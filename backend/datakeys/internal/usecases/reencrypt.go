@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/ports"
+	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"

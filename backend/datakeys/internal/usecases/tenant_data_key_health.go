@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ambi/idmagic/backend/datakeys/domain"
-	"github.com/ambi/idmagic/backend/datakeys/ports"
+	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	tenancyports "github.com/ambi/idmagic/backend/tenancy/ports"
 )

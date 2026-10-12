@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/testing_contract"
+	"github.com/ambi/idmagic/backend/datakeys/internal/testing_contract"
 )
 
 func TestPersistenceContract(t *testing.T) {

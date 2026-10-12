@@ -15,8 +15,6 @@ import (
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/datakeys"
-	datakeysmemory "github.com/ambi/idmagic/backend/datakeys/db_memory"
-	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
@@ -49,7 +47,7 @@ type controlPlaneBoundaryServer struct {
 	tenants        *observedTenantRepository
 	jobs           *jobsmemory.JobRepository
 	otherJob       *jobdomain.Job
-	dataKeys       *datakeysmemory.DataKeyRepository
+	dataKeys       datakeys.Module
 	otherAuditID   string
 	controlAuditID string
 }
@@ -76,7 +74,6 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 	if err != nil {
 		t.Fatal(err)
 	}
-	dataKeyStore := datakeysmemory.NewDataKeyRepository()
 	masterKey, err := envelope_cleartext.NewCleartextMasterKeyProvider()
 	if err != nil {
 		t.Fatal(err)
@@ -84,13 +81,13 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 	crypto := envelope_crypto.NewTinkEnvelopeCrypto(masterKey)
 	// DEK は 2 テナントに置き、acme だけ回転させる。健全性一覧がテナントごとの版を
 	// 取り違えずに返すかを、版の違いで判定できるようにするためである。
-	dataKeyDeps := datakeysusecases.Deps{Repository: dataKeyStore, Crypto: crypto}
+	dataKeyModule := datakeys.NewMemoryModule(crypto)
 	for _, tenantID := range []string{tenancydomain.DefaultTenantID, "acme"} {
-		if _, err := datakeysusecases.BootstrapTenantDataKey(t.Context(), dataKeyDeps, tenantID, now); err != nil {
+		if _, err := dataKeyModule.BootstrapTenantDataKey(t.Context(), tenantID, now); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := datakeysusecases.RotateTenantDataKey(t.Context(), dataKeyDeps, "acme", now.Add(time.Hour)); err != nil {
+	if _, err := dataKeyModule.RotateTenantDataKey(t.Context(), "acme", now.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -130,12 +127,12 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
 		TenantRepo: tenants, UserRepo: users, AuthnResolver: resolver,
 		SigningKeys: signingkeys.Module{KeyStore: keyStore},
-		DataKeys:    datakeys.Module{Repository: dataKeyStore, Crypto: crypto},
+		DataKeys:    dataKeyModule,
 		Jobs:        jobs.Module{Repo: jobStore},
 		Audit:       audit.Module{AuditEventRepo: auditStore},
 	})
 	return &controlPlaneBoundaryServer{
-		e: e, tenants: tenants, jobs: jobStore, otherJob: otherJob, dataKeys: dataKeyStore,
+		e: e, tenants: tenants, jobs: jobStore, otherJob: otherJob, dataKeys: dataKeyModule,
 		otherAuditID: "audit-acme", controlAuditID: "audit-control",
 	}
 }
@@ -230,7 +227,7 @@ func TestControlPlaneDataKeyHealthListsEveryTenantWithoutKeyMaterial(t *testing.
 
 	// 項目名に出なくても、鍵素材の値が他の項目へ紛れ込めば漏洩である。保存値そのものを本文から探す。
 	for tenantID := range wantActiveVersion {
-		keys, err := srv.dataKeys.ListAll(t.Context(), tenantID)
+		keys, err := srv.dataKeys.Repository.ListAll(t.Context(), tenantID)
 		if err != nil {
 			t.Fatal(err)
 		}

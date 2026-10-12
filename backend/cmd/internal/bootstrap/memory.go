@@ -24,8 +24,6 @@ import (
 	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
 	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
-	datakeysmemory "github.com/ambi/idmagic/backend/datakeys/db_memory"
-	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/db_memory"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
@@ -72,13 +70,11 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	if err != nil {
 		return nil, err
 	}
-	dataKeysRepo := datakeysmemory.NewDataKeyRepository()
 	dataKeysCrypto := envelope_crypto.NewTinkEnvelopeCrypto(masterKeyProvider)
-	dataKeysCache := datakeysusecases.NewDataKeyCache(dataKeysRepo, dataKeysCrypto)
+	dataKeysModule := datakeys.NewMemoryModule(dataKeysCrypto)
 	// No FieldMigrator to register: the memory runtime's MfaFactorRepository
 	// (below) never encrypts, so there is nothing for the
 	// data_key_reencryption job to migrate (dev/test only).
-	dataKeysMigrators := datakeysusecases.NewMigratorRegistry()
 	userRepo := usermemory.NewUserRepository()
 	csvArtifacts := idmmemory.NewCSVArtifactStore()
 	quotaRepo := tenancymemory.NewQuotaRepository()
@@ -186,7 +182,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},
 		SigningKeys:  signingkeys.Module{KeyStore: selectKeyStore(cfg, keyStore)},
-		DataKeys:     datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
+		DataKeys:     dataKeysModule,
 		Audit:        auditModule,
 		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		Saml: func() saml.Module {

@@ -5,7 +5,7 @@
 package handlers_http
 
 import (
-	"github.com/ambi/idmagic/backend/datakeys/ports"
+	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"

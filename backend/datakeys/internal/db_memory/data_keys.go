@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/domain"
+	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
 )
 
 // DataKeyRepository is the in-process reference implementation of

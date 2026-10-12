@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/usecases"
+	"github.com/ambi/idmagic/backend/datakeys/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/labstack/echo/v5"
 )

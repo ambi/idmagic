@@ -6,8 +6,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/datakeys"
-	datakeysmemory "github.com/ambi/idmagic/backend/datakeys/db_memory"
-	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -22,18 +20,16 @@ import (
 // mirroring how bootstrap wires backend/datakeys in production.
 func newTestCipher(t *testing.T, tenantID string) *datakeys.FieldCipher {
 	t.Helper()
-	repo := datakeysmemory.NewDataKeyRepository()
 	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
 	if err != nil {
 		t.Fatalf("NewCleartextMasterKeyProvider failed: %v", err)
 	}
 	crypto := envelope_crypto.NewTinkEnvelopeCrypto(master)
-	cache := datakeysusecases.NewDataKeyCache(repo, crypto)
-	deps := datakeysusecases.Deps{Repository: repo, Crypto: crypto, Cache: cache}
-	if _, err := datakeysusecases.BootstrapTenantDataKey(context.Background(), deps, tenantID, pgfixtures.TestClock()); err != nil {
+	module := datakeys.NewMemoryModule(crypto)
+	if _, err := module.BootstrapTenantDataKey(context.Background(), tenantID, pgfixtures.TestClock()); err != nil {
 		t.Fatalf("bootstrap tenant data key: %v", err)
 	}
-	return &datakeys.FieldCipher{Cache: cache, Crypto: crypto}
+	return module.FieldCipher()
 }
 
 func TestMfaFactorRepositoryRoundTrip(t *testing.T) {

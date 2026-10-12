@@ -3,7 +3,7 @@ package usecases
 import (
 	"sync"
 
-	"github.com/ambi/idmagic/backend/datakeys/ports"
+	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
 )
 
 // MigratorRegistry maps a name to the ports.FieldMigrator an owning module

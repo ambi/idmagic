@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/domain"
-	"github.com/ambi/idmagic/backend/datakeys/ports"
+	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
 )
 
 type Fixture struct {

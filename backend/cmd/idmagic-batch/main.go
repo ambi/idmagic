@@ -16,7 +16,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
-	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
+	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/version"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -127,7 +127,7 @@ func runDataKeyReencryptionSweep(ctx context.Context, deps *bootstrap.Dependenci
 	jobs := jobsusecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)
 	for _, tenant := range tenants {
 		for _, name := range names {
-			err := datakeysusecases.EnqueueReencryptionJob(ctx, jobs, tenant.ID, name, now)
+			err := datakeys.EnqueueReencryptionJob(ctx, jobs, tenant.ID, name, now)
 			// active_jobs の上限に達したテナントは次回の掃除で拾い直す。一つのテナントの上限で、
 			// ほかのテナントの再暗号化を止めない。
 			if _, exceeded := errors.AsType[*tenancydomain.QuotaExceededError](err); exceeded {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/domain"
-	"github.com/ambi/idmagic/backend/datakeys/ports"
+	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"

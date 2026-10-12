@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/datakeys/testing_contract"
+	"github.com/ambi/idmagic/backend/datakeys/internal/testing_contract"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
 

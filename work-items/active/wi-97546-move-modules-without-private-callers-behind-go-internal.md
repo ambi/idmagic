@@ -153,6 +153,7 @@ Seeding の domain は contributor と要求の契約であり、YAML 読み込�
 
 ### モジュールごとの記録
 
+- DataKeys: 公開パッケージを持たず、7 パッケージを移した。Module が保存先、暗号化、cache、migrator registry を組み、FieldCipher と再暗号化 handler に同じ依存を渡す。外部テストもこの構築操作と初期化、回転の操作を使う。`test-go-package` は DataKeys 54 件、MFA の PostgreSQL 9 件、外部 IdP の PostgreSQL 11 件が race 付きで成功した。境界検査、仕様影響検査と lint も成功した。PostgreSQL の保存先の旧構築関数は常に成功するため、移したエラー伝播の分岐には現在到達する入力がない。
 - SigningKeys: `domain` と `ports` を公開し、6 パッケージを移した。メモリ、PostgreSQL、Vault の構築、HTTP 登録とバッチの鍵ライフサイクルをルートへ集めた。テストの保存型は公開 KeyStore へ替え、HTTP の検査は独立した JSON の読み取り型を使う。外部鍵の JWK と信頼しない JWT 鍵の証明書も製品の内部変換へ依存しない fixture にした。`test-go-package` は SigningKeys 41 件、batch 8 件、`test-go-test` の XML の署名と鍵回転は 2 件が成功し、PostgreSQL、境界検査と lint も成功した。
 - Audit: `ports` だけを公開し、保存層、HTTP、usecases と共有契約を移した。既存の `TestCharacterize*` の本文を保ち、保存先の構築と検索属性の抽出をルートへ移した。`test-go-package` は Audit 81 件、bootstrap 119 件、Authentication/usecases 13 件が race 付きで成功した。`check-boundaries`、`check-event-contract` と lint も成功した。監査保存先の retention 用の操作を、構築操作の戻り値にも保つ。
 - 移行の前提となる検査: 特性化テストの移動を削除として拒否する故障を受け入れテストで RED にした。削除されたファイルの本文が追加されたテストファイルにすべて一致する場合だけ移動として扱い、本文変更と削除は引き続き拒否する。`test-tools-file -- check/src/spec-impact.acceptance.test.ts` は 30 テスト、`typecheck-tools`、`lint-tools` が成功した。

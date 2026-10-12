@@ -25,7 +25,6 @@ import (
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
-	datakeyshttp "github.com/ambi/idmagic/backend/datakeys/handlers_http"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	ighttp "github.com/ambi/idmagic/backend/idgovernance/handlers_http"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -410,11 +409,9 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Emit:          d.Emit,
 	})
 
-	datakeyshttp.RegisterRoutes(g, datakeyshttp.Deps{
+	d.DataKeys.RegisterRoutes(g, datakeys.RouteDeps{
 		Deps:          d.Deps,
 		Authenticator: authenticator,
-		Repository:    d.DataKeys.Repository,
-		Crypto:        d.DataKeys.Crypto,
 		TenantRepo:    d.TenantRepo,
 	})
 

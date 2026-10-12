@@ -9,8 +9,8 @@ import (
 
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 
-	"github.com/ambi/idmagic/backend/datakeys/db_memory"
-	"github.com/ambi/idmagic/backend/datakeys/ports"
+	"github.com/ambi/idmagic/backend/datakeys/internal/db_memory"
+	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	jobsdbmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"

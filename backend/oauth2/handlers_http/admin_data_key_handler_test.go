@@ -13,9 +13,6 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/datakeys"
-	datakeysmemory "github.com/ambi/idmagic/backend/datakeys/db_memory"
-	datakeyshttp "github.com/ambi/idmagic/backend/datakeys/handlers_http"
-	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -41,13 +38,13 @@ func newDataKeyAdminServer(t *testing.T, actor *userdomain.User) *echo.Echo {
 		resolver.ctx = &authdomain.AuthenticationContext{UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"}}
 	}
 
-	dataKeysRepo := datakeysmemory.NewDataKeyRepository()
 	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
 	if err != nil {
 		t.Fatal(err)
 	}
 	crypto := envelope_crypto.NewTinkEnvelopeCrypto(master)
-	if _, err := datakeysusecases.BootstrapTenantDataKey(context.Background(), datakeysusecases.Deps{Repository: dataKeysRepo, Crypto: crypto}, "acme", time.Now().UTC()); err != nil {
+	module := datakeys.NewMemoryModule(crypto)
+	if _, err := module.BootstrapTenantDataKey(context.Background(), "acme", time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -57,7 +54,7 @@ func newDataKeyAdminServer(t *testing.T, actor *userdomain.User) *echo.Echo {
 		TenantRepo:    newSingleTenantRepo(),
 		UserRepo:      userRepo,
 		AuthnResolver: resolver,
-		DataKeys:      datakeys.Module{Repository: dataKeysRepo, Crypto: crypto},
+		DataKeys:      module,
 	})
 	return e
 }
@@ -70,7 +67,12 @@ func TestAdminDataKeysHealthListsBootstrappedTenants(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	var body struct {
-		Tenants []datakeyshttp.TenantDataKeyHealthResponse `json:"tenants"`
+		Tenants []struct {
+			TenantID          string `json:"tenant_id"`
+			ActiveVersion     int    `json:"active_version"`
+			Provider          string `json:"provider"`
+			ProviderReachable bool   `json:"provider_reachable"`
+		} `json:"tenants"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)

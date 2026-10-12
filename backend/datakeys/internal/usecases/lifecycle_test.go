@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/db_memory"
-	"github.com/ambi/idmagic/backend/datakeys/domain"
+	"github.com/ambi/idmagic/backend/datakeys/internal/db_memory"
+	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
 	jobsdbmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"

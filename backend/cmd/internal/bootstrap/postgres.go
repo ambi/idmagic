@@ -25,8 +25,6 @@ import (
 	webauthnpostgres "github.com/ambi/idmagic/backend/authentication/webauthn/db_postgres"
 	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
-	datakeyspostgres "github.com/ambi/idmagic/backend/datakeys/db_postgres"
-	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	igpostgres "github.com/ambi/idmagic/backend/idgovernance/db_postgres"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
@@ -99,26 +97,25 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		return nil, err
 	}
 
-	dataKeysRepo, err := datakeyspostgres.NewDataKeyRepository(ctx, resilientDB)
-	if err != nil {
-		pool.Close()
-		return nil, err
-	}
 	masterKeyProvider, err := selectMasterKeyProvider(cfg)
 	if err != nil {
 		pool.Close()
 		return nil, err
 	}
 	dataKeysCrypto := envelope_crypto.NewTinkEnvelopeCrypto(masterKeyProvider)
-	dataKeysCache := datakeysusecases.NewDataKeyCache(dataKeysRepo, dataKeysCrypto)
-	mfaSecretCipher := &datakeys.FieldCipher{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto}
+	dataKeysModule, err := datakeys.NewPostgresModule(ctx, resilientDB, dataKeysCrypto)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	mfaSecretCipher := dataKeysModule.FieldCipher()
 	mfaFactorRepo := &totppostgres.MfaFactorRepository{Pool: resilientDB, Cipher: mfaSecretCipher}
 	federationConnectionRepo := &federationpostgres.ConnectionRepository{Pool: resilientDB, Cipher: mfaSecretCipher}
 	// dataKeysMigrators feeds the data_key_reencryption job (wi-97 T006):
 	// every owning module registers its FieldMigrator here so Rotate can
 	// enqueue per-migrator backfill jobs and Destroy's gate can verify no
 	// migrator still has pending rows before crypto-shredding a version.
-	dataKeysMigrators := datakeysusecases.NewMigratorRegistry()
+	dataKeysMigrators := dataKeysModule.Migrators
 	dataKeysMigrators.Register(totppostgres.MfaFactorMigratorName, &totppostgres.MfaFactorReencryptor{Repo: mfaFactorRepo})
 	dataKeysMigrators.Register(federationpostgres.IdentityProviderSecretMigratorName, &federationpostgres.ConnectionSecretReencryptor{
 		Repo: federationConnectionRepo, EnvResolver: federationsecrets.Resolver{},
@@ -218,7 +215,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},
 		SigningKeys:  signingkeys.Module{KeyStore: selectKeyStore(cfg, keyStore)},
-		DataKeys:     datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
+		DataKeys:     dataKeysModule,
 		Audit:        audit.NewPostgresModule(resilientDB),
 		WsFederation: wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
 		Saml: saml.Module{

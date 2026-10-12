@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/domain"
-	"github.com/ambi/idmagic/backend/datakeys/ports"
-	"github.com/ambi/idmagic/backend/datakeys/usecases"
+	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	"github.com/ambi/idmagic/backend/datakeys/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )

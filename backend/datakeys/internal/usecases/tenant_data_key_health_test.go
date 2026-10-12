@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/db_memory"
+	"github.com/ambi/idmagic/backend/datakeys/internal/db_memory"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"

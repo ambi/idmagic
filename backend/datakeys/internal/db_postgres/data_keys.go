@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ambi/idmagic/backend/datakeys/domain"
+	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpostgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )

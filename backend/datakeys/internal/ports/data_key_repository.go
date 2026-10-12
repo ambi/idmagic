@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/domain"
+	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
 )
 
 // DataKeyRepository owns the atomicity of the DataEncryptionKeyLifecycle

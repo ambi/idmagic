@@ -7,9 +7,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/datakeys"
-	datakeysmemory "github.com/ambi/idmagic/backend/datakeys/db_memory"
-	datakeysports "github.com/ambi/idmagic/backend/datakeys/ports"
-	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -24,42 +21,36 @@ import (
 // drive rotation directly, unlike mfa_test.go's newTestCipher which only
 // exposes the resulting FieldCipher.
 type testDataKeyStack struct {
-	repo   datakeysports.DataKeyRepository
-	crypto envelope_crypto.EnvelopeCrypto
-	cache  *datakeysusecases.DataKeyCache
+	module datakeys.Module
 	cipher *datakeys.FieldCipher
 }
 
 func newTestDataKeyStack(t *testing.T, tenantID string) *testDataKeyStack {
 	t.Helper()
-	repo := datakeysmemory.NewDataKeyRepository()
 	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
 	if err != nil {
 		t.Fatalf("NewCleartextMasterKeyProvider failed: %v", err)
 	}
 	crypto := envelope_crypto.NewTinkEnvelopeCrypto(master)
-	cache := datakeysusecases.NewDataKeyCache(repo, crypto)
-	deps := datakeysusecases.Deps{Repository: repo, Crypto: crypto, Cache: cache}
-	if _, err := datakeysusecases.BootstrapTenantDataKey(context.Background(), deps, tenantID, pgfixtures.TestClock()); err != nil {
+	module := datakeys.NewMemoryModule(crypto)
+	if _, err := module.BootstrapTenantDataKey(context.Background(), tenantID, pgfixtures.TestClock()); err != nil {
 		t.Fatalf("bootstrap tenant data key: %v", err)
 	}
 	return &testDataKeyStack{
-		repo: repo, crypto: crypto, cache: cache,
-		cipher: &datakeys.FieldCipher{Repository: repo, Cache: cache, Crypto: crypto},
+		module: module, cipher: module.FieldCipher(),
 	}
 }
 
 func (s *testDataKeyStack) rotate(t *testing.T, tenantID string) {
 	t.Helper()
-	deps := datakeysusecases.Deps{Repository: s.repo, Crypto: s.crypto, Cache: s.cache}
-	if _, err := datakeysusecases.RotateTenantDataKey(context.Background(), deps, tenantID, pgfixtures.TestClock()); err != nil {
+	if _, err := s.module.RotateTenantDataKey(context.Background(), tenantID, pgfixtures.TestClock()); err != nil {
 		t.Fatalf("rotate tenant data key: %v", err)
 	}
 }
 
 func (s *testDataKeyStack) activeVersion(t *testing.T, tenantID string) int {
 	t.Helper()
-	key, err := s.repo.FindActive(context.Background(), tenantID)
+	key, err := s.module.Repository.FindActive(context.Background(), tenantID)
 	if err != nil {
 		t.Fatalf("FindActive: %v", err)
 	}
