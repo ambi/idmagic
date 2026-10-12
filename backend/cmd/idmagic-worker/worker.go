@@ -24,8 +24,6 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	logoutpush "github.com/ambi/idmagic/backend/oauth2/logout/push_http"
 	"github.com/ambi/idmagic/backend/provisioning"
-	identitysource "github.com/ambi/idmagic/backend/provisioning/source_idmanagement"
-	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
@@ -205,12 +203,7 @@ func RunWorker() error {
 
 	// Users と Groups の両方を解決できる供給元を渡す。User だけを渡すと、Group の
 	// プロビジョニングタスクは「対象が無い」として何も送らずに成功で終わる (wi-441 が直した形)。
-	attrSource := identitysource.CombinedAttributeSource{
-		User:  &identitysource.UserAttributeSource{UserRepo: deps.IdManagement.UserRepo},
-		Group: &identitysource.GroupAttributeSource{GroupRepo: deps.IdManagement.GroupRepo},
-	}
-	memberSource := &identitysource.GroupMemberSource{GroupRepo: deps.IdManagement.GroupRepo}
-	handlers.Register(provisioning.KindProvisioningTask, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, memberSource, provisioning.NewTargetClient, deps.NewEmitFunc(logger), deps.Notification.Notifier)))
+	handlers.Register(provisioning.KindProvisioningTask, deps.Provisioning.TaskHandler(deps.IdManagement.UserRepo, deps.IdManagement.GroupRepo, provisioning.NewTargetClient, deps.NewEmitFunc(logger), deps.Notification.Notifier))
 	go provisioningDispatchLoop(ctx, deps, logger)
 	go provisioningReconcileLoop(ctx, deps, logger, worker.ProvisioningReconcileInterval)
 	go ephemeralSweepLoop(ctx, deps, worker.EphemeralSweepInterval)
@@ -382,11 +375,11 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies,
 	// NewEmitFunc は監査の書き込みに自前の context を使う。停止中の tick でも
 	// ProvisioningTaskStarted を落とさないため (sharedSignalsDeliveryLoop と同じ)。
 	emit := deps.NewEmitFunc(logger) //nolint:contextcheck // see comment above
-	dispatcherDeps := deps.Provisioning.DispatcherDeps(usecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit), emit)
+	dispatch := deps.Provisioning.Dispatcher(usecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit), emit)
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
-		if _, err := provisioningusecases.DispatchPendingTasks(ctx, dispatcherDeps, 100, time.Now().UTC()); err != nil {
+		if _, err := dispatch(ctx, 100, time.Now().UTC()); err != nil {
 			logging.Warn(ctx, "provisioning task dispatch failed", "error", err)
 		}
 		select {
@@ -405,7 +398,7 @@ const provisioningReconcileLimit = 500
 // (REQ-PLATFORM-003)。作ったタスクは provisioningDispatchLoop が Jobs へ渡す。
 func provisioningReconcileLoop(ctx context.Context, deps *bootstrap.Dependencies, logger logging.Logger, interval time.Duration) {
 	// 誤削除ガードによる隔離の ConnectionQuarantined を、provisioningDispatchLoop と同じ理由で自前の context で発行する。
-	reconcileDeps := deps.Provisioning.ReconcileDeps(deps.IdManagement.UserRepo, deps.Application.AssignmentRepo, deps.NewEmitFunc(logger), deps.Notification.Notifier) //nolint:contextcheck // see comment above
+	reconcile := deps.Provisioning.Reconciler(deps.IdManagement.UserRepo, deps.Application.AssignmentRepo, deps.NewEmitFunc(logger), deps.Notification.Notifier) //nolint:contextcheck // see comment above
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -414,7 +407,7 @@ func provisioningReconcileLoop(ctx context.Context, deps *bootstrap.Dependencies
 			return
 		case <-ticker.C:
 		}
-		if _, err := provisioningusecases.ReconcileConnections(ctx, reconcileDeps, provisioningReconcileLimit, time.Now().UTC()); err != nil {
+		if _, err := reconcile(ctx, provisioningReconcileLimit, time.Now().UTC()); err != nil {
 			logging.Warn(ctx, "provisioning reconciliation failed", "error", err)
 		}
 	}

@@ -43,7 +43,7 @@ import (
 	logoutpostgres "github.com/ambi/idmagic/backend/oauth2/logout/db_postgres"
 	oauth2tokenpostgres "github.com/ambi/idmagic/backend/oauth2/token/db_postgres"
 	"github.com/ambi/idmagic/backend/provisioning"
-	provisioningpostgres "github.com/ambi/idmagic/backend/provisioning/db_postgres"
+
 	"github.com/ambi/idmagic/backend/saml"
 	samlpostgres "github.com/ambi/idmagic/backend/saml/db_postgres"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
@@ -133,11 +133,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		WorkflowRepo: workflowRepo, Capture: workflowCapture, UserRepo: userRepo, RunRepo: workflowRunRepo,
 	}
 	assignmentRepo := &apppostgres.ApplicationAssignmentRepository{Pool: resilientDB}
-	provisioningModule := provisioning.Module{
-		ConnectionRepo: &provisioningpostgres.ProvisioningConnectionRepository{Pool: resilientDB},
-		RemoteLinkRepo: &provisioningpostgres.RemoteResourceLinkRepository{Pool: resilientDB},
-		TaskRepo:       &provisioningpostgres.ProvisioningTaskRepository{Pool: resilientDB},
-	}
+	provisioningModule := provisioning.NewPostgresModule(resilientDB)
 
 	return &Dependencies{
 		Tenancy: tenancy.Module{

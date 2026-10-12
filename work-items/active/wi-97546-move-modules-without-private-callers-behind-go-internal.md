@@ -153,6 +153,7 @@ Seeding の domain は contributor と要求の契約であり、YAML 読み込�
 
 ### モジュールごとの記録
 
+- Provisioning: 公開パッケージを持たず、9 パッケージを移した。worker が渡す既存の target client の差し替え点を保ち、User と Group の属性、所属、dispatcher と同期の構築をルートへ集めた。テナント分離の HTTP テストは、その内部 fixture を所有する Provisioning の HTTP パッケージへ移し、正式な `server_http.Register` の入口と表明を保った。`test-go-package` は Provisioning 301 件と共通スタック 8 件、PostgreSQL と lint が成功した。新しい `TestTaskHandlerWiresGroupAttributesAndMembers` は実際の構築操作から表示名、所属の増分 add、対応関係と成功状態を観測する。Group の属性の結線を外すと属性と所属が両方届かず失敗し、所属の結線だけを外すと表示名は届くが所属が空で失敗した。両方を戻して GREEN を確認した。
 - ApiTokens: `domain` と `ports` を公開し、5 パッケージを移した。保存層と Service の設定、HTTP principal の変換はルートの構築操作へ集めた。組み立て地点が型を名指す Service と Option はルートの構築の型として残す。`test-go-package` は ApiTokens 52 件と共通スタック 8 件が race 付きで成功し、PostgreSQL、境界検査と lint も成功した。
 - DataKeys: 公開パッケージを持たず、7 パッケージを移した。Module が保存先、暗号化、cache、migrator registry を組み、FieldCipher と再暗号化 handler に同じ依存を渡す。外部テストもこの構築操作と初期化、回転の操作を使う。`test-go-package` は DataKeys 54 件、MFA の PostgreSQL 9 件、外部 IdP の PostgreSQL 11 件が race 付きで成功した。境界検査、仕様影響検査と lint も成功した。PostgreSQL の保存先の旧構築関数は常に成功するため、移したエラー伝播の分岐には現在到達する入力がない。
 - SigningKeys: `domain` と `ports` を公開し、6 パッケージを移した。メモリ、PostgreSQL、Vault の構築、HTTP 登録とバッチの鍵ライフサイクルをルートへ集めた。テストの保存型は公開 KeyStore へ替え、HTTP の検査は独立した JSON の読み取り型を使う。外部鍵の JWK と信頼しない JWT 鍵の証明書も製品の内部変換へ依存しない fixture にした。`test-go-package` は SigningKeys 41 件、batch 8 件、`test-go-test` の XML の署名と鍵回転は 2 件が成功し、PostgreSQL、境界検査と lint も成功した。

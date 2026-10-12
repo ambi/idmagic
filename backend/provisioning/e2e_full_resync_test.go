@@ -15,7 +15,7 @@ import (
 	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/provisioning/domain"
+	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 

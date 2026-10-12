@@ -63,7 +63,7 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/provisioning"
-	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/db_memory"
+
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -186,21 +186,20 @@ type Stack struct {
 	KeyStore signingkeys.KeyStore
 	Signer   *tokensjose.JWTSigner
 
-	Clients                 *oauth2memory.OAuth2ClientRepository
-	Consents                *consentmemory.ConsentRepository
-	AuthzDetailTypes        *oauth2memory.AuthorizationDetailTypeRepository
-	McpResourceServers      *oauth2memory.McpResourceServerRepository
-	Codes                   *oauth2memory.AuthorizationCodeStore
-	PAR                     *oauth2memory.PARStore
-	Refresh                 *oauth2memory.RefreshTokenStore
-	ApiTokens               apitokenports.Repository
-	Applications            *appmemory.ApplicationRepository
-	ApplicationAssignments  *appmemory.ApplicationAssignmentRepository
-	ApplicationOrderings    *appmemory.ApplicationOrderingRepository
-	ApplicationCategories   *appmemory.ApplicationCategoryRepository
-	ApplicationIcons        *appmemory.ApplicationIconStore
-	ProvisioningConnections *provisioningmemory.ProvisioningConnectionRepository
-	ProvisioningTasks       *provisioningmemory.ProvisioningTaskRepository
+	Clients                *oauth2memory.OAuth2ClientRepository
+	Consents               *consentmemory.ConsentRepository
+	AuthzDetailTypes       *oauth2memory.AuthorizationDetailTypeRepository
+	McpResourceServers     *oauth2memory.McpResourceServerRepository
+	Codes                  *oauth2memory.AuthorizationCodeStore
+	PAR                    *oauth2memory.PARStore
+	Refresh                *oauth2memory.RefreshTokenStore
+	ApiTokens              apitokenports.Repository
+	Applications           *appmemory.ApplicationRepository
+	ApplicationAssignments *appmemory.ApplicationAssignmentRepository
+	ApplicationOrderings   *appmemory.ApplicationOrderingRepository
+	ApplicationCategories  *appmemory.ApplicationCategoryRepository
+	ApplicationIcons       *appmemory.ApplicationIconStore
+	Provisioning           provisioning.Module
 	// AppSignInPolicies と DefaultSignInPolicy は、サインインポリシーの具体例が
 	// 「保存されたか」を応答ではなく保存先で読み直せるように配る。
 	AppSignInPolicies   *appmemory.SignInPolicyRepository
@@ -471,13 +470,8 @@ func WithProvisioning() Option {
 		if b.stack.ApplicationAssignments == nil {
 			WithApplicationApi()(b)
 		}
-		b.stack.ProvisioningConnections = provisioningmemory.NewProvisioningConnectionRepository()
-		b.stack.ProvisioningTasks = provisioningmemory.NewProvisioningTaskRepository()
-		b.deps.Provisioning = provisioning.Module{
-			ConnectionRepo: b.stack.ProvisioningConnections,
-			TaskRepo:       b.stack.ProvisioningTasks,
-			RemoteLinkRepo: provisioningmemory.NewRemoteResourceLinkRepository(),
-		}
+		b.stack.Provisioning = provisioning.NewMemoryModule()
+		b.deps.Provisioning = b.stack.Provisioning
 	}
 }
 

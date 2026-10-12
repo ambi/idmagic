@@ -438,11 +438,11 @@ sql:
             nullable: false
   - engine: "postgresql"
     schema: "infra/schema/postgres.sql"
-    queries: "backend/provisioning/db_postgres"
+    queries: "backend/provisioning/internal/db_postgres"
     gen:
       go:
         package: "db_postgres"
-        out: "backend/provisioning/db_postgres"
+        out: "backend/provisioning/internal/db_postgres"
         sql_package: "pgx/v5"
         emit_interface: true
         emit_json_tags: false

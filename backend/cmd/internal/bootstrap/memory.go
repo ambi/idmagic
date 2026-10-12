@@ -39,7 +39,7 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	logoutmemory "github.com/ambi/idmagic/backend/oauth2/logout/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning"
-	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/db_memory"
+
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
@@ -97,11 +97,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		RunRepo:      workflowRunRepo,
 	}
 	assignmentRepo := appmemory.NewApplicationAssignmentRepository()
-	provisioningModule := provisioning.Module{
-		ConnectionRepo: provisioningmemory.NewProvisioningConnectionRepository(),
-		RemoteLinkRepo: provisioningmemory.NewRemoteResourceLinkRepository(),
-		TaskRepo:       provisioningmemory.NewProvisioningTaskRepository(),
-	}
+	provisioningModule := provisioning.NewMemoryModule()
 	federationRepos := federationmemory.NewRepositories()
 	return &Dependencies{
 		Tenancy: tenancy.Module{

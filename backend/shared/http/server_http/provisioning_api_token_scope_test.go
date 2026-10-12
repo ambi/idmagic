@@ -45,7 +45,7 @@ func TestProvisioningScopesAllowOnlyTheirNamedOperations(t *testing.T) {
 	if created.Code != http.StatusCreated {
 		t.Fatalf("write status=%d body=%s, want 201", created.Code, created.Body.String())
 	}
-	connection, err := s.ProvisioningConnections.Find(context.Background(), s.TenantID(t, "default"), "app-1")
+	connection, err := s.Provisioning.ConnectionRepo.Find(context.Background(), s.TenantID(t, "default"), "app-1")
 	if err != nil || connection == nil {
 		t.Fatalf("stored connection = (%+v, %v), want registered connection", connection, err)
 	}
@@ -60,7 +60,7 @@ func TestProvisioningReadScopeCannotRegisterAConnection(t *testing.T) {
 	if refused.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s, want 403", refused.Code, refused.Body.String())
 	}
-	connection, err := s.ProvisioningConnections.Find(context.Background(), s.TenantID(t, "default"), "app-1")
+	connection, err := s.Provisioning.ConnectionRepo.Find(context.Background(), s.TenantID(t, "default"), "app-1")
 	if err != nil || connection != nil {
 		t.Fatalf("stored connection after refusal = (%+v, %v), want none", connection, err)
 	}
@@ -86,7 +86,7 @@ func TestForeignTenantProvisioningTokenIsRejectedAsInvalid(t *testing.T) {
 	assertProvisioningInvalidToken(t, provisioningAPIRequest(t, s, http.MethodPost, "/api/admin/v1/applications/app-1/provisioning", foreignWrite,
 		`{"base_url":"https://downstream.example/scim/v2","credential":{"auth_method":"bearer_token","bearer_token":"secret"}}`))
 	assertProvisioningInvalidToken(t, provisioningAPIRequest(t, s, http.MethodPost, "/api/admin/v1/applications/app-1/provisioning/full-resync", foreignWrite, ""))
-	connection, err := s.ProvisioningConnections.Find(context.Background(), s.TenantID(t, "default"), "app-1")
+	connection, err := s.Provisioning.ConnectionRepo.Find(context.Background(), s.TenantID(t, "default"), "app-1")
 	if err != nil || connection != nil {
 		t.Fatalf("default tenant connection after foreign refusal = (%+v, %v), want none", connection, err)
 	}
