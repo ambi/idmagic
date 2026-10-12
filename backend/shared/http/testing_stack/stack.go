@@ -42,10 +42,10 @@ import (
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/apitoken"
-	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
+
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
-	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
+
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
@@ -215,7 +215,7 @@ type Stack struct {
 	Agents           *agentmemory.AgentRepository
 	RevocationEpochs *ssmemory.AgentRevocationEpochRepository
 
-	apiTokens *apitokenusecases.Service
+	apiTokens *apitoken.Service
 	// owner は New を呼んだテストである。HTTP サーバーの後始末はここへ登録する。
 	// Browser を呼んだ subtest へ登録すると、その subtest が終わった時点でサーバーが
 	// 閉じ、同じスタックを使う次の subtest が接続できなくなる。
@@ -405,16 +405,16 @@ func WithEndpointRateLimitReached(policy, key string) Option {
 // 有効に見える。入口を通すことに意味があるのは、入口の組み立てが製品と同じときだけである。
 func WithApiTokens() Option {
 	return func(b *builder) {
-		repo := apitokenmemory.NewRepository()
+		repo := apitoken.NewRepository()
 		b.stack.ApiTokens = repo
-		b.stack.apiTokens = apitokenusecases.New(repo,
-			apitokenusecases.WithTokenIssuer(b.stack.Signer),
-			apitokenusecases.WithTokenIntrospector(b.stack.Signer))
+		b.stack.apiTokens = apitoken.New(repo,
+			apitoken.WithTokenIssuer(b.stack.Signer),
+			apitoken.WithTokenIntrospector(b.stack.Signer))
 		b.deps.ApiTokens = apitoken.Module{
 			Repo: repo, TokenIssuer: b.stack.Signer, TokenIntrospector: b.stack.Signer,
 		}
-		b.deps.OAuth2.TokenIntrospector = apitokenusecases.New(repo,
-			apitokenusecases.WithTokenIntrospector(b.stack.Signer))
+		b.deps.OAuth2.TokenIntrospector = apitoken.New(repo,
+			apitoken.WithTokenIntrospector(b.stack.Signer))
 	}
 }
 

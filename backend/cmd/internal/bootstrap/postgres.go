@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/apitoken"
-	apitokenpostgres "github.com/ambi/idmagic/backend/apitoken/db_postgres"
+
 	"github.com/ambi/idmagic/backend/application"
 	apppostgres "github.com/ambi/idmagic/backend/application/db_postgres"
 	"github.com/ambi/idmagic/backend/audit"
@@ -224,7 +224,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			ReplayStore: &samlpostgres.AuthnRequestReplayStore{Pool: resilientDB},
 		},
 		Sourcing:  sourcing.NewPostgresModule(resilientDB),
-		ApiTokens: apitoken.Module{Repo: &apitokenpostgres.Repository{Pool: resilientDB}},
+		ApiTokens: apitoken.NewPostgresModule(resilientDB),
 		Jobs:      jobs.Module{Repo: &jobspostgres.JobRepository{Pool: resilientDB}},
 		Application: application.Module{
 			Repo:                    &apppostgres.ApplicationRepository{Pool: resilientDB},

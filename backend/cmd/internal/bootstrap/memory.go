@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/ambi/idmagic/backend/apitoken"
-	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
+
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	"github.com/ambi/idmagic/backend/audit"
@@ -190,7 +190,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 			return saml.Module{SPRepo: repo, ProfileRepo: repo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()}
 		}(),
 		Sourcing:  sourcing.NewMemoryModule(),
-		ApiTokens: apitoken.Module{Repo: apitokenmemory.NewRepository()},
+		ApiTokens: apitoken.NewMemoryModule(),
 		Jobs:      jobs.Module{Repo: jobsmemory.NewJobRepository()},
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),

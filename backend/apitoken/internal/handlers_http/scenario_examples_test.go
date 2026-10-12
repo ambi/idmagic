@@ -24,7 +24,7 @@ import (
 	"time"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
-	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
+	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/internal/usecases"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"

@@ -8,7 +8,7 @@ import (
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/apitoken/domain"
-	"github.com/ambi/idmagic/backend/apitoken/usecases"
+	"github.com/ambi/idmagic/backend/apitoken/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 

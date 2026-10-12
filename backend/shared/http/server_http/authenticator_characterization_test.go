@@ -17,8 +17,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/apitoken"
-	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
-	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
@@ -128,7 +127,7 @@ type authCharacterization struct {
 	sessions     *sessionusecases.SessionManager
 	sessionStore *sessionmemory.SessionStore
 	tenants      *tenancymemory.TenantRepository
-	apiTokens    *apitokenusecases.Service
+	apiTokens    *apitoken.Service
 	echo         *echo.Echo
 }
 
@@ -146,7 +145,7 @@ func newAuthCharacterization(t *testing.T) *authCharacterization {
 		t.Fatal(err)
 	}
 	signer := tokensjose.NewJWTSigner(characterizationIssuer, keyStore)
-	apiTokenRepo := apitokenmemory.NewRepository()
+	apiTokenRepo := apitoken.NewRepository()
 	sessionStore := sessionmemory.NewSessionStore()
 	sessions := sessionusecases.NewSessionManager(sessionStore)
 	h := &authCharacterization{
@@ -156,8 +155,8 @@ func newAuthCharacterization(t *testing.T) *authCharacterization {
 		sessions:     sessions,
 		sessionStore: sessionStore,
 		tenants:      tenants,
-		apiTokens: apitokenusecases.New(apiTokenRepo,
-			apitokenusecases.WithTokenIssuer(signer), apitokenusecases.WithTokenIntrospector(signer)),
+		apiTokens: apitoken.New(apiTokenRepo,
+			apitoken.WithTokenIssuer(signer), apitoken.WithTokenIntrospector(signer)),
 	}
 	h.deps = httpadapter.Deps{
 		Issuer: characterizationIssuer, Contract: spec.CurrentRuntimeContract(),

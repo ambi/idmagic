@@ -13,7 +13,7 @@ import (
 
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 
-	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
+	"github.com/ambi/idmagic/backend/apitoken"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
@@ -108,9 +108,9 @@ func Run() error {
 	sessionManager := sessionusecases.NewSessionManager(deps.Authentication.SessionStore)
 	tokenSigner := tokensJOSE.NewJWTSigner(issuer, deps.SigningKeys.KeyStore)
 	jwkResolver := tokensJOSE.NewJWKResolver()
-	managedTokenIntrospector := apitokenusecases.New(
+	managedTokenIntrospector := apitoken.New(
 		deps.ApiTokens.Repo,
-		apitokenusecases.WithTokenIntrospector(tokenSigner),
+		apitoken.WithTokenIntrospector(tokenSigner),
 	)
 	deps.ApiTokens.TokenIssuer = tokenSigner
 	deps.ApiTokens.TokenIntrospector = tokenSigner

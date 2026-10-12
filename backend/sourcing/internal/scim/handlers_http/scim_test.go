@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
+	"github.com/ambi/idmagic/backend/apitoken"
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
-	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
+
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -70,13 +70,13 @@ func (c *scimTokenCodec) IntrospectAccessToken(_ context.Context, token string) 
 	return &oauthports.IntrospectionResult{Active: false}, nil
 }
 
-func newTestApiTokenService(options ...apitokenusecases.Option) *apitokenusecases.Service {
+func newTestApiTokenService(options ...apitoken.Option) *apitoken.Service {
 	codec := newScimTokenCodec()
-	options = append(options, apitokenusecases.WithTokenIssuer(codec), apitokenusecases.WithTokenIntrospector(codec))
-	return apitokenusecases.New(apitokenmemory.NewRepository(), options...)
+	options = append(options, apitoken.WithTokenIssuer(codec), apitoken.WithTokenIntrospector(codec))
+	return apitoken.New(apitoken.NewRepository(), options...)
 }
 
-func newScopedScimHarness() (*echo.Echo, *apitokenusecases.Service) {
+func newScopedScimHarness() (*echo.Echo, *apitoken.Service) {
 	userRepo := usermemory.NewUserRepository()
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
@@ -164,7 +164,7 @@ func TestScimRoutesRequireOperationScope(t *testing.T) {
 type scimHarness struct {
 	echo          *echo.Echo
 	usecases      *usecases.Usecases
-	apiTokens     *apitokenusecases.Service
+	apiTokens     *apitoken.Service
 	userRepo      *usermemory.UserRepository
 	groupRepo     *groupmemory.GroupRepository
 	scimRepo      *scimmemory.ScimRepository
@@ -173,7 +173,7 @@ type scimHarness struct {
 
 // tokenOptions は API トークンの検証側へ渡す。失効や期限切れを観測するテストが
 // 時計を差し替えるために使う。
-func newScimHarness(tokenOptions ...apitokenusecases.Option) scimHarness {
+func newScimHarness(tokenOptions ...apitoken.Option) scimHarness {
 	userRepo := usermemory.NewUserRepository()
 	groupRepo := groupmemory.NewGroupRepository()
 	scimRepo := scimmemory.NewScimRepository()
@@ -195,12 +195,12 @@ func newScimHarness(tokenOptions ...apitokenusecases.Option) scimHarness {
 // newScimTestHarness wires the SCIM HTTP handler against in-memory
 // repositories, matching the setup TestScimInboundProvisioning /
 // TestScimGroupSync use, for tests that only need list/filter behavior.
-func newScimTestHarness() (*echo.Echo, *usecases.Usecases, *apitokenusecases.Service) {
+func newScimTestHarness() (*echo.Echo, *usecases.Usecases, *apitoken.Service) {
 	h := newScimHarness()
 	return h.echo, h.usecases, h.apiTokens
 }
 
-func issueAllScimToken(t *testing.T, apiTokens *apitokenusecases.Service) string {
+func issueAllScimToken(t *testing.T, apiTokens *apitoken.Service) string {
 	t.Helper()
 	literal, _, err := apiTokens.Issue(context.Background(), tenancydomain.DefaultTenantID, "admin-test", "SCIM integration", []string{
 		string(apitokendomain.ScopeScimUsersRead), string(apitokendomain.ScopeScimUsersWrite),

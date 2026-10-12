@@ -29,9 +29,10 @@ import (
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 
 	"github.com/ambi/idmagic/backend/apitoken"
-	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
+	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
+
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
-	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
@@ -111,8 +112,8 @@ type idmRefusalFixture struct {
 	sessions    *sessionmemory.SessionStore
 	emailTokens *usermemory.EmailChangeTokenStore
 	emails      *emailmemory.NoopEmailSender
-	apiTokens   *apitokenusecases.Service
-	apiTokenDB  *apitokenmemory.Repository
+	apiTokens   *apitoken.Service
+	apiTokenDB  apitokenports.Repository
 	events      *[]spec.DomainEvent
 	// consents はアカウントのデータエクスポートが読む先。同意が 1 件も無いテナントでも
 	// 経路自体は通るが、repository が未配線だと nil 参照で落ちる。
@@ -205,7 +206,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 	}
 	signer := tokensjose.NewJWTSigner(idmRefusalIssuer, keyStore)
 
-	apiTokenRepo := apitokenmemory.NewRepository()
+	apiTokenRepo := apitoken.NewRepository()
 	jobRepo := jobsmemory.NewJobRepository()
 	fixture := &idmRefusalFixture{
 		e:           echo.New(),

@@ -4,9 +4,9 @@ package apitoken
 import (
 	"github.com/labstack/echo/v5"
 
-	apitokenhttp "github.com/ambi/idmagic/backend/apitoken/handlers_http"
+	apitokenhttp "github.com/ambi/idmagic/backend/apitoken/internal/handlers_http"
+	"github.com/ambi/idmagic/backend/apitoken/internal/usecases"
 	"github.com/ambi/idmagic/backend/apitoken/ports"
-	"github.com/ambi/idmagic/backend/apitoken/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )

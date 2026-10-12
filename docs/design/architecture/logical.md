@@ -48,7 +48,7 @@ IdMagic は、一つの Go モジュール（`go.mod`）の中でモジュール
 | [ClaimMapping](../../modules/claim-mapping/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/claimmapping` | プロトコル非依存のクレーム開示ポリシーとマッピング |
 | [Provisioning](../../modules/provisioning/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/provisioning` | IdMagic を正とする外向き SCIM プロビジョニング |
 | [Sourcing](../../modules/sourcing/README.md) | `internal` | `backend/sourcing/scim/ports` | `backend/sourcing` | 上流の権威からの内向きアイデンティティ取り込み |
-| [ApiTokens](../../modules/api-tokens/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/apitoken` | 管理 API と SCIM API のテナント単位アクセストークン |
+| [ApiTokens](../../modules/api-tokens/README.md) | `internal` | `backend/apitoken/domain`, `backend/apitoken/ports` | `backend/apitoken` | 管理 API と SCIM API のテナント単位アクセストークン |
 | [Jobs](../../modules/jobs/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/jobs` | テナント境界を保つ非同期ジョブ基盤 |
 | [Seeding](../../modules/seeding/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/seeding` | 環境構成のプレビュー、計画、初期データ適用 |
 | [SigningKeys](../../modules/signing-keys/README.md) | `internal` | `backend/signingkeys/domain`, `backend/signingkeys/ports` | `backend/signingkeys` | 用途別署名鍵、証明書、ローテーション、提供元アダプター |

@@ -25,10 +25,10 @@ import (
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/apitoken"
-	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
+
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
-	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
+
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -74,7 +74,7 @@ const (
 type apiTokenStack struct {
 	e        *echo.Echo
 	repo     apitokenports.Repository
-	tokens   *apitokenusecases.Service
+	tokens   *apitoken.Service
 	users    *usermemory.UserRepository
 	keyStore signingkeys.KeyStore
 	signer   *tokensjose.JWTSigner
@@ -134,7 +134,7 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 		t.Fatal(err)
 	}
 	signer := tokensjose.NewJWTSigner(apiTokenIssuer, keyStore)
-	repo := apitokenmemory.NewRepository()
+	repo := apitoken.NewRepository()
 
 	// OAuth2.TokenIntrospector は生の署名検証器ではなく、管理発行トークンのライフサイクル
 	// 記録を重ねる apitoken の overlay である。組み立ての正は backend/cmd/idmagic/server.go
@@ -144,7 +144,7 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 	// 管理コンソールからの失効は記録にしか載らないので、overlay を外した配線では失効した
 	// トークンが `/introspect` で有効に見える。それは製品の欠陥ではなく、組み立ての違いである。
 	// 入口を通すことに意味があるのは、入口の組み立てが製品と同じときだけである。
-	managedIntrospector := apitokenusecases.New(repo, apitokenusecases.WithTokenIntrospector(signer))
+	managedIntrospector := apitoken.New(repo, apitoken.WithTokenIntrospector(signer))
 
 	// SAML を配線するのは、粒度スコープの具体例が「参照」と「登録・削除」を別のスコープに
 	// 割り当てているためである。スコープの判定だけを読むと、判定が正しくても保存が
@@ -169,8 +169,8 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 	return &apiTokenStack{
 		e: e, repo: repo, users: users, keyStore: keyStore, signer: signer, tenants: tenants,
 		samlSPs: samlSPs,
-		tokens: apitokenusecases.New(repo,
-			apitokenusecases.WithTokenIssuer(signer), apitokenusecases.WithTokenIntrospector(signer)),
+		tokens: apitoken.New(repo,
+			apitoken.WithTokenIssuer(signer), apitoken.WithTokenIntrospector(signer)),
 	}
 }
 
@@ -211,9 +211,9 @@ func (s *apiTokenStack) issueWithClock(t *testing.T, realm, dpopJKT string, now 
 	t.Helper()
 	service := s.tokens
 	if now != nil {
-		service = apitokenusecases.New(s.repo,
-			apitokenusecases.WithTokenIssuer(s.signer), apitokenusecases.WithTokenIntrospector(s.signer),
-			apitokenusecases.WithClock(now))
+		service = apitoken.New(s.repo,
+			apitoken.WithTokenIssuer(s.signer), apitoken.WithTokenIntrospector(s.signer),
+			apitoken.WithClock(now))
 	}
 	literal, metadata, err := service.Issue(
 		s.realmContext(t, realm), s.tenantID(t, realm), apiTokenAdminSub, "standards test",

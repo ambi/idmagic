@@ -1,7 +1,7 @@
 package server_http
 
 import (
-	apitokenhttp "github.com/ambi/idmagic/backend/apitoken/handlers_http"
+	"github.com/ambi/idmagic/backend/apitoken"
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
@@ -32,7 +32,7 @@ func newAuthenticator(d Deps, apiTokens apitokenports.Authenticator) *support.Au
 		}
 	}
 	if apiTokens != nil {
-		authenticator.ApiTokens = apitokenhttp.ResourceAuthenticator{Authenticator: apiTokens}
+		authenticator.ApiTokens = apitoken.ResourceAuthenticator(apiTokens)
 	}
 	if d.IdManagement.UserRepo != nil {
 		authenticator.Principals = idmhttpdeps.Principals{

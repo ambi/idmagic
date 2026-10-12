@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/apitoken"
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
-	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -23,7 +23,7 @@ var scimUserWriteScopes = []string{string(apitokendomain.ScopeScimUsersRead), st
 func TestScimCreateUser_RefusesAnUnusableTokenAndCreatesNoUser(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
-	h := newScimHarness(apitokenusecases.WithClock(func() time.Time { return now }))
+	h := newScimHarness(apitoken.WithClock(func() time.Time { return now }))
 
 	revoked, revokedMetadata, err := h.apiTokens.Issue(ctx, tenancydomain.DefaultTenantID, "admin-test", "revoked", scimUserWriteScopes, 30, "")
 	if err != nil {

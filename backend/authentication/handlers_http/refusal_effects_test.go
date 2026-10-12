@@ -29,9 +29,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/entropy"
 
 	"github.com/ambi/idmagic/backend/apitoken"
-	apitokenmemory "github.com/ambi/idmagic/backend/apitoken/db_memory"
+
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
-	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/usecases"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	federationmemory "github.com/ambi/idmagic/backend/authentication/federation/db_memory"
 	federationdomain "github.com/ambi/idmagic/backend/authentication/federation/domain"
@@ -153,7 +153,7 @@ type authRefusalFixture struct {
 	federation  federationmemory.Repositories
 	resetTokens *countingResetTokenStore
 	emails      *emailmemory.NoopEmailSender
-	apiTokens   *apitokenusecases.Service
+	apiTokens   *apitoken.Service
 	events      *[]spec.DomainEvent
 	// signer はポータルのアクセストークンを 1 本署名するために握る。
 	signer *tokensjose.JWTSigner
@@ -218,7 +218,7 @@ func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *aut
 		t.Fatal(err)
 	}
 
-	apiTokenRepo := apitokenmemory.NewRepository()
+	apiTokenRepo := apitoken.NewRepository()
 	fixture := &authRefusalFixture{
 		e:           echo.New(),
 		users:       users,

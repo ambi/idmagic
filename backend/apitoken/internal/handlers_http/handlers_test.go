@@ -13,9 +13,9 @@ import (
 
 	"github.com/labstack/echo/v5"
 
-	"github.com/ambi/idmagic/backend/apitoken/db_memory"
-	apitokenhttp "github.com/ambi/idmagic/backend/apitoken/handlers_http"
-	"github.com/ambi/idmagic/backend/apitoken/usecases"
+	"github.com/ambi/idmagic/backend/apitoken/internal/db_memory"
+	apitokenhttp "github.com/ambi/idmagic/backend/apitoken/internal/handlers_http"
+	"github.com/ambi/idmagic/backend/apitoken/internal/usecases"
 	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
