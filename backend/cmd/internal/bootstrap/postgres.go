@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	apppostgres "github.com/ambi/idmagic/backend/application/db_postgres"
 	"github.com/ambi/idmagic/backend/audit"
-	auditpostgres "github.com/ambi/idmagic/backend/audit/db_postgres"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	authnpostgres "github.com/ambi/idmagic/backend/authentication/db_postgres"
 	federationpostgres "github.com/ambi/idmagic/backend/authentication/federation/db_postgres"
@@ -53,7 +53,7 @@ import (
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/resilience"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
-	saltspostgres "github.com/ambi/idmagic/backend/shared/security/salts_postgres"
+
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	sharedsignalspostgres "github.com/ambi/idmagic/backend/sharedsignals/db_postgres"
@@ -217,12 +217,9 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			AccessTokenDenylist:        &oauth2postgres.AccessTokenDenylist{Pool: resilientDB},
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},
-		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(cfg, keyStore)},
-		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
-		Audit: audit.Module{
-			AuditEventRepo:  &auditpostgres.AuditEventRepository{Pool: resilientDB},
-			TenantSaltStore: saltspostgres.NewTenantSaltStore(resilientDB),
-		},
+		SigningKeys:  signingkeys.Module{KeyStore: selectKeyStore(cfg, keyStore)},
+		DataKeys:     datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
+		Audit:        audit.NewPostgresModule(resilientDB),
 		WsFederation: wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
 		Saml: saml.Module{
 			SPRepo:      &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB},

@@ -10,7 +10,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
-	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
+	auditmemory "github.com/ambi/idmagic/backend/audit"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/db_memory"
 	securitynotificationmemory "github.com/ambi/idmagic/backend/authentication/securitynotification/db_memory"
@@ -25,7 +25,7 @@ func daysAgo(now time.Time, d int) time.Time {
 	return now.Add(-time.Duration(d) * 24 * time.Hour)
 }
 
-func seedAudit(t *testing.T, store *auditmemory.AuditEventStore, id, eventType string, at time.Time) {
+func seedAudit(t *testing.T, store auditports.AuditEventRepository, id, eventType string, at time.Time) {
 	t.Helper()
 	if err := store.Append(testing_tenant.Default(context.Background()), &auditports.AuditEventRecord{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, Type: eventType, OccurredAt: at,
@@ -35,7 +35,7 @@ func seedAudit(t *testing.T, store *auditmemory.AuditEventStore, id, eventType s
 	}
 }
 
-func remainingAuditIDs(t *testing.T, store *auditmemory.AuditEventStore) map[string]bool {
+func remainingAuditIDs(t *testing.T, store auditports.AuditEventRepository) map[string]bool {
 	t.Helper()
 	recs, err := store.List(testing_tenant.Default(context.Background()), auditports.AuditEventQuery{Limit: 1000})
 	if err != nil {

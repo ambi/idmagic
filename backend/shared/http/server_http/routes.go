@@ -9,7 +9,6 @@ import (
 	"github.com/ambi/idmagic/backend/apitoken"
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/audit"
-	audithttp "github.com/ambi/idmagic/backend/audit/handlers_http"
 	"github.com/ambi/idmagic/backend/authentication"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	federationdomain "github.com/ambi/idmagic/backend/authentication/federation/domain"
@@ -421,11 +420,9 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		TenantRepo:    d.TenantRepo,
 	})
 
-	audithttp.RegisterRoutes(g, audithttp.Deps{
-		Deps:            d.Deps,
-		Authenticator:   authenticator,
-		AuditEventRepo:  d.Audit.AuditEventRepo,
-		TenantSaltStore: d.Audit.TenantSaltStore,
+	d.Audit.RegisterRoutes(g, audit.RouteDeps{
+		Deps:          d.Deps,
+		Authenticator: authenticator,
 		// d.UserRepo (トップレベル) は wi-178 移行中の非推奨テスト互換フィールドで、実運用の
 		// bootstrap では設定されない。username -> user_id 解決 (wi-147) には
 		// d.IdManagement.UserRepo を使う。

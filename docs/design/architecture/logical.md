@@ -44,7 +44,7 @@ IdMagic は、一つの Go モジュール（`go.mod`）の中でモジュール
 | [OAuth2](../../modules/oauth2/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/oauth2` | OAuth 2.0 と OIDC のプロトコル、クライアント、同意、トークン |
 | [Application](../../modules/application/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/application` | Application、プロトコルのバインディング、割り当て、表示分類 |
 | [Authorization](../../modules/authorization/README.md) | `internal` | なし | `backend/authorization` | 細粒度認可モデル、関係タプル、グラフ評価、整合トークン |
-| [Audit](../../modules/audit/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/audit` | 全モジュールの監査イベントを統合する Read Model と保持 |
+| [Audit](../../modules/audit/README.md) | `internal` | `backend/audit/ports` | `backend/audit` | 全モジュールの監査イベントを統合する Read Model と保持 |
 | [ClaimMapping](../../modules/claim-mapping/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/claimmapping` | プロトコル非依存のクレーム開示ポリシーとマッピング |
 | [Provisioning](../../modules/provisioning/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/provisioning` | IdMagic を正とする外向き SCIM プロビジョニング |
 | [Sourcing](../../modules/sourcing/README.md) | `internal` | `backend/sourcing/scim/ports` | `backend/sourcing` | 上流の権威からの内向きアイデンティティ取り込み |

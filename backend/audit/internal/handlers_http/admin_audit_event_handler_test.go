@@ -23,10 +23,10 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/audit"
-	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
-	audithttp "github.com/ambi/idmagic/backend/audit/handlers_http"
+	auditmemory "github.com/ambi/idmagic/backend/audit/internal/db_memory"
+	audithttp "github.com/ambi/idmagic/backend/audit/internal/handlers_http"
+	auditusecases "github.com/ambi/idmagic/backend/audit/internal/usecases"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"

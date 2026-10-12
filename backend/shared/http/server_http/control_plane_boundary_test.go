@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/audit"
-	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
+
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/datakeys"
 	datakeysmemory "github.com/ambi/idmagic/backend/datakeys/db_memory"
@@ -115,7 +115,7 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 
 	// 監査イベントは 2 テナント分置く。横断参照が「全件返っているか」ではなく
 	// 「他テナントの記録が現に混じるか」で判定できるようにするためである。
-	auditStore := auditmemory.NewAuditEventStore(0)
+	auditStore := audit.NewAuditEventStore(0)
 	for _, rec := range []*auditports.AuditEventRecord{
 		{ID: "audit-acme", TenantID: "acme", Type: "UserCreated", OccurredAt: now},
 		{ID: "audit-control", TenantID: tenancydomain.DefaultTenantID, Type: "UserCreated", OccurredAt: now.Add(time.Minute)},

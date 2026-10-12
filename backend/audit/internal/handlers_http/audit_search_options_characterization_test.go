@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	audithttp "github.com/ambi/idmagic/backend/audit/handlers_http"
+	audithttp "github.com/ambi/idmagic/backend/audit/internal/handlers_http"
 )
 
 func TestCharacterizeAdminAuditSearchOptionsSupportedChoices(t *testing.T) {

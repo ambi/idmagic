@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	auditusecases "github.com/ambi/idmagic/backend/audit"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"

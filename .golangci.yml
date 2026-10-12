@@ -150,7 +150,7 @@ linters:
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
-      - path: backend/audit/handlers_http/admin_audit_event_handler_test\.go
+      - path: backend/audit/internal/handlers_http/admin_audit_event_handler_test\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil

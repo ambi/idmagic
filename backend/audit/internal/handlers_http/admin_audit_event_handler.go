@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
+	auditusecases "github.com/ambi/idmagic/backend/audit/internal/usecases"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
 	oauth2domain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 

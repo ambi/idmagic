@@ -18,9 +18,8 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/audit"
-	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
+
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -69,7 +68,7 @@ func newControlPlaneAuditServer(t *testing.T) *controlPlaneAuditServer {
 	users := usermemory.NewUserRepository()
 	users.Seed(controlPlaneTestUser(controlPlaneAuditActor, tenancydomain.DefaultTenantID, "system_admin"))
 
-	auditStore := auditmemory.NewAuditEventStore(0)
+	auditStore := audit.NewAuditEventStore(0)
 	emit := func(event spec.DomainEvent) {
 		wire, err := spec.MarshalDomainEvent(event)
 		if err != nil {
@@ -90,7 +89,7 @@ func newControlPlaneAuditServer(t *testing.T) *controlPlaneAuditServer {
 			ID: id, Type: event.EventType(), OccurredAt: event.OccurredAt(), Payload: payload,
 		}
 		rec.TenantID, _ = payload["tenantId"].(string)
-		rec.SearchAttributes = auditusecases.ExtractSearchAttributes(rec)
+		rec.SearchAttributes = audit.ExtractSearchAttributes(rec)
 		if err := auditStore.Append(t.Context(), rec); err != nil {
 			t.Errorf("Append(%s) error = %v", rec.Type, err)
 		}

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/audit"
-	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
+	auditmemory "github.com/ambi/idmagic/backend/audit/internal/db_memory"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"

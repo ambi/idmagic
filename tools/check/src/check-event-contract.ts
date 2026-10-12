@@ -12,7 +12,7 @@ import type { CheckOutcome } from './runner.ts'
 
 const DECLARATION = 'spec/modules/system/models.tsp'
 const CONSUMERS = [
-  'backend/audit/usecases/audit_search_extractor.go',
+  'backend/audit/internal/usecases/audit_search_extractor.go',
   'backend/authentication/securitynotification/domain/catalog.go',
   'backend/authentication/securitynotification/usecases/dispatch.go',
 ]

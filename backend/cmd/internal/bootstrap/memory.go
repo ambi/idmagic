@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	"github.com/ambi/idmagic/backend/audit"
-	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/db_memory"
 	federationmemory "github.com/ambi/idmagic/backend/authentication/federation/db_memory"
@@ -48,7 +48,7 @@ import (
 	ratelimitmemory "github.com/ambi/idmagic/backend/shared/ratelimit/db_memory"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
-	"github.com/ambi/idmagic/backend/shared/security/salts_memory"
+
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	"github.com/ambi/idmagic/backend/signingkeys"
@@ -83,7 +83,8 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	csvArtifacts := idmmemory.NewCSVArtifactStore()
 	quotaRepo := tenancymemory.NewQuotaRepository()
 	passwordHistoryRepo := passwordmemory.NewPasswordHistoryRepository()
-	auditEventRepo := auditmemory.NewAuditEventStore(0)
+	auditModule := audit.NewMemoryModule(0)
+	auditEventRepo := auditModule.AuditEventRepo
 	groupRepo := groupmemory.NewGroupRepository()
 	groupImportCommitter := groupmemory.NewGroupImportRowCommitter(groupRepo)
 	groupMembershipImportCommitter := groupmemory.NewGroupMembershipImportRowCommitter(groupRepo)
@@ -184,12 +185,9 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},
-		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(cfg, keyStore)},
-		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
-		Audit: audit.Module{
-			AuditEventRepo:  auditEventRepo,
-			TenantSaltStore: salts_memory.NewInMemoryTenantSaltStore(),
-		},
+		SigningKeys:  signingkeys.Module{KeyStore: selectKeyStore(cfg, keyStore)},
+		DataKeys:     datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
+		Audit:        auditModule,
 		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		Saml: func() saml.Module {
 			repo := samlmemory.NewSamlServiceProviderRepository()

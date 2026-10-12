@@ -18,7 +18,7 @@ import (
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/audit"
-	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
+
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	recoverymemory "github.com/ambi/idmagic/backend/authentication/recovery/db_memory"
@@ -46,7 +46,7 @@ type accountHandlerFixture struct {
 	users    *usermemory.UserRepository
 	consents *consentmemory.ConsentRepository
 	factors  *totpmemory.MfaFactorRepository
-	audit    *auditmemory.AuditEventStore
+	audit    auditports.AuditEventRepository
 	webauthn *webauthnmemory.WebAuthnCredentialRepository
 	recovery *recoverymemory.RecoveryCodeRepository
 	policies *appmemory.DefaultSignInPolicyRepository
@@ -57,7 +57,7 @@ func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
 	users := usermemory.NewUserRepository()
 	consents := consentmemory.NewConsentRepository()
 	factors := totpmemory.NewMfaFactorRepository()
-	auditStore := auditmemory.NewAuditEventStore(0)
+	auditStore := audit.NewAuditEventStore(0)
 	webauthnRepo := webauthnmemory.NewWebAuthnCredentialRepository()
 	recoveryRepo := recoverymemory.NewRecoveryCodeRepository()
 	policies := appmemory.NewDefaultSignInPolicyRepository()

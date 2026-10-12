@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/audit"
-	auditpostgres "github.com/ambi/idmagic/backend/audit/db_postgres"
+
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -76,7 +76,7 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 		t.Fatalf("seed tenant: %v", err)
 	}
 
-	auditRepo := &auditpostgres.AuditEventRepository{Pool: db}
+	auditRepo := audit.NewPostgresModule(db).AuditEventRepo
 	userRepo := &userpostgres.UserRepository{Pool: db}
 	planDeps := userusecases.UserImportPlanDeps{
 		UserRepo: userRepo, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, OwnershipGuard: workerImportOwnershipGuard{},
@@ -134,7 +134,7 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 		t.Fatalf("seed user: %v", err)
 	}
 
-	auditRepo := &auditpostgres.AuditEventRepository{Pool: db}
+	auditRepo := audit.NewPostgresModule(db).AuditEventRepo
 	artifacts := &idmpostgres.CSVArtifactStore{Pool: db}
 	deps := &bootstrap.Dependencies{
 		IdManagement: idmanagement.Module{UserRepo: &userpostgres.UserRepository{Pool: db}, CSVArtifacts: artifacts},
