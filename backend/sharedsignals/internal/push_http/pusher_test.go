@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sharedsignals/push_http"
+	"github.com/ambi/idmagic/backend/sharedsignals/internal/push_http"
 )
 
 // TestHTTPSecurityEventPusher_Push_Succeeds — RED: 2xx を返す receiver への push は

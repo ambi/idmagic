@@ -7,7 +7,7 @@ import (
 	"time"
 
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
-	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
+	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )

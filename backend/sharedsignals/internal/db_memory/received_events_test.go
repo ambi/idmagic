@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	dbmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	dbmemory "github.com/ambi/idmagic/backend/sharedsignals/internal/db_memory"
 )
 
 // TestReceivedSecurityEventRepository_ExistsByJTIDetectsReplay — scenario

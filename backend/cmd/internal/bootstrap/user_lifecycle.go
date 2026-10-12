@@ -7,8 +7,6 @@ import (
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
-	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 )
 
 // GroupMembershipCommands は管理 API と同じ所属のイベントとプロビジョニング通知を組み立てる。
@@ -56,14 +54,8 @@ func (d *Dependencies) UserLifecycleCommands(emit func(spec.DomainEvent), actor 
 
 // AgentRevocationReactor は、Agent と所有者のイベントで失効エポックを進め、外部の受信側へ SET を投影する反応器を
 // 組み立てる。派生イベントは emit へ記録する。
-func (d *Dependencies) AgentRevocationReactor(emit func(spec.DomainEvent)) *sharedsignalsusecases.AgentRevocationReactor {
-	return sharedsignalsusecases.NewAgentRevocationReactor(sharedsignalsusecases.RevocationReactorDeps{
-		EpochRepo: d.SharedSignals.RevocationEpochRepo,
-		AgentRepo: d.IdManagement.AgentRepo,
-		Projector: sharedsignalsusecases.ProjectorDeps{
-			StreamRepo: d.SharedSignals.StreamRepo, TransmitterConfigRepo: d.SharedSignals.TransmitterConfigRepo,
-			DeliveryRepo: d.SharedSignals.DeliveryRepo, Signer: &sign_jose.Signer{KeyStore: d.SigningKeys.KeyStore}, Issuer: d.Issuer,
-		},
-		Emit: emit,
-	})
+func (d *Dependencies) AgentRevocationReactor(emit func(spec.DomainEvent)) interface {
+	React(context.Context, spec.DomainEvent) error
+} {
+	return d.SharedSignals.AgentRevocationReactor(d.IdManagement.AgentRepo, d.SigningKeys.KeyStore, d.Issuer, emit)
 }

@@ -10,10 +10,10 @@ import (
 	agentmodel "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/internal/db_memory"
+	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
-	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )

@@ -34,8 +34,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
+
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	sharedsignalsports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	"github.com/ambi/idmagic/backend/signingkeys"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -360,10 +361,10 @@ func TestWorkerDisableUserStepStopsTheAgentsTheUserOwns(t *testing.T) {
 type revocationFixture struct {
 	deps     *bootstrap.Dependencies
 	sink     *recordingSink
-	epochs   *ssmemory.AgentRevocationEpochRepository
-	streams  *ssmemory.SsfStreamRepository
-	configs  *ssmemory.SsfTransmitterConfigRepository
-	delivery *ssmemory.SecurityEventDeliveryRepository
+	epochs   sharedsignalsports.AgentRevocationEpochRepository
+	streams  sharedsignalsports.SsfStreamRepository
+	configs  sharedsignalsports.SsfTransmitterConfigRepository
+	delivery sharedsignalsports.SecurityEventDeliveryRepository
 	agentIDs []string
 }
 
@@ -376,8 +377,8 @@ func newRevocationFixture(t *testing.T) *revocationFixture {
 	agents := agentmemory.NewAgentRepository()
 	f := &revocationFixture{
 		sink:   &recordingSink{},
-		epochs: ssmemory.NewAgentRevocationEpochRepository(), streams: ssmemory.NewSsfStreamRepository(),
-		configs: ssmemory.NewSsfTransmitterConfigRepository(), delivery: ssmemory.NewSecurityEventDeliveryRepository(),
+		epochs: sharedsignals.NewAgentRevocationEpochRepository(), streams: sharedsignals.NewSsfStreamRepository(),
+		configs: sharedsignals.NewSsfTransmitterConfigRepository(), delivery: sharedsignals.NewSecurityEventDeliveryRepository(),
 		agentIDs: []string{"deploy-bot", "report-bot"},
 	}
 	for _, id := range f.agentIDs {

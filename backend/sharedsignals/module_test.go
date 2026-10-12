@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	sharedsignals "github.com/ambi/idmagic/backend/sharedsignals"
-	dbmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
-	dbpostgres "github.com/ambi/idmagic/backend/sharedsignals/db_postgres"
+	dbmemory "github.com/ambi/idmagic/backend/sharedsignals/internal/db_memory"
+	dbpostgres "github.com/ambi/idmagic/backend/sharedsignals/internal/db_postgres"
 )
 
 // TestModuleMemoryWiringCompiles は db_memory の各 repository が対応する ports

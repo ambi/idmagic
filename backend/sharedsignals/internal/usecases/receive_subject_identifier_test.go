@@ -8,8 +8,8 @@ import (
 
 	agentmodel "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
-	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 )
 
 const caepSessionRevokedURI = "https://schemas.openid.net/secevent/caep/event-type/session-revoked"

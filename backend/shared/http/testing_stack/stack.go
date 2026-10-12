@@ -72,7 +72,8 @@ import (
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
+	sharedsignalsports "github.com/ambi/idmagic/backend/sharedsignals/ports"
+
 	"github.com/ambi/idmagic/backend/signingkeys"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -212,7 +213,7 @@ type Stack struct {
 	SessionStore *sessionmemory.SessionStore
 	// Agents と RevocationEpochs は WithAgentRevocation が配る。
 	Agents           *agentmemory.AgentRepository
-	RevocationEpochs *ssmemory.AgentRevocationEpochRepository
+	RevocationEpochs sharedsignalsports.AgentRevocationEpochRepository
 
 	apiTokens *apitoken.Service
 	// owner は New を呼んだテストである。HTTP サーバーの後始末はここへ登録する。
@@ -436,7 +437,7 @@ func WithAccountApi() Option {
 func WithAgentRevocation() Option {
 	return func(b *builder) {
 		b.stack.Agents = agentmemory.NewAgentRepository()
-		b.stack.RevocationEpochs = ssmemory.NewAgentRevocationEpochRepository()
+		b.stack.RevocationEpochs = sharedsignals.NewAgentRevocationEpochRepository()
 		b.deps.IdManagement.AgentRepo = b.stack.Agents
 		b.deps.SharedSignals = sharedsignals.Module{RevocationEpochRepo: b.stack.RevocationEpochs}
 	}

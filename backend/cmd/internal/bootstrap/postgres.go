@@ -54,7 +54,6 @@ import (
 
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	sharedsignalspostgres "github.com/ambi/idmagic/backend/sharedsignals/db_postgres"
 	"github.com/ambi/idmagic/backend/signingkeys"
 
 	"github.com/ambi/idmagic/backend/sourcing"
@@ -230,15 +229,8 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		},
 		Provisioning:     provisioningModule,
 		WorkloadIdentity: workloadidentity.NewPostgresModule(resilientDB),
-		SharedSignals: sharedsignals.Module{
-			RevocationEpochRepo:   &sharedsignalspostgres.AgentRevocationEpochRepository{Pool: resilientDB},
-			StreamRepo:            &sharedsignalspostgres.SsfStreamRepository{Pool: resilientDB},
-			TransmitterConfigRepo: &sharedsignalspostgres.SsfTransmitterConfigRepository{Pool: resilientDB},
-			ReceiverConfigRepo:    &sharedsignalspostgres.SsfReceiverConfigRepository{Pool: resilientDB},
-			DeliveryRepo:          &sharedsignalspostgres.SecurityEventDeliveryRepository{Pool: resilientDB},
-			ReceivedEventRepo:     &sharedsignalspostgres.ReceivedSecurityEventRepository{Pool: resilientDB},
-		},
-		Authorization: authorization.NewPostgresModule(resilientDB),
+		SharedSignals:    sharedsignals.NewPostgresModule(resilientDB),
+		Authorization:    authorization.NewPostgresModule(resilientDB),
 		RateLimit: rlports.Module{
 			NewRateLimiter: func(configs rlports.RateLimitConfigs) rlports.RateLimiter {
 				return &ratelimitpostgres.RateLimiter{Pool: resilientDB, Configs: configs}

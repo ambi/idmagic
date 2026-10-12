@@ -10,8 +10,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
-	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
-	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
+	"github.com/ambi/idmagic/backend/sharedsignals/internal/sign_jose"
+	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"

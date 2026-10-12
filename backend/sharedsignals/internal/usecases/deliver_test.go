@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
-	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
+	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/internal/db_memory"
+	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
 )
 
 // fakePusher records Push calls and returns a scripted error (nil = success).

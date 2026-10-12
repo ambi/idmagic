@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	dbmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
-	"github.com/ambi/idmagic/backend/sharedsignals/testing_contract"
+	dbmemory "github.com/ambi/idmagic/backend/sharedsignals/internal/db_memory"
+	"github.com/ambi/idmagic/backend/sharedsignals/internal/testing_contract"
 )
 
 func TestPersistenceContract(t *testing.T) {

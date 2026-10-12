@@ -22,8 +22,8 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	sharedsignalsdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/internal/db_memory"
 
 	"github.com/labstack/echo/v5"
 )

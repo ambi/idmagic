@@ -9,7 +9,7 @@ import (
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
-	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
+	"github.com/ambi/idmagic/backend/sharedsignals"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -37,7 +37,7 @@ func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
 		t.Fatalf("seed binding: %v", err)
 	}
 
-	epochRepo := ssmemory.NewAgentRevocationEpochRepository()
+	epochRepo := sharedsignals.NewAgentRevocationEpochRepository()
 	epoch := now
 	if err := epochRepo.Advance(context.Background(), ssdomain.AgentRevocationEpoch{
 		AgentID: "agent_1", TenantID: tenancydomain.DefaultTenantID,

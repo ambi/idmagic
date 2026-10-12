@@ -7,10 +7,10 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
-	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
-	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
+	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/internal/db_memory"
+	"github.com/ambi/idmagic/backend/sharedsignals/internal/sign_jose"
+	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
 	"github.com/ambi/idmagic/backend/signingkeys"
 )
 

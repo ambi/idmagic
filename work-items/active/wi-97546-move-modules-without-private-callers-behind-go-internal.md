@@ -117,6 +117,12 @@ SQL のクエリと生成コード、共有契約テストも同じ配置へ移�
 
 ### 境界の判断
 
+IdGovernance のメモリ捕捉は UserRepository の Save だけを使うため、そのフィールドを既存の公開ポートへ替える。
+具体的なメモリ保存型への依存をルートで増やす案と型アサーションで隠す案は採らず、同じ実体を公開契約で渡す。
+PostgreSQL の既存のトランザクション内保存はそのまま保つ。
+worker のテストは内部モデルを公開する代わりに、独立した JSON fixture を公開された保存値へデコードし、正式な worker の実行器から結果を観測する。
+監査の外部テストも、公開イベントの JSON とイベント名を独立した fixture で供給する。
+
 入力は責務表、バックエンド設計の移行規則、現在の本番とテストの import、および既存の組み立て操作である。
 保存の更新元、トランザクション、イベント、通知の順序はそのまま移す。
 適用する制約は D3 と D6 である。
@@ -153,6 +159,7 @@ Seeding の domain は contributor と要求の契約であり、YAML 読み込�
 
 ### モジュールごとの記録
 
+- SharedSignals: `domain` と `ports` を公開し、8 パッケージを移した。保存先、署名器、検証器、失効反応器と配信処理をルートで組む。`test-go-package` は SharedSignals 153 件と worker 8 件が race 付きで成功し、PostgreSQL、lint と境界検査も成功した。反応器の EpochRepo の結線を外すと `TestWorkerDisableUserStepRevokesTheTokensOfTheAgentsTheUserOwns` が「失効エポックが進んでいない」と失敗し、復元後に成功した。
 - Seeding: 宣言的な要求と manifest の `domain` を公開し、YAML と usecases の 2 パッケージを移した。既定パスの選択、読み込み、秘密の解決を Prepare に集め、contributor の実行と材料化した manifest の型はルートで受け取る。`test-go-package` は Seeding 23 件、bootstrap 119 件が race 付きで成功し、境界検査と lint も成功した。ルートの変更行のミューテーション検査は 0 件だった。
 - Saml: `domain` と `ports` を公開し、7 パッケージを移した。SP と profile が同じメモリ保存先を共有する構築を保ち、replay store もルートで組む。外部テストは公開保存契約の Save を使い、内部保存型を名指さない。`test-go-package` は Saml 181 件と共通スタック 8 件が race 付きで成功し、PostgreSQL、lint、境界検査と負債の増加検査も成功した。WsFederation への既存の依存 2 件は利用元のパスだけを更新した。
 - 境界負債の比較の前提: 既存の外向きの依存を持つファイルの移動が、新しい依存として拒否された。責務表で同じモジュールが `legacy` から `internal` へ切り替わるときだけ、同じ接頭辞へ加えた `internal/` を比較前に取り除く。依存先の変更、公開方式を変えない移動、元の依存を残すコピーは拒否する。これらを含む `boundary-debt-ratchet.test.ts` の 10 テスト、tools の型検査と lint が成功した。実際の負債数は基準 revision と同じだった。

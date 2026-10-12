@@ -14,7 +14,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
+
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/sourcing"
 
@@ -83,7 +83,7 @@ func TestSCIMUserLifecycleAdvancesTheRevocationEpochOfOwnedAgents(t *testing.T) 
 	users := usermemory.NewUserRepository()
 	groups := groupmemory.NewGroupRepository()
 	agents := agentmemory.NewAgentRepository()
-	epochs := ssmemory.NewAgentRevocationEpochRepository()
+	epochs := sharedsignals.NewAgentRevocationEpochRepository()
 	deps := &bootstrap.Dependencies{
 		IdManagement:  idmanagement.Module{UserRepo: users, GroupRepo: groups, AgentRepo: agents},
 		Sourcing:      sourcing.NewMemoryModule(),

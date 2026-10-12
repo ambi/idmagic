@@ -56,7 +56,7 @@ IdMagic は、一つの Go モジュール（`go.mod`）の中でモジュール
 | [WsFederation](../../modules/ws-federation/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/wsfederation` | WS-Federation、WS-Trust、メタデータ、RP の信頼 |
 | [Saml](../../modules/saml/README.md) | `internal` | `backend/saml/domain`, `backend/saml/ports` | `backend/saml` | SAML 2.0 IdP、SP の信頼、SSO、SLO、メタデータ |
 | [WorkloadIdentity](../../modules/workloadidentity/README.md) | `internal` | `backend/workloadidentity/domain` | `backend/workloadidentity` | 外部アテステーションと Agent の対応付け |
-| [SharedSignals](../../modules/sharedsignals/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/sharedsignals` | SSF、SET、CAEP による継続的アクセス評価と失効 |
+| [SharedSignals](../../modules/sharedsignals/README.md) | `internal` | `backend/sharedsignals/domain`, `backend/sharedsignals/ports` | `backend/sharedsignals` | SSF、SET、CAEP による継続的アクセス評価と失効 |
 
 ## 品質要件の割り当て
 

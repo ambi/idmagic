@@ -11,9 +11,9 @@ import (
 	agentmodel "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	dbmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
-	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
+	dbmemory "github.com/ambi/idmagic/backend/sharedsignals/internal/db_memory"
+	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
 )
 
 // TestAdvanceRevocationEpoch_EmitsForEachAgent — scenario

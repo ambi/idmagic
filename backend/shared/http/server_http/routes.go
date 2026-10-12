@@ -49,10 +49,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	sharedsignalshttp "github.com/ambi/idmagic/backend/sharedsignals/handlers_http"
-	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
-	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
-	sharedsignalsverifyjose "github.com/ambi/idmagic/backend/sharedsignals/verify_jose"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	"github.com/ambi/idmagic/backend/sourcing"
@@ -292,15 +288,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	// 管理 API の User と Agent の操作は、idmhttp.Deps.ReactiveEmit が発行の後にこの反応器を呼ぶ。
 	// 管理 API の外から User を止める経路は、組み立ての地点の UserLifecycleCommands が同じ反応器を使う。
-	revocationReactor := sharedsignalsusecases.NewAgentRevocationReactor(sharedsignalsusecases.RevocationReactorDeps{
-		EpochRepo: d.SharedSignals.RevocationEpochRepo,
-		AgentRepo: d.IdManagement.AgentRepo,
-		Projector: sharedsignalsusecases.ProjectorDeps{
-			StreamRepo: d.SharedSignals.StreamRepo, TransmitterConfigRepo: d.SharedSignals.TransmitterConfigRepo,
-			DeliveryRepo: d.SharedSignals.DeliveryRepo, Signer: &sign_jose.Signer{KeyStore: d.SigningKeys.KeyStore}, Issuer: d.Issuer,
-		},
-		Emit: d.Emit,
-	})
+	revocationReactor := d.SharedSignals.AgentRevocationReactor(d.IdManagement.AgentRepo, d.SigningKeys.KeyStore, d.Issuer, d.Emit)
 
 	// fetchWorkloadJWKS resolves a WorkloadTrustBundle's signing keys (inline
 	// jwks or jwks_uri) via the shared, SSRF-safe JWKResolver (基盤の
@@ -381,12 +369,9 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Authorizer: d.OAuth2.Authorizer,
 	})
 
-	sharedsignalshttp.RegisterRoutes(g, sharedsignalshttp.Deps{
+	d.SharedSignals.RegisterRoutes(g, sharedsignals.RouteDeps{
 		Deps: d.Deps, Authenticator: authenticator,
-		StreamRepo: d.SharedSignals.StreamRepo, TransmitterConfigRepo: d.SharedSignals.TransmitterConfigRepo,
-		ReceiverConfigRepo: d.SharedSignals.ReceiverConfigRepo, DeliveryRepo: d.SharedSignals.DeliveryRepo,
-		ReceivedEventRepo: d.SharedSignals.ReceivedEventRepo, EpochRepo: d.SharedSignals.RevocationEpochRepo,
-		AgentRepo: d.IdManagement.AgentRepo, Verifier: &sharedsignalsverifyjose.Verifier{JWKResolver: d.JWKResolver},
+		AgentRepo: d.IdManagement.AgentRepo, JWKResolver: d.JWKResolver,
 		QuotaRepo: d.Tenancy.QuotaRepo,
 		Emit: func(event spec.DomainEvent) error {
 			if d.Emit != nil {

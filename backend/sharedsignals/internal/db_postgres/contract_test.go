@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/sharedsignals/testing_contract"
+	"github.com/ambi/idmagic/backend/sharedsignals/internal/testing_contract"
 )
 
 func TestPersistenceContract(t *testing.T) {

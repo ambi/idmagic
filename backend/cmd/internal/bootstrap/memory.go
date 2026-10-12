@@ -48,7 +48,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
+
 	"github.com/ambi/idmagic/backend/signingkeys"
 
 	"github.com/ambi/idmagic/backend/sourcing"
@@ -197,15 +197,8 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		},
 		Provisioning:     provisioningModule,
 		WorkloadIdentity: workloadidentity.NewMemoryModule(),
-		SharedSignals: sharedsignals.Module{
-			RevocationEpochRepo:   sharedsignalsmemory.NewAgentRevocationEpochRepository(),
-			StreamRepo:            sharedsignalsmemory.NewSsfStreamRepository(),
-			TransmitterConfigRepo: sharedsignalsmemory.NewSsfTransmitterConfigRepository(),
-			ReceiverConfigRepo:    sharedsignalsmemory.NewSsfReceiverConfigRepository(),
-			DeliveryRepo:          sharedsignalsmemory.NewSecurityEventDeliveryRepository(),
-			ReceivedEventRepo:     sharedsignalsmemory.NewReceivedSecurityEventRepository(),
-		},
-		Authorization: authorization.NewMemoryModule(),
+		SharedSignals:    sharedsignals.NewMemoryModule(),
+		Authorization:    authorization.NewMemoryModule(),
 		RateLimit: rlports.Module{
 			NewRateLimiter: func(configs rlports.RateLimitConfigs) rlports.RateLimiter {
 				return ratelimitmemory.NewRateLimiter(configs)

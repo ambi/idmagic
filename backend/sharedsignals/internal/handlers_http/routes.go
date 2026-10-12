@@ -14,8 +14,8 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	"github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
-	"github.com/ambi/idmagic/backend/sharedsignals/usecases"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"

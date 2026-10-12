@@ -29,8 +29,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
-	"github.com/ambi/idmagic/backend/sharedsignals/push_http"
-	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 )
 
 // RunWorker starts the durable job queue worker process:
@@ -426,18 +424,14 @@ func sharedSignalsDeliveryLoop(ctx context.Context, deps *bootstrap.Dependencies
 	// audit writes rather than this loop's ctx, so an audit record isn't lost
 	// just because the process is shutting down mid-tick.
 	emit := deps.NewEmitFunc(logger) //nolint:contextcheck // see comment above
-	deliverDeps := sharedsignalsusecases.DeliverDeps{
-		DeliveryRepo: deps.SharedSignals.DeliveryRepo, TransmitterConfigRepo: deps.SharedSignals.TransmitterConfigRepo,
-		Pusher: push_http.NewHTTPSecurityEventPusher(),
-		Emit: func(event spec.DomainEvent) error {
-			emit(event)
-			return nil
-		},
-	}
+	process := deps.SharedSignals.DeliveryProcessor(func(event spec.DomainEvent) error {
+		emit(event)
+		return nil
+	})
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
-		if _, err := sharedsignalsusecases.ProcessDueDeliveries(ctx, deliverDeps, time.Now().UTC(), 100); err != nil {
+		if _, err := process(ctx, time.Now().UTC(), 100); err != nil {
 			logging.Warn(ctx, "security event delivery processing failed", "error", err)
 		}
 		select {

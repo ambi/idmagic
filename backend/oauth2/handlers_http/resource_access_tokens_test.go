@@ -26,7 +26,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	ssmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
+	"github.com/ambi/idmagic/backend/sharedsignals"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -172,7 +172,7 @@ func TestResolveAuthnContextAppliesRevocation(t *testing.T) {
 		t.Fatalf("seed binding: %v", err)
 	}
 
-	epochRepo := ssmemory.NewAgentRevocationEpochRepository()
+	epochRepo := sharedsignals.NewAgentRevocationEpochRepository()
 	if err := epochRepo.Advance(testing_tenant.Default(context.Background()), ssdomain.AgentRevocationEpoch{
 		AgentID: "agent_1", TenantID: tenancydomain.DefaultTenantID, Epoch: now,
 		Reason: ssdomain.RevocationReasonAgentKilled, AdvancedAt: now,

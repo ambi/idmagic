@@ -34,7 +34,6 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 
 	"github.com/labstack/echo/v5"
 
@@ -246,7 +245,7 @@ func TestAdminAgentKill_AdvancesRevocationEpoch(t *testing.T) {
 		TenantID: tenancydomain.DefaultTenantID,
 	})
 	agentRepo := agentmemory.NewAgentRepository()
-	epochRepo := sharedsignalsmemory.NewAgentRevocationEpochRepository()
+	epochRepo := sharedsignals.NewAgentRevocationEpochRepository()
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
