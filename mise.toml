@@ -410,7 +410,7 @@ run = "bun run tools/verification/src/report.ts \"$@\""
 [tasks.report-contract-evidence]
 description = "List unresolved HTTP operations and candidate contract test files"
 depends = ["compile-spec"]
-run = "bun run tools/verification/src/contract-evidence-inventory.ts"
+run = "bun run tools/verification/src/contract-evidence-inventory.ts \"$@\""
 
 [tasks.test-go-cover]
 description = "Run Go tests with coverage"
