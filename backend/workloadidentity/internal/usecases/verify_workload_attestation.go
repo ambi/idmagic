@@ -15,7 +15,7 @@ import (
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/ports"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 )
 
 // VerifyWorkloadAttestationDeps holds the collaborators VerifyWorkloadAttestation

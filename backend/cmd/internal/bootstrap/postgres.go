@@ -65,7 +65,7 @@ import (
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 	"github.com/ambi/idmagic/backend/workloadidentity"
-	workloadidentitypostgres "github.com/ambi/idmagic/backend/workloadidentity/db_postgres"
+
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedpostgres "github.com/ambi/idmagic/backend/wsfederation/db_postgres"
 )
@@ -242,11 +242,8 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			DefaultSignInPolicyRepo: &apppostgres.DefaultSignInPolicyRepository{Pool: resilientDB},
 			ProvisioningNotifier:    provisioningModule.AssignmentNotifier(assignmentRepo),
 		},
-		Provisioning: provisioningModule,
-		WorkloadIdentity: workloadidentity.Module{
-			TrustBundleRepo: &workloadidentitypostgres.WorkloadTrustBundleRepository{Pool: resilientDB},
-			BindingRepo:     &workloadidentitypostgres.AgentWorkloadBindingRepository{Pool: resilientDB},
-		},
+		Provisioning:     provisioningModule,
+		WorkloadIdentity: workloadidentity.NewPostgresModule(resilientDB),
 		SharedSignals: sharedsignals.Module{
 			RevocationEpochRepo:   &sharedsignalspostgres.AgentRevocationEpochRepository{Pool: resilientDB},
 			StreamRepo:            &sharedsignalspostgres.SsfStreamRepository{Pool: resilientDB},

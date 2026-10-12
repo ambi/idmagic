@@ -1,5 +1,5 @@
 ---
-status: pending
+status: in_progress
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -7,6 +7,31 @@ created_at: 2026-10-10
 priority: p3
 depends_on: [wi-50428-move-one-module-behind-go-internal]
 change_kind: refactor
+evidence_policy: risk-based-v4
+documentation_impact:
+  level: none
+  reason: パッケージの配置と組み立て操作を変更するだけで、製品の API、設定、永続状態、通知を変更しない。
+  references: []
+initial_context:
+  specification: []
+  typespec: []
+  source:
+    - docs/design/architecture/logical.md
+    - docs/design/application/backend.md
+    - docs/design/application/design-guidelines.md
+    - tools/check/boundary-debt.json
+    - backend/authorization/module.go
+    - backend/cmd/internal/bootstrap/memory.go
+    - backend/cmd/internal/bootstrap/postgres.go
+    - backend/shared/http/server_http/routes.go
+    - backend/cmd/idmagic-worker/worker.go
+    - backend/cmd/idmagic-batch/main.go
+    - backend/cmd/internal/bootstrap/seeding.go
+  tests:
+    - backend/cmd/internal/bootstrap/audit_event_record_test.go
+    - backend/shared/http/testing_stack/stack_test.go
+    - backend/shared/http/server_http/routes_contract_test.go
+  stop_before_reading: [frontend, spec, infra/schema]
 spec_impact: { kind: none, reason: "外から非公開パッケージへの import がないモジュールのパッケージを Go の internal/ へ移し、責務表の公開方式と公開パッケージを書き換えるだけである。HTTP の応答、認証方式、永続状態、ドメインイベント、外向きの通知は変えない。" }
 ---
 
@@ -60,6 +85,63 @@ spec_impact: { kind: none, reason: "外から非公開パッケージへの impo
 モジュールごとに、外側に残るパッケージの分類、公開パッケージとその利用元、組み立て地点の結線の変更を設計の節へ記録する。
 移行はモジュールごとに独立しているので、モジュール単位でコミットし、途中で止めても `legacy` と `internal` の併用で検査が通る状態を保つ。
 
+### 再計測と対象の確定
+
+基準 revision は `96d851960` とする。
+`mise run check-boundaries` は成功した。
+負債台帳の本番の非公開 import は Application 2 件、Authentication 1 件、IdManagement 2 件、OAuth2 3 件、WsFederation 2 件である。
+`go list -json ./backend/...` の本番、通常テスト、外部テストの import を分けて調べた。
+起票時にこの項目へ割り当てられた 12 モジュールから、完了済みの Authorization を除いた 11 モジュールは、本番の非公開 import がすべて 0 件である。
+Tenancy、ClaimMapping、Jobs も現在は 0 件だが、起票時に後続項目へ割り当てた移行として今回の対象外に保つ。
+テストにある実装への直接 import は、公開範囲を広げず、モジュールの構築操作または公開契約を使う fixture へ変更する。
+
+### パッケージの分類と公開目的
+
+すべてのモジュールのルートパッケージを組み立て地点向けに残す。
+下表の公開パッケージ以外の本番パッケージは `internal/` へ移す。
+SQL のクエリと生成コード、共有契約テストも同じ配置へ移す。
+
+| モジュール | 公開パッケージと利用元 | ルートへ集める組み立て操作 |
+| --- | --- | --- |
+| IdGovernance | なし。IdManagement は自身の `UserMutationCommitter` ポートを使う | メモリと PostgreSQL の保存と捕捉の構築、HTTP 登録、実行器と dispatcher の構築 |
+| Audit | `backend/audit/ports`。Authentication、IdManagement、OAuth2 が監査記録と保存ポートを使う | 保存層の構築、HTTP 登録、イベント検索属性の抽出 |
+| Provisioning | なし。IdManagement と Application は自身の通知ポートを使う | 保存層の構築、属性と所属の供給元、worker の実行と同期の構築 |
+| Sourcing | `backend/sourcing/scim/ports`。IdManagement が SCIM 所有権とライフサイクルの契約を使う | 保存層の構築、取り込みの所有権ガード、HTTP 登録 |
+| ApiTokens | `backend/apitoken/domain`、`backend/apitoken/ports`。OAuth2 と Sourcing、HTTP の共通認証がトークン種別と認証ポートを使う | 保存層と Service の構築、設定、HTTP 登録 |
+| Seeding | `backend/seeding/domain`。seed コマンドと contributor が宣言的な要求、計画、manifest の契約を使う | YAML の読み込み、秘密の解決、materialize と実行をまとめる。排他と検証は内部に残す |
+| SigningKeys | `backend/signingkeys/domain`、`backend/signingkeys/ports`。OAuth2、WsFederation、SharedSignals が署名の型と KeyStore 契約を使う | メモリ、PostgreSQL、Vault の KeyStore 構築、HTTP 登録、バッチの鍵ライフサイクル |
+| DataKeys | なし。暗号化を利用する側は自身の cipher と migrator のポートを実装する | 保存層、cache、registry と FieldCipher の構築、HTTP 登録、再暗号化ジョブ |
+| Saml | `backend/saml/domain`、`backend/saml/ports`。Application が SP と profile の公開契約を使う | 保存層と replay store の構築、HTTP 登録。HTTP 固有のポートの型はルートで受け取る |
+| WorkloadIdentity | `backend/workloadidentity/domain`。OAuth2 が検証結果の grant を使う | 保存層の構築、JWKS と SVID 検証器の構築、HTTP 登録 |
+| SharedSignals | `backend/sharedsignals/domain`、`backend/sharedsignals/ports`。OAuth2 が失効エポックの読み取りを使い、公開ポートの実装はその入力と戻り値の型を使う | 保存層、署名器、検証器、反応器、配信処理と HTTP 登録の構築 |
+
+### 境界の判断
+
+入力は責務表、バックエンド設計の移行規則、現在の本番とテストの import、および既存の組み立て操作である。
+保存の更新元、トランザクション、イベント、通知の順序はそのまま移す。
+適用する制約は D3 と D6 である。
+公開の型を介した既存の循環は負債台帳のまま保ち、新しい辺、再入、原子性の境界を作らないので D4 と D7 の変更はない。
+
+候補 A は現在の `domain` と `ports` を一律に公開する案である。
+IdGovernance、Provisioning、DataKeys の保存型とユースケースは外部の本番コードが名指さず、組み立ての都合だけで内部知識を公開するため採らない。
+候補 B は実在する公開契約だけを残し、保存と外部技術の選択をルートの操作へ移す案であり、これを採る。
+Sourcing の domain と WorkloadIdentity の ports も、他モジュールが名指す必要がないので移す。
+Seeding の domain は contributor と要求の契約であり、YAML 読み込みや排他の実装を含む usecases と区別して残す。
+公開する SharedSignals の domain は公開ポートの引数と戻り値を実装するために必要な型である。
+
+変更シナリオは保存実装、HTTP 変換、JWT 検証器、YAML 読み込みを差し替えることである。
+候補 A では組み立て地点が各実装を import して変わる。
+候補 B ではルートの構築操作が差を吸収し、呼び出し側は現在の設定と外部ポートだけを渡す。
+残る仮定は既存の公開ポートと構造的適合を維持できることであり、Go のコンパイルと既存テストで確認する。
+
+## 計画
+
+モジュールごとに移動、構築操作、呼び出し側、責務表を一つの変更として検証し、正式コミットを作る。
+配線を外す故障を境界検査と組み立てテストで観測し、演算子のある新しい配線の分岐だけを基準 revision からのミューテーション検査へ選ぶ。
+移動したテストが差分に含まれるため、振る舞いを保つ変更の RED 免除は使わない。
+受け入れと単体の代替 RED は、責務表だけを `internal` にしたときの移し忘れと非公開 import を `check-boundaries` が拒否する結果とする。
+業務ロジックは移動と import の置換だけに保ち、配線の既存の規範被覆と不足をモジュールごとに確認する。
+
 ## タスク
 
 - [ ] T001 [Inventory] 対象のモジュールを再計測して確定し、モジュールごとに外部の利用元と組み立て地点からの import を記録する。
@@ -68,6 +150,10 @@ spec_impact: { kind: none, reason: "外から非公開パッケージへの impo
 - [ ] T004 [Verify] 変更を検証する。
 
 ## 検証
+
+### モジュールごとの記録
+
+- WorkloadIdentity: 責務表だけの切り替えで、外側の 7 パッケージと System からの非公開 import 5 件を境界検査が拒否した。移動後は成功した。`test-go-package -- ./backend/workloadidentity/...` は race 付きで 90 テストが成功し、PostgreSQL も実行した。`compile-spec` 後の `TestAssembledRoutesMatchGeneratedOpenAPI` は成功した。ルートの変更行に対するミューテーション検査は演算子がなく 0 件だった。HTTP の経路登録の切断は最後に共通の組み立てテストで調べる。
 
 - `mise run check-boundaries`
 - `mise run check-boundary-debt-ratchet`

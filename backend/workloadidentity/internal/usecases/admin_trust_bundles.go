@@ -17,7 +17,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/ports"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 )
 
 type AdminWorkloadIdentityDeps struct {

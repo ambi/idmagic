@@ -13,8 +13,8 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/ports"
-	"github.com/ambi/idmagic/backend/workloadidentity/usecases"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )

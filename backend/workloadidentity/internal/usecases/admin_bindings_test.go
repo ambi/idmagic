@@ -10,8 +10,8 @@ import (
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/db_memory"
-	"github.com/ambi/idmagic/backend/workloadidentity/usecases"
+	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/internal/db_memory"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 )
 
 func newAdminBindingDeps(t *testing.T) usecases.AdminAgentWorkloadBindingDeps {

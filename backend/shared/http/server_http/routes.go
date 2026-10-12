@@ -64,9 +64,6 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/workloadidentity"
 	workloadidentitydomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
-	workloadidentityhttp "github.com/ambi/idmagic/backend/workloadidentity/handlers_http"
-	workloadidentityusecases "github.com/ambi/idmagic/backend/workloadidentity/usecases"
-	workloadidentityverification "github.com/ambi/idmagic/backend/workloadidentity/verification_jose"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedhttp "github.com/ambi/idmagic/backend/wsfederation/handlers_http"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
@@ -317,16 +314,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	}
 	workloadVerifier := d.OAuth2.WorkloadVerifier
 	if workloadVerifier == nil {
-		workloadVerifier = workloadidentityusecases.WorkloadTokenVerifierAdapter{
-			Deps: workloadidentityusecases.VerifyWorkloadAttestationDeps{
-				TrustBundleRepo: d.WorkloadIdentity.TrustBundleRepo,
-				BindingRepo:     d.WorkloadIdentity.BindingRepo,
-				AgentRepo:       d.IdManagement.AgentRepo,
-				SVIDVerifier:    workloadidentityverification.NewVerifier(),
-				FetchJWKS:       fetchWorkloadJWKS,
-				Emit:            d.Emit,
-			},
-		}
+		workloadVerifier = d.WorkloadIdentity.TokenVerifier(d.IdManagement.AgentRepo, fetchWorkloadJWKS, d.Emit)
 	}
 
 	oauth2http.RegisterRoutes(g, oauth2http.Deps{
@@ -385,9 +373,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		DefaultSignInPolicyRepo:     d.Application.DefaultSignInPolicyRepo,
 	})
 
-	workloadidentityhttp.RegisterRoutes(g, workloadidentityhttp.Deps{
+	d.WorkloadIdentity.RegisterRoutes(g, workloadidentity.RouteDeps{
 		Deps: d.Deps, Authenticator: authenticator,
-		TrustBundleRepo: d.WorkloadIdentity.TrustBundleRepo, BindingRepo: d.WorkloadIdentity.BindingRepo,
 		AgentRepo: d.IdManagement.AgentRepo, FetchJWKS: fetchWorkloadJWKS,
 	})
 

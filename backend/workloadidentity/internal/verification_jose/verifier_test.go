@@ -14,7 +14,7 @@ import (
 	"time"
 
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/verification_jose"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/verification_jose"
 )
 
 func signSVID(t *testing.T, key *rsa.PrivateKey, kid, iss, sub, aud string, iat, exp time.Time) string {

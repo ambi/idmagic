@@ -12,9 +12,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/db_memory"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/usecases"
+	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/internal/db_memory"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 )
 
 func withTenant(tenantID string) context.Context {

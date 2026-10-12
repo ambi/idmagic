@@ -23,7 +23,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/workloadidentity"
-	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/db_memory"
+	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/internal/db_memory"
 
 	"github.com/labstack/echo/v5"
 )

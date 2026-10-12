@@ -55,7 +55,7 @@ IdMagic は、一つの Go モジュール（`go.mod`）の中でモジュール
 | [DataKeys](../../modules/data-keys/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/datakeys` | 可逆な秘密情報を保護するテナント別 DEK のライフサイクル |
 | [WsFederation](../../modules/ws-federation/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/wsfederation` | WS-Federation、WS-Trust、メタデータ、RP の信頼 |
 | [Saml](../../modules/saml/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/saml` | SAML 2.0 IdP、SP の信頼、SSO、SLO、メタデータ |
-| [WorkloadIdentity](../../modules/workloadidentity/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/workloadidentity` | 外部アテステーションと Agent の対応付け |
+| [WorkloadIdentity](../../modules/workloadidentity/README.md) | `internal` | `backend/workloadidentity/domain` | `backend/workloadidentity` | 外部アテステーションと Agent の対応付け |
 | [SharedSignals](../../modules/sharedsignals/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/sharedsignals` | SSF、SET、CAEP による継続的アクセス評価と失効 |
 
 ## 品質要件の割り当て

@@ -3,7 +3,7 @@
 package workloadidentity
 
 import (
-	"github.com/ambi/idmagic/backend/workloadidentity/ports"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 )
 
 // Module holds the dependencies WorkloadIdentity's admin API and the

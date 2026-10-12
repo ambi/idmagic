@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/ports"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 )
 
 type Fixture struct {

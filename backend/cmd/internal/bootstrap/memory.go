@@ -58,7 +58,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	"github.com/ambi/idmagic/backend/workloadidentity"
-	workloadidentitymemory "github.com/ambi/idmagic/backend/workloadidentity/db_memory"
+
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 )
@@ -208,11 +208,8 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
 			ProvisioningNotifier:    provisioningModule.AssignmentNotifier(assignmentRepo),
 		},
-		Provisioning: provisioningModule,
-		WorkloadIdentity: workloadidentity.Module{
-			TrustBundleRepo: workloadidentitymemory.NewWorkloadTrustBundleRepository(),
-			BindingRepo:     workloadidentitymemory.NewAgentWorkloadBindingRepository(),
-		},
+		Provisioning:     provisioningModule,
+		WorkloadIdentity: workloadidentity.NewMemoryModule(),
 		SharedSignals: sharedsignals.Module{
 			RevocationEpochRepo:   sharedsignalsmemory.NewAgentRevocationEpochRepository(),
 			StreamRepo:            sharedsignalsmemory.NewSsfStreamRepository(),

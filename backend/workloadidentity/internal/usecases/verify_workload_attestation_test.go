@@ -19,10 +19,10 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/db_memory"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/usecases"
-	"github.com/ambi/idmagic/backend/workloadidentity/verification_jose"
+	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/internal/db_memory"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/verification_jose"
 )
 
 const (
