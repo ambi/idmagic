@@ -10,8 +10,8 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
-	samlresponse "github.com/ambi/idmagic/backend/saml/responses_saml"
-	samlusecases "github.com/ambi/idmagic/backend/saml/usecases"
+	samlresponse "github.com/ambi/idmagic/backend/saml/internal/responses_saml"
+	samlusecases "github.com/ambi/idmagic/backend/saml/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"

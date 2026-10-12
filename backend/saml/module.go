@@ -4,7 +4,7 @@ package saml
 import (
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	samlhttp "github.com/ambi/idmagic/backend/saml/handlers_http"
+	samlhttp "github.com/ambi/idmagic/backend/saml/internal/handlers_http"
 	"github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"

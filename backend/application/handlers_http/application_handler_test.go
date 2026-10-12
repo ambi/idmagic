@@ -27,7 +27,7 @@ import (
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/saml"
-	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
+
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -61,7 +61,7 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
 			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
 		},
-		Saml: saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
+		Saml: saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		OAuth2: oauth2.Module{
 			ClientRepo: oauth2memory.NewClientRepository(),
 		},

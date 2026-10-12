@@ -65,7 +65,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 
 	"github.com/ambi/idmagic/backend/saml"
-	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
+
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -204,7 +204,7 @@ type Stack struct {
 	// 「保存されたか」を応答ではなく保存先で読み直せるように配る。
 	AppSignInPolicies   *appmemory.SignInPolicyRepository
 	DefaultSignInPolicy *appmemory.DefaultSignInPolicyRepository
-	SamlSPs             *samlmemory.SamlServiceProviderRepository
+	SamlSPs             saml.ServiceProviderRepository
 	WsFedRPs            *wsfedmemory.WsFedRelyingPartyRepository
 	Sessions            *sessionusecases.SessionManager
 	// SessionStore は Sessions の保管先。サインアウトの具体例は「サーバー側の
@@ -478,10 +478,10 @@ func WithProvisioning() Option {
 // WithSaml は SAML の保存先と管理 API を配線する。
 func WithSaml() Option {
 	return func(b *builder) {
-		b.stack.SamlSPs = samlmemory.NewSamlServiceProviderRepository()
+		b.stack.SamlSPs = saml.NewSamlServiceProviderRepository()
 		b.deps.Saml = saml.Module{
 			SPRepo: b.stack.SamlSPs, ProfileRepo: b.stack.SamlSPs,
-			ReplayStore: samlmemory.NewAuthnRequestReplayStore(),
+			ReplayStore: saml.NewAuthnRequestReplayStore(),
 		}
 		b.deps.FederationSigner = samltoken.KeyStoreSignerProvider{KeyStore: b.stack.KeyStore}
 	}

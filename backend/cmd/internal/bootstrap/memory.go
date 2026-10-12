@@ -41,7 +41,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 
 	"github.com/ambi/idmagic/backend/saml"
-	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
+
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	ratelimitmemory "github.com/ambi/idmagic/backend/shared/ratelimit/db_memory"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
@@ -181,13 +181,10 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		DataKeys:     dataKeysModule,
 		Audit:        auditModule,
 		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
-		Saml: func() saml.Module {
-			repo := samlmemory.NewSamlServiceProviderRepository()
-			return saml.Module{SPRepo: repo, ProfileRepo: repo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()}
-		}(),
-		Sourcing:  sourcing.NewMemoryModule(),
-		ApiTokens: apitoken.NewMemoryModule(),
-		Jobs:      jobs.Module{Repo: jobsmemory.NewJobRepository()},
+		Saml:         saml.NewMemoryModule(),
+		Sourcing:     sourcing.NewMemoryModule(),
+		ApiTokens:    apitoken.NewMemoryModule(),
+		Jobs:         jobs.Module{Repo: jobsmemory.NewJobRepository()},
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),
 			IconStore:               appmemory.NewApplicationIconStore(),

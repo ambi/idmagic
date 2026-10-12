@@ -3,7 +3,7 @@ package db_postgres
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/saml/testing_contract"
+	"github.com/ambi/idmagic/backend/saml/internal/testing_contract"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )

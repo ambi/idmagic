@@ -32,7 +32,7 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/saml"
-	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
+
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -90,7 +90,7 @@ func newSecretExampleFixture(t *testing.T) *secretExampleFixture {
 			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
 			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
 		},
-		Saml:         saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
+		Saml:         saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, RefreshStore: oauth2memory.NewRefreshTokenStore(),

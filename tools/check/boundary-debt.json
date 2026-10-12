@@ -491,8 +491,8 @@
       "targetModule": "WsFederation",
       "violations": [
         "private-import:Saml:backend/saml->backend/wsfederation/tokens_saml",
-        "private-import:Saml:backend/saml/handlers_http->backend/wsfederation/tokens_saml",
-        "private-import:Saml:backend/saml/responses_saml->backend/wsfederation/tokens_saml"
+        "private-import:Saml:backend/saml/internal/handlers_http->backend/wsfederation/tokens_saml",
+        "private-import:Saml:backend/saml/internal/responses_saml->backend/wsfederation/tokens_saml"
       ],
       "reason": "SAML builds and signs assertions with WsFederation's tokens_saml package. wi-90942 decides whether the builder becomes a WsFederation public package or splits into a protocol-neutral shared library (D3, D5, D8)."
     },

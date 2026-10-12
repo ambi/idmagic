@@ -42,7 +42,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
-	samlhttp "github.com/ambi/idmagic/backend/saml/handlers_http"
+
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
@@ -554,7 +554,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	// nil の *SessionManager をインターフェースへ入れると nil でなくなり、受け取り側の nil の確認を
 	// すり抜けるので、ないときはポートごと渡さない。
 	var wsfedSessionRevoker wsfedhttp.SessionRevoker
-	var samlSessionRevoker samlhttp.SessionRevoker
+	var samlSessionRevoker saml.SessionRevoker
 	if d.Authentication.SessionManager != nil {
 		wsfedSessionRevoker = d.Authentication.SessionManager
 		samlSessionRevoker = d.Authentication.SessionManager
@@ -566,7 +566,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		d.Tenancy.AttrSchemaRepo)
 
 	d.Saml.Register(g, d.Deps, authenticator, appGate,
-		samlhttp.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: samlSessionRevoker},
+		saml.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: samlSessionRevoker},
 		d.IdManagement.UserRepo, d.FederationSigner, d.Tenancy.AttrSchemaRepo)
 
 	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo, d.Tenancy.QuotaRepo, d.Tenancy.AttrSchemaRepo)

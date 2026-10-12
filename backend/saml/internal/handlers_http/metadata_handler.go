@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	metadata "github.com/ambi/idmagic/backend/saml/metadata_saml"
+	metadata "github.com/ambi/idmagic/backend/saml/internal/metadata_saml"
 
 	"github.com/labstack/echo/v5"
 )

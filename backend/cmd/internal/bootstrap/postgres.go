@@ -45,7 +45,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 
 	"github.com/ambi/idmagic/backend/saml"
-	samlpostgres "github.com/ambi/idmagic/backend/saml/db_postgres"
+
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	ratelimitpostgres "github.com/ambi/idmagic/backend/shared/ratelimit/db_postgres"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
@@ -214,14 +214,10 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		DataKeys:     dataKeysModule,
 		Audit:        audit.NewPostgresModule(resilientDB),
 		WsFederation: wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
-		Saml: saml.Module{
-			SPRepo:      &samlpostgres.SamlServiceProviderRepository{Pool: resilientDB},
-			ProfileRepo: &samlpostgres.SamlIdentityProviderProfileRepository{Pool: resilientDB},
-			ReplayStore: &samlpostgres.AuthnRequestReplayStore{Pool: resilientDB},
-		},
-		Sourcing:  sourcing.NewPostgresModule(resilientDB),
-		ApiTokens: apitoken.NewPostgresModule(resilientDB),
-		Jobs:      jobs.Module{Repo: &jobspostgres.JobRepository{Pool: resilientDB}},
+		Saml:         saml.NewPostgresModule(resilientDB),
+		Sourcing:     sourcing.NewPostgresModule(resilientDB),
+		ApiTokens:    apitoken.NewPostgresModule(resilientDB),
+		Jobs:         jobs.Module{Repo: &jobspostgres.JobRepository{Pool: resilientDB}},
 		Application: application.Module{
 			Repo:                    &apppostgres.ApplicationRepository{Pool: resilientDB},
 			IconStore:               &apppostgres.ApplicationIconStore{Pool: resilientDB},

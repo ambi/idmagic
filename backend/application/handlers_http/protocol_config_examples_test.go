@@ -28,7 +28,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/saml"
-	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
+
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -415,7 +415,7 @@ func newApplicationHandlerRecordingEvents(
 			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
 		},
 		Tenancy:       tenancy.Module{AttrSchemaRepo: schema},
-		Saml:          saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
+		Saml:          saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		OAuth2:        oauth2.Module{ClientRepo: oauth2memory.NewClientRepository()},
 		WsFederation:  wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		AuthnResolver: authusecases.DemoHeaderResolver{},

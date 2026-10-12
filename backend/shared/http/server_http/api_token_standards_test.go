@@ -36,7 +36,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/saml"
-	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
+
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -81,7 +81,7 @@ type apiTokenStack struct {
 	tenants  *tenancymemory.TenantRepository
 	// samlSPs は SAML の管理 API が読み書きする保存先。粒度スコープの具体例は、拒否が
 	// 防いだ効果をここから読み直す。
-	samlSPs *samlmemory.SamlServiceProviderRepository
+	samlSPs saml.ServiceProviderRepository
 }
 
 func newApiTokenStack(t *testing.T) *apiTokenStack {
@@ -149,7 +149,7 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 	// SAML を配線するのは、粒度スコープの具体例が「参照」と「登録・削除」を別のスコープに
 	// 割り当てているためである。スコープの判定だけを読むと、判定が正しくても保存が
 	// 起こったかどうかは分からない。
-	samlSPs := samlmemory.NewSamlServiceProviderRepository()
+	samlSPs := saml.NewSamlServiceProviderRepository()
 
 	e := echo.New()
 	Register(e, Deps{

@@ -113,7 +113,7 @@ const signOutServiceProviderEntityID = "https://sp.example.com"
 // seedSamlLogoutServiceProvider は SLO の返信先を持つ SP を 1 つ登録する。
 func seedSamlLogoutServiceProvider(t *testing.T, s *stack.Stack) {
 	t.Helper()
-	s.SamlSPs.Seed(&samldomain.SamlServiceProvider{
+	if err := s.SamlSPs.Save(t.Context(), &samldomain.SamlServiceProvider{
 		TenantID: tenancydomain.DefaultTenantID,
 		EntityID: signOutServiceProviderEntityID,
 		ACSURLs:  []string{"https://sp.example.com/acs"},
@@ -123,7 +123,9 @@ func seedSamlLogoutServiceProvider(t *testing.T, s *stack.Stack) {
 				Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "user_id",
 			},
 		},
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // samlLogoutRequest は Redirect 束縛で送れる LogoutRequest を組み立てる。

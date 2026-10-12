@@ -39,7 +39,7 @@ const exampleCSRFToken = "csrf-token-for-signing-key-examples"
 func newFederationStack(t *testing.T) (*stack.Stack, string) {
 	t.Helper()
 	s := stack.New(t, stack.WithAuthorizationCodeFlow(), stack.WithSaml(), stack.WithWsFederation())
-	s.SamlSPs.Seed(&samldomain.SamlServiceProvider{
+	if err := s.SamlSPs.Save(t.Context(), &samldomain.SamlServiceProvider{
 		TenantID:      tenancydomain.DefaultTenantID,
 		EntityID:      "https://sp.example.com",
 		ACSURLs:       []string{"https://sp.example.com/acs"},
@@ -47,7 +47,9 @@ func newFederationStack(t *testing.T) (*stack.Stack, string) {
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{
 			Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "user_id",
 		}},
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 	return s, newSession(t, s, stack.UserID)
 }
 

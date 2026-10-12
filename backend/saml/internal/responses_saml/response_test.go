@@ -17,7 +17,7 @@ import (
 	dsig "github.com/russellhaering/goxmldsig"
 
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
-	samlresponse "github.com/ambi/idmagic/backend/saml/responses_saml"
+	samlresponse "github.com/ambi/idmagic/backend/saml/internal/responses_saml"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )

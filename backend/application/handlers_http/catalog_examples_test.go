@@ -22,7 +22,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/saml"
-	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
+
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
@@ -389,7 +389,7 @@ func newTwoTenantApplicationHandler(t *testing.T) *echo.Echo {
 			SignInPolicyRepo:        appmemory.NewSignInPolicyRepository(),
 			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
 		},
-		Saml:          saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
+		Saml:          saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		OAuth2:        oauth2.Module{ClientRepo: oauth2memory.NewClientRepository()},
 		WsFederation:  wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		AuthnResolver: authusecases.DemoHeaderResolver{},

@@ -6,7 +6,7 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	samlusecases "github.com/ambi/idmagic/backend/saml/usecases"
+	samlusecases "github.com/ambi/idmagic/backend/saml/internal/usecases"
 )
 
 // ApplicationGate は、SSO の開始を Application の割り当てとサインインポリシーで判定する。

@@ -10,7 +10,7 @@ import (
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
-	samlusecases "github.com/ambi/idmagic/backend/saml/usecases"
+	samlusecases "github.com/ambi/idmagic/backend/saml/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/beevik/etree"

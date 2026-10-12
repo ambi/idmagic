@@ -12,7 +12,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/saml"
-	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
+
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -32,7 +32,7 @@ const (
 
 type adminJSONBodyFixture struct {
 	e        *echo.Echo
-	samlSPs  *samlmemory.SamlServiceProviderRepository
+	samlSPs  saml.ServiceProviderRepository
 	wsfedRPs *wsfedmemory.WsFedRelyingPartyRepository
 	quotas   *tenancymemory.QuotaRepository
 }
@@ -67,7 +67,7 @@ func newAdminJSONBodyFixture(t *testing.T) *adminJSONBodyFixture {
 		},
 	})
 
-	samlSPs := samlmemory.NewSamlServiceProviderRepository()
+	samlSPs := saml.NewSamlServiceProviderRepository()
 	wsfedRPs := wsfedmemory.NewWsFedRelyingPartyRepository()
 	quotas := tenancymemory.NewQuotaRepository()
 	seededUsers := adminJSONBodySeededUsers

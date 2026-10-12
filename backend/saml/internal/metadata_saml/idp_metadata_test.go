@@ -13,7 +13,7 @@ import (
 	"github.com/beevik/etree"
 
 	"github.com/ambi/idmagic/backend/saml/domain"
-	metadata "github.com/ambi/idmagic/backend/saml/metadata_saml"
+	metadata "github.com/ambi/idmagic/backend/saml/internal/metadata_saml"
 )
 
 func selfSignedCert(t *testing.T) *x509.Certificate {
