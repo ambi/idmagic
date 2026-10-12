@@ -91,6 +91,53 @@ async function ratchet(root: string, baseRevision = 'main') {
 }
 
 describe('checkBoundaryDebtRatchet', () => {
+  async function movedImport(target = 'usecases', switchPublication = true, keepOriginal = false) {
+    const source = 'backend/customer/usecases/private.go'
+    const root = await repository(
+      {
+        'docs/design/architecture/logical.md': BOUNDARY_FIXTURE[
+          'docs/design/architecture/logical.md'
+        ]!.replace(
+          '| [Customer](customer.md) | `legacy` | `domain` または `ports` の区画 |',
+          '| [Customer](customer.md) | `internal` | `backend/customer/ports`, `backend/customer/usecases` |',
+        ),
+        'backend/customer/ports/ports.go': 'package ports\n',
+        'backend/customer/internal/usecases/private.go': `package usecases\nimport "example.com/product/backend/supplier/${target}"\n`,
+      },
+      {
+        [source]: 'package usecases\nimport "example.com/product/backend/supplier/usecases"\n',
+      },
+    )
+    if (!switchPublication)
+      await write(root, {
+        'docs/design/architecture/logical.md':
+          BOUNDARY_FIXTURE['docs/design/architecture/logical.md']!,
+      })
+    if (!keepOriginal) await rm(join(root, source))
+    return root
+  }
+
+  it('公開方式を切り替えて既存の非公開 import の利用元だけを internal へ移す変更を通す', async () => {
+    const outcome = await ratchet(await movedImport())
+    expect(outcome.ok).toBe(true)
+  })
+
+  it('internal への移動と同時に別の非公開パッケージを使い始める変更を拒否する', async () => {
+    const outcome = await ratchet(await movedImport('adapter'))
+    expect(outcome.ok).toBe(false)
+    expect(outcome.lines[0]).toContain(
+      'backend/customer/internal/usecases->backend/supplier/adapter',
+    )
+  })
+
+  it('公開方式を切り替えない配置の変更は読み替えない', async () => {
+    expect((await ratchet(await movedImport('usecases', false))).ok).toBe(false)
+  })
+
+  it('移動元の依存も残る複製を移動として免除しない', async () => {
+    expect((await ratchet(await movedImport('usecases', true, true))).ok).toBe(false)
+  })
+
   it('accepts moving the cycle and the direct write of a retired-format base to new ids', async () => {
     const outcome = await ratchet(await repository({}))
 

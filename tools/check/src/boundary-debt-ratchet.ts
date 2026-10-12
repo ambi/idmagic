@@ -2,7 +2,13 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createWorkspaceSnapshot, type WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
-import type { BoundaryAnalysis, BoundaryViolationKind } from './boundary-fitness.ts'
+import {
+  parseLogicalArchitecture,
+  type ArchitectureModel,
+  type BoundaryAnalysis,
+  type BoundaryViolation,
+  type BoundaryViolationKind,
+} from './boundary-fitness.ts'
 import { analyzeModuleBoundaries, BOUNDARY_INPUT_PATHS } from './check-boundaries.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
 
@@ -66,8 +72,12 @@ export async function checkBoundaryDebtRatchet(
   const current = await analyzeModuleBoundaries(snapshot)
   const base = await checkout(options.baseRevision)
   let before: BoundaryAnalysis
+  let beforeModel: ArchitectureModel
   try {
     before = await analyzeModuleBoundaries(base.snapshot)
+    beforeModel = parseLogicalArchitecture(
+      await base.snapshot.read('docs/design/architecture/logical.md'),
+    )
   } finally {
     await base.release()
   }
@@ -80,7 +90,15 @@ export async function checkBoundaryDebtRatchet(
     }
   }
   const beforeIds = new Set(before.violations.map((violation) => violation.id))
-  const added = current.violations.filter((violation) => !beforeIds.has(violation.id))
+  const currentIds = new Set(current.violations.map((violation) => violation.id))
+  const currentModel = parseLogicalArchitecture(
+    await snapshot.read('docs/design/architecture/logical.md'),
+  )
+  const added = current.violations.filter((violation) => {
+    if (beforeIds.has(violation.id)) return false
+    const previousId = beforeMigrationId(violation, beforeModel, currentModel)
+    return !beforeIds.has(previousId) || currentIds.has(previousId)
+  })
   const counts = `${kindCounts(before)} -> ${kindCounts(current)}`
   if (added.length > 0) {
     return {
@@ -98,6 +116,30 @@ export async function checkBoundaryDebtRatchet(
     ok: true,
     lines: [`ok  boundary debt ratchet against ${options.baseRevision} (${counts})`],
   }
+}
+
+/** 方式を切り替えるモジュールの利用元だけを読み替え、参照先と残る相対パスを保つ。 */
+function beforeMigrationId(
+  violation: BoundaryViolation,
+  before: ArchitectureModel,
+  current: ArchitectureModel,
+): string {
+  if (violation.kind !== 'private-import') return violation.id
+  const module = current.modules.find(
+    (candidate) =>
+      candidate.name === violation.sourceModule && candidate.publication === 'internal',
+  )
+  const previous = before.modules.find(
+    (candidate) => candidate.name === violation.sourceModule && candidate.publication === 'legacy',
+  )
+  if (module === undefined || previous === undefined) return violation.id
+  for (const prefix of module.packagePrefixes) {
+    if (!previous.packagePrefixes.includes(prefix)) continue
+    const moved = `private-import:${module.name}:${prefix}/internal/`
+    if (violation.id.startsWith(moved))
+      return `private-import:${module.name}:${prefix}/${violation.id.slice(moved.length)}`
+  }
+  return violation.id
 }
 
 function kindCounts(analysis: BoundaryAnalysis): string {
