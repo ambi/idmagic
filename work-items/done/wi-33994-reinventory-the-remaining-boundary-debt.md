@@ -65,7 +65,7 @@ wi-17193、wi-39119、wi-65906 で、原因が一か所に集まった負債（`
 
 - 個々の依存と書き込みの解消そのもの。起票した work item で行う。
 - 件数だけからの一律な分割と統合、マイクロサービス化。
-- internal への配置変更そのものは[呼び出し側のないモジュールの移行](../active/wi-97546-move-modules-without-private-callers-behind-go-internal.md)と[残るモジュールの移行](../active/wi-75383-move-remaining-modules-behind-go-internal-and-retire-legacy.md)が扱う。
+- internal への配置変更そのものは[呼び出し側のないモジュールの移行](wi-97546-move-modules-without-private-callers-behind-go-internal.md)と[残るモジュールの移行](../active/wi-75383-move-remaining-modules-behind-go-internal-and-retire-legacy.md)が扱う。
 
 ## 設計
 
@@ -136,7 +136,7 @@ Repository や内部の型を公開して違反を消す案は、どの組でも
 
 ### internal 移行との分担
 
-依存の解消は本項目が起票した項目が行い、`internal/` への配置の変更は[呼び出し側のないモジュールの移行](../active/wi-97546-move-modules-without-private-callers-behind-go-internal.md)と[残るモジュールの移行](../active/wi-75383-move-remaining-modules-behind-go-internal-and-retire-legacy.md)が行う。
+依存の解消は本項目が起票した項目が行い、`internal/` への配置の変更は[呼び出し側のないモジュールの移行](wi-97546-move-modules-without-private-callers-behind-go-internal.md)と[残るモジュールの移行](../active/wi-75383-move-remaining-modules-behind-go-internal-and-retire-legacy.md)が行う。
 解消の項目は公開パッケージを決めて操作を移すところまでを受け持ち、残りのパッケージを `internal/` へ移す作業は含めない。
 残るモジュールの移行の項目は、`private-import` の解消の 8 項目に依存する。
 
