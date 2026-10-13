@@ -181,6 +181,14 @@ describe('用語検査', () => {
         },
       ]),
     ).toEqual([])
+    expect(
+      verifyTerminology([
+        {
+          file: 'docs/design/architecture/system-boundary.md',
+          source: 'C4 のシステムコンテキスト図を示す。\n\n```mermaid\nC4Context\n```\n',
+        },
+      ]),
+    ).toEqual([])
   })
 
   it('旧い文書区分と設計の階層名を拒否し、実行や認証の文脈は通す', () => {

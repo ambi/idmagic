@@ -147,6 +147,10 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
       { literal: 'パスワードリセットコンテキスト', reason: 'ブラウザー初期化 API の情報である' },
       { literal: 'コンテキストが返る', reason: 'ブラウザー初期化 API の応答である' },
       { literal: 'コンテキストの節約', reason: 'エージェントが読み込む情報量を指す' },
+      {
+        literal: 'システムコンテキスト図',
+        reason: 'C4 model の System Context のビューであり、設計の単位ではない',
+      },
     ],
   },
   // Bounded Context、Context Map、Context 間もこの規則で落ちる。Context Map は
@@ -157,6 +161,7 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
     allow: [
       { literal: 'context.Context', reason: 'Go の標準ライブラリの型であり、設計の単位ではない' },
       { literal: 'System Context', reason: 'C4 model のビュー名であり、設計の単位ではない' },
+      { literal: 'C4Context', reason: 'Mermaid の C4 図のキーワードであり、設計の単位ではない' },
       { literal: 'W3C Trace Context', reason: 'W3C の規格名であり、設計の単位ではない' },
 
       // 標準の行の文面を変えると、振る舞いを固定する証拠が要る。語の差し替えだけでは

@@ -4,16 +4,40 @@
 IdMagic のシステム境界には、ブラウザー UI、公開プロトコルと API、管理 API、永続ジョブとバッチが含まれる。
 クラウドのコンピューティング、データベースサービス、DNS、TLS 証明書、上流の IdP とアイデンティティ源、下流の送信先、監視と通知のサービスは境界外にあり、定義した契約を通じて接続する。
 
+次の C4 のシステムコンテキスト図は、人、IdMagic、外部システムと、その間の関係の目的を示す。
+矢印は利用または連携の向きであり、物理的な直接接続を意味しない。
+ゲートウェイ、プロセス、ネットワークの経路は、[ランタイム](runtime.md)、[デプロイメントアーキテクチャ](deployment.md)、[ネットワーク設計](../infrastructure/network.md)で示す。
+
 ```mermaid
-flowchart LR
-  Human["利用者と管理者<br/>ブラウザー"] --> Gateway[ゲートウェイ]
-  Client["連携アプリケーション<br/>OAuth、OIDC、SAML、SCIM のクライアント"] --> Gateway
-  Gateway --> IdMagic[IdMagic]
-  IdMagic --> Upstream["上流の IdP とアイデンティティ源"]
-  IdMagic --> Downstream["下流の送信先<br/>SCIM サーバー、SSF の受信側、SMTP サーバー"]
-  IdMagic --> Postgres[PostgreSQL]
-  Operator[運用者] --> Platform[デプロイ、シークレット、監視の基盤]
-  Platform --> IdMagic
+---
+config:
+  c4:
+    c4ShapeMargin: 90
+---
+C4Context
+  Person(human, "利用者と管理者", "ブラウザーから使う")
+  System_Ext(client, "連携アプリケーション", "OAuth、OIDC、SAML、SCIM のクライアント")
+  Person(operator, "運用者")
+  System_Ext(upstream, "上流の IdP とアイデンティティ源")
+  System(idmagic, "IdMagic", "認証、管理、プロビジョニング")
+  System_Ext(platform, "運用基盤", "デプロイ、シークレット、監視")
+  System_Ext(downstream, "下流の送信先", "SCIM サーバー、SSF の受信側、SMTP サーバー")
+  SystemDb_Ext(postgres, "PostgreSQL", "データベースサービス")
+  Rel(human, idmagic, "認証、管理、セルフサービスに使う")
+  Rel(client, idmagic, "プロトコルと API で連携する")
+  Rel(idmagic, upstream, "認証を委ね、属性を取り込む")
+  Rel(idmagic, downstream, "プロビジョニング、イベント、メールを送る")
+  Rel(idmagic, postgres, "状態を保存する")
+  Rel(operator, platform, "構成し、監視する")
+  Rel(platform, idmagic, "デプロイし、シークレットを渡し、観測する")
+  UpdateRelStyle(human, idmagic, $offsetX="-205", $offsetY="-10")
+  UpdateRelStyle(client, idmagic, $offsetX="10")
+  UpdateRelStyle(idmagic, upstream, $offsetX="-74", $offsetY="-8")
+  UpdateRelStyle(platform, idmagic, $offsetX="-50", $offsetY="58")
+  UpdateRelStyle(idmagic, downstream, $offsetX="-235", $offsetY="10")
+  UpdateRelStyle(idmagic, postgres, $offsetX="10")
+  UpdateRelStyle(operator, platform, $offsetX="10")
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
 
 | 外部当事者 | IdMagic の責任 | 外部当事者の責任 |
@@ -26,7 +50,7 @@ flowchart LR
 
 ## ゲートウェイとプラットフォームの実体
 
-図の「ゲートウェイ」と「デプロイ、シークレット、監視の基盤」は役割であり、それを担う製品はシステム境界の外で決まる。
+利用者と連携アプリケーションの通信を受ける「ゲートウェイ」と、図の「運用基盤」は役割であり、それを担う製品はシステム境界の外で決まる。
 [デプロイメントアーキテクチャ](deployment.md)のデプロイプロファイルごとの担い手は、次のとおりである。
 構成ファイルがまだ無いものは、末尾に（仮）と書く。
 

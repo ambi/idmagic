@@ -1420,7 +1420,7 @@ code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;backgroun
 .hero{margin:0 0 44px;padding:0 0 30px;border-bottom:1px solid var(--line)}.hero h1{font-size:34px}.hero p{color:var(--muted);font-size:17px}.hero-links{display:flex;flex-wrap:wrap;gap:20px;margin:0;font-size:15px;font-weight:600}
 .module-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin:1em 0;padding:0;list-style:none;font-size:14px}
 .table-wrap,table{max-width:100%;overflow:auto}table{width:100%;margin:1.4em 0;border-collapse:collapse;display:block;font-size:14.5px;line-height:1.65}th,td{padding:9px 14px 9px 0;border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}thead th{padding-left:10px;border-bottom:1px solid var(--line-strong);background:var(--bg-soft);font-size:13px}tbody th[scope=row]{font-weight:600}.term-table td:first-child{white-space:nowrap}
-.diagram-shell{position:relative;max-width:100%;overflow:auto;margin:1.6em 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.diagram-shell .mermaid{min-width:560px;background:transparent}:is(.diagram-shell .mermaid,.diagram-canvas) svg :is(.edgePath path,.flowchart-link,.transition){stroke:var(--diagram-line)!important;stroke-width:2.4px!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}
+.diagram-shell{position:relative;max-width:100%;overflow:auto;margin:1.6em 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.diagram-shell .mermaid{min-width:560px;background:transparent}:is(.diagram-shell .mermaid,.diagram-canvas) svg :is(.edgePath path,.flowchart-link,.transition){stroke:var(--diagram-line)!important;stroke-width:2.4px!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] [stroke="#444444"]{stroke:var(--diagram-line)}:is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] text[fill="#444444"]{fill:var(--text)}
 .diagram-zoom,.diagram-viewer-toolbar button{padding:4px 12px;color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;font:inherit;font-size:13px;cursor:pointer}.diagram-zoom:hover,.diagram-viewer-toolbar button:hover{background:var(--accent-soft)}.diagram-zoom:focus-visible,.diagram-viewer-toolbar button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.diagram-zoom{display:block;width:fit-content;margin:-6px -6px 6px auto}
 .diagram-viewer{width:100vw;max-width:none;height:100vh;max-height:none;margin:0;padding:0;border:0;color:var(--text);background:var(--bg)}.diagram-viewer::backdrop{background:rgba(20,23,28,.6)}.diagram-viewer-toolbar{position:absolute;z-index:1;top:12px;right:12px;display:flex;gap:8px}.diagram-viewport{width:100%;height:100%;overflow:hidden;cursor:grab;touch-action:none}.diagram-viewport.dragging{cursor:grabbing}.diagram-canvas{transform-origin:0 0}.diagram-canvas svg{display:block;max-width:none}
 .scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}
@@ -1539,11 +1539,26 @@ function createDiagramViewer(){
     fit();
   }};
 }
+// Mermaid の C4 図は配置の幅を閲覧者の画面幅から決め、要素の周りに大きな余白を残す。
+// 余白ごと本文の幅へ縮めると文字が読めないので、描画後に表示範囲を中身へ合わせる。
+function cropC4Diagrams(){
+  document.querySelectorAll('.diagram-shell svg[aria-roledescription=c4]').forEach(function(svg){
+    var drawing=svg.getBBox(),padding=16,width=drawing.width+padding*2;
+    svg.setAttribute('viewBox',[drawing.x-padding,drawing.y-padding,width,drawing.height+padding*2].join(' '));
+    svg.style.maxWidth=width+'px';
+  });
+}
 window.addEventListener('DOMContentLoaded',function(){
   if(window.mermaid&&document.querySelector('.mermaid')){
     var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
     window.mermaid.initialize({startOnLoad:false,securityLevel:'strict',layout:'dagre',look:'classic',theme:'base',themeVariables:dark?{background:'#1a1e25',primaryColor:'#1e2740',primaryTextColor:'#e7ebf1',primaryBorderColor:'#b9c8ff',lineColor:'#b9c8ff',textColor:'#e7ebf1',edgeLabelBackground:'#14171c',tertiaryColor:'#1a1e25'}:{background:'#f6f7f9',primaryColor:'#eef2ff',primaryTextColor:'#1c2024',primaryBorderColor:'#294cba',lineColor:'#294cba',textColor:'#1c2024',edgeLabelBackground:'#fff',tertiaryColor:'#f6f7f9'}});
-    window.mermaid.run({querySelector:'.mermaid'});
+    // C4 図は一行に並べる幅を screen.availWidth から決め、狭い画面では一列に崩れる。
+    // 描画の間だけ幅を固定し、どの画面でも同じ配置にする。
+    var screenWidth=Object.getOwnPropertyDescriptor(window.screen,'availWidth');
+    Object.defineProperty(window.screen,'availWidth',{configurable:true,get:function(){return 1600;}});
+    window.mermaid.run({querySelector:'.mermaid'}).then(cropC4Diagrams).finally(function(){
+      if(screenWidth)Object.defineProperty(window.screen,'availWidth',screenWidth);else delete window.screen.availWidth;
+    });
   }
   var viewer=null;
   document.querySelectorAll('[data-diagram-zoom]').forEach(function(button){

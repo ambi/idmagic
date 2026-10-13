@@ -1118,6 +1118,20 @@ describe('site layout and diagram viewer', () => {
     )
   })
 
+  // Mermaid の C4 図は関係の線とラベルを既定色 #444444 の属性で描き、テーマ変数を読まないため、
+  // 暗色の背景に沈む。既定色のものだけをサイトの色へ置き換え、図で指定した色は残す。
+  it('draws C4 relations left in the default color with the site line and text colors', () => {
+    const css = site().assets['site.css'] ?? ''
+
+    expect(css).toContain(
+      ':is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] [stroke="#444444"]{stroke:var(--diagram-line)}',
+    )
+    expect(css).toContain(
+      ':is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] text[fill="#444444"]{fill:var(--text)}',
+    )
+    expect(css).not.toMatch(/svg\[aria-roledescription=c4\] (?:line|path|text)\{/)
+  })
+
   it('puts an enlarge button on every diagram', () => {
     const html = site().files['index.html'] ?? ''
 
@@ -1146,6 +1160,71 @@ describe('site layout and diagram viewer', () => {
     }
     return { document, element }
   }
+
+  // Mermaid の C4 図は配置の幅を閲覧者の画面幅から決め、要素の周りに大きな余白を残す。
+  // 余白ごと本文の幅へ縮めると文字が読めない大きさになるため、描画後に表示範囲を中身へ合わせる。
+  it('crops a rendered C4 diagram to its drawing and leaves other diagrams as Mermaid sized them', async () => {
+    const window = new Window({ url: 'https://docs.example/index.html' })
+    const document = window.document
+    document.body.innerHTML =
+      '<main><div class="diagram-shell"><pre class="mermaid"><svg id="c4" aria-roledescription="c4" viewBox="0 -10 1428 1175" style="max-width: 1428px;" width="100%"></svg></pre></div>' +
+      '<div class="diagram-shell"><pre class="mermaid"><svg id="flow" aria-roledescription="flowchart-v2" viewBox="0 0 800 400" style="max-width: 800px;" width="100%"></svg></pre></div></main>'
+    const drawing = { x: 175, y: 240, width: 900, height: 600 }
+    for (const svg of document.querySelectorAll('svg')) {
+      Object.assign(svg, { getBBox: () => drawing })
+    }
+    let rendered = Promise.resolve()
+    Object.assign(window, {
+      mermaid: {
+        initialize: () => {},
+        run: () => {
+          rendered = Promise.resolve()
+          return rendered
+        },
+      },
+    })
+    new Function('window', 'document', site().assets['site.js'] ?? '')(window, document)
+    window.dispatchEvent(new window.Event('DOMContentLoaded'))
+    await rendered
+    await Promise.resolve()
+
+    const c4 = document.querySelector('#c4')
+    expect(c4?.getAttribute('viewBox')).toBe('159 224 932 632')
+    expect(c4?.getAttribute('style')).toContain('max-width: 932px')
+    const flow = document.querySelector('#flow')
+    expect(flow?.getAttribute('viewBox')).toBe('0 0 800 400')
+    expect(flow?.getAttribute('style')).toContain('max-width: 800px')
+  })
+
+  // C4 図は一行に並べる幅を screen.availWidth から決めるので、狭い画面では一列に崩れる。
+  it('lays out diagrams at a fixed screen width and restores the screen afterwards', async () => {
+    const window = new Window({ url: 'https://docs.example/index.html' })
+    const document = window.document
+    document.body.innerHTML =
+      '<main><div class="diagram-shell"><pre class="mermaid"></pre></div></main>'
+    const viewerWidth = window.screen.availWidth
+    let widthWhileRendering = 0
+    let rendered = Promise.resolve()
+    Object.assign(window, {
+      mermaid: {
+        initialize: () => {},
+        run: () => {
+          widthWhileRendering = window.screen.availWidth
+          rendered = Promise.resolve()
+          return rendered
+        },
+      },
+    })
+    new Function('window', 'document', site().assets['site.js'] ?? '')(window, document)
+    window.dispatchEvent(new window.Event('DOMContentLoaded'))
+    await rendered
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(widthWhileRendering).toBe(1600)
+    expect(viewerWidth).not.toBe(1600)
+    expect(window.screen.availWidth).toBe(viewerWidth)
+  })
 
   it('opens the rendered diagram in a full-screen dialog without duplicating its ids', () => {
     const { document, element } = loadDiagramPage()
