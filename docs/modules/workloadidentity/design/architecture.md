@@ -42,4 +42,4 @@
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
 | 管理 API | 解決済みのテナントの `/api/admin/v1/workload-identity/...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [信頼設定と関連付けの管理](../trust-configuration/README.md) |
-| アテステーションの交換 | `OAuth2` のトークンエンドポイントへの Token Exchange の要求 | `api` の `OAuth2` のユースケースが、このモジュールの検証を同期的に呼ぶ | [アテステーションの交換の設計](../attestation-exchange/design.md) |
+| アテステーションの交換 | `OAuth2` のトークンエンドポイントへの Token Exchange の要求 | `api` の `OAuth2` のユースケースが、このモジュールの検証を同期的に呼ぶ | [アテステーションの交換の設計](../attestation-exchange/README.md#実現方式) |

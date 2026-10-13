@@ -1,6 +1,6 @@
 # アドミッションコントロールが発動したとき
 
-`ApiAdmissionSheddingInteractiveAuth`、`ApiAdmissionShedding`、`ApiAdmissionUnclassifiedRoute` の対応手順である。機構そのものは [アドミッションコントロールの設計](../modules/system/admission-control/design.md)で、判断の理由は [System の設計判断](../modules/system/design/decisions.md#api-のプレーンを分けない)で説明する。
+`ApiAdmissionSheddingInteractiveAuth`、`ApiAdmissionShedding`、`ApiAdmissionUnclassifiedRoute` の対応手順である。機構そのものは [アドミッションコントロールの設計](../modules/system/admission-control/README.md#実現方式)で、判断の理由は [System の設計判断](../modules/system/design/decisions.md#api-のプレーンを分けない)で説明する。
 
 ## 何が起きているか
 

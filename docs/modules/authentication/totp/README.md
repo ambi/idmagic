@@ -45,3 +45,16 @@ TOTP は RFC 6238 の標準のパラメーター（SHA1、30 秒のステップ�
 - ステップアップ認証が有効な間、本人が現在の TOTP のコードで要素の解除を要求したとき、Authentication は、要素を消し、`mfa_enrolled` を計算し直し、`MfaFactorRemoved` を発行する。
 - ステップアップ認証なしで解除を要求された場合、Authentication は、403 と `step_up_required` で拒否し、要素を残す。
 - **例**：EX-AUTHENTICATION-012-01、EX-AUTHENTICATION-012-02
+
+## 実現方式
+
+### データ
+
+`mfa_factors.secret` は以前からある平文の TOTP の seed のカラムであり、既存のレコードを読めるようにするためだけに残している（二重の読み取り）。
+新しい書き込みは `secret_key_version` と `secret_ciphertext` を埋め、`secret` は `NULL` のままにする。
+残りの平文のレコードは、保留中の埋め戻しで移し、その後 `secret` を削除する。
+
+### 検証
+
+TOTP の照合は Go のネイティブのファジングの対象である。
+導いた符号が宣言した時間の窓の内側で受理されることと、桁数と文字の種類の検査が効いていることを表明する。

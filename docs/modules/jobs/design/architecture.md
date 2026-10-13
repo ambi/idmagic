@@ -42,5 +42,5 @@
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
 | 投入 | 利用側のモジュールのユースケース | `api` または `worker` のプロセスが、同期的に保存する | [永続キュー](../queue/README.md) |
-| 取得と実行 | 取得の間隔 | `worker` のレーンごとの `Runner` | [永続キューの設計](../queue/design.md) |
+| 取得と実行 | 取得の間隔 | `worker` のレーンごとの `Runner` | [永続キューの設計](../queue/README.md#実現方式) |
 | 管理 API | `/api/admin/v1/jobs...` と `/api/admin/v1/system/jobs...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [ジョブの管理](../admin/README.md) |

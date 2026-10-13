@@ -66,7 +66,7 @@
 #### REQ-SYSTEM-027 起動時設定の上限を超えるリクエストボディは 413 で拒否する
 
 - `HTTP_MAX_BODY_BYTES`（デフォルト 1 MiB）を超えるリクエストボディを受けた場合、System は、ハンドラーへ渡さずに 413 で拒否し、状態を変えない。
-- **判断**：汎用 API の JSON のリクエストボディにかかる 64 KiB の上限は、[REQ-PLATFORM-005](../../../requirements/scenarios.feature.md) が定める。
+- **判断**：汎用 API の JSON のリクエストボディにかかる 64 KiB の上限は、[REQ-PLATFORM-005](../../scenarios.feature.md) が定める。
 
 #### REQ-SYSTEM-028 汎用 API の文字列の長さはコードポイントで数え、上限を超えると 422 で拒否する
 

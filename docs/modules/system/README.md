@@ -9,7 +9,7 @@
 | --- | --- |
 | どのユーザーに何ができるか | 記録の正を持つ各モジュールと[認可設計](../../design/security/authorization.md) |
 | プロダクト全体が従う外部規範 | [全体の標準仕様](../../requirements/standards.md) |
-| モジュールをまたぐ語 | [用語集](../../requirements/glossary.md) |
+| モジュールをまたぐ語 | [共通用語集](../glossary.md) |
 | 実行の単位 | [ランタイムアーキテクチャ](../../design/architecture/runtime.md) |
 | 信頼境界 | [脅威モデル](../../design/security/threat-model.md) |
 | 実行の手順と検証のコマンド | リポジトリの `README.md` |

@@ -55,3 +55,19 @@ sourceAnchor は、設定の時点では既存のユーザーの欠落、重複�
 
 RP の登録、参照、削除と Entra のドメインフェデレーションの設定は、`AdminFederationTrustsManage` の権限（AuthZEN の action `admin:federation_trusts_manage`）を要する。
 対話のセッションでは、`admin` ロールを持つ、有効かつ認証済みのユーザーが、所属テナントに対して行える。
+
+## 実現方式
+
+### アーキテクチャ
+
+GUID の形をした sourceAnchor の値は、ImmutableID として使う前に、.NET の `Guid.ToByteArray()` のバイト順で base64 に符号化する。
+これは AD FS と Entra の慣行である。
+すでに base64 の値は、そのまま通す。
+
+### 信頼性
+
+バイト順を誤ると、Entra は Assertion を社内の同じユーザーへ関連付けられず、アカウントの重複やサインインの失敗を招く。
+Entra 側では原因を特定しにくいので、サインインの失敗が続く場合は、まず発行した ImmutableID と、社内のディレクトリが同期した値を突き合わせる。
+
+Hybrid Azure AD Join の端末の登録（`windowstransport` とコンピューターアカウントの Kerberos）は範囲の外である。
+設定の案内では、managed や PHS、あるいは AD FS を併存させる配置へ誘導する。

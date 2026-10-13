@@ -62,6 +62,6 @@
 | 想定ワークロード | キャパシティ算出に用いる利用規模と負荷 | [キャパシティ設計](performance/capacity.md#想定ワークロード) |
 | サイジング計算式 | レプリカ数と接続数を求める式 | [キャパシティ設計](performance/capacity.md#サイジング計算式) |
 | ロードシェディング順序 | 飽和時に優先度の低い経路から受け付けを落とす順序 | [キャパシティ設計](performance/capacity.md#ロードシェディング順序) |
-| アドミッションコントロール | 過負荷時にハンドラーの手前で受け付けを止める仕組み | [アドミッションコントロールの設計](../modules/system/admission-control/design.md) |
+| アドミッションコントロール | 過負荷時にハンドラーの手前で受け付けを止める仕組み | [アドミッションコントロールの設計](../modules/system/admission-control/README.md#実現方式) |
 | オブザーバビリティ | メトリクス、ログ、トレースと、それらの相関 | [オブザーバビリティ設計](observability/) |
 | ガイドライン | 設計時に参照する判断基準 | [API ガイドライン](application/api-guidelines.md)、[設計ガイドライン](application/design-guidelines.md) |

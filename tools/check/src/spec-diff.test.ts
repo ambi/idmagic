@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'bun:test'
-import { type Snapshot, diffSpecifications, formatSpecificationDiff } from './spec-diff.ts'
+import {
+  type Snapshot,
+  diffSpecifications,
+  formatSpecificationDiff,
+  isSpecificationSource,
+} from './spec-diff.ts'
 
-const SCENARIOS = 'docs/requirements/scenarios.feature.md'
+const SCENARIOS = 'docs/modules/scenarios.feature.md'
 const FEATURE = 'docs/modules/demo/work/task/README.md'
 
 /** システムの例に置く規則と、機能仕様の `## 状態遷移` の節に置く状態機械。 */
@@ -205,6 +210,28 @@ describe('diffSpecifications', () => {
     expect(formatSpecificationDiff(diff, 'main')).toBe(
       'no normative specification change against main',
     )
+  })
+
+  /** 過去の revision は共通シナリオを要件文書の下に置いていた。移動だけでは規則は変わらない。 */
+  it('reads shared scenarios at their former location in a past revision as the same rules', () => {
+    const [scenarios, feature] = document(scenario('REQ-DEMO-001', 'it succeeds'))
+    const base: Snapshot = new Map([
+      ['docs/requirements/scenarios.feature.md', scenarios],
+      [FEATURE, feature],
+    ])
+    const head: Snapshot = new Map([
+      [SCENARIOS, scenarios],
+      [FEATURE, feature],
+    ])
+    expect(isSpecificationSource('docs/requirements/scenarios.feature.md')).toBe(true)
+    expect(diffSpecifications(base, head)).toMatchObject({
+      addedScenarios: [],
+      removedScenarios: [],
+      changedScenarios: [],
+    })
+    expect(diffSpecifications(base, new Map([[FEATURE, feature]])).removedScenarios).toEqual([
+      'REQ-DEMO-001',
+    ])
   })
 
   it('separates added, removed, and changed scenarios', () => {

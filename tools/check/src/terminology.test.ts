@@ -177,7 +177,7 @@ describe('用語検査', () => {
       verifyTerminology([
         {
           file: 'docs/formats/documentation-guide.md',
-          source: 'Go の `context.Context` と C4 の System Context。\n',
+          source: 'Go の `context.Context`、C4 の System Context、W3C Trace Context。\n',
         },
       ]),
     ).toEqual([])

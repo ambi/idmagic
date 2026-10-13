@@ -2,16 +2,16 @@
 
 この文書は、Saml の設計を設計領域ごとに索引する。
 このモジュールが外へ約束することは、仕様の [Saml](../README.md) と各機能仕様が定める。
-一つの機能だけの仕組みは、その機能の `design.md` に置く。
+一つの機能だけの仕組みは、その機能の機能仕様の「実現方式」の節に置く。
 記載のない領域には[共通設計](../../../design/README.md#共通設計の適用範囲)を適用する。
 
 | 設計領域 | 区分 | 参照先 | 内容 |
 | --- | --- | --- | --- |
 | アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
 | アプリケーション設計 | 委譲 | [標準仕様](../standards.md#assertions-and-protocols-for-the-oasis-security-assertion-markup-language-saml-v20) | 管理 API はシステムのアプリケーション設計に従い、プロトコルの形は標準仕様が定める |
-| データ設計 | 委譲 | [モデル](../README.md#モデル)、[SAML の SSO の設計](../sso/design.md#データ) | Aggregate とその関係は仕様のモデルが、AuthnRequest の再送の記録はSAML の SSO の設計が扱う |
+| データ設計 | 委譲 | [モデル](../README.md#モデル)、[SAML の SSO の設計](../sso/README.md#データ) | Aggregate とその関係は仕様のモデルが、AuthnRequest の再送の記録はSAML の SSO の設計が扱う |
 | セキュリティ設計 | 固有設計 | [担当文書](security.md#テナントとプロファイルの単位の署名) | テナントとプロファイルの単位の署名、XML の処理 |
-| 信頼性設計 | 委譲 | [SAML の SSO の設計](../sso/design.md#信頼性) | 再送の記録先の障害の扱いはSAML の SSO の設計が扱う |
+| 信頼性設計 | 委譲 | [SAML の SSO の設計](../sso/README.md#信頼性) | 再送の記録先の障害の扱いはSAML の SSO の設計が扱う |
 | 検証設計 | 固有設計 | [担当文書](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト、実体参照の回帰テスト |
 
 ## 設計の記録

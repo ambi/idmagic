@@ -42,7 +42,7 @@
 
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| 実行の捕捉 | IdManagement の User の作成と変更 | User を変更したプロセスが、同じトランザクションで WorkflowRun を保存する | [ワークフローの実行の設計](../workflow-run/design.md) |
-| Job の関連付け | 一定の間隔 | `worker` のディスパッチャー | [ワークフローの実行の設計](../workflow-run/design.md) |
+| 実行の捕捉 | IdManagement の User の作成と変更 | User を変更したプロセスが、同じトランザクションで WorkflowRun を保存する | [ワークフローの実行の設計](../workflow-run/README.md#実現方式) |
+| Job の関連付け | 一定の間隔 | `worker` のディスパッチャー | [ワークフローの実行の設計](../workflow-run/README.md#実現方式) |
 | ステップの実行 | `lifecycle_workflow_run` の Job | `worker` が Job のハンドラーとして実行する | [ワークフローの実行](../workflow-run/README.md) |
 | 管理 API | 解決済みのテナントの管理 API への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [ライフサイクルワークフローの定義](../lifecycle-workflow/README.md) |

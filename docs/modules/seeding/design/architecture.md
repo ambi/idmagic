@@ -42,5 +42,5 @@
 
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| プレビュー | 運用者が `idmagic-seed` を `dry_run` で起動する | コマンドのプロセスが計画だけを作り、書き込まない | [seed の計画と適用の設計](../seed-run/design.md) |
-| 適用 | 運用者が `idmagic-seed` を `apply` で起動する | コマンドのプロセスが計画、適用、収束の確認を行う | [seed の計画と適用の設計](../seed-run/design.md) |
+| プレビュー | 運用者が `idmagic-seed` を `dry_run` で起動する | コマンドのプロセスが計画だけを作り、書き込まない | [seed の計画と適用の設計](../seed-run/README.md#実現方式) |
+| 適用 | 運用者が `idmagic-seed` を `apply` で起動する | コマンドのプロセスが計画、適用、収束の確認を行う | [seed の計画と適用の設計](../seed-run/README.md#実現方式) |

@@ -30,8 +30,8 @@ const rootProductOverviewDocument = {
 }
 
 const rootGlossaryDocument = {
-  path: 'docs/requirements/glossary.md',
-  source: `# 用語集
+  path: 'docs/modules/glossary.md',
+  source: `# 共通用語集
 
 | Term | Definition |
 |---|---|
@@ -50,7 +50,7 @@ const rootStructureDocument = {
 }
 
 const rootScenariosDocument = {
-  path: 'docs/requirements/scenarios.feature.md',
+  path: 'docs/modules/scenarios.feature.md',
   source: '# Feature: Cross-Module Scenarios\n',
 }
 
@@ -362,14 +362,14 @@ describe('renderDocumentationSite', () => {
       'docs/modules/demo/run/acceptance.html',
       'docs/modules/demo/run/index.html',
       'docs/modules/demo/standards.html',
+      'docs/modules/glossary.html',
       'docs/modules/index.html',
+      'docs/modules/scenarios.html',
       'docs/operations/index.html',
       'docs/operations/service-management.html',
-      'docs/requirements/glossary.html',
       'docs/requirements/index.html',
       'docs/requirements/product-overview.html',
       'docs/requirements/quality.html',
-      'docs/requirements/scenarios.html',
       'docs/requirements/standards.html',
       'docs/runbooks/async-jobs.html',
       'index.html',
@@ -462,10 +462,6 @@ describe('renderDocumentationSite', () => {
             '',
           ].join('\n'),
         },
-        {
-          path: 'docs/modules/demo/user/design.md',
-          source: '# ユーザーの内部設計\n\n- 構成。\n',
-        },
       ],
       repositoryRoot: '/repo',
       outputDirectory: '/repo/site',
@@ -477,7 +473,7 @@ describe('renderDocumentationSite', () => {
 
     expect(page).toContain('REQ-DEMO-002')
     expect(result.files['docs/modules/demo/user/index.html']).toBeDefined()
-    expect(childLabels(page)).toEqual(['内部設計', '例'])
+    expect(childLabels(page)).toEqual(['例'])
     const moduleBranch = sidebar(page).slice(sidebar(page).indexOf('>Demo</a>'))
     expect(moduleBranch).toContain('>ユーザー</a>')
   })
@@ -528,7 +524,7 @@ describe('renderDocumentationSite', () => {
           source:
             '# タスクのライフサイクル\n\n## 削除\n\n#### REQ-DEMO-003 閉じたタスクを消す\n\n- 閉じたタスクだけを消す。\n',
         },
-        { path: 'docs/modules/demo/work/task/design.md', source: '# タスクの内部設計\n\n構成。\n' },
+
         {
           path: 'docs/modules/demo/work/task/acceptance.feature.md',
           source: [
@@ -566,7 +562,7 @@ describe('renderDocumentationSite', () => {
       'docs/modules/demo/design/decisions.html',
       'docs/modules/demo/work/index.html',
       'docs/modules/demo/work/task/lifecycle.html',
-      'docs/modules/demo/work/task/design.html',
+
       'docs/modules/demo/work/task/acceptance.html',
     ]) {
       expect(result.files[page]).toBeDefined()
@@ -602,7 +598,7 @@ describe('renderDocumentationSite', () => {
     expect(result.files['docs/modules/demo/work/task/acceptance.html']).toContain(
       'scenario-keyword when',
     )
-    expect(childLabels(task)).toEqual(['重要な設計判断', 'ライフサイクル', '内部設計', '例'])
+    expect(childLabels(task)).toEqual(['重要な設計判断', 'ライフサイクル', '例'])
     const groupBranch = sidebar(task).slice(sidebar(task).indexOf('>作業</a>'))
     expect(groupBranch).toContain('>タスク</a>')
   })
@@ -668,7 +664,7 @@ describe('renderDocumentationSite', () => {
    * 要件は設計の入力であり、設計の区分の下に置くと設計の一部として読まれる。
    */
   it('gives requirements, system design, and module design their own divisions', () => {
-    const page = sidebar(site().files['docs/requirements/glossary.html'])
+    const page = sidebar(site().files['docs/modules/glossary.html'])
     const between = (from: string, to: string) =>
       page.slice(page.indexOf(`>${from}</a></summary>`), page.indexOf(`>${to}</a></summary>`))
     const labels = (division: string) =>
@@ -677,15 +673,10 @@ describe('renderDocumentationSite', () => {
     const design = between('全体設計文書', 'モジュール設計文書')
     const modules = between('モジュール設計文書', '開発文書')
 
-    expect(labels(requirements)).toEqual([
-      'プロダクト概要',
-      '品質要求',
-      '全体の標準仕様',
-      'システム横断シナリオ',
-      '用語集',
-    ])
+    expect(labels(requirements)).toEqual(['プロダクト概要', '品質要求', '全体の標準仕様'])
     expect(labels(design)).toEqual(['コード構成'])
-    expect(labels(modules)[0]).toBe('Demo')
+    // モジュール共通の文書を、各モジュールより先に並べる。
+    expect(labels(modules).slice(0, 3)).toEqual(['共通用語集', '横断シナリオ', 'Demo'])
   })
 
   /**
@@ -919,7 +910,7 @@ describe('renderDocumentationSite', () => {
       documents: [
         rootDocument,
         {
-          path: 'docs/requirements/glossary.md',
+          path: 'docs/requirements/functional.md',
           source:
             '# 用語集\n\n目標は [品質要求](../requirements/quality.md#可用性の目標) が定める。\n',
         },
@@ -938,7 +929,7 @@ describe('renderDocumentationSite', () => {
     expect(result.files['docs/requirements/quality.html']).toContain(
       'id="whole-system-requirements-quality-md-可用性の目標"',
     )
-    expect(result.files['docs/requirements/glossary.html']).toContain(
+    expect(result.files['docs/requirements/functional.html']).toContain(
       'href="quality.html#whole-system-requirements-quality-md-可用性の目標"',
     )
   })
@@ -948,7 +939,7 @@ describe('renderDocumentationSite', () => {
       documents: [
         rootDocument,
         {
-          path: 'docs/requirements/glossary.md',
+          path: 'docs/requirements/functional.md',
           source: '# 用語集\n\n[標準](standards.md#oauth-20)\n',
         },
         {
@@ -962,7 +953,7 @@ describe('renderDocumentationSite', () => {
       openapi: {},
       models: [],
     })
-    expect(result.files['docs/requirements/glossary.html']).toContain(
+    expect(result.files['docs/requirements/functional.html']).toContain(
       'href="standards.html#whole-system-requirements-standards-md-oauth-2-0"',
     )
   })

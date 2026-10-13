@@ -42,6 +42,6 @@
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
 | 項目の暗号化と復号 | 項目を持つモジュールの保存と読み取り | 呼び出し元のプロセスが `FieldCipher` を同期的に呼ぶ | [DataKeys のセキュリティ](security.md) |
-| 再暗号化 | ローテーションと、`idmagic-batch data-key-reencryption-sweep` | `worker` が `data_key_reencryption` のジョブを実行する | [DEK のライフサイクルの設計](../lifecycle/design.md) |
+| 再暗号化 | ローテーションと、`idmagic-batch data-key-reencryption-sweep` | `worker` が `data_key_reencryption` のジョブを実行する | [DEK のライフサイクルの設計](../lifecycle/README.md#実現方式) |
 | 健全性の一覧 | 制御面の管理 API への要求 | `api` が、`RequireControlPlaneUser` で制御面主体を確かめてからユースケースを呼ぶ | [DEK の健全性の一覧](../health/README.md) |
 | ローテーション、無効化、破棄 | なし | 呼び出す経路がない | [DataKeys のリスク](risks.md) |

@@ -55,7 +55,7 @@ Mermaid には C4 などの表現があるが、既存文書の図は主に flow
 | [デプロイプロファイル](../../docs/design/architecture/deployment.md#デプロイプロファイル) | Compose の観測経路、Kubernetes の Service、Deployment、HPA、PDB、NetworkPolicy と、未作成要素の破線がある | flowchart を維持する。C4Deployment や architecture-beta への統一より、通信、制御、未作成の区別を保つ方が、この文書の問いに合う |
 | [プラットフォーム](../../docs/design/infrastructure/platform.md#google-cloud) | リソース階層、production の構成、リリースの順序を別々に示す | 維持する。階層、共通プロジェクトの利用、工程順序は異なる関心であり、一つの C4 図へまとめない。配置図と重なる部分だけを理由に、共有リソースや管理関係まで消さない |
 | [ネットワーク](../../docs/design/infrastructure/network.md) | キャッシュと拒否の分岐、上流 IdP の戻り、トークン取得の順序、ネットワーク区画を示す | flowchart と sequenceDiagram を維持する。処理分岐と通信順序には既存の表現が合っており、C4Dynamic への置換や境界図の追加は不要 |
-| IdManagement の[CSV](../../docs/modules/identity-management/design/csv-transfer.md#プレビューと適用)、[エクスポート](../../docs/modules/identity-management/data-export/design.md#アーキテクチャ)、[監査](../../docs/modules/identity-management/design/audit-events.md#ドメインイベントの配信点) | プレビューと適用、ジョブと成果物、保存後のイベント配信を示す | シーケンス図を維持する。処理順序と確定の前後が読者の関心であり、静的な構成図へ変えるとその情報を失う |
+| IdManagement の[CSV](../../docs/modules/identity-management/design/csv-transfer.md#プレビューと適用)、[エクスポート](../../docs/modules/identity-management/data-export/README.md#アーキテクチャ)、[監査](../../docs/modules/identity-management/design/audit-events.md#ドメインイベントの配信点) | プレビューと適用、ジョブと成果物、保存後のイベント配信を示す | シーケンス図を維持する。処理順序と確定の前後が読者の関心であり、静的な構成図へ変えるとその情報を失う |
 | [データベース](../../docs/design/data/database.md#スキーマの読み方) | カラムを省き、テーブルと外部キーの多重度を示す | ER 図を維持する。classDiagram への置換やカラムの追記は、目的に合わず SQL の複製を増やす |
 | [生成の関係](../../docs/development/local-development.md#生成の関係)と生成状態図 | 前者は入力と生成物、後者は規範の状態遷移表を図示する | 維持する。C4 の対象ではなく、状態図を手書きすると規範表と二重管理になる |
 
@@ -94,7 +94,7 @@ C4Container の Container は Docker のコンテナとは区別し、既存の[
 
 ## 計画
 
-1. [wi-47518](wi-47518-align-shared-document-placement-and-design-records.md)の文書と用語の整理を先に取り込む。同じ設計文書とフォーマットを扱うため、その整理後の状態に置換を適用する。
+1. [wi-47518](../done/wi-47518-align-shared-document-placement-and-design-records.md)の文書と用語の整理を先に取り込む。同じ設計文書とフォーマットを扱うため、その整理後の状態に置換を適用する。
 2. 着手時に対象図、責任表、Mermaid のバージョンを再確認し、起票時の判断を変える差分だけを確認する。
 3. 設計フォーマットへ必要性と図種の選択基準を書き、システム境界の一図を置き換える。
 4. 構文と参照を検査し、生成サイトで既存図との比較を終える。採否条件を満たさなければ同じ一図の flowchart を改善する。

@@ -43,7 +43,7 @@
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
 | 失効エポックの前進 | `IdManagement` の Agent と User のイベント | イベントを発行した操作の中で、発行の後に反応を呼ぶ。管理 API の操作は `api` で、管理 API の外から User を止める操作（ライフサイクルワークフローの `disable_user` は `worker`、SCIM の取り込みは `api`）はそれを実行するプロセスで呼ぶ。反応の組み立ては `usecases.NewAgentRevocationReactor` の一つである | [失効エポック](../revocation/README.md) |
-| 配送の作成 | `AgentAccessRevoked` | 失効を進めた同じプロセスが、5 秒の期限で配送を作る。SET の `iss` には、どのプロセスでも共有の設定の `ISSUER` を使う | [SET の配送の設計](../transmitter/design.md) |
-| 配送の試行 | 一定の間隔 | `worker` の配送のループ | [SET の配送の設計](../transmitter/design.md) |
+| 配送の作成 | `AgentAccessRevoked` | 失効を進めた同じプロセスが、5 秒の期限で配送を作る。SET の `iss` には、どのプロセスでも共有の設定の `ISSUER` を使う | [SET の配送の設計](../transmitter/README.md#実現方式) |
+| 配送の試行 | 一定の間隔 | `worker` の配送のループ | [SET の配送の設計](../transmitter/README.md#実現方式) |
 | SET の受信 | 外部の送信側の `/ssf/streams/{stream_id}/events` への要求 | `api` が同期的に検証し、失効エポックを進める | [SET の受信](../receiver/README.md) |
 | 管理 API | 解決済みのテナントの `/api/admin/v1/shared-signals/...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [SSF ストリームの管理](../stream/README.md) |

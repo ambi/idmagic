@@ -36,5 +36,5 @@
 
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| クレームの発行 | ID Token、UserInfo、SAML アサーション、WS-Fed のトークンの発行 | 発行するモジュールのユースケースが、属性と属性定義を解決してから `IssueClaimsWithFloor` を呼ぶ | [クレームの発行の設計](../issuance/design.md) |
-| 保存時の規則の検査 | アプリケーションの OIDC、SAML、WS-Federation の設定の更新 | `Application` の管理 API が、保存の前に `ValidateClaimReleaseRules` を呼ぶ | [クレームの発行の設計](../issuance/design.md) |
+| クレームの発行 | ID Token、UserInfo、SAML アサーション、WS-Fed のトークンの発行 | 発行するモジュールのユースケースが、属性と属性定義を解決してから `IssueClaimsWithFloor` を呼ぶ | [クレームの発行の設計](../issuance/README.md#実現方式) |
+| 保存時の規則の検査 | アプリケーションの OIDC、SAML、WS-Federation の設定の更新 | `Application` の管理 API が、保存の前に `ValidateClaimReleaseRules` を呼ぶ | [クレームの発行の設計](../issuance/README.md#実現方式) |

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -10,6 +10,34 @@ change_kind: tooling
 spec_impact:
   kind: none
   reason: "文書の配置、設計の説明、現在の負債の記録と、その探索、検査、生成サイトを揃える。HTTP 応答、認証方式、永続状態、ドメインイベント、外向きの通知と、既存の規範 ID およびその義務は維持する。"
+evidence_policy: risk-based-v4
+documentation_impact:
+  level: none
+  reason: "未公開の製品について、開発者が読む文書の配置、設計の説明、検査ツールだけを変える。HTTP 契約、既存データ、運用手順に利用者が観測する差分はない。"
+  references: []
+initial_context:
+  specification:
+    - docs/formats/documentation-guide.md
+    - docs/formats/specification-format.md
+    - docs/formats/work-item-format.md
+    - docs/design/architecture/logical.md
+    - docs/design/architecture/decisions.md
+    - docs/design/architecture/risks.md
+    - docs/design/application/backend.md
+  typespec: []
+  source:
+    - tools/workspace/src/document-layout.ts
+    - tools/check/src/specification-doc.ts
+    - tools/check/src/spec-diff.ts
+    - tools/check/src/check-specification-rules.ts
+    - tools/check/src/check-security-controls.ts
+    - tools/render-docs/src/render.ts
+  tests:
+    - tools/check/src/specification-doc.test.ts
+    - tools/check/src/spec-diff.test.ts
+    - tools/check/src/canonical-document-set.test.ts
+    - tools/render-docs/src/render.test.ts
+  stop_before_reading: [backend, frontend, spec, work-items/done]
 ---
 
 # 共通文書の配置、設計の説明、リスクの記録を実際の責務と現状へ揃える
@@ -37,6 +65,7 @@ spec_impact:
 - 全体設計とモジュールの内部設計にある具体的な実装ファイル名を、責務、公開契約、パッケージと配置規則による説明へ整理する。
 - Go モジュールとモジュールの語義、`legacy` の終了条件、依存に関する判断を明確にする。
 - システム全体のリスクの現状、是正の所有項目、受容する間の扱いを根拠とともに整理する。
+- 機能スライスの `design.md` を廃止し、その内容を機能仕様 `README.md` の末尾の節「実現方式」へ統合する。配置、探索、検査、描画と、規則を述べる文書を合わせる。
 
 ## 対象外
 
@@ -45,6 +74,7 @@ spec_impact:
 - 規範 ID、要件本文、用語の意味、TypeSpec の公開契約の変更。
 - 完了済みの作業項目の歴史的な記録の更新。
 - ソースファイル名の禁止を、拡張子だけで判定する新しい機械検査。
+- 機能スライスのディレクトリを `<feature>.md` へ平坦化すること、受け入れ例を機能仕様へ統合すること。利用者は `design.md` の統合だけを今回の範囲に選んだ。`README.md` と `acceptance.feature.md` の組は統合前から 84 個あり、統合で新たには生じない。
 
 ## 設計
 
@@ -59,6 +89,23 @@ CSRF と JSON デコードの保証も後者に含めるため、「そのモジ
 要件用と設計用に用語集を分ける案と `docs/` 直下へ移す案は採らない。
 利用者が選んだ共通の親階層へ置き、用語を二つの一次情報へ分けない。
 新しい要件用語集や文書区分は作らない。
+
+### 機能スライスの仕様と設計
+
+着手後に利用者は、機能スライスに `README.md`、`design.md`、`acceptance.feature.md` が並ぶ構成で、`README.md` と `design.md` の違いが名前から読めないと指摘した。
+受け入れ例の付録は現状を維持する。
+起票時の機能の `design.md` は 53 個、合計 1317 行で、内容はその機能に閉じた構成要素の責務、実行時の流れ、データ、信頼性だった。
+
+| 案 | 採否と理由 |
+| --- | --- |
+| `design.md` を廃止し、機能仕様の末尾の任意の節「実現方式」へ統合する | 採用。利用者が選んだ。機能について知るべき内容が一つのファイルにまとまり、機能スライスは機能仕様と任意の受け入れ例だけになる。文書の種類をファイルで分ける原則には、機能の階層だけの例外として節で分けることを明記する |
+| モジュールの `design/<feature>.md` へ移す | 不採用。ファイルの分離は保てるが、機能の仕組みが機能スライスから離れた場所に置かれる |
+| 機能仕様を `specification.md` へ改名し、`design.md` を維持する | 不採用。約 106 の機能仕様と全リンクの改名が要り、モジュール直下と機能群の `README.md` との非対称も残る |
+
+「実現方式」は `SPECIFICATION_SECTIONS` の最後に置く任意の節とし、規則を置かない。
+統合前の `## <設計領域>` は `### <設計領域>` に一段下げ、本文の「この文書」は「この節」に読み替える。
+機能スライスに `design.md` を置くと、配置の検査が拒否する。
+文書の種別は過去の revision でも `design.md` を規範の入力にしないので、統合は規範差分を生まない。
 
 ### 探索と過去の仕様差分
 
@@ -139,14 +186,32 @@ wi-84348 を取り込んでから wi-15826 を実装し、wi-43627 は文書整�
 
 ## タスク
 
-- [ ] T001 [Docs] 配置、語義、設計に記載するコードの情報の規則と、その理由を更新する。
-- [ ] T002 [Tooling] 新位置の受理、旧位置の拒否、移動だけの規範差分なし、規範とセキュリティの探索、目次と用語リンクのテストを追加または更新する。
-- [ ] T003 [Docs/Tooling] 共通文書を移し、正規配置、探索、検査、描画と全現在参照を新位置へ揃える。
-- [ ] T004 [Docs] 論理アーキテクチャ、概要、判断、バックエンド設計の語義、依存の説明、legacy の終了条件を揃える。
-- [ ] T005 [Docs] 全体とモジュールの設計を検索し、任意の実装ファイル名、内部関数、テストファイルと画面ファイル一覧を責務と境界の説明へ整理する。
-- [ ] T006 [Inventory] リスクの各行を現在の実装と担当項目へ照合し、解消済みの行を削除し、残存と未検証の範囲を更新する。
-- [ ] T007 [Records] wi-282、wi-107、wi-55532 の補足を確認し、可用性の各未実装行を wi-165、wi-613、wi-615、wi-618、wi-592 の対象と完了条件へ対応付ける。
-- [ ] T008 [Verify] 局所検査、集約検査、サイト再生成と規範差分の確認を終え、完了記録とコミットを作る。
+- [x] T001 [Docs] 配置、語義、設計に記載するコードの情報の規則と、その理由を更新する。文書ガイドの配置図、適用範囲と置き場所の節、設計文書からコードへの参照の表（責務で示す配置の判断、フレームワークの命名規則、変更時に開く実装の一覧）、仕様フォーマットの仕様の木と glossary の規則を更新した。
+- [x] T002 [Tooling] 新位置の受理、旧位置の拒否、移動だけの規範差分なし、規範とセキュリティの探索、目次と用語リンクのテストを追加または更新する。RED：`canonical-document-set.test.ts`、`specification-doc.test.ts`、`spec-diff.test.ts`、`render.test.ts` の 28 件が実装前に失敗した。main の規範規則の検査は共通シナリオを読んでいなかった（86 文書。変更後は 87 文書）ため、`feature-layout.acceptance.test.ts` に共通シナリオの規則欄を検査するテストを追加した。
+- [x] T003 [Docs/Tooling] 共通文書を移し、正規配置、探索、検査、描画と全現在参照を新位置へ揃える。`document-layout.ts` に共通文書の宣言を集め、`spec-diff` だけが過去 revision の旧位置を読む。生成サイトはモジュール設計文書の先頭に共通用語集と横断シナリオを表示する。完了済みの作業記録は変更していない。
+- [x] T004 [Docs] 論理アーキテクチャ、概要、判断、バックエンド設計の語義、依存の説明、legacy の終了条件を揃える。判断の見出しを「モジュール間の依存を共通規則で検査する」とし、`legacy` の終了条件をバックエンド設計の節にした。責務表の `legacy` は 8 モジュールで、wi-75383 の対象と一致した。
+- [x] T005 [Docs] 全体とモジュールの設計を検索し、任意の実装ファイル名、内部関数、テストファイルと画面ファイル一覧を責務と境界の説明へ整理する。バックエンド設計の `events.go`、`module.go`、`routes.go`、`deps.go` と組み立て関数の一覧、フロントエンド設計の内部関数、定数、テスト補助、OAuth2 クライアントの変更不要なファイルの列挙を書き換えた。フレームワークの経路規約、構成ファイル、配置の宣言は残した。
+- [x] T006 [Inventory] リスクの各行を現在の実装と担当項目へ照合し、解消済みの行を削除し、残存と未検証の範囲を更新する。ドメインの作用の行は、本番 domain の `time.Now`、`crypto/rand`、`math/rand` の検索が該当なしで、負債台帳の `domain-effect` も 0 件のため削除した。各行に未実装、未実測、実環境で未検証、残存の区分を付け、`legacy` の行を加えた。トレースの現状説明にあった規格名の誤訳「W3C Trace モジュール」を直し、用語検査に規格名の例外を加えた。
+- [x] T007 [Records] wi-282、wi-107、wi-55532 の補足を確認し、可用性の各未実装行を wi-165、wi-613、wi-615、wi-618、wi-592 の対象と完了条件へ対応付ける。3 項目は起票時に補足済みで、変更は不要だった。対応は下の表に記録した。
+- [x] T009 [Docs/Tooling] 機能スライスの `design.md` を機能仕様の「実現方式」へ統合し、配置、種別、節の語彙、描画、規則の文書と参照を揃える。RED：設計を別ファイルにする故障と、節の語彙の故障に対する 7 件が実装前に失敗した。53 個の `design.md` を一回限りの移行スクリプトで統合し、67 ファイルの参照を張り替えた。
+- [x] T008 [Verify] 局所検査、集約検査、サイト再生成と規範差分の確認を終え、完了記録とコミットを作る。
+
+### 可用性とリスクの担当
+
+| 現行の不足 | 担当項目 |
+| --- | --- |
+| worker の `/livez`、frontend の Probe と PodDisruptionBudget | wi-613 |
+| batch の失敗、バックアップ、スクレイプ、外形監視、証明書、監視基盤自身のアラート | wi-618 |
+| 外部の鍵管理サービスのブレーカー | wi-615 |
+| ノードとゾーンへの分散、PostgreSQL の切り替え | wi-165 |
+| GKE 向けの構成 | wi-592 |
+| デプロイ構成ごとの準備状況の判定、GKE の実環境での検証 | wi-55532 |
+| ローカル Kubernetes での稼働の実証 | wi-43627 |
+| キャパシティの実測 | wi-282 |
+| worker と batch のトレース、依存の子スパン | wi-107 |
+| HTTP 応答型の分離 | wi-84348 |
+| 構築時の不変条件 | wi-15826 |
+| `legacy` の撤去 | wi-75383 |
 
 ## 検証
 
@@ -164,3 +229,40 @@ wi-84348 を取り込んでから wi-15826 を実装し、wi-43627 は文書整�
 両方のツリーを入力にした仕様差分テストで区別する。
 ファイル名の削除で必要な所有者や配置まで曖昧になる可能性があるため、責務とディレクトリの説明を残す。
 是正の起票と完了を混同せず、残るリスクは担当項目の検証が済むまで現行文書へ残す。
+
+## 完了
+
+- **完了日**: 2026-10-14
+- **要約**:
+  `mise run spec-diff` は main に対して「no normative specification change against main」を報告した。REQ、例、状態遷移、標準の行、TypeSpec の宣言に意味上の差分はない。
+  共通用語集と横断シナリオを `docs/modules/` の直下へ移し、配置の宣言、規範の探索、セキュリティ検査、仕様差分、生成サイトの目次を新位置へ揃えた。規範規則の検査は、これまで読んでいなかった共通シナリオを読むようになった。
+  機能スライスの `design.md` を廃止し、53 個の内容を機能仕様の任意の最後の節「実現方式」へ統合した。
+  論理アーキテクチャで Go モジュールとモジュールを区別し、依存の判断を「モジュール間の依存を共通規則で検査する」として書き直し、`legacy` の終了条件を明記した。設計文書の任意の実装ファイル名と内部関数を責務の説明へ置き換え、リスク表を現状の区分付きで更新した。
+- **受け入れ RED の証拠**:
+  - **テスト**: `tools/check/src/feature-layout.acceptance.test.ts` の「checks the rule fields of the shared scenarios beside the modules」「rejects a separate design.md in a feature slice」「rejects the realization section placed before the operations」と、`tools/render-docs/src/render.test.ts` の「gives requirements, system design, and module design their own divisions」。
+  - **要件**: N/A: 製品の振る舞いを変えない、文書の配置とその検査ツールの変更である。
+  - **観測した失敗**: 実装前は、共通文書を要件文書の区分に表示し、機能スライスの `design.md` を受理し、「実現方式」を機能仕様の節として認めなかったため失敗した。
+  - **検出できる理由**: 検査と描画をリポジトリと同じ入口（`runner.ts` の検査と `renderDocumentationSite`）から実行し、配置と節の受理を出力で比べるため、旧配置を受理し続ける実装を区別できる。
+- **単体 RED の証拠**:
+  - **テスト**: `canonical-document-set.test.ts` の新旧配置の受理と拒否、`specification-doc.test.ts` の `documentKind`、`spec-diff.test.ts` の「reads shared scenarios at their former location in a past revision as the same rules」。
+  - **要件**: N/A: 製品の振る舞いを変えない、文書の配置とその検査ツールの変更である。
+  - **観測した失敗**: 新位置の共通文書を種別なしと判定し、`design.md` を `prose` と判定し、過去 revision の旧位置のシナリオを読まなかったため失敗した。
+  - **検出できる理由**: 配置の判定と過去 revision の読み取りを別々の関数で確かめ、両方の木を入力にした仕様差分で、移動を削除と追加に読む実装を区別できる。
+- **変更耐性の結果**:
+  手作業で次の故障を注入し、それぞれ局所テストが検出した。
+  - 共通文書の置き場所を `README.md` だけに戻す：`canonical-document-set.test.ts` と `specification-doc.test.ts` が失敗した。
+  - 仕様差分で過去 revision の旧位置を読まない：`spec-diff.test.ts` の 1 件が失敗した。
+  - 生成サイトの目次から共通文書を落とす：`render.test.ts` が失敗した。
+  - 規範規則の検査から共通シナリオを落とす：追加前のテストは検出しなかった。テストを追加した後は `feature-layout.acceptance.test.ts` の 1 件が失敗した。
+  - 機能スライスに `design.md` を再び許す：`canonical-document-set.test.ts` が失敗した。
+  - 節の語彙から「実現方式」を落とす：`feature-layout.acceptance.test.ts` の 2 件が失敗した。
+  - 用語検査から「W3C Trace Context」の例外を落とす：`terminology.test.ts` が失敗した。
+  変更は TypeScript のツールと Markdown なので、Go のミューテーションテストは適用しない。
+- **検証結果**:
+  - `mise run test-tools`：配置の宣言が検査、仕様差分、描画、着手支援で共有されるため、ツール全体を選んだ。最終差分で 1014 件が成功した。
+  - `mise run lint-tools`、`mise run typecheck-tools`：変更したツールのコードを対象に選んだ。成功した。
+  - `mise run check-spec`、`mise run verify-spec`、`mise run check-rendered-docs`：移した規範文書と統合した 53 の機能仕様の形式、規範参照、生成サイトの検査として選んだ。成功した。
+  - `mise run spec-diff`：規範の意味上の差分がないことの確認として選んだ。差分なしだった。
+  - `mise run check-links`、`mise run check-work-items`、`mise run check-work-item-references`、`mise run check-terminology`、`mise run check-agent-guidance`：張り替えた参照、作業記録、用語、スキルの変更を対象に選んだ。成功した。
+  - `mise run render-docs`：生成サイトで、モジュール設計文書の先頭に共通用語集と横断シナリオが並び、要件文書の区分に旧ページがなく、機能のページに「実現方式」の節が表示されることを確かめた。
+  - Go は `backend/shared/http/server_http/cross_context_examples_test.go` のコメントだけを変えたため、Go の検査は選ばなかった。

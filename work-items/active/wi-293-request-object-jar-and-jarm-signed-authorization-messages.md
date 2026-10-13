@@ -78,7 +78,7 @@ FAPI を掲げる以上の整合性の問題でもある。
 - **go**:
   - request object の検証を `backend/oauth2` に実装する。クライアントの登録済み JWKS
     (または `jwks_uri` の取得済みキャッシュ) で署名検証する。
-    `docs/modules/oauth2/client/design.md` の `private_key_jwt` 検証 の検証基盤を再利用する。
+    `docs/modules/oauth2/client/README.md` の `private_key_jwt` 検証 の検証基盤を再利用する。
   - `jti` のリプレイ防止ストア (短命 / PostgreSQL、`docs/design/data/database.md` の一時状態の PostgreSQL 統合
     に従う) を追加する。
   - request object 展開後のパラメータ正規化を `/authorize` と `/par` の共通経路に置き、
@@ -113,7 +113,7 @@ FAPI を掲げる以上の整合性の問題でもある。
 - **`request_uri` を非対応にするのが安全側の設計判断**である。外部 URL を取得する実装は
   SSRF とサービス間の可用性結合を生む。PAR が既にあるため、「事前に POST して短命の
   `request_uri` を得る」という等価な体験は既に提供できている。`docs/modules/oauth2/design/decisions.md` にこの等価性を書く。
-- **検証は既存の private_key_jwt 検証基盤に載せる**。`docs/modules/oauth2/client/design.md` の `private_key_jwt` 検証 で
+- **検証は既存の private_key_jwt 検証基盤に載せる**。`docs/modules/oauth2/client/README.md` の `private_key_jwt` 検証 で
   クライアント JWKS の解決と署名検証は既に実装されているため、新しい鍵解決経路を作らない。
 - **`/authorize` と `/par` で同一の展開・検証経路を通す**。ここを分けると、片方だけ
   検証が緩いという典型的な脆弱性を作る。展開後の正規化パラメータを 1 つの型にして、

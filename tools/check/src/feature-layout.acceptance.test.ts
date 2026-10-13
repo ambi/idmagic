@@ -131,8 +131,8 @@ async function featureLayoutWorkspace(): Promise<string> {
     'docs/modules/demo/design/decisions.md': DECISIONS,
     'docs/modules/demo/design/audit.md': '# 監査\n',
     'docs/modules/demo/work/README.md': '# 作業\n',
-    'docs/modules/demo/work/task/README.md': SPECIFICATION,
-    'docs/modules/demo/work/task/design.md': `${areaIndex('タスクの設計', '[アーキテクチャ設計](#アーキテクチャ)')}\n## アーキテクチャ\n\nタスクを保存する。\n`,
+    'docs/modules/demo/work/task/README.md': `${SPECIFICATION}\n## 実現方式\n\n### アーキテクチャ\n\nタスクを保存する。\n`,
+
     'docs/modules/demo/work/task/acceptance.feature.md': EXAMPLES,
     'backend/demo/task/domain/task.go':
       'package domain\n\ntype Task struct{}\n\nfunc (t Task) Open() bool { return true }\n',
@@ -270,7 +270,8 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     expect(result.output).toContain('must index its own アーキテクチャ設計')
   })
 
-  it('accepts a feature design without a design area index', async () => {
+  /** 機能の仕組みは機能仕様の「実現方式」の節に書き、別のファイルへ分けない。 */
+  it('rejects a separate design.md in a feature slice', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
@@ -278,8 +279,20 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
       '# タスクの設計\n\n## 信頼性\n\n削除が途中で失敗したら、削除を再実行する。\n',
     )
     const result = await runCheck(root, 'documents')
-    expect(result.output).not.toContain('docs/modules/demo/work/task/design.md')
-    expect(result.code).toBe(0)
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('docs/modules/demo/work/task/design.md')
+  })
+
+  it('rejects the realization section placed before the operations', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/modules/demo/work/task/README.md',
+      SPECIFICATION.replace('## 操作', '## 実現方式\n\nタスクを保存する。\n\n## 操作'),
+    )
+    const result = await runCheck(root, 'specification-rules')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('section 操作 must come before 実現方式')
   })
 
   it('未知の領域を拒否する', async () => {
@@ -367,7 +380,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     )
     const path = 'docs/design/architecture/logical.md'
     const source =
-      '# 論理アーキテクチャ\n\n| 品質要件 | 担当機能 | 設計 | 検証 |\n| --- | --- | --- | --- |\n| [SLO-DEMO-LATENCY](../../requirements/quality.md#目標) | [担当](../../modules/demo/work/task/README.md#操作) | [設計](../../modules/demo/design/architecture.md#構成) | [検証](../../modules/demo/work/task/design.md#アーキテクチャ) |\n'
+      '# 論理アーキテクチャ\n\n| 品質要件 | 担当機能 | 設計 | 検証 |\n| --- | --- | --- | --- |\n| [SLO-DEMO-LATENCY](../../requirements/quality.md#目標) | [担当](../../modules/demo/work/task/README.md#操作) | [設計](../../modules/demo/design/architecture.md#構成) | [検証](../../modules/demo/work/task/README.md#アーキテクチャ) |\n'
     await write(root, path, source)
     expect((await runCheck(root, 'documents')).code).toBe(0)
     await write(root, path, source.replace('README.md#操作', 'README.md#ない操作'))
@@ -421,6 +434,26 @@ describe('機能仕様の規則の書式', () => {
     const result = await runCheck(root, 'specification-rules')
     expect(result.output).toContain('ok  specification rules')
     expect(result.code).toBe(0)
+  })
+
+  /** 共通シナリオはモジュールの段の外にあるが、機能仕様と同じ規則の書式で検査する。 */
+  it('checks the rule fields of the shared scenarios beside the modules', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/modules/scenarios.feature.md',
+      [
+        '# Feature: Cross-Module Scenarios',
+        '',
+        '## Rule: REQ-PLATFORM-001 共通の保証',
+        '',
+        '- **担保手段**：`Missing.Guard`',
+        '',
+      ].join('\n'),
+    )
+    const result = await runCheck(root, 'specification-rules')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('REQ-PLATFORM-001 guarantee `Missing.Guard` is not declared')
   })
 
   it('rejects the legacy reason field', async () => {

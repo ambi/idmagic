@@ -28,7 +28,7 @@
 | `FederatedIdentity` | テナント、プロバイダー、外部の不変な subject の組 | `IdentityProviderConnection` と `User` を参照する |
 
 いずれの Aggregate も `User` の識別子を参照するが、`User` の Aggregate には含まれない。
-User の削除がこれらへどう連鎖するかは、[ユーザーの設計](../identity-management/user/design.md)で定める。
+User の削除がこれらへどう連鎖するかは、[ユーザーの設計](../identity-management/user/README.md#実現方式)で定める。
 
 - **判断**：`users.id` を正式で全体で一意なユーザーの識別子とし、プロトコルの `sub` のクレームはここから導く。その逆ではない。
 - **判断**：このモジュールの大半は認証の完了の前の要求を扱うので、ロールではなく、そのセッションで確かめた認証の要素と認証の時刻が境界になる。

@@ -43,8 +43,8 @@
 
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| イベント同期 | User と割り当ての変更の確定 | 変更したプロセスが、確定の後に同期的にタスクを作る | [同期の設計](../synchronization/design.md) |
-| インクリメンタル同期 | `PROVISIONING_RECONCILE_INTERVAL` ごと | `worker` の周期のループ | [同期の設計](../synchronization/design.md) |
-| ディスパッチ | 一定の間隔 | `worker` のディスパッチャーが、予約を実体化し、タスクに Job を関連付ける | [同期の設計](../synchronization/design.md) |
+| イベント同期 | User と割り当ての変更の確定 | 変更したプロセスが、確定の後に同期的にタスクを作る | [同期の設計](../synchronization/README.md#実現方式) |
+| インクリメンタル同期 | `PROVISIONING_RECONCILE_INTERVAL` ごと | `worker` の周期のループ | [同期の設計](../synchronization/README.md#実現方式) |
+| ディスパッチ | 一定の間隔 | `worker` のディスパッチャーが、予約を実体化し、タスクに Job を関連付ける | [同期の設計](../synchronization/README.md#実現方式) |
 | タスクの実行 | `provisioning_task` の Job | `worker` の `default` のレーン | [プロビジョニングタスクの実行](../task/README.md) |
 | 管理 API | 解決済みのテナントの管理 API への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [接続の管理](../connection/README.md) |

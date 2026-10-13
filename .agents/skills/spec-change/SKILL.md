@@ -29,8 +29,8 @@ current document kinds and grammar; read the relevant sections, not its rational
    and a feature's share under `## 品質`. The feature node matches the code slice `backend/<module>/<feature>/`
    by name (drop the hyphens to compare names). Put a mechanism shared by features in
    `docs/modules/<module>/design/`, a decision that weighed alternatives in `design/decisions.md`, and only
-   what code cannot show (how a mechanism guarantees a result, how to repair it) in the optional feature
-   `design.md`. Use the matching file under `docs/requirements/` or `docs/design/` for a whole-system fact.
+   what code cannot show (how a mechanism guarantees a result, how to repair it) in the optional last section
+   `## 実現方式` of the feature `README.md`. Use the matching file under `docs/requirements/` or `docs/design/` for a whole-system fact.
 4. Before writing requirements, answer every question in the observation table of
    `docs/development/specification-first-workflow.md` (仕様の漏れを探す観点) for each operation you touch.
    An unanswered question is a gap. Classify each gap as (a) a requirement, (b) left unspecified, or
@@ -49,8 +49,8 @@ current document kinds and grammar; read the relevant sections, not its rational
 6. Add an example in `acceptance.feature.md` only when a boundary or a surprising behavior is hard to read from
    the requirement sentences. Prefer generating it from `testdata/*.examples.json`. Never add an example that
    restates a requirement.
-7. Keep behavior that only several modules can satisfy in `docs/requirements/scenarios.feature.md`, name the
-   participating modules, and keep module-local fragments out of it.
+7. Keep guarantees that need several modules, or that apply alike to several modules, in
+   `docs/modules/scenarios.feature.md`, name the participating modules, and keep module-local fragments out of it.
 8. Keep fine-grained authorization behavior in code and tests unless the project adopts a policy language.
    TypeSpec records authentication and enforced operation scopes; `docs/design/security/authorization.md`
    owns the shared principal, scope, tenant-boundary, and fail-closed rules.

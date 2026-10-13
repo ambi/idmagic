@@ -94,3 +94,19 @@
 | テキストの項目 | デフォルトのエスケープ処理で描画し、`dangerouslySetInnerHTML` を使わない |
 | フッターリンクの URL | `https://` のスキームだけを許し、`javascript:`、`data:`、平文の `http://` を書き込み時に拒否する |
 | ロゴとファビコン | 先頭のバイト列、大きさ、形式を検証し、`nosniff` を付けて配信する |
+
+## 実現方式
+
+### アーキテクチャ
+
+ロゴとファビコンには、Application のアイコンと同じ検証処理を使う。
+検証処理は `backend/shared/mediavalidation` で共有するが、保存先は専用の `tenant_branding_assets` テーブルとし、管理は Tenancy に残す。
+
+### 信頼性
+
+`GetTenantBranding` は、設定やアセットが欠けていてもシステムデフォルトへ退避し、ログイン画面を失敗させない。
+
+### 性能
+
+更新のたびに `updated_at` を進め、公開の応答ではこれを ETag の版として使う。
+`tenant_id` は配信 URL の一部なので、テナントの間でキャッシュを混同せずに古い外観を無効にできる。

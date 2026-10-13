@@ -28,11 +28,11 @@ export type SpecificationValidation = {
  * canonical document needed. A directory takes the split layout as soon as it
  * holds a README.md.
  *
- * 機能スライスは、機能仕様（`README.md` と任意の名前の章）、設計（`design.md`）、
- * 例の付録（`acceptance.feature.md`）を持つ。モジュールの `design/` は設計領域ごとの設計で、`README.md` は
- * 設計領域の索引、`decisions.md` は判断の記録の骨格を持つ。システムの `docs/design/README.md` も、
- * 設計の入口として設計領域の索引を持つ。機能の `design.md` は任意であり、コードから読み取れない
- * 仕組みだけを書くので、設計領域の索引を求めない。
+ * 機能スライスは、機能仕様（`README.md` と任意の名前の章）と例の付録（`acceptance.feature.md`）を持つ。
+ * 機能に閉じた仕組みは機能仕様の「実現方式」の節に書くので、機能スライスの `design.md` は
+ * どの種別でもない。過去の revision にあっても規範の入力にしない。モジュールの `design/` は
+ * 設計領域ごとの設計で、`README.md` は設計領域の索引、`decisions.md` は判断の記録の骨格を持つ。
+ * システムの `docs/design/README.md` も、設計の入口として設計領域の索引を持つ。
  */
 /** What a file's name says about the grammar its body must follow. */
 export type DocumentKind =
@@ -79,7 +79,7 @@ export function documentKind(path: string): DocumentKind | undefined {
     const named = KIND_BY_NAME.get(name)
     if (named) return named
     if (name === 'acceptance.feature.md') return 'examples'
-    if (name === 'design.md') return 'prose'
+    if (name === 'design.md') return undefined
     return name === 'README.md' || CHAPTER_NAME.test(name) ? 'specification' : undefined
   }
   if (/^docs\/modules\/[^/]+$/.test(directory)) {

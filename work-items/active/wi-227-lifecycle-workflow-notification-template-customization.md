@@ -21,7 +21,7 @@ depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-ema
 リンクを含めたい」といった要求が高頻度で発生する。固定テンプレートのままでは実運用に耐えない。
 
 ## Scope
-- `docs/modules/tenancy/notification-template/design.md` の通知テンプレートカタログに
+- `docs/modules/tenancy/notification-template/README.md` の通知テンプレートカタログに
   `NotificationTemplate` (tenant-scoped、locale 別の件名・本文、許可された変数の集合) を追加する。
 - `send_email` action の `template_key` を、テナント定義の `NotificationTemplate` または製品固定
   template のいずれかを参照できるようにする。

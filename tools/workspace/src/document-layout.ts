@@ -5,8 +5,17 @@ export interface DirectoryListing {
 
 export const ROOT_DOCUMENTS = ['README.md'] as const
 
-/** モジュール設計文書の入口。直下にはこの索引とモジュールのディレクトリだけを置く。 */
-export const MODULE_INDEX_DOCUMENTS = ['README.md'] as const
+/** モジュール共通の語彙。各モジュールの `glossary.md` はここの語を狭めて使う。 */
+export const SHARED_GLOSSARY = 'docs/modules/glossary.md'
+
+/** 複数のモジュールの協調による保証と、複数のモジュールへ共通に適用する保証を宣言する文書。 */
+export const SHARED_SCENARIOS = 'docs/modules/scenarios.feature.md'
+
+/**
+ * モジュール設計文書の入口。直下にはこの索引、モジュール共通の文書、モジュールのディレクトリだけを置く。
+ * 共通の文書はモジュールでも機能スライスでもない。
+ */
+export const MODULE_INDEX_DOCUMENTS = ['README.md', 'glossary.md', 'scenarios.feature.md'] as const
 
 /**
  * 全体設計文書の設計領域。システムの `docs/design/<directory>/` とモジュールの
@@ -64,15 +73,7 @@ export const SYSTEM_DOCUMENT_DIRECTORIES: ReadonlyArray<{
   { directory: 'docs', names: ROOT_DOCUMENTS },
   {
     directory: 'docs/requirements',
-    names: [
-      'README.md',
-      'product-overview.md',
-      'functional.md',
-      'quality.md',
-      'standards.md',
-      'scenarios.feature.md',
-      'glossary.md',
-    ],
+    names: ['README.md', 'product-overview.md', 'functional.md', 'quality.md', 'standards.md'],
   },
   { directory: 'docs/design', names: ['README.md'] },
   ...DESIGN_AREAS.map(({ directory }) => ({
@@ -128,12 +129,16 @@ export const MODULE_DOCUMENTS = ['README.md', 'glossary.md', 'standards.md', 'qu
 /** モジュールの内部設計の段に置く固定の文書。横断的概念は任意の名前で並べる。 */
 export const DESIGN_DOCUMENTS = ['README.md', 'decisions.md'] as const
 
-/** 機能スライスの固定の文書。長くなった機能仕様の章は任意の名前で並べる。 */
-export const FEATURE_SLICE_DOCUMENTS = ['README.md', 'design.md', 'acceptance.feature.md'] as const
+/**
+ * 機能スライスの固定の文書。長くなった機能仕様の章は任意の名前で並べる。機能に閉じた仕組みは
+ * 機能仕様の「実現方式」の節に書き、別の設計文書を置かない。
+ */
+export const FEATURE_SLICE_DOCUMENTS = ['README.md', 'acceptance.feature.md'] as const
 
 /**
  * 任意の名前を許す段でも使えない名前。ファイル種別ごとの文書を章として置くと、
  * 一つの機能を種別ごとのファイルに散らす構造へ戻ってしまう。用語と標準はモジュールの直下に置く。
+ * 機能の設計は機能仕様の節に置くので、`design.md` も章の名前にしない。
  */
 const RESERVED_FREE_NAMES = new Set([
   'states.md',
@@ -142,6 +147,7 @@ const RESERVED_FREE_NAMES = new Set([
   'scenarios.feature.md',
   'glossary.md',
   'standards.md',
+  'design.md',
 ])
 
 /** 任意の名前の文書は、ケバブケースの Markdown に限る。`Readme.md` のような打ち間違いを通さない。 */

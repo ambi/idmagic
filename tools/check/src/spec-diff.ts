@@ -19,7 +19,7 @@ import { relative, resolve } from 'node:path'
 import MarkdownIt from 'markdown-it'
 import { specificationRules } from './feature-specification.ts'
 import { type ScenarioExample, parseScenarioDocument, ruleBodies } from './gherkin-scenarios.ts'
-import { documentKind } from './specification-doc.ts'
+import { type DocumentKind, documentKind } from './specification-doc.ts'
 import { typeSpecDeclarations } from './typespec-declarations.ts'
 
 /** Repository-relative path to file contents. */
@@ -193,7 +193,7 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
   const steps = new Map<string, Set<string>>()
 
   for (const [path, source] of snapshot) {
-    const kind = documentKind(path)
+    const kind = comparedDocumentKind(path)
     if (kind === 'specification') {
       const bodies = new Map(ruleBodies(source).map((body) => [body.id, body.lines]))
       for (const rule of specificationRules(source)) {
@@ -370,9 +370,20 @@ export function formatSpecificationDiff(diff: SpecificationDiff, ref: string): s
  */
 const SPECIFICATION_TREES = ['docs', 'spec'] as const
 
+/**
+ * 共通シナリオを要件文書の下に置いていた過去の配置。現在の配置では拒否するが、その時期の
+ * revision と比べるときに読まなければ、移動だけで全規則が削除と追加に見える。
+ */
+const FORMER_SHARED_SCENARIOS = 'docs/requirements/scenarios.feature.md'
+
+/** 比較のために読む文書の種別。現在の配置の判定に、過去の配置の読み取りだけを足す。 */
+function comparedDocumentKind(path: string): DocumentKind | undefined {
+  return path === FORMER_SHARED_SCENARIOS ? 'scenarios' : documentKind(path)
+}
+
 export function isSpecificationSource(path: string): boolean {
   if (path.startsWith('spec/generated/')) return false
-  return path.endsWith('.tsp') || documentKind(path) !== undefined
+  return path.endsWith('.tsp') || comparedDocumentKind(path) !== undefined
 }
 
 export async function readWorkingTree(root: string): Promise<Snapshot> {

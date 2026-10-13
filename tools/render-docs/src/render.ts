@@ -4,7 +4,11 @@ import { specificationRules } from '../../check/src/feature-specification.ts'
 import { ruleBodies } from '../../check/src/gherkin-scenarios.ts'
 import { documentKind } from '../../check/src/specification-doc.ts'
 import { markdownHeadingTargets } from '../../check/src/markdown-links.ts'
-import { MODULE_DOCUMENTS, SYSTEM_DOCUMENT_PATHS } from '../../workspace/src/document-layout.ts'
+import {
+  MODULE_DOCUMENTS,
+  SHARED_SCENARIOS,
+  SYSTEM_DOCUMENT_PATHS,
+} from '../../workspace/src/document-layout.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
 
 export type SourceDocument = {
@@ -51,6 +55,7 @@ type DocumentCategory =
   | 'format'
   | 'format-index'
   | 'modules'
+  | 'modules-child'
   | 'development'
   | 'development-child'
   | 'operations'
@@ -148,11 +153,10 @@ function plainTitle(value: string): string {
 }
 
 /**
- * 機能スライスの子の並び。機能仕様の章を先に、内部設計と例の付録を後に置く。
+ * 機能スライスの子の並び。機能仕様の章を先に、例の付録を後に置く。
  * 章は仕様の続きなので、仕様の直後に読めるようにする。
  */
 function featureChildOrder(name: string, fallback: number): number {
-  if (name === 'design.md') return Number.MAX_SAFE_INTEGER - 1
   if (name === 'acceptance.feature.md') return Number.MAX_SAFE_INTEGER
   return fallback
 }
@@ -172,10 +176,7 @@ function sitePath(path: string): string {
 
 function documentMetadata(document: SourceDocument, index: number): RenderedDocument {
   const declaredTitle = plainTitle(document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path)
-  const title =
-    document.path === 'docs/requirements/scenarios.feature.md'
-      ? 'システム横断シナリオ'
-      : declaredTitle
+  const title = document.path === SHARED_SCENARIOS ? '横断シナリオ' : declaredTitle
   const sections = [...document.source.matchAll(/^## (.+)$/gm)].map(
     (match) => match[1]?.trim() ?? '',
   )
@@ -214,6 +215,15 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
   }
   if (document.path === 'docs/modules/README.md') {
     return { ...base, id: 'modules', category: 'modules', order: 0 }
+  }
+  // モジュール共通の文書。どのモジュールにも属さないので、モジュールの段として読まない。
+  if (/^docs\/modules\/[^/]+$/.test(document.path)) {
+    return {
+      ...base,
+      id: `modules-${slug(stem)}`,
+      category: 'modules-child',
+      order: canonicalOrder(SYSTEM_DOCUMENT_PATHS, document.path, index),
+    }
   }
   // モジュールより下の段。内部設計、機能群、機能群の下の機能スライスがある。
   // `feature` はその段のモジュールからの相対パスである。
@@ -676,6 +686,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
       .map(node),
   })
   const modulesBody = [
+    ...inGroup(documents, 'modules-child').map(leaf),
     ...modules.map((entry) =>
       directory({
         name: entry.title,

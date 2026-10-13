@@ -38,7 +38,7 @@ Audit の旧 `decisions.md` は「監査レコードは GDPR 第 30 条 (処理�
 
 ## Out of Scope
 
-- 監査イベントの検索属性と PII の変換方針。`docs/modules/audit/event-search/design.md` が持つ。
+- 監査イベントの検索属性と PII の変換方針。`docs/modules/audit/event-search/README.md` が持つ。
 - `GDPR-PROCESSING-RECORDS` へのテストの対応付け。[[wi-502-back-cross-cutting-standards-rows-with-tests]] が済ませた。
 - Purge の cascade の欠け。[[wi-513-purge-leaves-webauthn-credentials-and-recovery-codes]] が持つ。
 - 監査記録の外部転送 (SIEM、ログストリーミング)。

@@ -37,13 +37,13 @@ Worker は、ジョブのハンドラーと、プロセス内で周期的に動�
 | `JobKind` | 投入するモジュール | 処理 | 詳細 |
 | --- | --- | --- | --- |
 | `user_import_preview`、`user_import_apply` | IdManagement | 利用者の CSV インポートを検証し、確定する | [CSV の往復変換](../../modules/identity-management/design/csv-transfer.md) |
-| `group_import_preview`、`group_import_apply` | IdManagement | グループの CSV インポートを検証し、確定する | [グループ CSV の設計](../../modules/identity-management/group-csv/design.md) |
-| `group_membership_import_preview`、`group_membership_import_apply` | IdManagement | グループメンバーシップの CSV インポートを検証し、確定する | [グループ CSV の設計](../../modules/identity-management/group-csv/design.md) |
+| `group_import_preview`、`group_import_apply` | IdManagement | グループの CSV インポートを検証し、確定する | [グループ CSV の設計](../../modules/identity-management/group-csv/README.md#実現方式) |
+| `group_membership_import_preview`、`group_membership_import_apply` | IdManagement | グループメンバーシップの CSV インポートを検証し、確定する | [グループ CSV の設計](../../modules/identity-management/group-csv/README.md#実現方式) |
 | `dynamic_group_reconcile` | IdManagement | 動的グループの規則を評価し、メンバーシップを収束させる | [動的グループ](../../modules/identity-management/dynamic-group/README.md) |
-| `data_export` | IdManagement | 管理者が要求した CSV データエクスポートを作る | [データエクスポートの設計](../../modules/identity-management/data-export/design.md) |
-| `data_key_reencryption` | DataKeys | DEK のローテーション後に、各モジュールの秘密情報を新しいバージョンの DEK で再暗号化する | [DEK のライフサイクルの設計](../../modules/data-keys/lifecycle/design.md) |
+| `data_export` | IdManagement | 管理者が要求した CSV データエクスポートを作る | [データエクスポートの設計](../../modules/identity-management/data-export/README.md#実現方式) |
+| `data_key_reencryption` | DataKeys | DEK のローテーション後に、各モジュールの秘密情報を新しいバージョンの DEK で再暗号化する | [DEK のライフサイクルの設計](../../modules/data-keys/lifecycle/README.md#実現方式) |
 | `lifecycle_workflow_run` | IdGovernance | ライフサイクルワークフローを一回実行する | [IdGovernance](../../modules/identity-governance/README.md) |
-| `provisioning_task` | Provisioning | 連携先のアプリケーションへ利用者とグループの変更を反映する | [Provisioning の内部設計](../../modules/provisioning/synchronization/design.md) |
+| `provisioning_task` | Provisioning | 連携先のアプリケーションへ利用者とグループの変更を反映する | [Provisioning の内部設計](../../modules/provisioning/synchronization/README.md#実現方式) |
 | `backchannel_logout_delivery` | OAuth2 | OpenID Connect Back-Channel Logout の通知をクライアントへ送る | [ログアウト](../../modules/oauth2/logout/README.md) |
 | `noop_echo` | Jobs | 入力をそのまま返す。Worker の起動と配線を確かめるためのジョブである | [永続キュー](../../modules/jobs/queue/README.md) |
 
@@ -52,8 +52,8 @@ Worker は、ジョブのハンドラーと、プロセス内で周期的に動�
 | 処理 | 内容 | 詳細 |
 | --- | --- | --- |
 | ライフサイクルワークフローのディスパッチ | ジョブへ関連付けられていないワークフロー実行を探し、`lifecycle_workflow_run` のジョブを投入する | [IdGovernance](../../modules/identity-governance/README.md) |
-| プロビジョニングのディスパッチ | 保留中のプロビジョニングタスクを `provisioning_task` のジョブへ関連付ける | [Provisioning の内部設計](../../modules/provisioning/synchronization/design.md) |
-| プロビジョニングの照合 | イベント同期が作らなかった差分を探し、プロビジョニングタスクにする | [Provisioning の内部設計](../../modules/provisioning/synchronization/design.md) |
+| プロビジョニングのディスパッチ | 保留中のプロビジョニングタスクを `provisioning_task` のジョブへ関連付ける | [Provisioning の内部設計](../../modules/provisioning/synchronization/README.md#実現方式) |
+| プロビジョニングの照合 | イベント同期が作らなかった差分を探し、プロビジョニングタスクにする | [Provisioning の内部設計](../../modules/provisioning/synchronization/README.md#実現方式) |
 | 短命な状態の掃除 | 認可リクエスト、認可コード、デバイスコード、リプレイ防止、WebAuthn のセッション、流量制御など、期限を過ぎた短命な状態のレコードを削除して領域を回収する。有効期限は読み取り時に判定するので、掃除が遅れても期限は延びない | [データのライフサイクル](../data/lifecycle.md) |
 | セキュリティイベントの配信 | Shared Signals の送信ストリームへ、配信期限が来たセキュリティイベントを送り、再試行と配信不能を管理する | [SharedSignals の状態遷移](../../modules/sharedsignals/stream/README.md#状態遷移) |
 | キューの滞留数の記録 | レーンごとの待機中と実行中のジョブ数をメトリクスへ記録する | [監視設計](../observability/monitoring.md) |

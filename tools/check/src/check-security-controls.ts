@@ -1,3 +1,4 @@
+import { SHARED_SCENARIOS } from '../../workspace/src/document-layout.ts'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { repositoryGoFiles } from './repository-inputs.ts'
 import type { CheckOutcome } from './runner.ts'
@@ -16,7 +17,7 @@ export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promis
   const modulesDirectory = 'docs/modules'
   const contractDirectory = 'spec/modules'
   const platformRefusals = browserRefusalTypesNamedByPlatformScenario(
-    await snapshot.read('docs/requirements/scenarios.feature.md'),
+    await snapshot.read(SHARED_SCENARIOS),
   )
   const apiTokenRefusals = insufficientScopeTypeNamedByApiTokenScenario(
     await snapshot.read(`${modulesDirectory}/api-tokens/authentication/acceptance.feature.md`),

@@ -9,13 +9,29 @@ describe('verifyCanonicalDocumentSet', () => {
     expect(
       verifyCanonicalDocumentSet([
         { directory: 'docs', files: ['README.md'] },
-        { directory: 'docs/modules', files: ['README.md'] },
-        { directory: 'docs/requirements', files: ['README.md', 'quality.md', 'glossary.md'] },
+        {
+          directory: 'docs/modules',
+          files: ['README.md', 'glossary.md', 'scenarios.feature.md'],
+        },
+        { directory: 'docs/requirements', files: ['README.md', 'quality.md'] },
         { directory: 'docs/design/infrastructure', files: ['README.md', 'network.md'] },
         marker,
         { directory: 'docs/modules/demo', files: ['README.md', 'glossary.md'] },
       ]),
     ).toEqual([])
+  })
+
+  it('rejects the shared glossary and scenarios at their former requirements location', () => {
+    const findings = verifyCanonicalDocumentSet([
+      {
+        directory: 'docs/requirements',
+        files: ['README.md', 'glossary.md', 'scenarios.feature.md'],
+      },
+    ])
+    expect(findings.map((finding) => finding.path)).toEqual([
+      'docs/requirements/glossary.md',
+      'docs/requirements/scenarios.feature.md',
+    ])
   })
 
   it('keeps shared vocabulary out of a feature slice', () => {
@@ -128,6 +144,14 @@ describe('verifyCanonicalDocumentSet', () => {
       { directory: 'docs/modules/demo', files: ['intrnl.md'] },
     ])
     expect(findings[0]?.message).not.toContain('did you mean')
+  })
+
+  it('rejects a separate design document in a feature slice', () => {
+    const findings = verifyCanonicalDocumentSet([
+      marker,
+      { directory: 'docs/modules/demo/task', files: ['README.md', 'design.md'] },
+    ])
+    expect(findings.map((finding) => finding.path)).toEqual(['docs/modules/demo/task/design.md'])
   })
 
   it('holds each level to its own set of names', () => {

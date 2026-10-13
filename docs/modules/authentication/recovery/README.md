@@ -33,3 +33,11 @@
 - 誤った復旧コードか使用済みの復旧コードを受けた場合、Authentication は、401 と `invalid_recovery_code` で拒否し、`AuthenticationFailed` を発行する。
 - 復旧コードの保管先へ到達できない場合、Authentication は、503 と `recovery_unavailable` で拒否する。
 - **例**：EX-AUTHENTICATION-036-01、EX-AUTHENTICATION-036-02
+
+## 実現方式
+
+### データ
+
+`recovery_codes` は平文のコードを保存せず、`code_hash`（SHA-256 の 16 進）だけを持つ。
+`consumed_at` が `NULL` でなければ、そのコードは使用済みで、送り直せない。
+再生成は、ユーザーの一式をまとめて置き換える。

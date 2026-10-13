@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { documentKind, validateDocument, verifyQualityAllocations } from './specification-doc.ts'
 
-const SCENARIOS = 'docs/requirements/scenarios.feature.md'
+const SCENARIOS = 'docs/modules/scenarios.feature.md'
 const STATES = 'docs/modules/demo/work/task/README.md'
 const STANDARDS = 'docs/modules/demo/standards.md'
 
@@ -30,7 +30,7 @@ describe('共通設計を既定とする索引', () => {
 
   it.each([
     '| アーキテクチャ設計 | 固有設計 | [構成](architecture.md#構成) | 固有の構成 |',
-    '| データ設計 | 委譲 | [保存](../task/design.md#保存) | タスクに委ねる |',
+    '| データ設計 | 委譲 | [保存](../task/README.md#保存) | タスクに委ねる |',
     '| データ設計 | 対象外 | — | 永続状態を保存しない |',
   ])('有効な区分の行を受け入れる: %s', (row) => {
     expect(messages(path, index(row))).toEqual([])
@@ -118,7 +118,8 @@ describe('品質要件の割り当て', () => {
 
 describe('documentKind', () => {
   it('names the grammar of each canonical document', () => {
-    expect(documentKind('docs/requirements/scenarios.feature.md')).toBe('scenarios')
+    expect(documentKind('docs/modules/scenarios.feature.md')).toBe('scenarios')
+    expect(documentKind('docs/modules/glossary.md')).toBe('prose')
     expect(documentKind('docs/modules/demo/glossary.md')).toBe('prose')
     expect(documentKind('docs/requirements/standards.md')).toBe('standards')
     expect(documentKind('docs/design/security/authorization.md')).toBe('prose')
@@ -149,13 +150,13 @@ describe('documentKind', () => {
   it('reads a feature slice one level below its context with the grammar its name gives', () => {
     expect(documentKind('docs/modules/demo/user/README.md')).toBe('specification')
     expect(documentKind('docs/modules/demo/user/acceptance.feature.md')).toBe('examples')
-    expect(documentKind('docs/modules/demo/user/design.md')).toBe('prose')
+    expect(documentKind('docs/modules/demo/user/design.md')).toBeUndefined()
   })
 
-  it('reads the feature layout: specifications, chapters, appendix, and design', () => {
+  it('reads the feature layout: specifications, chapters, and appendix', () => {
     expect(documentKind('docs/modules/demo/people/user/README.md')).toBe('specification')
     expect(documentKind('docs/modules/demo/people/user/lifecycle.md')).toBe('specification')
-    expect(documentKind('docs/modules/demo/people/user/design.md')).toBe('prose')
+    expect(documentKind('docs/modules/demo/people/user/design.md')).toBeUndefined()
     expect(documentKind('docs/modules/demo/people/user/acceptance.feature.md')).toBe('examples')
     expect(documentKind('docs/modules/demo/design/README.md')).toBe('design-index')
     expect(documentKind('docs/design/README.md')).toBe('design-index')

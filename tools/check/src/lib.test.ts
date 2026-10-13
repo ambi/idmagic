@@ -93,7 +93,7 @@ describe('validateAgainstSchema — work-item', () => {
     verification: [{ cmd: 'go test ./...', result: 'ok' }],
   }
   const validInitialContext = {
-    specification: ['docs/requirements/scenarios.feature.md#REQ-DEMO-001'],
+    specification: ['docs/modules/scenarios.feature.md#REQ-DEMO-001'],
   }
   const validDocumentationImpact = {
     level: 'none',

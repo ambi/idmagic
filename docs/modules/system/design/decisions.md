@@ -128,7 +128,7 @@ IdP では、ログインとトークンの処理が止まることの影響が�
 
 キャパシティが足りないとき何を先に捨てるかを、API のプロセス自身が決める。
 要求を経路の登録と同じ場所で `interactive_auth`、`management`、`management_bulk`、`infrastructure` の四つの優先度クラスに分類し、クラスごとの同時実行の入場の上限を超えた要求を 503 で拒否する。
-順序は[キャパシティ設計](../../../design/performance/capacity.md#ロードシェディング順序)のロードシェディングの順序が定め、機構は[アドミッションコントロールの設計](../admission-control/design.md)で説明する。
+順序は[キャパシティ設計](../../../design/performance/capacity.md#ロードシェディング順序)のロードシェディングの順序が定め、機構は[アドミッションコントロールの設計](../admission-control/README.md#実現方式)で説明する。
 
 どの経路がどのクラスに属するかは、この文書も含め、どの散文にも書かない。
 分類はコードに一か所あり、そこから `ROUTE_PRIORITY.md` を生成する。

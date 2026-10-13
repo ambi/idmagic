@@ -44,3 +44,11 @@ Discovery Metadata は、手作業でもビルドの時でもなく、実行時�
 - `/authorize` と `/par` の要求を数えるとき、OAuth2 は、IP と `client_id` の組を単位にする。
 - 共有のカウンターのストアへ到達できない場合、OAuth2 は、要求を通さずに 429 と `rate_limited` を 30 秒の `Retry-After` とともに返す。
 - **例**：EX-OAUTH2-040-01、EX-OAUTH2-040-02、EX-OAUTH2-040-03、EX-OAUTH2-040-04、EX-OAUTH2-040-05、EX-OAUTH2-040-06
+
+## 実現方式
+
+### アーキテクチャ
+
+#### ディスカバリー
+
+OAuth 2.0 Authorization Server Metadata と OIDC Discovery Metadata は手作業で保守せず、派生成果物とする。実行時に、TypeSpec から生成したランタイム契約 (`backend/shared/spec`) からリクエスト先テナントの発行者を当てはめて組み立てる。対応するグラント、認証方式、署名アルゴリズム、レスポンスタイプ、PKCE 方式はいずれも同じ契約に由来するため、広告した内容とサーバーが実際に強制する内容がずれることはない。テナントで有効な `authorization_details` の型だけは実行時に解決して重ねる。

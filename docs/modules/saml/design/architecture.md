@@ -44,7 +44,7 @@
 
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| SSO | ブラウザーの `/saml/sso` または `/saml/idp/{profile_id}/sso` への要求 | `api` が、ログインセッションがなければログインの画面へ誘導し、あれば検証して SAMLResponse を ACS へ POST させる | [SAML の SSO の設計](../sso/design.md) |
+| SSO | ブラウザーの `/saml/sso` または `/saml/idp/{profile_id}/sso` への要求 | `api` が、ログインセッションがなければログインの画面へ誘導し、あれば検証して SAMLResponse を ACS へ POST させる | [SAML の SSO の設計](../sso/README.md#実現方式) |
 | SLO | ブラウザーの `/saml/slo` への要求 | `api` がローカルセッションを破棄する | [SAML の SSO](../sso/README.md) |
 | メタデータと証明書 | SP の取得 | `api` が、要求のたびにプロファイルの証明書から組み立てる | [IdP プロファイルとメタデータ](../idp-profile/README.md) |
 | 管理 API | 解決済みのテナントの `/api/admin/v1/saml/...` への要求 | `api` が、ハンドラーから同期的に保存する | [サービスプロバイダーの管理](../service-provider/README.md) |

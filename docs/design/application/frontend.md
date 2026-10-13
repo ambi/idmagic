@@ -39,7 +39,7 @@ SPA は次の四種類の画面を提供する。
 
 - **SPA と API を同一オリジンで公開する。** ブラウザーセッションの Cookie と CSRF の防御を、オリジンを跨ぐ設定なしに成立させるためである。
 - **SPA は正となる業務状態を保持しない。** 保持するのはブラウザーセッションだけである。権限の判定も API が行い、SPA の判定は表示の切り替えに限る。
-- **中継する経路の集合を、本番と開発時で一致させる。** 経路を足すときは `Caddyfile` と `vite.config.ts` を同じ変更で更新する。一致を確かめるテストは `frontend/src/devProxy.test.ts` だけで、公開する連携エンドポイントの一部しか確かめていない。
+- **中継する経路の集合を、本番と開発時で一致させる。** 経路を足すときは `Caddyfile` と `vite.config.ts` を同じ変更で更新する。一致を確かめるテストは一つだけで、公開する連携エンドポイントの一部しか確かめていない。
 - **テナントの経路は二通りで受け付ける。** デフォルトテナントの経路と、`/realms/:tenant_id` を接頭辞とする経路である。現在の URL が `/realms/:tenant_id` で始まるとき、SPA はその部分をルーターの基底パスにし、API の URL にも同じ接頭辞を付ける。
 
 ## 採用するライブラリ
@@ -149,7 +149,7 @@ frontend/src/features/admin-users/
 └── *.test.ts(x)                  # 上の各ファイルの単体テスト
 ```
 
-経路 `/admin/users` は `frontend/src/routes/admin/users.tsx` で定義され、このスライスの `AdminUsersPage` を描画する。
+TanStack Router のファイルによる経路定義の規約に従い、経路 `/admin/users` は `frontend/src/routes/admin/users.tsx` に定義し、このスライスの `AdminUsersPage` を描画する。
 
 ### 機能スライスとモジュールの対応
 
@@ -169,7 +169,7 @@ frontend/src/features/admin-users/
 ## 画面の一覧
 
 フロントエンドの画面は、利用者の立場ごとに四つの画面群に分かれる。
-経路ごとの完全な一覧は `frontend/src/routes/` のファイル配置が一次情報であり、画面の種類ごとのタブのタイトルは `frontend/src/routes/-page.tsx` の `PAGE_TITLES_JA` が定める。
+経路ごとの完全な一覧は `frontend/src/routes/` のファイル配置が一次情報であり、画面の種類ごとのタブのタイトルは、経路の補助が一か所で定める。
 
 | 画面群 | 経路 | 利用者 | 主な画面 |
 | --- | --- | --- | --- |
@@ -193,7 +193,7 @@ Vite のプラグインがビルド時と開発時に `frontend/src/routeTree.ge
 | レイアウトの経路 | `admin/route.tsx`、`account/route.tsx` | `<Outlet>` を描画するだけ |
 | 末端の経路 | `admin/users.tsx` | 検索パラメーターの検証、ローダー、API の呼び出し、パスパラメーターの処理を書き、機能スライスのビューを描画する |
 | 一覧を介さない詳細の経路 | `admin/users_/$id.tsx`（`/admin/users/$id`） | 末尾にアンダースコアを付けたディレクトリに置く |
-| 経路の補助 | `-guards.ts`、`-page.tsx` | `-` で始まるファイルは経路の生成から除外される |
+| 経路の補助 | `-` で始まるファイル | フレームワークの規約により、経路の生成から除外される |
 | ルート | `__root.tsx` | すべての経路の外枠 |
 
 ### 規則
@@ -201,8 +201,8 @@ Vite のプラグインがビルド時と開発時に `frontend/src/routeTree.ge
 1. 経路ファイルは機能スライスのビューを呼び出し、ビューは経路ファイルを参照しない。ビューが経路の型に依存すると、経路なしでビューを単体テストできなくなるためである。
 2. 画面内の移動には `<Link>` を使い、移動先のローダーだけを実行する。
 3. 認証フロー（ログイン、同意、コールバック、OIDC のリダイレクト）の遷移は、ページ全体の遷移にする。認可サーバーとの間でブラウザーのリダイレクトを経るため、SPA の内部状態を持ち越せないためである。
-4. 画面を描画する経路は、`-page.tsx` の補助を通して、描画した画面の種類を `<meta name="idmagic:page">` として DOM に書き出す。E2E テストは、ローダーの完了と画面の切り替わりを、待ち時間ではなくこの値で検出する。
-5. 認証が必要な経路は、ローダーの先頭で `-guards.ts` の `requirePortalAccount` を呼び出す。ローダーに置くのは、初回の読み込みと画面内の移動の両方で同じ判定を通すためである。
+4. 画面を描画する経路は、経路の補助を通して、描画した画面の種類を `<meta name="idmagic:page">` として DOM に書き出す。E2E テストは、ローダーの完了と画面の切り替わりを、待ち時間ではなくこの値で検出する。
+5. 認証が必要な経路は、ローダーの先頭で、経路の補助が提供する認証のガードを呼び出す。ローダーに置くのは、初回の読み込みと画面内の移動の両方で同じ判定を通すためである。
 
 `requirePortalAccount` は次のように動く。
 
@@ -219,8 +219,8 @@ Vite のプラグインがビルド時と開発時に `frontend/src/routeTree.ge
 
 ### API の呼び出し
 
-- API を呼び出す関数は `frontend/src/api/` に置き、`frontend/src/api.ts` がまとめて公開する。
-- `frontend/src/api/core.ts` が、ベアラートークンの付与、テナントの基底パスの付与、エラーレスポンスの解釈を一か所で行う。
+- API を呼び出す関数は `frontend/src/api/` に置き、一つの入口からまとめて公開する。
+- 共通の呼び出し処理が、ベアラートークンの付与、テナントの基底パスの付与、エラーレスポンスの解釈を一か所で行う。
 - エラーレスポンスは `AuthenticationAPIError` に変換する。安定したエラーコードは `code` に、API が返した英語の文言は `message` に入る。
 - リクエストとレスポンスの型は、`frontend/src/types.ts` と各 `api/` モジュールに手で書いている。TypeSpec からは生成しておらず、TypeSpec との一致を検査する仕組みもない。API の形を変えるときは、TypeSpec と同じ変更でこれらの型を更新する。
 
@@ -244,7 +244,7 @@ Vite のプラグインがビルド時と開発時に `frontend/src/routeTree.ge
 2. 遷移先のローダーが、そのカーソルで次のページを取得する。
 3. カーソルが無効になったとき（絞り込み条件を変えた後など）は、ローダーがカーソルなしで取得し直し、URL からカーソルを外す。
 
-ページ送りの操作部品は `frontend/src/components/ui/page-navigation.tsx` の `PageNavigation` である。
+ページ送りの操作部品は、共通の UI 部品の `PageNavigation` である。
 
 ## コンテナと表示用コンポーネント
 
@@ -288,7 +288,7 @@ Vite のプラグインがビルド時と開発時に `frontend/src/routeTree.ge
 | ブラウザーから API までを通す E2E テスト | `frontend/tests/e2e/` | `mise run test-ui-e2e` |
 
 - 単体テストは、Happy DOM を DOM として登録し、Testing Library で描画する。
-- `AccountShell`、`AdminShell`、`AuthShell` を含むコンポーネントは `Link` を使うため、描画にルーターのコンテキストが必要である。これらのテストは `frontend/src/test/renderWithRouter.tsx` の `renderWithRouter` で描画する。
+- `AccountShell`、`AdminShell`、`AuthShell` を含むコンポーネントは `Link` を使うため、描画にルーターのコンテキストが必要である。これらのテストは、ルーターのコンテキストを用意する共通のテスト補助で描画する。
 - テストのロケールの扱いは[ユーザーインターフェース設計](user-interface.md#国際化)が、テストダブルの選び方は[テスト方針](../../development/testing.md#テストダブル)が定める。
 
 ### E2E テスト

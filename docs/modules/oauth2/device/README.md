@@ -67,3 +67,11 @@ RFC 8628 デバイス認可グラントのライフサイクル。device_code �
 - 未知の `user_code`、別のテナントの `user_code`、承認か拒否の済んだ `user_code` の承認か拒否を受けた場合、OAuth2 は、400 と `invalid_request` で拒否する。
 - 未認証の利用者の承認か拒否を受けた場合、OAuth2 は、401 と `authentication_required` で拒否する。
 - **例**：EX-OAUTH2-027-01、EX-OAUTH2-027-02、EX-OAUTH2-027-03、EX-OAUTH2-027-04
+
+## 実現方式
+
+### アーキテクチャ
+
+#### デバイス認可グラント
+
+デバイスフロー（RFC 8628）、すなわち `POST /device_authorization`、`/device` の検証 UI、`/token` の `device_code` グラントでは、承認・拒否・交換の遷移をその場で再実装せず、`DeviceCodeFlow` の遷移表を共有する 1 つの遷移関数を使う。`device_code` は 32 バイトのランダム値であり、ベアラーシークレットとして SHA-256 ハッシュだけを保存する。`user_code` は母音と見分けにくい文字を除いた 20 文字の縮小済みで曖昧さのない文字集合を使い、`WDJB-MJHT` のようにグループ分けして表示する。ポーリングは仕様中核で定める間隔とバックオフ増分に従い、`authorization_pending` / `slow_down` / `access_denied` / `expired_token` を返す。二重発行を防ぐため、承認済みコードをトークン発行前に `approved → exchanged` へ遷移させる。

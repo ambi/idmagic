@@ -14,13 +14,11 @@ import {
   verifySpecificationOutline,
   verifySpecificationRuleFields,
 } from './specification-rules.ts'
+import { SHARED_SCENARIOS } from '../../workspace/src/document-layout.ts'
 import { documentKind } from './specification-doc.ts'
 
 /** 仕様のディレクトリと対応しないコードのディレクトリの基準。導入時点の一覧で、減る方向にしか動かさない。 */
 const FEATURE_SLICE_DEBT = 'tools/check/feature-slice-debt.json'
-
-/** モジュールをまたぐ要件を宣言する文書。 */
-const SYSTEM_SCENARIOS = 'docs/requirements/scenarios.feature.md'
 
 /**
  * 要件文の EARS の構文を確かめるモジュール。要件文を書き直したモジュールから加え、
@@ -52,12 +50,12 @@ const EARS_MODULES = new Set<string>([
 
 export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   const domainFiles = await snapshot.files('docs/modules', [])
-  // 規則を宣言する文書。システムの `scenarios.feature.md` と、機能仕様である。
+  // 規則を宣言する文書。モジュール共通の `scenarios.feature.md` と、機能仕様である。
   const specificationPaths = new Set(
     domainFiles.filter((path) => documentKind(path) === 'specification'),
   )
   const scenarioPaths = domainFiles
-    .filter((path) => path === SYSTEM_SCENARIOS || specificationPaths.has(path))
+    .filter((path) => path === SHARED_SCENARIOS || specificationPaths.has(path))
     .sort()
   const declarations = goDeclarations(await repositoryGoFiles(snapshot))
   const anchors = new Map<string, Set<string>>()

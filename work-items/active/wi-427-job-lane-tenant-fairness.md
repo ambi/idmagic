@@ -25,7 +25,7 @@ affected_spec:
 ## Scope
 
 - 同じレーンの中で、単一テナントの滞留が他テナントの取得を妨げないようにする取得規則を定める。
-- 同じレーンの中で、単一の `JobKind`（とくに下流の応答を待つもの）が枠を長く占有して他の `JobKind` を止めないようにする。`docs/modules/jobs/queue/design.md` は「`JobKind` ごとの品質の制御も、利用側ごとの順序や流量の制限も提供しない」と明言しており、テナント別の偏りと投入元別の偏りは同じ機構の欠落から来る。
+- 同じレーンの中で、単一の `JobKind`（とくに下流の応答を待つもの）が枠を長く占有して他の `JobKind` を止めないようにする。`docs/modules/jobs/queue/README.md` は「`JobKind` ごとの品質の制御も、利用側ごとの順序や流量の制限も提供しない」と明言しており、テナント別の偏りと投入元別の偏りは同じ機構の欠落から来る。
 - 規則を `docs/modules/jobs/design/decisions.md` の判断として書き、対応する規範シナリオを足す。
 - 公平性の観測手段を `docs/design/observability/README.md` の指標へ加えるかを判断する。
 - `docs/design/performance/capacity.md` に、テナント間の配分に関する前提を書く。
