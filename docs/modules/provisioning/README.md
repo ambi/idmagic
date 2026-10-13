@@ -51,4 +51,17 @@ HTTP の操作とモデルの形は TypeSpec の `Provisioning` のタグが、�
 | --- | --- |
 | [Provisioning の用語集](glossary.md) | このモジュールでの語義 |
 | [Provisioning の標準仕様](standards.md) | 採用する外部標準仕様 |
-| [Provisioning の設計](design/README.md) | 設計領域ごとの設計と重要な判断 |
+
+## 設計
+
+| 設計領域 | 区分 | 参照先 | 内容 |
+| --- | --- | --- | --- |
+| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| アプリケーション設計 | 委譲 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema) | 管理 API はシステムのアプリケーション設計に従い、下流の形は標準仕様が定める |
+| データ設計 | 委譲 | [モデル](#モデル) | Aggregate とその関係は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
+| セキュリティ設計 | 委譲 | [接続の管理](connection/README.md#セキュリティ上の考慮) | 下流の URL の検証とテナントの境界は接続の管理のセキュリティ上の考慮の節が扱う |
+| 信頼性設計 | 委譲 | [同期の設計](synchronization/README.md#信頼性)、[接続の管理の設計](connection/README.md#信頼性) | 隔離からの回復と通知は同期の設計が、フル同期の完了は接続の管理の設計が扱う |
+
+| 文書 | 内容 |
+| --- | --- |
+| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |

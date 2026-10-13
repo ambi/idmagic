@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -10,13 +10,41 @@ change_kind: tooling
 spec_impact:
   kind: none
   reason: "モジュールの設計領域の索引を置くファイルと、その検査、探索、生成サイトを変える。REQ、例、状態遷移、標準の行、TypeSpec の宣言と各設計文書の内容は維持する。"
+evidence_policy: risk-based-v4
+documentation_impact:
+  level: none
+  reason: "未公開の製品について、開発者が読むモジュール設計文書の配置と、その検査、探索、生成サイトだけを変える。HTTP 契約、既存データ、運用手順に利用者が観測する差分はない。"
+  references: []
+initial_context:
+  specification:
+    - docs/formats/design-format.md
+    - docs/formats/documentation-guide.md
+    - docs/formats/specification-format.md
+    - docs/development/format-rationale.md
+    - docs/modules/README.md
+    - docs/modules/tenancy/README.md
+  typespec: []
+  source:
+    - tools/workspace/src/document-layout.ts
+    - tools/check/src/specification-doc.ts
+    - tools/check/src/check-documents.ts
+    - tools/check/src/feature-slices.ts
+    - tools/brief/src/context.ts
+    - tools/render-docs/src/render.ts
+  tests:
+    - tools/check/src/specification-doc.test.ts
+    - tools/check/src/canonical-document-set.test.ts
+    - tools/check/src/feature-layout.acceptance.test.ts
+    - tools/brief/src/context.test.ts
+    - tools/render-docs/src/render.test.ts
+  stop_before_reading: [backend, frontend, spec, work-items/done]
 ---
 
 # モジュールの設計領域の索引をモジュールの README の最後の節へ統合する
 
 ## 動機
 
-[wi-47518](../done/wi-47518-align-shared-document-placement-and-design-records.md)は、機能スライスの `design.md` を機能仕様の最後の節「実現方式」へ統合した。
+[wi-47518](wi-47518-align-shared-document-placement-and-design-records.md)は、機能スライスの `design.md` を機能仕様の最後の節「実現方式」へ統合した。
 理由は、機能について知るべき規則と仕組みを一つのファイルで読めるようにし、`README.md` と `design.md` のように名前から違いが読めないファイルを並べないためだった。
 
 モジュールの階層には同じ問題が残っている。
@@ -87,12 +115,12 @@ spec_impact:
 
 ## タスク
 
-- [ ] T001 [Docs] 着手時の文脈を記録し、参照するツールと文書を確定する。
-- [ ] T002 [Tooling] 配置の宣言、索引の検査、モジュールの印、探索、生成サイトを、新しい節を読む形へ RED から変える。
-- [ ] T003 [Docs] 21 モジュールの索引を README の「設計」の節へ移し、`design/README.md` を削除してリンクを張り替える。
-- [ ] T004 [Docs] 文書ガイド、設計フォーマット、仕様フォーマット、フォーマットの理由を更新する。
-- [ ] T005 [Verify] 生成サイトの目次とモジュールのページを確かめる。
-- [ ] T006 [Verify] ツールと文書の検査、`spec-diff` を通す。
+- [x] T001 [Docs] 着手時の文脈を記録し、参照するツールと文書を確定する。
+- [x] T002 [Tooling] 配置の宣言、索引の検査、モジュールの印、探索、生成サイトを、新しい節を読む形へ RED から変える。
+- [x] T003 [Docs] 21 モジュールの索引を README の「設計」の節へ移し、`design/README.md` を削除してリンクを張り替える。
+- [x] T004 [Docs] 文書ガイド、設計フォーマット、仕様フォーマット、フォーマットの理由を更新する。
+- [x] T005 [Verify] 生成サイトの目次とモジュールのページを確かめる。
+- [x] T006 [Verify] ツールと文書の検査、`spec-diff` を通す。
 
 ## 検証
 
@@ -108,3 +136,35 @@ spec_impact:
 配置の宣言を一か所に保ち、新旧の配置を入力にしたテストで各入口を確かめる。
 仕様の文書に設計の索引が入ることで、規範と設計の区別が曖昧になる恐れがある。
 最後の節に限り `REQ-*` を置かない規則を、機能仕様の「実現方式」と同じく検査する。
+
+## 完了
+
+- **完了日**: 2026-10-14
+- **要約**:
+  `mise run spec-diff` は main に対して「no normative specification change against main」を報告した。REQ、例、状態遷移、標準の行、TypeSpec の宣言に意味上の差分はない。
+  21 モジュールの `design/README.md` を削除し、設計領域の索引、設計の記録へのリンク、横断的概念の一覧をモジュールの `README.md` の最後の節「設計」へ移した。全モジュール共通の導入文は写さず設計フォーマットの規則に置き、固有の文（SLO の参照）だけを節に残した。リンクは `design/` からの相対をモジュールからの相対へ書き換えた。
+  モジュールの印を `docs/modules/<module>/README.md` の有無へ変え、文書の種別、配置の宣言、索引の網羅検査、規範規則の検査、`brief`、生成サイトの目次を揃えた。検査は `design/README.md` を拒否し、索引を最後の節「設計」の外に置くことを拒否する。生成サイトは `design/` の文書をモジュールの「設計」の段に並べる。`brief` は「設計」の節の行だけを作用の索引として読む。
+  文書ガイド、設計フォーマット、仕様フォーマット、モジュール設計文書の入口、フォーマットの理由を更新した。
+  移行は一度だけのスクリプトで行い、リポジトリには残していない。
+- **受け入れ RED の証拠**:
+  - **テスト**: `tools/check/src/feature-layout.acceptance.test.ts` の「requires every module to have README.md」「rejects a separate design index in the design directory」「rejects a design area index outside the last section 設計」と、索引をモジュールの README に置いた既存のフィクスチャ。
+  - **要件**: N/A: 製品の振る舞いを変えない、文書の配置とその検査ツールの変更である。
+  - **観測した失敗**: 実装前は、モジュールの印を `design/README.md` で判定していたため、README に索引を置いたモジュールのすべての文書が拒否され、26 件が失敗した。
+  - **検出できる理由**: 検査をリポジトリと同じ入口（`runner.ts`）から仮の作業ツリーへ実行するため、旧い印、旧い索引の位置、節の外の索引を受理する実装を区別できる。
+- **単体 RED の証拠**:
+  - **テスト**: `tools/brief/src/context.test.ts` の 3 件と、`tools/render-docs/src/render.test.ts` の「renders a module in the feature layout with generated rule indexes」。
+  - **要件**: N/A: 製品の振る舞いを変えない、文書の配置とその探索と描画の変更である。
+  - **観測した失敗**: `brief` はモジュールの README の「設計」の節を読まず、機能の表を作用の索引に含め得た。生成サイトは索引の文書がないと `design/` の文書を目次から到達できないページとして拒否した。
+  - **検出できる理由**: `brief` は設計の節の外に作用の語を含む行を置いた入力で、生成サイトは索引のない `design/` の文書を含む入力で、それぞれの欠落を区別できる。
+- **変更耐性の結果**:
+  手作業で次の故障を注入し、それぞれ局所テストが検出した。
+  - 索引が最後の節「設計」にあるかの検査を無効にする：`feature-layout.acceptance.test.ts` の 1 件が失敗した。
+  - 目次の「設計」の段を外す：`render.test.ts` の複数件が到達できないページとして失敗した。
+  変更は TypeScript のツールと Markdown なので、Go のミューテーションテストは適用しない。
+- **検証結果**:
+  - `mise run test-tools`：配置の宣言が検査、探索、描画で共有されるため、ツール全体を選んだ。1019 件が成功した。
+  - `mise run lint-tools`、`mise run typecheck-tools`：変更したツールのコードを対象に選んだ。成功した。
+  - `mise run verify-spec`：移した索引を含むモジュールの文書の形式、索引の検査、規範参照、生成サイトの検査として選んだ。成功した。
+  - `mise run check-links`、`mise run check-work-items`、`mise run check-work-item-references`、`mise run check-terminology`：張り替えた参照、作業記録、用語を対象に選んだ。成功した。
+  - `mise run spec-diff`：規範の差分がないことの確認として選んだ。差分なしだった。
+  - `mise run render-docs` で再生成し、Tenancy の設計判断のページで、目次のモジュールの下に「設計」の段があり、`design/` の 4 文書が並ぶことを確かめた。

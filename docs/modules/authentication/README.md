@@ -67,4 +67,20 @@ HTTP の操作とモデルの形は TypeSpec の `Authentication` のタグが�
 | --- | --- |
 | [Authentication の用語集](glossary.md) | このモジュールでの語義 |
 | [Authentication の標準仕様](standards.md) | 採用する外部標準仕様 |
-| [Authentication の設計](design/README.md) | 設計領域ごとの設計と重要な判断 |
+
+## 設計
+
+このモジュールが担当する SLO とキャパシティ要件は、[品質要件の割り当て](../../design/architecture/logical.md#品質要件の割り当て)から担当機能、設計、検証へ参照する。
+
+| 設計領域 | 区分 | 参照先 | 内容 |
+| --- | --- | --- | --- |
+| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| アプリケーション設計 | 委譲 | [アカウントポータル](account-portal/README.md#概要) | API と UI はシステムのアプリケーション設計に従い、セルフサービス API の境界はアカウントポータルが扱う |
+| データ設計 | 委譲 | [認証のイベントの記録](design/authentication-events.md#データ) | 各 Aggregate の保存は各機能の設計が、認証のイベントの保存は認証のイベントの記録が扱う |
+| 信頼性設計 | 委譲 | [認証状態の障害](design/architecture.md#解決戦略) | 共有の一時的な状態のストアに到達できないときは失敗させる。各機能の扱いは各機能の設計が扱う |
+| オブザーバビリティ設計 | 委譲 | [認証のイベントの記録](design/authentication-events.md#アーキテクチャ) | 認証のイベントは認証のイベントの記録が扱い、それ以外はシステムのオブザーバビリティ設計に従う |
+
+| 文書 | 内容 |
+| --- | --- |
+| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |
+| [認証のイベントの記録](design/authentication-events.md) | 個別の記録と 5 分の集計、相関、種別ごとの保持期間 |

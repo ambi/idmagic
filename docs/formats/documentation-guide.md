@@ -104,12 +104,11 @@ docs/
     glossary.md                 # すべてのモジュールに共通する語彙
     scenarios.feature.md        # 複数のモジュールの協調による保証と、共通に適用する保証
     <module>/
-      README.md                 # 仕様：責務と境界、モデルの全体図、公開する契約、機能の索引
+      README.md                 # 仕様：責務と境界、モデルの全体図、公開する契約、機能の索引。最後の節「設計」に設計領域の索引
       glossary.md
       standards.md
       quality.md                # 仕様：割り当てを受けた品質要件
       design/                   # 設計
-        README.md               # 設計領域の索引と設計の記録
         architecture.md         # 文脈と範囲、解決戦略、構成要素、実行時の流れ
         decisions.md            # 代替案を比べた重要な設計判断
         risks.md                # 既知の欠陥、技術的負債、受容したリスク（任意）

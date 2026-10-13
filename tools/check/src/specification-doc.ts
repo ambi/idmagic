@@ -31,8 +31,8 @@ export type SpecificationValidation = {
  * 機能スライスは、機能仕様（`README.md` と任意の名前の章）と例の付録（`acceptance.feature.md`）を持つ。
  * 機能に閉じた仕組みは機能仕様の「実現方式」の節に書くので、機能スライスの `design.md` は
  * どの種別でもない。過去の revision にあっても規範の入力にしない。モジュールの `design/` は
- * 設計領域ごとの設計で、`README.md` は設計領域の索引、`decisions.md` は判断の記録の骨格を持つ。
- * システムの `docs/design/README.md` も、設計の入口として設計領域の索引を持つ。
+ * 設計領域ごとの設計で、`decisions.md` は判断の記録の骨格を持つ。設計領域の索引は、モジュールの
+ * `README.md` の最後の節「設計」と、システムの設計の入口 `docs/design/README.md` に置く。
  */
 /** What a file's name says about the grammar its body must follow. */
 export type DocumentKind =
@@ -70,8 +70,7 @@ export function documentKind(path: string): DocumentKind | undefined {
   const below = directory.match(/^docs\/modules\/[^/]+\/(.+)$/)?.[1]?.split('/')
   if (below) {
     if (below[0] === 'design') {
-      if (below.length !== 1 || !(name === 'README.md' || CHAPTER_NAME.test(name))) return undefined
-      if (name === 'README.md') return 'design-index'
+      if (below.length !== 1 || !CHAPTER_NAME.test(name)) return undefined
       return name === 'decisions.md' ? 'decision-records' : 'prose'
     }
     // 共有語彙と採用した標準は機能をまたいで使うので、モジュールの直下にだけ置く。
@@ -83,6 +82,7 @@ export function documentKind(path: string): DocumentKind | undefined {
     return name === 'README.md' || CHAPTER_NAME.test(name) ? 'specification' : undefined
   }
   if (/^docs\/modules\/[^/]+$/.test(directory)) {
+    if (name === 'README.md') return 'design-index'
     return MODULE_LEVEL_NAMES.has(name) ? (KIND_BY_NAME.get(name) ?? 'prose') : undefined
   }
   if (!canonicalDocumentNames(directory)?.includes(name)) return undefined
@@ -583,6 +583,19 @@ function validateDesignAreaIndex(
     })
     return
   }
+  // モジュールの索引は仕様の後ろに置き、規範の節と区別する。機能仕様の「実現方式」と同じ扱いである。
+  const lastSection = [...source.matchAll(/^## (.+)$/gm)].at(-1)
+  const first = rows[0]
+  if (
+    !system &&
+    first &&
+    (lastSection?.[1]?.trim() !== '設計' || first.index < (lastSection.index ?? 0))
+  ) {
+    findings.push({
+      line: lineAt(source, first.index),
+      message: 'design area index must be in the last section 設計',
+    })
+  }
   const areas: readonly string[] = DESIGN_AREAS.map(({ name }) => name)
   const listed: string[] = []
   for (const { cells, index } of rows) {
@@ -643,7 +656,7 @@ export function verifyDesignDocumentCoverage(
 ): Array<SpecificationFinding & { path: string }> {
   const findings: Array<SpecificationFinding & { path: string }> = []
   for (const path of documents.keys()) {
-    const match = path.match(/^(docs\/modules\/[^/]+\/design)\/([^/]+\.md)$/)
+    const match = path.match(/^(docs\/modules\/[^/]+)\/design\/([^/]+\.md)$/)
     if (!match) continue
     const area = DESIGN_AREAS.find((area) => area.file === match[2])
     if (!area) continue

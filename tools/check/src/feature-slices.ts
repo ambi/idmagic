@@ -85,7 +85,7 @@ function placementProblem(directory: string, view: DocumentSetView): string | un
 }
 
 /**
- * すべてのモジュールが印（`design/README.md`）を持つことを確かめる。印のないモジュールの段には
+ * すべてのモジュールが印（`README.md`）を持つことを確かめる。印のないモジュールの段には
  * どの文書も置けず、文書ごとの拒否だけでは原因が伝わらないので、モジュールごとに一件報告する。
  */
 export function verifyFeatureLayout(modules: readonly string[], view: DocumentSetView): string[] {
@@ -93,6 +93,6 @@ export function verifyFeatureLayout(modules: readonly string[], view: DocumentSe
     .filter((module) => !view.featureModules.has(module))
     .map(
       (module) =>
-        `fail  docs/modules/${module}: ${module} has no design/README.md; every module must use the feature layout`,
+        `fail  docs/modules/${module}: ${module} has no README.md; every module must use the feature layout`,
     )
 }

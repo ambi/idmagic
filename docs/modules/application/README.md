@@ -55,4 +55,15 @@ HTTP の操作とモデルの形は TypeSpec の `Application` のタグが定�
 | 文書 | 内容 |
 | --- | --- |
 | [Application の用語集](glossary.md) | このモジュールでの語義 |
-| [Application の設計](design/README.md) | 設計領域ごとの設計と重要な判断 |
+
+## 設計
+
+| 設計領域 | 区分 | 参照先 | 内容 |
+| --- | --- | --- | --- |
+| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| データ設計 | 固有設計 | [担当文書](design/data.md#application-とプロトコル設定の関係) | Application とプロトコル設定の関係、作成の原子性 |
+| セキュリティ設計 | 委譲 | [割り当て](assignment/README.md#セキュリティ上の考慮)、[サインインポリシー](sign-in-policy/README.md#セキュリティ上の考慮) | フェデレーションの関門は割り当てとサインインポリシーのセキュリティ上の考慮の節が扱う |
+
+| 文書 | 内容 |
+| --- | --- |
+| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |

@@ -86,7 +86,7 @@ describe('task-specific context', () => {
     expect(locations).toContain('docs/modules/identity-management/quality.md')
     expect(locations).toContain('docs/development/specification-first-workflow.md#仕様影響の宣言')
     expect(locations).toContain('docs/development/testing.md#主要ユースケース')
-    expect(locations).toContain('docs/modules/identity-management/design/README.md')
+    expect(locations).toContain('docs/modules/identity-management/README.md#設計')
     expect(locations.some((one) => one.startsWith('spec/modules/identity-management/'))).toBe(true)
     expect(locations.some((one) => one.includes('docs/modules/oauth2/'))).toBe(false)
     expect(locations.some((one) => one.includes('/design/audit-events.md'))).toBe(false)
@@ -115,7 +115,7 @@ describe('task-specific context', () => {
     )
     expect(plan.reading).toContainEqual({
       location: 'docs/modules/identity-management/design/audit-events.md',
-      origin: expect.stringContaining('docs/modules/identity-management/design/README.md:'),
+      origin: expect.stringContaining('docs/modules/identity-management/README.md:'),
       reason: expect.stringContaining('確定'),
       basis: 'inferred',
     })
@@ -135,7 +135,7 @@ describe('task-specific context', () => {
 
   it('derives a new owner link from the canonical index without a code registry', async () => {
     const snapshot = workspace()
-    const index = 'docs/modules/identity-management/design/README.md'
+    const index = 'docs/modules/identity-management/README.md'
     const plan = await deriveContext(
       { kind: 'refactor', targets: ['backend/idmanagement/user'], concerns: ['effects'] },
       {
@@ -143,13 +143,32 @@ describe('task-specific context', () => {
         read: (path) =>
           path === index
             ? Promise.resolve(
-                '# 設計\n\n| 文書 | 説明 |\n| --- | --- |\n| [確定の所有](data.md) | 通知と確定の境界 |\n',
+                [
+                  '# IdManagement',
+                  '',
+                  '## 機能',
+                  '',
+                  '| 機能 | 内容 |',
+                  '| --- | --- |',
+                  '| [通知の設定](user/README.md) | 通知の確定 |',
+                  '',
+                  '## 設計',
+                  '',
+                  '| 文書 | 説明 |',
+                  '| --- | --- |',
+                  '| [確定の所有](design/data.md) | 通知と確定の境界 |',
+                  '',
+                ].join('\n'),
               )
             : snapshot.read(path),
       },
     )
     expect(plan.reading.map((one) => one.location)).toContain(
       'docs/modules/identity-management/design/data.md',
+    )
+    // 設計の節の外にある機能の表は、作用の索引として読まない。
+    expect(plan.reading.map((one) => one.location)).not.toContain(
+      'docs/modules/identity-management/user/README.md',
     )
     expect(plan.reading.map((one) => one.location)).not.toContain(
       'docs/modules/identity-management/design/audit-events.md',

@@ -377,7 +377,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 旧形式は、ファイル種別（`states.md`、`decisions.md`、`internals.md`、`scenarios.feature.md`）で文書を分け、要件を Gherkin の `Rule` として宣言する形式である。
 すべてのモジュールは、この文書が定める形式へ移った。
 
-- すべてのモジュールは `design/README.md` を持つ *(checked)*。持たないモジュールには、どの文書も置けない *(checked)*。
+- すべてのモジュールは `README.md` を持つ *(checked)*。持たないモジュールには、どの文書も置けない *(checked)*。
 - モジュール、機能群、機能の階層には、旧形式のファイル種別を置けない *(checked)*。モジュール共通の `docs/modules/scenarios.feature.md` はモジュールの階層の外にあり、この規則の対象外である。
 - 文書を移しても、要件の ID とタイトルは変えない。内容も変える場合は、移動とは別の変更にする。
 - 未完了の work item は `affected_spec` を新しいパスへ直す。完了した work item は完了させる変更の中でだけ検証するので、書き換えず、旧パスの対応表も持たない。

@@ -55,4 +55,18 @@ SET の受信のエンドポイントは、[SharedSignals の標準仕様](stand
 | --- | --- |
 | [SharedSignals の用語集](glossary.md) | このモジュールでの語義 |
 | [SharedSignals の標準仕様](standards.md) | 採用する外部標準仕様 |
-| [SharedSignals の設計](design/README.md) | 設計領域ごとの設計と重要な判断 |
+
+## 設計
+
+| 設計領域 | 区分 | 参照先 | 内容 |
+| --- | --- | --- | --- |
+| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| アプリケーション設計 | 委譲 | [標準仕様](standards.md#security-event-token-set) | 管理 API はシステムのアプリケーション設計に従い、受信のエンドポイントの形は標準仕様が定める |
+| データ設計 | 委譲 | [モデル](#モデル) | Aggregate とその関係は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
+| セキュリティ設計 | 委譲 | [SET の受信](receiver/README.md#セキュリティ上の考慮)、[失効エポック](revocation/README.md#セキュリティ上の考慮) | 受信の検証はSET の受信が、エポックの公開の範囲は失効エポックのセキュリティ上の考慮の節が扱う |
+| 信頼性設計 | 委譲 | [SET の配送の設計](transmitter/README.md#信頼性) | 配送の再試行と配信不能はSET の配送の設計が扱う |
+
+| 文書 | 内容 |
+| --- | --- |
+| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |
+| [リスク](design/risks.md) | 既知の欠陥、技術的負債、受容したリスク |

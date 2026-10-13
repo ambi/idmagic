@@ -567,12 +567,12 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
         document.feature === entry.feature
       : document.category === 'module' && document.module === entry.module,
   )
-  if (!owner) return entry.title
   // 内部設計の文書は「Demo の重要な設計判断」のように、段ではなくモジュールの名前を冠する。
+  // design/ には索引の文書がないので、段の文書がなくてもモジュールの名前を外す。
   const module = documents.find(
     (document) => document.category === 'module' && document.module === entry.module,
   )
-  for (const prefix of [owner.title, module?.title]) {
+  for (const prefix of [owner?.title, module?.title]) {
     if (!prefix) continue
     // 英字の名前には空白を挟んで「の」を続け、日本語の名前には直接続ける。
     for (const possessive of [`${prefix} の`, `${prefix}の`, `${prefix} `]) {
@@ -685,6 +685,14 @@ function navigation(page: string, documents: RenderedDocument[]): string {
       )
       .map(node),
   })
+  // 設計領域の索引はモジュールの README の最後の節にあり、design/ には索引の文書がない。
+  // design/ の文書は、モジュールの README と同じく最後に「設計」の段として並べる。
+  const designDirectory = (module: string | undefined): NavigationDirectory[] => {
+    const designs = inGroup(documents, 'feature-child').filter(
+      (document) => document.module === module && document.feature === 'design',
+    )
+    return designs.length ? [{ name: '設計', documents: designs, directories: [] }] : []
+  }
   const modulesBody = [
     ...inGroup(documents, 'modules-child').map(leaf),
     ...modules.map((entry) =>
@@ -694,9 +702,17 @@ function navigation(page: string, documents: RenderedDocument[]): string {
         documents: inGroup(documents, 'module-child').filter(
           (document) => document.module === entry.module,
         ),
-        directories: inGroup(documents, 'feature')
-          .filter((feature) => feature.module === entry.module && !feature.feature?.includes('/'))
-          .map(node),
+        directories: [
+          ...inGroup(documents, 'feature')
+            .filter(
+              (feature) =>
+                feature.module === entry.module &&
+                feature.feature !== 'design' &&
+                !feature.feature?.includes('/'),
+            )
+            .map(node),
+          ...designDirectory(entry.module),
+        ],
       }),
     ),
   ].join('')

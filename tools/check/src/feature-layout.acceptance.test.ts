@@ -1,7 +1,7 @@
 /**
  * 機能仕様と内部設計を軸にした形式のモジュールを、検査が受け入れ、崩れを拒否することを確かめる。
  *
- * モジュールの印は `design/README.md` であり、この作業ツリーはそれを持つモジュール `demo` だけで組む。
+ * モジュールの印は `docs/modules/<module>/README.md` であり、この作業ツリーはそれを持つモジュール `demo` だけで組む。
  */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -93,11 +93,13 @@ const DECISIONS = [
 ].join('\n')
 
 /**
- * 最小の固有設計だけを書く。共通設計の九行は再掲しない。
+ * モジュールの README の最後の節「設計」に、最小の固有設計だけを書く。共通設計の九行は再掲しない。
  */
 function areaIndex(title: string, architecture: string): string {
   return [
     `# ${title}`,
+    '',
+    '## 設計',
     '',
     '| 設計領域 | 区分 | 参照先 | 内容 |',
     '| --- | --- | --- | --- |',
@@ -120,11 +122,10 @@ async function featureLayoutWorkspace(): Promise<string> {
       '| [Demo](../../modules/demo/README.md) | `legacy` | `domain` または `ports` の区画 | `demo` | Demo. |',
       '',
     ].join('\n'),
-    'docs/modules/demo/README.md': '# Demo\n',
     'docs/modules/demo/glossary.md': '# Demo の用語集\n',
-    'docs/modules/demo/design/README.md': areaIndex(
-      'Demo の設計',
-      '[アーキテクチャ設計](architecture.md#構成)',
+    'docs/modules/demo/README.md': areaIndex(
+      'Demo',
+      '[アーキテクチャ設計](design/architecture.md#構成)',
     ),
     'docs/modules/demo/design/architecture.md':
       '# Demo のアーキテクチャ\n\n## 構成\n\nタスクを扱う。\n',
@@ -257,14 +258,14 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
   it('共通設計だけのモジュールには領域の列挙を要求しない', async () => {
     const root = await featureLayoutWorkspace()
     await rm(join(root, 'docs/modules/demo/design/architecture.md'))
-    await write(root, 'docs/modules/demo/design/README.md', '# Demo の設計\n')
+    await write(root, 'docs/modules/demo/README.md', '# Demo\n')
     const result = await runCheck(root, 'documents')
     expect(result.code).toBe(0)
   })
 
   it('既存の固有設計を索引から消すと共通設計への委譲として隠せない', async () => {
     const root = await featureLayoutWorkspace()
-    await write(root, 'docs/modules/demo/design/README.md', '# Demo の設計\n')
+    await write(root, 'docs/modules/demo/README.md', '# Demo\n')
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
     expect(result.output).toContain('must index its own アーキテクチャ設計')
@@ -299,8 +300,8 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/design/README.md',
-      areaIndex('Demo の設計', '[構成](architecture.md#構成)').replace(
+      'docs/modules/demo/README.md',
+      areaIndex('Demo', '[構成](design/architecture.md#構成)').replace(
         'アーキテクチャ設計 |',
         '運用 |',
       ),
@@ -314,8 +315,8 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/design/README.md',
-      `${areaIndex('Demo の設計', '—')}| データ設計 | 対象外 | — | |\n`,
+      'docs/modules/demo/README.md',
+      `${areaIndex('Demo', '—')}| データ設計 | 対象外 | — | |\n`,
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
@@ -327,8 +328,8 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/design/README.md',
-      `${areaIndex('Demo の設計', '[構成](architecture.md#構成)')}| データ設計 | 対象外 | [保存](architecture.md#構成) | 保存しない |\n`,
+      'docs/modules/demo/README.md',
+      `${areaIndex('Demo', '[構成](design/architecture.md#構成)')}| データ設計 | 対象外 | [保存](design/architecture.md#構成) | 保存しない |\n`,
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
@@ -339,8 +340,8 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/design/README.md',
-      areaIndex('Demo の設計', '[構成](architecture.md#ない節)'),
+      'docs/modules/demo/README.md',
+      areaIndex('Demo', '[構成](design/architecture.md#ない節)'),
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
@@ -351,8 +352,8 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/design/README.md',
-      areaIndex('Demo の設計', '[構成](missing.md#構成)'),
+      'docs/modules/demo/README.md',
+      areaIndex('Demo', '[構成](design/missing.md#構成)'),
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
@@ -398,12 +399,33 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     expect(result.output).toContain('must have a design area index')
   })
 
-  it('requires every context to have design/README.md', async () => {
+  it('requires every module to have README.md', async () => {
     const root = await featureLayoutWorkspace()
-    await write(root, 'docs/modules/other/README.md', '# Other\n')
+    await write(root, 'docs/modules/other/glossary.md', '# Other の用語集\n')
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('other has no design/README.md')
+    expect(result.output).toContain('other has no README.md')
+  })
+
+  /** 設計領域の索引はモジュールの README の最後の節に置き、`design/` に別の入口を置かない。 */
+  it('rejects a separate design index in the design directory', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(root, 'docs/modules/demo/design/README.md', '# Demo の設計\n')
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('docs/modules/demo/design/README.md')
+  })
+
+  it('rejects a design area index outside the last section 設計', async () => {
+    const root = await featureLayoutWorkspace()
+    await write(
+      root,
+      'docs/modules/demo/README.md',
+      `${areaIndex('Demo', '[構成](design/architecture.md#構成)')}\n## 機能\n\nタスクを扱う。\n`,
+    )
+    const result = await runCheck(root, 'documents')
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('design area index must be in the last section 設計')
   })
 
   it('rejects the per-kind files of the former layout directly under a context', async () => {

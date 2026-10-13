@@ -72,4 +72,21 @@ HTTP の操作とモデルの形は TypeSpec の `Identity Management` のタグ
 | --- | --- |
 | [IdManagement の用語集](glossary.md) | このモジュールでの語義 |
 | [IdManagement の品質要件](quality.md) | このモジュールに割り当てた品質要件 |
-| [IdManagement の設計](design/README.md) | 設計領域ごとの設計と重要な判断 |
+
+## 設計
+
+| 設計領域 | 区分 | 参照先 | 内容 |
+| --- | --- | --- | --- |
+| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| データ設計 | 固有設計 | [担当文書](design/data.md#aggregate-と永続化) | Aggregate と永続化、保持と削除、排他と一意性、テナントの属性スキーマ |
+| セキュリティ設計 | 委譲 | [管理 API の認可](admin-access/README.md#概要)、[認可設計](../../design/security/authorization.md#主体の種類) | 管理 API の認可は機能 管理 API の認可 が、システム全体の認可は認可設計が扱う |
+| 信頼性設計 | 固有設計 | [担当文書](design/reliability.md#idmanagement-の信頼性) | 障害の症状、原因、直し方 |
+| 性能設計 | 固有設計 | [担当文書](design/performance.md#実効ポリシーを超えるエクスポート) | 実効ポリシーを超えるエクスポート |
+| 検証設計 | 委譲 | [性能](design/performance.md#実効ポリシーを超えるエクスポート) | 品質要件の確かめ方は性能に置き、それ以外はシステムの検証設計に従う |
+
+| 文書 | 内容 |
+| --- | --- |
+| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |
+| [リスク](design/risks.md) | 既知の欠陥、技術的負債、受容したリスク |
+| [CSV の往復変換](design/csv-transfer.md) | User と Group の CSV のエクスポートとインポートが共有する仕組み |
+| [イベントと監査の記録](design/audit-events.md) | ドメインイベント、監査の記録、下流への通知の経路と、確定との関係 |

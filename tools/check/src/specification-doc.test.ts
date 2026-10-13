@@ -20,17 +20,17 @@ const messages = (path: string, source: string) =>
   validateDocument(path, source).findings.map((finding) => finding.message)
 
 describe('共通設計を既定とする索引', () => {
-  const path = 'docs/modules/demo/design/README.md'
+  const path = 'docs/modules/demo/README.md'
   const index = (row: string) =>
-    `# Demo の設計\n\n| 設計領域 | 区分 | 参照先 | 内容 |\n| --- | --- | --- | --- |\n${row}\n`
+    `# Demo\n\n## 設計\n\n| 設計領域 | 区分 | 参照先 | 内容 |\n| --- | --- | --- | --- |\n${row}\n`
 
   it('共通設計だけのモジュールに九行を要求しない', () => {
-    expect(messages(path, '# Demo の設計\n')).toEqual([])
+    expect(messages(path, '# Demo\n')).toEqual([])
   })
 
   it.each([
-    '| アーキテクチャ設計 | 固有設計 | [構成](architecture.md#構成) | 固有の構成 |',
-    '| データ設計 | 委譲 | [保存](../task/README.md#保存) | タスクに委ねる |',
+    '| アーキテクチャ設計 | 固有設計 | [構成](design/architecture.md#構成) | 固有の構成 |',
+    '| データ設計 | 委譲 | [保存](task/README.md#保存) | タスクに委ねる |',
     '| データ設計 | 対象外 | — | 永続状態を保存しない |',
   ])('有効な区分の行を受け入れる: %s', (row) => {
     expect(messages(path, index(row))).toEqual([])
@@ -158,7 +158,8 @@ describe('documentKind', () => {
     expect(documentKind('docs/modules/demo/people/user/lifecycle.md')).toBe('specification')
     expect(documentKind('docs/modules/demo/people/user/design.md')).toBeUndefined()
     expect(documentKind('docs/modules/demo/people/user/acceptance.feature.md')).toBe('examples')
-    expect(documentKind('docs/modules/demo/design/README.md')).toBe('design-index')
+    expect(documentKind('docs/modules/demo/README.md')).toBe('design-index')
+    expect(documentKind('docs/modules/demo/design/README.md')).toBeUndefined()
     expect(documentKind('docs/design/README.md')).toBe('design-index')
     expect(documentKind('docs/modules/demo/quality.md')).toBe('prose')
     expect(documentKind('docs/modules/demo/design/csv-transfer.md')).toBe('prose')

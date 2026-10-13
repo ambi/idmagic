@@ -98,8 +98,8 @@ The demo module.
 }
 
 const moduleDesignDocument = {
-  path: 'docs/modules/demo/design/README.md',
-  source: '# Demo の内部設計\n\n構成。\n',
+  path: 'docs/modules/demo/design/architecture.md',
+  source: '# Demo のアーキテクチャ\n\n構成。\n',
 }
 
 const runDocument = {
@@ -355,7 +355,7 @@ describe('renderDocumentationSite', () => {
       'docs/formats/documentation-guide.html',
       'docs/formats/index.html',
       'docs/formats/work-item-format.html',
-      'docs/modules/demo/design/index.html',
+      'docs/modules/demo/design/architecture.html',
       'docs/modules/demo/glossary.html',
       'docs/modules/demo/index.html',
       'docs/modules/demo/quality.html',
@@ -434,7 +434,7 @@ describe('renderDocumentationSite', () => {
     const page = site().files['docs/modules/demo/index.html']
 
     // 最後の「例」は、モジュールの下に入れ子になった機能スライス（実行）の子である。
-    expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', '例'])
+    expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', '例', 'アーキテクチャ'])
     expect(page).not.toContain('>glossary.md<')
   })
 
@@ -473,7 +473,7 @@ describe('renderDocumentationSite', () => {
 
     expect(page).toContain('REQ-DEMO-002')
     expect(result.files['docs/modules/demo/user/index.html']).toBeDefined()
-    expect(childLabels(page)).toEqual(['例'])
+    expect(childLabels(page)).toEqual(['例', 'アーキテクチャ'])
     const moduleBranch = sidebar(page).slice(sidebar(page).indexOf('>Demo</a>'))
     expect(moduleBranch).toContain('>ユーザー</a>')
   })
@@ -483,7 +483,7 @@ describe('renderDocumentationSite', () => {
       documents: [
         rootDocument,
         { path: 'docs/modules/demo/README.md', source: '# Demo\n\nデモを扱う。\n' },
-        { path: 'docs/modules/demo/design/README.md', source: '# Demo の内部設計\n\n構成。\n' },
+
         {
           path: 'docs/modules/demo/design/decisions.md',
           source: '# Demo の重要な設計判断\n\n## 物理削除しない\n\n### 背景\n\n参照がある。\n',
@@ -558,7 +558,6 @@ describe('renderDocumentationSite', () => {
     const task = result.files['docs/modules/demo/work/task/index.html'] ?? ''
 
     for (const page of [
-      'docs/modules/demo/design/index.html',
       'docs/modules/demo/design/decisions.html',
       'docs/modules/demo/work/index.html',
       'docs/modules/demo/work/task/lifecycle.html',
@@ -598,9 +597,14 @@ describe('renderDocumentationSite', () => {
     expect(result.files['docs/modules/demo/work/task/acceptance.html']).toContain(
       'scenario-keyword when',
     )
-    expect(childLabels(task)).toEqual(['重要な設計判断', 'ライフサイクル', '例'])
+    expect(childLabels(task)).toEqual(['ライフサイクル', '例', '重要な設計判断'])
     const groupBranch = sidebar(task).slice(sidebar(task).indexOf('>作業</a>'))
     expect(groupBranch).toContain('>タスク</a>')
+    // 設計の索引はモジュールの README の節にあるので、design/ の文書はモジュールの「設計」の段に並べる。
+    const moduleBranch = sidebar(task).slice(sidebar(task).indexOf('>Demo</a>'))
+    expect(moduleBranch).toContain('<summary><span class="nav-label">設計</span></summary>')
+    expect(moduleBranch).toContain('>重要な設計判断</a>')
+    expect(result.files['docs/modules/demo/design/decisions.html']).toBeDefined()
   })
 
   it('keeps a parent page distinct from its children and removes Japanese possession', () => {

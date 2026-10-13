@@ -47,4 +47,19 @@ HTTP の操作とモデルの形は TypeSpec の `WS-Federation` のタグが定
 | --- | --- |
 | [WsFederation の用語集](glossary.md) | このモジュールでの語義 |
 | [WsFederation の標準仕様](standards.md) | 採用する外部標準仕様 |
-| [WsFederation の設計](design/README.md) | 設計領域ごとの設計と重要な判断 |
+
+## 設計
+
+| 設計領域 | 区分 | 参照先 | 内容 |
+| --- | --- | --- | --- |
+| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| アプリケーション設計 | 委譲 | [標準仕様](standards.md#web-services-federation-language-ws-federation-version-12) | 管理 API はシステムのアプリケーション設計に従い、プロトコルの形は標準仕様が定める |
+| データ設計 | 委譲 | [モデル](#モデル) | RP の項目は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
+| セキュリティ設計 | 固有設計 | [担当文書](design/security.md#テナント単位の署名) | テナント単位の署名、認可の境界 |
+| 信頼性設計 | 委譲 | [RP と Entra フェデレーションの管理の設計](relying-party/README.md#信頼性) | Entra のフェデレーションの障害の切り分けはRP と Entra フェデレーションの管理の設計が扱い、それ以外に固有の仕組みはない |
+| 検証設計 | 固有設計 | [担当文書](design/verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
+
+| 文書 | 内容 |
+| --- | --- |
+| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |
+| [フェデレーションメタデータ](design/federation-metadata.md) | `federationmetadata.xml` と MEX が広告する内容と、署名証明書の公開 |

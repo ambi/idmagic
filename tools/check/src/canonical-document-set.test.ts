@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { verifyCanonicalDocumentSet } from './canonical-document-set.ts'
 
 /** モジュールの印。印のないモジュールの段には、どの文書も置けない。 */
-const marker = { directory: 'docs/modules/demo/design', files: ['README.md'] }
+const marker = { directory: 'docs/modules/demo', files: ['README.md'] }
 
 describe('verifyCanonicalDocumentSet', () => {
   it('accepts a directory holding only canonical documents', () => {
@@ -52,13 +52,13 @@ describe('verifyCanonicalDocumentSet', () => {
     )
   })
 
-  it('admits no document in a context without design/README.md', () => {
+  it('admits no document in a module without README.md', () => {
     const findings = verifyCanonicalDocumentSet([
-      { directory: 'docs/modules/demo', files: ['README.md', 'scenarios.feature.md'] },
+      { directory: 'docs/modules/demo', files: ['glossary.md', 'scenarios.feature.md'] },
       { directory: 'docs/modules/demo/user', files: ['README.md'] },
     ])
     expect(findings.map((finding) => finding.path)).toEqual([
-      'docs/modules/demo/README.md',
+      'docs/modules/demo/glossary.md',
       'docs/modules/demo/scenarios.feature.md',
       'docs/modules/demo/user/README.md',
     ])

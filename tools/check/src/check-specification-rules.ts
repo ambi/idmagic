@@ -72,9 +72,7 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
   }
 
   const featureModules = new Set(
-    domainFiles.flatMap(
-      (path) => path.match(/^docs\/modules\/([^/]+)\/design\/README\.md$/)?.[1] ?? [],
-    ),
+    domainFiles.flatMap((path) => path.match(/^docs\/modules\/([^/]+)\/README\.md$/)?.[1] ?? []),
   )
   const parents = new Set(domainFiles.map((path) => posix.dirname(posix.dirname(path))))
   const inFeatureModule = (path: string) => featureModules.has(path.split('/')[2] ?? '')

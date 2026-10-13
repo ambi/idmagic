@@ -34,8 +34,6 @@ const VALID_REQUEST_EXAMPLES = [
 ].join('\n')
 
 /** 固有設計がないので、共通設計だけを適用する最小の入口。 */
-const DESIGN_INDEX = ['# Demo の設計', ''].join('\n')
-
 /**
  * 機能スライスに、要件を宣言する機能仕様と例の付録を置く。`node` はモジュールからの相対パスで、
  * 機能群の下の機能スライスも指せる。
@@ -73,7 +71,7 @@ async function workspace(): Promise<string> {
     ].join('\n'),
   )
   await writeFile(join(root, 'docs', 'modules', 'demo', 'README.md'), '# Demo\n')
-  await writeFile(join(root, 'docs', 'modules', 'demo', 'design', 'README.md'), DESIGN_INDEX)
+
   return root
 }
 
@@ -172,7 +170,7 @@ async function checkWorkItems(root: string): Promise<{ code: number; output: str
 describe('文書検査', () => {
   it('accepts a directory whose Markdown files are all canonical documents', async () => {
     const result = await checkDocuments(await workspace())
-    expect(result.output).toContain('ok  4 canonical document(s)')
+    expect(result.output).toContain('ok  3 canonical document(s)')
     expect(result.code).toBe(0)
   })
 
@@ -182,9 +180,9 @@ describe('文書検査', () => {
    */
   it('lists every passing document only when asked', async () => {
     const root = await workspace()
-    expect((await checkDocuments(root)).output).not.toContain('docs/modules/demo/design/README.md')
+    expect((await checkDocuments(root)).output).not.toContain('docs/modules/demo/README.md')
     const verbose = await checkDocuments(root, '--verbose')
-    expect(verbose.output).toContain('docs/modules/demo/design/README.md')
+    expect(verbose.output).toContain('docs/modules/demo/README.md')
     expect(verbose.code).toBe(0)
   })
 

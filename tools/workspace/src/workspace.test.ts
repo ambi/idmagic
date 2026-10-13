@@ -71,7 +71,10 @@ async function workspace(): Promise<string> {
   await writeFile(join(root, 'docs', 'design', 'security', 'README.md'), '# Security Design\n')
   await writeFile(join(root, 'docs', 'design', 'security', 'authorization.md'), '# Authorization\n')
   await writeFile(join(root, 'docs', 'modules', 'demo', 'README.md'), '# Demo\n')
-  await writeFile(join(root, 'docs', 'modules', 'demo', 'design', 'README.md'), '# Demo Design\n')
+  await writeFile(
+    join(root, 'docs', 'modules', 'demo', 'design', 'decisions.md'),
+    '# Demo の重要な設計判断\n',
+  )
   return root
 }
 
@@ -85,7 +88,7 @@ describe('discoverWorkspaceConfig', () => {
       'docs/design/security/README.md',
       'docs/design/security/authorization.md',
       'docs/modules/demo/README.md',
-      'docs/modules/demo/design/README.md',
+      'docs/modules/demo/design/decisions.md',
       'docs/requirements/README.md',
       'docs/requirements/quality.md',
     ])

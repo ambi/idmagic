@@ -115,14 +115,18 @@ export async function deriveContext(
         'Quality requirements allocated to the target module.',
       )
     }
-    const index = `${moduleDirectory}/design/README.md`
-    if (workspace.exists(index)) {
+    // 設計領域の索引と設計の記録は、モジュールの README の最後の節「設計」が並べる。
+    const index = entry
+    const source = workspace.exists(index) ? await workspace.read(index) : ''
+    const designLine = source.split('\n').indexOf('## 設計') + 1
+    if (designLine > 0) {
       await addModule(
-        index,
+        `${index}#設計`,
         'Shared design and known risks are linked by this module index; expand only the relevant links.',
       )
       if (seed.concerns.includes('effects')) {
-        for (const designRow of markdownRows(await workspace.read(index))) {
+        const designRows = markdownRows(source).filter((row) => row.line > designLine)
+        for (const designRow of designRows) {
           const description = designRow.cells.map((cell) => cell.text).join(' ')
           if (!/確定|通知|監査|イベント|トランザクション/.test(description)) continue
           for (const cell of designRow.cells) {

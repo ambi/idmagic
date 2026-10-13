@@ -49,4 +49,19 @@ SCIM のエンドポイントとモデルの形は TypeSpec の `Sourcing` の�
 | --- | --- |
 | [Sourcing の用語集](glossary.md) | このモジュールでの語義 |
 | [Sourcing の標準仕様](standards.md) | 採用する外部標準仕様 |
-| [Sourcing の設計](design/README.md) | 設計領域ごとの設計と重要な判断 |
+
+## 設計
+
+| 設計領域 | 区分 | 参照先 | 内容 |
+| --- | --- | --- | --- |
+| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| アプリケーション設計 | 委譲 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema) | SCIM のエンドポイントの形は標準仕様と TypeSpec が定める |
+| データ設計 | 委譲 | [モデル](#モデル) | 対応の記録は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
+| セキュリティ設計 | 委譲 | [SCIM による取り込み](scim/README.md#セキュリティ上の考慮) | トークンによるテナントの束縛はSCIM による取り込みのセキュリティ上の考慮の節が扱う |
+| 信頼性設計 | 委譲 | [SCIM による取り込みの設計](scim/README.md#信頼性) | 作成の失敗の後始末はSCIM による取り込みの設計が扱う |
+| 検証設計 | 固有設計 | [担当文書](design/verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
+
+| 文書 | 内容 |
+| --- | --- |
+| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |
+| [リスク](design/risks.md) | 既知の欠陥、技術的負債、受容したリスク |

@@ -126,8 +126,11 @@ export function canonicalDocumentNames(directory: string): readonly string[] | u
  */
 export const MODULE_DOCUMENTS = ['README.md', 'glossary.md', 'standards.md', 'quality.md'] as const
 
-/** モジュールの内部設計の段に置く固定の文書。横断的概念は任意の名前で並べる。 */
-export const DESIGN_DOCUMENTS = ['README.md', 'decisions.md'] as const
+/**
+ * モジュールの内部設計の段に置く固定の文書。横断的概念は任意の名前で並べる。設計領域の索引は
+ * モジュールの `README.md` の最後の節に置き、この段に別の入口を置かない。
+ */
+export const DESIGN_DOCUMENTS = ['decisions.md'] as const
 
 /**
  * 機能スライスの固定の文書。長くなった機能仕様の章は任意の名前で並べる。機能に閉じた仕組みは
@@ -162,7 +165,7 @@ export interface DocumentAllowance {
 /** 段の集合から読み取った、名前の判定に要る事実。 */
 export interface DocumentSetView {
   /**
-   * `design/README.md` を持つモジュールの名前。この印のないモジュールの段には、どの文書も置けない。
+   * `README.md` を持つモジュールの名前。この印のないモジュールの段には、どの文書も置けない。
    * 設定を読まずに同じ判定ができるよう、ファイルの有無で決める。
    */
   featureModules: ReadonlySet<string>
@@ -174,8 +177,8 @@ export function describeDocumentSet(listings: readonly DirectoryListing[]): Docu
   const featureModules = new Set<string>()
   const parents = new Set<string>()
   for (const listing of listings) {
-    const design = listing.directory.match(/^docs\/modules\/([^/]+)\/design$/)?.[1]
-    if (design && listing.files.includes('README.md')) featureModules.add(design)
+    const module = listing.directory.match(/^docs\/modules\/([^/]+)$/)?.[1]
+    if (module && listing.files.includes('README.md')) featureModules.add(module)
     const parent = listing.directory.slice(0, Math.max(0, listing.directory.lastIndexOf('/')))
     if (parent) parents.add(parent)
   }
