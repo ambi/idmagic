@@ -249,6 +249,11 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 `depends_on` は配置を含まない既存の識別子を保つ。
 移動後に `mise run check-work-items` と `mise run check-links` を実行する。
 
+同じコマンドは、main に取り込み済みでその変更に含まれない完了記録を、状態、全文を含むコミット（`archived_from`）、題名、要約だけに縮める（`mise run archive-work-items` でも実行できる）。
+完了させる記録は全文のまま検証を受け、取り込まれた後の完了で縮む。
+縮めた記録は形と `archived_from` だけを検査し、全文は `git show <archived_from>:<パス>` で読む。
+縮めた記録へはアンカーなしでリンクする。
+
 ```markdown
 ## 完了
 - **完了日**: 2026-01-01

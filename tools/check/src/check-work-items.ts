@@ -2,6 +2,7 @@ import { basename } from 'node:path'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { readReleasePhase } from './release-state.ts'
 import { compareOpenApi, type JsonSchema } from './api-compat.ts'
+import { isArchived, missingArchivedRevisions, verifyArchivedShape } from './archived-work-item.ts'
 import {
   claimsSpecificationAddition,
   diffFeatureMaturities,
@@ -58,7 +59,10 @@ export async function loadWorkItems(
   return Promise.all(
     (await workItemPaths(snapshot)).map(async (path): Promise<ParsedWorkItem> => {
       const result = validate(path, await snapshot.read(path), 'work-item')
-      return { id: basename(path, '.md'), path, data: result.data, formatFindings: result.findings }
+      const formatFindings = isArchived(result.data)
+        ? verifyArchivedShape(result.data!).map((message) => ({ line: 1, column: 1, message }))
+        : result.findings
+      return { id: basename(path, '.md'), path, data: result.data, formatFindings }
     }),
   )
 }
@@ -205,6 +209,8 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
     if (!record.path.startsWith(`${directory}/`)) {
       lines.push(`${record.path}: status ${status} belongs in ${directory}`)
     }
+    // 縮めた記録の証拠と参照は、全文を含む archived_from のコミットで検証済みである。
+    if (isArchived(record.data)) continue
     lines.push(
       ...verifyWorkItemReferences(record.data, repository).map(
         (finding) => `${record.path}: ${finding}`,
@@ -217,6 +223,14 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
       ),
     )
   }
+  lines.push(
+    ...missingArchivedRevisions(
+      snapshot.root,
+      verified
+        .filter((record) => isArchived(record.data))
+        .map((record) => ({ path: record.path, revision: String(record.data!.archived_from) })),
+    ),
+  )
   const identifiers = verifyWorkItemIdentifiers(dependencyRecords)
   lines.push(
     ...[...verifyWorkItemDependencies(dependencyRecords), ...identifiers.findings].map(

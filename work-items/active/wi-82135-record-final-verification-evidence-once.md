@@ -16,7 +16,7 @@ spec_impact:
 
 ## 動機
 
-[wi-26617 の実装結果](../done/wi-26617-remove-module-types-from-fixtures-and-observability-libraries.md#実装結果と完了の前提)と完了節には、同じ RED と変異検出と局所検証の説明が重複している。
+[wi-26617](../done/wi-26617-remove-module-types-from-fixtures-and-observability-libraries.md) の全文（`ab02067fc` の時点）の「実装結果と完了の前提」と完了節には、同じ RED と変異検出と局所検証の説明が重複している。
 最終結果の記録と、途中の失敗や組み合わせの変化を残すことには、それぞれ意味がある。
 ただし、同じ証拠を複数箇所で更新すると、書き直しの費用と不一致が生じる。
 最終的な証拠の記載先を一か所に決め、途中の記録には最終結果から復元できない判断だけを残したい。

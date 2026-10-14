@@ -868,6 +868,11 @@ description = "Move a completed or cancelled work item and update its Markdown l
 dir = "tools"
 run = "bun run work-item/src/main.ts \"$@\""
 
+[tasks.archive-work-items]
+description = "Collapse completed work items already on main to their title and summary"
+dir = "tools"
+run = "bun run work-item/src/archive-main.ts"
+
 [tasks.brief]
 description = "Show what one work item should be read from"
 # 規範 ID から仕様本文、TypeSpec の宣言位置、その ID を名指す既存のテストと実装、先行する

@@ -1,61 +1,10 @@
 ---
 status: completed
-authors: [tn]
-risk: medium
-created_at: 2026-07-10
+archived_from: 3ae2ae69f793e14a35138e05bbaa367b50666b2e
 ---
 
 # フロントエンドの重要操作を単体テストで保護し、カバレッジを引き上げる
 
-## Motivation
-現状のフロントエンド単体テストは共通 UI 部品と一部の画面を十分に検証している一方、
-全体の行カバレッジは 16.25% に留まり、認証・アカウント管理・管理コンソールの主要な
-成功・失敗経路が変更時の回帰から十分に保護されていない。重要な利用者操作を高速な
-単体・コンポーネントテストで保護し、E2E テストだけに依存しない品質保証を確立する。
+`frontend/src/api/` の未テスト API クライアント（account、admin、authFlow、oidc）にリクエスト内容・成功応答・失敗応答のテストを追加済みだった状態から、後発の `webauthn.ts`（パスキーの JSON ⇔ ブラウザ API 変換）に対して `webauthn.test.ts` を新規追加し、Scope で挙げた全 API クライアントのテストを揃えた。
 
-## Scope
-- `ui/src/api/` の未テスト API クライアントについて、リクエスト内容、成功応答、失敗応答を検証する Vitest テスト。
-- 後続 work item のベースラインとして `just test-ui-cover` の結果を記録する。
-
-## Out of Scope
-- 認証・アカウント画面のコンポーネントテスト（`wi-169` の対象）。
-- 管理コンソール画面のコンポーネントテスト（`wi-170` の対象）。
-- 共有シェルと集約カバレッジ 40% 達成（`wi-171` の対象）。
-- UI の仕様・振る舞い・画面設計の変更。
-- E2E テストの拡充。
-- CI のカバレッジ閾値強制および差分カバレッジの導入（`wi-131-testing-governance-and-ci-enforcement` の対象）。
-- カバレッジ値のみを上げるための意味のないアサーションや、テスト困難な実装を隠す除外設定。
-
-## Plan
-- Vitest と React Testing Library を用い、副作用は API モジュール境界でモックし、利用者が観測できる結果を検証する。
-- まず 0% の API クライアントと、認証・アカウント・管理操作の高リスク画面を優先する。
-- 画面全体のテストが困難な場合は、振る舞いを変えない範囲で presentation と副作用を分離し、抽出したロジックもテストする。
-- ルート定義のような薄い生成・配線コードを目標達成のためだけにテストするのではなく、主要な業務操作の網羅を優先する。
-
-## Tasks
-- [x] T001 [Baseline] `just test-ui-cover` で対象別の未カバー経路と全体カバレッジを記録する（2026-07-10: Lines 16.25%、API クライアントおよび管理・認証画面の多くが 0%）。
-- [x] T002 [Test] `ui/src/api/` の未テスト API クライアントに、成功・失敗・境界条件のテストを追加する（account、admin、authFlow、oidc、WebAuthn）。
-- [x] T003 [Verify] `just test-ui-cover` と `just verify-ui` を実行し、API 層 Lines 58.5%（webauthn.ts 100%）と全テスト成功を確認する。
-
-## Verification
-- `just test-ui-cover` — 全テストが成功し、API 層 Lines カバレッジが 50% 以上であること。
-- `just verify-ui` — format check、lint、typecheck、ユニットテスト、production build が成功すること。
-
-## Risk Notes
-DOM、ルーター、非同期 API のモックが実装詳細に依存すると、リファクタリング時に壊れやすい。
-画面の公開された表示と利用者操作を中心にアサートし、共通のモックヘルパーを最小限に保つことで軽減する。
-
-## Completion
-
-- **Completed At**: 2026-07-11
-- **Summary**: `frontend/src/api/` の未テスト API クライアント（account、admin、authFlow、oidc）にリクエスト内容・成功応答・失敗応答のテストを追加済みだった状態から、後発の `webauthn.ts`（パスキーの JSON ⇔ ブラウザ API 変換）に対して `webauthn.test.ts` を新規追加し、Scope で挙げた全 API クライアントのテストを揃えた。
-- **Affected Guarantees State**: API 契約・画面の仕様や振る舞いに変更はない。テスト追加のみで SCL の変更は不要。
-- **Verification Results**:
-  - `just test-ui-cover` — passed（`src/api` Lines 58.5%、`webauthn.ts` は Lines/Branches/Funcs/Statements すべて 100%）
-  - `just verify-ui` — passed（format check、lint、typecheck、unit tests 212/212、production build）
-- **Evidence**:
-  - 実行日: 2026-07-11
-  - 実行環境: ローカル開発環境
-  - 実行主体: Claude Code
-  - 対象ソース版: `main`（コミット前）
-  - 保存先: CI 外部成果物なし。上記コマンドの成功結果を本記録に要約。
+全文は `git show 3ae2ae69f793e14a35138e05bbaa367b50666b2e:<このファイルのパス>` で読む。
