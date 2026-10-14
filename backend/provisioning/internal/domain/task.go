@@ -75,7 +75,6 @@ const (
 	EventUserProvisioned         ProvisioningTaskLifecycleEvent = "UserProvisioned"
 	EventUserDeprovisioned       ProvisioningTaskLifecycleEvent = "UserDeprovisioned"
 	EventGroupPushed             ProvisioningTaskLifecycleEvent = "GroupPushed"
-	EventGroupMembershipPushed   ProvisioningTaskLifecycleEvent = "GroupMembershipPushed"
 	EventUserProvisioningFailed  ProvisioningTaskLifecycleEvent = "UserProvisioningFailed"
 )
 
@@ -92,7 +91,6 @@ var provisioningTaskTransitions = []provisioningTaskTransition{
 	{TaskInFlight, EventUserProvisioned, TaskSucceeded},
 	{TaskInFlight, EventUserDeprovisioned, TaskSucceeded},
 	{TaskInFlight, EventGroupPushed, TaskSucceeded},
-	{TaskInFlight, EventGroupMembershipPushed, TaskSucceeded},
 	{TaskInFlight, EventUserProvisioningFailed, TaskDeadLetter},
 }
 

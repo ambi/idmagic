@@ -139,19 +139,6 @@ type GroupPushed struct {
 func (e *GroupPushed) EventType() string     { return "GroupPushed" }
 func (e *GroupPushed) OccurredAt() time.Time { return e.At }
 
-// GroupMembershipPushed is emitted when a group membership PATCH task reaches
-// succeeded.
-type GroupMembershipPushed struct {
-	At           time.Time `json:"-"`
-	TenantID     string    `json:"tenantId"`
-	ConnectionID string    `json:"connectionId"`
-	TaskID       string    `json:"taskId"`
-	GroupID      string    `json:"groupId"`
-}
-
-func (e *GroupMembershipPushed) EventType() string     { return "GroupMembershipPushed" }
-func (e *GroupMembershipPushed) OccurredAt() time.Time { return e.At }
-
 // ConnectionQuarantined is emitted when a connection's health becomes quarantined
 // (consecutive failures or accidental deletion guard exceeded).
 type ConnectionQuarantined struct {

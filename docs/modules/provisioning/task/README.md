@@ -34,7 +34,6 @@
 | in_flight | UserProvisioned | `source_type == 'user'` | succeeded |  |
 | in_flight | UserDeprovisioned | `source_type == 'user'` | succeeded |  |
 | in_flight | GroupPushed | `source_type == 'group'` | succeeded |  |
-| in_flight | GroupMembershipPushed | `source_type == 'group'` | succeeded |  |
 | in_flight | UserProvisioningFailed | — | dead_letter |  |
 | dead_letter | 管理者による再試行 | — | pending |  |
 

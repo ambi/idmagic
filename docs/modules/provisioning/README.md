@@ -37,7 +37,7 @@ HTTP の操作とモデルの形は TypeSpec の `Provisioning` のタグが、�
 | `ProvisioningCapture`（イベント同期） | `IdManagement` の User の変更、`Application` の割り当ての変更 | このモジュールが提供する | 変更を確定した後に呼ばれ、一致する有効な接続ごとに `pending` のタスクを作る |
 | `AttributeSource`、`GroupMemberSource` | `IdManagement` の User と Group を読むアダプター | このモジュールが定める | 実行の時点の属性とメンバーを読む |
 | `provisioning_task` の Job | `Jobs` が実行する | このモジュールが定める | タスクを一回試行する |
-| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `ProvisioningConnection…`、`ProvisioningCredentialRotated`、`ProvisioningTaskStarted`、`UserProvisioned`、`UserDeprovisioned`、`UserProvisioningFailed`、`GroupPushed`、`GroupMembershipPushed`、`ConnectionQuarantined`、`FullResyncCompleted` |
+| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `ProvisioningConnection…`、`ProvisioningCredentialRotated`、`ProvisioningTaskStarted`、`UserProvisioned`、`UserDeprovisioned`、`UserProvisioningFailed`、`GroupPushed`、`ConnectionQuarantined`、`FullResyncCompleted` |
 
 ## 機能
 

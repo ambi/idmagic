@@ -312,7 +312,7 @@ func (c *Client) updateResource(ctx context.Context, path string, doc map[string
 }
 
 // PatchGroupMembers sends a single add/remove Operation against a Group's
-// members attribute (docs/modules/provisioning/ events.GroupMembershipPushed).
+// members attribute.
 // op must be "add" or "remove".
 func (c *Client) PatchGroupMembers(ctx context.Context, remoteGroupID, op string, remoteUserIDs []string) error {
 	members := make([]map[string]string, 0, len(remoteUserIDs))

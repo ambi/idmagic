@@ -18,7 +18,6 @@ var (
 		EventUserProvisioned,
 		EventUserDeprovisioned,
 		EventGroupPushed,
-		EventGroupMembershipPushed,
 		EventUserProvisioningFailed,
 	}
 )
@@ -33,7 +32,6 @@ func TestTransitionProvisioningTaskLifecycle_DeclaredTransitions(t *testing.T) {
 		{TaskInFlight, EventUserProvisioned, TaskSucceeded},
 		{TaskInFlight, EventUserDeprovisioned, TaskSucceeded},
 		{TaskInFlight, EventGroupPushed, TaskSucceeded},
-		{TaskInFlight, EventGroupMembershipPushed, TaskSucceeded},
 		{TaskInFlight, EventUserProvisioningFailed, TaskDeadLetter},
 	}
 	for _, tt := range tests {
@@ -45,6 +43,14 @@ func TestTransitionProvisioningTaskLifecycle_DeclaredTransitions(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("TransitionProvisioningTaskLifecycle(%q, %q) = %q, want %q", tt.from, tt.event, got, tt.want)
 		}
+	}
+}
+
+// メンバーシップは Group のタスクの中で送り、成功は GroupPushed が表す。
+// メンバーシップだけの成功を表すイベントは遷移の表にない。
+func TestTransitionProvisioningTaskLifecycle_RejectsMembershipOnlySuccess(t *testing.T) {
+	if _, err := TransitionProvisioningTaskLifecycle(TaskInFlight, ProvisioningTaskLifecycleEvent("GroupMembershipPushed")); err == nil {
+		t.Fatal("GroupMembershipPushed must not complete a task")
 	}
 }
 

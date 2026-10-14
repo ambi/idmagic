@@ -29,7 +29,6 @@ func TestProvisioningEvents_ImplementDomainEvent(t *testing.T) {
 		&UserDeprovisioned{At: now, TenantID: "tenant-a", ConnectionID: "app-1", TaskID: "task-1", UserID: "user-1", Action: DeprovisionDeactivate},
 		&UserProvisioningFailed{At: now, TenantID: "tenant-a", ConnectionID: "app-1", TaskID: "task-1", SourceType: SourceTypeUser, SourceID: "user-1", Error: "boom"},
 		&GroupPushed{At: now, TenantID: "tenant-a", ConnectionID: "app-1", TaskID: "task-1", GroupID: "group-1", RemoteID: "remote-1"},
-		&GroupMembershipPushed{At: now, TenantID: "tenant-a", ConnectionID: "app-1", TaskID: "task-1", GroupID: "group-1"},
 		&ConnectionQuarantined{At: now, TenantID: "tenant-a", ApplicationID: "app-1", Reason: "too many failures", ConsecutiveFailures: 10},
 		&ProvisioningConnectionQuarantineCleared{At: now, TenantID: "tenant-a", ApplicationID: "app-1"},
 		&FullResyncCompleted{At: now, TenantID: "tenant-a", ApplicationID: "app-1", TotalSubjects: 10, SucceededCount: 9, FailedCount: 1},
@@ -37,7 +36,7 @@ func TestProvisioningEvents_ImplementDomainEvent(t *testing.T) {
 	wantTypes := []string{
 		"ProvisioningConnectionRegistered", "ProvisioningConnectionUpdated", "ProvisioningConnectionDisabled",
 		"ProvisioningConnectionDeleted", "ProvisioningCredentialRotated", "ProvisioningTaskStarted",
-		"UserProvisioned", "UserDeprovisioned", "UserProvisioningFailed", "GroupPushed", "GroupMembershipPushed",
+		"UserProvisioned", "UserDeprovisioned", "UserProvisioningFailed", "GroupPushed",
 		"ConnectionQuarantined", "ProvisioningConnectionQuarantineCleared", "FullResyncCompleted",
 	}
 	if len(events) != len(wantTypes) {
@@ -72,7 +71,6 @@ func TestProvisioningEvents_MarshalWithTheContractFieldNames(t *testing.T) {
 		{&UserDeprovisioned{At: now}, []string{"tenantId", "connectionId", "taskId", "userId", "action"}},
 		{&UserProvisioningFailed{At: now}, []string{"tenantId", "connectionId", "taskId", "sourceType", "sourceId", "error"}},
 		{&GroupPushed{At: now}, []string{"tenantId", "connectionId", "taskId", "groupId", "remoteId"}},
-		{&GroupMembershipPushed{At: now}, []string{"tenantId", "connectionId", "taskId", "groupId"}},
 		{&ConnectionQuarantined{At: now}, []string{"tenantId", "applicationId", "reason", "consecutiveFailures"}},
 		{&ProvisioningConnectionQuarantineCleared{At: now}, []string{"tenantId", "applicationId"}},
 		{&FullResyncCompleted{At: now}, []string{"tenantId", "applicationId", "totalSubjects", "succeededCount", "failedCount"}},

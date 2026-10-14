@@ -398,7 +398,7 @@ model UserProvisioningFailed {
 }
 
 
-@doc("グループの作成、更新、deactivate、または削除が下流に届き、タスクが succeeded として確定した。")
+@doc("グループの作成、更新、deactivate、または削除と、そのメンバーシップの追加が下流に届き、タスクが succeeded として確定した。")
 model GroupPushed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -406,16 +406,6 @@ model GroupPushed {
   taskId: string;
   groupId: string;
   remoteId: string;
-}
-
-
-@doc("グループのメンバーシップの変更が members への PATCH として下流に届き、タスクが succeeded として確定した。")
-model GroupMembershipPushed {
-  occurredAt: utcDateTime;
-  tenantId: string;
-  connectionId: string;
-  taskId: string;
-  groupId: string;
 }
 
 

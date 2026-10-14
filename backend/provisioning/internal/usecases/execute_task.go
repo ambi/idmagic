@@ -275,7 +275,7 @@ func groupDisplayName(attrs map[string]any, config *domain.GroupPushConfig) any 
 }
 
 // pushGroupMembers sends the Group's current direct members downstream as one
-// incremental `add` (docs/modules/provisioning/ events.GroupMembershipPushed).
+// incremental `add`. Its success is part of the Group task and is reported by GroupPushed.
 //
 // Only members IdMagic has already provisioned are sent: a member with no
 // RemoteResourceLink has no downstream id to name, and inventing one would make
