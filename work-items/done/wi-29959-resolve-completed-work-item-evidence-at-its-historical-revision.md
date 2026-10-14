@@ -1,5 +1,5 @@
 ---
-status: pending
+status: cancelled
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -31,7 +31,7 @@ spec_impact:
 ## 対象外
 
 - 過去の作業記録や証拠の削除、過去の検証成功を現在の成功へ読み替えること。
-- ファイルの完了時の移動は[配置の改善](../done/wi-35829-keep-active-and-completed-work-items-at-the-same-depth.md)が扱う。
+- ファイルの完了時の移動は[配置の改善](wi-35829-keep-active-and-completed-work-items-at-the-same-depth.md)が扱う。
 - 履歴比較に必要な旧形式の読取処理を、用途の確認なしにすべて削除すること。
 
 ## 設計
@@ -71,3 +71,11 @@ spec_impact:
 
 履歴の取得が通常検査に増えると、解決の費用を別の形で増やす。
 通常の変更では必要な記録だけを読み、全履歴の詳細解決を必須にしない。
+
+## 完了
+- **完了日**: 2026-10-14
+- **要約**:
+  取り消す。動機の「完了済みの記録も現在まで解決する」要求は、2026-10-10 のコミット `1f47b7ea2`（refactor(tools): verify completed work items only when they change）で既になくなっていた。
+  完了した記録は完了させる変更の中で一度だけ検証され、仕様の移動に追従させる必要も、旧パスの対応表もない。
+  さらに [wi-29555](wi-29555-collapse-completed-work-item-records-into-summaries.md) で、main に取り込んだ完了記録は `affected_spec` を持たない要約へ縮み、全文は `archived_from` のコミットで読む。
+  当時の revision で証拠を解決する仕組みを作る理由は残らないので、製品と仕様には変更を加えずに終了する。
