@@ -1,0 +1,5 @@
+# rg、fd、ast-grep の既定の検索から外す。git の追跡と git grep には影響しない。
+# 完了した作業記録は当時の記録、ベースラインは生成した OpenAPI の写しで、日常の検索では読まない。
+# 探すときは rg --no-ignore-dot、fd --no-ignore を付ける。
+/work-items/done/
+/spec/*.openapi.baseline.json
