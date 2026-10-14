@@ -12,7 +12,7 @@
 
 | 作業 | 読む文書 |
 | --- | --- |
-| 作業項目の着手 <!-- context: kinds=* --> | [開発サイクル](docs/development/specification-first-workflow.md#3-開発サイクル)、[証拠の要件](docs/development/specification-first-workflow.md#4-証拠の要件)、[着手時の文脈と設計](docs/formats/work-item-format.md#着手時の文脈と設計)。証拠の子節は今回の変更に適用するものだけを読む |
+| 作業項目の着手 <!-- context: kinds=* --> | [開発サイクル](docs/development/specification-first-workflow.md#3-開発サイクル)、[証拠の要件](docs/development/specification-first-workflow.md#4-証拠の要件)、[着手時の文脈と設計](docs/formats/work-item-format.md#着手時の文脈と設計)。子節は今回の変更に適用するものだけを読む |
 | 機能と振る舞いの変更 <!-- context: kinds=feature,bugfix,operations --> | [仕様の漏れを探す観点](docs/development/specification-first-workflow.md#仕様の漏れを探す観点)、[主要ユースケース](docs/development/testing.md#主要ユースケース) |
 | 文書、コメント、UI 文言の執筆または推敲 <!-- context: kinds=docs targets=docs,.agents,AGENTS.md,frontend --> | [文章の言語](docs/development/writing-language.md)。日本語の文章品質と整形には `japanese-tech-writing` スキルを使う |
 | コードに含む文章の変更 <!-- context: targets=backend,frontend,tools,.agents,AGENTS.md --> | [文章の言語](docs/development/writing-language.md) |

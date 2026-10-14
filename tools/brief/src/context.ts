@@ -7,6 +7,8 @@ export type ContextSeed = {
   kind: string
   targets: readonly string[]
   concerns: readonly string[]
+  /** `spec_impact: none` の変更では false。契約の concern がない限り TypeSpec を候補にしない。 */
+  specification?: boolean
 }
 
 export type ContextCandidate = {
@@ -153,7 +155,10 @@ export async function deriveContext(
         'Known module risks may constrain a boundary change.',
       )
     }
-    if (workspace.exists(specification)) {
+    if (
+      workspace.exists(specification) &&
+      (seed.specification !== false || seed.concerns.includes('contract'))
+    ) {
       for (const file of await workspace.files(specification)) {
         if (file.endsWith('.tsp'))
           await addModule(
@@ -226,7 +231,54 @@ function matchesScope(scope: string, seed: ContextSeed): boolean {
   })
 }
 
-export function renderContext(plan: ContextPlan): string[] {
+export type ReadingSize = { bytes: number; children: { anchor: string; bytes: number }[] }
+
+/**
+ * 候補を開いたときに読む量を測る。
+ * 節の候補は最初の子見出しまでを本体とし、子節は本体と別に名前と量を並べる。
+ * 子節は変更に当てはまるものだけを読むので、合計には本体だけを数える。
+ */
+export async function measureCandidates(
+  plan: ContextPlan,
+  workspace: WorkspaceSnapshot,
+): Promise<Map<string, ReadingSize>> {
+  const sizes = new Map<string, ReadingSize>()
+  for (const candidate of plan.reading) {
+    const [path, anchor] = candidate.location.split('#')
+    const source = await workspace.read(path!)
+    if (!anchor) {
+      sizes.set(candidate.location, { bytes: Buffer.byteLength(source), children: [] })
+      continue
+    }
+    const lines = source.split('\n')
+    const headings = markdown
+      .parse(source, {})
+      .filter((token) => token.type === 'heading_open')
+      .map((token) => ({
+        level: Number(token.tag.slice(1)),
+        line: token.map![0],
+        anchor: [...markdownAnchors(lines[token.map![0]]!)][0] ?? '',
+      }))
+    const index = headings.findIndex((heading) => markdownAnchors(lines[heading.line]!).has(anchor))
+    const heading = headings[index]!
+    const following = headings.slice(index + 1)
+    const end = following.find((one) => one.level <= heading.level)?.line ?? lines.length
+    const children = following.filter((one) => one.line < end && one.level === heading.level + 1)
+    const span = (from: number, to: number) => Buffer.byteLength(lines.slice(from, to).join('\n'))
+    sizes.set(candidate.location, {
+      bytes: span(heading.line, children[0]?.line ?? end),
+      children: children.map((child, position) => ({
+        anchor: child.anchor,
+        bytes: span(child.line, children[position + 1]?.line ?? end),
+      })),
+    })
+  }
+  return sizes
+}
+
+const kilobytes = (bytes: number) => `${Math.max(1, Math.round(bytes / 1024))} KB`
+
+export function renderContext(plan: ContextPlan, sizes?: Map<string, ReadingSize>): string[] {
   const lines = [
     '## Task context candidates',
     '',
@@ -234,8 +286,18 @@ export function renderContext(plan: ContextPlan): string[] {
     '',
   ]
   for (const candidate of plan.reading) {
+    const size = sizes?.get(candidate.location)
     lines.push(
-      `- ${candidate.location} [${candidate.basis}]; origin: ${candidate.origin}; reason: ${candidate.reason}`,
+      `- ${candidate.location} [${candidate.basis}]${size ? ` ${kilobytes(size.bytes)}` : ''}; origin: ${candidate.origin}; reason: ${candidate.reason}`,
+    )
+    for (const child of size?.children ?? [])
+      lines.push(`  - #${child.anchor} ${kilobytes(child.bytes)}`)
+  }
+  if (sizes) {
+    const total = [...sizes.values()].reduce((sum, size) => sum + size.bytes, 0)
+    lines.push(
+      '',
+      `Lead sections total ${kilobytes(total)}. Open a child section only when it applies to this change.`,
     )
   }
   lines.push('', '## Verification task candidates', '')

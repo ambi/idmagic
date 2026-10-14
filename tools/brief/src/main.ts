@@ -9,7 +9,7 @@ import { readdir, readFile, realpath } from 'node:fs/promises'
 import { basename, relative, resolve } from 'node:path'
 import { parseFrontmatterAndMarkdown } from '../../check/src/work-item-markdown.ts'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
-import { deriveContext, neighborCandidates, renderContext } from './context.ts'
+import { deriveContext, measureCandidates, neighborCandidates, renderContext } from './context.ts'
 import { collectTraces } from './traces.ts'
 import {
   COVERAGE_NOTE,
@@ -110,6 +110,7 @@ const seed = {
   kind: record.change_kind ?? 'feature',
   targets: [] as string[],
   concerns: [] as string[],
+  specification: record.spec_impact?.kind !== 'none',
 }
 const include = new Set<string>()
 try {
@@ -164,7 +165,7 @@ const lines: string[] = [`# ${basename(path, '.md')}`, '', `Record: ${path}`, ''
 lines.push(
   `Kind: ${seed.kind}; targets: ${seed.targets.join(', ') || 'none (supply --target)'}; concerns: ${seed.concerns.join(', ') || 'none'}`,
   '',
-  ...renderContext(context),
+  ...renderContext(context, await measureCandidates(context, workspace)),
 )
 if (affected.length === 0) {
   const impact = record.spec_impact

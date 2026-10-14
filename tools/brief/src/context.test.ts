@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { resolve } from 'node:path'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
-import { deriveContext, neighborCandidates } from './context.ts'
+import { deriveContext, measureCandidates, neighborCandidates, renderContext } from './context.ts'
 
 const root = resolve(import.meta.dir, '../../..')
 const workspace = () => createWorkspaceSnapshot(root)
@@ -173,5 +173,52 @@ describe('task-specific context', () => {
     expect(plan.reading.map((one) => one.location)).not.toContain(
       'docs/modules/identity-management/design/audit-events.md',
     )
+  })
+})
+
+describe('reading size', () => {
+  it('measures the lead of a section and lists its children with their sizes', async () => {
+    const snapshot = workspace()
+    const plan = await deriveContext(
+      { kind: 'refactor', targets: ['backend/authentication'], concerns: [] },
+      snapshot,
+    )
+    const sizes = await measureCandidates(plan, snapshot)
+    const cycle = sizes.get('docs/development/specification-first-workflow.md#3-開発サイクル')!
+    const source = await snapshot.read('docs/development/specification-first-workflow.md')
+    const section = source.slice(source.indexOf('## 3. 開発サイクル'), source.indexOf('## 4. '))
+    expect(cycle.bytes).toBeGreaterThan(0)
+    const childBytes = cycle.children.reduce((sum, one) => sum + one.bytes, 0)
+    // 本体は子節を含まない。本体と子節を足すと節の全体になる。
+    expect(cycle.bytes + childBytes).toBeLessThanOrEqual(Buffer.byteLength(section))
+    expect(cycle.children.map((one) => one.anchor)).toContain('仕様にない振る舞いの分類')
+    expect(cycle.children.every((one) => one.bytes > 0)).toBe(true)
+
+    const rendered = renderContext(plan, sizes).join('\n')
+    expect(rendered).toMatch(/3-開発サイクル \[explicit\] \d+ KB/)
+    expect(rendered).toMatch(/ {2}- #仕様にない振る舞いの分類 \d+ KB/)
+    expect(rendered).toMatch(/Lead sections total \d+ KB/)
+  })
+
+  it('leaves TypeSpec out when the change declares no specification impact', async () => {
+    const withoutImpact = await deriveContext(
+      { kind: 'refactor', targets: ['backend/authentication'], concerns: [], specification: false },
+      workspace(),
+    )
+    expect(withoutImpact.reading.some((one) => one.location.startsWith('spec/'))).toBe(false)
+    expect(withoutImpact.reading.map((one) => one.location)).toContain(
+      'docs/modules/authentication/README.md#公開する契約',
+    )
+
+    const contract = await deriveContext(
+      {
+        kind: 'refactor',
+        targets: ['backend/authentication'],
+        concerns: ['contract'],
+        specification: false,
+      },
+      workspace(),
+    )
+    expect(contract.reading.some((one) => one.location.startsWith('spec/'))).toBe(true)
   })
 })
