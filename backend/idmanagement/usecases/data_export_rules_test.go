@@ -40,6 +40,10 @@ func TestStartDataExportRejectsDuplicateColumnsAndUnknownFiltersWithoutAJob(t *t
 	if _, err := idmusecases.StartDataExport(ctx, deps, "admin", "user", []string{"email"}, map[string]string{"status": "sleeping"}, now); !errors.Is(err, idmusecases.ErrInvalidExportFilter) {
 		t.Fatalf("未知の状態: err=%v, want ErrInvalidExportFilter", err)
 	}
+	// 状態の表にない値は、どの User も取らないので絞り込みにも使えない。
+	if _, err := idmusecases.StartDataExport(ctx, deps, "admin", "user", []string{"email"}, map[string]string{"status": "suspended"}, now); !errors.Is(err, idmusecases.ErrInvalidExportFilter) {
+		t.Fatalf("状態の表にない状態: err=%v, want ErrInvalidExportFilter", err)
+	}
 	if count := exportCount(t, deps, idmdomain.ExportTargetUser) + exportCount(t, deps, idmdomain.ExportTargetGroup); count != 0 {
 		t.Fatalf("拒否した開始がエクスポートを %d 件作った", count)
 	}

@@ -6,9 +6,6 @@ enum UserStatus {
   Disabled: "disabled",
   PendingDeletion: "pending_deletion",
   Deleted: "deleted",
-  Locked: "locked",
-  Staged: "staged",
-  Suspended: "suspended",
 }
 
 

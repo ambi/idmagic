@@ -54,15 +54,7 @@ const ACTION_KINDS: WorkflowActionKind[] = [
   'send_email',
 ]
 
-const USER_STATUS_VALUES = [
-  'active',
-  'disabled',
-  'pending_deletion',
-  'deleted',
-  'locked',
-  'staged',
-  'suspended',
-] as const
+const USER_STATUS_VALUES = ['active', 'disabled', 'pending_deletion', 'deleted'] as const
 
 const VISIBILITY_VALUES = ['visible', 'hidden'] as const
 

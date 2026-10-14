@@ -37,9 +37,8 @@ func (k AgentKind) Valid() bool {
 // ===============================================================
 
 // UserStatus は UserLifecycle.status。User の運用状態の **唯一の真実** で、
-// 状態機械 UserLifecycle (states セクション) と一致する。Active / Disabled /
-// Deleted が状態機械の状態、Locked / Staged / Suspended は Okta lifecycle_state /
-// Keycloak 相当の追加状態。Active 以外は認証不可。Deleted は終端 (tombstone)。
+// 状態機械 UserLifecycle (states セクション) と一致する。Active 以外は認証不可。
+// Deleted は終端 (tombstone)。
 // 「いつ遷移したか」は監査イベント (UserDisabled / UserDeleted 等) と
 // UserLifecycle.status_changed_at が持つので、専用の disabled_at / deleted_at は持たない。
 type UserStatus string
@@ -49,15 +48,11 @@ const (
 	UserStatusDisabled        UserStatus = "disabled"
 	UserStatusPendingDeletion UserStatus = "pending_deletion"
 	UserStatusDeleted         UserStatus = "deleted"
-	UserStatusLocked          UserStatus = "locked"
-	UserStatusStaged          UserStatus = "staged"
-	UserStatusSuspended       UserStatus = "suspended"
 )
 
 func (s UserStatus) Valid() bool {
 	switch s {
-	case UserStatusActive, UserStatusDisabled, UserStatusPendingDeletion, UserStatusDeleted,
-		UserStatusLocked, UserStatusStaged, UserStatusSuspended:
+	case UserStatusActive, UserStatusDisabled, UserStatusPendingDeletion, UserStatusDeleted:
 		return true
 	}
 	return false

@@ -46,9 +46,9 @@ func TestUserStatusReflectsLifecycle(t *testing.T) {
 	if u.IsActive() || !u.IsDeleted() {
 		t.Fatal("deleted status must be non-active and deleted")
 	}
-	u.Lifecycle.Status = idmdomain.UserStatusSuspended
+	u.Lifecycle.Status = idmdomain.UserStatusDisabled
 	if u.IsActive() {
-		t.Fatal("suspended must be non-active")
+		t.Fatal("disabled must be non-active")
 	}
 }
 

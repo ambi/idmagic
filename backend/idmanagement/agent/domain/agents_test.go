@@ -33,9 +33,9 @@ func TestEnumValid(t *testing.T) {
 		{"userstatus disabled", idmdomain.UserStatusDisabled, true},
 		{"userstatus pending", idmdomain.UserStatusPendingDeletion, true},
 		{"userstatus deleted", idmdomain.UserStatusDeleted, true},
-		{"userstatus locked", idmdomain.UserStatusLocked, true},
-		{"userstatus staged", idmdomain.UserStatusStaged, true},
-		{"userstatus suspended", idmdomain.UserStatusSuspended, true},
+		{"userstatus locked", idmdomain.UserStatus("locked"), false},
+		{"userstatus staged", idmdomain.UserStatus("staged"), false},
+		{"userstatus suspended", idmdomain.UserStatus("suspended"), false},
 		{"userstatus bad", idmdomain.UserStatus("x"), false},
 
 		{"reqaction update password", idmdomain.RequiredActionUpdatePassword, true},
