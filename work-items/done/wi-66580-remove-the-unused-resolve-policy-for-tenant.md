@@ -1,5 +1,5 @@
 ---
-status: pending
+status: cancelled
 authors: [tn]
 risk: low
 reversibility: reversible
@@ -56,3 +56,10 @@ spec_impact:
 ## リスク
 
 - 低い。呼び出し元がないので、削除してもビルドが通ればどの経路も変わらない。
+
+## 完了
+- **完了日**: 2026-10-14
+- **要約**:
+  取り消す。対象の `ResolvePolicyForTenant` は、2026-10-11 のコミット `c79c59978`（refactor(authentication): publish the judgments other modules use through domain and ports）で既に削除されていた。
+  2026-10-14 の時点で、`backend/` にこの名前は残っていない。
+  製品と仕様には変更を加えずに終了する。

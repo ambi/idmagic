@@ -1,5 +1,5 @@
 ---
-status: pending
+status: cancelled
 authors: [tn]
 risk: low
 created_at: 2026-07-28
@@ -49,3 +49,11 @@ depends_on: []
 
 ## Risk Notes
 - 既存のテストやインフラ基盤で Kafka に依存している箇所が壊れるリスク。削除範囲を慎重に見極める。
+
+## 完了
+- **完了日**: 2026-10-14
+- **要約**:
+  取り消す。この記録の対象は、2026-07-28 のコミット `89f4b3189`（refactor(idmagic): remove external message brokers and the outbox relay）で既に撤廃されていた。
+  2026-10-14 の時点で、`go.mod`、`backend/`、`infra/` に Kafka と Pub/Sub と `idmagic-relay` は残っていない。
+  `docs/design/infrastructure/platform.md` の Pub/Sub の記述は、マネージド実行環境の自動スケールの基準の説明であり、この記録の対象ではない。
+  製品と仕様には変更を加えずに終了する。
