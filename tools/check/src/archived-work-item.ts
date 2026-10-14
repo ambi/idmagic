@@ -1,12 +1,13 @@
 /**
- * main に取り込んだ完了記録は、題名と要約と `archived_from` だけに縮める。
- * 全文は `archived_from` のコミットにあり、縮めた記録は形だけを検査する。
+ * `work-items/done/` の記録は、状態と題名と要約だけに縮めてある。縮めた記録は形だけを検査する。
+ * 全文は `work-items/active/` のパスの履歴にある。初期に縮めた記録は `archived_from` で
+ * 全文のコミットを指す。
  */
 
 const FIELDS = new Set(['id', 'title', 'status', 'archived_from'])
 
-export function isArchived(data: Record<string, unknown> | undefined): boolean {
-  return data !== undefined && 'archived_from' in data
+export function isArchived(path: string): boolean {
+  return path.startsWith('work-items/done/')
 }
 
 /** 縮めた記録の形の所見。`id` と `title` はファイル名と見出しから解析器が補う。 */
@@ -14,7 +15,10 @@ export function verifyArchivedShape(data: Record<string, unknown>): string[] {
   const findings: string[] = []
   if (data.status !== 'completed' && data.status !== 'cancelled')
     findings.push('archived record must be completed or cancelled')
-  if (typeof data.archived_from !== 'string' || !/^[0-9a-f]{7,40}$/.test(data.archived_from))
+  if (
+    data.archived_from !== undefined &&
+    (typeof data.archived_from !== 'string' || !/^[0-9a-f]{7,40}$/.test(data.archived_from))
+  )
     findings.push('archived_from must be a commit id')
   if (typeof data.title !== 'string' || data.title === '')
     findings.push('archived record must keep its title')

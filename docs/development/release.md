@@ -9,7 +9,7 @@
 初回公開前の通常変更は、現在仕様との整合検査と作業記録で完了できる。
 集約検査と CI は `mise run check-published-api-compat` の公開条件を使い、既存バージョン API との互換性を必須判定から外す。
 新機能、非推奨、廃止と成熟度の変更にも利用者向け告知断片を要求しない。
-`documentation_impact` は理由付きの `none` を宣言でき、任意に宣言した告知断片は検査する。
+`documentation_impact` は宣言せず、任意に宣言した告知断片は検査する。
 成熟度の昇格には引き続き主要ユースケースの証拠、セキュリティ確認、互換性または移行の結果を残すが、告知文書のパスは初回公開後に要求する。
 
 公開状態は、現在仕様への整合、認可、テナント分離、既存データの保持と移行の検証を免除しない。
@@ -34,13 +34,12 @@ API、各実行レーンのワーカー、バッチ、UI は、同じ Git コミ
 既存の断片は初回公開向けの下書きとして保存し、`docs/releases/changes/` と `docs/releases/upgrades/` から探索できる。
 公開済みの変更履歴としては扱わない。
 初回公開の担当者は現行の機能一覧と利用開始条件を確認し、必要な下書きを選び直して公開文書へ束ねる。
-未公開期間の完了記録に告知を遡及して要求しない。
 
 リリース担当者は断片を対象バージョンへ束ねるが、元の断片を生成物にはしない。変更の作業者が利用者への影響と移行条件を知っている間に編集し、レビューで内容を確定するためである。バージョンの変更履歴は `changes/` の対象断片を索引し、更新ガイドは `upgrades/` の対象断片を順序付ける。リリース後も断片は work item ID で参照できる履歴として残す。
 
-着手した work item は `documentation_impact` で `none`、`release_note`、`upgrade_note`、`deprecation_notice`、`removal_notice` のいずれかを宣言する。
+公開後に着手した work item は `documentation_impact` で `none`、`release_note`、`upgrade_note`、`deprecation_notice`、`removal_notice` のいずれかを宣言する。
 `none` は具体的な理由を必要とする。
-それ以外は必要な断片の予定パスを宣言し、完了時にそのファイルが work item ID と安定した仕様参照を持つことを `mise run check-work-items` で検査する。
+それ以外は必要な断片の予定パスを宣言し、完了時にそのファイルが work item ID と安定した仕様参照を持つことを `mise run move-work-item` が検査する。
 公開後は自動判定が示す最低水準より強い影響は選べるが、弱い影響は選べない。
 
 `experimental` から `preview`、または `preview` から `supported` へ進める変更は、[作業項目の主要ユースケースの証拠](../formats/work-item-format.md#主要ユースケースの証拠)、セキュリティ確認、互換性または移行の結果、一次情報文書上の成熟度表示を残す。

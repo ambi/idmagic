@@ -15,57 +15,85 @@ const item = 'wi-10001-one.md'
 const from = `work-items/active/${item}`
 const to = `work-items/done/${item}`
 
-for (const status of ['completed', 'cancelled']) {
-  it(`${status} の移動で共通文書へのリンクを保ち、項目間のリンクを直す`, async () => {
-    const root = await mkdtemp(join(tmpdir(), 'idmagic-move-item-'))
-    roots.push(root)
+async function workspace(documents: Map<string, string>): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), 'idmagic-move-item-'))
+  roots.push(root)
+  await mkdir(join(root, 'spec'), { recursive: true })
+  await writeFile(join(root, 'spec/release-state.json'), '{"phase":"unpublished"}')
+  for (const [path, source] of documents) {
+    await mkdir(dirname(join(root, path)), { recursive: true })
+    await writeFile(join(root, path), source)
+  }
+  return root
+}
+
+const record = (status: string, summary = '\n## 要約\n\n文書の表記を直した。\n') =>
+  `---\nstatus: ${status}\nauthors: [tn]\nrisk: low\ncreated_at: 2026-10-15\ndepends_on: []\nchange_kind: docs\nspec_impact: { kind: none, reason: "文書の表記だけを直し、HTTP 応答、永続状態、イベントは変えない。" }\n---\n\n# 項目\n\n## 動機\n\n[文書](../../docs/README.md) を直す。\n\n## 対象範囲\n\n- 表記\n\n## 対象外\n\n- 内容\n\n## 検証\n\n- check-links\n\n## リスク\n\nない。\n${summary}`
+
+for (const [flags, status] of [
+  [[], 'completed'],
+  [['--cancel'], 'cancelled'],
+] as const) {
+  it(`${status} の移動で要約に縮め、ほかの文書から記録へのリンクを直す`, async () => {
     const documents = new Map([
-      [
-        from,
-        `---\nstatus: ${status}\n---\n\n# 項目\n\n[文書](../../docs/README.md)\n[次](wi-10002-two.md)\n`,
-      ],
+      [from, record('in_progress')],
       ['work-items/active/wi-10002-two.md', '# 次\n\n[前](wi-10001-one.md#項目)\n'],
-      ['work-items/done/wi-10003-three.md', '# 過去\n\n[前](../active/wi-10001-one.md)\n'],
       ['docs/README.md', '# 文書\n'],
     ])
-    for (const [path, source] of documents) {
-      await mkdir(dirname(join(root, path)), { recursive: true })
-      await writeFile(join(root, path), source)
-    }
+    const root = await workspace(documents)
 
-    const command = Bun.spawnSync(['bun', resolve(import.meta.dir, 'main.ts'), 'wi-10001'], {
-      cwd: root,
-      env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
-    })
+    const command = Bun.spawnSync(
+      ['bun', resolve(import.meta.dir, 'main.ts'), 'wi-10001', ...flags],
+      { cwd: root, env: { ...process.env, SPEC_WORKSPACE_ROOT: root } },
+    )
+    expect(command.stderr.toString()).toBe('')
     expect(command.exitCode).toBe(0)
     expect(await Bun.file(join(root, from)).exists()).toBe(false)
+    const moved = await readFile(join(root, to), 'utf8')
+    expect(moved).toBe(
+      [
+        '---',
+        `status: ${status}`,
+        '---',
+        '',
+        '# 項目',
+        '',
+        '文書の表記を直した。',
+        '',
+        '全文は `git log -1 -- work-items/active/wi-10001-one.md` が示すコミットの親、またはそのコミットで読む。',
+        '',
+      ].join('\n'),
+    )
     documents.delete(from)
-    documents.set(to, await readFile(join(root, to), 'utf8'))
-    for (const path of documents.keys())
-      documents.set(path, await readFile(join(root, path), 'utf8'))
-    expect(documents.get(to)).toContain('[文書](../../docs/README.md)')
-    expect(documents.get(to)).toContain('[次](../active/wi-10002-two.md)')
+    documents.set(to, moved)
+    documents.set(
+      'work-items/active/wi-10002-two.md',
+      await readFile(join(root, 'work-items/active/wi-10002-two.md'), 'utf8'),
+    )
     expect(documents.get('work-items/active/wi-10002-two.md')).toContain(
       '../done/wi-10001-one.md#項目',
     )
-    expect(documents.get('work-items/done/wi-10003-three.md')).toContain('(wi-10001-one.md)')
     expect(verifyMarkdownLinks(documents, new Set(documents.keys()))).toEqual([])
   })
 }
 
-it('未完了と移動先の衝突を、書き込みの前に拒否する', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'idmagic-move-item-'))
-  roots.push(root)
-  await mkdir(join(root, 'work-items/active'), { recursive: true })
+it('要約のない記録と移動先の衝突を、書き込みの前に拒否する', async () => {
+  const withoutSummary = record('in_progress', '')
+  const root = await workspace(new Map([[from, withoutSummary]]))
+  await expect(moveWorkItem(root, 'wi-10001')).rejects.toThrow('## 要約')
+  expect(await readFile(join(root, from), 'utf8')).toBe(withoutSummary)
+  await writeFile(join(root, from), record('in_progress'))
   await mkdir(join(root, 'work-items/done'), { recursive: true })
-  const pending = '---\nstatus: pending\n---\n# 未完了\n'
-  await writeFile(join(root, from), pending)
-  await expect(moveWorkItem(root, 'wi-10001')).rejects.toThrow('completed or cancelled')
-  expect(await readFile(join(root, from), 'utf8')).toBe(pending)
-  await writeFile(join(root, from), pending.replace('pending', 'completed'))
   await writeFile(join(root, to), '# 既存\n')
   await expect(moveWorkItem(root, 'wi-10001')).rejects.toThrow('already exists')
   expect(await readFile(join(root, to), 'utf8')).toBe('# 既存\n')
+})
+
+it('完了の検査に通らない記録を、書き込みの前に拒否する', async () => {
+  const broken = `---\nstatus: in_progress\nchange_kind: bugfix\naffected_spec:\n  - { path: docs/modules/demo/README.md, requirement: REQ-DEMO-001 }\n---\n\n# 項目\n\n## 要約\n\n直した。\n`
+  const root = await workspace(new Map([[from, broken]]))
+  await expect(moveWorkItem(root, 'wi-10001')).rejects.toThrow('affected_spec path does not exist')
+  expect(await readFile(join(root, from), 'utf8')).toBe(broken)
 })
 
 it('参照定義、画像、表、引用、タイトルとコードを区別して移行する', () => {

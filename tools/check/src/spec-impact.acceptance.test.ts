@@ -414,6 +414,24 @@ describe('spec-impact: 宣言と仕様差分の整合', () => {
     expect(result.code).toBe(0)
   })
 
+  it('完了で縮めて done へ移した記録の宣言を、active のパスの履歴から読む', async () => {
+    const active = 'work-items/active/wi-10001-demo.md'
+    const repo = await repository()
+    await repo.write(TYPESPEC, 'model Task {\n  id: string;\n  name: string;\n}\n')
+    await repo.write(active, affected('in_progress', `{ path: ${TYPESPEC}, symbol: Demo.Task }`))
+    await repo.commit('feat(demo): name tasks')
+    await repo.git('rm', '--quiet', active)
+    await repo.write(
+      'work-items/done/wi-10001-demo.md',
+      ['---', 'status: completed', '---', '', '# Demo change', '', '名前を足した。', ''].join('\n'),
+    )
+    await repo.commit('docs(work-items): complete naming tasks')
+
+    const result = await repo.check(repo.base)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
+  })
+
   it('impact: conforms の規範要素を引くテストが作業範囲になければ拒否する', async () => {
     const repo = await repository()
     await repo.write(SERVICE, service('running'))

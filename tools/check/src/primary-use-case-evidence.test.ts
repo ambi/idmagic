@@ -14,7 +14,6 @@ const files: Record<string, string> = {
 const environment: PrimaryUseCaseEnvironment = {
   read: (path) => files[path],
   requiredTasks: new Set(['test-go-race']),
-  changedPaths: undefined,
 }
 
 const plan = {
@@ -26,28 +25,17 @@ const plan = {
   fault_model: '保存を行わない。',
 }
 
-const evidence = {
-  id: plan.id,
-  red: '保存されず失敗した。',
-  fault_injection: '保存を外すと失敗した。',
-}
-
 const applicable = {
   status: 'in_progress',
-  evidence_policy: 'risk-based-v4',
   change_kind: 'feature',
   affected_spec: [{ path: 'docs/modules/demo/work/run/README.md', requirement }],
 }
 
 describe('verifyPrimaryUseCaseEvidence', () => {
-  it('最小境界を一つ選んだ計画と、その RED と故障注入の結果を受理する', () => {
+  it('最小境界を一つ選んだ計画を受理し、完了時は計画したテストの実在だけを確かめる', () => {
     const record = { ...applicable, primary_use_cases: [plan] }
     expect(verifyPrimaryUseCaseEvidence(record, environment)).toEqual([])
-    const completed = {
-      ...record,
-      status: 'completed',
-      completion: { primary_use_case_evidence: [evidence] },
-    }
+    const completed = { ...record, status: 'completed' }
     expect(verifyPrimaryUseCaseEvidence(completed, environment)).toEqual([])
   })
 
@@ -121,7 +109,6 @@ describe('verifyPrimaryUseCaseEvidence', () => {
     const brokenEnvironment: PrimaryUseCaseEnvironment = {
       read: (path) => (path === unitPath ? 'func TestSomethingElse(t *testing.T) {}' : undefined),
       requiredTasks: new Set(),
-      changedPaths: undefined,
     }
     const wired = {
       ...plan,
@@ -135,7 +122,6 @@ describe('verifyPrimaryUseCaseEvidence', () => {
         ...applicable,
         status: 'completed',
         primary_use_cases: [plan, wired],
-        completion: { primary_use_case_evidence: [evidence, { ...evidence, id: wired.id }] },
       },
       brokenEnvironment,
     )
@@ -151,133 +137,6 @@ describe('verifyPrimaryUseCaseEvidence', () => {
     expect(findings).toContain(
       'primary_use_cases demo-success acceptance test task is not required by verify or CI: test-go-race',
     )
-  })
-
-  it('requires one complete evidence result for every planned use case', () => {
-    const base = { ...applicable, status: 'completed', primary_use_cases: [plan] }
-    expect(verifyPrimaryUseCaseEvidence(base, environment)).toContain(
-      'completion.primary_use_case_evidence is required for applicable work',
-    )
-    const missingResults = { red: 'RED', fault_injection: 'fault-injection' } as const
-    for (const [field, label] of Object.entries(missingResults)) {
-      expect(
-        verifyPrimaryUseCaseEvidence(
-          {
-            ...base,
-            completion: {
-              primary_use_case_evidence: [{ ...evidence, [field]: '' }],
-            },
-          },
-          environment,
-        ),
-      ).toContain(`primary use case demo-success has no ${label} result`)
-    }
-    expect(
-      verifyPrimaryUseCaseEvidence(
-        { ...base, completion: { primary_use_case_evidence: [evidence] } },
-        environment,
-      ),
-    ).toEqual([])
-  })
-
-  it('requires alternate Acceptance and Unit RED evidence for non-applicable work', () => {
-    const tooling = {
-      status: 'completed',
-      evidence_policy: 'risk-based-v4',
-      change_kind: 'tooling',
-      affected_spec: [],
-      completion: {},
-    }
-    expect(verifyPrimaryUseCaseEvidence(tooling, environment)).toEqual([
-      'completion.acceptance_red_evidence is required for non-applicable work',
-      'completion.unit_red_evidence is required for non-applicable work',
-    ])
-  })
-
-  describe('振る舞いを保つ完了の変更', () => {
-    const missingRed = [
-      'completion.acceptance_red_evidence is required for non-applicable work',
-      'completion.unit_red_evidence is required for non-applicable work',
-    ]
-    const completedDocs = {
-      status: 'completed',
-      evidence_policy: 'risk-based-v4',
-      change_kind: 'docs',
-      spec_impact: { kind: 'none', reason: '表現だけを直す。' },
-      completion: {},
-    }
-    const completedRefactor = { ...completedDocs, change_kind: 'refactor' }
-    const changed = (...paths: string[]) => ({ ...environment, changedPaths: new Set(paths) })
-    const record = 'work-items/done/wi-10001-demo.md'
-
-    it('Markdown だけを変えた仕様影響のない完了を、RED の証拠なしで受理する', () => {
-      expect(
-        verifyPrimaryUseCaseEvidence(
-          completedDocs,
-          changed(record, 'docs/development/testing.md', '.agents/skills/demo/SKILL.md'),
-        ),
-      ).toEqual([])
-    })
-
-    it('文書変更と名乗っても、Markdown 以外を変えた完了には RED の証拠を求める', () => {
-      expect(
-        verifyPrimaryUseCaseEvidence(completedDocs, changed(record, 'backend/demo/rule.go')),
-      ).toEqual(missingRed)
-    })
-
-    it('テストを変えない refactor の完了を、RED の証拠なしで受理する', () => {
-      expect(
-        verifyPrimaryUseCaseEvidence(
-          completedRefactor,
-          changed(record, 'backend/demo/rule.go', 'frontend/src/demo.tsx'),
-        ),
-      ).toEqual([])
-    })
-
-    it('テストを変えた refactor の完了には RED の証拠を求める', () => {
-      for (const test of [
-        'backend/demo/rule_test.go',
-        'backend/demo/testdata/case.json',
-        'frontend/src/demo.test.tsx',
-        'frontend/e2e/demo.spec.ts',
-        'frontend/tests/fixtures/users.json',
-        'tools/check/src/demo.test.ts',
-      ]) {
-        expect(
-          verifyPrimaryUseCaseEvidence(
-            completedRefactor,
-            changed(record, 'backend/demo/rule.go', test),
-          ),
-          test,
-        ).toEqual(missingRed)
-      }
-    })
-
-    it('refactor 以外がコードを変えた完了には RED の証拠を求める', () => {
-      expect(
-        verifyPrimaryUseCaseEvidence(
-          { ...completedDocs, change_kind: 'tooling' },
-          changed(record, 'tools/check/src/demo.ts'),
-        ),
-      ).toEqual(missingRed)
-    })
-
-    it('規範要素を変える記録は、Markdown だけの変更でも RED の証拠を求める', () => {
-      const { spec_impact: _, ...withoutSpecImpact } = completedDocs
-      expect(
-        verifyPrimaryUseCaseEvidence(
-          {
-            ...withoutSpecImpact,
-            affected_spec: [{ path: 'docs/modules/demo/work/run/README.md', requirement }],
-          },
-          changed(record, 'docs/modules/demo/work/run/README.md'),
-        ),
-      ).toEqual(missingRed)
-    })
-
-    it('差分を求められない workspace では RED の証拠を求める', () => {
-      expect(verifyPrimaryUseCaseEvidence(completedDocs, environment)).toEqual(missingRed)
-    })
   })
 
   it('detects the pre-fix evidence shapes from wi-439, wi-440, and wi-441 without feature-specific rules', () => {

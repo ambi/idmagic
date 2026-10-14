@@ -87,31 +87,9 @@ describe('validateAgainstSchema — work-item', () => {
     risk: 'low',
     risk_notes: 'none',
   }
-  const validCompletion = {
-    completed_at: '2026-06-17',
-    summary: 'done',
-    verification: [{ cmd: 'go test ./...', result: 'ok' }],
-  }
-  const validInitialContext = {
-    specification: ['docs/modules/scenarios.feature.md#REQ-DEMO-001'],
-  }
-  const validDocumentationImpact = {
-    level: 'none',
-    reason: 'Repository-only validation has no user-visible release difference.',
-    references: [],
-  }
-  const validRedEvidence = {
-    test: 'TestDemo rejects an invalid transition',
-    requirement: 'REQ-DEMO-001',
-    observed_failure: 'expected rejection, received success',
-    detection_reason: 'the assertion distinguishes the invalid transition from success',
-  }
   const validCompleted = {
     ...validWorkItem,
     status: 'completed',
-    evidence_policy: 'risk-based-v4',
-    documentation_impact: validDocumentationImpact,
-    completion: validCompletion,
   }
 
   it('accepts a minimal valid work item', () => {
@@ -266,51 +244,14 @@ describe('validateAgainstSchema — work-item', () => {
     expect(f.length).toBeGreaterThan(0)
   })
 
-  it('accepts completion embedded in a completed work item', () => {
+  it('accepts a completed work item without a completion section', () => {
     expect(validateAgainstSchema('work-item', validCompleted, '')).toEqual([])
-  })
-
-  it('requires completion when status is completed', () => {
-    const data = { ...validWorkItem, status: 'completed' }
-    const f = validateAgainstSchema('work-item', data, '')
-    expect(f.some((x) => x.message.includes('completion'))).toBe(true)
-  })
-
-  it('requires initial context once the item is in progress', () => {
-    const started = { ...validWorkItem, status: 'in_progress' }
-    expect(validateAgainstSchema('work-item', started, '')).not.toEqual([])
-    expect(
-      validateAgainstSchema(
-        'work-item',
-        {
-          ...started,
-          evidence_policy: 'risk-based-v4',
-          initial_context: validInitialContext,
-          documentation_impact: validDocumentationImpact,
-        },
-        '',
-      ),
-    ).toEqual([])
-  })
-
-  it('requires a documentation impact once the item is in progress', () => {
-    const started = {
-      ...validWorkItem,
-      status: 'in_progress',
-      evidence_policy: 'risk-based-v4',
-      initial_context: validInitialContext,
-    }
-    const findings = validateAgainstSchema('work-item', started, '')
-    expect(findings.some((finding) => finding.message.includes('documentation_impact'))).toBe(true)
   })
 
   it('accepts both compatibility and migration results in maturity evidence', () => {
     const started = {
       ...validWorkItem,
       status: 'in_progress',
-      evidence_policy: 'risk-based-v4',
-      initial_context: validInitialContext,
-      documentation_impact: validDocumentationImpact,
       maturity_evidence: [
         {
           feature: 'demo-v1',
@@ -337,9 +278,6 @@ describe('validateAgainstSchema — work-item', () => {
     const started = {
       ...validWorkItem,
       status: 'in_progress',
-      evidence_policy: 'risk-based-v4',
-      initial_context: validInitialContext,
-      documentation_impact: validDocumentationImpact,
       maturity_evidence: [evidence],
     }
     expect(validateAgainstSchema('work-item', started, '')).toEqual([])
@@ -357,56 +295,13 @@ describe('validateAgainstSchema — work-item', () => {
     ).not.toEqual([])
   })
 
-  it('requires the current evidence policy once the item is in progress', () => {
-    const started = {
-      ...validWorkItem,
-      status: 'in_progress',
-      initial_context: validInitialContext,
-      documentation_impact: validDocumentationImpact,
-    }
-    const f = validateAgainstSchema('work-item', started, '')
-    expect(f.some((x) => x.message.includes('evidence_policy'))).toBe(true)
-  })
-
   it('starts medium-risk work without an approval record', () => {
     const started = {
       ...validWorkItem,
       status: 'in_progress',
       risk: 'medium',
-      evidence_policy: 'risk-based-v4',
-      initial_context: validInitialContext,
-      documentation_impact: validDocumentationImpact,
     }
     expect(validateAgainstSchema('work-item', started, '')).toEqual([])
-  })
-
-  it('requires the evidence policy and the documentation impact when an item completes', () => {
-    for (const field of ['evidence_policy', 'documentation_impact'] as const) {
-      const { [field]: _omitted, ...completed } = validCompleted
-      const f = validateAgainstSchema('work-item', completed, '')
-      expect(f.some((x) => x.message.includes(field))).toBe(true)
-    }
-  })
-
-  it('v4 だけを受理し、より古い契約を拒否する', () => {
-    const started = {
-      ...validWorkItem,
-      status: 'in_progress',
-      risk: 'medium',
-      initial_context: validInitialContext,
-      documentation_impact: validDocumentationImpact,
-    }
-    for (const policy of ['risk-based-v1', 'risk-based-v2', 'risk-based-v3']) {
-      expect(
-        validateAgainstSchema('work-item', { ...started, evidence_policy: policy }, ''),
-      ).not.toEqual([])
-      expect(
-        validateAgainstSchema('work-item', { ...validCompleted, evidence_policy: policy }, ''),
-      ).not.toEqual([])
-    }
-    expect(
-      validateAgainstSchema('work-item', { ...started, evidence_policy: 'risk-based-v4' }, ''),
-    ).toEqual([])
   })
 
   it('rejects an affected_spec path below the retired docs/domain tree', () => {
@@ -420,79 +315,6 @@ describe('validateAgainstSchema — work-item', () => {
     expect(reference('docs/domain/demo/work/task/README.md')).not.toEqual([])
   })
 
-  it('v4 の故障、境界と実測結果を保持し、Unit と E2E の対の形を拒否する', () => {
-    const plan = {
-      id: 'demo-success',
-      requirement: 'REQ-DEMO-001',
-      observable_result: '保存値を読める。',
-      boundary: 'acceptance',
-      test: { path: 'backend/demo/demo_test.go', name: 'TestDemo', task: 'test-go-race' },
-      fault_model: '保存を外す。',
-    }
-    const completed = {
-      ...validCompleted,
-      risk: 'medium',
-      primary_use_cases: [plan],
-      completion: {
-        ...validCompletion,
-        change_resistance: '保存を外すと失敗した。',
-        primary_use_case_evidence: [
-          { id: plan.id, red: '保存されず失敗した。', fault_injection: '保存を外すと失敗した。' },
-        ],
-      },
-    }
-    expect(validateAgainstSchema('work-item', completed, '')).toEqual([])
-    for (const altered of [
-      { ...plan, boundary: 'e2e' },
-      { ...plan, fault_model: '' },
-      { ...plan, test: undefined },
-      { ...plan, boundary: 'unknown' },
-    ])
-      expect(
-        validateAgainstSchema('work-item', { ...completed, primary_use_cases: [altered] }, ''),
-      ).not.toEqual([])
-    expect(
-      validateAgainstSchema(
-        'work-item',
-        {
-          ...completed,
-          primary_use_cases: [{ ...plan, boundary: 'e2e', reason: '正式な入口の配線を観測する。' }],
-        },
-        '',
-      ),
-    ).toEqual([])
-    const { test: _test, fault_model: _fault, ...withoutSelection } = plan
-    expect(
-      validateAgainstSchema(
-        'work-item',
-        {
-          ...completed,
-          primary_use_cases: [
-            {
-              ...withoutSelection,
-              unit_test: plan.test,
-              e2e_test: plan.test,
-              unit_fault_model: plan.fault_model,
-              e2e_fault_model: plan.fault_model,
-            },
-          ],
-        },
-        '',
-      ),
-    ).not.toEqual([])
-    expect(
-      validateAgainstSchema(
-        'work-item',
-        { ...completed, completion: { ...completed.completion, change_resistance: undefined } },
-        '',
-      ),
-    ).not.toEqual([])
-  })
-
-  /**
-   * reversibility は取り消せない決定であることを記録に残す軸であって、証拠を追加で
-   * 要求する軸ではない。要求していたものは通常の Pull Request のレビューと重なっていた。
-   */
   it('asks an irreversible item for no evidence beyond its risk row', () => {
     const completed = { ...validCompleted, risk: 'low', reversibility: 'irreversible' }
     expect(validateAgainstSchema('work-item', completed, '')).toEqual([])
@@ -501,65 +323,6 @@ describe('validateAgainstSchema — work-item', () => {
   it('leaves a reversible low-risk item free of the medium-risk evidence', () => {
     const completed = { ...validCompleted, risk: 'low', reversibility: 'reversible' }
     expect(validateAgainstSchema('work-item', completed, '')).toEqual([])
-  })
-
-  it('requires an exact requirement id or an explained N/A for RED evidence', () => {
-    const completed = {
-      ...validCompleted,
-      completion: {
-        ...validCompletion,
-        acceptance_red_evidence: validRedEvidence,
-        unit_red_evidence: validRedEvidence,
-      },
-    }
-    expect(validateAgainstSchema('work-item', completed, '')).toEqual([])
-    for (const field of ['acceptance_red_evidence', 'unit_red_evidence'] as const) {
-      expect(
-        validateAgainstSchema(
-          'work-item',
-          {
-            ...completed,
-            completion: {
-              ...completed.completion,
-              [field]: { ...validRedEvidence, requirement: 'REQ-DEMO-001 trailing text' },
-            },
-          },
-          '',
-        ),
-      ).not.toEqual([])
-    }
-  })
-
-  it('requires stronger completion evidence for medium-risk work', () => {
-    const completed = { ...validCompleted, risk: 'medium' }
-    expect(validateAgainstSchema('work-item', completed, '')).not.toEqual([])
-    /** 独立検証は任意項目になった。書いても medium の要求は満たさない。 */
-    expect(
-      validateAgainstSchema(
-        'work-item',
-        {
-          ...completed,
-          completion: {
-            ...completed.completion,
-            independent_verification: 'reviewed by a separate agent',
-          },
-        },
-        '',
-      ),
-    ).not.toEqual([])
-    expect(
-      validateAgainstSchema(
-        'work-item',
-        {
-          ...completed,
-          completion: {
-            ...completed.completion,
-            change_resistance: 'the representative fault was detected',
-          },
-        },
-        '',
-      ),
-    ).toEqual([])
   })
 })
 

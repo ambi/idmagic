@@ -1,5 +1,5 @@
 ---
-status: pending
+status: in_progress
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -41,7 +41,7 @@ spec_impact:
 - `documentation_impact` は、公開状態が `published` のときだけ求める。
 - `initial_context` の記入と解決の検査を廃止する。`brief` の出力は残す。
 - 上の変更に合わせて、作業項目の形式、仕様先行のワークフロー、`implement-work-item` と `new-work-item` と `integrate-work-item` のスキルから、該当する記述を削る。
-- 置き換えられる進行中の項目を中止として記録する。[wi-82135](wi-82135-record-final-verification-evidence-once.md) は対象がなくなる。
+- 置き換えられる進行中の項目を中止として記録する。[wi-82135](../done/wi-82135-record-final-verification-evidence-once.md) は対象がなくなる。
 
 ## 対象外
 
@@ -78,12 +78,12 @@ spec_impact:
 
 ## タスク
 
-- [ ] T001 [Design] 完了の検査を棚卸しし、残す検査と消す検査を確定する。
-- [ ] T002 [Tooling] `move-work-item` が検査、縮約、移動を一度で行う。RED を先に確かめる。
-- [ ] T003 [Tooling] `evidence_policy`、未公開の間の `documentation_impact`、`initial_context`、完了節の証拠の要求を取り除く。
-- [ ] T004 [Docs] 形式、ワークフロー、スキルから該当する記述を削る。
-- [ ] T005 [Cleanup] wi-82135 を中止として記録する。
-- [ ] T006 [Verify] 起票から完了までを一つの見本の項目で通し、記録の量と手順の数の前後を記録する。
+- [x] T001 [Design] 完了の検査を棚卸しし、残す検査と消す検査を確定する。
+- [x] T002 [Tooling] `move-work-item` が検査、縮約、移動を一度で行う。RED を先に確かめる。
+- [x] T003 [Tooling] `evidence_policy`、未公開の間の `documentation_impact`、`initial_context`、完了節の証拠の要求を取り除く。
+- [x] T004 [Docs] 形式、ワークフロー、スキルから該当する記述を削る。
+- [x] T005 [Cleanup] wi-82135 を中止として記録する。
+- [x] T006 [Verify] 起票から完了までを一つの見本の項目で通し、記録の量と手順の数の前後を記録する。
 
 ## 検証
 
@@ -96,3 +96,14 @@ spec_impact:
 RED を記録しなくなると、RED を観測せずに完了する作業を記録から見つけられない。
 もともと記録は自己申告で、観測の有無を検査できなかった。
 `primary_use_cases` が名指すテストの存在と要件の参照は、引き続き検査で確かめる。
+
+## 要約
+
+`mise run spec-diff` に規範の差分はない。
+完了は `## 要約` を書いて `mise run move-work-item -- <id>`（中止は `--cancel`）を実行するだけになった。
+コマンドは全文に完了時の検査（`affected_spec` の解決、`primary_use_cases` のテストの実在、宣言した告知文書）を適用し、状態、題名、要約だけに縮めて `work-items/done/` へ移す。
+縮めた記録は `archived_from` を持たず、仕様影響の検査は全文を `work-items/active/` のパスの履歴から読む。
+完了節の証拠、`evidence_policy`、`initial_context`、公開前の `documentation_impact`、`brief` の下書き一覧、`archive-work-items` をなくした。
+RED と故障注入は手順として残し、記録しない。
+差分は 37 ファイルで 343 行の追加と 1,665 行の削除で、該当する開発文書 6 本は 173,386 バイトから 166,438 バイトになった。
+wi-82135 は新しい手順で中止した。

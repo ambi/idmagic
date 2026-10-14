@@ -107,27 +107,4 @@ describe('verifyWorkItemReferences', () => {
       'requirement does not resolve in docs/modules/demo/scenarios.feature.md: REQ-DEMO-002',
     ])
   })
-
-  it('ignores the reading list until the item is in progress', () => {
-    const record = { initial_context: { source: ['backend/removed'] } }
-    expect(verifyWorkItemReferences({ ...record, status: 'pending' }, environment)).toEqual([])
-    expect(verifyWorkItemReferences({ ...record, status: 'in_progress' }, environment)).toEqual([
-      'initial_context source does not exist: backend/removed',
-    ])
-  })
-
-  it('resolves a reading-list scenario reference to its declaring document', () => {
-    const started = (specification: string[]) =>
-      verifyWorkItemReferences(
-        { status: 'in_progress', initial_context: { specification } },
-        environment,
-      )
-    expect(started(['docs/modules/demo/scenarios.feature.md#REQ-DEMO-001'])).toEqual([])
-    expect(started(['docs/modules/demo/scenarios.feature.md#REQ-DEMO-404'])).toEqual([
-      'initial_context specification does not resolve: docs/modules/demo/scenarios.feature.md#REQ-DEMO-404',
-    ])
-    expect(started(['docs/modules/gone/scenarios.feature.md#REQ-GONE-001'])).toEqual([
-      'initial_context specification path does not exist: docs/modules/gone/scenarios.feature.md#REQ-GONE-001',
-    ])
-  })
 })

@@ -21,7 +21,7 @@ const guidance: GuidanceDocument[] = [
   {
     file: '.agents/skills/implement-work-item/SKILL.md',
     source:
-      '編集に先立ち docs/development/coding-style.md を読む。\nリファクタリングの前に成功を確認する。\n受け入れ境界と単体境界で失敗を観測し、結果を記録する。\nrisk-based-v4 と fault_model を宣言する。\ndocs/development/task-context.md\nmise run brief -- item --target tools',
+      '編集に先立ち docs/development/coding-style.md を読む。\nリファクタリングの前に成功を確認する。\n受け入れ境界と単体境界で失敗を観測し、結果を記録する。\nfault_model を宣言する。\ndocs/development/task-context.md\nmise run brief -- item --target tools',
   },
 ]
 
@@ -99,7 +99,7 @@ describe('verifyAgentGuidance', () => {
           '--concern boundary',
         ],
       ],
-      [implementation, ['risk-based-v4', 'fault_model', '--target']],
+      [implementation, ['fault_model', '--target']],
     ] as const) {
       for (const marker of markers) {
         expect(verify(change(file, (source) => source.replace(marker, '')))).toContainEqual({
@@ -113,7 +113,7 @@ describe('verifyAgentGuidance', () => {
   it('必須の手順ファイル全体が欠落していても拒否する', () => {
     expect(verify(guidance.filter((document) => document.file !== implementation))).toContainEqual({
       file: implementation,
-      message: 'is missing required marker: risk-based-v4',
+      message: 'is missing required marker: fault_model',
     })
   })
 

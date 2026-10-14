@@ -19,7 +19,7 @@ import {
   type SpecificationDiff,
 } from './spec-diff.ts'
 import { parseMiseTasks, taskClosure } from './verification-tasks.ts'
-import { changedPaths, changedWorkItemRecords, verifiedNow } from './work-item-changes.ts'
+import { changedWorkItemRecords, verifiedNow } from './work-item-changes.ts'
 import {
   type WorkItemDependencyRecord,
   verifyWorkItemDependencies,
@@ -59,7 +59,7 @@ export async function loadWorkItems(
   return Promise.all(
     (await workItemPaths(snapshot)).map(async (path): Promise<ParsedWorkItem> => {
       const result = validate(path, await snapshot.read(path), 'work-item')
-      const formatFindings = isArchived(result.data)
+      const formatFindings = isArchived(path)
         ? verifyArchivedShape(result.data!).map((message) => ({ line: 1, column: 1, message }))
         : result.findings
       return { id: basename(path, '.md'), path, data: result.data, formatFindings }
@@ -162,6 +162,42 @@ async function documentationImpactEnvironment(
   }
 }
 
+/**
+ * 完了させる記録の全文に、完了時の検査を適用する。`move-work-item` が縮約の前に呼ぶ。
+ * 縮めた後の記録は形だけを検査するので、全文を確かめられるのはこの時点だけである。
+ */
+export async function verifyCompletion(
+  snapshot: WorkspaceSnapshot,
+  path: string,
+  text: string,
+): Promise<string[]> {
+  const result = validateMarkdownRecord(
+    path,
+    text.replace(/^status:.*$/m, 'status: completed'),
+    'work-item',
+  )
+  const findings = result.findings.map((finding) => finding.message)
+  if (!result.data) return findings
+  const repository: ReferenceEnvironment = {
+    exists: (one) => snapshot.exists(one),
+    read: (one) => (snapshot.exists(one) ? snapshot.readSync(one) : undefined),
+  }
+  const parsed = await loadWorkItems(snapshot)
+  const changed = changedWorkItemRecords(snapshot)
+  findings.push(
+    ...verifyWorkItemReferences(result.data, repository),
+    ...verifyPrimaryUseCaseEvidence(result.data, {
+      read: repository.read,
+      requiredTasks: await requiredVerificationTasks(snapshot),
+    }),
+    ...verifyDocumentationImpact(
+      result.data,
+      await documentationImpactEnvironment(snapshot, parsed, changed),
+    ),
+  )
+  return findings
+}
+
 export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   if (!snapshot.exists('work-items')) return { ok: true, lines: ['ok  0 work item(s)'] }
   const parsed = await loadWorkItems(snapshot)
@@ -186,7 +222,6 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
   const primaryEnvironment: PrimaryUseCaseEnvironment = {
     read: repository.read,
     requiredTasks: await requiredVerificationTasks(snapshot),
-    changedPaths: changedPaths(snapshot),
   }
   const documentationEnvironment = await documentationImpactEnvironment(snapshot, parsed, changed)
   // 依存と識別番号は記録の間の現在の関係なので、変わっていない完了済みの記録も含めて見る。
@@ -210,7 +245,7 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
       lines.push(`${record.path}: status ${status} belongs in ${directory}`)
     }
     // 縮めた記録の証拠と参照は、全文を含む archived_from のコミットで検証済みである。
-    if (isArchived(record.data)) continue
+    if (isArchived(record.path)) continue
     lines.push(
       ...verifyWorkItemReferences(record.data, repository).map(
         (finding) => `${record.path}: ${finding}`,
@@ -227,7 +262,7 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
     ...missingArchivedRevisions(
       snapshot.root,
       verified
-        .filter((record) => isArchived(record.data))
+        .filter((record) => isArchived(record.path) && record.data?.archived_from !== undefined)
         .map((record) => ({ path: record.path, revision: String(record.data!.archived_from) })),
     ),
   )

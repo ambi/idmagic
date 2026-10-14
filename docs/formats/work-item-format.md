@@ -31,18 +31,11 @@ created_at: 2026-01-01
 priority: p1
 depends_on: []
 change_kind: feature
-evidence_policy: risk-based-v4 # 着手後は必須
-documentation_impact: # 着手後は必須
+documentation_impact: # 公開後に着手する項目では必須
   level: release_note
   reason: 新たにサポートする機能をリリースの読者へ知らせる必要がある。
   references:
     - { kind: release_note, path: docs/releases/changes/wi-<number>-start-task.md }
-initial_context: # 起票時ではなく着手時に記入する
-  specification: [docs/modules/system/operations/README.md#REQ-SYSTEM-001]
-  typespec: [Product.System.Operations.StartTask]
-  source: [backend/system]
-  tests: [backend/system]
-  stop_before_reading: [frontend]
 affected_spec:
   - { path: docs/modules/system/operations/README.md, requirement: REQ-SYSTEM-001 }
   - { path: spec/modules/system/main.tsp, symbol: Product.System.Operations.StartTask }
@@ -53,7 +46,7 @@ primary_use_cases: # feature、bugfix、standards.md の変更では着手後に
     boundary: acceptance
     test: { path: backend/system/usecases/start_task_test.go, name: TestStartTask_REQ_SYSTEM_001, task: test-go-race }
     fault_model: ユースケースが開始コマンドを発行しない。
-maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必須。告知パスは公開後に必須
+maturity_evidence: # 成熟度を昇格する場合は完了前に必須。告知パスは公開後に必須
   - feature: start-task-v1
     from: preview
     to: supported
@@ -93,7 +86,7 @@ maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必�
 リスクと緩和策を書く。
 ```
 
-節見出しは、上のテンプレートが示す日本語と、既存の記録が使う英語（`Motivation`、`Scope`、`Out of Scope`、`Plan`、`Tasks`、`Verification`、`Risk Notes`、`Completion`）のどちらでも機械検査が同じ項目として読む。完了節のフィールド名も同じく、後述のテンプレートが示す日本語と、既存の記録が使う英語（`Completed At`、`Summary`、`Acceptance RED Evidence` など）のどちらでも読む。
+節見出しは、上のテンプレートが示す日本語と、既存の記録が使う英語（`Motivation`、`Scope`、`Out of Scope`、`Plan`、`Tasks`、`Verification`、`Risk Notes`）のどちらでも機械検査が同じ項目として読む。
 新しい記録はテンプレートの表記で書き、既存の記録を書き換えるためだけの変更はしない。
 検証タスクと対象は[最終検査の選択](../development/specification-first-workflow.md#最終検査の選択)に従って決める。
 
@@ -116,7 +109,6 @@ maturity_evidence: # 成熟度の昇格を検出した場合は完了時に必�
 `reversible` としても `risk` が求める証拠は緩和しない。
 このフィールドは導入前の記録を有効に保つため任意であり、未記入は可逆を意味せず、評価していないことを意味する。
 
-新しく項目を `in_progress` にするときは `evidence_policy: risk-based-v4` を追加する。
 リスクと証拠の対応は[仕様先行の開発ワークフロー](../development/specification-first-workflow.md#4-証拠の要件)が定める。
 
 ## 仕様影響
@@ -155,26 +147,13 @@ TypeSpec のシンボルには引く ID がないため、宣言名を含むテ�
 
 ## 着手時の文脈と設計
 
-`initial_context` は、一人のエージェントが最初に読む対象の一覧である。
-起票時ではなく、作業項目を `in_progress` にするときに書く。
-バックログにある間に書いた一覧は着手前に古くなり、移動または削除されたファイルを指す一覧は、一覧がない状態より作業を誤らせる。
+最初に読む範囲は、着手時に[作業文脈の導出](../development/task-context.md)の `brief` で求め、記録には書かない。
 `pending` の作業項目は、動機、対象範囲、対象外だけでも役に立つ。
 
-作業項目を `in_progress` にすると、`mise run check-work-items` が一覧を解決する。
-すべてのパスが存在し、`<文書>#REQ-<MODULE>-NNN` の項目が、その文書で宣言された規則を指さなければならない。
-規則を宣言する文書は、機能仕様（`docs/modules/<module>/<group>/<feature>/README.md` とその章）、またはモジュール共通の要件を宣言する `docs/modules/scenarios.feature.md` である。
-
-`affected_spec` は、未完了の記録と、完了させる変更の中の記録で解決する。
-これは当時読んだものではなく、変更が触れた規範要素の索引だからである。
+`affected_spec` は未完了の記録で解決し、完了の直前に `move-work-item` がもう一度解決する。
 規範要素を別のファイルへ移したら、未完了の記録は参照先を更新する。
 廃止した場合は廃止済みの見出しを残して参照を解決できるようにする。
-
-完了した記録は、記録を完了させる変更の中で一度だけ検証する。
-`mise run check-work-items` と `mise run check-links` は、`work-items/done/` の記録のうち、main とのマージベースから、または作業ツリーで変わったものだけを検証する。
-完了の変更は記録を `work-items/done/` へ移すので、必ず検証の対象に入る。
-完了した記録は当時の作業の記録であり、後のファイルの移動や形式の変更に合わせて書き換えると、読み返したときに当時の状態と食い違うからである。
-後から検証し直さないので、移動のたびに旧パスの対応表や旧形式の読み替えを足す必要もない。
-完了した記録を書き換えると、その変更の中で現在の規則による検証を受ける。
+`work-items/done/` の縮めた記録は、変わったときに形だけを検査し、後のファイルの移動に追従させない。
 
 中リスク以上の変更では、設計と計画の節を具体的に書く。
 中核ロジックを変更する場合は、主要なドメインデータ型と操作のシグネチャを挙げる。
@@ -190,7 +169,7 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 
 ## 文書影響と成熟度
 
-`in_progress` になる作業項目は、`documentation_impact` を一つ宣言し、完了まで同じ構造化フィールドを保つ。
+[公開状態](../development/release.md#公開状態と日常開発)が `published` の間に着手する作業項目は、`documentation_impact` を一つ宣言し、完了まで同じ構造化フィールドを保つ。初回公開前は宣言しない。
 `level` には `none`、`release_note`、`upgrade_note`、`deprecation_notice`、`removal_notice` のいずれかを指定する。
 `none` には具体的な理由が必要であり、リリース文書への参照を含めない。
 それ以外の水準では、実装前にリリース文書の予定パスを宣言する。
@@ -203,18 +182,13 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 検査は、変更種別、規範仕様の差分、TypeSpec の非推奨指定、機能レジストリの成熟度の差分から最低水準を導く。
 作成者は最低水準より強い水準を選べるが、弱い水準は選べない。
 
-この最低水準は[公開状態](../development/release.md#公開状態と日常開発)が `published` の場合に適用する。
-初回公開前は `none` を宣言でき、理由には未公開であることと、既存データや実利用契約への影響の判断を書く。
 明示的に宣言した告知文書への参照は公開状態によらず検査する。
-公開へ切り替えても、現在の変更に含まれない完了記録へ最低水準を遡及して適用しない。
 
-機能レジストリの差分で `experimental` から `preview`、または `preview` から `supported` へ昇格する場合は、完了時に昇格した機能ごとの `maturity_evidence` も記録する。
+機能レジストリの差分で `experimental` から `preview`、または `preview` から `supported` へ昇格する場合は、完了の前に、昇格した機能ごとの `maturity_evidence` も記録する。
 各項目には、正確な遷移、セキュリティ検査の結果、互換性情報または移行情報を書く。
 新しい成熟度を示すリリース文書の `documentation` パスは公開後に必須とし、初回公開前は省略できる。
 省略しても一次情報文書の成熟度表示と、昇格の検証は維持する。
 該当する作業項目には引き続き `primary_use_cases` が必要である。
-成熟度の証拠は、選択した境界の RED とフォールト注入の結果を置き換えない。
-この契約より前に書かれた完了記録は履歴であり、再解釈しない。
 
 ## 主要ユースケースの証拠
 
@@ -235,60 +209,26 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 
 テストへの参照には、リポジトリ相対の `path`、安定した `name`、必要な `mise` または CI の `task` を含める。
 作業項目が `in_progress` の間は、予定したテストがまだ存在しなくてもよい。
-完了時には、ファイルと識別子が存在し、テストソースが要件を参照し、宣言した標準タスクから到達できることを検査する。
+完了の直前に `move-work-item` が、ファイルと識別子が存在し、テストソースが要件を参照し、宣言した標準タスクから到達できることを検査する。
 
-`evidence_policy` には `risk-based-v4` だけを書ける。
-より古い契約で完了した記録は、完了の時点で検証済みであり、再解釈しない。
-
-## 完了記録
-
-作業が完了したら `status` を `completed` にし、次の節を追加して、`mise run move-work-item -- <id>` でファイルを `work-items/done/` へ移す。
-中止した場合も、判断を完了節へ記録し、`status` を `cancelled` にして同じコマンドを使う。
-コマンドは、移動する項目から他の項目へのリンクと、他の Markdown から移動する項目へのリンクを更新する。
-項目同士には通常の相対 Markdown リンクを使い、移動後も GitHub とエディターで参照できるようにする。
-`depends_on` は配置を含まない既存の識別子を保つ。
-移動後に `mise run check-work-items` と `mise run check-links` を実行する。
-
-同じコマンドは、main に取り込み済みでその変更に含まれない完了記録を、状態、全文を含むコミット（`archived_from`）、題名、要約だけに縮める（`mise run archive-work-items` でも実行できる）。
-完了させる記録は全文のまま検証を受け、取り込まれた後の完了で縮む。
-縮めた記録は形と `archived_from` だけを検査し、全文は `git show <archived_from>:<パス>` で読む。
-縮めた記録へはアンカーなしでリンクする。
-
-```markdown
 ## 完了
-- **完了日**: 2026-01-01
-- **要約**:
-  記憶ではなく `mise run spec-diff` の結果から読み取った、この作業による意味上の差分。
-- **受け入れ RED の証拠**:
-  - **テスト**: 実装前に失敗を観測したテストまたは検査。
-  - **要件**: `REQ-CONTEXT-NNN`。規範となる製品要件がない作業では `N/A: <理由>`。
-  - **観測した失敗**: 実際に観測した、想定どおりの失敗。
-  - **検出できる理由**: その表明によって、現実的な誤実装と要求された振る舞いを区別できる理由。受け入れ境界が該当しない場合は、実際に失敗した代替検査を示す。
-- **単体 RED の証拠**:
-  - **テスト**: 実装前に失敗を観測したテストまたは検査。
-  - **要件**: `REQ-CONTEXT-NNN`。規範となる製品要件がない作業では `N/A: <理由>`。
-  - **観測した失敗**: 実際に観測した、想定どおりの失敗。
-  - **検出できる理由**: その表明によって、現実的な誤実装と要求された内部の振る舞いを区別できる理由。単体境界が該当しない場合は、実際に失敗した代替検査を示す。
-- **変更耐性の結果**:
-  実行した検査、検出した故障、等価な変異、手法の限界を記す。
-  適用条件と収集方法は[証拠の要件](../development/specification-first-workflow.md#4-証拠の要件)に従う。
-- **検証結果**:
-  - 選んだ検査タスク、対象、選択理由、結果を記す。
-```
 
-上の受け入れ RED と単体 RED の証拠は、主要ユースケースの要件がない作業で使う完了形式である。
-[振る舞いを保つ変更](../development/specification-first-workflow.md#振る舞いを保つ変更)（仕様影響のない Markdown だけの変更と、テストを変えない refactor）では、受け入れ RED と単体 RED の証拠を省略し、検証結果に実行した検査を記す。
-変更耐性の検査は不要だが、`medium` 以上では既存のスキーマが記録欄を要求するため、変更耐性の結果へ `N/A: <非適用の理由>` を記す。
-該当する `risk-based-v4` の作業項目では、代わりに次のフィールドを使う。
-主要でない振る舞いの受け入れ RED または単体 RED の証拠を追加で残してもよいが、次の証拠の代わりにはならない。
+作業が完了したら、記録の末尾に `## 要約` の節を書き、`mise run move-work-item -- <id>` を実行する。
+要約には、記憶ではなく `mise run spec-diff` の結果から読み取った意味上の差分と、後から読む人が知るべき判断を数行で書く。
+中止するときも、中止の判断を `## 要約` に書き、`mise run move-work-item -- <id> --cancel` を実行する。
 
-```markdown
-- **主要ユースケースの証拠**:
-  - id: start-task
-    red: 開始コマンドを発行しないため、TestStartTask_REQ_SYSTEM_001 が失敗した。
-    fault_injection: コマンドの発行を削除すると、TestStartTask_REQ_SYSTEM_001 が失敗した。
-```
+コマンドは、完了では次の順に処理し、どこかで失敗すれば何も書き込まない。
 
-`id` は、`primary_use_cases` の計画項目と一致させる。
-計画した各項目には、完了項目がちょうど一つ必要である。
-RED とフォールト注入の各結果には、将来の指示ではなく、実際に観測した内容を書く。
+1. 全文に完了時の検査を適用する。`affected_spec` の解決、`primary_use_cases` のテストの実在、宣言した告知文書の実在と内容を確かめる。
+2. 記録を、状態、題名、要約だけに縮める。リンクは文字だけを残す。
+3. 縮めた記録を `work-items/done/` へ移し、ほかの Markdown から記録へのリンクを新しいパスへ直す。
+
+RED の観測や検証の実行は、手順として行い、記録には書かない。
+記録は自己申告であり、検査は書いたかどうかしか確かめられないためである。
+実行で確かめられる事実は、上の完了時の検査と `mise run check-spec-impact` が確かめる。
+
+縮めた記録の全文は、`git log -1 -- work-items/active/<ファイル名>` が示すコミット（記録を消したコミットならその親）で読む。
+初期に縮めた記録は、全文のコミットを `archived_from` に書いてある。
+縮めた記録へはアンカーなしでリンクする。
+`depends_on` は配置を含まない識別子なので、移動で変わらない。
+移動後に `mise run check-work-items` と `mise run check-links` を実行する。

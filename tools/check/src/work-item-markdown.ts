@@ -20,42 +20,6 @@ const SECTION_KEYS = new Map<string, string>([
   ['検証', 'verification'],
   ['risk notes', 'risk_notes'],
   ['リスク', 'risk_notes'],
-  ['completion', 'completion'],
-  ['完了', 'completion'],
-])
-
-// 完了節のフィールド名と記録の項目名の対応 (docs/formats/work-item-format.md)。節見出しと同じく、
-// フォーマット文書が示す日本語と既存の記録が使う英語を同じ項目へ解決する。
-const COMPLETION_FIELDS = new Map<string, string>([
-  ['completed at', 'completed_at'],
-  ['完了日', 'completed_at'],
-  ['summary', 'summary'],
-  ['要約', 'summary'],
-  ['verification results', 'verification'],
-  ['検証結果', 'verification'],
-  ['red evidence', 'red_evidence'],
-  ['red の証拠', 'red_evidence'],
-  ['acceptance red evidence', 'acceptance_red_evidence'],
-  ['受け入れ red の証拠', 'acceptance_red_evidence'],
-  ['unit red evidence', 'unit_red_evidence'],
-  ['単体 red の証拠', 'unit_red_evidence'],
-  ['primary use case evidence', 'primary_use_case_evidence'],
-  ['主要ユースケースの証拠', 'primary_use_case_evidence'],
-  ['independent verification', 'independent_verification'],
-  ['独立した検証', 'independent_verification'],
-  ['change-resistance results', 'change_resistance'],
-  ['変更耐性の結果', 'change_resistance'],
-])
-
-const RED_EVIDENCE_FIELDS = new Map<string, string>([
-  ['test', 'test'],
-  ['テスト', 'test'],
-  ['requirement', 'requirement'],
-  ['要件', 'requirement'],
-  ['observed failure', 'observed_failure'],
-  ['観測した失敗', 'observed_failure'],
-  ['detection reason', 'detection_reason'],
-  ['検出できる理由', 'detection_reason'],
 ])
 
 export function parseFrontmatterAndMarkdown(path: string, text: string): Record<string, unknown> {
@@ -124,60 +88,6 @@ export function parseFrontmatterAndMarkdown(path: string, text: string): Record<
           .filter(Boolean)
       } else if (sectionKey === 'risk_notes') {
         data.risk_notes = content
-      } else if (sectionKey === 'completion') {
-        const completion: Record<string, unknown> = {}
-        const compLines = content.split('\n')
-        let currentField = ''
-        let currentText: string[] = []
-
-        const flushField = () => {
-          if (currentField) {
-            if (currentField === 'verification') {
-              completion.verification = currentText
-                .map((l) => l.replace(/^-\s*/, '').trim())
-                .filter(Boolean)
-            } else if (
-              currentField === 'red_evidence' ||
-              currentField === 'acceptance_red_evidence' ||
-              currentField === 'unit_red_evidence'
-            ) {
-              const redEvidence: Record<string, string> = {}
-              for (const line of currentText) {
-                const field = line.match(/^-\s+\*\*([^*]+)\*\*:\s*(.*)$/)
-                const key = field?.[1]
-                  ? RED_EVIDENCE_FIELDS.get(field[1].trim().toLowerCase())
-                  : undefined
-                if (key && field?.[2]) redEvidence[key] = field[2].trim()
-              }
-              completion[currentField] = redEvidence
-            } else if (currentField === 'primary_use_case_evidence') {
-              completion.primary_use_case_evidence = Bun.YAML.parse(currentText.join('\n'))
-            } else {
-              completion[currentField] = currentText.join('\n').trim()
-            }
-            currentField = ''
-            currentText = []
-          }
-        }
-
-        for (const line of compLines) {
-          const m = line.match(/^-\s+\*\*([^*]+)\*\*:\s*(.*)$/)
-          if (m?.[1]) {
-            flushField()
-            const field = COMPLETION_FIELDS.get(m[1].trim().toLowerCase())
-            const value = m[2] ? m[2].trim() : ''
-            if (field === 'completed_at') {
-              completion.completed_at = value
-            } else if (field) {
-              currentField = field
-              if (value) currentText.push(value)
-            }
-          } else if (currentField) {
-            currentText.push(line.replace(/^\s{2}/, ''))
-          }
-        }
-        flushField()
-        data.completion = completion
       }
     }
   }

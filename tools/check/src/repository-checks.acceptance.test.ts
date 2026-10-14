@@ -167,6 +167,24 @@ async function checkWorkItems(root: string): Promise<{ code: number; output: str
   return { code, output: `${stdout}${stderr}` }
 }
 
+async function completeWorkItem(
+  root: string,
+  id: string,
+): Promise<{ code: number; output: string }> {
+  const proc = Bun.spawn(['bun', 'run', resolve(TOOLS_DIR, 'work-item/src/main.ts'), id], {
+    cwd: TOOLS_DIR,
+    env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ])
+  return { code, output: `${stdout}${stderr}` }
+}
+
 describe('文書検査', () => {
   it('accepts a directory whose Markdown files are all canonical documents', async () => {
     const result = await checkDocuments(await workspace())
@@ -412,18 +430,18 @@ The fixture must remain otherwise valid.
     expect(result.output).toContain(`duplicate work item '${name.replace(/\.md$/, '')}'`)
   })
 
-  it('rejects a completed item whose required release note is missing', async () => {
+  it('rejects completing an item whose declared release note is missing', async () => {
     const root = await workspace()
-    await mkdir(join(root, 'work-items', 'done'), { recursive: true })
+    await mkdir(join(root, 'work-items', 'active'), { recursive: true })
     await writeFile(
-      join(root, 'work-items', 'done', 'wi-452-missing-release-note.md'),
+      join(root, 'work-items', 'active', 'wi-452-missing-release-note.md'),
       `---
-status: completed
+status: in_progress
 authors: [tn]
 risk: low
 created_at: 2026-08-31
+depends_on: []
 change_kind: tooling
-evidence_policy: risk-based-v4
 spec_impact: { kind: none, reason: "The fixture changes repository tooling only." }
 documentation_impact:
   level: release_note
@@ -454,26 +472,13 @@ Exercise the documentation gate.
 
 The gate must reject an absent document.
 
-## Completion
+## 要約
 
-- **Completed At**: 2026-08-31
-- **Summary**: The fixture declares a release note that is absent.
-- **Acceptance RED Evidence**:
-  - **Test**: check-workspace rejects a missing release note
-  - **Requirement**: N/A: repository tooling has no normative product requirement
-  - **Observed Failure**: the incomplete fixture was accepted
-  - **Detection Reason**: the CLI must resolve the planned path at completion
-- **Unit RED Evidence**:
-  - **Test**: verifyDocumentationImpact rejects a missing release note
-  - **Requirement**: N/A: repository tooling has no normative product requirement
-  - **Observed Failure**: the pure verifier was absent
-  - **Detection Reason**: the verifier distinguishes a declared path from an existing document
-- **Verification Results**:
-  - mise run verify - passed
+The fixture declares a release note that is absent.
 `,
     )
 
-    const result = await checkWorkItems(root)
+    const result = await completeWorkItem(root, 'wi-452')
     expect(result.code).not.toBe(0)
     expect(result.output).toContain(
       'documentation reference does not exist: docs/releases/changes/wi-452-missing-release-note.md',
@@ -535,9 +540,9 @@ The feature could remain disconnected.
     expect(result.output).toContain('primary_use_cases')
   })
 
-  it('accepts complete primary evidence only when its test is reached by a required task', async () => {
+  it('completes an item only when its primary use case test is reached by a required task', async () => {
     const root = await workspace()
-    await mkdir(join(root, 'work-items'), { recursive: true })
+    await mkdir(join(root, 'work-items', 'active'), { recursive: true })
     await mkdir(join(root, 'backend', 'demo'), { recursive: true })
     await mkdir(join(root, 'docs', 'modules', 'demo', 'run'), { recursive: true })
     await writeFile(join(root, 'docs', 'modules', 'demo', 'run', 'README.md'), DEMO_SPECIFICATION)
@@ -550,12 +555,12 @@ The feature could remain disconnected.
       'func TestDemoRule_REQ_DEMO_001(t *testing.T) { /* REQ-DEMO-001 */ }\n',
     )
     const workItem = (task: string): string => `---
-status: completed
+status: in_progress
 authors: [tn]
 risk: low
 created_at: 2026-08-30
+depends_on: []
 change_kind: feature
-evidence_policy: risk-based-v4
 affected_spec:
   - { path: docs/modules/demo/run/README.md, requirement: REQ-DEMO-001 }
 primary_use_cases:
@@ -565,10 +570,6 @@ primary_use_cases:
     boundary: acceptance
     test: { path: backend/demo/rule_test.go, name: TestDemoRule_REQ_DEMO_001, task: ${task} }
     fault_model: The use case skips the effect.
-documentation_impact:
-  level: none
-  reason: The fixture is unpublished and has no release reader.
-  references: []
 ---
 
 # Feature with primary evidence
@@ -593,26 +594,19 @@ Exercise completed evidence.
 
 The feature could remain disconnected.
 
-## Completion
+## 要約
 
-- **Completed At**: 2026-08-30
-- **Summary**: The demo route now produces its final effect.
-- **Primary Use Case Evidence**:
-  - id: demo-success
-    red: the acceptance test observed no effect
-    fault_injection: removing the effect made the acceptance test fail
-- **Verification Results**:
-  - mise run verify - passed
+The demo route now produces its final effect.
 `
-    await mkdir(join(root, 'work-items', 'done'), { recursive: true })
-    const path = join(root, 'work-items', 'done', 'wi-445-complete-primary-use-case.md')
-    await writeFile(path, workItem('test-go-race'))
-    expect((await checkWorkItems(root)).code).toBe(0)
-
+    const path = join(root, 'work-items', 'active', 'wi-445-complete-primary-use-case.md')
     await writeFile(path, workItem('test-go'))
-    const unreachable = await checkWorkItems(root)
+    const unreachable = await completeWorkItem(root, 'wi-445')
     expect(unreachable.code).not.toBe(0)
     expect(unreachable.output).toContain('task is not required by verify or CI: test-go')
+
+    await writeFile(path, workItem('test-go-race'))
+    expect((await completeWorkItem(root, 'wi-445')).code).toBe(0)
+    expect((await checkWorkItems(root)).code).toBe(0)
   })
 })
 

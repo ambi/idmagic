@@ -40,7 +40,6 @@ const requiredMarkers = new Map<string, string[]>([
   [
     '.agents/skills/implement-work-item/SKILL.md',
     [
-      'risk-based-v4',
       'fault_model',
       'docs/development/coding-style.md',
       'docs/development/task-context.md',

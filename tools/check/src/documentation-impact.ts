@@ -387,7 +387,12 @@ export function verifyDocumentationImpact(
   const declaration = object(record.documentation_impact) as
     | DocumentationImpactDeclaration
     | undefined
-  if (!declaration) return ['documentation_impact is required after implementation starts']
+  if (!declaration) {
+    // 公開前は告知の水準が常に none なので、宣言を求めない。
+    if (environment.releasePhase !== 'published')
+      return verifyMaturityPromotions(record, environment)
+    return ['documentation_impact is required after implementation starts']
+  }
   const level = declaration.level
   if (typeof level !== 'string' || !IMPACTS.has(level as DocumentationImpact)) {
     return ['documentation_impact.level is not a recognized impact']

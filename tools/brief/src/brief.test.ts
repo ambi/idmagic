@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import {
-  coverageLine,
-  coverageOf,
-  extractDeclaration,
-  initialContextDraft,
-  partitionSources,
-  sourceDirectories,
-} from './brief.ts'
+import { coverageLine, coverageOf, extractDeclaration, partitionSources } from './brief.ts'
 
 const SCENARIOS = [
   '# Feature: Demo Scenarios',
@@ -203,58 +196,5 @@ describe('coverageLine', () => {
   /** 1 記号 1 行という制約は、`brief` 自体を読む時間を増やさないための約束である。 */
   it('stays on one line', () => {
     expect(coverageLine({ declared: true, implementation: true, tests: false })).not.toContain('\n')
-  })
-})
-
-describe('sourceDirectories', () => {
-  it('collapses naming files to the packages that hold them', () => {
-    expect(
-      sourceDirectories([
-        'backend/system/usecases/start_test.go',
-        'backend/system/usecases/stop_test.go',
-        'backend/system/domain/task.go',
-      ]),
-    ).toEqual(['backend/system/domain', 'backend/system/usecases'])
-  })
-
-  it('keeps a path with no directory as it is', () => {
-    expect(sourceDirectories(['CONFIGURATION.md'])).toEqual(['CONFIGURATION.md'])
-  })
-})
-
-describe('initialContextDraft', () => {
-  const draft = initialContextDraft({
-    specification: ['docs/modules/demo/scenarios.feature.md#REQ-DEMO-001'],
-    typespec: ['Product.Demo.Operations.StartTask'],
-    implementation: ['backend/demo/usecases/start.go', 'backend/demo/domain'],
-    tests: ['backend/demo/usecases/start_test.go'],
-  })
-
-  /** The point of the draft is that it can be pasted, not retyped. */
-  it('emits the frontmatter block a work item can take as written', () => {
-    expect(draft).toBe(
-      [
-        'initial_context:',
-        '  specification: [docs/modules/demo/scenarios.feature.md#REQ-DEMO-001]',
-        '  typespec: [Product.Demo.Operations.StartTask]',
-        '  source:',
-        '    - backend/demo/usecases/start.go',
-        '    - backend/demo/domain',
-        '  tests: [backend/demo/usecases/start_test.go]',
-        '  stop_before_reading: []',
-        '',
-      ].join('\n'),
-    )
-  })
-
-  it('emits an empty list rather than an absent key', () => {
-    const empty = initialContextDraft({
-      specification: [],
-      typespec: [],
-      implementation: [],
-      tests: [],
-    })
-    expect(empty).toContain('  source: []')
-    expect(empty).toContain('  tests: []')
   })
 })

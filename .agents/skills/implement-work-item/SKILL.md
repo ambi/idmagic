@@ -1,6 +1,6 @@
 ---
 name: implement-work-item
-description: 選択した作業項目を専用 worktree で実装し、仕様、故障に合う検証、完了記録、コミットまで仕上げる。
+description: 選択した作業項目を専用 worktree で実装し、仕様、故障に合う検証、要約への縮約、コミットまで仕上げる。
 ---
 
 # 作業項目の実装
@@ -50,8 +50,6 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 仕様を変える場合は `spec-change` で先に更新し、`mise run check-spec` を通す。
 確認後も `spec_impact: none` が正しければ、仕様の編集と仕様だけの基準検査は追加しない。
 
-[着手時の文脈と設計](../../../docs/formats/work-item-format.md#着手時の文脈と設計)に従い、実際に読んだ最小範囲へ `initial_context` を書き換える。
-空の区分を埋めるためだけには読まず、`stop_before_reading` を今回の範囲から決める。
 製品結果、公開契約、設計境界、タスク分割を変え得る問いを解決し、先送りする選択は対象外へ記す。
 複数の改善案を持つ項目では、すべての案の実装済み、今回の採用、保留、対象外と理由を記録し、今回実装すべき案を残していないことを確認する。
 
@@ -63,12 +61,10 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 
 ## 4. 着手の記録
 
-[証拠の要件](../../../docs/development/specification-first-workflow.md#4-証拠の要件)から適用する証拠を選び、`evidence_policy: risk-based-v4` を宣言する。
-主要ユースケースを要求する作業では、[テスト方針](../../../docs/development/testing.md#主要ユースケース)から観測結果、`fault_model`、最小の境界を選び、[記入形式](../../../docs/formats/work-item-format.md#主要ユースケースの証拠)に従って記録する。
-それ以外では RED または理由付きの代替検査を計画する。
-[振る舞いを保つ変更](../../../docs/development/specification-first-workflow.md#振る舞いを保つ変更)に当たる差分では、成功した検査を記録する。
-
-[文書影響と成熟度](../../../docs/formats/work-item-format.md#文書影響と成熟度)を記入し、`status: in_progress` にして `mise run check-work-items` を通す。
+[証拠の要件](../../../docs/development/specification-first-workflow.md#4-証拠の要件)から、行う証拠の手順を選ぶ。
+主要ユースケースを要求する作業では、[テスト方針](../../../docs/development/testing.md#主要ユースケース)から観測結果、`fault_model`、最小の境界を選び、[記入形式](../../../docs/formats/work-item-format.md#主要ユースケースの証拠)に従って `primary_use_cases` に書く。
+公開後は[文書影響と成熟度](../../../docs/formats/work-item-format.md#文書影響と成熟度)も記入する。
+`status: in_progress` にして `mise run check-work-items` を通す。
 中核ロジックは型と操作のシグネチャ、境界変更は候補の比較を、コードの前に設計へ記す。
 依存の構築条件を変える、または同じ操作の呼び出し元を追加する場合は、[依存の向きと差し替え点](../../../docs/design/application/design-guidelines.md#依存の向きと差し替え点)で公開の経路と必須の作用を比べる。
 必須依存の配線、HTTP の経路差、派生表現の参照を変える場合は、[組み立てと経路差](../../../docs/development/testing.md#組み立てと経路差)から観測結果と故障を選ぶ。
@@ -108,15 +104,15 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 
 ## 7. 完了とコミット
 
-対象の振る舞いと証拠がすべて揃ってから、七つの視点で差分をレビューする。
+対象の振る舞いを実装し、証拠の手順を終えてから、七つの視点で差分をレビューする。
 [最終検査の選択](../../../docs/development/specification-first-workflow.md#最終検査の選択)に従い、実際の差分と影響範囲に必要な最小の検査を選ぶ。
-検証欄へタスク、対象と選んだ理由を記し、影響が不明ならその範囲を広げる。
+影響が不明なら検査の範囲を広げる。
 Go では[通常テストと race 検査](../../../docs/development/specification-first-workflow.md#go-の通常テストと-race-検査)も選ぶ。
 必要な検査が最終差分を検証していることを確認し、未検査または入力が変わった検査を実行する。
 前提が未解決の間は集約ゲートを状態確認に使わない。
 
-`mise run spec-diff` を読み、[完了記録](../../../docs/formats/work-item-format.md#完了記録)を埋める。
-`status: completed` にして `mise run move-work-item -- <id>` を実行し、移動後に `mise run check-work-items` と `mise run check-links` を通す。
+`mise run spec-diff` を読み、[完了](../../../docs/formats/work-item-format.md#完了)に従って `## 要約` を書き、`mise run move-work-item -- <id>` を実行する。
+移動後に `mise run check-work-items` と `mise run check-links` を通す。
 [チェックポイントと最終コミット](../../../docs/development/specification-first-workflow.md#チェックポイントと最終コミット)に従って折り畳み、`commit` スキルで残る正式コミットを作る。
 
 最終報告には、ブランチ、コミット、対象外、残した未実施事項を示す。

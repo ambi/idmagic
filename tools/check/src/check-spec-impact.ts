@@ -135,6 +135,19 @@ function repository(snapshot: WorkspaceSnapshot, git: Git) {
   }
   const read = (path: string): string | undefined =>
     snapshot.exists(path) ? snapshot.readSync(path) : undefined
+  /**
+   * 要約に縮めた記録の宣言は、全文から読む。初期に縮めた記録は archived_from のコミット、
+   * それ以外は `work-items/active/` のパスを最後に変えたコミット（消したコミットならその親）にある。
+   */
+  const fullRecord = (path: string, source: string): string => {
+    const revision = source.match(/^archived_from:\s*([0-9a-f]{7,40})\s*$/m)?.[1]
+    if (revision) return git(['show', `${revision}:${path}`]) ?? source
+    if (!path.startsWith('work-items/done/')) return source
+    const active = `work-items/active/${path.slice('work-items/done/'.length)}`
+    const last = git(['log', '-1', '--format=%H', '--', active])?.trim()
+    if (!last) return source
+    return git(['show', `${last}:${active}`]) ?? git(['show', `${last}^:${active}`]) ?? source
+  }
 
   return {
     read,
@@ -154,12 +167,7 @@ function repository(snapshot: WorkspaceSnapshot, git: Git) {
     workItem: (id: string): { path: string; record: WorkItemRecord } | undefined => {
       for (const path of workItemPaths(id)) {
         const source = read(path)
-        // 要約に縮めた記録の宣言は、全文を含む archived_from のコミットから読む。
-        const revision = source?.match(/^archived_from:\s*([0-9a-f]{7,40})\s*$/m)?.[1]
-        const record = workItemRecord(
-          path,
-          revision ? (git(['show', `${revision}:${path}`]) ?? source) : source,
-        )
+        const record = workItemRecord(path, source && fullRecord(path, source))
         if (record) return { path, record }
       }
       return undefined

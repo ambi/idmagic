@@ -1,13 +1,10 @@
 /**
  * Resolve the references a work item makes into the specification and the
- * repository. A record that names a scenario, a TypeSpec symbol, or a reading
- * list is only useful while those targets still exist.
+ * repository. A record that names a scenario or a TypeSpec symbol is only
+ * useful while those targets still exist.
  *
- * `affected_spec` is checked for every record the caller verifies; a completed
- * record is verified only by the change that completes it. `initial_context` is checked
- * only once the item is in progress: a reading list written for a backlog item
- * rots before the work begins, and the format asks for it to be rewritten at
- * that moment.
+ * `affected_spec` is checked for every record the caller verifies, and for a
+ * completing record by `move-work-item` before it is collapsed.
  */
 
 import { specificationRules } from './feature-specification.ts'
@@ -16,7 +13,6 @@ import { parseScenarioDocument } from './gherkin-scenarios.ts'
 export type WorkItemRecord = {
   status?: unknown
   affected_spec?: unknown
-  initial_context?: unknown
 }
 
 export type ReferenceEnvironment = {
@@ -25,9 +21,6 @@ export type ReferenceEnvironment = {
   /** Contents of a repository-relative file, or undefined when unreadable. */
   read: (path: string) => string | undefined
 }
-
-/** Reading-list keys whose entries are repository paths. */
-const PATH_KEYS = ['source', 'tests', 'stop_before_reading'] as const
 
 function declaresScenario(source: string, id: string): boolean {
   if (new RegExp(`^### ${id}: `, 'm').test(source)) return true
@@ -41,12 +34,6 @@ function resolvesRequirement(source: string, requirement: string): boolean {
   return requirement.startsWith('REQ-')
     ? declaresScenario(source, requirement)
     : source.includes(requirement)
-}
-
-function stringList(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : []
 }
 
 function verifyAffectedSpec(record: WorkItemRecord, environment: ReferenceEnvironment): string[] {
@@ -83,37 +70,9 @@ function stringOrObjectList(value: unknown): Array<Record<string, unknown>> {
   )
 }
 
-function verifyInitialContext(record: WorkItemRecord, environment: ReferenceEnvironment): string[] {
-  const context = record.initial_context
-  if (typeof context !== 'object' || context === null || Array.isArray(context)) return []
-  const entries = context as Record<string, unknown>
-  const findings: string[] = []
-
-  for (const reference of stringList(entries.specification)) {
-    const [path, requirement] = reference.split('#')
-    const source = path && environment.exists(path) ? environment.read(path) : undefined
-    if (!path || source === undefined) {
-      findings.push(`initial_context specification path does not exist: ${reference}`)
-      continue
-    }
-    if (requirement && !resolvesRequirement(source, requirement)) {
-      findings.push(`initial_context specification does not resolve: ${reference}`)
-    }
-  }
-
-  for (const key of PATH_KEYS) {
-    for (const path of stringList(entries[key])) {
-      if (!environment.exists(path)) findings.push(`initial_context ${key} does not exist: ${path}`)
-    }
-  }
-  return findings
-}
-
 export function verifyWorkItemReferences(
   record: WorkItemRecord,
   environment: ReferenceEnvironment,
 ): string[] {
-  const findings = verifyAffectedSpec(record, environment)
-  if (record.status === 'in_progress') findings.push(...verifyInitialContext(record, environment))
-  return findings
+  return verifyAffectedSpec(record, environment)
 }

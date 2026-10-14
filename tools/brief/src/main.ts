@@ -16,9 +16,7 @@ import {
   coverageLine,
   coverageOf,
   extractDeclaration,
-  initialContextDraft,
   partitionSources,
-  sourceDirectories,
 } from './brief.ts'
 
 const root = resolve(process.env.SPEC_WORKSPACE_ROOT ?? resolve(import.meta.dir, '../../..'))
@@ -187,10 +185,6 @@ const traces = new Map(
 )
 const tspFiles = affected.some((one) => one.symbol) ? await typespecFiles('spec') : []
 
-const specification: string[] = []
-const typespec: string[] = []
-const implementation = new Set<string>()
-const tests = new Set<string>()
 const modules = new Set<string>()
 
 for (const reference of affected) {
@@ -199,7 +193,6 @@ for (const reference of affected) {
 
   if (reference.requirement) {
     const id = reference.requirement
-    specification.push(`${documentPath}#${id}`)
     lines.push(`## ${id}`, '', `Declared in ${documentPath}`, '')
     const source = await readFile(resolve(root, documentPath), 'utf8').catch(() => '')
     const declaration = extractDeclaration(source, id)
@@ -211,8 +204,6 @@ for (const reference of affected) {
     )
     const trace = traces.get(id) ?? namingFiles(id)
     const partition = partitionSources(trace.sources)
-    for (const one of partition.implementation) implementation.add(one)
-    for (const one of partition.tests) tests.add(one)
     lines.push(
       `- Named by tests: ${partition.tests.join(', ') || 'none'}`,
       `- Named by implementation: ${partition.implementation.join(', ') || 'none'}`,
@@ -223,7 +214,6 @@ for (const reference of affected) {
   }
 
   if (reference.symbol) {
-    typespec.push(reference.symbol)
     const declaration = await declarationOf(reference.symbol, tspFiles)
     // 完全修飾名は Go にも TypeScript にも現れないので、宣言された名前で問う。
     // `declarationOf` が宣言を探すときと同じ名前であり、答えの主語が揃う。
@@ -283,37 +273,6 @@ if (include.has('neighbors')) {
     )
   lines.push('')
 }
-
-// The draft points at packages on the source side and at the naming files on
-// the test side: the code to read is a package, and the test to re-run is a file.
-lines.push(
-  '## Draft reading list',
-  '',
-  '```yaml',
-  initialContextDraft({
-    specification: [
-      ...new Set([
-        ...specification,
-        ...context.reading
-          .filter((one) => one.location.startsWith('docs/'))
-          .map((one) => one.location.split('#')[0]!),
-      ]),
-    ],
-    typespec,
-    implementation: [
-      ...new Set([
-        ...sourceDirectories([...implementation, ...tests]),
-        ...seed.targets.filter((one) => !one.startsWith('docs/') && !one.startsWith('spec/')),
-        ...context.reading
-          .filter((one) => !one.location.startsWith('docs/') && !one.location.startsWith('spec/'))
-          .map((one) => one.location),
-      ]),
-    ],
-    tests: [...tests].sort(),
-  }).trimEnd(),
-  '```',
-  '',
-)
 
 process.stdout.write(
   `${lines.filter((line, index, all) => line !== '' || all[index - 1] !== '').join('\n')}\n`,

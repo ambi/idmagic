@@ -1,8 +1,9 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { basename, dirname, posix } from 'node:path'
 import MarkdownIt, { type Env, type Token } from 'markdown-it'
-import { parseFrontmatterAndMarkdown } from '../../check/src/work-item-markdown.ts'
+import { verifyCompletion } from '../../check/src/check-work-items.ts'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
+import { collapseRecord } from './archive.ts'
 
 type Destination = { start: number; end: number; value: string }
 
@@ -185,7 +186,15 @@ async function relocateWorkItems(root: string, moves: ReadonlyMap<string, string
   for (const write of writes) await writeFile(snapshot.path(write.path), write.source)
 }
 
-export async function moveWorkItem(root: string, id: string): Promise<void> {
+/**
+ * 作業項目を完了または中止にし、`## 要約` だけに縮めて `work-items/done/` へ移す。
+ * 完了では、縮める前の全文に完了時の検査を適用し、通らなければ何も書き込まない。
+ */
+export async function moveWorkItem(
+  root: string,
+  id: string,
+  status: 'completed' | 'cancelled' = 'completed',
+): Promise<void> {
   const snapshot = createWorkspaceSnapshot(root)
   const stem = basename(id, '.md')
   const matches = (await snapshot.files('work-items/active')).filter((path) => {
@@ -195,9 +204,14 @@ export async function moveWorkItem(root: string, id: string): Promise<void> {
   if (matches.length !== 1)
     throw new Error(`expected one active work item matching ${id}, found ${matches.length}`)
   const from = matches[0]!
-  const record = parseFrontmatterAndMarkdown(from, await snapshot.read(from))
-  if (record.status !== 'completed' && record.status !== 'cancelled') {
-    throw new Error(`set status to completed or cancelled before moving ${from}`)
+  const to = `work-items/done/${basename(from)}`
+  const text = await snapshot.read(from)
+  const collapsed = collapseRecord(text, status, from)
+  if (status === 'completed') {
+    const findings = await verifyCompletion(snapshot, from, text)
+    if (findings.length > 0)
+      throw new Error(`${from} does not pass the completion checks:\n${findings.join('\n')}`)
   }
-  await relocateWorkItems(root, new Map([[from, `work-items/done/${basename(from)}`]]))
+  await relocateWorkItems(root, new Map([[from, to]]))
+  await writeFile(snapshot.path(to), collapsed)
 }
