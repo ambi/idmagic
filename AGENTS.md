@@ -66,7 +66,7 @@
 | 内容の検索 | `rg` | `grep -r`、`find … -exec grep` |
 | 名前によるファイル検索 | `fd` | `find` |
 | 同じ構造で識別子だけ異なる複数箇所 | `ast-grep` | 複数行の正規表現、廃止された `sg` 別名 |
-| リテラルの一括置換 | `sd` | `sed -i` |
+| リテラルの一括置換 | `sd -F [-A] -- <find> <replace> <files>`。改行を含むなら `-A`（ないと終了コード 0 のまま空振りする）、`-` で始まる引数のために常に `--` を置く | `sed -i` |
 | HTML ページの読み取りと抽出 | `ax` | `curl` と解析スクリプト |
 | GitHub の Pull Request、Issue、API | `gh` | GitHub API への `curl` |
 
