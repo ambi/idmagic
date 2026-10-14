@@ -355,6 +355,16 @@ describe('verifySpecImpact の work item', () => {
     ])
   })
 
+  it('削除した宣言は、同じ範囲に仕様を変える別の work item があれば none の矛盾にしない', () => {
+    const removed = diff({ removedDeclarations: [`${TYPESPEC}:Legacy`] })
+    expect(
+      verifyItems(none(range({ diff: removed, claimedByOthers: [requirement('REQ-DEMO-009')] }))),
+    ).toEqual([])
+    expect(verifyItems(none(range({ diff: removed })))).toEqual([
+      expect.stringContaining(`${TYPESPEC}:Legacy`),
+    ])
+  })
+
   it('別の work item が conforms として挙げただけの差分は、none の矛盾として残す', () => {
     const findings = verifyItems(
       none(

@@ -153,7 +153,13 @@ function repository(snapshot: WorkspaceSnapshot, git: Git) {
     },
     workItem: (id: string): { path: string; record: WorkItemRecord } | undefined => {
       for (const path of workItemPaths(id)) {
-        const record = workItemRecord(path, read(path))
+        const source = read(path)
+        // 要約に縮めた記録の宣言は、全文を含む archived_from のコミットから読む。
+        const revision = source?.match(/^archived_from:\s*([0-9a-f]{7,40})\s*$/m)?.[1]
+        const record = workItemRecord(
+          path,
+          revision ? (git(['show', `${revision}:${path}`]) ?? source) : source,
+        )
         if (record) return { path, record }
       }
       return undefined

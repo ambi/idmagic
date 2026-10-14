@@ -394,6 +394,26 @@ describe('spec-impact: 宣言と仕様差分の整合', () => {
     expect(result.code).toBe(0)
   })
 
+  it('要約に縮めた完了記録の宣言を、archived_from のコミットの全文から読む', async () => {
+    const repo = await repository()
+    await repo.write(TYPESPEC, 'model Task {\n  id: string;\n  name: string;\n}\n')
+    await repo.write(ITEM, affected('in_progress', `{ path: ${TYPESPEC}, symbol: Demo.Task }`))
+    await repo.commit('feat(demo): name tasks')
+    await repo.write(ITEM, affected('completed', `{ path: ${TYPESPEC}, symbol: Demo.Task }`))
+    const full = await repo.commit('feat(demo): complete naming tasks')
+    await repo.write(
+      ITEM,
+      ['---', 'status: completed', `archived_from: ${full}`, '---', '', '# Demo change', ''].join(
+        '\n',
+      ),
+    )
+    await repo.commit('chore(work-items): collapse the demo record')
+
+    const result = await repo.check(repo.base)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
+  })
+
   it('impact: conforms の規範要素を引くテストが作業範囲になければ拒否する', async () => {
     const repo = await repository()
     await repo.write(SERVICE, service('running'))

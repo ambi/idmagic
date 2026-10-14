@@ -288,8 +288,13 @@ function verifyWorkItem(item: CheckedWorkItem): string[] {
   }
   const claimedByOthers = modifiedElements(range.claimedByOthers)
   if (declaration.kind === 'none') {
-    // 状態遷移は名指せないので、同じ範囲に仕様を変える別の work item があれば、その作業のものとして扱う。
-    const unattributable = new Set(claimedByOthers.size > 0 ? transitionChanges(range.diff) : [])
+    // 状態遷移と削除した宣言は affected_spec で名指せないので、同じ範囲に仕様を変える別の
+    // work item があれば、その作業のものとして扱う。
+    const unattributable = new Set(
+      claimedByOthers.size > 0
+        ? [...transitionChanges(range.diff), ...removedElements(range.diff)]
+        : [],
+    )
     const changes = normativeChanges(range.diff).filter(
       (change) => !claimedByOthers.has(change) && !unattributable.has(change),
     )
