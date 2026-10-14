@@ -21,7 +21,7 @@
     └── done/          # completed と cancelled
 ```
 
-`work-items/done/` と `spec/*.openapi.baseline.json` は `.ignore` で `rg`、`fd`、`ast-grep` の既定の検索から外している。探すときは `rg --no-ignore-dot` か `git grep` を使う。
+`work-items/done/` と `spec/*.openapi.baseline.json` は `.ignore` で `rg`、`fd`、`ast-grep` のデフォルトの検索から外している。探すときは `rg --no-ignore-dot` か `git grep` を使う。
 
 依存は `spec` から実装と派生成果物へ向かって流れる。`backend` のドメイン層とユースケース層のパッケージが、アダプターやランタイムへ逆向きに依存することはない。
 
