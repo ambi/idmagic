@@ -163,6 +163,9 @@ type totpServerOptions struct {
 	// 0 のときは 1 時間。登録期限を過ぎた確定を観測する具体例は、ログインの時点では
 	// 期限内で、確定の時点では期限外という状態を必要とする (EX-AUTHENTICATION-018-03)。
 	enrollmentDeadlineIn time.Duration
+	// firstParty は認可を求めるクライアントを IdMagic 自身の画面 (first-party) として登録する。
+	// first-party のクライアントには、アプリケーションのポリシーではなくテナントのデフォルトが掛かる。
+	firstParty bool
 	// webAuthn は WebAuthn の RP を構成し、ログインの第二要素の WebAuthn の API を使えるようにする。
 	webAuthn bool
 }
@@ -218,6 +221,7 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 		Scope:                    "openid profile email offline_access",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
+		FirstParty:               opts.firstParty,
 		CreatedAt:                time.Now().UTC(),
 	})
 
@@ -1094,6 +1098,7 @@ func TestDirectAdminLoginWithEnrolledTOTPReturnsToRequestedPage(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-APPLICATION-016: 管理コンソールへ戻る直接のログインで、テナントのデフォルトが MFA を要求するとき、パスワードの後は第二要素の画面へ進み、TOTP が成立して初めて管理コンソールへ戻る。
 func TestDirectAdminLoginRequiresTOTPWhenDefaultPolicyRequiresMFA(t *testing.T) {
 	srv := newServerWithTOTPPolicy(t, totpTestSecret, true)
 	defer srv.Close()
@@ -1152,6 +1157,45 @@ func TestDirectAdminLoginRequiresTOTPWhenDefaultPolicyRequiresMFA(t *testing.T) 
 		!slices.Contains(sessions.Sessions[0].AMR, "pwd") ||
 		!slices.Contains(sessions.Sessions[0].AMR, "otp") {
 		t.Fatalf("session=%+v, want current pwd+otp session", sessions.Sessions[0])
+	}
+}
+
+//spec:covers REQ-APPLICATION-016: first-party のクライアントの認可で、テナントのデフォルトが MFA を要求するとき、パスワードの後は第二要素の画面へ進み、TOTP が成立するまで認可コードを発行しない。
+func TestFirstPartyBrowserLoginRequiresTheSecondFactorUnderTheTenantDefault(t *testing.T) {
+	secret := totpTestSecret
+	srv, events := newTOTPServerWithEvents(t, totpServerOptions{totpSecret: secret, requireMFA: true, firstParty: true})
+	defer srv.Close()
+	client := browserClient(t)
+
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-first-party-default-policy-12345678", "state")
+	resp.Body.Close()
+	transaction := getJSON[struct {
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	loginResult := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{
+		"username": demoUsername,
+		"password": demoPassword,
+	})
+	if loginResult["next"] != "/realms/default/totp" || loginResult["redirect_to"] != "" {
+		t.Fatalf("login result=%v, want next=/realms/default/totp without a redirect", loginResult)
+	}
+	if issued := emittedOf[*domain.AuthorizationCodeIssued](events); len(issued) != 0 {
+		t.Fatalf("an authorization code was issued before the second factor: %+v", issued)
+	}
+
+	totpTransaction := getJSON[struct {
+		CSRFToken string `json:"csrf_token"`
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	code, err := totpusecases.GenerateTOTP(secret, time.Now().UTC().Unix())
+	if err != nil {
+		t.Fatalf("generate totp: %v", err)
+	}
+	totpResult := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/totp", totpTransaction.CSRFToken, map[string]string{
+		"code": code,
+	})
+	redirectTo, err := url.Parse(totpResult["redirect_to"])
+	if err != nil || redirectTo.Query().Get("code") == "" {
+		t.Fatalf("totp result=%v, want a redirect carrying the authorization code", totpResult)
 	}
 }
 

@@ -25,6 +25,7 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -207,6 +208,8 @@ func TestAuthorizePromptConsentBypassesExistingConsent(t *testing.T) {
 // Token とは違い Authorize には 403 の経路が存在するが、本文は OAuth のエラー形
 // (`{"error": ...}` + `application/json`) ではなく RFC 9457 Problem Details である。
 // 契約の AuthorizeError403 はこの実測に一致していなければならない。
+//
+//spec:covers REQ-APPLICATION-016: first-party のクライアントで、テナントのデフォルトの規則が許可しないネットワークからの認可要求は、ステップアップ認証の機会なしに 403 の access_denied で止まり、認可コードを発行しない。
 func TestAuthorizeDeniedBySignInPolicyReturnsProblemDetails403(t *testing.T) {
 	now := time.Now().UTC()
 	authn := &authdomain.AuthenticationContext{
@@ -266,6 +269,8 @@ func TestAuthorizeDeniedBySignInPolicyReturnsProblemDetails403(t *testing.T) {
 
 // MFA を要求するポリシーに対し、第二要素を 1 つも持たず登録も開始できない利用者は
 // 403 で止まる。ここも応答を書いたあとに拒否を伝えない形になっていた分岐である。
+//
+//spec:covers REQ-APPLICATION-016: first-party のクライアントで、テナントのデフォルトが MFA を要求し、利用者が第二要素を持たず登録も始められないとき、403 で止まり認可コードを発行しない。
 func TestAuthorizeMfaRequiredWithoutSecondFactorIssuesNoCode(t *testing.T) {
 	now := time.Now().UTC()
 	authn := &authdomain.AuthenticationContext{
@@ -305,6 +310,8 @@ func TestAuthorizeMfaRequiredWithoutSecondFactorIssuesNoCode(t *testing.T) {
 
 // 第二要素は持っているがセッションが引けず、ステップアップを開始できない場合。
 // 401 を書いたあとに拒否を伝えない形になっていた 3 つめの分岐である。
+//
+//spec:covers REQ-APPLICATION-016: first-party のクライアントで、ステップアップ認証を始めるログインセッションが失効しているとき、401 で止まり認可コードを発行しない。
 func TestAuthorizeStepUpWithExpiredSessionIssuesNoCode(t *testing.T) {
 	now := time.Now().UTC()
 	// AuthnResolver は認証済みの文脈を返すが、SessionManager の store は空なので
@@ -494,5 +501,99 @@ func TestAuthorizeResumeCompletesFederatedSession(t *testing.T) {
 	if location := rec.Header().Get("Location"); !strings.HasPrefix(location, authRedirectURI) ||
 		!strings.Contains(location, "code=") {
 		t.Fatalf("resume Location=%q, want redirect URI with authorization code", location)
+	}
+}
+
+// defaultMfaPolicyWithTOTP は、テナントのデフォルトが MFA を要求し、user_alice が TOTP を
+// 登録済みの状態を組み立てる。
+func defaultMfaPolicyWithTOTP(t *testing.T, now time.Time) func(*httpadapter.Deps) {
+	t.Helper()
+	policyRepo := appmemory.NewDefaultSignInPolicyRepository()
+	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+		TenantID: tenancydomain.DefaultTenantID,
+		Rules: []appdomain.SignInRule{{
+			RuleID: "mfa-required", Name: "mfa", Enabled: true,
+			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	factorRepo := totpmemory.NewMfaFactorRepository()
+	secret := "JBSWY3DPEHPK3PXP"
+	if err := factorRepo.Save(context.Background(), &totpdomain.MfaFactor{
+		UserID: "user_alice", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return func(deps *httpadapter.Deps) {
+		deps.Application.DefaultSignInPolicyRepo = policyRepo
+		deps.MfaFactorRepo = factorRepo
+	}
+}
+
+//spec:covers REQ-APPLICATION-016: prompt=none の first-party の認可要求が、テナントのデフォルトの MFA の要求でステップアップ認証を必要とするとき、login_required を返し、認可コードを発行しない。
+func TestAuthorizePromptNoneWithStepUpRequiredReturnsLoginRequired(t *testing.T) {
+	now := time.Now().UTC()
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", SessionID: "session_pwd", AuthTime: now.Unix(), AMR: []string{"pwd"},
+	}
+	e, emitted := newAuthorizeTestServer(t, authn, nil, defaultMfaPolicyWithTOTP(t, now))
+	q := authorizeQuery(url.Values{"prompt": {"none"}})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+	rec := runAuthorize(t, e, q)
+
+	if !strings.Contains(rec.Body.String()+rec.Header().Get("Location"), "login_required") {
+		t.Fatalf("status=%d location=%q body=%s, want login_required", rec.Code, rec.Header().Get("Location"), rec.Body.String())
+	}
+	if strings.Contains(rec.Header().Get("Location"), "code=") {
+		t.Fatalf("prompt=none step-up issued an authorization code: Location=%q", rec.Header().Get("Location"))
+	}
+	for _, event := range *emitted {
+		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+			t.Fatalf("prompt=none step-up issued an authorization code: %+v", event)
+		}
+	}
+}
+
+//spec:covers REQ-APPLICATION-016: 外部の IdP でのサインインから first-party の認可を再開するとき、テナントのデフォルトが MFA を要求すれば第二要素の画面へ送り、認可コードを発行しない。
+func TestAuthorizeResumeRequiresTheSecondFactorUnderTheTenantDefault(t *testing.T) {
+	now := time.Now().UTC()
+	sessions := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
+	authn, err := sessions.Create(testing_tenant.Default(context.Background()), "user_alice", []string{"federated"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := defaultMfaPolicyWithTOTP(t, now)
+	e, emitted := newAuthorizeTestServer(t, authn, nil, func(deps *httpadapter.Deps) {
+		policy(deps)
+		deps.SessionManager = sessions
+	})
+	q := authorizeQuery(url.Values{"prompt": {"login"}})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+	start := runAuthorize(t, e, q)
+	var transactionCookie *http.Cookie
+	for _, cookie := range start.Result().Cookies() {
+		if strings.Contains(cookie.Name, "idmagic_transaction") {
+			transactionCookie = cookie
+		}
+	}
+	if transactionCookie == nil {
+		t.Fatalf("authorization transaction cookie was not set: status=%d", start.Code)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/authorize/resume", http.NoBody)
+	req.AddCookie(transactionCookie)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/realms/default/totp" {
+		t.Fatalf("resume status=%d Location=%q, want 303 to /realms/default/totp", rec.Code, rec.Header().Get("Location"))
+	}
+	for _, event := range *emitted {
+		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+			t.Fatalf("resume issued an authorization code before the second factor: %+v", event)
+		}
 	}
 }
