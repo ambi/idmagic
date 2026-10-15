@@ -9,8 +9,9 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestCharacterizeGroupImportRowQuota(t *testing.T) {
@@ -117,7 +118,7 @@ func assertGroupStored(ctx context.Context, t *testing.T, db sharedpg.DB, tenant
 	}
 }
 
-func assertGroupUsage(ctx context.Context, t *testing.T, quotas *tenancypostgres.QuotaRepository, tenantID string, want int) {
+func assertGroupUsage(ctx context.Context, t *testing.T, quotas tenantports.QuotaRepository, tenantID string, want int) {
 	t.Helper()
 	usage, err := quotas.GetUsage(ctx, tenantID)
 	if err != nil {

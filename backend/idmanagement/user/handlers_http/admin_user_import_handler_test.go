@@ -18,11 +18,12 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userhttp "github.com/ambi/idmagic/backend/idmanagement/user/handlers_http"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
@@ -58,8 +59,8 @@ func TestGetAdminUserImportUsesManagementCursorPaginationForArtifactErrors(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	jobs := jobsmemory.NewJobRepository()
-	job, err := jobsusecases.Enqueue(testing_tenant.Default(context.Background()), jobsusecases.EnqueueDeps{Repo: jobs}, jobsports.EnqueueInput{
+	jobs := jobsmodule.NewJobRepository()
+	job, err := jobsmodule.NewEnqueuer(jobs, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {}).Enqueue(testing_tenant.Default(context.Background()), jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: jobsdomain.KindUserImportPreview, Params: []byte(`{"source_sha256":"source"}`), MaxAttempts: 1,
 	}, now)
 	if err != nil {

@@ -28,7 +28,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -61,7 +61,7 @@ func newConsentRefusalFixture(t *testing.T) *consentRefusalFixture {
 	}
 	consents := consentmemory.NewConsentRepository()
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive},
 		{ID: consentOtherRealm, Realm: consentOtherRealm, Status: tenancydomain.TenantStatusActive},

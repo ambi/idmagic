@@ -18,9 +18,7 @@ import (
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/metrics_prometheus"
 	"github.com/ambi/idmagic/backend/jobs/ports"
-	"github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/oauth2"
 	logoutpush "github.com/ambi/idmagic/backend/oauth2/logout/push_http"
 	"github.com/ambi/idmagic/backend/provisioning"
@@ -72,7 +70,7 @@ func RunWorker() error {
 	// OBSERVABILITY/OTLP, same as idmagic-api (cmd/idmagic/server.go). worker
 	// has no other HTTP surface, so this is a metrics-only listener (wi-261
 	// T006); the k8s NetworkPolicy restricts it to Prometheus ingress only.
-	appMetrics, err := metrics_prometheus.NewMetrics(serviceName, buildInfo.Version)
+	appMetrics, err := jobs.NewMetrics(serviceName, buildInfo.Version)
 	if err != nil {
 		return fmt.Errorf("initialize metrics: %w", err)
 	}
@@ -94,7 +92,7 @@ func RunWorker() error {
 		_ = metricsServer.Shutdown(shutdownCtx)
 	}()
 
-	handlers := usecases.NewHandlerRegistry()
+	handlers := jobs.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
 	oauth2.RegisterJobHandlers(handlers, oauth2.JobHandlerDeps{
 		Notifications: deps.OAuth2.LogoutNotificationStore, TokenSigner: tokens_jose.NewJWTSigner("", deps.SigningKeys.KeyStore),
@@ -195,7 +193,7 @@ func RunWorker() error {
 			return nil
 		},
 	}))
-	handlers.Register(domain.KindDataKeyReencryption, deps.DataKeys.ReencryptionHandler(usecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logger))))
+	handlers.Register(domain.KindDataKeyReencryption, deps.DataKeys.ReencryptionHandler(jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logger))))
 	handlers.Register(idgovernance.LifecycleWorkflowRunJobKind, deps.IdGovernance.Executor(lifecycleWorkflowExecutorDeps(deps, logger)))
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
 
@@ -212,10 +210,10 @@ func RunWorker() error {
 		workerID = workerIDFallback()
 	}
 	lanes := worker.Lanes
-	runners := make([]*usecases.Runner, 0, len(lanes))
+	runners := make([]*jobs.Runner, 0, len(lanes))
 	for _, lane := range lanes {
-		runners = append(runners, usecases.NewRunner(
-			usecases.RunnerConfig{
+		runners = append(runners, jobs.NewRunner(
+			jobs.RunnerConfig{
 				WorkerID:      workerID + "-" + string(lane),
 				Lane:          lane,
 				PollInterval:  worker.PollInterval,
@@ -224,7 +222,7 @@ func RunWorker() error {
 				BackoffBase:   worker.BackoffBase,
 				BackoffCap:    worker.BackoffCap,
 			},
-			usecases.RunnerDeps{
+			jobs.RunnerDeps{
 				Repo:     deps.Jobs.Repo,
 				Handlers: handlers,
 				Emit: func(e spec.DomainEvent) {
@@ -242,7 +240,7 @@ func RunWorker() error {
 
 	runErrChan := make(chan error, len(runners))
 	for _, rn := range runners {
-		go func(rn *usecases.Runner) { runErrChan <- rn.Run(ctx) }(rn)
+		go func(rn *jobs.Runner) { runErrChan <- rn.Run(ctx) }(rn)
 	}
 
 	<-ctx.Done()
@@ -272,7 +270,7 @@ func RunWorker() error {
 
 // metricsMux serves only GET /metrics: idmagic-worker has no other HTTP
 // surface, unlike idmagic-api's full route table.
-func metricsMux(appMetrics *metrics_prometheus.Metrics) http.Handler {
+func metricsMux(appMetrics *jobs.Metrics) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", appMetrics.Handler())
 	return mux
@@ -284,7 +282,7 @@ func metricsMux(appMetrics *metrics_prometheus.Metrics) http.Handler {
 // since depth is a queue-wide fact (every lane, every worker process) and
 // must self-correct after a worker crash the same way lease-expiry reclaim
 // does — an event-sourced counter would drift in that case.
-func jobsQueueDepthSamplingLoop(ctx context.Context, repo ports.JobRepository, appMetrics *metrics_prometheus.Metrics) {
+func jobsQueueDepthSamplingLoop(ctx context.Context, repo ports.JobRepository, appMetrics *jobs.Metrics) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for {
@@ -353,7 +351,7 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 	//nolint:contextcheck // Worker events use the bounded independent audit context.
 	emit := deps.NewEmitFunc(logging.Default())
 	for {
-		if err := deps.IdGovernance.DispatchQueuedRuns(ctx, usecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit), 100, time.Now().UTC()); err != nil {
+		if err := deps.IdGovernance.DispatchQueuedRuns(ctx, jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit), 100, time.Now().UTC()); err != nil {
 			logging.Warn(ctx, "lifecycle workflow dispatch failed", "error", err)
 		}
 		select {
@@ -372,7 +370,7 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies,
 	// NewEmitFunc は監査の書き込みに自前の context を使う。停止中の tick でも
 	// ProvisioningTaskStarted を落とさないため (sharedSignalsDeliveryLoop と同じ)。
 	emit := deps.NewEmitFunc(logger) //nolint:contextcheck // see comment above
-	dispatch := deps.Provisioning.Dispatcher(usecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit), emit)
+	dispatch := deps.Provisioning.Dispatcher(jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit), emit)
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {

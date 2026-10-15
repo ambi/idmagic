@@ -10,7 +10,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -44,7 +44,7 @@ func TestRegisterClientHashesSecret(t *testing.T) {
 func TestRegisterClient_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	repo := oauth2memory.NewClientRepository()
-	quotaRepo := tenancymemory.NewQuotaRepository()
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 	limit := 1
 	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{OAuth2Clients: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)

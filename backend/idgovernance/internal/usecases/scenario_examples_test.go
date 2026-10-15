@@ -32,9 +32,9 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -123,7 +123,7 @@ type governanceFixture struct {
 	groups      *timingOutGroups
 	apps        *appmemory.ApplicationRepository
 	assignments *appmemory.ApplicationAssignmentRepository
-	jobs        *jobsmemory.JobRepository
+	jobs        jobsports.JobRepository
 	sender      *email_memory.NoopEmailSender
 	events      *eventLog
 	// lifecycle は disable_user と enable_user の手順が呼ぶ操作である。nil なら worker と同じく
@@ -140,7 +140,7 @@ func newGovernanceFixture(t *testing.T) *governanceFixture {
 		groups:      &timingOutGroups{GroupRepository: groupmemory.NewGroupRepository()},
 		apps:        appmemory.NewApplicationRepository(),
 		assignments: appmemory.NewApplicationAssignmentRepository(),
-		jobs:        jobsmemory.NewJobRepository(), sender: &email_memory.NoopEmailSender{}, events: &eventLog{},
+		jobs:        jobsmodule.NewJobRepository(), sender: &email_memory.NoopEmailSender{}, events: &eventLog{},
 	}
 }
 
@@ -278,11 +278,11 @@ func (f *governanceFixture) runWorker(t *testing.T, run *igdomain.WorkflowRun) *
 	if err != nil || stored.JobID == nil {
 		t.Fatalf("run job attachment = %+v, %v", stored, err)
 	}
-	handlers := jobsusecases.NewHandlerRegistry()
+	handlers := jobsmodule.NewHandlerRegistry()
 	handlers.Register(usecases.LifecycleWorkflowRunJobKind, usecases.LifecycleWorkflowRunHandler(f.executor()))
-	runner := jobsusecases.NewRunner(
-		jobsusecases.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneDefault, PollInterval: 2 * time.Millisecond, LeaseDuration: time.Minute, BackoffBase: time.Millisecond, BackoffCap: time.Millisecond},
-		jobsusecases.RunnerDeps{Repo: f.jobs, Handlers: handlers},
+	runner := jobsmodule.NewRunner(
+		jobsmodule.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneDefault, PollInterval: 2 * time.Millisecond, LeaseDuration: time.Minute, BackoffBase: time.Millisecond, BackoffCap: time.Millisecond},
+		jobsmodule.RunnerDeps{Repo: f.jobs, Handlers: handlers},
 	)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)

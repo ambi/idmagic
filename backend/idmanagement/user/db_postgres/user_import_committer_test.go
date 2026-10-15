@@ -7,7 +7,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy"
 )
 
 func TestUserImportRowCommitterWritesPasswordHistoryAndAudit(t *testing.T) {

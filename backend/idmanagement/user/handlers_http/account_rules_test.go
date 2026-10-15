@@ -23,7 +23,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -59,7 +59,7 @@ func newAccountRulesServer(t *testing.T) (*accountRulesServer, *userdomain.User)
 	}); err != nil {
 		t.Fatal(err)
 	}
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	if err := tenants.Save(ctx, activeTenant(tenancydomain.DefaultTenantID, "Default")); err != nil {
 		t.Fatal(err)
 	}

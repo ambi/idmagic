@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement/user/testing_contract"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy"
 )
 
 func newContractFixture(t *testing.T) testing_contract.Fixture {

@@ -9,16 +9,16 @@ import (
 	"testing"
 	"time"
 
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	clientmemory "github.com/ambi/idmagic/backend/oauth2/client/db_memory"
 	clientdomain "github.com/ambi/idmagic/backend/oauth2/client/domain"
 	logoutdomain "github.com/ambi/idmagic/backend/oauth2/logout/domain"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	logoutusecases "github.com/ambi/idmagic/backend/oauth2/logout/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -248,9 +248,9 @@ func TestBackChannelLogoutRedeliveredJobDoesNotResendTheNotification(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	jobs := jobsmemory.NewJobRepository()
+	jobs := jobsmodule.NewJobRepository()
 	dedupKey := "logout-notification:notification-1"
-	job, err := jobsusecases.Enqueue(ctx, jobsusecases.EnqueueDeps{Repo: jobs}, jobsports.EnqueueInput{
+	job, err := jobsmodule.NewEnqueuer(jobs, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {}).Enqueue(ctx, jobsports.EnqueueInput{
 		TenantID: tenancydomain.DefaultTenantID, Kind: logoutdomain.KindBackChannelLogoutDelivery, Params: params, DedupKey: &dedupKey,
 	}, time.Now().UTC())
 	if err != nil {
@@ -258,11 +258,11 @@ func TestBackChannelLogoutRedeliveredJobDoesNotResendTheNotification(t *testing.
 	}
 	client := &countingBackChannelClient{}
 	handler := logoutusecases.BackChannelLogoutHandler(logoutusecases.BackChannelLogoutHandlerDeps{Notifications: notifications, Signer: &logoutTokenSigner{}, Client: client})
-	handlers := jobsusecases.NewHandlerRegistry()
+	handlers := jobsmodule.NewHandlerRegistry()
 	handlers.Register(logoutdomain.KindBackChannelLogoutDelivery, handler)
-	runner := jobsusecases.NewRunner(
-		jobsusecases.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneLatencySensitive, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
-		jobsusecases.RunnerDeps{Repo: jobs, Handlers: handlers},
+	runner := jobsmodule.NewRunner(
+		jobsmodule.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneLatencySensitive, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
+		jobsmodule.RunnerDeps{Repo: jobs, Handlers: handlers},
 	)
 	runCtx, cancel := context.WithCancel(ctx)
 	done := make(chan error, 1)

@@ -11,7 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -28,7 +28,7 @@ func seedTenant(t *testing.T, db *DataKeyRepository) *tenancydomain.Tenant {
 		ID: mustUUID(t), Realm: "datakeys-" + mustUUID(t)[:8], DisplayName: "DataKeys Test",
 		Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	}
-	if err := (&tenancypostgres.TenantRepository{Pool: db.Pool}).Save(context.Background(), tenant); err != nil {
+	if err := tenancypostgres.NewPostgresModule(db.Pool).TenantRepo.Save(context.Background(), tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	return tenant

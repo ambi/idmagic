@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/jobs"
-	jobspostgres "github.com/ambi/idmagic/backend/jobs/db_postgres"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/ambi/idmagic/backend/tenancy"
 )
 
 func TestWriteReadyFilePublishesDatabaseURL(t *testing.T) {
@@ -96,20 +96,20 @@ func TestEmbeddedInfrastructureSharesJobQueueWithRunner(t *testing.T) {
 	}
 
 	// API と同じ投入の入口を通す。レーンは種別の登録から決まり、呼び出し元は指定しない。
-	repo := &jobspostgres.JobRepository{Pool: pool}
-	job, err := jobsusecases.Enqueue(t.Context(), jobsusecases.EnqueueDeps{Repo: repo}, jobsports.EnqueueInput{
+	repo := jobs.NewPostgresModule(pool).Repo
+	job, err := jobs.NewEnqueuer(repo, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {}).Enqueue(t.Context(), jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: jobsdomain.KindNoopEcho, Params: json.RawMessage(`{"smoke":true}`),
 	}, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := jobsusecases.NewHandlerRegistry()
+	registry := jobs.NewHandlerRegistry()
 	registry.Register(jobsdomain.KindNoopEcho, jobs.NoopEchoHandler)
 	ctx, cancel := context.WithCancel(context.Background())
-	runner := jobsusecases.NewRunner(jobsusecases.RunnerConfig{
+	runner := jobs.NewRunner(jobs.RunnerConfig{
 		WorkerID: "dev-smoke", Lane: jobsdomain.LaneDefault, PollInterval: 10 * time.Millisecond, Concurrency: 1,
 		LeaseDuration: time.Second, BackoffBase: time.Millisecond, BackoffCap: time.Second,
-	}, jobsusecases.RunnerDeps{Repo: repo, Handlers: registry, Now: func() time.Time { return time.Now().UTC() }})
+	}, jobs.RunnerDeps{Repo: repo, Handlers: registry, Now: func() time.Time { return time.Now().UTC() }})
 	done := make(chan error, 1)
 	go func() { done <- runner.Run(ctx) }()
 	t.Cleanup(func() { cancel(); <-done })

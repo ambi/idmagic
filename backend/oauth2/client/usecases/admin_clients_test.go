@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -23,7 +23,7 @@ import (
 func TestDeleteAdminOAuth2Client_decrementsQuotaUsage(t *testing.T) {
 	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	clientRepo := oauth2memory.NewClientRepository()
-	quotaRepo := tenancymemory.NewQuotaRepository()
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 	limit := 1
 	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{OAuth2Clients: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)

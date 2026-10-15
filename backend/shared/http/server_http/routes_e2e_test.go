@@ -24,8 +24,10 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/ambi/idmagic/backend/authentication"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -366,9 +368,9 @@ func emittedOf[E spec.DomainEvent](events *[]spec.DomainEvent) []E {
 
 // seedTrustedDeviceTenant は既定テナントを 1 件だけ持つリポジトリを返す。
 // maxAgeSeconds が 0 なら信頼済みデバイスは無効のままになる。
-func seedTrustedDeviceTenant(t *testing.T, maxAgeSeconds int) *tenancymemory.TenantRepository {
+func seedTrustedDeviceTenant(t *testing.T, maxAgeSeconds int) tenantports.TenantRepository {
 	t.Helper()
-	repo := tenancymemory.NewTenantRepository()
+	repo := tenancy.NewMemoryModule().TenantRepo
 	tenant := &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: "default", DisplayName: "Default",
 		Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),

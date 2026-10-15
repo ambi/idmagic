@@ -23,7 +23,6 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -48,7 +47,7 @@ func newControlPlaneAuditServer(t *testing.T) *controlPlaneAuditServer {
 	t.Helper()
 	now := time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC)
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{
 			ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default",
@@ -100,7 +99,7 @@ func newControlPlaneAuditServer(t *testing.T) *controlPlaneAuditServer {
 		Issuer: quotaCsrfIssuer, Contract: spec.CurrentRuntimeContract(),
 		TenantRepo: tenants, TenantBaseDomain: "idp.test", Emit: emit,
 		UserRepo: users, AuthnResolver: &fixedAuthnResolver{sub: controlPlaneAuditActor},
-		Tenancy: tenancy.Module{TenantRepo: tenants, QuotaRepo: tenancymemory.NewQuotaRepository()},
+		Tenancy: tenancy.Module{TenantRepo: tenants, QuotaRepo: tenancy.NewMemoryModule().QuotaRepo},
 		Audit:   audit.Module{AuditEventRepo: auditStore},
 	})
 	return &controlPlaneAuditServer{e: e}

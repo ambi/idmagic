@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/ambi/idmagic/backend/authentication"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
@@ -23,7 +22,6 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -57,7 +55,7 @@ func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	artifacts := idmmemory.NewCSVArtifactStore()
-	jobRepo := jobsmemory.NewJobRepository()
+	jobRepo := jobs.NewJobRepository()
 	hasher := testing_passwords.NewHasher()
 	committer := usermemory.UserImportRowCommitter{Users: users}
 
@@ -70,7 +68,7 @@ func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 		IdManagement: idmanagement.Module{
 			UserRepo: users, CSVArtifacts: artifacts, UserImportCommitter: committer,
 		},
-		Jobs: jobs.Module{Repo: jobRepo, Enqueuer: jobsusecases.NewEnqueuer(jobRepo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})},
+		Jobs: jobs.Module{Repo: jobRepo, Enqueuer: jobs.NewEnqueuer(jobRepo, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {})},
 	})
 
 	account := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/account", http.NoBody)

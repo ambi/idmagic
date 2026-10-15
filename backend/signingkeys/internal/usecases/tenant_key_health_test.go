@@ -8,7 +8,7 @@ import (
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -51,7 +51,7 @@ func (f *fakeKeyStore) Healthy(ctx context.Context) bool    { return true }
 
 func TestListTenantKeyHealth(t *testing.T) {
 	ctx := context.Background()
-	tenantRepo := tenancymemory.NewTenantRepository()
+	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	keyStore := &fakeKeyStore{}
 
 	deps := TenantKeyHealthDeps{

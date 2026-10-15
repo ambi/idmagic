@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"github.com/ambi/idmagic/backend/shared/notification/template"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 // AssembleNotification は通知の送信経路を組み立てる: EmailSender adapter (未設定なら
@@ -33,12 +32,8 @@ func AssembleNotification(deps *Dependencies, cfg SharedConfig) error {
 	}
 
 	deps.Notification.Notifier = &template.Notifier{
-		Sender: deps.Notification.EmailSender,
-		Tenant: tenantusecases.TenantNotificationSource{
-			TenantRepo:   deps.Tenancy.TenantRepo,
-			BrandingRepo: deps.Tenancy.BrandingRepo,
-			TemplateRepo: deps.Tenancy.NotificationTemplates,
-		},
+		Sender:              deps.Notification.EmailSender,
+		Tenant:              deps.Tenancy.NotificationSource(),
 		SystemDefaultLocale: systemDefaultLocale,
 	}
 	return nil

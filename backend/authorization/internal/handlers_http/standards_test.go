@@ -37,7 +37,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	authorizationLocal "github.com/ambi/idmagic/backend/shared/policy/authorization_local"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -140,7 +140,7 @@ func newStandardsFixture(t *testing.T, seams standardsSeams, agents ...*agentdom
 			t.Fatal(err)
 		}
 	}
-	tenantRepo := tenancymemory.NewTenantRepository()
+	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	if err := tenantRepo.Save(context.Background(), &tenancydomain.Tenant{
 		ID: "acme", Realm: "acme", DisplayName: "acme",
 		Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),

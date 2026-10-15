@@ -18,7 +18,6 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
@@ -26,14 +25,16 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
 
 type observedTenantRepository struct {
-	*tenancymemory.TenantRepository
+	tenantports.TenantRepository
 	findAllCalls atomic.Int32
 }
 
@@ -45,7 +46,7 @@ func (r *observedTenantRepository) FindAll(ctx context.Context) ([]*tenancydomai
 type controlPlaneBoundaryServer struct {
 	e              *echo.Echo
 	tenants        *observedTenantRepository
-	jobs           *jobsmemory.JobRepository
+	jobs           jobports.JobRepository
 	otherJob       *jobdomain.Job
 	dataKeys       datakeys.Module
 	otherAuditID   string
@@ -55,7 +56,7 @@ type controlPlaneBoundaryServer struct {
 func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *controlPlaneBoundaryServer {
 	t.Helper()
 	now := time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC)
-	tenantStore := tenancymemory.NewTenantRepository()
+	tenantStore := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
 		{ID: "acme", Realm: "acme", DisplayName: "Acme", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
@@ -91,7 +92,7 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 		t.Fatal(err)
 	}
 
-	jobStore := jobsmemory.NewJobRepository()
+	jobStore := jobs.NewJobRepository()
 	lane, ok := jobdomain.LaneFor(jobdomain.KindNoopEcho)
 	if !ok {
 		t.Fatal("noop_echo の実行レーンが登録されていない")

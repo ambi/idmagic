@@ -23,7 +23,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -64,7 +64,7 @@ func newPasswordExpiryServer(
 	maxAgeDays, passwordChangedDaysAgo := opts.maxAgeDays, opts.passwordChangedDaysAgo
 	now := time.Now().UTC()
 
-	tenantRepo := tenancymemory.NewTenantRepository()
+	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	policyUpdatedDaysAgo := opts.policyUpdatedDaysAgo
 	if policyUpdatedDaysAgo == 0 {
 		policyUpdatedDaysAgo = maxAgeDays + 100

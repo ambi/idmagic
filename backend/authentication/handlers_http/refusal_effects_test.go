@@ -67,7 +67,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -192,7 +191,7 @@ func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *aut
 		})
 	}
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive},
 		{ID: authRefusalOtherTenant, Realm: authRefusalOtherTenant, Status: tenancydomain.TenantStatusActive},

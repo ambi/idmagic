@@ -10,7 +10,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	tenancypg "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -31,7 +31,7 @@ func TestRepositoryRoundTripScopesAndTenantRevoke(t *testing.T) {
 		ID: newUUID(t), Realm: "api-token-" + newUUID(t)[:8], DisplayName: "API Token Test",
 		Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	}
-	if err := (&tenancypg.TenantRepository{Pool: db}).Save(ctx, tenant); err != nil {
+	if err := tenancy.NewPostgresModule(db).TenantRepo.Save(ctx, tenant); err != nil {
 		t.Fatal(err)
 	}
 	expiresAt := now.Add(time.Hour)

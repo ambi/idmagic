@@ -36,7 +36,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -126,14 +126,14 @@ type authCharacterization struct {
 	consents     *faultyConsents
 	sessions     *sessionusecases.SessionManager
 	sessionStore *sessionmemory.SessionStore
-	tenants      *tenancymemory.TenantRepository
+	tenants      tenantports.TenantRepository
 	apiTokens    *apitoken.Service
 	echo         *echo.Echo
 }
 
 func newAuthCharacterization(t *testing.T) *authCharacterization {
 	t.Helper()
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	if err := tenants.Save(context.Background(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm,
 		DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),

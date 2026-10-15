@@ -23,7 +23,7 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmemory "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -411,12 +411,12 @@ func TestStartGroupImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 
 	for _, tc := range []struct {
 		name    string
-		arrange func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository) (context.Context, string)
+		arrange func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository) (context.Context, string)
 		wantErr error
 	}{
 		{
 			name: "存在しない",
-			arrange: func(t *testing.T, _ *idmmemory.CSVArtifactStore, _ *jobsmemory.JobRepository) (context.Context, string) {
+			arrange: func(t *testing.T, _ *idmmemory.CSVArtifactStore, _ jobsports.JobRepository) (context.Context, string) {
 				t.Helper()
 				return ctx, "no-such-preview"
 			},
@@ -424,7 +424,7 @@ func TestStartGroupImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 		},
 		{
 			name: "queued のまま",
-			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository) (context.Context, string) {
+			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository) (context.Context, string) {
 				t.Helper()
 				return ctx, startGroupImportPreviewForTest(t, artifacts, jobs).ID
 			},
@@ -432,7 +432,7 @@ func TestStartGroupImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 		},
 		{
 			name: "failed で終わっている",
-			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository) (context.Context, string) {
+			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository) (context.Context, string) {
 				t.Helper()
 				preview := startGroupImportPreviewForTest(t, artifacts, jobs)
 				claimGroupImportJob(t, jobs)
@@ -447,7 +447,7 @@ func TestStartGroupImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 		},
 		{
 			name: "別テナントに属する",
-			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository) (context.Context, string) {
+			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository) (context.Context, string) {
 				t.Helper()
 				return otherCtx, succeededGroupImportPreview(t, artifacts, jobs, true)
 			},
@@ -455,7 +455,7 @@ func TestStartGroupImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 		},
 		{
 			name: "ダイジェストが一致しない",
-			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository) (context.Context, string) {
+			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository) (context.Context, string) {
 				t.Helper()
 				return ctx, succeededGroupImportPreview(t, artifacts, jobs, false)
 			},
@@ -489,7 +489,7 @@ func TestStartGroupImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 }
 
 func startGroupImportPreviewForTest(
-	t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository,
+	t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository,
 ) *jobsdomain.Job {
 	t.Helper()
 	preview, err := StartGroupImportPreview(
@@ -502,7 +502,7 @@ func startGroupImportPreviewForTest(
 	return preview
 }
 
-func claimGroupImportJob(t *testing.T, jobs *jobsmemory.JobRepository) {
+func claimGroupImportJob(t *testing.T, jobs jobsports.JobRepository) {
 	t.Helper()
 	claimed, err := jobs.ClaimBatch(
 		groupImportContext(), "worker", jobsdomain.LaneBulk, 1, time.Minute, time.Now().UTC(),
@@ -515,7 +515,7 @@ func claimGroupImportJob(t *testing.T, jobs *jobsmemory.JobRepository) {
 // succeededGroupImportPreview は成功したプレビューを建てて id を返す。matchingDigest が
 // false のとき、結果が運ぶ SHA-256 を投入時のものとずらす。
 func succeededGroupImportPreview(
-	t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository, matchingDigest bool,
+	t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository, matchingDigest bool,
 ) string {
 	t.Helper()
 	preview := startGroupImportPreviewForTest(t, artifacts, jobs)

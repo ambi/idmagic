@@ -19,7 +19,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -156,12 +156,12 @@ func TestStartUserImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		// arrange は preview job を望んだ状態にし、apply を呼ぶ文脈と対象 id を返す。
-		arrange func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository) (context.Context, string)
+		arrange func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository) (context.Context, string)
 		wantErr error
 	}{
 		{
 			name: "存在しない",
-			arrange: func(t *testing.T, _ *idmmemory.CSVArtifactStore, _ *jobsmemory.JobRepository) (context.Context, string) {
+			arrange: func(t *testing.T, _ *idmmemory.CSVArtifactStore, _ jobsports.JobRepository) (context.Context, string) {
 				t.Helper()
 				return ctx, "no-such-preview"
 			},
@@ -169,7 +169,7 @@ func TestStartUserImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 		},
 		{
 			name: "queued のまま",
-			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository) (context.Context, string) {
+			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository) (context.Context, string) {
 				t.Helper()
 				return ctx, startUserImportPreviewForTest(t, artifacts, jobs).ID
 			},
@@ -177,7 +177,7 @@ func TestStartUserImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 		},
 		{
 			name: "failed で終わっている",
-			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository) (context.Context, string) {
+			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository) (context.Context, string) {
 				t.Helper()
 				preview := startUserImportPreviewForTest(t, artifacts, jobs)
 				claimUserImportJob(t, jobs)
@@ -192,7 +192,7 @@ func TestStartUserImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 		},
 		{
 			name: "別テナントに属する",
-			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository) (context.Context, string) {
+			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository) (context.Context, string) {
 				t.Helper()
 				preview := succeededUserImportPreview(t, artifacts, jobs, true)
 				return otherCtx, preview
@@ -201,7 +201,7 @@ func TestStartUserImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 		},
 		{
 			name: "ダイジェストが一致しない",
-			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository) (context.Context, string) {
+			arrange: func(t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository) (context.Context, string) {
 				t.Helper()
 				return ctx, succeededUserImportPreview(t, artifacts, jobs, false)
 			},
@@ -210,7 +210,7 @@ func TestStartUserImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			artifacts := idmmemory.NewCSVArtifactStore()
-			jobs := jobsmemory.NewJobRepository()
+			jobs := jobsmodule.NewJobRepository()
 			applyCtx, previewID := tc.arrange(t, artifacts, jobs)
 			before := userImportApplyJobIDs(t, jobs)
 
@@ -229,7 +229,7 @@ func TestStartUserImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 }
 
 func startUserImportPreviewForTest(
-	t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs *jobsmemory.JobRepository,
+	t *testing.T, artifacts *idmmemory.CSVArtifactStore, jobs jobsports.JobRepository,
 ) *jobsdomain.Job {
 	t.Helper()
 	preview, err := StartUserImportPreview(
@@ -242,7 +242,7 @@ func startUserImportPreviewForTest(
 	return preview
 }
 
-func claimUserImportJob(t *testing.T, jobs *jobsmemory.JobRepository) {
+func claimUserImportJob(t *testing.T, jobs jobsports.JobRepository) {
 	t.Helper()
 	claimed, err := jobs.ClaimBatch(importPlannerContext(), "worker", jobsdomain.LaneBulk, 1, time.Minute, time.Now().UTC())
 	if err != nil || len(claimed) != 1 {
@@ -254,7 +254,7 @@ func claimUserImportJob(t *testing.T, jobs *jobsmemory.JobRepository) {
 // false のとき、結果が運ぶ SHA-256 を投入時のものとずらす。
 func succeededUserImportPreview(
 	t *testing.T, artifacts *idmmemory.CSVArtifactStore,
-	jobs *jobsmemory.JobRepository, matchingDigest bool,
+	jobs jobsports.JobRepository, matchingDigest bool,
 ) string {
 	t.Helper()
 	preview := startUserImportPreviewForTest(t, artifacts, jobs)
@@ -277,7 +277,7 @@ func succeededUserImportPreview(
 }
 
 // userImportApplyJobIDs は投入済みの適用ジョブの id を返す。
-func userImportApplyJobIDs(t *testing.T, jobs *jobsmemory.JobRepository) []string {
+func userImportApplyJobIDs(t *testing.T, jobs jobsports.JobRepository) []string {
 	t.Helper()
 	page, err := jobs.ListByTenantAndKinds(
 		importPlannerContext(), "acme", []jobsdomain.JobKind{jobsdomain.KindUserImportApply}, 100,

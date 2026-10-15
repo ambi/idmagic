@@ -12,7 +12,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/idmanagement/user/testing_contract"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 )
 
 func testingContractUser(_ *testing.T, tenantID, username string, now time.Time) *userdomain.User {
@@ -29,7 +29,7 @@ func newContractFixture(t *testing.T) testing_contract.Fixture {
 	t.Helper()
 	users := NewUserRepository()
 	history := passwordmemory.NewPasswordHistoryRepository()
-	quota := tenancymemory.NewQuotaRepository()
+	quota := tenancy.NewMemoryModule().QuotaRepo
 	audit := auditmemory.NewAuditEventStore(10)
 	now := time.Date(2026, 1, 2, 3, 4, 5, 123456000, time.UTC)
 	emailUser := testingContractUser(t, "tenant-b", "email-user", now)

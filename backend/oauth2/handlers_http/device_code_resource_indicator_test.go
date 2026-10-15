@@ -18,7 +18,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/signingkeys"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
@@ -64,7 +64,7 @@ func newApprovedDeviceCodeServer(t *testing.T, mcpResourceServerRepo *oauth2memo
 	tokenIssuer := tokens_jose.NewJWTSigner("http://test", keyStore)
 
 	e := echo.New()
-	tenantRepo := tenancymemory.NewTenantRepository()
+	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	deps := httpadapter.Deps{
 		Issuer: "http://test", TenantRepo: tenantRepo,
 		OAuth2: oauth2.Module{

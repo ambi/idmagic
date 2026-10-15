@@ -50,7 +50,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -178,7 +178,7 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 		CreatedAt: now, UpdatedAt: now,
 	})
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	if err := tenants.Save(context.Background(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm,
 		Status: tenancydomain.TenantStatusActive,

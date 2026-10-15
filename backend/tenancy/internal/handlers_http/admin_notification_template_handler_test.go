@@ -1,0 +1,341 @@
+package handlers_http_test
+
+// SCL scenario "テナントの通知テンプレート上書きは組込み既定より優先される" /
+// "許可されていない差し込み変数を含むテンプレート上書きは保存時に拒否される" /
+// "プレビューは実送信せずテスト送信は操作者本人にしか届かない" を
+// /api/admin/v1/tenant/notification-templates 経由で検証する。
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
+	"github.com/ambi/idmagic/backend/tenancy/domain"
+	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
+
+	"github.com/labstack/echo/v5"
+)
+
+const notificationTemplatePath = "/realms/acme/api/admin/v1/tenant/notification-templates"
+
+func newNotificationTemplateServer(t *testing.T, actor *userdomain.User) (*echo.Echo, *email_memory.NoopEmailSender, *[]spec.DomainEvent) {
+	t.Helper()
+	userRepo := usermemory.NewUserRepository()
+	if actor != nil {
+		userRepo.Seed(actor)
+	}
+	tenantRepo := memory.NewTenantRepository()
+	if err := tenantRepo.Save(context.Background(), activeTenant("acme", "Acme")); err != nil {
+		t.Fatal(err)
+	}
+	resolver := &fakeAuthnResolver{}
+	if actor != nil {
+		resolver.ctx = &authdomain.AuthenticationContext{
+			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+		}
+	}
+	events := make([]spec.DomainEvent, 0)
+	sender := &email_memory.NoopEmailSender{}
+	e := echo.New()
+	httpadapter.Register(e, httpadapter.Deps{
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo:    tenantRepo,
+		Emit:          func(event spec.DomainEvent) { events = append(events, event) },
+		UserRepo:      userRepo,
+		EmailSender:   sender,
+		AuthnResolver: resolver,
+		Tenancy: tenancy.Module{
+			TenantRepo:            tenantRepo,
+			BrandingRepo:          memory.NewTenantBrandingRepository(),
+			NotificationTemplates: memory.NewNotificationTemplateRepository(),
+		},
+	})
+	return e, sender, &events
+}
+
+func notificationAdmin() *userdomain.User {
+	actor := settingsActor("admin", "acme", []string{"admin"})
+	email := "operator@example.test"
+	actor.Email = &email
+	actor.EmailVerified = true
+	return actor
+}
+
+func notificationRequest(t *testing.T, e *echo.Echo, method, path string, body any) *httptest.ResponseRecorder {
+	t.Helper()
+	var reader *bytes.Reader
+	if body != nil {
+		payload, err := json.Marshal(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		reader = bytes.NewReader(payload)
+	} else {
+		reader = bytes.NewReader(nil)
+	}
+	csrf, cookie := passwordResetContextCSRF(t, e, "/realms/acme/api/auth/password-reset-context")
+	req := httptest.NewRequest(method, defaultRealmPath(path), reader)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://idp.test")
+	req.Header.Set("X-Csrf-Token", csrf)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	return rec
+}
+
+//verify:operation ListNotificationTemplates: 非管理者の一覧は 403 access_denied の Problem Details で拒否する。
+//verify:operation GetNotificationTemplate: 非管理者の詳細は 403 access_denied の Problem Details で拒否する。
+//verify:operation UpdateNotificationTemplate: 非管理者の保存は 403 access_denied の Problem Details で拒否する。
+//verify:operation ResetNotificationTemplate: 非管理者のリセットは 403 access_denied の Problem Details で拒否する。
+//verify:operation PreviewNotificationTemplate: 非管理者のプレビューは 403 access_denied の Problem Details で拒否する。
+//verify:operation SendTestNotification: 非管理者の試し送りは 403 access_denied の Problem Details で拒否する。
+func TestNotificationTemplatesRejectNonAdmin(t *testing.T) {
+	e, _, _ := newNotificationTemplateServer(t, settingsActor("alice", "acme", nil))
+	for _, request := range []struct{ method, suffix string }{
+		{http.MethodGet, ""}, {http.MethodGet, "/password_reset/ja"}, {http.MethodPut, "/password_reset/ja"}, {http.MethodDelete, "/password_reset/ja"}, {http.MethodPost, "/password_reset/ja/preview"}, {http.MethodPost, "/password_reset/ja/test"},
+	} {
+		assertTenancyProblem(t, notificationRequest(t, e, request.method, notificationTemplatePath+request.suffix, nil), http.StatusForbidden, "access_denied")
+	}
+}
+
+//spec:covers EX-TENANCY-016-01: 管理 API は全 template key と全対応 locale を未上書き状態で一覧する。
+//verify:operation ListNotificationTemplates: 200 JSON は対応言語と件名を持つ未上書きのテンプレートの一覧を返す。
+func TestNotificationTemplatesListReturnsWholeCatalog(t *testing.T) {
+	e, _, _ := newNotificationTemplateServer(t, notificationAdmin())
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, notificationTemplatePath, http.NoBody))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Templates []struct {
+			TemplateKey string `json:"template_key"`
+			Locale      string `json:"locale"`
+			Customized  bool   `json:"customized"`
+			Subject     string `json:"subject"`
+		} `json:"templates"`
+		SupportedLocales []string `json:"supported_locales"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if len(body.Templates) == 0 || len(body.SupportedLocales) < 2 {
+		t.Fatalf("body=%+v", body)
+	}
+	for _, tmpl := range body.Templates {
+		if tmpl.Subject == "" || tmpl.Customized {
+			t.Fatalf("unexpected row: %+v", tmpl)
+		}
+	}
+}
+
+// scenario `Tenancy: テナントの通知テンプレート上書きは組込み既定より優先される`
+//
+//spec:covers EX-TENANCY-016-01, EX-TENANCY-016-03: 管理 API は上書きと reset のイベントを発行し、組込み既定へ戻す。
+//verify:operation UpdateNotificationTemplate: PUT は 200 の保存した文面、既定の文面、置換変数と customized=true を返す。
+//verify:operation GetNotificationTemplate: GET は 200 の保存した文面に一致する詳細を返す。
+//verify:operation ResetNotificationTemplate: DELETE は 200 の組み込み文面と customized=false を返し、リセットのイベントを発行する。
+func TestNotificationTemplateUpdateAndReset(t *testing.T) {
+	e, _, events := newNotificationTemplateServer(t, notificationAdmin())
+	path := notificationTemplatePath + "/password_reset/ja"
+
+	rec := notificationRequest(t, e, http.MethodPut, path, map[string]any{
+		"subject":           "【Acme】パスワード再設定",
+		"body_text":         "{{user_display_name}} さん {{reset_url}}",
+		"body_html":         "<p>{{user_display_name}} さん {{reset_url}}</p>",
+		"from_display_name": "Acme サポート",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("put status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var updated struct {
+		Customized     bool     `json:"customized"`
+		Subject        string   `json:"subject"`
+		DefaultSubject string   `json:"default_subject"`
+		Placeholders   []string `json:"placeholders"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &updated); err != nil {
+		t.Fatal(err)
+	}
+	if !updated.Customized || updated.Subject != "【Acme】パスワード再設定" {
+		t.Fatalf("body=%+v", updated)
+	}
+	if updated.DefaultSubject == "" || len(updated.Placeholders) == 0 {
+		t.Fatalf("the builtin default and the allowed placeholders must be returned: %+v", updated)
+	}
+	if len(*events) != 1 {
+		t.Fatalf("events=%d, want 1 NotificationTemplateUpdated", len(*events))
+	}
+	if _, ok := (*events)[0].(*domain.NotificationTemplateUpdated); !ok {
+		t.Fatalf("event type=%T", (*events)[0])
+	}
+	detail := assertNotificationDetail(t, rec, true)
+	if detail["body_text"] != "{{user_display_name}} さん {{reset_url}}" || detail["body_html"] != "<p>{{user_display_name}} さん {{reset_url}}</p>" || detail["from_display_name"] != "Acme サポート" {
+		t.Fatalf("saved detail=%v", detail)
+	}
+	read := notificationRequest(t, e, http.MethodGet, path, nil)
+	if got := assertNotificationDetail(t, read, true); !reflect.DeepEqual(got, detail) {
+		t.Fatalf("read detail=%v, want %v", got, detail)
+	}
+
+	rec = notificationRequest(t, e, http.MethodDelete, path, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("delete status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var reset struct {
+		Customized bool `json:"customized"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &reset); err != nil {
+		t.Fatal(err)
+	}
+	if reset.Customized {
+		t.Fatal("reset did not return to the builtin default")
+	}
+	detail = assertNotificationDetail(t, rec, false)
+	for _, field := range []string{"subject", "body_text", "body_html"} {
+		if detail[field] != detail["default_"+field] {
+			t.Fatalf("reset detail=%v, want builtin %s", detail, field)
+		}
+	}
+	if len(*events) != 2 {
+		t.Fatalf("events=%d, want a NotificationTemplateReset too", len(*events))
+	}
+	if _, ok := (*events)[1].(*domain.NotificationTemplateReset); !ok {
+		t.Fatalf("event type=%T", (*events)[1])
+	}
+}
+
+// scenario `Tenancy: 許可されていない差し込み変数を含むテンプレート上書きは保存時に拒否される`
+func TestNotificationTemplateUpdateRejectsUnknownPlaceholder(t *testing.T) {
+	e, _, events := newNotificationTemplateServer(t, notificationAdmin())
+
+	rec := notificationRequest(t, e, http.MethodPut, notificationTemplatePath+"/password_reset/ja", map[string]any{
+		"subject":   "件名",
+		"body_text": "{{password}}",
+		"body_html": "<p>{{password}}</p>",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if len(*events) != 0 {
+		t.Fatalf("a rejected update emitted %d events", len(*events))
+	}
+}
+
+func TestNotificationTemplateUpdateRejectsUnknownKeyAndLocale(t *testing.T) {
+	e, _, events := newNotificationTemplateServer(t, notificationAdmin())
+	body := map[string]any{"subject": "件名", "body_text": "本文", "body_html": "<p>本文</p>"}
+
+	for _, path := range []string{
+		notificationTemplatePath + "/made_up/ja",
+		notificationTemplatePath + "/password_reset/fr",
+	} {
+		rec := notificationRequest(t, e, http.MethodPut, path, body)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("%s status=%d body=%s", path, rec.Code, rec.Body.String())
+		}
+	}
+	if len(*events) != 0 {
+		t.Fatalf("rejected updates emitted %d events", len(*events))
+	}
+}
+
+// scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
+//
+//spec:covers EX-TENANCY-018-01: 管理 API の preview は描画済みの文面を返し、メールを送信しない。
+//verify:operation PreviewNotificationTemplate: POST は 200 の描画した件名、平文と HTML を返し、実送信しない。
+func TestNotificationTemplatePreviewDoesNotSend(t *testing.T) {
+	e, sender, _ := newNotificationTemplateServer(t, notificationAdmin())
+
+	rec := notificationRequest(t, e, http.MethodPost, notificationTemplatePath+"/password_reset/ja/preview", map[string]any{
+		"subject":   "編集中の件名",
+		"body_text": "{{user_display_name}} さん {{reset_url}}",
+		"body_html": "<p>{{user_display_name}}</p>",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var preview struct {
+		Subject  string `json:"subject"`
+		BodyText string `json:"body_text"`
+		BodyHTML string `json:"body_html"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &preview); err != nil {
+		t.Fatal(err)
+	}
+	if preview.Subject != "編集中の件名" || preview.BodyText == "" || preview.BodyHTML == "" {
+		t.Fatalf("preview=%+v", preview)
+	}
+	if len(sender.Sent) != 0 {
+		t.Fatalf("preview sent %d emails", len(sender.Sent))
+	}
+}
+
+// scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
+// 宛先は操作者本人に固定され、リクエストで指定できない。
+//
+//spec:covers EX-TENANCY-018-01: 管理 API のテスト送信は要求された別宛先を使わず操作者本人へ送る。
+//verify:operation SendTestNotification: POST は 200 の delivered=true と操作者本人の宛先を返し、その一人へ送る。
+func TestNotificationTemplateTestSendGoesToTheActorOnly(t *testing.T) {
+	e, sender, _ := newNotificationTemplateServer(t, notificationAdmin())
+
+	rec := notificationRequest(t, e, http.MethodPost, notificationTemplatePath+"/password_reset/ja/test",
+		map[string]any{"to": "victim@example.test"})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var result struct {
+		Delivered bool   `json:"delivered"`
+		To        string `json:"to"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if !result.Delivered || result.To != "operator@example.test" {
+		t.Fatalf("result=%+v", result)
+	}
+	if len(sender.Sent) != 1 || sender.Sent[0].To != "operator@example.test" {
+		t.Fatalf("sent=%+v", sender.Sent)
+	}
+}
+
+// scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
+// (extension at 4): 操作者に検証済みアドレスが無ければ拒否する。
+func TestNotificationTemplateTestSendRequiresVerifiedActorAddress(t *testing.T) {
+	actor := settingsActor("admin", "acme", []string{"admin"})
+	unverified := "operator@example.test"
+	actor.Email = &unverified
+	e, sender, _ := newNotificationTemplateServer(t, actor)
+
+	rec := notificationRequest(t, e, http.MethodPost, notificationTemplatePath+"/password_reset/ja/test", nil)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if len(sender.Sent) != 0 {
+		t.Fatalf("sent %d emails", len(sender.Sent))
+	}
+}
+
+// defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
+// bare path はどのテナントの正規ロケーションでもなくなったため、
+// テストのリクエスト先も /realms/default 配下でなければ 404 になる。
+func defaultRealmPath(path string) string {
+	if strings.HasPrefix(path, "/realms/") {
+		return path
+	}
+	return "/realms/default" + path
+}

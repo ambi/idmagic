@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -50,7 +50,7 @@ func newAccountServerWithRepo(
 	for _, other := range others {
 		userRepo.Seed(other)
 	}
-	tenantRepo := tenancymemory.NewTenantRepository()
+	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	if err := tenantRepo.Save(context.Background(), activeTenant(tenancydomain.DefaultTenantID, "Default")); err != nil {
 		t.Fatal(err)
 	}

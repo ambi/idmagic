@@ -10,7 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -25,7 +25,7 @@ func TestPostgresModuleDecryptsPersistedCiphertextAfterRotation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := (&tenancypostgres.TenantRepository{Pool: pool}).Save(ctx, &tenancydomain.Tenant{ID: id, Realm: "module-" + id[:8], DisplayName: "Module", Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now}); err != nil {
+	if err := tenancypostgres.NewPostgresModule(pool).TenantRepo.Save(ctx, &tenancydomain.Tenant{ID: id, Realm: "module-" + id[:8], DisplayName: "Module", Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
 	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()

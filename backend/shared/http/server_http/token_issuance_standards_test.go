@@ -45,8 +45,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const (
@@ -67,7 +68,7 @@ const (
 type tiFixture struct {
 	base          string
 	assertionKey  *rsa.PrivateKey
-	tenants       *tenancymemory.TenantRepository
+	tenants       tenantports.TenantRepository
 	refreshTokens *oauth2memory.RefreshTokenStore
 	codes         *oauth2memory.AuthorizationCodeStore
 	events        *eventRecorder
@@ -156,7 +157,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		Scopes: []string{"read"}, State: domain.McpResourceServerDisabled,
 	})
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	if err := tenants.Save(t.Context(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm,
 		Status: tenancydomain.TenantStatusActive,

@@ -25,7 +25,7 @@ import (
 	agentusecases "github.com/ambi/idmagic/backend/idmanagement/agent/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -59,7 +59,7 @@ func newAgentDeps(t *testing.T) (agentusecases.AdminAgentDeps, *[]spec.DomainEve
 		ClientRepo: clientRepo,
 		UserRepo:   userRepo,
 		Emit:       func(e spec.DomainEvent) error { *events = append(*events, e); return nil },
-		QuotaRepo:  tenancymemory.NewQuotaRepository(),
+		QuotaRepo:  tenancy.NewMemoryModule().QuotaRepo,
 	}
 	return deps, events
 }

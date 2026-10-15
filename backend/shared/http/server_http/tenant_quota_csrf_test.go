@@ -22,8 +22,8 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -38,7 +38,7 @@ const (
 // observedQuotaRepository は SetQuota の呼び出し回数を数える。403 を書いた後に保存へ
 // 進む誤実装は応答からは見えないため、ポートの呼び出しそのものを観測する。
 type observedQuotaRepository struct {
-	*tenancymemory.QuotaRepository
+	tenantports.QuotaRepository
 	setQuotaCalls atomic.Int32
 }
 
@@ -56,7 +56,7 @@ func newQuotaCsrfServer(t *testing.T) *quotaCsrfServer {
 	t.Helper()
 	now := time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC)
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{
 			ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default",
@@ -75,7 +75,7 @@ func newQuotaCsrfServer(t *testing.T) *quotaCsrfServer {
 	users := usermemory.NewUserRepository()
 	users.Seed(controlPlaneTestUser("ops", tenancydomain.DefaultTenantID, "system_admin"))
 
-	quotas := &observedQuotaRepository{QuotaRepository: tenancymemory.NewQuotaRepository()}
+	quotas := &observedQuotaRepository{QuotaRepository: tenancy.NewMemoryModule().QuotaRepo}
 	seeded := quotaCsrfSeededUsers
 	if err := quotas.QuotaRepository.SetQuota(t.Context(), quotaCsrfTargetID, &tenancydomain.TenantQuota{Users: &seeded}); err != nil {
 		t.Fatal(err)
@@ -187,7 +187,7 @@ func TestUpdateTenantQuotaAcceptsSystemConsoleSessionWithCSRF(t *testing.T) {
 // 与えないサーバーでも 403 が返る。新しい状態変更ルートを検査なしで足すと、この
 // 表に追加した時点で落ちる。
 func TestTenancyStateChangingAdminRoutesVerifyBrowserRequests(t *testing.T) {
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	if err := tenants.Save(t.Context(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default",
 		Status: tenancydomain.TenantStatusActive, CreatedAt: time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC),
@@ -240,7 +240,7 @@ func TestTenancyStateChangingAdminRoutesVerifyBrowserRequests(t *testing.T) {
 	}
 }
 
-func assertTenantsUnchanged(t *testing.T, tenants *tenancymemory.TenantRepository, before []*tenancydomain.Tenant) {
+func assertTenantsUnchanged(t *testing.T, tenants tenantports.TenantRepository, before []*tenancydomain.Tenant) {
 	t.Helper()
 	after, err := tenants.FindAll(t.Context())
 	if err != nil {

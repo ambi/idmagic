@@ -12,8 +12,7 @@ import (
 	"testing"
 	"time"
 
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -24,7 +23,7 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -96,9 +95,9 @@ func seededExportDeps(t *testing.T) (idmusecases.DataExportDeps, *eventRecorder)
 		Deps:   groupusecases.GroupCSVExportDeps{GroupRepo: groups, Artifacts: artifacts},
 		Policy: idmdomain.DefaultCSVTransferPolicy(),
 	}
-	jobRepo := jobsmemory.NewJobRepository()
+	jobRepo := jobsmodule.NewJobRepository()
 	// 一覧の窓の例は 200 件を超えるエクスポートを作るので、active_jobs の上限を既定より広げる。
-	quotas := tenancymemory.NewQuotaRepository()
+	quotas := tenancy.NewMemoryModule().QuotaRepo
 	activeJobs := 1000
 	if err := quotas.SetQuota(ctx, "acme", &tenancydomain.TenantQuota{ActiveJobs: &activeJobs}); err != nil {
 		t.Fatal(err)
@@ -107,7 +106,7 @@ func seededExportDeps(t *testing.T) (idmusecases.DataExportDeps, *eventRecorder)
 		UserRepo: users, GroupRepo: groups, JobRepo: jobRepo,
 		UserCSVExporter: exporter, GroupCSVExporter: groupExporter, CSVArtifacts: artifacts,
 		Emit: rec.emit, Now: func() time.Time { return now },
-		Enqueuer: jobsusecases.NewEnqueuer(jobRepo, quotas, func(event spec.DomainEvent) { _ = rec.emit(event) }),
+		Enqueuer: jobsmodule.NewEnqueuer(jobRepo, quotas, func(event spec.DomainEvent) { _ = rec.emit(event) }),
 	}
 	return deps, rec
 }

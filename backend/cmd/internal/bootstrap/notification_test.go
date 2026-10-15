@@ -6,7 +6,6 @@ import (
 
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -14,11 +13,11 @@ import (
 // 繋がっていないと、管理画面で保存した文面が実送信に反映されない (wi-288)。
 func TestAssembleNotificationAppliesTenantOverrides(t *testing.T) {
 	ctx := context.Background()
-	templates := tenancymemory.NewNotificationTemplateRepository()
-	tenants := tenancymemory.NewTenantRepository()
+	templates := tenancy.NewMemoryModule().NotificationTemplates
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	deps := &Dependencies{Tenancy: tenancy.Module{
 		TenantRepo:            tenants,
-		BrandingRepo:          tenancymemory.NewTenantBrandingRepository(),
+		BrandingRepo:          tenancy.NewMemoryModule().BrandingRepo,
 		NotificationTemplates: templates,
 	}}
 	if err := tenants.Save(ctx, &domain.Tenant{
@@ -67,7 +66,7 @@ func TestAssembleNotificationAppliesTenantOverrides(t *testing.T) {
 // テナント既定 locale も Notifier から見えていなければ、解決順序の第 2 段が死ぬ。
 func TestAssembleNotificationUsesTenantDefaultLocale(t *testing.T) {
 	ctx := context.Background()
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	locale := "ja"
 	if err := tenants.Save(ctx, &domain.Tenant{
 		ID: "tenant-a", Realm: "acme", DisplayName: "Acme Inc.",
@@ -78,8 +77,8 @@ func TestAssembleNotificationUsesTenantDefaultLocale(t *testing.T) {
 	sender := &captureEmailSender{}
 	deps := &Dependencies{Tenancy: tenancy.Module{
 		TenantRepo:            tenants,
-		BrandingRepo:          tenancymemory.NewTenantBrandingRepository(),
-		NotificationTemplates: tenancymemory.NewNotificationTemplateRepository(),
+		BrandingRepo:          tenancy.NewMemoryModule().BrandingRepo,
+		NotificationTemplates: tenancy.NewMemoryModule().NotificationTemplates,
 	}}
 	deps.Notification.EmailSender = sender
 	if err := AssembleNotification(deps, loadSharedConfigOrFatal(t, map[string]string{})); err != nil {

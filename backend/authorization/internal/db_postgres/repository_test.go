@@ -13,7 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	tenancypg "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -30,7 +30,7 @@ func seedTenant(t *testing.T, db sharedpg.DB) string {
 		ID: id, Realm: fmt.Sprintf("authz-tenant-%d", realmSeq.Add(1)), DisplayName: "Authorization Test Tenant",
 		Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	}
-	if err := (&tenancypg.TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
+	if err := tenancy.NewPostgresModule(db).TenantRepo.Save(context.Background(), tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	return id

@@ -16,7 +16,7 @@ import (
 	"github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -26,7 +26,7 @@ func fullAppDeps() appusecases.ApplicationDeps {
 		IconStore:      appmemory.NewApplicationIconStore(),
 		AssignmentRepo: appmemory.NewApplicationAssignmentRepository(),
 		PolicyRepo:     appmemory.NewSignInPolicyRepository(),
-		QuotaRepo:      tenancymemory.NewQuotaRepository(),
+		QuotaRepo:      tenancy.NewMemoryModule().QuotaRepo,
 	}
 }
 

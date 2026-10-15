@@ -20,8 +20,7 @@ import (
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	httpsupport "github.com/ambi/idmagic/backend/shared/http/support_http"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
 )
@@ -96,8 +95,9 @@ func TestAdmissionMiddlewareShedsLowerPriorityFirst(t *testing.T) {
 	startupComplete.Store(true)
 	spy := &admissionSpy{}
 
-	tenantRepo := tenancymemory.NewTenantRepository()
-	if err := tenantusecases.EnsureDefault(context.Background(), tenantRepo, time.Now().UTC()); err != nil {
+	tenancyModule := tenancy.NewMemoryModule()
+	tenantRepo := tenancyModule.TenantRepo
+	if err := tenancyModule.EnsureDefault(context.Background(), time.Now().UTC()); err != nil {
 		t.Fatalf("ensure default tenant: %v", err)
 	}
 

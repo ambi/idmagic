@@ -7,7 +7,6 @@ import (
 	securitynotificationusecases "github.com/ambi/idmagic/backend/authentication/securitynotification/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
 // securityNotificationTimeout は 1 通の通知に許す時間。SMTP の待ち時間 (既定 10 秒) を
@@ -48,15 +47,11 @@ func (d *Dependencies) dispatchSecurityNotification(
 		run = runDetached
 	}
 	deps := securitynotificationusecases.DispatchDeps{
-		UserRepo:     d.IdManagement.UserRepo,
-		Preferences:  d.Authentication.NotificationPreferenceRepo,
-		KnownDevices: d.Authentication.KnownSignInDeviceRepo,
-		Notifier:     d.Notification.Notifier,
-		TenantSource: tenantusecases.TenantNotificationSource{
-			TenantRepo:   d.Tenancy.TenantRepo,
-			BrandingRepo: d.Tenancy.BrandingRepo,
-			TemplateRepo: d.Tenancy.NotificationTemplates,
-		},
+		UserRepo:            d.IdManagement.UserRepo,
+		Preferences:         d.Authentication.NotificationPreferenceRepo,
+		KnownDevices:        d.Authentication.KnownSignInDeviceRepo,
+		Notifier:            d.Notification.Notifier,
+		TenantSource:        d.Tenancy.NotificationSource(),
 		SaltStore:           d.Audit.TenantSaltStore,
 		IssuerResolver:      d.SecurityNotifications.IssuerResolver,
 		SystemDefaultLocale: d.SecurityNotifications.SystemDefaultLocale,

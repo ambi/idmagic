@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	"github.com/ambi/idmagic/backend/jobs"
 
 	"github.com/ambi/idmagic/backend/apitoken"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
@@ -29,7 +29,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
 	"github.com/ambi/idmagic/backend/sourcing"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
@@ -76,7 +75,7 @@ func Run() error {
 	defer stop()
 
 	hasher := passwordsArgon2id.NewArgon2idPasswordHasher()
-	if err := tenantusecases.EnsureDefault(ctx, deps.Tenancy.TenantRepo, time.Now().UTC()); err != nil {
+	if err := deps.Tenancy.EnsureDefault(ctx, time.Now().UTC()); err != nil {
 		return fmt.Errorf("ensure default tenant: %w", err)
 	}
 	if seed.Configured() {
@@ -187,7 +186,7 @@ func Run() error {
 	}
 	// 投入器も JobEnqueued の発行先を必要とするので、NewEmitFunc の後で組み立てる。
 	jobsModule := deps.Jobs
-	jobsModule.Enqueuer = jobsusecases.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)
+	jobsModule.Enqueuer = jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)
 	httpadapter.Register(e, httpadapter.Deps{
 		MetricsHandler:            appMetrics.Handler(),
 		Admission:                 api.Admission,

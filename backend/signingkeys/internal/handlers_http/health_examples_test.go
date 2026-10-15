@@ -36,7 +36,7 @@ import (
 	signingmemory "github.com/ambi/idmagic/backend/signingkeys/internal/keys_memory"
 	signingvault "github.com/ambi/idmagic/backend/signingkeys/internal/keys_vault"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -47,7 +47,7 @@ const tenantA = "acme"
 
 // countedTenants はテナント横断の収集が始まったかを、全テナントの読み出し回数で観測する。
 type countedTenants struct {
-	*tenancymemory.TenantRepository
+	tenantports.TenantRepository
 	findAll atomic.Int32
 }
 
@@ -70,7 +70,7 @@ type healthServer struct {
 // newHealthServer は actor が認証済みのスタックを組む。制御面テナントは default である。
 func newHealthServer(t *testing.T, keyStore signingports.KeyStore, groups *groupmemory.GroupRepository, actor *userdomain.User) healthServer {
 	t.Helper()
-	tenants := &countedTenants{TenantRepository: tenancymemory.NewTenantRepository()}
+	tenants := &countedTenants{TenantRepository: tenancy.NewMemoryModule().TenantRepo}
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive},
 		{ID: tenantA, Realm: tenantA, DisplayName: "Acme", Status: tenancydomain.TenantStatusActive},

@@ -11,7 +11,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/signingkeys"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -49,7 +49,7 @@ func TestDiscoveryRoutesIncludeRFC8414Alias(t *testing.T) {
 // SCL scenario "テナントごとに別の署名鍵で発行する" / TenantJwksIsolation 不変条件。
 // /realms/{tenant_id}/jwks は当該テナントの鍵だけを返す。
 func TestPerTenantJwksIsolation(t *testing.T) {
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, id := range []string{"tenant-a", "tenant-b"} {
 		if err := tenants.Save(context.Background(), &tenancydomain.Tenant{
 			ID: id, Realm: id, DisplayName: id, Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),

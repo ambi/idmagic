@@ -43,7 +43,7 @@ IdMagic は、リポジトリのルートの `go.mod` が定める一つの Go �
 | モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |
 | --- | --- | --- | --- | --- |
 | [System](../../modules/system/README.md) | 組み立て地点 | なし | `backend/cmd`, `backend/shared/http/server_http`, `backend/shared/http/testing_stack`, `backend/shared/testing/fixtures_postgres`, `frontend/` | 起動、機能選択、経路の組み立て、テスト前提の組み立て、健全性、画面 |
-| [Tenancy](../../modules/tenancy/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/tenancy` | Tenant と realm、テナント設定、属性スキーマ、制御面の管理 |
+| [Tenancy](../../modules/tenancy/README.md) | `internal` | `backend/tenancy/domain`, `backend/tenancy/ports`, `backend/tenancy/testing_tenant` | `backend/tenancy` | Tenant と realm、テナント設定、属性スキーマ、制御面の管理 |
 | [IdManagement](../../modules/identity-management/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/idmanagement` | User、Group、Agent、プロフィール、アイデンティティのライフサイクル |
 | [IdGovernance](../../modules/identity-governance/README.md) | `internal` | — | `backend/idgovernance` | LifecycleWorkflow のポリシーとオーケストレーション |
 | [Authentication](../../modules/authentication/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/authentication` | 資格情報、MFA、ログインセッション、ステップアップ、認証イベント |
@@ -51,11 +51,11 @@ IdMagic は、リポジトリのルートの `go.mod` が定める一つの Go �
 | [Application](../../modules/application/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/application` | Application、プロトコルのバインディング、割り当て、表示分類 |
 | [Authorization](../../modules/authorization/README.md) | `internal` | なし | `backend/authorization` | 細粒度認可モデル、関係タプル、グラフ評価、整合トークン |
 | [Audit](../../modules/audit/README.md) | `internal` | `backend/audit/ports` | `backend/audit` | 全モジュールの監査イベントを統合する Read Model と保持 |
-| [ClaimMapping](../../modules/claim-mapping/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/claimmapping` | プロトコル非依存のクレーム開示ポリシーとマッピング |
+| [ClaimMapping](../../modules/claim-mapping/README.md) | `internal` | `backend/claimmapping/domain`, `backend/claimmapping/ports` | `backend/claimmapping` | プロトコル非依存のクレーム開示ポリシーとマッピング |
 | [Provisioning](../../modules/provisioning/README.md) | `internal` | なし | `backend/provisioning` | IdMagic を正とする外向き SCIM プロビジョニング |
 | [Sourcing](../../modules/sourcing/README.md) | `internal` | `backend/sourcing/scim/ports` | `backend/sourcing` | 上流の権威からの内向きアイデンティティ取り込み |
 | [ApiTokens](../../modules/api-tokens/README.md) | `internal` | `backend/apitoken/domain`, `backend/apitoken/ports` | `backend/apitoken` | 管理 API と SCIM API のテナント単位アクセストークン |
-| [Jobs](../../modules/jobs/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/jobs` | テナント境界を保つ非同期ジョブ基盤 |
+| [Jobs](../../modules/jobs/README.md) | `internal` | `backend/jobs/domain`, `backend/jobs/ports` | `backend/jobs` | テナント境界を保つ非同期ジョブ基盤 |
 | [Seeding](../../modules/seeding/README.md) | `internal` | `backend/seeding/domain` | `backend/seeding` | 環境構成のプレビュー、計画、初期データ適用 |
 | [SigningKeys](../../modules/signing-keys/README.md) | `internal` | `backend/signingkeys/domain`, `backend/signingkeys/ports` | `backend/signingkeys` | 用途別署名鍵、証明書、ローテーション、提供元アダプター |
 | [DataKeys](../../modules/data-keys/README.md) | `internal` | なし | `backend/datakeys` | 可逆な秘密情報を保護するテナント別 DEK のライフサイクル |

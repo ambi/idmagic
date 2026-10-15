@@ -9,7 +9,6 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
-	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
@@ -54,8 +53,7 @@ func TestCreateGroupWithEmailAndValidAttributes(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
-	if _, err := tenancyusecases.UpdateGroupAttributeSchema(ctx, deps.GroupAttrSchemaRepo, tenancydomain.DefaultTenantID,
-		tenancyGroupAttributeDef(t), now); err != nil {
+	if err := saveGroupAttributeSchema(ctx, deps, tenancyGroupAttributeDef(t), now); err != nil {
 		t.Fatalf("seed schema: %v", err)
 	}
 
@@ -139,10 +137,7 @@ func TestCreateGroupRejectsUndefinedAttributeKey(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			deps, events := newGroupDeps(t) //nolint:contextcheck // newGroupDeps は seed に自前の context を使う
 			if tc.withSchema {
-				if _, err := tenancyusecases.UpdateGroupAttributeSchema(
-					ctx, deps.GroupAttrSchemaRepo, tenancydomain.DefaultTenantID,
-					tenancyGroupAttributeDef(t), now,
-				); err != nil {
+				if err := saveGroupAttributeSchema(ctx, deps, tenancyGroupAttributeDef(t), now); err != nil {
 					t.Fatalf("seed schema: %v", err)
 				}
 			}
@@ -166,8 +161,7 @@ func TestCreateGroupRejectsMissingRequiredAttribute(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	deps, _ := newGroupDeps(t)
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
-	if _, err := tenancyusecases.UpdateGroupAttributeSchema(ctx, deps.GroupAttrSchemaRepo, tenancydomain.DefaultTenantID,
-		tenancyGroupAttributeDef(t), now); err != nil {
+	if err := saveGroupAttributeSchema(ctx, deps, tenancyGroupAttributeDef(t), now); err != nil {
 		t.Fatalf("seed schema: %v", err)
 	}
 	_, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
@@ -187,8 +181,7 @@ func TestUpdateGroupEmailAndAttributes(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	deps, events := newGroupDeps(t)
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
-	if _, err := tenancyusecases.UpdateGroupAttributeSchema(ctx, deps.GroupAttrSchemaRepo, tenancydomain.DefaultTenantID,
-		tenancyGroupAttributeDef(t), now); err != nil {
+	if err := saveGroupAttributeSchema(ctx, deps, tenancyGroupAttributeDef(t), now); err != nil {
 		t.Fatalf("seed schema: %v", err)
 	}
 	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
@@ -255,6 +248,13 @@ func TestUpdateGroupRejectsMalformedEmail(t *testing.T) {
 	}); !errors.Is(err, groupusecases.ErrInvalidEmail) {
 		t.Fatalf("expected ErrInvalidEmail, got %v", err)
 	}
+}
+
+// saveGroupAttributeSchema は default テナントのグループ属性スキーマを保存する。
+func saveGroupAttributeSchema(ctx context.Context, deps groupusecases.AdminGroupDeps, defs []groupdomain.GroupAttributeDef, now time.Time) error {
+	return deps.GroupAttrSchemaRepo.Save(ctx, &groupdomain.TenantGroupAttributeSchema{
+		TenantID: tenancydomain.DefaultTenantID, Attributes: defs, CreatedAt: now, UpdatedAt: now,
+	})
 }
 
 func tenancyGroupAttributeDef(t *testing.T) []groupdomain.GroupAttributeDef {

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	memory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -20,7 +20,7 @@ func TestSessionManagerCreate_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
 	store := memory.NewSessionStore()
 	store.Clock = func() time.Time { return now }
-	quotaRepo := tenancymemory.NewQuotaRepository()
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 	limit := 1
 	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{ActiveSessions: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)
@@ -46,7 +46,7 @@ func TestRevokeOwnSession_decrementsQuotaUsage(t *testing.T) {
 	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
 	store := memory.NewSessionStore()
 	store.Clock = func() time.Time { return now }
-	quotaRepo := tenancymemory.NewQuotaRepository()
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 	limit := 1
 	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{ActiveSessions: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)

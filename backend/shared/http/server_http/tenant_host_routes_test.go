@@ -14,7 +14,7 @@ import (
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -25,7 +25,7 @@ import (
 // テストは配線を要らないが、Bearer の challenge を読むテストは検証器が要る。
 func hostRoutingFixture(t *testing.T, baseDomain string, decorate ...func(*Deps)) *echo.Echo {
 	t.Helper()
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	now := time.Now().UTC()
 	for _, tenant := range []*tenancydomain.Tenant{
 		{

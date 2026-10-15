@@ -28,7 +28,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	authorizationLocal "github.com/ambi/idmagic/backend/shared/policy/authorization_local"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -77,7 +77,7 @@ func newServer(t *testing.T, user *userdomain.User, agents ...*agentdomain.Agent
 			t.Fatal(err)
 		}
 	}
-	tenantRepo := tenancymemory.NewTenantRepository()
+	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	for _, id := range []string{"acme", "globex"} {
 		tenant := &tenancydomain.Tenant{
 			ID: id, Realm: id, DisplayName: id, Status: tenancydomain.TenantStatusActive,

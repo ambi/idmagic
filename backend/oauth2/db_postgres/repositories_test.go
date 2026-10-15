@@ -22,7 +22,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	tenancypg "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	oauth2clientpostgres "github.com/ambi/idmagic/backend/oauth2/client/db_postgres"
 	oauth2consentpostgres "github.com/ambi/idmagic/backend/oauth2/consent/db_postgres"
@@ -58,7 +58,7 @@ func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := (&tenancypg.TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
+	if err := tenancy.NewPostgresModule(db).TenantRepo.Save(context.Background(), tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	return tenant

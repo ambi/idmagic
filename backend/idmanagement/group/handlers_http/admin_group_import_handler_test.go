@@ -22,11 +22,12 @@ import (
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
@@ -62,8 +63,8 @@ func TestGetAdminGroupImportUsesManagementCursorPaginationForArtifactErrors(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	jobs := jobsmemory.NewJobRepository()
-	job, err := jobsusecases.Enqueue(testing_tenant.Default(context.Background()), jobsusecases.EnqueueDeps{Repo: jobs}, jobsports.EnqueueInput{
+	jobs := jobsmodule.NewJobRepository()
+	job, err := jobsmodule.NewEnqueuer(jobs, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {}).Enqueue(testing_tenant.Default(context.Background()), jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: jobsdomain.KindGroupImportPreview, Params: []byte(`{"source_sha256":"source"}`), MaxAttempts: 1,
 	}, now)
 	if err != nil {
@@ -134,8 +135,8 @@ func TestGetAdminGroupImportRefusesAnotherTenantsJob(t *testing.T) {
 	repo := usermemory.NewUserRepository()
 	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
 	repo.Seed(&userdomain.User{ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin", PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now})
-	jobs := jobsmemory.NewJobRepository()
-	foreign, err := jobsusecases.Enqueue(testing_tenant.Default(context.Background()), jobsusecases.EnqueueDeps{Repo: jobs}, jobsports.EnqueueInput{
+	jobs := jobsmodule.NewJobRepository()
+	foreign, err := jobsmodule.NewEnqueuer(jobs, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {}).Enqueue(testing_tenant.Default(context.Background()), jobsports.EnqueueInput{
 		TenantID: "other-tenant", Kind: jobsdomain.KindGroupImportPreview, Params: []byte(`{"source_sha256":"source"}`), MaxAttempts: 1,
 	}, now)
 	if err != nil {

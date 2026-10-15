@@ -13,7 +13,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/datakeys/internal/db_memory"
 	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
-	jobsdbmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
@@ -320,7 +320,7 @@ func TestRotateTenantDataKeyEnqueuesReencryptionJobForRegisteredMigrators(t *tes
 
 	migrators := NewMigratorRegistry()
 	migrators.Register("mfa_totp_secret", &fakeReencryptMigrator{})
-	jobRepo := jobsdbmemory.NewJobRepository()
+	jobRepo := jobsmodule.NewJobRepository()
 	deps.Migrators = migrators
 	deps.Jobs = testEnqueuer(jobRepo)
 

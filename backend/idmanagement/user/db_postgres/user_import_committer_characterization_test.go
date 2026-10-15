@@ -9,8 +9,9 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestCharacterizeUserImportRowQuota(t *testing.T) {
@@ -88,7 +89,7 @@ func assertUserStored(t *testing.T, db sharedpg.DB, userID string, want bool) {
 	}
 }
 
-func assertUserUsage(t *testing.T, quotas *tenancypostgres.QuotaRepository, tenantID string, want int) {
+func assertUserUsage(t *testing.T, quotas tenantports.QuotaRepository, tenantID string, want int) {
 	t.Helper()
 	usage, err := quotas.GetUsage(context.Background(), tenantID)
 	if err != nil {

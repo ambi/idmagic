@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 
@@ -22,7 +22,6 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -226,7 +225,7 @@ func TestDynamicRuleExpressionConstraints(t *testing.T) {
 	}
 }
 
-func reconcileJobs(t *testing.T, jobs *jobsmemory.JobRepository) []groupusecases.DynamicGroupReconcileParams {
+func reconcileJobs(t *testing.T, jobs jobsports.JobRepository) []groupusecases.DynamicGroupReconcileParams {
 	t.Helper()
 	listed, err := jobs.ListByTenantAndKinds(testing_tenant.Default(context.Background()), "acme", []jobsdomain.JobKind{jobsdomain.KindDynamicGroupReconcile}, 100)
 	if err != nil {
@@ -244,7 +243,7 @@ func reconcileJobs(t *testing.T, jobs *jobsmemory.JobRepository) []groupusecases
 //spec:covers EX-IDMANAGEMENT-066-01, EX-IDMANAGEMENT-066-02: 初めて保存した規則が無効で版 1、有効化で版 2 となって再評価を予約し、有効な規則の式の保存が有効のまま版 3 にして再評価を予約すること。
 func TestDynamicRuleVersionsAndScheduling(t *testing.T) {
 	ctx, deps, _, _ := dynamicRuleFixture(t)
-	jobs := jobsmemory.NewJobRepository()
+	jobs := jobsmodule.NewJobRepository()
 	deps.Jobs = testJobEnqueuer(jobs)
 	saved, err := groupusecases.UpdateDynamicGroupRule(ctx, deps, "admin", dynamicFixtureGroupID, `user.department == "Engineering"`, groupRulesNow)
 	if err != nil || saved.Enabled || saved.Version != 1 {
@@ -321,7 +320,7 @@ func TestDisablingADynamicRuleRemovesEveryMembershipImmediately(t *testing.T) {
 	if got := dynamicMemberIDs(ctx, t, groups); len(got) != 2 {
 		t.Fatalf("前提が壊れている: members=%v", got)
 	}
-	jobs := jobsmemory.NewJobRepository()
+	jobs := jobsmodule.NewJobRepository()
 	deps.Jobs = testJobEnqueuer(jobs)
 	if _, err := groupusecases.SetDynamicGroupRuleEnabled(ctx, deps, "admin", dynamicFixtureGroupID, false, groupRulesNow); err != nil {
 		t.Fatal(err)
@@ -436,5 +435,5 @@ func TestDynamicRulePreviewLimitsAndUnknownUsers(t *testing.T) {
 
 // testJobEnqueuer は、repo へジョブを作り、上限のないクォータで数え、イベントを捨てる投入器を返す。
 func testJobEnqueuer(repo jobsports.JobRepository) jobsports.Enqueuer {
-	return jobsusecases.NewEnqueuer(repo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})
+	return jobsmodule.NewEnqueuer(repo, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {})
 }

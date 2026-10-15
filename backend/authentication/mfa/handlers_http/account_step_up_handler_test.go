@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -85,7 +85,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *sessionmemory.SessionStore, *[]
 		t.Fatal(err)
 	}
 
-	tenantRepo := tenancymemory.NewTenantRepository()
+	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	if err := tenantRepo.Save(ctx, activeTenant(tenancydomain.DefaultTenantID, "Default")); err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
@@ -26,10 +26,9 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -51,7 +50,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	groups := groupmemory.NewGroupRepository()
 	applications := appmemory.NewApplicationRepository()
 	assignments := appmemory.NewApplicationAssignmentRepository()
-	jobs := jobsmemory.NewJobRepository()
+	jobs := jobsmodule.NewJobRepository()
 
 	group := &groupdomain.Group{ID: "engineering", TenantID: "tenant-a", Name: "Engineering", MembershipType: groupdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now}
 	if err := groups.Save(ctx, group); err != nil {
@@ -152,7 +151,7 @@ func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T
 	users := usermemory.NewUserRepository()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	run := queuedDisableRun(t, runs, users, now)
-	jobRepo := jobsmemory.NewJobRepository()
+	jobRepo := jobsmodule.NewJobRepository()
 	jobs := &failOnceJobRepository{JobRepository: jobRepo, fail: true}
 	deps := usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, Jobs: testJobEnqueuer(jobs)}
 	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), deps, 10, now); err == nil {
@@ -173,11 +172,11 @@ func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T
 		t.Fatalf("dispatched job = kind %q tenant %q dedup %v, want the run's deduplicated lifecycle job", job.Kind, job.TenantID, job.DedupKey)
 	}
 
-	handlers := jobsusecases.NewHandlerRegistry()
+	handlers := jobsmodule.NewHandlerRegistry()
 	handlers.Register(usecases.LifecycleWorkflowRunJobKind, usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users)}))
-	runner := jobsusecases.NewRunner(
-		jobsusecases.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
-		jobsusecases.RunnerDeps{Repo: jobRepo, Handlers: handlers},
+	runner := jobsmodule.NewRunner(
+		jobsmodule.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
+		jobsmodule.RunnerDeps{Repo: jobRepo, Handlers: handlers},
 	)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
@@ -213,7 +212,7 @@ func TestDuplicateDispatchReusesTheLifecycleWorkflowJob(t *testing.T) {
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	run := queuedDisableRun(t, runs, nil, now)
-	jobs := jobsmemory.NewJobRepository()
+	jobs := jobsmodule.NewJobRepository()
 	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, Jobs: testJobEnqueuer(jobs)}, 10, now); err != nil {
 		t.Fatal(err)
 	}
@@ -605,5 +604,5 @@ func workflowUserLifecycle(users userports.UserRepository) igports.UserLifecycle
 
 // testJobEnqueuer は、repo へジョブを作り、上限のないクォータで数え、イベントを捨てる投入器を返す。
 func testJobEnqueuer(repo jobsports.JobRepository) jobsports.Enqueuer {
-	return jobsusecases.NewEnqueuer(repo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})
+	return jobsmodule.NewEnqueuer(repo, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {})
 }

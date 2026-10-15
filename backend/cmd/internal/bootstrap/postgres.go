@@ -32,7 +32,6 @@ import (
 	grouppostgres "github.com/ambi/idmagic/backend/idmanagement/group/db_postgres"
 	userpostgres "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobspostgres "github.com/ambi/idmagic/backend/jobs/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2"
 	cimdhttp "github.com/ambi/idmagic/backend/oauth2/client/cimd_http"
 	oauth2clientpostgres "github.com/ambi/idmagic/backend/oauth2/client/db_postgres"
@@ -57,8 +56,6 @@ import (
 	"github.com/ambi/idmagic/backend/sourcing"
 
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 	"github.com/ambi/idmagic/backend/workloadidentity"
 
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -79,11 +76,13 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		return nil, err
 	}
 	resilientDB := postgres.NewResilientDB(pool, dbBreaker, cfg.DB.QueryTimeout)
-	tenantRepo := &tenancypostgres.TenantRepository{Pool: resilientDB}
+	tenancyModule := tenancy.NewPostgresModule(resilientDB)
+	tenancyModule.AttrSchemaRepo = &userpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB}
+	tenancyModule.GroupAttrSchemaRepo = &grouppostgres.TenantGroupAttributeSchemaRepository{Pool: resilientDB}
 	// NewKeyStore bootstraps the default tenant signing key, whose FK requires
 	// the tenant row to exist first. Fresh databases (including `mise run dev`) must
 	// establish this root aggregate before assembling dependent adapters.
-	if err := tenantusecases.EnsureDefault(ctx, tenantRepo, time.Now().UTC()); err != nil {
+	if err := tenancyModule.EnsureDefault(ctx, time.Now().UTC()); err != nil {
 		pool.Close()
 		return nil, err
 	}
@@ -120,23 +119,15 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 
 	userRepo := &userpostgres.UserRepository{Pool: resilientDB}
 	csvArtifacts := &idmpostgres.CSVArtifactStore{Pool: resilientDB}
-	userImportCommitter := userpostgres.NewUserImportRowCommitter(resilientDB, tenancypostgres.QuotaRepositoryInTx)
-	groupImportCommitter := grouppostgres.NewGroupImportRowCommitter(resilientDB, tenancypostgres.QuotaRepositoryInTx)
+	userImportCommitter := userpostgres.NewUserImportRowCommitter(resilientDB, tenancy.QuotaRepositoryInTx)
+	groupImportCommitter := grouppostgres.NewGroupImportRowCommitter(resilientDB, tenancy.QuotaRepositoryInTx)
 	groupMembershipImportCommitter := grouppostgres.GroupMembershipImportRowCommitter{Pool: resilientDB}
 	governanceModule := idgovernance.NewPostgresModule(resilientDB, userRepo)
 	assignmentRepo := &apppostgres.ApplicationAssignmentRepository{Pool: resilientDB}
 	provisioningModule := provisioning.NewPostgresModule(resilientDB)
 
 	return &Dependencies{
-		Tenancy: tenancy.Module{
-			TenantRepo:            tenantRepo,
-			AttrSchemaRepo:        &userpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
-			GroupAttrSchemaRepo:   &grouppostgres.TenantGroupAttributeSchemaRepository{Pool: resilientDB},
-			BrandingRepo:          &tenancypostgres.TenantBrandingRepository{Pool: resilientDB},
-			BrandingAssetStore:    &tenancypostgres.TenantBrandingAssetStore{Pool: resilientDB},
-			NotificationTemplates: &tenancypostgres.NotificationTemplateRepository{Pool: resilientDB},
-			QuotaRepo:             tenancypostgres.NewQuotaRepository(resilientDB),
-		},
+		Tenancy: tenancyModule,
 		IdManagement: idmanagement.Module{
 			UserRepo:                       userRepo,
 			GroupRepo:                      &grouppostgres.GroupRepository{Pool: resilientDB},
@@ -204,7 +195,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		Saml:         saml.NewPostgresModule(resilientDB),
 		Sourcing:     sourcing.NewPostgresModule(resilientDB),
 		ApiTokens:    apitoken.NewPostgresModule(resilientDB),
-		Jobs:         jobs.Module{Repo: &jobspostgres.JobRepository{Pool: resilientDB}},
+		Jobs:         jobs.NewPostgresModule(resilientDB),
 		Application: application.Module{
 			Repo:                    &apppostgres.ApplicationRepository{Pool: resilientDB},
 			IconStore:               &apppostgres.ApplicationIconStore{Pool: resilientDB},

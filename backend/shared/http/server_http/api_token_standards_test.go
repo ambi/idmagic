@@ -43,7 +43,7 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
@@ -78,7 +78,7 @@ type apiTokenStack struct {
 	users    *usermemory.UserRepository
 	keyStore signingkeys.KeyStore
 	signer   *tokensjose.JWTSigner
-	tenants  *tenancymemory.TenantRepository
+	tenants  tenantports.TenantRepository
 	// samlSPs は SAML の管理 API が読み書きする保存先。粒度スコープの具体例は、拒否が
 	// 防いだ効果をここから読み直す。
 	samlSPs saml.ServiceProviderRepository
@@ -87,7 +87,7 @@ type apiTokenStack struct {
 func newApiTokenStack(t *testing.T) *apiTokenStack {
 	t.Helper()
 	created := time.Now().UTC()
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: created},
 		{ID: apiTokenOtherRealm, Realm: apiTokenOtherRealm, DisplayName: "Acme", Status: tenancydomain.TenantStatusActive, CreatedAt: created},

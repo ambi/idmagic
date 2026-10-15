@@ -14,9 +14,8 @@ import (
 	"testing"
 	"time"
 
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/ambi/idmagic/backend/authentication"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
@@ -29,8 +28,8 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -64,7 +63,7 @@ type membershipImportHarness struct {
 	echo      *echo.Echo
 	groups    *groupmemory.GroupRepository
 	users     *usermemory.UserRepository
-	jobs      *jobsmemory.JobRepository
+	jobs      jobsports.JobRepository
 	artifacts *idmmemory.CSVArtifactStore
 	jobDeps   groupusecases.GroupMembershipImportJobDeps
 	csrfToken string
@@ -111,7 +110,7 @@ func newMembershipImportHarness(t *testing.T, membershipType groupdomain.GroupMe
 	}
 
 	artifacts := idmmemory.NewCSVArtifactStore()
-	jobRepo := jobsmemory.NewJobRepository()
+	jobRepo := jobs.NewJobRepository()
 	committer := groupmemory.NewGroupMembershipImportRowCommitter(groups)
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -124,7 +123,7 @@ func newMembershipImportHarness(t *testing.T, membershipType groupdomain.GroupMe
 			UserRepo: users, GroupRepo: groups, CSVArtifacts: artifacts,
 			GroupMembershipImportCommitter: committer,
 		},
-		Jobs: jobs.Module{Repo: jobRepo, Enqueuer: jobsusecases.NewEnqueuer(jobRepo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})},
+		Jobs: jobs.Module{Repo: jobRepo, Enqueuer: jobs.NewEnqueuer(jobRepo, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {})},
 	})
 
 	planDeps := groupusecases.GroupMembershipImportPlanDeps{

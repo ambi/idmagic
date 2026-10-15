@@ -1,0 +1,193 @@
+package usecases_test
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/ambi/idmagic/backend/jobs/domain"
+	memoryjobs "github.com/ambi/idmagic/backend/jobs/internal/db_memory"
+	"github.com/ambi/idmagic/backend/jobs/internal/usecases"
+	"github.com/ambi/idmagic/backend/jobs/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+)
+
+func TestEnqueue_AppliesDefaultsAndEmits(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	var emitted []spec.DomainEvent
+	deps := usecases.EnqueueDeps{Repo: repo, Emit: func(e spec.DomainEvent) { emitted = append(emitted, e) }}
+	now := time.Now().UTC()
+
+	job, err := usecases.Enqueue(context.Background(), deps, ports.EnqueueInput{
+		TenantID: "tenant-a",
+		Kind:     domain.KindNoopEcho,
+		Params:   json.RawMessage(`{}`),
+	}, now)
+	if err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	if job.MaxAttempts != domain.DefaultMaxAttempts {
+		t.Errorf("MaxAttempts = %d, want default %d", job.MaxAttempts, domain.DefaultMaxAttempts)
+	}
+	if !job.RunAt.Equal(now) {
+		t.Errorf("RunAt = %v, want %v", job.RunAt, now)
+	}
+	if job.Status != domain.StatusQueued {
+		t.Errorf("Status = %q, want %q", job.Status, domain.StatusQueued)
+	}
+
+	if len(emitted) != 1 {
+		t.Fatalf("emitted %d events, want 1", len(emitted))
+	}
+	got, ok := emitted[0].(*domain.JobEnqueued)
+	if !ok {
+		t.Fatalf("emitted event type = %T, want *domain.JobEnqueued", emitted[0])
+	}
+	if got.JobID != job.ID || got.TenantID != job.TenantID || got.Kind != job.Kind {
+		t.Errorf("JobEnqueued = %+v, want to match job %+v", got, job)
+	}
+}
+
+// TestEnqueue_DerivesLaneFromKind: RED for decision 1 — the caller
+// cannot specify a lane; Enqueue derives it from the JobKind's registration
+// (docs/modules/jobs/ EnqueueJob: "作成される Job の lane は kind の登録情報
+// から一意に決まり、呼び出し元は指定できない").
+func TestEnqueue_DerivesLaneFromKind(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	deps := usecases.EnqueueDeps{Repo: repo}
+
+	job, err := usecases.Enqueue(context.Background(), deps, ports.EnqueueInput{
+		TenantID: "tenant-a",
+		Kind:     domain.KindUserImportPreview,
+		Params:   json.RawMessage(`{}`),
+	}, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	if job.Lane != domain.LaneBulk {
+		t.Errorf("job.Lane = %q, want %q (kind %q's registered lane)", job.Lane, domain.LaneBulk, domain.KindUserImportPreview)
+	}
+}
+
+func TestEnqueue_RejectsUnregisteredKind(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	deps := usecases.EnqueueDeps{Repo: repo}
+
+	_, err := usecases.Enqueue(context.Background(), deps, ports.EnqueueInput{
+		TenantID: "tenant-a",
+		Kind:     domain.JobKind("not_a_registered_kind"),
+		Params:   json.RawMessage(`{}`),
+	}, time.Now().UTC())
+	if err == nil {
+		t.Fatal("Enqueue() error = nil, want error for unregistered JobKind")
+	}
+}
+
+func TestEnqueue_DedupHitDoesNotEmit(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	var emitted []spec.DomainEvent
+	deps := usecases.EnqueueDeps{Repo: repo, Emit: func(e spec.DomainEvent) { emitted = append(emitted, e) }}
+	now := time.Now().UTC()
+	dedup := "dedup-1"
+
+	input := ports.EnqueueInput{TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`), DedupKey: &dedup}
+	first, err := usecases.Enqueue(context.Background(), deps, input, now)
+	if err != nil {
+		t.Fatalf("first Enqueue() error = %v", err)
+	}
+	second, err := usecases.Enqueue(context.Background(), deps, input, now)
+	if err != nil {
+		t.Fatalf("second Enqueue() error = %v", err)
+	}
+	if second.ID != first.ID {
+		t.Errorf("second Enqueue() returned a new Job, want the deduped existing one")
+	}
+	if len(emitted) != 1 {
+		t.Errorf("emitted %d events, want 1 (no JobEnqueued on dedup hit)", len(emitted))
+	}
+}
+
+// TestEnqueue_rejectsWhenHardQuotaExceeded is a wi-160 T004.8 RED test for the
+// SCL scenario "Hard Quota を超過したリソース作成は拒否される"
+// (docs/modules/tenancy/), applied to the active_jobs resource.
+func TestEnqueue_rejectsWhenHardQuotaExceeded(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
+	limit := 1
+	if err := quotaRepo.SetQuota(context.Background(), "tenant-a", &tenancydomain.TenantQuota{ActiveJobs: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	deps := usecases.EnqueueDeps{Repo: repo, QuotaRepo: quotaRepo}
+	now := time.Now().UTC()
+	if _, err := usecases.Enqueue(context.Background(), deps, ports.EnqueueInput{
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`),
+	}, now); err != nil {
+		t.Fatalf("first Enqueue: %v", err)
+	}
+	_, err := usecases.Enqueue(context.Background(), deps, ports.EnqueueInput{
+		TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`),
+	}, now)
+	var qErr *tenancydomain.QuotaExceededError
+	if !errors.As(err, &qErr) {
+		t.Fatalf("expected *domain.QuotaExceededError, got %v", err)
+	}
+	if qErr.Resource != tenancydomain.ResourceActiveJobs {
+		t.Fatalf("unexpected resource: %s", qErr.Resource)
+	}
+}
+
+// TestEnqueue_DedupHitReleasesSpeculativeQuotaReservation is a wi-160 T004.8
+// RED test: a dedup hit (created=false) must not permanently consume a quota
+// slot, since Enqueue cannot know whether Repo.Enqueue will dedup until after
+// the speculative CheckQuotaAndIncrement runs.
+func TestEnqueue_DedupHitReleasesSpeculativeQuotaReservation(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
+	limit := 1
+	if err := quotaRepo.SetQuota(context.Background(), "tenant-a", &tenancydomain.TenantQuota{ActiveJobs: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	deps := usecases.EnqueueDeps{Repo: repo, QuotaRepo: quotaRepo}
+	now := time.Now().UTC()
+	dedup := "dedup-1"
+	input := ports.EnqueueInput{TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`), DedupKey: &dedup}
+
+	if _, err := usecases.Enqueue(context.Background(), deps, input, now); err != nil {
+		t.Fatalf("first Enqueue: %v", err)
+	}
+	if _, err := usecases.Enqueue(context.Background(), deps, input, now); err != nil {
+		t.Fatalf("second (dedup hit) Enqueue: %v", err)
+	}
+	usage, err := quotaRepo.GetUsage(context.Background(), "tenant-a")
+	if err != nil {
+		t.Fatalf("GetUsage: %v", err)
+	}
+	if usage.ActiveJobs != 1 {
+		t.Fatalf("expected active_jobs usage to stay at 1 after dedup hit, got %d", usage.ActiveJobs)
+	}
+}
+
+// 投入器は JobEnqueued の発行と active_jobs の確認を省けないよう、三つの依存のどれかが欠けた組み立てを拒否する。
+func TestNewEnqueuerRejectsAMissingDependency(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	quotas := tenancy.NewMemoryModule().QuotaRepo
+	emit := func(spec.DomainEvent) {}
+	for name, build := range map[string]func(){
+		"保存先がない":   func() { usecases.NewEnqueuer(nil, quotas, emit) },
+		"クォータがない":  func() { usecases.NewEnqueuer(repo, nil, emit) },
+		"発行の関数がない": func() { usecases.NewEnqueuer(repo, quotas, nil) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatal("NewEnqueuer accepted a missing dependency, want a panic")
+				}
+			}()
+			build()
+		})
+	}
+}

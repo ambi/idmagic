@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/provisioning"
 	scim "github.com/ambi/idmagic/backend/provisioning/internal/client_scim"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
@@ -34,7 +34,7 @@ import (
 type lifecycleRun struct {
 	h      *e2eHarness
 	module provisioning.Module
-	jobs   *jobsmemory.JobRepository
+	jobs   jobsports.JobRepository
 	target string
 	events []spec.DomainEvent
 }
@@ -43,7 +43,7 @@ func newLifecycleRun(h *e2eHarness) *lifecycleRun {
 	return &lifecycleRun{
 		h:      h,
 		module: provisioning.Module{ConnectionRepo: h.connRepo, RemoteLinkRepo: h.linkRepo, TaskRepo: h.taskRepo},
-		jobs:   jobsmemory.NewJobRepository(),
+		jobs:   jobsmodule.NewJobRepository(),
 		target: h.server.URL,
 	}
 }
@@ -73,7 +73,7 @@ func (r *lifecycleRun) dispatch() {
 // dispatchAt は worker の周期処理を now の時点として 1 回実行する。
 func (r *lifecycleRun) dispatchAt(now time.Time) {
 	r.h.t.Helper()
-	if _, err := usecases.DispatchPendingTasks(testing_tenant.Default(context.Background()), r.module.DispatcherDeps(jobsusecases.NewEnqueuer(r.jobs, tenancymemory.NewQuotaRepository(), r.emit), r.emit), 100, now); err != nil {
+	if _, err := usecases.DispatchPendingTasks(testing_tenant.Default(context.Background()), r.module.DispatcherDeps(jobsmodule.NewEnqueuer(r.jobs, tenancy.NewMemoryModule().QuotaRepo, r.emit), r.emit), 100, now); err != nil {
 		r.h.t.Fatalf("DispatchPendingTasks() error = %v", err)
 	}
 }

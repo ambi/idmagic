@@ -33,8 +33,8 @@
 
 | Aggregate | 保存先 | 実装 |
 | --- | --- | --- |
-| `Tenant` | `tenants` | `backend/tenancy/db_postgres` |
-| `TenantBranding` | `tenant_brandings`、画像は `tenant_branding_assets` | `backend/tenancy/db_postgres` |
-| `NotificationTemplate` | `notification_templates` | `backend/tenancy/db_postgres` |
-| `TenantQuota` | 上限の上書きは `tenant_quotas`、使用量のカウンターは `tenant_usages` | `backend/tenancy/db_postgres` |
+| `Tenant` | `tenants` | `backend/tenancy/internal/db_postgres` |
+| `TenantBranding` | `tenant_brandings`、画像は `tenant_branding_assets` | `backend/tenancy/internal/db_postgres` |
+| `NotificationTemplate` | `notification_templates` | `backend/tenancy/internal/db_postgres` |
+| `TenantQuota` | 上限の上書きは `tenant_quotas`、使用量のカウンターは `tenant_usages` | `backend/tenancy/internal/db_postgres` |
 | `TenantUserAttributeSchema`、`TenantGroupAttributeSchema` | `tenant_user_attribute_schemas`、`tenant_group_attribute_schemas` | ポートは Tenancy が定め、実装は `IdManagement` の `user` と `group` のスライスが持つ |

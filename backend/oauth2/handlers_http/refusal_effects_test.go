@@ -45,7 +45,7 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/google/uuid"
@@ -117,7 +117,7 @@ func newRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *refusal
 	}
 	issuer := tokens_jose.NewJWTSigner("http://test", keyStore)
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive},
 		{ID: refusalOtherTenant, Realm: refusalOtherRealm, Status: tenancydomain.TenantStatusActive},

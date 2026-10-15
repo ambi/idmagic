@@ -16,7 +16,7 @@ import (
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -276,7 +276,7 @@ func TestDynamicGroupRuleVersionBumpDropsStaleMembershipAndFailuresGrantNothing(
 	// 「版が上がってから再評価が終わるまで」という具体例の言う瞬間が消える。
 	// production は job を挟むので、こちらが本来の形である。
 	deferred := deps
-	deferred.Jobs = testJobEnqueuer(jobsmemory.NewJobRepository())
+	deferred.Jobs = testJobEnqueuer(jobsmodule.NewJobRepository())
 	updated, err := groupusecases.UpdateDynamicGroupRule(
 		ctx, deferred, "admin", "g1", `user.department == "Engineering" || user.department == "Sales"`,
 		now.Add(time.Hour),

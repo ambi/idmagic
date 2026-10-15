@@ -13,7 +13,7 @@ import (
 	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsmemory "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 )
 

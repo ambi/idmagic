@@ -31,14 +31,12 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -57,13 +55,13 @@ type governanceStack struct {
 	apps      *appmemory.ApplicationRepository
 	workflows *igmemory.LifecycleWorkflowRepository
 	runs      *igmemory.LifecycleWorkflowRunRepository
-	jobs      *jobsmemory.JobRepository
+	jobs      jobsports.JobRepository
 }
 
 func newGovernanceStack(t *testing.T) *governanceStack {
 	t.Helper()
 	now := time.Now().UTC()
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
 		{ID: acmeTenant, Realm: acmeTenant, DisplayName: "Acme", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
@@ -75,7 +73,7 @@ func newGovernanceStack(t *testing.T) *governanceStack {
 	s := &governanceStack{
 		users: usermemory.NewUserRepository(), groups: groupmemory.NewGroupRepository(),
 		apps: appmemory.NewApplicationRepository(), workflows: igmemory.NewLifecycleWorkflowRepository(),
-		runs: igmemory.NewLifecycleWorkflowRunRepository(), jobs: jobsmemory.NewJobRepository(),
+		runs: igmemory.NewLifecycleWorkflowRunRepository(), jobs: jobs.NewJobRepository(),
 	}
 	schemas := usermemory.NewTenantUserAttributeSchemaRepository()
 	if err := schemas.Save(context.Background(), &userdomain.TenantUserAttributeSchema{
@@ -101,7 +99,7 @@ func newGovernanceStack(t *testing.T) *governanceStack {
 		Tenancy:       tenancy.Module{TenantRepo: tenants, AttrSchemaRepo: schemas},
 		IdManagement:  idmanagement.Module{UserRepo: s.users, GroupRepo: s.groups},
 		Application:   application.Module{Repo: s.apps, AssignmentRepo: appmemory.NewApplicationAssignmentRepository()},
-		Jobs:          jobs.Module{Repo: s.jobs, Enqueuer: jobsusecases.NewEnqueuer(s.jobs, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})},
+		Jobs:          jobs.Module{Repo: s.jobs, Enqueuer: jobs.NewEnqueuer(s.jobs, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {})},
 		IdGovernance:  idgovernance.Module{LifecycleWorkflowRepo: s.workflows, LifecycleWorkflowRunRepo: s.runs},
 	})
 	return s

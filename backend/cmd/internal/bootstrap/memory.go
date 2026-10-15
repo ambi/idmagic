@@ -31,7 +31,6 @@ import (
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2"
 	cimdhttp "github.com/ambi/idmagic/backend/oauth2/client/cimd_http"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
@@ -52,7 +51,6 @@ import (
 	"github.com/ambi/idmagic/backend/sourcing"
 
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	"github.com/ambi/idmagic/backend/workloadidentity"
 
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -75,7 +73,10 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	// data_key_reencryption job to migrate (dev/test only).
 	userRepo := usermemory.NewUserRepository()
 	csvArtifacts := idmmemory.NewCSVArtifactStore()
-	quotaRepo := tenancymemory.NewQuotaRepository()
+	tenancyModule := tenancy.NewMemoryModule()
+	tenancyModule.AttrSchemaRepo = usermemory.NewTenantUserAttributeSchemaRepository()
+	tenancyModule.GroupAttrSchemaRepo = groupmemory.NewTenantGroupAttributeSchemaRepository()
+	quotaRepo := tenancyModule.QuotaRepo
 	passwordHistoryRepo := passwordmemory.NewPasswordHistoryRepository()
 	auditModule := audit.NewMemoryModule(0)
 	auditEventRepo := auditModule.AuditEventRepo
@@ -90,15 +91,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	provisioningModule := provisioning.NewMemoryModule()
 	federationRepos := federationmemory.NewRepositories()
 	return &Dependencies{
-		Tenancy: tenancy.Module{
-			TenantRepo:            tenancymemory.NewTenantRepository(),
-			AttrSchemaRepo:        usermemory.NewTenantUserAttributeSchemaRepository(),
-			GroupAttrSchemaRepo:   groupmemory.NewTenantGroupAttributeSchemaRepository(),
-			BrandingRepo:          tenancymemory.NewTenantBrandingRepository(),
-			BrandingAssetStore:    tenancymemory.NewTenantBrandingAssetStore(),
-			NotificationTemplates: tenancymemory.NewNotificationTemplateRepository(),
-			QuotaRepo:             quotaRepo,
-		},
+		Tenancy: tenancyModule,
 		IdManagement: idmanagement.Module{
 			UserRepo:                       userRepo,
 			GroupRepo:                      groupRepo,
@@ -169,7 +162,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		Saml:         saml.NewMemoryModule(),
 		Sourcing:     sourcing.NewMemoryModule(),
 		ApiTokens:    apitoken.NewMemoryModule(),
-		Jobs:         jobs.Module{Repo: jobsmemory.NewJobRepository()},
+		Jobs:         jobs.NewMemoryModule(),
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),
 			IconStore:               appmemory.NewApplicationIconStore(),

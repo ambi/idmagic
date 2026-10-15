@@ -15,7 +15,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	tenancypg "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
@@ -44,7 +44,7 @@ func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 		ID: newUUID(t), Realm: uniqueID("tenant"), DisplayName: "Test Tenant",
 		Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	}
-	if err := (&tenancypg.TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
+	if err := tenancy.NewPostgresModule(db).TenantRepo.Save(context.Background(), tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	return tenant

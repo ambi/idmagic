@@ -12,15 +12,14 @@ import (
 	"testing"
 	"time"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/ambi/idmagic/backend/authentication"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
 	clientmemory "github.com/ambi/idmagic/backend/oauth2/client/db_memory"
 	clientdomain "github.com/ambi/idmagic/backend/oauth2/client/domain"
@@ -50,7 +49,7 @@ type logoutE2EFixture struct {
 	server              *httptest.Server
 	sessionID, clientID string
 	notifications       *logoutmemory.LogoutNotificationStore
-	jobs                *jobsmemory.JobRepository
+	jobs                jobsports.JobRepository
 	signer              *tokens_jose.JWTSigner
 	sessions            *sessionmemory.SessionStore
 	refresh             *oauth2memory.RefreshTokenStore
@@ -82,14 +81,14 @@ func newLogoutE2EFixture(t *testing.T, mutate func(*clientdomain.OAuth2Client)) 
 		t.Fatal(err)
 	}
 	notifications := logoutmemory.NewLogoutNotificationStore()
-	jobRepo := jobsmemory.NewJobRepository()
+	jobRepo := jobs.NewJobRepository()
 	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
 	signer := tokens_jose.NewJWTSigner(logoutE2EIssuer, keyStore)
 	e := echo.New()
-	httpadapter.Register(e, httpadapter.Deps{Issuer: logoutE2EIssuer, Authentication: authentication.Module{SessionManager: sessionManager}, OAuth2: oauth2.Module{ClientRepo: clientRepo, ClientSessionStore: clientSessions, LogoutNotificationStore: notifications, RefreshStore: refreshStore}, Jobs: jobs.Module{Repo: jobRepo, Enqueuer: jobsusecases.NewEnqueuer(jobRepo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})}})
+	httpadapter.Register(e, httpadapter.Deps{Issuer: logoutE2EIssuer, Authentication: authentication.Module{SessionManager: sessionManager}, OAuth2: oauth2.Module{ClientRepo: clientRepo, ClientSessionStore: clientSessions, LogoutNotificationStore: notifications, RefreshStore: refreshStore}, Jobs: jobs.Module{Repo: jobRepo, Enqueuer: jobs.NewEnqueuer(jobRepo, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {})}})
 	server := httptest.NewServer(e)
 	t.Cleanup(server.Close)
 	return logoutE2EFixture{server: server, sessionID: authn.SessionID, clientID: client.ClientID, notifications: notifications, jobs: jobRepo, signer: signer, sessions: sessionStore, refresh: refreshStore}
@@ -153,9 +152,9 @@ func TestEndSessionFrontChannelLogout_OIDC_FRONTCHANNEL_IFRAME(t *testing.T) {
 // runDeliveryWorker は back-channel 配信ジョブを本番と同じ handler と runner で回す。
 func (f logoutE2EFixture) runDeliveryWorker(t *testing.T, deliver logoutports.BackChannelLogoutClient) {
 	t.Helper()
-	registry := jobsusecases.NewHandlerRegistry()
+	registry := jobs.NewHandlerRegistry()
 	oauth2.RegisterJobHandlers(registry, oauth2.JobHandlerDeps{Notifications: f.notifications, TokenSigner: f.signer, BackChannelClient: deliver, Now: time.Now})
-	runner := jobsusecases.NewRunner(jobsusecases.RunnerConfig{WorkerID: "logout-e2e", Lane: jobsdomain.LaneLatencySensitive, PollInterval: time.Millisecond, LeaseDuration: time.Second, BackoffBase: time.Millisecond, BackoffCap: time.Millisecond}, jobsusecases.RunnerDeps{Repo: f.jobs, Handlers: registry, Now: time.Now})
+	runner := jobs.NewRunner(jobs.RunnerConfig{WorkerID: "logout-e2e", Lane: jobsdomain.LaneLatencySensitive, PollInterval: time.Millisecond, LeaseDuration: time.Second, BackoffBase: time.Millisecond, BackoffCap: time.Millisecond}, jobs.RunnerDeps{Repo: f.jobs, Handlers: registry, Now: time.Now})
 	workerCtx, cancelWorker := context.WithCancel(testing_tenant.Default(context.Background()))
 	runnerDone := make(chan error, 1)
 	go func() { runnerDone <- runner.Run(workerCtx) }()

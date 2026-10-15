@@ -22,7 +22,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 
@@ -60,7 +60,7 @@ func newTokenExchangeServer(t *testing.T, options ...func(*httpadapter.Deps)) st
 		ID: "rs-orders", Resource: "https://api.example/orders", Name: "Orders API",
 		Scopes: []string{"read", "write"}, State: domain.McpResourceServerActive,
 	})
-	tenantRepo := tenancymemory.NewTenantRepository()
+	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	if err := tenantRepo.Save(context.Background(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm,
 		DisplayName: "Default", Status: tenancydomain.TenantStatusActive,

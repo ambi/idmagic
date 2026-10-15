@@ -25,7 +25,6 @@ import (
 	sinks_console "github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -34,7 +33,7 @@ func newSecurityNotificationDeps(t *testing.T) (*Dependencies, *captureEmailSend
 	ctx := context.Background()
 	now := time.Now().UTC()
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	if err := tenants.Save(ctx, &tenancydomain.Tenant{
 		ID: "tenant-a", Realm: "acme", DisplayName: "Acme Inc.",
 		Status: tenancydomain.TenantStatusActive, CreatedAt: now,
@@ -54,8 +53,8 @@ func newSecurityNotificationDeps(t *testing.T) (*Dependencies, *captureEmailSend
 	deps := &Dependencies{
 		Tenancy: tenancy.Module{
 			TenantRepo:            tenants,
-			BrandingRepo:          tenancymemory.NewTenantBrandingRepository(),
-			NotificationTemplates: tenancymemory.NewNotificationTemplateRepository(),
+			BrandingRepo:          tenancy.NewMemoryModule().BrandingRepo,
+			NotificationTemplates: tenancy.NewMemoryModule().NotificationTemplates,
 		},
 		IdManagement: idmanagement.Module{UserRepo: users},
 		Authentication: authentication.Module{

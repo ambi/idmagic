@@ -23,7 +23,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	tenancypg "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	"github.com/ambi/idmagic/backend/tenancy"
 )
 
 // TestClock は決定的なタイムスタンプ生成に用いる基準時刻。
@@ -58,7 +58,7 @@ func SeedTenant(tb testing.TB, db sharedpg.DB) *tenancydomain.Tenant {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := (&tenancypg.TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
+	if err := tenancy.NewPostgresModule(db).TenantRepo.Save(context.Background(), tenant); err != nil {
 		tb.Fatalf("seed tenant: %v", err)
 	}
 	return tenant

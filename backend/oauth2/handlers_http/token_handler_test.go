@@ -14,7 +14,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/signingkeys"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -90,7 +90,7 @@ func newTokenServer(t *testing.T) tokenFixture {
 	e := echo.New()
 	deps := httpadapter.Deps{
 		Issuer:     "http://test",
-		TenantRepo: tenancymemory.NewTenantRepository(),
+		TenantRepo: tenancy.NewMemoryModule().TenantRepo,
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, RefreshStore: oauth2memory.NewRefreshTokenStore(), AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist(),
 			McpResourceServerRepo: mcpResourceServerRepo,

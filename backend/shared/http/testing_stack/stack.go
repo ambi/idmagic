@@ -77,7 +77,7 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -181,7 +181,7 @@ func (l *EventLog) AssertNotEmitted(t *testing.T, eventTypes ...string) {
 type Stack struct {
 	Echo     *echo.Echo
 	Events   *EventLog
-	Tenants  *tenancymemory.TenantRepository
+	Tenants  tenantports.TenantRepository
 	Users    *usermemory.UserRepository
 	Groups   *groupmemory.GroupRepository
 	KeyStore signingkeys.KeyStore
@@ -518,7 +518,7 @@ func New(t *testing.T, options ...Option) *Stack {
 	t.Helper()
 	created := time.Now().UTC()
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{
 			ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm,

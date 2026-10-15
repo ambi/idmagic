@@ -10,7 +10,7 @@ import (
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
-	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -22,7 +22,7 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 	// signing_keys.tenant_id は tenants(id) を参照するため対象 tenant を用意する。
 	now := pgtest.Now()
 	defaultTenant := &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now}
-	if err := (&tenancypostgres.TenantRepository{Pool: db}).Save(context.Background(), defaultTenant); err != nil {
+	if err := tenancypostgres.NewPostgresModule(db).TenantRepo.Save(context.Background(), defaultTenant); err != nil {
 		t.Fatalf("seed default tenant: %v", err)
 	}
 	ctx := tenantports.WithTenant(context.Background(), defaultTenant, "", "")

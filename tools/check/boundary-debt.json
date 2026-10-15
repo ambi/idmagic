@@ -500,7 +500,7 @@
       "sourceModule": "Tenancy",
       "targetModule": "WsFederation",
       "violations": [
-        "private-import:Tenancy:backend/tenancy/handlers_http->backend/wsfederation/tokens_saml"
+        "private-import:Tenancy:backend/tenancy/internal/handlers_http->backend/wsfederation/tokens_saml"
       ],
       "reason": "Tenancy's handler dependencies carry the SAML signer type from WsFederation's tokens_saml package. wi-90942 removes the type from Tenancy or replaces it with a published one (D3, D5)."
     },

@@ -25,7 +25,7 @@ import (
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
@@ -357,7 +357,7 @@ func TestListAdminApplicationsRefusesAUserWithoutTheAdminRole(t *testing.T) {
 func newTwoTenantApplicationHandler(t *testing.T) *echo.Echo {
 	t.Helper()
 	now := time.Now().UTC()
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
 		{ID: "globex", Realm: "globex", DisplayName: "Globex", Status: tenancydomain.TenantStatusActive, CreatedAt: now},

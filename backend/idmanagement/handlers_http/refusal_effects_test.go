@@ -26,8 +26,6 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
-
 	"github.com/ambi/idmagic/backend/apitoken"
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 
@@ -48,7 +46,6 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -64,7 +61,6 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -106,7 +102,7 @@ type idmRefusalFixture struct {
 	users       *usermemory.UserRepository
 	groups      *groupmemory.GroupRepository
 	agents      *agentmemory.AgentRepository
-	jobs        *jobsmemory.JobRepository
+	jobs        jobsports.JobRepository
 	jobClock    *backdatingJobRepository
 	artifacts   *idmmemory.CSVArtifactStore
 	sessions    *sessionmemory.SessionStore
@@ -188,7 +184,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 		t.Fatal(err)
 	}
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive},
 		{ID: idmRefusalOtherTenant, Realm: idmRefusalOtherTenant, Status: tenancydomain.TenantStatusActive},
@@ -207,7 +203,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 	signer := tokensjose.NewJWTSigner(idmRefusalIssuer, keyStore)
 
 	apiTokenRepo := apitoken.NewRepository()
-	jobRepo := jobsmemory.NewJobRepository()
+	jobRepo := jobs.NewJobRepository()
 	fixture := &idmRefusalFixture{
 		e:           echo.New(),
 		users:       users,
@@ -264,7 +260,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 		},
 		OAuth2:            oauth2.Module{ConsentRepo: fixture.consents, ClientRepo: fixture.clients},
 		Notification:      sharednotification.Module{EmailSender: fixture.emails},
-		Jobs:              jobs.Module{Repo: fixture.jobClock, Enqueuer: jobsusecases.NewEnqueuer(fixture.jobClock, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})},
+		Jobs:              jobs.Module{Repo: fixture.jobClock, Enqueuer: jobs.NewEnqueuer(fixture.jobClock, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {})},
 		ApiTokens:         apitoken.Module{Repo: apiTokenRepo},
 		KeyStore:          keyStore,
 		TokenIssuer:       signer,

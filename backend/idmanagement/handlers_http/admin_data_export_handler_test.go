@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
@@ -25,11 +24,11 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -39,7 +38,7 @@ type exportTestHandler struct {
 	echo      *echo.Echo
 	users     *usermemory.UserRepository
 	groups    *groupmemory.GroupRepository
-	jobRepo   *jobsmemory.JobRepository
+	jobRepo   jobsports.JobRepository
 	artifacts *idmmemory.CSVArtifactStore
 }
 
@@ -47,7 +46,7 @@ func newExportTestHandler(t *testing.T, options ...func(*httpadapter.Deps)) expo
 	t.Helper()
 	users := usermemory.NewUserRepository()
 	groups := groupmemory.NewGroupRepository()
-	jobRepo := jobsmemory.NewJobRepository()
+	jobRepo := jobs.NewJobRepository()
 	artifacts := idmmemory.NewCSVArtifactStore()
 	now := time.Now().UTC()
 	email := "alice@example.com"
@@ -72,9 +71,9 @@ func newExportTestHandler(t *testing.T, options ...func(*httpadapter.Deps)) expo
 	// 投入器は、オプションが差し替えたクォータを使うように、オプションの適用後に作る。
 	quotas := deps.Tenancy.QuotaRepo
 	if quotas == nil {
-		quotas = tenancymemory.NewQuotaRepository()
+		quotas = tenancy.NewMemoryModule().QuotaRepo
 	}
-	deps.Jobs.Enqueuer = jobsusecases.NewEnqueuer(jobRepo, quotas, func(spec.DomainEvent) {})
+	deps.Jobs.Enqueuer = jobs.NewEnqueuer(jobRepo, quotas, func(spec.DomainEvent) {})
 	httpadapter.Register(e, deps)
 	return exportTestHandler{echo: e, users: users, groups: groups, jobRepo: jobRepo, artifacts: artifacts}
 }
@@ -242,7 +241,7 @@ func TestDataExportHTTP_RejectsInvalidColumns(t *testing.T) {
 // クライアントが再試行すべきかは code だけで判断できなければならない。
 // 両者が `quota_exceeded` を共有していると、その判断ができない。
 func TestDataExportHTTP_ActiveJobCeilingHasItsOwnCode(t *testing.T) {
-	quotaRepo := tenancymemory.NewQuotaRepository()
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 	none := 0
 	if err := quotaRepo.SetQuota(context.Background(), tenancydomain.DefaultTenantID,
 		&tenancydomain.TenantQuota{ActiveJobs: &none}); err != nil {

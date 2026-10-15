@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -90,7 +89,7 @@ func TestResolveHostTenantDenyByDefault(t *testing.T) {
 }
 
 func TestResolveHostTenantEntersSubdomainTenant(t *testing.T) {
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenantsByID{}
 	tenant := &tenancydomain.Tenant{
 		ID: "tenant-acme", Realm: "acme", Status: tenancydomain.TenantStatusActive,
 		EndpointStyle: tenancydomain.TenantEndpointStyleSubdomain,
@@ -120,7 +119,7 @@ func TestResolveHostTenantEntersSubdomainTenant(t *testing.T) {
 func TestResolveHostTenantRejectsPathStyleTenant(t *testing.T) {
 	// A tenant registered as path-style must not resolve through the host route,
 	// even if its realm happens to match a subdomain label.
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenantsByID{}
 	if err := tenants.Save(t.Context(), &tenancydomain.Tenant{
 		ID: "tenant-acme", Realm: "acme", Status: tenancydomain.TenantStatusActive,
 		EndpointStyle: tenancydomain.TenantEndpointStylePath,
@@ -138,7 +137,7 @@ func TestResolveHostTenantRejectsPathStyleTenant(t *testing.T) {
 }
 
 func TestResolveHostTenantRejectsDisabledTenant(t *testing.T) {
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenantsByID{}
 	if err := tenants.Save(t.Context(), &tenancydomain.Tenant{
 		ID: "tenant-acme", Realm: "acme", Status: tenancydomain.TenantStatusDisabled,
 		EndpointStyle: tenancydomain.TenantEndpointStyleSubdomain,
@@ -170,7 +169,7 @@ func TestResolvePathTenantRejectsHostResolvableOrigin(t *testing.T) {
 }
 
 func TestResolvePathTenantEntersPathStyleTenant(t *testing.T) {
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenantsByID{}
 	if err := tenants.Save(t.Context(), &tenancydomain.Tenant{
 		ID: "tenant-acme", Realm: "acme", Status: tenancydomain.TenantStatusActive,
 		EndpointStyle: tenancydomain.TenantEndpointStylePath,
@@ -370,6 +369,39 @@ func TestTenantURLFallsBackWithoutATenant(t *testing.T) {
 	if got := TenantURL(c, "/x", "https://fallback.test"); got != "https://fallback.test/x" {
 		t.Fatalf("TenantURL = %q", got)
 	}
+}
+
+// tenantsByID は、保存したテナントを ID で保持し realm で引く TenantRepository である。
+// support_http を import する Tenancy の保存先を、このパッケージのテストから使えないので置く。
+type tenantsByID map[string]tenancydomain.Tenant
+
+func (r tenantsByID) FindByID(_ context.Context, id string) (*tenancydomain.Tenant, error) {
+	if tenant, ok := r[id]; ok {
+		return &tenant, nil
+	}
+	return nil, nil //nolint:nilnil // TenantRepository の契約では、見つからないテナントを nil で返す。
+}
+
+func (r tenantsByID) FindByRealm(_ context.Context, realm string) (*tenancydomain.Tenant, error) {
+	for _, tenant := range r {
+		if tenant.Realm == realm {
+			return &tenant, nil
+		}
+	}
+	return nil, nil //nolint:nilnil // TenantRepository の契約では、見つからないテナントを nil で返す。
+}
+
+func (r tenantsByID) FindAll(context.Context) ([]*tenancydomain.Tenant, error) {
+	out := make([]*tenancydomain.Tenant, 0, len(r))
+	for _, tenant := range r {
+		out = append(out, &tenant)
+	}
+	return out, nil
+}
+
+func (r tenantsByID) Save(_ context.Context, tenant *tenancydomain.Tenant) error {
+	r[tenant.ID] = *tenant
+	return nil
 }
 
 // erroringTenantRepo implements tenantports.TenantRepository with every

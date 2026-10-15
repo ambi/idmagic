@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
@@ -120,7 +120,7 @@ func federatedProvisioningDeps(
 	}); err != nil {
 		t.Fatalf("Save schema: %v", err)
 	}
-	quotaRepo := tenancymemory.NewQuotaRepository()
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 	if userLimit > 0 {
 		if err := quotaRepo.SetQuota(
 			ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Users: &userLimit},
@@ -402,7 +402,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 func TestCreateUser_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	repo := usermemory.NewUserRepository()
-	quotaRepo := tenancymemory.NewQuotaRepository()
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 	limit := 1
 	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Users: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)
@@ -439,7 +439,7 @@ func TestCreateUser_rejectsWhenHardQuotaExceeded(t *testing.T) {
 func TestDeleteUser_decrementsQuotaUsage(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	repo := usermemory.NewUserRepository()
-	quotaRepo := tenancymemory.NewQuotaRepository()
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 	limit := 1
 	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Users: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)

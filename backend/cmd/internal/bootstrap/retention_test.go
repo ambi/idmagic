@@ -17,7 +17,6 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -64,7 +63,7 @@ func (s *recordingEventSink) Emit(_ context.Context, event spec.DomainEvent) err
 func TestRetentionSweepPurgesUsersPastTheGracePeriod(t *testing.T) {
 	now := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 	ctx := context.Background()
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	users := usermemory.NewUserRepository()
 	pending := func(tenantID, id string, since time.Time) {
 		t.Helper()

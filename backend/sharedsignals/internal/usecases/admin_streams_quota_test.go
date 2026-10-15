@@ -8,7 +8,7 @@ import (
 
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -40,7 +40,7 @@ func TestRegisterSsfStream_HardQuota(t *testing.T) {
 	newDeps := func(t *testing.T, limit int) ssusecases.AdminStreamDeps {
 		t.Helper()
 		deps, _ := newAdminStreamDeps(t)
-		quotaRepo := tenancymemory.NewQuotaRepository()
+		quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 		if err := quotaRepo.SetQuota(context.Background(), "tenant-a", &tenancydomain.TenantQuota{
 			SsfStreams: &limit,
 		}); err != nil {
@@ -103,7 +103,7 @@ func TestRegisterSsfStream_HardQuota(t *testing.T) {
 	t.Run("QuotaExceededIsEmitted", func(t *testing.T) {
 		deps, events := newAdminStreamDeps(t)
 		limit := 0
-		quotaRepo := tenancymemory.NewQuotaRepository()
+		quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 		if err := quotaRepo.SetQuota(ctx, "tenant-a", &tenancydomain.TenantQuota{SsfStreams: &limit}); err != nil {
 			t.Fatal(err)
 		}

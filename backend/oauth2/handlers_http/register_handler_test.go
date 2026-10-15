@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -34,7 +34,7 @@ func newRegisterServer() registerFixture {
 	e := echo.New()
 	deps := httpadapter.Deps{
 		Issuer:     "http://test",
-		TenantRepo: tenancymemory.NewTenantRepository(),
+		TenantRepo: tenancy.NewMemoryModule().TenantRepo,
 		Emit:       func(event spec.DomainEvent) { *events = append(*events, event) },
 		OAuth2:     oauth2.Module{ClientRepo: clientRepo},
 	}

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -20,7 +20,7 @@ import (
 // 無効化の応答が到達経路でどう変わるかを読むには、両方の形の無効なテナントが要る。
 func disabledTenantFixture(t *testing.T) *echo.Echo {
 	t.Helper()
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	now := time.Now().UTC()
 	for _, tenant := range []*tenancydomain.Tenant{
 		{

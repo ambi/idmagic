@@ -33,7 +33,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
+	tenancypostgres "github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -72,7 +72,7 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := (&tenancypostgres.TenantRepository{Pool: db}).Save(ctx, tenant); err != nil {
+	if err := tenancypostgres.NewPostgresModule(db).TenantRepo.Save(ctx, tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
 
@@ -122,7 +122,7 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 		ID: tenantID, Realm: "export-audit-test-" + tenantID, DisplayName: "wi-148 Export Audit Test Tenant",
 		Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	}
-	if err := (&tenancypostgres.TenantRepository{Pool: db}).Save(ctx, tenant); err != nil {
+	if err := tenancypostgres.NewPostgresModule(db).TenantRepo.Save(ctx, tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	userID, _ := spec.NewUUIDv4()

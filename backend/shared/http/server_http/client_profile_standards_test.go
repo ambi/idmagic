@@ -48,7 +48,7 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -104,7 +104,7 @@ func newClientProfileFixture(t *testing.T) *cpFixture {
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 	})
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	if err := tenants.Save(t.Context(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm,
 		Status: tenancydomain.TenantStatusActive,

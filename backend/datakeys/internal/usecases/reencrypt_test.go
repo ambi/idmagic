@@ -7,17 +7,16 @@ import (
 	"testing"
 	"time"
 
+	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 
 	"github.com/ambi/idmagic/backend/datakeys/internal/db_memory"
 	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
-	jobsdbmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
-	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -117,7 +116,7 @@ func TestReencryptionHandler_ReturnsResultJSONWithoutEnqueueingWhenDone(t *testi
 	repo := newReencryptTestRepo(t)
 	migrators := NewMigratorRegistry()
 	migrators.Register("mfa_totp_secret", &fakeReencryptMigrator{batchReturns: []int{2}, pending: 0})
-	jobRepo := jobsdbmemory.NewJobRepository()
+	jobRepo := jobsmodule.NewJobRepository()
 
 	handler := ReencryptionHandler(ReencryptDeps{Repository: repo, Migrators: migrators, Jobs: testEnqueuer(jobRepo)})
 	params, err := json.Marshal(ReencryptParams{TenantID: "tenant-a", Migrator: "mfa_totp_secret"})
@@ -160,7 +159,7 @@ func TestReencryptionHandler_RefusesParamsNamingAnotherTenant(t *testing.T) {
 	migrators := NewMigratorRegistry()
 	migrator := &fakeReencryptMigrator{batchReturns: []int{2}}
 	migrators.Register("mfa_totp_secret", migrator)
-	jobRepo := jobsdbmemory.NewJobRepository()
+	jobRepo := jobsmodule.NewJobRepository()
 	handler := ReencryptionHandler(ReencryptDeps{Repository: repo, Migrators: migrators, Jobs: testEnqueuer(jobRepo)})
 
 	params, err := json.Marshal(ReencryptParams{TenantID: "tenant-b", Migrator: "mfa_totp_secret"})
@@ -188,7 +187,7 @@ func TestReencryptionHandler_ReenqueuesContinuationWhenRemaining(t *testing.T) {
 	repo := newReencryptTestRepo(t)
 	migrators := NewMigratorRegistry()
 	migrators.Register("mfa_totp_secret", &fakeReencryptMigrator{batchReturns: []int{2}, pending: 500})
-	jobRepo := jobsdbmemory.NewJobRepository()
+	jobRepo := jobsmodule.NewJobRepository()
 
 	handler := ReencryptionHandler(ReencryptDeps{Repository: repo, Migrators: migrators, Jobs: testEnqueuer(jobRepo)})
 	params, err := json.Marshal(ReencryptParams{TenantID: "tenant-a", Migrator: "mfa_totp_secret"})
@@ -213,9 +212,9 @@ func TestReencryptionHandler_ReenqueuesContinuationWhenRemaining(t *testing.T) {
 
 //spec:covers REQ-JOBS-002: 再暗号化のジョブを新しく作った投入は JobEnqueued を一件発行し、重複排除で既存のジョブを返した投入は発行しない。
 func TestEnqueueReencryptionJobEmitsJobEnqueued(t *testing.T) {
-	jobRepo := jobsdbmemory.NewJobRepository()
+	jobRepo := jobsmodule.NewJobRepository()
 	var events []spec.DomainEvent
-	jobs := jobsusecases.NewEnqueuer(jobRepo, tenancymemory.NewQuotaRepository(), func(event spec.DomainEvent) { events = append(events, event) })
+	jobs := jobsmodule.NewEnqueuer(jobRepo, tenancy.NewMemoryModule().QuotaRepo, func(event spec.DomainEvent) { events = append(events, event) })
 	now := time.Now().UTC()
 	for range 2 {
 		if err := EnqueueReencryptionJob(context.Background(), jobs, "tenant-a", "mfa_totp_secret", now); err != nil {
@@ -234,12 +233,12 @@ func TestEnqueueReencryptionJobEmitsJobEnqueued(t *testing.T) {
 //spec:covers REQ-TENANCY-013: active_jobs の上限に達したテナントでは再暗号化のジョブの投入を QuotaExceededError で拒否し、使用量を変えない。
 func TestEnqueueReencryptionJobRespectsActiveJobsQuota(t *testing.T) {
 	ctx := context.Background()
-	quotas := tenancymemory.NewQuotaRepository()
+	quotas := tenancy.NewMemoryModule().QuotaRepo
 	limit := 0
 	if err := quotas.SetQuota(ctx, "tenant-a", &tenancydomain.TenantQuota{ActiveJobs: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)
 	}
-	jobs := jobsusecases.NewEnqueuer(jobsdbmemory.NewJobRepository(), quotas, func(spec.DomainEvent) {})
+	jobs := jobsmodule.NewEnqueuer(jobsmodule.NewJobRepository(), quotas, func(spec.DomainEvent) {})
 
 	err := EnqueueReencryptionJob(ctx, jobs, "tenant-a", "mfa_totp_secret", time.Now().UTC())
 	var exceeded *tenancydomain.QuotaExceededError
@@ -256,7 +255,7 @@ func TestEnqueueReencryptionJobRespectsActiveJobsQuota(t *testing.T) {
 }
 
 func TestEnqueueReencryptionJob_DedupsRepeatedCalls(t *testing.T) {
-	jobRepo := jobsdbmemory.NewJobRepository()
+	jobRepo := jobsmodule.NewJobRepository()
 	enqueue := testEnqueuer(jobRepo)
 	now := time.Now().UTC()
 	if err := EnqueueReencryptionJob(context.Background(), enqueue, "tenant-a", "mfa_totp_secret", now); err != nil {
@@ -277,5 +276,5 @@ func TestEnqueueReencryptionJob_DedupsRepeatedCalls(t *testing.T) {
 
 // testEnqueuer は、repo へジョブを作り、上限のないクォータで数え、イベントを捨てる投入器を返す。
 func testEnqueuer(repo jobsports.JobRepository) jobsports.Enqueuer {
-	return jobsusecases.NewEnqueuer(repo, tenancymemory.NewQuotaRepository(), func(spec.DomainEvent) {})
+	return jobsmodule.NewEnqueuer(repo, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {})
 }

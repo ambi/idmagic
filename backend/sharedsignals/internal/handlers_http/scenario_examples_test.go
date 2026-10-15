@@ -52,7 +52,6 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -160,7 +159,7 @@ type exampleStack struct {
 	receiverConfigs    *countingReceiverConfigs
 	deliveries         *ssmemory.SecurityEventDeliveryRepository
 	epochs             *ssmemory.AgentRevocationEpochRepository
-	quotas             *tenancymemory.QuotaRepository
+	quotas             tenantports.QuotaRepository
 	keyStore           signingkeys.KeyStore
 	csrf               string
 	cookie             *http.Cookie
@@ -170,7 +169,7 @@ func newExampleStack(t *testing.T) *exampleStack {
 	t.Helper()
 	now := time.Now().UTC()
 
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
 		{ID: exampleOtherTenant, Realm: exampleOtherTenant, DisplayName: "Acme", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
@@ -210,7 +209,7 @@ func newExampleStack(t *testing.T) *exampleStack {
 		t.Fatalf("key store: %v", err)
 	}
 	signer := tokensjose.NewJWTSigner(exampleIssuer, keyStore)
-	quotas := tenancymemory.NewQuotaRepository()
+	quotas := tenancy.NewMemoryModule().QuotaRepo
 	limit := 20
 	if err := quotas.SetQuota(context.Background(), tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{SsfStreams: &limit}); err != nil {
 		t.Fatalf("seed quota: %v", err)

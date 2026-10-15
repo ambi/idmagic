@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -39,7 +39,7 @@ func newGroupDeps(t *testing.T) (groupusecases.AdminGroupDeps, *[]spec.DomainEve
 		GroupRepo:           groupmemory.NewGroupRepository(),
 		UserRepo:            userRepo,
 		Emit:                func(e spec.DomainEvent) error { *events = append(*events, e); return nil },
-		QuotaRepo:           tenancymemory.NewQuotaRepository(),
+		QuotaRepo:           tenancy.NewMemoryModule().QuotaRepo,
 		GroupAttrSchemaRepo: groupmemory.NewTenantGroupAttributeSchemaRepository(),
 	}
 	return deps, events

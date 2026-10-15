@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
@@ -22,7 +22,7 @@ import (
 func TestRevokeConsent_decrementsQuotaUsage(t *testing.T) {
 	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	consentRepo := oauth2memory.NewConsentRepository()
-	quotaRepo := tenancymemory.NewQuotaRepository()
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 	limit := 1
 	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Consents: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)

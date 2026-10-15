@@ -24,7 +24,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -34,7 +34,7 @@ import (
 //spec:covers REQ-OAUTH2-041: an authenticated confidential client can create a backchannel request.
 //verify:operation BackchannelAuthenticate: 200 の auth_req_id、期限、interval と pending 状態、および不正な secret の拒否
 func TestBackchannelAuthenticateCreatesPendingRequest(t *testing.T) {
-	tenantRepo := tenancymemory.NewTenantRepository()
+	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	_ = tenantRepo.Save(context.Background(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm,
 		Status: tenancydomain.TenantStatusActive,
@@ -96,7 +96,7 @@ func TestBackchannelAuthenticateCreatesPendingRequest(t *testing.T) {
 //
 //spec:covers REQ-OAUTH2-041, EX-OAUTH2-041-01: 要求は Pending → Approved → Consumed と進み、各段で BackchannelAuthRequested、BackchannelAuthApproved、AccessTokenIssued が発行され、交換は一度だけ成立する。
 func TestBackchannelApprovalIssuesTokenOnce(t *testing.T) {
-	tenantRepo := tenancymemory.NewTenantRepository()
+	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	if err := tenantRepo.Save(context.Background(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive,
 	}); err != nil {
@@ -209,7 +209,7 @@ type approvalHandlerFixture struct {
 
 func newApprovalHandlerFixture(t *testing.T) approvalHandlerFixture {
 	t.Helper()
-	tenantRepo := tenancymemory.NewTenantRepository()
+	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	_ = tenantRepo.Save(context.Background(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm,
 		Status: tenancydomain.TenantStatusActive,

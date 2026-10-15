@@ -154,7 +154,7 @@ linters:
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
-      - path: backend/jobs/handlers_http/admin_job_handler_test\.go
+      - path: backend/jobs/internal/handlers_http/admin_job_handler_test\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
@@ -168,7 +168,7 @@ linters:
       # TenantNotificationSource adapts Tenancy repositories to the shared
       # notification port, whose "no tenant override for this template" answer is
       # nil result + nil error, same as the Find* repository contracts above.
-      - path: backend/tenancy/usecases/manage_notification_templates\.go
+      - path: backend/tenancy/internal/usecases/manage_notification_templates\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil

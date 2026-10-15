@@ -35,7 +35,6 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobshttp "github.com/ambi/idmagic/backend/jobs/handlers_http"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/handlers_http"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -52,7 +51,6 @@ import (
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	"github.com/ambi/idmagic/backend/sourcing"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/handlers_http"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/workloadidentity"
 	workloadidentitydomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
@@ -160,13 +158,11 @@ func Register(e *echo.Echo, d Deps) {
 	// tenantGroup にそのまま登録する。default テナントへの限定は
 	// RequireControlPlaneUser が担う。
 	// ルーティング層で別 prefix に隔離する必要はない。
-	tenancyhttp.RegisterControlPlaneRoutes(tenantGroup, tenancyhttp.Deps{
-		Deps:           d.Deps,
-		Authenticator:  authenticator,
-		TenantRepo:     d.TenantRepo,
-		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
-		UserRepo:       d.IdManagement.UserRepo,
-		QuotaRepo:      d.Tenancy.QuotaRepo,
+	d.Tenancy.RegisterControlPlaneRoutes(tenantGroup, tenancy.RouteDeps{
+		Deps:          d.Deps,
+		Authenticator: authenticator,
+		TenantRepo:    d.TenantRepo,
+		UserRepo:      d.IdManagement.UserRepo,
 	})
 
 	e.GET("/health", d.handleHealth)
@@ -386,12 +382,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		TenantRepo:    d.TenantRepo,
 	})
 
-	jobshttp.RegisterRoutes(g, jobshttp.Deps{
-		Deps:          d.Deps,
-		Authenticator: authenticator,
-		Repo:          d.Jobs.Repo,
-		Emit:          d.Emit,
-	})
+	d.Jobs.RegisterRoutes(g, d.Deps, authenticator, d.Emit)
 
 	d.DataKeys.RegisterRoutes(g, datakeys.RouteDeps{
 		Deps:          d.Deps,
@@ -516,21 +507,14 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
 	})
 
-	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{
-		Deps:                d.Deps,
-		Authenticator:       authenticator,
-		TenantRepo:          d.TenantRepo,
-		AttrSchemaRepo:      d.Tenancy.AttrSchemaRepo,
-		GroupAttrSchemaRepo: d.Tenancy.GroupAttrSchemaRepo,
-		BrandingRepo:        d.Tenancy.BrandingRepo,
-		BrandingAssetStore:  d.Tenancy.BrandingAssetStore,
-
-		NotificationTemplateRepo: d.Tenancy.NotificationTemplates,
-		Notifier:                 d.Notification.Notifier,
-		UserRepo:                 d.IdManagement.UserRepo,
-		GroupRepo:                d.IdManagement.GroupRepo,
-		QuotaRepo:                d.Tenancy.QuotaRepo,
-		FederationSigner:         d.FederationSigner,
+	d.Tenancy.RegisterRoutes(g, tenancy.RouteDeps{
+		Deps:             d.Deps,
+		Authenticator:    authenticator,
+		TenantRepo:       d.TenantRepo,
+		Notifier:         d.Notification.Notifier,
+		UserRepo:         d.IdManagement.UserRepo,
+		GroupRepo:        d.IdManagement.GroupRepo,
+		FederationSigner: d.FederationSigner,
 	})
 
 	// nil の *SessionManager をインターフェースへ入れると nil でなくなり、受け取り側の nil の確認を

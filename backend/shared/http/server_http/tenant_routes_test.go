@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -33,7 +33,7 @@ func (r *fixedAuthnResolver) Resolve(
 
 //spec:covers EX-OAUTH2-033-01, EX-TENANCY-006-01, EX-TENANCY-010-01: realm 接頭辞付きの Discovery Metadata は、issuer と endpoint URL を同じ path 形式の正規ロケーションから組み立てる。
 func TestRealmDiscoveryUsesTenantIssuer(t *testing.T) {
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	if err := tenants.Save(context.Background(), &tenancydomain.Tenant{
 		ID: "acme", Realm: "acme", DisplayName: "Acme", Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}); err != nil {
@@ -61,7 +61,7 @@ func TestRealmDiscoveryUsesTenantIssuer(t *testing.T) {
 
 //spec:covers EX-TENANCY-006-02: 無効化済みの path 形式テナントは存在を漏らさない invalid request として拒否される。
 func TestBareRouteUsesDefaultAndDisabledTenantIsRejected(t *testing.T) {
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	now := time.Now().UTC()
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
@@ -95,7 +95,7 @@ func TestBareRouteUsesDefaultAndDisabledTenantIsRejected(t *testing.T) {
 }
 
 func TestTenantAdminRequiresSystemAdmin(t *testing.T) {
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	if err := tenants.Save(context.Background(), &tenancydomain.Tenant{
 		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default",
 		Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
@@ -133,7 +133,7 @@ func TestTenantAdminRequiresSystemAdmin(t *testing.T) {
 // 別テナントのセッションがリクエストに紛れ込んだ場合、resolveAuthentication が
 // 未認証として弾くこと (cookie path 分離が破られたケースの defense-in-depth)。
 func TestCrossTenantSessionRejectsSystemAdmin(t *testing.T) {
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	now := time.Now().UTC()
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
@@ -166,7 +166,7 @@ func TestCrossTenantSessionRejectsSystemAdmin(t *testing.T) {
 // 「ハンドラーが拒否する」という実行時の保証への切り替えを直接検証する
 // 回帰ガード。
 func TestControlPlaneRoutesUnreachableFromOtherRealm(t *testing.T) {
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	now := time.Now().UTC()
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now},
@@ -202,7 +202,7 @@ func TestControlPlaneRoutesUnreachableFromOtherRealm(t *testing.T) {
 // (wi: echo v5.3.1 対応時に発見)。このテストはパラメータが正しく分離されている
 // ことを直接確認する。
 func TestControlPlaneGetTenantResolvesPathParamNotRequestRealm(t *testing.T) {
-	tenants := tenancymemory.NewTenantRepository()
+	tenants := tenancy.NewMemoryModule().TenantRepo
 	now := time.Now().UTC()
 	for _, tenant := range []*tenancydomain.Tenant{
 		{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now},

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -81,7 +81,7 @@ func newDeviceServer(t *testing.T) deviceFixture {
 	tokenIssuer := tokens_jose.NewJWTSigner("http://test", keyStore)
 	deps := httpadapter.Deps{
 		Issuer:     "http://test",
-		TenantRepo: tenancymemory.NewTenantRepository(),
+		TenantRepo: tenancy.NewMemoryModule().TenantRepo,
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, DeviceCodeStore: deviceStore, RefreshStore: oauth2memory.NewRefreshTokenStore(),
 		},

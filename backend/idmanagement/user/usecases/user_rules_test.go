@@ -31,7 +31,7 @@ import (
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -56,7 +56,7 @@ type userRulesFixture struct {
 	users    *usermemory.UserRepository
 	sessions *sessionmemory.SessionStore
 	devices  *trusteddevicememory.TrustedDeviceRepository
-	quota    *tenancymemory.QuotaRepository
+	quota    tenantports.QuotaRepository
 	notifier *recordingProvisioningNotifier
 	events   *[]spec.DomainEvent
 	agents   *agentmemory.AgentRepository
@@ -66,7 +66,7 @@ func newUserRulesFixture(t *testing.T) *userRulesFixture {
 	t.Helper()
 	f := &userRulesFixture{
 		users: usermemory.NewUserRepository(), sessions: sessionmemory.NewSessionStore(),
-		devices: trusteddevicememory.NewTrustedDeviceRepository(), quota: tenancymemory.NewQuotaRepository(),
+		devices: trusteddevicememory.NewTrustedDeviceRepository(), quota: tenancy.NewMemoryModule().QuotaRepo,
 		notifier: &recordingProvisioningNotifier{}, events: &[]spec.DomainEvent{},
 		agents: agentmemory.NewAgentRepository(),
 	}
