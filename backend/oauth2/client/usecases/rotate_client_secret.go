@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -13,18 +14,10 @@ import (
 
 var ErrClientSecretNotRotatable = errors.New("client secret is not rotatable")
 
-type RotateClientSecretInput struct {
-	ActorUserID string
-	ClientID    string
-	GraceDays   int
-	Now         time.Time
-}
-
-type RotateClientSecretResult struct {
-	ClientSecret string
-	GraceUntil   *time.Time
-	Credentials  []domain.ClientSecretCredential
-}
+type (
+	RotateClientSecretInput  = clientports.RotateClientSecretInput
+	RotateClientSecretResult = clientports.RotateClientSecretResult
+)
 
 func RotateClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in RotateClientSecretInput) (*RotateClientSecretResult, error) {
 	if in.GraceDays < 0 || in.GraceDays > 30 {

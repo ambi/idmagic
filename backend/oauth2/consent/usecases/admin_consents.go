@@ -6,7 +6,6 @@ package usecases
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
@@ -16,7 +15,8 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-var ErrConsentNotFound = errors.New("consent not found")
+// ErrConsentNotFound は公開パッケージの同名のエラーである。
+var ErrConsentNotFound = consentports.ErrConsentNotFound
 
 type ConsentDeps struct {
 	ConsentRepo consentports.ConsentRepository

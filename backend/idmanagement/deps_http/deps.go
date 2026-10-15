@@ -19,7 +19,7 @@ import (
 	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
+	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
@@ -57,14 +57,16 @@ type Deps struct {
 	// Reactor fail-closed reacts to emitted DomainEvents (currently
 	// SharedSignals' Agent revocation epoch enforcement; wi-58).
 	// nil skips reaction. See ReactiveEmit.
-	Reactor              EventReactor
-	JobRepo              jobsports.JobRepository
-	JobEnqueuer          jobsports.Enqueuer
-	ClientRepo           oauthports.OAuth2ClientRepository
-	ScimRepo             scimports.ScimRepository
-	AttrSchemaRepo       tenantports.TenantUserAttributeSchemaRepository
-	GroupAttrSchemaRepo  tenantports.TenantGroupAttributeSchemaRepository
-	ConsentRepo          oauthports.ConsentRepository
+	Reactor             EventReactor
+	JobRepo             jobsports.JobRepository
+	JobEnqueuer         jobsports.Enqueuer
+	ClientRepo          oauthports.OAuth2ClientRepository
+	ScimRepo            scimports.ScimRepository
+	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
+	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
+	ConsentRepo         oauthports.ConsentRepository
+	// Consents はデータエクスポートが本人の Granted の同意を読む先である。
+	Consents             consentports.AccountConsents
 	RefreshStore         oauthports.RefreshTokenStore
 	DeviceCodeStore      oauthports.DeviceCodeStore
 	ApprovalRequestStore oauthports.ApprovalRequestStore
@@ -89,10 +91,6 @@ type Deps struct {
 	// QuotaRepo enforces the tenant's Hard Quota on users, groups, and agents
 	// (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
-}
-
-func (d Deps) ConsentDeps() consentusecases.ConsentDeps {
-	return consentusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
 }
 
 // LegacyEmit adapts the fire-and-forget support.Deps.Emit to the

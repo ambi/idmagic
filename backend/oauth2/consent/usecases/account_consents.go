@@ -7,8 +7,11 @@ package usecases
 
 import (
 	"context"
+	"time"
 
+	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -27,4 +30,25 @@ func ListConsentsForSub(ctx context.Context, deps ConsentDeps, sub string) ([]*d
 		}
 	}
 	return mine, nil
+}
+
+// AccountConsents は consentports.AccountConsents を実装する。管理者の撤回と異なり
+// QuotaRepo を持たないので、本人の撤回は consents のクォータの枠を空けない。
+type AccountConsents struct {
+	ConsentRepo consentports.ConsentRepository
+	Emit        func(spec.DomainEvent)
+}
+
+var _ consentports.AccountConsents = AccountConsents{}
+
+func (a AccountConsents) deps() ConsentDeps {
+	return ConsentDeps{ConsentRepo: a.ConsentRepo, Emit: a.Emit}
+}
+
+func (a AccountConsents) ListGranted(ctx context.Context, sub string) ([]*domain.Consent, error) {
+	return ListConsentsForSub(ctx, a.deps(), sub)
+}
+
+func (a AccountConsents) Revoke(ctx context.Context, sub, clientID string, now time.Time) error {
+	return RevokeConsent(ctx, a.deps(), sub, sub, clientID, now)
 }

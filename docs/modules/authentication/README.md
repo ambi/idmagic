@@ -42,6 +42,8 @@ HTTP の操作とモデルの形は TypeSpec の `Authentication` のタグが�
 | --- | --- | --- | --- |
 | ログインセッションの解決と `amr`、`acr` | `OAuth2`、`SAML`、`WS-Federation`、管理とアカウントの API | このモジュールが提供する | セッションの Cookie から認証済みの主体と認証の強度を返す |
 | ステップアップ認証の直近性 | `Application` のサインインポリシー、機微なセルフサービスの操作 | このモジュールが提供する | `max(auth_time, step_up_at)` から直近の認証を判定する |
+| `SessionTokenRevoker` | `OAuth2` が実装する | このモジュールが定める | ログインセッションを失効させるとき、その `sid` に結び付いたトークンを失効させる |
+| `AccountConsents` | `OAuth2` が提供する | このモジュールが使う | 接続済みアプリの画面で、本人の同意を一覧し撤回する |
 | `EmailSender` | 共有の通知の部品 | このモジュールが使う | パスワードのリセット、メールアドレスの確認、セキュリティ通知を送る |
 | 相関用のソルト | `Audit` の `TenantSaltStore` | このモジュールが使う | 利用者名と IP の相関のハッシュを、テナントごとに作る |
 | ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `UserAuthenticated`、`AuthenticationFailed`、`LoginThrottled`、`SessionEnded`、`PasswordChanged`、`MfaFactor…`、`WebAuthnCredential…`、`RecoveryCodes…`、`TrustedDevice…` ほか |

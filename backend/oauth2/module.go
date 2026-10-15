@@ -12,10 +12,17 @@ import (
 
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
+	clientusecases "github.com/ambi/idmagic/backend/oauth2/client/usecases"
+	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
+	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
 	logoutdomain "github.com/ambi/idmagic/backend/oauth2/logout/domain"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	logoutusecases "github.com/ambi/idmagic/backend/oauth2/logout/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type JobHandlerDeps struct {
@@ -58,4 +65,21 @@ type Module struct {
 	// token-exchange grant ([[wi-54-workload-identity-federation-spiffe]]).
 	// nil rejects subject_token_type=JWT URN as unsupported (fail-closed).
 	WorkloadVerifier oauthports.WorkloadTokenVerifier
+}
+
+// AccountConsents は、利用者本人の同意の一覧と撤回の操作を返す。
+func (m Module) AccountConsents(emit func(spec.DomainEvent)) consentports.AccountConsents {
+	return consentusecases.AccountConsents{ConsentRepo: m.ConsentRepo, Emit: emit}
+}
+
+// SessionTokenRevoker は、ログインセッション単位でトークンを失効させる操作を返す。
+func (m Module) SessionTokenRevoker() tokenusecases.SessionTokenRevoker {
+	return tokenusecases.SessionTokenRevoker{RefreshStore: m.RefreshStore}
+}
+
+// ClientAdministration は、ほかのモジュールの管理画面が使うクライアントの管理操作を返す。
+func (m Module) ClientAdministration(emit func(spec.DomainEvent), quota tenantports.QuotaRepository) clientports.ClientAdministration {
+	return clientusecases.ClientAdministration{Deps: clientusecases.AdminOAuth2ClientDeps{
+		ClientRepo: m.ClientRepo, Emit: emit, QuotaRepo: quota,
+	}}
 }

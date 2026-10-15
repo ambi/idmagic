@@ -11,36 +11,17 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-type RegisterClientInput struct {
-	ClientName                        string
-	ClientType                        spec.ClientType
-	RedirectURIs                      []string
-	GrantTypes                        []spec.GrantType
-	ResponseTypes                     []spec.ResponseType
-	TokenEndpointAuthMethod           domain.TokenEndpointAuthMethod
-	Scope                             string
-	JWKS                              map[string]any
-	JwksURI                           *string
-	TlsClientAuthSubjectDN            *string
-	RequirePAR                        bool
-	DpopBoundAccessTokens             bool
-	FapiProfile                       domain.FapiProfile
-	BackChannelLogoutURI              *string
-	BackChannelLogoutSessionRequired  bool
-	FrontChannelLogoutURI             *string
-	FrontChannelLogoutSessionRequired bool
-}
-
-type RegisterClientResult struct {
-	Client       *domain.OAuth2Client
-	ClientSecret string // 平文。出力後は再表示されない (RFC 7591 §3.2.1)
-}
+type (
+	RegisterClientInput  = clientports.RegisterClientInput
+	RegisterClientResult = clientports.RegisterClientResult
+)
 
 type RegisterClientDeps struct {
 	ClientRepo ports.OAuth2ClientRepository

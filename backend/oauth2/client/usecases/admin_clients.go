@@ -10,6 +10,7 @@ import (
 	"slices"
 	"time"
 
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -31,11 +32,7 @@ type AdminOAuth2ClientDeps struct {
 	QuotaRepo tenantports.QuotaRepository
 }
 
-type CreateAdminOAuth2ClientInput struct {
-	ActorUserID  string
-	Registration RegisterClientInput
-	Now          time.Time
-}
+type CreateAdminOAuth2ClientInput = clientports.CreateAdminOAuth2ClientInput
 
 func CreateAdminOAuth2Client(
 	ctx context.Context,
@@ -62,22 +59,7 @@ func CreateAdminOAuth2Client(
 	return result, nil
 }
 
-type UpdateAdminOAuth2ClientInput struct {
-	ActorUserID                       string
-	ClientID                          string
-	ClientName                        *string
-	RedirectURIs                      *[]string
-	GrantTypes                        *[]spec.GrantType
-	ResponseTypes                     *[]spec.ResponseType
-	Scope                             *string
-	RequirePAR                        *bool
-	DpopBoundTokens                   *bool
-	BackChannelLogoutURI              *string
-	BackChannelLogoutSessionRequired  *bool
-	FrontChannelLogoutURI             *string
-	FrontChannelLogoutSessionRequired *bool
-	Now                               time.Time
-}
+type UpdateAdminOAuth2ClientInput = clientports.UpdateAdminOAuth2ClientInput
 
 func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in UpdateAdminOAuth2ClientInput) (*domain.OAuth2Client, error) {
 	tenantID := tenantports.TenantID(ctx)

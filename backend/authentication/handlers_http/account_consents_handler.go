@@ -11,7 +11,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
-	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
+	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -40,7 +40,7 @@ func handleListAccountConsents(d Deps, c *echo.Context) error {
 		return httpdeps.WriteAccountError(c, err)
 	}
 	ctx := c.Request().Context()
-	consents, err := consentusecases.ListConsentsForSub(ctx, d.ConsentDeps(), sub)
+	consents, err := d.Consents.ListGranted(ctx, sub)
 	if err != nil {
 		return err
 	}
@@ -64,10 +64,8 @@ func handleRevokeAccountConsent(d Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	// actor も target も自分の sub に固定する。URL の client_id 以外は信用しない。
-	if err := consentusecases.RevokeConsent(
-		c.Request().Context(), d.ConsentDeps(), sub, sub, c.Param("client_id"), time.Now().UTC(),
-	); err != nil {
+	// 操作者も対象も自分の sub に固定する。URL の client_id 以外は信用しない。
+	if err := d.Consents.Revoke(c.Request().Context(), sub, c.Param("client_id"), time.Now().UTC()); err != nil {
 		return writeConsentError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -76,7 +74,7 @@ func handleRevokeAccountConsent(d Deps, c *echo.Context) error {
 
 // writeConsentError は consent 操作のドメインエラーを HTTP エラーへ変換する。
 func writeConsentError(c *echo.Context, err error) error {
-	if errors.Is(err, consentusecases.ErrConsentNotFound) {
+	if errors.Is(err, consentports.ErrConsentNotFound) {
 		return support.WriteProblem(c, http.StatusNotFound, "consent_not_found", "The consent record does not exist.")
 	}
 	return err

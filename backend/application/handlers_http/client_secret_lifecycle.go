@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/application/domain"
-	clientusecases "github.com/ambi/idmagic/backend/oauth2/client/usecases"
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
@@ -40,7 +40,7 @@ func (d Deps) handleRotateOIDCClientSecret(c *echo.Context) error {
 	if req.GraceDays != nil {
 		graceDays = *req.GraceDays
 	}
-	result, err := clientusecases.RotateClientSecret(c.Request().Context(), clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, clientusecases.RotateClientSecretInput{ActorUserID: actor.ID, ClientID: clientID, GraceDays: graceDays, Now: time.Now().UTC()})
+	result, err := d.Clients.RotateSecret(c.Request().Context(), clientports.RotateClientSecretInput{ActorUserID: actor.ID, ClientID: clientID, GraceDays: graceDays, Now: time.Now().UTC()})
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -77,9 +77,7 @@ func (d Deps) handleIssueOIDCClientSecret(c *echo.Context) error {
 		expiresInDays = *req.ExpiresInDays
 	}
 	now := time.Now().UTC()
-	result, err := clientusecases.IssueClientSecret(c.Request().Context(), clientusecases.AdminOAuth2ClientDeps{
-		ClientRepo: d.ClientRepo, Emit: d.Emit,
-	}, clientusecases.IssueClientSecretInput{
+	result, err := d.Clients.IssueSecret(c.Request().Context(), clientports.IssueClientSecretInput{
 		ActorUserID: actor.ID, ClientID: clientID, ExpiresInDays: expiresInDays, Now: now,
 	})
 	if err != nil {
@@ -109,9 +107,7 @@ func (d Deps) handleRevokeOIDCClientSecret(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}
 	now := time.Now().UTC()
-	result, err := clientusecases.RevokeClientSecret(c.Request().Context(), clientusecases.AdminOAuth2ClientDeps{
-		ClientRepo: d.ClientRepo, Emit: d.Emit,
-	}, clientusecases.RevokeClientSecretInput{
+	result, err := d.Clients.RevokeSecret(c.Request().Context(), clientports.RevokeClientSecretInput{
 		ActorUserID: actor.ID, ClientID: clientID, CredentialID: c.Param("credential_id"), Now: now,
 	})
 	if err != nil {

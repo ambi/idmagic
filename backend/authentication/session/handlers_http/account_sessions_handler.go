@@ -11,7 +11,6 @@ import (
 	httpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	authusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -53,16 +52,10 @@ func accountSessionDeps(d httpdeps.Deps) authusecases.SessionDeps {
 	return deps
 }
 
-// revokeOAuthSessionTokens は sid (LoginSession.id) に紐づく RefreshTokenRecord を
-// family/client を横断して失効させる。RefreshStore が配線されていない
-// 環境 (offline_access 未使用など) では no-op とする。
+// revokeOAuthSessionTokens は sid (LoginSession.id) に紐づく OAuth のトークンを
+// family/client を横断して失効させる。
 func revokeOAuthSessionTokens(d httpdeps.Deps, c *echo.Context, sid string) error {
-	if d.RefreshStore == nil {
-		return nil
-	}
-	return tokenusecases.RevokeTokensBySid(
-		c.Request().Context(), tokenusecases.RevokeDeps{RefreshStore: d.RefreshStore}, sid, time.Now().UTC(),
-	)
+	return d.SessionTokens.RevokeTokensBySid(c.Request().Context(), sid)
 }
 
 // requireAuthenticatedSession は認証済み (pending でない) セッションの sub と sessionID を

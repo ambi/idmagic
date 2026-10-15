@@ -24,8 +24,13 @@ import (
 type Deps = httpdeps.Deps
 
 // RegisterRoutes はテナント解決済みグループに authentication コンテキストの
-// エンドポイントを登録する。パス・メソッド・middleware は分割前と一致する。
-func RegisterRoutes(g *echo.Group, d Deps) {
+// エンドポイントを登録する。セッションの失効は OAuth のトークンの失効を伴うので、
+// sessionTokens を必須とし、nil なら起動時に拒否する。
+func RegisterRoutes(g *echo.Group, d Deps, sessionTokens httpdeps.SessionTokenRevoker) {
+	if sessionTokens == nil {
+		panic("authentication: RegisterRoutes requires a SessionTokenRevoker")
+	}
+	d.SessionTokens = sessionTokens
 	g.GET("/api/auth/account", func(c *echo.Context) error { return handleAccountContext(d, c) })
 	g.GET("/api/account/v1/consents", func(c *echo.Context) error { return handleListAccountConsents(d, c) })
 	g.POST("/api/account/v1/consents/:client_id/revoke", func(c *echo.Context) error { return handleRevokeAccountConsent(d, c) })

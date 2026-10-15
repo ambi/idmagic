@@ -14,6 +14,7 @@ import (
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -135,7 +136,8 @@ func (m Module) ClientDisplayNames(clientRepo oauthports.OAuth2ClientRepository)
 // Register は Application カタログの admin / account エンドポイントを登録する。
 func (m Module) Register(
 	g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
-	groupRepo groupports.GroupRepository, userRepo userports.UserRepository, clientRepo oauthports.OAuth2ClientRepository,
+	groupRepo groupports.GroupRepository, userRepo userports.UserRepository,
+	clientRepo oauthports.OAuth2ClientRepository, clients clientports.ClientAdministration,
 	wsFedRPRepo wsfederationports.WsFedRelyingPartyRepository, samlSPRepo samlports.SamlServiceProviderRepository,
 	quotaRepo tenantports.QuotaRepository, attrSchemaRepo claimports.TenantAttributeSchemaRepo,
 ) {
@@ -153,6 +155,7 @@ func (m Module) Register(
 		GroupRepo:                   groupRepo,
 		UserRepo:                    userRepo,
 		ClientRepo:                  clientRepo,
+		Clients:                     clients,
 		WsFedRPRepo:                 wsFedRPRepo,
 		SamlSPRepo:                  samlSPRepo,
 		ProvisioningNotifier:        m.ProvisioningNotifier,

@@ -407,8 +407,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo:                  d.IdManagement.UserRepo,
 		PasswordHasher:            d.Authentication.PasswordHasher,
 		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,
-		ConsentRepo:               d.OAuth2.ConsentRepo,
-		RefreshStore:              d.OAuth2.RefreshStore,
+		Consents:                  d.OAuth2.AccountConsents(d.Emit),
 		ClientDisplayNameResolver: clientDisplayNames,
 		AttrSchemaRepo:            d.Tenancy.AttrSchemaRepo,
 		MfaFactorRepo:             d.Authentication.MfaFactorRepo,
@@ -428,7 +427,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		NotificationPreferenceRepo: d.Authentication.NotificationPreferenceRepo,
 		DefaultSignInPolicyRepo:    d.Application.DefaultSignInPolicyRepo,
 	}
-	authhttp.RegisterRoutes(g, authDeps)
+	authhttp.RegisterRoutes(g, authDeps, d.OAuth2.SessionTokenRevoker())
 
 	idmDeps := idmhttp.Deps{
 		Deps:                      d.Deps,
@@ -445,6 +444,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AttrSchemaRepo:            d.Tenancy.AttrSchemaRepo,
 		GroupAttrSchemaRepo:       d.Tenancy.GroupAttrSchemaRepo,
 		ConsentRepo:               d.OAuth2.ConsentRepo,
+		Consents:                  d.OAuth2.AccountConsents(d.Emit),
 		RefreshStore:              d.OAuth2.RefreshStore,
 		DeviceCodeStore:           d.OAuth2.DeviceCodeStore,
 		ApprovalRequestStore:      d.OAuth2.ApprovalRequestStore,
@@ -535,7 +535,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		saml.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: samlSessionRevoker},
 		d.IdManagement.UserRepo, d.FederationSigner, d.Tenancy.AttrSchemaRepo)
 
-	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.WsFederation.RPRepo, d.Saml.SPRepo, d.Tenancy.QuotaRepo, d.Tenancy.AttrSchemaRepo)
+	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.OAuth2.ClientAdministration(d.Emit, d.Tenancy.QuotaRepo), d.WsFederation.RPRepo, d.Saml.SPRepo, d.Tenancy.QuotaRepo, d.Tenancy.AttrSchemaRepo)
 
 	d.ApiTokens.Register(g, d.Deps, authenticator)
 

@@ -59,6 +59,18 @@ func RevokeTokensBySid(ctx context.Context, deps RevokeDeps, sid string, now tim
 	return deps.RefreshStore.RevokeBySid(ctx, sid)
 }
 
+// SessionTokenRevoker は、ログインセッションの失効に合わせて、その sid に結び付いたトークンを
+// 失効させる。Authentication が要求するポートを、型を import せずに満たす。RefreshStore を
+// 結ばない組み立てでは何もしない。
+type SessionTokenRevoker struct{ RefreshStore ports.RefreshTokenStore }
+
+func (r SessionTokenRevoker) RevokeTokensBySid(ctx context.Context, sid string) error {
+	if r.RefreshStore == nil {
+		return nil
+	}
+	return RevokeTokensBySid(ctx, RevokeDeps{RefreshStore: r.RefreshStore}, sid, time.Now().UTC())
+}
+
 func revokeAccessToken(
 	ctx context.Context,
 	deps RevokeDeps,

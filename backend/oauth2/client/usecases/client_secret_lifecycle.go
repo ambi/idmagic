@@ -3,8 +3,8 @@ package usecases
 import (
 	"context"
 	"errors"
-	"time"
 
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -15,23 +15,15 @@ const MaxActiveClientSecrets = 2
 
 var (
 	ErrClientSecretNotManageable       = errors.New("client secret is not manageable")
-	ErrClientSecretLimitExceeded       = errors.New("active client secret limit exceeded")
+	ErrClientSecretLimitExceeded       = clientports.ErrClientSecretLimitExceeded
 	ErrClientSecretCredentialNotFound  = errors.New("client secret credential not found")
 	ErrClientSecretCredentialNotActive = errors.New("client secret credential is not active")
 )
 
-type IssueClientSecretInput struct {
-	ActorUserID   string
-	ClientID      string
-	ExpiresInDays int
-	Now           time.Time
-}
-
-type IssueClientSecretResult struct {
-	ClientSecret string
-	Credential   domain.ClientSecretCredential
-	Credentials  []domain.ClientSecretCredential
-}
+type (
+	IssueClientSecretInput  = clientports.IssueClientSecretInput
+	IssueClientSecretResult = clientports.IssueClientSecretResult
+)
 
 func IssueClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in IssueClientSecretInput) (*IssueClientSecretResult, error) {
 	if in.ExpiresInDays < 1 || in.ExpiresInDays > 730 {
@@ -90,16 +82,10 @@ func IssueClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Issue
 	return &IssueClientSecretResult{ClientSecret: secret, Credential: credential, Credentials: credentials}, nil
 }
 
-type RevokeClientSecretInput struct {
-	ActorUserID  string
-	ClientID     string
-	CredentialID string
-	Now          time.Time
-}
-
-type RevokeClientSecretResult struct {
-	Credentials []domain.ClientSecretCredential
-}
+type (
+	RevokeClientSecretInput  = clientports.RevokeClientSecretInput
+	RevokeClientSecretResult = clientports.RevokeClientSecretResult
+)
 
 func RevokeClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in RevokeClientSecretInput) (*RevokeClientSecretResult, error) {
 	now := adminNow(in.Now)

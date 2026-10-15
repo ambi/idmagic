@@ -20,7 +20,7 @@ import (
 	"github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	clientusecases "github.com/ambi/idmagic/backend/oauth2/client/usecases"
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -191,7 +191,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if len(req.RedirectURIs) == 0 {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify at least one redirect URI.")
 		}
-		registration := clientusecases.RegisterClientInput{
+		registration := clientports.RegisterClientInput{
 			ClientName: req.Name, ClientType: req.ClientType, RedirectURIs: req.RedirectURIs,
 			GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 			ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
@@ -203,7 +203,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if uri := strings.TrimSpace(req.JwksURI); uri != "" {
 			registration.JwksURI = &uri
 		}
-		result, err := clientusecases.CreateAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo}, clientusecases.CreateAdminOAuth2ClientInput{
+		result, err := d.Clients.Create(ctx, clientports.CreateAdminOAuth2ClientInput{
 			ActorUserID:  actor.ID,
 			Registration: registration,
 			Now:          now,
@@ -223,9 +223,9 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 	case "service":
 		// M2M / サービスクライアント (client_credentials)。redirect を持たず、ポータルにも
 		// 出さない service kind の Application として登録する (Okta の API Services 相当)。
-		result, err := clientusecases.CreateAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo}, clientusecases.CreateAdminOAuth2ClientInput{
+		result, err := d.Clients.Create(ctx, clientports.CreateAdminOAuth2ClientInput{
 			ActorUserID: actor.ID,
-			Registration: clientusecases.RegisterClientInput{
+			Registration: clientports.RegisterClientInput{
 				ClientName: req.Name, ClientType: spec.ClientConfidential,
 				GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
 				TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic, Scope: nonEmpty(req.Scope, defaultServiceScope),
@@ -464,7 +464,7 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 		}
 	}
-	if _, err := clientusecases.UpdateAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, clientusecases.UpdateAdminOAuth2ClientInput{
+	if _, err := d.Clients.Update(ctx, clientports.UpdateAdminOAuth2ClientInput{
 		ActorUserID: actor.ID, ClientID: clientID,
 		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
 		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,

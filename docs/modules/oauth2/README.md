@@ -39,6 +39,9 @@ HTTP の操作とモデルの形は TypeSpec の `OAuth 2.0 and OpenID Connect` 
 | --- | --- | --- | --- |
 | `TokenIssuer`、`TokenIntrospector` | `ApiTokens` | このモジュールが提供する | RFC 9068 の JWT の発行と検証 |
 | `WorkloadTokenVerifier` | `WorkloadIdentity` が実装する | このモジュールが定める | Token Exchange の `subject_token` の外部のアテステーションを検証する |
+| `AccountConsents` | `Authentication` のアカウントポータル、`IdManagement` のデータエクスポート | このモジュールが提供する | 本人の `Granted` の同意を一覧し、本人の同意を撤回する |
+| `ClientAdministration` | `Application` | このモジュールが提供する | Application が持つクライアントを作成、更新し、シークレットを交換、発行、失効させる |
+| `SessionTokenRevoker` | `Authentication` が定める | このモジュールが実装する | ログインセッションの失効に合わせて、その `sid` のリフレッシュトークンを失効させる |
 | `authorize()`（AuthZEN） | 判断の合成を求めるモジュール（`Authorization`） | このモジュールが提供する | 規則表が要件の論理積を評価する |
 | 失効エポックの参照 | `SharedSignals` が提供する | このモジュールが使う | イントロスペクションで Agent の失効を反映する |
 | ドメインイベント | 監査と下流が購読する | このモジュールが発行する | 認可、トークン、同意、承認、ログアウトの各イベント |

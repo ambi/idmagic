@@ -24,8 +24,7 @@ import (
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -45,10 +44,11 @@ type Deps struct {
 	SessionManager      *sessionusecases.SessionManager
 	PasswordHasher      passwordports.PasswordHasher
 	PasswordHistoryRepo passwordports.PasswordHistoryRepository
-	ConsentRepo         oauthports.ConsentRepository
-	// RefreshStore は self-service session revoke から oauth2 の RefreshTokenRecord を
-	// sid 単位で失効させるために使う (wi-28 T004)。nil なら token revoke をスキップする。
-	RefreshStore              oauthports.RefreshTokenStore
+	// Consents は接続済みアプリの画面で、本人の同意を一覧し撤回する。
+	Consents consentports.AccountConsents
+	// SessionTokens はセッションの失効に合わせて、その sid に結び付いた OAuth のトークンを
+	// 失効させる。RegisterRoutes が必須の引数として受け取る。
+	SessionTokens             SessionTokenRevoker
 	ClientDisplayNameResolver ClientDisplayNameResolver
 	AttrSchemaRepo            tenantports.TenantUserAttributeSchemaRepository
 	MfaFactorRepo             totpports.MfaFactorRepository
@@ -95,6 +95,12 @@ type ClientDisplayNameResolver interface {
 	ResolveAll(ctx context.Context, tenantID string, clientIDs []string) map[string]string
 }
 
+// SessionTokenRevoker は、sid のログインセッションに結び付いた OAuth のトークンを失効させる。
+// 実装は OAuth2 が所有し、組み立て地点が結ぶ。
+type SessionTokenRevoker interface {
+	RevokeTokensBySid(ctx context.Context, sid string) error
+}
+
 // NotificationPreferenceDeps はセキュリティ通知の受信設定の use case へ渡す依存。
 func (d Deps) NotificationPreferenceDeps() securitynotificationusecases.PreferenceDeps {
 	return securitynotificationusecases.PreferenceDeps{Repo: d.NotificationPreferenceRepo}
@@ -114,10 +120,6 @@ func (d Deps) RevokeTrustedDevices(
 	return trusteddeviceusecases.RevokeAllForUser(
 		ctx, d.TrustedDeviceDeps(), tenantID, userID, reason, time.Now().UTC(),
 	)
-}
-
-func (d Deps) ConsentDeps() consentusecases.ConsentDeps {
-	return consentusecases.ConsentDeps{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
 }
 
 // LegacyEmit adapts the fire-and-forget support.Deps.Emit to the
