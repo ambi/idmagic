@@ -73,7 +73,9 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 ## 5. 実装と局所検証
 
 最初のコードまたはテストの編集前に、[コーディングスタイル](../../../docs/development/coding-style.md)を読む。
-触れる既存 Go の振る舞いを `//spec:covers` テストが固定していない場合は、[特性化テスト](../../../docs/development/specification-first-workflow.md#特性化テスト)を先に行い、検出能力を確認して本番コードを変えない別コミットへ記録する。
+触れる既存 Go の振る舞いを `//spec:covers` テストが固定していない場合は、[特性化テスト](../../../docs/development/specification-first-workflow.md#特性化テスト)の条件に従う。
+公開状態が `published` なら特性化テストを先に行い、検出能力を確認して本番コードを変えない別コミットへ記録する。
+`unpublished` なら、触れる範囲の保証を表す要件のテストが欠けていないかだけを確かめ、欠けていれば先に足す。
 既存の `TestCharacterize*` の失敗は期待値を書き換えて通さず、変更を戻すか、利用者に分類を確認する。
 
 [検証の段階](../../../docs/development/specification-first-workflow.md#5-検証の段階)に従い、選んだ最小の検査で一つの振る舞いを RED、GREEN にし、GREEN を保ってリファクタリングする。
