@@ -577,6 +577,15 @@ TypeSpec の宣言は、直前のデコレーターから宣言の終わりま�
 2. `git reset --soft <直前の正式コミット>` でステージ済みの変更へ戻す。対話的 rebase は使わない。
 3. `commit` スキルで正式な Conventional Commit を作る。最終コミットの本文は完了要約を英語へ翻訳または要約する。
 
+作業を完了するときは、変更と縮めた記録を別のコミットにする。
+
+1. `## 要約` を書いた作業項目の全文を `work-items/active/` に置いたまま、上の順で折り畳んで正式コミットを作る。
+2. `mise run move-work-item -- <work-item-id>` で記録を縮め、`mise run check-work-items` と `mise run check-links` を通して、`docs(work-items): complete <work-item-id> by collapsing it to its summary` の件名でコミットする。
+
+縮めた記録は `affected_spec` を持たず、`check-spec-impact` は宣言を全文を最後に含むコミットから読む（[完了](../formats/work-item-format.md#完了)）。
+一つのコミットで縮めると全文がどのコミットにも残らず、仕様を変える作業項目の変更を担当する宣言が見つからなくなる。
+仕様を変えない作業項目も同じ順序にし、種類の判断を誤ったときだけ検査が失敗する状態を作らない。
+
 要約は作業項目の言語を維持する。
 `git log --oneline <base>..HEAD` に `checkpoint(` の件名がないことを確認し、ブランチとコミットを報告する。
 明示した指示があるまで push しない。
