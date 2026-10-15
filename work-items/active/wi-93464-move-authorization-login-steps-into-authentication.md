@@ -5,7 +5,7 @@ risk: high
 reversibility: reversible
 created_at: 2026-10-10
 priority: p2
-depends_on: [wi-87746-publish-authentication-operations-other-modules-use]
+depends_on: [wi-87746-publish-authentication-operations-other-modules-use, wi-28791-publish-application-sign-in-policy-evaluation]
 change_kind: refactor
 spec_impact: { kind: none, reason: "認可エンドポイントの途中で行うログインと追加の認証の手順の実装を、OAuth2 の handler から Authentication へ移すだけである。手順の順序、各手順の判定、HTTP の応答、セッションの状態、ドメインイベントは変えない。" }
 ---
@@ -29,7 +29,7 @@ Authentication と OAuth2 の共変更は 4 回で、共変更の組の上位に
 ## 対象外
 
 - 手順の順序と各手順の判定の変更。
-- サインイン方針の評価（Application への依存）。[Application のサインイン方針の公開](wi-28791-publish-application-sign-in-policy-evaluation.md)で扱う。
+- サインイン方針の評価（Application への依存）。[Application のサインイン方針の公開](../done/wi-28791-publish-application-sign-in-policy-evaluation.md)で扱う。
 
 ## 設計
 

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/mfa/usecases"
@@ -37,7 +36,7 @@ func (d Deps) applicationMfaEnrollmentPolicy(c *echo.Context, applicationID stri
 			return nil, err
 		}
 	}
-	return appusecases.MfaEnrollmentPolicyFromRules(appusecases.EffectiveSignInRules(defaultPolicy, appPolicy)), nil
+	return appdomain.MfaEnrollmentPolicyFromRules(appdomain.EffectiveSignInRules(defaultPolicy, appPolicy)), nil
 }
 
 type mfaEnrollmentConfirmRequest struct {

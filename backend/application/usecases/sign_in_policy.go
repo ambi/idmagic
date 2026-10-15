@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"errors"
-	"net"
 	"net/netip"
 	"slices"
 	"strings"
@@ -158,45 +157,15 @@ func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in Up
 	return policy, nil
 }
 
-// appPolicyConfigured はアプリが独自の sign-in policy を持つ (デフォルトを上書きする) かを返す。
-// 有効ルールが 1 つでもあれば「設定あり」とみなす。
-func appPolicyConfigured(app *domain.AppSignInPolicy) bool {
-	if app == nil {
-		return false
-	}
-	for _, rule := range app.Rules {
-		if rule.Enabled {
-			return true
-		}
-	}
-	return false
-}
-
-// EffectiveSignInRules は上書きモデルで実際に適用されるルール列を返す。
-// アプリが独自ポリシーを持てばそれがデフォルトを完全に置換し、持たなければデフォルトを適用する。
-func EffectiveSignInRules(def *domain.TenantDefaultSignInPolicy, app *domain.AppSignInPolicy) []domain.SignInRule {
-	if appPolicyConfigured(app) {
-		return slices.Clone(app.Rules)
-	}
-	if def != nil {
-		return slices.Clone(def.Rules)
-	}
-	return nil
-}
-
-// EffectivePolicyForEvaluation は上書き後の実効ルールで評価用 policy を組み立てる。ルールが無ければ nil。
-func EffectivePolicyForEvaluation(def *domain.TenantDefaultSignInPolicy, app *domain.AppSignInPolicy) *domain.AppSignInPolicy {
-	rules := EffectiveSignInRules(def, app)
-	if len(rules) == 0 {
-		return nil
-	}
-	out := &domain.AppSignInPolicy{Rules: rules}
-	if app != nil {
-		out.TenantID = app.TenantID
-		out.ApplicationID = app.ApplicationID
-	}
-	return out
-}
+// サインインポリシーの評価は入力だけで決まる計算なので、公開パッケージの domain に置く。
+// ここではモジュールの内部の呼び出し側のために同じ名前で参照できるようにする。
+var (
+	EffectiveSignInRules         = domain.EffectiveSignInRules
+	EffectivePolicyForEvaluation = domain.EffectivePolicyForEvaluation
+	TrustedDeviceAllowedByRules  = domain.TrustedDeviceAllowedByRules
+	MfaEnrollmentPolicyFromRules = domain.MfaEnrollmentPolicyFromRules
+	UpcomingMfaEnforcementStart  = domain.UpcomingMfaEnforcementStart
+)
 
 // signInSettings は 1 ポリシー分の設定を強度比較のために平坦化した表現。
 // UI は常に単一ルールを書き込むため、有効な最初のルールから読み取る。
@@ -226,7 +195,7 @@ func settingsFromRules(rules []domain.SignInRule) signInSettings {
 // アプリが独自ポリシーを持たなければ (=デフォルトを適用) 常に false。弱さは認証強度・再認証時間・
 // 許可ネットワークの 3 項目のいずれかで判定する。
 func AppPolicyWeakerThanDefault(def *domain.TenantDefaultSignInPolicy, app *domain.AppSignInPolicy) bool {
-	if !appPolicyConfigured(app) {
+	if !app.Configured() {
 		return false
 	}
 	var defSettings signInSettings
@@ -317,39 +286,6 @@ func ValidateSignInPolicyRulesAt(rules []domain.SignInRule, now time.Time) error
 	return nil
 }
 
-// TrustedDeviceAllowedByRules は、記憶済みの信頼済みデバイスで MFA 要件を満たしてよいかを
-// 実効ルールから返す。MFA を要求する有効なルールが 1 つでもこれを禁じていれば false
-// (「毎回 MFA」が優先される)。MFA を要求するルールが無い場合は判断の対象自体が無いので true。
-func TrustedDeviceAllowedByRules(rules []domain.SignInRule) bool {
-	for i := range rules {
-		rule := &rules[i]
-		if rule.Enabled && rule.RequiredAuthn.Strength == domain.RequiredAuthnMfa && !rule.TrustedDeviceAllowed() {
-			return false
-		}
-	}
-	return true
-}
-
-func MfaEnrollmentPolicyFromRules(rules []domain.SignInRule) *domain.MfaEnrollmentPolicy {
-	for i := range rules {
-		if rules[i].Enabled && rules[i].RequiredAuthn.Strength == domain.RequiredAuthnMfa {
-			return rules[i].MfaEnrollment
-		}
-	}
-	return nil
-}
-
-// UpcomingMfaEnforcementStart は、実効ルールが now より後に MFA の強制を始めるとき、その開始日時を返す。
-// 強制が既に始まっているか予定がなければ nil を返す。
-func UpcomingMfaEnforcementStart(rules []domain.SignInRule, now time.Time) *time.Time {
-	policy := MfaEnrollmentPolicyFromRules(rules)
-	if policy == nil || policy.EnforcementStartAt == nil || !now.Before(*policy.EnforcementStartAt) {
-		return nil
-	}
-	start := *policy.EnforcementStartAt
-	return &start
-}
-
 // normalizeCIDRs は許可 CIDR を検証・正規化する。空要素は無視し、パースできない値は拒否する。
 func normalizeCIDRs(raw []string) ([]string, error) {
 	if len(raw) == 0 {
@@ -373,87 +309,23 @@ func normalizeCIDRs(raw []string) ([]string, error) {
 	return out, nil
 }
 
-type PolicyDecision string
-
-const (
-	PolicyAllow          PolicyDecision = "allow"
-	PolicyDeny           PolicyDecision = "deny"
-	PolicyStepUpRequired PolicyDecision = "step_up_required"
+type (
+	PolicyDecision   = domain.PolicyDecision
+	PolicyEvaluation = domain.PolicyEvaluation
 )
 
-type PolicyEvaluation struct {
-	Decision PolicyDecision
-	Reason   string
-}
+const (
+	PolicyAllow          = domain.PolicyAllow
+	PolicyDeny           = domain.PolicyDeny
+	PolicyStepUpRequired = domain.PolicyStepUpRequired
+)
 
-// EvaluateSignInPolicy はサインインポリシーを fail-closed で評価する。
-// clientIP は許可 CIDR 条件の評価に使う。IP が空で許可 CIDR が設定されていれば拒否する。
+// EvaluateSignInPolicy は domain.EvaluateSignInPolicy を、零値の時刻を現在時刻で補って呼ぶ。
 func EvaluateSignInPolicy(policy *domain.AppSignInPolicy, authn *authdomain.AuthenticationContext, clientIP string, now time.Time) PolicyEvaluation {
-	if policy == nil || len(policy.Rules) == 0 {
-		return PolicyEvaluation{Decision: PolicyAllow}
-	}
-	if authn == nil || authn.AuthenticationPending {
-		return PolicyEvaluation{Decision: PolicyDeny, Reason: "authentication context is unavailable"}
-	}
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	for _, rule := range policy.Rules {
-		if !rule.Enabled {
-			continue
-		}
-		if len(rule.Condition.NetworkAllowCIDRs) > 0 && !clientIPAllowed(clientIP, rule.Condition.NetworkAllowCIDRs) {
-			return PolicyEvaluation{Decision: PolicyDeny, Reason: "client network is not allowed"}
-		}
-		mfaEnforced := rule.MfaEnrollment == nil || rule.MfaEnrollment.EnforcementStartAt == nil || !now.Before(*rule.MfaEnrollment.EnforcementStartAt)
-		if rule.RequiredAuthn.Strength == domain.RequiredAuthnMfa && mfaEnforced && !mfaSatisfied(rule, authn) {
-			return PolicyEvaluation{Decision: PolicyStepUpRequired, Reason: "mfa requirement is not satisfied"}
-		}
-		if rule.Condition.ReauthMaxAgeSeconds != nil {
-			recent := max(authn.AuthTime, authn.StepUpAt)
-			if recent <= 0 || now.Unix()-recent > int64(*rule.Condition.ReauthMaxAgeSeconds) {
-				return PolicyEvaluation{Decision: PolicyStepUpRequired, Reason: "reauth max age exceeded"}
-			}
-		}
-	}
-	return PolicyEvaluation{Decision: PolicyAllow}
-}
-
-// mfaSatisfied は MFA 必須ルールが満たされているかを返す。allow_trusted_device=false の
-// ルールでは、記憶済みデバイスによる昇格 (amr の tdev のみ) を充足として認めない。本物の
-// 第二要素があれば、同じセッションに tdev が併存していても満たされている。
-func mfaSatisfied(rule domain.SignInRule, authn *authdomain.AuthenticationContext) bool {
-	if !authdomain.ACRSatisfies(authn.ACR, authdomain.ACRMFA) {
-		return false
-	}
-	if rule.TrustedDeviceAllowed() {
-		return true
-	}
-	for _, method := range authn.AMR {
-		if method != authdomain.AMRTrustedDevice && authdomain.IsMfaAMR(method) {
-			return true
-		}
-	}
-	return false
-}
-
-// clientIPAllowed は clientIP が許可 CIDR のいずれかに含まれるかを返す。
-// IP が空・パース不能なら fail-closed で false。
-func clientIPAllowed(clientIP string, cidrs []string) bool {
-	ip := net.ParseIP(strings.TrimSpace(clientIP))
-	if ip == nil {
-		return false
-	}
-	for _, entry := range cidrs {
-		_, network, err := net.ParseCIDR(entry)
-		if err != nil {
-			continue
-		}
-		if network.Contains(ip) {
-			return true
-		}
-	}
-	return false
+	return domain.EvaluateSignInPolicy(policy, authn, clientIP, now)
 }
 
 func ensureApplicationExists(ctx context.Context, repo ports.ApplicationRepository, tenantID, applicationID string) error {

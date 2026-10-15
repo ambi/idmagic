@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	appusecases "github.com/ambi/idmagic/backend/application/usecases"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	httpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	recoveryusecases "github.com/ambi/idmagic/backend/authentication/recovery/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
@@ -122,5 +122,5 @@ func upcomingMfaEnforcementStart(d Deps, c *echo.Context) (*time.Time, error) {
 	if err != nil || policy == nil {
 		return nil, err
 	}
-	return appusecases.UpcomingMfaEnforcementStart(policy.Rules, time.Now().UTC()), nil
+	return appdomain.UpcomingMfaEnforcementStart(policy.Rules, time.Now().UTC()), nil
 }

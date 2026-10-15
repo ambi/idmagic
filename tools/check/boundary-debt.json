@@ -400,15 +400,6 @@
       "reason": "WsFederation -> SigningKeys lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
-      "id": "private-import:Authentication->Application",
-      "sourceModule": "Authentication",
-      "targetModule": "Application",
-      "violations": [
-        "private-import:Authentication:backend/authentication/handlers_http->backend/application/usecases"
-      ],
-      "reason": "Authentication's account handler reads the upcoming MFA enforcement date from Application's use cases. Application owns sign-in policy, so it publishes the evaluation as a public operation (D1, D3) in wi-28791."
-    },
-    {
       "id": "private-import:Authentication->IdManagement",
       "sourceModule": "Authentication",
       "targetModule": "IdManagement",
@@ -428,15 +419,6 @@
         "private-import:IdGovernance:backend/idgovernance/internal/db_postgres->backend/idmanagement/user/db_postgres"
       ],
       "reason": "IdGovernance saves users inside its lifecycle transaction through IdManagement's PostgreSQL adapter. IdManagement publishes a transaction-bound user writer so the lifecycle step and the user commit together (D2, D7) in wi-93579."
-    },
-    {
-      "id": "private-import:OAuth2->Application",
-      "sourceModule": "OAuth2",
-      "targetModule": "Application",
-      "violations": [
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/application/usecases"
-      ],
-      "reason": "OAuth2's authorization handlers evaluate the application sign-in policy through Application's use cases. Application publishes the evaluation and its result type (D1, D3) in wi-28791."
     },
     {
       "id": "private-import:OAuth2->Authentication",

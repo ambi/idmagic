@@ -11,7 +11,6 @@ import (
 	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
@@ -258,23 +257,23 @@ func (d Deps) enforceDefaultSignInPolicy(
 	if policy == nil || len(policy.Rules) == 0 {
 		return false, nil
 	}
-	evaluation := appusecases.EvaluateSignInPolicy(
+	evaluation := appdomain.EvaluateSignInPolicy(
 		&appdomain.AppSignInPolicy{TenantID: policy.TenantID, Rules: policy.Rules},
 		authn,
 		d.ClientIP(c.Request()),
 		time.Now().UTC(),
 	)
 	switch evaluation.Decision {
-	case appusecases.PolicyAllow:
+	case appdomain.PolicyAllow:
 		return false, nil
-	case appusecases.PolicyStepUpRequired:
+	case appdomain.PolicyStepUpRequired:
 		if !allowChallenge {
 			return true, nil
 		}
 		// 記憶済みの信頼済みデバイスは第二要素の提示を省略できる (wi-91)。成立すると
 		// authn は tdev 込みへ昇格し、遷移は起きない。
 		trusted, err := d.trustedDeviceSatisfiesSecondFactor(
-			c, appusecases.TrustedDeviceAllowedByRules(policy.Rules), authn,
+			c, appdomain.TrustedDeviceAllowedByRules(policy.Rules), authn,
 		)
 		if err != nil {
 			return false, err
@@ -283,7 +282,7 @@ func (d Deps) enforceDefaultSignInPolicy(
 			return false, nil
 		}
 		if len(d.secondFactorMethods(c, authn.UserID)) == 0 {
-			enrollment := appusecases.MfaEnrollmentPolicyFromRules(policy.Rules)
+			enrollment := appdomain.MfaEnrollmentPolicyFromRules(policy.Rules)
 			if begun, err := d.beginMfaEnrollment(c, authn, enrollment); err != nil {
 				return false, err
 			} else if begun {

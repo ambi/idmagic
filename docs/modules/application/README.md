@@ -38,6 +38,7 @@ HTTP の操作とモデルの形は TypeSpec の `Application` のタグが定�
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
 | 割り当てとサインインポリシーの評価 | `OAuth2` の認可、`SAML` の SSO、`WS-Federation` のサインイン | このモジュールが提供する | フェデレーションを始めるたびに、トークンや Assertion の発行の前に、割り当てとポリシーを評価する |
+| サインインポリシーの評価の計算（`EvaluateSignInPolicy`、`EffectiveSignInRules` ほか） | `OAuth2` のログイン、`Authentication` のアカウントのセキュリティ設定 | このモジュールが提供する | 保存先を読まず、ポリシー、認証の文脈、クライアントの IP、時刻から、許可、拒否、step-up の判定、信頼済みデバイスの可否、MFA の強制の開始日を計算する |
 | `AssignApplicationDesiredState`、`UnassignApplicationDesiredState` | `IdGovernance` | このモジュールが提供する | あるべき状態として、直接の割り当てを冪等に作成と解除する |
 | `ProvisioningNotifier` | `Provisioning` が実装する | このモジュールが定める | 割り当ての変化を下流のプロビジョニングへ伝える |
 | `SubjectDirectory` | `IdManagement` が実装する | このモジュールが定める | 割り当ての主体が存在するかを確かめる |
