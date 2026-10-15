@@ -285,3 +285,43 @@ func emitSessionEnded(
 		SessionID: sess.ID, ActorUserID: actorUserID, Reason: reason,
 	})
 }
+
+// LogoutSessions は、RP-Initiated Logout がログインセッションを解決して終わらせる操作である。
+// OAuth2 が要求する形を、型を import させずに満たす。
+type LogoutSessions struct {
+	Manager *SessionManager
+	Emit    func(spec.DomainEvent)
+}
+
+// SessionIDFromCookie は Cookie ヘッダーが指すセッションの ID を返す。
+func (l LogoutSessions) SessionIDFromCookie(cookieHeader string) string {
+	return l.Manager.SessionIDFromCookie(cookieHeader)
+}
+
+// Owner は sid のセッションの主体を返す。有効なセッションがなければ ok=false を返す。
+func (l LogoutSessions) Owner(ctx context.Context, sid string) (string, bool, error) {
+	if l.Manager.Store == nil {
+		return "", false, nil
+	}
+	session, err := l.Manager.Store.Find(ctx, sid)
+	if err != nil {
+		return "", false, err
+	}
+	if session == nil {
+		return "", false, nil
+	}
+	return session.UserID, true, nil
+}
+
+// End は sid のセッションを終わらせ、その主体を返す。有効なセッションを読めなければ、
+// 読めなかった理由を問わず found=false を返し、何もしない。ログアウトは Cookie を消して
+// 終えられるので、読み取りの失敗でログアウトを止めない。
+func (l LogoutSessions) End(ctx context.Context, sid string, now time.Time) (subject string, found bool, err error) {
+	session, findErr := l.Manager.Store.Find(ctx, sid)
+	if findErr != nil || session == nil {
+		return "", false, nil //nolint:nilerr // 読めないセッションは見つからないものとして扱う。
+	}
+	return session.UserID, true, EndSession(ctx, SessionDeps{
+		Store: l.Manager.Store, Emit: l.Emit, QuotaRepo: l.Manager.QuotaRepo,
+	}, sid, now)
+}

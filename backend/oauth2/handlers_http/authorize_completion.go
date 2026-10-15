@@ -12,7 +12,6 @@ import (
 	authorizationusecases "github.com/ambi/idmagic/backend/oauth2/authorization/usecases"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
@@ -31,7 +30,7 @@ func (d Deps) completeAfterAuthn(
 		prompt, _ = oauthdomain.ParsePromptTokens(*req.Prompt)
 	}
 	if authn.AuthenticationPending {
-		return authorizationNext{Path: d.pendingAuthPath(c, authn)}, nil
+		return authorizationNext{Path: d.SignIn.PendingPath(c, authn)}, nil
 	}
 	// first-party クライアント (IdP 自身の管理コンソール / アカウントポータル) は
 	// resource owner が IdP 利用者自身であるため consent をスキップする。
@@ -80,14 +79,6 @@ func (d Deps) completeAfterAuthn(
 	return authorizationNext{RedirectTo: redirectTo}, err
 }
 
-func (d Deps) canUseTOTP(c *echo.Context, sub string) bool {
-	if d.MfaFactorRepo == nil {
-		return false
-	}
-	factor, err := d.MfaFactorRepo.Find(c.Request().Context(), sub, spec.MfaFactorTOTP)
-	return err == nil && factor != nil && factor.Secret != nil && *factor.Secret != ""
-}
-
 // clientIsFirstParty は client_id が first-party クライアントかを返す。解決不能なら false
 // (fail-closed で割当ゲートを適用する)。
 func (d Deps) clientIsFirstParty(ctx context.Context, clientID string) bool {
@@ -125,15 +116,14 @@ func (d Deps) issueCodeURL(
 					Protocol: string(appdomain.ApplicationProtocolOIDC), Subject: authn.UserID,
 				})
 			}
-			if len(d.secondFactorMethods(c, authn.UserID)) > 0 { //nolint:contextcheck // HTTP request context is required for factor lookup.
-				pending, err := d.requireSecondFactor(ctx, c, authn.SessionID)
+			if len(d.SignIn.SecondFactorMethods(c, authn.UserID)) > 0 {
+				pending, err := d.SignIn.RequireSecondFactor(ctx, c, authn.SessionID)
 				if err != nil {
 					return "", err
 				}
 				if pending == nil {
 					return authorizationErrorURL(req, iss, "login_required", "The existing session does not satisfy the authentication requirements."), nil
 				}
-				d.setSessionCookie(c, pending.SessionID)    //nolint:contextcheck // Cookie path is derived from the Echo request.
 				return support.TenantRoute(c, "/totp"), nil //nolint:contextcheck // Redirect URL is derived from the Echo request.
 			}
 			return authorizationErrorURL(req, iss, "access_denied", "The application's sign-in policy requirements were not met."), nil

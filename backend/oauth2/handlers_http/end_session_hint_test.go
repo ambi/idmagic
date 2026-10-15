@@ -203,6 +203,26 @@ func assertSessionAndTokensSurvived(t *testing.T, s hintTestServer, sid string) 
 
 // 対象のセッションもそのリフレッシュトークンも生き残る。
 //
+// ログインセッションの照合を通って 400 の invalid_request で拒否され、セッションもリフレッシュトークンも残る。
+//
+//spec:covers EX-OAUTH2-024-06: sid が示す LoginSession の主体と sub が違う id_token_hint は、組み立てた
+func TestEndSessionRejectsIDTokenHintForAnotherSubject(t *testing.T) {
+	s := newHintTestServer(t)
+	sid := "session-hint-other-subject"
+	s.seedSession(t, sid)
+	s.seedRefreshToken(t, hintClientID, sid)
+	hint := s.signIDTokenHint(t, hintClientID, "mallory", sid)
+
+	q := url.Values{"client_id": {hintClientID}, "id_token_hint": {hint}}
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/end_session?"+q.Encode(), http.NoBody)
+	rec := httptest.NewRecorder()
+	s.e.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "invalid_request") {
+		t.Fatalf("status=%d body=%s, want 400 invalid_request", rec.Code, rec.Body.String())
+	}
+	assertSessionAndTokensSurvived(t, s, sid)
+}
+
 //spec:covers EX-OAUTH2-024-02: aud が client_id と一致しない id_token_hint は拒否され、
 //spec:covers OIDC-LOGOUT-ID-TOKEN-HINT: client_id パラメーターと矛盾するヒントを拒否することを固定する。
 func TestEndSessionRejectsIDTokenHintAudienceMismatch(t *testing.T) {

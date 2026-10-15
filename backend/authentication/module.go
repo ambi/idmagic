@@ -17,6 +17,7 @@ import (
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 )
@@ -63,4 +64,10 @@ func (m Module) UserDeviceRevoker() trusteddeviceports.UserDeviceRevoker {
 		return nil
 	}
 	return trusteddeviceusecases.UserDeviceRevoker{Repo: m.TrustedDeviceRepo}
+}
+
+// LogoutSessions は、RP-Initiated Logout がログインセッションを終わらせる操作を返す。
+// SessionManager が未配線なら、組み立て地点は値を渡さない。
+func (m Module) LogoutSessions(emit func(spec.DomainEvent)) sessionusecases.LogoutSessions {
+	return sessionusecases.LogoutSessions{Manager: m.SessionManager, Emit: emit}
 }

@@ -42,6 +42,9 @@ HTTP の操作とモデルの形は TypeSpec の `OAuth 2.0 and OpenID Connect` 
 | `AccountConsents` | `Authentication` のアカウントポータル、`IdManagement` のデータエクスポート | このモジュールが提供する | 本人の `Granted` の同意を一覧し、本人の同意を撤回する |
 | `ClientAdministration` | `Application` | このモジュールが提供する | Application が持つクライアントを作成、更新し、シークレットを交換、発行、失効させる |
 | `SessionTokenRevoker` | `Authentication` が定める | このモジュールが実装する | ログインセッションの失効に合わせて、その `sid` のリフレッシュトークンを失効させる |
+| `PendingAuthorizations` | `Authentication` が定める | このモジュールが実装する | 対話のログインが認証を終えたあと、認可要求のクライアントに応じたサインインの条件を答え、同意かコードの発行へ続ける |
+| `SignInSteps` | `Authentication` が実装する | このモジュールが定める | 既存のセッションへの認可で、テナントのデフォルトのポリシーの適用と第二要素の要求を対話のログインへ委ねる |
+| `LoginSessions` | `Authentication` が実装する | このモジュールが定める | `/end_session` がログインセッションを解決して終わらせる |
 | `authorize()`（AuthZEN） | 判断の合成を求めるモジュール（`Authorization`） | このモジュールが提供する | 規則表が要件の論理積を評価する |
 | 失効エポックの参照 | `SharedSignals` が提供する | このモジュールが使う | イントロスペクションで Agent の失効を反映する |
 | ドメインイベント | 監査と下流が購読する | このモジュールが発行する | 認可、トークン、同意、承認、ログアウトの各イベント |

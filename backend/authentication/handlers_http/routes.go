@@ -13,6 +13,8 @@ import (
 	recoveryhttp "github.com/ambi/idmagic/backend/authentication/recovery/handlers_http"
 	securitynotificationhttp "github.com/ambi/idmagic/backend/authentication/securitynotification/handlers_http"
 	sessionhttp "github.com/ambi/idmagic/backend/authentication/session/handlers_http"
+	signinhttp "github.com/ambi/idmagic/backend/authentication/signin/handlers_http"
+	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	trusteddevicehttp "github.com/ambi/idmagic/backend/authentication/trusteddevice/handlers_http"
 	webauthnhttp "github.com/ambi/idmagic/backend/authentication/webauthn/handlers_http"
 
@@ -24,13 +26,21 @@ import (
 type Deps = httpdeps.Deps
 
 // RegisterRoutes はテナント解決済みグループに authentication コンテキストの
-// エンドポイントを登録する。セッションの失効は OAuth のトークンの失効を伴うので、
-// sessionTokens を必須とし、nil なら起動時に拒否する。
-func RegisterRoutes(g *echo.Group, d Deps, sessionTokens httpdeps.SessionTokenRevoker) {
+// エンドポイントを登録する。セッションの失効は OAuth のトークンの失効を伴い、対話のログインは
+// 認証を終えたら認可要求を続けるので、sessionTokens と authorizations を必須とし、nil なら
+// 起動時に拒否する。
+func RegisterRoutes(
+	g *echo.Group, d Deps, sessionTokens httpdeps.SessionTokenRevoker, authorizations signinports.PendingAuthorizations,
+) {
 	if sessionTokens == nil {
 		panic("authentication: RegisterRoutes requires a SessionTokenRevoker")
 	}
+	if authorizations == nil {
+		panic("authentication: RegisterRoutes requires PendingAuthorizations")
+	}
 	d.SessionTokens = sessionTokens
+	d.Authorizations = authorizations
+	signinhttp.RegisterRoutes(g, signinhttp.Deps{Deps: d})
 	g.GET("/api/auth/account", func(c *echo.Context) error { return handleAccountContext(d, c) })
 	g.GET("/api/account/v1/consents", func(c *echo.Context) error { return handleListAccountConsents(d, c) })
 	g.POST("/api/account/v1/consents/:client_id/revoke", func(c *echo.Context) error { return handleRevokeAccountConsent(d, c) })

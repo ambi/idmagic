@@ -35,17 +35,16 @@ func (d Deps) handleFederatedResume(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")
 	}
 	if client.FirstParty {
-		if redirected, policyErr := d.enforceDefaultSignInPolicy(c, authn, true); policyErr != nil {
+		if redirected, policyErr := d.SignIn.EnforceTenantDefault(c, authn, true); policyErr != nil {
 			return policyErr
 		} else if redirected {
-			return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
+			return c.Redirect(http.StatusSeeOther, d.SignIn.PendingPath(c, authn))
 		}
 	}
 
 	req.UserID, req.AuthTime, req.AMR, req.ACR = &authn.UserID, &authn.AuthTime, authn.AMR, &authn.ACR
 	authTime := time.Unix(authn.AuthTime, 0).UTC()
-	d.emitAuthenticationSuccess(c, authTime, user, authn, req.ClientID)
-	gateNext, err := d.recordLoginAndRequiredAction(c, user, authTime)
+	gateNext, err := d.SignIn.CompleteSignIn(c, user, authn, req.ClientID, authTime)
 	if err != nil {
 		return err
 	}

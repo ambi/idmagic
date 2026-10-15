@@ -56,7 +56,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 	if strings.TrimSpace(input.Username) == "" || input.Password == "" {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A username and password are required.")
 	}
-	req, transactionErr := d.transactionRequest(c)
+	authorization, transactionErr := d.Authorizations.Find(c)
 	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
 	if directAdminLogin {
 		if !validReturnTo(c, input.ReturnTo) {
@@ -159,19 +159,11 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		}
 		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{RedirectTo: input.ReturnTo})
 	}
-	req.UserID, req.AuthTime, req.AMR, req.ACR = &user.ID, &authn.AuthTime, authn.AMR, &authn.ACR
-	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
-	if err != nil || client == nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")
+	decision, err := authorization.Requirement(c, authn)
+	if err != nil {
+		return err
 	}
-	if !client.FirstParty {
-		decision, err := d.EvaluateApplicationAccess(
-			c.Request().Context(), support.RequestTenantID(c), appdomain.ApplicationProtocolOIDC, req.ClientID,
-			authn.UserID, authn, d.ClientIP(c.Request()),
-		)
-		if err != nil {
-			return err
-		}
+	if !decision.TenantDefault {
 		if decision.StepUpRequired {
 			// 記憶済みの信頼済みデバイスは第二要素の提示を省略できる (wi-91)。成立すると
 			// authn は tdev 込みへ昇格するので、そのまま通常の完了経路へ落ちる。
@@ -182,11 +174,10 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 			if trusted {
 				// 第二要素の不足がこの decision の唯一の拒否理由だったので、昇格した
 				// 時点で下の !decision.Allowed による拒否も当たらない。
-				req.AMR, req.ACR = authn.AMR, &authn.ACR
 				decision.Allowed = true
 			} else {
 				if len(d.secondFactorMethods(c, authn.UserID)) == 0 {
-					enrollment, policyErr := d.applicationMfaEnrollmentPolicy(c, decision.ApplicationID)
+					enrollment, policyErr := authorization.EnrollmentPolicy(c, decision.ApplicationID)
 					if policyErr != nil {
 						return policyErr
 					}
@@ -196,7 +187,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 						return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: support.TenantRoute(c, "/mfa-enrollment")})
 					}
 					return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
-						RedirectTo: authorizationErrorURL(req, support.RequestIssuer(c, d.Issuer), "access_denied", "The application's sign-in policy requirements were not met."),
+						RedirectTo: authorization.DeniedRedirect(c, "access_denied", "The application's sign-in policy requirements were not met."),
 					})
 				}
 				pending, err := d.requireSecondFactor(c.Request().Context(), c, authn.SessionID)
@@ -212,18 +203,18 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		}
 		if !decision.Allowed {
 			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
-				RedirectTo: authorizationErrorURL(req, support.RequestIssuer(c, d.Issuer), "access_denied", "The user is not allowed to access this application."),
+				RedirectTo: authorization.DeniedRedirect(c, "access_denied", "The user is not allowed to access this application."),
 			})
 		}
 	}
-	if client.FirstParty {
+	if decision.TenantDefault {
 		if redirected, err := d.enforceDefaultSignInPolicy(c, authn, true); err != nil {
 			return err
 		} else if redirected {
 			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: d.pendingAuthPath(c, authn)})
 		}
 	}
-	d.emitAuthenticationSuccess(c, authTime, user, authn, req.ClientID)
+	d.emitAuthenticationSuccess(c, authTime, user, authn, authorization.ClientID())
 	// full authentication 完了。last_login_at 記録 + required action gate。
 	gateNext, err := d.recordLoginAndRequiredAction(c, user, authTime)
 	if err != nil {
@@ -232,14 +223,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 	if gateNext != "" {
 		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: gateNext})
 	}
-	next, err := d.completeAfterAuthn(c, req, client, authn)
-	if err != nil {
-		return err
-	}
-	if next.RedirectTo != "" {
-		d.clearTransactionCookie(c)
-	}
-	return writeAuthorizationNext(c, next)
+	return authorization.ContinueAfterPassword(c, authn)
 }
 
 func (d Deps) enforceDefaultSignInPolicy(

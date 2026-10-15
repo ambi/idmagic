@@ -15,30 +15,6 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func (d Deps) applicationMfaEnrollmentPolicy(c *echo.Context, applicationID string) (*appdomain.MfaEnrollmentPolicy, error) {
-	if d.ApplicationGate == nil {
-		return &appdomain.MfaEnrollmentPolicy{}, nil
-	}
-	ctx := c.Request().Context()
-	tenantID := support.RequestTenantID(c)
-	var appPolicy *appdomain.AppSignInPolicy
-	var defaultPolicy *appdomain.TenantDefaultSignInPolicy
-	var err error
-	if d.ApplicationSignInPolicyRepo != nil {
-		appPolicy, err = d.ApplicationSignInPolicyRepo.Get(ctx, tenantID, applicationID)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if d.DefaultSignInPolicyRepo != nil {
-		defaultPolicy, err = d.DefaultSignInPolicyRepo.Get(ctx, tenantID)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return appdomain.MfaEnrollmentPolicyFromRules(appdomain.EffectiveSignInRules(defaultPolicy, appPolicy)), nil
-}
-
 type mfaEnrollmentConfirmRequest struct {
 	Secret   string `json:"secret"`
 	Code     string `json:"code"`
@@ -140,7 +116,7 @@ func (d Deps) handleConfirmMfaEnrollmentAPI(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	req, transactionErr := d.transactionRequest(c)
+	authorization, transactionErr := d.Authorizations.Find(c)
 	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
 	if directAdminLogin {
 		if !validReturnTo(c, input.ReturnTo) {
@@ -160,7 +136,7 @@ func (d Deps) handleConfirmMfaEnrollmentAPI(c *echo.Context) error {
 	}
 	// 登録専用フローからはデバイスを記憶しない (wi-91)。ここは管理者が発行した bypass で
 	// 到達する経路であり、記憶の同意を出す画面でもない。
-	return d.finishSecondFactor(c, authn.SessionID, req, "otp", directAdminLogin, input.ReturnTo, false)
+	return d.finishSecondFactor(c, authn.SessionID, authorization, "otp", directAdminLogin, input.ReturnTo, false)
 }
 
 func writeBrowserEnrollmentError(c *echo.Context, err error) error {

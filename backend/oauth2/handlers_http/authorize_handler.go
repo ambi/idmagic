@@ -98,7 +98,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 				if prompt.None {
 					return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "additional factor verification required"))
 				}
-				return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
+				return c.Redirect(http.StatusSeeOther, d.SignIn.PendingPath(c, authn))
 			}
 			policy := oauthdomain.ParsePrompt(out.Request)
 			needsStepUp := out.Request.ACRValues != nil &&
@@ -108,21 +108,20 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 				if prompt.None {
 					return d.redirectAuthorizationError(c, out.Request, "login_required", "The existing session does not satisfy the authentication requirements.")
 				}
-				if needsStepUp && d.canUseTOTP(c, authn.UserID) {
-					pending, err := d.requireSecondFactor(c.Request().Context(), c, authn.SessionID)
+				if needsStepUp && d.SignIn.CanUseTOTP(c, authn.UserID) {
+					pending, err := d.SignIn.RequireSecondFactor(c.Request().Context(), c, authn.SessionID)
 					if err != nil {
 						return err
 					}
 					if pending == nil {
 						return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "The existing session does not satisfy the authentication requirements."))
 					}
-					d.setSessionCookie(c, pending.SessionID)
-					return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
+					return c.Redirect(http.StatusSeeOther, d.SignIn.PendingPath(c, authn))
 				}
 				return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/login"))
 			}
 			if out.Client.FirstParty {
-				redirected, err := d.enforceDefaultSignInPolicy(c, authn, !prompt.None)
+				redirected, err := d.SignIn.EnforceTenantDefault(c, authn, !prompt.None)
 				if err != nil {
 					return err
 				}
@@ -130,7 +129,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 					if prompt.None {
 						return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "The existing session does not satisfy the authentication requirements."))
 					}
-					return c.Redirect(http.StatusSeeOther, d.pendingAuthPath(c, authn))
+					return c.Redirect(http.StatusSeeOther, d.SignIn.PendingPath(c, authn))
 				}
 			}
 			next, err := d.completeAfterAuthn(c, out.Request, out.Client, authn)

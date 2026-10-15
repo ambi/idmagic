@@ -8,15 +8,16 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	recoveryusecases "github.com/ambi/idmagic/backend/authentication/recovery/usecases"
+	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
 	webauthnhttp "github.com/ambi/idmagic/backend/authentication/webauthn/handlers_http"
 	webauthnusecases "github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -45,7 +46,7 @@ type totpAPIRequest struct {
 
 func (d Deps) webAuthnLoginDeps(c *echo.Context) webauthnusecases.WebAuthnDeps {
 	return webauthnusecases.WebAuthnDeps{
-		RP:             webauthnhttp.ResolveRPForRequest(c, d.Deps, d.WebAuthnRP),
+		RP:             webauthnhttp.ResolveRPForRequest(c, d.Deps.Deps, d.WebAuthnRP),
 		UserRepo:       d.UserRepo,
 		CredentialRepo: d.WebAuthnCredentialRepo,
 		MfaFactorRepo:  d.MfaFactorRepo,
@@ -60,17 +61,13 @@ func (d Deps) recoveryCodesDeps() recoveryusecases.RecoveryCodesDeps {
 	}
 }
 
-// secondFactorTransaction は第二要素待ち (kind=totp) の transaction 応答を組み立てる。
-func (d Deps) secondFactorTransaction(c *echo.Context, csrf string, authn *authdomain.AuthenticationContext) transactionResponse {
+// pendingStep は保留中のセッションが進む画面の種類 (mfa_enrollment か totp) と、第二要素の
+// 画面に出す選択肢と、「このデバイスを記憶する」の導線を出すかを返す。
+func (d Deps) pendingStep(c *echo.Context, authn *authdomain.AuthenticationContext) (string, []string, bool) {
 	if authn.PendingPurpose == authdomain.LoginPendingEnrollment {
-		return transactionResponse{Kind: "mfa_enrollment", CSRFToken: csrf}
+		return "mfa_enrollment", nil, false
 	}
-	return transactionResponse{
-		Kind:                "totp",
-		CSRFToken:           csrf,
-		SecondFactorMethods: d.secondFactorMethods(c, authn.UserID),
-		CanRememberDevice:   d.trustedDeviceMaxAge(c) > 0,
-	}
+	return "totp", d.secondFactorMethods(c, authn.UserID), d.trustedDeviceMaxAge(c) > 0
 }
 
 // secondFactorMethods は sub が利用できる第二要素 method を返す (totp / webauthn / recovery_code)。
@@ -79,7 +76,7 @@ func (d Deps) secondFactorMethods(c *echo.Context, sub string) []string {
 	if d.canUseTOTP(c, sub) {
 		methods = append(methods, "totp")
 	}
-	if webauthnhttp.ResolveRPForRequest(c, d.Deps, d.WebAuthnRP) != nil && d.WebAuthnCredentialRepo != nil {
+	if webauthnhttp.ResolveRPForRequest(c, d.Deps.Deps, d.WebAuthnRP) != nil && d.WebAuthnCredentialRepo != nil {
 		if creds, err := d.WebAuthnCredentialRepo.ListBySub(c.Request().Context(), sub); err == nil && len(creds) > 0 {
 			methods = append(methods, "webauthn")
 		}
@@ -156,7 +153,7 @@ func mfaFactorForAMR(amr string) (spec.MfaFactorType, bool) {
 
 // handleWebAuthnChallengeAPI は login の WebAuthn assertion challenge を発行する。
 func (d Deps) handleWebAuthnChallengeAPI(c *echo.Context) error {
-	if webauthnhttp.ResolveRPForRequest(c, d.Deps, d.WebAuthnRP) == nil {
+	if webauthnhttp.ResolveRPForRequest(c, d.Deps.Deps, d.WebAuthnRP) == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
 	}
 	if err := d.VerifyBrowserRequest(c); err != nil {
@@ -181,7 +178,7 @@ func (d Deps) handleWebAuthnChallengeAPI(c *echo.Context) error {
 
 // handleWebAuthnAPI は login の WebAuthn assertion を検証し、成功すれば認証を完了させる。
 func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
-	if webauthnhttp.ResolveRPForRequest(c, d.Deps, d.WebAuthnRP) == nil {
+	if webauthnhttp.ResolveRPForRequest(c, d.Deps.Deps, d.WebAuthnRP) == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
 	}
 	if err := d.VerifyBrowserRequest(c); err != nil {
@@ -198,7 +195,7 @@ func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	req, transactionErr := d.transactionRequest(c)
+	authorization, transactionErr := d.Authorizations.Find(c)
 	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
 	if directAdminLogin {
 		if !validReturnTo(c, input.ReturnTo) {
@@ -214,7 +211,7 @@ func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
 		d.emitMfaChallengeFailed(c, authn, spec.MfaFactorWebAuthn)
 		return support.WriteProblem(c, http.StatusUnauthorized, "invalid_webauthn", "Passkey authentication failed.")
 	}
-	return d.finishSecondFactor(c, authn.SessionID, req, "webauthn", directAdminLogin, input.ReturnTo, input.RememberDevice)
+	return d.finishSecondFactor(c, authn.SessionID, authorization, "webauthn", directAdminLogin, input.ReturnTo, input.RememberDevice)
 }
 
 // handleRecoveryCodeAPI は login の第二要素として backup recovery code を消費する。
@@ -236,7 +233,7 @@ func (d Deps) handleRecoveryCodeAPI(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	req, transactionErr := d.transactionRequest(c)
+	authorization, transactionErr := d.Authorizations.Find(c)
 	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
 	if directAdminLogin {
 		if !validReturnTo(c, input.ReturnTo) {
@@ -256,7 +253,7 @@ func (d Deps) handleRecoveryCodeAPI(c *echo.Context) error {
 		return err
 	}
 	// 復旧コードは要素喪失時の経路なので、その端末を記憶の対象にはしない。
-	return d.finishSecondFactor(c, authn.SessionID, req, "rc", directAdminLogin, input.ReturnTo, false)
+	return d.finishSecondFactor(c, authn.SessionID, authorization, "rc", directAdminLogin, input.ReturnTo, false)
 }
 
 // handleTOTPAPI は login の第二要素として TOTP ワンタイムコードを検証する。
@@ -271,14 +268,14 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 	if authn == nil || authn.SessionID == "" {
 		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The TOTP verification session does not exist.")
 	}
-	if containsString(authn.AMR, "otp") && !authn.AuthenticationPending {
+	if slices.Contains(authn.AMR, "otp") && !authn.AuthenticationPending {
 		return support.WriteProblem(c, http.StatusForbidden, "access_denied", "TOTP has already been verified.")
 	}
 	var input totpAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	req, transactionErr := d.transactionRequest(c)
+	authorization, transactionErr := d.Authorizations.Find(c)
 	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
 	if directAdminLogin {
 		if !validReturnTo(c, input.ReturnTo) {
@@ -302,7 +299,7 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 		d.emitMfaChallengeFailed(c, authn, spec.MfaFactorTOTP)
 		return support.WriteProblem(c, http.StatusUnauthorized, "invalid_totp", "Check the TOTP code.")
 	}
-	return d.finishSecondFactor(c, authn.SessionID, req, "otp", directAdminLogin, input.ReturnTo, input.RememberDevice)
+	return d.finishSecondFactor(c, authn.SessionID, authorization, "otp", directAdminLogin, input.ReturnTo, input.RememberDevice)
 }
 
 // finishSecondFactor は第二要素 (otp / webauthn / rc) 検証後の共通後処理。session を認証完了に
@@ -310,7 +307,7 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 func (d Deps) finishSecondFactor(
 	c *echo.Context,
 	sessionID string,
-	req *domain.AuthorizationRequest,
+	authorization signinports.Authorization,
 	amr string,
 	directAdminLogin bool,
 	returnTo string,
@@ -341,8 +338,8 @@ func (d Deps) finishSecondFactor(
 	}
 	user = found
 	clientID := ""
-	if req != nil {
-		clientID = req.ClientID
+	if authorization != nil {
+		clientID = authorization.ClientID()
 	}
 	d.emitAuthenticationSuccess(c, time.Now().UTC(), user, completed, clientID)
 	// full authentication 完了 (pwd + 第二要素)。last_login_at 記録 + required action gate。
@@ -358,23 +355,5 @@ func (d Deps) finishSecondFactor(
 	if directAdminLogin {
 		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{RedirectTo: returnTo})
 	}
-	if err := d.RequestStore.AttachAuthentication(
-		c.Request().Context(), req.ID, completed.UserID, completed.AuthTime, completed.AMR, completed.ACR, completed.SessionID,
-	); err != nil {
-		return writeOAuthError(c, err)
-	}
-	req.UserID, req.AuthTime, req.AMR, req.ACR = &completed.UserID, &completed.AuthTime, completed.AMR, &completed.ACR
-	req.Sid = &completed.SessionID
-	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
-	if err != nil || client == nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")
-	}
-	next, err := d.completeAfterAuthn(c, req, client, completed)
-	if err != nil {
-		return err
-	}
-	if next.RedirectTo != "" {
-		d.clearTransactionCookie(c)
-	}
-	return writeAuthorizationNext(c, next)
+	return authorization.ContinueAfterSecondFactor(c, completed)
 }

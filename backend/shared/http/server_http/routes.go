@@ -20,6 +20,7 @@ import (
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	signinhttp "github.com/ambi/idmagic/backend/authentication/signin/handlers_http"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
@@ -297,7 +298,47 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		workloadVerifier = d.WorkloadIdentity.TokenVerifier(d.IdManagement.AgentRepo, fetchWorkloadJWKS, d.Emit)
 	}
 
-	oauth2http.RegisterRoutes(g, oauth2http.Deps{
+	// nil の *SessionManager を包んだ値はインターフェースの nil の確認をすり抜けるので、
+	// ないときはポートごと渡さない。
+	var loginSessions oauth2http.LoginSessions
+	if d.Authentication.SessionManager != nil {
+		loginSessions = d.Authentication.LogoutSessions(d.Emit)
+	}
+	// 対話のログインは Authentication が処理し、認証を終えたら OAuth2 の認可要求を続ける。
+	// OAuth2 は既存のセッションに追加の認証を求めるときに Authentication の Steps を使う。
+	authDeps := authhttp.Deps{
+		Deps:                      d.Deps,
+		Authenticator:             authenticator,
+		SessionManager:            d.Authentication.SessionManager,
+		AuditEventRepo:            d.Audit.AuditEventRepo,
+		UserRepo:                  d.IdManagement.UserRepo,
+		PasswordHasher:            d.Authentication.PasswordHasher,
+		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,
+		Consents:                  d.OAuth2.AccountConsents(d.Emit),
+		ClientDisplayNameResolver: clientDisplayNames,
+		AttrSchemaRepo:            d.Tenancy.AttrSchemaRepo,
+		MfaFactorRepo:             d.Authentication.MfaFactorRepo,
+		MfaEnrollmentBypassRepo:   d.Authentication.MfaEnrollmentBypassRepo,
+		AuthEventBucketStore:      d.Authentication.AuthEventBucketStore,
+		TenantRepo:                d.TenantRepo,
+		PasswordResetTokenStore:   d.Authentication.PasswordResetTokenStore,
+		EmailSender:               d.Notification.EmailSender,
+		Notifier:                  d.Notification.Notifier,
+		BreachedPasswordChecker:   d.Authentication.BreachedPasswordChecker,
+		WebAuthnRP:                d.Authentication.WebAuthnRP,
+		WebAuthnCredentialRepo:    d.Authentication.WebAuthnCredentialRepo,
+		WebAuthnSessionStore:      d.Authentication.WebAuthnSessionStore,
+		RecoveryCodeRepo:          d.Authentication.RecoveryCodeRepo,
+		TrustedDeviceRepo:         d.Authentication.TrustedDeviceRepo,
+		LoginAttemptThrottle:      d.Authentication.LoginAttemptThrottle,
+		SentinelPasswordHash:      d.Authentication.SentinelPasswordHash,
+		TenantSaltStore:           d.Audit.TenantSaltStore,
+		ClientIP:                  appGate.ClientIP,
+
+		NotificationPreferenceRepo: d.Authentication.NotificationPreferenceRepo,
+		DefaultSignInPolicyRepo:    d.Application.DefaultSignInPolicyRepo,
+	}
+	oauthDeps := oauth2http.Deps{
 		WorkloadVerifier:           workloadVerifier,
 		Deps:                       d.Deps,
 		Authenticator:              authenticator,
@@ -308,15 +349,10 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		ConsentRepo:                d.OAuth2.ConsentRepo,
 		ClientDisplayNameResolver:  clientDisplayNames,
 		KeyStore:                   d.SigningKeys.KeyStore,
-		TenantSaltStore:            d.Audit.TenantSaltStore,
 		TenantRepo:                 d.TenantRepo,
 		PARStore:                   d.OAuth2.PARStore,
 		RequestStore:               d.OAuth2.RequestStore,
 		UserRepo:                   d.IdManagement.UserRepo,
-		PasswordHasher:             d.Authentication.PasswordHasher,
-		LoginAttemptThrottle:       d.Authentication.LoginAttemptThrottle,
-		MfaFactorRepo:              d.Authentication.MfaFactorRepo,
-		MfaEnrollmentBypassRepo:    d.Authentication.MfaEnrollmentBypassRepo,
 		CodeStore:                  d.OAuth2.CodeStore,
 		JWKResolver:                d.JWKResolver,
 		ClientAssertionReplayStore: d.OAuth2.ClientAssertionReplayStore,
@@ -336,22 +372,17 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AccessTokenDenylist:        d.OAuth2.AccessTokenDenylist,
 		ManagedTokenRevoker:        apiTokenService,
 		AttrSchemaRepo:             d.Tenancy.AttrSchemaRepo,
-		AuthEventBucketStore:       d.Authentication.AuthEventBucketStore,
 		Authorizer:                 d.OAuth2.Authorizer,
-		SentinelPasswordHash:       d.Authentication.SentinelPasswordHash,
-		WebAuthnRP:                 d.Authentication.WebAuthnRP,
-		WebAuthnCredentialRepo:     d.Authentication.WebAuthnCredentialRepo,
-		WebAuthnSessionStore:       d.Authentication.WebAuthnSessionStore,
-		RecoveryCodeRepo:           d.Authentication.RecoveryCodeRepo,
-		TrustedDeviceRepo:          d.Authentication.TrustedDeviceRepo,
 		QuotaRepo:                  d.Tenancy.QuotaRepo,
 
-		SessionManager: d.Authentication.SessionManager,
-		AuthnResolver:  d.Authentication.AuthnResolver,
+		AuthnResolver: d.Authentication.AuthnResolver,
+		LoginSessions: loginSessions,
+		SignIn:        signinhttp.Steps{Deps: signinhttp.Deps{Deps: authDeps}},
 
 		ApplicationSignInPolicyRepo: d.Application.SignInPolicyRepo,
 		DefaultSignInPolicyRepo:     d.Application.DefaultSignInPolicyRepo,
-	})
+	}
+	oauth2http.RegisterRoutes(g, oauthDeps)
 
 	d.WorkloadIdentity.RegisterRoutes(g, workloadidentity.RouteDeps{
 		Deps: d.Deps, Authenticator: authenticator,
@@ -399,35 +430,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo: d.IdManagement.UserRepo,
 	})
 
-	authDeps := authhttp.Deps{
-		Deps:                      d.Deps,
-		Authenticator:             authenticator,
-		SessionManager:            d.Authentication.SessionManager,
-		AuditEventRepo:            d.Audit.AuditEventRepo,
-		UserRepo:                  d.IdManagement.UserRepo,
-		PasswordHasher:            d.Authentication.PasswordHasher,
-		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,
-		Consents:                  d.OAuth2.AccountConsents(d.Emit),
-		ClientDisplayNameResolver: clientDisplayNames,
-		AttrSchemaRepo:            d.Tenancy.AttrSchemaRepo,
-		MfaFactorRepo:             d.Authentication.MfaFactorRepo,
-		MfaEnrollmentBypassRepo:   d.Authentication.MfaEnrollmentBypassRepo,
-		AuthEventBucketStore:      d.Authentication.AuthEventBucketStore,
-		TenantRepo:                d.TenantRepo,
-		PasswordResetTokenStore:   d.Authentication.PasswordResetTokenStore,
-		EmailSender:               d.Notification.EmailSender,
-		Notifier:                  d.Notification.Notifier,
-		BreachedPasswordChecker:   d.Authentication.BreachedPasswordChecker,
-		WebAuthnRP:                d.Authentication.WebAuthnRP,
-		WebAuthnCredentialRepo:    d.Authentication.WebAuthnCredentialRepo,
-		WebAuthnSessionStore:      d.Authentication.WebAuthnSessionStore,
-		RecoveryCodeRepo:          d.Authentication.RecoveryCodeRepo,
-		TrustedDeviceRepo:         d.Authentication.TrustedDeviceRepo,
-
-		NotificationPreferenceRepo: d.Authentication.NotificationPreferenceRepo,
-		DefaultSignInPolicyRepo:    d.Application.DefaultSignInPolicyRepo,
-	}
-	authhttp.RegisterRoutes(g, authDeps, d.OAuth2.SessionTokenRevoker())
+	authhttp.RegisterRoutes(g, authDeps, d.OAuth2.SessionTokenRevoker(), oauth2http.NewSignInContinuation(oauthDeps))
 
 	idmDeps := idmhttp.Deps{
 		Deps:                      d.Deps,

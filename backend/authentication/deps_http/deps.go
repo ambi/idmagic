@@ -7,6 +7,7 @@ package deps_http
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
@@ -18,7 +19,9 @@ import (
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	securitynotificationports "github.com/ambi/idmagic/backend/authentication/securitynotification/ports"
 	securitynotificationusecases "github.com/ambi/idmagic/backend/authentication/securitynotification/usecases"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
@@ -76,8 +79,20 @@ type Deps struct {
 	NotificationPreferenceRepo securitynotificationports.PreferenceRepository
 
 	// DefaultSignInPolicyRepo はアカウントポータルに適用されるテナントデフォルトの sign-in policy。
-	// セキュリティ設定の応答で MFA の強制開始を予告するために読む。nil なら予告しない。
+	// セキュリティ設定の応答で MFA の強制開始を予告し、対話のログインで IdMagic 自身の画面への
+	// サインインに適用する。nil ならどちらも行わない。
 	DefaultSignInPolicyRepo appports.DefaultSignInPolicyRepository
+
+	// LoginAttemptThrottle、SentinelPasswordHash、TenantSaltStore は対話のログインの
+	// パスワードの照合と失敗の抑制に使う。
+	LoginAttemptThrottle sessionports.LoginAttemptThrottle
+	SentinelPasswordHash string
+	TenantSaltStore      auditports.TenantSaltStore
+	// ClientIP は、サインインポリシーのネットワークの条件を評価するクライアントの IP を返す。
+	// Application のアクセスの判定と同じ解決を使うため、組み立て地点が結ぶ。
+	ClientIP func(*http.Request) string
+	// Authorizations は、対話のログインが認証を終えたあとに続ける認可要求を引く。
+	Authorizations signinports.PendingAuthorizations
 }
 
 // ResolveAuthentication はリクエストの認証を、AMR や保留の目的まで読める認証の文脈として返す。

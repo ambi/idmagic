@@ -1,8 +1,8 @@
 // Package http: oauth2 コンテキストの HTTP アダプタ。
 //
 // OAuth 2.0 / OIDC のプロトコルエンドポイント (authorize/token/introspect/revoke/
-// userinfo/par/device/discovery/register) と、認可トランザクションのフロントエンドである
-// 対話ログイン (login/totp/consent/end_session)、および client/consent/key/
+// userinfo/par/device/discovery/register) と、認可トランザクションの画面 (transaction/
+// consent/end_session)、および client/consent/key/
 // role_policy の管理 API を所有する。監査 (audit_event) の管理 API は audit context が
 // 所有する (wi-146)。共有基盤 support.Deps を受け取り router から登録される。
 package handlers_http
@@ -10,21 +10,13 @@ package handlers_http
 import (
 	"context"
 	"net/http"
+	"time"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	mfaports "github.com/ambi/idmagic/backend/authentication/mfa/ports"
-	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
-	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
-	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
-	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
-	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
@@ -38,7 +30,6 @@ import (
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v5"
 )
 
@@ -58,10 +49,6 @@ type Deps struct {
 	PARStore                   oauthports.PARStore
 	RequestStore               oauthports.AuthorizationRequestStore
 	UserRepo                   userports.UserRepository
-	PasswordHasher             passwordports.PasswordHasher
-	LoginAttemptThrottle       sessionports.LoginAttemptThrottle
-	MfaFactorRepo              totpports.MfaFactorRepository
-	MfaEnrollmentBypassRepo    mfaports.MfaEnrollmentBypassRepository
 	CodeStore                  oauthports.AuthorizationCodeStore
 	JWKResolver                *tokens_jose.JWKResolver
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
@@ -81,38 +68,27 @@ type Deps struct {
 	// WorkloadVerifier is the composition-root wiring point for workload
 	// identity federation ([[wi-54-workload-identity-federation-spiffe]]).
 	// nil rejects subject_token_type=JWT URN token-exchange as unsupported.
-	WorkloadVerifier     oauthports.WorkloadTokenVerifier
-	TokenIntrospector    oauthports.TokenIntrospector
-	IDTokenHintVerifier  oauthports.IDTokenHintVerifier
-	AccessTokenDenylist  oauthports.AccessTokenDenylist
-	ManagedTokenRevoker  tokenusecases.ManagedTokenRevoker
-	AttrSchemaRepo       tenantports.TenantUserAttributeSchemaRepository
-	AuthEventBucketStore authnports.AuthEventBucketStore
-	Authorizer           oauthports.Authorizer
-	TenantSaltStore      auditports.TenantSaltStore
-	SentinelPasswordHash string
+	WorkloadVerifier    oauthports.WorkloadTokenVerifier
+	TokenIntrospector   oauthports.TokenIntrospector
+	IDTokenHintVerifier oauthports.IDTokenHintVerifier
+	AccessTokenDenylist oauthports.AccessTokenDenylist
+	ManagedTokenRevoker tokenusecases.ManagedTokenRevoker
+	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
+	Authorizer          oauthports.Authorizer
 	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (client
 	// registration) and consents (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
 
-	// WebAuthn / recovery code を第二要素 (login step) として使うための依存 (wi-26)。
-	// WebAuthnRP が nil の場合 WebAuthn login は無効。
-	WebAuthnRP             *gowebauthn.WebAuthn
-	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
-	WebAuthnSessionStore   webauthnports.WebAuthnSessionStore
-	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
+	// AuthnResolver は対話のログインが作ったログインセッションを読む。Authentication が所有し、
+	// 組み立て地点が結ぶ。
+	AuthnResolver authdomain.AuthenticationContextResolver
+	// LoginSessions は /end_session がログインセッションを終わらせる先である。
+	LoginSessions LoginSessions
+	// SignIn は、既存のセッションに追加の認証を求める先である。
+	SignIn SignInSteps
 
-	// TrustedDeviceRepo は「このデバイスを記憶する」の発行と評価に使う (wi-91)。
-	// nil なら信頼済みデバイスは発行も評価もされず、第二要素は常に要求される。
-	TrustedDeviceRepo trusteddeviceports.TrustedDeviceRepository
-
-	// SessionManager と AuthnResolver は、対話ログインが作り、読み、終わらせるログイン
-	// セッションである。Authentication が所有し、組み立て地点が結ぶ。
-	SessionManager *sessionusecases.SessionManager
-	AuthnResolver  authdomain.AuthenticationContextResolver
-
-	// ApplicationSignInPolicyRepo と DefaultSignInPolicyRepo は、MFA の登録の要求と、
-	// テナント既定のサインインポリシーの評価に読む。ApplicationGate と同じ保存先を結ぶ。
+	// ApplicationSignInPolicyRepo と DefaultSignInPolicyRepo は、外部のアプリケーションへの
+	// 認可で MFA の登録を始めさせるかの方針を読む。ApplicationGate と同じ保存先を結ぶ。
 	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
 	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
 }
@@ -140,6 +116,24 @@ type ApplicationGate interface {
 	ClientIP(r *http.Request) string
 }
 
+// SignInSteps は、認可エンドポイントが既存のセッションに追加の認証を求める操作である。
+// 対話のログインを所有する Authentication が満たし、組み立て地点が結ぶ。
+type SignInSteps interface {
+	// EnforceTenantDefault は IdMagic 自身の画面への認可にテナントのデフォルトのポリシーを適用する。
+	// true は追加の認証の画面へ移すことを表す。拒否の応答を書いたときはそれを表すエラーを返す。
+	EnforceTenantDefault(c *echo.Context, authn *authdomain.AuthenticationContext, allowChallenge bool) (bool, error)
+	PendingPath(c *echo.Context, authn *authdomain.AuthenticationContext) string
+	CanUseTOTP(c *echo.Context, sub string) bool
+	SecondFactorMethods(c *echo.Context, sub string) []string
+	// RequireSecondFactor はセッションを第二要素の照合の待ちにして Cookie を発行する。
+	// セッションが失効していれば nil を返す。
+	RequireSecondFactor(ctx context.Context, c *echo.Context, sessionID string) (*authdomain.AuthenticationContext, error)
+	PendingStep(c *echo.Context, authn *authdomain.AuthenticationContext) (kind string, methods []string, canRememberDevice bool)
+	ValidReturnTo(c *echo.Context, returnTo string) bool
+	// CompleteSignIn は、ほかの経路で成立した認証を記録し、認可を続けずに進ませる画面があれば返す。
+	CompleteSignIn(c *echo.Context, user *userdomain.User, authn *authdomain.AuthenticationContext, clientID string, at time.Time) (string, error)
+}
+
 // ClientDisplayNameResolver は、同意と認可の画面に出す client_id の表示名を解決する。
 // 解決の順序は Application が所有し、組み立て地点が結ぶ。
 type ClientDisplayNameResolver interface {
@@ -155,14 +149,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/end_session", d.handleEndSession)
 	g.POST("/end_session", d.handleEndSession)
 	g.GET("/api/auth/transaction", d.handleTransaction)
-	g.POST("/api/auth/login", d.handleLoginAPI)
 	g.POST("/api/auth/consent", d.handleConsentAPI)
-	g.POST("/api/auth/totp", d.handleTOTPAPI)
-	g.POST("/api/auth/webauthn/challenge", d.handleWebAuthnChallengeAPI)
-	g.POST("/api/auth/webauthn", d.handleWebAuthnAPI)
-	g.POST("/api/auth/recovery-code", d.handleRecoveryCodeAPI)
-	g.POST("/api/auth/mfa/enrollment/totp/start", d.handleStartMfaEnrollmentAPI)
-	g.POST("/api/auth/mfa/enrollment/totp/confirm", d.handleConfirmMfaEnrollmentAPI)
 	g.GET("/api/auth/device", d.handleDeviceContext)
 	g.POST("/api/auth/device", d.handleDeviceAPI)
 	g.POST("/token", d.handleToken)

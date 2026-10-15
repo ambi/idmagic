@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	logoutdomain "github.com/ambi/idmagic/backend/oauth2/logout/domain"
 	logoutusecases "github.com/ambi/idmagic/backend/oauth2/logout/usecases"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
@@ -42,7 +41,7 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 
 	target, err := tokenusecases.ResolveEndSession(ctx, tokenusecases.EndSessionDeps{
 		ClientRepo: d.ClientRepo, HintVerifier: d.IDTokenHintVerifier,
-		SessionOwner: loginSessionOwner{manager: d.SessionManager},
+		SessionOwner: loginSessionOwner{sessions: d.LoginSessions},
 	}, tokenusecases.EndSessionInput{ClientID: clientID, PostLogoutRedirectURI: post, IDTokenHint: idTokenHint})
 	if err != nil {
 		return writeOAuthError(c, err)
@@ -60,23 +59,26 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 	return c.Redirect(redirectStatus, redirectURI)
 }
 
-// loginSessionOwner は Authentication の SessionStore を、id_token_hint の sub と
-// 対象セッションの主体を照合する use case が必要とする形へ合わせる。
-// SessionManager が無い配線ではローカル失効も起きないので、見つからないものとして扱う。
-type loginSessionOwner struct{ manager *authusecases.SessionManager }
+// LoginSessions は、ログアウトでログインセッションを解決して終わらせる。Authentication が
+// 所有し、組み立て地点が結ぶ。セッションの配線が無い構成では nil になる。
+type LoginSessions interface {
+	SessionIDFromCookie(cookieHeader string) string
+	// Owner は sid のセッションの主体を返す。有効なセッションがなければ ok=false。
+	Owner(ctx context.Context, sid string) (sub string, ok bool, err error)
+	// End は sid のセッションを終わらせ、その主体を返す。有効なセッションを読めなければ found=false。
+	End(ctx context.Context, sid string, now time.Time) (subject string, found bool, err error)
+}
+
+// loginSessionOwner は LoginSessions を、id_token_hint の sub と対象セッションの主体を
+// 照合する use case が必要とする形へ合わせる。セッションの配線が無い構成ではローカル失効も
+// 起きないので、見つからないものとして扱う。
+type loginSessionOwner struct{ sessions LoginSessions }
 
 func (l loginSessionOwner) LoginSessionOwner(ctx context.Context, sid string) (string, bool, error) {
-	if l.manager == nil || l.manager.Store == nil {
+	if l.sessions == nil {
 		return "", false, nil
 	}
-	session, err := l.manager.Store.Find(ctx, sid)
-	if err != nil {
-		return "", false, err
-	}
-	if session == nil {
-		return "", false, nil
-	}
-	return session.UserID, true, nil
+	return l.sessions.Owner(ctx, sid)
 }
 
 type settledLogout struct {
@@ -87,24 +89,22 @@ type settledLogout struct {
 func (d Deps) endLocalSession(c *echo.Context, sid, subject string) settledLogout {
 	ctx := c.Request().Context()
 	now := time.Now().UTC()
-	if d.SessionManager == nil {
+	if d.LoginSessions == nil {
 		return settledLogout{}
 	}
 	if sid == "" {
-		sid = d.SessionManager.SessionIDFromCookie(c.Request().Header.Get("Cookie"))
+		sid = d.LoginSessions.SessionIDFromCookie(c.Request().Header.Get("Cookie"))
 	}
 	if sid != "" {
-		session, err := d.SessionManager.Store.Find(ctx, sid)
-		if err != nil || session == nil {
+		owner, found, err := d.LoginSessions.End(ctx, sid, now)
+		if !found {
 			d.clearSessionCookie(c)
 			return settledLogout{sid: sid}
 		}
 		if subject == "" {
-			subject = session.UserID
+			subject = owner
 		}
-		if err := authusecases.EndSession(ctx, authusecases.SessionDeps{
-			Store: d.SessionManager.Store, Emit: d.Emit, QuotaRepo: d.SessionManager.QuotaRepo,
-		}, sid, now); err != nil {
+		if err != nil {
 			d.clearSessionCookie(c)
 			return settledLogout{sid: sid, subject: subject}
 		}

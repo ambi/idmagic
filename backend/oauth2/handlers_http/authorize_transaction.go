@@ -3,14 +3,13 @@ package handlers_http
 import (
 	"errors"
 	"net/http"
-	"net/url"
-	"path"
 	"strings"
 	"time"
 
 	"github.com/labstack/echo/v5"
 
-	usecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -20,7 +19,7 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 	req, err := d.transactionRequest(c)
 	if err != nil {
 		if returnTo := c.QueryParam("return_to"); returnTo != "" {
-			if !validReturnTo(c, returnTo) {
+			if !d.SignIn.ValidReturnTo(c, returnTo) {
 				return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
 			}
 			csrf, csrfErr := d.EnsureCSRFCookie(c)
@@ -29,7 +28,7 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 			}
 			authn, _ := d.ResolveAuthentication(c)
 			if authn != nil && authn.AuthenticationPending {
-				return support.NoStoreJSON(c, http.StatusOK, d.secondFactorTransaction(c, csrf, authn))
+				return support.NoStoreJSON(c, http.StatusOK, d.pendingStepTransaction(c, csrf, authn))
 			}
 			return support.NoStoreJSON(c, http.StatusOK, transactionResponse{Kind: "login", CSRFToken: csrf})
 		}
@@ -42,13 +41,13 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 	if req.UserID == nil {
 		authn, _ := d.ResolveAuthentication(c)
 		if authn != nil && authn.AuthenticationPending {
-			return support.NoStoreJSON(c, http.StatusOK, d.secondFactorTransaction(c, csrf, authn))
+			return support.NoStoreJSON(c, http.StatusOK, d.pendingStepTransaction(c, csrf, authn))
 		}
 		return support.NoStoreJSON(c, http.StatusOK, transactionResponse{Kind: "login", CSRFToken: csrf})
 	}
 	authn, _ := d.ResolveAuthentication(c)
 	if authn != nil && authn.AuthenticationPending {
-		return support.NoStoreJSON(c, http.StatusOK, d.secondFactorTransaction(c, csrf, authn))
+		return support.NoStoreJSON(c, http.StatusOK, d.pendingStepTransaction(c, csrf, authn))
 	}
 	if authn == nil || authn.UserID != *req.UserID {
 		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not match.")
@@ -86,16 +85,10 @@ func (d Deps) transactionRequest(c *echo.Context) (*domain.AuthorizationRequest,
 	return req, nil
 }
 
-func validReturnTo(c *echo.Context, returnTo string) bool {
-	if strings.Contains(returnTo, "\\") {
-		return false
-	}
-	parsed, err := url.Parse(returnTo)
-	if err != nil || parsed.IsAbs() || parsed.Host != "" || parsed.Fragment != "" || path.Clean(parsed.Path) != parsed.Path {
-		return false
-	}
-	adminRoot, wsfedRoot := support.TenantRoute(c, "/admin"), support.TenantRoute(c, "/wsfed")
-	return parsed.Path == adminRoot || strings.HasPrefix(parsed.Path, adminRoot+"/") || parsed.Path == wsfedRoot
+// pendingStepTransaction は、第二要素か MFA の登録を待つセッションの transaction 応答を組み立てる。
+func (d Deps) pendingStepTransaction(c *echo.Context, csrf string, authn *authdomain.AuthenticationContext) transactionResponse {
+	kind, methods, canRememberDevice := d.SignIn.PendingStep(c, authn)
+	return transactionResponse{Kind: kind, CSRFToken: csrf, SecondFactorMethods: methods, CanRememberDevice: canRememberDevice}
 }
 
 func (d Deps) setTransactionCookie(c *echo.Context, requestID string) {
@@ -106,10 +99,6 @@ func (d Deps) clearTransactionCookie(c *echo.Context) {
 	c.SetCookie(&http.Cookie{Name: support.TenantCookieName(c, authorizationTransactionCookie), Path: support.TenantCookiePath(c), Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1}) //nolint:gosec // Secure is selected from the configured issuer scheme.
 }
 
-func (d Deps) setSessionCookie(c *echo.Context, sessionID string) {
-	c.SetCookie(&http.Cookie{Name: support.TenantCookieName(c, usecases.SessionCookie), Value: sessionID, Path: support.TenantCookiePath(c), Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: usecases.SessionTTLSeconds}) //nolint:gosec // Secure is selected from the configured issuer scheme.
-}
-
 func (d Deps) clearSessionCookie(c *echo.Context) {
-	c.SetCookie(&http.Cookie{Name: support.TenantCookieName(c, usecases.SessionCookie), Path: support.TenantCookiePath(c), Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1}) //nolint:gosec // Secure is selected from the configured issuer scheme.
+	c.SetCookie(&http.Cookie{Name: support.TenantCookieName(c, sessiondomain.SessionCookie), Path: support.TenantCookiePath(c), Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1}) //nolint:gosec // Secure is selected from the configured issuer scheme.
 }

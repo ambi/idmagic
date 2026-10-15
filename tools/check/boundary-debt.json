@@ -183,13 +183,6 @@
       "reason": "OAuth2 and Application import each other, so the edge OAuth2 -> Application stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
     },
     {
-      "id": "module-cycle:OAuth2->Audit",
-      "sourceModule": "OAuth2",
-      "targetModule": "Audit",
-      "violations": ["module-cycle:OAuth2->Audit"],
-      "reason": "OAuth2 and Audit import each other, so the edge OAuth2 -> Audit stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
       "id": "module-cycle:OAuth2->Authentication",
       "sourceModule": "OAuth2",
       "targetModule": "Authentication",
@@ -419,22 +412,6 @@
         "private-import:IdGovernance:backend/idgovernance/internal/db_postgres->backend/idmanagement/user/db_postgres"
       ],
       "reason": "IdGovernance saves users inside its lifecycle transaction through IdManagement's PostgreSQL adapter. IdManagement publishes a transaction-bound user writer so the lifecycle step and the user commit together (D2, D7) in wi-93579."
-    },
-    {
-      "id": "private-import:OAuth2->Authentication",
-      "sourceModule": "OAuth2",
-      "targetModule": "Authentication",
-      "violations": [
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/mfa/usecases",
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/password/usecases",
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/recovery/usecases",
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/session/usecases",
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/totp/usecases",
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/trusteddevice/usecases",
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/webauthn/handlers_http",
-        "private-import:OAuth2:backend/oauth2/handlers_http->backend/authentication/webauthn/usecases"
-      ],
-      "reason": "OAuth2's authorization handlers orchestrate login, password expiry, MFA enrollment, TOTP, WebAuthn, recovery codes, and trusted devices by calling nine Authentication packages directly. Authentication owns these steps, so their implementation moves into Authentication and OAuth2 only resumes the authorization request (D1, D8) in wi-93464."
     },
     {
       "id": "private-import:Saml->WsFederation",
