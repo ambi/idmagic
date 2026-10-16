@@ -393,27 +393,6 @@
       "reason": "WsFederation -> SigningKeys lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
-      "id": "private-import:Authentication->IdManagement",
-      "sourceModule": "Authentication",
-      "targetModule": "IdManagement",
-      "violations": [
-        "private-import:Authentication:backend/authentication/deps_http->backend/idmanagement/usecases",
-        "private-import:Authentication:backend/authentication/deps_http->backend/idmanagement/user/usecases",
-        "private-import:Authentication:backend/authentication/handlers_http->backend/idmanagement/user/usecases",
-        "private-import:Authentication:backend/authentication/password/db_postgres->backend/idmanagement/user/db_postgres"
-      ],
-      "reason": "Authentication reads the account profile through IdManagement's use cases and saves the user inside the password-change transaction through IdManagement's PostgreSQL adapter. IdManagement publishes the profile query and a transaction-bound user writer (D2, D7) in wi-93579."
-    },
-    {
-      "id": "private-import:IdGovernance->IdManagement",
-      "sourceModule": "IdGovernance",
-      "targetModule": "IdManagement",
-      "violations": [
-        "private-import:IdGovernance:backend/idgovernance/internal/db_postgres->backend/idmanagement/user/db_postgres"
-      ],
-      "reason": "IdGovernance saves users inside its lifecycle transaction through IdManagement's PostgreSQL adapter. IdManagement publishes a transaction-bound user writer so the lifecycle step and the user commit together (D2, D7) in wi-93579."
-    },
-    {
       "id": "private-import:Saml->WsFederation",
       "sourceModule": "Saml",
       "targetModule": "WsFederation",

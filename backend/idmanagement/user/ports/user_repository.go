@@ -33,3 +33,10 @@ type UserRepository interface {
 	CountFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus) (int64, error)
 	Save(ctx context.Context, user *userdomain.User) error
 }
+
+// UserWriter は、呼び出し側のトランザクションに参加して User を保存する。
+// ほかのモジュールが自分の書き込みと User の変更を一緒に確定するときに使い、
+// 確定と巻き戻しは呼び出し側のトランザクションが決める。
+type UserWriter interface {
+	Save(ctx context.Context, user *userdomain.User) error
+}

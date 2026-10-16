@@ -50,6 +50,7 @@ HTTP の操作とモデルの形は TypeSpec の `Identity Management` のタグ
 | `UserSourceOwnershipGuard`、`GroupSourceOwnershipGuard` | `Sourcing` が実装する | このモジュールが呼ぶ | 外部の権威が管理する User と Group を、CSV が上書きしないように判定する |
 | `ProvisionFederatedUser` | `Authentication` が呼ぶ | このモジュールが提供する | フェデレーションのログインで User を作る |
 | `UserRepository`、`GroupRepository` の読み取り | `Authentication`、`OAuth2`、`Authorization` などが呼ぶ | このモジュールが提供する | User と Group、および実効ロールを読む |
+| `UserWriter` | `Authentication`（パスワードの再設定）、`IdGovernance`（ワークフローの実行の記録）が呼ぶ | このモジュールが提供する | 呼び出し側のトランザクションに参加して User を保存する。確定と巻き戻しは呼び出し側が決め、組み立て地点がトランザクションから作る構築関数を渡す |
 | ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `User…`、`Group…`、`DynamicGroupRule…`、`Agent…`、`DataExport…`、`EmailChange…` |
 
 ## 機能

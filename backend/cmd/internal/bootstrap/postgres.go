@@ -122,7 +122,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	userImportCommitter := userpostgres.NewUserImportRowCommitter(resilientDB, tenancy.QuotaRepositoryInTx)
 	groupImportCommitter := grouppostgres.NewGroupImportRowCommitter(resilientDB, tenancy.QuotaRepositoryInTx)
 	groupMembershipImportCommitter := grouppostgres.GroupMembershipImportRowCommitter{Pool: resilientDB}
-	governanceModule := idgovernance.NewPostgresModule(resilientDB, userRepo)
+	governanceModule := idgovernance.NewPostgresModule(resilientDB, userRepo, userpostgres.UserWriterInTx)
 	assignmentRepo := &apppostgres.ApplicationAssignmentRepository{Pool: resilientDB}
 	provisioningModule := provisioning.NewPostgresModule(resilientDB)
 
@@ -151,7 +151,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			MfaFactorRepo:            mfaFactorRepo,
 			MfaEnrollmentBypassRepo:  &mfapostgres.MfaEnrollmentBypassRepository{Pool: resilientDB},
 			PasswordHistoryRepo:      &passwordpostgres.PasswordHistoryRepository{Pool: resilientDB},
-			PasswordResetTokenStore:  &passwordpostgres.PasswordResetTokenStore{Pool: resilientDB},
+			PasswordResetTokenStore:  passwordpostgres.NewPasswordResetTokenStore(resilientDB, userpostgres.UserWriterInTx),
 			SessionStore:             &sessionpostgres.SessionRepository{Pool: resilientDB},
 			WebAuthnCredentialRepo:   &webauthnpostgres.WebAuthnCredentialRepository{Pool: resilientDB},
 			WebAuthnSessionStore:     &webauthnpostgres.WebAuthnSessionStore{Pool: resilientDB},

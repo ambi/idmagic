@@ -19,6 +19,7 @@ import (
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v5"
 )
 
@@ -32,10 +33,10 @@ func NewMemoryModule(users userports.UserRepository) Module {
 	}
 }
 
-func NewPostgresModule(pool postgres.DB, users userports.UserRepository) Module {
+func NewPostgresModule(pool postgres.DB, users userports.UserRepository, usersInTx func(pgx.Tx) userports.UserWriter) Module {
 	workflows := &db_postgres.LifecycleWorkflowRepository{Pool: pool}
 	runs := &db_postgres.LifecycleWorkflowRunRepository{Pool: pool}
-	capture := &db_postgres.UserWorkflowCapture{Pool: pool}
+	capture := db_postgres.NewUserWorkflowCapture(pool, usersInTx)
 	return Module{
 		LifecycleWorkflowRepo: workflows, LifecycleWorkflowRunRepo: runs, UserWorkflowCapture: capture,
 		UserMutationCommitter: usecases.UserMutationCommitter{WorkflowRepo: workflows, Capture: capture, UserRepo: users, RunRepo: runs},

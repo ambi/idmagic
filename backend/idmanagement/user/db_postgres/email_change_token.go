@@ -91,7 +91,7 @@ func (s *EmailChangeTokenStore) ConsumeAndApply(
 		}
 		return err
 	}
-	if err := SaveUserTx(ctx, tx, commit.User); err != nil {
+	if err := internalSaveUser(ctx, tx, commit.User); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

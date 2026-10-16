@@ -7,13 +7,22 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	userpostgres "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
 // PasswordResetTokenStore (Authentication)
-type PasswordResetTokenStore struct{ Pool sharedpg.DB }
+type PasswordResetTokenStore struct {
+	pool      sharedpg.DB
+	usersInTx func(pgx.Tx) userports.UserWriter
+}
+
+// NewPasswordResetTokenStore は、使用済み化と同じトランザクションで User を保存するため、
+// IdManagement の UserWriter を作る usersInTx を受け取る。
+func NewPasswordResetTokenStore(pool sharedpg.DB, usersInTx func(pgx.Tx) userports.UserWriter) *PasswordResetTokenStore {
+	return &PasswordResetTokenStore{pool: pool, usersInTx: usersInTx}
+}
 
 var _ authnports.PasswordResetTokenStore = (*PasswordResetTokenStore)(nil)
 
@@ -21,7 +30,7 @@ func (s *PasswordResetTokenStore) Save(ctx context.Context, envelope actiontoken
 	if envelope.Purpose != actiontoken.PurposePasswordReset {
 		return actiontoken.ErrPurposeMismatch
 	}
-	tx, err := s.Pool.Begin(ctx)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -48,7 +57,7 @@ func (s *PasswordResetTokenStore) Find(
 	ctx context.Context,
 	digest actiontoken.Digest,
 ) (*actiontoken.Envelope, error) {
-	row, err := New(s.Pool).FindUnusedPasswordResetToken(ctx, string(digest))
+	row, err := New(s.pool).FindUnusedPasswordResetToken(ctx, string(digest))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -76,7 +85,7 @@ func (s *PasswordResetTokenStore) ConsumeAndApply(
 	ctx context.Context,
 	commit authnports.PasswordResetCommit,
 ) error {
-	tx, err := s.Pool.Begin(ctx)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -92,7 +101,7 @@ func (s *PasswordResetTokenStore) ConsumeAndApply(
 		}
 		return err
 	}
-	if err := userpostgres.SaveUserTx(ctx, tx, commit.User); err != nil {
+	if err := s.usersInTx(tx).Save(ctx, commit.User); err != nil {
 		return err
 	}
 	if err := q.InsertPasswordHistory(ctx, InsertPasswordHistoryParams{

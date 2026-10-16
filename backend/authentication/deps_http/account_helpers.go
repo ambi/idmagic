@@ -12,20 +12,10 @@ import (
 	recoveryusecases "github.com/ambi/idmagic/backend/authentication/recovery/usecases"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	webauthnusecases "github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
-	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
 )
-
-// AccountProfileDeps は self-service プロフィール系ユースケースの依存を組み立てる。
-// mfa/shared 双方の handler から呼ばれる横断ヘルパー。
-func AccountProfileDeps(d Deps) userusecases.AccountProfileDeps {
-	return userusecases.AccountProfileDeps{
-		UserRepo: d.UserRepo, AttrSchemaRepo: d.AttrSchemaRepo, Emit: d.LegacyEmit(),
-	}
-}
 
 // RequireAuthenticatedSub は認証済み (pending でない) セッションの sub を返す。
 // self-service では actor == target なので sub をそのまま操作対象に使う。
@@ -89,8 +79,6 @@ func WriteAccountError(c *echo.Context, err error) error {
 		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	case errors.Is(err, mfausecases.ErrStepUpRequired):
 		return support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
-	case errors.Is(err, idmusecases.ErrUserNotFound):
-		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	case errors.Is(err, sessionusecases.ErrSessionNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "session_not_found", "The session does not exist.")
 	default:

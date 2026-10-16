@@ -9,6 +9,7 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -283,12 +284,14 @@ func (r *UserRepository) Save(ctx context.Context, u *userdomain.User) error {
 	return internalSaveUser(ctx, r.Pool, u)
 }
 
-// SaveUserTx writes a User row on the caller's DBTX (e.g. an in-flight
-// transaction). IdGovernance's UserWorkflowCapture uses it to keep the User
-// mutation and its derived lifecycle workflow runs in one transaction after the
-// context split (wi-237); the users table stays owned by IdManagement.
-func SaveUserTx(ctx context.Context, db DBTX, u *userdomain.User) error {
-	return internalSaveUser(ctx, db, u)
+// UserWriterInTx は、呼び出し側のトランザクションで User を保存する UserWriter を返す。
+// ほかのモジュールの書き込みと User の変更を同じトランザクションで確定させるため、組み立て地点が渡す。
+func UserWriterInTx(tx pgx.Tx) userports.UserWriter { return txUserWriter{tx: tx} }
+
+type txUserWriter struct{ tx pgx.Tx }
+
+func (w txUserWriter) Save(ctx context.Context, u *userdomain.User) error {
+	return internalSaveUser(ctx, w.tx, u)
 }
 
 func internalSaveUser(ctx context.Context, db DBTX, u *userdomain.User) error {

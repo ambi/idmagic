@@ -316,7 +316,6 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,
 		Consents:                  d.OAuth2.AccountConsents(d.Emit),
 		ClientDisplayNameResolver: clientDisplayNames,
-		AttrSchemaRepo:            d.Tenancy.AttrSchemaRepo,
 		MfaFactorRepo:             d.Authentication.MfaFactorRepo,
 		MfaEnrollmentBypassRepo:   d.Authentication.MfaEnrollmentBypassRepo,
 		AuthEventBucketStore:      d.Authentication.AuthEventBucketStore,

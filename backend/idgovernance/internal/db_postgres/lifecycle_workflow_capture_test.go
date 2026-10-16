@@ -29,7 +29,7 @@ func TestUserWorkflowCaptureCommitsUserAndRunsTogether(t *testing.T) {
 	}
 	users := &userpg.UserRepository{Pool: pool}
 	runs := &igpostgres.LifecycleWorkflowRunRepository{Pool: pool}
-	capture := &igpostgres.UserWorkflowCapture{Pool: pool}
+	capture := igpostgres.NewUserWorkflowCapture(pool, userpg.UserWriterInTx)
 	planned := func(runID, workflowID string) (*igdomain.WorkflowRun, []igdomain.WorkflowStep) {
 		run := &igdomain.WorkflowRun{ID: runID, TenantID: tenant.ID, WorkflowID: workflowID, Revision: 1, SourceOccurrenceID: "occurrence-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: actions, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
 		steps := []igdomain.WorkflowStep{

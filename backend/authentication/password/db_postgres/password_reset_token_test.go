@@ -3,11 +3,16 @@ package db_postgres
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+
 	authnports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	userpg "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -19,7 +24,7 @@ func seedResetToken(
 	t *testing.T, db sharedpg.DB, subject string,
 ) (*PasswordResetTokenStore, actiontoken.Envelope) {
 	t.Helper()
-	store := &PasswordResetTokenStore{Pool: db}
+	store := NewPasswordResetTokenStore(db, userpg.UserWriterInTx)
 	envelope := actiontoken.Envelope{
 		ID:      pgfixtures.NewUUID(t),
 		Purpose: actiontoken.PurposePasswordReset,
@@ -51,7 +56,7 @@ func TestPasswordResetTokenStoreRefusesAnotherPurpose(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
 	user := pgfixtures.SeedUser(t, db, tenant.ID)
-	store := &PasswordResetTokenStore{Pool: db}
+	store := NewPasswordResetTokenStore(db, userpg.UserWriterInTx)
 
 	foreign := actiontoken.Envelope{
 		ID: pgfixtures.NewUUID(t), Purpose: actiontoken.PurposeEmailChange, Subject: user.ID,
@@ -165,6 +170,52 @@ func TestPasswordResetTokenStoreRollsBackWhenTheEffectFails(t *testing.T) {
 	stored, err := (&PasswordHistoryRepository{Pool: db}).Recent(ctx, rival.ID, 5)
 	if err != nil || len(stored) != 0 {
 		t.Fatalf("the failed effect touched the rival: %+v %v", stored, err)
+	}
+}
+
+// historyFailingDB は、トランザクションの中のパスワード履歴の追加だけを失敗させる。
+// User の保存が成功した後で確定が失敗する経路を作るために使う。
+type historyFailingDB struct{ sharedpg.DB }
+
+func (d historyFailingDB) Begin(ctx context.Context) (pgx.Tx, error) {
+	tx, err := d.DB.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return historyFailingTx{tx}, nil
+}
+
+type historyFailingTx struct{ pgx.Tx }
+
+var errHistoryInsert = errors.New("password history insert failed")
+
+func (t historyFailingTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	if strings.Contains(sql, "INSERT INTO password_history") {
+		return pgconn.CommandTag{}, errHistoryInsert
+	}
+	return t.Tx.Exec(ctx, sql, args...)
+}
+
+// User を保存した後の書き込みが失敗しても、User の変更はトークンの使用済み化と一緒に巻き戻る。
+// User の保存が呼び出し側のトランザクションの外で確定する誤りを検出する。
+func TestPasswordResetTokenStoreRollsBackTheUserWhenALaterWriteFails(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	user := pgfixtures.SeedUser(t, db, tenant.ID)
+	_, envelope := seedResetToken(t, db, user.ID)
+	ctx := context.Background()
+
+	store := NewPasswordResetTokenStore(historyFailingDB{db}, userpg.UserWriterInTx)
+	if err := store.ConsumeAndApply(ctx, resetCommit(envelope.Digest, user, "encoded-rolled-back")); !errors.Is(err, errHistoryInsert) {
+		t.Fatalf("consume error = %v, want the history failure", err)
+	}
+
+	stored, err := (&userpg.UserRepository{Pool: db}).FindBySub(ctx, user.ID)
+	if err != nil || stored == nil || stored.PasswordHash != user.PasswordHash {
+		t.Fatalf("user after the failed commit = %+v, %v; want the password unchanged", stored, err)
+	}
+	if found, err := store.Find(ctx, envelope.Digest); err != nil || found == nil {
+		t.Fatalf("the failed commit consumed the token: %+v %v", found, err)
 	}
 }
 

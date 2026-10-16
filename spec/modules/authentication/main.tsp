@@ -356,13 +356,23 @@ model GetAccountSecurityError403 {
   @body body: GetAccountSecurityError403Body;
 }
 
+union GetAccountSecurityError404Body {
+  IdMagic.Contract.UserNotFoundError,
+}
+
+model GetAccountSecurityError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAccountSecurityError404Body;
+}
+
 @doc("認証済みのユーザーが、自身のセキュリティの概要を読む（セルフサービス）。対象は `subject.id` に固定される。パスワードの変更時刻と、MFA（TOTP）を登録しているかどうかを返す。")
 @TypeSpec.OpenAPI.operationId("GetAccountSecurity")
 @route("/api/account/v1/security")
 @get
 op GetAccountSecurity(
 
-): GetAccountSecuritySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAccountSecurityError403;
+): GetAccountSecuritySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAccountSecurityError403 | GetAccountSecurityError404;
 
 model GetMyNotificationPreferencesSuccess_200 {
   @statusCode statusCode: 200;

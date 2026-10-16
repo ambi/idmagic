@@ -4,13 +4,14 @@
 package handlers_http
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	httpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	recoveryusecases "github.com/ambi/idmagic/backend/authentication/recovery/usecases"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
+	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -52,7 +53,10 @@ func handleGetAccountSecurity(d Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	user, _, err := userusecases.GetUserProfile(c.Request().Context(), httpdeps.AccountProfileDeps(d), sub)
+	user, err := authusecases.LoadSelfUser(c.Request().Context(), d.UserRepo, sub)
+	if errors.Is(err, authusecases.ErrUserNotFound) {
+		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
+	}
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}

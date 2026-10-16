@@ -53,7 +53,6 @@ type Deps struct {
 	// 失効させる。RegisterRoutes が必須の引数として受け取る。
 	SessionTokens             SessionTokenRevoker
 	ClientDisplayNameResolver ClientDisplayNameResolver
-	AttrSchemaRepo            tenantports.TenantUserAttributeSchemaRepository
 	MfaFactorRepo             totpports.MfaFactorRepository
 	MfaEnrollmentBypassRepo   mfaports.MfaEnrollmentBypassRepository
 	AuthEventBucketStore      authnports.AuthEventBucketStore
