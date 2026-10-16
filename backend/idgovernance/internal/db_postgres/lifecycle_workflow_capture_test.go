@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	igpostgres "github.com/ambi/idmagic/backend/idgovernance/internal/db_postgres"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
-	userpg "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
@@ -16,7 +17,7 @@ func TestUserWorkflowCaptureCommitsUserAndRunsTogether(t *testing.T) {
 	pool := pgtest.Require(t)
 	ctx := context.Background()
 	tenant := pgfixtures.SeedTenant(t, pool)
-	user := pgfixtures.SeedUser(t, pool, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
 	now := pgfixtures.TestClock()
 	workflows := &igpostgres.LifecycleWorkflowRepository{Pool: pool}
 	workflow := &igdomain.LifecycleWorkflow{ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, Name: "Joiner", Status: igdomain.LifecycleWorkflowDraft, CurrentRevision: 1, CreatedAt: now, UpdatedAt: now}
@@ -27,9 +28,9 @@ func TestUserWorkflowCaptureCommitsUserAndRunsTogether(t *testing.T) {
 	if err := workflows.SaveRevision(ctx, &igdomain.LifecycleWorkflowRevision{WorkflowID: workflow.ID, TenantID: tenant.ID, Revision: 1, Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: actions, CreatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
-	users := &userpg.UserRepository{Pool: pool}
+	users := idmanagement.NewPostgresModule(pool, nil).UserRepo
 	runs := &igpostgres.LifecycleWorkflowRunRepository{Pool: pool}
-	capture := igpostgres.NewUserWorkflowCapture(pool, userpg.UserWriterInTx)
+	capture := igpostgres.NewUserWorkflowCapture(pool, idmanagement.UserWriterInTx)
 	planned := func(runID, workflowID string) (*igdomain.WorkflowRun, []igdomain.WorkflowStep) {
 		run := &igdomain.WorkflowRun{ID: runID, TenantID: tenant.ID, WorkflowID: workflowID, Revision: 1, SourceOccurrenceID: "occurrence-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: actions, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
 		steps := []igdomain.WorkflowStep{

@@ -1,0 +1,152 @@
+package usecases
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
+
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/internal/session/db_memory"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
+	totpmemory "github.com/ambi/idmagic/backend/authentication/internal/totp/db_memory"
+	totpusecases "github.com/ambi/idmagic/backend/authentication/internal/totp/usecases"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
+
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
+	"github.com/ambi/idmagic/backend/shared/spec"
+)
+
+func TestAvailableStepUpMethods(t *testing.T) {
+	t.Parallel()
+	if got := AvailableStepUpMethods(&userdomain.User{}); len(got) != 1 || got[0] != StepUpMethodPassword {
+		t.Fatalf("no MFA: got %v", got)
+	}
+	got := AvailableStepUpMethods(&userdomain.User{MfaEnrolled: true})
+	if len(got) != 2 || got[1] != StepUpMethodTOTP {
+		t.Fatalf("MFA enrolled: got %v", got)
+	}
+}
+
+func newStepUpFixture(t *testing.T, now time.Time) (StepUpDeps, *sessionusecases.SessionManager, *[]spec.DomainEvent) {
+	t.Helper()
+	ctx := testing_tenant.Default(context.Background())
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	hasher := testing_passwords.NewHasher()
+	hash, err := hasher.Hash("demo-password-1234")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := userRepo.Save(ctx, &userdomain.User{
+		ID: "user-1", PreferredUsername: "alice", PasswordHash: hash, MfaEnrolled: true,
+		CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	secret, err := totpusecases.GenerateTOTPSecret()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mfaRepo := totpmemory.NewMfaFactorRepository()
+	if err := mfaRepo.Save(ctx, &totpdomain.MfaFactor{
+		UserID: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: now.Add(-time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var events []spec.DomainEvent
+	// in-memory SessionStore は既定で実時計により期限切れ判定するため、固定 now の
+	// テストでセッションが失効しないよう時計を now に固定する。
+	sessionStore := sessionmemory.NewSessionStore()
+	sessionStore.Clock = func() time.Time { return now }
+	sm := sessionusecases.NewSessionManager(sessionStore)
+	deps := StepUpDeps{
+		UserRepo: userRepo, PasswordHasher: hasher, MfaFactorRepo: mfaRepo, SessionManager: sm,
+		Emit: func(e spec.DomainEvent) { events = append(events, e) },
+	}
+	return deps, sm, &events
+}
+
+func TestCompleteStepUpPasswordRecordsAndEmits(t *testing.T) {
+	t.Parallel()
+	ctx := testing_tenant.Default(context.Background())
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	deps, sm, events := newStepUpFixture(t, now)
+	authn, err := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-30*time.Minute), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := CompleteStepUp(ctx, deps, CompleteStepUpInput{
+		Sub: "user-1", SessionID: authn.SessionID, Method: StepUpMethodPassword,
+		Password: "demo-password-1234", Now: now,
+	}); err != nil {
+		t.Fatalf("complete step-up: %v", err)
+	}
+	sess, _ := sm.Store.Find(ctx, authn.SessionID)
+	if sess.StepUpAt != now.Unix() {
+		t.Fatalf("step_up_at=%d, want %d", sess.StepUpAt, now.Unix())
+	}
+	// 刻んだ後は recency 窓内なので gate を通過する。
+	if !mfadomain.StepUpSatisfied(&authdomain.AuthenticationContext{AuthTime: authn.AuthTime, StepUpAt: sess.StepUpAt}, now) {
+		t.Fatal("expected step-up to satisfy gate after completion")
+	}
+	if len(*events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(*events))
+	}
+	completed, ok := (*events)[0].(*authdomain.StepUpCompleted)
+	if !ok || completed.Method != "password" || completed.UserID != "user-1" {
+		t.Fatalf("unexpected event %#v", (*events)[0])
+	}
+}
+
+func TestCompleteStepUpWrongPasswordFails(t *testing.T) {
+	t.Parallel()
+	ctx := testing_tenant.Default(context.Background())
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	deps, sm, _ := newStepUpFixture(t, now)
+	authn, _ := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-30*time.Minute), false)
+
+	err := CompleteStepUp(ctx, deps, CompleteStepUpInput{
+		Sub: "user-1", SessionID: authn.SessionID, Method: StepUpMethodPassword,
+		Password: "wrong-password", Now: now,
+	})
+	if !errors.Is(err, ErrStepUpFailed) {
+		t.Fatalf("err=%v, want ErrStepUpFailed", err)
+	}
+	sess, _ := sm.Store.Find(ctx, authn.SessionID)
+	if sess.StepUpAt != 0 {
+		t.Fatal("step_up_at must stay unset on failure")
+	}
+}
+
+func TestCompleteStepUpTOTPSucceeds(t *testing.T) {
+	t.Parallel()
+	ctx := testing_tenant.Default(context.Background())
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	deps, sm, _ := newStepUpFixture(t, now)
+	authn, _ := sm.CreateWithPending(ctx, "user-1", []string{"pwd"}, now.Add(-30*time.Minute), false)
+
+	factor, err := deps.MfaFactorRepo.Find(ctx, "user-1", spec.MfaFactorTOTP)
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, err := totpusecases.GenerateTOTP(*factor.Secret, now.Unix())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := CompleteStepUp(ctx, deps, CompleteStepUpInput{
+		Sub: "user-1", SessionID: authn.SessionID, Method: StepUpMethodTOTP, Code: code, Now: now,
+	}); err != nil {
+		t.Fatalf("complete TOTP step-up: %v", err)
+	}
+	sess, _ := sm.Store.Find(ctx, authn.SessionID)
+	if sess.StepUpAt != now.Unix() {
+		t.Fatal("expected step_up_at recorded for TOTP")
+	}
+}

@@ -1,0 +1,462 @@
+package handlers_http
+
+import (
+	"errors"
+	"net/http"
+	"slices"
+	"strings"
+	"sync"
+	"time"
+
+	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
+
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/internal/user/usecases"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+
+	"github.com/labstack/echo/v5"
+)
+
+const (
+	listAdminUsersQuery        = "ListAdminUsers"
+	listAdminUsersDefaultLimit = support.DefaultPageLimit
+	listAdminUsersMaxLimit     = support.MaxPageLimit
+)
+
+type adminUserCreateRequest struct {
+	PreferredUsername string   `json:"preferred_username"`
+	Password          string   `json:"password"`
+	Name              *string  `json:"name"`
+	Email             *string  `json:"email"`
+	EmailVerified     bool     `json:"email_verified"`
+	Roles             []string `json:"roles"`
+}
+
+type adminUserUpdateRequest struct {
+	PreferredUsername *string                               `json:"preferred_username"`
+	Name              *string                               `json:"name"`
+	GivenName         *string                               `json:"given_name"`
+	FamilyName        *string                               `json:"family_name"`
+	Email             *string                               `json:"email"`
+	EmailVerified     *bool                                 `json:"email_verified"`
+	Roles             *[]string                             `json:"roles"`
+	Attributes        *map[string]userdomain.AttributeValue `json:"attributes"`
+}
+
+type adminUserDeleteRequest struct {
+	Reason string `json:"reason"`
+	// Force が true のとき soft-delete をスキップして即時完全削除 (purge) する。
+	// クエリ ?purge=true と同義。
+	Force bool `json:"force"`
+}
+
+type adminUserResponse struct {
+	ID                string                               `json:"id"`
+	PreferredUsername string                               `json:"preferred_username"`
+	Name              *string                              `json:"name,omitempty"`
+	GivenName         *string                              `json:"given_name,omitempty"`
+	FamilyName        *string                              `json:"family_name,omitempty"`
+	Email             *string                              `json:"email,omitempty"`
+	EmailVerified     bool                                 `json:"email_verified"`
+	MfaEnrolled       bool                                 `json:"mfa_enrolled"`
+	Roles             []string                             `json:"roles"`
+	Status            idmdomain.UserStatus                 `json:"status"`
+	Attributes        map[string]userdomain.AttributeValue `json:"attributes,omitempty"`
+	RequiredActions   []idmdomain.RequiredAction           `json:"required_actions,omitempty"`
+	LastLoginAt       *time.Time                           `json:"last_login_at,omitempty"`
+	PasswordChangedAt *time.Time                           `json:"password_changed_at,omitempty"`
+	// DisabledAt は status から導出した後方互換フィールド (現行 UI 用)。
+	DisabledAt *time.Time `json:"disabled_at,omitempty"`
+	// PendingDeletionAt は status == PendingDeletion のとき soft-delete された時刻
+	// (status_changed_at)。PurgeAfter は自動 purge される時刻 (soft-delete + 猶予期間)。
+	// UI が猶予残日数を表示するために使う。
+	PendingDeletionAt *time.Time `json:"pending_deletion_at,omitempty"`
+	PurgeAfter        *time.Time `json:"purge_after,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
+	ScimSource        *string    `json:"scim_source,omitempty"`
+}
+
+type adminRequiredActionRequest struct {
+	Action string `json:"action"`
+}
+
+func HandleListAdminUsers(d Deps, c *echo.Context) error {
+	if _, err := d.RequireAdmin(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	tenantID := support.RequestTenantID(c)
+	query := strings.TrimSpace(c.QueryParam("query"))
+	var status *idmdomain.UserStatus
+	if rawStatus := strings.TrimSpace(c.QueryParam("status")); rawStatus != "" {
+		parsed := idmdomain.UserStatus(rawStatus)
+		if !parsed.Valid() {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "status is invalid")
+		}
+		status = &parsed
+	}
+	queryHash := listAdminUsersQuery + ";query=" + strings.ToLower(query) + ";status=" + c.QueryParam("status")
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, queryHash, listAdminUsersDefaultLimit, listAdminUsersMaxLimit)
+	if err != nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	ctx := c.Request().Context()
+	var users []*userdomain.User
+	var pageErr, filteredCountErr, totalCountErr error
+	var totalItems, totalUsers int64
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		if page.Direction == support.PageBackward {
+			users, pageErr = d.UserRepo.ListPageBeforeFiltered(ctx, tenantID, query, status, page.AfterPrimary, page.AfterID, page.Limit+1)
+		} else {
+			users, pageErr = d.UserRepo.ListPageFiltered(ctx, tenantID, query, status, page.AfterPrimary, page.AfterID, page.Limit+1)
+		}
+	})
+	wg.Go(func() {
+		totalItems, filteredCountErr = d.UserRepo.CountFiltered(ctx, tenantID, query, status)
+	})
+	countsMatch := query == "" && status == nil
+	if !countsMatch {
+		wg.Go(func() {
+			totalUsers, totalCountErr = d.UserRepo.Count(ctx, tenantID)
+		})
+	}
+	wg.Wait()
+	if pageErr != nil {
+		return pageErr
+	}
+	if filteredCountErr != nil {
+		return filteredCountErr
+	}
+	if totalCountErr != nil {
+		return totalCountErr
+	}
+	if countsMatch {
+		totalUsers = totalItems
+	}
+	users, hasPrevious, hasNext := support.TrimPage(users, page)
+	if page.Anchor == support.PageAnchorEnd {
+		users = support.TrimEndPage(users, totalItems, page.Limit)
+	}
+	metadata := support.CalculatePaginationMetadata(totalItems, page)
+	support.SetPaginationHeaders(c, metadata)
+	response := make([]adminUserResponse, len(users))
+	for i, user := range users {
+		response[i] = toAdminUserResponse(user)
+	}
+	var firstPrimary, firstID, lastPrimary, lastID string
+	if len(users) > 0 {
+		first := users[0]
+		last := users[len(users)-1]
+		firstPrimary, firstID = first.PreferredUsername, first.ID
+		lastPrimary, lastID = last.PreferredUsername, last.ID
+	}
+	if err := support.SetPaginationLinks(c, d.PaginationCodec, d.Issuer, tenantID, queryHash, page,
+		firstPrimary, firstID, lastPrimary, lastID, hasPrevious, hasNext, metadata.TotalPages); err != nil {
+		return err
+	}
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"users": response, "total_users": totalUsers})
+}
+
+func HandleGetAdminUser(d Deps, c *echo.Context) error {
+	if _, err := d.RequireAdmin(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	user, err := d.UserRepo.FindBySub(c.Request().Context(), c.Param("sub"))
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
+	}
+	if user.TenantID != support.RequestTenantID(c) {
+		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
+	}
+	res := toAdminUserResponse(user)
+	if d.ScimRepo != nil {
+		ref, _ := d.ScimRepo.FindUserRefByUserID(c.Request().Context(), user.TenantID, user.ID)
+		if ref != nil {
+			src := "SCIM"
+			res.ScimSource = &src
+		}
+	}
+	return support.NoStoreJSON(c, http.StatusOK, res)
+}
+
+func HandleCreateAdminUser(d Deps, c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	var input adminUserCreateRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	}
+	ctx, cancel := d.OperationContext(c.Request().Context())
+	defer cancel()
+	user, err := userusecases.CreateUser(
+		ctx,
+		adminUserDeps(d),
+		userusecases.CreateUserInput{
+			ActorUserID: actor.ID, PreferredUsername: input.PreferredUsername,
+			Password: input.Password, Name: input.Name, Email: input.Email,
+			EmailVerified: input.EmailVerified, Roles: input.Roles, Now: time.Now().UTC(),
+		},
+	)
+	if err != nil {
+		return writeAdminUserError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusCreated, toAdminUserResponse(user))
+}
+
+func HandleUpdateAdminUser(d Deps, c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	var input adminUserUpdateRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	}
+	ctx, cancel := d.OperationContext(c.Request().Context())
+	defer cancel()
+	user, err := userusecases.UpdateUser(
+		ctx,
+		adminUserDeps(d),
+		userusecases.UpdateUserInput{
+			ActorUserID: actor.ID, Sub: c.Param("sub"),
+			PreferredUsername: input.PreferredUsername, Name: input.Name,
+			GivenName: input.GivenName, FamilyName: input.FamilyName, Email: input.Email,
+			EmailVerified: input.EmailVerified, Roles: input.Roles,
+			Attributes: input.Attributes, Now: time.Now().UTC(),
+		},
+	)
+	if err != nil {
+		return writeAdminUserError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, toAdminUserResponse(user))
+}
+
+func HandleDisableAdminUser(d Deps, c *echo.Context) error {
+	return handleSetAdminUserDisabled(d, c, true)
+}
+
+func HandleEnableAdminUser(d Deps, c *echo.Context) error {
+	return handleSetAdminUserDisabled(d, c, false)
+}
+
+func HandleDeleteAdminUser(d Deps, c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	var input adminUserDeleteRequest
+	if c.Request().ContentLength > 0 {
+		if err := support.DecodeJSON(c.Request(), &input); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		}
+	}
+	// 既定は soft-delete (削除予約)。?purge=true または body force=true で完全削除
+	// (anonymize cascade) に分岐する。
+	ctx, cancel := d.OperationContext(c.Request().Context())
+	defer cancel()
+	if c.QueryParam("purge") == "true" || input.Force {
+		err = userusecases.DeleteUser(ctx, adminUserDeps(d), userusecases.DeleteUserInput{
+			ActorUserID: actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
+		})
+	} else {
+		err = userusecases.SoftDeleteUser(ctx, adminUserDeps(d), userusecases.SoftDeleteUserInput{
+			ActorUserID: actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
+		})
+	}
+	if err != nil {
+		return writeAdminUserError(c, err)
+	}
+	c.Response().Header().Set("Cache-Control", "no-store")
+	return c.NoContent(http.StatusNoContent)
+}
+
+func HandleRestoreAdminUser(d Deps, c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	ctx, cancel := d.OperationContext(c.Request().Context())
+	defer cancel()
+	user, err := userusecases.RestoreUser(
+		ctx, adminUserDeps(d), actor.ID, c.Param("sub"), time.Now().UTC(),
+	)
+	if err != nil {
+		return writeAdminUserError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, toAdminUserResponse(user))
+}
+
+func handleSetAdminUserDisabled(d Deps, c *echo.Context, disabled bool) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	ctx, cancel := d.OperationContext(c.Request().Context())
+	defer cancel()
+	_, err = userusecases.SetUserDisabled(
+		ctx, adminUserDeps(d), actor.ID, c.Param("sub"), disabled, time.Now().UTC(),
+	)
+	if err != nil {
+		return writeAdminUserError(c, err)
+	}
+	c.Response().Header().Set("Cache-Control", "no-store")
+	return c.NoContent(http.StatusNoContent)
+}
+
+func adminUserDeps(d Deps) userusecases.AdminUserDeps {
+	deps := userusecases.AdminUserDeps{
+		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, AttrSchemaRepo: d.AttrSchemaRepo,
+		UserMutationCommitter: d.UserMutationCommitter,
+		ProvisioningNotifier:  d.ProvisioningNotifier,
+		AgentRepo:             d.AgentRepo,
+		ConsentRepo:           d.ConsentRepo, RefreshStore: d.RefreshStore,
+		DeviceCodeStore: d.DeviceCodeStore, ApprovalRequestStore: d.ApprovalRequestStore, MfaFactorRepo: d.MfaFactorRepo,
+		TrustedDeviceRepo:      d.TrustedDeviceRepo,
+		TrustedDevices:         d.TrustedDevices,
+		WebAuthnCredentialRepo: d.WebAuthnCredentialRepo, RecoveryCodeRepo: d.RecoveryCodeRepo,
+		PasswordHasher: d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
+		Emit: d.ReactiveEmit(), QuotaRepo: d.QuotaRepo, TenantRepo: d.TenantRepo,
+		SessionStore: d.SessionStore,
+	}
+	return deps
+}
+
+func writeAdminUserError(c *echo.Context, err error) error {
+	switch {
+	case errors.Is(err, idmusecases.ErrUserNotFound):
+		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
+	case errors.Is(err, userusecases.ErrUsernameConflict):
+		return support.WriteProblem(c, http.StatusConflict, "username_conflict", "The username is already in use.")
+	case errors.Is(err, userusecases.ErrEmailTaken):
+		return support.WriteProblem(c, http.StatusConflict, "email_taken", "This email address is already in use.")
+	case errors.Is(err, idmusecases.ErrReservedRole):
+		return support.WriteProblem(
+			c, http.StatusUnprocessableEntity, "invalid_role",
+			"The role system_admin is reserved for control plane users.",
+		)
+	case errors.Is(err, idmusecases.ErrInvalidRole):
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_role", "The role is invalid.")
+	case errors.Is(err, userusecases.ErrSelfDeleteForbidden):
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "self_delete_forbidden", "Administrators cannot delete themselves.")
+	case errors.Is(err, userusecases.ErrSelfDisableForbidden):
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "self_disable_forbidden", "Administrators cannot disable themselves.")
+	case errors.Is(err, userusecases.ErrUserPendingDeletion):
+		return support.WriteProblem(c, http.StatusConflict, "user_pending_deletion", "The user is scheduled for deletion; restore the user instead.")
+	case errors.Is(err, userusecases.ErrUserNotPendingDeletion):
+		return support.WriteProblem(c, http.StatusConflict, "not_pending_deletion", "The user is not scheduled for deletion.")
+	case errors.Is(err, userusecases.ErrRestoreGracePeriodExpired):
+		return support.WriteProblem(c, http.StatusConflict, "restore_grace_expired", "The restoration grace period has expired.")
+	case errors.Is(err, userusecases.ErrInvalidAttribute):
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_attribute", "The attribute does not conform to the schema.")
+	case errors.Is(err, userusecases.ErrInvalidRequiredAction):
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_required_action", "The required action is invalid.")
+	default:
+		if policyErr, ok := errors.AsType[*passworddomain.PasswordPolicyError](err); ok {
+			violations := make([]string, len(policyErr.Violations))
+			for i, violation := range policyErr.Violations {
+				violations[i] = string(violation)
+			}
+			return support.NoStoreJSON(c, http.StatusBadRequest, map[string]any{
+				"error": "password_policy", "message": "The password does not meet the security requirements.",
+				"violations": violations,
+			})
+		}
+		return err
+	}
+}
+
+func toAdminUserResponse(user *userdomain.User) adminUserResponse {
+	var disabledAt *time.Time
+	if user.Lifecycle.Status == idmdomain.UserStatusDisabled {
+		disabledAt = user.Lifecycle.StatusChangedAt
+	}
+	var pendingDeletionAt, purgeAfter *time.Time
+	if user.Lifecycle.EffectiveStatus() == idmdomain.UserStatusPendingDeletion {
+		pendingDeletionAt = user.Lifecycle.StatusChangedAt
+		if pendingDeletionAt != nil {
+			deadline := pendingDeletionAt.Add(userusecases.UserSoftDeleteGracePeriodSeconds * time.Second)
+			purgeAfter = &deadline
+		}
+	}
+	return adminUserResponse{
+		ID: user.ID, PreferredUsername: user.PreferredUsername, Name: user.Name,
+		GivenName: user.GivenName, FamilyName: user.FamilyName,
+		Email: user.Email, EmailVerified: user.EmailVerified, MfaEnrolled: user.MfaEnrolled,
+		Roles: slices.Clone(user.Roles), Status: user.Lifecycle.EffectiveStatus(),
+		Attributes:        user.Attributes,
+		RequiredActions:   slices.Clone(user.Lifecycle.RequiredActions),
+		LastLoginAt:       user.Lifecycle.LastLoginAt,
+		PasswordChangedAt: user.Lifecycle.PasswordChangedAt,
+		DisabledAt:        disabledAt,
+		PendingDeletionAt: pendingDeletionAt,
+		PurgeAfter:        purgeAfter,
+		CreatedAt:         user.CreatedAt, UpdatedAt: user.UpdatedAt,
+	}
+}
+
+func HandleSetUserRequiredAction(d Deps, c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	var input adminRequiredActionRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	}
+	ctx, cancel := d.OperationContext(c.Request().Context())
+	defer cancel()
+	user, err := userusecases.SetUserRequiredAction(
+		ctx, adminUserDeps(d), actor.ID, c.Param("sub"),
+		idmdomain.RequiredAction(input.Action), time.Now().UTC(),
+	)
+	if err != nil {
+		return writeAdminUserError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, toAdminUserResponse(user))
+}
+
+func HandleClearUserRequiredAction(d Deps, c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	ctx, cancel := d.OperationContext(c.Request().Context())
+	defer cancel()
+	user, err := userusecases.ClearUserRequiredAction(
+		ctx, adminUserDeps(d), actor.ID, c.Param("sub"),
+		idmdomain.RequiredAction(c.Param("action")), time.Now().UTC(),
+	)
+	if err != nil {
+		return writeAdminUserError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, toAdminUserResponse(user))
+}

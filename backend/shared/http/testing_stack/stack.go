@@ -39,6 +39,10 @@ import (
 	"testing"
 	"time"
 
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/apitoken"
@@ -47,21 +51,16 @@ import (
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
+	appports "github.com/ambi/idmagic/backend/application/ports"
+	"github.com/ambi/idmagic/backend/authentication"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	consentmemory "github.com/ambi/idmagic/backend/oauth2/consent/db_memory"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/provisioning"
 
 	"github.com/ambi/idmagic/backend/saml"
@@ -182,37 +181,37 @@ type Stack struct {
 	Echo     *echo.Echo
 	Events   *EventLog
 	Tenants  tenantports.TenantRepository
-	Users    *usermemory.UserRepository
-	Groups   *groupmemory.GroupRepository
+	Users    userports.UserRepository
+	Groups   groupports.GroupRepository
 	KeyStore signingkeys.KeyStore
 	Signer   *tokensjose.JWTSigner
 
-	Clients                *oauth2memory.OAuth2ClientRepository
-	Consents               *consentmemory.ConsentRepository
-	AuthzDetailTypes       *oauth2memory.AuthorizationDetailTypeRepository
-	McpResourceServers     *oauth2memory.McpResourceServerRepository
-	Codes                  *oauth2memory.AuthorizationCodeStore
-	PAR                    *oauth2memory.PARStore
-	Refresh                *oauth2memory.RefreshTokenStore
+	Clients                oauthports.OAuth2ClientRepository
+	Consents               oauthports.ConsentRepository
+	AuthzDetailTypes       oauthports.AuthorizationDetailTypeRepository
+	McpResourceServers     oauthports.McpResourceServerRepository
+	Codes                  oauthports.AuthorizationCodeStore
+	PAR                    oauthports.PARStore
+	Refresh                oauthports.RefreshTokenStore
 	ApiTokens              apitokenports.Repository
-	Applications           *appmemory.ApplicationRepository
-	ApplicationAssignments *appmemory.ApplicationAssignmentRepository
-	ApplicationOrderings   *appmemory.ApplicationOrderingRepository
-	ApplicationCategories  *appmemory.ApplicationCategoryRepository
-	ApplicationIcons       *appmemory.ApplicationIconStore
+	Applications           appports.ApplicationRepository
+	ApplicationAssignments appports.AssignmentRepository
+	ApplicationOrderings   appports.ApplicationOrderingRepository
+	ApplicationCategories  appports.ApplicationCategoryRepository
+	ApplicationIcons       appports.ApplicationIconStore
 	Provisioning           provisioning.Module
 	// AppSignInPolicies と DefaultSignInPolicy は、サインインポリシーの具体例が
 	// 「保存されたか」を応答ではなく保存先で読み直せるように配る。
-	AppSignInPolicies   *appmemory.SignInPolicyRepository
-	DefaultSignInPolicy *appmemory.DefaultSignInPolicyRepository
+	AppSignInPolicies   appports.SignInPolicyRepository
+	DefaultSignInPolicy appports.DefaultSignInPolicyRepository
 	SamlSPs             saml.ServiceProviderRepository
 	WsFedRPs            *wsfedmemory.WsFedRelyingPartyRepository
-	Sessions            *sessionusecases.SessionManager
+	Sessions            *authentication.SessionManager
 	// SessionStore は Sessions の保管先。サインアウトの具体例は「サーバー側の
 	// セッションが失効したか」を言っていて、それは応答ではなくここにしか現れない。
-	SessionStore *sessionmemory.SessionStore
+	SessionStore sessionports.SessionStore
 	// Agents と RevocationEpochs は WithAgentRevocation が配る。
-	Agents           *agentmemory.AgentRepository
+	Agents           agentports.AgentRepository
 	RevocationEpochs sharedsignalsports.AgentRevocationEpochRepository
 
 	apiTokens *apitoken.Service
@@ -238,12 +237,12 @@ type builder struct {
 // 拒否が防いだ効果は resource ごとに読み直す必要がある。
 func WithOAuth2Clients() Option {
 	return func(b *builder) {
-		b.stack.Clients = oauth2memory.NewClientRepository()
-		b.stack.AuthzDetailTypes = oauth2memory.NewAuthorizationDetailTypeRepository()
-		b.stack.McpResourceServers = oauth2memory.NewMcpResourceServerRepository()
+		b.stack.Clients = oauth2.NewMemoryModule().ClientRepo
+		b.stack.AuthzDetailTypes = oauth2.NewMemoryModule().AuthzDetailTypeRepo
+		b.stack.McpResourceServers = oauth2.NewMemoryModule().McpResourceServerRepo
 		secretHash := oauthdomain.HashClientSecret(ResourceServerSecret)
 		for _, tenantID := range []string{tenancydomain.DefaultTenantID, OtherRealm} {
-			b.stack.Clients.Seed(&oauthdomain.OAuth2Client{
+			_ = b.stack.Clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 				TenantID: tenantID, ClientID: ResourceServerClientID, ClientSecretHash: &secretHash,
 				ClientType:              spec.ClientConfidential,
 				TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
@@ -266,15 +265,16 @@ func WithAuthorizationCodeFlow() Option {
 			WithOAuth2Clients()(b)
 		}
 		if b.stack.Consents == nil {
-			b.stack.Consents = consentmemory.NewConsentRepository()
+			b.stack.Consents = oauth2.NewMemoryModule().ConsentRepo
 			b.deps.OAuth2.ConsentRepo = b.stack.Consents
 		}
-		b.stack.Codes = oauth2memory.NewAuthorizationCodeStore()
-		b.stack.SessionStore = sessionmemory.NewSessionStore()
-		b.stack.Sessions = sessionusecases.NewSessionManager(b.stack.SessionStore)
-		b.deps.OAuth2.RequestStore = oauth2memory.NewAuthorizationRequestStore()
+		b.stack.Codes = oauth2.NewMemoryModule().CodeStore
+		authn := authentication.NewMemoryModule(b.stack.Users)
+		b.stack.SessionStore = authn.SessionStore
+		b.stack.Sessions = authn.NewSessionManager()
+		b.deps.OAuth2.RequestStore = oauth2.NewMemoryModule().RequestStore
 		b.deps.OAuth2.CodeStore = b.stack.Codes
-		b.stack.PAR = oauth2memory.NewPARStore()
+		b.stack.PAR = oauth2.NewMemoryModule().PARStore
 		b.deps.OAuth2.PARStore = b.stack.PAR
 		b.deps.SessionManager = b.stack.Sessions
 		b.deps.AuthnResolver = b.stack.Sessions
@@ -286,11 +286,11 @@ func WithAuthorizationCodeFlow() Option {
 // 失効リスト、DPoP のリプレイ記録である。署名鍵と署名器は基盤が常に持つ。
 func WithTokenIssuance() Option {
 	return func(b *builder) {
-		b.stack.Refresh = oauth2memory.NewRefreshTokenStore()
+		b.stack.Refresh = oauth2.NewMemoryModule().RefreshStore
 		b.deps.OAuth2.RefreshStore = b.stack.Refresh
-		b.deps.OAuth2.AccessTokenDenylist = oauth2memory.NewAccessTokenDenylist()
-		b.deps.OAuth2.DpopReplayStore = oauth2memory.NewDpopReplayStore()
-		b.deps.OAuth2.ClientAssertionReplayStore = oauth2memory.NewClientAssertionReplayStore()
+		b.deps.OAuth2.AccessTokenDenylist = oauth2.NewMemoryModule().AccessTokenDenylist
+		b.deps.OAuth2.DpopReplayStore = oauth2.NewMemoryModule().DpopReplayStore
+		b.deps.OAuth2.ClientAssertionReplayStore = oauth2.NewMemoryModule().ClientAssertionReplayStore
 	}
 }
 
@@ -310,7 +310,7 @@ func WithBrowserFlow() Option {
 		}
 		secretHash := oauthdomain.HashClientSecret(BrowserClientSecret)
 		for _, tenantID := range []string{tenancydomain.DefaultTenantID, OtherRealm} {
-			b.stack.Clients.Seed(&oauthdomain.OAuth2Client{
+			_ = b.stack.Clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 				TenantID: tenantID, ClientID: BrowserClientID, ClientSecretHash: &secretHash,
 				ClientType:   spec.ClientConfidential,
 				RedirectURIs: []string{BrowserRedirectURI},
@@ -338,7 +338,7 @@ func WithBrowserFlow() Option {
 			b.t.Fatalf("seed user %s: user=%v err=%v", UserID, user, err)
 		}
 		user.PasswordHash = hash
-		b.stack.Users.Seed(user)
+		_ = b.stack.Users.Save(context.Background(), user)
 	}
 }
 
@@ -350,7 +350,7 @@ func WithBrowserFlow() Option {
 // 通ることで示す。
 func WithLoginThrottle(accountFailures, ipFailures int) Option {
 	return func(b *builder) {
-		b.deps.Authentication.LoginAttemptThrottle = sessionmemory.NewLoginAttemptThrottle(
+		b.deps.Authentication.LoginAttemptThrottle = authentication.NewMemoryModule(b.stack.Users).NewLoginAttemptThrottle(
 			sessionports.LoginThrottleConfigs{
 				Account: sessionports.LoginThrottleConfig{
 					MaxFailures: accountFailures, WindowSeconds: 900, LockoutSeconds: 900,
@@ -422,7 +422,7 @@ func WithApiTokens() Option {
 func WithAccountApi() Option {
 	return func(b *builder) {
 		if b.stack.Consents == nil {
-			b.stack.Consents = consentmemory.NewConsentRepository()
+			b.stack.Consents = oauth2.NewMemoryModule().ConsentRepo
 			b.deps.OAuth2.ConsentRepo = b.stack.Consents
 		}
 	}
@@ -436,7 +436,7 @@ func WithAccountApi() Option {
 // 発行済みトークンを無効と判定する。エポックの保存先が nil だと反応器は何もしない。
 func WithAgentRevocation() Option {
 	return func(b *builder) {
-		b.stack.Agents = agentmemory.NewAgentRepository()
+		b.stack.Agents = idmanagement.NewMemoryModule().AgentRepo
 		b.stack.RevocationEpochs = sharedsignals.NewAgentRevocationEpochRepository()
 		b.deps.IdManagement.AgentRepo = b.stack.Agents
 		b.deps.SharedSignals = sharedsignals.Module{RevocationEpochRepo: b.stack.RevocationEpochs}
@@ -446,22 +446,15 @@ func WithAgentRevocation() Option {
 // WithApplicationApi は Application の admin / account API と、拒否後に読み直す保存先を配線する。
 func WithApplicationApi() Option {
 	return func(b *builder) {
-		b.stack.Applications = appmemory.NewApplicationRepository()
-		b.stack.ApplicationAssignments = appmemory.NewApplicationAssignmentRepository()
-		b.stack.ApplicationOrderings = appmemory.NewApplicationOrderingRepository()
-		b.stack.ApplicationCategories = appmemory.NewApplicationCategoryRepository()
-		b.stack.ApplicationIcons = appmemory.NewApplicationIconStore()
-		b.stack.AppSignInPolicies = appmemory.NewSignInPolicyRepository()
-		b.stack.DefaultSignInPolicy = appmemory.NewDefaultSignInPolicyRepository()
-		b.deps.Application = application.Module{
-			Repo:                    b.stack.Applications,
-			IconStore:               b.stack.ApplicationIcons,
-			AssignmentRepo:          b.stack.ApplicationAssignments,
-			OrderingRepo:            b.stack.ApplicationOrderings,
-			CategoryRepo:            b.stack.ApplicationCategories,
-			SignInPolicyRepo:        b.stack.AppSignInPolicies,
-			DefaultSignInPolicyRepo: b.stack.DefaultSignInPolicy,
-		}
+		module := application.NewMemoryModule()
+		b.stack.Applications = module.Repo
+		b.stack.ApplicationAssignments = module.AssignmentRepo
+		b.stack.ApplicationOrderings = module.OrderingRepo
+		b.stack.ApplicationCategories = module.CategoryRepo
+		b.stack.ApplicationIcons = module.IconStore
+		b.stack.AppSignInPolicies = module.SignInPolicyRepo
+		b.stack.DefaultSignInPolicy = module.DefaultSignInPolicyRepo
+		b.deps.Application = module
 	}
 }
 
@@ -534,20 +527,21 @@ func New(t *testing.T, options ...Option) *Stack {
 		}
 	}
 
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	idmModule := idmanagement.NewMemoryModule()
+	users := idmModule.UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: AdminUserID, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"},
 		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: created, UpdatedAt: created,
 	})
-	users.Seed(&userdomain.User{
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: UserID, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "user",
 		PasswordHash: "unused", Roles: []string{"user"},
 		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: created, UpdatedAt: created,
 	})
-	groups := groupmemory.NewGroupRepository()
+	groups := idmModule.GroupRepo
 
 	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
@@ -639,7 +633,7 @@ func (s *Stack) AdminSessionCookie(t *testing.T, realm string) *http.Cookie {
 	if realm != tenancydomain.DefaultRealm {
 		userID = AdminUserID + "@" + realm
 		now := time.Now().UTC()
-		s.Users.Seed(&userdomain.User{
+		_ = s.Users.Save(context.Background(), &userdomain.User{
 			ID: userID, TenantID: s.TenantID(t, realm), PreferredUsername: "admin",
 			PasswordHash: "unused", Roles: []string{"admin"},
 			Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
@@ -653,7 +647,7 @@ func (s *Stack) AdminSessionCookie(t *testing.T, realm string) *http.Cookie {
 	// 要求へ載せるときに送られるのは名前と値だけである。属性は製品が発行する
 	// セッション Cookie にそろえておく。
 	return &http.Cookie{
-		Name: sessionusecases.SessionCookie, Value: authn.SessionID,
+		Name: authentication.SessionCookie, Value: authn.SessionID,
 		Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode,
 	}
 }
@@ -975,7 +969,7 @@ func (b *Browser) SessionCookie(t *testing.T) string {
 		t.Fatal(err)
 	}
 	for _, cookie := range b.client.Jar.Cookies(base) {
-		if cookie.Name == sessionusecases.SessionCookie {
+		if cookie.Name == authentication.SessionCookie {
 			return cookie.Value
 		}
 	}

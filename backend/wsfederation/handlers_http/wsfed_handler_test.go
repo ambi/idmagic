@@ -18,15 +18,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2"
-	memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -110,7 +110,7 @@ func newServerWithSigner(t *testing.T, authn *authdomain.AuthenticationContext, 
 		},
 	})
 
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	hasher := testing_passwords.NewHasher()
 	passwordHash, err := hasher.Hash("correct-password")
 	if err != nil {
@@ -120,7 +120,7 @@ func newServerWithSigner(t *testing.T, authn *authdomain.AuthenticationContext, 
 	if err != nil {
 		t.Fatalf("hash sentinel: %v", err)
 	}
-	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice", PasswordHash: passwordHash})
+	_ = userRepo.Save(context.Background(), &userdomain.User{ID: "user-1", PreferredUsername: "alice", PasswordHash: passwordHash})
 
 	signer := devSigner(t)
 	deps := httpadapter.Deps{
@@ -131,7 +131,7 @@ func newServerWithSigner(t *testing.T, authn *authdomain.AuthenticationContext, 
 		UserRepo:             userRepo,
 		PasswordHasher:       hasher,
 		SentinelPasswordHash: sentinel,
-		OAuth2:               oauth2.Module{ClientAssertionReplayStore: memory.NewClientAssertionReplayStore()},
+		OAuth2:               oauth2.Module{ClientAssertionReplayStore: oauth2.NewMemoryModule().ClientAssertionReplayStore},
 		FederationSigner:     signer,
 		AuthnResolver:        stubResolver{ctx: authn},
 	}
@@ -820,9 +820,9 @@ func wsTrustRST(now time.Time, messageID, appliesTo string) string {
 
 func newAdminServer(t *testing.T) *echo.Echo {
 	t.Helper()
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	objectGUID := "6f9619ff-8b86-d011-b42d-00c04fc964ff"
-	userRepo.Seed(&userdomain.User{
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID:                "admin-1",
 		TenantID:          tenancydomain.DefaultTenantID,
 		PreferredUsername: "admin@contoso.com",

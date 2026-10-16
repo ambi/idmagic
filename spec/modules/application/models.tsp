@@ -42,7 +42,7 @@ enum ResponseType {
 }
 
 
-@doc("OAuth2 モジュールが所有する FAPI のセキュリティプロファイルを、公開契約として写したもの。送受信の値は IdMagic が定める（backend/oauth2/client/domain/client.go）。")
+@doc("OAuth2 モジュールが所有する FAPI のセキュリティプロファイルを、公開契約として写したもの。送受信の値は IdMagic が定める（backend/oauth2/internal/client/domain/client.go）。")
 enum FapiProfile {
   None: "none",
   Fapi2SecurityProfile: "fapi_2_security_profile",

@@ -1,12 +1,12 @@
 package ports
 
 import (
-	approvalports "github.com/ambi/idmagic/backend/oauth2/approval/ports"
-	authorizationports "github.com/ambi/idmagic/backend/oauth2/authorization/ports"
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
-	deviceports "github.com/ambi/idmagic/backend/oauth2/device/ports"
-	tokenports "github.com/ambi/idmagic/backend/oauth2/token/ports"
+	approvalports "github.com/ambi/idmagic/backend/oauth2/internal/approval/ports"
+	authorizationports "github.com/ambi/idmagic/backend/oauth2/internal/authorization/ports"
+	deviceports "github.com/ambi/idmagic/backend/oauth2/internal/device/ports"
+	tokenports "github.com/ambi/idmagic/backend/oauth2/internal/token/ports"
 )
 
 // Feature ports are re-exported while external composition roots migrate.

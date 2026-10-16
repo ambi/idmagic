@@ -5,21 +5,21 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/application/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 )
 
 //spec:covers REQ-APPLICATION-007: User は取得後の tenant_id を照合し、Group は tenant-scoped lookup を使って同一テナントの主体だけを公開する。
 func TestIDManagementSubjectDirectoryIsTenantScoped(t *testing.T) {
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{ID: "tenant-user", TenantID: "tenant-1", PreferredUsername: "tenant-user"})
-	users.Seed(&userdomain.User{ID: "foreign-user", TenantID: "tenant-2", PreferredUsername: "foreign-user"})
-	groups := groupmemory.NewGroupRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{ID: "tenant-user", TenantID: "tenant-1", PreferredUsername: "tenant-user"})
+	_ = users.Save(context.Background(), &userdomain.User{ID: "foreign-user", TenantID: "tenant-2", PreferredUsername: "foreign-user"})
+	groups := idmanagement.NewMemoryModule().GroupRepo
 	for _, group := range []*groupdomain.Group{
 		{ID: "tenant-group", TenantID: "tenant-1", Name: "Tenant Group"},
 		{ID: "foreign-group", TenantID: "tenant-2", Name: "Foreign Group"},

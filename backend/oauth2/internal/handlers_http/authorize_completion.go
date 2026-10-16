@@ -1,0 +1,196 @@
+package handlers_http
+
+import (
+	"context"
+	"errors"
+	"net/url"
+	"strings"
+	"time"
+
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	authorizationusecases "github.com/ambi/idmagic/backend/oauth2/internal/authorization/usecases"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+
+	"github.com/labstack/echo/v5"
+)
+
+// completeAfterAuthn は認証済みセッションから OAuth フローの続きを決める。同意が必要な
+// 場合は同意画面への遷移を、不要なら認可コード発行後のリダイレクトを返す。
+func (d Deps) completeAfterAuthn(
+	c *echo.Context,
+	req *oauthdomain.AuthorizationRequest,
+	client *oauthdomain.OAuth2Client,
+	authn *authdomain.AuthenticationContext,
+) (authorizationNext, error) {
+	prompt := oauthdomain.PromptTokens{}
+	if req.Prompt != nil {
+		prompt, _ = oauthdomain.ParsePromptTokens(*req.Prompt)
+	}
+	if authn.AuthenticationPending {
+		return authorizationNext{Path: d.SignIn.PendingPath(c, authn)}, nil
+	}
+	// first-party クライアント (IdP 自身の管理コンソール / アカウントポータル) は
+	// resource owner が IdP 利用者自身であるため consent をスキップする。
+	if d.ConsentRepo != nil && !client.FirstParty {
+		consent, _ := d.ConsentRepo.Find(
+			c.Request().Context(), support.RequestTenantID(c), authn.UserID, client.ClientID,
+		)
+		covered := consent != nil &&
+			consent.State == oauthdomain.ConsentGranted &&
+			consent.RevokedAt == nil &&
+			time.Now().Before(consent.ExpiresAt)
+		if covered {
+			for scope := range strings.FieldsSeq(req.Scope) {
+				if !containsString(consent.Scopes, scope) {
+					covered = false
+					break
+				}
+			}
+		}
+		if prompt.Consent {
+			covered = false
+		}
+		// RFC 9396 — 構造化された authorization_details は粗い scope 同意では代替できない。
+		// 明示同意を要求し、過去 scope 同意での自動スキップを許さない (fail-closed)。
+		if len(req.AuthorizationDetails) > 0 {
+			covered = false
+		}
+		if !covered {
+			if prompt.None {
+				return authorizationNext{RedirectTo: authorizationErrorURL(req, tenantports.Issuer(c.Request().Context(), d.Issuer), "consent_required", "Existing consent is required.")}, nil
+			}
+			ctx, cancel := d.OperationContext(c.Request().Context())
+			defer cancel()
+			if err := d.RequestStore.AttachAuthentication(
+				ctx, req.ID, authn.UserID, authn.AuthTime, authn.AMR, authn.ACR, authn.SessionID,
+			); err != nil {
+				return authorizationNext{}, err
+			}
+			req.UserID, req.AuthTime = &authn.UserID, &authn.AuthTime
+			return authorizationNext{Path: support.TenantRoute(c, "/consent")}, nil
+		}
+	}
+	ctx, cancel := d.OperationContext(c.Request().Context())
+	defer cancel()
+	redirectTo, err := d.issueCodeURL(ctx, c, req, authn, time.Unix(authn.AuthTime, 0))
+	return authorizationNext{RedirectTo: redirectTo}, err
+}
+
+// clientIsFirstParty は client_id が first-party クライアントかを返す。解決不能なら false
+// (fail-closed で割当ゲートを適用する)。
+func (d Deps) clientIsFirstParty(ctx context.Context, clientID string) bool {
+	if d.ClientRepo == nil {
+		return false
+	}
+	client, err := d.ClientRepo.FindByID(ctx, tenantports.TenantID(ctx), clientID)
+	return err == nil && client != nil && client.FirstParty
+}
+
+func (d Deps) issueCodeURL(
+	ctx context.Context,
+	c *echo.Context,
+	req *oauthdomain.AuthorizationRequest,
+	authn *authdomain.AuthenticationContext,
+	authTime time.Time,
+) (string, error) {
+	iss := tenantports.Issuer(ctx, d.Issuer)
+	tenantID := tenantports.TenantID(ctx)
+	// 割当ゲート (wi-69): client が Application binding に属する場合、未割当 subject には
+	// 認可コードを発行せず access_denied で RP へ返す (fail-closed, AssignmentGatesProtocol)。
+	// ただし first-party クライアント (IdP 自身の管理コンソール / アカウントポータル) は
+	// resource owner が IdP 利用者自身であり、アプリ割当でログインをゲートしない。
+	if !d.clientIsFirstParty(ctx, req.ClientID) {
+		decision, err := d.EvaluateApplicationAccess(
+			ctx, tenantID, appdomain.ApplicationProtocolOIDC, req.ClientID, authn.UserID, authn, d.ClientIP(c.Request()),
+		)
+		if err != nil {
+			return "", err
+		}
+		if decision.StepUpRequired {
+			if d.Emit != nil {
+				d.Emit(&appdomain.AppStepUpRequired{
+					At: time.Now().UTC(), TenantID: tenantID, ApplicationID: decision.ApplicationID,
+					Protocol: string(appdomain.ApplicationProtocolOIDC), Subject: authn.UserID,
+				})
+			}
+			if len(d.SignIn.SecondFactorMethods(c, authn.UserID)) > 0 {
+				pending, err := d.SignIn.RequireSecondFactor(ctx, c, authn.SessionID)
+				if err != nil {
+					return "", err
+				}
+				if pending == nil {
+					return authorizationErrorURL(req, iss, "login_required", "The existing session does not satisfy the authentication requirements."), nil
+				}
+				return support.TenantRoute(c, "/totp"), nil //nolint:contextcheck // Redirect URL is derived from the Echo request.
+			}
+			return authorizationErrorURL(req, iss, "access_denied", "The application's sign-in policy requirements were not met."), nil
+		}
+		if !decision.Allowed {
+			reason := decision.Reason
+			if reason == "" {
+				reason = "subject not assigned to application"
+			}
+			if d.Emit != nil && decision.ApplicationID != "" {
+				d.Emit(&appdomain.AppAccessDeniedByPolicy{
+					At: time.Now().UTC(), TenantID: tenantID, ApplicationID: decision.ApplicationID,
+					Protocol: string(appdomain.ApplicationProtocolOIDC), Subject: authn.UserID, Reason: reason,
+				})
+			}
+			return authorizationErrorURL(req, iss, "access_denied", "The user is not allowed to access this application."), nil
+		}
+	}
+	out, err := authorizationusecases.CompleteLogin(ctx, authorizationusecases.CompleteLoginDeps{
+		RequestStore: d.RequestStore,
+		CodeStore:    d.CodeStore,
+	}, authorizationusecases.CompleteLoginInput{
+		RequestID: req.ID,
+		Sub:       authn.UserID,
+		AuthTime:  authTime,
+		AMR:       authn.AMR,
+		ACR:       authn.ACR,
+		Sid:       authn.SessionID,
+	})
+	if err != nil {
+		if oauthErr, ok := errors.AsType[*authorizationusecases.OAuthError](err); ok {
+			return authorizationErrorURL(req, iss, oauthErr.Code, oauthErr.Description), nil
+		}
+		return "", err
+	}
+	if d.Emit != nil {
+		d.Emit(&oauthdomain.AuthorizationCodeIssued{
+			At: time.Now().UTC(), TenantID: tenantID, ClientID: req.ClientID, UserID: authn.UserID,
+			Scopes: out.Code.Scopes, CodeChallengeMethod: req.CodeChallengeMethod,
+		})
+	}
+	u, _ := url.Parse(out.Request.RedirectURI)
+	query := u.Query()
+	query.Set("code", out.Code.Code)
+	if out.Request.StateParam != nil {
+		query.Set("state", *out.Request.StateParam)
+	}
+	// RFC 9207 §2: Authorization Server Issuer Identification (mix-up 攻撃対策)。
+	query.Set("iss", iss)
+	u.RawQuery = query.Encode()
+	return u.String(), nil
+}
+
+func authorizationErrorURL(req *oauthdomain.AuthorizationRequest, iss, code, description string) string {
+	u, _ := url.Parse(req.RedirectURI)
+	query := u.Query()
+	query.Set("error", code)
+	if description != "" {
+		query.Set("error_description", description)
+	}
+	if req.StateParam != nil {
+		query.Set("state", *req.StateParam)
+	}
+	// RFC 9207 §2: error response も含めて iss を必須にする。
+	if iss != "" {
+		query.Set("iss", iss)
+	}
+	u.RawQuery = query.Encode()
+	return u.String()
+}

@@ -11,10 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -149,7 +150,7 @@ func wire(t *testing.T, event spec.DomainEvent) map[string]any {
 
 func (h *e2eHarness) createUser(username string) string {
 	h.t.Helper()
-	user, err := userusecases.CreateUser(testing_tenant.Default(context.Background()), h.adminUserDeps, userusecases.CreateUserInput{
+	user, err := h.adminUsers().CreateUser(testing_tenant.Default(context.Background()), idmanagement.CreateUserInput{
 		PreferredUsername: username, Password: "correct-horse-battery-staple-9", Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -347,7 +348,7 @@ func TestE2E_DisablingAUserSendsActiveFalseAndEmitsDeprovisioned(t *testing.T) {
 	remoteID := h.remoteUserID(userID)
 	run.events = nil
 
-	if _, err := userusecases.SetUserDisabled(testing_tenant.Default(context.Background()), h.adminUserDeps, "actor", userID, true, time.Now().UTC()); err != nil {
+	if _, err := h.adminUsers().SetUserDisabled(testing_tenant.Default(context.Background()), "actor", userID, true, time.Now().UTC()); err != nil {
 		t.Fatalf("SetUserDisabled() error = %v", err)
 	}
 	run.dispatch()
@@ -375,7 +376,7 @@ func (h *e2eHarness) useDeleteWithGracePeriod(days int) {
 
 func (h *e2eHarness) softDeleteUser(userID string, now time.Time) {
 	h.t.Helper()
-	if err := userusecases.SoftDeleteUser(testing_tenant.Default(context.Background()), h.adminUserDeps, userusecases.SoftDeleteUserInput{
+	if err := h.adminUsers().SoftDeleteUser(testing_tenant.Default(context.Background()), idmanagement.SoftDeleteUserInput{
 		ActorUserID: "actor", Sub: userID, Now: now,
 	}); err != nil {
 		h.t.Fatalf("SoftDeleteUser() error = %v", err)
@@ -444,7 +445,7 @@ func TestE2E_RestoreWithinTheGracePeriodCancelsTheDELETE(t *testing.T) {
 	deletedAt := time.Now().UTC()
 
 	h.softDeleteUser(userID, deletedAt)
-	if _, err := userusecases.RestoreUser(testing_tenant.Default(context.Background()), h.adminUserDeps, "actor", userID, deletedAt.Add(24*time.Hour)); err != nil {
+	if _, err := h.adminUsers().RestoreUser(testing_tenant.Default(context.Background()), "actor", userID, deletedAt.Add(24*time.Hour)); err != nil {
 		t.Fatalf("RestoreUser() error = %v", err)
 	}
 	run.drainAt(deletedAt.Add(8 * 24 * time.Hour))

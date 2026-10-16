@@ -1,0 +1,420 @@
+package handlers_http_test
+
+// 主要ユースケース追跡: REQ-PLATFORM-002、REQ-IDMANAGEMENT-011。
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/ambi/idmagic/backend/authentication"
+
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	agentmemory "github.com/ambi/idmagic/backend/idmanagement/internal/agent/db_memory"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/internal/group/db_memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/internal/user/db_memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+
+	"github.com/ambi/idmagic/backend/oauth2"
+
+	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
+	"github.com/labstack/echo/v5"
+)
+
+func TestAdminUserAPIRequiresAdminRole(t *testing.T) {
+	e, _ := newAdminUserHandler(t)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/users", http.NoBody)
+	request.Header.Set("X-Demo-Sub", "regular")
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestAdminUserAPIIsAvailableUnderAPIPath(t *testing.T) {
+	e, _ := newAdminUserHandler(t)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/users", http.NoBody)
+	request.Header.Set("X-Demo-Sub", "admin")
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestAdminUserAPICreatesAndDisablesUser(t *testing.T) {
+	e, repo := newAdminUserHandler(t)
+	csrf, cookie := adminCSRF(t, e)
+
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
+		"preferred_username": "bob",
+		"password":           "initial-password-9182",
+		"email":              "bob@example.com",
+		"roles":              []string{"support"},
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
+	}
+	if strings.Contains(create.Body.String(), "password") {
+		t.Fatalf("password material leaked in response: %s", create.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.ID == "" {
+		t.Fatal("created id is empty")
+	}
+
+	disable := adminJSONRequest(
+		t, e, http.MethodPost, "/api/admin/v1/users/"+created.ID+"/disable", csrf, cookie, nil,
+	)
+	if disable.Code != http.StatusNoContent {
+		t.Fatalf("disable status=%d body=%s", disable.Code, disable.Body.String())
+	}
+	user, err := repo.FindBySub(context.Background(), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user == nil || user.Lifecycle.Status != idmdomain.UserStatusDisabled {
+		t.Fatalf("disabled user=%+v", user)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/account", http.NoBody)
+	request.Header.Set("X-Demo-Sub", created.ID)
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("disabled session status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+//spec:covers REQ-IDMANAGEMENT-042: 管理 API の作成が、ほかの User と大文字と小文字だけが異なるメールアドレスを 409 と email_taken で拒否し、User を作らないこと。
+func TestCreateAdminUserRejectsAnEmailAnotherUserHas(t *testing.T) {
+	e, repo := newAdminUserHandler(t)
+	csrf, cookie := adminCSRF(t, e)
+	first := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
+		"preferred_username": "bob", "password": "initial-password-9182", "email": "bob@example.com",
+	})
+	if first.Code != http.StatusCreated {
+		t.Fatalf("first status=%d body=%s", first.Code, first.Body.String())
+	}
+	second := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
+		"preferred_username": "robert", "password": "initial-password-9182", "email": "Bob@Example.com",
+	})
+	if second.Code != http.StatusConflict || !strings.Contains(second.Body.String(), "urn:idmagic:error:email_taken") {
+		t.Fatalf("second status=%d body=%s, want 409 email_taken", second.Code, second.Body.String())
+	}
+	if user, _ := repo.FindByUsername(context.Background(), tenancydomain.DefaultTenantID, "robert"); user != nil {
+		t.Fatalf("拒否した作成が User を作った: %+v", user)
+	}
+}
+
+func TestAdminUserAPISetsAndClearsRequiredAction(t *testing.T) {
+	e, repo := newAdminUserHandler(t)
+	csrf, cookie := adminCSRF(t, e)
+
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
+		"preferred_username": "carol",
+		"password":           "initial-password-9182",
+		"email":              "carol@example.com",
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+
+	set := adminJSONRequest(t, e, http.MethodPost,
+		"/api/admin/v1/users/"+created.ID+"/required-actions", csrf, cookie,
+		map[string]any{"action": "update_password"})
+	if set.Code != http.StatusOK {
+		t.Fatalf("set status=%d body=%s", set.Code, set.Body.String())
+	}
+	var afterSet struct {
+		RequiredActions []string `json:"required_actions"`
+	}
+	if err := json.Unmarshal(set.Body.Bytes(), &afterSet); err != nil {
+		t.Fatal(err)
+	}
+	if len(afterSet.RequiredActions) != 1 || afterSet.RequiredActions[0] != "update_password" {
+		t.Fatalf("required_actions=%v, want [update_password]", afterSet.RequiredActions)
+	}
+	user, err := repo.FindBySub(context.Background(), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user == nil || len(user.Lifecycle.RequiredActions) != 1 {
+		t.Fatalf("persisted required actions=%+v", user)
+	}
+
+	bad := adminJSONRequest(t, e, http.MethodPost,
+		"/api/admin/v1/users/"+created.ID+"/required-actions", csrf, cookie,
+		map[string]any{"action": "teleport"})
+	if bad.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("invalid action status=%d body=%s", bad.Code, bad.Body.String())
+	}
+
+	cleared := adminJSONRequest(t, e, http.MethodDelete,
+		"/api/admin/v1/users/"+created.ID+"/required-actions/update_password", csrf, cookie, nil)
+	if cleared.Code != http.StatusOK {
+		t.Fatalf("clear status=%d body=%s", cleared.Code, cleared.Body.String())
+	}
+	user, err = repo.FindBySub(context.Background(), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user == nil || len(user.Lifecycle.RequiredActions) != 0 {
+		t.Fatalf("required actions not cleared: %+v", user)
+	}
+}
+
+func TestAdminUserAPIDeletesUserWithCascade(t *testing.T) {
+	e, repo := newAdminUserHandler(t)
+	csrf, cookie := adminCSRF(t, e)
+
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
+		"preferred_username": "alice",
+		"password":           "initial-password-9182",
+		"email":              "alice@example.com",
+		"roles":              []string{"support"},
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+
+	// purge=true で完全削除 (anonymize cascade) パスを検証する。既定 DELETE は
+	// soft-delete で、その挙動は TestAdminUserAPISoftDeletesAndRestores が検証する。
+	del := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/users/"+created.ID+"?purge=true", csrf, cookie,
+		map[string]any{"reason": "leaving company"})
+	if del.Code != http.StatusNoContent {
+		t.Fatalf("delete status=%d body=%s", del.Code, del.Body.String())
+	}
+
+	// Tombstone is invisible to FindBySub.
+	if user, _ := repo.FindBySub(context.Background(), created.ID); user != nil {
+		t.Fatalf("FindBySub returned deleted user: %+v", user)
+	}
+	tombstone, err := repo.FindBySubIncludingDeleted(context.Background(), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tombstone == nil || !tombstone.IsDeleted() {
+		t.Fatalf("tombstone not persisted: %+v", tombstone)
+	}
+	if tombstone.PreferredUsername != "deleted:"+created.ID || tombstone.Email != nil {
+		t.Fatalf("PII not anonymized: %+v", tombstone)
+	}
+
+	// Listing no longer shows the user.
+	list := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/users", http.NoBody)
+	list.Header.Set("X-Demo-Sub", "admin")
+	listResp := httptest.NewRecorder()
+	e.ServeHTTP(listResp, list)
+	if strings.Contains(listResp.Body.String(), created.ID) {
+		t.Fatalf("deleted user still listed: %s", listResp.Body.String())
+	}
+
+	// Idempotent.
+	again := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/users/"+created.ID+"?purge=true", csrf, cookie, nil)
+	if again.Code != http.StatusNoContent {
+		t.Fatalf("idempotent delete status=%d body=%s", again.Code, again.Body.String())
+	}
+}
+
+func TestAdminUserAPISoftDeletesAndRestores(t *testing.T) {
+	e, repo := newAdminUserHandler(t)
+	csrf, cookie := adminCSRF(t, e)
+
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
+		"preferred_username": "alice",
+		"password":           "initial-password-9182",
+		"email":              "alice@example.com",
+		"roles":              []string{"support"},
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+
+	// 既定 DELETE は soft-delete: PII は温存され status は pending_deletion。
+	del := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/users/"+created.ID, csrf, cookie,
+		map[string]any{"reason": "maybe leaving"})
+	if del.Code != http.StatusNoContent {
+		t.Fatalf("soft-delete status=%d body=%s", del.Code, del.Body.String())
+	}
+	user, _ := repo.FindBySub(context.Background(), created.ID)
+	if user == nil || !user.IsSoftDeleted() || user.Email == nil {
+		t.Fatalf("expected visible soft-deleted user with PII, got %+v", user)
+	}
+
+	// 復元: status は Active に戻り、PII は温存されたまま。
+	restore := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users/"+created.ID+"/restore", csrf, cookie, nil)
+	if restore.Code != http.StatusOK {
+		t.Fatalf("restore status=%d body=%s", restore.Code, restore.Body.String())
+	}
+	restored, _ := repo.FindBySub(context.Background(), created.ID)
+	if restored == nil || !restored.IsActive() || restored.Email == nil {
+		t.Fatalf("expected active restored user with PII, got %+v", restored)
+	}
+}
+
+func TestAdminUserAPIRejectsSelfDelete(t *testing.T) {
+	e, repo := newAdminUserHandler(t)
+	csrf, cookie := adminCSRF(t, e)
+	resp := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/users/admin", csrf, cookie, nil)
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	if !strings.Contains(resp.Body.String(), "urn:idmagic:error:self_delete_forbidden") {
+		t.Fatalf("unexpected body=%s", resp.Body.String())
+	}
+	admin, err := repo.FindBySubIncludingDeleted(context.Background(), "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if admin == nil || admin.IsDeleted() || admin.PreferredUsername != "admin" {
+		t.Fatalf("self-delete refusal changed the administrator: %+v", admin)
+	}
+}
+
+// newAdminUserHandler は本番と同じ httpadapter.Register で管理 API を組み立てる。
+// options は組み立ての直前に Deps へ手を入れる。cascade の到達先のように、既定の
+// 組み立てが持たない port を足すテストが使う。
+func newAdminUserHandler(
+	t *testing.T,
+	options ...func(*httpadapter.Deps),
+) (*echo.Echo, *usermemory.UserRepository) {
+	t.Helper()
+	repo := usermemory.NewUserRepository()
+	history := authentication.NewMemoryModule(nil).PasswordHistoryRepo
+	hasher := testing_passwords.NewHasher()
+	now := time.Now().UTC()
+	for _, user := range []*userdomain.User{
+		{
+			ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
+			Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
+		},
+		{
+			ID: "regular", PreferredUsername: "regular", PasswordHash: "unused",
+			CreatedAt: now, UpdatedAt: now,
+		},
+	} {
+		repo.Seed(user)
+	}
+	e := echo.New()
+	deps := httpadapter.Deps{
+		Issuer:          "http://idp.test",
+		PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")), UserRepo: repo, PasswordHasher: hasher,
+		PasswordHistoryRepo: history, AuthnResolver: authentication.DemoHeaderResolver{},
+		AgentRepo: agentmemory.NewAgentRepository(),
+		GroupRepo: groupmemory.NewGroupRepository(),
+		OAuth2: oauth2.Module{
+			ClientRepo:  oauth2.NewMemoryModule().ClientRepo,
+			ConsentRepo: oauth2.NewMemoryModule().ConsentRepo,
+		},
+		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(repo),
+		EmailSender:           mockEmailSender{},
+	}
+	for _, option := range options {
+		option(&deps)
+	}
+	httpadapter.Register(e, deps)
+	return e, repo
+}
+
+type mockEmailSender struct{}
+
+func (m mockEmailSender) SendEmail(ctx context.Context, message sharednotification.EmailMessage) bool {
+	return true
+}
+
+func adminCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/account", http.NoBody)
+	request.Header.Set("X-Demo-Sub", "admin")
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("account status=%d body=%s", response.Code, response.Body.String())
+	}
+	var body struct {
+		CSRFToken string `json:"csrf_token"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	cookies := response.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatal("csrf cookie missing")
+	}
+	if cookies[0].Path != "/realms/default" {
+		t.Fatalf("csrf cookie path=%q, want /realms/default", cookies[0].Path)
+	}
+	return body.CSRFToken, cookies[0]
+}
+
+func adminJSONRequest(
+	t *testing.T,
+	e *echo.Echo,
+	method, path, csrf string,
+	cookie *http.Cookie,
+	body any,
+) *httptest.ResponseRecorder {
+	t.Helper()
+	var payload []byte
+	if body != nil {
+		var err error
+		payload, err = json.Marshal(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	request := httptest.NewRequest(method, defaultRealmPath(path), bytes.NewReader(payload))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Origin", "http://idp.test")
+	request.Header.Set("X-Csrf-Token", csrf)
+	request.Header.Set("X-Demo-Sub", "admin")
+	request.AddCookie(cookie)
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	return response
+}
+
+// defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
+// bare path はどのテナントの正規ロケーションでもなくなったため、
+// テストのリクエスト先も /realms/default 配下でなければ 404 になる。
+func defaultRealmPath(path string) string {
+	if strings.HasPrefix(path, "/realms/") {
+		return path
+	}
+	return "/realms/default" + path
+}

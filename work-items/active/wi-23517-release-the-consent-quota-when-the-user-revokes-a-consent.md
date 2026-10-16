@@ -53,7 +53,7 @@ wi-13438 が公開する本人用の同意の操作は、OAuth2 のルートパ�
 ## 検証
 
 - `mise run check-spec`
-- `mise run test-go-package -- ./backend/authentication/handlers_http`
+- `mise run test-go-package -- ./backend/authentication/internal/handlers_http`
 
 ## リスク
 

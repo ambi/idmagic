@@ -3,6 +3,8 @@ package db_postgres
 import (
 	"testing"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/apitoken/internal/testing_contract"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
@@ -14,7 +16,7 @@ func TestPersistenceContract(t *testing.T) {
 		db := pgtest.Require(t)
 		tenantA := pgfixtures.SeedTenant(t, db)
 		tenantB := pgfixtures.SeedTenant(t, db)
-		user := pgfixtures.SeedUser(t, db, tenantA.ID)
+		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenantA.ID)
 		return testing_contract.Fixture{
 			Repository: &Repository{Pool: db}, TenantA: tenantA.ID, TenantB: tenantB.ID,
 			UserID: user.ID, Now: pgtest.Now(),

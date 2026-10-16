@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	consentdomain "github.com/ambi/idmagic/backend/oauth2/consent/domain"
+	consentdomain "github.com/ambi/idmagic/backend/oauth2/internal/consent/domain"
 )
 
 // ErrConsentNotFound は、操作の対象の同意が存在しないことを表す。

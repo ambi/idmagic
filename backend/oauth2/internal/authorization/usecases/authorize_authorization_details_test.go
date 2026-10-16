@@ -1,0 +1,102 @@
+package usecases
+
+import (
+	"context"
+	"encoding/json"
+	"testing"
+	"time"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
+
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
+
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+
+	"github.com/ambi/idmagic/backend/shared/spec"
+)
+
+func seedPaymentType(repo *oauth2memory.AuthorizationDetailTypeRepository) {
+	repo.Seed(&domain.AuthorizationDetailType{
+		TenantID: tenancydomain.DefaultTenantID, Type: "payment_initiation", State: domain.DetailTypeEnabled,
+		Schema: domain.AuthorizationDetailsSchema{Rules: []domain.AuthorizationDetailFieldRule{
+			{Name: "actions", Semantics: domain.DetailFieldSet, Required: true, Allowed: []string{"initiate", "status"}},
+			{Name: "instructedAmount", Semantics: domain.DetailFieldAtMost, Required: true},
+		}},
+		DisplayTemplate: "最大 {instructedAmount} まで", CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	})
+}
+
+func authorizeDepsWithTypes() AuthorizeDeps {
+	deps := newAuthorizeDeps(false)
+	types := oauth2memory.NewAuthorizationDetailTypeRepository()
+	seedPaymentType(types)
+	deps.AuthzDetailTypeRepo = types
+	return deps
+}
+
+func paymentDetail(amount float64, actions ...string) spec.AuthorizationDetail {
+	return spec.AuthorizationDetail{Type: "payment_initiation", Actions: actions, Fields: map[string]any{"instructedAmount": amount}}
+}
+
+func TestAuthorizeStoresValidAuthorizationDetails(t *testing.T) {
+	deps := authorizeDepsWithTypes()
+	in := validAuthorizeInput()
+	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{paymentDetail(100, "initiate")})
+	out, err := Authorize(testing_tenant.Default(context.Background()), deps, in)
+	if err != nil {
+		t.Fatalf("expected valid details accepted, got %v", err)
+	}
+	if len(out.Request.AuthorizationDetails) != 1 {
+		t.Fatalf("expected details stored on request, got %d", len(out.Request.AuthorizationDetails))
+	}
+}
+
+func TestAuthorizeRejectsUnregisteredDetailType(t *testing.T) {
+	deps := authorizeDepsWithTypes()
+	in := validAuthorizeInput()
+	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{{Type: "data_access"}})
+	if _, err := Authorize(testing_tenant.Default(context.Background()), deps, in); err == nil {
+		t.Fatal("expected rejection for unregistered type")
+	}
+}
+
+func TestAuthorizeRejectsSchemaViolation(t *testing.T) {
+	deps := authorizeDepsWithTypes()
+	in := validAuthorizeInput()
+	// instructedAmount (required) を欠く → fail-closed。
+	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{{Type: "payment_initiation", Actions: []string{"initiate"}}})
+	if _, err := Authorize(testing_tenant.Default(context.Background()), deps, in); err == nil {
+		t.Fatal("expected rejection for schema violation")
+	}
+}
+
+func TestAuthorizeRejectsDetailsWhenRegistryAbsent(t *testing.T) {
+	// レジストリ未配線で details を要求したら受理しない (fail-closed)。
+	deps := newAuthorizeDeps(false)
+	in := validAuthorizeInput()
+	in.AuthorizationDetailsRaw = rawDetails(t, []spec.AuthorizationDetail{paymentDetail(100, "initiate")})
+	if _, err := Authorize(testing_tenant.Default(context.Background()), deps, in); err == nil {
+		t.Fatal("expected rejection when registry is absent")
+	}
+}
+
+func TestParseAuthorizationDetailsRejectsMalformedJSON(t *testing.T) {
+	if _, err := ParseAuthorizationDetails("{not-an-array"); err == nil {
+		t.Fatal("expected malformed JSON rejection")
+	}
+	got, err := ParseAuthorizationDetails("")
+	if err != nil || got != nil {
+		t.Fatalf("expected empty input to yield nil, nil; got %v %v", got, err)
+	}
+}
+
+// rawDetails は details を /authorize が受け取る authorization_details の JSON にする。
+func rawDetails(t *testing.T, details []spec.AuthorizationDetail) string {
+	t.Helper()
+	raw, err := json.Marshal(details)
+	if err != nil {
+		t.Fatalf("json.Marshal(%v) error = %v", details, err)
+	}
+	return string(raw)
+}

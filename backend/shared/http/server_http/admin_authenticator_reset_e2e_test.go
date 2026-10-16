@@ -19,25 +19,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/authentication"
-	mfamemory "github.com/ambi/idmagic/backend/authentication/mfa/db_memory"
-	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
-	recoverymemory "github.com/ambi/idmagic/backend/authentication/recovery/db_memory"
 	recoverydomain "github.com/ambi/idmagic/backend/authentication/recovery/domain"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
-	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
-	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
 	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauth2domain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -83,20 +74,20 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 	ctx := context.Background()
 	now := time.Now().UTC()
 
-	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := usermemory.NewUserRepository()
-	mfaFactorRepo := totpmemory.NewMfaFactorRepository()
-	webAuthnCredentialRepo := webauthnmemory.NewWebAuthnCredentialRepository()
-	recoveryCodeRepo := recoverymemory.NewRecoveryCodeRepository()
-	mfaEnrollmentBypassRepo := mfamemory.NewMfaEnrollmentBypassRepository()
-	passwordHistoryRepo := passwordmemory.NewPasswordHistoryRepository()
-	requestStore := oauth2memory.NewAuthorizationRequestStore()
-	codeStore := oauth2memory.NewAuthorizationCodeStore()
-	defaultSignInPolicyRepo := appmemory.NewDefaultSignInPolicyRepository()
+	clientRepo := oauth2.NewMemoryModule().ClientRepo
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	mfaFactorRepo := authentication.NewMemoryModule(nil).MfaFactorRepo
+	webAuthnCredentialRepo := authentication.NewMemoryModule(nil).WebAuthnCredentialRepo
+	recoveryCodeRepo := authentication.NewMemoryModule(nil).RecoveryCodeRepo
+	mfaEnrollmentBypassRepo := authentication.NewMemoryModule(nil).MfaEnrollmentBypassRepo
+	passwordHistoryRepo := authentication.NewMemoryModule(nil).PasswordHistoryRepo
+	requestStore := oauth2.NewMemoryModule().RequestStore
+	codeStore := oauth2.NewMemoryModule().CodeStore
+	defaultSignInPolicyRepo := application.NewMemoryModule().DefaultSignInPolicyRepo
 	hasher := testing_passwords.NewHasher()
 
 	secretHash := oauth2domain.HashClientSecret(demoClientSecret)
-	clientRepo.Seed(&oauth2domain.OAuth2Client{
+	_ = clientRepo.Save(context.Background(), &oauth2domain.OAuth2Client{
 		ClientID: demoClientID, ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs:             []string{demoRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
@@ -113,7 +104,7 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 		t.Fatalf("hash alice password: %v", err)
 	}
 	aliceEmail := "alice@example.com"
-	userRepo.Seed(&userdomain.User{
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID: "user_alice", PreferredUsername: demoUsername, PasswordHash: aliceHash,
 		Email: &aliceEmail, EmailVerified: true, MfaEnrolled: true,
 		CreatedAt: now, UpdatedAt: now,
@@ -134,7 +125,7 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 	if err != nil {
 		t.Fatalf("hash bob password: %v", err)
 	}
-	userRepo.Seed(&userdomain.User{
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID: "user_bob", PreferredUsername: resetBobUsername, PasswordHash: bobHash,
 		MfaEnrolled: true, CreatedAt: now, UpdatedAt: now,
 	})
@@ -156,7 +147,7 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 	if err != nil {
 		t.Fatalf("hash admin password: %v", err)
 	}
-	userRepo.Seed(&userdomain.User{
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID: "user_admin", PreferredUsername: resetAdminUsername, PasswordHash: adminHash,
 		MfaEnrolled: true, Roles: []string{"admin"},
 		CreatedAt: now, UpdatedAt: now,
@@ -188,7 +179,7 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 		t.Fatalf("key store: %v", err)
 	}
 	tokenIssuer := tokensJOSE.NewJWTSigner("http://test", keyStore)
-	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
+	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
 	shuttingDown := &atomic.Bool{}
@@ -199,9 +190,9 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 		Emit:            func(event spec.DomainEvent) { *events = append(*events, event) },
 		StartupComplete: startupComplete, ShuttingDown: shuttingDown,
 		OAuth2: oauth2.Module{
-			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
-			RequestStore: requestStore, CodeStore: codeStore, PARStore: oauth2memory.NewPARStore(),
-			RefreshStore: oauth2memory.NewRefreshTokenStore(), DeviceCodeStore: oauth2memory.NewDeviceCodeStore(),
+			ClientRepo: clientRepo, ConsentRepo: oauth2.NewMemoryModule().ConsentRepo,
+			RequestStore: requestStore, CodeStore: codeStore, PARStore: oauth2.NewMemoryModule().PARStore,
+			RefreshStore: oauth2.NewMemoryModule().RefreshStore, DeviceCodeStore: oauth2.NewMemoryModule().DeviceCodeStore,
 		},
 		UserRepo:               userRepo,
 		MfaFactorRepo:          mfaFactorRepo,
@@ -239,7 +230,7 @@ func loginDirectAdmin(t *testing.T, srv *httptest.Server, username, password, to
 	if totpTransaction.Kind != "totp" {
 		t.Fatalf("kind=%q, want totp", totpTransaction.Kind)
 	}
-	code, err := totpusecases.GenerateTOTP(totpSecret, time.Now().UTC().Unix())
+	code, err := authentication.GenerateTOTP(totpSecret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatalf("generate totp: %v", err)
 	}
@@ -316,7 +307,7 @@ func TestAdminResetUserAuthenticatorsFullResetForcesReenrollment(t *testing.T) {
 	start := postJSON[struct {
 		Secret string `json:"secret"`
 	}](t, aliceClient, srv.URL+"/realms/default/api/auth/mfa/enrollment/totp/start", enrollmentTransaction.CSRFToken, map[string]string{})
-	code, err := totpusecases.GenerateTOTP(start.Secret, time.Now().UTC().Unix())
+	code, err := authentication.GenerateTOTP(start.Secret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,7 +362,7 @@ func TestAdminResetUserAuthenticatorsPartialResetKeepsLoginWorking(t *testing.T)
 	if totpTransaction.Kind != "totp" {
 		t.Fatalf("kind=%q, want totp", totpTransaction.Kind)
 	}
-	code, err := totpusecases.GenerateTOTP(totpTestSecret, time.Now().UTC().Unix())
+	code, err := authentication.GenerateTOTP(totpTestSecret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -405,7 +396,7 @@ func TestAdminResetUserAuthenticatorsRejectsNonAdmin(t *testing.T) {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
 	}](t, aliceClient, srv.URL+"/realms/default/api/auth/transaction?return_to="+returnTo)
-	code, err := totpusecases.GenerateTOTP(totpTestSecret, time.Now().UTC().Unix())
+	code, err := authentication.GenerateTOTP(totpTestSecret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -445,7 +436,7 @@ func assertAliceTOTPNotReset(t *testing.T, srv *httptest.Server) {
 	totpTransaction := getJSON[struct {
 		CSRFToken string `json:"csrf_token"`
 	}](t, client, srv.URL+"/realms/default/api/auth/transaction?return_to="+returnTo)
-	code, err := totpusecases.GenerateTOTP(totpTestSecret, time.Now().UTC().Unix())
+	code, err := authentication.GenerateTOTP(totpTestSecret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,236 @@
+package db_postgres_test
+
+import (
+	"context"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
+	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+)
+
+// TestPARStore は Pushed Authorization Request の単発消費 を検証する。
+func TestPARStore(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	other := seedTenant(t, db)
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	otherCtx := tenantports.WithTenant(context.Background(), other, "", "")
+	store := &oauth2postgres.PARStore{Pool: db}
+	now := pgtest.Now()
+
+	rec := &domain.PARRecord{
+		RequestURI: "urn:par:1", TenantID: tenant.ID, ClientID: "client-1",
+		Parameters: map[string]string{"scope": "openid"}, IssuedAt: now, ExpiresAt: now.Add(time.Minute),
+	}
+	if err := store.Save(ctx, rec); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	got, err := store.Find(ctx, "urn:par:1")
+	if err != nil || got == nil || got.Used || got.ClientID != "client-1" || got.Parameters["scope"] != "openid" {
+		t.Fatalf("find: %v %+v", err, got)
+	}
+	consumed, err := store.Consume(ctx, "urn:par:1")
+	if err != nil || consumed == nil || !consumed.Used {
+		t.Fatalf("consume: %v %+v (want used=true)", err, consumed)
+	}
+	if again, err := store.Consume(ctx, "urn:par:1"); err != nil || again != nil {
+		t.Fatalf("second consume=%+v err=%v (want nil)", again, err)
+	}
+	if got, err := store.Find(ctx, "urn:par:1"); err != nil || got == nil || !got.Used {
+		t.Fatalf("find after consume=%+v err=%v (want used=true overlay)", got, err)
+	}
+	expired := &domain.PARRecord{RequestURI: "urn:par:exp", TenantID: tenant.ID, ClientID: "c", IssuedAt: now, ExpiresAt: now.Add(-time.Second)}
+	if err := store.Save(ctx, expired); err != nil {
+		t.Fatalf("save expired: %v", err)
+	}
+	if c, err := store.Consume(ctx, "urn:par:exp"); err != nil || c != nil {
+		t.Fatalf("expired consume=%+v err=%v (want nil)", c, err)
+	}
+	if got, err := store.Find(otherCtx, "urn:par:1"); err != nil || got != nil {
+		t.Fatalf("cross-tenant find=%+v err=%v (want nil)", got, err)
+	}
+	if n, err := store.DeleteExpiredBatch(ctx, now, 100); err != nil || n < 1 {
+		t.Fatalf("gc n=%d err=%v (want >=1)", n, err)
+	}
+}
+
+// REQ-OAUTH2-041/042: PostgreSQL serializes poll bookkeeping, decisions, and one-time consumption.
+func TestApprovalRequestStore(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	other := seedTenant(t, db)
+	user := seedUser(t, db, tenant.ID)
+	client := seedClient(t, db, tenant.ID)
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	otherCtx := tenantports.WithTenant(context.Background(), other, "", "")
+	store := &oauth2postgres.ApprovalRequestStore{Pool: db}
+	now := pgtest.Now()
+	rec := &approvaldomain.ApprovalRequest{
+		ID: newUUID(t), TenantID: tenant.ID, ClientID: client.ClientID, UserID: user.ID,
+		Scopes: []string{"openid"}, State: spec.ApprovalPending,
+		AuthReqIDHash: approvaldomain.HashAuthReqID("auth-request-secret"), IntervalSeconds: 5,
+		RequestedAt: now, ExpiresAt: now.Add(time.Minute),
+	}
+	if err := store.Save(ctx, rec); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if got, err := store.FindByID(otherCtx, rec.ID); err != nil || got != nil {
+		t.Fatalf("cross-tenant find = %+v, err = %v", got, err)
+	}
+	if _, tooFast, err := store.RecordPoll(ctx, rec.AuthReqIDHash, now); err != nil || tooFast {
+		t.Fatalf("first poll tooFast = %v, err = %v", tooFast, err)
+	}
+	polled, tooFast, err := store.RecordPoll(ctx, rec.AuthReqIDHash, now.Add(time.Second))
+	if err != nil || !tooFast || polled.IntervalSeconds != 10 {
+		t.Fatalf("fast poll = %+v, tooFast = %v, err = %v", polled, tooFast, err)
+	}
+	decided, err := store.Decide(ctx, rec.ID, user.ID, spec.ApprovalEventApprove, now.Add(2*time.Second))
+	if err != nil || decided == nil || decided.State != spec.ApprovalApproved || decided.DecidedAt == nil {
+		t.Fatalf("decide = %+v, err = %v", decided, err)
+	}
+	stored, err := store.FindByID(ctx, rec.ID)
+	if err != nil || stored.DecidedAt == nil {
+		t.Fatalf("persisted decision = %+v, err = %v", stored, err)
+	}
+
+	var wg sync.WaitGroup
+	results := make(chan *approvaldomain.ApprovalRequest, 2)
+	for range 2 {
+		wg.Go(func() {
+			consumed, consumeErr := store.Consume(ctx, rec.AuthReqIDHash, now.Add(3*time.Second))
+			if consumeErr != nil {
+				t.Errorf("consume: %v", consumeErr)
+			}
+			results <- consumed
+		})
+	}
+	wg.Wait()
+	close(results)
+	successes := 0
+	for consumed := range results {
+		if consumed != nil {
+			successes++
+			if consumed.ConsumedAt == nil {
+				t.Error("successful consume did not persist consumed_at")
+			}
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("successful consumes = %d, want 1", successes)
+	}
+}
+
+// TestAuthorizationCodeStore は認可コードの単発 redeem を検証する。
+func TestAuthorizationCodeStore(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	store := &oauth2postgres.AuthorizationCodeStore{Pool: db}
+	now := pgtest.Now()
+
+	rec := &domain.AuthorizationCodeRecord{
+		Code: "code-1", TenantID: tenant.ID, ClientID: "client-1", UserID: "user-1",
+		Scopes: []string{"openid"}, RedirectURI: "https://c/cb", State: spec.AuthCodeRecordIssued,
+		AuthTime: now.Unix(), IssuedAt: now, ExpiresAt: now.Add(time.Minute),
+	}
+	if err := store.Save(ctx, rec); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if got, err := store.Find(ctx, "code-1"); err != nil || got == nil || got.State != spec.AuthCodeRecordIssued {
+		t.Fatalf("find: %v %+v", err, got)
+	}
+	redeemed, err := store.Redeem(ctx, "code-1", now)
+	if err != nil || redeemed == nil || redeemed.State != spec.AuthCodeRecordRedeemed || redeemed.RedeemedAt == nil {
+		t.Fatalf("redeem: %v %+v (want redeemed + redeemed_at)", err, redeemed)
+	}
+	if again, err := store.Redeem(ctx, "code-1", now); err != nil || again != nil {
+		t.Fatalf("second redeem=%+v err=%v (want nil, replay)", again, err)
+	}
+	if got, err := store.Find(ctx, "code-1"); err != nil || got == nil || got.State != spec.AuthCodeRecordRedeemed {
+		t.Fatalf("find after redeem=%+v err=%v (want redeemed overlay)", got, err)
+	}
+	if err := store.LinkFamily(ctx, "code-1", "fam-1"); err != nil {
+		t.Fatalf("link family: %v", err)
+	}
+	if got, err := store.Find(ctx, "code-1"); err != nil || got == nil || got.IssuedFamilyID == nil || *got.IssuedFamilyID != "fam-1" {
+		t.Fatalf("find after link=%+v err=%v (want fam-1)", got, err)
+	}
+	if err := store.LinkFamily(ctx, "missing", "fam-x"); err == nil {
+		t.Fatal("link family on missing code: want error")
+	}
+
+	// state='issued' の行だけが expired へ遷移する CAS (wi-566, EX-OAUTH2-005-08)。
+	if again, err := store.MarkExpired(ctx, "code-1"); err != nil || again != nil {
+		t.Fatalf("mark expired on redeemed code=%+v err=%v (want nil, not issued)", again, err)
+	}
+	issued := &domain.AuthorizationCodeRecord{
+		Code: "code-2", TenantID: tenant.ID, ClientID: "client-1", UserID: "user-1",
+		Scopes: []string{"openid"}, RedirectURI: "https://c/cb", State: spec.AuthCodeRecordIssued,
+		AuthTime: now.Unix(), IssuedAt: now, ExpiresAt: now.Add(-time.Second),
+	}
+	if err := store.Save(ctx, issued); err != nil {
+		t.Fatalf("save issued: %v", err)
+	}
+	expired, err := store.MarkExpired(ctx, "code-2")
+	if err != nil || expired == nil || expired.State != spec.AuthCodeRecordExpired {
+		t.Fatalf("mark expired: %v %+v (want expired)", err, expired)
+	}
+	if got, err := store.Find(ctx, "code-2"); err != nil || got == nil || got.State != spec.AuthCodeRecordExpired {
+		t.Fatalf("find after mark expired=%+v err=%v (want expired overlay)", got, err)
+	}
+	if again, err := store.MarkExpired(ctx, "code-2"); err != nil || again != nil {
+		t.Fatalf("second mark expired=%+v err=%v (want nil, already expired)", again, err)
+	}
+}
+
+// TestDeviceCodeStore は RFC 8628 device flow の状態遷移 を検証する。
+func TestDeviceCodeStore(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	user := seedUser(t, db, tenant.ID)
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	store := &oauth2postgres.DeviceCodeStore{Pool: db}
+	now := pgtest.Now()
+
+	rec := &domain.DeviceAuthorization{
+		DeviceCodeHash: "hash-1", TenantID: tenant.ID, UserCode: "USER-CODE-1", ClientID: "client-1",
+		Scopes: []string{"openid"}, State: spec.DeviceFlowIssued, IntervalSeconds: 5,
+		IssuedAt: now, ExpiresAt: now.Add(time.Minute),
+	}
+	if err := store.Save(ctx, rec); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if got, err := store.FindByDeviceCodeHash(ctx, "hash-1"); err != nil || got == nil || got.State != spec.DeviceFlowIssued {
+		t.Fatalf("find by hash: %v %+v", err, got)
+	}
+	if got, err := store.FindByUserCode(ctx, "USER-CODE-1"); err != nil || got == nil || got.DeviceCodeHash != "hash-1" {
+		t.Fatalf("find by user code: %v %+v", err, got)
+	}
+	rec.State = spec.DeviceFlowApproved
+	rec.UserID = &user.ID
+	if err := store.Update(ctx, rec); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if got, err := store.FindByDeviceCodeHash(ctx, "hash-1"); err != nil || got == nil || got.State != spec.DeviceFlowApproved || got.UserID == nil || *got.UserID != user.ID {
+		t.Fatalf("find after approve=%+v err=%v (want approved + user)", got, err)
+	}
+	exchanged, err := store.Exchange(ctx, "hash-1")
+	if err != nil || exchanged == nil || exchanged.State != spec.DeviceFlowExchanged {
+		t.Fatalf("exchange: %v %+v (want exchanged)", err, exchanged)
+	}
+	if again, err := store.Exchange(ctx, "hash-1"); err != nil || again != nil {
+		t.Fatalf("second exchange=%+v err=%v (want nil)", again, err)
+	}
+	if err := store.DeleteAllForSub(ctx, user.ID); err != nil {
+		t.Fatalf("delete all for sub: %v", err)
+	}
+	if got, err := store.FindByDeviceCodeHash(ctx, "hash-1"); err != nil || got != nil {
+		t.Fatalf("find after delete=%+v err=%v (want nil)", got, err)
+	}
+}

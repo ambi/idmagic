@@ -6,15 +6,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 )
 
 func TestGetGroupAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
-	repo := groupmemory.NewTenantGroupAttributeSchemaRepository()
+	repo := idmanagement.NewMemoryModule().GroupAttrSchemaRepo
 	schema, err := GetGroupAttributeSchema(context.Background(), repo, domain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
@@ -25,7 +26,7 @@ func TestGetGroupAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
 }
 
 func TestUpdateGroupAttributeSchemaPersistsCustomDefs(t *testing.T) {
-	repo := groupmemory.NewTenantGroupAttributeSchemaRepository()
+	repo := idmanagement.NewMemoryModule().GroupAttrSchemaRepo
 	ctx := context.Background()
 	defs := []groupdomain.GroupAttributeDef{
 		{Key: "cost_center", Type: idmdomain.AttributeTypeString},
@@ -47,7 +48,7 @@ func TestUpdateGroupAttributeSchemaPersistsCustomDefs(t *testing.T) {
 }
 
 func TestUpdateGroupAttributeSchemaRejectsDuplicateKey(t *testing.T) {
-	repo := groupmemory.NewTenantGroupAttributeSchemaRepository()
+	repo := idmanagement.NewMemoryModule().GroupAttrSchemaRepo
 	defs := []groupdomain.GroupAttributeDef{
 		{Key: "cost_center", Type: idmdomain.AttributeTypeString},
 		{Key: "cost_center", Type: idmdomain.AttributeTypeNumber},
@@ -60,7 +61,7 @@ func TestUpdateGroupAttributeSchemaRejectsDuplicateKey(t *testing.T) {
 }
 
 func TestUpdateGroupAttributeSchemaAllowsEmptyClear(t *testing.T) {
-	repo := groupmemory.NewTenantGroupAttributeSchemaRepository()
+	repo := idmanagement.NewMemoryModule().GroupAttrSchemaRepo
 	ctx := context.Background()
 	if _, err := UpdateGroupAttributeSchema(ctx, repo, domain.DefaultTenantID,
 		[]groupdomain.GroupAttributeDef{{Key: "cost_center", Type: idmdomain.AttributeTypeString}},

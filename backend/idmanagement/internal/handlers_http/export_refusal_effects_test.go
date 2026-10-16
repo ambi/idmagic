@@ -1,0 +1,506 @@
+package handlers_http_test
+
+// CSV エクスポートが宣言する拒否について、応答と「拒否が生まなかった生成物」の
+// 両方を確かめる。組み立てとヘルパーは refusal_effects_test.go が持つ。
+//
+// エクスポートは非同期のジョブを伴うので、拒否は「ジョブを作らない」ことまで含む。
+// 応答だけを読むテストは、ジョブを作ってから後で失敗させる実装と区別できない。
+// 生成物が既にある場合の拒否は、CSV の中身が応答に出ないことまで読む。
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/internal/group/usecases"
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/internal/user/usecases"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+)
+
+// runExport は queued のエクスポートを worker と同じ手順で succeeded まで進める。
+// ダウンロードの経路を live worker なしで通すためのもので、拒否の判定には触れない。
+// 完了の時刻は、ジョブの作成と同じだけ jobClock が遡らせた時刻にする。
+func (f *idmRefusalFixture) runExport(t *testing.T, exportID string) {
+	t.Helper()
+	f.runExportCompletedAt(t, exportID, time.Now().UTC().Add(-f.jobClock.backdate))
+}
+
+// runExportCompletedAt は runExport と同じ手順で、completedAt の時刻にエクスポートを完了させる。
+func (f *idmRefusalFixture) runExportCompletedAt(t *testing.T, exportID string, completedAt time.Time) {
+	t.Helper()
+	ctx := context.Background()
+	job, err := f.jobs.Get(ctx, exportID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deps := idmusecases.DataExportDeps{
+		UserRepo: f.users, GroupRepo: f.groups, JobRepo: f.jobs, CSVArtifacts: f.artifacts,
+		// 生成の 3 段はどれもイベントとしてしか観測できない。ここを配線しないと、
+		// 「状態は変えるが記録を残さない」実装がそのまま通る。
+		Emit: func(event spec.DomainEvent) error { *f.events = append(*f.events, event); return nil },
+		UserCSVExporter: userusecases.UserCSVExporter{
+			Deps: userusecases.UserCSVExportDeps{
+				UserRepo: f.users, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: f.artifacts,
+			},
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
+		},
+		GroupCSVExporter: groupusecases.GroupCSVExporter{
+			Deps: groupusecases.GroupCSVExportDeps{
+				GroupRepo: f.groups, SchemaReader: groupusecases.TenantGroupCSVSchemaReader{}, Artifacts: f.artifacts,
+			},
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
+		},
+		GroupMembershipCSVExporter: groupusecases.GroupMembershipCSVExporter{
+			Deps: groupusecases.GroupMembershipCSVExportDeps{
+				GroupRepo: f.groups, UserRepo: f.users, Artifacts: f.artifacts,
+			},
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
+		},
+	}
+	raw, err := idmusecases.DataExportHandler(deps)(ctx, job)
+	if err != nil {
+		t.Fatalf("run export job: %v", err)
+	}
+	if _, err := f.jobs.ClaimBatch(ctx, "w1", jobsdomain.LaneBulk, 10, time.Minute, completedAt); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.jobs.Complete(ctx, exportID, "w1", raw, completedAt); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// failExport は生成を失敗させたうえで、worker と同じ手順で failed まで進める。
+// 失敗の作り方は転送ポリシーの上限で、生成器の内側には触れない。
+func (f *idmRefusalFixture) failExport(t *testing.T, exportID string, policy idmdomain.CSVTransferPolicy) {
+	t.Helper()
+	ctx := context.Background()
+	job, err := f.jobs.Get(ctx, exportID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deps := idmusecases.DataExportDeps{
+		UserRepo: f.users, GroupRepo: f.groups, JobRepo: f.jobs, CSVArtifacts: f.artifacts,
+		Emit: func(event spec.DomainEvent) error { *f.events = append(*f.events, event); return nil },
+		UserCSVExporter: userusecases.UserCSVExporter{
+			Deps: userusecases.UserCSVExportDeps{
+				UserRepo: f.users, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: f.artifacts,
+			},
+			Policy: policy,
+		},
+	}
+	if _, err := idmusecases.DataExportHandler(deps)(ctx, job); err == nil {
+		t.Fatalf("前提が壊れている: 生成が成功した")
+	}
+	if _, err := f.jobs.ClaimBatch(ctx, "w1", jobsdomain.LaneBulk, 10, time.Minute, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.jobs.Fail(ctx, exportID, "w1", jobsports.FailOutcome{
+		NextStatus: jobsdomain.StatusFailed, Error: "csv_transfer_limit_exceeded",
+	}, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// createManualGroup は管理 route を通して手動メンバーシップのグループを建て、id を返す。
+func (f *idmRefusalFixture) createManualGroup(t *testing.T, session, name string) string {
+	t.Helper()
+	response := f.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/groups", sessionID: session, csrf: idmRefusalCSRF,
+		body: map[string]any{"name": name},
+	})
+	if response.Code != http.StatusCreated {
+		t.Fatalf("グループの作成が status=%d body=%s", response.Code, response.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &created); err != nil || created.ID == "" {
+		t.Fatalf("グループ id を読めない: %s", response.Body.String())
+	}
+	return created.ID
+}
+
+// addGroupMember は管理 route を通してグループへ利用者を足す。
+func (f *idmRefusalFixture) addGroupMember(t *testing.T, session, groupID, userID string) {
+	t.Helper()
+	response := f.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/groups/" + groupID + "/members/" + userID,
+		sessionID: session, csrf: idmRefusalCSRF,
+	})
+	if response.Code != http.StatusNoContent && response.Code != http.StatusOK {
+		t.Fatalf("メンバーの追加が status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+// startedExportID は 202 で返ったエクスポートの id を取り出す。
+func startedExportID(t *testing.T, recorder *httptest.ResponseRecorder) string {
+	t.Helper()
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("前提が壊れている: エクスポートの開始が status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var started struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &started); err != nil || started.ID == "" {
+		t.Fatalf("エクスポート id を読めない: %s", recorder.Body.String())
+	}
+	return started.ID
+}
+
+// exportIDs は呼び出し元から見えるエクスポート一覧の id を返す。
+// 「ジョブが作られていない」を、保存層の内部表現ではなく読み取りモデルで読む。
+func (f *idmRefusalFixture) exportIDs(t *testing.T, session, path string) []string {
+	t.Helper()
+	listed := f.send(t, idmRefusalRequest{method: http.MethodGet, path: path, sessionID: session})
+	if listed.Code != http.StatusOK {
+		t.Fatalf("エクスポート一覧が status=%d body=%s", listed.Code, listed.Body.String())
+	}
+	var body struct {
+		Exports []struct {
+			ID string `json:"id"`
+		} `json:"exports"`
+	}
+	if err := json.Unmarshal(listed.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	ids := make([]string, 0, len(body.Exports))
+	for _, export := range body.Exports {
+		ids = append(ids, export.ID)
+	}
+	return ids
+}
+
+// 含むエクスポートの開始は `InvalidRequestError` (`invalid_columns`) で拒否され、
+// エクスポートは作成されず、ファイルも生まれない。
+//
+// この拒否が素通りすれば、パスワードハッシュがそのまま CSV で持ち出せる。
+// 応答だけを読むテストは、ジョブを作ってから生成時に落ちる実装を成功と区別できない。
+//
+//spec:covers EX-IDMANAGEMENT-006-02: `User` の許可一覧にないキー (`password_hash`) を選択列に
+func TestUserExportWithDisallowedColumnCreatesNoExport(t *testing.T) {
+	fixture := newIdmRefusalServer(t)
+	admin := fixture.seedSession(t, "sess-admin-columns", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+
+	refused := fixture.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/users/exports", sessionID: admin, csrf: idmRefusalCSRF,
+		body: map[string]any{"columns": []string{"preferred_username", "password_hash"}},
+	})
+	if refused.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status=%d body=%s, want 422", refused.Code, refused.Body.String())
+	}
+	if code := idmProblemCode(t, refused); code != "invalid_columns" {
+		t.Fatalf("error code=%q, want invalid_columns", code)
+	}
+
+	// 拒否が何も作っていないこと。読み取りモデルにも worker が掴める仕事にも現れない。
+	if ids := fixture.exportIDs(t, admin, "/api/admin/v1/users/exports"); len(ids) != 0 {
+		t.Fatalf("拒否されたのにエクスポートが %d 件ある: %v", len(ids), ids)
+	}
+	if claimed := fixture.runnableJobs(t); len(claimed) != 0 {
+		t.Fatalf("拒否されたのに %d 件のジョブが残った: %+v", len(claimed), claimed)
+	}
+
+	// 対照: 許可された列だけなら同じ要求が通り、エクスポートが 1 件できる。
+	control := newIdmRefusalServer(t)
+	controlAdmin := control.seedSession(t, "sess-admin-ok", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+	accepted := control.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/users/exports", sessionID: controlAdmin, csrf: idmRefusalCSRF,
+		body: map[string]any{"columns": []string{"preferred_username", "email"}},
+	})
+	if ids := control.exportIDs(t, controlAdmin, "/api/admin/v1/users/exports"); len(ids) != 1 ||
+		ids[0] != startedExportID(t, accepted) {
+		t.Fatalf("前提が壊れている: 許可された列でもエクスポートができない: %v", ids)
+	}
+}
+
+// `downloadable` は false、ダウンロードは拒否される。
+//
+// 「拒否が変えなかったもの」は CSV の中身である。期限切れを応答に書きながら本体を
+// 返す実装は、ステータスだけを読むテストでは成功と区別できない。
+//
+//spec:covers EX-IDMANAGEMENT-087-02: 保持期限を過ぎたエクスポートは `expired` となり
+func TestExpiredUserExportRefusesDownloadAndReturnsNoCSV(t *testing.T) {
+	fixture := newIdmRefusalServer(t)
+	admin := fixture.seedSession(t, "sess-admin-expiry", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+
+	// 保持期限より 1 日長く遡らせて始める。判定そのものには触れない。
+	fixture.jobClock.backdate = idmusecases.DataExportTTL + 24*time.Hour
+	exportID := startedExportID(t, fixture.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/users/exports", sessionID: admin, csrf: idmRefusalCSRF,
+		body: map[string]any{"columns": []string{"preferred_username", "email"}},
+	}))
+	fixture.runExport(t, exportID)
+
+	view := fixture.send(t, idmRefusalRequest{
+		method: http.MethodGet, path: "/api/admin/v1/users/exports/" + exportID, sessionID: admin,
+	})
+	if view.Code != http.StatusOK {
+		t.Fatalf("参照が status=%d body=%s", view.Code, view.Body.String())
+	}
+	var state struct {
+		Status       string `json:"status"`
+		Downloadable bool   `json:"downloadable"`
+	}
+	if err := json.Unmarshal(view.Body.Bytes(), &state); err != nil {
+		t.Fatal(err)
+	}
+	if state.Status != string(idmdomain.ExportStatusExpired) || state.Downloadable {
+		t.Fatalf("status=%q downloadable=%v, want expired / false", state.Status, state.Downloadable)
+	}
+
+	refused := fixture.send(t, idmRefusalRequest{
+		method: http.MethodGet, path: "/api/admin/v1/users/exports/" + exportID + "/file", sessionID: admin,
+	})
+	if refused.Code != http.StatusConflict {
+		t.Fatalf("ダウンロードが status=%d body=%s, want 409", refused.Code, refused.Body.String())
+	}
+	if code := idmProblemCode(t, refused); code != "data_export_not_downloadable" {
+		t.Fatalf("error code=%q, want data_export_not_downloadable", code)
+	}
+	// 拒否が本体を返していないこと。CSV に載る利用者名が応答に現れない。
+	if strings.Contains(refused.Body.String(), idmRefusalAlice) {
+		t.Fatalf("期限切れの拒否が CSV の中身を返した: %s", refused.Body.String())
+	}
+
+	// 対照: 時刻を遡らせない同じ流れはダウンロードでき、CSV に利用者が載る。
+	control := newIdmRefusalServer(t)
+	controlAdmin := control.seedSession(t, "sess-admin-fresh", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+	freshID := startedExportID(t, control.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/users/exports", sessionID: controlAdmin, csrf: idmRefusalCSRF,
+		body: map[string]any{"columns": []string{"preferred_username", "email"}},
+	}))
+	control.runExport(t, freshID)
+	accepted := control.send(t, idmRefusalRequest{
+		method: http.MethodGet, path: "/api/admin/v1/users/exports/" + freshID + "/file", sessionID: controlAdmin,
+	})
+	if accepted.Code != http.StatusOK || !strings.Contains(accepted.Body.String(), idmRefusalAlice) {
+		t.Fatalf("前提が壊れている: 期限内のダウンロードが status=%d body=%s", accepted.Code, accepted.Body.String())
+	}
+}
+
+// 指定した参照、ダウンロード、取り消しは拒否され、CSV の中身は返らず、取り消しも効かない。
+//
+// 取り消しは種別の境界を越えた側から見ると成功と区別しにくい。拒否のあとに正しい
+// 経路から読み直し、エクスポートが `succeeded` のままであることを確かめる。
+//
+//spec:covers EX-IDMANAGEMENT-088-01: `User` エクスポートの ID を `/groups/exports` または別テナントで
+func TestUserExportAcrossTypeAndTenantReturnsNoCSVAndCancelsNothing(t *testing.T) {
+	fixture := newIdmRefusalServer(t)
+	admin := fixture.seedSession(t, "sess-admin-boundary", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+	foreignAdmin := fixture.seedSession(
+		t, "sess-acme-boundary", idmRefusalOtherTenant, idmRefusalForeignAdmin,
+	)
+
+	exportID := startedExportID(t, fixture.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/users/exports", sessionID: admin, csrf: idmRefusalCSRF,
+		body: map[string]any{"columns": []string{"preferred_username", "email"}},
+	}))
+	fixture.runExport(t, exportID)
+
+	for _, refusal := range []struct {
+		name, method, path, session, tenantID string
+	}{
+		{"別種別での参照", http.MethodGet, "/api/admin/v1/groups/exports/" + exportID, admin, ""},
+		{"別種別でのダウンロード", http.MethodGet, "/api/admin/v1/groups/exports/" + exportID + "/file", admin, ""},
+		{
+			"別テナントでの参照", http.MethodGet, "/api/admin/v1/users/exports/" + exportID,
+			foreignAdmin, idmRefusalOtherTenant,
+		},
+		{
+			"別テナントでのダウンロード", http.MethodGet, "/api/admin/v1/users/exports/" + exportID + "/file",
+			foreignAdmin, idmRefusalOtherTenant,
+		},
+	} {
+		t.Run(refusal.name, func(t *testing.T) {
+			refused := fixture.send(t, idmRefusalRequest{
+				method: refusal.method, path: refusal.path,
+				sessionID: refusal.session, tenantID: refusal.tenantID,
+			})
+			if refused.Code != http.StatusNotFound {
+				t.Fatalf("status=%d body=%s, want 404", refused.Code, refused.Body.String())
+			}
+			// 拒否が本体を返していないこと。
+			if strings.Contains(refused.Body.String(), idmRefusalAlice) {
+				t.Fatalf("境界を越えた拒否が CSV の中身を返した: %s", refused.Body.String())
+			}
+		})
+	}
+
+	for _, refusal := range []struct {
+		name, path, session, tenantID string
+	}{
+		{"別種別での取り消し", "/api/admin/v1/groups/exports/" + exportID + "/cancel", admin, ""},
+		{
+			"別テナントでの取り消し", "/api/admin/v1/users/exports/" + exportID + "/cancel",
+			foreignAdmin, idmRefusalOtherTenant,
+		},
+	} {
+		t.Run(refusal.name, func(t *testing.T) {
+			refused := fixture.send(t, idmRefusalRequest{
+				method: http.MethodPost, path: refusal.path, sessionID: refusal.session,
+				tenantID: refusal.tenantID, csrf: idmRefusalCSRF, body: map[string]any{},
+			})
+			if refused.Code != http.StatusNotFound {
+				t.Fatalf("status=%d body=%s, want 404", refused.Code, refused.Body.String())
+			}
+		})
+	}
+
+	// 拒否が何も変えていないこと。正しい経路から読み直すと今も succeeded で、
+	// ダウンロードもできる。取り消しが通っていれば canceled になっている。
+	after := fixture.send(t, idmRefusalRequest{
+		method: http.MethodGet, path: "/api/admin/v1/users/exports/" + exportID, sessionID: admin,
+	})
+	if !strings.Contains(after.Body.String(), `"status":"succeeded"`) {
+		t.Fatalf("境界を越えた取り消しがエクスポートを変えた: %s", after.Body.String())
+	}
+	download := fixture.send(t, idmRefusalRequest{
+		method: http.MethodGet, path: "/api/admin/v1/users/exports/" + exportID + "/file", sessionID: admin,
+	})
+	if download.Code != http.StatusOK || !strings.Contains(download.Body.String(), idmRefusalAlice) {
+		t.Fatalf("前提が壊れている: 正しい経路のダウンロードが status=%d", download.Code)
+	}
+}
+
+// `InvalidRequestError` で拒否され、エクスポートは作成されない。
+//
+// グループ単位の指定が必須なのは、指定を落とすとテナント全体のメンバーシップが
+// 1 つの CSV になるからである。拒否がジョブを作ってしまえば、あとは worker が出力する。
+//
+//spec:covers EX-IDMANAGEMENT-008-02: `group_id` を指定しないメンバーエクスポートの開始は
+func TestGroupMemberExportWithoutGroupCreatesNoExport(t *testing.T) {
+	fixture := newIdmRefusalServer(t)
+	admin := fixture.seedSession(t, "sess-admin-member", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+
+	refused := fixture.send(t, idmRefusalRequest{
+		// %20 は空白 1 文字。ルートは一致するが group_id は実質空であり、
+		// 「グループを指定しない」要求がハンドラーまで届く唯一の形である。
+		method: http.MethodPost, path: "/api/admin/v1/groups/%20/members/exports",
+		sessionID: admin, csrf: idmRefusalCSRF,
+		body: map[string]any{"columns": []string{"user_id", "preferred_username"}},
+	})
+	if refused.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status=%d body=%s, want 422", refused.Code, refused.Body.String())
+	}
+	if code := idmProblemCode(t, refused); code != "invalid_filter" {
+		t.Fatalf("error code=%q, want invalid_filter", code)
+	}
+
+	// 拒否が何も作っていないこと。対象のグループにもエクスポートは無い。
+	path := "/api/admin/v1/groups/" + idmRefusalManualGroup + "/members/exports"
+	if ids := fixture.exportIDs(t, admin, path); len(ids) != 0 {
+		t.Fatalf("拒否されたのにエクスポートが %d 件ある: %v", len(ids), ids)
+	}
+	if claimed := fixture.runnableJobs(t); len(claimed) != 0 {
+		t.Fatalf("拒否されたのに %d 件のジョブが残った: %+v", len(claimed), claimed)
+	}
+
+	// 対照: グループを指定すれば同じ要求が通る。
+	control := newIdmRefusalServer(t)
+	controlAdmin := control.seedSession(t, "sess-admin-member-ok", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+	accepted := control.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: path, sessionID: controlAdmin, csrf: idmRefusalCSRF,
+		body: map[string]any{"columns": []string{"user_id", "preferred_username"}},
+	})
+	if ids := control.exportIDs(t, controlAdmin, path); len(ids) != 1 || ids[0] != startedExportID(t, accepted) {
+		t.Fatalf("前提が壊れている: グループを指定してもエクスポートができない: %v", ids)
+	}
+}
+
+// 参照とダウンロードは拒否され、他グループのメンバーは応答に出ない。
+//
+//spec:covers EX-IDMANAGEMENT-008-03: 別グループのパスでメンバーエクスポートの ID を指定した
+func TestGroupMemberExportUnderAnotherGroupReturnsNoMembers(t *testing.T) {
+	fixture := newIdmRefusalServer(t)
+	admin := fixture.seedSession(t, "sess-admin-cross-group", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+
+	exportID := startedExportID(t, fixture.send(t, idmRefusalRequest{
+		method:    http.MethodPost,
+		path:      "/api/admin/v1/groups/" + idmRefusalManualGroup + "/members/exports",
+		sessionID: admin, csrf: idmRefusalCSRF,
+		body: map[string]any{"columns": []string{"user_id", "source"}},
+	}))
+	fixture.runExport(t, exportID)
+
+	other := "/api/admin/v1/groups/" + idmRefusalDynamicGroup + "/members/exports/" + exportID
+	for _, refusal := range []struct{ name, path string }{
+		{"別グループでの参照", other},
+		{"別グループでのダウンロード", other + "/file"},
+	} {
+		t.Run(refusal.name, func(t *testing.T) {
+			refused := fixture.send(t, idmRefusalRequest{
+				method: http.MethodGet, path: refusal.path, sessionID: admin,
+			})
+			if refused.Code != http.StatusNotFound {
+				t.Fatalf("status=%d body=%s, want 404", refused.Code, refused.Body.String())
+			}
+			// 拒否が他グループのメンバーを返していないこと。
+			if strings.Contains(refused.Body.String(), idmRefusalAlice) {
+				t.Fatalf("別グループの経路が engineering のメンバーを返した: %s", refused.Body.String())
+			}
+		})
+	}
+
+	// 対照: 発行元のグループの経路なら同じ ID でメンバーの CSV が返る。
+	accepted := fixture.send(t, idmRefusalRequest{
+		method:    http.MethodGet,
+		path:      "/api/admin/v1/groups/" + idmRefusalManualGroup + "/members/exports/" + exportID + "/file",
+		sessionID: admin,
+	})
+	if accepted.Code != http.StatusOK || !strings.Contains(accepted.Body.String(), idmRefusalAlice) {
+		t.Fatalf("前提が壊れている: 発行元のダウンロードが status=%d body=%s", accepted.Code, accepted.Body.String())
+	}
+}
+
+// REQ-IDMANAGEMENT-079 の主要な使い方を、管理 API の経路で固定する。
+//
+//spec:covers EX-IDMANAGEMENT-079-01: 作成から保持期限より長く経っても、完了から保持期限が経っていないエクスポートはダウンロードでき、expires_at が完了の時刻に保持期限を加えた時刻であること。
+func TestExportStaysDownloadableUntilThirtyDaysAfterCompletion(t *testing.T) {
+	fixture := newIdmRefusalServer(t)
+	admin := fixture.seedSession(t, "sess-admin-retention", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+
+	// 作成は保持期限より 1 日前、完了は保持期限の 1 時間後まで残る時刻にする。
+	fixture.jobClock.backdate = idmusecases.DataExportTTL + 24*time.Hour
+	exportID := startedExportID(t, fixture.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/users/exports", sessionID: admin, csrf: idmRefusalCSRF,
+		body: map[string]any{"columns": []string{"preferred_username", "email"}},
+	}))
+	completedAt := time.Now().UTC().Add(-idmusecases.DataExportTTL + time.Hour).Truncate(time.Second)
+	fixture.runExportCompletedAt(t, exportID, completedAt)
+
+	view := fixture.send(t, idmRefusalRequest{
+		method: http.MethodGet, path: "/api/admin/v1/users/exports/" + exportID, sessionID: admin,
+	})
+	if view.Code != http.StatusOK {
+		t.Fatalf("参照が status=%d body=%s", view.Code, view.Body.String())
+	}
+	var state struct {
+		Status       string    `json:"status"`
+		Downloadable bool      `json:"downloadable"`
+		ExpiresAt    time.Time `json:"expires_at"`
+	}
+	if err := json.Unmarshal(view.Body.Bytes(), &state); err != nil {
+		t.Fatal(err)
+	}
+	if state.Status != string(idmdomain.ExportStatusSucceeded) || !state.Downloadable {
+		t.Fatalf("status=%q downloadable=%v, want succeeded / true", state.Status, state.Downloadable)
+	}
+	if want := completedAt.Add(idmusecases.DataExportTTL); !state.ExpiresAt.Equal(want) {
+		t.Fatalf("expires_at=%v, want %v", state.ExpiresAt, want)
+	}
+	downloaded := fixture.send(t, idmRefusalRequest{
+		method: http.MethodGet, path: "/api/admin/v1/users/exports/" + exportID + "/file", sessionID: admin,
+	})
+	if downloaded.Code != http.StatusOK || !strings.Contains(downloaded.Body.String(), idmRefusalAlice) {
+		t.Fatalf("期限内のダウンロードが status=%d body=%s", downloaded.Code, downloaded.Body.String())
+	}
+}

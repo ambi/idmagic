@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	securitynotificationusecases "github.com/ambi/idmagic/backend/authentication/securitynotification/usecases"
+	"github.com/ambi/idmagic/backend/authentication"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -46,10 +46,8 @@ func (d *Dependencies) dispatchSecurityNotification(
 	if run == nil {
 		run = runDetached
 	}
-	deps := securitynotificationusecases.DispatchDeps{
+	deps := authentication.SecurityNotificationDeps{
 		UserRepo:            d.IdManagement.UserRepo,
-		Preferences:         d.Authentication.NotificationPreferenceRepo,
-		KnownDevices:        d.Authentication.KnownSignInDeviceRepo,
 		Notifier:            d.Notification.Notifier,
 		TenantSource:        d.Tenancy.NotificationSource(),
 		SaltStore:           d.Audit.TenantSaltStore,
@@ -60,7 +58,7 @@ func (d *Dependencies) dispatchSecurityNotification(
 	run(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), securityNotificationTimeout)
 		defer cancel()
-		if err := securitynotificationusecases.Dispatch(ctx, deps, event); err != nil {
+		if err := d.Authentication.DispatchSecurityNotification(ctx, deps, event); err != nil {
 			// 通知は最大限努力なので、失敗しても元の操作へは伝播させない。
 			logger.Error(ctx, "security notification dispatch failed",
 				"error", err, "event_type", event.EventType())

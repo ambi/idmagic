@@ -22,6 +22,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/apitoken"
@@ -29,10 +32,8 @@ import (
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/saml"
@@ -75,7 +76,7 @@ type apiTokenStack struct {
 	e        *echo.Echo
 	repo     apitokenports.Repository
 	tokens   *apitoken.Service
-	users    *usermemory.UserRepository
+	users    userports.UserRepository
 	keyStore signingkeys.KeyStore
 	signer   *tokensjose.JWTSigner
 	tenants  tenantports.TenantRepository
@@ -101,28 +102,28 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 		}
 	}
 
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: apiTokenAdminSub, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: created, UpdatedAt: created,
 	})
-	users.Seed(&userdomain.User{
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: apiTokenTargetSub, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "target",
 		PasswordHash: "unused", Roles: []string{"user"}, CreatedAt: created, UpdatedAt: created,
 	})
-	users.Seed(&userdomain.User{
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: apiTokenHostAdminSub, TenantID: apiTokenHostRealm, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: created, UpdatedAt: created,
 	})
-	users.Seed(&userdomain.User{
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: apiTokenHostTargetSub, TenantID: apiTokenHostRealm, PreferredUsername: "target",
 		PasswordHash: "unused", Roles: []string{"user"}, CreatedAt: created, UpdatedAt: created,
 	})
 
-	clients := oauth2memory.NewClientRepository()
+	clients := oauth2.NewMemoryModule().ClientRepo
 	for _, tenantID := range []string{tenancydomain.DefaultTenantID, apiTokenOtherRealm} {
 		secretHash := oauthdomain.HashClientSecret(apiTokenRSSecret)
-		clients.Seed(&oauthdomain.OAuth2Client{
+		_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 			TenantID: tenantID, ClientID: apiTokenRSClientID, ClientSecretHash: &secretHash,
 			ClientType: spec.ClientConfidential, TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 			GrantTypes: []spec.GrantType{spec.GrantClientCredentials}, CreatedAt: created,
@@ -158,9 +159,9 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 		SigningKeys: signingkeys.Module{KeyStore: keyStore},
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, TokenIssuer: signer, TokenIntrospector: managedIntrospector,
-			RefreshStore:        oauth2memory.NewRefreshTokenStore(),
-			AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist(),
-			DpopReplayStore:     oauth2memory.NewDpopReplayStore(),
+			RefreshStore:        oauth2.NewMemoryModule().RefreshStore,
+			AccessTokenDenylist: oauth2.NewMemoryModule().AccessTokenDenylist,
+			DpopReplayStore:     oauth2.NewMemoryModule().DpopReplayStore,
 		},
 		ApiTokens:        apitoken.Module{Repo: repo, TokenIssuer: signer, TokenIntrospector: signer},
 		Saml:             saml.Module{SPRepo: samlSPs, ProfileRepo: samlSPs},

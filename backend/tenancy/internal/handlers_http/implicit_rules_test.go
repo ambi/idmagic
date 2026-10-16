@@ -24,10 +24,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
@@ -56,8 +57,8 @@ type rulesServer struct {
 	tenants   *memory.TenantRepository
 	branding  *memory.TenantBrandingRepository
 	templates *memory.NotificationTemplateRepository
-	schemas   *usermemory.TenantUserAttributeSchemaRepository
-	groups    *groupmemory.GroupRepository
+	schemas   tenantports.TenantUserAttributeSchemaRepository
+	groups    groupports.GroupRepository
 	events    *[]spec.DomainEvent
 }
 
@@ -70,8 +71,8 @@ func newRulesServer(t *testing.T, actor *userdomain.User, options rulesOptions) 
 		tenants:   memory.NewTenantRepository(),
 		branding:  memory.NewTenantBrandingRepository(),
 		templates: memory.NewNotificationTemplateRepository(),
-		schemas:   usermemory.NewTenantUserAttributeSchemaRepository(),
-		groups:    groupmemory.NewGroupRepository(),
+		schemas:   idmanagement.NewMemoryModule().AttrSchemaRepo,
+		groups:    idmanagement.NewMemoryModule().GroupRepo,
 		e:         echo.New(),
 	}
 	for _, tenant := range []*domain.Tenant{activeTenant(domain.DefaultTenantID, "Default"), activeTenant("acme", "Acme")} {
@@ -79,8 +80,8 @@ func newRulesServer(t *testing.T, actor *userdomain.User, options rulesOptions) 
 			t.Fatal(err)
 		}
 	}
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(actor)
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), actor)
 	events := make([]spec.DomainEvent, 0)
 	s.events = &events
 	quotas := options.quotas

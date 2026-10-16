@@ -8,6 +8,7 @@ package handlers_http_test
 // 保存先を読み直して、拒否が防いだ効果まで確かめる。
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -56,7 +57,7 @@ func newWsFedScopeStack(t *testing.T) *stack.Stack {
 		user.Attributes = map[string]userdomain.AttributeValue{
 			"object_guid": {Type: idmdomain.AttributeTypeString, String: &guid},
 		}
-		s.Users.Seed(user)
+		_ = s.Users.Save(context.Background(), user)
 	}
 	return s
 }

@@ -41,7 +41,7 @@ func TestApplicationAssignmentAcceptsOnlyExistingTenantSubjects(t *testing.T) {
 		{
 			name: "foreign user", subjectType: appdomain.AssignmentSubjectUser, subjectID: "foreign-user",
 			seed: func(_ *testing.T, s *stack.Stack) {
-				s.Users.Seed(&userdomain.User{
+				_ = s.Users.Save(context.Background(), &userdomain.User{
 					ID: "foreign-user", TenantID: stack.OtherRealm, PreferredUsername: "foreign-user",
 					Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 				})

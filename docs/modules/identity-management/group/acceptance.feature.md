@@ -27,12 +27,12 @@
 
 ## Rule: REQ-IDMANAGEMENT-060 Group の作成と更新は、名前、説明、連絡先を正規化して保存する
 
-一次情報は [実行可能な具体例](../../../../backend/idmanagement/group/usecases/testdata/normalization.examples.json) である。
+一次情報は [実行可能な具体例](../../../../backend/idmanagement/internal/group/usecases/testdata/normalization.examples.json) である。
 同じ表を作成と更新の両方へ実行する。
 成功時は保存値を読み戻し、拒否時は状態、イベント、通知が変わらないことを確かめる。
 `null` は未設定、空の `error` は成功を表す。
 
-<!-- spec:examples backend/idmanagement/group/usecases/testdata/normalization.examples.json -->
+<!-- spec:examples backend/idmanagement/internal/group/usecases/testdata/normalization.examples.json -->
 
 ### Example: EX-IDMANAGEMENT-060-01 大文字と小文字だけが異なる名前
 

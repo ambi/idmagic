@@ -5,10 +5,13 @@ import (
 	"testing"
 	"time"
 
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
+	"github.com/ambi/idmagic/backend/idmanagement"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
+	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	memory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
@@ -21,16 +24,16 @@ type reconcileFixture struct {
 	connRepo       *memory.ProvisioningConnectionRepository
 	taskRepo       *memory.ProvisioningTaskRepository
 	linkRepo       *memory.RemoteResourceLinkRepository
-	userRepo       *usermemory.UserRepository
-	assignmentRepo *appmemory.ApplicationAssignmentRepository
+	userRepo       userports.UserRepository
+	assignmentRepo appports.AssignmentRepository
 }
 
 func newReconcileFixture(t *testing.T, conn *domain.ProvisioningConnection) *reconcileFixture {
 	t.Helper()
 	f := &reconcileFixture{
 		t: t, connRepo: memory.NewProvisioningConnectionRepository(), taskRepo: memory.NewProvisioningTaskRepository(),
-		linkRepo: memory.NewRemoteResourceLinkRepository(), userRepo: usermemory.NewUserRepository(),
-		assignmentRepo: appmemory.NewApplicationAssignmentRepository(),
+		linkRepo: memory.NewRemoteResourceLinkRepository(), userRepo: idmanagement.NewMemoryModule().UserRepo,
+		assignmentRepo: application.NewMemoryModule().AssignmentRepo,
 	}
 	f.deps = usecases.ReconcileDeps{
 		ConnectionRepo: f.connRepo, TaskRepo: f.taskRepo, LinkRepo: f.linkRepo, UserRepo: f.userRepo, AssignmentRepo: f.assignmentRepo,

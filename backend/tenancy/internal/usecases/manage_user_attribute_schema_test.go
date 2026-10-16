@@ -6,15 +6,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
 func TestGetUserAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
-	repo := usermemory.NewTenantUserAttributeSchemaRepository()
+	repo := idmanagement.NewMemoryModule().AttrSchemaRepo
 	schema, err := GetUserAttributeSchema(context.Background(), repo, domain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
@@ -25,7 +26,7 @@ func TestGetUserAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
 }
 
 func TestUpdateUserAttributeSchemaPersistsCustomDefs(t *testing.T) {
-	repo := usermemory.NewTenantUserAttributeSchemaRepository()
+	repo := idmanagement.NewMemoryModule().AttrSchemaRepo
 	ctx := context.Background()
 	defs := []userdomain.UserAttributeDef{
 		{Key: "region", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityClaimExposed, ClaimName: new("region")},
@@ -47,7 +48,7 @@ func TestUpdateUserAttributeSchemaPersistsCustomDefs(t *testing.T) {
 }
 
 func TestUpdateUserAttributeSchemaRejectsBuiltinCollision(t *testing.T) {
-	repo := usermemory.NewTenantUserAttributeSchemaRepository()
+	repo := idmanagement.NewMemoryModule().AttrSchemaRepo
 	defs := []userdomain.UserAttributeDef{
 		{Key: "nickname", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityClaimExposed},
 	}
@@ -59,7 +60,7 @@ func TestUpdateUserAttributeSchemaRejectsBuiltinCollision(t *testing.T) {
 }
 
 func TestUpdateUserAttributeSchemaAllowsEmptyClear(t *testing.T) {
-	repo := usermemory.NewTenantUserAttributeSchemaRepository()
+	repo := idmanagement.NewMemoryModule().AttrSchemaRepo
 	ctx := context.Background()
 	if _, err := UpdateUserAttributeSchema(ctx, repo, domain.DefaultTenantID,
 		[]userdomain.UserAttributeDef{{Key: "region", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityAdminReadable}},

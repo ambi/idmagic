@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
+	"github.com/ambi/idmagic/backend/authentication"
 )
 
 const (
@@ -52,7 +52,7 @@ func signInWithTOTP(
 		t.Fatalf("login next=%q, want the second-factor step", next.Next)
 	}
 	second := getJSON[authTransaction](t, client, base+"/api/auth/transaction")
-	code, err := totpusecases.GenerateTOTP(totpTestSecret, time.Now().UTC().Unix())
+	code, err := authentication.GenerateTOTP(totpTestSecret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatalf("generate totp: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestTrustedDeviceBeyondTheAbsoluteLifetimeRequiresTheSecondFactor(t *testin
 	}
 	// 保留のセッションが tdev で昇格していないことを、第二要素を終えたあとの amr で読む。
 	second := getJSON[authTransaction](t, expired, base+"/api/auth/transaction")
-	code, err := totpusecases.GenerateTOTP(secret, time.Now().UTC().Unix())
+	code, err := authentication.GenerateTOTP(secret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatalf("generate totp: %v", err)
 	}
@@ -436,7 +436,7 @@ func TestTrustedDeviceIsRevokedWhenTheSecondFactorIsRemoved(t *testing.T) {
 	if trustedDeviceCookieOf(t, client, base) == nil {
 		t.Fatal("no trusted device cookie was issued")
 	}
-	code, err := totpusecases.GenerateTOTP(secret, time.Now().UTC().Unix())
+	code, err := authentication.GenerateTOTP(secret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatalf("generate totp: %v", err)
 	}

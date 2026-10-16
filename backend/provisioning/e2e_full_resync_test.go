@@ -9,10 +9,11 @@ import (
 	"testing"
 	"time"
 
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
-	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
+	"github.com/ambi/idmagic/backend/application"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
@@ -26,15 +27,15 @@ import (
 func (r *lifecycleRun) startFullResyncOverHTTP() {
 	r.h.t.Helper()
 	now := time.Now().UTC()
-	r.h.userRepo.Seed(&userdomain.User{
+	_ = r.h.userRepo.Save(context.Background(), &userdomain.User{
 		ID: "resync-admin", TenantID: r.h.tenantID, PreferredUsername: "resync-admin", PasswordHash: "unused",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()
 	e.HTTPErrorHandler = support.ErrorHandler(nil, nil)
 	r.module.Register(e.Group("", testing_tenant.ResolveDefault), support.Deps{Issuer: "http://idp.test", Emit: r.emit},
-		&support.Authenticator{Principals: idmhttpdeps.Principals{Users: r.h.userRepo}, Sessions: authhttpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}}},
-		appmemory.NewApplicationAssignmentRepository(), r.h.userRepo, r.h.groupRepo)
+		&support.Authenticator{Principals: idmanagement.Module{UserRepo: r.h.userRepo}.Principals(), Sessions: authentication.Module{AuthnResolver: authentication.DemoHeaderResolver{}}.SessionAuthentications()},
+		application.NewMemoryModule().AssignmentRepo, r.h.userRepo, r.h.groupRepo)
 
 	const csrf = "csrf-token"
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/v1/applications/"+r.h.connectionID+"/provisioning/full-resync", http.NoBody)
@@ -67,7 +68,7 @@ func TestE2E_FullResyncEmitsCompletedOnceAllTasksSettle(t *testing.T) {
 	run.drainAt(time.Now().UTC())
 	// イベント同期を通らない User は下流と乖離している。
 	now := time.Now().UTC()
-	h.userRepo.Seed(&userdomain.User{
+	_ = h.userRepo.Save(context.Background(), &userdomain.User{
 		ID: "carol-resync", TenantID: h.tenantID, PreferredUsername: "carol-resync", PasswordHash: "unused",
 		CreatedAt: now, UpdatedAt: now,
 	})

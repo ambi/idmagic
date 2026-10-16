@@ -1,0 +1,359 @@
+// 第二要素 (login step) の WebAuthn / recovery code サポート (wi-26)。
+// password 認証後の pending login session に対し、TOTP に加えて passkey / recovery code を
+// 選択式で検証できるようにする。検証成功後の共通後処理は finishSecondFactor に集約する。
+package handlers_http
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"slices"
+	"time"
+
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	recoveryusecases "github.com/ambi/idmagic/backend/authentication/internal/recovery/usecases"
+	totpusecases "github.com/ambi/idmagic/backend/authentication/internal/totp/usecases"
+	webauthnhttp "github.com/ambi/idmagic/backend/authentication/internal/webauthn/handlers_http"
+	webauthnusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
+	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+
+	"github.com/labstack/echo/v5"
+)
+
+type browserWebAuthnRequest struct {
+	Assertion json.RawMessage `json:"assertion"`
+	ReturnTo  string          `json:"return_to,omitempty"`
+	// RememberDevice は「このデバイスを記憶する」への本人の明示同意 (wi-91)。
+	RememberDevice bool `json:"remember_device,omitempty"`
+}
+
+type recoveryCodeAPIRequest struct {
+	Code     string `json:"code"`
+	ReturnTo string `json:"return_to,omitempty"`
+}
+
+type totpAPIRequest struct {
+	Code     string `json:"code"`
+	ReturnTo string `json:"return_to,omitempty"`
+	// RememberDevice は「このデバイスを記憶する」への本人の明示同意 (wi-91)。
+	RememberDevice bool `json:"remember_device,omitempty"`
+}
+
+func (d Deps) webAuthnLoginDeps(c *echo.Context) webauthnusecases.WebAuthnDeps {
+	return webauthnusecases.WebAuthnDeps{
+		RP:             webauthnhttp.ResolveRPForRequest(c, d.Deps.Deps, d.WebAuthnRP),
+		UserRepo:       d.UserRepo,
+		CredentialRepo: d.WebAuthnCredentialRepo,
+		MfaFactorRepo:  d.MfaFactorRepo,
+		SessionStore:   d.WebAuthnSessionStore,
+		Emit:           d.Emit,
+	}
+}
+
+func (d Deps) recoveryCodesDeps() recoveryusecases.RecoveryCodesDeps {
+	return recoveryusecases.RecoveryCodesDeps{
+		UserRepo: d.UserRepo, RecoveryCodeRepo: d.RecoveryCodeRepo, Emit: d.Emit,
+	}
+}
+
+// pendingStep は保留中のセッションが進む画面の種類 (mfa_enrollment か totp) と、第二要素の
+// 画面に出す選択肢と、「このデバイスを記憶する」の導線を出すかを返す。
+func (d Deps) pendingStep(c *echo.Context, authn *authdomain.AuthenticationContext) (string, []string, bool) {
+	if authn.PendingPurpose == authdomain.LoginPendingEnrollment {
+		return "mfa_enrollment", nil, false
+	}
+	return "totp", d.secondFactorMethods(c, authn.UserID), d.trustedDeviceMaxAge(c) > 0
+}
+
+// secondFactorMethods は sub が利用できる第二要素 method を返す (totp / webauthn / recovery_code)。
+func (d Deps) secondFactorMethods(c *echo.Context, sub string) []string {
+	methods := []string{}
+	if d.canUseTOTP(c, sub) {
+		methods = append(methods, "totp")
+	}
+	if webauthnhttp.ResolveRPForRequest(c, d.Deps.Deps, d.WebAuthnRP) != nil && d.WebAuthnCredentialRepo != nil {
+		if creds, err := d.WebAuthnCredentialRepo.ListBySub(c.Request().Context(), sub); err == nil && len(creds) > 0 {
+			methods = append(methods, "webauthn")
+		}
+	}
+	if d.RecoveryCodeRepo != nil {
+		if codes, err := d.RecoveryCodeRepo.ListBySub(c.Request().Context(), sub); err == nil {
+			for _, code := range codes {
+				if code.ConsumedAt == nil {
+					methods = append(methods, "recovery_code")
+					break
+				}
+			}
+		}
+	}
+	return methods
+}
+
+// requireSecondFactor はログインセッションを第二要素の照合の待ちにし、提示できる要素の種類を
+// MfaChallengeIssued で記録する。パスワードが正しかったことを残すのはこのイベントだけである。
+func (d Deps) requireSecondFactor(
+	ctx context.Context,
+	c *echo.Context,
+	sessionID string,
+) (*authdomain.AuthenticationContext, error) {
+	pending, err := d.SessionManager.RequireFactor(ctx, sessionID)
+	if err != nil || pending == nil {
+		return pending, err
+	}
+	if d.Emit != nil {
+		d.Emit(&authdomain.MfaChallengeIssued{
+			At: time.Now().UTC(), TenantID: tenantports.TenantID(ctx), UserID: pending.UserID,
+			FactorTypes: mfaFactorTypes(d.secondFactorMethods(c, pending.UserID)), SessionID: pending.SessionID, //nolint:contextcheck // HTTP request context is required for factor lookup.
+		})
+	}
+	return pending, nil
+}
+
+// emitMfaChallengeFailed は第二要素の照合の失敗を記録する。
+func (d Deps) emitMfaChallengeFailed(c *echo.Context, authn *authdomain.AuthenticationContext, factor spec.MfaFactorType) {
+	if d.Emit != nil {
+		d.Emit(&authdomain.MfaChallengeFailed{
+			At: time.Now().UTC(), TenantID: support.RequestTenantID(c), UserID: authn.UserID,
+			FactorType: factor, SessionID: authn.SessionID,
+		})
+	}
+}
+
+// mfaFactorTypes は第二要素の method を MfaFactorType へ写す。復旧コードは要素の種類ではないので除く。
+func mfaFactorTypes(methods []string) []spec.MfaFactorType {
+	types := make([]spec.MfaFactorType, 0, len(methods))
+	for _, method := range methods {
+		switch method {
+		case "totp":
+			types = append(types, spec.MfaFactorTOTP)
+		case "webauthn":
+			types = append(types, spec.MfaFactorWebAuthn)
+		}
+	}
+	return types
+}
+
+// mfaFactorForAMR は第二要素として加わった amr の値に対応する MfaFactorType を返す。
+// 復旧コード (rc) は要素の種類ではないので false を返す。
+func mfaFactorForAMR(amr string) (spec.MfaFactorType, bool) {
+	switch amr {
+	case "otp":
+		return spec.MfaFactorTOTP, true
+	case "webauthn":
+		return spec.MfaFactorWebAuthn, true
+	default:
+		return "", false
+	}
+}
+
+// handleWebAuthnChallengeAPI は login の WebAuthn assertion challenge を発行する。
+func (d Deps) handleWebAuthnChallengeAPI(c *echo.Context) error {
+	if webauthnhttp.ResolveRPForRequest(c, d.Deps.Deps, d.WebAuthnRP) == nil {
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
+	}
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	authn, _ := d.ResolveAuthentication(c)
+	if authn == nil || authn.SessionID == "" {
+		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not exist.")
+	}
+	if !authn.AuthenticationPending {
+		return support.WriteProblem(c, http.StatusForbidden, "access_denied", "Additional authentication is not required.")
+	}
+	assertion, err := webauthnusecases.BeginWebAuthnAssertion(c.Request().Context(), d.webAuthnLoginDeps(c), authn.SessionID, authn.UserID)
+	if err != nil {
+		if errors.Is(err, webauthnusecases.ErrWebAuthnNoCredential) {
+			return support.WriteProblem(c, http.StatusNotFound, "webauthn_not_enrolled", "No passkey is enrolled.")
+		}
+		return err
+	}
+	return support.NoStoreJSON(c, http.StatusOK, assertion)
+}
+
+// handleWebAuthnAPI は login の WebAuthn assertion を検証し、成功すれば認証を完了させる。
+func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
+	if webauthnhttp.ResolveRPForRequest(c, d.Deps.Deps, d.WebAuthnRP) == nil {
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
+	}
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	authn, _ := d.ResolveAuthentication(c)
+	if authn == nil || authn.SessionID == "" {
+		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not exist.")
+	}
+	if !authn.AuthenticationPending {
+		return support.WriteProblem(c, http.StatusForbidden, "access_denied", "Additional authentication is not required.")
+	}
+	var input browserWebAuthnRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	}
+	authorization, transactionErr := d.Authorizations.Find(c)
+	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
+	if directAdminLogin {
+		if !validReturnTo(c, input.ReturnTo) {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
+		}
+	} else if transactionErr != nil {
+		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
+	}
+	if _, err := webauthnusecases.FinishWebAuthnAssertion(
+		c.Request().Context(), d.webAuthnLoginDeps(c), authn.SessionID, authn.UserID, []byte(input.Assertion), time.Now().UTC(),
+	); err != nil {
+		d.recordLoginOutcome("failure", "webauthn_invalid", "webauthn")
+		d.emitMfaChallengeFailed(c, authn, spec.MfaFactorWebAuthn)
+		return support.WriteProblem(c, http.StatusUnauthorized, "invalid_webauthn", "Passkey authentication failed.")
+	}
+	return d.finishSecondFactor(c, authn.SessionID, authorization, "webauthn", directAdminLogin, input.ReturnTo, input.RememberDevice)
+}
+
+// handleRecoveryCodeAPI は login の第二要素として backup recovery code を消費する。
+func (d Deps) handleRecoveryCodeAPI(c *echo.Context) error {
+	if d.RecoveryCodeRepo == nil {
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "recovery_unavailable", "Recovery codes are unavailable.")
+	}
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	authn, _ := d.ResolveAuthentication(c)
+	if authn == nil || authn.SessionID == "" {
+		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not exist.")
+	}
+	if !authn.AuthenticationPending {
+		return support.WriteProblem(c, http.StatusForbidden, "access_denied", "Additional authentication is not required.")
+	}
+	var input recoveryCodeAPIRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	}
+	authorization, transactionErr := d.Authorizations.Find(c)
+	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
+	if directAdminLogin {
+		if !validReturnTo(c, input.ReturnTo) {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
+		}
+	} else if transactionErr != nil {
+		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
+	}
+	if _, err := recoveryusecases.ConsumeRecoveryCode(
+		c.Request().Context(), d.recoveryCodesDeps(), authn.UserID, input.Code, time.Now().UTC(),
+	); err != nil {
+		if errors.Is(err, recoveryusecases.ErrRecoveryCodeInvalid) {
+			d.recordLoginOutcome("failure", "recovery_code_invalid", "recovery_code")
+			d.emitAuthenticationFailure(c, authn.UserID, "recovery_code_invalid")
+			return support.WriteProblem(c, http.StatusUnauthorized, "invalid_recovery_code", "Check the recovery code.")
+		}
+		return err
+	}
+	// 復旧コードは要素喪失時の経路なので、その端末を記憶の対象にはしない。
+	return d.finishSecondFactor(c, authn.SessionID, authorization, "rc", directAdminLogin, input.ReturnTo, false)
+}
+
+// handleTOTPAPI は login の第二要素として TOTP ワンタイムコードを検証する。
+func (d Deps) handleTOTPAPI(c *echo.Context) error {
+	if d.MfaFactorRepo == nil {
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "mfa_unavailable", "MFA factor store is unavailable")
+	}
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	authn, _ := d.ResolveAuthentication(c)
+	if authn == nil || authn.SessionID == "" {
+		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The TOTP verification session does not exist.")
+	}
+	if slices.Contains(authn.AMR, "otp") && !authn.AuthenticationPending {
+		return support.WriteProblem(c, http.StatusForbidden, "access_denied", "TOTP has already been verified.")
+	}
+	var input totpAPIRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	}
+	authorization, transactionErr := d.Authorizations.Find(c)
+	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
+	if directAdminLogin {
+		if !validReturnTo(c, input.ReturnTo) {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
+		}
+	} else if transactionErr != nil {
+		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
+	}
+	result, err := totpusecases.VerifyTOTPFactor(
+		c.Request().Context(),
+		d.MfaFactorRepo,
+		authn.UserID,
+		input.Code,
+		time.Now().UTC(),
+	)
+	if err != nil {
+		return err
+	}
+	if !result.OK {
+		d.recordLoginOutcome("failure", result.Reason, "otp")
+		d.emitMfaChallengeFailed(c, authn, spec.MfaFactorTOTP)
+		return support.WriteProblem(c, http.StatusUnauthorized, "invalid_totp", "Check the TOTP code.")
+	}
+	return d.finishSecondFactor(c, authn.SessionID, authorization, "otp", directAdminLogin, input.ReturnTo, input.RememberDevice)
+}
+
+// finishSecondFactor は第二要素 (otp / webauthn / rc) 検証後の共通後処理。session を認証完了に
+// 昇格させ、last_login gate / directAdmin / 認可継続を処理する。
+func (d Deps) finishSecondFactor(
+	c *echo.Context,
+	sessionID string,
+	authorization signinports.Authorization,
+	amr string,
+	directAdminLogin bool,
+	returnTo string,
+	rememberDevice bool,
+) error {
+	completed, err := d.SessionManager.CompleteFactor(c.Request().Context(), sessionID, []string{amr})
+	if err != nil {
+		return err
+	}
+	if completed == nil {
+		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
+	}
+	d.setSessionCookie(c, completed.SessionID)
+	if factor, ok := mfaFactorForAMR(amr); ok && d.Emit != nil {
+		d.Emit(&authdomain.MfaChallengeSucceeded{
+			At: time.Now().UTC(), TenantID: support.RequestTenantID(c), UserID: completed.UserID,
+			FactorType: factor, SessionID: completed.SessionID,
+		})
+	}
+	// 本物の第二要素が成立した直後だけがデバイスを記憶できる契機である (wi-91)。
+	if err := d.rememberDeviceIfRequested(c, completed.UserID, amr, rememberDevice); err != nil {
+		return err
+	}
+	var user *userdomain.User
+	found, err := d.UserRepo.FindBySub(c.Request().Context(), completed.UserID)
+	if err != nil {
+		return err
+	}
+	user = found
+	clientID := ""
+	if authorization != nil {
+		clientID = authorization.ClientID()
+	}
+	d.emitAuthenticationSuccess(c, time.Now().UTC(), user, completed, clientID)
+	// full authentication 完了 (pwd + 第二要素)。last_login_at 記録 + required action gate。
+	if user != nil {
+		gateNext, err := d.recordLoginAndRequiredAction(c, user, time.Now().UTC())
+		if err != nil {
+			return err
+		}
+		if gateNext != "" {
+			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: gateNext})
+		}
+	}
+	if directAdminLogin {
+		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{RedirectTo: returnTo})
+	}
+	return authorization.ContinueAfterSecondFactor(c, completed)
+}

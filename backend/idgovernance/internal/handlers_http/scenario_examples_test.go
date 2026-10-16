@@ -15,20 +15,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/internal/db_memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -50,9 +52,9 @@ const (
 // governanceStack は管理 API と、拒否が防いだ効果を読み直す保存先を持つ。
 type governanceStack struct {
 	e         *echo.Echo
-	users     *usermemory.UserRepository
-	groups    *groupmemory.GroupRepository
-	apps      *appmemory.ApplicationRepository
+	users     userports.UserRepository
+	groups    groupports.GroupRepository
+	apps      appports.ApplicationRepository
 	workflows *igmemory.LifecycleWorkflowRepository
 	runs      *igmemory.LifecycleWorkflowRunRepository
 	jobs      jobsports.JobRepository
@@ -71,11 +73,11 @@ func newGovernanceStack(t *testing.T) *governanceStack {
 		}
 	}
 	s := &governanceStack{
-		users: usermemory.NewUserRepository(), groups: groupmemory.NewGroupRepository(),
-		apps: appmemory.NewApplicationRepository(), workflows: igmemory.NewLifecycleWorkflowRepository(),
+		users: idmanagement.NewMemoryModule().UserRepo, groups: idmanagement.NewMemoryModule().GroupRepo,
+		apps: application.NewMemoryModule().Repo, workflows: igmemory.NewLifecycleWorkflowRepository(),
 		runs: igmemory.NewLifecycleWorkflowRunRepository(), jobs: jobs.NewJobRepository(),
 	}
-	schemas := usermemory.NewTenantUserAttributeSchemaRepository()
+	schemas := idmanagement.NewMemoryModule().AttrSchemaRepo
 	if err := schemas.Save(context.Background(), &userdomain.TenantUserAttributeSchema{
 		TenantID: acmeTenant, CreatedAt: now, UpdatedAt: now,
 		Attributes: []userdomain.UserAttributeDef{{Key: "badge_color", Type: idmdomain.AttributeTypeString}},
@@ -89,16 +91,16 @@ func newGovernanceStack(t *testing.T) *governanceStack {
 	} {
 		user.PasswordHash, user.CreatedAt, user.UpdatedAt = "unused", now, now
 		user.Lifecycle = userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}
-		s.users.Seed(user)
+		_ = s.users.Save(context.Background(), user)
 	}
 	s.e = echo.New()
 	httpadapter.Register(s.e, httpadapter.Deps{
 		Issuer:        "http://idp.test",
-		AuthnResolver: authusecases.DemoHeaderResolver{},
+		AuthnResolver: authentication.DemoHeaderResolver{},
 		TenantRepo:    tenants,
 		Tenancy:       tenancy.Module{TenantRepo: tenants, AttrSchemaRepo: schemas},
 		IdManagement:  idmanagement.Module{UserRepo: s.users, GroupRepo: s.groups},
-		Application:   application.Module{Repo: s.apps, AssignmentRepo: appmemory.NewApplicationAssignmentRepository()},
+		Application:   application.Module{Repo: s.apps, AssignmentRepo: application.NewMemoryModule().AssignmentRepo},
 		Jobs:          jobs.Module{Repo: s.jobs, Enqueuer: jobs.NewEnqueuer(s.jobs, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {})},
 		IdGovernance:  idgovernance.Module{LifecycleWorkflowRepo: s.workflows, LifecycleWorkflowRunRepo: s.runs},
 	})

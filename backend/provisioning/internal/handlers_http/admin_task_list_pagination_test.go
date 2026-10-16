@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/provisioning"
 	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
@@ -31,9 +31,9 @@ import (
 // ProvisioningConnection レコードは不要 (usecases/admin_test.go と同じ前提)。
 func newAdminTaskPaginationHandler(t *testing.T) (*echo.Echo, *provisioningmemory.ProvisioningTaskRepository) {
 	t.Helper()
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	now := time.Now().UTC()
-	users.Seed(&userdomain.User{
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -44,21 +44,21 @@ func newAdminTaskPaginationHandler(t *testing.T) (*echo.Echo, *provisioningmemor
 		Emit:            func(spec.DomainEvent) {},
 		PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")),
 		UserRepo:        users,
-		GroupRepo:       groupmemory.NewGroupRepository(),
+		GroupRepo:       idmanagement.NewMemoryModule().GroupRepo,
 		Application: application.Module{
-			Repo:                    appmemory.NewApplicationRepository(),
-			IconStore:               appmemory.NewApplicationIconStore(),
-			AssignmentRepo:          appmemory.NewApplicationAssignmentRepository(),
-			OrderingRepo:            appmemory.NewApplicationOrderingRepository(),
-			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
-			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
+			Repo:                    application.NewMemoryModule().Repo,
+			IconStore:               application.NewMemoryModule().IconStore,
+			AssignmentRepo:          application.NewMemoryModule().AssignmentRepo,
+			OrderingRepo:            application.NewMemoryModule().OrderingRepo,
+			CategoryRepo:            application.NewMemoryModule().CategoryRepo,
+			DefaultSignInPolicyRepo: application.NewMemoryModule().DefaultSignInPolicyRepo,
 		},
 		Provisioning: provisioning.Module{
 			ConnectionRepo: provisioningmemory.NewProvisioningConnectionRepository(),
 			RemoteLinkRepo: provisioningmemory.NewRemoteResourceLinkRepository(),
 			TaskRepo:       taskRepo,
 		},
-		AuthnResolver: authusecases.DemoHeaderResolver{},
+		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
 	return e, taskRepo
 }

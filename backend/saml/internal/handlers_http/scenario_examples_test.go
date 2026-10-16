@@ -22,13 +22,13 @@ import (
 	"testing"
 	"time"
 
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 
 	"github.com/ambi/idmagic/backend/application"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/saml"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
@@ -65,8 +65,8 @@ func newServerWithKeyStore(t *testing.T) (*echo.Echo, signingkeys.KeyStore) {
 			Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "user_id",
 		}},
 	})
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), &userdomain.User{ID: "user-1", PreferredUsername: "alice"})
 	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
@@ -96,11 +96,11 @@ func newServerBehindAnApplication(t *testing.T, assign bool) (*echo.Echo, *[]spe
 			Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "user_id",
 		}},
 	})
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(&userdomain.User{ID: "user-1", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "alice"})
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), &userdomain.User{ID: "user-1", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "alice"})
 
 	now := time.Now().UTC()
-	appRepo := appmemory.NewApplicationRepository()
+	appRepo := application.NewMemoryModule().Repo
 	app := &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ID: "app-1", Name: "SP", Kind: appdomain.ApplicationFederated,
 		Status: appdomain.ApplicationActive, CreatedAt: now, UpdatedAt: now,
@@ -109,7 +109,7 @@ func newServerBehindAnApplication(t *testing.T, assign bool) (*echo.Echo, *[]spe
 	if err := appRepo.Save(context.Background(), app); err != nil {
 		t.Fatal(err)
 	}
-	assignments := appmemory.NewApplicationAssignmentRepository()
+	assignments := application.NewMemoryModule().AssignmentRepo
 	if assign {
 		if err := assignments.Save(context.Background(), &appdomain.ApplicationAssignment{
 			TenantID: tenancydomain.DefaultTenantID, ApplicationID: app.ID,

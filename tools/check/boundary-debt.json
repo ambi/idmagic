@@ -459,7 +459,7 @@
       "sourceModule": "Application",
       "targetModule": "OAuth2",
       "violations": [
-        "table-write:Application:backend/application/db_postgres/applications.sql:LinkOAuth2ClientToApplication:update:oauth2_clients:application_id"
+        "table-write:Application:backend/application/internal/db_postgres/applications.sql:LinkOAuth2ClientToApplication:update:oauth2_clients:application_id"
       ],
       "reason": "Application links an OAuth2 client record to the application it creates by writing application_id in the same transaction that creates the application, so a partial commit cannot leave an unlinked protocol configuration (docs/design/data/database.md#所有と書き込みの境界). OAuth2 publishes a write that joins the caller's transaction (D2, D7) in wi-88544."
     },
@@ -468,7 +468,7 @@
       "sourceModule": "Application",
       "targetModule": "Saml",
       "violations": [
-        "table-write:Application:backend/application/db_postgres/applications.sql:LinkSamlServiceProviderToApplication:update:saml_service_providers:application_id"
+        "table-write:Application:backend/application/internal/db_postgres/applications.sql:LinkSamlServiceProviderToApplication:update:saml_service_providers:application_id"
       ],
       "reason": "Application links a SAML service provider record to the application it creates by writing application_id in the same transaction that creates the application, so a partial commit cannot leave an unlinked protocol configuration (docs/design/data/database.md#所有と書き込みの境界). SAML publishes a write that joins the caller's transaction (D2, D7) in wi-88544."
     },
@@ -477,7 +477,7 @@
       "sourceModule": "Application",
       "targetModule": "WsFederation",
       "violations": [
-        "table-write:Application:backend/application/db_postgres/applications.sql:LinkWsFedRelyingPartyToApplication:update:wsfed_relying_parties:application_id"
+        "table-write:Application:backend/application/internal/db_postgres/applications.sql:LinkWsFedRelyingPartyToApplication:update:wsfed_relying_parties:application_id"
       ],
       "reason": "Application links a WS-Federation relying party record to the application it creates by writing application_id in the same transaction that creates the application, so a partial commit cannot leave an unlinked protocol configuration (docs/design/data/database.md#所有と書き込みの境界). WS-Federation publishes a write that joins the caller's transaction (D2, D7) in wi-88544."
     },
@@ -486,8 +486,8 @@
       "sourceModule": "IdManagement",
       "targetModule": "Audit",
       "violations": [
-        "table-write:IdManagement:backend/idmanagement/group/db_postgres/group_import.sql:InsertGroupImportAuditEvent:insert:audit_events:id,occurred_at,payload,tenant_id,type,user_id",
-        "table-write:IdManagement:backend/idmanagement/user/db_postgres/user_import.sql:InsertUserImportAuditEvent:insert:audit_events:id,occurred_at,payload,tenant_id,type,user_id"
+        "table-write:IdManagement:backend/idmanagement/internal/group/db_postgres/group_import.sql:InsertGroupImportAuditEvent:insert:audit_events:id,occurred_at,payload,tenant_id,type,user_id",
+        "table-write:IdManagement:backend/idmanagement/internal/user/db_postgres/user_import.sql:InsertUserImportAuditEvent:insert:audit_events:id,occurred_at,payload,tenant_id,type,user_id"
       ],
       "reason": "IdManagement records the CSV import audit event in the same transaction that commits the user or group import, so a committed import cannot lack its audit record (docs/design/data/database.md#所有と書き込みの境界). Audit publishes a record write that joins the caller's transaction (D2, D7) in wi-88544."
     },
@@ -496,7 +496,7 @@
       "sourceModule": "IdManagement",
       "targetModule": "Authentication",
       "violations": [
-        "table-write:IdManagement:backend/idmanagement/user/db_postgres/user_import.sql:InsertImportedPasswordHistory:insert:password_history:created_at,encoded,id,user_id"
+        "table-write:IdManagement:backend/idmanagement/internal/user/db_postgres/user_import.sql:InsertImportedPasswordHistory:insert:password_history:created_at,encoded,id,user_id"
       ],
       "reason": "IdManagement writes the password history of a password set by user CSV import in the same transaction that commits the imported user, so reuse checks cannot miss an imported password (docs/design/data/database.md#所有と書き込みの境界). Authentication publishes a history write that joins the caller's transaction (D2, D7) in wi-88544."
     },
@@ -505,7 +505,7 @@
       "sourceModule": "IdManagement",
       "targetModule": "Jobs",
       "violations": [
-        "table-write:IdManagement:backend/idmanagement/group/db_postgres/group_import.sql:EnqueueGroupReconcileJob:insert:jobs:attempts,created_at,dedup_key,id,kind,lane,max_attempts,params,run_at,status,tenant_id,updated_at"
+        "table-write:IdManagement:backend/idmanagement/internal/group/db_postgres/group_import.sql:EnqueueGroupReconcileJob:insert:jobs:attempts,created_at,dedup_key,id,kind,lane,max_attempts,params,run_at,status,tenant_id,updated_at"
       ],
       "reason": "IdManagement enqueues the group reconcile job in the same transaction that commits the group CSV import, so a committed import cannot lack its reconciliation (docs/design/data/database.md#所有と書き込みの境界). Jobs publishes an enqueue that joins the caller's transaction (D2, D7) in wi-88544."
     }

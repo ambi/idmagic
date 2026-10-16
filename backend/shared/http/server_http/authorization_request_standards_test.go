@@ -24,15 +24,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/labstack/echo/v5"
 
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	authorizationdomain "github.com/ambi/idmagic/backend/oauth2/authorization/domain"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -74,9 +73,9 @@ type arFixture struct {
 	server   *httptest.Server
 	base     string
 	requests *countingRequestStore
-	clients  *oauth2memory.OAuth2ClientRepository
-	consents *oauth2memory.ConsentRepository
-	par      *oauth2memory.PARStore
+	clients  oauthports.OAuth2ClientRepository
+	consents oauthports.ConsentRepository
+	par      oauthports.PARStore
 }
 
 // newAuthorizationRequestFixture は本番と同じ Register で認可・トークン・PAR・登録の
@@ -87,9 +86,9 @@ func newAuthorizationRequestFixture(t *testing.T) *arFixture {
 	t.Helper()
 	now := time.Now().UTC()
 
-	clients := oauth2memory.NewClientRepository()
+	clients := oauth2.NewMemoryModule().ClientRepo
 	secretHash := domain.HashClientSecret(arClientSecret)
-	clients.Seed(&domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: arClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{arRedirectURI},
@@ -109,8 +108,8 @@ func newAuthorizationRequestFixture(t *testing.T) *arFixture {
 	if err != nil {
 		t.Fatalf("seed password: %v", err)
 	}
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "user_alice", PreferredUsername: arUsername, PasswordHash: passwordHash,
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 	})
@@ -118,25 +117,25 @@ func newAuthorizationRequestFixture(t *testing.T) *arFixture {
 	// payment_initiation は「金額の上限」と「操作の集合」を持つ型である。
 	// 上限のある型でないと、RFC9396-MONOTONIC-NARROWING の「狭めることだけを許す」を
 	// 区別する事例が作れない。
-	detailTypes := oauth2memory.NewAuthorizationDetailTypeRepository()
-	detailTypes.Seed(&authorizationdomain.AuthorizationDetailType{
+	detailTypes := oauth2.NewMemoryModule().AuthzDetailTypeRepo
+	_ = detailTypes.Save(context.Background(), &domain.AuthorizationDetailType{
 		TenantID: tenancydomain.DefaultTenantID, Type: arDetailType,
 		Description: "支払いの開始", DisplayTemplate: "{actions} を実行する",
-		State: authorizationdomain.DetailTypeEnabled,
-		Schema: authorizationdomain.AuthorizationDetailsSchema{
-			Rules: []authorizationdomain.AuthorizationDetailFieldRule{
+		State: domain.DetailTypeEnabled,
+		Schema: domain.AuthorizationDetailsSchema{
+			Rules: []domain.AuthorizationDetailFieldRule{
 				{
-					Name: "actions", Semantics: authorizationdomain.DetailFieldSet, Required: true,
+					Name: "actions", Semantics: domain.DetailFieldSet, Required: true,
 					Allowed: []string{"initiate", "status"},
 				},
-				{Name: "instructedAmount", Semantics: authorizationdomain.DetailFieldAtMost, Required: true},
+				{Name: "instructedAmount", Semantics: domain.DetailFieldAtMost, Required: true},
 			},
 		},
 		CreatedAt: now, UpdatedAt: now,
 	})
 
-	resourceServers := oauth2memory.NewMcpResourceServerRepository()
-	resourceServers.Seed(&domain.McpResourceServer{
+	resourceServers := oauth2.NewMemoryModule().McpResourceServerRepo
+	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
 		ID: "rs-payments", Resource: arResource, Name: "Payments API",
 		Scopes: []string{"openid", "profile", "payments"},
 		State:  domain.McpResourceServerActive,
@@ -155,10 +154,10 @@ func newAuthorizationRequestFixture(t *testing.T) *arFixture {
 		t.Fatalf("key store: %v", err)
 	}
 	signer := tokensJOSE.NewJWTSigner(arIssuer, keyStore)
-	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
-	requests := &countingRequestStore{AuthorizationRequestStore: oauth2memory.NewAuthorizationRequestStore()}
-	consents := oauth2memory.NewConsentRepository()
-	parStore := oauth2memory.NewPARStore()
+	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
+	requests := &countingRequestStore{AuthorizationRequestStore: oauth2.NewMemoryModule().RequestStore}
+	consents := oauth2.NewMemoryModule().ConsentRepo
+	parStore := oauth2.NewMemoryModule().PARStore
 
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
@@ -170,8 +169,8 @@ func newAuthorizationRequestFixture(t *testing.T) *arFixture {
 		ShuttingDown:    &atomic.Bool{},
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, ConsentRepo: consents,
-			RequestStore: requests, CodeStore: oauth2memory.NewAuthorizationCodeStore(),
-			PARStore: parStore, RefreshStore: oauth2memory.NewRefreshTokenStore(),
+			RequestStore: requests, CodeStore: oauth2.NewMemoryModule().CodeStore,
+			PARStore: parStore, RefreshStore: oauth2.NewMemoryModule().RefreshStore,
 			AuthzDetailTypeRepo: detailTypes, McpResourceServerRepo: resourceServers,
 		},
 		UserRepo:          users,

@@ -158,7 +158,7 @@ Agent へのトークン発行では、`client_credentials` と CIBA の承認�
 - `mise run verify-spec`
 - `mise run test-go`
   - 理由：束縛時の拒否、各発行経路での拒否、束縛後の認証方式変更による拒否、非対称方式での発行成功の境界を確かめる。
-- `mise run test-go-mutation -- backend/oauth2/usecases`
+- `mise run test-go-mutation -- backend/oauth2/internal/usecases`
 - `mise run verify-ui`
 - `mise run verify`
 

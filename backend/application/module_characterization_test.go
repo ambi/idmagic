@@ -12,14 +12,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+
+	"github.com/ambi/idmagic/backend/oauth2"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -79,7 +83,7 @@ func (r *faultyDefaultSignInPolicies) Get(ctx context.Context, tenantID string) 
 }
 
 type faultyGroups struct {
-	*groupmemory.GroupRepository
+	groupports.GroupRepository
 	listErr error
 }
 
@@ -109,7 +113,7 @@ func newGateFixture(t *testing.T) *gateFixture {
 		assignments: &faultyAssignments{ApplicationAssignmentRepository: appmemory.NewApplicationAssignmentRepository()},
 		policies:    &faultySignInPolicies{SignInPolicyRepository: appmemory.NewSignInPolicyRepository()},
 		defaults:    &faultyDefaultSignInPolicies{DefaultSignInPolicyRepository: appmemory.NewDefaultSignInPolicyRepository()},
-		groups:      &faultyGroups{GroupRepository: groupmemory.NewGroupRepository()},
+		groups:      &faultyGroups{GroupRepository: idmanagement.NewMemoryModule().GroupRepo},
 	}
 	if err := f.apps.Save(ctx, &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ID: "app-1", Name: "Payroll",
@@ -199,8 +203,16 @@ func TestCharacterizeApplicationGatePropagatesStoreFailures(t *testing.T) {
 	}
 }
 
+// oauth2memory は OAuth2 のメモリのクライアントの保存先を作る。OAuth2 の保存先は internal/ にあるので、
+// ルートパッケージの Module から取り出す。
+var oauth2memory = struct {
+	NewClientRepository func() oauthports.OAuth2ClientRepository
+}{
+	NewClientRepository: func() oauthports.OAuth2ClientRepository { return oauth2.NewMemoryModule().ClientRepo },
+}
+
 type countingClients struct {
-	*oauth2memory.OAuth2ClientRepository
+	oauthports.OAuth2ClientRepository
 	lookups int
 }
 

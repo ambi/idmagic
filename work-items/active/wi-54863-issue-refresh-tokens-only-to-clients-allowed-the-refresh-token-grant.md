@@ -76,8 +76,8 @@ affected_spec:
 
 ## 検証
 
-- `mise run test-go-test -- ./backend/oauth2/token/usecases <test>` と `./backend/oauth2/device/usecases <test>`
-- `mise run test-go-mutation -- backend/oauth2/token/domain`
+- `mise run test-go-test -- ./backend/oauth2/internal/token/usecases <test>` と `./backend/oauth2/internal/device/usecases <test>`
+- `mise run test-go-mutation -- backend/oauth2/internal/token/domain`
 - `mise run verify`
 
 ## リスク

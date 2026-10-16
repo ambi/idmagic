@@ -33,7 +33,7 @@ User 以外の状態機械は、wi-83002 で状態遷移表を持つが、表と
 
 ## 設計
 
-User のテスト（`backend/idmanagement/handlers_http/user_lifecycle_model_test.go`）と同じく、操作の列の名前から要求への対応と、条件の作り方だけをテストに置く。
+User のテスト（`backend/idmanagement/internal/handlers_http/user_lifecycle_model_test.go`）と同じく、操作の列の名前から要求への対応と、条件の作り方だけをテストに置く。
 三つの状態機械で同じ組み立てが繰り返されるなら、予測と比較の部分を `testing_statematrix` へ移すかを検討する。
 
 ## タスク
@@ -45,7 +45,7 @@ User のテスト（`backend/idmanagement/handlers_http/user_lifecycle_model_tes
 
 ## 検証
 
-- `mise run test-go-package -- ./backend/idmanagement/handlers_http`
+- `mise run test-go-package -- ./backend/idmanagement/internal/handlers_http`
 - `mise run verify`
 
 ## リスク

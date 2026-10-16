@@ -4,15 +4,16 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	identitysource "github.com/ambi/idmagic/backend/provisioning/internal/source_idmanagement"
 )
 
 func TestUserAttributeSource_ResolveAttributes_MapsCoreFields(t *testing.T) {
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	ctx := context.Background()
 	name := "Alice Example"
 	given := "Alice"
@@ -47,7 +48,7 @@ func TestUserAttributeSource_ResolveAttributes_MapsCoreFields(t *testing.T) {
 }
 
 func TestUserAttributeSource_ResolveAttributes_NotFoundOrOtherTenant(t *testing.T) {
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	ctx := context.Background()
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}}
 	_ = userRepo.Save(ctx, user)
@@ -64,7 +65,7 @@ func TestUserAttributeSource_ResolveAttributes_NotFoundOrOtherTenant(t *testing.
 }
 
 func TestUserAttributeSource_ResolveAttributes_DisabledUserIsInactive(t *testing.T) {
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	ctx := context.Background()
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled}}
 	_ = userRepo.Save(ctx, user)
@@ -86,7 +87,7 @@ func TestUserAttributeSource_ResolveAttributes_DisabledUserIsInactive(t *testing
 // never reach the downstream (FindBySub excludes deleted users; the fix uses
 // FindBySubIncludingDeleted).
 func TestUserAttributeSource_ResolveAttributes_DeletedUserStillResolvesAsInactive(t *testing.T) {
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	ctx := context.Background()
 	user := &userdomain.User{
 		ID: "user-1", TenantID: "tenant-a", PreferredUsername: "deleted:user-1", PasswordHash: "hash",

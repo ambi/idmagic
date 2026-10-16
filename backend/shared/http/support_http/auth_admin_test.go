@@ -9,14 +9,13 @@ import (
 	"testing"
 	"time"
 
-	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -28,7 +27,7 @@ import (
 
 // newAdminTestContext builds a request whose tenant is already resolved (as
 // tenant middleware would leave it) and whose X-Demo-Sub header authenticates
-// as sub via authusecases.DemoHeaderResolver, so RequireAdmin and friends can
+// as sub via authentication.DemoHeaderResolver, so RequireAdmin and friends can
 // be exercised without the full HTTP router.
 func newAdminTestContext(sub string) *echo.Context {
 	e := echo.New()
@@ -41,7 +40,7 @@ func newAdminTestContext(sub string) *echo.Context {
 	return e.NewContext(req, httptest.NewRecorder())
 }
 
-func seedAdminUser(t *testing.T, users *usermemory.UserRepository, sub string, active bool, roles ...string) {
+func seedAdminUser(t *testing.T, users userports.UserRepository, sub string, active bool, roles ...string) {
 	t.Helper()
 	now := time.Now().UTC()
 	status := idmdomain.UserStatusActive
@@ -53,7 +52,7 @@ func seedAdminUser(t *testing.T, users *usermemory.UserRepository, sub string, a
 		Roles: roles, Lifecycle: userdomain.UserLifecycle{Status: status, StatusChangedAt: &now},
 		CreatedAt: now, UpdatedAt: now,
 	}
-	users.Seed(user)
+	_ = users.Save(context.Background(), user)
 }
 
 // groupRepoWithAdminGroup seeds a group granting "admin" and adds sub as a
@@ -61,7 +60,7 @@ func seedAdminUser(t *testing.T, users *usermemory.UserRepository, sub string, a
 // that only exists via group membership.
 func groupRepoWithAdminGroup(t *testing.T, sub string) groupports.GroupRepository {
 	t.Helper()
-	repo := groupmemory.NewGroupRepository()
+	repo := idmanagement.NewMemoryModule().GroupRepo
 	now := time.Now().UTC()
 	group := &groupdomain.Group{
 		ID: "group-admins", TenantID: tenancydomain.DefaultTenantID, Name: "Admins",
@@ -86,7 +85,7 @@ func (erroringGroupRepo) ListGroupsByUser(context.Context, string, string) ([]*g
 
 func TestRequireAdmin(t *testing.T) {
 	t.Run("requires an authenticated session", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		a := adminAuthenticator(users, nil)
 		c := newAdminTestContext("")
 		if _, err := a.RequireAdmin(c); !errors.Is(err, support.ErrAdminAuthenticationRequired) {
@@ -95,7 +94,7 @@ func TestRequireAdmin(t *testing.T) {
 	})
 
 	t.Run("rejects a non-admin user", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		seedAdminUser(t, users, "alice", true)
 		a := adminAuthenticator(users, nil)
 		c := newAdminTestContext("alice")
@@ -109,7 +108,7 @@ func TestRequireAdmin(t *testing.T) {
 		// as unauthenticated (defense-in-depth), so RequireAdmin's own inactive
 		// check downstream never sees a disabled user — the caller observes
 		// support.ErrAdminAuthenticationRequired, not support.ErrAdminAccessDenied.
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		seedAdminUser(t, users, "alice", false, "admin")
 		a := adminAuthenticator(users, nil)
 		c := newAdminTestContext("alice")
@@ -119,7 +118,7 @@ func TestRequireAdmin(t *testing.T) {
 	})
 
 	t.Run("accepts an active admin", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		seedAdminUser(t, users, "alice", true, "admin")
 		a := adminAuthenticator(users, nil)
 		c := newAdminTestContext("alice")
@@ -130,7 +129,7 @@ func TestRequireAdmin(t *testing.T) {
 	})
 
 	t.Run("admin role granted only through group membership is honored", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		seedAdminUser(t, users, "alice", true)
 		groups := groupRepoWithAdminGroup(t, "alice")
 		a := adminAuthenticator(users, groups)
@@ -209,7 +208,7 @@ func TestWriteAdminAccessErrorPreservesInvalidTokenClassification(t *testing.T) 
 
 func TestResolveAdminActor(t *testing.T) {
 	t.Run("requires authentication", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		a := adminAuthenticator(users, nil)
 		c := newAdminTestContext("")
 		if _, err := a.ResolveAdminActor(c); !errors.Is(err, support.ErrAdminAuthenticationRequired) {
@@ -220,7 +219,7 @@ func TestResolveAdminActor(t *testing.T) {
 	t.Run("rejects a disabled user", func(t *testing.T) {
 		// Same defense-in-depth path as RequireAdmin: ResolveAuthentication
 		// already turns an inactive user's session into "unauthenticated".
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		seedAdminUser(t, users, "alice", false)
 		a := adminAuthenticator(users, nil)
 		c := newAdminTestContext("alice")
@@ -230,7 +229,7 @@ func TestResolveAdminActor(t *testing.T) {
 	})
 
 	t.Run("returns the actor with group-derived roles composed in", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		seedAdminUser(t, users, "alice", true, "editor")
 		groups := groupRepoWithAdminGroup(t, "alice")
 		a := adminAuthenticator(users, groups)
@@ -252,7 +251,7 @@ func TestResolveAdminActor(t *testing.T) {
 
 func TestRequireAdministrator(t *testing.T) {
 	t.Run("rejects a user without either role", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		seedAdminUser(t, users, "alice", true)
 		a := adminAuthenticator(users, nil)
 		c := newAdminTestContext("alice")
@@ -262,7 +261,7 @@ func TestRequireAdministrator(t *testing.T) {
 	})
 
 	t.Run("accepts system_admin as well as admin", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		seedAdminUser(t, users, "bob", true, "system_admin")
 		a := adminAuthenticator(users, nil)
 		c := newAdminTestContext("bob")
@@ -282,7 +281,7 @@ func TestEffectiveRolesWithoutGroupRepo(t *testing.T) {
 }
 
 func TestEffectiveRolesPropagatesRepoErrorAsUserRoles(t *testing.T) {
-	a := &support.Authenticator{Principals: idmhttpdeps.Principals{Groups: erroringGroupRepo{}}}
+	a := &support.Authenticator{Principals: idmanagement.Module{GroupRepo: erroringGroupRepo{}}.Principals()}
 	principal := support.Principal{Roles: []string{"editor"}}
 	if got := a.EffectiveRoles(context.Background(), principal); len(got) != 1 || got[0] != "editor" {
 		t.Fatalf("EffectiveRoles=%v, want fallback to direct roles on repo error", got)
@@ -292,7 +291,7 @@ func TestEffectiveRolesPropagatesRepoErrorAsUserRoles(t *testing.T) {
 func TestEffectiveRolesComposesGroupRolesIntoAFreshSlice(t *testing.T) {
 	// With a GroupRepo wired, EffectiveRoles builds a new slice (groupdomain.EffectiveRoles),
 	// so the composed roles no longer alias the principal's backing array.
-	a := &support.Authenticator{Principals: idmhttpdeps.Principals{Groups: groupRepoWithAdminGroup(t, "alice")}}
+	a := &support.Authenticator{Principals: idmanagement.Module{GroupRepo: groupRepoWithAdminGroup(t, "alice")}.Principals()}
 	original := support.Principal{ID: "alice", TenantID: tenancydomain.DefaultTenantID, Roles: []string{"editor"}}
 	composed := a.EffectiveRoles(context.Background(), original)
 	composed[0] = "mutated"
@@ -305,7 +304,7 @@ func TestEffectiveRolesComposesGroupRolesIntoAFreshSlice(t *testing.T) {
 // Authenticator を、組み立て地点と同じアダプターで組み立てる。
 func adminAuthenticator(users userports.UserRepository, groups groupports.GroupRepository) *support.Authenticator {
 	return &support.Authenticator{
-		Principals: idmhttpdeps.Principals{Users: users, Groups: groups},
-		Sessions:   authhttpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}},
+		Principals: idmanagement.Module{UserRepo: users, GroupRepo: groups}.Principals(),
+		Sessions:   authentication.Module{AuthnResolver: authentication.DemoHeaderResolver{}}.SessionAuthentications(),
 	}
 }

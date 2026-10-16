@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
+	"github.com/ambi/idmagic/backend/authentication"
 
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -172,7 +172,7 @@ func TestBrowserEnrollmentAfterTheDeadlineSavesNoFactorAndDoesNotPromote(t *test
 	// この具体例の中身である。
 	time.Sleep(deadlineIn + 100*time.Millisecond)
 
-	code, err := totpusecases.GenerateTOTP(start.Secret, time.Now().UTC().Unix())
+	code, err := authentication.GenerateTOTP(start.Secret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func TestBrowserEnrollmentWithAWrongCodeKeepsThePendingSession(t *testing.T) {
 
 	// 対照: 同じ保留のまま、正しいコードなら確定でき、認可が継続する。認証要素が
 	// 作られていなかったことも、ここで作れることで示す。
-	code, err := totpusecases.GenerateTOTP(start.Secret, time.Now().UTC().Unix())
+	code, err := authentication.GenerateTOTP(start.Secret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -161,7 +161,7 @@ mise run test-go-mutation -- backend/idmanagement/group/domain
 この結果から、変更していない行の検出能力は判断しない。
 
 ```console
-mise run test-go-mutation -- backend/oauth2/handlers_http 2 off /tmp/idmagic-oauth-mutation.json main
+mise run test-go-mutation -- backend/oauth2/internal/handlers_http 2 off /tmp/idmagic-oauth-mutation.json main
 ```
 
 同じ変更で生き残った変異を調べ直す反復に限り、第 3 引数へ cache file を指定する。

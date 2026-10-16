@@ -5,32 +5,32 @@ import (
 	"testing"
 	"time"
 
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/oauth2"
 
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 	ctx := context.Background()
-	clients := oauth2memory.NewClientRepository()
+	clients := oauth2.NewMemoryModule().ClientRepo
 	apps := appmemory.NewApplicationRepository()
 	now := time.Now().UTC()
 
 	named := "Admin Console"
-	clients.Seed(&oauthdomain.OAuth2Client{
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "client-named",
 		ClientName: &named, ClientType: spec.ClientPublic, CreatedAt: now, UpdatedAt: now,
 	})
 	// client_name が空白のみのクライアントは Application カタログ名へフォールバックする。
 	blank := "   "
-	clients.Seed(&oauthdomain.OAuth2Client{
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "client-catalog",
 		ClientName: &blank, ClientType: spec.ClientPublic, CreatedAt: now, UpdatedAt: now,
 	})

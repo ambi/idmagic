@@ -31,16 +31,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+
 	"github.com/labstack/echo/v5"
 
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
@@ -76,7 +78,7 @@ const (
 
 type tpFixture struct {
 	base          string
-	refreshTokens *oauth2memory.RefreshTokenStore
+	refreshTokens oauthports.RefreshTokenStore
 	events        *eventRecorder
 }
 
@@ -91,9 +93,9 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 	t.Helper()
 	now := time.Now().UTC()
 
-	clients := oauth2memory.NewClientRepository()
+	clients := oauth2.NewMemoryModule().ClientRepo
 	secretHash := domain.HashClientSecret(tpClientSecret)
-	clients.Seed(&domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tpClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{tpRedirectURI},
@@ -109,7 +111,7 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 	})
 	// 他クライアント所有のトークンを作るための 2 つ目のクライアント。
 	otherHash := domain.HashClientSecret(tpOtherSecret)
-	clients.Seed(&domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tpOtherClientID, ClientSecretHash: &otherHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{tpRedirectURI},
@@ -126,7 +128,7 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 	// 内省を要求するリソースサーバー。トークンを発行しないので、内省の応答が
 	// 「自分が発行したものだから返せた」ではないことがこの分離で読める。
 	rsHash := domain.HashClientSecret(tpRSSecret)
-	clients.Seed(&domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tpRSClientID, ClientSecretHash: &rsHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{tpRedirectURI},
@@ -139,7 +141,7 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 		CreatedAt:                now,
 	})
 	subjectDN := tpMTLSSubjectDN
-	clients.Seed(&domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tpMTLSClientID, ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{tpRedirectURI},
@@ -162,8 +164,8 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 	}
 	email := tpUserEmail
 	name := tpUserName
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: tpUserID, PreferredUsername: tpUsername, PasswordHash: passwordHash,
 		Name: &name, Email: &email, EmailVerified: true,
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
@@ -182,11 +184,11 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 		t.Fatal(err)
 	}
 	signer := tokensJOSE.NewJWTSigner(tpIssuer, keyStore)
-	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
+	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
-	refreshTokens := oauth2memory.NewRefreshTokenStore()
+	refreshTokens := oauth2.NewMemoryModule().RefreshStore
 	events := &eventRecorder{}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -196,15 +198,15 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 		ShuttingDown:    &atomic.Bool{},
 		Emit:            events.record,
 		OAuth2: oauth2.Module{
-			ClientRepo: clients, ConsentRepo: oauth2memory.NewConsentRepository(),
-			RequestStore:               oauth2memory.NewAuthorizationRequestStore(),
-			CodeStore:                  oauth2memory.NewAuthorizationCodeStore(),
-			PARStore:                   oauth2memory.NewPARStore(),
+			ClientRepo: clients, ConsentRepo: oauth2.NewMemoryModule().ConsentRepo,
+			RequestStore:               oauth2.NewMemoryModule().RequestStore,
+			CodeStore:                  oauth2.NewMemoryModule().CodeStore,
+			PARStore:                   oauth2.NewMemoryModule().PARStore,
 			RefreshStore:               refreshTokens,
-			McpResourceServerRepo:      oauth2memory.NewMcpResourceServerRepository(),
-			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
-			DpopReplayStore:            oauth2memory.NewDpopReplayStore(),
-			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
+			McpResourceServerRepo:      oauth2.NewMemoryModule().McpResourceServerRepo,
+			ClientAssertionReplayStore: oauth2.NewMemoryModule().ClientAssertionReplayStore,
+			DpopReplayStore:            oauth2.NewMemoryModule().DpopReplayStore,
+			AccessTokenDenylist:        oauth2.NewMemoryModule().AccessTokenDenylist,
 		},
 		UserRepo:          users,
 		KeyStore:          keyStore,

@@ -18,7 +18,8 @@ import (
 	"testing"
 	"time"
 
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -72,8 +73,8 @@ func newQuotaCsrfServer(t *testing.T) *quotaCsrfServer {
 		}
 	}
 
-	users := usermemory.NewUserRepository()
-	users.Seed(controlPlaneTestUser("ops", tenancydomain.DefaultTenantID, "system_admin"))
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), controlPlaneTestUser("ops", tenancydomain.DefaultTenantID, "system_admin"))
 
 	quotas := &observedQuotaRepository{QuotaRepository: tenancy.NewMemoryModule().QuotaRepo}
 	seeded := quotaCsrfSeededUsers
@@ -194,8 +195,8 @@ func TestTenancyStateChangingAdminRoutesVerifyBrowserRequests(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	users := usermemory.NewUserRepository()
-	users.Seed(controlPlaneTestUser("ops", tenancydomain.DefaultTenantID, "system_admin"))
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), controlPlaneTestUser("ops", tenancydomain.DefaultTenantID, "system_admin"))
 
 	e := echo.New()
 	Register(e, Deps{

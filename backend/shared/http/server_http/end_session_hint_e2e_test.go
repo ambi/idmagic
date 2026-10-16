@@ -16,15 +16,14 @@ import (
 	"testing"
 	"time"
 
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+
 	"github.com/ambi/idmagic/backend/authentication"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	clientmemory "github.com/ambi/idmagic/backend/oauth2/client/db_memory"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -50,17 +49,17 @@ type hintE2EResponse struct {
 
 type hintE2EFixture struct {
 	server    *httptest.Server
-	sessions  *sessionmemory.SessionStore
-	refresh   *oauth2memory.RefreshTokenStore
+	sessions  sessionports.SessionStore
+	refresh   oauthports.RefreshTokenStore
 	signer    *tokens_jose.JWTSigner
-	manager   *sessionusecases.SessionManager
+	manager   *authentication.SessionManager
 	sessionID string
 }
 
 func newHintE2EFixture(t *testing.T) hintE2EFixture {
 	t.Helper()
-	clientRepo := clientmemory.NewClientRepository()
-	clientRepo.Seed(&oauthdomain.OAuth2Client{
+	clientRepo := oauth2.NewMemoryModule().ClientRepo
+	_ = clientRepo.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: hintE2EClientID, ClientType: spec.ClientPublic,
 		RedirectURIs:             []string{"https://rp.example/callback"},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
@@ -72,14 +71,14 @@ func newHintE2EFixture(t *testing.T) hintE2EFixture {
 		CreatedAt:                time.Now().UTC(),
 	})
 
-	sessionStore := sessionmemory.NewSessionStore()
-	sessionManager := sessionusecases.NewSessionManager(sessionStore)
+	sessionStore := authentication.NewMemoryModule(nil).SessionStore
+	sessionManager := authentication.Module{SessionStore: sessionStore}.NewSessionManager()
 	authenticated, err := sessionManager.Create(testing_tenant.Default(context.Background()), "alice", []string{"pwd"}, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	refreshStore := oauth2memory.NewRefreshTokenStore()
+	refreshStore := oauth2.NewMemoryModule().RefreshStore
 	sid := authenticated.SessionID
 	record := &oauthdomain.RefreshTokenRecord{
 		ID: "hint-e2e-rt", Hash: hintE2ERefresh, FamilyID: "hint-e2e-fam", TenantID: tenancydomain.DefaultTenantID,
@@ -117,7 +116,7 @@ func newHintE2EFixture(t *testing.T) hintE2EFixture {
 // signHint は sub と sid を指定した ID Token を発行する。sid が空なら `sid` claim は付かない。
 func (f hintE2EFixture) signHint(t *testing.T, subject, sid string) string {
 	t.Helper()
-	token, err := f.signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
+	token, err := f.signer.SignIDToken(testing_tenant.Default(context.Background()), oauthports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: hintE2EClientID}, User: &userdomain.User{ID: subject},
 		Scopes: []string{"openid"}, Sid: sid,
 	})
@@ -143,7 +142,7 @@ func (f hintE2EFixture) endSession(t *testing.T, cookieSid string, query url.Val
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: cookieSid})
+	request.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: cookieSid})
 	response, err := client.Do(request)
 	if err != nil {
 		t.Fatal(err)

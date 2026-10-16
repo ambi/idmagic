@@ -11,11 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/audit"
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/datakeys"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
 	jobdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -67,8 +68,8 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 	}
 	tenants := &observedTenantRepository{TenantRepository: tenantStore}
 
-	users := usermemory.NewUserRepository()
-	users.Seed(actor)
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), actor)
 	resolver := &fixedAuthnResolver{sub: actor.ID}
 
 	keyStore, err := signingkeys.NewInMemoryKeyStore()

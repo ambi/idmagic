@@ -9,24 +9,19 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -45,10 +40,10 @@ import (
 func TestWorkerLifecycleWorkflowHandlerCancelsRunsOfADisabledWorkflow(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 22, 0, 0, 0, 0, time.UTC)
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	governance := idgovernance.NewMemoryModule(users)
 	workflows, runs := governance.LifecycleWorkflowRepo, governance.LifecycleWorkflowRunRepo
-	users.Seed(&userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
+	_ = users.Save(context.Background(), &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
 	if err := saveWorkflowFixture(ctx, t, governance, &workflowFixture{ID: "workflow-1", TenantID: "tenant-a", Name: "Leaver", Status: "disabled", CurrentRevision: 1, CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +53,7 @@ func TestWorkerLifecycleWorkflowHandlerCancelsRunsOfADisabledWorkflow(t *testing
 		t.Fatal(err)
 	}
 	deps := &bootstrap.Dependencies{
-		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groupmemory.NewGroupRepository()},
+		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo},
 		IdGovernance: idgovernance.Module{LifecycleWorkflowRepo: workflows, LifecycleWorkflowRunRepo: runs},
 		OAuth2:       oauth2.Module{EventSink: sinks_console.NewConsoleSink()},
 	}
@@ -95,10 +90,10 @@ func (n *workflowGroupNotifier) NotifyGroupMutation(_ context.Context, _, _ stri
 func TestWorkerLifecycleWorkflowIdentityActions(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 10, 11, 0, 0, 0, 0, time.UTC)
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
-	users.Seed(&userdomain.User{ID: "foreign", TenantID: "tenant-b", PreferredUsername: "foreign", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
-	groups := groupmemory.NewGroupRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
+	_ = users.Save(context.Background(), &userdomain.User{ID: "foreign", TenantID: "tenant-b", PreferredUsername: "foreign", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
+	groups := idmanagement.NewMemoryModule().GroupRepo
 	for _, group := range []*groupdomain.Group{
 		{ID: "engineering", TenantID: "tenant-a", Name: "Engineering", MembershipType: groupdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now},
 		{ID: "foreign-group", TenantID: "tenant-b", Name: "Foreign", MembershipType: groupdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now},
@@ -202,11 +197,11 @@ func (s *recordingSink) count(eventType string) int {
 func TestWorkerLifecycleWorkflowAppliesTheDirectAssignmentBesideAGroupAssignment(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC)
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	governance := idgovernance.NewMemoryModule(users)
 	workflows, runs := governance.LifecycleWorkflowRepo, governance.LifecycleWorkflowRunRepo
-	users.Seed(&userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
-	groups := groupmemory.NewGroupRepository()
+	_ = users.Save(context.Background(), &userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
+	groups := idmanagement.NewMemoryModule().GroupRepo
 	if err := groups.Save(ctx, &groupdomain.Group{ID: "engineering", TenantID: "tenant-a", Name: "Engineering", MembershipType: groupdomain.GroupMembershipDynamic, CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
@@ -216,14 +211,14 @@ func TestWorkerLifecycleWorkflowAppliesTheDirectAssignmentBesideAGroupAssignment
 	if _, err := groups.AddMember(ctx, &groupdomain.GroupMember{GroupID: "engineering", UserID: "alice", Source: groupdomain.MembershipSourceDynamicRule, RuleVersion: new(int64(1)), CreatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
-	applications := appmemory.NewApplicationRepository()
+	applications := application.NewMemoryModule().Repo
 	if err := applications.Save(ctx, &appdomain.Application{
 		TenantID: "tenant-a", ID: "portal", Name: "Portal", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
 		Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "portal-client"}, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	assignments := appmemory.NewApplicationAssignmentRepository()
+	assignments := application.NewMemoryModule().AssignmentRepo
 	groupAssignment := appdomain.ApplicationAssignment{TenantID: "tenant-a", ApplicationID: "portal", SubjectType: appdomain.AssignmentSubjectGroup, SubjectID: "engineering", Visibility: appdomain.AssignmentVisible, CreatedAt: now, UpdatedAt: now}
 	if err := assignments.Save(ctx, &groupAssignment); err != nil {
 		t.Fatal(err)
@@ -311,11 +306,11 @@ func TestWorkerLifecycleWorkflowAppliesTheDirectAssignmentBesideAGroupAssignment
 func TestWorkerDisableUserStepStopsTheAgentsTheUserOwns(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 22, 0, 0, 0, 0, time.UTC)
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	governance := idgovernance.NewMemoryModule(users)
 	workflows, runs := governance.LifecycleWorkflowRepo, governance.LifecycleWorkflowRunRepo
-	users.Seed(&userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Roles: []string{}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
-	agents := agentmemory.NewAgentRepository()
+	_ = users.Save(context.Background(), &userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Roles: []string{}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
+	agents := idmanagement.NewMemoryModule().AgentRepo
 	if err := agents.Save(ctx, &agentdomain.Agent{ID: "deploy-bot", TenantID: "tenant-a", Name: "deploy-bot", Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "alice", Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +324,7 @@ func TestWorkerDisableUserStepStopsTheAgentsTheUserOwns(t *testing.T) {
 	}
 	sink := &recordingSink{}
 	deps := &bootstrap.Dependencies{
-		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groupmemory.NewGroupRepository(), AgentRepo: agents},
+		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo, AgentRepo: agents},
 		IdGovernance: idgovernance.Module{LifecycleWorkflowRepo: workflows, LifecycleWorkflowRunRepo: runs},
 		OAuth2:       oauth2.Module{EventSink: sink},
 	}
@@ -369,9 +364,9 @@ func newRevocationFixture(t *testing.T) *revocationFixture {
 	t.Helper()
 	ctx := context.Background()
 	now := time.Now().UTC()
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Roles: []string{}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
-	agents := agentmemory.NewAgentRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Roles: []string{}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
+	agents := idmanagement.NewMemoryModule().AgentRepo
 	f := &revocationFixture{
 		sink:   &recordingSink{},
 		epochs: sharedsignals.NewAgentRevocationEpochRepository(), streams: sharedsignals.NewSsfStreamRepository(),
@@ -395,7 +390,7 @@ func newRevocationFixture(t *testing.T) *revocationFixture {
 		t.Fatal(err)
 	}
 	f.deps = &bootstrap.Dependencies{
-		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groupmemory.NewGroupRepository(), AgentRepo: agents},
+		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo, AgentRepo: agents},
 		IdGovernance: governance,
 		OAuth2:       oauth2.Module{EventSink: f.sink},
 		SigningKeys:  signingkeys.Module{KeyStore: keyStore},
@@ -441,7 +436,6 @@ func TestWorkerDisableUserStepRevokesTheTokensOfTheAgentsTheUserOwns(t *testing.
 	f.disableAlice(t)
 
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
-	introspect := tokenusecases.IntrospectDeps{AgentRepo: f.deps.IdManagement.AgentRepo, RevocationEpochRepo: f.epochs}
 	var epochs []time.Time
 	for _, id := range f.agentIDs {
 		epoch, err := f.epochs.FindByAgent(ctx, "tenant-a", id)
@@ -452,9 +446,12 @@ func TestWorkerDisableUserStepRevokesTheTokensOfTheAgentsTheUserOwns(t *testing.
 			t.Fatalf("revocation reason of %s = %s, want %s", id, epoch.Reason, ssdomain.RevocationReasonOwnerDisabled)
 		}
 		epochs = append(epochs, epoch.Epoch)
-		revoked, err := tokenusecases.AccessTokenIsRevoked(ctx, introspect, &oauthports.IntrospectionResult{Active: true, ClientID: id + "-client", Iat: issuedAt.Unix()})
-		if err != nil || !revoked {
-			t.Fatalf("token of %s issued before the disable: revoked = %v, %v; want true", id, revoked, err)
+		accessTokens := oauth2.Module{TokenIntrospector: staticIntrospection{result: &oauthports.IntrospectionResult{
+			Active: true, Sub: id, ClientID: id + "-client", Iat: issuedAt.Unix(),
+		}}}.ResourceAccessTokens(f.deps.IdManagement.AgentRepo, f.epochs)
+		verified, err := accessTokens.IntrospectAccessToken(ctx, id+"-token")
+		if err != nil || verified != nil {
+			t.Fatalf("token of %s issued before the disable: verified = %+v, %v; want revoked", id, verified, err)
 		}
 	}
 	if !epochs[0].Equal(epochs[1]) {
@@ -499,4 +496,13 @@ func TestWorkerDisableUserStepQueuesTheRevocationForTransmitStreams(t *testing.T
 			t.Fatalf("delivery = status %s, iss %q; want pending and signed under the worker's issuer", d.Status, d.Set.Issuer)
 		}
 	}
+}
+
+// staticIntrospection は、イントロスペクションの結果を固定したアクセストークンの検証器である。
+type staticIntrospection struct {
+	result *oauthports.IntrospectionResult
+}
+
+func (i staticIntrospection) IntrospectAccessToken(context.Context, string) (*oauthports.IntrospectionResult, error) {
+	return i.result, nil
 }

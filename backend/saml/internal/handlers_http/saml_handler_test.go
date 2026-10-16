@@ -20,12 +20,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/saml"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
@@ -121,8 +122,8 @@ func newServerWithRepository(t *testing.T, authn *authdomain.AuthenticationConte
 		},
 	})
 
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), &userdomain.User{ID: "user-1", PreferredUsername: "alice"})
 	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
@@ -403,8 +404,8 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 			Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "user_id",
 		}},
 	})
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), &userdomain.User{ID: "user-1", PreferredUsername: "alice"})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:   "https://idp.example",
@@ -437,7 +438,7 @@ func TestSamlSLO_RedirectsToRegisteredSLOURL(t *testing.T) {
 		Contract: spec.CurrentRuntimeContract(),
 
 		Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) }, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
-		UserRepo:         usermemory.NewUserRepository(),
+		UserRepo:         idmanagement.NewMemoryModule().UserRepo,
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},
 	})
@@ -474,7 +475,7 @@ func TestSamlSLO_LogoutRequestReturnsLogoutResponse(t *testing.T) {
 		Contract: spec.CurrentRuntimeContract(),
 
 		Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) }, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
-		UserRepo:         usermemory.NewUserRepository(),
+		UserRepo:         idmanagement.NewMemoryModule().UserRepo,
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},
 	})
@@ -607,8 +608,8 @@ func TestSamlIDPProfilePublishesIsolatedMetadataAndRejectsCrossProfileRequest(t 
 
 func newAdminServer(t *testing.T) *echo.Echo {
 	t.Helper()
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(&userdomain.User{
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID:                "admin-1",
 		TenantID:          tenancydomain.DefaultTenantID,
 		PreferredUsername: "admin@example.com",

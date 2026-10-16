@@ -1,0 +1,62 @@
+package usecases
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+)
+
+// UserLifecycleCommands は、管理 API の外のモジュール（LifecycleWorkflow と SCIM の取り込み）が
+// User を止めるための操作である。User の状態を直接保存させず、管理 API と同じユースケースを通して、
+// イベント、記憶済みの端末の失効、下流への通知、所有する Agent の無効化を伴わせる。
+// 組み立ての地点が、呼ぶ側のモジュールのポートへ渡す。
+//
+// Deps には UserMutationCommitter を渡さない。ほかのモジュールの手順による User の変更から、
+// さらに LifecycleWorkflow の実行を作らないためである。
+type UserLifecycleCommands struct {
+	Deps  AdminUserDeps
+	Actor string
+}
+
+// SetUserRequiredAction は必須操作を付与または解除し、実際の変更だけを返す。
+// ワークフローの操作から新たな WorkflowRun を計画しない。
+func (c UserLifecycleCommands) SetUserRequiredAction(ctx context.Context, tenantID, userID string, action idmdomain.RequiredAction, required bool, now time.Time) (bool, error) {
+	_, changed, err := setUserRequiredAction(c.tenantContext(ctx, tenantID), c.deps(), c.Actor, userID, action, required, now)
+	return changed, err
+}
+
+// SetUserDisabled は User を無効化または再有効化し、User を変えたかを返す。削除予約中の User は
+// 無効化も再有効化もしない (REQ-IDMANAGEMENT-046) ので、変更なしとして返す。
+func (c UserLifecycleCommands) SetUserDisabled(ctx context.Context, tenantID, userID string, disabled bool, now time.Time) (bool, error) {
+	if _, err := SetUserDisabled(c.tenantContext(ctx, tenantID), c.deps(), c.Actor, userID, disabled, now); err != nil {
+		if errors.Is(err, ErrUserPendingDeletion) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// ScheduleUserDeletion は User の削除を予約する。
+func (c UserLifecycleCommands) ScheduleUserDeletion(ctx context.Context, tenantID, userID string, now time.Time) error {
+	return SoftDeleteUser(c.tenantContext(ctx, tenantID), c.deps(), SoftDeleteUserInput{ActorUserID: c.Actor, Sub: userID, Now: now})
+}
+
+// PurgeExpiredSoftDeleted は、文脈のテナントで猶予期間を過ぎた削除予約の User を完全削除する。
+func (c UserLifecycleCommands) PurgeExpiredSoftDeleted(ctx context.Context, now time.Time) error {
+	return PurgeExpiredSoftDeleted(ctx, c.Deps, now)
+}
+
+func (c UserLifecycleCommands) deps() AdminUserDeps {
+	deps := c.Deps
+	deps.UserMutationCommitter = nil
+	return deps
+}
+
+func (c UserLifecycleCommands) tenantContext(ctx context.Context, tenantID string) context.Context {
+	return tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
+}

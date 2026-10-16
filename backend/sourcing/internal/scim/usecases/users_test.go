@@ -7,9 +7,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	scimmemory "github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
@@ -18,9 +19,9 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-func newScimUsecases() (*usecases.Usecases, *usermemory.UserRepository) {
-	userRepo := usermemory.NewUserRepository()
-	groupRepo := groupmemory.NewGroupRepository()
+func newScimUsecases() (*usecases.Usecases, userports.UserRepository) {
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
 	return usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}), userRepo
 }

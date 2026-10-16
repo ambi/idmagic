@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/authentication"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/sharedsignals"
@@ -45,8 +45,8 @@ func TestTransmitterStreamLifecycleAndDelivery(t *testing.T) {
 	defer receiver.Close()
 
 	now := time.Now().UTC()
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin", PasswordHash: "unused",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -56,7 +56,7 @@ func TestTransmitterStreamLifecycleAndDelivery(t *testing.T) {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:        "http://idp.test",
-		AuthnResolver: authusecases.DemoHeaderResolver{},
+		AuthnResolver: authentication.DemoHeaderResolver{},
 		IdManagement:  idmanagement.Module{UserRepo: users},
 		SharedSignals: sharedsignals.Module{
 			StreamRepo: streams, TransmitterConfigRepo: configs, ReceiverConfigRepo: sharedsignalsmemory.NewSsfReceiverConfigRepository(),

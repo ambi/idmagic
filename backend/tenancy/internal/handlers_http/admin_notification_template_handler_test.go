@@ -16,8 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
@@ -33,9 +34,9 @@ const notificationTemplatePath = "/realms/acme/api/admin/v1/tenant/notification-
 
 func newNotificationTemplateServer(t *testing.T, actor *userdomain.User) (*echo.Echo, *email_memory.NoopEmailSender, *[]spec.DomainEvent) {
 	t.Helper()
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	if actor != nil {
-		userRepo.Seed(actor)
+		_ = userRepo.Save(context.Background(), actor)
 	}
 	tenantRepo := memory.NewTenantRepository()
 	if err := tenantRepo.Save(context.Background(), activeTenant("acme", "Acme")); err != nil {

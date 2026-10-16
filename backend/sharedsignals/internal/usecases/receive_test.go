@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	"github.com/ambi/idmagic/backend/idmanagement"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+
 	agentmodel "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -45,7 +47,7 @@ type receiveTestDeps struct {
 	configRepo   *ssmemory.SsfReceiverConfigRepository
 	receivedRepo *ssmemory.ReceivedSecurityEventRepository
 	epochRepo    *ssmemory.AgentRevocationEpochRepository
-	agentRepo    *agentmemory.AgentRepository
+	agentRepo    agentports.AgentRepository
 	events       *[]spec.DomainEvent
 }
 
@@ -55,7 +57,7 @@ func newReceiveTestDeps(t *testing.T, verifier ssports.SecurityEventTokenVerifie
 	d := receiveTestDeps{
 		streamRepo: ssmemory.NewSsfStreamRepository(), configRepo: ssmemory.NewSsfReceiverConfigRepository(),
 		receivedRepo: ssmemory.NewReceivedSecurityEventRepository(), epochRepo: ssmemory.NewAgentRevocationEpochRepository(),
-		agentRepo: agentmemory.NewAgentRepository(), events: events,
+		agentRepo: idmanagement.NewMemoryModule().AgentRepo, events: events,
 	}
 	d.deps = ssusecases.ReceiveDeps{
 		StreamRepo: d.streamRepo, ReceiverConfigRepo: d.configRepo, ReceivedEventRepo: d.receivedRepo,

@@ -9,10 +9,7 @@ import (
 	"testing"
 	"time"
 
-	approvaldomain "github.com/ambi/idmagic/backend/oauth2/approval/domain"
-	authdomain "github.com/ambi/idmagic/backend/oauth2/authorization/domain"
-	devicedomain "github.com/ambi/idmagic/backend/oauth2/device/domain"
-	tokendomain "github.com/ambi/idmagic/backend/oauth2/token/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -27,7 +24,7 @@ func mustUUID(t *testing.T) string {
 
 func TestValidateAuthorizationRequest(t *testing.T) {
 	now := time.Now().UTC()
-	valid := authdomain.AuthorizationRequest{
+	valid := oauthdomain.AuthorizationRequest{
 		ID: mustUUID(t), State: spec.AuthFlowReceived, ClientID: "client-1",
 		RedirectURI: "https://client.example/callback", ResponseType: spec.ResponseTypeCode,
 		CodeChallenge: "challenge", CodeChallengeMethod: spec.CodeChallengeMethodS256,
@@ -45,7 +42,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 
 func TestValidateAuthorizationCodeRecord(t *testing.T) {
 	now := time.Now().UTC()
-	valid := authdomain.AuthorizationCodeRecord{
+	valid := oauthdomain.AuthorizationCodeRecord{
 		Code: "code-1", AuthorizationRequestID: mustUUID(t), ClientID: "client-1", UserID: "user-1",
 		RedirectURI: "https://client.example/callback", CodeChallenge: "challenge",
 		CodeChallengeMethod: spec.CodeChallengeMethodS256, State: spec.AuthCodeRecordIssued,
@@ -63,7 +60,7 @@ func TestValidateAuthorizationCodeRecord(t *testing.T) {
 
 func TestValidateRefreshTokenRecord(t *testing.T) {
 	now := time.Now().UTC()
-	valid := tokendomain.RefreshTokenRecord{
+	valid := oauthdomain.RefreshTokenRecord{
 		ID: mustUUID(t), Hash: "hash", FamilyID: mustUUID(t), ClientID: "client-1", UserID: "user-1",
 		IssuedAt: now, ExpiresAt: now.Add(time.Minute), AbsoluteExpiresAt: now.Add(time.Hour),
 	}
@@ -79,7 +76,7 @@ func TestValidateRefreshTokenRecord(t *testing.T) {
 
 func TestValidatePARRecord(t *testing.T) {
 	now := time.Now().UTC()
-	valid := authdomain.PARRecord{
+	valid := oauthdomain.PARRecord{
 		RequestURI: "urn:ietf:params:oauth:request_uri:abc", ClientID: "client-1",
 		IssuedAt: now, ExpiresAt: now.Add(time.Minute),
 	}
@@ -95,7 +92,7 @@ func TestValidatePARRecord(t *testing.T) {
 
 func TestValidateDeviceAuthorization(t *testing.T) {
 	now := time.Now().UTC()
-	valid := devicedomain.DeviceAuthorization{
+	valid := oauthdomain.DeviceAuthorization{
 		DeviceCodeHash: "hash", UserCode: "USER-CODE", ClientID: "client-1",
 		State: spec.DeviceFlowIssued, IntervalSeconds: 5, IssuedAt: now, ExpiresAt: now.Add(time.Minute),
 	}
@@ -111,7 +108,7 @@ func TestValidateDeviceAuthorization(t *testing.T) {
 
 func TestValidateApprovalRequest(t *testing.T) {
 	now := time.Now().UTC()
-	valid := approvaldomain.ApprovalRequest{
+	valid := oauthdomain.ApprovalRequest{
 		ID: mustUUID(t), ClientID: "client-1", UserID: "user-1", AuthReqIDHash: "hash",
 		State: spec.ApprovalPending, IntervalSeconds: 5, RequestedAt: now, ExpiresAt: now.Add(time.Minute),
 	}

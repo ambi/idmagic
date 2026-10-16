@@ -17,8 +17,6 @@ import (
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	cimdhttp "github.com/ambi/idmagic/backend/oauth2/client/cimd_http"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	httpsupport "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/logging"
@@ -104,7 +102,7 @@ func Run() error {
 	})
 	rateLimiter := deps.RateLimit.NewRateLimiter(api.RateLimits)
 	authorizer := bootstrap.AssembleAuthorizer(shared)
-	sessionManager := sessionusecases.NewSessionManager(deps.Authentication.SessionStore)
+	sessionManager := deps.Authentication.NewSessionManager()
 	tokenSigner := tokensJOSE.NewJWTSigner(issuer, deps.SigningKeys.KeyStore)
 	jwkResolver := tokensJOSE.NewJWKResolver()
 	managedTokenIntrospector := apitoken.New(
@@ -181,9 +179,7 @@ func Run() error {
 	sessionManager.Emit = emit
 	// ClientRepo is wrapped with CIMD resolution in bootstrap; Emit can only
 	// be wired here, after NewEmitFunc exists (same reason as sessionManager.Emit above).
-	if cimdRepo, ok := deps.OAuth2.ClientRepo.(*cimdhttp.ClientRepositoryWithCIMD); ok {
-		cimdRepo.Emit = emit
-	}
+	deps.OAuth2.BindClientMetadataEmit(emit)
 	// 投入器も JobEnqueued の発行先を必要とするので、NewEmitFunc の後で組み立てる。
 	jobsModule := deps.Jobs
 	jobsModule.Enqueuer = jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)
@@ -321,7 +317,7 @@ func healthFeatureMetadata(metadata bootstrap.FeatureRuntimeMetadata) httpsuppor
 // イベントの出力先は NewEmitFunc の後でしか決まらないので、ここで組み立てる。
 func sourcingModule(deps *bootstrap.Dependencies, emit func(spec.DomainEvent)) sourcing.Module {
 	module := deps.Sourcing
-	module.UserLifecycle = deps.UserLifecycleCommands(emit, scimActor)
+	module.UserLifecycle = deps.IdManagement.UserLifecycleCommands(deps.UserLifecycleDeps(), deps.ReactiveEmit(emit), scimActor)
 	return module
 }
 

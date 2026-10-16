@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
@@ -40,7 +40,7 @@ func TestTaskHandlerWiresGroupAttributesAndMembers(t *testing.T) {
 	ctx := t.Context()
 	now := time.Now().UTC()
 	m := provisioning.NewMemoryModule()
-	groups := groupmemory.NewGroupRepository()
+	groups := idmanagement.NewMemoryModule().GroupRepo
 	if err := groups.Save(ctx, &groupdomain.Group{ID: "group", TenantID: "tenant", Name: "Staff", CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestTaskHandlerWiresGroupAttributesAndMembers(t *testing.T) {
 		}
 		return client, nil
 	}
-	handler := m.TaskHandler(usermemory.NewUserRepository(), groups, newClient, func(spec.DomainEvent) {}, nil)
+	handler := m.TaskHandler(idmanagement.NewMemoryModule().UserRepo, groups, newClient, func(spec.DomainEvent) {}, nil)
 	if _, err := handler(ctx, &jobsdomain.Job{ID: "job", TenantID: "tenant", Params: json.RawMessage(`{"task_id":"task"}`), Attempts: 1, MaxAttempts: 8}); err != nil {
 		t.Fatal(err)
 	}

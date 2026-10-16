@@ -150,7 +150,7 @@ func seedOwnedAgent(t *testing.T, s *stack.Stack, agentID string) string {
 	now := time.Now().UTC()
 	clientID := "agent-client-" + strings.ToLower(agentID)
 	secretHash := oauthdomain.HashClientSecret(clientID + "-secret")
-	s.Clients.Seed(&oauthdomain.OAuth2Client{
+	_ = s.Clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: clientID, ClientSecretHash: &secretHash,
 		ClientType:              spec.ClientConfidential,
 		GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},

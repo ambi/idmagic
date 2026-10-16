@@ -8,6 +8,7 @@ package server_http_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -17,17 +18,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	"github.com/ambi/idmagic/backend/authentication"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -85,11 +84,11 @@ const (
 // looping hundreds of times) and a metricsSpy wired as support.Deps.Metrics.
 func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 	t.Helper()
-	clientRepo := oauth2memory.NewClientRepository()
-	userRepo := usermemory.NewUserRepository()
+	clientRepo := oauth2.NewMemoryModule().ClientRepo
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 
 	secretHash := domain.HashClientSecret(metricsTestClientSecret)
-	clientRepo.Seed(&domain.OAuth2Client{
+	_ = clientRepo.Save(context.Background(), &domain.OAuth2Client{
 		ClientID: metricsTestClientID, ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
 		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
@@ -105,7 +104,7 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 		t.Fatalf("seed password: %v", err)
 	}
 	now := time.Now().UTC()
-	userRepo.Seed(&userdomain.User{
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID: "user_alice", PreferredUsername: metricsTestUsername, PasswordHash: hash,
 		CreatedAt: now, UpdatedAt: now,
 	})
@@ -115,11 +114,11 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 		t.Fatalf("key store: %v", err)
 	}
 	tokenIssuer := tokensJOSE.NewJWTSigner("http://test", keyStore)
-	loginThrottle := sessionmemory.NewLoginAttemptThrottle(sessionports.LoginThrottleConfigs{
+	loginThrottle := authentication.NewMemoryModule(nil).NewLoginAttemptThrottle(sessionports.LoginThrottleConfigs{
 		Account: sessionports.LoginThrottleConfig{MaxFailures: 2, WindowSeconds: 900, LockoutSeconds: 900},
 		IP:      sessionports.LoginThrottleConfig{MaxFailures: 100, WindowSeconds: 900, LockoutSeconds: 900},
 	})
-	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
+	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
 	spy := &metricsSpy{}
@@ -131,9 +130,9 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 		ShuttingDown:    &atomic.Bool{},
 		Metrics:         spy,
 		OAuth2: oauth2.Module{
-			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
-			RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(),
-			PARStore: oauth2memory.NewPARStore(), RefreshStore: oauth2memory.NewRefreshTokenStore(),
+			ClientRepo: clientRepo, ConsentRepo: oauth2.NewMemoryModule().ConsentRepo,
+			RequestStore: oauth2.NewMemoryModule().RequestStore, CodeStore: oauth2.NewMemoryModule().CodeStore,
+			PARStore: oauth2.NewMemoryModule().PARStore, RefreshStore: oauth2.NewMemoryModule().RefreshStore,
 		},
 		Authentication: authentication.Module{LoginAttemptThrottle: loginThrottle},
 		UserRepo:       userRepo, KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,

@@ -15,11 +15,8 @@ import (
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	securitynotificationmemory "github.com/ambi/idmagic/backend/authentication/securitynotification/db_memory"
-	securitynotificationdomain "github.com/ambi/idmagic/backend/authentication/securitynotification/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	sinks_console "github.com/ambi/idmagic/backend/shared/events/sinks_console"
@@ -40,9 +37,9 @@ func newSecurityNotificationDeps(t *testing.T) (*Dependencies, *captureEmailSend
 	}); err != nil {
 		t.Fatal(err)
 	}
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	email := "alice@example.test"
-	users.Seed(&userdomain.User{
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice",
 		Email: &email, EmailVerified: true,
 		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
@@ -58,8 +55,8 @@ func newSecurityNotificationDeps(t *testing.T) (*Dependencies, *captureEmailSend
 		},
 		IdManagement: idmanagement.Module{UserRepo: users},
 		Authentication: authentication.Module{
-			NotificationPreferenceRepo: securitynotificationmemory.NewPreferenceRepository(),
-			KnownSignInDeviceRepo:      securitynotificationmemory.NewKnownDeviceRepository(),
+			NotificationPreferenceRepo: authentication.NewMemoryModule(nil).NotificationPreferenceRepo,
+			KnownSignInDeviceRepo:      authentication.NewMemoryModule(nil).KnownSignInDeviceRepo,
 		},
 		Audit:  audit.Module{},
 		OAuth2: oauth2.Module{EventSink: sinks_console.NewConsoleSink()},
@@ -119,10 +116,5 @@ func TestEmitFuncDoesNotChainNotifications(t *testing.T) {
 	emit(&authdomain.PasswordChanged{At: time.Now().UTC(), TenantID: "tenant-a", UserID: "user-1"})
 	if len(sender.sent) != 1 {
 		t.Fatalf("sent=%d, want exactly one message rather than a chain", len(sender.sent))
-	}
-	if _, chained := securitynotificationdomain.TriggerFor(
-		(&securitynotificationdomain.AccountSecurityNotificationSent{}).EventType(),
-	); chained {
-		t.Fatal("the dispatcher's own event type is in the catalog; notifications would chain")
 	}
 }

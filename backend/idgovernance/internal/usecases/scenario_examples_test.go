@@ -14,24 +14,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/internal/db_memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
 	"github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -69,7 +67,7 @@ func (l *eventLog) count(eventType string) int {
 // hookedUsers は User の保存のあとに差し込みを呼ぶ。ステップの実行中に管理者の操作が
 // 割り込む状況と、保存の回数を観測するために使う。
 type hookedUsers struct {
-	*usermemory.UserRepository
+	userports.UserRepository
 	mu     sync.Mutex
 	saves  int
 	onSave func()
@@ -98,7 +96,7 @@ func (u *hookedUsers) saveCount() int {
 
 // timingOutGroups は最初の AddMember だけを保存先のタイムアウトとして失敗させる。
 type timingOutGroups struct {
-	*groupmemory.GroupRepository
+	groupports.GroupRepository
 	mu      sync.Mutex
 	timeout bool
 }
@@ -121,8 +119,8 @@ type governanceFixture struct {
 	runs        *igmemory.LifecycleWorkflowRunRepository
 	users       *hookedUsers
 	groups      *timingOutGroups
-	apps        *appmemory.ApplicationRepository
-	assignments *appmemory.ApplicationAssignmentRepository
+	apps        appports.ApplicationRepository
+	assignments appports.AssignmentRepository
 	jobs        jobsports.JobRepository
 	sender      *email_memory.NoopEmailSender
 	events      *eventLog
@@ -136,10 +134,10 @@ func newGovernanceFixture(t *testing.T) *governanceFixture {
 	return &governanceFixture{
 		ctx: workflowContext(), now: time.Date(2026, 9, 22, 0, 0, 0, 0, time.UTC),
 		workflows: igmemory.NewLifecycleWorkflowRepository(), runs: igmemory.NewLifecycleWorkflowRunRepository(),
-		users:       &hookedUsers{UserRepository: usermemory.NewUserRepository()},
-		groups:      &timingOutGroups{GroupRepository: groupmemory.NewGroupRepository()},
-		apps:        appmemory.NewApplicationRepository(),
-		assignments: appmemory.NewApplicationAssignmentRepository(),
+		users:       &hookedUsers{UserRepository: idmanagement.NewMemoryModule().UserRepo},
+		groups:      &timingOutGroups{GroupRepository: idmanagement.NewMemoryModule().GroupRepo},
+		apps:        application.NewMemoryModule().Repo,
+		assignments: application.NewMemoryModule().AssignmentRepo,
 		jobs:        jobsmodule.NewJobRepository(), sender: &email_memory.NoopEmailSender{}, events: &eventLog{},
 	}
 }
@@ -148,15 +146,16 @@ func (f *governanceFixture) workflowDeps() usecases.LifecycleWorkflowDeps {
 	return usecases.LifecycleWorkflowDeps{Repo: f.workflows, RunRepo: f.runs, GroupRepo: f.groups, ApplicationRepo: f.apps, Emit: f.events.emit}
 }
 
-func (f *governanceFixture) userDeps() userusecases.AdminUserDeps {
-	return userusecases.AdminUserDeps{
+func (f *governanceFixture) adminUsers() idmanagement.AdminUsers {
+	return idmanagement.Module{
 		UserRepo: f.users,
 		UserMutationCommitter: usecases.UserMutationCommitter{
 			WorkflowRepo: f.workflows, RunRepo: f.runs, UserRepo: f.users,
 			Capture: &igmemory.UserWorkflowCapture{Users: f.users.UserRepository, Runs: f.runs},
 		},
-		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
-	}
+	}.AdminUsers(idmanagement.LifecycleDeps{
+		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
+	}, nil)
 }
 
 // executor は worker が組み立てるのと同じ依存を渡す。
@@ -166,8 +165,8 @@ func (f *governanceFixture) executor() usecases.LifecycleWorkflowExecutorDeps {
 		ApplicationRepo: f.apps, AssignmentRepo: f.assignments,
 		ApplicationAssignments: desiredStateAssignments(f.apps, f.assignments, f.users, f.groups, f.events.emit),
 		UserLifecycle:          f.userLifecycle(),
-		GroupMembership:        groupusecases.GroupMembershipCommands{Deps: groupusecases.AdminGroupDeps{UserRepo: f.users, GroupRepo: f.groups, Emit: f.events.emit}, Actor: "lifecycle-workflow"},
-		UserRequiredActions:    userusecases.UserLifecycleCommands{Deps: userusecases.AdminUserDeps{UserRepo: f.users, Emit: f.events.emit}, Actor: "lifecycle-workflow"},
+		GroupMembership:        idmanagement.Module{UserRepo: f.users, GroupRepo: f.groups}.GroupMembershipCommands(f.events.emit, "lifecycle-workflow"),
+		UserRequiredActions:    idmanagement.Module{UserRepo: f.users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, f.events.emit, "lifecycle-workflow"),
 		Notifier:               &template.Notifier{Sender: f.sender, SystemDefaultLocale: "en"},
 		Emit:                   f.events.emit,
 	}
@@ -177,10 +176,7 @@ func (f *governanceFixture) userLifecycle() igports.UserLifecycle {
 	if f.lifecycle != nil {
 		return f.lifecycle
 	}
-	return userusecases.UserLifecycleCommands{
-		Deps:  userusecases.AdminUserDeps{UserRepo: f.users, Emit: f.events.emit},
-		Actor: "lifecycle-workflow",
-	}
+	return idmanagement.Module{UserRepo: f.users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, f.events.emit, "lifecycle-workflow")
 }
 
 // recordingUserLifecycle は手順が呼んだ User の操作を記録し、User を変えない。
@@ -230,7 +226,7 @@ func (f *governanceFixture) enabledWorkflow(t *testing.T, trigger igdomain.Workf
 
 func (f *governanceFixture) createUser(t *testing.T, username string) *userdomain.User {
 	t.Helper()
-	user, err := userusecases.CreateUser(f.ctx, f.userDeps(), userusecases.CreateUserInput{ActorUserID: "admin", PreferredUsername: username, Password: "initial-password-9182", Now: f.now})
+	user, err := f.adminUsers().CreateUser(f.ctx, idmanagement.CreateUserInput{ActorUserID: "admin", PreferredUsername: username, Password: "initial-password-9182", Now: f.now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +236,7 @@ func (f *governanceFixture) createUser(t *testing.T, username string) *userdomai
 func (f *governanceFixture) setDepartment(t *testing.T, userID, department string) {
 	t.Helper()
 	attributes := map[string]userdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &department}}
-	if _, err := userusecases.UpdateUser(f.ctx, f.userDeps(), userusecases.UpdateUserInput{Sub: userID, Attributes: &attributes, Now: f.now}); err != nil {
+	if _, err := f.adminUsers().UpdateUser(f.ctx, idmanagement.UpdateUserInput{Sub: userID, Attributes: &attributes, Now: f.now}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -827,7 +823,7 @@ func TestSavingValidatesReferencesInTheWorkflowsTenant(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.seedApplication(t, "portal")
-	schemas := usermemory.NewTenantUserAttributeSchemaRepository()
+	schemas := idmanagement.NewMemoryModule().AttrSchemaRepo
 	if err := schemas.Save(f.ctx, &userdomain.TenantUserAttributeSchema{TenantID: "tenant-a", Attributes: []userdomain.UserAttributeDef{{Key: "badge_color", Type: idmdomain.AttributeTypeString}}, CreatedAt: f.now, UpdatedAt: f.now}); err != nil {
 		t.Fatal(err)
 	}

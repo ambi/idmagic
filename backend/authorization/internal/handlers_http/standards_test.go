@@ -29,10 +29,8 @@ import (
 	authorizationports "github.com/ambi/idmagic/backend/authorization/internal/ports"
 	"github.com/ambi/idmagic/backend/authorization/internal/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	authorizationLocal "github.com/ambi/idmagic/backend/shared/policy/authorization_local"
@@ -132,9 +130,9 @@ func suspendedAgent(id string) *agentdomain.Agent {
 
 func newStandardsFixture(t *testing.T, seams standardsSeams, agents ...*agentdomain.Agent) *standardsFixture {
 	t.Helper()
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(actor("admin", []string{"admin"}))
-	agentRepo := agentmemory.NewAgentRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), actor("admin", []string{"admin"}))
+	agentRepo := idmanagement.NewMemoryModule().AgentRepo
 	for _, agent := range agents {
 		if err := agentRepo.Save(context.Background(), agent); err != nil {
 			t.Fatal(err)

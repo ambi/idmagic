@@ -28,18 +28,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+
 	"github.com/labstack/echo/v5"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -153,7 +152,7 @@ func (r *countingReceiverConfigs) Save(ctx context.Context, tenantID string, c *
 type exampleStack struct {
 	e                  *echo.Echo
 	events             *eventLog
-	agents             *agentmemory.AgentRepository
+	agents             agentports.AgentRepository
 	streams            *ssmemory.SsfStreamRepository
 	transmitterConfigs *countingTransmitterConfigs
 	receiverConfigs    *countingReceiverConfigs
@@ -178,7 +177,7 @@ func newExampleStack(t *testing.T) *exampleStack {
 			t.Fatalf("seed tenant: %v", err)
 		}
 	}
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	for _, user := range []*userdomain.User{
 		{ID: exampleAdmin, PreferredUsername: exampleAdmin, Roles: []string{"admin"}},
 		{ID: exampleNonAdmin, PreferredUsername: exampleNonAdmin},
@@ -187,13 +186,13 @@ func newExampleStack(t *testing.T) *exampleStack {
 		user.PasswordHash = "unused"
 		user.Lifecycle = userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}
 		user.CreatedAt, user.UpdatedAt = now, now
-		users.Seed(user)
+		_ = users.Save(context.Background(), user)
 	}
 
-	clients := oauth2memory.NewClientRepository()
+	clients := oauth2.NewMemoryModule().ClientRepo
 	for id, secret := range map[string]string{agentClientID: agentClientSecret, resourceServerID: resourceServerSecret} {
 		hash := oauthdomain.HashClientSecret(secret)
-		clients.Seed(&oauthdomain.OAuth2Client{
+		_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 			TenantID: tenancydomain.DefaultTenantID, ClientID: id, ClientSecretHash: &hash,
 			ClientType:              spec.ClientConfidential,
 			GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
@@ -216,7 +215,7 @@ func newExampleStack(t *testing.T) *exampleStack {
 	}
 
 	s := &exampleStack{
-		e: echo.New(), events: &eventLog{}, agents: agentmemory.NewAgentRepository(),
+		e: echo.New(), events: &eventLog{}, agents: idmanagement.NewMemoryModule().AgentRepo,
 		streams:            ssmemory.NewSsfStreamRepository(),
 		transmitterConfigs: &countingTransmitterConfigs{SsfTransmitterConfigRepository: ssmemory.NewSsfTransmitterConfigRepository()},
 		receiverConfigs:    &countingReceiverConfigs{SsfReceiverConfigRepository: ssmemory.NewSsfReceiverConfigRepository()},
@@ -226,12 +225,12 @@ func newExampleStack(t *testing.T) *exampleStack {
 	}
 	httpadapter.Register(s.e, httpadapter.Deps{
 		Issuer: exampleIssuer, Emit: s.events.record, TenantRepo: tenants,
-		AuthnResolver: authusecases.DemoHeaderResolver{},
-		IdManagement:  idmanagement.Module{UserRepo: users, GroupRepo: groupmemory.NewGroupRepository(), AgentRepo: s.agents},
+		AuthnResolver: authentication.DemoHeaderResolver{},
+		IdManagement:  idmanagement.Module{UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo, AgentRepo: s.agents},
 		SigningKeys:   signingkeys.Module{KeyStore: keyStore},
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, TokenIssuer: signer, TokenIntrospector: signer,
-			RefreshStore: oauth2memory.NewRefreshTokenStore(), AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist(),
+			RefreshStore: oauth2.NewMemoryModule().RefreshStore, AccessTokenDenylist: oauth2.NewMemoryModule().AccessTokenDenylist,
 		},
 		Tenancy:     tenancy.Module{QuotaRepo: quotas},
 		JWKResolver: tokensjose.NewJWKResolver(),

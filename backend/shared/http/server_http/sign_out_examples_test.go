@@ -16,9 +16,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
@@ -39,8 +40,8 @@ func TestSignOutRevokesTheServerSideSessionForEveryEndpointShape(t *testing.T) {
 		for _, shape := range []struct {
 			name, cookieName string
 		}{
-			{"サブドメイン形式 (__Host- 接頭辞つき)", "__Host-" + sessionusecases.SessionCookie},
-			{"パス形式 (接頭辞なし)", sessionusecases.SessionCookie},
+			{"サブドメイン形式 (__Host- 接頭辞つき)", "__Host-" + authentication.SessionCookie},
+			{"パス形式 (接頭辞なし)", authentication.SessionCookie},
 		} {
 			t.Run(signOut.name+"/"+shape.name, func(t *testing.T) {
 				s := stack.New(t, stack.WithAuthorizationCodeFlow(), stack.WithSaml(), stack.WithWsFederation())

@@ -5,27 +5,27 @@ import (
 	"testing"
 	"time"
 
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	"github.com/ambi/idmagic/backend/idmanagement"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
+
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	scimmemory "github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 )
 
 // scimUserLifecycle は、組み立ての地点と同じく IdManagement の操作を SCIM のポートへ渡す。
-func scimUserLifecycle(users userports.UserRepository) userusecases.UserLifecycleCommands {
-	return userusecases.UserLifecycleCommands{Deps: userusecases.AdminUserDeps{UserRepo: users}, Actor: "scim"}
+func scimUserLifecycle(users userports.UserRepository) scimports.UserLifecycle {
+	return idmanagement.Module{UserRepo: users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, nil, "scim")
 }
 
 type scimOwnerFixture struct {
 	u       *usecases.Usecases
-	users   *usermemory.UserRepository
-	agents  *agentmemory.AgentRepository
+	users   userports.UserRepository
+	agents  agentports.AgentRepository
 	events  []string
 	scimID  string
 	ownerID string
@@ -34,15 +34,13 @@ type scimOwnerFixture struct {
 func newScimOwnerFixture(t *testing.T) *scimOwnerFixture {
 	t.Helper()
 	ctx := context.Background()
-	f := &scimOwnerFixture{users: usermemory.NewUserRepository(), agents: agentmemory.NewAgentRepository()}
-	lifecycle := userusecases.UserLifecycleCommands{
-		Deps: userusecases.AdminUserDeps{
-			UserRepo: f.users, AgentRepo: f.agents,
-			Emit: func(event spec.DomainEvent) error { f.events = append(f.events, event.EventType()); return nil },
-		},
-		Actor: "scim",
-	}
-	f.u = usecases.NewUsecases(scimmemory.NewScimRepository(), f.users, groupmemory.NewGroupRepository(), lifecycle, func(spec.DomainEvent) {})
+	f := &scimOwnerFixture{users: idmanagement.NewMemoryModule().UserRepo, agents: idmanagement.NewMemoryModule().AgentRepo}
+	lifecycle := idmanagement.Module{UserRepo: f.users, AgentRepo: f.agents}.UserLifecycleCommands(
+		idmanagement.LifecycleDeps{},
+		func(event spec.DomainEvent) error { f.events = append(f.events, event.EventType()); return nil },
+		"scim",
+	)
+	f.u = usecases.NewUsecases(scimmemory.NewScimRepository(), f.users, idmanagement.NewMemoryModule().GroupRepo, lifecycle, func(spec.DomainEvent) {})
 	created, err := f.u.CreateUser(ctx, scimTenant, map[string]any{"userName": "alice", "active": true})
 	if err != nil {
 		t.Fatal(err)

@@ -1,0 +1,399 @@
+package usecases_test
+
+// 主要ユースケース追跡: REQ-IDMANAGEMENT-015。
+
+import (
+	"context"
+	"errors"
+	"slices"
+	"testing"
+	"time"
+
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
+
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/internal/group/db_memory"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/internal/group/usecases"
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/internal/user/db_memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
+)
+
+func newGroupDeps(t *testing.T) (groupusecases.AdminGroupDeps, *[]spec.DomainEvent) {
+	t.Helper()
+	userRepo := usermemory.NewUserRepository()
+	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
+	userRepo.Seed(&userdomain.User{
+		ID: "user_alice", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "alice",
+		PasswordHash: "x", Roles: []string{}, CreatedAt: now, UpdatedAt: now,
+	})
+	userRepo.Seed(&userdomain.User{
+		ID: "user_other", TenantID: "acme", PreferredUsername: "other",
+		PasswordHash: "x", Roles: []string{}, CreatedAt: now, UpdatedAt: now,
+	})
+	events := &[]spec.DomainEvent{}
+	deps := groupusecases.AdminGroupDeps{
+		GroupRepo:           groupmemory.NewGroupRepository(),
+		UserRepo:            userRepo,
+		Emit:                func(e spec.DomainEvent) error { *events = append(*events, e); return nil },
+		QuotaRepo:           tenancy.NewMemoryModule().QuotaRepo,
+		GroupAttrSchemaRepo: groupmemory.NewTenantGroupAttributeSchemaRepository(),
+	}
+	return deps, events
+}
+
+// newGroupDepsWithQuota is like newGroupDeps but pins the tenant's groups
+// Hard Quota to limit, for wi-160 enforcement tests.
+func newGroupDepsWithQuota(t *testing.T, tenantID string, limit int) groupusecases.AdminGroupDeps {
+	t.Helper()
+	deps, _ := newGroupDeps(t)
+	if err := deps.QuotaRepo.SetQuota(testing_tenant.Default(context.Background()), tenantID, &tenancydomain.TenantQuota{Groups: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	return deps
+}
+
+func eventTypes(events []spec.DomainEvent) []string {
+	out := make([]string, len(events))
+	for i, e := range events {
+		out[i] = e.EventType()
+	}
+	return out
+}
+
+// 015-02 の「再発行されない」は、イベントの列が増えないことと、所属が二重にならない
+// ことの両方で読む。イベントだけを数えると、行を増やしてから発行を抑える実装が通る。
+//
+//spec:covers EX-IDMANAGEMENT-015-01, EX-IDMANAGEMENT-015-02, EX-IDMANAGEMENT-084-01: グループ由来のロールが実効ロールに乗ること、同じ所属の再登録が GroupMemberAdded も所属の行も増やさないこと。
+func TestGroupCreateAddMemberEffectiveRoles(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	deps, events := newGroupDeps(t)
+	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
+
+	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "engineering", Roles: []string{"catalog:read"}, Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 名前一意性
+	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "Engineering", Now: now,
+	}); !errors.Is(err, groupusecases.ErrGroupNameConflict) {
+		t.Fatalf("expected name conflict, got %v", err)
+	}
+
+	if err := groupusecases.AddMember(ctx, deps, "operator", group.ID, "user_alice", now); err != nil {
+		t.Fatal(err)
+	}
+	// 冪等: 再追加では event は増えない
+	if err := groupusecases.AddMember(ctx, deps, "operator", group.ID, "user_alice", now); err != nil {
+		t.Fatal(err)
+	}
+
+	view, err := groupusecases.UserGroups(ctx, deps, "user_alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(view.EffectiveRoles, []string{"catalog:read"}) {
+		t.Fatalf("effective roles = %v", view.EffectiveRoles)
+	}
+	if !slices.Equal(view.GroupRoles, []string{"catalog:read"}) || len(view.DirectRoles) != 0 {
+		t.Fatalf("direct=%v group=%v", view.DirectRoles, view.GroupRoles)
+	}
+
+	got := eventTypes(*events)
+	want := []string{"GroupCreated", "GroupMemberAdded"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("events = %v, want %v", got, want)
+	}
+	// 再登録が所属の行を増やしていないこと。
+	_, members, err := groupusecases.GetGroup(ctx, deps, group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(members) != 1 || members[0].UserID != "user_alice" {
+		t.Fatalf("再登録で所属が %d 件になった: %+v", len(members), members)
+	}
+}
+
+func TestListGetUpdateAndRemoveGroupMember(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	deps, events := newGroupDeps(t)
+	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
+	description := "  platform team  "
+	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "engineering", Description: &description, Roles: []string{"catalog:read"}, Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := groupusecases.AddMember(ctx, deps, "operator", group.ID, "user_alice", now); err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := groupusecases.ListGroups(ctx, deps, "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].Group.ID != group.ID || list[0].MemberCount != 1 {
+		t.Fatalf("list = %+v", list)
+	}
+	got, members, err := groupusecases.GetGroup(ctx, deps, group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Description == nil || *got.Description != "platform team" || len(members) != 1 {
+		t.Fatalf("get group=%+v members=%+v", got, members)
+	}
+
+	*events = (*events)[:0]
+	newName := "platform"
+	emptyDescription := " "
+	roles := []string{"catalog:write"}
+	updated, err := groupusecases.UpdateGroup(ctx, deps, groupusecases.UpdateGroupInput{
+		ActorUserID: "operator", ID: group.ID, Name: &newName, Description: &emptyDescription, Roles: &roles, Now: now.Add(time.Hour),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Name != "platform" || updated.Description != nil || !slices.Equal(updated.Roles, roles) {
+		t.Fatalf("updated = %+v", updated)
+	}
+	if !slices.Equal(eventTypes(*events), []string{"GroupUpdated"}) {
+		t.Fatalf("events = %v", eventTypes(*events))
+	}
+
+	*events = (*events)[:0]
+	if err := groupusecases.RemoveMember(ctx, deps, "operator", group.ID, "user_alice", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := groupusecases.RemoveMember(ctx, deps, "operator", group.ID, "user_alice", now); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(eventTypes(*events), []string{"GroupMemberRemoved"}) {
+		t.Fatalf("events = %v", eventTypes(*events))
+	}
+}
+
+func TestUpdateGroupValidationErrors(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	deps, events := newGroupDeps(t)
+	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
+	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "engineering", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "support", Now: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	eventCount := len(*events)
+
+	blank := " "
+	if _, err := groupusecases.UpdateGroup(ctx, deps, groupusecases.UpdateGroupInput{
+		ActorUserID: "operator", ID: group.ID, Name: &blank,
+	}); !errors.Is(err, groupusecases.ErrGroupNameEmpty) {
+		t.Fatalf("expected ErrGroupNameEmpty, got %v", err)
+	}
+	dupe := "support"
+	if _, err := groupusecases.UpdateGroup(ctx, deps, groupusecases.UpdateGroupInput{
+		ActorUserID: "operator", ID: group.ID, Name: &dupe,
+	}); !errors.Is(err, groupusecases.ErrGroupNameConflict) {
+		t.Fatalf("expected ErrGroupNameConflict, got %v", err)
+	}
+	roles := []string{" "}
+	if _, err := groupusecases.UpdateGroup(ctx, deps, groupusecases.UpdateGroupInput{
+		ActorUserID: "operator", ID: group.ID, Roles: &roles,
+	}); err == nil {
+		t.Fatal("expected invalid role error")
+	}
+	if _, err := groupusecases.UpdateGroup(ctx, deps, groupusecases.UpdateGroupInput{
+		ActorUserID: "operator", ID: "ghost", Name: &dupe,
+	}); !errors.Is(err, groupusecases.ErrGroupNotFound) {
+		t.Fatalf("expected ErrGroupNotFound, got %v", err)
+	}
+	after, err := deps.GroupRepo.FindByID(ctx, tenancydomain.DefaultTenantID, group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after == nil || after.Name != "engineering" || len(after.Roles) != 0 {
+		t.Fatalf("rejected updates changed the group: %+v", after)
+	}
+	if len(*events) != eventCount {
+		t.Fatalf("rejected updates emitted %d events, want %d", len(*events), eventCount)
+	}
+}
+
+// TestCreateGroup_rejectsWhenHardQuotaExceeded is a wi-160 T004.2 RED test for
+// the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
+// (docs/modules/tenancy/).
+func TestCreateGroup_rejectsWhenHardQuotaExceeded(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	deps := newGroupDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
+	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
+	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "engineering", Now: now,
+	}); err != nil {
+		t.Fatalf("first CreateGroup: %v", err)
+	}
+	_, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "support", Now: now,
+	})
+	var qErr *tenancydomain.QuotaExceededError
+	if !errors.As(err, &qErr) {
+		t.Fatalf("expected *domain.QuotaExceededError, got %v", err)
+	}
+	if qErr.Resource != tenancydomain.ResourceGroups {
+		t.Fatalf("unexpected resource: %s", qErr.Resource)
+	}
+	list, err := groupusecases.ListGroups(ctx, deps, "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected rejected create to not persist a second group, got %d groups", len(list))
+	}
+}
+
+// TestDeleteGroup_decrementsQuotaUsage is a wi-160 T004.2 RED test: deleting a
+// group must free its quota slot so a subsequent create at the same limit
+// succeeds.
+func TestDeleteGroup_decrementsQuotaUsage(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	deps := newGroupDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
+	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
+	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "engineering", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := groupusecases.DeleteGroup(ctx, deps, "operator", group.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "support", Now: now,
+	}); err != nil {
+		t.Fatalf("expected create to succeed after delete freed quota, got %v", err)
+	}
+}
+
+func TestAddMemberRejectsCrossTenantUser(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	deps, _ := newGroupDeps(t)
+	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
+	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "engineering", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := groupusecases.AddMember(ctx, deps, "operator", group.ID, "user_other", now); !errors.Is(err, idmusecases.ErrUserNotFound) {
+		t.Fatalf("expected ErrUserNotFound for cross-tenant user, got %v", err)
+	}
+	members, err := deps.GroupRepo.ListMembersByGroup(ctx, tenancydomain.DefaultTenantID, group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(members) != 0 {
+		t.Fatalf("cross-tenant refusal saved memberships: %+v", members)
+	}
+}
+
+func TestDeleteGroupCascadesMembership(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	deps, events := newGroupDeps(t)
+	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
+	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "engineering", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := groupusecases.AddMember(ctx, deps, "operator", group.ID, "user_alice", now); err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+	if err := groupusecases.DeleteGroup(ctx, deps, "operator", group.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	got := eventTypes(*events)
+	want := []string{"GroupMemberRemoved", "GroupDeleted"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("delete events = %v, want %v", got, want)
+	}
+	if _, _, err := groupusecases.GetGroup(ctx, deps, group.ID); !errors.Is(err, groupusecases.ErrGroupNotFound) {
+		t.Fatalf("expected ErrGroupNotFound after delete, got %v", err)
+	}
+}
+
+// 制御面テナントの Group は `system_admin` を保持でき、所属 User の実効ロールへ配る。
+//
+// 主要ユースケース control-plane-group-grants-system-admin の単体証拠。実効ロールまで
+// 読むのは、Group が自身でシステム運用者になるのではなく制御面 User へロールを配る束
+// だという設計を、Group の保存だけでは確かめられないからである。
+//
+// 対照として同じロールを acme テナントで拒否する。許可の側だけを見るテストは、
+// テナントを一切見ない実装を通してしまう。
+//
+//spec:covers REQ-IDMANAGEMENT-032, EX-IDMANAGEMENT-032-01, EX-IDMANAGEMENT-032-04: 制御面テナントの Group への `system_admin` の付与が受理され、所属 User の実効ロールへ group 由来として現れること。制御面以外のテナントでは同じ付与が ErrReservedRole で拒否され、Group が作られないこと。
+func TestCreateGroupKeepsTheReservedRoleInsideTheControlPlane(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	deps, events := newGroupDeps(t)
+	now := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
+
+	group, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "system-operators",
+		Roles: []string{idmusecases.ReservedRoleSystemAdmin}, Now: now,
+	})
+	if err != nil {
+		t.Fatalf("制御面 Group の作成が拒否された: %v", err)
+	}
+	if !slices.Equal(group.Roles, []string{idmusecases.ReservedRoleSystemAdmin}) {
+		t.Fatalf("roles=%v", group.Roles)
+	}
+	if err := groupusecases.AddMember(ctx, deps, "operator", group.ID, "user_alice", now); err != nil {
+		t.Fatal(err)
+	}
+	view, err := groupusecases.UserGroups(ctx, deps, "user_alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(view.EffectiveRoles, []string{idmusecases.ReservedRoleSystemAdmin}) {
+		t.Fatalf("実効ロール=%v", view.EffectiveRoles)
+	}
+	if !slices.Equal(view.GroupRoles, []string{idmusecases.ReservedRoleSystemAdmin}) || len(view.DirectRoles) != 0 {
+		t.Fatalf("direct=%v group=%v", view.DirectRoles, view.GroupRoles)
+	}
+
+	// 対照: 制御面以外のテナントでは同じ付与が拒否され、Group も残らない。
+	foreign := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "acme"}, "", "")
+	foreignDeps, foreignEvents := newGroupDeps(t)
+	if _, err := groupusecases.CreateGroup(foreign, foreignDeps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "escalation",
+		Roles: []string{idmusecases.ReservedRoleSystemAdmin}, Now: now,
+	}); !errors.Is(err, idmusecases.ErrReservedRole) {
+		t.Fatalf("err=%v, want ErrReservedRole", err)
+	}
+	groups, err := foreignDeps.GroupRepo.ListAll(foreign, "acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(groups) != 0 {
+		t.Fatalf("拒否されたのに Group が %d 件残った: %+v", len(groups), groups)
+	}
+	if len(*foreignEvents) != 0 {
+		t.Fatalf("拒否されたのに %v が発行された", eventTypes(*foreignEvents))
+	}
+	if got := eventTypes(*events); !slices.Equal(got, []string{"GroupCreated", "GroupMemberAdded"}) {
+		t.Fatalf("events=%v", got)
+	}
+}

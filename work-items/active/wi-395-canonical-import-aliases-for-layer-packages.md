@@ -95,7 +95,7 @@ importas:
 
 ### 正規表現の衝突
 
-`backend/authorization/domain` と `backend/oauth2/authorization/domain` は、機械的導出だとどちらも `authorizationdomain` になる。両方を import するファイルではコンパイルが通らない。**片方は明示エントリで別の別名を与える**（`oauth2/authorization` 側を `oauthauthorizationdomain` などにする）。同じ形の衝突が他に無いことを T001 の棚卸しで確認する。
+`backend/authorization/domain` と `backend/oauth2/internal/authorization/domain` は、機械的導出だとどちらも `authorizationdomain` になる。両方を import するファイルではコンパイルが通らない。**片方は明示エントリで別の別名を与える**（`oauth2/authorization` 側を `oauthauthorizationdomain` などにする）。同じ形の衝突が他に無いことを T001 の棚卸しで確認する。
 
 ### `domain/` ディレクトリを廃止する案を採らなかった理由
 
@@ -141,7 +141,7 @@ importas:
 - `mise run verify`
 - 手動: 任意のファイルで `tenancydomain` を `tenantdomain` に書き換え、`mise run lint-go` が落ちることを確認する。落ちなければ規則は強制されていない。
 - 手動: 規則を定めていない新しいパッケージを `domain` 配下に作り、正規表現の受け皿が効いて別名を強制することを確認する。効かなければ、次に生えるパッケージから再び綴りが割れる。
-- 手動: `backend/authorization/domain` と `backend/oauth2/authorization/domain` を同時に import するファイルがコンパイルできることを確認する。
+- 手動: `backend/authorization/domain` と `backend/oauth2/internal/authorization/domain` を同時に import するファイルがコンパイルできることを確認する。
 
 ## Risk Notes
 

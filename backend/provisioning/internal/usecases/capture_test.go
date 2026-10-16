@@ -7,18 +7,19 @@ import (
 	"testing"
 	"time"
 
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
+	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	memory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 )
 
-func newCaptureDeps() (usecases.CaptureDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository, *appmemory.ApplicationAssignmentRepository) {
+func newCaptureDeps() (usecases.CaptureDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository, appports.AssignmentRepository) {
 	connRepo := memory.NewProvisioningConnectionRepository()
 	taskRepo := memory.NewProvisioningTaskRepository()
-	assignmentRepo := appmemory.NewApplicationAssignmentRepository()
+	assignmentRepo := application.NewMemoryModule().AssignmentRepo
 	return usecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo, AssignmentRepo: assignmentRepo}, connRepo, taskRepo, assignmentRepo
 }
 

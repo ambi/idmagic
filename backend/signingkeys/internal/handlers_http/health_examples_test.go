@@ -23,11 +23,11 @@ import (
 	"testing"
 	"time"
 
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -68,7 +68,7 @@ type healthServer struct {
 }
 
 // newHealthServer は actor が認証済みのスタックを組む。制御面テナントは default である。
-func newHealthServer(t *testing.T, keyStore signingports.KeyStore, groups *groupmemory.GroupRepository, actor *userdomain.User) healthServer {
+func newHealthServer(t *testing.T, keyStore signingports.KeyStore, groups groupports.GroupRepository, actor *userdomain.User) healthServer {
 	t.Helper()
 	tenants := &countedTenants{TenantRepository: tenancy.NewMemoryModule().TenantRepo}
 	for _, tenant := range []*tenancydomain.Tenant{
@@ -79,8 +79,8 @@ func newHealthServer(t *testing.T, keyStore signingports.KeyStore, groups *group
 			t.Fatal(err)
 		}
 	}
-	users := usermemory.NewUserRepository()
-	users.Seed(actor)
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), actor)
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(),
@@ -193,7 +193,7 @@ func TestKeyProviderOutageIsVisibleInHealthWhileJWKSServesCachedKeys(t *testing.
 	if err != nil {
 		t.Fatalf("load tenant-a key while Vault is reachable: %v", err)
 	}
-	server := newHealthServer(t, keyStore, groupmemory.NewGroupRepository(), healthUser("sys-operator", tenancydomain.DefaultTenantID, "system_admin"))
+	server := newHealthServer(t, keyStore, idmanagement.NewMemoryModule().GroupRepo, healthUser("sys-operator", tenancydomain.DefaultTenantID, "system_admin"))
 	const healthPath = "/realms/" + tenancydomain.DefaultRealm + "/api/admin/v1/keys/health"
 
 	if before := decodeHealth(t, server.get(t, healthPath))[tenantA]; !before.Healthy || before.ActiveKid != cached.Kid {
@@ -227,7 +227,7 @@ func TestSigningKeyHealthRefusesActorsOutsideTheControlPlane(t *testing.T) {
 		kids = append(kids, key.Kid)
 	}
 
-	groups := groupmemory.NewGroupRepository()
+	groups := idmanagement.NewMemoryModule().GroupRepo
 	if err := groups.Save(t.Context(), &groupdomain.Group{
 		ID: "ops", TenantID: tenantA, Name: "ops", Roles: []string{"system_admin"},
 		MembershipType: groupdomain.GroupMembershipManual,

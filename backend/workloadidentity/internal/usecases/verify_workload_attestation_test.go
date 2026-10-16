@@ -14,7 +14,8 @@ import (
 	"testing"
 	"time"
 
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 
@@ -104,7 +105,7 @@ func newFixture(t *testing.T) *fixture {
 
 	bundleRepo := workloadmemory.NewWorkloadTrustBundleRepository()
 	bindingRepo := workloadmemory.NewAgentWorkloadBindingRepository()
-	agentRepo := agentmemory.NewAgentRepository()
+	agentRepo := idmanagement.NewMemoryModule().AgentRepo
 
 	f := &fixture{key: key, kid: kid, now: time.Now().UTC()}
 	f.deps = usecases.VerifyWorkloadAttestationDeps{

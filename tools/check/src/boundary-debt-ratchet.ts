@@ -118,13 +118,16 @@ export async function checkBoundaryDebtRatchet(
   }
 }
 
+/** 利用元のパスを ID に含み、`internal/` への移動で ID が変わる違反の種類。 */
+const SOURCE_PATH_KINDS: readonly BoundaryViolationKind[] = ['private-import', 'table-write']
+
 /** 方式を切り替えるモジュールの利用元だけを読み替え、参照先と残る相対パスを保つ。 */
 function beforeMigrationId(
   violation: BoundaryViolation,
   before: ArchitectureModel,
   current: ArchitectureModel,
 ): string {
-  if (violation.kind !== 'private-import') return violation.id
+  if (!SOURCE_PATH_KINDS.includes(violation.kind)) return violation.id
   const module = current.modules.find(
     (candidate) =>
       candidate.name === violation.sourceModule && candidate.publication === 'internal',
@@ -135,9 +138,9 @@ function beforeMigrationId(
   if (module === undefined || previous === undefined) return violation.id
   for (const prefix of module.packagePrefixes) {
     if (!previous.packagePrefixes.includes(prefix)) continue
-    const moved = `private-import:${module.name}:${prefix}/internal/`
+    const moved = `${violation.kind}:${module.name}:${prefix}/internal/`
     if (violation.id.startsWith(moved))
-      return `private-import:${module.name}:${prefix}/${violation.id.slice(moved.length)}`
+      return `${violation.kind}:${module.name}:${prefix}/${violation.id.slice(moved.length)}`
   }
   return violation.id
 }

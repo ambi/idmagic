@@ -11,8 +11,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 )
 
 func encodeClientAssertion(t *testing.T, key *rsa.PrivateKey, header, payload map[string]any) string {
@@ -107,7 +105,7 @@ func TestVerifyClientAssertionRejectsMalformedInput(t *testing.T) {
 	)
 	key, jwk := dpopTestKey(t)
 	jwk["kid"] = "client-key"
-	replay := memory.NewClientAssertionReplayStore()
+	replay := newReplayStoreFake()
 	keysFn := func(_ context.Context, _ string) ([]map[string]any, error) { //nolint:unparam // error is always nil here; these cases all fail before the jwks load
 		return []map[string]any{jwk}, nil
 	}
@@ -170,7 +168,7 @@ func TestVerifyClientAssertionRejectsKeysFnError(t *testing.T) {
 	}
 	_, err := VerifyClientAssertion(
 		context.Background(), assertion, clientID, []string{audience}, keysFn,
-		memory.NewClientAssertionReplayStore(), now, nil,
+		newReplayStoreFake(), now, nil,
 	)
 	if err == nil || !strings.Contains(err.Error(), "load jwks") {
 		t.Fatalf("expected jwks-load error, got %v", err)

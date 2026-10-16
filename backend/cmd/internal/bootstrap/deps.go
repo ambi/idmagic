@@ -8,7 +8,6 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
-	webauthnusecases "github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
 	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idgovernance"
@@ -122,11 +121,7 @@ func loadWebAuthnRP(cfg SharedConfig) (*gowebauthn.WebAuthn, error) {
 	if cfg.WebAuthnRPID == "" {
 		return nil, nil //nolint:nilnil // RP_ID 未設定は WebAuthn 無効を表す正当な状態 (エラーではない)。
 	}
-	return webauthnusecases.NewWebAuthn(webauthnusecases.WebAuthnConfig{
-		RPID:          cfg.WebAuthnRPID,
-		RPDisplayName: cfg.WebAuthnRPDisplayName,
-		RPOrigins:     cfg.WebAuthnRPOrigins,
-	})
+	return authentication.NewWebAuthn(cfg.WebAuthnRPID, cfg.WebAuthnRPDisplayName, cfg.WebAuthnRPOrigins)
 }
 
 // splitAndTrim はカンマ区切り文字列を空要素を除いてトリムして分割する。

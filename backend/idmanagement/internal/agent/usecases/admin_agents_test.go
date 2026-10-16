@@ -1,0 +1,675 @@
+package usecases_test
+
+// 主要ユースケース追跡: REQ-IDMANAGEMENT-009。
+
+import (
+	"context"
+	"errors"
+	"slices"
+	"testing"
+	"time"
+
+	"github.com/ambi/idmagic/backend/oauth2"
+
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
+
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	agentmemory "github.com/ambi/idmagic/backend/idmanagement/internal/agent/db_memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/internal/user/db_memory"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
+	agentusecases "github.com/ambi/idmagic/backend/idmanagement/internal/agent/usecases"
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+)
+
+func newAgentDeps(t *testing.T) (agentusecases.AdminAgentDeps, *[]spec.DomainEvent) {
+	t.Helper()
+	clientRepo := oauth2.NewMemoryModule().ClientRepo
+	userRepo := usermemory.NewUserRepository()
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	_ = clientRepo.Save(testing_tenant.Default(context.Background()), &oauthdomain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID, ClientID: "svc_client", ClientType: spec.ClientConfidential,
+		RedirectURIs:             []string{"https://app.example/cb"},
+		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
+	})
+	userRepo.Seed(&userdomain.User{
+		ID: "operator", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "operator",
+		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
+	})
+	userRepo.Seed(&userdomain.User{
+		ID: "user_new", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "user-new",
+		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
+	})
+	userRepo.Seed(&userdomain.User{
+		ID: "acme_owner", TenantID: "acme", PreferredUsername: "acme-owner",
+		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
+	})
+	events := &[]spec.DomainEvent{}
+	deps := agentusecases.AdminAgentDeps{
+		AgentRepo:  agentmemory.NewAgentRepository(),
+		ClientRepo: clientRepo,
+		UserRepo:   userRepo,
+		Emit:       func(e spec.DomainEvent) error { *events = append(*events, e); return nil },
+		QuotaRepo:  tenancy.NewMemoryModule().QuotaRepo,
+	}
+	return deps, events
+}
+
+// newAgentDepsWithQuota is like newAgentDeps but pins the tenant's agents
+// Hard Quota to limit (wi-160).
+func newAgentDepsWithQuota(t *testing.T, tenantID string, limit int) agentusecases.AdminAgentDeps {
+	t.Helper()
+	deps, _ := newAgentDeps(t)
+	if err := deps.QuotaRepo.SetQuota(testing_tenant.Default(context.Background()), tenantID, &tenancydomain.TenantQuota{Agents: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	return deps
+}
+
+func agentEventTypes(events []spec.DomainEvent) []string {
+	out := make([]string, len(events))
+	for i, e := range events {
+		out[i] = e.EventType()
+	}
+	return out
+}
+
+// defaultTenantCtx は default テナントを解決済みの context を返す。
+func defaultTenantCtx() context.Context {
+	return testing_tenant.Default(context.Background())
+}
+
+func tenantCtx(id string) context.Context {
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "https://idp.example", "")
+}
+
+func TestRegisterAgentNameUniquenessAndOwnerDefault(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Roles: []string{"deploy:run"}, Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if agent.OwnerUserID != "operator" {
+		t.Fatalf("owner_sub default = %q, want operator", agent.OwnerUserID)
+	}
+	// status だけが既定を持つ。kind は呼び出し側が宣言したものがそのまま残る。
+	if agent.Status != idmdomain.AgentStatusActive || agent.Kind != idmdomain.AgentKindAutonomous {
+		t.Fatalf("unexpected defaults: status=%q kind=%q", agent.Status, agent.Kind)
+	}
+
+	// 名前一意性 (大文字小文字無視)
+	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "Deploy-Bot", Now: now,
+	}); !errors.Is(err, agentusecases.ErrAgentNameConflict) {
+		t.Fatalf("expected name conflict, got %v", err)
+	}
+
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentRegistered"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+// TestRegisterAgent_rejectsWhenHardQuotaExceeded is a wi-160 T004.3 RED test
+// for the SCL scenario "Hard Quota を超過したリソース作成は拒否される"
+// (docs/modules/tenancy/), applied to the agents resource.
+func TestRegisterAgent_rejectsWhenHardQuotaExceeded(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps := newAgentDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	}); err != nil {
+		t.Fatalf("first RegisterAgent: %v", err)
+	}
+	_, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "build-bot", Now: now,
+	})
+	var qErr *tenancydomain.QuotaExceededError
+	if !errors.As(err, &qErr) {
+		t.Fatalf("expected *domain.QuotaExceededError, got %v", err)
+	}
+	if qErr.Resource != tenancydomain.ResourceAgents {
+		t.Fatalf("unexpected resource: %s", qErr.Resource)
+	}
+	list, err := agentusecases.ListAgents(ctx, deps, "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected rejected create to not persist a second agent, got %d agents", len(list))
+	}
+}
+
+// TestDeleteAgent_decrementsQuotaUsage is a wi-160 T004.3 RED test: deleting
+// an agent must free its quota slot so a subsequent register at the same
+// limit succeeds.
+func TestDeleteAgent_decrementsQuotaUsage(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps := newAgentDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := agentusecases.DeleteAgent(ctx, deps, "operator", agent.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "build-bot", Now: now,
+	}); err != nil {
+		t.Fatalf("expected register to succeed after delete freed quota, got %v", err)
+	}
+}
+
+func TestListAgentsAndUpdateDetails(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := agentusecases.BindCredential(ctx, deps, "operator", agent.ID, "svc_client", now); err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := agentusecases.ListAgents(ctx, deps, "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].Agent.ID != agent.ID || !slices.Equal(list[0].ClientIDs, []string{"svc_client"}) {
+		t.Fatalf("list = %+v", list)
+	}
+
+	*events = (*events)[:0]
+	newName := "deploy-bot-renamed"
+	desc := "  deploy automation  "
+	kind := idmdomain.AgentKindAutonomous
+	roles := []string{"deploy:run", "deploy:read"}
+	normalizedRoles := []string{"deploy:read", "deploy:run"}
+	updated, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, Name: &newName, Description: &desc, Kind: &kind, Roles: &roles, Now: now.Add(time.Hour),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Name != newName || updated.Description == nil || *updated.Description != "deploy automation" || updated.Kind != kind || !slices.Equal(updated.Roles, normalizedRoles) {
+		t.Fatalf("updated = %+v", updated)
+	}
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentUpdated"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+
+	again, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, Now: now.Add(2 * time.Hour),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Name != newName {
+		t.Fatalf("no-op update changed agent: %+v", again)
+	}
+}
+
+func TestAgentInputValidationErrors(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+
+	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: " ", Now: now,
+	}); !errors.Is(err, agentusecases.ErrAgentNameEmpty) {
+		t.Fatalf("expected ErrAgentNameEmpty, got %v", err)
+	}
+	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind: idmdomain.AgentKindAutonomous,
+		Name: "ownerless", Now: now,
+	}); !errors.Is(err, agentusecases.ErrAgentOwnerRequired) {
+		t.Fatalf("expected ErrAgentOwnerRequired, got %v", err)
+	}
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blankName := " "
+	if _, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, Name: &blankName,
+	}); !errors.Is(err, agentusecases.ErrAgentNameEmpty) {
+		t.Fatalf("expected ErrAgentNameEmpty, got %v", err)
+	}
+	blankOwner := " "
+	if _, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, OwnerUserID: &blankOwner,
+	}); !errors.Is(err, agentusecases.ErrAgentOwnerRequired) {
+		t.Fatalf("expected ErrAgentOwnerRequired, got %v", err)
+	}
+	roles := []string{" "}
+	if _, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, Roles: &roles,
+	}); err == nil {
+		t.Fatal("expected invalid role error")
+	}
+	if _, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: "ghost", Name: &blankName,
+	}); !errors.Is(err, agentusecases.ErrAgentNotFound) {
+		t.Fatalf("expected ErrAgentNotFound, got %v", err)
+	}
+	after, err := deps.AgentRepo.FindByID(ctx, tenancydomain.DefaultTenantID, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after == nil || after.Name != "deploy-bot" || after.OwnerUserID != "operator" || len(after.Roles) != 0 {
+		t.Fatalf("rejected updates changed the agent: %+v", after)
+	}
+	if len(*events) != 1 {
+		t.Fatalf("rejected operations emitted events: %+v", *events)
+	}
+}
+
+func TestGetAgentRejectsCrossTenant(t *testing.T) {
+	deps, _ := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := agentusecases.RegisterAgent(defaultTenantCtx(), deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherCtx := tenantCtx("acme")
+	if _, err := agentusecases.GetAgent(otherCtx, deps, agent.ID); !errors.Is(err, agentusecases.ErrAgentNotFound) {
+		t.Fatalf("expected ErrAgentNotFound cross-tenant, got %v", err)
+	}
+}
+
+func TestSetAgentDisabledThenEnable(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+
+	disabled, err := agentusecases.SetAgentDisabled(ctx, deps, "operator", agent.ID, true, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disabled.Status != idmdomain.AgentStatusDisabled || disabled.DisabledAt == nil || disabled.IsActive() {
+		t.Fatalf("disabled agent unexpected: %+v", disabled)
+	}
+	enabled, err := agentusecases.SetAgentDisabled(ctx, deps, "operator", agent.ID, false, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if enabled.Status != idmdomain.AgentStatusActive || enabled.DisabledAt != nil || !enabled.IsActive() {
+		t.Fatalf("enabled agent unexpected: %+v", enabled)
+	}
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentDisabled", "AgentEnabled"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+func TestKillAgentIsIrreversible(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+
+	killed, err := agentusecases.KillAgent(ctx, deps, "operator", agent.ID, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if killed.Status != idmdomain.AgentStatusKilled || killed.KilledAt == nil || killed.IsActive() {
+		t.Fatalf("killed agent unexpected: %+v", killed)
+	}
+	// 再 kill / enable / update は reject
+	if _, err := agentusecases.KillAgent(ctx, deps, "operator", agent.ID, now); !errors.Is(err, agentusecases.ErrAgentKilled) {
+		t.Fatalf("expected ErrAgentKilled on re-kill, got %v", err)
+	}
+	if _, err := agentusecases.SetAgentDisabled(ctx, deps, "operator", agent.ID, false, now); !errors.Is(err, agentusecases.ErrAgentKilled) {
+		t.Fatalf("expected ErrAgentKilled on enable-after-kill, got %v", err)
+	}
+	if _, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, Name: new("x"),
+	}); !errors.Is(err, agentusecases.ErrAgentKilled) {
+		t.Fatalf("expected ErrAgentKilled on update-after-kill, got %v", err)
+	}
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentKilled"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+func TestUpdateAgentOwnerChangeEmitsOwnerChanged(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+
+	updated, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, OwnerUserID: new("user_new"), Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.OwnerUserID != "user_new" {
+		t.Fatalf("owner not changed: %q", updated.OwnerUserID)
+	}
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentUpdated", "AgentOwnerChanged"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+func TestRegisterAndUpdateAgentRejectUnknownOwner(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", OwnerUserID: "ghost", Now: now,
+	}); !errors.Is(err, agentusecases.ErrAgentOwnerNotFound) {
+		t.Fatalf("expected ErrAgentOwnerNotFound on register, got %v", err)
+	}
+	agents, err := deps.AgentRepo.ListAll(ctx, tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(agents) != 0 || len(*events) != 0 {
+		t.Fatalf("rejected registration left agents=%+v events=%+v", agents, *events)
+	}
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, OwnerUserID: new("ghost"), Now: now,
+	}); !errors.Is(err, agentusecases.ErrAgentOwnerNotFound) {
+		t.Fatalf("expected ErrAgentOwnerNotFound on update, got %v", err)
+	}
+	after, err := deps.AgentRepo.FindByID(ctx, tenancydomain.DefaultTenantID, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after == nil || after.OwnerUserID != "operator" {
+		t.Fatalf("rejected owner update changed the agent: %+v", after)
+	}
+	if len(*events) != 1 {
+		t.Fatalf("rejected owner update emitted events: %+v", *events)
+	}
+}
+
+func TestBindUnbindCredentialAndFindByClientID(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+
+	if err := agentusecases.BindCredential(ctx, deps, "operator", agent.ID, "svc_client", now); err != nil {
+		t.Fatal(err)
+	}
+	// 冪等再束縛は event を増やさない
+	if err := agentusecases.BindCredential(ctx, deps, "operator", agent.ID, "svc_client", now); err != nil {
+		t.Fatal(err)
+	}
+	// 未知 client は reject
+	if err := agentusecases.BindCredential(ctx, deps, "operator", agent.ID, "ghost", now); !errors.Is(err, agentusecases.ErrAgentClientNotFound) {
+		t.Fatalf("expected ErrAgentClientNotFound, got %v", err)
+	}
+
+	found, err := deps.AgentRepo.FindByClientID(ctx, tenancydomain.DefaultTenantID, "svc_client")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found == nil || found.ID != agent.ID {
+		t.Fatalf("FindByClientID returned %+v", found)
+	}
+
+	view, err := agentusecases.GetAgent(ctx, deps, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(view.ClientIDs, []string{"svc_client"}) {
+		t.Fatalf("client_ids = %v", view.ClientIDs)
+	}
+
+	if err := agentusecases.UnbindCredential(ctx, deps, "operator", agent.ID, "svc_client", now); err != nil {
+		t.Fatal(err)
+	}
+	found, err = deps.AgentRepo.FindByClientID(ctx, tenancydomain.DefaultTenantID, "svc_client")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found != nil {
+		t.Fatalf("expected nil after unbind, got %+v", found)
+	}
+
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentCredentialBound", "AgentCredentialUnbound"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+// 別テナントの OAuth2Client は存在しないものとして拒否し、関連付けを残さないこと。
+//
+//spec:covers EX-IDMANAGEMENT-074-05: 別テナントの client_id のバインドが ErrAgentClientNotFound で拒否され、Agent に関連付けが残らないこと。
+func TestBindCredentialRejectsClientOfAnotherTenant(t *testing.T) {
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	acme := tenantCtx("acme")
+	agent, err := agentusecases.RegisterAgent(acme, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "batch-agent", OwnerUserID: "acme_owner", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+
+	// svc_client は default テナントのクライアントである。
+	if err := agentusecases.BindCredential(acme, deps, "operator", agent.ID, "svc_client", now); !errors.Is(err, agentusecases.ErrAgentClientNotFound) {
+		t.Fatalf("expected ErrAgentClientNotFound, got %v", err)
+	}
+	view, err := agentusecases.GetAgent(acme, deps, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.ClientIDs) != 0 || len(*events) != 0 {
+		t.Fatalf("client_ids = %v, events = %v", view.ClientIDs, agentEventTypes(*events))
+	}
+}
+
+func TestBindCredentialRejectsClientAlreadyBoundToAnotherAgent(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, _ := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	first, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "report-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := agentusecases.BindCredential(ctx, deps, "operator", first.ID, "svc_client", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := agentusecases.BindCredential(ctx, deps, "operator", second.ID, "svc_client", now); !errors.Is(err, agentusecases.ErrAgentClientBound) {
+		t.Fatalf("expected ErrAgentClientBound, got %v", err)
+	}
+}
+
+func TestDeleteAgentEmitsAgentDeleted(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+	if err := agentusecases.DeleteAgent(ctx, deps, "operator", agent.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := agentusecases.GetAgent(ctx, deps, agent.ID); !errors.Is(err, agentusecases.ErrAgentNotFound) {
+		t.Fatalf("expected ErrAgentNotFound after delete, got %v", err)
+	}
+	if !slices.Equal(agentEventTypes(*events), []string{"AgentDeleted"}) {
+		t.Fatalf("events = %v", agentEventTypes(*events))
+	}
+}
+
+func TestDeleteKilledAgentIsRejected(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, _ := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := agentusecases.KillAgent(ctx, deps, "operator", agent.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := agentusecases.DeleteAgent(ctx, deps, "operator", agent.ID, now); !errors.Is(err, agentusecases.ErrAgentKilled) {
+		t.Fatalf("expected ErrAgentKilled, got %v", err)
+	}
+	found, err := agentusecases.GetAgent(ctx, deps, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found.Agent.Status != idmdomain.AgentStatusKilled {
+		t.Fatalf("agent was deleted or changed: %+v", found.Agent)
+	}
+}
+
+// Agent には制御面テナントでも `system_admin` を割り当てられず、拒否は割当て枠も消費しない。
+//
+// 登録の拒否は use case の内側でしか観測できない効果を 1 つ持つ。検査を割当て枠の
+// 加算より後ろへ置いた実装は、拒否を返しながら枠を食い潰す。HTTP 境界の受入テストは
+// そこを見られないので、ここで読む。
+//
+//spec:covers EX-IDMANAGEMENT-032-05: 制御面テナントの Agent への `system_admin` の付与が登録でも更新でも ErrReservedRole で拒否され、Agent も割当て枠の消費も生じないこと。
+func TestAgentReservedRoleRefusedEvenInsideTheControlPlane(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
+
+	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "privileged-agent", Kind: idmdomain.AgentKindAutonomous,
+		Roles: []string{idmusecases.ReservedRoleSystemAdmin}, Now: now,
+	}); !errors.Is(err, idmusecases.ErrReservedRole) {
+		t.Fatalf("err=%v, want ErrReservedRole", err)
+	}
+	agents, err := deps.AgentRepo.ListAll(ctx, tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(agents) != 0 {
+		t.Fatalf("拒否されたのに Agent が %d 体残った: %+v", len(agents), agents)
+	}
+	// 拒否が割当て枠を消費していないこと。
+	usage, err := deps.QuotaRepo.GetUsage(ctx, tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage.Agents != 0 {
+		t.Fatalf("拒否されたのに agents の使用量が %d になった", usage.Agents)
+	}
+	if len(*events) != 0 {
+		t.Fatalf("拒否されたのにイベントが %d 件発行された", len(*events))
+	}
+
+	// 更新側も同じ検査を通ること。通常ロールで登録してから予約ロールへ変えようとする。
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		ActorUserID: "operator", Name: "batch-agent", Kind: idmdomain.AgentKindAutonomous,
+		Roles: []string{"catalog:read"}, Now: now,
+	})
+	if err != nil {
+		t.Fatalf("前提が壊れている: 通常ロールの登録が %v", err)
+	}
+	reserved := []string{idmusecases.ReservedRoleSystemAdmin}
+	if _, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
+		ActorUserID: "operator", ID: agent.ID, Roles: &reserved, Now: now.Add(time.Hour),
+	}); !errors.Is(err, idmusecases.ErrReservedRole) {
+		t.Fatalf("err=%v, want ErrReservedRole", err)
+	}
+	stored, err := deps.AgentRepo.FindByID(ctx, tenancydomain.DefaultTenantID, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(stored.Roles, []string{"catalog:read"}) {
+		t.Fatalf("拒否されたのに roles=%v が変わった", stored.Roles)
+	}
+	if !stored.UpdatedAt.Equal(agent.UpdatedAt) {
+		t.Fatalf("拒否されたのに updated_at が動いた: %s -> %s", agent.UpdatedAt, stored.UpdatedAt)
+	}
+}

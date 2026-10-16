@@ -14,8 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -37,8 +38,8 @@ func integrationEndpointServer(t *testing.T, endpointStyle tenantdomain.TenantEn
 	}); err != nil {
 		t.Fatal(err)
 	}
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(&userdomain.User{
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID: "admin", TenantID: tenantID, PreferredUsername: "admin", Roles: []string{"admin"},
 	})
 	key, err := rsa.GenerateKey(rand.Reader, 2048)

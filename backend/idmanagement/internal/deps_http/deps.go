@@ -1,0 +1,131 @@
+// Package httpdeps holds the IdManagement HTTP layer's Deps type. It is a
+// leaf package (no dependency on the feature handlers_http packages) so that
+// user/group/agent handlers_http can depend on it without an import cycle
+// back to the context-root handlers_http package that wires routes (
+// Phase 2).
+package deps_http
+
+import (
+	"context"
+	"time"
+
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
+	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/internal/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+)
+
+// EventReactor receives every DomainEvent this context's Emit already emits
+// and fail-closed reacts to the ones it cares about. Unlike Emit (fire-and-
+// forget, wi-190's reverted transactional-event-log decided against
+// making the general audit path error-propagating), a reactor's error
+// propagates back through ReactiveEmit. SharedSignals implements this
+// shape for Agent revocation epoch enforcement (wi-58) without
+// idmanagement importing sharedsignals — only context.Context and
+// spec.DomainEvent are named in the signature.
+type EventReactor interface {
+	React(ctx context.Context, event spec.DomainEvent) error
+}
+
+// Deps は identity management HTTP ハンドラが必要とする依存。
+type Deps struct {
+	support.Deps
+	*support.Authenticator
+
+	UserRepo              userports.UserRepository
+	GroupRepo             groupports.GroupRepository
+	AgentRepo             agentports.AgentRepository
+	UserMutationCommitter userports.UserMutationCommitter
+	ProvisioningNotifier  userports.ProvisioningNotifier
+	// GroupProvisioningNotifier reports committed Group mutations to outbound
+	// Provisioning. Separate from ProvisioningNotifier because the two carry
+	// different IdManagement-owned trigger vocabularies.
+	GroupProvisioningNotifier groupports.ProvisioningNotifier
+	// Reactor fail-closed reacts to emitted DomainEvents (currently
+	// SharedSignals' Agent revocation epoch enforcement; wi-58).
+	// nil skips reaction. See ReactiveEmit.
+	Reactor             EventReactor
+	JobRepo             jobsports.JobRepository
+	JobEnqueuer         jobsports.Enqueuer
+	ClientRepo          oauthports.OAuth2ClientRepository
+	ScimRepo            scimports.ScimRepository
+	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
+	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
+	ConsentRepo         oauthports.ConsentRepository
+	// Consents はデータエクスポートが本人の Granted の同意を読む先である。
+	Consents             consentports.AccountConsents
+	RefreshStore         oauthports.RefreshTokenStore
+	DeviceCodeStore      oauthports.DeviceCodeStore
+	ApprovalRequestStore oauthports.ApprovalRequestStore
+	MfaFactorRepo        mfaports.MfaFactorRepository
+	// TrustedDeviceRepo は無効化と匿名化 cascade から信頼済みデバイスを失効 / 削除する (wi-91)。
+	TrustedDeviceRepo trusteddeviceports.TrustedDeviceRepository
+	// TrustedDevices は無効化で信頼済みデバイスをすべて失効させる。
+	TrustedDevices trusteddeviceports.UserDeviceRevoker
+	// WebAuthnCredentialRepo と RecoveryCodeRepo は匿名化 cascade の到達先である (wi-513)。
+	// この 2 つは Authentication が持つ資格情報だが、消すのは IdManagement の Purge なので
+	// ここを通って AdminUserDeps へ届く。
+	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
+	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
+	PasswordHasher         passwordports.PasswordHasher
+	PasswordHistoryRepo    passwordports.PasswordHistoryRepository
+	// SessionStore は匿名化 cascade がログインセッションを消す先である。nil なら消さない。
+	SessionStore          userports.SessionPurger
+	EmailChangeTokenStore userports.EmailChangeTokenStore
+	CSVArtifacts          idmports.CSVArtifactStore
+	EmailSender           sharednotification.EmailSender
+	Notifier              sharednotification.Notifier
+	// QuotaRepo enforces the tenant's Hard Quota on users, groups, and agents
+	// (wi-160). nil skips enforcement.
+	QuotaRepo tenantports.QuotaRepository
+}
+
+// LegacyEmit adapts the fire-and-forget support.Deps.Emit to the
+// error-returning signature usecases in this context require (wi-184 T003).
+// It is the default for handlers not yet migrated to the transaction
+// runner; migrated handlers (admin_user_handler.go Create/Update/
+// SetDisabled) override deps.Emit with a transaction-bound one instead.
+// Exported (unlike its wi-184 origin) so the user/group/agent feature
+// packages can call it across the Phase 2 package boundary.
+func (d Deps) LegacyEmit() func(spec.DomainEvent) error {
+	return func(event spec.DomainEvent) error {
+		if d.Emit != nil {
+			d.Emit(event)
+		}
+		return nil
+	}
+}
+
+// ReactiveEmit composes LegacyEmit's best-effort audit trail with d.Reactor's
+// fail-closed reaction: the mutation that emits (KillAgent, SetUserDisabled, ...)
+// gets Reactor's error back, so a failed Agent revocation epoch advance
+// fails the admin operation instead of being silently swallowed like the
+// audit write is (wi-58). d.Reactor uses its own background
+// context with a timeout, not the caller's request context, matching
+// NewEmitFunc's existing convention of not tying event recording to
+// request cancellation.
+func (d Deps) ReactiveEmit() func(spec.DomainEvent) error {
+	legacy := d.LegacyEmit()
+	return func(event spec.DomainEvent) error {
+		legacy(event) //nolint:errcheck // LegacyEmit always returns nil (best-effort by design)
+		if d.Reactor == nil {
+			return nil
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return d.Reactor.React(ctx, event)
+	}
+}

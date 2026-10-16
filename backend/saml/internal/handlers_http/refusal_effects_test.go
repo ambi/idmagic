@@ -26,9 +26,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/saml"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
@@ -112,8 +113,8 @@ func newProfileBoundServerWith(t *testing.T, reachableKeys bool) (*echo.Echo, *[
 		},
 	})
 
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), &userdomain.User{ID: "user-1", PreferredUsername: "alice"})
 
 	memoryKeys, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {

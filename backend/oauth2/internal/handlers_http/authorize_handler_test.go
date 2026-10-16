@@ -1,0 +1,598 @@
+package handlers_http_test
+
+// SCL シナリオ "prompt=none で session 無し" / "prompt=login" / "prompt=consent" /
+// "max_age を超えた前回認証では再認証を要求する" を handler 層で検証する。
+// AuthnResolver の差し替えだけで再認証フローを観測する単純構成。
+
+import (
+	"context"
+	"encoding/json"
+	"maps"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
+	"github.com/ambi/idmagic/backend/application"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
+
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/oauth2"
+	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
+
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
+
+	"github.com/labstack/echo/v5"
+)
+
+type fakeAuthnResolver struct {
+	ctx *authdomain.AuthenticationContext
+}
+
+func (f *fakeAuthnResolver) Resolve(_ context.Context, _ authdomain.Headers) (*authdomain.AuthenticationContext, error) {
+	return f.ctx, nil
+}
+
+const (
+	authClientID           = "auth-client"
+	authClientSec          = "auth-client-secret"
+	authRedirectURI        = "https://app.example.com/cb"
+	authFirstPartyClientID = "auth-client-fp"
+)
+
+func newAuthorizeTestServer(
+	t *testing.T,
+	authn *authdomain.AuthenticationContext,
+	consent *domain.Consent,
+	options ...func(*httpadapter.Deps),
+) (*echo.Echo, *[]spec.DomainEvent) {
+	t.Helper()
+	clientRepo := oauth2memory.NewClientRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	consentRepo := oauth2memory.NewConsentRepository()
+	secretHash := domain.HashClientSecret(authClientSec)
+	now := time.Now().UTC()
+	clientRepo.Seed(&domain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID,
+		ClientID: authClientID, ClientSecretHash: &secretHash,
+		ClientType: spec.ClientConfidential, RedirectURIs: []string{authRedirectURI},
+		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
+		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
+		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		Scope:                    "openid profile",
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
+		FapiProfile:              domain.FapiNone,
+		CreatedAt:                now,
+	})
+	// first-party クライアント : consent をスキップする検証用。
+	clientRepo.Seed(&domain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID,
+		ClientID: authFirstPartyClientID, ClientType: spec.ClientPublic,
+		RedirectURIs:             []string{authRedirectURI},
+		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
+		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
+		TokenEndpointAuthMethod:  domain.AuthMethodNone,
+		Scope:                    "openid profile idmagic.admin",
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
+		FapiProfile:              domain.FapiNone,
+		FirstParty:               true,
+		CreatedAt:                now,
+	})
+	if authn != nil {
+		_ = userRepo.Save(context.Background(), &userdomain.User{
+			ID: authn.UserID, PreferredUsername: "alice",
+			TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
+		})
+	}
+	if consent != nil {
+		_ = consentRepo.Save(context.Background(), tenancydomain.DefaultTenantID, consent)
+	}
+	e := echo.New()
+	emitted := &[]spec.DomainEvent{}
+	deps := httpadapter.Deps{
+		Issuer: "http://test",
+		Emit:   func(e spec.DomainEvent) { *emitted = append(*emitted, e) },
+		OAuth2: oauth2.Module{
+			ClientRepo: clientRepo, ConsentRepo: consentRepo,
+			RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(), PARStore: oauth2memory.NewPARStore(),
+		},
+		UserRepo: userRepo,
+	}
+	if authn != nil {
+		deps.AuthnResolver = &fakeAuthnResolver{ctx: authn}
+	}
+	for _, option := range options {
+		option(&deps)
+	}
+	httpadapter.Register(e, deps)
+	return e, emitted
+}
+
+func authorizeQuery(extra url.Values) url.Values {
+	q := url.Values{
+		"client_id":             {authClientID},
+		"redirect_uri":          {authRedirectURI},
+		"response_type":         {"code"},
+		"scope":                 {"openid profile"},
+		"code_challenge":        {"abcdef0123456789abcdef0123456789abcdef0123ab"},
+		"code_challenge_method": {"S256"},
+	}
+	maps.Copy(q, extra)
+	return q
+}
+
+func runAuthorize(t *testing.T, e *echo.Echo, q url.Values) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/authorize?"+q.Encode(), http.NoBody)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestAuthorizePromptNoneWithoutSessionReturnsLoginRequired(t *testing.T) {
+	e, _ := newAuthorizeTestServer(t, nil, nil)
+	rec := runAuthorize(t, e, authorizeQuery(url.Values{"prompt": {"none"}}))
+	if rec.Code != http.StatusSeeOther || !strings.Contains(rec.Header().Get("Location"), "error=login_required") ||
+		!strings.Contains(rec.Header().Get("Location"), "iss=") {
+		t.Fatalf("status=%d location=%q", rec.Code, rec.Header().Get("Location"))
+	}
+}
+
+func TestAuthorizePromptLoginForcesReauthentication(t *testing.T) {
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+	}
+	e, _ := newAuthorizeTestServer(t, authn, nil)
+	rec := runAuthorize(t, e, authorizeQuery(url.Values{"prompt": {"login"}}))
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303 redirect, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if loc := rec.Header().Get("Location"); !strings.HasSuffix(loc, "/login") {
+		t.Fatalf("redirect Location=%q, want /login", loc)
+	}
+}
+
+func TestAuthorizeMaxAgeBeyondLastAuthForcesReauthentication(t *testing.T) {
+	// auth_time が 1 時間前、max_age=60 → NeedsReauthentication=true。
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", AuthTime: time.Now().Add(-time.Hour).Unix(), AMR: []string{"pwd"},
+	}
+	e, _ := newAuthorizeTestServer(t, authn, nil)
+	rec := runAuthorize(t, e, authorizeQuery(url.Values{"max_age": {"60"}}))
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if loc := rec.Header().Get("Location"); !strings.HasSuffix(loc, "/login") {
+		t.Fatalf("redirect Location=%q, want /login", loc)
+	}
+}
+
+func TestAuthorizePromptConsentBypassesExistingConsent(t *testing.T) {
+	now := time.Now().UTC()
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
+	}
+	// 既存 Consent。prompt=consent が無ければ即 issueCode に進む。
+	consent := &domain.Consent{
+		UserID: "user_alice", ClientID: authClientID,
+		Scopes:    []string{"openid", "profile"},
+		State:     domain.ConsentGranted,
+		GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+	}
+	e, _ := newAuthorizeTestServer(t, authn, consent)
+	rec := runAuthorize(t, e, authorizeQuery(url.Values{"prompt": {"consent"}}))
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if loc := rec.Header().Get("Location"); !strings.HasSuffix(loc, "/consent") {
+		t.Fatalf("redirect Location=%q, want /consent", loc)
+	}
+}
+
+// テナント既定のサインインポリシーが拒否したとき、/authorize が実際に返す応答を測る。
+// Token とは違い Authorize には 403 の経路が存在するが、本文は OAuth のエラー形
+// (`{"error": ...}` + `application/json`) ではなく RFC 9457 Problem Details である。
+// 契約の AuthorizeError403 はこの実測に一致していなければならない。
+//
+//spec:covers REQ-APPLICATION-016: first-party のクライアントで、テナントのデフォルトの規則が許可しないネットワークからの認可要求は、ステップアップ認証の機会なしに 403 の access_denied で止まり、認可コードを発行しない。
+func TestAuthorizeDeniedBySignInPolicyReturnsProblemDetails403(t *testing.T) {
+	now := time.Now().UTC()
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
+	}
+	policyRepo := application.NewMemoryModule().DefaultSignInPolicyRepo
+	// 到達不能な CIDR だけを許可することで、どの試験用の client IP でも拒否させる。
+	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+		TenantID: tenancydomain.DefaultTenantID,
+		Rules: []appdomain.SignInRule{{
+			RuleID: "deny-all-networks", Name: "office only", Enabled: true,
+			Condition: appdomain.AccessCondition{NetworkAllowCIDRs: []string{"203.0.113.0/32"}},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	e, emitted := newAuthorizeTestServer(t, authn, nil, func(deps *httpadapter.Deps) {
+		deps.Application.DefaultSignInPolicyRepo = policyRepo
+	})
+	q := authorizeQuery(url.Values{})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+	rec := runAuthorize(t, e, q)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s, want 403", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/problem+json") {
+		t.Fatalf("Content-Type=%q, want application/problem+json", ct)
+	}
+	var problem struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v (body=%s)", err, rec.Body.String())
+	}
+	if problem.Type != "urn:idmagic:error:access_denied" || problem.Status != http.StatusForbidden {
+		t.Fatalf("problem=%+v, want type urn:idmagic:error:access_denied and status 403", problem)
+	}
+	if strings.Contains(rec.Body.String(), `"error"`) {
+		t.Fatalf("403 body must not be the OAuth error shape, got %s", rec.Body.String())
+	}
+	// 拒否が実際に何も通していないこと。状態を読み戻して、認可コードが 1 つも
+	// 発行されていないことを確かめる。状態と文言の一方だけを見る試験は、拒否を
+	// 書いてから操作を続行する実装にも通ってしまう。
+	for _, event := range *emitted {
+		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+			t.Fatalf("denied authorization issued an authorization code: %+v", event)
+		}
+	}
+	if loc := rec.Header().Get("Location"); loc != "" {
+		t.Fatalf("denied authorization must not redirect, got Location=%q", loc)
+	}
+}
+
+// MFA を要求するポリシーに対し、第二要素を 1 つも持たず登録も開始できない利用者は
+// 403 で止まる。ここも応答を書いたあとに拒否を伝えない形になっていた分岐である。
+//
+//spec:covers REQ-APPLICATION-016: first-party のクライアントで、テナントのデフォルトが MFA を要求し、利用者が第二要素を持たず登録も始められないとき、403 で止まり認可コードを発行しない。
+func TestAuthorizeMfaRequiredWithoutSecondFactorIssuesNoCode(t *testing.T) {
+	now := time.Now().UTC()
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
+	}
+	policyRepo := application.NewMemoryModule().DefaultSignInPolicyRepo
+	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+		TenantID: tenancydomain.DefaultTenantID,
+		Rules: []appdomain.SignInRule{{
+			RuleID: "mfa-required", Name: "mfa", Enabled: true,
+			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	e, emitted := newAuthorizeTestServer(t, authn, nil, func(deps *httpadapter.Deps) {
+		deps.Application.DefaultSignInPolicyRepo = policyRepo
+	})
+	q := authorizeQuery(url.Values{})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+	rec := runAuthorize(t, e, q)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s, want 403", rec.Code, rec.Body.String())
+	}
+	for _, event := range *emitted {
+		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+			t.Fatalf("refused authorization issued an authorization code: %+v", event)
+		}
+	}
+	if loc := rec.Header().Get("Location"); loc != "" {
+		t.Fatalf("refused authorization must not redirect, got Location=%q", loc)
+	}
+}
+
+// 第二要素は持っているがセッションが引けず、ステップアップを開始できない場合。
+// 401 を書いたあとに拒否を伝えない形になっていた 3 つめの分岐である。
+//
+//spec:covers REQ-APPLICATION-016: first-party のクライアントで、ステップアップ認証を始めるログインセッションが失効しているとき、401 で止まり認可コードを発行しない。
+func TestAuthorizeStepUpWithExpiredSessionIssuesNoCode(t *testing.T) {
+	now := time.Now().UTC()
+	// AuthnResolver は認証済みの文脈を返すが、SessionManager の store は空なので
+	// RequireFactor は「セッションなし」を返す。ステップアップを始められない状態。
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", SessionID: "sess-gone", AuthTime: now.Unix(), AMR: []string{"pwd"},
+	}
+	policyRepo := application.NewMemoryModule().DefaultSignInPolicyRepo
+	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+		TenantID: tenancydomain.DefaultTenantID,
+		Rules: []appdomain.SignInRule{{
+			RuleID: "mfa-required", Name: "mfa", Enabled: true,
+			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// TOTP を登録済みにして、secondFactorMethods を空でなくする。
+	factorRepo := authentication.NewMemoryModule(nil).MfaFactorRepo
+	secret := "JBSWY3DPEHPK3PXP"
+	if err := factorRepo.Save(context.Background(), &totpdomain.MfaFactor{
+		UserID: "user_alice", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	e, emitted := newAuthorizeTestServer(t, authn, nil, func(deps *httpadapter.Deps) {
+		deps.Application.DefaultSignInPolicyRepo = policyRepo
+		deps.MfaFactorRepo = factorRepo
+		deps.SessionManager = authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
+	})
+	q := authorizeQuery(url.Values{})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+	rec := runAuthorize(t, e, q)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d body=%s, want 401", rec.Code, rec.Body.String())
+	}
+	for _, event := range *emitted {
+		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+			t.Fatalf("refused authorization issued an authorization code: %+v", event)
+		}
+	}
+	if loc := rec.Header().Get("Location"); loc != "" {
+		t.Fatalf("refused authorization must not redirect, got Location=%q", loc)
+	}
+}
+
+// first-party クライアントは consent 画面をスキップし、同意レコードが
+// 無くても即 authorization code を発行する (redirect_uri へ code 付きで 303)。
+func TestAuthorizeFirstPartyClientSkipsConsent(t *testing.T) {
+	now := time.Now().UTC()
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
+	}
+	e, emitted := newAuthorizeTestServer(t, authn, nil)
+	q := authorizeQuery(url.Values{})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+	rec := runAuthorize(t, e, q)
+	// 認可コード発行は redirect_uri へ 302 (Found)。/consent への 303 ではない。
+	if rec.Code != http.StatusFound {
+		t.Fatalf("expected 302, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	loc := rec.Header().Get("Location")
+	if strings.Contains(loc, "/consent") {
+		t.Fatalf("first-party client must skip consent, got Location=%q", loc)
+	}
+	if !strings.HasPrefix(loc, authRedirectURI) || !strings.Contains(loc, "code=") {
+		t.Fatalf("expected redirect to %s with code, got Location=%q", authRedirectURI, loc)
+	}
+	found := false
+	for _, e := range *emitted {
+		if _, ok := e.(*domain.AuthorizationCodeIssued); ok {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected AuthorizationCodeIssued to be emitted")
+	}
+}
+
+// フェデレーションを OAuth2.Authorize で拒否し、`visibility=visible` の割り当てを先に置けば完了できること。
+//
+//spec:covers REQ-APPLICATION-011, EX-APPLICATION-011-01, EX-APPLICATION-011-02: 割り当てのない主体の
+//spec:covers REQ-APPLICATION-012, EX-APPLICATION-012-01: hidden 割り当てでもフェデレーションを完了できること。ポータル一覧から外れる側は TestApplicationAdminCRUDAndAccountVisibility が固定する。
+func TestAuthorizeAllowsHiddenApplicationAssignment(t *testing.T) {
+	now := time.Now().UTC()
+	authn := &authdomain.AuthenticationContext{UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"}}
+	applications := application.NewMemoryModule().Repo
+	assignments := application.NewMemoryModule().AssignmentRepo
+	if err := applications.Save(context.Background(), &appdomain.Application{
+		TenantID: tenancydomain.DefaultTenantID, ID: "hidden-app", Name: "Hidden application",
+		Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
+		Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: authClientID},
+		CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// 割当ゲートは同意の後、コード発行の直前で効く。同意を先に成立させて
+	// そこまで到達させる。first-party client はゲートを迂回するので通常の client を使う。
+	granted := &domain.Consent{
+		UserID: authn.UserID, ClientID: authClientID,
+		Scopes:    []string{"openid", "profile"},
+		State:     domain.ConsentGranted,
+		GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+	}
+	e, _ := newAuthorizeTestServer(t, authn, granted, func(deps *httpadapter.Deps) {
+		deps.Application = application.Module{Repo: applications, AssignmentRepo: assignments}
+	})
+
+	// 割当ゲートが経路に入っていることを、まず未割当の拒否で確かめる。
+	denied := runAuthorize(t, e, authorizeQuery(url.Values{}))
+	if denied.Code != http.StatusForbidden && !strings.Contains(denied.Header().Get("Location"), "error=access_denied") {
+		t.Fatalf("unassigned subject must be denied: status=%d location=%q body=%s",
+			denied.Code, denied.Header().Get("Location"), denied.Body.String())
+	}
+
+	// visible 割当を先に置けばフェデレーションは完了する。拒否側だけを観測すると、
+	// 何も通さない実装も同じテストを通ってしまう。
+	if err := assignments.Save(context.Background(), &appdomain.ApplicationAssignment{
+		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "hidden-app",
+		SubjectType: appdomain.AssignmentSubjectUser, SubjectID: authn.UserID, Visibility: appdomain.AssignmentVisible,
+		CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	visible := runAuthorize(t, e, authorizeQuery(url.Values{}))
+	if !strings.Contains(visible.Header().Get("Location"), "code=") {
+		t.Fatalf("visible assignment must allow the protocol: status=%d location=%q body=%s",
+			visible.Code, visible.Header().Get("Location"), visible.Body.String())
+	}
+
+	// hidden 割当はポータルから隠すだけで、protocol の利用は許す。
+	if err := assignments.Save(context.Background(), &appdomain.ApplicationAssignment{
+		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "hidden-app",
+		SubjectType: appdomain.AssignmentSubjectUser, SubjectID: authn.UserID, Visibility: appdomain.AssignmentHidden,
+		CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	allowed := runAuthorize(t, e, authorizeQuery(url.Values{}))
+	if !strings.Contains(allowed.Header().Get("Location"), "code=") {
+		t.Fatalf("hidden assignment must still allow the protocol: status=%d location=%q body=%s",
+			allowed.Code, allowed.Header().Get("Location"), allowed.Body.String())
+	}
+}
+
+// Federated authentication completes outside the password handler. The resume
+// endpoint must continue the authorization transaction using the newly created
+// session and issue a code for a first-party client.
+func TestAuthorizeResumeCompletesFederatedSession(t *testing.T) {
+	now := time.Now().UTC()
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", SessionID: "session_federated",
+		AuthTime: now.Unix(), AMR: []string{"federated"},
+	}
+	e, _ := newAuthorizeTestServer(t, authn, nil)
+	q := authorizeQuery(url.Values{"prompt": {"login"}})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+
+	start := runAuthorize(t, e, q)
+	if start.Code != http.StatusSeeOther {
+		t.Fatalf("start status=%d body=%s", start.Code, start.Body.String())
+	}
+	var transactionCookie *http.Cookie
+	for _, cookie := range start.Result().Cookies() {
+		if strings.Contains(cookie.Name, "idmagic_transaction") {
+			transactionCookie = cookie
+			break
+		}
+	}
+	if transactionCookie == nil {
+		t.Fatal("authorization transaction cookie was not set")
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/authorize/resume", http.NoBody)
+	req.AddCookie(transactionCookie)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("resume status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if location := rec.Header().Get("Location"); !strings.HasPrefix(location, authRedirectURI) ||
+		!strings.Contains(location, "code=") {
+		t.Fatalf("resume Location=%q, want redirect URI with authorization code", location)
+	}
+}
+
+// defaultMfaPolicyWithTOTP は、テナントのデフォルトが MFA を要求し、user_alice が TOTP を
+// 登録済みの状態を組み立てる。
+func defaultMfaPolicyWithTOTP(t *testing.T, now time.Time) func(*httpadapter.Deps) {
+	t.Helper()
+	policyRepo := application.NewMemoryModule().DefaultSignInPolicyRepo
+	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+		TenantID: tenancydomain.DefaultTenantID,
+		Rules: []appdomain.SignInRule{{
+			RuleID: "mfa-required", Name: "mfa", Enabled: true,
+			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	factorRepo := authentication.NewMemoryModule(nil).MfaFactorRepo
+	secret := "JBSWY3DPEHPK3PXP"
+	if err := factorRepo.Save(context.Background(), &totpdomain.MfaFactor{
+		UserID: "user_alice", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return func(deps *httpadapter.Deps) {
+		deps.Application.DefaultSignInPolicyRepo = policyRepo
+		deps.MfaFactorRepo = factorRepo
+	}
+}
+
+//spec:covers REQ-APPLICATION-016: prompt=none の first-party の認可要求が、テナントのデフォルトの MFA の要求でステップアップ認証を必要とするとき、login_required を返し、認可コードを発行しない。
+func TestAuthorizePromptNoneWithStepUpRequiredReturnsLoginRequired(t *testing.T) {
+	now := time.Now().UTC()
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", SessionID: "session_pwd", AuthTime: now.Unix(), AMR: []string{"pwd"},
+	}
+	e, emitted := newAuthorizeTestServer(t, authn, nil, defaultMfaPolicyWithTOTP(t, now))
+	q := authorizeQuery(url.Values{"prompt": {"none"}})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+	rec := runAuthorize(t, e, q)
+
+	if !strings.Contains(rec.Body.String()+rec.Header().Get("Location"), "login_required") {
+		t.Fatalf("status=%d location=%q body=%s, want login_required", rec.Code, rec.Header().Get("Location"), rec.Body.String())
+	}
+	if strings.Contains(rec.Header().Get("Location"), "code=") {
+		t.Fatalf("prompt=none step-up issued an authorization code: Location=%q", rec.Header().Get("Location"))
+	}
+	for _, event := range *emitted {
+		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+			t.Fatalf("prompt=none step-up issued an authorization code: %+v", event)
+		}
+	}
+}
+
+//spec:covers REQ-APPLICATION-016: 外部の IdP でのサインインから first-party の認可を再開するとき、テナントのデフォルトが MFA を要求すれば第二要素の画面へ送り、認可コードを発行しない。
+func TestAuthorizeResumeRequiresTheSecondFactorUnderTheTenantDefault(t *testing.T) {
+	now := time.Now().UTC()
+	sessions := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
+	authn, err := sessions.Create(testing_tenant.Default(context.Background()), "user_alice", []string{"federated"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := defaultMfaPolicyWithTOTP(t, now)
+	e, emitted := newAuthorizeTestServer(t, authn, nil, func(deps *httpadapter.Deps) {
+		policy(deps)
+		deps.SessionManager = sessions
+	})
+	q := authorizeQuery(url.Values{"prompt": {"login"}})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+	start := runAuthorize(t, e, q)
+	var transactionCookie *http.Cookie
+	for _, cookie := range start.Result().Cookies() {
+		if strings.Contains(cookie.Name, "idmagic_transaction") {
+			transactionCookie = cookie
+		}
+	}
+	if transactionCookie == nil {
+		t.Fatalf("authorization transaction cookie was not set: status=%d", start.Code)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/authorize/resume", http.NoBody)
+	req.AddCookie(transactionCookie)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/realms/default/totp" {
+		t.Fatalf("resume status=%d Location=%q, want 303 to /realms/default/totp", rec.Code, rec.Header().Get("Location"))
+	}
+	for _, event := range *emitted {
+		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+			t.Fatalf("resume issued an authorization code before the second factor: %+v", event)
+		}
+	}
+}

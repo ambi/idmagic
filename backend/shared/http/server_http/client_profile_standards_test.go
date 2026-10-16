@@ -16,6 +16,7 @@ package server_http_test
 // ことは満たしてしまう。2 行とも、返ったものが実際に効くことを対にして読む。
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -33,13 +34,9 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication"
 	authndomain "github.com/ambi/idmagic/backend/authentication/domain"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -73,9 +70,9 @@ func newClientProfileFixture(t *testing.T) *cpFixture {
 	t.Helper()
 	now := time.Now().UTC()
 
-	clients := oauth2memory.NewClientRepository()
+	clients := oauth2.NewMemoryModule().ClientRepo
 	secretHash := domain.HashClientSecret(cpClientSecret)
-	clients.Seed(&domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: cpClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{cpRedirectURI},
@@ -97,8 +94,8 @@ func newClientProfileFixture(t *testing.T) *cpFixture {
 		t.Fatal(err)
 	}
 	email := "alice@example.test"
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: cpUserID, PreferredUsername: cpUsername, PasswordHash: passwordHash,
 		Email: &email, EmailVerified: true,
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
@@ -117,7 +114,7 @@ func newClientProfileFixture(t *testing.T) *cpFixture {
 		t.Fatal(err)
 	}
 	signer := tokensJOSE.NewJWTSigner(cpIssuer, keyStore)
-	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
+	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
@@ -130,15 +127,15 @@ func newClientProfileFixture(t *testing.T) *cpFixture {
 		Contract:        spec.CurrentRuntimeContract(),
 		OAuth2: oauth2.Module{
 			ClientRepo:                 clients,
-			ConsentRepo:                oauth2memory.NewConsentRepository(),
-			RequestStore:               oauth2memory.NewAuthorizationRequestStore(),
-			CodeStore:                  oauth2memory.NewAuthorizationCodeStore(),
-			PARStore:                   oauth2memory.NewPARStore(),
-			RefreshStore:               oauth2memory.NewRefreshTokenStore(),
-			McpResourceServerRepo:      oauth2memory.NewMcpResourceServerRepository(),
-			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
-			DpopReplayStore:            oauth2memory.NewDpopReplayStore(),
-			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
+			ConsentRepo:                oauth2.NewMemoryModule().ConsentRepo,
+			RequestStore:               oauth2.NewMemoryModule().RequestStore,
+			CodeStore:                  oauth2.NewMemoryModule().CodeStore,
+			PARStore:                   oauth2.NewMemoryModule().PARStore,
+			RefreshStore:               oauth2.NewMemoryModule().RefreshStore,
+			McpResourceServerRepo:      oauth2.NewMemoryModule().McpResourceServerRepo,
+			ClientAssertionReplayStore: oauth2.NewMemoryModule().ClientAssertionReplayStore,
+			DpopReplayStore:            oauth2.NewMemoryModule().DpopReplayStore,
+			AccessTokenDenylist:        oauth2.NewMemoryModule().AccessTokenDenylist,
 			TokenIssuer:                signer,
 			TokenIntrospector:          signer,
 		},

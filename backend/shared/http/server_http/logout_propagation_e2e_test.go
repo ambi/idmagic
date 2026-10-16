@@ -12,23 +12,19 @@ import (
 	"testing"
 	"time"
 
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/ambi/idmagic/backend/authentication"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
-	clientmemory "github.com/ambi/idmagic/backend/oauth2/client/db_memory"
-	clientdomain "github.com/ambi/idmagic/backend/oauth2/client/domain"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	logoutmemory "github.com/ambi/idmagic/backend/oauth2/logout/db_memory"
-	logoutdomain "github.com/ambi/idmagic/backend/oauth2/logout/domain"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
-	logoutpush "github.com/ambi/idmagic/backend/oauth2/logout/push_http"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -48,26 +44,26 @@ const (
 type logoutE2EFixture struct {
 	server              *httptest.Server
 	sessionID, clientID string
-	notifications       *logoutmemory.LogoutNotificationStore
+	notifications       logoutports.LogoutNotificationStore
 	jobs                jobsports.JobRepository
 	signer              *tokens_jose.JWTSigner
-	sessions            *sessionmemory.SessionStore
-	refresh             *oauth2memory.RefreshTokenStore
+	sessions            sessionports.SessionStore
+	refresh             oauthports.RefreshTokenStore
 }
 
-func newLogoutE2EFixture(t *testing.T, mutate func(*clientdomain.OAuth2Client)) logoutE2EFixture {
+func newLogoutE2EFixture(t *testing.T, mutate func(*oauthdomain.OAuth2Client)) logoutE2EFixture {
 	t.Helper()
-	clientRepo := clientmemory.NewClientRepository()
-	client := &clientdomain.OAuth2Client{TenantID: tenancydomain.DefaultTenantID, ClientID: "00000000-0000-4000-8000-000000000001", ClientType: spec.ClientPublic, RedirectURIs: []string{"https://rp.example/callback"}, GrantTypes: []spec.GrantType{spec.GrantAuthorizationCode}, ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, TokenEndpointAuthMethod: clientdomain.AuthMethodNone, Scope: "openid", IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: clientdomain.FapiNone, CreatedAt: time.Now().UTC()}
+	clientRepo := oauth2.NewMemoryModule().ClientRepo
+	client := &oauthdomain.OAuth2Client{TenantID: tenancydomain.DefaultTenantID, ClientID: "00000000-0000-4000-8000-000000000001", ClientType: spec.ClientPublic, RedirectURIs: []string{"https://rp.example/callback"}, GrantTypes: []spec.GrantType{spec.GrantAuthorizationCode}, ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, TokenEndpointAuthMethod: oauthdomain.AuthMethodNone, Scope: "openid", IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: oauthdomain.FapiNone, CreatedAt: time.Now().UTC()}
 	mutate(client)
-	clientRepo.Seed(client)
-	sessionStore := sessionmemory.NewSessionStore()
-	sessionManager := sessionusecases.NewSessionManager(sessionStore)
+	_ = clientRepo.Save(context.Background(), client)
+	sessionStore := authentication.NewMemoryModule(nil).SessionStore
+	sessionManager := authentication.Module{SessionStore: sessionStore}.NewSessionManager()
 	authn, err := sessionManager.Create(testing_tenant.Default(context.Background()), "alice", []string{"pwd"}, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
-	refreshStore := oauth2memory.NewRefreshTokenStore()
+	refreshStore := oauth2.NewMemoryModule().RefreshStore
 	if err := refreshStore.Save(testing_tenant.Default(context.Background()), &oauthdomain.RefreshTokenRecord{
 		ID: "logout-e2e-rt", TenantID: tenancydomain.DefaultTenantID, Hash: logoutE2ERefreshHash, FamilyID: "logout-e2e-fam",
 		ClientID: client.ClientID, UserID: "alice", Scopes: []string{"openid", "offline_access"},
@@ -76,11 +72,11 @@ func newLogoutE2EFixture(t *testing.T, mutate func(*clientdomain.OAuth2Client)) 
 	}); err != nil {
 		t.Fatal(err)
 	}
-	clientSessions := logoutmemory.NewClientSessionStore()
-	if err := clientSessions.Upsert(testing_tenant.Default(context.Background()), &logoutdomain.ClientSession{TenantID: tenancydomain.DefaultTenantID, Sid: authn.SessionID, ClientID: client.ClientID, FirstIssuedAt: time.Now().UTC(), LastIssuedAt: time.Now().UTC()}); err != nil {
+	clientSessions := oauth2.NewMemoryModule().ClientSessionStore
+	if err := clientSessions.Upsert(testing_tenant.Default(context.Background()), &oauthdomain.ClientSession{TenantID: tenancydomain.DefaultTenantID, Sid: authn.SessionID, ClientID: client.ClientID, FirstIssuedAt: time.Now().UTC(), LastIssuedAt: time.Now().UTC()}); err != nil {
 		t.Fatal(err)
 	}
-	notifications := logoutmemory.NewLogoutNotificationStore()
+	notifications := oauth2.NewMemoryModule().LogoutNotificationStore
 	jobRepo := jobs.NewJobRepository()
 	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
@@ -122,7 +118,7 @@ func (f logoutE2EFixture) endSession(t *testing.T) *http.Response {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: f.sessionID})
+	request.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: f.sessionID})
 	response, err := client.Do(request)
 	if err != nil {
 		t.Fatal(err)
@@ -132,7 +128,7 @@ func (f logoutE2EFixture) endSession(t *testing.T) *http.Response {
 
 //spec:covers OIDC-FRONTCHANNEL-IFRAME: 本番配線の end_session 応答が参加済み RP の iframe を含む。
 func TestEndSessionFrontChannelLogout_OIDC_FRONTCHANNEL_IFRAME(t *testing.T) {
-	fixture := newLogoutE2EFixture(t, func(client *clientdomain.OAuth2Client) {
+	fixture := newLogoutE2EFixture(t, func(client *oauthdomain.OAuth2Client) {
 		uri := "https://rp.example/frontchannel-logout"
 		client.FrontChannelLogoutURI = &uri
 		client.FrontChannelLogoutSessionRequired = true
@@ -162,11 +158,11 @@ func (f logoutE2EFixture) runDeliveryWorker(t *testing.T, deliver logoutports.Ba
 }
 
 // awaitNotification は配信ジョブが指す LogoutNotification が条件を満たすまで待つ。
-func (f logoutE2EFixture) awaitNotification(t *testing.T, accept func(*logoutdomain.LogoutNotification) bool) *logoutdomain.LogoutNotification {
+func (f logoutE2EFixture) awaitNotification(t *testing.T, accept func(*oauthdomain.LogoutNotification) bool) *oauthdomain.LogoutNotification {
 	t.Helper()
-	var last *logoutdomain.LogoutNotification
+	var last *oauthdomain.LogoutNotification
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(time.Millisecond) {
-		queued, err := f.jobs.ListByTenantAndKinds(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, []jobsdomain.JobKind{logoutdomain.KindBackChannelLogoutDelivery}, 1)
+		queued, err := f.jobs.ListByTenantAndKinds(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, []jobsdomain.JobKind{oauthdomain.KindBackChannelLogoutDelivery}, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -199,7 +195,7 @@ func (f logoutE2EFixture) awaitNotification(t *testing.T, accept func(*logoutdom
 func TestEndSessionFrontChannelUnreachable_OIDC_FRONTCHANNEL_BEST_EFFORT(t *testing.T) {
 	// 閉じたポートを指す。ブラウザーがこの iframe を読み込めば必ず失敗する宛先である。
 	const unreachable = "https://127.0.0.1:1/frontchannel-logout"
-	fixture := newLogoutE2EFixture(t, func(client *clientdomain.OAuth2Client) {
+	fixture := newLogoutE2EFixture(t, func(client *oauthdomain.OAuth2Client) {
 		uri := unreachable
 		client.FrontChannelLogoutURI = &uri
 	})
@@ -226,15 +222,15 @@ func TestEndSessionBackChannelDeliveryExhausted_OIDC_BACKCHANNEL_DELIVERY_RETRY(
 		response.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer rp.Close()
-	fixture := newLogoutE2EFixture(t, func(client *clientdomain.OAuth2Client) {
+	fixture := newLogoutE2EFixture(t, func(client *oauthdomain.OAuth2Client) {
 		client.BackChannelLogoutURI = &rp.URL
 		client.BackChannelLogoutSessionRequired = true
 	})
-	fixture.runDeliveryWorker(t, logoutpush.NewBackChannelLogoutClient(rp.Client()))
+	fixture.runDeliveryWorker(t, oauth2.NewBackChannelLogoutClient(rp.Client()))
 	fixture.endSession(t).Body.Close()
 
-	notification := fixture.awaitNotification(t, func(n *logoutdomain.LogoutNotification) bool {
-		return n.State == logoutdomain.LogoutNotificationFailed
+	notification := fixture.awaitNotification(t, func(n *oauthdomain.LogoutNotification) bool {
+		return n.State == oauthdomain.LogoutNotificationFailed
 	})
 	if attempts.Load() < 2 {
 		t.Fatalf("再試行されていない: attempts=%d notification=%+v", attempts.Load(), notification)
@@ -255,11 +251,11 @@ func TestEndSessionBackChannelLogout_REQ_OAUTH2_025(t *testing.T) {
 		response.WriteHeader(http.StatusNoContent)
 	}))
 	defer rp.Close()
-	fixture := newLogoutE2EFixture(t, func(client *clientdomain.OAuth2Client) {
+	fixture := newLogoutE2EFixture(t, func(client *oauthdomain.OAuth2Client) {
 		client.BackChannelLogoutURI = &rp.URL
 		client.BackChannelLogoutSessionRequired = true
 	})
-	fixture.runDeliveryWorker(t, logoutpush.NewBackChannelLogoutClient(rp.Client()))
+	fixture.runDeliveryWorker(t, oauth2.NewBackChannelLogoutClient(rp.Client()))
 	fixture.endSession(t).Body.Close()
 	select {
 	case token := <-tokenCh:
@@ -267,8 +263,8 @@ func TestEndSessionBackChannelLogout_REQ_OAUTH2_025(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("RP did not receive a logout token")
 	}
-	fixture.awaitNotification(t, func(n *logoutdomain.LogoutNotification) bool {
-		return n.State == logoutdomain.LogoutNotificationDelivered
+	fixture.awaitNotification(t, func(n *oauthdomain.LogoutNotification) bool {
+		return n.State == oauthdomain.LogoutNotificationDelivered
 	})
 }
 

@@ -107,7 +107,7 @@ export function reportSecurityTestGaps(tests: GoTest[]): SecurityTestGapReport {
   for (const test of tests) {
     if (
       test.path.startsWith('backend/provisioning/client_scim/') ||
-      test.path === 'backend/oauth2/handlers_http/client_auth_test.go' ||
+      test.path === 'backend/oauth2/internal/handlers_http/client_auth_test.go' ||
       (test.path === 'backend/sourcing/scim/handlers_http/scim_test.go' &&
         test.name === 'TestScimListUsersDateTimeFilterAndURNPrefix')
     )

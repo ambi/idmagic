@@ -1,15 +1,14 @@
-// Package idmanagement は IdManagement モジュールの DI 組立を所有する
-// (wi-178)。User/Group/Agent の永続化 port を Module 1 個に束ね、中央
-// server/routes.go と bootstrap の Dependencies が受け渡す。idmanagement/handlers_http
-// は oauth2/scim/authentication/tenancy 由来の port も必要とするため、HTTP route 登録は
-// authentication.Module 同様に中央 routes.go が引き続き組み立てる (自己登録は行わない)。
+// Package idmanagement は IdManagement モジュールの組み立てを所有する。User、Group、Agent の
+// 保存先を Module に束ね、経路の登録、ジョブのハンドラーの登録、管理 API の外から User を止める
+// 操作を、組み立て地点が渡すほかのモジュールの依存とともに組み立てる。
 package idmanagement
 
 import (
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/internal/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // Module は identity-management context が所有する永続化 port の束。
@@ -37,4 +36,8 @@ type Module struct {
 	// いるのは、IdManagement が持つ引き金の語彙が Group と User で別だからである。
 	// プロビジョニングタスクを生むかどうかは接続の push_groups が決めるので、常に配線してよい。
 	GroupProvisioningNotifier groupports.ProvisioningNotifier
+	// AttrSchemaRepo と GroupAttrSchemaRepo は、IdManagement が実装する Tenancy の属性スキーマの
+	// 保存先である。組み立て地点が Tenancy の Module へ渡す。
+	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
+	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
 }

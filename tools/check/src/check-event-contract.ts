@@ -13,8 +13,8 @@ import type { CheckOutcome } from './runner.ts'
 const DECLARATION = 'spec/modules/system/models.tsp'
 const CONSUMERS = [
   'backend/audit/internal/usecases/audit_search_extractor.go',
-  'backend/authentication/securitynotification/domain/catalog.go',
-  'backend/authentication/securitynotification/usecases/dispatch.go',
+  'backend/authentication/internal/securitynotification/domain/catalog.go',
+  'backend/authentication/internal/securitynotification/usecases/dispatch.go',
 ]
 
 /** 発行経路を持たないイベントの導入時点の一覧。減る方向にしか動かさない。 */

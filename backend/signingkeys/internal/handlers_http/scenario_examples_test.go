@@ -16,8 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -61,7 +62,7 @@ func (c sessionClient) post(t *testing.T, path, body string) *httptest.ResponseR
 	request := newRequest(t, http.MethodPost, path, body)
 	request.Header.Set("Origin", stack.Issuer)
 	request.Header.Set(support.CSRFHeader, csrfTokenValue)
-	request.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: c.sessionID})
+	request.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: c.sessionID})
 	request.AddCookie(&http.Cookie{Name: support.CSRFCookie, Value: csrfTokenValue})
 	recorder := httptest.NewRecorder()
 	c.s.Echo.ServeHTTP(recorder, request)
@@ -377,7 +378,7 @@ func TestAdminKeyHTTPContract(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			request := newRequest(t, http.MethodGet, adminKeysPath+"/"+tc.kid, "")
-			request.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: admin.sessionID})
+			request.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: admin.sessionID})
 			recorder := httptest.NewRecorder()
 			s.Echo.ServeHTTP(recorder, request)
 			if recorder.Code != tc.status {

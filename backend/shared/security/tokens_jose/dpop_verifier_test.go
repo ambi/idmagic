@@ -16,8 +16,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 )
 
 func dpopTestECKey(t *testing.T) (*ecdsa.PrivateKey, map[string]any) {
@@ -105,7 +103,7 @@ func TestVerifyDPoPAcceptsValidProof(t *testing.T) {
 	)
 	res, err := VerifyDPoPForToken(
 		context.Background(), proof, "POST", "https://idp.example/token",
-		memory.NewDpopReplayStore(), now,
+		newReplayStoreFake(), now,
 	)
 	if err != nil {
 		t.Fatalf("valid proof rejected: %v", err)
@@ -184,7 +182,7 @@ func TestVerifyDPoPRejectsFailureCases(t *testing.T) {
 			proof := encodeDPoPProof(t, key, header, payload)
 			_, err := VerifyDPoPForToken(
 				context.Background(), proof, "POST", validHTU,
-				memory.NewDpopReplayStore(), now,
+				newReplayStoreFake(), now,
 			)
 			if err == nil {
 				t.Fatalf("expected rejection containing %q", tc.wantError)
@@ -205,7 +203,7 @@ func TestVerifyDPoPRejectsAMissingHTUEvenWhenNoTargetIsExpected(t *testing.T) {
 		map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk},
 		map[string]any{"htm": "GET", "jti": "no-htu", "iat": now.Unix()},
 	)
-	if _, err := VerifyDPoPForToken(context.Background(), proof, "GET", "", memory.NewDpopReplayStore(), now); err == nil ||
+	if _, err := VerifyDPoPForToken(context.Background(), proof, "GET", "", newReplayStoreFake(), now); err == nil ||
 		!strings.Contains(err.Error(), "htu") {
 		t.Fatalf("err = %v, want an htu rejection", err)
 	}
@@ -215,7 +213,7 @@ func TestVerifyDPoPDetectsReplay(t *testing.T) {
 	// 同一 jti の再使用は ReplayWindow 内で拒否される (DpopJtiUniquenessWithinWindow)。
 	key, jwk := dpopTestKey(t)
 	now := time.Now().UTC()
-	store := memory.NewDpopReplayStore()
+	store := newReplayStoreFake()
 	proof := encodeDPoPProof(
 		t, key,
 		map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk},
@@ -242,7 +240,7 @@ func TestVerifyDPoPRejectsInvalidSignature(t *testing.T) {
 	)
 	_, err := VerifyDPoPForToken(
 		context.Background(), proof, "POST", "https://idp.example/token",
-		memory.NewDpopReplayStore(), now,
+		newReplayStoreFake(), now,
 	)
 	if err == nil || !strings.Contains(err.Error(), "signature") {
 		t.Fatalf("expected signature rejection, got %v", err)
@@ -275,7 +273,7 @@ func TestVerifyDPoPForResourceBindsProofToAccessToken(t *testing.T) {
 	t.Run("正しい ath を持つ proof は受理される", func(t *testing.T) {
 		res, err := VerifyDPoPForResource(
 			context.Background(), proofWithATH(t, "ath-ok", AccessTokenHash(accessToken)),
-			"GET", htu, accessToken, memory.NewDpopReplayStore(), now,
+			"GET", htu, accessToken, newReplayStoreFake(), now,
 		)
 		if err != nil {
 			t.Fatalf("valid ath rejected: %v", err)
@@ -288,7 +286,7 @@ func TestVerifyDPoPForResourceBindsProofToAccessToken(t *testing.T) {
 	t.Run("ath 欠落の proof は拒否される", func(t *testing.T) {
 		_, err := VerifyDPoPForResource(
 			context.Background(), proofWithATH(t, "ath-missing", nil),
-			"GET", htu, accessToken, memory.NewDpopReplayStore(), now,
+			"GET", htu, accessToken, newReplayStoreFake(), now,
 		)
 		if err == nil || !strings.Contains(err.Error(), "ath required") {
 			t.Fatalf("expected missing-ath rejection, got %v", err)
@@ -298,7 +296,7 @@ func TestVerifyDPoPForResourceBindsProofToAccessToken(t *testing.T) {
 	t.Run("別 access token の ath を持つ proof は拒否される", func(t *testing.T) {
 		_, err := VerifyDPoPForResource(
 			context.Background(), proofWithATH(t, "ath-other", AccessTokenHash(otherToken)),
-			"GET", htu, accessToken, memory.NewDpopReplayStore(), now,
+			"GET", htu, accessToken, newReplayStoreFake(), now,
 		)
 		if err == nil || !strings.Contains(err.Error(), "ath mismatch") {
 			t.Fatalf("expected ath mismatch rejection, got %v", err)
@@ -308,7 +306,7 @@ func TestVerifyDPoPForResourceBindsProofToAccessToken(t *testing.T) {
 	t.Run("proof 不在は拒否される", func(t *testing.T) {
 		_, err := VerifyDPoPForResource(
 			context.Background(), "", "GET", htu, accessToken,
-			memory.NewDpopReplayStore(), now,
+			newReplayStoreFake(), now,
 		)
 		if err == nil || !strings.Contains(err.Error(), "proof required") {
 			t.Fatalf("expected missing-proof rejection, got %v", err)
@@ -319,7 +317,7 @@ func TestVerifyDPoPForResourceBindsProofToAccessToken(t *testing.T) {
 		// Pins that the ath check cannot be skipped by forgetting to pass the token.
 		_, err := VerifyDPoPForResource(
 			context.Background(), proofWithATH(t, "ath-no-token", AccessTokenHash(accessToken)),
-			"GET", htu, "", memory.NewDpopReplayStore(), now,
+			"GET", htu, "", newReplayStoreFake(), now,
 		)
 		if err == nil || !strings.Contains(err.Error(), "access token required") {
 			t.Fatalf("expected missing-token rejection, got %v", err)
@@ -339,7 +337,7 @@ func TestVerifyDPoPForTokenAcceptsProofWithoutATH(t *testing.T) {
 	)
 	res, err := VerifyDPoPForToken(
 		context.Background(), proof, "POST", "https://idp.example/token",
-		memory.NewDpopReplayStore(), now,
+		newReplayStoreFake(), now,
 	)
 	if err != nil || res == nil {
 		t.Fatalf("token endpoint proof without ath: res=%v err=%v", res, err)
@@ -359,7 +357,7 @@ func TestVerifyDPoPAcceptsES256Proof(t *testing.T) {
 	)
 	res, err := VerifyDPoPForToken(
 		context.Background(), proof, "POST", "https://idp.example/token",
-		memory.NewDpopReplayStore(), now,
+		newReplayStoreFake(), now,
 	)
 	if err != nil {
 		t.Fatalf("valid ES256 proof rejected: %v", err)
@@ -384,7 +382,7 @@ func TestVerifyDPoPRejectsES256WithWrongKey(t *testing.T) {
 	)
 	_, err := VerifyDPoPForToken(
 		context.Background(), proof, "POST", "https://idp.example/token",
-		memory.NewDpopReplayStore(), now,
+		newReplayStoreFake(), now,
 	)
 	if err == nil || !strings.Contains(err.Error(), "signature") {
 		t.Fatalf("expected signature rejection, got %v", err)
@@ -507,7 +505,7 @@ func TestVerifyDPoPMissingHeaderIsNoOp(t *testing.T) {
 	// 空ヘッダーは「proof 不在」を意味する。エラー無しで nil を返し、呼び出し側の責務に委ねる。
 	res, err := VerifyDPoPForToken(
 		context.Background(), "", "POST", "https://idp.example/token",
-		memory.NewDpopReplayStore(), time.Now().UTC(),
+		newReplayStoreFake(), time.Now().UTC(),
 	)
 	if err != nil || res != nil {
 		t.Fatalf("empty header: got res=%v err=%v, want nil/nil", res, err)

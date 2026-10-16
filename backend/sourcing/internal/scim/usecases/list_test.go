@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	scimmemory "github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
@@ -17,8 +17,8 @@ import (
 // "SCIM clientはUsersとGroups collectionを検索できる")。
 func TestListUsersTenantIsolation(t *testing.T) {
 	ctx := context.Background()
-	userRepo := usermemory.NewUserRepository()
-	groupRepo := groupmemory.NewGroupRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
 	u := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
 
@@ -53,8 +53,8 @@ func TestListUsersTenantIsolation(t *testing.T) {
 
 func TestListGroupsTenantIsolation(t *testing.T) {
 	ctx := context.Background()
-	userRepo := usermemory.NewUserRepository()
-	groupRepo := groupmemory.NewGroupRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
 	u := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
 

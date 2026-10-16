@@ -19,10 +19,8 @@ import (
 	"github.com/ambi/idmagic/backend/authorization"
 	authorizationmemory "github.com/ambi/idmagic/backend/authorization/internal/db_memory"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -69,9 +67,9 @@ func activeAgent(id string) *agentdomain.Agent {
 // ことを、テストが API を介さずに読み直せるようにしている。
 func newServer(t *testing.T, user *userdomain.User, agents ...*agentdomain.Agent) (*echo.Echo, *[]spec.DomainEvent, *authorizationmemory.Store) {
 	t.Helper()
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(user)
-	agentRepo := agentmemory.NewAgentRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), user)
+	agentRepo := idmanagement.NewMemoryModule().AgentRepo
 	for _, agent := range agents {
 		if err := agentRepo.Save(context.Background(), agent); err != nil {
 			t.Fatal(err)

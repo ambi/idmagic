@@ -4,7 +4,7 @@ package ports
 import (
 	"context"
 
-	consentdomain "github.com/ambi/idmagic/backend/oauth2/consent/domain"
+	consentdomain "github.com/ambi/idmagic/backend/oauth2/internal/consent/domain"
 )
 
 type ConsentRepository interface {

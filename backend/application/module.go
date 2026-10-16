@@ -9,9 +9,9 @@ import (
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 
 	"github.com/ambi/idmagic/backend/application/domain"
-	apphttp "github.com/ambi/idmagic/backend/application/handlers_http"
+	apphttp "github.com/ambi/idmagic/backend/application/internal/handlers_http"
+	appusecases "github.com/ambi/idmagic/backend/application/internal/usecases"
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"

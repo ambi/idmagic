@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
@@ -34,8 +34,8 @@ import (
 //spec:covers EX-PROVISIONING-002-01: 管理 API で接続を登録すると ProvisioningConnectionRegistered が発行され、接続テストで capabilities がキャッシュされる。
 func TestAdminConnectionAPIEmitsLifecycleEvents(t *testing.T) {
 	now := time.Now().UTC()
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin", PasswordHash: "unused",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -47,8 +47,8 @@ func TestAdminConnectionAPIEmitsLifecycleEvents(t *testing.T) {
 		Issuer: "http://idp.test",
 		Emit:   func(event spec.DomainEvent) { events = append(events, event) },
 		Authenticator: &support.Authenticator{
-			Principals: idmhttpdeps.Principals{Users: users},
-			Sessions:   authhttpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}},
+			Principals: idmanagement.Module{UserRepo: users}.Principals(),
+			Sessions:   authentication.Module{AuthnResolver: authentication.DemoHeaderResolver{}}.SessionAuthentications(),
 		},
 		ConnectionRepo: connections,
 		NewTargetClient: func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error) {

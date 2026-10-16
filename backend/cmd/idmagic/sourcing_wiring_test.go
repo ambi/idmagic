@@ -7,11 +7,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 
@@ -24,9 +21,9 @@ import (
 //spec:covers EX-IDMANAGEMENT-081-03: API の起動が組み立てた Sourcing で、SCIM の active=false が IdManagement の無効化を通り、所有する Agent を止めて UserDisabled を scim の操作者で発行すること。
 func TestServerWiresScimUserStopsThroughIdManagement(t *testing.T) {
 	ctx := context.Background()
-	users := usermemory.NewUserRepository()
-	groups := groupmemory.NewGroupRepository()
-	agents := agentmemory.NewAgentRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
+	groups := idmanagement.NewMemoryModule().GroupRepo
+	agents := idmanagement.NewMemoryModule().AgentRepo
 	deps := &bootstrap.Dependencies{
 		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groups, AgentRepo: agents},
 		Sourcing:     sourcing.NewMemoryModule(),
@@ -80,9 +77,9 @@ func TestServerWiresScimUserStopsThroughIdManagement(t *testing.T) {
 //spec:covers REQ-PLATFORM-001: API の起動が組み立てた Sourcing で SCIM の active=false が User を止めると、所有する Agent の失効エポックが所有者の無効化を理由に進むことを固定する。
 func TestSCIMUserLifecycleAdvancesTheRevocationEpochOfOwnedAgents(t *testing.T) {
 	ctx := context.Background()
-	users := usermemory.NewUserRepository()
-	groups := groupmemory.NewGroupRepository()
-	agents := agentmemory.NewAgentRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
+	groups := idmanagement.NewMemoryModule().GroupRepo
+	agents := idmanagement.NewMemoryModule().AgentRepo
 	epochs := sharedsignals.NewAgentRevocationEpochRepository()
 	deps := &bootstrap.Dependencies{
 		IdManagement:  idmanagement.Module{UserRepo: users, GroupRepo: groups, AgentRepo: agents},

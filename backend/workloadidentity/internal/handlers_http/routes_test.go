@@ -5,6 +5,7 @@ package handlers_http_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -12,12 +13,11 @@ import (
 	"testing"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/authentication"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -30,18 +30,18 @@ import (
 
 func newWorkloadIdentityHandler(t *testing.T) *echo.Echo {
 	t.Helper()
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	now := time.Now().UTC()
-	userRepo.Seed(&userdomain.User{
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	// 管理者でない主体でも同じ経路を通せるようにしておく (REQ-WORKLOADIDENTITY-010)。
-	userRepo.Seed(&userdomain.User{
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID: "alice", PreferredUsername: "alice", PasswordHash: "unused",
 		CreatedAt: now, UpdatedAt: now,
 	})
-	agents := agentmemory.NewAgentRepository()
+	agents := idmanagement.NewMemoryModule().AgentRepo
 	if err := agents.Save(t.Context(), &agentdomain.Agent{
 		ID: "agent-1", TenantID: tenancydomain.DefaultTenantID, Name: "worker",
 		OwnerUserID: "admin", Kind: idmdomain.AgentKindAutonomous, Status: idmdomain.AgentStatusActive,
@@ -52,7 +52,7 @@ func newWorkloadIdentityHandler(t *testing.T) *echo.Echo {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:        "http://idp.test",
-		AuthnResolver: authusecases.DemoHeaderResolver{},
+		AuthnResolver: authentication.DemoHeaderResolver{},
 		IdManagement:  idmanagement.Module{UserRepo: userRepo, AgentRepo: agents},
 		WorkloadIdentity: workloadidentity.Module{
 			TrustBundleRepo: workloadmemory.NewWorkloadTrustBundleRepository(),

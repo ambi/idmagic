@@ -8,16 +8,16 @@ import (
 	"testing"
 	"time"
 
-	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/internal/db_memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 	"github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -208,7 +208,7 @@ func TestLifecycleWorkflowTenantIsolation(t *testing.T) {
 func TestDryRunLifecycleWorkflowUsesEnabledRevisionNotDraft(t *testing.T) {
 	ctx := workflowContext()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo}
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled}, CreatedAt: now, UpdatedAt: now}
@@ -248,8 +248,8 @@ func TestDryRunLifecycleWorkflowUsesEnabledRevisionNotDraft(t *testing.T) {
 func TestDryRunLifecycleWorkflowNoOpWhenUserAlreadyAtGoalState(t *testing.T) {
 	ctx := workflowContext()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
-	users := usermemory.NewUserRepository()
-	groups := groupmemory.NewGroupRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
+	groups := idmanagement.NewMemoryModule().GroupRepo
 	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo, GroupRepo: groups}
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
@@ -287,7 +287,7 @@ func TestDryRunLifecycleWorkflowNoOpWhenUserAlreadyAtGoalState(t *testing.T) {
 func TestDryRunLifecycleWorkflowBlockedWhenTriggerFiltersDoNotMatch(t *testing.T) {
 	ctx := workflowContext()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo}
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	department := "sales"
@@ -318,7 +318,7 @@ func TestDryRunLifecycleWorkflowBlockedWhenTriggerFiltersDoNotMatch(t *testing.T
 func TestDryRunLifecycleWorkflowTargetUserNotFound(t *testing.T) {
 	ctx := workflowContext()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo}
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	workflow, err := usecases.CreateLifecycleWorkflow(ctx, deps, workflowInput())
@@ -350,26 +350,27 @@ func TestUserMutationsCaptureMatchingWorkflowRuns(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	deps := userusecases.AdminUserDeps{
+	adminUsers := idmanagement.Module{
 		UserRepo: users,
 		UserMutationCommitter: usecases.UserMutationCommitter{
 			WorkflowRepo: workflowRepo, RunRepo: runs, UserRepo: users,
 			Capture: &igmemory.UserWorkflowCapture{Users: users, Runs: runs},
 		},
-		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
-	}
+	}.AdminUsers(idmanagement.LifecycleDeps{
+		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
+	}, nil)
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	user, err := userusecases.CreateUser(ctx, deps, userusecases.CreateUserInput{PreferredUsername: "alice", Password: "initial-password-9182", Now: now})
+	user, err := adminUsers.CreateUser(ctx, idmanagement.CreateUserInput{PreferredUsername: "alice", Password: "initial-password-9182", Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}
 	department := "Engineering"
-	if _, err := userusecases.UpdateUser(ctx, deps, userusecases.UpdateUserInput{Sub: user.ID, Attributes: &map[string]userdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &department}}, Now: now.Add(time.Minute)}); err != nil {
+	if _, err := adminUsers.UpdateUser(ctx, idmanagement.UpdateUserInput{Sub: user.ID, Attributes: &map[string]userdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &department}}, Now: now.Add(time.Minute)}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := userusecases.SetUserDisabled(ctx, deps, "operator", user.ID, true, now.Add(2*time.Minute)); err != nil {
+	if _, err := adminUsers.SetUserDisabled(ctx, "operator", user.ID, true, now.Add(2*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	captured, err := runs.ListUnenqueuedRuns(ctx, 10)

@@ -31,18 +31,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+
 	"github.com/labstack/echo/v5"
 
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	approvalmemory "github.com/ambi/idmagic/backend/oauth2/approval/db_memory"
-	approvaldomain "github.com/ambi/idmagic/backend/oauth2/approval/domain"
-	approvalports "github.com/ambi/idmagic/backend/oauth2/approval/ports"
-	authorizationdomain "github.com/ambi/idmagic/backend/oauth2/authorization/domain"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -71,11 +69,11 @@ const (
 // 保存そのものの回数で読む。保存層を後から覗く形にすると、保存して削除した実装と
 // 区別できない。
 type countingApprovalStore struct {
-	approvalports.ApprovalRequestStore
+	oauthports.ApprovalRequestStore
 	saves atomic.Int64
 }
 
-func (s *countingApprovalStore) Save(ctx context.Context, rec *approvaldomain.ApprovalRequest) error {
+func (s *countingApprovalStore) Save(ctx context.Context, rec *domain.ApprovalRequest) error {
 	s.saves.Add(1)
 	return s.ApprovalRequestStore.Save(ctx, rec)
 }
@@ -113,8 +111,8 @@ func (r *eventRecorder) assertEmitted(t *testing.T, eventTypes ...string) {
 type nigFixture struct {
 	server    *httptest.Server
 	base      string
-	devices   *oauth2memory.DeviceCodeStore
-	approvals *approvalmemory.ApprovalRequestStore
+	devices   oauthports.DeviceCodeStore
+	approvals oauthports.ApprovalRequestStore
 	counted   *countingApprovalStore
 	events    *eventRecorder
 }
@@ -127,9 +125,9 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 	t.Helper()
 	now := time.Now().UTC()
 
-	clients := oauth2memory.NewClientRepository()
+	clients := oauth2.NewMemoryModule().ClientRepo
 	secretHash := domain.HashClientSecret(nigClientSecret)
-	clients.Seed(&domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: nigClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{nigRedirectURI},
@@ -151,8 +149,8 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 		t.Fatalf("seed password: %v", err)
 	}
 	email := "alice@example.com"
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "user_alice", PreferredUsername: nigUsername, PasswordHash: passwordHash,
 		Email: &email, EmailVerified: true,
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
@@ -161,18 +159,18 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 	// binding_message の行は「クライアント、要求スコープ、authorization_details と
 	// 併せて示す」ことを言っている。構造化された詳細を持てる型が登録されていないと、
 	// 4 つを併せて示していることを区別する事例が作れない。
-	detailTypes := oauth2memory.NewAuthorizationDetailTypeRepository()
-	detailTypes.Seed(&authorizationdomain.AuthorizationDetailType{
+	detailTypes := oauth2.NewMemoryModule().AuthzDetailTypeRepo
+	_ = detailTypes.Save(context.Background(), &domain.AuthorizationDetailType{
 		TenantID: tenancydomain.DefaultTenantID, Type: nigDetailType,
 		Description: "支払いの開始", DisplayTemplate: "{actions} を実行する",
-		State: authorizationdomain.DetailTypeEnabled,
-		Schema: authorizationdomain.AuthorizationDetailsSchema{
-			Rules: []authorizationdomain.AuthorizationDetailFieldRule{
+		State: domain.DetailTypeEnabled,
+		Schema: domain.AuthorizationDetailsSchema{
+			Rules: []domain.AuthorizationDetailFieldRule{
 				{
-					Name: "actions", Semantics: authorizationdomain.DetailFieldSet, Required: true,
+					Name: "actions", Semantics: domain.DetailFieldSet, Required: true,
 					Allowed: []string{"initiate", "status"},
 				},
-				{Name: "instructedAmount", Semantics: authorizationdomain.DetailFieldAtMost, Required: true},
+				{Name: "instructedAmount", Semantics: domain.DetailFieldAtMost, Required: true},
 			},
 		},
 		CreatedAt: now, UpdatedAt: now,
@@ -191,9 +189,9 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 		t.Fatalf("key store: %v", err)
 	}
 	signer := tokensJOSE.NewJWTSigner(nigIssuer, keyStore)
-	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
-	devices := oauth2memory.NewDeviceCodeStore()
-	approvals := oauth2memory.NewApprovalRequestStore()
+	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
+	devices := oauth2.NewMemoryModule().DeviceCodeStore
+	approvals := oauth2.NewMemoryModule().ApprovalRequestStore
 	counted := &countingApprovalStore{ApprovalRequestStore: approvals}
 
 	startupComplete := &atomic.Bool{}
@@ -208,11 +206,11 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 		ShuttingDown:    &atomic.Bool{},
 		Emit:            events.record,
 		OAuth2: oauth2.Module{
-			ClientRepo: clients, ConsentRepo: oauth2memory.NewConsentRepository(),
-			RequestStore:    oauth2memory.NewAuthorizationRequestStore(),
-			CodeStore:       oauth2memory.NewAuthorizationCodeStore(),
-			PARStore:        oauth2memory.NewPARStore(),
-			RefreshStore:    oauth2memory.NewRefreshTokenStore(),
+			ClientRepo: clients, ConsentRepo: oauth2.NewMemoryModule().ConsentRepo,
+			RequestStore:    oauth2.NewMemoryModule().RequestStore,
+			CodeStore:       oauth2.NewMemoryModule().CodeStore,
+			PARStore:        oauth2.NewMemoryModule().PARStore,
+			RefreshStore:    oauth2.NewMemoryModule().RefreshStore,
 			DeviceCodeStore: devices, ApprovalRequestStore: counted,
 			AuthzDetailTypeRepo: detailTypes,
 			// 本番の組み立て (cmd/idmagic/server.go) と同じく、id_token_hint の
@@ -382,7 +380,7 @@ func (f *nigFixture) advanceDeviceClock(t *testing.T, userCode string, d time.Du
 func (f *nigFixture) advanceApprovalClock(t *testing.T, authReqID string, d time.Duration) {
 	t.Helper()
 	ctx := f.tenantContext()
-	rec, err := f.approvals.FindByAuthReqIDHash(ctx, approvaldomain.HashAuthReqID(authReqID))
+	rec, err := f.approvals.FindByAuthReqIDHash(ctx, domain.HashAuthReqID(authReqID))
 	if err != nil || rec == nil {
 		t.Fatalf("approval record: %v", err)
 	}
@@ -729,7 +727,7 @@ func TestCibaPollModeSemanticsAndSingleUseExchange(t *testing.T) {
 
 	// 期限切れは expired_token。判断が付く前に期限が来た場合である。
 	expiring := start(t)
-	fixture.advanceApprovalClock(t, expiring, 2*approvaldomain.MaxTTL)
+	fixture.advanceApprovalClock(t, expiring, 2*domain.ApprovalRequestMaxTTL)
 	status, body = fixture.exchangeAuthReqID(t, expiring)
 	assertOAuthError(t, "期限切れの auth_req_id", status, body, "expired_token")
 

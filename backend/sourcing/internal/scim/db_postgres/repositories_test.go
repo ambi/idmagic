@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	grouppg "github.com/ambi/idmagic/backend/idmanagement/group/db_postgres"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	userpg "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -64,7 +64,7 @@ func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if err := (&userpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
+	if err := idmanagement.NewPostgresModule(db, nil).UserRepo.Save(context.Background(), user); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	return user
@@ -81,7 +81,7 @@ func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *groupdomain.Group
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := (&grouppg.GroupRepository{Pool: db}).Save(context.Background(), group); err != nil {
+	if err := idmanagement.NewPostgresModule(db, nil).GroupRepo.Save(context.Background(), group); err != nil {
 		t.Fatalf("seed group: %v", err)
 	}
 	return group

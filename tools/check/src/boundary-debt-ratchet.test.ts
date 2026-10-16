@@ -138,6 +138,29 @@ describe('checkBoundaryDebtRatchet', () => {
     expect((await ratchet(await movedImport('usecases', true, true))).ok).toBe(false)
   })
 
+  it('公開方式を切り替えて既存の所有者外の書き込みのクエリを internal へ移す変更を通す', async () => {
+    const root = await repository({
+      'docs/design/architecture/logical.md': BOUNDARY_FIXTURE[
+        'docs/design/architecture/logical.md'
+      ]!.replace(
+        '| [Customer](customer.md) | `legacy` | `domain` または `ports` の区画 |',
+        '| [Customer](customer.md) | `internal` | `backend/customer/ports` |',
+      ),
+      'backend/customer/ports/ports.go': 'package ports\n',
+      'sqlc.yaml': BOUNDARY_FIXTURE['sqlc.yaml']!.replace(
+        '"backend/customer/db_postgres"',
+        '"backend/customer/internal/db_postgres"',
+      ),
+      'backend/customer/internal/db_postgres/orders.sql':
+        BOUNDARY_FIXTURE['backend/customer/db_postgres/orders.sql']!,
+      'backend/customer/internal/db_postgres/supplies.sql':
+        EXISTING_DEBT['backend/customer/db_postgres/supplies.sql']!,
+    })
+    await rm(join(root, 'backend/customer/db_postgres'), { recursive: true })
+
+    expect((await ratchet(root)).ok).toBe(true)
+  })
+
   it('accepts moving the cycle and the direct write of a retired-format base to new ids', async () => {
     const outcome = await ratchet(await repository({}))
 

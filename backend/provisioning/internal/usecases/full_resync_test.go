@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	memory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
@@ -47,9 +48,9 @@ func newFullResyncFixture(t *testing.T, userIDs ...string) *fullResyncFixture {
 	if err := connRepo.Register(context.Background(), conn, "tok"); err != nil {
 		t.Fatal(err)
 	}
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	for _, id := range userIDs {
-		users.Seed(&userdomain.User{ID: id, TenantID: testTenantID, PreferredUsername: id, CreatedAt: now, UpdatedAt: now})
+		_ = users.Save(context.Background(), &userdomain.User{ID: id, TenantID: testTenantID, PreferredUsername: id, CreatedAt: now, UpdatedAt: now})
 	}
 	f := &fullResyncFixture{t: t, handler: handlerDeps, client: client, taskRepo: taskRepo}
 	f.admin = usecases.AdminDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo, UserRepo: users, Emit: f.record}

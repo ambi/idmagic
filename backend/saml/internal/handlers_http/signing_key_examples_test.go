@@ -20,9 +20,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
 	"github.com/beevik/etree"
 
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -84,7 +85,7 @@ func issuedAssertion(t *testing.T, s *stack.Stack, sessionID string) *etree.Elem
 	samlRequest := authnRequestRedirect(t, "https://sp.example.com", "https://sp.example.com/acs")
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
 		stack.Issuer+"/realms/default/saml/sso?SAMLRequest="+url.QueryEscape(samlRequest), http.NoBody)
-	request.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: sessionID})
+	request.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: sessionID})
 	recorder := serve(t, s, request)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("sso status=%d body=%s", recorder.Code, recorder.Body.String())
@@ -167,7 +168,7 @@ func TestAdministratorRotatesTheXmlFederationKeyWithoutBreakingTrust(t *testing.
 	rotate.Header.Set("Content-Type", "application/json")
 	rotate.Header.Set("Origin", stack.Issuer)
 	rotate.Header.Set(support.CSRFHeader, exampleCSRFToken)
-	rotate.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: newSession(t, s, stack.AdminUserID)})
+	rotate.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: newSession(t, s, stack.AdminUserID)})
 	rotate.AddCookie(&http.Cookie{Name: support.CSRFCookie, Value: exampleCSRFToken})
 	if rotated := serve(t, s, rotate); rotated.Code != http.StatusOK {
 		t.Fatalf("rotate status=%d body=%s", rotated.Code, rotated.Body.String())

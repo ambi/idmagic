@@ -1,6 +1,8 @@
 // Package fixtures_postgres は PostgreSQL テストの前提を組み立てる。
 // 各所有モジュールのアダプターを通じて FK の親行を投入するテスト専用の組み立て地点である。
 // storage/db_postgres の内部テストから使うと import が循環するため、そこでの前提は内部で組み立てる。
+// User、Group、OAuth2 クライアントは、所有モジュールの内側のテストからも使えるよう、所有モジュールの
+// ルートパッケージを import せず、保存先を呼び出し元から受け取る。
 package fixtures_postgres
 
 import (
@@ -14,12 +16,12 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	grouppg "github.com/ambi/idmagic/backend/idmanagement/group/db_postgres"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	userpg "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	oauth2clientpostgres "github.com/ambi/idmagic/backend/oauth2/client/db_postgres"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -64,8 +66,8 @@ func SeedTenant(tb testing.TB, db sharedpg.DB) *tenancydomain.Tenant {
 	return tenant
 }
 
-// SeedUser は指定テナントにユーザを作成して返す。
-func SeedUser(tb testing.TB, db sharedpg.DB, tenantID string) *userdomain.User {
+// SeedUser は指定テナントにユーザを作成して返す。users は IdManagement の PostgreSQL の保存先である。
+func SeedUser(tb testing.TB, users userports.UserRepository, tenantID string) *userdomain.User {
 	tb.Helper()
 	now := TestClock()
 	user := &userdomain.User{
@@ -77,14 +79,14 @@ func SeedUser(tb testing.TB, db sharedpg.DB, tenantID string) *userdomain.User {
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if err := (&userpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
+	if err := users.Save(context.Background(), user); err != nil {
 		tb.Fatalf("seed user: %v", err)
 	}
 	return user
 }
 
-// SeedGroup は指定テナントにグループを作成して返す。
-func SeedGroup(tb testing.TB, db sharedpg.DB, tenantID string) *groupdomain.Group {
+// SeedGroup は指定テナントにグループを作成して返す。groups は IdManagement の PostgreSQL の保存先である。
+func SeedGroup(tb testing.TB, groups groupports.GroupRepository, tenantID string) *groupdomain.Group {
 	tb.Helper()
 	now := TestClock()
 	group := &groupdomain.Group{
@@ -95,14 +97,16 @@ func SeedGroup(tb testing.TB, db sharedpg.DB, tenantID string) *groupdomain.Grou
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := (&grouppg.GroupRepository{Pool: db}).Save(context.Background(), group); err != nil {
+	if err := groups.Save(context.Background(), group); err != nil {
 		tb.Fatalf("seed group: %v", err)
 	}
 	return group
 }
 
-// SeedClient は指定テナントに OAuth2 クライアントを作成して返す。
-func SeedClient(tb testing.TB, db sharedpg.DB, tenantID string) *oauthdomain.OAuth2Client {
+// SeedClient は指定テナントに OAuth2 クライアントを作成して返す。clients は OAuth2 の
+// PostgreSQL の保存先である。OAuth2 の内側のテストがルートパッケージを経ずに渡せるよう、
+// 保存先を呼び出し元から受け取る。
+func SeedClient(tb testing.TB, clients oauthports.OAuth2ClientRepository, tenantID string) *oauthdomain.OAuth2Client {
 	tb.Helper()
 	now := TestClock()
 	client := &oauthdomain.OAuth2Client{
@@ -120,7 +124,7 @@ func SeedClient(tb testing.TB, db sharedpg.DB, tenantID string) *oauthdomain.OAu
 		CreatedAt:                now,
 		UpdatedAt:                now,
 	}
-	if err := (&oauth2clientpostgres.OAuth2ClientRepository{Pool: db}).Save(context.Background(), client); err != nil {
+	if err := clients.Save(context.Background(), client); err != nil {
 		tb.Fatalf("seed client: %v", err)
 	}
 	return client

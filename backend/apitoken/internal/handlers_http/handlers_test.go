@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/apitoken/internal/db_memory"
 	apitokenhttp "github.com/ambi/idmagic/backend/apitoken/internal/handlers_http"
 	"github.com/ambi/idmagic/backend/apitoken/internal/usecases"
-	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -40,15 +40,15 @@ func (fakeIssuer) IDTokenTTLSeconds() int     { return 3600 }
 
 func newHandler(t *testing.T) *echo.Echo {
 	t.Helper()
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	now := time.Now().UTC()
-	users.Seed(&userdomain.User{
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	service := usecases.New(db_memory.NewRepository(), usecases.WithTokenIssuer(fakeIssuer{}))
 	deps := support.Deps{Issuer: "http://idp.test"}
-	authenticator := &support.Authenticator{Principals: idmhttpdeps.Principals{Users: users}, Sessions: authhttpdeps.SessionAuthentications{Resolver: authusecases.DemoHeaderResolver{}}}
+	authenticator := &support.Authenticator{Principals: idmanagement.Module{UserRepo: users}.Principals(), Sessions: authentication.Module{AuthnResolver: authentication.DemoHeaderResolver{}}.SessionAuthentications()}
 	e := echo.New()
 	apitokenhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultRealmTenant), apitokenhttp.Deps{
 		Deps: deps, Authenticator: authenticator, Service: service,

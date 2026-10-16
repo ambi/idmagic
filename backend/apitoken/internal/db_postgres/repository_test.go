@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/apitoken/domain"
-	userpg "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
@@ -36,7 +37,7 @@ func TestRepositoryRoundTripScopesAndTenantRevoke(t *testing.T) {
 	}
 	expiresAt := now.Add(time.Hour)
 	userID := newUUID(t)
-	if err := (&userpg.UserRepository{Pool: db}).Save(ctx, &userdomain.User{
+	if err := idmanagement.NewPostgresModule(db, nil).UserRepo.Save(ctx, &userdomain.User{
 		ID: userID, TenantID: tenant.ID,
 		PreferredUsername: "api-token-owner", PasswordHash: "test-hash", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {

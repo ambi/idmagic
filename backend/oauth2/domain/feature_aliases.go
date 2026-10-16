@@ -1,11 +1,13 @@
 package domain
 
 import (
-	authorizationdomain "github.com/ambi/idmagic/backend/oauth2/authorization/domain"
-	clientdomain "github.com/ambi/idmagic/backend/oauth2/client/domain"
-	consentdomain "github.com/ambi/idmagic/backend/oauth2/consent/domain"
-	devicedomain "github.com/ambi/idmagic/backend/oauth2/device/domain"
-	tokendomain "github.com/ambi/idmagic/backend/oauth2/token/domain"
+	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
+	authorizationdomain "github.com/ambi/idmagic/backend/oauth2/internal/authorization/domain"
+	clientdomain "github.com/ambi/idmagic/backend/oauth2/internal/client/domain"
+	consentdomain "github.com/ambi/idmagic/backend/oauth2/internal/consent/domain"
+	devicedomain "github.com/ambi/idmagic/backend/oauth2/internal/device/domain"
+	logoutdomain "github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
+	tokendomain "github.com/ambi/idmagic/backend/oauth2/internal/token/domain"
 )
 
 // Kept package-local for the historical root-package contract tests. Feature
@@ -16,8 +18,12 @@ const (
 	refreshTokenAbsoluteTTL = 30 * 24 * 60 * 60 * 1e9
 )
 
-// Feature domain types are re-exported while callers migrate to feature paths.
+// 機能スライスの型と操作のうち、ほかのモジュール、組み立て地点、公開ポートが使うものを公開する。
 type (
+	ApprovalRequest                   = approvaldomain.ApprovalRequest
+	ClientSession                     = logoutdomain.ClientSession
+	LogoutNotification                = logoutdomain.LogoutNotification
+	LogoutNotificationState           = logoutdomain.LogoutNotificationState
 	OAuth2Client                      = clientdomain.OAuth2Client
 	ClientSecretCredential            = clientdomain.ClientSecretCredential
 	ClientSecretCredentialStatus      = clientdomain.ClientSecretCredentialStatus
@@ -76,9 +82,15 @@ const (
 	DetailFieldEnum               = authorizationdomain.DetailFieldEnum
 	DetailFieldExact              = authorizationdomain.DetailFieldExact
 	DeviceCodeTTL                 = devicedomain.DeviceCodeTTL
+	ApprovalRequestMaxTTL         = approvaldomain.MaxTTL
+	KindBackChannelLogoutDelivery = logoutdomain.KindBackChannelLogoutDelivery
+	LogoutNotificationPending     = logoutdomain.LogoutNotificationPending
+	LogoutNotificationDelivered   = logoutdomain.LogoutNotificationDelivered
+	LogoutNotificationFailed      = logoutdomain.LogoutNotificationFailed
 )
 
 var (
+	HashAuthReqID                 = approvaldomain.HashAuthReqID
 	HashClientSecret              = clientdomain.HashClientSecret
 	VerifyClientSecret            = clientdomain.VerifyClientSecret
 	GenerateAuthorizationCode     = authorizationdomain.GenerateAuthorizationCode

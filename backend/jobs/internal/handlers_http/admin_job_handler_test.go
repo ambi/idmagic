@@ -14,7 +14,6 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
@@ -107,9 +106,9 @@ func newJobsAdminServer(t *testing.T, actor *userdomain.User) *jobsTestServer {
 // 状態を作る操作は包む前の保存先へ直接行う。
 func newJobsAdminServerServing(t *testing.T, actor *userdomain.User, serve func(jobports.JobRepository) jobports.JobRepository) *jobsTestServer {
 	t.Helper()
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	if actor != nil {
-		userRepo.Seed(actor)
+		_ = userRepo.Save(context.Background(), actor)
 	}
 	repo := jobsmemory.NewJobRepository()
 	base := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)

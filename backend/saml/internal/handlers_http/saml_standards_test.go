@@ -8,6 +8,7 @@ package handlers_http_test
 // 入口を通したという事実そのものが根拠にならない。
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/xml"
 	"net/http"
@@ -19,9 +20,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/saml"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
@@ -620,8 +622,8 @@ func newServerRequiringSignedAuthnRequests(t *testing.T) *echo.Echo {
 			Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "user_id",
 		}},
 	})
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), &userdomain.User{ID: "user-1", PreferredUsername: "alice"})
 	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)

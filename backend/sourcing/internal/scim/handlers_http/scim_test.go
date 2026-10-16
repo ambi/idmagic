@@ -15,16 +15,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	"github.com/ambi/idmagic/backend/apitoken"
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/labstack/echo/v5"
 
@@ -77,8 +78,8 @@ func newTestApiTokenService(options ...apitoken.Option) *apitoken.Service {
 }
 
 func newScopedScimHarness() (*echo.Echo, *apitoken.Service) {
-	userRepo := usermemory.NewUserRepository()
-	groupRepo := groupmemory.NewGroupRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
 	scimUsecases := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
 	apiTokens := newTestApiTokenService()
@@ -86,7 +87,7 @@ func newScopedScimHarness() (*echo.Echo, *apitoken.Service) {
 	e := echo.New()
 	deps := support.Deps{Emit: func(spec.DomainEvent) {}}
 	scimhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultRealmTenant), scimhttp.Deps{
-		Deps: deps, Authenticator: &support.Authenticator{Principals: idmhttpdeps.Principals{Users: userRepo, Groups: groupRepo}},
+		Deps: deps, Authenticator: &support.Authenticator{Principals: idmanagement.Module{UserRepo: userRepo, GroupRepo: groupRepo}.Principals()},
 		Usecases: scimUsecases, ApiTokenAuthenticator: apiTokens,
 	})
 	return e, apiTokens
@@ -165,8 +166,8 @@ type scimHarness struct {
 	echo          *echo.Echo
 	usecases      *usecases.Usecases
 	apiTokens     *apitoken.Service
-	userRepo      *usermemory.UserRepository
-	groupRepo     *groupmemory.GroupRepository
+	userRepo      userports.UserRepository
+	groupRepo     groupports.GroupRepository
 	scimRepo      *scimmemory.ScimRepository
 	authenticator *support.Authenticator
 }
@@ -174,14 +175,14 @@ type scimHarness struct {
 // tokenOptions は API トークンの検証側へ渡す。失効や期限切れを観測するテストが
 // 時計を差し替えるために使う。
 func newScimHarness(tokenOptions ...apitoken.Option) scimHarness {
-	userRepo := usermemory.NewUserRepository()
-	groupRepo := groupmemory.NewGroupRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
 	apiTokens := newTestApiTokenService(tokenOptions...)
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
-	authenticator := &support.Authenticator{Principals: idmhttpdeps.Principals{Users: userRepo, Groups: groupRepo}}
+	authenticator := &support.Authenticator{Principals: idmanagement.Module{UserRepo: userRepo, GroupRepo: groupRepo}.Principals()}
 	scimDeps := scimhttp.Deps{Deps: sd, Authenticator: authenticator, Usecases: usecasesInst, ApiTokenAuthenticator: apiTokens}
 
 	e := echo.New()
@@ -486,8 +487,8 @@ func TestScimListUsersDateTimeFilterAndURNPrefix(t *testing.T) {
 //spec:covers EX-SOURCING-002-01: CreateScimUser で内部 User が Active で作られ、PatchScimUser の active=false で Disabled、DeleteScimUser で PendingDeletion へ遷移する。
 func TestScimInboundProvisioning(t *testing.T) {
 	ctx := context.Background()
-	userRepo := usermemory.NewUserRepository()
-	groupRepo := groupmemory.NewGroupRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
@@ -495,7 +496,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 
 	sd := support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{
-		Principals: idmhttpdeps.Principals{Users: userRepo, Groups: groupRepo},
+		Principals: idmanagement.Module{UserRepo: userRepo, GroupRepo: groupRepo}.Principals(),
 	}
 	scimDeps := scimhttp.Deps{
 		Deps:                  sd,
@@ -663,8 +664,8 @@ func TestScimInboundProvisioning(t *testing.T) {
 //spec:covers EX-SOURCING-005-01: CreateScimGroup でグループを作り、PatchScimGroup のメンバー追加と削除が GroupMembership と User の有効ロールへ届き、応答のメンバーが type=User を持つ。
 func TestScimGroupSync(t *testing.T) {
 	ctx := context.Background()
-	userRepo := usermemory.NewUserRepository()
-	groupRepo := groupmemory.NewGroupRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
 
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
@@ -672,7 +673,7 @@ func TestScimGroupSync(t *testing.T) {
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{
-		Principals: idmhttpdeps.Principals{Users: userRepo, Groups: groupRepo},
+		Principals: idmanagement.Module{UserRepo: userRepo, GroupRepo: groupRepo}.Principals(),
 	}
 	scimDeps := scimhttp.Deps{
 		Deps:                  sd,

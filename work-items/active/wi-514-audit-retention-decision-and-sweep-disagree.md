@@ -20,7 +20,7 @@ Audit の旧 `decisions.md` は「監査レコードは GDPR 第 30 条 (処理�
 実装はそうなっていない。
 
 - `backend/audit/ports/audit_event_repository.go` は `RetentionCutoff` を定義し、`db_postgres` と `db_memory` の両方が `DeleteOlderThan` を実装している。これは決定が「提供しない」と書いた削除のインターフェースそのものである。
-- `backend/authentication/usecases/retention.go` の `DefaultRetentionPolicy` は、成功・一般監査を 365 日、失敗詳細を 30 日、集約と MFA とセッションを 90 日で切る。7 年ではない。
+- `backend/authentication/internal/usecases/retention.go` の `DefaultRetentionPolicy` は、成功・一般監査を 365 日、失敗詳細を 30 日、集約と MFA とセッションを 90 日で切る。7 年ではない。
 - `backend/cmd/internal/bootstrap/retention.go` の `RunRetentionSweepOnce` がそれを適用し、`backend/cmd/idmagic-batch/main.go` が外部スケジューラー向けの一括処理として公開している。`mise run batch` から到達できる。
 
 同じ port のコメントは「本実装は監査保管 (SCL objectives.AuditLogRetention 7y) ではなく、直近のオペレーション可視化を目的としたショートウィンドウ用途を想定する」と書いており、食い違いを認識してはいる。ただし `AuditLogRetention` という名前はリポジトリのどこにも宣言されておらず、この注記が指す先は既に存在しない。
@@ -34,7 +34,7 @@ Audit の旧 `decisions.md` は「監査レコードは GDPR 第 30 条 (処理�
 - 7 年保持と種類別の短い保持のどちらが製品の意図かを決め、根拠を残す。
 - 決めた側に合わせて、`docs/modules/audit/design/decisions.md` か `RetentionPolicy` と `DeleteOlderThan` の位置づけのどちらかを変える。
 - `backend/audit/ports/audit_event_repository.go` の、存在しない `SCL objectives.AuditLogRetention` を指す注記を落とす。
-- 行の担い手の位置も合わせて見直す。行は「保持期間は Audit Context が定める」と言うのに、期間を計算する `RetentionPolicy` は `backend/authentication/usecases` にある。
+- 行の担い手の位置も合わせて見直す。行は「保持期間は Audit Context が定める」と言うのに、期間を計算する `RetentionPolicy` は `backend/authentication/internal/usecases` にある。
 
 ## Out of Scope
 

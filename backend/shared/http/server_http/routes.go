@@ -11,16 +11,8 @@ import (
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	federationdomain "github.com/ambi/idmagic/backend/authentication/federation/domain"
-	federationhttp "github.com/ambi/idmagic/backend/authentication/federation/handlers_http"
-	oidcprotocol "github.com/ambi/idmagic/backend/authentication/federation/protocol_oidc"
-	federationusecases "github.com/ambi/idmagic/backend/authentication/federation/usecases"
-	authhttp "github.com/ambi/idmagic/backend/authentication/handlers_http"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	signinhttp "github.com/ambi/idmagic/backend/authentication/signin/handlers_http"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
@@ -30,14 +22,10 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	idmhttp "github.com/ambi/idmagic/backend/idmanagement/handlers_http"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	userhttp "github.com/ambi/idmagic/backend/idmanagement/user/handlers_http"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2http "github.com/ambi/idmagic/backend/oauth2/handlers_http"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
@@ -91,12 +79,12 @@ type Deps struct {
 	MfaFactorRepo           totpports.MfaFactorRepository
 	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
 	EmailChangeTokenStore   userports.EmailChangeTokenStore
-	AuthEventBucketStore    authnports.AuthEventBucketStore
+	AuthEventBucketStore    authentication.AuthEventBucketStore
 	PasswordHasher          passwordports.PasswordHasher
 	EmailSender             sharednotification.EmailSender
 	BreachedPasswordChecker passwordports.BreachedPasswordChecker
 	SentinelPasswordHash    string
-	SessionManager          *sessionusecases.SessionManager
+	SessionManager          *authentication.SessionManager
 	AuthnResolver           authdomain.AuthenticationContextResolver
 	WebAuthnRP              *gowebauthn.WebAuthn
 	WebAuthnCredentialRepo  webauthnports.WebAuthnCredentialRepository
@@ -282,7 +270,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	clientDisplayNames := d.Application.ClientDisplayNames(d.OAuth2.ClientRepo)
 	jobEnqueuer := d.Jobs.Enqueuer
 
-	// 管理 API の User と Agent の操作は、idmhttp.Deps.ReactiveEmit が発行の後にこの反応器を呼ぶ。
+	// 管理 API の User と Agent の操作は、IdManagement の経路の ReactiveEmit が発行の後にこの反応器を呼ぶ。
 	// 管理 API の外から User を止める経路は、組み立ての地点の UserLifecycleCommands が同じ反応器を使う。
 	revocationReactor := d.SharedSignals.AgentRevocationReactor(d.IdManagement.AgentRepo, d.SigningKeys.KeyStore, d.Issuer, d.Emit)
 
@@ -298,90 +286,52 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		workloadVerifier = d.WorkloadIdentity.TokenVerifier(d.IdManagement.AgentRepo, fetchWorkloadJWKS, d.Emit)
 	}
 
-	// nil の *SessionManager を包んだ値はインターフェースの nil の確認をすり抜けるので、
-	// ないときはポートごと渡さない。
-	var loginSessions oauth2http.LoginSessions
-	if d.Authentication.SessionManager != nil {
-		loginSessions = d.Authentication.LogoutSessions(d.Emit)
-	}
 	// 対話のログインは Authentication が処理し、認証を終えたら OAuth2 の認可要求を続ける。
 	// OAuth2 は既存のセッションに追加の認証を求めるときに Authentication の Steps を使う。
-	authDeps := authhttp.Deps{
+	authRoutes := authentication.RouteDeps{
 		Deps:                      d.Deps,
 		Authenticator:             authenticator,
-		SessionManager:            d.Authentication.SessionManager,
 		AuditEventRepo:            d.Audit.AuditEventRepo,
 		UserRepo:                  d.IdManagement.UserRepo,
-		PasswordHasher:            d.Authentication.PasswordHasher,
-		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,
 		Consents:                  d.OAuth2.AccountConsents(d.Emit),
 		ClientDisplayNameResolver: clientDisplayNames,
-		MfaFactorRepo:             d.Authentication.MfaFactorRepo,
-		MfaEnrollmentBypassRepo:   d.Authentication.MfaEnrollmentBypassRepo,
-		AuthEventBucketStore:      d.Authentication.AuthEventBucketStore,
 		TenantRepo:                d.TenantRepo,
-		PasswordResetTokenStore:   d.Authentication.PasswordResetTokenStore,
 		EmailSender:               d.Notification.EmailSender,
 		Notifier:                  d.Notification.Notifier,
-		BreachedPasswordChecker:   d.Authentication.BreachedPasswordChecker,
-		WebAuthnRP:                d.Authentication.WebAuthnRP,
-		WebAuthnCredentialRepo:    d.Authentication.WebAuthnCredentialRepo,
-		WebAuthnSessionStore:      d.Authentication.WebAuthnSessionStore,
-		RecoveryCodeRepo:          d.Authentication.RecoveryCodeRepo,
-		TrustedDeviceRepo:         d.Authentication.TrustedDeviceRepo,
-		LoginAttemptThrottle:      d.Authentication.LoginAttemptThrottle,
-		SentinelPasswordHash:      d.Authentication.SentinelPasswordHash,
 		TenantSaltStore:           d.Audit.TenantSaltStore,
 		ClientIP:                  appGate.ClientIP,
-
-		NotificationPreferenceRepo: d.Authentication.NotificationPreferenceRepo,
-		DefaultSignInPolicyRepo:    d.Application.DefaultSignInPolicyRepo,
+		DefaultSignInPolicyRepo:   d.Application.DefaultSignInPolicyRepo,
 	}
-	oauthDeps := oauth2http.Deps{
-		WorkloadVerifier:           workloadVerifier,
-		Deps:                       d.Deps,
-		Authenticator:              authenticator,
-		ApplicationGate:            appGate,
-		AuthzDetailTypeRepo:        d.OAuth2.AuthzDetailTypeRepo,
-		McpResourceServerRepo:      d.OAuth2.McpResourceServerRepo,
-		ClientRepo:                 d.OAuth2.ClientRepo,
-		ConsentRepo:                d.OAuth2.ConsentRepo,
-		ClientDisplayNameResolver:  clientDisplayNames,
-		KeyStore:                   d.SigningKeys.KeyStore,
-		TenantRepo:                 d.TenantRepo,
-		PARStore:                   d.OAuth2.PARStore,
-		RequestStore:               d.OAuth2.RequestStore,
-		UserRepo:                   d.IdManagement.UserRepo,
-		CodeStore:                  d.OAuth2.CodeStore,
-		JWKResolver:                d.JWKResolver,
-		ClientAssertionReplayStore: d.OAuth2.ClientAssertionReplayStore,
-		ClientSessionStore:         d.OAuth2.ClientSessionStore,
-		LogoutNotificationStore:    d.OAuth2.LogoutNotificationStore,
-		JobEnqueuer:                jobEnqueuer,
-		DeviceCodeStore:            d.OAuth2.DeviceCodeStore,
-		ApprovalRequestStore:       d.OAuth2.ApprovalRequestStore,
-		Notifier:                   d.Notification.Notifier,
-		DpopReplayStore:            d.OAuth2.DpopReplayStore,
-		RefreshStore:               d.OAuth2.RefreshStore,
-		TokenIssuer:                d.OAuth2.TokenIssuer,
-		AgentRepo:                  d.IdManagement.AgentRepo,
-		RevocationEpochRepo:        d.SharedSignals.RevocationEpochRepo,
-		TokenIntrospector:          d.OAuth2.TokenIntrospector,
-		IDTokenHintVerifier:        d.OAuth2.IDTokenHintVerifier,
-		AccessTokenDenylist:        d.OAuth2.AccessTokenDenylist,
-		ManagedTokenRevoker:        apiTokenService,
-		AttrSchemaRepo:             d.Tenancy.AttrSchemaRepo,
-		Authorizer:                 d.OAuth2.Authorizer,
-		QuotaRepo:                  d.Tenancy.QuotaRepo,
+	oauthRoutes := oauth2.RouteDeps{
+		WorkloadVerifier:          workloadVerifier,
+		Deps:                      d.Deps,
+		Authenticator:             authenticator,
+		ApplicationGate:           appGate,
+		ClientDisplayNameResolver: clientDisplayNames,
+		KeyStore:                  d.SigningKeys.KeyStore,
+		TenantRepo:                d.TenantRepo,
+		UserRepo:                  d.IdManagement.UserRepo,
+		JWKResolver:               d.JWKResolver,
+		JobEnqueuer:               jobEnqueuer,
+		Notifier:                  d.Notification.Notifier,
+		AgentRepo:                 d.IdManagement.AgentRepo,
+		RevocationEpochRepo:       d.SharedSignals.RevocationEpochRepo,
+		ManagedTokenRevoker:       apiTokenService,
+		AttrSchemaRepo:            d.Tenancy.AttrSchemaRepo,
+		QuotaRepo:                 d.Tenancy.QuotaRepo,
 
 		AuthnResolver: d.Authentication.AuthnResolver,
-		LoginSessions: loginSessions,
-		SignIn:        signinhttp.Steps{Deps: signinhttp.Deps{Deps: authDeps}},
+		SignIn:        d.Authentication.SignInSteps(authRoutes),
 
 		ApplicationSignInPolicyRepo: d.Application.SignInPolicyRepo,
 		DefaultSignInPolicyRepo:     d.Application.DefaultSignInPolicyRepo,
 	}
-	oauth2http.RegisterRoutes(g, oauthDeps)
+	// nil の *SessionManager を包んだ値はインターフェースの nil の確認をすり抜けるので、
+	// ないときはポートごと渡さない。
+	if d.Authentication.SessionManager != nil {
+		oauthRoutes.LoginSessions = d.Authentication.LogoutSessions(d.Emit)
+	}
+	d.OAuth2.RegisterRoutes(g, oauthRoutes)
 
 	d.WorkloadIdentity.RegisterRoutes(g, workloadidentity.RouteDeps{
 		Deps: d.Deps, Authenticator: authenticator,
@@ -429,59 +379,41 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo: d.IdManagement.UserRepo,
 	})
 
-	authhttp.RegisterRoutes(g, authDeps, d.OAuth2.SessionTokenRevoker(), oauth2http.NewSignInContinuation(oauthDeps))
+	d.Authentication.RegisterRoutes(g, authRoutes, d.OAuth2.SessionTokenRevoker(), d.OAuth2.SignInContinuation(oauthRoutes))
 
-	idmDeps := idmhttp.Deps{
-		Deps:                      d.Deps,
-		Authenticator:             authenticator,
-		UserRepo:                  d.IdManagement.UserRepo,
-		GroupRepo:                 d.IdManagement.GroupRepo,
-		AgentRepo:                 d.IdManagement.AgentRepo,
-		UserMutationCommitter:     d.IdManagement.UserMutationCommitter,
-		ProvisioningNotifier:      d.IdManagement.ProvisioningNotifier,
-		GroupProvisioningNotifier: d.IdManagement.GroupProvisioningNotifier,
-		Reactor:                   revocationReactor,
-		ClientRepo:                d.OAuth2.ClientRepo,
-		ScimRepo:                  d.Sourcing.ScimRepo,
-		AttrSchemaRepo:            d.Tenancy.AttrSchemaRepo,
-		GroupAttrSchemaRepo:       d.Tenancy.GroupAttrSchemaRepo,
-		ConsentRepo:               d.OAuth2.ConsentRepo,
-		Consents:                  d.OAuth2.AccountConsents(d.Emit),
-		RefreshStore:              d.OAuth2.RefreshStore,
-		DeviceCodeStore:           d.OAuth2.DeviceCodeStore,
-		ApprovalRequestStore:      d.OAuth2.ApprovalRequestStore,
-		MfaFactorRepo:             d.Authentication.MfaFactorRepo,
-		TrustedDeviceRepo:         d.Authentication.TrustedDeviceRepo,
-		TrustedDevices:            d.Authentication.UserDeviceRevoker(),
-		WebAuthnCredentialRepo:    d.Authentication.WebAuthnCredentialRepo,
-		RecoveryCodeRepo:          d.Authentication.RecoveryCodeRepo,
-		PasswordHasher:            d.Authentication.PasswordHasher,
-		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,
-		EmailChangeTokenStore:     d.IdManagement.EmailChangeTokenStore,
-		CSVArtifacts:              d.IdManagement.CSVArtifacts,
-		EmailSender:               d.Notification.EmailSender,
-		Notifier:                  d.Notification.Notifier,
-		JobRepo:                   d.Jobs.Repo,
-		JobEnqueuer:               jobEnqueuer,
-		QuotaRepo:                 d.Tenancy.QuotaRepo,
+	idmRoutes := idmanagement.RouteDeps{
+		AttrSchemaRepo:         d.Tenancy.AttrSchemaRepo,
+		QuotaRepo:              d.Tenancy.QuotaRepo,
+		ConsentRepo:            d.OAuth2.ConsentRepo,
+		RefreshStore:           d.OAuth2.RefreshStore,
+		DeviceCodeStore:        d.OAuth2.DeviceCodeStore,
+		ApprovalRequestStore:   d.OAuth2.ApprovalRequestStore,
+		MfaFactorRepo:          d.Authentication.MfaFactorRepo,
+		TrustedDeviceRepo:      d.Authentication.TrustedDeviceRepo,
+		TrustedDevices:         d.Authentication.UserDeviceRevoker(),
+		WebAuthnCredentialRepo: d.Authentication.WebAuthnCredentialRepo,
+		RecoveryCodeRepo:       d.Authentication.RecoveryCodeRepo,
+		PasswordHasher:         d.Authentication.PasswordHasher,
+		PasswordHistoryRepo:    d.Authentication.PasswordHistoryRepo,
+		Deps:                   d.Deps,
+		Authenticator:          authenticator,
+		Reactor:                revocationReactor,
+		ClientRepo:             d.OAuth2.ClientRepo,
+		ScimRepo:               d.Sourcing.ScimRepo,
+		GroupAttrSchemaRepo:    d.Tenancy.GroupAttrSchemaRepo,
+		Consents:               d.OAuth2.AccountConsents(d.Emit),
+		EmailSender:            d.Notification.EmailSender,
+		Notifier:               d.Notification.Notifier,
+		JobRepo:                d.Jobs.Repo,
+		JobEnqueuer:            jobEnqueuer,
 	}
 	if d.Authentication.SessionManager != nil {
-		idmDeps.SessionStore = d.Authentication.SessionManager.Store
+		idmRoutes.SessionStore = d.Authentication.SessionManager.Store
 	}
-	provisionFederatedUser := userhttp.FederatedUserProvisioner(idmDeps)
+	provisionFederatedUser := d.IdManagement.FederatedUserProvisioner(idmRoutes)
 
-	oidcClient := oidcprotocol.Client{SecretResolver: d.Authentication.FederationSecretResolver}
-	brokerDeps := federationusecases.BrokerDeps{
-		Connections: d.Authentication.FederationConnectionRepo,
-		Identities:  d.Authentication.FederationIdentityRepo,
-		Attempts:    d.Authentication.FederationAttemptStore,
-		Users:       d.IdManagement.UserRepo,
-		Sessions:    d.Authentication.SessionManager,
-		Drivers: map[federationdomain.Protocol]federationusecases.ProtocolDriver{
-			federationdomain.ProtocolOIDC: federationhttp.OIDCDriver{Client: oidcClient},
-			federationdomain.ProtocolSAML: federationhttp.SAMLDriver{Replay: d.Authentication.FederationReplayStore},
-		},
-		ProvisionUser: func(ctx context.Context, claims federationdomain.NormalizedClaims, now time.Time) (*userdomain.User, error) {
+	d.Authentication.RegisterFederationRoutes(g, authRoutes,
+		func(ctx context.Context, claims authentication.FederatedClaims, now time.Time) (*userdomain.User, error) {
 			var email, name *string
 			if claims.Email != "" {
 				email = &claims.Email
@@ -489,16 +421,13 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 			if claims.Name != "" {
 				name = &claims.Name
 			}
-			return provisionFederatedUser(ctx, userusecases.ProvisionFederatedUserInput{
+			return provisionFederatedUser(ctx, idmanagement.FederatedUserInput{
 				PreferredUsername: claims.Username, Name: name, Email: email,
 				EmailVerified: claims.EmailVerified, Now: now,
 			})
-		},
-		Emit: d.Emit,
-	}
-	federationhttp.RegisterRoutes(g, federationhttp.Deps{Broker: brokerDeps, Auth: authDeps, OIDC: &oidcClient})
+		})
 
-	idmhttp.RegisterRoutes(g, idmDeps)
+	d.IdManagement.RegisterRoutes(g, idmRoutes)
 
 	d.IdGovernance.RegisterRoutes(g, idgovernance.RouteDeps{
 		Deps: d.Deps, Authenticator: authenticator,

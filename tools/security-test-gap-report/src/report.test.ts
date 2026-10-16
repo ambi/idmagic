@@ -199,7 +199,7 @@ describe('reportSecurityTestGaps', () => {
   test('excludes token-client authentication probes that cannot mutate state', () => {
     const report = reportSecurityTestGaps([
       {
-        path: 'backend/oauth2/handlers_http/client_auth_test.go',
+        path: 'backend/oauth2/internal/handlers_http/client_auth_test.go',
         name: 'TestClientAuthenticationFailuresAreUniform',
         body: `
           req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)

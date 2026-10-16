@@ -13,6 +13,7 @@ package server_http_test
 // 変更が緑のまま通ってしまう。
 
 import (
+	"context"
 	stdcrypto "crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -32,13 +33,9 @@ import (
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/authentication"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -86,9 +83,9 @@ func newFapiProfileFixture(t *testing.T) *fpFixture {
 		"e": base64.RawURLEncoding.EncodeToString(big.NewInt(int64(signingKey.PublicKey.E)).Bytes()),
 	}}}
 
-	clients := oauth2memory.NewClientRepository()
+	clients := oauth2.NewMemoryModule().ClientRepo
 	seed := func(clientID string, profile domain.FapiProfile) {
-		clients.Seed(&domain.OAuth2Client{
+		_ = clients.Save(context.Background(), &domain.OAuth2Client{
 			TenantID: tenancydomain.DefaultTenantID,
 			ClientID: clientID, ClientType: spec.ClientConfidential,
 			RedirectURIs: []string{fpRedirectURI},
@@ -113,8 +110,8 @@ func newFapiProfileFixture(t *testing.T) *fpFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: fpUserID, PreferredUsername: fpUsername, PasswordHash: passwordHash,
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 	})
@@ -132,7 +129,7 @@ func newFapiProfileFixture(t *testing.T) *fpFixture {
 		t.Fatal(err)
 	}
 	signer := tokensJOSE.NewJWTSigner(fpIssuer, keyStore)
-	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
+	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
@@ -145,17 +142,17 @@ func newFapiProfileFixture(t *testing.T) *fpFixture {
 		Contract:        spec.CurrentRuntimeContract(),
 		OAuth2: oauth2.Module{
 			ClientRepo:   clients,
-			ConsentRepo:  oauth2memory.NewConsentRepository(),
-			RequestStore: oauth2memory.NewAuthorizationRequestStore(),
-			CodeStore:    oauth2memory.NewAuthorizationCodeStore(),
-			PARStore:     oauth2memory.NewPARStore(),
-			RefreshStore: oauth2memory.NewRefreshTokenStore(),
+			ConsentRepo:  oauth2.NewMemoryModule().ConsentRepo,
+			RequestStore: oauth2.NewMemoryModule().RequestStore,
+			CodeStore:    oauth2.NewMemoryModule().CodeStore,
+			PARStore:     oauth2.NewMemoryModule().PARStore,
+			RefreshStore: oauth2.NewMemoryModule().RefreshStore,
 			// DPoP の検証はこのストアが無いと丸ごと飛ばされる。送信者制約を
 			// 観測する行が 1 つも読めなくなるので、必ず渡す。
-			DpopReplayStore:            oauth2memory.NewDpopReplayStore(),
-			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
-			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
-			McpResourceServerRepo:      oauth2memory.NewMcpResourceServerRepository(),
+			DpopReplayStore:            oauth2.NewMemoryModule().DpopReplayStore,
+			ClientAssertionReplayStore: oauth2.NewMemoryModule().ClientAssertionReplayStore,
+			AccessTokenDenylist:        oauth2.NewMemoryModule().AccessTokenDenylist,
+			McpResourceServerRepo:      oauth2.NewMemoryModule().McpResourceServerRepo,
 			TokenIssuer:                signer,
 			TokenIntrospector:          signer,
 		},

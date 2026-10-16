@@ -1,21 +1,21 @@
-// Package authentication は authentication モジュールの DI 組立を所有する
-// (wi-177)。中央 server/routes.go と bootstrap の Dependencies は、認証固有の
-// port と実行時依存をこの Module 1 個で受け渡す。
+// Package authentication は Authentication モジュールの組み立てを所有する。保存先と実行時の依存を
+// Module に束ね、経路の登録、サインインの手順、セキュリティ通知、保持期間の掃除を、組み立て地点が渡す
+// ほかのモジュールの依存とともに組み立てる。
 package authentication
 
 import (
 	"github.com/ambi/idmagic/backend/authentication/domain"
-	federationports "github.com/ambi/idmagic/backend/authentication/federation/ports"
-	mfaports "github.com/ambi/idmagic/backend/authentication/mfa/ports"
+	federationports "github.com/ambi/idmagic/backend/authentication/internal/federation/ports"
+	mfaports "github.com/ambi/idmagic/backend/authentication/internal/mfa/ports"
+	"github.com/ambi/idmagic/backend/authentication/internal/ports"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	"github.com/ambi/idmagic/backend/authentication/ports"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
-	securitynotificationports "github.com/ambi/idmagic/backend/authentication/securitynotification/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
-	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 

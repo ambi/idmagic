@@ -12,15 +12,11 @@ import (
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idgovernance"
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
-	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
+	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
-	logoutpush "github.com/ambi/idmagic/backend/oauth2/logout/push_http"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
@@ -96,103 +92,20 @@ func RunWorker() error {
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
 	oauth2.RegisterJobHandlers(handlers, oauth2.JobHandlerDeps{
 		Notifications: deps.OAuth2.LogoutNotificationStore, TokenSigner: tokens_jose.NewJWTSigner("", deps.SigningKeys.KeyStore),
-		BackChannelClient: logoutpush.NewBackChannelLogoutClient(nil), Now: time.Now,
+		BackChannelClient: oauth2.NewBackChannelLogoutClient(nil), Now: time.Now,
 	})
-	importPlanDeps := userusecases.UserImportPlanDeps{
-		UserRepo:       deps.IdManagement.UserRepo,
-		SchemaReader:   userusecases.TenantUserCSVSchemaReader{Repository: deps.Tenancy.AttrSchemaRepo},
-		OwnershipGuard: deps.Sourcing.UserOwnershipGuard(),
-	}
-	importJobDeps := userusecases.UserImportJobDeps{
-		Artifacts: deps.IdManagement.CSVArtifacts, Jobs: deps.Jobs.Repo,
-		Plan: importPlanDeps,
-		Apply: userusecases.UserImportApplyDeps{
-			Plan: importPlanDeps, Committer: deps.IdManagement.UserImportCommitter,
-			PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
-			DynamicGroups: groupusecases.DynamicGroupDeps{
-				GroupRepo: deps.IdManagement.GroupRepo, UserRepo: deps.IdManagement.UserRepo, SchemaRepo: deps.Tenancy.AttrSchemaRepo,
-			},
-		},
-		Policy: idmdomain.DefaultCSVTransferPolicy(),
-	}
-	handlers.Register(domain.KindUserImportPreview, userusecases.UserImportJobHandler(importJobDeps, userusecases.UserImportModePreview))
-	handlers.Register(domain.KindUserImportApply, userusecases.UserImportJobHandler(importJobDeps, userusecases.UserImportModeApply))
-	groupCSVSchemaReader := groupusecases.TenantGroupCSVSchemaReader{Repository: deps.Tenancy.GroupAttrSchemaRepo}
-	groupImportPlanDeps := groupusecases.GroupImportPlanDeps{
-		GroupRepo:         deps.IdManagement.GroupRepo,
-		SchemaRepo:        deps.Tenancy.AttrSchemaRepo,
-		GroupSchemaReader: groupCSVSchemaReader,
-		OwnershipGuard:    deps.Sourcing.GroupOwnershipGuard(),
-	}
-	groupImportJobDeps := groupusecases.GroupImportJobDeps{
-		Artifacts: deps.IdManagement.CSVArtifacts, Jobs: deps.Jobs.Repo,
-		Plan: groupImportPlanDeps,
-		Apply: groupusecases.GroupImportApplyDeps{
-			Plan: groupImportPlanDeps, Committer: deps.IdManagement.GroupImportCommitter,
-		},
-		Policy: idmdomain.DefaultCSVTransferPolicy(),
-	}
-	handlers.Register(domain.KindGroupImportPreview, groupusecases.GroupImportJobHandler(groupImportJobDeps, groupusecases.GroupImportModePreview))
-	handlers.Register(domain.KindGroupImportApply, groupusecases.GroupImportJobHandler(groupImportJobDeps, groupusecases.GroupImportModeApply))
-	membershipImportPlanDeps := groupusecases.GroupMembershipImportPlanDeps{
-		GroupRepo:           deps.IdManagement.GroupRepo,
-		UserRepo:            deps.IdManagement.UserRepo,
-		GroupOwnershipGuard: deps.Sourcing.GroupOwnershipGuard(),
+	deps.IdManagement.RegisterJobHandlers(handlers, idmanagement.JobHandlerDeps{
+		Jobs:                deps.Jobs.Repo,
+		AttrSchemaRepo:      deps.Tenancy.AttrSchemaRepo,
+		GroupAttrSchemaRepo: deps.Tenancy.GroupAttrSchemaRepo,
 		UserOwnershipGuard:  deps.Sourcing.UserOwnershipGuard(),
-	}
-	membershipImportJobDeps := groupusecases.GroupMembershipImportJobDeps{
-		Artifacts: deps.IdManagement.CSVArtifacts, Jobs: deps.Jobs.Repo,
-		Plan: membershipImportPlanDeps,
-		Apply: groupusecases.GroupMembershipImportApplyDeps{
-			Plan: membershipImportPlanDeps, Committer: deps.IdManagement.GroupMembershipImportCommitter,
-		},
-		Policy: idmdomain.DefaultCSVTransferPolicy(),
-	}
-	handlers.Register(domain.KindGroupMembershipImportPreview,
-		groupusecases.GroupMembershipImportJobHandler(membershipImportJobDeps, groupusecases.GroupMembershipImportModePreview))
-	handlers.Register(domain.KindGroupMembershipImportApply,
-		groupusecases.GroupMembershipImportJobHandler(membershipImportJobDeps, groupusecases.GroupMembershipImportModeApply))
-	handlers.Register(domain.KindDynamicGroupReconcile, groupusecases.DynamicGroupReconcileHandler(groupusecases.DynamicGroupDeps{
-		GroupRepo:  deps.IdManagement.GroupRepo,
-		UserRepo:   deps.IdManagement.UserRepo,
-		SchemaRepo: deps.Tenancy.AttrSchemaRepo,
+		GroupOwnershipGuard: deps.Sourcing.GroupOwnershipGuard(),
+		PasswordHasher:      passwords_argon2id.NewArgon2idPasswordHasher(),
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)
 			return nil
 		},
-	}))
-	handlers.Register(idmusecases.KindDataExport, idmusecases.DataExportHandler(idmusecases.DataExportDeps{
-		UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo, JobRepo: deps.Jobs.Repo,
-		CSVArtifacts: deps.IdManagement.CSVArtifacts,
-		UserCSVExporter: userusecases.UserCSVExporter{
-			Deps: userusecases.UserCSVExportDeps{
-				UserRepo:     deps.IdManagement.UserRepo,
-				SchemaReader: userusecases.TenantUserCSVSchemaReader{Repository: deps.Tenancy.AttrSchemaRepo},
-				Artifacts:    deps.IdManagement.CSVArtifacts,
-			},
-			Policy: idmdomain.DefaultCSVTransferPolicy(),
-		},
-		GroupCSVExporter: groupusecases.GroupCSVExporter{
-			Deps: groupusecases.GroupCSVExportDeps{
-				GroupRepo:    deps.IdManagement.GroupRepo,
-				SchemaReader: groupCSVSchemaReader,
-				Artifacts:    deps.IdManagement.CSVArtifacts,
-			},
-			Policy: idmdomain.DefaultCSVTransferPolicy(),
-		},
-		GroupMembershipCSVExporter: groupusecases.GroupMembershipCSVExporter{
-			Deps: groupusecases.GroupMembershipCSVExportDeps{
-				GroupRepo: deps.IdManagement.GroupRepo,
-				UserRepo:  deps.IdManagement.UserRepo,
-				Artifacts: deps.IdManagement.CSVArtifacts,
-			},
-			Policy: idmdomain.DefaultCSVTransferPolicy(),
-		},
-		Emit: func(event spec.DomainEvent) error {
-			deps.NewEmitFunc(logger)(event)
-			return nil
-		},
-	}))
+	})
 	handlers.Register(domain.KindDataKeyReencryption, deps.DataKeys.ReencryptionHandler(jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logger))))
 	handlers.Register(idgovernance.LifecycleWorkflowRunJobKind, deps.IdGovernance.Executor(lifecycleWorkflowExecutorDeps(deps, logger)))
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
@@ -330,13 +243,14 @@ func lifecycleWorkflowExecutorDeps(deps *bootstrap.Dependencies, logger logging.
 		emit(event)
 		return nil
 	}
+	userLifecycle := deps.IdManagement.UserLifecycleCommands(deps.UserLifecycleDeps(), deps.ReactiveEmit(emit), lifecycleWorkflowActor)
 	return idgovernance.ExecutorDeps{
 		UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,
 		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo,
 		ApplicationAssignments: deps.Application.DesiredStateAssignments(deps.IdManagement.UserRepo, deps.IdManagement.GroupRepo, emit, lifecycleWorkflowActor),
-		UserLifecycle:          deps.UserLifecycleCommands(emit, lifecycleWorkflowActor),
-		GroupMembership:        deps.GroupMembershipCommands(emit, lifecycleWorkflowActor),
-		UserRequiredActions:    deps.UserLifecycleCommands(emit, lifecycleWorkflowActor),
+		UserLifecycle:          userLifecycle,
+		GroupMembership:        deps.IdManagement.GroupMembershipCommands(emitErr, lifecycleWorkflowActor),
+		UserRequiredActions:    userLifecycle,
 		Notifier:               deps.Notification.Notifier,
 		Emit:                   emitErr,
 	}

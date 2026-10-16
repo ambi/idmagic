@@ -1,0 +1,463 @@
+package db_postgres_test
+
+import (
+	"context"
+	"errors"
+	"slices"
+	"sort"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/ambi/idmagic/backend/shared/security/entropy"
+
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	"github.com/ambi/idmagic/backend/tenancy"
+
+	oauth2clientpostgres "github.com/ambi/idmagic/backend/oauth2/internal/client/db_postgres"
+	oauth2consentpostgres "github.com/ambi/idmagic/backend/oauth2/internal/consent/db_postgres"
+	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
+	oauth2tokenpostgres "github.com/ambi/idmagic/backend/oauth2/internal/token/db_postgres"
+)
+
+// testClock は決定的なタイムスタンプ生成に用いる基準時刻。
+func testClock() time.Time { return time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC) }
+
+// newUUID は UUID 列向けの一意な UUID を生成する。
+func newUUID(t *testing.T) string {
+	t.Helper()
+	id, err := spec.NewUUIDv4()
+	if err != nil {
+		t.Fatalf("new uuid: %v", err)
+	}
+	return id
+}
+
+// seedTenant / seedUser は pgfixtures を使わず自前で用意する。pgfixtures は本パッケージ
+// (oauthpg) を import しており、本パッケージの内部テストから pgfixtures を使うと
+// postgres -> pgfixtures -> postgres の import cycle になるため (wi-172 と同じ制約)。
+
+func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
+	t.Helper()
+	now := testClock()
+	tenant := &tenancydomain.Tenant{
+		ID:          newUUID(t),
+		Realm:       "tenant-" + newUUID(t)[:8],
+		DisplayName: "Test Tenant",
+		Status:      tenancydomain.TenantStatusActive,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if err := tenancy.NewPostgresModule(db).TenantRepo.Save(context.Background(), tenant); err != nil {
+		t.Fatalf("seed tenant: %v", err)
+	}
+	return tenant
+}
+
+func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
+	t.Helper()
+	now := testClock()
+	user := &userdomain.User{
+		ID:                newUUID(t),
+		TenantID:          tenantID,
+		PreferredUsername: "user-" + newUUID(t)[:8],
+		PasswordHash:      "hash",
+		Roles:             []string{},
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := idmanagement.NewPostgresModule(db, nil).UserRepo.Save(context.Background(), user); err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	return user
+}
+
+func seedClient(t *testing.T, db sharedpg.DB, tenantID string) *domain.OAuth2Client {
+	t.Helper()
+	now := testClock()
+	client := &domain.OAuth2Client{
+		TenantID:                 tenantID,
+		ClientID:                 newUUID(t),
+		ClientType:               spec.ClientConfidential,
+		RedirectURIs:             []string{"https://client.example/cb"},
+		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
+		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
+		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		Scope:                    "openid offline_access",
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
+		FapiProfile:              domain.FapiNone,
+		CreatedAt:                now,
+		UpdatedAt:                now,
+	}
+	if err := (&oauth2clientpostgres.OAuth2ClientRepository{Pool: db}).Save(context.Background(), client); err != nil {
+		t.Fatalf("seed client: %v", err)
+	}
+	return client
+}
+
+func TestOAuth2ClientRepositoryRoundTrip(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	repo := &oauth2clientpostgres.OAuth2ClientRepository{Pool: db}
+	ctx := context.Background()
+
+	client := seedClient(t, db, tenant.ID)
+
+	got, err := repo.FindByID(ctx, tenant.ID, client.ClientID)
+	if err != nil || got == nil {
+		t.Fatalf("find: %v, %+v", err, got)
+	}
+	if got.Scope != "openid offline_access" || got.ClientType != spec.ClientConfidential {
+		t.Fatalf("unexpected client: %+v", got)
+	}
+	if len(got.RedirectURIs) != 1 || got.RedirectURIs[0] != "https://client.example/cb" {
+		t.Fatalf("redirect uris not round-tripped: %+v", got.RedirectURIs)
+	}
+
+	all, err := repo.FindAll(ctx, tenant.ID)
+	if err != nil || len(all) != 1 {
+		t.Fatalf("find all: %v len=%d", err, len(all))
+	}
+
+	if err := repo.Delete(ctx, tenant.ID, client.ClientID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	got, err = repo.FindByID(ctx, tenant.ID, client.ClientID)
+	if err != nil || got != nil {
+		t.Fatalf("expected deleted, got %v %+v", err, got)
+	}
+}
+
+func TestOAuth2ClientRepositoryIssuesSecretWithinActiveLimitAtomically(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	repo := &oauth2clientpostgres.OAuth2ClientRepository{Pool: db}
+	ctx := context.Background()
+	client := seedClient(t, db, tenant.ID)
+	now := testClock()
+	firstExpiry := now.Add(24 * time.Hour)
+	first := domain.ClientSecretCredential{
+		ID: newUUID(t), ClientID: client.ClientID, SecretHash: "first",
+		CreatedAt: now, ExpiresAt: &firstExpiry,
+	}
+	if err := repo.IssueClientSecretCredential(ctx, nil, first, 2, now); err != nil {
+		t.Fatalf("issue first: %v", err)
+	}
+
+	credentialIDs := []string{newUUID(t), newUUID(t)}
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	var ready sync.WaitGroup
+	ready.Add(2)
+	for _, credentialID := range credentialIDs {
+		go func(id string) {
+			ready.Done()
+			<-start
+			expiresAt := now.Add(48 * time.Hour)
+			errs <- repo.IssueClientSecretCredential(ctx, nil, domain.ClientSecretCredential{
+				ID: id, ClientID: client.ClientID, SecretHash: id,
+				CreatedAt: now, ExpiresAt: &expiresAt,
+			}, 2, now)
+		}(credentialID)
+	}
+	ready.Wait()
+	close(start)
+
+	succeeded := 0
+	limited := 0
+	for range 2 {
+		err := <-errs
+		switch {
+		case err == nil:
+			succeeded++
+		case errors.Is(err, oauthports.ErrClientSecretCredentialLimitExceeded):
+			limited++
+		default:
+			t.Fatalf("unexpected issue error: %v", err)
+		}
+	}
+	if succeeded != 1 || limited != 1 {
+		t.Fatalf("succeeded=%d limited=%d", succeeded, limited)
+	}
+	credentials, err := repo.ListClientSecretCredentials(ctx, client.ClientID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(credentials) != 2 {
+		t.Fatalf("credentials=%d, want 2", len(credentials))
+	}
+}
+
+func TestConsentRepositoryRoundTrip(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	user := seedUser(t, db, tenant.ID)
+	client := seedClient(t, db, tenant.ID)
+	repo := &oauth2consentpostgres.ConsentRepository{Pool: db}
+	ctx := context.Background()
+
+	now := testClock()
+	consent := &domain.Consent{
+		UserID:   user.ID,
+		ClientID: client.ClientID,
+		Scopes:   []string{"openid", "profile"},
+		// State は Find 時に実時刻 (time.Now) で導出されるため、有効期限は実時刻基準で未来に置く。
+		GrantedAt: now,
+		ExpiresAt: pgtest.Now().Add(24 * time.Hour),
+	}
+	if err := repo.Save(ctx, tenant.ID, consent); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	got, err := repo.Find(ctx, tenant.ID, user.ID, client.ClientID)
+	if err != nil || got == nil {
+		t.Fatalf("find: %v %+v", err, got)
+	}
+	if got.State != domain.ConsentGranted || len(got.Scopes) != 2 {
+		t.Fatalf("unexpected consent: %+v", got)
+	}
+
+	all, err := repo.FindAll(ctx, tenant.ID)
+	if err != nil || len(all) != 1 {
+		t.Fatalf("find all: %v len=%d", err, len(all))
+	}
+
+	if err := repo.Revoke(ctx, tenant.ID, user.ID, client.ClientID); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+	got, err = repo.Find(ctx, tenant.ID, user.ID, client.ClientID)
+	if err != nil || got == nil || got.State != domain.ConsentRevoked {
+		t.Fatalf("expected revoked: %v %+v", err, got)
+	}
+
+	if err := repo.DeleteAllForSub(ctx, user.ID); err != nil {
+		t.Fatalf("delete all: %v", err)
+	}
+	got, err = repo.Find(ctx, tenant.ID, user.ID, client.ClientID)
+	if err != nil || got != nil {
+		t.Fatalf("expected gone: %v %+v", err, got)
+	}
+}
+
+func TestAuthorizationDetailTypeRepositoryRoundTrip(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	repo := &oauth2postgres.AuthorizationDetailTypeRepository{Pool: db}
+	ctx := context.Background()
+
+	now := testClock()
+	detailType := &domain.AuthorizationDetailType{
+		TenantID:        tenant.ID,
+		Type:            "payment_initiation",
+		Description:     "Payment initiation details",
+		DisplayTemplate: "Pay {{.amount}}",
+		State:           domain.DetailTypeEnabled,
+		Schema: domain.AuthorizationDetailsSchema{
+			Rules: []domain.AuthorizationDetailFieldRule{
+				{Name: "currency", Semantics: domain.DetailFieldEnum, Allowed: []string{"USD", "JPY"}},
+			},
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := repo.Save(ctx, detailType); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	got, err := repo.FindByType(ctx, tenant.ID, "payment_initiation")
+	if err != nil || got == nil {
+		t.Fatalf("find by type: %v %+v", err, got)
+	}
+	if got.DisplayTemplate != "Pay {{.amount}}" || got.State != domain.DetailTypeEnabled {
+		t.Fatalf("unexpected detail type: %+v", got)
+	}
+	if len(got.Schema.Rules) != 1 || got.Schema.Rules[0].Semantics != domain.DetailFieldEnum {
+		t.Fatalf("schema not round-tripped: %+v", got.Schema)
+	}
+
+	list, err := repo.ListAll(ctx, tenant.ID)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list by tenant: %v len=%d", err, len(list))
+	}
+
+	if err := repo.Delete(ctx, tenant.ID, "payment_initiation"); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	got, err = repo.FindByType(ctx, tenant.ID, "payment_initiation")
+	if err != nil || got != nil {
+		t.Fatalf("expected deleted: %v %+v", err, got)
+	}
+}
+
+func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	repo := &oauth2postgres.McpResourceServerRepository{Pool: db}
+	ctx := context.Background()
+
+	now := testClock()
+	resourceServerID := newUUID(t)
+	m := &domain.McpResourceServer{
+		TenantID:  tenant.ID,
+		ID:        resourceServerID,
+		Resource:  "https://mcp.example.com/tools/github",
+		Name:      "GitHub MCP Tools",
+		Scopes:    []string{"mcp.read", "mcp.write"},
+		State:     domain.McpResourceServerActive,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := repo.Save(ctx, m); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	got, err := repo.FindByID(ctx, tenant.ID, resourceServerID)
+	if err != nil || got == nil {
+		t.Fatalf("find by id: %v %+v", err, got)
+	}
+	if got.Resource != m.Resource || got.State != domain.McpResourceServerActive {
+		t.Fatalf("unexpected resource server: %+v", got)
+	}
+	if len(got.Scopes) != 2 {
+		t.Fatalf("scopes not round-tripped: %+v", got.Scopes)
+	}
+
+	byResource, err := repo.FindByResource(ctx, tenant.ID, "https://mcp.example.com/tools/github")
+	if err != nil || byResource == nil || byResource.ID != resourceServerID {
+		t.Fatalf("find by resource: %v %+v", err, byResource)
+	}
+
+	list, err := repo.ListAll(ctx, tenant.ID)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list by tenant: %v len=%d", err, len(list))
+	}
+
+	if err := repo.Delete(ctx, tenant.ID, resourceServerID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	got, err = repo.FindByID(ctx, tenant.ID, resourceServerID)
+	if err != nil || got != nil {
+		t.Fatalf("expected deleted: %v %+v", err, got)
+	}
+}
+
+// wi-262: resource indicator (RFC 8707) の audience 束縛が Postgres 永続化を
+// 跨いで保持されることを確認する。
+func TestRefreshTokenStoreRoundTrip_PreservesResource(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	user := seedUser(t, db, tenant.ID)
+	client := seedClient(t, db, tenant.ID)
+	store := &oauth2tokenpostgres.RefreshTokenStore{Pool: db}
+	ctx := context.Background()
+
+	now := testClock()
+	resource := "https://mcp.example.com/tools/github"
+	gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, &resource, now, entropy.Crypto())
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	gen.Record.TenantID = tenant.ID
+	if err := store.Save(ctx, gen.Record); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	found, err := store.FindByHash(ctx, gen.Record.Hash)
+	if err != nil || found == nil {
+		t.Fatalf("find by hash: %v %+v", err, found)
+	}
+	if found.Resource == nil || *found.Resource != resource {
+		t.Fatalf("expected resource to round-trip, got %v", found.Resource)
+	}
+
+	rotated, err := domain.RotateRefreshToken(found, now.Add(time.Hour), entropy.Crypto())
+	if err != nil {
+		t.Fatalf("rotate: %v", err)
+	}
+	rotated.Record.TenantID = tenant.ID
+	if _, err := store.Rotate(ctx, found.ID, rotated.Record); err != nil {
+		t.Fatalf("store rotate: %v", err)
+	}
+
+	afterRotation, err := store.FindByHash(ctx, rotated.Record.Hash)
+	if err != nil || afterRotation == nil {
+		t.Fatalf("find rotated by hash: %v %+v", err, afterRotation)
+	}
+	if afterRotation.Resource == nil || *afterRotation.Resource != resource {
+		t.Fatalf("expected resource to survive rotation round-trip, got %v", afterRotation.Resource)
+	}
+}
+
+// RevokeFamily は新たに Revoked へ遷移した token だけを報告し、呼び出し側が token ごとに
+// TokenRevoked を組み立てられるようにする (wi-566)。EX-OAUTH2-005-07 と EX-OAUTH2-006-02 の
+// 被覆は、この返り値を実際に使って通知を組み立てる usecases 層のテストが持つ。
+func TestRefreshTokenStoreRevokeFamily_ReportsNewlyRevokedIDs(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	user := seedUser(t, db, tenant.ID)
+	client := seedClient(t, db, tenant.ID)
+	store := &oauth2tokenpostgres.RefreshTokenStore{Pool: db}
+	ctx := context.Background()
+	now := testClock()
+
+	first, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now, entropy.Crypto())
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	first.Record.TenantID = tenant.ID
+	if err := store.Save(ctx, first.Record); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	rotated, err := domain.RotateRefreshToken(first.Record, now.Add(time.Minute), entropy.Crypto())
+	if err != nil {
+		t.Fatalf("rotate: %v", err)
+	}
+	rotated.Record.TenantID = tenant.ID
+	if _, err := store.Rotate(ctx, first.Record.ID, rotated.Record); err != nil {
+		t.Fatalf("store rotate: %v", err)
+	}
+
+	otherFamily, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now, entropy.Crypto())
+	if err != nil {
+		t.Fatalf("generate other family: %v", err)
+	}
+	otherFamily.Record.TenantID = tenant.ID
+	if err := store.Save(ctx, otherFamily.Record); err != nil {
+		t.Fatalf("save other family: %v", err)
+	}
+
+	revokedIDs, err := store.RevokeFamily(ctx, first.Record.FamilyID)
+	if err != nil {
+		t.Fatalf("revoke family: %v", err)
+	}
+	want := []string{first.Record.ID, rotated.Record.ID}
+	sort.Strings(want)
+	if !slices.Equal(revokedIDs, want) {
+		t.Fatalf("revoked ids = %v, want %v", revokedIDs, want)
+	}
+
+	// 別 family のトークンは対象外のまま。
+	untouched, err := store.FindByHash(ctx, otherFamily.Record.Hash)
+	if err != nil || untouched == nil || untouched.Revoked {
+		t.Fatalf("other family must stay unrevoked: %v %+v", err, untouched)
+	}
+
+	// 既に Revoked な family を再度失効させても、新たに遷移した id は無い (idempotent)。
+	again, err := store.RevokeFamily(ctx, first.Record.FamilyID)
+	if err != nil {
+		t.Fatalf("revoke family again: %v", err)
+	}
+	if len(again) != 0 {
+		t.Fatalf("expected no newly revoked ids on repeat call, got %v", again)
+	}
+}

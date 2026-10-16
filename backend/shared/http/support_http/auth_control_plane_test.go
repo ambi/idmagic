@@ -9,13 +9,14 @@ import (
 	"testing"
 	"time"
 
-	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -42,17 +43,17 @@ func newControlPlaneTestContext() *echo.Context {
 // controlPlaneAuthenticator は、利用者と Group の保存先、固定した認証の文脈で認証する
 // Authenticator を、組み立て地点と同じアダプターで組み立てる。
 func controlPlaneAuthenticator(
-	users *usermemory.UserRepository, groups groupports.GroupRepository, authn *authdomain.AuthenticationContext,
+	users userports.UserRepository, groups groupports.GroupRepository, authn *authdomain.AuthenticationContext,
 ) *support.Authenticator {
 	return &support.Authenticator{
-		Principals: idmhttpdeps.Principals{Users: users, Groups: groups},
-		Sessions:   authhttpdeps.SessionAuthentications{Resolver: controlPlaneAuthnResolver{ctx: authn}},
+		Principals: idmanagement.Module{UserRepo: users, GroupRepo: groups}.Principals(),
+		Sessions:   authentication.Module{AuthnResolver: controlPlaneAuthnResolver{ctx: authn}}.SessionAuthentications(),
 	}
 }
 
 func groupRepoWithRole(t *testing.T, sub, tenantID, role string) groupports.GroupRepository {
 	t.Helper()
-	repo := groupmemory.NewGroupRepository()
+	repo := idmanagement.NewMemoryModule().GroupRepo
 	now := time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC)
 	group := &groupdomain.Group{
 		ID: "group-" + role, TenantID: tenantID, Name: "Role group", Roles: []string{role}, CreatedAt: now, UpdatedAt: now,
@@ -111,9 +112,9 @@ func controlPlaneTestActor(roles ...string) *userdomain.User {
 //spec:covers REQ-SIGNINGKEYS-009: 認証状態と Group 由来を含む有効ロールを共通境界で検証する。
 func TestRequireControlPlaneUser(t *testing.T) {
 	t.Run("requires completed authentication", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		actor := controlPlaneTestActor("system_admin")
-		users.Seed(actor)
+		_ = users.Save(context.Background(), actor)
 		a := controlPlaneAuthenticator(users, nil, &authdomain.AuthenticationContext{
 			UserID: actor.ID, AuthenticationPending: true,
 		})
@@ -123,9 +124,9 @@ func TestRequireControlPlaneUser(t *testing.T) {
 	})
 
 	t.Run("accepts a direct effective role", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		actor := controlPlaneTestActor("system_admin")
-		users.Seed(actor)
+		_ = users.Save(context.Background(), actor)
 		a := controlPlaneAuthenticator(users, nil, &authdomain.AuthenticationContext{UserID: actor.ID})
 		got, err := a.RequireControlPlaneUser(newControlPlaneTestContext())
 		if err != nil || got == nil || !slices.Contains(got.Roles, "system_admin") {
@@ -134,9 +135,9 @@ func TestRequireControlPlaneUser(t *testing.T) {
 	})
 
 	t.Run("accepts a group-derived effective role", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		actor := controlPlaneTestActor()
-		users.Seed(actor)
+		_ = users.Save(context.Background(), actor)
 		a := controlPlaneAuthenticator(users, groupRepoWithRole(t, actor.ID, actor.TenantID, "system_admin"),
 			&authdomain.AuthenticationContext{UserID: actor.ID})
 		got, err := a.RequireControlPlaneUser(newControlPlaneTestContext())
@@ -146,9 +147,9 @@ func TestRequireControlPlaneUser(t *testing.T) {
 	})
 
 	t.Run("rejects another role", func(t *testing.T) {
-		users := usermemory.NewUserRepository()
+		users := idmanagement.NewMemoryModule().UserRepo
 		actor := controlPlaneTestActor("admin")
-		users.Seed(actor)
+		_ = users.Save(context.Background(), actor)
 		a := controlPlaneAuthenticator(users, nil, &authdomain.AuthenticationContext{UserID: actor.ID})
 		if _, err := a.RequireControlPlaneUser(newControlPlaneTestContext()); !errors.Is(err, support.ErrAdminAccessDenied) {
 			t.Fatalf("err = %v, want ErrAdminAccessDenied", err)

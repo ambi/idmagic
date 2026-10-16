@@ -17,12 +17,13 @@ import (
 	"testing"
 	"time"
 
-	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	oauth2http "github.com/ambi/idmagic/backend/oauth2/handlers_http"
+	"github.com/ambi/idmagic/backend/oauth2"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy/domain"
@@ -80,12 +81,12 @@ func newAuditTestServer(t *testing.T, opts auditTestOptions) *auditTestServer {
 		}
 	}
 
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	actor := &userdomain.User{
 		ID: auditTestActor, PreferredUsername: auditTestActor, TenantID: domain.DefaultTenantID,
 		Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	}
-	userRepo.Seed(actor)
+	_ = userRepo.Save(context.Background(), actor)
 
 	deps := tenancyhttp.Deps{
 		Deps: support.Deps{
@@ -93,11 +94,11 @@ func newAuditTestServer(t *testing.T, opts auditTestOptions) *auditTestServer {
 			TenantBaseDomain: opts.tenantBaseDomain,
 		},
 		Authenticator: &support.Authenticator{
-			Principals: idmhttpdeps.Principals{Users: userRepo},
-			Sessions: authhttpdeps.SessionAuthentications{Resolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
+			Principals: idmanagement.Module{UserRepo: userRepo}.Principals(),
+			Sessions: authentication.Module{AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
 				UserID: actor.ID, AuthTime: now.Unix(), AMR: []string{"pwd"},
-			}}},
-			AccessTokens: oauth2http.ResourceAccessTokens{Introspector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}},
+			}}}.SessionAuthentications(),
+			AccessTokens: oauth2.Module{TokenIntrospector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}}.ResourceAccessTokens(nil, nil),
 		},
 		TenantRepo: tenantRepo,
 		UserRepo:   userRepo,

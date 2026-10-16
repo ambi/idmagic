@@ -1,0 +1,287 @@
+package usecases_test
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
+
+	auditmemory "github.com/ambi/idmagic/backend/audit"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	authnmemory "github.com/ambi/idmagic/backend/authentication/internal/db_memory"
+	securitynotificationmemory "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/db_memory"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/internal/session/db_memory"
+	"github.com/ambi/idmagic/backend/authentication/internal/usecases"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+	consentdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+)
+
+func daysAgo(now time.Time, d int) time.Time {
+	return now.Add(-time.Duration(d) * 24 * time.Hour)
+}
+
+func seedAudit(t *testing.T, store auditports.AuditEventRepository, id, eventType string, at time.Time) {
+	t.Helper()
+	if err := store.Append(testing_tenant.Default(context.Background()), &auditports.AuditEventRecord{
+		ID: id, TenantID: tenancydomain.DefaultTenantID, Type: eventType, OccurredAt: at,
+		Payload: map[string]any{"tenantId": tenancydomain.DefaultTenantID},
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func remainingAuditIDs(t *testing.T, store auditports.AuditEventRepository) map[string]bool {
+	t.Helper()
+	recs, err := store.List(testing_tenant.Default(context.Background()), auditports.AuditEventQuery{Limit: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]bool{}
+	for _, r := range recs {
+		out[r.ID] = true
+	}
+	return out
+}
+
+func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	store := auditmemory.NewAuditEventStore(0)
+
+	// 失敗詳細 30 日: 29 日前は残り 31 日前は消える。
+	seedAudit(t, store, "fail-29", (&authdomain.AuthenticationFailed{}).EventType(), daysAgo(now, 29))
+	seedAudit(t, store, "fail-31", (&authdomain.AuthenticationFailed{}).EventType(), daysAgo(now, 31))
+	// 成功 365 日: 364 日前は残り 366 日前は消える。
+	seedAudit(t, store, "ok-364", (&authdomain.UserAuthenticated{}).EventType(), daysAgo(now, 364))
+	seedAudit(t, store, "ok-366", (&authdomain.UserAuthenticated{}).EventType(), daysAgo(now, 366))
+	// セッション / bucket 90 日: 89 日前は残り 91 日前は消える。
+	seedAudit(t, store, "sess-89", (&authdomain.SessionEnded{}).EventType(), daysAgo(now, 89))
+	seedAudit(t, store, "sess-91", (&authdomain.SessionEnded{}).EventType(), daysAgo(now, 91))
+	seedAudit(t, store, "agg-91", (&authdomain.AuthenticationEventAggregated{}).EventType(), daysAgo(now, 91))
+	// impersonation: cap 未設定なら無期限保持 (400 日前でも残る)。
+	seedAudit(t, store, "imp-400", (&authdomain.SessionImpersonationStarted{}).EventType(), daysAgo(now, 400))
+
+	res, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Audit: store}, usecases.DefaultRetentionPolicy(), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.AuditEvents != 4 {
+		t.Fatalf("deleted audit=%d, want 4", res.AuditEvents)
+	}
+	got := remainingAuditIDs(t, store)
+	wantKept := []string{"fail-29", "ok-364", "sess-89", "imp-400"}
+	wantGone := []string{"fail-31", "ok-366", "sess-91", "agg-91"}
+	for _, id := range wantKept {
+		if !got[id] {
+			t.Errorf("%s should be kept", id)
+		}
+	}
+	for _, id := range wantGone {
+		if got[id] {
+			t.Errorf("%s should be deleted", id)
+		}
+	}
+}
+
+func TestRetentionSweepKeepsFailureUsernamePlaintext(t *testing.T) {
+	// AuthenticationFailed.username は redact されず、
+	// 他の failure イベントと同じ保持期間 (FailDays) でそのまま保持される。
+	ctx := testing_tenant.Default(context.Background())
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	store := auditmemory.NewAuditEventStore(0)
+	oldFailure := &auditports.AuditEventRecord{
+		ID: "fail-8", TenantID: tenancydomain.DefaultTenantID,
+		Type: (&authdomain.AuthenticationFailed{}).EventType(), OccurredAt: daysAgo(now, 8),
+		Payload: map[string]any{"tenantId": tenancydomain.DefaultTenantID, "username": "alice"},
+	}
+	if err := store.Append(ctx, oldFailure); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Audit: store}, usecases.DefaultRetentionPolicy(), now); err != nil {
+		t.Fatal(err)
+	}
+	oldGot, _ := store.FindByID(ctx, "fail-8")
+	if oldGot == nil {
+		t.Fatal("fail-8 should survive the 30-day FailDays cutoff at day 8")
+	}
+	if oldGot.Payload["username"] != "alice" {
+		t.Fatalf("username should remain plaintext, got %#v", oldGot.Payload["username"])
+	}
+}
+
+func TestRetentionSweepGlobalCapShortensAndDeletesImpersonation(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	store := auditmemory.NewAuditEventStore(0)
+	// global cap 30 日: 成功も impersonation も 31 日前は消える。
+	seedAudit(t, store, "ok-31", (&authdomain.UserAuthenticated{}).EventType(), daysAgo(now, 31))
+	seedAudit(t, store, "ok-29", (&authdomain.UserAuthenticated{}).EventType(), daysAgo(now, 29))
+	seedAudit(t, store, "imp-31", (&authdomain.SessionImpersonationStarted{}).EventType(), daysAgo(now, 31))
+
+	policy := usecases.DefaultRetentionPolicy()
+	policy.MaxDays = 30
+	if _, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Audit: store}, policy, now); err != nil {
+		t.Fatal(err)
+	}
+	got := remainingAuditIDs(t, store)
+	if !got["ok-29"] {
+		t.Error("ok-29 should be kept under cap=30")
+	}
+	if got["ok-31"] {
+		t.Error("ok-31 should be deleted under cap=30")
+	}
+	if got["imp-31"] {
+		t.Error("imp-31 should be deleted: global cap shortens impersonation")
+	}
+}
+
+func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	store := authnmemory.NewAuthEventBucketStore()
+	// 91 日前の窓と直近の窓を作る。
+	if _, err := store.Record(ctx, "failed_login", tenancydomain.DefaultTenantID, "old-key", daysAgo(now, 91)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Record(ctx, "failed_login", tenancydomain.DefaultTenantID, "fresh-key", now); err != nil {
+		t.Fatal(err)
+	}
+	res, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Buckets: store}, usecases.DefaultRetentionPolicy(), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Buckets != 1 {
+		t.Fatalf("deleted buckets=%d, want 1", res.Buckets)
+	}
+	buckets, err := store.List(ctx, tenancydomain.DefaultTenantID, time.Time{}, "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(buckets) != 1 || buckets[0].KeyHash != "fresh-key" {
+		t.Fatalf("remaining buckets=%#v, want only fresh-key", buckets)
+	}
+}
+
+// TestRetentionSweepDeletesExpiredSessions: wi-253 Plan §7 の housekeeping cleanup を
+// retention sweep に統合する。SessionDays (既定 90 日) を LoginSession の
+// tombstone/期限切れ行の物理削除 cutoff に転用する。
+func TestRetentionSweepDeletesExpiredSessions(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	store := sessionmemory.NewSessionStore()
+
+	mustSave := func(id string, expiresAt time.Time) {
+		t.Helper()
+		if err := store.Save(ctx, &sessiondomain.LoginSession{
+			ID: id, UserID: "user-1", AMR: []string{"pwd"}, ACR: "urn:idmagic:acr:pwd",
+			ExpiresAt: expiresAt,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// 90 日 cutoff: 89 日前に失効した行は残り、91 日前に失効した行は消える。
+	mustSave("expired-89", daysAgo(now, 89))
+	mustSave("expired-91", daysAgo(now, 91))
+	mustSave("active", now.Add(time.Hour))
+
+	res, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Sessions: store}, usecases.DefaultRetentionPolicy(), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Sessions != 1 {
+		t.Fatalf("deleted sessions=%d, want 1", res.Sessions)
+	}
+	if owned, _ := store.FindOwned(ctx, "expired-91", "user-1"); owned != nil {
+		t.Error("expired-91 should be purged past the 90-day cutoff")
+	}
+	if owned, _ := store.FindOwned(ctx, "expired-89", "user-1"); owned == nil {
+		t.Error("expired-89 should survive within the 90-day cutoff")
+	}
+	if owned, _ := store.FindOwned(ctx, "active", "user-1"); owned == nil {
+		t.Error("active session should survive")
+	}
+}
+
+// TestRetentionSweepDeletesIdleKnownSignInDevices: 既知のサインイン端末はサインイン履歴と
+// 同じ 365 日で掃除する (wi-90)。履歴から消えた端末を「既知」と呼び続けないためである。
+func TestRetentionSweepDeletesIdleKnownSignInDevices(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	store := securitynotificationmemory.NewKnownDeviceRepository()
+
+	observe := func(hash string, seenAt time.Time) {
+		t.Helper()
+		if _, err := store.Observe(ctx, securitynotificationports.KnownDevice{
+			UserID: "user-1", DeviceHash: hash, SeenAt: seenAt,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	observe("recent", daysAgo(now, 364))
+	observe("idle", daysAgo(now, 366))
+
+	res, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{KnownDevices: store}, usecases.DefaultRetentionPolicy(), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.KnownDevices != 1 {
+		t.Fatalf("deleted known devices=%d, want 1", res.KnownDevices)
+	}
+	// 掃除された端末は次のサインインで再び「新しい端末」になり、残った端末はならない。
+	swept, err := store.Observe(ctx, securitynotificationports.KnownDevice{UserID: "user-1", DeviceHash: "idle", SeenAt: now})
+	if err != nil || !swept {
+		t.Errorf("the swept device = %v, err %v; want it to count as new again", swept, err)
+	}
+	kept, err := store.Observe(ctx, securitynotificationports.KnownDevice{UserID: "user-1", DeviceHash: "recent", SeenAt: now})
+	if err != nil || kept {
+		t.Errorf("the device within the window = %v, err %v; want it to stay known", kept, err)
+	}
+}
+
+// 保持期間の内側では残り、外側では消える。
+//
+// 片側だけを見るテストは行を区別できない。内側だけなら「何も消さない」実装が通り、
+// 外側だけなら「全部消す」実装が通る。種類も 2 つ要る。行が「セキュリティおよび認可」と
+// 2 つ挙げているのに、期間の型が違う (認可は Default の 365 日、失敗は ByType の 30 日) ため、
+// 片方の種類だけでは他方の期間が守られていることを言えない。
+//
+//spec:covers GDPR-PROCESSING-RECORDS: セキュリティイベントと認可イベントの監査記録は、定義済みの
+func TestRetentionKeepsSecurityAndAuthorizationRecordsWithinTheDefinedPeriod(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
+	store := auditmemory.NewAuditEventStore(0)
+	policy := usecases.DefaultRetentionPolicy()
+
+	securityType := (&authdomain.AuthenticationFailed{}).EventType()
+	authorizationType := (&consentdomain.ConsentRevokedEvent{}).EventType()
+
+	// 期間の内側と外側を種類ごとに 1 件ずつ置く。境界は種類で違うので、日数も種類から取る。
+	seedAudit(t, store, "security-inside", securityType, daysAgo(now, policy.FailDays-1))
+	seedAudit(t, store, "security-outside", securityType, daysAgo(now, policy.FailDays+1))
+	seedAudit(t, store, "authorization-inside", authorizationType, daysAgo(now, policy.SuccessDays-1))
+	seedAudit(t, store, "authorization-outside", authorizationType, daysAgo(now, policy.SuccessDays+1))
+
+	if _, err := usecases.RunRetentionSweep(
+		ctx, usecases.RetentionStores{Audit: store}, policy, now,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	remaining := remainingAuditIDs(t, store)
+	for _, id := range []string{"security-inside", "authorization-inside"} {
+		if !remaining[id] {
+			t.Errorf("%s は保持期間の内側なので残っていなければならない", id)
+		}
+	}
+	for _, id := range []string{"security-outside", "authorization-outside"} {
+		if remaining[id] {
+			t.Errorf("%s は保持期間の外側なので消えていなければならない", id)
+		}
+	}
+}

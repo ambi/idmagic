@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -19,7 +20,7 @@ func newAdminBindingDeps(t *testing.T) usecases.AdminAgentWorkloadBindingDeps {
 	return usecases.AdminAgentWorkloadBindingDeps{
 		TrustBundleRepo: workloadmemory.NewWorkloadTrustBundleRepository(),
 		BindingRepo:     workloadmemory.NewAgentWorkloadBindingRepository(),
-		AgentRepo:       agentmemory.NewAgentRepository(),
+		AgentRepo:       idmanagement.NewMemoryModule().AgentRepo,
 	}
 }
 

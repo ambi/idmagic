@@ -28,18 +28,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+
 	"github.com/labstack/echo/v5"
 
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
-	tokendomain "github.com/ambi/idmagic/backend/oauth2/token/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -69,8 +70,8 @@ type tiFixture struct {
 	base          string
 	assertionKey  *rsa.PrivateKey
 	tenants       tenantports.TenantRepository
-	refreshTokens *oauth2memory.RefreshTokenStore
-	codes         *oauth2memory.AuthorizationCodeStore
+	refreshTokens oauthports.RefreshTokenStore
+	codes         oauthports.AuthorizationCodeStore
 	events        *eventRecorder
 }
 
@@ -86,9 +87,9 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		t.Fatal(err)
 	}
 
-	clients := oauth2memory.NewClientRepository()
+	clients := oauth2.NewMemoryModule().ClientRepo
 	secretHash := domain.HashClientSecret(tiClientSecret)
-	clients.Seed(&domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tiClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{tiRedirectURI},
@@ -104,7 +105,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		CreatedAt:                now,
 	})
 	// public クライアントは client_credentials を宣言していても使えない。
-	clients.Seed(&domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tiPublicClientID, ClientType: spec.ClientPublic,
 		RedirectURIs:             []string{tiRedirectURI},
@@ -116,7 +117,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
 	})
-	clients.Seed(&domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tiAssertionClient, ClientType: spec.ClientConfidential,
 		RedirectURIs:            []string{tiRedirectURI},
@@ -139,20 +140,20 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: tiUserID, PreferredUsername: tiUsername, PasswordHash: passwordHash,
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 	})
 
-	resourceServers := oauth2memory.NewMcpResourceServerRepository()
-	resourceServers.Seed(&domain.McpResourceServer{
+	resourceServers := oauth2.NewMemoryModule().McpResourceServerRepo
+	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
 		ID: "rs-orders", Resource: tiResource, Name: "Orders API",
 		Scopes: []string{"openid", "profile", "offline_access", "read", "write"},
 		State:  domain.McpResourceServerActive,
 	})
 	// 無効な資源サーバー。登録済みでも `Active` でなければ audience にできない。
-	resourceServers.Seed(&domain.McpResourceServer{
+	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
 		ID: "rs-invoices", Resource: tiOtherResource, Name: "Invoices API",
 		Scopes: []string{"read"}, State: domain.McpResourceServerDisabled,
 	})
@@ -170,9 +171,9 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		t.Fatal(err)
 	}
 	signer := tokensJOSE.NewJWTSigner(tiIssuer, keyStore)
-	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
-	refreshTokens := oauth2memory.NewRefreshTokenStore()
-	codes := oauth2memory.NewAuthorizationCodeStore()
+	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
+	refreshTokens := oauth2.NewMemoryModule().RefreshStore
+	codes := oauth2.NewMemoryModule().CodeStore
 
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
@@ -185,13 +186,13 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		ShuttingDown:    &atomic.Bool{},
 		Emit:            events.record,
 		OAuth2: oauth2.Module{
-			ClientRepo: clients, ConsentRepo: oauth2memory.NewConsentRepository(),
-			RequestStore: oauth2memory.NewAuthorizationRequestStore(),
+			ClientRepo: clients, ConsentRepo: oauth2.NewMemoryModule().ConsentRepo,
+			RequestStore: oauth2.NewMemoryModule().RequestStore,
 			CodeStore:    codes,
-			PARStore:     oauth2memory.NewPARStore(), RefreshStore: refreshTokens,
+			PARStore:     oauth2.NewMemoryModule().PARStore, RefreshStore: refreshTokens,
 			McpResourceServerRepo:      resourceServers,
-			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
-			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
+			ClientAssertionReplayStore: oauth2.NewMemoryModule().ClientAssertionReplayStore,
+			AccessTokenDenylist:        oauth2.NewMemoryModule().AccessTokenDenylist,
 		},
 		UserRepo:          users,
 		KeyStore:          keyStore,
@@ -376,7 +377,7 @@ func assertOAuthErrorCode(t *testing.T, what, body, want string) {
 }
 
 // refreshRecord は平文のリフレッシュトークンに対応する保存層の記録を返す。
-func (f *tiFixture) refreshRecord(t *testing.T, token string) *tokendomain.RefreshTokenRecord {
+func (f *tiFixture) refreshRecord(t *testing.T, token string) *domain.RefreshTokenRecord {
 	t.Helper()
 	record, err := f.refreshTokens.FindByHash(context.Background(), domain.HashRefreshToken(token))
 	if err != nil || record == nil {
@@ -856,7 +857,7 @@ func TestTokenExchangeDelegatesByDefaultAndBoundsTheActorChain(t *testing.T) {
 	//spec:covers RFC8693-DELEGATION-DEPTH: テナントが上限を下げると、その深さを超える
 	// チェーンは拒否される。ここで観測しているのは、解決器が `/token` へ
 	// 配線されていることである。上限そのものの規則は
-	// backend/oauth2/token/usecases/exchange_token_delegation_policy_test.go が持つ。
+	// backend/oauth2/internal/token/usecases/exchange_token_delegation_policy_test.go が持つ。
 	t.Run("テナントが下げた上限を超える交換は拒否される", func(t *testing.T) {
 		lowered := 1
 		if err := fixture.tenants.Save(t.Context(), &tenancydomain.Tenant{

@@ -4,51 +4,37 @@ import (
 	"context"
 	"time"
 
-	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
+	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// GroupMembershipCommands は管理 API と同じ所属のイベントとプロビジョニング通知を組み立てる。
-func (d *Dependencies) GroupMembershipCommands(emit func(spec.DomainEvent), actor string) groupusecases.GroupMembershipCommands {
-	return groupusecases.GroupMembershipCommands{Actor: actor, Deps: groupusecases.AdminGroupDeps{
-		GroupRepo: d.IdManagement.GroupRepo, UserRepo: d.IdManagement.UserRepo,
-		ProvisioningNotifier: d.IdManagement.GroupProvisioningNotifier,
-		Emit:                 func(event spec.DomainEvent) error { emit(event); return nil },
-	}}
+// UserLifecycleDeps は、管理 API の外（LifecycleWorkflow、SCIM の取り込み、保持期間の掃除）から User を止めるときに
+// IdManagement の操作へ渡す依存である。管理 API のハンドラーと同じ集合にして、どの経路で止めても
+// 同じイベント、端末の失効、下流への通知を伴わせる。
+func (d *Dependencies) UserLifecycleDeps() idmanagement.LifecycleDeps {
+	return idmanagement.LifecycleDeps{
+		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo, QuotaRepo: d.Tenancy.QuotaRepo,
+		ConsentRepo: d.OAuth2.ConsentRepo, RefreshStore: d.OAuth2.RefreshStore,
+		DeviceCodeStore: d.OAuth2.DeviceCodeStore, ApprovalRequestStore: d.OAuth2.ApprovalRequestStore,
+		SessionStore: d.Authentication.SessionStore, MfaFactorRepo: d.Authentication.MfaFactorRepo,
+		TrustedDeviceRepo:      d.Authentication.TrustedDeviceRepo,
+		TrustedDevices:         d.Authentication.UserDeviceRevoker(),
+		WebAuthnCredentialRepo: d.Authentication.WebAuthnCredentialRepo, RecoveryCodeRepo: d.Authentication.RecoveryCodeRepo,
+		PasswordHasher: d.Authentication.PasswordHasher, PasswordHistoryRepo: d.Authentication.PasswordHistoryRepo,
+	}
 }
 
-// UserLifecycleCommands は、管理 API の外（LifecycleWorkflow と SCIM の取り込み）から User を止めるときに通す
-// IdManagement の操作を組み立てる。依存は管理 API のハンドラーと同じ集合にして、どの経路で止めても
-// 同じイベント、端末の失効、下流への通知、所有する Agent の無効化と失効エポックの前進を伴わせる。
-// actor は監査イベントに残る名前である。
-//
+// ReactiveEmit は、イベントを emit へ記録した後に、所有する Agent の無効化と失効エポックの前進を反応させる。
 // 失効エポックの反応は管理 API の ReactiveEmit と同じく fail-closed にする。前進に失敗した無効化は
 // 誤りとして呼び出し元へ返り、ワークフローの手順や SCIM の要求が失敗する。
-func (d *Dependencies) UserLifecycleCommands(emit func(spec.DomainEvent), actor string) userusecases.UserLifecycleCommands {
+func (d *Dependencies) ReactiveEmit(emit func(spec.DomainEvent)) func(spec.DomainEvent) error {
 	reactor := d.AgentRevocationReactor(emit)
-	return userusecases.UserLifecycleCommands{
-		Deps: userusecases.AdminUserDeps{
-			UserRepo: d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo, AgentRepo: d.IdManagement.AgentRepo,
-			AttrSchemaRepo:       d.Tenancy.AttrSchemaRepo,
-			ProvisioningNotifier: d.IdManagement.ProvisioningNotifier,
-			ConsentRepo:          d.OAuth2.ConsentRepo, RefreshStore: d.OAuth2.RefreshStore,
-			DeviceCodeStore: d.OAuth2.DeviceCodeStore, ApprovalRequestStore: d.OAuth2.ApprovalRequestStore,
-			SessionStore: d.Authentication.SessionStore, MfaFactorRepo: d.Authentication.MfaFactorRepo,
-			TrustedDeviceRepo:      d.Authentication.TrustedDeviceRepo,
-			TrustedDevices:         d.Authentication.UserDeviceRevoker(),
-			WebAuthnCredentialRepo: d.Authentication.WebAuthnCredentialRepo, RecoveryCodeRepo: d.Authentication.RecoveryCodeRepo,
-			PasswordHasher: d.Authentication.PasswordHasher, PasswordHistoryRepo: d.Authentication.PasswordHistoryRepo,
-			QuotaRepo: d.Tenancy.QuotaRepo,
-			Emit: func(event spec.DomainEvent) error {
-				emit(event)
-				// 管理 API と同じく、要求の context ではなく自前の期限で反応させる。
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				return reactor.React(ctx, event)
-			},
-		},
-		Actor: actor,
+	return func(event spec.DomainEvent) error {
+		emit(event)
+		// 管理 API と同じく、要求の context ではなく自前の期限で反応させる。
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return reactor.React(ctx, event)
 	}
 }
 

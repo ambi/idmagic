@@ -15,8 +15,7 @@ import (
 	"testing"
 	"time"
 
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
+	"github.com/ambi/idmagic/backend/authentication"
 )
 
 // postRefused は 2xx を期待しない POST を送る。postJSON は非 200 で失敗するので、
@@ -49,7 +48,7 @@ func sessionCookieValue(t *testing.T, client *http.Client, base string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := findCookie(client.Jar.Cookies(parsed), sessionusecases.SessionCookie)
+	cookie := findCookie(client.Jar.Cookies(parsed), authentication.SessionCookie)
 	if cookie == nil {
 		return ""
 	}
@@ -124,7 +123,7 @@ func TestWrongTotpCodeLeavesTheLoginSessionPending(t *testing.T) {
 
 	// その 3: 同じセッションで正しいコードを送れば認証は継続する。
 	// 拒否がセッションを消費も失効もしていない証拠になる。
-	code, err := totpusecases.GenerateTOTP(secret, time.Now().UTC().Unix())
+	code, err := authentication.GenerateTOTP(secret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -21,9 +21,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -47,7 +48,7 @@ type refusalServer struct {
 	e        *echo.Echo
 	branding *memory.TenantBrandingRepository
 	quotas   *memory.QuotaRepository
-	groups   *groupmemory.GroupRepository
+	groups   groupports.GroupRepository
 	sender   *email_memory.NoopEmailSender
 	events   *[]spec.DomainEvent
 }
@@ -70,10 +71,10 @@ func newRefusalServer(t *testing.T, actors ...*userdomain.User) *refusalServer {
 		}
 	}
 
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	resolver := &fakeAuthnResolver{}
 	for index, actor := range actors {
-		userRepo.Seed(actor)
+		_ = userRepo.Save(context.Background(), actor)
 		if index == 0 {
 			resolver.ctx = &authdomain.AuthenticationContext{
 				UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
@@ -85,7 +86,7 @@ func newRefusalServer(t *testing.T, actors ...*userdomain.User) *refusalServer {
 		e:        echo.New(),
 		branding: memory.NewTenantBrandingRepository(),
 		quotas:   memory.NewQuotaRepository(),
-		groups:   groupmemory.NewGroupRepository(),
+		groups:   idmanagement.NewMemoryModule().GroupRepo,
 		sender:   &email_memory.NoopEmailSender{},
 	}
 	events := make([]spec.DomainEvent, 0)

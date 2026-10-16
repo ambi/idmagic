@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/saml"
 
@@ -58,8 +59,8 @@ func newAdminJSONBodyFixture(t *testing.T) *adminJSONBodyFixture {
 	}
 
 	objectGUID := "6f9619ff-8b86-d011-b42d-00c04fc964ff"
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "ops", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "ops@example.test",
 		Roles: []string{"admin", "system_admin"}, CreatedAt: now, UpdatedAt: now,
 		Attributes: map[string]userdomain.AttributeValue{

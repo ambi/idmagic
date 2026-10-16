@@ -23,9 +23,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/internal/usecases"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -264,7 +265,7 @@ func (c sessionClient) do(t *testing.T, method, path string, body any) *httptest
 	if c.csrfHeader != "" {
 		request.Header.Set(support.CSRFHeader, c.csrfHeader)
 	}
-	request.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: c.sessionID})
+	request.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: c.sessionID})
 	request.AddCookie(&http.Cookie{Name: support.CSRFCookie, Value: csrfTokenValue})
 	recorder := httptest.NewRecorder()
 	c.s.Echo.ServeHTTP(recorder, request)
@@ -434,7 +435,7 @@ func TestIssueApiTokenRequiresTheAdminOrSystemAdminRole(t *testing.T) {
 	withSystemAdmin := *systemAdmin
 	withSystemAdmin.ID, withSystemAdmin.PreferredUsername = "system-admin-1", "system-admin"
 	withSystemAdmin.Roles = []string{"system_admin"}
-	s.Users.Seed(&withSystemAdmin)
+	_ = s.Users.Save(context.Background(), &withSystemAdmin)
 	issueRequest := map[string]any{
 		"description": "Directory sync", "scopes": []string{"groups:read"}, "expiry_days": 7,
 	}
@@ -620,7 +621,7 @@ func TestAdminApiRejectsATokenWhoseIssuerLostTheRole(t *testing.T) {
 	}
 	demoted := *issuer
 	demoted.Roles = []string{"user"}
-	s.Users.Seed(&demoted)
+	_ = s.Users.Save(context.Background(), &demoted)
 
 	for _, tc := range []struct {
 		method string

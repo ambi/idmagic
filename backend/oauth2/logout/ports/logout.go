@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/logout/domain"
+	"github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
 )
 
 type ClientSessionStore interface {

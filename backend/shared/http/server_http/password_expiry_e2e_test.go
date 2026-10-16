@@ -7,19 +7,20 @@ package server_http_test
 // login to change-password, and a login that is inside the window is untouched.
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -37,7 +38,7 @@ const (
 // newPasswordExpiryTestServer seeds the default tenant with max_age_days=90,
 // with the policy itself changed long enough ago that the grace window has
 // passed, and one user whose password was last changed passwordChangedDaysAgo.
-func newPasswordExpiryTestServer(t *testing.T, maxAgeDays, passwordChangedDaysAgo int) (*httptest.Server, *usermemory.UserRepository) {
+func newPasswordExpiryTestServer(t *testing.T, maxAgeDays, passwordChangedDaysAgo int) (*httptest.Server, userports.UserRepository) {
 	t.Helper()
 	server, users, _ := newPasswordExpiryServer(t, passwordExpiryOptions{
 		maxAgeDays: maxAgeDays, passwordChangedDaysAgo: passwordChangedDaysAgo,
@@ -59,7 +60,7 @@ type passwordExpiryOptions struct {
 
 func newPasswordExpiryServer(
 	t *testing.T, opts passwordExpiryOptions,
-) (*httptest.Server, *usermemory.UserRepository, *[]spec.DomainEvent) {
+) (*httptest.Server, userports.UserRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	maxAgeDays, passwordChangedDaysAgo := opts.maxAgeDays, opts.passwordChangedDaysAgo
 	now := time.Now().UTC()
@@ -88,20 +89,20 @@ func newPasswordExpiryServer(
 	if err != nil {
 		t.Fatalf("seed password: %v", err)
 	}
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	passwordChangedAt := now.AddDate(0, 0, -passwordChangedDaysAgo)
 	storedHash := hash
 	if opts.passwordless {
 		storedHash = ""
 	}
-	userRepo.Seed(&userdomain.User{
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID: "user_alice", PreferredUsername: expiryTestUsername, PasswordHash: storedHash,
 		TenantID:  tenancydomain.DefaultTenantID,
 		Lifecycle: userdomain.UserLifecycle{PasswordChangedAt: &passwordChangedAt},
 		CreatedAt: passwordChangedAt, UpdatedAt: passwordChangedAt,
 	})
 
-	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
+	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
 
@@ -114,12 +115,12 @@ func newPasswordExpiryServer(
 		ShuttingDown:    &atomic.Bool{},
 		TenantRepo:      tenantRepo,
 		OAuth2: oauth2.Module{
-			ClientRepo: oauth2memory.NewClientRepository(), ConsentRepo: oauth2memory.NewConsentRepository(),
-			RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(),
-			PARStore: oauth2memory.NewPARStore(), RefreshStore: oauth2memory.NewRefreshTokenStore(),
+			ClientRepo: oauth2.NewMemoryModule().ClientRepo, ConsentRepo: oauth2.NewMemoryModule().ConsentRepo,
+			RequestStore: oauth2.NewMemoryModule().RequestStore, CodeStore: oauth2.NewMemoryModule().CodeStore,
+			PARStore: oauth2.NewMemoryModule().PARStore, RefreshStore: oauth2.NewMemoryModule().RefreshStore,
 		},
 		UserRepo:            userRepo,
-		PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
+		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 		PasswordHasher:      hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
 	})
 	return httptest.NewServer(e), userRepo, events

@@ -1,0 +1,170 @@
+package handlers_http_test
+
+// wi-66: OIDC RP 化した portal が提示する Bearer access token を
+// resource server として受理する経路を /api/admin/v1/policy/roles 経由で検証する。
+// セッション resolver を配線せず、Bearer のみで admin 認可が成立すること、
+// 無効トークン・非 admin・トークン無しの fail-closed を確認する。
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+
+	"github.com/labstack/echo/v5"
+)
+
+// stubIntrospector は token 文字列から固定の IntrospectionResult を返す。
+type stubIntrospector struct {
+	byToken map[string]*oauthports.IntrospectionResult
+}
+
+func (s stubIntrospector) IntrospectAccessToken(
+	_ context.Context, token string,
+) (*oauthports.IntrospectionResult, error) {
+	if res, ok := s.byToken[token]; ok {
+		return res, nil
+	}
+	return &oauthports.IntrospectionResult{Active: false}, nil
+}
+
+func newBearerAdminServer(t *testing.T, actor *userdomain.User, introspector oauthports.TokenIntrospector) *echo.Echo {
+	t.Helper()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	if actor != nil {
+		_ = userRepo.Save(context.Background(), actor)
+	}
+	e := echo.New()
+	httpadapter.Register(e, httpadapter.Deps{
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo: newSingleTenantRepo(),
+		Emit:       func(spec.DomainEvent) {}, UserRepo: userRepo,
+		TokenIntrospector: introspector,
+	})
+	return e
+}
+
+// adminRolePoliciesPath は RequireAdmin/ResolveAdminActor を通る代表的な admin GET。
+const adminRolePoliciesPath = "/realms/acme/api/admin/v1/policy/roles"
+
+func getWithBearer(e *echo.Echo, token string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet, adminRolePoliciesPath, http.NoBody)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	return rec
+}
+
+func activeToken(sub string) *oauthports.IntrospectionResult {
+	return tokenWithScope(sub, "openid idmagic.admin")
+}
+
+func tokenWithScope(sub, scope string) *oauthports.IntrospectionResult {
+	return &oauthports.IntrospectionResult{Active: true, Sub: sub, Iat: time.Now().Unix(), Scope: scope}
+}
+
+func TestBearerAccessTokenAuthorizesAdmin(t *testing.T) {
+	admin := keyAdminUser("user_alice", "acme", []string{"admin"})
+	e := newBearerAdminServer(t, admin, stubIntrospector{byToken: map[string]*oauthports.IntrospectionResult{
+		"good": activeToken("user_alice"),
+	}})
+	rec := getWithBearer(e, "good")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("admin Bearer should be authorized: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestBearerMissingTokenIsUnauthorized(t *testing.T) {
+	admin := keyAdminUser("user_alice", "acme", []string{"admin"})
+	e := newBearerAdminServer(t, admin, stubIntrospector{})
+	rec := getWithBearer(e, "")
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("no credential must be 401: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestBearerInactiveTokenIsUnauthorized(t *testing.T) {
+	admin := keyAdminUser("user_alice", "acme", []string{"admin"})
+	e := newBearerAdminServer(t, admin, stubIntrospector{}) // 未知 token は Active:false
+	rec := getWithBearer(e, "revoked")
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("inactive token must be 401: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	want := `Bearer error="invalid_token", resource_metadata="http://idp.test/realms/acme/.well-known/oauth-protected-resource"`
+	if got := rec.Header().Get("WWW-Authenticate"); got != want {
+		t.Fatalf("WWW-Authenticate = %q, want %q", got, want)
+	}
+}
+
+func TestBearerInactiveTokenChallengeUsesSubdomainMetadata(t *testing.T) {
+	tenants := newSingleTenantRepo()
+	tenants.tenant.EndpointStyle = tenancydomain.TenantEndpointStyleSubdomain
+	e := echo.New()
+	httpadapter.Register(e, httpadapter.Deps{
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo: tenants, TenantBaseDomain: "idp.test", Emit: func(spec.DomainEvent) {},
+		TokenIntrospector: stubIntrospector{},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/v1/policy/roles", http.NoBody)
+	req.Host = "acme.idp.test"
+	req.Header.Set("Authorization", "Bearer revoked")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("inactive token must be 401: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	want := `Bearer error="invalid_token", resource_metadata="http://acme.idp.test/.well-known/oauth-protected-resource"`
+	if got := rec.Header().Get("WWW-Authenticate"); got != want {
+		t.Fatalf("WWW-Authenticate = %q, want %q", got, want)
+	}
+}
+
+func TestBearerWithoutPortalScopeIsForbidden(t *testing.T) {
+	admin := keyAdminUser("user_alice", "acme", []string{"admin"})
+	// admin ロールはあるが token に idmagic.admin scope が無い → fail-closed。
+	e := newBearerAdminServer(t, admin, stubIntrospector{byToken: map[string]*oauthports.IntrospectionResult{
+		"good": tokenWithScope("user_alice", "openid profile"),
+	}})
+	rec := getWithBearer(e, "good")
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("admin API without idmagic.admin scope must be 403: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	want := `Bearer error="insufficient_scope", scope="idmagic.admin", resource_metadata="http://idp.test/realms/acme/.well-known/oauth-protected-resource"`
+	if got := rec.Header().Get("WWW-Authenticate"); got != want {
+		t.Fatalf("WWW-Authenticate = %q, want %q", got, want)
+	}
+}
+
+func TestBearerAccountScopeRejectedOnAdminAPI(t *testing.T) {
+	admin := keyAdminUser("user_alice", "acme", []string{"admin"})
+	// account portal の token (idmagic.account) で admin API を叩く cross-portal 利用を拒否。
+	e := newBearerAdminServer(t, admin, stubIntrospector{byToken: map[string]*oauthports.IntrospectionResult{
+		"good": tokenWithScope("user_alice", "openid profile idmagic.account"),
+	}})
+	rec := getWithBearer(e, "good")
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("account-scoped token must not authorize admin API: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestBearerNonAdminIsForbidden(t *testing.T) {
+	plain := keyAdminUser("user_bob", "acme", nil)
+	e := newBearerAdminServer(t, plain, stubIntrospector{byToken: map[string]*oauthports.IntrospectionResult{
+		"good": activeToken("user_bob"),
+	}})
+	rec := getWithBearer(e, "good")
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin Bearer must be 403: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}

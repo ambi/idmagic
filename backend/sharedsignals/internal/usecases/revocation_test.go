@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 
-	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	"github.com/ambi/idmagic/backend/idmanagement"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+
 	agentmodel "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -95,7 +97,7 @@ func TestCheckRevocationEpoch_UnknownAgentReturnsNil(t *testing.T) {
 	}
 }
 
-func seedAgent(ctx context.Context, t *testing.T, repo *agentmemory.AgentRepository, id, tenantID, ownerUserID string) {
+func seedAgent(ctx context.Context, t *testing.T, repo agentports.AgentRepository, id, tenantID, ownerUserID string) {
 	t.Helper()
 	agent := &agentmodel.Agent{
 		ID: id, TenantID: tenantID, Name: id, Kind: idmdomain.AgentKindAutonomous,
@@ -126,7 +128,7 @@ func TestAgentRevocationReactor_ReactsToAgentEvents(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			epochRepo := dbmemory.NewAgentRevocationEpochRepository()
-			reactor := &ssusecases.AgentRevocationReactor{EpochRepo: epochRepo, AgentRepo: agentmemory.NewAgentRepository()}
+			reactor := &ssusecases.AgentRevocationReactor{EpochRepo: epochRepo, AgentRepo: idmanagement.NewMemoryModule().AgentRepo}
 			if err := reactor.React(ctx, tc.event); err != nil {
 				t.Fatalf("React: %v", err)
 			}
@@ -159,7 +161,7 @@ func TestAgentRevocationReactor_ReactsToOwnerEvents(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			epochRepo := dbmemory.NewAgentRevocationEpochRepository()
-			agentRepo := agentmemory.NewAgentRepository()
+			agentRepo := idmanagement.NewMemoryModule().AgentRepo
 			seedAgent(ctx, t, agentRepo, "agent_1", "tenant-a", "user_1")
 			seedAgent(ctx, t, agentRepo, "agent_2", "tenant-a", "user_1")
 			seedAgent(ctx, t, agentRepo, "agent_3", "tenant-a", "user_2")
@@ -187,7 +189,7 @@ func TestAgentRevocationReactor_ReactsToOwnerEvents(t *testing.T) {
 func TestAgentRevocationReactor_OwnerWithNoAgentsIsNoop(t *testing.T) {
 	ctx := context.Background()
 	reactor := &ssusecases.AgentRevocationReactor{
-		EpochRepo: dbmemory.NewAgentRevocationEpochRepository(), AgentRepo: agentmemory.NewAgentRepository(),
+		EpochRepo: dbmemory.NewAgentRevocationEpochRepository(), AgentRepo: idmanagement.NewMemoryModule().AgentRepo,
 	}
 	if err := reactor.React(ctx, &idmdomain.UserDeleted{At: time.Now().UTC(), TenantID: "tenant-a", TargetUserID: "user_without_agents"}); err != nil {
 		t.Fatalf("React (empty owner set): %v", err)
@@ -199,7 +201,7 @@ func TestAgentRevocationReactor_OwnerWithNoAgentsIsNoop(t *testing.T) {
 func TestAgentRevocationReactor_IgnoresUnrelatedEvents(t *testing.T) {
 	ctx := context.Background()
 	reactor := &ssusecases.AgentRevocationReactor{
-		EpochRepo: dbmemory.NewAgentRevocationEpochRepository(), AgentRepo: agentmemory.NewAgentRepository(),
+		EpochRepo: dbmemory.NewAgentRevocationEpochRepository(), AgentRepo: idmanagement.NewMemoryModule().AgentRepo,
 	}
 	if err := reactor.React(ctx, &idmdomain.AgentRegistered{At: time.Now().UTC(), TenantID: "tenant-a", AgentID: "agent_1"}); err != nil {
 		t.Fatalf("React (unrelated event): %v", err)
@@ -213,7 +215,7 @@ func TestAgentRevocationReactor_IgnoresUnrelatedEvents(t *testing.T) {
 // 必要がある (wi-58)。
 func TestAgentRevocationReactor_NilEpochRepoIsNoop(t *testing.T) {
 	ctx := context.Background()
-	reactor := &ssusecases.AgentRevocationReactor{AgentRepo: agentmemory.NewAgentRepository()}
+	reactor := &ssusecases.AgentRevocationReactor{AgentRepo: idmanagement.NewMemoryModule().AgentRepo}
 	if err := reactor.React(ctx, &idmdomain.AgentKilled{At: time.Now().UTC(), TenantID: "tenant-a", AgentID: "agent_1"}); err != nil {
 		t.Fatalf("React (nil EpochRepo): %v", err)
 	}

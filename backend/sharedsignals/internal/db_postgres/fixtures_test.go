@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	agentpg "github.com/ambi/idmagic/backend/idmanagement/agent/db_postgres"
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	userpg "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -57,14 +57,14 @@ func seedAgent(t *testing.T, db sharedpg.DB, tenantID string) *agentdomain.Agent
 		ID: newUUID(t), TenantID: tenantID, PreferredUsername: uniqueID("username"),
 		PasswordHash: "hash", Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 	}
-	if err := (&userpg.UserRepository{Pool: db}).Save(context.Background(), user); err != nil {
+	if err := idmanagement.NewPostgresModule(db, nil).UserRepo.Save(context.Background(), user); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	agent := &agentdomain.Agent{
 		ID: newUUID(t), TenantID: tenantID, Name: uniqueID("agent"), Kind: idmdomain.AgentKindAutonomous,
 		OwnerUserID: user.ID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now,
 	}
-	if err := (&agentpg.AgentRepository{Pool: db}).Save(context.Background(), agent); err != nil {
+	if err := idmanagement.NewPostgresModule(db, nil).AgentRepo.Save(context.Background(), agent); err != nil {
 		t.Fatalf("seed agent: %v", err)
 	}
 	return agent

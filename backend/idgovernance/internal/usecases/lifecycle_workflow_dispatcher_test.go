@@ -8,24 +8,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
+	appmodule "github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/internal/db_memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
 	"github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -46,10 +45,10 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
 	workflows := igmemory.NewLifecycleWorkflowRepository()
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := usermemory.NewUserRepository()
-	groups := groupmemory.NewGroupRepository()
-	applications := appmemory.NewApplicationRepository()
-	assignments := appmemory.NewApplicationAssignmentRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
+	groups := idmanagement.NewMemoryModule().GroupRepo
+	applications := appmodule.NewMemoryModule().Repo
+	assignments := appmodule.NewMemoryModule().AssignmentRepo
 	jobs := jobsmodule.NewJobRepository()
 
 	group := &groupdomain.Group{ID: "engineering", TenantID: "tenant-a", Name: "Engineering", MembershipType: groupdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now}
@@ -76,7 +75,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	created, err := userusecases.CreateUser(ctx, userusecases.AdminUserDeps{
+	adminUsers := idmanagement.Module{
 		UserRepo: users,
 		UserMutationCommitter: usecases.UserMutationCommitter{
 			WorkflowRepo: workflows,
@@ -84,9 +83,11 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 			UserRepo:     users,
 			Capture:      &igmemory.UserWorkflowCapture{Users: users, Runs: runs},
 		},
+	}.AdminUsers(idmanagement.LifecycleDeps{
 		PasswordHasher:      testing_passwords.NewHasher(),
-		PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
-	}, userusecases.CreateUserInput{ActorUserID: "admin", PreferredUsername: "alice", Password: "initial-password-9182", Now: now.Add(time.Minute)})
+		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
+	}, nil)
+	created, err := adminUsers.CreateUser(ctx, idmanagement.CreateUserInput{ActorUserID: "admin", PreferredUsername: "alice", Password: "initial-password-9182", Now: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +101,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), GroupRepo: groups, ApplicationRepo: applications, AssignmentRepo: assignments,
 		ApplicationAssignments: desiredStateAssignments(applications, assignments, users, groups, nil),
-		GroupMembership:        groupusecases.GroupMembershipCommands{Deps: groupusecases.AdminGroupDeps{UserRepo: users, GroupRepo: groups}, Actor: "lifecycle-workflow"},
+		GroupMembership:        idmanagement.Module{UserRepo: users, GroupRepo: groups}.GroupMembershipCommands(nil, "lifecycle-workflow"),
 	})
 	result, err := handler(ctx, claimed[0])
 	if err != nil {
@@ -129,7 +130,7 @@ func (r *failOnceJobRepository) Enqueue(ctx context.Context, in jobsports.Enqueu
 }
 
 // queuedDisableRun は tenant-a の user-1 を無効化する、job_id 未設定で queued の実行を保存する。
-func queuedDisableRun(t *testing.T, runs *igmemory.LifecycleWorkflowRunRepository, users *usermemory.UserRepository, now time.Time) *igdomain.WorkflowRun {
+func queuedDisableRun(t *testing.T, runs *igmemory.LifecycleWorkflowRunRepository, users userports.UserRepository, now time.Time) *igdomain.WorkflowRun {
 	t.Helper()
 	if users != nil {
 		user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
@@ -148,7 +149,7 @@ func queuedDisableRun(t *testing.T, runs *igmemory.LifecycleWorkflowRunRepositor
 //spec:covers EX-JOBS-008-01: 即時の投入に失敗した queued の実行を、ディスパッチャーが dedup_key=lifecycle-workflow-run:{run_id} で投入して job_id を関連付け、worker がその Job を取得してハンドラーを実行する。1 回目の投入は API プロセスの即時投入に当たり、失敗させる。2 回目は worker の定期ディスパッチャーの再走査に当たる。
 func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T) {
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	run := queuedDisableRun(t, runs, users, now)
 	jobRepo := jobsmodule.NewJobRepository()
@@ -242,7 +243,7 @@ func TestLifecycleWorkflowRunHandlerCheckpointsAndSkipsCompletedStepsOnRetry(t *
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
@@ -279,7 +280,7 @@ func TestLifecycleWorkflowRunHandlerEmitsRunStartedAndRunSucceeded(t *testing.T)
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
@@ -326,7 +327,7 @@ func TestLifecycleWorkflowRunHandlerAllStepsFailedEmitsRunFailed(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
@@ -368,7 +369,7 @@ func TestLifecycleWorkflowRunHandlerMixedOutcomeEmitsRunPartiallyFailed(t *testi
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
@@ -405,8 +406,8 @@ func TestLifecycleWorkflowRunHandlerAddGroupMemberNoOpWhenAlreadyMember(t *testi
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := usermemory.NewUserRepository()
-	groups := groupmemory.NewGroupRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
+	groups := idmanagement.NewMemoryModule().GroupRepo
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
@@ -450,9 +451,9 @@ func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *te
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := usermemory.NewUserRepository()
-	apps := appmemory.NewApplicationRepository()
-	assignments := appmemory.NewApplicationAssignmentRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
+	apps := appmodule.NewMemoryModule().Repo
+	assignments := appmodule.NewMemoryModule().AssignmentRepo
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
@@ -487,9 +488,9 @@ func TestLifecycleWorkflowRunHandlerAssignApplicationUpdatesADifferentVisibility
 	ctx := context.Background()
 	now := time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := usermemory.NewUserRepository()
-	apps := appmemory.NewApplicationRepository()
-	assignments := appmemory.NewApplicationAssignmentRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
+	apps := appmodule.NewMemoryModule().Repo
+	assignments := appmodule.NewMemoryModule().AssignmentRepo
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
@@ -517,7 +518,7 @@ func TestLifecycleWorkflowRunHandlerAssignApplicationUpdatesADifferentVisibility
 	}
 	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), ApplicationRepo: apps, AssignmentRepo: assignments,
-		ApplicationAssignments: desiredStateAssignments(apps, assignments, users, groupmemory.NewGroupRepository(), nil),
+		ApplicationAssignments: desiredStateAssignments(apps, assignments, users, idmanagement.NewMemoryModule().GroupRepo, nil),
 	})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
@@ -547,7 +548,7 @@ func TestLifecycleWorkflowRunHandlerSendsCatalogTemplateForSendEmail(t *testing.
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	email := "alice@example.test"
 	locale := "ja"
 	user := &userdomain.User{
@@ -599,7 +600,7 @@ func TestLifecycleWorkflowRunHandlerSendsCatalogTemplateForSendEmail(t *testing.
 
 // workflowUserLifecycle は worker と同じく、disable_user と enable_user を IdManagement の操作として行う。
 func workflowUserLifecycle(users userports.UserRepository) igports.UserLifecycle {
-	return userusecases.UserLifecycleCommands{Deps: userusecases.AdminUserDeps{UserRepo: users}, Actor: "lifecycle-workflow"}
+	return idmanagement.Module{UserRepo: users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, nil, "lifecycle-workflow")
 }
 
 // testJobEnqueuer は、repo へジョブを作り、上限のないクォータで数え、イベントを捨てる投入器を返す。

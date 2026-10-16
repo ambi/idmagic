@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
@@ -50,7 +51,7 @@ func (h *e2eHarness) reconcileDeps() usecases.ReconcileDeps {
 // provisionActiveUser はイベント同期で User を作り、下流へ作成を反映する。
 func (h *e2eHarness) provisionActiveUser(username string) string {
 	h.t.Helper()
-	user, err := userusecases.CreateUser(testing_tenant.Default(context.Background()), h.adminUserDeps, userusecases.CreateUserInput{
+	user, err := h.adminUsers().CreateUser(testing_tenant.Default(context.Background()), idmanagement.CreateUserInput{
 		PreferredUsername: username, Password: "correct-horse-battery-staple-9", Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -105,9 +106,9 @@ func TestE2E_ReconcileDeactivatesAUserDisabledWithoutCapture(t *testing.T) {
 	h.mapActive()
 	userID := h.provisionActiveUser("reconcile-uncaptured")
 
-	withoutCapture := h.adminUserDeps
+	withoutCapture := h.idm
 	withoutCapture.ProvisioningNotifier = nil
-	if _, err := userusecases.SetUserDisabled(testing_tenant.Default(context.Background()), withoutCapture, "actor", userID, true, time.Now().UTC()); err != nil {
+	if _, err := withoutCapture.AdminUsers(h.lifecycle, nil).SetUserDisabled(testing_tenant.Default(context.Background()), "actor", userID, true, time.Now().UTC()); err != nil {
 		t.Fatalf("SetUserDisabled() error = %v", err)
 	}
 	h.assertNoPendingTask(userID)
@@ -121,9 +122,9 @@ func TestE2E_ReconcileRecoversAFailedCapture(t *testing.T) {
 	h.mapActive()
 	userID := h.provisionActiveUser("reconcile-failed-capture")
 
-	failingCapture := h.adminUserDeps
+	failingCapture := h.idm
 	failingCapture.ProvisioningNotifier = failingNotifier{}
-	if _, err := userusecases.SetUserDisabled(testing_tenant.Default(context.Background()), failingCapture, "actor", userID, true, time.Now().UTC()); err != nil {
+	if _, err := failingCapture.AdminUsers(h.lifecycle, nil).SetUserDisabled(testing_tenant.Default(context.Background()), "actor", userID, true, time.Now().UTC()); err != nil {
 		t.Fatalf("SetUserDisabled() error = %v, want the change to commit despite the failed capture", err)
 	}
 	user, err := h.userRepo.FindBySub(testing_tenant.Default(context.Background()), userID)

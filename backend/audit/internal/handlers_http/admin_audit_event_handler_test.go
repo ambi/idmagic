@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/audit"
@@ -28,7 +30,6 @@ import (
 	auditusecases "github.com/ambi/idmagic/backend/audit/internal/usecases"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -85,9 +86,9 @@ func (r *singleTenantRepo) Delete(_ context.Context, _ string) error            
 
 func newAuditAdminServer(t *testing.T, actor *userdomain.User, events []*auditports.AuditEventRecord) *echo.Echo {
 	t.Helper()
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	if actor != nil {
-		userRepo.Seed(actor)
+		_ = userRepo.Save(context.Background(), actor)
 	}
 	auditStore := auditmemory.NewAuditEventStore(0)
 	for _, ev := range events {
@@ -158,9 +159,9 @@ func TestAdminAuditEventsResolvesUsernameToUserID(t *testing.T) {
 	// username を持たないため、username=... は検索時に user_id へ解決してから絞り込む。
 	admin := auditUser("user_admin", "acme", []string{"admin"})
 	target := auditUser("alice", "acme", []string{})
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(admin)
-	userRepo.Seed(target)
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), admin)
+	_ = userRepo.Save(context.Background(), target)
 	now := time.Now().UTC()
 	events := []*auditports.AuditEventRecord{
 		auditEvent("acme", "UserAuthenticated", "alice", now),
@@ -195,8 +196,8 @@ func TestAdminAuditEventsUnknownUsernameReturnsEmptyNotError(t *testing.T) {
 	// wi-147: 該当ユーザーが存在しない username は 0 件を返す。フィルタ無視で全件返す・
 	// エラーにするのどちらでもない。
 	admin := auditUser("user_admin", "acme", []string{"admin"})
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(admin)
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), admin)
 	now := time.Now().UTC()
 	auditStore := auditmemory.NewAuditEventStore(0)
 	_ = auditStore.Append(context.Background(), auditEvent("acme", "UserAuthenticated", "alice", now))

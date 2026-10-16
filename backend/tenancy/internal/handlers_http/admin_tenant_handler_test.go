@@ -17,12 +17,13 @@ import (
 	"testing"
 	"time"
 
-	authhttpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	oauth2http "github.com/ambi/idmagic/backend/oauth2/handlers_http"
+	"github.com/ambi/idmagic/backend/oauth2"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -96,12 +97,12 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 		}
 	}
 
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	actor := &userdomain.User{
 		ID: "ops", PreferredUsername: "ops", TenantID: domain.DefaultTenantID,
 		Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	}
-	userRepo.Seed(actor)
+	_ = userRepo.Save(context.Background(), actor)
 
 	quotas := &observedQuotaRepository{QuotaRepository: memory.NewQuotaRepository()}
 	seeded := quotaTestSeededUsers
@@ -110,11 +111,11 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 	}
 
 	authn := &support.Authenticator{
-		Principals: idmhttpdeps.Principals{Users: userRepo},
-		Sessions: authhttpdeps.SessionAuthentications{Resolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
+		Principals: idmanagement.Module{UserRepo: userRepo}.Principals(),
+		Sessions: authentication.Module{AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
 			UserID: actor.ID, AuthTime: now.Unix(), AMR: []string{"pwd"},
-		}}},
-		AccessTokens: oauth2http.ResourceAccessTokens{Introspector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}},
+		}}}.SessionAuthentications(),
+		AccessTokens: oauth2.Module{TokenIntrospector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}}.ResourceAccessTokens(nil, nil),
 	}
 	e := echo.New()
 	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", testing_tenant.ResolveDefault), tenancyhttp.Deps{
@@ -142,8 +143,8 @@ func TestUpdateTenantQuotaHTTPContractRefusesAuthenticationAndScope(t *testing.T
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			srv := newQuotaControlPlaneServer(t)
-			srv.authn.Sessions = authhttpdeps.SessionAuthentications{Resolver: &fakeAuthnResolver{}}
-			srv.authn.AccessTokens = oauth2http.ResourceAccessTokens{Introspector: staticIntrospector{sub: "ops", scope: tc.scope}}
+			srv.authn.Sessions = authentication.Module{AuthnResolver: &fakeAuthnResolver{}}.SessionAuthentications()
+			srv.authn.AccessTokens = oauth2.Module{TokenIntrospector: staticIntrospector{sub: "ops", scope: tc.scope}}.ResourceAccessTokens(nil, nil)
 			rec := srv.updateQuota(func(req *http.Request) {
 				withBrowserCredentials(quotaTestIssuer, "token", "token")(req)
 				if tc.scope != "" {

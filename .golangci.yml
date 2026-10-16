@@ -123,14 +123,14 @@ linters:
           - nilnil
       # Authentication resolvers use nil result + nil error for
       # "not authenticated / not applicable" by port contract.
-      - path: backend/authentication/usecases/(demo_header_resolver|session_manager)\.go
+      - path: backend/authentication/internal/usecases/(demo_header_resolver|session_manager)\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
       # A client with no bound Agent is the ordinary case on every token
       # issuance path, not an error: ResolveIssuableAgent passes through
       # AgentRepository.FindByClientID's (nil, nil) not-bound contract.
-      - path: backend/oauth2/usecases/agent_issuance\.go
+      - path: backend/oauth2/internal/usecases/agent_issuance\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
@@ -141,12 +141,12 @@ linters:
           - nilnil
       # normalizeGroupEmail's (nil, nil) is the valid "no email set" case, not a
       # suppressed error (wi-315).
-      - path: backend/idmanagement/group/usecases/admin_groups\.go
+      - path: backend/idmanagement/internal/group/usecases/admin_groups\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
       # Test repositories mirror production Find* not-found contracts.
-      - path: backend/oauth2/handlers_http/userinfo_handler_test\.go
+      - path: backend/oauth2/internal/handlers_http/userinfo_handler_test\.go
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil

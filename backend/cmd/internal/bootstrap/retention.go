@@ -9,10 +9,6 @@ import (
 	"fmt"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
-	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
-	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -22,27 +18,20 @@ func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	audit, _ := deps.Audit.AuditEventRepo.(authusecases.AuditEventPurger)
-	buckets, _ := deps.Authentication.AuthEventBucketStore.(authusecases.AuthEventBucketPurger)
-	sessions, _ := deps.Authentication.SessionStore.(authusecases.SessionPurger)
-	knownDevices, _ := deps.Authentication.KnownSignInDeviceRepo.(authusecases.KnownDevicePurger)
-	stores := authusecases.RetentionStores{
-		Audit: audit, Buckets: buckets, Sessions: sessions, KnownDevices: knownDevices,
+	res, ran, err := deps.Authentication.RunRetentionSweep(ctx, deps.Audit.AuditEventRepo, now)
+	if err != nil {
+		return err
 	}
-	if !stores.Empty() {
-		res, err := authusecases.RunRetentionSweep(ctx, stores, authusecases.DefaultRetentionPolicy(), now)
-		if err != nil {
-			return err
-		}
+	if ran {
 		logging.Info(ctx, "retention sweep completed",
 			"deleted_audit_events", res.AuditEvents, "deleted_buckets", res.Buckets,
 			"deleted_sessions", res.Sessions, "deleted_known_devices", res.KnownDevices)
 	}
-	if artifacts, ok := deps.IdManagement.CSVArtifacts.(idmports.CSVArtifactPurger); ok {
-		deleted, err := idmusecases.PurgeExpiredCSVArtifacts(ctx, artifacts, now)
-		if err != nil {
-			return err
-		}
+	deleted, purged, err := deps.IdManagement.PurgeExpiredCSVArtifacts(ctx, now)
+	if err != nil {
+		return err
+	}
+	if purged {
 		logging.Info(ctx, "csv artifact retention sweep completed", "deleted_csv_artifacts", deleted)
 	}
 	if deps.Tenancy.TenantRepo != nil && deps.IdManagement.UserRepo != nil {
@@ -60,11 +49,11 @@ func purgeExpiredUsers(ctx context.Context, deps *Dependencies, now time.Time) e
 		return err
 	}
 	//nolint:contextcheck // Batch events use the bounded independent audit context.
-	commands := deps.UserLifecycleCommands(deps.NewEmitFunc(logging.Default()), "system")
+	commands := deps.IdManagement.UserLifecycleCommands(deps.UserLifecycleDeps(), deps.ReactiveEmit(deps.NewEmitFunc(logging.Default())), "system")
 	var failures []error
 	for _, tenant := range tenants {
 		tenantCtx := tenantports.WithTenant(ctx, tenant, "", "")
-		if err := userusecases.PurgeExpiredSoftDeleted(tenantCtx, commands.Deps, now); err != nil {
+		if err := commands.PurgeExpiredSoftDeleted(tenantCtx, now); err != nil {
 			logging.Error(tenantCtx, "user purge failed", "error", err, "tenant_id", tenant.ID)
 			failures = append(failures, fmt.Errorf("purge expired users of tenant %s: %w", tenant.ID, err))
 		}

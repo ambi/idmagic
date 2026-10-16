@@ -4,6 +4,7 @@ package handlers_http_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,13 +12,12 @@ import (
 	"testing"
 	"time"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/authentication"
+
 	"github.com/ambi/idmagic/backend/idgovernance"
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/internal/db_memory"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -27,22 +27,22 @@ import (
 
 func newAdminLifecycleWorkflowHandler(t *testing.T) *echo.Echo {
 	t.Helper()
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
-	groupRepo := groupmemory.NewGroupRepository()
+	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	now := time.Now().UTC()
-	userRepo.Seed(&userdomain.User{
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	userRepo.Seed(&userdomain.User{
+	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID: "alice", PreferredUsername: "alice", PasswordHash: "unused",
 		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now,
 	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:        "http://idp.test",
-		AuthnResolver: authusecases.DemoHeaderResolver{},
+		AuthnResolver: authentication.DemoHeaderResolver{},
 		IdManagement: idmanagement.Module{
 			UserRepo: userRepo, GroupRepo: groupRepo,
 		},

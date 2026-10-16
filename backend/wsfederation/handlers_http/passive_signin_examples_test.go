@@ -19,7 +19,6 @@ import (
 	dsig "github.com/russellhaering/goxmldsig"
 
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -39,7 +38,7 @@ const (
 func behindAnApplication(t *testing.T, assigned bool) func(*httpadapter.Deps) {
 	t.Helper()
 	now := time.Now().UTC()
-	applications := appmemory.NewApplicationRepository()
+	applications := application.NewMemoryModule().Repo
 	app := &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ID: "wsfed-app", Name: "WS-Fed RP",
 		Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive, CreatedAt: now, UpdatedAt: now,
@@ -48,7 +47,7 @@ func behindAnApplication(t *testing.T, assigned bool) func(*httpadapter.Deps) {
 	if err := applications.Save(context.Background(), app); err != nil {
 		t.Fatal(err)
 	}
-	assignments := appmemory.NewApplicationAssignmentRepository()
+	assignments := application.NewMemoryModule().AssignmentRepo
 	if assigned {
 		if err := assignments.Save(context.Background(), &appdomain.ApplicationAssignment{
 			TenantID: tenancydomain.DefaultTenantID, ApplicationID: app.ID,

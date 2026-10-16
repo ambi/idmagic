@@ -8,12 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/tenancy"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -102,13 +103,13 @@ func TestTenantAdminRequiresSystemAdmin(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	now := time.Now().UTC()
-	users.Seed(&userdomain.User{
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "ops", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "ops",
 		PasswordHash: "hash", Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	users.Seed(&userdomain.User{
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "hash", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -143,8 +144,8 @@ func TestCrossTenantSessionRejectsSystemAdmin(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "acme-admin", TenantID: "acme", PreferredUsername: "acme-admin",
 		PasswordHash: "hash", Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -176,11 +177,11 @@ func TestControlPlaneRoutesUnreachableFromOtherRealm(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	users := usermemory.NewUserRepository()
+	users := idmanagement.NewMemoryModule().UserRepo
 	// system_admin ロールを acme テナント所属ユーザーに付与しても、
 	// requireSystemAdmin は user.TenantID == DefaultTenantID を要求するため
 	// 拒否されるはず (テナント境界がロール名より優先される)。
-	users.Seed(&userdomain.User{
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "acme-admin", TenantID: "acme", PreferredUsername: "acme-admin",
 		PasswordHash: "hash", Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	})
@@ -212,8 +213,8 @@ func TestControlPlaneGetTenantResolvesPathParamNotRequestRealm(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "ops", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "ops",
 		PasswordHash: "hash", Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	})

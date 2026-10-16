@@ -22,7 +22,7 @@ gomutants 0.6.1 は、変異体ごとに `-overlay` で書き換えたソース�
 - **実行時間**：変異体ごとのコンパイルとリンクが実行時間の大半を占める。
 - **共有ビルドキャッシュの肥大**：変異体ごとのビルド結果は二度と使われないのに、共有の Go ビルドキャッシュに書き込まれる。go コマンドの自動掃除は 5 日間使われていないエントリだけを消し、容量の上限を持たない。そのため、変異テストを繰り返すと数十 GiB に達し、ディスクが埋まりかける。
 
-2026-10-06 に `backend/oauth2/token/usecases`（約 1,700 行、変異体 216 体）を `mise run test-go-mutation` の既定の設定で実行したところ、113 秒かかり、共有ビルドキャッシュに 2,769 件、454 MiB が加わった。
+2026-10-06 に `backend/oauth2/internal/token/usecases`（約 1,700 行、変異体 216 体）を `mise run test-go-mutation` の既定の設定で実行したところ、113 秒かかり、共有ビルドキャッシュに 2,769 件、454 MiB が加わった。
 
 gomutants の作者は、全変異体を 1 回のコンパイルに埋め込み、どの変異体を有効にするかを実行時に環境変数で選ぶ mutant schemata を、`--schemata` オプションとして開発している（[gomutants の Pull Request #101](https://github.com/gomutants/gomutants/pull/101)、2026-10-06 時点で下書き）。
 
@@ -52,7 +52,7 @@ schemata のビルドが失敗した変異体は「判定不能」に格下げ�
 ### 開発中の版での実測
 
 2026-10-06 に、Pull Request #101 の最新コミット（`v0.6.2-0.20260916024012-7de2bcb806d4`）を一時ディレクトリにインストールして測った。
-対象は `backend/oauth2/token/usecases` で、worker 数 2、5 種類の変異、キャッシュ無効という既定の設定に `--schemata` だけを足した。
+対象は `backend/oauth2/internal/token/usecases` で、worker 数 2、5 種類の変異、キャッシュ無効という既定の設定に `--schemata` だけを足した。
 
 | 測定項目 | 0.6.1 | `--schemata` |
 | --- | --- | --- |
@@ -85,7 +85,7 @@ not viable となる変異体は schemata から外れ、従来のビルドで�
 1. リリース版の変更履歴で、`--schemata` の名前、既定値、Pull Request #101 からの変更点を確かめる。既定で有効になっていれば、オプションを付ける代わりにその既定を確認する。
 2. `mise-config.test.ts` に `--schemata` と新しい固定バージョンを要求する表明を加え、現在の設定に対する RED を確認する。
 3. `mise.toml` の固定バージョンと三つのタスクを更新する。
-4. canary と `backend/oauth2/token/usecases` を実行し、実行時間、共有ビルドキャッシュの増加、0.6.1 の判定との一致を記録する。
+4. canary と `backend/oauth2/internal/token/usecases` を実行し、実行時間、共有ビルドキャッシュの増加、0.6.1 の判定との一致を記録する。
 5. テスト方針を更新する。
 
 リリース版が `--schemata` を含まずに Pull Request #101 が閉じられた場合は、この work item を中止し、「採用しない案」から選び直す。
@@ -102,7 +102,7 @@ not viable となる変異体は schemata から外れ、従来のビルドで�
 
 - `mise run test-tools-file -- check/src/mise-config.test.ts`
 - `mise run check-go-mutation-tool`
-- `mise run test-go-mutation -- backend/oauth2/token/usecases` を 0.6.1 と新しい版で実行し、変異体 id ごとの判定を比べる。前後で `go env GOCACHE` 配下のファイル数と容量を測る。
+- `mise run test-go-mutation -- backend/oauth2/internal/token/usecases` を 0.6.1 と新しい版で実行し、変異体 id ごとの判定を比べる。前後で `go env GOCACHE` 配下のファイル数と容量を測る。
 - `mise run test-go-mutation-mutant` で、既知の生き残り 1 体を再実行する。
 - `mise run verify`
 

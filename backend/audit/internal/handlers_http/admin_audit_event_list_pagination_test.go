@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/audit"
 	auditmemory "github.com/ambi/idmagic/backend/audit/internal/db_memory"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/labstack/echo/v5"
@@ -26,8 +27,8 @@ import (
 func newAuditAdminPaginationServer(t *testing.T, events []*auditports.AuditEventRecord) *echo.Echo {
 	t.Helper()
 	actor := auditUser("admin", "acme", []string{"admin"})
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(actor)
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), actor)
 	auditStore := auditmemory.NewAuditEventStore(0)
 	for _, ev := range events {
 		if err := auditStore.Append(t.Context(), ev); err != nil {
@@ -274,8 +275,8 @@ func (r *countFailingAuditRepo) Count(context.Context, auditports.AuditEventQuer
 //spec:covers EX-AUDIT-004-03: 正確な件数の取得に失敗したとき、0 件として成功させず、リクエスト全体をサーバーエラーで失敗させることを固定する。
 func TestAdminAuditEventListFailsClosedWhenCountFails(t *testing.T) {
 	actor := auditUser("admin", "acme", []string{"admin"})
-	userRepo := usermemory.NewUserRepository()
-	userRepo.Seed(actor)
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	_ = userRepo.Save(context.Background(), actor)
 	store := auditmemory.NewAuditEventStore(0)
 	if err := store.Append(t.Context(), auditEvent("acme", "TypeA", "admin", time.Now().UTC())); err != nil {
 		t.Fatalf("append: %v", err)

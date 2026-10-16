@@ -1,6 +1,6 @@
 // wi-45 T008: end-to-end verification that a real IdManagement mutation
 // reaches a real downstream over HTTP through the actual capture → execute
-// wiring (userusecases.CreateUser/UpdateUser/SetUserDisabled/DeleteUser →
+// wiring (idmanagement.AdminUsers CreateUser/UpdateUser/SetUserDisabled/DeleteUser →
 // provisioning.UserMutationNotifier → CaptureLifecycleEvent →
 // ExecuteTask → scim.Client → fake SCIM downstream). This intentionally
 // bypasses the Jobs queue/dispatcher (already covered end-to-end by
@@ -23,14 +23,15 @@ import (
 	"testing"
 	"time"
 
-	memoryauth "github.com/ambi/idmagic/backend/authentication/password/db_memory"
+	"github.com/ambi/idmagic/backend/authentication"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	scim "github.com/ambi/idmagic/backend/provisioning/internal/client_scim"
 	memoryprov "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
@@ -132,13 +133,14 @@ func (f *fakeSCIMDownstream) find(method, path string) *recordedRequest {
 // production (minus the HTTP layer and Jobs queue).
 type e2eHarness struct {
 	t               *testing.T
-	userRepo        *usermemory.UserRepository
+	userRepo        userports.UserRepository
 	connRepo        *memoryprov.ProvisioningConnectionRepository
 	taskRepo        *memoryprov.ProvisioningTaskRepository
 	linkRepo        *memoryprov.RemoteResourceLinkRepository
-	groupRepo       *groupmemory.GroupRepository
+	groupRepo       groupports.GroupRepository
 	groupNotifier   usecases.GroupMutationNotifier
-	adminUserDeps   userusecases.AdminUserDeps
+	idm             idmanagement.Module
+	lifecycle       idmanagement.LifecycleDeps
 	executeTaskDeps usecases.ExecuteTaskDeps
 	downstream      *fakeSCIMDownstream
 	server          *httptest.Server
@@ -154,8 +156,8 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 	server := httptest.NewServer(downstream.handler())
 	t.Cleanup(server.Close)
 
-	userRepo := usermemory.NewUserRepository()
-	groupRepo := groupmemory.NewGroupRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	connRepo := memoryprov.NewProvisioningConnectionRepository()
 	taskRepo := memoryprov.NewProvisioningTaskRepository()
 	linkRepo := memoryprov.NewRemoteResourceLinkRepository()
@@ -164,11 +166,10 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 	notifier := usecases.UserMutationNotifier{CaptureDeps: captureDeps}
 	groupNotifier := usecases.GroupMutationNotifier{CaptureDeps: captureDeps}
 
-	adminUserDeps := userusecases.AdminUserDeps{
-		UserRepo:             userRepo,
-		PasswordHasher:       testing_passwords.NewHasher(),
-		PasswordHistoryRepo:  memoryauth.NewPasswordHistoryRepository(),
-		ProvisioningNotifier: notifier,
+	idm := idmanagement.Module{UserRepo: userRepo, ProvisioningNotifier: notifier}
+	lifecycle := idmanagement.LifecycleDeps{
+		PasswordHasher:      testing_passwords.NewHasher(),
+		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 	}
 
 	executeTaskDeps := usecases.ExecuteTaskDeps{
@@ -187,11 +188,16 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 	h := &e2eHarness{
 		t: t, userRepo: userRepo, connRepo: connRepo, taskRepo: taskRepo, linkRepo: linkRepo,
 		groupRepo: groupRepo, groupNotifier: groupNotifier,
-		adminUserDeps: adminUserDeps, executeTaskDeps: executeTaskDeps, downstream: downstream, server: server,
+		idm: idm, lifecycle: lifecycle, executeTaskDeps: executeTaskDeps, downstream: downstream, server: server,
 		tenantID: tenancydomain.DefaultTenantID, connectionID: "app-e2e",
 	}
 	h.registerActiveConnection()
 	return h
+}
+
+// adminUsers は管理 API と同じ規則で User を変え、変更をプロビジョニングへ通知する操作を返す。
+func (h *e2eHarness) adminUsers() idmanagement.AdminUsers {
+	return h.idm.AdminUsers(h.lifecycle, nil)
 }
 
 func (h *e2eHarness) registerActiveConnection() {
@@ -252,7 +258,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 
 	// 1. Create: IdManagement.CreateUser -> real ProvisioningNotifier -> real
 	// CaptureLifecycleEvent -> real ExecuteTask -> real scim.Client POST.
-	user, err := userusecases.CreateUser(ctx, h.adminUserDeps, userusecases.CreateUserInput{
+	user, err := h.adminUsers().CreateUser(ctx, idmanagement.CreateUserInput{
 		PreferredUsername: "alice-e2e", Password: "correct-horse-battery-staple-9", Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -275,7 +281,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 
 	// 2. Update: UpdateUser -> ProvisioningUserAttributesChanged -> update task -> PUT/PATCH.
 	newName := "Alice E2E"
-	if _, err := userusecases.UpdateUser(ctx, h.adminUserDeps, userusecases.UpdateUserInput{
+	if _, err := h.adminUsers().UpdateUser(ctx, idmanagement.UpdateUserInput{
 		Sub: user.ID, Name: &newName, Now: time.Now().UTC(),
 	}); err != nil {
 		t.Fatalf("UpdateUser() error = %v", err)
@@ -289,7 +295,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 	}
 
 	// 3. Disable: SetUserDisabled(true) -> deactivate task.
-	if _, err := userusecases.SetUserDisabled(ctx, h.adminUserDeps, "actor", user.ID, true, time.Now().UTC()); err != nil {
+	if _, err := h.adminUsers().SetUserDisabled(ctx, "actor", user.ID, true, time.Now().UTC()); err != nil {
 		t.Fatalf("SetUserDisabled() error = %v", err)
 	}
 	disabled := h.executePendingTask(user.ID)
@@ -298,7 +304,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 	}
 
 	// 4. Delete: DeleteUser -> deprovision per policy (on_delete=deactivate here) -> task.
-	if err := userusecases.DeleteUser(ctx, h.adminUserDeps, userusecases.DeleteUserInput{
+	if err := h.adminUsers().DeleteUser(ctx, idmanagement.DeleteUserInput{
 		ActorUserID: "actor", Sub: user.ID, Now: time.Now().UTC(),
 	}); err != nil {
 		t.Fatalf("DeleteUser() error = %v", err)
@@ -328,7 +334,7 @@ func TestE2E_DeleteWithDeleteOnPolicy_SendsRealDELETE(t *testing.T) {
 		t.Fatalf("Update() error = %v", err)
 	}
 
-	user, err := userusecases.CreateUser(ctx, h.adminUserDeps, userusecases.CreateUserInput{
+	user, err := h.adminUsers().CreateUser(ctx, idmanagement.CreateUserInput{
 		PreferredUsername: "bob-e2e", Password: "correct-horse-battery-staple-9", Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -336,7 +342,7 @@ func TestE2E_DeleteWithDeleteOnPolicy_SendsRealDELETE(t *testing.T) {
 	}
 	h.executePendingTask(user.ID)
 
-	if err := userusecases.DeleteUser(ctx, h.adminUserDeps, userusecases.DeleteUserInput{
+	if err := h.adminUsers().DeleteUser(ctx, idmanagement.DeleteUserInput{
 		ActorUserID: "actor", Sub: user.ID, Now: time.Now().UTC(),
 	}); err != nil {
 		t.Fatalf("DeleteUser() error = %v", err)
@@ -372,8 +378,8 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	userRepo := usermemory.NewUserRepository()
-	groupRepo := groupmemory.NewGroupRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
+	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	connRepo := memoryprov.NewProvisioningConnectionRepository()
 	taskRepo := memoryprov.NewProvisioningTaskRepository()
 	linkRepo := memoryprov.NewRemoteResourceLinkRepository()
@@ -589,7 +595,7 @@ func TestE2E_GroupMembership_PatchesOnlyProvisionedMembers(t *testing.T) {
 
 	group := h.seedGroup()
 	// 1 人は下流へ provision 済み、もう 1 人はまだである。
-	provisioned, err := userusecases.CreateUser(ctx, h.adminUserDeps, userusecases.CreateUserInput{
+	provisioned, err := h.adminUsers().CreateUser(ctx, idmanagement.CreateUserInput{
 		PreferredUsername: "alice-member", Password: "correct-horse-battery-staple-9", Now: now,
 	})
 	if err != nil {
@@ -906,7 +912,7 @@ func TestE2E_GroupMembership_NeverSendsRemovalWhenAMemberLeaves(t *testing.T) {
 // provisionUser は User を 1 人作り、下流へ provision して id を返す。
 func (h *e2eHarness) provisionUser(username string) string {
 	h.t.Helper()
-	created, err := userusecases.CreateUser(testing_tenant.Default(context.Background()), h.adminUserDeps, userusecases.CreateUserInput{
+	created, err := h.adminUsers().CreateUser(testing_tenant.Default(context.Background()), idmanagement.CreateUserInput{
 		PreferredUsername: username, Password: "correct-horse-battery-staple-9", Now: time.Now().UTC(),
 	})
 	if err != nil {

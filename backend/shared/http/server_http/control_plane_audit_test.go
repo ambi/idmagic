@@ -8,6 +8,7 @@ package server_http
 // 確かめられないため、書き込みと読み出しの両方を外部入口に置く。
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -17,10 +18,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	"github.com/ambi/idmagic/backend/audit"
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -64,8 +66,8 @@ func newControlPlaneAuditServer(t *testing.T) *controlPlaneAuditServer {
 		}
 	}
 
-	users := usermemory.NewUserRepository()
-	users.Seed(controlPlaneTestUser(controlPlaneAuditActor, tenancydomain.DefaultTenantID, "system_admin"))
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), controlPlaneTestUser(controlPlaneAuditActor, tenancydomain.DefaultTenantID, "system_admin"))
 
 	auditStore := audit.NewAuditEventStore(0)
 	emit := func(event spec.DomainEvent) {

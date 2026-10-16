@@ -18,8 +18,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -33,9 +34,9 @@ import (
 
 func newBrandingServer(t *testing.T, actor *userdomain.User, tenants ...*domain.Tenant) (*echo.Echo, *memory.TenantBrandingRepository, *memory.TenantBrandingAssetStore, *[]spec.DomainEvent) {
 	t.Helper()
-	userRepo := usermemory.NewUserRepository()
+	userRepo := idmanagement.NewMemoryModule().UserRepo
 	if actor != nil {
-		userRepo.Seed(actor)
+		_ = userRepo.Save(context.Background(), actor)
 	}
 	tenantRepo := memory.NewTenantRepository()
 	for _, tenant := range tenants {

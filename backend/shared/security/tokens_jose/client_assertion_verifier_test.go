@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
-
-	memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 )
 
 func signClientAssertion(
@@ -70,7 +68,7 @@ func TestVerifyClientAssertion(t *testing.T) {
 	}
 
 	t.Run("accepts valid assertion and rejects replay", func(t *testing.T) {
-		replay := memory.NewClientAssertionReplayStore()
+		replay := newReplayStoreFake()
 		assertion := signClientAssertion(t, key, audience, "jti-1", now, 2*time.Minute)
 		if _, err := VerifyClientAssertion(
 			context.Background(), assertion, clientID, []string{audience}, keysFn, replay, now, nil,
@@ -85,7 +83,7 @@ func TestVerifyClientAssertion(t *testing.T) {
 	})
 
 	t.Run("rejects wrong audience and excessive lifetime", func(t *testing.T) {
-		replay := memory.NewClientAssertionReplayStore()
+		replay := newReplayStoreFake()
 		wrongAud := signClientAssertion(t, key, "https://other.example", "jti-2", now, time.Minute)
 		if _, err := VerifyClientAssertion(
 			context.Background(), wrongAud, clientID, []string{audience}, keysFn, replay, now, nil,
@@ -101,7 +99,7 @@ func TestVerifyClientAssertion(t *testing.T) {
 	})
 
 	t.Run("invalid signature does not reserve jti", func(t *testing.T) {
-		replay := memory.NewClientAssertionReplayStore()
+		replay := newReplayStoreFake()
 		attacker, err := rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
 			t.Fatal(err)

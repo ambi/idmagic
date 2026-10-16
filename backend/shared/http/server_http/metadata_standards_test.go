@@ -20,6 +20,7 @@ package server_http_test
 // トークンを検証できる」という当の対応関係が観測から消える。
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
@@ -41,13 +42,9 @@ import (
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	"github.com/ambi/idmagic/backend/authentication"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -99,9 +96,9 @@ func newMetadataFixture(t *testing.T) *mdFixture {
 	t.Helper()
 	now := time.Now().UTC()
 
-	clients := oauth2memory.NewClientRepository()
+	clients := oauth2.NewMemoryModule().ClientRepo
 	secretHash := domain.HashClientSecret(mdClientSecret)
-	clients.Seed(&domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: mdClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{mdRedirectURI},
@@ -116,18 +113,18 @@ func newMetadataFixture(t *testing.T) *mdFixture {
 		CreatedAt:                now,
 	})
 
-	resourceServers := oauth2memory.NewMcpResourceServerRepository()
-	resourceServers.Seed(&domain.McpResourceServer{
+	resourceServers := oauth2.NewMemoryModule().McpResourceServerRepo
+	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
 		TenantID: tenancydomain.DefaultTenantID, ID: "mcp-tools",
 		Resource: mdResourceA, Name: "Tools", Scopes: mdScopesA,
 		State: domain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now,
 	})
-	resourceServers.Seed(&domain.McpResourceServer{
+	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
 		TenantID: tenancydomain.DefaultTenantID, ID: "mcp-reports",
 		Resource: mdResourceB, Name: "Reports", Scopes: mdScopesB,
 		State: domain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now,
 	})
-	resourceServers.Seed(&domain.McpResourceServer{
+	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
 		TenantID: tenancydomain.DefaultTenantID, ID: "mcp-retired",
 		Resource: mdDisabledResource, Name: "Retired", Scopes: []string{"retired:read"},
 		State: domain.McpResourceServerDisabled, CreatedAt: now, UpdatedAt: now,
@@ -139,8 +136,8 @@ func newMetadataFixture(t *testing.T) *mdFixture {
 		t.Fatal(err)
 	}
 	email := "alice@example.test"
-	users := usermemory.NewUserRepository()
-	users.Seed(&userdomain.User{
+	users := idmanagement.NewMemoryModule().UserRepo
+	_ = users.Save(context.Background(), &userdomain.User{
 		ID: mdUserID, PreferredUsername: mdUsername, PasswordHash: passwordHash,
 		Email: &email, EmailVerified: true,
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
@@ -159,7 +156,7 @@ func newMetadataFixture(t *testing.T) *mdFixture {
 		t.Fatal(err)
 	}
 	signer := tokensJOSE.NewJWTSigner(mdIssuer, keyStore)
-	sessionManager := sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
+	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
@@ -175,15 +172,15 @@ func newMetadataFixture(t *testing.T) *mdFixture {
 		Contract: spec.CurrentRuntimeContract(),
 		OAuth2: oauth2.Module{
 			ClientRepo:                 clients,
-			ConsentRepo:                oauth2memory.NewConsentRepository(),
-			RequestStore:               oauth2memory.NewAuthorizationRequestStore(),
-			CodeStore:                  oauth2memory.NewAuthorizationCodeStore(),
-			PARStore:                   oauth2memory.NewPARStore(),
-			RefreshStore:               oauth2memory.NewRefreshTokenStore(),
+			ConsentRepo:                oauth2.NewMemoryModule().ConsentRepo,
+			RequestStore:               oauth2.NewMemoryModule().RequestStore,
+			CodeStore:                  oauth2.NewMemoryModule().CodeStore,
+			PARStore:                   oauth2.NewMemoryModule().PARStore,
+			RefreshStore:               oauth2.NewMemoryModule().RefreshStore,
 			McpResourceServerRepo:      resourceServers,
-			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
-			DpopReplayStore:            oauth2memory.NewDpopReplayStore(),
-			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
+			ClientAssertionReplayStore: oauth2.NewMemoryModule().ClientAssertionReplayStore,
+			DpopReplayStore:            oauth2.NewMemoryModule().DpopReplayStore,
+			AccessTokenDenylist:        oauth2.NewMemoryModule().AccessTokenDenylist,
 			TokenIssuer:                signer,
 			TokenIntrospector:          signer,
 		},

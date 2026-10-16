@@ -16,20 +16,20 @@ import (
 	"testing"
 	"time"
 
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	"github.com/ambi/idmagic/backend/apitoken"
 
 	"github.com/ambi/idmagic/backend/authentication"
-	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
-	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	consentmemory "github.com/ambi/idmagic/backend/oauth2/consent/db_memory"
-	consentdomain "github.com/ambi/idmagic/backend/oauth2/consent/domain"
+	consentdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
@@ -61,7 +61,7 @@ var errCharacterizedStore = errors.New("characterized store failure")
 // faultyUsers は FindBySub の n 回目以降を失敗または不在にする。認証の経路が同じ利用者を
 // 何回引くかは、どの照合で失敗が表に出るかを決めるので、回数で指定する。
 type faultyUsers struct {
-	*usermemory.UserRepository
+	userports.UserRepository
 	calls       int
 	failFrom    int
 	missingFrom int
@@ -79,7 +79,7 @@ func (r *faultyUsers) FindBySub(ctx context.Context, sub string) (*userdomain.Us
 }
 
 type faultyGroups struct {
-	*groupmemory.GroupRepository
+	groupports.GroupRepository
 	listErr error
 }
 
@@ -91,7 +91,7 @@ func (r *faultyGroups) ListGroupsByUser(ctx context.Context, tenantID, userID st
 }
 
 type faultyConsents struct {
-	*consentmemory.ConsentRepository
+	oauthports.ConsentRepository
 	findErr error
 }
 
@@ -124,8 +124,8 @@ type authCharacterization struct {
 	users        *faultyUsers
 	groups       *faultyGroups
 	consents     *faultyConsents
-	sessions     *sessionusecases.SessionManager
-	sessionStore *sessionmemory.SessionStore
+	sessions     *authentication.SessionManager
+	sessionStore sessionports.SessionStore
 	tenants      tenantports.TenantRepository
 	apiTokens    *apitoken.Service
 	echo         *echo.Echo
@@ -146,12 +146,12 @@ func newAuthCharacterization(t *testing.T) *authCharacterization {
 	}
 	signer := tokensjose.NewJWTSigner(characterizationIssuer, keyStore)
 	apiTokenRepo := apitoken.NewRepository()
-	sessionStore := sessionmemory.NewSessionStore()
-	sessions := sessionusecases.NewSessionManager(sessionStore)
+	sessionStore := authentication.NewMemoryModule(nil).SessionStore
+	sessions := authentication.Module{SessionStore: sessionStore}.NewSessionManager()
 	h := &authCharacterization{
-		users:        &faultyUsers{UserRepository: usermemory.NewUserRepository()},
-		groups:       &faultyGroups{GroupRepository: groupmemory.NewGroupRepository()},
-		consents:     &faultyConsents{ConsentRepository: consentmemory.NewConsentRepository()},
+		users:        &faultyUsers{UserRepository: idmanagement.NewMemoryModule().UserRepo},
+		groups:       &faultyGroups{GroupRepository: idmanagement.NewMemoryModule().GroupRepo},
+		consents:     &faultyConsents{ConsentRepository: oauth2.NewMemoryModule().ConsentRepo},
 		sessions:     sessions,
 		sessionStore: sessionStore,
 		tenants:      tenants,
@@ -179,7 +179,7 @@ func (h *authCharacterization) seedUser(t *testing.T, id string, active bool, ro
 	if !active {
 		status = idmdomain.UserStatusDisabled
 	}
-	h.users.Seed(&userdomain.User{
+	_ = h.users.Save(context.Background(), &userdomain.User{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: id, PasswordHash: "unused",
 		Roles: roles, Lifecycle: userdomain.UserLifecycle{Status: status, StatusChangedAt: &now},
 		CreatedAt: now, UpdatedAt: now,
@@ -218,7 +218,7 @@ func (h *authCharacterization) sessionCookie(t *testing.T, userID string) *http.
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &http.Cookie{Name: sessionusecases.SessionCookie, Value: authn.SessionID}
+	return &http.Cookie{Name: authentication.SessionCookie, Value: authn.SessionID}
 }
 
 type characterizedResponse struct {
