@@ -2,8 +2,11 @@ import { describe, expect, it } from 'bun:test'
 import {
   collectErrorCodes,
   collectEventTypes,
+  collectModelNames,
   compareWithDebt,
   findUnspecified,
+  ruleTexts,
+  sharedEventOwners,
   specifiedTexts,
 } from './unspecified-vocabulary.ts'
 
@@ -74,6 +77,57 @@ describe('specifiedTexts', () => {
     expect(texts.requirements.join('\n')).not.toContain('InvalidUserAttributeError')
     expect(texts.transitions.join('\n')).toContain('UserDisabled')
     expect(texts.transitions.join('\n')).not.toContain('GroupCreated')
+  })
+})
+
+describe('ruleTexts', () => {
+  it('reads each cross-cutting rule together with its examples and ignores the preamble', () => {
+    const rules = ruleTexts(
+      [
+        '# Feature: Cross-Module Scenarios',
+        '',
+        'CsrfFailedError の防御はここに一度だけ書く。',
+        '',
+        '## Rule: REQ-PLATFORM-004 状態変更は CSRF トークンを必要とする',
+        '',
+        '### Example: EX-PLATFORM-004-02 CSRF トークンが一致しない',
+        '',
+        '- Then 403 の `CsrfFailedError` で拒否される',
+        '',
+        '## Rule: REQ-PLATFORM-005 JSON は前方互換にデコードされる',
+        '',
+        '- Then 未知のプロパティを無視する',
+      ].join('\n'),
+    )
+    expect(rules).toHaveLength(2)
+    expect(rules[0]).toContain('CsrfFailedError')
+    expect(rules[1]).not.toContain('CsrfFailedError')
+  })
+})
+
+describe('collectModelNames', () => {
+  it('reads the names of declared models', () => {
+    expect(collectModelNames(`${TYPESPEC}\nmodel EmailSent {\n  toHash: string;\n}\n`)).toEqual([
+      'UserPendingDeletionError',
+      'InvalidUserAttributeError',
+      'InvalidGroupAttributeError',
+      'EmailSent',
+    ])
+  })
+})
+
+describe('sharedEventOwners', () => {
+  it('assigns a shared event to the module whose TypeSpec declares it and the rest to the fallback', () => {
+    const models = new Map([
+      ['authentication', new Set(['EmailSent'])],
+      ['tenancy', new Set(['TenantCreated'])],
+    ])
+    expect(sharedEventOwners(['EmailSent', 'SystemStarted'], models, 'system')).toEqual(
+      new Map([
+        ['authentication', ['EmailSent']],
+        ['system', ['SystemStarted']],
+      ]),
+    )
   })
 })
 

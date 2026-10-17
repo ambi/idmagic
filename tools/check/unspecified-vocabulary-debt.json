@@ -48,14 +48,7 @@
     "events": []
   },
   "sharedsignals": {
-    "errors": [
-      "invalid_request",
-      "insufficient_scope",
-      "invalid_origin",
-      "csrf_failed",
-      "step_up_required",
-      "unlink_denied"
-    ],
+    "errors": [],
     "events": []
   },
   "signing-keys": {
@@ -64,7 +57,7 @@
   },
   "system": {
     "errors": [],
-    "events": ["EmailSent"]
+    "events": []
   },
   "workloadidentity": {
     "errors": [],

@@ -80,6 +80,7 @@
 - 本人がメールアドレスの変更を起票したとき、IdManagement は、30 分で期限の切れる `<発行者>/account/email/verify?token=<トークン>` を確認のリンクとして送る。
 - 本人がメールアドレスの変更を起票したとき、IdManagement は、表示名付きの形式から取り出したアドレスを小文字にして、新しいアドレスとして扱う。
 - 本人が未確認の現在のアドレスと同じアドレスで起票したとき、IdManagement は、受け付ける。
+- 確認のメールの送信を試みたとき、IdManagement は、送信の成否によらず、`purpose` を `email_change`、`delivered` を送信の成否とする `EmailSent` を発行する。
 - 確認のメールの送信に失敗した場合、IdManagement は、204 を返す。
 - 有効期限内のステップアップ認証を満たさない起票を受けた場合、IdManagement は、403 と `step_up_required` で拒否する。
 - アドレスとして読めない値を指定された場合、IdManagement は、422 と `invalid_email` で拒否する。

@@ -23,9 +23,12 @@ export type VocabularyDebt = { errors: string[]; events: string[] }
 
 const ERROR_CODE = /urn:idmagic:error:([a-z0-9_]+)/g
 const DOCUMENTED_MODEL = /@doc\("((?:[^"\\]|\\.)*)"\)\s*model\s+([A-Za-z_][A-Za-z0-9_]*)/g
+const MODEL = /^model\s+([A-Za-z_][A-Za-z0-9_]*)/gm
 const EVENT_TYPE = /EventType\(\)\s+string\s*\{\s*return\s+"([A-Za-z_][A-Za-z0-9_]*)"/g
 const REQUIREMENT_HEADING = /^#{3,4} REQ-[A-Z0-9-]+/
+const RULE_HEADING = /^## Rule: REQ-[A-Z0-9-]+/
 const HEADING = /^#{1,6} /
+const SECTION_HEADING = /^#{1,2} /
 
 export function collectErrorCodes(typespec: string): ErrorCodes {
   const codes: ErrorCodes = new Map()
@@ -41,8 +44,46 @@ export function collectErrorCodes(typespec: string): ErrorCodes {
   return codes
 }
 
+export function collectModelNames(typespec: string): string[] {
+  return [...typespec.matchAll(MODEL)].map((match) => match[1] ?? '')
+}
+
 export function collectEventTypes(go: string): string[] {
   return [...go.matchAll(EVENT_TYPE)].map((match) => match[1] ?? '')
+}
+
+/**
+ * 複数のモジュールが発行する、共有の Go の木のイベントの所有者を決める。
+ * 同じ名前のモデルを TypeSpec で宣言するモジュールが所有し、どこも宣言しなければ `fallback` が所有する。
+ */
+export function sharedEventOwners(
+  events: readonly string[],
+  modelsByModule: ReadonlyMap<string, ReadonlySet<string>>,
+  fallback: string,
+): Map<string, string[]> {
+  const owners = new Map<string, string[]>()
+  for (const event of events) {
+    const owner = [...modelsByModule].find(([, models]) => models.has(event))?.[0] ?? fallback
+    owners.set(owner, [...(owners.get(owner) ?? []), event])
+  }
+  return owners
+}
+
+/**
+ * 横断的なシナリオの文書から、`## Rule: REQ-…` の見出しから次の Rule の見出しまでを読む。
+ * Rule の本文は配下の Example なので、Example の見出しでは区切らない。
+ */
+export function ruleTexts(source: string): string[] {
+  const rules: string[] = []
+  let current = -1
+  for (const line of source.split('\n')) {
+    if (SECTION_HEADING.test(line)) {
+      current = RULE_HEADING.test(line) ? rules.push(line) - 1 : -1
+    } else if (current >= 0) {
+      rules[current] += `\n${line}`
+    }
+  }
+  return rules
 }
 
 /**

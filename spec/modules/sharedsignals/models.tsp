@@ -1,31 +1,7 @@
 namespace IdMagic.Contract {
 
-@doc("リクエストに必須のパラメーターがないか不正な値を含む、または対象が他のテナントに属しており存在しないものとして扱う。OAuth2 モジュールが定める共有のエラーを、公開契約として写したもの。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_request` である。OAuth 2.0 のエンドポイントは、同じ条件を代わりに OAuthInvalidRequestError として報告する。")
-model InvalidRequestError is ProblemDetails;
-
-
 @doc("主体が操作のポリシーを満たさない。Authentication モジュールが定める共有のエラーを、公開契約として写したもの。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:access_denied` である。OAuth 2.0 のエンドポイントは、OAuth のエラーボディで答える箇所では同じ条件を OAuthAccessDeniedError として報告する。`/authorize` は、ブラウザーへ直接書くサインインのポリシーの拒否にこの形を使う。")
 model AccessDeniedError is ProblemDetails;
-
-
-@doc("提示した API アクセストークンのスコープが、求めた汎用 API の操作を満たさない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:insufficient_scope` である。OAuth 2.0 と OpenID Connect のエンドポイントは、同じ条件を代わりに OAuthInsufficientScopeError として報告する。")
-model InsufficientScopeError is ProblemDetails;
-
-
-@doc("ブラウザーのリクエストの Origin が製品のオリジンと一致しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_origin` である。")
-model InvalidOriginError is ProblemDetails;
-
-
-@doc("ブラウザーのリクエストが、一致する二重送信の CSRF の Cookie とヘッダーを含んでいない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:csrf_failed` である。")
-model CsrfFailedError is ProblemDetails;
-
-
-@doc("操作には最近の再認証が必要である。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:step_up_required` である。")
-model StepUpRequiredError is ProblemDetails;
-
-
-@doc("連携した ID を外すとアカウントに許可されたサインインの方法がなくなるので、外せない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:unlink_denied` である。")
-model UnlinkDeniedError is ProblemDetails;
 
 
 @doc("テナントがリソースの作成の上限（Quota）に達した。Tenancy モジュールが定める共有のエラーを、公開契約として写したもの。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:quota_exceeded` であり、Dynamic Client Registration のエンドポイントを含むすべての経路で共有のエラーハンドラーが書く。")

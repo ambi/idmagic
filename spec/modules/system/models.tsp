@@ -46,6 +46,18 @@ model ProblemDetails {
 }
 
 
+@doc("リクエストに必須のパラメーターがないか不正な値を含む、または対象が他のテナントに属しており存在しないものとして扱う。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_request` である。OAuth 2.0 のエンドポイントは、同じ条件を代わりに OAuthInvalidRequestError として報告する。")
+model InvalidRequestError is ProblemDetails;
+
+
+@doc("ブラウザーのリクエストの Origin が製品のオリジンと一致しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_origin` である。")
+model InvalidOriginError is ProblemDetails;
+
+
+@doc("ブラウザーのリクエストが、一致する二重送信の CSRF の Cookie とヘッダーを含んでいない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:csrf_failed` である。")
+model CsrfFailedError is ProblemDetails;
+
+
 union AuthenticationRequiredResponseBody {
   AuthenticationRequiredError,
   InvalidAccessTokenError,

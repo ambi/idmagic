@@ -11,6 +11,14 @@ model EmailSent {
 }
 
 
+@doc("操作には最近の再認証が必要である。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:step_up_required` である。")
+model StepUpRequiredError is ProblemDetails;
+
+
+@doc("連携した ID を外すとアカウントに許可されたサインインの方法がなくなるので、外せない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:unlink_denied` である。")
+model UnlinkDeniedError is ProblemDetails;
+
+
 @doc("上流の接続の送受信のプロトコル。ソーシャルのプロバイダーのプリセットは、`oidc` の初期の設定として現れる。")
 enum IdentityProviderProtocol {
   Oidc: "oidc",

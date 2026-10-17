@@ -1,5 +1,9 @@
 namespace IdMagic.Contract {
 
+@doc("提示した API アクセストークンのスコープが、求めた汎用 API の操作を満たさない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:insufficient_scope` である。OAuth 2.0 と OpenID Connect のエンドポイントは、同じ条件を代わりに OAuthInsufficientScopeError として報告する。")
+model InsufficientScopeError is ProblemDetails;
+
+
 @doc("API アクセストークンに付与できるスコープの正式な一覧。`<resource>:<action>` の形で書き、参照には read、変更には write を使う。`scim:*` のスコープは SCIM 2.0 の受信プロビジョニング API だけに属し、ユーザーとグループを read と write に分ける。SCIM のディスカバリーエンドポイント（ServiceProviderConfig、ResourceTypes、Schemas）は、どの `scim:*` スコープでも読める。Application 集約とそのプロトコルのバインディングは `applications:*` の下にあり、単独のプロトコルとリソースの管理 API は `oauth-clients:*`、`authorization-detail-types:*`、`mcp-resource-servers:*`、`saml:*`、`wsfed:*`、`provisioning:*`、`workload-identity:*`、`shared-signals:*` に分かれる。`account:*` のスコープはトークンの発行者自身のセルフサービス API に属し、read と write を分けたうえで、MFA、セッション、同意、パスワードという機微な側面を個別のスコープにする。公開、プロトコル、ステップアップ、メール確認のエンドポイントはスコープを求めない。")
 enum ApiTokenScope {
   users_read: "users:read",
