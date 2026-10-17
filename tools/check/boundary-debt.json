@@ -385,33 +385,6 @@
       "reason": "support_http はテナントを解決し、ratelimit/db_postgres、salts_memory、salts_postgres は Tenancy のポートからテナント ID を読み、db_memory は Tenancy の型を使う。これらは wi-73604 で解消する（D1、D5）。"
     },
     {
-      "id": "table-write:Application->OAuth2",
-      "sourceModule": "Application",
-      "targetModule": "OAuth2",
-      "violations": [
-        "table-write:Application:backend/application/internal/db_postgres/applications.sql:LinkOAuth2ClientToApplication:update:oauth2_clients:application_id"
-      ],
-      "reason": "Application links an OAuth2 client record to the application it creates by writing application_id in the same transaction that creates the application, so a partial commit cannot leave an unlinked protocol configuration (docs/design/data/database.md#所有と書き込みの境界). OAuth2 publishes a write that joins the caller's transaction (D2, D7) in wi-88544."
-    },
-    {
-      "id": "table-write:Application->Saml",
-      "sourceModule": "Application",
-      "targetModule": "Saml",
-      "violations": [
-        "table-write:Application:backend/application/internal/db_postgres/applications.sql:LinkSamlServiceProviderToApplication:update:saml_service_providers:application_id"
-      ],
-      "reason": "Application links a SAML service provider record to the application it creates by writing application_id in the same transaction that creates the application, so a partial commit cannot leave an unlinked protocol configuration (docs/design/data/database.md#所有と書き込みの境界). SAML publishes a write that joins the caller's transaction (D2, D7) in wi-88544."
-    },
-    {
-      "id": "table-write:Application->WsFederation",
-      "sourceModule": "Application",
-      "targetModule": "WsFederation",
-      "violations": [
-        "table-write:Application:backend/application/internal/db_postgres/applications.sql:LinkWsFedRelyingPartyToApplication:update:wsfed_relying_parties:application_id"
-      ],
-      "reason": "Application links a WS-Federation relying party record to the application it creates by writing application_id in the same transaction that creates the application, so a partial commit cannot leave an unlinked protocol configuration (docs/design/data/database.md#所有と書き込みの境界). WS-Federation publishes a write that joins the caller's transaction (D2, D7) in wi-88544."
-    },
-    {
       "id": "table-write:IdManagement->Audit",
       "sourceModule": "IdManagement",
       "targetModule": "Audit",

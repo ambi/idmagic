@@ -131,57 +131,6 @@ func (q *Queries) GetApplicationProtocolKey(ctx context.Context, arg GetApplicat
 	return protocol_key, err
 }
 
-const linkOAuth2ClientToApplication = `-- name: LinkOAuth2ClientToApplication :exec
-UPDATE oauth2_clients
-SET application_id = $1
-WHERE tenant_id = $2 AND client_id::text = $3 AND application_id IS NULL
-`
-
-type LinkOAuth2ClientToApplicationParams struct {
-	ApplicationID pgtype.UUID
-	TenantID      string
-	ClientID      string
-}
-
-func (q *Queries) LinkOAuth2ClientToApplication(ctx context.Context, arg LinkOAuth2ClientToApplicationParams) error {
-	_, err := q.db.Exec(ctx, linkOAuth2ClientToApplication, arg.ApplicationID, arg.TenantID, arg.ClientID)
-	return err
-}
-
-const linkSamlServiceProviderToApplication = `-- name: LinkSamlServiceProviderToApplication :exec
-UPDATE saml_service_providers
-SET application_id = $1
-WHERE tenant_id = $2 AND entity_id = $3 AND application_id IS NULL
-`
-
-type LinkSamlServiceProviderToApplicationParams struct {
-	ApplicationID pgtype.UUID
-	TenantID      string
-	EntityID      string
-}
-
-func (q *Queries) LinkSamlServiceProviderToApplication(ctx context.Context, arg LinkSamlServiceProviderToApplicationParams) error {
-	_, err := q.db.Exec(ctx, linkSamlServiceProviderToApplication, arg.ApplicationID, arg.TenantID, arg.EntityID)
-	return err
-}
-
-const linkWsFedRelyingPartyToApplication = `-- name: LinkWsFedRelyingPartyToApplication :exec
-UPDATE wsfed_relying_parties
-SET application_id = $1
-WHERE tenant_id = $2 AND wtrealm = $3 AND application_id IS NULL
-`
-
-type LinkWsFedRelyingPartyToApplicationParams struct {
-	ApplicationID pgtype.UUID
-	TenantID      string
-	Wtrealm       string
-}
-
-func (q *Queries) LinkWsFedRelyingPartyToApplication(ctx context.Context, arg LinkWsFedRelyingPartyToApplicationParams) error {
-	_, err := q.db.Exec(ctx, linkWsFedRelyingPartyToApplication, arg.ApplicationID, arg.TenantID, arg.Wtrealm)
-	return err
-}
-
 const listApplicationsByTenant = `-- name: ListApplicationsByTenant :many
 SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
 FROM applications

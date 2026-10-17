@@ -83,21 +83,6 @@ WHERE a.tenant_id = $1
     OR ($2 = 'wsfed' AND w.wtrealm = $3)
   );
 
--- name: LinkOAuth2ClientToApplication :exec
-UPDATE oauth2_clients
-SET application_id = $1
-WHERE tenant_id = $2 AND client_id::text = $3 AND application_id IS NULL;
-
--- name: LinkSamlServiceProviderToApplication :exec
-UPDATE saml_service_providers
-SET application_id = $1
-WHERE tenant_id = $2 AND entity_id = $3 AND application_id IS NULL;
-
--- name: LinkWsFedRelyingPartyToApplication :exec
-UPDATE wsfed_relying_parties
-SET application_id = $1
-WHERE tenant_id = $2 AND wtrealm = $3 AND application_id IS NULL;
-
 -- name: DeleteApplication :exec
 DELETE FROM applications WHERE tenant_id = $1 AND id = $2;
 

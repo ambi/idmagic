@@ -19,6 +19,7 @@ type Querier interface {
 	GetSamlIDPProfile(ctx context.Context, arg GetSamlIDPProfileParams) (*SamlIdentityProviderProfile, error)
 	GetSamlIDPProfileForUpdate(ctx context.Context, arg GetSamlIDPProfileForUpdateParams) (*SamlIdentityProviderProfile, error)
 	GetSamlServiceProvider(ctx context.Context, arg GetSamlServiceProviderParams) (*SamlServiceProvider, error)
+	LinkApplication(ctx context.Context, arg LinkApplicationParams) error
 	ListSamlIDPProfilesByTenant(ctx context.Context, tenantID string) ([]*SamlIdentityProviderProfile, error)
 	ListSamlServiceProvidersByTenant(ctx context.Context, tenantID string) ([]*SamlServiceProvider, error)
 	// TTL 付き単発予約。live な予約が既にあれば ON CONFLICT の

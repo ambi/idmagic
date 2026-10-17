@@ -5,7 +5,9 @@ risk: medium
 reversibility: reversible
 created_at: 2026-10-10
 priority: p2
-depends_on: []
+depends_on:
+  - wi-55774-move-protocol-application-links-to-table-owners
+  - wi-55044-preserve-jobs-rules-in-transactional-csv-reconciliation
 change_kind: refactor
 spec_impact: { kind: none, reason: "ほかのモジュールのテーブルへの書き込みを、所有者が公開する、呼び出し側のトランザクションに参加する操作の経由へ変えるだけである。書き込む行、原子性、HTTP の応答、ドメインイベントは変えない。" }
 ---
@@ -37,6 +39,15 @@ spec_impact: { kind: none, reason: "ほかのモジュールのテーブルへ�
 - 書き込む行と原子性の範囲の変更。
 
 ## 設計
+
+### 負債の棚卸しでの着手条件
+
+2026-10-18 に書き込みと公開操作を比較した。
+Application の3件は独立した原子性の境界なので wi-55774 へ分ける。
+CSV の再評価ジョブは active_jobs の確認と JobEnqueued の発行を省いており、既存のクエリを公開するだけでは REQ-JOBS-002 と REQ-TENANCY-013 に反する操作が残る。
+この経路を維持する配置変更は今は行わず、wi-55044 で保証を満たす投入操作を先に設計する。
+既存の AuditEventRepository.Append も、CSV の監査と違って自分でトランザクションを開始し、user_id を payload の userId から取るため、そのまま置き換えない。
+監査の検索に使う主体と payload の意味、パスワード履歴、ジョブを含めた一行の原子性を保つ範囲は、前提の解消後にまとめて実装する。
 
 [境界の負債の順位付け](../done/wi-33994-reinventory-the-remaining-boundary-debt.md)の判断を引き継ぐ。
 

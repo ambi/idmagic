@@ -58,6 +58,7 @@ type Querier interface {
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error
 	// 期限切れマーカーは revoked とみなさない (正しさは expires_at > now が担保、GC は空間回収のみ)。
 	IsOauth2AccessTokenRevoked(ctx context.Context, arg IsOauth2AccessTokenRevokedParams) (bool, error)
+	LinkApplication(ctx context.Context, arg LinkApplicationParams) error
 	LinkAuthorizationCodeFamily(ctx context.Context, arg LinkAuthorizationCodeFamilyParams) (int64, error)
 	ListAuthorizationDetailTypesByTenant(ctx context.Context, tenantID string) ([]*AuthorizationDetailType, error)
 	ListClientSecretCredentials(ctx context.Context, clientID string) ([]*Oauth2ClientSecret, error)

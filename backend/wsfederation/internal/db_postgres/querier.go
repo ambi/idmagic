@@ -11,6 +11,7 @@ import (
 type Querier interface {
 	DeleteWsFedRelyingParty(ctx context.Context, arg DeleteWsFedRelyingPartyParams) error
 	GetWsFedRelyingParty(ctx context.Context, arg GetWsFedRelyingPartyParams) (*WsfedRelyingParty, error)
+	LinkApplication(ctx context.Context, arg LinkApplicationParams) error
 	ListWsFedRelyingPartiesByTenant(ctx context.Context, tenantID string) ([]*WsfedRelyingParty, error)
 	UpsertWsFedRelyingParty(ctx context.Context, arg UpsertWsFedRelyingPartyParams) error
 }

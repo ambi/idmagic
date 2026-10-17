@@ -24,9 +24,6 @@ type Querier interface {
 	GetApplicationOrdering(ctx context.Context, userID string) (*ApplicationOrdering, error)
 	GetApplicationProtocolKey(ctx context.Context, arg GetApplicationProtocolKeyParams) (string, error)
 	GetTenantDefaultSignInPolicy(ctx context.Context, tenantID string) (*TenantDefaultSignInPolicy, error)
-	LinkOAuth2ClientToApplication(ctx context.Context, arg LinkOAuth2ClientToApplicationParams) error
-	LinkSamlServiceProviderToApplication(ctx context.Context, arg LinkSamlServiceProviderToApplicationParams) error
-	LinkWsFedRelyingPartyToApplication(ctx context.Context, arg LinkWsFedRelyingPartyToApplicationParams) error
 	ListAppSignInPoliciesByTenant(ctx context.Context, tenantID string) ([]*ListAppSignInPoliciesByTenantRow, error)
 	ListApplicationAssignmentsByApplication(ctx context.Context, arg ListApplicationAssignmentsByApplicationParams) ([]*ListApplicationAssignmentsByApplicationRow, error)
 	// First page of ListApplicationAssignments keyset pagination (wi-159):

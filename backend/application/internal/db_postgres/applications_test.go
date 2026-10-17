@@ -34,7 +34,7 @@ func seedApplication(t *testing.T, db sharedpg.DB, tenantID string) *domain.Appl
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := (&ApplicationRepository{Pool: db}).Save(context.Background(), app); err != nil {
+	if err := NewApplicationRepository(db, testProtocolLinkers()).Save(context.Background(), app); err != nil {
 		t.Fatalf("seed application: %v", err)
 	}
 	return app
@@ -44,7 +44,7 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
 	client := pgfixtures.SeedClient(t, oauth2.NewPostgresModule(db).ClientRepo, tenant.ID)
-	repo := &ApplicationRepository{Pool: db}
+	repo := NewApplicationRepository(db, testProtocolLinkers())
 	ctx := context.Background()
 
 	now := pgfixtures.TestClock()
@@ -112,7 +112,7 @@ func TestApplicationRepositoryFindByIDIsScopedToTenant(t *testing.T) {
 	owner := pgfixtures.SeedTenant(t, db)
 	other := pgfixtures.SeedTenant(t, db)
 	app := seedApplication(t, db, owner.ID)
-	repo := &ApplicationRepository{Pool: db}
+	repo := NewApplicationRepository(db, testProtocolLinkers())
 	ctx := context.Background()
 
 	if got, err := repo.FindByID(ctx, owner.ID, app.ID); err != nil || got == nil {
@@ -130,7 +130,7 @@ func TestApplicationProtocolRelationConstraintsAndCascade(t *testing.T) {
 	first := pgfixtures.SeedClient(t, oauth2.NewPostgresModule(db).ClientRepo, tenant.ID)
 	second := pgfixtures.SeedClient(t, oauth2.NewPostgresModule(db).ClientRepo, tenant.ID)
 	ctx := context.Background()
-	repo := &ApplicationRepository{Pool: db}
+	repo := NewApplicationRepository(db, testProtocolLinkers())
 	now := pgfixtures.TestClock()
 	app := &domain.Application{
 		TenantID: tenant.ID, ID: pgfixtures.NewUUID(t), Name: "OIDC App",
@@ -540,7 +540,7 @@ func TestApplicationAssignmentRepositoryListPage(t *testing.T) {
 func TestApplicationRepositoryListPage(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	repo := &ApplicationRepository{Pool: db}
+	repo := NewApplicationRepository(db, testProtocolLinkers())
 	ctx := context.Background()
 	now := pgfixtures.TestClock()
 

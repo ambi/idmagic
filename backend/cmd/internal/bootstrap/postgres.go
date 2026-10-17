@@ -92,7 +92,9 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 
 	userRepo := idmModule.UserRepo
 	governanceModule := idgovernance.NewPostgresModule(resilientDB, userRepo, idmanagement.UserWriterInTx)
-	applicationModule := application.NewPostgresModule(resilientDB)
+	applicationModule := application.NewPostgresModule(resilientDB, application.ProtocolLinkers{
+		OIDC: oauth2.LinkApplicationInTx, SAML: saml.LinkApplicationInTx, WsFed: wsfederation.LinkApplicationInTx,
+	})
 	assignmentRepo := applicationModule.AssignmentRepo
 	provisioningModule := provisioning.NewPostgresModule(resilientDB)
 	// CIMD の解決のイベントの発行先は NewEmitFunc の後で cmd/idmagic/server.go が結ぶ。

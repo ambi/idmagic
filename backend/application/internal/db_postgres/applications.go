@@ -17,7 +17,10 @@ import (
 // ApplicationRepository は ApplicationCatalog の Application aggregate を PostgreSQL に
 // 永続化する。protocol relation は各 protocol table の application_id から解決する。
 // クエリは sqlc 生成 (wi-172); Pool は DBTX を構造的に満たす。
-type ApplicationRepository struct{ Pool sharedpg.DB }
+type ApplicationRepository struct {
+	Pool            sharedpg.DB
+	ProtocolLinkers ProtocolLinkers
+}
 
 func applicationFromRow(row *Application) *domain.Application {
 	app := &domain.Application{
@@ -212,36 +215,26 @@ func saveApplication(ctx context.Context, queries *Queries, app *domain.Applicat
 	})
 }
 
-func linkApplicationProtocol(ctx context.Context, queries *Queries, app *domain.Application) error {
+func (r *ApplicationRepository) linkApplicationProtocol(ctx context.Context, tx pgx.Tx, queries *Queries, app *domain.Application) error {
 	if app.Protocol == nil {
 		return nil
 	}
-	var applicationID pgtype.UUID
-	if err := applicationID.Scan(app.ID); err != nil {
-		return err
-	}
-	var err error
 	var key string
+	var link func(context.Context, pgx.Tx, string, string, string) error
 	switch app.Protocol.Type {
 	case domain.ApplicationProtocolOIDC:
 		key = app.Protocol.ClientID
-		err = queries.LinkOAuth2ClientToApplication(ctx, LinkOAuth2ClientToApplicationParams{
-			ApplicationID: applicationID, TenantID: app.TenantID, ClientID: key,
-		})
+		link = r.ProtocolLinkers.OIDC
 	case domain.ApplicationProtocolSAML:
 		key = app.Protocol.EntityID
-		err = queries.LinkSamlServiceProviderToApplication(ctx, LinkSamlServiceProviderToApplicationParams{
-			ApplicationID: applicationID, TenantID: app.TenantID, EntityID: key,
-		})
+		link = r.ProtocolLinkers.SAML
 	case domain.ApplicationProtocolWsFed:
 		key = app.Protocol.Wtrealm
-		err = queries.LinkWsFedRelyingPartyToApplication(ctx, LinkWsFedRelyingPartyToApplicationParams{
-			ApplicationID: applicationID, TenantID: app.TenantID, Wtrealm: key,
-		})
+		link = r.ProtocolLinkers.WsFed
 	default:
 		return domain.ErrInvalidProtocolType
 	}
-	if err != nil {
+	if err := link(ctx, tx, app.TenantID, app.ID, key); err != nil {
 		return err
 	}
 	linkedKey, err := queries.GetApplicationProtocolKey(ctx, GetApplicationProtocolKeyParams{
@@ -266,7 +259,7 @@ func (r *ApplicationRepository) Create(ctx context.Context, app *domain.Applicat
 	if err := saveApplication(ctx, queries, app); err != nil {
 		return err
 	}
-	if err := linkApplicationProtocol(ctx, queries, app); err != nil {
+	if err := r.linkApplicationProtocol(ctx, tx, queries, app); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

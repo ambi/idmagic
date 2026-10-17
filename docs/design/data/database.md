@@ -529,7 +529,6 @@ erDiagram
 
 | 書き込むモジュール | 対象のテーブル | 書き込む内容 |
 | --- | --- | --- |
-| Application | `oauth2_clients`、`saml_service_providers`、`wsfed_relying_parties` | プロトコル設定のレコードを、作成したアプリケーションへ結び付ける `application_id` |
 | IdManagement | `password_history` | CSV インポートで設定したパスワードの履歴 |
 | IdManagement | `audit_events` | CSV インポートの確定と同じトランザクションで記録する監査イベント |
 | IdManagement | `jobs` | グループの CSV インポートの確定と同じトランザクションで投入するジョブ |

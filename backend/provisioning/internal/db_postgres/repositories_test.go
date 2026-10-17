@@ -13,11 +13,14 @@ import (
 
 	"github.com/ambi/idmagic/backend/application"
 	applicationdomain "github.com/ambi/idmagic/backend/application/domain"
+	"github.com/ambi/idmagic/backend/oauth2"
 	postgres "github.com/ambi/idmagic/backend/provisioning/internal/db_postgres"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	"github.com/ambi/idmagic/backend/saml"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
+	"github.com/ambi/idmagic/backend/wsfederation"
 )
 
 // seedApplication creates an Application fixture. It lives here rather than in
@@ -41,7 +44,9 @@ func seedApplication(tb testing.TB, pool *pgxpool.Pool, tenantID string) *applic
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := application.NewPostgresModule(pool).Repo.Save(context.Background(), app); err != nil {
+	if err := application.NewPostgresModule(pool, application.ProtocolLinkers{
+		OIDC: oauth2.LinkApplicationInTx, SAML: saml.LinkApplicationInTx, WsFed: wsfederation.LinkApplicationInTx,
+	}).Repo.Save(context.Background(), app); err != nil {
 		tb.Fatalf("seed application: %v", err)
 	}
 	return app
