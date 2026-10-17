@@ -39,12 +39,13 @@ func NormalizeRoles(roles []string) ([]string, error) {
 	return out, nil
 }
 
-// NormalizedNow は now が zero-value の場合に time.Now().UTC() を返す。
+// NormalizedNow は now が zero-value の場合に time.Now() を使い、UTC の値を返す。
+// 時刻は TIMESTAMPTZ と同じマイクロ秒に切り捨て、ユースケースが返す値と保存後に読み直す値を一致させる。
 func NormalizedNow(now time.Time) time.Time {
 	if now.IsZero() {
-		return time.Now().UTC()
+		now = time.Now()
 	}
-	return now.UTC()
+	return now.UTC().Truncate(time.Microsecond)
 }
 
 // EqualOptionalString は 2 つの *string が (両方 nil) または (両方非 nil で同値) かを返す。
