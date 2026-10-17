@@ -4,7 +4,8 @@ import { readReleasePhase } from './release-state.ts'
 import { compareOpenApi, type JsonSchema } from './api-compat.ts'
 import { isArchived, missingArchivedRevisions, verifyArchivedShape } from './archived-work-item.ts'
 import {
-  claimsSpecificationAddition,
+  addedSpecificationElements,
+  claimsSpecificationElement,
   diffFeatureMaturities,
   type DocumentationImpactEnvironment,
   verifyDocumentationImpact,
@@ -114,13 +115,13 @@ function specificationAdditionsClaimed(
   changed: ReadonlySet<string> | undefined,
   records: readonly ParsedWorkItem[],
 ): boolean {
-  const added = [...diff.addedScenarios, ...diff.addedStandards, ...diff.addedDeclarations]
+  const added = addedSpecificationElements(diff)
   if (added.length === 0 || changed === undefined) return false
   return records.some(
     (record) =>
       changed.has(record.id) &&
       record.data !== undefined &&
-      claimsSpecificationAddition(record.data, added),
+      claimsSpecificationElement(record.data, added),
   )
 }
 

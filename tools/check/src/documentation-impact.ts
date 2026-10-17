@@ -179,26 +179,34 @@ function referenceNames(reference: Record<string, unknown>, element: string): bo
   )
 }
 
-/**
- * Whether a record's `affected_spec` names any of these added elements.
- *
- * Exported because the same question is asked twice from different sides: this
- * module decides whether a given record owns the additions, and the workspace
- * checker decides whether any record claims them at all. One matching rule
- * keeps those two answers from drifting apart.
- */
-export function claimsSpecificationAddition(
-  record: { affected_spec?: unknown },
-  added: Iterable<string>,
+/** Whether one `affected_spec` reference names any of these diff elements. */
+export function namesSpecificationElement(
+  reference: Record<string, unknown>,
+  elements: Iterable<string>,
 ): boolean {
-  if (!Array.isArray(record.affected_spec)) return false
-  const references = record.affected_spec
-    .map((entry) => object(entry))
-    .filter((entry) => entry !== undefined)
-  for (const element of added) {
-    if (references.some((reference) => referenceNames(reference, element))) return true
+  for (const element of elements) {
+    if (referenceNames(reference, element)) return true
   }
   return false
+}
+
+/**
+ * Whether a record's `affected_spec` names any of these diff elements.
+ *
+ * Exported because the same question is asked twice from different sides: this
+ * module decides whether a given record owns the added or removed elements, and
+ * the workspace checker decides whether any record claims them at all. One
+ * matching rule keeps those two answers from drifting apart.
+ */
+export function claimsSpecificationElement(
+  record: { affected_spec?: unknown },
+  elements: Iterable<string>,
+): boolean {
+  if (!Array.isArray(record.affected_spec)) return false
+  const wanted = [...elements]
+  return record.affected_spec
+    .map((entry) => object(entry))
+    .some((reference) => reference !== undefined && namesSpecificationElement(reference, wanted))
 }
 
 /**
@@ -221,12 +229,15 @@ function ownsSpecificationAdditions(
   environment: DocumentationImpactEnvironment,
 ): boolean {
   if (environment.specificationAdditionsClaimed !== true) return true
-  const diff = environment.specificationDiff
-  return claimsSpecificationAddition(record, [
-    ...diff.addedScenarios,
-    ...diff.addedStandards,
-    ...diff.addedDeclarations,
-  ])
+  return claimsSpecificationElement(
+    record,
+    addedSpecificationElements(environment.specificationDiff),
+  )
+}
+
+/** Scenarios, standards rows, and declarations the diff added, as the diff spells them. */
+export function addedSpecificationElements(diff: SpecificationDiff): string[] {
+  return [...diff.addedScenarios, ...diff.addedStandards, ...diff.addedDeclarations]
 }
 
 export function minimumDocumentationImpact(
@@ -240,9 +251,7 @@ export function minimumDocumentationImpact(
 
   if (
     ownsSpecificationAdditions(record, environment) &&
-    (diff.addedScenarios.length > 0 ||
-      diff.addedStandards.length > 0 ||
-      diff.addedDeclarations.length > 0)
+    addedSpecificationElements(diff).length > 0
   ) {
     impact = stronger(impact, 'release_note')
   }

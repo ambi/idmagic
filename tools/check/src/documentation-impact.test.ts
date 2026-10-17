@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import {
   type DocumentationImpactEnvironment,
   type MaturityChange,
-  claimsSpecificationAddition,
+  claimsSpecificationElement,
   diffFeatureMaturities,
   verifyDocumentationImpact,
 } from './documentation-impact.ts'
@@ -258,17 +258,17 @@ describe('verifyDocumentationImpact', () => {
       ],
     })
 
-    expect(claimsSpecificationAddition(reference({}), [row])).toBe(true)
+    expect(claimsSpecificationElement(reference({}), [row])).toBe(true)
 
     // The document pins the row. The same id adopted by another context is a
     // different row, and a record that names it must not claim this one.
     expect(
-      claimsSpecificationAddition(reference({ path: 'docs/modules/other/standards.md' }), [row]),
+      claimsSpecificationElement(reference({ path: 'docs/modules/other/standards.md' }), [row]),
     ).toBe(false)
-    expect(claimsSpecificationAddition(reference({ requirement: 'RFC-DEMO-FOUR' }), [row])).toBe(
+    expect(claimsSpecificationElement(reference({ requirement: 'RFC-DEMO-FOUR' }), [row])).toBe(
       false,
     )
-    expect(claimsSpecificationAddition({}, [row])).toBe(false)
+    expect(claimsSpecificationElement({}, [row])).toBe(false)
   })
 
   it('matches an added declaration by file and declaration name together', () => {
@@ -283,17 +283,17 @@ describe('verifyDocumentationImpact', () => {
       ],
     })
 
-    expect(claimsSpecificationAddition(reference({}), [declaration])).toBe(true)
+    expect(claimsSpecificationElement(reference({}), [declaration])).toBe(true)
 
     // The path pins the file. Without it, a same-named declaration added to
     // another context would be claimed by an unrelated record.
     expect(
-      claimsSpecificationAddition(reference({ path: 'spec/modules/other/models.tsp' }), [
+      claimsSpecificationElement(reference({ path: 'spec/modules/other/models.tsp' }), [
         declaration,
       ]),
     ).toBe(false)
     expect(
-      claimsSpecificationAddition(reference({ symbol: 'Demo.Contract.SomethingElse' }), [
+      claimsSpecificationElement(reference({ symbol: 'Demo.Contract.SomethingElse' }), [
         declaration,
       ]),
     ).toBe(false)
@@ -301,7 +301,7 @@ describe('verifyDocumentationImpact', () => {
     // A scenario or standard is added under its own id and keeps matching the
     // `requirement` verbatim.
     expect(
-      claimsSpecificationAddition(
+      claimsSpecificationElement(
         {
           affected_spec: [
             { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001' },
@@ -310,7 +310,7 @@ describe('verifyDocumentationImpact', () => {
         ['REQ-DEMO-001'],
       ),
     ).toBe(true)
-    expect(claimsSpecificationAddition({}, [declaration])).toBe(false)
+    expect(claimsSpecificationElement({}, [declaration])).toBe(false)
   })
 
   it('derives feature maturity changes from registry definitions', () => {
