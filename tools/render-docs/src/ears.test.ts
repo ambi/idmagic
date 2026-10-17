@@ -7,32 +7,33 @@ function clauses(statement: string, responder = 'OAuth2'): string[] | undefined 
   if (!cuts) return undefined
   return cuts.map((cut, index) => {
     const end = cuts[index + 1]?.from ?? statement.length
-    return `${cut.kind}: ${statement.slice(cut.to, end)}`
+    return `${cut.keywords.join(' ')}: ${statement.slice(cut.to, end)}`
   })
 }
 
+// 型ごとのキーワードは EARS（Alistair Mavin）の型に従う。主体は要件に一つ必要なので残す。
 describe('earsCuts', () => {
-  it('reads an always-on statement as one response', () => {
+  it('reads a ubiquitous statement as the system name and its response under Shall', () => {
     expect(clauses('OAuth2 は、同意の作成を提供しない。')).toEqual([
-      'then: 同意の作成を提供しない。',
+      'shall: OAuth2 は、同意の作成を提供しない。',
     ])
   })
 
-  it('separates a trigger from the response and drops the marker and the responder', () => {
+  it('reads an event-driven statement as When and Shall, dropping only the marker', () => {
     expect(clauses('管理者が同意を撤回したとき、OAuth2 は、204 を返す。')).toEqual([
       'when: 管理者が同意を撤回した',
-      'then: 204 を返す。',
+      'shall: OAuth2 は、204 を返す。',
     ])
   })
 
-  it('reads 場合 as an unwanted input', () => {
+  it('pairs If with Then before Shall for an unwanted behaviour', () => {
     expect(clauses('存在しない同意を受けた場合、OAuth2 は、404 で拒否する。')).toEqual([
       'if: 存在しない同意を受けた',
-      'then: 404 で拒否する。',
+      'then shall: OAuth2 は、404 で拒否する。',
     ])
   })
 
-  it('keeps the order of a complex preamble', () => {
+  it('keeps the EARS order of a complex preamble', () => {
     expect(
       clauses(
         '`Disabled` のテナントでは、管理者がいる間、再開を要求したとき、Tenancy は、テナントを `Active` にする。',
@@ -42,14 +43,22 @@ describe('earsCuts', () => {
       'where: `Disabled` のテナント',
       'while: 管理者がいる',
       'when: 再開を要求した',
-      'then: テナントを `Active` にする。',
+      'shall: Tenancy は、テナントを `Active` にする。',
     ])
   })
 
-  it('reads a state clause that ends with a verb and 間', () => {
+  it('reads a state clause that ends with a verb and 間 as While', () => {
     expect(clauses('ジョブが走る間、Jobs は、取り消しを拒否する。', 'Jobs')).toEqual([
       'while: ジョブが走る',
-      'then: 取り消しを拒否する。',
+      'shall: Jobs は、取り消しを拒否する。',
+    ])
+  })
+
+  it('pairs If with Then also behind a state precondition', () => {
+    expect(clauses('ジョブが走る間、上限を超えた場合、Jobs は、409 で拒否する。', 'Jobs')).toEqual([
+      'while: ジョブが走る',
+      'if: 上限を超えた',
+      'then shall: Jobs は、409 で拒否する。',
     ])
   })
 

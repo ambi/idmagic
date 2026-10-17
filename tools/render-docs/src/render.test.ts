@@ -440,18 +440,18 @@ describe('renderDocumentationSite', () => {
         models: [],
       }).files['docs/modules/demo/features/run.html'] ?? ''
 
+    // EARS の型に従い、契機は When、応答は Shall、望まない振る舞いは If と、Then と Shall で示す。
+    // 区切りの語だけを表示から外し、EARS が要件に一つ求める主体は残す。
     expect(page).toContain(
-      '<span class="ears-clause"><span class="scenario-keyword ears-when">When</span> 利用者が開始を要求した</span><span class="ears-clause"><span class="scenario-keyword ears-then">Then</span> <code>Running</code> にする。</span>',
+      '<span class="ears-clause"><span class="scenario-keyword ears-when">When</span> 利用者が開始を要求した</span><span class="ears-clause"><span class="scenario-keyword ears-shall">Shall</span> Demo は、<code>Running</code> にする。</span>',
     )
     expect(page).toContain(
-      '<span class="scenario-keyword ears-if">If</span> 準備ができていない</span>',
+      '<span class="ears-clause"><span class="scenario-keyword ears-if">If</span> 準備ができていない</span><span class="ears-clause"><span class="scenario-keyword ears-then">Then</span> <span class="scenario-keyword ears-shall">Shall</span> Demo は、409 で拒否する。</span>',
     )
-    // 主体と区切りの語は表示から外す。読み取れない文と欄は原文のまま表示する。
-    expect(page).not.toContain('Demo は、')
+    expect(page).not.toContain('要求したとき、')
+    // 読み取れない文と欄は原文のまま表示する。
     expect(page).toContain('<li>準備のできたデモだけを開始する。</li>')
-    expect(page).not.toContain(
-      'ears-clause"><span class="scenario-keyword ears-then">Then</span> <strong>',
-    )
+    expect(page).not.toContain('ears-shall">Shall</span> <strong>')
   })
 
   it('marks every scenario step, the actor, and nothing outside a scenario document', () => {

@@ -1,30 +1,39 @@
 /**
- * 機能仕様の要件文を、日本語の EARS の節に分ける。生成サイトは、受け入れ例の Gherkin と同じ
- * 見た目の名札で節を区切り、条件と応答の対応を一目で読めるようにする。
+ * 機能仕様の要件文を、日本語の EARS の節に分ける。生成サイトは、EARS のキーワードを受け入れ例の
+ * Gherkin と同じ見た目の名札で示し、条件と応答の対応を一目で読めるようにする。
+ *
+ * EARS（Alistair Mavin）の型は次のとおりで、節の順序は常に同じである。
+ * - 常時：The 〈system name〉 shall 〈system response〉
+ * - 状態：While 〈precondition〉, the 〈system name〉 shall …
+ * - 契機：When 〈trigger〉, the 〈system name〉 shall …
+ * - 任意の機能：Where 〈feature is included〉, the 〈system name〉 shall …
+ * - 望まない振る舞い：If 〈trigger〉, then the 〈system name〉 shall …
  *
  * 要件文の書式は仕様フォーマットの EARS 形式が定め、検査（`verifyEarsStatements`）が確かめる。
  * ここは表示のための読み取りであり、読み取れない文は分けずに原文のまま表示させる。
  */
 
-/** 節の種類。前置きの四つと、主体が返す応答である。 */
-export type EarsKind = 'where' | 'while' | 'when' | 'if' | 'then'
+/** EARS のキーワード。応答の節は Shall で、望まない振る舞いの型では Then も付く。 */
+export type EarsKeyword = 'where' | 'while' | 'when' | 'if' | 'then' | 'shall'
 
-/** 節の名札。EARS の英語のキーワードを、受け入れ例の Gherkin と同じく英語のまま示す。 */
-const EARS_LABELS = new Map<EarsKind, string>([
+/** 名札。EARS のキーワードを、受け入れ例の Gherkin と同じく英語のまま示す。 */
+const EARS_LABELS = new Map<EarsKeyword, string>([
   ['where', 'Where'],
   ['while', 'While'],
   ['when', 'When'],
   ['if', 'If'],
   ['then', 'Then'],
+  ['shall', 'Shall'],
 ])
 
 /**
- * 表示で取り除く範囲と、その位置から始まる節。`from` から `to` までの文字（前置きの区切りの語と、
- * 主体の「〈主体〉は、」）を消し、そこから `kind` の節を始める。最初の要素は文頭から始まる。
+ * 表示で取り除く範囲と、その位置から始まる節。`from` から `to` までの文字（前置きの区切りの語と
+ * 読点）を消し、そこから `keywords` の名札を付けた節を始める。最初の要素は文頭から始まる。
+ * EARS は要件に主体を一つ求めるので、応答の節は主体の「〈主体〉は、」から始めて残す。
  */
-export type EarsCut = { from: number; to: number; kind: EarsKind }
+export type EarsCut = { from: number; to: number; keywords: EarsKeyword[] }
 
-const MARKER_KINDS = new Map<string, EarsKind>([
+const MARKER_KEYWORDS = new Map<string, EarsKeyword>([
   ['では', 'where'],
   ['の間', 'while'],
   ['間', 'while'],
@@ -33,8 +42,14 @@ const MARKER_KINDS = new Map<string, EarsKind>([
 ])
 
 /** 生成サイトが要件文の節を区切る印。名札は受け入れ例の Gherkin のキーワードと同じ見た目にする。 */
-function clauseOpening(kind: EarsKind): string {
-  return `<span class="ears-clause"><span class="scenario-keyword ears-${kind}">${EARS_LABELS.get(kind)}</span> `
+function clauseOpening(keywords: readonly EarsKeyword[]): string {
+  const labels = keywords
+    .map(
+      (keyword) =>
+        `<span class="scenario-keyword ears-${keyword}">${EARS_LABELS.get(keyword)}</span> `,
+    )
+    .join('')
+  return `<span class="ears-clause">${labels}`
 }
 
 /** インラインの要素のうち、ここで読み書きする部分。 */
@@ -42,7 +57,7 @@ export type InlineToken = { type: string; content: string }
 
 /**
  * 箇条の本文のインラインの要素を、EARS の節ごとに区切った並びに置き換える。
- * 区切りの語と主体はテキストの要素の中にあるので、テキストだけを連ねて節を読み、その位置で
+ * 区切りの語はテキストの要素の中にあるので、テキストだけを連ねて節を読み、その位置で
  * テキストを分けて印を差し込む。読み取れなければ undefined を返し、原文を残させる。
  */
 export function earsChildren<T extends InlineToken>(
@@ -57,7 +72,7 @@ export function earsChildren<T extends InlineToken>(
   const cuts = earsCuts(plain, responder)
   const [first] = cuts ?? []
   if (!cuts || !first) return undefined
-  const out: T[] = [make('html_inline', clauseOpening(first.kind))]
+  const out: T[] = [make('html_inline', clauseOpening(first.keywords))]
   let skipUntil = first.to
   let next = 1
   let offset = 0
@@ -74,7 +89,7 @@ export function earsChildren<T extends InlineToken>(
     for (let cut = cuts[next]; cut !== undefined && cut.from < end; cut = cuts[next]) {
       if (cut.from < cursor) return undefined
       if (cut.from > cursor) out.push(make('text', plain.slice(cursor, cut.from)))
-      out.push(make('html_inline', `</span>${clauseOpening(cut.kind)}`))
+      out.push(make('html_inline', `</span>${clauseOpening(cut.keywords)}`))
       skipUntil = cut.to
       next += 1
       cursor = Math.min(skipUntil, end)
@@ -106,32 +121,37 @@ export function earsCuts(statement: string, responder: string): EarsCut[] | unde
   const [mark] = marks
   if (mark === undefined || marks.length !== 1) return undefined
   const markStart = mark.index ?? 0
-  const responseStart = markStart + mark[0].length
-  if (markStart === 0) return [{ from: 0, to: responseStart, kind: 'then' }]
+  if (markStart === 0) return [{ from: 0, to: 0, keywords: ['shall'] }]
 
   // 前置きは、最後の節の区切りの読点までである。
   const preamble = statement.slice(0, markStart)
-  const clauses: Array<{ kind: EarsKind; markerStart: number; markerEnd: number }> = []
+  const clauses: Array<{ keyword: EarsKeyword; markerStart: number; markerEnd: number }> = []
   PREAMBLE_CLAUSE.lastIndex = 0
   while (PREAMBLE_CLAUSE.lastIndex < preamble.length) {
     const start = PREAMBLE_CLAUSE.lastIndex
     const clause = PREAMBLE_CLAUSE.exec(preamble)
     if (clause === null) return undefined
     const [, content = '', marker = ''] = clause
-    const kind = MARKER_KINDS.get(marker)
-    if (kind === undefined || content === '') return undefined
+    const keyword = MARKER_KEYWORDS.get(marker)
+    if (keyword === undefined || content === '') return undefined
     const markerStart = start + content.length
-    clauses.push({ kind, markerStart, markerEnd: PREAMBLE_CLAUSE.lastIndex })
+    clauses.push({ keyword, markerStart, markerEnd: PREAMBLE_CLAUSE.lastIndex })
   }
   const [first] = clauses
   if (first === undefined) return undefined
+  // 望まない振る舞いの型は、If と対になる Then を応答の前に置く。
+  const response: EarsKeyword[] = clauses.some((clause) => clause.keyword === 'if')
+    ? ['then', 'shall']
+    : ['shall']
   return [
-    { from: 0, to: 0, kind: first.kind },
+    { from: 0, to: 0, keywords: [first.keyword] },
     ...clauses.map((clause, index) => {
       const next = clauses[index + 1]
-      return next === undefined
-        ? { from: clause.markerStart, to: responseStart, kind: 'then' as const }
-        : { from: clause.markerStart, to: clause.markerEnd, kind: next.kind }
+      return {
+        from: clause.markerStart,
+        to: clause.markerEnd,
+        keywords: next === undefined ? response : [next.keyword],
+      }
     }),
   ]
 }
