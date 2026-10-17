@@ -143,14 +143,6 @@ model SigningKeyRotated {
 }
 
 
-@doc("SigningKeyMinJwksOverlap を過ぎたか、緊急に無効にしたため、署名鍵が Verifying から Retired へ移り、JWKS から外れた。")
-model SigningKeyRetired {
-  occurredAt: utcDateTime;
-  tenantId: string;
-  kid: string;
-}
-
-
 @doc("猶予が終わった署名鍵が Retired から Archived へ移った。Archived は終端の状態で、監査のために保管する。")
 model SigningKeyArchived {
   occurredAt: utcDateTime;
