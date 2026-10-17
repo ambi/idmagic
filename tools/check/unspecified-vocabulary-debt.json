@@ -32,7 +32,7 @@
     "events": []
   },
   "jobs": {
-    "errors": ["jobs_unavailable"],
+    "errors": [],
     "events": []
   },
   "oauth2": {

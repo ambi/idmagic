@@ -124,6 +124,49 @@ func (h exportTestHandler) assertNoRunnableExportJobs(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-IDMANAGEMENT-039: ジョブの保存先が未構成の開始は 503 jobs_unavailable を返し、ジョブとイベントを残さない。
+//verify:operation StartUserCsvExport: ジョブ保存先の未構成に対する 503 の Problem Details と無作用。
+//verify:operation StartGroupCsvExport: ジョブ保存先の未構成に対する 503 の Problem Details と無作用。
+//verify:operation StartGroupMemberCsvExport: ジョブ保存先の未構成に対する 503 の Problem Details と無作用。
+func TestDataExportHTTPRejectsAnUnavailableJobService(t *testing.T) {
+	for _, tc := range []struct {
+		name, path, column string
+	}{
+		{"users", "/api/admin/v1/users/exports", "preferred_username"},
+		{"groups", "/api/admin/v1/groups/exports", "name"},
+		{"members", "/api/admin/v1/groups/g1/members/exports", "user_id"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var requested []spec.DomainEvent
+			h := newExportTestHandler(t, func(deps *httpadapter.Deps) {
+				deps.Jobs.Repo = nil
+				deps.Emit = func(event spec.DomainEvent) {
+					if event.EventType() == "DataExportRequested" {
+						requested = append(requested, event)
+					}
+				}
+			})
+			csrf, cookie := adminCSRF(t, h.echo)
+			response := adminJSONRequest(t, h.echo, http.MethodPost, tc.path, csrf, cookie, map[string]any{"columns": []string{tc.column}})
+			var problem struct {
+				Type   string `json:"type"`
+				Status int    `json:"status"`
+			}
+			if err := json.Unmarshal(response.Body.Bytes(), &problem); err != nil {
+				t.Fatal(err)
+			}
+			if response.Code != http.StatusServiceUnavailable || problem.Status != http.StatusServiceUnavailable ||
+				problem.Type != "urn:idmagic:error:jobs_unavailable" || response.Header().Get("Content-Type") != "application/problem+json" {
+				t.Fatalf("status=%d content-type=%q body=%s, want 503 jobs_unavailable Problem Details", response.Code, response.Header().Get("Content-Type"), response.Body.String())
+			}
+			h.assertNoRunnableExportJobs(t)
+			if len(requested) != 0 {
+				t.Fatalf("refused export emitted %d DataExportRequested event(s)", len(requested))
+			}
+		})
+	}
+}
+
 func TestDataExportHTTP_UserFullFlow(t *testing.T) {
 	h := newExportTestHandler(t)
 	e := h.echo

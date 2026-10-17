@@ -205,7 +205,5 @@ model JobCanceled {
 }
 
 
-@doc("エクスポートとインポートを支えるジョブのサービスが設定されていないか、到達できないので、リクエストをキューへ入れることも読むこともできなかった。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:jobs_unavailable` である。この条件はデプロイメントに起因し、サービスに到達できるようになれば同じリクエストが成功するので、500 ではなく 503 とする。")
-model JobsUnavailableError is ProblemDetails;
 
 }

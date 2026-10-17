@@ -1,5 +1,8 @@
 namespace IdMagic.Contract {
 
+@doc("ジョブの保存先が構成されていないため、エクスポートの操作を実行できなかった。RFC 9457 の Problem Details で、type は urn:idmagic:error:jobs_unavailable である。構成を修正した後に再試行できるため503を返す。")
+model JobsUnavailableError is ProblemDetails;
+
 @doc("属性値の直和型の判別子。Tenancy モジュールが所有する定義を、公開契約として写したもの。")
 enum AttributeType {
   String: "string",

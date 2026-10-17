@@ -1,5 +1,11 @@
 namespace IdMagic.Contract {
 
+@doc("アイコンのアップロードが画像でない、262,144 バイトを超える、または画像を含まないため拒否された。RFC 9457 の Problem Details で、type は urn:idmagic:error:invalid_icon である。")
+model InvalidIconError is ProblemDetails;
+
+@doc("サインインポリシーの規則、認証強度、CIDR、再認証の期間、MFA の登録の猶予が不正なため拒否された。RFC 9457 の Problem Details で、type は urn:idmagic:error:invalid_sign_in_policy である。")
+model InvalidSignInPolicyError is ProblemDetails;
+
 @doc("OAuth2 モジュールが所有するクライアントの種類を、公開契約として写したもの。送受信の値は RFC 6749 の 2.1 節に従う。")
 enum ClientType {
   Public: "public",

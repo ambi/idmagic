@@ -191,6 +191,7 @@ model UploadApplicationIconSuccess_200 {
 
 union UploadApplicationIconError400Body {
   IdMagic.Contract.InvalidRequestError,
+  IdMagic.Contract.InvalidIconError,
 }
 
 model UploadApplicationIconError400 {
@@ -840,6 +841,7 @@ model UpdateAppSignInPolicySuccess_200 {
 
 union UpdateAppSignInPolicyError400Body {
   IdMagic.Contract.InvalidRequestError,
+  IdMagic.Contract.InvalidSignInPolicyError,
 }
 
 model UpdateAppSignInPolicyError400 {
@@ -913,6 +915,7 @@ model UpdateTenantDefaultSignInPolicySuccess_200 {
 
 union UpdateTenantDefaultSignInPolicyError400Body {
   IdMagic.Contract.InvalidRequestError,
+  IdMagic.Contract.InvalidSignInPolicyError,
 }
 
 model UpdateTenantDefaultSignInPolicyError400 {

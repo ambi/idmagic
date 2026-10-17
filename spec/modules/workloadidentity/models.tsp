@@ -1,5 +1,8 @@
 namespace IdMagic.Contract {
 
+@doc("同じ信頼設定に同じ主体のパターンの関連付けが存在するため、作成を拒否した。RFC 9457 の Problem Details で、type は urn:idmagic:error:agent_workload_binding_pattern_conflict である。")
+model AgentWorkloadBindingPatternConflictError is ProblemDetails;
+
 @doc("指定した信頼設定が存在しないか、別のテナントに属する。RFC 9457 の Problem Details で、type は urn:idmagic:error:workload_trust_bundle_not_found である。")
 model WorkloadTrustBundleNotFoundError is ProblemDetails;
 

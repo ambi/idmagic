@@ -399,6 +399,12 @@ model CreateAgentWorkloadBindingError403 {
   @body body: CreateAgentWorkloadBindingError403Body;
 }
 
+model CreateAgentWorkloadBindingError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AgentWorkloadBindingPatternConflictError;
+}
+
 union CreateAgentWorkloadBindingError422Body {
   IdMagic.Contract.AgentWorkloadBindingAgentNotFoundError,
   IdMagic.Contract.AgentWorkloadBindingPatternRequiredError,
@@ -418,7 +424,7 @@ model CreateAgentWorkloadBindingError422 {
 op CreateAgentWorkloadBinding(
   @path trust_bundle_id: string,
   @body body: IdMagic.Contract.AgentWorkloadBindingCreateRequest
-): CreateAgentWorkloadBindingSuccess_201 | CreateAgentWorkloadBindingError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAgentWorkloadBindingError403 | CreateAgentWorkloadBindingError422 | WorkloadTrustBundleNotFoundResponse;
+): CreateAgentWorkloadBindingSuccess_201 | CreateAgentWorkloadBindingError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAgentWorkloadBindingError403 | CreateAgentWorkloadBindingError409 | CreateAgentWorkloadBindingError422 | WorkloadTrustBundleNotFoundResponse;
 
 model DisableAgentWorkloadBindingSuccess_204 {
   @statusCode statusCode: 204;

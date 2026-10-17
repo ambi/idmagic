@@ -71,6 +71,7 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 - User のエクスポートで `status` 以外の絞り込みのキーを指定されたか、Group のエクスポートで絞り込みを指定された場合、IdManagement は、422 と `invalid_filter` で拒否する。
 - User の状態のどれでもない `status` の値を指定された場合、IdManagement は、422 と `invalid_filter` で拒否する。
 - 実行中のジョブの上限を超える開始を要求された場合、IdManagement は、429 と `active_job_quota_exceeded` で拒否する。
+- ジョブの保存先が構成されていない場合、IdManagement は、エクスポートの開始を 503 と `jobs_unavailable` で拒否し、ジョブを作らず、イベントを発行しない。
 - 開始を拒否した場合、IdManagement は、ジョブを作らず、`DataExportRequested` を発行しない。
 - **例**：EX-IDMANAGEMENT-039-01、EX-IDMANAGEMENT-039-04
 
