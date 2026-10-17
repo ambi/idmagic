@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -45,7 +44,7 @@ func AccessTokenHash(accessToken string) string {
 func VerifyDPoPForToken(
 	ctx context.Context,
 	dpopHeader, expectedHTM, expectedHTU string,
-	replay ports.DpopReplayStore,
+	replay ReplayStore,
 	now time.Time,
 ) (*DPoPResult, error) {
 	if dpopHeader == "" {
@@ -62,7 +61,7 @@ func VerifyDPoPForToken(
 func VerifyDPoPForResource(
 	ctx context.Context,
 	dpopHeader, expectedHTM, expectedHTU, accessToken string,
-	replay ports.DpopReplayStore,
+	replay ReplayStore,
 	now time.Time,
 ) (*DPoPResult, error) {
 	if dpopHeader == "" {
@@ -80,7 +79,7 @@ func VerifyDPoPForResource(
 func verifyDPoP(
 	ctx context.Context,
 	dpopHeader, expectedHTM, expectedHTU, accessToken string,
-	replay ports.DpopReplayStore,
+	replay ReplayStore,
 	now time.Time,
 ) (*DPoPResult, error) {
 	parts := strings.Split(dpopHeader, ".")

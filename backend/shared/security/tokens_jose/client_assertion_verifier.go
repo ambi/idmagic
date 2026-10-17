@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -36,7 +35,7 @@ func VerifyClientAssertion(
 	assertion, expectedClientID string,
 	expectedAudiences []string,
 	keysFn func(ctx context.Context, clientID string) ([]map[string]any, error),
-	replay ports.ClientAssertionReplayStore,
+	replay ReplayStore,
 	now time.Time,
 	httpc *http.Client,
 ) (*ClientAssertionResult, error) {

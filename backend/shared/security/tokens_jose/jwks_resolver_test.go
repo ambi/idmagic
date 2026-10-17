@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // roundTripFunc lets a test stand in for the network without a real listener:
@@ -104,7 +102,7 @@ func TestJWKResolverResolve(t *testing.T) {
 			t.Fatal("unexpected network call")
 			return nil, errors.New("unreachable")
 		})
-		client := &oauthdomain.OAuth2Client{JWKS: map[string]any{"keys": []any{map[string]any{"kid": "inline"}}}}
+		client := JWKSource{JWKS: map[string]any{"keys": []any{map[string]any{"kid": "inline"}}}}
 		keys, err := r.Resolve(context.Background(), client)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -116,7 +114,7 @@ func TestJWKResolverResolve(t *testing.T) {
 
 	t.Run("errors when neither inline jwks nor jwks_uri is set", func(t *testing.T) {
 		r := newStubResolver(nil)
-		client := &oauthdomain.OAuth2Client{}
+		client := JWKSource{}
 		if _, err := r.Resolve(context.Background(), client); err == nil {
 			t.Fatal("expected error")
 		}
@@ -125,7 +123,7 @@ func TestJWKResolverResolve(t *testing.T) {
 	t.Run("errors when jwks_uri is empty string", func(t *testing.T) {
 		r := newStubResolver(nil)
 		empty := ""
-		client := &oauthdomain.OAuth2Client{JwksURI: &empty}
+		client := JWKSource{JwksURI: &empty}
 		if _, err := r.Resolve(context.Background(), client); err == nil {
 			t.Fatal("expected error")
 		}
@@ -139,7 +137,7 @@ func TestJWKResolverResolve(t *testing.T) {
 			}
 			return jsonResponse(http.StatusOK, `{"keys":[{"kid":"remote"}]}`), nil
 		})
-		client := &oauthdomain.OAuth2Client{JwksURI: &uri}
+		client := JWKSource{JwksURI: &uri}
 		keys, err := r.Resolve(context.Background(), client)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)

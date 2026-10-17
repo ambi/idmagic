@@ -372,13 +372,6 @@
       "reason": "WsFederation -> OAuth2 lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
-      "id": "shared-dependency:shared->OAuth2",
-      "sourceModule": "shared",
-      "targetModule": "OAuth2",
-      "violations": ["shared-dependency:backend/shared/security/tokens_jose->OAuth2"],
-      "reason": "JWT の署名器を移した後も、JWKS の取得、Client Assertion と DPoP の検証が OAuth2 の型とリプレイ保存ポートを使う。技術的な検証への入力と、OAuth2 の型からの変換を分ける必要がある（D5、D6）。"
-    },
-    {
       "id": "shared-dependency:shared->Tenancy",
       "sourceModule": "shared",
       "targetModule": "Tenancy",

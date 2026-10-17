@@ -77,7 +77,7 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 				if cl == nil {
 					return nil, invalidClientError()
 				}
-				return resolver.Resolve(ctx, cl)
+				return resolver.Resolve(ctx, tokensJOSE.JWKSource{JWKS: cl.JWKS, JwksURI: cl.JwksURI})
 			},
 			d.ClientAssertionReplayStore, time.Now().UTC(), nil,
 		)
