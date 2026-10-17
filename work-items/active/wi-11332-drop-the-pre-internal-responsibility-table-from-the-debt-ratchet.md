@@ -14,7 +14,7 @@ spec_impact: { kind: none, reason: "負債の比較検査が基準 revision の�
 
 ## 動機
 
-[残りのモジュールの internal/ への移行](wi-75383-move-remaining-modules-behind-go-internal-and-retire-legacy.md)で、作業ツリーの責務表は `internal` だけを宣言できるようになった。
+[残りのモジュールの internal/ への移行](../done/wi-75383-move-remaining-modules-behind-go-internal-and-retire-legacy.md)で、作業ツリーの責務表は `internal` だけを宣言できるようになった。
 負債の比較検査は基準 revision の責務表も読むため、基準 revision が `legacy` の行や旧形式の表を持つ間は、それを読む互換と、`legacy` から `internal` へ切り替えたモジュールの利用元のパスの読み替えを残してある。
 wi-75383 が `main` に入れば、比較の基準になる revision の責務表はすべて `internal` になり、この互換は使われなくなる。
 
