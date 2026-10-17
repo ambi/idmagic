@@ -73,6 +73,7 @@ func start() (*pgxpool.Pool, func()) {
 		removeRuntimePath()
 		return nil, noop
 	}
+	binariesPath := postgresBinariesPath()
 	pg := embeddedpostgres.NewDatabase(
 		embeddedpostgres.DefaultConfig().
 			Port(port).
@@ -82,11 +83,11 @@ func start() (*pgxpool.Pool, func()) {
 			RuntimePath(runtimePath).
 			// The immutable binaries are safe to share and expensive to extract.
 			// Keep only mutable runtime/data files in the isolated directory.
-			BinariesPath(postgresBinariesPath()).
+			BinariesPath(binariesPath).
 			Logger(nil).
 			StartTimeout(90 * time.Second),
 	)
-	if err := pg.Start(); err != nil {
+	if err := startWithSharedBinaries(binariesPath, pg.Start); err != nil {
 		warn("embedded-postgres unavailable", err)
 		removeRuntimePath()
 		return nil, noop
