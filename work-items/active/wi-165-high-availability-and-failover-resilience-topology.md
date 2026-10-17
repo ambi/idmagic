@@ -7,8 +7,8 @@ created_at: 2026-07-10
 priority: p2
 change_kind: operations
 affected_spec:
-  - { path: docs/modules/system/operations/README.md, requirement: REQ-SYSTEM-002 }
-  - { path: docs/modules/system/operations/README.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/modules/system/features/operations.md, requirement: REQ-SYSTEM-002 }
+  - { path: docs/modules/system/features/operations.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # どの単一障害でも認証を止めないマルチAZ・自動フェイルオーバー・過負荷保護・ゼロダウンタイム移行のトポロジを整備する

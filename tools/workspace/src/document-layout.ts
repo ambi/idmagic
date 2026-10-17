@@ -18,8 +18,8 @@ export const SHARED_SCENARIOS = 'docs/modules/scenarios.feature.md'
 export const MODULE_INDEX_DOCUMENTS = ['README.md', 'glossary.md', 'scenarios.feature.md'] as const
 
 /**
- * 全体設計文書の設計領域。システムの `docs/design/<directory>/` とモジュールの
- * `design/<file>` が同じ語彙と順序を使う。モジュールの索引は固有設計と例外だけを並べる。
+ * 全体設計文書の設計領域。システムの `docs/design/<directory>/` とモジュールの直下の
+ * `<file>` が同じ語彙と順序を使う。モジュールの索引は固有設計と例外だけを並べる。
  * 順序は実現対象（アプリケーション、データ、
  * インフラストラクチャ）、複数の実現対象へ作用する領域、検証の順であり、索引の表と生成サイトの
  * 目次はこの順に従う。
@@ -121,45 +121,83 @@ export function canonicalDocumentNames(directory: string): readonly string[] | u
 }
 
 /**
- * モジュールの直下に置ける文書。判断と仕組みは `design/` へ、規則は機能スライスへ置く。
- * `quality.md` は、システムの品質要求のうちこのモジュールに割り当てた分を書く仕様である。
+ * モジュールの直下に置ける固定の文書。文書は対象（モジュール全体、設計領域、機能）で分け、
+ * 仕様か設計かでは分けない。並びは索引と生成サイトの順であり、概要、語彙、外部規範、品質、
+ * 設計領域、設計の記録の順とする。`quality.md` は、システムの品質要件のうちこのモジュールに
+ * 割り当てた分を書く。モジュールの直下には、この一覧のほかに文書を置かない。
  */
-export const MODULE_DOCUMENTS = ['README.md', 'glossary.md', 'standards.md', 'quality.md'] as const
-
-/**
- * モジュールの内部設計の段に置く固定の文書。横断的概念は任意の名前で並べる。設計領域の索引は
- * モジュールの `README.md` の最後の節に置き、この段に別の入口を置かない。
- */
-export const DESIGN_DOCUMENTS = ['decisions.md'] as const
-
-/**
- * 機能スライスの固定の文書。長くなった機能仕様の章は任意の名前で並べる。機能に閉じた仕組みは
- * 機能仕様の「実現方式」の節に書き、別の設計文書を置かない。
- */
-export const FEATURE_SLICE_DOCUMENTS = ['README.md', 'acceptance.feature.md'] as const
-
-/**
- * 任意の名前を許す段でも使えない名前。ファイル種別ごとの文書を章として置くと、
- * 一つの機能を種別ごとのファイルに散らす構造へ戻ってしまう。用語と標準はモジュールの直下に置く。
- * 機能の設計は機能仕様の節に置くので、`design.md` も章の名前にしない。
- */
-const RESERVED_FREE_NAMES = new Set([
-  'states.md',
-  'decisions.md',
-  'internals.md',
-  'scenarios.feature.md',
+export const MODULE_DOCUMENTS: readonly string[] = [
+  'README.md',
   'glossary.md',
   'standards.md',
-  'design.md',
+  'quality.md',
+  ...DESIGN_AREAS.map(({ file }) => file),
+  'decisions.md',
+  'risks.md',
+]
+
+/** 機能仕様を置く、モジュールの下の唯一の段。 */
+export const FEATURES_DIRECTORY = 'features'
+
+/**
+ * 機能名と章の名前に使えない名前。ファイル種別ごとの文書を機能や章として置くと、一つの対象を
+ * 種別ごとのファイルに散らす構造へ戻ってしまう。用語、標準、品質、設計の記録はモジュールの
+ * 直下に置き、機能の設計は機能仕様の節に置くので、`design` も名前にしない。
+ */
+const RESERVED_FEATURE_STEMS = new Set([
+  'states',
+  'internals',
+  'design',
+  'features',
+  'scenarios',
+  'glossary',
+  'standards',
+  'quality',
+  'decisions',
+  'risks',
+  'readme',
 ])
 
-/** 任意の名前の文書は、ケバブケースの Markdown に限る。`Readme.md` のような打ち間違いを通さない。 */
-const FREE_DOCUMENT_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/
+/**
+ * 機能の段の文書の名前。`<feature>.md` が機能仕様、`<feature>.feature.md` が受け入れ例、
+ * `<feature>.<chapter>.md` が長くなった機能仕様の章である。名前はケバブケースに限り、
+ * `Readme.md` のような打ち間違いを通さない。
+ */
+const KEBAB = '[a-z0-9]+(?:-[a-z0-9]+)*'
+const FEATURE_DOCUMENT_NAME = new RegExp(`^(${KEBAB})(?:\\.(${KEBAB}))?\\.md$`)
 
-/** ある段に置ける文書。`freeNames` が真なら、固定の名前に加えて任意の名前の章も置ける。 */
+/** 機能の段の文書が、機能のどの部分か。 */
+export type FeatureDocument = {
+  module: string
+  feature: string
+  part: 'specification' | 'chapter' | 'examples'
+}
+
+/** パスが機能の段の文書なら、その機能と部分を返す。名前の形が合わなければ返さない。 */
+export function featureDocument(path: string): FeatureDocument | undefined {
+  const match = path.match(/^docs\/modules\/([^/]+)\/features\/([^/]+)$/)
+  if (!match) return undefined
+  const name = match[2]?.match(FEATURE_DOCUMENT_NAME)
+  const [module = '', feature = '', chapter] = [match[1], name?.[1], name?.[2]]
+  if (!name || RESERVED_FEATURE_STEMS.has(feature) || RESERVED_FEATURE_STEMS.has(chapter ?? '')) {
+    return undefined
+  }
+  const part =
+    chapter === undefined ? 'specification' : chapter === 'feature' ? 'examples' : 'chapter'
+  return { module, feature, part }
+}
+
+/** 機能仕様のパス。機能の章と例はこのパスと同じ機能に属する。 */
+export function featureSpecificationPath(module: string, feature: string): string {
+  return `docs/modules/${module}/${FEATURES_DIRECTORY}/${feature}.md`
+}
+
+/**
+ * ある段に置ける文書。`features` が真なら、固定の名前の代わりに機能の段の名前の形で置ける。
+ */
 export interface DocumentAllowance {
   names: readonly string[]
-  freeNames: boolean
+  features?: boolean
 }
 
 /** 段の集合から読み取った、名前の判定に要る事実。 */
@@ -169,46 +207,36 @@ export interface DocumentSetView {
    * 設定を読まずに同じ判定ができるよう、ファイルの有無で決める。
    */
   featureModules: ReadonlySet<string>
-  /** 子のディレクトリを持つ段。これが機能群と機能スライスを分ける。 */
-  parents: ReadonlySet<string>
 }
 
 export function describeDocumentSet(listings: readonly DirectoryListing[]): DocumentSetView {
   const featureModules = new Set<string>()
-  const parents = new Set<string>()
   for (const listing of listings) {
     const module = listing.directory.match(/^docs\/modules\/([^/]+)$/)?.[1]
     if (module && listing.files.includes('README.md')) featureModules.add(module)
-    const parent = listing.directory.slice(0, Math.max(0, listing.directory.lastIndexOf('/')))
-    if (parent) parents.add(parent)
   }
-  return { featureModules, parents }
+  return { featureModules }
 }
 
 /**
- * その段に置ける文書。モジュールは、モジュール、内部設計、機能群、機能スライスの段を持つ。
- * 機能群は子のディレクトリを持つ段であり、境界と索引だけを書く。機能スライスはモジュールから
- * 一段か二段下の、子を持たない段である。それより下と、印を持たないモジュールの段と、
- * 固定の一覧にないシステムの段には何も置けない。
+ * その段に置ける文書。モジュールは、モジュールの直下と機能の段の二つだけを持つ。
+ * それより下と、印を持たないモジュールの段と、固定の一覧にないシステムの段には何も置けない。
  */
 export function documentAllowance(directory: string, view: DocumentSetView): DocumentAllowance {
   const match = directory.match(/^docs\/modules\/([^/]+)(?:\/(.+))?$/)
   const module = match?.[1]
-  if (!module) return { names: canonicalDocumentNames(directory) ?? [], freeNames: false }
-  if (!view.featureModules.has(module)) return { names: [], freeNames: false }
-  const rest = match[2]?.split('/') ?? []
-  if (rest.length === 0) return { names: MODULE_DOCUMENTS, freeNames: false }
-  if (rest[0] === 'design') {
-    return rest.length === 1
-      ? { names: DESIGN_DOCUMENTS, freeNames: true }
-      : { names: [], freeNames: false }
-  }
-  if (rest.length > 2) return { names: [], freeNames: false }
-  if (view.parents.has(directory)) return { names: ['README.md'], freeNames: false }
-  return { names: FEATURE_SLICE_DOCUMENTS, freeNames: true }
+  if (!module) return { names: canonicalDocumentNames(directory) ?? [] }
+  if (!view.featureModules.has(module)) return { names: [] }
+  const rest = match[2]
+  if (rest === undefined) return { names: MODULE_DOCUMENTS }
+  if (rest === FEATURES_DIRECTORY) return { names: [], features: true }
+  return { names: [] }
 }
 
 export function allowsDocument(allowance: DocumentAllowance, name: string): boolean {
   if (allowance.names.includes(name)) return true
-  return allowance.freeNames && FREE_DOCUMENT_NAME.test(name) && !RESERVED_FREE_NAMES.has(name)
+  return (
+    allowance.features === true &&
+    featureDocument(`docs/modules/m/${FEATURES_DIRECTORY}/${name}`) !== undefined
+  )
 }

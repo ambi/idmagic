@@ -8,13 +8,13 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/modules/identity-management/data-export/README.md, requirement: REQ-IDMANAGEMENT-039 }
-  - { path: docs/modules/identity-management/data-export/README.md, requirement: REQ-IDMANAGEMENT-041 }
-  - { path: docs/modules/identity-management/data-export/README.md, requirement: REQ-IDMANAGEMENT-087 }
-  - { path: docs/modules/identity-management/data-export/README.md, requirement: REQ-IDMANAGEMENT-088 }
-  - { path: docs/modules/identity-management/user-csv/README.md, requirement: REQ-IDMANAGEMENT-004 }
-  - { path: docs/modules/identity-management/group-csv/README.md, requirement: REQ-IDMANAGEMENT-026 }
-  - { path: docs/modules/identity-management/group-csv/README.md, requirement: REQ-IDMANAGEMENT-029 }
+  - { path: docs/modules/identity-management/features/data-export.md, requirement: REQ-IDMANAGEMENT-039 }
+  - { path: docs/modules/identity-management/features/data-export.md, requirement: REQ-IDMANAGEMENT-041 }
+  - { path: docs/modules/identity-management/features/data-export.md, requirement: REQ-IDMANAGEMENT-087 }
+  - { path: docs/modules/identity-management/features/data-export.md, requirement: REQ-IDMANAGEMENT-088 }
+  - { path: docs/modules/identity-management/features/user-csv.md, requirement: REQ-IDMANAGEMENT-004 }
+  - { path: docs/modules/identity-management/features/group-csv.md, requirement: REQ-IDMANAGEMENT-026 }
+  - { path: docs/modules/identity-management/features/group-csv.md, requirement: REQ-IDMANAGEMENT-029 }
 ---
 
 # IdManagement の CSV のインポートとエクスポートの操作が返すステータスを TypeSpec に宣言する

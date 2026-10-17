@@ -53,33 +53,30 @@ HTTP の操作とモデルの形は TypeSpec の `OAuth 2.0 and OpenID Connect` 
 
 | 機能 | 内容 |
 | --- | --- |
-| [クライアント](client/README.md) | 登録、メタデータの解決、クライアントの認証、クライアントシークレット |
-| [認可](authorization/README.md) | 認可コードフロー、PKCE、PAR |
-| [同意](consent/README.md) | 同意の付与、参照、撤回 |
-| [デバイス認可](device/README.md) | Device Authorization Grant |
-| [トークン](token/README.md) | 発行、ローテーション、イントロスペクション、失効、UserInfo、送信者制約、委譲 |
-| [承認リクエスト](approval/README.md) | Agent の操作に対する人間の承認（CIBA） |
-| [ログアウト](logout/README.md) | RP-Initiated Logout とバックチャネルのログアウト |
-| [プロトコルのエンドポイント](protocol-endpoints/README.md) | Discovery Metadata と流量の制限 |
-| [管理 API の認可](admin-access/README.md) | 管理 API のスコープとロールポリシー |
+| [クライアント](features/client.md) | 登録、メタデータの解決、クライアントの認証、クライアントシークレット |
+| [認可](features/authorization.md) | 認可コードフロー、PKCE、PAR |
+| [同意](features/consent.md) | 同意の付与、参照、撤回 |
+| [デバイス認可](features/device.md) | Device Authorization Grant |
+| [トークン](features/token.md) | 発行、ローテーション、イントロスペクション、失効、UserInfo、送信者制約、委譲 |
+| [承認リクエスト](features/approval.md) | Agent の操作に対する人間の承認（CIBA） |
+| [ログアウト](features/logout.md) | RP-Initiated Logout とバックチャネルのログアウト |
+| [プロトコルのエンドポイント](features/protocol-endpoints.md) | Discovery Metadata と流量の制限 |
+| [管理 API の認可](features/admin-access.md) | 管理 API のスコープとロールポリシー |
 
-| 文書 | 内容 |
-| --- | --- |
-| [OAuth2 の用語集](glossary.md) | このモジュールでの語義 |
-| [OAuth2 の標準仕様](standards.md) | 採用する外部標準仕様 |
-
-## 設計
+## 文書
 
 このモジュールが担当する SLO とキャパシティ要件は、[品質要件の割り当て](../../design/architecture/logical.md#品質要件の割り当て)から担当機能、設計、検証へ参照する。
 
 | 設計領域 | 区分 | 参照先 | 内容 |
 | --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
 | アプリケーション設計 | 委譲 | [標準仕様](standards.md#the-oauth-20-authorization-framework) | プロトコルの形は標準仕様と TypeSpec が、管理 API はシステムのアプリケーション設計が扱う |
-| データ設計 | 委譲 | [トークンの設計](token/README.md#データ) | トークンの有効期間と保持期間はトークンの設計が、テーブルの定義はスキーマファイルが扱う |
-| 信頼性設計 | 委譲 | [トークン](token/README.md#概要)、[ログアウトの設計](logout/README.md#アーキテクチャ) | 署名の提供元の障害はトークンが、ログアウトの配信の再試行はログアウトの設計が扱う |
-| 検証設計 | 固有設計 | [担当文書](design/verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
+| データ設計 | 委譲 | [トークンの設計](features/token.md#データ) | トークンの有効期間と保持期間はトークンの設計が、テーブルの定義はスキーマファイルが扱う |
+| 信頼性設計 | 委譲 | [トークン](features/token.md#概要)、[ログアウトの設計](features/logout.md#アーキテクチャ) | 署名の提供元の障害はトークンが、ログアウトの配信の再試行はログアウトの設計が扱う |
+| 検証設計 | 固有設計 | [担当文書](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
 
 | 文書 | 内容 |
 | --- | --- |
-| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |
+| [OAuth2 の用語集](glossary.md) | このモジュールでの語義 |
+| [OAuth2 の標準仕様](standards.md) | 採用する外部標準仕様 |
+| [設計判断](decisions.md) | 代替案を比べた重要な判断 |

@@ -6,9 +6,9 @@ created_at: 2026-08-08
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/modules/sharedsignals/revocation/README.md, requirement: REQ-SHAREDSIGNALS-001 }
-  - { path: docs/modules/sharedsignals/receiver/README.md, requirement: REQ-SHAREDSIGNALS-010 }
-  - { path: docs/modules/oauth2/token/README.md, requirement: REQ-OAUTH2-047 }
+  - { path: docs/modules/sharedsignals/features/revocation.md, requirement: REQ-SHAREDSIGNALS-001 }
+  - { path: docs/modules/sharedsignals/features/receiver.md, requirement: REQ-SHAREDSIGNALS-010 }
+  - { path: docs/modules/oauth2/features/token.md, requirement: REQ-OAUTH2-047 }
 depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
 ---
 
@@ -29,7 +29,7 @@ Agent 主体の token にしか revocation epoch 判定をかけない。
 User 側のローカル revocation epoch 機構と、それを既存の human 側失効トリガーに接続する部分が
 丸ごと欠けている**。README ロードマップ (Phase 3) は元々 CAEP/SSF を汎用機能として位置づけていた。
 
-人間ユーザーは RFC 7009 Token Revocation・refresh token family revocation (`docs/modules/oauth2/design/decisions.md` のリフレッシュトークン回転)・`sid`
+人間ユーザーは RFC 7009 Token Revocation・refresh token family revocation (`docs/modules/oauth2/decisions.md` のリフレッシュトークン回転)・`sid`
 ベースのセッション失効 ([[wi-28-session-management-and-oidc-logout-completion]]) というローカルの
 失効プリミティブは既に持っているが、これらは当該 IdP 内で完結し、外部 resource server / 別 IdP へ
 CAEP イベントとして伝播しない (EcosystemPropagation が無い)。また外部から届く User 主体の inbound

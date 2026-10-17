@@ -129,7 +129,7 @@ export async function checkDocuments(
       lines.push(`${supersession.where}: superseding ${supersession.target} does not exist`)
     }
   }
-  const nodeFindings = nodes.verify(view)
+  const nodeFindings = nodes.verify()
   failed ||= nodeFindings.length > 0
   lines.push(...nodeFindings)
 

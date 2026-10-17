@@ -8,8 +8,8 @@ priority: p1
 depends_on: [wi-462-control-plane-console-single-entry]
 change_kind: feature
 affected_spec:
-  - { path: docs/modules/audit/event-search/README.md, requirement: REQ-AUDIT-001 }
-  - { path: docs/modules/jobs/queue/README.md, requirement: REQ-JOBS-009 }
+  - { path: docs/modules/audit/features/event-search.md, requirement: REQ-AUDIT-001 }
+  - { path: docs/modules/jobs/features/queue.md, requirement: REQ-JOBS-009 }
   - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Audit.Operations.ExportAdminAuditEvents }
   - { path: spec/modules/jobs/models.tsp, symbol: IdMagic.Contract.JobKind }
 ---

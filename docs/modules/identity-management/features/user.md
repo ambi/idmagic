@@ -1,0 +1,232 @@
+# ユーザー
+
+## 概要
+
+この文書は、テナントの人間のプリンシパルである `User` を、管理者とフェデレーションが作成し、変更し、削除する機能の仕様である。
+
+| 項目 | 内容 |
+| --- | --- |
+| 責務 | `User` の作成、管理者による一覧と更新、必須操作の付与、無効化と再有効化、削除の予約と復元、完全削除、プロフィール属性の検証 |
+| 行為者 | 管理者（`Administrator`）、フェデレーションのログインを処理する `Authentication` |
+| コードの機能スライス | `backend/idmanagement/user` |
+| 扱わないもの | 本人によるセルフサービスは[アカウントのセルフサービス](account.md)、CSV による一括の作成と更新は[ユーザー CSV](user-csv.md)、管理 API の認可は[管理 API の認可](admin-access.md)が扱う |
+
+状態を変える操作（無効化と再有効化、削除の予約、復元、完全削除）は、章[ユーザーのライフサイクルの操作](user.lifecycle.md)に置く。
+
+## モデル
+
+`User` は、テナントに属する Aggregate root である。
+型として定義する中核の項目は、アイデンティティ、認証、RBAC に要るものだけに限る。
+
+| 項目 | 内容 |
+| --- | --- |
+| `sub` | 不変の識別子。削除した後も保持し、再利用しない |
+| `tenant_id` | 所属するテナント |
+| `preferred_username` | ユーザー名 |
+| `password_hash` | パスワード資格情報。フェデレーションで作った User では空である |
+| `email`、`email_verified` | メールアドレスと、その所有を確認したか |
+| `mfa_enrolled` | 多要素認証を登録したか |
+| `roles` | 直接付与したロール。実効ロールは所属する `Group` のロールとの和集合である |
+| `name`、`given_name`、`family_name` | 表示名 |
+| `lifecycle` | 状態と、状態が変わった時刻（`status_changed_at`） |
+| `attributes` | 中核にないプロフィール属性の疎な対応表 |
+
+- **判断**：OIDC と SCIM の任意項目は 25 個ほどあり、ほとんどのテナントは使わない。すべての User の型と保存領域へ加えずに、値を設定したキーだけが領域を使う `attributes` に置く。
+
+ユーザー名（`preferred_username`）とメールアドレス（`email`）の正規化、比較、一意性の範囲は、[IdManagement の値オブジェクト](../README.md#値オブジェクト)が定める。
+
+### 属性の定義
+
+`attributes` の各キーは、`UserAttributeDef` の定義に従う。
+実効的な定義は、すべてのテナントが共有する組み込みのカタログ（OIDC §5.1 の任意のクレームと、SCIM の `enterprise:User` に相当する組織の属性）と、テナントが定義する `TenantUserAttributeSchema` の和集合である。
+
+| 定義の項目 | 内容 |
+| --- | --- |
+| `key` | snake_case で、先頭は英字 |
+| `type` | `string`、`number`、`boolean`、`date`、`string_array` のいずれか |
+| `required` | 値を必須とするか |
+| `editable_by_user` | 本人のセルフサービスで変更できるか |
+| `visibility` | `private`、`self_readable`、`admin_readable`、`claim_exposed` のいずれか。relying party へ開示するのは `claim_exposed` だけである |
+| `claim_name`、`oidc_scope` | `visibility` が `claim_exposed` のときに使うクレーム名とスコープ |
+| `pii` | 個人情報か。デフォルトは `true` であり、保存と監査では平文ではなく SHA-256 の要約を記録する |
+
+- **判断**：組み込みの属性とテナント定義の属性を、`UserAttributeDef` の一つの仕組みで扱う。管理者が設定するスキーマの形を一つに保つためである。
+- **判断**：`pii` のデフォルトを `true` にするのは、テナントの利便より開示の上限を優先する安全側のデフォルトだからである。
+
+## 状態遷移
+
+### UserLifecycle
+
+`Active` は通常の稼働、`Disabled` は元に戻せる停止である。
+削除のデフォルトは予約であり、`PendingDeletion` に入ってから猶予期間の 30 日の間は `Active` へ戻せる。
+`Deleted` は、Tombstone へ置き換えて匿名化した終端状態であり、復元できない。
+
+| State | Kind | Meaning |
+|---|---|---|
+| Active | initial | 通常稼働。認証を許可するのはこの状態だけである |
+| Disabled | — | 復元可能な無効化 |
+| PendingDeletion | — | 削除予約。猶予期間内は復元できる |
+| Deleted | terminal | Tombstone 化して匿名化した。復元できない |
+
+| From | Event | Guard | To | Effects |
+|---|---|---|---|---|
+| Active | UserDisabled | — | Disabled |  |
+| Disabled | UserEnabled | — | Active |  |
+| Active | UserSoftDeleted | — | PendingDeletion |  |
+| Disabled | UserSoftDeleted | — | PendingDeletion |  |
+| PendingDeletion | UserRestored | — | Active |  |
+| PendingDeletion | UserDeleted | input.purge == true \|\| duration_since(status_changed_at) > duration('2592000s') | Deleted | UserDeleted |
+| Active | UserDeleted | input.purge == true | Deleted | UserDeleted |
+| Disabled | UserDeleted | input.purge == true | Deleted | UserDeleted |
+
+| State | 無効化 | 再有効化 | 削除の予約 | 復元 | 完全削除 | 保持期限の削除 |
+|---|---|---|---|---|---|---|
+| Active | → Disabled | 何もしない | → PendingDeletion | 拒否：409 not_pending_deletion | → Deleted | 何もしない |
+| Disabled | 何もしない | → Active | → PendingDeletion | 拒否：409 not_pending_deletion | → Deleted | 何もしない |
+| PendingDeletion | 拒否：409 user_pending_deletion | 拒否：409 user_pending_deletion | 何もしない | → Active（猶予期間内）<br>拒否：409 restore_grace_expired（猶予期間後） | → Deleted | 何もしない（猶予期間内）<br>→ Deleted（猶予期間後） |
+| Deleted | 拒否：404 user_not_found | 拒否：404 user_not_found | 拒否：404 user_not_found | 拒否：404 user_not_found | 何もしない | 何もしない |
+
+- **判断**：猶予期間の 30 日は、業界で一般的な 7 日から 30 日の範囲に合わせた。
+- **判断**：削除を物理削除ではなく Tombstone で行う理由は、[User の削除を物理削除ではなく Tombstone で行う](../decisions.md#user-の削除を物理削除ではなく-tombstone-で行う)に書く。
+
+## 操作
+
+### 作成の経路に共通する規則
+
+#### REQ-IDMANAGEMENT-089 User の作成は、経路によらず名前とメールアドレスの一意性を守り、作った User を動的グループの規則で評価する
+
+- IdManagement は、同じテナントの削除されていない User と[名前](../README.md#値オブジェクト)が同じユーザー名の User を作らない。
+- IdManagement は、同じテナントの削除されていない User と[メールアドレス](../README.md#値オブジェクト)が同じメールアドレスの User を作らない。
+- 管理者による作成、CSV の適用、フェデレーションの JIT が User を作ったとき、IdManagement は、作った User を有効な動的グループの規則で評価し、一致した Group に所属させる。
+- テナントの User のリソース上限に達している場合、IdManagement は、User を作らずに拒否し、使用量を変えない。
+- テナントの属性スキーマに違反する属性を指定された場合、IdManagement は、User を作らずに拒否する。
+- **判断**：作成の経路ごとに一意性や評価が異なると、同じ User が作り方によって別の扱いを受ける。JIT で作った User が次の全件の再評価まで動的グループに所属しないと、Group 由来のロールとアプリケーションの割り当てが遅れる。Okta のグループ規則と Entra ID の動的グループも、作成の経路によらず評価する。
+- **例**：EX-IDMANAGEMENT-089-01、EX-IDMANAGEMENT-089-02
+
+### 管理者による作成
+
+#### REQ-IDMANAGEMENT-042 管理者による User の作成は、ユーザー名とメールアドレスの一意性とパスワードポリシーを検証し、`Active` の User を作る
+
+- **上位の要件**：[REQ-IDMANAGEMENT-089](#作成の経路に共通する規則)
+- 管理者が User を作成したとき、IdManagement は、`Active` の User を作り、設定したパスワードをパスワードの履歴に加える。
+- 管理者が User を作成したとき、IdManagement は、ユーザー名を[名前](../README.md#値オブジェクト)の定義で正規化して保存する。
+- 同じテナントの削除されていない User と名前が同じユーザー名を指定された場合、IdManagement は、409 と `username_conflict` で拒否し、User を作らない。
+- 同じテナントの削除されていない User とメールアドレスが同じメールアドレスを指定された場合、IdManagement は、409 と `email_taken` で拒否し、User を作らない。
+- 前後の空白を除くと空になるユーザー名を指定された場合、IdManagement は、拒否し、User を作らない。
+- テナントのパスワードポリシーに違反するパスワードを指定された場合、IdManagement は、拒否し、User を作らない。
+- **例**：EX-IDMANAGEMENT-042-01、EX-IDMANAGEMENT-042-02
+
+### フェデレーションによる作成
+
+#### REQ-IDMANAGEMENT-001 フェデレーションの JIT はパスワード資格情報を作らず有効な User を作成する
+
+- `Authentication` が上流のトークンまたは Assertion とテナントの JIT ポリシーを検証した後に `ProvisionFederatedUser` を呼んだとき、IdManagement は、対応付けたユーザー名と、任意の名前、メールアドレス、属性で、`password_hash` が空の `Active` の User を作り、`UserCreated` を発行する。
+- テナントのリソース上限を超えるか、ユーザー名またはメールアドレスが衝突するか、属性スキーマに違反する場合、IdManagement は、User を作らずにエラーを返す。
+- **判断**：上流が認証の権威なので、ローカルの資格情報を設定しない。設定すると、上流で無効にした後もローカルのパスワードでサインインできる経路が残る。リソース上限、一意性、属性スキーマの検証は通常の作成と共通であり、この経路だけの近道はない。
+
+#### REQ-IDMANAGEMENT-043 フェデレーションの JIT が作る User は、ロールとパスワードの履歴を持たず、操作者に `identity-broker` を記録する
+
+- **上位の要件**：[REQ-IDMANAGEMENT-089](#作成の経路に共通する規則)
+- フェデレーションの JIT が User を作ったとき、IdManagement は、ロールを空にし、パスワードの履歴を作らない。
+- フェデレーションの JIT が User を作ったとき、IdManagement は、メールアドレスを[値オブジェクト](../README.md#値オブジェクト)の定義で正規化して保存する。
+- フェデレーションの JIT が User を作ったとき、IdManagement は、`UserCreated` の操作者に `identity-broker` を記録する。
+
+### 一覧
+
+#### REQ-IDMANAGEMENT-005 管理者のユーザー一覧は、正確な件数とカーソルで、重複も欠落もなくページを返す
+
+- 管理者がユーザー一覧を取得したとき、IdManagement は、絞り込みに一致する User の正確な総件数、総ページ数、現在のページ、ページサイズと、絞り込みに依存しない `total_users` を返す。
+- 管理者がユーザー一覧を取得したとき、IdManagement は、前後のページへ移る `first`、`prev`、`next`、`last` のカーソルを `Link` ヘッダーで返す。
+- 一覧の途中で User を削除したとき、IdManagement は、その User を以後のページに含めない。
+- カーソルで次のページを取得したとき、IdManagement は、返却済みの User を重複して返さない。
+- `query` または `status` を指定されたとき、IdManagement は、テナント全体から条件に一致する User だけを返し、`pagination.total_items` に条件に一致する件数を、`total_users` に削除済みを除く絞り込みに依存しない件数を返す。
+- 条件に一致する User がない場合、IdManagement は、空の一覧と、総項目数、総ページ数、現在のページ番号 `0 / 0 / 0` を返し、`Link` を一つも返さない。
+- 正確な件数を取得できない場合、IdManagement は、0 件として成功させずに、リクエスト全体をサーバーエラーで失敗させる。
+- 別テナントで発行されたカーソル、改ざんされたカーソル、発行時と `query` または `status` が異なるカーソルを受け取った場合、IdManagement は、InvalidRequestError で拒否する。
+- `admin` ロールを持たない呼び出し元が一覧を要求した場合、IdManagement は、AccessDeniedError で拒否する。
+- **例**：EX-IDMANAGEMENT-005-01、EX-IDMANAGEMENT-005-03
+
+### 保持期限の削除
+
+#### REQ-IDMANAGEMENT-044 猶予期間を過ぎた削除予約の User は、保持期限の削除が完全削除する
+
+- 保持期限の削除を実行したとき、IdManagement は、すべてのテナントで、`PendingDeletion` になってから猶予期間の 30 日を過ぎた User を完全削除する。
+- 保持期限の削除を実行したとき、IdManagement は、猶予期間の終わりの時刻ちょうどの User と、`PendingDeletion` になった時刻を記録していない User を完全削除しない。
+- 保持期限の削除が User を完全削除したとき、IdManagement は、`UserDeleted` の操作者に `system`、理由に `auto_purge` を記録する。
+- 保持期限の削除を実行したとき、IdManagement は、匿名化の後に完全削除が失敗した User の、残りの手順を行う。
+- ある User の完全削除が失敗した場合、IdManagement は、ほかの User の完全削除を続け、保持期限の削除を失敗として終える。
+- 管理者がユーザー一覧を取得したとき、IdManagement は、User を完全削除しない。
+- **判断**：読み取りの操作に削除を兼ねさせると、一覧を取得しないテナントでは個人情報が残り続ける。保持期限の削除は Batch の `retention-sweep` が行い、デフォルトの配置は毎時実行するので、猶予期間を過ぎた User が残るのは最長で約 1 時間である。
+- **例**：EX-IDMANAGEMENT-044-01、EX-IDMANAGEMENT-044-02
+
+### 更新
+
+#### REQ-IDMANAGEMENT-045 管理者による User の更新は、値が変わった項目だけを記録する
+
+- 管理者が User を更新したとき、IdManagement は、値が変わった項目だけを保存し、それだけを `changed_fields` に載せた `UserUpdated` を発行する。
+- 管理者が User の属性を更新したとき、IdManagement は、値が変わった属性のキーごとに、キーの昇順で `changed_fields` に載せる。
+- 管理者がどの項目の値も変えない更新を要求した場合、IdManagement は、成功を返し、`updated_at` を進めず、`UserUpdated` を発行しない。
+- 管理者が `attributes` を指定して User を更新したとき、IdManagement は、属性の対応表の全体を置き換え、指定しなかったキーを消す。
+- 管理者が `email_verified` を指定せずにメールアドレスを別の値へ変えたとき、IdManagement は、`email_verified` を `false` にする。
+- 管理者がメールアドレスと `email_verified` を同じ要求で指定したとき、IdManagement は、指定した `email_verified` を保存する。
+- **例**：EX-IDMANAGEMENT-045-01、EX-IDMANAGEMENT-045-03
+
+#### REQ-IDMANAGEMENT-090 管理者による User の更新は、ほかの User と同じユーザー名とメールアドレスへの変更を拒否する
+
+- **上位の要件**：[REQ-IDMANAGEMENT-089](#作成の経路に共通する規則)
+- 管理者が User のユーザー名を大文字と小文字だけが異なる表記へ変えたとき、IdManagement は、その表記で保存する。
+- 同じテナントの削除されていないほかの User と[名前](../README.md#値オブジェクト)が同じユーザー名へ変える更新を要求された場合、IdManagement は、409 と `username_conflict` で拒否し、User を変えない。
+- 同じテナントの削除されていないほかの User と[メールアドレス](../README.md#値オブジェクト)が同じメールアドレスへ変える更新を要求された場合、IdManagement は、409 と `email_taken` で拒否し、User を変えない。
+
+### 必須操作の付与と解除
+
+#### REQ-IDMANAGEMENT-047 必須操作の付与と解除は、すでにその状態なら何もしない
+
+- 管理者が必須操作を付与したとき、IdManagement は、User に必須操作を加え、`UserRequiredActionSet` を発行する。
+- 管理者が必須操作を解除したとき、IdManagement は、User から必須操作を外し、`UserRequiredActionCleared` を発行する。
+- 管理者がすでに付いている必須操作を付与したとき、IdManagement は、成功を返し、イベントを発行しない。
+- 管理者が付いていない必須操作を解除したとき、IdManagement は、成功を返し、イベントを発行しない。
+- 定義されていない必須操作を指定された場合、IdManagement は、422 と `invalid_required_action` で拒否する。
+
+## セキュリティ上の考慮
+
+| 観点 | 内容 |
+| --- | --- |
+| 認可 | 管理者の操作は、操作ごとの管理権限を要求する。規則は[管理 API の認可](admin-access.md)が定める |
+| テナント境界 | 操作の対象は、呼び出し元と同じテナントの User に限る |
+| 資格情報の開示 | 管理 API の応答は、`password_hash` を含まない専用の型を通す |
+| 停止した User | `Active` 以外の User は、新規のサインイン、既存のセッション、トークンの再発行、UserInfo のいずれも拒否する |
+
+- **判断**：管理 API の応答に汎用のドメイン型を使わない。ドメイン型へ後から項目を加えたときに、その項目が管理 API から漏れる形にしないためである。
+
+## 実現方式
+モジュール全体の設計は [IdManagement の文書](../README.md#文書)が扱う。
+
+### データ
+
+| データ | 仕組み |
+| --- | --- |
+| 認証の可否 | 認証を許可するのは `status` が `Active` の場合だけである。`Active` に解決されるゼロ値を含め、ほかの値はすべて拒否する |
+| 住所の属性 | 平坦なキー（`address_formatted`、`address_locality` など）で保存し、UserInfo と ID Token を作るときだけ入れ子の `address` クレームへ組み直す。`AttributeValue` を文字列、数値、真偽値、日付、文字列の配列の単純な直和型に保つためである |
+
+### 信頼性
+
+完全削除は、Aggregate を破棄せずにその場で Tombstone へ書き換え、次の順に進む。
+
+1. 所有する Agent を無効化する。
+2. 再識別と再認証に使える項目を一度に消した Tombstone を保存する。Tombstone の `lifecycle` には、残りの手順（`pending_purge`）と、`UserDeleted` に記録する操作者と理由を入れる。
+3. 削除した User から以後たどれてはならない記録を、それを所有するモジュールのポートを通して一つずつ消す。ポートは呼び出しごとに確定し、ポートをまたぐトランザクションはない。
+4. テナントの User の使用量を一つ減らし、残りの手順を手順 5 に進めて Tombstone を保存する。
+5. `UserDeleted` を発行し、下流のプロビジョニングへ通知し、`pending_purge` を消して Tombstone を保存する。
+
+手順 3 は何度行っても同じ結果になる。
+冪等でない手順 4 と 5 は、終えるたびに `pending_purge` を進めるので、再実行は終えていない手順から再開する。
+再実行するのは、同じ User の完全削除の要求と、Batch の `retention-sweep` である。
+`retention-sweep` は、各テナントで猶予期間を過ぎた `PendingDeletion` の User と、`pending_purge` を持つ Tombstone を探して完全削除し、一人の失敗で残りを止めない。
+
+| 症状 | 原因 | 直し方 |
+| --- | --- | --- |
+| 完全削除がエラーを返した後も、User の関連する記録の一部が残る | 手順 2 の後に、手順 3 以降のどれかが失敗した | 同じ User を完全削除し直すか、次の `retention-sweep` を待つ。どちらも残りの手順から再開する |
+| テナントの User の使用量が実際の件数より一つ少ない | 手順 4 の使用量の減算は成功し、直後の Tombstone の保存が失敗した後に再実行した | 再実行が減算をもう一度行った。使用量を実際の件数に合わせて手作業で直す |
+| `UserDeleted` が二度記録されている | `UserDeleted` に続く反応（所有者の削除による失効エポックの前進）か、手順 5 の Tombstone の保存が失敗した後に再実行した | 再実行が `UserDeleted` をもう一度発行した。失効エポックの前進は何度行っても同じ結果になるので、直す必要はない |
+| 猶予期間を過ぎた `PendingDeletion` の User が残っている | `retention-sweep` が動いていないか、その User の完全削除が失敗し続けている | CronJob の実行とログの `user purge failed` を確かめる |

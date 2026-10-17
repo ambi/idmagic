@@ -6,8 +6,8 @@ created_at: 2026-07-16
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: docs/modules/identity-governance/workflow-run/README.md, requirement: REQ-IDGOVERNANCE-008 }
-  - { path: docs/modules/tenancy/notification-template/README.md, requirement: REQ-TENANCY-016 }
+  - { path: docs/modules/identity-governance/features/workflow-run.md, requirement: REQ-IDGOVERNANCE-008 }
+  - { path: docs/modules/tenancy/features/notification-template.md, requirement: REQ-TENANCY-016 }
 depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-email-sender-adapter]
 ---
 
@@ -21,7 +21,7 @@ depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-ema
 リンクを含めたい」といった要求が高頻度で発生する。固定テンプレートのままでは実運用に耐えない。
 
 ## Scope
-- `docs/modules/tenancy/notification-template/README.md` の通知テンプレートカタログに
+- `docs/modules/tenancy/features/notification-template.md` の通知テンプレートカタログに
   `NotificationTemplate` (tenant-scoped、locale 別の件名・本文、許可された変数の集合) を追加する。
 - `send_email` action の `template_key` を、テナント定義の `NotificationTemplate` または製品固定
   template のいずれかを参照できるようにする。
@@ -42,7 +42,7 @@ depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-ema
 
 ## Tasks
 - [ ] T001 [Spec] `NotificationTemplate` モデル、authorization、scenarios を追加する。
-- [ ] T002 [Decision] placeholder 許可リストと sanitization 方針を `docs/modules/identity-governance/design/decisions.md` に記録する。
+- [ ] T002 [Decision] placeholder 許可リストと sanitization 方針を `docs/modules/identity-governance/decisions.md` に記録する。
 - [ ] T003 [App] テンプレート管理 usecase と `send_email` action の参照解決を実装する。
 - [ ] T004 [UI] テンプレート編集・プレビュー画面を追加する。
 - [ ] T005 [Verify] injection 耐性・fallback・locale 切り替えを検証する。

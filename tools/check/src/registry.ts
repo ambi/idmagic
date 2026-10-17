@@ -12,6 +12,7 @@ import { checkDocuments } from './check-documents.ts'
 import { checkExecutableExamples } from './check-executable-examples.ts'
 import { checkEventContract } from './check-event-contract.ts'
 import { checkLinks } from './check-links.ts'
+import { checkModuleDependencies } from './check-module-dependencies.ts'
 import { checkRawSql } from './check-raw-sql.ts'
 import { checkSchemaTables } from './check-schema-tables.ts'
 import { checkSecurityControls } from './check-security-controls.ts'
@@ -37,6 +38,7 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'terminology', groups: ['all'], run: checkTerminology },
   { name: 'work-item-references', groups: ['all'], run: checkDocsWorkItemLinks },
   { name: 'boundaries', groups: ['all'], run: checkBoundaries },
+  { name: 'module-dependencies', groups: ['all'], run: checkModuleDependencies },
   { name: 'raw-sql', groups: ['all'], run: checkRawSql },
   { name: 'command-map', groups: ['all'], run: checkCommandMap },
   { name: 'agent-guidance', groups: ['all'], run: checkAgentGuidance },

@@ -40,12 +40,14 @@ docs/
     })
   })
 
-  it('機能仕様と内部設計の形式の段を配置図に求め、旧形式の種別は求めない', () => {
+  it('モジュールの文書と機能の段を配置図に求め、旧形式の種別は求めない', () => {
     const paths = verifyDocumentLayout('# 仕様フォーマット\n').map((finding) => finding.path)
 
-    expect(paths).toContain('docs/modules/<module>/design/decisions.md')
-    expect(paths).toContain('docs/modules/<module>/<group>/README.md')
-    expect(paths).toContain('docs/modules/<module>/<group>/<feature>/acceptance.feature.md')
+    expect(paths).toContain('docs/modules/<module>/decisions.md')
+    expect(paths).toContain('docs/modules/<module>/architecture.md')
+    expect(paths).toContain('docs/modules/<module>/features/<feature>.md')
+    expect(paths).toContain('docs/modules/<module>/features/<feature>.feature.md')
     expect(paths).not.toContain('docs/modules/<module>/internals.md')
+    expect(paths.some((path) => path.startsWith('docs/modules/<module>/design/'))).toBe(false)
   })
 })

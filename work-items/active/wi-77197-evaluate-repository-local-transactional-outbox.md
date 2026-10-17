@@ -26,9 +26,9 @@ spec_impact:
 
 ## 対象範囲
 
-- [REQ-AUDIT-008](../../docs/modules/audit/event-search/README.md) が許容する欠落と、求められる回復の範囲を確認する。
+- [REQ-AUDIT-008](../../docs/modules/audit/features/event-search.md) が許容する欠落と、求められる回復の範囲を確認する。
 - 操作ごとに、最終状態への収束で足りるか、個々の発生と過去の行為者、時刻、変更内容を残す必要があるかを区別する。
-- [Provisioning の差分同期](../../docs/modules/provisioning/design/decisions.md) と、User とワークフローの実行予定を確定する既存の保存境界を比較する。
+- [Provisioning の差分同期](../../docs/modules/provisioning/decisions.md) と、User とワークフローの実行予定を確定する既存の保存境界を比較する。
 - 採用候補がある場合は、状態と発行意図を専用の保存ポートで同時確定する案の、保証、所有者、失敗処理と運用負担を見積もる。
 - 採用しない判断も結果として記録し、実装が必要なら合意した保証を持つ別の実装項目を起票する。
 

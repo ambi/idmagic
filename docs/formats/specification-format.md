@@ -21,7 +21,7 @@
 | モジュール | 変わりうる設計判断を内部へ隠し、責務と公開契約を定める実装の単位。仕様文書との対応は論理アーキテクチャの責務表で宣言する | Tenancy |
 | 値オブジェクト | 識別子ではなく値で比較する型。正規化、比較、妥当性の判定を一か所で定義する | ユーザー名 |
 | 状態遷移表（マトリクス形式） | 行に状態、列に操作を並べ、すべてのセルに結果を書く表 | [状態遷移](#3-状態遷移)の三つ目の表 |
-| 機能スライス | 一つの機能の単位。仕様のディレクトリと、対応するコードのディレクトリ `backend/<module>/<feature>/` からなる。コードのディレクトリはないこともある | `docs/modules/identity-management/user/` と `backend/idmanagement/user/` |
+| 機能スライス | 一つの機能の単位。機能仕様 `features/<feature>.md` と、対応するコードのディレクトリ `backend/<module>/<feature>/` からなる。コードのディレクトリはないこともある | `docs/modules/identity-management/features/user.md` と `backend/idmanagement/user/` |
 
 ## 1. TypeSpec の範囲
 
@@ -38,17 +38,17 @@
 | 複合一意性、参照整合性、索引 | スキーマファイル |
 | ライフサイクルの遷移 | 機能仕様の状態遷移の節 |
 | きめ細かな認可と境界の規則 | `docs/design/security/authorization.md` と実装 |
-| 競合解決と冪等性の判断 | 要件の判断の欄、または `design/decisions.md` |
+| 競合解決と冪等性の判断 | 要件の判断の欄、または `decisions.md` |
 | 受け入れ基準 | 機能仕様の要件と、任意の例の付録 |
 
 ## 2. 仕様文書
 
-固定された節の集合を定めるのは、機能仕様（`<feature>/README.md`）だけである。
+固定された節の集合を定めるのは、機能仕様（`features/<feature>.md`）だけである。
 一次情報文書に共通する規則（H1、`README.md` による境界の宣言）は[文書ガイド](documentation-guide.md#一次情報文書に共通する規則)が定める。
 
-### README.md — モジュールの仕様
+### README.md — モジュールの概要
 
-モジュールの `README.md` は、モジュールの仕様であり、境界の宣言に加えて次を書く。
+モジュールの `README.md` は、モジュールの外への約束と文書の索引を一つにまとめる概要であり、境界の宣言に加えて次を書く。
 
 | 内容 | 書くこと |
 | --- | --- |
@@ -68,7 +68,7 @@
 
 ### 機能仕様 — 一つの機能について知るべきこと
 
-機能スライスの `README.md` は、その機能の仕様である。
+機能の段の `<feature>.md` は、その機能の仕様である。
 SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一度ずつ置く *(checked)*。
 内容のない節は置かない。
 
@@ -84,7 +84,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 
 - エラーの節は置かない *(checked)*。エラーの形は TypeSpec が、返す条件は要件文が定める。
 - 要件は操作の節の下に置く *(checked)*。
-- 機能が長くなったら、操作の節の一部を章のページ（`<chapter>.md`）へ分け、`README.md` から索引する。章のページは操作の節の続きなので、節の名前を問わない。
+- 機能が長くなったら、操作の節の一部を章のページ（`<feature>.<chapter>.md`）へ分け、機能仕様から索引する。章のページは操作の節の続きなので、節の名前を問わない。
 - 要件一覧、未決事項、操作の一覧は、生成サイトが見出しから作る。手で書かない。
 - 判断の理由は、それが正当化する要件やモデルのそばに書く。
 
@@ -108,29 +108,29 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 
 ### 仕様の木
 
-仕様は、システム、モジュール、機能群、機能の四つの階層からなる木に置く。
+仕様は、システム、モジュール、機能の三つの階層からなる木に置く。
 すべてのモジュールに共通する仕様は、モジュールの階層の親である `docs/modules/` の直下に置く。
+各階層の文書は対象ごとに分け、仕様と設計を同じ文書に置いてよい（[文書ガイド](documentation-guide.md#仕様と設計)）。
 
-| 階層 | 置き場所 | 仕様 | 設計 |
+| 階層 | 置き場所 | 仕様を置く文書 | 設計を置く文書 |
 | --- | --- | --- | --- |
 | システム | `docs/requirements/`、`docs/design/` | `requirements/`（目的と範囲、機能、品質、外部規範） | `docs/design/` |
-| モジュール共通 | `docs/modules/` | `glossary.md`（共通用語集）、`scenarios.feature.md`（横断シナリオ） | なし |
-| モジュール | `docs/modules/<module>/` | `README.md`（責務と境界、モデル、公開する契約、機能の索引）、`quality.md`、`glossary.md`、`standards.md` | `design/` |
-| 機能群 | `docs/modules/<module>/<group>/` | `README.md`（関係の深い機能の境界と索引）。要件は宣言しない *(checked)* | なし |
-| 機能 | `docs/modules/<module>/<group>/<feature>/` | `README.md` と章、任意の `acceptance.feature.md` | `README.md` の任意の節「実現方式」 |
+| モジュール共通 | `docs/modules/` | `glossary.md`（共通用語集）、`scenarios.feature.md`（横断シナリオ） | `README.md`（責務表と依存の図） |
+| モジュール | `docs/modules/<module>/` | `README.md`（責務と境界、モデル、公開する契約、機能の索引）、`quality.md`、`glossary.md`、`standards.md` | 設計領域の文書、`decisions.md`、`risks.md` |
+| 機能 | `docs/modules/<module>/features/` | `<feature>.md` と章 `<feature>.<chapter>.md`、任意の `<feature>.feature.md` | `<feature>.md` の任意の節「実現方式」 |
 
-- 要件は、モジュール共通の横断シナリオを除き、機能スライスの仕様でだけ宣言する *(checked)*。複数の機能にまたがって見える要件も、その要件を実装するコードが属する機能へ置く。実装が共有の仕組みであれば、その仕組みを一つの機能（例：管理 API の認可、CSV の転送）として機能スライスを設ける。
-- 機能群に置けるのは `README.md` だけである *(checked)*。
-- 機能スライスの仕様のディレクトリに置けるのは `README.md`、`acceptance.feature.md` と任意の名前の章である *(checked)*。`design.md` は章の名前にも使えない *(checked)*。その下にディレクトリを置かない *(checked)*。
+- 要件は、モジュール共通の横断シナリオを除き、機能仕様でだけ宣言する *(checked)*。複数の機能にまたがって見える要件も、その要件を実装するコードが属する機能へ置く。実装が共有の仕組みであれば、その仕組みを一つの機能（例：管理 API の認可、CSV の転送）として機能仕様を設ける。
+- 機能の段に置けるのは、機能名で始まる `<feature>.md`、`<feature>.<chapter>.md`、`<feature>.feature.md` だけである *(checked)*。`design`、`glossary`、`standards` などのファイル種別の名前は、機能名にも章の名前にも使えない *(checked)*。機能の段の下にディレクトリを置かない *(checked)*。
+- 機能群のディレクトリは置かない。関係の深い機能は、モジュールの `README.md` の機能の表で機能群として並べる。
 - `glossary.md` と `standards.md` は、モジュールのルートに置く。
 - 親の設計が並べる構成要素は、子の仕様へリンクする。
 
-**機能スライスの仕様とコード。**
+**機能仕様とコード。**
 
-- 機能スライスの仕様のディレクトリは、コードのディレクトリ `backend/<module>/<feature>/`（直下に `domain/` または `usecases/` を置くディレクトリ）に対応させる。
-- 仕様のディレクトリの名前からハイフンを除いた名前がコードのディレクトリの名前と一致すれば、対応とみなす（`trusted-device` と `trusteddevice`）。一致しないモジュール名は検査の設定に別名として書く。
-- コードのディレクトリには、対応する仕様のディレクトリを必ず置く *(checked)*。導入時点で対応のなかったコードのディレクトリは `tools/check/feature-slice-debt.json` に列挙し、減る方向にだけ変える。
-- コードのディレクトリのない機能スライスにも、要件のまとまりがあれば仕様のディレクトリを置いてよい。その場合は、モジュールの設計の構成要素の表に、どのコードが実装するかを書く。
+- 機能仕様 `features/<feature>.md` は、コードのディレクトリ `backend/<module>/<feature>/`（直下に `domain/` または `usecases/` を置くディレクトリ）に対応させる。
+- 機能名からハイフンを除いた名前がコードのディレクトリの名前と一致すれば、対応とみなす（`trusted-device` と `trusteddevice`）。一致しないモジュール名は検査の設定に別名として書く。
+- コードのディレクトリには、対応する機能仕様を必ず置く *(checked)*。導入時点で対応のなかったコードのディレクトリは `tools/check/feature-slice-debt.json` に列挙し、減る方向にだけ変える。
+- コードのディレクトリのない機能にも、要件のまとまりがあれば機能仕様を置いてよい。その場合は、モジュールの設計の構成要素の表に、どのコードが実装するかを書く。
 
 **継承。**
 
@@ -138,7 +138,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 - 例外は下位のノードで要件として宣言し、「上位の要件」の欄から上位の見出しへリンクする。
 
 仕様の機能分割は、利用者が観測する操作と要件のまとまりで決める。
-関連する機能が多いときは機能群で索引し、同じ保証を複数の機能へ複製しない。
+関連する機能が多いときは、モジュールの `README.md` の機能の表で機能群として索引し、同じ保証を複数の機能へ複製しない。
 語彙の違いや責務を説明する文の形だけを、モジュールを分割する根拠にしない。
 モジュールの境界を変える場合は、[設計ガイドライン](../design/application/design-guidelines.md#境界を選ぶ判断手順)で隠す設計判断、制約、変更の波及を比較し、その結果を責務表とモジュールの仕様へ反映する。
 
@@ -235,7 +235,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 
 - トランザクションを使う場合は、「失敗したときに、A だけが保存され B が保存されない状態を残さない」という結果を要件にする。
 - キャッシュを使う場合は、依存先の更新後どの時点まで以前の結果を返し得るかに意味があるときに、その結果を要件にする。
-- 障害時の修復方法とコードから読み取れない仕組みは機能仕様の「実現方式」の節に、その仕組みを採用した理由は判断の欄または `design/decisions.md` に書く。
+- 障害時の修復方法とコードから読み取れない仕組みは機能仕様の「実現方式」の節に、その仕組みを採用した理由は判断の欄または `decisions.md` に書く。
 
 ### 要件一件の書式
 
@@ -269,7 +269,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 | --- | --- | --- |
 | ID とタイトル | テストの `//spec:covers`、work item の `affected_spec`、`spec-diff` が指す単位 | 必ず置く |
 | 要件文 | 一行に一つの要件を [EARS 形式](#ears-形式)で書く | 必ず置く |
-| 判断 | その要件を選んだ理由。代替案を比べた判断なら `design/decisions.md` の見出しへリンクする | 理由が要件文から読み取れない場合 |
+| 判断 | その要件を選んだ理由。代替案を比べた判断なら `decisions.md` の見出しへリンクする | 理由が要件文から読み取れない場合 |
 | 上位の要件 | 上位の要件の見出しへのリンク | 例外の場合だけ |
 | 例 | 代表例、境界、意外な挙動の `EX-*` | 例を置いた場合 |
 
@@ -289,7 +289,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 - 処理の順序が振る舞いを決める場合だけ、番号付きの手順で書く。
 - `REQ-*` の見出し自体に規範の効力があるので、`SHALL`、`MUST`、「しなければならない」の定型文を重ねない。
 - 一度参照された ID は変更しない。
-- モデルと外部インターフェースは TypeSpec、採用したプロトコル規則は `standards.md`、ライフサイクルは状態遷移の節、判断は判断の欄または `design/decisions.md` に置き、要件文と重複させない。
+- モデルと外部インターフェースは TypeSpec、採用したプロトコル規則は `standards.md`、ライフサイクルは状態遷移の節、判断は判断の欄または `decisions.md` に置き、要件文と重複させない。
 
 ### EARS 形式
 
@@ -347,11 +347,11 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 置くのは、代表例、境界値、意外な挙動を要件文だけでは読み取りにくい場合に限る。
 要件文の言い換えになる例は置かない。
 
-- 例は同じ機能スライスの付録 `acceptance.feature.md` に [Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md) で書く。
+- 例は同じ機能の付録 `<feature>.feature.md` に [Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md) で書く。
 - Cucumber をテストランナーとして導入せず、ステップから製品テストを生成しない。
 - すべてのファイルを公式の JavaScript Gherkin パーサーが受理する *(checked)*。
 - 一ファイルに一つの `Feature`、要件ごとに一つの `Rule`、一つの `Example` に分岐のない一経路を書く。
-- 付録の `Rule` は、同じ機能スライスの仕様本文が宣言した要件だけを参照でき、タイトルは宣言と一致させる *(checked)*。
+- 付録の `Rule` は、同じ機能の仕様本文が宣言した要件だけを参照でき、タイトルは宣言と一致させる *(checked)*。
 - 付録に置いた `Rule` には、一つ以上の例を置く *(checked)*。
 - `Example` の名前は `EX-<MODULE>-<REQ-NNN>-<sequence>` で始める。`Scenario Outline` では、各 `Examples` 行の `example_id` 列に置く。
 - 例の ID は変更せず、全体で一意にし、親の要件に所属させる *(checked)*。
@@ -367,7 +367,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 ### 実行可能な具体例と派生表示
 
 - 例は、実装に隣接する `testdata/*.examples.json` を一次情報にして生成することを優先する。一次情報は各例の `id`、`title`、`given`、`input`、`expected` からなる JSON 配列である。
-- `acceptance.feature.md` の親の `Rule` の下に `<!-- spec:examples backend/<module>/<feature>/.../testdata/<name>.examples.json -->` と `<!-- /spec:examples -->` を置く。その区間は `mise run generate-spec-examples` が生成し、手で編集しない。
+- `<feature>.feature.md` の親の `Rule` の下に `<!-- spec:examples backend/<module>/<feature>/.../testdata/<name>.examples.json -->` と `<!-- /spec:examples -->` を置く。その区間は `mise run generate-spec-examples` が生成し、手で編集しない。
 - `mise run check-spec` は一次情報との差を拒否する *(checked)*。
 - 生成した EX にも通常の検査を適用し、データを実行して期待結果を表明するテストを要する。テストの `//spec:covers` にその EX の ID を追加する。
 - 実装から得た出力を期待結果として自動採用しない。
@@ -378,7 +378,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 すべてのモジュールは、この文書が定める形式へ移った。
 
 - すべてのモジュールは `README.md` を持つ *(checked)*。持たないモジュールには、どの文書も置けない *(checked)*。
-- モジュール、機能群、機能の階層には、旧形式のファイル種別を置けない *(checked)*。モジュール共通の `docs/modules/scenarios.feature.md` はモジュールの階層の外にあり、この規則の対象外である。
+- モジュールと機能の階層には、旧形式のファイル種別を置けない *(checked)*。モジュール共通の `docs/modules/scenarios.feature.md` はモジュールの階層の外にあり、この規則の対象外である。
 - 文書を移しても、要件の ID とタイトルは変えない。内容も変える場合は、移動とは別の変更にする。
 - 未完了の work item は `affected_spec` を新しいパスへ直す。完了した work item は完了させる変更の中でだけ検証するので、書き換えず、旧パスの対応表も持たない。
 - `spec-diff` は、比較の基準のリビジョンも現在の配置と形式で読む。配置や形式を移す work item は、基準を読むための読み替えをその work item の中だけで足し、統合後に外す。

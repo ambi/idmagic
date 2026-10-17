@@ -58,7 +58,7 @@ const moduleDirectories = (await readdir(moduleRoot, { withFileTypes: true }))
   .map((entry) => entry.name)
   .sort()
 /**
- * モジュールの文書。モジュールの直下、内部設計、機能群と機能スライスの順に、各段では
+ * モジュールの文書。モジュールの直下、機能の段の順に、各段では
  * `README.md` を先に置いて集める。置いてよいかは検査と同じ判定（`documentAllowance`）で決める。
  */
 async function moduleDocuments(module: string): Promise<string[]> {
@@ -82,12 +82,10 @@ async function moduleDocuments(module: string): Promise<string[]> {
     const index = fixed(directory).indexOf(name)
     return index < 0 ? Number.MAX_SAFE_INTEGER : index
   }
-  const designFirst = (directory: string) => (directory === `${module}/design` ? 0 : 1)
   return listings
     .sort(
       (left, right) =>
         Number(left.directory !== module) - Number(right.directory !== module) ||
-        designFirst(left.directory) - designFirst(right.directory) ||
         left.directory.localeCompare(right.directory),
     )
     .flatMap(({ directory, files }) => {

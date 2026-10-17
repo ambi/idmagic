@@ -3,6 +3,10 @@ import MarkdownIt from 'markdown-it'
 import { markdownAnchors } from '../../check/src/markdown-links.ts'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 
+/** モジュールの責務表。各行の最初のリンクがモジュールの README を指す。 */
+const RESPONSIBILITY_TABLE = 'docs/modules/README.md'
+const MODULE_ENTRY = /^docs\/modules\/[^/]+\/README\.md$/
+
 export type ContextSeed = {
   kind: string
   targets: readonly string[]
@@ -85,12 +89,12 @@ export async function deriveContext(
   }
 
   // モジュール名の別名を新しい台帳へ写さず、既存の責務表のリンクと接頭辞を使う。
-  const architecture = 'docs/design/architecture/logical.md'
+  const architecture = RESPONSIBILITY_TABLE
   if (!workspace.exists(architecture)) return plan
   for (const row of markdownRows(await workspace.read(architecture))) {
     const link = row.cells[0]?.links[0]
     const entry = link ? localLink(architecture, link) : undefined
-    if (!entry?.startsWith('docs/modules/')) continue
+    if (!entry || !MODULE_ENTRY.test(entry)) continue
     const moduleDirectory = posix.dirname(entry)
     const specification = `spec/modules/${posix.basename(moduleDirectory)}`
     const prefixes = row.cells[3]?.text.split(',').map((one) => one.trim()) ?? []
@@ -117,13 +121,13 @@ export async function deriveContext(
         'Quality requirements allocated to the target module.',
       )
     }
-    // 設計領域の索引と設計の記録は、モジュールの README の最後の節「設計」が並べる。
+    // 設計領域の索引とモジュールの文書は、モジュールの README の最後の節「文書」が並べる。
     const index = entry
     const source = workspace.exists(index) ? await workspace.read(index) : ''
-    const designLine = source.split('\n').indexOf('## 設計') + 1
+    const designLine = source.split('\n').indexOf('## 文書') + 1
     if (designLine > 0) {
       await addModule(
-        `${index}#設計`,
+        `${index}#文書`,
         'Shared design and known risks are linked by this module index; expand only the relevant links.',
       )
       if (seed.concerns.includes('effects')) {
@@ -146,12 +150,9 @@ export async function deriveContext(
         }
       }
     }
-    if (
-      seed.concerns.includes('boundary') &&
-      workspace.exists(`${moduleDirectory}/design/risks.md`)
-    ) {
+    if (seed.concerns.includes('boundary') && workspace.exists(`${moduleDirectory}/risks.md`)) {
       await addModule(
-        `${moduleDirectory}/design/risks.md`,
+        `${moduleDirectory}/risks.md`,
         'Known module risks may constrain a boundary change.',
       )
     }
@@ -320,7 +321,7 @@ export async function neighborCandidates(
   plan: ContextPlan,
   workspace: WorkspaceSnapshot,
 ): Promise<ContextCandidate[]> {
-  const architecture = 'docs/design/architecture/logical.md'
+  const architecture = RESPONSIBILITY_TABLE
   if (!workspace.exists(architecture)) return []
   const rows = markdownRows(await workspace.read(architecture))
   const neighbors = new Map<string, ContextCandidate>()
@@ -334,7 +335,14 @@ export async function neighborCandidates(
       const name = row.cells[0]?.text
       const link = row.cells[0]?.links[0]
       const location = link ? localLink(architecture, link) : undefined
-      if (!name || !location || owners.has(location) || !source.includes(`\`${name}\``)) continue
+      if (
+        !name ||
+        !location ||
+        !MODULE_ENTRY.test(location) ||
+        owners.has(location) ||
+        !source.includes(`\`${name}\``)
+      )
+        continue
       neighbors.set(location, {
         location,
         origin: contract.location,

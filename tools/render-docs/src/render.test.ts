@@ -98,12 +98,12 @@ The demo module.
 }
 
 const moduleDesignDocument = {
-  path: 'docs/modules/demo/design/architecture.md',
+  path: 'docs/modules/demo/architecture.md',
   source: '# Demo のアーキテクチャ\n\n構成。\n',
 }
 
 const runDocument = {
-  path: 'docs/modules/demo/run/README.md',
+  path: 'docs/modules/demo/features/run.md',
   source: `# 実行
 
 ## 状態遷移
@@ -133,7 +133,7 @@ const runDocument = {
 }
 
 const examplesDocument = {
-  path: 'docs/modules/demo/run/acceptance.feature.md',
+  path: 'docs/modules/demo/features/run.feature.md',
   source: `# Feature: 実行の例
 
 ## Rule: REQ-DEMO-001 a demo runs
@@ -355,12 +355,12 @@ describe('renderDocumentationSite', () => {
       'docs/formats/documentation-guide.html',
       'docs/formats/index.html',
       'docs/formats/work-item-format.html',
-      'docs/modules/demo/design/architecture.html',
+      'docs/modules/demo/architecture.html',
+      'docs/modules/demo/features/run-feature.html',
+      'docs/modules/demo/features/run.html',
       'docs/modules/demo/glossary.html',
       'docs/modules/demo/index.html',
       'docs/modules/demo/quality.html',
-      'docs/modules/demo/run/acceptance.html',
-      'docs/modules/demo/run/index.html',
       'docs/modules/demo/standards.html',
       'docs/modules/glossary.html',
       'docs/modules/index.html',
@@ -384,16 +384,16 @@ describe('renderDocumentationSite', () => {
     expect(result.files['index.html']).not.toContain('目的から探す')
     expect(result.files['index.html']).not.toContain('class="card"')
     expect(sidebar(result.files['index.html'])).toContain('href="docs/modules/demo/index.html"')
-    expect(result.files['docs/modules/demo/index.html']).toContain('href="run/index.html"')
-    expect(result.files['docs/modules/demo/run/index.html']).toContain('stateDiagram-v2')
-    expect(result.files['docs/modules/demo/run/index.html']).toContain(
+    expect(result.files['docs/modules/demo/index.html']).toContain('href="features/run.html"')
+    expect(result.files['docs/modules/demo/features/run.html']).toContain('stateDiagram-v2')
+    expect(result.files['docs/modules/demo/features/run.html']).toContain(
       'state_3 --&gt; state_1: Reset',
     )
-    expect(result.files['docs/modules/demo/run/index.html']).not.toContain('Reset [')
-    expect(result.files['docs/modules/demo/run/acceptance.html']).toContain(
+    expect(result.files['docs/modules/demo/features/run.html']).not.toContain('Reset [')
+    expect(result.files['docs/modules/demo/features/run-feature.html']).toContain(
       'class="scenario-keyword when"',
     )
-    expect(result.files['docs/modules/demo/run/acceptance.html']).toContain(
+    expect(result.files['docs/modules/demo/features/run-feature.html']).toContain(
       'class="scenario-keyword but"',
     )
     expect(result.files['index.html']).toContain('class="mermaid"')
@@ -417,7 +417,7 @@ describe('renderDocumentationSite', () => {
 
   // 印は文書と位置で絞る。方法論文書の英語本文にも Gherkin と同じ語が現れる。
   it('marks every scenario step, the actor, and nothing outside a scenario document', () => {
-    const scenarios = site().files['docs/modules/demo/run/acceptance.html'] ?? ''
+    const scenarios = site().files['docs/modules/demo/features/run-feature.html'] ?? ''
 
     // 残りがコード片から始まるステップでも印が付く。
     expect(scenarios).toContain(
@@ -433,8 +433,8 @@ describe('renderDocumentationSite', () => {
   it('names module children by content and lists them in canonical order', () => {
     const page = site().files['docs/modules/demo/index.html']
 
-    // 最後の「例」は、モジュールの下に入れ子になった機能スライス（実行）の子である。
-    expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', '例', 'アーキテクチャ'])
+    // 最後の「例」は、モジュールの「機能」の段に入れ子になった機能（実行）の子である。
+    expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', 'アーキテクチャ', '例'])
     expect(page).not.toContain('>glossary.md<')
   })
 
@@ -445,11 +445,11 @@ describe('renderDocumentationSite', () => {
         moduleDocument,
         moduleDesignDocument,
         {
-          path: 'docs/modules/demo/user/README.md',
+          path: 'docs/modules/demo/features/user.md',
           source: '# ユーザー\n\n#### REQ-DEMO-002 a user is created\n\n- 要求でユーザーを作る。\n',
         },
         {
-          path: 'docs/modules/demo/user/acceptance.feature.md',
+          path: 'docs/modules/demo/features/user.feature.md',
           source: [
             '# Feature: ユーザーの例',
             '',
@@ -469,11 +469,11 @@ describe('renderDocumentationSite', () => {
       openapi: {},
       models: [],
     })
-    const page = result.files['docs/modules/demo/user/acceptance.html']
+    const page = result.files['docs/modules/demo/features/user-feature.html']
 
     expect(page).toContain('REQ-DEMO-002')
-    expect(result.files['docs/modules/demo/user/index.html']).toBeDefined()
-    expect(childLabels(page)).toEqual(['例', 'アーキテクチャ'])
+    expect(result.files['docs/modules/demo/features/user.html']).toBeDefined()
+    expect(childLabels(page)).toEqual(['アーキテクチャ', '例'])
     const moduleBranch = sidebar(page).slice(sidebar(page).indexOf('>Demo</a>'))
     expect(moduleBranch).toContain('>ユーザー</a>')
   })
@@ -485,12 +485,12 @@ describe('renderDocumentationSite', () => {
         { path: 'docs/modules/demo/README.md', source: '# Demo\n\nデモを扱う。\n' },
 
         {
-          path: 'docs/modules/demo/design/decisions.md',
+          path: 'docs/modules/demo/decisions.md',
           source: '# Demo の重要な設計判断\n\n## 物理削除しない\n\n### 背景\n\n参照がある。\n',
         },
-        { path: 'docs/modules/demo/work/README.md', source: '# 作業\n\n作業の機能群。\n' },
+        { path: 'docs/modules/demo/features/work.md', source: '# 作業\n\n作業の機能群。\n' },
         {
-          path: 'docs/modules/demo/work/task/README.md',
+          path: 'docs/modules/demo/features/task.md',
           source: [
             '# タスク',
             '',
@@ -520,13 +520,13 @@ describe('renderDocumentationSite', () => {
           ].join('\n'),
         },
         {
-          path: 'docs/modules/demo/work/task/lifecycle.md',
+          path: 'docs/modules/demo/features/task.lifecycle.md',
           source:
             '# タスクのライフサイクル\n\n## 削除\n\n#### REQ-DEMO-003 閉じたタスクを消す\n\n- 閉じたタスクだけを消す。\n',
         },
 
         {
-          path: 'docs/modules/demo/work/task/acceptance.feature.md',
+          path: 'docs/modules/demo/features/task.feature.md',
           source: [
             '# Feature: タスクの例',
             '',
@@ -555,20 +555,20 @@ describe('renderDocumentationSite', () => {
       ],
       moduleAliases: { demoimpl: 'demo' },
     })
-    const task = result.files['docs/modules/demo/work/task/index.html'] ?? ''
+    const task = result.files['docs/modules/demo/features/task.html'] ?? ''
 
     for (const page of [
-      'docs/modules/demo/design/decisions.html',
-      'docs/modules/demo/work/index.html',
-      'docs/modules/demo/work/task/lifecycle.html',
+      'docs/modules/demo/decisions.html',
+      'docs/modules/demo/features/work.html',
+      'docs/modules/demo/features/task-lifecycle.html',
 
-      'docs/modules/demo/work/task/acceptance.html',
+      'docs/modules/demo/features/task-feature.html',
     ]) {
       expect(result.files[page]).toBeDefined()
     }
     expect(task).toContain('stateDiagram')
     expect(task).toContain('要件一覧')
-    expect(task).toContain('href="lifecycle.html#')
+    expect(task).toContain('href="task-lifecycle.html#')
     expect(task).toContain('未決事項')
     expect(task).toContain('上限を設けるかを決める。')
     // 操作の一覧は「操作」の見出しの直後、最初の操作より前に置き、章の操作も並べる。
@@ -577,13 +577,15 @@ describe('renderDocumentationSite', () => {
     expect(operations).toBeLessThan(task.indexOf('一覧</h3>'))
     const operationIndex = task.slice(operations, task.indexOf('</table>', operations))
     expect(operationIndex).toContain('>一覧</a>')
-    expect(operationIndex).toContain('href="lifecycle.html#')
+    expect(operationIndex).toContain('href="task-lifecycle.html#')
     expect(operationIndex).toContain('>削除</a>')
     expect(operationIndex).toContain('REQ-DEMO-002')
     expect(operationIndex).toContain('REQ-DEMO-003')
-    expect(result.files['docs/modules/demo/work/task/lifecycle.html']).not.toContain('操作の一覧')
+    expect(result.files['docs/modules/demo/features/task-lifecycle.html']).not.toContain(
+      '操作の一覧',
+    )
     expect(result.files['docs/modules/demo/index.html']).toContain('機能地図')
-    expect(result.files['docs/modules/demo/index.html']).toContain('href="work/task/index.html"')
+    expect(result.files['docs/modules/demo/index.html']).toContain('href="features/task.html"')
     const featureMap =
       (result.files['docs/modules/demo/index.html'] ?? '')
         .split('機能地図</h2>')[1]
@@ -594,17 +596,21 @@ describe('renderDocumentationSite', () => {
     expect(featureMap).toContain('backend/demoimpl/task/testing_contract/contract.go')
     expect(featureMap).toContain('spec/modules/demo/main.tsp')
     expect(featureMap).not.toContain('other_test.go')
-    expect(result.files['docs/modules/demo/work/task/acceptance.html']).toContain(
+    expect(result.files['docs/modules/demo/features/task-feature.html']).toContain(
       'scenario-keyword when',
     )
-    expect(childLabels(task)).toEqual(['ライフサイクル', '例', '重要な設計判断'])
-    const groupBranch = sidebar(task).slice(sidebar(task).indexOf('>作業</a>'))
-    expect(groupBranch).toContain('>タスク</a>')
-    // 設計の索引はモジュールの README の節にあるので、design/ の文書はモジュールの「設計」の段に並べる。
+    // モジュールの文書をモジュールの直下に並べ、機能は「機能」の段にまとめる。
+    expect(childLabels(task)).toEqual(['重要な設計判断', 'ライフサイクル', '例'])
     const moduleBranch = sidebar(task).slice(sidebar(task).indexOf('>Demo</a>'))
-    expect(moduleBranch).toContain('<summary><span class="nav-label">設計</span></summary>')
+    expect(moduleBranch).toContain('<summary><span class="nav-label">機能</span></summary>')
     expect(moduleBranch).toContain('>重要な設計判断</a>')
-    expect(result.files['docs/modules/demo/design/decisions.html']).toBeDefined()
+    expect(moduleBranch.indexOf('>重要な設計判断</a>')).toBeLessThan(
+      moduleBranch.indexOf('<span class="nav-label">機能</span>'),
+    )
+    expect(moduleBranch.indexOf('<span class="nav-label">機能</span>')).toBeLessThan(
+      moduleBranch.indexOf('>タスク</a>'),
+    )
+    expect(result.files['docs/modules/demo/decisions.html']).toBeDefined()
   })
 
   it('keeps a parent page distinct from its children and removes Japanese possession', () => {
@@ -740,12 +746,12 @@ describe('renderDocumentationSite', () => {
   })
 
   it('lists a document own headings beside its body', () => {
-    const page = site().files['docs/modules/demo/run/acceptance.html'] ?? ''
+    const page = site().files['docs/modules/demo/features/run-feature.html'] ?? ''
 
     expect(page).toContain('<nav class="page-toc" aria-label="このページの内容">')
-    expect(page).toContain('href="#module-demo-run-acceptance-rule-req-demo-001-a-demo-runs"')
+    expect(page).toContain('href="#module-demo-run-feature-rule-req-demo-001-a-demo-runs"')
     expect(page).toContain(
-      'class="page-toc-h3"><a data-site-link href="#module-demo-run-acceptance-example-ex-demo-001-01-a-ready-demo-starts"',
+      'class="page-toc-h3"><a data-site-link href="#module-demo-run-feature-example-ex-demo-001-01-a-ready-demo-starts"',
     )
     // 見出しが一つしかないページに目次を出しても、本文を繰り返すだけである。
     expect(site().files['docs/requirements/product-overview.html']).not.toContain('page-toc')

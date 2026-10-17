@@ -1,9 +1,11 @@
 import {
-  DESIGN_DOCUMENTS,
+  FEATURES_DIRECTORY,
   MODULE_DOCUMENTS,
-  FEATURE_SLICE_DOCUMENTS,
   SYSTEM_DOCUMENT_DIRECTORIES,
 } from '../../workspace/src/document-layout.ts'
+
+/** 機能の段の文書の名前の形。配置図にもこの書き方で現れる。 */
+const FEATURE_DOCUMENT_PATTERNS = ['<feature>.md', '<feature>.feature.md', '<feature>.<chapter>.md']
 
 export type DocumentLayoutFinding = {
   path: string
@@ -23,18 +25,10 @@ function requiredDocumentPaths(): string[] {
     names.map((name) => `${directory}/${name}`),
   )
   const moduleDocuments = MODULE_DOCUMENTS.map((name) => `docs/modules/<module>/${name}`)
-  const designDocuments = DESIGN_DOCUMENTS.map((name) => `docs/modules/<module>/design/${name}`)
-  const groupDocuments = ['docs/modules/<module>/<group>/README.md']
-  const featureDocuments = FEATURE_SLICE_DOCUMENTS.map(
-    (name) => `docs/modules/<module>/<group>/<feature>/${name}`,
+  const featureDocuments = FEATURE_DOCUMENT_PATTERNS.map(
+    (name) => `docs/modules/<module>/${FEATURES_DIRECTORY}/${name}`,
   )
-  return [
-    ...systemDocuments,
-    ...moduleDocuments,
-    ...designDocuments,
-    ...groupDocuments,
-    ...featureDocuments,
-  ]
+  return [...systemDocuments, ...moduleDocuments, ...featureDocuments]
 }
 
 function documentedPaths(source: string): Set<string> {

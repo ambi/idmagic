@@ -23,7 +23,7 @@ Web Browser SSO Profile に基づき、SP 起点と IdP 起点の SSO を提供�
 
 テナントには、変更できない `default` のプロファイルが必ずあり、複数の SP で共有する。
 
-- **判断**：`shared` と `dedicated` を一つのモデルで表す理由は、[IdP プロファイルを一つの共有できるモデルで表す](design/decisions.md#idp-プロファイルを一つの共有できるモデルで表す)。
+- **判断**：`shared` と `dedicated` を一つのモデルで表す理由は、[IdP プロファイルを一つの共有できるモデルで表す](decisions.md#idp-プロファイルを一つの共有できるモデルで表す)。
 
 ## 公開する契約
 
@@ -44,26 +44,23 @@ SSO と SLO は、さらに HTTP-Redirect の GET と HTTP-POST の POST を分�
 
 | 機能 | 内容 |
 | --- | --- |
-| [IdP プロファイルとメタデータ](idp-profile/README.md) | IdP プロファイルの管理と、メタデータと署名証明書の公開 |
-| [サービスプロバイダーの管理](service-provider/README.md) | SP の登録、参照、削除 |
-| [SAML の SSO](sso/README.md) | SP 起点と IdP 起点の SSO と Single Logout |
+| [IdP プロファイルとメタデータ](features/idp-profile.md) | IdP プロファイルの管理と、メタデータと署名証明書の公開 |
+| [サービスプロバイダーの管理](features/service-provider.md) | SP の登録、参照、削除 |
+| [SAML の SSO](features/sso.md) | SP 起点と IdP 起点の SSO と Single Logout |
+
+## 文書
+
+| 設計領域 | 区分 | 参照先 | 内容 |
+| --- | --- | --- | --- |
+| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| アプリケーション設計 | 委譲 | [標準仕様](standards.md#assertions-and-protocols-for-the-oasis-security-assertion-markup-language-saml-v20) | 管理 API はシステムのアプリケーション設計に従い、プロトコルの形は標準仕様が定める |
+| データ設計 | 委譲 | [モデル](#モデル)、[SAML の SSO の設計](features/sso.md#データ) | Aggregate とその関係は仕様のモデルが、AuthnRequest の再送の記録はSAML の SSO の設計が扱う |
+| セキュリティ設計 | 固有設計 | [担当文書](security.md#テナントとプロファイルの単位の署名) | テナントとプロファイルの単位の署名、XML の処理 |
+| 信頼性設計 | 委譲 | [SAML の SSO の設計](features/sso.md#信頼性) | 再送の記録先の障害の扱いはSAML の SSO の設計が扱う |
+| 検証設計 | 固有設計 | [担当文書](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト、実体参照の回帰テスト |
 
 | 文書 | 内容 |
 | --- | --- |
 | [Saml の用語集](glossary.md) | このモジュールでの語義 |
 | [Saml の標準仕様](standards.md) | 採用する外部標準仕様 |
-
-## 設計
-
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| アプリケーション設計 | 委譲 | [標準仕様](standards.md#assertions-and-protocols-for-the-oasis-security-assertion-markup-language-saml-v20) | 管理 API はシステムのアプリケーション設計に従い、プロトコルの形は標準仕様が定める |
-| データ設計 | 委譲 | [モデル](#モデル)、[SAML の SSO の設計](sso/README.md#データ) | Aggregate とその関係は仕様のモデルが、AuthnRequest の再送の記録はSAML の SSO の設計が扱う |
-| セキュリティ設計 | 固有設計 | [担当文書](design/security.md#テナントとプロファイルの単位の署名) | テナントとプロファイルの単位の署名、XML の処理 |
-| 信頼性設計 | 委譲 | [SAML の SSO の設計](sso/README.md#信頼性) | 再送の記録先の障害の扱いはSAML の SSO の設計が扱う |
-| 検証設計 | 固有設計 | [担当文書](design/verification.md#パースの境界のファズテスト) | パースの境界のファズテスト、実体参照の回帰テスト |
-
-| 文書 | 内容 |
-| --- | --- |
-| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |
+| [設計判断](decisions.md) | 代替案を比べた重要な判断 |

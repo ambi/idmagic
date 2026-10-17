@@ -8,8 +8,8 @@ priority: p3
 depends_on: [wi-13438-publish-oauth2-consent-revocation-and-client-administration]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/modules/oauth2/consent/README.md, requirement: REQ-OAUTH2-032 }
-  - { path: docs/modules/tenancy/quota/README.md, requirement: REQ-TENANCY-036, impact: conforms }
+  - { path: docs/modules/oauth2/features/consent.md, requirement: REQ-OAUTH2-032 }
+  - { path: docs/modules/tenancy/features/quota.md, requirement: REQ-TENANCY-036, impact: conforms }
 ---
 
 # 本人による同意の撤回でも consents のクォータの枠を空ける
@@ -25,8 +25,8 @@ affected_spec:
 
 同意を付与するときは、どちらの経路で撤回されるかにかかわらず使用量へ 1 を足す。
 本人が撤回するたびに使用量が実際の `Granted` の件数より大きくなり、Hard Quota の 10,000 件に実際より早く達する。
-[REQ-TENANCY-036](../../docs/modules/tenancy/quota/README.md#req-tenancy-036-hard-quota-の実効値は上書きがあればその値なければデフォルト値である) は、リソースを削除したときに使用量から減算すると定める。
-一方で、本人の撤回を定める [REQ-OAUTH2-032](../../docs/modules/oauth2/consent/README.md#req-oauth2-032-ユーザーは接続済みアプリの同意を自分で撤回できる) は、クォータについて何も述べていない。
+[REQ-TENANCY-036](../../docs/modules/tenancy/features/quota.md#req-tenancy-036-hard-quota-の実効値は上書きがあればその値なければデフォルト値である) は、リソースを削除したときに使用量から減算すると定める。
+一方で、本人の撤回を定める [REQ-OAUTH2-032](../../docs/modules/oauth2/features/consent.md#req-oauth2-032-ユーザーは接続済みアプリの同意を自分で撤回できる) は、クォータについて何も述べていない。
 
 ## 対象範囲
 

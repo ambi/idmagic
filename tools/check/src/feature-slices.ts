@@ -1,12 +1,16 @@
 /**
  * 機能スライスで、ファイルをまたいで成り立つべきことを確かめる。
  *
- * 要件は機能仕様（`README.md` と章）で宣言し、例は同じ機能スライスの `acceptance.feature.md` に置く。
+ * 要件は機能仕様（`features/<feature>.md` と章）で宣言し、例は同じ機能の `<feature>.feature.md` に置く。
  * 一つのファイルだけを読む検証では、付録が宣言のない要件を参照していることが分からない。
- * ここは機能スライスごとに宣言と参照を集めてから照合する。例は任意なので、例のない要件は拒否しない。
+ * ここは機能ごとに宣言と参照を集めてから照合する。例は任意なので、例のない要件は拒否しない。
  */
 
-import type { DocumentSetView } from '../../workspace/src/document-layout.ts'
+import {
+  featureDocument,
+  featureSpecificationPath,
+  type DocumentSetView,
+} from '../../workspace/src/document-layout.ts'
 import type { SpecificationValidation } from './specification-doc.ts'
 
 type Declaration = { id: string; title: string; where: string }
@@ -15,11 +19,13 @@ type Reference = { id: string; title: string; where: string }
 export class FeatureSliceDeclarations {
   private readonly declarations = new Map<string, Declaration[]>()
   private readonly references = new Map<string, Reference[]>()
+  private readonly misplaced: Declaration[] = []
 
   add(path: string, result: SpecificationValidation): void {
-    const directory = path.slice(0, path.lastIndexOf('/'))
-    if (path.endsWith('/acceptance.feature.md')) {
-      const references = this.references.get(directory) ?? []
+    const feature = featureDocument(path)
+    if (feature?.part === 'examples') {
+      const key = featureSpecificationPath(feature.module, feature.feature)
+      const references = this.references.get(key) ?? []
       references.push(
         ...result.ruleReferences.map((reference) => ({
           id: reference.id,
@@ -27,33 +33,33 @@ export class FeatureSliceDeclarations {
           where: `${path}:${reference.line}`,
         })),
       )
-      this.references.set(directory, references)
+      this.references.set(key, references)
       return
     }
-    const declared = result.scenarioIds.filter((scenario) => scenario.title !== undefined)
-    if (declared.length === 0) return
-    const declarations = this.declarations.get(directory) ?? []
-    declarations.push(
-      ...declared.map((scenario) => ({
+    const declared = result.scenarioIds
+      .filter((scenario) => scenario.title !== undefined)
+      .map((scenario) => ({
         id: scenario.id,
         title: scenario.title ?? '',
         where: `${path}:${scenario.line}`,
-      })),
-    )
-    this.declarations.set(directory, declarations)
+      }))
+    if (declared.length === 0) return
+    if (!feature) {
+      this.misplaced.push(...declared)
+      return
+    }
+    const key = featureSpecificationPath(feature.module, feature.feature)
+    this.declarations.set(key, [...(this.declarations.get(key) ?? []), ...declared])
   }
 
-  verify(view: DocumentSetView): string[] {
-    const findings: string[] = []
-    for (const [directory, declarations] of this.declarations) {
-      const placement = placementProblem(directory, view)
-      for (const declaration of declarations) {
-        if (placement) findings.push(`${declaration.where}: ${declaration.id} ${placement}`)
-      }
-    }
-    for (const [directory, references] of this.references) {
+  verify(): string[] {
+    const findings = this.misplaced.map(
+      (declaration) =>
+        `${declaration.where}: ${declaration.id} must be declared in a feature slice`,
+    )
+    for (const [specification, references] of this.references) {
       const declared = new Map(
-        (this.declarations.get(directory) ?? []).map((declaration) => [
+        (this.declarations.get(specification) ?? []).map((declaration) => [
           declaration.id,
           declaration,
         ]),
@@ -62,7 +68,7 @@ export class FeatureSliceDeclarations {
         const declaration = declared.get(reference.id)
         if (!declaration) {
           findings.push(
-            `${reference.where}: ${reference.id} is not declared by the feature specification in ${directory}/`,
+            `${reference.where}: ${reference.id} is not declared by the feature specification ${specification}`,
           )
         } else if (declaration.title !== reference.title) {
           findings.push(
@@ -73,15 +79,6 @@ export class FeatureSliceDeclarations {
     }
     return findings.sort()
   }
-}
-
-/** 要件を宣言できない階層なら、その理由を返す。 */
-function placementProblem(directory: string, view: DocumentSetView): string | undefined {
-  const [, , , ...rest] = directory.split('/')
-  if (rest.length === 0 || rest[0] === 'design' || view.parents.has(directory)) {
-    return 'must be declared in a feature slice'
-  }
-  return undefined
 }
 
 /**

@@ -1,11 +1,12 @@
+import { featureDocument } from '../../workspace/src/document-layout.ts'
 import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { updateExampleBlocks } from './executable-examples.ts'
 
 const snapshot = createWorkspaceSnapshot()
-for (const path of (await snapshot.files('docs')).filter((path) =>
-  path.endsWith('acceptance.feature.md'),
+for (const path of (await snapshot.files('docs')).filter(
+  (path) => featureDocument(path)?.part === 'examples',
 )) {
   const source = await snapshot.read(path)
   const generated = updateExampleBlocks(source, (path) =>

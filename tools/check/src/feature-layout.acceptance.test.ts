@@ -92,19 +92,31 @@ const DECISIONS = [
   '',
 ].join('\n')
 
+/** モジュールの直下の、設計領域以外の文書の索引。 */
+const MODULE_DOCUMENT_TABLE = [
+  '| 文書 | 内容 |',
+  '| --- | --- |',
+  '| [用語集](glossary.md) | 語義 |',
+  '| [設計判断](decisions.md) | 判断 |',
+  '',
+].join('\n')
+
 /**
- * モジュールの README の最後の節「設計」に、最小の固有設計だけを書く。共通設計の九行は再掲しない。
+ * モジュールの README の最後の節「文書」に、最小の固有設計とモジュールの文書だけを書く。
+ * 共通設計の九行は再掲しない。
  */
-function areaIndex(title: string, architecture: string): string {
+function areaIndex(title: string, architecture: string, rows: string[] = []): string {
   return [
     `# ${title}`,
     '',
-    '## 設計',
+    '## 文書',
     '',
     '| 設計領域 | 区分 | 参照先 | 内容 |',
     '| --- | --- | --- | --- |',
     `| アーキテクチャ設計 | 固有設計 | ${architecture} | 構成要素と配置 |`,
+    ...rows,
     '',
+    MODULE_DOCUMENT_TABLE,
   ].join('\n')
 }
 
@@ -123,18 +135,12 @@ async function featureLayoutWorkspace(): Promise<string> {
       '',
     ].join('\n'),
     'docs/modules/demo/glossary.md': '# Demo の用語集\n',
-    'docs/modules/demo/README.md': areaIndex(
-      'Demo',
-      '[アーキテクチャ設計](design/architecture.md#構成)',
-    ),
-    'docs/modules/demo/design/architecture.md':
-      '# Demo のアーキテクチャ\n\n## 構成\n\nタスクを扱う。\n',
-    'docs/modules/demo/design/decisions.md': DECISIONS,
-    'docs/modules/demo/design/audit.md': '# 監査\n',
-    'docs/modules/demo/work/README.md': '# 作業\n',
-    'docs/modules/demo/work/task/README.md': `${SPECIFICATION}\n## 実現方式\n\n### アーキテクチャ\n\nタスクを保存する。\n`,
+    'docs/modules/demo/README.md': areaIndex('Demo', '[アーキテクチャ設計](architecture.md#構成)'),
+    'docs/modules/demo/architecture.md': '# Demo のアーキテクチャ\n\n## 構成\n\nタスクを扱う。\n',
+    'docs/modules/demo/decisions.md': DECISIONS,
+    'docs/modules/demo/features/task.md': `${SPECIFICATION}\n## 実現方式\n\n### アーキテクチャ\n\nタスクを保存する。\n`,
 
-    'docs/modules/demo/work/task/acceptance.feature.md': EXAMPLES,
+    'docs/modules/demo/features/task.feature.md': EXAMPLES,
     'backend/demo/task/domain/task.go':
       'package domain\n\ntype Task struct{}\n\nfunc (t Task) Open() bool { return true }\n',
     'backend/demo/task/domain/task_test.go': [
@@ -179,19 +185,19 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     expect(result.code).toBe(0)
   })
 
-  it('rejects the per-kind files of the legacy layout inside a feature slice', async () => {
+  it('rejects the per-kind files of the legacy layout for a feature', async () => {
     const root = await featureLayoutWorkspace()
-    await write(root, 'docs/modules/demo/work/task/decisions.md', '# 判断\n')
+    await write(root, 'docs/modules/demo/features/task.decisions.md', '# 判断\n')
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('docs/modules/demo/work/task/decisions.md')
+    expect(result.output).toContain('docs/modules/demo/features/task.decisions.md')
   })
 
   it('accepts a requirement that has no example in the appendix', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/task/README.md',
+      'docs/modules/demo/features/task.md',
       `${SPECIFICATION}\n#### REQ-DEMO-003 閉じたタスクを隠す\n\n- 閉じたタスクは返さない。\n`,
     )
     const result = await runCheck(root, 'documents')
@@ -203,7 +209,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/task/acceptance.feature.md',
+      'docs/modules/demo/features/task.feature.md',
       EXAMPLES.replaceAll('REQ-DEMO-002', 'REQ-DEMO-009').replaceAll('EX-DEMO-002', 'EX-DEMO-009'),
     )
     const result = await runCheck(root, 'documents')
@@ -215,7 +221,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/task/acceptance.feature.md',
+      'docs/modules/demo/features/task.feature.md',
       EXAMPLES.replace('開いたタスクだけを一覧する', 'タスクを一覧する'),
     )
     const result = await runCheck(root, 'documents')
@@ -223,23 +229,25 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     expect(result.output).toContain('REQ-DEMO-002 title differs from the feature specification')
   })
 
-  it('rejects a rule declared in a group of features', async () => {
+  it('rejects a rule declared outside a feature specification', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/README.md',
-      '# 作業\n\n#### REQ-DEMO-004 作業を数える\n\n- 作業を数える。\n',
+      'docs/modules/demo/architecture.md',
+      '# Demo のアーキテクチャ\n\n## 構成\n\n#### REQ-DEMO-004 作業を数える\n\n- 作業を数える。\n',
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('REQ-DEMO-004 must be declared in a feature slice')
+    expect(result.output).toContain(
+      'REQ-DEMO-004 must be declared in scenarios.feature.md or in a feature specification',
+    )
   })
 
   it('rejects a decision that leaves out a part of the decision record', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/design/decisions.md',
+      'docs/modules/demo/decisions.md',
       DECISIONS.replace('### 検討した代替案', '### 比較'),
     )
     const result = await runCheck(root, 'documents')
@@ -250,6 +258,11 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
   it('accepts the quality requirements allocated to a context', async () => {
     const root = await featureLayoutWorkspace()
     await write(root, 'docs/modules/demo/quality.md', '# Demo の品質要件\n')
+    await write(
+      root,
+      'docs/modules/demo/README.md',
+      `${areaIndex('Demo', '[構成](architecture.md#構成)')}| [品質要件](quality.md) | 割り当て |\n`,
+    )
     const result = await runCheck(root, 'documents')
     expect(result.output).not.toContain('docs/modules/demo/quality.md')
     expect(result.code).toBe(0)
@@ -257,8 +270,12 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
 
   it('共通設計だけのモジュールには領域の列挙を要求しない', async () => {
     const root = await featureLayoutWorkspace()
-    await rm(join(root, 'docs/modules/demo/design/architecture.md'))
-    await write(root, 'docs/modules/demo/README.md', '# Demo\n')
+    await rm(join(root, 'docs/modules/demo/architecture.md'))
+    await write(
+      root,
+      'docs/modules/demo/README.md',
+      `# Demo\n\n## 文書\n\n${MODULE_DOCUMENT_TABLE}`,
+    )
     const result = await runCheck(root, 'documents')
     expect(result.code).toBe(0)
   })
@@ -272,23 +289,23 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
   })
 
   /** 機能の仕組みは機能仕様の「実現方式」の節に書き、別のファイルへ分けない。 */
-  it('rejects a separate design.md in a feature slice', async () => {
+  it('rejects a separate design document for a feature', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/task/design.md',
+      'docs/modules/demo/features/task.design.md',
       '# タスクの設計\n\n## 信頼性\n\n削除が途中で失敗したら、削除を再実行する。\n',
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('docs/modules/demo/work/task/design.md')
+    expect(result.output).toContain('docs/modules/demo/features/task.design.md')
   })
 
   it('rejects the realization section placed before the operations', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/task/README.md',
+      'docs/modules/demo/features/task.md',
       SPECIFICATION.replace('## 操作', '## 実現方式\n\nタスクを保存する。\n\n## 操作'),
     )
     const result = await runCheck(root, 'specification-rules')
@@ -301,10 +318,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     await write(
       root,
       'docs/modules/demo/README.md',
-      areaIndex('Demo', '[構成](design/architecture.md#構成)').replace(
-        'アーキテクチャ設計 |',
-        '運用 |',
-      ),
+      areaIndex('Demo', '[構成](architecture.md#構成)').replace('アーキテクチャ設計 |', '運用 |'),
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
@@ -316,7 +330,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     await write(
       root,
       'docs/modules/demo/README.md',
-      `${areaIndex('Demo', '—')}| データ設計 | 対象外 | — | |\n`,
+      areaIndex('Demo', '—', ['| データ設計 | 対象外 | — | |']),
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
@@ -329,7 +343,9 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     await write(
       root,
       'docs/modules/demo/README.md',
-      `${areaIndex('Demo', '[構成](design/architecture.md#構成)')}| データ設計 | 対象外 | [保存](design/architecture.md#構成) | 保存しない |\n`,
+      areaIndex('Demo', '[構成](architecture.md#構成)', [
+        '| データ設計 | 対象外 | [保存](architecture.md#構成) | 保存しない |',
+      ]),
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
@@ -341,7 +357,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     await write(
       root,
       'docs/modules/demo/README.md',
-      areaIndex('Demo', '[構成](design/architecture.md#ない節)'),
+      areaIndex('Demo', '[構成](architecture.md#ない節)'),
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
@@ -350,11 +366,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
 
   it('委譲先の存在しないファイルを文書検査で拒否する', async () => {
     const root = await featureLayoutWorkspace()
-    await write(
-      root,
-      'docs/modules/demo/README.md',
-      areaIndex('Demo', '[構成](design/missing.md#構成)'),
-    )
+    await write(root, 'docs/modules/demo/README.md', areaIndex('Demo', '[構成](missing.md#構成)'))
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
     expect(result.output).toContain('relative link target does not exist')
@@ -381,10 +393,10 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     )
     const path = 'docs/design/architecture/logical.md'
     const source =
-      '# 論理アーキテクチャ\n\n| 品質要件 | 担当機能 | 設計 | 検証 |\n| --- | --- | --- | --- |\n| [SLO-DEMO-LATENCY](../../requirements/quality.md#目標) | [担当](../../modules/demo/work/task/README.md#操作) | [設計](../../modules/demo/design/architecture.md#構成) | [検証](../../modules/demo/work/task/README.md#アーキテクチャ) |\n'
+      '# 論理アーキテクチャ\n\n| 品質要件 | 担当機能 | 設計 | 検証 |\n| --- | --- | --- | --- |\n| [SLO-DEMO-LATENCY](../../requirements/quality.md#目標) | [担当](../../modules/demo/features/task.md#操作) | [設計](../../modules/demo/architecture.md#構成) | [検証](../../modules/demo/features/task.md#アーキテクチャ) |\n'
     await write(root, path, source)
     expect((await runCheck(root, 'documents')).code).toBe(0)
-    await write(root, path, source.replace('README.md#操作', 'README.md#ない操作'))
+    await write(root, path, source.replace('task.md#操作', 'task.md#ない操作'))
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
     expect(result.output).toContain('ない操作')
@@ -407,8 +419,8 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     expect(result.output).toContain('other has no README.md')
   })
 
-  /** 設計領域の索引はモジュールの README の最後の節に置き、`design/` に別の入口を置かない。 */
-  it('rejects a separate design index in the design directory', async () => {
+  /** 設計領域の文書はモジュールの直下に置き、`design/` の段を置かない。 */
+  it('rejects a design directory below a module', async () => {
     const root = await featureLayoutWorkspace()
     await write(root, 'docs/modules/demo/design/README.md', '# Demo の設計\n')
     const result = await runCheck(root, 'documents')
@@ -416,16 +428,16 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     expect(result.output).toContain('docs/modules/demo/design/README.md')
   })
 
-  it('rejects a design area index outside the last section 設計', async () => {
+  it('rejects a design area index outside the last section 文書', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
       'docs/modules/demo/README.md',
-      `${areaIndex('Demo', '[構成](design/architecture.md#構成)')}\n## 機能\n\nタスクを扱う。\n`,
+      `${areaIndex('Demo', '[構成](architecture.md#構成)')}\n## 機能\n\nタスクを扱う。\n`,
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('design area index must be in the last section 設計')
+    expect(result.output).toContain('design area index must be in the last section 文書')
   })
 
   it('rejects the per-kind files of the former layout directly under a context', async () => {
@@ -450,7 +462,7 @@ describe('機能仕様の規則の書式', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/task/README.md',
+      'docs/modules/demo/features/task.md',
       SPECIFICATION.replace('- **担保手段**：`Task.Open`\n', ''),
     )
     const result = await runCheck(root, 'specification-rules')
@@ -482,7 +494,7 @@ describe('機能仕様の規則の書式', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/task/README.md',
+      'docs/modules/demo/features/task.md',
       SPECIFICATION.replace('**判断**', '**理由**'),
     )
     const result = await runCheck(root, 'specification-rules')
@@ -494,7 +506,7 @@ describe('機能仕様の規則の書式', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/task/README.md',
+      'docs/modules/demo/features/task.md',
       SPECIFICATION.replace(
         '- **担保手段**：`Task.Open`\n',
         '- **上位の規則**：[ページサイズ](#一覧)\n',
@@ -509,7 +521,7 @@ describe('機能仕様の規則の書式', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/task/README.md',
+      'docs/modules/demo/features/task.md',
       SPECIFICATION.replace('## 概要\n\nタスクを扱う。\n', '').concat(
         '\n## 概要\n\nタスクを扱う。\n',
       ),
@@ -523,7 +535,7 @@ describe('機能仕様の規則の書式', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/task/README.md',
+      'docs/modules/demo/features/task.md',
       `${SPECIFICATION}\n## 品質\n\n一覧は 1 秒以内に返す。\n`,
     )
     const result = await runCheck(root, 'specification-rules')
@@ -535,7 +547,7 @@ describe('機能仕様の規則の書式', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/work/task/README.md',
+      'docs/modules/demo/features/task.md',
       `${SPECIFICATION}\n## エラー\n\n共通のエラーはない。\n`,
     )
     const result = await runCheck(root, 'specification-rules')

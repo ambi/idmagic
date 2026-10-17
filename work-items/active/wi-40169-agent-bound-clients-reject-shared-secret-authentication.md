@@ -8,8 +8,8 @@ priority: p2
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: docs/modules/identity-management/agent/README.md, requirement: REQ-IDMANAGEMENT-009 }
-  - { path: docs/modules/oauth2/token/README.md, requirement: REQ-OAUTH2-046 }
+  - { path: docs/modules/identity-management/features/agent.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/modules/oauth2/features/token.md, requirement: REQ-OAUTH2-046 }
   - { path: spec/modules/identity-management/main.tsp, symbol: BindAgentCredential }
 ---
 

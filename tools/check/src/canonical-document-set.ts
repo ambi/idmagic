@@ -85,11 +85,11 @@ export function verifyCanonicalDocumentSet(listings: DirectoryListing[]): Findin
         path: `${listing.directory}/${name}`,
         message: nearest
           ? `not a canonical document; did you mean ${nearest}?`
-          : allowed.length === 0
-            ? 'not a canonical document; the specification tree stops at the feature slice'
-            : `not a canonical document; ${listing.directory}/ holds only ${allowed.join(', ')}${
-                allowance.freeNames ? ', and chapters named in kebab-case' : ''
-              }`,
+          : allowance.features
+            ? `not a canonical document; ${listing.directory}/ holds only <feature>.md, <feature>.feature.md, and <feature>.<chapter>.md in kebab-case`
+            : allowed.length === 0
+              ? 'not a canonical document; a module holds only its own documents and features/'
+              : `not a canonical document; ${listing.directory}/ holds only ${allowed.join(', ')}`,
       })
     }
   }

@@ -14,7 +14,7 @@ import {
   verifySpecificationOutline,
   verifySpecificationRuleFields,
 } from './specification-rules.ts'
-import { SHARED_SCENARIOS } from '../../workspace/src/document-layout.ts'
+import { featureDocument, SHARED_SCENARIOS } from '../../workspace/src/document-layout.ts'
 import { documentKind } from './specification-doc.ts'
 
 /** 仕様のディレクトリと対応しないコードのディレクトリの基準。導入時点の一覧で、減る方向にしか動かさない。 */
@@ -74,7 +74,6 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
   const featureModules = new Set(
     domainFiles.flatMap((path) => path.match(/^docs\/modules\/([^/]+)\/README\.md$/)?.[1] ?? []),
   )
-  const parents = new Set(domainFiles.map((path) => posix.dirname(posix.dirname(path))))
   const inFeatureModule = (path: string) => featureModules.has(path.split('/')[2] ?? '')
 
   const findings: Finding[] = []
@@ -87,8 +86,7 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
       if (EARS_MODULES.has(module)) {
         findings.push(...verifyEarsStatements(path, source, await responder(snapshot, module)))
       }
-      const directory = posix.dirname(path)
-      if (path.endsWith('/README.md') && !parents.has(directory)) {
+      if (featureDocument(path)?.part === 'specification') {
         findings.push(...verifySpecificationOutline(path, source))
       }
     }
@@ -102,13 +100,9 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
   )
   const specifications = new Set(
     domainFiles.flatMap((path) => {
-      const directory = posix.dirname(path)
-      if (/^docs\/modules\/[^/]+\/[^/]+$/.test(directory)) return [directory]
-      // 機能群の一段下も機能スライスの仕様になる。内部設計の段は機能ではない。
-      return inFeatureModule(path) &&
-        /^docs\/modules\/[^/]+\/[^/]+\/[^/]+$/.test(directory) &&
-        directory.split('/')[3] !== 'design'
-        ? [directory]
+      const feature = featureDocument(path)
+      return feature?.part === 'specification'
+        ? [{ module: feature.module, feature: feature.feature }]
         : []
     }),
   )

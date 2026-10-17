@@ -25,7 +25,7 @@
 | `ScheduledDeprovision` | 猶予期間つきの削除の予約。接続、User、削除のイベントのバージョン、期限、状態 | `ProvisioningConnection` と User を参照する |
 | `FullResync` | フル同期の対象の数と状態 | `ProvisioningConnection` を参照し、`ProvisioningTask` を関連付ける |
 
-- **判断**：反映済みの状態を `RemoteResourceLink` に持つ理由は、[反映済みの状態を RemoteResourceLink に保持する](design/decisions.md#反映済みの状態を-remoteresourcelink-に保持する)。
+- **判断**：反映済みの状態を `RemoteResourceLink` に持つ理由は、[反映済みの状態を RemoteResourceLink に保持する](decisions.md#反映済みの状態を-remoteresourcelink-に保持する)。
 
 ## 公開する契約
 
@@ -43,25 +43,22 @@ HTTP の操作とモデルの形は TypeSpec の `Provisioning` のタグが、�
 
 | 機能 | 内容 |
 | --- | --- |
-| [接続の管理](connection/README.md) | 接続の登録と接続テスト、On-Demand Provision、フル同期、資格情報のローテーション |
-| [同期](synchronization/README.md) | イベント同期、インクリメンタル同期、猶予期間つきの削除、誤削除ガード |
-| [プロビジョニングタスクの実行](task/README.md) | 下流への反映、衝突と消失の解決、再試行と配信不能 |
+| [接続の管理](features/connection.md) | 接続の登録と接続テスト、On-Demand Provision、フル同期、資格情報のローテーション |
+| [同期](features/synchronization.md) | イベント同期、インクリメンタル同期、猶予期間つきの削除、誤削除ガード |
+| [プロビジョニングタスクの実行](features/task.md) | 下流への反映、衝突と消失の解決、再試行と配信不能 |
+
+## 文書
+
+| 設計領域 | 区分 | 参照先 | 内容 |
+| --- | --- | --- | --- |
+| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| アプリケーション設計 | 委譲 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema) | 管理 API はシステムのアプリケーション設計に従い、下流の形は標準仕様が定める |
+| データ設計 | 委譲 | [モデル](#モデル) | Aggregate とその関係は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
+| セキュリティ設計 | 委譲 | [接続の管理](features/connection.md#セキュリティ上の考慮) | 下流の URL の検証とテナントの境界は接続の管理のセキュリティ上の考慮の節が扱う |
+| 信頼性設計 | 委譲 | [同期の設計](features/synchronization.md#信頼性)、[接続の管理の設計](features/connection.md#信頼性) | 隔離からの回復と通知は同期の設計が、フル同期の完了は接続の管理の設計が扱う |
 
 | 文書 | 内容 |
 | --- | --- |
 | [Provisioning の用語集](glossary.md) | このモジュールでの語義 |
 | [Provisioning の標準仕様](standards.md) | 採用する外部標準仕様 |
-
-## 設計
-
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| アプリケーション設計 | 委譲 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema) | 管理 API はシステムのアプリケーション設計に従い、下流の形は標準仕様が定める |
-| データ設計 | 委譲 | [モデル](#モデル) | Aggregate とその関係は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
-| セキュリティ設計 | 委譲 | [接続の管理](connection/README.md#セキュリティ上の考慮) | 下流の URL の検証とテナントの境界は接続の管理のセキュリティ上の考慮の節が扱う |
-| 信頼性設計 | 委譲 | [同期の設計](synchronization/README.md#信頼性)、[接続の管理の設計](connection/README.md#信頼性) | 隔離からの回復と通知は同期の設計が、フル同期の完了は接続の管理の設計が扱う |
-
-| 文書 | 内容 |
-| --- | --- |
-| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |
+| [設計判断](decisions.md) | 代替案を比べた重要な判断 |

@@ -11,7 +11,7 @@ const guidance: GuidanceDocument[] = [
   {
     file: '.agents/skills/spec-change/SKILL.md',
     source:
-      'spec/modules/<module>/{models,main}.tsp\ndocs/modules/<module>/<group>/<feature>/README.md\nacceptance.feature.md\ndocs/development/task-context.md\nmise run brief -- item --concern contract',
+      'spec/modules/<module>/{models,main}.tsp\ndocs/modules/<module>/features/<feature>.md\n<feature>.feature.md\ndocs/development/task-context.md\nmise run brief -- item --concern contract',
   },
   {
     file: '.agents/skills/update-design/SKILL.md',
@@ -85,8 +85,8 @@ describe('verifyAgentGuidance', () => {
         '.agents/skills/spec-change/SKILL.md',
         [
           'spec/modules/<module>/{models,main}.tsp',
-          'docs/modules/<module>/<group>/<feature>/README.md',
-          'acceptance.feature.md',
+          'docs/modules/<module>/features/<feature>.md',
+          '<feature>.feature.md',
           '--concern contract',
         ],
       ],

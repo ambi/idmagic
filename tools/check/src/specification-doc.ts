@@ -4,6 +4,7 @@ import { posix } from 'node:path'
 import { parseScenarioDocument } from './gherkin-scenarios.ts'
 import {
   canonicalDocumentNames,
+  featureDocument,
   MODULE_DOCUMENTS,
   DESIGN_AREAS,
 } from '../../workspace/src/document-layout.ts'
@@ -28,11 +29,11 @@ export type SpecificationValidation = {
  * canonical document needed. A directory takes the split layout as soon as it
  * holds a README.md.
  *
- * 機能スライスは、機能仕様（`README.md` と任意の名前の章）と例の付録（`acceptance.feature.md`）を持つ。
- * 機能に閉じた仕組みは機能仕様の「実現方式」の節に書くので、機能スライスの `design.md` は
- * どの種別でもない。過去の revision にあっても規範の入力にしない。モジュールの `design/` は
- * 設計領域ごとの設計で、`decisions.md` は判断の記録の骨格を持つ。設計領域の索引は、モジュールの
- * `README.md` の最後の節「設計」と、システムの設計の入口 `docs/design/README.md` に置く。
+ * 機能は、機能仕様（`features/<feature>.md` と章 `<feature>.<chapter>.md`）と例の付録
+ * （`<feature>.feature.md`）を持つ。機能に閉じた仕組みは機能仕様の「実現方式」の節に書く。
+ * モジュールの直下の設計領域の文書は散文で、`decisions.md` は判断の記録の骨格を持つ。
+ * 設計領域の索引は、モジュールの `README.md` の最後の節「文書」と、システムの設計の入口
+ * `docs/design/README.md` に置く。
  */
 /** What a file's name says about the grammar its body must follow. */
 export type DocumentKind =
@@ -52,9 +53,6 @@ const KIND_BY_NAME = new Map<string, DocumentKind>([
 /** モジュールの直下で種別を返す名前。 */
 const MODULE_LEVEL_NAMES = new Set<string>(MODULE_DOCUMENTS)
 
-/** モジュールより下の段で、任意の名前の章として読む名前。 */
-const CHAPTER_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/
-
 /**
  * The kind of a canonical document, or undefined when the path is not one.
  * `path` is repository-relative and uses forward slashes.
@@ -67,22 +65,12 @@ export function documentKind(path: string): DocumentKind | undefined {
   const name = path.split('/').at(-1) ?? ''
   const directory = path.slice(0, path.lastIndexOf('/'))
   if (directory === 'docs/design' && name === 'README.md') return 'design-index'
-  const below = directory.match(/^docs\/modules\/[^/]+\/(.+)$/)?.[1]?.split('/')
-  if (below) {
-    if (below[0] === 'design') {
-      if (below.length !== 1 || !CHAPTER_NAME.test(name)) return undefined
-      return name === 'decisions.md' ? 'decision-records' : 'prose'
-    }
-    // 共有語彙と採用した標準は機能をまたいで使うので、モジュールの直下にだけ置く。
-    if (below.length > 2 || name === 'glossary.md' || name === 'standards.md') return undefined
-    const named = KIND_BY_NAME.get(name)
-    if (named) return named
-    if (name === 'acceptance.feature.md') return 'examples'
-    if (name === 'design.md') return undefined
-    return name === 'README.md' || CHAPTER_NAME.test(name) ? 'specification' : undefined
-  }
+  const feature = featureDocument(path)
+  if (feature) return feature.part === 'examples' ? 'examples' : 'specification'
+  if (/^docs\/modules\/[^/]+\/.+$/.test(directory)) return undefined
   if (/^docs\/modules\/[^/]+$/.test(directory)) {
     if (name === 'README.md') return 'design-index'
+    if (name === 'decisions.md') return 'decision-records'
     return MODULE_LEVEL_NAMES.has(name) ? (KIND_BY_NAME.get(name) ?? 'prose') : undefined
   }
   if (!canonicalDocumentNames(directory)?.includes(name)) return undefined
@@ -531,7 +519,7 @@ const DECISION_RECORD_SECTIONS = [
   '関連する要件',
 ] as const
 
-/** `design/decisions.md` の各判断（H2）が、記録の各部（H3）をこの順で一度ずつ持つことを確かめる。 */
+/** モジュールの `decisions.md` の各判断（H2）が、記録の各部（H3）をこの順で一度ずつ持つことを確かめる。 */
 function validateDecisionRecords(source: string, findings: SpecificationFinding[]): void {
   const decisions = [...source.matchAll(/^## (?!#)(.+)$/gm)]
   for (const [index, decision] of decisions.entries()) {
@@ -562,6 +550,9 @@ function validateDecisionRecords(source: string, findings: SpecificationFinding[
 
 const AREA_INDEX_HEADER = '| 設計領域 | 区分 | 参照先 | 内容 |'
 
+/** モジュールの `README.md` の最後の節。設計領域とモジュールの文書をここで索引する。 */
+const MODULE_DOCUMENT_INDEX_SECTION = '文書'
+
 /** 担当を曖昧にしないため、文書だけでなく節まで名指す。存在は文書間の検査で確かめる。 */
 const LOCAL_SECTION_LINK = /\[[^\]]+\]\((?![a-z][a-z0-9+.-]*:|\/)[^\s)#]*#[^\s)]+\)/i
 
@@ -589,11 +580,12 @@ function validateDesignAreaIndex(
   if (
     !system &&
     first &&
-    (lastSection?.[1]?.trim() !== '設計' || first.index < (lastSection.index ?? 0))
+    (lastSection?.[1]?.trim() !== MODULE_DOCUMENT_INDEX_SECTION ||
+      first.index < (lastSection.index ?? 0))
   ) {
     findings.push({
       line: lineAt(source, first.index),
-      message: 'design area index must be in the last section 設計',
+      message: `design area index must be in the last section ${MODULE_DOCUMENT_INDEX_SECTION}`,
     })
   }
   const areas: readonly string[] = DESIGN_AREAS.map(({ name }) => name)
@@ -650,18 +642,41 @@ function validateDesignAreaIndex(
 
 const QUALITY_ASSIGNMENT_HEADER = '| 品質要件 | 担当機能 | 設計 | 検証 |'
 
+/** モジュールの `README.md` の最後の節から、同じモジュールの文書へのリンク先を集める。 */
+function documentIndexLinks(readme: string, moduleDirectory: string): Set<string> {
+  const lastSection = [...readme.matchAll(/^## (.+)$/gm)].at(-1)
+  if (lastSection?.[1]?.trim() !== MODULE_DOCUMENT_INDEX_SECTION) return new Set()
+  const body = readme.slice(lastSection.index ?? 0)
+  return new Set(
+    [...body.matchAll(/\]\(([^)#\s]+)(?:#[^)]*)?\)/g)].map((link) =>
+      posix.normalize(posix.join(moduleDirectory, link[1] ?? '')),
+    ),
+  )
+}
+
 /** 既定への継承は、実在する固有設計の記載を省く理由にはしない。 */
 export function verifyDesignDocumentCoverage(
   documents: ReadonlyMap<string, string>,
 ): Array<SpecificationFinding & { path: string }> {
   const findings: Array<SpecificationFinding & { path: string }> = []
   for (const path of documents.keys()) {
-    const match = path.match(/^(docs\/modules\/[^/]+)\/design\/([^/]+\.md)$/)
-    if (!match) continue
-    const area = DESIGN_AREAS.find((area) => area.file === match[2])
-    if (!area) continue
+    const match = path.match(/^(docs\/modules\/[^/]+)\/([^/]+\.md)$/)
+    if (!match || match[2] === 'README.md') continue
     const indexPath = `${match[1]}/README.md`
-    const rows = tableRows(withoutCodeBlocks(documents.get(indexPath) ?? ''), AREA_INDEX_HEADER)
+    const index = withoutCodeBlocks(documents.get(indexPath) ?? '')
+    const area = DESIGN_AREAS.find((area) => area.file === match[2])
+    if (!area) {
+      // 設計領域以外のモジュールの文書は、索引の節「文書」から辿れるようにする。
+      if (!documentIndexLinks(index, match[1] ?? '').has(path)) {
+        findings.push({
+          path: indexPath,
+          line: 1,
+          message: `the last section ${MODULE_DOCUMENT_INDEX_SECTION} must link to ${match[2]}`,
+        })
+      }
+      continue
+    }
+    const rows = tableRows(index, AREA_INDEX_HEADER)
     const indexed = rows.some(
       ({ cells }) =>
         cells[0] === area.name &&

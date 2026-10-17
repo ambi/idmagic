@@ -5,6 +5,7 @@ import { ruleBodies } from '../../check/src/gherkin-scenarios.ts'
 import { documentKind } from '../../check/src/specification-doc.ts'
 import { markdownHeadingTargets } from '../../check/src/markdown-links.ts'
 import {
+  featureDocument as featurePart,
   MODULE_DOCUMENTS,
   SHARED_SCENARIOS,
   SYSTEM_DOCUMENT_PATHS,
@@ -153,11 +154,11 @@ function plainTitle(value: string): string {
 }
 
 /**
- * 機能スライスの子の並び。機能仕様の章を先に、例の付録を後に置く。
+ * 機能の子の並び。機能仕様の章を先に、例の付録を後に置く。
  * 章は仕様の続きなので、仕様の直後に読めるようにする。
  */
-function featureChildOrder(name: string, fallback: number): number {
-  if (name === 'acceptance.feature.md') return Number.MAX_SAFE_INTEGER
+function featureChildOrder(path: string, fallback: number): number {
+  if (featurePart(path)?.part === 'examples') return Number.MAX_SAFE_INTEGER
   return fallback
 }
 
@@ -171,6 +172,8 @@ function sitePath(path: string): string {
   const file = segments.pop() ?? ''
   const directory = segments.map(slug).join('/')
   if (file === 'README.md') return `${directory}/index.html`
+  // 機能の段では、機能仕様、章、例が同じ機能名で始まるので、`.md` だけを外して区別を残す。
+  if (featurePart(path)) return `${directory}/${slug(file.replace(/\.md$/, ''))}.html`
   return `${directory}/${slug(file.replace(/(?:\.feature)?\.md$/, ''))}.html`
 }
 
@@ -225,16 +228,14 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
       order: canonicalOrder(SYSTEM_DOCUMENT_PATHS, document.path, index),
     }
   }
-  // モジュールより下の段。内部設計、機能群、機能群の下の機能スライスがある。
-  // `feature` はその段のモジュールからの相対パスである。
-  const featureDocument = document.path.match(/^docs\/modules\/([^/]+)\/(.+)\/([^/]+)$/)
-  if (featureDocument) {
-    const [, module = '', feature = '', featureFile = ''] = featureDocument
-    const node = feature.split('/').map(slug).join('-')
-    return featureFile === 'README.md'
+  // 機能の段。機能仕様を機能の見出しに、章と例をその子にする。
+  const part = featurePart(document.path)
+  if (part) {
+    const { module, feature } = part
+    return part.part === 'specification'
       ? {
           ...base,
-          id: `module-${module}-${node}`,
+          id: `module-${module}-${slug(feature)}`,
           category: 'feature',
           order: index,
           module,
@@ -242,9 +243,9 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
         }
       : {
           ...base,
-          id: `module-${module}-${node}-${slug(stem)}`,
+          id: `module-${module}-${slug(file.replace(/\.md$/, ''))}`,
           category: 'feature-child',
-          order: featureChildOrder(featureFile, index),
+          order: featureChildOrder(document.path, index),
           module,
           feature,
         }
@@ -440,11 +441,9 @@ function markdownRenderer(
     md.renderer.rules.text ?? ((tokens, index) => escapeHtml(tokens[index]?.content ?? ''))
   md.renderer.rules.text = (tokens, index, options, env, self) => {
     const content = tokens[index]?.content ?? ''
+    const path = (env as { document: RenderedDocument }).document.path
     const leading =
-      index === 0 &&
-      /(?:scenarios|acceptance)\.feature\.md$/.test(
-        (env as { document: RenderedDocument }).document.path,
-      )
+      index === 0 && (path === SHARED_SCENARIOS || featurePart(path)?.part === 'examples')
     // ステップの残りが `applications:read` のようなコード片から始まると、この
     // テキストトークンはキーワードだけで終わる。残りを必須にすると、そういう
     // ステップだけ印が消える。
@@ -559,7 +558,7 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
   if (entry.category === 'runbook') return entry.title.replace(/の運用手順書$/, '')
   // 入れ子の段そのものが所属を示す段では、名札は題名だけでよい。
   if (entry.category !== 'module-child' && entry.category !== 'feature-child') return entry.title
-  if (entry.path.endsWith('acceptance.feature.md')) return '例'
+  if (featurePart(entry.path)?.part === 'examples') return '例'
   const owner = documents.find((document) =>
     entry.category === 'feature-child'
       ? document.category === 'feature' &&
@@ -567,8 +566,7 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
         document.feature === entry.feature
       : document.category === 'module' && document.module === entry.module,
   )
-  // 内部設計の文書は「Demo の重要な設計判断」のように、段ではなくモジュールの名前を冠する。
-  // design/ には索引の文書がないので、段の文書がなくてもモジュールの名前を外す。
+  // モジュールの文書は「Demo の重要な設計判断」のように、モジュールの名前を冠する。
   const module = documents.find(
     (document) => document.category === 'module' && document.module === entry.module,
   )
@@ -668,30 +666,19 @@ function navigation(page: string, documents: RenderedDocument[]): string {
     node ? [...node.documents.map(leaf), ...node.directories.map(directory)].join('') : ''
   const requirementsNode = division('requirements')
   const designNode = division('design')
-  // 段は入れ子にする。機能スライスが機能群の下に、内部設計の文書が
-  // `design` の下に並ぶ。親の段は、その段の相対パスを接頭辞に持つ段を子に持つ。
+  // モジュールの段は、モジュールの文書を並べ、機能を「機能」の段にまとめる。
+  // 機能仕様は機能の見出しになり、章と例をその子に持つ。
   const node = (feature: RenderedDocument): NavigationDirectory => ({
     name: feature.title,
     document: feature,
     documents: inGroup(documents, 'feature-child').filter(
       (document) => document.module === feature.module && document.feature === feature.feature,
     ),
-    directories: inGroup(documents, 'feature')
-      .filter(
-        (child) =>
-          child.module === feature.module &&
-          child.feature?.startsWith(`${feature.feature}/`) &&
-          !child.feature.slice((feature.feature?.length ?? 0) + 1).includes('/'),
-      )
-      .map(node),
+    directories: [],
   })
-  // 設計領域の索引はモジュールの README の最後の節にあり、design/ には索引の文書がない。
-  // design/ の文書は、モジュールの README と同じく最後に「設計」の段として並べる。
-  const designDirectory = (module: string | undefined): NavigationDirectory[] => {
-    const designs = inGroup(documents, 'feature-child').filter(
-      (document) => document.module === module && document.feature === 'design',
-    )
-    return designs.length ? [{ name: '設計', documents: designs, directories: [] }] : []
+  const featuresDirectory = (module: string | undefined): NavigationDirectory[] => {
+    const features = inGroup(documents, 'feature').filter((feature) => feature.module === module)
+    return features.length ? [{ name: '機能', documents: [], directories: features.map(node) }] : []
   }
   const modulesBody = [
     ...inGroup(documents, 'modules-child').map(leaf),
@@ -702,17 +689,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
         documents: inGroup(documents, 'module-child').filter(
           (document) => document.module === entry.module,
         ),
-        directories: [
-          ...inGroup(documents, 'feature')
-            .filter(
-              (feature) =>
-                feature.module === entry.module &&
-                feature.feature !== 'design' &&
-                !feature.feature?.includes('/'),
-            )
-            .map(node),
-          ...designDirectory(entry.module),
-        ],
+        directories: featuresDirectory(entry.module),
       }),
     ),
   ].join('')
@@ -1064,7 +1041,7 @@ const OPEN_QUESTION = /^- (?:\*\*)?要判断(?:\*\*)?[：:]\s*(.*)$/
  * README では「操作」の節の下の H3 だけを操作とし、モデルや状態遷移の H3 と区別する。
  */
 function specificationOperations(document: RenderedDocument): SpecificationOperation[] {
-  const chapter = !document.path.endsWith('/README.md')
+  const chapter = featurePart(document.path)?.part === 'chapter'
   const operations: SpecificationOperation[] = []
   let section = ''
   let fenced = false
@@ -1116,8 +1093,7 @@ function featureOperationIndex(
   documents: RenderedDocument[],
   rules: DeclaredRule[],
 ): string {
-  if (documentKind(document.path) !== 'specification' || !document.path.endsWith('/README.md'))
-    return ''
+  if (featurePart(document.path)?.part !== 'specification') return ''
   const pages = documents.filter(
     (entry) =>
       entry.module === document.module &&
@@ -1187,7 +1163,7 @@ function featureRuleIndex(document: RenderedDocument, rules: DeclaredRule[]): st
   return `<section class="module-reference">${index}${open}</section>`
 }
 
-/** モジュールの機能地図。機能群、機能、要件と未決事項の数を、要件の見出しから作る。 */
+/** モジュールの機能地図。機能、要件と未決事項の数を、要件の見出しから作る。 */
 function featureMap(
   document: RenderedDocument,
   documents: RenderedDocument[],
@@ -1196,25 +1172,17 @@ function featureMap(
   moduleAliases: Record<string, string>,
 ): string {
   const module = document.module
-  const nodes = inGroup(documents, 'feature').filter(
-    (entry) => entry.module === module && entry.feature !== 'design',
-  )
-  const leaves = nodes.filter(
-    (entry) => !nodes.some((other) => other.feature?.startsWith(`${entry.feature}/`)),
-  )
+  const leaves = inGroup(documents, 'feature').filter((entry) => entry.module === module)
   if (leaves.length === 0) return ''
   const page = document.outputPath
   const rows = leaves
     .map((leaf) => {
-      const group = nodes.find(
-        (entry) => entry !== leaf && leaf.feature?.startsWith(`${entry.feature}/`),
-      )
       const own = rules.filter(
         (rule) => rule.document.module === module && rule.document.feature === leaf.feature,
       )
       const questions = own.reduce((count, rule) => count + rule.openQuestions.length, 0)
       const flatten = (value: string) => value.replaceAll('-', '')
-      const feature = leaf.feature?.split('/').at(-1) ?? ''
+      const feature = leaf.feature ?? ''
       const paths = sourcePaths.filter((path) => {
         const [root, owner = '', name = ''] = path.split('/')
         if (root === 'spec')
@@ -1233,10 +1201,10 @@ function featureMap(
         path.endsWith('_test.go') ||
         path.includes('/testing_contract/') ||
         path.endsWith('.examples.json')
-      return `<tr><td>${group ? siteLink(page, group.outputPath, group.title) : '—'}</td><th scope="row">${siteLink(page, leaf.outputPath, leaf.title)}</th><td>${own.length}</td><td>${questions}</td><td>${pathList(paths.filter((path) => !testPath(path)))}</td><td>${pathList(paths.filter(testPath))}</td></tr>`
+      return `<tr><th scope="row">${siteLink(page, leaf.outputPath, leaf.title)}</th><td>${own.length}</td><td>${questions}</td><td>${pathList(paths.filter((path) => !testPath(path)))}</td><td>${pathList(paths.filter(testPath))}</td></tr>`
     })
     .join('')
-  return `<section class="module-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能スライス、要件、配置とモジュール名の対応から生成した探索用の候補であり、被覆の証明ではない。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能群</th><th scope="col">機能</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
+  return `<section class="module-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能スライス、要件、配置とモジュール名の対応から生成した探索用の候補であり、被覆の証明ではない。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
 }
 
 /**

@@ -60,7 +60,7 @@ async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'spec-workspace-test-'))
   cleanup.push(root)
   await mkdir(join(root, 'spec', 'domain', 'demo'), { recursive: true })
-  await mkdir(join(root, 'docs', 'modules', 'demo', 'design'), { recursive: true })
+  await mkdir(join(root, 'docs', 'modules', 'demo'), { recursive: true })
   await mkdir(join(root, 'docs', 'requirements'), { recursive: true })
   await mkdir(join(root, 'docs', 'design', 'security'), { recursive: true })
   await mkdir(join(root, 'work-items', 'done'), { recursive: true })
@@ -72,7 +72,7 @@ async function workspace(): Promise<string> {
   await writeFile(join(root, 'docs', 'design', 'security', 'authorization.md'), '# Authorization\n')
   await writeFile(join(root, 'docs', 'modules', 'demo', 'README.md'), '# Demo\n')
   await writeFile(
-    join(root, 'docs', 'modules', 'demo', 'design', 'decisions.md'),
+    join(root, 'docs', 'modules', 'demo', 'decisions.md'),
     '# Demo の重要な設計判断\n',
   )
   return root
@@ -88,7 +88,7 @@ describe('discoverWorkspaceConfig', () => {
       'docs/design/security/README.md',
       'docs/design/security/authorization.md',
       'docs/modules/demo/README.md',
-      'docs/modules/demo/design/decisions.md',
+      'docs/modules/demo/decisions.md',
       'docs/requirements/README.md',
       'docs/requirements/quality.md',
     ])
@@ -97,10 +97,10 @@ describe('discoverWorkspaceConfig', () => {
 
   it('ignores a Markdown file the layout does not name', async () => {
     const root = await workspace()
-    await writeFile(join(root, 'docs', 'modules', 'demo', 'notes.md'), '# Notes\n')
+    await writeFile(join(root, 'docs', 'modules', 'demo', 'states.md'), '# States\n')
     await writeFile(join(root, 'docs', 'states.md'), '# States\n')
     const config = await discoverWorkspaceConfig(root)
-    expect(config.documents).not.toContain('docs/modules/demo/notes.md')
+    expect(config.documents).not.toContain('docs/modules/demo/states.md')
     expect(config.documents).not.toContain('docs/states.md')
   })
 

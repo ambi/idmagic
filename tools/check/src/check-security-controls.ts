@@ -1,4 +1,8 @@
-import { SHARED_SCENARIOS } from '../../workspace/src/document-layout.ts'
+import {
+  FEATURES_DIRECTORY,
+  featureDocument,
+  SHARED_SCENARIOS,
+} from '../../workspace/src/document-layout.ts'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { repositoryGoFiles } from './repository-inputs.ts'
 import type { CheckOutcome } from './runner.ts'
@@ -20,7 +24,7 @@ export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promis
     await snapshot.read(SHARED_SCENARIOS),
   )
   const apiTokenRefusals = insufficientScopeTypeNamedByApiTokenScenario(
-    await snapshot.read(`${modulesDirectory}/api-tokens/authentication/acceptance.feature.md`),
+    await snapshot.read(`${modulesDirectory}/api-tokens/features/authentication.feature.md`),
   )
   const sharedRefusals = new Set([...platformRefusals, ...apiTokenRefusals])
   let declared = sharedRefusals.size
@@ -66,24 +70,20 @@ export async function checkSecurityControls(snapshot: WorkspaceSnapshot): Promis
 /**
  * モジュールの機能スライスにある例の付録。拒否の宣言はモジュール単位で判定するので、
  * 例をどの機能スライスへ置いても同じモジュールの宣言として数える。
- * 機能スライスはモジュールの一段下か、機能群の一段下にある。
+ * 例の付録は、モジュールの機能の段に `<feature>.feature.md` として並ぶ。
  */
 async function moduleScenarioSources(
   snapshot: WorkspaceSnapshot,
   context: string,
 ): Promise<string[]> {
-  const paths: string[] = []
-  for (const entry of await snapshot.list(context)) {
-    if (!entry.isDirectory()) continue
-    const feature = `${context}/${entry.name}`
-    paths.push(`${feature}/acceptance.feature.md`)
-    for (const child of await snapshot.list(feature)) {
-      if (child.isDirectory()) paths.push(`${feature}/${child.name}/acceptance.feature.md`)
-    }
-  }
+  const features = `${context}/${FEATURES_DIRECTORY}`
+  if (!snapshot.exists(features)) return []
   const sources: string[] = []
-  for (const path of paths) {
-    if (snapshot.exists(path)) sources.push(await snapshot.read(path))
+  for (const entry of await snapshot.list(features)) {
+    const path = `${features}/${entry.name}`
+    if (entry.isFile() && featureDocument(path)?.part === 'examples') {
+      sources.push(await snapshot.read(path))
+    }
   }
   return sources
 }

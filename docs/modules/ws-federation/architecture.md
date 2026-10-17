@@ -1,0 +1,71 @@
+# WsFederation のアーキテクチャ
+
+この文書は、WsFederation の文脈、解決戦略、構成要素、実行時の流れを扱う。
+システム全体の構成は[論理アーキテクチャ](../../design/architecture/logical.md)と[ランタイムアーキテクチャ](../../design/architecture/runtime.md)に従う。
+
+## 文脈と範囲
+
+このモジュールがほかのモジュールと結ぶ契約は、仕様の[公開する契約](README.md#公開する契約)が定める。
+このモジュールから外への依存の向きは次のとおりである。
+
+| 相手 | 向き | 実現方式 |
+| --- | --- | --- |
+| `ClaimMapping` | 発行が、RP のポリシーでクレームを組み立てる | 相手の `domain` の `IssueClaimsWithFloor` と、`ports` の属性の解決を呼ぶ |
+| `SigningKeys` | 発行とメタデータが、テナントの XML 署名の資格情報を読む | 組み立て地点が渡す相手の署名器の解決が、資格情報を発行のたびに得る。Assertion の組み立てと XML 署名は共有ライブラリ `tokens_saml` が行う |
+| `Authentication` | パッシブサインインがログインセッションを読み、能動的な STS が UsernameToken を検証する | 相手のセッションとパスワードの部品、ログインの試行の制限を使う |
+| `Application` | パッシブサインインが、対象のユーザーの割り当てを確かめる | 相手の割り当ての読み取りを使う |
+| `OAuth2` | 能動的な STS が `MessageID` の再利用を記録する | 相手のクライアントアサーションのリプレイ防止ストアを共有する |
+
+## 解決戦略
+
+| 方針 | 理由 |
+| --- | --- |
+| 準拠を価値のすべてとし、独自の語彙を足さない | 足せば相互運用を損なう |
+| 能動的な対応を狭く保つ | 再送と XML の包み替えへの攻撃面を広げない。詳細は[判断](decisions.md#ws-trust-の能動的な対応を-usernamemixed-の-issue-だけに絞る) |
+| メタデータの公開とクレームの対応付けの担当を分ける | クレームの公開ポリシーを、WS-Fed、WS-Trust、SAML で共有する。詳細は[判断](decisions.md#フェデレーションメタデータの公開とクレームの対応付けの担当を分ける) |
+
+## 構成要素
+
+コードは機能スライスを持たず、一つの層の構成である。
+機能仕様に対応するコードは、要件の ID を `//spec:covers` で名指すテストからたどる。
+
+| 層 | 責務 |
+| --- | --- |
+| `domain` | `WsFedRelyingParty`、`EntraFederationProfile`、ImmutableID の正規化、ドメインイベント |
+| `ports` | `RelyingPartyRepository` |
+| `usecases` | サインイン、サインアウト、`Issue` の判定 |
+| `requests_wstrust` | RST の SOAP エンベロープの解析と RSTR の組み立て |
+| `responses_wsfederation` | パッシブサインインの RSTR のフォーム |
+| `metadata_wsfederation` | `federationmetadata.xml` と MEX の組み立て |
+| `handlers_http` | プロトコルのエンドポイントと、テナント単位の管理 API |
+| `db_postgres`、`db_memory` | `ports` の PostgreSQL の実装と、テストとローカルの構成で使うメモリの実装 |
+| `testing_contract` | 二つの実装が同じ契約を満たすことを確かめる共通のテスト |
+
+## 実行時の流れ
+
+| 流れ | 契機 | 実行する場所 | 詳細 |
+| --- | --- | --- | --- |
+| パッシブサインイン | ブラウザーの `/wsfed` への `wsignin1.0` | `api` が、ログインセッションがなければログインの画面へ誘導し、あれば検証して RSTR のフォームを返す | [パッシブサインイン](features/passive-sign-in.md) |
+| 能動的な STS | クライアントの `/trust/usernamemixed` への SOAP の要求 | `api` が、エンベロープの解析、`MessageID` の記録、資格情報の検証、発行を同期的に行う | [WS-Trust の能動的 STS](features/active-sts.md) |
+| メタデータと MEX | RP と Entra の取得 | `api` が、要求のたびにテナントの証明書から組み立てる | [フェデレーションメタデータ](#フェデレーションメタデータ) |
+| 管理 API | 解決済みのテナントの `/api/admin/v1/wsfed/...` への要求 | `api` が、ハンドラーから同期的に保存する | [RP と Entra フェデレーションの管理](features/relying-party.md) |
+
+## フェデレーションメタデータ
+
+WsFederation が公開する `federationmetadata.xml` と MEX は、パッシブサインインと能動的な STS の両方の利用者が使う。
+
+各テナントの `/{realm}/federationmetadata/2007-06/federationmetadata.xml` で AD FS 互換の `federationmetadata.xml` を公開し、テナントの発行者（デフォルトテナントでは `/realms/default`）を entityID として広告する。
+WS-Fed の RP と Microsoft Entra のドメインフェデレーションは、別の導入手順を使わずに、発行者、エンドポイント、署名証明書を検出できる。
+
+| 要素 | 広告する内容 |
+| --- | --- |
+| `RoleDescriptor` | `SecurityTokenServiceType` と `ApplicationServiceType` の二つ |
+| エンドポイント | `PassiveRequestorEndpoint`、`SecurityTokenServiceEndpoint`、`MetadataEndpoint` |
+| `KeyDescriptor` | 役割ごとに、現在有効な署名証明書と、有効期限内の検証用の証明書 |
+
+署名証明書は、OAuth と OIDC の JWK の形を再利用せず、WS-* が本来使う X.509 の形で公開する。
+鍵の用途、ローテーション、重なりは `SigningKeys` の責務のままであり、メタデータは WS-* の利用者がすでに期待するものを広告すれば足りるからである。
+有効期限内の検証用の証明書も広告するので、RP は計画されたローテーションの前後でも検証を続けられる。
+
+`/{realm}/trust/mex` は、能動的な STS の探索として、`usernamemixed` のエンドポイントと、UsernameToken を必須とするその方針を公開する。
+RST と RSTR のやり取り自体は、メタデータの一部ではない。

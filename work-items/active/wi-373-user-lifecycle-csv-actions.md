@@ -7,7 +7,7 @@ priority: p2
 depends_on: [wi-284-improve-csv-import-export]
 change_kind: feature
 affected_spec:
-  - { path: docs/modules/identity-management/user-csv/README.md, requirement: REQ-IDMANAGEMENT-004 }
+  - { path: docs/modules/identity-management/features/user-csv.md, requirement: REQ-IDMANAGEMENT-004 }
   - { path: spec/modules/identity-management/models.tsp, symbol: IdMagic.Contract.UserImportJob }
   - { path: spec/modules/identity-management/main.tsp, symbol: IdMagic.Contract.ApplyAdminUserImport }
 ---

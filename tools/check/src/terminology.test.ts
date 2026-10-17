@@ -207,7 +207,7 @@ describe('用語検査', () => {
           source: 'モジュール設計。認証コンテキストと実行コンテキスト、リクエストコンテキスト。\n',
         },
         {
-          file: 'docs/modules/authentication/sign-in/acceptance.feature.md',
+          file: 'docs/modules/authentication/features/sign-in.feature.md',
           source:
             'アカウントコンテキストとパスワードリセットコンテキスト。CSRF トークンを含むコンテキストが返る。\n',
         },

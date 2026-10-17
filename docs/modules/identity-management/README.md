@@ -57,37 +57,33 @@ HTTP の操作とモデルの形は TypeSpec の `Identity Management` のタグ
 
 | 機能 | 内容 |
 | --- | --- |
-| [ユーザー](user/README.md) | 管理者による `User` の作成、一覧、更新、無効化、削除、属性 |
-| [アカウントのセルフサービス](account/README.md) | 本人によるプロフィール、メールアドレス、データエクスポートの操作 |
-| [エージェント](agent/README.md) | `Agent` の登録、資格情報のバインド、ライフサイクル |
-| [グループ](group/README.md) | `Group` の作成と更新、連絡先とカスタム属性、手動のメンバーシップ、実効ロール |
-| [動的グループ](dynamic-group/README.md) | CEL の規則の保存、プレビュー、全件の再評価による所属 |
-| [CSV の転送](csv-transfer/README.md) | User と Group の CSV が共有する、見出し、行、セルの読み書きと転送の上限 |
-| [ユーザー CSV](user-csv/README.md) | User の CSV のインポートとエクスポート |
-| [グループ CSV](group-csv/README.md) | Group と、一つの Group のメンバーシップの CSV のインポートとエクスポート |
-| [データエクスポート](data-export/README.md) | 非同期のエクスポートのジョブの開始、一覧、ダウンロード、取り消し、保持期限 |
-| [管理 API の認可](admin-access/README.md) | 管理者のセッションと API アクセストークンによる管理 API の呼び出しを認める条件 |
-| [ロール](roles/README.md) | ロールの正規化と、予約ロール `system_admin` を割り当てられる対象 |
+| [ユーザー](features/user.md) | 管理者による `User` の作成、一覧、更新、無効化、削除、属性 |
+| [アカウントのセルフサービス](features/account.md) | 本人によるプロフィール、メールアドレス、データエクスポートの操作 |
+| [エージェント](features/agent.md) | `Agent` の登録、資格情報のバインド、ライフサイクル |
+| [グループ](features/group.md) | `Group` の作成と更新、連絡先とカスタム属性、手動のメンバーシップ、実効ロール |
+| [動的グループ](features/dynamic-group.md) | CEL の規則の保存、プレビュー、全件の再評価による所属 |
+| [CSV の転送](features/csv-transfer.md) | User と Group の CSV が共有する、見出し、行、セルの読み書きと転送の上限 |
+| [ユーザー CSV](features/user-csv.md) | User の CSV のインポートとエクスポート |
+| [グループ CSV](features/group-csv.md) | Group と、一つの Group のメンバーシップの CSV のインポートとエクスポート |
+| [データエクスポート](features/data-export.md) | 非同期のエクスポートのジョブの開始、一覧、ダウンロード、取り消し、保持期限 |
+| [管理 API の認可](features/admin-access.md) | 管理者のセッションと API アクセストークンによる管理 API の呼び出しを認める条件 |
+| [ロール](features/roles.md) | ロールの正規化と、予約ロール `system_admin` を割り当てられる対象 |
+
+## 文書
+
+| 設計領域 | 区分 | 参照先 | 内容 |
+| --- | --- | --- | --- |
+| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| データ設計 | 固有設計 | [担当文書](data.md#aggregate-と永続化) | Aggregate と永続化、保持と削除、排他と一意性、テナントの属性スキーマ |
+| セキュリティ設計 | 委譲 | [管理 API の認可](features/admin-access.md#概要)、[認可設計](../../design/security/authorization.md#主体の種類) | 管理 API の認可は機能 管理 API の認可 が、システム全体の認可は認可設計が扱う |
+| 信頼性設計 | 固有設計 | [担当文書](reliability.md#idmanagement-の信頼性) | 障害の症状、原因、直し方 |
+| 性能設計 | 固有設計 | [担当文書](performance.md#実効ポリシーを超えるエクスポート) | 実効ポリシーを超えるエクスポート |
+| オブザーバビリティ設計 | 固有設計 | [担当文書](observability.md#経路) | ドメインイベント、監査の記録、下流への通知の経路と、確定との関係 |
+| 検証設計 | 委譲 | [性能](performance.md#実効ポリシーを超えるエクスポート) | 品質要件の確かめ方は性能に置き、それ以外はシステムの検証設計に従う |
 
 | 文書 | 内容 |
 | --- | --- |
 | [IdManagement の用語集](glossary.md) | このモジュールでの語義 |
 | [IdManagement の品質要件](quality.md) | このモジュールに割り当てた品質要件 |
-
-## 設計
-
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| データ設計 | 固有設計 | [担当文書](design/data.md#aggregate-と永続化) | Aggregate と永続化、保持と削除、排他と一意性、テナントの属性スキーマ |
-| セキュリティ設計 | 委譲 | [管理 API の認可](admin-access/README.md#概要)、[認可設計](../../design/security/authorization.md#主体の種類) | 管理 API の認可は機能 管理 API の認可 が、システム全体の認可は認可設計が扱う |
-| 信頼性設計 | 固有設計 | [担当文書](design/reliability.md#idmanagement-の信頼性) | 障害の症状、原因、直し方 |
-| 性能設計 | 固有設計 | [担当文書](design/performance.md#実効ポリシーを超えるエクスポート) | 実効ポリシーを超えるエクスポート |
-| 検証設計 | 委譲 | [性能](design/performance.md#実効ポリシーを超えるエクスポート) | 品質要件の確かめ方は性能に置き、それ以外はシステムの検証設計に従う |
-
-| 文書 | 内容 |
-| --- | --- |
-| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |
-| [リスク](design/risks.md) | 既知の欠陥、技術的負債、受容したリスク |
-| [CSV の往復変換](design/csv-transfer.md) | User と Group の CSV のエクスポートとインポートが共有する仕組み |
-| [イベントと監査の記録](design/audit-events.md) | ドメインイベント、監査の記録、下流への通知の経路と、確定との関係 |
+| [設計判断](decisions.md) | 代替案を比べた重要な判断 |
+| [リスク](risks.md) | 既知の欠陥、技術的負債、受容したリスク |

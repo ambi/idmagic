@@ -63,7 +63,7 @@ mise run brief -- <work-item> --kind refactor --target backend/idmanagement/user
 # context: targets=tools
 ```
 
-所有モジュールは [論理アーキテクチャの責務表](../design/architecture/logical.md#モジュールの責務) のリンクと実装範囲から求める。
+所有モジュールは [モジュールの責務表](../modules/README.md#モジュール) のリンクと実装範囲から求める。
 公開契約、割り当てられた品質要件、設計索引と TypeSpec を、そのモジュールの配置から候補にする。
 TypeSpec は、`spec_impact: none` の変更では `--concern contract` を指定したときだけ候補にする。
 モジュール名とパッケージ名の別名表を追加しない。

@@ -8,8 +8,8 @@ priority: p2
 depends_on: [wi-552-back-signing-keys-examples-with-tests]
 change_kind: feature
 affected_spec:
-  - { path: docs/modules/signing-keys/lifecycle/README.md, requirement: REQ-SIGNINGKEYS-002 }
-  - { path: docs/modules/signing-keys/separation/README.md, requirement: REQ-SIGNINGKEYS-006 }
+  - { path: docs/modules/signing-keys/features/lifecycle.md, requirement: REQ-SIGNINGKEYS-002 }
+  - { path: docs/modules/signing-keys/features/separation.md, requirement: REQ-SIGNINGKEYS-006 }
 ---
 
 # ライフサイクルバッチが XmlFederationSigning 鍵も周期でローテートし、アーカイブする

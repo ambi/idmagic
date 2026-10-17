@@ -28,7 +28,7 @@ const plan = {
 const applicable = {
   status: 'in_progress',
   change_kind: 'feature',
-  affected_spec: [{ path: 'docs/modules/demo/work/run/README.md', requirement }],
+  affected_spec: [{ path: 'docs/modules/demo/features/run.md', requirement }],
 }
 
 describe('verifyPrimaryUseCaseEvidence', () => {
@@ -166,7 +166,7 @@ describe('verifyPrimaryUseCaseEvidence', () => {
         change_kind: 'bugfix',
         affected_spec: [
           {
-            path: 'docs/modules/provisioning/task/README.md',
+            path: 'docs/modules/provisioning/features/task.md',
             requirement: 'REQ-PROVISIONING-013',
           },
         ],

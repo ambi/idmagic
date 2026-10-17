@@ -1,0 +1,85 @@
+# ログアウト
+
+## 概要
+
+この文書は、RP-Initiated Logout とバックチャネルのログアウトの仕様である。
+
+| 項目 | 内容 |
+| --- | --- |
+| 責務 | `id_token_hint` によるセッションとクライアントの特定、登録済みの `post_logout_redirect_uri` への復帰、セッションの失効の時のログアウトトークンの配信 |
+| 行為者 | 登録済みのクライアント、ResourceOwner、System（セッションの失効） |
+| 扱わないもの | ログインセッションの失効そのものは `Authentication` が扱う |
+
+## モデル
+
+RP-Initiated Logout の `/end_session` は、ブラウザーの遷移で使う GET と、フォームの送信で使う POST の両方を提供する。
+同じログアウトの処理へ到達するが HTTP の binding が異なるので、公開の契約ではそれぞれに一意の `operationId` を与える。
+
+- **判断**：`sid` のクレームに `LoginSession.id` を使う理由は、[sid のクレームに LoginSession の ID をそのまま使う](../decisions.md#sid-のクレームに-loginsession-の-id-をそのまま使う)。
+
+## 状態遷移
+
+### LogoutNotificationLifecycle
+
+LogoutNotification のライフサイクル。Deliver で成功確定、Exhaust で max_attempts 到達による最終失敗確定 (dead-letter)。Jobs 側の Retry は Pending のまま attempts のみ増やす (状態遷移ではない)。
+
+| State | Kind | Meaning |
+|---|---|---|
+| Pending | initial | 配信待ち。Jobs 側の再試行中もこの状態にとどまる |
+| Delivered | terminal | RP が 2xx を返した |
+| Failed | terminal | `max_attempts` に達した。配信不能として確定する |
+
+| From | Event | Guard | To | Effects |
+|---|---|---|---|---|
+| Pending | Deliver | — | Delivered |  |
+| Pending | Exhaust | — | Failed |  |
+
+| State | ログアウトトークンの配信 |
+|---|---|
+| Pending | → Delivered（RP が 2xx を返した）<br>何もしない（一時的に失敗し、再試行が残る）<br>→ Failed（`max_attempts` に達した） |
+| Delivered | 何もしない |
+| Failed | 何もしない |
+
+## 操作
+
+### クライアントによる RP-Initiated Logout
+
+#### REQ-OAUTH2-023 RP-Initiated Logout は登録済み post_logout_redirect_uri にだけ戻す
+
+- クライアントが登録済みの `post_logout_redirect_uri` を指定して `/end_session` を GET か POST で呼んだとき、OAuth2 は、ローカルのセッションを終えた後に、`state` を付けた `post_logout_redirect_uri` へ 302 でリダイレクトする。
+- クライアントを特定できない `/end_session` を受けたとき、OAuth2 は、ローカルのセッションを終えた後に、サインアウトの状態の画面へ 303 でリダイレクトする。
+- 同じセッションにフロントチャネルのログアウトを登録した RP があるとき、OAuth2 は、各 RP のログアウトの URI を隠れた iframe で読み込み、その後に戻り先へ遷移させる 200 の HTML を返す。
+- 登録していない `post_logout_redirect_uri` を受けた場合、OAuth2 は、400 と `invalid_request` で拒否し、リダイレクトしない。
+- **例**：EX-OAUTH2-023-01、EX-OAUTH2-023-02
+
+#### REQ-OAUTH2-024 RP-Initiated Logout は id_token_hint からセッションとクライアントを特定する
+
+- 署名、`iss`、`aud`、`sub`、`sid` の検証を通る `id_token_hint` を受けたとき、OAuth2 は、`sid` の示す LoginSession を失効させ、同じ `sid` を持つすべてのクライアントのリフレッシュトークンを `Revoked` にし、セッションの Cookie を消す。
+- `exp` を過ぎただけの `id_token_hint` を受けたとき、OAuth2 は、`exp` を理由に拒否せずに `sid` からセッションを解決する。
+- `id_token_hint` のない `/end_session` を受けたとき、OAuth2 は、ブラウザーの Cookie の示すセッションを終える。
+- `id_token_hint` の `aud` が指定した `client_id` と一致しないか、署名を IdMagic の署名鍵で検証できないか、`sid`、`sub`、`aud` のどれかがないか、`sub` が `sid` のセッションの主体と一致しない場合、OAuth2 は、400 と `invalid_request` で拒否し、どのセッションもリフレッシュトークンも失効させない。
+- **例**：EX-OAUTH2-024-01、EX-OAUTH2-024-02、EX-OAUTH2-024-03、EX-OAUTH2-024-04、EX-OAUTH2-024-05、EX-OAUTH2-024-06
+
+### セッションの失効によるバックチャネルのログアウト
+
+#### REQ-OAUTH2-025 セッション失効時は `backchannel_logout_uri` を登録済みの RP へログアウトトークンを配信する
+
+- `/end_session` でセッションを終えたとき、OAuth2 は、そのセッションで認可した `backchannel_logout_uri` を登録済みの RP ごとに `Pending` の LogoutNotification を作り、配信のジョブを登録する。
+- 配信のジョブを実行したとき、OAuth2 は、署名済みのログアウトトークンを `backchannel_logout_uri` へ送り、RP が 2xx を返した通知を `Delivered` にする。
+- 配信が一時的に失敗した場合、OAuth2 は、通知を `Pending` のまま試行の回数を増やして再試行し、ローカルのセッションとリフレッシュトークンの失効を取り消さない。
+- `max_attempts` まで再試行しても配信に成功しない場合、OAuth2 は、通知を `Failed` にし、ローカルの失効を取り消さない。
+- 配信のジョブを登録できない場合、OAuth2 は、エラーを記録し、ログアウトの応答を失敗させない。
+- **例**：EX-OAUTH2-025-01、EX-OAUTH2-025-02、EX-OAUTH2-025-03
+
+## 実現方式
+
+### アーキテクチャ
+
+#### OIDC セッションの関連付けとログアウトの伝播
+
+`sid` クレームは `LoginSession.id` 自体であり、RP ごとの値ではなく、1 つのブラウザーセッションについてすべての relying party が共有する。OIDC の `sid` は OP セッションを表すため、RP ごとの `sid` では 1 回のセッション失効から影響する全 RP をたどれない。`sid` は `authenticate_user` の完了時に一度だけ `AuthorizationRequest` へ伝播し、その後 `AuthorizationCodeRecord` → `RefreshTokenRecord` → `IdTokenClaims` を通る。Authentication の `LoginSession` が唯一の正であり、その属性を OAuth2 へ複製しない。`ClientSession` はログアウト通知用の `(sid, client_id)` 配信インデックスであり、2 つ目のセッション状態ではない。`RefreshTokenRecord.sid` はローテーション後も残るため、ファミリーごとにたどらず、1 回の「このブラウザーセッション」の失効で、同じ `sid` にバインドされた全クライアント・全ファミリーのリフレッシュトークンを失効できる。
+
+ログアウト通知先は HTTPS に限定し、利用者情報とフラグメントを拒否する。
+バックチャネル配送では環境プロキシを使わず、名前解決後の非公開 IP とリダイレクト先を検査する共通 HTTP クライアントを使うことで、登録された通知先を経由する SSRF を防ぐ。
+
+`/end_session` の `id_token_hint` は、署名、`iss`、`aud`、`sub`、`sid` をフェイルクローズに検証する。`aud` は明示的な `client_id` パラメーターと一致しなければならず、暗黙には無視しない。ログアウト時に ID トークンが期限切れであることは一般的なため、`exp` は意図的に検査しない。ヒントがなければ `client_id` とブラウザーの Cookie で解決する。バックチャネルログアウトの配信は専用キューではなく、永続的で冪等な `Job` として Jobs モジュールに渡す。配信に失敗してもローカルセッションとリフレッシュトークンの失効はロールバックしない。フロントチャネルログアウトは同じリクエスト内で計算する `iframe` の送信先一覧であり、`frontchannel_logout_session_required=true` を宣言した RP には `iss` と `sid` を付ける。RP 側の `iframe` の失敗は許容し、配信を保証しない。バックチャネルの配信では、署名済みのログアウトトークンを登録先へ POST し、2xx だけを成功とみなす。それ以外のレスポンス、タイムアウト、接続失敗はいずれも Job の再試行に委ね、試行上限に達した通知は配信不能として確定する。アクセストークンの失効は対象外とする。アクセストークンは署名だけで検証する自己完結型 JWT のままとし、即時失効のために全リソースサーバーの検証をストア参照へ変える代わりに、リフレッシュトークンファミリーの即時失効と RP 通知に加えて最大 600 秒の残存リスクを受け入れる。`check_session_iframe`（OIDC Session Management 1.0）は、Discovery Metadata での広告と、ブラウザーの Cookie が有効なセッションを示すかどうかの静的検査だけを提供する。

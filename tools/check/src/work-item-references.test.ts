@@ -25,9 +25,9 @@ const environment: ReferenceEnvironment = {
 
 describe('verifyWorkItemReferences with the feature layout', () => {
   const moved: ReferenceEnvironment = {
-    exists: (path) => path === 'docs/modules/demo/work/task/README.md',
+    exists: (path) => path === 'docs/modules/demo/features/task.md',
     read: (path) =>
-      path === 'docs/modules/demo/work/task/README.md'
+      path === 'docs/modules/demo/features/task.md'
         ? '# Task\n\n## 操作\n\n#### REQ-DEMO-001 A valid request succeeds\n'
         : undefined,
   }
@@ -37,7 +37,7 @@ describe('verifyWorkItemReferences with the feature layout', () => {
       {
         status: 'pending',
         affected_spec: [
-          { path: 'docs/modules/demo/work/task/README.md', requirement: 'REQ-DEMO-001' },
+          { path: 'docs/modules/demo/features/task.md', requirement: 'REQ-DEMO-001' },
         ],
       },
       moved,

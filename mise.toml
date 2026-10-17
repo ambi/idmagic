@@ -921,6 +921,11 @@ depends = ["compile-spec"]
 dir = "tools"
 run = "bun run render-docs/src/main.ts"
 
+[tasks.generate-module-dependencies]
+description = "Regenerate the module dependency diagram from production Go imports"
+dir = "tools"
+run = "bun run check/src/generate-module-dependencies.ts"
+
 [tasks.generate-spec-examples]
 description = "Regenerate documented examples from executable test data"
 dir = "tools"

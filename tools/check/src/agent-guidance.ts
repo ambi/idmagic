@@ -21,8 +21,8 @@ const requiredMarkers = new Map<string, string[]>([
     '.agents/skills/spec-change/SKILL.md',
     [
       'spec/modules/<module>/{models,main}.tsp',
-      'docs/modules/<module>/<group>/<feature>/README.md',
-      'acceptance.feature.md',
+      'docs/modules/<module>/features/<feature>.md',
+      '<feature>.feature.md',
       'docs/development/task-context.md',
       '--concern contract',
     ],

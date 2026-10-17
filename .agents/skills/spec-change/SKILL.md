@@ -21,16 +21,17 @@ current document kinds and grammar; read the relevant sections, not its rational
 3. Put module boundaries in `docs/modules/<module>/README.md`, together with the value objects several
    features share (normalization, comparison, uniqueness scope); vocabulary in `glossary.md`; adopted protocol
    rules in `standards.md`. Put one feature's model, state machines, requirements, and security
-   considerations in its feature specification `docs/modules/<module>/<group>/<feature>/README.md` (or a
-   chapter beside it). Give each operation its own H3 under `## 操作` holding only requirements, ordered normal
+   considerations in its feature specification `docs/modules/<module>/features/<feature>.md` (or a
+   chapter `<feature>.<chapter>.md` beside it). Give each operation its own H3 under `## 操作` holding only requirements, ordered normal
    path, state-dependent branches, then refusals. Do not write a per-operation summary table or an `## エラー`
    section. Each state machine carries the state table, the transition table, and the state transition matrix
    with every cell filled. Put a module's allocated quality requirements in `docs/modules/<module>/quality.md`
    and a feature's share under `## 品質`. The feature node matches the code slice `backend/<module>/<feature>/`
-   by name (drop the hyphens to compare names). Put a mechanism shared by features in
-   `docs/modules/<module>/design/`, a decision that weighed alternatives in `design/decisions.md`, and only
+   by file name (drop the hyphens to compare names). Put a mechanism shared by features in `## 実現方式` of the
+   feature that implements it, or in the module's design area document such as `observability.md`; a
+   decision that weighed alternatives in `decisions.md`; and only
    what code cannot show (how a mechanism guarantees a result, how to repair it) in the optional last section
-   `## 実現方式` of the feature `README.md`. Use the matching file under `docs/requirements/` or `docs/design/` for a whole-system fact.
+   `## 実現方式` of the feature specification. Use the matching file under `docs/requirements/` or `docs/design/` for a whole-system fact.
 4. Before writing requirements, answer every question in the observation table of
    `docs/development/specification-first-workflow.md` (仕様の漏れを探す観点) for each operation you touch.
    An unanswered question is a gap. Classify each gap as (a) a requirement, (b) left unspecified, or
@@ -46,7 +47,7 @@ current document kinds and grammar; read the relevant sections, not its rational
    product keeps (a limit, a period, a formula) in the requirement, never only in the design. State a
    requirement shared by several operations once, under the operation it governs most directly; the others
    link it from `**上位の要件**` and state only their departure.
-6. Add an example in `acceptance.feature.md` only when a boundary or a surprising behavior is hard to read from
+6. Add an example in `<feature>.feature.md` only when a boundary or a surprising behavior is hard to read from
    the requirement sentences. Prefer generating it from `testdata/*.examples.json`. Never add an example that
    restates a requirement.
 7. Keep guarantees that need several modules, or that apply alike to several modules, in

@@ -119,9 +119,7 @@ describe('checkBoundaryDebtRatchet', () => {
     const root = await repository(
       {},
       {
-        'docs/design/architecture/logical.md': BOUNDARY_FIXTURE[
-          'docs/design/architecture/logical.md'
-        ]!.replace(
+        'docs/modules/README.md': BOUNDARY_FIXTURE['docs/modules/README.md']!.replace(
           '| `internal` | `backend/supplier/domain`, `backend/supplier/ports` |',
           '| `legacy` | `domain` または `ports` の区画 |',
         ),

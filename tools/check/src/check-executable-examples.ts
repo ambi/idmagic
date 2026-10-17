@@ -1,3 +1,4 @@
+import { featureDocument } from '../../workspace/src/document-layout.ts'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { updateExampleBlocks } from './executable-examples.ts'
 import type { CheckOutcome } from './runner.ts'
@@ -5,8 +6,8 @@ import type { CheckOutcome } from './runner.ts'
 export async function checkExecutableExamples(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   const lines: string[] = []
   let count = 0
-  for (const path of (await snapshot.files('docs')).filter((path) =>
-    path.endsWith('acceptance.feature.md'),
+  for (const path of (await snapshot.files('docs')).filter(
+    (path) => featureDocument(path)?.part === 'examples',
   )) {
     const source = await snapshot.read(path)
     if (!source.includes('spec:examples')) continue

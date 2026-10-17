@@ -8,7 +8,7 @@ priority: p3
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/modules/tenancy/notification-template/README.md, requirement: REQ-TENANCY-018 }
+  - { path: docs/modules/tenancy/features/notification-template.md, requirement: REQ-TENANCY-018 }
 ---
 
 # 通知の試し送りが EmailSent を発行するかどうかを、仕様と実装で一致させる

@@ -7,7 +7,7 @@ import {
 } from './spec-diff.ts'
 
 const SCENARIOS = 'docs/modules/scenarios.feature.md'
-const FEATURE = 'docs/modules/demo/work/task/README.md'
+const FEATURE = 'docs/modules/demo/features/task.md'
 
 /** システムの例に置く規則と、機能仕様の `## 状態遷移` の節に置く状態機械。 */
 const document = (scenarios: string, transitions = ''): [string, string] => [
@@ -234,6 +234,19 @@ describe('diffSpecifications', () => {
     ])
   })
 
+  /** 過去の revision は機能仕様を機能ごとのディレクトリに置いていた。移動だけでは規則は変わらない。 */
+  it('reads feature specifications at their former directory in a past revision as the same rules', () => {
+    const [, feature] = document(scenario('REQ-DEMO-001', 'it succeeds'))
+    const base: Snapshot = new Map([['docs/modules/demo/run/README.md', feature]])
+    expect(isSpecificationSource('docs/modules/demo/run/README.md')).toBe(true)
+    expect(isSpecificationSource('docs/modules/demo/design/decisions.md')).toBe(false)
+    expect(diffSpecifications(base, new Map([[FEATURE, feature]]))).toMatchObject({
+      addedScenarios: [],
+      removedScenarios: [],
+      changedScenarios: [],
+    })
+  })
+
   it('separates added, removed, and changed scenarios', () => {
     const base = snapshot(
       document(
@@ -316,14 +329,17 @@ describe('diffSpecifications', () => {
         ],
       ])
     const base = rule(
-      'docs/modules/demo/group/task/README.md',
+      'docs/modules/demo/features/task.md',
       '[管理 API の認可](../../common/access/README.md#認可)',
     )
     const moved = rule(
-      'docs/modules/demo/task/README.md',
+      'docs/modules/demo/features/task.md',
       '[管理 API の認可](../access/README.md#認可)',
     )
-    const relabeled = rule('docs/modules/demo/task/README.md', '[ロール](../access/README.md#認可)')
+    const relabeled = rule(
+      'docs/modules/demo/features/task.md',
+      '[ロール](../access/README.md#認可)',
+    )
     expect(diffSpecifications(base, moved).changedScenarios).toEqual([])
     expect(diffSpecifications(base, relabeled).changedScenarios).toEqual(['REQ-DEMO-001'])
   })
@@ -378,8 +394,8 @@ describe('diffSpecifications', () => {
       ].join('\n')
     const head = (statement: string, result: string): Snapshot =>
       new Map([
-        ['docs/modules/demo/work/task/README.md', specification(statement)],
-        ['docs/modules/demo/work/task/acceptance.feature.md', appendix(result)],
+        ['docs/modules/demo/features/task.md', specification(statement)],
+        ['docs/modules/demo/features/task.feature.md', appendix(result)],
       ])
     const migrated = diffSpecifications(base, head('規則文の一行', 'it succeeds'))
     expect(migrated.removedScenarios).toEqual([])

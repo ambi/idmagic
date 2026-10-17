@@ -21,16 +21,15 @@ export function gitRevisionCheckout(root: string): RevisionCheckout {
         `cannot resolve Git revision ${revision}: ${resolved.stderr.toString().trim()}`,
       )
     }
-    const archive = Bun.spawnSync(
-      [
-        'git',
-        'archive',
-        '--format=tar',
-        resolved.stdout.toString().trim(),
-        ...BOUNDARY_INPUT_PATHS,
-      ],
-      { cwd: root },
+    const commit = resolved.stdout.toString().trim()
+    // 責務表の置き場所は revision によって異なるので、その revision にある入力だけを取り出す。
+    const present = BOUNDARY_INPUT_PATHS.filter(
+      (path) =>
+        Bun.spawnSync(['git', 'cat-file', '-e', `${commit}:${path}`], { cwd: root }).exitCode === 0,
     )
+    const archive = Bun.spawnSync(['git', 'archive', '--format=tar', commit, ...present], {
+      cwd: root,
+    })
     if (archive.exitCode !== 0) {
       throw new Error(
         `cannot read boundary inputs at ${revision}: ${archive.stderr.toString().trim()}`,

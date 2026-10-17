@@ -8,8 +8,8 @@ created_at: 2026-08-30
 priority: p3
 change_kind: operations
 affected_spec:
-  - { path: docs/modules/system/operations/README.md, requirement: REQ-SYSTEM-001 }
-  - { path: docs/modules/system/operations/README.md, requirement: REQ-SYSTEM-002 }
+  - { path: docs/modules/system/features/operations.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/modules/system/features/operations.md, requirement: REQ-SYSTEM-002 }
 ---
 
 # 配備前に旧版と新版の更新互換性を判定する

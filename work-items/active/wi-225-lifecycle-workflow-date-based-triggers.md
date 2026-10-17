@@ -6,8 +6,8 @@ created_at: 2026-07-16
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: docs/modules/identity-governance/workflow-run/README.md, requirement: REQ-IDGOVERNANCE-003 }
-  - { path: docs/modules/jobs/queue/README.md, requirement: REQ-JOBS-007 }
+  - { path: docs/modules/identity-governance/features/workflow-run.md, requirement: REQ-IDGOVERNANCE-003 }
+  - { path: docs/modules/jobs/features/queue.md, requirement: REQ-JOBS-007 }
 depends_on: [wi-153-identity-lifecycle-workflows, wi-217-lifecycle-workflow-durable-run-handoff, wi-218-lifecycle-workflow-action-execution-and-audit]
 ---
 
@@ -36,7 +36,7 @@ IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを
   (`source_occurrence_id` を評価日ベースで構成する等) を設計する。
 - スキャン対象の日付属性は `TenantUserAttributeSchema` の日付型属性に限定する fail-closed な
   validation を追加する。
-- `docs/modules/identity-governance/design/decisions.md` に、日次スキャン方式 (cron ではなく既存 job runner の recurring job) を採用する理由と、
+- `docs/modules/identity-governance/decisions.md` に、日次スキャン方式 (cron ではなく既存 job runner の recurring job) を採用する理由と、
   タイムゾーン・DST・スキャン遅延時の扱いを記録する。
 
 ## Out of Scope
@@ -54,12 +54,12 @@ IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを
 ## Plan
 - 既存の trigger evaluator / run planner の構造 (kind 別の trigger 定義 + filter) を再利用し、
   `date_attribute_offset` を 4 つ目の kind として追加する。
-- 日次スキャンは DynamicGroupRule の全件再評価 job (`docs/modules/identity-management/dynamic-group/` の CEL 動的グループ規則) のパターンを参考にする。
+- 日次スキャンは DynamicGroupRule の全件再評価 job (`docs/modules/identity-management/features/dynamic-group.md` の CEL 動的グループ規則) のパターンを参考にする。
 - 重複排除は「同一 User × workflow × revision × 評価日」を一意制約にする。
 
 ## Tasks
 - [ ] T001 [Spec] `date_attribute_offset` trigger kind、日次スキャン scenario、objective を追加する。
-- [ ] T002 [Decision] 日次スキャン方式、タイムゾーン方針、dedup 方針を `docs/modules/identity-governance/design/decisions.md` に記録する。
+- [ ] T002 [Decision] 日次スキャン方式、タイムゾーン方針、dedup 方針を `docs/modules/identity-governance/decisions.md` に記録する。
 - [ ] T003 [App] trigger evaluator の拡張と日次スキャン job を実装する。
 - [ ] T004 [Verify] 境界日 (offset 当日、前後日)、タイムゾーン、重複実行を検証する。
 
@@ -76,4 +76,4 @@ IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを
 日次スキャンは大規模テナントで全 User 走査コストがかかるため、対象日付属性を持つ User への
 インデックス等のパフォーマンス配慮が必要であり、[[wi-161-large-tenant-performance-foundation]] と
 連携する可能性がある。タイムゾーンの扱いを誤ると意図しない日に trigger が発火するため、テナントの
-タイムゾーン設定または固定 UTC 基準を `docs/modules/identity-governance/design/decisions.md` で明確に固定する。
+タイムゾーン設定または固定 UTC 基準を `docs/modules/identity-governance/decisions.md` で明確に固定する。

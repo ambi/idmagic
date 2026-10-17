@@ -12,15 +12,15 @@ depends_on:
   - wi-471-align-the-tenant-quota-update-route-with-the-admin-api-conventions
 change_kind: feature
 affected_spec:
-  - { path: docs/modules/tenancy/lifecycle/README.md, requirement: REQ-TENANCY-003 }
-  - { path: docs/modules/tenancy/resolution/README.md, requirement: REQ-TENANCY-011 }
-  - { path: docs/modules/tenancy/quota/README.md, requirement: REQ-TENANCY-012 }
-  - { path: docs/modules/tenancy/lifecycle/README.md, requirement: REQ-TENANCY-014 }
-  - { path: docs/modules/identity-management/user/README.md, requirement: REQ-IDMANAGEMENT-005 }
-  - { path: docs/modules/identity-management/agent/README.md, requirement: REQ-IDMANAGEMENT-009 }
-  - { path: docs/modules/identity-management/group/README.md, requirement: REQ-IDMANAGEMENT-015 }
-  - { path: docs/modules/application/catalog/README.md, requirement: REQ-APPLICATION-001 }
-  - { path: docs/modules/oauth2/client/README.md, requirement: REQ-OAUTH2-035 }
+  - { path: docs/modules/tenancy/features/lifecycle.md, requirement: REQ-TENANCY-003 }
+  - { path: docs/modules/tenancy/features/resolution.md, requirement: REQ-TENANCY-011 }
+  - { path: docs/modules/tenancy/features/quota.md, requirement: REQ-TENANCY-012 }
+  - { path: docs/modules/tenancy/features/lifecycle.md, requirement: REQ-TENANCY-014 }
+  - { path: docs/modules/identity-management/features/user.md, requirement: REQ-IDMANAGEMENT-005 }
+  - { path: docs/modules/identity-management/features/agent.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/modules/identity-management/features/group.md, requirement: REQ-IDMANAGEMENT-015 }
+  - { path: docs/modules/application/features/catalog.md, requirement: REQ-APPLICATION-001 }
+  - { path: docs/modules/oauth2/features/client.md, requirement: REQ-OAUTH2-035 }
   - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.ListTenants }
   - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.GetTenant }
   - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenant }

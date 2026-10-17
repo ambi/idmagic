@@ -28,7 +28,7 @@
 | `FederatedIdentity` | テナント、プロバイダー、外部の不変な subject の組 | `IdentityProviderConnection` と `User` を参照する |
 
 いずれの Aggregate も `User` の識別子を参照するが、`User` の Aggregate には含まれない。
-User の削除がこれらへどう連鎖するかは、[ユーザーの設計](../identity-management/user/README.md#実現方式)で定める。
+User の削除がこれらへどう連鎖するかは、[ユーザーの設計](../identity-management/features/user.md#実現方式)で定める。
 
 - **判断**：`users.id` を正式で全体で一意なユーザーの識別子とし、プロトコルの `sub` のクレームはここから導く。その逆ではない。
 - **判断**：このモジュールの大半は認証の完了の前の要求を扱うので、ロールではなく、そのセッションで確かめた認証の要素と認証の時刻が境界になる。
@@ -55,37 +55,33 @@ HTTP の操作とモデルの形は TypeSpec の `Authentication` のタグが�
 
 | 機能群 | 機能 | 内容 |
 | --- | --- | --- |
-| ログインとセッション | [ログイン](sign-in/README.md) | パスワードによるログイン、ログインの流量の制限、無効なユーザーの拒否、ブラウザーの初期化 |
-| ログインとセッション | [ログインセッション](session/README.md) | セッションの保存、一覧、失効、サインアウト |
-| ログインとセッション | [外部 IdP との連携](federation/README.md) | 上流の IdP との接続、外部 subject の関連付け、JIT |
-| 認証の要素 | [パスワード](password/README.md) | パスワードのポリシー、変更、有効期限、リセット |
-| 認証の要素 | [多要素認証](mfa/README.md) | 第二要素を求める条件、MFA の強制と登録、認証器のリセット |
-| 認証の要素 | [TOTP](totp/README.md) | TOTP の要素の登録、照合、解除 |
-| 認証の要素 | [WebAuthn](webauthn/README.md) | WebAuthn による第二要素とステップアップ認証 |
-| 認証の要素 | [復旧コード](recovery/README.md) | 復旧コードによる第二要素 |
-| 認証の要素 | [信頼済みデバイス](trusted-device/README.md) | 記憶したブラウザーによる第二要素の省略 |
-| 本人の操作 | [アカウントポータル](account-portal/README.md) | 本人の範囲に閉じたセルフサービス API と、機微な操作のステップアップ認証 |
-| 本人の操作 | [セキュリティ通知](security-notification/README.md) | アカウントのセキュリティの上の変化の通知 |
-| 本人の操作 | [サインイン履歴](sign-in-activity/README.md) | 本人によるサインイン履歴の参照 |
+| ログインとセッション | [ログイン](features/sign-in.md) | パスワードによるログイン、ログインの流量の制限、無効なユーザーの拒否、ブラウザーの初期化 |
+| ログインとセッション | [ログインセッション](features/session.md) | セッションの保存、一覧、失効、サインアウト |
+| ログインとセッション | [外部 IdP との連携](features/federation.md) | 上流の IdP との接続、外部 subject の関連付け、JIT |
+| 認証の要素 | [パスワード](features/password.md) | パスワードのポリシー、変更、有効期限、リセット |
+| 認証の要素 | [多要素認証](features/mfa.md) | 第二要素を求める条件、MFA の強制と登録、認証器のリセット |
+| 認証の要素 | [TOTP](features/totp.md) | TOTP の要素の登録、照合、解除 |
+| 認証の要素 | [WebAuthn](features/webauthn.md) | WebAuthn による第二要素とステップアップ認証 |
+| 認証の要素 | [復旧コード](features/recovery.md) | 復旧コードによる第二要素 |
+| 認証の要素 | [信頼済みデバイス](features/trusted-device.md) | 記憶したブラウザーによる第二要素の省略 |
+| 本人の操作 | [アカウントポータル](features/account-portal.md) | 本人の範囲に閉じたセルフサービス API と、機微な操作のステップアップ認証 |
+| 本人の操作 | [セキュリティ通知](features/security-notification.md) | アカウントのセキュリティの上の変化の通知 |
+| 本人の操作 | [サインイン履歴](features/sign-in-activity.md) | 本人によるサインイン履歴の参照 |
 
-| 文書 | 内容 |
-| --- | --- |
-| [Authentication の用語集](glossary.md) | このモジュールでの語義 |
-| [Authentication の標準仕様](standards.md) | 採用する外部標準仕様 |
-
-## 設計
+## 文書
 
 このモジュールが担当する SLO とキャパシティ要件は、[品質要件の割り当て](../../design/architecture/logical.md#品質要件の割り当て)から担当機能、設計、検証へ参照する。
 
 | 設計領域 | 区分 | 参照先 | 内容 |
 | --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| アプリケーション設計 | 委譲 | [アカウントポータル](account-portal/README.md#概要) | API と UI はシステムのアプリケーション設計に従い、セルフサービス API の境界はアカウントポータルが扱う |
-| データ設計 | 委譲 | [認証のイベントの記録](design/authentication-events.md#データ) | 各 Aggregate の保存は各機能の設計が、認証のイベントの保存は認証のイベントの記録が扱う |
-| 信頼性設計 | 委譲 | [認証状態の障害](design/architecture.md#解決戦略) | 共有の一時的な状態のストアに到達できないときは失敗させる。各機能の扱いは各機能の設計が扱う |
-| オブザーバビリティ設計 | 委譲 | [認証のイベントの記録](design/authentication-events.md#アーキテクチャ) | 認証のイベントは認証のイベントの記録が扱い、それ以外はシステムのオブザーバビリティ設計に従う |
+| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| アプリケーション設計 | 委譲 | [アカウントポータル](features/account-portal.md#概要) | API と UI はシステムのアプリケーション設計に従い、セルフサービス API の境界はアカウントポータルが扱う |
+| データ設計 | 委譲 | [認証のイベントの相関と保持](observability.md#相関と保持) | 各 Aggregate の保存は各機能の設計が、認証のイベントの保存はオブザーバビリティ設計が扱う |
+| 信頼性設計 | 委譲 | [認証状態の障害](architecture.md#解決戦略) | 共有の一時的な状態のストアに到達できないときは失敗させる。各機能の扱いは各機能の設計が扱う |
+| オブザーバビリティ設計 | 固有設計 | [担当文書](observability.md#認証のイベントの記録) | 認証のイベントの個別の記録と 5 分の集計、相関、種別ごとの保持期間 |
 
 | 文書 | 内容 |
 | --- | --- |
-| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |
-| [認証のイベントの記録](design/authentication-events.md) | 個別の記録と 5 分の集計、相関、種別ごとの保持期間 |
+| [Authentication の用語集](glossary.md) | このモジュールでの語義 |
+| [Authentication の標準仕様](standards.md) | 採用する外部標準仕様 |
+| [設計判断](decisions.md) | 代替案を比べた重要な判断 |

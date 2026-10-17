@@ -403,23 +403,19 @@ export function codeSlices(directories: string[]): CodeSlice[] {
 }
 
 /**
- * 機能スライスのコードのディレクトリごとに、名前が対応する仕様のディレクトリがあることを
- * 確かめる。仕様のディレクトリの名前からハイフンを除いた名前がコードのディレクトリの名前と
- * 一致すれば対応とみなす。モジュールの名前も同じ規則で対応させ、一致しないものだけを
+ * 機能スライスのコードのディレクトリごとに、名前が対応する機能仕様があることを確かめる。
+ * 機能仕様 `features/<feature>.md` の機能名からハイフンを除いた名前がコードのディレクトリの
+ * 名前と一致すれば対応とみなす。モジュールの名前も同じ規則で対応させ、一致しないものだけを
  * `moduleAliases` で引く。
  */
 export function verifyFeatureSliceSpecifications(
   slices: CodeSlice[],
-  specifications: Set<string>,
+  specifications: Iterable<{ module: string; feature: string }>,
   debt: FeatureSliceDebt,
 ): Finding[] {
   const flatten = (name: string) => name.replaceAll('-', '')
-  // 仕様のディレクトリは機能群の下にもあるので、最後の段の名前で対応させる。
   const specificationKeys = new Set(
-    [...specifications].map((specification) => {
-      const [, , module = '', ...below] = specification.split('/')
-      return `${flatten(module)}/${flatten(below.at(-1) ?? '')}`
-    }),
+    [...specifications].map(({ module, feature }) => `${flatten(module)}/${flatten(feature)}`),
   )
   const unmapped = new Set(debt.unmappedSlices)
   const findings: Finding[] = []

@@ -139,7 +139,7 @@ const requirement = (...body: string[]): string =>
     ...body,
   ].join('\n')
 const earsMessages = (...body: string[]) =>
-  verifyEarsStatements('docs/modules/demo/user/README.md', requirement(...body), 'Demo').map(
+  verifyEarsStatements('docs/modules/demo/features/user.md', requirement(...body), 'Demo').map(
     (finding) => finding.message,
   )
 
@@ -260,7 +260,7 @@ describe('verifyEarsStatements', () => {
       '',
       '- `場合` を含む名前を指定された場合、Demo は、`invalid_name` で拒否する。',
     ].join('\n')
-    expect(verifyEarsStatements('docs/modules/demo/user/README.md', source, 'Demo')).toEqual([])
+    expect(verifyEarsStatements('docs/modules/demo/features/user.md', source, 'Demo')).toEqual([])
   })
 })
 
@@ -297,11 +297,11 @@ describe('verifyFeatureSliceSpecifications', () => {
     expect(
       verifyFeatureSliceSpecifications(
         slices,
-        new Set([
-          'docs/modules/demo/trusted-device',
-          'docs/modules/demo/session',
-          'docs/modules/id-management/user',
-        ]),
+        [
+          { module: 'demo', feature: 'trusted-device' },
+          { module: 'demo', feature: 'session' },
+          { module: 'id-management', feature: 'user' },
+        ],
         { moduleAliases: { idmgmt: 'id-management' }, unmappedSlices: [] },
       ),
     ).toEqual([])
@@ -311,7 +311,10 @@ describe('verifyFeatureSliceSpecifications', () => {
     expect(
       verifyFeatureSliceSpecifications(
         slices,
-        new Set(['docs/modules/demo/trusted-device', 'docs/modules/demo/session']),
+        [
+          { module: 'demo', feature: 'trusted-device' },
+          { module: 'demo', feature: 'session' },
+        ],
         {
           moduleAliases: {},
           unmappedSlices: ['backend/demo/session'],

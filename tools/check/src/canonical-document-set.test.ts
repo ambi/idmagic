@@ -34,54 +34,85 @@ describe('verifyCanonicalDocumentSet', () => {
     ])
   })
 
-  it('keeps shared vocabulary out of a feature slice', () => {
-    const findings = verifyCanonicalDocumentSet([
-      marker,
-      { directory: 'docs/modules/demo/user', files: ['README.md', 'glossary.md'] },
-    ])
-    expect(findings.map((finding) => finding.path)).toEqual(['docs/modules/demo/user/glossary.md'])
+  it('accepts design areas and records beside the module overview', () => {
+    expect(
+      verifyCanonicalDocumentSet([
+        {
+          directory: 'docs/modules/demo',
+          files: ['README.md', 'architecture.md', 'observability.md', 'decisions.md', 'risks.md'],
+        },
+        {
+          directory: 'docs/modules/demo/features',
+          files: ['user.md', 'user.lifecycle.md', 'user.feature.md'],
+        },
+      ]),
+    ).toEqual([])
   })
 
-  it('rejects any document below a feature slice', () => {
+  it('keeps shared vocabulary out of the features directory', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/modules/demo/user/profile/extra', files: ['README.md'] },
+      { directory: 'docs/modules/demo/features', files: ['user.md', 'glossary.md'] },
     ])
-    expect(findings[0]?.message).toBe(
-      'not a canonical document; the specification tree stops at the feature slice',
-    )
+    expect(findings.map((finding) => finding.path)).toEqual([
+      'docs/modules/demo/features/glossary.md',
+    ])
+  })
+
+  it('rejects any document below the features directory or in another module directory', () => {
+    const findings = verifyCanonicalDocumentSet([
+      marker,
+      { directory: 'docs/modules/demo/features/user', files: ['README.md'] },
+      { directory: 'docs/modules/demo/design', files: ['architecture.md'] },
+    ])
+    expect(findings.map((finding) => finding.message)).toEqual([
+      'not a canonical document; a module holds only its own documents and features/',
+      'not a canonical document; a module holds only its own documents and features/',
+    ])
   })
 
   it('admits no document in a module without README.md', () => {
     const findings = verifyCanonicalDocumentSet([
       { directory: 'docs/modules/demo', files: ['glossary.md', 'scenarios.feature.md'] },
-      { directory: 'docs/modules/demo/user', files: ['README.md'] },
+      { directory: 'docs/modules/demo/features', files: ['user.md'] },
     ])
     expect(findings.map((finding) => finding.path)).toEqual([
       'docs/modules/demo/glossary.md',
       'docs/modules/demo/scenarios.feature.md',
-      'docs/modules/demo/user/README.md',
+      'docs/modules/demo/features/user.md',
     ])
   })
 
-  it('rejects the file kinds of the former layout in a context', () => {
+  it('rejects a free-named document beside the fixed module documents', () => {
+    const findings = verifyCanonicalDocumentSet([
+      marker,
+      { directory: 'docs/modules/demo', files: ['csv-transfer.md'] },
+    ])
+    expect(findings.map((finding) => finding.path)).toEqual(['docs/modules/demo/csv-transfer.md'])
+  })
+
+  it('rejects the file kinds of the former layout in a module', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
       {
         directory: 'docs/modules/demo',
-        files: ['states.md', 'decisions.md', 'internals.md', 'scenarios.feature.md'],
+        files: ['states.md', 'internals.md', 'scenarios.feature.md', 'design.md'],
       },
     ])
     expect(findings).toHaveLength(4)
   })
 
-  it('rejects the appendix under its former name examples.feature.md', () => {
+  it('rejects the feature directory layout and the former appendix names', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/modules/demo/user', files: ['README.md', 'examples.feature.md'] },
+      {
+        directory: 'docs/modules/demo/features',
+        files: ['README.md', 'acceptance.feature.md', 'user.examples.feature.md'],
+      },
     ])
     expect(findings.map((finding) => finding.path)).toEqual([
-      'docs/modules/demo/user/examples.feature.md',
+      'docs/modules/demo/features/README.md',
+      'docs/modules/demo/features/user.examples.feature.md',
     ])
   })
 
@@ -141,29 +172,30 @@ describe('verifyCanonicalDocumentSet', () => {
   it('suggests nothing for a name three edits away', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/modules/demo', files: ['intrnl.md'] },
+      { directory: 'docs/requirements', files: ['qualityxyz.md'] },
     ])
     expect(findings[0]?.message).not.toContain('did you mean')
   })
 
-  it('rejects a separate design document in a feature slice', () => {
+  it('rejects a separate design document for a feature', () => {
     const findings = verifyCanonicalDocumentSet([
       marker,
-      { directory: 'docs/modules/demo/task', files: ['README.md', 'design.md'] },
+      { directory: 'docs/modules/demo/features', files: ['task.md', 'task.design.md'] },
     ])
-    expect(findings.map((finding) => finding.path)).toEqual(['docs/modules/demo/task/design.md'])
+    expect(findings.map((finding) => finding.path)).toEqual([
+      'docs/modules/demo/features/task.design.md',
+    ])
   })
 
   it('holds each level to its own set of names', () => {
-    // quality.md はモジュールの文書であり docs/ 直下の文書ではない。逆に
-    // structure.md は docs/modules/ の文書でありモジュールの文書ではない。
+    // quality.md はモジュールの文書であり docs/ 直下の文書でも機能でもない。
     expect(verifyCanonicalDocumentSet([{ directory: 'docs', files: ['quality.md'] }])).toHaveLength(
       1,
     )
     expect(
       verifyCanonicalDocumentSet([
         marker,
-        { directory: 'docs/modules/demo', files: ['structure.md'] },
+        { directory: 'docs/modules/demo/features', files: ['quality.md'] },
       ]),
     ).toHaveLength(1)
     expect(
@@ -191,7 +223,7 @@ describe('verifyCanonicalDocumentSet', () => {
       verifyCanonicalDocumentSet([
         { directory: 'docs', files: ['one.md', 'two.md'] },
         marker,
-        { directory: 'docs/modules/demo', files: ['three.md'] },
+        { directory: 'docs/modules/demo', files: ['Three.md'] },
       ]),
     ).toHaveLength(3)
   })

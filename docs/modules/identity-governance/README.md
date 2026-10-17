@@ -27,8 +27,8 @@ JML を自動化する `LifecycleWorkflow` の定義、トリガーの評価、`
 | `WorkflowAction` | `add_group_member`、`remove_group_member`、`assign_application`、`unassign_application`、`set_required_action`、`clear_required_action`、`enable_user`、`disable_user`、`send_email` のいずれか。すでに目的の状態なら `no_op` とする |
 | `WorkflowStep` | アクション 1 件の実行の記録。結果（`changed`、`no_op`、`failed`、`canceled`）、機密情報を除いたエラーコード、実行の時刻 |
 
-- **判断**：アクションを線形の列に限る理由は、[アクションを定義順の線形の列に限る](design/decisions.md#アクションを定義順の線形の列に限る)。
-- **判断**：WorkflowRun に展開したアクションとリビジョンを固定する理由は、[WorkflowRun の作成時に展開したアクションとリビジョンを固定する](design/decisions.md#workflowrun-の作成時に展開したアクションとリビジョンを固定する)。
+- **判断**：アクションを線形の列に限る理由は、[アクションを定義順の線形の列に限る](decisions.md#アクションを定義順の線形の列に限る)。
+- **判断**：WorkflowRun に展開したアクションとリビジョンを固定する理由は、[WorkflowRun の作成時に展開したアクションとリビジョンを固定する](decisions.md#workflowrun-の作成時に展開したアクションとリビジョンを固定する)。
 
 ## 公開する契約
 
@@ -47,22 +47,19 @@ HTTP の操作とモデルの形は TypeSpec の `Identity Governance` のタグ
 
 | 機能 | 内容 |
 | --- | --- |
-| [ライフサイクルワークフローの定義](lifecycle-workflow/README.md) | 作成、編集、有効化と無効化、削除、取得、プレビュー |
-| [ワークフローの実行](workflow-run/README.md) | User の変更による実行の捕捉、Job の関連付け、ステップの実行と再試行 |
+| [ライフサイクルワークフローの定義](features/lifecycle-workflow.md) | 作成、編集、有効化と無効化、削除、取得、プレビュー |
+| [ワークフローの実行](features/workflow-run.md) | User の変更による実行の捕捉、Job の関連付け、ステップの実行と再試行 |
+
+## 文書
+
+| 設計領域 | 区分 | 参照先 | 内容 |
+| --- | --- | --- | --- |
+| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
+| データ設計 | 委譲 | [モデル](#モデル) | Aggregate とその関係は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
+| 信頼性設計 | 委譲 | [ワークフローの実行の設計](features/workflow-run.md#信頼性) | Job の投入の失敗と再試行の扱いはワークフローの実行の設計が扱う |
 
 | 文書 | 内容 |
 | --- | --- |
 | [IdGovernance の用語集](glossary.md) | このモジュールでの語義 |
-
-## 設計
-
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](design/architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| データ設計 | 委譲 | [モデル](#モデル) | Aggregate とその関係は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
-| 信頼性設計 | 委譲 | [ワークフローの実行の設計](workflow-run/README.md#信頼性) | Job の投入の失敗と再試行の扱いはワークフローの実行の設計が扱う |
-
-| 文書 | 内容 |
-| --- | --- |
-| [設計判断](design/decisions.md) | 代替案を比べた重要な判断 |
-| [リスク](design/risks.md) | 既知の欠陥、技術的負債、受容したリスク |
+| [設計判断](decisions.md) | 代替案を比べた重要な判断 |
+| [リスク](risks.md) | 既知の欠陥、技術的負債、受容したリスク |

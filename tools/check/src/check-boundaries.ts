@@ -7,6 +7,7 @@ import {
   parseBoundaryDebt,
   parseLogicalArchitecture,
   reconcileBoundaryDebt,
+  RESPONSIBILITY_HEADER,
   type BoundaryAnalysis,
   type BoundaryDebtGroup,
   type GoSource,
@@ -24,7 +25,10 @@ import {
 
 const DEFAULT_OPTIONS: CheckOptions = { verbose: false, listUnresolved: false }
 
-const LOGICAL_ARCHITECTURE_PATH = 'docs/design/architecture/logical.md'
+/** 責務表を置くモジュール設計文書の入口。依存の図も同じ文書の印の間に置く。 */
+export const RESPONSIBILITY_TABLE_PATH = 'docs/modules/README.md'
+/** 基準 revision との比較では、表を論理アーキテクチャに置いていた revision も読む。 */
+const EARLIER_RESPONSIBILITY_TABLE_PATH = 'docs/design/architecture/logical.md'
 const DATABASE_DESIGN_PATH = 'docs/design/data/database.md'
 const SQLC_CONFIG_PATH = 'sqlc.yaml'
 export const BOUNDARY_DEBT_PATH = 'tools/check/boundary-debt.json'
@@ -35,7 +39,8 @@ export const BOUNDARY_INPUT_PATHS = [
   'backend',
   'infra/schema',
   SQLC_CONFIG_PATH,
-  LOGICAL_ARCHITECTURE_PATH,
+  RESPONSIBILITY_TABLE_PATH,
+  EARLIER_RESPONSIBILITY_TABLE_PATH,
   DATABASE_DESIGN_PATH,
 ]
 
@@ -95,10 +100,7 @@ export async function analyzeModuleBoundaries(
 ): Promise<BoundaryAnalysis> {
   const modulePath = (await snapshot.read('go.mod')).match(/^module\s+(\S+)$/m)?.[1]
   if (!modulePath) throw new Error('go.mod must declare a module path')
-  if (!snapshot.exists(LOGICAL_ARCHITECTURE_PATH)) {
-    throw new Error(`${LOGICAL_ARCHITECTURE_PATH} is required to check module boundaries`)
-  }
-  const architecture = parseLogicalArchitecture(await snapshot.read(LOGICAL_ARCHITECTURE_PATH))
+  const architecture = parseLogicalArchitecture(await responsibilityTable(snapshot))
   const sources: GoSource[] = []
   for (const path of await productionGoFiles(snapshot)) {
     sources.push({ path, source: await snapshot.read(path) })
@@ -152,7 +154,17 @@ export async function analyzeModuleBoundaries(
       left.id.localeCompare(right.id),
     ),
     diagnostics: [...imports.diagnostics, ...diagnostics],
+    dependencies: imports.dependencies,
   }
+}
+
+async function responsibilityTable(snapshot: WorkspaceSnapshot): Promise<string> {
+  for (const path of [RESPONSIBILITY_TABLE_PATH, EARLIER_RESPONSIBILITY_TABLE_PATH]) {
+    if (!snapshot.exists(path)) continue
+    const source = await snapshot.read(path)
+    if (source.includes(RESPONSIBILITY_HEADER)) return source
+  }
+  throw new Error(`${RESPONSIBILITY_TABLE_PATH} must contain the module responsibility table`)
 }
 
 type SqlcQueryInput = {

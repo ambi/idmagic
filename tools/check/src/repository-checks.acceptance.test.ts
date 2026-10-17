@@ -35,19 +35,18 @@ const VALID_REQUEST_EXAMPLES = [
 
 /** 固有設計がないので、共通設計だけを適用する最小の入口。 */
 /**
- * 機能スライスに、要件を宣言する機能仕様と例の付録を置く。`node` はモジュールからの相対パスで、
- * 機能群の下の機能スライスも指せる。
+ * 機能の段に、要件を宣言する機能仕様と例の付録を置く。`feature` は機能の名前である。
  */
 async function writeFeature(
   root: string,
-  node: string,
+  feature: string,
   specification: string,
   examples: string,
 ): Promise<void> {
-  const directory = join(root, 'docs', 'modules', 'demo', ...node.split('/'))
+  const directory = join(root, 'docs', 'modules', 'demo', 'features')
   await mkdir(directory, { recursive: true })
-  await writeFile(join(directory, 'README.md'), specification)
-  await writeFile(join(directory, 'acceptance.feature.md'), examples)
+  await writeFile(join(directory, `${feature}.md`), specification)
+  await writeFile(join(directory, `${feature}.feature.md`), examples)
 }
 
 /** 仮の作業ツリー。一次情報文書の集合が閉じているかどうかだけを見る最小の形。 */
@@ -258,15 +257,13 @@ describe('文書検査', () => {
     expect(result.output).toContain('EX-DEMO-001-01 is declared, but no test names it')
   })
 
-  // 機能群の下の機能スライスの文書が一次情報として読まれなければ、そこへ置いた要件は宣言ごと
-  // 検査から消える。被覆の拒否が出ることが、読まれていることの観測になる。
-  it('reads the examples of a feature slice inside a group as normative', async () => {
+  // 機能の段の文書が一次情報として読まれなければ、そこへ置いた要件は宣言ごと検査から消える。
+  // 被覆の拒否が出ることが、読まれていることの観測になる。
+  it('reads the examples of a feature as normative', async () => {
     const root = await workspace()
-    await mkdir(join(root, 'docs', 'modules', 'demo', 'people'), { recursive: true })
-    await writeFile(join(root, 'docs', 'modules', 'demo', 'people', 'README.md'), '# People\n')
     await writeFeature(
       root,
-      'people/user',
+      'user',
       '# User\n\n#### REQ-DEMO-002 A user is created on request\n\n- 要求でユーザーを作る。\n',
       [
         '# Feature: User',
@@ -283,7 +280,6 @@ describe('文書検査', () => {
 
     const result = await checkDocuments(root)
     expect(result.output).not.toContain('not a canonical specification document')
-    expect(result.output).not.toContain('docs/modules/demo/people/user/ is not listed')
     expect(result.output).toContain('EX-DEMO-002-01 is declared, but no test names it')
   })
 
@@ -488,8 +484,8 @@ The fixture declares a release note that is absent.
   it('rejects an applicable in-progress item without a primary-use-case plan', async () => {
     const root = await workspace()
     await mkdir(join(root, 'work-items', 'active'), { recursive: true })
-    await mkdir(join(root, 'docs', 'modules', 'demo', 'run'), { recursive: true })
-    await writeFile(join(root, 'docs', 'modules', 'demo', 'run', 'README.md'), DEMO_SPECIFICATION)
+    await mkdir(join(root, 'docs', 'modules', 'demo', 'features'), { recursive: true })
+    await writeFile(join(root, 'docs', 'modules', 'demo', 'features', 'run.md'), DEMO_SPECIFICATION)
     await writeFile(
       join(root, 'work-items', 'active', 'wi-439-missing-primary-use-case.md'),
       `---
@@ -506,9 +502,9 @@ documentation_impact:
   references:
     - { kind: release_note, path: docs/releases/changes/wi-439-missing-primary-use-case.md }
 initial_context:
-  source: [docs/modules/demo/run/README.md]
+  source: [docs/modules/demo/features/run.md]
 affected_spec:
-  - { path: docs/modules/demo/run/README.md, requirement: REQ-DEMO-001 }
+  - { path: docs/modules/demo/features/run.md, requirement: REQ-DEMO-001 }
 ---
 
 # Feature without a primary use case
@@ -544,8 +540,8 @@ The feature could remain disconnected.
     const root = await workspace()
     await mkdir(join(root, 'work-items', 'active'), { recursive: true })
     await mkdir(join(root, 'backend', 'demo'), { recursive: true })
-    await mkdir(join(root, 'docs', 'modules', 'demo', 'run'), { recursive: true })
-    await writeFile(join(root, 'docs', 'modules', 'demo', 'run', 'README.md'), DEMO_SPECIFICATION)
+    await mkdir(join(root, 'docs', 'modules', 'demo', 'features'), { recursive: true })
+    await writeFile(join(root, 'docs', 'modules', 'demo', 'features', 'run.md'), DEMO_SPECIFICATION)
     await writeFile(
       join(root, 'mise.toml'),
       '[tasks.verify]\ndepends = ["test-go-race"]\n\n[tasks.test-go-race]\nrun = "go test -race ./..."\n',
@@ -562,7 +558,7 @@ created_at: 2026-08-30
 depends_on: []
 change_kind: feature
 affected_spec:
-  - { path: docs/modules/demo/run/README.md, requirement: REQ-DEMO-001 }
+  - { path: docs/modules/demo/features/run.md, requirement: REQ-DEMO-001 }
 primary_use_cases:
   - id: demo-success
     requirement: REQ-DEMO-001
@@ -714,9 +710,9 @@ describe('規則の書式と仕様の木の検査', () => {
       join(root, 'docs', 'design', 'application', 'api-guidelines.md'),
       '# API ガイドライン\n\n## ページサイズ\n\n既定は 50 件とする。\n',
     )
-    await mkdir(join(root, 'docs', 'modules', 'demo', 'task'), { recursive: true })
+    await mkdir(join(root, 'docs', 'modules', 'demo', 'features'), { recursive: true })
     await writeFile(
-      join(root, 'docs', 'modules', 'demo', 'task', 'README.md'),
+      join(root, 'docs', 'modules', 'demo', 'features', 'task.md'),
       [
         '# タスク',
         '',

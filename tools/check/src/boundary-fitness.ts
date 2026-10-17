@@ -45,6 +45,8 @@ export type BoundaryViolation = {
 export type BoundaryAnalysis = {
   violations: BoundaryViolation[]
   diagnostics: string[]
+  /** モジュール間の import の辺。重複を除き、名前の順に並べる。 */
+  dependencies: ModuleDependency[]
 }
 
 export type BoundaryDebtEntry = {
@@ -77,7 +79,8 @@ export const SHARED_LIBRARY_NAME = 'shared'
 
 const SHARED_PREFIX = 'backend/shared'
 
-const RESPONSIBILITY_HEADER = '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |'
+export const RESPONSIBILITY_HEADER =
+  '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |'
 
 type ImportSpec = {
   path: string
@@ -89,22 +92,32 @@ type PackageOwner =
   | { kind: 'composition' }
   | { kind: 'shared' }
 
-type ModuleDependency = {
+export type ModuleDependency = {
   sourceModule: string
   targetModule: string
 }
 
-/** 責務表からモジュール、公開パッケージ、組み立て地点を読む。公開方式は `internal` だけを受け付ける。 */
+/**
+ * 責務表からモジュール、公開パッケージ、組み立て地点を読む。公開方式は `internal` だけを受け付ける。
+ * 責務表は区分ごとに同じ見出しの表へ分けてよく、見出しが一致する表をすべて読む。
+ */
 export function parseLogicalArchitecture(markdown: string): ArchitectureModel {
   const lines = markdown.split(/\r?\n/)
-  const headerIndex = lines.findIndex((line) => line.trim() === RESPONSIBILITY_HEADER)
-  if (headerIndex < 0) {
+  const headerIndexes = lines.flatMap((line, index) =>
+    line.trim() === RESPONSIBILITY_HEADER ? [index] : [],
+  )
+  if (headerIndexes.length === 0) {
     throw new Error('logical architecture must contain the module responsibility table')
   }
+  const rows = headerIndexes.flatMap((headerIndex) => {
+    const end = lines.findIndex(
+      (line, index) => index > headerIndex + 1 && !line.trim().startsWith('|'),
+    )
+    return lines.slice(headerIndex + 2, end < 0 ? undefined : end)
+  })
   const modules: ModuleDefinition[] = []
   let compositionPrefixes: string[] = []
-  for (const line of lines.slice(headerIndex + 2)) {
-    if (!line.trim().startsWith('|')) break
+  for (const line of rows) {
     const row = cells(line)
     const name = row[0]?.match(/^\[([^\]]+)\]/)?.[1]?.trim()
     if (!name) continue
@@ -191,6 +204,15 @@ export function findBoundaryViolations(input: {
       ...new Map(violations.map((violation) => [violation.id, violation])).values(),
     ].sort(compareById),
     diagnostics,
+    dependencies: [
+      ...new Map(
+        dependencies.map((edge) => [`${edge.sourceModule}\n${edge.targetModule}`, edge]),
+      ).values(),
+    ].sort(
+      (left, right) =>
+        left.sourceModule.localeCompare(right.sourceModule) ||
+        left.targetModule.localeCompare(right.targetModule),
+    ),
   }
 }
 

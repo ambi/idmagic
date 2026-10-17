@@ -3,7 +3,7 @@ package usecases
 // Group CSV の計画器。プレビューと適用が共有する 1 個の決定的な計算であり、
 // リポジトリの読み取り以外に効果を持たない。適用はこの計画器を現在状態に対して
 // 再び走らせるため、プレビューが暗黙の楽観的ロックの迂回路にならない
-// (docs/modules/identity-management/group-csv/README.md)。
+// (docs/modules/identity-management/features/group-csv.md)。
 
 import (
 	"context"

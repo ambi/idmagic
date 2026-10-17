@@ -376,9 +376,27 @@ const SPECIFICATION_TREES = ['docs', 'spec'] as const
  */
 const FORMER_SHARED_SCENARIOS = 'docs/requirements/scenarios.feature.md'
 
+/**
+ * 機能仕様を機能ごとのディレクトリ（`<feature>/README.md`、章、`acceptance.feature.md`）に置いて
+ * いた過去の配置。機能群の一段下も機能だった。その時期の revision と比べるときに読まなければ、
+ * 移動だけで全規則が削除と追加に見える。
+ */
+const FORMER_FEATURE_DOCUMENT =
+  /^docs\/modules\/[^/]+\/(?:[a-z0-9-]+\/)?(?!design\/|features\/)[a-z0-9-]+\/([^/]+)$/
+
+function formerFeatureDocumentKind(path: string): DocumentKind | undefined {
+  const name = path.match(FORMER_FEATURE_DOCUMENT)?.[1]
+  if (name === 'acceptance.feature.md') return 'examples'
+  if (name === 'README.md' || /^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(name ?? '')) {
+    return 'specification'
+  }
+  return undefined
+}
+
 /** 比較のために読む文書の種別。現在の配置の判定に、過去の配置の読み取りだけを足す。 */
 function comparedDocumentKind(path: string): DocumentKind | undefined {
-  return path === FORMER_SHARED_SCENARIOS ? 'scenarios' : documentKind(path)
+  if (path === FORMER_SHARED_SCENARIOS) return 'scenarios'
+  return documentKind(path) ?? formerFeatureDocumentKind(path)
 }
 
 export function isSpecificationSource(path: string): boolean {

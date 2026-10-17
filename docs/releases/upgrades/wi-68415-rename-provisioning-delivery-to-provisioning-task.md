@@ -1,7 +1,7 @@
 # wi-68415-rename-provisioning-delivery-to-provisioning-task
 
 作業項目は `wi-68415-rename-provisioning-delivery-to-provisioning-task` である。
-対象は [IdMagic.Provisioning.Operations.ListProvisioningTasks](../../../spec/modules/provisioning/main.tsp)、[IdMagic.Provisioning.Operations.GetProvisioningTask](../../../spec/modules/provisioning/main.tsp)、[IdMagic.Provisioning.Operations.RetryProvisioningTask](../../../spec/modules/provisioning/main.tsp) と、[REQ-PROVISIONING-015](../../modules/provisioning/connection/README.md) である。
+対象は [IdMagic.Provisioning.Operations.ListProvisioningTasks](../../../spec/modules/provisioning/main.tsp)、[IdMagic.Provisioning.Operations.GetProvisioningTask](../../../spec/modules/provisioning/main.tsp)、[IdMagic.Provisioning.Operations.RetryProvisioningTask](../../../spec/modules/provisioning/main.tsp) と、[REQ-PROVISIONING-015](../../modules/provisioning/features/connection.md) である。
 
 ## 管理 API
 

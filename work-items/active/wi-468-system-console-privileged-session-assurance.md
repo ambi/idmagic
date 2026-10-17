@@ -11,7 +11,7 @@ depends_on:
   - wi-461-control-plane-credential-boundary
   - wi-462-control-plane-console-single-entry
 affected_spec:
-  - { path: docs/modules/authentication/trusted-device/README.md, requirement: REQ-AUTHENTICATION-029 }
+  - { path: docs/modules/authentication/features/trusted-device.md, requirement: REQ-AUTHENTICATION-029 }
   - { path: spec/modules/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.CompleteStepUpAuthentication }
   - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.SetTenantEndpointStyle }
   - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.DisableTenant }

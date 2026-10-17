@@ -311,7 +311,7 @@ describe('validateAgainstSchema — work-item', () => {
         { ...validWorkItem, affected_spec: [{ path, requirement: 'REQ-DEMO-001' }] },
         '',
       )
-    expect(reference('docs/modules/demo/work/task/README.md')).toEqual([])
+    expect(reference('docs/modules/demo/features/task.md')).toEqual([])
     expect(reference('docs/domain/demo/work/task/README.md')).not.toEqual([])
   })
 

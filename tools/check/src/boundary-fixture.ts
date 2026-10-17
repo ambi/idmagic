@@ -1,7 +1,7 @@
 /** 境界検査の受け入れテストが共有する、宣言と違反のない最小の作業ツリー。 */
 export const BOUNDARY_FIXTURE: Record<string, string> = {
   'go.mod': 'module example.com/product\n',
-  'docs/design/architecture/logical.md': [
+  'docs/modules/README.md': [
     '# Logical architecture',
     '',
     '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |',
