@@ -35,7 +35,7 @@ describe('checkBoundaries module rules', () => {
   it('accepts a workspace whose imports and table writes follow the declarations', async () => {
     expect(
       await outcomeFor({
-        'backend/customer/usecases/service.go':
+        'backend/customer/internal/usecases/service.go':
           'package usecases\nimport "example.com/product/backend/supplier/ports"\n',
       }),
     ).toEqual({ ok: true, lines: ['ok  module boundaries'] })
@@ -44,7 +44,7 @@ describe('checkBoundaries module rules', () => {
   it('rejects a cross-module import of a private package', async () => {
     expect(
       await failureFor({
-        'backend/customer/usecases/service.go':
+        'backend/customer/internal/usecases/service.go':
           'package usecases\nimport "example.com/product/backend/supplier/usecases"\n',
       }),
     ).toContain('private-import:Customer->Supplier')
@@ -121,7 +121,7 @@ describe('checkBoundaries module rules', () => {
             sourceModule: 'Customer',
             targetModule: 'Supplier',
             violations: [
-              'private-import:Customer:backend/customer/usecases->backend/supplier/usecases',
+              'private-import:Customer:backend/customer/internal/usecases->backend/supplier/usecases',
             ],
             reason: 'Customer still constructs the supplier workflow directly.',
           },
@@ -134,7 +134,7 @@ describe('checkBoundaries module rules', () => {
 
   it('rejects a debt entry without a concrete reason', async () => {
     const root = await boundaryWorkspace({
-      'backend/customer/usecases/service.go':
+      'backend/customer/internal/usecases/service.go':
         'package usecases\nimport "example.com/product/backend/supplier/usecases"\n',
       'tools/check/boundary-debt.json': JSON.stringify({
         violations: [
@@ -143,7 +143,7 @@ describe('checkBoundaries module rules', () => {
             sourceModule: 'Customer',
             targetModule: 'Supplier',
             violations: [
-              'private-import:Customer:backend/customer/usecases->backend/supplier/usecases',
+              'private-import:Customer:backend/customer/internal/usecases->backend/supplier/usecases',
             ],
           },
         ],

@@ -36,7 +36,6 @@ import (
 	"github.com/ambi/idmagic/backend/workloadidentity"
 
 	"github.com/ambi/idmagic/backend/wsfederation"
-	wsfedpostgres "github.com/ambi/idmagic/backend/wsfederation/db_postgres"
 )
 
 // assemblePostgres は PostgreSQL 単一依存の構成を組み立てる。durable state と
@@ -113,7 +112,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		SigningKeys:      signingkeys.Module{KeyStore: selectKeyStore(cfg, keyStore)},
 		DataKeys:         dataKeysModule,
 		Audit:            audit.NewPostgresModule(resilientDB),
-		WsFederation:     wsfederation.Module{RPRepo: &wsfedpostgres.WsFedRelyingPartyRepository{Pool: resilientDB}},
+		WsFederation:     wsfederation.NewPostgresModule(resilientDB),
 		Saml:             saml.NewPostgresModule(resilientDB),
 		Sourcing:         sourcing.NewPostgresModule(resilientDB),
 		ApiTokens:        apitoken.NewPostgresModule(resilientDB),

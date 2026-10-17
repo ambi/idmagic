@@ -91,28 +91,29 @@ async function ratchet(root: string, baseRevision = 'main') {
 }
 
 describe('checkBoundaryDebtRatchet', () => {
+  /**
+   * 基準 revision の `backend/customer/usecases` から Supplier の非公開パッケージへの import を、
+   * 現在の作業ツリーで `backend/customer/internal/usecases` へ移した作業ツリーを作る。
+   * switchPublication が false なら、基準 revision の Customer は既に `internal` である。
+   */
   async function movedImport(target = 'usecases', switchPublication = true, keepOriginal = false) {
     const source = 'backend/customer/usecases/private.go'
+    const alreadyInternal = BOUNDARY_FIXTURE['docs/design/architecture/logical.md']!.replace(
+      '`backend/customer/domain`, `backend/customer/ports`',
+      '`backend/customer/domain`, `backend/customer/ports`, `backend/customer/usecases`',
+    ).replace(
+      '| `internal` | `backend/supplier/domain`, `backend/supplier/ports` |',
+      '| `legacy` | `domain` または `ports` の区画 |',
+    )
     const root = await repository(
       {
-        'docs/design/architecture/logical.md': BOUNDARY_FIXTURE[
-          'docs/design/architecture/logical.md'
-        ]!.replace(
-          '| [Customer](customer.md) | `legacy` | `domain` または `ports` の区画 |',
-          '| [Customer](customer.md) | `internal` | `backend/customer/ports`, `backend/customer/usecases` |',
-        ),
-        'backend/customer/ports/ports.go': 'package ports\n',
         'backend/customer/internal/usecases/private.go': `package usecases\nimport "example.com/product/backend/supplier/${target}"\n`,
       },
       {
         [source]: 'package usecases\nimport "example.com/product/backend/supplier/usecases"\n',
+        ...(switchPublication ? {} : { 'docs/design/architecture/logical.md': alreadyInternal }),
       },
     )
-    if (!switchPublication)
-      await write(root, {
-        'docs/design/architecture/logical.md':
-          BOUNDARY_FIXTURE['docs/design/architecture/logical.md']!,
-      })
     if (!keepOriginal) await rm(join(root, source))
     return root
   }
@@ -130,8 +131,12 @@ describe('checkBoundaryDebtRatchet', () => {
     )
   })
 
-  it('公開方式を切り替えない配置の変更は読み替えない', async () => {
-    expect((await ratchet(await movedImport('usecases', false))).ok).toBe(false)
+  it('基準 revision で既に internal のモジュールの配置の変更は読み替えない', async () => {
+    const outcome = await ratchet(await movedImport('usecases', false))
+    expect(outcome.ok).toBe(false)
+    expect(outcome.lines[0]).toContain(
+      'private-import:Customer:backend/customer/internal/usecases->backend/supplier/usecases',
+    )
   })
 
   it('移動元の依存も残る複製を移動として免除しない', async () => {

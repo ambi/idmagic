@@ -42,6 +42,7 @@ affected_spec:
 
 - 外から非公開パッケージへの import そのものの解消。負債の棚卸しが起票する項目とテナントの公開契約の項目で行う。
 - モジュールの分割と統合。
+- 負債の比較検査が基準 revision の移行前の責務表を読む互換の撤去。この項目が `main` に入って基準 revision が新しい形になった後に、[移行前の責務表を読む互換の撤去](wi-11332-drop-the-pre-internal-responsibility-table-from-the-debt-ratchet.md)で外す。
 
 ## 設計
 
@@ -99,15 +100,18 @@ WsFederation の移行と `legacy` の撤去（T003、T004）は wi-90942 の完
 
 - [x] T001 [Inventory] 対象のモジュールへの `private-import` が解消済みかを確かめ、未解消のものの解消の項目を特定する。
   未解消は WsFederation への 2 件で、wi-90942 が解消する。
-- [ ] T002 [App] 解消したモジュールから順に `internal/` へ移し、責務表を `internal` にする。
-  Application、OAuth2、IdManagement、Authentication を移した。
-  WsFederation は wi-90942 の完了後に移す。
+- [x] T002 [App] 解消したモジュールから順に `internal/` へ移し、責務表を `internal` にする。
+  Application、OAuth2、IdManagement、Authentication を移し、wi-90942 の完了後に WsFederation を移した。
   検証は `mise run lint-go`、`mise run check-boundaries`、`mise run check-boundary-debt-ratchet`、`mise run test-go-changed`。
   Authentication のルートの経路依存から `SessionManager` を外す誤実装を注入し、`server_http` のテスト 87 件が失敗することを確かめた。
   負債の比較検査の読み替えは、`table-write` の移動を扱うテストを先に失敗させてから直した。
-- [ ] T003 [Tooling] 全モジュールの移行後に `legacy` の判定と移行期間の規則を境界検査から外し、fixture を更新する。
-- [ ] T004 [Docs] 責務表と構造の文書から `legacy` の公開方式を外す。
-- [ ] T005 [Verify] 変更を検証する。
+- [x] T003 [Tooling] 全モジュールの移行後に `legacy` の判定と移行期間の規則を境界検査から外し、fixture を更新する。
+  作業ツリーの責務表は `internal` だけを受け付け、`legacy` と旧形式の表は基準 revision を読むときだけ受け付ける。
+  境界検査の fixture は `internal` の宣言と `internal/` の配置にした。
+  作業ツリーで `legacy` を受け付ける誤実装を注入し、`boundary-fitness.test.ts` のテストが失敗することを確かめた。
+- [x] T004 [Docs] 責務表と構造の文書から `legacy` の公開方式を外す。
+  バックエンド設計の公開範囲の節を現在の規則として書き直し、終了条件の節と、解消したリスクの行を消した。
+- [x] T005 [Verify] 変更を検証する。
 
 ## 検証
 
@@ -121,3 +125,13 @@ WsFederation の移行と `legacy` の撤去（T003、T004）は wi-90942 の完
   解消したモジュールから移せるようにし、`legacy` の撤去だけを最後に回す。
 - `legacy` の撤去と同時に、公開目的の照合まで外してしまうおそれがある。
   撤去するのは命名による判定だけとし、`internal` の照合の fixture を残す。
+
+## 要約
+
+`mise run spec-diff` は、TypeSpec の `FapiProfile` の説明文にある Go のパスを移動先へ直した 1 件だけを規範の変更として報告した。
+Application、OAuth2、IdManagement、Authentication、WsFederation を Go の `internal/` へ移し、責務表のすべてのモジュールを `internal` にした。
+組み立て地点が名指していた非公開パッケージは、各モジュールのルートパッケージの操作（永続層ごとの生成、経路とジョブの登録、ライフサイクル操作、通知、保持期間の掃除）と型の別名に置き換えた。
+ほかのモジュールの結合テストのために、IdManagement のルートに `AdminUsers` を置いた。
+`fixtures_postgres` は、所有モジュールの内側のテストとの循環を避けるため、User、Group、OAuth2 クライアントの保存先を引数で受け取る。
+境界検査は作業ツリーの責務表で `internal` だけを受け付け、`legacy` は負債の比較の基準 revision を読むときだけ受け付ける。
+その互換は、この項目が `main` に入った後に wi-11332 が外す。

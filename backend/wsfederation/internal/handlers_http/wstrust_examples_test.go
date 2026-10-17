@@ -12,7 +12,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
-	wstrust "github.com/ambi/idmagic/backend/wsfederation/requests_wstrust"
+	wstrust "github.com/ambi/idmagic/backend/wsfederation/internal/requests_wstrust"
 
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"

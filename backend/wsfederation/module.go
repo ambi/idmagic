@@ -9,7 +9,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
-	wsfedhttp "github.com/ambi/idmagic/backend/wsfederation/handlers_http"
+	wsfedhttp "github.com/ambi/idmagic/backend/wsfederation/internal/handlers_http"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"

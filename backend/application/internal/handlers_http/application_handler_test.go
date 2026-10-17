@@ -32,7 +32,6 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation"
-	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 
 	"github.com/labstack/echo/v5"
 )
@@ -66,7 +65,7 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 		OAuth2: oauth2.Module{
 			ClientRepo: oauth2.NewMemoryModule().ClientRepo,
 		},
-		WsFederation:  wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
+		WsFederation:  wsfederation.NewMemoryModule(),
 		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
 	return e

@@ -20,7 +20,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/wsfederation"
-	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -34,7 +34,7 @@ const (
 type adminJSONBodyFixture struct {
 	e        *echo.Echo
 	samlSPs  saml.ServiceProviderRepository
-	wsfedRPs *wsfedmemory.WsFedRelyingPartyRepository
+	wsfedRPs wsfedports.WsFedRelyingPartyRepository
 	quotas   tenantports.QuotaRepository
 }
 
@@ -69,7 +69,7 @@ func newAdminJSONBodyFixture(t *testing.T) *adminJSONBodyFixture {
 	})
 
 	samlSPs := saml.NewSamlServiceProviderRepository()
-	wsfedRPs := wsfedmemory.NewWsFedRelyingPartyRepository()
+	wsfedRPs := wsfederation.NewMemoryModule().RPRepo
 	quotas := tenancy.NewMemoryModule().QuotaRepo
 	seededUsers := adminJSONBodySeededUsers
 	if err := quotas.SetQuota(context.Background(), adminJSONBodyTargetTenant, &tenancydomain.TenantQuota{Users: &seededUsers}); err != nil {

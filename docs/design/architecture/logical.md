@@ -33,7 +33,7 @@ IdMagic は、リポジトリのルートの `go.mod` が定める一つの Go �
 | 列 | 意味 |
 | --- | --- |
 | モジュール | モジュールの名前と、仕様の文書の入口 |
-| 公開方式 | `legacy` は `domain` または `ports` の区画を含むパッケージを公開とみなす移行中の方式（[終了条件](../application/backend.md#legacy-の終了条件)）、`internal` は公開パッケージの列に挙げたパッケージだけを公開する最終形。System 行は組み立て地点を表す |
+| 公開方式 | `internal`。公開パッケージの列に挙げたパッケージだけを公開する（[公開範囲](../application/backend.md#公開範囲と-internal)）。System 行は組み立て地点を表す |
 | 公開パッケージ | `internal` のモジュールがほかのモジュールへ公開するパッケージの完全なパス。配下のパッケージは自動的には公開しない |
 | Go パッケージ | モジュールに属するパッケージの接頭辞。System 行では組み立て地点の接頭辞 |
 | 責務 | モジュールが担う状態と操作 |
@@ -59,7 +59,7 @@ IdMagic は、リポジトリのルートの `go.mod` が定める一つの Go �
 | [Seeding](../../modules/seeding/README.md) | `internal` | `backend/seeding/domain` | `backend/seeding` | 環境構成のプレビュー、計画、初期データ適用 |
 | [SigningKeys](../../modules/signing-keys/README.md) | `internal` | `backend/signingkeys/domain`, `backend/signingkeys/ports` | `backend/signingkeys` | 用途別署名鍵、証明書、ローテーション、提供元アダプター |
 | [DataKeys](../../modules/data-keys/README.md) | `internal` | なし | `backend/datakeys` | 可逆な秘密情報を保護するテナント別 DEK のライフサイクル |
-| [WsFederation](../../modules/ws-federation/README.md) | `legacy` | `domain` または `ports` の区画 | `backend/wsfederation` | WS-Federation、WS-Trust、メタデータ、RP の信頼 |
+| [WsFederation](../../modules/ws-federation/README.md) | `internal` | `backend/wsfederation/domain`, `backend/wsfederation/ports` | `backend/wsfederation` | WS-Federation、WS-Trust、メタデータ、RP の信頼 |
 | [Saml](../../modules/saml/README.md) | `internal` | `backend/saml/domain`, `backend/saml/ports` | `backend/saml` | SAML 2.0 IdP、SP の信頼、SSO、SLO、メタデータ |
 | [WorkloadIdentity](../../modules/workloadidentity/README.md) | `internal` | `backend/workloadidentity/domain` | `backend/workloadidentity` | 外部アテステーションと Agent の対応付け |
 | [SharedSignals](../../modules/sharedsignals/README.md) | `internal` | `backend/sharedsignals/domain`, `backend/sharedsignals/ports` | `backend/sharedsignals` | SSF、SET、CAEP による継続的アクセス評価と失効 |

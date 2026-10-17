@@ -5,7 +5,7 @@ import (
 	"time"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	metadata "github.com/ambi/idmagic/backend/wsfederation/metadata_wsfederation"
+	metadata "github.com/ambi/idmagic/backend/wsfederation/internal/metadata_wsfederation"
 
 	"github.com/labstack/echo/v5"
 )

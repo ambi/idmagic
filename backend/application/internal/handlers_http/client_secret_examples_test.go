@@ -42,7 +42,6 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/wsfederation"
-	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 )
 
 type secretExampleFixture struct {
@@ -93,7 +92,7 @@ func newSecretExampleFixture(t *testing.T) *secretExampleFixture {
 			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
 		},
 		Saml:         saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
-		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
+		WsFederation: wsfederation.NewMemoryModule(),
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, RefreshStore: oauth2.NewMemoryModule().RefreshStore,
 		},

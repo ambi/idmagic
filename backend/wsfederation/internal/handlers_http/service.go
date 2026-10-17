@@ -6,7 +6,7 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/usecases"
+	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/internal/usecases"
 )
 
 // ApplicationGate は、パッシブサインインの開始を Application の割り当てとサインインポリシーで

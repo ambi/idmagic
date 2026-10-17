@@ -80,8 +80,8 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/wsfederation"
-	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
 // 基盤が用意する主体とレルム。テストが自分で seed しなくても、テナント境界を
@@ -204,7 +204,7 @@ type Stack struct {
 	AppSignInPolicies   appports.SignInPolicyRepository
 	DefaultSignInPolicy appports.DefaultSignInPolicyRepository
 	SamlSPs             saml.ServiceProviderRepository
-	WsFedRPs            *wsfedmemory.WsFedRelyingPartyRepository
+	WsFedRPs            wsfedports.WsFedRelyingPartyRepository
 	Sessions            *authentication.SessionManager
 	// SessionStore は Sessions の保管先。サインアウトの具体例は「サーバー側の
 	// セッションが失効したか」を言っていて、それは応答ではなくここにしか現れない。
@@ -484,8 +484,9 @@ func WithSaml() Option {
 // サインアウトはその RP を名指しで呼ぶので、登録が無いと入口そのものが無い。
 func WithWsFederation() Option {
 	return func(b *builder) {
-		b.stack.WsFedRPs = wsfedmemory.NewWsFedRelyingPartyRepository()
-		b.stack.WsFedRPs.Seed(&feddomain.WsFedRelyingParty{
+		b.deps.WsFederation = wsfederation.NewMemoryModule()
+		b.stack.WsFedRPs = b.deps.WsFederation.RPRepo
+		_ = b.stack.WsFedRPs.Save(context.Background(), &feddomain.WsFedRelyingParty{
 			Wtrealm:   WsFedRealm,
 			ReplyURLs: []string{WsFedReplyURL},
 			ClaimPolicy: claimdomain.ClaimMappingPolicy{
@@ -495,7 +496,6 @@ func WithWsFederation() Option {
 				},
 			},
 		})
-		b.deps.WsFederation = wsfederation.Module{RPRepo: b.stack.WsFedRPs}
 		if b.deps.FederationSigner == nil {
 			b.deps.FederationSigner = signingkeys.Module{KeyStore: b.stack.KeyStore}.FederationSigner()
 		}

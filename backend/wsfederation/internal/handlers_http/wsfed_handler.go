@@ -14,8 +14,8 @@ import (
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
-	wsfed "github.com/ambi/idmagic/backend/wsfederation/responses_wsfederation"
-	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/usecases"
+	wsfed "github.com/ambi/idmagic/backend/wsfederation/internal/responses_wsfederation"
+	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )

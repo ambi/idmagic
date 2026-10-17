@@ -34,7 +34,6 @@ import (
 	"github.com/ambi/idmagic/backend/workloadidentity"
 
 	"github.com/ambi/idmagic/backend/wsfederation"
-	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 )
 
 func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
@@ -79,7 +78,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		SigningKeys:      signingkeys.Module{KeyStore: selectKeyStore(cfg, keyStore)},
 		DataKeys:         dataKeysModule,
 		Audit:            auditModule,
-		WsFederation:     wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
+		WsFederation:     wsfederation.NewMemoryModule(),
 		Saml:             saml.NewMemoryModule(),
 		Sourcing:         sourcing.NewMemoryModule(),
 		ApiTokens:        apitoken.NewMemoryModule(),

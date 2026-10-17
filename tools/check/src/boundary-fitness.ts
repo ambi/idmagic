@@ -6,7 +6,14 @@
  * `docs/design/application/backend.md` が定める。
  */
 
+/**
+ * 公開方式。作業ツリーの責務表は `internal` だけを宣言する。`legacy` は、移行が終わる前の基準
+ * revision を読むときだけ現れ、`domain` または `ports` の区画を公開とみなす。
+ */
 export type PublicationMode = 'legacy' | 'internal'
+
+/** 責務表を読む revision。`base` は負債の比較の基準 revision で、移行前の形も読む。 */
+export type ArchitectureRevision = 'workspace' | 'base'
 
 export type ModuleDefinition = {
   name: string
@@ -108,8 +115,14 @@ type ModuleDependency = {
   targetModule: string
 }
 
-/** 責務表からモジュール、公開方式、公開パッケージ、組み立て地点を読む。 */
-export function parseLogicalArchitecture(markdown: string): ArchitectureModel {
+/**
+ * 責務表からモジュール、公開方式、公開パッケージ、組み立て地点を読む。作業ツリーの表は
+ * `internal` だけを受け付け、基準 revision の表は移行前の `legacy` と旧形式の表も読む。
+ */
+export function parseLogicalArchitecture(
+  markdown: string,
+  revision: ArchitectureRevision = 'workspace',
+): ArchitectureModel {
   const lines = markdown.split(/\r?\n/)
   const headerIndex = lines.findIndex(
     (line) =>
@@ -119,6 +132,9 @@ export function parseLogicalArchitecture(markdown: string): ArchitectureModel {
     throw new Error('logical architecture must contain the module responsibility table')
   }
   const retired = lines[headerIndex]!.trim() === RETIRED_RESPONSIBILITY_HEADER
+  if (retired && revision === 'workspace') {
+    throw new Error('the retired Context table is readable only from a base revision')
+  }
   const modules: ModuleDefinition[] = []
   let compositionPrefixes: string[] = retired ? [...RETIRED_COMPOSITION_PREFIXES] : []
   for (const line of lines.slice(headerIndex + 2)) {
@@ -139,8 +155,8 @@ export function parseLogicalArchitecture(markdown: string): ArchitectureModel {
       continue
     }
     const publication = row[1]?.replace(/`/g, '').trim()
-    if (publication !== 'legacy' && publication !== 'internal') {
-      throw new Error(`${name}: publication mode must be legacy or internal`)
+    if (publication !== 'internal' && (revision === 'workspace' || publication !== 'legacy')) {
+      throw new Error(`${name}: publication mode must be internal`)
     }
     const publicPackages = backendPaths(row[2] ?? '')
     if (publication === 'legacy' && publicPackages.length > 0) {
@@ -446,7 +462,10 @@ function publicationDiagnostics(
   return diagnostics
 }
 
-/** ほかのモジュールが import できるか。ルートパッケージは組み立て地点だけに公開する。 */
+/**
+ * ほかのモジュールが import できるか。ルートパッケージは組み立て地点だけに公開する。
+ * `legacy` の区画名による判定は、移行前の基準 revision を読むときだけ使う。
+ */
 function isPublicPackage(path: string, owner: Extract<PackageOwner, { kind: 'module' }>): boolean {
   if (path === owner.prefix) return false
   if (owner.module.publication === 'internal') return owner.module.publicPackages.includes(path)
@@ -489,6 +508,7 @@ function importViolation(
   if (source.kind === 'module' && source.module.name === targetName) return undefined
   if (isPublicPackage(targetPackage, target)) return undefined
   if (source.kind === 'composition') {
+    // 移行前の基準 revision では、組み立て地点が legacy のモジュールの非公開パッケージを直接使っていた。
     const reachable = target.module.publication === 'legacy' || targetPackage === target.prefix
     if (reachable) return undefined
   }

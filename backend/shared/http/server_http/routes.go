@@ -45,7 +45,6 @@ import (
 	"github.com/ambi/idmagic/backend/workloadidentity"
 	workloadidentitydomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 	"github.com/ambi/idmagic/backend/wsfederation"
-	wsfedhttp "github.com/ambi/idmagic/backend/wsfederation/handlers_http"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v5"
@@ -450,14 +449,14 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	// nil の *SessionManager をインターフェースへ入れると nil でなくなり、受け取り側の nil の確認を
 	// すり抜けるので、ないときはポートごと渡さない。
-	var wsfedSessionRevoker wsfedhttp.SessionRevoker
+	var wsfedSessionRevoker wsfederation.SessionRevoker
 	var samlSessionRevoker saml.SessionRevoker
 	if d.Authentication.SessionManager != nil {
 		wsfedSessionRevoker = d.Authentication.SessionManager
 		samlSessionRevoker = d.Authentication.SessionManager
 	}
 	d.WsFederation.Register(g, d.Deps, authenticator, appGate,
-		wsfedhttp.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: wsfedSessionRevoker},
+		wsfederation.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: wsfedSessionRevoker},
 		d.IdManagement.UserRepo, d.FederationSigner,
 		d.OAuth2.ClientAssertionReplayStore, d.Authentication.LoginAttemptThrottle, d.Authentication.PasswordHasher, d.Authentication.SentinelPasswordHash,
 		d.Tenancy.AttrSchemaRepo)

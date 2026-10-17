@@ -25,7 +25,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/wsfederation"
-	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 	"github.com/labstack/echo/v5"
 )
 
@@ -58,7 +57,7 @@ func newApplicationPaginationHandler(t *testing.T) (*echo.Echo, *appmemory.Appli
 		},
 		Saml:          saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		OAuth2:        oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
-		WsFederation:  wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
+		WsFederation:  wsfederation.NewMemoryModule(),
 		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
 	return e, appRepo

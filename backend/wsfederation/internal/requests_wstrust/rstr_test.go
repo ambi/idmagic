@@ -13,7 +13,7 @@ import (
 	dsig "github.com/russellhaering/goxmldsig"
 
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
-	wstrust "github.com/ambi/idmagic/backend/wsfederation/requests_wstrust"
+	wstrust "github.com/ambi/idmagic/backend/wsfederation/internal/requests_wstrust"
 )
 
 // RSTR は署名済みの assertion を包んで運ぶだけであり、中身へ手を入れてはならない。

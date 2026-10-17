@@ -11,8 +11,8 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
-	wstrust "github.com/ambi/idmagic/backend/wsfederation/requests_wstrust"
-	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/usecases"
+	wstrust "github.com/ambi/idmagic/backend/wsfederation/internal/requests_wstrust"
+	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )

@@ -74,9 +74,10 @@ export async function checkBoundaryDebtRatchet(
   let before: BoundaryAnalysis
   let beforeModel: ArchitectureModel
   try {
-    before = await analyzeModuleBoundaries(base.snapshot)
+    before = await analyzeModuleBoundaries(base.snapshot, 'base')
     beforeModel = parseLogicalArchitecture(
       await base.snapshot.read('docs/design/architecture/logical.md'),
+      'base',
     )
   } finally {
     await base.release()
