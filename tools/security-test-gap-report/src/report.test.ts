@@ -183,7 +183,7 @@ describe('reportSecurityTestGaps', () => {
   test('excludes refusals returned by a remote SCIM server from local effect gaps', () => {
     const report = reportSecurityTestGaps([
       {
-        path: 'backend/provisioning/client_scim/client_test.go',
+        path: 'backend/provisioning/internal/client_scim/client_test.go',
         name: 'TestClientConflict',
         body: `
           _, _, err := client.CreateUser(ctx, rules, attributes)
@@ -215,7 +215,7 @@ describe('reportSecurityTestGaps', () => {
   test('excludes a refused read whose setup creates the resource', () => {
     const report = reportSecurityTestGaps([
       {
-        path: 'backend/sourcing/scim/handlers_http/scim_test.go',
+        path: 'backend/sourcing/internal/scim/handlers_http/scim_test.go',
         name: 'TestScimListUsersDateTimeFilterAndURNPrefix',
         body: `
           _, err := usecasesInst.CreateUser(ctx, tenantID, attributes)

@@ -106,9 +106,9 @@ export function reportSecurityTestGaps(tests: GoTest[]): SecurityTestGapReport {
   const report: SecurityTestGapReport = { refused: 0, gaps: [] }
   for (const test of tests) {
     if (
-      test.path.startsWith('backend/provisioning/client_scim/') ||
+      test.path.startsWith('backend/provisioning/internal/client_scim/') ||
       test.path === 'backend/oauth2/internal/handlers_http/client_auth_test.go' ||
-      (test.path === 'backend/sourcing/scim/handlers_http/scim_test.go' &&
+      (test.path === 'backend/sourcing/internal/scim/handlers_http/scim_test.go' &&
         test.name === 'TestScimListUsersDateTimeFilterAndURNPrefix')
     )
       continue
