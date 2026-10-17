@@ -10,7 +10,6 @@ change_kind: bugfix
 affected_spec:
   - { path: spec/modules/workloadidentity/models.tsp, symbol: IdMagic.Contract.AgentWorkloadBindingPatternConflictError }
   - { path: spec/modules/workloadidentity/main.tsp, symbol: IdMagic.WorkloadIdentity.Operations.CreateAgentWorkloadBinding }
-  - { path: spec/modules/jobs/models.tsp, symbol: IdMagic.Contract.JobsUnavailableError }
   - { path: spec/modules/identity-management/models.tsp, symbol: IdMagic.Contract.JobsUnavailableError }
   - { path: spec/modules/application/models.tsp, symbol: IdMagic.Contract.InvalidIconError }
   - { path: spec/modules/application/models.tsp, symbol: IdMagic.Contract.InvalidSignInPolicyError }
@@ -23,7 +22,7 @@ primary_use_cases:
     requirement: REQ-IDMANAGEMENT-039
     observable_result: ジョブ保存先のないエクスポート開始は 503 jobs_unavailable を返し、ジョブとイベントを残さない。
     boundary: acceptance
-    test: { path: backend/idmanagement/internal/handlers_http/admin_data_export_handler_test.go, name: TestDataExportHTTPRejectsAnUnavailableJobService, task: test-go-package }
+    test: { path: backend/idmanagement/internal/handlers_http/admin_data_export_handler_test.go, name: TestDataExportHTTPRejectsAnUnavailableJobService, task: test-go-race }
     fault_model: ジョブ保存先の未構成を 500 または別のエラーコードにする。
 ---
 
