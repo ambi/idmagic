@@ -5,9 +5,10 @@ import (
 	"errors"
 	"net/http"
 
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
+
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 	"github.com/labstack/echo/v5"
 )
 

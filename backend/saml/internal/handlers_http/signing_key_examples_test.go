@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signingkeys"
+
 	"github.com/ambi/idmagic/backend/authentication"
 
 	"github.com/beevik/etree"
@@ -31,7 +33,6 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
 
 const exampleCSRFToken = "csrf-token-for-signing-key-examples"
@@ -104,7 +105,7 @@ func issuedAssertion(t *testing.T, s *stack.Stack, sessionID string) *etree.Elem
 // activeXMLCertificate は、テナントのデフォルトスコープで現在有効な XmlFederationSigning 鍵の証明書を返す。
 func activeXMLCertificate(t *testing.T, s *stack.Stack, realm string) *x509.Certificate {
 	t.Helper()
-	signer, err := samltoken.KeyStoreSignerProvider{KeyStore: s.KeyStore}.Resolve(s.RealmContext(t, realm))
+	signer, err := signingkeys.Module{KeyStore: s.KeyStore}.FederationSigner().Resolve(s.RealmContext(t, realm))
 	if err != nil {
 		t.Fatalf("resolve %s federation signer: %v", realm, err)
 	}

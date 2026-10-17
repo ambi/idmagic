@@ -12,9 +12,8 @@ import (
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	wstrust "github.com/ambi/idmagic/backend/wsfederation/requests_wstrust"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
 
 // RSTR は署名済みの assertion を包んで運ぶだけであり、中身へ手を入れてはならない。
@@ -50,10 +49,8 @@ func TestBuildRSTR_CarriesTheSignedAssertionVerifiably(t *testing.T) {
 			Version: version, Issuer: "https://idp.example/realms/default", Audience: "urn:rp",
 			Recipient: "urn:rp", IssueInstant: now, NotBefore: now.Add(-time.Minute),
 			NotOnOrAfter: now.Add(5 * time.Minute), AuthnInstant: now,
-			Result: claimdomain.ClaimIssuanceResult{
-				NameIDFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent", NameIDValue: "user-1",
-				Claims: []claimdomain.IssuedClaim{{ClaimType: "http://schemas.xmlsoap.org/claims/UPN", Values: []string{"alice"}}},
-			},
+			NameIDFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent", NameIDValue: "user-1",
+			Attributes: []samltoken.Attribute{{Name: "http://schemas.xmlsoap.org/claims/UPN", Values: []string{"alice"}}},
 		}, signer)
 		if err != nil {
 			t.Fatalf("sign assertion: %v", err)

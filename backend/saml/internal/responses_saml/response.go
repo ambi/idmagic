@@ -18,7 +18,7 @@ import (
 	"github.com/beevik/etree"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 )
 
 const (

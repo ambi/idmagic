@@ -14,8 +14,8 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
 )

@@ -33,13 +33,13 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
 )

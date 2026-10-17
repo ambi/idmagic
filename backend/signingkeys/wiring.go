@@ -5,6 +5,7 @@ import (
 	"time"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -12,6 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys/internal/handlers_http"
 	"github.com/ambi/idmagic/backend/signingkeys/internal/keys_memory"
 	"github.com/ambi/idmagic/backend/signingkeys/internal/keys_vault"
+	"github.com/ambi/idmagic/backend/signingkeys/internal/signers_saml"
 	"github.com/ambi/idmagic/backend/signingkeys/internal/usecases"
 	"github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -50,4 +52,10 @@ func (m Module) RotateIfDue(ctx context.Context, emit func(spec.DomainEvent), no
 
 func (m Module) ArchiveExpired(ctx context.Context, emit func(spec.DomainEvent), now time.Time) ([]*domain.SigningKey, error) {
 	return usecases.ArchiveExpiredSigningKeys(ctx, usecases.ArchiveExpiredSigningKeysDeps{KeyStore: m.KeyStore, Emit: emit}, now)
+}
+
+// FederationSigner は、要求の鍵のスコープで有効な XML 連携署名の鍵から SAML assertion の署名器を
+// 解決する。WS-Federation、SAML、テナントのメタデータが使う。
+func (m Module) FederationSigner() tokens_saml.SignerProvider {
+	return signers_saml.KeyStoreSignerProvider{KeyStore: m.KeyStore}
 }

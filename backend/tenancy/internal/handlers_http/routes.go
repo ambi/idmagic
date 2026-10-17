@@ -9,8 +9,8 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
 )

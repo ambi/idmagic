@@ -10,9 +10,8 @@
 
 | 相手 | 向き | 実現方式 |
 | --- | --- | --- |
-| `WS-Federation` | SSO が Assertion を組み立て、署名する | 相手の `tokens_saml` の構築器と署名器を再利用する |
 | `ClaimMapping` | SSO が SP のポリシーでクレームを組み立てる | 相手の `IssueClaimsWithFloor` と属性の解決を呼ぶ |
-| `SigningKeys` | 署名とメタデータが、テナントとプロファイルの資格情報を読む | 用途 `XmlFederationSigning` と、プロファイルの ID をスコープにして相手の `KeyStore` を使う |
+| `SigningKeys` | 署名とメタデータが、テナントとプロファイルの資格情報を読む | 組み立て地点が渡す相手の署名器の解決を、プロファイルの ID をスコープにして使う。Assertion の組み立てと XML 署名は共有ライブラリ `tokens_saml` が行う |
 | `Authentication` | SSO と SLO がログインセッションを読み、破棄する | 相手のセッションの部品を使う |
 | `Application` | SSO が、対象のユーザーの割り当てを確かめる | 相手の割り当ての読み取りを使う |
 

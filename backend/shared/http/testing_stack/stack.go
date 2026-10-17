@@ -82,7 +82,6 @@ import (
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
 
 // 基盤が用意する主体とレルム。テストが自分で seed しなくても、テナント境界を
@@ -477,7 +476,7 @@ func WithSaml() Option {
 			SPRepo: b.stack.SamlSPs, ProfileRepo: b.stack.SamlSPs,
 			ReplayStore: saml.NewAuthnRequestReplayStore(),
 		}
-		b.deps.FederationSigner = samltoken.KeyStoreSignerProvider{KeyStore: b.stack.KeyStore}
+		b.deps.FederationSigner = signingkeys.Module{KeyStore: b.stack.KeyStore}.FederationSigner()
 	}
 }
 
@@ -498,7 +497,7 @@ func WithWsFederation() Option {
 		})
 		b.deps.WsFederation = wsfederation.Module{RPRepo: b.stack.WsFedRPs}
 		if b.deps.FederationSigner == nil {
-			b.deps.FederationSigner = samltoken.KeyStoreSignerProvider{KeyStore: b.stack.KeyStore}
+			b.deps.FederationSigner = signingkeys.Module{KeyStore: b.stack.KeyStore}.FederationSigner()
 		}
 	}
 }

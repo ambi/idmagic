@@ -5,14 +5,16 @@ import (
 	"net/url"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfed "github.com/ambi/idmagic/backend/wsfederation/responses_wsfederation"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/usecases"
 
 	"github.com/labstack/echo/v5"
@@ -27,6 +29,23 @@ func samlVersion(t feddomain.WsFedTokenType) samltoken.SAMLVersion {
 		return samltoken.SAML20
 	}
 	return samltoken.SAML11
+}
+
+// authnContext は認証方式クラスを assertion の認証コンテキストへ写す。
+func authnContext(m feddomain.AuthnMethodClass) samltoken.AuthnContext {
+	if m == feddomain.AuthnPassword {
+		return samltoken.AuthnContextPassword
+	}
+	return samltoken.AuthnContextUnspecified
+}
+
+// assertionAttributes は発行した claim を assertion の属性へ写す。claim の型を属性の名前にする。
+func assertionAttributes(claims []claimdomain.IssuedClaim) []samltoken.Attribute {
+	attributes := make([]samltoken.Attribute, 0, len(claims))
+	for _, claim := range claims {
+		attributes = append(attributes, samltoken.Attribute{Name: claim.ClaimType, Values: claim.Values})
+	}
+	return attributes
 }
 
 // handleWsFed は WS-Federation passive エンドポイントを wa で分岐する。
@@ -86,8 +105,10 @@ func (d Deps) issuePassiveForm(c *echo.Context, o wsfedusecases.SignInOutcome) e
 		NotBefore:    o.Now.Add(-1 * time.Minute),
 		NotOnOrAfter: o.Now.Add(assertionLifetime),
 		AuthnInstant: time.Unix(o.Authn.AuthTime, 0).UTC(),
-		AuthnMethod:  o.AuthnMethod,
-		Result:       o.ClaimResult,
+		AuthnContext: authnContext(o.AuthnMethod),
+		NameIDFormat: o.ClaimResult.NameIDFormat,
+		NameIDValue:  o.ClaimResult.NameIDValue,
+		Attributes:   assertionAttributes(o.ClaimResult.Claims),
 	}, signer)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "assertion build failed")

@@ -9,12 +9,8 @@ import (
 	"testing"
 	"time"
 
-	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
-
-	"github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
 // selfSignedCert は署名検証のためのテスト用 X.509 証明書と鍵を生成する。
@@ -64,13 +60,11 @@ func sampleInput() AssertionInput {
 		NotBefore:    now.Add(-1 * time.Minute),
 		NotOnOrAfter: now.Add(5 * time.Minute),
 		AuthnInstant: now,
-		Result: claimdomain.ClaimIssuanceResult{
-			NameIDFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
-			NameIDValue:  "AAECAwQFBgc=",
-			Claims: []claimdomain.IssuedClaim{
-				{ClaimType: "http://schemas.xmlsoap.org/claims/UPN", Values: []string{"alice@contoso.com"}},
-				{ClaimType: "http://schemas.xmlsoap.org/claims/Group", Values: []string{"admins", "users"}},
-			},
+		NameIDFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+		NameIDValue:  "AAECAwQFBgc=",
+		Attributes: []Attribute{
+			{Name: "http://schemas.xmlsoap.org/claims/UPN", Values: []string{"alice@contoso.com"}},
+			{Name: "http://schemas.xmlsoap.org/claims/Group", Values: []string{"admins", "users"}},
 		},
 	}
 }
@@ -152,7 +146,7 @@ func TestIssueSignedAssertion_SAML11RoundTrip(t *testing.T) {
 
 	in := sampleInput()
 	in.Version = SAML11
-	in.AuthnMethod = domain.AuthnPassword
+	in.AuthnContext = AuthnContextPassword
 	signedXML, id, err := IssueSignedAssertion(in, signer)
 	if err != nil {
 		t.Fatalf("issue signed assertion: %v", err)
@@ -245,14 +239,14 @@ func TestBuildAssertion_InputValidation(t *testing.T) {
 	bad := map[string]func(*AssertionInput){
 		"missing issuer":      func(in *AssertionInput) { in.Issuer = "" },
 		"missing audience":    func(in *AssertionInput) { in.Audience = "" },
-		"missing nameid fmt":  func(in *AssertionInput) { in.Result.NameIDFormat = "" },
-		"missing nameid val":  func(in *AssertionInput) { in.Result.NameIDValue = "" },
+		"missing nameid fmt":  func(in *AssertionInput) { in.NameIDFormat = "" },
+		"missing nameid val":  func(in *AssertionInput) { in.NameIDValue = "" },
 		"invalid time window": func(in *AssertionInput) { in.NotOnOrAfter = in.NotBefore },
 	}
 	for name, mutate := range bad {
 		t.Run(name, func(t *testing.T) {
 			in := base
-			in.Result.Claims = append([]claimdomain.IssuedClaim(nil), base.Result.Claims...)
+			in.Attributes = append([]Attribute(nil), base.Attributes...)
 			mutate(&in)
 			if _, _, err := BuildAssertion(in); err == nil {
 				t.Fatalf("%s: expected error, got nil", name)

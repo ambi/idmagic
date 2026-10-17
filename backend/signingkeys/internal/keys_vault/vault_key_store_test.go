@@ -13,13 +13,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signingkeys"
+
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 
 	adaptercrypto "github.com/ambi/idmagic/backend/signingkeys/internal/keys_vault"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
 
 func tenantCtx() context.Context {
@@ -121,7 +122,7 @@ func TestVaultXMLFederationCertificateIsStableAcrossStoreRestart(t *testing.T) {
 	ctx := tenantCtx()
 	fingerprints := func(store *adaptercrypto.VaultKeyStore) [][32]byte {
 		t.Helper()
-		certificates, err := samltoken.KeyStoreSignerProvider{KeyStore: store}.Certificates(ctx, time.Now().UTC())
+		certificates, err := signingkeys.Module{KeyStore: store}.FederationSigner().Certificates(ctx, time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
 		}

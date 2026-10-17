@@ -27,7 +27,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
 	"github.com/ambi/idmagic/backend/sourcing"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
@@ -81,7 +80,7 @@ func Run() error {
 			return fmt.Errorf("explicit startup seed: %w", err)
 		}
 	}
-	federationSigner := samltoken.KeyStoreSignerProvider{KeyStore: deps.SigningKeys.KeyStore}
+	federationSigner := deps.SigningKeys.FederationSigner()
 	runtimeContract := spec.CurrentRuntimeContract()
 	sentinelPasswordHash, err := hasher.Hash("idmagic-invalid-user-password")
 	if err != nil {

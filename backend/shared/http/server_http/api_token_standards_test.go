@@ -47,7 +47,6 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
 
 const (
@@ -165,7 +164,7 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 		},
 		ApiTokens:        apitoken.Module{Repo: repo, TokenIssuer: signer, TokenIntrospector: signer},
 		Saml:             saml.Module{SPRepo: samlSPs, ProfileRepo: samlSPs},
-		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
+		FederationSigner: signingkeys.Module{KeyStore: keyStore}.FederationSigner(),
 	})
 	return &apiTokenStack{
 		e: e, repo: repo, users: users, keyStore: keyStore, signer: signer, tenants: tenants,

@@ -90,7 +90,7 @@ SP の entityID、`AssertionConsumerServiceURL`、Destination、対象のユー�
 
 ### アーキテクチャ
 
-クレームの発行と Assertion の署名には、WS-Federation と WS-Trust で共有している構築器と署名器（`backend/wsfederation/tokens_saml`）を再利用する。
+クレームの発行と Assertion の署名には、WS-Federation と WS-Trust と共有する構築器と署名器（共有ライブラリ `backend/shared/security/tokens_saml`）を使う。
 これらは SAML のバージョン、Bearer の SubjectConfirmation、audience の制限をすでに扱っている。
 このモジュールは署名の処理を作り直さず、`InResponseTo` の対応付けなど、SP 起点の流れに固有の入力だけを加える。
 

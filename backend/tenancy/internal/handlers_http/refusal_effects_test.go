@@ -37,7 +37,6 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
 )
@@ -117,7 +116,7 @@ func newRefusalServer(t *testing.T, actors ...*userdomain.User) *refusalServer {
 		GroupRepo:        server.groups,
 		EmailSender:      server.sender,
 		AuthnResolver:    resolver,
-		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
+		FederationSigner: signingkeys.Module{KeyStore: keyStore}.FederationSigner(),
 		Notification:     sharednotification.Module{EmailSender: server.sender, Notifier: notifier},
 		Tenancy: tenancy.Module{
 			TenantRepo:            tenantRepo,

@@ -13,7 +13,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 
 	"github.com/labstack/echo/v5"
 )

@@ -8,7 +8,7 @@ Web Browser SSO Profile に基づき、SP 起点と IdP 起点の SSO を提供�
 | 扱わないもの | 担当 |
 | --- | --- |
 | プロトコルに依存しないクレームの対応付け | `ClaimMapping` |
-| Assertion の組み立てと XML 署名の部品 | `WS-Federation` の `tokens_saml`。このモジュールは再利用する |
+| Assertion の組み立てと XML 署名の部品 | 共有ライブラリ `backend/shared/security/tokens_saml`。WS-Federation と共有する |
 | 署名鍵のライフサイクル | `SigningKeys` |
 | ブラウザーのログインセッション | `Authentication` |
 | Application への割り当て | `Application` |

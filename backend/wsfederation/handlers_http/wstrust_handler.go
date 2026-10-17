@@ -9,9 +9,9 @@ import (
 	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wstrust "github.com/ambi/idmagic/backend/wsfederation/requests_wstrust"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/usecases"
 
 	"github.com/labstack/echo/v5"
@@ -82,8 +82,10 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		NotBefore:    now.Add(-1 * time.Minute),
 		NotOnOrAfter: now.Add(assertionLifetime),
 		AuthnInstant: now,
-		AuthnMethod:  feddomain.AuthnPassword,
-		Result:       result,
+		AuthnContext: authnContext(feddomain.AuthnPassword),
+		NameIDFormat: result.NameIDFormat,
+		NameIDValue:  result.NameIDValue,
+		Attributes:   assertionAttributes(result.Claims),
 	}, signer)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "assertion build failed")

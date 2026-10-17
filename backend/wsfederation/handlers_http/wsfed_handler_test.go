@@ -31,12 +31,12 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wstrust "github.com/ambi/idmagic/backend/wsfederation/requests_wstrust"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/beevik/etree"
 	"github.com/labstack/echo/v5"

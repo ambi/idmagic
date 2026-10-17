@@ -19,11 +19,11 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantmemory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/internal/handlers_http"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
 )

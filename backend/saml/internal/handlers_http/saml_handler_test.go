@@ -33,9 +33,9 @@ import (
 	samlmemory "github.com/ambi/idmagic/backend/saml/internal/db_memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/beevik/etree"
 	"github.com/labstack/echo/v5"
@@ -136,7 +136,7 @@ func newServerWithRepository(t *testing.T, authn *authdomain.AuthenticationConte
 
 		Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) }, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         userRepo,
-		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
+		FederationSigner: signingkeys.Module{KeyStore: keyStore}.FederationSigner(),
 		AuthnResolver:    stubResolver{ctx: authn},
 	})
 	return e, captured, spRepo
@@ -625,7 +625,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 		Contract: spec.CurrentRuntimeContract(), Saml: saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
 		UserRepo:         userRepo,
 		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
-		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
+		FederationSigner: signingkeys.Module{KeyStore: keyStore}.FederationSigner(),
 	})
 	return e
 }

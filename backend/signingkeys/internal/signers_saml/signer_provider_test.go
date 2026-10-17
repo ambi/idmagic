@@ -1,4 +1,4 @@
-package tokens_saml
+package signers_saml
 
 import (
 	"context"
@@ -6,13 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/signingkeys"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
+
+	"github.com/ambi/idmagic/backend/signingkeys/internal/keys_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestKeyStoreSignerProviderResolvesTenantXMLCredential(t *testing.T) {
-	store, err := signingkeys.NewInMemoryKeyStore()
+	store, err := keys_memory.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +32,7 @@ func TestKeyStoreSignerProviderResolvesTenantXMLCredential(t *testing.T) {
 	if signerA.Certificate().SerialNumber.Cmp(signerB.Certificate().SerialNumber) == 0 {
 		t.Fatal("different tenants must not resolve the same federation certificate")
 	}
-	profileSigner, err := provider.Resolve(WithSignerScope(ctxA, "profile-a"))
+	profileSigner, err := provider.Resolve(samltoken.WithSignerScope(ctxA, "profile-a"))
 	if err != nil {
 		t.Fatal(err)
 	}

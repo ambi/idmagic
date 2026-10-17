@@ -4,7 +4,7 @@ package handlers_http_test
 //
 // 入口は `httpadapter.Register` が組み立てた `/saml/*` である。ハーネスの配線は
 // `backend/cmd/idmagic/server.go`（`Saml: deps.Saml`、`FederationSigner:
-// samltoken.KeyStoreSignerProvider{...}`）と同じ形にしてある。組み立てが本番と違うと、
+// signingkeys.Module{...}.FederationSigner()`）と同じ形にしてある。組み立てが本番と違うと、
 // 入口を通したという事実そのものが根拠にならない。
 
 import (
@@ -31,7 +31,6 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/beevik/etree"
 	"github.com/labstack/echo/v5"
@@ -633,7 +632,7 @@ func newServerRequiringSignedAuthnRequests(t *testing.T) *echo.Echo {
 		Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(),
 		Saml:             saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         userRepo,
-		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
+		FederationSigner: signingkeys.Module{KeyStore: keyStore}.FederationSigner(),
 		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{
 			UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 		}},

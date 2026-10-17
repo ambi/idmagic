@@ -30,7 +30,6 @@ HTTP の操作とモデルの形は TypeSpec の `WS-Federation` のタグが定
 | 契約 | 相手 | 向き | 内容 |
 | --- | --- | --- | --- |
 | `RelyingPartyRepository` | `Application` のプロトコル設定 | このモジュールが提供する | アプリケーションに属する RP の設定を読み書きする |
-| `tokens_saml` の Assertion の組み立てと署名 | `SAML` の SSO | このモジュールが提供する | SAML 1.1 と SAML 2.0 の Assertion を組み立て、XML 署名を付ける |
 | `IssueClaimsWithFloor` | `ClaimMapping` が提供する | このモジュールが使う | RP のポリシーでクレームを発行する |
 | XML 署名の資格情報 | `SigningKeys` が提供する | このモジュールが使う | テナントの `XmlFederationSigning` の鍵と証明書を発行のたびに得る |
 | ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `WsFedSignInIssued`、`WsFedSignInRejected`、`WsTrustTokenIssued`、`WsTrustTokenRejected` |

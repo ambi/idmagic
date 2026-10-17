@@ -1,4 +1,5 @@
-package tokens_saml
+// Package signers_saml は、SigningKeys の XML 連携署名の鍵から SAML assertion の署名器を解決する。
+package signers_saml
 
 import (
 	"context"
@@ -7,28 +8,27 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 )
 
-type SignerProvider interface {
-	Resolve(ctx context.Context) (*Signer, error)
-	Certificates(ctx context.Context, now time.Time) ([]*x509.Certificate, error)
-}
-
+// KeyStoreSignerProvider は、要求の鍵のスコープで有効な XML 連携署名の鍵から署名器を作る。
 type KeyStoreSignerProvider struct {
 	KeyStore signingports.KeyStore
 }
 
-func WithSignerScope(ctx context.Context, scopeID string) context.Context {
-	return signingports.WithKeyScope(ctx, scopeID)
-}
+var _ tokens_saml.SignerProvider = KeyStoreSignerProvider{}
 
+// xmlContext は、XML 連携署名の鍵の用途と、WithSignerScope で載せた鍵のスコープを文脈に付ける。
 func (p KeyStoreSignerProvider) xmlContext(ctx context.Context) context.Context {
+	if scopeID, ok := tokens_saml.SignerScope(ctx); ok {
+		ctx = signingports.WithKeyScope(ctx, scopeID)
+	}
 	return signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning)
 }
 
-func (p KeyStoreSignerProvider) Resolve(ctx context.Context) (*Signer, error) {
+func (p KeyStoreSignerProvider) Resolve(ctx context.Context) (*tokens_saml.Signer, error) {
 	if p.KeyStore == nil || !p.KeyStore.Healthy(ctx) {
 		return nil, fmt.Errorf("samltoken: federation key provider unavailable")
 	}
@@ -47,7 +47,7 @@ func (p KeyStoreSignerProvider) Resolve(ctx context.Context) (*Signer, error) {
 	if !ok {
 		return nil, fmt.Errorf("samltoken: federation private key cannot sign")
 	}
-	return NewSigner(cert, signer)
+	return tokens_saml.NewSigner(cert, signer)
 }
 
 func (p KeyStoreSignerProvider) Certificates(ctx context.Context, now time.Time) ([]*x509.Certificate, error) {

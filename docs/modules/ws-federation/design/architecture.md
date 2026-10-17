@@ -11,7 +11,7 @@
 | 相手 | 向き | 実現方式 |
 | --- | --- | --- |
 | `ClaimMapping` | 発行が、RP のポリシーでクレームを組み立てる | 相手の `domain` の `IssueClaimsWithFloor` と、`ports` の属性の解決を呼ぶ |
-| `SigningKeys` | 発行とメタデータが、テナントの XML 署名の資格情報を読む | `tokens_saml` の署名者が、相手の資格情報を発行のたびに得る |
+| `SigningKeys` | 発行とメタデータが、テナントの XML 署名の資格情報を読む | 組み立て地点が渡す相手の署名器の解決が、資格情報を発行のたびに得る。Assertion の組み立てと XML 署名は共有ライブラリ `tokens_saml` が行う |
 | `Authentication` | パッシブサインインがログインセッションを読み、能動的な STS が UsernameToken を検証する | 相手のセッションとパスワードの部品、ログインの試行の制限を使う |
 | `Application` | パッシブサインインが、対象のユーザーの割り当てを確かめる | 相手の割り当ての読み取りを使う |
 | `OAuth2` | 能動的な STS が `MessageID` の再利用を記録する | 相手のクライアントアサーションのリプレイ防止ストアを共有する |
@@ -36,7 +36,6 @@
 | `usecases` | サインイン、サインアウト、`Issue` の判定 |
 | `requests_wstrust` | RST の SOAP エンベロープの解析と RSTR の組み立て |
 | `responses_wsfederation` | パッシブサインインの RSTR のフォーム |
-| `tokens_saml` | SAML 1.1 と SAML 2.0 の Assertion の組み立てと XML 署名。`SAML` も使う |
 | `metadata_wsfederation` | `federationmetadata.xml` と MEX の組み立て |
 | `handlers_http` | プロトコルのエンドポイントと、テナント単位の管理 API |
 | `db_postgres`、`db_memory` | `ports` の PostgreSQL の実装と、テストとローカルの構成で使うメモリの実装 |

@@ -13,9 +13,8 @@ import (
 	samlresponse "github.com/ambi/idmagic/backend/saml/internal/responses_saml"
 	samlusecases "github.com/ambi/idmagic/backend/saml/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/beevik/etree"
 	"github.com/labstack/echo/v5"
@@ -179,10 +178,6 @@ func (d Deps) issueResponse(c *echo.Context, o samlusecases.SignInOutcome, relay
 
 // buildAssertion は claim 発行結果から SAML 2.0 assertion を組み立て、SP 設定に従って署名する。
 func (d Deps) buildAssertion(c *echo.Context, sp samldomain.SamlServiceProvider, validated samldomain.ValidatedSignIn, result claimdomain.ClaimIssuanceResult, authn *authdomain.AuthenticationContext, now time.Time, signer *samltoken.Signer) (*etree.Element, error) {
-	authnMethod := feddomain.AuthnUnspecified
-	if slices.Contains(authn.AMR, "pwd") {
-		authnMethod = feddomain.AuthnPassword
-	}
 	in := samltoken.AssertionInput{
 		Version:      samltoken.SAML20,
 		Issuer:       d.idpProfileEntityID(c, requestedIDPProfileID(c)),
@@ -193,8 +188,10 @@ func (d Deps) buildAssertion(c *echo.Context, sp samldomain.SamlServiceProvider,
 		NotBefore:    now.Add(-1 * time.Minute),
 		NotOnOrAfter: now.Add(assertionLifetime),
 		AuthnInstant: time.Unix(authn.AuthTime, 0).UTC(),
-		AuthnMethod:  authnMethod,
-		Result:       result,
+		AuthnContext: authnContextFromAMR(authn.AMR),
+		NameIDFormat: result.NameIDFormat,
+		NameIDValue:  result.NameIDValue,
+		Attributes:   assertionAttributes(result.Claims),
 	}
 	if sp.SignAssertion {
 		signed, _, err := samltoken.BuildSignedAssertion(in, signer)
@@ -223,4 +220,21 @@ func (d Deps) emit(event spec.DomainEvent) {
 // (同一オリジンの相対パスのみ)。
 func loginRedirect(c *echo.Context, returnTo string) string {
 	return support.TenantRoute(c, "/login") + "?return_to=" + url.QueryEscape(returnTo)
+}
+
+// assertionAttributes は発行した claim を assertion の属性へ写す。claim の型を属性の名前にする。
+func assertionAttributes(claims []claimdomain.IssuedClaim) []samltoken.Attribute {
+	attributes := make([]samltoken.Attribute, 0, len(claims))
+	for _, claim := range claims {
+		attributes = append(attributes, samltoken.Attribute{Name: claim.ClaimType, Values: claim.Values})
+	}
+	return attributes
+}
+
+// authnContextFromAMR は、ログインセッションがパスワードで認証していれば password の認証コンテキストを返す。
+func authnContextFromAMR(amr []string) samltoken.AuthnContext {
+	if slices.Contains(amr, "pwd") {
+		return samltoken.AuthnContextPassword
+	}
+	return samltoken.AuthnContextUnspecified
 }

@@ -40,7 +40,6 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/beevik/etree"
 	"github.com/labstack/echo/v5"
@@ -135,7 +134,7 @@ func newProfileBoundServerWith(t *testing.T, reachableKeys bool) (*echo.Echo, *[
 			SPRepo: spRepo, ProfileRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore(),
 		},
 		UserRepo:         userRepo,
-		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
+		FederationSigner: signingkeys.Module{KeyStore: keyStore}.FederationSigner(),
 		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{
 			UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 		}},

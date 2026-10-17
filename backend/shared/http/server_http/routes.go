@@ -34,6 +34,7 @@ import (
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	"github.com/ambi/idmagic/backend/signingkeys"
@@ -45,7 +46,6 @@ import (
 	workloadidentitydomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedhttp "github.com/ambi/idmagic/backend/wsfederation/handlers_http"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v5"

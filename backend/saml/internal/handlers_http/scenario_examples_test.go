@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
@@ -40,7 +42,6 @@ import (
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/beevik/etree"
 	"github.com/labstack/echo/v5"
@@ -76,7 +77,7 @@ func newServerWithKeyStore(t *testing.T) (*echo.Echo, signingkeys.KeyStore) {
 		Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(),
 		Saml:             saml.Module{SPRepo: spRepo, ProfileRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         userRepo,
-		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
+		FederationSigner: signingkeys.Module{KeyStore: keyStore}.FederationSigner(),
 		AuthnResolver:    stubResolver{ctx: nil},
 	})
 	return e, keyStore
@@ -132,7 +133,7 @@ func newServerBehindAnApplication(t *testing.T, assign bool) (*echo.Echo, *[]spe
 		Saml:             saml.Module{SPRepo: spRepo, ProfileRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		Application:      application.Module{Repo: appRepo, AssignmentRepo: assignments},
 		UserRepo:         userRepo,
-		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
+		FederationSigner: signingkeys.Module{KeyStore: keyStore}.FederationSigner(),
 		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{
 			UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
 		}},
@@ -206,7 +207,7 @@ func TestSamlSigningCertificateIsTheActiveCredentialAndMetadataCarriesEveryTrust
 		t.Fatalf("certificate status=%d body=%s", download.Code, download.Body.String())
 	}
 	before := certificateFromPEMResponse(t, download.Body.Bytes())
-	active, err := samltoken.KeyStoreSignerProvider{KeyStore: keyStore}.Resolve(federationKeyContext(false))
+	active, err := signingkeys.Module{KeyStore: keyStore}.FederationSigner().Resolve(federationKeyContext(false))
 	if err != nil {
 		t.Fatal(err)
 	}
