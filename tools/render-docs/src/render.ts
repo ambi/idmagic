@@ -10,6 +10,7 @@ import {
   SHARED_SCENARIOS,
   SYSTEM_DOCUMENT_PATHS,
 } from '../../workspace/src/document-layout.ts'
+import { earsChildren } from './ears.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
 
 export type SourceDocument = {
@@ -424,6 +425,46 @@ function markdownRenderer(
   const headingTargets = new Map(
     documents.map((document) => [document.id, markdownHeadingTargets(document.source)]),
   )
+
+  // 要件文の主体は、機能仕様が属するモジュールの README の H1 である。
+  const responders = new Map(
+    documents.flatMap((document) =>
+      document.category === 'module' && document.module ? [[document.module, document.title]] : [],
+    ),
+  )
+
+  // 機能仕様の要件の箇条を、EARS の節ごとに Gherkin と同じ見た目の名札で区切る。
+  // 原稿は一文の箇条のまま保ち、表示だけを変える。読み取れない文は原文のまま表示する。
+  md.core.ruler.push('ears_clauses', (state) => {
+    const document = (state.env as { document?: RenderedDocument }).document
+    const part = document ? featurePart(document.path)?.part : undefined
+    const responder = responders.get(document?.module ?? '')
+    if (!responder || (part !== 'specification' && part !== 'chapter')) return
+    let inRequirement = false
+    for (const [index, token] of state.tokens.entries()) {
+      if (token.type === 'heading_open') {
+        const level = Number(token.tag.slice(1))
+        if (level <= 4) {
+          inRequirement = level === 4 && /^REQ-/.test(state.tokens[index + 1]?.content ?? '')
+        }
+        continue
+      }
+      if (
+        !inRequirement ||
+        token.type !== 'inline' ||
+        state.tokens[index - 1]?.type !== 'paragraph_open' ||
+        state.tokens[index - 2]?.type !== 'list_item_open' ||
+        token.content.startsWith('**')
+      )
+        continue
+      const children = earsChildren(token.children ?? [], responder, (type, content) => {
+        const made = new state.Token(type, '', 0)
+        made.content = content
+        return made
+      })
+      if (children) token.children = children
+    }
+  })
 
   md.renderer.rules.heading_open = (tokens, index, _options, env) => {
     const token = tokens[index]
@@ -1344,8 +1385,8 @@ function validateSiteLinks(files: Record<string, string>): void {
 }
 
 const styles = `
-:root{color-scheme:light dark;--bg:#fff;--bg-soft:#f6f7f9;--text:#1c2024;--muted:#5c646f;--line:#e3e6ea;--line-strong:#c8ced7;--accent:#1f4fd8;--accent-soft:#eef2ff;--code:#f4f5f7;--given:#0f6b84;--when:#8a5200;--then:#0f6b45;--diagram-line:#294cba;--measure:960px;--wide:1400px;--sidebar:290px;--toc:216px}
-@media(prefers-color-scheme:dark){:root{--bg:#14171c;--bg-soft:#1a1e25;--text:#e7ebf1;--muted:#9aa3b0;--line:#282e38;--line-strong:#3b4350;--accent:#93adff;--accent-soft:#1e2740;--code:#1e232b;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--diagram-line:#b9c8ff}}
+:root{color-scheme:light dark;--bg:#fff;--bg-soft:#f6f7f9;--text:#1c2024;--muted:#5c646f;--line:#e3e6ea;--line-strong:#c8ced7;--accent:#1f4fd8;--accent-soft:#eef2ff;--code:#f4f5f7;--given:#0f6b84;--when:#8a5200;--then:#0f6b45;--refuse:#b42318;--diagram-line:#294cba;--measure:960px;--wide:1400px;--sidebar:290px;--toc:216px}
+@media(prefers-color-scheme:dark){:root{--bg:#14171c;--bg-soft:#1a1e25;--text:#e7ebf1;--muted:#9aa3b0;--line:#282e38;--line-strong:#3b4350;--accent:#93adff;--accent-soft:#1e2740;--code:#1e232b;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--refuse:#ff8a7a;--diagram-line:#b9c8ff}}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:16px/1.75 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--bg);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}
 .sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar);overflow:auto;padding:26px 14px 64px;border-right:1px solid var(--line);background:var(--bg-soft)}.site-title{margin:0 10px 22px;font-size:16px;font-weight:700;letter-spacing:-.01em}.site-title a{color:inherit;text-decoration:none}
 .nav-section{margin:0 0 4px}.nav-section>summary{padding:7px 10px;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;list-style:none}.nav-section>summary::-webkit-details-marker{display:none}.nav-section>summary::before{content:"▸";display:inline-block;width:14px;color:var(--line-strong)}.nav-section[open]>summary::before{content:"▾"}.nav-section-link{color:inherit;text-decoration:none}.nav-section-link:hover,.nav-section-link[aria-current=page]{color:var(--accent)}
@@ -1363,7 +1404,7 @@ code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;backgroun
 .diagram-shell{position:relative;max-width:100%;overflow:auto;margin:1.6em 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.diagram-shell .mermaid{min-width:560px;background:transparent}:is(.diagram-shell .mermaid,.diagram-canvas) svg :is(.edgePath path,.flowchart-link,.transition){stroke:var(--diagram-line)!important;stroke-width:2.4px!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] [stroke="#444444"]{stroke:var(--diagram-line)}:is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] text[fill="#444444"]{fill:var(--text)}
 .diagram-zoom,.diagram-viewer-toolbar button{padding:4px 12px;color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;font:inherit;font-size:13px;cursor:pointer}.diagram-zoom:hover,.diagram-viewer-toolbar button:hover{background:var(--accent-soft)}.diagram-zoom:focus-visible,.diagram-viewer-toolbar button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.diagram-zoom{display:block;width:fit-content;margin:-6px -6px 6px auto}
 .diagram-viewer{width:100vw;max-width:none;height:100vh;max-height:none;margin:0;padding:0;border:0;color:var(--text);background:var(--bg)}.diagram-viewer::backdrop{background:rgba(20,23,28,.6)}.diagram-viewer-toolbar{position:absolute;z-index:1;top:12px;right:12px;display:flex;gap:8px}.diagram-viewport{width:100%;height:100%;overflow:hidden;cursor:grab;touch-action:none}.diagram-viewport.dragging{cursor:grabbing}.diagram-canvas{transform-origin:0 0}.diagram-canvas svg{display:block;max-width:none}
-.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}
+.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}.scenario-keyword:is(.ears-where,.ears-while){color:var(--given)}.scenario-keyword.ears-when{color:var(--when)}.scenario-keyword.ears-if{color:var(--refuse)}.scenario-keyword.ears-then{color:var(--then)}.ears-clause{display:block;margin:.15em 0}li:has(.ears-clause){margin:.6em 0}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}
 .reference-header{margin-bottom:26px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px 0 0;padding:20px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff;color:#3b4151}.swagger-shell .swagger-ui .wrapper{max-width:none;padding-inline:0}
 .model-group{margin-top:34px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.model-search{display:grid;max-width:520px;gap:6px;margin-top:22px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:8px;font:inherit}
 .kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--bg-soft)}.badges{margin:.5em 0}.module-reference{margin-top:44px;padding-top:10px;border-top:1px solid var(--line)}.symbol-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin:.6em 0;padding:0;list-style:none}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}

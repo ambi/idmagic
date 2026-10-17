@@ -78,6 +78,18 @@ describe('findEnglishProse', () => {
     ])
   })
 
+  // 名札は節の種類を示す記号であり、続く英語の名前と一つの文にはつながない。
+  it('EARS の節の名札に続く英語の名前は英文としない', () => {
+    const pages = {
+      'a.html':
+        '<li><span class="ears-clause"><span class="scenario-keyword ears-if">If</span> SOAP 1.2 の要求を受けた</span></li><li>If the body is SOAP 1.2, it is refused</li>',
+    }
+
+    expect(findEnglishProse(pages).map((finding) => finding.text)).toEqual([
+      'If the body is SOAP 1.2, it is refused',
+    ])
+  })
+
   it('許容語の表にある規格名と文書名は英文としない', () => {
     const pages = {
       'a.html':

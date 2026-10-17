@@ -416,6 +416,44 @@ describe('renderDocumentationSite', () => {
   })
 
   // 印は文書と位置で絞る。方法論文書の英語本文にも Gherkin と同じ語が現れる。
+  // 要件文は原稿の一文のまま保ち、表示だけを EARS の節に分けて Gherkin と同じ名札を付ける。
+  it('splits a requirement statement into labelled EARS clauses on the feature page', () => {
+    const run = {
+      ...runDocument,
+      source: runDocument.source.replace(
+        '- 準備のできたデモだけを開始する。',
+        [
+          '- 利用者が開始を要求したとき、Demo は、`Running` にする。',
+          '- 準備ができていない場合、Demo は、409 で拒否する。',
+          '- 準備のできたデモだけを開始する。',
+          '- **判断**：準備を待つ。',
+        ].join('\n'),
+      ),
+    }
+    const page =
+      renderDocumentationSite({
+        documents: [rootDocument, moduleDocument, run],
+        repositoryRoot: '/repo',
+        outputDirectory: '/repo/site',
+        openapiFileName: 'example.openapi.json',
+        openapi: {},
+        models: [],
+      }).files['docs/modules/demo/features/run.html'] ?? ''
+
+    expect(page).toContain(
+      '<span class="ears-clause"><span class="scenario-keyword ears-when">When</span> 利用者が開始を要求した</span><span class="ears-clause"><span class="scenario-keyword ears-then">Then</span> <code>Running</code> にする。</span>',
+    )
+    expect(page).toContain(
+      '<span class="scenario-keyword ears-if">If</span> 準備ができていない</span>',
+    )
+    // 主体と区切りの語は表示から外す。読み取れない文と欄は原文のまま表示する。
+    expect(page).not.toContain('Demo は、')
+    expect(page).toContain('<li>準備のできたデモだけを開始する。</li>')
+    expect(page).not.toContain(
+      'ears-clause"><span class="scenario-keyword ears-then">Then</span> <strong>',
+    )
+  })
+
   it('marks every scenario step, the actor, and nothing outside a scenario document', () => {
     const scenarios = site().files['docs/modules/demo/features/run-feature.html'] ?? ''
 

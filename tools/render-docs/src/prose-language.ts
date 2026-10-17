@@ -98,6 +98,12 @@ const INLINE_TAGS =
 /** コードは識別子なので読まないが、文の途中にあるため境界にはしない。 */
 const INLINE_CODE = /<code\b[^>]*>[\s\S]*?<\/code>/gi
 
+/**
+ * Gherkin と EARS の節の名札。文の一部ではなく節の種類を示す記号なので、続く語と一つの文に
+ * つなげず、境界として読む。
+ */
+const CLAUSE_LABELS = /<span class="scenario-keyword\b[^"]*">[^<]*<\/span>/gi
+
 const BOUNDARY = '\u0000'
 
 const WORD_RUN = /[A-Za-z][\w'’./-]*(?:(?:\s+|[,;:]\s*)[A-Za-z0-9][\w'’./-]*)*/g
@@ -170,6 +176,7 @@ function decodeEntities(text: string): string {
 function textSegments(html: string): string[] {
   const text = html
     .replace(OPAQUE_BLOCKS, BOUNDARY)
+    .replace(CLAUSE_LABELS, BOUNDARY)
     .replace(INLINE_CODE, ' ')
     .replace(INLINE_TAGS, '')
     .replace(/<[^>]*>/g, BOUNDARY)
