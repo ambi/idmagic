@@ -53,7 +53,7 @@ affected_spec:
 
 ### 着手時の棚卸し
 
-2026-10-17 の台帳で残る `private-import` は `Saml->WsFederation` と `Tenancy->WsFederation` の 2 件で、どちらも [SAML のアサーション生成の移設](wi-90942-relocate-saml-assertion-building-out-of-wsfederation.md)（`pending`）が解消する。
+2026-10-17 の台帳で残る `private-import` は `Saml->WsFederation` と `Tenancy->WsFederation` の 2 件で、どちらも [SAML のアサーション生成の移設](../done/wi-90942-relocate-saml-assertion-building-out-of-wsfederation.md)（`pending`）が解消する。
 IdManagement、Authentication、OAuth2、Application は今回移せる。
 WsFederation の移行と `legacy` の撤去（T003、T004）は wi-90942 の完了を待つ。
 
