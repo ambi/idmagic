@@ -211,7 +211,7 @@ describe('mise mutation testing boundary', () => {
 
   /** ツールの保守が止まったときに動くバージョンが残らないと、証拠の作り方ごと失われる。 */
   it('pins the mutation tool to an exact version', () => {
-    expect(config.tools?.['go:github.com/szhekpisov/gomutants']).toBe('0.6.1')
+    expect(config.tools?.['go:github.com/gomutants/gomutants']).toBe('0.7.0')
   })
 
   /**
@@ -231,7 +231,7 @@ describe('mise mutation testing boundary', () => {
   })
 
   /**
-   * gomutants 0.6.1 の cache key は対象 package が import する package の変更を完全には
+   * gomutants 0.7.0 の cache key は対象 package が import する package の変更を完全には
    * 追跡しない。既定では再利用せず、同一変更を反復するときだけ cache file を明示する。
    */
   it('uses conservative worker and cache defaults', () => {

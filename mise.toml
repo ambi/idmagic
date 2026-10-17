@@ -3,20 +3,20 @@ min_version = "2026.10.0"
 [tools]
 go = "1.27.2"
 bun = "1.4.3"
-"aqua:golangci/golangci-lint" = "2.14.0"
+"aqua:golangci/golangci-lint" = "2.15.0"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
 "aqua:sqldef/sqldef/psqldef" = "3.11.26"
 "aqua:koalaman/shellcheck" = "0.11.0"
-"aqua:zizmorcore/zizmor" = "1.30.1"
+"aqua:zizmorcore/zizmor" = "1.31.1"
 "aqua:betterleaks/betterleaks" = "1.9.0"
-"aqua:google/osv-scanner" = "2.6.0"
+"aqua:google/osv-scanner" = "2.7.0"
 # govulncheck は配布バイナリではなく go: バックエンドで固定する。到達性の判定は go.mod が
 # 宣言する言語バージョンでビルドされていないと成立せず、配布バイナリはリリース時点の Go で焼き固め
 # られるためである。詳細は wi-291。
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
 # 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでもバージョンを固定するのは、
 # 生成される変異の集合がバージョンで変わり、work item に残した一覧が再現できなくなるためである。
-"go:github.com/szhekpisov/gomutants" = "0.6.1"
+"go:github.com/gomutants/gomutants" = "0.7.0"
 
 [tasks.setup]
 description = "Install repository dependencies"
@@ -483,7 +483,7 @@ esac
 # 5 種類に固定する。gomutants の全 operator は survivor の仕分け量を測ってから別に判断する。
 operators="ARITHMETIC_BASE,CONDITIONALS_BOUNDARY,CONDITIONALS_NEGATION,INCREMENT_DECREMENT,INVERT_NEGATIVES"
 report="${4:-${TMPDIR:-/tmp}/idmagic-mutation-report.json}"
-# gomutants 0.6.1 の cache key は、対象 package が import する package の変更を完全には追跡しない。
+# gomutants 0.7.0 の cache key は、対象 package が import する package の変更を完全には追跡しない。
 # 既定では無効にし、同一変更を反復するときだけ第 3 引数へ cache file を明示する。
 gomutants --workers "${2:-2}" --cache "${3:-off}" --only "$operators" --output "$report" ${5:+--changed-since "$5"} "$target"
 '''
