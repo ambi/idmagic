@@ -1,5 +1,5 @@
 ---
-status: pending
+status: in_progress
 authors: [tn]
 risk: low
 created_at: 2026-09-25
@@ -42,19 +42,64 @@ wi-68415 で TypeSpec の操作を改名したとき、次の記録が無関係�
 
 `minimumDocumentationImpact` の除去の分岐を、追加の分岐と同じ形にする。
 除去した要素は作業ツリーにないので、記録の `affected_spec` が旧名を名指ししているかで照合する。
-改名では、記録は新旧の両方を `affected_spec` に挙げることになる。
-その扱いは着手時に決める。
+
+### 帰属の判断
+
+- `DocumentationImpactEnvironment` に `specificationRemovalsClaimed?: boolean` を足す。
+  作業ツリーで変更された記録のどれかが除去した要素を名指しすれば真にする。
+  追加の `specificationAdditionsClaimed` と同じ求め方である。
+- 真なら、除去した要素を名指しする記録だけが `removal_notice` を負う。
+  偽なら、従来どおり差分を持つ全記録が負う。
+- 照合は追加と同じ `referenceNames` を使う。
+  関数名 `claimsSpecificationAddition` は追加に限らないので `claimsSpecificationElement` へ改名する。
+
+### 改名の扱い
+
+改名する記録は、新名と旧名の両方を `affected_spec` に挙げる。
+新名で追加を、旧名で除去を名指しするので、`release_note` と `removal_notice` の両方の要求を受ける。
+公開後の改名は旧名の利用者に対する除去なので、この要求は正しい。
+
+旧名は作業ツリーにないため、現在の `verifyWorkItemReferences` は参照を解決できないとして拒否する。
+採用した案と退けた案を次に示す。
+
+| 案 | 内容 | 採否と理由 |
+| --- | --- | --- |
+| A | `main` との差分で取り除かれた要素を名指しする参照は、解決を求めない | 採用。差分がある間だけの免除で、照合規則は帰属と共有できる |
+| B | 旧名を `affected_spec` 以外の欄（例: `removed_spec`）に書かせる | 不採用。参照の形式と解決の規則が二つになる |
+| C | 除去を、同じファイルへ追加を名指しする記録へ帰属させる | 不採用。ファイルごと消す除去や、改名でない除去を扱えない |
+
+案 A では `ReferenceEnvironment` に、差分で取り除かれた要素の一覧 `removedSpecification?: readonly string[]` を足す。
+差分がなくなった後（`main` へ統合した後）も進行中の記録が旧名を残していれば、解決できない参照として報告される。
+完了時には記録を縮めて `affected_spec` を落とすので、通常の流れでは問題にならない。
+
+### シグネチャ
+
+```ts
+export function namesSpecificationElement(
+  reference: Record<string, unknown>,
+  elements: Iterable<string>,
+): boolean
+export function claimsSpecificationElement(
+  record: { affected_spec?: unknown },
+  elements: Iterable<string>,
+): boolean
+```
 
 ## 計画
 
 1. 除去の帰属を追加と同じ形に揃える単体テストを先に書き、RED を確かめる。
 2. 帰属の分岐を実装する。
+3. 取り除いた要素への参照を解決の対象から外す単体テストを書き、RED を確かめてから実装する。
+4. `check-work-items` から差分の除去一覧を両方へ渡す。
 
 ## タスク
 
-- [ ] T001 [Acceptance] 無関係な進行中の記録に `removal_notice` を求めないことを RED として確かめる。
-- [ ] T002 [App] 除去の帰属を実装する。
-- [ ] T003 [Verify] 変更を検証する。
+- [x] T001 [Acceptance] 無関係な進行中の記録に `removal_notice` を求めないことを RED として確かめる。
+- [x] T002 [App] 除去の帰属を実装する。
+- [x] T003 [App] 取り除いた要素を名指しする `affected_spec` を解決の対象から外す。
+- [x] T004 [App] `check-work-items` で除去の帰属と参照の免除を配線する。
+- [x] T005 [Docs] `affected_spec` の解決規則の記述へ、取り除いた要素の扱いを足す。
+- [x] T006 [Verify] 変更を検証する。
 
 ## 検証
 
@@ -64,3 +109,14 @@ wi-68415 で TypeSpec の操作を改名したとき、次の記録が無関係�
 ## リスク
 
 - **本来必要な告知を見逃す。** 除去を名指ししない記録が、除去そのものを行っている場合に告知の要求が消える。除去した要素を名指しする記録が 1 件もないときは、従来どおり差分を持つ全記録へ求める。
+
+## 要約
+
+`check-work-items` は、取り除いたシナリオ、標準行、TypeSpec の宣言による `removal_notice` の要求を、`affected_spec` でその要素を名指しする記録だけに課す。
+変更された記録のどれも名指ししなければ、従来どおり差分を持つすべての記録に課す。
+照合には追加の帰属と同じ規則を使い、関数名を `claimsSpecificationElement` へ改めた。
+改名する記録は新名と旧名を両方挙げ、追加と除去の両方の要求を受ける。
+旧名は作業ツリーで解決できないので、`main` との差分が取り除いた要素として示す間は、その参照の解決を求めない。
+旧名を別の欄に書かせる案と、同じファイルへの追加の記録に帰属させる案は採らなかった。
+初回公開前は告知の最低水準が常に `none` なので、wi-68415 で起きた失敗は公開後に再び現れるはずだったものである。
+`mise run spec-diff` は規範の差分を報告しない。

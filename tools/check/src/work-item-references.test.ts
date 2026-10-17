@@ -107,4 +107,22 @@ describe('verifyWorkItemReferences', () => {
       'requirement does not resolve in docs/modules/demo/scenarios.feature.md: REQ-DEMO-002',
     ])
   })
+
+  it('accepts a reference to an element the diff removed, and only that element', () => {
+    const removing = {
+      status: 'in_progress',
+      affected_spec: [
+        { path: 'spec/modules/demo/main.tsp', symbol: 'Demo.Operations.BeginTask' },
+        { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-009' },
+        { path: 'docs/modules/demo/removed.feature.md', requirement: 'REQ-DEMO-010' },
+      ],
+    }
+    const findings = verifyWorkItemReferences(removing, {
+      ...environment,
+      removedSpecification: ['spec/modules/demo/main.tsp:BeginTask', 'REQ-DEMO-010'],
+    })
+    expect(findings).toEqual([
+      'requirement does not resolve in docs/modules/demo/scenarios.feature.md: REQ-DEMO-009',
+    ])
+  })
 })

@@ -16,6 +16,36 @@ async function unpublishedWorkspace(): Promise<string> {
   return root
 }
 
+function git(root: string, ...args: string[]): void {
+  const result = Bun.spawnSync(
+    [
+      'git',
+      '-c',
+      'user.name=t',
+      '-c',
+      'user.email=t@example.com',
+      '-c',
+      'commit.gpgsign=false',
+      ...args,
+    ],
+    { cwd: root },
+  )
+  if (result.exitCode !== 0) throw new Error(result.stderr.toString())
+}
+
+/** `files` を main の最初のコミットにした Git の workspace。 */
+async function committedWorkspace(files: Record<string, string>): Promise<string> {
+  const root = await unpublishedWorkspace()
+  for (const [path, source] of Object.entries(files)) {
+    await mkdir(join(root, path, '..'), { recursive: true })
+    await writeFile(join(root, path), source)
+  }
+  git(root, 'init', '-q', '-b', 'main')
+  git(root, 'add', '-A')
+  git(root, 'commit', '-q', '-m', 'base')
+  return root
+}
+
 afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((path) => rm(path, { recursive: true })))
 })
@@ -194,36 +224,6 @@ describe('checkWorkItems', () => {
     const closed =
       '---\nstatus: cancelled\naffected_spec: [{ path: docs/modules/demo/README.md, requirement: REQ-DEMO-001 }]\n---\n\n# 中止\n\n中止した。\n'
 
-    function git(root: string, ...args: string[]): void {
-      const result = Bun.spawnSync(
-        [
-          'git',
-          '-c',
-          'user.name=t',
-          '-c',
-          'user.email=t@example.com',
-          '-c',
-          'commit.gpgsign=false',
-          ...args,
-        ],
-        { cwd: root },
-      )
-      if (result.exitCode !== 0) throw new Error(result.stderr.toString())
-    }
-
-    /** `files` を main の最初のコミットにした Git の workspace。 */
-    async function committedWorkspace(files: Record<string, string>): Promise<string> {
-      const root = await unpublishedWorkspace()
-      for (const [path, source] of Object.entries(files)) {
-        await mkdir(join(root, path, '..'), { recursive: true })
-        await writeFile(join(root, path), source)
-      }
-      git(root, 'init', '-q', '-b', 'main')
-      git(root, 'add', '-A')
-      git(root, 'commit', '-q', '-m', 'base')
-      return root
-    }
-
     it('基準から変わっていない記録は、参照先が消えていても通す', async () => {
       const root = await committedWorkspace({ 'work-items/done/wi-10004-closed.md': closed })
 
@@ -280,6 +280,44 @@ describe('checkWorkItems', () => {
       expect(outcome.ok).toBe(false)
       expect(outcome.lines).toContain(`work-items/done/wi-10004-closed.md:${finding}`)
     })
+  })
+
+  it('公開後の改名で、取り除いた宣言の告知を旧名を挙げる記録だけに求める', async () => {
+    const impactNone =
+      'documentation_impact: { level: none, reason: "利用者向けの告知差分はない。", references: [] }'
+    const withMetadata = (title: string, metadata: string[]) =>
+      minimalRecord(title, 'in_progress').replace(
+        '---\n\n#',
+        `${[impactNone, ...metadata].join('\n')}\n---\n\n#`,
+      )
+    const root = await committedWorkspace({
+      // 仕様の差分は docs と spec の両方を読むので、docs が欠けると差分を取れない。
+      'docs/README.md': '# Docs\n',
+      'spec/release-state.json': '{"phase":"published"}',
+      'spec/idmagic.openapi.baseline.json': '{"paths":{}}',
+      'spec/generated/openapi/current.json': '{"paths":{}}',
+      'spec/modules/demo/main.tsp': 'namespace Demo.Contract;\n\nop BeginTask(): void;\n',
+      'work-items/active/wi-10006-open.md': withMetadata('無関係', []),
+      'work-items/active/wi-10007-rename.md': withMetadata('改名', []),
+    })
+    await writeFile(
+      join(root, 'spec/modules/demo/main.tsp'),
+      'namespace Demo.Contract;\n\nop StartTask(): void;\n',
+    )
+    await writeFile(
+      join(root, 'work-items/active/wi-10007-rename.md'),
+      withMetadata('改名', [
+        'affected_spec:',
+        '  - { path: spec/modules/demo/main.tsp, symbol: Demo.Contract.StartTask }',
+        '  - { path: spec/modules/demo/main.tsp, symbol: Demo.Contract.BeginTask }',
+      ]).replace(/^spec_impact:.*\n/m, ''),
+    )
+
+    const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
+
+    expect(outcome.lines).toEqual([
+      'work-items/active/wi-10007-rename.md: documentation_impact none is weaker than inferred removal_notice',
+    ])
   })
 
   it('旧配置と status に反するディレクトリを拒否する', async () => {

@@ -7,6 +7,7 @@
  * completing record by `move-work-item` before it is collapsed.
  */
 
+import { namesSpecificationElement } from './documentation-impact.ts'
 import { specificationRules } from './feature-specification.ts'
 import { parseScenarioDocument } from './gherkin-scenarios.ts'
 
@@ -20,6 +21,13 @@ export type ReferenceEnvironment = {
   exists: (path: string) => boolean
   /** Contents of a repository-relative file, or undefined when unreadable. */
   read: (path: string) => string | undefined
+  /**
+   * Elements the specification diff against the baseline removed, spelled as
+   * the diff spells them. A record that removes or renames an element names
+   * the old one, which no longer exists in the working tree; such a reference
+   * is accepted while the diff still carries the removal.
+   */
+  removedSpecification?: readonly string[]
 }
 
 function declaresScenario(source: string, id: string): boolean {
@@ -40,6 +48,7 @@ function verifyAffectedSpec(record: WorkItemRecord, environment: ReferenceEnviro
   const findings: string[] = []
   for (const reference of stringOrObjectList(record.affected_spec)) {
     if (typeof reference.path !== 'string') continue
+    if (namesSpecificationElement(reference, environment.removedSpecification ?? [])) continue
     const source = environment.exists(reference.path) ? environment.read(reference.path) : undefined
     if (source === undefined) {
       findings.push(`affected_spec path does not exist: ${reference.path}`)

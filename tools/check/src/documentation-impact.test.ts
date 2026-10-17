@@ -225,6 +225,45 @@ describe('verifyDocumentationImpact', () => {
     expect(verifyDocumentationImpact(sibling, environment(claimed))).toEqual([])
   })
 
+  it('gives a removed TypeSpec declaration to the record that names it', () => {
+    // A rename removes the old name. Every open record and every record whose
+    // references were merely updated used to inherit that removal, so renaming
+    // one operation demanded removal notices from six unrelated records.
+    const renamed = {
+      ...noSpecificationChange,
+      addedDeclarations: ['spec/modules/demo/main.tsp:StartTask'],
+      removedDeclarations: ['spec/modules/demo/main.tsp:BeginTask'],
+    }
+    const author = {
+      ...record,
+      id: 'wi-684-author',
+      status: 'in_progress',
+      affected_spec: [
+        { path: 'spec/modules/demo/main.tsp', symbol: 'Demo.Contract.StartTask' },
+        { path: 'spec/modules/demo/main.tsp', symbol: 'Demo.Contract.BeginTask' },
+      ],
+    }
+    const sibling = { ...record, id: 'wi-496-open', status: 'in_progress' }
+    const claimed = {
+      specificationDiff: renamed,
+      specificationAdditionsClaimed: true,
+      specificationRemovalsClaimed: true,
+    }
+
+    expect(verifyDocumentationImpact(author, environment(claimed))).toContain(
+      'documentation_impact none is weaker than inferred removal_notice',
+    )
+    expect(verifyDocumentationImpact(sibling, environment(claimed))).toEqual([])
+
+    // A removal nobody names stays with every record that owns the diff.
+    expect(
+      verifyDocumentationImpact(
+        sibling,
+        environment({ specificationDiff: renamed, specificationRemovalsClaimed: false }),
+      ),
+    ).toContain('documentation_impact none is weaker than inferred removal_notice')
+  })
+
   it('gives an added standards row to the record that declares it', () => {
     // The third spelling. The diff keys a standards row `<path>#<ID>` because
     // one id may be declared by several documents, while a record names the id

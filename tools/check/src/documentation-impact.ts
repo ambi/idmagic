@@ -45,6 +45,14 @@ export type DocumentationImpactEnvironment = {
    * rather than attributed to nobody.
    */
   specificationAdditionsClaimed?: boolean
+  /**
+   * Whether some record's `affected_spec` names an element the diff removed.
+   *
+   * The removal counterpart of `specificationAdditionsClaimed`. A record names
+   * a removed element by its name in the baseline, which is how a rename lists
+   * both the new and the old name.
+   */
+  specificationRemovalsClaimed?: boolean
 }
 
 type WorkItemRecord = {
@@ -235,9 +243,32 @@ function ownsSpecificationAdditions(
   )
 }
 
+/**
+ * Whether the elements this diff removes belong to this record.
+ *
+ * The same ownership rule as additions. Without it, a rename made every open
+ * record and every record whose references were updated to the new name owe a
+ * removal notice (wi-68415).
+ */
+function ownsSpecificationRemovals(
+  record: WorkItemRecord,
+  environment: DocumentationImpactEnvironment,
+): boolean {
+  if (environment.specificationRemovalsClaimed !== true) return true
+  return claimsSpecificationElement(
+    record,
+    removedSpecificationElements(environment.specificationDiff),
+  )
+}
+
 /** Scenarios, standards rows, and declarations the diff added, as the diff spells them. */
 export function addedSpecificationElements(diff: SpecificationDiff): string[] {
   return [...diff.addedScenarios, ...diff.addedStandards, ...diff.addedDeclarations]
+}
+
+/** Scenarios, standards rows, and declarations the diff removed, as the diff spells them. */
+export function removedSpecificationElements(diff: SpecificationDiff): string[] {
+  return [...diff.removedScenarios, ...diff.removedStandards, ...diff.removedDeclarations]
 }
 
 export function minimumDocumentationImpact(
@@ -262,9 +293,8 @@ export function minimumDocumentationImpact(
     impact = stronger(impact, 'deprecation_notice')
   }
   if (
-    diff.removedScenarios.length > 0 ||
-    diff.removedStandards.length > 0 ||
-    diff.removedDeclarations.length > 0
+    ownsSpecificationRemovals(record, environment) &&
+    removedSpecificationElements(diff).length > 0
   ) {
     impact = stronger(impact, 'removal_notice')
   }

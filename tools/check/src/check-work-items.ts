@@ -8,6 +8,7 @@ import {
   claimsSpecificationElement,
   diffFeatureMaturities,
   type DocumentationImpactEnvironment,
+  removedSpecificationElements,
   verifyDocumentationImpact,
 } from './documentation-impact.ts'
 import { validateMarkdownRecord } from './work-item-markdown.ts'
@@ -110,19 +111,29 @@ function revisionFile(snapshot: WorkspaceSnapshot, ref: string, path: string): s
   return result.exitCode === 0 ? result.stdout.toString() : ''
 }
 
-function specificationAdditionsClaimed(
-  diff: SpecificationDiff,
+function specificationElementsClaimed(
+  elements: readonly string[],
   changed: ReadonlySet<string> | undefined,
   records: readonly ParsedWorkItem[],
 ): boolean {
-  const added = addedSpecificationElements(diff)
-  if (added.length === 0 || changed === undefined) return false
+  if (elements.length === 0 || changed === undefined) return false
   return records.some(
     (record) =>
       changed.has(record.id) &&
       record.data !== undefined &&
-      claimsSpecificationElement(record.data, added),
+      claimsSpecificationElement(record.data, elements),
   )
+}
+
+function referenceEnvironment(
+  snapshot: WorkspaceSnapshot,
+  diff: SpecificationDiff,
+): ReferenceEnvironment {
+  return {
+    exists: (path) => snapshot.exists(path),
+    read: (path) => (snapshot.exists(path) ? snapshot.readSync(path) : undefined),
+    removedSpecification: removedSpecificationElements(diff),
+  }
 }
 
 async function documentationImpactEnvironment(
@@ -150,8 +161,13 @@ async function documentationImpactEnvironment(
     read: (path) => (snapshot.exists(path) ? snapshot.readSync(path) : undefined),
     specificationDiff,
     changedRecords: changed,
-    specificationAdditionsClaimed: specificationAdditionsClaimed(
-      specificationDiff,
+    specificationAdditionsClaimed: specificationElementsClaimed(
+      addedSpecificationElements(specificationDiff),
+      changed,
+      records,
+    ),
+    specificationRemovalsClaimed: specificationElementsClaimed(
+      removedSpecificationElements(specificationDiff),
       changed,
       records,
     ),
@@ -179,22 +195,17 @@ export async function verifyCompletion(
   )
   const findings = result.findings.map((finding) => finding.message)
   if (!result.data) return findings
-  const repository: ReferenceEnvironment = {
-    exists: (one) => snapshot.exists(one),
-    read: (one) => (snapshot.exists(one) ? snapshot.readSync(one) : undefined),
-  }
   const parsed = await loadWorkItems(snapshot)
   const changed = changedWorkItemRecords(snapshot)
+  const documentationEnvironment = await documentationImpactEnvironment(snapshot, parsed, changed)
+  const repository = referenceEnvironment(snapshot, documentationEnvironment.specificationDiff)
   findings.push(
     ...verifyWorkItemReferences(result.data, repository),
     ...verifyPrimaryUseCaseEvidence(result.data, {
       read: repository.read,
       requiredTasks: await requiredVerificationTasks(snapshot),
     }),
-    ...verifyDocumentationImpact(
-      result.data,
-      await documentationImpactEnvironment(snapshot, parsed, changed),
-    ),
+    ...verifyDocumentationImpact(result.data, documentationEnvironment),
   )
   return findings
 }
@@ -216,15 +227,12 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
       )
     }
   }
-  const repository: ReferenceEnvironment = {
-    exists: (path) => snapshot.exists(path),
-    read: (path) => (snapshot.exists(path) ? snapshot.readSync(path) : undefined),
-  }
+  const documentationEnvironment = await documentationImpactEnvironment(snapshot, parsed, changed)
+  const repository = referenceEnvironment(snapshot, documentationEnvironment.specificationDiff)
   const primaryEnvironment: PrimaryUseCaseEnvironment = {
     read: repository.read,
     requiredTasks: await requiredVerificationTasks(snapshot),
   }
-  const documentationEnvironment = await documentationImpactEnvironment(snapshot, parsed, changed)
   // 依存と識別番号は記録の間の現在の関係なので、変わっていない完了済みの記録も含めて見る。
   const dependencyRecords: WorkItemDependencyRecord[] = []
   for (const record of parsed) {
