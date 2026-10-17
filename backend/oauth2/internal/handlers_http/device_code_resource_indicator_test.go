@@ -30,7 +30,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/internal/device/usecases"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -63,7 +63,7 @@ func newApprovedDeviceCodeServer(t *testing.T, mcpResourceServerRepo *oauth2memo
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
-	tokenIssuer := tokens_jose.NewJWTSigner("http://test", keyStore)
+	tokenIssuer := oauth2.NewJWTSigner("http://test", keyStore)
 
 	e := echo.New()
 	tenantRepo := tenancy.NewMemoryModule().TenantRepo

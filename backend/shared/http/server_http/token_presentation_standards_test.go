@@ -183,7 +183,7 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := tokensJOSE.NewJWTSigner(tpIssuer, keyStore)
+	signer := oauth2.NewJWTSigner(tpIssuer, keyStore)
 	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 
 	startupComplete := &atomic.Bool{}

@@ -27,7 +27,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -82,7 +82,7 @@ func newTokenServer(t *testing.T) tokenFixture {
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
-	tokenIssuer := tokens_jose.NewJWTSigner("http://test", keyStore)
+	tokenIssuer := oauth2.NewJWTSigner("http://test", keyStore)
 
 	mcpResourceServerRepo := oauth2memory.NewMcpResourceServerRepository()
 	agentRepo := idmanagement.NewMemoryModule().AgentRepo

@@ -44,7 +44,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
-	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -188,7 +188,7 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
-	signer := tokensJOSE.NewJWTSigner(nigIssuer, keyStore)
+	signer := oauth2.NewJWTSigner(nigIssuer, keyStore)
 	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 	devices := oauth2.NewMemoryModule().DeviceCodeStore
 	approvals := oauth2.NewMemoryModule().ApprovalRequestStore

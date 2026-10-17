@@ -25,7 +25,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -51,7 +51,7 @@ type hintE2EFixture struct {
 	server    *httptest.Server
 	sessions  sessionports.SessionStore
 	refresh   oauthports.RefreshTokenStore
-	signer    *tokens_jose.JWTSigner
+	signer    *oauth2.JWTSigner
 	manager   *authentication.SessionManager
 	sessionID string
 }
@@ -97,7 +97,7 @@ func newHintE2EFixture(t *testing.T) hintE2EFixture {
 	// ヒントの署名はリクエスト文脈の外で行うため、signer にはテナント解決後の
 	// issuer をそのまま渡す。こうしないと iss 不一致だけで拒否され、claim の
 	// 検査が働いたのかどうかをテストが区別できなくなる。
-	signer := tokens_jose.NewJWTSigner(hintE2EIssuer+"/realms/"+tenancydomain.DefaultRealm, keyStore)
+	signer := oauth2.NewJWTSigner(hintE2EIssuer+"/realms/"+tenancydomain.DefaultRealm, keyStore)
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{

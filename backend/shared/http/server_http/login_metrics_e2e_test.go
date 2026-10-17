@@ -30,7 +30,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
-	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -113,7 +113,7 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
-	tokenIssuer := tokensJOSE.NewJWTSigner("http://test", keyStore)
+	tokenIssuer := oauth2.NewJWTSigner("http://test", keyStore)
 	loginThrottle := authentication.NewMemoryModule(nil).NewLoginAttemptThrottle(sessionports.LoginThrottleConfigs{
 		Account: sessionports.LoginThrottleConfig{MaxFailures: 2, WindowSeconds: 900, LockoutSeconds: 900},
 		IP:      sessionports.LoginThrottleConfig{MaxFailures: 100, WindowSeconds: 900, LockoutSeconds: 900},

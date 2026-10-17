@@ -29,5 +29,5 @@ func (s *Signer) Sign(ctx context.Context, tenantID string, claims map[string]an
 	if err != nil {
 		return "", err
 	}
-	return tokens_jose.SignPS256(key, map[string]string{"typ": "secevent+jwt"}, claims)
+	return tokens_jose.SignPS256(key.PrivateKey, key.Kid, map[string]string{"typ": "secevent+jwt"}, claims)
 }

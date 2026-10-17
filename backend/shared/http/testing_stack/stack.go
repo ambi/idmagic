@@ -68,7 +68,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
-	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	sharedsignalsports "github.com/ambi/idmagic/backend/sharedsignals/ports"
@@ -183,7 +183,7 @@ type Stack struct {
 	Users    userports.UserRepository
 	Groups   groupports.GroupRepository
 	KeyStore signingkeys.KeyStore
-	Signer   *tokensjose.JWTSigner
+	Signer   *oauth2.JWTSigner
 
 	Clients                oauthports.OAuth2ClientRepository
 	Consents               oauthports.ConsentRepository
@@ -546,7 +546,7 @@ func New(t *testing.T, options ...Option) *Stack {
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
-	signer := tokensjose.NewJWTSigner(Issuer, keyStore)
+	signer := oauth2.NewJWTSigner(Issuer, keyStore)
 
 	stack := &Stack{
 		Echo: echo.New(), Events: &EventLog{}, owner: t,

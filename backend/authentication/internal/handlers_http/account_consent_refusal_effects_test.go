@@ -23,7 +23,6 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -42,7 +41,7 @@ const (
 type consentRefusalFixture struct {
 	e        *echo.Echo
 	consents oauthports.ConsentRepository
-	signer   *tokensjose.JWTSigner
+	signer   *oauth2.JWTSigner
 }
 
 func newConsentRefusalFixture(t *testing.T) *consentRefusalFixture {
@@ -75,7 +74,7 @@ func newConsentRefusalFixture(t *testing.T) *consentRefusalFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := tokensjose.NewJWTSigner("http://idp.test", keyStore)
+	signer := oauth2.NewJWTSigner("http://idp.test", keyStore)
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{

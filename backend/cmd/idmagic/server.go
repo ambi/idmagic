@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	oauth2signing "github.com/ambi/idmagic/backend/oauth2"
+
 	"github.com/ambi/idmagic/backend/jobs"
 
 	"github.com/ambi/idmagic/backend/apitoken"
@@ -102,7 +104,7 @@ func Run() error {
 	rateLimiter := deps.RateLimit.NewRateLimiter(api.RateLimits)
 	authorizer := bootstrap.AssembleAuthorizer(shared)
 	sessionManager := deps.Authentication.NewSessionManager()
-	tokenSigner := tokensJOSE.NewJWTSigner(issuer, deps.SigningKeys.KeyStore)
+	tokenSigner := oauth2signing.NewJWTSigner(issuer, deps.SigningKeys.KeyStore)
 	jwkResolver := tokensJOSE.NewJWKResolver()
 	managedTokenIntrospector := apitoken.New(
 		deps.ApiTokens.Repo,

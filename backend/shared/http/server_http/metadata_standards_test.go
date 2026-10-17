@@ -48,7 +48,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
-	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 
@@ -155,7 +155,7 @@ func newMetadataFixture(t *testing.T) *mdFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := tokensJOSE.NewJWTSigner(mdIssuer, keyStore)
+	signer := oauth2.NewJWTSigner(mdIssuer, keyStore)
 	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 
 	startupComplete := &atomic.Bool{}

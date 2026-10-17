@@ -28,7 +28,7 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -53,7 +53,7 @@ const (
 type withdrawalFixture struct {
 	e        *echo.Echo
 	consents *consentmemory.ConsentRepository
-	signer   *tokensjose.JWTSigner
+	signer   *oauth2.JWTSigner
 	emitted  *[]spec.DomainEvent
 }
 
@@ -96,7 +96,7 @@ func newWithdrawalFixture(t *testing.T) *withdrawalFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := tokensjose.NewJWTSigner(withdrawalIssuer, keyStore)
+	signer := oauth2.NewJWTSigner(withdrawalIssuer, keyStore)
 
 	consents := consentmemory.NewConsentRepository()
 	emitted := &[]spec.DomainEvent{}

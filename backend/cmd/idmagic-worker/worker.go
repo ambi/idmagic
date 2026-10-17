@@ -20,7 +20,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
-	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
 )
@@ -91,7 +91,7 @@ func RunWorker() error {
 	handlers := jobs.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
 	oauth2.RegisterJobHandlers(handlers, oauth2.JobHandlerDeps{
-		Notifications: deps.OAuth2.LogoutNotificationStore, TokenSigner: tokens_jose.NewJWTSigner("", deps.SigningKeys.KeyStore),
+		Notifications: deps.OAuth2.LogoutNotificationStore, TokenSigner: oauth2.NewJWTSigner("", deps.SigningKeys.KeyStore),
 		BackChannelClient: oauth2.NewBackChannelLogoutClient(nil), Now: time.Now,
 	})
 	deps.IdManagement.RegisterJobHandlers(handlers, idmanagement.JobHandlerDeps{

@@ -36,7 +36,7 @@ import (
 	"github.com/ambi/idmagic/backend/saml"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -73,7 +73,7 @@ func newSecretExampleFixture(t *testing.T) *secretExampleFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := tokensjose.NewJWTSigner("http://idp.test", keyStore)
+	signer := oauth2.NewJWTSigner("http://idp.test", keyStore)
 
 	clients := oauth2.NewMemoryModule().ClientRepo
 	events := &[]spec.DomainEvent{}

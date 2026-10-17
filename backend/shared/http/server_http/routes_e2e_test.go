@@ -47,7 +47,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
-	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -110,7 +110,7 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, userports.UserRepo
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
-	tokenIssuer := tokensJOSE.NewJWTSigner("http://test", keyStore)
+	tokenIssuer := oauth2.NewJWTSigner("http://test", keyStore)
 	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
@@ -293,7 +293,7 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
-	tokenIssuer := tokensJOSE.NewJWTSigner("http://test", keyStore)
+	tokenIssuer := oauth2.NewJWTSigner("http://test", keyStore)
 	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
@@ -1701,7 +1701,7 @@ func TestHealthProbes(t *testing.T) {
 	clientRepo := oauth2.NewMemoryModule().ClientRepo
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	keyStore, _ := signingkeys.NewInMemoryKeyStore()
-	tokenIssuer := tokensJOSE.NewJWTSigner("http://test", keyStore)
+	tokenIssuer := oauth2.NewJWTSigner("http://test", keyStore)
 	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 	hasher := testing_passwords.NewHasher()
 

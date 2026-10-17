@@ -372,32 +372,11 @@
       "reason": "WsFederation -> OAuth2 lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
-      "id": "shared-dependency:shared->ClaimMapping",
-      "sourceModule": "shared",
-      "targetModule": "ClaimMapping",
-      "violations": ["shared-dependency:backend/shared/security/tokens_jose->ClaimMapping"],
-      "reason": "The tokens_jose shared library issues ID token claims through ClaimMapping. The signer builds OAuth2 tokens and needs module types, so it moves into OAuth2 (D5, D8) in wi-91505."
-    },
-    {
-      "id": "shared-dependency:shared->IdManagement",
-      "sourceModule": "shared",
-      "targetModule": "IdManagement",
-      "violations": ["shared-dependency:backend/shared/security/tokens_jose->IdManagement"],
-      "reason": "tokens_jose はトークンの組み立てに IdManagement の User 型を使う。署名器を OAuth2 へ移す作業 wi-91505 で解消する（D5）。"
-    },
-    {
       "id": "shared-dependency:shared->OAuth2",
       "sourceModule": "shared",
       "targetModule": "OAuth2",
       "violations": ["shared-dependency:backend/shared/security/tokens_jose->OAuth2"],
-      "reason": "tokens_jose は OAuth2 の型とポートを使ってトークンを組み立てる。署名器を OAuth2 へ移す作業 wi-91505 で解消する（D5）。"
-    },
-    {
-      "id": "shared-dependency:shared->SigningKeys",
-      "sourceModule": "shared",
-      "targetModule": "SigningKeys",
-      "violations": ["shared-dependency:backend/shared/security/tokens_jose->SigningKeys"],
-      "reason": "tokens_jose は SigningKeys の型とポートで署名鍵を選ぶ。署名器を OAuth2 へ移す作業 wi-91505 で解消する（D5）。"
+      "reason": "JWT の署名器を移した後も、JWKS の取得、Client Assertion と DPoP の検証が OAuth2 の型とリプレイ保存ポートを使う。技術的な検証への入力と、OAuth2 の型からの変換を分ける必要がある（D5、D6）。"
     },
     {
       "id": "shared-dependency:shared->Tenancy",
@@ -408,10 +387,9 @@
         "shared-dependency:backend/shared/ratelimit/db_postgres->Tenancy",
         "shared-dependency:backend/shared/security/salts_memory->Tenancy",
         "shared-dependency:backend/shared/security/salts_postgres->Tenancy",
-        "shared-dependency:backend/shared/security/tokens_jose->Tenancy",
         "shared-dependency:backend/shared/storage/db_memory->Tenancy"
       ],
-      "reason": "support_http はテナントを解決し、ratelimit/db_postgres、salts_memory、salts_postgres は Tenancy のポートからテナント ID を読み、db_memory は Tenancy の型を使う。これらは wi-73604 で解消する（D1、D5）。tokens_jose のテナント参照は、署名器を OAuth2 へ移す作業 wi-91505 で解消する。"
+      "reason": "support_http はテナントを解決し、ratelimit/db_postgres、salts_memory、salts_postgres は Tenancy のポートからテナント ID を読み、db_memory は Tenancy の型を使う。これらは wi-73604 で解消する（D1、D5）。"
     },
     {
       "id": "table-write:Application->OAuth2",

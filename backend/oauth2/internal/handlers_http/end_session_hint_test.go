@@ -41,7 +41,7 @@ const hintClientID = "hint-web-app"
 
 type hintTestServer struct {
 	e            *echo.Echo
-	signer       *cryptoadapter.JWTSigner
+	signer       *oauth2.JWTSigner
 	keyStore     signingkeys.KeyStore
 	sessionStore sessionports.SessionStore
 	refreshStore *oauth2memory.RefreshTokenStore
@@ -53,7 +53,7 @@ func newHintTestServer(t *testing.T) hintTestServer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := cryptoadapter.NewJWTSigner("http://test/realms/default", ks)
+	signer := oauth2.NewJWTSigner("http://test/realms/default", ks)
 
 	clientRepo := oauth2memory.NewClientRepository()
 	clientRepo.Seed(&oauthdomain.OAuth2Client{
@@ -148,7 +148,7 @@ func (s hintTestServer) signExpiredIDTokenHint(t *testing.T, clientID, sub, sid 
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := cryptoadapter.SignPS256(key, nil, claims)
+	token, err := cryptoadapter.SignPS256(key.PrivateKey, key.Kid, nil, claims)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func TestEndSessionRejectsIDTokenHintFromOtherIssuer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	otherSigner := cryptoadapter.NewJWTSigner("http://not-this-idp", otherKS)
+	otherSigner := oauth2.NewJWTSigner("http://not-this-idp", otherKS)
 	forged, err := otherSigner.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: hintClientID}, User: &userdomain.User{ID: "alice"},
 		Scopes: []string{"openid"}, Sid: sid,

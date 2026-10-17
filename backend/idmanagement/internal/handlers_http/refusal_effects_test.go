@@ -56,7 +56,7 @@ import (
 	emailmemory "github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
-	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -200,7 +200,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := tokensjose.NewJWTSigner(idmRefusalIssuer, keyStore)
+	signer := oauth2.NewJWTSigner(idmRefusalIssuer, keyStore)
 
 	apiTokenRepo := apitoken.NewRepository()
 	jobRepo := jobs.NewJobRepository()

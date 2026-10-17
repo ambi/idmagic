@@ -11,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+	oauth2signing "github.com/ambi/idmagic/backend/oauth2"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -206,7 +207,7 @@ func TestBearerChallengeOnAHostRoutedRealmPointsAtTheHostRootMetadata(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := tokensJOSE.NewJWTSigner("https://idp.example", keyStore)
+	signer := oauth2signing.NewJWTSigner("https://idp.example", keyStore)
 	e := hostRoutingFixture(t, "idp.example", func(deps *Deps) {
 		deps.KeyStore = keyStore
 		deps.TokenIssuer = signer

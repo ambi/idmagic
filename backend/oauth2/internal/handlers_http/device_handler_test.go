@@ -24,7 +24,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -79,7 +79,7 @@ func newDeviceServer(t *testing.T) deviceFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tokenIssuer := tokens_jose.NewJWTSigner("http://test", keyStore)
+	tokenIssuer := oauth2.NewJWTSigner("http://test", keyStore)
 	deps := httpadapter.Deps{
 		Issuer:     "http://test",
 		TenantRepo: tenancy.NewMemoryModule().TenantRepo,

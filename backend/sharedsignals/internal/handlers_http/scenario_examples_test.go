@@ -207,7 +207,7 @@ func newExampleStack(t *testing.T) *exampleStack {
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
-	signer := tokensjose.NewJWTSigner(exampleIssuer, keyStore)
+	signer := oauth2.NewJWTSigner(exampleIssuer, keyStore)
 	quotas := tenancy.NewMemoryModule().QuotaRepo
 	limit := 20
 	if err := quotas.SetQuota(context.Background(), tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{SsfStreams: &limit}); err != nil {
@@ -439,7 +439,7 @@ func (s *exampleStack) reissueAt(t *testing.T, token string, issuedAt time.Time)
 	if err != nil {
 		t.Fatal(err)
 	}
-	reissued, err := tokensjose.SignPS256(key, map[string]string{"typ": "at+jwt"}, claims)
+	reissued, err := tokensjose.SignPS256(key.PrivateKey, key.Kid, map[string]string{"typ": "at+jwt"}, claims)
 	if err != nil {
 		t.Fatal(err)
 	}

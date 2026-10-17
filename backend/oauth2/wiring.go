@@ -22,6 +22,7 @@ import (
 	logoutpush "github.com/ambi/idmagic/backend/oauth2/internal/logout/push_http"
 	tokenpostgres "github.com/ambi/idmagic/backend/oauth2/internal/token/db_postgres"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/internal/token/usecases"
+	tokensjose "github.com/ambi/idmagic/backend/oauth2/internal/tokens_jose"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -33,6 +34,14 @@ import (
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
+
+// JWTSigner は起動時に組み立てる OAuth2 の署名器である。
+type JWTSigner = tokensjose.JWTSigner
+
+// NewJWTSigner は OAuth2 のトークンの組み立てと署名を行うアダプターを返す。
+func NewJWTSigner(issuer string, ks signingports.KeyStore) *JWTSigner {
+	return tokensjose.NewJWTSigner(issuer, ks)
+}
 
 // NewMemoryModule は OAuth2 が所有する保存先をメモリで作る。トークンの発行器、検証器、
 // イベントの出力先は組み立て地点が設定する。

@@ -23,6 +23,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	jose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -364,37 +365,9 @@ func normalizeAudience(v any) []string {
 // PS256 署名・検証ヘルパ (jose ライブラリ非依存)
 // =====================================================================
 
-// SignPS256 signs claims with key using PS256, returning the compact JWT.
-// Exported so other modules can sign non-OAuth2 JWTs with the same key
-// management (e.g. SharedSignals' Security Event Tokens reuse SigningKeys'
-// rotation/JWKS instead of introducing separate key material,
-// decision 7).
+// SignPS256 は署名鍵を共有の PS256 署名関数の入力へ変換する。
 func SignPS256(key *signingdomain.SigningKey, extraHeader map[string]string, claims map[string]any) (string, error) {
-	// crypto.Signer 経由で署名する。Local / Postgres provider の *rsa.PrivateKey は
-	// crypto.Signer を満たし、VaultTransit provider は署名を Vault へ委譲する Signer を渡す。
-	signer, ok := key.PrivateKey.(crypto.Signer)
-	if !ok {
-		return "", errors.New("active key has no signer")
-	}
-	header := map[string]any{"alg": "PS256", "kid": key.Kid}
-	for k, v := range extraHeader {
-		header[k] = v
-	}
-	hb, err := json.Marshal(header)
-	if err != nil {
-		return "", err
-	}
-	pb, err := json.Marshal(claims)
-	if err != nil {
-		return "", err
-	}
-	signingInput := base64.RawURLEncoding.EncodeToString(hb) + "." + base64.RawURLEncoding.EncodeToString(pb)
-	digest := sha256.Sum256([]byte(signingInput))
-	sig, err := signer.Sign(rand.Reader, digest[:], &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash, Hash: crypto.SHA256})
-	if err != nil {
-		return "", err
-	}
-	return signingInput + "." + base64.RawURLEncoding.EncodeToString(sig), nil
+	return jose.SignPS256(key.PrivateKey, key.Kid, extraHeader, claims)
 }
 
 func verifyPS256AnyKey(token string, keys []*signingdomain.SigningKey) (map[string]any, error) {

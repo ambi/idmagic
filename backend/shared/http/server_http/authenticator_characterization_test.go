@@ -32,7 +32,6 @@ import (
 	consentdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 
@@ -144,7 +143,7 @@ func newAuthCharacterization(t *testing.T) *authCharacterization {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := tokensjose.NewJWTSigner(characterizationIssuer, keyStore)
+	signer := oauth2.NewJWTSigner(characterizationIssuer, keyStore)
 	apiTokenRepo := apitoken.NewRepository()
 	sessionStore := authentication.NewMemoryModule(nil).SessionStore
 	sessions := authentication.Module{SessionStore: sessionStore}.NewSessionManager()

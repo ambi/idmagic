@@ -21,7 +21,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -55,7 +55,7 @@ func newTokenExchangeServer(t *testing.T, options ...func(*httpadapter.Deps)) st
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
-	tokenIssuer := tokens_jose.NewJWTSigner("http://test", keyStore)
+	tokenIssuer := oauth2.NewJWTSigner("http://test", keyStore)
 	resourceServers := oauth2memory.NewMcpResourceServerRepository()
 	resourceServers.Seed(&domain.McpResourceServer{
 		ID: "rs-orders", Resource: "https://api.example/orders", Name: "Orders API",

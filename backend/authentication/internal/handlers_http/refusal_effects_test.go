@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	oauth2signing "github.com/ambi/idmagic/backend/oauth2"
+
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -64,7 +66,6 @@ import (
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
-	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -156,7 +157,7 @@ type authRefusalFixture struct {
 	apiTokens   *apitoken.Service
 	events      *[]spec.DomainEvent
 	// signer はポータルのアクセストークンを 1 本署名するために握る。
-	signer *tokensjose.JWTSigner
+	signer *oauth2signing.JWTSigner
 	// devices は記憶済みの端末。資格情報の変更が端末を失効させたかは、ここからしか読めない。
 	devices *trusteddevicememory.TrustedDeviceRepository
 }
@@ -209,7 +210,7 @@ func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *aut
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := tokensjose.NewJWTSigner(authRefusalIssuer, keyStore)
+	signer := oauth2signing.NewJWTSigner(authRefusalIssuer, keyStore)
 
 	relyingParty, err := webauthnusecases.NewWebAuthn(webauthnusecases.WebAuthnConfig{
 		RPID: "idp.test", RPDisplayName: "idmagic", RPOrigins: []string{authRefusalIssuer},

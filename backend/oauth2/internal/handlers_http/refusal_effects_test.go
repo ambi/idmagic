@@ -42,7 +42,7 @@ import (
 	tokendomain "github.com/ambi/idmagic/backend/oauth2/internal/token/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
-	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -117,7 +117,7 @@ func newRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *refusal
 	if err != nil {
 		t.Fatalf("key store: %v", err)
 	}
-	issuer := tokens_jose.NewJWTSigner("http://test", keyStore)
+	issuer := oauth2.NewJWTSigner("http://test", keyStore)
 
 	tenants := tenancy.NewMemoryModule().TenantRepo
 	for _, tenant := range []*tenancydomain.Tenant{
@@ -563,7 +563,7 @@ func TestTokenIssuanceFailsClosedWhenKeyProviderIsUnreachable(t *testing.T) {
 	fixture := newRefusalServer(t, func(deps *httpadapter.Deps) {
 		keys.KeyStore = deps.KeyStore
 		deps.KeyStore = keys
-		deps.TokenIssuer = tokens_jose.NewJWTSigner("http://test", keys)
+		deps.TokenIssuer = oauth2.NewJWTSigner("http://test", keys)
 	})
 	seedAuthorizationCode(t, fixture, tenancydomain.DefaultTenantID, "AC1", []string{"openid", "profile"})
 

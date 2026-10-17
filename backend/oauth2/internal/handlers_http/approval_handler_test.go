@@ -20,7 +20,7 @@ import (
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	oauthmemory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -117,7 +117,7 @@ func TestBackchannelApprovalIssuesTokenOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tokenIssuer := tokens_jose.NewJWTSigner("http://test", keyStore)
+	tokenIssuer := oauth2.NewJWTSigner("http://test", keyStore)
 	authn := &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: "alice-id", AuthTime: time.Now().Unix(), StepUpAt: time.Now().Unix()}}
 	events := &[]spec.DomainEvent{}
 	e := echo.New()

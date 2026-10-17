@@ -77,7 +77,7 @@ type apiTokenStack struct {
 	tokens   *apitoken.Service
 	users    userports.UserRepository
 	keyStore signingkeys.KeyStore
-	signer   *tokensjose.JWTSigner
+	signer   *oauth2.JWTSigner
 	tenants  tenantports.TenantRepository
 	// samlSPs は SAML の管理 API が読み書きする保存先。粒度スコープの具体例は、拒否が
 	// 防いだ効果をここから読み直す。
@@ -133,7 +133,7 @@ func newApiTokenStack(t *testing.T) *apiTokenStack {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := tokensjose.NewJWTSigner(apiTokenIssuer, keyStore)
+	signer := oauth2.NewJWTSigner(apiTokenIssuer, keyStore)
 	repo := apitoken.NewRepository()
 
 	// OAuth2.TokenIntrospector は生の署名検証器ではなく、管理発行トークンのライフサイクル
@@ -301,7 +301,7 @@ func (s *apiTokenStack) resignManaged(t *testing.T, literal string, overrides ma
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := tokensjose.SignPS256(key, map[string]string{"typ": "at+jwt"}, claims)
+	token, err := tokensjose.SignPS256(key.PrivateKey, key.Kid, map[string]string{"typ": "at+jwt"}, claims)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -539,10 +539,7 @@ func TestManagedApiTokenIsSignedWithTheTenantAccessTokenKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, claims := decodeJWT(t, literal)
-	forged, err := tokensjose.SignPS256(
-		&signingdomain.SigningKey{Kid: active.Kid, Alg: signingdomain.SigAlgPS256, PrivateKey: foreign},
-		map[string]string{"typ": "at+jwt"}, claims,
-	)
+	forged, err := tokensjose.SignPS256(foreign, active.Kid, map[string]string{"typ": "at+jwt"}, claims)
 	if err != nil {
 		t.Fatal(err)
 	}

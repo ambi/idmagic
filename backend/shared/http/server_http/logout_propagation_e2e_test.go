@@ -26,7 +26,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -46,7 +46,7 @@ type logoutE2EFixture struct {
 	sessionID, clientID string
 	notifications       logoutports.LogoutNotificationStore
 	jobs                jobsports.JobRepository
-	signer              *tokens_jose.JWTSigner
+	signer              *oauth2.JWTSigner
 	sessions            sessionports.SessionStore
 	refresh             oauthports.RefreshTokenStore
 }
@@ -82,7 +82,7 @@ func newLogoutE2EFixture(t *testing.T, mutate func(*oauthdomain.OAuth2Client)) l
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := tokens_jose.NewJWTSigner(logoutE2EIssuer, keyStore)
+	signer := oauth2.NewJWTSigner(logoutE2EIssuer, keyStore)
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{Issuer: logoutE2EIssuer, Authentication: authentication.Module{SessionManager: sessionManager}, OAuth2: oauth2.Module{ClientRepo: clientRepo, ClientSessionStore: clientSessions, LogoutNotificationStore: notifications, RefreshStore: refreshStore}, Jobs: jobs.Module{Repo: jobRepo, Enqueuer: jobs.NewEnqueuer(jobRepo, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {})}})
 	server := httptest.NewServer(e)
@@ -268,7 +268,7 @@ func TestEndSessionBackChannelLogout_REQ_OAUTH2_025(t *testing.T) {
 	})
 }
 
-func assertLogoutToken(t *testing.T, signer *tokens_jose.JWTSigner, token, audience, sid string) {
+func assertLogoutToken(t *testing.T, signer *oauth2.JWTSigner, token, audience, sid string) {
 	t.Helper()
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: "default"}, logoutE2EIssuer+"/realms/default", "/realms/default")
 	claims, err := signer.VerifyIDTokenHint(ctx, token)
