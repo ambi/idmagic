@@ -98,8 +98,8 @@ The demo module.
 }
 
 const moduleDesignDocument = {
-  path: 'docs/modules/demo/architecture.md',
-  source: '# Demo のアーキテクチャ\n\n構成。\n',
+  path: 'docs/modules/demo/data.md',
+  source: '# Demo のデータ\n\n## 集約\n\n構成。\n',
 }
 
 const runDocument = {
@@ -355,7 +355,7 @@ describe('renderDocumentationSite', () => {
       'docs/formats/documentation-guide.html',
       'docs/formats/index.html',
       'docs/formats/work-item-format.html',
-      'docs/modules/demo/architecture.html',
+      'docs/modules/demo/data.html',
       'docs/modules/demo/features/run-feature.html',
       'docs/modules/demo/features/run.html',
       'docs/modules/demo/glossary.html',
@@ -434,7 +434,7 @@ describe('renderDocumentationSite', () => {
     const page = site().files['docs/modules/demo/index.html']
 
     // 最後の「例」は、モジュールの「機能」の段に入れ子になった機能（実行）の子である。
-    expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', 'アーキテクチャ', '例'])
+    expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', 'データ', '例'])
     expect(page).not.toContain('>glossary.md<')
   })
 
@@ -473,7 +473,7 @@ describe('renderDocumentationSite', () => {
 
     expect(page).toContain('REQ-DEMO-002')
     expect(result.files['docs/modules/demo/features/user.html']).toBeDefined()
-    expect(childLabels(page)).toEqual(['アーキテクチャ', '例'])
+    expect(childLabels(page)).toEqual(['データ', '例'])
     const moduleBranch = sidebar(page).slice(sidebar(page).indexOf('>Demo</a>'))
     expect(moduleBranch).toContain('>ユーザー</a>')
   })
@@ -545,15 +545,6 @@ describe('renderDocumentationSite', () => {
       openapiFileName: 'example.openapi.json',
       openapi: {},
       models: [],
-      sourcePaths: [
-        'backend/demoimpl/task/usecases/task.go',
-        'backend/demoimpl/task/usecases/task_test.go',
-        'backend/demoimpl/task/usecases/testdata/task.examples.json',
-        'backend/demoimpl/task/testing_contract/contract.go',
-        'backend/demoimpl/other/usecases/other_test.go',
-        'spec/modules/demo/main.tsp',
-      ],
-      moduleAliases: { demoimpl: 'demo' },
     })
     const task = result.files['docs/modules/demo/features/task.html'] ?? ''
 
@@ -584,30 +575,21 @@ describe('renderDocumentationSite', () => {
     expect(result.files['docs/modules/demo/features/task-lifecycle.html']).not.toContain(
       '操作の一覧',
     )
-    expect(result.files['docs/modules/demo/index.html']).toContain('機能地図')
+    // 機能の一覧は README の機能一覧が示すので、モジュールのページに生成の一覧を足さない。
+    expect(result.files['docs/modules/demo/index.html']).not.toContain('機能地図')
     expect(result.files['docs/modules/demo/index.html']).toContain('href="features/task.html"')
-    const featureMap =
-      (result.files['docs/modules/demo/index.html'] ?? '')
-        .split('機能地図</h2>')[1]
-        ?.split('</section>')[0] ?? ''
-    expect(featureMap).toContain('backend/demoimpl/task/usecases/task.go')
-    expect(featureMap).toContain('backend/demoimpl/task/usecases/task_test.go')
-    expect(featureMap).toContain('backend/demoimpl/task/usecases/testdata/task.examples.json')
-    expect(featureMap).toContain('backend/demoimpl/task/testing_contract/contract.go')
-    expect(featureMap).toContain('spec/modules/demo/main.tsp')
-    expect(featureMap).not.toContain('other_test.go')
     expect(result.files['docs/modules/demo/features/task-feature.html']).toContain(
       'scenario-keyword when',
     )
     // モジュールの文書をモジュールの直下に並べ、機能は「機能」の段にまとめる。
     expect(childLabels(task)).toEqual(['重要な設計判断', 'ライフサイクル', '例'])
     const moduleBranch = sidebar(task).slice(sidebar(task).indexOf('>Demo</a>'))
-    expect(moduleBranch).toContain('<summary><span class="nav-label">機能</span></summary>')
+    expect(moduleBranch).toContain('<summary><span class="nav-label">機能一覧</span></summary>')
     expect(moduleBranch).toContain('>重要な設計判断</a>')
     expect(moduleBranch.indexOf('>重要な設計判断</a>')).toBeLessThan(
-      moduleBranch.indexOf('<span class="nav-label">機能</span>'),
+      moduleBranch.indexOf('<span class="nav-label">機能一覧</span>'),
     )
-    expect(moduleBranch.indexOf('<span class="nav-label">機能</span>')).toBeLessThan(
+    expect(moduleBranch.indexOf('<span class="nav-label">機能一覧</span>')).toBeLessThan(
       moduleBranch.indexOf('>タスク</a>'),
     )
     expect(result.files['docs/modules/demo/decisions.html']).toBeDefined()
@@ -871,44 +853,17 @@ describe('renderDocumentationSite', () => {
     expect(site().assets['site.css']).toContain('.term-table td:first-child{white-space:nowrap}')
   })
 
-  it('leads from a module to its own operations and models', () => {
+  // 一覧はリファレンスとカタログに一つだけ置き、モジュールのページは絞り込んだ位置へ案内する。
+  it('leads from a module to its own operations and models without copying them', () => {
     const result = site()
     const page = result.files['docs/modules/demo/index.html'] ?? ''
 
-    expect(page).toContain('API とモデル')
-    expect(page).toContain('>API</h3>')
-    expect(page).toContain('<th scope="col">説明</th>')
+    expect(page).toContain('API と型')
     expect(page).toContain('href="../../../api/index.html?tag=Demo"')
-    expect(page).toContain('List things')
     expect(page).toContain('href="../../../models/index.html#module-demo"')
-    expect(page).toContain('href="../../../models/example-demo-internalrecord.html"')
+    expect(page).not.toContain('List things')
+    expect(page).not.toContain('href="../../../models/example-demo-internalrecord.html"')
     expect(result.files['models/index.html']).toContain('<h2 id="module-demo">Demo</h2>')
-  })
-
-  it('uses an OpenAPI description before exposing an operation identifier', () => {
-    const result = renderDocumentationSite({
-      documents: [rootDocument, moduleDocument],
-      repositoryRoot: '/repo',
-      outputDirectory: '/repo/site',
-      openapiFileName: 'example.openapi.json',
-      openapi: {
-        paths: {
-          '/things': {
-            get: {
-              operationId: 'ListThings',
-              description: '利用可能な Thing を一覧する。',
-              tags: ['Demo'],
-            },
-          },
-        },
-      },
-      models: [],
-      moduleTags: { demo: ['Demo'] },
-    })
-    const page = result.files['docs/modules/demo/index.html'] ?? ''
-
-    expect(page).toContain('利用可能な Thing を一覧する。')
-    expect(page).not.toContain('<td>ListThings</td>')
   })
 
   /**

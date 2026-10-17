@@ -33,7 +33,7 @@
 
 - **判断**：OIDC と SCIM の任意項目は 25 個ほどあり、ほとんどのテナントは使わない。すべての User の型と保存領域へ加えずに、値を設定したキーだけが領域を使う `attributes` に置く。
 
-ユーザー名（`preferred_username`）とメールアドレス（`email`）の正規化、比較、一意性の範囲は、[IdManagement の値オブジェクト](../README.md#値オブジェクト)が定める。
+ユーザー名（`preferred_username`）とメールアドレス（`email`）の正規化、比較、一意性の範囲は、[IdManagement の値オブジェクト](../data.md#値オブジェクト)が定める。
 
 ### 属性の定義
 
@@ -95,8 +95,8 @@
 
 #### REQ-IDMANAGEMENT-089 User の作成は、経路によらず名前とメールアドレスの一意性を守り、作った User を動的グループの規則で評価する
 
-- IdManagement は、同じテナントの削除されていない User と[名前](../README.md#値オブジェクト)が同じユーザー名の User を作らない。
-- IdManagement は、同じテナントの削除されていない User と[メールアドレス](../README.md#値オブジェクト)が同じメールアドレスの User を作らない。
+- IdManagement は、同じテナントの削除されていない User と[名前](../data.md#値オブジェクト)が同じユーザー名の User を作らない。
+- IdManagement は、同じテナントの削除されていない User と[メールアドレス](../data.md#値オブジェクト)が同じメールアドレスの User を作らない。
 - 管理者による作成、CSV の適用、フェデレーションの JIT が User を作ったとき、IdManagement は、作った User を有効な動的グループの規則で評価し、一致した Group に所属させる。
 - テナントの User のリソース上限に達している場合、IdManagement は、User を作らずに拒否し、使用量を変えない。
 - テナントの属性スキーマに違反する属性を指定された場合、IdManagement は、User を作らずに拒否する。
@@ -109,7 +109,7 @@
 
 - **上位の要件**：[REQ-IDMANAGEMENT-089](#作成の経路に共通する規則)
 - 管理者が User を作成したとき、IdManagement は、`Active` の User を作り、設定したパスワードをパスワードの履歴に加える。
-- 管理者が User を作成したとき、IdManagement は、ユーザー名を[名前](../README.md#値オブジェクト)の定義で正規化して保存する。
+- 管理者が User を作成したとき、IdManagement は、ユーザー名を[名前](../data.md#値オブジェクト)の定義で正規化して保存する。
 - 同じテナントの削除されていない User と名前が同じユーザー名を指定された場合、IdManagement は、409 と `username_conflict` で拒否し、User を作らない。
 - 同じテナントの削除されていない User とメールアドレスが同じメールアドレスを指定された場合、IdManagement は、409 と `email_taken` で拒否し、User を作らない。
 - 前後の空白を除くと空になるユーザー名を指定された場合、IdManagement は、拒否し、User を作らない。
@@ -128,7 +128,7 @@
 
 - **上位の要件**：[REQ-IDMANAGEMENT-089](#作成の経路に共通する規則)
 - フェデレーションの JIT が User を作ったとき、IdManagement は、ロールを空にし、パスワードの履歴を作らない。
-- フェデレーションの JIT が User を作ったとき、IdManagement は、メールアドレスを[値オブジェクト](../README.md#値オブジェクト)の定義で正規化して保存する。
+- フェデレーションの JIT が User を作ったとき、IdManagement は、メールアドレスを[値オブジェクト](../data.md#値オブジェクト)の定義で正規化して保存する。
 - フェデレーションの JIT が User を作ったとき、IdManagement は、`UserCreated` の操作者に `identity-broker` を記録する。
 
 ### 一覧
@@ -175,8 +175,8 @@
 
 - **上位の要件**：[REQ-IDMANAGEMENT-089](#作成の経路に共通する規則)
 - 管理者が User のユーザー名を大文字と小文字だけが異なる表記へ変えたとき、IdManagement は、その表記で保存する。
-- 同じテナントの削除されていないほかの User と[名前](../README.md#値オブジェクト)が同じユーザー名へ変える更新を要求された場合、IdManagement は、409 と `username_conflict` で拒否し、User を変えない。
-- 同じテナントの削除されていないほかの User と[メールアドレス](../README.md#値オブジェクト)が同じメールアドレスへ変える更新を要求された場合、IdManagement は、409 と `email_taken` で拒否し、User を変えない。
+- 同じテナントの削除されていないほかの User と[名前](../data.md#値オブジェクト)が同じユーザー名へ変える更新を要求された場合、IdManagement は、409 と `username_conflict` で拒否し、User を変えない。
+- 同じテナントの削除されていないほかの User と[メールアドレス](../data.md#値オブジェクト)が同じメールアドレスへ変える更新を要求された場合、IdManagement は、409 と `email_taken` で拒否し、User を変えない。
 
 ### 必須操作の付与と解除
 

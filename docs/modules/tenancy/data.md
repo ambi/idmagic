@@ -3,6 +3,22 @@
 この文書は、Tenancy の Aggregate の永続化と、テナントの識別子の扱いを扱う。
 システム全体のデータ設計は[データベース](../../design/data/database.md)に従う。
 
+## 集約
+
+| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
+| --- | --- | --- |
+| `Tenant` | `realm`、表示名、状態、`endpoint_style`、セキュリティポリシーの上書き、通知のデフォルト言語 | すべてのモジュールの Aggregate が `tenant_id` で参照する |
+| `TenantBranding` | ブランド設定の項目とアセット | `Tenant` を `tenant_id` で参照する |
+| `TenantUserAttributeSchema`、`TenantGroupAttributeSchema` | カスタム属性の定義 | `Tenant` を `tenant_id` で参照する |
+| `NotificationTemplate` | 一つの `template_key` と `locale` の文面の上書き | `Tenant` を `tenant_id` で参照する |
+| `TenantQuota` | リソースごとの上限の上書きと使用量 | `Tenant` を `tenant_id` で参照する |
+
+`Tenant` は、不変の UUID の `id` と、変更できて一意な `realm` の二つの識別子を持つ。
+URL の接頭辞、OIDC の発行者、Discovery Metadata など外部に示す識別子には `realm` を、`tenant_id` の外部キーなど内部の参照には `id` を使う。
+
+起動時に自動で作成する `realm` が `default` のテナント（デフォルトテナント）は、制御面のテナントを兼ねる。
+`system_admin` のロールを持つデフォルトテナントの User だけが、テナントを越える操作を行える。
+
 ## テナントの識別子
 
 `tenants` は、不変の代理キー `id UUID` と、変更できて一意な `realm TEXT` を持つ。

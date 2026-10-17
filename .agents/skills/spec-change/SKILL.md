@@ -18,8 +18,8 @@ current document kinds and grammar; read the relevant sections, not its rational
 2. Put models, API operations, HTTP bindings, request and response shapes, status codes, error unions,
    deprecation metadata, and authentication mechanisms in
    `spec/modules/<module>/{models,main}.tsp`.
-3. Put module boundaries in `docs/modules/<module>/README.md`, together with the value objects several
-   features share (normalization, comparison, uniqueness scope); vocabulary in `glossary.md`; adopted protocol
+3. Put module boundaries in `docs/modules/<module>/README.md`, and the value objects several features
+   share (normalization, comparison, uniqueness scope) in the module's `data.md`; vocabulary in `glossary.md`; adopted protocol
    rules in `standards.md`. Put one feature's model, state machines, requirements, and security
    considerations in its feature specification `docs/modules/<module>/features/<feature>.md` (or a
    chapter `<feature>.<chapter>.md` beside it). Give each operation its own H3 under `## 操作` holding only requirements, ordered normal

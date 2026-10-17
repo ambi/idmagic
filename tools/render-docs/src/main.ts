@@ -11,7 +11,7 @@ import {
   documentAllowance,
   SYSTEM_DOCUMENT_DIRECTORIES,
 } from '../../workspace/src/document-layout.ts'
-import { createWorkspaceSnapshot, discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
+import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
 import { findEnglishProse } from './prose-language.ts'
 import { renderDocumentationSite, type SourceDocument } from './render.ts'
 import { extractTypeSpecCatalog } from './typespec-catalog.ts'
@@ -118,12 +118,6 @@ if (program.hasError()) {
 }
 const apiSchemas = new Set<string>(Object.keys(openapi.components?.schemas ?? {}))
 const catalog = extractTypeSpecCatalog(program, apiSchemas, root)
-const snapshot = createWorkspaceSnapshot(root)
-const { moduleAliases } = JSON.parse(await snapshot.read('tools/check/feature-slice-debt.json'))
-const sourcePaths = [
-  ...(await snapshot.files('backend')),
-  ...(await snapshot.files('spec/modules')),
-].sort()
 const result = renderDocumentationSite({
   documents,
   openapi,
@@ -132,8 +126,6 @@ const result = renderDocumentationSite({
   openapiFileName: basename(openapiPath),
   models: catalog.symbols,
   moduleTags: catalog.moduleTags,
-  sourcePaths,
-  moduleAliases,
 })
 
 // 文章の言語の規則に反する英文は、書き出す前に止める。生成物だけを直しても元の文書に英語が残るので、

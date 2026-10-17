@@ -64,11 +64,11 @@ CSV は二つ目のプロビジョニングの権威ではなく、IdManagement 
 - `id` を持つ行を読んだとき、IdManagement は、`id` で対象を決める。
 - `id` を持たず `preferred_username` だけを持つ行を読んだとき、IdManagement は、そのユーザー名の User を対象にする。
 - `id` を持たず、`preferred_username` の User がテナントにない行を読んだとき、IdManagement は、作成として計画する。
-- `preferred_username` で対象を照合し、行のユーザー名の重複を判定するとき、IdManagement は、[名前](../README.md#値オブジェクト)の定義で比較する。
+- `preferred_username` で対象を照合し、行のユーザー名の重複を判定するとき、IdManagement は、[名前](../data.md#値オブジェクト)の定義で比較する。
 - テナントにない `id` の行を読んだ場合、IdManagement は、`target_not_found` で `rejected` とし、User を作らない。
 - 前の行と同じ `id` を持つ行を読んだ場合、IdManagement は、その行を `duplicate_target` で `rejected` にし、前の行を計画に残す。
 - 前の行と同じ `preferred_username` を持つ行を読んだ場合、IdManagement は、その行を `duplicate_username` で `rejected` にし、前の行を計画に残す。
-- 行の対象でない、同じテナントの削除されていない User と[メールアドレス](../README.md#値オブジェクト)が同じ `email` の行を読んだ場合、IdManagement は、その行を `email_taken` で `rejected` にする。
+- 行の対象でない、同じテナントの削除されていない User と[メールアドレス](../data.md#値オブジェクト)が同じ `email` の行を読んだ場合、IdManagement は、その行を `email_taken` で `rejected` にする。
 - 前の行とメールアドレスが同じ `email` を持つ行を読んだ場合、IdManagement は、その行を `duplicate_email` で `rejected` にし、前の行を計画に残す。
 
 #### REQ-IDMANAGEMENT-057 User の CSV の組み込み列は、決まった字句形のセルだけを受け付ける

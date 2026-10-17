@@ -19,7 +19,7 @@ export const MODULE_INDEX_DOCUMENTS = ['README.md', 'glossary.md', 'scenarios.fe
 
 /**
  * 全体設計文書の設計領域。システムの `docs/design/<directory>/` とモジュールの直下の
- * `<file>` が同じ語彙と順序を使う。モジュールの索引は固有設計と例外だけを並べる。
+ * `<file>` が同じ語彙と順序を使う。モジュールの索引は、共通設計と異なる領域だけを並べる。
  * 順序は実現対象（アプリケーション、データ、
  * インフラストラクチャ）、複数の実現対象へ作用する領域、検証の順であり、索引の表と生成サイトの
  * 目次はこの順に従う。
@@ -125,13 +125,16 @@ export function canonicalDocumentNames(directory: string): readonly string[] | u
  * 仕様か設計かでは分けない。並びは索引と生成サイトの順であり、概要、語彙、外部規範、品質、
  * 設計領域、設計の記録の順とする。`quality.md` は、システムの品質要件のうちこのモジュールに
  * 割り当てた分を書く。モジュールの直下には、この一覧のほかに文書を置かない。
+ *
+ * モジュールはアーキテクチャ設計の文書を持たない。モジュールの構成はシステムの論理
+ * アーキテクチャが割り当て、モジュールの外から見た姿と主な流れは `README.md` が示す。
  */
 export const MODULE_DOCUMENTS: readonly string[] = [
   'README.md',
   'glossary.md',
   'standards.md',
   'quality.md',
-  ...DESIGN_AREAS.map(({ file }) => file),
+  ...DESIGN_AREAS.filter(({ directory }) => directory !== 'architecture').map(({ file }) => file),
   'decisions.md',
   'risks.md',
 ]

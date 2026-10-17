@@ -15,27 +15,22 @@ IdMagic は SPIRE のサーバーやエージェントを同梱、運用せず�
 | Token Exchange のグラントとアクセストークンの発行 | `OAuth2` |
 | JWT の署名の検証と JWKS の取得の部品 | 技術的な共有アダプター `backend/shared/security/tokens_jose` |
 
-## モデル
+## 主な流れ
 
-| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
-| --- | --- | --- |
-| `WorkloadTrustBundle` | 名前、トラストドメイン、発行者、JWKS の取得元またはインラインの JWKS、受理する audience、外部のトークンの最大 TTL、状態 | `Tenant` を `tenant_id` で参照する。発行者はテナントの中で一意である |
-| `AgentWorkloadBinding` | 外部の主体の glob パターン、対応先の `Agent`、状態 | `WorkloadTrustBundle` の配下にあり、同じテナントの `Agent` を参照する。主体のパターンは信頼設定の中で一意である |
-
-- **判断**：関連付けは信頼設定の配下にあるが、独立して有効と無効を切り替えるため、信頼設定の Aggregate の内側には置かない。信頼設定を削除すると、配下の関連付けも削除する。
-
-## 公開する契約
-
-HTTP の操作とモデルの形は TypeSpec の `Workload Identity` のタグが定める。
-次の表は、それ以外にほかのモジュールと結ぶ契約である。
-
-| 契約 | 相手 | 向き | 内容 |
+| 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| `WorkloadTokenVerifier` の `VerifyWorkloadToken` | `OAuth2` の Token Exchange | このモジュールが実装する。ポートは `OAuth2` が定める | `subject_token` を検証し、対応先の `Agent` と束縛先の `client_id` を `WorkloadIdentityGrant` として返す |
-| `AgentRepository` の読み取り | `IdManagement` が提供する | このモジュールが使う | 対応先の `Agent` の状態と、`OAuth2Client` への束縛を読む |
-| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `WorkloadTrustBundle…`、`AgentWorkloadBinding…`、`WorkloadAttestationRejected`。`WorkloadTokenExchanged` は `OAuth2` がトークンの発行の後に発行する |
+| 管理 API | 解決済みのテナントの `/api/admin/v1/workload-identity/...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [信頼設定と関連付けの管理](features/trust-configuration.md) |
+| アテステーションの交換 | `OAuth2` のトークンエンドポイントへの Token Exchange の要求 | `api` の `OAuth2` のユースケースが、このモジュールの検証を同期的に呼ぶ | [アテステーションの交換の設計](features/attestation-exchange.md#実現方式) |
 
-## 機能
+## 設計の要点
+
+| 方針 | 理由 |
+| --- | --- |
+| 外部のアテステーションを検証する RP に徹する | SPIRE などの基盤を同梱せずに、既存の実行環境の資格情報を使える。詳細は[判断](decisions.md#外部のアテステーションを検証する-rp-に徹し長期のシークレットを配らない) |
+| 交換の結果を、登録した関連付けだけで決める | トークンの内容で対応先が変わらない |
+| 複数の一致を拒否する | 関連付けの追加が既存のワークロードの対応先を変えない。詳細は[判断](decisions.md#複数の関連付けに一致した主体は優先順位で選ばず拒否する) |
+
+## 機能一覧
 
 | 機能 | 内容 |
 | --- | --- |
@@ -44,12 +39,11 @@ HTTP の操作とモデルの形は TypeSpec の `Workload Identity` のタグ�
 
 ## 文書
 
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| データ設計 | 委譲 | [モデル](#モデル) | 二つの Aggregate の関係と削除の扱いは仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
-| セキュリティ設計 | 委譲 | [アテステーションの交換](features/attestation-exchange.md#セキュリティ上の考慮) | 交換の経路が管理者の権限を通らないことと、テナントの境界はアテステーションの交換のセキュリティ上の考慮の節が扱う |
-| 信頼性設計 | 委譲 | [アテステーションの交換の設計](features/attestation-exchange.md#信頼性) | JWKS の取得の失敗の扱いはアテステーションの交換の設計が扱う |
+| 設計領域 | 文書 | 内容 |
+| --- | --- | --- |
+| データ設計 | [WorkloadIdentity のデータ](data.md#集約) | Aggregate とその関係。テーブルの定義はスキーマファイルが扱う |
+| セキュリティ設計 | [アテステーションの交換](features/attestation-exchange.md#セキュリティ上の考慮) | 交換の経路が管理者の権限を通らないことと、テナントの境界はアテステーションの交換のセキュリティ上の考慮の節が扱う |
+| 信頼性設計 | [アテステーションの交換の設計](features/attestation-exchange.md#信頼性) | JWKS の取得の失敗の扱いはアテステーションの交換の設計が扱う |
 
 | 文書 | 内容 |
 | --- | --- |

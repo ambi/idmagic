@@ -16,30 +16,21 @@
 | User と Group の記録の正 | `IdManagement` |
 | SCIM の API アクセストークンの発行とスコープの語彙 | `ApiTokens` |
 
-## モデル
+## 主な流れ
 
-| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
-| --- | --- | --- |
-| `ScimUserRef` | テナント、SCIM の ID、内部の User の ID | `User` を参照する |
-| `ScimGroupRef` | テナント、SCIM の ID、内部の Group の ID | `Group` を参照する |
-
-- **判断**：取り込み元との対応（`ScimUserRef`、`ScimGroupRef`）は `User` と `Group` の Aggregate に埋め込まず、このモジュールの独立した Aggregate とする。埋め込むと、IdManagement の主体のモデルが取り込み元の存在を知ることになり、取り込み元の変更が IdManagement へ波及するからである。
-
-用語集の `IdentitySource`、`IngestionRun`、`SourceCursor` は、取り込み元の種類が増えたときの概念であり、現在の `scim` の機能は実体を持たない。
-モジュールのルートにはファサードと組み立てだけを置き、複数の取り込み元に実在する共通点が判明するまでは、共通の機構を作らない。
-
-## 公開する契約
-
-SCIM のエンドポイントとモデルの形は TypeSpec の `Sourcing` のタグが、採用する SCIM の規則は[Sourcing の標準仕様](standards.md)が定める。
-次の表は、それ以外にほかのモジュールと結ぶ契約である。
-
-| 契約 | 相手 | 向き | 内容 |
+| 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| `UserLifecycle` | `IdManagement` が実装する | このモジュールが定める | User の無効化と再有効化、削除の予約を、IdManagement の User の操作として行う |
-| `User` と `Group` の Repository | `IdManagement` が提供する | このモジュールが使う | User と Group とメンバーシップを読み書きする |
-| API アクセストークンの認証 | `ApiTokens` が提供する | このモジュールが使う | SCIM の要求を認証し、スコープを解決する |
+| SCIM の要求 | 外部の IdP の `/realms/{realm_id}/scim/v2/...` への要求 | `api` が、トークンを認証してからユースケースを同期的に呼ぶ | [SCIM による取り込みの設計](features/scim.md#実現方式) |
 
-## 機能
+## 設計の要点
+
+| 方針 | 理由 |
+| --- | --- |
+| 取り込み元ごとに機能を設け、共通の機構は実在する共通点が判明してから作る | 一つの取り込み元から推測した抽象を、ほかの取り込み元に押し付けない |
+| 外部の表現を正規の Aggregate へ投影し、ワイヤ表現を保存しない | 正規のユーザー像を一つに保つ |
+| 外部の削除を論理削除へ統合する | 外部の同期の誤りで個人識別情報を失わない。詳細は[判断](decisions.md#scim-の-user-の削除を論理削除へ統合する) |
+
+## 機能一覧
 
 | 機能 | 内容 |
 | --- | --- |
@@ -47,14 +38,13 @@ SCIM のエンドポイントとモデルの形は TypeSpec の `Sourcing` の�
 
 ## 文書
 
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| アプリケーション設計 | 委譲 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema) | SCIM のエンドポイントの形は標準仕様と TypeSpec が定める |
-| データ設計 | 委譲 | [モデル](#モデル) | 対応の記録は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
-| セキュリティ設計 | 委譲 | [SCIM による取り込み](features/scim.md#セキュリティ上の考慮) | トークンによるテナントの束縛はSCIM による取り込みのセキュリティ上の考慮の節が扱う |
-| 信頼性設計 | 委譲 | [SCIM による取り込みの設計](features/scim.md#信頼性) | 作成の失敗の後始末はSCIM による取り込みの設計が扱う |
-| 検証設計 | 固有設計 | [担当文書](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
+| 設計領域 | 文書 | 内容 |
+| --- | --- | --- |
+| アプリケーション設計 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema) | SCIM のエンドポイントの形は標準仕様と TypeSpec が定める |
+| データ設計 | [Sourcing のデータ](data.md#集約) | Aggregate とその関係。テーブルの定義はスキーマファイルが扱う |
+| セキュリティ設計 | [SCIM による取り込み](features/scim.md#セキュリティ上の考慮) | トークンによるテナントの束縛はSCIM による取り込みのセキュリティ上の考慮の節が扱う |
+| 信頼性設計 | [SCIM による取り込みの設計](features/scim.md#信頼性) | 作成の失敗の後始末はSCIM による取り込みの設計が扱う |
+| 検証設計 | [Sourcing の検証](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
 
 | 文書 | 内容 |
 | --- | --- |

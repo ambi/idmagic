@@ -15,37 +15,26 @@
 
 このモジュールが決めるのは、それらの記録がどの境界に属し、その境界にどんな上限とデフォルトが効くかである。
 
-## モデル
+## 主な流れ
 
-| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
-| --- | --- | --- |
-| `Tenant` | `realm`、表示名、状態、`endpoint_style`、セキュリティポリシーの上書き、通知のデフォルト言語 | すべてのモジュールの Aggregate が `tenant_id` で参照する |
-| `TenantBranding` | ブランド設定の項目とアセット | `Tenant` を `tenant_id` で参照する |
-| `TenantUserAttributeSchema`、`TenantGroupAttributeSchema` | カスタム属性の定義 | `Tenant` を `tenant_id` で参照する |
-| `NotificationTemplate` | 一つの `template_key` と `locale` の文面の上書き | `Tenant` を `tenant_id` で参照する |
-| `TenantQuota` | リソースごとの上限の上書きと使用量 | `Tenant` を `tenant_id` で参照する |
-
-`Tenant` は、不変の UUID の `id` と、変更できて一意な `realm` の二つの識別子を持つ。
-URL の接頭辞、OIDC の発行者、Discovery Metadata など外部に示す識別子には `realm` を、`tenant_id` の外部キーなど内部の参照には `id` を使う。
-
-起動時に自動で作成する `realm` が `default` のテナント（デフォルトテナント）は、制御面のテナントを兼ねる。
-`system_admin` のロールを持つデフォルトテナントの User だけが、テナントを越える操作を行える。
-
-## 公開する契約
-
-HTTP の操作とモデルの形は TypeSpec の `Tenancy` のタグが定める。
-次の表は、それ以外にほかのモジュールと結ぶ契約である。
-
-| 契約 | 相手 | 向き | 内容 |
+| 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| リクエストコンテキストのテナント | すべてのモジュールの HTTP ハンドラー | このモジュールが提供する | 解決した `Tenant`、発行者、URL の接頭辞を運ぶ |
-| `TenantRepository` の読み取り | `Authentication`、`OAuth2`、`IdManagement`、`DataKeys`、`SigningKeys`、テナント解決のミドルウェア | このモジュールが提供する | `Tenant` と、その上書きの実効値を読む |
-| `QuotaRepository` の `CheckAndIncrement` と `Decrement` | リソースを作成するモジュール（`IdManagement`、`Application`、`OAuth2`、`Authentication`、`Jobs`、`SharedSignals`） | このモジュールが提供する | 作成のトランザクションの中で Hard の上限を確認し、使用量を増減する |
-| `TenantUserAttributeSchemaRepository`、`TenantGroupAttributeSchemaRepository` | `IdManagement` が実装する。`SAML`、`WS-Federation`、`Application`、`IdGovernance`、`Authentication` が読む | このモジュールが定める | 属性スキーマの永続化と読み取り |
-| `TenantBrandingRepository` の読み取り | 通知メールの描画（`backend/shared/notification`）と `Authentication` のセキュリティ通知 | このモジュールが提供する | 差し込み変数 `product_name` などの外装を読む |
-| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `Tenant…`、`QuotaExceeded`、`NotificationTemplate…` |
+| テナントの解決 | すべての HTTP の要求 | `api` のミドルウェアが、ハンドラーより先に解決する | [テナントの解決の設計](features/resolution.md#実現方式) |
+| テナント単位の管理 API | 解決済みのテナントの `/api/admin/v1/...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | 各機能仕様 |
+| 制御面のテナント管理 API | 解決済みのテナントの `/api/admin/v1/tenants/...` への要求 | `api` が、`RequireControlPlaneUser` で `system_admin` と制御面テナントへの所属を確かめてからユースケースを呼ぶ | [テナントのライフサイクル](features/lifecycle.md) |
+| 上限の確認 | ほかのモジュールのリソースの作成 | 作成する側のユースケースが、作成のトランザクションの中で `CheckAndIncrement` を呼ぶ | [リソース上限](features/quota.md) |
+| デフォルトテナントの作成 | プロセスの起動 | 起動処理が、存在しなければ作成する | [テナントのライフサイクル](features/lifecycle.md) |
 
-## 機能
+## 設計の要点
+
+| 方針 | 理由 |
+| --- | --- |
+| テナントの識別子を UUID と realm に分ける | realm の改名で外部キーに触れない。詳細は[判断](decisions.md#テナントのキーを不変な-uuid-と可変な-realm-に分ける) |
+| 一つのテナントに一つの正規ロケーションと一つの発行者を対応させる | 発行者と Discovery Metadata を標準に合わせる。詳細は[判断](decisions.md#テナントの正規ロケーションを一つにする) |
+| 外装と属性スキーマを `Tenant` とは別の Aggregate にする | 認可と realm の解決が依存する `Tenant` を太らせない。詳細は[判断](decisions.md#外装と属性スキーマを-tenant-から独立した-aggregate-にする) |
+| 上限の確認を、作成する側のトランザクションに委ねる | 作成と使用量の加算を同時に確定させる |
+
+## 機能一覧
 
 | 機能群 | 機能 | 内容 |
 | --- | --- | --- |
@@ -58,13 +47,14 @@ HTTP の操作とモデルの形は TypeSpec の `Tenancy` のタグが定める
 | テナントの設定 | [通知テンプレート](features/notification-template.md) | 通知メールの文面の上書き、プレビュー、試し送り |
 | テナントの設定 | [リソース上限](features/quota.md) | 上限のデフォルト値、上書き、超過時の拒否 |
 
+属性スキーマのポートは Tenancy が定め、実装は `IdManagement` が持つ。
+
 ## 文書
 
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| データ設計 | 固有設計 | [担当文書](data.md#テナントの識別子) | テナントの識別子、`tenant_id` のカラム、Aggregate の保存先 |
-| インフラストラクチャ設計 | 委譲 | [テナントの解決の設計](features/resolution.md#インフラストラクチャ) | `tenant_base_domain` の要否はテナントの解決の設計が扱い、それ以外はシステムのインフラストラクチャ設計に従う |
+| 設計領域 | 文書 | 内容 |
+| --- | --- | --- |
+| データ設計 | [Tenancy のデータ](data.md#集約) | Aggregate とその関係、テナントの識別子、`tenant_id` のカラム、Aggregate の保存先 |
+| インフラストラクチャ設計 | [テナントの解決の設計](features/resolution.md#インフラストラクチャ) | `tenant_base_domain` の要否はテナントの解決の設計が扱い、それ以外はシステムのインフラストラクチャ設計に従う |
 
 | 文書 | 内容 |
 | --- | --- |

@@ -39,7 +39,7 @@ describe('verifyCanonicalDocumentSet', () => {
       verifyCanonicalDocumentSet([
         {
           directory: 'docs/modules/demo',
-          files: ['README.md', 'architecture.md', 'observability.md', 'decisions.md', 'risks.md'],
+          files: ['README.md', 'data.md', 'observability.md', 'decisions.md', 'risks.md'],
         },
         {
           directory: 'docs/modules/demo/features',

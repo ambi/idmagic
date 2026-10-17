@@ -3,6 +3,20 @@
 この文書は、Application とプロトコル設定の関係を、どう保存して保証するかを扱う。
 テーブルの定義はスキーマファイルが定める。
 
+## 集約
+
+| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
+| --- | --- | --- |
+| `Application` | 名前、種類（`weblink`、`federated`、`service`）、起動の URL、状態、アイコン、カテゴリ、プロトコル設定への参照（`ApplicationProtocol`） | `Tenant` を `tenant_id` で参照する。プロトコル設定を最大一つ参照する |
+| `ApplicationAssignment` | 主体（`user` または `group`）、`visibility` | `Application` と、User または Group を参照する |
+| `AppSignInPolicy` | 順序付けた `SignInRule` の集合 | `Application` を参照する |
+| `TenantDefaultSignInPolicy` | テナントのデフォルトの `SignInRule` の集合 | `Tenant` を `tenant_id` で参照する |
+| `ApplicationCategory` | テナントの管理者が定義するカテゴリ | `Tenant` を `tenant_id` で参照する |
+| `ApplicationOrdering` | `(tenant_id, user_sub)` ごとの `application_id` の並び | User を参照する |
+
+- **判断**：テナントのデフォルトのサインインポリシーは、テナントの Aggregate ではなく、アプリケーションへのサインインの方法に関する概念なので、`Tenancy` ではなくこのモジュールに置く。
+- **判断**：ポータルでの手動の並び順とカテゴリは、IdManagement の User の Aggregate ではなく、`Application` の表示に関する概念なので、このモジュールに置く。
+
 ## Application とプロトコル設定の関係
 
 各プロトコルのテーブル（`oauth2_clients`、`saml_service_providers`、`wsfed_relying_parties`）は、`NULL` を許す一意な `application_id` を持つ。

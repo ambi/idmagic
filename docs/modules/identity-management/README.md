@@ -14,46 +14,45 @@
 | 外部の権威からの取り込み（SCIM など） | `Sourcing` |
 | 外部の宛先への送り出し | `Provisioning` |
 
-## モデル
+## 主な流れ
 
-Aggregate root は `User`、`Group`、`Agent` の三つである。
-
-| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
-| --- | --- | --- |
-| `User` | 属性（`attributes`）、必須操作 | `Group` のメンバーになる。`Agent` の所有者になる |
-| `Group` | `GroupMembership`、`DynamicGroupRule` | メンバーの `User` を ID で参照する |
-| `Agent` | `AgentCredentialBinding` | 所有者の `User` または `Group` と、バインドする `OAuth2Client` を ID で参照する |
-
-境界の内側にあるものは、その Aggregate root を経由せずに参照しない。
-`User` の実効ロールは、直接付与したロールと、所属する `Group` のロールの和集合である。
-
-### 値オブジェクト
-
-| 値 | 使う項目 | 正規化 | 比較 | 一意性の範囲 |
-| --- | --- | --- | --- | --- |
-| 名前 | `User` の `preferred_username`、`Group` の `name`、`Agent` の `name` | 前後の空白を除き、残りを入力された表記のまま保存し、表示する | Unicode の case folding をした値どうしで比較し、大文字と小文字を区別しない | 同じテナントの、削除されていない同じ種類の Aggregate |
-| メールアドレス | `User` の `email` | 前後の空白を除き、残りを表記のまま保存する。空になる値は設定しない | 名前と同じく、case folding をした値どうしで比較する | 同じテナントの削除されていない `User` |
-
-- **判断**：名前を大文字と小文字を区別せずに比較するのは、主要な IdP（Okta、Entra ID、Google Workspace、AWS IAM）と SCIM の `userName`（`caseExact: false`）に合わせるためである。表記を保つのは、Okta と Entra ID と同じく、利用者が入力した表記を表示するためである。
-- **判断**：比較には小文字への変換ではなく case folding（Unicode のデフォルトの caseless matching）を使う。小文字への変換では、`ß` と `SS`、語末の `ς` と `Σ` のように、大文字と小文字だけが異なる表記が一致しない。
-- **判断**：メールアドレスをテナントの中で一意にするのは、Google Workspace、Keycloak、Auth0 と同じく、メールアドレスで User を一人に決められるようにするためである。
-
-## 公開する契約
-
-HTTP の操作とモデルの形は TypeSpec の `Identity Management` のタグが定める。
-次の表は、それ以外にほかのモジュールと結ぶ契約である。
-
-| 契約 | 相手 | 向き | 内容 |
+| 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| `UserMutationCommitter` | `IdGovernance` が実装する | このモジュールが呼ぶ | User の変更と、その変更から生まれるワークフローの実行を同時に確定する |
-| `ProvisioningNotifier`（User と Group） | `Provisioning` が実装する | このモジュールが呼ぶ | User と Group の変更を下流の宛先へ通知する |
-| `UserSourceOwnershipGuard`、`GroupSourceOwnershipGuard` | `Sourcing` が実装する | このモジュールが呼ぶ | 外部の権威が管理する User と Group を、CSV が上書きしないように判定する |
-| `ProvisionFederatedUser` | `Authentication` が呼ぶ | このモジュールが提供する | フェデレーションのログインで User を作る |
-| `UserRepository`、`GroupRepository` の読み取り | `Authentication`、`OAuth2`、`Authorization` などが呼ぶ | このモジュールが提供する | User と Group、および実効ロールを読む |
-| `UserWriter` | `Authentication`（パスワードの再設定）、`IdGovernance`（ワークフローの実行の記録）が呼ぶ | このモジュールが提供する | 呼び出し側のトランザクションに参加して User を保存する。確定と巻き戻しは呼び出し側が決め、組み立て地点がトランザクションから作る構築関数を渡す |
-| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `User…`、`Group…`、`DynamicGroupRule…`、`Agent…`、`DataExport…`、`EmailChange…` |
+| 管理 API とセルフサービス API | HTTP の要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | 各機能の設計 |
+| CSV のプレビューと適用 | 管理者の要求で `Jobs` のジョブを作る | `worker` | [CSV の転送の実現方式](features/csv-transfer.md#実現方式) |
+| データエクスポート | 管理者の要求で、種類 `data_export` のジョブを作る | `worker` | [データエクスポート](features/data-export.md) |
+| ドメインイベントの発行 | 状態を変えた操作 | ユースケースが発行し、監査と下流へ渡す | [イベントと監査の記録](observability.md) |
+| CSV の成果物の削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、作成から 30 日を過ぎた成果物を消す | [CSV の転送](features/csv-transfer.md#成果物の保持) |
+| 猶予期間を過ぎた User の完全削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、各テナントで猶予期間を過ぎた削除予約の User と、途中で失敗した完全削除を完全削除する | [ユーザーの設計](features/user.md#信頼性) |
+| ほかのモジュールからの User の停止 | ライフサイクルワークフローの手順、SCIM の取り込み | `worker` と `api` が、User のユースケースを呼ぶ | [ほかのモジュールからの User の停止](#ほかのモジュールからの-user-の停止) |
 
-## 機能
+### ほかのモジュールからの User の停止
+
+User の無効化、再有効化、削除の予約は、管理 API の外からも起きる。
+どの経路でも User のユースケースを通し、User の状態を直接保存させない。
+止めることに伴うイベント、記憶済みの端末の失効、動的グループの再評価、下流への通知、所有する Agent の無効化、削除予約中の User の拒否を、管理 API と揃えるためである。
+
+| 経路 | 呼ぶ側のポート | 操作 | 監査イベントの actor |
+| --- | --- | --- | --- |
+| ライフサイクルワークフローの `disable_user` と `enable_user` | `IdGovernance` の `UserLifecycle` | 無効化と再有効化 | `lifecycle-workflow` |
+| SCIM の `active` の切り替え | `Sourcing` の `UserLifecycle` | 無効化と再有効化 | `scim` |
+| SCIM の `DELETE` | `Sourcing` の `UserLifecycle` | 削除の予約 | `scim` |
+
+`user` スライスの `UserLifecycleCommands` が両方のポートを満たし、組み立ての地点（`worker` と `api` の起動）が依存を管理 API と同じ集合で組み立てて渡す。
+`UserLifecycleCommands` は、User の変更からライフサイクルワークフローの実行を作る仕組みを渡さない。
+ワークフローの手順による User の変更から、さらにワークフローの実行が連鎖しないようにするためである。
+削除予約中の User への無効化と再有効化は、ワークフローの手順にとっては変更なしとして扱う。
+
+## 設計の要点
+
+| 方針 | 理由 |
+| --- | --- |
+| `User`、`Group`、`Agent` をそれぞれ機能スライスに分ける | 一つの Aggregate の仕組みを一つのディレクトリの下で読めるようにする。詳細は[重要な設計判断](decisions.md)の「User、Group、Agent を機能ごとの縦割りのスライスで構成する」 |
+| CSV のインポートを、プレビューと適用の二つの非同期ジョブにする | 適用の前に全行の検証結果を管理者に見せ、適用ではプレビューしたペイロードだけを実行する。詳細は[CSV の転送の実現方式](features/csv-transfer.md#実現方式) |
+| User の削除を Tombstone にする | 追記専用の記録が参照する `sub` を壊さない。詳細は[判断](decisions.md#user-の削除を物理削除ではなく-tombstone-で行う) |
+| 他のモジュールとの協調をポートの注入で行う | このモジュールから下流のモジュールへの依存を作らない |
+
+## 機能一覧
 
 | 機能 | 内容 |
 | --- | --- |
@@ -69,17 +68,18 @@ HTTP の操作とモデルの形は TypeSpec の `Identity Management` のタグ
 | [管理 API の認可](features/admin-access.md) | 管理者のセッションと API アクセストークンによる管理 API の呼び出しを認める条件 |
 | [ロール](features/roles.md) | ロールの正規化と、予約ロール `system_admin` を割り当てられる対象 |
 
+データエクスポートとロールは機能スライスを持たず、モジュールのルートが CSV の転送ポリシーと解析器、成果物ストアとともに実装する。
+
 ## 文書
 
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| データ設計 | 固有設計 | [担当文書](data.md#aggregate-と永続化) | Aggregate と永続化、保持と削除、排他と一意性、テナントの属性スキーマ |
-| セキュリティ設計 | 委譲 | [管理 API の認可](features/admin-access.md#概要)、[認可設計](../../design/security/authorization.md#主体の種類) | 管理 API の認可は機能 管理 API の認可 が、システム全体の認可は認可設計が扱う |
-| 信頼性設計 | 固有設計 | [担当文書](reliability.md#idmanagement-の信頼性) | 障害の症状、原因、直し方 |
-| 性能設計 | 固有設計 | [担当文書](performance.md#実効ポリシーを超えるエクスポート) | 実効ポリシーを超えるエクスポート |
-| オブザーバビリティ設計 | 固有設計 | [担当文書](observability.md#経路) | ドメインイベント、監査の記録、下流への通知の経路と、確定との関係 |
-| 検証設計 | 委譲 | [性能](performance.md#実効ポリシーを超えるエクスポート) | 品質要件の確かめ方は性能に置き、それ以外はシステムの検証設計に従う |
+| 設計領域 | 文書 | 内容 |
+| --- | --- | --- |
+| データ設計 | [IdManagement のデータ](data.md#集約) | Aggregate とその関係、永続化、保持と削除、排他と一意性、テナントの属性スキーマ |
+| セキュリティ設計 | [管理 API の認可](features/admin-access.md#概要)、[認可設計](../../design/security/authorization.md#主体の種類) | 管理 API の認可は機能 管理 API の認可 が、システム全体の認可は認可設計が扱う |
+| 信頼性設計 | [IdManagement の信頼性](reliability.md#idmanagement-の信頼性) | 障害の症状、原因、直し方 |
+| 性能設計 | [IdManagement の性能](performance.md#実効ポリシーを超えるエクスポート) | 実効ポリシーを超えるエクスポート |
+| オブザーバビリティ設計 | [IdManagement のオブザーバビリティ](observability.md#経路) | ドメインイベント、監査の記録、下流への通知の経路と、確定との関係 |
+| 検証設計 | [性能](performance.md#実効ポリシーを超えるエクスポート) | 品質要件の確かめ方は性能に置き、それ以外はシステムの検証設計に従う |
 
 | 文書 | 内容 |
 | --- | --- |

@@ -15,31 +15,25 @@
 `Sourcing` が外部から取り込むのに対し、このモジュールは外部へ送り出す。
 処理の向き、記録の正の所在、語彙が異なるので、`Tenancy`、`Application`、`IdManagement`、`Jobs` の公開するインターフェースを除いて、コードを共有しない。
 
-## モデル
+## 主な流れ
 
-| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
-| --- | --- | --- |
-| `ProvisioningConnection` | 接続先の `base_url`、認証、機能のトグル、スコープ、属性の対応付け、`DeprovisionPolicy`、信頼性の設定、健全性（隔離を含む）、`notification_email` | `Application` を一つ参照する |
-| `RemoteResourceLink` | IdMagic の User または Group と、下流のリソース（リモートの ID、`externalId`、`etag`）の対応、下流で有効として反映したか、最後に反映したバージョン | `ProvisioningConnection` と、User または Group を参照する |
-| `ProvisioningTask` | 操作の種類（`create`、`update`、`deactivate`、`delete`）、状態、冪等のキー、関連付けた Job | `ProvisioningConnection` を参照する |
-| `ScheduledDeprovision` | 猶予期間つきの削除の予約。接続、User、削除のイベントのバージョン、期限、状態 | `ProvisioningConnection` と User を参照する |
-| `FullResync` | フル同期の対象の数と状態 | `ProvisioningConnection` を参照し、`ProvisioningTask` を関連付ける |
-
-- **判断**：反映済みの状態を `RemoteResourceLink` に持つ理由は、[反映済みの状態を RemoteResourceLink に保持する](decisions.md#反映済みの状態を-remoteresourcelink-に保持する)。
-
-## 公開する契約
-
-HTTP の操作とモデルの形は TypeSpec の `Provisioning` のタグが、下流の SCIM の規則は[Provisioning の標準仕様](standards.md)が定める。
-次の表は、それ以外にほかのモジュールと結ぶ契約である。
-
-| 契約 | 相手 | 向き | 内容 |
+| 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| `ProvisioningCapture`（イベント同期） | `IdManagement` の User の変更、`Application` の割り当ての変更 | このモジュールが提供する | 変更を確定した後に呼ばれ、一致する有効な接続ごとに `pending` のタスクを作る |
-| `AttributeSource`、`GroupMemberSource` | `IdManagement` の User と Group を読むアダプター | このモジュールが定める | 実行の時点の属性とメンバーを読む |
-| `provisioning_task` の Job | `Jobs` が実行する | このモジュールが定める | タスクを一回試行する |
-| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `ProvisioningConnection…`、`ProvisioningCredentialRotated`、`ProvisioningTaskStarted`、`UserProvisioned`、`UserDeprovisioned`、`UserProvisioningFailed`、`GroupPushed`、`ConnectionQuarantined`、`FullResyncCompleted` |
+| イベント同期 | User と割り当ての変更の確定 | 変更したプロセスが、確定の後に同期的にタスクを作る | [同期の設計](features/synchronization.md#実現方式) |
+| インクリメンタル同期 | `PROVISIONING_RECONCILE_INTERVAL` ごと | `worker` の周期のループ | [同期の設計](features/synchronization.md#実現方式) |
+| ディスパッチ | 一定の間隔 | `worker` のディスパッチャーが、予約を実体化し、タスクに Job を関連付ける | [同期の設計](features/synchronization.md#実現方式) |
+| タスクの実行 | `provisioning_task` の Job | `worker` の `default` のレーン | [プロビジョニングタスクの実行](features/task.md) |
+| 管理 API | 解決済みのテナントの管理 API への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [接続の管理](features/connection.md) |
 
-## 機能
+## 設計の要点
+
+| 方針 | 理由 |
+| --- | --- |
+| プロトコルに依存しない中核と、プロトコルごとの薄い機能に分ける | ドメインの形がほぼプロトコルに依存しない。詳細は[判断](decisions.md#プロトコルに依存しない中核とプロトコルごとの薄い機能に分ける) |
+| 反映をインクリメンタル同期で保証し、イベント同期を近道にする | 取りこぼしの原因を問わずに回収する。詳細は[判断](decisions.md#下流への反映をインクリメンタル同期で保証する) |
+| 内向きの SCIM と通信の中核を共有しない | 詳細は[判断](decisions.md#内向きの-scim-と通信の中核を共有しない) |
+
+## 機能一覧
 
 | 機能 | 内容 |
 | --- | --- |
@@ -49,13 +43,12 @@ HTTP の操作とモデルの形は TypeSpec の `Provisioning` のタグが、�
 
 ## 文書
 
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| アプリケーション設計 | 委譲 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema) | 管理 API はシステムのアプリケーション設計に従い、下流の形は標準仕様が定める |
-| データ設計 | 委譲 | [モデル](#モデル) | Aggregate とその関係は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
-| セキュリティ設計 | 委譲 | [接続の管理](features/connection.md#セキュリティ上の考慮) | 下流の URL の検証とテナントの境界は接続の管理のセキュリティ上の考慮の節が扱う |
-| 信頼性設計 | 委譲 | [同期の設計](features/synchronization.md#信頼性)、[接続の管理の設計](features/connection.md#信頼性) | 隔離からの回復と通知は同期の設計が、フル同期の完了は接続の管理の設計が扱う |
+| 設計領域 | 文書 | 内容 |
+| --- | --- | --- |
+| アプリケーション設計 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema) | 管理 API はシステムのアプリケーション設計に従い、下流の形は標準仕様が定める |
+| データ設計 | [Provisioning のデータ](data.md#集約) | Aggregate とその関係。テーブルの定義はスキーマファイルが扱う |
+| セキュリティ設計 | [接続の管理](features/connection.md#セキュリティ上の考慮) | 下流の URL の検証とテナントの境界は接続の管理のセキュリティ上の考慮の節が扱う |
+| 信頼性設計 | [同期の設計](features/synchronization.md#信頼性)、[接続の管理の設計](features/connection.md#信頼性) | 隔離からの回復と通知は同期の設計が、フル同期の完了は接続の管理の設計が扱う |
 
 | 文書 | 内容 |
 | --- | --- |

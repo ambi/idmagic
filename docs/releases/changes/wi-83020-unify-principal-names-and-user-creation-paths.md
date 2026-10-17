@@ -8,7 +8,7 @@ WI-83020 は、User のユーザー名、Group と Agent の名前を一つの�
 `alice` がいるテナントでの `Alice` の作成は、`POST /api/admin/v1/users` が 409 と `username_conflict` で拒否し、User CSV では対象の照合と重複の判定で同じ User として扱う。
 入力された表記は保存し、そのまま表示する。
 比較は Unicode の case folding で行うので、`straße` と `STRASSE` のような名前も同じ名前になる。
-規則は[IdManagement の値オブジェクト](../../modules/identity-management/README.md#値オブジェクト)が定め、[ユーザー](../../modules/identity-management/features/user.md)の REQ-IDMANAGEMENT-042 と REQ-IDMANAGEMENT-090、[グループ](../../modules/identity-management/features/group.md)の REQ-IDMANAGEMENT-060、[エージェント](../../modules/identity-management/features/agent.md)の REQ-IDMANAGEMENT-073 と REQ-IDMANAGEMENT-075、[グループ CSV](../../modules/identity-management/features/group-csv.md)の REQ-IDMANAGEMENT-072 が参照する。
+規則は[IdManagement の値オブジェクト](../../modules/identity-management/data.md#値オブジェクト)が定め、[ユーザー](../../modules/identity-management/features/user.md)の REQ-IDMANAGEMENT-042 と REQ-IDMANAGEMENT-090、[グループ](../../modules/identity-management/features/group.md)の REQ-IDMANAGEMENT-060、[エージェント](../../modules/identity-management/features/agent.md)の REQ-IDMANAGEMENT-073 と REQ-IDMANAGEMENT-075、[グループ CSV](../../modules/identity-management/features/group-csv.md)の REQ-IDMANAGEMENT-072 が参照する。
 
 メールアドレスは、テナントの中で削除されていない User の間で一意になる。
 管理者による作成と更新は、ほかの User と大文字と小文字を区別せずに同じメールアドレスを 409 と `email_taken`（`EmailTakenError`）で拒否する。

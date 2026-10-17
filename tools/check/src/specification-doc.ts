@@ -548,7 +548,7 @@ function validateDecisionRecords(source: string, findings: SpecificationFinding[
   }
 }
 
-const AREA_INDEX_HEADER = '| 設計領域 | 区分 | 参照先 | 内容 |'
+const AREA_INDEX_HEADER = '| 設計領域 | 文書 | 内容 |'
 
 /** モジュールの `README.md` の最後の節。設計領域とモジュールの文書をここで索引する。 */
 const MODULE_DOCUMENT_INDEX_SECTION = '文書'
@@ -558,7 +558,8 @@ const LOCAL_SECTION_LINK = /\[[^\]]+\]\((?![a-z][a-z0-9+.-]*:|\/)[^\s)#]*#[^\s)]
 
 /**
  * 全体設計は九領域を、モジュールは既定からの差分だけを記述する。
- * 記載の省略と明示した対象外を区別し、委譲を対象外として隠さない。
+ * 文書の列は、その領域を書いた節へのリンクか、実現対象がないことを表す `—` である。
+ * `—` の行は内容の列に理由を書き、リンクを併記しない。
  */
 function validateDesignAreaIndex(
   path: string,
@@ -591,7 +592,7 @@ function validateDesignAreaIndex(
   const areas: readonly string[] = DESIGN_AREAS.map(({ name }) => name)
   const listed: string[] = []
   for (const { cells, index } of rows) {
-    const [area = '', disposition = '', reference = '', content = ''] = cells
+    const [area = '', reference = '', content = ''] = cells
     const line = lineAt(source, index)
     if (!areas.includes(area)) {
       findings.push({ line, message: `design area index names an unknown area ${area}` })
@@ -601,28 +602,21 @@ function validateDesignAreaIndex(
       findings.push({ line, message: `design area index duplicates ${area}` })
     }
     listed.push(area)
-    if (cells.length !== 4) {
-      findings.push({ line, message: `design area ${area} must have four cells` })
+    if (cells.length !== 3) {
+      findings.push({ line, message: `design area ${area} must have three cells` })
     }
     if (!content || content === '—') {
       findings.push({ line, message: `design area ${area} must state a reason or content` })
     }
-    if (disposition === '固有設計' || disposition === '委譲') {
-      if (!LOCAL_SECTION_LINK.test(reference)) {
-        findings.push({ line, message: `design area ${area} must link to a local section` })
-      }
-    } else if (disposition === '対象外') {
-      if (reference !== '—' || /\]\(/.test(content)) {
+    if (reference === '—') {
+      if (/\]\(/.test(content)) {
         findings.push({
           line,
-          message: `design area ${area} marked 対象外 must use — without delegation`,
+          message: `design area ${area} without a document must not link from its content`,
         })
       }
-    } else {
-      findings.push({
-        line,
-        message: `design area ${area} has unknown disposition ${disposition}`,
-      })
+    } else if (!LOCAL_SECTION_LINK.test(reference)) {
+      findings.push({ line, message: `design area ${area} must link to a local section` })
     }
   }
   const line = lineAt(source, rows[0]?.index ?? 0)
@@ -654,7 +648,7 @@ function documentIndexLinks(readme: string, moduleDirectory: string): Set<string
   )
 }
 
-/** 既定への継承は、実在する固有設計の記載を省く理由にはしない。 */
+/** 既定への継承は、実在する設計領域の文書の記載を省く理由にはしない。 */
 export function verifyDesignDocumentCoverage(
   documents: ReadonlyMap<string, string>,
 ): Array<SpecificationFinding & { path: string }> {
@@ -680,8 +674,7 @@ export function verifyDesignDocumentCoverage(
     const indexed = rows.some(
       ({ cells }) =>
         cells[0] === area.name &&
-        cells[1] === '固有設計' &&
-        [...(cells[2] ?? '').matchAll(/\[[^\]]+\]\(([^)#]+)#[^)]+\)/g)].some(
+        [...(cells[1] ?? '').matchAll(/\[[^\]]+\]\(([^)#]+)#[^)]+\)/g)].some(
           (link) => posix.normalize(posix.join(match[1] ?? '', link[1] ?? '')) === path,
         ),
     )

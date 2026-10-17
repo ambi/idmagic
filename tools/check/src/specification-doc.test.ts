@@ -22,47 +22,42 @@ const messages = (path: string, source: string) =>
 describe('共通設計を既定とする索引', () => {
   const path = 'docs/modules/demo/README.md'
   const index = (row: string) =>
-    `# Demo\n\n## 文書\n\n| 設計領域 | 区分 | 参照先 | 内容 |\n| --- | --- | --- | --- |\n${row}\n`
+    `# Demo\n\n## 文書\n\n| 設計領域 | 文書 | 内容 |\n| --- | --- | --- |\n${row}\n`
 
   it('共通設計だけのモジュールに九行を要求しない', () => {
     expect(messages(path, '# Demo\n')).toEqual([])
   })
 
   it.each([
-    '| アーキテクチャ設計 | 固有設計 | [構成](architecture.md#構成) | 固有の構成 |',
-    '| データ設計 | 委譲 | [保存](features/task.md#保存) | タスクに委ねる |',
-    '| データ設計 | 対象外 | — | 永続状態を保存しない |',
-  ])('有効な区分の行を受け入れる: %s', (row) => {
+    '| データ設計 | [Demo のデータ](data.md#集約) | 集約 |',
+    '| データ設計 | [タスクの設計](features/task.md#保存) | タスクの保存 |',
+    '| データ設計 | — | 永続状態を保存しない |',
+  ])('有効な行を受け入れる: %s', (row) => {
     expect(messages(path, index(row))).toEqual([])
   })
 
   it.each([
-    ['| データ設計 | 委譲 | — | 保存を委ねる |', 'must link to a local section'],
-    ['| データ設計 | 固有設計 | [保存](data.md) | 保存 |', 'must link to a local section'],
-    ['| データ設計 | 対象外 | — |  |', 'must state a reason'],
-    ['| データ設計 | 対象外 | [保存](data.md#保存) | 保存しない |', 'must use —'],
-    ['| データ設計 | 未記入 | — | 保存 |', 'unknown disposition'],
-    ['| 未知の設計 | 対象外 | — | 対象がない |', 'unknown area'],
+    ['| データ設計 | [Demo のデータ](data.md) | 保存 |', 'must link to a local section'],
+    ['| データ設計 | 保存の設計 | 保存 |', 'must link to a local section'],
+    ['| データ設計 | — |  |', 'must state a reason'],
+    ['| データ設計 | — | [保存](data.md#保存)に従う |', 'must not link from its content'],
+    ['| データ設計 | — |', 'must have three cells'],
+    ['| 未知の設計 | — | 対象がない |', 'unknown area'],
   ])('不正な行を拒否する: %s', (row, expected) => {
     expect(messages(path, index(row)).join('\n')).toContain(expected)
   })
 
   it('重複と順序の逆転を拒否する', () => {
-    const row = '| データ設計 | 対象外 | — | 永続状態を保存しない |'
+    const row = '| データ設計 | — | 永続状態を保存しない |'
     expect(messages(path, index(`${row}\n${row}`)).join('\n')).toContain('duplicates データ設計')
     expect(
-      messages(
-        path,
-        index(`${row}\n| アプリケーション設計 | 対象外 | — | HTTP を公開しない |`),
-      ).join('\n'),
+      messages(path, index(`${row}\n| アプリケーション設計 | — | HTTP を公開しない |`)).join('\n'),
     ).toContain('must order its areas')
   })
 
   it('システムには全九領域を要求する', () => {
     expect(
-      messages('docs/design/README.md', index('| データ設計 | 対象外 | — | 保存しない |')).join(
-        '\n',
-      ),
+      messages('docs/design/README.md', index('| データ設計 | — | 保存しない |')).join('\n'),
     ).toContain('must list 性能設計')
   })
 })
@@ -162,7 +157,8 @@ describe('documentKind', () => {
     expect(documentKind('docs/modules/demo/design/README.md')).toBeUndefined()
     expect(documentKind('docs/design/README.md')).toBe('design-index')
     expect(documentKind('docs/modules/demo/quality.md')).toBe('prose')
-    expect(documentKind('docs/modules/demo/architecture.md')).toBe('prose')
+    expect(documentKind('docs/modules/demo/data.md')).toBe('prose')
+    expect(documentKind('docs/modules/demo/architecture.md')).toBeUndefined()
     expect(documentKind('docs/modules/demo/csv-transfer.md')).toBeUndefined()
     expect(documentKind('docs/modules/demo/decisions.md')).toBe('decision-records')
     expect(documentKind('docs/modules/demo/design/csv-transfer.md')).toBeUndefined()
@@ -291,7 +287,7 @@ Replaced by the valid request scenario.
 
 ## Rule: REQ-DEMO-002 A behavior
 `
-    const result = validateDocument('docs/modules/demo/architecture.md', source)
+    const result = validateDocument('docs/modules/demo/data.md', source)
     expect(result.findings.map((finding) => finding.message)).toEqual([
       'REQ-DEMO-002 must be declared in scenarios.feature.md or in a feature specification',
     ])

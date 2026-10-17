@@ -17,7 +17,7 @@ describe('task-specific context', () => {
       workspace(),
     )
     expect(plan.reading.map((one) => one.location)).toContain(
-      'docs/modules/identity-management/README.md#公開する契約',
+      'docs/modules/identity-management/README.md#責務と境界',
     )
     expect(plan.tasks.map((one) => one.location)).toContain('check-contract-drift')
   })
@@ -39,7 +39,7 @@ describe('task-specific context', () => {
     expect(neighbors.map((one) => one.location)).toContain('docs/modules/provisioning/README.md')
     expect(neighbors.some((one) => one.location.includes('identity-management'))).toBe(false)
     expect(
-      neighbors.every((one) => one.basis === 'inferred' && one.origin.endsWith('#公開する契約')),
+      neighbors.every((one) => one.basis === 'inferred' && one.origin.endsWith('#責務と境界')),
     ).toBe(true)
   })
   it('routes tooling with no normative reference to code guidance and narrow tools checks', async () => {
@@ -73,7 +73,7 @@ describe('task-specific context', () => {
     expect(plan.tasks.map((one) => one.location)).not.toContain('lint-go')
     expect(plan.reading.some((one) => one.location.includes('coding-style'))).toBe(false)
     expect(plan.reading.some((one) => one.location.startsWith('spec/'))).toBe(false)
-    expect(plan.reading.some((one) => one.location.includes('公開する契約'))).toBe(false)
+    expect(plan.reading.some((one) => one.location.includes('責務と境界'))).toBe(false)
   })
 
   it('uses the responsibility table for aliased modules and keeps neighbors unopened', async () => {
@@ -82,7 +82,7 @@ describe('task-specific context', () => {
       workspace(),
     )
     const locations = plan.reading.map((one) => one.location)
-    expect(locations).toContain('docs/modules/identity-management/README.md#公開する契約')
+    expect(locations).toContain('docs/modules/identity-management/README.md#責務と境界')
     expect(locations).toContain('docs/modules/identity-management/quality.md')
     expect(locations).toContain('docs/development/specification-first-workflow.md#仕様影響の宣言')
     expect(locations).toContain('docs/development/testing.md#主要ユースケース')
@@ -209,7 +209,7 @@ describe('reading size', () => {
     )
     expect(withoutImpact.reading.some((one) => one.location.startsWith('spec/'))).toBe(false)
     expect(withoutImpact.reading.map((one) => one.location)).toContain(
-      'docs/modules/authentication/README.md#公開する契約',
+      'docs/modules/authentication/README.md#責務と境界',
     )
 
     const contract = await deriveContext(

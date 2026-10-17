@@ -15,30 +15,22 @@
 このモジュールは、関係が成り立つかという事実を求め、評価器へ渡す。
 外部の PDP へ差し替えても、合成の規則が重複しない。
 
-## モデル
+## 主な流れ
 
-| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
-| --- | --- | --- |
-| `AuthorizationModel` | 追記だけで積み上げる版ごとの `ResourceTypeDefinition`、`RelationDefinition`、`RelationRewrite` | `Tenant` を `tenant_id` で参照する。最新の版が判定に使われる |
-| `RelationTuple` | `(resource_type:resource_id, relation, subject)` の関係の事実 | `Tenant` を `tenant_id` で参照する。型と関係は認可モデルが宣言したものに限る |
-
-`ResourceTypeDefinition`、`RelationDefinition`、`RelationRewrite` は `AuthorizationModel` の版の内側にあり、版を経ずに変更しない。
-テナントごとに単調に増える書き込みの版を持ち、書き込みは整合トークンを返す。
-
-- **判断**：関係の定義を和だけで組む理由は、[書き換え規則を和だけで組み交差と差集合を入れない](decisions.md#書き換え規則を和だけで組み交差と差集合を入れない)。
-
-## 公開する契約
-
-HTTP の操作とモデルの形は TypeSpec の `Authorization` のタグが、採用する標準の規則は[Authorization の標準仕様](standards.md)が定める。
-次の表は、それ以外にほかのモジュールと結ぶ契約である。
-
-| 契約 | 相手 | 向き | 内容 |
+| 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| `CheckAccess` と `ListAccessibleResources` のユースケース | データ資源を提供する呼び出し側 | このモジュールが提供する | 関係の事実を組み立て、評価器の `resource:access` の規則で判定する |
-| `PrincipalStatusResolver` | `IdManagement` の `Agent` の状態を読むアダプター | このモジュールが定める | 代行チェーンの actor が有効かを解決する |
-| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `AuthorizationModelPublished`、`RelationTupleWritten`、`RelationTupleDeleted`、`FgaCheckEvaluated`、`FgaResourcesEnumerated` |
+| 管理 API | 解決済みのテナントの `/api/admin/v1/authorization/...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | 各機能仕様 |
+| 判定と列挙 | 管理 API の診断の経路、またはデータ資源を提供する呼び出し側 | 呼び出したプロセスが、関係タプルを読みながら同期的に評価する | [関係の判定の設計](features/check.md#実現方式) |
 
-## 機能
+## 設計の要点
+
+| 方針 | 理由 |
+| --- | --- |
+| 関係の事実だけを求め、判断の合成は評価器に任せる | 外部の PDP へ差し替えても、合成の規則が重複しない。詳細は[判断](decisions.md#関係の事実を求め判断の合成を評価器に任せる) |
+| 書き換え規則を和だけで組む | 評価が単調になる。詳細は[判断](decisions.md#書き換え規則を和だけで組み交差と差集合を入れない) |
+| まず判定の正しさを優先し、列挙に索引を持たない | 詳細は[判断](decisions.md#リソースの列挙を上限付きの走査と-1-件ずつの判定で行う) |
+
+## 機能一覧
 
 | 機能 | 内容 |
 | --- | --- |
@@ -48,13 +40,12 @@ HTTP の操作とモデルの形は TypeSpec の `Authorization` のタグが、
 
 ## 文書
 
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| データ設計 | 委譲 | [関係の判定の設計](features/check.md#データ) | 書き込みの版と永続化は関係の判定の設計が、テーブルの定義はスキーマファイルが扱う |
-| 信頼性設計 | 委譲 | [関係の判定の設計](features/check.md#アーキテクチャ) | ストアの障害は判定不能として不許可にし、関係の判定の設計が扱う |
-| 性能設計 | 委譲 | [判断](decisions.md#リソースの列挙を上限付きの走査と-1-件ずつの判定で行う) | システムの性能設計に従い、列挙の規模の限界は判断に置く |
-| 検証設計 | 固有設計 | [担当文書](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
+| 設計領域 | 文書 | 内容 |
+| --- | --- | --- |
+| データ設計 | [Authorization のデータ](data.md#集約)、[関係の判定の設計](features/check.md#データ) | Aggregate とその関係。書き込みの版と永続化は関係の判定の設計が、テーブルの定義はスキーマファイルが扱う |
+| 信頼性設計 | [関係の判定の設計](features/check.md#アーキテクチャ) | ストアの障害は判定不能として不許可にし、関係の判定の設計が扱う |
+| 性能設計 | [判断](decisions.md#リソースの列挙を上限付きの走査と-1-件ずつの判定で行う) | システムの性能設計に従い、列挙の規模の限界は判断に置く |
+| 検証設計 | [Authorization の検証](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
 
 | 文書 | 内容 |
 | --- | --- |

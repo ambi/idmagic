@@ -13,45 +13,24 @@
 | OAuth の認可とトークンの発行 | `OAuth2` |
 | 可逆なシークレットのエンベロープ暗号化 | `DataKeys` |
 
-## モデル
+## 主な流れ
 
-| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
-| --- | --- | --- |
-| `LoginSession` | 認証時刻、`amr` と `acr`、ステップアップの時刻、保留の目的、有効期限、失効 | `User` を参照する |
-| `MfaFactor` | TOTP の要素と、暗号化した seed | `User` を参照する |
-| `WebAuthnCredential` | `credential_id`、COSE の公開鍵、`sign_count` | `User` を参照する |
-| `RecoveryCode` | コードのハッシュと使用の時刻 | `User` を参照する |
-| `TrustedDevice` | selector、verifier のハッシュ、ブラウザーと OS の系統のラベル、時刻、失効 | `User` を参照する |
-| `MfaEnrollmentBypass` | 管理者が発行する、単回限りの登録の許可 | `User` を参照する |
-| `PasswordHistory` | 直近のパスワードのハッシュ | `User` を参照する |
-| `IdentityProviderConnection` | テナント単位の上流の OIDC と SAML の接続 | `Tenant` を `tenant_id` で参照する |
-| `FederatedIdentity` | テナント、プロバイダー、外部の不変な subject の組 | `IdentityProviderConnection` と `User` を参照する |
-
-いずれの Aggregate も `User` の識別子を参照するが、`User` の Aggregate には含まれない。
-User の削除がこれらへどう連鎖するかは、[ユーザーの設計](../identity-management/features/user.md#実現方式)で定める。
-
-- **判断**：`users.id` を正式で全体で一意なユーザーの識別子とし、プロトコルの `sub` のクレームはここから導く。その逆ではない。
-- **判断**：このモジュールの大半は認証の完了の前の要求を扱うので、ロールではなく、そのセッションで確かめた認証の要素と認証の時刻が境界になる。
-
-## 公開する契約
-
-HTTP の操作とモデルの形は TypeSpec の `Authentication` のタグが、採用する標準の規則は[Authentication の標準仕様](standards.md)が定める。
-次の表は、それ以外にほかのモジュールと結ぶ契約である。
-
-| 契約 | 相手 | 向き | 内容 |
+| 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| ログインセッションの解決と `amr`、`acr` | `OAuth2`、`SAML`、`WS-Federation`、管理とアカウントの API | このモジュールが提供する | セッションの Cookie から認証済みの主体と認証の強度を返す |
-| ステップアップ認証の直近性 | `Application` のサインインポリシー、機微なセルフサービスの操作 | このモジュールが提供する | `max(auth_time, step_up_at)` から直近の認証を判定する |
-| `SessionTokenRevoker` | `OAuth2` が実装する | このモジュールが定める | ログインセッションを失効させるとき、その `sid` に結び付いたトークンを失効させる |
-| `AccountConsents` | `OAuth2` が提供する | このモジュールが使う | 接続済みアプリの画面で、本人の同意を一覧し撤回する |
-| `PendingAuthorizations`（`signin/ports`） | `OAuth2` が実装する | このモジュールが定める | 対話のログインが認証を終えたあと、認可要求が求めるサインインの条件を問い、認可を続けさせる |
-| 既存のセッションでの追加の認証（`signin` の `Steps`） | `OAuth2` が定める | このモジュールが実装する | 認可エンドポイントが、テナントのデフォルトのポリシーの適用、第二要素の要求、保留中の画面の経路、サインインの完了の記録を求める |
-| ログアウトでのセッションの終了（`LogoutSessions`） | `OAuth2` が定める | このモジュールが実装する | `/end_session` が Cookie の指すセッションを解決し、主体を照合して終わらせる |
-| `EmailSender` | 共有の通知の部品 | このモジュールが使う | パスワードのリセット、メールアドレスの確認、セキュリティ通知を送る |
-| 相関用のソルト | `Audit` の `TenantSaltStore` | このモジュールが使う | 利用者名と IP の相関のハッシュを、テナントごとに作る |
-| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `UserAuthenticated`、`AuthenticationFailed`、`LoginThrottled`、`SessionEnded`、`PasswordChanged`、`MfaFactor…`、`WebAuthnCredential…`、`RecoveryCodes…`、`TrustedDevice…` ほか |
+| ログイン | ブラウザーの `/api/auth/*` への要求 | `api` が、スロットル、資格情報、第二要素の順に確かめ、セッションを作る | [ログイン](features/sign-in.md) |
+| セキュリティ通知 | 配信点を通るドメインイベント | 発行したプロセスが、配信点から切り離して送る | [セキュリティ通知の設計](features/security-notification.md#実現方式) |
+| 保持期間の掃除 | 毎時、または `idmagic-batch retention-sweep` | バッチのプロセス | [認証のイベントの記録](observability.md#認証のイベントの記録) |
 
-## 機能
+## 設計の要点
+
+| 方針 | 理由 |
+| --- | --- |
+| 確かめた認証の要素と認証の時刻を境界にする | 認証の完了の前の要求を、ロールでは扱えない |
+| 機微な自己操作にステップアップ認証を求める | 詳細は[判断](decisions.md#機微な自己操作に-csrf-の防御に加えてステップアップ認証を求める) |
+| 共有の一時的な状態は、到達できないとき失敗させる | 抑制のない試行を通さない |
+| セレモニーと暗号処理を自作しない | WebAuthn は `go-webauthn/webauthn`、パスワードのハッシュは Argon2id に委ねる |
+
+## 機能一覧
 
 | 機能群 | 機能 | 内容 |
 | --- | --- | --- |
@@ -68,17 +47,18 @@ HTTP の操作とモデルの形は TypeSpec の `Authentication` のタグが�
 | 本人の操作 | [セキュリティ通知](features/security-notification.md) | アカウントのセキュリティの上の変化の通知 |
 | 本人の操作 | [サインイン履歴](features/sign-in-activity.md) | 本人によるサインイン履歴の参照 |
 
+ログイン、アカウントポータル、サインイン履歴は機能スライスを持たず、モジュールのルートの `usecases`、`handlers_http`、`deps_http` が実装する。ルートの層は、ブラウザー向けの認証 API、セルフサービス API、管理 API を組み立てる。
+
 ## 文書
 
 このモジュールが担当する SLO とキャパシティ要件は、[品質要件の割り当て](../../design/architecture/logical.md#品質要件の割り当て)から担当機能、設計、検証へ参照する。
 
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| アプリケーション設計 | 委譲 | [アカウントポータル](features/account-portal.md#概要) | API と UI はシステムのアプリケーション設計に従い、セルフサービス API の境界はアカウントポータルが扱う |
-| データ設計 | 委譲 | [認証のイベントの相関と保持](observability.md#相関と保持) | 各 Aggregate の保存は各機能の設計が、認証のイベントの保存はオブザーバビリティ設計が扱う |
-| 信頼性設計 | 委譲 | [認証状態の障害](architecture.md#解決戦略) | 共有の一時的な状態のストアに到達できないときは失敗させる。各機能の扱いは各機能の設計が扱う |
-| オブザーバビリティ設計 | 固有設計 | [担当文書](observability.md#認証のイベントの記録) | 認証のイベントの個別の記録と 5 分の集計、相関、種別ごとの保持期間 |
+| 設計領域 | 文書 | 内容 |
+| --- | --- | --- |
+| アプリケーション設計 | [アカウントポータル](features/account-portal.md#概要) | API と UI はシステムのアプリケーション設計に従い、セルフサービス API の境界はアカウントポータルが扱う |
+| データ設計 | [Authentication のデータ](data.md#集約)、[認証のイベントの相関と保持](observability.md#相関と保持) | Aggregate とその関係。各 Aggregate の保存は各機能の設計が、認証のイベントの保存はオブザーバビリティ設計が扱う |
+| 信頼性設計 | [認証状態の障害](#設計の要点) | 共有の一時的な状態のストアに到達できないときは失敗させる。各機能の扱いは各機能の設計が扱う |
+| オブザーバビリティ設計 | [Authentication のオブザーバビリティ](observability.md#認証のイベントの記録) | 認証のイベントの個別の記録と 5 分の集計、相関、種別ごとの保持期間 |
 
 | 文書 | 内容 |
 | --- | --- |

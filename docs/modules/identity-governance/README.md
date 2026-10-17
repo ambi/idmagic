@@ -14,36 +14,24 @@ JML を自動化する `LifecycleWorkflow` の定義、トリガーの評価、`
 
 このモジュールは、User の変更を契機にワークフローを評価し、記録の正を持つモジュールの状態を冪等に変える。
 
-## モデル
+## 主な流れ
 
-| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
-| --- | --- | --- |
-| `LifecycleWorkflow` | 名前、状態、`current_revision` と `enabled_revision`、リビジョンごとの `WorkflowTrigger` と `WorkflowAction` の列 | `Tenant` を `tenant_id` で参照する。アクションは同じテナントの Group と Application を参照する |
-| `WorkflowRun` | 作成時に固定した `workflow_id`、`revision`、発火の事象、対象の User、展開したアクションの列、`WorkflowStep` の記録、関連付けた Job | `LifecycleWorkflow` と User を参照する |
-
-| 概念 | 内容 |
-| --- | --- |
-| `WorkflowTrigger` | `user_created`、`user_attributes_changed`、`user_status_changed` のいずれかと、0〜20 件の型付きのフィルター（`field`、`operator`、`value` の論理積） |
-| `WorkflowAction` | `add_group_member`、`remove_group_member`、`assign_application`、`unassign_application`、`set_required_action`、`clear_required_action`、`enable_user`、`disable_user`、`send_email` のいずれか。すでに目的の状態なら `no_op` とする |
-| `WorkflowStep` | アクション 1 件の実行の記録。結果（`changed`、`no_op`、`failed`、`canceled`）、機密情報を除いたエラーコード、実行の時刻 |
-
-- **判断**：アクションを線形の列に限る理由は、[アクションを定義順の線形の列に限る](decisions.md#アクションを定義順の線形の列に限る)。
-- **判断**：WorkflowRun に展開したアクションとリビジョンを固定する理由は、[WorkflowRun の作成時に展開したアクションとリビジョンを固定する](decisions.md#workflowrun-の作成時に展開したアクションとリビジョンを固定する)。
-
-## 公開する契約
-
-HTTP の操作とモデルの形は TypeSpec の `Identity Governance` のタグが定める。
-次の表は、それ以外にほかのモジュールと結ぶ契約である。
-
-| 契約 | 相手 | 向き | 内容 |
+| 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| `UserMutationCommitter` | `IdManagement` が定め、このモジュールが実装する | このモジュールが提供する | User の変更から WorkflowRun を計画し、User と WorkflowRun を一つのトランザクションで保存する |
-| `UserLifecycle` | `IdManagement` が実装する | このモジュールが定める | `enable_user` と `disable_user` を、IdManagement の User の操作として行う |
-| `ApplicationAssignments` | `Application` が実装する | このモジュールが定める | `assign_application` と `unassign_application` を、Application の割り当ての操作として行う |
-| `lifecycle_workflow_run` の Job | `Jobs` が実行する | このモジュールが定める | WorkflowRun を一回試行する |
-| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `LifecycleWorkflow…`、`LifecycleWorkflowRun…`、`LifecycleWorkflowStepFailed` |
+| 実行の捕捉 | IdManagement の User の作成と変更 | User を変更したプロセスが、同じトランザクションで WorkflowRun を保存する | [ワークフローの実行の設計](features/workflow-run.md#実現方式) |
+| Job の関連付け | 一定の間隔 | `worker` のディスパッチャー | [ワークフローの実行の設計](features/workflow-run.md#実現方式) |
+| ステップの実行 | `lifecycle_workflow_run` の Job | `worker` が Job のハンドラーとして実行する | [ワークフローの実行](features/workflow-run.md) |
+| 管理 API | 解決済みのテナントの管理 API への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [ライフサイクルワークフローの定義](features/lifecycle-workflow.md) |
 
-## 機能
+## 設計の要点
+
+| 方針 | 理由 |
+| --- | --- |
+| 記録の正を持たず、ポリシーとオーケストレーションだけを持つ | ワークフローが記録の正を持つモジュールの内部へ広がらない。詳細は[判断](decisions.md#ガバナンスのポリシーとオーケストレーションを-idmanagement-から切り出す) |
+| WorkflowRun を User の変更と同じトランザクションで捕捉する | User だけが更新されて実行が作られない事態を防ぐ |
+| アクションを冪等にし、ステップごとに結果を記録する | 再試行で、成功したステップを繰り返さない |
+
+## 機能一覧
 
 | 機能 | 内容 |
 | --- | --- |
@@ -52,11 +40,10 @@ HTTP の操作とモデルの形は TypeSpec の `Identity Governance` のタグ
 
 ## 文書
 
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| データ設計 | 委譲 | [モデル](#モデル) | Aggregate とその関係は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
-| 信頼性設計 | 委譲 | [ワークフローの実行の設計](features/workflow-run.md#信頼性) | Job の投入の失敗と再試行の扱いはワークフローの実行の設計が扱う |
+| 設計領域 | 文書 | 内容 |
+| --- | --- | --- |
+| データ設計 | [IdGovernance のデータ](data.md#集約) | Aggregate とその関係。テーブルの定義はスキーマファイルが扱う |
+| 信頼性設計 | [ワークフローの実行の設計](features/workflow-run.md#信頼性) | Job の投入の失敗と再試行の扱いはワークフローの実行の設計が扱う |
 
 | 文書 | 内容 |
 | --- | --- |

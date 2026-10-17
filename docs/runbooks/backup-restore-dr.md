@@ -5,7 +5,7 @@
 IdMagic は認証基盤の単一障害点になりうるため、この手順書ではバックアップ対象の分類、バックアップと復元の手順、復元後の検証、障害シナリオごとの対応を定める。バックアップ対象は次の 2 系統である。
 
 1. **PostgreSQL**: 永続テーブルと一時テーブル（認可の中間状態、コード、PAR、デバイスコード、リプレイ記録、WebAuthn チャレンジ、拒否リスト、ログインスロットル、SAML AuthnRequest のリプレイ記録）を含む単一のデータベース。
-2. **署名鍵素材**: `KeyProvider` が `Local` / `Database` なら PostgreSQL のバックアップに含まれる。`VaultTransit` では Vault 側のスナップショットが正本であり、PostgreSQL 側は公開鍵の写しにすぎない。どの提供元で鍵素材が平文になるかは [SigningKeys のモデル](../modules/signing-keys/README.md#モデル) が定める。
+2. **署名鍵素材**: `KeyProvider` が `Local` / `Database` なら PostgreSQL のバックアップに含まれる。`VaultTransit` では Vault 側のスナップショットが正本であり、PostgreSQL 側は公開鍵の写しにすぎない。どの提供元で鍵素材が平文になるかは [SigningKeys の集約](../modules/signing-keys/data.md#集約) が定める。
 3. **データ暗号鍵のマスターキー**: `DATA_KEY_PROVIDER` が保持するマスターキー。`tenant_data_encryption_keys` の PostgreSQL バックアップにはマスターキーでラップした形しか含まれないため、それだけでは復旧できない。
 
 ### マスターキーの喪失は復旧できない

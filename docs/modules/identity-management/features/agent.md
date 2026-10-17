@@ -19,7 +19,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | `id` | URL セーフなスラッグ |
-| `name`、`description` | 名前と説明。名前の正規化、比較、一意性は[名前](../README.md#値オブジェクト)の定義に従う |
+| `name`、`description` | 名前と説明。名前の正規化、比較、一意性は[名前](../data.md#値オブジェクト)の定義に従う |
 | `kind` | `autonomous`（人の都度の承認なしに動く）または `supervised`（人の監督の下で動く） |
 | `owner_sub` | 所有者の User |
 | `roles` | ロール |
@@ -87,7 +87,7 @@
 - 管理者が Agent を登録したとき、IdManagement は、名前を前後の空白を除いて保存する。
 - 管理者が所有者を指定せずに登録したとき、IdManagement は、登録した管理者を所有者として保存する。
 - 前後の空白を除くと空になる名前を指定された場合、IdManagement は、422 と `agent_name_required` で拒否する。
-- 同じテナントのほかの Agent と[名前](../README.md#値オブジェクト)が同じ名前を指定された場合、IdManagement は、409 と `agent_name_conflict` で拒否する。
+- 同じテナントのほかの Agent と[名前](../data.md#値オブジェクト)が同じ名前を指定された場合、IdManagement は、409 と `agent_name_conflict` で拒否する。
 - 同じテナントの `Active` の User でない所有者を指定された場合、IdManagement は、422 と `agent_owner_not_found` で拒否する。
 - 登録を拒否した場合、IdManagement は、Agent を作らず、テナントの Agent の使用量を変えない。
 
@@ -114,7 +114,7 @@
 - 管理者が所有者を変えたとき、IdManagement は、`AgentUpdated` に続けて、変更前と変更後の所有者を載せた `AgentOwnerChanged` を発行する。
 - 管理者がどの項目の値も変えない更新を要求した場合、IdManagement は、成功を返し、`updated_at` を進めず、イベントを発行しない。
 - 前後の空白を除くと空になる所有者を指定された場合、IdManagement は、422 と `agent_owner_required` で拒否し、Agent を変えない。
-- 同じテナントのほかの Agent と[名前](../README.md#値オブジェクト)が同じ名前へ変える更新を要求された場合、IdManagement は、409 と `agent_name_conflict` で拒否し、Agent を変えない。
+- 同じテナントのほかの Agent と[名前](../data.md#値オブジェクト)が同じ名前へ変える更新を要求された場合、IdManagement は、409 と `agent_name_conflict` で拒否し、Agent を変えない。
 
 ### 無効化と再有効化
 
@@ -190,7 +190,7 @@ Agent のトークンの発行の可否は、この機能ではなく `OAuth2` �
 
 所有者の停止に伴う無効化は、User のユースケース（無効化、削除の予約、完全削除）が User を確定した後に呼ぶ。
 User を止める経路は、管理 API、ライフサイクルワークフロー、SCIM の取り込みのどれも User のユースケースを通るので、無効化はどの経路でも同じように起きる。
-経路と組み立ては、モジュールの[アーキテクチャ](../architecture.md#ほかのモジュールからの-user-の停止)が扱う。
+経路と組み立ては、モジュールの[アーキテクチャ](../README.md#ほかのモジュールからの-user-の停止)が扱う。
 
 ### 信頼性
 

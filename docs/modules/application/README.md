@@ -16,35 +16,23 @@ OIDC のクライアント、SAML の SP、WS-Fed の RP は、Application に�
 割り当てとサインインポリシーは、ポータルでの表示とフェデレーションの可否をフェイルクローズで制御する。
 Application は、プロトコル設定を中身に依存しないキーで参照する。
 
-## モデル
+## 主な流れ
 
-| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
-| --- | --- | --- |
-| `Application` | 名前、種類（`weblink`、`federated`、`service`）、起動の URL、状態、アイコン、カテゴリ、プロトコル設定への参照（`ApplicationProtocol`） | `Tenant` を `tenant_id` で参照する。プロトコル設定を最大一つ参照する |
-| `ApplicationAssignment` | 主体（`user` または `group`）、`visibility` | `Application` と、User または Group を参照する |
-| `AppSignInPolicy` | 順序付けた `SignInRule` の集合 | `Application` を参照する |
-| `TenantDefaultSignInPolicy` | テナントのデフォルトの `SignInRule` の集合 | `Tenant` を `tenant_id` で参照する |
-| `ApplicationCategory` | テナントの管理者が定義するカテゴリ | `Tenant` を `tenant_id` で参照する |
-| `ApplicationOrdering` | `(tenant_id, user_sub)` ごとの `application_id` の並び | User を参照する |
-
-- **判断**：テナントのデフォルトのサインインポリシーは、テナントの Aggregate ではなく、アプリケーションへのサインインの方法に関する概念なので、`Tenancy` ではなくこのモジュールに置く。
-- **判断**：ポータルでの手動の並び順とカテゴリは、IdManagement の User の Aggregate ではなく、`Application` の表示に関する概念なので、このモジュールに置く。
-
-## 公開する契約
-
-HTTP の操作とモデルの形は TypeSpec の `Application` のタグが定める。
-次の表は、それ以外にほかのモジュールと結ぶ契約である。
-
-| 契約 | 相手 | 向き | 内容 |
+| 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| 割り当てとサインインポリシーの評価 | `OAuth2` の認可、`SAML` の SSO、`WS-Federation` のサインイン | このモジュールが提供する | フェデレーションを始めるたびに、トークンや Assertion の発行の前に、割り当てとポリシーを評価する |
-| サインインポリシーの評価の計算（`EvaluateSignInPolicy`、`EffectiveSignInRules` ほか） | `OAuth2` のログイン、`Authentication` のアカウントのセキュリティ設定 | このモジュールが提供する | 保存先を読まず、ポリシー、認証の文脈、クライアントの IP、時刻から、許可、拒否、step-up の判定、信頼済みデバイスの可否、MFA の強制の開始日を計算する |
-| `AssignApplicationDesiredState`、`UnassignApplicationDesiredState` | `IdGovernance` | このモジュールが提供する | あるべき状態として、直接の割り当てを冪等に作成と解除する |
-| `ProvisioningNotifier` | `Provisioning` が実装する | このモジュールが定める | 割り当ての変化を下流のプロビジョニングへ伝える |
-| `SubjectDirectory` | `IdManagement` が実装する | このモジュールが定める | 割り当ての主体が存在するかを確かめる |
-| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `Application…`、`AppSignInPolicyUpdated`、`TenantDefaultSignInPolicyUpdated`、`AppAccessDeniedByPolicy`、`AppStepUpRequired`、`ApplicationCategory…` |
+| フェデレーションの関門 | OIDC の認可、SAML の SSO、WS-Fed のサインイン | 各プロトコルの処理が、発行の前にこのモジュールの評価を同期的に呼ぶ | [サインインポリシーの設計](features/sign-in-policy.md#実現方式) |
+| あるべき状態の割り当て | `IdGovernance` のワークフローの手順 | `worker` が同期的に呼ぶ | [割り当て](features/assignment.md) |
+| 管理 API とアカウント API | 解決済みのテナントの要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | 各機能仕様 |
 
-## 機能
+## 設計の要点
+
+| 方針 | 理由 |
+| --- | --- |
+| 割り当てとポリシーの評価を、プロトコル設定の関連付けの確認と同じ関門に置く | 別のプロトコルを入口に選んで迂回させない |
+| ポリシーを上書きで選び、一つの評価器で評価する | 実際に適用されるポリシーを一つの形で示す。詳細は[判断](decisions.md#テナントのデフォルトとアプリケーションごとのポリシーを合成せず上書きにする) |
+| 一対一の関係をデータベースで保証する | 詳細は[判断](decisions.md#application-とプロトコル設定の関係を複合外部キーで保証する) |
+
+## 機能一覧
 
 | 機能 | 内容 |
 | --- | --- |
@@ -55,11 +43,10 @@ HTTP の操作とモデルの形は TypeSpec の `Application` のタグが定�
 
 ## 文書
 
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| データ設計 | 固有設計 | [担当文書](data.md#application-とプロトコル設定の関係) | Application とプロトコル設定の関係、作成の原子性 |
-| セキュリティ設計 | 委譲 | [割り当て](features/assignment.md#セキュリティ上の考慮)、[サインインポリシー](features/sign-in-policy.md#セキュリティ上の考慮) | フェデレーションの関門は割り当てとサインインポリシーのセキュリティ上の考慮の節が扱う |
+| 設計領域 | 文書 | 内容 |
+| --- | --- | --- |
+| データ設計 | [Application のデータ](data.md#集約) | Aggregate とその関係、Application とプロトコル設定の関係、作成の原子性 |
+| セキュリティ設計 | [割り当て](features/assignment.md#セキュリティ上の考慮)、[サインインポリシー](features/sign-in-policy.md#セキュリティ上の考慮) | フェデレーションの関門は割り当てとサインインポリシーのセキュリティ上の考慮の節が扱う |
 
 | 文書 | 内容 |
 | --- | --- |

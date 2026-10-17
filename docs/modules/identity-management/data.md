@@ -3,13 +3,37 @@
 この文書は、IdManagement の Aggregate の永続化、保持と削除を扱う。
 カラムと索引の定義はスキーマファイル（`infra/schema/postgres.sql`）が、データの区分ごとの消え方はシステムの[データライフサイクル設計](../../design/data/lifecycle.md)が定める。
 
-## Aggregate と永続化
+## 集約
 
-| Aggregate | 境界の内側にあるもの | 永続化の単位 |
+Aggregate root は `User`、`Group`、`Agent` の三つである。
+
+| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
 | --- | --- | --- |
-| `User` | 属性、必須操作 | 一つの Aggregate を一つのレコードとして保存する。属性は疎な対応表として保存し、値を設定したキーだけが領域を使う |
-| `Group` | `GroupMembership`、`DynamicGroupRule` | `Group` を経由して保存し、メンバーシップと規則を単独で変えない |
-| `Agent` | `AgentCredentialBinding` | `Agent` を経由して保存する |
+| `User` | 属性（`attributes`）、必須操作 | `Group` のメンバーになる。`Agent` の所有者になる |
+| `Group` | `GroupMembership`、`DynamicGroupRule` | メンバーの `User` を ID で参照する |
+| `Agent` | `AgentCredentialBinding` | 所有者の `User` または `Group` と、バインドする `OAuth2Client` を ID で参照する |
+
+境界の内側にあるものは、その Aggregate root を経由せずに参照しない。
+`User` の実効ロールは、直接付与したロールと、所属する `Group` のロールの和集合である。
+
+### 値オブジェクト
+
+| 値 | 使う項目 | 正規化 | 比較 | 一意性の範囲 |
+| --- | --- | --- | --- | --- |
+| 名前 | `User` の `preferred_username`、`Group` の `name`、`Agent` の `name` | 前後の空白を除き、残りを入力された表記のまま保存し、表示する | Unicode の case folding をした値どうしで比較し、大文字と小文字を区別しない | 同じテナントの、削除されていない同じ種類の Aggregate |
+| メールアドレス | `User` の `email` | 前後の空白を除き、残りを表記のまま保存する。空になる値は設定しない | 名前と同じく、case folding をした値どうしで比較する | 同じテナントの削除されていない `User` |
+
+- **判断**：名前を大文字と小文字を区別せずに比較するのは、主要な IdP（Okta、Entra ID、Google Workspace、AWS IAM）と SCIM の `userName`（`caseExact: false`）に合わせるためである。表記を保つのは、Okta と Entra ID と同じく、利用者が入力した表記を表示するためである。
+- **判断**：比較には小文字への変換ではなく case folding（Unicode のデフォルトの caseless matching）を使う。小文字への変換では、`ß` と `SS`、語末の `ς` と `Σ` のように、大文字と小文字だけが異なる表記が一致しない。
+- **判断**：メールアドレスをテナントの中で一意にするのは、Google Workspace、Keycloak、Auth0 と同じく、メールアドレスで User を一人に決められるようにするためである。
+
+## 永続化
+
+| Aggregate | 永続化の単位 |
+| --- | --- |
+| `User` | 一つの Aggregate を一つのレコードとして保存する。属性は疎な対応表として保存し、値を設定したキーだけが領域を使う |
+| `Group` | `Group` を経由して保存し、メンバーシップと規則を単独で変えない |
+| `Agent` | `Agent` を経由して保存する |
 
 User の状態の一次情報は、`lifecycle.status` と `status_changed_at` の組だけである。
 遷移の時刻の記録は、`UserDisabled` や `UserDeleted` などのイベントに残す。
@@ -30,7 +54,7 @@ IdManagement は、Aggregate の保存に楽観的な排他も行のロックも
 
 | 守る結果 | 仕組み |
 | --- | --- |
-| 名前の一意性 | User、Group、Agent の表に、[名前](README.md#値オブジェクト)の比較キー（Go の一つの関数で作る case folding の値）を保存する列を置き、テナントとその列の組に一意索引を張る。User の索引は削除されていない行に限る。アプリケーションの判定と制約が同じキーを使うので、データベースのロケールに左右されない |
+| 名前の一意性 | User、Group、Agent の表に、[名前](#値オブジェクト)の比較キー（Go の一つの関数で作る case folding の値）を保存する列を置き、テナントとその列の組に一意索引を張る。User の索引は削除されていない行に限る。アプリケーションの判定と制約が同じキーを使うので、データベースのロケールに左右されない |
 | メールアドレスの一意性 | 制約を置かず、作成と更新のユースケースが比較キーの列で検索して判定する。SCIM の取り込みは重複を書けるためである |
 | 同じメンバーシップを二つ作らない | Group と User の組の一意性の制約と `ON CONFLICT DO NOTHING` |
 | テナントのリソース上限 | 使用量の加算を、上限の条件付きの一つの更新文で行う。上限を超える加算は行を更新せず、上限の超過として返る |

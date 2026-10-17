@@ -13,38 +13,23 @@
 | ポリシーを埋め込む信頼先の登録と保存 | 信頼先を持つ各プロトコルのモジュール |
 | テナントのカスタム属性の定義 | `Tenancy` の属性スキーマ |
 
-## モデル
+## 主な流れ
 
-このモジュールは Aggregate を定義しない。
-`ClaimMappingPolicy` は値オブジェクトであり、各プロトコルのモジュールの信頼先の Aggregate（`OAuth2Client`、`SamlServiceProvider`、`WsFedRelyingParty`）に埋め込まれる。
-このモジュールは、その値の意味と検証だけを定める。
-
-| 値オブジェクト | 内容 |
-| --- | --- |
-| `ClaimMappingPolicy` | 信頼先ごとの `ClaimMappingRule` の集合と、`NameIdConfiguration` の組 |
-| `ClaimMappingRule` | 出力するクレーム型（URI）と、そのソース（ユーザー属性、固定値、`NameID` のいずれか）。必須かどうかを持つ |
-| `NameIdConfiguration` | `NameID` の形式と、ソースとする属性 |
-| `IssuedClaim` | ポリシーを適用して得た、クレーム型と値の組。プロトコルごとの表現へ変換する前の中間表現 |
-
-- **判断**：ポリシーを独立した Aggregate にしない理由は、[ClaimMappingPolicy を信頼先に埋め込む値オブジェクトにする](decisions.md#claimmappingpolicy-を信頼先に埋め込む値オブジェクトにする)。
-
-`User` の中核の項目（`user_id`、`email`、`name`、`given_name`、`family_name`、`preferred_username`、`email_verified`、ロール）は、テナントの属性定義に現れず、常にソースにできる。
-`user_id` は User Aggregate の識別子を指す、プロトコルに依存しない内部の属性キーであり、OIDC の ID Token や UserInfo が発行するクレーム `sub` とは別物である。
-両者の対応付けは `OAuth2` の発行側が行う。
-
-## 公開する契約
-
-規則とクレームの形は、TypeSpec の `ClaimMappingRule`、`NameIdConfiguration`、`IssuedClaim`、`ClaimReleaseDeniedError` が定める。
-このモジュールは HTTP の操作を持たない。
-
-| 契約 | 相手 | 向き | 内容 |
+| 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| `IssueClaimsWithFloor` | `OAuth2`（UserInfo と ID Token）、`SAML`、`WS-Federation`（サインインと WS-Trust） | このモジュールが提供する | ポリシー、解決済みの属性、テナントの属性定義から、`NameID` と `IssuedClaim` の集合を返すか、発行を拒否する |
-| `ValidateClaimReleaseRules` | アプリケーションの OIDC、SAML、WS-Federation の設定を保存する `Application` | このモジュールが提供する | 保存の前に、規則が公開できる範囲に収まっているかを確かめる |
-| `ResolveUserAttributes`、`ResolveTenantAttributeDefs` | クレームを発行する各プロトコルのモジュールと `Application` | このモジュールが提供する | `User` から規則のソースに使う属性の対応表を、テナントから組み込みとカスタムの属性定義を作る |
-| `TenantAttributeSchemaRepo` | `Tenancy` の属性スキーマのポートが構造的に満たす | このモジュールが定める | テナントのカスタム属性の定義を読む |
+| クレームの発行 | ID Token、UserInfo、SAML アサーション、WS-Fed のトークンの発行 | 発行するモジュールのユースケースが、属性と属性定義を解決してから `IssueClaimsWithFloor` を呼ぶ | [クレームの発行の設計](features/issuance.md#実現方式) |
+| 保存時の規則の検査 | アプリケーションの OIDC、SAML、WS-Federation の設定の更新 | `Application` の管理 API が、保存の前に `ValidateClaimReleaseRules` を呼ぶ | [クレームの発行の設計](features/issuance.md#実現方式) |
 
-## 機能
+## 設計の要点
+
+| 方針 | 理由 |
+| --- | --- |
+| クレームの解決を、すべてのプロトコルが共有する一つの経路にする | あるプロトコルでだけ非公開の属性が漏れる形を作らせない |
+| 規則を宣言的な対応付けに限る | 公開できる範囲を、規則を実行せずに検査できる。詳細は[判断](decisions.md#規則を宣言的な対応付けに限る) |
+| 発行を、作用を持たない関数にする | ポリシー、属性、属性定義だけから結果が決まり、呼び出し元のトランザクションや署名と独立に検証できる |
+| 下限を通らない発行（`issueClaims`）を `domain` の外へ公開せず、ほかのモジュールには `IssueClaimsWithFloor` だけを使わせる | どのプロトコルも、開示の下限を省いてクレームを組み立てられない |
+
+## 機能一覧
 
 | 機能 | 内容 |
 | --- | --- |
@@ -52,12 +37,11 @@
 
 ## 文書
 
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ |
-| アプリケーション設計 | 対象外 | — | このモジュールは HTTP の操作と UI を持たない |
-| データ設計 | 対象外 | — | このモジュールは永続状態を保存しない。ポリシーは信頼先の Aggregate の一部として、そのモジュールが保存する |
-| セキュリティ設計 | 委譲 | [クレームの発行](features/issuance.md#セキュリティ上の考慮) | 公開できない属性を拒否する下限は、クレームの発行のセキュリティ上の考慮の節が扱う |
+| 設計領域 | 文書 | 内容 |
+| --- | --- | --- |
+| アプリケーション設計 | — | このモジュールは HTTP の操作と UI を持たない |
+| データ設計 | [ClaimMapping のデータ](data.md#集約) | Aggregate とその関係。このモジュールは永続状態を保存しない。ポリシーは信頼先の Aggregate の一部として、そのモジュールが保存する |
+| セキュリティ設計 | [クレームの発行](features/issuance.md#セキュリティ上の考慮) | 公開できない属性を拒否する下限は、クレームの発行のセキュリティ上の考慮の節が扱う |
 
 | 文書 | 内容 |
 | --- | --- |

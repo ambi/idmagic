@@ -44,7 +44,8 @@ docs/
     const paths = verifyDocumentLayout('# 仕様フォーマット\n').map((finding) => finding.path)
 
     expect(paths).toContain('docs/modules/<module>/decisions.md')
-    expect(paths).toContain('docs/modules/<module>/architecture.md')
+    expect(paths).toContain('docs/modules/<module>/data.md')
+    expect(paths).not.toContain('docs/modules/<module>/architecture.md')
     expect(paths).toContain('docs/modules/<module>/features/<feature>.md')
     expect(paths).toContain('docs/modules/<module>/features/<feature>.feature.md')
     expect(paths).not.toContain('docs/modules/<module>/internals.md')

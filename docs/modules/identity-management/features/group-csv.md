@@ -51,7 +51,7 @@
 
 #### REQ-IDMANAGEMENT-072 Group の CSV は、名前を値オブジェクトの定義で照合し、連絡先をアドレスだけで受け付ける
 
-- `name` で対象を照合し、行の重複を判定するとき、IdManagement は、[名前](../README.md#値オブジェクト)の定義で比較する。
+- `name` で対象を照合し、行の重複を判定するとき、IdManagement は、[名前](../data.md#値オブジェクト)の定義で比較する。
 - `email` のセルを読んだとき、IdManagement は、アドレスを小文字にして保存する。
 - `dynamic_rule_expression` のセルを読んだとき、IdManagement は、前後の空白を除いて読む。
 - 空の `dynamic_rule_enabled` のセルを読んだとき、IdManagement は、現在の有効か無効かを変えない。

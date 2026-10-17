@@ -6,6 +6,8 @@ import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 /** モジュールの責務表。各行の最初のリンクがモジュールの README を指す。 */
 const RESPONSIBILITY_TABLE = 'docs/modules/README.md'
 const MODULE_ENTRY = /^docs\/modules\/[^/]+\/README\.md$/
+/** モジュールの README の、責務と、扱わないものの担当を書く節。隣のモジュールの名前もここに現れる。 */
+const MODULE_BOUNDARY_SECTION = '責務と境界'
 
 export type ContextSeed = {
   kind: string
@@ -112,8 +114,8 @@ export async function deriveContext(
     const addModule = (location: string, reason: string) =>
       addReading({ location, origin, reason, basis: 'inferred' })
     await addModule(
-      `${entry}#公開する契約`,
-      'The responsibility table assigns this target to the module; read its public contract.',
+      `${entry}#${MODULE_BOUNDARY_SECTION}`,
+      'The responsibility table assigns this target to the module; read its responsibility and boundary.',
     )
     if (workspace.exists(`${moduleDirectory}/quality.md`)) {
       await addModule(
@@ -327,7 +329,7 @@ export async function neighborCandidates(
   const neighbors = new Map<string, ContextCandidate>()
   const owners = new Set(plan.reading.map((one) => one.location.split('#')[0]))
   for (const contract of plan.reading.filter((one) =>
-    one.location.endsWith('/README.md#公開する契約'),
+    one.location.endsWith(`/README.md#${MODULE_BOUNDARY_SECTION}`),
   )) {
     const file = contract.location.split('#')[0]!
     const source = await workspace.read(file)

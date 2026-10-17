@@ -102,18 +102,18 @@ const MODULE_DOCUMENT_TABLE = [
 ].join('\n')
 
 /**
- * モジュールの README の最後の節「文書」に、最小の固有設計とモジュールの文書だけを書く。
+ * モジュールの README の最後の節「文書」に、最小の設計領域の索引とモジュールの文書だけを書く。
  * 共通設計の九行は再掲しない。
  */
-function areaIndex(title: string, architecture: string, rows: string[] = []): string {
+function areaIndex(title: string, data: string, rows: string[] = []): string {
   return [
     `# ${title}`,
     '',
     '## 文書',
     '',
-    '| 設計領域 | 区分 | 参照先 | 内容 |',
-    '| --- | --- | --- | --- |',
-    `| アーキテクチャ設計 | 固有設計 | ${architecture} | 構成要素と配置 |`,
+    '| 設計領域 | 文書 | 内容 |',
+    '| --- | --- | --- |',
+    `| データ設計 | ${data} | 集約 |`,
     ...rows,
     '',
     MODULE_DOCUMENT_TABLE,
@@ -135,8 +135,8 @@ async function featureLayoutWorkspace(): Promise<string> {
       '',
     ].join('\n'),
     'docs/modules/demo/glossary.md': '# Demo の用語集\n',
-    'docs/modules/demo/README.md': areaIndex('Demo', '[アーキテクチャ設計](architecture.md#構成)'),
-    'docs/modules/demo/architecture.md': '# Demo のアーキテクチャ\n\n## 構成\n\nタスクを扱う。\n',
+    'docs/modules/demo/README.md': areaIndex('Demo', '[Demo のデータ](data.md#構成)'),
+    'docs/modules/demo/data.md': '# Demo のデータ\n\n## 構成\nタスクを扱う。\n',
     'docs/modules/demo/decisions.md': DECISIONS,
     'docs/modules/demo/features/task.md': `${SPECIFICATION}\n## 実現方式\n\n### アーキテクチャ\n\nタスクを保存する。\n`,
 
@@ -233,7 +233,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
-      'docs/modules/demo/architecture.md',
+      'docs/modules/demo/data.md',
       '# Demo のアーキテクチャ\n\n## 構成\n\n#### REQ-DEMO-004 作業を数える\n\n- 作業を数える。\n',
     )
     const result = await runCheck(root, 'documents')
@@ -261,7 +261,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     await write(
       root,
       'docs/modules/demo/README.md',
-      `${areaIndex('Demo', '[構成](architecture.md#構成)')}| [品質要件](quality.md) | 割り当て |\n`,
+      `${areaIndex('Demo', '[構成](data.md#構成)')}| [品質要件](quality.md) | 割り当て |\n`,
     )
     const result = await runCheck(root, 'documents')
     expect(result.output).not.toContain('docs/modules/demo/quality.md')
@@ -270,7 +270,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
 
   it('共通設計だけのモジュールには領域の列挙を要求しない', async () => {
     const root = await featureLayoutWorkspace()
-    await rm(join(root, 'docs/modules/demo/architecture.md'))
+    await rm(join(root, 'docs/modules/demo/data.md'))
     await write(
       root,
       'docs/modules/demo/README.md',
@@ -280,12 +280,12 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     expect(result.code).toBe(0)
   })
 
-  it('既存の固有設計を索引から消すと共通設計への委譲として隠せない', async () => {
+  it('既存の設計領域の文書を索引から消すと共通設計への継承として隠せない', async () => {
     const root = await featureLayoutWorkspace()
     await write(root, 'docs/modules/demo/README.md', '# Demo\n')
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('must index its own アーキテクチャ設計')
+    expect(result.output).toContain('must index its own データ設計')
   })
 
   /** 機能の仕組みは機能仕様の「実現方式」の節に書き、別のファイルへ分けない。 */
@@ -318,19 +318,19 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     await write(
       root,
       'docs/modules/demo/README.md',
-      areaIndex('Demo', '[構成](architecture.md#構成)').replace('アーキテクチャ設計 |', '運用 |'),
+      areaIndex('Demo', '[構成](data.md#構成)').replace('データ設計 |', '運用 |'),
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
     expect(result.output).toContain('design area index names an unknown area 運用')
   })
 
-  it('委譲先と対象外の理由の欠落を拒否する', async () => {
+  it('リンクでない文書と、文書のない行の理由の欠落を拒否する', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
       'docs/modules/demo/README.md',
-      areaIndex('Demo', '—', ['| データ設計 | 対象外 | — | |']),
+      areaIndex('Demo', 'データの文書', ['| 性能設計 | — | |']),
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
@@ -338,27 +338,21 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     expect(result.output).toContain('must state a reason')
   })
 
-  it('対象外と委譲の矛盾を拒否する', async () => {
+  it('文書のない行の内容にリンクを置くことを拒否する', async () => {
     const root = await featureLayoutWorkspace()
     await write(
       root,
       'docs/modules/demo/README.md',
-      areaIndex('Demo', '[構成](architecture.md#構成)', [
-        '| データ設計 | 対象外 | [保存](architecture.md#構成) | 保存しない |',
-      ]),
+      areaIndex('Demo', '[構成](data.md#構成)', ['| 性能設計 | — | [保存](data.md#構成)に従う |']),
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
-    expect(result.output).toContain('must use — without delegation')
+    expect(result.output).toContain('must not link from its content')
   })
 
   it('委譲先の存在しない節を文書検査で拒否する', async () => {
     const root = await featureLayoutWorkspace()
-    await write(
-      root,
-      'docs/modules/demo/README.md',
-      areaIndex('Demo', '[構成](architecture.md#ない節)'),
-    )
+    await write(root, 'docs/modules/demo/README.md', areaIndex('Demo', '[構成](data.md#ない節)'))
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)
     expect(result.output).toContain('ない節')
@@ -393,7 +387,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     )
     const path = 'docs/design/architecture/logical.md'
     const source =
-      '# 論理アーキテクチャ\n\n| 品質要件 | 担当機能 | 設計 | 検証 |\n| --- | --- | --- | --- |\n| [SLO-DEMO-LATENCY](../../requirements/quality.md#目標) | [担当](../../modules/demo/features/task.md#操作) | [設計](../../modules/demo/architecture.md#構成) | [検証](../../modules/demo/features/task.md#アーキテクチャ) |\n'
+      '# 論理アーキテクチャ\n\n| 品質要件 | 担当機能 | 設計 | 検証 |\n| --- | --- | --- | --- |\n| [SLO-DEMO-LATENCY](../../requirements/quality.md#目標) | [担当](../../modules/demo/features/task.md#操作) | [設計](../../modules/demo/data.md#構成) | [検証](../../modules/demo/features/task.md#アーキテクチャ) |\n'
     await write(root, path, source)
     expect((await runCheck(root, 'documents')).code).toBe(0)
     await write(root, path, source.replace('task.md#操作', 'task.md#ない操作'))
@@ -433,7 +427,7 @@ describe('機能仕様と内部設計の形式の文書検査', () => {
     await write(
       root,
       'docs/modules/demo/README.md',
-      `${areaIndex('Demo', '[構成](architecture.md#構成)')}\n## 機能\n\nタスクを扱う。\n`,
+      `${areaIndex('Demo', '[構成](data.md#構成)')}\n## 機能\n\nタスクを扱う。\n`,
     )
     const result = await runCheck(root, 'documents')
     expect(result.code).not.toBe(0)

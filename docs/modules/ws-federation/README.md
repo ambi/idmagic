@@ -12,29 +12,44 @@
 | ブラウザーのログインセッションと UsernameToken の資格情報の検証の部品 | `Authentication` |
 | Application への割り当て | `Application` |
 
-## モデル
+## 主な流れ
 
-| Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
-| --- | --- | --- |
-| `WsFedRelyingParty` | `wtrealm`、許可する `wreply` の集合、audience、トークンの型（SAML 1.1 または SAML 2.0）、`ClaimMappingPolicy`、Entra のフェデレーションの定型設定 | `Tenant` を `tenant_id` で参照する。`Application` から参照される |
-
-RP のトークンの型は、指定がなければ SAML 1.1 とする。
-Entra と AD FS の WS-Fed のデフォルトに合わせるためである。
-
-## 公開する契約
-
-HTTP の操作とモデルの形は TypeSpec の `WS-Federation` のタグが定める。
-プロトコルのエンドポイント（`/wsfed`、`federationmetadata.xml`、`/trust/mex`、`/trust/usernamemixed`）は、[WsFederation の標準仕様](standards.md)が定める範囲で動く。
-次の表は、それ以外にほかのモジュールと結ぶ契約である。
-
-| 契約 | 相手 | 向き | 内容 |
+| 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| `RelyingPartyRepository` | `Application` のプロトコル設定 | このモジュールが提供する | アプリケーションに属する RP の設定を読み書きする |
-| `IssueClaimsWithFloor` | `ClaimMapping` が提供する | このモジュールが使う | RP のポリシーでクレームを発行する |
-| XML 署名の資格情報 | `SigningKeys` が提供する | このモジュールが使う | テナントの `XmlFederationSigning` の鍵と証明書を発行のたびに得る |
-| ドメインイベント | 監査と下流が購読する | このモジュールが発行する | `WsFedSignInIssued`、`WsFedSignInRejected`、`WsTrustTokenIssued`、`WsTrustTokenRejected` |
+| パッシブサインイン | ブラウザーの `/wsfed` への `wsignin1.0` | `api` が、ログインセッションがなければログインの画面へ誘導し、あれば検証して RSTR のフォームを返す | [パッシブサインイン](features/passive-sign-in.md) |
+| 能動的な STS | クライアントの `/trust/usernamemixed` への SOAP の要求 | `api` が、エンベロープの解析、`MessageID` の記録、資格情報の検証、発行を同期的に行う | [WS-Trust の能動的 STS](features/active-sts.md) |
+| メタデータと MEX | RP と Entra の取得 | `api` が、要求のたびにテナントの証明書から組み立てる | [フェデレーションメタデータ](#フェデレーションメタデータ) |
+| 管理 API | 解決済みのテナントの `/api/admin/v1/wsfed/...` への要求 | `api` が、ハンドラーから同期的に保存する | [RP と Entra フェデレーションの管理](features/relying-party.md) |
 
-## 機能
+### フェデレーションメタデータ
+
+WsFederation が公開する `federationmetadata.xml` と MEX は、パッシブサインインと能動的な STS の両方の利用者が使う。
+
+各テナントの `/{realm}/federationmetadata/2007-06/federationmetadata.xml` で AD FS 互換の `federationmetadata.xml` を公開し、テナントの発行者（デフォルトテナントでは `/realms/default`）を entityID として広告する。
+WS-Fed の RP と Microsoft Entra のドメインフェデレーションは、別の導入手順を使わずに、発行者、エンドポイント、署名証明書を検出できる。
+
+| 要素 | 広告する内容 |
+| --- | --- |
+| `RoleDescriptor` | `SecurityTokenServiceType` と `ApplicationServiceType` の二つ |
+| エンドポイント | `PassiveRequestorEndpoint`、`SecurityTokenServiceEndpoint`、`MetadataEndpoint` |
+| `KeyDescriptor` | 役割ごとに、現在有効な署名証明書と、有効期限内の検証用の証明書 |
+
+署名証明書は、OAuth と OIDC の JWK の形を再利用せず、WS-* が本来使う X.509 の形で公開する。
+鍵の用途、ローテーション、重なりは `SigningKeys` の責務のままであり、メタデータは WS-* の利用者がすでに期待するものを広告すれば足りるからである。
+有効期限内の検証用の証明書も広告するので、RP は計画されたローテーションの前後でも検証を続けられる。
+
+`/{realm}/trust/mex` は、能動的な STS の探索として、`usernamemixed` のエンドポイントと、UsernameToken を必須とするその方針を公開する。
+RST と RSTR のやり取り自体は、メタデータの一部ではない。
+
+## 設計の要点
+
+| 方針 | 理由 |
+| --- | --- |
+| 準拠を価値のすべてとし、独自の語彙を足さない | 足せば相互運用を損なう |
+| 能動的な対応を狭く保つ | 再送と XML の包み替えへの攻撃面を広げない。詳細は[判断](decisions.md#ws-trust-の能動的な対応を-usernamemixed-の-issue-だけに絞る) |
+| メタデータの公開とクレームの対応付けの担当を分ける | クレームの公開ポリシーを、WS-Fed、WS-Trust、SAML で共有する。詳細は[判断](decisions.md#フェデレーションメタデータの公開とクレームの対応付けの担当を分ける) |
+
+## 機能一覧
 
 | 機能 | 内容 |
 | --- | --- |
@@ -44,14 +59,13 @@ HTTP の操作とモデルの形は TypeSpec の `WS-Federation` のタグが定
 
 ## 文書
 
-| 設計領域 | 区分 | 参照先 | 内容 |
-| --- | --- | --- | --- |
-| アーキテクチャ設計 | 固有設計 | [担当文書](architecture.md#文脈と範囲) | 文脈と範囲、解決戦略、構成要素、実行時の流れ、フェデレーションメタデータ |
-| アプリケーション設計 | 委譲 | [標準仕様](standards.md#web-services-federation-language-ws-federation-version-12) | 管理 API はシステムのアプリケーション設計に従い、プロトコルの形は標準仕様が定める |
-| データ設計 | 委譲 | [モデル](#モデル) | RP の項目は仕様のモデルが、テーブルの定義はスキーマファイルが扱う |
-| セキュリティ設計 | 固有設計 | [担当文書](security.md#テナント単位の署名) | テナント単位の署名、認可の境界 |
-| 信頼性設計 | 委譲 | [RP と Entra フェデレーションの管理の設計](features/relying-party.md#信頼性) | Entra のフェデレーションの障害の切り分けはRP と Entra フェデレーションの管理の設計が扱い、それ以外に固有の仕組みはない |
-| 検証設計 | 固有設計 | [担当文書](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
+| 設計領域 | 文書 | 内容 |
+| --- | --- | --- |
+| アプリケーション設計 | [標準仕様](standards.md#web-services-federation-language-ws-federation-version-12) | 管理 API はシステムのアプリケーション設計に従い、プロトコルの形は標準仕様が定める |
+| データ設計 | [WsFederation のデータ](data.md#集約) | Aggregate とその関係。テーブルの定義はスキーマファイルが扱う |
+| セキュリティ設計 | [WsFederation のセキュリティ](security.md#テナント単位の署名) | テナント単位の署名、認可の境界 |
+| 信頼性設計 | [RP と Entra フェデレーションの管理の設計](features/relying-party.md#信頼性) | Entra のフェデレーションの障害の切り分けはRP と Entra フェデレーションの管理の設計が扱い、それ以外に固有の仕組みはない |
+| 検証設計 | [WsFederation の検証](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
 
 | 文書 | 内容 |
 | --- | --- |

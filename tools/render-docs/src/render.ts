@@ -678,7 +678,9 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   })
   const featuresDirectory = (module: string | undefined): NavigationDirectory[] => {
     const features = inGroup(documents, 'feature').filter((feature) => feature.module === module)
-    return features.length ? [{ name: '機能', documents: [], directories: features.map(node) }] : []
+    return features.length
+      ? [{ name: '機能一覧', documents: [], directories: features.map(node) }]
+      : []
   }
   const modulesBody = [
     ...inGroup(documents, 'modules-child').map(leaf),
@@ -742,33 +744,31 @@ function modelGroupId(module: string): string {
   return `module-${slug(module)}`
 }
 
-/** API リファレンスとモデルカタログは一つに保ち、宣言元のモジュールから該当箇所へ案内する。 */
+/**
+ * API リファレンスとモデルカタログは一つに保ち、モジュールのページには一覧を写さず、
+ * そのモジュールの操作と型へ絞り込んだ位置への案内だけを置く。
+ */
 function moduleReference(args: {
   document: RenderedDocument
   tags: string[]
-  operations: ApiOperation[]
-  models: CatalogSymbol[]
+  hasModels: boolean
 }): string {
   const module = args.document.module
-  if (!module || (args.operations.length === 0 && args.models.length === 0)) return ''
+  if (!module || (args.tags.length === 0 && !args.hasModels)) return ''
   const page = args.document.outputPath
-  const id = `${args.document.id}-api-and-models`
   const filtered = (tag: string) =>
     `<a data-site-link href="${escapeHtml(`${pageHref(page, 'api/index.html')}?tag=${encodeURIComponent(tag)}`)}">${escapeHtml(tag)}</a>`
-  const operations = args.operations.length
-    ? `<h3 id="${id}-operations">API</h3><p class="muted">API リファレンスでは ${args.tags.map(filtered).join('、')} のタグで掲載する。</p><div class="table-wrap"><table><thead><tr><th scope="col">メソッド</th><th scope="col">パス</th><th scope="col">説明</th></tr></thead><tbody>${args.operations
-        .map(
-          (operation) =>
-            `<tr><th scope="row"><code>${escapeHtml(operation.method)}</code></th><td><code>${escapeHtml(operation.path)}</code></td><td>${operation.summary || operation.description ? renderDoc(operation.summary ?? operation.description ?? '') : '<span class="muted">説明未記入</span>'}</td></tr>`,
-        )
-        .join('')}</tbody></table></div>`
-    : ''
-  const models = args.models.length
-    ? `<h3 id="${id}-models">モデル</h3><p class="muted">${args.models.length} 個の TypeSpec シンボルを、モデルカタログの ${siteLink(page, 'models/index.html', module, modelGroupId(module))} にも掲載する。</p><ul class="symbol-links">${args.models
-        .map((model) => `<li>${siteLink(page, modelPath(model), model.shortName)}</li>`)
-        .join('')}</ul>`
-    : ''
-  return `<section class="module-reference"><h2 id="${id}">API とモデル</h2><p>このモジュールが宣言する TypeSpec から生成した情報である。</p>${operations}${models}</section>`
+  const links = [
+    ...(args.tags.length
+      ? [`HTTP の操作は API リファレンスの ${args.tags.map(filtered).join('、')}`]
+      : []),
+    ...(args.hasModels
+      ? [
+          `型はモデルカタログの ${siteLink(page, 'models/index.html', module, modelGroupId(module))}`,
+        ]
+      : []),
+  ]
+  return `<section class="module-reference"><h2 id="${args.document.id}-api-and-models">API と型</h2><p>${links.join('、')}が、TypeSpec から生成して示す。</p></section>`
 }
 
 /**
@@ -1163,50 +1163,6 @@ function featureRuleIndex(document: RenderedDocument, rules: DeclaredRule[]): st
   return `<section class="module-reference">${index}${open}</section>`
 }
 
-/** モジュールの機能地図。機能、要件と未決事項の数を、要件の見出しから作る。 */
-function featureMap(
-  document: RenderedDocument,
-  documents: RenderedDocument[],
-  rules: DeclaredRule[],
-  sourcePaths: readonly string[],
-  moduleAliases: Record<string, string>,
-): string {
-  const module = document.module
-  const leaves = inGroup(documents, 'feature').filter((entry) => entry.module === module)
-  if (leaves.length === 0) return ''
-  const page = document.outputPath
-  const rows = leaves
-    .map((leaf) => {
-      const own = rules.filter(
-        (rule) => rule.document.module === module && rule.document.feature === leaf.feature,
-      )
-      const questions = own.reduce((count, rule) => count + rule.openQuestions.length, 0)
-      const flatten = (value: string) => value.replaceAll('-', '')
-      const feature = leaf.feature ?? ''
-      const paths = sourcePaths.filter((path) => {
-        const [root, owner = '', name = ''] = path.split('/')
-        if (root === 'spec')
-          return path.startsWith(`spec/modules/${module}/`) && path.endsWith('.tsp')
-        return (
-          root === 'backend' &&
-          flatten(moduleAliases[owner] ?? owner) === flatten(module ?? '') &&
-          flatten(name) === flatten(feature)
-        )
-      })
-      const pathList = (entries: string[]) =>
-        entries.length
-          ? `<ul>${entries.map((path) => `<li><code>${escapeHtml(path)}</code></li>`).join('')}</ul>`
-          : '該当なし'
-      const testPath = (path: string) =>
-        path.endsWith('_test.go') ||
-        path.includes('/testing_contract/') ||
-        path.endsWith('.examples.json')
-      return `<tr><th scope="row">${siteLink(page, leaf.outputPath, leaf.title)}</th><td>${own.length}</td><td>${questions}</td><td>${pathList(paths.filter((path) => !testPath(path)))}</td><td>${pathList(paths.filter(testPath))}</td></tr>`
-    })
-    .join('')
-  return `<section class="module-reference"><h2 id="${document.id}-機能地図">機能地図</h2><p class="muted">機能スライス、要件、配置とモジュール名の対応から生成した探索用の候補であり、被覆の証明ではない。</p><div class="table-wrap"><table><thead><tr><th scope="col">機能</th><th scope="col">要件</th><th scope="col">未決事項</th><th scope="col">実装と契約の候補</th><th scope="col">テストと具体例の一次情報</th></tr></thead><tbody>${rows}</tbody></table></div></section>`
-}
-
 /**
  * 生成した区分の入口。中身は下位のページが持つので、この段は何がどこにあるかだけを言う。
  * 入口が無いと、サイドバーの区分名だけがクリックできない例外になる。
@@ -1590,8 +1546,6 @@ export function renderDocumentationSite(args: {
   openapiFileName: string
   models: CatalogSymbol[]
   moduleTags?: Record<string, string[]>
-  sourcePaths?: string[]
-  moduleAliases?: Record<string, string>
 }): RenderedDocumentationSite {
   const documents = args.documents.map(documentMetadata)
   const openapi = inspectOpenApi(args.openapi)
@@ -1637,14 +1591,10 @@ export function renderDocumentationSite(args: {
     const tags = (document.module ? args.moduleTags?.[document.module] : undefined) ?? []
     const reference =
       document.category === 'module'
-        ? featureMap(document, documents, rules, args.sourcePaths ?? [], args.moduleAliases ?? {}) +
-          moduleReference({
+        ? moduleReference({
             document,
             tags,
-            operations: openapi.operations.filter((operation) =>
-              operation.tags.some((tag) => tags.includes(tag)),
-            ),
-            models: args.models.filter((model) => model.module === document.module),
+            hasModels: args.models.some((model) => model.module === document.module),
           })
         : document.category === 'feature'
           ? featureRuleIndex(document, rules)
