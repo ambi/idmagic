@@ -2,11 +2,9 @@ import { describe, expect, it } from 'bun:test'
 import {
   collectErrorCodes,
   collectEventTypes,
-  collectModelNames,
   compareWithDebt,
   findUnspecified,
   ruleTexts,
-  sharedEventOwners,
   specifiedTexts,
 } from './unspecified-vocabulary.ts'
 
@@ -102,32 +100,6 @@ describe('ruleTexts', () => {
     expect(rules).toHaveLength(2)
     expect(rules[0]).toContain('CsrfFailedError')
     expect(rules[1]).not.toContain('CsrfFailedError')
-  })
-})
-
-describe('collectModelNames', () => {
-  it('reads the names of declared models', () => {
-    expect(collectModelNames(`${TYPESPEC}\nmodel EmailSent {\n  toHash: string;\n}\n`)).toEqual([
-      'UserPendingDeletionError',
-      'InvalidUserAttributeError',
-      'InvalidGroupAttributeError',
-      'EmailSent',
-    ])
-  })
-})
-
-describe('sharedEventOwners', () => {
-  it('assigns a shared event to the module whose TypeSpec declares it and the rest to the fallback', () => {
-    const models = new Map([
-      ['authentication', new Set(['EmailSent'])],
-      ['tenancy', new Set(['TenantCreated'])],
-    ])
-    expect(sharedEventOwners(['EmailSent', 'SystemStarted'], models, 'system')).toEqual(
-      new Map([
-        ['authentication', ['EmailSent']],
-        ['system', ['SystemStarted']],
-      ]),
-    )
   })
 })
 

@@ -13,18 +13,6 @@ type DomainEvent interface {
 	OccurredAt() time.Time
 }
 
-// EmailSent is a cross-module notification delivery primitive used by
-// authentication and identity self-service flows.
-type EmailSent struct {
-	At        time.Time `json:"-"`
-	ToHash    string    `json:"toHash"`
-	Purpose   string    `json:"purpose"`
-	Delivered bool      `json:"delivered"`
-}
-
-func (e *EmailSent) EventType() string     { return "EmailSent" }
-func (e *EmailSent) OccurredAt() time.Time { return e.At }
-
 // AuthenticationEventAggregated は、攻撃 (クレデンシャル試行洪水) 時に個別の
 // AuthenticationFailed を 1 行ずつ書かず、(tenant, kind, keyHash, 5 分窓) の bucket に
 // 集約したことを表す (wi-20 スライス 3 / throttle 判定と keyHash を共有する)。

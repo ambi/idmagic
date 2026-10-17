@@ -88,9 +88,9 @@ func TestRequestEmailChangeSucceedsWhenDeliveryFails(t *testing.T) {
 	if sender.attempts != 1 {
 		t.Fatalf("attempts=%d, want 1", sender.attempts)
 	}
-	var sent *spec.EmailSent
+	var sent *idmdomain.EmailSent
 	for _, event := range events {
-		if e, ok := event.(*spec.EmailSent); ok {
+		if e, ok := event.(*idmdomain.EmailSent); ok {
 			sent = e
 		}
 	}

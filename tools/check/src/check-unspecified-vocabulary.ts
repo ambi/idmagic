@@ -4,11 +4,9 @@ import { documentKind } from './specification-doc.ts'
 import {
   collectErrorCodes,
   collectEventTypes,
-  collectModelNames,
   compareWithDebt,
   findUnspecified,
   ruleTexts,
-  sharedEventOwners,
   type SpecifiedTexts,
   specifiedTexts,
   type UnspecifiedTerm,
@@ -47,10 +45,8 @@ const MODULES = [
 const DEBT = 'tools/check/unspecified-vocabulary-debt.json'
 
 /**
- * どのモジュールにも属さない共通の宣言を持つモジュール。その Go の木 `backend/shared/spec` の
- * イベントは複数のモジュールが発行するので、同じ名前のモデルを TypeSpec で宣言するモジュールの
- * 要件で照合する。共通のエラーは、各モジュールの経路へ同じ形で適用する保証なので、横断的な
- * シナリオの Rule でも照合する。
+ * どのモジュールにも属さない共通の宣言を持つモジュール。共通のエラーは、各モジュールの経路へ
+ * 同じ形で適用する保証なので、横断的なシナリオの Rule でも照合する。
  */
 const COMMON = 'system'
 const CROSS_MODULE_SCENARIOS = 'docs/modules/scenarios.feature.md'
@@ -61,49 +57,24 @@ export async function checkUnspecifiedVocabulary(
   const debts: Record<string, VocabularyDebt> = snapshot.exists(DEBT)
     ? JSON.parse(await snapshot.read(DEBT))
     : {}
-  const typespecs = new Map<string, string[]>()
-  for (const { module } of MODULES) {
-    const sources: string[] = []
-    for (const path of await snapshot.files(`spec/modules/${module}`, [])) {
-      if (path.endsWith('.tsp')) sources.push(await snapshot.read(path))
-    }
-    typespecs.set(module, sources)
-  }
-  const goEvents = new Map<string, string[]>()
-  for (const { module, backend } of MODULES) {
-    const events = new Set<string>()
-    for (const path of await snapshot.files(backend, ['vendor'])) {
-      if (!path.endsWith('.go') || path.endsWith('_test.go')) continue
-      for (const event of collectEventTypes(await snapshot.read(path))) events.add(event)
-    }
-    goEvents.set(module, [...events])
-  }
-  const sharedEvents = sharedEventOwners(
-    goEvents.get(COMMON) ?? [],
-    new Map(
-      [...typespecs].map(([module, sources]) => [
-        module,
-        new Set(sources.flatMap(collectModelNames)),
-      ]),
-    ),
-    COMMON,
-  )
   const crossModuleRules = snapshot.exists(CROSS_MODULE_SCENARIOS)
     ? ruleTexts(await snapshot.read(CROSS_MODULE_SCENARIOS))
     : []
   const lines: string[] = []
   let terms = 0
-  for (const { module } of MODULES) {
+  for (const { module, backend } of MODULES) {
     const errors = new Map<string, string[]>()
-    for (const source of typespecs.get(module) ?? []) {
-      for (const [code, models] of collectErrorCodes(source)) {
+    for (const path of await snapshot.files(`spec/modules/${module}`, [])) {
+      if (!path.endsWith('.tsp')) continue
+      for (const [code, models] of collectErrorCodes(await snapshot.read(path))) {
         errors.set(code, [...(errors.get(code) ?? []), ...models])
       }
     }
-    const events = new Set([
-      ...(module === COMMON ? [] : (goEvents.get(module) ?? [])),
-      ...(sharedEvents.get(module) ?? []),
-    ])
+    const events = new Set<string>()
+    for (const path of await snapshot.files(backend, ['vendor'])) {
+      if (!path.endsWith('.go') || path.endsWith('_test.go')) continue
+      for (const event of collectEventTypes(await snapshot.read(path))) events.add(event)
+    }
     const texts: SpecifiedTexts = { requirements: [], transitions: [] }
     for (const path of await snapshot.files(`docs/modules/${module}`, [])) {
       if (documentKind(path) !== 'specification') continue

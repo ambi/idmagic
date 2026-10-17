@@ -164,6 +164,19 @@ type PasswordResetRequested struct {
 func (e *PasswordResetRequested) EventType() string     { return "PasswordResetRequested" }
 func (e *PasswordResetRequested) OccurredAt() time.Time { return e.At }
 
+// EmailSent は、パスワードのリセットのメールを送信境界へ渡した結果である。送信境界は
+// フェイルオープンなので、送信の失敗は Delivered だけに現れる。IdManagement も同じ
+// ワイヤ表現（TypeSpec の EmailSent）で自分の送信を記録する。
+type EmailSent struct {
+	At        time.Time `json:"-"`
+	ToHash    string    `json:"toHash"`
+	Purpose   string    `json:"purpose"`
+	Delivered bool      `json:"delivered"`
+}
+
+func (e *EmailSent) EventType() string     { return "EmailSent" }
+func (e *EmailSent) OccurredAt() time.Time { return e.At }
+
 type MfaFactorEnrolled struct {
 	At         time.Time          `json:"-"`
 	TenantID   string             `json:"tenantId"`

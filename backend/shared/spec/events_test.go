@@ -9,17 +9,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func TestEmailSentEventTypeAndOccurredAt(t *testing.T) {
-	at := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
-	event := &spec.EmailSent{At: at, ToHash: "hash", Purpose: "welcome", Delivered: true}
-	if event.EventType() != "EmailSent" {
-		t.Fatalf("EventType() = %q, want EmailSent", event.EventType())
-	}
-	if !event.OccurredAt().Equal(at) {
-		t.Fatalf("OccurredAt() = %v, want %v", event.OccurredAt(), at)
-	}
-}
-
 type unmarshalableEvent struct {
 	Fn func()
 }

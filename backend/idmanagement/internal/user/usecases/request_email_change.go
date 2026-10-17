@@ -137,7 +137,7 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 		deps.Emit(&idmdomain.EmailChangeRequested{
 			At: now, TenantID: user.TenantID, UserID: user.ID, NewEmailHash: sha256Hex(newEmail),
 		})
-		deps.Emit(&spec.EmailSent{
+		deps.Emit(&idmdomain.EmailSent{
 			At: now, ToHash: sha256Hex(newEmail), Purpose: "email_change", Delivered: delivered,
 		})
 	}

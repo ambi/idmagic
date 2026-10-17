@@ -103,7 +103,7 @@ func RequestPasswordReset(ctx context.Context, deps RequestPasswordResetDeps, in
 		},
 	})
 	if deps.Emit != nil {
-		deps.Emit(&spec.EmailSent{
+		deps.Emit(&authdomain.EmailSent{
 			At: now, ToHash: sha256Hex(email), Purpose: "password_reset", Delivered: delivered,
 		})
 	}

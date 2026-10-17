@@ -174,7 +174,7 @@ func TestNewAuditEventRecordLifecycleWorkflowSearchExcludesUnrelatedRunsAndSensi
 func TestNewAuditEventRecordWithoutTenantIDStaysEmpty(t *testing.T) {
 	now := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
 	for _, ev := range []spec.DomainEvent{
-		&spec.EmailSent{At: now, ToHash: "deadbeef", Purpose: "password_reset", Delivered: true},
+		&authdomain.EmailSent{At: now, ToHash: "deadbeef", Purpose: "password_reset", Delivered: true},
 		&signingdomain.SigningKeyRotated{At: now, NewKID: "kid-2", PreviousKID: "kid-1"},
 	} {
 		rec, err := NewAuditEventRecord(ev)
