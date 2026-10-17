@@ -66,7 +66,7 @@ async function workspace(): Promise<string> {
       '',
       '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |',
       '| --- | --- | --- | --- | --- |',
-      '| [Demo](../../domain/demo/README.md) | `legacy` | `domain` または `ports` の区画 | `demo` | Demo. |',
+      '| [Demo](../../domain/demo/README.md) | `internal` | なし | `demo` | Demo. |',
       '',
     ].join('\n'),
   )

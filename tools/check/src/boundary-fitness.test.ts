@@ -36,9 +36,6 @@ const INTERNAL_SUPPLIER_ROW =
 const PRIVATE_CUSTOMER_ROW =
   '| [Customer](customer.md) | `internal` | なし | `backend/customer` | Uses the model |'
 
-const LEGACY_SUPPLIER_ROW =
-  '| [Supplier](supplier.md) | `legacy` | `domain` または `ports` の区画 | `backend/supplier` | Supplies a model |'
-
 function analyze(sources: GoSource[], rows = ROWS) {
   return findBoundaryViolations({
     modulePath: 'example.com/product',
@@ -64,52 +61,17 @@ function kinds(sources: GoSource[], rows?: string[]): string[] {
 }
 
 describe('parseLogicalArchitecture', () => {
-  it('reads modules, publication modes, and composition prefixes from the responsibility table', () => {
+  it('reads modules, public packages, and composition prefixes from the responsibility table', () => {
     expect(
       parseLogicalArchitecture(logicalArchitecture([PRIVATE_CUSTOMER_ROW, INTERNAL_SUPPLIER_ROW])),
     ).toEqual({
       compositionPrefixes: ['backend/cmd', 'backend/shared/http/server_http'],
       modules: [
-        {
-          name: 'Customer',
-          packagePrefixes: ['backend/customer'],
-          publication: 'internal',
-          publicPackages: [],
-        },
+        { name: 'Customer', packagePrefixes: ['backend/customer'], publicPackages: [] },
         {
           name: 'Supplier',
           packagePrefixes: ['backend/supplier'],
-          publication: 'internal',
           publicPackages: ['backend/supplier/api'],
-        },
-      ],
-    })
-  })
-
-  it('reads the retired Context table of a base revision as legacy modules with the initial composition prefixes', () => {
-    const retired = [
-      '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |',
-      '| --- | --- | --- | --- |',
-      '| [System](system.md) | Supporting | `backend/cmd/internal/bootstrap`, `frontend/` | Wiring |',
-      '| [Supplier](supplier.md) | Core | `backend/supplier` | Supplies |',
-      '',
-    ].join('\n')
-
-    expect(() => parseLogicalArchitecture(retired)).toThrow(
-      'the retired Context table is readable only from a base revision',
-    )
-    expect(parseLogicalArchitecture(retired, 'base')).toEqual({
-      compositionPrefixes: [
-        'backend/cmd',
-        'backend/shared/http/server_http',
-        'backend/shared/http/testing_stack',
-      ],
-      modules: [
-        {
-          name: 'Supplier',
-          packagePrefixes: ['backend/supplier'],
-          publication: 'legacy',
-          publicPackages: [],
         },
       ],
     })
@@ -117,6 +79,19 @@ describe('parseLogicalArchitecture', () => {
 
   it('fails when the responsibility table is missing', () => {
     expect(() => parseLogicalArchitecture('# Logical architecture\n')).toThrow(
+      'logical architecture must contain the module responsibility table',
+    )
+  })
+
+  it('does not read the retired Context table as the responsibility table', () => {
+    const retired = [
+      '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |',
+      '| --- | --- | --- | --- |',
+      '| [Supplier](supplier.md) | Core | `backend/supplier` | Supplies |',
+      '',
+    ].join('\n')
+
+    expect(() => parseLogicalArchitecture(retired)).toThrow(
       'logical architecture must contain the module responsibility table',
     )
   })
@@ -142,37 +117,12 @@ describe('parseLogicalArchitecture', () => {
     ).toThrow('backend/supplier is assigned more than once')
   })
 
-  it('fails on an unknown publication mode', () => {
+  it.each(['`open`', '`legacy`'])('fails on the publication mode %s', (mode) => {
     expect(() =>
       parseLogicalArchitecture(
-        logicalArchitecture([INTERNAL_SUPPLIER_ROW.replace('`internal`', '`open`')]),
+        logicalArchitecture([INTERNAL_SUPPLIER_ROW.replace('`internal`', mode)]),
       ),
     ).toThrow('Supplier: publication mode must be internal')
-  })
-
-  it('reads the legacy publication mode only from a base revision', () => {
-    const table = logicalArchitecture([LEGACY_SUPPLIER_ROW])
-
-    expect(() => parseLogicalArchitecture(table)).toThrow(
-      'Supplier: publication mode must be internal',
-    )
-    expect(parseLogicalArchitecture(table, 'base').modules).toEqual([
-      {
-        name: 'Supplier',
-        packagePrefixes: ['backend/supplier'],
-        publication: 'legacy',
-        publicPackages: [],
-      },
-    ])
-  })
-
-  it('fails when a legacy module of a base revision lists public packages', () => {
-    expect(() =>
-      parseLogicalArchitecture(
-        logicalArchitecture([INTERNAL_SUPPLIER_ROW.replace('`internal`', '`legacy`')]),
-        'base',
-      ),
-    ).toThrow('Supplier: a legacy module derives its public packages from domain and ports')
   })
 
   it('fails when an internal module declares a package below internal/', () => {

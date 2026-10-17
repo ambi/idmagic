@@ -6,20 +6,10 @@
  * `docs/design/application/backend.md` が定める。
  */
 
-/**
- * 公開方式。作業ツリーの責務表は `internal` だけを宣言する。`legacy` は、移行が終わる前の基準
- * revision を読むときだけ現れ、`domain` または `ports` の区画を公開とみなす。
- */
-export type PublicationMode = 'legacy' | 'internal'
-
-/** 責務表を読む revision。`base` は負債の比較の基準 revision で、移行前の形も読む。 */
-export type ArchitectureRevision = 'workspace' | 'base'
-
 export type ModuleDefinition = {
   name: string
   packagePrefixes: string[]
-  publication: PublicationMode
-  /** `internal` のモジュールだけが列挙する。`legacy` は区画の名前で判定するので空にする。 */
+  /** 責務表の公開パッケージの列に挙げたパッケージ。ルートと `internal/` の外にあるのはこれだけである。 */
   publicPackages: string[]
 }
 
@@ -89,17 +79,6 @@ const SHARED_PREFIX = 'backend/shared'
 
 const RESPONSIBILITY_HEADER = '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |'
 
-/**
- * 責務表を改めた revision より前の表。基準 revision の比較だけがこの形を読む。
- * 旧表は組み立て地点を列挙しないので、新しい表が System 行に宣言する初期値を使う。
- */
-const RETIRED_RESPONSIBILITY_HEADER = '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |'
-const RETIRED_COMPOSITION_PREFIXES = [
-  'backend/cmd',
-  'backend/shared/http/server_http',
-  'backend/shared/http/testing_stack',
-]
-
 type ImportSpec = {
   path: string
   localName: string
@@ -115,53 +94,32 @@ type ModuleDependency = {
   targetModule: string
 }
 
-/**
- * 責務表からモジュール、公開方式、公開パッケージ、組み立て地点を読む。作業ツリーの表は
- * `internal` だけを受け付け、基準 revision の表は移行前の `legacy` と旧形式の表も読む。
- */
-export function parseLogicalArchitecture(
-  markdown: string,
-  revision: ArchitectureRevision = 'workspace',
-): ArchitectureModel {
+/** 責務表からモジュール、公開パッケージ、組み立て地点を読む。公開方式は `internal` だけを受け付ける。 */
+export function parseLogicalArchitecture(markdown: string): ArchitectureModel {
   const lines = markdown.split(/\r?\n/)
-  const headerIndex = lines.findIndex(
-    (line) =>
-      line.trim() === RESPONSIBILITY_HEADER || line.trim() === RETIRED_RESPONSIBILITY_HEADER,
-  )
+  const headerIndex = lines.findIndex((line) => line.trim() === RESPONSIBILITY_HEADER)
   if (headerIndex < 0) {
     throw new Error('logical architecture must contain the module responsibility table')
   }
-  const retired = lines[headerIndex]!.trim() === RETIRED_RESPONSIBILITY_HEADER
-  if (retired && revision === 'workspace') {
-    throw new Error('the retired Context table is readable only from a base revision')
-  }
   const modules: ModuleDefinition[] = []
-  let compositionPrefixes: string[] = retired ? [...RETIRED_COMPOSITION_PREFIXES] : []
+  let compositionPrefixes: string[] = []
   for (const line of lines.slice(headerIndex + 2)) {
     if (!line.trim().startsWith('|')) break
     const row = cells(line)
     const name = row[0]?.match(/^\[([^\]]+)\]/)?.[1]?.trim()
     if (!name) continue
-    const packages = backendPaths(row[retired ? 2 : 3] ?? '')
+    const packages = backendPaths(row[3] ?? '')
     if (name === COMPOSITION_NAME) {
-      if (!retired) compositionPrefixes = packages
+      compositionPrefixes = packages
       continue
     }
     if (packages.length === 0) {
       throw new Error(`${name}: the responsibility table must declare a backend package`)
     }
-    if (retired) {
-      modules.push({ name, packagePrefixes: packages, publication: 'legacy', publicPackages: [] })
-      continue
-    }
-    const publication = row[1]?.replace(/`/g, '').trim()
-    if (publication !== 'internal' && (revision === 'workspace' || publication !== 'legacy')) {
+    if (row[1]?.replace(/`/g, '').trim() !== 'internal') {
       throw new Error(`${name}: publication mode must be internal`)
     }
     const publicPackages = backendPaths(row[2] ?? '')
-    if (publication === 'legacy' && publicPackages.length > 0) {
-      throw new Error(`${name}: a legacy module derives its public packages from domain and ports`)
-    }
     for (const declared of publicPackages) {
       if (declared.split('/').includes('internal')) {
         throw new Error(`${name}: ${declared} is below internal/ and cannot be public`)
@@ -170,7 +128,7 @@ export function parseLogicalArchitecture(
         throw new Error(`${name}: public package ${declared} is outside the module`)
       }
     }
-    modules.push({ name, packagePrefixes: packages, publication, publicPackages })
+    modules.push({ name, packagePrefixes: packages, publicPackages })
   }
   if (modules.length === 0) {
     throw new Error('the module responsibility table declares no module')
@@ -434,14 +392,13 @@ function validateAssignments(
   }
 }
 
-/** `internal` のモジュールで、宣言と実在するパッケージの食い違いを返す。 */
+/** 公開パッケージの宣言と、実在するパッケージの食い違いを返す。 */
 function publicationDiagnostics(
   architecture: ArchitectureModel,
   packages: ReadonlySet<string>,
 ): string[] {
   const diagnostics: string[] = []
   for (const module of architecture.modules) {
-    if (module.publication !== 'internal') continue
     for (const declared of module.publicPackages) {
       if (!packages.has(declared)) {
         diagnostics.push(
@@ -462,16 +419,9 @@ function publicationDiagnostics(
   return diagnostics
 }
 
-/**
- * ほかのモジュールが import できるか。ルートパッケージは組み立て地点だけに公開する。
- * `legacy` の区画名による判定は、移行前の基準 revision を読むときだけ使う。
- */
+/** ほかのモジュールが import できるか。ルートパッケージは組み立て地点だけに公開する。 */
 function isPublicPackage(path: string, owner: Extract<PackageOwner, { kind: 'module' }>): boolean {
-  if (path === owner.prefix) return false
-  if (owner.module.publication === 'internal') return owner.module.publicPackages.includes(path)
-  const segments = path.slice(owner.prefix.length).split('/').filter(Boolean)
-  if (segments.includes('internal')) return false
-  return segments.some((segment) => segment === 'domain' || segment === 'ports')
+  return path !== owner.prefix && owner.module.publicPackages.includes(path)
 }
 
 function importViolation(
@@ -507,11 +457,7 @@ function importViolation(
   }
   if (source.kind === 'module' && source.module.name === targetName) return undefined
   if (isPublicPackage(targetPackage, target)) return undefined
-  if (source.kind === 'composition') {
-    // 移行前の基準 revision では、組み立て地点が legacy のモジュールの非公開パッケージを直接使っていた。
-    const reachable = target.module.publication === 'legacy' || targetPackage === target.prefix
-    if (reachable) return undefined
-  }
+  if (source.kind === 'composition' && targetPackage === target.prefix) return undefined
   return {
     id: `private-import:${sourceName}:${sourcePackage}->${targetPackage}`,
     debtId: `private-import:${sourceName}->${targetName}`,

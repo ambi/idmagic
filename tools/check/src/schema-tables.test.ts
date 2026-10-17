@@ -52,7 +52,7 @@ const DOC = [
   '| --- | --- |',
   '| `not_a_table` | 見出しが「テーブル」ではない |',
   '',
-  '| テーブル | 役割 | 所有 Context | テーブル種別 | `tenant_id` カラム |',
+  '| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |',
   '| --- | --- | --- | --- | --- |',
   '| `scim_user_refs` | 外部 ID の対応 | Sourcing | `LOGGED` | 複合主キーの一部 |',
   '| `group_members` | 所属 | IdManagement | `LOGGED` | なし |',
@@ -103,10 +103,17 @@ describe('describedTables', () => {
     })
   })
 
-  it('reads the owner from the retired 所有 Context header of a base revision', () => {
-    expect(describedTables(DOC).find((table) => table.name === 'login_counters')?.owner).toBe(
+  it('does not read the retired 所有 Context header as the owner column', () => {
+    const retired = DOC.replace('| 役割 | 所有モジュール |', '| 役割 | 所有 Context |')
+
+    expect(describedTables(retired).map((table) => table.owner)).toEqual([
+      '',
+      '',
+      '',
+      'Sourcing',
+      'IdManagement',
       'Authentication',
-    )
+    ])
   })
 })
 

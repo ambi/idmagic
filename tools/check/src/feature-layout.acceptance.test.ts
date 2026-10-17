@@ -119,7 +119,7 @@ async function featureLayoutWorkspace(): Promise<string> {
       '',
       '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |',
       '| --- | --- | --- | --- | --- |',
-      '| [Demo](../../modules/demo/README.md) | `legacy` | `domain` または `ports` の区画 | `demo` | Demo. |',
+      '| [Demo](../../modules/demo/README.md) | `internal` | なし | `demo` | Demo. |',
       '',
     ].join('\n'),
     'docs/modules/demo/glossary.md': '# Demo の用語集\n',

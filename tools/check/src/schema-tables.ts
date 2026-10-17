@@ -32,8 +32,6 @@ const LOGGED_KIND = '`LOGGED`'
 const UNLOGGED_KIND = '`UNLOGGED`'
 const KIND_HEADER = 'テーブル種別'
 const OWNER_HEADER = '所有モジュール'
-/** 所有の列を改名する前の見出し。基準 revision の比較だけがこの見出しを読む。 */
-const RETIRED_OWNER_HEADER = '所有 Context'
 /** モジュールに属さず、共有ライブラリだけが書き込むテーブルの所有者。 */
 export const SHARED_INFRASTRUCTURE_OWNER = '共通基盤'
 const TENANT_ID_HEADER = '`tenant_id` カラム'
@@ -110,7 +108,7 @@ export function describedTables(markdown: string): DescribedTable[] {
       columns =
         row[0] === 'テーブル'
           ? {
-              owner: ownerColumn(row),
+              owner: row.indexOf(OWNER_HEADER),
               kind: row.indexOf(KIND_HEADER),
               tenantId: row.indexOf(TENANT_ID_HEADER),
             }
@@ -167,11 +165,6 @@ export function compareTables(
     }
   }
   return findings
-}
-
-function ownerColumn(header: readonly string[]): number {
-  const current = header.indexOf(OWNER_HEADER)
-  return current >= 0 ? current : header.indexOf(RETIRED_OWNER_HEADER)
 }
 
 /**

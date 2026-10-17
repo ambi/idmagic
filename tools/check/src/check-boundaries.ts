@@ -7,7 +7,6 @@ import {
   parseBoundaryDebt,
   parseLogicalArchitecture,
   reconcileBoundaryDebt,
-  type ArchitectureRevision,
   type BoundaryAnalysis,
   type BoundaryDebtGroup,
   type GoSource,
@@ -93,17 +92,13 @@ export async function checkBoundaries(
  */
 export async function analyzeModuleBoundaries(
   snapshot: WorkspaceSnapshot,
-  revision: ArchitectureRevision = 'workspace',
 ): Promise<BoundaryAnalysis> {
   const modulePath = (await snapshot.read('go.mod')).match(/^module\s+(\S+)$/m)?.[1]
   if (!modulePath) throw new Error('go.mod must declare a module path')
   if (!snapshot.exists(LOGICAL_ARCHITECTURE_PATH)) {
     throw new Error(`${LOGICAL_ARCHITECTURE_PATH} is required to check module boundaries`)
   }
-  const architecture = parseLogicalArchitecture(
-    await snapshot.read(LOGICAL_ARCHITECTURE_PATH),
-    revision,
-  )
+  const architecture = parseLogicalArchitecture(await snapshot.read(LOGICAL_ARCHITECTURE_PATH))
   const sources: GoSource[] = []
   for (const path of await productionGoFiles(snapshot)) {
     sources.push({ path, source: await snapshot.read(path) })

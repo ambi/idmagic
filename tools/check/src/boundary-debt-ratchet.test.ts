@@ -11,39 +11,14 @@ afterAll(async () => {
   for (const path of cleanup) await rm(path, { recursive: true, force: true })
 })
 
-/** 責務表と所有の列を改める前の形式。基準 revision がこの形を持つ。 */
-const RETIRED_DOCUMENTS: Record<string, string> = {
-  'docs/design/architecture/logical.md': [
-    '# 論理アーキテクチャ',
-    '',
-    '## Context Map',
-    '',
-    '```mermaid',
-    'flowchart LR',
-    '  Supplier -->|OHS/PL: model| Customer',
-    '```',
-    '',
-    '## Context の責務',
-    '',
-    '| 仕様上の Context | Subdomain | Go パッケージ | 責務 |',
-    '| --- | --- | --- | --- |',
-    '| [System](system.md) | Supporting | `backend/cmd/internal/bootstrap` | Wiring |',
-    '| [Supplier](supplier.md) | Core | `backend/supplier` | Supplies a model |',
-    '| [Customer](customer.md) | Core | `backend/customer` | Uses the model |',
-    '',
-  ].join('\n'),
-  'docs/design/data/database.md': BOUNDARY_FIXTURE['docs/design/data/database.md']!.replace(
-    '所有モジュール',
-    '所有 Context',
-  ),
-}
-
-/** 基準に既にある循環と所有者外の書き込み。 */
+/** 基準に既にある循環、非公開パッケージへの import、所有者外の書き込み。 */
 const EXISTING_DEBT: Record<string, string> = {
-  'backend/customer/usecases/a.go':
+  'backend/customer/internal/usecases/a.go':
     'package usecases\nimport "example.com/product/backend/supplier/domain"\n',
-  'backend/supplier/usecases/a.go':
+  'backend/supplier/internal/usecases/a.go':
     'package usecases\nimport "example.com/product/backend/customer/ports"\n',
+  'backend/customer/internal/usecases/private.go':
+    'package usecases\nimport "example.com/product/backend/supplier/internal/usecases"\n',
   'backend/customer/db_postgres/supplies.sql':
     '-- name: Reserve :exec\nUPDATE supplies SET stock = stock - 1 WHERE id = $1;\n',
 }
@@ -63,22 +38,18 @@ function git(root: string, ...args: string[]): void {
   if (result.exitCode !== 0) throw new Error(result.stderr.toString())
 }
 
-/** 旧形式の文書と既存の負債を基準 commit にし、現在の作業ツリーへ `changes` を書く。 */
+/** 既存の負債と `baseChanges` を基準 commit にし、既存の負債へ `changes` を重ねた作業ツリーを作る。 */
 async function repository(
   changes: Record<string, string>,
   baseChanges: Record<string, string> = {},
 ): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'boundary-ratchet-'))
   cleanup.push(root)
-  await write(root, { ...BOUNDARY_FIXTURE, ...RETIRED_DOCUMENTS, ...EXISTING_DEBT, ...baseChanges })
+  await write(root, { ...BOUNDARY_FIXTURE, ...EXISTING_DEBT, ...baseChanges })
   git(root, 'init', '-q', '-b', 'main')
   git(root, 'add', '-A')
   git(root, 'commit', '-q', '-m', 'base')
-  await write(root, {
-    'docs/design/architecture/logical.md': BOUNDARY_FIXTURE['docs/design/architecture/logical.md']!,
-    'docs/design/data/database.md': BOUNDARY_FIXTURE['docs/design/data/database.md']!,
-    ...changes,
-  })
+  await write(root, { ...BOUNDARY_FIXTURE, ...EXISTING_DEBT, ...changes })
   return root
 }
 
@@ -91,97 +62,22 @@ async function ratchet(root: string, baseRevision = 'main') {
 }
 
 describe('checkBoundaryDebtRatchet', () => {
-  /**
-   * 基準 revision の `backend/customer/usecases` から Supplier の非公開パッケージへの import を、
-   * 現在の作業ツリーで `backend/customer/internal/usecases` へ移した作業ツリーを作る。
-   * switchPublication が false なら、基準 revision の Customer は既に `internal` である。
-   */
-  async function movedImport(target = 'usecases', switchPublication = true, keepOriginal = false) {
-    const source = 'backend/customer/usecases/private.go'
-    const alreadyInternal = BOUNDARY_FIXTURE['docs/design/architecture/logical.md']!.replace(
-      '`backend/customer/domain`, `backend/customer/ports`',
-      '`backend/customer/domain`, `backend/customer/ports`, `backend/customer/usecases`',
-    ).replace(
-      '| `internal` | `backend/supplier/domain`, `backend/supplier/ports` |',
-      '| `legacy` | `domain` または `ports` の区画 |',
-    )
-    const root = await repository(
-      {
-        'backend/customer/internal/usecases/private.go': `package usecases\nimport "example.com/product/backend/supplier/${target}"\n`,
-      },
-      {
-        [source]: 'package usecases\nimport "example.com/product/backend/supplier/usecases"\n',
-        ...(switchPublication ? {} : { 'docs/design/architecture/logical.md': alreadyInternal }),
-      },
-    )
-    if (!keepOriginal) await rm(join(root, source))
-    return root
-  }
-
-  it('公開方式を切り替えて既存の非公開 import の利用元だけを internal へ移す変更を通す', async () => {
-    const outcome = await ratchet(await movedImport())
-    expect(outcome.ok).toBe(true)
-  })
-
-  it('internal への移動と同時に別の非公開パッケージを使い始める変更を拒否する', async () => {
-    const outcome = await ratchet(await movedImport('adapter'))
-    expect(outcome.ok).toBe(false)
-    expect(outcome.lines[0]).toContain(
-      'backend/customer/internal/usecases->backend/supplier/adapter',
-    )
-  })
-
-  it('基準 revision で既に internal のモジュールの配置の変更は読み替えない', async () => {
-    const outcome = await ratchet(await movedImport('usecases', false))
-    expect(outcome.ok).toBe(false)
-    expect(outcome.lines[0]).toContain(
-      'private-import:Customer:backend/customer/internal/usecases->backend/supplier/usecases',
-    )
-  })
-
-  it('移動元の依存も残る複製を移動として免除しない', async () => {
-    expect((await ratchet(await movedImport('usecases', true, true))).ok).toBe(false)
-  })
-
-  it('公開方式を切り替えて既存の所有者外の書き込みのクエリを internal へ移す変更を通す', async () => {
-    const root = await repository({
-      'docs/design/architecture/logical.md': BOUNDARY_FIXTURE[
-        'docs/design/architecture/logical.md'
-      ]!.replace(
-        '| [Customer](customer.md) | `legacy` | `domain` または `ports` の区画 |',
-        '| [Customer](customer.md) | `internal` | `backend/customer/ports` |',
-      ),
-      'backend/customer/ports/ports.go': 'package ports\n',
-      'sqlc.yaml': BOUNDARY_FIXTURE['sqlc.yaml']!.replace(
-        '"backend/customer/db_postgres"',
-        '"backend/customer/internal/db_postgres"',
-      ),
-      'backend/customer/internal/db_postgres/orders.sql':
-        BOUNDARY_FIXTURE['backend/customer/db_postgres/orders.sql']!,
-      'backend/customer/internal/db_postgres/supplies.sql':
-        EXISTING_DEBT['backend/customer/db_postgres/supplies.sql']!,
-    })
-    await rm(join(root, 'backend/customer/db_postgres'), { recursive: true })
-
-    expect((await ratchet(root)).ok).toBe(true)
-  })
-
-  it('accepts moving the cycle and the direct write of a retired-format base to new ids', async () => {
+  it('accepts a workspace that keeps the existing violations of the base revision', async () => {
     const outcome = await ratchet(await repository({}))
 
     expect(outcome).toEqual({
       ok: true,
       lines: [
-        'ok  boundary debt ratchet against main (module-cycle 2, table-write 1 -> module-cycle 2, table-write 1)',
+        'ok  boundary debt ratchet against main (module-cycle 2, private-import 1, table-write 1 -> module-cycle 2, private-import 1, table-write 1)',
       ],
     })
   })
 
-  it('rejects a new violation added in the migration diff even when the ledger records it', async () => {
+  it('rejects a new violation even when the ledger records it', async () => {
     const outcome = await ratchet(
       await repository({
-        'backend/customer/usecases/b.go':
-          'package usecases\nimport "example.com/product/backend/supplier/usecases"\n',
+        'backend/customer/internal/usecases/b.go':
+          'package usecases\nimport "example.com/product/backend/supplier/internal/adapter"\n',
         'tools/check/boundary-debt.json': JSON.stringify({
           violations: [
             {
@@ -189,7 +85,7 @@ describe('checkBoundaryDebtRatchet', () => {
               sourceModule: 'Customer',
               targetModule: 'Supplier',
               violations: [
-                'private-import:Customer:backend/customer/usecases->backend/supplier/usecases',
+                'private-import:Customer:backend/customer/internal/usecases->backend/supplier/internal/adapter',
               ],
               reason: 'Customer still constructs the supplier workflow directly.',
             },
@@ -200,8 +96,39 @@ describe('checkBoundaryDebtRatchet', () => {
 
     expect(outcome.ok).toBe(false)
     expect(outcome.lines[0]).toBe(
-      'fail  private-import:Customer:backend/customer/usecases->backend/supplier/usecases: absent from main; remove the new dependency or write instead of growing boundary debt.',
+      'fail  private-import:Customer:backend/customer/internal/usecases->backend/supplier/internal/adapter: absent from main; remove the new dependency or write instead of growing boundary debt.',
     )
+  })
+
+  it('does not read an existing private import moved to another source package as the same violation', async () => {
+    const root = await repository({
+      'backend/customer/internal/workflow/private.go':
+        EXISTING_DEBT['backend/customer/internal/usecases/private.go']!,
+    })
+    await rm(join(root, 'backend/customer/internal/usecases/private.go'))
+
+    const outcome = await ratchet(root)
+
+    expect(outcome.ok).toBe(false)
+    expect(outcome.lines[0]).toContain(
+      'private-import:Customer:backend/customer/internal/workflow->backend/supplier/internal/usecases',
+    )
+  })
+
+  it('fails when the base revision declares the retired legacy publication mode', async () => {
+    const root = await repository(
+      {},
+      {
+        'docs/design/architecture/logical.md': BOUNDARY_FIXTURE[
+          'docs/design/architecture/logical.md'
+        ]!.replace(
+          '| `internal` | `backend/supplier/domain`, `backend/supplier/ports` |',
+          '| `legacy` | `domain` または `ports` の区画 |',
+        ),
+      },
+    )
+
+    await expect(ratchet(root)).rejects.toThrow('Supplier: publication mode must be internal')
   })
 
   it('rejects an existing out-of-owner write that starts writing another column', async () => {
@@ -222,7 +149,7 @@ describe('checkBoundaryDebtRatchet', () => {
     const root = await repository(
       {},
       {
-        'docs/design/data/database.md': RETIRED_DOCUMENTS['docs/design/data/database.md']!.replace(
+        'docs/design/data/database.md': BOUNDARY_FIXTURE['docs/design/data/database.md']!.replace(
           '| `supplies` | Supplies | Supplier | `LOGGED` | なし |\n',
           '',
         ),
