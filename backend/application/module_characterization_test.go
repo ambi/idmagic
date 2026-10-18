@@ -16,7 +16,7 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/shared/http/server_http/applicationdeps"
 
 	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
@@ -24,7 +24,6 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -203,22 +202,23 @@ func TestCharacterizeApplicationGatePropagatesStoreFailures(t *testing.T) {
 	}
 }
 
-// oauth2memory は OAuth2 のメモリのクライアントの保存先を作る。OAuth2 の保存先は internal/ にあるので、
-// ルートパッケージの Module から取り出す。
+// oauth2memory は正式な境界の変換で、メモリの保存先から表示名の照会を作る。
 var oauth2memory = struct {
-	NewClientRepository func() oauthports.OAuth2ClientRepository
+	NewClientRepository func() appports.ClientNames
 }{
-	NewClientRepository: func() oauthports.OAuth2ClientRepository { return oauth2.NewMemoryModule().ClientRepo },
+	NewClientRepository: func() appports.ClientNames {
+		return applicationdeps.NewClientNames(oauth2.NewMemoryModule().ClientRepo)
+	},
 }
 
 type countingClients struct {
-	oauthports.OAuth2ClientRepository
-	lookups int
+	OAuth2ClientRepository appports.ClientNames
+	lookups                int
 }
 
-func (r *countingClients) FindByID(ctx context.Context, tenantID, clientID string) (*oauthdomain.OAuth2Client, error) {
+func (r *countingClients) FindClientName(ctx context.Context, tenantID, clientID string) (*string, error) {
 	r.lookups++
-	return r.OAuth2ClientRepository.FindByID(ctx, tenantID, clientID)
+	return r.OAuth2ClientRepository.FindClientName(ctx, tenantID, clientID)
 }
 
 func TestCharacterizeClientDisplayNamesResolveEachClientOnce(t *testing.T) {

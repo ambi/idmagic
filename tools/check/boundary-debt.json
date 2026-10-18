@@ -22,13 +22,6 @@
       "reason": "Application -> IdManagement lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
-      "id": "module-cycle:Application->OAuth2",
-      "sourceModule": "Application",
-      "targetModule": "OAuth2",
-      "violations": ["module-cycle:Application->OAuth2"],
-      "reason": "Application and OAuth2 import each other, so the edge Application -> OAuth2 stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
       "id": "module-cycle:Application->Saml",
       "sourceModule": "Application",
       "targetModule": "Saml",

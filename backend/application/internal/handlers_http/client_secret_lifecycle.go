@@ -5,8 +5,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/application/domain"
-	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
-	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -40,12 +39,11 @@ func (d Deps) handleRotateOIDCClientSecret(c *echo.Context) error {
 	if req.GraceDays != nil {
 		graceDays = *req.GraceDays
 	}
-	result, err := d.Clients.RotateSecret(c.Request().Context(), clientports.RotateClientSecretInput{ActorUserID: actor.ID, ClientID: clientID, GraceDays: graceDays, Now: time.Now().UTC()})
+	result, err := d.Clients.RotateSecret(c.Request().Context(), appports.RotateClientSecretInput{ActorUserID: actor.ID, ClientID: clientID, GraceDays: graceDays, Now: time.Now().UTC()})
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	metadata := clientSecretMetadata(result.Credentials, time.Now().UTC())
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"client_secret": result.ClientSecret, "grace_until": result.GraceUntil, "credentials": metadata})
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"client_secret": result.ClientSecret, "grace_until": result.GraceUntil, "credentials": result.Credentials})
 }
 
 type issueOIDCClientSecretRequest struct {
@@ -77,16 +75,14 @@ func (d Deps) handleIssueOIDCClientSecret(c *echo.Context) error {
 		expiresInDays = *req.ExpiresInDays
 	}
 	now := time.Now().UTC()
-	result, err := d.Clients.IssueSecret(c.Request().Context(), clientports.IssueClientSecretInput{
+	result, err := d.Clients.IssueSecret(c.Request().Context(), appports.IssueClientSecretInput{
 		ActorUserID: actor.ID, ClientID: clientID, ExpiresInDays: expiresInDays, Now: now,
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	metadata := clientSecretMetadata(result.Credentials, now)
-	issued := clientSecretMetadata([]oauthdomain.ClientSecretCredential{result.Credential}, now)[0]
 	return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
-		"client_secret": result.ClientSecret, "credential": issued, "credentials": metadata,
+		"client_secret": result.ClientSecret, "credential": result.Credential, "credentials": result.Credentials,
 	})
 }
 
@@ -107,13 +103,13 @@ func (d Deps) handleRevokeOIDCClientSecret(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}
 	now := time.Now().UTC()
-	result, err := d.Clients.RevokeSecret(c.Request().Context(), clientports.RevokeClientSecretInput{
+	result, err := d.Clients.RevokeSecret(c.Request().Context(), appports.RevokeClientSecretInput{
 		ActorUserID: actor.ID, ClientID: clientID, CredentialID: c.Param("credential_id"), Now: now,
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{
-		"credentials": clientSecretMetadata(result.Credentials, now),
+		"credentials": result.Credentials,
 	})
 }

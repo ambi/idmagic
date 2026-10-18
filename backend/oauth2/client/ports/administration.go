@@ -5,12 +5,15 @@ import (
 	"errors"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // ErrClientSecretLimitExceeded は、有効なシークレットが上限に達したクライアントへシークレットを発行しようとしたことを表す。
 var ErrClientSecretLimitExceeded = errors.New("active client secret limit exceeded")
+
+var ErrCatalogClientNotFound = errors.New("client does not exist")
 
 // ClientAdministration は、ほかのモジュールの管理画面が OAuth2 クライアントを作成、更新し、
 // シークレットを管理する操作である。シークレットの上限、クォータ、発行するイベントは OAuth2 が保つ。
@@ -20,6 +23,16 @@ type ClientAdministration interface {
 	RotateSecret(ctx context.Context, in RotateClientSecretInput) (*RotateClientSecretResult, error)
 	IssueSecret(ctx context.Context, in IssueClientSecretInput) (*IssueClientSecretResult, error)
 	RevokeSecret(ctx context.Context, in RevokeClientSecretInput) (*RevokeClientSecretResult, error)
+	BindApplication(ctx context.Context, tenantID, clientID, applicationID string) error
+	UpdateClaims(ctx context.Context, tenantID, clientID string, in ClientClaimUpdate) error
+	// DeleteForApplication は、カタログが所有するクライアントを Application の削除の後に消す。
+	DeleteForApplication(ctx context.Context, tenantID, clientID string) error
+}
+
+type ClientClaimUpdate struct {
+	SubSourceAttribute *string
+	Rules              *[]claimdomain.ClaimMappingRule
+	Now                time.Time
 }
 
 type RegisterClientInput struct {

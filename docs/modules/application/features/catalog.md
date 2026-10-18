@@ -126,3 +126,14 @@ Application に属するプロトコル設定を、各プロトコルの管理 A
 Application、プロトコル設定、カテゴリ、割り当て、サインインポリシーの管理は、いずれも `admin` ロールを持つ、有効かつ認証済みのユーザーに限る。
 AuthZEN の action は対象ごとに分かれ、`admin:applications_manage`、`admin:application_assignments_manage`、`admin:application_policies_manage`、`admin:application_categories_manage`、`admin:tenant_default_sign_in_policy_manage` を要求する。
 いずれも、操作の対象が呼び出し元と同じテナントに属することを条件とする。
+
+## 実現方式
+
+OIDC とサービスクライアントの管理では、Application が `OIDCClientAdministration` で作成、設定更新、関連付け、クレーム更新、削除とシークレットの管理を要求する。
+表示は Application が定める設定値と資格情報のメタデータだけを受け取り、OAuth2 の保存型、シークレットのハッシュ、認証方式の検証を持たない。
+組み立て地点の `applicationdeps` が OAuth2 の公開管理操作へ接続し、資格情報の状態も OAuth2 の判定から射影する。
+同意などで使う表示名は独立した `ClientNames` の照会で取得し、名前の欠落、空白、読み取りエラーではカタログ名とクライアント ID へ順にフォールバックする。
+
+クライアントをカタログの外で作成した後、[作成の原子性](../data.md#作成の原子性)に従って Application と関連付けを確定し、保存側の関連付けの射影も同期する。
+通常設定の更新とクレームの更新は既存どおり別々に確定し、後段が失敗しても前段を取り消す補償を加えない。
+削除は Application の削除とイベント発行の後にクライアントを削除し、クレームの更新イベントは保存した値と同じ時刻で Application が発行する。

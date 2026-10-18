@@ -29,6 +29,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
+	"github.com/ambi/idmagic/backend/shared/http/server_http/applicationdeps"
 
 	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -275,7 +276,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	authenticator := newAuthenticator(d, apiTokenService)
 
 	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops)
-	clientDisplayNames := d.Application.ClientDisplayNames(d.OAuth2.ClientRepo)
+	clientDisplayNames := d.Application.ClientDisplayNames(applicationdeps.NewClientNames(d.OAuth2.ClientRepo))
 	jobEnqueuer := d.Jobs.Enqueuer
 
 	// 管理 API の User と Agent の操作は、IdManagement の経路の ReactiveEmit が発行の後にこの反応器を呼ぶ。
@@ -476,7 +477,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		saml.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: samlSessionRevoker},
 		d.IdManagement.UserRepo, d.FederationSigner, d.IdManagement.AttrSchemaRepo)
 
-	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.OAuth2.ClientAdministration(d.Emit, d.Tenancy.QuotaRepo), d.WsFederation.RPRepo, d.Saml.SPRepo, d.Tenancy.QuotaRepo, d.IdManagement.AttrSchemaRepo)
+	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, applicationdeps.NewOIDCClients(d.OAuth2.ClientRepo, d.OAuth2.ClientAdministration(d.Emit, d.Tenancy.QuotaRepo)), d.WsFederation.RPRepo, d.Saml.SPRepo, d.Tenancy.QuotaRepo, d.IdManagement.AttrSchemaRepo)
 
 	d.ApiTokens.Register(g, d.Deps, authenticator)
 

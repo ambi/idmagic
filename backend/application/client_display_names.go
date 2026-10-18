@@ -11,14 +11,13 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 // ClientDisplayNameResolver は OAuth2Client.client_name → Application カタログ名 → client_id
 // の順に表示名を解決する。いずれの参照でエラーが出ても表示は失敗させず、次の候補または
 // client_id フォールバックへ進む。
 type ClientDisplayNameResolver struct {
-	ClientRepo      oauthports.OAuth2ClientRepository
+	ClientRepo      appports.ClientNames
 	ApplicationRepo appports.ApplicationRepository
 }
 
@@ -28,8 +27,8 @@ func (r *ClientDisplayNameResolver) Resolve(ctx context.Context, tenantID, clien
 		return clientID
 	}
 	if r.ClientRepo != nil {
-		if client, err := r.ClientRepo.FindByID(ctx, tenantID, clientID); err == nil && client != nil && client.ClientName != nil {
-			if name := strings.TrimSpace(*client.ClientName); name != "" {
+		if clientName, err := r.ClientRepo.FindClientName(ctx, tenantID, clientID); err == nil && clientName != nil {
+			if name := strings.TrimSpace(*clientName); name != "" {
 				return name
 			}
 		}

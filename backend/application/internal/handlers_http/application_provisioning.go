@@ -15,12 +15,10 @@ import (
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
-	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-
 	"github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/internal/usecases"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -43,11 +41,11 @@ type createApplicationRequest struct {
 	// OIDC
 	RedirectURIs []string `json:"redirect_uris"`
 	// OIDC / service の生成 client 設定。auth 方式は作成時に確定し以後不変。
-	Scope                   string                              `json:"scope"`
-	ClientType              spec.ClientType                     `json:"client_type"`
-	TokenEndpointAuthMethod oauthdomain.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
-	JwksURI                 string                              `json:"jwks_uri"`
-	TLSClientAuthSubjectDN  string                              `json:"tls_client_auth_subject_dn"`
+	Scope                   string          `json:"scope"`
+	ClientType              spec.ClientType `json:"client_type"`
+	TokenEndpointAuthMethod string          `json:"token_endpoint_auth_method"`
+	JwksURI                 string          `json:"jwks_uri"`
+	TLSClientAuthSubjectDN  string          `json:"tls_client_auth_subject_dn"`
 	// WS-Federation
 	Wtrealm      string   `json:"wtrealm"`
 	ReplyURLs    []string `json:"reply_urls"`
@@ -66,43 +64,7 @@ type createApplicationRequest struct {
 // oidcConfig / wsfedConfig はアプリ詳細に解決して返す protocol 設定。
 // advanced 項目を含めてアプリ編集画面に集約する (wi-76)。
 // ClientType / TokenEndpointAuthMethod / FapiProfile は更新契約上の不変項目で表示専用。
-type oidcConfig struct {
-	ClientID                string                              `json:"client_id"`
-	ClientType              spec.ClientType                     `json:"client_type"`
-	RedirectURIs            []string                            `json:"redirect_uris"`
-	GrantTypes              []spec.GrantType                    `json:"grant_types"`
-	ResponseTypes           []spec.ResponseType                 `json:"response_types"`
-	TokenEndpointAuthMethod oauthdomain.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
-	Scope                   string                              `json:"scope"`
-	RequirePAR              bool                                `json:"require_pushed_authorization_requests"`
-	DpopBoundAccessTokens   bool                                `json:"dpop_bound_access_tokens"`
-	FapiProfile             oauthdomain.FapiProfile             `json:"fapi_profile"`
-	ClientSecretRotatable   bool                                `json:"client_secret_rotatable"`
-	SecretCredentials       []clientSecretCredentialMetadata    `json:"secret_credentials"`
-	// SubSourceAttribute and Rules are the claim release override (wi-73).
-	SubSourceAttribute string                         `json:"sub_source_attribute"`
-	Rules              []claimdomain.ClaimMappingRule `json:"rules"`
-}
-
-type clientSecretCredentialMetadata struct {
-	CredentialID string     `json:"credential_id"`
-	CreatedAt    time.Time  `json:"created_at"`
-	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
-	RevokedAt    *time.Time `json:"revoked_at,omitempty"`
-	Status       string     `json:"status"`
-}
-
-func clientSecretMetadata(credentials []oauthdomain.ClientSecretCredential, now time.Time) []clientSecretCredentialMetadata {
-	metadata := make([]clientSecretCredentialMetadata, 0, len(credentials))
-	for _, credential := range credentials {
-		metadata = append(metadata, clientSecretCredentialMetadata{
-			CredentialID: credential.ID, CreatedAt: credential.CreatedAt,
-			ExpiresAt: credential.ExpiresAt, RevokedAt: credential.RevokedAt,
-			Status: string(credential.StatusAt(now)),
-		})
-	}
-	return metadata
-}
+type oidcConfig = appports.OIDCConfiguration
 
 type wsfedConfig struct {
 	Wtrealm      string                         `json:"wtrealm"`
@@ -136,23 +98,6 @@ func nonNilRules(rules []claimdomain.ClaimMappingRule) []claimdomain.ClaimMappin
 		return []claimdomain.ClaimMappingRule{}
 	}
 	return rules
-}
-
-// oidcSubSourceAttribute は OAuth2Client.ClaimPolicy から sub の source 属性を取り出す
-// (wi-73)。policy 未設定なら既定 (defaultNameIDSource = "user_id") を返す。
-func oidcSubSourceAttribute(policy *claimdomain.ClaimMappingPolicy) string {
-	if policy == nil || policy.NameID.SourceAttribute == "" {
-		return defaultNameIDSource
-	}
-	return policy.NameID.SourceAttribute
-}
-
-// oidcClaimPolicyRules は OAuth2Client.ClaimPolicy から claim release 上書き rule を取り出す。
-func oidcClaimPolicyRules(policy *claimdomain.ClaimMappingPolicy) []claimdomain.ClaimMappingRule {
-	if policy == nil {
-		return nil
-	}
-	return policy.Rules
 }
 
 // resolveClaimAttributeDefs はこのテナントの属性可視性 floor 判定用に builtin +
@@ -191,7 +136,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if len(req.RedirectURIs) == 0 {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify at least one redirect URI.")
 		}
-		registration := clientports.RegisterClientInput{
+		registration := appports.OIDCClientRegistration{
 			ClientName: req.Name, ClientType: req.ClientType, RedirectURIs: req.RedirectURIs,
 			GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 			ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
@@ -203,7 +148,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if uri := strings.TrimSpace(req.JwksURI); uri != "" {
 			registration.JwksURI = &uri
 		}
-		result, err := d.Clients.Create(ctx, clientports.CreateAdminOAuth2ClientInput{
+		result, err := d.Clients.Create(ctx, appports.CreateOIDCClientInput{
 			ActorUserID:  actor.ID,
 			Registration: registration,
 			Now:          now,
@@ -212,23 +157,23 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			return d.writeApplicationError(c, err)
 		}
 		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
-			domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
+			domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: result.ClientID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
 		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
-			"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app), "client_id": result.Client.ClientID, "client_secret": result.ClientSecret,
+			"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app), "client_id": result.ClientID, "client_secret": result.ClientSecret,
 		})
 
 	case "service":
 		// M2M / サービスクライアント (client_credentials)。redirect を持たず、ポータルにも
 		// 出さない service kind の Application として登録する (Okta の API Services 相当)。
-		result, err := d.Clients.Create(ctx, clientports.CreateAdminOAuth2ClientInput{
+		result, err := d.Clients.Create(ctx, appports.CreateOIDCClientInput{
 			ActorUserID: actor.ID,
-			Registration: clientports.RegisterClientInput{
+			Registration: appports.OIDCClientRegistration{
 				ClientName: req.Name, ClientType: spec.ClientConfidential,
 				GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
-				TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic, Scope: nonEmpty(req.Scope, defaultServiceScope),
+				TokenEndpointAuthMethod: "client_secret_basic", Scope: nonEmpty(req.Scope, defaultServiceScope),
 			},
 			Now: now,
 		})
@@ -236,12 +181,12 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			return d.writeApplicationError(c, err)
 		}
 		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationService,
-			domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
+			domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: result.ClientID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
 		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
-			"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app), "client_id": result.Client.ClientID, "client_secret": result.ClientSecret,
+			"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app), "client_id": result.ClientID, "client_secret": result.ClientSecret,
 		})
 
 	case "wsfed":
@@ -323,15 +268,8 @@ func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req crea
 	// memory adapter の domain projection に application_id を同期する。
 	switch protocol.Type {
 	case domain.ApplicationProtocolOIDC:
-		client, findErr := d.ClientRepo.FindByID(ctx, app.TenantID, protocol.ClientID)
-		if findErr != nil {
-			return nil, findErr
-		}
-		if client != nil {
-			client.ApplicationID = app.ID
-			if saveErr := d.ClientRepo.Save(ctx, client); saveErr != nil {
-				return nil, saveErr
-			}
+		if err := d.Clients.BindApplication(ctx, app.TenantID, protocol.ClientID, app.ID); err != nil {
+			return nil, err
 		}
 	case domain.ApplicationProtocolSAML:
 		sp, findErr := d.SamlSPRepo.FindByEntityID(ctx, app.TenantID, protocol.EntityID)
@@ -371,22 +309,9 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 		protocol := app.Protocol
 		switch protocol.Type {
 		case domain.ApplicationProtocolOIDC:
-			if d.ClientRepo == nil {
-				break
-			}
-			if client, err := d.ClientRepo.FindByID(ctx, tenantID, protocol.ClientID); err == nil && client != nil {
-				credentials, _ := d.ClientRepo.ListClientSecretCredentials(ctx, client.ClientID)
-				metadata := clientSecretMetadata(credentials, time.Now().UTC())
-				oidc = &oidcConfig{
-					ClientID: client.ClientID, ClientType: client.ClientType, RedirectURIs: client.RedirectURIs,
-					GrantTypes: client.GrantTypes, ResponseTypes: client.ResponseTypes,
-					TokenEndpointAuthMethod: client.TokenEndpointAuthMethod, Scope: client.Scope,
-					RequirePAR:            client.RequirePushedAuthorizationRequests,
-					DpopBoundAccessTokens: client.DpopBoundAccessTokens, FapiProfile: client.FapiProfile,
-					ClientSecretRotatable: client.TokenEndpointAuthMethod == oauthdomain.AuthMethodClientSecretBasic || client.TokenEndpointAuthMethod == oauthdomain.AuthMethodClientSecretPost,
-					SecretCredentials:     metadata,
-					SubSourceAttribute:    oidcSubSourceAttribute(client.ClaimPolicy),
-					Rules:                 nonNilRules(oidcClaimPolicyRules(client.ClaimPolicy)),
+			if d.Clients != nil {
+				if config, err := d.Clients.Configuration(ctx, tenantID, protocol.ClientID, time.Now().UTC()); err == nil {
+					oidc = config
 				}
 			}
 		case domain.ApplicationProtocolWsFed:
@@ -464,7 +389,7 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 		}
 	}
-	if _, err := d.Clients.Update(ctx, clientports.UpdateAdminOAuth2ClientInput{
+	if err := d.Clients.Update(ctx, appports.UpdateOIDCClientInput{
 		ActorUserID: actor.ID, ClientID: clientID,
 		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
 		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,
@@ -473,39 +398,17 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 		return d.writeApplicationError(c, err)
 	}
 	if req.SubSourceAttribute != nil || req.Rules != nil {
-		client, err := d.ClientRepo.FindByID(ctx, tenantID, clientID)
-		if err != nil {
-			return err
-		}
-		if client == nil {
-			return support.WriteProblem(c, http.StatusNotFound, "not_found", "The client does not exist.")
-		}
-		policy := claimdomain.ClaimMappingPolicy{}
-		if client.ClaimPolicy != nil {
-			policy = *client.ClaimPolicy
-		}
-		if policy.NameID.Format == "" {
-			policy.NameID.Format = defaultNameIDSource
-		}
-		if req.SubSourceAttribute != nil {
-			sub := strings.TrimSpace(*req.SubSourceAttribute)
-			if sub == "" {
-				sub = defaultNameIDSource
+		now := time.Now().UTC()
+		if err := d.Clients.UpdateClaims(ctx, tenantID, clientID, appports.OIDCClaimUpdate{
+			SubSourceAttribute: req.SubSourceAttribute, Rules: req.Rules, Now: now,
+		}); err != nil {
+			if errors.Is(err, appports.ErrOIDCClientNotFound) {
+				return support.WriteProblem(c, http.StatusNotFound, "not_found", "The client does not exist.")
 			}
-			policy.NameID.SourceAttribute = sub
-		} else if policy.NameID.SourceAttribute == "" {
-			policy.NameID.SourceAttribute = defaultNameIDSource
-		}
-		if req.Rules != nil {
-			policy.Rules = *req.Rules
-		}
-		client.ClaimPolicy = &policy
-		client.UpdatedAt = time.Now().UTC()
-		if err := d.ClientRepo.Save(ctx, client); err != nil {
 			return err
 		}
 		d.Emit(&domain.ApplicationClaimMappingUpdated{
-			At: client.UpdatedAt, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(domain.ApplicationProtocolOIDC),
+			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(domain.ApplicationProtocolOIDC),
 		})
 	}
 	return c.NoContent(http.StatusNoContent)

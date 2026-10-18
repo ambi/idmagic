@@ -14,6 +14,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
+	"github.com/ambi/idmagic/backend/shared/http/server_http/applicationdeps"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -43,7 +44,7 @@ func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r := &application.ClientDisplayNameResolver{ClientRepo: clients, ApplicationRepo: apps}
+	r := &application.ClientDisplayNameResolver{ClientRepo: applicationdeps.NewClientNames(clients), ApplicationRepo: apps}
 
 	cases := []struct {
 		name     string

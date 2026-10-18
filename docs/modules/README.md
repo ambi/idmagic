@@ -130,7 +130,6 @@ flowchart LR
   ApiTokens --> Tenancy
   Application --> ClaimMapping
   Application --> IdManagement
-  Application --> OAuth2
   Application --> Saml
   Application --> Tenancy
   Application --> WsFederation

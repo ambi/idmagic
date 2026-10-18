@@ -14,8 +14,6 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -129,7 +127,7 @@ func (m Module) DesiredStateAssignments(
 
 // ClientDisplayNames は client_id をアプリ表示名へ解決するリゾルバを組み立てる
 // (oauth2 / authentication の監査・表示系が消費する)。
-func (m Module) ClientDisplayNames(clientRepo oauthports.OAuth2ClientRepository) *ClientDisplayNameResolver {
+func (m Module) ClientDisplayNames(clientRepo appports.ClientNames) *ClientDisplayNameResolver {
 	return &ClientDisplayNameResolver{ClientRepo: clientRepo, ApplicationRepo: m.Repo}
 }
 
@@ -137,7 +135,7 @@ func (m Module) ClientDisplayNames(clientRepo oauthports.OAuth2ClientRepository)
 func (m Module) Register(
 	g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
 	groupRepo groupports.GroupRepository, userRepo userports.UserRepository,
-	clientRepo oauthports.OAuth2ClientRepository, clients clientports.ClientAdministration,
+	clients appports.OIDCClientAdministration,
 	wsFedRPRepo wsfederationports.WsFedRelyingPartyRepository, samlSPRepo samlports.SamlServiceProviderRepository,
 	quotaRepo tenantports.QuotaRepository, attrSchemaRepo claimports.TenantAttributeSchemaRepo,
 ) {
@@ -154,7 +152,6 @@ func (m Module) Register(
 		AssignmentSubjectDirectory:  idManagementSubjectDirectory{users: userRepo, groups: groupRepo},
 		GroupRepo:                   groupRepo,
 		UserRepo:                    userRepo,
-		ClientRepo:                  clientRepo,
 		Clients:                     clients,
 		WsFedRPRepo:                 wsFedRPRepo,
 		SamlSPRepo:                  samlSPRepo,
