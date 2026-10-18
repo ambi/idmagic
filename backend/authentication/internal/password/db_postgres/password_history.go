@@ -6,11 +6,19 @@ import (
 	"time"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
 )
 
 // PasswordHistoryRepository (Authentication)。
-type PasswordHistoryRepository struct{ Pool sharedpg.DB }
+type PasswordHistoryRepository struct{ Pool DBTX }
+
+// PasswordHistoryWriterInTx は、User の保存と同じ Tx へ履歴を追加する操作を返す。
+func PasswordHistoryWriterInTx(tx pgx.Tx) authnports.PasswordHistoryWriter {
+	if tx == nil {
+		panic("authentication: PasswordHistoryWriterInTx requires a transaction")
+	}
+	return &PasswordHistoryRepository{Pool: tx}
+}
 
 func (r *PasswordHistoryRepository) queries() *Queries {
 	return New(r.Pool)

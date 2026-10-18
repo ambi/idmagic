@@ -59,6 +59,12 @@ type AuditEventQuery struct {
 	Filters []AuditFilterExpression
 }
 
+// AuditEventWriter は呼び出し側のトランザクションへ監査を追記する。
+// indexedUserID は UserID による検索の対象であり、payload の行為者の表現とは分けて指定する。
+type AuditEventWriter interface {
+	Append(ctx context.Context, record AuditEventRecord, indexedUserID string) error
+}
+
 type AuditEventRepository interface {
 	// Append は新規イベントを保存する。EventSink 側からも並列に呼ばれる想定。
 	Append(ctx context.Context, rec *AuditEventRecord) error

@@ -11,6 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/salts_memory"
 	"github.com/ambi/idmagic/backend/shared/security/salts_postgres"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/labstack/echo/v5"
 )
@@ -26,6 +27,9 @@ func NewMemoryModule(maxEvents int) Module {
 func NewPostgresModule(pool postgres.DB) Module {
 	return Module{AuditEventRepo: &db_postgres.AuditEventRepository{Pool: pool}, TenantSaltStore: salts_postgres.NewTenantSaltStore(pool)}
 }
+
+// RecordWriterInTx は同じ Tx へ監査を追記し、検索の対象を明示できる書き込み操作を返す。
+func RecordWriterInTx(tx pgx.Tx) ports.AuditEventWriter { return db_postgres.RecordWriterInTx(tx) }
 
 type RouteDeps struct {
 	support.Deps

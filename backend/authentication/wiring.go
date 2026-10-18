@@ -45,6 +45,7 @@ import (
 	webauthnmemory "github.com/ambi/idmagic/backend/authentication/internal/webauthn/db_memory"
 	webauthnpostgres "github.com/ambi/idmagic/backend/authentication/internal/webauthn/db_postgres"
 	webauthnusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
@@ -60,6 +61,11 @@ import (
 
 // SessionManager は対話のログインセッションを管理する。組み立て地点が起動の後半で発行先と使用量を結ぶ。
 type SessionManager = sessionusecases.SessionManager
+
+// PasswordHistoryWriterInTx は呼び出し側の Tx へパスワードの履歴を追加する操作を返す。
+func PasswordHistoryWriterInTx(tx pgx.Tx) passwordports.PasswordHistoryWriter {
+	return passwordpostgres.PasswordHistoryWriterInTx(tx)
+}
 
 // AuthEventBucketStore は認証イベントの集計の保存先である。
 type AuthEventBucketStore = authnports.AuthEventBucketStore

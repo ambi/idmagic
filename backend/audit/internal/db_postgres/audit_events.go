@@ -60,20 +60,45 @@ func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEvent
 			return err
 		}
 	}
-	payload := rec.Payload
-	if payload == nil {
-		payload = map[string]any{}
-	}
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if err := appendAuditRecord(ctx, New(tx), rec, userID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// RecordWriterInTx は検索の対象を明示して、監査を呼び出し側と同時に確定する。
+// 通常の Append が持つ payload.userId の解釈を CSV の監査へ適用しない。
+func RecordWriterInTx(tx pgx.Tx) ports.AuditEventWriter {
+	if tx == nil {
+		panic("audit: RecordWriterInTx requires a transaction")
+	}
+	return recordWriter{tx: tx}
+}
+
+type recordWriter struct{ tx pgx.Tx }
+
+func (w recordWriter) Append(ctx context.Context, rec ports.AuditEventRecord, indexedUserID string) error {
+	var userID pgtype.UUID
+	if err := userID.Scan(indexedUserID); err != nil {
+		return err
+	}
+	return appendAuditRecord(ctx, New(w.tx), &rec, userID)
+}
+
+func appendAuditRecord(ctx context.Context, queries *Queries, rec *ports.AuditEventRecord, userID pgtype.UUID) error {
+	payload := rec.Payload
+	if payload == nil {
+		payload = map[string]any{}
+	}
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	queries := New(r.Pool).WithTx(tx)
 	if err := queries.AppendAuditEvent(ctx, AppendAuditEventParams{
 		ID: rec.ID, TenantID: rec.TenantID, Type: rec.Type, UserID: userID,
 		OccurredAt: rec.OccurredAt, Payload: payloadJSON,
@@ -95,7 +120,7 @@ func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEvent
 			}
 		}
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery) ([]*ports.AuditEventRecord, error) {
