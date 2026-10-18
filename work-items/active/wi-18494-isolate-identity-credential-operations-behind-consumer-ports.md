@@ -14,7 +14,7 @@ spec_impact: { kind: none, reason: "要求側のポートと境界の変換で I
 
 ## 動機
 
-[依存の向きの決定](wi-21934-decide-module-dependency-order-and-break-cycles.md)で、`IdManagement → Authentication` を除く向きを選んだ。
+[依存の向きの決定](../done/wi-21934-decide-module-dependency-order-and-break-cycles.md)で、`IdManagement → Authentication` を除く向きを選んだ。
 公開パッケージの利用でもモジュールの循環は残るため、この組を独立して解消する。
 
 ## 対象範囲
