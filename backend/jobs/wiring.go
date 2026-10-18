@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/jobs/internal/db_memory"
@@ -36,6 +37,16 @@ func NewJobRepository() ports.JobRepository { return db_memory.NewJobRepository(
 // NewEnqueuer は、repo へジョブを作り、quotas で active_jobs を確認し、emit で JobEnqueued を発行する投入器を返す。
 func NewEnqueuer(repo ports.JobRepository, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) ports.Enqueuer {
 	return usecases.NewEnqueuer(repo, quotas, emit)
+}
+
+// NewEnqueuerInTx は呼び出し側の Tx で、通常と同じ投入規則と active_jobs の確認を適用する。
+// quotas も同じ Tx に結ぶ。emit は確定までイベントを保持し、確定後に発行する関数を渡す。
+// 拒否の QuotaExceeded はロールバック後に発行し、失敗した投入の JobEnqueued は破棄する。
+func NewEnqueuerInTx(tx pgx.Tx, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) ports.Enqueuer {
+	if tx == nil {
+		panic("jobs: NewEnqueuerInTx requires a transaction")
+	}
+	return usecases.NewEnqueuer(&db_postgres.JobRepository{Pool: tx}, quotas, emit)
 }
 
 func NewHandlerRegistry() *HandlerRegistry { return usecases.NewHandlerRegistry() }

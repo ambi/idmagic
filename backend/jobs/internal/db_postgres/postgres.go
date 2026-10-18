@@ -14,15 +14,13 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// JobRepository persists Jobs to PostgreSQL. Pool is DBTX-compatible
-// ; a fresh Queries is created per call, matching the
-// convention in backend/sourcing/scim/db_postgres.
-type JobRepository struct{ Pool sharedpg.DB }
+// JobRepository は、プールまたは呼び出し側の Tx で同じジョブの操作を実行する。
+// 個々の操作は一つの SQL で状態を変更するため、トランザクションの開始は要求しない。
+type JobRepository struct{ Pool DBTX }
 
 var _ ports.JobRepository = (*JobRepository)(nil)
 
