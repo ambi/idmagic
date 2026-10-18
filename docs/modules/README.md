@@ -155,7 +155,6 @@ flowchart LR
   IdManagement --> Authentication
   IdManagement --> Jobs
   IdManagement --> OAuth2
-  IdManagement --> Sourcing
   IdManagement --> Tenancy
   Jobs --> Tenancy
   OAuth2 --> ApiTokens

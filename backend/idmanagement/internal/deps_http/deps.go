@@ -24,7 +24,6 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -62,7 +61,8 @@ type Deps struct {
 	JobRepo             jobsports.JobRepository
 	JobEnqueuer         jobsports.Enqueuer
 	ClientRepo          oauthports.OAuth2ClientRepository
-	ScimRepo            scimports.ScimRepository
+	SCIMUsers           userports.SCIMUserLookup
+	SCIMGroups          groupports.SCIMGroupLookup
 	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
 	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
 	ConsentRepo         oauthports.ConsentRepository

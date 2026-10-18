@@ -149,9 +149,9 @@ func HandleGetGroup(d Deps, c *echo.Context) error {
 			return err
 		}
 	}
-	if d.ScimRepo != nil {
-		ref, _ := d.ScimRepo.FindGroupRefByGroupID(c.Request().Context(), group.TenantID, group.ID)
-		if ref != nil {
+	if d.SCIMGroups != nil {
+		managed, _ := d.SCIMGroups.IsSCIMGroup(c.Request().Context(), group.TenantID, group.ID)
+		if managed {
 			src := "SCIM"
 			res.ScimSource = &src
 		}

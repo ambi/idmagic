@@ -175,9 +175,9 @@ func HandleGetAdminUser(d Deps, c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	}
 	res := toAdminUserResponse(user)
-	if d.ScimRepo != nil {
-		ref, _ := d.ScimRepo.FindUserRefByUserID(c.Request().Context(), user.TenantID, user.ID)
-		if ref != nil {
+	if d.SCIMUsers != nil {
+		managed, _ := d.SCIMUsers.IsSCIMUser(c.Request().Context(), user.TenantID, user.ID)
+		if managed {
 			src := "SCIM"
 			res.ScimSource = &src
 		}

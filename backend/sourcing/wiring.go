@@ -23,8 +23,24 @@ func (m Module) UserOwnershipGuard() userports.UserSourceOwnershipGuard {
 	return source_idmanagement.UserOwnershipGuard{Repository: m.ScimRepo}
 }
 
+// SCIMUserLookup は任意の由来表示を組み立てる。未配線なら照会も未配線のままにする。
+func (m Module) SCIMUserLookup() userports.SCIMUserLookup {
+	if m.ScimRepo == nil {
+		return nil
+	}
+	return source_idmanagement.UserLookup{Repository: m.ScimRepo}
+}
+
 func (m Module) GroupOwnershipGuard() groupports.GroupSourceOwnershipGuard {
 	return source_idmanagement.GroupOwnershipGuard{Repository: m.ScimRepo}
+}
+
+// SCIMGroupLookup は任意の Group の由来表示を組み立てる。
+func (m Module) SCIMGroupLookup() groupports.SCIMGroupLookup {
+	if m.ScimRepo == nil {
+		return nil
+	}
+	return source_idmanagement.GroupLookup{Repository: m.ScimRepo}
 }
 
 // Usecases は HTTP と同じライフサイクル操作を使う SCIM の呼び出し口を組み立てる。

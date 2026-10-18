@@ -40,7 +40,6 @@ import (
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -277,7 +276,8 @@ type RouteDeps struct {
 	// Reactor は管理 API の User と Agent の操作が発行したイベントに反応する。
 	Reactor             idmhttpdeps.EventReactor
 	ClientRepo          oauthports.OAuth2ClientRepository
-	ScimRepo            scimports.ScimRepository
+	SCIMUsers           userports.SCIMUserLookup
+	SCIMGroups          groupports.SCIMGroupLookup
 	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
 	Consents            consentports.AccountConsents
 	EmailSender         sharednotification.EmailSender
@@ -312,7 +312,8 @@ func (m Module) httpDeps(d RouteDeps) idmhttp.Deps {
 		GroupProvisioningNotifier: m.GroupProvisioningNotifier,
 		Reactor:                   d.Reactor,
 		ClientRepo:                d.ClientRepo,
-		ScimRepo:                  d.ScimRepo,
+		SCIMUsers:                 d.SCIMUsers,
+		SCIMGroups:                d.SCIMGroups,
 		AttrSchemaRepo:            d.AttrSchemaRepo,
 		GroupAttrSchemaRepo:       d.GroupAttrSchemaRepo,
 		ConsentRepo:               d.ConsentRepo,

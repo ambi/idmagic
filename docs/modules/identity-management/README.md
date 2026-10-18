@@ -14,6 +14,9 @@
 | 外部の権威からの取り込み（SCIM など） | `Sourcing` |
 | 外部の宛先への送り出し | `Provisioning` |
 
+User と Group の詳細の SCIM 由来は、公開 `user/ports` の `SCIMUserLookup` と `group/ports` の `SCIMGroupLookup` で照会する。
+Sourcing が対応レコードから有無へ変換し、組み立て地点が渡すため、IdManagement は取り込み元の保存型に依存しない。
+
 ## 主な流れ
 
 | 流れ | 契機 | 実行する場所 | 詳細 |

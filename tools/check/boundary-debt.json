@@ -148,13 +148,6 @@
       "reason": "IdManagement and OAuth2 import each other, so the edge IdManagement -> OAuth2 stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
     },
     {
-      "id": "module-cycle:IdManagement->Sourcing",
-      "sourceModule": "IdManagement",
-      "targetModule": "Sourcing",
-      "violations": ["module-cycle:IdManagement->Sourcing"],
-      "reason": "IdManagement and Sourcing import each other, so the edge IdManagement -> Sourcing stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
       "id": "module-cycle:IdManagement->Tenancy",
       "sourceModule": "IdManagement",
       "targetModule": "Tenancy",
@@ -293,20 +286,6 @@
       "targetModule": "Tenancy",
       "violations": ["module-cycle:SigningKeys->Tenancy"],
       "reason": "SigningKeys -> Tenancy lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
-      "id": "module-cycle:Sourcing->ApiTokens",
-      "sourceModule": "Sourcing",
-      "targetModule": "ApiTokens",
-      "violations": ["module-cycle:Sourcing->ApiTokens"],
-      "reason": "Sourcing -> ApiTokens lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
-      "id": "module-cycle:Sourcing->IdManagement",
-      "sourceModule": "Sourcing",
-      "targetModule": "IdManagement",
-      "violations": ["module-cycle:Sourcing->IdManagement"],
-      "reason": "Sourcing and IdManagement import each other, so the edge Sourcing -> IdManagement stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
     },
     {
       "id": "module-cycle:Tenancy->IdManagement",
