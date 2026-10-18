@@ -8,13 +8,6 @@
       "reason": "ApiTokens and OAuth2 import each other, so the edge ApiTokens -> OAuth2 stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
     },
     {
-      "id": "module-cycle:Application->Authentication",
-      "sourceModule": "Application",
-      "targetModule": "Authentication",
-      "violations": ["module-cycle:Application->Authentication"],
-      "reason": "Application and Authentication import each other, so the edge Application -> Authentication stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
       "id": "module-cycle:Application->ClaimMapping",
       "sourceModule": "Application",
       "targetModule": "ClaimMapping",

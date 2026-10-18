@@ -5,9 +5,18 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 )
+
+// SignInAuthentication は、ポリシーが読む認証事実だけを表す。
+// ACR と AMR の解釈は供給元に閉じ、認証方式を評価器へ持ち込まない。
+// 各メソッドは作用を持たず、Pending は認証結果がない場合も true を返す。
+type SignInAuthentication interface {
+	Pending() bool
+	MFAAuthenticated() bool
+	SecondFactorAuthenticated() bool
+	AuthenticatedAt() int64
+	SteppedUpAt() int64
+}
 
 type PolicyDecision string
 
@@ -97,11 +106,11 @@ func UpcomingMfaEnforcementStart(rules []SignInRule, now time.Time) *time.Time {
 
 // EvaluateSignInPolicy はサインインポリシーを fail-closed で評価する。
 // clientIP は許可 CIDR 条件の評価に使う。IP が空で許可 CIDR が設定されていれば拒否する。
-func EvaluateSignInPolicy(policy *AppSignInPolicy, authn *authdomain.AuthenticationContext, clientIP string, now time.Time) PolicyEvaluation {
+func EvaluateSignInPolicy(policy *AppSignInPolicy, authn SignInAuthentication, clientIP string, now time.Time) PolicyEvaluation {
 	if policy == nil || len(policy.Rules) == 0 {
 		return PolicyEvaluation{Decision: PolicyAllow}
 	}
-	if authn == nil || authn.AuthenticationPending {
+	if authn == nil || authn.Pending() {
 		return PolicyEvaluation{Decision: PolicyDeny, Reason: "authentication context is unavailable"}
 	}
 	for _, rule := range policy.Rules {
@@ -116,7 +125,7 @@ func EvaluateSignInPolicy(policy *AppSignInPolicy, authn *authdomain.Authenticat
 			return PolicyEvaluation{Decision: PolicyStepUpRequired, Reason: "mfa requirement is not satisfied"}
 		}
 		if rule.Condition.ReauthMaxAgeSeconds != nil {
-			recent := max(authn.AuthTime, authn.StepUpAt)
+			recent := max(authn.AuthenticatedAt(), authn.SteppedUpAt())
 			if recent <= 0 || now.Unix()-recent > int64(*rule.Condition.ReauthMaxAgeSeconds) {
 				return PolicyEvaluation{Decision: PolicyStepUpRequired, Reason: "reauth max age exceeded"}
 			}
@@ -125,22 +134,15 @@ func EvaluateSignInPolicy(policy *AppSignInPolicy, authn *authdomain.Authenticat
 	return PolicyEvaluation{Decision: PolicyAllow}
 }
 
-// mfaSatisfied は MFA 必須ルールが満たされているかを返す。allow_trusted_device=false の
-// ルールでは、記憶済みデバイスによる昇格 (amr の tdev のみ) を充足として認めない。本物の
-// 第二要素があれば、同じセッションに tdev が併存していても満たされている。
-func mfaSatisfied(rule SignInRule, authn *authdomain.AuthenticationContext) bool {
-	if !authdomain.ACRSatisfies(authn.ACR, authdomain.ACRMFA) {
+// mfaSatisfied は、毎回の MFA を求めるルールでは実際の第二要素も要求する。
+func mfaSatisfied(rule SignInRule, authn SignInAuthentication) bool {
+	if !authn.MFAAuthenticated() {
 		return false
 	}
 	if rule.TrustedDeviceAllowed() {
 		return true
 	}
-	for _, method := range authn.AMR {
-		if method != authdomain.AMRTrustedDevice && authdomain.IsMfaAMR(method) {
-			return true
-		}
-	}
-	return false
+	return authn.SecondFactorAuthenticated()
 }
 
 // ClientIPAllowed は clientIP が許可 CIDR のいずれかに含まれるかを返す。

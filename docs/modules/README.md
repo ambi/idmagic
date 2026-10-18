@@ -128,7 +128,6 @@ flowchart LR
   end
   ApiTokens --> OAuth2
   ApiTokens --> Tenancy
-  Application --> Authentication
   Application --> ClaimMapping
   Application --> IdManagement
   Application --> OAuth2

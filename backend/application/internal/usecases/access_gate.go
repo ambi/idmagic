@@ -14,7 +14,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
-	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 )
 
 // AccessGate はフェデレーション開始時のアプリ割当ゲートに必要な依存を保持する。
@@ -56,7 +55,7 @@ func (g *AccessGate) EvaluateApplicationAccess(
 	tenantID string,
 	bindingType domain.ApplicationProtocolType,
 	bindingKey, sub string,
-	authn *authdomain.AuthenticationContext,
+	authn domain.SignInAuthentication,
 	clientIP string,
 ) (domain.ApplicationAccessDecision, error) {
 	if g.ApplicationRepo == nil {

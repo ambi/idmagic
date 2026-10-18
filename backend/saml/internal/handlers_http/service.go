@@ -17,7 +17,7 @@ type ApplicationGate interface {
 		tenantID string,
 		bindingType appdomain.ApplicationProtocolType,
 		bindingKey, sub string,
-		authn *authdomain.AuthenticationContext,
+		authn appdomain.SignInAuthentication,
 		clientIP string,
 	) (appdomain.ApplicationAccessDecision, error)
 	ClientIP(r *http.Request) string

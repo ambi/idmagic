@@ -27,7 +27,25 @@ type AuthenticationContext struct {
 func (a *AuthenticationContext) Subject() string        { return a.UserID }
 func (a *AuthenticationContext) AuthenticatedAt() int64 { return a.AuthTime }
 func (a *AuthenticationContext) Session() string        { return a.SessionID }
-func (a *AuthenticationContext) Pending() bool          { return a.AuthenticationPending }
+
+// Pending は、認証結果が未取得でも認証待ちとして拒否できるよう nil を扱う。
+func (a *AuthenticationContext) Pending() bool { return a == nil || a.AuthenticationPending }
+
+// MFAAuthenticated は ACR の意味を、方式に依存しない認証事実へ射影する。
+func (a *AuthenticationContext) MFAAuthenticated() bool { return ACRSatisfies(a.ACR, ACRMFA) }
+
+// SecondFactorAuthenticated は、記憶済み端末の充足と実際の第二要素を区別する。
+// 同じセッションに両方があっても、実際の第二要素の成立は失われない。
+func (a *AuthenticationContext) SecondFactorAuthenticated() bool {
+	for _, method := range a.AMR {
+		if method != AMRTrustedDevice && IsMfaAMR(method) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *AuthenticationContext) SteppedUpAt() int64 { return a.StepUpAt }
 
 // ResolvedAuthentication は、共有の HTTP 支援が返す認証の結果のうち、文脈を組み立て直すのに
 // 読む部分である。

@@ -10,7 +10,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
-	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -321,7 +320,7 @@ const (
 )
 
 // EvaluateSignInPolicy は domain.EvaluateSignInPolicy を、零値の時刻を現在時刻で補って呼ぶ。
-func EvaluateSignInPolicy(policy *domain.AppSignInPolicy, authn *authdomain.AuthenticationContext, clientIP string, now time.Time) PolicyEvaluation {
+func EvaluateSignInPolicy(policy *domain.AppSignInPolicy, authn domain.SignInAuthentication, clientIP string, now time.Time) PolicyEvaluation {
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
