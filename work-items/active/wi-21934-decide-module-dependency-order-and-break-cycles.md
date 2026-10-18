@@ -73,7 +73,7 @@ Tenancy と IdManagement の循環は、Tenancy が属性スキーマの型と�
 | --- | --- | --- |
 | [wi-61185](../done/wi-61185-share-password-defaults-through-tenancy.md) | Tenancy → Authentication | パスワードの固定の既定値をテナント設定の型と同じ場所に置く。既定値4個のための注入ポートは増やさない |
 | [wi-64444](../done/wi-64444-read-user-source-through-an-identity-management-port.md) | IdManagement → Sourcing | User と Group の由来表示は、保存型を受け取らず IdManagement の照会ポートを使う。Sourcing を含む循環の3件が不要になる |
-| [wi-49676](wi-49676-remove-audit-search-reverse-dependencies.md) | Audit → IdManagement・OAuth2 | username の解決は組み立て地点で Audit の関数型へ変換し、列挙値だけを仕様バインディングで共有する。Audit を含む循環の4件が不要になる |
+| [wi-49676](../done/wi-49676-remove-audit-search-reverse-dependencies.md) | Audit → IdManagement・OAuth2 | username の解決は組み立て地点で Audit の関数型へ変換し、列挙値だけを仕様バインディングで共有する。Audit を含む循環の4件が不要になる |
 
 これらの変更後の循環は45件であり、解消した8件だけを台帳から除く。
 Sourcing → IdManagement・ApiTokens と、Authentication・IdManagement → Audit の import 自体は必要な非循環の依存として残る。
