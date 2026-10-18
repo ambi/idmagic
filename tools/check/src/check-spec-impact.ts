@@ -121,30 +121,35 @@ function repository(snapshot: WorkspaceSnapshot, git: Git) {
     }
     return value
   }
-  /** `sha` から作業ツリーまでに追加、変更、削除されたパス。未追跡のファイルを含む。 */
-  const changedSince = (sha: string): string[] => {
-    let value = changes.get(sha)
+  /** `sha` から終端までの変更。終端の省略時だけ作業ツリーと未追跡のファイルを含む。 */
+  const changedSince = (sha: string, end?: string): string[] => {
+    const key = `${sha}:${end ?? 'working-tree'}`
+    let value = changes.get(key)
     if (!value) {
       value = [
-        ...lines(git(['diff', '--name-only', '--no-renames', sha, '--'])),
-        ...lines(git(['ls-files', '--others', '--exclude-standard'])),
+        ...lines(git(['diff', '--name-only', '--no-renames', sha, ...(end ? [end] : []), '--'])),
+        ...(end ? [] : lines(git(['ls-files', '--others', '--exclude-standard']))),
       ]
-      changes.set(sha, value)
+      changes.set(key, value)
     }
     return value
   }
-  const read = (path: string): string | undefined =>
-    snapshot.exists(path) ? snapshot.readSync(path) : undefined
+  const read = (path: string, at?: string): string | undefined =>
+    at
+      ? git(['show', `${at}:${path}`])
+      : snapshot.exists(path)
+        ? snapshot.readSync(path)
+        : undefined
   /**
    * 要約に縮めた記録の宣言は、全文から読む。初期に縮めた記録は archived_from のコミット、
    * それ以外は `work-items/active/` のパスを最後に変えたコミット（消したコミットならその親）にある。
    */
-  const fullRecord = (path: string, source: string): string => {
+  const fullRecord = (path: string, source: string, at?: string): string => {
     const revision = source.match(/^archived_from:\s*([0-9a-f]{7,40})\s*$/m)?.[1]
     if (revision) return git(['show', `${revision}:${path}`]) ?? source
     if (!path.startsWith('work-items/done/')) return source
     const active = `work-items/active/${path.slice('work-items/done/'.length)}`
-    const last = git(['log', '-1', '--format=%H', '--', active])?.trim()
+    const last = git(['log', '-1', '--format=%H', ...(at ? [at] : []), '--', active])?.trim()
     if (!last) return source
     return git(['show', `${last}:${active}`]) ?? git(['show', `${last}^:${active}`]) ?? source
   }
@@ -152,9 +157,10 @@ function repository(snapshot: WorkspaceSnapshot, git: Git) {
   return {
     read,
     changedSince,
-    /** `sha` から作業ツリーまでの仕様差分。仕様のファイルが変わっていなければ読まない。 */
-    diffSince: async (sha: string): Promise<SpecificationDiff> => {
-      if (!changedSince(sha).some(isSpecificationSource)) return NO_DIFF
+    /** `sha` から終端までの仕様差分。終端の省略時は作業ツリーを読む。 */
+    diffSince: async (sha: string, end?: string): Promise<SpecificationDiff> => {
+      if (!changedSince(sha, end).some(isSpecificationSource)) return NO_DIFF
+      if (end) return diffSpecifications(revision(sha), revision(end))
       workingTree ??= readWorkingTree(snapshot.root)
       return diffSpecifications(revision(sha), await workingTree)
     },
@@ -164,11 +170,13 @@ function repository(snapshot: WorkspaceSnapshot, git: Git) {
       const parent = git(['rev-parse', '--verify', '--quiet', `${sha}^`])?.trim()
       return diffSpecifications(parent ? revision(parent) : new Map(), revision(sha))
     },
-    workItem: (id: string): { path: string; record: WorkItemRecord } | undefined => {
+    workItem: (id: string, at?: string): { path: string; record: WorkItemRecord } | undefined => {
       for (const path of workItemPaths(id)) {
-        const source = read(path)
-        const record = workItemRecord(path, source && fullRecord(path, source))
-        if (record) return { path, record }
+        const source = read(path, at)
+        const current = workItemRecord(path, source)
+        const record = workItemRecord(path, source && fullRecord(path, source, at))
+        // 要約から全文を復元しても、完了した状態を着手中へ戻さない。
+        if (record) return { path, record: { ...record, status: current?.status } }
       }
       return undefined
     },
@@ -233,24 +241,29 @@ async function checkedWorkItem(
   const item = { path: current.path, declaration: current.record.declaration }
   if (!startSha) return { ...item, range: undefined }
 
-  const changed = repo.changedSince(startSha)
+  const end =
+    current.record.status === 'completed'
+      ? history.find((commit) => commit.status === 'completed')?.sha
+      : undefined
+  const readEnd = (path: string): string | undefined => repo.read(path, end)
+  const changed = repo.changedSince(startSha, end)
   return {
     ...item,
     range: {
-      diff: await repo.diffSince(startSha),
+      diff: await repo.diffSince(startSha, end),
       claimedByOthers: workItemIds(changed)
         .filter((other) => other !== id)
         .flatMap((other) => {
-          const record = repo.workItem(other)?.record
+          const record = repo.workItem(other, end)?.record
           return isUnderWay(record) ? modifiedBy(record.declaration) : []
         }),
       changedTests: changed
         .filter((path) => TEST_FILE.test(path))
-        .flatMap((path) => repo.read(path) ?? []),
+        .flatMap((path) => readEnd(path) ?? []),
       changedCharacterizations: characterizationChanges(
         changed,
         (path) => git(['show', `${startSha}:${path}`]),
-        repo.read,
+        readEnd,
       ),
     },
   }

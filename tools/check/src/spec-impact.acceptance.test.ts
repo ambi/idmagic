@@ -15,6 +15,9 @@ const TYPESPEC = 'spec/modules/demo/main.tsp'
 const SERVICE = 'backend/demo/service.go'
 const SERVICE_TEST = 'backend/demo/service_test.go'
 const ITEM = 'work-items/wi-10001-demo.md'
+const ACTIVE_ITEM = 'work-items/active/wi-10001-demo.md'
+const DONE_ITEM = 'work-items/done/wi-10001-demo.md'
+const NEXT_ITEM = 'work-items/active/wi-10002-next.md'
 const CONCRETE_REASON = 'keeps the returned task, the stored state, and the emitted events'
 
 const scenario = (result: string): string =>
@@ -128,6 +131,12 @@ async function repository(): Promise<Repository & { base: string }> {
         { SPEC_WORKSPACE_ROOT: root },
       ),
   }
+}
+
+async function completeRecord(repo: Repository): Promise<void> {
+  await repo.git('rm', '--quiet', ACTIVE_ITEM)
+  await repo.write(DONE_ITEM, workItem(['status: completed']))
+  await repo.commit('docs(work-items): complete demo')
 }
 
 describe('spec-impact: 本番コードを変更するコミットの宣言', () => {
@@ -350,6 +359,98 @@ describe('spec-impact: 特性化テストの書き換え', () => {
     await repo.commit('feat(demo): report running')
 
     const result = await repo.check(base)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
+  })
+})
+
+describe('spec-impact: 完了済みの作業範囲', () => {
+  it('後の別作業の特性化テストの変更を完了済みの none に帰属させない', async () => {
+    const repo = await repository()
+    await repo.write(SERVICE_TEST, characterization('started'))
+    const base = await repo.commit('test(demo): characterize Start')
+    await repo.write(ACTIVE_ITEM, notAffected('in_progress', CONCRETE_REASON))
+    await repo.commit('refactor(demo): preserve results')
+    await completeRecord(repo)
+
+    await repo.write(SERVICE, service('running'))
+    await repo.write(SERVICE_TEST, characterization('running'))
+    await repo.write(SCENARIOS, scenario('the request is running'))
+    await repo.write(
+      NEXT_ITEM,
+      affected('in_progress', `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001 }`),
+    )
+    await repo.commit('fix(demo): report running')
+
+    const result = await repo.check(base)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
+  })
+
+  it('後の作業で戻された特性化テストも完了時点の none の違反として拒否する', async () => {
+    const repo = await repository()
+    await repo.write(SERVICE_TEST, characterization('started'))
+    const base = await repo.commit('test(demo): characterize Start')
+    await repo.write(ACTIVE_ITEM, notAffected('in_progress', CONCRETE_REASON))
+    await repo.write(SERVICE_TEST, characterization('running'))
+    await repo.commit('refactor(demo): change a characterization')
+    await completeRecord(repo)
+
+    await repo.write(SERVICE_TEST, characterization('started'))
+    await repo.write(SCENARIOS, scenario('the request is running'))
+    await repo.write(
+      NEXT_ITEM,
+      affected('in_progress', `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001 }`),
+    )
+    await repo.commit('fix(demo): restore the characterization')
+
+    const result = await repo.check(base)
+    expect(result.output).toContain(
+      `${DONE_ITEM}: spec_impact is none, but the work range changes or removes characterization tests`,
+    )
+    expect(result.code).toBe(1)
+  })
+
+  it('後で消えたテストも完了時点の conforms の引用として読む', async () => {
+    const repo = await repository()
+    await repo.write(
+      ACTIVE_ITEM,
+      affected(
+        'in_progress',
+        `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001, impact: conforms }`,
+      ),
+    )
+    await repo.write(
+      SERVICE_TEST,
+      'package demo\n\n//spec:covers REQ-DEMO-001\nfunc TestStart(t *testing.T) {}\n',
+    )
+    await repo.commit('fix(demo): cover existing behavior')
+    await completeRecord(repo)
+
+    await repo.git('rm', '--quiet', SERVICE_TEST)
+    await repo.write(NEXT_ITEM, notAffected('in_progress', CONCRETE_REASON))
+    await repo.commit('test(demo): remove the old test')
+
+    const result = await repo.check(repo.base)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
+  })
+
+  it('後で戻された仕様も完了時点の modifies の差分として読む', async () => {
+    const repo = await repository()
+    await repo.write(TYPESPEC, 'model Task {\n  id: string;\n  name: string;\n}\n')
+    await repo.write(
+      ACTIVE_ITEM,
+      affected('in_progress', `{ path: ${TYPESPEC}, symbol: Demo.Task }`),
+    )
+    await repo.commit('feat(demo): name tasks')
+    await completeRecord(repo)
+
+    await repo.write(TYPESPEC, 'model Task {\n  id: string;\n}\n')
+    await repo.write(NEXT_ITEM, affected('in_progress', `{ path: ${TYPESPEC}, symbol: Demo.Task }`))
+    await repo.commit('feat(demo): remove task names')
+
+    const result = await repo.check(repo.base)
     expect(result.output).toContain('ok  spec impact')
     expect(result.code).toBe(0)
   })
