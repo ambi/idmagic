@@ -37,6 +37,18 @@ spec_impact: { kind: none, reason: "共有ライブラリがテナント ID を�
 
 ## 設計
 
+### 今回の負債整理での見送りと再開条件
+
+2026-10-18 時点で残るのは、support_http、rate limiter、二つの salt の保存先、メモリ保存先の計5件である。
+署名器からの Tenancy 依存は wi-91505 で解消した。
+middleware だけを移しても、support_http.Deps.TenantRepo と Cookie の名前や属性を決める処理に Tenancy の型への依存が残る。
+メモリ保存先の DefaultTenant と TenantKey も、空の ID を default へ補う意味を持ち、型名を文字列へ写すだけでは共有の条件を満たさない。
+
+今回は HTTP と背景処理の文脈の契約を混ぜる変更を見送る。
+wi-73872 と合わせて、解決済みの設定を持つ文脈と ID だけの文脈、未解決の文脈の区別を先に決める。
+再開条件は、テナント ID の読取りと未解決時の拒否を一か所に保ち、設定を持たない背景処理に空の Tenant を解決済みとして見せず、HTTP の origin と Cookie の分離も保つ設計をこの項目へ記録することである。
+単に共有の getter を増やして、二つの文脈キーの優先順位と default の規則を別々に維持する実装は行わない。
+
 [境界の負債の順位付け](../done/wi-33994-reinventory-the-remaining-boundary-debt.md)の判断を引き継ぐ。
 
 - D1：テナントの解決規則の所有者は Tenancy なので、middleware は Tenancy に置く。

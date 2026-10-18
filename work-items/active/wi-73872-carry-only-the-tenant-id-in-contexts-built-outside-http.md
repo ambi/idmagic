@@ -38,6 +38,12 @@ spec_impact:
 
 ## 設計
 
+### 共有ライブラリの負債との整合
+
+2026-10-18 の棚卸しで、wi-73604 が同じテナント ID の運搬を変更することを再確認した。
+両項目で別々のキー、getter、未解決時の拒否を実装しないよう、共有側へ渡す ID と Tenancy が持つ解決済み設定の関係を一緒に決める。
+この負債整理では文脈を変更せず、今の読み手が HTTP の設定を必要とする箇所も確認し直してから着手する。
+
 ### 採る案
 
 `backend/tenancy/context.go` に `WithTenantID(ctx context.Context, tenantID string) context.Context` を加え、テナントの ID を `Tenant` とは別のキーで運ぶ。

@@ -6,6 +6,8 @@ reversibility: reversible
 created_at: 2026-10-10
 priority: p3
 depends_on:
+  - wi-73604-let-shared-libraries-take-tenant-id-without-tenancy
+  - wi-88544-let-table-owners-publish-transactional-writes
   - wi-35767-publish-claim-issuance-as-claimmapping-public-operations
   - wi-60465-publish-job-enqueue-and-handler-registration-as-jobs-ports
   - wi-87746-publish-authentication-operations-other-modules-use
@@ -57,6 +59,14 @@ Tenancy と IdManagement の循環は、Tenancy が属性スキーマの型と�
 - `private-import`、`shared-dependency`、`table-write` の解消。それぞれの項目で行う。
 
 ## 設計
+
+### 今回の負債整理で見送る範囲
+
+2026-10-18 の再計測では、循環は53件である。
+private-import の項目は完了しているが、Tenancy の文脈の運搬と、CSV が利用するトランザクション内の所有者の操作はまだ決まっていない。
+ここで逆向きのポートを先に固定すると、それらの所有者と作用の契約を決め直すときに再分割が必要になる。
+今回は循環の機械的な置き換えを行わず、wi-73604 と wi-88544 の完了を前提に加える。
+再開時には、この時点の53件や起票時の57件を固定した入力にせず、変更後の import と実行時の作用を再計測して向きを決める。
 
 [境界の負債の順位付け](../done/wi-33994-reinventory-the-remaining-boundary-debt.md)の判断を引き継ぐ。
 
