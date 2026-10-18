@@ -1,12 +1,9 @@
-// Package http は Application モジュールの HTTP アダプタ (wi-69)。
-//
-// 運用者向け Application カタログ (CRUD・単一 protocol・割当) と、利用者ポータル向けの
-// 割当済みアプリ一覧を所有する。共有基盤 support.Deps を受け取り、shared/handlers_http/server から
-// tenant 解決済みグループに登録される。
+// Package handlers_http は ApplicationCatalog の管理とポータルの HTTP を提供する。
 package handlers_http
 
 import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
+	catalogports "github.com/ambi/idmagic/backend/applicationcatalog/ports"
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -34,7 +31,7 @@ type Deps struct {
 	GroupRepo                   groupports.GroupRepository
 	UserRepo                    userports.UserRepository
 	// Clients は OIDC の Application が持つクライアントを作成、更新し、シークレットを管理する。
-	Clients     appports.OIDCClientAdministration
+	Clients     catalogports.OIDCClientAdministration
 	WsFedRPRepo wsfederationports.WsFedRelyingPartyRepository
 	SamlSPRepo  samlports.SamlServiceProviderRepository
 	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45). nil means outbound provisioning is not wired.

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
+	catalogports "github.com/ambi/idmagic/backend/applicationcatalog/ports"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -17,13 +18,13 @@ type OIDCClients struct {
 	administration clientports.ClientAdministration
 }
 
-var _ appports.OIDCClientAdministration = (*OIDCClients)(nil)
+var _ catalogports.OIDCClientAdministration = (*OIDCClients)(nil)
 
 func NewOIDCClients(repository clientports.OAuth2ClientRepository, administration clientports.ClientAdministration) *OIDCClients {
 	return &OIDCClients{repository: repository, administration: administration}
 }
 
-func (a *OIDCClients) Configuration(ctx context.Context, tenantID, clientID string, now time.Time) (*appports.OIDCConfiguration, error) {
+func (a *OIDCClients) Configuration(ctx context.Context, tenantID, clientID string, now time.Time) (*catalogports.OIDCConfiguration, error) {
 	if a.repository == nil {
 		return nil, nil //nolint:nilnil // 保存先が未配線なら、従来どおり任意の設定表示を省略する。
 	}
@@ -36,7 +37,7 @@ func (a *OIDCClients) Configuration(ctx context.Context, tenantID, clientID stri
 	return configuration(client, credentials, now), nil
 }
 
-func configuration(client *oauthdomain.OAuth2Client, credentials []oauthdomain.ClientSecretCredential, now time.Time) *appports.OIDCConfiguration {
+func configuration(client *oauthdomain.OAuth2Client, credentials []oauthdomain.ClientSecretCredential, now time.Time) *catalogports.OIDCConfiguration {
 	sub := "user_id"
 	rules := []claimdomain.ClaimMappingRule{}
 	if client.ClaimPolicy != nil {
@@ -47,7 +48,7 @@ func configuration(client *oauthdomain.OAuth2Client, credentials []oauthdomain.C
 			rules = slices.Clone(client.ClaimPolicy.Rules)
 		}
 	}
-	return &appports.OIDCConfiguration{
+	return &catalogports.OIDCConfiguration{
 		ClientID: client.ClientID, ClientType: client.ClientType,
 		RedirectURIs: slices.Clone(client.RedirectURIs), GrantTypes: slices.Clone(client.GrantTypes), ResponseTypes: slices.Clone(client.ResponseTypes),
 		TokenEndpointAuthMethod: string(client.TokenEndpointAuthMethod), Scope: client.Scope,
@@ -58,10 +59,10 @@ func configuration(client *oauthdomain.OAuth2Client, credentials []oauthdomain.C
 	}
 }
 
-func secretMetadata(credentials []oauthdomain.ClientSecretCredential, now time.Time) []appports.ClientSecretMetadata {
-	metadata := make([]appports.ClientSecretMetadata, 0, len(credentials))
+func secretMetadata(credentials []oauthdomain.ClientSecretCredential, now time.Time) []catalogports.ClientSecretMetadata {
+	metadata := make([]catalogports.ClientSecretMetadata, 0, len(credentials))
 	for _, credential := range credentials {
-		metadata = append(metadata, appports.ClientSecretMetadata{
+		metadata = append(metadata, catalogports.ClientSecretMetadata{
 			CredentialID: credential.ID, CreatedAt: credential.CreatedAt,
 			ExpiresAt: copyValue(credential.ExpiresAt), RevokedAt: copyValue(credential.RevokedAt), Status: string(credential.StatusAt(now)),
 		})
@@ -69,7 +70,7 @@ func secretMetadata(credentials []oauthdomain.ClientSecretCredential, now time.T
 	return metadata
 }
 
-func (a *OIDCClients) Create(ctx context.Context, in appports.CreateOIDCClientInput) (*appports.CreatedOIDCClient, error) {
+func (a *OIDCClients) Create(ctx context.Context, in catalogports.CreateOIDCClientInput) (*catalogports.CreatedOIDCClient, error) {
 	r := in.Registration
 	result, err := a.administration.Create(ctx, clientports.CreateAdminOAuth2ClientInput{
 		ActorUserID: in.ActorUserID, Now: in.Now,
@@ -83,10 +84,10 @@ func (a *OIDCClients) Create(ctx context.Context, in appports.CreateOIDCClientIn
 	if err != nil {
 		return nil, err
 	}
-	return &appports.CreatedOIDCClient{ClientID: result.Client.ClientID, ClientSecret: result.ClientSecret}, nil
+	return &catalogports.CreatedOIDCClient{ClientID: result.Client.ClientID, ClientSecret: result.ClientSecret}, nil
 }
 
-func (a *OIDCClients) Update(ctx context.Context, in appports.UpdateOIDCClientInput) error {
+func (a *OIDCClients) Update(ctx context.Context, in catalogports.UpdateOIDCClientInput) error {
 	_, err := a.administration.Update(ctx, clientports.UpdateAdminOAuth2ClientInput{
 		ActorUserID: in.ActorUserID, ClientID: in.ClientID, RedirectURIs: in.RedirectURIs,
 		GrantTypes: in.GrantTypes, ResponseTypes: in.ResponseTypes, Scope: in.Scope,
@@ -99,12 +100,12 @@ func (a *OIDCClients) BindApplication(ctx context.Context, tenantID, clientID, a
 	return a.administration.BindApplication(ctx, tenantID, clientID, applicationID)
 }
 
-func (a *OIDCClients) UpdateClaims(ctx context.Context, tenantID, clientID string, in appports.OIDCClaimUpdate) error {
+func (a *OIDCClients) UpdateClaims(ctx context.Context, tenantID, clientID string, in catalogports.OIDCClaimUpdate) error {
 	err := a.administration.UpdateClaims(ctx, tenantID, clientID, clientports.ClientClaimUpdate{
 		SubSourceAttribute: in.SubSourceAttribute, Rules: in.Rules, Now: in.Now,
 	})
 	if errors.Is(err, clientports.ErrCatalogClientNotFound) {
-		return appports.ErrOIDCClientNotFound
+		return catalogports.ErrOIDCClientNotFound
 	}
 	return err
 }
@@ -113,39 +114,39 @@ func (a *OIDCClients) Delete(ctx context.Context, tenantID, clientID string) err
 	return a.administration.DeleteForApplication(ctx, tenantID, clientID)
 }
 
-func (a *OIDCClients) RotateSecret(ctx context.Context, in appports.RotateClientSecretInput) (*appports.RotateClientSecretResult, error) {
+func (a *OIDCClients) RotateSecret(ctx context.Context, in catalogports.RotateClientSecretInput) (*catalogports.RotateClientSecretResult, error) {
 	result, err := a.administration.RotateSecret(ctx, clientports.RotateClientSecretInput{
 		ActorUserID: in.ActorUserID, ClientID: in.ClientID, GraceDays: in.GraceDays, Now: in.Now,
 	})
 	if err != nil {
 		return nil, secretError(err)
 	}
-	return &appports.RotateClientSecretResult{ClientSecret: result.ClientSecret, GraceUntil: copyValue(result.GraceUntil), Credentials: secretMetadata(result.Credentials, time.Now().UTC())}, nil
+	return &catalogports.RotateClientSecretResult{ClientSecret: result.ClientSecret, GraceUntil: copyValue(result.GraceUntil), Credentials: secretMetadata(result.Credentials, time.Now().UTC())}, nil
 }
 
-func (a *OIDCClients) IssueSecret(ctx context.Context, in appports.IssueClientSecretInput) (*appports.IssueClientSecretResult, error) {
+func (a *OIDCClients) IssueSecret(ctx context.Context, in catalogports.IssueClientSecretInput) (*catalogports.IssueClientSecretResult, error) {
 	result, err := a.administration.IssueSecret(ctx, clientports.IssueClientSecretInput{
 		ActorUserID: in.ActorUserID, ClientID: in.ClientID, ExpiresInDays: in.ExpiresInDays, Now: in.Now,
 	})
 	if err != nil {
 		return nil, secretError(err)
 	}
-	return &appports.IssueClientSecretResult{ClientSecret: result.ClientSecret, Credential: secretMetadata([]oauthdomain.ClientSecretCredential{result.Credential}, in.Now)[0], Credentials: secretMetadata(result.Credentials, in.Now)}, nil
+	return &catalogports.IssueClientSecretResult{ClientSecret: result.ClientSecret, Credential: secretMetadata([]oauthdomain.ClientSecretCredential{result.Credential}, in.Now)[0], Credentials: secretMetadata(result.Credentials, in.Now)}, nil
 }
 
-func (a *OIDCClients) RevokeSecret(ctx context.Context, in appports.RevokeClientSecretInput) (*appports.RevokeClientSecretResult, error) {
+func (a *OIDCClients) RevokeSecret(ctx context.Context, in catalogports.RevokeClientSecretInput) (*catalogports.RevokeClientSecretResult, error) {
 	result, err := a.administration.RevokeSecret(ctx, clientports.RevokeClientSecretInput{
 		ActorUserID: in.ActorUserID, ClientID: in.ClientID, CredentialID: in.CredentialID, Now: in.Now,
 	})
 	if err != nil {
 		return nil, secretError(err)
 	}
-	return &appports.RevokeClientSecretResult{Credentials: secretMetadata(result.Credentials, in.Now)}, nil
+	return &catalogports.RevokeClientSecretResult{Credentials: secretMetadata(result.Credentials, in.Now)}, nil
 }
 
 func secretError(err error) error {
 	if errors.Is(err, clientports.ErrClientSecretLimitExceeded) {
-		return appports.ErrClientSecretLimitExceeded
+		return catalogports.ErrClientSecretLimitExceeded
 	}
 	return err
 }

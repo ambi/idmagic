@@ -14,11 +14,6 @@ var (
 	ErrOIDCClientNotFound        = errors.New("client does not exist")
 )
 
-// ClientNames は、カタログ名へのフォールバックに必要な名前だけを要求する。
-type ClientNames interface {
-	FindClientName(context.Context, string, string) (*string, error)
-}
-
 // OIDCClientAdministration はカタログが要求する管理操作である。
 // 保存表現と秘密のハッシュは渡さず、各操作の確定と不変条件は所有者が保つ。
 type OIDCClientAdministration interface {

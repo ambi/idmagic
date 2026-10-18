@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/application/domain"
-	appusecases "github.com/ambi/idmagic/backend/application/internal/usecases"
+	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"

@@ -13,9 +13,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/saml"
@@ -31,7 +30,7 @@ import (
 // newApplicationPaginationHandler は application/handlers_http_test の既存 newApplicationHandler
 // と異なり PaginationCodec を設定し、Application repo を直接返す。既存 helper は
 // Deps.PaginationCodec が nil のままなので cursor pagination のテストには使えない。
-func newApplicationPaginationHandler(t *testing.T) (*echo.Echo, *appmemory.ApplicationRepository) {
+func newApplicationPaginationHandler(t *testing.T) (*echo.Echo, appports.ApplicationRepository) {
 	t.Helper()
 	users := idmanagement.NewMemoryModule().UserRepo
 	now := time.Now().UTC()
@@ -39,7 +38,8 @@ func newApplicationPaginationHandler(t *testing.T) (*echo.Echo, *appmemory.Appli
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	appRepo := appmemory.NewApplicationRepository()
+	module := newCatalogApplicationModule()
+	appRepo := module.Repo
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:          "http://idp.test",
@@ -47,18 +47,11 @@ func newApplicationPaginationHandler(t *testing.T) (*echo.Echo, *appmemory.Appli
 		PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")),
 		UserRepo:        users,
 		GroupRepo:       idmanagement.NewMemoryModule().GroupRepo,
-		Application: application.Module{
-			Repo:                    appRepo,
-			IconStore:               appmemory.NewApplicationIconStore(),
-			AssignmentRepo:          appmemory.NewApplicationAssignmentRepository(),
-			OrderingRepo:            appmemory.NewApplicationOrderingRepository(),
-			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
-			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
-		},
-		Saml:          saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
-		OAuth2:        oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
-		WsFederation:  wsfederation.NewMemoryModule(),
-		AuthnResolver: authentication.DemoHeaderResolver{},
+		Application:     module,
+		Saml:            saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
+		OAuth2:          oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
+		WsFederation:    wsfederation.NewMemoryModule(),
+		AuthnResolver:   authentication.DemoHeaderResolver{},
 	})
 	return e, appRepo
 }
@@ -74,7 +67,7 @@ func adminApplicationListRequest(e interface {
 	return response
 }
 
-func seedApplication(t *testing.T, repo *appmemory.ApplicationRepository, id, name string, now time.Time) {
+func seedApplication(t *testing.T, repo appports.ApplicationRepository, id, name string, now time.Time) {
 	t.Helper()
 	if err := repo.Save(context.Background(), &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ID: id, Name: name,

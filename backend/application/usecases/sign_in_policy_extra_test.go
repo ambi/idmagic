@@ -9,7 +9,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/application/domain"
 	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
-	appusecases "github.com/ambi/idmagic/backend/application/internal/usecases"
+	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 )
 

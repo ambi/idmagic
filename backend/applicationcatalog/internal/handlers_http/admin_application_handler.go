@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/application/domain"
-	appusecases "github.com/ambi/idmagic/backend/application/internal/usecases"
-	appports "github.com/ambi/idmagic/backend/application/ports"
+	appusecases "github.com/ambi/idmagic/backend/application/usecases"
+	catalogports "github.com/ambi/idmagic/backend/applicationcatalog/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -609,7 +609,7 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 	if errors.Is(err, appusecases.ErrInvalidSignInPolicy) {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_sign_in_policy", err.Error())
 	}
-	if errors.Is(err, appports.ErrClientSecretLimitExceeded) {
+	if errors.Is(err, catalogports.ErrClientSecretLimitExceeded) {
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "client_secret_limit_exceeded", "The client already has two active secrets.")
 	}
 	// QuotaExceededError (wi-160) falls through to support_http.ErrorHandler

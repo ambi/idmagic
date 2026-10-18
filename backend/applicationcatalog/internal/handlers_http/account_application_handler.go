@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/application/domain"
-	appusecases "github.com/ambi/idmagic/backend/application/internal/usecases"
 	appports "github.com/ambi/idmagic/backend/application/ports"
+	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 

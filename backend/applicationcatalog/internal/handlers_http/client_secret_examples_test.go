@@ -28,8 +28,6 @@ import (
 
 	"github.com/labstack/echo/v5"
 
-	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -83,14 +81,7 @@ func newSecretExampleFixture(t *testing.T) *secretExampleFixture {
 		TenantRepo: tenants,
 		Emit:       func(event spec.DomainEvent) { *events = append(*events, event) },
 		UserRepo:   users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo,
-		Application: application.Module{
-			Repo:                    appmemory.NewApplicationRepository(),
-			IconStore:               appmemory.NewApplicationIconStore(),
-			AssignmentRepo:          appmemory.NewApplicationAssignmentRepository(),
-			OrderingRepo:            appmemory.NewApplicationOrderingRepository(),
-			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
-			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
-		},
+		Application:  newCatalogApplicationModule(),
 		Saml:         saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		WsFederation: wsfederation.NewMemoryModule(),
 		OAuth2: oauth2.Module{

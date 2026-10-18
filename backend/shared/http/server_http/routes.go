@@ -8,6 +8,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/apitoken"
 	"github.com/ambi/idmagic/backend/application"
+	"github.com/ambi/idmagic/backend/applicationcatalog"
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -477,7 +478,24 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		saml.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: samlSessionRevoker},
 		d.IdManagement.UserRepo, d.FederationSigner, d.IdManagement.AttrSchemaRepo)
 
-	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, applicationdeps.NewOIDCClients(d.OAuth2.ClientRepo, d.OAuth2.ClientAdministration(d.Emit, d.Tenancy.QuotaRepo)), d.WsFederation.RPRepo, d.Saml.SPRepo, d.Tenancy.QuotaRepo, d.IdManagement.AttrSchemaRepo)
+	applicationcatalog.Register(g, applicationcatalog.Dependencies{
+		Deps: d.Deps, Authenticator: authenticator,
+		ApplicationRepo:             d.Application.Repo,
+		ApplicationIconStore:        d.Application.IconStore,
+		ApplicationAssignmentRepo:   d.Application.AssignmentRepo,
+		ApplicationOrderingRepo:     d.Application.OrderingRepo,
+		ApplicationCategoryRepo:     d.Application.CategoryRepo,
+		ApplicationSignInPolicyRepo: d.Application.SignInPolicyRepo,
+		DefaultSignInPolicyRepo:     d.Application.DefaultSignInPolicyRepo,
+		AssignmentSubjectDirectory:  application.SubjectDirectory(d.IdManagement.UserRepo, d.IdManagement.GroupRepo),
+		GroupRepo:                   d.IdManagement.GroupRepo, UserRepo: d.IdManagement.UserRepo,
+		Clients:              applicationdeps.NewOIDCClients(d.OAuth2.ClientRepo, d.OAuth2.ClientAdministration(d.Emit, d.Tenancy.QuotaRepo)),
+		WsFedRPRepo:          d.WsFederation.RPRepo,
+		SamlSPRepo:           d.Saml.SPRepo,
+		ProvisioningNotifier: d.Application.ProvisioningNotifier,
+		QuotaRepo:            d.Tenancy.QuotaRepo,
+		AttrSchemaRepo:       d.IdManagement.AttrSchemaRepo,
+	})
 
 	d.ApiTokens.Register(g, d.Deps, authenticator)
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	appports "github.com/ambi/idmagic/backend/application/ports"
+	catalogports "github.com/ambi/idmagic/backend/applicationcatalog/ports"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
@@ -34,13 +34,13 @@ func TestOIDCConfigurationPreservesManagedValues(t *testing.T) {
 	if err := repo.Save(ctx, client); err != nil {
 		t.Fatal(err)
 	}
-	want := &appports.OIDCConfiguration{
+	want := &catalogports.OIDCConfiguration{
 		ClientID: "client", ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{"https://rp.example/callback"}, GrantTypes: []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, Scope: "openid custom",
 		TokenEndpointAuthMethod: "client_secret_post", RequirePAR: true, DpopBoundAccessTokens: true,
 		FapiProfile: "fapi_2_security_profile", ClientSecretRotatable: true,
-		SecretCredentials: []appports.ClientSecretMetadata{}, SubSourceAttribute: "employee_id", Rules: []claimdomain.ClaimMappingRule{},
+		SecretCredentials: []catalogports.ClientSecretMetadata{}, SubSourceAttribute: "employee_id", Rules: []claimdomain.ClaimMappingRule{},
 	}
 	got, err := NewOIDCClients(repo, nil).Configuration(ctx, "tenant", "client", now)
 	if err != nil || !reflect.DeepEqual(got, want) {
@@ -55,7 +55,7 @@ func TestOIDCAdministrationPreservesInputsAndOwnerState(t *testing.T) {
 	var events []spec.DomainEvent
 	admin := NewOIDCClients(module.ClientRepo, module.ClientAdministration(func(e spec.DomainEvent) { events = append(events, e) }, nil))
 	now := time.Now().UTC()
-	created, err := admin.Create(ctx, appports.CreateOIDCClientInput{ActorUserID: "actor", Now: now, Registration: appports.OIDCClientRegistration{
+	created, err := admin.Create(ctx, catalogports.CreateOIDCClientInput{ActorUserID: "actor", Now: now, Registration: catalogports.OIDCClientRegistration{
 		ClientName: "Payroll", ClientType: spec.ClientConfidential, RedirectURIs: []string{"https://rp.example/callback"},
 		GrantTypes: []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken}, ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod: "client_secret_basic", Scope: "openid profile",
@@ -75,7 +75,7 @@ func TestOIDCAdministrationPreservesInputsAndOwnerState(t *testing.T) {
 	redirects := []string{"https://rp.example/new"}
 	grants := []spec.GrantType{spec.GrantAuthorizationCode}
 	responses := []spec.ResponseType{spec.ResponseTypeCode}
-	if err := admin.Update(ctx, appports.UpdateOIDCClientInput{ActorUserID: "actor", ClientID: created.ClientID, RedirectURIs: &redirects, GrantTypes: &grants, ResponseTypes: &responses, Scope: &scope, RequirePAR: &requirePAR, DpopBoundTokens: &dpop, Now: now}); err != nil {
+	if err := admin.Update(ctx, catalogports.UpdateOIDCClientInput{ActorUserID: "actor", ClientID: created.ClientID, RedirectURIs: &redirects, GrantTypes: &grants, ResponseTypes: &responses, Scope: &scope, RequirePAR: &requirePAR, DpopBoundTokens: &dpop, Now: now}); err != nil {
 		t.Fatal(err)
 	}
 	config, err := admin.Configuration(ctx, "tenant", created.ClientID, now)
@@ -84,22 +84,22 @@ func TestOIDCAdministrationPreservesInputsAndOwnerState(t *testing.T) {
 	}
 	sub := " employee_id "
 	rules := []claimdomain.ClaimMappingRule{{ClaimType: "department", Source: claimdomain.ClaimSourceFixed, FixedValue: "eng"}}
-	if err := admin.UpdateClaims(ctx, "tenant", created.ClientID, appports.OIDCClaimUpdate{SubSourceAttribute: &sub, Rules: &rules, Now: now}); err != nil {
+	if err := admin.UpdateClaims(ctx, "tenant", created.ClientID, catalogports.OIDCClaimUpdate{SubSourceAttribute: &sub, Rules: &rules, Now: now}); err != nil {
 		t.Fatal(err)
 	}
 	client, err = module.ClientRepo.FindByID(ctx, "tenant", created.ClientID)
 	if err != nil || client.ApplicationID != "application" || client.UpdatedAt != now || client.ClaimPolicy.NameID.SourceAttribute != "employee_id" || !reflect.DeepEqual(client.ClaimPolicy.Rules, rules) {
 		t.Fatalf("claim client=%+v err=%v", client, err)
 	}
-	issued, err := admin.IssueSecret(ctx, appports.IssueClientSecretInput{ActorUserID: "actor", ClientID: created.ClientID, ExpiresInDays: 30, Now: now})
+	issued, err := admin.IssueSecret(ctx, catalogports.IssueClientSecretInput{ActorUserID: "actor", ClientID: created.ClientID, ExpiresInDays: 30, Now: now})
 	if err != nil || issued.ClientSecret == "" || issued.Credential.Status != "Active" || len(issued.Credentials) != 2 {
 		t.Fatalf("issue=%+v err=%v", issued, err)
 	}
-	_, err = admin.IssueSecret(ctx, appports.IssueClientSecretInput{ActorUserID: "actor", ClientID: created.ClientID, ExpiresInDays: 30, Now: now})
-	if !errors.Is(err, appports.ErrClientSecretLimitExceeded) {
+	_, err = admin.IssueSecret(ctx, catalogports.IssueClientSecretInput{ActorUserID: "actor", ClientID: created.ClientID, ExpiresInDays: 30, Now: now})
+	if !errors.Is(err, catalogports.ErrClientSecretLimitExceeded) {
 		t.Fatalf("limit error=%v", err)
 	}
-	revoked, err := admin.RevokeSecret(ctx, appports.RevokeClientSecretInput{ActorUserID: "actor", ClientID: created.ClientID, CredentialID: issued.Credential.CredentialID, Now: now})
+	revoked, err := admin.RevokeSecret(ctx, catalogports.RevokeClientSecretInput{ActorUserID: "actor", ClientID: created.ClientID, CredentialID: issued.Credential.CredentialID, Now: now})
 	if err != nil || len(revoked.Credentials) != 2 {
 		t.Fatalf("revoke=%+v err=%v", revoked, err)
 	}
@@ -108,7 +108,7 @@ func TestOIDCAdministrationPreservesInputsAndOwnerState(t *testing.T) {
 			t.Fatalf("credential=%+v", credential)
 		}
 	}
-	rotated, err := admin.RotateSecret(ctx, appports.RotateClientSecretInput{ActorUserID: "actor", ClientID: created.ClientID, GraceDays: 1, Now: now})
+	rotated, err := admin.RotateSecret(ctx, catalogports.RotateClientSecretInput{ActorUserID: "actor", ClientID: created.ClientID, GraceDays: 1, Now: now})
 	if err != nil || rotated.ClientSecret == "" || rotated.GraceUntil == nil || !rotated.GraceUntil.Equal(now.Add(24*time.Hour)) {
 		t.Fatalf("rotate=%+v err=%v", rotated, err)
 	}
@@ -125,7 +125,7 @@ func TestOIDCRegistrationKeepsPublicKeySettings(t *testing.T) {
 	module := oauth2.NewMemoryModule()
 	admin := NewOIDCClients(module.ClientRepo, module.ClientAdministration(func(spec.DomainEvent) {}, nil))
 	uri, dn := "https://rp.example/jwks", "CN=client"
-	created, err := admin.Create(ctx, appports.CreateOIDCClientInput{ActorUserID: "actor", Now: time.Now().UTC(), Registration: appports.OIDCClientRegistration{
+	created, err := admin.Create(ctx, catalogports.CreateOIDCClientInput{ActorUserID: "actor", Now: time.Now().UTC(), Registration: catalogports.OIDCClientRegistration{
 		ClientName: "Key client", ClientType: spec.ClientConfidential, GrantTypes: []spec.GrantType{spec.GrantClientCredentials}, TokenEndpointAuthMethod: "private_key_jwt", Scope: "openid", JwksURI: &uri, TlsClientAuthSubjectDN: &dn,
 	}})
 	if err != nil || created == nil || created.ClientSecret != "" {
@@ -203,22 +203,22 @@ func TestOIDCAdministrationPropagatesRefusals(t *testing.T) {
 	ctx := tenantports.WithTenantID(context.Background(), "tenant")
 	module := oauth2.NewMemoryModule()
 	admin := NewOIDCClients(module.ClientRepo, module.ClientAdministration(func(spec.DomainEvent) {}, tenancy.NewMemoryModule().QuotaRepo))
-	if _, err := admin.Create(ctx, appports.CreateOIDCClientInput{Registration: appports.OIDCClientRegistration{TokenEndpointAuthMethod: "unknown"}}); err == nil {
+	if _, err := admin.Create(ctx, catalogports.CreateOIDCClientInput{Registration: catalogports.OIDCClientRegistration{TokenEndpointAuthMethod: "unknown"}}); err == nil {
 		t.Fatal("invalid registration accepted")
 	}
-	if err := admin.Update(ctx, appports.UpdateOIDCClientInput{ClientID: "missing"}); err == nil {
+	if err := admin.Update(ctx, catalogports.UpdateOIDCClientInput{ClientID: "missing"}); err == nil {
 		t.Fatal("missing client updated")
 	}
-	if err := admin.UpdateClaims(ctx, "tenant", "missing", appports.OIDCClaimUpdate{}); !errors.Is(err, appports.ErrOIDCClientNotFound) {
+	if err := admin.UpdateClaims(ctx, "tenant", "missing", catalogports.OIDCClaimUpdate{}); !errors.Is(err, catalogports.ErrOIDCClientNotFound) {
 		t.Fatalf("claim error=%v", err)
 	}
-	if _, err := admin.IssueSecret(ctx, appports.IssueClientSecretInput{ClientID: "missing"}); err == nil {
+	if _, err := admin.IssueSecret(ctx, catalogports.IssueClientSecretInput{ClientID: "missing"}); err == nil {
 		t.Fatal("missing client received a secret")
 	}
-	if _, err := admin.RotateSecret(ctx, appports.RotateClientSecretInput{ClientID: "missing"}); err == nil {
+	if _, err := admin.RotateSecret(ctx, catalogports.RotateClientSecretInput{ClientID: "missing"}); err == nil {
 		t.Fatal("missing client rotated")
 	}
-	if _, err := admin.RevokeSecret(ctx, appports.RevokeClientSecretInput{ClientID: "missing"}); err == nil {
+	if _, err := admin.RevokeSecret(ctx, catalogports.RevokeClientSecretInput{ClientID: "missing"}); err == nil {
 		t.Fatal("missing client revoked")
 	}
 }

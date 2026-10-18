@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/application/domain"
-	appports "github.com/ambi/idmagic/backend/application/ports"
+	catalogports "github.com/ambi/idmagic/backend/applicationcatalog/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -39,7 +39,7 @@ func (d Deps) handleRotateOIDCClientSecret(c *echo.Context) error {
 	if req.GraceDays != nil {
 		graceDays = *req.GraceDays
 	}
-	result, err := d.Clients.RotateSecret(c.Request().Context(), appports.RotateClientSecretInput{ActorUserID: actor.ID, ClientID: clientID, GraceDays: graceDays, Now: time.Now().UTC()})
+	result, err := d.Clients.RotateSecret(c.Request().Context(), catalogports.RotateClientSecretInput{ActorUserID: actor.ID, ClientID: clientID, GraceDays: graceDays, Now: time.Now().UTC()})
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -75,7 +75,7 @@ func (d Deps) handleIssueOIDCClientSecret(c *echo.Context) error {
 		expiresInDays = *req.ExpiresInDays
 	}
 	now := time.Now().UTC()
-	result, err := d.Clients.IssueSecret(c.Request().Context(), appports.IssueClientSecretInput{
+	result, err := d.Clients.IssueSecret(c.Request().Context(), catalogports.IssueClientSecretInput{
 		ActorUserID: actor.ID, ClientID: clientID, ExpiresInDays: expiresInDays, Now: now,
 	})
 	if err != nil {
@@ -103,7 +103,7 @@ func (d Deps) handleRevokeOIDCClientSecret(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}
 	now := time.Now().UTC()
-	result, err := d.Clients.RevokeSecret(c.Request().Context(), appports.RevokeClientSecretInput{
+	result, err := d.Clients.RevokeSecret(c.Request().Context(), catalogports.RevokeClientSecretInput{
 		ActorUserID: actor.ID, ClientID: clientID, CredentialID: c.Param("credential_id"), Now: now,
 	})
 	if err != nil {

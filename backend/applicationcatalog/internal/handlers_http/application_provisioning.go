@@ -16,8 +16,8 @@ import (
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
 	"github.com/ambi/idmagic/backend/application/domain"
-	appusecases "github.com/ambi/idmagic/backend/application/internal/usecases"
-	appports "github.com/ambi/idmagic/backend/application/ports"
+	appusecases "github.com/ambi/idmagic/backend/application/usecases"
+	catalogports "github.com/ambi/idmagic/backend/applicationcatalog/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -64,7 +64,7 @@ type createApplicationRequest struct {
 // oidcConfig / wsfedConfig はアプリ詳細に解決して返す protocol 設定。
 // advanced 項目を含めてアプリ編集画面に集約する (wi-76)。
 // ClientType / TokenEndpointAuthMethod / FapiProfile は更新契約上の不変項目で表示専用。
-type oidcConfig = appports.OIDCConfiguration
+type oidcConfig = catalogports.OIDCConfiguration
 
 type wsfedConfig struct {
 	Wtrealm      string                         `json:"wtrealm"`
@@ -136,7 +136,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if len(req.RedirectURIs) == 0 {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify at least one redirect URI.")
 		}
-		registration := appports.OIDCClientRegistration{
+		registration := catalogports.OIDCClientRegistration{
 			ClientName: req.Name, ClientType: req.ClientType, RedirectURIs: req.RedirectURIs,
 			GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 			ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
@@ -148,7 +148,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if uri := strings.TrimSpace(req.JwksURI); uri != "" {
 			registration.JwksURI = &uri
 		}
-		result, err := d.Clients.Create(ctx, appports.CreateOIDCClientInput{
+		result, err := d.Clients.Create(ctx, catalogports.CreateOIDCClientInput{
 			ActorUserID:  actor.ID,
 			Registration: registration,
 			Now:          now,
@@ -168,9 +168,9 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 	case "service":
 		// M2M / サービスクライアント (client_credentials)。redirect を持たず、ポータルにも
 		// 出さない service kind の Application として登録する (Okta の API Services 相当)。
-		result, err := d.Clients.Create(ctx, appports.CreateOIDCClientInput{
+		result, err := d.Clients.Create(ctx, catalogports.CreateOIDCClientInput{
 			ActorUserID: actor.ID,
-			Registration: appports.OIDCClientRegistration{
+			Registration: catalogports.OIDCClientRegistration{
 				ClientName: req.Name, ClientType: spec.ClientConfidential,
 				GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
 				TokenEndpointAuthMethod: "client_secret_basic", Scope: nonEmpty(req.Scope, defaultServiceScope),
@@ -389,7 +389,7 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 		}
 	}
-	if err := d.Clients.Update(ctx, appports.UpdateOIDCClientInput{
+	if err := d.Clients.Update(ctx, catalogports.UpdateOIDCClientInput{
 		ActorUserID: actor.ID, ClientID: clientID,
 		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
 		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,
@@ -399,10 +399,10 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 	}
 	if req.SubSourceAttribute != nil || req.Rules != nil {
 		now := time.Now().UTC()
-		if err := d.Clients.UpdateClaims(ctx, tenantID, clientID, appports.OIDCClaimUpdate{
+		if err := d.Clients.UpdateClaims(ctx, tenantID, clientID, catalogports.OIDCClaimUpdate{
 			SubSourceAttribute: req.SubSourceAttribute, Rules: req.Rules, Now: now,
 		}); err != nil {
-			if errors.Is(err, appports.ErrOIDCClientNotFound) {
+			if errors.Is(err, catalogports.ErrOIDCClientNotFound) {
 				return support.WriteProblem(c, http.StatusNotFound, "not_found", "The client does not exist.")
 			}
 			return err

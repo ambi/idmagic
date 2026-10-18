@@ -10,8 +10,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/application/domain"
 	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
-	appusecases "github.com/ambi/idmagic/backend/application/internal/usecases"
 	"github.com/ambi/idmagic/backend/application/ports"
+	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 

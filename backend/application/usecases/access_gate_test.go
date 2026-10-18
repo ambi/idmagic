@@ -13,7 +13,7 @@ import (
 	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 
-	appusecases "github.com/ambi/idmagic/backend/application/internal/usecases"
+	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 )
 
 func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {

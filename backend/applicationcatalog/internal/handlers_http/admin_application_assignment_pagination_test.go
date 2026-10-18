@@ -13,9 +13,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/saml"
@@ -32,7 +31,7 @@ import (
 // 露出させた上で PaginationCodec を設定する独立 helper。newApplicationPaginationHandler は
 // AssignmentRepo を内部生成して外に返さないため、assignment 一覧の pagination テストには
 // 使えない (シードした行が見えない)。対象 application はここで1件事前作成する。
-func newApplicationAssignmentPaginationHandler(t *testing.T) (*echo.Echo, *appmemory.ApplicationAssignmentRepository, string) {
+func newApplicationAssignmentPaginationHandler(t *testing.T) (*echo.Echo, appports.AssignmentRepository, string) {
 	t.Helper()
 	users := idmanagement.NewMemoryModule().UserRepo
 	now := time.Now().UTC()
@@ -40,8 +39,9 @@ func newApplicationAssignmentPaginationHandler(t *testing.T) (*echo.Echo, *appme
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	appRepo := appmemory.NewApplicationRepository()
-	assignmentRepo := appmemory.NewApplicationAssignmentRepository()
+	module := newCatalogApplicationModule()
+	appRepo := module.Repo
+	assignmentRepo := module.AssignmentRepo
 	appID := "app-1"
 	if err := appRepo.Save(context.Background(), &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ID: appID, Name: "target-app",
@@ -58,18 +58,11 @@ func newApplicationAssignmentPaginationHandler(t *testing.T) (*echo.Echo, *appme
 		PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")),
 		UserRepo:        users,
 		GroupRepo:       idmanagement.NewMemoryModule().GroupRepo,
-		Application: application.Module{
-			Repo:                    appRepo,
-			IconStore:               appmemory.NewApplicationIconStore(),
-			AssignmentRepo:          assignmentRepo,
-			OrderingRepo:            appmemory.NewApplicationOrderingRepository(),
-			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
-			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
-		},
-		Saml:          saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
-		OAuth2:        oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
-		WsFederation:  wsfederation.NewMemoryModule(),
-		AuthnResolver: authentication.DemoHeaderResolver{},
+		Application:     module,
+		Saml:            saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
+		OAuth2:          oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
+		WsFederation:    wsfederation.NewMemoryModule(),
+		AuthnResolver:   authentication.DemoHeaderResolver{},
 	})
 	return e, assignmentRepo, appID
 }
@@ -85,7 +78,7 @@ func adminApplicationAssignmentListRequest(e interface {
 	return response
 }
 
-func seedApplicationAssignment(t *testing.T, repo *appmemory.ApplicationAssignmentRepository, appID, subjectID string, now time.Time) {
+func seedApplicationAssignment(t *testing.T, repo appports.AssignmentRepository, appID, subjectID string, now time.Time) {
 	t.Helper()
 	if err := repo.Save(context.Background(), &appdomain.ApplicationAssignment{
 		TenantID: tenancydomain.DefaultTenantID, ApplicationID: appID,

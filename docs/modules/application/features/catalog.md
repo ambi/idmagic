@@ -129,8 +129,10 @@ AuthZEN の action は対象ごとに分かれ、`admin:applications_manage`、`
 
 ## 実現方式
 
-OIDC とサービスクライアントの管理では、Application が `OIDCClientAdministration` で作成、設定更新、関連付け、クレーム更新、削除とシークレットの管理を要求する。
-表示は Application が定める設定値と資格情報のメタデータだけを受け取り、OAuth2 の保存型、シークレットのハッシュ、認証方式の検証を持たない。
+HTTP とプロトコル設定の管理の編成は ApplicationCatalog が担当する。
+Application の状態、更新操作とアクセス判定は Application に残し、各プロトコルからの評価は Catalog を経由しない。
+OIDC とサービスクライアントの管理では、Catalog が `OIDCClientAdministration` で作成、設定更新、関連付け、クレーム更新、削除とシークレットの管理を要求する。
+表示は Catalog が定める設定値と資格情報のメタデータだけを受け取り、OAuth2 の保存型、シークレットのハッシュ、認証方式の検証を持たない。
 組み立て地点の `applicationdeps` が OAuth2 の公開管理操作へ接続し、資格情報の状態も OAuth2 の判定から射影する。
 同意などで使う表示名は独立した `ClientNames` の照会で取得し、名前の欠落、空白、読み取りエラーではカタログ名とクライアント ID へ順にフォールバックする。
 

@@ -1,31 +1,25 @@
-// Package application は application モジュールの DI 組立と route 登録を自前で持つ
-// (wi-172 パイロット)。中央 server/routes.go の Deps と bootstrap/deps.go の
-// Dependencies から application 由来 field を Module 1 個に集約し撤去する。
+// Package application は Application の保存先、状態更新とアクセス判定を組み立てる。
 package application
 
 import (
 	"context"
 
-	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
-
 	"github.com/ambi/idmagic/backend/application/domain"
-	apphttp "github.com/ambi/idmagic/backend/application/internal/handlers_http"
-	appusecases "github.com/ambi/idmagic/backend/application/internal/usecases"
 	appports "github.com/ambi/idmagic/backend/application/ports"
+	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	samlports "github.com/ambi/idmagic/backend/saml/ports"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
-
-	"github.com/labstack/echo/v5"
 )
 
 type idManagementSubjectDirectory struct {
 	users  userports.UserRepository
 	groups groupports.GroupRepository
+}
+
+// SubjectDirectory は、管理とあるべき状態の割り当てが使う同じテナントの主体の照会を組み立てる。
+func SubjectDirectory(users userports.UserRepository, groups groupports.GroupRepository) appports.SubjectDirectory {
+	return idManagementSubjectDirectory{users: users, groups: groups}
 }
 
 func (d idManagementSubjectDirectory) SubjectExists(
@@ -117,7 +111,7 @@ func (m Module) DesiredStateAssignments(
 	return appusecases.DesiredStateAssignments{
 		Deps: appusecases.AssignmentDeps{
 			Repo: m.Repo, AssignmentRepo: m.AssignmentRepo,
-			SubjectDirectory:     idManagementSubjectDirectory{users: userRepo, groups: groupRepo},
+			SubjectDirectory:     SubjectDirectory(userRepo, groupRepo),
 			Emit:                 emit,
 			ProvisioningNotifier: m.ProvisioningNotifier,
 		},
@@ -129,34 +123,4 @@ func (m Module) DesiredStateAssignments(
 // (oauth2 / authentication の監査・表示系が消費する)。
 func (m Module) ClientDisplayNames(clientRepo appports.ClientNames) *ClientDisplayNameResolver {
 	return &ClientDisplayNameResolver{ClientRepo: clientRepo, ApplicationRepo: m.Repo}
-}
-
-// Register は Application カタログの admin / account エンドポイントを登録する。
-func (m Module) Register(
-	g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
-	groupRepo groupports.GroupRepository, userRepo userports.UserRepository,
-	clients appports.OIDCClientAdministration,
-	wsFedRPRepo wsfederationports.WsFedRelyingPartyRepository, samlSPRepo samlports.SamlServiceProviderRepository,
-	quotaRepo tenantports.QuotaRepository, attrSchemaRepo claimports.TenantAttributeSchemaRepo,
-) {
-	apphttp.RegisterRoutes(g, apphttp.Deps{
-		Deps:                        deps,
-		Authenticator:               authenticator,
-		ApplicationRepo:             m.Repo,
-		ApplicationIconStore:        m.IconStore,
-		ApplicationAssignmentRepo:   m.AssignmentRepo,
-		ApplicationOrderingRepo:     m.OrderingRepo,
-		ApplicationCategoryRepo:     m.CategoryRepo,
-		ApplicationSignInPolicyRepo: m.SignInPolicyRepo,
-		DefaultSignInPolicyRepo:     m.DefaultSignInPolicyRepo,
-		AssignmentSubjectDirectory:  idManagementSubjectDirectory{users: userRepo, groups: groupRepo},
-		GroupRepo:                   groupRepo,
-		UserRepo:                    userRepo,
-		Clients:                     clients,
-		WsFedRPRepo:                 wsFedRPRepo,
-		SamlSPRepo:                  samlSPRepo,
-		ProvisioningNotifier:        m.ProvisioningNotifier,
-		QuotaRepo:                   quotaRepo,
-		AttrSchemaRepo:              attrSchemaRepo,
-	})
 }

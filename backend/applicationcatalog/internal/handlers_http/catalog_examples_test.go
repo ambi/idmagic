@@ -18,7 +18,6 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/saml"
@@ -379,15 +378,7 @@ func newTwoTenantApplicationHandler(t *testing.T) *echo.Echo {
 		Issuer:     "http://idp.test",
 		Emit:       func(spec.DomainEvent) {},
 		TenantRepo: tenants, UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo,
-		Application: application.Module{
-			Repo:                    appmemory.NewApplicationRepository(),
-			IconStore:               appmemory.NewApplicationIconStore(),
-			AssignmentRepo:          appmemory.NewApplicationAssignmentRepository(),
-			OrderingRepo:            appmemory.NewApplicationOrderingRepository(),
-			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
-			SignInPolicyRepo:        appmemory.NewSignInPolicyRepository(),
-			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
-		},
+		Application:   application.NewMemoryModule(),
 		Saml:          saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		OAuth2:        oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
 		WsFederation:  wsfederation.NewMemoryModule(),

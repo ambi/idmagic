@@ -26,7 +26,6 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
 	"github.com/ambi/idmagic/backend/saml"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -35,6 +34,13 @@ import (
 
 	"github.com/labstack/echo/v5"
 )
+
+func newCatalogApplicationModule() application.Module {
+	module := application.NewMemoryModule()
+	// この fixture は個別のサインインポリシーを保存しない構成を使う。
+	module.SignInPolicyRepo = nil
+	return module
+}
 
 func newApplicationHandler(t *testing.T) *echo.Echo {
 	t.Helper()
@@ -53,15 +59,8 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 		Issuer: "http://idp.test",
 
 		Emit: func(spec.DomainEvent) {}, UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo,
-		Application: application.Module{
-			Repo:                    appmemory.NewApplicationRepository(),
-			IconStore:               appmemory.NewApplicationIconStore(),
-			AssignmentRepo:          appmemory.NewApplicationAssignmentRepository(),
-			OrderingRepo:            appmemory.NewApplicationOrderingRepository(),
-			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
-			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
-		},
-		Saml: saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
+		Application: newCatalogApplicationModule(),
+		Saml:        saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		OAuth2: oauth2.Module{
 			ClientRepo: oauth2.NewMemoryModule().ClientRepo,
 		},

@@ -24,7 +24,6 @@ import (
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 
 	"github.com/ambi/idmagic/backend/application"
-	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -405,15 +404,7 @@ func newApplicationHandlerRecordingEvents(
 		Issuer:   "http://idp.test",
 		Emit:     events.record,
 		UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo,
-		Application: application.Module{
-			Repo:                    appmemory.NewApplicationRepository(),
-			IconStore:               appmemory.NewApplicationIconStore(),
-			AssignmentRepo:          appmemory.NewApplicationAssignmentRepository(),
-			OrderingRepo:            appmemory.NewApplicationOrderingRepository(),
-			CategoryRepo:            appmemory.NewApplicationCategoryRepository(),
-			SignInPolicyRepo:        appmemory.NewSignInPolicyRepository(),
-			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
-		},
+		Application:   application.NewMemoryModule(),
 		IdManagement:  idmanagement.Module{AttrSchemaRepo: schema},
 		Saml:          saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		OAuth2:        oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
