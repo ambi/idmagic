@@ -14,8 +14,6 @@ type Querier interface {
 	CountGroupsByTenant(ctx context.Context, tenantID string) (int64, error)
 	DeleteGroup(ctx context.Context, arg DeleteGroupParams) error
 	DeleteTenantGroupAttributeSchema(ctx context.Context, tenantID string) error
-	// dedup_key は Jobs の部分一意索引がそのまま効く。
-	EnqueueGroupReconcileJob(ctx context.Context, arg EnqueueGroupReconcileJobParams) error
 	FindDynamicGroupRule(ctx context.Context, arg FindDynamicGroupRuleParams) (*DynamicGroupRule, error)
 	FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*Group, error)
 	FindTenantGroupAttributeSchemaByTenant(ctx context.Context, tenantID string) (*TenantGroupAttributeSchema, error)

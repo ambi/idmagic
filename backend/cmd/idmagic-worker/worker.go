@@ -95,6 +95,7 @@ func RunWorker() error {
 		BackChannelClient: oauth2.NewBackChannelLogoutClient(nil), Now: time.Now,
 	})
 	deps.IdManagement.RegisterJobHandlers(handlers, idmanagement.JobHandlerDeps{
+		EnqueuerInTx:        jobs.NewEnqueuerInTx,
 		Jobs:                deps.Jobs.Repo,
 		AttrSchemaRepo:      deps.Tenancy.AttrSchemaRepo,
 		GroupAttrSchemaRepo: deps.Tenancy.GroupAttrSchemaRepo,

@@ -12,6 +12,7 @@ import (
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -53,7 +54,7 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 	if err := tenancypostgres.NewPostgresModule(db).TenantRepo.Save(ctx, tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
-	idmModule := idmanagement.NewPostgresModule(db, nil)
+	idmModule := idmanagement.NewPostgresModule(db, tenancypostgres.QuotaRepositoryInTx)
 	userID, _ := spec.NewUUIDv4()
 	tenantCtx := tenantports.WithTenant(ctx, tenant, "", "")
 	if err := idmModule.UserRepo.Save(tenantCtx, &userdomain.User{
@@ -73,6 +74,7 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 
 	handlers := capturedHandlers{}
 	deps.IdManagement.RegisterJobHandlers(handlers, idmanagement.JobHandlerDeps{
+		EnqueuerInTx:   jobs.NewEnqueuerInTx,
 		AttrSchemaRepo: idmModule.AttrSchemaRepo,
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)

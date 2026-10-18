@@ -50,12 +50,14 @@ func NewMemoryModule() Module {
 	users := usermemory.NewUserRepository()
 	groups := groupmemory.NewGroupRepository()
 	return Module{
-		UserRepo:                       users,
-		GroupRepo:                      groups,
-		AgentRepo:                      agentmemory.NewAgentRepository(),
-		EmailChangeTokenStore:          usermemory.NewEmailChangeTokenStore(users),
-		CSVArtifacts:                   idmmemory.NewCSVArtifactStore(),
-		GroupImportCommitter:           groupmemory.NewGroupImportRowCommitter(groups),
+		UserRepo:              users,
+		GroupRepo:             groups,
+		AgentRepo:             agentmemory.NewAgentRepository(),
+		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(users),
+		CSVArtifacts:          idmmemory.NewCSVArtifactStore(),
+		newGroupImportCommitter: func(_ func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer, _ func(spec.DomainEvent)) groupports.GroupImportRowCommitter {
+			return groupmemory.NewGroupImportRowCommitter(groups)
+		},
 		GroupMembershipImportCommitter: groupmemory.NewGroupMembershipImportRowCommitter(groups),
 		AttrSchemaRepo:                 usermemory.NewTenantUserAttributeSchemaRepository(),
 		GroupAttrSchemaRepo:            groupmemory.NewTenantGroupAttributeSchemaRepository(),
@@ -77,13 +79,15 @@ func (m Module) WithMemoryUserImport(
 // CSV の取り込みの 1 行と同じトランザクションで使用量を加減算する Tenancy の保存先を返す。
 func NewPostgresModule(pool postgres.DB, quotasInTx func(pgx.Tx) tenantports.QuotaRepository) Module {
 	return Module{
-		UserRepo:                       &userpostgres.UserRepository{Pool: pool},
-		GroupRepo:                      &grouppostgres.GroupRepository{Pool: pool},
-		AgentRepo:                      &agentpostgres.AgentRepository{Pool: pool},
-		EmailChangeTokenStore:          &userpostgres.EmailChangeTokenStore{Pool: pool},
-		CSVArtifacts:                   &idmpostgres.CSVArtifactStore{Pool: pool},
-		UserImportCommitter:            userpostgres.NewUserImportRowCommitter(pool, quotasInTx),
-		GroupImportCommitter:           grouppostgres.NewGroupImportRowCommitter(pool, quotasInTx),
+		UserRepo:              &userpostgres.UserRepository{Pool: pool},
+		GroupRepo:             &grouppostgres.GroupRepository{Pool: pool},
+		AgentRepo:             &agentpostgres.AgentRepository{Pool: pool},
+		EmailChangeTokenStore: &userpostgres.EmailChangeTokenStore{Pool: pool},
+		CSVArtifacts:          &idmpostgres.CSVArtifactStore{Pool: pool},
+		UserImportCommitter:   userpostgres.NewUserImportRowCommitter(pool, quotasInTx),
+		newGroupImportCommitter: func(enqueuersInTx func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer, emit func(spec.DomainEvent)) groupports.GroupImportRowCommitter {
+			return grouppostgres.NewGroupImportRowCommitter(pool, quotasInTx, enqueuersInTx, emit)
+		},
 		GroupMembershipImportCommitter: grouppostgres.GroupMembershipImportRowCommitter{Pool: pool},
 		AttrSchemaRepo:                 &userpostgres.TenantUserAttributeSchemaRepository{Pool: pool},
 		GroupAttrSchemaRepo:            &grouppostgres.TenantGroupAttributeSchemaRepository{Pool: pool},
@@ -97,6 +101,7 @@ func UserWriterInTx(tx pgx.Tx) userports.UserWriter { return userpostgres.UserWr
 // JobHandlerDeps は、CSV の取り込みと書き出し、動的 Group の再計算のジョブが、ほかのモジュールと
 // 共通基盤から受け取る依存である。
 type JobHandlerDeps struct {
+	EnqueuerInTx        func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer
 	Jobs                jobsports.JobRepository
 	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
 	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
@@ -109,6 +114,10 @@ type JobHandlerDeps struct {
 // RegisterJobHandlers は、User、Group、所属の CSV の取り込み、データの書き出し、動的 Group の再計算の
 // ジョブのハンドラーを登録する。
 func (m Module) RegisterJobHandlers(registry jobsports.HandlerRegistrar, d JobHandlerDeps) {
+	if d.Emit == nil {
+		panic("idmanagement: job handlers require an event sink")
+	}
+	groupCommitter := m.newGroupImportCommitter(d.EnqueuerInTx, func(event spec.DomainEvent) { _ = d.Emit(event) })
 	policy := idmdomain.DefaultCSVTransferPolicy()
 	userSchemaReader := userusecases.TenantUserCSVSchemaReader{Repository: d.AttrSchemaRepo}
 	dynamicGroups := groupusecases.DynamicGroupDeps{
@@ -135,7 +144,7 @@ func (m Module) RegisterJobHandlers(registry jobsports.HandlerRegistrar, d JobHa
 	}
 	groupImport := groupusecases.GroupImportJobDeps{
 		Artifacts: m.CSVArtifacts, Jobs: d.Jobs, Plan: groupPlan,
-		Apply:  groupusecases.GroupImportApplyDeps{Plan: groupPlan, Committer: m.GroupImportCommitter},
+		Apply:  groupusecases.GroupImportApplyDeps{Plan: groupPlan, Committer: groupCommitter},
 		Policy: policy,
 	}
 	registry.Register(jobsdomain.KindGroupImportPreview, groupusecases.GroupImportJobHandler(groupImport, groupusecases.GroupImportModePreview))

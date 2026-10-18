@@ -10,40 +10,6 @@ import (
 	"time"
 )
 
-const enqueueGroupReconcileJob = `-- name: EnqueueGroupReconcileJob :exec
-INSERT INTO jobs (id, tenant_id, kind, lane, status, params, attempts, max_attempts, dedup_key, run_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, 'queued', $5, 0, $6,
-  $7::text, $8, $8, $8)
-ON CONFLICT (tenant_id, dedup_key) WHERE dedup_key IS NOT NULL AND status IN ('queued', 'running')
-DO NOTHING
-`
-
-type EnqueueGroupReconcileJobParams struct {
-	ID          string
-	TenantID    string
-	Kind        string
-	Lane        string
-	Params      []byte
-	MaxAttempts int32
-	DedupKey    string
-	Now         time.Time
-}
-
-// dedup_key は Jobs の部分一意索引がそのまま効く。
-func (q *Queries) EnqueueGroupReconcileJob(ctx context.Context, arg EnqueueGroupReconcileJobParams) error {
-	_, err := q.db.Exec(ctx, enqueueGroupReconcileJob,
-		arg.ID,
-		arg.TenantID,
-		arg.Kind,
-		arg.Lane,
-		arg.Params,
-		arg.MaxAttempts,
-		arg.DedupKey,
-		arg.Now,
-	)
-	return err
-}
-
 const insertGroupImportAuditEvent = `-- name: InsertGroupImportAuditEvent :exec
 INSERT INTO audit_events (id, tenant_id, type, user_id, occurred_at, payload)
 VALUES ($1, $2, $3, $4::uuid, $5, $6)

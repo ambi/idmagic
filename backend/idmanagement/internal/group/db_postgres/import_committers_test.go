@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/jobs"
+	"github.com/ambi/idmagic/backend/shared/spec"
+
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -51,7 +54,7 @@ func TestGroupImportRowCommitterRecordsAuditAndEnqueuesOneReconcile(t *testing.T
 		After: group, Changed: []string{"name"}, ActorUserID: actor.ID, AuditEventType: "group.imported",
 		ReconcileGroupID: group.ID, ReconcileVersion: 3, Now: now,
 	}
-	committer := NewGroupImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx)
+	committer := NewGroupImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx, jobs.NewEnqueuerInTx, func(spec.DomainEvent) {})
 	for range 2 {
 		if err := committer.CommitGroupImportRow(ctx, mutation); err != nil {
 			t.Fatalf("CommitGroupImportRow: %v", err)

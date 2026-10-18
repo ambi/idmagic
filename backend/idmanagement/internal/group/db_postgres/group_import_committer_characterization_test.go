@@ -5,6 +5,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/jobs"
+	"github.com/ambi/idmagic/backend/shared/spec"
+
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -18,7 +21,7 @@ func TestCharacterizeGroupImportRowQuota(t *testing.T) {
 	db := pgtest.Require(t)
 	ctx := context.Background()
 	quotas := tenancypostgres.NewQuotaRepository(db)
-	committer := NewGroupImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx)
+	committer := NewGroupImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx, jobs.NewEnqueuerInTx, func(spec.DomainEvent) {})
 
 	newGroup := func(t *testing.T, tenantID, name string) *groupdomain.Group {
 		t.Helper()

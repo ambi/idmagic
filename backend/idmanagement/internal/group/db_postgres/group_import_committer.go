@@ -16,6 +16,7 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -25,14 +26,23 @@ import (
 )
 
 type GroupImportRowCommitter struct {
-	pool       sharedpg.DB
-	quotasInTx func(pgx.Tx) tenantports.QuotaRepository
+	pool          sharedpg.DB
+	quotasInTx    func(pgx.Tx) tenantports.QuotaRepository
+	enqueuersInTx func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer
+	emit          func(spec.DomainEvent)
 }
 
 // NewGroupImportRowCommitter は、quotasInTx が返す Tenancy の QuotaRepository で、
 // 行と同じトランザクションの中でグループの使用量を加減算する committer を返す。
-func NewGroupImportRowCommitter(pool sharedpg.DB, quotasInTx func(pgx.Tx) tenantports.QuotaRepository) GroupImportRowCommitter {
-	return GroupImportRowCommitter{pool: pool, quotasInTx: quotasInTx}
+func NewGroupImportRowCommitter(
+	pool sharedpg.DB, quotasInTx func(pgx.Tx) tenantports.QuotaRepository,
+	enqueuersInTx func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer,
+	emit func(spec.DomainEvent),
+) GroupImportRowCommitter {
+	if pool == nil || quotasInTx == nil || enqueuersInTx == nil || emit == nil {
+		panic("group import: requires a database, transactional quota and job factories, and an event sink")
+	}
+	return GroupImportRowCommitter{pool: pool, quotasInTx: quotasInTx, enqueuersInTx: enqueuersInTx, emit: emit}
 }
 
 func (c GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, mutation groupports.GroupImportRowMutation) error {
@@ -40,7 +50,16 @@ func (c GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, mutat
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck // commit path makes rollback a no-op
+	var events []spec.DomainEvent
+	defer func() {
+		_ = tx.Rollback(ctx)
+		// 拒否の通知も Tx の外で監査へ書けるよう、ロールバック後に発行する。
+		for _, event := range events {
+			if _, refused := event.(*tenancydomain.QuotaExceeded); refused {
+				c.emit(event)
+			}
+		}
+	}()
 	if mutation.Delete {
 		if err := commitGroupImportDeletion(ctx, tx, c.quotasInTx(tx), mutation); err != nil {
 			return err
@@ -77,11 +96,18 @@ func (c GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, mutat
 	// 規則の版が上がった行は、新版の評価を同じトランザクションへ投入する。別の
 	// 経路にすると、行が確定したのに再評価だけが失われる窓ができる。
 	if mutation.ReconcileGroupID != "" {
-		if err := enqueueGroupReconcileInTx(ctx, tx, mutation); err != nil {
+		enqueuer := c.enqueuersInTx(tx, c.quotasInTx(tx), func(event spec.DomainEvent) { events = append(events, event) })
+		if err := enqueueGroupReconcileInTx(ctx, enqueuer, mutation); err != nil {
 			return err
 		}
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	for _, event := range events {
+		c.emit(event)
+	}
+	return nil
 }
 
 func commitGroupImportDeletion(ctx context.Context, tx pgx.Tx, quotas tenantports.QuotaRepository, mutation groupports.GroupImportRowMutation) error {
@@ -154,24 +180,20 @@ func writeGroupImportAudit(ctx context.Context, tx pgx.Tx, mutation groupports.G
 }
 
 // enqueueGroupReconcileInTx は再評価ジョブを行と同じトランザクションへ入れる。
-// Jobs のリポジトリは接続プールを要求するため、ここでは投入だけを同じ形の SQL で行う。
-func enqueueGroupReconcileInTx(ctx context.Context, tx pgx.Tx, mutation groupports.GroupImportRowMutation) error {
+// レーン、既定値、重複排除と active_jobs の確認は Jobs の操作が担う。
+func enqueueGroupReconcileInTx(ctx context.Context, enqueuer jobsports.Enqueuer, mutation groupports.GroupImportRowMutation) error {
 	params, err := json.Marshal(map[string]any{
 		"group_id": mutation.ReconcileGroupID, "rule_version": mutation.ReconcileVersion,
 	})
 	if err != nil {
 		return err
 	}
-	id, err := spec.NewUUIDv4()
-	if err != nil {
-		return err
-	}
 	dedupKey := fmt.Sprintf("dynamic-group:%s:v%d", mutation.ReconcileGroupID, mutation.ReconcileVersion)
-	return New(tx).EnqueueGroupReconcileJob(ctx, EnqueueGroupReconcileJobParams{
-		ID: id, TenantID: mutation.After.TenantID, Kind: string(jobsdomain.KindDynamicGroupReconcile),
-		Lane: string(jobsdomain.LaneBulk), Params: params, MaxAttempts: jobsdomain.DefaultMaxAttempts,
-		DedupKey: dedupKey, Now: mutation.Now,
-	})
+	_, err = enqueuer.Enqueue(ctx, jobsports.EnqueueInput{
+		TenantID: mutation.After.TenantID, Kind: jobsdomain.KindDynamicGroupReconcile,
+		Params: params, DedupKey: &dedupKey,
+	}, mutation.Now)
+	return err
 }
 
 var _ groupports.GroupImportRowCommitter = GroupImportRowCommitter{}

@@ -8,7 +8,10 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/internal/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	"github.com/jackc/pgx/v5"
 )
 
 // Module は identity-management context が所有する永続化 port の束。
@@ -22,7 +25,8 @@ type Module struct {
 	EmailChangeTokenStore userports.EmailChangeTokenStore
 	CSVArtifacts          idmports.CSVArtifactStore
 	UserImportCommitter   userports.UserImportRowCommitter
-	GroupImportCommitter  groupports.GroupImportRowCommitter
+	// ハンドラーの構築時に必須の投入器とイベントの発行先を結ぶ。
+	newGroupImportCommitter func(func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer, func(spec.DomainEvent)) groupports.GroupImportRowCommitter
 	// GroupMembershipImportCommitter は membership CSV の 1 行を確定する境界 port
 	// (wi-351)。Group 本体の import committer とは変更集合が別なので分けている。
 	GroupMembershipImportCommitter groupports.GroupMembershipImportRowCommitter
