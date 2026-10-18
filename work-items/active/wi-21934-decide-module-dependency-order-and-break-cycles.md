@@ -16,6 +16,9 @@ depends_on:
   - wi-93579-publish-idmanagement-user-operations-and-transactional-writer
   - wi-90942-relocate-saml-assertion-building-out-of-wsfederation
   - wi-28791-publish-application-sign-in-policy-evaluation
+  - wi-61185-share-password-defaults-through-tenancy
+  - wi-64444-read-user-source-through-an-identity-management-port
+  - wi-49676-remove-audit-search-reverse-dependencies
 change_kind: refactor
 spec_impact: { kind: none, reason: "モジュール間の依存の向きを決め、逆向きの依存を要求側のポートへ置き換えるだけである。HTTP の応答、認証と認可の判定、永続状態、ドメインイベントは変えない。" }
 ---
@@ -60,13 +63,36 @@ Tenancy と IdManagement の循環は、Tenancy が属性スキーマの型と�
 
 ## 設計
 
-### 今回の負債整理で見送る範囲
+### 前提の完了後に切り出した変更
 
-2026-10-18 の再計測では、循環は53件である。
-private-import の項目は完了しているが、Tenancy の文脈の運搬と、CSV が利用するトランザクション内の所有者の操作はまだ決まっていない。
-ここで逆向きのポートを先に固定すると、それらの所有者と作用の契約を決め直すときに再分割が必要になる。
-今回は循環の機械的な置き換えを行わず、wi-73604 と wi-88544 の完了を前提に加える。
-再開時には、この時点の53件や起票時の57件を固定した入力にせず、変更後の import と実行時の作用を再計測して向きを決める。
+2026-10-18 に wi-73604 と wi-88544 の完了を確認し、53件の循環を再計測した。
+文脈の運搬と CSV のトランザクションは、もはや着手を妨げる前提ではない。
+次の変更は製品の保証と所有者を変えずに独立して取り込めるため、別の項目で実装する。
+
+| 項目 | 切り離す依存 | 判断 |
+| --- | --- | --- |
+| [wi-61185](../done/wi-61185-share-password-defaults-through-tenancy.md) | Tenancy → Authentication | パスワードの固定の既定値をテナント設定の型と同じ場所に置く。既定値4個のための注入ポートは増やさない |
+| [wi-64444](../done/wi-64444-read-user-source-through-an-identity-management-port.md) | IdManagement → Sourcing | User と Group の由来表示は、保存型を受け取らず IdManagement の照会ポートを使う。Sourcing を含む循環の3件が不要になる |
+| [wi-49676](wi-49676-remove-audit-search-reverse-dependencies.md) | Audit → IdManagement・OAuth2 | username の解決は組み立て地点で Audit の関数型へ変換し、列挙値だけを仕様バインディングで共有する。Audit を含む循環の4件が不要になる |
+
+これらの変更後の循環は45件であり、解消した8件だけを台帳から除く。
+Sourcing → IdManagement・ApiTokens と、Authentication・IdManagement → Audit の import 自体は必要な非循環の依存として残る。
+
+### 今回は一括して置き換えない範囲
+
+残る45件はこの項目で引き続き扱う。
+循環の件数だけを下げるために、次の担当と作用の問いを未解決のままポートを増やす変更は行わない。
+
+| 対象 | 今は一括の置き換えを行わない理由 | 再開時に先に確定すること |
+| --- | --- | --- |
+| Tenancy と IdManagement の属性スキーマ | 設定の API と Repository の契約は Tenancy にあり、定義型、組み込み属性、保存先と動的 Group の参照は IdManagement にある。型を共有へ移すだけでは、どちらが不変条件を保つかが決まらない | REQ-TENANCY の属性スキーマと動的 Group の参照保護から、型、更新、参照保護の担当を一組で比較する。保存先の所有を動かす場合は移行と同じ Tx の要否も記録する |
+| Application と OAuth2・Saml・WsFederation | Application の管理 API はプロトコルの設定と関連付けを一括して作り、失敗時の後始末も行う。Repository を写したポートを足すだけでは、その確定順と後始末の責任が残る | プロトコルごとに、作成・関連付け・失敗時の後始末を既存の成功と失敗のテストに照合し、編成を置く場所と公開する操作を比較する |
+| Application と Authentication、Authentication と IdManagement・OAuth2、IdManagement と OAuth2 | サインインの再開、MFA の登録方針、同意、失効と完全削除が型と操作を共有する。個々の Repository 呼び出しを逆転するだけでは、再入と必須の作用を省ける経路を作りうる | 認証の再開と失効・削除を分けて操作列を列挙し、必要な作用を含む公開操作を選ぶ。完全削除では既存の再実行と各保存先の確定を保つ |
+| ApiTokens と OAuth2 | API トークンの署名と検証に加え、OAuth2 の失効の組み込みクライアントの例外と Protected Resource Metadata のスコープ語彙が相互に参照する。業務のスコープ全体を shared へ移す案は D5 に適合しない | 管理発行トークンの操作と、組み込みリソースの公開情報・失効の認証を分け、後者を正式な組み立てで渡す案を比較する |
+| Jobs・SigningKeys・ClaimMapping・SharedSignals・WorkloadIdentity を通る長い循環 | これらの辺だけを消しても、上の相互参照を原因とする循環の向きは決まらない。既存の非循環の依存まで削ると、必要のないポートが増える | 上の組を一つ解くたびに循環を再計測し、不要になった台帳の辺だけを除く。クォータ、鍵の対象テナントと失効の順序を import だけで判断しない |
+
+これらは着手済みや解消済みとは扱わず、T002 以降に残す。
+再開時は45件を固定した入力にせず、変更後の import と実行時の作用から再計測する。
 
 [境界の負債の順位付け](../done/wi-33994-reinventory-the-remaining-boundary-debt.md)の判断を引き継ぐ。
 
@@ -78,7 +104,7 @@ private-import の項目は完了しているが、Tenancy の文脈の運搬と
 
 ## タスク
 
-- [ ] T001 [Inventory] 前提の項目の完了後に循環と辺を再計測する。
+- [x] T001 [Inventory] 前提の項目の完了後に循環と辺を再計測する。
 - [ ] T002 [Design] 依存の向きを決め、逆向きの辺ごとに案を比べる。
 - [ ] T003 [Docs] 決めた向きを構造の文書へ書く。
 - [ ] T004 [App] 逆向きの辺を解消するか、組ごとに解消の項目を起票する。

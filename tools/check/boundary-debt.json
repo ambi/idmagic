@@ -64,32 +64,11 @@
       "reason": "Application and WsFederation import each other, so the edge Application -> WsFederation stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
     },
     {
-      "id": "module-cycle:Audit->IdManagement",
-      "sourceModule": "Audit",
-      "targetModule": "IdManagement",
-      "violations": ["module-cycle:Audit->IdManagement"],
-      "reason": "Audit and IdManagement import each other, so the edge Audit -> IdManagement stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
-      "id": "module-cycle:Audit->OAuth2",
-      "sourceModule": "Audit",
-      "targetModule": "OAuth2",
-      "violations": ["module-cycle:Audit->OAuth2"],
-      "reason": "Audit and OAuth2 import each other, so the edge Audit -> OAuth2 stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
       "id": "module-cycle:Authentication->Application",
       "sourceModule": "Authentication",
       "targetModule": "Application",
       "violations": ["module-cycle:Authentication->Application"],
       "reason": "Authentication and Application import each other, so the edge Authentication -> Application stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
-      "id": "module-cycle:Authentication->Audit",
-      "sourceModule": "Authentication",
-      "targetModule": "Audit",
-      "violations": ["module-cycle:Authentication->Audit"],
-      "reason": "Authentication -> Audit lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
       "id": "module-cycle:Authentication->IdManagement",
@@ -118,13 +97,6 @@
       "targetModule": "IdManagement",
       "violations": ["module-cycle:ClaimMapping->IdManagement"],
       "reason": "ClaimMapping -> IdManagement lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
-      "id": "module-cycle:IdManagement->Audit",
-      "sourceModule": "IdManagement",
-      "targetModule": "Audit",
-      "violations": ["module-cycle:IdManagement->Audit"],
-      "reason": "IdManagement and Audit import each other, so the edge IdManagement -> Audit stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
     },
     {
       "id": "module-cycle:IdManagement->Authentication",

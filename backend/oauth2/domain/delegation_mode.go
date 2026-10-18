@@ -1,5 +1,7 @@
 package domain
 
+import "github.com/ambi/idmagic/backend/shared/spec"
+
 // PrincipalTypeAgent は access token の `principal_type` claim が Agent を表す値。
 // 発行側 (tokens_jose) と判定側がこの 1 つの定数を共有する。
 const PrincipalTypeAgent = "agent"
@@ -7,17 +9,17 @@ const PrincipalTypeAgent = "agent"
 // DelegationMode はトークンが今どの立場で振る舞っているかの区別。
 // 新しい永続状態ではなく `act` チェーンと principal 種別から導出する派生値なので、
 // クレームと食い違う第二の真実は生まれない。
-type DelegationMode string
+type DelegationMode = spec.DelegationMode
 
 const (
 	// DelegationModeDirect は代行が無く、subject が人間の利用者である場合。
-	DelegationModeDirect DelegationMode = "direct"
+	DelegationModeDirect = spec.DelegationModeDirect
 	// DelegationModeAutonomous は代行が無く、subject 自身が非人間のプリンシパル
 	// (Agent または client) である場合。エージェントの自律実行がこれに当たる。
-	DelegationModeAutonomous DelegationMode = "autonomous"
+	DelegationModeAutonomous = spec.DelegationModeAutonomous
 	// DelegationModeOnBehalfOf は `act` に subject と異なる行為者がいる場合。
 	// エージェントが利用者を代理している状態を表す。
-	DelegationModeOnBehalfOf DelegationMode = "on_behalf_of"
+	DelegationModeOnBehalfOf = spec.DelegationModeOnBehalfOf
 )
 
 // DelegationSubject は委譲モードの導出に必要な入力。トークンのクレームから

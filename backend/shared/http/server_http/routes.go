@@ -377,7 +377,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		// d.UserRepo (トップレベル) は wi-178 移行中の非推奨テスト互換フィールドで、実運用の
 		// bootstrap では設定されない。username -> user_id 解決 (wi-147) には
 		// d.IdManagement.UserRepo を使う。
-		UserRepo: d.IdManagement.UserRepo,
+		LookupUsername: auditUsernameLookup(d.IdManagement.UserRepo),
 	})
 
 	d.Authentication.RegisterRoutes(g, authRoutes, d.OAuth2.SessionTokenRevoker(), d.OAuth2.SignInContinuation(oauthRoutes))

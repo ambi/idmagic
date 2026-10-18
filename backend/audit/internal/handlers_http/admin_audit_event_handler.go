@@ -18,8 +18,8 @@ import (
 
 	auditusecases "github.com/ambi/idmagic/backend/audit/internal/usecases"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	oauth2domain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -354,9 +354,9 @@ var auditActorTypeChoices = []string{auditports.ActorTypeUser, auditports.ActorT
 // auditDelegationModeChoices は delegation.mode フィルタの選択肢。REQ-OAUTH2-049 が定める
 // 列挙をそのまま使い、監査側で別の一覧を持たない。
 var auditDelegationModeChoices = []string{
-	string(oauth2domain.DelegationModeDirect),
-	string(oauth2domain.DelegationModeAutonomous),
-	string(oauth2domain.DelegationModeOnBehalfOf),
+	string(spec.DelegationModeDirect),
+	string(spec.DelegationModeAutonomous),
+	string(spec.DelegationModeOnBehalfOf),
 }
 
 // handleAdminAuditEventSearchOptions は event.type / outcome を選択式にするための選択肢一覧を
@@ -410,24 +410,24 @@ func (d Deps) parseAuditEventQuery(c *echo.Context, actor *support.Principal, sc
 		q.UserID = userID
 	}
 	// username (wi-147): 実アカウントが常に確定するイベントの検索用。payload に username/hash を
-	// 持たせず、検索時に UserRepo で user_id へ解決してから既存の user_id フィルタで絞り込む。
+	// 持たせず、検索時に user_id へ解決してから既存の user_id フィルタで絞り込む。
 	// 該当ユーザーが存在しない場合は noMatch=true (0 件を返す。全件返すフォールバックはしない)。
 	if username := c.QueryParam("username"); username != "" {
-		if d.UserRepo == nil {
+		if d.LookupUsername == nil {
 			return auditports.AuditEventQuery{}, true, nil
 		}
 		resolveTenant := q.TenantID
 		if q.AllTenants {
 			resolveTenant = actor.TenantID
 		}
-		user, err := d.UserRepo.FindByUsername(c.Request().Context(), resolveTenant, username)
+		userID, found, err := d.LookupUsername(c.Request().Context(), resolveTenant, username)
 		if err != nil {
 			return auditports.AuditEventQuery{}, false, err
 		}
-		if user == nil {
+		if !found {
 			return auditports.AuditEventQuery{}, true, nil
 		}
-		q.UserID = user.ID
+		q.UserID = userID
 	}
 	if after := c.QueryParam("after"); after != "" {
 		t, err := time.Parse(time.RFC3339, after)

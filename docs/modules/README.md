@@ -135,8 +135,6 @@ flowchart LR
   Application --> Saml
   Application --> Tenancy
   Application --> WsFederation
-  Audit --> IdManagement
-  Audit --> OAuth2
   Authentication --> Application
   Authentication --> Audit
   Authentication --> IdManagement

@@ -5,6 +5,16 @@
 // 更新する。
 package spec
 
+// DelegationMode は TypeSpec の同名の列挙の Go バインディングである。
+// 値の導出は OAuth2 が所有し、ここにはワイヤ語彙だけを置く。
+type DelegationMode string
+
+const (
+	DelegationModeDirect     DelegationMode = "direct"
+	DelegationModeAutonomous DelegationMode = "autonomous"
+	DelegationModeOnBehalfOf DelegationMode = "on_behalf_of"
+)
+
 // ===============================================================
 // TypeSpec の enum を Go の typed string で表す。
 // ワイヤ形式は TypeSpec の宣言と同じ snake_case。

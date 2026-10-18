@@ -6,7 +6,6 @@ import (
 	"github.com/ambi/idmagic/backend/audit/internal/handlers_http"
 	"github.com/ambi/idmagic/backend/audit/internal/usecases"
 	"github.com/ambi/idmagic/backend/audit/ports"
-	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/salts_memory"
 	"github.com/ambi/idmagic/backend/shared/security/salts_postgres"
@@ -34,12 +33,12 @@ func RecordWriterInTx(tx pgx.Tx) ports.AuditEventWriter { return db_postgres.Rec
 type RouteDeps struct {
 	support.Deps
 	*support.Authenticator
-	UserRepo userports.UserRepository
+	LookupUsername ports.UsernameLookup
 }
 
 func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
 	handlers_http.RegisterRoutes(g, handlers_http.Deps{
-		Deps: d.Deps, Authenticator: d.Authenticator, UserRepo: d.UserRepo,
+		Deps: d.Deps, Authenticator: d.Authenticator, LookupUsername: d.LookupUsername,
 		AuditEventRepo: m.AuditEventRepo, TenantSaltStore: m.TenantSaltStore,
 	})
 }
