@@ -5,15 +5,16 @@ import (
 	"testing"
 	"time"
 
+	userschemaports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // 実装がポートを満たすことをコンパイル時に保証する。
-var _ tenantports.TenantUserAttributeSchemaRepository = (*TenantUserAttributeSchemaRepository)(nil)
+var _ userschemaports.TenantUserAttributeSchemaRepository = (*TenantUserAttributeSchemaRepository)(nil)
 
 func TestTenantUserAttributeSchemaRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()

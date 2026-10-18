@@ -20,6 +20,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
+	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -120,10 +121,10 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 	e := echo.New()
 	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", testing_tenant.ResolveDefault), tenancyhttp.Deps{
 		Issuer: quotaTestIssuer, Contract: spec.CurrentRuntimeContract(),
-		Authenticator: authn,
-		TenantRepo:    tenantRepo,
-		UserRepo:      userRepo,
-		QuotaRepo:     quotas,
+		Authenticator:         authn,
+		TenantRepo:            tenantRepo,
+		TestNotificationActor: tenancydeps.TestNotificationActors(userRepo),
+		QuotaRepo:             quotas,
 	})
 	return &quotaTestServer{e: e, quotas: quotas, authn: authn}
 }

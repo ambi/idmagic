@@ -24,7 +24,7 @@ var ErrInvalidDynamicGroupRule = errors.New("invalid dynamic group rule")
 type DynamicGroupDeps struct {
 	GroupRepo  groupports.GroupRepository
 	UserRepo   userports.UserRepository
-	SchemaRepo tenantports.TenantUserAttributeSchemaRepository
+	SchemaRepo userports.TenantUserAttributeSchemaRepository
 	// Jobs は再評価のジョブを投入する。nil のときは、ジョブを使わずにその場で再評価する。
 	Jobs jobsports.Enqueuer
 	Emit func(spec.DomainEvent) error

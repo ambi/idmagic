@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	userschemaports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 
@@ -57,7 +59,7 @@ type rulesServer struct {
 	tenants   *memory.TenantRepository
 	branding  *memory.TenantBrandingRepository
 	templates *memory.NotificationTemplateRepository
-	schemas   tenantports.TenantUserAttributeSchemaRepository
+	schemas   userschemaports.TenantUserAttributeSchemaRepository
 	groups    groupports.GroupRepository
 	events    *[]spec.DomainEvent
 }

@@ -8,13 +8,6 @@
       "reason": "ApiTokens and OAuth2 import each other, so the edge ApiTokens -> OAuth2 stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
     },
     {
-      "id": "module-cycle:ApiTokens->Tenancy",
-      "sourceModule": "ApiTokens",
-      "targetModule": "Tenancy",
-      "violations": ["module-cycle:ApiTokens->Tenancy"],
-      "reason": "ApiTokens -> Tenancy lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
       "id": "module-cycle:Application->Authentication",
       "sourceModule": "Application",
       "targetModule": "Authentication",
@@ -50,13 +43,6 @@
       "reason": "Application and Saml import each other, so the edge Application -> Saml stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
     },
     {
-      "id": "module-cycle:Application->Tenancy",
-      "sourceModule": "Application",
-      "targetModule": "Tenancy",
-      "violations": ["module-cycle:Application->Tenancy"],
-      "reason": "Application -> Tenancy lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
       "id": "module-cycle:Application->WsFederation",
       "sourceModule": "Application",
       "targetModule": "WsFederation",
@@ -85,13 +71,6 @@
       "reason": "Authentication and OAuth2 import each other, so the edge Authentication -> OAuth2 stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
     },
     {
-      "id": "module-cycle:Authentication->Tenancy",
-      "sourceModule": "Authentication",
-      "targetModule": "Tenancy",
-      "violations": ["module-cycle:Authentication->Tenancy"],
-      "reason": "Authentication and Tenancy import each other, so the edge Authentication -> Tenancy stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
       "id": "module-cycle:ClaimMapping->IdManagement",
       "sourceModule": "ClaimMapping",
       "targetModule": "IdManagement",
@@ -106,32 +85,11 @@
       "reason": "IdManagement and Authentication import each other, so the edge IdManagement -> Authentication stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
     },
     {
-      "id": "module-cycle:IdManagement->Jobs",
-      "sourceModule": "IdManagement",
-      "targetModule": "Jobs",
-      "violations": ["module-cycle:IdManagement->Jobs"],
-      "reason": "IdManagement -> Jobs lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
       "id": "module-cycle:IdManagement->OAuth2",
       "sourceModule": "IdManagement",
       "targetModule": "OAuth2",
       "violations": ["module-cycle:IdManagement->OAuth2"],
       "reason": "IdManagement and OAuth2 import each other, so the edge IdManagement -> OAuth2 stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
-      "id": "module-cycle:IdManagement->Tenancy",
-      "sourceModule": "IdManagement",
-      "targetModule": "Tenancy",
-      "violations": ["module-cycle:IdManagement->Tenancy"],
-      "reason": "IdManagement and Tenancy import each other, so the edge IdManagement -> Tenancy stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
-      "id": "module-cycle:Jobs->Tenancy",
-      "sourceModule": "Jobs",
-      "targetModule": "Tenancy",
-      "violations": ["module-cycle:Jobs->Tenancy"],
-      "reason": "Jobs -> Tenancy lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
       "id": "module-cycle:OAuth2->ApiTokens",
@@ -169,32 +127,11 @@
       "reason": "OAuth2 and IdManagement import each other, so the edge OAuth2 -> IdManagement stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
     },
     {
-      "id": "module-cycle:OAuth2->Jobs",
-      "sourceModule": "OAuth2",
-      "targetModule": "Jobs",
-      "violations": ["module-cycle:OAuth2->Jobs"],
-      "reason": "OAuth2 -> Jobs lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
       "id": "module-cycle:OAuth2->SharedSignals",
       "sourceModule": "OAuth2",
       "targetModule": "SharedSignals",
       "violations": ["module-cycle:OAuth2->SharedSignals"],
       "reason": "OAuth2 -> SharedSignals lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
-      "id": "module-cycle:OAuth2->SigningKeys",
-      "sourceModule": "OAuth2",
-      "targetModule": "SigningKeys",
-      "violations": ["module-cycle:OAuth2->SigningKeys"],
-      "reason": "OAuth2 -> SigningKeys lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
-      "id": "module-cycle:OAuth2->Tenancy",
-      "sourceModule": "OAuth2",
-      "targetModule": "Tenancy",
-      "violations": ["module-cycle:OAuth2->Tenancy"],
-      "reason": "OAuth2 -> Tenancy lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
       "id": "module-cycle:OAuth2->WorkloadIdentity",
@@ -239,46 +176,11 @@
       "reason": "SharedSignals -> IdManagement lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
-      "id": "module-cycle:SharedSignals->SigningKeys",
-      "sourceModule": "SharedSignals",
-      "targetModule": "SigningKeys",
-      "violations": ["module-cycle:SharedSignals->SigningKeys"],
-      "reason": "SharedSignals -> SigningKeys lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
-      "id": "module-cycle:SharedSignals->Tenancy",
-      "sourceModule": "SharedSignals",
-      "targetModule": "Tenancy",
-      "violations": ["module-cycle:SharedSignals->Tenancy"],
-      "reason": "SharedSignals -> Tenancy lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
-      "id": "module-cycle:SigningKeys->Tenancy",
-      "sourceModule": "SigningKeys",
-      "targetModule": "Tenancy",
-      "violations": ["module-cycle:SigningKeys->Tenancy"],
-      "reason": "SigningKeys -> Tenancy lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
-      "id": "module-cycle:Tenancy->IdManagement",
-      "sourceModule": "Tenancy",
-      "targetModule": "IdManagement",
-      "violations": ["module-cycle:Tenancy->IdManagement"],
-      "reason": "Tenancy and IdManagement import each other, so the edge Tenancy -> IdManagement stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
       "id": "module-cycle:WorkloadIdentity->IdManagement",
       "sourceModule": "WorkloadIdentity",
       "targetModule": "IdManagement",
       "violations": ["module-cycle:WorkloadIdentity->IdManagement"],
       "reason": "WorkloadIdentity -> IdManagement lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
-      "id": "module-cycle:WorkloadIdentity->Tenancy",
-      "sourceModule": "WorkloadIdentity",
-      "targetModule": "Tenancy",
-      "violations": ["module-cycle:WorkloadIdentity->Tenancy"],
-      "reason": "WorkloadIdentity -> Tenancy lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
       "id": "module-cycle:WsFederation->Application",

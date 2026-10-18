@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // TenantUserAttributeSchemaRepository は tenant ごとの custom attribute 定義集合
@@ -11,7 +11,9 @@ import (
 // 持ち、tenant 削除時に Delete で cascade する。
 type TenantUserAttributeSchemaRepository interface {
 	// FindByTenant は tenant の schema を返す。未定義なら nil, nil。
-	FindByTenant(ctx context.Context, tenantID string) (*userdomain.TenantUserAttributeSchema, error)
-	Save(ctx context.Context, schema *userdomain.TenantUserAttributeSchema) error
+	FindByTenant(ctx context.Context, tenantID string) (*domain.TenantUserAttributeSchema, error)
+	Save(ctx context.Context, schema *domain.TenantUserAttributeSchema) error
 	Delete(ctx context.Context, tenantID string) error
+	Validate(schema *domain.TenantUserAttributeSchema) error
+	Builtin() []domain.UserAttributeDef
 }

@@ -51,7 +51,7 @@ type AdminGroupDeps struct {
 	// GroupAttrSchemaRepo validates Group.Attributes against the tenant's
 	// TenantGroupAttributeSchema. nil rejects any non-empty Attributes (there is no
 	// builtin catalog to fall back to, unlike User's AttrSchemaRepo).
-	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
+	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
 	// ProvisioningNotifier reports a committed Group mutation to outbound
 	// Provisioning, mirroring the User side. nil means outbound provisioning is
 	// not wired. Whether a delivery results is the connection's decision
@@ -98,7 +98,7 @@ func normalizeGroupEmail(email *string) (*string, error) {
 // effectiveGroupAttributeDefs returns the tenant's Group attribute definitions. Unlike
 // User, Group has no builtin catalog, so an unwired repo or an undefined tenant schema
 // resolves to an empty definition set rather than falling back to defaults.
-func effectiveGroupAttributeDefs(ctx context.Context, repo tenantports.TenantGroupAttributeSchemaRepository, tenantID string) ([]groupdomain.GroupAttributeDef, error) {
+func effectiveGroupAttributeDefs(ctx context.Context, repo groupports.TenantGroupAttributeSchemaRepository, tenantID string) ([]groupdomain.GroupAttributeDef, error) {
 	if repo == nil {
 		return nil, nil
 	}

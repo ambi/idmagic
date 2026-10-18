@@ -127,7 +127,7 @@ type RouteDeps struct {
 	// WorkloadVerifier は token exchange の外部ワークロードのトークンを検証する。nil は拒否する。
 	WorkloadVerifier    oauthports.WorkloadTokenVerifier
 	ManagedTokenRevoker tokenusecases.ManagedTokenRevoker
-	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
+	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
 	QuotaRepo           tenantports.QuotaRepository
 
 	AuthnResolver authdomain.AuthenticationContextResolver

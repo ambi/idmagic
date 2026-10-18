@@ -7,7 +7,6 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 
@@ -15,20 +14,20 @@ import (
 )
 
 type GroupAttributeSchemaResponse struct {
-	TenantID   string                          `json:"tenant_id"`
-	Attributes []groupdomain.GroupAttributeDef `json:"attributes"`
-	CreatedAt  time.Time                       `json:"created_at"`
-	UpdatedAt  time.Time                       `json:"updated_at"`
+	TenantID   string                            `json:"tenant_id"`
+	Attributes []tenancydomain.GroupAttributeDef `json:"attributes"`
+	CreatedAt  time.Time                         `json:"created_at"`
+	UpdatedAt  time.Time                         `json:"updated_at"`
 }
 
 type groupAttributeSchemaUpdateRequest struct {
-	Attributes []groupdomain.GroupAttributeDef `json:"attributes"`
+	Attributes []tenancydomain.GroupAttributeDef `json:"attributes"`
 }
 
-func toGroupAttributeSchemaResponse(schema *groupdomain.TenantGroupAttributeSchema) GroupAttributeSchemaResponse {
+func toGroupAttributeSchemaResponse(schema *tenancydomain.TenantGroupAttributeSchema) GroupAttributeSchemaResponse {
 	attributes := schema.Attributes
 	if attributes == nil {
-		attributes = []groupdomain.GroupAttributeDef{}
+		attributes = []tenancydomain.GroupAttributeDef{}
 	}
 	return GroupAttributeSchemaResponse{
 		TenantID:   schema.TenantID,

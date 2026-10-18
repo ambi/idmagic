@@ -11,10 +11,11 @@ import (
 	"testing"
 	"time"
 
+	userschemaports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func planRows(t *testing.T, f *groupImportFixture, document string) []groupdomain.GroupImportRowPlan {
@@ -223,7 +224,7 @@ func (ruleSchemaRepo) Delete(context.Context, string) error { return errReadOnly
 
 var errReadOnlySchemaRepo = errors.New("the group import test schema repository is read-only")
 
-var _ tenantports.TenantUserAttributeSchemaRepository = ruleSchemaRepo{}
+var _ userschemaports.TenantUserAttributeSchemaRepository = ruleSchemaRepo{}
 
 // `email` と `custom:<key>` は他の書き込み可能列と同じ規則に従う。列が無ければ維持、
 // 空セルは消去、値が不正なら行を拒否して連絡先も属性も変更しない。

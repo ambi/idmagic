@@ -9,9 +9,8 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
-// TenantAttributeSchemaRepo resolves a tenant's custom attribute schema. Satisfied
-// structurally by Tenancy's ports.TenantUserAttributeSchemaRepository, without an
-// import dependency on the Tenancy context.
+// TenantAttributeSchemaRepo はテナントのカスタム属性定義を読む。
+// IdManagement の保存ポートが構造的に満たし、Tenancy の管理用の表現には依存しない。
 type TenantAttributeSchemaRepo interface {
 	FindByTenant(ctx context.Context, tenantID string) (*userdomain.TenantUserAttributeSchema, error)
 }

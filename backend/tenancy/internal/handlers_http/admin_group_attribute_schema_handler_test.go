@@ -12,8 +12,9 @@ import (
 	"testing"
 	"time"
 
+	groupschemaports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
@@ -22,7 +23,6 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/internal/handlers_http"
 
 	"github.com/labstack/echo/v5"
@@ -30,7 +30,7 @@ import (
 
 func newGroupAttributeSchemaServer(
 	t *testing.T, actor *userdomain.User, tenants ...*domain.Tenant,
-) (*echo.Echo, tenantports.TenantGroupAttributeSchemaRepository, *[]spec.DomainEvent) {
+) (*echo.Echo, groupschemaports.TenantGroupAttributeSchemaRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	if actor != nil {
@@ -56,7 +56,7 @@ func newGroupAttributeSchemaServer(
 		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
 		TenantRepo: tenantRepo,
 		Emit:       emit, UserRepo: userRepo,
-		Tenancy:       tenancy.Module{GroupAttrSchemaRepo: schemaRepo},
+		IdManagement:  idmanagement.Module{GroupAttrSchemaRepo: schemaRepo},
 		AuthnResolver: resolver,
 	})
 	return e, schemaRepo, &events

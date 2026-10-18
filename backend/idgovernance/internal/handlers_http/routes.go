@@ -13,7 +13,6 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -36,7 +35,7 @@ type Deps struct {
 	AssignmentRepo  appports.AssignmentRepository
 	Notifier        sharednotification.Notifier
 	// AttrSchemaRepo は保存と有効化で、フィルターのフィールドをテナントの属性スキーマと照合する。
-	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
+	AttrSchemaRepo userports.TenantUserAttributeSchemaRepository
 }
 
 // RegisterRoutes wires the 11 lifecycle workflow admin endpoints.

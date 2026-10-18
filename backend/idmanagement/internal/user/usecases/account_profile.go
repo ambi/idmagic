@@ -26,7 +26,7 @@ var ErrAttributeNotEditable = errors.New("attribute is not user-editable")
 
 type AccountProfileDeps struct {
 	UserRepo       userports.UserRepository
-	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
+	AttrSchemaRepo userports.TenantUserAttributeSchemaRepository
 	Emit           func(spec.DomainEvent) error
 }
 

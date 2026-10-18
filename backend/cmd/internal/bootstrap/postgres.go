@@ -17,6 +17,7 @@ import (
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/provisioning"
+	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
 
 	"github.com/ambi/idmagic/backend/saml"
 
@@ -58,8 +59,8 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		AuditInTx:   audit.RecordWriterInTx,
 		HistoryInTx: authentication.PasswordHistoryWriterInTx,
 	})
-	tenancyModule.AttrSchemaRepo = idmModule.AttrSchemaRepo
-	tenancyModule.GroupAttrSchemaRepo = idmModule.GroupAttrSchemaRepo
+	tenancyModule.AttrSchemaRepo = tenancydeps.UserAttributeSchemas(idmModule.AttrSchemaRepo)
+	tenancyModule.GroupAttrSchemaRepo = tenancydeps.GroupAttributeSchemas(idmModule.GroupAttrSchemaRepo)
 	// NewKeyStore bootstraps the default tenant signing key, whose FK requires
 	// the tenant row to exist first. Fresh databases (including `mise run dev`) must
 	// establish this root aggregate before assembling dependent adapters.

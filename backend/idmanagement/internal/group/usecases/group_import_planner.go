@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	userschemaports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
@@ -28,7 +30,7 @@ type GroupImportPlanDeps struct {
 	GroupRepo groupports.GroupRepository
 	// SchemaRepo は動的規則の式が参照できる User 属性定義を供給する。nil なら
 	// 組み込み定義だけを使う。
-	SchemaRepo tenantports.TenantUserAttributeSchemaRepository
+	SchemaRepo userschemaports.TenantUserAttributeSchemaRepository
 	// GroupSchemaReader は `custom:<key>` 列になりうる Group 属性定義を供給する。
 	// nil のテナントは custom 列を持たない。
 	GroupSchemaReader groupports.EffectiveGroupAttributeSchemaReader

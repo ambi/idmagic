@@ -20,6 +20,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
+	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -97,9 +98,9 @@ func newAuditTestServer(t *testing.T, opts auditTestOptions) *auditTestServer {
 			}}}.SessionAuthentications(),
 			AccessTokens: oauth2.Module{TokenIntrospector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}}.ResourceAccessTokens(nil, nil),
 		},
-		TenantRepo: tenantRepo,
-		UserRepo:   userRepo,
-		QuotaRepo:  memory.NewQuotaRepository(),
+		TenantRepo:            tenantRepo,
+		TestNotificationActor: tenancydeps.TestNotificationActors(userRepo),
+		QuotaRepo:             memory.NewQuotaRepository(),
 	}
 	if opts.failQuotaSave {
 		deps.QuotaRepo = quotaSaveFailingRepository{QuotaRepository: memory.NewQuotaRepository()}

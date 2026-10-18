@@ -11,11 +11,11 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
 )
 
 func TestGetUserAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
-	repo := idmanagement.NewMemoryModule().AttrSchemaRepo
+	repo := tenancydeps.UserAttributeSchemas(idmanagement.NewMemoryModule().AttrSchemaRepo)
 	schema, err := GetUserAttributeSchema(context.Background(), repo, domain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
@@ -26,10 +26,10 @@ func TestGetUserAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
 }
 
 func TestUpdateUserAttributeSchemaPersistsCustomDefs(t *testing.T) {
-	repo := idmanagement.NewMemoryModule().AttrSchemaRepo
+	repo := tenancydeps.UserAttributeSchemas(idmanagement.NewMemoryModule().AttrSchemaRepo)
 	ctx := context.Background()
-	defs := []userdomain.UserAttributeDef{
-		{Key: "region", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityClaimExposed, ClaimName: new("region")},
+	defs := []domain.UserAttributeDef{
+		{Key: "region", Type: string(idmdomain.AttributeTypeString), Visibility: string(idmdomain.AttrVisibilityClaimExposed), ClaimName: new("region")},
 	}
 	saved, err := UpdateUserAttributeSchema(ctx, repo, domain.DefaultTenantID, defs, time.Now().UTC())
 	if err != nil {
@@ -48,9 +48,9 @@ func TestUpdateUserAttributeSchemaPersistsCustomDefs(t *testing.T) {
 }
 
 func TestUpdateUserAttributeSchemaRejectsBuiltinCollision(t *testing.T) {
-	repo := idmanagement.NewMemoryModule().AttrSchemaRepo
-	defs := []userdomain.UserAttributeDef{
-		{Key: "nickname", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityClaimExposed},
+	repo := tenancydeps.UserAttributeSchemas(idmanagement.NewMemoryModule().AttrSchemaRepo)
+	defs := []domain.UserAttributeDef{
+		{Key: "nickname", Type: string(idmdomain.AttributeTypeString), Visibility: string(idmdomain.AttrVisibilityClaimExposed)},
 	}
 	if _, err := UpdateUserAttributeSchema(
 		context.Background(), repo, domain.DefaultTenantID, defs, time.Now().UTC(),
@@ -60,10 +60,10 @@ func TestUpdateUserAttributeSchemaRejectsBuiltinCollision(t *testing.T) {
 }
 
 func TestUpdateUserAttributeSchemaAllowsEmptyClear(t *testing.T) {
-	repo := idmanagement.NewMemoryModule().AttrSchemaRepo
+	repo := tenancydeps.UserAttributeSchemas(idmanagement.NewMemoryModule().AttrSchemaRepo)
 	ctx := context.Background()
 	if _, err := UpdateUserAttributeSchema(ctx, repo, domain.DefaultTenantID,
-		[]userdomain.UserAttributeDef{{Key: "region", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityAdminReadable}},
+		[]domain.UserAttributeDef{{Key: "region", Type: string(idmdomain.AttributeTypeString), Visibility: string(idmdomain.AttrVisibilityAdminReadable)}},
 		time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}

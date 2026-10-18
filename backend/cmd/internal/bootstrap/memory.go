@@ -16,6 +16,7 @@ import (
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/provisioning"
+	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
 
 	"github.com/ambi/idmagic/backend/saml"
 
@@ -55,8 +56,8 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	idmModule := idmanagement.NewMemoryModule()
 	authnModule := authentication.NewMemoryModule(idmModule.UserRepo)
 	idmModule = idmModule.WithMemoryUserImport(authnModule.PasswordHistoryRepo, tenancyModule.QuotaRepo, auditModule.AuditEventRepo)
-	tenancyModule.AttrSchemaRepo = idmModule.AttrSchemaRepo
-	tenancyModule.GroupAttrSchemaRepo = idmModule.GroupAttrSchemaRepo
+	tenancyModule.AttrSchemaRepo = tenancydeps.UserAttributeSchemas(idmModule.AttrSchemaRepo)
+	tenancyModule.GroupAttrSchemaRepo = tenancydeps.GroupAttributeSchemas(idmModule.GroupAttrSchemaRepo)
 	userRepo := idmModule.UserRepo
 	governanceModule := idgovernance.NewMemoryModule(userRepo)
 	applicationModule := application.NewMemoryModule()

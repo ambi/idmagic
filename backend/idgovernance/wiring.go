@@ -17,7 +17,6 @@ import (
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v5"
@@ -52,7 +51,7 @@ type RouteDeps struct {
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
 	Notifier        notificationports.Notifier
-	AttrSchemaRepo  tenantports.TenantUserAttributeSchemaRepository
+	AttrSchemaRepo  userports.TenantUserAttributeSchemaRepository
 }
 
 func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {

@@ -13,8 +13,9 @@ import (
 	"testing"
 	"time"
 
+	userschemaports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
@@ -30,7 +31,7 @@ import (
 
 func newUserAttributeSchemaServer(
 	t *testing.T, actor *userdomain.User, tenants ...*domain.Tenant,
-) (*echo.Echo, tenantports.TenantUserAttributeSchemaRepository, *[]spec.DomainEvent) {
+) (*echo.Echo, userschemaports.TenantUserAttributeSchemaRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	if actor != nil {

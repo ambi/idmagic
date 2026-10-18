@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -17,14 +17,14 @@ var ErrInvalidUserAttributeSchema = errors.New("invalid attribute schema")
 // 空集合の schema を返し、呼び出し側が常に non-nil を扱えるようにする。
 func GetUserAttributeSchema(
 	ctx context.Context, repo tenantports.TenantUserAttributeSchemaRepository, tenantID string,
-) (*userdomain.TenantUserAttributeSchema, error) {
+) (*tenancydomain.TenantUserAttributeSchema, error) {
 	schema, err := repo.FindByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	if schema == nil {
 		now := time.Now().UTC()
-		return &userdomain.TenantUserAttributeSchema{TenantID: tenantID, Attributes: []userdomain.UserAttributeDef{}, CreatedAt: now, UpdatedAt: now}, nil
+		return &tenancydomain.TenantUserAttributeSchema{TenantID: tenantID, Attributes: []tenancydomain.UserAttributeDef{}, CreatedAt: now, UpdatedAt: now}, nil
 	}
 	return schema, nil
 }
@@ -33,12 +33,12 @@ func GetUserAttributeSchema(
 // 組み込み属性との key 衝突・重複 key を拒否したうえで保存する。
 func UpdateUserAttributeSchema(
 	ctx context.Context, repo tenantports.TenantUserAttributeSchemaRepository,
-	tenantID string, defs []userdomain.UserAttributeDef, now time.Time,
-) (*userdomain.TenantUserAttributeSchema, error) {
+	tenantID string, defs []tenancydomain.UserAttributeDef, now time.Time,
+) (*tenancydomain.TenantUserAttributeSchema, error) {
 	if defs == nil {
-		defs = []userdomain.UserAttributeDef{}
+		defs = []tenancydomain.UserAttributeDef{}
 	}
-	schema := &userdomain.TenantUserAttributeSchema{
+	schema := &tenancydomain.TenantUserAttributeSchema{
 		TenantID:   tenantID,
 		Attributes: defs,
 		CreatedAt:  now,
@@ -51,7 +51,7 @@ func UpdateUserAttributeSchema(
 	if existing != nil && !existing.CreatedAt.IsZero() {
 		schema.CreatedAt = existing.CreatedAt
 	}
-	if err := schema.Validate(); err != nil {
+	if err := repo.Validate(schema); err != nil {
 		return nil, errors.Join(ErrInvalidUserAttributeSchema, err)
 	}
 	if err := repo.Save(ctx, schema); err != nil {

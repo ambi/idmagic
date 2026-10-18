@@ -5,8 +5,6 @@
 package handlers_http
 
 import (
-	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
@@ -30,10 +28,10 @@ type Deps struct {
 	BrandingAssetStore       tenantports.TenantBrandingAssetStore
 	NotificationTemplateRepo tenantports.NotificationTemplateRepository
 	// Notifier はテンプレート編集画面からのテスト送信に使う (wi-288)。
-	Notifier  notificationports.Notifier
-	UserRepo  userports.UserRepository
-	GroupRepo groupports.GroupRepository
-	QuotaRepo tenantports.QuotaRepository
+	Notifier                 notificationports.Notifier
+	TestNotificationActor    tenantports.TestNotificationActorReader
+	GroupAttributeReferences tenantports.DynamicGroupAttributeReferences
+	QuotaRepo                tenantports.QuotaRepository
 	// FederationSigner resolves the request tenant's active public XML credential.
 	FederationSigner samltoken.SignerProvider
 }

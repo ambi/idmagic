@@ -5,15 +5,12 @@ import (
 
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-// TenantGroupCSVSchemaReader adapts the Tenancy-owned schema repository to the
-// narrow inward-facing Group CSV port. Group has no builtin catalogue to union,
-// so an undefined tenant schema resolves to no custom columns at all rather
-// than to a default set.
+// TenantGroupCSVSchemaReader は IdManagement の属性定義の保存先を Group CSV の照会ポートへ接続する。
+// Group に組み込みの属性はなく、未定義のスキーマは追加の列を返さない。
 type TenantGroupCSVSchemaReader struct {
-	Repository tenantports.TenantGroupAttributeSchemaRepository
+	Repository groupports.TenantGroupAttributeSchemaRepository
 }
 
 func (r TenantGroupCSVSchemaReader) EffectiveGroupAttributeDefs(ctx context.Context, tenantID string) ([]groupdomain.GroupAttributeDef, error) {

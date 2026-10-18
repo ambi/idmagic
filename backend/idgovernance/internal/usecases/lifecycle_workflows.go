@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	userschemaports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
@@ -93,7 +95,7 @@ type LifecycleWorkflowDeps struct {
 	// ワークフローと同じテナントで照合するために使う。
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
-	AttrSchemaRepo  tenantports.TenantUserAttributeSchemaRepository
+	AttrSchemaRepo  userschemaports.TenantUserAttributeSchemaRepository
 	Emit            func(spec.DomainEvent) error
 }
 

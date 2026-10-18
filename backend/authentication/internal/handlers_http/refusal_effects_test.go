@@ -248,8 +248,7 @@ func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *aut
 		Issuer:       authRefusalIssuer,
 		TenantRepo:   tenants,
 		Emit:         func(event spec.DomainEvent) { *fixture.events = append(*fixture.events, event) },
-		IdManagement: idmanagement.Module{UserRepo: users},
-		Tenancy:      tenancy.Module{AttrSchemaRepo: idmanagement.NewMemoryModule().AttrSchemaRepo},
+		IdManagement: idmanagement.Module{UserRepo: users, AttrSchemaRepo: idmanagement.NewMemoryModule().AttrSchemaRepo},
 		Authentication: authentication.Module{
 			SessionStore: fixture.sessions, SessionManager: sessionManager, AuthnResolver: sessionManager,
 			TrustedDeviceRepo: fixture.devices,

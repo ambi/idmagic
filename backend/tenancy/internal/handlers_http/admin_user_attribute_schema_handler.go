@@ -7,8 +7,6 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 
@@ -16,26 +14,26 @@ import (
 )
 
 type UserAttributeSchemaResponse struct {
-	TenantID   string                        `json:"tenant_id"`
-	Attributes []userdomain.UserAttributeDef `json:"attributes"`
-	Builtin    []userdomain.UserAttributeDef `json:"builtin"`
-	CreatedAt  time.Time                     `json:"created_at"`
-	UpdatedAt  time.Time                     `json:"updated_at"`
+	TenantID   string                           `json:"tenant_id"`
+	Attributes []tenancydomain.UserAttributeDef `json:"attributes"`
+	Builtin    []tenancydomain.UserAttributeDef `json:"builtin"`
+	CreatedAt  time.Time                        `json:"created_at"`
+	UpdatedAt  time.Time                        `json:"updated_at"`
 }
 
 type userAttributeSchemaUpdateRequest struct {
-	Attributes []userdomain.UserAttributeDef `json:"attributes"`
+	Attributes []tenancydomain.UserAttributeDef `json:"attributes"`
 }
 
-func toUserAttributeSchemaResponse(schema *userdomain.TenantUserAttributeSchema) UserAttributeSchemaResponse {
+func (d Deps) toUserAttributeSchemaResponse(schema *tenancydomain.TenantUserAttributeSchema) UserAttributeSchemaResponse {
 	attributes := schema.Attributes
 	if attributes == nil {
-		attributes = []userdomain.UserAttributeDef{}
+		attributes = []tenancydomain.UserAttributeDef{}
 	}
 	return UserAttributeSchemaResponse{
 		TenantID:   schema.TenantID,
 		Attributes: attributes,
-		Builtin:    userdomain.BuiltinUserAttributeDefs(),
+		Builtin:    d.AttrSchemaRepo.Builtin(),
 		CreatedAt:  schema.CreatedAt,
 		UpdatedAt:  schema.UpdatedAt,
 	}
@@ -50,7 +48,7 @@ func (d Deps) handleGetUserAttributeSchema(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toUserAttributeSchemaResponse(schema))
+	return support.NoStoreJSON(c, http.StatusOK, d.toUserAttributeSchemaResponse(schema))
 }
 
 func (d Deps) handleUpdateUserAttributeSchema(c *echo.Context) error {
@@ -65,12 +63,12 @@ func (d Deps) handleUpdateUserAttributeSchema(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	if d.GroupRepo != nil {
+	if d.GroupAttributeReferences != nil {
 		existing, findErr := d.AttrSchemaRepo.FindByTenant(c.Request().Context(), actor.TenantID)
 		if findErr != nil {
 			return findErr
 		}
-		nextTypes := make(map[string]idmdomain.AttributeType, len(input.Attributes))
+		nextTypes := make(map[string]string, len(input.Attributes))
 		for _, def := range input.Attributes {
 			nextTypes[def.Key] = def.Type
 		}
@@ -82,12 +80,12 @@ func (d Deps) handleUpdateUserAttributeSchema(c *echo.Context) error {
 				}
 			}
 		}
-		rules, listErr := d.GroupRepo.ListDynamicRules(c.Request().Context(), actor.TenantID)
+		references, listErr := d.GroupAttributeReferences(c.Request().Context(), actor.TenantID)
 		if listErr != nil {
 			return listErr
 		}
-		for _, rule := range rules {
-			for _, key := range rule.ReferencedAttributes {
+		for _, attributes := range references {
+			for _, key := range attributes {
 				if changed[key] {
 					return support.WriteProblem(c, http.StatusConflict, "attribute_referenced_by_dynamic_group", "An attribute referenced by a dynamic group rule cannot be deleted or have its type changed.")
 				}
@@ -112,5 +110,5 @@ func (d Deps) handleUpdateUserAttributeSchema(c *echo.Context) error {
 			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: actor.TenantID, AttributeKeys: keys,
 		})
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toUserAttributeSchemaResponse(schema))
+	return support.NoStoreJSON(c, http.StatusOK, d.toUserAttributeSchemaResponse(schema))
 }

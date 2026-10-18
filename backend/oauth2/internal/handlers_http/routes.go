@@ -73,7 +73,7 @@ type Deps struct {
 	IDTokenHintVerifier oauthports.IDTokenHintVerifier
 	AccessTokenDenylist oauthports.AccessTokenDenylist
 	ManagedTokenRevoker tokenusecases.ManagedTokenRevoker
-	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
+	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
 	Authorizer          oauthports.Authorizer
 	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (client
 	// registration) and consents (wi-160). nil skips enforcement.

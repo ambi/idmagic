@@ -13,7 +13,7 @@ import (
 // 同じイベント、端末の失効、下流への通知を伴わせる。
 func (d *Dependencies) UserLifecycleDeps() idmanagement.LifecycleDeps {
 	return idmanagement.LifecycleDeps{
-		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo, QuotaRepo: d.Tenancy.QuotaRepo,
+		AttrSchemaRepo: d.IdManagement.AttrSchemaRepo, QuotaRepo: d.Tenancy.QuotaRepo,
 		ConsentRepo: d.OAuth2.ConsentRepo, RefreshStore: d.OAuth2.RefreshStore,
 		DeviceCodeStore: d.OAuth2.DeviceCodeStore, ApprovalRequestStore: d.OAuth2.ApprovalRequestStore,
 		SessionStore: d.Authentication.SessionStore, MfaFactorRepo: d.Authentication.MfaFactorRepo,

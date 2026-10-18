@@ -97,8 +97,8 @@ func RunWorker() error {
 	deps.IdManagement.RegisterJobHandlers(handlers, idmanagement.JobHandlerDeps{
 		EnqueuerInTx:        jobs.NewEnqueuerInTx,
 		Jobs:                deps.Jobs.Repo,
-		AttrSchemaRepo:      deps.Tenancy.AttrSchemaRepo,
-		GroupAttrSchemaRepo: deps.Tenancy.GroupAttrSchemaRepo,
+		AttrSchemaRepo:      deps.IdManagement.AttrSchemaRepo,
+		GroupAttrSchemaRepo: deps.IdManagement.GroupAttrSchemaRepo,
 		UserOwnershipGuard:  deps.Sourcing.UserOwnershipGuard(),
 		GroupOwnershipGuard: deps.Sourcing.GroupOwnershipGuard(),
 		PasswordHasher:      passwords_argon2id.NewArgon2idPasswordHasher(),

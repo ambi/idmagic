@@ -15,7 +15,6 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // Fixture provides one isolated set of persistence adapters and the
@@ -23,7 +22,7 @@ import (
 type Fixture struct {
 	Users          userports.UserRepository
 	EmailTokens    userports.EmailChangeTokenStore
-	Schemas        tenantports.TenantUserAttributeSchemaRepository
+	Schemas        userports.TenantUserAttributeSchemaRepository
 	ImportRows     userports.UserImportRowCommitter
 	TenantA        string
 	TenantB        string

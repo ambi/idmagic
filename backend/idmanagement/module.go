@@ -40,8 +40,8 @@ type Module struct {
 	// いるのは、IdManagement が持つ引き金の語彙が Group と User で別だからである。
 	// プロビジョニングタスクを生むかどうかは接続の push_groups が決めるので、常に配線してよい。
 	GroupProvisioningNotifier groupports.ProvisioningNotifier
-	// AttrSchemaRepo と GroupAttrSchemaRepo は、IdManagement が実装する Tenancy の属性スキーマの
-	// 保存先である。組み立て地点が Tenancy の Module へ渡す。
-	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
-	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
+	// AttrSchemaRepo と GroupAttrSchemaRepo は IdManagement が所有する属性定義の保存先である。
+	// 組み立て地点は管理用の値へ変換するアダプターを通して Tenancy へ渡す。
+	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
+	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
 }

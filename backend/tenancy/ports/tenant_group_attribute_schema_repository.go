@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // TenantGroupAttributeSchemaRepository は tenant ごとの Group custom attribute 定義集合
@@ -12,7 +12,8 @@ import (
 // Tenancy コンテキストが所有する)。
 type TenantGroupAttributeSchemaRepository interface {
 	// FindByTenant は tenant の schema を返す。未定義なら nil, nil。
-	FindByTenant(ctx context.Context, tenantID string) (*groupdomain.TenantGroupAttributeSchema, error)
-	Save(ctx context.Context, schema *groupdomain.TenantGroupAttributeSchema) error
+	FindByTenant(ctx context.Context, tenantID string) (*domain.TenantGroupAttributeSchema, error)
+	Save(ctx context.Context, schema *domain.TenantGroupAttributeSchema) error
 	Delete(ctx context.Context, tenantID string) error
+	Validate(schema *domain.TenantGroupAttributeSchema) error
 }

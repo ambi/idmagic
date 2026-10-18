@@ -3,14 +3,14 @@ package usecases
 import (
 	"context"
 
+	userschemaports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-// TenantUserCSVSchemaReader adapts the Tenancy-owned schema repository to the
-// narrow inward-facing User CSV port.
+// TenantUserCSVSchemaReader は IdManagement の属性定義の保存先を User CSV の照会ポートへ接続する。
 type TenantUserCSVSchemaReader struct {
-	Repository tenantports.TenantUserAttributeSchemaRepository
+	Repository userschemaports.TenantUserAttributeSchemaRepository
 }
 
 func (r TenantUserCSVSchemaReader) EffectiveUserAttributeDefs(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error) {

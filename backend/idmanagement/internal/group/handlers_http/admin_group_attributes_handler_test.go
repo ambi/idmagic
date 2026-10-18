@@ -12,12 +12,12 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/internal/group/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/internal/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -37,7 +37,7 @@ func newAdminGroupHandlerWithAttrSchema(t *testing.T) (*echo.Echo, *groupmemory.
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:          "http://idp.test",
 		PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")), UserRepo: userRepo, GroupRepo: groupRepo,
-		Tenancy:       tenancy.Module{GroupAttrSchemaRepo: schemaRepo},
+		IdManagement:  idmanagement.Module{GroupAttrSchemaRepo: schemaRepo},
 		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
 	return e, schemaRepo

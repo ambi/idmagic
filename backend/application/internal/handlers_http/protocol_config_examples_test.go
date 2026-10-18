@@ -15,10 +15,11 @@ import (
 	"testing"
 	"time"
 
+	userschemaports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+
 	"github.com/ambi/idmagic/backend/authentication"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 
@@ -32,7 +33,6 @@ import (
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/wsfederation"
 
@@ -42,7 +42,7 @@ import (
 // seedAttributeSchema は、テナントが `employee_number` を `SelfReadable` で、内部属性を
 // `Private` で定義した状態を置く。具体例 006-01 の `Given` はこの定義を前提にしており、
 // 定義が無ければ規則の保存そのものが可視性 floor で拒否され、許可側を観測できない。
-func seedAttributeSchema(t *testing.T) tenantports.TenantUserAttributeSchemaRepository {
+func seedAttributeSchema(t *testing.T) userschemaports.TenantUserAttributeSchemaRepository {
 	t.Helper()
 	repo := idmanagement.NewMemoryModule().AttrSchemaRepo
 	now := time.Now().UTC()
@@ -220,7 +220,7 @@ func readOidcRules(t *testing.T, e *echo.Echo, csrf string, cookie *http.Cookie,
 // issuedClaimTypes は、保存された規則を製品が共有する 1 本のクレーム解決経路へ通し、
 // 実際に発行されるクレーム型を返す。規則が保存されたことと、そのクレームが実際に
 // 発行されることは別の主張であり、具体例は後者を言っている。
-func issuedClaimTypes(t *testing.T, schema tenantports.TenantUserAttributeSchemaRepository, rules []claimdomain.ClaimMappingRule) []string {
+func issuedClaimTypes(t *testing.T, schema userschemaports.TenantUserAttributeSchemaRepository, rules []claimdomain.ClaimMappingRule) []string {
 	t.Helper()
 	defs, err := claimports.ResolveTenantAttributeDefs(
 		context.Background(), tenancydomain.DefaultTenantID, schema)
@@ -378,7 +378,7 @@ func (r *recordedEvents) reset() {
 // 具体例の `Then` が言うイベントを観測できない。
 func newApplicationHandlerRecordingEvents(
 	t *testing.T,
-) (*echo.Echo, *recordedEvents, tenantports.TenantUserAttributeSchemaRepository) {
+) (*echo.Echo, *recordedEvents, userschemaports.TenantUserAttributeSchemaRepository) {
 	t.Helper()
 	users := idmanagement.NewMemoryModule().UserRepo
 	now := time.Now().UTC()
@@ -414,7 +414,7 @@ func newApplicationHandlerRecordingEvents(
 			SignInPolicyRepo:        appmemory.NewSignInPolicyRepository(),
 			DefaultSignInPolicyRepo: appmemory.NewDefaultSignInPolicyRepository(),
 		},
-		Tenancy:       tenancy.Module{AttrSchemaRepo: schema},
+		IdManagement:  idmanagement.Module{AttrSchemaRepo: schema},
 		Saml:          saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		OAuth2:        oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
 		WsFederation:  wsfederation.NewMemoryModule(),

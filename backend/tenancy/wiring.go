@@ -7,8 +7,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v5"
 
-	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -84,9 +82,9 @@ type RouteDeps struct {
 	*support.Authenticator
 	TenantRepo ports.TenantRepository
 	// Notifier はテンプレート編集画面からのテスト送信に使う。
-	Notifier  notificationports.Notifier
-	UserRepo  userports.UserRepository
-	GroupRepo groupports.GroupRepository
+	Notifier                 notificationports.Notifier
+	TestNotificationActor    ports.TestNotificationActorReader
+	GroupAttributeReferences ports.DynamicGroupAttributeReferences
 	// FederationSigner は要求テナントの有効な公開 XML 資格情報を解決する。
 	FederationSigner tenancyhttp.FederationSigner
 }
@@ -112,8 +110,8 @@ func (m Module) httpDeps(d RouteDeps) tenancyhttp.Deps {
 		BrandingAssetStore:       m.BrandingAssetStore,
 		NotificationTemplateRepo: m.NotificationTemplates,
 		Notifier:                 d.Notifier,
-		UserRepo:                 d.UserRepo,
-		GroupRepo:                d.GroupRepo,
+		TestNotificationActor:    d.TestNotificationActor,
+		GroupAttributeReferences: d.GroupAttributeReferences,
 		QuotaRepo:                m.QuotaRepo,
 		FederationSigner:         d.FederationSigner,
 	}

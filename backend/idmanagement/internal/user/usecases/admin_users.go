@@ -56,7 +56,7 @@ const deletedPasswordHashSentinel = "$deleted$"
 type AdminUserDeps struct {
 	UserRepo             userports.UserRepository
 	GroupRepo            groupports.GroupRepository
-	AttrSchemaRepo       tenantports.TenantUserAttributeSchemaRepository
+	AttrSchemaRepo       userports.TenantUserAttributeSchemaRepository
 	ConsentRepo          oauthports.ConsentRepository
 	RefreshStore         oauthports.RefreshTokenStore
 	DeviceCodeStore      oauthports.DeviceCodeStore
@@ -748,7 +748,7 @@ func softDeleteExpired(user *userdomain.User, now time.Time, graceSeconds int) b
 // effectiveUserAttributeDefs は組み込み属性 + tenant 固有 schema を結合した実効定義を返す。
 // AttrSchemaRepo 未配線 (nil) の場合は組み込み属性のみで検証する。
 func effectiveUserAttributeDefs(
-	ctx context.Context, repo tenantports.TenantUserAttributeSchemaRepository, tenantID string,
+	ctx context.Context, repo userports.TenantUserAttributeSchemaRepository, tenantID string,
 ) ([]userdomain.UserAttributeDef, error) {
 	defs := userdomain.BuiltinUserAttributeDefs()
 	if repo == nil {

@@ -114,8 +114,8 @@ func UserWriterInTx(tx pgx.Tx) userports.UserWriter { return userpostgres.UserWr
 type JobHandlerDeps struct {
 	EnqueuerInTx        func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer
 	Jobs                jobsports.JobRepository
-	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
-	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
+	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
+	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
 	UserOwnershipGuard  userports.UserSourceOwnershipGuard
 	GroupOwnershipGuard groupports.GroupSourceOwnershipGuard
 	PasswordHasher      passwordports.PasswordHasher
@@ -202,7 +202,7 @@ func (m Module) RegisterJobHandlers(registry jobsports.HandlerRegistrar, d JobHa
 // LifecycleDeps は、User を止める、削除する操作が、ほかのモジュールから受け取る依存である。
 // 管理 API と、管理 API の外（LifecycleWorkflow、SCIM の取り込み、保持期間の掃除）の経路が同じ集合を使う。
 type LifecycleDeps struct {
-	AttrSchemaRepo         tenantports.TenantUserAttributeSchemaRepository
+	AttrSchemaRepo         userports.TenantUserAttributeSchemaRepository
 	QuotaRepo              tenantports.QuotaRepository
 	ConsentRepo            oauthports.ConsentRepository
 	RefreshStore           oauthports.RefreshTokenStore
@@ -278,7 +278,7 @@ type RouteDeps struct {
 	ClientRepo          oauthports.OAuth2ClientRepository
 	SCIMUsers           userports.SCIMUserLookup
 	SCIMGroups          groupports.SCIMGroupLookup
-	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
+	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
 	Consents            consentports.AccountConsents
 	EmailSender         sharednotification.EmailSender
 	Notifier            sharednotification.Notifier

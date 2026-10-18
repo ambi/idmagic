@@ -63,8 +63,8 @@ type Deps struct {
 	ClientRepo          oauthports.OAuth2ClientRepository
 	SCIMUsers           userports.SCIMUserLookup
 	SCIMGroups          groupports.SCIMGroupLookup
-	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
-	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
+	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
+	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
 	ConsentRepo         oauthports.ConsentRepository
 	// Consents はデータエクスポートが本人の Granted の同意を読む先である。
 	Consents             consentports.AccountConsents

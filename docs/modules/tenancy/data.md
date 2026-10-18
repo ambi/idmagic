@@ -53,4 +53,4 @@ URL の接頭辞、OIDC の発行者、Discovery Metadata など外部に示す�
 | `TenantBranding` | `tenant_brandings`、画像は `tenant_branding_assets` | `backend/tenancy/internal/db_postgres` |
 | `NotificationTemplate` | `notification_templates` | `backend/tenancy/internal/db_postgres` |
 | `TenantQuota` | 上限の上書きは `tenant_quotas`、使用量のカウンターは `tenant_usages` | `backend/tenancy/internal/db_postgres` |
-| `TenantUserAttributeSchema`、`TenantGroupAttributeSchema` | `tenant_user_attribute_schemas`、`tenant_group_attribute_schemas` | ポートは Tenancy が定め、実装は `IdManagement` の `user` と `group` のスライスが持つ |
+| `TenantUserAttributeSchema`、`TenantGroupAttributeSchema` | `tenant_user_attribute_schemas`、`tenant_group_attribute_schemas` | 管理用の値と要求側ポートは Tenancy、保存型と保存ポート、実装は IdManagement の `user` と `group` のスライスが定める |

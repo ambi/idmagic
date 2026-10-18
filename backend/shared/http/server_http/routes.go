@@ -30,6 +30,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 
+	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
@@ -65,8 +66,8 @@ type Deps struct {
 
 	Tenancy    tenancy.Module
 	TenantRepo tenantports.TenantRepository
-	// Deprecated: wi-179 移行中のテスト用互換入力。bootstrap は Tenancy.Module のみを設定する。
-	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
+	// Deprecated: テスト用の互換入力。bootstrap は IdManagement.Module の保存先を設定する。
+	AttrSchemaRepo userports.TenantUserAttributeSchemaRepository
 	IdManagement   idmanagement.Module
 	IdGovernance   idgovernance.Module
 	// Deprecated: wi-178 移行中のテスト用互換入力。bootstrap は IdManagement.Module のみを設定する。
@@ -149,10 +150,10 @@ func Register(e *echo.Echo, d Deps) {
 	// RequireControlPlaneUser が担う。
 	// ルーティング層で別 prefix に隔離する必要はない。
 	d.Tenancy.RegisterControlPlaneRoutes(tenantGroup, tenancy.RouteDeps{
-		Deps:          d.Deps,
-		Authenticator: authenticator,
-		TenantRepo:    d.TenantRepo,
-		UserRepo:      d.IdManagement.UserRepo,
+		Deps:                  d.Deps,
+		Authenticator:         authenticator,
+		TenantRepo:            d.TenantRepo,
+		TestNotificationActor: tenancydeps.TestNotificationActors(d.IdManagement.UserRepo),
 	})
 
 	e.GET("/health", d.handleHealth)
@@ -220,12 +221,18 @@ func mergeLegacyOAuth2Deps(module oauth2.Module, d Deps) oauth2.Module {
 
 func mergeLegacyTenancyDeps(module tenancy.Module, d Deps) tenancy.Module {
 	if module.AttrSchemaRepo == nil {
-		module.AttrSchemaRepo = d.AttrSchemaRepo
+		module.AttrSchemaRepo = tenancydeps.UserAttributeSchemas(d.IdManagement.AttrSchemaRepo)
+	}
+	if module.GroupAttrSchemaRepo == nil {
+		module.GroupAttrSchemaRepo = tenancydeps.GroupAttributeSchemas(d.IdManagement.GroupAttrSchemaRepo)
 	}
 	return module
 }
 
 func mergeLegacyIdManagementDeps(module idmanagement.Module, d Deps) idmanagement.Module {
+	if module.AttrSchemaRepo == nil {
+		module.AttrSchemaRepo = d.AttrSchemaRepo
+	}
 	if module.UserRepo == nil {
 		module.UserRepo = d.UserRepo
 	}
@@ -318,7 +325,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AgentRepo:                 d.IdManagement.AgentRepo,
 		RevocationEpochRepo:       d.SharedSignals.RevocationEpochRepo,
 		ManagedTokenRevoker:       apiTokenService,
-		AttrSchemaRepo:            d.Tenancy.AttrSchemaRepo,
+		AttrSchemaRepo:            d.IdManagement.AttrSchemaRepo,
 		QuotaRepo:                 d.Tenancy.QuotaRepo,
 
 		AuthnResolver: d.Authentication.AuthnResolver,
@@ -384,7 +391,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	idmRoutes := idmanagement.RouteDeps{
 		TenantRepo:             d.TenantRepo,
-		AttrSchemaRepo:         d.Tenancy.AttrSchemaRepo,
+		AttrSchemaRepo:         d.IdManagement.AttrSchemaRepo,
 		QuotaRepo:              d.Tenancy.QuotaRepo,
 		ConsentRepo:            d.OAuth2.ConsentRepo,
 		RefreshStore:           d.OAuth2.RefreshStore,
@@ -403,7 +410,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		ClientRepo:             d.OAuth2.ClientRepo,
 		SCIMUsers:              d.Sourcing.SCIMUserLookup(),
 		SCIMGroups:             d.Sourcing.SCIMGroupLookup(),
-		GroupAttrSchemaRepo:    d.Tenancy.GroupAttrSchemaRepo,
+		GroupAttrSchemaRepo:    d.IdManagement.GroupAttrSchemaRepo,
 		Consents:               d.OAuth2.AccountConsents(d.Emit),
 		EmailSender:            d.Notification.EmailSender,
 		Notifier:               d.Notification.Notifier,
@@ -438,17 +445,17 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo:    d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
 		ApplicationRepo: d.Application.Repo, AssignmentRepo: d.Application.AssignmentRepo,
 		Notifier:       d.Notification.Notifier,
-		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
+		AttrSchemaRepo: d.IdManagement.AttrSchemaRepo,
 	})
 
 	d.Tenancy.RegisterRoutes(g, tenancy.RouteDeps{
-		Deps:             d.Deps,
-		Authenticator:    authenticator,
-		TenantRepo:       d.TenantRepo,
-		Notifier:         d.Notification.Notifier,
-		UserRepo:         d.IdManagement.UserRepo,
-		GroupRepo:        d.IdManagement.GroupRepo,
-		FederationSigner: d.FederationSigner,
+		Deps:                     d.Deps,
+		Authenticator:            authenticator,
+		TenantRepo:               d.TenantRepo,
+		Notifier:                 d.Notification.Notifier,
+		TestNotificationActor:    tenancydeps.TestNotificationActors(d.IdManagement.UserRepo),
+		GroupAttributeReferences: tenancydeps.GroupAttributeReferences(d.IdManagement.GroupRepo),
+		FederationSigner:         d.FederationSigner,
 	})
 
 	// nil の *SessionManager をインターフェースへ入れると nil でなくなり、受け取り側の nil の確認を
@@ -463,13 +470,13 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		wsfederation.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: wsfedSessionRevoker},
 		d.IdManagement.UserRepo, d.FederationSigner,
 		d.OAuth2.ClientAssertionReplayStore, d.Authentication.LoginAttemptThrottle, d.Authentication.PasswordHasher, d.Authentication.SentinelPasswordHash,
-		d.Tenancy.AttrSchemaRepo)
+		d.IdManagement.AttrSchemaRepo)
 
 	d.Saml.Register(g, d.Deps, authenticator, appGate,
 		saml.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: samlSessionRevoker},
-		d.IdManagement.UserRepo, d.FederationSigner, d.Tenancy.AttrSchemaRepo)
+		d.IdManagement.UserRepo, d.FederationSigner, d.IdManagement.AttrSchemaRepo)
 
-	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.OAuth2.ClientAdministration(d.Emit, d.Tenancy.QuotaRepo), d.WsFederation.RPRepo, d.Saml.SPRepo, d.Tenancy.QuotaRepo, d.Tenancy.AttrSchemaRepo)
+	d.Application.Register(g, d.Deps, authenticator, d.IdManagement.GroupRepo, d.IdManagement.UserRepo, d.OAuth2.ClientRepo, d.OAuth2.ClientAdministration(d.Emit, d.Tenancy.QuotaRepo), d.WsFederation.RPRepo, d.Saml.SPRepo, d.Tenancy.QuotaRepo, d.IdManagement.AttrSchemaRepo)
 
 	d.ApiTokens.Register(g, d.Deps, authenticator)
 
