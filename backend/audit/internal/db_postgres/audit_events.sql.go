@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const appendAuditEvent = `-- name: AppendAuditEvent :exec
+const appendAuditEvent = `-- name: AppendAuditEvent :execrows
 INSERT INTO audit_events (id, tenant_id, type, user_id, occurred_at, payload)
 VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (id) DO NOTHING
@@ -27,8 +27,8 @@ type AppendAuditEventParams struct {
 	Payload    []byte
 }
 
-func (q *Queries) AppendAuditEvent(ctx context.Context, arg AppendAuditEventParams) error {
-	_, err := q.db.Exec(ctx, appendAuditEvent,
+func (q *Queries) AppendAuditEvent(ctx context.Context, arg AppendAuditEventParams) (int64, error) {
+	result, err := q.db.Exec(ctx, appendAuditEvent,
 		arg.ID,
 		arg.TenantID,
 		arg.Type,
@@ -36,7 +36,10 @@ func (q *Queries) AppendAuditEvent(ctx context.Context, arg AppendAuditEventPara
 		arg.OccurredAt,
 		arg.Payload,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const appendAuditEventSearchAttribute = `-- name: AppendAuditEventSearchAttribute :exec

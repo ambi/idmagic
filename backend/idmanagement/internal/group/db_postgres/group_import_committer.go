@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
@@ -30,19 +32,21 @@ type GroupImportRowCommitter struct {
 	quotasInTx    func(pgx.Tx) tenantports.QuotaRepository
 	enqueuersInTx func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer
 	emit          func(spec.DomainEvent)
+	auditInTx     func(pgx.Tx) auditports.AuditEventWriter
 }
 
-// NewGroupImportRowCommitter は、quotasInTx が返す Tenancy の QuotaRepository で、
+// NewGroupImportCommitter は、quotasInTx が返す Tenancy の QuotaRepository で、
 // 行と同じトランザクションの中でグループの使用量を加減算する committer を返す。
-func NewGroupImportRowCommitter(
+func NewGroupImportCommitter(
 	pool sharedpg.DB, quotasInTx func(pgx.Tx) tenantports.QuotaRepository,
 	enqueuersInTx func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer,
 	emit func(spec.DomainEvent),
+	auditInTx func(pgx.Tx) auditports.AuditEventWriter,
 ) GroupImportRowCommitter {
-	if pool == nil || quotasInTx == nil || enqueuersInTx == nil || emit == nil {
+	if pool == nil || quotasInTx == nil || enqueuersInTx == nil || emit == nil || auditInTx == nil {
 		panic("group import: requires a database, transactional quota and job factories, and an event sink")
 	}
-	return GroupImportRowCommitter{pool: pool, quotasInTx: quotasInTx, enqueuersInTx: enqueuersInTx, emit: emit}
+	return GroupImportRowCommitter{pool: pool, quotasInTx: quotasInTx, enqueuersInTx: enqueuersInTx, emit: emit, auditInTx: auditInTx}
 }
 
 func (c GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, mutation groupports.GroupImportRowMutation) error {
@@ -61,7 +65,7 @@ func (c GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, mutat
 		}
 	}()
 	if mutation.Delete {
-		if err := commitGroupImportDeletion(ctx, tx, c.quotasInTx(tx), mutation); err != nil {
+		if err := commitGroupImportDeletion(ctx, tx, c.quotasInTx(tx), c.auditInTx(tx), mutation); err != nil {
 			return err
 		}
 		return tx.Commit(ctx)
@@ -90,7 +94,7 @@ func (c GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, mutat
 			return err
 		}
 	}
-	if err := writeGroupImportAudit(ctx, tx, mutation, mutation.After.TenantID, mutation.After.ID); err != nil {
+	if err := writeGroupImportAudit(ctx, c.auditInTx(tx), mutation, mutation.After.TenantID, mutation.After.ID); err != nil {
 		return err
 	}
 	// 規則の版が上がった行は、新版の評価を同じトランザクションへ投入する。別の
@@ -110,7 +114,7 @@ func (c GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, mutat
 	return nil
 }
 
-func commitGroupImportDeletion(ctx context.Context, tx pgx.Tx, quotas tenantports.QuotaRepository, mutation groupports.GroupImportRowMutation) error {
+func commitGroupImportDeletion(ctx context.Context, tx pgx.Tx, quotas tenantports.QuotaRepository, audit auditports.AuditEventWriter, mutation groupports.GroupImportRowMutation) error {
 	if mutation.Before == nil {
 		return errors.New("a delete mutation must name the group it removes")
 	}
@@ -130,7 +134,7 @@ func commitGroupImportDeletion(ctx context.Context, tx pgx.Tx, quotas tenantport
 			return err
 		}
 	}
-	return writeGroupImportAudit(ctx, tx, mutation, tenantID, groupID)
+	return writeGroupImportAudit(ctx, audit, mutation, tenantID, groupID)
 }
 
 func saveGroupInTx(ctx context.Context, tx pgx.Tx, group *groupdomain.Group) error {
@@ -161,22 +165,18 @@ func saveGroupInTx(ctx context.Context, tx pgx.Tx, group *groupdomain.Group) err
 
 // writeGroupImportAudit は行番号もセル値も載せない。監査に残るのは、誰が、どの
 // Group を、どの項目について変えたかだけである。
-func writeGroupImportAudit(ctx context.Context, tx pgx.Tx, mutation groupports.GroupImportRowMutation, tenantID, groupID string) error {
+func writeGroupImportAudit(ctx context.Context, writer auditports.AuditEventWriter, mutation groupports.GroupImportRowMutation, tenantID, groupID string) error {
 	auditID, err := spec.NewUUIDv4()
 	if err != nil {
 		return err
 	}
-	payload, err := json.Marshal(map[string]any{
-		"actorUserId": mutation.ActorUserID, "groupId": groupID, "changedFields": mutation.Changed,
-		"removedMemberships": len(mutation.RemovedMemberships),
-	})
-	if err != nil {
-		return err
-	}
-	return New(tx).InsertGroupImportAuditEvent(ctx, InsertGroupImportAuditEventParams{
-		ID: auditID, TenantID: tenantID, Type: mutation.AuditEventType, UserID: mutation.ActorUserID,
-		OccurredAt: mutation.Now, Payload: payload,
-	})
+	return writer.Append(ctx, auditports.AuditEventRecord{
+		ID: auditID, TenantID: tenantID, Type: mutation.AuditEventType, OccurredAt: mutation.Now,
+		Payload: map[string]any{
+			"actorUserId": mutation.ActorUserID, "groupId": groupID, "changedFields": mutation.Changed,
+			"removedMemberships": len(mutation.RemovedMemberships),
+		},
+	}, mutation.ActorUserID)
 }
 
 // enqueueGroupReconcileInTx は再評価ジョブを行と同じトランザクションへ入れる。

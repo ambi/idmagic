@@ -20,7 +20,7 @@ import (
 func TestPersistenceContract(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	client := pgfixtures.SeedClient(t, &clientpostgres.OAuth2ClientRepository{Pool: db}, tenant.ID)
 	now := pgtest.Now()
 	if err := authentication.NewPostgresModule(db, nil, nil).SessionStore.Save(context.Background(), &authsessiondomain.LoginSession{ID: "00000000-0000-0000-0000-000000000002", TenantID: tenant.ID, UserID: user.ID, AuthTime: now.Unix(), AMR: []string{}, ACR: "", ExpiresAt: now.Add(time.Hour), LastSeenAt: now}); err != nil {

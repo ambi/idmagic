@@ -17,7 +17,7 @@ func TestPersistenceContract(t *testing.T) {
 		db := pgtest.Require(t)
 		tenantA := pgfixtures.SeedTenant(t, db)
 		tenantB := pgfixtures.SeedTenant(t, db)
-		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenantA.ID)
+		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenantA.ID)
 		id, err := spec.NewUUIDv4()
 		if err != nil {
 			t.Fatal(err)

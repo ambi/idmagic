@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/audit"
+
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -54,7 +56,7 @@ func TestGroupImportRowCommitterRecordsAuditAndEnqueuesOneReconcile(t *testing.T
 		After: group, Changed: []string{"name"}, ActorUserID: actor.ID, AuditEventType: "group.imported",
 		ReconcileGroupID: group.ID, ReconcileVersion: 3, Now: now,
 	}
-	committer := NewGroupImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx, jobs.NewEnqueuerInTx, func(spec.DomainEvent) {})
+	committer := NewGroupImportCommitter(db, tenancypostgres.QuotaRepositoryInTx, jobs.NewEnqueuerInTx, func(spec.DomainEvent) {}, audit.RecordWriterInTx)
 	for range 2 {
 		if err := committer.CommitGroupImportRow(ctx, mutation); err != nil {
 			t.Fatalf("CommitGroupImportRow: %v", err)
@@ -93,7 +95,7 @@ func TestGroupMembershipImportRowCommitterRecordsAudit(t *testing.T) {
 	member := seedUser(t, db, tenant.ID)
 	group := seedGroup(t, db, tenant.ID)
 	now := testClock()
-	err := GroupMembershipImportRowCommitter{Pool: db}.CommitGroupMembershipImportRow(ctx, groupports.GroupMembershipImportRowMutation{
+	err := NewGroupMembershipImportRowCommitter(db, audit.RecordWriterInTx).CommitGroupMembershipImportRow(ctx, groupports.GroupMembershipImportRowMutation{
 		TenantID: tenant.ID, GroupID: group.ID, UserID: member.ID,
 		Member:      &groupdomain.GroupMember{GroupID: group.ID, UserID: member.ID, CreatedAt: now},
 		ActorUserID: actor.ID, AuditEventType: "group.membership_imported", Now: now,

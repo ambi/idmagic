@@ -37,7 +37,7 @@ func newTestCipher(t *testing.T, tenantID string) *datakeys.FieldCipher {
 func TestMfaFactorRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 	repo := &MfaFactorRepository{Pool: db, Cipher: newTestCipher(t, tenant.ID)}
 
@@ -94,7 +94,7 @@ func TestMfaFactorRepositoryRoundTrip(t *testing.T) {
 func TestMfaFactorRepositoryDualReadsLegacyPlaintext(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 	repo := &MfaFactorRepository{Pool: db, Cipher: newTestCipher(t, tenant.ID)}
 
@@ -124,7 +124,7 @@ func TestMfaFactorRepositoryDecryptFailsClosedForWrongTenant(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
 	otherTenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	cipher := newTestCipher(t, tenant.ID)
 	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 	repo := &MfaFactorRepository{Pool: db, Cipher: cipher}

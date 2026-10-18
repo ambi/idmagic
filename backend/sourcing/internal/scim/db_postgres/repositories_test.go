@@ -64,7 +64,7 @@ func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if err := idmanagement.NewPostgresModule(db, nil).UserRepo.Save(context.Background(), user); err != nil {
+	if err := idmanagement.NewPostgresModule(db).UserRepo.Save(context.Background(), user); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	return user
@@ -81,7 +81,7 @@ func seedGroup(t *testing.T, db sharedpg.DB, tenantID string) *groupdomain.Group
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := idmanagement.NewPostgresModule(db, nil).GroupRepo.Save(context.Background(), group); err != nil {
+	if err := idmanagement.NewPostgresModule(db).GroupRepo.Save(context.Background(), group); err != nil {
 		t.Fatalf("seed group: %v", err)
 	}
 	return group

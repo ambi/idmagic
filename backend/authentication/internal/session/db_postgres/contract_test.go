@@ -18,7 +18,7 @@ func TestPersistenceContract(t *testing.T) {
 		db := pgtest.Require(t)
 		tenant := pgfixtures.SeedTenant(t, db)
 		other := pgfixtures.SeedTenant(t, db)
-		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 		return testing_contract.Fixture{
 			Store:   &SessionRepository{Pool: db},
 			Context: func(ctx context.Context) context.Context { return tenantports.WithTenant(ctx, tenant, "", "") },

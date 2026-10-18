@@ -1,4 +1,4 @@
--- name: AppendAuditEvent :exec
+-- name: AppendAuditEvent :execrows
 INSERT INTO audit_events (id, tenant_id, type, user_id, occurred_at, payload)
 VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (id) DO NOTHING;

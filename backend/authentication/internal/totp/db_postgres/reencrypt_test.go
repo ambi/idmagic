@@ -62,7 +62,7 @@ func (s *testDataKeyStack) activeVersion(t *testing.T, tenantID string) int {
 func TestMfaFactorReencryptor_MigratesLegacyPlaintext(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	stack := newTestDataKeyStack(t, tenant.ID)
 	repo := &MfaFactorRepository{Pool: db, Cipher: stack.cipher}
 	migrator := &MfaFactorReencryptor{Repo: repo}
@@ -115,7 +115,7 @@ func TestMfaFactorReencryptor_MigratesLegacyPlaintext(t *testing.T) {
 func TestMfaFactorReencryptor_MigratesStaleVersionAfterRotationAndPreservesValue(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	stack := newTestDataKeyStack(t, tenant.ID)
 	repo := &MfaFactorRepository{Pool: db, Cipher: stack.cipher}
 	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
@@ -166,7 +166,7 @@ func TestMfaFactorReencryptor_MigratesStaleVersionAfterRotationAndPreservesValue
 func TestMfaFactorReencryptor_SkipsRowsWithNoSecretMaterial(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	stack := newTestDataKeyStack(t, tenant.ID)
 	repo := &MfaFactorRepository{Pool: db, Cipher: stack.cipher}
 	migrator := &MfaFactorReencryptor{Repo: repo}
@@ -199,8 +199,8 @@ func TestMfaFactorReencryptor_TenantIsolation(t *testing.T) {
 	db := pgtest.Require(t)
 	tenantA := pgfixtures.SeedTenant(t, db)
 	tenantB := pgfixtures.SeedTenant(t, db)
-	userA := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenantA.ID)
-	userB := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenantB.ID)
+	userA := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenantA.ID)
+	userB := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenantB.ID)
 	stackA := newTestDataKeyStack(t, tenantA.ID)
 	stackB := newTestDataKeyStack(t, tenantB.ID)
 
@@ -252,7 +252,7 @@ func TestMfaFactorReencryptor_NoPlaintextSurvivesBackfillAcrossTenants(t *testin
 		tenant := pgfixtures.SeedTenant(t, db)
 		stack := newTestDataKeyStack(t, tenant.ID)
 		for j := range usersPerTenant {
-			user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+			user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 			if err := New(db).UpsertMfaFactor(context.Background(), UpsertMfaFactorParams{
 				UserID: user.ID, Type: string(spec.MfaFactorTOTP),
 				Secret:    pgtype.Text{String: fmt.Sprintf("plaintext-%d-%d", i, j), Valid: true},

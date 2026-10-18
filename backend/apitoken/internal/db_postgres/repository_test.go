@@ -37,7 +37,7 @@ func TestRepositoryRoundTripScopesAndTenantRevoke(t *testing.T) {
 	}
 	expiresAt := now.Add(time.Hour)
 	userID := newUUID(t)
-	if err := idmanagement.NewPostgresModule(db, nil).UserRepo.Save(ctx, &userdomain.User{
+	if err := idmanagement.NewPostgresModule(db).UserRepo.Save(ctx, &userdomain.User{
 		ID: userID, TenantID: tenant.ID,
 		PreferredUsername: "api-token-owner", PasswordHash: "test-hash", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {

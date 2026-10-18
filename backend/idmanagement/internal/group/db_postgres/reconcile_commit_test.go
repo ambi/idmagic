@@ -6,6 +6,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/audit"
+
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	"github.com/ambi/idmagic/backend/jobs"
@@ -30,7 +32,7 @@ func TestGroupImportReconciliationEmitsAfterCommitAndDeduplicates(t *testing.T) 
 		t.Fatal(err)
 	}
 	var events []spec.DomainEvent
-	committer := NewGroupImportRowCommitter(db, tenancy.QuotaRepositoryInTx, jobs.NewEnqueuerInTx, func(event spec.DomainEvent) {
+	committer := NewGroupImportCommitter(db, tenancy.QuotaRepositoryInTx, jobs.NewEnqueuerInTx, func(event spec.DomainEvent) {
 		assertGroupStored(ctx, t, db, mutation.After.TenantID, mutation.After.ID, true)
 		enqueued, ok := event.(*jobsdomain.JobEnqueued)
 		if !ok {
@@ -51,7 +53,7 @@ func TestGroupImportReconciliationEmitsAfterCommitAndDeduplicates(t *testing.T) 
 			t.Fatalf("event=%+v job=%+v params=%+v", enqueued, stored, params)
 		}
 		events = append(events, event)
-	})
+	}, audit.RecordWriterInTx)
 	if err := committer.CommitGroupImportRow(ctx, mutation); err != nil {
 		t.Fatal(err)
 	}
@@ -73,9 +75,9 @@ func TestGroupImportReconciliationRollsBackOnCommitFailure(t *testing.T) {
 	ctx := t.Context()
 	mutation := reconcileMutation(t, db)
 	var events []spec.DomainEvent
-	committer := NewGroupImportRowCommitter(commitFailureDB{DB: db}, tenancy.QuotaRepositoryInTx, jobs.NewEnqueuerInTx, func(event spec.DomainEvent) {
+	committer := NewGroupImportCommitter(commitFailureDB{DB: db}, tenancy.QuotaRepositoryInTx, jobs.NewEnqueuerInTx, func(event spec.DomainEvent) {
 		events = append(events, event)
-	})
+	}, audit.RecordWriterInTx)
 	err := committer.CommitGroupImportRow(ctx, mutation)
 	if !errors.Is(err, errReconcileCommit) {
 		t.Fatalf("error=%v, want injected commit failure", err)
@@ -134,12 +136,13 @@ func (commitFailureTx) Commit(context.Context) error { return errReconcileCommit
 
 func TestGroupImportCommitterRejectsMissingDependencies(t *testing.T) {
 	db := pgtest.Require(t)
-	for _, missing := range []string{"database", "quotas", "jobs", "events"} {
+	for _, missing := range []string{"database", "quotas", "jobs", "events", "audit"} {
 		t.Run(missing, func(t *testing.T) {
 			var pool sharedpg.DB = db
 			quotas := tenancy.QuotaRepositoryInTx
 			enqueuers := jobs.NewEnqueuerInTx
 			emit := func(spec.DomainEvent) {}
+			auditInTx := audit.RecordWriterInTx
 			switch missing {
 			case "database":
 				pool = nil
@@ -149,13 +152,15 @@ func TestGroupImportCommitterRejectsMissingDependencies(t *testing.T) {
 				enqueuers = nil
 			case "events":
 				emit = nil
+			case "audit":
+				auditInTx = nil
 			}
 			defer func() {
 				if recover() == nil {
 					t.Fatal("missing required dependency did not panic")
 				}
 			}()
-			NewGroupImportRowCommitter(pool, quotas, enqueuers, emit)
+			NewGroupImportCommitter(pool, quotas, enqueuers, emit, auditInTx)
 		})
 	}
 }

@@ -16,7 +16,7 @@ import (
 func TestMfaEnrollmentBypassRepositoryConsumesOnce(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	repo := &MfaEnrollmentBypassRepository{Pool: db}
 	now := pgfixtures.TestClock()
 	id, err := spec.NewUUIDv4()

@@ -58,14 +58,14 @@ func TestSessionQueryPlansUseIndexes(t *testing.T) {
 	}
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	ctx := withTenant(context.Background(), tenant)
 	now := pgtest.Now()
 
 	// 対象ユーザーに 200 件、無関係な他ユーザーに 4,800 件、計 5,000 件で計画を安定させる。
 	targetIDs := seedManySessions(ctx, t, db, tenant.ID, user.ID, 200, now)
 	for range 24 {
-		other := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+		other := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 		seedManySessions(ctx, t, db, tenant.ID, other.ID, 200, now)
 	}
 	if _, err := db.Exec(ctx, "ANALYZE authentication_sessions"); err != nil {
@@ -134,7 +134,7 @@ func assertNoSeqScan(t *testing.T, plan string) {
 func BenchmarkSessionRepository_Find(b *testing.B) {
 	db := pgtest.Require(b)
 	tenant := pgfixtures.SeedTenant(b, db)
-	user := pgfixtures.SeedUser(b, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(b, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	ctx := withTenant(context.Background(), tenant)
 	repo := &SessionRepository{Pool: db}
 	sess := &domain.LoginSession{
@@ -157,7 +157,7 @@ func BenchmarkSessionRepository_ListBySub(b *testing.B) {
 		b.Run(fmt.Sprintf("sessions=%d", n), func(b *testing.B) {
 			db := pgtest.Require(b)
 			tenant := pgfixtures.SeedTenant(b, db)
-			user := pgfixtures.SeedUser(b, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+			user := pgfixtures.SeedUser(b, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 			ctx := withTenant(context.Background(), tenant)
 			seedManySessions(ctx, b, db, tenant.ID, user.ID, n, pgtest.Now())
 			repo := &SessionRepository{Pool: db}

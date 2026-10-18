@@ -70,8 +70,11 @@ CSV の再評価ジョブは active_jobs の確認と JobEnqueued の発行を�
 D1、D2、D4、D7 を適用し、履歴の保存と監査の保存の判断を所有者へ残す。
 Audit の通常の Append は payload.userId を検索の主体にするが、CSV は User の行では対象 User を、Group と所属の行では行為者を検索の主体にする。
 この意味を変更せず、Audit が `RecordWriterInTx(tx pgx.Tx) auditports.AuditEventWriter` を公開する。
-`AuditEventWriter.Append(ctx, record *AuditEventRecord, indexedUserID string) error` は検索の主体を明示し、同じ内部の監査の保存処理を使う。
+`AuditEventWriter.Append(ctx, record AuditEventRecord, indexedUserID string) error` は検索の主体を明示し、同じ内部の監査の保存処理を使う。
 検索属性も Audit が保存し、トランザクションを確定しない。
+通常の Append は ID の重複を受け付けるが、CSV の従来の INSERT は重複を拒否する。
+この失敗の境界も維持し、共通の INSERT の作成行数が0なら Tx 用の書き込み操作はエラーを返し、CSV の行を確定しない。
+通常の Append は従来どおり再配信を受け付ける。
 IdManagement はセル値と行番号を含めない従来の payload を作り、検索の主体を従来どおり渡す。
 
 Authentication は `PasswordHistoryWriterInTx(tx pgx.Tx) passwordports.PasswordHistoryWriter` を公開し、既存の履歴の Add を同じ Tx に結ぶ。
@@ -102,17 +105,44 @@ CSV 用の生の INSERT の公開は、不変条件を二か所に残すため�
 ## タスク
 
 - [x] T001 [Characterize] 各書き込みの原子性を確認した。TestUserImportRollsBackWhenHistoryOrAuditFails が履歴と監査の保存失敗の無変更を、TestMembershipImportRollsBackWhenAuditFails が監査失敗後の所属の無変更を固定する。変更前の user パッケージ39件、group パッケージ23件が実 PostgreSQL で成功した。Group 本体のコミット失敗時の巻き戻しは wi-55044 のテストが固定する。
-- [ ] T002 [App] 所有者ごとにトランザクションに参加する書き込みを公開し、書き込む側を書き換える。
-- [ ] T003 [Tooling] 解消した違反 ID を台帳から消す。
-- [ ] T004 [Verify] 変更を検証する。
+- [x] T002 [App] 所有者の Tx 用の監査と履歴の操作へ切り替えた。Module の保存先だけを使う fixture では旧引数の nil を除き、本番と worker と共通の組み立てテストには WithPostgresImports で必須の操作を渡す。特性化テストの本文は main と同一に保ち、従来の構築名をテスト用ヘルパーで現在の必須依存へ結ぶ。
+- [x] T003 [Tooling] 解消した三つの違反 ID と、元の SQL および不要になった生成コードを削除した。越境書き込みは7件から、先行二項目を経て0件となった。
+- [x] T004 [Verify] 変更を検証した。lint-go、check -- main、render-docs と spec-diff が成功し、規範仕様の差分はなかった。全 Go race 検査は6464件成功、失敗0件、スキップ3件で、対象と worker を含む PostgreSQL の実行を確認した。
+
+  着手時の report-contract-evidence は未解析と参照不足がともに0件だった。
+  通常の監査13件と履歴8件の成功後、所有者の Tx 用の操作を構造変更の 0cb2746e4 に分けた。
+  移行後の User の39件、Group の23件、IdManagement の組み立ての3件が成功した。
+  履歴の後で一度確定し、監査を別 Tx へ移す手動故障は TestUserImportRollsBackWhenHistoryOrAuditFails が残った User を検出した。
+  検索の主体を payload.userId に替える手動故障は TestGroupMembershipImportRowCommitterRecordsAudit が行為者とメンバーの取り違えを検出した。
+  両方とも故障を元に戻した。
+  Audit の変更行の変異7件、Authentication の変更行の変異1件はすべて検出し、生存、未到達、無効、時間超過は0件だった。
+  User の6件と Group の10件の変異も、構築名とテストの配線の最終変更後にすべて検出した。
+  比較基準は着手時の main（2319a4d7b）とする。
+  9019eae4aからの check は、後に完了した wi-55044 のテストの変更を、先に完了した none の項目にも帰属させて拒否した。
+  その範囲の取り違えを wi-22260 に起票し、今回の検査は着手時の main で行う。
+  検査の例外や宣言は緩めず、wi-22260 で全範囲の検査も成功させる。
 
 ## 検証
 
-- `mise run check-boundaries`
-- `mise run check-boundary-debt-ratchet`
-- `mise run verify`
+- `mise run check -- main`：着手時からの仕様影響、境界と負債の増加の禁止、生成物、文書を検査する。全範囲の誤った帰属の修正は wi-22260 が扱う。
+- `mise run lint-go` と `mise run test-go-race`：構成入口と保存先の構築を変えるため、Go 全体と逆依存を検査する。
+- `mise run test-go-mutation -- <対象> 2 off <report> main`：Audit、Authentication の履歴、User、Group の変更行の検出能力。
+- `mise run render-docs` と `mise run spec-diff`：現在状態の設計の再生成と、規範仕様の無変更。
+
+変更はバックエンド、負債の台帳と設計の文書に限り、フロントエンドとブラウザーの振る舞いは変えないため、UI の検査は追加しない。
 
 ## リスク
 
 - 書き込みを呼び出し側のトランザクションの外で行う誤りは、通常の経路のテストでは見えない。
   別のトランザクションで確定させる変異を手で入れ、特性化テストが検出することを確かめる。
+
+## 要約
+
+spec-diff は規範仕様の差分なしだった。
+残る CSV の監査2件とパスワード履歴1件を、Audit と Authentication の同じ Tx に参加する操作へ移した。
+行、使用量、監査と履歴の原子性、検索に使う User の意味、通常の監査の再配信の受理と CSV の重複監査の拒否を維持した。
+構成入口は WithPostgresImports で必須の操作を渡し、特性化テストの本文は変えずに構築用のヘルパーを使う。
+先行する wi-55774 と wi-55044 の解消を含め、越境書き込みは7件から0件になった。
+変更行の変異24件と原子性・検索対象の手動故障2件を検出した。
+check -- main、lint、文書生成と全 Go race 検査（6464件成功、3件スキップ）が成功した。
+全変更を一括検査した際に見つけた、完了済みの記録への誤った帰属は wi-22260 で修正する。

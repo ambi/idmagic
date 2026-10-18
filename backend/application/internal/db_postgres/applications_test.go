@@ -321,8 +321,8 @@ func TestApplicationIconStoreFindIsScopedToTenant(t *testing.T) {
 func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
-	group := pgfixtures.SeedGroup(t, idmanagement.NewPostgresModule(db, nil).GroupRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
+	group := pgfixtures.SeedGroup(t, idmanagement.NewPostgresModule(db).GroupRepo, tenant.ID)
 	app := seedApplication(t, db, tenant.ID)
 	repo := &ApplicationAssignmentRepository{Pool: db}
 	ctx := context.Background()
@@ -390,7 +390,7 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 func TestApplicationOrderingRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	repo := &ApplicationOrderingRepository{Pool: db}
 	ctx := context.Background()
 
@@ -500,7 +500,7 @@ func TestApplicationAssignmentRepositoryListPage(t *testing.T) {
 
 	userIDs := make([]string, 0, 5)
 	for range 5 {
-		u := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+		u := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 		userIDs = append(userIDs, u.ID)
 		if err := repo.Save(ctx, &domain.ApplicationAssignment{
 			TenantID: tenant.ID, ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser,

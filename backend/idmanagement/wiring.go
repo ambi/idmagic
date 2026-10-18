@@ -75,23 +75,35 @@ func (m Module) WithMemoryUserImport(
 	return m
 }
 
-// NewPostgresModule は IdManagement が所有する保存先を PostgreSQL で作る。quotasInTx は、
-// CSV の取り込みの 1 行と同じトランザクションで使用量を加減算する Tenancy の保存先を返す。
-func NewPostgresModule(pool postgres.DB, quotasInTx func(pgx.Tx) tenantports.QuotaRepository) Module {
+// NewPostgresModule は IdManagement が所有する保存先を PostgreSQL で作る。
+// CSV の行の確定は、他モジュールの操作とともに WithPostgresImports で組み立てる。
+func NewPostgresModule(pool postgres.DB) Module {
 	return Module{
 		UserRepo:              &userpostgres.UserRepository{Pool: pool},
 		GroupRepo:             &grouppostgres.GroupRepository{Pool: pool},
 		AgentRepo:             &agentpostgres.AgentRepository{Pool: pool},
 		EmailChangeTokenStore: &userpostgres.EmailChangeTokenStore{Pool: pool},
 		CSVArtifacts:          &idmpostgres.CSVArtifactStore{Pool: pool},
-		UserImportCommitter:   userpostgres.NewUserImportRowCommitter(pool, quotasInTx),
-		newGroupImportCommitter: func(enqueuersInTx func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer, emit func(spec.DomainEvent)) groupports.GroupImportRowCommitter {
-			return grouppostgres.NewGroupImportRowCommitter(pool, quotasInTx, enqueuersInTx, emit)
-		},
-		GroupMembershipImportCommitter: grouppostgres.GroupMembershipImportRowCommitter{Pool: pool},
-		AttrSchemaRepo:                 &userpostgres.TenantUserAttributeSchemaRepository{Pool: pool},
-		GroupAttrSchemaRepo:            &grouppostgres.TenantGroupAttributeSchemaRepository{Pool: pool},
+		AttrSchemaRepo:        &userpostgres.TenantUserAttributeSchemaRepository{Pool: pool},
+		GroupAttrSchemaRepo:   &grouppostgres.TenantGroupAttributeSchemaRepository{Pool: pool},
 	}
+}
+
+// PostgresImportDeps は、CSV の行と同じ Tx に参加する所有者の操作である。
+type PostgresImportDeps struct {
+	QuotasInTx  func(pgx.Tx) tenantports.QuotaRepository
+	AuditInTx   func(pgx.Tx) auditports.AuditEventWriter
+	HistoryInTx func(pgx.Tx) passwordports.PasswordHistoryWriter
+}
+
+// WithPostgresImports は行、使用量、監査と履歴を同じ Tx で確定する CSV の操作を組み立てる。
+func (m Module) WithPostgresImports(pool postgres.DB, d PostgresImportDeps) Module {
+	m.UserImportCommitter = userpostgres.NewUserImportCommitter(pool, d.QuotasInTx, d.AuditInTx, d.HistoryInTx)
+	m.newGroupImportCommitter = func(enqueuersInTx func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer, emit func(spec.DomainEvent)) groupports.GroupImportRowCommitter {
+		return grouppostgres.NewGroupImportCommitter(pool, d.QuotasInTx, enqueuersInTx, emit, d.AuditInTx)
+	}
+	m.GroupMembershipImportCommitter = grouppostgres.NewGroupMembershipImportRowCommitter(pool, d.AuditInTx)
+	return m
 }
 
 // UserWriterInTx は、呼び出し側のトランザクションで User を保存する UserWriter を返す。

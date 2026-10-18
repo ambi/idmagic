@@ -53,7 +53,11 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	}
 	resilientDB := postgres.NewResilientDB(pool, dbBreaker, cfg.DB.QueryTimeout)
 	tenancyModule := tenancy.NewPostgresModule(resilientDB)
-	idmModule := idmanagement.NewPostgresModule(resilientDB, tenancy.QuotaRepositoryInTx)
+	idmModule := idmanagement.NewPostgresModule(resilientDB).WithPostgresImports(resilientDB, idmanagement.PostgresImportDeps{
+		QuotasInTx:  tenancy.QuotaRepositoryInTx,
+		AuditInTx:   audit.RecordWriterInTx,
+		HistoryInTx: authentication.PasswordHistoryWriterInTx,
+	})
 	tenancyModule.AttrSchemaRepo = idmModule.AttrSchemaRepo
 	tenancyModule.GroupAttrSchemaRepo = idmModule.GroupAttrSchemaRepo
 	// NewKeyStore bootstraps the default tenant signing key, whose FK requires

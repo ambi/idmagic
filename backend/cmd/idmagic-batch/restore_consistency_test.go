@@ -45,7 +45,7 @@ func TestCheckRestoreConsistency_healthyDatabaseHasNoErrors(t *testing.T) {
 	resetTables(t)
 	db := pgtest.Require(t)
 	tenant := fixtures.SeedTenant(t, db)
-	fixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	fixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	fixtures.SeedClient(t, oauth2.NewPostgresModule(db).ClientRepo, tenant.ID)
 	seedActiveSigningKey(t, tenant.ID)
 
@@ -79,7 +79,7 @@ func TestCheckRestoreConsistency_tenantMissingActiveSigningKeyIsReported(t *test
 	resetTables(t)
 	db := pgtest.Require(t)
 	tenant := fixtures.SeedTenant(t, db)
-	fixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	fixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	fixtures.SeedClient(t, oauth2.NewPostgresModule(db).ClientRepo, tenant.ID)
 	// deliberately no signing key seeded for this tenant
 
@@ -96,7 +96,7 @@ func TestCheckRestoreConsistency_nonEmptyEphemeralTableIsReported(t *testing.T) 
 	resetTables(t)
 	db := pgtest.Require(t)
 	tenant := fixtures.SeedTenant(t, db)
-	fixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	fixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	fixtures.SeedClient(t, oauth2.NewPostgresModule(db).ClientRepo, tenant.ID)
 	seedActiveSigningKey(t, tenant.ID)
 

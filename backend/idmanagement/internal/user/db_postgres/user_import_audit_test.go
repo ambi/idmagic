@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
 	"github.com/ambi/idmagic/backend/audit"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -57,7 +59,7 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 		UserRepo: userRepo, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, OwnershipGuard: importOwnershipGuard{},
 	}
 	result, err := userusecases.ApplyUserImport(tenantports.WithTenant(ctx, tenant, "", ""), userusecases.UserImportApplyDeps{
-		Plan: planDeps, Committer: NewUserImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx), PasswordHasher: testing_passwords.NewHasher(),
+		Plan: planDeps, Committer: NewUserImportCommitter(db, tenancypostgres.QuotaRepositoryInTx, audit.RecordWriterInTx, authentication.PasswordHistoryWriterInTx), PasswordHasher: testing_passwords.NewHasher(),
 		DynamicGroups: groupusecases.DynamicGroupDeps{GroupRepo: &grouppostgres.GroupRepository{Pool: db}, UserRepo: userRepo},
 	}, strings.NewReader("preferred_username,email,name,roles\nalice,alice@example.com,Alice,admin\n"), idmdomain.DefaultCSVTransferPolicy(), "admin-actor", now, nil)
 	if err != nil {

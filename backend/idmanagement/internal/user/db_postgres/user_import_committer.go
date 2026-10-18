@@ -2,7 +2,9 @@ package db_postgres
 
 import (
 	"context"
-	"encoding/json"
+
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -16,14 +18,21 @@ import (
 // UserImportRowCommitter persists the complete row write set and its safe
 // audit record in one PostgreSQL transaction.
 type UserImportRowCommitter struct {
-	pool       sharedpg.DB
-	quotasInTx func(pgx.Tx) tenantports.QuotaRepository
+	pool        sharedpg.DB
+	quotasInTx  func(pgx.Tx) tenantports.QuotaRepository
+	auditInTx   func(pgx.Tx) auditports.AuditEventWriter
+	historyInTx func(pgx.Tx) passwordports.PasswordHistoryWriter
 }
 
-// NewUserImportRowCommitter は、quotasInTx が返す Tenancy の QuotaRepository で、
+// NewUserImportCommitter は、quotasInTx が返す Tenancy の QuotaRepository で、
 // 行と同じトランザクションの中でユーザーの使用量を加算する committer を返す。
-func NewUserImportRowCommitter(pool sharedpg.DB, quotasInTx func(pgx.Tx) tenantports.QuotaRepository) UserImportRowCommitter {
-	return UserImportRowCommitter{pool: pool, quotasInTx: quotasInTx}
+func NewUserImportCommitter(pool sharedpg.DB, quotasInTx func(pgx.Tx) tenantports.QuotaRepository,
+	auditInTx func(pgx.Tx) auditports.AuditEventWriter, historyInTx func(pgx.Tx) passwordports.PasswordHistoryWriter,
+) UserImportRowCommitter {
+	if pool == nil || quotasInTx == nil || auditInTx == nil || historyInTx == nil {
+		panic("user import: requires a database and transactional quota, audit, and history writers")
+	}
+	return UserImportRowCommitter{pool: pool, quotasInTx: quotasInTx, auditInTx: auditInTx, historyInTx: historyInTx}
 }
 
 func (c UserImportRowCommitter) CommitUserImportRow(ctx context.Context, mutation userports.UserImportRowMutation) error {
@@ -41,13 +50,7 @@ func (c UserImportRowCommitter) CommitUserImportRow(ctx context.Context, mutatio
 		return err
 	}
 	if mutation.PasswordHistoryHash != "" {
-		historyID, err := spec.NewUUIDv4()
-		if err != nil {
-			return err
-		}
-		if err := New(tx).InsertImportedPasswordHistory(ctx, InsertImportedPasswordHistoryParams{
-			ID: historyID, UserID: mutation.After.ID, Encoded: mutation.PasswordHistoryHash, CreatedAt: mutation.Now,
-		}); err != nil {
+		if err := c.historyInTx(tx).Add(ctx, mutation.After.ID, mutation.PasswordHistoryHash, mutation.Now); err != nil {
 			return err
 		}
 	}
@@ -55,16 +58,10 @@ func (c UserImportRowCommitter) CommitUserImportRow(ctx context.Context, mutatio
 	if err != nil {
 		return err
 	}
-	payload, err := json.Marshal(map[string]any{
-		"actorUserId": mutation.ActorUserID, "targetUserId": mutation.After.ID, "changedFields": mutation.Changed,
-	})
-	if err != nil {
-		return err
-	}
-	if err := New(tx).InsertUserImportAuditEvent(ctx, InsertUserImportAuditEventParams{
-		ID: auditID, TenantID: mutation.After.TenantID, Type: mutation.AuditEventType, UserID: mutation.After.ID,
-		OccurredAt: mutation.Now, Payload: payload,
-	}); err != nil {
+	if err := c.auditInTx(tx).Append(ctx, auditports.AuditEventRecord{
+		ID: auditID, TenantID: mutation.After.TenantID, Type: mutation.AuditEventType, OccurredAt: mutation.Now,
+		Payload: map[string]any{"actorUserId": mutation.ActorUserID, "targetUserId": mutation.After.ID, "changedFields": mutation.Changed},
+	}, mutation.After.ID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

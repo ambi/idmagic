@@ -7,6 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/audit"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	"github.com/ambi/idmagic/backend/authentication"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/internal/group/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -52,7 +56,11 @@ func TestPostgresGroupImportHandlerWiresTransactionalReconciliation(t *testing.T
 		t.Fatal(err)
 	}
 	ctx := tenantports.WithTenant(t.Context(), tenant, "", "")
-	idm := idmanagement.NewPostgresModule(db, tenancy.QuotaRepositoryInTx)
+	idm := idmanagement.NewPostgresModule(db).WithPostgresImports(db, idmanagement.PostgresImportDeps{
+		QuotasInTx:  tenancy.QuotaRepositoryInTx,
+		AuditInTx:   audit.RecordWriterInTx,
+		HistoryInTx: authentication.PasswordHistoryWriterInTx,
+	})
 	actorID, err := spec.NewUUIDv4()
 	if err != nil {
 		t.Fatal(err)
@@ -116,6 +124,10 @@ func TestPostgresGroupImportHandlerWiresTransactionalReconciliation(t *testing.T
 	job, err := repo.Get(ctx, enqueued.JobID)
 	if err != nil || job == nil || job.Status != jobsdomain.StatusQueued {
 		t.Fatalf("job=%+v error=%v, want committed queued reconciliation", job, err)
+	}
+	records, err := audit.NewPostgresModule(db).AuditEventRepo.List(ctx, auditports.AuditEventQuery{TenantID: tenant.ID, Type: "GroupCreated", UserID: actorID})
+	if err != nil || len(records) != 1 || records[0].Payload["actorUserId"] != actorID {
+		t.Fatalf("audit=%+v error=%v, want one committed group creation indexed by the actor", records, err)
 	}
 	usage, err := tenancy.NewQuotaRepository(db).GetUsage(ctx, tenant.ID)
 	if err != nil || usage.ActiveJobs != 2 || usage.Groups != 1 {

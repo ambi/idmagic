@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
 	"github.com/ambi/idmagic/backend/audit"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
@@ -54,7 +56,11 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 	if err := tenancypostgres.NewPostgresModule(db).TenantRepo.Save(ctx, tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
-	idmModule := idmanagement.NewPostgresModule(db, tenancypostgres.QuotaRepositoryInTx)
+	idmModule := idmanagement.NewPostgresModule(db).WithPostgresImports(db, idmanagement.PostgresImportDeps{
+		QuotasInTx:  tenancypostgres.QuotaRepositoryInTx,
+		AuditInTx:   audit.RecordWriterInTx,
+		HistoryInTx: authentication.PasswordHistoryWriterInTx,
+	})
 	userID, _ := spec.NewUUIDv4()
 	tenantCtx := tenantports.WithTenant(ctx, tenant, "", "")
 	if err := idmModule.UserRepo.Save(tenantCtx, &userdomain.User{

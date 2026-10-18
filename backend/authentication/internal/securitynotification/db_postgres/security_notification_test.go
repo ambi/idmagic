@@ -18,7 +18,7 @@ import (
 func TestPreferenceRepositoryRoundTripsAndTreatsAbsenceAsAllEnabled(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	repo := &PreferenceRepository{Pool: db}
 	ctx := context.Background()
 
@@ -67,8 +67,8 @@ func TestPreferenceRepositoryRoundTripsAndTreatsAbsenceAsAllEnabled(t *testing.T
 func TestKnownDeviceRepositoryReportsOnlyTheFirstObservation(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	alice := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
-	bob := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	alice := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
+	bob := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	repo := &KnownDeviceRepository{Pool: db}
 	ctx := context.Background()
 	now := pgfixtures.TestClock()
@@ -122,7 +122,7 @@ func TestKnownDeviceRepositoryReportsOnlyTheFirstObservation(t *testing.T) {
 func TestKnownDeviceRepositoryDeletesOnlyIdleRows(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	repo := &KnownDeviceRepository{Pool: db}
 	ctx := context.Background()
 	now := pgfixtures.TestClock()

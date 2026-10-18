@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/audit"
+	"github.com/ambi/idmagic/backend/authentication"
+
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -28,7 +31,7 @@ func TestUserImportRollsBackWhenHistoryOrAuditFails(t *testing.T) {
 				ID: newUUID(t), TenantID: tenant.ID, PreferredUsername: uniqueID("atomic-row"),
 				PasswordHash: "encoded", Roles: []string{}, CreatedAt: now, UpdatedAt: now,
 			}
-			committer := NewUserImportRowCommitter(failImportDB{DB: db, table: table}, tenancy.QuotaRepositoryInTx)
+			committer := NewUserImportCommitter(failImportDB{DB: db, table: table}, tenancy.QuotaRepositoryInTx, audit.RecordWriterInTx, authentication.PasswordHistoryWriterInTx)
 			err := committer.CommitUserImportRow(ctx, userports.UserImportRowMutation{
 				After: user, ActorUserID: actor.ID, AuditEventType: "UserCreated", Changed: []string{"password"},
 				ConsumesUserQuota: true, PasswordHistoryHash: "encoded", Now: now,
@@ -55,6 +58,34 @@ func TestUserImportRollsBackWhenHistoryOrAuditFails(t *testing.T) {
 }
 
 var errImportWrite = errors.New("injected import write failure")
+
+func TestUserImportRequiresTransactionalDependencies(t *testing.T) {
+	db := pgtest.Require(t)
+	for _, missing := range []string{"database", "quotas", "audit", "history"} {
+		t.Run(missing, func(t *testing.T) {
+			var pool sharedpg.DB = db
+			quotas := tenancy.QuotaRepositoryInTx
+			audits := audit.RecordWriterInTx
+			history := authentication.PasswordHistoryWriterInTx
+			switch missing {
+			case "database":
+				pool = nil
+			case "quotas":
+				quotas = nil
+			case "audit":
+				audits = nil
+			case "history":
+				history = nil
+			}
+			defer func() {
+				if recover() == nil {
+					t.Fatal("missing required dependency accepted")
+				}
+			}()
+			NewUserImportCommitter(pool, quotas, audits, history)
+		})
+	}
+}
 
 type failImportDB struct {
 	sharedpg.DB

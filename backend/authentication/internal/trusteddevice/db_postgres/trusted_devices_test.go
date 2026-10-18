@@ -21,7 +21,7 @@ const testMaxAge = 30 * 24 * time.Hour
 func TestTrustedDeviceRepositoryRoundTripsAndRotates(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	repo := &TrustedDeviceRepository{Pool: db}
 	now := pgfixtures.TestClock()
 	ctx := context.Background()
@@ -67,7 +67,7 @@ func TestTrustedDeviceRepositoryScopesSelectorToTheTenant(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
 	other := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	repo := &TrustedDeviceRepository{Pool: db}
 	now := pgfixtures.TestClock()
 	ctx := context.Background()
@@ -93,7 +93,7 @@ func TestTrustedDeviceRepositoryScopesSelectorToTheTenant(t *testing.T) {
 func TestTrustedDeviceRepositoryRevokesAllOnce(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	repo := &TrustedDeviceRepository{Pool: db}
 	now := pgfixtures.TestClock()
 	ctx := context.Background()
@@ -126,8 +126,8 @@ func TestTrustedDeviceRepositoryRevokesAllOnce(t *testing.T) {
 func TestTrustedDeviceRepositoryFindByIDScopesToTheOwner(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	owner := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
-	stranger := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	owner := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
+	stranger := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	repo := &TrustedDeviceRepository{Pool: db}
 	now := pgfixtures.TestClock()
 	ctx := context.Background()

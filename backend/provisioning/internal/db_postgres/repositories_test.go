@@ -205,7 +205,7 @@ func TestProvisioningTaskRepository_Save_IdempotentOnDuplicateKey(t *testing.T) 
 	app := seedApplication(t, pool, tenant.ID)
 	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
 	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 
@@ -238,7 +238,7 @@ func TestProvisioningTaskRepository_Find_ScopesToTenant(t *testing.T) {
 	if err := (&postgres.ProvisioningConnectionRepository{Pool: pool}).Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
 	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 	task := testTask(t, tenant.ID, app.ID, user.ID, 1)
@@ -267,7 +267,7 @@ func TestProvisioningTaskRepository_ListPageByConnection(t *testing.T) {
 
 	ids := make([]string, 5)
 	for i := range ids {
-		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
+		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
 		d := testTask(t, tenant.ID, app.ID, user.ID, 1)
 		if i == 2 {
 			d.SourceType = domain.SourceTypeGroup
@@ -317,7 +317,7 @@ func TestProvisioningTaskRepository_ListUnenqueuedAttachJobRetry(t *testing.T) {
 	app := seedApplication(t, pool, tenant.ID)
 	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
 	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 
@@ -374,7 +374,7 @@ func TestRemoteResourceLinkRepository_UpsertThenFind(t *testing.T) {
 	app := seedApplication(t, pool, tenant.ID)
 	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
 	repo := &postgres.RemoteResourceLinkRepository{Pool: pool}
 	ctx := context.Background()
 
@@ -483,7 +483,7 @@ func TestProvisioningTaskRepository_ScheduledDeprovisionLifecycle(t *testing.T) 
 	if err := connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret"); err != nil {
 		t.Fatal(err)
 	}
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
 	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 	deletedAt := pgtest.Now()
@@ -533,7 +533,7 @@ func TestProvisioningTaskRepository_CancelledDeprovisionIsNeverMaterialized(t *t
 	if err := connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret"); err != nil {
 		t.Fatal(err)
 	}
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
 	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 	deletedAt := pgtest.Now()
@@ -567,8 +567,8 @@ func TestRemoteResourceLinkRepository_ListByConnectionRoundTripsActiveAndDeleteR
 	app := seedApplication(t, pool, tenant.ID)
 	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
-	active := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
-	inactive := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
+	active := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
+	inactive := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
 	repo := &postgres.RemoteResourceLinkRepository{Pool: pool}
 	ctx := context.Background()
 
@@ -608,7 +608,7 @@ func TestProvisioningTaskRepository_ListUnsettledByConnectionExcludesSucceeded(t
 	app := seedApplication(t, pool, tenant.ID)
 	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
 	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 

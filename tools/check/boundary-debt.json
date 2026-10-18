@@ -383,25 +383,6 @@
         "shared-dependency:backend/shared/storage/db_memory->Tenancy"
       ],
       "reason": "support_http はテナントを解決し、ratelimit/db_postgres、salts_memory、salts_postgres は Tenancy のポートからテナント ID を読み、db_memory は Tenancy の型を使う。これらは wi-73604 で解消する（D1、D5）。"
-    },
-    {
-      "id": "table-write:IdManagement->Audit",
-      "sourceModule": "IdManagement",
-      "targetModule": "Audit",
-      "violations": [
-        "table-write:IdManagement:backend/idmanagement/internal/group/db_postgres/group_import.sql:InsertGroupImportAuditEvent:insert:audit_events:id,occurred_at,payload,tenant_id,type,user_id",
-        "table-write:IdManagement:backend/idmanagement/internal/user/db_postgres/user_import.sql:InsertUserImportAuditEvent:insert:audit_events:id,occurred_at,payload,tenant_id,type,user_id"
-      ],
-      "reason": "IdManagement records the CSV import audit event in the same transaction that commits the user or group import, so a committed import cannot lack its audit record (docs/design/data/database.md#所有と書き込みの境界). Audit publishes a record write that joins the caller's transaction (D2, D7) in wi-88544."
-    },
-    {
-      "id": "table-write:IdManagement->Authentication",
-      "sourceModule": "IdManagement",
-      "targetModule": "Authentication",
-      "violations": [
-        "table-write:IdManagement:backend/idmanagement/internal/user/db_postgres/user_import.sql:InsertImportedPasswordHistory:insert:password_history:created_at,encoded,id,user_id"
-      ],
-      "reason": "IdManagement writes the password history of a password set by user CSV import in the same transaction that commits the imported user, so reuse checks cannot miss an imported password (docs/design/data/database.md#所有と書き込みの境界). Authentication publishes a history write that joins the caller's transaction (D2, D7) in wi-88544."
     }
   ]
 }

@@ -153,7 +153,7 @@ func TestConnectionAndIdentityRepositoriesRoundTrip(t *testing.T) {
 		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive},
 		CreatedAt: now, UpdatedAt: now,
 	}
-	if err := idmanagement.NewPostgresModule(pool, nil).UserRepo.Save(ctx, user); err != nil {
+	if err := idmanagement.NewPostgresModule(pool).UserRepo.Save(ctx, user); err != nil {
 		t.Fatalf("Save user: %v", err)
 	}
 	link := &domain.FederatedIdentity{

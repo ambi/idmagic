@@ -18,7 +18,7 @@ func TestRecoveryCodeRepositoryContract(t *testing.T) {
 		t.Helper()
 		db := pgtest.Require(t)
 		tenant := pgfixtures.SeedTenant(t, db)
-		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 		return testing_contract.Fixture{
 			Repository: &RecoveryCodeRepository{Pool: db}, UserID: user.ID, Now: pgtest.Now(),
 		}

@@ -7,8 +7,9 @@ package db_postgres
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -19,12 +20,22 @@ import (
 
 var errMembershipMutationWithoutMember = errors.New("an add mutation must carry the membership it creates")
 
-type GroupMembershipImportRowCommitter struct{ Pool sharedpg.DB }
+type GroupMembershipImportRowCommitter struct {
+	pool      sharedpg.DB
+	auditInTx func(pgx.Tx) auditports.AuditEventWriter
+}
+
+func NewGroupMembershipImportRowCommitter(pool sharedpg.DB, auditInTx func(pgx.Tx) auditports.AuditEventWriter) GroupMembershipImportRowCommitter {
+	if pool == nil || auditInTx == nil {
+		panic("membership import: requires a database and transactional audit writer")
+	}
+	return GroupMembershipImportRowCommitter{pool: pool, auditInTx: auditInTx}
+}
 
 func (c GroupMembershipImportRowCommitter) CommitGroupMembershipImportRow(
 	ctx context.Context, mutation groupports.GroupMembershipImportRowMutation,
 ) error {
-	tx, err := c.Pool.Begin(ctx)
+	tx, err := c.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -46,7 +57,7 @@ func (c GroupMembershipImportRowCommitter) CommitGroupMembershipImportRow(
 			return err
 		}
 	}
-	if err := writeGroupMembershipImportAudit(ctx, tx, mutation); err != nil {
+	if err := writeGroupMembershipImportAudit(ctx, c.auditInTx(tx), mutation); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -55,22 +66,16 @@ func (c GroupMembershipImportRowCommitter) CommitGroupMembershipImportRow(
 // writeGroupMembershipImportAudit は行番号もセル値も載せない。監査に残るのは、
 // 誰が、どの Group の、どの User の所属を、どちらへ変えたかだけである。
 func writeGroupMembershipImportAudit(
-	ctx context.Context, tx pgx.Tx, mutation groupports.GroupMembershipImportRowMutation,
+	ctx context.Context, writer auditports.AuditEventWriter, mutation groupports.GroupMembershipImportRowMutation,
 ) error {
 	auditID, err := spec.NewUUIDv4()
 	if err != nil {
 		return err
 	}
-	payload, err := json.Marshal(map[string]any{
-		"actorUserId": mutation.ActorUserID, "groupId": mutation.GroupID, "userId": mutation.UserID,
-	})
-	if err != nil {
-		return err
-	}
-	return New(tx).InsertGroupImportAuditEvent(ctx, InsertGroupImportAuditEventParams{
-		ID: auditID, TenantID: mutation.TenantID, Type: mutation.AuditEventType, UserID: mutation.ActorUserID,
-		OccurredAt: mutation.Now, Payload: payload,
-	})
+	return writer.Append(ctx, auditports.AuditEventRecord{
+		ID: auditID, TenantID: mutation.TenantID, Type: mutation.AuditEventType, OccurredAt: mutation.Now,
+		Payload: map[string]any{"actorUserId": mutation.ActorUserID, "groupId": mutation.GroupID, "userId": mutation.UserID},
+	}, mutation.ActorUserID)
 }
 
 var _ groupports.GroupMembershipImportRowCommitter = GroupMembershipImportRowCommitter{}

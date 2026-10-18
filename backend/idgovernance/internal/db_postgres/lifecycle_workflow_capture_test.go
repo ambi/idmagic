@@ -17,7 +17,7 @@ func TestUserWorkflowCaptureCommitsUserAndRunsTogether(t *testing.T) {
 	pool := pgtest.Require(t)
 	ctx := context.Background()
 	tenant := pgfixtures.SeedTenant(t, pool)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
 	now := pgfixtures.TestClock()
 	workflows := &igpostgres.LifecycleWorkflowRepository{Pool: pool}
 	workflow := &igdomain.LifecycleWorkflow{ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, Name: "Joiner", Status: igdomain.LifecycleWorkflowDraft, CurrentRevision: 1, CreatedAt: now, UpdatedAt: now}
@@ -28,7 +28,7 @@ func TestUserWorkflowCaptureCommitsUserAndRunsTogether(t *testing.T) {
 	if err := workflows.SaveRevision(ctx, &igdomain.LifecycleWorkflowRevision{WorkflowID: workflow.ID, TenantID: tenant.ID, Revision: 1, Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: actions, CreatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
-	users := idmanagement.NewPostgresModule(pool, nil).UserRepo
+	users := idmanagement.NewPostgresModule(pool).UserRepo
 	runs := &igpostgres.LifecycleWorkflowRunRepository{Pool: pool}
 	capture := igpostgres.NewUserWorkflowCapture(pool, idmanagement.UserWriterInTx)
 	planned := func(runID, workflowID string) (*igdomain.WorkflowRun, []igdomain.WorkflowStep) {

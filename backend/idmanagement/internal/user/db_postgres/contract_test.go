@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/audit"
+	"github.com/ambi/idmagic/backend/authentication"
+
 	"github.com/ambi/idmagic/backend/idmanagement/internal/user/testing_contract"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -22,7 +25,7 @@ func newContractFixture(t *testing.T) testing_contract.Fixture {
 		Users:       &UserRepository{Pool: db},
 		EmailTokens: &EmailChangeTokenStore{Pool: db},
 		Schemas:     &TenantUserAttributeSchemaRepository{Pool: db},
-		ImportRows:  NewUserImportRowCommitter(db, tenancypostgres.QuotaRepositoryInTx),
+		ImportRows:  NewUserImportCommitter(db, tenancypostgres.QuotaRepositoryInTx, audit.RecordWriterInTx, authentication.PasswordHistoryWriterInTx),
 		TenantA:     tenantA.ID, TenantB: tenantB.ID, EmailUser: emailUser,
 		ActorUserID: actor.ID, Now: pgtest.Now(),
 		AssertImported: func(t *testing.T, mutation userports.UserImportRowMutation) {

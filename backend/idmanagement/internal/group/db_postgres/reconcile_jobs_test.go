@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/audit"
+
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -34,10 +36,10 @@ func TestGroupImportReconciliationRejectsAnActiveJobQuota(t *testing.T) {
 	}
 	mutation.Rule = &groupdomain.DynamicGroupRule{GroupID: group.ID, TenantID: tenant.ID, Expression: "true", Enabled: true, Version: 1, CreatedAt: now, UpdatedAt: now}
 	var events []spec.DomainEvent
-	err := NewGroupImportRowCommitter(db, tenancy.QuotaRepositoryInTx, jobs.NewEnqueuerInTx, func(event spec.DomainEvent) {
+	err := NewGroupImportCommitter(db, tenancy.QuotaRepositoryInTx, jobs.NewEnqueuerInTx, func(event spec.DomainEvent) {
 		assertGroupUsage(ctx, t, quotas, tenant.ID, 0)
 		events = append(events, event)
-	}).CommitGroupImportRow(ctx, mutation)
+	}, audit.RecordWriterInTx).CommitGroupImportRow(ctx, mutation)
 	var exceeded *tenancydomain.QuotaExceededError
 	if !errors.As(err, &exceeded) || exceeded.Resource != tenancydomain.ResourceActiveJobs {
 		t.Fatalf("CommitGroupImportRow error = %v, want active_jobs quota refusal", err)

@@ -19,5 +19,8 @@
 いずれの Aggregate も `User` の識別子を参照するが、`User` の Aggregate には含まれない。
 User の削除がこれらへどう連鎖するかは、[ユーザーの設計](../identity-management/features/user.md#実現方式)で定める。
 
+User の CSV がパスワードを設定する場合は、`PasswordHistoryWriterInTx` が行と同じ Tx へ履歴を追加する。
+通常の履歴の Add と同じ処理を使い、IdManagement は履歴の保存表現と SQL を持たない。
+
 - **判断**：`users.id` を正式で全体で一意なユーザーの識別子とし、プロトコルの `sub` のクレームはここから導く。その逆ではない。
 - **判断**：このモジュールの大半は認証の完了の前の要求を扱うので、ロールではなく、そのセッションで確かめた認証の要素と認証の時刻が境界になる。

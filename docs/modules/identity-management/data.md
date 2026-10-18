@@ -38,6 +38,11 @@ Aggregate root は `User`、`Group`、`Agent` の三つである。
 User の状態の一次情報は、`lifecycle.status` と `status_changed_at` の組だけである。
 遷移の時刻の記録は、`UserDisabled` や `UserDeleted` などのイベントに残す。
 
+CSV の行の確定は、IdManagement の行、同じ Tx の Tenancy の使用量、Audit の監査、Authentication のパスワードの履歴をまとめて保存する。
+他モジュールのテーブルへ直接書かず、所有者の `RecordWriterInTx` と `PasswordHistoryWriterInTx` を組み立て地点が渡す。
+PostgreSQL の保存先は `NewPostgresModule` が作り、行の確定は必須の所有者の操作を受け取る `WithPostgresImports` で組み立てる。
+監査の検索対象は、User の行では対象 User、Group とメンバーシップの行では行為者とし、payload の意味と区別して明示する。
+
 ## 保持と削除
 
 | データ | 保持と削除 |

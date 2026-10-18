@@ -28,7 +28,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
 	otherTenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	repo := &SessionRepository{Pool: db}
 	ctx := withTenant(context.Background(), tenant)
 	// Find / ListBySub は expires_at をリクエスト時点の実時計 (time.Now()) と比較するため
@@ -156,7 +156,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 	})
 
 	t.Run("FindOwned rejects wrong owner and Revoke is idempotent", func(t *testing.T) {
-		otherUser := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID) //nolint:contextcheck // fixture helper intentionally uses context.Background(); out of this WI's scope to thread ctx through pgfixtures
+		otherUser := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID) //nolint:contextcheck // fixture helper intentionally uses context.Background(); out of this WI's scope to thread ctx through pgfixtures
 		if got, err := repo.FindOwned(ctx, sess.ID, otherUser.ID); err != nil || got != nil {
 			t.Fatalf("expected nil for wrong owner: %v %+v", err, got)
 		}
@@ -188,7 +188,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 	})
 
 	t.Run("DeleteAllForSub physically erases rows", func(t *testing.T) {
-		u := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID) //nolint:contextcheck // fixture helper intentionally uses context.Background(); out of this WI's scope to thread ctx through pgfixtures
+		u := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID) //nolint:contextcheck // fixture helper intentionally uses context.Background(); out of this WI's scope to thread ctx through pgfixtures
 		s := &domain.LoginSession{
 			ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, UserID: u.ID,
 			AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: "urn:idmagic:acr:pwd",
@@ -207,7 +207,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 	})
 
 	t.Run("DeleteExpiredBatch deletes in small batches", func(t *testing.T) {
-		u := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID) //nolint:contextcheck // fixture helper intentionally uses context.Background(); out of this WI's scope to thread ctx through pgfixtures
+		u := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID) //nolint:contextcheck // fixture helper intentionally uses context.Background(); out of this WI's scope to thread ctx through pgfixtures
 		// cutoff は他 subtest が作った (now + 1h 前後の) 行を巻き込まない、この subtest 専用の
 		// 狭い窓にする。DeleteExpiredBatch はテナント/ユーザーで絞らない全体 housekeeping。
 		cutoff := now.Add(time.Minute)
@@ -256,7 +256,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 func TestSessionResolutionSurvivesProcessRestart(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	ctx := withTenant(context.Background(), tenant)
 
 	// "process A": ログインしてセッションを作る。

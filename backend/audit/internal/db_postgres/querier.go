@@ -9,7 +9,7 @@ import (
 )
 
 type Querier interface {
-	AppendAuditEvent(ctx context.Context, arg AppendAuditEventParams) error
+	AppendAuditEvent(ctx context.Context, arg AppendAuditEventParams) (int64, error)
 	AppendAuditEventSearchAttribute(ctx context.Context, arg AppendAuditEventSearchAttributeParams) error
 	DeleteAuditEventsBeforeExceptTypes(ctx context.Context, arg DeleteAuditEventsBeforeExceptTypesParams) (int64, error)
 	DeleteAuditEventsByTypeBefore(ctx context.Context, arg DeleteAuditEventsByTypeBeforeParams) (int64, error)

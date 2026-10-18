@@ -17,7 +17,7 @@ func TestPersistenceContract(t *testing.T) {
 		t.Helper()
 		db := pgtest.Require(t)
 		tenant := pgfixtures.SeedTenant(t, db)
-		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 		return testing_contract.Fixture{
 			Repository: &MfaFactorRepository{Pool: db, Cipher: newTestCipher(t, tenant.ID)},
 			Context:    func(ctx context.Context) context.Context { return tenantports.WithTenant(ctx, tenant, "", "") },

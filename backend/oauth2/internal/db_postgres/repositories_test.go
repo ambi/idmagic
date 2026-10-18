@@ -76,7 +76,7 @@ func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if err := idmanagement.NewPostgresModule(db, nil).UserRepo.Save(context.Background(), user); err != nil {
+	if err := idmanagement.NewPostgresModule(db).UserRepo.Save(context.Background(), user); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	return user

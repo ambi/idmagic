@@ -56,7 +56,7 @@ func resetCommit(
 func TestPasswordResetTokenStoreRefusesAnotherPurpose(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	store := NewPasswordResetTokenStore(db, idmanagement.UserWriterInTx)
 
 	foreign := actiontoken.Envelope{
@@ -75,7 +75,7 @@ func TestPasswordResetTokenStoreRefusesAnotherPurpose(t *testing.T) {
 func TestPasswordResetTokenStoreFindReadsWithoutConsuming(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	store, envelope := seedResetToken(t, db, user.ID)
 	ctx := context.Background()
 
@@ -106,7 +106,7 @@ func TestPasswordResetTokenStoreFindReadsWithoutConsuming(t *testing.T) {
 func TestPasswordResetTokenStoreAppliesOnceUnderConcurrency(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	store, envelope := seedResetToken(t, db, user.ID)
 
 	var wg sync.WaitGroup
@@ -147,8 +147,8 @@ func TestPasswordResetTokenStoreAppliesOnceUnderConcurrency(t *testing.T) {
 func TestPasswordResetTokenStoreRollsBackWhenTheEffectFails(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
-	rival := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
+	rival := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	store, envelope := seedResetToken(t, db, user.ID)
 	ctx := context.Background()
 
@@ -202,7 +202,7 @@ func (t historyFailingTx) Exec(ctx context.Context, sql string, args ...any) (pg
 func TestPasswordResetTokenStoreRollsBackTheUserWhenALaterWriteFails(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	_, envelope := seedResetToken(t, db, user.ID)
 	ctx := context.Background()
 
@@ -211,7 +211,7 @@ func TestPasswordResetTokenStoreRollsBackTheUserWhenALaterWriteFails(t *testing.
 		t.Fatalf("consume error = %v, want the history failure", err)
 	}
 
-	stored, err := idmanagement.NewPostgresModule(db, nil).UserRepo.FindBySub(ctx, user.ID)
+	stored, err := idmanagement.NewPostgresModule(db).UserRepo.FindBySub(ctx, user.ID)
 	if err != nil || stored == nil || stored.PasswordHash != user.PasswordHash {
 		t.Fatalf("user after the failed commit = %+v, %v; want the password unchanged", stored, err)
 	}
@@ -223,7 +223,7 @@ func TestPasswordResetTokenStoreRollsBackTheUserWhenALaterWriteFails(t *testing.
 func TestPasswordResetTokenStoreKeepsOnlyTheLatestTokenPerUser(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	_, first := seedResetToken(t, db, user.ID)
 	store, second := seedResetToken(t, db, user.ID)
 

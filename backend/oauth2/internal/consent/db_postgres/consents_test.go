@@ -26,7 +26,7 @@ func TestConsentRepositoryListPageByTenant(t *testing.T) {
 	client := pgfixtures.SeedClient(t, &clientpostgres.OAuth2ClientRepository{Pool: db}, tenant.ID)
 	userIDs := make([]string, 0, 5)
 	for range 5 {
-		u := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db, nil).UserRepo, tenant.ID)
+		u := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 		userIDs = append(userIDs, u.ID)
 		if err := repo.Save(ctx, tenant.ID, &domain.Consent{
 			UserID: u.ID, ClientID: client.ClientID, Scopes: []string{"read"},
