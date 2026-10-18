@@ -6,9 +6,11 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
 // =====================================================================
@@ -27,7 +29,7 @@ func NewAuthorizationRequestStore() *AuthorizationRequestStore {
 func (s *AuthorizationRequestStore) Save(_ context.Context, req *domain.AuthorizationRequest) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	sharedmem.DefaultTenant(&req.TenantID)
+	sharedmem.DefaultScope(&req.TenantID, kernel.DefaultTenantID)
 	s.requests[req.ID] = req
 	return nil
 }

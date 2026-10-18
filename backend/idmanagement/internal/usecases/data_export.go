@@ -17,7 +17,6 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -209,7 +208,7 @@ func DataExportHandler(deps DataExportDeps) func(context.Context, *jobsdomain.Jo
 		if err := json.Unmarshal(job.Params, &p); err != nil {
 			return nil, err
 		}
-		ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
+		ctx = tenantports.WithTenantID(ctx, job.TenantID)
 		now := deps.now()
 		_ = adminEmitExport(deps.Emit, &idmdomain.DataExportStarted{At: now, TenantID: job.TenantID, ExportID: job.ID, Target: p.Target})
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -15,6 +14,6 @@ type GroupMembershipCommands struct {
 }
 
 func (c GroupMembershipCommands) SetGroupMembership(ctx context.Context, tenantID, groupID, userID string, present bool, now time.Time) (bool, error) {
-	ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
+	ctx = tenantports.WithTenantID(ctx, tenantID)
 	return setGroupMembership(ctx, c.Deps, c.Actor, groupID, userID, present, now)
 }

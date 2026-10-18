@@ -117,9 +117,15 @@
 
 | 構成要素 | 責務 |
 | --- | --- |
-| `backend/shared/http/support_http` のテナント解決ミドルウェア | パスの `/realms/{realm}` の区間または Host から realm を取り出し、テナントの Repository で realm から `Tenant` を引き、`endpoint_style` と到達経路を照合する |
+| `backend/tenancy/internal/handlers_http` のテナント解決ミドルウェア | パスの `/realms/{realm}` の区間または Host から realm を取り出し、テナントの Repository で realm から `Tenant` を引き、`endpoint_style` と到達経路を照合する。組み立て地点は Tenancy の `HTTPMiddleware` から解決器を受け取る |
 | 正規ロケーションの組み立て | テナントの正規ロケーションから、発行者と URL の接頭辞を組み立てる |
-| リクエストコンテキスト | 解決した `Tenant`、発行者、URL の接頭辞を運ぶ。発行者、URL の接頭辞、Cookie のスコープ、WebAuthn の RP ID は、いずれもここから組み立てる。テナントを持たない文脈からテナントの ID を読むと panic し、デフォルトテナントへ退避させない。ジョブ、バッチ、イベントへの反応のように HTTP を経ない処理は、対象のテナントで文脈を作ってから呼ぶ |
+| リクエストコンテキスト | Tenancy の非公開の値が、解決した `Tenant`、発行者、URL の接頭辞と Cookie の属性を保持する。共有の `tenantcontext.Scope` が公開する ID と任意の HTTP 位置情報を通して、共有ライブラリも Tenancy の型なしで利用する |
+
+文脈の格納先は `shared/tenantcontext` の一つのキーに統一する。
+`TenantID` は、解決済みの値でも ID だけの値でも同じ箇所で読み、ID がない場合は panic してデフォルトテナントへ退避させない。
+ジョブやイベントへの反応など、設定を解決せず ID だけを必要とする処理は `WithTenantID` を使い、この文脈では `Tenant` が nil を返す。
+ID だけの値で上書きすると、親の文脈が持っていた設定と HTTP 位置情報も見えなくなる。
+HTTP の origin と Cookie の分離を決める規則は、解決済みの値を作る Tenancy に残す。
 
 プロトコルと管理のルートは、テナントをまたぐ制御面のテナント管理（`/api/admin/v1/tenants/...`）も含めて、すべて解決済みのテナントの下に置く。
 制御面の操作を制御面テナントからの呼び出しに限るのは、ルーティングではなく `RequireControlPlaneUser` の判定である。

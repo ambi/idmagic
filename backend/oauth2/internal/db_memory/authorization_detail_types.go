@@ -6,8 +6,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // AuthorizationDetailTypeRepository (RFC 9396)
@@ -51,7 +53,7 @@ func (r *AuthorizationDetailTypeRepository) ListAll(_ context.Context, tenantID 
 func (r *AuthorizationDetailTypeRepository) FindByType(_ context.Context, tenantID, detailType string) (*domain.AuthorizationDetailType, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	t := r.types[sharedmem.TenantKey(tenantID, detailType)]
+	t := r.types[sharedmem.ScopedKey(tenantID, detailType, kernel.DefaultTenantID)]
 	if t == nil {
 		return nil, nil
 	}
@@ -61,14 +63,14 @@ func (r *AuthorizationDetailTypeRepository) FindByType(_ context.Context, tenant
 func (r *AuthorizationDetailTypeRepository) Save(_ context.Context, t *domain.AuthorizationDetailType) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	sharedmem.DefaultTenant(&t.TenantID)
-	r.types[sharedmem.TenantKey(t.TenantID, t.Type)] = cloneDetailType(t)
+	sharedmem.DefaultScope(&t.TenantID, kernel.DefaultTenantID)
+	r.types[sharedmem.ScopedKey(t.TenantID, t.Type, kernel.DefaultTenantID)] = cloneDetailType(t)
 	return nil
 }
 
 func (r *AuthorizationDetailTypeRepository) Delete(_ context.Context, tenantID, detailType string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.types, sharedmem.TenantKey(tenantID, detailType))
+	delete(r.types, sharedmem.ScopedKey(tenantID, detailType, kernel.DefaultTenantID))
 	return nil
 }

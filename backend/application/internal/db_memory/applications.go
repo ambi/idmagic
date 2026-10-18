@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
@@ -154,7 +156,7 @@ func (r *ApplicationRepository) Count(_ context.Context, tenantID string) (int64
 func (r *ApplicationRepository) FindByID(_ context.Context, tenantID, applicationID string) (*domain.Application, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	app := r.applications[sharedmem.TenantKey(tenantID, applicationID)]
+	app := r.applications[sharedmem.ScopedKey(tenantID, applicationID, kernel.DefaultTenantID)]
 	if app == nil {
 		return nil, nil
 	}
@@ -194,7 +196,7 @@ func (r *ApplicationRepository) FindByProtocol(_ context.Context, tenantID strin
 func (r *ApplicationRepository) Save(_ context.Context, app *domain.Application) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.applications[sharedmem.TenantKey(app.TenantID, app.ID)] = cloneApplication(app)
+	r.applications[sharedmem.ScopedKey(app.TenantID, app.ID, kernel.DefaultTenantID)] = cloneApplication(app)
 	return nil
 }
 
@@ -205,7 +207,7 @@ func (r *ApplicationRepository) Create(ctx context.Context, app *domain.Applicat
 func (r *ApplicationRepository) Delete(_ context.Context, tenantID, applicationID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.applications, sharedmem.TenantKey(tenantID, applicationID))
+	delete(r.applications, sharedmem.ScopedKey(tenantID, applicationID, kernel.DefaultTenantID))
 	return nil
 }
 
@@ -237,7 +239,7 @@ func NewSignInPolicyRepository() *SignInPolicyRepository {
 func (r *SignInPolicyRepository) Get(_ context.Context, tenantID, applicationID string) (*domain.AppSignInPolicy, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	policy := r.policies[sharedmem.TenantKey(tenantID, applicationID)]
+	policy := r.policies[sharedmem.ScopedKey(tenantID, applicationID, kernel.DefaultTenantID)]
 	if policy == nil {
 		return nil, nil
 	}
@@ -259,7 +261,7 @@ func (r *SignInPolicyRepository) ListAll(_ context.Context, tenantID string) ([]
 func (r *SignInPolicyRepository) Save(_ context.Context, policy *domain.AppSignInPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := sharedmem.TenantKey(policy.TenantID, policy.ApplicationID)
+	key := sharedmem.ScopedKey(policy.TenantID, policy.ApplicationID, kernel.DefaultTenantID)
 	cloned := cloneSignInPolicy(policy)
 	if existing := r.policies[key]; existing != nil && !existing.CreatedAt.IsZero() {
 		cloned.CreatedAt = existing.CreatedAt
@@ -271,7 +273,7 @@ func (r *SignInPolicyRepository) Save(_ context.Context, policy *domain.AppSignI
 func (r *SignInPolicyRepository) Delete(_ context.Context, tenantID, applicationID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.policies, sharedmem.TenantKey(tenantID, applicationID))
+	delete(r.policies, sharedmem.ScopedKey(tenantID, applicationID, kernel.DefaultTenantID))
 	return nil
 }
 
@@ -519,7 +521,7 @@ func (r *ApplicationCategoryRepository) ListAll(_ context.Context, tenantID stri
 func (r *ApplicationCategoryRepository) FindByID(_ context.Context, tenantID, categoryID string) (*domain.ApplicationCategory, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	category := r.categories[sharedmem.TenantKey(tenantID, categoryID)]
+	category := r.categories[sharedmem.ScopedKey(tenantID, categoryID, kernel.DefaultTenantID)]
 	if category == nil {
 		return nil, nil
 	}
@@ -531,13 +533,13 @@ func (r *ApplicationCategoryRepository) Save(_ context.Context, category *domain
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cloned := *category
-	r.categories[sharedmem.TenantKey(category.TenantID, category.ID)] = &cloned
+	r.categories[sharedmem.ScopedKey(category.TenantID, category.ID, kernel.DefaultTenantID)] = &cloned
 	return nil
 }
 
 func (r *ApplicationCategoryRepository) Delete(_ context.Context, tenantID, categoryID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.categories, sharedmem.TenantKey(tenantID, categoryID))
+	delete(r.categories, sharedmem.ScopedKey(tenantID, categoryID, kernel.DefaultTenantID))
 	return nil
 }

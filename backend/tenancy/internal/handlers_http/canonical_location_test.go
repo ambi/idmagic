@@ -1,4 +1,4 @@
-package support_http
+package handlers_http
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 //
 //spec:covers EX-TENANCY-024-02: port を持つ発行者のデプロイでは、subdomain テナントの発行者も同じ scheme と port を持つ。
 func TestCanonicalLocationKeepsTheDeploymentSchemeAndPort(t *testing.T) {
-	deps := Deps{Issuer: "http://localhost:5173/", TenantBaseDomain: "idp.test"}
+	deps := TenantResolver{Issuer: "http://localhost:5173/", TenantBaseDomain: "idp.test"}
 	for _, tc := range []struct {
 		style      tenancydomain.TenantEndpointStyle
 		wantIssuer string
@@ -26,7 +26,7 @@ func TestCanonicalLocationKeepsTheDeploymentSchemeAndPort(t *testing.T) {
 		}
 	}
 
-	secure := Deps{Issuer: "https://login.example.com", TenantBaseDomain: "idp.test."}
+	secure := TenantResolver{Issuer: "https://login.example.com", TenantBaseDomain: "idp.test."}
 	if issuer, _ := secure.CanonicalLocation(&tenancydomain.Tenant{
 		Realm: "acme", EndpointStyle: tenancydomain.TenantEndpointStyleSubdomain,
 	}); issuer != "https://acme.idp.test" {

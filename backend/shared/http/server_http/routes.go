@@ -63,7 +63,8 @@ type Deps struct {
 	// ゼロ値では何も拒否しないので、入場制御を組み立てないテストはそのまま動く。
 	Admission support.AdmissionBudget
 
-	Tenancy tenancy.Module
+	Tenancy    tenancy.Module
+	TenantRepo tenantports.TenantRepository
 	// Deprecated: wi-179 移行中のテスト用互換入力。bootstrap は Tenancy.Module のみを設定する。
 	AttrSchemaRepo tenantports.TenantUserAttributeSchemaRepository
 	IdManagement   idmanagement.Module
@@ -135,8 +136,9 @@ func Register(e *echo.Echo, d Deps) {
 	// テナントの正規ロケーションは 2 形あり、どちらか一方だけが有効になる。
 	// subdomain style は origin 直下の bare path、path style は /realms/{realm} 配下。
 	// 到達経路と endpoint_style の一致は resolver 側で確かめる。
-	registerTenantRoutes(e.Group("", d.ResolveHostTenant), d)
-	tenantGroup := e.Group("/realms/:tenant_id", d.ResolvePathTenant)
+	hostTenant, pathTenant := (tenancy.Module{TenantRepo: d.TenantRepo}).HTTPMiddleware(d.Issuer, d.TenantBaseDomain)
+	registerTenantRoutes(e.Group("", hostTenant), d)
+	tenantGroup := e.Group("/realms/:tenant_id", pathTenant)
 	registerTenantRoutes(tenantGroup, d)
 
 	// 制御面の経路は管理発行の API アクセストークンを受けない。
@@ -381,6 +383,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	d.Authentication.RegisterRoutes(g, authRoutes, d.OAuth2.SessionTokenRevoker(), d.OAuth2.SignInContinuation(oauthRoutes))
 
 	idmRoutes := idmanagement.RouteDeps{
+		TenantRepo:             d.TenantRepo,
 		AttrSchemaRepo:         d.Tenancy.AttrSchemaRepo,
 		QuotaRepo:              d.Tenancy.QuotaRepo,
 		ConsentRepo:            d.OAuth2.ConsentRepo,

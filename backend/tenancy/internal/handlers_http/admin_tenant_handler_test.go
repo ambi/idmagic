@@ -119,9 +119,7 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 	}
 	e := echo.New()
 	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", testing_tenant.ResolveDefault), tenancyhttp.Deps{
-		Deps: support.Deps{
-			Issuer: quotaTestIssuer, Contract: spec.CurrentRuntimeContract(), TenantRepo: tenantRepo,
-		},
+		Issuer: quotaTestIssuer, Contract: spec.CurrentRuntimeContract(),
 		Authenticator: authn,
 		TenantRepo:    tenantRepo,
 		UserRepo:      userRepo,

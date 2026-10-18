@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -86,7 +88,7 @@ func newScopedScimHarness() (*echo.Echo, *apitoken.Service) {
 
 	e := echo.New()
 	deps := support.Deps{Emit: func(spec.DomainEvent) {}}
-	scimhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultRealmTenant), scimhttp.Deps{
+	scimhttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefaultAt(deps.Issuer)), scimhttp.Deps{
 		Deps: deps, Authenticator: &support.Authenticator{Principals: idmanagement.Module{UserRepo: userRepo, GroupRepo: groupRepo}.Principals()},
 		Usecases: scimUsecases, ApiTokenAuthenticator: apiTokens,
 	})
@@ -186,7 +188,7 @@ func newScimHarness(tokenOptions ...apitoken.Option) scimHarness {
 	scimDeps := scimhttp.Deps{Deps: sd, Authenticator: authenticator, Usecases: usecasesInst, ApiTokenAuthenticator: apiTokens}
 
 	e := echo.New()
-	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultRealmTenant), scimDeps)
+	scimhttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefaultAt(sd.Issuer)), scimDeps)
 	return scimHarness{
 		echo: e, usecases: usecasesInst, apiTokens: apiTokens,
 		userRepo: userRepo, groupRepo: groupRepo, scimRepo: scimRepo, authenticator: authenticator,
@@ -506,7 +508,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 	}
 
 	e := echo.New()
-	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultRealmTenant), scimDeps)
+	scimhttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefaultAt(sd.Issuer)), scimDeps)
 
 	// 1. 未登録のアクセストークンでは 401 になること
 	{
@@ -683,7 +685,7 @@ func TestScimGroupSync(t *testing.T) {
 	}
 
 	e := echo.New()
-	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultRealmTenant), scimDeps)
+	scimhttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefaultAt(sd.Issuer)), scimDeps)
 
 	tokenStr := issueAllScimToken(t, apiTokens)
 

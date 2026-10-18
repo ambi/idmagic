@@ -42,6 +42,7 @@ type EventReactor interface {
 
 // Deps は identity management HTTP ハンドラが必要とする依存。
 type Deps struct {
+	TenantRepo tenantports.TenantRepository
 	support.Deps
 	*support.Authenticator
 

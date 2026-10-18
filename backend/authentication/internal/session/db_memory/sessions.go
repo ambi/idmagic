@@ -5,9 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -39,7 +41,7 @@ func (s *SessionStore) now() time.Time {
 func (s *SessionStore) Save(_ context.Context, sess *authdomain.LoginSession) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	sharedmem.DefaultTenant(&sess.TenantID)
+	sharedmem.DefaultScope(&sess.TenantID, kernel.DefaultTenantID)
 	s.sessions[sess.ID] = sess
 	return nil
 }
@@ -50,7 +52,7 @@ func (s *SessionStore) Save(_ context.Context, sess *authdomain.LoginSession) er
 // テナントを立てない呼び出し元から見た振る舞いは変わらない。
 func inTenant(ctx context.Context, sess *authdomain.LoginSession) bool {
 	tenantID := sess.TenantID
-	sharedmem.DefaultTenant(&tenantID)
+	sharedmem.DefaultScope(&tenantID, kernel.DefaultTenantID)
 	return tenantID == tenantports.TenantID(ctx)
 }
 

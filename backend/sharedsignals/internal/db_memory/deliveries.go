@@ -6,7 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 )
 
@@ -64,6 +66,6 @@ func (r *SecurityEventDeliveryRepository) ListDue(_ context.Context, now time.Ti
 func (r *SecurityEventDeliveryRepository) Save(_ context.Context, d *ssdomain.SecurityEventDelivery) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.deliveries[sharedmem.TenantKey(d.TenantID, d.ID)] = cloneDelivery(d)
+	r.deliveries[sharedmem.ScopedKey(d.TenantID, d.ID, kernel.DefaultTenantID)] = cloneDelivery(d)
 	return nil
 }

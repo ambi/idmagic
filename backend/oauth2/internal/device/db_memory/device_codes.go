@@ -4,9 +4,11 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
 // =====================================================================
@@ -29,7 +31,7 @@ func NewDeviceCodeStore() *DeviceCodeStore {
 func (s *DeviceCodeStore) Save(_ context.Context, rec *domain.DeviceAuthorization) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	sharedmem.DefaultTenant(&rec.TenantID)
+	sharedmem.DefaultScope(&rec.TenantID, kernel.DefaultTenantID)
 	stored := cloneDeviceAuthorization(rec)
 	s.byHash[stored.DeviceCodeHash] = stored
 	s.byUserCode[stored.UserCode] = stored
@@ -51,7 +53,7 @@ func (s *DeviceCodeStore) FindByUserCode(_ context.Context, userCode string) (*d
 func (s *DeviceCodeStore) Update(_ context.Context, rec *domain.DeviceAuthorization) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	sharedmem.DefaultTenant(&rec.TenantID)
+	sharedmem.DefaultScope(&rec.TenantID, kernel.DefaultTenantID)
 	stored := cloneDeviceAuthorization(rec)
 	s.byHash[stored.DeviceCodeHash] = stored
 	s.byUserCode[stored.UserCode] = stored

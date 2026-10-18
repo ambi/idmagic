@@ -4,7 +4,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 )
 
@@ -20,7 +22,7 @@ func NewReceivedSecurityEventRepository() *ReceivedSecurityEventRepository {
 }
 
 func receivedEventKey(tenantID, streamID, setJTI string) string {
-	return sharedmem.TenantKey(tenantID, streamID+"|"+setJTI)
+	return sharedmem.ScopedKey(tenantID, streamID+"|"+setJTI, kernel.DefaultTenantID)
 }
 
 func (r *ReceivedSecurityEventRepository) ExistsByJTI(_ context.Context, tenantID, streamID, setJTI string) (bool, error) {

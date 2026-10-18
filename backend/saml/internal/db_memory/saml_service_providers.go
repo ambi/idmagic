@@ -8,8 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	"github.com/ambi/idmagic/backend/saml/domain"
-	sharedmemory "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
 // =====================================================================
@@ -47,7 +49,7 @@ func cloneIDPProfile(profile *domain.SamlIdentityProviderProfile) *domain.SamlId
 }
 
 func (r *SamlServiceProviderRepository) ensureDefaultIDPProfileLocked(tenantID string) *domain.SamlIdentityProviderProfile {
-	key := sharedmemory.TenantKey(tenantID, domain.DefaultIDPProfileID)
+	key := sharedmem.ScopedKey(tenantID, domain.DefaultIDPProfileID, kernel.DefaultTenantID)
 	if profile := r.profiles[key]; profile != nil {
 		return profile
 	}
@@ -72,7 +74,7 @@ func (r *SamlServiceProviderRepository) EnsureDefaultIDPProfile(_ context.Contex
 func (r *SamlServiceProviderRepository) FindIDPProfileByID(_ context.Context, tenantID, profileID string) (*domain.SamlIdentityProviderProfile, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	profile := r.profiles[sharedmemory.TenantKey(tenantID, profileID)]
+	profile := r.profiles[sharedmem.ScopedKey(tenantID, profileID, kernel.DefaultTenantID)]
 	if profile == nil {
 		return nil, nil
 	}
@@ -116,7 +118,7 @@ func (r *SamlServiceProviderRepository) SaveIDPProfile(_ context.Context, profil
 	if err := profile.Validate(boundCount); err != nil {
 		return err
 	}
-	key := sharedmemory.TenantKey(profile.TenantID, profile.ProfileID)
+	key := sharedmem.ScopedKey(profile.TenantID, profile.ProfileID, kernel.DefaultTenantID)
 	if existing := r.profiles[key]; existing != nil && existing.IsDefault {
 		return domain.ErrDefaultIDPProfile
 	}
@@ -136,7 +138,7 @@ func (r *SamlServiceProviderRepository) DeleteIDPProfile(_ context.Context, tena
 	if profileID == domain.DefaultIDPProfileID {
 		return domain.ErrDefaultIDPProfile
 	}
-	key := sharedmemory.TenantKey(tenantID, profileID)
+	key := sharedmem.ScopedKey(tenantID, profileID, kernel.DefaultTenantID)
 	if r.profiles[key] == nil {
 		return nil
 	}
@@ -152,7 +154,7 @@ func (r *SamlServiceProviderRepository) DeleteIDPProfile(_ context.Context, tena
 func (r *SamlServiceProviderRepository) FindByEntityID(_ context.Context, tenantID, entityID string) (*domain.SamlServiceProvider, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	sp := r.sps[sharedmemory.TenantKey(tenantID, entityID)]
+	sp := r.sps[sharedmem.ScopedKey(tenantID, entityID, kernel.DefaultTenantID)]
 	if sp == nil {
 		return nil, nil
 	}
@@ -178,10 +180,10 @@ func (r *SamlServiceProviderRepository) Save(_ context.Context, sp *domain.SamlS
 	if sp == nil {
 		return fmt.Errorf("saml service provider is required")
 	}
-	sharedmemory.DefaultTenant(&sp.TenantID)
+	sharedmem.DefaultScope(&sp.TenantID, kernel.DefaultTenantID)
 	sp.IDPProfileID = sp.EffectiveIDPProfileID()
 	r.ensureDefaultIDPProfileLocked(sp.TenantID)
-	profile := r.profiles[sharedmemory.TenantKey(sp.TenantID, sp.IDPProfileID)]
+	profile := r.profiles[sharedmem.ScopedKey(sp.TenantID, sp.IDPProfileID, kernel.DefaultTenantID)]
 	if profile == nil {
 		return domain.ErrInvalidIDPProfile
 	}
@@ -195,13 +197,13 @@ func (r *SamlServiceProviderRepository) Save(_ context.Context, sp *domain.SamlS
 	if err := profile.Validate(boundCount); err != nil {
 		return err
 	}
-	r.sps[sharedmemory.TenantKey(sp.TenantID, sp.EntityID)] = cloneServiceProvider(sp)
+	r.sps[sharedmem.ScopedKey(sp.TenantID, sp.EntityID, kernel.DefaultTenantID)] = cloneServiceProvider(sp)
 	return nil
 }
 
 func (r *SamlServiceProviderRepository) Delete(_ context.Context, tenantID, entityID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.sps, sharedmemory.TenantKey(tenantID, entityID))
+	delete(r.sps, sharedmem.ScopedKey(tenantID, entityID, kernel.DefaultTenantID))
 	return nil
 }

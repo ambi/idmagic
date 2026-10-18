@@ -18,7 +18,6 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -171,7 +170,7 @@ func GroupImportJobHandler(deps GroupImportJobDeps, mode GroupImportMode) func(c
 		if err := json.Unmarshal(job.Params, &params); err != nil {
 			return nil, err
 		}
-		ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
+		ctx = tenantports.WithTenantID(ctx, job.TenantID)
 		var source GroupImportParams
 		if mode == GroupImportModeApply {
 			bound, previewResult, err := loadBoundGroupPreview(ctx, deps.Jobs, deps.Artifacts, job.TenantID, params.PreviewJobID)

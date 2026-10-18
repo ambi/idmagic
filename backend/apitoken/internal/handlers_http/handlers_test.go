@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
+
 	"github.com/ambi/idmagic/backend/authentication"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -50,7 +52,7 @@ func newHandler(t *testing.T) *echo.Echo {
 	deps := support.Deps{Issuer: "http://idp.test"}
 	authenticator := &support.Authenticator{Principals: idmanagement.Module{UserRepo: users}.Principals(), Sessions: authentication.Module{AuthnResolver: authentication.DemoHeaderResolver{}}.SessionAuthentications()}
 	e := echo.New()
-	apitokenhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultRealmTenant), apitokenhttp.Deps{
+	apitokenhttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefaultAt(deps.Issuer)), apitokenhttp.Deps{
 		Deps: deps, Authenticator: authenticator, Service: service,
 	})
 	return e

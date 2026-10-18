@@ -1,16 +1,20 @@
-package support_http
+package handlers_http
 
 import (
 	"net/http"
-	"net/url"
 	"strings"
 
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-
 	"github.com/labstack/echo/v5"
 )
+
+type TenantResolver struct {
+	TenantRepo       tenantports.TenantRepository
+	Issuer           string
+	TenantBaseDomain string
+}
 
 // ResolveHostTenant は Host が `{realm}.{TenantBaseDomain}` に一致するリクエストを
 // subdomain style のテナントへ解決する。TenantBaseDomain が空、Host が
@@ -19,7 +23,7 @@ import (
 //
 // fail-open にすると任意の Host ヘッダで default テナントへ到達でき、テナント境界の
 // 破りになるため、既定は deny とする。
-func (d Deps) ResolveHostTenant(next echo.HandlerFunc) echo.HandlerFunc {
+func (d TenantResolver) ResolveHostTenant(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		realm, ok := d.hostRealm(c.Request().Host)
 		if !ok {
@@ -30,7 +34,7 @@ func (d Deps) ResolveHostTenant(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 // ResolvePathTenant は `/realms/{realm}/...` を path style のテナントへ解決する。
-func (d Deps) ResolvePathTenant(next echo.HandlerFunc) echo.HandlerFunc {
+func (d TenantResolver) ResolvePathTenant(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		// subdomain style のテナントの origin から path prefix で別テナントへ抜けられると、
 		// origin とテナントが食い違う (その origin の cookie 空間に別テナントの
@@ -46,7 +50,7 @@ func (d Deps) ResolvePathTenant(next echo.HandlerFunc) echo.HandlerFunc {
 // テナントを resolve する。URL prefix は /realms/default になり、cookie path が
 // そのまま control-plane endpoint を覆う (cross-tenant cookie 漏れを避けるための
 // §1 の選択)。テナント横断操作である /realms/default/admin/tenants 等で使う。
-func (d Deps) ResolveDefaultRealmTenant(next echo.HandlerFunc) echo.HandlerFunc {
+func (d TenantResolver) ResolveDefaultRealmTenant(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		if _, ok := d.hostRealm(c.Request().Host); ok {
 			return tenantNotFound(c)
@@ -57,7 +61,7 @@ func (d Deps) ResolveDefaultRealmTenant(next echo.HandlerFunc) echo.HandlerFunc 
 
 // hostRealm は Host から subdomain style の realm ラベルを取り出す。
 // TenantBaseDomain が未設定なら常に不一致 — host 解決を丸ごと無効化する。
-func (d Deps) hostRealm(host string) (string, bool) {
+func (d TenantResolver) hostRealm(host string) (string, bool) {
 	base := strings.ToLower(strings.TrimSpace(d.TenantBaseDomain))
 	if base == "" {
 		return "", false
@@ -90,8 +94,7 @@ func normalizeHost(host string) string {
 // resolveTenant は realm からテナントを解決し、到達経路が そのテナントの正規ロケーション
 // と一致することを確かめてから、issuer / URL prefix を ctx に載せる。
 // 内部キーは tenant.ID (UUID)。
-func (d Deps) resolveTenant(
-	c *echo.Context,
+func (d TenantResolver) resolveTenant(c *echo.Context,
 	next echo.HandlerFunc,
 	realm string,
 	via tenancydomain.TenantEndpointStyle,
@@ -119,12 +122,12 @@ func (d Deps) resolveTenant(
 		return tenantNotFound(c)
 	}
 	if tenant.Status != tenancydomain.TenantStatusActive || tenant.DisabledAt != nil {
-		return c.JSON(http.StatusBadRequest, OAuthErrorBody("invalid_request", "tenant is unavailable"))
+		return c.JSON(http.StatusBadRequest, support.OAuthErrorBody("invalid_request", "tenant is unavailable"))
 	}
 	return d.enterTenant(c, next, tenant)
 }
 
-func (d Deps) enterTenant(c *echo.Context, next echo.HandlerFunc, tenant *tenancydomain.Tenant) error {
+func (d TenantResolver) enterTenant(c *echo.Context, next echo.HandlerFunc, tenant *tenancydomain.Tenant) error {
 	issuer, urlPrefix := d.CanonicalLocation(tenant)
 	c.SetRequest(c.Request().WithContext(tenantports.WithTenant(c.Request().Context(), tenant, issuer, urlPrefix)))
 	// テナントの正規ロケーションは Host に依存する。共有キャッシュが host をキーに
@@ -140,7 +143,7 @@ func tenantNotFound(c *echo.Context) error {
 // CanonicalLocation はテナントの正規ロケーションを (issuer, URL prefix) として返す。
 // 1 テナント = 1 正規ロケーション = 1 issuer なので、discovery 文書の
 // issuer は必ずその文書の取得元 URL と一致する (OIDC Discovery 1.0 §4.3)。
-func (d Deps) CanonicalLocation(tenant *tenancydomain.Tenant) (issuer, urlPrefix string) {
+func (d TenantResolver) CanonicalLocation(tenant *tenancydomain.Tenant) (issuer, urlPrefix string) {
 	base := strings.TrimSuffix(d.Issuer, "/")
 	if tenant.EffectiveEndpointStyle() == tenancydomain.TenantEndpointStyleSubdomain {
 		scheme := "https"
@@ -160,73 +163,4 @@ func (d Deps) CanonicalLocation(tenant *tenancydomain.Tenant) (issuer, urlPrefix
 		return scheme + "://" + tenant.Realm + "." + strings.TrimSuffix(d.TenantBaseDomain, ".") + port, ""
 	}
 	return base + "/realms/" + tenant.Realm, "/realms/" + tenant.Realm
-}
-
-func RequestTenantID(c *echo.Context) string {
-	return tenantports.TenantID(c.Request().Context())
-}
-
-func RequestIssuer(c *echo.Context, fallback string) string {
-	return tenantports.Issuer(c.Request().Context(), fallback)
-}
-
-// RequestHTU は DPoP proof の htu (RFC 9449 §4.2) として照合する、クエリとフラグメントを
-// 含まない絶対 URL を返す。文脈にテナントが無いときは fallback を issuer として使う。
-//
-// issuer 全体ではなく origin にリクエストのパスを継ぐ。path style の issuer は既に
-// /realms/{realm} を含み、パスにも同じ prefix があるので、issuer 全体へ継ぐと二重になる。
-// Host ヘッダーからは組まない。正規ロケーションは discovery が広告する URL と同じ出所なので、
-// プロキシ配下でもクライアントの URL と一致し、ヘッダーの偽装で期待値を動かせない。
-//
-// origin を決められなければ "" を返す。DPoP の検証は空の htu を一致とみなさないので、
-// その場合の証明は拒否される。
-func RequestHTU(c *echo.Context, fallback string) string {
-	issuer, err := url.Parse(RequestIssuer(c, fallback))
-	if err != nil || issuer.Scheme == "" || issuer.Host == "" {
-		return ""
-	}
-	return issuer.Scheme + "://" + issuer.Host + c.Request().URL.Path
-}
-
-// TenantURL はテナントの正規ロケーション配下の絶対 URL を組み立てる。
-// issuer 自体が正規ロケーションの root なので、issuer に path を継ぐだけでよい。
-//
-// `issuer + TenantRoute(c, path)` と書いてはならない: path style では issuer が
-// 既に /realms/{realm} を含むため prefix が二重になる。TenantRoute は同一 origin 内の
-// 相対リンク (redirect 先、cookie path) 専用。
-func TenantURL(c *echo.Context, path, fallback string) string {
-	return strings.TrimRight(RequestIssuer(c, fallback), "/") + path
-}
-
-func TenantRoute(c *echo.Context, path string) string {
-	if prefix := tenantports.URLPrefix(c.Request().Context()); prefix != "" {
-		return prefix + path
-	}
-	return path
-}
-
-func TenantCookiePath(c *echo.Context) string {
-	if prefix := tenantports.URLPrefix(c.Request().Context()); prefix != "" {
-		return prefix
-	}
-	return "/"
-}
-
-// TenantCookieName は endpoint style に合わせて cookie 名を返す。Subdomain は tenant
-// 固有 host でだけ使えるため __Host- prefix を使い、Domain 属性を持たず Path=/ とする。
-// Path style は既存の名前を保ち、/realms/{realm} の Path で分離する。
-func TenantCookieName(c *echo.Context, name string) string {
-	if tenant := tenantports.Tenant(c.Request().Context()); tenant != nil &&
-		tenant.EffectiveEndpointStyle() == tenancydomain.TenantEndpointStyleSubdomain {
-		return "__Host-" + name
-	}
-	return name
-}
-
-// TenantCookieSecure reports whether the cookie belongs to a subdomain tenant.
-// __Host- is valid only with Secure, independently of the process-wide local
-// development issuer setting.
-func TenantCookieSecure(c *echo.Context) bool {
-	tenant := tenantports.Tenant(c.Request().Context())
-	return tenant != nil && tenant.EffectiveEndpointStyle() == tenancydomain.TenantEndpointStyleSubdomain
 }

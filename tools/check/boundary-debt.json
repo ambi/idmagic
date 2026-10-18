@@ -370,19 +370,6 @@
       "targetModule": "OAuth2",
       "violations": ["module-cycle:WsFederation->OAuth2"],
       "reason": "WsFederation -> OAuth2 lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
-    },
-    {
-      "id": "shared-dependency:shared->Tenancy",
-      "sourceModule": "shared",
-      "targetModule": "Tenancy",
-      "violations": [
-        "shared-dependency:backend/shared/http/support_http->Tenancy",
-        "shared-dependency:backend/shared/ratelimit/db_postgres->Tenancy",
-        "shared-dependency:backend/shared/security/salts_memory->Tenancy",
-        "shared-dependency:backend/shared/security/salts_postgres->Tenancy",
-        "shared-dependency:backend/shared/storage/db_memory->Tenancy"
-      ],
-      "reason": "support_http はテナントを解決し、ratelimit/db_postgres、salts_memory、salts_postgres は Tenancy のポートからテナント ID を読み、db_memory は Tenancy の型を使う。これらは wi-73604 で解消する（D1、D5）。"
     }
   ]
 }

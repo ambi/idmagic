@@ -6,7 +6,6 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -58,5 +57,5 @@ func (c UserLifecycleCommands) deps() AdminUserDeps {
 }
 
 func (c UserLifecycleCommands) tenantContext(ctx context.Context, tenantID string) context.Context {
-	return tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: tenantID}, "", "")
+	return tenantports.WithTenantID(ctx, tenantID)
 }

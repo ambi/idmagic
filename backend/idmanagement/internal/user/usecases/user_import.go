@@ -15,7 +15,6 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -165,7 +164,7 @@ func UserImportJobHandler(deps UserImportJobDeps, mode UserImportMode) func(cont
 		if err := json.Unmarshal(job.Params, &params); err != nil {
 			return nil, err
 		}
-		ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
+		ctx = tenantports.WithTenantID(ctx, job.TenantID)
 		var source UserImportParams
 		if mode == UserImportModeApply {
 			bound, previewResult, err := loadBoundPreview(ctx, deps.Jobs, deps.Artifacts, job.TenantID, params.PreviewJobID)

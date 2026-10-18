@@ -6,9 +6,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
 // =====================================================================
@@ -27,7 +29,7 @@ func NewAuthorizationCodeStore() *AuthorizationCodeStore {
 func (s *AuthorizationCodeStore) Save(_ context.Context, code *domain.AuthorizationCodeRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	sharedmem.DefaultTenant(&code.TenantID)
+	sharedmem.DefaultScope(&code.TenantID, kernel.DefaultTenantID)
 	s.codes[code.Code] = cloneAuthorizationCode(code)
 	return nil
 }

@@ -17,6 +17,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/apitoken"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -166,13 +167,12 @@ func Run() error {
 	// 配下でなければならない。正規ロケーションの組み立ては HTTP 層が所有するので、
 	// issuer と親ドメインを知っているこのプロセスが解決器を差し込む (wi-90)。
 	// NewEmitFunc がこの配線を読むため、必ずその前に行う。
-	canonical := httpsupport.Deps{Issuer: issuer, TenantBaseDomain: api.TenantBaseDomain}
 	deps.SecurityNotifications.IssuerResolver = func(ctx context.Context, tenantID string) string {
 		tenant, err := deps.Tenancy.TenantRepo.FindByID(ctx, tenantID)
 		if err != nil || tenant == nil {
 			return issuer
 		}
-		tenantIssuer, _ := canonical.CanonicalLocation(tenant)
+		tenantIssuer, _ := tenancy.CanonicalLocation(tenant, issuer, api.TenantBaseDomain)
 		return tenantIssuer
 	}
 	emit := deps.NewEmitFunc(logger)

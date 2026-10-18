@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
@@ -93,7 +95,7 @@ func (r *GroupRepository) Count(_ context.Context, tenantID string) (int64, erro
 func (r *GroupRepository) FindByID(_ context.Context, tenantID, id string) (*groupdomain.Group, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	group := r.groups[sharedmem.TenantKey(tenantID, id)]
+	group := r.groups[sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)]
 	if group == nil {
 		return nil, nil
 	}
@@ -103,16 +105,16 @@ func (r *GroupRepository) FindByID(_ context.Context, tenantID, id string) (*gro
 func (r *GroupRepository) Save(_ context.Context, group *groupdomain.Group) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.groups[sharedmem.TenantKey(group.TenantID, group.ID)] = cloneGroup(group)
+	r.groups[sharedmem.ScopedKey(group.TenantID, group.ID, kernel.DefaultTenantID)] = cloneGroup(group)
 	return nil
 }
 
 func (r *GroupRepository) Delete(_ context.Context, tenantID, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.groups, sharedmem.TenantKey(tenantID, id))
-	delete(r.members, sharedmem.TenantKey(tenantID, id))
-	delete(r.rules, sharedmem.TenantKey(tenantID, id))
+	delete(r.groups, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
+	delete(r.members, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
+	delete(r.rules, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
 	return nil
 }
 
@@ -128,7 +130,7 @@ func cloneDynamicRule(rule *groupdomain.DynamicGroupRule) *groupdomain.DynamicGr
 func (r *GroupRepository) FindDynamicRule(_ context.Context, tenantID, groupID string) (*groupdomain.DynamicGroupRule, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return cloneDynamicRule(r.rules[sharedmem.TenantKey(tenantID, groupID)]), nil
+	return cloneDynamicRule(r.rules[sharedmem.ScopedKey(tenantID, groupID, kernel.DefaultTenantID)]), nil
 }
 
 func (r *GroupRepository) ListDynamicRules(_ context.Context, tenantID string) ([]*groupdomain.DynamicGroupRule, error) {
@@ -146,14 +148,14 @@ func (r *GroupRepository) ListDynamicRules(_ context.Context, tenantID string) (
 func (r *GroupRepository) SaveDynamicRule(_ context.Context, rule *groupdomain.DynamicGroupRule) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.rules[sharedmem.TenantKey(rule.TenantID, rule.GroupID)] = cloneDynamicRule(rule)
+	r.rules[sharedmem.ScopedKey(rule.TenantID, rule.GroupID, kernel.DefaultTenantID)] = cloneDynamicRule(rule)
 	return nil
 }
 
 func (r *GroupRepository) ListMembersByGroup(_ context.Context, tenantID, groupID string) ([]*groupdomain.GroupMember, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	stored := r.members[sharedmem.TenantKey(tenantID, groupID)]
+	stored := r.members[sharedmem.ScopedKey(tenantID, groupID, kernel.DefaultTenantID)]
 	out := make([]*groupdomain.GroupMember, 0, len(stored))
 	for _, member := range stored {
 		cloned := *member
@@ -198,7 +200,7 @@ func (r *GroupRepository) membershipEffective(key string, group *groupdomain.Gro
 func (r *GroupRepository) CountMembers(_ context.Context, tenantID, groupID string) (int, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return len(r.members[sharedmem.TenantKey(tenantID, groupID)]), nil
+	return len(r.members[sharedmem.ScopedKey(tenantID, groupID, kernel.DefaultTenantID)]), nil
 }
 
 func (r *GroupRepository) AddMember(_ context.Context, member *groupdomain.GroupMember) (bool, error) {
@@ -218,7 +220,7 @@ func (r *GroupRepository) AddMember(_ context.Context, member *groupdomain.Group
 func (r *GroupRepository) RemoveMember(_ context.Context, tenantID, groupID, userID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := sharedmem.TenantKey(tenantID, groupID)
+	key := sharedmem.ScopedKey(tenantID, groupID, kernel.DefaultTenantID)
 	members := r.members[key]
 	for i, existing := range members {
 		if existing.UserID == userID {

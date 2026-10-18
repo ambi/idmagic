@@ -6,8 +6,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // McpResourceServerRepository
@@ -52,7 +54,7 @@ func (r *McpResourceServerRepository) ListAll(_ context.Context, tenantID string
 func (r *McpResourceServerRepository) FindByID(_ context.Context, tenantID, resourceServerID string) (*domain.McpResourceServer, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	m := r.byID[sharedmem.TenantKey(tenantID, resourceServerID)]
+	m := r.byID[sharedmem.ScopedKey(tenantID, resourceServerID, kernel.DefaultTenantID)]
 	if m == nil {
 		return nil, nil
 	}
@@ -62,7 +64,7 @@ func (r *McpResourceServerRepository) FindByID(_ context.Context, tenantID, reso
 func (r *McpResourceServerRepository) FindByResource(_ context.Context, tenantID, resource string) (*domain.McpResourceServer, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	m := r.byRes[sharedmem.TenantKey(tenantID, resource)]
+	m := r.byRes[sharedmem.ScopedKey(tenantID, resource, kernel.DefaultTenantID)]
 	if m == nil {
 		return nil, nil
 	}
@@ -72,22 +74,22 @@ func (r *McpResourceServerRepository) FindByResource(_ context.Context, tenantID
 func (r *McpResourceServerRepository) Save(_ context.Context, m *domain.McpResourceServer) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	sharedmem.DefaultTenant(&m.TenantID)
+	sharedmem.DefaultScope(&m.TenantID, kernel.DefaultTenantID)
 	cloned := cloneMcpResourceServer(m)
-	r.byID[sharedmem.TenantKey(m.TenantID, m.ID)] = cloned
-	r.byRes[sharedmem.TenantKey(m.TenantID, m.Resource)] = cloned
+	r.byID[sharedmem.ScopedKey(m.TenantID, m.ID, kernel.DefaultTenantID)] = cloned
+	r.byRes[sharedmem.ScopedKey(m.TenantID, m.Resource, kernel.DefaultTenantID)] = cloned
 	return nil
 }
 
 func (r *McpResourceServerRepository) Delete(_ context.Context, tenantID, resourceServerID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := sharedmem.TenantKey(tenantID, resourceServerID)
+	key := sharedmem.ScopedKey(tenantID, resourceServerID, kernel.DefaultTenantID)
 	m := r.byID[key]
 	if m == nil {
 		return nil
 	}
 	delete(r.byID, key)
-	delete(r.byRes, sharedmem.TenantKey(tenantID, m.Resource))
+	delete(r.byRes, sharedmem.ScopedKey(tenantID, m.Resource, kernel.DefaultTenantID))
 	return nil
 }

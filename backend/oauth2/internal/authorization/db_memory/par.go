@@ -5,8 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
+	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // =====================================================================
@@ -25,7 +27,7 @@ func NewPARStore() *PARStore {
 func (s *PARStore) Save(_ context.Context, rec *domain.PARRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	sharedmem.DefaultTenant(&rec.TenantID)
+	sharedmem.DefaultScope(&rec.TenantID, kernel.DefaultTenantID)
 	s.records[rec.RequestURI] = rec
 	return nil
 }

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -391,8 +391,8 @@ func (a *Authenticator) RequireAdmin(c *echo.Context) (*Principal, error) {
 // 呼び出し元は Group 由来を合成した有効ロールを actor.Roles に入れてから渡す。
 func IsControlPlaneActor(actor *Principal, requestTenantID string) bool {
 	return actor != nil && actor.Active &&
-		actor.TenantID == tenancydomain.DefaultTenantID &&
-		requestTenantID == tenancydomain.DefaultTenantID &&
+		actor.TenantID == kernel.DefaultTenantID &&
+		requestTenantID == kernel.DefaultTenantID &&
 		slices.Contains(actor.Roles, "system_admin")
 }
 

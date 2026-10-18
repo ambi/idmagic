@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
@@ -28,21 +30,21 @@ func (r *OAuth2ClientRepository) Seed(c *domain.OAuth2Client) {
 func (r *OAuth2ClientRepository) FindByID(_ context.Context, tenantID, clientID string) (*domain.OAuth2Client, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.clients[sharedmem.TenantKey(tenantID, clientID)], nil
+	return r.clients[sharedmem.ScopedKey(tenantID, clientID, kernel.DefaultTenantID)], nil
 }
 
 func (r *OAuth2ClientRepository) Save(_ context.Context, c *domain.OAuth2Client) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	sharedmem.DefaultTenant(&c.TenantID)
-	r.clients[sharedmem.TenantKey(c.TenantID, c.ClientID)] = c
+	sharedmem.DefaultScope(&c.TenantID, kernel.DefaultTenantID)
+	r.clients[sharedmem.ScopedKey(c.TenantID, c.ClientID, kernel.DefaultTenantID)] = c
 	return nil
 }
 
 func (r *OAuth2ClientRepository) Delete(_ context.Context, tenantID, clientID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.clients, sharedmem.TenantKey(tenantID, clientID))
+	delete(r.clients, sharedmem.ScopedKey(tenantID, clientID, kernel.DefaultTenantID))
 	return nil
 }
 

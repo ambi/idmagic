@@ -12,6 +12,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy/internal/db_postgres"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/internal/handlers_http"
@@ -55,6 +56,17 @@ func QuotaRepositoryInTx(tx pgx.Tx) ports.QuotaRepository { return db_postgres.Q
 // EnsureDefault は default テナントがなければ作る。
 func (m Module) EnsureDefault(ctx context.Context, now time.Time) error {
 	return usecases.EnsureDefault(ctx, m.TenantRepo, now)
+}
+
+// HTTPMiddleware は公開経路の組み立てにテナントの解決器を渡す。
+func (m Module) HTTPMiddleware(issuer, baseDomain string) (host, path echo.MiddlewareFunc) {
+	resolver := tenancyhttp.TenantResolver{TenantRepo: m.TenantRepo, Issuer: issuer, TenantBaseDomain: baseDomain}
+	return resolver.ResolveHostTenant, resolver.ResolvePathTenant
+}
+
+// CanonicalLocation は HTTP と背景の通知に共通の正規ロケーションを返す。
+func CanonicalLocation(tenant *domain.Tenant, issuer, baseDomain string) (string, string) {
+	return (tenancyhttp.TenantResolver{Issuer: issuer, TenantBaseDomain: baseDomain}).CanonicalLocation(tenant)
 }
 
 // NotificationSource は、通知の既定 locale、製品名、表示名とテンプレートの上書きをテナントから読む。

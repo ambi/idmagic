@@ -7,9 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
-	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
 type LifecycleWorkflowRunRepository struct {
@@ -24,7 +26,11 @@ var _ igports.LifecycleWorkflowRunRepository = (*LifecycleWorkflowRunRepository)
 func NewLifecycleWorkflowRunRepository() *LifecycleWorkflowRunRepository {
 	return &LifecycleWorkflowRunRepository{runs: map[string]*igdomain.WorkflowRun{}, steps: map[string][]igdomain.WorkflowStep{}, occurrences: map[string]string{}}
 }
-func runKey(tenantID, id string) string { return sharedmem.TenantKey(tenantID, id) }
+
+func runKey(tenantID, id string) string {
+	return sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)
+}
+
 func occurrenceKey(r *igdomain.WorkflowRun) string {
 	return runKey(r.TenantID, r.WorkflowID) + ":" + r.SourceOccurrenceID + ":" + r.TargetUserID
 }

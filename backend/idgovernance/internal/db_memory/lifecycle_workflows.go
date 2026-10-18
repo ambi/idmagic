@@ -7,9 +7,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
-	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
 type LifecycleWorkflowRepository struct {
@@ -25,7 +27,7 @@ func NewLifecycleWorkflowRepository() *LifecycleWorkflowRepository {
 }
 
 func workflowKey(tenantID, workflowID string) string {
-	return sharedmem.TenantKey(tenantID, workflowID)
+	return sharedmem.ScopedKey(tenantID, workflowID, kernel.DefaultTenantID)
 }
 
 func workflowRevisionKey(tenantID, workflowID string, revision int64) string {

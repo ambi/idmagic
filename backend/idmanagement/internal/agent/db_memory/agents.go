@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
@@ -89,7 +91,7 @@ func (r *AgentRepository) Count(_ context.Context, tenantID string) (int64, erro
 func (r *AgentRepository) FindByID(_ context.Context, tenantID, id string) (*agentdomain.Agent, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	agent := r.agents[sharedmem.TenantKey(tenantID, id)]
+	agent := r.agents[sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)]
 	if agent == nil {
 		return nil, nil
 	}
@@ -99,22 +101,22 @@ func (r *AgentRepository) FindByID(_ context.Context, tenantID, id string) (*age
 func (r *AgentRepository) Save(_ context.Context, agent *agentdomain.Agent) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.agents[sharedmem.TenantKey(agent.TenantID, agent.ID)] = cloneAgent(agent)
+	r.agents[sharedmem.ScopedKey(agent.TenantID, agent.ID, kernel.DefaultTenantID)] = cloneAgent(agent)
 	return nil
 }
 
 func (r *AgentRepository) Delete(_ context.Context, tenantID, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.agents, sharedmem.TenantKey(tenantID, id))
-	delete(r.bindings, sharedmem.TenantKey(tenantID, id))
+	delete(r.agents, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
+	delete(r.bindings, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
 	return nil
 }
 
 func (r *AgentRepository) ListBindings(_ context.Context, tenantID, agentID string) ([]*agentdomain.AgentCredentialBinding, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	stored := r.bindings[sharedmem.TenantKey(tenantID, agentID)]
+	stored := r.bindings[sharedmem.ScopedKey(tenantID, agentID, kernel.DefaultTenantID)]
 	out := make([]*agentdomain.AgentCredentialBinding, 0, len(stored))
 	for _, binding := range stored {
 		cloned := *binding
@@ -146,7 +148,7 @@ func (r *AgentRepository) AddBinding(_ context.Context, binding *agentdomain.Age
 			return false, nil
 		}
 	}
-	key := sharedmem.TenantKey(tenantID, binding.AgentID)
+	key := sharedmem.ScopedKey(tenantID, binding.AgentID, kernel.DefaultTenantID)
 	for _, existing := range r.bindings[key] {
 		if existing.ClientID == binding.ClientID {
 			return false, nil
@@ -160,7 +162,7 @@ func (r *AgentRepository) AddBinding(_ context.Context, binding *agentdomain.Age
 func (r *AgentRepository) RemoveBinding(_ context.Context, tenantID, agentID, clientID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := sharedmem.TenantKey(tenantID, agentID)
+	key := sharedmem.ScopedKey(tenantID, agentID, kernel.DefaultTenantID)
 	bindings := r.bindings[key]
 	for i, existing := range bindings {
 		if existing.ClientID == clientID {

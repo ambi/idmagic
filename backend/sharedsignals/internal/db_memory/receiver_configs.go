@@ -5,7 +5,9 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 )
 
@@ -28,7 +30,7 @@ func cloneReceiverConfig(c *ssdomain.SsfReceiverConfig) *ssdomain.SsfReceiverCon
 func (r *SsfReceiverConfigRepository) FindByStream(_ context.Context, tenantID, streamID string) (*ssdomain.SsfReceiverConfig, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	c := r.configs[sharedmem.TenantKey(tenantID, streamID)]
+	c := r.configs[sharedmem.ScopedKey(tenantID, streamID, kernel.DefaultTenantID)]
 	if c == nil {
 		return nil, nil
 	}
@@ -38,13 +40,13 @@ func (r *SsfReceiverConfigRepository) FindByStream(_ context.Context, tenantID, 
 func (r *SsfReceiverConfigRepository) Save(_ context.Context, tenantID string, c *ssdomain.SsfReceiverConfig) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.configs[sharedmem.TenantKey(tenantID, c.StreamID)] = cloneReceiverConfig(c)
+	r.configs[sharedmem.ScopedKey(tenantID, c.StreamID, kernel.DefaultTenantID)] = cloneReceiverConfig(c)
 	return nil
 }
 
 func (r *SsfReceiverConfigRepository) Delete(_ context.Context, tenantID, streamID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.configs, sharedmem.TenantKey(tenantID, streamID))
+	delete(r.configs, sharedmem.ScopedKey(tenantID, streamID, kernel.DefaultTenantID))
 	return nil
 }

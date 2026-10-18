@@ -89,10 +89,7 @@ func newAuditTestServer(t *testing.T, opts auditTestOptions) *auditTestServer {
 	_ = userRepo.Save(context.Background(), actor)
 
 	deps := tenancyhttp.Deps{
-		Deps: support.Deps{
-			Issuer: quotaTestIssuer, Contract: spec.CurrentRuntimeContract(), TenantRepo: tenantRepo,
-			TenantBaseDomain: opts.tenantBaseDomain,
-		},
+		Issuer: quotaTestIssuer, Contract: spec.CurrentRuntimeContract(), TenantBaseDomain: opts.tenantBaseDomain,
 		Authenticator: &support.Authenticator{
 			Principals: idmanagement.Module{UserRepo: userRepo}.Principals(),
 			Sessions: authentication.Module{AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{

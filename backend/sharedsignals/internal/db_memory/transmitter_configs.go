@@ -4,7 +4,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 )
 
@@ -21,7 +23,7 @@ func NewSsfTransmitterConfigRepository() *SsfTransmitterConfigRepository {
 func (r *SsfTransmitterConfigRepository) FindByStream(_ context.Context, tenantID, streamID string) (*ssdomain.SsfTransmitterConfig, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	c := r.configs[sharedmem.TenantKey(tenantID, streamID)]
+	c := r.configs[sharedmem.ScopedKey(tenantID, streamID, kernel.DefaultTenantID)]
 	if c == nil {
 		return nil, nil
 	}
@@ -33,13 +35,13 @@ func (r *SsfTransmitterConfigRepository) Save(_ context.Context, tenantID string
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cloned := *c
-	r.configs[sharedmem.TenantKey(tenantID, c.StreamID)] = &cloned
+	r.configs[sharedmem.ScopedKey(tenantID, c.StreamID, kernel.DefaultTenantID)] = &cloned
 	return nil
 }
 
 func (r *SsfTransmitterConfigRepository) Delete(_ context.Context, tenantID, streamID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.configs, sharedmem.TenantKey(tenantID, streamID))
+	delete(r.configs, sharedmem.ScopedKey(tenantID, streamID, kernel.DefaultTenantID))
 	return nil
 }

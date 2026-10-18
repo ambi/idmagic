@@ -1,24 +1,13 @@
-// Package memory: 永続化アダプタの in-memory 実装（デモ・テスト用）。
-// TS の memory Adapter に対応。
-//
-// リポジトリ実装は境界づけられたコンテキスト単位でファイル分割している
-// (tenants.go / clients.go / users.go ...)。共有インフラとして bootstrap が
-// 全コンテキストへ配線するが、コンテキスト境界は各 ports が担保する。
 package db_memory
 
-import (
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-)
-
-func DefaultTenant(tenantID *string) {
-	if *tenantID == "" {
-		*tenantID = tenancydomain.DefaultTenantID
+// DefaultScope は、保存先の所有者が指定した補完値を空のスコープに設定する。
+func DefaultScope(scope *string, fallback string) {
+	if *scope == "" {
+		*scope = fallback
 	}
 }
 
-func TenantKey(tenantID, id string) string {
-	if tenantID == "" {
-		tenantID = tenancydomain.DefaultTenantID
-	}
-	return tenantID + "|" + id
+func ScopedKey(scope, id, fallback string) string {
+	DefaultScope(&scope, fallback)
+	return scope + "|" + id
 }

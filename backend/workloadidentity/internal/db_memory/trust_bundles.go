@@ -7,7 +7,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
@@ -44,7 +46,7 @@ func (r *WorkloadTrustBundleRepository) ListAll(_ context.Context, tenantID stri
 func (r *WorkloadTrustBundleRepository) FindByID(_ context.Context, tenantID, id string) (*workloaddomain.WorkloadTrustBundle, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	b := r.bundles[sharedmem.TenantKey(tenantID, id)]
+	b := r.bundles[sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)]
 	if b == nil {
 		return nil, nil
 	}
@@ -70,13 +72,13 @@ func (r *WorkloadTrustBundleRepository) Save(_ context.Context, b *workloaddomai
 			return errDuplicateTrustBundleIssuer
 		}
 	}
-	r.bundles[sharedmem.TenantKey(b.TenantID, b.ID)] = cloneTrustBundle(b)
+	r.bundles[sharedmem.ScopedKey(b.TenantID, b.ID, kernel.DefaultTenantID)] = cloneTrustBundle(b)
 	return nil
 }
 
 func (r *WorkloadTrustBundleRepository) Delete(_ context.Context, tenantID, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.bundles, sharedmem.TenantKey(tenantID, id))
+	delete(r.bundles, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
 	return nil
 }

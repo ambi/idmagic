@@ -8,7 +8,6 @@ import (
 
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // Deps は全 HTTP ハンドラが共有する依存集約のうち、HTTP 横断設定とライフサイクルに関連するもの。
@@ -34,7 +33,6 @@ type Deps struct {
 	DbPing                    func(context.Context) error
 	ShuttingDown              *atomic.Bool
 	StartupComplete           *atomic.Bool
-	TenantRepo                tenantports.TenantRepository
 	// PaginationCodec signs/verifies keyset pagination cursors.
 	// nil-safe: handlers that don't paginate never touch it.
 	PaginationCodec *CursorCodec

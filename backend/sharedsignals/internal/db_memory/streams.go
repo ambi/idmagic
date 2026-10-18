@@ -5,7 +5,9 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 )
 
@@ -41,7 +43,7 @@ func (r *SsfStreamRepository) ListAll(_ context.Context, tenantID string) ([]*ss
 func (r *SsfStreamRepository) FindByID(_ context.Context, tenantID, id string) (*ssdomain.SsfStream, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	s := r.streams[sharedmem.TenantKey(tenantID, id)]
+	s := r.streams[sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)]
 	if s == nil {
 		return nil, nil
 	}
@@ -51,13 +53,13 @@ func (r *SsfStreamRepository) FindByID(_ context.Context, tenantID, id string) (
 func (r *SsfStreamRepository) Save(_ context.Context, s *ssdomain.SsfStream) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.streams[sharedmem.TenantKey(s.TenantID, s.ID)] = cloneStream(s)
+	r.streams[sharedmem.ScopedKey(s.TenantID, s.ID, kernel.DefaultTenantID)] = cloneStream(s)
 	return nil
 }
 
 func (r *SsfStreamRepository) Delete(_ context.Context, tenantID, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.streams, sharedmem.TenantKey(tenantID, id))
+	delete(r.streams, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
 	return nil
 }

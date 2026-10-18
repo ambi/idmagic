@@ -270,6 +270,7 @@ func (m Module) Principals() support.PrincipalDirectory {
 
 // RouteDeps は IdManagement の経路が共通基盤とほかのモジュールから受け取る依存である。
 type RouteDeps struct {
+	TenantRepo tenantports.TenantRepository
 	LifecycleDeps
 	support.Deps
 	*support.Authenticator
@@ -300,6 +301,7 @@ func (m Module) FederatedUserProvisioner(d RouteDeps) func(context.Context, Fede
 
 func (m Module) httpDeps(d RouteDeps) idmhttp.Deps {
 	return idmhttp.Deps{
+		TenantRepo:                d.TenantRepo,
 		Deps:                      d.Deps,
 		Authenticator:             d.Authenticator,
 		UserRepo:                  m.UserRepo,

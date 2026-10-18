@@ -1,4 +1,4 @@
-package support_http
+package handlers_http
 
 import (
 	"context"
@@ -29,10 +29,10 @@ func TestNormalizeHost(t *testing.T) {
 }
 
 func TestHostRealm(t *testing.T) {
-	d := Deps{TenantBaseDomain: "idmagic.test"}
+	d := TenantResolver{TenantBaseDomain: "idmagic.test"}
 
 	t.Run("empty base domain disables host resolution", func(t *testing.T) {
-		empty := Deps{}
+		empty := TenantResolver{}
 		if _, ok := empty.hostRealm("acme.idmagic.test"); ok {
 			t.Fatal("expected host resolution disabled with empty TenantBaseDomain")
 		}
@@ -72,7 +72,7 @@ func newTenantMiddlewareContext(target string) (*echo.Context, *httptest.Respons
 }
 
 func TestResolveHostTenantDenyByDefault(t *testing.T) {
-	d := Deps{TenantBaseDomain: "idmagic.test"}
+	d := TenantResolver{TenantBaseDomain: "idmagic.test"}
 	called := false
 	next := func(*echo.Context) error { called = true; return nil }
 
@@ -97,11 +97,11 @@ func TestResolveHostTenantEntersSubdomainTenant(t *testing.T) {
 	if err := tenants.Save(t.Context(), tenant); err != nil {
 		t.Fatal(err)
 	}
-	d := Deps{TenantBaseDomain: "idmagic.test", TenantRepo: tenants, Issuer: "https://idmagic.test"}
+	d := TenantResolver{TenantBaseDomain: "idmagic.test", TenantRepo: tenants, Issuer: "https://idmagic.test"}
 
 	var seenTenantID string
 	next := func(c *echo.Context) error {
-		seenTenantID = RequestTenantID(c)
+		seenTenantID = tenantports.TenantID(c.Request().Context())
 		return nil
 	}
 	c, rec := newTenantMiddlewareContext("http://acme.idmagic.test/anything")
@@ -126,7 +126,7 @@ func TestResolveHostTenantRejectsPathStyleTenant(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	d := Deps{TenantBaseDomain: "idmagic.test", TenantRepo: tenants}
+	d := TenantResolver{TenantBaseDomain: "idmagic.test", TenantRepo: tenants}
 	c, rec := newTenantMiddlewareContext("http://acme.idmagic.test/anything")
 	if err := d.ResolveHostTenant(func(*echo.Context) error { return nil })(c); err != nil {
 		t.Fatal(err)
@@ -144,7 +144,7 @@ func TestResolveHostTenantRejectsDisabledTenant(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	d := Deps{TenantBaseDomain: "idmagic.test", TenantRepo: tenants}
+	d := TenantResolver{TenantBaseDomain: "idmagic.test", TenantRepo: tenants}
 	c, rec := newTenantMiddlewareContext("http://acme.idmagic.test/anything")
 	if err := d.ResolveHostTenant(func(*echo.Context) error { return nil })(c); err != nil {
 		t.Fatal(err)
@@ -157,7 +157,7 @@ func TestResolveHostTenantRejectsDisabledTenant(t *testing.T) {
 func TestResolvePathTenantRejectsHostResolvableOrigin(t *testing.T) {
 	// A subdomain tenant's own origin must not also accept a path-prefixed
 	// escape into a different tenant (cross-tenant cookie boundary).
-	d := Deps{TenantBaseDomain: "idmagic.test"}
+	d := TenantResolver{TenantBaseDomain: "idmagic.test"}
 	c, rec := newTenantMiddlewareContext("http://acme.idmagic.test/realms/other/anything")
 	c.SetPathValues(echo.PathValues{{Name: "tenant_id", Value: "other"}})
 	if err := d.ResolvePathTenant(func(*echo.Context) error { return nil })(c); err != nil {
@@ -176,11 +176,11 @@ func TestResolvePathTenantEntersPathStyleTenant(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	d := Deps{TenantRepo: tenants, Issuer: "https://idp.test"}
+	d := TenantResolver{TenantRepo: tenants, Issuer: "https://idp.test"}
 	c, _ := newTenantMiddlewareContext("http://idp.test/realms/acme/anything")
 	c.SetPathValues(echo.PathValues{{Name: "tenant_id", Value: "acme"}})
 	var seenTenantID string
-	next := func(c *echo.Context) error { seenTenantID = RequestTenantID(c); return nil }
+	next := func(c *echo.Context) error { seenTenantID = tenantports.TenantID(c.Request().Context()); return nil }
 	if err := d.ResolvePathTenant(next)(c); err != nil {
 		t.Fatal(err)
 	}
@@ -190,10 +190,10 @@ func TestResolvePathTenantEntersPathStyleTenant(t *testing.T) {
 }
 
 func TestResolveDefaultRealmTenantWithoutRepoUsesBuiltinDefault(t *testing.T) {
-	d := Deps{Issuer: "https://idp.test"}
+	d := TenantResolver{Issuer: "https://idp.test"}
 	c, _ := newTenantMiddlewareContext("http://idp.test/realms/default/anything")
 	var seenTenantID string
-	next := func(c *echo.Context) error { seenTenantID = RequestTenantID(c); return nil }
+	next := func(c *echo.Context) error { seenTenantID = tenantports.TenantID(c.Request().Context()); return nil }
 	if err := d.ResolveDefaultRealmTenant(next)(c); err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +203,7 @@ func TestResolveDefaultRealmTenantWithoutRepoUsesBuiltinDefault(t *testing.T) {
 }
 
 func TestResolveDefaultRealmTenantRejectsHostResolvableOrigin(t *testing.T) {
-	d := Deps{TenantBaseDomain: "idmagic.test"}
+	d := TenantResolver{TenantBaseDomain: "idmagic.test"}
 	c, rec := newTenantMiddlewareContext("http://acme.idmagic.test/realms/default/anything")
 	if err := d.ResolveDefaultRealmTenant(func(*echo.Context) error { return nil })(c); err != nil {
 		t.Fatal(err)
@@ -214,7 +214,7 @@ func TestResolveDefaultRealmTenantRejectsHostResolvableOrigin(t *testing.T) {
 }
 
 func TestResolveTenantWithNilRepoRejectsNonDefaultRealm(t *testing.T) {
-	d := Deps{}
+	d := TenantResolver{}
 	c, rec := newTenantMiddlewareContext("http://idp.test/realms/acme/anything")
 	c.SetPathValues(echo.PathValues{{Name: "tenant_id", Value: "acme"}})
 	if err := d.ResolvePathTenant(func(*echo.Context) error { return nil })(c); err != nil {
@@ -226,7 +226,7 @@ func TestResolveTenantWithNilRepoRejectsNonDefaultRealm(t *testing.T) {
 }
 
 func TestResolveTenantPropagatesRepoError(t *testing.T) {
-	d := Deps{TenantRepo: erroringTenantRepo{}}
+	d := TenantResolver{TenantRepo: erroringTenantRepo{}}
 	c, _ := newTenantMiddlewareContext("http://idp.test/realms/acme/anything")
 	c.SetPathValues(echo.PathValues{{Name: "tenant_id", Value: "acme"}})
 	err := d.ResolvePathTenant(func(*echo.Context) error { return nil })(c)
@@ -236,7 +236,7 @@ func TestResolveTenantPropagatesRepoError(t *testing.T) {
 }
 
 func TestCanonicalLocationPathStyle(t *testing.T) {
-	d := Deps{Issuer: "https://idp.test"}
+	d := TenantResolver{Issuer: "https://idp.test"}
 	tenant := &tenancydomain.Tenant{Realm: "acme", EndpointStyle: tenancydomain.TenantEndpointStylePath}
 	issuer, prefix := d.CanonicalLocation(tenant)
 	if issuer != "https://idp.test/realms/acme" || prefix != "/realms/acme" {
@@ -255,119 +255,13 @@ func TestCanonicalLocationSubdomainStyle(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			d := Deps{Issuer: tc.issuer, TenantBaseDomain: "idmagic.test"}
+			d := TenantResolver{Issuer: tc.issuer, TenantBaseDomain: "idmagic.test"}
 			tenant := &tenancydomain.Tenant{Realm: "acme", EndpointStyle: tenancydomain.TenantEndpointStyleSubdomain}
 			issuer, prefix := d.CanonicalLocation(tenant)
 			if issuer != tc.wantIssuer || prefix != "" {
 				t.Fatalf("issuer=%q prefix=%q, want issuer=%q prefix=empty", issuer, prefix, tc.wantIssuer)
 			}
 		})
-	}
-}
-
-func TestTenantRouteCookiePathAndName(t *testing.T) {
-	pathTenant := &tenancydomain.Tenant{ID: "t1", Realm: "acme", EndpointStyle: tenancydomain.TenantEndpointStylePath}
-	subTenant := &tenancydomain.Tenant{ID: "t2", Realm: "acme", EndpointStyle: tenancydomain.TenantEndpointStyleSubdomain}
-
-	t.Run("path style tenant", func(t *testing.T) {
-		c, _ := newTenantMiddlewareContext("http://idp.test/anything")
-		c.SetRequest(c.Request().WithContext(tenantports.WithTenant(c.Request().Context(), pathTenant, "https://idp.test/realms/acme", "/realms/acme")))
-		if got := TenantRoute(c, "/foo"); got != "/realms/acme/foo" {
-			t.Fatalf("TenantRoute = %q", got)
-		}
-		if got := TenantCookiePath(c); got != "/realms/acme" {
-			t.Fatalf("TenantCookiePath = %q", got)
-		}
-		if got := TenantCookieName(c, CSRFCookie); got != CSRFCookie {
-			t.Fatalf("TenantCookieName = %q, want unprefixed", got)
-		}
-		if TenantCookieSecure(c) {
-			t.Fatal("path style tenant must not require Secure __Host- cookies")
-		}
-	})
-
-	t.Run("subdomain style tenant", func(t *testing.T) {
-		c, _ := newTenantMiddlewareContext("http://acme.idp.test/anything")
-		c.SetRequest(c.Request().WithContext(tenantports.WithTenant(c.Request().Context(), subTenant, "https://acme.idp.test", "")))
-		if got := TenantRoute(c, "/foo"); got != "/foo" {
-			t.Fatalf("TenantRoute = %q", got)
-		}
-		if got := TenantCookiePath(c); got != "/" {
-			t.Fatalf("TenantCookiePath = %q", got)
-		}
-		if got := TenantCookieName(c, CSRFCookie); got != "__Host-"+CSRFCookie {
-			t.Fatalf("TenantCookieName = %q, want __Host- prefixed", got)
-		}
-		if !TenantCookieSecure(c) {
-			t.Fatal("subdomain style tenant must require Secure __Host- cookies")
-		}
-	})
-
-	t.Run("no tenant in context falls back to root", func(t *testing.T) {
-		c, _ := newTenantMiddlewareContext("http://idp.test/anything")
-		if got := TenantRoute(c, "/foo"); got != "/foo" {
-			t.Fatalf("TenantRoute = %q", got)
-		}
-		if got := TenantCookiePath(c); got != "/" {
-			t.Fatalf("TenantCookiePath = %q", got)
-		}
-		if got := TenantCookieName(c, CSRFCookie); got != CSRFCookie {
-			t.Fatalf("TenantCookieName = %q", got)
-		}
-		if TenantCookieSecure(c) {
-			t.Fatal("no tenant in context must not require Secure cookies")
-		}
-	})
-}
-
-// htu の期待値は、クライアントがリクエストを送った絶対 URL である。path style の issuer は
-// すでに /realms/{realm} を含むので、issuer 全体にパスを継ぐと prefix が二重になる。基底の
-// issuer を前置すると subdomain style の host が落ちる。どちらの誤りもここで区別する。
-//
-//spec:covers RFC9449-API-TOKEN-DPOP: htu の期待値を、テナントの正規ロケーションの origin とリクエストのパスから、クエリを除いて組む。
-func TestRequestHTUIsTheTargetURIAtTheCanonicalLocation(t *testing.T) {
-	pathTenant := &tenancydomain.Tenant{ID: "acme", Realm: "acme", EndpointStyle: tenancydomain.TenantEndpointStylePath}
-	subTenant := &tenancydomain.Tenant{ID: "globex", Realm: "globex", EndpointStyle: tenancydomain.TenantEndpointStyleSubdomain}
-	for _, tc := range []struct {
-		name, target     string
-		tenant           *tenancydomain.Tenant
-		issuer, fallback string
-		want             string
-	}{
-		{
-			name: "path style", target: "http://internal:8080/realms/acme/api/admin/v1/users?limit=1",
-			tenant: pathTenant, issuer: "https://idp.test/realms/acme",
-			want: "https://idp.test/realms/acme/api/admin/v1/users",
-		},
-		{
-			name: "subdomain style", target: "http://internal:8080/token",
-			tenant: subTenant, issuer: "https://globex.idp.test:8443", fallback: "https://idp.test",
-			want: "https://globex.idp.test:8443/token",
-		},
-		{
-			name: "no tenant falls back", target: "http://internal/realms/default/token",
-			fallback: "https://idp.test/",
-			want:     "https://idp.test/realms/default/token",
-		},
-		{name: "no issuer at all", target: "http://internal/realms/default/token", want: ""},
-		{name: "issuer without a host", target: "http://internal/token", fallback: "idp.test", want: ""},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			c, _ := newTenantMiddlewareContext(tc.target)
-			if tc.tenant != nil {
-				c.SetRequest(c.Request().WithContext(tenantports.WithTenant(c.Request().Context(), tc.tenant, tc.issuer, "")))
-			}
-			if got := RequestHTU(c, tc.fallback); got != tc.want {
-				t.Fatalf("RequestHTU = %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
-
-func TestTenantURLFallsBackWithoutATenant(t *testing.T) {
-	c, _ := newTenantMiddlewareContext("http://idp.test/realms/acme/token?foo=bar")
-	if got := TenantURL(c, "/x", "https://fallback.test"); got != "https://fallback.test/x" {
-		t.Fatalf("TenantURL = %q", got)
 	}
 }
 

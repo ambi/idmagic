@@ -10,7 +10,6 @@ import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -80,7 +79,7 @@ func (d *Dependencies) NewEmitFunc(logger logging.Logger) func(spec.DomainEvent)
 		}
 		appendCtx := eventCtx
 		if rec.TenantID != "" {
-			appendCtx = tenantports.WithTenant(eventCtx, &tenancydomain.Tenant{ID: rec.TenantID}, "", "")
+			appendCtx = tenantports.WithTenantID(eventCtx, rec.TenantID)
 		}
 		if err := d.Audit.AuditEventRepo.Append(appendCtx, rec); err != nil {
 			if d.AuditFailures != nil {

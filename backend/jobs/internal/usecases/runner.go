@@ -162,7 +162,7 @@ func (rn *Runner) execute(ctx context.Context, job *domain.Job) {
 	// ハンドラーの実行コンテキストは Job のテナントに固定する。worker はすべての
 	// テナントの Job を実行するので、Job ごとに固定しなければハンドラーはどのテナントの範囲で
 	// 動くかを決められず、テナントを読んだ時点で tenantports.TenantID が panic する。
-	ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
+	ctx = tenantports.WithTenantID(ctx, job.TenantID)
 	execCtx, cancelExecution := context.WithCancelCause(ctx)
 	defer cancelExecution(nil)
 	go rn.heartbeatLoop(execCtx, job, cancelExecution)

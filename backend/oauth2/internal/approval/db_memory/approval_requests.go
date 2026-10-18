@@ -6,9 +6,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -34,7 +36,7 @@ func (s *ApprovalRequestStore) put(ctx context.Context, rec *approvaldomain.Appr
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rec.TenantID = tenantports.TenantID(ctx)
-	sharedmem.DefaultTenant(&rec.TenantID)
+	sharedmem.DefaultScope(&rec.TenantID, kernel.DefaultTenantID)
 	stored := cloneApprovalRequest(rec)
 	s.byID[stored.ID] = stored
 	s.byHash[stored.AuthReqIDHash] = stored

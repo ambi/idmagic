@@ -4,7 +4,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 )
 
@@ -26,7 +28,7 @@ func cloneRevocationEpoch(e *ssdomain.AgentRevocationEpoch) *ssdomain.AgentRevoc
 func (r *AgentRevocationEpochRepository) FindByAgent(_ context.Context, tenantID, agentID string) (*ssdomain.AgentRevocationEpoch, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	e := r.epochs[sharedmem.TenantKey(tenantID, agentID)]
+	e := r.epochs[sharedmem.ScopedKey(tenantID, agentID, kernel.DefaultTenantID)]
 	if e == nil {
 		return nil, nil
 	}
@@ -38,7 +40,7 @@ func (r *AgentRevocationEpochRepository) FindByAgent(_ context.Context, tenantID
 func (r *AgentRevocationEpochRepository) Advance(_ context.Context, epoch ssdomain.AgentRevocationEpoch) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := sharedmem.TenantKey(epoch.TenantID, epoch.AgentID)
+	key := sharedmem.ScopedKey(epoch.TenantID, epoch.AgentID, kernel.DefaultTenantID)
 	if existing := r.epochs[key]; existing != nil && !epoch.Epoch.After(existing.Epoch) {
 		return ssdomain.ErrEpochNotAdvancing
 	}

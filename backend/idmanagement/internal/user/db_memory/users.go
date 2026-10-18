@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
@@ -37,7 +39,7 @@ func (r *UserRepository) Seed(u *userdomain.User) {
 // 時刻の列は TIMESTAMPTZ と同じマイクロ秒に切り捨て、保存し直しでは作成時刻と所属テナントを
 // 最初の値のまま保つ。
 func (r *UserRepository) Save(_ context.Context, u *userdomain.User) error {
-	sharedmem.DefaultTenant(&u.TenantID)
+	sharedmem.DefaultScope(&u.TenantID, kernel.DefaultTenantID)
 	stored := cloneUser(u)
 	stored.CreatedAt = stored.CreatedAt.Truncate(time.Microsecond)
 	stored.UpdatedAt = stored.UpdatedAt.Truncate(time.Microsecond)
@@ -69,7 +71,7 @@ func (r *UserRepository) Save(_ context.Context, u *userdomain.User) error {
 }
 
 func userNameKey(u *userdomain.User) string {
-	return sharedmem.TenantKey(u.TenantID, idmdomain.NameKey(u.PreferredUsername))
+	return sharedmem.ScopedKey(u.TenantID, idmdomain.NameKey(u.PreferredUsername), kernel.DefaultTenantID)
 }
 
 func (r *UserRepository) FindBySub(_ context.Context, sub string) (*userdomain.User, error) {
@@ -94,7 +96,7 @@ func (r *UserRepository) FindBySubIncludingDeleted(_ context.Context, sub string
 func (r *UserRepository) FindByUsername(_ context.Context, tenantID, username string) (*userdomain.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	user := r.byUser[sharedmem.TenantKey(tenantID, idmdomain.NameKey(username))]
+	user := r.byUser[sharedmem.ScopedKey(tenantID, idmdomain.NameKey(username), kernel.DefaultTenantID)]
 	if user == nil || user.IsDeleted() {
 		return nil, nil
 	}

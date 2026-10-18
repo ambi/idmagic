@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
@@ -132,5 +134,5 @@ func (r *ConsentRepository) DeleteAllForSub(_ context.Context, sub string) error
 }
 
 func consentKey(tenantID, sub, clientID string) string {
-	return sharedmem.TenantKey(tenantID, sub+"|"+clientID)
+	return sharedmem.ScopedKey(tenantID, sub+"|"+clientID, kernel.DefaultTenantID)
 }

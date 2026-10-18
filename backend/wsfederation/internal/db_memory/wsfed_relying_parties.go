@@ -6,7 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	sharedmemory "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+	"github.com/ambi/idmagic/backend/shared/kernel"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	"github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
@@ -37,7 +39,7 @@ func cloneRelyingParty(rp *domain.WsFedRelyingParty) *domain.WsFedRelyingParty {
 func (r *WsFedRelyingPartyRepository) FindByWtrealm(_ context.Context, tenantID, wtrealm string) (*domain.WsFedRelyingParty, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	rp := r.parts[sharedmemory.TenantKey(tenantID, wtrealm)]
+	rp := r.parts[sharedmem.ScopedKey(tenantID, wtrealm, kernel.DefaultTenantID)]
 	if rp == nil {
 		return nil, nil
 	}
@@ -60,14 +62,14 @@ func (r *WsFedRelyingPartyRepository) ListAll(_ context.Context, tenantID string
 func (r *WsFedRelyingPartyRepository) Save(_ context.Context, rp *domain.WsFedRelyingParty) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	sharedmemory.DefaultTenant(&rp.TenantID)
-	r.parts[sharedmemory.TenantKey(rp.TenantID, rp.Wtrealm)] = cloneRelyingParty(rp)
+	sharedmem.DefaultScope(&rp.TenantID, kernel.DefaultTenantID)
+	r.parts[sharedmem.ScopedKey(rp.TenantID, rp.Wtrealm, kernel.DefaultTenantID)] = cloneRelyingParty(rp)
 	return nil
 }
 
 func (r *WsFedRelyingPartyRepository) Delete(_ context.Context, tenantID, wtrealm string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.parts, sharedmemory.TenantKey(tenantID, wtrealm))
+	delete(r.parts, sharedmem.ScopedKey(tenantID, wtrealm, kernel.DefaultTenantID))
 	return nil
 }

@@ -6,7 +6,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
+
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
@@ -42,7 +44,7 @@ func (r *AgentWorkloadBindingRepository) ListByTrustBundle(_ context.Context, te
 func (r *AgentWorkloadBindingRepository) FindByID(_ context.Context, tenantID, id string) (*workloaddomain.AgentWorkloadBinding, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	b := r.bindings[sharedmem.TenantKey(tenantID, id)]
+	b := r.bindings[sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)]
 	if b == nil {
 		return nil, nil
 	}
@@ -52,13 +54,13 @@ func (r *AgentWorkloadBindingRepository) FindByID(_ context.Context, tenantID, i
 func (r *AgentWorkloadBindingRepository) Save(_ context.Context, b *workloaddomain.AgentWorkloadBinding) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.bindings[sharedmem.TenantKey(b.TenantID, b.ID)] = cloneBinding(b)
+	r.bindings[sharedmem.ScopedKey(b.TenantID, b.ID, kernel.DefaultTenantID)] = cloneBinding(b)
 	return nil
 }
 
 func (r *AgentWorkloadBindingRepository) Delete(_ context.Context, tenantID, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.bindings, sharedmem.TenantKey(tenantID, id))
+	delete(r.bindings, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
 	return nil
 }

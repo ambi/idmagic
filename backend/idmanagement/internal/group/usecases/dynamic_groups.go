@@ -16,7 +16,6 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -164,7 +163,7 @@ func DynamicGroupReconcileHandler(deps DynamicGroupDeps) func(context.Context, *
 		if err := json.Unmarshal(job.Params, &params); err != nil {
 			return nil, err
 		}
-		ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: job.TenantID}, "", "")
+		ctx = tenantports.WithTenantID(ctx, job.TenantID)
 		rule, err := deps.GroupRepo.FindDynamicRule(ctx, job.TenantID, params.GroupID)
 		if err != nil {
 			return nil, err

@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
+
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
@@ -28,7 +30,7 @@ func NewProvisioningConnectionRepository() *ProvisioningConnectionRepository {
 }
 
 func connKey(tenantID, applicationID string) string {
-	return sharedmem.TenantKey(tenantID, applicationID)
+	return sharedmem.ScopedKey(tenantID, applicationID, kernel.DefaultTenantID)
 }
 
 func cloneConnection(c *domain.ProvisioningConnection) *domain.ProvisioningConnection {
@@ -189,7 +191,9 @@ func NewProvisioningTaskRepository() *ProvisioningTaskRepository {
 	}
 }
 
-func taskKey(tenantID, id string) string { return sharedmem.TenantKey(tenantID, id) }
+func taskKey(tenantID, id string) string {
+	return sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)
+}
 
 func cloneTask(d *domain.ProvisioningTask) *domain.ProvisioningTask {
 	if d == nil {
