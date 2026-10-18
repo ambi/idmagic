@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
-
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -207,9 +205,9 @@ func tenantChangedFields(input tenantUpdateRequest) []string {
 
 func (d Deps) tenantPolicyFloor() tenantusecases.PolicyFloor {
 	return tenantusecases.PolicyFloor{
-		MinLength:    passworddomain.PasswordPolicyMinLength,
-		MaxLength:    passworddomain.PasswordPolicyMaxLength,
-		HistoryDepth: passworddomain.PasswordPolicyHistoryDepth,
+		MinLength:    domain.PasswordPolicyMinLength,
+		MaxLength:    domain.PasswordPolicyMaxLength,
+		HistoryDepth: domain.PasswordPolicyHistoryDepth,
 	}
 }
 

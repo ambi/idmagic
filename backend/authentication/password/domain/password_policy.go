@@ -18,19 +18,13 @@ const (
 	ViolationBreached PasswordPolicyViolation = "breached"
 )
 
-// The product defaults of the Authentication context's PasswordPolicy. The schema
-// of the tenant overrides and the current values returned to the UI
-// (PasswordPolicyDefaults) live in spec/modules/tenancy; letting the two drift
-// apart is a spec-implementation drift.
+// 設定 API と同じ製品共通の既定値を参照する。パスワードの検証と期限の判定は
+// Authentication が所有し、テナントの上書きと既定値の定義は Tenancy が持つ。
 const (
-	PasswordPolicyMinLength    = 12
-	PasswordPolicyMaxLength    = 128
-	PasswordPolicyHistoryDepth = 5
-	// PasswordPolicyMaxAgeDays is the declared default for expiry. 0 means "no
-	// expiry", following NIST SP 800-63B-4's discouragement of forced rotation;
-	// a tenant opts in through PasswordPolicyOverride.max_age_days
-	// (REQ-AUTHENTICATION-024).
-	PasswordPolicyMaxAgeDays = 0
+	PasswordPolicyMinLength    = tenancydomain.PasswordPolicyMinLength
+	PasswordPolicyMaxLength    = tenancydomain.PasswordPolicyMaxLength
+	PasswordPolicyHistoryDepth = tenancydomain.PasswordPolicyHistoryDepth
+	PasswordPolicyMaxAgeDays   = tenancydomain.PasswordPolicyMaxAgeDays
 )
 
 type PasswordPolicyResult struct {

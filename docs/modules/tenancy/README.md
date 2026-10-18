@@ -32,6 +32,7 @@
 | テナントの識別子を UUID と realm に分ける | realm の改名で外部キーに触れない。詳細は[判断](decisions.md#テナントのキーを不変な-uuid-と可変な-realm-に分ける) |
 | 一つのテナントに一つの正規ロケーションと一つの発行者を対応させる | 発行者と Discovery Metadata を標準に合わせる。詳細は[判断](decisions.md#テナントの正規ロケーションを一つにする) |
 | 解決済みの設定を持つ文脈と ID だけの文脈を区別する | 背景処理が未解決の設定をデフォルト値と取り違えない。格納先と ID の拒否は[テナントの解決の設計](features/resolution.md#アーキテクチャ)の一か所に集める |
+| パスワードの既定値を設定の型と同じ公開パッケージに置く | `backend/tenancy/domain` の定数を、設定 API と Authentication が共に使う。上書きの解決とパスワードの検証は Authentication が行う |
 | 外装と属性スキーマを `Tenant` とは別の Aggregate にする | 認可と realm の解決が依存する `Tenant` を太らせない。詳細は[判断](decisions.md#外装と属性スキーマを-tenant-から独立した-aggregate-にする) |
 | 上限の確認を、作成する側のトランザクションに委ねる | 作成と使用量の加算を同時に確定させる |
 

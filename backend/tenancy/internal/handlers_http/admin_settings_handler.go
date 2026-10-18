@@ -5,8 +5,6 @@ import (
 	"slices"
 	"time"
 
-	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
-
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -151,7 +149,7 @@ func (d Deps) toAdminSettingsResponse(t *domain.Tenant) AdminSettingsResponse {
 			MinLength:    floor.MinLength,
 			MaxLength:    floor.MaxLength,
 			HistoryDepth: floor.HistoryDepth,
-			MaxAgeDays:   passworddomain.PasswordPolicyMaxAgeDays,
+			MaxAgeDays:   domain.PasswordPolicyMaxAgeDays,
 		},
 		MaxDelegationDepth:                t.MaxDelegationDepth,
 		MaxDelegationDepthDefault:         domain.DefaultMaxDelegationDepth,

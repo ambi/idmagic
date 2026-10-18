@@ -181,7 +181,6 @@ flowchart LR
   SigningKeys --> Tenancy
   Sourcing --> ApiTokens
   Sourcing --> IdManagement
-  Tenancy --> Authentication
   Tenancy --> IdManagement
   WorkloadIdentity --> IdManagement
   WorkloadIdentity --> Tenancy
