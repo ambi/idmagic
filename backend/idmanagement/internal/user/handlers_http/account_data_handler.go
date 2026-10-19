@@ -39,11 +39,11 @@ func toAccountConsentResponse(consent *oauthdomain.Consent) accountConsentRespon
 func HandleExportAccountData(d Deps, c *echo.Context) error {
 	sub, err := requireAuthenticatedSub(d, c)
 	if err != nil {
-		return writeAccountError(c, err)
+		return writeAccountError(d, c, err)
 	}
 	user, defs, err := userusecases.GetUserProfile(c.Request().Context(), accountProfileDeps(d), sub)
 	if err != nil {
-		return writeAccountError(c, err)
+		return writeAccountError(d, c, err)
 	}
 	consents, err := d.Consents.ListGranted(c.Request().Context(), sub)
 	if err != nil {

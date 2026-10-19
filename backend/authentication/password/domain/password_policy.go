@@ -97,6 +97,15 @@ type PasswordPolicyError struct {
 	Violations []PasswordPolicyViolation
 }
 
+// PasswordPolicyViolations は、HTTP の表示に必要なコードだけを所有者の順序で返す。
+func (e *PasswordPolicyError) PasswordPolicyViolations() []string {
+	codes := make([]string, len(e.Violations))
+	for i, violation := range e.Violations {
+		codes[i] = string(violation)
+	}
+	return codes
+}
+
 func (e *PasswordPolicyError) Error() string {
 	parts := make([]string, len(e.Violations))
 	for i, v := range e.Violations {

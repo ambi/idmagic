@@ -13,13 +13,6 @@ import (
 	"strings"
 	"time"
 
-	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
-
-	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
-	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
-	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
-	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
@@ -62,19 +55,13 @@ type AdminUserDeps struct {
 	DeviceCodeStore      oauthports.DeviceCodeStore
 	ApprovalRequestStore oauthports.ApprovalRequestStore
 	SessionStore         userports.SessionPurger
-	MfaFactorRepo        mfaports.MfaFactorRepository
-	// TrustedDeviceRepo は無効化と匿名化 cascade から信頼済みデバイスを失効 / 削除する
-	// ために持つ (wi-91)。nil なら未配線として何もしない。
-	TrustedDeviceRepo trusteddeviceports.TrustedDeviceRepository
+	UserCredentials      userports.UserCredentialPurger
 	// TrustedDevices は無効化で信頼済みデバイスをすべて失効させる。nil なら未配線として何もしない。
-	TrustedDevices      trusteddeviceports.UserDeviceRevoker
-	PasswordHasher      passwordports.PasswordHasher
-	PasswordHistoryRepo passwordports.PasswordHistoryRepository
-	// WebAuthnCredentialRepo と RecoveryCodeRepo は匿名化 cascade から Authentication の
-	// 資格情報を消す (wi-513)。どちらも nil なら未配線として何もしない。
-	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
-	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
-	Emit                   func(spec.DomainEvent) error
+	TrustedDevices          userports.UserDeviceRevoker
+	PasswordHasher          userports.PasswordHasher
+	PasswordHistoryRepo     userports.PasswordHistoryWriter
+	ValidateInitialPassword func(context.Context, string) error
+	Emit                    func(spec.DomainEvent) error
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装し、User 保存と派生する LifecycleWorkflow run 生成を同一トランザクションで
 	// 確定する (wi-237)。nil のとき UserRepo.Save に fallback する。
@@ -93,9 +80,6 @@ type AdminUserDeps struct {
 	// nil skips enforcement (wiring gaps in tests/tools); production bootstrap
 	// always sets it.
 	QuotaRepo tenantports.QuotaRepository
-	// TenantRepo resolves the tenant's password policy override for
-	// admin-issued passwords. nil falls back to the product defaults.
-	TenantRepo tenantports.TenantRepository
 }
 
 // notifyProvisioning is a best-effort call to deps.ProvisioningNotifier: a nil
@@ -137,13 +121,13 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 		return nil, errors.New("preferred username is required")
 	}
 	tenantID := tenantports.TenantID(ctx)
-	// An admin-issued password goes through the same tenant-resolved policy as
-	// change-password and reset-password; otherwise a tenant that raised
-	// min_length would still get baseline-strength passwords from this path.
-	policy := passworddomain.PolicyForTenant(tenantports.Tenant(ctx))
-	result := passworddomain.ValidatePasswordWith(in.Password, policy)
-	if !result.OK {
-		return nil, &passworddomain.PasswordPolicyError{Violations: result.Violations}
+	// テナントのポリシーの解決と検証は認証情報の所有者へ委ねる。ロールを拒否する前には
+	// ハッシュを作らず、複数の違反がある場合も従来の拒否順を保つ。
+	if deps.ValidateInitialPassword == nil {
+		return nil, errors.New("initial password validator is required")
+	}
+	if err := deps.ValidateInitialPassword(ctx, in.Password); err != nil {
+		return nil, err
 	}
 	roles, err := idmusecases.NormalizeRoles(in.Roles)
 	if err != nil {
@@ -542,6 +526,9 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	if in.ActorUserID == user.ID && hasPrivilegedRole(user.Roles) {
 		return ErrSelfDeleteForbidden
 	}
+	if deps.UserCredentials == nil {
+		return errors.New("user credential purger is required")
+	}
 	tombstone := anonymizeUser(user, now)
 	tombstone.Lifecycle.PendingPurge = &userdomain.PendingPurge{
 		Step: userdomain.PurgeStepReleaseUsage, ActorUserID: in.ActorUserID, Reason: in.Reason,
@@ -797,30 +784,11 @@ func cascadeDeleteForSub(ctx context.Context, deps AdminUserDeps, sub string) er
 			return err
 		}
 	}
-	if deps.PasswordHistoryRepo != nil {
-		if err := deps.PasswordHistoryRepo.DeleteAllForSub(ctx, sub); err != nil {
-			return err
-		}
+	if deps.UserCredentials == nil {
+		return errors.New("user credential purger is required")
 	}
-	if deps.MfaFactorRepo != nil {
-		if err := deps.MfaFactorRepo.DeleteAllForSub(ctx, sub); err != nil {
-			return err
-		}
-	}
-	if deps.TrustedDeviceRepo != nil {
-		if err := deps.TrustedDeviceRepo.DeleteAllForSub(ctx, sub); err != nil {
-			return err
-		}
-	}
-	if deps.WebAuthnCredentialRepo != nil {
-		if err := deps.WebAuthnCredentialRepo.DeleteAllForSub(ctx, sub); err != nil {
-			return err
-		}
-	}
-	if deps.RecoveryCodeRepo != nil {
-		if err := deps.RecoveryCodeRepo.DeleteAllForSub(ctx, sub); err != nil {
-			return err
-		}
+	if err := deps.UserCredentials.PurgeUserCredentials(ctx, sub); err != nil {
+		return err
 	}
 	if deps.DeviceCodeStore != nil {
 		if err := deps.DeviceCodeStore.DeleteAllForSub(ctx, sub); err != nil {

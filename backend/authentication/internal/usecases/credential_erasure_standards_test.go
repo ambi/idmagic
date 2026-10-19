@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/internal/password/db_memory"
@@ -124,12 +126,11 @@ func TestCredentialErasureLeavesNothingAuthenticable(t *testing.T) {
 	}
 
 	adminUsers := idmanagement.Module{UserRepo: users}.AdminUsers(idmanagement.LifecycleDeps{
-		PasswordHistoryRepo:    history,
-		MfaFactorRepo:          factors,
-		SessionStore:           sessions,
-		TrustedDeviceRepo:      devices,
-		WebAuthnCredentialRepo: credentials,
-		RecoveryCodeRepo:       codes,
+		UserCredentials: authentication.Module{
+			PasswordHistoryRepo: history, MfaFactorRepo: factors, TrustedDeviceRepo: devices,
+			WebAuthnCredentialRepo: credentials, RecoveryCodeRepo: codes,
+		}.UserCredentials(),
+		SessionStore: sessions,
 	}, func(spec.DomainEvent) error { return nil })
 	if err := adminUsers.DeleteUser(ctx, idmanagement.DeleteUserInput{
 		ActorUserID: "admin", Sub: credentialSubject, Reason: "erasure request", Now: now,

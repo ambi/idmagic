@@ -8,7 +8,6 @@ import (
 	"slices"
 	"time"
 
-	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/internal/group/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -19,7 +18,7 @@ import (
 type UserImportApplyDeps struct {
 	Plan           UserImportPlanDeps
 	Committer      userports.UserImportRowCommitter
-	PasswordHasher passwordports.PasswordHasher
+	PasswordHasher userports.PasswordHasher
 	// DynamicGroups は確定した行の User を動的グループの規則で評価する依存。GroupRepo は必須であり、
 	// 未配線を評価の省略として黙って通さない。
 	DynamicGroups groupusecases.DynamicGroupDeps

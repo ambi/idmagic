@@ -69,10 +69,14 @@ func newUserRulesFixture(t *testing.T) *userRulesFixture {
 		notifier: &recordingProvisioningNotifier{}, events: &[]spec.DomainEvent{},
 		agents: agentmemory.NewAgentRepository(),
 	}
+	history := authentication.NewMemoryModule(nil).PasswordHistoryRepo
+	authenticationModule := authentication.Module{TrustedDeviceRepo: f.devices, PasswordHistoryRepo: history}
 	f.deps = userusecases.AdminUserDeps{
-		UserRepo: f.users, SessionStore: f.sessions, TrustedDeviceRepo: f.devices, TrustedDevices: authentication.Module{TrustedDeviceRepo: f.devices}.UserDeviceRevoker(), QuotaRepo: f.quota,
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authenticationModule.UserCredentials(),
+		UserRepo:                f.users, SessionStore: f.sessions, TrustedDevices: authenticationModule.UserDeviceRevoker(), QuotaRepo: f.quota,
 		AgentRepo:      f.agents,
-		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
+		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: history,
 		ProvisioningNotifier: f.notifier,
 		Emit:                 func(event spec.DomainEvent) error { *f.events = append(*f.events, event); return nil },
 	}

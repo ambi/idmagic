@@ -6,9 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
-	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
-
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/internal/user/usecases"
@@ -94,11 +91,11 @@ func toAccountSummaryResponse(user *userdomain.User) accountSummaryResponse {
 func HandleGetAccountSummary(d Deps, c *echo.Context) error {
 	sub, err := requireAuthenticatedSub(d, c)
 	if err != nil {
-		return writeAccountError(c, err)
+		return writeAccountError(d, c, err)
 	}
 	user, _, err := userusecases.GetUserProfile(c.Request().Context(), accountProfileDeps(d), sub)
 	if err != nil {
-		return writeAccountError(c, err)
+		return writeAccountError(d, c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAccountSummaryResponse(user))
 }
@@ -106,11 +103,11 @@ func HandleGetAccountSummary(d Deps, c *echo.Context) error {
 func HandleGetAccountProfile(d Deps, c *echo.Context) error {
 	sub, err := requireAuthenticatedSub(d, c)
 	if err != nil {
-		return writeAccountError(c, err)
+		return writeAccountError(d, c, err)
 	}
 	user, defs, err := userusecases.GetUserProfile(c.Request().Context(), accountProfileDeps(d), sub)
 	if err != nil {
-		return writeAccountError(c, err)
+		return writeAccountError(d, c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAccountProfileResponse(user, defs))
 }
@@ -121,7 +118,7 @@ func HandleUpdateAccountProfile(d Deps, c *echo.Context) error {
 	}
 	sub, err := requireAuthenticatedSub(d, c)
 	if err != nil {
-		return writeAccountError(c, err)
+		return writeAccountError(d, c, err)
 	}
 	var input accountProfileUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
@@ -133,7 +130,7 @@ func HandleUpdateAccountProfile(d Deps, c *echo.Context) error {
 			Attributes: input.Attributes, Now: time.Now().UTC(),
 		})
 	if err != nil {
-		return writeAccountError(c, err)
+		return writeAccountError(d, c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAccountProfileResponse(user, defs))
 }
@@ -151,16 +148,13 @@ func requireAuthenticatedSub(d Deps, c *echo.Context) (string, error) {
 	return authn.Subject(), nil
 }
 
-func writeAccountError(c *echo.Context, err error) error {
+func writeAccountError(d Deps, c *echo.Context, err error) error {
+	if handled, result := d.AccountIdentity.WriteAuthenticationError(c, err); handled {
+		return result
+	}
 	switch {
-	case errors.Is(err, support.ErrAdminAuthenticationRequired):
-		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
-	case errors.Is(err, mfadomain.ErrStepUpRequired):
-		return support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
 	case errors.Is(err, idmusecases.ErrUserNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
-	case errors.Is(err, sessiondomain.ErrSessionNotFound):
-		return support.WriteProblem(c, http.StatusNotFound, "session_not_found", "The session does not exist.")
 	case errors.Is(err, userusecases.ErrAttributeNotEditable):
 		return support.WriteProblem(c, http.StatusForbidden, "attribute_not_editable", "This attribute cannot be edited.")
 	case errors.Is(err, userusecases.ErrInvalidAttribute):
@@ -176,15 +170,5 @@ func writeAccountError(c *echo.Context, err error) error {
 // requireStepUpSub は認証済みセッションを解決し、step-up gate を通過した sub を返す
 // (primary email 変更など高 sensitivity な identity 操作用)。
 func requireStepUpSub(d Deps, c *echo.Context) (string, error) {
-	authn, err := d.Authenticate(c)
-	if err != nil {
-		return "", err
-	}
-	if authn == nil || authn.Pending() {
-		return "", support.ErrAdminAuthenticationRequired
-	}
-	if !mfadomain.StepUpSatisfied(authn, time.Now().UTC()) {
-		return "", mfadomain.ErrStepUpRequired
-	}
-	return authn.Subject(), nil
+	return d.AccountIdentity.RequireStepUpSub(c)
 }

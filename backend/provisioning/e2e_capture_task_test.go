@@ -168,7 +168,7 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 
 	idm := idmanagement.Module{UserRepo: userRepo, ProvisioningNotifier: notifier}
 	lifecycle := idmanagement.LifecycleDeps{
-		PasswordHasher:      testing_passwords.NewHasher(),
+		ValidateInitialPassword: authentication.ValidateInitialPassword, UserCredentials: authentication.Module{}.UserCredentials(), PasswordHasher: testing_passwords.NewHasher(),
 		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 	}
 

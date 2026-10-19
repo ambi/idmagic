@@ -22,6 +22,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/ambi/idmagic/backend/authentication"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/internal/user/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -57,7 +58,9 @@ func adminRequest(method, suffix string) func(m *userLifecycleModel) *httptest.R
 // 保持期限の削除には HTTP の入口がないので、成否を応答の状態コードへ写す。
 func runRetentionSweep(m *userLifecycleModel) *httptest.ResponseRecorder {
 	deps := userusecases.AdminUserDeps{
-		UserRepo: m.fixture.users,
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                m.fixture.users,
 		Emit: func(event spec.DomainEvent) error {
 			*m.fixture.events = append(*m.fixture.events, event)
 			return nil

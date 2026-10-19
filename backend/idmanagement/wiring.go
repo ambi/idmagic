@@ -8,11 +8,7 @@ import (
 	"github.com/labstack/echo/v5"
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
-	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
-	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
-	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/internal/agent/db_memory"
@@ -66,7 +62,7 @@ func NewMemoryModule() Module {
 // WithMemoryUserImport は、User の CSV の取り込みの 1 行を、パスワードの履歴、使用量、監査の記録と
 // まとめて確定する committer を設定した Module を返す。
 func (m Module) WithMemoryUserImport(
-	passwordHistory passwordports.PasswordHistoryRepository, quota tenantports.QuotaRepository, audit auditports.AuditEventRepository,
+	passwordHistory userports.PasswordHistoryWriter, quota tenantports.QuotaRepository, audit auditports.AuditEventRepository,
 ) Module {
 	m.UserImportCommitter = usermemory.UserImportRowCommitter{
 		Users: m.UserRepo, PasswordHistory: passwordHistory, Quota: quota, Audit: audit,
@@ -92,7 +88,7 @@ func NewPostgresModule(pool postgres.DB) Module {
 type PostgresImportDeps struct {
 	QuotasInTx  func(pgx.Tx) tenantports.QuotaRepository
 	AuditInTx   func(pgx.Tx) auditports.AuditEventWriter
-	HistoryInTx func(pgx.Tx) passwordports.PasswordHistoryWriter
+	HistoryInTx func(pgx.Tx) userports.PasswordHistoryWriter
 }
 
 // WithPostgresImports は行、使用量、監査と履歴を同じ Tx で確定する CSV の操作を組み立てる。
@@ -118,7 +114,7 @@ type JobHandlerDeps struct {
 	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
 	UserOwnershipGuard  userports.UserSourceOwnershipGuard
 	GroupOwnershipGuard groupports.GroupSourceOwnershipGuard
-	PasswordHasher      passwordports.PasswordHasher
+	PasswordHasher      userports.PasswordHasher
 	Emit                func(spec.DomainEvent) error
 }
 
@@ -202,20 +198,18 @@ func (m Module) RegisterJobHandlers(registry jobsports.HandlerRegistrar, d JobHa
 // LifecycleDeps は、User を止める、削除する操作が、ほかのモジュールから受け取る依存である。
 // 管理 API と、管理 API の外（LifecycleWorkflow、SCIM の取り込み、保持期間の掃除）の経路が同じ集合を使う。
 type LifecycleDeps struct {
-	AttrSchemaRepo         userports.TenantUserAttributeSchemaRepository
-	QuotaRepo              tenantports.QuotaRepository
-	ConsentRepo            oauthports.ConsentRepository
-	RefreshStore           oauthports.RefreshTokenStore
-	DeviceCodeStore        oauthports.DeviceCodeStore
-	ApprovalRequestStore   oauthports.ApprovalRequestStore
-	SessionStore           userports.SessionPurger
-	MfaFactorRepo          mfaports.MfaFactorRepository
-	TrustedDeviceRepo      trusteddeviceports.TrustedDeviceRepository
-	TrustedDevices         trusteddeviceports.UserDeviceRevoker
-	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
-	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
-	PasswordHasher         passwordports.PasswordHasher
-	PasswordHistoryRepo    passwordports.PasswordHistoryRepository
+	AttrSchemaRepo          userports.TenantUserAttributeSchemaRepository
+	QuotaRepo               tenantports.QuotaRepository
+	ConsentRepo             oauthports.ConsentRepository
+	RefreshStore            oauthports.RefreshTokenStore
+	DeviceCodeStore         oauthports.DeviceCodeStore
+	ApprovalRequestStore    oauthports.ApprovalRequestStore
+	SessionStore            userports.SessionPurger
+	UserCredentials         userports.UserCredentialPurger
+	TrustedDevices          userports.UserDeviceRevoker
+	ValidateInitialPassword func(context.Context, string) error
+	PasswordHasher          userports.PasswordHasher
+	PasswordHistoryRepo     userports.PasswordHistoryWriter
 }
 
 // UserLifecycleCommands は、管理 API の外から User を止める、必須操作を設定する、削除を予約する操作を返す。
@@ -231,11 +225,10 @@ func (m Module) adminUserDeps(d LifecycleDeps, emit func(spec.DomainEvent) error
 		ProvisioningNotifier: m.ProvisioningNotifier,
 		ConsentRepo:          d.ConsentRepo, RefreshStore: d.RefreshStore,
 		DeviceCodeStore: d.DeviceCodeStore, ApprovalRequestStore: d.ApprovalRequestStore,
-		SessionStore: d.SessionStore, MfaFactorRepo: d.MfaFactorRepo,
-		TrustedDeviceRepo:      d.TrustedDeviceRepo,
-		TrustedDevices:         d.TrustedDevices,
-		WebAuthnCredentialRepo: d.WebAuthnCredentialRepo, RecoveryCodeRepo: d.RecoveryCodeRepo,
-		PasswordHasher: d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
+		SessionStore: d.SessionStore, UserCredentials: d.UserCredentials,
+		TrustedDevices:          d.TrustedDevices,
+		ValidateInitialPassword: d.ValidateInitialPassword,
+		PasswordHasher:          d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
 		QuotaRepo: d.QuotaRepo,
 		Emit:      emit,
 	}
@@ -269,7 +262,8 @@ func (m Module) Principals() support.PrincipalDirectory {
 
 // RouteDeps は IdManagement の経路が共通基盤とほかのモジュールから受け取る依存である。
 type RouteDeps struct {
-	TenantRepo tenantports.TenantRepository
+	TenantRepo      tenantports.TenantRepository
+	AccountIdentity idmhttpdeps.AccountIdentity
 	LifecycleDeps
 	support.Deps
 	*support.Authenticator
@@ -300,6 +294,9 @@ func (m Module) FederatedUserProvisioner(d RouteDeps) func(context.Context, Fede
 }
 
 func (m Module) httpDeps(d RouteDeps) idmhttp.Deps {
+	if d.UserCredentials == nil || d.ValidateInitialPassword == nil || d.AccountIdentity == nil {
+		panic("identity routes require credential deletion, password validation, and account identity")
+	}
 	return idmhttp.Deps{
 		TenantRepo:                d.TenantRepo,
 		Deps:                      d.Deps,
@@ -321,11 +318,10 @@ func (m Module) httpDeps(d RouteDeps) idmhttp.Deps {
 		RefreshStore:              d.RefreshStore,
 		DeviceCodeStore:           d.DeviceCodeStore,
 		ApprovalRequestStore:      d.ApprovalRequestStore,
-		MfaFactorRepo:             d.MfaFactorRepo,
-		TrustedDeviceRepo:         d.TrustedDeviceRepo,
+		UserCredentials:           d.UserCredentials,
 		TrustedDevices:            d.TrustedDevices,
-		WebAuthnCredentialRepo:    d.WebAuthnCredentialRepo,
-		RecoveryCodeRepo:          d.RecoveryCodeRepo,
+		ValidateInitialPassword:   d.ValidateInitialPassword,
+		AccountIdentity:           d.AccountIdentity,
 		PasswordHasher:            d.PasswordHasher,
 		PasswordHistoryRepo:       d.PasswordHistoryRepo,
 		SessionStore:              d.SessionStore,

@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -16,11 +18,10 @@ func (d *Dependencies) UserLifecycleDeps() idmanagement.LifecycleDeps {
 		AttrSchemaRepo: d.IdManagement.AttrSchemaRepo, QuotaRepo: d.Tenancy.QuotaRepo,
 		ConsentRepo: d.OAuth2.ConsentRepo, RefreshStore: d.OAuth2.RefreshStore,
 		DeviceCodeStore: d.OAuth2.DeviceCodeStore, ApprovalRequestStore: d.OAuth2.ApprovalRequestStore,
-		SessionStore: d.Authentication.SessionStore, MfaFactorRepo: d.Authentication.MfaFactorRepo,
-		TrustedDeviceRepo:      d.Authentication.TrustedDeviceRepo,
-		TrustedDevices:         d.Authentication.UserDeviceRevoker(),
-		WebAuthnCredentialRepo: d.Authentication.WebAuthnCredentialRepo, RecoveryCodeRepo: d.Authentication.RecoveryCodeRepo,
-		PasswordHasher: d.Authentication.PasswordHasher, PasswordHistoryRepo: d.Authentication.PasswordHistoryRepo,
+		SessionStore: d.Authentication.SessionStore, UserCredentials: d.Authentication.UserCredentials(),
+		TrustedDevices:          d.Authentication.UserDeviceRevoker(),
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		PasswordHasher:          d.Authentication.PasswordHasher, PasswordHistoryRepo: d.Authentication.PasswordHistoryRepo,
 	}
 }
 

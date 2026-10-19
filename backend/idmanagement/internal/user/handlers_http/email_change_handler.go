@@ -38,7 +38,7 @@ func HandleRequestEmailChange(d Deps, c *echo.Context) error {
 	// primary email の変更は高 sensitivity 操作。step-up 再認証を要求する。
 	sub, err := requireStepUpSub(d, c)
 	if err != nil {
-		return writeAccountError(c, err)
+		return writeAccountError(d, c, err)
 	}
 	var input emailChangeRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
@@ -49,7 +49,7 @@ func HandleRequestEmailChange(d Deps, c *echo.Context) error {
 		Notifier: d.Notifier, Emit: d.Emit, Issuer: support.RequestIssuer(c, d.Issuer),
 	}, userusecases.RequestEmailChangeInput{Sub: sub, NewEmail: input.NewEmail, Now: time.Now().UTC()})
 	if err != nil {
-		return writeEmailChangeError(c, err)
+		return writeEmailChangeError(d, c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
@@ -69,12 +69,12 @@ func HandleConfirmEmailChange(d Deps, c *echo.Context) error {
 	if _, err := userusecases.ConfirmEmailChange(c.Request().Context(), userusecases.ConfirmEmailChangeDeps{
 		UserRepo: d.UserRepo, TokenStore: d.EmailChangeTokenStore, Emit: d.Emit,
 	}, userusecases.ConfirmEmailChangeInput{Token: input.Token, Now: time.Now().UTC()}); err != nil {
-		return writeEmailChangeError(c, err)
+		return writeEmailChangeError(d, c, err)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func writeEmailChangeError(c *echo.Context, err error) error {
+func writeEmailChangeError(d Deps, c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, userusecases.ErrInvalidEmail):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_email", "The email address format is invalid.")
@@ -85,6 +85,6 @@ func writeEmailChangeError(c *echo.Context, err error) error {
 	case errors.Is(err, userusecases.ErrInvalidEmailChangeToken):
 		return support.WriteProblem(c, http.StatusGone, "invalid_email_change_token", "The confirmation link is invalid or expired.")
 	default:
-		return writeAccountError(c, err)
+		return writeAccountError(d, c, err)
 	}
 }

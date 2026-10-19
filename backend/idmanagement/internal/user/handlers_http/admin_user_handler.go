@@ -8,12 +8,11 @@ import (
 	"sync"
 	"time"
 
-	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
-
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/internal/user/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -333,12 +332,11 @@ func adminUserDeps(d Deps) userusecases.AdminUserDeps {
 		ProvisioningNotifier:  d.ProvisioningNotifier,
 		AgentRepo:             d.AgentRepo,
 		ConsentRepo:           d.ConsentRepo, RefreshStore: d.RefreshStore,
-		DeviceCodeStore: d.DeviceCodeStore, ApprovalRequestStore: d.ApprovalRequestStore, MfaFactorRepo: d.MfaFactorRepo,
-		TrustedDeviceRepo:      d.TrustedDeviceRepo,
-		TrustedDevices:         d.TrustedDevices,
-		WebAuthnCredentialRepo: d.WebAuthnCredentialRepo, RecoveryCodeRepo: d.RecoveryCodeRepo,
-		PasswordHasher: d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
-		Emit: d.ReactiveEmit(), QuotaRepo: d.QuotaRepo, TenantRepo: d.TenantRepo,
+		DeviceCodeStore: d.DeviceCodeStore, ApprovalRequestStore: d.ApprovalRequestStore, UserCredentials: d.UserCredentials,
+		TrustedDevices:          d.TrustedDevices,
+		ValidateInitialPassword: d.ValidateInitialPassword,
+		PasswordHasher:          d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
+		Emit: d.ReactiveEmit(), QuotaRepo: d.QuotaRepo,
 		SessionStore: d.SessionStore,
 	}
 	return deps
@@ -374,14 +372,10 @@ func writeAdminUserError(c *echo.Context, err error) error {
 	case errors.Is(err, userusecases.ErrInvalidRequiredAction):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_required_action", "The required action is invalid.")
 	default:
-		if policyErr, ok := errors.AsType[*passworddomain.PasswordPolicyError](err); ok {
-			violations := make([]string, len(policyErr.Violations))
-			for i, violation := range policyErr.Violations {
-				violations[i] = string(violation)
-			}
+		if policyErr, ok := errors.AsType[userports.PasswordPolicyRejection](err); ok {
 			return support.NoStoreJSON(c, http.StatusBadRequest, map[string]any{
 				"error": "password_policy", "message": "The password does not meet the security requirements.",
-				"violations": violations,
+				"violations": policyErr.PasswordPolicyViolations(),
 			})
 		}
 		return err

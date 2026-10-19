@@ -9,11 +9,8 @@ import (
 	"context"
 	"time"
 
-	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
-	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
-	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
-	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	"github.com/labstack/echo/v5"
+
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/internal/ports"
@@ -37,6 +34,12 @@ import (
 // spec.DomainEvent are named in the signature.
 type EventReactor interface {
 	React(ctx context.Context, event spec.DomainEvent) error
+}
+
+// AccountIdentity は、認証の所有者が提供する本人の再認証と、認証エラーの表示である。
+type AccountIdentity interface {
+	RequireStepUpSub(c *echo.Context) (string, error)
+	WriteAuthenticationError(c *echo.Context, err error) (bool, error)
 }
 
 // Deps は identity management HTTP ハンドラが必要とする依存。
@@ -71,18 +74,13 @@ type Deps struct {
 	RefreshStore         oauthports.RefreshTokenStore
 	DeviceCodeStore      oauthports.DeviceCodeStore
 	ApprovalRequestStore oauthports.ApprovalRequestStore
-	MfaFactorRepo        mfaports.MfaFactorRepository
-	// TrustedDeviceRepo は無効化と匿名化 cascade から信頼済みデバイスを失効 / 削除する (wi-91)。
-	TrustedDeviceRepo trusteddeviceports.TrustedDeviceRepository
+	UserCredentials      userports.UserCredentialPurger
 	// TrustedDevices は無効化で信頼済みデバイスをすべて失効させる。
-	TrustedDevices trusteddeviceports.UserDeviceRevoker
-	// WebAuthnCredentialRepo と RecoveryCodeRepo は匿名化 cascade の到達先である (wi-513)。
-	// この 2 つは Authentication が持つ資格情報だが、消すのは IdManagement の Purge なので
-	// ここを通って AdminUserDeps へ届く。
-	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
-	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
-	PasswordHasher         passwordports.PasswordHasher
-	PasswordHistoryRepo    passwordports.PasswordHistoryRepository
+	TrustedDevices          userports.UserDeviceRevoker
+	ValidateInitialPassword func(context.Context, string) error
+	AccountIdentity         AccountIdentity
+	PasswordHasher          userports.PasswordHasher
+	PasswordHistoryRepo     userports.PasswordHistoryWriter
 	// SessionStore は匿名化 cascade がログインセッションを消す先である。nil なら消さない。
 	SessionStore          userports.SessionPurger
 	EmailChangeTokenStore userports.EmailChangeTokenStore

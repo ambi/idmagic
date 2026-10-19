@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/internal/user/db_memory"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/internal/user/usecases"
@@ -64,8 +65,10 @@ func newErasureFixture(t *testing.T, now time.Time) *erasureFixture {
 		users:  users,
 		events: events,
 		deps: userusecases.AdminUserDeps{
-			UserRepo: users,
-			Emit:     func(event spec.DomainEvent) error { *events = append(*events, event); return nil },
+			ValidateInitialPassword: authentication.ValidateInitialPassword,
+			UserCredentials:         authentication.Module{}.UserCredentials(),
+			UserRepo:                users,
+			Emit:                    func(event spec.DomainEvent) error { *events = append(*events, event); return nil },
 		},
 	}
 }

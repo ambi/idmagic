@@ -154,7 +154,7 @@ func (f *governanceFixture) adminUsers() idmanagement.AdminUsers {
 			Capture: &igmemory.UserWorkflowCapture{Users: f.users.UserRepository, Runs: f.runs},
 		},
 	}.AdminUsers(idmanagement.LifecycleDeps{
-		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
+		ValidateInitialPassword: authentication.ValidateInitialPassword, UserCredentials: authentication.Module{}.UserCredentials(), PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 	}, nil)
 }
 

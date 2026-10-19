@@ -4,7 +4,6 @@ import (
 	"context"
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -21,13 +20,13 @@ type UserImportRowCommitter struct {
 	pool        sharedpg.DB
 	quotasInTx  func(pgx.Tx) tenantports.QuotaRepository
 	auditInTx   func(pgx.Tx) auditports.AuditEventWriter
-	historyInTx func(pgx.Tx) passwordports.PasswordHistoryWriter
+	historyInTx func(pgx.Tx) userports.PasswordHistoryWriter
 }
 
 // NewUserImportCommitter は、quotasInTx が返す Tenancy の QuotaRepository で、
 // 行と同じトランザクションの中でユーザーの使用量を加算する committer を返す。
 func NewUserImportCommitter(pool sharedpg.DB, quotasInTx func(pgx.Tx) tenantports.QuotaRepository,
-	auditInTx func(pgx.Tx) auditports.AuditEventWriter, historyInTx func(pgx.Tx) passwordports.PasswordHistoryWriter,
+	auditInTx func(pgx.Tx) auditports.AuditEventWriter, historyInTx func(pgx.Tx) userports.PasswordHistoryWriter,
 ) UserImportRowCommitter {
 	if pool == nil || quotasInTx == nil || auditInTx == nil || historyInTx == nil {
 		panic("user import: requires a database and transactional quota, audit, and history writers")

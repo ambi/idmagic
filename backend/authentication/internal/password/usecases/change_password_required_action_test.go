@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
+
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/internal/password/db_memory"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -17,8 +19,12 @@ import (
 func TestChangePasswordAutoClearsUpdatePasswordAction(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	idm := idmanagement.NewMemoryModule()
+	hasher := testing_passwords.NewHasher()
+	history := passwordmemory.NewPasswordHistoryRepository()
 	lifecycle := idmanagement.LifecycleDeps{
-		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: passwordmemory.NewPasswordHistoryRepository(),
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		PasswordHasher:          hasher, PasswordHistoryRepo: history,
 	}
 	events := &[]spec.DomainEvent{}
 	emit := func(event spec.DomainEvent) error { *events = append(*events, event); return nil }
@@ -41,8 +47,8 @@ func TestChangePasswordAutoClearsUpdatePasswordAction(t *testing.T) {
 
 	updated, err := authusecases.ChangePassword(ctx, authusecases.ChangePasswordDeps{
 		UserRepo:            idm.UserRepo,
-		PasswordHasher:      lifecycle.PasswordHasher,
-		PasswordHistoryRepo: lifecycle.PasswordHistoryRepo,
+		PasswordHasher:      hasher,
+		PasswordHistoryRepo: history,
 		Emit:                emit,
 	}, authusecases.ChangePasswordInput{
 		Sub:             user.ID,

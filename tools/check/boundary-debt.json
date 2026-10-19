@@ -43,13 +43,6 @@
       "reason": "ClaimMapping -> IdManagement lies on a longer module cycle through other modules. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edges with ports the requesting modules define (D4, D8)."
     },
     {
-      "id": "module-cycle:IdManagement->Authentication",
-      "sourceModule": "IdManagement",
-      "targetModule": "Authentication",
-      "violations": ["module-cycle:IdManagement->Authentication"],
-      "reason": "IdManagement and Authentication import each other, so the edge IdManagement -> Authentication stays on a module cycle even through public packages. wi-21934 decides the dependency direction after the private-import items land and replaces the reverse edge with a port the requesting module defines, or revisits the owner (D4, D8)."
-    },
-    {
       "id": "module-cycle:IdManagement->OAuth2",
       "sourceModule": "IdManagement",
       "targetModule": "OAuth2",

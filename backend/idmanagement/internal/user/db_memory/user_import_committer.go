@@ -4,7 +4,7 @@ import (
 	"context"
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
+
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -15,7 +15,7 @@ import (
 // methods cannot fail after the quota precondition in the memory backend.
 type UserImportRowCommitter struct {
 	Users           userports.UserRepository
-	PasswordHistory passwordports.PasswordHistoryRepository
+	PasswordHistory userports.PasswordHistoryWriter
 	Quota           tenantports.QuotaRepository
 	Audit           auditports.AuditEventRepository
 }

@@ -25,7 +25,9 @@ func newRequiredActionFixture(t *testing.T) (context.Context, userusecases.Admin
 	hasher := testing_passwords.NewHasher()
 	events := &[]spec.DomainEvent{}
 	deps := userusecases.AdminUserDeps{
-		UserRepo: userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,
 		Emit: func(event spec.DomainEvent) error { *events = append(*events, event); return nil },
 	}
 	now := time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)

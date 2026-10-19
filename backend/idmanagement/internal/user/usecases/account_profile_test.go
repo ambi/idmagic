@@ -26,7 +26,9 @@ func accountTestDeps(t *testing.T) (context.Context, userusecases.AccountProfile
 	userRepo := usermemory.NewUserRepository()
 	schemaRepo := usermemory.NewTenantUserAttributeSchemaRepository()
 	adminDeps := userusecases.AdminUserDeps{
-		UserRepo: userRepo, AttrSchemaRepo: schemaRepo,
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                userRepo, AttrSchemaRepo: schemaRepo,
 		PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 		Emit: func(spec.DomainEvent) error { return nil },
 	}

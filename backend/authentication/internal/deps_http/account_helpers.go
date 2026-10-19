@@ -74,15 +74,47 @@ func WriteAccountError(c *echo.Context, err error) error {
 	if handled, result := WriteAccountMfaError(c, err); handled {
 		return result
 	}
+	if handled, result := WriteAuthenticationError(c, err); handled {
+		return result
+	}
+	return err
+}
+
+// AccountIdentity は、本人の属性を管理する側へ、認証情報の型を渡さずに再認証と拒否の表示を提供する。
+type AccountIdentity struct {
+	Authenticator *support.Authenticator
+}
+
+func (a AccountIdentity) RequireStepUpSub(c *echo.Context) (string, error) {
+	authn, err := a.Authenticator.Authenticate(c)
+	if err != nil {
+		return "", err
+	}
+	// 別の実装の認証結果も、文脈へ射影する前の pending を見て拒否する。
+	if authn == nil || authn.Pending() {
+		return "", support.ErrAdminAuthenticationRequired
+	}
+	if !mfadomain.StepUpSatisfied(authn, time.Now().UTC()) {
+		return "", mfausecases.ErrStepUpRequired
+	}
+	return authn.Subject(), nil
+}
+
+func (a AccountIdentity) WriteAuthenticationError(c *echo.Context, err error) (bool, error) {
+	return WriteAuthenticationError(c, err)
+}
+
+// WriteAuthenticationError は、本人認証の拒否だけを表示し、業務固有のエラーは呼び出し側へ残す。
+func WriteAuthenticationError(c *echo.Context, err error) (bool, error) {
 	switch {
 	case errors.Is(err, support.ErrAdminAuthenticationRequired):
-		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
+		return true, support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	case errors.Is(err, mfausecases.ErrStepUpRequired):
-		return support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
+		return true, support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
 	case errors.Is(err, sessionusecases.ErrSessionNotFound):
-		return support.WriteProblem(c, http.StatusNotFound, "session_not_found", "The session does not exist.")
+		return true, support.WriteProblem(c, http.StatusNotFound, "session_not_found", "The session does not exist.")
 	default:
-		return err
+		return false, nil
 	}
 }
 

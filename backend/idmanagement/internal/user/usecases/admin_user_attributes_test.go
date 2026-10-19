@@ -24,11 +24,13 @@ func attrTestDeps(t *testing.T) (context.Context, userusecases.AdminUserDeps, *u
 	t.Helper()
 	schemaRepo := usermemory.NewTenantUserAttributeSchemaRepository()
 	deps := userusecases.AdminUserDeps{
-		UserRepo:            usermemory.NewUserRepository(),
-		AttrSchemaRepo:      schemaRepo,
-		PasswordHasher:      testing_passwords.NewHasher(),
-		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
-		Emit:                func(spec.DomainEvent) error { return nil },
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                usermemory.NewUserRepository(),
+		AttrSchemaRepo:          schemaRepo,
+		PasswordHasher:          testing_passwords.NewHasher(),
+		PasswordHistoryRepo:     authentication.NewMemoryModule(nil).PasswordHistoryRepo,
+		Emit:                    func(spec.DomainEvent) error { return nil },
 	}
 	return testing_tenant.Default(context.Background()), deps, schemaRepo
 }

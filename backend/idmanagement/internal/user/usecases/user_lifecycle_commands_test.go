@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/internal/agent/db_memory"
@@ -38,7 +39,9 @@ func newLifecycleFixture(t *testing.T, status idmdomain.UserStatus) *lifecycleFi
 	}
 	f.adapter = userusecases.UserLifecycleCommands{
 		Deps: userusecases.AdminUserDeps{
-			UserRepo: f.users, AgentRepo: f.agents,
+			ValidateInitialPassword: authentication.ValidateInitialPassword,
+			UserCredentials:         authentication.Module{}.UserCredentials(),
+			UserRepo:                f.users, AgentRepo: f.agents,
 			Emit: func(event spec.DomainEvent) error { *f.events = append(*f.events, event); return nil },
 		},
 		Actor: "lifecycle-workflow",

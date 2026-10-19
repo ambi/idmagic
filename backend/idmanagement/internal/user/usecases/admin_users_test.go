@@ -42,7 +42,9 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	hasher := testing_passwords.NewHasher()
 	var events []spec.DomainEvent
 	deps := userusecases.AdminUserDeps{
-		UserRepo: userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,
 		Emit: func(event spec.DomainEvent) error { events = append(events, event); return nil },
 	}
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
@@ -131,7 +133,9 @@ func federatedProvisioningDeps(
 	}
 	events := &[]spec.DomainEvent{}
 	deps := userusecases.AdminUserDeps{
-		UserRepo: userRepo, AttrSchemaRepo: schemaRepo, QuotaRepo: quotaRepo,
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                userRepo, AttrSchemaRepo: schemaRepo, QuotaRepo: quotaRepo,
 		Emit: func(event spec.DomainEvent) error { *events = append(*events, event); return nil },
 	}
 	return deps, userRepo, events
@@ -328,7 +332,9 @@ func TestUpdateUserExtraFieldsAndNoop(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	deps := userusecases.AdminUserDeps{
-		UserRepo: userRepo, PasswordHasher: testing_passwords.NewHasher(),
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                userRepo, PasswordHasher: testing_passwords.NewHasher(),
 		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 	}
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
@@ -387,7 +393,9 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 		CreatedAt: now, UpdatedAt: now,
 	})
 	_, err := userusecases.CreateUser(testing_tenant.Default(context.Background()), userusecases.AdminUserDeps{
-		UserRepo: repo, PasswordHasher: testing_passwords.NewHasher(),
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                repo, PasswordHasher: testing_passwords.NewHasher(),
 		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 	}, userusecases.CreateUserInput{
 		PreferredUsername: "bob", Password: "initial-password-9182",
@@ -409,7 +417,9 @@ func TestCreateUser_rejectsWhenHardQuotaExceeded(t *testing.T) {
 		t.Fatalf("SetQuota: %v", err)
 	}
 	deps := userusecases.AdminUserDeps{
-		UserRepo: repo, PasswordHasher: testing_passwords.NewHasher(),
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                repo, PasswordHasher: testing_passwords.NewHasher(),
 		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 		QuotaRepo:           quotaRepo,
 	}
@@ -441,13 +451,16 @@ func TestDeleteUser_decrementsQuotaUsage(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	repo := usermemory.NewUserRepository()
 	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
+	authenticationModule := authentication.NewMemoryModule(nil)
 	limit := 1
 	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Users: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)
 	}
 	deps := userusecases.AdminUserDeps{
-		UserRepo: repo, PasswordHasher: testing_passwords.NewHasher(),
-		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authenticationModule.UserCredentials(),
+		UserRepo:                repo, PasswordHasher: testing_passwords.NewHasher(),
+		PasswordHistoryRepo: authenticationModule.PasswordHistoryRepo,
 		QuotaRepo:           quotaRepo,
 	}
 	now := time.Now().UTC()
@@ -481,8 +494,10 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	hasher := testing_passwords.NewHasher()
 	var events []spec.DomainEvent
 	deps := userusecases.AdminUserDeps{
-		UserRepo: userRepo, ConsentRepo: consentRepo, RefreshStore: refreshStore,
-		DeviceCodeStore: deviceStore, SessionStore: sessionStore, MfaFactorRepo: mfaRepo,
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{PasswordHistoryRepo: historyRepo, MfaFactorRepo: mfaRepo}.UserCredentials(),
+		UserRepo:                userRepo, ConsentRepo: consentRepo, RefreshStore: refreshStore,
+		DeviceCodeStore: deviceStore, SessionStore: sessionStore,
 		PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,
 		Emit: func(event spec.DomainEvent) error { events = append(events, event); return nil },
 	}
@@ -573,7 +588,11 @@ func TestDeleteUserRejectsSelfDelete(t *testing.T) {
 		ID: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	err := userusecases.DeleteUser(ctx, userusecases.AdminUserDeps{UserRepo: userRepo},
+	err := userusecases.DeleteUser(ctx, userusecases.AdminUserDeps{
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                userRepo,
+	},
 		userusecases.DeleteUserInput{ActorUserID: "admin-1", Sub: "admin-1", Now: now})
 	if !errors.Is(err, userusecases.ErrSelfDeleteForbidden) {
 		t.Fatalf("error=%v, want ErrSelfDeleteForbidden", err)
@@ -595,7 +614,11 @@ func TestSetUserDisabledRejectsSelfDisable(t *testing.T) {
 		ID: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	deps := userusecases.AdminUserDeps{UserRepo: userRepo}
+	deps := userusecases.AdminUserDeps{
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                userRepo,
+	}
 
 	// admin が自身を無効化しようとすると自爆防止に弾かれる。
 	_, err := userusecases.SetUserDisabled(ctx, deps, "admin-1", "admin-1", true, now)
@@ -617,7 +640,11 @@ func TestSetUserDisabledAllowsDisablingOtherAdmin(t *testing.T) {
 		ID: "admin-2", PreferredUsername: "other-admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	deps := userusecases.AdminUserDeps{UserRepo: userRepo}
+	deps := userusecases.AdminUserDeps{
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                userRepo,
+	}
 
 	user, err := userusecases.SetUserDisabled(ctx, deps, "admin-1", "admin-2", true, now)
 	if err != nil {
@@ -633,11 +660,14 @@ func TestSetUserDisabledAllowsDisablingOtherAdmin(t *testing.T) {
 func softDeleteTestDeps(events *[]spec.DomainEvent) (userusecases.AdminUserDeps, oauthports.ConsentRepository, *usermemory.UserRepository) {
 	userRepo := usermemory.NewUserRepository()
 	consentRepo := oauth2.NewMemoryModule().ConsentRepo
+	authenticationModule := authentication.NewMemoryModule(nil)
 	deps := userusecases.AdminUserDeps{
-		UserRepo: userRepo, ConsentRepo: consentRepo,
-		RefreshStore: oauth2.NewMemoryModule().RefreshStore, SessionStore: authentication.NewMemoryModule(nil).SessionStore,
-		MfaFactorRepo: authentication.NewMemoryModule(nil).MfaFactorRepo, PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
-		Emit: func(event spec.DomainEvent) error { *events = append(*events, event); return nil },
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authenticationModule.UserCredentials(),
+		UserRepo:                userRepo, ConsentRepo: consentRepo,
+		RefreshStore: oauth2.NewMemoryModule().RefreshStore, SessionStore: authenticationModule.SessionStore,
+		PasswordHistoryRepo: authenticationModule.PasswordHistoryRepo,
+		Emit:                func(event spec.DomainEvent) error { *events = append(*events, event); return nil },
 	}
 	return deps, consentRepo, userRepo
 }
@@ -806,7 +836,11 @@ func TestSoftDeleteAndRestoreRejectSelf(t *testing.T) {
 		ID: "admin-1", PreferredUsername: "admin", PasswordHash: "hash",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	deps := userusecases.AdminUserDeps{UserRepo: userRepo}
+	deps := userusecases.AdminUserDeps{
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authentication.Module{}.UserCredentials(),
+		UserRepo:                userRepo,
+	}
 	if err := userusecases.SoftDeleteUser(ctx, deps, userusecases.SoftDeleteUserInput{
 		ActorUserID: "admin-1", Sub: "admin-1", Now: now,
 	}); !errors.Is(err, userusecases.ErrSelfDeleteForbidden) {
