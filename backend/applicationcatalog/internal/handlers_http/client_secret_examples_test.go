@@ -39,6 +39,7 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/wsfederation"
 )
 
@@ -51,6 +52,11 @@ type secretExampleFixture struct {
 }
 
 func newSecretExampleFixture(t *testing.T) *secretExampleFixture {
+	t.Helper()
+	return newSecretExampleFixtureWithQuota(t, nil)
+}
+
+func newSecretExampleFixtureWithQuota(t *testing.T, quota tenantports.QuotaRepository) *secretExampleFixture {
 	t.Helper()
 	now := time.Now().UTC()
 	users := idmanagement.NewMemoryModule().UserRepo
@@ -79,6 +85,7 @@ func newSecretExampleFixture(t *testing.T) *secretExampleFixture {
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:     "http://idp.test",
 		TenantRepo: tenants,
+		Tenancy:    tenancy.Module{QuotaRepo: quota},
 		Emit:       func(event spec.DomainEvent) { *events = append(*events, event) },
 		UserRepo:   users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo,
 		Application:  newCatalogApplicationModule(),

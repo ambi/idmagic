@@ -3,10 +3,10 @@ package handlers_http
 
 import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	catalogports "github.com/ambi/idmagic/backend/applicationcatalog/ports"
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -31,7 +31,8 @@ type Deps struct {
 	GroupRepo                   groupports.GroupRepository
 	UserRepo                    userports.UserRepository
 	// Clients は OIDC の Application が持つクライアントを作成、更新し、シークレットを管理する。
-	Clients     catalogports.OIDCClientAdministration
+	Clients     clientports.ClientAdministration
+	ClientRepo  clientports.OAuth2ClientRepository
 	WsFedRPRepo wsfederationports.WsFedRelyingPartyRepository
 	SamlSPRepo  samlports.SamlServiceProviderRepository
 	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45). nil means outbound provisioning is not wired.

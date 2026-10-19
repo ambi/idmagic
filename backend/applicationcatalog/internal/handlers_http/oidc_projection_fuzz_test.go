@@ -1,4 +1,4 @@
-package applicationdeps
+package handlers_http
 
 import (
 	"reflect"
