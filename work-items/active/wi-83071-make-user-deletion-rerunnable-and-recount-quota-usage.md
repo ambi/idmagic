@@ -34,7 +34,9 @@ affected_spec:
 
 - テナントの User の使用量を、削除されていない User の実際の件数から数え直して補正する再集計を実装し、定期的に走らせる。
 - `docs/modules/identity-management/features/user.md` の信頼性の節と `docs/modules/identity-management/risks.md` から、使用量を手作業で直す手順を、再集計で直る記述へ改める。
-- `docs/design/application/design-guidelines.md` が、User の削除のカスケードを「1 つのトランザクションで変更してよい類型」として挙げている記述を、実装（ポートごとに確定し、再実行と照合で回収する）に合わせる。
+
+完全削除の確定境界についての設計ガイドラインの誤記は、[wi-18494](wi-18494-isolate-identity-credential-operations-behind-consumer-ports.md) が現行の実装に合わせる。
+この項目は、使用量の再集計を実装した後にユーザー設計とリスクの回収方法を更新する。
 
 ## 対象外
 
@@ -65,7 +67,7 @@ affected_spec:
 - [ ] T001 [Spec] 計画の問い 3 で決めた要件を書き、`mise run check-spec` を通す。
 - [ ] T002 [Acceptance] User の保存に失敗した作成で使用量だけが増え、再集計がないので戻らないことを RED として観測する。
 - [ ] T003 [App] 使用量の再集計を実装し、定期実行に組み立てる。
-- [ ] T004 [Docs] ユーザーの設計、IdManagement のリスク、設計ガイドラインのトランザクションの類型を現状に合わせる。
+- [ ] T004 [Docs] ユーザーの設計と IdManagement のリスクへ、使用量を再集計で補正する回収方法を反映する。
 - [ ] T005 [Verify] 変更を検証する。
 
 ## 検証
