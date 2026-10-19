@@ -35,7 +35,7 @@ affected_spec:
 - テナントの User の使用量を、削除されていない User の実際の件数から数え直して補正する再集計を実装し、定期的に走らせる。
 - `docs/modules/identity-management/features/user.md` の信頼性の節と `docs/modules/identity-management/risks.md` から、使用量を手作業で直す手順を、再集計で直る記述へ改める。
 
-完全削除の確定境界についての設計ガイドラインの誤記は、[wi-18494](wi-18494-isolate-identity-credential-operations-behind-consumer-ports.md) が現行の実装に合わせる。
+完全削除の確定境界についての設計ガイドラインの誤記は、[wi-18494](../done/wi-18494-isolate-identity-credential-operations-behind-consumer-ports.md) が現行の実装に合わせる。
 この項目は、使用量の再集計を実装した後にユーザー設計とリスクの回収方法を更新する。
 
 ## 対象外

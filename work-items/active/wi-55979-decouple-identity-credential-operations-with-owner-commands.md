@@ -14,7 +14,7 @@ spec_impact: { kind: none, reason: "資格情報の削除、失効、パスワ�
 
 ## 動機
 
-[分離方針の再検討](wi-18494-isolate-identity-credential-operations-behind-consumer-ports.md)は、Repository 群の複製を避け、所有者へ資格情報の削除を集約する方針を選んだ。
+[分離方針の再検討](../done/wi-18494-isolate-identity-credential-operations-behind-consumer-ports.md)は、Repository 群の複製を避け、所有者へ資格情報の削除を集約する方針を選んだ。
 循環の原因は削除だけではなく、パスワードの規則、CSV の履歴、HTTP の本人確認にもある。
 この項目は `IdManagement → Authentication` を生む本番 import をすべて取り除く。
 
