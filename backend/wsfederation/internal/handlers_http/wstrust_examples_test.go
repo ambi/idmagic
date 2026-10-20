@@ -4,13 +4,19 @@ package handlers_http_test
 // 宣言する具体例を、能動 STS の入口 `/trust/usernamemixed` から観測する。
 
 import (
+	"context"
 	"crypto/x509"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/application"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wstrust "github.com/ambi/idmagic/backend/wsfederation/internal/requests_wstrust"
 
@@ -261,4 +267,68 @@ func TestWsTrustIssue_RefusesAWrongCredentialWith401AndNoToken(t *testing.T) {
 			t.Fatalf("control status=%d body=%s", rec.Code, rec.Body.String())
 		}
 	})
+}
+
+// requiringMFA は behindAnApplication の Application に、MFA を求めるサインインポリシーを足す。
+// behindAnApplication の後に適用する。
+func requiringMFA(t *testing.T) func(*httpadapter.Deps) {
+	t.Helper()
+	policies := application.NewMemoryModule().SignInPolicyRepo
+	if err := policies.Save(context.Background(), &appdomain.AppSignInPolicy{
+		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "wsfed-app", UpdatedAt: time.Now().UTC(),
+		Rules: []appdomain.SignInRule{{RuleID: "rule-1", Name: "MFA", Enabled: true, RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa}}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return func(deps *httpadapter.Deps) {
+		deps.Application.SignInPolicyRepo = policies
+	}
+}
+
+// assertRefusedByTheApplicationGate は、関門の拒否が 403 の text/plain で、トークンを運ばず、
+// 拒否の理由を WsTrustTokenRejected とアプリケーションのイベントに残したことを読む。
+func assertRefusedByTheApplicationGate(t *testing.T, rec *httptest.ResponseRecorder, events []spec.DomainEvent) {
+	t.Helper()
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s, want 403", rec.Code, rec.Body.String())
+	}
+	if !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/plain") || strings.TrimSpace(rec.Body.String()) == "" {
+		t.Fatalf("Content-Type=%q body=%q, want nonempty text/plain refusal", rec.Header().Get("Content-Type"), rec.Body.String())
+	}
+	assertNoWsTrustTokenIssued(t, rec, events, 0)
+	if reasons := rejectedTokenReasons(events); len(reasons) != 1 {
+		t.Fatalf("WsTrustTokenRejected reasons = %v, want exactly one", reasons)
+	}
+	if !hasEvent(events, "AppAccessDeniedByPolicy") {
+		t.Fatal("AppAccessDeniedByPolicy was not emitted")
+	}
+}
+
+// 割り当てのない利用者だけを拒否することは、拒否の側だけでは観測できない。何も発行しない実装も
+// 拒否の側は通すからである。同じ RP に割り当てのある利用者が発行されることを対照に置く。
+//
+//spec:covers REQ-APPLICATION-011: アプリケーションに関連付けた RP へ、割り当てのない利用者が正しい UsernameToken で RST を送ると、403 で拒否され、トークンも WsTrustTokenIssued も出ず、拒否の理由が残ること。
+//verify:operation WsTrustIssue: アプリケーションの関門が拒否したときの 403 と、空でない text/plain の本文を照合する。
+func TestWsTrustIssue_RefusesAUserTheApplicationDoesNotAssign(t *testing.T) {
+	e, events, _ := newServerWithSigner(t, nil, behindAnApplication(t, false))
+	rec := postWsTrustSOAP(e, brokenRST{appliesTo: passiveRealm}.body(t))
+	assertRefusedByTheApplicationGate(t, rec, *events)
+
+	t.Run("control: the assigned user is issued", func(t *testing.T) {
+		e, events, _ := newServerWithSigner(t, nil, behindAnApplication(t, true))
+		rec := postWsTrustSOAP(e, brokenRST{appliesTo: passiveRealm}.body(t))
+		if rec.Code != http.StatusOK || issuedTokenEvent(*events) == nil {
+			t.Fatalf("control status=%d body=%s", rec.Code, rec.Body.String())
+		}
+	})
+}
+
+//spec:covers REQ-WSFEDERATION-004: 割り当てのある利用者でも、アプリケーションのサインインポリシーが MFA を求めると、パスワードだけの UsernameToken は 403 で拒否され、トークンが出ず、AppStepUpRequired が残ること。
+func TestWsTrustIssue_RefusesWhenTheSignInPolicyRequiresMFA(t *testing.T) {
+	e, events, _ := newServerWithSigner(t, nil, behindAnApplication(t, true), requiringMFA(t))
+	rec := postWsTrustSOAP(e, brokenRST{appliesTo: passiveRealm}.body(t))
+	assertRefusedByTheApplicationGate(t, rec, *events)
+	if !hasEvent(*events, "AppStepUpRequired") {
+		t.Fatal("AppStepUpRequired was not emitted")
+	}
 }

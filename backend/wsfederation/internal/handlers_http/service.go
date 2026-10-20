@@ -34,6 +34,12 @@ func (d Deps) signInService() wsfedusecases.SignInService {
 	}
 }
 
+// wsTrustService は Deps の依存から WS-Trust の発行の usecase を組み立てる。パッシブサインインと
+// 同じアプリケーションの関門を使う。
+func (d Deps) wsTrustService() wsfedusecases.WsTrustService {
+	return wsfedusecases.WsTrustService{Gate: gateAdapter{d.ApplicationGate}, Emit: d.Emit}
+}
+
 // signOutService は Deps の依存から sign-out usecase を組み立てる。
 func (d Deps) signOutService() wsfedusecases.SignOutService {
 	return wsfedusecases.SignOutService{RPRepo: d.WsFedRPRepo}

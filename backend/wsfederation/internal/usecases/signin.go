@@ -133,21 +133,11 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 
 	// 割当ゲート (wi-69): RP が Application binding に属する場合、未割当 subject には
 	// assertion を発行しない (fail-closed, AssignmentGatesProtocol)。
-	decision, err := s.Gate.EvaluateApplicationAccess(ctx, tenantID, appdomain.ApplicationProtocolWsFed, rp.Wtrealm, authn.UserID, authn, in.ClientIP)
+	reason, err := enforceApplicationAccess(ctx, s.Gate, s.Emit, tenantID, rp.Wtrealm, authn.UserID, authn, in.ClientIP, now)
 	if err != nil {
 		return SignInOutcome{}, err
 	}
-	if !decision.Allowed {
-		reason := decision.Reason
-		if decision.StepUpRequired {
-			reason = "step-up required by application sign-in policy"
-			s.emit(&appdomain.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ApplicationProtocolWsFed), Subject: authn.UserID})
-		} else if reason == "" {
-			reason = "subject not assigned to application"
-		}
-		if decision.ApplicationID != "" {
-			s.emit(&appdomain.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ApplicationProtocolWsFed), Subject: authn.UserID, Reason: reason})
-		}
+	if reason != "" {
 		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reason})
 		return SignInOutcome{Kind: SignInForbidden, Message: "The user does not meet the application's sign-in policy requirements."}, nil
 	}
@@ -196,4 +186,36 @@ func (s SignInService) emit(event spec.DomainEvent) {
 	if s.Emit != nil {
 		s.Emit(event)
 	}
+}
+
+// enforceApplicationAccess は wtrealm の RP が属するアプリケーションの割り当てとサインインポリシーで
+// 発行を判定する。パッシブサインインと WS-Trust が同じ判定とイベントを使う。拒否したときは
+// AppStepUpRequired と AppAccessDeniedByPolicy を発行して理由を返し、許可したときは空の理由を返す。
+func enforceApplicationAccess(
+	ctx context.Context, gate ApplicationGate, emit func(spec.DomainEvent),
+	tenantID, wtrealm, sub string, authn *authdomain.AuthenticationContext, clientIP string, now time.Time,
+) (string, error) {
+	decision, err := gate.EvaluateApplicationAccess(ctx, tenantID, appdomain.ApplicationProtocolWsFed, wtrealm, sub, authn, clientIP)
+	if err != nil {
+		return "", err
+	}
+	if decision.Allowed {
+		return "", nil
+	}
+	send := func(event spec.DomainEvent) {
+		if emit != nil {
+			emit(event)
+		}
+	}
+	reason := decision.Reason
+	if decision.StepUpRequired {
+		reason = "step-up required by application sign-in policy"
+		send(&appdomain.AppStepUpRequired{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ApplicationProtocolWsFed), Subject: sub})
+	} else if reason == "" {
+		reason = "subject not assigned to application"
+	}
+	if decision.ApplicationID != "" {
+		send(&appdomain.AppAccessDeniedByPolicy{At: now, TenantID: tenantID, ApplicationID: decision.ApplicationID, Protocol: string(appdomain.ApplicationProtocolWsFed), Subject: sub, Reason: reason})
+	}
+	return reason, nil
 }
