@@ -37,7 +37,7 @@ User の `PasswordHash` を直接読み、アカウント単位の試行の制�
 
 ## 対象外
 
-- WS-Trust の Application の関門（[wi-52958](wi-52958-gate-ws-trust-issuance-by-application-assignment-and-policy.md)）。
+- WS-Trust の Application の関門（[wi-52958](../done/wi-52958-gate-ws-trust-issuance-by-application-assignment-and-policy.md)）。
 - パスワードのハッシュの置き場所の変更。
 - WS-Trust での MFA の対応。
 
