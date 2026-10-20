@@ -42,8 +42,6 @@ func RegisterRoutes(
 	d.Authorizations = authorizations
 	signinhttp.RegisterRoutes(g, signinhttp.Deps{Deps: d})
 	g.GET("/api/auth/account", func(c *echo.Context) error { return handleAccountContext(d, c) })
-	g.GET("/api/account/v1/consents", func(c *echo.Context) error { return handleListAccountConsents(d, c) })
-	g.POST("/api/account/v1/consents/:client_id/revoke", func(c *echo.Context) error { return handleRevokeAccountConsent(d, c) })
 	g.POST("/api/account/v1/step-up/start", func(c *echo.Context) error { return mfahttp.HandleStartStepUp(d, c) })
 	g.POST("/api/account/v1/step-up/complete", func(c *echo.Context) error { return mfahttp.HandleCompleteStepUp(d, c) })
 	g.POST("/api/account/v1/step-up/webauthn/challenge", func(c *echo.Context) error { return mfahttp.HandleStepUpWebAuthnChallenge(d, c) })

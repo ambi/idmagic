@@ -142,7 +142,6 @@ flowchart LR
   Authentication --> Application
   Authentication --> Audit
   Authentication --> IdManagement
-  Authentication --> OAuth2
   Authentication --> Tenancy
   Authorization --> IdManagement
   Authorization --> OAuth2

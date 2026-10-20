@@ -50,7 +50,6 @@ import (
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -216,16 +215,14 @@ func (m Module) RunRetentionSweep(
 type RouteDeps struct {
 	support.Deps
 	*support.Authenticator
-	AuditEventRepo            auditports.AuditEventRepository
-	UserRepo                  userports.UserRepository
-	Consents                  consentports.AccountConsents
-	ClientDisplayNameResolver authhttpdeps.ClientDisplayNameResolver
-	TenantRepo                tenantports.TenantRepository
-	EmailSender               sharednotification.EmailSender
-	Notifier                  sharednotification.Notifier
-	TenantSaltStore           auditports.TenantSaltStore
-	ClientIP                  func(*http.Request) string
-	DefaultSignInPolicyRepo   appports.DefaultSignInPolicyRepository
+	AuditEventRepo          auditports.AuditEventRepository
+	UserRepo                userports.UserRepository
+	TenantRepo              tenantports.TenantRepository
+	EmailSender             sharednotification.EmailSender
+	Notifier                sharednotification.Notifier
+	TenantSaltStore         auditports.TenantSaltStore
+	ClientIP                func(*http.Request) string
+	DefaultSignInPolicyRepo appports.DefaultSignInPolicyRepository
 }
 
 // RegisterRoutes は、対話のログイン、アカウントの資格情報、MFA、セッションの経路を登録する。
@@ -267,32 +264,30 @@ func (m Module) RegisterFederationRoutes(
 
 func (m Module) httpDeps(d RouteDeps) authhttp.Deps {
 	return authhttp.Deps{
-		Deps:                      d.Deps,
-		Authenticator:             d.Authenticator,
-		SessionManager:            m.SessionManager,
-		AuditEventRepo:            d.AuditEventRepo,
-		UserRepo:                  d.UserRepo,
-		PasswordHasher:            m.PasswordHasher,
-		PasswordHistoryRepo:       m.PasswordHistoryRepo,
-		Consents:                  d.Consents,
-		ClientDisplayNameResolver: d.ClientDisplayNameResolver,
-		MfaFactorRepo:             m.MfaFactorRepo,
-		MfaEnrollmentBypassRepo:   m.MfaEnrollmentBypassRepo,
-		AuthEventBucketStore:      m.AuthEventBucketStore,
-		TenantRepo:                d.TenantRepo,
-		PasswordResetTokenStore:   m.PasswordResetTokenStore,
-		EmailSender:               d.EmailSender,
-		Notifier:                  d.Notifier,
-		BreachedPasswordChecker:   m.BreachedPasswordChecker,
-		WebAuthnRP:                m.WebAuthnRP,
-		WebAuthnCredentialRepo:    m.WebAuthnCredentialRepo,
-		WebAuthnSessionStore:      m.WebAuthnSessionStore,
-		RecoveryCodeRepo:          m.RecoveryCodeRepo,
-		TrustedDeviceRepo:         m.TrustedDeviceRepo,
-		LoginAttemptThrottle:      m.LoginAttemptThrottle,
-		SentinelPasswordHash:      m.SentinelPasswordHash,
-		TenantSaltStore:           d.TenantSaltStore,
-		ClientIP:                  d.ClientIP,
+		Deps:                    d.Deps,
+		Authenticator:           d.Authenticator,
+		SessionManager:          m.SessionManager,
+		AuditEventRepo:          d.AuditEventRepo,
+		UserRepo:                d.UserRepo,
+		PasswordHasher:          m.PasswordHasher,
+		PasswordHistoryRepo:     m.PasswordHistoryRepo,
+		MfaFactorRepo:           m.MfaFactorRepo,
+		MfaEnrollmentBypassRepo: m.MfaEnrollmentBypassRepo,
+		AuthEventBucketStore:    m.AuthEventBucketStore,
+		TenantRepo:              d.TenantRepo,
+		PasswordResetTokenStore: m.PasswordResetTokenStore,
+		EmailSender:             d.EmailSender,
+		Notifier:                d.Notifier,
+		BreachedPasswordChecker: m.BreachedPasswordChecker,
+		WebAuthnRP:              m.WebAuthnRP,
+		WebAuthnCredentialRepo:  m.WebAuthnCredentialRepo,
+		WebAuthnSessionStore:    m.WebAuthnSessionStore,
+		RecoveryCodeRepo:        m.RecoveryCodeRepo,
+		TrustedDeviceRepo:       m.TrustedDeviceRepo,
+		LoginAttemptThrottle:    m.LoginAttemptThrottle,
+		SentinelPasswordHash:    m.SentinelPasswordHash,
+		TenantSaltStore:         d.TenantSaltStore,
+		ClientIP:                d.ClientIP,
 
 		NotificationPreferenceRepo: m.NotificationPreferenceRepo,
 		DefaultSignInPolicyRepo:    d.DefaultSignInPolicyRepo,

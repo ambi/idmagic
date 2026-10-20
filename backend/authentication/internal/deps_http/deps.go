@@ -27,7 +27,6 @@ import (
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -47,20 +46,17 @@ type Deps struct {
 	SessionManager      *sessionusecases.SessionManager
 	PasswordHasher      passwordports.PasswordHasher
 	PasswordHistoryRepo passwordports.PasswordHistoryRepository
-	// Consents は接続済みアプリの画面で、本人の同意を一覧し撤回する。
-	Consents consentports.AccountConsents
 	// SessionTokens はセッションの失効に合わせて、その sid に結び付いた OAuth のトークンを
 	// 失効させる。RegisterRoutes が必須の引数として受け取る。
-	SessionTokens             SessionTokenRevoker
-	ClientDisplayNameResolver ClientDisplayNameResolver
-	MfaFactorRepo             totpports.MfaFactorRepository
-	MfaEnrollmentBypassRepo   mfaports.MfaEnrollmentBypassRepository
-	AuthEventBucketStore      authnports.AuthEventBucketStore
-	TenantRepo                tenantports.TenantRepository
-	PasswordResetTokenStore   passwordports.PasswordResetTokenStore
-	EmailSender               sharednotification.EmailSender
-	Notifier                  sharednotification.Notifier
-	BreachedPasswordChecker   passwordports.BreachedPasswordChecker
+	SessionTokens           SessionTokenRevoker
+	MfaFactorRepo           totpports.MfaFactorRepository
+	MfaEnrollmentBypassRepo mfaports.MfaEnrollmentBypassRepository
+	AuthEventBucketStore    authnports.AuthEventBucketStore
+	TenantRepo              tenantports.TenantRepository
+	PasswordResetTokenStore passwordports.PasswordResetTokenStore
+	EmailSender             sharednotification.EmailSender
+	Notifier                sharednotification.Notifier
+	BreachedPasswordChecker passwordports.BreachedPasswordChecker
 
 	// WebAuthn / Passkey と backup recovery code の self-service 管理 (wi-26)。
 	// WebAuthnRP が nil の場合 WebAuthn 登録は無効。
@@ -101,12 +97,6 @@ func (d Deps) ResolveAuthentication(c *echo.Context) (*authdomain.Authentication
 		return nil, err
 	}
 	return authdomain.ContextOf(authn), nil
-}
-
-// ClientDisplayNameResolver は、接続済みアプリの画面に出す client_id の表示名を解決する。
-// 解決の順序は Application が所有し、組み立て地点が結ぶ。
-type ClientDisplayNameResolver interface {
-	ResolveAll(ctx context.Context, tenantID string, clientIDs []string) map[string]string
 }
 
 // SessionTokenRevoker は、sid のログインセッションに結び付いた OAuth のトークンを失効させる。

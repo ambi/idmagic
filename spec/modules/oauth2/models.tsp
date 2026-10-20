@@ -1903,6 +1903,10 @@ model AuthorizationDetailTypeExistsError is ProblemDetails;
 model McpResourceServerNotFoundError is ProblemDetails;
 
 
+@doc("指定した利用者と `client_id` の組の Consent が、このテナントに存在しない。本人の操作では、本人の Consent だけを探す。他のテナントや他の利用者の Consent は存在しないものとして扱い、同じように答える。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:consent_not_found` である。")
+model ConsentNotFoundError is ProblemDetails;
+
+
 @doc("同じ `resource` が、このテナントの MCP のリソースサーバーとしてすでに登録されている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:resource_exists` である。")
 model McpResourceServerExistsError is ProblemDetails;
 

@@ -300,18 +300,16 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	// 対話のログインは Authentication が処理し、認証を終えたら OAuth2 の認可要求を続ける。
 	// OAuth2 は既存のセッションに追加の認証を求めるときに Authentication の Steps を使う。
 	authRoutes := authentication.RouteDeps{
-		Deps:                      d.Deps,
-		Authenticator:             authenticator,
-		AuditEventRepo:            d.Audit.AuditEventRepo,
-		UserRepo:                  d.IdManagement.UserRepo,
-		Consents:                  d.OAuth2.AccountConsents(d.Emit),
-		ClientDisplayNameResolver: clientDisplayNames,
-		TenantRepo:                d.TenantRepo,
-		EmailSender:               d.Notification.EmailSender,
-		Notifier:                  d.Notification.Notifier,
-		TenantSaltStore:           d.Audit.TenantSaltStore,
-		ClientIP:                  appGate.ClientIP,
-		DefaultSignInPolicyRepo:   d.Application.DefaultSignInPolicyRepo,
+		Deps:                    d.Deps,
+		Authenticator:           authenticator,
+		AuditEventRepo:          d.Audit.AuditEventRepo,
+		UserRepo:                d.IdManagement.UserRepo,
+		TenantRepo:              d.TenantRepo,
+		EmailSender:             d.Notification.EmailSender,
+		Notifier:                d.Notification.Notifier,
+		TenantSaltStore:         d.Audit.TenantSaltStore,
+		ClientIP:                appGate.ClientIP,
+		DefaultSignInPolicyRepo: d.Application.DefaultSignInPolicyRepo,
 	}
 	oauthRoutes := oauth2.RouteDeps{
 		WorkloadVerifier:          workloadVerifier,

@@ -1458,6 +1458,16 @@ model GetAdminConsentError403 {
   @body body: GetAdminConsentError403Body;
 }
 
+union GetAdminConsentError404Body {
+  IdMagic.Contract.ConsentNotFoundError,
+}
+
+model GetAdminConsentError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminConsentError404Body;
+}
+
 @doc("管理者が、自身のテナントの Consent を、サブジェクトと `client_id` で読む。他のテナントの Consent は存在しないものとして扱う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["consents:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminConsent")
@@ -1466,7 +1476,7 @@ model GetAdminConsentError403 {
 op GetAdminConsent(
   @path user_id: string,
   @path client_id: string
-): GetAdminConsentSuccess_200 | GetAdminConsentError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminConsentError403;
+): GetAdminConsentSuccess_200 | GetAdminConsentError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminConsentError403 | GetAdminConsentError404;
 
 model RevokeAdminConsentSuccess_204 {
   @statusCode statusCode: 204;
@@ -1495,6 +1505,16 @@ model RevokeAdminConsentError403 {
   @body body: RevokeAdminConsentError403Body;
 }
 
+union RevokeAdminConsentError404Body {
+  IdMagic.Contract.ConsentNotFoundError,
+}
+
+model RevokeAdminConsentError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: RevokeAdminConsentError404Body;
+}
+
 @doc("管理者が、自身のテナントの Consent を論理的に失効させる。管理者には、Consent の作成やスコープの拡大は許されない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["consents:write"])
 @TypeSpec.OpenAPI.operationId("RevokeAdminConsent")
@@ -1503,7 +1523,7 @@ model RevokeAdminConsentError403 {
 op RevokeAdminConsent(
   @path user_id: string,
   @path client_id: string
-): RevokeAdminConsentSuccess_204 | RevokeAdminConsentError400 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeAdminConsentError403;
+): RevokeAdminConsentSuccess_204 | RevokeAdminConsentError400 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeAdminConsentError403 | RevokeAdminConsentError404;
 
 model ListAdminRolePoliciesHttpResponse {
   roles: IdMagic.Contract.AdminRolePolicy[];
@@ -1583,12 +1603,22 @@ model RevokeMyConsentError403 {
   @body body: RevokeMyConsentError403Body;
 }
 
+union RevokeMyConsentError404Body {
+  IdMagic.Contract.ConsentNotFoundError,
+}
+
+model RevokeMyConsentError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: RevokeMyConsentError404Body;
+}
+
 @doc("認証済みのユーザーが、指定した `client_id` に対する自身の Consent を論理的に失効させる（セルフサービス）。`actor.id` は `target.id` と等しく固定される。そのクライアントの次の認可では、改めて同意を求める。")
 @TypeSpec.OpenAPI.operationId("RevokeMyConsent")
 @route("/api/account/v1/consents/{client_id}/revoke")
 @post
 op RevokeMyConsent(
-  @path client_id: string,): RevokeMyConsentSuccess_204 | RevokeMyConsentError400 | RevokeMyConsentError403;
+  @path client_id: string,): RevokeMyConsentSuccess_204 | RevokeMyConsentError400 | RevokeMyConsentError403 | RevokeMyConsentError404;
 
 model ListMyApprovalRequestsSuccess_200 {
   @statusCode statusCode: 200;

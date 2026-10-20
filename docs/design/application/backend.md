@@ -139,7 +139,7 @@ URL、メールアドレス、IP アドレスの構文解析（`net/url`、`net/
 | カタログからのプロトコル設定の管理 | ApplicationCatalog が HTTP と管理の編成を担当し、Application の公開更新操作と各プロトコルを利用する。各プロトコルは Catalog を経由せず Application のアクセス判定を利用する | 分離済み。OIDC は OAuth2 の公開管理操作を直接利用し、表示へ写す処理は Catalog に置く。SAML と WS-Fed は各所有者の公開型と Repository を利用する |
 | 主体の管理からの資格情報の操作 | User の編成は IdManagement、資格情報の規則と保存は Authentication が担当する。連続する資格情報の削除は所有者の操作へ集約し、CSV は同じ Tx に参加する履歴 writer を要求する。Repository の保存型を要求側へ複製しない | 実装済み。必要最小限の要求契約と本人確認の操作を組み立て地点で結び、IdManagement から Authentication への本番 import はない |
 | 主体の管理からのプロトコルの操作 | IdManagement が必要な同意照会、削除とクライアントの束縛を要求する。User と Agent のライフサイクルの編成と既存の確定境界を保つ | 逆向きの import が残存 |
-| 本人のアカウント画面からの同意の管理 | Authentication が本人の同意照会と取り消しを要求し、OAuth2 の公開操作が同意と関連する失効を扱う | 逆向きの import が残存 |
+| 本人のアカウント画面からの同意の管理 | 操作の所有者である OAuth2 が、account の経路として一覧と取り消しを提供する。本人の解決とブラウザー要求の検証は共有の認証器を使い、Authentication には同意の知識を置かない | 実装済み。Authentication から OAuth2 への本番 import はない |
 | プロトコルから必要になる管理発行トークンの情報 | OAuth2 が必要な組み込みリソースの公開情報と失効用の識別情報を、正式な組み立てで渡す。業務スコープを共有ライブラリへ移さない | 実装済み。組み立て地点が ApiTokens のスコープと組み込みクライアントの ID から OAuth2 の構築入力を作り、OAuth2 から ApiTokens への本番 import はない |
 
 実装が追いついていない境界は、表の実装状況に示す。

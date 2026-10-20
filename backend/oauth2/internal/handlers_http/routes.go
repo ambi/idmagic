@@ -162,6 +162,8 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/par", d.handlePAR)
 	g.POST("/device_authorization", d.handleDeviceAuthorization)
 	g.POST("/bc-authorize", d.handleBackchannelAuthenticate)
+	g.GET("/api/account/v1/consents", d.handleListMyConsents)
+	g.POST("/api/account/v1/consents/:client_id/revoke", d.handleRevokeMyConsent)
 	g.GET("/api/account/v1/approval-requests", d.handleListMyApprovalRequests)
 	g.POST("/api/account/v1/approval-requests/:id/decision", d.handleDecideMyApprovalRequest)
 	g.GET("/.well-known/openid-configuration", d.handleDiscovery)
