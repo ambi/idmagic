@@ -309,4 +309,30 @@ func TestTokenAPI(t *testing.T) {
 			t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 		}
 	})
+
+	// 組み込みの公開クライアントの例外は、資格情報を提示しない要求だけに当てる。
+	// 資格情報を伴う要求と client_id を欠く要求は、一般のクライアント認証で拒否する。
+	revokeWithoutAuthentication := []struct {
+		name          string
+		form          url.Values
+		authorization string
+	}{
+		{name: "BuiltinClientIDWithSecret", form: url.Values{"client_id": {"idmagic-api-token"}, "client_secret": {"guess"}, "token": {"unknown-token"}}},
+		{name: "BuiltinClientIDWithAuthorizationHeader", form: url.Values{"client_id": {"idmagic-api-token"}, "token": {"unknown-token"}}, authorization: "Basic aWRtYWdpYy1hcGktdG9rZW46Z3Vlc3M="},
+		{name: "MissingClientID", form: url.Values{"token": {"unknown-token"}}},
+	}
+	for _, tc := range revokeWithoutAuthentication {
+		t.Run("Revoke_"+tc.name+"_RequiresClientAuthentication", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/realms/default/revoke", strings.NewReader(tc.form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			if tc.authorization != "" {
+				req.Header.Set("Authorization", tc.authorization)
+			}
+			rec := httptest.NewRecorder()
+			fix.e.ServeHTTP(rec, req)
+			if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), "invalid_client") {
+				t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+			}
+		})
+	}
 }
