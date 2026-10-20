@@ -1992,51 +1992,43 @@ model DisableIdentityProviderConnectionError404 {
 op DisableIdentityProviderConnection(
   @path provider_id: string,): DisableIdentityProviderConnectionSuccess_204 | DisableIdentityProviderConnectionError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableIdentityProviderConnectionError403 | DisableIdentityProviderConnectionError404;
 
-model RefreshIdentityProviderMetadataSuccess_200 {
+model PreviewIdentityProviderMetadataSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: IdMagic.Contract.IdentityProviderConnection;
+  @body body: IdMagic.Contract.IdentityProviderMetadataPreview;
 }
 
-union RefreshIdentityProviderMetadataError400Body {
+union PreviewIdentityProviderMetadataError400Body {
   IdMagic.Contract.InvalidRequestError,
+  IdMagic.Contract.IdentityProviderMetadataInvalidError,
 }
 
-model RefreshIdentityProviderMetadataError400 {
+model PreviewIdentityProviderMetadataError400 {
   @statusCode statusCode: 400;
   @header contentType: "application/problem+json";
-  @body body: RefreshIdentityProviderMetadataError400Body;
+  @body body: PreviewIdentityProviderMetadataError400Body;
 }
 
-union RefreshIdentityProviderMetadataError403Body {
+union PreviewIdentityProviderMetadataError403Body {
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
 }
 
-model RefreshIdentityProviderMetadataError403 {
+model PreviewIdentityProviderMetadataError403 {
   @statusCode statusCode: 403;
   @header contentType: "application/problem+json";
-  @body body: RefreshIdentityProviderMetadataError403Body;
+  @body body: PreviewIdentityProviderMetadataError403Body;
 }
 
-union RefreshIdentityProviderMetadataError404Body {
-  IdMagic.Contract.IdentityProviderConnectionNotFoundError,
-}
-
-model RefreshIdentityProviderMetadataError404 {
-  @statusCode statusCode: 404;
-  @header contentType: "application/problem+json";
-  @body body: RefreshIdentityProviderMetadataError404Body;
-}
-
-@doc("テナントの管理者が、固定した発行者またはメタデータの取得元から、ディスカバリーの文書と JWKS、または SAML のメタデータを取得し直し、SSRF のガードと信頼の検証の両方を通ったときだけ、最後に正常だった情報を更新する。")
+@doc("対話セッションのテナント管理者が、フォームに入力した issuer から OIDC Discovery と JWKS を取得して検証し、設定の候補を得る。接続は保存せず、適用と保存は管理者が行う。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
-@TypeSpec.OpenAPI.operationId("RefreshIdentityProviderMetadata")
-@route("/api/admin/v1/identity-providers/{provider_id}/refresh")
+@TypeSpec.OpenAPI.operationId("PreviewIdentityProviderMetadata")
+@route("/api/admin/v1/identity-providers/metadata-preview")
 @post
-op RefreshIdentityProviderMetadata(
-  @path provider_id: string,): RefreshIdentityProviderMetadataSuccess_200 | RefreshIdentityProviderMetadataError400 | IdMagic.Contract.AuthenticationRequiredResponse | RefreshIdentityProviderMetadataError403 | RefreshIdentityProviderMetadataError404;
+op PreviewIdentityProviderMetadata(
+  @body body: IdMagic.Contract.IdentityProviderMetadataPreviewRequest,
+): PreviewIdentityProviderMetadataSuccess_200 | PreviewIdentityProviderMetadataError400 | IdMagic.Contract.AuthenticationRequiredResponse | PreviewIdentityProviderMetadataError403;
 
 model TestIdentityProviderConnectionHttpResponse {
   result: IdMagic.Contract.IdentityProviderConnectionTestResult;

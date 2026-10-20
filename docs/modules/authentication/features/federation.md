@@ -93,17 +93,24 @@ JIT は接続ごとに個別に有効にし、メールのドメインの許可�
 - 管理者が `Active` の接続の信頼の根拠を更新したとき、Authentication は、200 と接続を返し、接続を `Disabled` にする。
 - 管理者が接続を有効化か無効化したとき、Authentication は、204 を返し、状態遷移表のとおりに状態を変える。
 - 設定が検証を通らない接続か `Active` の接続の有効化を受けた場合、Authentication は、400 と `invalid_state` で拒否する。
-- 管理者が OIDC の接続のメタデータの再取得を要求したとき、Authentication は、Discovery の文書を取得し直し、200 と接続を返す。
 - 管理者が接続の検査を要求したとき、Authentication は、200 と、設定と上流の検査の失敗の一覧を返す。
 - 管理者がクレームの対応付けの試行を要求したとき、Authentication は、200 と正規化したクレームを返す。
 - API アクセストークンで接続の参照か変更を要求された場合、Authentication は、トークンのスコープにかかわらず 403 と `insufficient_scope` で拒否する。
 - 管理者が API アクセストークンでセッションと認証の情報の管理 API を要求したとき、Authentication は、`sessions:read` でセッションとサインイン履歴の参照を、`sessions:write` でセッションの失効を、`users:write` で MFA の登録の許可と認証器のリセットを許可する。
-- 存在しない接続の更新、有効化、無効化、再取得、検査、試行を受けた場合、Authentication は、404 と `not_found` で拒否する。
+- 存在しない接続の更新、有効化、無効化、検査、試行を受けた場合、Authentication は、404 と `not_found` で拒否する。
 - JSON として読めない本文か保存できない設定を受けた場合、Authentication は、400 と `invalid_request` で拒否する。
-- SAML の接続のメタデータの再取得を受けた場合、Authentication は、400 と `unsupported` で拒否する。
-- 上流のメタデータを検証できない場合、Authentication は、400 と `metadata_invalid` で拒否し、最後に成功した内容を保持する。
 - クレームの対応付けを適用できない場合、Authentication は、400 と `invalid_mapping` で拒否する。
 - **例**：EX-AUTHENTICATION-025-01、EX-AUTHENTICATION-025-02
+
+#### REQ-AUTHENTICATION-041 Discovery は保存を伴わない設定の入力支援とする
+
+- 管理者がブラウザーのログインセッションか管理ポータルのアクセストークンで HTTPS の issuer から OIDC のメタデータの候補を要求したとき、Authentication は、Discovery の文書と JWKS の検証を通った issuer、認可エンドポイント、トークンエンドポイント、JWKS URI を 200 で返し、接続を作成も更新もしない。
+- JSON として読めない本文か空の issuer を受けた場合、Authentication は、400 と `invalid_request` で拒否する。
+- issuer の完全一致、取得先の検査、Discovery の取得、JWKS の取得、鍵の検証のいずれかが失敗した場合、Authentication は、400 と `metadata_invalid` で拒否し、保存済みの接続を変えない。
+- API アクセストークンから候補の取得を要求された場合、Authentication は、スコープにかかわらず 403 と `insufficient_scope` で拒否する。
+- 管理者が作成または編集フォームで候補を取得したとき、Authentication は、管理画面に候補を表示し、管理者が適用するまで入力を変えず、保存操作までは接続を保存しない。
+- 候補の取得後にフォームの issuer またはプロトコルが変わった場合、Authentication は、管理画面でその候補を適用させない。
+- **判断**：保存されるエンドポイントは管理者の設定だけとし、取得処理を別の書き手にしない。取得と検証はサーバーが行い、適用と保存は管理者が決める。
 
 #### REQ-AUTHENTICATION-037 外部 IdP 接続は、利用者との連携が残っている間は削除できない
 
@@ -147,6 +154,10 @@ IdManagement は JIT のために資格情報を持たないユーザーを作�
 OAuth の認可は `/authorize/resume` を通じて再開するので、アプリケーションのポリシー、必須の操作、同意、認可コードの発行は、ブローカーに複製せず `OAuth2` が担う。
 
 ### 検証
+
+Discovery は、保存を伴わない設定の入力支援としてサーバーで取得と検証を行う。
+取得結果と設定の保存を分けるため、取得中の管理者の編集を Discovery の保存が書き戻す窓はない。
+管理画面は issuer ごとに候補の状態を持ち、issuer の変更と OIDC 以外への切り替えで候補を破棄する。
 
 上流の ID Token の検証は、Go のネイティブのファジングの対象である。
 ファジングは「こちらが署名していない ID Token を必ず拒否する」だけを表明し、正当なトークンの受理と、各主張の不一致による拒否は、表で駆動するテストが押さえる。

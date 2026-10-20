@@ -1076,11 +1076,28 @@ export async function updateIdentityProviderConnection(
 export async function runIdentityProviderAction(
   csrfToken: string,
   providerID: string,
-  action: 'activate' | 'disable' | 'refresh',
+  action: 'activate' | 'disable',
 ): Promise<void> {
   await request(
     `/api/admin/v1/identity-providers/${encodeURIComponent(providerID)}/${action}`,
     adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export type IdentityProviderMetadataPreview = {
+  issuer: string
+  authorization_endpoint: string
+  token_endpoint: string
+  jwks_uri: string
+}
+
+export async function previewIdentityProviderMetadata(
+  csrfToken: string,
+  issuer: string,
+): Promise<IdentityProviderMetadataPreview> {
+  return request(
+    '/api/admin/v1/identity-providers/metadata-preview',
+    adminRequest(csrfToken, 'POST', { issuer }),
   )
 }
 

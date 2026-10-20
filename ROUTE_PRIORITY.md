@@ -147,11 +147,11 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/groups/{group_id}/dynamic-rule/enable` | POST |
 | `/api/admin/v1/groups/{group_id}/members/{user_sub}` | DELETE, POST |
 | `/api/admin/v1/identity-providers` | GET, POST |
+| `/api/admin/v1/identity-providers/metadata-preview` | POST |
 | `/api/admin/v1/identity-providers/{provider_id}` | DELETE, PUT |
 | `/api/admin/v1/identity-providers/{provider_id}/activate` | POST |
 | `/api/admin/v1/identity-providers/{provider_id}/disable` | POST |
 | `/api/admin/v1/identity-providers/{provider_id}/mapping-preview` | POST |
-| `/api/admin/v1/identity-providers/{provider_id}/refresh` | POST |
 | `/api/admin/v1/identity-providers/{provider_id}/test` | POST |
 | `/api/admin/v1/integration-endpoints` | GET |
 | `/api/admin/v1/jobs` | GET |

@@ -199,6 +199,7 @@ func (f *authRefusalFixture) connectionNames(t *testing.T, tenantID string) map[
 // セッションを提示する。接続は作成も更新もされない。
 //
 //spec:covers REQ-AUTHENTICATION-025, EX-AUTHENTICATION-025-02: API アクセストークンは、どのスコープを持っていても外部 IdP
+//spec:covers REQ-AUTHENTICATION-041: 保存を伴わないメタデータの候補取得も対話セッションに限る。
 func TestApiTokenCannotManageIdentityProviderConnections(t *testing.T) {
 	fixture := newAuthRefusalServer(t)
 	fixture.seedConnection(t, authRefusalProviderID, "Workforce")
@@ -219,6 +220,7 @@ func TestApiTokenCannotManageIdentityProviderConnections(t *testing.T) {
 	for _, operation := range []struct{ name, method, path string }{
 		{"一覧", http.MethodGet, "/api/admin/v1/identity-providers"},
 		{"作成", http.MethodPost, "/api/admin/v1/identity-providers"},
+		{"メタデータの候補", http.MethodPost, "/api/admin/v1/identity-providers/metadata-preview"},
 		{"更新", http.MethodPut, "/api/admin/v1/identity-providers/" + authRefusalProviderID},
 		{"削除", http.MethodDelete, "/api/admin/v1/identity-providers/" + authRefusalProviderID},
 	} {

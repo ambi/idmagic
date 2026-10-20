@@ -3,6 +3,7 @@ package testing_contract
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -59,8 +60,35 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if err := f.TrustBundles.Save(ctx, &otherTenant); err != nil {
 		t.Fatalf("same issuer in another tenant: %v", err)
 	}
+	// 取得結果の記録は既存の設定の一列だけを書き、テナントの境界を越えない。
+	before, err := f.TrustBundles.FindByID(ctx, f.TenantA, f.BundleID)
+	if err != nil || before == nil {
+		t.Fatalf("before fetch = (%+v, %v)", before, err)
+	}
+	at := f.Now.Add(time.Minute)
+	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantB, f.BundleID, at); err != nil {
+		t.Fatalf("other tenant RecordJWKSFetched: %v", err)
+	}
+	unchanged, err := f.TrustBundles.FindByID(ctx, f.TenantA, f.BundleID)
+	if err != nil || !reflect.DeepEqual(unchanged, before) {
+		t.Fatalf("other tenant changed bundle = (%+v, %v), want %+v", unchanged, err, before)
+	}
+	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, at); err != nil {
+		t.Fatalf("RecordJWKSFetched: %v", err)
+	}
+	after, err := f.TrustBundles.FindByID(ctx, f.TenantA, f.BundleID)
+	if err != nil || after == nil || after.JWKSCachedAt == nil || !after.JWKSCachedAt.Equal(at) {
+		t.Fatalf("after fetch = (%+v, %v), want fetch time %s", after, err, at)
+	}
+	before.JWKSCachedAt = after.JWKSCachedAt
+	if !reflect.DeepEqual(after, before) {
+		t.Fatalf("after fetch = (%+v, %v), want only the fetch time changed: %+v", after, err, before)
+	}
 	if err := f.TrustBundles.Delete(ctx, f.TenantA, f.BundleID); err != nil {
 		t.Fatalf("Delete: %v", err)
+	}
+	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, at); err != nil {
+		t.Fatalf("deleted RecordJWKSFetched: %v", err)
 	}
 	if deleted, err := f.TrustBundles.FindByID(ctx, f.TenantA, f.BundleID); err != nil || deleted != nil {
 		t.Fatalf("FindByID after Delete = (%+v, %v)", deleted, err)

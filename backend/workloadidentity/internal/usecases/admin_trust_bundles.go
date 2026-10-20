@@ -259,9 +259,7 @@ func RefreshWorkloadTrustBundleJWKS(ctx context.Context, deps AdminWorkloadIdent
 	reachable := fetchErr == nil
 	result := &RefreshWorkloadTrustBundleJWKSResult{Reachable: reachable, KeyCount: len(keys)}
 	if reachable {
-		updated := *bundle
-		updated.JWKSCachedAt = &now
-		if err := deps.TrustBundleRepo.Save(ctx, &updated); err != nil {
+		if err := deps.TrustBundleRepo.RecordJWKSFetched(ctx, tenantID, id, now); err != nil {
 			return nil, err
 		}
 		result.JWKSCachedAt = &now

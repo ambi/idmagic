@@ -44,7 +44,7 @@ func RegisterRoutes(group *echo.Group, deps Deps) {
 	group.DELETE("/api/admin/v1/identity-providers/:provider_id", deps.deleteAdmin)
 	group.POST("/api/admin/v1/identity-providers/:provider_id/activate", deps.activate)
 	group.POST("/api/admin/v1/identity-providers/:provider_id/disable", deps.disable)
-	group.POST("/api/admin/v1/identity-providers/:provider_id/refresh", deps.refresh)
+	group.POST("/api/admin/v1/identity-providers/metadata-preview", deps.previewMetadata)
 	group.POST("/api/admin/v1/identity-providers/:provider_id/test", deps.test)
 	group.POST("/api/admin/v1/identity-providers/:provider_id/mapping-preview", deps.previewMapping)
 }
@@ -345,24 +345,24 @@ func (d Deps) changeStatus(c *echo.Context, activate bool) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) refresh(c *echo.Context) error {
+func (d Deps) previewMetadata(c *echo.Context) error {
 	if err := d.requireBrowserAdmin(c); err != nil {
 		return err
 	}
-	connection, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
-	if err != nil || connection == nil {
-		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
+	var input struct {
+		Issuer string `json:"issuer"`
 	}
-	if connection.Protocol != federationdomain.ProtocolOIDC || d.OIDC == nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "unsupported", "Automatic metadata refresh is unavailable for this provider.")
+	if err := support.DecodeJSON(c.Request(), &input); err != nil || strings.TrimSpace(input.Issuer) == "" {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A JSON request with an issuer is required.")
 	}
-	if err := d.OIDC.RefreshDiscovery(c.Request().Context(), connection, time.Now().UTC()); err != nil {
+	if d.OIDC == nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "metadata_invalid", "The identity provider metadata could not be retrieved.")
+	}
+	metadata, err := d.OIDC.Discover(c.Request().Context(), input.Issuer)
+	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "metadata_invalid", "The identity provider metadata was rejected.")
 	}
-	if err := d.Broker.Connections.Save(c.Request().Context(), connection); err != nil {
-		return err
-	}
-	return support.NoStoreJSON(c, http.StatusOK, withSecretPresence(connection))
+	return support.NoStoreJSON(c, http.StatusOK, metadata)
 }
 
 type connectionTestResult struct {

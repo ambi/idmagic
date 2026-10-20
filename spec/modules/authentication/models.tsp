@@ -1212,6 +1212,22 @@ model IdentityProviderConnectionRequest {
   allowed_email_domains?: string[];
 }
 
+@doc("OIDC の設定の入力支援で取得する、HTTPS の発行者。接続の保存は伴わない。")
+model IdentityProviderMetadataPreviewRequest {
+  issuer: url;
+}
+
+@doc("Discovery と JWKS の検証を通った OIDC の設定候補。管理者が確認して保存するまで接続へ反映しない。")
+model IdentityProviderMetadataPreview {
+  issuer: url;
+  authorization_endpoint: url;
+  token_endpoint: url;
+  jwks_uri: url;
+}
+
+@doc("OIDC のメタデータの取得先、発行者または署名鍵を検証できなかった。接続は保存していない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:metadata_invalid` である。")
+model IdentityProviderMetadataInvalidError is ProblemDetails;
+
 
 @doc("リクエストが指定した上流の ID プロバイダーの接続が、このテナントに存在しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:not_found` である。")
 model IdentityProviderConnectionNotFoundError is ProblemDetails;

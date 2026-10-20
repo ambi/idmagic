@@ -134,6 +134,12 @@ func (r *WorkloadTrustBundleRepository) Save(ctx context.Context, b *workloaddom
 	})
 }
 
+func (r *WorkloadTrustBundleRepository) RecordJWKSFetched(ctx context.Context, tenantID, id string, at time.Time) error {
+	return New(r.Pool).RecordWorkloadTrustBundleJWKSFetched(ctx, RecordWorkloadTrustBundleJWKSFetchedParams{
+		TenantID: tenantID, ID: id, JwksCachedAt: timestamptzOrNilPtr(&at),
+	})
+}
+
 func (r *WorkloadTrustBundleRepository) Delete(ctx context.Context, tenantID, id string) error {
 	return New(r.Pool).DeleteWorkloadTrustBundle(ctx, DeleteWorkloadTrustBundleParams{TenantID: tenantID, ID: id})
 }

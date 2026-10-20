@@ -34,7 +34,7 @@ func TestRefreshDiscoveryRejectsIssuerMixup(t *testing.T) {
 		},
 	})}
 	connection := testConnection()
-	if err := client.RefreshDiscovery(context.Background(), &connection, time.Now()); err == nil {
+	if _, err := client.Discover(context.Background(), connection.Issuer); err == nil {
 		t.Fatal("issuer mismatch must be rejected")
 	}
 }
@@ -226,7 +226,7 @@ func TestRefreshDiscoveryRequiresAnExactIssuerAndHTTPSAuthorities(t *testing.T) 
 			"jwks_uri":               "https://idp.example/jwks2",
 		}
 	}
-	refresh := func(t *testing.T, document map[string]any) (domain.IdentityProviderConnection, error) {
+	refresh := func(t *testing.T, document map[string]any) (*domain.MetadataPreview, error) {
 		t.Helper()
 		client := Client{HTTPClient: fakeHTTPClient(map[string]any{
 			configured + "/.well-known/openid-configuration": document,
@@ -237,9 +237,7 @@ func TestRefreshDiscoveryRequiresAnExactIssuerAndHTTPSAuthorities(t *testing.T) 
 			"https://10.0.0.1/jwks":                          jwks,
 			"https://user:pass@idp.example/jwks":             jwks,
 		})}
-		connection := testConnection()
-		err := client.RefreshDiscovery(context.Background(), &connection, time.Now())
-		return connection, err
+		return client.Discover(context.Background(), configured)
 	}
 
 	for name, forged := range map[string]map[string]any{
@@ -262,24 +260,19 @@ func TestRefreshDiscoveryRequiresAnExactIssuerAndHTTPSAuthorities(t *testing.T) 
 		if err == nil {
 			t.Fatalf("%s: accepted", name)
 		}
-		before := testConnection()
-		if connection.AuthorizationEndpoint != before.AuthorizationEndpoint ||
-			connection.TokenEndpoint != before.TokenEndpoint ||
-			connection.JWKSURI != before.JWKSURI ||
-			connection.MetadataRefreshedAt != nil {
-			t.Fatalf("%s: the rejected document still moved the connection to %+v", name, connection)
+		if connection != nil {
+			t.Fatalf("%s: the rejected document returned a candidate: %+v", name, connection)
 		}
 	}
 
-	// 対照: 無傷の document は受理され、connection の endpoint を書き換える。
+	// 対照: 無傷の document は保存先へ触れず、入力候補として返す。
 	connection, err := refresh(t, intact())
 	if err != nil {
 		t.Fatalf("an intact discovery document was rejected: %v", err)
 	}
 	if connection.AuthorizationEndpoint != "https://idp.example/auth2" ||
 		connection.TokenEndpoint != "https://idp.example/token2" ||
-		connection.JWKSURI != "https://idp.example/jwks2" ||
-		connection.MetadataRefreshedAt == nil {
-		t.Fatalf("the accepted document did not move the connection: %+v", connection)
+		connection.JWKSURI != "https://idp.example/jwks2" || connection.Issuer != configured {
+		t.Fatalf("the accepted document returned the wrong candidate: %+v", connection)
 	}
 }

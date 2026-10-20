@@ -24,6 +24,7 @@ import {
   inputFrom,
 } from './AdminIdentityProviderFormShared'
 import { identityProvidersDictionary } from './AdminIdentityProvidersPage.i18n'
+import { IdentityProviderMetadataPreview } from './IdentityProviderMetadataPreview'
 
 export function AdminIdentityProviderCreatePage({
   csrfToken,
@@ -160,6 +161,22 @@ function ConnectionFormShell({
               onChange={(event) => field('issuer', event.target.value)}
             />
           </Field>
+
+          {form.protocol === 'oidc' ? (
+            <IdentityProviderMetadataPreview
+              key={form.issuer.trim()}
+              issuer={form.issuer.trim()}
+              csrfToken={csrfToken}
+              onApply={(metadata) =>
+                setForm((current) => ({
+                  ...current,
+                  authorizationEndpoint: metadata.authorization_endpoint,
+                  tokenEndpoint: metadata.token_endpoint,
+                  jwksUri: metadata.jwks_uri,
+                }))
+              }
+            />
+          ) : null}
 
           <TrustSourceFields
             form={form}

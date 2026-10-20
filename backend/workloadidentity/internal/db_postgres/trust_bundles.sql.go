@@ -130,6 +130,21 @@ func (q *Queries) ListWorkloadTrustBundlesByTenant(ctx context.Context, tenantID
 	return items, nil
 }
 
+const recordWorkloadTrustBundleJWKSFetched = `-- name: RecordWorkloadTrustBundleJWKSFetched :exec
+UPDATE workload_trust_bundles SET jwks_cached_at=$3 WHERE tenant_id=$1 AND id=$2
+`
+
+type RecordWorkloadTrustBundleJWKSFetchedParams struct {
+	TenantID     string
+	ID           string
+	JwksCachedAt pgtype.Timestamptz
+}
+
+func (q *Queries) RecordWorkloadTrustBundleJWKSFetched(ctx context.Context, arg RecordWorkloadTrustBundleJWKSFetchedParams) error {
+	_, err := q.db.Exec(ctx, recordWorkloadTrustBundleJWKSFetched, arg.TenantID, arg.ID, arg.JwksCachedAt)
+	return err
+}
+
 const saveWorkloadTrustBundle = `-- name: SaveWorkloadTrustBundle :exec
 INSERT INTO workload_trust_bundles (id,tenant_id,name,trust_domain,issuer,jwks_uri,jwks,
  accepted_audiences,max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at)

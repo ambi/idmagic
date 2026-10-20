@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
@@ -73,6 +74,15 @@ func (r *WorkloadTrustBundleRepository) Save(_ context.Context, b *workloaddomai
 		}
 	}
 	r.bundles[sharedmem.ScopedKey(b.TenantID, b.ID, kernel.DefaultTenantID)] = cloneTrustBundle(b)
+	return nil
+}
+
+func (r *WorkloadTrustBundleRepository) RecordJWKSFetched(_ context.Context, tenantID, id string, at time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if b := r.bundles[sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)]; b != nil {
+		b.JWKSCachedAt = &at
+	}
 	return nil
 }
 

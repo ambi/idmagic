@@ -54,7 +54,7 @@ func federationContractConnection(t *testing.T, body map[string]any, name string
 //verify:operation CreateIdentityProviderConnection: 接続の作成、更新、mapping preview、metadata refresh の HTTP 応答と保存結果
 //verify:operation UpdateIdentityProviderConnection: 接続の作成、更新、mapping preview、metadata refresh の HTTP 応答と保存結果
 //verify:operation PreviewIdentityProviderMapping: 接続の作成、更新、mapping preview、metadata refresh の HTTP 応答と保存結果
-//verify:operation RefreshIdentityProviderMetadata: 接続の作成、更新、mapping preview、metadata refresh の HTTP 応答と保存結果
+//verify:operation PreviewIdentityProviderMetadata: issuer の要求から検証済みのエンドポイントを返し、保存済みの接続を変えない。
 func TestIdentityProviderAdminHTTPContracts(t *testing.T) {
 	client := oidcprotocol.Client{HTTPClient: &http.Client{Transport: fakeRoundTripper(func(r *http.Request) (*http.Response, error) {
 		var body string
@@ -93,17 +93,12 @@ func TestIdentityProviderAdminHTTPContracts(t *testing.T) {
 	if !reflect.DeepEqual(preview["preview"], map[string]any{"subject": "external-sub", "username": "alice@example.test", "email": "alice@example.test", "email_verified": true, "name": "Alice"}) {
 		t.Fatalf("preview=%v", preview)
 	}
-	refreshed := federationContractJSON(t, send(http.MethodPost, "/api/admin/v1/identity-providers/"+id+"/refresh", nil), http.StatusOK)
-	federationContractConnection(t, refreshed, "Contract renamed")
-	if refreshed["id"] != id || refreshed["authorization_endpoint"] != "https://contract.example/new-auth" || refreshed["token_endpoint"] != "https://contract.example/new-token" || refreshed["jwks_uri"] != "https://contract.example/jwks" {
+	refreshed := federationContractJSON(t, send(http.MethodPost, "/api/admin/v1/identity-providers/metadata-preview", map[string]string{"issuer": "https://contract.example"}), http.StatusOK)
+	if len(refreshed) != 4 || refreshed["issuer"] != "https://contract.example" || refreshed["authorization_endpoint"] != "https://contract.example/new-auth" || refreshed["token_endpoint"] != "https://contract.example/new-token" || refreshed["jwks_uri"] != "https://contract.example/jwks" {
 		t.Fatalf("refreshed=%v", refreshed)
 	}
-	value, ok := refreshed["metadata_refreshed_at"].(string)
-	if parsed, err := time.Parse(time.RFC3339Nano, value); !ok || err != nil || parsed.IsZero() {
-		t.Fatalf("metadata_refreshed_at=%v", refreshed)
-	}
 	stored, err := repos.Connections.Find(testing_tenant.Default(t.Context()), tenancydomain.DefaultTenantID, id)
-	if err != nil || stored == nil || stored.AuthorizationEndpoint != refreshed["authorization_endpoint"] || stored.MetadataRefreshedAt == nil {
+	if err != nil || stored == nil || stored.AuthorizationEndpoint != updated["authorization_endpoint"] || stored.MetadataRefreshedAt != nil {
 		t.Fatalf("stored=%v err=%v", stored, err)
 	}
 }
@@ -111,14 +106,14 @@ func TestIdentityProviderAdminHTTPContracts(t *testing.T) {
 //verify:operation CreateIdentityProviderConnection: CSRF 拒否の 403 Problem Details
 //verify:operation UpdateIdentityProviderConnection: CSRF 拒否の 403 Problem Details
 //verify:operation PreviewIdentityProviderMapping: CSRF 拒否の 403 Problem Details
-//verify:operation RefreshIdentityProviderMetadata: CSRF 拒否の 403 Problem Details
+//verify:operation PreviewIdentityProviderMetadata: CSRF 拒否の 403 Problem Details
 func TestIdentityProviderAdminHTTPContractsRefuseCSRF(t *testing.T) {
 	e, _ := newAdminServer(t, nil)
 	for _, request := range []struct{ method, path string }{
 		{http.MethodPost, "/api/admin/v1/identity-providers"},
 		{http.MethodPut, "/api/admin/v1/identity-providers/missing"},
 		{http.MethodPost, "/api/admin/v1/identity-providers/missing/mapping-preview"},
-		{http.MethodPost, "/api/admin/v1/identity-providers/missing/refresh"},
+		{http.MethodPost, "/api/admin/v1/identity-providers/metadata-preview"},
 	} {
 		req := adminRequest(t, request.method, request.path, nil)
 		req.Header.Del("X-Csrf-Token")

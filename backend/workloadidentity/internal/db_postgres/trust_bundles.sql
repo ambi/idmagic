@@ -24,3 +24,6 @@ ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,jwks_uri=EXCLUDED.jwks_uri,jwk
 
 -- name: DeleteWorkloadTrustBundle :exec
 DELETE FROM workload_trust_bundles WHERE tenant_id=$1 AND id=$2;
+
+-- name: RecordWorkloadTrustBundleJWKSFetched :exec
+UPDATE workload_trust_bundles SET jwks_cached_at=$3 WHERE tenant_id=$1 AND id=$2;

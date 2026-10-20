@@ -70,6 +70,14 @@ type IdentityProviderConnection struct {
 	UpdatedAt               time.Time        `json:"updated_at"`
 }
 
+// MetadataPreview は検証済みの入力候補であり、保存済みの接続とは別の値である。
+type MetadataPreview struct {
+	Issuer                string `json:"issuer"`
+	AuthorizationEndpoint string `json:"authorization_endpoint"`
+	TokenEndpoint         string `json:"token_endpoint"`
+	JWKSURI               string `json:"jwks_uri"`
+}
+
 func (c IdentityProviderConnection) Validate() error {
 	if strings.TrimSpace(c.ID) == "" || strings.TrimSpace(c.TenantID) == "" || strings.TrimSpace(c.DisplayName) == "" {
 		return errors.New("connection id, tenant id, and display name are required")

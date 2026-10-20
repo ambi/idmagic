@@ -577,11 +577,13 @@ Repository の保存は、Aggregate 全体を ID で上書きする（`ON CONFLI
 | ログインセッションの最終アクセス | `TouchAuthenticationSession` が、前回から一定時間が過ぎたときだけ `last_seen_at` を書く |
 | テナントのリソースの使用量 | 使用量の加算を、上限を条件にした一つの更新文で行う |
 | Authentication による User の記録 | ログイン、パスワードの変更と再設定、MFA の状態の記録が、`UserRepository.Update` で行を固定して読み直した User に変更を当てる。最終ログイン時刻、変更時刻、必須操作は無効化の状態と同じ `lifecycle` の列にあり、期限切れの判定も最新の値から行う。再設定はトークンの使用済み化と同じトランザクションで `UserWriter.Update` を使う |
+| トラストバンドルの JWKS の確認 | `RecordJWKSFetched` が `jwks_cached_at` だけを書き、取得中の設定の編集を保持する |
 
 適用状況：
 
 - 版による検出を持つ管理 API は、ライフサイクルワークフローの `expected_revision` だけである。ほかの Aggregate の編集は後勝ちである。
-- 次の書き込みはこの規則に反し、先に読んだ Aggregate を丸ごと保存する。トラストバンドルの JWKS の確認、IdP 接続のメタデータの更新、所有者の停止に伴う Agent の無効化。
+- IdP の Discovery は、保存を伴わない設定の入力支援である。取得処理は接続の書き手ではなく、管理者による通常の作成と編集だけが設定を保存する。
+- 所有者の停止に伴う Agent の無効化はこの規則に反し、先に読んだ Aggregate を丸ごと保存する。
 
 ## カラム型の選択
 

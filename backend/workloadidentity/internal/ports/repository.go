@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
@@ -17,6 +18,9 @@ type WorkloadTrustBundleRepository interface {
 	// issuer 解決に使う (未登録 issuer は fail-closed で拒否する)。
 	FindByIssuer(ctx context.Context, tenantID, issuer string) (*workloaddomain.WorkloadTrustBundle, error)
 	Save(ctx context.Context, bundle *workloaddomain.WorkloadTrustBundle) error
+	// RecordJWKSFetched は取得時刻だけを記録し、取得中の設定変更を保持する。
+	// 存在しない行は作らない。
+	RecordJWKSFetched(ctx context.Context, tenantID, id string, at time.Time) error
 	// Delete は WorkloadTrustBundle 単体を削除する。配下の AgentWorkloadBinding の
 	// cascade 削除は usecase 層が AgentWorkloadBindingRepository を通じて行う責務。
 	Delete(ctx context.Context, tenantID, id string) error

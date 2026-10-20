@@ -38,36 +38,32 @@ type discoveryDocument struct {
 	JWKSURI               string `json:"jwks_uri"`
 }
 
-func (c Client) RefreshDiscovery(ctx context.Context, connection *domain.IdentityProviderConnection, now time.Time) error {
-	if connection.Protocol != domain.ProtocolOIDC {
-		return errors.New("connection is not OIDC")
-	}
+// Discover は設定の入力候補を返す。取得処理に保存済みの接続を渡さない。
+func (c Client) Discover(ctx context.Context, issuer string) (*domain.MetadataPreview, error) {
 	var document discoveryDocument
-	discoveryURL := strings.TrimRight(connection.Issuer, "/") + "/.well-known/openid-configuration"
+	discoveryURL := strings.TrimRight(issuer, "/") + "/.well-known/openid-configuration"
 	if err := c.getJSON(ctx, discoveryURL, &document); err != nil {
-		return err
+		return nil, err
 	}
-	if document.Issuer != connection.Issuer {
-		return errors.New("OIDC discovery issuer mismatch")
+	if document.Issuer != issuer {
+		return nil, errors.New("OIDC discovery issuer mismatch")
 	}
 	for _, endpoint := range []string{document.AuthorizationEndpoint, document.TokenEndpoint, document.JWKSURI} {
 		if err := validateRemoteURL(endpoint); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	var keys jwksDocument
 	if err := c.getJSON(ctx, document.JWKSURI, &keys); err != nil {
-		return err
+		return nil, err
 	}
 	if _, err := keys.rsaKeys(); err != nil {
-		return err
+		return nil, err
 	}
-	connection.AuthorizationEndpoint = document.AuthorizationEndpoint
-	connection.TokenEndpoint = document.TokenEndpoint
-	connection.JWKSURI = document.JWKSURI
-	refreshed := normalizedNow(now)
-	connection.MetadataRefreshedAt, connection.UpdatedAt = &refreshed, refreshed
-	return nil
+	return &domain.MetadataPreview{
+		Issuer: issuer, AuthorizationEndpoint: document.AuthorizationEndpoint,
+		TokenEndpoint: document.TokenEndpoint, JWKSURI: document.JWKSURI,
+	}, nil
 }
 
 // TestConnection reports, without performing any authorization_code flow, whether the

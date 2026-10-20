@@ -16,6 +16,7 @@ type Querier interface {
 	FindWorkloadTrustBundleByIssuer(ctx context.Context, arg FindWorkloadTrustBundleByIssuerParams) (*WorkloadTrustBundle, error)
 	ListAgentWorkloadBindingsByTrustBundle(ctx context.Context, arg ListAgentWorkloadBindingsByTrustBundleParams) ([]*AgentWorkloadBinding, error)
 	ListWorkloadTrustBundlesByTenant(ctx context.Context, tenantID string) ([]*WorkloadTrustBundle, error)
+	RecordWorkloadTrustBundleJWKSFetched(ctx context.Context, arg RecordWorkloadTrustBundleJWKSFetchedParams) error
 	SaveAgentWorkloadBinding(ctx context.Context, arg SaveAgentWorkloadBindingParams) error
 	SaveWorkloadTrustBundle(ctx context.Context, arg SaveWorkloadTrustBundleParams) error
 }
