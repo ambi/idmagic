@@ -33,6 +33,11 @@ func (r *OAuth2ClientRepository) FindByID(_ context.Context, tenantID, clientID 
 	return r.clients[sharedmem.ScopedKey(tenantID, clientID, kernel.DefaultTenantID)], nil
 }
 
+func (r *OAuth2ClientRepository) ClientExists(ctx context.Context, tenantID, clientID string) (bool, error) {
+	client, err := r.FindByID(ctx, tenantID, clientID)
+	return client != nil, err
+}
+
 func (r *OAuth2ClientRepository) Save(_ context.Context, c *domain.OAuth2Client) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

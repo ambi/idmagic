@@ -16,8 +16,6 @@ import (
 	idmports "github.com/ambi/idmagic/backend/idmanagement/internal/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -63,17 +61,17 @@ type Deps struct {
 	Reactor             EventReactor
 	JobRepo             jobsports.JobRepository
 	JobEnqueuer         jobsports.Enqueuer
-	ClientRepo          oauthports.OAuth2ClientRepository
+	ClientRepo          agentports.ClientLookup
 	SCIMUsers           userports.SCIMUserLookup
 	SCIMGroups          groupports.SCIMGroupLookup
 	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
 	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
-	ConsentRepo         oauthports.ConsentRepository
+	ConsentRepo         userports.UserRecordsPurger
 	// Consents はデータエクスポートが本人の Granted の同意を読む先である。
-	Consents             consentports.AccountConsents
-	RefreshStore         oauthports.RefreshTokenStore
-	DeviceCodeStore      oauthports.DeviceCodeStore
-	ApprovalRequestStore oauthports.ApprovalRequestStore
+	Consents             func(context.Context, string) ([]userports.AccountConsent, error)
+	RefreshStore         userports.UserRecordsPurger
+	DeviceCodeStore      userports.UserRecordsPurger
+	ApprovalRequestStore userports.UserRecordsPurger
 	UserCredentials      userports.UserCredentialPurger
 	// TrustedDevices は無効化で信頼済みデバイスをすべて失効させる。
 	TrustedDevices          userports.UserDeviceRevoker

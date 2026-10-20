@@ -28,6 +28,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
+	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
@@ -415,7 +416,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		SCIMUsers:               d.Sourcing.SCIMUserLookup(),
 		SCIMGroups:              d.Sourcing.SCIMGroupLookup(),
 		GroupAttrSchemaRepo:     d.IdManagement.GroupAttrSchemaRepo,
-		Consents:                d.OAuth2.AccountConsents(d.Emit),
+		Consents:                accountConsentExport(d.OAuth2.AccountConsents(d.Emit)),
 		EmailSender:             d.Notification.EmailSender,
 		Notifier:                d.Notification.Notifier,
 		JobRepo:                 d.Jobs.Repo,
@@ -505,4 +506,23 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	d.Sourcing.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService)
 
 	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo, d.IdManagement.GroupRepo)
+}
+
+// accountConsentExport は、同意の保存型を本人データに含める表示値へ写す。
+// 本人の絞り込みと Granted の判定は OAuth2 に残す。
+func accountConsentExport(consents consentports.AccountConsents) func(context.Context, string) ([]userports.AccountConsent, error) {
+	return func(ctx context.Context, sub string) ([]userports.AccountConsent, error) {
+		granted, err := consents.ListGranted(ctx, sub)
+		if err != nil {
+			return nil, err
+		}
+		result := make([]userports.AccountConsent, len(granted))
+		for i, consent := range granted {
+			result[i] = userports.AccountConsent{
+				ClientID: consent.ClientID, Scopes: append([]string(nil), consent.Scopes...),
+				State: string(consent.State), GrantedAt: consent.GrantedAt, ExpiresAt: consent.ExpiresAt,
+			}
+		}
+		return result, nil
+	}
 }

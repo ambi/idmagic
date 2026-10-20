@@ -154,7 +154,6 @@ flowchart LR
   IdGovernance --> Tenancy
   IdManagement --> Audit
   IdManagement --> Jobs
-  IdManagement --> OAuth2
   IdManagement --> Tenancy
   Jobs --> Tenancy
   OAuth2 --> Application

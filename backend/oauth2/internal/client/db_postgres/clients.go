@@ -95,6 +95,11 @@ func (r *OAuth2ClientRepository) FindByID(ctx context.Context, tenantID, clientI
 	return clientFromRow(row)
 }
 
+func (r *OAuth2ClientRepository) ClientExists(ctx context.Context, tenantID, clientID string) (bool, error) {
+	client, err := r.FindByID(ctx, tenantID, clientID)
+	return client != nil, err
+}
+
 func (r *OAuth2ClientRepository) FindAll(ctx context.Context, tenantID string) ([]*domain.OAuth2Client, error) {
 	rows, err := oauth2pg.New(r.Pool).ListClientsByTenant(ctx, tenantID)
 	if err != nil {

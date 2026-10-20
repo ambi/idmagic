@@ -13,6 +13,8 @@ var ErrClientSecretCredentialLimitExceeded = errors.New("active client secret cr
 
 type OAuth2ClientRepository interface {
 	FindByID(ctx context.Context, tenantID, clientID string) (*domain.OAuth2Client, error)
+	// ClientExists は、Agent の束縛先に保存型を渡さず、既存の照会と同じ条件で存在を調べる。
+	ClientExists(ctx context.Context, tenantID, clientID string) (bool, error)
 	Save(ctx context.Context, c *domain.OAuth2Client) error
 	Delete(ctx context.Context, tenantID, clientID string) error
 	FindAll(ctx context.Context, tenantID string) ([]*domain.OAuth2Client, error)

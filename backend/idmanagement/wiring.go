@@ -9,6 +9,7 @@ import (
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/internal/agent/db_memory"
@@ -30,8 +31,6 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -200,10 +199,10 @@ func (m Module) RegisterJobHandlers(registry jobsports.HandlerRegistrar, d JobHa
 type LifecycleDeps struct {
 	AttrSchemaRepo          userports.TenantUserAttributeSchemaRepository
 	QuotaRepo               tenantports.QuotaRepository
-	ConsentRepo             oauthports.ConsentRepository
-	RefreshStore            oauthports.RefreshTokenStore
-	DeviceCodeStore         oauthports.DeviceCodeStore
-	ApprovalRequestStore    oauthports.ApprovalRequestStore
+	ConsentRepo             userports.UserRecordsPurger
+	RefreshStore            userports.UserRecordsPurger
+	DeviceCodeStore         userports.UserRecordsPurger
+	ApprovalRequestStore    userports.UserRecordsPurger
 	SessionStore            userports.SessionPurger
 	UserCredentials         userports.UserCredentialPurger
 	TrustedDevices          userports.UserDeviceRevoker
@@ -269,11 +268,11 @@ type RouteDeps struct {
 	*support.Authenticator
 	// Reactor は管理 API の User と Agent の操作が発行したイベントに反応する。
 	Reactor             idmhttpdeps.EventReactor
-	ClientRepo          oauthports.OAuth2ClientRepository
+	ClientRepo          agentports.ClientLookup
 	SCIMUsers           userports.SCIMUserLookup
 	SCIMGroups          groupports.SCIMGroupLookup
 	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
-	Consents            consentports.AccountConsents
+	Consents            func(context.Context, string) ([]userports.AccountConsent, error)
 	EmailSender         sharednotification.EmailSender
 	Notifier            sharednotification.Notifier
 	JobRepo             jobsports.JobRepository

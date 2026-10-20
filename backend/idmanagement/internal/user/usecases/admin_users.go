@@ -20,7 +20,6 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -50,10 +49,10 @@ type AdminUserDeps struct {
 	UserRepo             userports.UserRepository
 	GroupRepo            groupports.GroupRepository
 	AttrSchemaRepo       userports.TenantUserAttributeSchemaRepository
-	ConsentRepo          oauthports.ConsentRepository
-	RefreshStore         oauthports.RefreshTokenStore
-	DeviceCodeStore      oauthports.DeviceCodeStore
-	ApprovalRequestStore oauthports.ApprovalRequestStore
+	ConsentRepo          userports.UserRecordsPurger
+	RefreshStore         userports.UserRecordsPurger
+	DeviceCodeStore      userports.UserRecordsPurger
+	ApprovalRequestStore userports.UserRecordsPurger
 	SessionStore         userports.SessionPurger
 	UserCredentials      userports.UserCredentialPurger
 	// TrustedDevices は無効化で信頼済みデバイスをすべて失効させる。nil なら未配線として何もしない。

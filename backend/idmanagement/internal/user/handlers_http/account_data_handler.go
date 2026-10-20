@@ -7,33 +7,17 @@ import (
 	"net/http"
 	"time"
 
-	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/internal/user/usecases"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
 )
 
 type accountDataExport struct {
-	ExportedAt time.Time                `json:"exported_at"`
-	Profile    AccountProfileResponse   `json:"profile"`
-	Consents   []accountConsentResponse `json:"consents"`
-}
-
-type accountConsentResponse struct {
-	ClientID  string                   `json:"client_id"`
-	Scopes    []string                 `json:"scopes"`
-	State     oauthdomain.ConsentState `json:"state"`
-	GrantedAt time.Time                `json:"granted_at"`
-	ExpiresAt time.Time                `json:"expires_at"`
-}
-
-func toAccountConsentResponse(consent *oauthdomain.Consent) accountConsentResponse {
-	return accountConsentResponse{
-		ClientID: consent.ClientID, Scopes: append([]string(nil), consent.Scopes...),
-		State: consent.State, GrantedAt: consent.GrantedAt, ExpiresAt: consent.ExpiresAt,
-	}
+	ExportedAt time.Time                  `json:"exported_at"`
+	Profile    AccountProfileResponse     `json:"profile"`
+	Consents   []userports.AccountConsent `json:"consents"`
 }
 
 func HandleExportAccountData(d Deps, c *echo.Context) error {
@@ -45,17 +29,13 @@ func HandleExportAccountData(d Deps, c *echo.Context) error {
 	if err != nil {
 		return writeAccountError(d, c, err)
 	}
-	consents, err := d.Consents.ListGranted(c.Request().Context(), sub)
+	consents, err := d.Consents(c.Request().Context(), sub)
 	if err != nil {
 		return err
-	}
-	consentResponses := make([]accountConsentResponse, len(consents))
-	for i, consent := range consents {
-		consentResponses[i] = toAccountConsentResponse(consent)
 	}
 	return support.NoStoreJSON(c, http.StatusOK, accountDataExport{
 		ExportedAt: time.Now().UTC(),
 		Profile:    toAccountProfileResponse(user, defs),
-		Consents:   consentResponses,
+		Consents:   consents,
 	})
 }

@@ -23,7 +23,6 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -44,7 +43,7 @@ var (
 
 type AdminAgentDeps struct {
 	AgentRepo  agentports.AgentRepository
-	ClientRepo oauthports.OAuth2ClientRepository
+	ClientRepo agentports.ClientLookup
 	UserRepo   userports.UserRepository
 	Emit       func(spec.DomainEvent) error
 	// QuotaRepo enforces the tenant's Hard Quota on agents (wi-160).
@@ -413,11 +412,11 @@ func BindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agent
 		return ErrAgentClientNotFound
 	}
 	if deps.ClientRepo != nil {
-		client, err := deps.ClientRepo.FindByID(ctx, tenantID, clientID)
+		exists, err := deps.ClientRepo.ClientExists(ctx, tenantID, clientID)
 		if err != nil {
 			return err
 		}
-		if client == nil {
+		if !exists {
 			return ErrAgentClientNotFound
 		}
 	}
