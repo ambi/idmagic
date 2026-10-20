@@ -5,7 +5,6 @@ package usecases
 import (
 	"context"
 
-	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
@@ -17,6 +16,26 @@ type ProtectedResourceMetadata struct {
 	DPoPSigningAlgValuesSupported []string `json:"dpop_signing_alg_values_supported,omitempty"`
 }
 
+// BuiltinResource は、認可サーバー自身が保護する realm の API について、管理発行
+// トークンの所有者が組み立て地点から渡す情報である。
+type BuiltinResource struct {
+	// Scopes は resource を省いた Protected Resource Metadata の scopes_supported に載せる。
+	Scopes []string
+	// RevocationClientID は、クライアント認証なしで /revoke を呼べる組み込みの公開
+	// クライアントの ID である。空なら例外を設けない。
+	RevocationClientID string
+}
+
+// BuiltinProtectedResourceMetadata は、resource を省いた要求に返す realm の API の
+// Protected Resource Metadata を作る。
+func BuiltinProtectedResourceMetadata(builtin BuiltinResource, issuer string) *ProtectedResourceMetadata {
+	return &ProtectedResourceMetadata{
+		Resource: issuer, AuthorizationServers: []string{issuer},
+		ScopesSupported: builtin.Scopes, BearerMethodsSupported: []string{"header"},
+		DPoPSigningAlgValuesSupported: []string{"ES256", "RS256", "PS256"},
+	}
+}
+
 // BuildProtectedResourceMetadata は resource に対応する登録済み Active な
 // McpResourceServer から Protected Resource Metadata を導出する。未登録・Disabled は
 // fail-closed で invalid_target を返す。
@@ -25,13 +44,6 @@ func BuildProtectedResourceMetadata(
 	repo ports.McpResourceServerRepository,
 	tenantID, resource, issuer string,
 ) (*ProtectedResourceMetadata, error) {
-	if resource == "" {
-		return &ProtectedResourceMetadata{
-			Resource: issuer, AuthorizationServers: []string{issuer},
-			ScopesSupported: apitokendomain.AllScopes(), BearerMethodsSupported: []string{"header"},
-			DPoPSigningAlgValuesSupported: []string{"ES256", "RS256", "PS256"},
-		}, nil
-	}
 	if repo == nil {
 		return nil, NewOAuthError("invalid_target", "The resource is not registered.")
 	}

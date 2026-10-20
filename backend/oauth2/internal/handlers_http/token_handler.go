@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	approvalusecases "github.com/ambi/idmagic/backend/oauth2/internal/approval/usecases"
 	deviceusecases "github.com/ambi/idmagic/backend/oauth2/internal/device/usecases"
@@ -328,9 +327,10 @@ func (d Deps) handleRevoke(c *echo.Context) error {
 	}
 	client := authedClient{}
 	var err error
-	if c.Request().PostFormValue("client_id") == apitokendomain.BuiltinClientID &&
+	if builtinID := d.BuiltinResource.RevocationClientID; builtinID != "" &&
+		c.Request().PostFormValue("client_id") == builtinID &&
 		c.Request().Header.Get("Authorization") == "" && c.Request().PostFormValue("client_secret") == "" {
-		client.ID = apitokendomain.BuiltinClientID
+		client.ID = builtinID
 	} else {
 		client, err = d.authenticateTokenClient(c)
 		if err != nil {

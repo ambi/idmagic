@@ -15,11 +15,18 @@ import (
 func (d Deps) handleProtectedResourceMetadata(c *echo.Context) error {
 	resource := c.QueryParam("resource")
 	tenantID := support.RequestTenantID(c)
-	meta, err := tokenusecases.BuildProtectedResourceMetadata(
-		c.Request().Context(), d.McpResourceServerRepo, tenantID, resource, support.RequestIssuer(c, d.Issuer),
-	)
-	if err != nil {
-		return writeOAuthError(c, err)
+	issuer := support.RequestIssuer(c, d.Issuer)
+	var meta *tokenusecases.ProtectedResourceMetadata
+	if resource == "" {
+		meta = tokenusecases.BuiltinProtectedResourceMetadata(d.BuiltinResource, issuer)
+	} else {
+		var err error
+		meta, err = tokenusecases.BuildProtectedResourceMetadata(
+			c.Request().Context(), d.McpResourceServerRepo, tenantID, resource, issuer,
+		)
+		if err != nil {
+			return writeOAuthError(c, err)
+		}
 	}
 	if d.Emit != nil {
 		eventResource := resource

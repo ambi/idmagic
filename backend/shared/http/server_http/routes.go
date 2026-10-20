@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/apitoken"
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/applicationcatalog"
 	"github.com/ambi/idmagic/backend/audit"
@@ -327,8 +328,12 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AgentRepo:                 d.IdManagement.AgentRepo,
 		RevocationEpochRepo:       d.SharedSignals.RevocationEpochRepo,
 		ManagedTokenRevoker:       apiTokenService,
-		AttrSchemaRepo:            d.IdManagement.AttrSchemaRepo,
-		QuotaRepo:                 d.Tenancy.QuotaRepo,
+		BuiltinResource: oauth2.BuiltinResource{
+			Scopes:             apitokendomain.AllScopes(),
+			RevocationClientID: apitokendomain.BuiltinClientID,
+		},
+		AttrSchemaRepo: d.IdManagement.AttrSchemaRepo,
+		QuotaRepo:      d.Tenancy.QuotaRepo,
 
 		AuthnResolver: d.Authentication.AuthnResolver,
 		SignIn:        d.Authentication.SignInSteps(authRoutes),

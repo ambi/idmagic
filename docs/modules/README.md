@@ -158,7 +158,6 @@ flowchart LR
   IdManagement --> OAuth2
   IdManagement --> Tenancy
   Jobs --> Tenancy
-  OAuth2 --> ApiTokens
   OAuth2 --> Application
   OAuth2 --> Authentication
   OAuth2 --> ClaimMapping

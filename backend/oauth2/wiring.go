@@ -110,6 +110,10 @@ func NewBackChannelLogoutClient(httpClient *http.Client) logoutports.BackChannel
 	return logoutpush.NewBackChannelLogoutClient(httpClient)
 }
 
+// BuiltinResource は、組み立て地点が管理発行トークンの所有者から作って RouteDeps へ渡す、
+// realm の API の公開スコープと失効用の組み込みクライアントである。
+type BuiltinResource = tokenusecases.BuiltinResource
+
 // RouteDeps は OAuth2 の経路が共通基盤とほかのモジュールから受け取る依存である。
 type RouteDeps struct {
 	support.Deps
@@ -127,6 +131,7 @@ type RouteDeps struct {
 	// WorkloadVerifier は token exchange の外部ワークロードのトークンを検証する。nil は拒否する。
 	WorkloadVerifier    oauthports.WorkloadTokenVerifier
 	ManagedTokenRevoker tokenusecases.ManagedTokenRevoker
+	BuiltinResource     BuiltinResource
 	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
 	QuotaRepo           tenantports.QuotaRepository
 
@@ -200,6 +205,7 @@ func (m Module) httpDeps(d RouteDeps) oauth2http.Deps {
 		IDTokenHintVerifier:         m.IDTokenHintVerifier,
 		AccessTokenDenylist:         m.AccessTokenDenylist,
 		ManagedTokenRevoker:         d.ManagedTokenRevoker,
+		BuiltinResource:             d.BuiltinResource,
 		AttrSchemaRepo:              d.AttrSchemaRepo,
 		Authorizer:                  m.Authorizer,
 		QuotaRepo:                   d.QuotaRepo,
