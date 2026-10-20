@@ -236,6 +236,43 @@ func TestHandleRevokeAccountConsentSucceeds(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-OAUTH2-032: 本人に同意のないクライアントの撤回は 404 と consent_not_found で拒否され、ほかの利用者の同意を変えない
+//verify:operation RevokeMyConsent: 同意がないときの 404 Problem Details
+func TestHandleRevokeAccountConsentWithoutConsentReturnsNotFound(t *testing.T) {
+	f := newAccountHandlerFixture(t)
+	f.seedUser(t, "alice")
+	f.seedUser(t, "bob")
+	now := time.Now().UTC()
+	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &consentdomain.Consent{
+		UserID: "bob", ClientID: "client-1", Scopes: []string{"openid"},
+		State: consentdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ctxReq := httptest.NewRequest(http.MethodGet, defaultRealmPath("/api/auth/account"), http.NoBody)
+	ctxReq.Header.Set("X-Demo-Sub", "alice")
+	ctxResp := httptest.NewRecorder()
+	f.e.ServeHTTP(ctxResp, ctxReq)
+	cookies := ctxResp.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatalf("expected a CSRF cookie from account context, status=%d body=%s", ctxResp.Code, ctxResp.Body.String())
+	}
+	csrfCookie := cookies[0]
+
+	request := httptest.NewRequest(http.MethodPost, defaultRealmPath("/api/account/v1/consents/client-1/revoke"), http.NoBody)
+	request.Header.Set("X-Demo-Sub", "alice")
+	request.Header.Set("Origin", "http://idp.test")
+	request.Header.Set("X-Csrf-Token", csrfCookie.Value)
+	request.AddCookie(csrfCookie)
+	response := httptest.NewRecorder()
+	f.e.ServeHTTP(response, request)
+	authContractProblem(t, response, http.StatusNotFound, "consent_not_found")
+	stored, err := f.consents.Find(context.Background(), tenancydomain.DefaultTenantID, "bob", "client-1")
+	if err != nil || stored == nil || stored.State != consentdomain.ConsentGranted {
+		t.Fatalf("other user's consent=%+v err=%v", stored, err)
+	}
+}
+
 func TestHandleGetAccountSecurityRequiresAuthentication(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	resp := f.request("/api/account/v1/security", "")
