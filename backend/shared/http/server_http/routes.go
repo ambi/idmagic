@@ -473,7 +473,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	d.WsFederation.Register(g, d.Deps, authenticator, appGate,
 		wsfederation.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: wsfedSessionRevoker},
 		d.IdManagement.UserRepo, d.FederationSigner,
-		d.OAuth2.ClientAssertionReplayStore, d.Authentication.LoginAttemptThrottle, d.Authentication.PasswordHasher, d.Authentication.SentinelPasswordHash,
+		d.OAuth2.ClientAssertionReplayStore, d.Authentication.PasswordAuthentication(authRoutes),
 		d.IdManagement.AttrSchemaRepo)
 
 	d.Saml.Register(g, d.Deps, authenticator, appGate,

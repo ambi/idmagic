@@ -36,6 +36,7 @@
 - 認可のトランザクションを解決できない場合、Authentication は、401 と `transaction_unavailable` で拒否する。
 - SameSite の Cookie と要求の CSRF トークンが一致しない場合、Authentication は、403 と `csrf_failed` で拒否し、セッションを作らない。
 - 存在しないユーザー名か誤ったパスワードを受けた場合、Authentication は、401 と `invalid_credentials` で拒否し、ログインの失敗を数え、`AuthenticationFailed` を発行する。
+- 正しいパスワードが現在のパスワードのポリシーを満たさない場合、Authentication は、401 と `password_policy` で拒否し、セッションを作らない。
 - 900 秒の間にアカウントのログインの失敗が 10 回に達した間、そのアカウントのログインを受けたとき、Authentication は、パスワードを検証せずに 429 と `rate_limited` を `Retry-After` とともに返し、`LoginThrottled` を発行する。
 - 900 秒の間に同じ IP からのログインの失敗が 30 回に達した間、その IP からのログインを受けたとき、Authentication は、429 と `rate_limited` を `Retry-After` とともに返し、`LoginThrottled` を発行する。
 - 抑制の閾値を超えた後のログインの失敗を記録するとき、Authentication は、失敗を 5 分の窓ごとに集約し、各窓の最初の失敗で件数を載せた `AuthenticationEventAggregated` を発行する。
@@ -75,6 +76,12 @@
 無条件に信頼すると、攻撃者が IP 単位の軸を偽装で回避できるからである。
 
 ## 実現方式
+
+### パスワード認証の共有
+
+パスワードの照合、アカウント単位と IP 単位の試行の制限、失敗の記録と集約、`AuthenticationFailed` の発行は、セッションを作らない一つの操作にまとめる。
+ログインの API と WsFederation の能動的な STS がこの操作を呼び、応答の形は拒否の理由から各経路が決める。
+経路ごとに照合を書き写すと、片方の防御を強めたときにもう片方が追従しないためである。
 
 ### データ
 

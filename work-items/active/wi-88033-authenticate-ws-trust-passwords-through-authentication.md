@@ -131,10 +131,10 @@ type PasswordAuthenticator interface {
 ## タスク
 
 - [x] T001 [Refactor] パスワード認証を `PasswordAuthentication` に切り出し、ログイン画面をそれに通す。移したロジックの単体テストを usecase のパッケージへ移す。ログイン画面の既存のテストは変えない。
-- [ ] T002 [Spec] REQ-AUTHENTICATION-007 にポリシーの確認を、REQ-WSFEDERATION-004 に試行の制限、監査、ポリシー、パスワードの変更の要求による拒否を書く。
-- [ ] T003 [Acceptance] WS-Trust の IP 単位の制限、失敗の監査、パスワードの変更の要求の欠落を RED にする。
-- [ ] T004 [App] WS-Trust を `PasswordAuthenticator` へ通し、写しを消す。
-- [ ] T005 [Verify] 変更を検証する。
+- [x] T002 [Spec] REQ-AUTHENTICATION-007 にポリシーの確認を、REQ-WSFEDERATION-004 に試行の制限、監査、ポリシー、パスワードの変更の要求による拒否を書く。
+- [x] T003 [Acceptance] WS-Trust の IP 単位の制限、失敗の監査、パスワードの変更の要求の欠落を RED にする。
+- [x] T004 [App] WS-Trust を `PasswordAuthenticator` へ通し、写しを消す。
+- [x] T005 [Verify] 変更を検証する。
 
 ## 検証
 
@@ -145,3 +145,19 @@ type PasswordAuthenticator interface {
 
 ログイン画面の失敗の応答（401、429 と `Retry-After`）と WS-Trust の応答（401 と `text/plain`）は異なる。
 操作は拒否の理由だけを返し、応答の形は各経路が決める。
+
+## 要約
+
+REQ-WSFEDERATION-004 に、UsernameToken の照合がログインの API と同じ試行の制限、失敗の数え方と集約、認証の失敗のイベントを使うこと、パスワードのポリシーを満たさない資格情報と IP の制限を 401 に含めること、パスワードの変更を求められている User を 403 で拒否することを書いた。
+REQ-AUTHENTICATION-007 には、仕様に書かれていなかったログインの API のポリシーの確認を書いた。
+二つの判断（WS-Trust でもポリシーを確認する、パスワードの変更を求められている User に発行しない）は利用者に確認した。
+
+まず、ログインの API のパスワード認証を echo に依存しない `PasswordAuthentication` に切り出し、ログインの API をそれに通した。
+ログインの API の既存のテストは変えずに成功し、移したロジックの単体テストは同じ表明のまま usecase のパッケージへ移した。
+次に、WS-Trust の能動的な STS を `PasswordAuthenticator` へ通し、写しの照合を消した。
+受け入れテストで、WS-Trust の失敗が `AuthenticationFailed` を出さないことと、`update_password` を持つ User に発行することを RED にしてから直した。
+
+期限切れのときに `update_password` を付ける案は、User を丸ごと保存する書き手を増やすので採らず、拒否だけにした。
+ミューテーションで見つかった、失敗を記録する鍵の種類と IP の制限の分岐の観測の不足は、単体テストを足して塞いだ。
+成功の記録のストアが失敗する経路は、切り出す前と同じくテストがない。
+WS-Trust のログインの結果の指標とエンドポイント単位のレート制限は対象外に残した。

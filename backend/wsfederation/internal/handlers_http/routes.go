@@ -8,8 +8,7 @@ import (
 	"context"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -31,10 +30,10 @@ type Deps struct {
 	UserRepo                   userports.UserRepository
 	FederationSigner           samltoken.SignerProvider
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
-	LoginAttemptThrottle       sessionports.LoginAttemptThrottle
-	PasswordHasher             passwordports.PasswordHasher
-	SentinelPasswordHash       string
-	AttrSchemaRepo             claimports.TenantAttributeSchemaRepo
+	// Passwords は UsernameToken を、対話のログインと同じ試行の制限と監査で認証する。
+	// Authentication が所有し、組み立て地点が結ぶ。
+	Passwords      signinports.PasswordAuthenticator
+	AttrSchemaRepo claimports.TenantAttributeSchemaRepo
 }
 
 // Sessions は、パッシブサインインが読み、サインアウトが失効させるログインセッションである。

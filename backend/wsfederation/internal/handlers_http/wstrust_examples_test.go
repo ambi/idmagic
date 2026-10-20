@@ -14,6 +14,9 @@ import (
 
 	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	"github.com/ambi/idmagic/backend/authentication"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -21,6 +24,7 @@ import (
 	wstrust "github.com/ambi/idmagic/backend/wsfederation/internal/requests_wstrust"
 
 	"github.com/beevik/etree"
+	"github.com/labstack/echo/v5"
 	dsig "github.com/russellhaering/goxmldsig"
 )
 
@@ -330,5 +334,107 @@ func TestWsTrustIssue_RefusesWhenTheSignInPolicyRequiresMFA(t *testing.T) {
 	assertRefusedByTheApplicationGate(t, rec, *events)
 	if !hasEvent(*events, "AppStepUpRequired") {
 		t.Fatal("AppStepUpRequired was not emitted")
+	}
+}
+
+// usernameTokenRST は、MessageID と UsernameToken を指定した有効な RST を作る。同じサーバーへ
+// 何度も送るので、MessageID の再利用の拒否に当たらないよう要求ごとに変える。
+func usernameTokenRST(t *testing.T, messageID, username, password string) string {
+	t.Helper()
+	out := wsTrustRST(time.Now().UTC(), messageID, passiveRealm)
+	for old, replacement := range map[string]string{
+		"<o:Username>alice</o:Username>":            "<o:Username>" + username + "</o:Username>",
+		"<o:Password>correct-password</o:Password>": "<o:Password>" + password + "</o:Password>",
+	} {
+		if !strings.Contains(out, old) {
+			t.Fatalf("RST に %q が無い", old)
+		}
+		out = strings.Replace(out, old, replacement, 1)
+	}
+	return out
+}
+
+// postWsTrustSOAPFrom は、信頼する転送ホップの外側の発信元を X-Forwarded-For で名乗って RST を送る。
+func postWsTrustSOAPFrom(e *echo.Echo, body, clientIP string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, "/realms/default/trust/usernamemixed", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/soap+xml")
+	req.Header.Set("X-Forwarded-For", clientIP+", 10.0.0.1")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	return rec
+}
+
+// withLoginThrottle は、ログインの API と同じ試行の制限を、IP 単位の閾値を小さくして組み立てる。
+func withLoginThrottle(ipMaxFailures int) func(*httpadapter.Deps) {
+	return func(deps *httpadapter.Deps) {
+		deps.TrustedForwardedHops = 1
+		deps.Authentication.LoginAttemptThrottle = authentication.NewMemoryModule(nil).NewLoginAttemptThrottle(sessionports.LoginThrottleConfigs{
+			Account: sessionports.LoginThrottleConfig{MaxFailures: 100, WindowSeconds: 900, LockoutSeconds: 900},
+			IP:      sessionports.LoginThrottleConfig{MaxFailures: ipMaxFailures, WindowSeconds: 900, LockoutSeconds: 900},
+		})
+	}
+}
+
+// IP 単位の制限は、一つのアカウントへの失敗では観測できない。アカウント単位の制限でも同じ拒否に
+// なるからである。別々のユーザー名で同じ発信元から失敗を重ね、まだ失敗していない alice の正しい
+// 資格情報が拒否されることを読む。対照として、別の発信元の alice は発行される。
+//
+//spec:covers REQ-WSFEDERATION-004: UsernameToken の照合がログインの API と同じ IP 単位の試行の制限と失敗の監査を使い、同じ発信元の失敗が閾値に達すると、別のアカウントの正しい資格情報も 401 で拒否されてトークンが出ず、失敗ごとに AuthenticationFailed が残ること。
+func TestWsTrustIssue_SharesTheLoginThrottleAndFailureAudit(t *testing.T) {
+	const attacker = "203.0.113.9"
+	e, events, _ := newServerWithSigner(t, nil, withLoginThrottle(3))
+	for i, username := range []string{"mallory", "eve", "trudy"} {
+		rec := postWsTrustSOAPFrom(e, usernameTokenRST(t, "urn:uuid:spray-"+username, username, "guess"), attacker)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("spray #%d status=%d body=%s, want 401", i, rec.Code, rec.Body.String())
+		}
+	}
+	if got := countEvents(*events, "AuthenticationFailed"); got != 3 {
+		t.Fatalf("AuthenticationFailed count = %d, want 3 (one per refused UsernameToken)", got)
+	}
+
+	rec := postWsTrustSOAPFrom(e, usernameTokenRST(t, "urn:uuid:alice-throttled", "alice", "correct-password"), attacker)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d body=%s, want 401 for a throttled source", rec.Code, rec.Body.String())
+	}
+	assertNoWsTrustTokenIssued(t, rec, *events, 0)
+
+	t.Run("control: another source is issued", func(t *testing.T) {
+		rec := postWsTrustSOAPFrom(e, usernameTokenRST(t, "urn:uuid:alice-elsewhere", "alice", "correct-password"), "198.51.100.7")
+		if rec.Code != http.StatusOK || issuedTokenEvent(*events) == nil {
+			t.Fatalf("control status=%d body=%s", rec.Code, rec.Body.String())
+		}
+	})
+}
+
+// requiringPasswordChange は、fixture の alice に必須操作 update_password を付ける。
+func requiringPasswordChange(t *testing.T) func(*httpadapter.Deps) {
+	t.Helper()
+	return func(deps *httpadapter.Deps) {
+		ctx := context.Background()
+		user, err := deps.UserRepo.FindBySub(ctx, "user-1")
+		if err != nil || user == nil {
+			t.Fatalf("fixture user: %v", err)
+		}
+		user.Lifecycle.RequiredActions = []idmdomain.RequiredAction{idmdomain.RequiredActionUpdatePassword}
+		if err := deps.UserRepo.Save(ctx, user); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+//spec:covers REQ-WSFEDERATION-004: パスワードの変更を求められている User の正しい UsernameToken は 403 で拒否され、トークンが出ず、WsTrustTokenRejected が残ること。
+func TestWsTrustIssue_RefusesAUserWhosePasswordMustChange(t *testing.T) {
+	e, events, _ := newServerWithSigner(t, nil, requiringPasswordChange(t))
+	rec := postWsTrustSOAP(e, brokenRST{appliesTo: passiveRealm}.body(t))
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s, want 403", rec.Code, rec.Body.String())
+	}
+	if !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/plain") || strings.TrimSpace(rec.Body.String()) == "" {
+		t.Fatalf("Content-Type=%q body=%q, want nonempty text/plain refusal", rec.Header().Get("Content-Type"), rec.Body.String())
+	}
+	assertNoWsTrustTokenIssued(t, rec, *events, 0)
+	if reasons := rejectedTokenReasons(*events); len(reasons) != 1 {
+		t.Fatalf("WsTrustTokenRejected reasons = %v, want exactly one", reasons)
 	}
 }

@@ -239,6 +239,12 @@ func (m Module) SignInSteps(d RouteDeps) signinhttp.Steps {
 	return signinhttp.Steps{Deps: signinhttp.Deps{Deps: m.httpDeps(d)}}
 }
 
+// PasswordAuthentication は、対話のログインと同じ試行の制限、照合、失敗の記録と監査で、
+// セッションを作らずにパスワード認証する操作を返す。WS-Trust の能動的な STS が使う。
+func (m Module) PasswordAuthentication(d RouteDeps) signinports.PasswordAuthenticator {
+	return m.httpDeps(d).PasswordAuthentication()
+}
+
 // RegisterFederationRoutes は外部の IdP によるログインの経路を登録する。provisionUser は、
 // 初めてログインした利用者を IdManagement の User として作る。
 func (m Module) RegisterFederationRoutes(

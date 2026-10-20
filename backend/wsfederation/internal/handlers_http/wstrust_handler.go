@@ -3,11 +3,9 @@ package handlers_http
 import (
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
@@ -49,18 +47,30 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "unknown relying party"})
 		return c.String(http.StatusBadRequest, "unknown relying party")
 	}
-	user, err := d.authenticateWsTrustUser(c, rst.Username, rst.Password, now)
+	clientIP := d.ClientIP(c.Request())
+	authenticated, err := d.Passwords.AuthenticatePassword(c.Request().Context(), signinports.PasswordAttempt{
+		Username: rst.Username, Password: rst.Password, ClientIP: clientIP, UserAgent: c.Request().UserAgent(),
+	})
 	if err != nil {
-		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: err.Error()})
+		return err
+	}
+	if authenticated.Refusal != signinports.PasswordRefusalNone {
+		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: string(authenticated.Refusal)})
 		return c.String(http.StatusUnauthorized, "invalid credentials")
 	}
+	if authenticated.PasswordChangeRequired {
+		// WS-Trust には変更の画面がないので、変更を求めている資格情報でトークンを作らない。
+		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "password change required"})
+		return c.String(http.StatusForbidden, "password change required")
+	}
+	user := authenticated.User
 
 	decision, err := d.wsTrustService().IssueToken(c.Request().Context(), tenantID, d.AttrSchemaRepo, wsfedusecases.TokenRequest{
 		RP:                 *rp,
 		User:               *user,
 		RequestedTokenType: rst.TokenType,
 		AuthenticatedAt:    now,
-		ClientIP:           d.ClientIP(c.Request()),
+		ClientIP:           clientIP,
 	})
 	if err != nil {
 		return err
@@ -106,41 +116,4 @@ func (d Deps) recordWsTrustMessageID(c *echo.Context, messageID string, now time
 		return true, nil
 	}
 	return d.ClientAssertionReplayStore.RecordIfNew(c.Request().Context(), "wstrust:"+messageID, int(assertionLifetime.Seconds()), now)
-}
-
-func (d Deps) authenticateWsTrustUser(c *echo.Context, username, password string, now time.Time) (*userdomain.User, error) {
-	normalizedUsername := strings.ToLower(username)
-	if d.LoginAttemptThrottle != nil {
-		result, err := d.LoginAttemptThrottle.TryAcquire(c.Request().Context(), authnports.LoginThrottleAccount, normalizedUsername, now)
-		if err != nil {
-			return nil, err
-		}
-		if !result.Allowed {
-			return nil, errBadRequest("login throttled")
-		}
-	}
-	user, err := d.UserRepo.FindByUsername(c.Request().Context(), support.RequestTenantID(c), username)
-	if err != nil {
-		return nil, err
-	}
-	hashToVerify := d.SentinelPasswordHash
-	if user != nil {
-		hashToVerify = user.PasswordHash
-	}
-	ok := false
-	if hashToVerify != "" && d.PasswordHasher != nil {
-		ok, err = d.PasswordHasher.Verify(password, hashToVerify)
-	}
-	if user == nil || err != nil || !ok || !user.IsActive() {
-		if d.LoginAttemptThrottle != nil {
-			_, _ = d.LoginAttemptThrottle.RecordFailure(c.Request().Context(), authnports.LoginThrottleAccount, normalizedUsername, now)
-		}
-		return nil, errBadRequest("invalid credentials")
-	}
-	if d.LoginAttemptThrottle != nil {
-		if err := d.LoginAttemptThrottle.RecordSuccess(c.Request().Context(), authnports.LoginThrottleAccount, normalizedUsername); err != nil {
-			return nil, err
-		}
-	}
-	return user, nil
 }

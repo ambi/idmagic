@@ -2,8 +2,7 @@
 package wsfederation
 
 import (
-	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
-	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -21,13 +20,12 @@ type Module struct {
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
 	applicationGate wsfedhttp.ApplicationGate, sessions wsfedhttp.Sessions, userRepo userports.UserRepository, federationSigner samltoken.SignerProvider,
-	clientAssertionReplayStore oauthports.ClientAssertionReplayStore, loginAttemptThrottle sessionports.LoginAttemptThrottle,
-	passwordHasher passwordports.PasswordHasher, sentinelPasswordHash string, attrSchemaRepo claimports.TenantAttributeSchemaRepo,
+	clientAssertionReplayStore oauthports.ClientAssertionReplayStore, passwords signinports.PasswordAuthenticator,
+	attrSchemaRepo claimports.TenantAttributeSchemaRepo,
 ) {
 	wsfedhttp.RegisterRoutes(g, wsfedhttp.Deps{
 		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate, Sessions: sessions, WsFedRPRepo: m.RPRepo,
 		UserRepo: userRepo, FederationSigner: federationSigner, ClientAssertionReplayStore: clientAssertionReplayStore,
-		LoginAttemptThrottle: loginAttemptThrottle, PasswordHasher: passwordHasher, SentinelPasswordHash: sentinelPasswordHash,
-		AttrSchemaRepo: attrSchemaRepo,
+		Passwords: passwords, AttrSchemaRepo: attrSchemaRepo,
 	})
 }
