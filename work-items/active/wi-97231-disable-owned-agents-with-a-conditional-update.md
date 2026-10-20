@@ -26,6 +26,7 @@ REQ-IDMANAGEMENT-081 は、所有者の User が止まると、その User が�
 
 - 所有者の停止に伴う無効化を、`Active` の Agent だけを `Disabled` にする条件付きの更新へ置き換える。メモリと PostgreSQL の実装と共有の契約テストを揃える。
 - 管理者の Agent の編集が、編集の間に行われた無効化を書き戻さないことを確かめ、書き戻す場合は直す。
+- 修正後に、[同時の更新と排他](../../docs/design/data/database.md#同時の更新と排他)の適用状況と、IdManagement のデータとリスクの文書から、この無効化を除く。
 
 ## 対象外
 

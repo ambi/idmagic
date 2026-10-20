@@ -26,6 +26,7 @@ Authentication は、ログイン、パスワードの変更、TOTP の登録の
 
 - `backend/authentication/internal/signin/handlers_http/login.go:recordLoginAndRequiredAction`、`internal/password/usecases/change_password.go`、`internal/mfa/usecases/account_mfa.go` の `UserRepo.Save` を、IdManagement が公開する、変える項目だけを確定する操作へ置き換える。
 - 置き換えた操作が、同時に行われた User の無効化、属性とロールの更新を書き戻さないことを検査する。
+- 修正後に、[同時の更新と排他](../../docs/design/data/database.md#同時の更新と排他)の適用状況と、IdManagement のデータとリスクの文書から、Authentication による User の保存を除く。
 
 ## 対象外
 
