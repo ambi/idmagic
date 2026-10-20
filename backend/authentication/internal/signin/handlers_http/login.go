@@ -8,12 +8,10 @@ import (
 	"strings"
 	"time"
 
-	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
-
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
-	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -66,69 +64,36 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
 	}
 
-	normalizedUsername := strings.ToLower(input.Username)
 	clientIP := extractClientIP(c.Request(), d.TrustedForwardedHops)
 	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "login", clientIP); err != nil {
 		return err
 	} else if blocked {
 		return nil
 	}
-	if result, err := d.acquireLoginThrottle(c, authnports.LoginThrottleAccount, normalizedUsername); err != nil {
-		return err
-	} else if !result.Allowed {
-		d.recordLoginOutcome("throttled", "", "password")
-		return writeLoginThrottled(c, result.RetryAfterSeconds)
-	}
-	if clientIP != "" {
-		if result, err := d.acquireLoginThrottle(c, authnports.LoginThrottleIP, clientIP); err != nil {
-			return err
-		} else if !result.Allowed {
-			d.recordLoginOutcome("throttled", "", "password")
-			return writeLoginThrottled(c, result.RetryAfterSeconds)
-		}
-	}
 
-	user, err := d.UserRepo.FindByUsername(c.Request().Context(), support.RequestTenantID(c), input.Username)
+	outcome, err := d.PasswordAuthentication().AuthenticatePassword(c.Request().Context(), signinports.PasswordAttempt{
+		Username: input.Username, Password: input.Password, ClientIP: clientIP, UserAgent: c.Request().UserAgent(),
+	})
+	// 監査イベントは集約時に抑制されるが、golden signal のカウンタは集約の有無と失敗の記録の
+	// 成否に関わらず、確定した失敗ごとに記録する (攻撃バーストで無音化しない)。
+	switch outcome.Refusal {
+	case signinports.PasswordRefusalThrottled:
+		d.recordLoginOutcome("throttled", "", "password")
+	case signinports.PasswordRefusalInvalidCredentials, signinports.PasswordRefusalAccountDisabled:
+		d.recordLoginOutcome("failure", string(outcome.Refusal), "password")
+	}
 	if err != nil {
 		return err
 	}
-	hashToVerify := d.SentinelPasswordHash
-	if user != nil {
-		hashToVerify = user.PasswordHash
-	}
-	ok := false
-	if hashToVerify != "" {
-		ok, err = d.PasswordHasher.Verify(input.Password, hashToVerify)
-	}
-	if user == nil || err != nil || !ok {
-		// 監査イベントは集約時に抑制されるが (下記)、golden signal のカウンタは
-		// 集約の有無に関わらず確定した失敗ごとに記録する (攻撃バーストで無音化しない)。
-		d.recordLoginOutcome("failure", "invalid_credentials", "password")
-		aggregated, ferr := d.recordLoginFailure(c, normalizedUsername, clientIP)
-		if ferr != nil {
-			return ferr
-		}
-		// 閾値超過後は AuthenticationEventAggregated に集約し、個別行を出さない (爆発抑制)。
-		if !aggregated {
-			d.emitAuthenticationFailure(c, input.Username, "invalid_credentials")
-		}
+	switch outcome.Refusal {
+	case signinports.PasswordRefusalThrottled:
+		return writeLoginThrottled(c, outcome.RetryAfterSeconds)
+	case signinports.PasswordRefusalInvalidCredentials, signinports.PasswordRefusalAccountDisabled:
 		return support.WriteProblem(c, http.StatusUnauthorized, "invalid_credentials", "Check the username or password.")
-	}
-	if !user.IsActive() {
-		d.recordLoginOutcome("failure", "account_disabled", "password")
-		d.emitAuthenticationFailure(c, input.Username, "account_disabled")
-		return support.WriteProblem(c, http.StatusUnauthorized, "invalid_credentials", "Check the username or password.")
-	}
-	if result := passworddomain.ValidatePassword(input.Password); !result.OK {
+	case signinports.PasswordRefusalPasswordPolicy:
 		return support.WriteProblem(c, http.StatusUnauthorized, "password_policy", "The password does not meet the security requirements.")
 	}
-	if d.LoginAttemptThrottle != nil {
-		if err := d.LoginAttemptThrottle.RecordSuccess(
-			c.Request().Context(), authnports.LoginThrottleAccount, normalizedUsername,
-		); err != nil {
-			return err
-		}
-	}
+	user := outcome.User
 
 	authTime := time.Now().UTC()
 	authn, err := d.SessionManager.Create(

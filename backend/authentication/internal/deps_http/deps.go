@@ -19,6 +19,7 @@ import (
 	securitynotificationusecases "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/usecases"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
@@ -88,6 +89,15 @@ type Deps struct {
 	ClientIP func(*http.Request) string
 	// Authorizations は、対話のログインが認証を終えたあとに続ける認可要求を引く。
 	Authorizations signinports.PendingAuthorizations
+}
+
+// PasswordAuthentication は、対話のログインとほかのモジュールが共有するパスワード認証を組み立てる。
+func (d Deps) PasswordAuthentication() authusecases.PasswordAuthentication {
+	return authusecases.PasswordAuthentication{
+		UserRepo: d.UserRepo, PasswordHasher: d.PasswordHasher, SentinelPasswordHash: d.SentinelPasswordHash,
+		LoginAttemptThrottle: d.LoginAttemptThrottle, AuthEventBucketStore: d.AuthEventBucketStore,
+		TenantSaltStore: d.TenantSaltStore, Emit: d.Emit, Metrics: d.Metrics,
+	}
 }
 
 // ResolveAuthentication はリクエストの認証を、AMR や保留の目的まで読める認証の文脈として返す。

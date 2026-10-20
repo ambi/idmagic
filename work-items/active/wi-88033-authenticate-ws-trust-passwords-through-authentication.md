@@ -1,5 +1,5 @@
 ---
-status: pending
+status: in_progress
 authors: [tn]
 risk: high
 reversibility: reversible
@@ -9,7 +9,20 @@ depends_on: []
 change_kind: bugfix
 affected_spec:
   - { path: docs/modules/ws-federation/features/active-sts.md, requirement: REQ-WSFEDERATION-004 }
-  - { path: docs/modules/authentication/features/sign-in.md, requirement: REQ-AUTHENTICATION-007, impact: conforms }
+  - { path: docs/modules/authentication/features/sign-in.md, requirement: REQ-AUTHENTICATION-007 }
+primary_use_cases:
+  - id: ws-trust-throttles-by-ip
+    requirement: REQ-WSFEDERATION-004
+    observable_result: 同じ発信元からの WS-Trust の失敗が IP の閾値に達すると、別のアカウントの正しい UsernameToken も 401 で拒否され、トークンが出ない。
+    boundary: acceptance
+    test: { path: backend/wsfederation/internal/handlers_http/wstrust_examples_test.go, name: TestWsTrustIssue_SharesTheLoginThrottleAndFailureAudit, task: test-go-race }
+    fault_model: WS-Trust が IP 単位の試行の制限を数えない、または判定しない。
+  - id: ws-trust-refuses-password-change-required
+    requirement: REQ-WSFEDERATION-004
+    observable_result: パスワードの変更を求められている User の正しい UsernameToken は、403 で拒否され、トークンが出ない。
+    boundary: acceptance
+    test: { path: backend/wsfederation/internal/handlers_http/wstrust_examples_test.go, name: TestWsTrustIssue_RefusesAUserWhosePasswordMustChange, task: test-go-race }
+    fault_model: WS-Trust が期限切れのパスワードと必須操作 update_password を見ずに発行する。
 ---
 
 # WS-Trust の UsernameToken のパスワード認証を Authentication に委ねる
@@ -40,13 +53,74 @@ User の `PasswordHash` を直接読み、アカウント単位の試行の制�
 - WS-Trust の Application の関門（[wi-52958](../done/wi-52958-gate-ws-trust-issuance-by-application-assignment-and-policy.md)）。
 - パスワードのハッシュの置き場所の変更。
 - WS-Trust での MFA の対応。
+- WS-Trust のログインの結果の指標（`RecordLoginOutcome`）。指標のラベルの値を増やすため、別に扱う。試行の制限の指標は共有の操作が記録する。
+- WS-Trust のエンドポイント単位のレート制限。
 
 ## 設計
 
 依存の向きは WsFederation → Authentication で、基準の向き（連携プロトコルが認証を利用する）に合う。
 OAuth2 が Authentication の公開操作を使うのと同じ形にし、組み立て地点で結ぶ。
 ログイン画面に固有の処理（セッションの作成、必須操作の判定、認可の継続、CSRF）は操作に含めない。
-パスワードの期限切れを WS-Trust でどう扱うか（拒否するか、発行を続けるか）は着手時に決め、仕様へ書く。
+
+### 着手時の調査
+
+ログイン画面のパスワード認証（`internal/signin/handlers_http/login.go:handleLoginAPI` と `login_throttle.go`）は、次の順で処理し、すべて echo のコンテキストに依存する。
+
+1. エンドポイントのレート制限（HTTP の関心なので画面に残す）
+2. アカウント単位、続いて IP 単位の試行の制限の取得と、その指標
+3. User の検索と、番兵のハッシュを使った照合
+4. 失敗の記録、閾値を超えた鍵の `LoginThrottled` と 5 分窓の集約、集約しなかった場合の `AuthenticationFailed`
+5. `Active` でない User の拒否と、理由 `account_disabled` の `AuthenticationFailed`
+6. パスワードのポリシーの確認（仕様に書かれていない分岐）
+7. アカウントの失敗の回数の消去
+
+2 から 7 は、セッションと画面に依存しない。
+
+### 型と操作
+
+公開する型は `backend/authentication/signin/ports` に置く。
+
+```go
+type PasswordRefusal string // "", throttled, invalid_credentials, account_disabled, password_policy
+
+type PasswordAttempt struct {
+    Username, Password, ClientIP, UserAgent string
+}
+
+type PasswordOutcome struct {
+    User                   *userdomain.User
+    Refusal                PasswordRefusal
+    RetryAfterSeconds      int  // Refusal が throttled のとき
+    PasswordChangeRequired bool // 期限切れか、必須操作 update_password を持つ
+}
+
+type PasswordAuthenticator interface {
+    AuthenticatePassword(ctx context.Context, in PasswordAttempt) (PasswordOutcome, error)
+}
+```
+
+実装は `backend/authentication/internal/usecases/password_authentication.go` の `PasswordAuthentication` に置き、2 から 7 を echo なしで行う。
+テナントは要求のコンテキストから読む。
+`PasswordChangeRequired` は User を保存せずに判定する。
+ログイン画面は応答の形と結果の指標（`RecordLoginOutcome`）を、WS-Trust は 401 と 403 の `text/plain` を、拒否の理由から決める。
+組み立ては `authentication.Module` の `PasswordAuthentication(RouteDeps)` が行い、WsFederation の `Register` は試行の制限、ハッシュ、番兵のハッシュの 3 つの引数の代わりにこれを受け取る。
+
+### 利用者に確認した判断
+
+| 問い | 決定 | 理由 |
+| --- | --- | --- |
+| ポリシーを満たさない古いパスワードを WS-Trust でも拒否するか | 拒否する。ログイン画面の分岐を REQ-AUTHENTICATION-007 に書く | 同じ認証を一つの操作で行い、経路ごとの差を残さない |
+| 期限切れのパスワードと必須操作 `update_password` を持つ User に WS-Trust で発行するか | 403 で拒否する | 変更を求めている資格情報で新しいトークンを作らない。WS-Trust には変更の画面がない |
+
+期限切れのときにログイン画面と同じく `update_password` を付ける案は採らない。
+付けるには User を丸ごと保存する書き手を増やすことになり、[同時の更新と排他](../../docs/design/data/database.md#同時の更新と排他)に反する。
+利用者が次にブラウザーでログインしたとき、ログイン画面が付ける。
+
+### 構造の変更と振る舞いの変更
+
+先に、ログイン画面の振る舞いを変えずに操作を切り出す。
+移したロジックの単体テスト（試行の制限の指標、失敗の集約、相関のハッシュ）は、同じ表明のまま usecase のパッケージへ移す。
+その後に、WS-Trust を操作へ通す振る舞いの変更を行う。
 
 ## 計画
 
@@ -56,10 +130,11 @@ OAuth2 が Authentication の公開操作を使うのと同じ形にし、組み
 
 ## タスク
 
-- [ ] T001 [Spec] REQ-WSFEDERATION-004 に試行の制限と監査の適用を書く。
-- [ ] T002 [Acceptance] WS-Trust の IP 単位の制限と失敗の監査の欠落を RED にする。
-- [ ] T003 [App] Authentication の操作を実装し、ログイン画面と WS-Trust を通す。
-- [ ] T004 [Verify] 変更を検証する。
+- [x] T001 [Refactor] パスワード認証を `PasswordAuthentication` に切り出し、ログイン画面をそれに通す。移したロジックの単体テストを usecase のパッケージへ移す。ログイン画面の既存のテストは変えない。
+- [ ] T002 [Spec] REQ-AUTHENTICATION-007 にポリシーの確認を、REQ-WSFEDERATION-004 に試行の制限、監査、ポリシー、パスワードの変更の要求による拒否を書く。
+- [ ] T003 [Acceptance] WS-Trust の IP 単位の制限、失敗の監査、パスワードの変更の要求の欠落を RED にする。
+- [ ] T004 [App] WS-Trust を `PasswordAuthenticator` へ通し、写しを消す。
+- [ ] T005 [Verify] 変更を検証する。
 
 ## 検証
 
