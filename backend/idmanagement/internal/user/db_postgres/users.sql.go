@@ -114,6 +114,40 @@ func (q *Queries) FindUserBySub(ctx context.Context, id string) (*User, error) {
 	return &i, err
 }
 
+const findUserBySubForUpdate = `-- name: FindUserBySubForUpdate :one
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
+WHERE id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+FOR UPDATE
+`
+
+// Update が最新の値へ変更を当てるまで、ほかの書き込みを待たせる。
+func (q *Queries) FindUserBySubForUpdate(ctx context.Context, id string) (*User, error) {
+	row := q.db.QueryRow(ctx, findUserBySubForUpdate, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PreferredUsername,
+		&i.PasswordHash,
+		&i.Name,
+		&i.GivenName,
+		&i.FamilyName,
+		&i.Email,
+		&i.EmailVerified,
+		&i.MfaEnrolled,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Roles,
+		&i.Lifecycle,
+		&i.Attributes,
+		&i.SearchText,
+		&i.PreferredUsernameKey,
+		&i.EmailKey,
+	)
+	return &i, err
+}
+
 const findUserBySubIncludingDeleted = `-- name: FindUserBySubIncludingDeleted :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users

@@ -23,6 +23,7 @@ import (
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -130,9 +131,14 @@ func ConfirmTOTPEnrollment(ctx context.Context, deps AccountMfaDeps, in ConfirmT
 	if err := deps.MfaFactorRepo.Save(ctx, factor); err != nil {
 		return err
 	}
-	user.MfaEnrolled = true
-	user.UpdatedAt = now
-	if err := deps.UserRepo.Save(ctx, user); err != nil {
+	if _, err := deps.UserRepo.Update(ctx, user.ID, func(latest *userdomain.User) (bool, error) {
+		if latest.MfaEnrolled {
+			return false, nil
+		}
+		latest.MfaEnrolled = true
+		latest.UpdatedAt = now
+		return true, nil
+	}); err != nil {
 		return err
 	}
 	if deps.Emit != nil {

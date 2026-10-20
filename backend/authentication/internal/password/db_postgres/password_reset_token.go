@@ -101,11 +101,15 @@ func (s *PasswordResetTokenStore) ConsumeAndApply(
 		}
 		return err
 	}
-	if err := s.usersInTx(tx).Save(ctx, commit.User); err != nil {
+	updated, err := s.usersInTx(tx).Update(ctx, commit.UserID, commit.Apply)
+	if err != nil {
 		return err
 	}
+	if updated == nil {
+		return authnports.ErrResetUserMissing
+	}
 	if err := q.InsertPasswordHistory(ctx, InsertPasswordHistoryParams{
-		UserID: commit.User.ID, Encoded: commit.PasswordEncoded, CreatedAt: commit.Now,
+		UserID: commit.UserID, Encoded: commit.PasswordEncoded, CreatedAt: commit.Now,
 	}); err != nil {
 		return err
 	}

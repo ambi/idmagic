@@ -19,6 +19,6 @@ func TestPersistenceContract(t *testing.T) {
 		user := &userdomain.User{ID: "password-user", PreferredUsername: "password-user", PasswordHash: "hash-before", CreatedAt: now, UpdatedAt: now}
 		_ = users.Save(context.Background(), user)
 		history := NewPasswordHistoryRepository()
-		return testing_contract.Fixture{History: history, Reset: NewPasswordResetTokenStore(users, history), User: user, Now: now}
+		return testing_contract.Fixture{History: history, Reset: NewPasswordResetTokenStore(users, history), Users: users, User: user, Now: now}
 	})
 }

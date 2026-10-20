@@ -3,6 +3,13 @@ SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
 WHERE id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted');
 
+-- name: FindUserBySubForUpdate :one
+-- Update が最新の値へ変更を当てるまで、ほかの書き込みを待たせる。
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
+WHERE id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+FOR UPDATE;
+
 -- name: FindUserBySubIncludingDeleted :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users

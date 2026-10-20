@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
 	totpmemory "github.com/ambi/idmagic/backend/authentication/internal/totp/db_memory"
@@ -171,5 +172,82 @@ func TestRemoveTOTPFactorWhenNoneEnrolled(t *testing.T) {
 		Sub: "user-alice", Code: "000000", Now: now,
 	}); !errors.Is(err, usecases.ErrMfaNotEnrolled) {
 		t.Fatalf("error=%v, want ErrMfaNotEnrolled", err)
+	}
+}
+
+// disableBeforeNextWrite は、armed の間の最初の書き込みの直前に、別の書き手として User を
+// 無効化する。MFA の状態の記録が、読んだ後に行われた無効化を書き戻さないことを観測する。
+type disableBeforeNextWrite struct {
+	userports.UserRepository
+	armed bool
+}
+
+func (u *disableBeforeNextWrite) disableFirst(ctx context.Context, sub string) {
+	if !u.armed {
+		return
+	}
+	u.armed = false
+	user, err := u.FindBySub(ctx, sub)
+	if err != nil || user == nil {
+		panic("concurrent disable: user not found")
+	}
+	user.Lifecycle.Status = idmdomain.UserStatusDisabled
+	if err := u.UserRepository.Save(ctx, user); err != nil {
+		panic(err)
+	}
+}
+
+func (u *disableBeforeNextWrite) Save(ctx context.Context, user *userdomain.User) error {
+	u.disableFirst(ctx, user.ID)
+	return u.UserRepository.Save(ctx, user)
+}
+
+func (u *disableBeforeNextWrite) Update(ctx context.Context, sub string, change userports.UserChange) (*userdomain.User, error) {
+	u.disableFirst(ctx, sub)
+	return u.UserRepository.Update(ctx, sub, change)
+}
+
+// TOTP の登録と解除は、MFA の状態だけを記録する。登録は確定の処理が、解除は残る要素からの
+// 計算し直しが User を書くので、両方の経路で無効化を書き戻さないことを読む。
+//
+//spec:covers REQ-IDMANAGEMENT-010: TOTP の登録と解除が MFA の状態を記録する直前に管理者が User を無効化しても、記録が無効化を書き戻さず、User が Disabled のまま MFA の状態だけが変わること。
+func TestTOTPEnrollmentAndRemovalKeepADisableMadeWhileTheyRecordTheFlag(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	deps, userRepo, _ := newMfaDeps(t)
+	race := &disableBeforeNextWrite{UserRepository: userRepo}
+	deps.UserRepo = race
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+
+	start, err := usecases.StartTOTPEnrollment(ctx, deps, "user-alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, _ := totpusecases.GenerateTOTP(start.Secret, now.Unix())
+	race.armed = true
+	if err := usecases.ConfirmTOTPEnrollment(ctx, deps, usecases.ConfirmTOTPEnrollmentInput{
+		Sub: "user-alice", Secret: start.Secret, Code: code, Now: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	stored, _ := userRepo.FindBySub(ctx, "user-alice")
+	if race.armed || stored.Lifecycle.Status != idmdomain.UserStatusDisabled || !stored.MfaEnrolled {
+		t.Fatalf("after enrollment: armed=%v lifecycle=%+v mfa_enrolled=%v, want disabled and enrolled", race.armed, stored.Lifecycle, stored.MfaEnrolled)
+	}
+
+	// 解除の前に有効へ戻し、解除の確定の直前にもう一度無効化を差し込む。
+	stored.Lifecycle.Status = idmdomain.UserStatusActive
+	if err := userRepo.Save(ctx, stored); err != nil {
+		t.Fatal(err)
+	}
+	removeCode, _ := totpusecases.GenerateTOTP(start.Secret, now.Unix())
+	race.armed = true
+	if err := usecases.RemoveTOTPFactor(ctx, deps, usecases.RemoveTOTPFactorInput{
+		Sub: "user-alice", Code: removeCode, Now: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	stored, _ = userRepo.FindBySub(ctx, "user-alice")
+	if race.armed || stored.Lifecycle.Status != idmdomain.UserStatusDisabled || stored.MfaEnrolled {
+		t.Fatalf("after removal: armed=%v lifecycle=%+v mfa_enrolled=%v, want disabled and not enrolled", race.armed, stored.Lifecycle, stored.MfaEnrolled)
 	}
 }

@@ -351,6 +351,71 @@ func runUserRepository(t *testing.T, newFixture NewFixture) {
 			t.Fatalf("created_at=%s updated_at=%s, want both %s", got.CreatedAt, got.UpdatedAt, f.Now)
 		}
 	})
+
+	// Update は、呼び出し側が先に読んだ値ではなく保存先の最新の値に変更を当てる。先に読んだ値に
+	// 当てる実装は、その間の無効化を書き戻す。
+	t.Run("update applies the change to the latest stored user", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		stored := user(t, f.TenantA, "racer", f.Now)
+		if err := f.Users.Save(ctx, stored); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		disabled := *stored
+		disabled.Lifecycle.Status = idmdomain.UserStatusDisabled
+		if err := f.Users.Save(ctx, &disabled); err != nil {
+			t.Fatalf("Save disabled: %v", err)
+		}
+		loginAt := f.Now.Add(time.Minute)
+		updated, err := f.Users.Update(ctx, stored.ID, func(u *userdomain.User) (bool, error) {
+			u.Lifecycle.LastLoginAt = &loginAt
+			return true, nil
+		})
+		if err != nil || updated == nil {
+			t.Fatalf("Update = (%+v, %v), want the updated user", updated, err)
+		}
+		got, err := f.Users.FindBySub(ctx, stored.ID)
+		if err != nil || got == nil {
+			t.Fatalf("FindBySub = (%+v, %v)", got, err)
+		}
+		if got.Lifecycle.Status != idmdomain.UserStatusDisabled || got.Lifecycle.LastLoginAt == nil || !got.Lifecycle.LastLoginAt.Equal(loginAt) {
+			t.Fatalf("lifecycle=%+v, want disabled with last_login_at %s", got.Lifecycle, loginAt)
+		}
+	})
+
+	t.Run("update without a change, a missing user or an error saves nothing", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		stored := user(t, f.TenantA, "unchanged", f.Now)
+		if err := f.Users.Save(ctx, stored); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		if _, err := f.Users.Update(ctx, stored.ID, func(u *userdomain.User) (bool, error) {
+			u.Roles = []string{"discarded"}
+			return false, nil
+		}); err != nil {
+			t.Fatalf("Update without change: %v", err)
+		}
+		refused := errors.New("refused")
+		if _, err := f.Users.Update(ctx, stored.ID, func(u *userdomain.User) (bool, error) {
+			u.Roles = []string{"discarded"}
+			return true, refused
+		}); !errors.Is(err, refused) {
+			t.Fatalf("Update error = %v, want %v", err, refused)
+		}
+		got, err := f.Users.FindBySub(ctx, stored.ID)
+		if err != nil || got == nil || !slices.Equal(got.Roles, []string{"reader"}) {
+			t.Fatalf("FindBySub = (%+v, %v), want the roles unchanged", got, err)
+		}
+		called := false
+		missing, err := f.Users.Update(ctx, newID(t), func(*userdomain.User) (bool, error) {
+			called = true
+			return true, nil
+		})
+		if err != nil || missing != nil || called {
+			t.Fatalf("Update of a missing user = (%+v, %v, called=%v), want (nil, nil, false)", missing, err, called)
+		}
+	})
 }
 
 func one(u *userdomain.User, err error) ([]*userdomain.User, error) {

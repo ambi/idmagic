@@ -56,6 +56,8 @@ type passwordExpiryOptions struct {
 	policyUpdatedDaysAgo int
 	// passwordless は利用者からパスワード資格情報を外す。
 	passwordless bool
+	// wrapUsers は、組み立てに渡す User の保存先を包む。nil なら包まない。
+	wrapUsers func(userports.UserRepository) userports.UserRepository
 }
 
 func newPasswordExpiryServer(
@@ -105,6 +107,10 @@ func newPasswordExpiryServer(
 	sessionManager := authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 	startupComplete := &atomic.Bool{}
 	startupComplete.Store(true)
+	wiredUsers := userRepo
+	if opts.wrapUsers != nil {
+		wiredUsers = opts.wrapUsers(userRepo)
+	}
 
 	e := echo.New()
 	events := &[]spec.DomainEvent{}
@@ -119,7 +125,7 @@ func newPasswordExpiryServer(
 			RequestStore: oauth2.NewMemoryModule().RequestStore, CodeStore: oauth2.NewMemoryModule().CodeStore,
 			PARStore: oauth2.NewMemoryModule().PARStore, RefreshStore: oauth2.NewMemoryModule().RefreshStore,
 		},
-		UserRepo:            userRepo,
+		UserRepo:            wiredUsers,
 		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 		PasswordHasher:      hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
 	})

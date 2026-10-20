@@ -32,11 +32,21 @@ type UserRepository interface {
 	Count(ctx context.Context, tenantID string) (int64, error)
 	CountFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus) (int64, error)
 	Save(ctx context.Context, user *userdomain.User) error
+	// Update は sub の User の行を固定して読み直し、change をその最新の値に当てて保存し、
+	// 保存した User を返す。先に読んだ User を Save すると、その間の別の書き込み (無効化など) を
+	// 書き戻すので、一部の値だけを記録する書き手はこれを使う。
+	Update(ctx context.Context, sub string, change UserChange) (*userdomain.User, error)
 }
+
+// UserChange は、Update が最新の User に当てる変更である。false を返すと保存しない。
+// 行を固定している間に呼ばれるので、外部の作用を起こさない。
+type UserChange func(user *userdomain.User) (bool, error)
 
 // UserWriter は、呼び出し側のトランザクションに参加して User を保存する。
 // ほかのモジュールが自分の書き込みと User の変更を一緒に確定するときに使い、
 // 確定と巻き戻しは呼び出し側のトランザクションが決める。
 type UserWriter interface {
 	Save(ctx context.Context, user *userdomain.User) error
+	// Update は呼び出し側のトランザクションの中で、UserRepository.Update と同じことを行う。
+	Update(ctx context.Context, sub string, change UserChange) (*userdomain.User, error)
 }

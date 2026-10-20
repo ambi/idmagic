@@ -307,15 +307,21 @@ func (d Deps) recordLoginOutcome(outcome, reasonClass, method string) {
 // the same gate below then routes to change-password.
 func (d Deps) recordLoginAndRequiredAction(c *echo.Context, user *userdomain.User, now time.Time) (string, error) {
 	ctx := c.Request().Context()
-	updated := *user
-	updated.Lifecycle.LastLoginAt = &now
-	expired := authusecases.EnforcePasswordExpiry(
-		&updated, authusecases.ResolveTenantPolicy(ctx), now,
-	)
-	if err := d.UserRepo.Save(ctx, &updated); err != nil {
+	// 先に読んだ User を保存すると、照合の後に行われた無効化や編集を書き戻すので、
+	// 行を固定して読み直した最新の User に当てる。
+	expired := false
+	updated, err := d.UserRepo.Update(ctx, user.ID, func(latest *userdomain.User) (bool, error) {
+		latest.Lifecycle.LastLoginAt = &now
+		expired = authusecases.EnforcePasswordExpiry(latest, authusecases.ResolveTenantPolicy(ctx), now)
+		return true, nil
+	})
+	if err != nil {
 		return "", err
 	}
-	*user = updated
+	if updated == nil {
+		return "", fmt.Errorf("record login: user %s no longer exists", user.ID)
+	}
+	*user = *updated
 	if expired && d.Emit != nil {
 		// The actor is the system, not the user: the action was imposed by the
 		// tenant's policy rather than by anyone's request.

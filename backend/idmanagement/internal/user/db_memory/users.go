@@ -12,6 +12,7 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
@@ -39,12 +40,39 @@ func (r *UserRepository) Seed(u *userdomain.User) {
 // 時刻の列は TIMESTAMPTZ と同じマイクロ秒に切り捨て、保存し直しでは作成時刻と所属テナントを
 // 最初の値のまま保つ。
 func (r *UserRepository) Save(_ context.Context, u *userdomain.User) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.saveLocked(u)
+}
+
+// Update は PostgreSQL の FOR UPDATE と同じく、読み直しから保存までを一つのロックの中で行う。
+func (r *UserRepository) Update(_ context.Context, sub string, change userports.UserChange) (*userdomain.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	current := r.bySub[sub]
+	if current == nil || current.IsDeleted() {
+		return nil, nil
+	}
+	user := cloneUser(current)
+	changed, err := change(user)
+	if err != nil {
+		return nil, err
+	}
+	if !changed {
+		return user, nil
+	}
+	if err := r.saveLocked(user); err != nil {
+		return nil, err
+	}
+	return cloneUser(r.bySub[sub]), nil
+}
+
+// saveLocked は r.mu を持った状態で u の複製を保存する。
+func (r *UserRepository) saveLocked(u *userdomain.User) error {
 	sharedmem.DefaultScope(&u.TenantID, kernel.DefaultTenantID)
 	stored := cloneUser(u)
 	stored.CreatedAt = stored.CreatedAt.Truncate(time.Microsecond)
 	stored.UpdatedAt = stored.UpdatedAt.Truncate(time.Microsecond)
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	existing := r.bySub[stored.ID]
 	if existing != nil {
 		stored.TenantID = existing.TenantID

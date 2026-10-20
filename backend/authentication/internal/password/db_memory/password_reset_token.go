@@ -84,16 +84,21 @@ func (s *PasswordResetTokenStore) ConsumeAndApply(
 		return actiontoken.ErrAlreadyConsumed
 	}
 	// 巻き戻しに使う直前の姿を控えてから書く。PostgreSQL 側の ROLLBACK に対応する。
-	before, err := s.users.FindBySub(ctx, commit.User.ID)
+	before, err := s.users.FindBySub(ctx, commit.UserID)
 	if err != nil {
 		return err
 	}
 	record.used = true
-	if err := s.users.Save(ctx, commit.User); err != nil {
+	updated, err := s.users.Update(ctx, commit.UserID, commit.Apply)
+	if err != nil {
 		record.used = false
 		return err
 	}
-	if err := s.history.Add(ctx, commit.User.ID, commit.PasswordEncoded, commit.Now); err != nil {
+	if updated == nil {
+		record.used = false
+		return passwordports.ErrResetUserMissing
+	}
+	if err := s.history.Add(ctx, commit.UserID, commit.PasswordEncoded, commit.Now); err != nil {
 		record.used = false
 		if before != nil {
 			_ = s.users.Save(ctx, before)

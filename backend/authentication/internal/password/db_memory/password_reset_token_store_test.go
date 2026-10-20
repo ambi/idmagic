@@ -35,10 +35,11 @@ func newFixture(t *testing.T) (*PasswordResetTokenStore, userports.UserRepositor
 
 func commitFor(digest actiontoken.Digest, now time.Time, hash string) passwordports.PasswordResetCommit {
 	return passwordports.PasswordResetCommit{
-		Digest: digest, Now: now, PasswordEncoded: hash,
-		User: &userdomain.User{
-			ID: "user", PreferredUsername: "alice", PasswordHash: hash,
-			CreatedAt: now, UpdatedAt: now,
+		Digest: digest, Now: now, PasswordEncoded: hash, UserID: "user",
+		Apply: func(latest *userdomain.User) (bool, error) {
+			latest.PasswordHash = hash
+			latest.UpdatedAt = now
+			return true, nil
 		},
 	}
 }

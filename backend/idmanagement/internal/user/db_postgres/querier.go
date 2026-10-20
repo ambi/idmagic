@@ -17,6 +17,8 @@ type Querier interface {
 	FindUnusedEmailChangeToken(ctx context.Context, tokenHash string) (*FindUnusedEmailChangeTokenRow, error)
 	FindUserByEmail(ctx context.Context, arg FindUserByEmailParams) (*User, error)
 	FindUserBySub(ctx context.Context, id string) (*User, error)
+	// Update が最新の値へ変更を当てるまで、ほかの書き込みを待たせる。
+	FindUserBySubForUpdate(ctx context.Context, id string) (*User, error)
 	FindUserBySubIncludingDeleted(ctx context.Context, id string) (*User, error)
 	FindUserByUsername(ctx context.Context, arg FindUserByUsernameParams) (*User, error)
 	InsertEmailChangeToken(ctx context.Context, arg InsertEmailChangeTokenParams) error

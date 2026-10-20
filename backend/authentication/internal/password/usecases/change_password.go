@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"errors"
-	"slices"
 	"time"
 
 	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
@@ -103,19 +102,17 @@ func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePassw
 		return nil, err
 	}
 
-	updated := *user
-	updated.PasswordHash = encoded
-	updated.UpdatedAt = now
-	updated.Lifecycle.PasswordChangedAt = &now
 	// 本人がパスワードを変更したので update_password の強制アクションは自動解除する。
-	clearedUpdatePassword := slices.Contains(updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword)
-	if clearedUpdatePassword {
-		updated.Lifecycle.RequiredActions = removeRequiredAction(
-			updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword,
-		)
-	}
-	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
+	clearedUpdatePassword := false
+	updated, err := deps.UserRepo.Update(ctx, user.ID, func(latest *userdomain.User) (bool, error) {
+		clearedUpdatePassword = applyNewPassword(latest, encoded, now)
+		return true, nil
+	})
+	if err != nil {
 		return nil, err
+	}
+	if updated == nil {
+		return nil, ErrUserNotFound
 	}
 	if err := deps.PasswordHistoryRepo.Add(ctx, user.ID, encoded, now); err != nil {
 		return nil, err
@@ -134,5 +131,5 @@ func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePassw
 			}
 		}
 	}
-	return &updated, nil
+	return updated, nil
 }

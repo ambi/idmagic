@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
@@ -117,21 +116,19 @@ func ResetPasswordWithToken(
 	if err != nil {
 		return nil, err
 	}
-	updated := *user
-	updated.PasswordHash = encoded
-	updated.UpdatedAt = now
-	updated.Lifecycle.PasswordChangedAt = &now
 	// リセットで新パスワードを設定したので update_password 強制アクションを自動解除する。
-	clearedUpdatePassword := slices.Contains(updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword)
-	if clearedUpdatePassword {
-		updated.Lifecycle.RequiredActions = removeRequiredAction(
-			updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword,
-		)
-	}
+	// トークンの使用済み化と同じトランザクションで、行を固定して読み直した最新の User に当てる。
+	clearedUpdatePassword := false
+	var updated userdomain.User
 	if err := deps.TokenStore.ConsumeAndApply(ctx, passwordports.PasswordResetCommit{
-		Digest: envelope.Digest, Now: now, User: &updated, PasswordEncoded: encoded,
+		Digest: envelope.Digest, Now: now, UserID: user.ID, PasswordEncoded: encoded,
+		Apply: func(latest *userdomain.User) (bool, error) {
+			clearedUpdatePassword = applyNewPassword(latest, encoded, now)
+			updated = *latest
+			return true, nil
+		},
 	}); err != nil {
-		if errors.Is(err, actiontoken.ErrAlreadyConsumed) {
+		if errors.Is(err, actiontoken.ErrAlreadyConsumed) || errors.Is(err, passwordports.ErrResetUserMissing) {
 			return nil, fmt.Errorf("%w: %w", ErrInvalidResetToken, err)
 		}
 		return nil, err

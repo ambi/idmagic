@@ -40,7 +40,8 @@ func hasSecondFactor(
 	return len(credentials) > 0, nil
 }
 
-// SyncMfaEnrolled は残存する第二要素に応じて User.mfa_enrolled を再計算し、変化があれば保存する。
+// SyncMfaEnrolled は残存する第二要素に応じて User.mfa_enrolled を再計算し、変化があれば
+// 行を固定して読み直した最新の User に当てて保存する。user には保存した値を写す。
 // totp/webauthn を横断するため mfa (このパッケージ) が所有し、export して webauthn 側からも
 // package 境界を越えて呼べるようにする (Phase 2 と同方針)。
 func SyncMfaEnrolled(
@@ -55,10 +56,19 @@ func SyncMfaEnrolled(
 	if err != nil {
 		return err
 	}
-	if user.MfaEnrolled == enrolled {
-		return nil
+	updated, err := userRepo.Update(ctx, user.ID, func(latest *userdomain.User) (bool, error) {
+		if latest.MfaEnrolled == enrolled {
+			return false, nil
+		}
+		latest.MfaEnrolled = enrolled
+		latest.UpdatedAt = now
+		return true, nil
+	})
+	if err != nil {
+		return err
 	}
-	user.MfaEnrolled = enrolled
-	user.UpdatedAt = now
-	return userRepo.Save(ctx, user)
+	if updated != nil {
+		*user = *updated
+	}
+	return nil
 }

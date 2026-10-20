@@ -2,20 +2,27 @@ package ports
 
 import (
 	"context"
+	"errors"
 	"time"
 
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 )
 
+// ErrResetUserMissing は、トークンの対象の User が確定の時点で存在しないことを表す。
+// ConsumeAndApply は全体を巻き戻し、トークンを未使用のまま残す。
+var ErrResetUserMissing = errors.New("password reset target user no longer exists")
+
 // PasswordResetCommit は、トークンの使用済み化と同時に確定する用途別の作用である。
-// 具体値だけを運び、トランザクションの中で何を計算してよいかを port が語らずに済む。
+// パスワード規則と履歴の評価は呼び出し側が済ませ、トランザクションの中では最新の User に
+// 新しいパスワードを当てるだけにする。
 type PasswordResetCommit struct {
 	Digest actiontoken.Digest
 	Now    time.Time
-	// User は更新後の User である。呼び出し側がパスワード規則と履歴を評価した後に
-	// 組み立てる。
-	User *userdomain.User
+	UserID string
+	// Apply は、行を固定して読み直した最新の User に新しいパスワードを当てる。先に読んだ
+	// User を保存すると、その間の無効化や編集を書き戻すためである。外部の作用を起こさない。
+	Apply userports.UserChange
 	// PasswordEncoded はパスワード履歴へ追加する encoded hash である。
 	PasswordEncoded string
 }

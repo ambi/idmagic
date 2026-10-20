@@ -44,12 +44,14 @@ func seedResetToken(
 func resetCommit(
 	digest actiontoken.Digest, user *userdomain.User, hash string,
 ) authnports.PasswordResetCommit {
-	updated := *user
-	updated.PasswordHash = hash
-	updated.UpdatedAt = pgfixtures.TestClock().Add(time.Minute)
 	return authnports.PasswordResetCommit{
 		Digest: digest, Now: pgfixtures.TestClock().Add(time.Minute),
-		User: &updated, PasswordEncoded: hash,
+		UserID: user.ID, PasswordEncoded: hash,
+		Apply: func(latest *userdomain.User) (bool, error) {
+			latest.PasswordHash = hash
+			latest.UpdatedAt = pgfixtures.TestClock().Add(time.Minute)
+			return true, nil
+		},
 	}
 }
 
@@ -155,7 +157,11 @@ func TestPasswordResetTokenStoreRollsBackWhenTheEffectFails(t *testing.T) {
 	// 同じテナントで使われている preferred_username へ変えようとして、一意制約に当てる。
 	// トークンを使用済みにした後で作用が失敗する経路である。
 	commit := resetCommit(envelope.Digest, user, "encoded-1")
-	commit.User.PreferredUsername = rival.PreferredUsername
+	applyPassword := commit.Apply
+	commit.Apply = func(latest *userdomain.User) (bool, error) {
+		latest.PreferredUsername = rival.PreferredUsername
+		return applyPassword(latest)
+	}
 	if err := store.ConsumeAndApply(ctx, commit); err == nil {
 		t.Fatal("the conflicting effect was accepted")
 	}

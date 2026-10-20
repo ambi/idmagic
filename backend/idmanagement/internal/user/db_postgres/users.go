@@ -284,6 +284,22 @@ func (r *UserRepository) Save(ctx context.Context, u *userdomain.User) error {
 	return internalSaveUser(ctx, r.Pool, u)
 }
 
+func (r *UserRepository) Update(ctx context.Context, sub string, change userports.UserChange) (*userdomain.User, error) {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	updated, err := updateUserInTx(ctx, tx, sub, change)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return updated, nil
+}
+
 // UserWriterInTx は、呼び出し側のトランザクションで User を保存する UserWriter を返す。
 // ほかのモジュールの書き込みと User の変更を同じトランザクションで確定させるため、組み立て地点が渡す。
 func UserWriterInTx(tx pgx.Tx) userports.UserWriter { return txUserWriter{tx: tx} }
@@ -292,6 +308,37 @@ type txUserWriter struct{ tx pgx.Tx }
 
 func (w txUserWriter) Save(ctx context.Context, u *userdomain.User) error {
 	return internalSaveUser(ctx, w.tx, u)
+}
+
+func (w txUserWriter) Update(ctx context.Context, sub string, change userports.UserChange) (*userdomain.User, error) {
+	return updateUserInTx(ctx, w.tx, sub, change)
+}
+
+// updateUserInTx は行を FOR UPDATE で固定して読み直し、change を当てて同じトランザクションで保存する。
+// 固定はトランザクションの終わりまで続くので、その間の別の書き込みは確定を待つ。
+func updateUserInTx(ctx context.Context, tx pgx.Tx, sub string, change userports.UserChange) (*userdomain.User, error) {
+	row, err := New(tx).FindUserBySubForUpdate(ctx, sub)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	user, err := userFromRow(row)
+	if err != nil {
+		return nil, err
+	}
+	changed, err := change(user)
+	if err != nil {
+		return nil, err
+	}
+	if !changed {
+		return user, nil
+	}
+	if err := internalSaveUser(ctx, tx, user); err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 func internalSaveUser(ctx context.Context, db DBTX, u *userdomain.User) error {
