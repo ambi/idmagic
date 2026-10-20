@@ -31,7 +31,7 @@ REQ-IDMANAGEMENT-081 は、所有者の User が止まると、その User が�
 ## 対象外
 
 - 管理者どうしの Agent の編集の競合（[wi-605](wi-605-detect-lost-updates-with-etag-and-if-match.md)）。
-- 集約の一部だけを書く処理の設計規則（[wi-77130](wi-77130-record-external-fetch-results-without-overwriting-configuration.md)）。
+- 集約の一部だけを書く処理の設計規則（[wi-77130](../done/wi-77130-record-external-fetch-results-without-overwriting-configuration.md)）。
 
 ## 設計
 
