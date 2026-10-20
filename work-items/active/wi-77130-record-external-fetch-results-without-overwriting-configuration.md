@@ -39,7 +39,7 @@ affected_spec:
 ## 対象外
 
 - 管理者どうしの同じ項目の編集の競合（wi-605）。
-- Authentication が User を丸ごと保存する問題（[wi-98381](wi-98381-update-authentication-state-without-overwriting-the-user.md)）。
+- Authentication が User を丸ごと保存する問題（[wi-98381](../done/wi-98381-update-authentication-state-without-overwriting-the-user.md)）。
 - 所有者の停止に伴う Agent の無効化（[wi-97231](wi-97231-disable-owned-agents-with-a-conditional-update.md)）。
 
 ## 設計
