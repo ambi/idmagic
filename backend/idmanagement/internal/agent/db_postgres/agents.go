@@ -8,6 +8,7 @@ import (
 	"time"
 
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
@@ -158,6 +159,47 @@ func (r *AgentRepository) FindByID(ctx context.Context, tenantID, id string) (*a
 }
 
 func (r *AgentRepository) Save(ctx context.Context, agent *agentdomain.Agent) error {
+	return writeAgent(ctx, r.Pool, agent)
+}
+
+// Update は行を FOR UPDATE で固定して読み直し、change を当てて同じトランザクションで保存する。
+// 固定はトランザクションの終わりまで続くので、その間の別の書き込みは確定を待つ。
+func (r *AgentRepository) Update(
+	ctx context.Context, tenantID, id string, change agentports.AgentChange,
+) (*agentdomain.Agent, error) {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	row, err := New(tx).FindAgentByIDForUpdate(ctx, FindAgentByIDForUpdateParams{TenantID: tenantID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	agent, err := agentFromRow(row)
+	if err != nil {
+		return nil, err
+	}
+	changed, err := change(agent)
+	if err != nil {
+		return nil, err
+	}
+	if !changed {
+		return agent, nil
+	}
+	if err := writeAgent(ctx, tx, agent); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return agent, nil
+}
+
+func writeAgent(ctx context.Context, db DBTX, agent *agentdomain.Agent) error {
 	roles := agent.Roles
 	if roles == nil {
 		roles = []string{}
@@ -166,7 +208,7 @@ func (r *AgentRepository) Save(ctx context.Context, agent *agentdomain.Agent) er
 	if err != nil {
 		return err
 	}
-	return New(r.Pool).SaveAgent(ctx, SaveAgentParams{
+	return New(db).SaveAgent(ctx, SaveAgentParams{
 		ID:          agent.ID,
 		TenantID:    agent.TenantID,
 		Name:        agent.Name,

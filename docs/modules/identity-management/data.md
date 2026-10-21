@@ -56,6 +56,7 @@ PostgreSQL の保存先は `NewPostgresModule` が作り、行の確定は必須
 IdManagement は、Aggregate の保存に楽観的な排他を使わない。
 リポジトリの保存は、Aggregate 全体を ID で上書きする（`ON CONFLICT (id) DO UPDATE`）。
 User の一部の値だけを記録するほかのモジュールのために、`UserRepository.Update` と `UserWriter.Update` が行を `FOR UPDATE` で固定して読み直し、その最新の値へ変更を当てる。
+Agent を変える操作（管理者の更新、無効化と再有効化、停止、所有者の停止に伴う無効化）は、`AgentRepository.Update` で同じことを行う。
 書き手ごとの保存の形は[同時の更新と排他](../../design/data/database.md#同時の更新と排他)に従う。
 同時に重なってはならない結果は、次の仕組みで守る。
 
@@ -70,8 +71,6 @@ User の一部の値だけを記録するほかのモジュールのために、
 
 それ以外の更新は後勝ちである。
 二人の管理者が同じ User を同時に読んで更新すると、後に保存した更新が先の更新の項目を上書きする。
-また、所有者の停止に伴う Agent の無効化は Agent を丸ごと保存する。
-これはデータベース設計の規則に反し、その間に行われた編集と無効化が互いを書き戻しうる。
 
 ## テナントの属性スキーマ
 

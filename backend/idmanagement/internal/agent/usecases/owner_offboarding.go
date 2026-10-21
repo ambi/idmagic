@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
@@ -34,12 +35,23 @@ func DisableAgentsOwnedBy(ctx context.Context, deps AgentOwnerDeps, tenantID, ow
 		if agent.OwnerUserID != ownerUserID || agent.Status != idmdomain.AgentStatusActive {
 			continue
 		}
-		updated := *agent
-		updated.Status = idmdomain.AgentStatusDisabled
-		updated.DisabledAt = &now
-		updated.UpdatedAt = now
-		if err := deps.AgentRepo.Save(ctx, &updated); err != nil {
+		// 一覧を読んだ後の管理者の更新や停止を書き戻さないよう、読み直した最新の Agent が
+		// まだこの所有者の Active であるときだけ無効化する。
+		disabled := false
+		if _, err := deps.AgentRepo.Update(ctx, tenantID, agent.ID, func(latest *agentdomain.Agent) (bool, error) {
+			if latest.OwnerUserID != ownerUserID || latest.Status != idmdomain.AgentStatusActive {
+				return false, nil
+			}
+			latest.Status = idmdomain.AgentStatusDisabled
+			latest.DisabledAt = &now
+			latest.UpdatedAt = now
+			disabled = true
+			return true, nil
+		}); err != nil {
 			return err
+		}
+		if !disabled {
+			continue
 		}
 		if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.AgentDisabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID}); err != nil {
 			return err

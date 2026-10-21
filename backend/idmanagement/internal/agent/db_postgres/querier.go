@@ -14,6 +14,8 @@ type Querier interface {
 	DeleteAgent(ctx context.Context, arg DeleteAgentParams) error
 	FindAgentByClientID(ctx context.Context, arg FindAgentByClientIDParams) (*Agent, error)
 	FindAgentByID(ctx context.Context, arg FindAgentByIDParams) (*Agent, error)
+	// Update が最新の値へ変更を当てるまで、ほかの書き込みを待たせる。
+	FindAgentByIDForUpdate(ctx context.Context, arg FindAgentByIDForUpdateParams) (*Agent, error)
 	ListAgentBindingsByAgent(ctx context.Context, arg ListAgentBindingsByAgentParams) ([]*AgentCredentialBinding, error)
 	ListAgentsByTenant(ctx context.Context, tenantID string) ([]*Agent, error)
 	// First page of ListAgents keyset pagination (wi-159): stable sort

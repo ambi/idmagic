@@ -9,6 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/kernel"
 
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
@@ -103,6 +104,28 @@ func (r *AgentRepository) Save(_ context.Context, agent *agentdomain.Agent) erro
 	defer r.mu.Unlock()
 	r.agents[sharedmem.ScopedKey(agent.TenantID, agent.ID, kernel.DefaultTenantID)] = cloneAgent(agent)
 	return nil
+}
+
+// Update は PostgreSQL の FOR UPDATE と同じく、読み直しから保存までを一つのロックの中で行う。
+func (r *AgentRepository) Update(
+	_ context.Context, tenantID, id string, change agentports.AgentChange,
+) (*agentdomain.Agent, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)
+	current := r.agents[key]
+	if current == nil {
+		return nil, nil
+	}
+	agent := cloneAgent(current)
+	changed, err := change(agent)
+	if err != nil {
+		return nil, err
+	}
+	if changed {
+		r.agents[key] = cloneAgent(agent)
+	}
+	return agent, nil
 }
 
 func (r *AgentRepository) Delete(_ context.Context, tenantID, id string) error {

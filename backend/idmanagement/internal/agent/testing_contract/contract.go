@@ -43,6 +43,40 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if err := f.Repository.Save(ctx, &updated); err != nil {
 		t.Fatalf("Save update: %v", err)
 	}
+
+	// Update は呼び出し側が先に読んだ値ではなく、保存先の最新の値に変更を当てる。
+	described := "described by Update"
+	afterUpdate, err := f.Repository.Update(ctx, f.TenantID, f.Agent.ID, func(latest *domain.Agent) (bool, error) {
+		if latest.Name != "updated-agent" {
+			t.Errorf("Update received name %q, want the latest saved name", latest.Name)
+		}
+		latest.Description = &described
+		return true, nil
+	})
+	if err != nil || afterUpdate == nil {
+		t.Fatalf("Update = (%+v, %v)", afterUpdate, err)
+	}
+	if got, err := f.Repository.FindByID(ctx, f.TenantID, f.Agent.ID); err != nil || got == nil ||
+		got.Name != "updated-agent" || got.Description == nil || *got.Description != described {
+		t.Fatalf("FindByID after Update = (%+v, %v)", got, err)
+	}
+	if _, err := f.Repository.Update(ctx, f.TenantID, f.Agent.ID, func(latest *domain.Agent) (bool, error) {
+		latest.Name = "discarded"
+		return false, nil
+	}); err != nil {
+		t.Fatalf("Update without change: %v", err)
+	}
+	if got, err := f.Repository.FindByID(ctx, f.TenantID, f.Agent.ID); err != nil || got == nil || got.Name != "updated-agent" {
+		t.Fatalf("Update without change saved: (%+v, %v)", got, err)
+	}
+	called := false
+	if missing, err := f.Repository.Update(ctx, f.TenantID, "00000000-0000-0000-0000-0000000000fe", func(*domain.Agent) (bool, error) {
+		called = true
+		return true, nil
+	}); err != nil || missing != nil || called {
+		t.Fatalf("Update of a missing agent = (%+v, %v, called=%v)", missing, err, called)
+	}
+
 	if err := f.Repository.Delete(ctx, f.TenantID, f.Agent.ID); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}

@@ -45,6 +45,13 @@ SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents
 WHERE tenant_id=$1 AND id=$2;
 
+-- name: FindAgentByIDForUpdate :one
+-- Update が最新の値へ変更を当てるまで、ほかの書き込みを待たせる。
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+created_at,updated_at,disabled_at,killed_at,name_key FROM agents
+WHERE tenant_id=$1 AND id=$2
+FOR UPDATE;
+
 -- name: FindAgentByClientID :one
 SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents

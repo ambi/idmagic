@@ -199,12 +199,10 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 	if agent.Status == idmdomain.AgentStatusKilled {
 		return nil, ErrAgentKilled
 	}
-	updated := *agent
-	changed := []string{}
-	previousOwner := agent.OwnerUserID
-	ownerChanged := false
+	// 入力の検証と、ほかの Agent と User を読む確認は、行を固定する前に行う。
+	var name, owner string
 	if in.Name != nil {
-		name := strings.TrimSpace(*in.Name)
+		name = strings.TrimSpace(*in.Name)
 		if name == "" {
 			return nil, ErrAgentNameEmpty
 		}
@@ -212,28 +210,13 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 			if err := ensureAgentNameAvailable(ctx, deps, tenantID, name, agent.ID); err != nil {
 				return nil, err
 			}
-			updated.Name = name
-			changed = append(changed, "name")
 		}
 	}
-	if in.Description != nil {
-		desc := idmusecases.NormalizeDescription(in.Description)
-		if !idmusecases.EqualOptionalString(agent.Description, desc) {
-			updated.Description = desc
-			changed = append(changed, "description")
-		}
-	}
-	if in.Kind != nil {
-		if !in.Kind.Valid() {
-			return nil, ErrAgentKindInvalid
-		}
-		if *in.Kind != agent.Kind {
-			updated.Kind = *in.Kind
-			changed = append(changed, "kind")
-		}
+	if in.Kind != nil && !in.Kind.Valid() {
+		return nil, ErrAgentKindInvalid
 	}
 	if in.OwnerUserID != nil {
-		owner := strings.TrimSpace(*in.OwnerUserID)
+		owner = strings.TrimSpace(*in.OwnerUserID)
 		if owner == "" {
 			return nil, ErrAgentOwnerRequired
 		}
@@ -241,36 +224,69 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 			if err := ensureAgentOwner(ctx, deps, tenantID, owner); err != nil {
 				return nil, err
 			}
-			updated.OwnerUserID = owner
+		}
+	}
+	var roles []string
+	if in.Roles != nil {
+		if roles, err = idmusecases.NormalizeRoles(*in.Roles); err != nil {
+			return nil, err
+		}
+	}
+	now := idmusecases.NormalizedNow(in.Now)
+	var changed []string
+	previousOwner := agent.OwnerUserID
+	ownerChanged := false
+	// 変わった項目の判定と停止の拒否は、読み直した最新の Agent に対して行う。先に読んだ Agent を
+	// 保存すると、その間の所有者の停止に伴う無効化や停止を書き戻す。
+	updated, err := deps.AgentRepo.Update(ctx, tenantID, agent.ID, func(latest *agentdomain.Agent) (bool, error) {
+		if latest.Status == idmdomain.AgentStatusKilled {
+			return false, ErrAgentKilled
+		}
+		changed, previousOwner, ownerChanged = []string{}, latest.OwnerUserID, false
+		if in.Name != nil && name != latest.Name {
+			latest.Name = name
+			changed = append(changed, "name")
+		}
+		if in.Description != nil {
+			if desc := idmusecases.NormalizeDescription(in.Description); !idmusecases.EqualOptionalString(latest.Description, desc) {
+				latest.Description = desc
+				changed = append(changed, "description")
+			}
+		}
+		if in.Kind != nil && *in.Kind != latest.Kind {
+			latest.Kind = *in.Kind
+			changed = append(changed, "kind")
+		}
+		if in.OwnerUserID != nil && owner != latest.OwnerUserID {
+			latest.OwnerUserID = owner
 			changed = append(changed, "owner_sub")
 			ownerChanged = true
 		}
+		if in.Roles != nil {
+			if err := idmusecases.ValidateRoleAssignment(
+				idmusecases.RoleTargetAgent, latest.TenantID, latest.Roles, roles,
+			); err != nil {
+				return false, err
+			}
+			if !slices.Equal(roles, latest.Roles) {
+				latest.Roles = roles
+				changed = append(changed, "roles")
+			}
+		}
+		if len(changed) == 0 {
+			return false, nil
+		}
+		latest.UpdatedAt = now
+		return true, latest.Validate()
+	})
+	if err != nil {
+		return nil, err
 	}
-	if in.Roles != nil {
-		roles, err := idmusecases.NormalizeRoles(*in.Roles)
-		if err != nil {
-			return nil, err
-		}
-		if err := idmusecases.ValidateRoleAssignment(
-			idmusecases.RoleTargetAgent, agent.TenantID, agent.Roles, roles,
-		); err != nil {
-			return nil, err
-		}
-		if !slices.Equal(roles, agent.Roles) {
-			updated.Roles = roles
-			changed = append(changed, "roles")
-		}
+	if updated == nil {
+		return nil, ErrAgentNotFound
 	}
 	if len(changed) == 0 {
-		return &updated, nil
-	}
-	now := idmusecases.NormalizedNow(in.Now)
-	updated.UpdatedAt = now
-	if err := updated.Validate(); err != nil {
-		return nil, err
-	}
-	if err := deps.AgentRepo.Save(ctx, &updated); err != nil {
-		return nil, err
+		return updated, nil
 	}
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.AgentUpdated{
 		At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID, ChangedFields: changed,
@@ -285,7 +301,18 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 			return nil, err
 		}
 	}
-	return &updated, nil
+	return updated, nil
+}
+
+// applyAgentState は、最新の Agent に状態の遷移を当てる。停止した Agent は変えずに拒否する。
+func applyAgentState(transition func(*agentdomain.Agent)) agentports.AgentChange {
+	return func(latest *agentdomain.Agent) (bool, error) {
+		if latest.Status == idmdomain.AgentStatusKilled {
+			return false, ErrAgentKilled
+		}
+		transition(latest)
+		return true, latest.Validate()
+	}
 }
 
 // SetAgentDisabled は Agent を運用停止 (disabled=true) / 再稼働 (disabled=false) する。
@@ -310,20 +337,21 @@ func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id 
 		}
 	}
 	now = idmusecases.NormalizedNow(now)
-	updated := *agent
-	updated.UpdatedAt = now
-	if disabled {
-		updated.Status = idmdomain.AgentStatusDisabled
-		updated.DisabledAt = &now
-	} else {
-		updated.Status = idmdomain.AgentStatusActive
-		updated.DisabledAt = nil
-	}
-	if err := updated.Validate(); err != nil {
+	updated, err := deps.AgentRepo.Update(ctx, tenantID, agent.ID, applyAgentState(func(latest *agentdomain.Agent) {
+		latest.UpdatedAt = now
+		if disabled {
+			latest.Status = idmdomain.AgentStatusDisabled
+			latest.DisabledAt = &now
+		} else {
+			latest.Status = idmdomain.AgentStatusActive
+			latest.DisabledAt = nil
+		}
+	}))
+	if err != nil {
 		return nil, err
 	}
-	if err := deps.AgentRepo.Save(ctx, &updated); err != nil {
-		return nil, err
+	if updated == nil {
+		return nil, ErrAgentNotFound
 	}
 	var emitErr error
 	if disabled {
@@ -334,7 +362,7 @@ func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id 
 	if emitErr != nil {
 		return nil, emitErr
 	}
-	return &updated, nil
+	return updated, nil
 }
 
 // KillAgent は Agent を緊急停止し Killed (一方向終端) に遷移させる。既に Killed なら
@@ -352,20 +380,21 @@ func KillAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string,
 		return nil, ErrAgentKilled
 	}
 	now = idmusecases.NormalizedNow(now)
-	updated := *agent
-	updated.Status = idmdomain.AgentStatusKilled
-	updated.KilledAt = &now
-	updated.UpdatedAt = now
-	if err := updated.Validate(); err != nil {
+	updated, err := deps.AgentRepo.Update(ctx, tenantID, agent.ID, applyAgentState(func(latest *agentdomain.Agent) {
+		latest.Status = idmdomain.AgentStatusKilled
+		latest.KilledAt = &now
+		latest.UpdatedAt = now
+	}))
+	if err != nil {
 		return nil, err
 	}
-	if err := deps.AgentRepo.Save(ctx, &updated); err != nil {
-		return nil, err
+	if updated == nil {
+		return nil, ErrAgentNotFound
 	}
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.AgentKilled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID}); err != nil {
 		return nil, err
 	}
-	return &updated, nil
+	return updated, nil
 }
 
 // DeleteAgent は Agent を物理削除し、束縛は cascade で解除する。

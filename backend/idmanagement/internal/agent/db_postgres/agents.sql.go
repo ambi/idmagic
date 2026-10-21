@@ -123,6 +123,40 @@ func (q *Queries) FindAgentByID(ctx context.Context, arg FindAgentByIDParams) (*
 	return &i, err
 }
 
+const findAgentByIDForUpdate = `-- name: FindAgentByIDForUpdate :one
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+created_at,updated_at,disabled_at,killed_at,name_key FROM agents
+WHERE tenant_id=$1 AND id=$2
+FOR UPDATE
+`
+
+type FindAgentByIDForUpdateParams struct {
+	TenantID string
+	ID       string
+}
+
+// Update が最新の値へ変更を当てるまで、ほかの書き込みを待たせる。
+func (q *Queries) FindAgentByIDForUpdate(ctx context.Context, arg FindAgentByIDForUpdateParams) (*Agent, error) {
+	row := q.db.QueryRow(ctx, findAgentByIDForUpdate, arg.TenantID, arg.ID)
+	var i Agent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Name,
+		&i.Description,
+		&i.Kind,
+		&i.OwnerUserID,
+		&i.Status,
+		&i.Roles,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DisabledAt,
+		&i.KilledAt,
+		&i.NameKey,
+	)
+	return &i, err
+}
+
 const listAgentBindingsByAgent = `-- name: ListAgentBindingsByAgent :many
 SELECT b.agent_id,b.client_id,b.created_at
 FROM agent_credential_bindings b JOIN agents a ON a.id=b.agent_id
