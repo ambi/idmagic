@@ -372,6 +372,9 @@ func writeAdminUserError(c *echo.Context, err error) error {
 	case errors.Is(err, userusecases.ErrInvalidRequiredAction):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_required_action", "The required action is invalid.")
 	default:
+		if _, ok := errors.AsType[*userports.UniqueAttributeConflictError](err); ok {
+			return writeAttributeValueConflict(c)
+		}
 		if policyErr, ok := errors.AsType[userports.PasswordPolicyRejection](err); ok {
 			return support.NoStoreJSON(c, http.StatusBadRequest, map[string]any{
 				"error": "password_policy", "message": "The password does not meet the security requirements.",
@@ -380,6 +383,12 @@ func writeAdminUserError(c *echo.Context, err error) error {
 		}
 		return err
 	}
+}
+
+// writeAttributeValueConflict は、unique の属性の値がほかの User と重なった書き込みを 409 で返す。
+// どの User が値を持つかは返さない。
+func writeAttributeValueConflict(c *echo.Context) error {
+	return support.WriteProblem(c, http.StatusConflict, "attribute_value_conflict", "Another user already has this value for a unique attribute.")
 }
 
 func toAdminUserResponse(user *userdomain.User) adminUserResponse {

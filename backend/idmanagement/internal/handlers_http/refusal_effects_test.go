@@ -100,6 +100,7 @@ const (
 type idmRefusalFixture struct {
 	e           *echo.Echo
 	users       *usermemory.UserRepository
+	schemas     *usermemory.TenantUserAttributeSchemaRepository
 	groups      *groupmemory.GroupRepository
 	agents      *agentmemory.AgentRepository
 	jobs        jobsports.JobRepository
@@ -131,7 +132,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 	ctx := context.Background()
 	now := time.Now().UTC()
 
-	users := usermemory.NewUserRepository()
+	users, schemas := usermemory.NewUserStore()
 	for _, seed := range []struct {
 		id, tenantID string
 		roles        []string
@@ -207,6 +208,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 	fixture := &idmRefusalFixture{
 		e:           echo.New(),
 		users:       users,
+		schemas:     schemas,
 		groups:      groups,
 		agents:      agents,
 		jobs:        jobRepo,
@@ -249,7 +251,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 		IdManagement: idmanagement.Module{
 			UserRepo: users, GroupRepo: groups, AgentRepo: agents,
 			CSVArtifacts: fixture.artifacts, EmailChangeTokenStore: fixture.emailTokens,
-			AttrSchemaRepo: usermemory.NewTenantUserAttributeSchemaRepository(),
+			AttrSchemaRepo: schemas,
 		},
 		Authentication: authentication.Module{
 			SessionStore: fixture.sessions, SessionManager: sessionManager, AuthnResolver: sessionManager,

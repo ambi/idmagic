@@ -10,6 +10,36 @@ import (
 	"time"
 )
 
+const copyUniqueAttributeValues = `-- name: CopyUniqueAttributeValues :exec
+INSERT INTO user_unique_attribute_values (tenant_id, attribute_key, value, user_id)
+SELECT u.tenant_id, $1::text, u.attributes -> $1::text ->> 'string', u.id
+FROM users u
+WHERE u.tenant_id = $2
+  AND u.lifecycle->>'status' IS DISTINCT FROM 'deleted'
+  AND u.attributes -> $1::text ->> 'type' = 'string'
+  AND coalesce(u.attributes -> $1::text ->> 'string', '') <> ''
+`
+
+type CopyUniqueAttributeValuesParams struct {
+	AttributeKey string
+	TenantID     string
+}
+
+// 削除されていない User の、属性 attribute_key の空でない文字列の値を写す。重なりは主キーが拒否する。
+func (q *Queries) CopyUniqueAttributeValues(ctx context.Context, arg CopyUniqueAttributeValuesParams) error {
+	_, err := q.db.Exec(ctx, copyUniqueAttributeValues, arg.AttributeKey, arg.TenantID)
+	return err
+}
+
+const deleteTenantUniqueAttributeValues = `-- name: DeleteTenantUniqueAttributeValues :exec
+DELETE FROM user_unique_attribute_values WHERE tenant_id = $1
+`
+
+func (q *Queries) DeleteTenantUniqueAttributeValues(ctx context.Context, tenantID string) error {
+	_, err := q.db.Exec(ctx, deleteTenantUniqueAttributeValues, tenantID)
+	return err
+}
+
 const deleteTenantUserAttributeSchema = `-- name: DeleteTenantUserAttributeSchema :exec
 DELETE FROM tenant_user_attribute_schemas WHERE tenant_id=$1
 `
@@ -34,6 +64,16 @@ func (q *Queries) FindTenantUserAttributeSchemaByTenant(ctx context.Context, ten
 		&i.UpdatedAt,
 	)
 	return &i, err
+}
+
+const lockUniqueAttributeValuesExclusive = `-- name: LockUniqueAttributeValuesExclusive :exec
+SELECT pg_advisory_xact_lock(hashtextextended('user_unique_attribute_values:' || $1::text, 0))
+`
+
+// unique の属性の集合を変える保存は排他の固定を取り、交差する User の保存を待たせる。
+func (q *Queries) LockUniqueAttributeValuesExclusive(ctx context.Context, tenantID string) error {
+	_, err := q.db.Exec(ctx, lockUniqueAttributeValuesExclusive, tenantID)
+	return err
 }
 
 const saveTenantUserAttributeSchema = `-- name: SaveTenantUserAttributeSchema :exec

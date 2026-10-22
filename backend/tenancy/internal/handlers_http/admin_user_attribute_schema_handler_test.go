@@ -33,9 +33,25 @@ func newUserAttributeSchemaServer(
 	t *testing.T, actor *userdomain.User, tenants ...*domain.Tenant,
 ) (*echo.Echo, userschemaports.TenantUserAttributeSchemaRepository, *[]spec.DomainEvent) {
 	t.Helper()
-	userRepo := idmanagement.NewMemoryModule().UserRepo
+	var seeds []*userdomain.User
 	if actor != nil {
-		_ = userRepo.Save(context.Background(), actor)
+		seeds = append(seeds, actor)
+	}
+	return newUserAttributeSchemaServerWithUsers(t, actor, seeds, tenants...)
+}
+
+// newUserAttributeSchemaServerWithUsers は、組み立て地点と同じく User とスキーマの保存先を一つの
+// IdManagement のモジュールから作り、users を保存したサーバーを返す。
+func newUserAttributeSchemaServerWithUsers(
+	t *testing.T, actor *userdomain.User, users []*userdomain.User, tenants ...*domain.Tenant,
+) (*echo.Echo, userschemaports.TenantUserAttributeSchemaRepository, *[]spec.DomainEvent) {
+	t.Helper()
+	identity := idmanagement.NewMemoryModule()
+	userRepo := identity.UserRepo
+	for _, u := range users {
+		if err := userRepo.Save(context.Background(), u); err != nil {
+			t.Fatal(err)
+		}
 	}
 	tenantRepo := memory.NewTenantRepository()
 	for _, tenant := range tenants {
@@ -43,7 +59,7 @@ func newUserAttributeSchemaServer(
 			t.Fatal(err)
 		}
 	}
-	schemaRepo := idmanagement.NewMemoryModule().AttrSchemaRepo
+	schemaRepo := identity.AttrSchemaRepo
 	resolver := &fakeAuthnResolver{}
 	if actor != nil {
 		resolver.ctx = &authdomain.AuthenticationContext{
@@ -168,4 +184,49 @@ func TestUserAttributeSchemaPutRejectsBuiltinCollision(t *testing.T) {
 		t.Fatalf("unexpected body=%s", rec.Body.String())
 	}
 	assertTenancyProblem(t, rec, http.StatusUnprocessableEntity, "invalid_attribute_schema")
+}
+
+func memberWithBadge(id, tenantID, badge string) *userdomain.User {
+	u := settingsActor(id, tenantID, nil)
+	value := badge
+	u.Attributes = map[string]userdomain.AttributeValue{"badge": {Type: "string", String: &value}}
+	return u
+}
+
+//spec:covers REQ-TENANCY-002: 削除されていない二人の User が同じ値を持つ属性を unique に変える保存を 409 と attribute_values_not_unique で拒否してスキーマを変えず、値が重ならない属性は unique にできること。
+//verify:operation UpdateTenantUserAttributeSchema: 値が重なる属性を unique にする保存は 409 attribute_values_not_unique の Problem Details で拒否し、スキーマを変えない。
+func TestUserAttributeSchemaPutRejectsUniqueOverSharedValues(t *testing.T) {
+	actor := settingsActor("admin", "acme", []string{"admin"})
+	e, schemaRepo, events := newUserAttributeSchemaServerWithUsers(t, actor, []*userdomain.User{
+		actor, memberWithBadge("alice", "acme", "B-1"), memberWithBadge("bob", "acme", "B-1"),
+	}, activeTenant("acme", "Acme"))
+	const path = "/realms/acme/api/admin/v1/tenant/user-attribute-schema"
+	badge := func(unique bool) map[string]any {
+		return map[string]any{"attributes": []map[string]any{
+			{"key": "badge", "type": "string", "visibility": "admin_readable", "unique": unique},
+		}}
+	}
+	if rec := putUserAttributeSchema(t, e, path, badge(false)); rec.Code != http.StatusOK {
+		t.Fatalf("define badge status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	*events = nil
+
+	rec := putUserAttributeSchema(t, e, path, badge(true))
+	assertTenancyProblem(t, rec, http.StatusConflict, "attribute_values_not_unique")
+	stored, err := schemaRepo.FindByTenant(context.Background(), "acme")
+	if err != nil || stored == nil || stored.Attributes[0].Unique {
+		t.Fatalf("refused schema was stored: (%+v, %v)", stored, err)
+	}
+	if len(*events) != 0 {
+		t.Fatalf("refused save emitted %+v", *events)
+	}
+
+	other := map[string]any{"attributes": []map[string]any{
+		{"key": "badge", "type": "string", "visibility": "admin_readable"},
+		{"key": "employee_no", "type": "string", "visibility": "admin_readable", "unique": true},
+	}}
+	ok := putUserAttributeSchema(t, e, path, other)
+	if ok.Code != http.StatusOK || !strings.Contains(ok.Body.String(), `"unique":true`) {
+		t.Fatalf("unique without shared values status=%d body=%s", ok.Code, ok.Body.String())
+	}
 }

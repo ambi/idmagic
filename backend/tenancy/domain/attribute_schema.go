@@ -10,6 +10,7 @@ type UserAttributeDef struct {
 	MultiValued    bool    `json:"multi_valued"`
 	Required       bool    `json:"required"`
 	EditableByUser bool    `json:"editable_by_user"`
+	Unique         bool    `json:"unique"`
 	ClaimName      *string `json:"claim_name,omitempty"`
 	OIDCScope      *string `json:"oidc_scope,omitempty"`
 	Visibility     string  `json:"visibility"`

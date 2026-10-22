@@ -58,6 +58,7 @@
 - 名前、名、姓のどれも変わらず `attributes` も含まない更新を要求された場合、IdManagement は、`UserUpdated` を発行しない。
 - `editable_by_user` が `false` の属性を含む更新を要求された場合、IdManagement は、403 と `attribute_not_editable` で拒否し、どの項目も変えない。
 - 定義されていない属性、または型の合わない値を含む更新を要求された場合、IdManagement は、422 と `invalid_attribute` で拒否し、どの項目も変えない。
+- 同じテナントの削除されていないほかの User と同じ値へ `unique` の属性を変える更新を要求された場合、IdManagement は、409 と `attribute_value_conflict` で拒否し、どの項目も変えない。
 
 ### アカウントデータのエクスポート
 

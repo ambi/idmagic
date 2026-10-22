@@ -695,4 +695,7 @@ model FederationCredentialsUnavailableError is ProblemDetails;
 @doc("動的グループの規則が参照する属性は、削除も型の変更もできない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:attribute_referenced_by_dynamic_group` である。")
 model AttributeReferencedByDynamicGroupError is ProblemDetails;
 
+@doc("`unique` に変えようとした属性は、テナントの削除されていない二人以上の User が同じ値を持っている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:attribute_values_not_unique` である。")
+model AttributeValuesNotUniqueError is ProblemDetails;
+
 }

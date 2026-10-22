@@ -138,6 +138,12 @@ model UpdateUserProfileError404 {
   @body body: UpdateUserProfileError404Body;
 }
 
+model UpdateUserProfileError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AttributeValueConflictError;
+}
+
 union UpdateUserProfileError422Body {
   IdMagic.Contract.InvalidUserAttributeError,
 }
@@ -154,7 +160,7 @@ model UpdateUserProfileError422 {
 @patch
 op UpdateUserProfile(
   @body body: IdMagic.Contract.AccountProfileUpdateRequest
-): UpdateUserProfileSuccess_200 | UpdateUserProfileError400 | UpdateUserProfileError401 | UpdateUserProfileError403 | UpdateUserProfileError404 | UpdateUserProfileError422;
+): UpdateUserProfileSuccess_200 | UpdateUserProfileError400 | UpdateUserProfileError401 | UpdateUserProfileError403 | UpdateUserProfileError404 | UpdateUserProfileError409 | UpdateUserProfileError422;
 
 union RequestEmailChangeError400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -1571,6 +1577,7 @@ model UpdateAdminUserError403 {
 union UpdateAdminUserError409Body {
   IdMagic.Contract.UsernameConflictError,
   IdMagic.Contract.EmailTakenError,
+  IdMagic.Contract.AttributeValueConflictError,
 }
 
 model UpdateAdminUserError409 {

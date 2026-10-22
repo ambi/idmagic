@@ -7,6 +7,8 @@ export const adminTenantAttributesDictionary = defineDictionary(
     visibilityAdminReadable: '管理者のみ参照',
     visibilityClaimExposed: 'claim として開示',
     saveFailedError: '属性スキーマを保存できませんでした。',
+    valuesNotUniqueError:
+      '同じ値を持つユーザーがいるので、この属性はほかのユーザーと同じ値を禁止にできません。値の重なりを解いてから保存してください。',
     addedNotice: '属性を追加しました。',
     updatedNotice: '属性を更新しました。',
     deletedNotice: '属性を削除しました。',
@@ -42,6 +44,7 @@ export const adminTenantAttributesDictionary = defineDictionary(
     oidcScopePlaceholder: '未指定なら custom_attribute',
     requiredToggle: '必須',
     editableByUserToggle: '本人が編集可',
+    uniqueToggle: 'ほかのユーザーと同じ値を禁止',
     piiToggle: 'PII（監査ログでハッシュ化）',
     cancel: 'キャンセル',
     saving: '保存中…',
@@ -57,6 +60,8 @@ export const adminTenantAttributesDictionary = defineDictionary(
     visibilityAdminReadable: 'Admin readable only',
     visibilityClaimExposed: 'Exposed as claim',
     saveFailedError: 'Could not save the attribute schema.',
+    valuesNotUniqueError:
+      'Some users share a value of this attribute, so it cannot be made unique. Resolve the shared values, then save again.',
     addedNotice: 'The attribute has been added.',
     updatedNotice: 'The attribute has been updated.',
     deletedNotice: 'The attribute has been deleted.',
@@ -92,6 +97,7 @@ export const adminTenantAttributesDictionary = defineDictionary(
     oidcScopePlaceholder: 'If unspecified, custom_attribute is used',
     requiredToggle: 'Required',
     editableByUserToggle: 'Editable by the user',
+    uniqueToggle: 'Unique across users',
     piiToggle: 'PII (hashed in audit logs)',
     cancel: 'Cancel',
     saving: 'Saving…',

@@ -12,6 +12,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -280,8 +281,17 @@ func usersFromRows(rows []*User, err error) ([]*userdomain.User, error) {
 	return out, nil
 }
 
+// Save は、User の行と unique の属性の値を一つのトランザクションで保存する。
 func (r *UserRepository) Save(ctx context.Context, u *userdomain.User) error {
-	return internalSaveUser(ctx, r.Pool, u)
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := internalSaveUser(ctx, tx, u); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *UserRepository) Update(ctx context.Context, sub string, change userports.UserChange) (*userdomain.User, error) {
@@ -341,7 +351,57 @@ func updateUserInTx(ctx context.Context, tx pgx.Tx, sub string, change userports
 	return user, nil
 }
 
-func internalSaveUser(ctx context.Context, db DBTX, u *userdomain.User) error {
+// internalSaveUser は、呼び出し側のトランザクション tx で User の行を保存し、その User の
+// unique の属性の値を一意性の表に書き直す。値の重なりは UniqueAttributeConflictError になる。
+func internalSaveUser(ctx context.Context, tx DBTX, u *userdomain.User) error {
+	q := New(tx)
+	if err := q.LockUniqueAttributeValuesShared(ctx, u.TenantID); err != nil {
+		return err
+	}
+	if err := saveUserRow(ctx, q, u); err != nil {
+		return err
+	}
+	return writeUniqueAttributeValues(ctx, q, u)
+}
+
+func writeUniqueAttributeValues(ctx context.Context, q *Queries, u *userdomain.User) error {
+	if err := q.DeleteUserUniqueAttributeValues(ctx, u.ID); err != nil {
+		return err
+	}
+	schema, err := findUserAttributeSchema(ctx, q, u.TenantID)
+	if err != nil || schema == nil {
+		return err
+	}
+	values := u.UniqueAttributeValues(schema.UniqueKeys())
+	for _, key := range schema.UniqueKeys() {
+		value, ok := values[key]
+		if !ok {
+			continue
+		}
+		err := q.InsertUserUniqueAttributeValue(ctx, InsertUserUniqueAttributeValueParams{
+			TenantID: u.TenantID, AttributeKey: key, Value: value, UserID: u.ID,
+		})
+		if isUniqueAttributeValueViolation(err) {
+			return &userports.UniqueAttributeConflictError{Key: key}
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// sqlstateUniqueViolation は PostgreSQL の unique_violation の SQLSTATE である。
+const sqlstateUniqueViolation = "23505"
+
+// isUniqueAttributeValueViolation は、err が一意性の表の主キーの違反かを返す。
+func isUniqueAttributeValueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == sqlstateUniqueViolation &&
+		pgErr.ConstraintName == "user_unique_attribute_values_pkey"
+}
+
+func saveUserRow(ctx context.Context, q *Queries, u *userdomain.User) error {
 	// lifecycle / attributes は JSONB に格納する。多値属性は本 PR では
 	// 単一カラムで持ち、検索が要るようになった段階で別テーブル化する。
 	roles, err := json.Marshal(u.Roles)
@@ -356,7 +416,7 @@ func internalSaveUser(ctx context.Context, db DBTX, u *userdomain.User) error {
 	if err != nil {
 		return err
 	}
-	return New(db).SaveUser(ctx, SaveUserParams{
+	return q.SaveUser(ctx, SaveUserParams{
 		ID:                u.ID,
 		TenantID:          u.TenantID,
 		PreferredUsername: u.PreferredUsername,

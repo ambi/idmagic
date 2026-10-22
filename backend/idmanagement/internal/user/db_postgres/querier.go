@@ -9,10 +9,14 @@ import (
 )
 
 type Querier interface {
+	// 削除されていない User の、属性 attribute_key の空でない文字列の値を写す。重なりは主キーが拒否する。
+	CopyUniqueAttributeValues(ctx context.Context, arg CopyUniqueAttributeValuesParams) error
 	CountUsersByTenant(ctx context.Context, tenantID string) (int64, error)
 	CountUsersByTenantFiltered(ctx context.Context, arg CountUsersByTenantFilteredParams) (int64, error)
 	DeleteEmailChangeTokensForSub(ctx context.Context, userID string) error
+	DeleteTenantUniqueAttributeValues(ctx context.Context, tenantID string) error
 	DeleteTenantUserAttributeSchema(ctx context.Context, tenantID string) error
+	DeleteUserUniqueAttributeValues(ctx context.Context, userID string) error
 	FindTenantUserAttributeSchemaByTenant(ctx context.Context, tenantID string) (*TenantUserAttributeSchema, error)
 	FindUnusedEmailChangeToken(ctx context.Context, tokenHash string) (*FindUnusedEmailChangeTokenRow, error)
 	FindUserByEmail(ctx context.Context, arg FindUserByEmailParams) (*User, error)
@@ -22,6 +26,7 @@ type Querier interface {
 	FindUserBySubIncludingDeleted(ctx context.Context, id string) (*User, error)
 	FindUserByUsername(ctx context.Context, arg FindUserByUsernameParams) (*User, error)
 	InsertEmailChangeToken(ctx context.Context, arg InsertEmailChangeTokenParams) error
+	InsertUserUniqueAttributeValue(ctx context.Context, arg InsertUserUniqueAttributeValueParams) error
 	// Pending deletions and tombstones whose purge has not finished. The grace
 	// period is decided by the caller.
 	ListUserPurgeCandidates(ctx context.Context, tenantID string) ([]*User, error)
@@ -39,6 +44,10 @@ type Querier interface {
 	ListUsersByTenantPageEnd(ctx context.Context, arg ListUsersByTenantPageEndParams) ([]*User, error)
 	ListUsersByTenantPageEndFiltered(ctx context.Context, arg ListUsersByTenantPageEndFilteredParams) ([]*User, error)
 	ListUsersByTenantPageFiltered(ctx context.Context, arg ListUsersByTenantPageFilteredParams) ([]*User, error)
+	// unique の属性の集合を変える保存は排他の固定を取り、交差する User の保存を待たせる。
+	LockUniqueAttributeValuesExclusive(ctx context.Context, tenantID string) error
+	// User の保存は共有の固定を取り、unique の属性の集合を変えるスキーマの保存と交差しない。
+	LockUniqueAttributeValuesShared(ctx context.Context, tenantID string) error
 	MarkEmailChangeTokenUsed(ctx context.Context, arg MarkEmailChangeTokenUsedParams) (*MarkEmailChangeTokenUsedRow, error)
 	SaveTenantUserAttributeSchema(ctx context.Context, arg SaveTenantUserAttributeSchemaParams) error
 	SaveUser(ctx context.Context, arg SaveUserParams) error

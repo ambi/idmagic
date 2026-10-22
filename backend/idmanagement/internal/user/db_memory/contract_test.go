@@ -28,7 +28,7 @@ func testingContractUser(_ *testing.T, tenantID, username string, now time.Time)
 
 func newContractFixture(t *testing.T) testing_contract.Fixture {
 	t.Helper()
-	users := NewUserRepository()
+	users, schemas := NewUserStore()
 	history := authentication.NewMemoryModule(nil).PasswordHistoryRepo
 	quota := tenancy.NewMemoryModule().QuotaRepo
 	audit := auditmemory.NewAuditEventStore(10)
@@ -41,7 +41,7 @@ func newContractFixture(t *testing.T) testing_contract.Fixture {
 	return testing_contract.Fixture{
 		Users:       users,
 		EmailTokens: NewEmailChangeTokenStore(users),
-		Schemas:     NewTenantUserAttributeSchemaRepository(),
+		Schemas:     schemas,
 		ImportRows: UserImportRowCommitter{
 			Users: users, PasswordHistory: history, Quota: quota, Audit: audit,
 		},

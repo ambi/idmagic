@@ -133,3 +133,14 @@ ON CONFLICT (id) DO UPDATE SET preferred_username=EXCLUDED.preferred_username,
  family_name=EXCLUDED.family_name,email=EXCLUDED.email,email_verified=EXCLUDED.email_verified,
  mfa_enrolled=EXCLUDED.mfa_enrolled,roles=EXCLUDED.roles,lifecycle=EXCLUDED.lifecycle,
  attributes=EXCLUDED.attributes,updated_at=EXCLUDED.updated_at;
+
+-- name: LockUniqueAttributeValuesShared :exec
+-- User の保存は共有の固定を取り、unique の属性の集合を変えるスキーマの保存と交差しない。
+SELECT pg_advisory_xact_lock_shared(hashtextextended('user_unique_attribute_values:' || sqlc.arg(tenant_id)::text, 0));
+
+-- name: DeleteUserUniqueAttributeValues :exec
+DELETE FROM user_unique_attribute_values WHERE user_id = $1;
+
+-- name: InsertUserUniqueAttributeValue :exec
+INSERT INTO user_unique_attribute_values (tenant_id, attribute_key, value, user_id)
+VALUES ($1, $2, $3, $4);

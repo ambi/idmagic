@@ -46,6 +46,7 @@
 | `type` | `string`、`number`、`boolean`、`date`、`string_array` のいずれか |
 | `required` | 値を必須とするか |
 | `editable_by_user` | 本人のセルフサービスで変更できるか |
+| `unique` | 同じテナントの削除されていないほかの User と同じ値を持てないか。設定できるのは、単一の値の `string` の属性だけである。値は保存した文字列の完全一致で比べる |
 | `visibility` | `private`、`self_readable`、`admin_readable`、`claim_exposed` のいずれか。relying party へ開示するのは `claim_exposed` だけである |
 | `claim_name`、`oidc_scope` | `visibility` が `claim_exposed` のときに使うクレーム名とスコープ |
 | `pii` | 個人情報か。デフォルトは `true` であり、保存と監査では平文ではなく SHA-256 の要約を記録する |
@@ -97,6 +98,7 @@
 
 - IdManagement は、同じテナントの削除されていない User と[名前](../data.md#値オブジェクト)が同じユーザー名の User を作らない。
 - IdManagement は、同じテナントの削除されていない User と[メールアドレス](../data.md#値オブジェクト)が同じメールアドレスの User を作らない。
+- IdManagement は、作成と更新の経路によらず、同じテナントの削除されていないほかの User と `unique` の属性の値が同じ User を保存しない。
 - 管理者による作成、CSV の適用、フェデレーションの JIT が User を作ったとき、IdManagement は、作った User を有効な動的グループの規則で評価し、一致した Group に所属させる。
 - テナントの User のリソース上限に達している場合、IdManagement は、User を作らずに拒否し、使用量を変えない。
 - テナントの属性スキーマに違反する属性を指定された場合、IdManagement は、User を作らずに拒否する。
@@ -177,6 +179,7 @@
 - 管理者が User のユーザー名を大文字と小文字だけが異なる表記へ変えたとき、IdManagement は、その表記で保存する。
 - 同じテナントの削除されていないほかの User と[名前](../data.md#値オブジェクト)が同じユーザー名へ変える更新を要求された場合、IdManagement は、409 と `username_conflict` で拒否し、User を変えない。
 - 同じテナントの削除されていないほかの User と[メールアドレス](../data.md#値オブジェクト)が同じメールアドレスへ変える更新を要求された場合、IdManagement は、409 と `email_taken` で拒否し、User を変えない。
+- 同じテナントの削除されていないほかの User と同じ値へ `unique` の属性を変える更新を要求された場合、IdManagement は、409 と `attribute_value_conflict` で拒否し、User を変えない。
 
 ### 必須操作の付与と解除
 

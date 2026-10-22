@@ -26,10 +26,22 @@ type UserRepository struct {
 	mu     sync.RWMutex
 	bySub  map[string]*userdomain.User
 	byUser map[string]*userdomain.User
+	// schemas は、保存のたびに一意に保つ unique の属性を決める。nil なら一意性を守らない。
+	schemas *TenantUserAttributeSchemaRepository
 }
 
 func NewUserRepository() *UserRepository {
 	return &UserRepository{bySub: map[string]*userdomain.User{}, byUser: map[string]*userdomain.User{}}
+}
+
+// NewUserStore は、属性スキーマの unique の属性の値を、User の保存とスキーマの保存の両方で
+// 一意に保つ User とスキーマの保存先を返す。PostgreSQL の一意性の表と同じ結果になる。
+func NewUserStore() (*UserRepository, *TenantUserAttributeSchemaRepository) {
+	users := NewUserRepository()
+	schemas := NewTenantUserAttributeSchemaRepository()
+	users.schemas = schemas
+	schemas.users = users
+	return users, schemas
 }
 
 func (r *UserRepository) Seed(u *userdomain.User) {
@@ -39,14 +51,14 @@ func (r *UserRepository) Seed(u *userdomain.User) {
 // Save は PostgreSQL の SaveUser と同じ結果を保存する。保存するのは引数の複製であり、
 // 時刻の列は TIMESTAMPTZ と同じマイクロ秒に切り捨て、保存し直しでは作成時刻と所属テナントを
 // 最初の値のまま保つ。
-func (r *UserRepository) Save(_ context.Context, u *userdomain.User) error {
+func (r *UserRepository) Save(ctx context.Context, u *userdomain.User) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.saveLocked(u)
+	return r.saveLocked(ctx, u)
 }
 
 // Update は PostgreSQL の FOR UPDATE と同じく、読み直しから保存までを一つのロックの中で行う。
-func (r *UserRepository) Update(_ context.Context, sub string, change userports.UserChange) (*userdomain.User, error) {
+func (r *UserRepository) Update(ctx context.Context, sub string, change userports.UserChange) (*userdomain.User, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	current := r.bySub[sub]
@@ -61,14 +73,14 @@ func (r *UserRepository) Update(_ context.Context, sub string, change userports.
 	if !changed {
 		return user, nil
 	}
-	if err := r.saveLocked(user); err != nil {
+	if err := r.saveLocked(ctx, user); err != nil {
 		return nil, err
 	}
 	return cloneUser(r.bySub[sub]), nil
 }
 
 // saveLocked は r.mu を持った状態で u の複製を保存する。
-func (r *UserRepository) saveLocked(u *userdomain.User) error {
+func (r *UserRepository) saveLocked(ctx context.Context, u *userdomain.User) error {
 	sharedmem.DefaultScope(&u.TenantID, kernel.DefaultTenantID)
 	stored := cloneUser(u)
 	stored.CreatedAt = stored.CreatedAt.Truncate(time.Microsecond)
@@ -86,6 +98,9 @@ func (r *UserRepository) saveLocked(u *userdomain.User) error {
 	if !nameIsFree && !stored.IsDeleted() {
 		return errPreferredUsernameExists
 	}
+	if err := r.checkUniqueLocked(ctx, stored); err != nil {
+		return err
+	}
 	if existing != nil {
 		if previousKey := userNameKey(existing); previousKey != usernameKey && r.byUser[previousKey] == existing {
 			delete(r.byUser, previousKey)
@@ -94,6 +109,52 @@ func (r *UserRepository) saveLocked(u *userdomain.User) error {
 	r.bySub[stored.ID] = stored
 	if nameIsFree {
 		r.byUser[usernameKey] = stored
+	}
+	return nil
+}
+
+// checkUniqueLocked は r.mu を持った状態で、u の unique の属性の値を、同じテナントのほかの
+// 削除されていない User が持っていないことを確かめる。
+func (r *UserRepository) checkUniqueLocked(ctx context.Context, u *userdomain.User) error {
+	if r.schemas == nil {
+		return nil
+	}
+	schema, err := r.schemas.FindByTenant(ctx, u.TenantID)
+	if err != nil || schema == nil {
+		return err
+	}
+	return r.firstSharedLocked(u.TenantID, schema.UniqueKeys(), u, func(key string) error {
+		return &userports.UniqueAttributeConflictError{Key: key}
+	})
+}
+
+// firstSharedLocked は、keys の順に、テナントの User の間で値が重なる最初の属性を conflict で返す。
+// candidate が nil でなければ、candidate の値とほかの User の値を比べる。nil なら User どうしを比べる。
+func (r *UserRepository) firstSharedLocked(tenantID string, keys []string, candidate *userdomain.User, conflict func(string) error) error {
+	for _, key := range keys {
+		holders := map[string]string{}
+		if candidate != nil {
+			value, ok := candidate.UniqueAttributeValues([]string{key})[key]
+			if !ok {
+				continue
+			}
+			holders[value] = candidate.ID
+		}
+		for _, other := range r.bySub {
+			if other.TenantID != tenantID || (candidate != nil && other.ID == candidate.ID) {
+				continue
+			}
+			value, ok := other.UniqueAttributeValues([]string{key})[key]
+			if !ok {
+				continue
+			}
+			if holder, taken := holders[value]; taken && holder != other.ID {
+				return conflict(key)
+			}
+			if candidate == nil {
+				holders[value] = other.ID
+			}
+		}
 	}
 	return nil
 }

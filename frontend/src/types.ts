@@ -1038,6 +1038,7 @@ export type UserAttributeDef = {
   multi_valued: boolean
   required: boolean
   editable_by_user: boolean
+  unique?: boolean
   claim_name?: string
   oidc_scope?: string
   visibility: AttrVisibility

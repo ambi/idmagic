@@ -96,6 +96,9 @@ model UsernameConflictError is ProblemDetails;
 @doc("求めた `email` は、テナントの削除されていない別の User がすでに使っている。アドレスは前後の空白を除き Unicode の大文字と小文字の畳み込みをしてから比べる。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:email_taken` である。")
 model EmailTakenError is ProblemDetails;
 
+@doc("`unique` と定義した属性に求めた値は、テナントの削除されていない別の User がすでに持っている。値は保存した文字列の完全一致で比べる。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:attribute_value_conflict` である。")
+model AttributeValueConflictError is ProblemDetails;
+
 @doc("メールアドレス変更の確認トークンが、存在しない、期限切れ、使用済み、または別の用途のものである。HTTP 410 の Problem Details として返し、`type` は `urn:idmagic:error:invalid_email_change_token` である。")
 model InvalidEmailChangeTokenError is ProblemDetails;
 

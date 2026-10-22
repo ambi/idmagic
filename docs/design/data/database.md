@@ -71,6 +71,8 @@ erDiagram
     }
     email_change_tokens {
     }
+    user_unique_attribute_values {
+    }
     tenants ||--|| tenant_quotas : 上限を持つ
     tenants ||--|| tenant_usages : 使用量を持つ
     tenants ||--|| tenant_brandings : 外観を持つ
@@ -93,6 +95,7 @@ erDiagram
     users ||--o{ password_reset_tokens : 再設定する
     users ||--o{ authentication_sessions : サインインする
     users ||--o{ email_change_tokens : メールを変更する
+    users ||--o{ user_unique_attribute_values : 一意の値を持つ
 ```
 
 | テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
@@ -117,6 +120,7 @@ erDiagram
 | `password_reset_tokens` | パスワードの再設定と初期設定のリンクに埋める使い捨てトークンのハッシュ | Authentication | `LOGGED` | なし |
 | `authentication_sessions` | サインイン済みのブラウザーセッション。認証時刻、認証方式、MFA の登録待ちと段階的な認証の状態を記録する | Authentication | `LOGGED` | 非キーカラム |
 | `email_change_tokens` | メールアドレス変更の確認リンクに埋める使い捨てトークンのハッシュ | IdManagement | `LOGGED` | なし |
+| `user_unique_attribute_values` | 属性スキーマで `unique` と定義した属性の、削除されていない User の値。User の保存と同じトランザクションで書き、主キーが値の重なりを拒否する | IdManagement | `LOGGED` | 複合主キーの一部 |
 
 ### フェデレーション、グループ、監査、エージェント
 

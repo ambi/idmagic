@@ -43,7 +43,11 @@ export function AdminTenantAttributesPage({
       setNotice(success)
       return true
     } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : t.saveFailedError)
+      if (cause instanceof AuthenticationAPIError && cause.code === 'attribute_values_not_unique') {
+        setError(t.valuesNotUniqueError)
+      } else {
+        setError(cause instanceof AuthenticationAPIError ? cause.message : t.saveFailedError)
+      }
       return false
     } finally {
       setSaving(false)

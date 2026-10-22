@@ -47,6 +47,7 @@ CSV は二つ目のプロビジョニングの権威ではなく、IdManagement 
 - `queued` または `failed` のプレビューのジョブを指定した適用を要求された場合、IdManagement は、409 と `preview_not_ready` で拒否し、User を変えない。
 - 保存したペイロードとダイジェストが一致しないプレビューのジョブを指定した適用を要求された場合、IdManagement は、409 と `preview_digest_mismatch` で拒否し、User を変えない。
 - 外部の取り込み元が管理する User の行を読んだ場合、IdManagement は、`source_managed` で `rejected` とし、User を変えない。
+- 適用で、同じテナントの削除されていないほかの User と同じ値を `unique` の属性に保存する行を読んだ場合、IdManagement は、その行を `attribute_value_conflict` で `rejected` とし、その行の User を変えない。
 - **上位の要件**：[REQ-IDMANAGEMENT-089](user.md#作成の経路に共通する規則)
 - **判断**：適用をプレビューのペイロードに束縛する理由は、[CSV の適用をプレビューで保存したペイロードに束縛する](../decisions.md#csv-の適用をプレビューで保存したペイロードに束縛する)。
 - **判断**：変更なしの行も評価するのは、評価に失敗した適用を、同じ CSV の再適用で回収できるようにするためである。再適用では確定済みの行が変更なしになる。

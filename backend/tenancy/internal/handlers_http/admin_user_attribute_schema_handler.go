@@ -9,6 +9,7 @@ import (
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -98,6 +99,9 @@ func (d Deps) handleUpdateUserAttributeSchema(c *echo.Context) error {
 	if err != nil {
 		if errors.Is(err, tenantusecases.ErrInvalidUserAttributeSchema) {
 			return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_attribute_schema", "The attribute definition is invalid.")
+		}
+		if errors.Is(err, tenantports.ErrAttributeValuesNotUnique) {
+			return support.WriteProblem(c, http.StatusConflict, "attribute_values_not_unique", "Users share a value of an attribute that would become unique.")
 		}
 		return err
 	}

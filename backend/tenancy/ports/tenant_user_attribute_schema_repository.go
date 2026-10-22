@@ -2,9 +2,14 @@ package ports
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
+
+// ErrAttributeValuesNotUnique は、unique に変えようとした属性の値を、テナントの削除されていない
+// 二人以上の User が持つので、Save がスキーマを変えなかったことを表す。
+var ErrAttributeValuesNotUnique = errors.New("attribute values are not unique")
 
 // TenantUserAttributeSchemaRepository は tenant ごとの custom attribute 定義集合
 // を保持する。tenant aggregate には埋め込まず独立 aggregate として

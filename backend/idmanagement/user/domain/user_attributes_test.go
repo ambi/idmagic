@@ -244,3 +244,41 @@ func TestBuiltinUserAttributeDefsHaveLabels(t *testing.T) {
 		}
 	}
 }
+
+//spec:covers REQ-TENANCY-002: unique を付けられるのは単一の値の string の属性だけで、ほかの型と複数の値の属性の unique は定義の形式に反すること。
+func TestUserAttributeDefAllowsUniqueOnlyOnASingleValuedString(t *testing.T) {
+	for _, tc := range []struct {
+		def  userdomain.UserAttributeDef
+		want bool
+	}{
+		{userdomain.UserAttributeDef{Key: "badge", Type: idmdomain.AttributeTypeString, Unique: true, Visibility: idmdomain.AttrVisibilityAdminReadable}, true},
+		{userdomain.UserAttributeDef{Key: "badge", Type: idmdomain.AttributeTypeNumber, Unique: true, Visibility: idmdomain.AttrVisibilityAdminReadable}, false},
+		{userdomain.UserAttributeDef{Key: "badge", Type: idmdomain.AttributeTypeStringArray, MultiValued: true, Unique: true, Visibility: idmdomain.AttrVisibilityAdminReadable}, false},
+		{userdomain.UserAttributeDef{Key: "badge", Type: idmdomain.AttributeTypeString, MultiValued: true, Unique: true, Visibility: idmdomain.AttrVisibilityAdminReadable}, false},
+		{userdomain.UserAttributeDef{Key: "badge", Type: idmdomain.AttributeTypeNumber, Visibility: idmdomain.AttrVisibilityAdminReadable}, true},
+	} {
+		if err := tc.def.Validate(); (err == nil) != tc.want {
+			t.Errorf("Validate(%+v) = %v, want valid=%v", tc.def, err, tc.want)
+		}
+	}
+}
+
+func TestUniqueAttributeValuesKeepOnlyNonEmptyStringsOfALiveUser(t *testing.T) {
+	text := func(v string) userdomain.AttributeValue {
+		return userdomain.AttributeValue{Type: idmdomain.AttributeTypeString, String: &v}
+	}
+	number := 7.0
+	u := validUser()
+	u.Attributes = map[string]userdomain.AttributeValue{
+		"badge": text("B-1"), "blank": text(""), "count": {Type: idmdomain.AttributeTypeNumber, Number: &number},
+		"ignored": text("not asked"),
+	}
+	got := u.UniqueAttributeValues([]string{"badge", "blank", "count", "missing"})
+	if len(got) != 1 || got["badge"] != "B-1" {
+		t.Fatalf("UniqueAttributeValues = %v, want only badge", got)
+	}
+	u.Lifecycle.Status = idmdomain.UserStatusDeleted
+	if got := u.UniqueAttributeValues([]string{"badge"}); len(got) != 0 {
+		t.Fatalf("a deleted user kept values %v", got)
+	}
+}

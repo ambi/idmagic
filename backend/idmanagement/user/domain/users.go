@@ -244,16 +244,19 @@ func (v AttributeValue) JSONValue() any {
 // UserAttributeDef は属性 1 件の定義。組み込みカタログ
 // (BuiltinUserAttributeDefs) と tenant 定義 (TenantUserAttributeSchema) の両方で使う。
 type UserAttributeDef struct {
-	Key            string                   `json:"key"`
-	Label          string                   `json:"label,omitempty"` // 利用者向けの日本語表示名 (任意)
-	Type           idmdomain.AttributeType  `json:"type"`
-	MultiValued    bool                     `json:"multi_valued"`
-	Required       bool                     `json:"required"`
-	EditableByUser bool                     `json:"editable_by_user"`
-	ClaimName      *string                  `json:"claim_name,omitempty"` // OIDC claim 名 (露出時)
-	OIDCScope      *string                  `json:"oidc_scope,omitempty"` // 露出を解禁する OIDC scope
-	Visibility     idmdomain.AttrVisibility `json:"visibility"`
-	PII            bool                     `json:"pii"` // 省略時は PII 扱い (hash 化) が安全側 default
+	Key            string                  `json:"key"`
+	Label          string                  `json:"label,omitempty"` // 利用者向けの日本語表示名 (任意)
+	Type           idmdomain.AttributeType `json:"type"`
+	MultiValued    bool                    `json:"multi_valued"`
+	Required       bool                    `json:"required"`
+	EditableByUser bool                    `json:"editable_by_user"`
+	// Unique は、同じテナントの削除されていないほかの User と同じ値を持てないことを表す。
+	// 単一の値の string の属性だけに付けられ、保存した文字列の完全一致で比べる。
+	Unique     bool                     `json:"unique"`
+	ClaimName  *string                  `json:"claim_name,omitempty"` // OIDC claim 名 (露出時)
+	OIDCScope  *string                  `json:"oidc_scope,omitempty"` // 露出を解禁する OIDC scope
+	Visibility idmdomain.AttrVisibility `json:"visibility"`
+	PII        bool                     `json:"pii"` // 省略時は PII 扱い (hash 化) が安全側 default
 }
 
 var userAttributeDefSchema = z.Struct(z.Shape{
@@ -278,7 +281,30 @@ var userAttributeDefSchema = z.Struct(z.Shape{
 	).Required(),
 })
 
-func (d UserAttributeDef) Validate() error { return spec.Validate(userAttributeDefSchema, &d) }
+func (d UserAttributeDef) Validate() error {
+	if err := spec.Validate(userAttributeDefSchema, &d); err != nil {
+		return err
+	}
+	if d.Unique && (d.Type != idmdomain.AttributeTypeString || d.MultiValued) {
+		return fmt.Errorf("attribute %q: unique requires a single-valued string attribute", d.Key)
+	}
+	return nil
+}
+
+// UniqueAttributeValues は、keys の属性のうち、User が空でない文字列の値を持つものを返す。
+// 削除した User は値を持たないものとして扱い、その値をほかの User に譲る。
+func (u User) UniqueAttributeValues(keys []string) map[string]string {
+	if u.IsDeleted() {
+		return nil
+	}
+	values := map[string]string{}
+	for _, key := range keys {
+		if v, ok := u.Attributes[key]; ok && v.Type == idmdomain.AttributeTypeString && v.String != nil && *v.String != "" {
+			values[key] = *v.String
+		}
+	}
+	return values
+}
 
 // TenantUserAttributeSchema は tenant 単位の custom 属性定義集合。
 // 組み込み属性は BuiltinUserAttributeDefs() がコードで持ち、本集合は tenant 固有分のみ。
@@ -309,6 +335,17 @@ func (s TenantUserAttributeSchema) Validate() error {
 		seen[d.Key] = true
 	}
 	return nil
+}
+
+// UniqueKeys は、unique と定義した属性のキーを返す。
+func (s TenantUserAttributeSchema) UniqueKeys() []string {
+	var keys []string
+	for _, d := range s.Attributes {
+		if d.Unique {
+			keys = append(keys, d.Key)
+		}
+	}
+	return keys
 }
 
 // EffectiveDefs は組み込み属性 + tenant custom 属性を結合した実効定義を返す。

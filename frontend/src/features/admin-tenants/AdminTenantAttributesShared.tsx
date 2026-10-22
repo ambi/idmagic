@@ -38,6 +38,7 @@ export function newAttribute(): UserAttributeDef {
     multi_valued: false,
     required: false,
     editable_by_user: false,
+    unique: false,
     visibility: 'admin_readable',
     pii: true,
   }
@@ -49,6 +50,8 @@ export function normalizeAttribute(draft: UserAttributeDef): UserAttributeDef {
     key: draft.key.trim(),
     label: draft.label?.trim() || undefined,
     multi_valued: draft.type === 'string_array',
+    // 一意にできるのは単一の値の文字列だけなので、ほかの型へ変えたら外す。
+    unique: draft.type === 'string' && Boolean(draft.unique),
     claim_name: draft.claim_name?.trim() || undefined,
     oidc_scope: draft.oidc_scope?.trim() || undefined,
   }
@@ -186,6 +189,14 @@ export function AttributeFormFields({
           checked={draft.editable_by_user}
           onChange={(checked) => onChange({ editable_by_user: checked })}
         />
+        {draft.type === 'string' ? (
+          <Toggle
+            id="attr-unique"
+            label={t.uniqueToggle}
+            checked={Boolean(draft.unique)}
+            onChange={(checked) => onChange({ unique: checked })}
+          />
+        ) : null}
         <Toggle
           id="attr-pii"
           label={t.piiToggle}

@@ -211,3 +211,37 @@ func containsRequiredAction(actions []idmdomain.RequiredAction, want idmdomain.R
 func importDynamicGroups(repo *usermemory.UserRepository) groupusecases.DynamicGroupDeps {
 	return groupusecases.DynamicGroupDeps{GroupRepo: groupmemory.NewGroupRepository(), UserRepo: repo}
 }
+
+// conflictingRowCommitter は、指定したユーザー名の行の確定を unique の属性の重なりで失敗させる。
+type conflictingRowCommitter struct{ username string }
+
+func (c conflictingRowCommitter) CommitUserImportRow(_ context.Context, mutation userports.UserImportRowMutation) error {
+	if mutation.After.PreferredUsername == c.username {
+		return &userports.UniqueAttributeConflictError{Key: "department"}
+	}
+	return nil
+}
+
+//spec:covers REQ-IDMANAGEMENT-004: 適用で unique の属性にほかの User の値を保存する行を、attribute_value_conflict で rejected にし、ほかの行の適用を続けること。
+func TestApplyUserImportRejectsARowWhoseUniqueValueIsTaken(t *testing.T) {
+	repo := usermemory.NewUserRepository()
+	repo.Seed(importPlannerUser("user-alice", "alice"))
+	repo.Seed(importPlannerUser("user-bob", "bob"))
+	deps := UserImportApplyDeps{
+		Plan:           importPlannerDeps(repo, perUserImportOwnershipGuard{}),
+		Committer:      conflictingRowCommitter{username: "bob"},
+		PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
+	}
+	csv := "id,attr:department\nuser-alice,Engineering\nuser-bob,Engineering\n"
+
+	summary, rows, err := applyUserImportForTest(importPlannerContext(), deps, csv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.UpdatedRows != 1 || summary.RejectedRows != 1 || len(rows) != 2 {
+		t.Fatalf("summary=%+v rows=%+v", summary, rows)
+	}
+	if rows[1].Error == nil || rows[1].Error.Code != "attribute_value_conflict" {
+		t.Fatalf("conflicting row=%+v, want attribute_value_conflict", rows[1])
+	}
+}

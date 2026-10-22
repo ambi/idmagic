@@ -204,6 +204,21 @@ CREATE INDEX users_search_text_trgm_idx
     ON users USING gin (search_text gin_trgm_ops)
     WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
 
+-- 属性スキーマで unique と定義した属性の、削除されていない User の値。User の保存と同じ
+-- トランザクションで書き、主キーが同じテナントの同じ属性の値の重なりを拒否する。
+CREATE TABLE user_unique_attribute_values (
+    tenant_id UUID NOT NULL,
+    attribute_key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    user_id UUID NOT NULL,
+    CONSTRAINT user_unique_attribute_values_pkey PRIMARY KEY (tenant_id, attribute_key, value),
+    CONSTRAINT user_unique_attribute_values_user_fkey
+        FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE
+);
+
+CREATE INDEX user_unique_attribute_values_user_idx
+    ON user_unique_attribute_values (user_id);
+
 CREATE TABLE mfa_factors (
     user_id UUID NOT NULL,
     type TEXT NOT NULL,

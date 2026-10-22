@@ -41,7 +41,7 @@ import (
 // NewMemoryModule は IdManagement が所有する保存先をメモリで作る。User の CSV の取り込みの確定は
 // ほかのモジュールの保存先も使うので、WithMemoryUserImport で設定する。
 func NewMemoryModule() Module {
-	users := usermemory.NewUserRepository()
+	users, userSchemas := usermemory.NewUserStore()
 	groups := groupmemory.NewGroupRepository()
 	return Module{
 		UserRepo:              users,
@@ -53,7 +53,7 @@ func NewMemoryModule() Module {
 			return groupmemory.NewGroupImportRowCommitter(groups)
 		},
 		GroupMembershipImportCommitter: groupmemory.NewGroupMembershipImportRowCommitter(groups),
-		AttrSchemaRepo:                 usermemory.NewTenantUserAttributeSchemaRepository(),
+		AttrSchemaRepo:                 userSchemas,
 		GroupAttrSchemaRepo:            groupmemory.NewTenantGroupAttributeSchemaRepository(),
 	}
 }

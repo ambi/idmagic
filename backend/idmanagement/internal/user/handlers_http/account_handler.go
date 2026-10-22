@@ -10,6 +10,7 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/internal/user/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -163,6 +164,9 @@ func writeAccountError(d Deps, c *echo.Context, err error) error {
 		// 同じ違反を UpdateAdminUser も 422 で返す。
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_attribute", "The attribute does not conform to the schema.")
 	default:
+		if _, ok := errors.AsType[*userports.UniqueAttributeConflictError](err); ok {
+			return writeAttributeValueConflict(c)
+		}
 		return err
 	}
 }

@@ -48,7 +48,10 @@ func ApplyUserImport(
 			if err == nil {
 				err = deps.Committer.CommitUserImportRow(ctx, mutation)
 			}
-			if err != nil {
+			if conflict, ok := errors.AsType[*userports.UniqueAttributeConflictError](err); ok {
+				final = rejectedUserImportRow(row.Row, "custom:"+conflict.Key, "attribute_value_conflict")
+				evaluated = nil
+			} else if err != nil {
 				final = rejectedUserImportRow(row.Row, "", "apply_failed")
 				evaluated = nil
 			} else {

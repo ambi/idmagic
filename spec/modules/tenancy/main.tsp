@@ -481,6 +481,7 @@ model UpdateTenantUserAttributeSchemaError422 {
 
 union UpdateTenantUserAttributeSchemaError409Body {
   IdMagic.Contract.AttributeReferencedByDynamicGroupError,
+  IdMagic.Contract.AttributeValuesNotUniqueError,
 }
 
 model UpdateTenantUserAttributeSchemaError409 {

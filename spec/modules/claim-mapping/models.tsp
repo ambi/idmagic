@@ -25,6 +25,8 @@ model UserAttributeDef {
   required: boolean = false;
   @doc("ユーザーが自身のセルフサービスのプロフィールからこの属性を編集できるかどうか。")
   editable_by_user: boolean = false;
+  @doc("同じテナントの削除されていないほかの User と同じ値を持てないかどうか。true にできるのは、`multi_valued` でない `string` の属性だけである。値は保存した文字列の完全一致で比べる。")
+  unique: boolean = false;
   @doc("属性をクレームとして発行するときのクレーム名。省略するとキーそのものをクレーム名にする。")
   @minLength(1)
   @maxLength(100)

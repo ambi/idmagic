@@ -3,6 +3,8 @@ package tenancydeps
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
@@ -37,7 +39,11 @@ func (r userAttributeSchemas) FindByTenant(ctx context.Context, tenantID string)
 }
 
 func (r userAttributeSchemas) Save(ctx context.Context, schema *tenantdomain.TenantUserAttributeSchema) error {
-	return r.repo.Save(ctx, identityUserSchema(schema))
+	err := r.repo.Save(ctx, identityUserSchema(schema))
+	if notUnique, ok := errors.AsType[*userports.AttributeValuesNotUniqueError](err); ok {
+		return fmt.Errorf("%w: %s", tenantports.ErrAttributeValuesNotUnique, notUnique.Key)
+	}
+	return err
 }
 
 func (r userAttributeSchemas) Delete(ctx context.Context, tenantID string) error {
@@ -60,6 +66,7 @@ func identityUserSchema(schema *tenantdomain.TenantUserAttributeSchema) *userdom
 			definitions[i] = userdomain.UserAttributeDef{
 				Key: def.Key, Label: def.Label, Type: idmdomain.AttributeType(def.Type),
 				MultiValued: def.MultiValued, Required: def.Required, EditableByUser: def.EditableByUser,
+				Unique:    def.Unique,
 				ClaimName: cloneString(def.ClaimName), OIDCScope: cloneString(def.OIDCScope),
 				Visibility: idmdomain.AttrVisibility(def.Visibility), PII: def.PII,
 			}
@@ -80,6 +87,7 @@ func userDefinitions(definitions []userdomain.UserAttributeDef) []tenantdomain.U
 		converted[i] = tenantdomain.UserAttributeDef{
 			Key: def.Key, Label: def.Label, Type: string(def.Type),
 			MultiValued: def.MultiValued, Required: def.Required, EditableByUser: def.EditableByUser,
+			Unique:    def.Unique,
 			ClaimName: cloneString(def.ClaimName), OIDCScope: cloneString(def.OIDCScope),
 			Visibility: string(def.Visibility), PII: def.PII,
 		}

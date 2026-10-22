@@ -44,6 +44,15 @@ func (q *Queries) CountUsersByTenantFiltered(ctx context.Context, arg CountUsers
 	return count, err
 }
 
+const deleteUserUniqueAttributeValues = `-- name: DeleteUserUniqueAttributeValues :exec
+DELETE FROM user_unique_attribute_values WHERE user_id = $1
+`
+
+func (q *Queries) DeleteUserUniqueAttributeValues(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, deleteUserUniqueAttributeValues, userID)
+	return err
+}
+
 const findUserByEmail = `-- name: FindUserByEmail :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text,preferred_username_key,email_key FROM users
@@ -215,6 +224,28 @@ func (q *Queries) FindUserByUsername(ctx context.Context, arg FindUserByUsername
 		&i.EmailKey,
 	)
 	return &i, err
+}
+
+const insertUserUniqueAttributeValue = `-- name: InsertUserUniqueAttributeValue :exec
+INSERT INTO user_unique_attribute_values (tenant_id, attribute_key, value, user_id)
+VALUES ($1, $2, $3, $4)
+`
+
+type InsertUserUniqueAttributeValueParams struct {
+	TenantID     string
+	AttributeKey string
+	Value        string
+	UserID       string
+}
+
+func (q *Queries) InsertUserUniqueAttributeValue(ctx context.Context, arg InsertUserUniqueAttributeValueParams) error {
+	_, err := q.db.Exec(ctx, insertUserUniqueAttributeValue,
+		arg.TenantID,
+		arg.AttributeKey,
+		arg.Value,
+		arg.UserID,
+	)
+	return err
 }
 
 const listUserPurgeCandidates = `-- name: ListUserPurgeCandidates :many
@@ -792,6 +823,16 @@ func (q *Queries) ListUsersByTenantPageFiltered(ctx context.Context, arg ListUse
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockUniqueAttributeValuesShared = `-- name: LockUniqueAttributeValuesShared :exec
+SELECT pg_advisory_xact_lock_shared(hashtextextended('user_unique_attribute_values:' || $1::text, 0))
+`
+
+// User の保存は共有の固定を取り、unique の属性の集合を変えるスキーマの保存と交差しない。
+func (q *Queries) LockUniqueAttributeValuesShared(ctx context.Context, tenantID string) error {
+	_, err := q.db.Exec(ctx, lockUniqueAttributeValuesShared, tenantID)
+	return err
 }
 
 const saveUser = `-- name: SaveUser :exec
