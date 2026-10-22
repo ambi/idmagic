@@ -35,7 +35,7 @@
 - ログインセッションがないか、認証が完了していないか、User が `Active` でない間、`wsignin1.0` を受けたとき、WsFederation は、トークンを発行せず、元の要求を `return_to` に持つログイン画面へ 303 でリダイレクトする。
 - `wfresh` の分数（30 秒未満は 30 秒とする）より前に認証したログインセッションの間、`wsignin1.0` を受けたとき、WsFederation は、トークンを発行せず、元の要求を `return_to` に持つログイン画面へ 303 でリダイレクトする。
 - 統合 Windows 認証の `wauth` を指定されたか、パスワードの `wauth` を指定されたのにログインセッションがパスワードで認証していない場合、WsFederation は、400 で拒否し、`WsFedSignInRejected` を発行し、トークンを発行しない。
-- クレームを発行できないか、Entra の定型設定の ImmutableID を導けないか、利用者の UPN のドメインが Entra の定型設定のどのドメインにも属さない場合、WsFederation は、500 で拒否し、`WsFedSignInRejected` を発行し、トークンを発行しない。
+- クレームを発行できないか、Entra の定型設定の sourceAnchor の属性が `unique` でないか `editable_by_user` であるか、利用者の sourceAnchor の値が ImmutableID として使えないか、利用者の UPN のドメインが Entra の定型設定のどのドメインにも属さない場合、WsFederation は、500 で拒否し、`WsFedSignInRejected` を発行し、トークンを発行しない。
 - **例**：EX-WSFEDERATION-002-01、EX-WSFEDERATION-002-02、EX-WSFEDERATION-002-03
 
 #### REQ-WSFEDERATION-003 信頼していない宛先へのパッシブサインインは拒否する

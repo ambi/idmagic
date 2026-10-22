@@ -235,6 +235,7 @@ describe('core api utils', () => {
         name: 'AuthenticationAPIError',
         message: 'The import result could not be loaded.',
         code: 'internal_server_error',
+        body: expect.objectContaining({ type: 'urn:idmagic:error:internal_server_error' }),
       })
     })
 

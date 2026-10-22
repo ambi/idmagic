@@ -19,20 +19,24 @@ Entra はどのドメインの要求でも、自身の識別子 `urn:federation:
 | 要素 | 内容 |
 | --- | --- |
 | ドメインの組 | 検証済みのドメインと、そのドメインの IssuerUri。IssuerUri はドメインの間で重ならない |
-| sourceAnchor の属性 | 定型設定に一つ。すべてのドメインの利用者の ImmutableID をこの属性から導く |
+| sourceAnchor の属性 | 定型設定に一つ。属性スキーマで `unique` で、`editable_by_user` でない属性に限る。すべてのドメインの利用者の ImmutableID は、この属性の値そのものである |
 | エンドポイント | 受動、能動、MEX の各エンドポイント |
 
 | 必須のクレーム | 発行のしかた |
 | --- | --- |
 | UPN | `preferred_username` から `http://schemas.xmlsoap.org/claims/UPN` として発行する |
-| ImmutableID | 正規化した sourceAnchor（`entra_immutable_id`）から導き、永続的な NameID、`http://schemas.xmlsoap.org/claims/nameidentifier`、`http://schemas.microsoft.com/LiveID/Federation/2008/05/ImmutableID` に含める |
+| ImmutableID | sourceAnchor の属性の値を変えずに（`entra_immutable_id`）、永続的な NameID、`http://schemas.xmlsoap.org/claims/nameidentifier`、`http://schemas.microsoft.com/LiveID/Federation/2008/05/ImmutableID` に含める |
 
 Assertion の発行者は、利用者の UPN のドメインに最も長く一致する構成済みのドメインの IssuerUri とする。
 サブドメインの利用者は、Entra が親のドメインの設定を継ぐので、親のドメインの IssuerUri で発行する。
 
 必須のクレームは定型設定で固定し、フェイルクローズで扱う。
 `entra_immutable_id` は、sourceAnchor の属性を公開できるときだけ公開できる。
-sourceAnchor は、設定の時点では既存のユーザーの欠落、重複、変換できない値を拒否し、発行の時点では対象のユーザーの ImmutableID を導けなければクレームの発行を拒否する。
+sourceAnchor の値の重なりは、属性が `unique` なので IdManagement が書き込みの時点で拒否する。
+空の値と `@` を含む値は ImmutableID として使えない。
+設定の時点では、フェデレーションするドメインの利用者の欠けた値と使えない値を拒否し、発行の時点では、属性の定義が守られていないか対象の利用者の値が使えなければクレームの発行を拒否する。
+
+- **判断**：値を変換しないのは、Entra Connect が sourceAnchor を immutableId と同じものとし、文字列でない属性（objectGUID）は同期の側で base64 に符号化し、文字列の属性はそのまま使うからである。値をそのまま使えば、保存した値の一意性が ImmutableID の一意性になり、同じ ImmutableID の別の表記が重なりを逃れることがない。
 
 - **判断**：定型設定にする理由は、[Entra のドメインフェデレーションを専用の定型設定として扱う](../decisions.md#entra-のドメインフェデレーションを専用の定型設定として扱う)。
 
@@ -58,7 +62,12 @@ sourceAnchor は、設定の時点では既存のユーザーの欠落、重複�
 - `wtrealm` を指定しない削除を要求された場合、WsFederation は、400 と `invalid_request` で拒否する。
 - Application に属する RP の削除を要求された場合、WsFederation は、409 と `application_owned_protocol` で拒否し、RP を残す。
 - ドメインがないか URL の形であるか、sourceAnchor の属性がないか、返信先が絶対 URL でない Entra の構成を要求された場合、WsFederation は、400 と `invalid_request` で拒否し、RP を変えない。
-- テナントの既存の User のどれかで sourceAnchor の属性が欠けているか、変換できないか、ほかの User と重複する場合、WsFederation は、Entra の構成を 400 と `invalid_request` で拒否し、RP を変えない。
+- sourceAnchor の属性が属性スキーマで `unique` でない場合、WsFederation は、Entra の構成を 422 と `source_anchor_not_unique` で拒否し、RP を変えない。
+- sourceAnchor の属性が属性スキーマで `editable_by_user` である場合、WsFederation は、Entra の構成を 422 と `source_anchor_editable` で拒否し、RP を変えない。
+- 構成した後の定型設定で UPN がフェデレーションするドメインに属する既存の User のどれかが sourceAnchor の値を持たない場合、WsFederation は、Entra の構成を 422 と `source_anchor_missing` で拒否し、該当する User の数（`user_count`）と先頭の 5 人までのユーザー名（`sample_usernames`）を返し、RP を変えない。
+- 構成した後の定型設定で UPN がフェデレーションするドメインに属する既存の User のどれかが、空か `@` を含む sourceAnchor の値を持つ場合、WsFederation は、Entra の構成を 422 と `source_anchor_invalid` で拒否し、`user_count` と `sample_usernames` を返し、RP を変えない。
+- 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、UPN がフェデレーションするドメインに属さない User の sourceAnchor の値を確かめない。
+- Entra の定型設定を持つ RP と同じ `wtrealm` の RP の登録を要求された場合、WsFederation は、409 と `entra_relying_party` で拒否し、RP を変えない。
 - IssuerUri がほかの構成済みのドメインの IssuerUri と同じか、ほかのドメインを構成している間に構成済みのものと異なる sourceAnchor の属性を指定された場合、WsFederation は、Entra の構成を 400 と `invalid_request` で拒否し、RP を変えない。
 - `admin` のロールを持たない利用者が RP か Entra のドメインフェデレーションの管理 API を要求した場合、WsFederation は、403 と `access_denied` で拒否し、RP を変えない。
 - **例**：EX-WSFEDERATION-001-01、EX-WSFEDERATION-001-02、EX-WSFEDERATION-001-03、EX-WSFEDERATION-001-04
@@ -72,14 +81,14 @@ RP の登録、参照、削除と Entra のドメインフェデレーション�
 
 ### アーキテクチャ
 
-GUID の形をした sourceAnchor の値は、ImmutableID として使う前に、.NET の `Guid.ToByteArray()` のバイト順で base64 に符号化する。
-これは AD FS と Entra の慣行である。
-すでに base64 の値は、そのまま通す。
+sourceAnchor の属性には、Entra の利用者の ImmutableID（`onPremisesImmutableId`）と同じ文字列を保存する。
+AD の objectGUID を sourceAnchor にする場合は、Entra Connect と同じく、取り込みの側が .NET の `Guid.ToByteArray()` のバイト順で base64 に符号化した値を保存する。
 
 ### 信頼性
 
-バイト順を誤ると、Entra は Assertion を社内の同じユーザーへ関連付けられず、アカウントの重複やサインインの失敗を招く。
-Entra 側では原因を特定しにくいので、サインインの失敗が続く場合は、まず発行した ImmutableID と、社内のディレクトリが同期した値を突き合わせる。
+保存した値が Entra の ImmutableID と食い違うと、Entra は Assertion を社内の同じユーザーへ関連付けられず、アカウントの重複やサインインの失敗を招く。
+GUID の文字列のまま保存した値は、base64 に符号化した ImmutableID と一致しない。
+Entra 側では原因を特定しにくいので、サインインの失敗が続く場合は、まず発行した ImmutableID と、Entra の利用者の `onPremisesImmutableId` を突き合わせる。
 
 Hybrid Azure AD Join の端末の登録（`windowstransport` とコンピューターアカウントの Kerberos）は範囲の外である。
 設定の案内では、managed や PHS、あるいは AD FS を併存させる配置へ誘導する。

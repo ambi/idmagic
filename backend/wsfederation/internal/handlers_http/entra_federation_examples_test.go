@@ -6,6 +6,7 @@ package handlers_http_test
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -40,73 +41,108 @@ func (s switchResolver) Resolve(context.Context, authdomain.Headers) (*authdomai
 	return *s.current, nil
 }
 
+// entraUser の sourceAnchor は、Entra の利用者の ImmutableID と同じ文字列であり、そのまま NameID になる。
+// 空の sourceAnchor は、属性を持たない利用者を表す。
 type entraUser struct {
-	id, upn, objectGUID, immutableID string
+	id, upn, sourceAnchor string
 }
 
 var (
-	entraAlice = entraUser{"alice-1", "alice@contoso.com", "6f9619ff-8b86-d011-b42d-00c04fc964ff", "/xmWb4aLEdC0LQDAT8lk/w=="}
+	entraAlice = entraUser{"alice-1", "alice@contoso.com", "/xmWb4aLEdC0LQDAT8lk/w=="}
 	// サブドメインの利用者は、親のドメインの IssuerUri で発行される。
-	// sourceAnchor がすでに base64 の ImmutableID なら、そのまま NameID になる。
-	entraCarol = entraUser{"carol-1", "carol@corp.contoso.com", "ESIzRFVmd4iZqrvM3e7/AA==", "ESIzRFVmd4iZqrvM3e7/AA=="}
-	entraDave  = entraUser{"dave-1", "dave@fabrikam.com", "AAECAwQFBgcICQoLDA0ODw==", "AAECAwQFBgcICQoLDA0ODw=="}
+	entraCarol = entraUser{"carol-1", "carol@corp.contoso.com", "ESIzRFVmd4iZqrvM3e7/AA=="}
+	// Entra Connect は文字列の sourceAnchor（employeeID など）をそのまま ImmutableID にする。
+	entraDave = entraUser{"dave-1", "dave@fabrikam.com", "E-00042"}
 	// フェデレーションしていないドメインの利用者。
-	entraEve = entraUser{"eve-1", "eve@example.org", "8PHy8/T19vf4+fr7/P3+/w==", "8PHy8/T19vf4+fr7/P3+/w=="}
+	entraEve = entraUser{"eve-1", "eve@example.org", "8PHy8/T19vf4+fr7/P3+/w=="}
+	// フェデレーションしていないドメインの管理者は、sourceAnchor を持たない。
+	entraAdmin = entraUser{"admin-1", "admin@local.example", ""}
 )
+
+// protectedSourceAnchor は、Entra の sourceAnchor に使える属性の定義である。
+func protectedSourceAnchor() userdomain.UserAttributeDef {
+	return userdomain.UserAttributeDef{
+		Key: "object_guid", Type: idmdomain.AttributeTypeString, Unique: true,
+		Visibility: idmdomain.AttrVisibilityAdminReadable,
+	}
+}
+
+// entraServer は、Entra のテストのサーバーと、行為者と属性スキーマを差し替える関数である。
+type entraServer struct {
+	e      *echo.Echo
+	events *[]spec.DomainEvent
+	actAs  func(userID string)
+	schema func(def userdomain.UserAttributeDef)
+}
+
+// newEntraServerWith は、User と属性スキーマを組み立て地点と同じく一つの IdManagement のモジュールで
+// 持ち、users を保存したサーバーを返す。行為者は最初は管理者である。
+func newEntraServerWith(t *testing.T, def userdomain.UserAttributeDef, users ...entraUser) entraServer {
+	t.Helper()
+	ctx := context.Background()
+	current := &authdomain.AuthenticationContext{UserID: entraAdmin.id, AuthTime: time.Now().Unix()}
+	identity := idmanagement.NewMemoryModule()
+	saveSchema := func(def userdomain.UserAttributeDef) {
+		if err := identity.AttrSchemaRepo.Save(ctx, &userdomain.TenantUserAttributeSchema{
+			TenantID: tenancydomain.DefaultTenantID, Attributes: []userdomain.UserAttributeDef{def},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	saveSchema(def)
+	e, events, _ := newServerWithSigner(t, nil, func(d *httpadapter.Deps) {
+		hash, err := d.PasswordHasher.Hash("correct-password")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, u := range append([]entraUser{entraAdmin}, users...) {
+			user := &userdomain.User{
+				ID: u.id, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: u.upn, PasswordHash: hash,
+			}
+			if u == entraAdmin {
+				user.Roles = []string{"admin"}
+			}
+			if u.sourceAnchor != "" {
+				anchor := u.sourceAnchor
+				user.Attributes = map[string]userdomain.AttributeValue{
+					"object_guid": {Type: idmdomain.AttributeTypeString, String: &anchor},
+				}
+			}
+			if err := identity.UserRepo.Save(ctx, user); err != nil {
+				t.Fatal(err)
+			}
+		}
+		d.AttrSchemaRepo = identity.AttrSchemaRepo
+		d.UserRepo = identity.UserRepo
+		d.AuthnResolver = switchResolver{current: &current}
+	})
+	return entraServer{
+		e: e, events: events, schema: saveSchema,
+		actAs: func(userID string) {
+			current = &authdomain.AuthenticationContext{UserID: userID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"}}
+		},
+	}
+}
+
+func configureEntra(e *echo.Echo, body string) *httptest.ResponseRecorder {
+	return doJSON(e, http.MethodPost, "/api/admin/v1/wsfed/entra-federation", body)
+}
 
 // newEntraServer は、contoso.com と fabrikam.com を管理 API でフェデレーションしたサーバーと、
 // 行為者を差し替える関数を返す。
 func newEntraServer(t *testing.T) (*echo.Echo, *[]spec.DomainEvent, func(userID string)) {
 	t.Helper()
-	admin := &authdomain.AuthenticationContext{UserID: "admin-1", AuthTime: time.Now().Unix()}
-	current := admin
-	e, events, _ := newServerWithSigner(t, nil, func(d *httpadapter.Deps) {
-		userRepo := idmanagement.NewMemoryModule().UserRepo
-		hash, err := d.PasswordHasher.Hash("correct-password")
-		if err != nil {
-			t.Fatal(err)
-		}
-		save := func(id, upn, objectGUID string, roles ...string) {
-			guid := objectGUID
-			if err := userRepo.Save(context.Background(), &userdomain.User{
-				ID: id, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: upn, PasswordHash: hash, Roles: roles,
-				Attributes: map[string]userdomain.AttributeValue{
-					"object_guid": {Type: idmdomain.AttributeTypeString, String: &guid},
-				},
-			}); err != nil {
-				t.Fatal(err)
-			}
-		}
-		save("admin-1", "admin@contoso.com", "a0a1a2a3-a4a5-a6a7-a8a9-aaabacadaeaf", "admin")
-		for _, u := range []entraUser{entraAlice, entraCarol, entraDave, entraEve} {
-			save(u.id, u.upn, u.objectGUID)
-		}
-		// Entra Connect が同期する sourceAnchor は、管理者が参照できる属性として定義される。
-		schemas := idmanagement.NewMemoryModule().AttrSchemaRepo
-		if err := schemas.Save(context.Background(), &userdomain.TenantUserAttributeSchema{
-			TenantID: tenancydomain.DefaultTenantID,
-			Attributes: []userdomain.UserAttributeDef{
-				{Key: "object_guid", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityAdminReadable},
-			},
-		}); err != nil {
-			t.Fatal(err)
-		}
-		d.AttrSchemaRepo = schemas
-		d.UserRepo = userRepo
-		d.AuthnResolver = switchResolver{current: &current}
-	})
+	s := newEntraServerWith(t, protectedSourceAnchor(), entraAlice, entraCarol, entraDave, entraEve)
 	for _, body := range []string{
 		`{"domain":"contoso.com","source_anchor_attribute":"object_guid"}`,
 		`{"domain":"fabrikam.com","issuer_uri":"` + fabrikamIssuer + `","source_anchor_attribute":"object_guid"}`,
 	} {
-		if rec := doJSON(e, http.MethodPost, "/api/admin/v1/wsfed/entra-federation", body); rec.Code != http.StatusCreated {
+		if rec := configureEntra(s.e, body); rec.Code != http.StatusCreated {
 			t.Fatalf("configure %s: status=%d body=%s", body, rec.Code, rec.Body.String())
 		}
 	}
-	*events = nil
-	return e, events, func(userID string) {
-		current = &authdomain.AuthenticationContext{UserID: userID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"}}
-	}
+	*s.events = nil
+	return s.e, s.events, s.actAs
 }
 
 // entraRST は、Entra のリッチクライアントが送る AppliesTo の RST を作る。
@@ -191,14 +227,14 @@ func TestEntraFederation_IssuesForTheRealmEntraSendsWithTheDomainIssuer(t *testi
 				if got := assertion.FindElement("./Conditions/AudienceRestrictionCondition/Audience"); got == nil || got.Text() != entraRealm {
 					t.Fatalf("Audience = %v, want %q", got, entraRealm)
 				}
-				if got := assertion.FindElement("./AttributeStatement/Subject/NameIdentifier"); got == nil || got.Text() != tc.user.immutableID {
-					t.Fatalf("NameIdentifier = %v, want %q", got, tc.user.immutableID)
+				if got := assertion.FindElement("./AttributeStatement/Subject/NameIdentifier"); got == nil || got.Text() != tc.user.sourceAnchor {
+					t.Fatalf("NameIdentifier = %v, want %q", got, tc.user.sourceAnchor)
 				}
 				if got := attributeValue(assertion, "UPN"); got != tc.user.upn {
 					t.Fatalf("UPN = %q, want %q", got, tc.user.upn)
 				}
-				if got := attributeValue(assertion, immutableIDClaim); got != tc.user.immutableID {
-					t.Fatalf("ImmutableID = %q, want %q", got, tc.user.immutableID)
+				if got := attributeValue(assertion, immutableIDClaim); got != tc.user.sourceAnchor {
+					t.Fatalf("ImmutableID = %q, want %q", got, tc.user.sourceAnchor)
 				}
 			})
 		}

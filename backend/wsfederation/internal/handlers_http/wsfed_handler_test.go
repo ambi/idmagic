@@ -820,7 +820,13 @@ func wsTrustRST(now time.Time, messageID, appliesTo string) string {
 
 func newAdminServer(t *testing.T) *echo.Echo {
 	t.Helper()
-	userRepo := idmanagement.NewMemoryModule().UserRepo
+	identity := idmanagement.NewMemoryModule()
+	userRepo := identity.UserRepo
+	if err := identity.AttrSchemaRepo.Save(context.Background(), &userdomain.TenantUserAttributeSchema{
+		TenantID: tenancydomain.DefaultTenantID, Attributes: []userdomain.UserAttributeDef{protectedSourceAnchor()},
+	}); err != nil {
+		t.Fatal(err)
+	}
 	objectGUID := "6f9619ff-8b86-d011-b42d-00c04fc964ff"
 	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID:                "admin-1",
@@ -835,8 +841,9 @@ func newAdminServer(t *testing.T) *echo.Echo {
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:   "https://idp.example",
 		Contract: spec.CurrentRuntimeContract(), WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
-		UserRepo:      userRepo,
-		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
+		UserRepo:       userRepo,
+		AttrSchemaRepo: identity.AttrSchemaRepo,
+		AuthnResolver:  stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
 	})
 	return e
 }
@@ -961,10 +968,10 @@ func TestAdminConfigureEntraFederation_CreatesPresetRelyingParty(t *testing.T) {
 	}
 }
 
-//verify:operation ConfigureEntraFederation: 欠けた sourceAnchor の設定は 400 invalid_request の本文で拒否され、設定を保存しない。
+//verify:operation ConfigureEntraFederation: 属性を指定しない構成は 400 invalid_request の本文で拒否され、設定を保存しない。
 func TestAdminConfigureEntraFederation_RejectsMissingSourceAnchor(t *testing.T) {
 	e := newAdminServer(t)
-	body := `{"domain":"contoso.com","source_anchor_attribute":"missing_anchor"}`
+	body := `{"domain":"contoso.com"}`
 	rec := doJSON(e, http.MethodPost, "/api/admin/v1/wsfed/entra-federation", body)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
@@ -975,9 +982,6 @@ func TestAdminConfigureEntraFederation_RejectsMissingSourceAnchor(t *testing.T) 
 	}
 	if rec.Header().Get("Content-Type") != support.ProblemContentType || problem.Type != "urn:idmagic:error:invalid_request" || problem.Status != http.StatusBadRequest {
 		t.Fatalf("problem=%+v, want 400 invalid_request", problem)
-	}
-	if !strings.Contains(rec.Body.String(), "sourceAnchor validation failed") {
-		t.Fatalf("missing sourceAnchor error not returned: %s", rec.Body.String())
 	}
 	list := get(e, "/api/admin/v1/wsfed/relying-parties")
 	if strings.Contains(list.Body.String(), "contoso.com") || strings.Contains(list.Body.String(), "entra_profile") {

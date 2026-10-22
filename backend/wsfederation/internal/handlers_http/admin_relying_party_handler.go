@@ -73,6 +73,10 @@ func (d Deps) handleUpsertRelyingParty(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
+	// 汎用の登録は Entra の定型設定と固定のクレームを捨てて置き換えるので、Entra の RP には届かせない。
+	if existing != nil && existing.EntraProfile != nil {
+		return support.WriteProblem(c, http.StatusConflict, "entra_relying_party", "The Entra federation relying party is changed only through the Entra federation configuration.")
+	}
 	rp := &feddomain.WsFedRelyingParty{
 		TenantID:    tenantID,
 		Wtrealm:     req.Wtrealm,

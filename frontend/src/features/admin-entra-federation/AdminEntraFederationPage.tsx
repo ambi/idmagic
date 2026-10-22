@@ -21,7 +21,8 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { useDictionary } from '../../lib/i18n'
+import { useDictionary, useLocale } from '../../lib/i18n'
+import { localizedErrorMessage } from '../../lib/i18n/errorMessage'
 import type { AdminIntegrationEndpointCatalog, WsFedRelyingParty } from '../../types'
 import {
   adminEntraFederationDictionary,
@@ -207,6 +208,7 @@ export function AdminEntraFederationAddPage({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminEntraFederationDictionary)
+  const { locale } = useLocale()
 
   async function handleConfigure(event: FormEvent) {
     event.preventDefault()
@@ -223,9 +225,41 @@ export function AdminEntraFederationAddPage({
       setResult(configured)
       setNotice(t.federationSavedNotice.replace('{domain}', requestedDomain.toLowerCase()))
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError ? cause.message : t.federationSaveFailedError,
-      )
+      if (!(cause instanceof AuthenticationAPIError)) {
+        setError(t.federationSaveFailedError)
+        return
+      }
+      switch (cause.code) {
+        case 'source_anchor_not_unique':
+          setError(t.sourceAnchorNotUniqueError)
+          break
+        case 'source_anchor_editable':
+          setError(t.sourceAnchorEditableError)
+          break
+        case 'source_anchor_missing':
+        case 'source_anchor_invalid': {
+          const count = cause.body?.user_count
+          const users = cause.body?.sample_usernames
+          if (
+            typeof count !== 'number' ||
+            !Array.isArray(users) ||
+            !users.every((name) => typeof name === 'string')
+          ) {
+            setError(t.federationSaveFailedError)
+            break
+          }
+          const message =
+            cause.code === 'source_anchor_missing'
+              ? t.sourceAnchorMissingError
+              : t.sourceAnchorInvalidError
+          setError(
+            `${message.replace('{count}', count.toLocaleString(locale))} ${t.sourceAnchorSampleUsers.replace('{users}', users.join(', '))}`,
+          )
+          break
+        }
+        default:
+          setError(localizedErrorMessage(locale, cause.code, cause.message))
+      }
     }
   }
 

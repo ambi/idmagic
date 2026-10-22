@@ -1,10 +1,14 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, mock } from 'bun:test'
-import { restoreGlobals } from '../../test/globals'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { LocaleProvider } from '../../lib/i18n'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import type { AdminIntegrationEndpointCatalog } from '../../types'
-import { AdminEntraFederationPage, EntraFederationList } from './AdminEntraFederationPage'
+import {
+  AdminEntraFederationAddPage,
+  AdminEntraFederationPage,
+  EntraFederationList,
+} from './AdminEntraFederationPage'
 import { adminEntraFederationDictionary } from './AdminEntraFederationPage.i18n'
 
 const t = adminEntraFederationDictionary.en
@@ -146,4 +150,75 @@ describe('EntraFederationList', () => {
     )
     expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ wtrealm: 'urn:contoso' }))
   })
+})
+
+describe('Entra の構成の拒否', () => {
+  afterEach(() => restoreGlobals())
+
+  //spec:covers REQ-SYSTEM-011: Entra の構成のエラーコードを辞書の文言へ対応付け、内部の英語を表示しないこと。
+  //spec:covers REQ-WSFEDERATION-001: sourceAnchor の値の問題について、応答の件数とユーザー名を表示すること。
+  for (const locale of ['ja', 'en'] as const) {
+    for (const code of [
+      'source_anchor_missing',
+      'source_anchor_invalid',
+      'source_anchor_not_unique',
+      'source_anchor_editable',
+      'invalid_request',
+      'unexpected_error',
+    ]) {
+      it(`${locale}: ${code} を翻訳し、値の問題の詳細を示す`, async () => {
+        stubGlobal(
+          'fetch',
+          mock(
+            async () =>
+              new Response(
+                JSON.stringify({
+                  type: `urn:idmagic:error:${code}`,
+                  status: 422,
+                  detail: 'Internal English detail must not be shown',
+                  user_count: 7,
+                  sample_usernames: ['ann@contoso.com', 'bob@contoso.com'],
+                }),
+                { status: 422, headers: { 'Content-Type': 'application/problem+json' } },
+              ),
+          ),
+        )
+        await renderWithRouter(<AdminEntraFederationAddPage csrfToken="csrf" />, { locale })
+        fireEvent.change(
+          screen.getByLabelText(adminEntraFederationDictionary[locale].verifiedDomainLabel),
+          { target: { value: 'contoso.com' } },
+        )
+        fireEvent.click(
+          screen.getByRole('button', { name: adminEntraFederationDictionary[locale].save }),
+        )
+        await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+        const alert = screen.getByRole('alert')
+        const dictionary = adminEntraFederationDictionary[locale]
+        if (code === 'source_anchor_not_unique')
+          expect(alert).toHaveTextContent(dictionary.sourceAnchorNotUniqueError)
+        if (code === 'source_anchor_editable')
+          expect(alert).toHaveTextContent(dictionary.sourceAnchorEditableError)
+        if (code === 'source_anchor_missing')
+          expect(alert).toHaveTextContent(
+            dictionary.sourceAnchorMissingError.replace('{count}', '7'),
+          )
+        if (code === 'source_anchor_invalid')
+          expect(alert).toHaveTextContent(
+            dictionary.sourceAnchorInvalidError.replace('{count}', '7'),
+          )
+        if (code === 'unexpected_error') {
+          expect(alert).toHaveTextContent('Internal English detail')
+        } else {
+          expect(alert).not.toHaveTextContent('Internal English detail')
+        }
+        if (code === 'source_anchor_missing' || code === 'source_anchor_invalid') {
+          expect(alert).toHaveTextContent('7')
+          expect(alert).toHaveTextContent('ann@contoso.com')
+          expect(alert).toHaveTextContent('bob@contoso.com')
+        } else {
+          expect(alert).not.toHaveTextContent('ann@contoso.com')
+        }
+      })
+    }
+  }
 })

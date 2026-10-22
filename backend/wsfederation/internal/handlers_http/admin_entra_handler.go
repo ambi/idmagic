@@ -1,12 +1,13 @@
 package handlers_http
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
@@ -57,9 +58,6 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	ctx := c.Request().Context()
 	tenantID := support.RequestTenantID(c)
 	sourceAttr := strings.TrimSpace(req.SourceAnchorAttribute)
-	if err := d.validateEntraSourceAnchors(c, sourceAttr); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
-	}
 
 	passive := support.TenantURL(c, "/wsfed", d.Issuer)
 	active := support.TenantURL(c, "/trust/usernamemixed", d.Issuer)
@@ -87,6 +85,9 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	profile, added, err := configured.WithDomain(feddomain.EntraDomainFederation{Domain: domain, IssuerURI: issuerURI}, sourceAttr)
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	if handled, err := d.refuseUnusableSourceAnchors(c, profile); handled {
+		return err
 	}
 	profile.ImmutableIDAttribute = feddomain.EntraImmutableIDAttribute
 	profile.PassiveLogOnURI = passive
@@ -132,23 +133,43 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	})
 }
 
-func (d Deps) validateEntraSourceAnchors(c *echo.Context, sourceAttr string) error {
-	users, err := d.UserRepo.FindAll(c.Request().Context(), support.RequestTenantID(c))
+// sourceAnchorValueProblem は、値に問題のある利用者の件数と先頭のユーザー名を載せた Problem Details である。
+type sourceAnchorValueProblem struct {
+	support.Problem
+	UserCount       int      `json:"user_count"`
+	SampleUsernames []string `json:"sample_usernames"`
+}
+
+// refuseUnusableSourceAnchors は、構成した後の profile の sourceAnchor の属性の定義と、UPN が
+// フェデレーションするドメインの利用者の値を確かめ、使えなければ 422 を書いて handled を返す。
+func (d Deps) refuseUnusableSourceAnchors(c *echo.Context, profile feddomain.EntraFederationProfile) (bool, error) {
+	ctx := c.Request().Context()
+	tenantID := support.RequestTenantID(c)
+	defs, err := claimports.ResolveTenantAttributeDefs(ctx, tenantID, d.AttrSchemaRepo)
 	if err != nil {
-		return err
+		return true, err
 	}
-	seen := map[string]string{}
-	for _, user := range users {
-		attrs := claimdomain.ResolveUserAttributes(*user)
-		withProfile, err := feddomain.ApplyEntraProfile(attrs, &feddomain.EntraFederationProfile{SourceAnchorAttribute: sourceAttr})
-		if err != nil {
-			return errBadRequest("sourceAnchor validation failed for user " + user.ID + ": " + err.Error())
-		}
-		immutableID := withProfile[feddomain.EntraImmutableIDAttribute][0]
-		if previous, ok := seen[immutableID]; ok {
-			return errBadRequest("sourceAnchor attribute " + sourceAttr + " is not unique: users " + previous + " and " + user.ID)
-		}
-		seen[immutableID] = user.ID
+	switch err := feddomain.CheckEntraSourceAnchorAttribute(defs, &profile); {
+	case errors.Is(err, feddomain.ErrSourceAnchorNotUnique):
+		return true, support.WriteProblem(c, http.StatusUnprocessableEntity, "source_anchor_not_unique", "The sourceAnchor attribute must be unique in the attribute schema.")
+	case errors.Is(err, feddomain.ErrSourceAnchorEditable):
+		return true, support.WriteProblem(c, http.StatusUnprocessableEntity, "source_anchor_editable", "The sourceAnchor attribute must not be editable by the user.")
 	}
-	return nil
+	users, err := d.UserRepo.FindAll(ctx, tenantID)
+	if err != nil {
+		return true, err
+	}
+	problem := feddomain.CheckEntraSourceAnchorValues(profile, users)
+	if problem == nil {
+		return false, nil
+	}
+	code, detail := "source_anchor_invalid", "Some federated users have a sourceAnchor value that cannot be an ImmutableID."
+	if errors.Is(problem.Err, feddomain.ErrSourceAnchorMissing) {
+		code, detail = "source_anchor_missing", "Some federated users have no sourceAnchor value."
+	}
+	return true, support.WriteProblemBody(c, http.StatusUnprocessableEntity, sourceAnchorValueProblem{
+		Problem:         support.NewProblem(c, http.StatusUnprocessableEntity, code, detail),
+		UserCount:       problem.UserCount,
+		SampleUsernames: problem.SampleUsernames,
+	})
 }

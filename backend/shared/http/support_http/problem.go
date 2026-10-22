@@ -34,14 +34,25 @@ type Problem struct {
 // correlation), read from context rather than passed in so call sites cannot
 // drift from the id actually returned to the client via X-Request-ID.
 func WriteProblem(c *echo.Context, status int, code, detail string) error {
-	c.Response().Header().Set("Content-Type", ProblemContentType)
-	return NoStoreJSON(c, status, Problem{
+	return WriteProblemBody(c, status, NewProblem(c, status, code, detail))
+}
+
+// NewProblem は WriteProblem と同じ Problem Details を作る。拡張の欄を持つ問題は、これを埋め込んだ
+// 型を WriteProblemBody で書く。
+func NewProblem(c *echo.Context, status int, code, detail string) Problem {
+	return Problem{
 		Type:     problemTypeURNPrefix + code,
 		Title:    humanizeErrorCode(code),
 		Status:   status,
 		Detail:   detail,
 		Instance: logging.RequestIDFromContext(c.Request().Context()),
-	})
+	}
+}
+
+// WriteProblemBody は、Problem を埋め込んだ body を Problem Details として書く。
+func WriteProblemBody(c *echo.Context, status int, body any) error {
+	c.Response().Header().Set("Content-Type", ProblemContentType)
+	return NoStoreJSON(c, status, body)
 }
 
 // humanizeErrorCode turns a snake_case error code into a short human-readable

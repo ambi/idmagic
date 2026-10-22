@@ -179,15 +179,16 @@ func (l *EventLog) AssertNotEmitted(t *testing.T, eventTypes ...string) {
 // 保存先を公開するのは、拒否が防いだ効果を読み直すためである。nil のままの field は
 // その option を渡していないことを意味する。
 type Stack struct {
-	Echo           *echo.Echo
-	Events         *EventLog
-	Tenants        tenantports.TenantRepository
-	Users          userports.UserRepository
-	Groups         groupports.GroupRepository
-	KeyStore       signingkeys.KeyStore
-	Signer         *oauth2.JWTSigner
-	Quotas         tenantports.QuotaRepository
-	SCIMReferences scimports.ScimRepository
+	Echo                 *echo.Echo
+	Events               *EventLog
+	Tenants              tenantports.TenantRepository
+	Users                userports.UserRepository
+	UserAttributeSchemas userports.TenantUserAttributeSchemaRepository
+	Groups               groupports.GroupRepository
+	KeyStore             signingkeys.KeyStore
+	Signer               *oauth2.JWTSigner
+	Quotas               tenantports.QuotaRepository
+	SCIMReferences       scimports.ScimRepository
 
 	Clients                oauthports.OAuth2ClientRepository
 	Consents               oauthports.ConsentRepository
@@ -565,7 +566,7 @@ func New(t *testing.T, options ...Option) *Stack {
 
 	stack := &Stack{
 		Echo: echo.New(), Events: &EventLog{}, owner: t,
-		Tenants: tenants, Users: users, Groups: groups, KeyStore: keyStore, Signer: signer,
+		Tenants: tenants, Users: users, UserAttributeSchemas: idmModule.AttrSchemaRepo, Groups: groups, KeyStore: keyStore, Signer: signer,
 	}
 	b := &builder{
 		t: t, stack: stack,
@@ -577,7 +578,7 @@ func New(t *testing.T, options ...Option) *Stack {
 			Issuer: Issuer, Contract: spec.CurrentRuntimeContract(),
 			Emit:         stack.Events.record,
 			TenantRepo:   tenants,
-			IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groups},
+			IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groups, AttrSchemaRepo: idmModule.AttrSchemaRepo},
 			SigningKeys:  signingkeys.Module{KeyStore: keyStore},
 			OAuth2:       oauth2.Module{TokenIssuer: signer, TokenIntrospector: signer},
 		},

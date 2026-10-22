@@ -27,7 +27,7 @@ model WsFedRelyingParty {
   token_type?: WsFedTokenType;
   @doc("この RP に対するクレームの発行のポリシー。")
   claim_policy: ClaimMappingPolicy;
-  @doc("Microsoft Entra のドメインフェデレーションのプリセット。フェデレーションを設定するときに使う必須のクレームと sourceAnchor の変換をまとめる。")
+  @doc("Microsoft Entra のドメインフェデレーションのプリセット。フェデレーションを設定するときに使う必須のクレームと sourceAnchor の属性をまとめる。")
   entra_profile?: EntraFederationProfile;
   created_at: utcDateTime;
   updated_at: utcDateTime;
@@ -39,10 +39,10 @@ model EntraFederationProfile {
   @doc("構成したドメインと IssuerUri の組。発行するトークンの発行者は、利用者の UPN のドメインに最も長く一致する組の IssuerUri である。")
   @minItems(1)
   domains: EntraDomainFederation[];
-  @doc("ImmutableID の元になる、変わらないユーザーの属性。objectGUID の GUID の文字列か、すでに base64 で符号化した値のどちらかである。")
+  @doc("ImmutableID と同じ文字列を保存するユーザーの属性。属性スキーマで `unique` で、`editable_by_user` でない属性に限る。objectGUID を使う場合は、取り込みの側で base64 に符号化した値を保存する。")
   @minLength(1)
   source_anchor_attribute: string;
-  @doc("変換した ImmutableID を保存する合成の属性名。デフォルトは `entra_immutable_id` である。")
+  @doc("sourceAnchor の値を変えずに ImmutableID として保存する合成の属性名。デフォルトは `entra_immutable_id` である。")
   @minLength(1)
   immutable_id_attribute: string;
   @doc("Entra の PassiveLogOnUri。通常は `/wsfed` である。")
@@ -203,5 +203,24 @@ model WsFedRelyingPartyRequest {
   @doc("この RP に対するクレームの発行のポリシー。")
   claim_policy: ClaimMappingPolicy;
 }
+
+@doc("sourceAnchor に指定した属性が、属性スキーマで `unique` でない。値が重なると、二人の利用者に同じ ImmutableID を発行する。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:source_anchor_not_unique` である。")
+model SourceAnchorNotUniqueError is ProblemDetails;
+
+@doc("sourceAnchor に指定した属性が、属性スキーマで `editable_by_user` である。利用者が値を他人の値に書き換えられる。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:source_anchor_editable` である。")
+model SourceAnchorEditableError is ProblemDetails;
+
+@doc("UPN がフェデレーションするドメインに属する利用者の sourceAnchor の値に問題がある。`type` は、値がないなら `urn:idmagic:error:source_anchor_missing`、空か `@` を含むなら `urn:idmagic:error:source_anchor_invalid` である。")
+model SourceAnchorValueError {
+  ...ProblemDetails;
+  @doc("問題のある値を持つ利用者の数。")
+  user_count: int32;
+  @doc("問題のある値を持つ利用者のうち、ユーザー名の順で先頭の 5 人までのユーザー名。")
+  @maxItems(5)
+  sample_usernames: string[];
+}
+
+@doc("登録しようとした RP の `wtrealm` は、Entra のドメインフェデレーションの定型設定を持つ RP のものである。定型設定と固定のクレームは、Entra の構成の操作だけが変える。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:entra_relying_party` である。")
+model EntraRelyingPartyError is ProblemDetails;
 
 }

@@ -1,10 +1,7 @@
 package domain
 
 import (
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 
@@ -99,7 +96,7 @@ func (p EntraFederationProfile) WithDomain(domain EntraDomainFederation, sourceA
 }
 
 // EntraAttributeDefs は、sourceAnchor の属性を公開できるときだけ、合成の ImmutableID の属性を公開
-// できる定義に加える。ImmutableID は sourceAnchor の値そのものを符号化したものだからである。
+// できる定義に加える。ImmutableID は sourceAnchor の値そのものだからである。
 func EntraAttributeDefs(defs []userdomain.UserAttributeDef, profile *EntraFederationProfile) []userdomain.UserAttributeDef {
 	if profile == nil || !claimdomain.IsAttributeReleasable(profile.sourceAnchorAttribute(), defs) {
 		return defs
@@ -143,14 +140,9 @@ func ApplyEntraProfile(attrs claimdomain.Attributes, profile *EntraFederationPro
 	if profile == nil {
 		return attrs, nil
 	}
-	sourceAttr := profile.sourceAnchorAttribute()
-	raw, ok := firstNonEmptyAttribute(attrs[sourceAttr])
-	if !ok {
-		return nil, fmt.Errorf("entra federation: sourceAnchor attribute %q has no value", sourceAttr)
-	}
-	immutableID, err := NormalizeImmutableID(raw)
+	immutableID, err := ImmutableIDOf(attrs, profile)
 	if err != nil {
-		return nil, fmt.Errorf("entra federation: sourceAnchor attribute %q: %w", sourceAttr, err)
+		return nil, err
 	}
 	targetAttr := profile.immutableIDAttribute()
 	out := make(claimdomain.Attributes, len(attrs)+1)
@@ -161,45 +153,87 @@ func ApplyEntraProfile(attrs claimdomain.Attributes, profile *EntraFederationPro
 	return out, nil
 }
 
-func firstNonEmptyAttribute(values []string) (string, bool) {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return value, true
+var (
+	// ErrSourceAnchorMissing は、利用者が sourceAnchor の値を持たないことを表す。
+	ErrSourceAnchorMissing = errors.New("entra federation: the user has no sourceAnchor value")
+	// ErrSourceAnchorInvalid は、sourceAnchor の値が ImmutableID として使えないことを表す。
+	ErrSourceAnchorInvalid = errors.New("entra federation: the sourceAnchor value cannot be an ImmutableID")
+	// ErrSourceAnchorNotUnique は、sourceAnchor の属性が属性スキーマで unique でないことを表す。
+	ErrSourceAnchorNotUnique = errors.New("entra federation: the sourceAnchor attribute is not unique")
+	// ErrSourceAnchorEditable は、sourceAnchor の属性を利用者が編集できることを表す。
+	ErrSourceAnchorEditable = errors.New("entra federation: the sourceAnchor attribute is editable by the user")
+)
+
+// ImmutableIDOf は、sourceAnchor の属性の値を変えずに ImmutableID として返す。Entra Connect は
+// sourceAnchor を immutableId と同じものとして扱い、文字列でない属性は同期の側で base64 にする。
+// 値を変換しないので、IdManagement が守る値の一意性が、そのまま ImmutableID の一意性になる。
+func ImmutableIDOf(attrs claimdomain.Attributes, profile *EntraFederationProfile) (string, error) {
+	values := attrs[profile.sourceAnchorAttribute()]
+	if len(values) == 0 || values[0] == "" {
+		return "", ErrSourceAnchorMissing
+	}
+	value := values[0]
+	// Entra は `@` を含む属性を sourceAnchor に選ばせない。空白だけの値も利用者を識別しない。
+	if strings.TrimSpace(value) == "" || strings.Contains(value, "@") {
+		return "", ErrSourceAnchorInvalid
+	}
+	return value, nil
+}
+
+// CheckEntraSourceAnchorAttribute は、sourceAnchor の属性が、ほかの利用者と重ならず、利用者が
+// 書き換えられない値かを、テナントの実効の属性の定義から確かめる。定義のない属性は重なりを
+// 守られていないものとして扱う。
+func CheckEntraSourceAnchorAttribute(defs []userdomain.UserAttributeDef, profile *EntraFederationProfile) error {
+	attribute := profile.sourceAnchorAttribute()
+	for _, def := range defs {
+		if def.Key != attribute {
+			continue
+		}
+		if !def.Unique {
+			return ErrSourceAnchorNotUnique
+		}
+		if def.EditableByUser {
+			return ErrSourceAnchorEditable
+		}
+		return nil
+	}
+	return ErrSourceAnchorNotUnique
+}
+
+// SourceAnchorValueProblem は、構成の時点に sourceAnchor の値を使えない利用者の件数と、ユーザー名の
+// 順で先頭の利用者である。
+type SourceAnchorValueProblem struct {
+	Err             error // ErrSourceAnchorMissing または ErrSourceAnchorInvalid
+	UserCount       int
+	SampleUsernames []string
+}
+
+// sourceAnchorSampleSize は、構成の拒否に載せる利用者のユーザー名の数である。
+const sourceAnchorSampleSize = 5
+
+// CheckEntraSourceAnchorValues は、profile で UPN がフェデレーションするドメインに属する利用者の
+// sourceAnchor の値を確かめる。値のない利用者がいればそれを、いなければ使えない値の利用者を返し、
+// 問題がなければ nil を返す。フェデレーションしないドメインの利用者は確かめない。
+func CheckEntraSourceAnchorValues(profile EntraFederationProfile, users []*userdomain.User) *SourceAnchorValueProblem {
+	affected := map[error][]string{}
+	for _, user := range users {
+		if user.IsDeleted() {
+			continue
+		}
+		if _, err := profile.IssuerFor(user.PreferredUsername); err != nil {
+			continue
+		}
+		if _, err := ImmutableIDOf(claimdomain.ResolveUserAttributes(*user), &profile); err != nil {
+			affected[err] = append(affected[err], user.PreferredUsername)
 		}
 	}
-	return "", false
-}
-
-// NormalizeImmutableID returns the Azure AD ImmutableID base64 value for a sourceAnchor.
-func NormalizeImmutableID(value string) (string, error) {
-	v := strings.TrimSpace(value)
-	if v == "" {
-		return "", fmt.Errorf("empty sourceAnchor")
+	for _, kind := range []error{ErrSourceAnchorMissing, ErrSourceAnchorInvalid} {
+		names := affected[kind]
+		if len(names) == 0 {
+			continue
+		}
+		slices.Sort(names)
+		return &SourceAnchorValueProblem{Err: kind, UserCount: len(names), SampleUsernames: names[:min(len(names), sourceAnchorSampleSize)]}
 	}
-	if guidBytes, ok := parseGUIDToMicrosoftBytes(v); ok {
-		return base64.StdEncoding.EncodeToString(guidBytes), nil
-	}
-	decoded, err := base64.StdEncoding.DecodeString(v)
-	if err == nil && len(decoded) > 0 {
-		return v, nil
-	}
-	return "", fmt.Errorf("must be a GUID or base64 ImmutableID")
-}
-
-func parseGUIDToMicrosoftBytes(value string) ([]byte, bool) {
-	compact := strings.ReplaceAll(strings.TrimSpace(value), "-", "")
-	if len(compact) != 32 {
-		return nil, false
-	}
-	raw, err := hex.DecodeString(compact)
-	if err != nil || len(raw) != 16 {
-		return nil, false
-	}
-	return []byte{
-		raw[3], raw[2], raw[1], raw[0],
-		raw[5], raw[4],
-		raw[7], raw[6],
-		raw[8], raw[9],
-		raw[10], raw[11], raw[12], raw[13], raw[14], raw[15],
-	}, true
+	return nil
 }

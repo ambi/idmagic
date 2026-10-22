@@ -191,6 +191,17 @@ func issueForRelyingParty(
 	ctx context.Context, tenantID string, attrSchemaRepo claimports.TenantAttributeSchemaRepo,
 	rp feddomain.WsFedRelyingParty, user userdomain.User,
 ) (rpIssuance, string, error) {
+	defs, err := claimports.ResolveTenantAttributeDefs(ctx, tenantID, attrSchemaRepo)
+	if err != nil {
+		return rpIssuance{}, "", err
+	}
+	// 構成の後に属性スキーマが変わっても、重なりうるか利用者が書き換えられる値では発行しない。
+	if rp.EntraProfile != nil {
+		if err := feddomain.CheckEntraSourceAnchorAttribute(defs, rp.EntraProfile); err != nil {
+			//nolint:nilerr // 守られていない sourceAnchor は拒否の理由として返す。
+			return rpIssuance{}, "entra source anchor not protected", nil
+		}
+	}
 	attrs, err := feddomain.ApplyEntraProfile(claimdomain.ResolveUserAttributes(user), rp.EntraProfile)
 	if err != nil {
 		//nolint:nilerr // ImmutableID を導けないことは拒否の理由として返し、呼び出し側には error を返さない。
@@ -202,10 +213,6 @@ func issueForRelyingParty(
 			//nolint:nilerr // フェデレーションしていないドメインの利用者は拒否の理由として返す。
 			return rpIssuance{}, "entra domain not federated", nil
 		}
-	}
-	defs, err := claimports.ResolveTenantAttributeDefs(ctx, tenantID, attrSchemaRepo)
-	if err != nil {
-		return rpIssuance{}, "", err
 	}
 	result, err := claimdomain.IssueClaimsWithFloor(rp.ClaimPolicy, attrs, feddomain.EntraAttributeDefs(defs, rp.EntraProfile))
 	if err != nil {

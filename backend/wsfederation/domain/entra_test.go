@@ -2,6 +2,8 @@ package domain
 
 import (
 	"errors"
+	"slices"
+	"strings"
 	"testing"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
@@ -9,41 +11,118 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
-func TestNormalizeImmutableID_GUIDUsesMicrosoftByteOrder(t *testing.T) {
-	got, err := NormalizeImmutableID("6f9619ff-8b86-d011-b42d-00c04fc964ff")
-	if err != nil {
-		t.Fatalf("NormalizeImmutableID: %v", err)
+//spec:covers REQ-WSFEDERATION-002: sourceAnchor の値を変換せずにそのまま ImmutableID にし、値がないか空白だけか `@` を含めば ImmutableID にしないこと。
+func TestImmutableIDOfUsesTheSourceAnchorVerbatim(t *testing.T) {
+	profile := &EntraFederationProfile{SourceAnchorAttribute: "source_anchor"}
+	for _, value := range []string{"/xmWb4aLEdC0LQDAT8lk/w==", "E-00042", "6f9619ff-8b86-d011-b42d-00c04fc964ff", "MixedCase"} {
+		got, err := ImmutableIDOf(claimdomain.Attributes{"source_anchor": {value}}, profile)
+		if err != nil || got != value {
+			t.Errorf("ImmutableIDOf(%q) = (%q, %v), want the value unchanged", value, got, err)
+		}
 	}
-	if got != "/xmWb4aLEdC0LQDAT8lk/w==" {
-		t.Fatalf("ImmutableID = %q", got)
+	for name, tc := range map[string]struct {
+		attrs claimdomain.Attributes
+		want  error
+	}{
+		"absent":          {claimdomain.Attributes{}, ErrSourceAnchorMissing},
+		"empty":           {claimdomain.Attributes{"source_anchor": {""}}, ErrSourceAnchorMissing},
+		"whitespace only": {claimdomain.Attributes{"source_anchor": {"  "}}, ErrSourceAnchorInvalid},
+		"contains @":      {claimdomain.Attributes{"source_anchor": {"bob@corp"}}, ErrSourceAnchorInvalid},
+		"other attribute": {claimdomain.Attributes{"object_guid": {"E-1"}}, ErrSourceAnchorMissing},
+	} {
+		if _, err := ImmutableIDOf(tc.attrs, profile); !errors.Is(err, tc.want) {
+			t.Errorf("%s: err = %v, want %v", name, err, tc.want)
+		}
 	}
 }
 
-func TestNormalizeImmutableID_AcceptsExistingBase64(t *testing.T) {
-	got, err := NormalizeImmutableID("/xmWb4aLEdC0LQDAT8lk/w==")
-	if err != nil {
-		t.Fatalf("NormalizeImmutableID: %v", err)
+//spec:covers REQ-WSFEDERATION-002: 文字列の sourceAnchor は大文字と小文字や前後の空白を含めて保存値のまま発行し、@ を含む値は拒否すること。
+func FuzzImmutableIDPreservesTheStoredString(f *testing.F) {
+	for _, seed := range []string{"E-00042", " MixedCase ", "/xmWb4aLEdC0LQDAT8lk/w==", "", "@"} {
+		f.Add(seed)
 	}
-	if got != "/xmWb4aLEdC0LQDAT8lk/w==" {
-		t.Fatalf("ImmutableID = %q", got)
-	}
+	f.Fuzz(func(t *testing.T, input string) {
+		profile := &EntraFederationProfile{SourceAnchorAttribute: "source_anchor"}
+		value := "ID-" + strings.ReplaceAll(input, "@", "-")
+		got, err := ImmutableIDOf(claimdomain.Attributes{"source_anchor": {value}}, profile)
+		if err != nil || got != value {
+			t.Fatalf("stored value %q became (%q, %v)", value, got, err)
+		}
+		if _, err := ImmutableIDOf(claimdomain.Attributes{"source_anchor": {value + "@"}}, profile); !errors.Is(err, ErrSourceAnchorInvalid) {
+			t.Fatalf("sourceAnchor containing @ was not refused: %v", err)
+		}
+	})
 }
 
-func TestApplyEntraProfileAddsSyntheticImmutableID(t *testing.T) {
-	attrs, err := ApplyEntraProfile(claimdomain.Attributes{
-		"object_guid": {"6f9619ff-8b86-d011-b42d-00c04fc964ff"},
-	}, &EntraFederationProfile{SourceAnchorAttribute: "object_guid"})
+func TestApplyEntraProfileAddsTheSourceAnchorAsTheImmutableID(t *testing.T) {
+	attrs, err := ApplyEntraProfile(claimdomain.Attributes{"object_guid": {"E-00042"}}, &EntraFederationProfile{SourceAnchorAttribute: "object_guid"})
 	if err != nil {
 		t.Fatalf("ApplyEntraProfile: %v", err)
 	}
-	if got := attrs[EntraImmutableIDAttribute]; len(got) != 1 || got[0] != "/xmWb4aLEdC0LQDAT8lk/w==" {
+	if got := attrs[EntraImmutableIDAttribute]; len(got) != 1 || got[0] != "E-00042" {
 		t.Fatalf("entra_immutable_id = %#v", got)
+	}
+	if _, err := ApplyEntraProfile(claimdomain.Attributes{}, &EntraFederationProfile{SourceAnchorAttribute: "object_guid"}); !errors.Is(err, ErrSourceAnchorMissing) {
+		t.Fatalf("missing sourceAnchor err = %v", err)
 	}
 }
 
-func TestApplyEntraProfileRejectsMissingSourceAnchor(t *testing.T) {
-	if _, err := ApplyEntraProfile(claimdomain.Attributes{}, &EntraFederationProfile{SourceAnchorAttribute: "object_guid"}); err == nil {
-		t.Fatal("expected missing sourceAnchor error")
+//spec:covers REQ-WSFEDERATION-001: sourceAnchor の属性は unique で editable_by_user でない属性に限り、定義のない属性も拒否すること。
+func TestCheckEntraSourceAnchorAttributeRequiresAUniqueAdminManagedAttribute(t *testing.T) {
+	profile := &EntraFederationProfile{SourceAnchorAttribute: "source_anchor"}
+	def := func(unique, editable bool) []userdomain.UserAttributeDef {
+		return []userdomain.UserAttributeDef{
+			{Key: "other", Type: idmdomain.AttributeTypeString, Unique: true},
+			{Key: "source_anchor", Type: idmdomain.AttributeTypeString, Unique: unique, EditableByUser: editable},
+		}
+	}
+	for name, tc := range map[string]struct {
+		defs []userdomain.UserAttributeDef
+		want error
+	}{
+		"protected":           {def(true, false), nil},
+		"not unique":          {def(false, false), ErrSourceAnchorNotUnique},
+		"editable":            {def(true, true), ErrSourceAnchorEditable},
+		"not unique editable": {def(false, true), ErrSourceAnchorNotUnique},
+		"undefined":           {def(true, false)[:1], ErrSourceAnchorNotUnique},
+	} {
+		if err := CheckEntraSourceAnchorAttribute(tc.defs, profile); !errors.Is(err, tc.want) {
+			t.Errorf("%s: err = %v, want %v", name, err, tc.want)
+		}
+	}
+}
+
+//spec:covers REQ-WSFEDERATION-001: 構成の時点の値の検査が、フェデレーションするドメインの削除されていない利用者だけを対象にし、問題のある値の件数とユーザー名の順で先頭の 5 人を返すこと。
+func TestCheckEntraSourceAnchorValuesChecksOnlyFederatedUsers(t *testing.T) {
+	profile := EntraFederationProfile{SourceAnchorAttribute: "source_anchor", Domains: []EntraDomainFederation{{Domain: "contoso.com", IssuerURI: "urn:c"}}}
+	person := func(upn, anchor string) *userdomain.User {
+		u := &userdomain.User{ID: upn, PreferredUsername: upn}
+		if anchor != "" {
+			v := anchor
+			u.Attributes = map[string]userdomain.AttributeValue{"source_anchor": {Type: idmdomain.AttributeTypeString, String: &v}}
+		}
+		return u
+	}
+	deleted := person("gone@contoso.com", "")
+	deleted.Lifecycle.Status = idmdomain.UserStatusDeleted
+	ok := []*userdomain.User{person("alice@contoso.com", "A-1"), person("admin@local.example", ""), deleted}
+	if got := CheckEntraSourceAnchorValues(profile, ok); got != nil {
+		t.Fatalf("federated users with values: %+v, want nil", got)
+	}
+
+	invalid := append(slices.Clone(ok), person("zed@contoso.com", "z@corp"))
+	if got := CheckEntraSourceAnchorValues(profile, invalid); got == nil || !errors.Is(got.Err, ErrSourceAnchorInvalid) || got.UserCount != 1 {
+		t.Fatalf("invalid value: %+v", got)
+	}
+
+	missing := slices.Clone(ok)
+	for _, upn := range []string{"g@contoso.com", "b@corp.contoso.com", "f@contoso.com", "a@contoso.com", "e@contoso.com", "c@contoso.com"} {
+		missing = append(missing, person(upn, ""))
+	}
+	got := CheckEntraSourceAnchorValues(profile, missing)
+	if got == nil || !errors.Is(got.Err, ErrSourceAnchorMissing) || got.UserCount != 6 ||
+		!slices.Equal(got.SampleUsernames, []string{"a@contoso.com", "b@corp.contoso.com", "c@contoso.com", "e@contoso.com", "f@contoso.com"}) {
+		t.Fatalf("missing values: %+v", got)
 	}
 }
 

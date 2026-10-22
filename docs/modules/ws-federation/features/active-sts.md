@@ -48,7 +48,7 @@ RSTR は SOAP 1.2 で署名した SAML Assertion を返す。
 - 認証した User に RP のトークンを発行するとき、WsFederation は、パッシブサインインと同じアプリケーションの関門（[割り当て](../../application/features/assignment.md)の REQ-APPLICATION-011 と[サインインポリシー](../../application/features/sign-in-policy.md)）で、パスワードだけで認証した事実と要求の発信元の IP を使って判定する。
 - 関門が拒否するか、サインインポリシーが追加の認証を求める場合、WsFederation は、403 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - WS-Trust の要求を 400、401 または 403 で拒否するとき、WsFederation は、`text/plain` の本文を返し、署名したトークンを本文に含めない。
-- クレームを発行できないか、Entra の定型設定の ImmutableID を導けないか、利用者の UPN のドメインが Entra の定型設定のどのドメインにも属さない場合、WsFederation は、500 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
+- クレームを発行できないか、Entra の定型設定の sourceAnchor の属性が `unique` でないか `editable_by_user` であるか、利用者の sourceAnchor の値が ImmutableID として使えないか、利用者の UPN のドメインが Entra の定型設定のどのドメインにも属さない場合、WsFederation は、500 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - **例**：EX-WSFEDERATION-004-01、EX-WSFEDERATION-004-02、EX-WSFEDERATION-004-03
 
 #### REQ-WSFEDERATION-005 不正なエンベロープの WS-Trust Issue は拒否する

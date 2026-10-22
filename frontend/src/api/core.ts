@@ -2,6 +2,7 @@ import { commonDictionary } from '../lib/i18n/common.i18n'
 import { getCurrentLocale } from '../lib/i18n/currentLocale'
 
 export type APIError = {
+  [extension: string]: unknown
   error?: string
   message?: string
   error_description?: string
@@ -19,7 +20,12 @@ export class AuthenticationAPIError extends Error {
   code?: string
   retryAfterSeconds?: number
 
-  constructor(message: string, code?: string, retryAfterSeconds?: number) {
+  constructor(
+    message: string,
+    code?: string,
+    retryAfterSeconds?: number,
+    readonly body?: APIError,
+  ) {
     super(message)
     this.name = 'AuthenticationAPIError'
     this.code = code
@@ -53,6 +59,7 @@ export function authenticationAPIError(body: APIError, fallback?: string): Authe
     apiErrorMessage(body, fallback),
     apiErrorCode(body),
     body.retry_after_seconds,
+    body,
   )
 }
 
@@ -93,7 +100,7 @@ async function doFetch<T>(
     if (response.status === 401) {
       throw new UnauthenticatedError(message, code)
     }
-    throw new AuthenticationAPIError(message, code, body.retry_after_seconds)
+    throw authenticationAPIError(body)
   }
   return { body, response }
 }

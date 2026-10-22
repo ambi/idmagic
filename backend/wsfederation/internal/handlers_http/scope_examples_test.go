@@ -42,12 +42,16 @@ func wsfedScopeEntraBody() string {
 
 // newWsFedScopeStack は API アクセストークンと WS-Federation の管理 API を配線したスタックを建てる。
 //
-// Entra フェデレーションの構成は、テナントの全利用者が sourceAnchor の属性を一意に持つことを
-// 前提に検証する。属性を持たない利用者がいると、スコープの判定を通った要求も 400 で止まり、
-// 「write が構成へ届く」ことを観測できない。
+// sourceAnchor を一意かつ本人が編集できない属性にして、スコープの判定を通った構成が
+// 属性スキーマの不備による 422 で止まらないようにする。
 func newWsFedScopeStack(t *testing.T) *stack.Stack {
 	t.Helper()
 	s := stack.New(t, stack.WithApiTokens(), stack.WithWsFederation())
+	if err := s.UserAttributeSchemas.Save(context.Background(), &userdomain.TenantUserAttributeSchema{
+		TenantID: tenancydomain.DefaultTenantID, Attributes: []userdomain.UserAttributeDef{protectedSourceAnchor()},
+	}); err != nil {
+		t.Fatal(err)
+	}
 	for i, id := range []string{stack.AdminUserID, stack.UserID} {
 		user, err := s.Users.FindBySub(s.RealmContext(t, tenancydomain.DefaultRealm), id)
 		if err != nil || user == nil {
