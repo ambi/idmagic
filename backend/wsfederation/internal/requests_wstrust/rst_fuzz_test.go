@@ -15,7 +15,7 @@ const validRST = `<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"`
 	`<s:Header>` +
 	`<a:MessageID>urn:uuid:1</a:MessageID>` +
 	`<a:To>https://idmagic.example/trust</a:To>` +
-	`<a:Action>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Issue</a:Action>` +
+	`<a:Action>http://docs.oasis-open.org/ws-sx/ws-trust/200512/RST/Issue</a:Action>` +
 	`<Security><UsernameToken><Username>user</Username><Password>secret</Password></UsernameToken>` +
 	`<Timestamp><Created>2026-01-01T00:00:00Z</Created><Expires>2026-01-01T00:05:00Z</Expires></Timestamp>` +
 	`</Security></s:Header>` +

@@ -478,7 +478,7 @@ func TestTrustMEX_Published(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		"mex:Metadata",
-		"UserNameWSTrustBinding_IWSTrust13Sync",
+		"UserNameWSTrustBinding_IWSTrust13Async",
 		"https://idp.example/realms/default/trust/usernamemixed",
 	} {
 		if !strings.Contains(body, want) {
@@ -706,7 +706,7 @@ func TestWsTrustAddressing_ValidatesMessageIDToAndAction(t *testing.T) {
 		// RequestType は Issue のまま残す。崩すのは WS-Addressing の Action だけ。
 		body := strings.Replace(
 			wsTrustRST(time.Now().UTC(), "urn:uuid:addressing-action", "urn:idmagic:demo-rp"),
-			"<a:Action>"+wstrust.RequestIssue+"</a:Action>",
+			"<a:Action>"+wstrust.ActionIssue+"</a:Action>",
 			"<a:Action>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Renew</a:Action>",
 			1,
 		)
@@ -791,7 +791,7 @@ func wsTrustRST(now time.Time, messageID, appliesTo string) string {
   xmlns:t="http://docs.oasis-open.org/ws-sx/ws-trust/200512"
   xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy">
   <s:Header>
-    <a:Action>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Issue</a:Action>
+    <a:Action>http://docs.oasis-open.org/ws-sx/ws-trust/200512/RST/Issue</a:Action>
     <a:MessageID>` + messageID + `</a:MessageID>
     <a:To>https://idp.example/realms/default/trust/usernamemixed</a:To>
     <o:Security>

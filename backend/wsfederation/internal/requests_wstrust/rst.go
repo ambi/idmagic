@@ -17,6 +17,9 @@ const (
 	NSSOAP12     = "http://www.w3.org/2003/05/soap-envelope"
 	NSWSU        = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
 
+	// ActionIssue は Issue の要求の WS-Addressing の Action、RequestIssue は RST の RequestType である
+	// (WS-Trust 1.3 の 4.1 節)。
+	ActionIssue   = NSTrust13 + "/RST/Issue"
 	RequestIssue  = NSTrust13 + "/Issue"
 	KeyTypeBearer = "http://docs.oasis-open.org/ws-sx/ws-trust/200512/Bearer"
 	xmlDateTime   = "2006-01-02T15:04:05Z"
@@ -90,7 +93,7 @@ func (r RequestSecurityToken) Validate(now time.Time) error {
 		return fmt.Errorf("wstrust: To is required")
 	case r.Action == "":
 		return fmt.Errorf("wstrust: Action is required")
-	case r.Action != RequestIssue:
+	case r.Action != ActionIssue:
 		return fmt.Errorf("wstrust: unsupported Action %q", r.Action)
 	case r.Username == "":
 		return fmt.Errorf("wstrust: UsernameToken Username is required")

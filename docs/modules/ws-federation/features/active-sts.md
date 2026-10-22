@@ -54,7 +54,7 @@ RSTR は SOAP 1.2 で署名した SAML Assertion を返す。
 #### REQ-WSFEDERATION-005 不正なエンベロープの WS-Trust Issue は拒否する
 
 - SOAP 1.2 のエンベロープとして読めないか、`RequestSecurityToken`、`MessageID`、`To`、`Action`、UsernameToken のユーザー名かパスワード、`AppliesTo` のどれかがない RST を受けた場合、WsFederation は、400 と `text/plain` の本文で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
-- `Action` または `RequestType` が WS-Trust 1.3 の `Issue` でないか、`KeyType` が `Bearer` でない RST を受けた場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
+- `Action` が WS-Trust 1.3 の Issue の要求（`http://docs.oasis-open.org/ws-sx/ws-trust/200512/RST/Issue`）でないか、`RequestType` が WS-Trust 1.3 の Issue（`http://docs.oasis-open.org/ws-sx/ws-trust/200512/Issue`）でないか、`KeyType` が `Bearer` でない RST を受けた場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - Timestamp の `Expires` が `Created` より後でないか、`Created` が現在より 5 分を超えて未来か、`Expires` を過ぎている RST を受けた場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - `To` がテナントの能動的な STS の URL と一致しないか、`AppliesTo` がテナントに登録した RP の `wtrealm` でない RST を受けた場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - **例**：EX-WSFEDERATION-005-01

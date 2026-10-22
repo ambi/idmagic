@@ -1,5 +1,5 @@
 ---
-status: pending
+status: in_progress
 authors: [tn]
 risk: medium
 reversibility: reversible
@@ -9,8 +9,15 @@ depends_on: []
 change_kind: bugfix
 affected_spec:
   - { path: docs/modules/ws-federation/features/active-sts.md, requirement: REQ-WSFEDERATION-005 }
-  - { path: spec/modules/ws-federation/main.tsp, symbol: IdMagic.WsFederation.Operations.WsTrustIssue }
+  - { path: spec/modules/ws-federation/main.tsp, symbol: IdMagic.WsFederation.Operations.WsTrustIssue, impact: conforms }
   - { path: spec/modules/ws-federation/main.tsp, symbol: IdMagic.WsFederation.Operations.WsTrustMetadataExchange }
+primary_use_cases:
+  - id: msal-rst-issue
+    requirement: REQ-WSFEDERATION-005
+    observable_result: MSAL が組み立てる形の WS-Trust 1.3 の RST（Action が `.../RST/Issue`）に、署名した Assertion を持つ RSTR が返り、`RequestType` の値を Action に置いた RST は 400 で拒否される。
+    boundary: acceptance
+    test: { path: backend/wsfederation/internal/handlers_http/wstrust_client_interop_test.go, name: TestWsTrustIssue_AcceptsTheRSTThatMSALSends, task: test-go-race }
+    fault_model: Action の照合が RequestType の値を求め、標準の Action を送るクライアントを拒否する。
 ---
 
 # WS-Trust の Issue を標準の Action で受け、クライアントが読める MEX を公開する
@@ -45,16 +52,32 @@ MEX の組み立ては、現在と同じく `metadata_wsfederation` が要求ご
 方針と束縛の組を一つのデータで表し、wi-98213 が `windowstransport` の組を足せる形にする。
 
 ```go
+// mexBinding は、MEX の WSDL で一つのエンドポイントを公開する方針、束縛、ポートの組である。
 type mexBinding struct {
-    Name     string // 例 UserNameWSTrustBinding_IWSTrust13Async
-    PolicyID string
-    Policy   mexPolicy // UsernameToken over TLS、のちに Negotiate を足す
-    Address  string
+    name       string             // UserNameWSTrustBinding_IWSTrust13Async
+    address    string             // https の usernamemixed
+    soapAction string             // http://docs.oasis-open.org/ws-sx/ws-trust/200512/RST/Issue
+    assertion  func(*etree.Element) // wsp:All に認証の方針を書く。のちに Negotiate を足す
 }
 ```
 
+### 着手時に一次資料から写した形
+
+出典は MSAL.NET の `src/client/Microsoft.Identity.Client/WsTrust/MexDocument.cs`、`WsTrustEndpoint.cs`、`Internal/XmlNamespace.cs`（main ブランチ）である。
+
+| 項目 | 形 |
+| --- | --- |
+| RST | SOAP 1.2。`wsa:Action`（`mustUnderstand="1"`）は `.../200512/RST/Issue`、`wsa:MessageID`、`wsa:ReplyTo`（anonymous）、`wsa:To`、`wsse:Security` の `wsu:Timestamp`（小数秒付き、期限は作成の 10 分後）と `UsernameToken`。本体の `wst:RequestSecurityToken` は `wsp:AppliesTo`、`KeyType`（Bearer）、`RequestType`（`.../200512/Issue`）の順 |
+| MEX の方針 | `wsp:Policy`（`wsu:Id`）の `wsp:ExactlyOne`／`wsp:All` に、`TransportBinding`（WS-SecurityPolicy 1.2 または 2005/07 の名前空間）と、`sp:SignedEncryptedSupportingTokens`（1.2）または `sp:SignedSupportingTokens`（2005/07）を置く。その下の `UsernameToken` と `WssUsernameToken10` は、MSAL は 2005/07 の名前空間でだけ探す |
+| MEX の束縛 | `wsdl:binding`（`name`）の `wsp:PolicyReference`（`URI="#<wsu:Id>"`）、`soap12:binding`（`transport="http://schemas.xmlsoap.org/soap/http"`）、`wsdl:operation` の `soap12:operation`（`soapAction` が `.../RST/Issue` なら WS-Trust 1.3） |
+| MEX のポート | 最初の `wsdl:service` の `wsdl:port`（`binding="<接頭辞>:<束縛名>"`）の `wsa10:EndpointReference`／`wsa10:Address`。https の絶対 URL だけを使う |
+
+方針は、MSAL の解析の癖に合わせ、WS-SecurityPolicy 2005/07 の `sp:SignedSupportingTokens` で揃える。
+1.2 の `SignedEncryptedSupportingTokens` の下に 2005/07 の `UsernameToken` を置く形は、名前空間が混ざり、ほかのクライアントが読み違えるおそれがあるので採らない。
+
 MEX のテストのオラクルは、MSAL の `MexDocument` の選択の手順（方針、束縛、ポートの順にたどる）を Go で書き、公開した MEX から usernamemixed のエンドポイントが得られることを確かめる。
-受け入れテストの RST は、MSAL の `WsTrustEndpoint` が組み立てる要素と名前空間の形に合わせる。
+受け入れテストの RST は、上の表の形に合わせる。
+MEX の公開は既存の要件を持たないので、README の「フェデレーションメタデータ」と TypeSpec の説明に形を書き、テストは `//verify:operation WsTrustMetadataExchange` で引く。
 
 ## 計画
 
@@ -63,17 +86,27 @@ MEX のテストのオラクルは、MSAL の `MexDocument` の選択の手順�
 
 ## タスク
 
-- [ ] T001 [Spec] REQ-WSFEDERATION-005 と標準仕様の表に Action と MEX の形を明記する。
-- [ ] T002 [Acceptance] MSAL の形の RST が 400 になることと、MSAL の手順で MEX からエンドポイントを得られないことを RED で確かめる。
-- [ ] T003 [Adapter] `ParseRST` と `BuildMEX` を直し、受け入れテストと既存のファズテストを GREEN にする。
-- [ ] T004 [Verify] 変更を検証する。
+- [x] T001 [Spec] REQ-WSFEDERATION-005 と標準仕様の表（`WSAddressing-MessageIDToAction`）に Action の URI を明記し、README の「フェデレーションメタデータ」と `WsTrustMetadataExchange` の説明に MEX の方針、束縛、ポートの形を書いた。
+- [x] T002 [Acceptance] `wstrust_client_interop_test.go` の `TestWsTrustIssue_AcceptsTheRSTThatMSALSends` は 400 `wstrust: unsupported Action` で、`TestWsTrustMEX_LetsMSALFindTheUsernameMixedEndpoint` は MSAL の手順でエンドポイントを一つも選べずに失敗した。
+- [x] T003 [Adapter] `ParseRST` の Action の照合を `ActionIssue`（`.../RST/Issue`）にし、`BuildMEX` を `mexBinding` の組から方針、束縛、ポートを書く形にした。既存のテストの RST とファズテストの種の Action を標準の値に改め、束縛名を AD FS と同じ `UserNameWSTrustBinding_IWSTrust13Async` にした。
+- [x] T004 [Verify] 変更を検証した。結果は検証の節に書いた。
 
 ## 検証
 
-- `mise run test-go-changed`：`requests_wstrust`、`metadata_wsfederation`、WsFederation の HTTP の例。
-- `mise run check`、`mise run check-spec-impact`。
-- ミューテーションテスト：`ParseRST` の Action と RequestType の照合。
+- `mise run test-go-changed -- main`：677 件が成功、失敗とスキップは 0 件。
+- `mise run check`、`lint-go`、`check-spec-impact`、`check-operation-references`、`check-boundaries`：成功。
+- ミューテーションテスト（変更行、`main` と比較）：`requests_wstrust` は 1 件を検出した。`metadata_wsfederation` の変更行には変異の対象がない。
+- 手動の故障注入：MEX から方針の参照、WS-Trust 1.3 の `soapAction`、ポートのエンドポイント参照、`TransportBinding`、`WssUsernameToken10` をそれぞれ落とし、`TestWsTrustMEX_LetsMSALFindTheUsernameMixedEndpoint` が五つとも検出した。
 
 ## リスク
 
 - MEX の形は MSAL のソースに合わせるので、ほかのクライアント（Office の古い版、dsregcmd）の差は実テナントの確認（wi-79）まで残る。
+
+## 要約
+
+REQ-WSFEDERATION-005 と `WsTrustMetadataExchange` を改めた。
+能動的な STS は、RST の `Action` に WS-Trust 1.3 の Issue の要求（`.../200512/RST/Issue`）を求め、`RequestType` の値（`.../200512/Issue`）を Action に置いた RST を拒否する。
+MEX は、TLS と UsernameToken を求める方針、それを参照する WS-Trust 1.3 の Issue の束縛、束縛を参照するポートを WSDL で公開し、MSAL が方針、束縛、ポートの順にたどって usernamemixed を選べる。
+方針は、MSAL が `UsernameToken` を WS-SecurityPolicy 2005/07 の名前空間でだけ探すので、その名前空間で揃えた。
+RST と MEX の形は MSAL.NET のソースを一次資料にし、受け入れテストはその手順を Go で写したオラクルで確かめる。
+WS-Trust 2005 の束縛は対象外とし、MSAL 以外のクライアントとの差は実テナントの確認（wi-79）に残る。

@@ -39,6 +39,13 @@ WS-Fed の RP と Microsoft Entra のドメインフェデレーションは、�
 有効期限内の検証用の証明書も広告するので、RP は計画されたローテーションの前後でも検証を続けられる。
 
 `/{realm}/trust/mex` は、能動的な STS の探索として、`usernamemixed` のエンドポイントと、UsernameToken を必須とするその方針を公開する。
+MEX は WSDL の方針、束縛、ポートで構成し、MSAL のようなクライアントが方針から束縛、束縛からポートをたどってエンドポイントを選べる形にする。
+
+| 要素 | 内容 |
+| --- | --- |
+| 方針（`wsp:Policy`） | TLS の `TransportBinding` と、WS-SecurityPolicy 2005/07 の `SignedSupportingTokens` の `UsernameToken`（`WssUsernameToken10`） |
+| 束縛（`wsdl:binding`） | 方針を `wsp:PolicyReference` で参照し、SOAP 1.2 の HTTP の転送と、WS-Trust 1.3 の Issue の `soapAction`（`.../200512/RST/Issue`）を持つ |
+| ポート（`wsdl:port`） | 束縛を参照し、`soap12:address` と `wsa:EndpointReference` に `usernamemixed` の URL を持つ |
 RST と RSTR のやり取り自体は、メタデータの一部ではない。
 
 ## 設計の要点

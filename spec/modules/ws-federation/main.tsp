@@ -83,7 +83,7 @@ model WsTrustMetadataExchangeSuccess_200 {
   @body body: string;
 }
 
-@doc("WS-Trust の MEX エンドポイント。アクティブ STS の usernamemixed のエンドポイント、UsernameToken のポリシー、WS-Addressing と SOAP のバインディングを示し、いずれもレルムの発行者から導く。")
+@doc("WS-Trust の MEX エンドポイント。アクティブ STS の usernamemixed のエンドポイントを、TLS と UsernameToken を求める WS-SecurityPolicy の方針、その方針を参照する SOAP 1.2 の WS-Trust 1.3 の Issue（soapAction は `http://docs.oasis-open.org/ws-sx/ws-trust/200512/RST/Issue`）の束縛、束縛を参照する WS-Addressing のエンドポイント参照を持つポートとして WSDL で示し、いずれもレルムの発行者から導く。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("WsTrustMetadataExchange")
 @route("/trust/mex")

@@ -32,4 +32,4 @@
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| WSAddressing-MessageIDToAction | required | MUST | MessageID はリプレイ防止のために検証し、To は能動的 STS のエンドポイント、Action は Issue として検証する |
+| WSAddressing-MessageIDToAction | required | MUST | MessageID はリプレイ防止のために検証し、To は能動的 STS のエンドポイント、Action は WS-Trust 1.3 の Issue の要求（`http://docs.oasis-open.org/ws-sx/ws-trust/200512/RST/Issue`）として検証する |

@@ -23,6 +23,12 @@ const (
 	nsAddress = "http://www.w3.org/2005/08/addressing"
 	nsTrust13 = "http://docs.oasis-open.org/ws-sx/ws-trust/200512"
 	nsSoap12  = "http://schemas.xmlsoap.org/wsdl/soap12/"
+
+	nsWSDL               = "http://schemas.xmlsoap.org/wsdl/"
+	nsWSSUtility         = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	nsSecurityPolicy2005 = "http://schemas.xmlsoap.org/ws/2005/07/securitypolicy"
+	nsSTSService         = "http://schemas.microsoft.com/ws/2008/06/identity/securitytokenservice"
+	soapHTTPTransport    = "http://schemas.xmlsoap.org/soap/http"
 )
 
 // EndpointSet は metadata に広告する WS-Federation / WS-Trust endpoint 群。
@@ -146,7 +152,27 @@ func addEndpointReference(parent *etree.Element, endpoint string) {
 	ref.CreateElement("wsa:Address").SetText(endpoint)
 }
 
-// BuildMEX は WS-Trust active endpoint と federation metadata URL を広告する簡易 MEX を生成する。
+// mexBinding は、MEX の WSDL で一つのエンドポイントを公開する方針、束縛、ポートの組である。
+// クライアントは方針から束縛、束縛からポートをたどってエンドポイントを選ぶ。
+type mexBinding struct {
+	name       string
+	address    string
+	soapAction string
+	// authentication は、方針の wsp:All に、このエンドポイントが求める認証を書く。
+	authentication func(all *etree.Element)
+}
+
+// requireUsernameToken は、UsernameToken を求める方針を書く。MSAL は SignedSupportingTokens の
+// 下の UsernameToken と WssUsernameToken10 を WS-SecurityPolicy 2005/07 の名前空間でだけ探すので、
+// 方針全体をその名前空間で揃える。
+func requireUsernameToken(all *etree.Element) {
+	tokens := all.CreateElement("sp:SignedSupportingTokens").CreateElement("wsp:Policy")
+	token := tokens.CreateElement("sp:UsernameToken")
+	token.CreateAttr("sp:IncludeToken", nsSecurityPolicy2005+"/IncludeToken/AlwaysToRecipient")
+	token.CreateElement("wsp:Policy").CreateElement("sp:WssUsernameToken10")
+}
+
+// BuildMEX は、能動的な STS のエンドポイントを WSDL の方針、束縛、ポートで公開する MEX を生成する。
 func BuildMEX(endpoints EndpointSet) ([]byte, error) {
 	if strings.TrimSpace(endpoints.ActiveURL) == "" {
 		return nil, fmt.Errorf("metadata: active endpoint is required")
@@ -154,36 +180,46 @@ func BuildMEX(endpoints EndpointSet) ([]byte, error) {
 	if strings.TrimSpace(endpoints.MEXURL) == "" {
 		return nil, fmt.Errorf("metadata: MEX endpoint is required")
 	}
+	bindings := []mexBinding{{
+		name:           "UserNameWSTrustBinding_IWSTrust13Async",
+		address:        endpoints.ActiveURL,
+		soapAction:     nsTrust13 + "/RST/Issue",
+		authentication: requireUsernameToken,
+	}}
+
 	doc := etree.NewDocument()
 	doc.CreateProcInst("xml", `version="1.0" encoding="utf-8"`)
 	root := doc.CreateElement("mex:Metadata")
 	root.CreateAttr("xmlns:mex", "http://schemas.xmlsoap.org/ws/2004/09/mex")
 	root.CreateAttr("xmlns:wsa", nsAddress)
 	root.CreateAttr("xmlns:wsp", nsPolicy)
-	root.CreateAttr("xmlns:wsdl", "http://schemas.xmlsoap.org/wsdl/")
+	root.CreateAttr("xmlns:wsu", nsWSSUtility)
+	root.CreateAttr("xmlns:sp", nsSecurityPolicy2005)
+	root.CreateAttr("xmlns:wsdl", nsWSDL)
 	root.CreateAttr("xmlns:soap12", nsSoap12)
-	root.CreateAttr("xmlns:t", nsTrust13)
+	root.CreateAttr("xmlns:tns", nsSTSService)
 
 	section := root.CreateElement("mex:MetadataSection")
-	section.CreateAttr("Dialect", "http://schemas.xmlsoap.org/wsdl/")
-	wsdl := section.CreateElement("wsdl:definitions")
-	wsdl.CreateAttr("targetNamespace", nsTrust13)
-	service := wsdl.CreateElement("wsdl:service")
+	section.CreateAttr("Dialect", nsWSDL)
+	section.CreateAttr("Identifier", nsSTSService)
+	definitions := section.CreateElement("wsdl:definitions")
+	definitions.CreateAttr("name", "SecurityTokenService")
+	definitions.CreateAttr("targetNamespace", nsSTSService)
+	for _, b := range bindings {
+		addMEXPolicy(definitions, b)
+	}
+	for _, b := range bindings {
+		addMEXBinding(definitions, b)
+	}
+	service := definitions.CreateElement("wsdl:service")
 	service.CreateAttr("name", "SecurityTokenService")
-	port := service.CreateElement("wsdl:port")
-	port.CreateAttr("name", "UserNameWSTrustBinding_IWSTrust13Sync")
-	port.CreateAttr("binding", "t:UserNameWSTrustBinding_IWSTrust13Sync")
-	address := port.CreateElement("soap12:address")
-	address.CreateAttr("location", endpoints.ActiveURL)
-
-	policySection := root.CreateElement("mex:MetadataSection")
-	policySection.CreateAttr("Dialect", nsPolicy)
-	policy := policySection.CreateElement("wsp:Policy")
-	policy.CreateAttr("wsu:Id", "UserNameWSTrustBinding")
-	policy.CreateAttr("xmlns:wsu", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd")
-	supportingTokens := policy.CreateElement("sp:SignedSupportingTokens")
-	supportingTokens.CreateAttr("xmlns:sp", "http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702")
-	policy.CreateElement("t:RequestType").SetText(nsTrust13 + "/Issue")
+	for _, b := range bindings {
+		port := service.CreateElement("wsdl:port")
+		port.CreateAttr("name", b.name)
+		port.CreateAttr("binding", "tns:"+b.name)
+		port.CreateElement("soap12:address").CreateAttr("location", b.address)
+		addEndpointReference(port, b.address)
+	}
 
 	if strings.TrimSpace(endpoints.FederationMetaURL) != "" {
 		metaSection := root.CreateElement("mex:MetadataSection")
@@ -198,4 +234,34 @@ func BuildMEX(endpoints EndpointSet) ([]byte, error) {
 		return nil, fmt.Errorf("metadata: serialize MEX: %w", err)
 	}
 	return out, nil
+}
+
+// addMEXPolicy は、TLS の転送と、束縛が求める認証を要件とする方針を書く。
+func addMEXPolicy(definitions *etree.Element, b mexBinding) {
+	policy := definitions.CreateElement("wsp:Policy")
+	policy.CreateAttr("wsu:Id", b.name+"_policy")
+	all := policy.CreateElement("wsp:ExactlyOne").CreateElement("wsp:All")
+	transport := all.CreateElement("sp:TransportBinding").CreateElement("wsp:Policy")
+	transport.CreateElement("sp:TransportToken").CreateElement("wsp:Policy").
+		CreateElement("sp:HttpsToken").CreateAttr("RequireClientCertificate", "false")
+	transport.CreateElement("sp:AlgorithmSuite").CreateElement("wsp:Policy").CreateElement("sp:Basic256")
+	transport.CreateElement("sp:Layout").CreateElement("wsp:Policy").CreateElement("sp:Strict")
+	transport.CreateElement("sp:IncludeTimestamp")
+	b.authentication(all)
+}
+
+// addMEXBinding は、方針を参照する SOAP 1.2 の WS-Trust の Issue の束縛を書く。
+func addMEXBinding(definitions *etree.Element, b mexBinding) {
+	binding := definitions.CreateElement("wsdl:binding")
+	binding.CreateAttr("name", b.name)
+	binding.CreateAttr("type", "tns:IWSTrust13Async")
+	binding.CreateElement("wsp:PolicyReference").CreateAttr("URI", "#"+b.name+"_policy")
+	binding.CreateElement("soap12:binding").CreateAttr("transport", soapHTTPTransport)
+	operation := binding.CreateElement("wsdl:operation")
+	operation.CreateAttr("name", "Trust13IssueAsync")
+	soapOperation := operation.CreateElement("soap12:operation")
+	soapOperation.CreateAttr("soapAction", b.soapAction)
+	soapOperation.CreateAttr("style", "document")
+	operation.CreateElement("wsdl:input").CreateElement("soap12:body").CreateAttr("use", "literal")
+	operation.CreateElement("wsdl:output").CreateElement("soap12:body").CreateAttr("use", "literal")
 }

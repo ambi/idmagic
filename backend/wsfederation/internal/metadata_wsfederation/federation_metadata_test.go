@@ -92,7 +92,7 @@ func TestBuildMEX_AdvertisesUserNameMixedEndpoint(t *testing.T) {
 	body := string(xml)
 	for _, want := range []string{
 		"mex:Metadata",
-		"UserNameWSTrustBinding_IWSTrust13Sync",
+		"UserNameWSTrustBinding_IWSTrust13Async",
 		"https://idp.example/trust/usernamemixed",
 		"https://idp.example/federationmetadata/2007-06/federationmetadata.xml",
 	} {

@@ -72,7 +72,7 @@ func brokenRSTs() []brokenRST {
 		{name: "AppliesTo missing", envelope: true, appliesTo: ""},
 		{
 			name: "Action other than Issue", envelope: true, appliesTo: rp,
-			old: "<a:Action>" + wstrust.RequestIssue + "</a:Action>", replacement: "<a:Action>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Renew</a:Action>",
+			old: "<a:Action>" + wstrust.ActionIssue + "</a:Action>", replacement: "<a:Action>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Renew</a:Action>",
 		},
 		{
 			name: "RequestType other than Issue", envelope: true, appliesTo: rp,
