@@ -222,3 +222,60 @@ describe('Entra の構成の拒否', () => {
     }
   }
 })
+
+describe('Graph の構成結果', () => {
+  afterEach(() => restoreGlobals())
+
+  //spec:covers REQ-WSFEDERATION-001: 作成と更新のコマンドをそれぞれコピーし、制限のコードを選択した言語で表示すること。
+  for (const locale of ['ja', 'en'] as const) {
+    it('Graph のコマンドをコピーし制限を翻訳する', async () => {
+      const commands = {
+        create:
+          "New-MgDomainFederationConfiguration -DomainId 'contoso.com' -SigningCertificate 'MIICcreate'",
+        update:
+          "Update-MgDomainFederationConfiguration -DomainId 'contoso.com' -SigningCertificate 'MIICupdate'",
+      }
+      const copy = mock(async (_value: string) => {})
+      stubGlobal('navigator', { clipboard: { writeText: copy } })
+      stubGlobal(
+        'fetch',
+        mock(
+          async () =>
+            new Response(
+              JSON.stringify({
+                powershell: {
+                  SigningCertificate: 'MIICcreate',
+                  PreferredAuthenticationProtocol: 'wsFed',
+                },
+                commands,
+                known_limitations: [{ code: 'hybrid_join_not_supported' }],
+              }),
+              { status: 201, headers: { 'Content-Type': 'application/json' } },
+            ),
+        ),
+      )
+      await renderWithRouter(<AdminEntraFederationAddPage csrfToken="csrf" />, { locale })
+      const dictionary = adminEntraFederationDictionary[locale]
+      fireEvent.change(screen.getByLabelText(dictionary.verifiedDomainLabel), {
+        target: { value: 'contoso.com' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: dictionary.save }))
+      await waitFor(() => expect(screen.getByText(commands.create)).toBeInTheDocument())
+      expect(screen.getByText(commands.update)).toBeInTheDocument()
+      expect(screen.getByText(dictionary.hybridJoinNotProvidedNotice)).toBeInTheDocument()
+      expect(screen.queryByText('hybrid_join_not_supported')).not.toBeInTheDocument()
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: locale === 'ja' ? '作成コマンドをコピー' : 'Copy create command',
+        }),
+      )
+      await waitFor(() => expect(copy).toHaveBeenLastCalledWith(commands.create))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: locale === 'ja' ? '更新コマンドをコピー' : 'Copy update command',
+        }),
+      )
+      await waitFor(() => expect(copy).toHaveBeenLastCalledWith(commands.update))
+    })
+  }
+})

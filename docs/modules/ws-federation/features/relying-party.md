@@ -51,6 +51,9 @@ sourceAnchor の値の重なりは、属性が `unique` なので IdManagement �
 - 管理者が RP を一覧したとき、WsFederation は、テナントのすべての RP を 200 で返す。
 - 管理者が `wtrealm` を指定して RP を削除したとき、WsFederation は、その RP を消して 204 を返す。
 - 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、`wtrealm` と audience を `urn:federation:MicrosoftOnline` とするテナントに一つの SAML 1.1 の RP に、ドメインと IssuerUri（省略時は `urn:idmagic:entra:<ドメイン>`）の組を追加または置き換え、`EntraFederationConfigured` を発行し、PowerShell に渡す設定値とともに返す。
+- 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、Microsoft Graph PowerShell の名前を持つ設定値、有効な XML 署名証明書の公開部分の base64、値を埋めた `New-MgDomainFederationConfiguration` と `Update-MgDomainFederationConfiguration` のコマンドを返す。
+- 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、`SignOutUri` に `wsignout1.0` を受ける受動的なエンドポイントを、`PreferredAuthenticationProtocol` に `wsFed` を、`FederatedIdpMfaBehavior` に `acceptIfMfaDoneByFederatedIdp` を返す。
+- 管理者が構成の結果を表示したとき、WsFederation は、作成と更新のコマンドをそれぞれコピーできる形で表示し、制限のコードを選択した言語の辞書の文言で表示する。
 - 指定したドメインを構成していない間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、201 を返す。
 - 指定したドメインを構成している間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、200 を返す。
 - `wsfed:read` のスコープの API アクセストークンで呼び出されたとき、WsFederation は、RP の一覧だけを許可する。

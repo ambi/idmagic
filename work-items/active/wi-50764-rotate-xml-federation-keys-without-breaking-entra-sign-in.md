@@ -4,7 +4,7 @@ authors: [tn]
 risk: high
 created_at: 2026-10-23
 priority: p2
-depends_on: []
+depends_on: [wi-23994-return-entra-federation-settings-usable-with-microsoft-graph-powershell]
 change_kind: bugfix
 affected_spec:
   - { path: docs/modules/signing-keys/features/separation.md, requirement: REQ-SIGNINGKEYS-006 }
@@ -46,6 +46,10 @@ Entra は逆の向きの重なりを要する。
 | ローテーションの API で警告を出すだけにする | 採らない | 停止を防げない |
 
 T001 で、Entra が自動の更新に使うメタデータの取得先と、`nextSigningCertificate` の運用の手順を一次資料で確かめてから選ぶ。
+
+次の証明書を Entra に登録するため、先に wi-23994 で有効な証明書を含む Graph PowerShell の構成結果を整える。
+事前公開の状態を追加するとき、この応答へ `NextSigningCertificate` を接続する。
+Vault の提供元は再起動時に最新のバージョンを署名用に取り込むため、事前公開しただけの鍵を署名に使わない永続的な選択も、この設計で解決する。
 
 ## 計画
 

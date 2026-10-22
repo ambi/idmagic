@@ -1,7 +1,9 @@
 package handlers_http
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -62,7 +64,6 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	passive := support.TenantURL(c, "/wsfed", d.Issuer)
 	active := support.TenantURL(c, "/trust/usernamemixed", d.Issuer)
 	mex := support.TenantURL(c, "/trust/mex", d.Issuer)
-	metadata := support.TenantURL(c, "/federationmetadata/2007-06/federationmetadata.xml", d.Issuer)
 	domain := strings.ToLower(strings.TrimSpace(req.Domain))
 	issuerURI := strings.TrimSpace(req.IssuerURI)
 	if issuerURI == "" {
@@ -112,24 +113,37 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	if added {
 		status = http.StatusCreated
 	}
+	if d.FederationSigner == nil {
+		return fmt.Errorf("federation signing certificate unavailable")
+	}
+	signer, err := d.FederationSigner.Resolve(ctx)
+	if err != nil {
+		return err
+	}
+	if signer == nil || signer.Certificate() == nil {
+		return fmt.Errorf("federation signing certificate unavailable")
+	}
+	settings := map[string]string{
+		"IssuerUri":                       issuerURI,
+		"PassiveSignInUri":                passive,
+		"ActiveSignInUri":                 active,
+		"MetadataExchangeUri":             mex,
+		"SignOutUri":                      passive + "?wa=wsignout1.0",
+		"SigningCertificate":              base64.StdEncoding.EncodeToString(signer.Certificate().Raw),
+		"PreferredAuthenticationProtocol": "wsFed",
+		"FederatedIdpMfaBehavior":         "acceptIfMfaDoneByFederatedIdp",
+	}
 	if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
 		return err
 	}
 	d.emit(&feddomain.EntraFederationConfigured{At: now, TenantID: tenantID, Domain: domain, IssuerURI: issuerURI})
 
 	return support.NoStoreJSON(c, status, map[string]any{
-		"profile":       rp.EntraProfile,
-		"relying_party": rp,
-		"powershell": map[string]string{
-			"IssuerUri":           issuerURI,
-			"PassiveLogOnUri":     passive,
-			"ActiveLogOnUri":      active,
-			"MetadataExchangeUri": mex,
-			"SigningCertificate":  "Use the X.509 certificate published in " + metadata,
-		},
-		"known_limitations": []string{
-			"Hybrid Azure AD Join device registration is not provided; use managed/PHS or AD FS coexistence when device registration is required.",
-		},
+		"profile":           rp.EntraProfile,
+		"relying_party":     rp,
+		"powershell":        settings,
+		"commands":          entraPowerShellCommands(domain, settings),
+		"known_limitations": []map[string]string{{"code": "hybrid_join_not_supported"}},
 	})
 }
 

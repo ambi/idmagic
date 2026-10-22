@@ -79,6 +79,11 @@ type entraServer struct {
 // 持ち、users を保存したサーバーを返す。行為者は最初は管理者である。
 func newEntraServerWith(t *testing.T, def userdomain.UserAttributeDef, users ...entraUser) entraServer {
 	t.Helper()
+	return newEntraServerConfigured(t, def, nil, users...)
+}
+
+func newEntraServerConfigured(t *testing.T, def userdomain.UserAttributeDef, configure func(*httpadapter.Deps), users ...entraUser) entraServer {
+	t.Helper()
 	ctx := context.Background()
 	current := &authdomain.AuthenticationContext{UserID: entraAdmin.id, AuthTime: time.Now().Unix()}
 	identity := idmanagement.NewMemoryModule()
@@ -115,6 +120,9 @@ func newEntraServerWith(t *testing.T, def userdomain.UserAttributeDef, users ...
 		d.AttrSchemaRepo = identity.AttrSchemaRepo
 		d.UserRepo = identity.UserRepo
 		d.AuthnResolver = switchResolver{current: &current}
+		if configure != nil {
+			configure(d)
+		}
 	})
 	return entraServer{
 		e: e, events: events, schema: saveSchema,

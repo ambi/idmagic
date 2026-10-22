@@ -34,6 +34,15 @@ export const adminEntraFederationDictionary = defineDictionary(
     issuerUriPlaceholder: '空なら自動生成',
     replyUrlLabel: 'wreply URL',
     save: '保存',
+    graphCommandsNotice:
+      'Microsoft Graph PowerShell に接続し、新規の構成には作成コマンド、既存の構成には更新コマンドを実行してください。',
+    createCommandLabel: '作成コマンド',
+    updateCommandLabel: '更新コマンド',
+    copyCreateCommand: '作成コマンドをコピー',
+    copyUpdateCommand: '更新コマンドをコピー',
+    commandCopiedNotice: 'コマンドをコピーしました。',
+    commandCopyFailedError:
+      'コピーできませんでした。表示したコマンドを選択してコピーしてください。',
     hybridJoinNotProvidedNotice:
       'Hybrid Azure AD Join のデバイス登録は未提供です。必要な場合は managed/PHS への切替または AD FS 併存を検討してください。',
     backToFederationList: 'フェデレーション一覧へ戻る',
@@ -71,6 +80,14 @@ export const adminEntraFederationDictionary = defineDictionary(
     issuerUriPlaceholder: 'Auto-generated if blank',
     replyUrlLabel: 'wreply URL',
     save: 'Save',
+    graphCommandsNotice:
+      'Connect to Microsoft Graph PowerShell, then run the create command for a new configuration or the update command for an existing configuration.',
+    createCommandLabel: 'Create command',
+    updateCommandLabel: 'Update command',
+    copyCreateCommand: 'Copy create command',
+    copyUpdateCommand: 'Copy update command',
+    commandCopiedNotice: 'Copied the command.',
+    commandCopyFailedError: 'Could not copy. Select the displayed command and copy it manually.',
     hybridJoinNotProvidedNotice:
       'Hybrid Azure AD Join device registration is not provided. If needed, consider switching to managed/PHS or keeping AD FS alongside.',
     backToFederationList: 'Back to federation list',

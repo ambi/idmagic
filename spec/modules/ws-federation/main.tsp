@@ -122,10 +122,17 @@ model ConfigureEntraFederationHttpRequest {
 model ConfigureEntraFederationHttpResponse {
   profile: IdMagic.Contract.EntraFederationProfile;
   relying_party: IdMagic.Contract.WsFedRelyingParty;
-  @doc("`Set-MsolDomainAuthentication` に渡す値。そのパラメーター名（IssuerUri、PassiveLogOnUri、ActiveLogOnUri、MetadataExchangeUri、SigningCertificate）をキーとする。")
+  @doc("Microsoft Graph PowerShell のパラメーター名をキーとする。IssuerUri、PassiveSignInUri、ActiveSignInUri、MetadataExchangeUri、SignOutUri、SigningCertificate、PreferredAuthenticationProtocol、FederatedIdpMfaBehavior を含む。SigningCertificate は有効な XML 署名証明書の公開部分の base64、PreferredAuthenticationProtocol は wsFed、FederatedIdpMfaBehavior は acceptIfMfaDoneByFederatedIdp である。")
   powershell: Record<string>;
-  @doc("このプリセットが提供しないもの。運用者が設定した後ではなく前に気付けるように示す。Hybrid Azure AD Join のデバイス登録はここに載る。")
-  known_limitations: string[];
+  @doc("値を埋めた作成と更新のコマンド。Microsoft Graph に接続した PowerShell で管理者が実行する。更新は同じドメインの既存の構成から ID を取得する。")
+  commands: {
+    create: string;
+    update: string;
+  };
+  @doc("この定型設定が提供しない機能のコード。画面は選択した言語の辞書で表示する。")
+  known_limitations: {
+    code: "hybrid_join_not_supported";
+  }[];
 }
 
 model ConfigureEntraFederationSuccess_200 {
@@ -171,7 +178,7 @@ model ConfigureEntraFederationError422 {
   @body body: ConfigureEntraFederationError422Body;
 }
 
-@doc("Microsoft Entra のドメインフェデレーションのプリセットを設定する。確認済みのドメイン、IssuerUri、sourceAnchor の属性を受け取り、属性が `unique` で `editable_by_user` でないこと、UPN がフェデレーションするドメインに属する既存の利用者がみな ImmutableID として使える値を持つこと、IssuerUri がほかのドメインと重ならないことを確かめる。sourceAnchor の値は変換せずにそのまま ImmutableID にする。成功すると、UPN、ImmutableID、永続的な NameID のクレームのプリセットを含む、`wtrealm` が `urn:federation:MicrosoftOnline` のテナントに一つの WsFedRelyingParty に、ドメインと IssuerUri の組を追加または置き換え、Entra に登録する PassiveLogOnUri、ActiveLogOnUri、MetadataExchangeUri を返す。Hybrid Azure AD Join のデバイス登録には windowstransport とコンピューターアカウントの Kerberos が必要なので、診断はそれを提供しないものとして報告する。")
+@doc("Microsoft Entra のドメインフェデレーションの定型設定を構成する。確認済みのドメイン、IssuerUri、sourceAnchor の属性を受け取り、属性が unique で本人が編集できないこと、対象の利用者の sourceAnchor の値、IssuerUri の重複を確かめる。テナントに一つの Entra の RP にドメインと IssuerUri を追加または置き換え、Microsoft Graph PowerShell の設定値と作成と更新のコマンドを返す。SigningCertificate は署名器の有効な証明書の公開部分の base64 とする。制限はコードで返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
 @TypeSpec.OpenAPI.operationId("ConfigureEntraFederation")
 @route("/api/admin/v1/wsfed/entra-federation")

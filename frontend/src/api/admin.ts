@@ -722,7 +722,8 @@ export type ConfigureEntraFederationResponse = {
   profile: EntraFederationProfile
   relying_party: WsFedRelyingParty
   powershell: Record<string, string>
-  known_limitations: string[]
+  commands: { create: string; update: string }
+  known_limitations: { code: 'hybrid_join_not_supported' }[]
 }
 
 export async function configureEntraFederation(

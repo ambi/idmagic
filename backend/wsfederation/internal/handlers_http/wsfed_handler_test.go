@@ -841,9 +841,10 @@ func newAdminServer(t *testing.T) *echo.Echo {
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:   "https://idp.example",
 		Contract: spec.CurrentRuntimeContract(), WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
-		UserRepo:       userRepo,
-		AttrSchemaRepo: identity.AttrSchemaRepo,
-		AuthnResolver:  stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
+		UserRepo:         userRepo,
+		AttrSchemaRepo:   identity.AttrSchemaRepo,
+		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
+		FederationSigner: devSigner(t),
 	})
 	return e
 }
@@ -938,8 +939,8 @@ func TestAdminConfigureEntraFederation_CreatesPresetRelyingParty(t *testing.T) {
 		`"source_anchor_attribute":"object_guid"`,
 		`"claim_type":"http://schemas.xmlsoap.org/claims/UPN"`,
 		`"claim_type":"http://schemas.xmlsoap.org/claims/nameidentifier"`,
-		`"ActiveLogOnUri":"https://idp.example/realms/default/trust/usernamemixed"`,
-		"Hybrid Azure AD Join device registration is not provided",
+		`"ActiveSignInUri":"https://idp.example/realms/default/trust/usernamemixed"`,
+		`"code":"hybrid_join_not_supported"`,
 	} {
 		if !strings.Contains(rec.Body.String(), want) {
 			t.Fatalf("response missing %q:\n%s", want, rec.Body.String())
@@ -957,7 +958,7 @@ func TestAdminConfigureEntraFederation_CreatesPresetRelyingParty(t *testing.T) {
 		Profile      feddomain.EntraFederationProfile `json:"profile"`
 		RelyingParty feddomain.WsFedRelyingParty      `json:"relying_party"`
 		PowerShell   map[string]string                `json:"powershell"`
-		KnownLimits  []string                         `json:"known_limitations"`
+		KnownLimits  []map[string]string              `json:"known_limitations"`
 	}
 	if err := json.Unmarshal(updated.Body.Bytes(), &updatedBody); err != nil {
 		t.Fatal(err)

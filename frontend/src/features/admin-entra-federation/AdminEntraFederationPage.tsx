@@ -210,10 +210,21 @@ export function AdminEntraFederationAddPage({
   const t = useDictionary(adminEntraFederationDictionary)
   const { locale } = useLocale()
 
+  async function copyCommand(command: string) {
+    setError('')
+    try {
+      await navigator.clipboard.writeText(command)
+      setNotice(t.commandCopiedNotice)
+    } catch {
+      setError(t.commandCopyFailedError)
+    }
+  }
+
   async function handleConfigure(event: FormEvent) {
     event.preventDefault()
     setError('')
     setNotice('')
+    setResult(null)
     try {
       const requestedDomain = domain.trim()
       const configured = await configureEntraFederation(csrfToken, {
@@ -331,7 +342,27 @@ export function AdminEntraFederationAddPage({
                 </div>
               ))}
             </div>
-            <Alert>{t.hybridJoinNotProvidedNotice}</Alert>
+            <p>{t.graphCommandsNotice}</p>
+            {(['create', 'update'] as const).map((kind) => (
+              <div key={kind} className="grid min-w-0 gap-2">
+                <h2 className="font-semibold">
+                  {kind === 'create' ? t.createCommandLabel : t.updateCommandLabel}
+                </h2>
+                <pre className="max-h-64 overflow-auto rounded-md bg-white p-3">
+                  <code>{result.commands[kind]}</code>
+                </pre>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void copyCommand(result.commands[kind])}
+                >
+                  {kind === 'create' ? t.copyCreateCommand : t.copyUpdateCommand}
+                </Button>
+              </div>
+            ))}
+            {result.known_limitations.map((limitation) => (
+              <Alert key={limitation.code}>{t.hybridJoinNotProvidedNotice}</Alert>
+            ))}
             <div>
               <Button
                 variant="outline"
