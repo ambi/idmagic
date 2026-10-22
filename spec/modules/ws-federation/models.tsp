@@ -34,14 +34,11 @@ model WsFedRelyingParty {
 }
 
 
-@doc("Microsoft Entra のドメインフェデレーションのプロファイル。IssuerUri、sourceAnchor の属性、パッシブ、アクティブ、MEX のエンドポイントをまとめ、UPN、ImmutableID、永続的な NameID のクレームのプリセットを WS-Fed の RP に適用する。")
+@doc("Microsoft Entra のドメインフェデレーションのプロファイル。テナントに一つの `urn:federation:MicrosoftOnline` の RP に、構成したドメインと IssuerUri の組、sourceAnchor の属性、パッシブ、アクティブ、MEX のエンドポイントをまとめ、UPN、ImmutableID、永続的な NameID のクレームのプリセットを適用する。")
 model EntraFederationProfile {
-  @doc("Entra で確認済みの DNS ドメイン。")
-  @minLength(1)
-  domain: string;
-  @doc("Entra に登録した IssuerUri。発行するトークンの発行者と RP の wtrealm に一致する。")
-  @minLength(1)
-  issuer_uri: string;
+  @doc("構成したドメインと IssuerUri の組。発行するトークンの発行者は、利用者の UPN のドメインに最も長く一致する組の IssuerUri である。")
+  @minItems(1)
+  domains: EntraDomainFederation[];
   @doc("ImmutableID の元になる、変わらないユーザーの属性。objectGUID の GUID の文字列か、すでに base64 で符号化した値のどちらかである。")
   @minLength(1)
   source_anchor_attribute: string;
@@ -54,6 +51,16 @@ model EntraFederationProfile {
   active_logon_uri: string;
   @doc("Entra の MetadataExchangeUri。通常は `/trust/mex` である。")
   metadata_exchange_uri: string;
+}
+
+@doc("Entra のドメインフェデレーションで構成した一つのドメイン。")
+model EntraDomainFederation {
+  @doc("Entra で確認済みの DNS ドメイン。小文字で保存する。")
+  @minLength(1)
+  domain: string;
+  @doc("このドメインに Entra で設定した IssuerUri。ドメインの間で重ならない。")
+  @minLength(1)
+  issuer_uri: string;
 }
 
 

@@ -159,7 +159,7 @@ model ConfigureEntraFederationError403 {
   @body body: ConfigureEntraFederationError403Body;
 }
 
-@doc("Microsoft Entra のドメインフェデレーションのプリセットを設定する。確認済みのドメイン、IssuerUri、sourceAnchor の属性を受け取り、sourceAnchor が既存のユーザーで欠けても重複してもいないこと、GUID または base64 の ImmutableID へ正規化できることを確かめる。成功すると、UPN、ImmutableID、永続的な NameID のクレームのプリセットを含む WsFedRelyingParty を作成または更新し、Entra に登録する PassiveLogOnUri、ActiveLogOnUri、MetadataExchangeUri を返す。Hybrid Azure AD Join のデバイス登録には windowstransport とコンピューターアカウントの Kerberos が必要なので、診断はそれを提供しないものとして報告する。")
+@doc("Microsoft Entra のドメインフェデレーションのプリセットを設定する。確認済みのドメイン、IssuerUri、sourceAnchor の属性を受け取り、sourceAnchor が既存のユーザーで欠けても重複してもいないこと、GUID または base64 の ImmutableID へ正規化できることと、IssuerUri がほかのドメインと重ならないことを確かめる。成功すると、UPN、ImmutableID、永続的な NameID のクレームのプリセットを含む、`wtrealm` が `urn:federation:MicrosoftOnline` のテナントに一つの WsFedRelyingParty に、ドメインと IssuerUri の組を追加または置き換え、Entra に登録する PassiveLogOnUri、ActiveLogOnUri、MetadataExchangeUri を返す。Hybrid Azure AD Join のデバイス登録には windowstransport とコンピューターアカウントの Kerberos が必要なので、診断はそれを提供しないものとして報告する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
 @TypeSpec.OpenAPI.operationId("ConfigureEntraFederation")
 @route("/api/admin/v1/wsfed/entra-federation")

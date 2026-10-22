@@ -30,10 +30,12 @@
 - `wreply` を省略した `wsignin1.0` を受けたとき、WsFederation は、RP に登録した最初の返信先へ RSTR を送る。
 - `wsignin1.0` にトークンを発行するとき、WsFederation は、Assertion の audience を RP の audience（設定がない RP では `wtrealm`）に、recipient を返信先に、有効期間を発行の 1 分前から 5 分後までにし、RP の `ClaimMappingPolicy` でクレームを発行する。
 - `wsignin1.0` にトークンを発行するとき、WsFederation は、RP に設定したトークンの型（SAML 1.1 または SAML 2.0。設定がない RP では SAML 1.1）の Assertion を返し、応答に `Cache-Control: no-store` を付ける。
+- Entra の定型設定を持つ RP にトークンを発行するとき、WsFederation は、Assertion の発行者を、利用者の UPN のドメインに最も長く一致する構成済みのドメインの IssuerUri にする。
+- Entra の定型設定を持たない RP にトークンを発行するとき、WsFederation は、Assertion の発行者をテナントの発行者にする。
 - ログインセッションがないか、認証が完了していないか、User が `Active` でない間、`wsignin1.0` を受けたとき、WsFederation は、トークンを発行せず、元の要求を `return_to` に持つログイン画面へ 303 でリダイレクトする。
 - `wfresh` の分数（30 秒未満は 30 秒とする）より前に認証したログインセッションの間、`wsignin1.0` を受けたとき、WsFederation は、トークンを発行せず、元の要求を `return_to` に持つログイン画面へ 303 でリダイレクトする。
 - 統合 Windows 認証の `wauth` を指定されたか、パスワードの `wauth` を指定されたのにログインセッションがパスワードで認証していない場合、WsFederation は、400 で拒否し、`WsFedSignInRejected` を発行し、トークンを発行しない。
-- クレームを発行できないか、Entra の定型設定の ImmutableID を導けない場合、WsFederation は、500 で拒否し、`WsFedSignInRejected` を発行し、トークンを発行しない。
+- クレームを発行できないか、Entra の定型設定の ImmutableID を導けないか、利用者の UPN のドメインが Entra の定型設定のどのドメインにも属さない場合、WsFederation は、500 で拒否し、`WsFedSignInRejected` を発行し、トークンを発行しない。
 - **例**：EX-WSFEDERATION-002-01、EX-WSFEDERATION-002-02、EX-WSFEDERATION-002-03
 
 #### REQ-WSFEDERATION-003 信頼していない宛先へのパッシブサインインは拒否する

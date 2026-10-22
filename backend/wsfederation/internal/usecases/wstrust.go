@@ -44,7 +44,9 @@ func passwordAuthentication(sub string, at time.Time) *authdomain.Authentication
 
 // TokenDecision はトークン発行判断の結果。RejectReason が非空なら発行拒否。
 type TokenDecision struct {
-	ClaimResult  claimdomain.ClaimIssuanceResult
+	ClaimResult claimdomain.ClaimIssuanceResult
+	// Issuer は Assertion の発行者。空ならテナントの発行者を使う。
+	Issuer       string
 	TokenType    feddomain.WsFedTokenType
 	RejectReason string // 非空なら発行拒否 (WsTrustTokenRejected を発行し RejectStatus を返す)。
 	RejectStatus int
@@ -63,19 +65,12 @@ func (s WsTrustService) IssueToken(ctx context.Context, tenantID string, attrSch
 	if reason != "" {
 		return TokenDecision{RejectReason: reason, RejectStatus: http.StatusForbidden}, nil
 	}
-	attrs, err := feddomain.ApplyEntraProfile(claimdomain.ResolveUserAttributes(req.User), req.RP.EntraProfile)
-	if err != nil {
-		//nolint:nilerr // entra profile 失敗は reject outcome へ変換し、呼び出し側には error を返さない。
-		return TokenDecision{RejectReason: "entra profile failed", RejectStatus: 500}, nil
-	}
-	defs, err := claimports.ResolveTenantAttributeDefs(ctx, tenantID, attrSchemaRepo)
+	issued, reject, err := issueForRelyingParty(ctx, tenantID, attrSchemaRepo, req.RP, req.User)
 	if err != nil {
 		return TokenDecision{}, err
 	}
-	result, err := claimdomain.IssueClaimsWithFloor(req.RP.ClaimPolicy, attrs, defs)
-	if err != nil {
-		//nolint:nilerr // claim 発行失敗 (fail-closed floor 違反を含む) は reject outcome へ変換し、呼び出し側には error を返さない。
-		return TokenDecision{RejectReason: "claim issuance failed", RejectStatus: 500}, nil
+	if reject != "" {
+		return TokenDecision{RejectReason: reject, RejectStatus: http.StatusInternalServerError}, nil
 	}
 	tokenType := req.RP.EffectiveTokenType()
 	if strings.TrimSpace(req.RequestedTokenType) != "" {
@@ -84,5 +79,5 @@ func (s WsTrustService) IssueToken(ctx context.Context, tenantID string, attrSch
 		}
 		tokenType = feddomain.WsFedTokenType(req.RequestedTokenType)
 	}
-	return TokenDecision{ClaimResult: result, TokenType: tokenType}, nil
+	return TokenDecision{ClaimResult: issued.claims, Issuer: issued.issuer, TokenType: tokenType}, nil
 }

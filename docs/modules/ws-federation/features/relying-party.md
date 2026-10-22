@@ -13,14 +13,25 @@
 ## モデル
 
 `EntraFederationProfile` は、WS-Fed の RP のための定型設定である。
-ドメイン、IssuerUri、sourceAnchor の属性、受動、能動、MEX の各エンドポイントを受け取り、`wtrealm` と audience に同じ IssuerUri を持つ `WsFedRelyingParty` を作成または更新する。
+Entra はどのドメインの要求でも、自身の識別子 `urn:federation:MicrosoftOnline` を `wtrealm` と `AppliesTo` に使う。
+そのため定型設定は、`wtrealm` と audience を `urn:federation:MicrosoftOnline` とする `WsFedRelyingParty` をテナントに一つだけ持ち、その中に構成したドメインごとの IssuerUri を持つ。
+
+| 要素 | 内容 |
+| --- | --- |
+| ドメインの組 | 検証済みのドメインと、そのドメインの IssuerUri。IssuerUri はドメインの間で重ならない |
+| sourceAnchor の属性 | 定型設定に一つ。すべてのドメインの利用者の ImmutableID をこの属性から導く |
+| エンドポイント | 受動、能動、MEX の各エンドポイント |
 
 | 必須のクレーム | 発行のしかた |
 | --- | --- |
 | UPN | `preferred_username` から `http://schemas.xmlsoap.org/claims/UPN` として発行する |
-| ImmutableID | 正規化した sourceAnchor（`entra_immutable_id`）から導き、永続的な NameID と `http://schemas.xmlsoap.org/claims/nameidentifier` の両方に含める |
+| ImmutableID | 正規化した sourceAnchor（`entra_immutable_id`）から導き、永続的な NameID、`http://schemas.xmlsoap.org/claims/nameidentifier`、`http://schemas.microsoft.com/LiveID/Federation/2008/05/ImmutableID` に含める |
+
+Assertion の発行者は、利用者の UPN のドメインに最も長く一致する構成済みのドメインの IssuerUri とする。
+サブドメインの利用者は、Entra が親のドメインの設定を継ぐので、親のドメインの IssuerUri で発行する。
 
 必須のクレームは定型設定で固定し、フェイルクローズで扱う。
+`entra_immutable_id` は、sourceAnchor の属性を公開できるときだけ公開できる。
 sourceAnchor は、設定の時点では既存のユーザーの欠落、重複、変換できない値を拒否し、発行の時点では対象のユーザーの ImmutableID を導けなければクレームの発行を拒否する。
 
 - **判断**：定型設定にする理由は、[Entra のドメインフェデレーションを専用の定型設定として扱う](../decisions.md#entra-のドメインフェデレーションを専用の定型設定として扱う)。
@@ -35,9 +46,9 @@ sourceAnchor は、設定の時点では既存のユーザーの欠落、重複�
 - 同じ `wtrealm` の RP がある間、管理者が RP を登録したとき、WsFederation は、作成時刻を保って RP を置き換え、200 と保存した RP を返す。
 - 管理者が RP を一覧したとき、WsFederation は、テナントのすべての RP を 200 で返す。
 - 管理者が `wtrealm` を指定して RP を削除したとき、WsFederation は、その RP を消して 204 を返す。
-- 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、`wtrealm` と audience を IssuerUri（省略時は `urn:idmagic:entra:<ドメイン>`）とする SAML 1.1 の RP を作成または置き換え、`EntraFederationConfigured` を発行し、PowerShell に渡す設定値とともに返す。
-- 指定した IssuerUri の RP がない間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、201 を返す。
-- 指定した IssuerUri の RP がある間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、200 を返す。
+- 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、`wtrealm` と audience を `urn:federation:MicrosoftOnline` とするテナントに一つの SAML 1.1 の RP に、ドメインと IssuerUri（省略時は `urn:idmagic:entra:<ドメイン>`）の組を追加または置き換え、`EntraFederationConfigured` を発行し、PowerShell に渡す設定値とともに返す。
+- 指定したドメインを構成していない間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、201 を返す。
+- 指定したドメインを構成している間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、200 を返す。
 - `wsfed:read` のスコープの API アクセストークンで呼び出されたとき、WsFederation は、RP の一覧だけを許可する。
 - `wsfed:write` のスコープの API アクセストークンで呼び出されたとき、WsFederation は、RP の登録と削除と Entra のドメインフェデレーションの構成だけを許可する。
 - `wsfed:write` を持たないトークンで変更の操作を要求された場合、WsFederation は、403 と `insufficient_scope` で拒否し、RP を変えない。
@@ -48,6 +59,7 @@ sourceAnchor は、設定の時点では既存のユーザーの欠落、重複�
 - Application に属する RP の削除を要求された場合、WsFederation は、409 と `application_owned_protocol` で拒否し、RP を残す。
 - ドメインがないか URL の形であるか、sourceAnchor の属性がないか、返信先が絶対 URL でない Entra の構成を要求された場合、WsFederation は、400 と `invalid_request` で拒否し、RP を変えない。
 - テナントの既存の User のどれかで sourceAnchor の属性が欠けているか、変換できないか、ほかの User と重複する場合、WsFederation は、Entra の構成を 400 と `invalid_request` で拒否し、RP を変えない。
+- IssuerUri がほかの構成済みのドメインの IssuerUri と同じか、ほかのドメインを構成している間に構成済みのものと異なる sourceAnchor の属性を指定された場合、WsFederation は、Entra の構成を 400 と `invalid_request` で拒否し、RP を変えない。
 - `admin` のロールを持たない利用者が RP か Entra のドメインフェデレーションの管理 API を要求した場合、WsFederation は、403 と `access_denied` で拒否し、RP を変えない。
 - **例**：EX-WSFEDERATION-001-01、EX-WSFEDERATION-001-02、EX-WSFEDERATION-001-03、EX-WSFEDERATION-001-04
 

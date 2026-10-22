@@ -16,6 +16,7 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
@@ -73,7 +74,9 @@ type SignInOutcome struct {
 	Status  int    // Rejected の HTTP status (400 / 500)。
 
 	// SignInIssued のときの発行データ。
-	Validated   feddomain.ValidatedSignIn
+	Validated feddomain.ValidatedSignIn
+	// Issuer は Assertion の発行者。空ならテナントの発行者を使う。
+	Issuer      string
 	ClaimResult claimdomain.ClaimIssuanceResult
 	AuthnMethod feddomain.AuthnMethodClass
 	TokenType   feddomain.WsFedTokenType
@@ -154,32 +157,62 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		return SignInOutcome{Kind: SignInRejected, Message: err.Error(), Status: 400}, nil
 	}
 
-	attrs, err := feddomain.ApplyEntraProfile(claimdomain.ResolveUserAttributes(*user), rp.EntraProfile)
-	if err != nil {
-		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "entra profile failed"})
-		//nolint:nilerr // entra profile 失敗は 500 の reject outcome へ変換し、呼び出し側には error を返さない。
-		return SignInOutcome{Kind: SignInRejected, Message: "entra profile failed", Status: 500}, nil
-	}
-	defs, err := claimports.ResolveTenantAttributeDefs(ctx, tenantID, s.AttrSchemaRepo)
+	issued, reject, err := issueForRelyingParty(ctx, tenantID, s.AttrSchemaRepo, *rp, *user)
 	if err != nil {
 		return SignInOutcome{}, err
 	}
-	result, err := claimdomain.IssueClaimsWithFloor(rp.ClaimPolicy, attrs, defs)
-	if err != nil {
-		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "claim issuance failed"})
-		//nolint:nilerr // claim 発行失敗は 500 の reject outcome へ変換し、呼び出し側には error を返さない。
-		return SignInOutcome{Kind: SignInRejected, Message: "claim issuance failed", Status: 500}, nil
+	if reject != "" {
+		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reject})
+		return SignInOutcome{Kind: SignInRejected, Message: reject, Status: 500}, nil
 	}
 
 	return SignInOutcome{
 		Kind:        SignInIssued,
 		Validated:   validated,
-		ClaimResult: result,
+		Issuer:      issued.issuer,
+		ClaimResult: issued.claims,
 		AuthnMethod: authnMethod,
 		TokenType:   rp.EffectiveTokenType(),
 		Authn:       authn,
 		Now:         now,
 	}, nil
+}
+
+// rpIssuance は、RP へ発行するクレームと発行者である。発行者が空ならテナントの発行者を使う。
+type rpIssuance struct {
+	claims claimdomain.ClaimIssuanceResult
+	issuer string
+}
+
+// issueForRelyingParty は、パッシブサインインと WS-Trust に共通する、RP のクレームと発行者の決定である。
+// Entra の定型設定を持つ RP では、ImmutableID を導き、利用者の UPN のドメインの IssuerUri を発行者にする。
+// 発行できないときは拒否の理由を返す。
+func issueForRelyingParty(
+	ctx context.Context, tenantID string, attrSchemaRepo claimports.TenantAttributeSchemaRepo,
+	rp feddomain.WsFedRelyingParty, user userdomain.User,
+) (rpIssuance, string, error) {
+	attrs, err := feddomain.ApplyEntraProfile(claimdomain.ResolveUserAttributes(user), rp.EntraProfile)
+	if err != nil {
+		//nolint:nilerr // ImmutableID を導けないことは拒否の理由として返し、呼び出し側には error を返さない。
+		return rpIssuance{}, "entra profile failed", nil
+	}
+	var issuer string
+	if rp.EntraProfile != nil {
+		if issuer, err = rp.EntraProfile.IssuerFor(user.PreferredUsername); err != nil {
+			//nolint:nilerr // フェデレーションしていないドメインの利用者は拒否の理由として返す。
+			return rpIssuance{}, "entra domain not federated", nil
+		}
+	}
+	defs, err := claimports.ResolveTenantAttributeDefs(ctx, tenantID, attrSchemaRepo)
+	if err != nil {
+		return rpIssuance{}, "", err
+	}
+	result, err := claimdomain.IssueClaimsWithFloor(rp.ClaimPolicy, attrs, feddomain.EntraAttributeDefs(defs, rp.EntraProfile))
+	if err != nil {
+		//nolint:nilerr // claim 発行失敗 (fail-closed floor 違反を含む) は拒否の理由として返す。
+		return rpIssuance{}, "claim issuance failed", nil
+	}
+	return rpIssuance{claims: result, issuer: issuer}, "", nil
 }
 
 func (s SignInService) emit(event spec.DomainEvent) {

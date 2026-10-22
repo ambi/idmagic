@@ -84,9 +84,7 @@ export function AdminEntraFederationPage({
     try {
       await deleteWsFedRelyingParty(csrfToken, rp.wtrealm)
       setItems((prev) => prev.filter((item) => item.wtrealm !== rp.wtrealm))
-      setNotice(
-        t.federationDeletedNotice.replace('{domain}', rp.entra_profile?.domain ?? rp.wtrealm),
-      )
+      setNotice(t.federationDeletedNotice.replace('{domain}', federatedDomainNames(rp)))
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.deleteFailedError)
     }
@@ -131,6 +129,12 @@ export function AdminEntraFederationPage({
   )
 }
 
+// federatedDomainNames は、Entra の RP がフェデレーションしているドメインを並べる。
+function federatedDomainNames(relyingParty: WsFedRelyingParty): string {
+  const domains = relyingParty.entra_profile?.domains.map((d) => d.domain) ?? []
+  return domains.length > 0 ? domains.join(', ') : relyingParty.wtrealm
+}
+
 export function EntraFederationList({
   items,
   onDelete,
@@ -153,8 +157,18 @@ export function EntraFederationList({
               aria-hidden="true"
             />
             <div className="min-w-0 text-xs leading-5 text-slate-600">
-              <p className="font-semibold text-slate-900">{relyingParty.entra_profile?.domain}</p>
               <p className="truncate font-mono">{relyingParty.wtrealm}</p>
+              <ul className="my-1">
+                {relyingParty.entra_profile?.domains.map((federated) => (
+                  <li key={federated.domain} className="min-w-0">
+                    <span className="font-semibold text-slate-900">{federated.domain}</span>
+                    <span className="block truncate font-mono">
+                      {t.issuerUriPrefix}
+                      {federated.issuer_uri}
+                    </span>
+                  </li>
+                ))}
+              </ul>
               <p>
                 {t.sourceAnchorPrefix}
                 {relyingParty.entra_profile?.source_anchor_attribute}
@@ -199,14 +213,15 @@ export function AdminEntraFederationAddPage({
     setError('')
     setNotice('')
     try {
+      const requestedDomain = domain.trim()
       const configured = await configureEntraFederation(csrfToken, {
-        domain: domain.trim(),
+        domain: requestedDomain,
         issuer_uri: issuer.trim() || undefined,
         source_anchor_attribute: sourceAnchor.trim(),
         reply_url: replyURL.trim() || undefined,
       })
       setResult(configured)
-      setNotice(t.federationSavedNotice.replace('{domain}', configured.profile.domain))
+      setNotice(t.federationSavedNotice.replace('{domain}', requestedDomain.toLowerCase()))
     } catch (cause) {
       setError(
         cause instanceof AuthenticationAPIError ? cause.message : t.federationSaveFailedError,

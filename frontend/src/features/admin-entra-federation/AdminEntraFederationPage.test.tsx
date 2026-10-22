@@ -119,9 +119,14 @@ describe('EntraFederationList', () => {
               claim_policy: { name_id: { format: 'persistent', source_attribute: 'sub' } },
               created_at: '2026-01-01T00:00:00Z',
               entra_profile: {
-                domain: 'contoso.com',
+                domains: [
+                  { domain: 'contoso.com', issuer_uri: 'urn:idmagic:entra:contoso.com' },
+                  {
+                    domain: 'fabrikam.com',
+                    issuer_uri: 'http://fabrikam.com/adfs/services/trust/',
+                  },
+                ],
                 source_anchor_attribute: 'object_guid',
-                issuer_uri: 'https://idp.example.test',
                 immutable_id_attribute: 'object_guid',
               },
             },
@@ -130,6 +135,12 @@ describe('EntraFederationList', () => {
         />
       </LocaleProvider>,
     )
+    // 一つの Entra の RP に構成した、すべてのドメインとその IssuerUri を示す。
+    expect(screen.getByText('contoso.com')).toBeInTheDocument()
+    expect(screen.getByText('fabrikam.com')).toBeInTheDocument()
+    expect(
+      screen.getByText(`${t.issuerUriPrefix}http://fabrikam.com/adfs/services/trust/`),
+    ).toBeInTheDocument()
     fireEvent.click(
       screen.getByRole('button', { name: t.deleteAriaLabel.replace('{wtrealm}', 'urn:contoso') }),
     )

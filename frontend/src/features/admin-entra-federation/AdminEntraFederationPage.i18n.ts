@@ -9,17 +9,18 @@ export const adminEntraFederationDictionary = defineDictionary(
     deleteFailedError: '削除に失敗しました。',
     pageTitle: 'Entra ドメインフェデレーション',
     pageDescription:
-      '検証済みドメインを Microsoft Entra から本 IdP へフェデレーションします。ドメインごとに UPN / ImmutableID / persistent NameID の claim preset を持つ relying party を作成します。',
+      '検証済みドメインを Microsoft Entra から本 IdP へフェデレーションします。UPN / ImmutableID / persistent NameID の claim preset を持つ Entra の relying party を一つ作り、ドメインごとに IssuerUri を持ちます。',
     addDomainFederation: 'ドメインフェデレーションを追加',
     noFederationsNotice:
       'まだフェデレーション済みのドメインがありません。「ドメインフェデレーションを追加」から作成してください。',
     sourceAnchorPrefix: 'sourceAnchor: ',
+    issuerUriPrefix: 'IssuerUri: ',
     deleteAriaLabel: '{wtrealm} を削除',
     federationSavedNotice: '{domain} のドメインフェデレーションを保存しました。',
     federationSaveFailedError: 'Entra federation の保存に失敗しました。',
     addPageTitle: 'ドメインフェデレーションを追加',
     addPageDescription:
-      'Microsoft 365 のドメインフェデレーション向けに、検証済みドメインごとに claim preset を作成します。',
+      'Microsoft 365 のドメインフェデレーションに、検証済みドメインとその IssuerUri を追加します。構成済みのドメインを指定すると IssuerUri を置き換えます。',
     federationList: 'フェデレーション一覧',
     verifiedDomainLabel: '検証済み domain',
     sourceAnchorAttributeLabel: 'sourceAnchor 属性',
@@ -39,17 +40,18 @@ export const adminEntraFederationDictionary = defineDictionary(
     deleteFailedError: 'Failed to delete.',
     pageTitle: 'Entra domain federation',
     pageDescription:
-      'Federate verified domains from Microsoft Entra to this IdP. Creates a relying party per domain with a UPN / ImmutableID / persistent NameID claim preset.',
+      'Federate verified domains from Microsoft Entra to this IdP. Creates one Entra relying party with a UPN / ImmutableID / persistent NameID claim preset that holds an IssuerUri per domain.',
     addDomainFederation: 'Add domain federation',
     noFederationsNotice:
       'There are no federated domains yet. Create one from "Add domain federation."',
     sourceAnchorPrefix: 'sourceAnchor: ',
+    issuerUriPrefix: 'IssuerUri: ',
     deleteAriaLabel: 'Delete {wtrealm}',
     federationSavedNotice: 'Saved the domain federation for {domain}.',
     federationSaveFailedError: 'Failed to save the Entra federation.',
     addPageTitle: 'Add domain federation',
     addPageDescription:
-      'Creates a claim preset per verified domain for Microsoft 365 domain federation.',
+      'Adds a verified domain and its IssuerUri to the Microsoft 365 domain federation. A configured domain has its IssuerUri replaced.',
     federationList: 'Federation list',
     verifiedDomainLabel: 'Verified domain',
     sourceAnchorAttributeLabel: 'sourceAnchor attribute',

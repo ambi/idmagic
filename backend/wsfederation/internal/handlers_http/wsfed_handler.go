@@ -1,6 +1,7 @@
 package handlers_http
 
 import (
+	"cmp"
 	"net/http"
 	"net/url"
 	"time"
@@ -98,7 +99,7 @@ func (d Deps) issuePassiveForm(c *echo.Context, o wsfedusecases.SignInOutcome) e
 
 	signed, _, err := samltoken.BuildSignedAssertion(samltoken.AssertionInput{
 		Version:      samlVersion(o.TokenType),
-		Issuer:       support.RequestIssuer(c, d.Issuer),
+		Issuer:       cmp.Or(o.Issuer, support.RequestIssuer(c, d.Issuer)),
 		Audience:     rp.EffectiveAudience(),
 		Recipient:    o.Validated.ReplyURL,
 		IssueInstant: o.Now,

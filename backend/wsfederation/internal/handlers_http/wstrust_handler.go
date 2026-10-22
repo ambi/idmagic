@@ -1,6 +1,7 @@
 package handlers_http
 
 import (
+	"cmp"
 	"io"
 	"net/http"
 	"time"
@@ -87,7 +88,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 	}
 	signed, _, err := samltoken.BuildSignedAssertion(samltoken.AssertionInput{
 		Version:      samlVersion(tokenType),
-		Issuer:       support.RequestIssuer(c, d.Issuer),
+		Issuer:       cmp.Or(decision.Issuer, support.RequestIssuer(c, d.Issuer)),
 		Audience:     rp.EffectiveAudience(),
 		Recipient:    rst.AppliesTo,
 		IssueInstant: now,

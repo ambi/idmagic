@@ -656,9 +656,13 @@ export type WsFedClaimMappingPolicy = {
   rules?: WsFedClaimMappingRule[]
 }
 
-export type EntraFederationProfile = {
+export type EntraDomainFederation = {
   domain: string
   issuer_uri: string
+}
+
+export type EntraFederationProfile = {
+  domains: EntraDomainFederation[]
   source_anchor_attribute: string
   immutable_id_attribute: string
   passive_logon_uri?: string

@@ -75,38 +75,41 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 		replyURL = defaultEntraReplyURL
 	}
 
-	profile := &feddomain.EntraFederationProfile{
-		Domain:                domain,
-		IssuerURI:             issuerURI,
-		SourceAnchorAttribute: sourceAttr,
-		ImmutableIDAttribute:  feddomain.EntraImmutableIDAttribute,
-		PassiveLogOnURI:       passive,
-		ActiveLogOnURI:        active,
-		MetadataExchangeURI:   mex,
-	}
 	now := time.Now().UTC()
-	existing, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, issuerURI)
+	existing, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, feddomain.EntraRealm)
 	if err != nil {
 		return err
 	}
+	var configured feddomain.EntraFederationProfile
+	if existing != nil && existing.EntraProfile != nil {
+		configured = *existing.EntraProfile
+	}
+	profile, added, err := configured.WithDomain(feddomain.EntraDomainFederation{Domain: domain, IssuerURI: issuerURI}, sourceAttr)
+	if err != nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	profile.ImmutableIDAttribute = feddomain.EntraImmutableIDAttribute
+	profile.PassiveLogOnURI = passive
+	profile.ActiveLogOnURI = active
+	profile.MetadataExchangeURI = mex
 	rp := &feddomain.WsFedRelyingParty{
 		TenantID:     tenantID,
-		Wtrealm:      issuerURI,
-		DisplayName:  "Microsoft Entra federation: " + domain,
+		Wtrealm:      feddomain.EntraRealm,
+		DisplayName:  "Microsoft Entra federation",
 		ReplyURLs:    []string{replyURL},
-		Audience:     issuerURI,
+		Audience:     feddomain.EntraRealm,
 		TokenType:    feddomain.TokenTypeSAML11,
 		ClaimPolicy:  feddomain.BuildEntraClaimPolicy(),
-		EntraProfile: profile,
+		EntraProfile: &profile,
 		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
-	status := http.StatusCreated
 	if existing != nil {
 		rp.CreatedAt = existing.CreatedAt
-		rp.UpdatedAt = now
-		status = http.StatusOK
-	} else {
-		rp.UpdatedAt = now
+	}
+	status := http.StatusOK
+	if added {
+		status = http.StatusCreated
 	}
 	if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
 		return err

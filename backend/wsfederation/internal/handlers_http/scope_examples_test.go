@@ -27,7 +27,7 @@ const (
 	wsfedScopeRPPath    = "/api/admin/v1/wsfed/relying-parties"
 	wsfedScopeEntraPath = "/api/admin/v1/wsfed/entra-federation"
 	wsfedScopeWtrealm   = "urn:idmagic:scoped-rp"
-	wsfedScopeEntraRP   = "urn:idmagic:entra:contoso.com"
+	wsfedScopeEntraRP   = "urn:federation:MicrosoftOnline"
 )
 
 func wsfedScopeRPBody() string {
@@ -138,7 +138,7 @@ func TestWsFedAdminOperationsFollowTheGranularScopes(t *testing.T) {
 		t.Fatalf("wsfed:write の Entra 構成 status=%d body=%s, want 201", recorder.Code, recorder.Body.String())
 	}
 	entra, err := s.WsFedRPs.FindByWtrealm(s.RealmContext(t, realm), s.TenantID(t, realm), wsfedScopeEntraRP)
-	if err != nil || entra == nil || entra.EntraProfile == nil || entra.EntraProfile.Domain != "contoso.com" {
+	if err != nil || entra == nil || entra.EntraProfile == nil || len(entra.EntraProfile.Domains) != 1 || entra.EntraProfile.Domains[0].Domain != "contoso.com" {
 		t.Fatalf("Entra の構成が保存されていない: rp=%+v err=%v", entra, err)
 	}
 	// 参照を配らずに変更だけを配ることが、粒度の意味である。

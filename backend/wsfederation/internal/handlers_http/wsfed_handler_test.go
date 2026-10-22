@@ -955,7 +955,8 @@ func TestAdminConfigureEntraFederation_CreatesPresetRelyingParty(t *testing.T) {
 	if err := json.Unmarshal(updated.Body.Bytes(), &updatedBody); err != nil {
 		t.Fatal(err)
 	}
-	if updatedBody.Profile.Domain != "contoso.com" || updatedBody.Profile.SourceAnchorAttribute != "object_guid" || updatedBody.RelyingParty.Wtrealm != "urn:idmagic:entra:contoso.com" || updatedBody.PowerShell["IssuerUri"] != "urn:idmagic:entra:contoso.com" || len(updatedBody.KnownLimits) == 0 {
+	if len(updatedBody.Profile.Domains) != 1 || updatedBody.Profile.Domains[0] != (feddomain.EntraDomainFederation{Domain: "contoso.com", IssuerURI: "urn:idmagic:entra:contoso.com"}) ||
+		updatedBody.Profile.SourceAnchorAttribute != "object_guid" || updatedBody.RelyingParty.Wtrealm != feddomain.EntraRealm || updatedBody.PowerShell["IssuerUri"] != "urn:idmagic:entra:contoso.com" || len(updatedBody.KnownLimits) == 0 {
 		t.Fatalf("replacement=%+v, want stored Entra trust and configuration", updatedBody)
 	}
 }
