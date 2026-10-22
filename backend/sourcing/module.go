@@ -4,6 +4,8 @@
 package sourcing
 
 import (
+	"context"
+
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -13,11 +15,14 @@ import (
 	scimusecases "github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v5"
 )
 
 type Module struct {
 	ScimRepo ports.ScimRepository
+	Writes   ports.IdentityWrites
+	begin    func(context.Context) (pgx.Tx, error)
 	// UserLifecycle は、SCIM が User を止める、削除を予約するときに通す IdManagement の操作である。
 	// イベントの出力先が決まった後で、組み立ての地点が設定する。
 	UserLifecycle ports.UserLifecycle
@@ -29,7 +34,7 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 ) {
 	scimhttp.RegisterRoutes(g, scimhttp.Deps{
 		Deps: deps, Authenticator: authenticator,
-		Usecases:              scimusecases.NewUsecases(m.ScimRepo, userRepo, groupRepo, m.UserLifecycle, emit),
+		Usecases:              scimusecases.NewUsecases(m.ScimRepo, userRepo, groupRepo, m.UserLifecycle, emit, m.Writes),
 		ApiTokenAuthenticator: apiTokenAuthenticator,
 	})
 }

@@ -21,6 +21,7 @@ import (
 
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	"github.com/ambi/idmagic/backend/shared/http/server_http/sourcingdeps"
 	httpsupport "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	metricsPrometheus "github.com/ambi/idmagic/backend/shared/observability/metrics_prometheus"
@@ -319,6 +320,7 @@ func healthFeatureMetadata(metadata bootstrap.FeatureRuntimeMetadata) httpsuppor
 func sourcingModule(deps *bootstrap.Dependencies, emit func(spec.DomainEvent)) sourcing.Module {
 	module := deps.Sourcing
 	module.UserLifecycle = deps.IdManagement.UserLifecycleCommands(deps.UserLifecycleDeps(), deps.ReactiveEmit(emit), scimActor)
+	module.Writes = sourcingdeps.NewWrites(deps.IdManagement, deps.UserLifecycleDeps(), module, emit)
 	return module
 }
 

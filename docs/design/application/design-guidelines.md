@@ -195,6 +195,7 @@ TypeSpec は、HTTP を含む外部境界の型、制約、エラー和、認証
 | 類型 | 片方だけが残った場合 | 記録 |
 | --- | --- | --- |
 | User の CSV の一行が、User、パスワードの履歴、使用量と監査の記録を同じ PostgreSQL トランザクションで確定する | 失敗した行の一部だけが残る | [User CSV](../../modules/identity-management/features/user-csv.md#インポート) |
+| SCIM の作成が、User または Group と初期所属、使用量、ワークフロー捕捉と対応表を同じ PostgreSQL トランザクションで確定する | 対応表のない User や Group が残り、外部の IdP から操作できなくなる | [SCIM による取り込み](../../modules/sourcing/features/scim.md#信頼性) |
 | アクショントークンの使用済み化と、そのトークンが認可した用途別の作用 | 同じリンクで作用が二度成功するか、利用者が正当な回復手段だけを失う | [Authentication のパスワードの判断](../../modules/authentication/features/password.md#実現方式)、[メールアドレスの変更の規則](../../modules/identity-management/features/account.md#メールアドレスの変更の確定) |
 
 User の完全削除は、関連する記録の保存先ごとに確定し、ポートをまたぐトランザクションを持たない。

@@ -65,7 +65,11 @@ PATCH の `path` は、`employeeNumber` などの単純な名前と、Enterprise
 
 #### REQ-SOURCING-002 外部 IdP から SCIM でユーザーのライフサイクルを同期できる
 
-- SCIM クライアントが User を作成したとき、Sourcing は、`Active` の User を作り、201 と SCIM の User を返す。
+- SCIM クライアントが `active=true` または `active` を省略して User を作成したとき、Sourcing は、`Active` の User を作り、201 と SCIM の User を返す。
+- SCIM クライアントが `active=false` を指定して User を作成したとき、Sourcing は、`Disabled` の User を作り、201 と SCIM の User を返す。
+- SCIM クライアントが User を作成または属性を変更したとき、Sourcing は、IdManagement の操作を通し、管理 API と同じ使用量の確認、作成または変更のイベント、ライフサイクルワークフローの捕捉と下流への通知を伴わせる。
+- SCIM クライアントが User を作成したとき、Sourcing は、User と SCIM の対応の記録を一緒に確定し、対応の記録の保存に失敗すると User を残さない。
+- User の Hard Quota を超える作成を要求された場合、Sourcing は、422 と `scimType` を省略した SCIM のエラーで拒否し、User と対応の記録を作らず、使用量を変えない。
 - SCIM クライアントが `active=false` を指定して User を更新したとき、Sourcing は、IdManagement の無効化を通して User を `Disabled` にする。
 - SCIM クライアントが `active=true` を指定して `Disabled` の User を更新したとき、Sourcing は、IdManagement の再有効化を通して User を `Active` に戻す。
 - SCIM クライアントが User を削除したとき、Sourcing は、IdManagement の削除の予約を通して User を `PendingDeletion` にし、204 を返す。
@@ -121,6 +125,9 @@ PATCH の `path` は、`employeeNumber` などの単純な名前と、Enterprise
 #### REQ-SOURCING-005 外部 IdP から SCIM でグループとメンバーシップを同期できる
 
 - SCIM クライアントが Group を作成したとき、Sourcing は、Group を作り、201 と SCIM の Group を返す。
+- SCIM クライアントが Group を作成、更新、削除するか所属を変えたとき、Sourcing は、IdManagement の操作を通し、管理 API と同じ使用量の確認、イベントと下流への通知を伴わせる。
+- SCIM クライアントが Group を作成したとき、Sourcing は、Group、初期の所属と SCIM の対応の記録を一緒に確定し、対応の記録の保存に失敗すると Group と初期の所属を残さない。
+- Group の Hard Quota を超える作成を要求された場合、Sourcing は、422 と `scimType` を省略した SCIM のエラーで拒否し、Group と対応の記録を作らず、使用量を変えない。
 - SCIM クライアントが Group のメンバーを追加または削除したとき、Sourcing は、直接所属する User のメンバーシップを同期し、User の実効ロールに Group のロールを反映する。
 - SCIM の Group を返すとき、Sourcing は、各メンバーに `type=User` を付ける。
 - SCIM クライアントが Group を削除したとき、Sourcing は、Group を削除し、204 を返す。
@@ -153,13 +160,20 @@ User の変更では、すべてのメールアドレスの要素を検証した
 
 `active` を `false` にする変更と、`DELETE /Users/{id}` による削除の予約は、User を直接保存せず、`UserLifecycle` のポートを通して IdManagement の User の操作で行う。
 管理 API で止めたときと同じイベント、記憶済みの端末の失効、下流への通知、所有する Agent の無効化が伴う。
-それ以外の User と Group の作成と更新、Group のメンバーシップは、IdManagement の Repository を直接保存する（[Sourcing のリスク](../risks.md)）。
+User と Group の作成と属性変更、Group の所属変更と削除は、`IdentityWrites` を通して IdManagement の `SourceCommands` へ渡す。
+属性の解析と SCIM の ID の解決は Sourcing が行い、一意性、使用量、イベント、ワークフローの捕捉と下流通知は既存の管理操作と共有する。
+組み立て地点の `sourcingdeps` が両者を結ぶ。
 
 `DELETE /Groups/{id}` は即時かつ完全である。
 Group は個人識別情報を持たないからである。
 
 ### 信頼性
 
-Group の作成で、対応の記録やメンバーの追加に失敗した場合は、作った Group と対応の記録を消してからエラーを返す。
-この後始末の失敗は捨てるので、Group だけが残ることがある。
-残った Group は、外部の IdP から見えない孤立した Group になるので、管理 API で消す。
+PostgreSQL では、User の作成と対応表、または Group の作成と初期所属と対応表を同じトランザクションで確定する。
+User のワークフロー捕捉と使用量の加算も、このトランザクションに含める。
+イベントと下流通知はコミット後に発行し、対応表の保存に失敗した作成からは発行しない。
+上限超過の監査イベントは、作成を拒否しても発行する。
+メモリ構成は I/O のない保存先を使い、入力の検証と参照の解決を保存より先に終える。
+
+既存 Group の複数の所属を変更する操作は、一括のトランザクションにはしていない。
+途中の失敗では変更済みの所属を補償するが、補償の成功は保証しない。

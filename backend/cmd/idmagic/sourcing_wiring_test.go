@@ -15,6 +15,7 @@ import (
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/sourcing"
 
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -26,7 +27,7 @@ func TestServerWiresScimUserStopsThroughIdManagement(t *testing.T) {
 	agents := idmanagement.NewMemoryModule().AgentRepo
 	deps := &bootstrap.Dependencies{
 		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: groups, AgentRepo: agents},
-		Sourcing:     sourcing.NewMemoryModule(),
+		Sourcing:     sourcing.NewMemoryModule(), Tenancy: tenancy.NewMemoryModule(),
 	}
 	var events []spec.DomainEvent
 	module := sourcingModule(deps, func(event spec.DomainEvent) { events = append(events, event) })
@@ -84,7 +85,7 @@ func TestSCIMUserLifecycleAdvancesTheRevocationEpochOfOwnedAgents(t *testing.T) 
 	deps := &bootstrap.Dependencies{
 		IdManagement:  idmanagement.Module{UserRepo: users, GroupRepo: groups, AgentRepo: agents},
 		Sourcing:      sourcing.NewMemoryModule(),
-		SharedSignals: sharedsignals.Module{RevocationEpochRepo: epochs},
+		SharedSignals: sharedsignals.Module{RevocationEpochRepo: epochs}, Tenancy: tenancy.NewMemoryModule(),
 	}
 	module := sourcingModule(deps, func(spec.DomainEvent) {})
 	scim := module.Usecases(users, groups, func(spec.DomainEvent) {})

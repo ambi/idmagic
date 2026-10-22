@@ -227,6 +227,7 @@ func TestPatchGroupNotFound(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SOURCING-005: Group の削除は SCIM の対応表も削除する。
 func TestDeleteGroup(t *testing.T) {
 	ctx := context.Background()
 	u, _ := newScimUsecases()
@@ -239,6 +240,10 @@ func TestDeleteGroup(t *testing.T) {
 	}
 	if _, err := u.GetGroup(ctx, scimTenant, group["id"].(string)); !errors.Is(err, usecases.ErrNotFound) {
 		t.Fatalf("err=%v, want ErrNotFound after delete", err)
+	}
+	ref, err := u.ScimRepo.FindGroupRefByScimID(ctx, scimTenant, group["id"].(string))
+	if err != nil || ref != nil {
+		t.Fatalf("deleted group reference=%+v error=%v", ref, err)
 	}
 }
 

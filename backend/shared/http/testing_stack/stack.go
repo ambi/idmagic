@@ -74,6 +74,8 @@ import (
 	sharedsignalsports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 
 	"github.com/ambi/idmagic/backend/signingkeys"
+	"github.com/ambi/idmagic/backend/sourcing"
+	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -177,13 +179,15 @@ func (l *EventLog) AssertNotEmitted(t *testing.T, eventTypes ...string) {
 // 保存先を公開するのは、拒否が防いだ効果を読み直すためである。nil のままの field は
 // その option を渡していないことを意味する。
 type Stack struct {
-	Echo     *echo.Echo
-	Events   *EventLog
-	Tenants  tenantports.TenantRepository
-	Users    userports.UserRepository
-	Groups   groupports.GroupRepository
-	KeyStore signingkeys.KeyStore
-	Signer   *oauth2.JWTSigner
+	Echo           *echo.Echo
+	Events         *EventLog
+	Tenants        tenantports.TenantRepository
+	Users          userports.UserRepository
+	Groups         groupports.GroupRepository
+	KeyStore       signingkeys.KeyStore
+	Signer         *oauth2.JWTSigner
+	Quotas         tenantports.QuotaRepository
+	SCIMReferences scimports.ScimRepository
 
 	Clients                oauthports.OAuth2ClientRepository
 	Consents               oauthports.ConsentRepository
@@ -414,6 +418,17 @@ func WithApiTokens() Option {
 		}
 		b.deps.OAuth2.TokenIntrospector = apitoken.New(repo,
 			apitoken.WithTokenIntrospector(b.stack.Signer))
+	}
+}
+
+// WithSCIM は正式なルーターへ取り込み、API トークンと使用量の確認を結ぶ。
+func WithSCIM() Option {
+	return func(b *builder) {
+		WithApiTokens()(b)
+		b.deps.Sourcing = sourcing.NewMemoryModule()
+		b.deps.Tenancy.QuotaRepo = tenancy.NewMemoryModule().QuotaRepo
+		b.stack.Quotas = b.deps.Tenancy.QuotaRepo
+		b.stack.SCIMReferences = b.deps.Sourcing.ScimRepo
 	}
 }
 

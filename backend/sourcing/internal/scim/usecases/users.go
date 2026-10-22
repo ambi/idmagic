@@ -12,7 +12,6 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
-	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
 )
 
 func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[string]any) (map[string]any, error) {
@@ -29,14 +28,6 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 		return nil, fmt.Errorf("%w: userName %q already exists", ErrDuplicate, w.UserName)
 	}
 
-	// server-assigned identifiers (RFC7643-CORE-RESOURCES: id is readOnly,
-	// client-supplied values are ignored)
-	subBytes := make([]byte, 16)
-	if _, err := rand.Read(subBytes); err != nil {
-		return nil, err
-	}
-	sub := fmt.Sprintf("user_%s", hex.EncodeToString(subBytes))
-
 	scimIDBytes := make([]byte, 16)
 	if _, err := rand.Read(scimIDBytes); err != nil {
 		return nil, err
@@ -45,7 +36,6 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 
 	now := time.Now()
 	user := &userdomain.User{
-		ID:                sub,
 		TenantID:          tenantID,
 		PreferredUsername: w.UserName,
 		PasswordHash:      "", // SCIM users usually don't have local password initially
@@ -68,12 +58,8 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 		return nil, err
 	}
 
-	if err := u.UserRepo.Save(ctx, user); err != nil {
-		return nil, err
-	}
-
-	ref := &ports.ScimUserRef{TenantID: tenantID, ScimID: scimID, UserID: sub}
-	if err := u.ScimRepo.SaveUserRef(ctx, ref); err != nil {
+	user, err = u.Writes.CreateUser(ctx, scimID, user)
+	if err != nil {
 		return nil, err
 	}
 
@@ -96,11 +82,8 @@ func (u *Usecases) GetUser(ctx context.Context, tenantID, scimID string) (map[st
 	return u.toScimUser(ctx, tenantID, user, scimID)
 }
 
-// UpdateUser implements PUT full-replace semantics: every
-// RFC7643-CORE-RESOURCES mutable attribute is set from body, with omitted
-// attributes reset to their default via domain.ParseUserWrite. The User
-// aggregate is validated (userName required) before the single Save call,
-// so a validation failure never leaves a partial write.
+// UpdateUser は PUT の省略属性を既定値へ戻し、属性を所有者の操作へ渡す。
+// 本文の検証と参照の解決は、書き込みの前に終える。
 func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body map[string]any) (map[string]any, error) {
 	user, err := u.findLiveUserByScimID(ctx, tenantID, scimID)
 	if err != nil {
@@ -130,7 +113,8 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 	}
 	user.UpdatedAt = time.Now()
 
-	if err := u.UserRepo.Save(ctx, user); err != nil {
+	user, err = u.Writes.UpdateUser(ctx, user)
+	if err != nil {
 		return nil, err
 	}
 	user, err = u.applyActive(ctx, tenantID, user, w.Active)
@@ -141,10 +125,8 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 	return u.toScimUser(ctx, tenantID, user, scimID)
 }
 
-// PatchUser applies RFC 7644 §3.5.2 operations validated by
-// domain.ParseUserPatchOps against the User attribute allowlist. All
-// operations are validated up front (validate-first) before any
-// field is mutated; the aggregate is persisted with a single Save call.
+// PatchUser は RFC 7644 §3.5.2 の操作を検証し、投影した属性を所有者の操作へ渡す。
+// active の変更は、属性の保存後に既存のライフサイクル操作へ渡す。
 func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body map[string]any) (map[string]any, error) {
 	user, err := u.findLiveUserByScimID(ctx, tenantID, scimID)
 	if err != nil {
@@ -169,7 +151,8 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 	}
 
 	user.UpdatedAt = time.Now()
-	if err := u.UserRepo.Save(ctx, user); err != nil {
+	user, err = u.Writes.UpdateUser(ctx, user)
+	if err != nil {
 		return nil, err
 	}
 	user, err = u.applyActive(ctx, tenantID, user, active)

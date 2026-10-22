@@ -40,7 +40,8 @@ func newScimOwnerFixture(t *testing.T) *scimOwnerFixture {
 		func(event spec.DomainEvent) error { f.events = append(f.events, event.EventType()); return nil },
 		"scim",
 	)
-	f.u = usecases.NewUsecases(scimmemory.NewScimRepository(), f.users, idmanagement.NewMemoryModule().GroupRepo, lifecycle, func(spec.DomainEvent) {})
+	refs, groups := scimmemory.NewScimRepository(), idmanagement.NewMemoryModule().GroupRepo
+	f.u = usecases.NewUsecases(refs, f.users, groups, lifecycle, func(spec.DomainEvent) {}, scimIdentityWrites(refs, f.users, groups, func(spec.DomainEvent) {}))
 	created, err := f.u.CreateUser(ctx, scimTenant, map[string]any{"userName": "alice", "active": true})
 	if err != nil {
 		t.Fatal(err)

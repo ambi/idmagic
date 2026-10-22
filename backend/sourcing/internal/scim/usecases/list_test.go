@@ -20,7 +20,7 @@ func TestListUsersTenantIsolation(t *testing.T) {
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
-	u := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
+	u := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 
 	const tenantB = "tenant-b"
 	if _, err := u.CreateUser(ctx, tenancydomain.DefaultTenantID, map[string]any{"userName": "a-user@example.com"}); err != nil {
@@ -56,7 +56,7 @@ func TestListGroupsTenantIsolation(t *testing.T) {
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
-	u := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
+	u := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 
 	const tenantB = "tenant-b"
 	if _, err := u.CreateGroup(ctx, tenancydomain.DefaultTenantID, map[string]any{"displayName": "A-Team"}); err != nil {

@@ -23,7 +23,7 @@ func newScimUsecases() (*usecases.Usecases, userports.UserRepository) {
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
-	return usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}), userRepo
+	return usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})), userRepo
 }
 
 const scimTenant = tenancydomain.DefaultTenantID

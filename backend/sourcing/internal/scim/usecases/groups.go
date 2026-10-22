@@ -10,14 +10,8 @@ import (
 
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
-	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
 )
 
-// CreateGroup validates the full request (displayName uniqueness, member
-// resolvability) before any write. If a persistence step still fails after
-// validation (rare operational failure), already-completed steps
-// are compensated best-effort so a duplicate-key retry doesn't see a
-// half-created group.
 func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[string]any) (map[string]any, error) {
 	w, err := domain.ParseGroupWrite(body)
 	if err != nil {
@@ -37,12 +31,6 @@ func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[st
 		return nil, err
 	}
 
-	idBytes := make([]byte, 16)
-	if _, err := rand.Read(idBytes); err != nil {
-		return nil, err
-	}
-	id := fmt.Sprintf("group_%s", hex.EncodeToString(idBytes))
-
 	scimIDBytes := make([]byte, 16)
 	if _, err := rand.Read(scimIDBytes); err != nil {
 		return nil, err
@@ -51,7 +39,6 @@ func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[st
 
 	now := time.Now()
 	group := &groupdomain.Group{
-		ID:        id,
 		TenantID:  tenantID,
 		Name:      w.DisplayName,
 		Roles:     []string{},
@@ -59,19 +46,8 @@ func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[st
 		UpdatedAt: now,
 	}
 
-	if err := u.GroupRepo.Save(ctx, group); err != nil {
-		return nil, err
-	}
-
-	ref := &ports.ScimGroupRef{TenantID: tenantID, ScimID: scimID, GroupID: id}
-	if err := u.ScimRepo.SaveGroupRef(ctx, ref); err != nil {
-		_ = u.GroupRepo.Delete(ctx, tenantID, id)
-		return nil, err
-	}
-
-	if err := u.addMembers(ctx, tenantID, id, memberUserIDs); err != nil {
-		_ = u.ScimRepo.DeleteGroupRef(ctx, tenantID, scimID)
-		_ = u.GroupRepo.Delete(ctx, tenantID, id)
+	group, err = u.Writes.CreateGroup(ctx, scimID, group, memberUserIDs)
+	if err != nil {
 		return nil, err
 	}
 
@@ -186,9 +162,9 @@ func (u *Usecases) resolveMemberUserIDs(ctx context.Context, tenantID string, sc
 func (u *Usecases) addMembers(ctx context.Context, tenantID, groupID string, userIDs []string) error {
 	added := make([]string, 0, len(userIDs))
 	for _, userID := range userIDs {
-		if _, err := u.GroupRepo.AddMember(ctx, &groupdomain.GroupMember{GroupID: groupID, UserID: userID, CreatedAt: time.Now()}); err != nil {
+		if _, err := u.Writes.SetGroupMembership(ctx, tenantID, groupID, userID, true, time.Now()); err != nil {
 			for _, a := range added {
-				_, _ = u.GroupRepo.RemoveMember(ctx, tenantID, groupID, a)
+				_, _ = u.Writes.SetGroupMembership(ctx, tenantID, groupID, a, false, time.Now())
 			}
 			return err
 		}
@@ -208,9 +184,9 @@ func (u *Usecases) replaceMembers(ctx context.Context, tenantID, groupID string,
 
 	removed := make([]string, 0, len(existing))
 	for _, m := range existing {
-		if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, groupID, m.UserID); err != nil {
+		if _, err := u.Writes.SetGroupMembership(ctx, tenantID, groupID, m.UserID, false, time.Now()); err != nil {
 			for _, r := range removed {
-				_, _ = u.GroupRepo.AddMember(ctx, &groupdomain.GroupMember{GroupID: groupID, UserID: r, CreatedAt: time.Now()})
+				_, _ = u.Writes.SetGroupMembership(ctx, tenantID, groupID, r, true, time.Now())
 			}
 			return err
 		}
@@ -219,7 +195,7 @@ func (u *Usecases) replaceMembers(ctx context.Context, tenantID, groupID string,
 
 	if err := u.addMembers(ctx, tenantID, groupID, newUserIDs); err != nil {
 		for _, r := range removed {
-			_, _ = u.GroupRepo.AddMember(ctx, &groupdomain.GroupMember{GroupID: groupID, UserID: r, CreatedAt: time.Now()})
+			_, _ = u.Writes.SetGroupMembership(ctx, tenantID, groupID, r, true, time.Now())
 		}
 		return err
 	}
@@ -242,7 +218,7 @@ func (u *Usecases) removeMembersLenient(ctx context.Context, tenantID, groupID s
 		if userRef == nil {
 			continue
 		}
-		if _, err := u.GroupRepo.RemoveMember(ctx, tenantID, groupID, userRef.UserID); err != nil {
+		if _, err := u.Writes.SetGroupMembership(ctx, tenantID, groupID, userRef.UserID, false, time.Now()); err != nil {
 			return err
 		}
 	}
@@ -293,7 +269,8 @@ func (u *Usecases) UpdateGroup(ctx context.Context, tenantID, scimID string, bod
 
 	group.Name = w.DisplayName
 	group.UpdatedAt = time.Now()
-	if err := u.GroupRepo.Save(ctx, group); err != nil {
+	group, err = u.Writes.UpdateGroup(ctx, group)
+	if err != nil {
 		return nil, err
 	}
 
@@ -352,7 +329,8 @@ func (u *Usecases) PatchGroup(ctx context.Context, tenantID, scimID string, body
 	}
 
 	group.UpdatedAt = time.Now()
-	if err := u.GroupRepo.Save(ctx, group); err != nil {
+	group, err = u.Writes.UpdateGroup(ctx, group)
+	if err != nil {
 		return nil, err
 	}
 
@@ -401,7 +379,7 @@ func (u *Usecases) DeleteGroup(ctx context.Context, tenantID, scimID string) err
 		return errors.New("group not found")
 	}
 
-	if err := u.GroupRepo.Delete(ctx, tenantID, ref.GroupID); err != nil {
+	if err := u.Writes.DeleteGroup(ctx, tenantID, ref.GroupID, time.Now()); err != nil {
 		return err
 	}
 	return u.ScimRepo.DeleteGroupRef(ctx, tenantID, scimID)

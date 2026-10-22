@@ -17,7 +17,7 @@ import (
 
 // newUser は管理者による作成と JIT が createUser へ渡す、経路ごとに決まった部分である。
 type newUser struct {
-	// User は ID、時刻、状態を除いた作成する User。ユーザー名とメールアドレスは正規化済みとする。
+	// User は ID と時刻を除いた作成する User。取り込み元だけは初期の Disabled を指定できる。
 	User        userdomain.User
 	ActorUserID string
 	// PasswordHistoryHash が空なら、パスワードの履歴を作らない。
@@ -49,7 +49,11 @@ func createUser(ctx context.Context, deps AdminUserDeps, in newUser, now time.Ti
 		return nil, err
 	}
 	user.ID = id
-	user.Lifecycle = userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}
+	status := idmdomain.UserStatusActive
+	if user.Lifecycle.Status == idmdomain.UserStatusDisabled {
+		status = idmdomain.UserStatusDisabled
+	}
+	user.Lifecycle = userdomain.UserLifecycle{Status: status}
 	user.CreatedAt, user.UpdatedAt = now, now
 	if err := user.Validate(); err != nil {
 		return nil, err

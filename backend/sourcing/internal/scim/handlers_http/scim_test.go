@@ -83,7 +83,7 @@ func newScopedScimHarness() (*echo.Echo, *apitoken.Service) {
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
-	scimUsecases := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
+	scimUsecases := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 	apiTokens := newTestApiTokenService()
 
 	e := echo.New()
@@ -180,7 +180,7 @@ func newScimHarness(tokenOptions ...apitoken.Option) scimHarness {
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
-	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
+	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 	apiTokens := newTestApiTokenService(tokenOptions...)
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
@@ -493,7 +493,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
 
-	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
+	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 	apiTokens := newTestApiTokenService()
 
 	sd := support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), Emit: func(spec.DomainEvent) {}}
@@ -670,7 +670,7 @@ func TestScimGroupSync(t *testing.T) {
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
 
-	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {})
+	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 	apiTokens := newTestApiTokenService()
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}

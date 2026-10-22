@@ -30,6 +30,7 @@
 | 外部の表現を正規の Aggregate へ投影し、ワイヤ表現を保存しない | 正規のユーザー像を一つに保つ |
 | 外部の削除を論理削除へ統合する | 外部の同期の誤りで個人識別情報を失わない。詳細は[判断](decisions.md#scim-の-user-の削除を論理削除へ統合する) |
 | User と Group の由来の表示には IdManagement の照会ポートを実装する | `source_idmanagement` が SCIM の対応の有無だけを返し、表示側へ Repository 全体と保存型を渡さない |
+| User と Group の書き込みは `IdentityWrites` から所有者の操作へ渡す | 管理操作と使用量、イベント、ワークフロー捕捉と通知を共有し、作成時の対応表を同じトランザクションで確定する |
 
 ## 機能一覧
 
@@ -44,7 +45,7 @@
 | アプリケーション設計 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema) | SCIM のエンドポイントの形は標準仕様と TypeSpec が定める |
 | データ設計 | [Sourcing のデータ](data.md#集約) | Aggregate とその関係。テーブルの定義はスキーマファイルが扱う |
 | セキュリティ設計 | [SCIM による取り込み](features/scim.md#セキュリティ上の考慮) | トークンによるテナントの束縛はSCIM による取り込みのセキュリティ上の考慮の節が扱う |
-| 信頼性設計 | [SCIM による取り込みの設計](features/scim.md#信頼性) | 作成の失敗の後始末はSCIM による取り込みの設計が扱う |
+| 信頼性設計 | [SCIM による取り込みの設計](features/scim.md#信頼性) | 作成と対応表の確定、既存の所属変更の補償を扱う |
 | 検証設計 | [Sourcing の検証](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
 
 | 文書 | 内容 |

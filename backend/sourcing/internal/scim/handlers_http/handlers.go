@@ -72,6 +72,12 @@ func (h *Handler) writeScimError(c *echo.Context, status int, detail, scimType s
 // *domain.MutationError as 400 with its carried scimType (invalidValue /
 // invalidPath / mutability), anything else as an internal error.
 func (h *Handler) writeMutationError(c *echo.Context, notFoundDetail string, err error) error {
+	if quota, ok := errors.AsType[interface {
+		error
+		IsQuotaExceeded() bool
+	}](err); ok && quota.IsQuotaExceeded() {
+		return h.writeScimError(c, http.StatusUnprocessableEntity, err.Error(), "")
+	}
 	if errors.Is(err, usecases.ErrNotFound) {
 		return h.writeScimError(c, http.StatusNotFound, notFoundDetail, "")
 	}

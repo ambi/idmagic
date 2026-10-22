@@ -33,6 +33,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 	"github.com/ambi/idmagic/backend/shared/http/server_http/applicationdeps"
+	"github.com/ambi/idmagic/backend/shared/http/server_http/sourcingdeps"
 
 	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -503,6 +504,11 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	d.ApiTokens.Register(g, d.Deps, authenticator)
 
+	if d.Sourcing.ScimRepo != nil && d.Sourcing.Writes == nil {
+		d.Sourcing.Writes = sourcingdeps.NewWrites(d.IdManagement, idmanagement.LifecycleDeps{
+			AttrSchemaRepo: d.IdManagement.AttrSchemaRepo, QuotaRepo: d.Tenancy.QuotaRepo,
+		}, d.Sourcing, d.Emit)
+	}
 	d.Sourcing.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService)
 
 	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo, d.IdManagement.GroupRepo)

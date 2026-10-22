@@ -90,6 +90,12 @@ model CreateScimUserError400 {
   @body body: CreateScimUserError400Body;
 }
 
+model ScimQuotaExceededResponse {
+  @statusCode statusCode: 422;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimProtocolError;
+}
+
 model CreateScimUserSuccess_201 {
   @statusCode statusCode: 201;
   @header contentType: "application/scim+json";
@@ -103,7 +109,7 @@ model CreateScimUserSuccess_201 {
 op CreateScimUser(
   @header contentType: "application/scim+json",
   @body body: IdMagic.Contract.ScimResource
-): CreateScimUserSuccess_201 | CreateScimUserError400;
+): CreateScimUserSuccess_201 | CreateScimUserError400 | ScimQuotaExceededResponse;
 
 model ListScimUsersSuccess_200 {
   @statusCode statusCode: 200;
@@ -295,7 +301,7 @@ model CreateScimGroupSuccess_201 {
 op CreateScimGroup(
   @header contentType: "application/scim+json",
   @body body: IdMagic.Contract.ScimResource
-): CreateScimGroupSuccess_201 | CreateScimGroupError400;
+): CreateScimGroupSuccess_201 | CreateScimGroupError400 | ScimQuotaExceededResponse;
 
 model ListScimGroupsSuccess_200 {
   @statusCode statusCode: 200;

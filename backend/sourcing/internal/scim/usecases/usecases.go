@@ -37,6 +37,7 @@ type Usecases struct {
 	GroupRepo     groupports.GroupRepository
 	UserLifecycle ports.UserLifecycle
 	Emit          func(spec.DomainEvent)
+	Writes        ports.IdentityWrites
 }
 
 func NewUsecases(
@@ -45,6 +46,7 @@ func NewUsecases(
 	groupRepo groupports.GroupRepository,
 	userLifecycle ports.UserLifecycle,
 	emit func(spec.DomainEvent),
+	writes ports.IdentityWrites,
 ) *Usecases {
 	return &Usecases{
 		ScimRepo:      scimRepo,
@@ -52,6 +54,7 @@ func NewUsecases(
 		GroupRepo:     groupRepo,
 		UserLifecycle: userLifecycle,
 		Emit:          emit,
+		Writes:        writes,
 	}
 }
 
