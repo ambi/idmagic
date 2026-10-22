@@ -16,7 +16,7 @@ spec_impact:
 
 ## 動機
 
-[wi-31758](wi-31758-reduce-full-ci-feedback-time.md)では CI を高速化するため、Go 全体テストを通常構成へ切り替える。
+[wi-31758](../done/wi-31758-reduce-full-ci-feedback-time.md)では CI を高速化するため、Go 全体テストを通常構成へ切り替える。
 race の実行と停止を履歴や経過日数で切り替える仕組みは、CI の構成を複雑にするため採らない。
 通常テストは並行アクセスの検査を代行しないので、簡潔な構成で race を自動実行へ戻したい。
 

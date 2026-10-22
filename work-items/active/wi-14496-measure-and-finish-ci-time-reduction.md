@@ -16,7 +16,7 @@ spec_impact:
 
 ## 動機
 
-[wi-31758](wi-31758-reduce-full-ci-feedback-time.md)では、CI の並列化、通常の Go 全体テストへの切り替え、英文検査と重複処理の削除を実装した。
+[wi-31758](../done/wi-31758-reduce-full-ci-feedback-time.md)では、CI の並列化、通常の Go 全体テストへの切り替え、英文検査と重複処理の削除を実装した。
 利用者の指示により実装を先に main へ統合するが、Actions 上での時間はまだ測っていない。
 [変更前の実行](https://github.com/ambi/idmagic/actions/runs/39308038133)の約12分から6分程度へ短縮できたかを確認し、不足する場合は実測から追加の改善を選びたい。
 
