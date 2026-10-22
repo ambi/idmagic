@@ -665,7 +665,8 @@ run = '''
 #!/usr/bin/env sh
 set -eu
 test "$#" -le 1 || { echo "usage: mise run check -- [base-revision]" >&2; exit 2; }
-mise run -c \
+# このタスクの依存で仕様を生成済みなので、子の依存から同じ生成を繰り返さない。
+mise run -c --skip-deps \
   check-spec-inputs ::: \
   check-repository ${1:+"$1"} ::: \
   check-config-reference ::: \
@@ -681,6 +682,17 @@ run = '''
 set -eu
 test "$#" -le 1 || { echo "usage: mise run check-repository -- [base-revision]" >&2; exit 2; }
 bun run check/src/runner.ts all ${1:+--base-revision "$1"}
+'''
+
+[tasks.check-ci-spec]
+description = "Verify specifications and repository rules without rebuilding Go references"
+depends = ["compile-spec"]
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -le 1 || { echo "usage: mise run check-ci-spec -- [base-revision]" >&2; exit 2; }
+# Go の参照検査は CI の Go テスト直後へ置き、そのジョブのビルド結果を利用する。
+mise run -c --skip-deps check-spec-inputs ::: check-repository ${1:+"$1"}
 '''
 
 [tasks.check-rendered-docs]
@@ -775,7 +787,19 @@ run = "bun run check/src/runner.ts agent-guidance"
 [tasks.check-spec-inputs]
 description = "Check generated specification inputs shared by both check suites"
 depends = ["compile-spec"]
-run = "mise run -c check-generated-contract ::: check-rendered-docs"
+# 個別入口の前提は残し、この入口では上の依存が生成した OpenAPI を共有する。
+run = "mise run -c --skip-deps check-generated-contract ::: check-rendered-docs"
+
+[tasks.check-ci-results]
+description = "Reject failed, skipped, cancelled, or missing CI verification groups"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -eq 4 || { echo "expected four CI group results" >&2; exit 1; }
+for result do
+  test "$result" = success || { echo "CI group did not succeed: $result" >&2; exit 1; }
+done
+'''
 
 # 生成検査と registry の spec group が、check にも含まれる共通の仕様ゲートである。
 [tasks.check-spec]

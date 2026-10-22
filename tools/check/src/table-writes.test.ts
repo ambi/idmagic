@@ -105,6 +105,17 @@ describe('extractTableWrites', () => {
 })
 
 describe('parseSqlFiles', () => {
+  it('同じ SQL を再利用しても、返した構文木の変更が次の呼び出しへ波及しない', async () => {
+    const sql = '-- name: CachedDelete :exec\nDELETE FROM jobs;'
+    const first = await parseSql(sql)
+    const expected = structuredClone(first)
+    const tree = first[0]!.tree as Record<string, unknown>
+    for (const key of Object.keys(tree)) delete tree[key]
+    first[0]!.text = 'changed'
+    expect(await parseSql(sql)).toEqual(expected)
+    expect(extractTableWrites(await parseSql(sql), columns).writes[0]?.table).toBe('jobs')
+  })
+
   it('assigns each statement of a combined parse to the file that contains it', async () => {
     const parsed = await parseSqlFiles([
       {

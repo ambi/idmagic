@@ -43,7 +43,8 @@ describe('mise generated OpenAPI dependencies', () => {
 
   it('CI も公開契約の条件付きゲートを使う', async () => {
     const workflow = await Bun.file(resolve(root, '.github/workflows/idmagic-ci.yaml')).text()
-    expect(workflow).toContain('mise run check-published-api-compat')
+    expect(workflow).toContain('mise run check-ci-spec --')
+    expect(workflow).not.toContain('mise run check-published-api-compat')
     expect(workflow).not.toContain('mise run check-api-compat')
     expect(config.tasks?.['check-published-api-compat']?.run).toBe(
       'bun run check/src/runner.ts published-api-compat',

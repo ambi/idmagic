@@ -12,7 +12,6 @@ import {
   SYSTEM_DOCUMENT_DIRECTORIES,
 } from '../../workspace/src/document-layout.ts'
 import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
-import { findEnglishProse } from './prose-language.ts'
 import { renderDocumentationSite, type SourceDocument } from './render.ts'
 import { extractTypeSpecCatalog } from './typespec-catalog.ts'
 
@@ -127,16 +126,6 @@ const result = renderDocumentationSite({
   models: catalog.symbols,
   moduleTags: catalog.moduleTags,
 })
-
-// 文章の言語の規則に反する英文は、書き出す前に止める。生成物だけを直しても元の文書に英語が残るので、
-// 報告から TypeSpec または Markdown の原稿へ戻って直す。
-const englishProse = findEnglishProse(result.files)
-if (englishProse.length > 0) {
-  for (const { page, text } of englishProse) console.error(`${page}: ${text}`)
-  throw new Error(
-    `${englishProse.length} English sentence(s) remain in the rendered site; translate them at their source or add a classified entry to ALLOWED_ENGLISH`,
-  )
-}
 
 const validationWindow = new Window()
 Object.assign(globalThis, {

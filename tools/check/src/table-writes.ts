@@ -95,7 +95,25 @@ export async function parseSqlFiles(
 
 type LocatedStatement = SqlStatement & { end: number }
 
+// 一回の CLI 実行の中で、同じ SQL の解析を共有する。ソース本文をキーにし、検査結果は永続化しない。
+const parsedSql = new Map<string, Promise<LocatedStatement[]>>()
+
 async function parseLocatedSql(sql: string): Promise<LocatedStatement[]> {
+  let pending = parsedSql.get(sql)
+  if (!pending) {
+    pending = runSqlParser(sql)
+    parsedSql.set(sql, pending)
+  }
+  try {
+    // 呼び出し元による構文木の変更を、次の解析や別の検査へ伝えない。
+    return structuredClone(await pending)
+  } catch (error) {
+    if (parsedSql.get(sql) === pending) parsedSql.delete(sql)
+    throw error
+  }
+}
+
+async function runSqlParser(sql: string): Promise<LocatedStatement[]> {
   const child = Bun.spawn(['sqlc', 'parse', '--dialect', 'postgresql'], {
     stdin: new TextEncoder().encode(sql),
     stdout: 'pipe',
