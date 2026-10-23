@@ -201,7 +201,7 @@ func TestIssueSignedAssertion_SAML11RoundTrip(t *testing.T) {
 // 枝だけを保持者証明へ変えても気づけない。両方の版で、Subject を持つすべての位置の確認方法が Bearer で
 // あることを見る。
 //
-//spec:covers WSTrust13-IssueBearer: 発行する assertion が版によらず Bearer で確認されることを固定する。
+//spec:covers WSTRUST13-ISSUE-BEARER: 発行する assertion が版によらず Bearer で確認されることを固定する。
 func TestBuildAssertion_ConfirmsTheSubjectAsBearerInBothVersions(t *testing.T) {
 	versions := map[SAMLVersion]struct {
 		path   string

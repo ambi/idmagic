@@ -46,6 +46,7 @@ func msalRST(now time.Time, action, appliesTo string) string {
 }
 
 //spec:covers REQ-WSFEDERATION-005: Action が WS-Trust 1.3 の Issue の要求（.../RST/Issue）である MSAL の形の RST に RSTR を返し、RequestType の値（.../Issue）を Action に置いた RST は 400 と WsTrustTokenRejected で拒否してトークンを発行しないこと。
+//spec:covers MSAL-WSTRUST-RST: MSAL.NET が組み立てる形の WS-Trust 1.3 の RST に RSTR を返すこと。
 func TestWsTrustIssue_AcceptsTheRSTThatMSALSends(t *testing.T) {
 	e, events := newServer(t, nil)
 	now := time.Now().UTC()
@@ -207,6 +208,7 @@ func msalMexEndpoint(t *testing.T, body string) (endpoint, version string) {
 }
 
 //verify:operation WsTrustMetadataExchange: MSAL の MexDocument と同じ手順で、方針、束縛、ポートをたどり、usernamemixed の WS-Trust 1.3 のエンドポイントを選べる。
+//spec:covers MSAL-WSTRUST-MEX: MSAL.NET の MexDocument の手順で、公開した MEX から usernamemixed を WS-Trust 1.3 として選べること。
 func TestWsTrustMEX_LetsMSALFindTheUsernameMixedEndpoint(t *testing.T) {
 	e, _ := newServer(t, &authdomain.AuthenticationContext{})
 	rec := get(e, "/realms/default/trust/mex")

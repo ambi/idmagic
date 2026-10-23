@@ -25,6 +25,7 @@ import (
 
 //spec:covers REQ-WSFEDERATION-001: Graph の設定値と作成と更新のコマンドを返し、返した有効な証明書がメタデータに含まれ、Entra の Assertion を検証できること。
 //verify:operation ConfigureEntraFederation: domain と sourceAnchor の要求で、作成の 201 と更新の 200、Graph の設定、コマンド、制限のコードを持つ応答を返すこと。
+//spec:covers ENTRA-GRAPH-PASSIVE-PROTOCOL, ENTRA-GRAPH-SIGNING-CERTIFICATE, ENTRA-GRAPH-SIGN-OUT: 構成の結果が、wsFed のプロトコル、メタデータにある有効な署名の証明書の base64、wsignout1.0 を受ける SignOutUri を案内すること。
 func TestConfigureEntraFederationReturnsUsableGraphSettings(t *testing.T) {
 	store, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {

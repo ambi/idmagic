@@ -12,6 +12,7 @@ import (
 )
 
 //spec:covers REQ-WSFEDERATION-002: sourceAnchor の値を変換せずにそのまま ImmutableID にし、値がないか空白だけか `@` を含めば ImmutableID にしないこと。
+//spec:covers ENTRA-SOURCEANCHOR-VERBATIM, ENTRA-SOURCEANCHOR-AT-SIGN: sourceAnchor の値を大文字と小文字を含めて変えずに ImmutableID にし、`@` を含む値を ImmutableID にしないこと。
 func TestImmutableIDOfUsesTheSourceAnchorVerbatim(t *testing.T) {
 	profile := &EntraFederationProfile{SourceAnchorAttribute: "source_anchor"}
 	for _, value := range []string{"/xmWb4aLEdC0LQDAT8lk/w==", "E-00042", "6f9619ff-8b86-d011-b42d-00c04fc964ff", "MixedCase"} {

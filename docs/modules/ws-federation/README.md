@@ -77,5 +77,5 @@ RST と RSTR のやり取り自体は、メタデータの一部ではない。
 | 文書 | 内容 |
 | --- | --- |
 | [WsFederation の用語集](glossary.md) | このモジュールでの語義 |
-| [WsFederation の標準仕様](standards.md) | 採用する外部標準仕様 |
+| [WsFederation の標準仕様](standards.md) | 採用する外部標準仕様と、Microsoft Entra、Microsoft Graph、MSAL.NET との相互運用で守る要件（出典と参照日付き） |
 | [設計判断](decisions.md) | 代替案を比べた重要な判断 |

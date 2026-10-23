@@ -194,6 +194,7 @@ func attributeValue(assertion *etree.Element, name string) string {
 
 //spec:covers REQ-WSFEDERATION-002: Entra が送る wtrealm の受動的な要求に、利用者の UPN のドメインの IssuerUri を発行者とし、audience を urn:federation:MicrosoftOnline とし、ImmutableID を NameID と ImmutableID のクレームに、UPN を UPN のクレームに持つ Assertion を login.srf へ返すこと。
 //spec:covers REQ-WSFEDERATION-004: Entra の AppliesTo の RST に、利用者の UPN のドメインの IssuerUri を発行者とし、audience を urn:federation:MicrosoftOnline とする同じ形の Assertion を返すこと。
+//spec:covers ENTRA-FED-REALM, ENTRA-FED-ISSUER, ENTRA-FED-NAMEID, ENTRA-CLAIMS-USER, ENTRA-MULTIDOMAIN-SUBDOMAIN: Entra の realm の受動的な要求と RST に、ドメイン（サブドメインは親のドメイン）の IssuerUri を発行者とし、Entra を audience とし、ImmutableID を NameID と ImmutableID のクレームに、UPN を UPN のクレームに持つ Assertion を返すこと。
 func TestEntraFederation_IssuesForTheRealmEntraSendsWithTheDomainIssuer(t *testing.T) {
 	for _, tc := range []struct {
 		user       entraUser
@@ -267,6 +268,7 @@ func TestEntraFederation_RefusesAUserOutsideTheFederatedDomains(t *testing.T) {
 }
 
 //spec:covers REQ-WSFEDERATION-001: Entra の構成は、テナントに一つの urn:federation:MicrosoftOnline の RP にドメインと IssuerUri の組を足し、新しいドメインには 201、構成済みのドメインには 200 を返し、別のドメインと同じ IssuerUri を 400 の invalid_request で拒否すること。
+//spec:covers ENTRA-MULTIDOMAIN-ISSUER-URI: 別のドメインと同じ IssuerUri の構成を拒否し、既存のドメインを残すこと。
 func TestEntraFederation_KeepsOneRelyingPartyWithADomainPerIssuer(t *testing.T) {
 	e, _, _ := newEntraServer(t)
 	again := doJSON(e, http.MethodPost, "/api/admin/v1/wsfed/entra-federation", `{"domain":"fabrikam.com","issuer_uri":"`+fabrikamIssuer+`","source_anchor_attribute":"object_guid"}`)

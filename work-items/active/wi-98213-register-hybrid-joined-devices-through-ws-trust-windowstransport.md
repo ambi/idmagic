@@ -35,7 +35,7 @@ Entra の定型設定は「Hybrid Join の端末の登録は提供しない」�
 - 主体が利用者なら、利用者のトークンに `accounttype=User` を足して、usernamemixed と同じクレームで発行する。
 - MEX に、`http:NegotiateAuthentication` の方針を持つ `windowstransport` の束縛を足す。
 - `windowstransport` を受ける発信元を、テナントが設定する社内の IP の範囲に限る。設定がなければエンドポイントを閉じる。
-- `WSTrust13-WindowsTransport` を `required` に改め、能動的な STS の判断、Entra の定型設定の案内（`known_limitations`）、wi-65 と wi-79 の対象外の記述を改める。wi-79 の検証範囲を、Hybrid Join の登録の成功の確認に改める。
+- `WSTRUST13-WINDOWS-TRANSPORT` を `required` に改め、能動的な STS の判断、Entra の定型設定の案内（`known_limitations`）、wi-65 と wi-79 の対象外の記述を改める。wi-79 の検証範囲を、Hybrid Join の登録の成功の確認に改める。
 
 ## 対象外
 
