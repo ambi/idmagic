@@ -9,7 +9,7 @@
 ## Pull Request に求めること
 
 - 一つの意味上の変更につき一つの work item を作る。形式は[作業項目フォーマット](docs/formats/work-item-format.md)に従う。
-- 仕様先行、生成と証拠は[開発サイクル](docs/development/specification-first-workflow.md#3-開発サイクル)と[証拠の要件](docs/development/specification-first-workflow.md#4-証拠の要件)に従う。
+- 仕様先行、生成と証拠は[開発サイクル](docs/development/specification-first-workflow.md#開発サイクル)と[証拠の要件](docs/development/specification-first-workflow.md#証拠の要件)に従う。
 - コードを書くときとレビューするときは、[コーディングスタイル](docs/development/coding-style.md#使い方)の七つの視点で判断する。
 - コミットメッセージは Conventional Commits に従い、件名も本文も英語で書く。
 
@@ -19,7 +19,7 @@
 
 Pull Request を出す前に、[最終検査の選択](docs/development/specification-first-workflow.md#最終検査の選択)に従って、実際の差分と影響範囲に必要な検査を通してください。
 
-CI の必須検査は [.github/workflows/idmagic-ci.yaml](.github/workflows/idmagic-ci.yaml)、手元の実行順序は[検証の段階](docs/development/specification-first-workflow.md#5-検証の段階)が定めます。
+CI の必須検査は [.github/workflows/idmagic-ci.yaml](.github/workflows/idmagic-ci.yaml)、手元の実行順序は[検証の進め方](docs/development/specification-first-workflow.md#検証の進め方)が定めます。
 
 ## 脆弱性の報告
 

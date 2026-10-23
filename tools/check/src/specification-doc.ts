@@ -85,6 +85,12 @@ const STATE_KINDS = new Set(['initial', 'terminal', '—'])
 
 const STANDARDS_HEADER = '| ID | Adoption | Strength | Statement |'
 
+/**
+ * 標準どうしと製品の関係を説明する、`standards.md` の任意の最初の節。標準ではないので
+ * 規範の行を持たず、規範の行は該当する標準の節に置く。
+ */
+export const STANDARDS_OVERVIEW_HEADING = '## 標準と製品の関係'
+
 /** Whether the product takes the standard's capability at all. */
 const ADOPTION_VALUES = new Set(['required', 'optional', 'partial', 'excluded'])
 
@@ -338,6 +344,23 @@ function validateStandards(
     const start = (standard.index ?? 0) + standard[0].length
     const end = standards[index + 1]?.index ?? body.length
     const block = body.slice(start, end)
+    if (standard[0] === STANDARDS_OVERVIEW_HEADING) {
+      const line = lineAt(source, offset + (standard.index ?? 0))
+      if (index !== 0) {
+        findings.push({
+          line,
+          message: 'the overview of standards and the product must be the first section',
+        })
+      }
+      if (block.includes(STANDARDS_HEADER)) {
+        findings.push({
+          line,
+          message:
+            'the overview of standards and the product must not declare normative rows; move them under their standard',
+        })
+      }
+      continue
+    }
     if (!block.includes(STANDARDS_HEADER)) {
       findings.push({
         line: lineAt(source, offset + (standard.index ?? 0)),

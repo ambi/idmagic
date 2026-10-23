@@ -475,6 +475,37 @@ describe('diffSpecifications', () => {
     )
   })
 
+  it('does not read the overview of standards and the product as standards rows', () => {
+    const standards = (overview: string): Snapshot =>
+      new Map([
+        [
+          'docs/modules/demo/standards.md',
+          [
+            '# Standards',
+            '',
+            '## 標準と製品の関係',
+            '',
+            '| 役割 | 製品の入口 |',
+            '| --- | --- |',
+            overview,
+            '',
+            '## Demo Protocol',
+            '',
+            '| ID | Adoption | Strength | Statement |',
+            '| --- | --- | --- | --- |',
+            '| RFC-DEMO-ONE | required | MUST | The first behavior. |',
+          ].join('\n'),
+        ],
+      ])
+
+    const diff = diffSpecifications(
+      standards('| MEX | `/trust/mex` |'),
+      standards('| MEX | `/{realm}/trust/mex` |'),
+    )
+    expect(diff.addedStandards).toEqual([])
+    expect(diff.changedStandards).toEqual([])
+  })
+
   it('leaves per-operation transport wrappers out of the declaration list', () => {
     const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds')), '')
     const head = snapshot(

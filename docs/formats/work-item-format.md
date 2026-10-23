@@ -109,7 +109,7 @@ maturity_evidence: # 成熟度を昇格する場合は完了前に必須。告�
 `reversible` としても `risk` が求める証拠は緩和しない。
 このフィールドは導入前の記録を有効に保つため任意であり、未記入は可逆を意味せず、評価していないことを意味する。
 
-リスクと証拠の対応は[仕様先行の開発ワークフロー](../development/specification-first-workflow.md#4-証拠の要件)が定める。
+リスクと証拠の対応は[仕様先行の開発ワークフロー](../development/specification-first-workflow.md#証拠の要件)が定める。
 
 ## 仕様影響
 

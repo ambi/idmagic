@@ -1,11 +1,21 @@
 import { dirname, posix, relative, resolve } from 'node:path'
+import type { HLJSApi, Language } from 'highlight.js'
+import hljs from 'highlight.js/lib/core'
+import bashLanguage from 'highlight.js/lib/languages/bash'
+import goLanguage from 'highlight.js/lib/languages/go'
+import iniLanguage from 'highlight.js/lib/languages/ini'
+import markdownLanguage from 'highlight.js/lib/languages/markdown'
+import shellLanguage from 'highlight.js/lib/languages/shell'
+import yamlLanguage from 'highlight.js/lib/languages/yaml'
 import MarkdownIt, { type MarkdownIt as MarkdownItInstance } from 'markdown-it'
 import { specificationRules } from '../../check/src/feature-specification.ts'
 import { ruleBodies } from '../../check/src/gherkin-scenarios.ts'
 import { documentKind } from '../../check/src/specification-doc.ts'
+import { responsibilityTableDirectories } from '../../check/src/boundary-fitness.ts'
 import { markdownHeadingTargets } from '../../check/src/markdown-links.ts'
 import {
   featureDocument as featurePart,
+  featureSpecificationPath,
   MODULE_DOCUMENTS,
   SHARED_SCENARIOS,
   SYSTEM_DOCUMENT_PATHS,
@@ -69,6 +79,7 @@ type DocumentCategory =
   | 'module-child'
   | 'feature'
   | 'feature-child'
+  | 'feature-examples'
 
 export type RenderedDocumentationSite = {
   files: Record<string, string>
@@ -155,15 +166,6 @@ function plainTitle(value: string): string {
 }
 
 /**
- * 機能の子の並び。機能仕様の章を先に、例の付録を後に置く。
- * 章は仕様の続きなので、仕様の直後に読めるようにする。
- */
-function featureChildOrder(path: string, fallback: number): number {
-  if (featurePart(path)?.part === 'examples') return Number.MAX_SAFE_INTEGER
-  return fallback
-}
-
-/**
  * 文書のページの位置。`docs/` の Markdown はリポジトリと同じ相対パスに置き、URL から元の
  * 文書を辿れるようにする。入口の `docs/README.md` だけはサイトの最上位に置く。
  */
@@ -179,8 +181,10 @@ function sitePath(path: string): string {
 }
 
 function documentMetadata(document: SourceDocument, index: number): RenderedDocument {
-  const declaredTitle = plainTitle(document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path)
-  const title = document.path === SHARED_SCENARIOS ? '横断シナリオ' : declaredTitle
+  // `Feature:` は Gherkin の語であり、名札、パンくず、`<title>` では題名の一部として読まない。
+  const title = plainTitle(
+    document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path,
+  ).replace(/^Feature:\s*/, '')
   const sections = [...document.source.matchAll(/^## (.+)$/gm)].map(
     (match) => match[1]?.trim() ?? '',
   )
@@ -229,27 +233,29 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
       order: canonicalOrder(SYSTEM_DOCUMENT_PATHS, document.path, index),
     }
   }
-  // 機能の段。機能仕様を機能の見出しに、章と例をその子にする。
+  // 機能の段。機能仕様を機能の見出しに、章をその子にする。例の付録は機能のページの節になる
+  // ので、出力先を機能のページにそろえ、そのページへのリンクとして解決させる。
   const part = featurePart(document.path)
   if (part) {
     const { module, feature } = part
-    return part.part === 'specification'
-      ? {
-          ...base,
-          id: `module-${module}-${slug(feature)}`,
-          category: 'feature',
-          order: index,
-          module,
-          feature,
-        }
-      : {
-          ...base,
-          id: `module-${module}-${slug(file.replace(/\.md$/, ''))}`,
-          category: 'feature-child',
-          order: featureChildOrder(document.path, index),
-          module,
-          feature,
-        }
+    const shared = {
+      ...base,
+      id: `module-${module}-${slug(file.replace(/\.md$/, ''))}`,
+      order: index,
+      module,
+      feature,
+    }
+    if (part.part === 'specification') {
+      return { ...shared, id: `module-${module}-${slug(feature)}`, category: 'feature' }
+    }
+    if (part.part === 'examples') {
+      return {
+        ...shared,
+        category: 'feature-examples',
+        outputPath: sitePath(featureSpecificationPath(module, feature)),
+      }
+    }
+    return { ...shared, category: 'feature-child' }
   }
   const moduleDocument = document.path.match(/^docs\/modules\/([^/]+)\/([^/]+)$/)
   const module = moduleDocument?.[1]
@@ -412,6 +418,51 @@ export function addDerivedStateDiagrams(source: string): string {
  */
 const GENERATED_VIEWS = new Map([['spec/main.tsp', 'reference/index.html']])
 
+/**
+ * 文書のコードブロックが宣言する言語だけを登録する。`console` は対話の記録なので、
+ * プロンプトと出力を区別する `shell` で読む。`toml` は節とキーと値の形が同じ `ini` で読む。
+ */
+const highlighter = hljs.newInstance()
+highlighter.registerLanguage('bash', bashWithCommands)
+highlighter.registerLanguage('shell', shellLanguage)
+highlighter.registerLanguage('go', goLanguage)
+highlighter.registerLanguage('yaml', yamlLanguage)
+highlighter.registerLanguage('ini', iniLanguage)
+highlighter.registerLanguage('markdown', markdownLanguage)
+highlighter.registerAliases(['console'], { languageName: 'shell' })
+
+/**
+ * highlight.js の bash は、キーワードと組み込みのコマンドにだけ印を付ける。文書のコードブロックの
+ * 大半は `mise run verify` のような外部コマンドの行なので、そのままでは色が付かない。行頭とパイプや
+ * 区切りの後に立つコマンド名にも印を付ける。キーワードと組み込みは元の文法の印に任せる。
+ */
+function bashWithCommands(api: HLJSApi): Language {
+  const base = bashLanguage(api)
+  const keywords = (base.keywords ?? {}) as Record<string, string | string[]>
+  const reserved = ['keyword', 'built_in', 'literal'].flatMap((group) => {
+    const words = keywords[group] ?? []
+    return typeof words === 'string' ? words.split(' ') : words
+  })
+  const command = new RegExp(
+    `(?<=^[ \\t]*|[|;&][ \\t]*)(?!(?:${reserved.join('|')})\\b)[A-Za-z_][\\w./-]*(?=[ \\t]|$)`,
+    'm',
+  )
+  return {
+    ...base,
+    contains: [{ scope: 'title.function', match: command, relevance: 0 }, ...(base.contains ?? [])],
+  }
+}
+
+/**
+ * 色付けは生成時に行い、閲覧時にスクリプトを要しない。登録していない言語と言語のない
+ * ブロックは空を返し、markdown-it の既定の escape に任せる。
+ */
+function highlightedBlock(code: string, language: string): string {
+  if (!language || !highlighter.getLanguage(language)) return ''
+  const value = highlighter.highlight(code, { language, ignoreIllegals: true }).value
+  return `<pre><code class="hljs language-${escapeHtml(language)}">${value}</code></pre>\n`
+}
+
 function markdownRenderer(
   documents: RenderedDocument[],
   repositoryRoot: string,
@@ -421,7 +472,12 @@ function markdownRenderer(
   const bySource = new Map(
     documents.map((document) => [resolve(repositoryRoot, document.path), document]),
   )
-  const md = new MarkdownIt({ html: false, linkify: true, typographer: false })
+  const md = new MarkdownIt({
+    html: false,
+    linkify: true,
+    typographer: false,
+    highlight: highlightedBlock,
+  })
   const headingTargets = new Map(
     documents.map((document) => [document.id, markdownHeadingTargets(document.source)]),
   )
@@ -599,7 +655,6 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
   if (entry.category === 'runbook') return entry.title.replace(/の運用手順書$/, '')
   // 入れ子の段そのものが所属を示す段では、名札は題名だけでよい。
   if (entry.category !== 'module-child' && entry.category !== 'feature-child') return entry.title
-  if (featurePart(entry.path)?.part === 'examples') return '例'
   const owner = documents.find((document) =>
     entry.category === 'feature-child'
       ? document.category === 'feature' &&
@@ -681,7 +736,8 @@ function navigation(page: string, documents: RenderedDocument[]): string {
     const heading = node.document
       ? link(node.document)
       : `<span class="nav-label">${escapeHtml(node.name)}</span>`
-    if (!children) return `<li class="nav-branch">${heading}</li>`
+    // 子のない枝には開閉の記号がないので、葉として並べて兄弟の頭とそろえる。
+    if (!children) return `<li class="nav-item">${heading}</li>`
     return `<li class="nav-branch"><details class="nav-directory"${containsCurrent(node) ? ' open' : ''}><summary>${heading}</summary><ul>${children}</ul></details></li>`
   }
   const referenceLink = (path: string, label: string) => {
@@ -708,7 +764,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   const requirementsNode = division('requirements')
   const designNode = division('design')
   // モジュールの段は、モジュールの文書を並べ、機能を「機能」の段にまとめる。
-  // 機能仕様は機能の見出しになり、章と例をその子に持つ。
+  // 機能仕様は機能の見出しになり、章をその子に持つ。
   const node = (feature: RenderedDocument): NavigationDirectory => ({
     name: feature.title,
     document: feature,
@@ -719,9 +775,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   })
   const featuresDirectory = (module: string | undefined): NavigationDirectory[] => {
     const features = inGroup(documents, 'feature').filter((feature) => feature.module === module)
-    return features.length
-      ? [{ name: '機能一覧', documents: [], directories: features.map(node) }]
-      : []
+    return features.length ? [{ name: '機能', documents: [], directories: features.map(node) }] : []
   }
   const modulesBody = [
     ...inGroup(documents, 'modules-child').map(leaf),
@@ -1385,8 +1439,8 @@ function validateSiteLinks(files: Record<string, string>): void {
 }
 
 const styles = `
-:root{color-scheme:light dark;--bg:#fff;--bg-soft:#f6f7f9;--text:#1c2024;--muted:#5c646f;--line:#e3e6ea;--line-strong:#c8ced7;--accent:#1f4fd8;--accent-soft:#eef2ff;--code:#f4f5f7;--given:#0f6b84;--when:#8a5200;--then:#0f6b45;--refuse:#b42318;--diagram-line:#294cba;--measure:960px;--wide:1400px;--sidebar:290px;--toc:216px}
-@media(prefers-color-scheme:dark){:root{--bg:#14171c;--bg-soft:#1a1e25;--text:#e7ebf1;--muted:#9aa3b0;--line:#282e38;--line-strong:#3b4350;--accent:#93adff;--accent-soft:#1e2740;--code:#1e232b;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--refuse:#ff8a7a;--diagram-line:#b9c8ff}}
+:root{color-scheme:light dark;--bg:#fff;--bg-soft:#f6f7f9;--text:#1c2024;--muted:#5c646f;--line:#e3e6ea;--line-strong:#c8ced7;--accent:#1f4fd8;--accent-soft:#eef2ff;--code:#f4f5f7;--given:#0f6b84;--when:#8a5200;--then:#0f6b45;--refuse:#b42318;--diagram-line:#294cba;--measure:960px;--wide:1400px;--sidebar:290px;--toc:216px;--code-keyword:#b42318;--code-string:#0f5c2e;--code-comment:#6b7480;--code-literal:#1f4fd8;--code-title:#6d3fc0;--code-meta:#8a5200}
+@media(prefers-color-scheme:dark){:root{--bg:#14171c;--bg-soft:#1a1e25;--text:#e7ebf1;--muted:#9aa3b0;--line:#282e38;--line-strong:#3b4350;--accent:#93adff;--accent-soft:#1e2740;--code:#1e232b;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--refuse:#ff8a7a;--diagram-line:#b9c8ff;--code-keyword:#ff8a7a;--code-string:#8fd9a8;--code-comment:#8b94a1;--code-literal:#93adff;--code-title:#d2b4ff;--code-meta:#ffc36b}}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:16px/1.75 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--bg);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}
 .sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar);overflow:auto;padding:26px 14px 64px;border-right:1px solid var(--line);background:var(--bg-soft)}.site-title{margin:0 10px 22px;font-size:16px;font-weight:700;letter-spacing:-.01em}.site-title a{color:inherit;text-decoration:none}
 .nav-section{margin:0 0 4px}.nav-section>summary{padding:7px 10px;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;list-style:none}.nav-section>summary::-webkit-details-marker{display:none}.nav-section>summary::before{content:"▸";display:inline-block;width:14px;color:var(--line-strong)}.nav-section[open]>summary::before{content:"▾"}.nav-section-link{color:inherit;text-decoration:none}.nav-section-link:hover,.nav-section-link[aria-current=page]{color:var(--accent)}
@@ -1397,7 +1451,7 @@ main{margin-left:var(--sidebar);padding:34px 40px 140px}main:has(.swagger-shell)
 .page-toc{position:sticky;top:34px;max-height:calc(100vh - 80px);overflow:auto;padding-left:16px;border-left:1px solid var(--line);font-size:13px;line-height:1.5}.page-toc-title{margin:0 0 8px;color:var(--muted);font-weight:700}.page-toc ul{margin:0;padding:0;list-style:none}.page-toc a{display:block;padding:4px 0;color:var(--muted);text-decoration:none}.page-toc a:hover{color:var(--text)}.page-toc a[aria-current=location]{color:var(--accent)}.page-toc-h3 a{padding-left:14px;font-size:12.5px}
 h1,h2,h3,h4{line-height:1.35;letter-spacing:-.012em;scroll-margin-top:26px}h1{margin:0 0 .7em;font-size:30px}h2{margin:2.4em 0 .7em;font-size:21px}h3{margin:1.9em 0 .5em;font-size:17px}h4{margin:1.6em 0 .4em;font-size:15px}p,ul,ol{margin:0 0 1.1em}
 a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
-code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;background:var(--code);font-size:.87em}pre{max-width:100%;overflow:auto;margin:1.4em 0;padding:16px 18px;border:1px solid var(--line);border-radius:8px;background:var(--code)}pre code{padding:0;border:0;background:none;font-size:.86em}
+code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;background:var(--code);font-size:.87em}pre{max-width:100%;overflow:auto;margin:1.4em 0;padding:16px 18px;border:1px solid var(--line);border-radius:8px;background:var(--code)}pre code{padding:0;border:0;background:none;font-size:.86em}.hljs-keyword,.hljs-built_in,.hljs-selector-tag{color:var(--code-keyword)}.hljs-string,.hljs-regexp,.hljs-addition{color:var(--code-string)}.hljs-comment,.hljs-quote{color:var(--code-comment);font-style:italic}.hljs-number,.hljs-literal,.hljs-variable,.hljs-attr,.hljs-attribute{color:var(--code-literal)}.hljs-title,.hljs-section,.hljs-type{color:var(--code-title)}.hljs-meta,.hljs-symbol,.hljs-deletion{color:var(--code-meta)}.hljs-section,.hljs-strong{font-weight:700}.hljs-emphasis{font-style:italic}
 .hero{margin:0 0 44px;padding:0 0 30px;border-bottom:1px solid var(--line)}.hero h1{font-size:34px}.hero p{color:var(--muted);font-size:17px}.hero-links{display:flex;flex-wrap:wrap;gap:20px;margin:0;font-size:15px;font-weight:600}
 .module-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin:1em 0;padding:0;list-style:none;font-size:14px}
 .table-wrap,table{max-width:100%;overflow:auto}table{width:100%;margin:1.4em 0;border-collapse:collapse;display:block;font-size:14.5px;line-height:1.65}th,td{padding:9px 14px 9px 0;border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}thead th{padding-left:10px;border-bottom:1px solid var(--line-strong);background:var(--bg-soft);font-size:13px}tbody th[scope=row]{font-weight:600}.term-table td:first-child{white-space:nowrap}
@@ -1579,6 +1633,47 @@ window.addEventListener('DOMContentLoaded',function(){
 });
 `
 
+/**
+ * モジュールを責務表の行の順に並べる。責務表にないモジュールは、表の後ろにファイルの順で置く。
+ * 責務表がなければ、ファイルの順のままにする。
+ */
+function inResponsibilityOrder(documents: RenderedDocument[]): RenderedDocument[] {
+  const index = documents.find((document) => document.category === 'modules')
+  const directories = index ? responsibilityTableDirectories(index.source) : []
+  if (directories.length === 0) return documents
+  return documents.map((document) => {
+    if (document.category !== 'module' || !document.module) return document
+    const rank = directories.indexOf(document.module)
+    return { ...document, order: rank >= 0 ? rank : directories.length + document.order }
+  })
+}
+
+/**
+ * 例の付録を、機能のページの末尾の節「例」として組む。付録の題名を節の見出しに置き換え、
+ * ほかの見出しを一段下げる。見出しの id は付録の接頭辞を保つので、付録へのリンクはそのまま届く。
+ */
+function featureExamples(
+  feature: RenderedDocument,
+  documents: RenderedDocument[],
+  markdown: MarkdownItInstance,
+): string {
+  const examples = documents.find(
+    (document) =>
+      document.category === 'feature-examples' && document.outputPath === feature.outputPath,
+  )
+  if (!examples) return ''
+  let fenced = false
+  const source = stripFrontmatter(examples.source)
+    .split('\n')
+    .map((line) => {
+      if (line.startsWith('```')) fenced = !fenced
+      if (fenced || !/^#{1,5} /.test(line)) return line
+      return line.startsWith('# ') ? '## 例' : `#${line}`
+    })
+    .join('\n')
+  return `<section class="feature-examples">${markdown.render(source, { document: examples })}</section>`
+}
+
 export function renderDocumentationSite(args: {
   documents: SourceDocument[]
   openapi: OpenApiDocument
@@ -1588,7 +1683,7 @@ export function renderDocumentationSite(args: {
   models: CatalogSymbol[]
   moduleTags?: Record<string, string[]>
 }): RenderedDocumentationSite {
-  const documents = args.documents.map(documentMetadata)
+  const documents = inResponsibilityOrder(args.documents.map(documentMetadata))
   const openapi = inspectOpenApi(args.openapi)
   const modelPaths = new Map<string, string>()
   for (const model of args.models) {
@@ -1629,6 +1724,7 @@ export function renderDocumentationSite(args: {
   }
   const rules = declaredRules(documents)
   for (const document of documents) {
+    if (document.category === 'feature-examples') continue
     const tags = (document.module ? args.moduleTags?.[document.module] : undefined) ?? []
     const reference =
       document.category === 'module'
@@ -1638,7 +1734,7 @@ export function renderDocumentationSite(args: {
             hasModels: args.models.some((model) => model.module === document.module),
           })
         : document.category === 'feature'
-          ? featureRuleIndex(document, rules)
+          ? `${featureRuleIndex(document, rules)}${featureExamples(document, documents, markdown)}`
           : ''
     files[document.outputPath] = insertAfterHeading(
       documentPage(document, documents, markdown, reference),
@@ -1647,6 +1743,14 @@ export function renderDocumentationSite(args: {
     )
   }
   for (const model of args.models) files[modelPath(model)] = modelPage(model, symbols, documents)
+  const orphan = documents.find(
+    (document) =>
+      document.category === 'feature-examples' &&
+      !documents.some(
+        (owner) => owner.category === 'feature' && owner.outputPath === document.outputPath,
+      ),
+  )
+  if (orphan) throw new Error(`${orphan.path} has no feature specification to belong to`)
   validateSiteLinks(files)
   return {
     files,

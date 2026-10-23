@@ -97,24 +97,41 @@ export type ModuleDependency = {
   targetModule: string
 }
 
-/**
- * 責務表からモジュール、公開パッケージ、組み立て地点を読む。公開方式は `internal` だけを受け付ける。
- * 責務表は区分ごとに同じ見出しの表へ分けてよく、見出しが一致する表をすべて読む。
- */
-export function parseLogicalArchitecture(markdown: string): ArchitectureModel {
+/** 責務表の行を、表と行の現れる順に返す。責務表がなければ `undefined` を返す。 */
+function responsibilityRows(markdown: string): string[] | undefined {
   const lines = markdown.split(/\r?\n/)
   const headerIndexes = lines.flatMap((line, index) =>
     line.trim() === RESPONSIBILITY_HEADER ? [index] : [],
   )
-  if (headerIndexes.length === 0) {
-    throw new Error('logical architecture must contain the module responsibility table')
-  }
-  const rows = headerIndexes.flatMap((headerIndex) => {
+  if (headerIndexes.length === 0) return undefined
+  return headerIndexes.flatMap((headerIndex) => {
     const end = lines.findIndex(
       (line, index) => index > headerIndex + 1 && !line.trim().startsWith('|'),
     )
     return lines.slice(headerIndex + 2, end < 0 ? undefined : end)
   })
+}
+
+/**
+ * 責務表の行が入口として張ったモジュール設計文書のディレクトリを、表の順に返す。
+ * 表の順は区分ごとに読む順序でもあるので、生成サイトはこの順にモジュールを並べる。
+ */
+export function responsibilityTableDirectories(markdown: string): string[] {
+  return (responsibilityRows(markdown) ?? []).flatMap((line) => {
+    const directory = cells(line)[0]?.match(/^\[[^\]]+\]\(([^)/]+)\/README\.md\)/)?.[1]
+    return directory ? [directory] : []
+  })
+}
+
+/**
+ * 責務表からモジュール、公開パッケージ、組み立て地点を読む。公開方式は `internal` だけを受け付ける。
+ * 責務表は区分ごとに同じ見出しの表へ分けてよく、見出しが一致する表をすべて読む。
+ */
+export function parseLogicalArchitecture(markdown: string): ArchitectureModel {
+  const rows = responsibilityRows(markdown)
+  if (rows === undefined) {
+    throw new Error('logical architecture must contain the module responsibility table')
+  }
   const modules: ModuleDefinition[] = []
   let compositionPrefixes: string[] = []
   for (const line of rows) {

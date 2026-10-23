@@ -51,7 +51,7 @@ const rootStructureDocument = {
 
 const rootScenariosDocument = {
   path: 'docs/modules/scenarios.feature.md',
-  source: '# Feature: Cross-Module Scenarios\n',
+  source: '# Feature: 横断シナリオ\n',
 }
 
 const requirementsIndexDocument = {
@@ -356,7 +356,6 @@ describe('renderDocumentationSite', () => {
       'docs/formats/index.html',
       'docs/formats/work-item-format.html',
       'docs/modules/demo/data.html',
-      'docs/modules/demo/features/run-feature.html',
       'docs/modules/demo/features/run.html',
       'docs/modules/demo/glossary.html',
       'docs/modules/demo/index.html',
@@ -390,10 +389,10 @@ describe('renderDocumentationSite', () => {
       'state_3 --&gt; state_1: Reset',
     )
     expect(result.files['docs/modules/demo/features/run.html']).not.toContain('Reset [')
-    expect(result.files['docs/modules/demo/features/run-feature.html']).toContain(
+    expect(result.files['docs/modules/demo/features/run.html']).toContain(
       'class="scenario-keyword when"',
     )
-    expect(result.files['docs/modules/demo/features/run-feature.html']).toContain(
+    expect(result.files['docs/modules/demo/features/run.html']).toContain(
       'class="scenario-keyword but"',
     )
     expect(result.files['index.html']).toContain('class="mermaid"')
@@ -455,7 +454,7 @@ describe('renderDocumentationSite', () => {
   })
 
   it('marks every scenario step, the actor, and nothing outside a scenario document', () => {
-    const scenarios = site().files['docs/modules/demo/features/run-feature.html'] ?? ''
+    const scenarios = site().files['docs/modules/demo/features/run.html'] ?? ''
 
     // 残りがコード片から始まるステップでも印が付く。
     expect(scenarios).toContain(
@@ -471,8 +470,7 @@ describe('renderDocumentationSite', () => {
   it('names module children by content and lists them in canonical order', () => {
     const page = site().files['docs/modules/demo/index.html']
 
-    // 最後の「例」は、モジュールの「機能」の段に入れ子になった機能（実行）の子である。
-    expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', 'データ', '例'])
+    expect(childLabels(page)).toEqual(['Glossary', 'Standards', 'Quality', 'データ'])
     expect(page).not.toContain('>glossary.md<')
   })
 
@@ -507,13 +505,104 @@ describe('renderDocumentationSite', () => {
       openapi: {},
       models: [],
     })
-    const page = result.files['docs/modules/demo/features/user-feature.html']
+    const page = result.files['docs/modules/demo/features/user.html']
 
-    expect(page).toContain('REQ-DEMO-002')
-    expect(result.files['docs/modules/demo/features/user.html']).toBeDefined()
-    expect(childLabels(page)).toEqual(['データ', '例'])
+    expect(page).toContain('EX-DEMO-002-01')
+    expect(result.files['docs/modules/demo/features/user-feature.html']).toBeUndefined()
+    expect(childLabels(page)).toEqual(['データ'])
     const moduleBranch = sidebar(page).slice(sidebar(page).indexOf('>Demo</a>'))
-    expect(moduleBranch).toContain('>ユーザー</a>')
+    // 章のない機能は子を持たないので、開閉の段ではなく葉として並ぶ。
+    expect(moduleBranch).toContain(
+      '<li class="nav-item"><a data-site-link class="nav-link" aria-current="page" href="#">ユーザー</a></li>',
+    )
+  })
+
+  /**
+   * 例の付録は機能仕様の続きとして読むので、機能のページの末尾に節「例」として置く。
+   * 例の付録の見出しは一段下げ、要件の見出しと同じ綴りでも id は例の付録の接頭辞で分ける。
+   */
+  it('folds the examples appendix into the end of the feature page', () => {
+    const result = site()
+    const page = result.files['docs/modules/demo/features/run.html'] ?? ''
+    const examples = page.indexOf('<h2 id="module-demo-run-feature-例">例</h2>')
+
+    expect(examples).toBeGreaterThan(page.indexOf('id="module-demo-run-req-demo-001-a-demo-runs"'))
+    expect(page).toContain('<h3 id="module-demo-run-feature-rule-req-demo-001-a-demo-runs">')
+    expect(page).toContain(
+      '<h4 id="module-demo-run-feature-example-ex-demo-001-01-a-ready-demo-starts">',
+    )
+    expect(page).not.toContain('Feature: 実行の例')
+    expect(result.files['docs/modules/demo/features/run-feature.html']).toBeUndefined()
+  })
+
+  it('sends a link to the examples appendix to the section on the feature page', () => {
+    const result = renderDocumentationSite({
+      documents: [
+        rootDocument,
+        moduleDocument,
+        runDocument,
+        examplesDocument,
+        {
+          path: 'docs/modules/demo/glossary.md',
+          source:
+            '# Demo Glossary\n\n[例](features/run.feature.md#rule-req-demo-001-a-demo-runs)を読む。\n',
+        },
+      ],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/site',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+    })
+
+    expect(result.files['docs/modules/demo/glossary.html']).toContain(
+      'href="features/run.html#module-demo-run-feature-rule-req-demo-001-a-demo-runs"',
+    )
+  })
+
+  /** モジュールの並びは、文書を読む順序として責務表が宣言した行の順である。 */
+  it('lists modules in the order of the responsibility table', () => {
+    const module = (directory: string, title: string) => ({
+      path: `docs/modules/${directory}/README.md`,
+      source: `# ${title}\n\n${title} を扱う。\n`,
+    })
+    const result = renderDocumentationSite({
+      documents: [
+        rootDocument,
+        {
+          path: 'docs/modules/README.md',
+          source: [
+            '# モジュール設計',
+            '',
+            '### 基盤',
+            '',
+            '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |',
+            '| --- | --- | --- | --- | --- |',
+            '| [Tenancy](tenancy/README.md) | `internal` | なし | `backend/tenancy` | テナント |',
+            '',
+            '### 認証',
+            '',
+            '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |',
+            '| --- | --- | --- | --- | --- |',
+            '| [Authentication](authentication/README.md) | `internal` | なし | `backend/authentication` | 認証 |',
+            '| [Application](application/README.md) | `internal` | なし | `backend/application` | 割り当て |',
+            '',
+          ].join('\n'),
+        },
+        module('application', 'Application'),
+        module('authentication', 'Authentication'),
+        module('tenancy', 'Tenancy'),
+      ],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/site',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+    })
+    const page = sidebar(result.files['docs/modules/index.html'])
+    const labels = [...page.matchAll(/class="nav-link"[^>]*>([^<]+)</g)].map((match) => match[1])
+
+    expect(labels.slice(0, 3)).toEqual(['Tenancy', 'Authentication', 'Application'])
   })
 
   it('renders a module in the feature layout with generated rule indexes', () => {
@@ -590,8 +679,6 @@ describe('renderDocumentationSite', () => {
       'docs/modules/demo/decisions.html',
       'docs/modules/demo/features/work.html',
       'docs/modules/demo/features/task-lifecycle.html',
-
-      'docs/modules/demo/features/task-feature.html',
     ]) {
       expect(result.files[page]).toBeDefined()
     }
@@ -616,18 +703,16 @@ describe('renderDocumentationSite', () => {
     // 機能の一覧は README の機能一覧が示すので、モジュールのページに生成の一覧を足さない。
     expect(result.files['docs/modules/demo/index.html']).not.toContain('機能地図')
     expect(result.files['docs/modules/demo/index.html']).toContain('href="features/task.html"')
-    expect(result.files['docs/modules/demo/features/task-feature.html']).toContain(
-      'scenario-keyword when',
-    )
+    expect(task).toContain('scenario-keyword when')
     // モジュールの文書をモジュールの直下に並べ、機能は「機能」の段にまとめる。
-    expect(childLabels(task)).toEqual(['重要な設計判断', 'ライフサイクル', '例'])
+    expect(childLabels(task)).toEqual(['重要な設計判断', 'ライフサイクル'])
     const moduleBranch = sidebar(task).slice(sidebar(task).indexOf('>Demo</a>'))
-    expect(moduleBranch).toContain('<summary><span class="nav-label">機能一覧</span></summary>')
+    expect(moduleBranch).toContain('<summary><span class="nav-label">機能</span></summary>')
     expect(moduleBranch).toContain('>重要な設計判断</a>')
     expect(moduleBranch.indexOf('>重要な設計判断</a>')).toBeLessThan(
-      moduleBranch.indexOf('<span class="nav-label">機能一覧</span>'),
+      moduleBranch.indexOf('<span class="nav-label">機能</span>'),
     )
-    expect(moduleBranch.indexOf('<span class="nav-label">機能一覧</span>')).toBeLessThan(
+    expect(moduleBranch.indexOf('<span class="nav-label">機能</span>')).toBeLessThan(
       moduleBranch.indexOf('>タスク</a>'),
     )
     expect(result.files['docs/modules/demo/decisions.html']).toBeDefined()
@@ -766,12 +851,14 @@ describe('renderDocumentationSite', () => {
   })
 
   it('lists a document own headings beside its body', () => {
-    const page = site().files['docs/modules/demo/features/run-feature.html'] ?? ''
+    const page = site().files['docs/modules/demo/features/run.html'] ?? ''
 
     expect(page).toContain('<nav class="page-toc" aria-label="このページの内容">')
-    expect(page).toContain('href="#module-demo-run-feature-rule-req-demo-001-a-demo-runs"')
     expect(page).toContain(
-      'class="page-toc-h3"><a data-site-link href="#module-demo-run-feature-example-ex-demo-001-01-a-ready-demo-starts"',
+      'class="page-toc-h2"><a data-site-link href="#module-demo-run-feature-例"',
+    )
+    expect(page).toContain(
+      'class="page-toc-h3"><a data-site-link href="#module-demo-run-feature-rule-req-demo-001-a-demo-runs"',
     )
     // 見出しが一つしかないページに目次を出しても、本文を繰り返すだけである。
     expect(site().files['docs/requirements/product-overview.html']).not.toContain('page-toc')
@@ -828,6 +915,51 @@ describe('renderDocumentationSite', () => {
     expect(css).not.toMatch(/\.nav-branch>\.nav-link[^{]*\{[^}]*(?:color|font-weight)/)
     expect(css).toContain('.page-toc')
     expect(css).toContain('.page-toc a[aria-current=location]')
+  })
+
+  /** 色付けは生成時に済ませ、閲覧時にスクリプトを要しない。言語のないブロックは原文のまま置く。 */
+  it('colors code blocks by their declared language when the site is built', () => {
+    const result = renderDocumentationSite({
+      documents: [
+        rootDocument,
+        developmentDocument,
+        {
+          path: 'docs/development/release.md',
+          source: [
+            '# リリース',
+            '',
+            '```bash',
+            'mise run verify # 全体を検査する',
+            '```',
+            '',
+            '```console',
+            '$ mise run check-links',
+            '```',
+            '',
+            '```',
+            'if <plain>',
+            '```',
+            '',
+          ].join('\n'),
+        },
+      ],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/site',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+    })
+    const page = result.files['docs/development/release.html'] ?? ''
+
+    expect(page).toContain('<code class="hljs language-bash">')
+    expect(page).toContain('<span class="hljs-comment"># 全体を検査する</span>')
+    // 外部コマンドの名前にも印を付ける。bash の文法だけでは `mise` の行に色が付かない。
+    expect(page).toContain('<span class="hljs-title function_">mise</span> run verify')
+    expect(page).toContain('<code class="hljs language-console">')
+    expect(page).toContain('<span class="hljs-meta prompt_">$ </span>')
+    expect(page).toContain('<pre><code>if &lt;plain&gt;\n</code></pre>')
+    expect(page).not.toContain('highlight.min.js')
+    expect(result.assets['site.css']).toContain('.hljs-comment')
   })
 
   it('uses the full reference width without Swagger UI wrapper padding', () => {

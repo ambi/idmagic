@@ -50,8 +50,8 @@ mise run verify
 
 Go のバージョン情報は `VERSION`、`GIT_COMMIT`、`BUILD_DATE` から埋め込む。`VERSION` を指定しなければ開発用の `0.0.0-dev` になる。リリース用の値と成果物の扱いは [リリース](release.md) が定める。
 
-依存の準備、局所検証、並列タスクの引数、失敗の収集は[検証の段階](specification-first-workflow.md#5-検証の段階)に従う。
-最終検査とブラウザー E2E の範囲は[最終検査の選択](specification-first-workflow.md#最終検査の選択)、Go の `-race` の有無は[通常テストと race 検査](specification-first-workflow.md#go-の通常テストと-race-検査)で判断する。
+依存の準備、局所検証、並列タスクの引数、失敗の収集は[検証の進め方](specification-first-workflow.md#検証の進め方)に従う。
+最終検査とブラウザー E2E の範囲は[最終検査の選択](specification-first-workflow.md#最終検査の選択)、Go の `-race` の有無は[通常テストと race 検査](testing.md#go-の通常テストと-race-検査)で判断する。
 
 ゲートごとの所要時間は次で測る。
 

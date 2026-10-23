@@ -30,7 +30,7 @@ SQL の構文解析は一つの CLI プロセス内で本文が同じ成功結�
 既存バージョン API の必須互換性ゲートと告知の最低水準は、[公開状態](../../docs/development/release.md#公開状態と日常開発)を共通の入力とする。
 `check-api-compat` は集約に含めず、未公開でも保存済みベースラインとの比較を明示的に行う。
 
-規範 ID の引用は[規範 ID の参照](../../docs/development/specification-first-workflow.md#規範idをテストから参照する)、作業記録の検査対象と形式は[作業項目フォーマット](../../docs/formats/work-item-format.md)が定める。
+規範 ID の引用は[規範 ID の参照](../../docs/development/specification-first-workflow.md#規範-id-をテストから参照する)、作業記録の検査対象と形式は[作業項目フォーマット](../../docs/formats/work-item-format.md)が定める。
 実際の登録規則とテストは `src/` を参照する。
 
 ## 用語の検査

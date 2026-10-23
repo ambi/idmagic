@@ -31,7 +31,7 @@ gomutants の作者は、全変異体を 1 回のコンパイルに埋め込み�
 - `--schemata` を含む gomutants のリリース版へ、`mise.toml` の固定バージョンを更新する。
 - `test-go-mutation`、`test-go-mutation-mutant`、`check-go-mutation-tool` の各タスクに `--schemata` を付ける。
 - タスク契約を固定する `tools/check/src/mise-config.test.ts` の期待を更新する。
-- [テスト方針の Go のミューテーションテスト](../../docs/development/testing.md#go-のミューテーションテスト)へ、実行方式と実行時間の目安を反映する。
+- [テスト方針のミューテーションテスト](../../docs/development/testing.md#ミューテーションテスト)へ、実行方式と実行時間の目安を反映する。
 
 ## 対象外
 

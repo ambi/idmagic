@@ -43,7 +43,7 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 共有コード、構成入口を含め、製品の HTTP 契約へ影響する変更では、[着手時の影響と契約証拠](../../../docs/development/specification-first-workflow.md#着手時の影響と契約証拠)で予定するファイルと参照不足を照合する。
 
 選んだ検査の実行に必要な依存だけを準備する。
-導入タスクと先行 lint の条件は[検証の段階](../../../docs/development/specification-first-workflow.md#5-検証の段階)に従う。
+導入タスクと先行 lint の条件は[検証の進め方](../../../docs/development/specification-first-workflow.md#検証の進め方)に従う。
 
 ## 3. 仕様と計画
 
@@ -61,7 +61,7 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 
 ## 4. 着手の記録
 
-[証拠の要件](../../../docs/development/specification-first-workflow.md#4-証拠の要件)から、行う証拠の手順を選ぶ。
+[証拠の要件](../../../docs/development/specification-first-workflow.md#証拠の要件)から、行う証拠の手順を選ぶ。
 主要ユースケースを要求する作業では、[テスト方針](../../../docs/development/testing.md#主要ユースケース)から観測結果、`fault_model`、最小の境界を選び、[記入形式](../../../docs/formats/work-item-format.md#主要ユースケースの証拠)に従って `primary_use_cases` に書く。
 公開後は[文書影響と成熟度](../../../docs/formats/work-item-format.md#文書影響と成熟度)も記入する。
 `status: in_progress` にして `mise run check-work-items` を通す。
@@ -78,7 +78,7 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 `unpublished` なら、触れる範囲の保証を表す要件のテストが欠けていないかだけを確かめ、欠けていれば先に足す。
 既存の `TestCharacterize*` の失敗は期待値を書き換えて通さず、変更を戻すか、利用者に分類を確認する。
 
-[検証の段階](../../../docs/development/specification-first-workflow.md#5-検証の段階)に従い、選んだ最小の検査で一つの振る舞いを RED、GREEN にし、GREEN を保ってリファクタリングする。
+[検証の進め方](../../../docs/development/specification-first-workflow.md#検証の進め方)に従い、選んだ最小の検査で一つの振る舞いを RED、GREEN にし、GREEN を保ってリファクタリングする。
 必要な範囲で Domain、Use Cases、Adapters、Infrastructure、UI へ進み、各層の局所検査をその場で実行する。
 選んだ recipe はタスクに記し、同じ選択を繰り返さない。
 タスクには、実際の失敗、テスト名、規範 ID、該当しない境界の理由と代替検査を残す。
@@ -89,17 +89,17 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 [実装とテストで見つけた振る舞いの反映](../../../docs/development/specification-first-workflow.md#実装とテストで見つけた振る舞いの反映)に従い、要件、例、生成できる参照を一次情報へ移す。
 例をデータにすると短くなる場合は[実行可能な具体例](../../../docs/formats/specification-format.md#実行可能な具体例と派生表示)を使い、複雑な操作列はコードとして残す。
 
-テストの引用は[規範 ID の参照](../../../docs/development/specification-first-workflow.md#規範idをテストから参照する)に従う。
+テストの引用は[規範 ID の参照](../../../docs/development/specification-first-workflow.md#規範-id-をテストから参照する)に従う。
 `//verify:operation` を追加または変更したら `mise run check-operation-references` で形式と配置を局所検査する。
-手書きの解析、デコード、分割、正規化、比較には[プロパティテストとファジング](../../../docs/development/specification-first-workflow.md#プロパティテストとファジング)を適用する。
+手書きの解析、デコード、分割、正規化、比較には[プロパティテストとファジング](../../../docs/development/testing.md#プロパティテストとファジング)を適用する。
 各タスクが GREEN になったら、[チェックポイント](../../../docs/development/specification-first-workflow.md#チェックポイントと最終コミット)を作る。
 
 ## 6. 設計と変更耐性
 
-[現在状態の文書](../../../docs/development/specification-first-workflow.md#6-現在状態の文書)の条件に当たれば `update-design` を使う。
+[現在状態の文書](../../../docs/development/specification-first-workflow.md#現在状態の文書)の条件に当たれば `update-design` を使う。
 境界を変える場合は、手順 4 で記録した比較に基づいて更新する。
 
-選んだ故障について、[ミューテーションテスト](../../../docs/development/specification-first-workflow.md#ミューテーションテスト)で変更耐性を検査する。
+選んだ故障について、[ミューテーションテスト](../../../docs/development/testing.md#ミューテーションテスト)で変更耐性を検査する。
 変更した Go には `mise run test-go-mutation -- <package-directory>` を使い、ツールで表現できない配線の切断などだけを手で注入する。
 比較基準、変更行と既存の全体調査の選択、生存変異の到達経路、並行時の時間超過の扱いは、同じ節から選ぶ。
 生存した変異を読み、未使用の補完、等価な変異、観測の不足を分け、仕様にない振る舞いがあれば手順 5 の分類へ戻る。
@@ -109,7 +109,7 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 対象の振る舞いを実装し、証拠の手順を終えてから、七つの視点で差分をレビューする。
 [最終検査の選択](../../../docs/development/specification-first-workflow.md#最終検査の選択)に従い、実際の差分と影響範囲に必要な最小の検査を選ぶ。
 影響が不明なら検査の範囲を広げる。
-Go では[通常テストと race 検査](../../../docs/development/specification-first-workflow.md#go-の通常テストと-race-検査)も選ぶ。
+Go では[通常テストと race 検査](../../../docs/development/testing.md#go-の通常テストと-race-検査)も選ぶ。
 必要な検査が最終差分を検証していることを確認し、未検査または入力が変わった検査を実行する。
 前提が未解決の間は集約ゲートを状態確認に使わない。
 

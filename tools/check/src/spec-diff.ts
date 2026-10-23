@@ -19,7 +19,7 @@ import { relative, resolve } from 'node:path'
 import MarkdownIt from 'markdown-it'
 import { specificationRules } from './feature-specification.ts'
 import { type ScenarioExample, parseScenarioDocument, ruleBodies } from './gherkin-scenarios.ts'
-import { type DocumentKind, documentKind } from './specification-doc.ts'
+import { type DocumentKind, documentKind, STANDARDS_OVERVIEW_HEADING } from './specification-doc.ts'
 import { typeSpecDeclarations } from './typespec-declarations.ts'
 
 /** Repository-relative path to file contents. */
@@ -107,11 +107,14 @@ function deprecatedDeclarations(path: string, source: string): Set<string> {
   return declarations
 }
 
-/** 標準仕様の行は、それを所有する文書と ID で同定する。 */
+/**
+ * 標準仕様の行は、それを所有する文書と ID で同定する。標準と製品の関係を説明する節の表は
+ * 規範の行ではないので読まない。
+ */
 function standardRows(path: string, source: string): Map<string, string> {
   const rows = new Map<string, string>()
   let cells: string[] | undefined
-  for (const token of markdown.parse(source, {})) {
+  for (const token of markdown.parse(withoutStandardsOverview(source), {})) {
     if (token.type === 'tr_open') {
       cells = []
     } else if (token.type === 'inline' && cells) {
@@ -123,6 +126,14 @@ function standardRows(path: string, source: string): Map<string, string> {
     }
   }
   return rows
+}
+
+function withoutStandardsOverview(source: string): string {
+  const lines = source.split('\n')
+  const start = lines.indexOf(STANDARDS_OVERVIEW_HEADING)
+  if (start < 0) return source
+  const next = lines.findIndex((line, index) => index > start && line.startsWith('## '))
+  return [...lines.slice(0, start), ...(next < 0 ? [] : lines.slice(next))].join('\n')
 }
 
 function section(source: string, name: string): string {

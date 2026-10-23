@@ -12,7 +12,7 @@
 
 | 作業 | 読む文書 |
 | --- | --- |
-| 作業項目の着手 <!-- context: kinds=* --> | [開発サイクル](docs/development/specification-first-workflow.md#3-開発サイクル)、[証拠の要件](docs/development/specification-first-workflow.md#4-証拠の要件)、[着手時の文脈と設計](docs/formats/work-item-format.md#着手時の文脈と設計)。子節は今回の変更に適用するものだけを読む |
+| 作業項目の着手 <!-- context: kinds=* --> | [開発サイクル](docs/development/specification-first-workflow.md#開発サイクル)、[証拠の要件](docs/development/specification-first-workflow.md#証拠の要件)、[着手時の文脈と設計](docs/formats/work-item-format.md#着手時の文脈と設計)。子節は今回の変更に適用するものだけを読む |
 | 機能と振る舞いの変更 <!-- context: kinds=feature,bugfix,operations --> | [仕様の漏れを探す観点](docs/development/specification-first-workflow.md#仕様の漏れを探す観点)、[主要ユースケース](docs/development/testing.md#主要ユースケース) |
 | 文書、コメント、UI 文言の執筆または推敲 <!-- context: kinds=docs targets=docs,.agents,AGENTS.md,frontend --> | [文章の言語](docs/development/writing-language.md)。日本語の文章品質と整形には `japanese-tech-writing` スキルを使う |
 | コードに含む文章の変更 <!-- context: targets=backend,frontend,tools,.agents,AGENTS.md --> | [文章の言語](docs/development/writing-language.md) |
@@ -22,13 +22,13 @@
 | モジュール、型、依存、作用、エラーの設計 <!-- context: targets=backend,frontend/src --> | [モジュールの深さと情報隠蔽](docs/design/application/design-guidelines.md#モジュールの深さと情報隠蔽)。触れる型と作用の節へ進む |
 | モジュールの追加、分割と統合、公開範囲の拡大、モジュール間の依存の追加、テーブル所有者または組み立て地点の変更 <!-- context: concerns=boundary --> | [境界を選ぶ判断手順](docs/design/application/design-guidelines.md#境界を選ぶ判断手順)、[モジュールの責務](docs/modules/README.md#モジュール)、[依存規則](docs/design/application/backend.md#モジュール間の依存規則)、[既知リスク](docs/design/architecture/risks.md)。比較の記録を work item の設計に書いてから実装する |
 | 横断的な作用と確定の変更 <!-- context: concerns=effects --> | [作用の境界](docs/design/application/design-guidelines.md#作用の境界)、[一貫性の境界と永続化](docs/design/application/design-guidelines.md#一貫性の境界と永続化)、[モジュール間イベント](docs/design/application/backend.md#モジュール間イベント) |
-| 公開 HTTP 契約の変更 <!-- context: concerns=contract --> | [API 区分](docs/design/application/api-guidelines.md#api-区分)、[TypeSpec の範囲](docs/formats/specification-format.md#1-typespec-の範囲)。触れる HTTP の判断の節へ進む |
+| 公開 HTTP 契約の変更 <!-- context: concerns=contract --> | [API 区分](docs/design/application/api-guidelines.md#api-区分)、[TypeSpec の範囲](docs/formats/specification-format.md#typespec-の範囲)。触れる HTTP の判断の節へ進む |
 | 認可と信頼境界の変更 <!-- context: concerns=security --> | [主体の種類](docs/design/security/authorization.md#主体の種類)、[テナント境界](docs/design/security/authorization.md#テナント境界)、[脅威モデルの読み方](docs/design/security/threat-model.md#読み方)。触れる信頼境界の節へ進む |
 | 品質目標を変える作業 <!-- context: concerns=performance --> | [サービス目標](docs/requirements/quality.md#サービス目標)、[性能設計](docs/design/performance/README.md) |
-| 仕様文書の執筆 <!-- context: targets=spec,docs/modules,docs/requirements --> | [要件と例の形式](docs/formats/specification-format.md#5-要件と例) |
-| 設計文書の執筆 <!-- context: kinds=docs targets=docs/design --> | [設計領域の形式](docs/formats/design-format.md#1-設計領域) |
+| 仕様文書の執筆 <!-- context: targets=spec,docs/modules,docs/requirements --> | [要件と例の形式](docs/formats/specification-format.md#要件と例) |
+| 設計文書の執筆 <!-- context: kinds=docs targets=docs/design --> | [設計領域の形式](docs/formats/design-format.md#設計領域) |
 | 文書の配置を変える作業 <!-- context: kinds=docs --> | [一次情報源の割り当て](docs/formats/documentation-guide.md#一次情報源の割り当て)から、触れる文書種別の節を選ぶ |
-| 開発文書の執筆 <!-- context: kinds=docs targets=docs/development --> | [開発文書の形式](docs/formats/documentation-guide.md#8-開発文書) |
+| 開発文書の執筆 <!-- context: kinds=docs targets=docs/development --> | [開発文書の形式](docs/formats/documentation-guide.md#開発文書) |
 | 開発環境、ビルド、生成、CI、リリース <!-- context: targets=mise.toml,infra,.github --> | [開発文書の索引](docs/development/README.md)から該当する文書を選ぶ |
 | リポジトリ内ツールの変更 <!-- context: targets=tools --> | [リポジトリツール](tools/README.md) |
 
@@ -46,8 +46,8 @@
 `mise run verify` と Go の HTTP 統合テストも localhost の待受けを使うため、同じ実行方法に従う。
 権限昇格が必要な実行環境では、最初の呼び出しから実行ツールの権限昇格を指定する。
 
-テストが規範の被覆を主張する場合は[規範 ID の参照](docs/development/specification-first-workflow.md#規範idをテストから参照する)に従う。
-検出能力を測る場合は[ミューテーションテスト](docs/development/specification-first-workflow.md#ミューテーションテスト)で適用条件と手動注入の分担を選び、引数は[Go のミューテーションテスト](docs/development/testing.md#go-のミューテーションテスト)を読む。
+テストが規範の被覆を主張する場合は[規範 ID の参照](docs/development/specification-first-workflow.md#規範-id-をテストから参照する)に従う。
+検出能力を測る場合は[ミューテーションテスト](docs/development/testing.md#ミューテーションテスト)で適用条件、手動注入の分担、引数を選ぶ。
 
 ## ツール
 

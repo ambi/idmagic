@@ -55,4 +55,4 @@ CI の通常テストの報告には `.verification/test-go.json` を明示し�
 
 ブラウザー E2E (`test-ui-e2e`) は手元の `verify` には入っていない。Go のビルド、API サーバー、開発サーバー、初期データの投入という起動をこのテストだけが要求し、静的検査と単体テストのたびに毎回払う費用ではないからである。手元では `mise run verify-full` で、CI では独立した job で実行する。
 
-Pull Request の要件は [コントリビューション](../../CONTRIBUTING.md)で、変更中に検査を広げる順序は [検証の段階](specification-first-workflow.md#5-検証の段階)で定める。
+Pull Request の要件は [コントリビューション](../../CONTRIBUTING.md)で、変更中に検査を広げる順序は [検証の進め方](specification-first-workflow.md#検証の進め方)で定める。

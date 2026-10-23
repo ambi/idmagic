@@ -186,9 +186,9 @@ describe('reading size', () => {
       snapshot,
     )
     const sizes = await measureCandidates(plan, snapshot)
-    const cycle = sizes.get('docs/development/specification-first-workflow.md#3-開発サイクル')!
+    const cycle = sizes.get('docs/development/specification-first-workflow.md#開発サイクル')!
     const source = await snapshot.read('docs/development/specification-first-workflow.md')
-    const section = source.slice(source.indexOf('## 3. 開発サイクル'), source.indexOf('## 4. '))
+    const section = source.slice(source.indexOf('## 開発サイクル'), source.indexOf('## 証拠の要件'))
     expect(cycle.bytes).toBeGreaterThan(0)
     const childBytes = cycle.children.reduce((sum, one) => sum + one.bytes, 0)
     // 本体は子節を含まない。本体と子節を足すと節の全体になる。
@@ -197,7 +197,7 @@ describe('reading size', () => {
     expect(cycle.children.every((one) => one.bytes > 0)).toBe(true)
 
     const rendered = renderContext(plan, sizes).join('\n')
-    expect(rendered).toMatch(/3-開発サイクル \[explicit\] \d+ KB/)
+    expect(rendered).toMatch(/#開発サイクル \[explicit\] \d+ KB/)
     expect(rendered).toMatch(/ {2}- #仕様にない振る舞いの分類 \d+ KB/)
     expect(rendered).toMatch(/Lead sections total \d+ KB/)
   })

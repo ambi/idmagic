@@ -607,6 +607,49 @@ describe('standards.md', () => {
     expect(validateDocument(STANDARDS, source).findings).toEqual([])
   })
 
+  it('accepts an overview of standards and the product before the first standard', () => {
+    const source = withStandards('| DEMO-CORE | required | MUST | The product answers. |').replace(
+      '## Demo Protocol',
+      [
+        '## 標準と製品の関係',
+        '',
+        '| 役割 | 標準 |',
+        '| --- | --- |',
+        '| 要求 | Demo Protocol |',
+        '',
+        '## Demo Protocol',
+      ].join('\n'),
+    )
+    const validation = validateDocument(STANDARDS, source)
+    expect(validation.findings).toEqual([])
+    expect(validation.standardIds.map((entry) => entry.id)).toEqual(['DEMO-CORE'])
+  })
+
+  it('rejects normative rows in the overview of standards and the product', () => {
+    const source = withStandards('| DEMO-CORE | required | MUST | The product answers. |').replace(
+      '## Demo Protocol',
+      [
+        '## 標準と製品の関係',
+        '',
+        '| ID | Adoption | Strength | Statement |',
+        '|---|---|---|---|',
+        '| DEMO-HIDDEN | required | MUST | A rule hidden in the overview. |',
+        '',
+        '## Demo Protocol',
+      ].join('\n'),
+    )
+    expect(messages(STANDARDS, source)).toContain(
+      'the overview of standards and the product must not declare normative rows; move them under their standard',
+    )
+  })
+
+  it('rejects the overview of standards and the product after a standard', () => {
+    const source = `${withStandards('| DEMO-CORE | required | MUST | The product answers. |')}\n## 標準と製品の関係\n\n説明。\n`
+    expect(messages(STANDARDS, source)).toContain(
+      'the overview of standards and the product must be the first section',
+    )
+  })
+
   it('rejects a standard without the canonical table', () => {
     const source = '# Demo Standards\n\n## Demo Protocol\n\nAdopted in full.\n'
     expect(messages(STANDARDS, source)).toContain(
