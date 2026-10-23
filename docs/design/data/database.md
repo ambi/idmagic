@@ -61,6 +61,8 @@ erDiagram
     }
     signing_keys {
     }
+    vault_signing_key_sets {
+    }
     tenant_data_encryption_keys {
     }
     password_history {
@@ -82,6 +84,7 @@ erDiagram
     tenants ||--o{ mfa_enrollment_bypasses : 例外を持つ
     tenants ||--o{ trusted_devices : 信頼済み端末を持つ
     tenants ||--o{ signing_keys : 署名鍵を持つ
+    tenants ||--o{ vault_signing_key_sets : Vaultの署名鍵の状態を持つ
     tenants ||--o{ tenant_data_encryption_keys : データ暗号鍵を持つ
     tenants ||--o{ authentication_sessions : セッションを持つ
     users ||--o{ mfa_factors : 認証要素を持つ
