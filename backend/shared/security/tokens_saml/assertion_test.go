@@ -234,6 +234,39 @@ func TestBuildAssertion_ConfirmsTheSubjectAsBearerInBothVersions(t *testing.T) {
 	}
 }
 
+// Entra は SAML 1.1 では AuthenticationMethod、SAML 2.0 では AuthnContextClassRef の multipleauthn で
+// IdP の MFA を受け入れる。HTTP 境界は Entra の RP の SAML 1.1 しか通らないので、両方の版をここで見る。
+//
+//spec:covers ENTRA-MFA-AUTHENTICATION-METHOD: 第二要素を含む認証を、SAML 1.1 の AuthenticationMethod と SAML 2.0 の AuthnContextClassRef の multipleauthn にすること。
+func TestBuildAssertion_StatesMultipleAuthnInBothVersions(t *testing.T) {
+	const multipleAuthn = "http://schemas.microsoft.com/claims/multipleauthn"
+	for version, read := range map[SAMLVersion]func(*etree.Element) string{
+		SAML20: func(a *etree.Element) string {
+			if ref := a.FindElement("./AuthnStatement/AuthnContext/AuthnContextClassRef"); ref != nil {
+				return ref.Text()
+			}
+			return ""
+		},
+		SAML11: func(a *etree.Element) string {
+			if statement := a.FindElement("./AuthenticationStatement"); statement != nil {
+				return statement.SelectAttrValue("AuthenticationMethod", "")
+			}
+			return ""
+		},
+	} {
+		in := sampleInput()
+		in.Version = version
+		in.AuthnContext = AuthnContextMultipleAuthn
+		assertion, _, err := BuildAssertion(in)
+		if err != nil {
+			t.Fatalf("build assertion: %v", err)
+		}
+		if got := read(assertion); got != multipleAuthn {
+			t.Fatalf("version %v authentication method = %q, want %q", version, got, multipleAuthn)
+		}
+	}
+}
+
 func TestBuildAssertion_InputValidation(t *testing.T) {
 	base := sampleInput()
 	bad := map[string]func(*AssertionInput){

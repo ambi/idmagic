@@ -8,6 +8,7 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
@@ -65,6 +66,9 @@ const (
 	SignInForbidden
 	// SignInIssued は assertion 発行に進んでよいことを表す。
 	SignInIssued
+	// SignInNeedSecondFactor は、RP が求めた MFA のために、既存のセッションに第二要素の照合を
+	// 求めるべきことを表す。イベントは発行していない。
+	SignInNeedSecondFactor
 )
 
 // SignInOutcome は passive sign-in 判断の結果。
@@ -149,8 +153,14 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 	if feddomain.RequiresFreshAuth(req.Wfresh, time.Unix(authn.AuthTime, 0), now) {
 		return SignInOutcome{Kind: SignInNeedLogin}, nil
 	}
-	// wauth: 要求された認証方式を尊重する。満たせない方式 (統合 Windows 等) は拒否する。
-	authnMethod, err := feddomain.ResolveAuthnMethod(req.Wauth, authn.AMR)
+	// wauth: 要求された認証方式を尊重する。満たせない方式 (統合 Windows 等) は拒否し、
+	// Entra が求めた MFA には第二要素の照合を求める。
+	authnMethod, err := feddomain.ResolveAuthnMethod(req.Wauth, feddomain.PerformedAuthn{
+		AMR: authn.AMR, SecondFactor: authn.SecondFactorAuthenticated(),
+	}, *rp)
+	if errors.Is(err, feddomain.ErrSecondFactorRequired) {
+		return SignInOutcome{Kind: SignInNeedSecondFactor, Validated: validated, Authn: authn, Now: now}, nil
+	}
 	if err != nil {
 		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: err.Error()})
 		//nolint:nilerr // wauth 不適合は 400 の reject outcome へ変換し、呼び出し側には error を返さない。

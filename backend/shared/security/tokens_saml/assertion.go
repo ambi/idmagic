@@ -31,6 +31,8 @@ const (
 	authnContextPassword = "urn:oasis:names:tc:SAML:2.0:ac:classes:Password"
 	authnMethodUnspec11  = "urn:oasis:names:tc:SAML:1.0:am:unspecified"
 	authnMethodPassword  = "urn:oasis:names:tc:SAML:1.0:am:password"
+	// authnMultipleAuthn は Microsoft の MFA の認証方式で、SAML 1.1 と 2.0 の両方で同じ URI を使う。
+	authnMultipleAuthn = "http://schemas.microsoft.com/claims/multipleauthn"
 
 	attrNameFormatURI = "urn:oasis:names:tc:SAML:2.0:attrname-format:uri"
 	xmlDateTime       = "2006-01-02T15:04:05Z"
@@ -75,6 +77,8 @@ const (
 	AuthnContextUnspecified AuthnContext = iota
 	// AuthnContextPassword はパスワードによる認証を表す。
 	AuthnContextPassword
+	// AuthnContextMultipleAuthn は第二要素を含む認証を表す。Entra はこの値で IdP の MFA を受け入れる。
+	AuthnContextMultipleAuthn
 )
 
 // Attribute は assertion の 1 つの属性である。Name は属性の URI、Values は値の並びである。
@@ -155,8 +159,11 @@ func buildSAML20(in AssertionInput, id string) *etree.Element {
 	authn := a.CreateElement("AuthnStatement")
 	authn.CreateAttr("AuthnInstant", in.AuthnInstant.UTC().Format(xmlDateTime))
 	classRef := authnContextUnspec20
-	if in.AuthnContext == AuthnContextPassword {
+	switch in.AuthnContext {
+	case AuthnContextPassword:
 		classRef = authnContextPassword
+	case AuthnContextMultipleAuthn:
+		classRef = authnMultipleAuthn
 	}
 	authn.CreateElement("AuthnContext").CreateElement("AuthnContextClassRef").SetText(classRef)
 
@@ -192,8 +199,11 @@ func buildSAML11(in AssertionInput, id string) *etree.Element {
 
 	authn := a.CreateElement("AuthenticationStatement")
 	method := authnMethodUnspec11
-	if in.AuthnContext == AuthnContextPassword {
+	switch in.AuthnContext {
+	case AuthnContextPassword:
 		method = authnMethodPassword
+	case AuthnContextMultipleAuthn:
+		method = authnMultipleAuthn
 	}
 	authn.CreateAttr("AuthenticationMethod", method)
 	authn.CreateAttr("AuthenticationInstant", in.AuthnInstant.UTC().Format(xmlDateTime))

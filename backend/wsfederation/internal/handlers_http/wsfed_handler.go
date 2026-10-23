@@ -34,10 +34,14 @@ func samlVersion(t feddomain.WsFedTokenType) samltoken.SAMLVersion {
 
 // authnContext は認証方式クラスを assertion の認証コンテキストへ写す。
 func authnContext(m feddomain.AuthnMethodClass) samltoken.AuthnContext {
-	if m == feddomain.AuthnPassword {
+	switch m {
+	case feddomain.AuthnPassword:
 		return samltoken.AuthnContextPassword
+	case feddomain.AuthnMultipleAuthn:
+		return samltoken.AuthnContextMultipleAuthn
+	default:
+		return samltoken.AuthnContextUnspecified
 	}
-	return samltoken.AuthnContextUnspecified
 }
 
 // assertionAttributes は発行した claim を assertion の属性へ写す。claim の型を属性の名前にする。
@@ -79,6 +83,8 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 	switch outcome.Kind {
 	case wsfedusecases.SignInNeedLogin:
 		return c.Redirect(http.StatusSeeOther, loginRedirect(c))
+	case wsfedusecases.SignInNeedSecondFactor:
+		return d.requireSecondFactor(c, outcome)
 	case wsfedusecases.SignInRejected:
 		return c.String(outcome.Status, outcome.Message)
 	case wsfedusecases.SignInForbidden:
@@ -86,6 +92,25 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 	default:
 		return d.issuePassiveForm(c, outcome)
 	}
+}
+
+// requireSecondFactor は、セッションを第二要素の照合の待ちにし、照合の後に同じ要求へ戻す第二要素の
+// 画面へ送る。使える第二要素がなければ、待ちにせず拒否する。
+func (d Deps) requireSecondFactor(c *echo.Context, o wsfedusecases.SignInOutcome) error {
+	if len(d.SecondFactors.SecondFactorMethods(c, o.Authn.UserID)) == 0 {
+		const reason = "the requested multi-factor authentication needs a second factor the user does not have"
+		d.emit(&feddomain.WsFedSignInRejected{At: o.Now, TenantID: support.RequestTenantID(c), Wtrealm: o.Validated.RelyingParty.Wtrealm, Reason: reason})
+		return c.String(http.StatusBadRequest, reason)
+	}
+	pending, err := d.SecondFactors.RequireSecondFactor(c.Request().Context(), c, o.Authn.SessionID)
+	if err != nil {
+		return err
+	}
+	if pending == nil {
+		return c.Redirect(http.StatusSeeOther, loginRedirect(c))
+	}
+	returnTo := c.Request().URL.RequestURI()
+	return c.Redirect(http.StatusSeeOther, d.SecondFactors.PendingPath(c, pending)+"?return_to="+url.QueryEscape(returnTo))
 }
 
 // issuePassiveForm は発行データから署名済み SAML assertion を RSTR に包み、自動 POST で返す。

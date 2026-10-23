@@ -25,6 +25,7 @@ type Deps struct {
 	*support.Authenticator
 	ApplicationGate
 	Sessions
+	SecondFactors SecondFactorSteps
 
 	WsFedRPRepo                wsfederationports.WsFedRelyingPartyRepository
 	UserRepo                   userports.UserRepository
@@ -41,6 +42,16 @@ type Deps struct {
 type Sessions struct {
 	AuthnResolver  authdomain.AuthenticationContextResolver
 	SessionManager SessionRevoker
+}
+
+// SecondFactorSteps は、Entra が MFA を求めた要求で、既存のセッションに第二要素の照合を求める操作である。
+// 対話のログインを所有する Authentication が満たし、組み立て地点が結ぶ。
+type SecondFactorSteps interface {
+	SecondFactorMethods(c *echo.Context, sub string) []string
+	// RequireSecondFactor はセッションを第二要素の照合の待ちにして Cookie を発行する。
+	// セッションが失効していれば nil を返す。
+	RequireSecondFactor(ctx context.Context, c *echo.Context, sessionID string) (*authdomain.AuthenticationContext, error)
+	PendingPath(c *echo.Context, authn *authdomain.AuthenticationContext) string
 }
 
 // SessionRevoker はログアウトで、cookie が指すログインセッションを失効させる。Authentication の

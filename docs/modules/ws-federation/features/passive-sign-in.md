@@ -32,9 +32,12 @@
 - `wsignin1.0` にトークンを発行するとき、WsFederation は、RP に設定したトークンの型（SAML 1.1 または SAML 2.0。設定がない RP では SAML 1.1）の Assertion を返し、応答に `Cache-Control: no-store` を付ける。
 - Entra の定型設定を持つ RP にトークンを発行するとき、WsFederation は、Assertion の発行者を、利用者の UPN のドメインに最も長く一致する構成済みのドメインの IssuerUri にする。
 - Entra の定型設定を持たない RP にトークンを発行するとき、WsFederation は、Assertion の発行者をテナントの発行者にする。
+- ログインセッションが記憶済みの端末を除く第二要素で認証している間、Entra の定型設定を持つ RP にトークンを発行するとき、WsFederation は、Assertion の認証方式を `http://schemas.microsoft.com/claims/multipleauthn` にする。
 - ログインセッションがないか、認証が完了していないか、User が `Active` でない間、`wsignin1.0` を受けたとき、WsFederation は、トークンを発行せず、元の要求を `return_to` に持つログイン画面へ 303 でリダイレクトする。
 - `wfresh` の分数（30 秒未満は 30 秒とする）より前に認証したログインセッションの間、`wsignin1.0` を受けたとき、WsFederation は、トークンを発行せず、元の要求を `return_to` に持つログイン画面へ 303 でリダイレクトする。
+- ログインセッションが第二要素で認証していない間、Entra の定型設定を持つ RP の `wsignin1.0` で MFA の `wauth`（`http://schemas.microsoft.com/claims/multipleauthn`）を受けたとき、WsFederation は、トークンを発行せず、ログインセッションを第二要素の照合の待ちにし、元の要求を `return_to` に持つ第二要素の画面へ 303 でリダイレクトする。
 - 統合 Windows 認証の `wauth` を指定されたか、パスワードの `wauth` を指定されたのにログインセッションがパスワードで認証していない場合、WsFederation は、400 で拒否し、`WsFedSignInRejected` を発行し、トークンを発行しない。
+- 第二要素を一つも持たない利用者のログインセッションで、Entra の定型設定を持つ RP が MFA の `wauth` を指定した場合、WsFederation は、400 で拒否し、`WsFedSignInRejected` を発行し、トークンを発行せず、ログインセッションを変えない。
 - クレームを発行できないか、Entra の定型設定の sourceAnchor の属性が `unique` でないか `editable_by_user` であるか、利用者の sourceAnchor の値が ImmutableID として使えないか、利用者の UPN のドメインが Entra の定型設定のどのドメインにも属さない場合、WsFederation は、500 で拒否し、`WsFedSignInRejected` を発行し、トークンを発行しない。
 - **例**：EX-WSFEDERATION-002-01、EX-WSFEDERATION-002-02、EX-WSFEDERATION-002-03
 

@@ -9,6 +9,7 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -127,7 +128,19 @@ const (
 	AuthnPassword AuthnMethodClass = "password"
 	// AuthnUnspecified は方式を特定しない。
 	AuthnUnspecified AuthnMethodClass = "unspecified"
+	// AuthnMultipleAuthn は第二要素を含む認証であり、Entra へ MFA を済ませたことを伝える。
+	AuthnMultipleAuthn AuthnMethodClass = "multipleauthn"
 )
+
+// PerformedAuthn は、発行の判断に使うログインセッションの認証の事実である。
+type PerformedAuthn struct {
+	AMR []string
+	// SecondFactor は、記憶済みの端末を除く第二要素を提示したかである。
+	SecondFactor bool
+}
+
+// ErrSecondFactorRequired は、要求された MFA を満たすには第二要素の照合が要ることを表す。
+var ErrSecondFactorRequired = errors.New("wsfed: the requested multi-factor authentication needs a second factor")
 
 // この IdP が満たせる wauth (要求された認証方式 URI) と、満たせない (= 別 WI 範囲) URI。
 // 満たせない方式が要求された場合は fail-closed で拒否する。
@@ -147,15 +160,25 @@ var (
 	}
 )
 
-// ResolveAuthnMethod は実施した認証 (amr) と要求された wauth から、発行 assertion に載せる
-// 認証方式クラスを決める (wi-61)。
+// mfaWauthURI は、Entra が条件付きアクセスの MFA を IdP に求めるときの wauth である。
+const mfaWauthURI = "http://schemas.microsoft.com/claims/multipleauthn"
+
+// ResolveAuthnMethod は実施した認証と要求された wauth から、RP へ発行する assertion に載せる
+// 認証方式クラスを決める。
 //
-//   - wauth 未指定なら実施した方式をそのまま用いる。
+//   - wauth 未指定なら実施した方式をそのまま用いる。Entra の RP には、第二要素を済ませていれば
+//     multipleauthn を用いる。
 //   - wauth が password 系で、実施が password なら満たし、password を用いる。
 //   - wauth が統合 Windows 認証など本 IdP で満たせない方式なら error を返す (fail-closed)。
+//   - wauth が multipleauthn で RP が Entra なら、第二要素を済ませていなければ ErrSecondFactorRequired を返す。
+//     multipleauthn は Microsoft の語彙なので、Entra でない RP には未知の URI と同じく扱う。
 //   - wauth が未知の URI なら hint とみなし、実施した方式を用いる。
-func ResolveAuthnMethod(wauth string, amr []string) (AuthnMethodClass, error) {
-	performed := classFromAMR(amr)
+func ResolveAuthnMethod(wauth string, in PerformedAuthn, rp WsFedRelyingParty) (AuthnMethodClass, error) {
+	entra := rp.EntraProfile != nil
+	performed := classFromAMR(in.AMR)
+	if entra && in.SecondFactor {
+		performed = AuthnMultipleAuthn
+	}
 	wauth = strings.TrimSpace(wauth)
 	if wauth == "" {
 		return performed, nil
@@ -164,10 +187,13 @@ func ResolveAuthnMethod(wauth string, amr []string) (AuthnMethodClass, error) {
 		return "", fmt.Errorf("wsfed: requested authentication method %q is not supported by this identity provider", wauth)
 	}
 	if _, ok := passwordWauthURIs[wauth]; ok {
-		if performed != AuthnPassword {
+		if !slices.Contains(in.AMR, "pwd") {
 			return "", fmt.Errorf("wsfed: requested authentication method %q was not satisfied", wauth)
 		}
 		return AuthnPassword, nil
+	}
+	if wauth == mfaWauthURI && entra && !in.SecondFactor {
+		return "", ErrSecondFactorRequired
 	}
 	return performed, nil
 }

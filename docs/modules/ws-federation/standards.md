@@ -114,6 +114,22 @@ MSAL の手順は、MSAL.NET の `UsernamePasswordRequest` と `CommonNonInterac
 | ENTRA-FED-ISSUER | required | MUST | Entra の RP へ発行する Assertion の発行者を、利用者の UPN のドメインに構成した IssuerUri にする |
 | ENTRA-FED-NAMEID | required | MUST | Entra の RP へ発行する Assertion の永続的な NameID に ImmutableID を、UPN のクレームに UPN を入れる |
 
+## Microsoft Entra の連携した IdP からの MFA のクレーム
+
+2026-10-24 参照 — https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-mfa-expected-inbound-assertions
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| ENTRA-MFA-AUTHENTICATION-METHOD | required | MUST | 記憶済みの端末を除く第二要素で認証したログインセッションで Entra の RP へ発行するとき、SAML 1.1 の `AuthenticationStatement` の `AuthenticationMethod`（SAML 2.0 では `AuthnContextClassRef`）を `http://schemas.microsoft.com/claims/multipleauthn` にする |
+
+## AD FS の要求による MFA
+
+2014-02-18 公開 — https://learn.microsoft.com/en-us/archive/blogs/ramical/under-the-hood-tour-on-multi-factor-authentication-in-adfs-part-2-mfa-aware-relying-parties
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| ADFS-MFA-WAUTH | required | MUST | Entra の RP の `wsignin1.0` が `wauth` に `http://schemas.microsoft.com/claims/multipleauthn` を指定したら、第二要素で認証したログインセッションでだけ発行し、そうでなければ第二要素の照合へ誘導する |
+
 ## Microsoft Entra Connect の複数のドメインのフェデレーション
 
 2026-10-23 参照 — https://learn.microsoft.com/en-us/entra/identity/hybrid/connect/how-to-connect-install-multiple-domains
@@ -149,6 +165,7 @@ MSAL の手順は、MSAL.NET の `UsernamePasswordRequest` と `CommonNonInterac
 | ENTRA-GRAPH-PASSIVE-PROTOCOL | required | MUST | Entra の構成の結果で、`PreferredAuthenticationProtocol` に `wsFed` を案内する。明示しなければ受動的なフローが動かないからである |
 | ENTRA-GRAPH-SIGNING-CERTIFICATE | required | MUST | Entra の構成の結果で、`SigningCertificate` に、メタデータに載せた現在の有効な XML 署名の証明書の base64 を案内する |
 | ENTRA-GRAPH-SIGN-OUT | required | MUST | Entra の構成の結果で、`SignOutUri` に `wsignout1.0` を受ける受動的なエンドポイントを案内する |
+| ENTRA-GRAPH-MFA-BEHAVIOR | required | MUST | Entra の構成の結果で、`FederatedIdpMfaBehavior` に `acceptIfMfaDoneByFederatedIdp` を案内する。IdMagic が MFA を済ませていれば Entra はそれを受け入れ、済ませていなければ Entra が MFA をするので、第二要素を持たない利用者もサインインできる |
 
 ## MSAL.NET の WS-Trust のクライアント
 

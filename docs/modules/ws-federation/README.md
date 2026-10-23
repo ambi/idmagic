@@ -9,14 +9,14 @@
 | プロトコルに依存しないクレームの発行 | `ClaimMapping` |
 | 署名鍵のライフサイクル | `SigningKeys` |
 | SAML 2.0 の SP との信頼関係 | `SAML` |
-| ブラウザーのログインセッションと UsernameToken の資格情報の検証の部品 | `Authentication` |
+| ブラウザーのログインセッション、第二要素の照合の手順、UsernameToken の資格情報の検証の部品 | `Authentication` |
 | Application への割り当て | `Application` |
 
 ## 主な流れ
 
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| パッシブサインイン | ブラウザーの `/wsfed` への `wsignin1.0` | `api` が、ログインセッションがなければログインの画面へ誘導し、あれば検証して RSTR のフォームを返す | [パッシブサインイン](features/passive-sign-in.md) |
+| パッシブサインイン | ブラウザーの `/wsfed` への `wsignin1.0` | `api` が、ログインセッションがなければログインの画面へ、Entra が求めた MFA を満たさなければ第二要素の画面へ誘導し、満たせば検証して RSTR のフォームを返す | [パッシブサインイン](features/passive-sign-in.md) |
 | 能動的な STS | クライアントの `/trust/usernamemixed` への SOAP の要求 | `api` が、エンベロープの解析、`MessageID` の記録、資格情報の検証、発行を同期的に行う | [WS-Trust の能動的 STS](features/active-sts.md) |
 | メタデータと MEX | RP と Entra の取得 | `api` が、要求のたびにテナントの証明書から組み立てる | [フェデレーションメタデータ](#フェデレーションメタデータ) |
 | 管理 API | 解決済みのテナントの `/api/admin/v1/wsfed/...` への要求 | `api` が、ハンドラーから同期的に保存する | [RP と Entra フェデレーションの管理](features/relying-party.md) |

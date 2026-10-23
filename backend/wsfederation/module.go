@@ -19,12 +19,14 @@ type Module struct {
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
-	applicationGate wsfedhttp.ApplicationGate, sessions wsfedhttp.Sessions, userRepo userports.UserRepository, federationSigner samltoken.SignerProvider,
+	applicationGate wsfedhttp.ApplicationGate, sessions wsfedhttp.Sessions, secondFactors wsfedhttp.SecondFactorSteps,
+	userRepo userports.UserRepository, federationSigner samltoken.SignerProvider,
 	clientAssertionReplayStore oauthports.ClientAssertionReplayStore, passwords signinports.PasswordAuthenticator,
 	attrSchemaRepo claimports.TenantAttributeSchemaRepo,
 ) {
 	wsfedhttp.RegisterRoutes(g, wsfedhttp.Deps{
-		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate, Sessions: sessions, WsFedRPRepo: m.RPRepo,
+		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate, Sessions: sessions,
+		SecondFactors: secondFactors, WsFedRPRepo: m.RPRepo,
 		UserRepo: userRepo, FederationSigner: federationSigner, ClientAssertionReplayStore: clientAssertionReplayStore,
 		Passwords: passwords, AttrSchemaRepo: attrSchemaRepo,
 	})
