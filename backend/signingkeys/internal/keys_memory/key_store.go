@@ -7,6 +7,7 @@ package keys_memory
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -98,6 +99,19 @@ func (s *InMemoryKeyStore) FindByKID(ctx context.Context, kid string) (*signingd
 		}
 	}
 	return nil, nil //nolint:nilnil // repository contract: a missing key is not an adapter failure.
+}
+
+func (s *InMemoryKeyStore) KeyScopes(ctx context.Context) ([]string, error) {
+	prefix := keySetID(tenantports.TenantID(ctx), signingports.KeyUsage(ctx), "")
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	scopes := []string{}
+	for id, tk := range s.byTenant {
+		if scopeID, ok := strings.CutPrefix(id, prefix); ok && len(tk.keys) > 0 {
+			scopes = append(scopes, scopeID)
+		}
+	}
+	return scopes, nil
 }
 
 func (s *InMemoryKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {

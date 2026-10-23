@@ -23,6 +23,8 @@ JWKS の利用者と RP は、ローテーションの直前に発行された�
 管理者は共有鍵を使うすべての連携先へ新しい証明書を登録し、`action: activate`、準備済みの `kid`、`trust_updated: true` を指定して切り替える。
 準備した候補がある間も、メタデータと証明書ダウンロードの有効な証明書は現在の署名鍵に対応する。
 SAML 専用プロファイルのスコープでは、即時のローテーションと二段階のローテーションを選べる。
+定期実行のバッチは、XML 鍵の集合ではスコープを問わず準備までを行い、有効化しない。
+連携先が新しい証明書を登録したかを、バッチは確かめられないからである。
 最初の世代は `Active` として作り、その交代候補は `Prepared` として作る。
 
 | 値 | デフォルト | 設定 |
@@ -93,17 +95,20 @@ SAML 専用プロファイルのスコープでは、即時のローテーショ
 
 #### REQ-SIGNINGKEYS-002 猶予期間終了後の署名鍵は JWKS から除去してアーカイブする
 
-- スケジューラーがアーカイブを実行したとき、SigningKeys は、`expires_at` が実行の時刻以前でまだアーカイブしていない鍵を `Archived` にし、鍵ごとに `kid`、`retiredAt`、`expiresAt`、`disposedAt` を載せた `SigningKeyArchived` を発行する。
+- スケジューラーがアーカイブを実行したとき、SigningKeys は、`Signing` の鍵と、`XmlFederationSigning` の鍵を持つすべてのスコープの鍵のうち、`expires_at` が実行の時刻以前でまだアーカイブしていない鍵を `Archived` にし、鍵ごとに `kid`、`retiredAt`、`expiresAt`、`disposedAt` を載せた `SigningKeyArchived` を発行する。
 - SigningKeys は、`Archived` の鍵素材を消さず、個別に完全に削除する経路を持たない。
 - **例**：EX-SIGNINGKEYS-002-01
 
 ### System 管理者によるライフサイクルのバッチの起動
 
-#### REQ-SIGNINGKEYS-003 ライフサイクル設定が不正なバッチは起動しない
+#### REQ-SIGNINGKEYS-003 ライフサイクルのバッチは周期を過ぎた鍵の集合だけを回し、不正な設定では起動しない
 
-- `system_admin` が `idmagic-batch signing-key-lifecycle` を起動したとき、SigningKeys は、`Active` の鍵が作成から `-cadence-days`（デフォルト 90 日）を過ぎた組だけをローテーションし、`-grace-days`（デフォルト 7 日）を重複期間として使う。
+- `system_admin` が `idmagic-batch signing-key-lifecycle` を起動したとき、SigningKeys は、`Signing` の鍵のうち `Active` の鍵が作成から `-cadence-days`（デフォルト 90 日）を過ぎた組だけをローテーションし、`-grace-days`（デフォルト 7 日）を重複期間として使う。
+- `system_admin` が `idmagic-batch signing-key-lifecycle` を起動したとき、SigningKeys は、`XmlFederationSigning` の鍵を持つスコープごとに、`Active` の鍵が作成から `-cadence-days` を過ぎ、`Prepared` の鍵がない集合だけに新しい鍵を `Prepared` として準備し、`SigningKeyPrepared` を発行し、有効な署名鍵を変えない。
+- `Prepared` の鍵がある集合では、SigningKeys は、バッチの実行で鍵とイベントを増やさない。
+- バッチを実行したとき、SigningKeys は、`XmlFederationSigning` の鍵を持たないテナントとスコープに XML 鍵を作らない。
 - `-grace-days` が `-cadence-days` 以上か、`-cadence-days` が 0 以下の場合、SigningKeys は、設定エラーで終了し、鍵をローテーションしない。
-- **例**：EX-SIGNINGKEYS-003-01
+- **例**：EX-SIGNINGKEYS-003-01、EX-SIGNINGKEYS-003-02
 
 ### 管理者による検証用の鍵の無効化
 

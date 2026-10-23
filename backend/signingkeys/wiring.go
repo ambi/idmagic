@@ -8,7 +8,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/signingkeys/domain"
 	"github.com/ambi/idmagic/backend/signingkeys/internal/db_postgres"
 	"github.com/ambi/idmagic/backend/signingkeys/internal/handlers_http"
 	"github.com/ambi/idmagic/backend/signingkeys/internal/keys_memory"
@@ -51,12 +50,10 @@ func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
 	handlers_http.RegisterRoutes(g, handlers_http.Deps{Deps: d.Deps, Authenticator: d.Authenticator, KeyStore: m.KeyStore, TenantRepo: d.TenantRepo})
 }
 
-func (m Module) RotateIfDue(ctx context.Context, emit func(spec.DomainEvent), now time.Time, cadence, grace time.Duration) (*domain.SigningKey, error) {
-	return usecases.RotateSigningKeyIfDue(ctx, usecases.RotateSigningKeyDeps{KeyStore: m.KeyStore, Emit: emit, Grace: grace}, now, cadence)
-}
-
-func (m Module) ArchiveExpired(ctx context.Context, emit func(spec.DomainEvent), now time.Time) ([]*domain.SigningKey, error) {
-	return usecases.ArchiveExpiredSigningKeys(ctx, usecases.ArchiveExpiredSigningKeysDeps{KeyStore: m.KeyStore, Emit: emit}, now)
+// RunLifecycle は ctx のテナントの鍵の集合すべてに、定期実行のローテーション、XML 鍵の準備、
+// アーカイブを 1 回適用する。
+func (m Module) RunLifecycle(ctx context.Context, emit func(spec.DomainEvent), now time.Time, cadence, grace time.Duration) error {
+	return usecases.RunSigningKeyLifecycle(ctx, usecases.SigningKeyLifecycleDeps{KeyStore: m.KeyStore, Emit: emit}, now, cadence, grace)
 }
 
 // FederationSigner は、要求の鍵のスコープで有効な XML 連携署名の鍵から SAML assertion の署名器を

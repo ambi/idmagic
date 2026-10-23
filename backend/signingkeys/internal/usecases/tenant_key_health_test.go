@@ -34,6 +34,10 @@ func (f *fakeKeyStore) FindByKID(ctx context.Context, kid string) (*signingdomai
 	return nil, errors.New("unimplemented")
 }
 
+func (f *fakeKeyStore) KeyScopes(context.Context) ([]string, error) {
+	return nil, errors.New("unimplemented")
+}
+
 func (f *fakeKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
 	return nil, errors.New("unimplemented")
 }

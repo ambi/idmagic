@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingpostgres "github.com/ambi/idmagic/backend/signingkeys/internal/db_postgres"
@@ -90,6 +92,31 @@ func TestVaultPreparedKeyContract(t *testing.T) {
 	contract.Run(t, func(t *testing.T) contract.Fixture {
 		t.Helper()
 		return contract.Fixture{Store: adaptercrypto.NewVaultKeyStore(newFakeTransit(), "idmagic-signing-"), Context: tenantCtx()}
+	})
+}
+
+//spec:covers REQ-SIGNINGKEYS-003: Vault のスコープの列挙は、メモリの状態ストアでも PostgreSQL の状態ストアでも共有契約を満たすこと。
+func TestVaultKeyScopesContract(t *testing.T) {
+	t.Run("memory state", func(t *testing.T) {
+		contract.RunKeyScopes(t, func(t *testing.T) contract.Fixture {
+			t.Helper()
+			return contract.Fixture{Store: adaptercrypto.NewVaultKeyStore(newFakeTransit(), "idmagic-signing-"), Context: tenantCtx()}
+		})
+	})
+	t.Run("postgres state", func(t *testing.T) {
+		contract.RunKeyScopes(t, func(t *testing.T) contract.Fixture {
+			t.Helper()
+			db := pgtest.Require(t)
+			// パッケージ内のテストが共有するデータベースで、ほかのテストの状態を見ない新しいテナントを使う。
+			now := pgtest.Now()
+			id := uuid.NewString()
+			tenant := &tenancydomain.Tenant{ID: id, Realm: "contract-" + id, DisplayName: "Contract", Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now}
+			if err := tenancy.NewPostgresModule(db).TenantRepo.Save(context.Background(), tenant); err != nil {
+				t.Fatal(err)
+			}
+			store := adaptercrypto.NewVaultKeyStoreWithState(newFakeTransit(), "idmagic-signing-", signingpostgres.VaultKeyStateStore{Pool: db})
+			return contract.Fixture{Store: store, Context: tenantports.WithTenant(context.Background(), tenant, "", "")}
+		})
 	})
 }
 

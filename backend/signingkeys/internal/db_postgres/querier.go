@@ -19,7 +19,9 @@ type Querier interface {
 	GetAllKeys(ctx context.Context, arg GetAllKeysParams) ([]*GetAllKeysRow, error)
 	GetVaultKeySet(ctx context.Context, arg GetVaultKeySetParams) ([]byte, error)
 	InsertSigningKey(ctx context.Context, arg InsertSigningKeyParams) error
+	ListKeyScopes(ctx context.Context, arg ListKeyScopesParams) ([]string, error)
 	ListPublicKeys(ctx context.Context, arg ListPublicKeysParams) ([]*ListPublicKeysRow, error)
+	ListVaultKeySetScopes(ctx context.Context, arg ListVaultKeySetScopesParams) ([]string, error)
 	LockSigningKeyRotation(ctx context.Context, arg LockSigningKeyRotationParams) error
 	RetireActiveKey(ctx context.Context, arg RetireActiveKeyParams) error
 	SaveVaultKeySet(ctx context.Context, arg SaveVaultKeySetParams) error

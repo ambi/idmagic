@@ -21,7 +21,7 @@ OAuth2 と OIDC は JWK、JWKS、JWT の署名器を、SAML と WS-* は X.509 �
 | --- | --- | --- | --- |
 | 署名と公開鍵の一覧 | トークン、Assertion、JWKS、メタデータの要求 | 要求を受けたプロセスが、要求のテナント、用途、スコープの鍵を同期的に読む | [テナントと用途による鍵の分離](features/separation.md) |
 | 管理者によるローテーションと無効化 | `/api/admin/v1/...` の鍵の管理 API への要求 | `api` が、ハンドラーから同期的に行う | [署名鍵のライフサイクル](features/lifecycle.md) |
-| 定期のローテーションとアーカイブ | 外部のスケジューラーによる `idmagic-batch signing-key-lifecycle` | バッチのプロセスが、テナントごとに順に行う | [SigningKeys のリスク](risks.md) |
+| 定期のローテーション、XML 鍵の準備、アーカイブ | 外部のスケジューラーによる `idmagic-batch signing-key-lifecycle` | バッチのプロセスが、テナントごとに、鍵を持つ用途とスコープの集合を順に扱う | [署名鍵のライフサイクル](features/lifecycle.md)、[SigningKeys のリスク](risks.md) |
 
 ## 設計の要点
 

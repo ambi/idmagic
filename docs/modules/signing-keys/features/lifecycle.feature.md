@@ -21,13 +21,24 @@
 - Then レスポンスに `kid` "kid-old" は含まれない
 - Then SigningKeyArchived イベントに `kid`、`retiredAt`、`expiresAt`、`disposedAt` が記録される
 
-## Rule: REQ-SIGNINGKEYS-003 ライフサイクル設定が不正なバッチは起動しない
+## Rule: REQ-SIGNINGKEYS-003 ライフサイクルのバッチは周期を過ぎた鍵の集合だけを回し、不正な設定では起動しない
 
 ### Example: EX-SIGNINGKEYS-003-01 通常経路
 
 - Given `grace_days` が `cadence_days` 以上である
 - When `system_admin` が `idmagic-batch signing-key-lifecycle` を起動する
 - Then 設定エラーで終了し、鍵を回転しない
+
+### Example: EX-SIGNINGKEYS-003-02 XML 鍵は周期を過ぎても準備までに留まる
+
+- Given テナント "tenant-a" の `XmlFederationSigning` の `default` のスコープと SAML 専用プロファイル "profile-x" のスコープに、作成から `cadence_days` を過ぎた有効な鍵がある
+- And テナント "tenant-b" は XML 鍵を持たない
+- When `system_admin` が `idmagic-batch signing-key-lifecycle` を起動する
+- Then 両方のスコープに `Prepared` の鍵が一つずつでき、メタデータに公開される
+- Then 両方のスコープの有効な署名鍵は変わらない
+- Then "tenant-b" に XML 鍵はできない
+- When `system_admin` がもう一度バッチを起動する
+- Then 鍵と `SigningKeyPrepared` は増えない
 
 ## Rule: REQ-SIGNINGKEYS-010 管理者は回転後の検証用鍵だけを即時無効化できる
 

@@ -52,6 +52,8 @@ type KeyStore interface {
 	GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error)
 	ListPublicKeys(ctx context.Context, now time.Time) ([]*signingdomain.SigningKey, error)
 	FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error)
+	// KeyScopes は ctx のテナントと用途で鍵を持つスコープを返す。鍵を作らない。
+	KeyScopes(ctx context.Context) ([]string, error)
 	Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error)
 	ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error)
 	// Disable は ctx テナントの鍵 1 件を無効化 (JWKS から除去) する。

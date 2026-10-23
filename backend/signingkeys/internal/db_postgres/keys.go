@@ -241,6 +241,10 @@ func (s *KeyStore) RotateIfDue(ctx context.Context, now time.Time, cadence, grac
 	return s.rotateForTenant(ctx, tenantports.TenantID(ctx), now, grace, &dueBefore, false)
 }
 
+func (s *KeyStore) KeyScopes(ctx context.Context) ([]string, error) {
+	return New(s.Pool).ListKeyScopes(ctx, ListKeyScopesParams{TenantID: tenantports.TenantID(ctx), KeyUsage: string(signingports.KeyUsage(ctx))})
+}
+
 func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {

@@ -30,6 +30,10 @@ func loadVaultState(ctx context.Context, q *Queries) (keys_vault.KeySetState, er
 func (s VaultKeyStateStore) Load(ctx context.Context) (keys_vault.KeySetState, error) {
 	return loadVaultState(ctx, New(s.Pool))
 }
+
+func (s VaultKeyStateStore) Scopes(ctx context.Context) ([]string, error) {
+	return New(s.Pool).ListVaultKeySetScopes(ctx, ListVaultKeySetScopesParams{TenantID: tenantports.TenantID(ctx), KeyUsage: string(signingports.KeyUsage(ctx))})
+}
 func (s VaultKeyStateStore) Healthy(ctx context.Context) bool { return s.Pool.Ping(ctx) == nil }
 func (s VaultKeyStateStore) Update(ctx context.Context, update func(*keys_vault.KeySetState) error) error {
 	tx, err := s.Pool.Begin(ctx)

@@ -93,6 +93,13 @@ func PreparedKey(keys []*SigningKey) *SigningKey {
 	return nil
 }
 
+// PreparationDue は、XML 鍵の集合に定期実行で次の鍵を準備すべきかを返す。有効な鍵が作成から
+// cadence に達し、まだ準備済みの鍵がない集合だけが対象になる。
+func PreparationDue(keys []*SigningKey, now time.Time, cadence time.Duration) bool {
+	active := ActiveKey(keys)
+	return active != nil && PreparedKey(keys) == nil && !now.Before(active.CreatedAt.Add(cadence))
+}
+
 // ActivatePrepared は鍵集合の所有者の直列化の内側で呼ぶ。変更する要素は複製し、
 // 切り替え前に読み出した鍵の値を後から変更しない。
 func ActivatePrepared(keys []*SigningKey, kid string, now time.Time, grace time.Duration) (RotationResult, error) {

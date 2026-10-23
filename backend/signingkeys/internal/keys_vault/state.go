@@ -3,6 +3,7 @@ package keys_vault
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"sync"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -23,6 +24,8 @@ type (
 type KeyStateStore interface {
 	Load(context.Context) (KeySetState, error)
 	Update(context.Context, func(*KeySetState) error) error
+	// Scopes は ctx のテナントと用途で状態を持つスコープを返す。
+	Scopes(context.Context) ([]string, error)
 	Healthy(context.Context) bool
 }
 
@@ -37,6 +40,18 @@ func NewMemoryKeyStateStore() *MemoryKeyStateStore {
 
 func stateID(ctx context.Context) string {
 	return vaultSetID(tenantports.TenantID(ctx), signingports.KeyUsage(ctx), signingports.KeyScope(ctx))
+}
+
+// setScopes は、vaultSetID を鍵とする map から、ctx のテナントと用途に属するスコープを返す。
+func setScopes[V any](ctx context.Context, sets map[string]V) []string {
+	prefix := vaultSetID(tenantports.TenantID(ctx), signingports.KeyUsage(ctx), "")
+	scopes := []string{}
+	for id := range sets {
+		if scopeID, ok := strings.CutPrefix(id, prefix); ok {
+			scopes = append(scopes, scopeID)
+		}
+	}
+	return scopes
 }
 
 func (m *MemoryKeyStateStore) Load(ctx context.Context) (KeySetState, error) {
@@ -70,4 +85,11 @@ func (m *MemoryKeyStateStore) Update(ctx context.Context, update func(*KeySetSta
 	m.states[stateID(ctx)] = payload
 	return nil
 }
+
+func (m *MemoryKeyStateStore) Scopes(ctx context.Context) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return setScopes(ctx, m.states), nil
+}
+
 func (m *MemoryKeyStateStore) Healthy(context.Context) bool { return true }

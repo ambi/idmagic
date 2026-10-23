@@ -376,6 +376,35 @@ func (q *Queries) InsertSigningKey(ctx context.Context, arg InsertSigningKeyPara
 	return err
 }
 
+const listKeyScopes = `-- name: ListKeyScopes :many
+SELECT DISTINCT scope_id FROM signing_keys WHERE tenant_id=$1 AND key_usage=$2
+`
+
+type ListKeyScopesParams struct {
+	TenantID string
+	KeyUsage string
+}
+
+func (q *Queries) ListKeyScopes(ctx context.Context, arg ListKeyScopesParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listKeyScopes, arg.TenantID, arg.KeyUsage)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var scope_id string
+		if err := rows.Scan(&scope_id); err != nil {
+			return nil, err
+		}
+		items = append(items, scope_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublicKeys = `-- name: ListPublicKeys :many
 SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,prepared,created_at,retired_at,expires_at,archived_at
 FROM signing_keys
@@ -441,6 +470,35 @@ func (q *Queries) ListPublicKeys(ctx context.Context, arg ListPublicKeysParams) 
 			return nil, err
 		}
 		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVaultKeySetScopes = `-- name: ListVaultKeySetScopes :many
+SELECT scope_id FROM vault_signing_key_sets WHERE tenant_id=$1 AND key_usage=$2
+`
+
+type ListVaultKeySetScopesParams struct {
+	TenantID string
+	KeyUsage string
+}
+
+func (q *Queries) ListVaultKeySetScopes(ctx context.Context, arg ListVaultKeySetScopesParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listVaultKeySetScopes, arg.TenantID, arg.KeyUsage)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var scope_id string
+		if err := rows.Scan(&scope_id); err != nil {
+			return nil, err
+		}
+		items = append(items, scope_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

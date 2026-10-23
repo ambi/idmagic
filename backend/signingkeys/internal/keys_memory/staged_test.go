@@ -9,12 +9,19 @@ import (
 
 //spec:covers REQ-SIGNINGKEYS-006: メモリの提供元の準備、切り替えと並行要求は共有契約を満たすこと。
 func TestPreparedKeyContract(t *testing.T) {
-	contract.Run(t, func(t *testing.T) contract.Fixture {
-		t.Helper()
-		store, err := keys_memory.NewInMemoryKeyStore()
-		if err != nil {
-			t.Fatal(err)
-		}
-		return contract.Fixture{Store: store, Context: tenantCtx("tenant-a")}
-	})
+	contract.Run(t, memoryFixture)
+}
+
+//spec:covers REQ-SIGNINGKEYS-003: メモリの提供元のスコープの列挙は共有契約を満たすこと。
+func TestKeyScopesContract(t *testing.T) {
+	contract.RunKeyScopes(t, memoryFixture)
+}
+
+func memoryFixture(t *testing.T) contract.Fixture {
+	t.Helper()
+	store, err := keys_memory.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return contract.Fixture{Store: store, Context: tenantCtx("tenant-a")}
 }

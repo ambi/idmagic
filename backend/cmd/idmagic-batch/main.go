@@ -165,11 +165,8 @@ func runSigningKeyLifecycle(ctx context.Context, deps *bootstrap.Dependencies, c
 	emit := deps.NewEmitFunc(logging.Default())
 	for _, tenant := range tenants {
 		tenantCtx := tenantports.WithTenant(ctx, tenant, "", "")
-		if _, err := deps.SigningKeys.RotateIfDue(tenantCtx, emit, now, cfg.cadence, cfg.grace); err != nil {
-			return fmt.Errorf("rotate tenant %s: %w", tenant.ID, err)
-		}
-		if _, err := deps.SigningKeys.ArchiveExpired(tenantCtx, emit, now); err != nil {
-			return fmt.Errorf("archive tenant %s: %w", tenant.ID, err)
+		if err := deps.SigningKeys.RunLifecycle(tenantCtx, emit, now, cfg.cadence, cfg.grace); err != nil {
+			return fmt.Errorf("signing key lifecycle for tenant %s: %w", tenant.ID, err)
 		}
 	}
 	return nil

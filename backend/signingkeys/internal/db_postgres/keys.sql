@@ -18,6 +18,9 @@ SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,cert
 FROM signing_keys
 WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3 AND scope_id=$4;
 
+-- name: ListKeyScopes :many
+SELECT DISTINCT scope_id FROM signing_keys WHERE tenant_id=$1 AND key_usage=$2;
+
 -- name: DisableKey :exec
 UPDATE signing_keys
 SET active=FALSE,prepared=FALSE,archived_at=now(),updated_at=now()
@@ -55,6 +58,9 @@ WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3 AND scope_id=$4 AND prepared=TRUE
 
 -- name: GetVaultKeySet :one
 SELECT state FROM vault_signing_key_sets WHERE tenant_id=$1 AND key_usage=$2 AND scope_id=$3;
+
+-- name: ListVaultKeySetScopes :many
+SELECT scope_id FROM vault_signing_key_sets WHERE tenant_id=$1 AND key_usage=$2;
 
 -- name: SaveVaultKeySet :exec
 INSERT INTO vault_signing_key_sets (tenant_id,key_usage,scope_id,state) VALUES ($1,$2,$3,$4)

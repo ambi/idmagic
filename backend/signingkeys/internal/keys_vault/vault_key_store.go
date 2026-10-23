@@ -154,6 +154,15 @@ func (s *VaultKeyStore) FindByKID(ctx context.Context, kid string) (*signingdoma
 	return nil, nil //nolint:nilnil // 契約: 見つからない場合は (nil, nil)。
 }
 
+func (s *VaultKeyStore) KeyScopes(ctx context.Context) ([]string, error) {
+	if signingports.KeyUsage(ctx) == signingdomain.KeyUsageXMLFederationSigning {
+		return s.states.Scopes(ctx)
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return setScopes(ctx, s.byTenant), nil
+}
+
 func (s *VaultKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
 	if signingports.KeyUsage(ctx) == signingdomain.KeyUsageXMLFederationSigning {
 		result, err := s.changeXML(ctx, "rotate", "", now, grace)
