@@ -140,6 +140,39 @@ async function completeRecord(repo: Repository): Promise<void> {
 }
 
 describe('spec-impact: 本番コードを変更するコミットの宣言', () => {
+  it('宣言の全文を保存せず、実装と要約だけの完了記録を一つのコミットにできる', async () => {
+    const repo = await repository()
+    await repo.write(SERVICE, service('accepted'))
+    await repo.write(SCENARIOS, scenario('the request is accepted'))
+    await repo.write(DONE_ITEM, `${workItem(['status: completed'])}\n受け付けるようにした。\n`)
+    const uncommitted = await repo.check(repo.base)
+    expect(uncommitted.code).toBe(0)
+    await repo.commit('feat(demo): accept the request and complete the item')
+
+    const result = await repo.check(repo.base)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
+
+    await repo.write(SERVICE, service('changed again'))
+    await repo.commit('fix(demo): change a completed result without a declaration')
+    const later = await repo.check(repo.base)
+    expect(later.code).toBe(1)
+    expect(later.output).toContain('without declaring its specification impact')
+  })
+
+  it('完了記録を再編集しても、完了後の仕様の変更を申告済みにしない', async () => {
+    const repo = await repository()
+    await repo.write(SCENARIOS, scenario('the request is accepted'))
+    await repo.write(DONE_ITEM, workItem(['status: completed']))
+    await repo.commit('docs(work-items): complete the item')
+    await repo.write(DONE_ITEM, `${workItem(['status: completed'])}\n要約を修正した。\n`)
+    await repo.write(SCENARIOS, scenario('the request is accepted again'))
+    await repo.commit('docs(demo): change the specification after completion')
+    const result = await repo.check(repo.base)
+    expect(result.code).toBe(1)
+    expect(result.output).toContain('REQ-DEMO-001: the specification changes here')
+  })
+
   it('仕様影響を宣言しないコミットを含む範囲を拒否する', async () => {
     const repo = await repository()
     await repo.write(SERVICE, service('running'))
@@ -387,7 +420,7 @@ describe('spec-impact: 完了済みの作業範囲', () => {
     expect(result.code).toBe(0)
   })
 
-  it('後の作業で戻された特性化テストも完了時点の none の違反として拒否する', async () => {
+  it('完了時の none の宣言を履歴から復元して照合し直さない', async () => {
     const repo = await repository()
     await repo.write(SERVICE_TEST, characterization('started'))
     const base = await repo.commit('test(demo): characterize Start')
@@ -405,13 +438,11 @@ describe('spec-impact: 完了済みの作業範囲', () => {
     await repo.commit('fix(demo): restore the characterization')
 
     const result = await repo.check(base)
-    expect(result.output).toContain(
-      `${DONE_ITEM}: spec_impact is none, but the work range changes or removes characterization tests`,
-    )
-    expect(result.code).toBe(1)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
   })
 
-  it('後で消えたテストも完了時点の conforms の引用として読む', async () => {
+  it('完了した conforms の宣言を、後で消えたテストで照合し直さない', async () => {
     const repo = await repository()
     await repo.write(
       ACTIVE_ITEM,
@@ -436,7 +467,7 @@ describe('spec-impact: 完了済みの作業範囲', () => {
     expect(result.code).toBe(0)
   })
 
-  it('後で戻された仕様も完了時点の modifies の差分として読む', async () => {
+  it('完了した作業の後に、別の作業が仕様を戻せる', async () => {
     const repo = await repository()
     await repo.write(TYPESPEC, 'model Task {\n  id: string;\n  name: string;\n}\n')
     await repo.write(
@@ -495,7 +526,7 @@ describe('spec-impact: 宣言と仕様差分の整合', () => {
     expect(result.code).toBe(0)
   })
 
-  it('要約に縮めた完了記録の宣言を、archived_from のコミットの全文から読む', async () => {
+  it('archived_from を持つ古い完了記録も、宣言を復元せず受理する', async () => {
     const repo = await repository()
     await repo.write(TYPESPEC, 'model Task {\n  id: string;\n  name: string;\n}\n')
     await repo.write(ITEM, affected('in_progress', `{ path: ${TYPESPEC}, symbol: Demo.Task }`))
@@ -515,7 +546,7 @@ describe('spec-impact: 宣言と仕様差分の整合', () => {
     expect(result.code).toBe(0)
   })
 
-  it('完了で縮めて done へ移した記録の宣言を、active のパスの履歴から読む', async () => {
+  it('active から done への移動後は、作業中の宣言を照合し直さない', async () => {
     const active = 'work-items/active/wi-10001-demo.md'
     const repo = await repository()
     await repo.write(TYPESPEC, 'model Task {\n  id: string;\n  name: string;\n}\n')
@@ -643,7 +674,7 @@ describe('spec-impact: 宣言と仕様差分の整合', () => {
     await repo.commit('feat(demo): accept the request')
 
     const result = await repo.check(migrated)
-    expect(result.output).toContain('ok  spec impact (1 work item(s)')
+    expect(result.output).toContain('ok  spec impact (0 work item(s)')
     expect(result.code).toBe(0)
   })
 

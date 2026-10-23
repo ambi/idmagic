@@ -21,23 +21,13 @@ export function summaryOf(text: string): string[] | undefined {
 }
 
 /**
- * 記録を、状態、題名、`## 要約` だけに縮める。全文は作業中のコミットに残り、
- * `work-items/active/` のパスの履歴から読む。
+ * 記録を状態、題名と要約だけに縮める。作業中の全文の保存は保証しない。
  */
 export function collapseRecord(text: string, status: string, activePath: string): string {
   const summary = summaryOf(text)
   if (!summary) throw new Error(`${activePath} has no ## 要約 section to keep`)
   const title = text.split('\n').find((line) => /^# /.test(line)) ?? '# (題名なし)'
-  return [
-    '---',
-    `status: ${status}`,
-    '---',
-    '',
-    title,
-    '',
-    ...summary.map(withoutLinks),
-    '',
-    `全文は \`git log -1 -- ${activePath}\` が示すコミットの親、またはそのコミットで読む。`,
-    '',
-  ].join('\n')
+  return ['---', `status: ${status}`, '---', '', title, '', ...summary.map(withoutLinks), ''].join(
+    '\n',
+  )
 }

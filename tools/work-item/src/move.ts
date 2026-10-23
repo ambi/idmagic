@@ -188,7 +188,7 @@ async function relocateWorkItems(root: string, moves: ReadonlyMap<string, string
 
 /**
  * 作業項目を完了または中止にし、`## 要約` だけに縮めて `work-items/done/` へ移す。
- * 完了では、縮める前の全文に完了時の検査を適用し、通らなければ何も書き込まない。
+ * 完了では、縮める前の全文で参照と仕様影響を検査し、通らなければ何も書き込まない。
  */
 export async function moveWorkItem(
   root: string,

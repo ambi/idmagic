@@ -114,8 +114,9 @@ Go では[通常テストと race 検査](../../../docs/development/testing.md#g
 前提が未解決の間は集約ゲートを状態確認に使わない。
 
 `mise run spec-diff` を読み、[完了](../../../docs/formats/work-item-format.md#完了)に従って `## 要約` を書く。
-[チェックポイントと最終コミット](../../../docs/development/specification-first-workflow.md#チェックポイントと最終コミット)に従って折り畳み、`commit` スキルで作業項目の全文を含む正式コミットを作る。
-その後に `mise run move-work-item -- <id>` を実行し、`mise run check-work-items` と `mise run check-links` を通して、縮めた記録を別のコミットにする。
+正式コミットの前に `mise run move-work-item -- <id>` を実行し、縮約前の仕様影響の照合と完了時の検査を通す。
+移動後に `mise run check-work-items` と `mise run check-links` を通す。
+[チェックポイントと最終コミット](../../../docs/development/specification-first-workflow.md#チェックポイントと最終コミット)に従って折り畳み、完了の変更もすべてステージして、`commit` スキルで実装と要約だけの完了記録を一つの正式コミットにする。
 
 最終報告には、ブランチ、コミット、対象外、残した未実施事項を示す。
 明示された場合だけ push する。

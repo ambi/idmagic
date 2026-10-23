@@ -94,7 +94,7 @@ function workItemRecord(path: string, source: string | undefined): WorkItemRecor
 }
 
 function isUnderWay(record: WorkItemRecord | undefined): record is WorkItemRecord {
-  return record?.status === 'in_progress' || record?.status === 'completed'
+  return record?.status === 'in_progress'
 }
 
 /** 現在の兄弟配置と、移行前の Git 履歴を同じ記録として読む。 */
@@ -107,7 +107,11 @@ function workItemPaths(id: string): string[] {
  *
  * 同じリビジョンの仕様と同じ範囲の変更一覧を、work item ごとに読み直さないよう記憶する。
  */
-function repository(snapshot: WorkspaceSnapshot, git: Git) {
+function repository(
+  snapshot: WorkspaceSnapshot,
+  git: Git,
+  completing?: { path: string; text: string },
+) {
   const revisions = new Map<string, Snapshot>()
   const changes = new Map<string, string[]>()
   let workingTree: Promise<Snapshot> | undefined
@@ -137,22 +141,11 @@ function repository(snapshot: WorkspaceSnapshot, git: Git) {
   const read = (path: string, at?: string): string | undefined =>
     at
       ? git(['show', `${at}:${path}`])
-      : snapshot.exists(path)
-        ? snapshot.readSync(path)
-        : undefined
-  /**
-   * 要約に縮めた記録の宣言は、全文から読む。初期に縮めた記録は archived_from のコミット、
-   * それ以外は `work-items/active/` のパスを最後に変えたコミット（消したコミットならその親）にある。
-   */
-  const fullRecord = (path: string, source: string, at?: string): string => {
-    const revision = source.match(/^archived_from:\s*([0-9a-f]{7,40})\s*$/m)?.[1]
-    if (revision) return git(['show', `${revision}:${path}`]) ?? source
-    if (!path.startsWith('work-items/done/')) return source
-    const active = `work-items/active/${path.slice('work-items/done/'.length)}`
-    const last = git(['log', '-1', '--format=%H', ...(at ? [at] : []), '--', active])?.trim()
-    if (!last) return source
-    return git(['show', `${last}:${active}`]) ?? git(['show', `${last}^:${active}`]) ?? source
-  }
+      : path === completing?.path
+        ? completing.text.replace(/^status:.*$/m, 'status: in_progress')
+        : snapshot.exists(path)
+          ? snapshot.readSync(path)
+          : undefined
 
   return {
     read,
@@ -173,10 +166,8 @@ function repository(snapshot: WorkspaceSnapshot, git: Git) {
     workItem: (id: string, at?: string): { path: string; record: WorkItemRecord } | undefined => {
       for (const path of workItemPaths(id)) {
         const source = read(path, at)
-        const current = workItemRecord(path, source)
-        const record = workItemRecord(path, source && fullRecord(path, source, at))
-        // 要約から全文を復元しても、完了した状態を着手中へ戻さない。
-        if (record) return { path, record: { ...record, status: current?.status } }
+        const record = workItemRecord(path, source)
+        if (record) return { path, record }
       }
       return undefined
     },
@@ -210,6 +201,39 @@ function repository(snapshot: WorkspaceSnapshot, git: Git) {
 
 type Repository = ReturnType<typeof repository>
 
+type CompletedRange = {
+  commits: readonly string[]
+  diff: SpecificationDiff
+  end?: string
+}
+
+function workHistory(id: string, git: Git, repo: Repository) {
+  return lines(git(['log', '--reverse', '--format=%H', '--', ...workItemPaths(id)])).map((sha) => ({
+    sha,
+    status: repo.workItemAt(sha, id)?.status,
+  }))
+}
+
+/** 完了範囲は状態の履歴で閉じる。削除済みの宣言は読み戻さない。 */
+async function completedRange(
+  id: string,
+  head: string,
+  git: Git,
+  repo: Repository,
+): Promise<CompletedRange | undefined> {
+  if (repo.workItem(id)?.record.status !== 'completed') return undefined
+  const history = workHistory(id, git, repo)
+  const start = workRangeStart(history, repo.workItemAt(head, id)?.status, head)
+  const startSha = start && git(['rev-parse', '--verify', '--quiet', `${start}^{commit}`])?.trim()
+  if (!startSha) return undefined
+  const end = history.find((commit) => commit.status === 'completed')?.sha
+  return {
+    commits: lines(git(['rev-list', `${startSha}..${end ?? head}`])),
+    diff: await repo.diffSince(startSha, end),
+    end,
+  }
+}
+
 function workItemIds(paths: readonly string[]): string[] {
   return [...new Set(paths.flatMap((path) => path.match(WORK_ITEM)?.[1] ?? []))]
 }
@@ -222,48 +246,45 @@ function modifiedBy(declaration: SpecImpactDeclaration | undefined): SpecReferen
 
 async function checkedWorkItem(
   id: string,
-  base: string,
   head: string,
   git: Git,
   repo: Repository,
 ): Promise<CheckedWorkItem | undefined> {
   const current = repo.workItem(id)
   if (!current || !isUnderWay(current.record) || !current.record.declaration) return undefined
-  // 基準の時点で完了していた記録は、参照先の書き換えで変わっても過去の作業を再検査しない。
-  if (current.record.status === 'completed' && repo.workItemAt(base, id)?.status === 'completed') {
-    return undefined
-  }
-  const history = lines(git(['log', '--reverse', '--format=%H', '--', ...workItemPaths(id)])).map(
-    (sha) => ({ sha, status: repo.workItemAt(sha, id)?.status }),
-  )
+  const history = workHistory(id, git, repo)
   const start = workRangeStart(history, repo.workItemAt(head, id)?.status, head)
   const startSha = start && git(['rev-parse', '--verify', '--quiet', `${start}^{commit}`])?.trim()
   const item = { path: current.path, declaration: current.record.declaration }
   if (!startSha) return { ...item, range: undefined }
 
-  const end =
-    current.record.status === 'completed'
-      ? history.find((commit) => commit.status === 'completed')?.sha
-      : undefined
-  const readEnd = (path: string): string | undefined => repo.read(path, end)
-  const changed = repo.changedSince(startSha, end)
+  const activeCommits = new Set(lines(git(['rev-list', `${startSha}..${head}`])))
+  const changed = repo.changedSince(startSha)
+  const completed: CompletedRange[] = []
+  for (const other of workItemIds(changed).filter((other) => other !== id)) {
+    const range = await completedRange(other, head, git, repo)
+    if (range) completed.push(range)
+  }
   return {
     ...item,
     range: {
-      diff: await repo.diffSince(startSha, end),
+      diff: await repo.diffSince(startSha),
+      completedDiffs: completed
+        .filter((range) => !range.end || range.commits.some((sha) => activeCommits.has(sha)))
+        .map((range) => range.diff),
       claimedByOthers: workItemIds(changed)
         .filter((other) => other !== id)
         .flatMap((other) => {
-          const record = repo.workItem(other, end)?.record
+          const record = repo.workItem(other)?.record
           return isUnderWay(record) ? modifiedBy(record.declaration) : []
         }),
       changedTests: changed
         .filter((path) => TEST_FILE.test(path))
-        .flatMap((path) => readEnd(path) ?? []),
+        .flatMap((path) => repo.read(path) ?? []),
       changedCharacterizations: characterizationChanges(
         changed,
         (path) => git(['show', `${startSha}:${path}`]),
-        readEnd,
+        (path) => repo.read(path),
       ),
     },
   }
@@ -295,7 +316,7 @@ async function checkedCommit(sha: string, git: Git, repo: Repository): Promise<C
       (record) => isUnderWay(record) && record.declaration !== undefined,
     ),
     trailer: trailer ? trailer : undefined,
-    diff: trailer ? repo.diffOf(sha, paths) : NO_DIFF,
+    diff: repo.diffOf(sha, paths),
     changedCharacterizations: characterizationChanges(
       paths,
       (path) => git(['show', `${sha}^:${path}`]),
@@ -307,6 +328,7 @@ async function checkedCommit(sha: string, git: Git, repo: Repository): Promise<C
 export async function checkSpecImpact(
   snapshot: WorkspaceSnapshot,
   options: CheckOptions,
+  completing?: { path: string; text: string },
 ): Promise<CheckOutcome> {
   if (!options.baseRevision) {
     return { ok: false, lines: ['spec-impact requires --base-revision <git-revision>'] }
@@ -322,18 +344,39 @@ export async function checkSpecImpact(
   }
   // 基準が先へ進んだブランチでは、基準側の変更が逆向きの差分として現れる。分岐点から比べる。
   const base = git(['merge-base', resolved.trim(), head])?.trim() || resolved.trim()
-  const repo = repository(snapshot, git)
+  const repo = repository(snapshot, git, completing)
+
+  const ids = workItemIds([...repo.changedSince(base), ...(completing ? [completing.path] : [])])
+  const completed: CompletedRange[] = []
+  for (const id of ids) {
+    const range = await completedRange(id, head, git, repo)
+    if (range) completed.push(range)
+  }
+  const completedCommits = new Set(completed.flatMap((range) => range.commits))
 
   const items: CheckedWorkItem[] = []
-  for (const id of workItemIds(repo.changedSince(base))) {
-    const item = await checkedWorkItem(id, base, head, git, repo)
+  for (const id of ids) {
+    const item = await checkedWorkItem(id, head, git, repo)
     if (item) items.push(item)
   }
   const commits: CheckedCommit[] = []
   for (const sha of lines(git(['rev-list', '--reverse', '--no-merges', `${base}..${head}`]))) {
-    commits.push(await checkedCommit(sha, git, repo))
+    commits.push({
+      ...(await checkedCommit(sha, git, repo)),
+      workItemCompleted: completedCommits.has(sha),
+    })
   }
-  const findings = verifySpecImpact({ items, commits, diff: await repo.diffSince(base) })
+  const uncompletedDiffs = commits
+    .filter((commit) => !commit.workItemCompleted)
+    .map((commit) => commit.diff)
+  if (!completed.some((range) => range.end === undefined))
+    uncompletedDiffs.push(await repo.diffSince(head))
+  const findings = verifySpecImpact({
+    items,
+    commits,
+    diff: await repo.diffSince(base),
+    uncompletedDiffs,
+  })
   if (findings.length > 0)
     return { ok: false, lines: findings.map((finding) => `fail  ${finding}`) }
   return {

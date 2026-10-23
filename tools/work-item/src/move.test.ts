@@ -20,6 +20,26 @@ async function workspace(documents: Map<string, string>): Promise<string> {
   roots.push(root)
   await mkdir(join(root, 'spec'), { recursive: true })
   await writeFile(join(root, 'spec/release-state.json'), '{"phase":"unpublished"}')
+  for (const args of [
+    ['init', '--quiet', '--initial-branch', 'main'],
+    ['add', '.'],
+    ['commit', '--quiet', '--message', 'chore: initial'],
+  ]) {
+    const command = Bun.spawnSync(
+      [
+        'git',
+        '-c',
+        'user.name=test',
+        '-c',
+        'user.email=test@example.test',
+        '-c',
+        'commit.gpgsign=false',
+        ...args,
+      ],
+      { cwd: root },
+    )
+    if (command.exitCode !== 0) throw new Error(command.stderr.toString())
+  }
   for (const [path, source] of documents) {
     await mkdir(dirname(join(root, path)), { recursive: true })
     await writeFile(join(root, path), source)
@@ -51,18 +71,7 @@ for (const [flags, status] of [
     expect(await Bun.file(join(root, from)).exists()).toBe(false)
     const moved = await readFile(join(root, to), 'utf8')
     expect(moved).toBe(
-      [
-        '---',
-        `status: ${status}`,
-        '---',
-        '',
-        '# 項目',
-        '',
-        '文書の表記を直した。',
-        '',
-        '全文は `git log -1 -- work-items/active/wi-10001-one.md` が示すコミットの親、またはそのコミットで読む。',
-        '',
-      ].join('\n'),
+      ['---', `status: ${status}`, '---', '', '# 項目', '', '文書の表記を直した。', ''].join('\n'),
     )
     documents.delete(from)
     documents.set(to, moved)
@@ -94,6 +103,32 @@ it('完了の検査に通らない記録を、書き込みの前に拒否する'
   const root = await workspace(new Map([[from, broken]]))
   await expect(moveWorkItem(root, 'wi-10001')).rejects.toThrow('affected_spec path does not exist')
   expect(await readFile(join(root, from), 'utf8')).toBe(broken)
+})
+
+it('非影響の宣言に反する仕様の変更は、縮約とリンク更新の前に拒否する', async () => {
+  const original = record('in_progress')
+  const link = '# 文書\n\n[作業](../work-items/active/wi-10001-one.md)\n'
+  const root = await workspace(
+    new Map([
+      [from, original],
+      ['docs/README.md', link],
+      ['spec/main.tsp', 'model Task { id: string; }\n'],
+    ]),
+  )
+  await expect(moveWorkItem(root, 'wi-10001')).rejects.toThrow('spec_impact is none')
+  expect(await readFile(join(root, from), 'utf8')).toBe(original)
+  expect(await readFile(join(root, 'docs/README.md'), 'utf8')).toBe(link)
+  expect(await Bun.file(join(root, to)).exists()).toBe(false)
+})
+
+it('比較基準を解決できないときは、完了記録へ移動しない', async () => {
+  const original = record('in_progress')
+  const root = await workspace(new Map([[from, original]]))
+  const renamed = Bun.spawnSync(['git', 'branch', '-m', 'topic'], { cwd: root })
+  expect(renamed.exitCode).toBe(0)
+  await expect(moveWorkItem(root, 'wi-10001')).rejects.toThrow('cannot resolve Git revision main')
+  expect(await readFile(join(root, from), 'utf8')).toBe(original)
+  expect(await Bun.file(join(root, to)).exists()).toBe(false)
 })
 
 it('参照定義、画像、表、引用、タイトルとコードを区別して移行する', () => {

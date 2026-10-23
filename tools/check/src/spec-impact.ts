@@ -27,6 +27,8 @@ export type WorkRange = {
   diff: SpecificationDiff
   /** 同じ範囲で変更された別の work item が `modifies` として挙げた規範要素。 */
   claimedByOthers: readonly SpecReference[]
+  /** 同じ範囲で完了した作業の実際の仕様差分。宣言は保存しない。 */
+  completedDiffs?: readonly SpecificationDiff[]
   /** 同じ範囲で追加または変更されたテストファイルの本文。 */
   changedTests: readonly string[]
   /** 起点に存在し、同じ範囲で変わったか消えた特性化テスト。 */
@@ -46,6 +48,8 @@ export type CheckedCommit = {
   productionPaths: readonly string[]
   /** 同じコミットで変更した work item、または checkpoint が名指す work item に宣言がある。 */
   workItemDeclared: boolean
+  /** 宣言を捨てた完了済みの作業範囲に含まれる。 */
+  workItemCompleted?: boolean
   /** `Spec-Impact` トレーラーの値。トレーラーがなければ undefined。 */
   trailer: string | undefined
   /** このコミット自体の仕様差分。 */
@@ -57,6 +61,8 @@ export type CheckedCommit = {
 export type SpecImpactInput = {
   items: readonly CheckedWorkItem[]
   commits: readonly CheckedCommit[]
+  /** 完了範囲の外にあるコミットと未コミットの仕様差分。 */
+  uncompletedDiffs?: readonly SpecificationDiff[]
   /** 基準から作業ツリーまでの仕様差分。 */
   diff: SpecificationDiff
 }
@@ -286,7 +292,10 @@ function verifyWorkItem(item: CheckedWorkItem): string[] {
       'cannot find the commit where this work item left pending, so its work range is unknown',
     ]
   }
-  const claimedByOthers = modifiedElements(range.claimedByOthers)
+  const claimedByOthers = new Set([
+    ...modifiedElements(range.claimedByOthers),
+    ...(range.completedDiffs ?? []).flatMap(normativeChanges),
+  ])
   if (declaration.kind === 'none') {
     // 状態遷移と削除した宣言は affected_spec で名指せないので、同じ範囲に仕様を変える別の
     // work item があれば、その作業のものとして扱う。
@@ -338,6 +347,7 @@ function verifyWorkItem(item: CheckedWorkItem): string[] {
 }
 
 function verifyCommit(commit: CheckedCommit): string[] {
+  if (commit.workItemCompleted) return []
   const findings: string[] = []
   if (commit.trailer === undefined) {
     if (commit.productionPaths.length > 0 && !commit.workItemDeclared) {
@@ -396,7 +406,9 @@ export function verifySpecImpact(input: SpecImpactInput): string[] {
       item.declaration.kind === 'affected' ? item.declaration.references : [],
     ),
   )
-  const unclaimed = [...new Set(claimableElements(input.diff))]
+  const unclaimed = [
+    ...new Set((input.uncompletedDiffs ?? [input.diff]).flatMap(claimableElements)),
+  ]
     .filter((element) => !claimed.has(element))
     .sort()
   for (const element of unclaimed) {

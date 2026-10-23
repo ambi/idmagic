@@ -14,7 +14,8 @@ import {
 import { validateMarkdownRecord } from './work-item-markdown.ts'
 import type { PrimaryUseCaseEnvironment } from './primary-use-case-evidence.ts'
 import { verifyPrimaryUseCaseEvidence } from './primary-use-case-evidence.ts'
-import type { CheckOutcome } from './runner.ts'
+import { defaultBaseRevision, type CheckOutcome } from './runner.ts'
+import { checkSpecImpact } from './check-spec-impact.ts'
 import {
   diffSpecifications,
   diffWorkspaceSpecifications,
@@ -207,6 +208,14 @@ export async function verifyCompletion(
     }),
     ...verifyDocumentationImpact(result.data, documentationEnvironment),
   )
+  if (findings.length === 0) {
+    const impact = await checkSpecImpact(
+      snapshot,
+      { baseRevision: defaultBaseRevision(snapshot.root), verbose: false, listUnresolved: false },
+      { path, text },
+    )
+    if (!impact.ok) findings.push(...impact.lines)
+  }
   return findings
 }
 

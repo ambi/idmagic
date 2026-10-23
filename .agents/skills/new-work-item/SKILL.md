@@ -20,6 +20,7 @@ description: Create a specification-first work item under work-items using the c
 6. Pass `mise run check-work-items`.
 
 完了時は `## 要約` を書いて `mise run move-work-item -- <id>` を実行する。
-コマンドが完了時の検査、要約への縮約、`work-items/done/` への移動、リンクの更新を行う。
+コマンドが縮約前の仕様影響の照合、完了時の検査、要約への縮約、`work-items/done/` への移動、リンクの更新を行う。
 中止時は判断を `## 要約` に書き、`--cancel` を付けて同じコマンドを使う。
 移動後は `mise run check-work-items` と `mise run check-links` を通す。
+実装と完了記録は一つの正式コミットに含め、完了処理だけのコミットは作らない。

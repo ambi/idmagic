@@ -1,7 +1,6 @@
 /**
  * `work-items/done/` の記録は、状態と題名と要約だけに縮めてある。縮めた記録は形だけを検査する。
- * 全文は `work-items/active/` のパスの履歴にある。初期に縮めた記録は `archived_from` で
- * 全文のコミットを指す。
+ * 過去の記録が持つ `archived_from` は互換性のため受理する。
  */
 
 const FIELDS = new Set(['id', 'title', 'status', 'archived_from'])

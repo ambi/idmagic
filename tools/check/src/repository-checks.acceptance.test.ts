@@ -538,6 +538,26 @@ The feature could remain disconnected.
 
   it('completes an item only when its primary use case test is reached by a required task', async () => {
     const root = await workspace()
+    for (const args of [
+      ['init', '--quiet', '--initial-branch', 'main'],
+      ['add', '.'],
+      ['commit', '--quiet', '--message', 'chore: initial'],
+    ]) {
+      const command = Bun.spawnSync(
+        [
+          'git',
+          '-c',
+          'user.name=test',
+          '-c',
+          'user.email=test@example.test',
+          '-c',
+          'commit.gpgsign=false',
+          ...args,
+        ],
+        { cwd: root },
+      )
+      expect(command.exitCode).toBe(0)
+    }
     await mkdir(join(root, 'work-items', 'active'), { recursive: true })
     await mkdir(join(root, 'backend', 'demo'), { recursive: true })
     await mkdir(join(root, 'docs', 'modules', 'demo', 'features'), { recursive: true })
