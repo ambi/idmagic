@@ -53,7 +53,7 @@ func (s *KeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey,
 		ScopeID:  scopeID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return s.rotateForTenant(ctx, tenantID, time.Now().UTC(), 7*24*time.Hour, nil)
+		return s.rotateForTenant(ctx, tenantID, time.Now().UTC(), 7*24*time.Hour, nil, true)
 	}
 	if err != nil {
 		return nil, err
@@ -81,20 +81,22 @@ func (s *KeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey,
 		PublicJWK:      publicJWK,
 		PublicKey:      pub,
 		PrivateKey:     priv,
-		CertificateDER: row.CertificateDer,
-		Active:         row.Active,
-		CreatedAt:      row.CreatedAt,
-		RetiredAt:      timePtr(row.RetiredAt),
-		ExpiresAt:      timePtr(row.ExpiresAt),
-		ArchivedAt:     timePtr(row.ArchivedAt),
+		CertificateDER: row.CertificateDer, Active: row.Active, Prepared: row.Prepared, CreatedAt: row.CreatedAt,
+		RetiredAt:  timePtr(row.RetiredAt),
+		ExpiresAt:  timePtr(row.ExpiresAt),
+		ArchivedAt: timePtr(row.ArchivedAt),
 	}, nil
 }
 
 func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
+	return loadKeySet(ctx, New(s.Pool))
+}
+
+func loadKeySet(ctx context.Context, q *Queries) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
-	rows, err := New(s.Pool).GetAllKeys(ctx, GetAllKeysParams{
+	rows, err := q.GetAllKeys(ctx, GetAllKeysParams{
 		TenantID: tenantID,
 		KeyUsage: string(usage),
 		ScopeID:  scopeID,
@@ -125,12 +127,10 @@ func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey,
 			PublicJWK:      publicJWK,
 			PublicKey:      pub,
 			PrivateKey:     priv,
-			CertificateDER: row.CertificateDer,
-			Active:         row.Active,
-			CreatedAt:      row.CreatedAt,
-			RetiredAt:      timePtr(row.RetiredAt),
-			ExpiresAt:      timePtr(row.ExpiresAt),
-			ArchivedAt:     timePtr(row.ArchivedAt),
+			CertificateDER: row.CertificateDer, Active: row.Active, Prepared: row.Prepared, CreatedAt: row.CreatedAt,
+			RetiredAt:  timePtr(row.RetiredAt),
+			ExpiresAt:  timePtr(row.ExpiresAt),
+			ArchivedAt: timePtr(row.ArchivedAt),
 		})
 	}
 	return out, nil
@@ -174,12 +174,10 @@ func (s *KeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([]*signin
 			PublicJWK:      publicJWK,
 			PublicKey:      pub,
 			PrivateKey:     priv,
-			CertificateDER: row.CertificateDer,
-			Active:         row.Active,
-			CreatedAt:      row.CreatedAt,
-			RetiredAt:      timePtr(row.RetiredAt),
-			ExpiresAt:      timePtr(row.ExpiresAt),
-			ArchivedAt:     timePtr(row.ArchivedAt),
+			CertificateDER: row.CertificateDer, Active: row.Active, Prepared: row.Prepared, CreatedAt: row.CreatedAt,
+			RetiredAt:  timePtr(row.RetiredAt),
+			ExpiresAt:  timePtr(row.ExpiresAt),
+			ArchivedAt: timePtr(row.ArchivedAt),
 		})
 	}
 	return out, nil
@@ -224,17 +222,15 @@ func (s *KeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.Si
 		PublicJWK:      publicJWK,
 		PublicKey:      pub,
 		PrivateKey:     priv,
-		CertificateDER: row.CertificateDer,
-		Active:         row.Active,
-		CreatedAt:      row.CreatedAt,
-		RetiredAt:      timePtr(row.RetiredAt),
-		ExpiresAt:      timePtr(row.ExpiresAt),
-		ArchivedAt:     timePtr(row.ArchivedAt),
+		CertificateDER: row.CertificateDer, Active: row.Active, Prepared: row.Prepared, CreatedAt: row.CreatedAt,
+		RetiredAt:  timePtr(row.RetiredAt),
+		ExpiresAt:  timePtr(row.ExpiresAt),
+		ArchivedAt: timePtr(row.ArchivedAt),
 	}, nil
 }
 
 func (s *KeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
-	return s.rotateForTenant(ctx, tenantports.TenantID(ctx), now, grace, nil)
+	return s.rotateForTenant(ctx, tenantports.TenantID(ctx), now, grace, nil, false)
 }
 
 func (s *KeyStore) RotateIfDue(ctx context.Context, now time.Time, cadence, grace time.Duration) (*signingdomain.SigningKey, error) {
@@ -242,25 +238,40 @@ func (s *KeyStore) RotateIfDue(ctx context.Context, now time.Time, cadence, grac
 		return nil, errors.New("signing key rotation cadence must be positive")
 	}
 	dueBefore := now.Add(-cadence)
-	return s.rotateForTenant(ctx, tenantports.TenantID(ctx), now, grace, &dueBefore)
+	return s.rotateForTenant(ctx, tenantports.TenantID(ctx), now, grace, &dueBefore, false)
 }
 
 func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
-	key, err := s.FindByKID(ctx, kid)
-	if err != nil || key == nil {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
 		return nil, err
 	}
-	if key.Active {
-		return nil, signingdomain.ErrActiveSigningKeyCannotBeDisabled
-	}
-	if err := New(s.Pool).DisableKey(ctx, DisableKeyParams{
-		Kid:      kid,
-		TenantID: tenantports.TenantID(ctx),
-	}); err != nil {
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := New(tx)
+	if err := lockKeySet(ctx, q); err != nil {
 		return nil, err
 	}
-	key.Active = false
-	return key, nil
+	keys, err := loadKeySet(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	for _, key := range keys {
+		if key.Kid != kid {
+			continue
+		}
+		if key.Active {
+			return nil, signingdomain.ErrActiveSigningKeyCannotBeDisabled
+		}
+		if err := q.DisableKey(ctx, DisableKeyParams{Kid: kid, TenantID: tenantports.TenantID(ctx)}); err != nil {
+			return nil, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return nil, err
+		}
+		key.Prepared = false
+		return key, nil
+	}
+	return nil, nil
 }
 
 func (s *KeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {
@@ -302,12 +313,10 @@ func (s *KeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*sig
 			PublicJWK:      publicJWK,
 			PublicKey:      pub,
 			PrivateKey:     priv,
-			CertificateDER: row.CertificateDer,
-			Active:         row.Active,
-			CreatedAt:      row.CreatedAt,
-			RetiredAt:      timePtr(row.RetiredAt),
-			ExpiresAt:      timePtr(row.ExpiresAt),
-			ArchivedAt:     timePtr(row.ArchivedAt),
+			CertificateDER: row.CertificateDer, Active: row.Active, Prepared: row.Prepared, CreatedAt: row.CreatedAt,
+			RetiredAt:  timePtr(row.RetiredAt),
+			ExpiresAt:  timePtr(row.ExpiresAt),
+			ArchivedAt: timePtr(row.ArchivedAt),
 		})
 	}
 	return archived, nil
@@ -317,7 +326,7 @@ func (s *KeyStore) Provider() signingdomain.KeyProvider { return signingdomain.K
 
 func (s *KeyStore) Healthy(ctx context.Context) bool { return s.Pool.Ping(ctx) == nil }
 
-func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now time.Time, grace time.Duration, dueBefore *time.Time) (*signingdomain.SigningKey, error) {
+func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now time.Time, grace time.Duration, dueBefore *time.Time, initialize bool) (*signingdomain.SigningKey, error) {
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	if now.IsZero() {
@@ -359,6 +368,17 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now tim
 	}); err != nil {
 		return nil, err
 	}
+	keys, err := loadKeySet(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	active := signingdomain.ActiveKey(keys)
+	if initialize && active != nil {
+		return active, nil
+	}
+	if active != nil && (signingdomain.RequiresPrepublication(usage, scopeID) || signingdomain.PreparedKey(keys) != nil) {
+		return nil, signingdomain.ErrPrepublicationRequired
+	}
 	if dueBefore != nil {
 		createdAt, err := q.GetActiveKeyCreatedAtForUpdate(ctx, GetActiveKeyCreatedAtForUpdateParams{
 			TenantID: tenantID,
@@ -395,6 +415,7 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now tim
 		PublicJwk:      publicJSON,
 		PrivateJwk:     privateJSON,
 		CertificateDer: certificateDER,
+		Active:         true, Prepared: false, CreatedAt: now,
 	}); err != nil {
 		return nil, err
 	}

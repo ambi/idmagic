@@ -1,33 +1,33 @@
 -- name: GetActiveKey :one
-SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at
+SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,prepared,created_at,retired_at,expires_at,archived_at
 FROM signing_keys
 WHERE active=TRUE AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 LIMIT 1;
 
 -- name: GetAllKeys :many
-SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at
+SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,prepared,created_at,retired_at,expires_at,archived_at
 FROM signing_keys
 WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 ORDER BY created_at DESC;
 
 -- name: ListPublicKeys :many
-SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at
+SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,prepared,created_at,retired_at,expires_at,archived_at
 FROM signing_keys
-WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 AND (active=TRUE OR expires_at>$4) ORDER BY created_at DESC;
+WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 AND (active=TRUE OR prepared=TRUE OR expires_at>$4) ORDER BY created_at DESC;
 
 -- name: FindKeyByKID :one
-SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at
+SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,prepared,created_at,retired_at,expires_at,archived_at
 FROM signing_keys
 WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3 AND scope_id=$4;
 
 -- name: DisableKey :exec
 UPDATE signing_keys
-SET active=FALSE,archived_at=now(),updated_at=now()
+SET active=FALSE,prepared=FALSE,archived_at=now(),updated_at=now()
 WHERE kid=$1 AND tenant_id=$2;
 
 -- name: ArchiveExpiredKeys :many
 UPDATE signing_keys
 SET archived_at=$2,updated_at=$2
 WHERE archived_at IS NULL AND tenant_id=$1 AND expires_at IS NOT NULL AND expires_at<=$2 AND key_usage=$3 AND scope_id=$4
-RETURNING kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at;
+RETURNING kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,prepared,created_at,retired_at,expires_at,archived_at;
 
 -- name: LockSigningKeyRotation :exec
 SELECT pg_advisory_xact_lock(hashtext('idmagic-signing-key:'||$1||':'||$2||':'||$3));
@@ -44,7 +44,18 @@ WHERE active=TRUE AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3;
 
 -- name: InsertSigningKey :exec
 INSERT INTO signing_keys (
-  kid, tenant_id, alg, provider, key_usage, scope_id, public_jwk, private_jwk, certificate_der, active
+  kid, tenant_id, alg, provider, key_usage, scope_id, public_jwk, private_jwk, certificate_der, active, prepared, created_at
 ) VALUES (
-  $1, $2, 'PS256', 'Database', $3, $4, $5, $6, $7, TRUE
+  $1, $2, 'PS256', 'Database', $3, $4, $5, $6, $7, $8, $9, $10
 );
+
+-- name: ActivatePreparedKey :exec
+UPDATE signing_keys SET active=TRUE,prepared=FALSE,updated_at=$5
+WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3 AND scope_id=$4 AND prepared=TRUE AND archived_at IS NULL;
+
+-- name: GetVaultKeySet :one
+SELECT state FROM vault_signing_key_sets WHERE tenant_id=$1 AND key_usage=$2 AND scope_id=$3;
+
+-- name: SaveVaultKeySet :exec
+INSERT INTO vault_signing_key_sets (tenant_id,key_usage,scope_id,state) VALUES ($1,$2,$3,$4)
+ON CONFLICT (tenant_id,key_usage,scope_id) DO UPDATE SET state=EXCLUDED.state;

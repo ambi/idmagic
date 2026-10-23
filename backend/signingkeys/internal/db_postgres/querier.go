@@ -10,16 +10,19 @@ import (
 )
 
 type Querier interface {
+	ActivatePreparedKey(ctx context.Context, arg ActivatePreparedKeyParams) error
 	ArchiveExpiredKeys(ctx context.Context, arg ArchiveExpiredKeysParams) ([]*ArchiveExpiredKeysRow, error)
 	DisableKey(ctx context.Context, arg DisableKeyParams) error
 	FindKeyByKID(ctx context.Context, arg FindKeyByKIDParams) (*FindKeyByKIDRow, error)
 	GetActiveKey(ctx context.Context, arg GetActiveKeyParams) (*GetActiveKeyRow, error)
 	GetActiveKeyCreatedAtForUpdate(ctx context.Context, arg GetActiveKeyCreatedAtForUpdateParams) (time.Time, error)
 	GetAllKeys(ctx context.Context, arg GetAllKeysParams) ([]*GetAllKeysRow, error)
+	GetVaultKeySet(ctx context.Context, arg GetVaultKeySetParams) ([]byte, error)
 	InsertSigningKey(ctx context.Context, arg InsertSigningKeyParams) error
 	ListPublicKeys(ctx context.Context, arg ListPublicKeysParams) ([]*ListPublicKeysRow, error)
 	LockSigningKeyRotation(ctx context.Context, arg LockSigningKeyRotationParams) error
 	RetireActiveKey(ctx context.Context, arg RetireActiveKeyParams) error
+	SaveVaultKeySet(ctx context.Context, arg SaveVaultKeySetParams) error
 }
 
 var _ Querier = (*Queries)(nil)

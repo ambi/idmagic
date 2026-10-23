@@ -361,6 +361,7 @@ CREATE TABLE signing_keys (
     private_jwk JSONB NOT NULL,
     certificate_der BYTEA,
     active BOOLEAN NOT NULL DEFAULT TRUE,
+    prepared BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     retired_at TIMESTAMPTZ,
@@ -377,6 +378,18 @@ CREATE TABLE signing_keys (
 CREATE UNIQUE INDEX signing_keys_single_active_idx
     ON signing_keys (tenant_id, key_usage, scope_id, active)
     WHERE active;
+
+CREATE UNIQUE INDEX signing_keys_single_prepared_idx
+    ON signing_keys (tenant_id, key_usage, scope_id)
+    WHERE prepared AND archived_at IS NULL;
+
+CREATE TABLE vault_signing_key_sets (
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+    key_usage TEXT NOT NULL,
+    scope_id TEXT NOT NULL,
+    state JSONB NOT NULL,
+    PRIMARY KEY (tenant_id, key_usage, scope_id)
+);
 
 CREATE TABLE tenant_data_encryption_keys (
     id UUID PRIMARY KEY,

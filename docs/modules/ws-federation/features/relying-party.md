@@ -52,6 +52,7 @@ sourceAnchor の値の重なりは、属性が `unique` なので IdManagement �
 - 管理者が `wtrealm` を指定して RP を削除したとき、WsFederation は、その RP を消して 204 を返す。
 - 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、`wtrealm` と audience を `urn:federation:MicrosoftOnline` とするテナントに一つの SAML 1.1 の RP に、ドメインと IssuerUri（省略時は `urn:idmagic:entra:<ドメイン>`）の組を追加または置き換え、`EntraFederationConfigured` を発行し、PowerShell に渡す設定値とともに返す。
 - 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、Microsoft Graph PowerShell の名前を持つ設定値、有効な XML 署名証明書の公開部分の base64、値を埋めた `New-MgDomainFederationConfiguration` と `Update-MgDomainFederationConfiguration` のコマンドを返す。
+- 準備済みの XML 鍵がある間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、その証明書の公開部分の base64 を `NextSigningCertificate` として設定値とコマンドに含める。
 - 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、`SignOutUri` に `wsignout1.0` を受ける受動的なエンドポイントを、`PreferredAuthenticationProtocol` に `wsFed` を、`FederatedIdpMfaBehavior` に `acceptIfMfaDoneByFederatedIdp` を返す。
 - 管理者が構成の結果を表示したとき、WsFederation は、作成と更新のコマンドをそれぞれコピーできる形で表示し、制限のコードを選択した言語の辞書の文言で表示する。
 - 指定したドメインを構成していない間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、201 を返す。
@@ -95,3 +96,11 @@ Entra 側では原因を特定しにくいので、サインインの失敗が�
 
 Hybrid Azure AD Join の端末の登録（`windowstransport` とコンピューターアカウントの Kerberos）は範囲の外である。
 設定の案内では、managed や PHS、あるいは AD FS を併存させる配置へ誘導する。
+
+### 証明書の交代
+
+共有 XML 鍵の準備を管理 API で行うと、メタデータは現在と次の証明書を公開し、Entra の構成結果と Graph PowerShell のコマンドは `SigningCertificate` と `NextSigningCertificate` を返す。
+管理者はこの共有鍵を使うすべてのフェデレーション済みドメインへ次の証明書を登録する。
+Graph の登録値を読み直して一致を確認してから、SigningKeys の確認付きの切り替えを行う。
+登録が終わるまで現在の署名鍵は変わらず、切り替えの時刻から旧証明書を 7 日の間メタデータに残す。
+Entra の自動更新の時期に依存せず、管理者が登録を確認する。

@@ -36,6 +36,11 @@ func NewVaultKeyStore(address, token, mount, prefix string) ports.KeyStore {
 	return keys_vault.NewVaultKeyStore(keys_vault.NewHTTPTransitEngine(address, token, mount), prefix)
 }
 
+// NewPostgresVaultKeyStore は秘密鍵を Vault に保ったまま、XML の公開と選択を永続化する。
+func NewPostgresVaultKeyStore(pool postgres.DB, address, token, mount, prefix string) ports.KeyStore {
+	return keys_vault.NewVaultKeyStoreWithState(keys_vault.NewHTTPTransitEngine(address, token, mount), prefix, db_postgres.VaultKeyStateStore{Pool: pool})
+}
+
 type RouteDeps struct {
 	support.Deps
 	*support.Authenticator

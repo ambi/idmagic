@@ -37,10 +37,15 @@ func TestConfigureEntraFederationReturnsUsableGraphSettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	current, err := store.Rotate(xmlCtx, time.Now().UTC(), 7*24*time.Hour)
+	prepared, err := store.Prepare(xmlCtx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
+	activation, err := store.Activate(xmlCtx, prepared.Next.Kid, time.Now().UTC(), 7*24*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current := activation.Next
 	module := signingkeys.Module{KeyStore: store}
 	s := newEntraServerConfigured(t, protectedSourceAnchor(), func(d *httpadapter.Deps) {
 		d.FederationSigner = module.FederationSigner()
@@ -131,6 +136,10 @@ func TestConfigureEntraFederationReturnsUsableGraphSettings(t *testing.T) {
 type unavailableEntraSigner struct{ err error }
 
 func (s unavailableEntraSigner) Resolve(context.Context) (*samltoken.Signer, error) {
+	return nil, s.err
+}
+
+func (s unavailableEntraSigner) PreparedCertificate(context.Context) (*x509.Certificate, error) {
 	return nil, s.err
 }
 

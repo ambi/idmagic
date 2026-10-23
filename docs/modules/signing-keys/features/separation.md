@@ -40,7 +40,14 @@ XML フェデレーションの鍵には、その公開鍵を含む自己署名�
 
 #### REQ-SIGNINGKEYS-006 XML フェデレーション鍵のローテーション中も既存の信頼関係を検証できる
 
-- 管理者が `XmlFederationSigning` の鍵をローテーションしたとき、SigningKeys は、新しい XML のメッセージに新しい鍵で署名させる。
+- `XmlFederationSigning` の用途の `default` のスコープに即時のローテーションを要求された場合、SigningKeys は、400 と `invalid_request` で拒否し、有効な鍵を変えない。
+- 準備済みの鍵がある間、即時のローテーションを要求された場合、SigningKeys は、400 と `invalid_request` で拒否し、有効な鍵と準備済みの鍵を変えない。
+- 管理者が XML 鍵の準備を要求したとき、SigningKeys は、新しい鍵を `Prepared` としてメタデータに公開し、有効な署名鍵とその期限を変えず、`SigningKeyPrepared` を発行する。
+- `Prepared` の鍵がある間、管理者が準備を要求したとき、SigningKeys は、同じ準備済みの鍵を返し、鍵とイベントを増やさない。
+- 管理者が XML 鍵の準備済みの `kid` と信頼の更新の確認を指定して切り替えを要求したとき、SigningKeys は、その鍵を `Active` にし、以前の有効な鍵を `Verifying` にし、旧鍵の重複期間（7 日）をその時刻から開始し、`SigningKeyRotated` を発行する。
+- 指定した鍵が既に有効である間、管理者が同じ確認付きの切り替えを要求したとき、SigningKeys は、その鍵を返し、旧鍵の期限とイベントを変えない。
+- `Prepared` でない有効でない鍵、未知の鍵、信頼の更新を確認しない切り替えを要求された場合、SigningKeys は、400 と `invalid_request` で拒否し、鍵とイベントを変えない。
+- 管理者が準備済みの鍵を無効化したとき、SigningKeys は、その鍵を公開から除き、有効な署名鍵を変えない。
 - 重複期間の間、SAML と WS-Federation のメタデータを取得されたとき、SigningKeys は、新旧の鍵の証明書を返す。
 - 重複期間を過ぎた後、メタデータを取得されたとき、SigningKeys は、古い鍵の証明書を返さない。
 - **例**：EX-SIGNINGKEYS-006-01
@@ -50,6 +57,7 @@ XML フェデレーションの鍵には、その公開鍵を含む自己署名�
 #### REQ-SIGNINGKEYS-007 XML フェデレーション署名資格情報は再起動後も同一である
 
 - PostgreSQL または Vault の提供元の構成では、API のプロセスを再起動したとき、SigningKeys は、再起動の前と同じ有効な証明書とフィンガープリントを返す。
+- PostgreSQL に状態を保存する構成では、API のプロセスを再起動したとき、SigningKeys は、準備済みの鍵を保ち、Vault の最新のバージョンを自動で有効にしない。
 - **例**：EX-SIGNINGKEYS-007-01
 
 ## セキュリティ上の考慮

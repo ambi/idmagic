@@ -115,6 +115,7 @@ erDiagram
 | `notification_preferences` | 利用者が受信を止めたセキュリティ通知の分類 | Authentication | `LOGGED` | なし |
 | `known_sign_in_devices` | 過去にサインインした端末の指紋。未知の端末からのサインインを通知するために使う | Authentication | `LOGGED` | なし |
 | `signing_keys` | トークンとアサーションに署名する鍵の世代と公開鍵 | SigningKeys | `LOGGED` | 非キーカラム |
+| `vault_signing_key_sets` | Vault の公開鍵とバージョンと有効な世代の選択。秘密鍵を含まない | SigningKeys | `LOGGED` | 複合主キーの一部 |
 | `tenant_data_encryption_keys` | 可逆な秘密情報を暗号化するテナントごとの DEK。ラップ済みの鍵と、バージョンごとの状態を記録する | DataKeys | `LOGGED` | 非キーカラム |
 | `password_history` | 再利用を禁じるための過去のパスワードハッシュ | Authentication | `LOGGED` | なし |
 | `password_reset_tokens` | パスワードの再設定と初期設定のリンクに埋める使い捨てトークンのハッシュ | Authentication | `LOGGED` | なし |

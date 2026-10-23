@@ -24,7 +24,9 @@
 ### Example: EX-SIGNINGKEYS-006-01 通常経路
 
 - Given `XmlFederationSigning` の現在の鍵 K1 がメタデータに掲載されている
-- When 管理者が XmlFederationSigning 鍵を K2 へ回転する
+- When 管理者が XmlFederationSigning 鍵 K2 を準備する
+- Then メタデータは K1 と K2 を公開し、新しい XML メッセージは K1 で署名される
+- When 管理者が連携先への K2 の登録を確認して K2 へ切り替える
 - Then 新しい XML メッセージは K2 で署名される
 - Then 猶予期間中の SAML / WS-Fed メタデータには K1 と K2 の証明書が掲載される
 - Then 猶予期間終了後は K1 がメタデータから除去される

@@ -20,6 +20,21 @@ type KeyStoreSignerProvider struct {
 
 var _ tokens_saml.SignerProvider = KeyStoreSignerProvider{}
 
+func (p KeyStoreSignerProvider) PreparedCertificate(ctx context.Context) (*x509.Certificate, error) {
+	if p.KeyStore == nil {
+		return nil, fmt.Errorf("samltoken: federation key store is required")
+	}
+	keys, err := p.KeyStore.GetAllKeys(p.xmlContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	key := signingdomain.PreparedKey(keys)
+	if key == nil {
+		return nil, nil //nolint:nilnil // 準備済みの鍵がないことを表す。
+	}
+	return x509.ParseCertificate(key.CertificateDER)
+}
+
 // xmlContext は、XML 連携署名の鍵の用途と、WithSignerScope で載せた鍵のスコープを文脈に付ける。
 func (p KeyStoreSignerProvider) xmlContext(ctx context.Context) context.Context {
 	if scopeID, ok := tokens_saml.SignerScope(ctx); ok {

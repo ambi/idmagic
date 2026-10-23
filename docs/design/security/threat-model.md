@@ -173,6 +173,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-058 | Information disclosure | 管理 API またはエラーレスポンスから鍵素材が出る | DataKeys, SigningKeys | REQ-DATAKEYS-006、docs/design/security/authorization.md: レスポンスが決して含まないもの | `covered` |
 | THREAT-059 | Denial of service | 鍵提供元の障害が、発行と検証の両方を止める | SigningKeys, OAuth2 | REQ-OAUTH2-039、REQ-SIGNINGKEYS-008、REQ-SIGNINGKEYS-001 | `covered` |
 | THREAT-060 | Tampering | 攻撃者の鍵を JWKS へ紛れ込ませ、偽造したトークンを信頼させる | SigningKeys | REQ-SIGNINGKEYS-004、REQ-SIGNINGKEYS-010、REQ-SIGNINGKEYS-011 | `covered` |
+| THREAT-083 | Denial of service | 連携先が知らない XML 鍵へ署名を切り替え、フェデレーションした利用者がサインインできなくなる | SigningKeys, WsFederation | REQ-SIGNINGKEYS-006、REQ-SIGNINGKEYS-007、REQ-WSFEDERATION-001 | `covered` |
 | THREAT-061 | Information disclosure | 起動時設定のシークレットが、生成した設定リファレンスやログへ出る | System | REQ-SYSTEM-016、REQ-SYSTEM-017、docs/modules/glossary.md: 外部契約 | `covered` |
 | THREAT-062 | Information disclosure | 平文の鍵を含むバックアップが、保存先の権限から持ち出される | SigningKeys, DataKeys | REQ-SIGNINGKEYS-012、contexts/signing-keys/design/decisions.md、runbooks/backup-restore-dr.md | `planned` |
 

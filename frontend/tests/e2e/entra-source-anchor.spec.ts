@@ -42,6 +42,10 @@ test('Entra configuration displays Graph commands with the real signing certific
         key: 'entra_graph_anchor', type: 'string', multi_valued: false, required: false,
         editable_by_user: false, unique: true, visibility: 'admin_readable', pii: false,
       }])
+      await api.request('/api/admin/v1/keys/rotate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': account.csrf_token },
+        body: JSON.stringify({ usage: 'XmlFederationSigning', action: 'prepare' }),
+      })
       return JSON.stringify(schema.attributes)
     })()`)) as string
     await setInputValue(view, '#entra_domain', 'entra-graph.example.test')
@@ -64,6 +68,7 @@ test('Entra configuration displays Graph commands with the real signing certific
       expect(command).toContain("-FederatedIdpMfaBehavior 'acceptIfMfaDoneByFederatedIdp'")
       expect(command).toContain("/realms/default/wsfed?wa=wsignout1.0'")
       expect(command).toMatch(/-SigningCertificate '[A-Za-z0-9+/=]{500,}'/)
+      expect(command).toMatch(/-NextSigningCertificate '[A-Za-z0-9+/=]{500,}'/)
     }
     await waitForText(view, '作成コマンドをコピー')
     await waitForText(view, '更新コマンドをコピー')
@@ -78,6 +83,12 @@ test('Entra configuration displays Graph commands with the real signing certific
           const api = await import('/src/api.ts')
           const account = await api.request('/api/auth/account')
           await api.deleteWsFedRelyingParty(account.csrf_token, 'urn:federation:MicrosoftOnline')
+          const keys = await api.request('/api/admin/v1/keys?usage=XmlFederationSigning')
+          for (const key of keys.keys.filter(key => key.prepared)) {
+            await api.request('/api/admin/v1/keys/' + encodeURIComponent(key.kid) + '/disable?usage=XmlFederationSigning', {
+              method: 'POST', headers: { 'X-CSRF-Token': account.csrf_token },
+            })
+          }
           await api.updateTenantUserAttributeSchema(account.csrf_token, ${originalAttributes})
         })()`)
       }

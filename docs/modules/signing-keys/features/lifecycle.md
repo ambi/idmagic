@@ -18,6 +18,13 @@
 ローテーションは、古い有効な鍵を同じ処理の中で検証用に降格させ、重複期間を設ける。
 JWKS の利用者と RP は、ローテーションの直前に発行されたメッセージも検証できる。
 
+共有する XML 鍵（`XmlFederationSigning` の `default`）は、公開と切り替えを二つの操作に分ける。
+管理 API の `action` を省略した XML のローテーション要求は準備を行い、`Prepared` の証明書を先に公開する。
+管理者は共有鍵を使うすべての連携先へ新しい証明書を登録し、`action: activate`、準備済みの `kid`、`trust_updated: true` を指定して切り替える。
+準備した候補がある間も、メタデータと証明書ダウンロードの有効な証明書は現在の署名鍵に対応する。
+SAML 専用プロファイルのスコープでは、即時のローテーションと二段階のローテーションを選べる。
+最初の世代は `Active` として作り、その交代候補は `Prepared` として作る。
+
 | 値 | デフォルト | 設定 |
 | --- | --- | --- |
 | ローテーションの間隔 | 90 日 | `idmagic-batch signing-key-lifecycle` の `-cadence-days` |
@@ -36,6 +43,7 @@ JWKS の利用者と RP は、ローテーションの直前に発行された�
 | State | Kind | Meaning |
 |---|---|---|
 | Active | initial | 新しいメッセージへの署名に使う。テナント、用途、スコープの組ごとに 1 本だけ存在する |
+| Prepared | — | メタデータに事前公開する XML 鍵。署名には使わず、集合ごとに一つだけ存在する |
 | Verifying | — | 署名には使わないが、JWKS とフェデレーションメタデータに載せて検証に使う |
 | Retired | — | 公開の重複期間（`expires_at`）を過ぎ、JWKS から除外した。公開しない |
 | Archived | terminal | 監査保管。退役した鍵で署名された監査トークンを検証できるよう鍵素材を保持する |
@@ -43,17 +51,20 @@ JWKS の利用者と RP は、ローテーションの直前に発行された�
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
 | Active | SigningKeyRotated | — | Verifying |  |
+| Prepared | SigningKeyRotated | 管理者が信頼の更新を確認した | Active |  |
+| Prepared | 管理者による無効化 | — | Archived |  |
 | Verifying | SigningKeyRetired | `expires_at` を過ぎた | Retired |  |
 | Retired | SigningKeyArchived | — | Archived |  |
 | Verifying | 管理者による無効化 | — | Archived |  |
 | Retired | 管理者による無効化 | — | Archived |  |
 
-| State | ローテーション | 検証用の鍵の無効化 | 重複期間の経過 | アーカイブの実行 |
-|---|---|---|---|---|
-| Active | → Verifying | 拒否：400 invalid_request | 何もしない | 何もしない |
-| Verifying | 何もしない | → Archived | → Retired | 何もしない |
-| Retired | 何もしない | → Archived | 何もしない | → Archived |
-| Archived | 何もしない | 何もしない | 何もしない | 何もしない |
+| State | ローテーション | 検証用の鍵の無効化 | 重複期間の経過 | アーカイブの実行 | 確認付きの有効化 |
+|---|---|---|---|---|---|
+| Active | → Verifying（共有 XML 以外）<br>拒否：400 invalid_request（共有 XML） | 拒否：400 invalid_request | 何もしない | 何もしない | 何もしない |
+| Prepared | 何もしない | → Archived | 何もしない | 何もしない | → Active |
+| Verifying | 何もしない | → Archived | → Retired | 何もしない | 拒否：400 invalid_request |
+| Retired | 何もしない | → Archived | 何もしない | → Archived | 拒否：400 invalid_request |
+| Archived | 何もしない | 何もしない | 何もしない | 何もしない | 拒否：400 invalid_request |
 
 ## 操作
 
@@ -62,7 +73,8 @@ JWKS の利用者と RP は、ローテーションの直前に発行された�
 #### REQ-SIGNINGKEYS-001 署名鍵をローテーションしても以前の kid は JWKS に残る
 
 - テナント、用途、スコープの組に有効な鍵がない間、その組の鍵で初めて署名するとき、SigningKeys は、その組の `Active` の鍵を作る。
-- 管理者が署名鍵をローテーションしたとき、SigningKeys は、指定した用途（省略時は `Signing`、または `XmlFederationSigning`）の新しい鍵を `Active` にし、それまでの `Active` の鍵を同じ処理の中で `Verifying` にして `expires_at` を重複期間（7 日）の後にし、200 と新旧の鍵を返し、`SigningKeyRotated` を発行する。
+- 事前公開を要求しない鍵の集合では、管理者が署名鍵をローテーションしたとき、SigningKeys は、指定した用途（省略時は `Signing`、または `XmlFederationSigning`）の新しい鍵を `Active` にし、それまでの `Active` の鍵を同じ処理の中で `Verifying` にして `expires_at` を重複期間（7 日）の後にし、200 と新旧の鍵を返し、`SigningKeyRotated` を発行する。
+- 管理者が XML 鍵の準備または確認付きの切り替えを要求したとき、SigningKeys は、[事前公開の規則](separation.md#req-signingkeys-006-xml-フェデレーション鍵のローテーション中も既存の信頼関係を検証できる)に従い、200 と新旧の鍵を返す。
 - クライアントが JWKS を取得したとき、SigningKeys は、`Active` の鍵と、`expires_at` を過ぎていない `Verifying` の鍵の公開鍵を返し、`Retired` と `Archived` の鍵を返さない。
 - 管理者が署名鍵を一覧または取得したとき、SigningKeys は、`kid`、状態、有効期間、証明書、フィンガープリントを返し、秘密鍵の素材を返さない。
 - `Signing` と `XmlFederationSigning` 以外の用途のローテーションを要求された場合、SigningKeys は、400 と `invalid_request` で拒否し、鍵を変えない。

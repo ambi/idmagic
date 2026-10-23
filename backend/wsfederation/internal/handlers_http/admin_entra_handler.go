@@ -133,6 +133,13 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 		"PreferredAuthenticationProtocol": "wsFed",
 		"FederatedIdpMfaBehavior":         "acceptIfMfaDoneByFederatedIdp",
 	}
+	preparedCertificate, err := d.FederationSigner.PreparedCertificate(ctx)
+	if err != nil {
+		return err
+	}
+	if preparedCertificate != nil {
+		settings["NextSigningCertificate"] = base64.StdEncoding.EncodeToString(preparedCertificate.Raw)
+	}
 	if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
 		return err
 	}

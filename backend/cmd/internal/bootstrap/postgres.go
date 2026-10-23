@@ -109,6 +109,10 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	idmModule.UserMutationCommitter = governanceModule.UserMutationCommitter
 	idmModule.ProvisioningNotifier = provisioningModule.UserNotifier(assignmentRepo)
 	idmModule.GroupProvisioningNotifier = provisioningModule.GroupNotifier(assignmentRepo)
+	selectedKeyStore := keyStore
+	if cfg.KeyProvider == "vault" {
+		selectedKeyStore = signingkeys.NewPostgresVaultKeyStore(resilientDB, cfg.VaultAddr, cfg.VaultToken.Value(), cfg.VaultTransitMount, cfg.VaultKeyPrefix)
+	}
 
 	return &Dependencies{
 		Tenancy:          tenancyModule,
@@ -116,7 +120,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		IdGovernance:     governanceModule,
 		Authentication:   authnModule,
 		OAuth2:           oauth2Module,
-		SigningKeys:      signingkeys.Module{KeyStore: selectKeyStore(cfg, keyStore)},
+		SigningKeys:      signingkeys.Module{KeyStore: selectedKeyStore},
 		DataKeys:         dataKeysModule,
 		Audit:            audit.NewPostgresModule(resilientDB),
 		WsFederation:     wsfederation.NewPostgresModule(resilientDB),

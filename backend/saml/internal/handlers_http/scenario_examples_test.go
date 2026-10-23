@@ -228,7 +228,12 @@ func TestSamlSigningCertificateIsTheActiveCredentialAndMetadataCarriesEveryTrust
 	// 3. ローテートさせると、ダウンロードは新しい有効証明書へ移り、メタデータは移行期間中の
 	//    旧証明書も併せて公開する。両方を読まないと、ローテートで旧鍵の検証手段が消える実装と
 	//    区別できない。
-	if _, err := keyStore.Rotate(federationKeyContext(true), time.Now().UTC(), time.Hour); err != nil {
+	staged := keyStore.(signingports.FederationKeyStore)
+	prepared, err := staged.Prepare(federationKeyContext(true), time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := staged.Activate(federationKeyContext(true), prepared.Next.Kid, time.Now().UTC(), time.Hour); err != nil {
 		t.Fatalf("rotate: %v", err)
 	}
 	rotatedDownload := get(e, "/saml/signing-certificate.pem")

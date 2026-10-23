@@ -8,12 +8,14 @@ package handlers_http
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -26,11 +28,15 @@ import (
 )
 
 type AdminKeyResponse struct {
-	Kid       string         `json:"kid"`
-	Alg       string         `json:"alg"`
-	Active    bool           `json:"active"`
-	CreatedAt time.Time      `json:"created_at"`
-	PublicJWK map[string]any `json:"public_jwk"`
+	Usage              string         `json:"usage"`
+	ScopeID            string         `json:"scope_id"`
+	Prepared           bool           `json:"prepared"`
+	SigningCertificate string         `json:"signing_certificate,omitempty"`
+	Kid                string         `json:"kid"`
+	Alg                string         `json:"alg"`
+	Active             bool           `json:"active"`
+	CreatedAt          time.Time      `json:"created_at"`
+	PublicJWK          map[string]any `json:"public_jwk"`
 }
 
 type AdminRotateKeyResponse struct {
@@ -51,6 +57,9 @@ func (d Deps) handleListAdminKeys(c *echo.Context) error {
 	if err := d.requireKeyReader(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+	if err := selectKeyQuery(c); err != nil {
+		return support.WriteProblem(c, 400, "invalid_request", err.Error())
+	}
 	if d.KeyStore == nil {
 		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"keys": []AdminKeyResponse{}})
 	}
@@ -68,6 +77,9 @@ func (d Deps) handleListAdminKeys(c *echo.Context) error {
 func (d Deps) handleGetAdminKey(c *echo.Context) error {
 	if err := d.requireKeyReader(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
+	}
+	if err := selectKeyQuery(c); err != nil {
+		return support.WriteProblem(c, 400, "invalid_request", err.Error())
 	}
 	if d.KeyStore == nil {
 		return support.WriteProblem(c, http.StatusNotFound, "key_not_found", "The signing key does not exist.")
@@ -89,28 +101,56 @@ func (d Deps) handleRotateTenantKey(c *echo.Context) error {
 	if err := d.requireTenantKeyManager(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	usage, err := rotationUsage(c.Request())
+	req, err := rotationRequest(c.Request())
 	if err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "usage must be Signing or XmlFederationSigning.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The key usage, scope, action, kid, and trust confirmation must form a valid rotation request.")
 	}
 	if d.KeyStore == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "key_store_unavailable", "The signing key store is not configured.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	ctx = signingports.WithKeyUsage(ctx, usage)
-	prev, _ := d.KeyStore.GetActiveKey(ctx)
-	next, err := usecases.RotateSigningKey(ctx, usecases.RotateSigningKeyDeps{
-		KeyStore: d.KeyStore,
-		Emit:     d.Emit,
-	}, time.Now().UTC())
+	ctx = signingports.WithKeyScope(signingports.WithKeyUsage(ctx, req.Usage), req.ScopeID)
+	prev, err := d.KeyStore.GetActiveKey(ctx)
 	if err != nil {
 		return err
 	}
+	now := time.Now().UTC()
+	var next *signingdomain.SigningKey
+	if req.Action == "rotate" {
+		next, err = usecases.RotateSigningKey(ctx, usecases.RotateSigningKeyDeps{KeyStore: d.KeyStore, Emit: d.Emit}, now)
+	} else if staged, ok := d.KeyStore.(signingports.FederationKeyStore); ok {
+		var result signingdomain.RotationResult
+		if req.Action == "prepare" {
+			result, err = staged.Prepare(ctx, now)
+		} else {
+			result, err = staged.Activate(ctx, req.Kid, now, 7*24*time.Hour)
+		}
+		next = result.Next
+		if err == nil && result.Changed && d.Emit != nil {
+			if req.Action == "prepare" {
+				d.Emit(&signingdomain.SigningKeyPrepared{At: now, TenantID: next.TenantID, Kid: next.Kid})
+			} else {
+				previousKid := ""
+				if result.Previous != nil {
+					previousKid = result.Previous.Kid
+				}
+				d.Emit(&signingdomain.SigningKeyRotated{At: now, TenantID: next.TenantID, NewKID: next.Kid, PreviousKID: previousKid})
+			}
+		}
+	} else {
+		return support.WriteProblem(c, 503, "key_store_unavailable", "The key store cannot publish XML keys.")
+	}
+	if err != nil {
+		if errors.Is(err, signingdomain.ErrPrepublicationRequired) || errors.Is(err, signingdomain.ErrKeyNotPrepared) {
+			return support.WriteProblem(c, 400, "invalid_request", err.Error())
+		}
+		return err
+	}
 	resp := AdminRotateKeyResponse{Next: toAdminKeyResponse(next)}
-	if prev != nil {
+	if prev != nil && prev.Kid != next.Kid {
 		previous := toAdminKeyResponse(prev)
-		previous.Active = false
+		previous.Active = !next.Active
 		resp.Previous = &previous
 	}
 	return support.NoStoreJSON(c, http.StatusOK, resp)
@@ -122,6 +162,9 @@ func (d Deps) handleDisableTenantKey(c *echo.Context) error {
 	}
 	if err := d.requireTenantKeyManager(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
+	}
+	if err := selectKeyQuery(c); err != nil {
+		return support.WriteProblem(c, 400, "invalid_request", err.Error())
 	}
 	if d.KeyStore == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "key_store_unavailable", "The signing key store is not configured.")
@@ -199,41 +242,90 @@ func (d Deps) requireTenantKeyManager(c *echo.Context) error {
 	return nil
 }
 
-// rotationUsage はローテーション要求の任意の本文から、ローテートする鍵の用途を読む。本文も usage も無ければ
+// rotationRequest はローテーション要求の任意の本文から、操作と鍵の集合を読む。本文も usage も無ければ
 // Signing である。signingports.WithKeyUsage は不正な用途を黙って Signing として扱うため、
 // 契約にない値はここで拒否しないと、要求と違う鍵が回る。
-func rotationUsage(request *http.Request) (signingdomain.KeyUsage, error) {
-	payload, err := io.ReadAll(io.LimitReader(request.Body, maxRotationBodyBytes))
-	if err != nil {
-		return "", err
-	}
-	if len(bytes.TrimSpace(payload)) == 0 {
-		return signingdomain.KeyUsageSigning, nil
-	}
-	var body struct {
-		Usage *signingdomain.KeyUsage `json:"usage"`
-	}
-	if err := json.Unmarshal(payload, &body); err != nil {
-		return "", err
-	}
-	if body.Usage == nil {
-		return signingdomain.KeyUsageSigning, nil
-	}
-	if !body.Usage.Valid() {
-		return "", fmt.Errorf("unknown key usage %q", *body.Usage)
-	}
-	return *body.Usage, nil
+type rotateKeyRequest struct {
+	Usage        signingdomain.KeyUsage `json:"usage"`
+	ScopeID      string                 `json:"scope_id"`
+	Action       string                 `json:"action"`
+	Kid          string                 `json:"kid"`
+	TrustUpdated bool                   `json:"trust_updated"`
 }
 
-// maxRotationBodyBytes は usage 1 つだけの本文に十分な上限である。
+func rotationRequest(request *http.Request) (rotateKeyRequest, error) {
+	body := rotateKeyRequest{Usage: signingdomain.KeyUsageSigning, ScopeID: signingports.DefaultKeyScope}
+	payload, err := io.ReadAll(io.LimitReader(request.Body, maxRotationBodyBytes+1))
+	if err != nil {
+		return body, err
+	}
+	if len(payload) > maxRotationBodyBytes {
+		return body, fmt.Errorf("rotation request is too large")
+	}
+	if len(bytes.TrimSpace(payload)) != 0 {
+		if err := json.Unmarshal(payload, &body); err != nil {
+			return body, err
+		}
+	}
+	if body.ScopeID == "" {
+		body.ScopeID = signingports.DefaultKeyScope
+	}
+	if body.Action == "" {
+		body.Action = "rotate"
+		if signingdomain.RequiresPrepublication(body.Usage, body.ScopeID) {
+			body.Action = "prepare"
+		}
+	}
+	if !body.Usage.Valid() || strings.TrimSpace(body.ScopeID) != body.ScopeID || body.Usage == signingdomain.KeyUsageSigning && body.ScopeID != signingports.DefaultKeyScope {
+		return body, fmt.Errorf("invalid key usage or scope")
+	}
+	switch body.Action {
+	case "rotate":
+		if body.Kid != "" || body.TrustUpdated {
+			return body, fmt.Errorf("rotate cannot name a prepared key")
+		}
+	case "prepare":
+		if body.Usage != signingdomain.KeyUsageXMLFederationSigning || body.Kid != "" || body.TrustUpdated {
+			return body, fmt.Errorf("prepare requires only XML usage and scope")
+		}
+	case "activate":
+		if body.Usage != signingdomain.KeyUsageXMLFederationSigning || body.Kid == "" || !body.TrustUpdated {
+			return body, fmt.Errorf("activate requires an XML kid and trust_updated")
+		}
+	default:
+		return body, fmt.Errorf("unknown rotation action")
+	}
+	return body, nil
+}
+
+// maxRotationBodyBytes は鍵の集合、操作、kid と確認だけを含む本文の上限である。
 const maxRotationBodyBytes = 1 << 10
+
+func selectKeyQuery(c *echo.Context) error {
+	usage := signingdomain.KeyUsage(c.QueryParam("usage"))
+	if usage == "" {
+		usage = signingdomain.KeyUsageSigning
+	}
+	scope := c.QueryParam("scope_id")
+	if scope == "" {
+		scope = signingports.DefaultKeyScope
+	}
+	if !usage.Valid() || strings.TrimSpace(scope) != scope || usage == signingdomain.KeyUsageSigning && scope != signingports.DefaultKeyScope {
+		return fmt.Errorf("invalid key usage or scope")
+	}
+	ctx := signingports.WithKeyScope(signingports.WithKeyUsage(c.Request().Context(), usage), scope)
+	c.SetRequest(c.Request().WithContext(ctx))
+	return nil
+}
 
 func toAdminKeyResponse(k *signingdomain.SigningKey) AdminKeyResponse {
 	return AdminKeyResponse{
-		Kid:       k.Kid,
-		Alg:       string(k.Alg),
-		Active:    k.Active,
-		CreatedAt: k.CreatedAt,
-		PublicJWK: k.PublicJWK,
+		Usage: string(k.Usage), ScopeID: k.ScopeID, Prepared: k.Prepared,
+		SigningCertificate: base64.StdEncoding.EncodeToString(k.CertificateDER),
+		Kid:                k.Kid,
+		Alg:                string(k.Alg),
+		Active:             k.Active,
+		CreatedAt:          k.CreatedAt,
+		PublicJWK:          k.PublicJWK,
 	}
 }

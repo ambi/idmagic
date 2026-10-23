@@ -2,6 +2,15 @@ package domain
 
 import "time"
 
+type SigningKeyPrepared struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	Kid      string    `json:"kid"`
+}
+
+func (e *SigningKeyPrepared) EventType() string     { return "SigningKeyPrepared" }
+func (e *SigningKeyPrepared) OccurredAt() time.Time { return e.At }
+
 type SigningKeyRotated struct {
 	At          time.Time `json:"-"`
 	TenantID    string    `json:"tenantId"`

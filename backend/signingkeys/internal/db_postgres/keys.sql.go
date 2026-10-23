@@ -12,11 +12,35 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activatePreparedKey = `-- name: ActivatePreparedKey :exec
+UPDATE signing_keys SET active=TRUE,prepared=FALSE,updated_at=$5
+WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3 AND scope_id=$4 AND prepared=TRUE AND archived_at IS NULL
+`
+
+type ActivatePreparedKeyParams struct {
+	Kid       string
+	TenantID  string
+	KeyUsage  string
+	ScopeID   string
+	UpdatedAt time.Time
+}
+
+func (q *Queries) ActivatePreparedKey(ctx context.Context, arg ActivatePreparedKeyParams) error {
+	_, err := q.db.Exec(ctx, activatePreparedKey,
+		arg.Kid,
+		arg.TenantID,
+		arg.KeyUsage,
+		arg.ScopeID,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
 const archiveExpiredKeys = `-- name: ArchiveExpiredKeys :many
 UPDATE signing_keys
 SET archived_at=$2,updated_at=$2
 WHERE archived_at IS NULL AND tenant_id=$1 AND expires_at IS NOT NULL AND expires_at<=$2 AND key_usage=$3 AND scope_id=$4
-RETURNING kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at
+RETURNING kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,prepared,created_at,retired_at,expires_at,archived_at
 `
 
 type ArchiveExpiredKeysParams struct {
@@ -37,6 +61,7 @@ type ArchiveExpiredKeysRow struct {
 	PrivateJwk     []byte
 	CertificateDer []byte
 	Active         bool
+	Prepared       bool
 	CreatedAt      time.Time
 	RetiredAt      pgtype.Timestamptz
 	ExpiresAt      pgtype.Timestamptz
@@ -68,6 +93,7 @@ func (q *Queries) ArchiveExpiredKeys(ctx context.Context, arg ArchiveExpiredKeys
 			&i.PrivateJwk,
 			&i.CertificateDer,
 			&i.Active,
+			&i.Prepared,
 			&i.CreatedAt,
 			&i.RetiredAt,
 			&i.ExpiresAt,
@@ -85,7 +111,7 @@ func (q *Queries) ArchiveExpiredKeys(ctx context.Context, arg ArchiveExpiredKeys
 
 const disableKey = `-- name: DisableKey :exec
 UPDATE signing_keys
-SET active=FALSE,archived_at=now(),updated_at=now()
+SET active=FALSE,prepared=FALSE,archived_at=now(),updated_at=now()
 WHERE kid=$1 AND tenant_id=$2
 `
 
@@ -100,7 +126,7 @@ func (q *Queries) DisableKey(ctx context.Context, arg DisableKeyParams) error {
 }
 
 const findKeyByKID = `-- name: FindKeyByKID :one
-SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at
+SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,prepared,created_at,retired_at,expires_at,archived_at
 FROM signing_keys
 WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3 AND scope_id=$4
 `
@@ -123,6 +149,7 @@ type FindKeyByKIDRow struct {
 	PrivateJwk     []byte
 	CertificateDer []byte
 	Active         bool
+	Prepared       bool
 	CreatedAt      time.Time
 	RetiredAt      pgtype.Timestamptz
 	ExpiresAt      pgtype.Timestamptz
@@ -148,6 +175,7 @@ func (q *Queries) FindKeyByKID(ctx context.Context, arg FindKeyByKIDParams) (*Fi
 		&i.PrivateJwk,
 		&i.CertificateDer,
 		&i.Active,
+		&i.Prepared,
 		&i.CreatedAt,
 		&i.RetiredAt,
 		&i.ExpiresAt,
@@ -157,7 +185,7 @@ func (q *Queries) FindKeyByKID(ctx context.Context, arg FindKeyByKIDParams) (*Fi
 }
 
 const getActiveKey = `-- name: GetActiveKey :one
-SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at
+SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,prepared,created_at,retired_at,expires_at,archived_at
 FROM signing_keys
 WHERE active=TRUE AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 LIMIT 1
 `
@@ -179,6 +207,7 @@ type GetActiveKeyRow struct {
 	PrivateJwk     []byte
 	CertificateDer []byte
 	Active         bool
+	Prepared       bool
 	CreatedAt      time.Time
 	RetiredAt      pgtype.Timestamptz
 	ExpiresAt      pgtype.Timestamptz
@@ -199,6 +228,7 @@ func (q *Queries) GetActiveKey(ctx context.Context, arg GetActiveKeyParams) (*Ge
 		&i.PrivateJwk,
 		&i.CertificateDer,
 		&i.Active,
+		&i.Prepared,
 		&i.CreatedAt,
 		&i.RetiredAt,
 		&i.ExpiresAt,
@@ -227,7 +257,7 @@ func (q *Queries) GetActiveKeyCreatedAtForUpdate(ctx context.Context, arg GetAct
 }
 
 const getAllKeys = `-- name: GetAllKeys :many
-SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at
+SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,prepared,created_at,retired_at,expires_at,archived_at
 FROM signing_keys
 WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 ORDER BY created_at DESC
 `
@@ -249,6 +279,7 @@ type GetAllKeysRow struct {
 	PrivateJwk     []byte
 	CertificateDer []byte
 	Active         bool
+	Prepared       bool
 	CreatedAt      time.Time
 	RetiredAt      pgtype.Timestamptz
 	ExpiresAt      pgtype.Timestamptz
@@ -275,6 +306,7 @@ func (q *Queries) GetAllKeys(ctx context.Context, arg GetAllKeysParams) ([]*GetA
 			&i.PrivateJwk,
 			&i.CertificateDer,
 			&i.Active,
+			&i.Prepared,
 			&i.CreatedAt,
 			&i.RetiredAt,
 			&i.ExpiresAt,
@@ -290,11 +322,28 @@ func (q *Queries) GetAllKeys(ctx context.Context, arg GetAllKeysParams) ([]*GetA
 	return items, nil
 }
 
+const getVaultKeySet = `-- name: GetVaultKeySet :one
+SELECT state FROM vault_signing_key_sets WHERE tenant_id=$1 AND key_usage=$2 AND scope_id=$3
+`
+
+type GetVaultKeySetParams struct {
+	TenantID string
+	KeyUsage string
+	ScopeID  string
+}
+
+func (q *Queries) GetVaultKeySet(ctx context.Context, arg GetVaultKeySetParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getVaultKeySet, arg.TenantID, arg.KeyUsage, arg.ScopeID)
+	var state []byte
+	err := row.Scan(&state)
+	return state, err
+}
+
 const insertSigningKey = `-- name: InsertSigningKey :exec
 INSERT INTO signing_keys (
-  kid, tenant_id, alg, provider, key_usage, scope_id, public_jwk, private_jwk, certificate_der, active
+  kid, tenant_id, alg, provider, key_usage, scope_id, public_jwk, private_jwk, certificate_der, active, prepared, created_at
 ) VALUES (
-  $1, $2, 'PS256', 'Database', $3, $4, $5, $6, $7, TRUE
+  $1, $2, 'PS256', 'Database', $3, $4, $5, $6, $7, $8, $9, $10
 )
 `
 
@@ -306,6 +355,9 @@ type InsertSigningKeyParams struct {
 	PublicJwk      []byte
 	PrivateJwk     []byte
 	CertificateDer []byte
+	Active         bool
+	Prepared       bool
+	CreatedAt      time.Time
 }
 
 func (q *Queries) InsertSigningKey(ctx context.Context, arg InsertSigningKeyParams) error {
@@ -317,14 +369,17 @@ func (q *Queries) InsertSigningKey(ctx context.Context, arg InsertSigningKeyPara
 		arg.PublicJwk,
 		arg.PrivateJwk,
 		arg.CertificateDer,
+		arg.Active,
+		arg.Prepared,
+		arg.CreatedAt,
 	)
 	return err
 }
 
 const listPublicKeys = `-- name: ListPublicKeys :many
-SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at
+SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,prepared,created_at,retired_at,expires_at,archived_at
 FROM signing_keys
-WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 AND (active=TRUE OR expires_at>$4) ORDER BY created_at DESC
+WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 AND (active=TRUE OR prepared=TRUE OR expires_at>$4) ORDER BY created_at DESC
 `
 
 type ListPublicKeysParams struct {
@@ -345,6 +400,7 @@ type ListPublicKeysRow struct {
 	PrivateJwk     []byte
 	CertificateDer []byte
 	Active         bool
+	Prepared       bool
 	CreatedAt      time.Time
 	RetiredAt      pgtype.Timestamptz
 	ExpiresAt      pgtype.Timestamptz
@@ -376,6 +432,7 @@ func (q *Queries) ListPublicKeys(ctx context.Context, arg ListPublicKeysParams) 
 			&i.PrivateJwk,
 			&i.CertificateDer,
 			&i.Active,
+			&i.Prepared,
 			&i.CreatedAt,
 			&i.RetiredAt,
 			&i.ExpiresAt,
@@ -427,6 +484,28 @@ func (q *Queries) RetireActiveKey(ctx context.Context, arg RetireActiveKeyParams
 		arg.ScopeID,
 		arg.RetiredAt,
 		arg.ExpiresAt,
+	)
+	return err
+}
+
+const saveVaultKeySet = `-- name: SaveVaultKeySet :exec
+INSERT INTO vault_signing_key_sets (tenant_id,key_usage,scope_id,state) VALUES ($1,$2,$3,$4)
+ON CONFLICT (tenant_id,key_usage,scope_id) DO UPDATE SET state=EXCLUDED.state
+`
+
+type SaveVaultKeySetParams struct {
+	TenantID string
+	KeyUsage string
+	ScopeID  string
+	State    []byte
+}
+
+func (q *Queries) SaveVaultKeySet(ctx context.Context, arg SaveVaultKeySetParams) error {
+	_, err := q.db.Exec(ctx, saveVaultKeySet,
+		arg.TenantID,
+		arg.KeyUsage,
+		arg.ScopeID,
+		arg.State,
 	)
 	return err
 }

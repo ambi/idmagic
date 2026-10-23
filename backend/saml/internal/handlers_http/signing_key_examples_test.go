@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -103,11 +104,11 @@ func issuedAssertion(t *testing.T, s *stack.Stack, sessionID string) *etree.Elem
 }
 
 // activeXMLCertificate は、テナントのデフォルトスコープで現在有効な XmlFederationSigning 鍵の証明書を返す。
-func activeXMLCertificate(t *testing.T, s *stack.Stack, realm string) *x509.Certificate {
+func activeXMLCertificate(t *testing.T, s *stack.Stack) *x509.Certificate {
 	t.Helper()
-	signer, err := signingkeys.Module{KeyStore: s.KeyStore}.FederationSigner().Resolve(s.RealmContext(t, realm))
+	signer, err := signingkeys.Module{KeyStore: s.KeyStore}.FederationSigner().Resolve(s.RealmContext(t, tenancydomain.DefaultRealm))
 	if err != nil {
-		t.Fatalf("resolve %s federation signer: %v", realm, err)
+		t.Fatalf("resolve federation signer: %v", err)
 	}
 	return signer.Certificate()
 }
@@ -121,7 +122,7 @@ func TestSamlAssertionIsSignedOnlyByTheIssuingTenantsXmlFederationKey(t *testing
 	s, sessionID := newFederationStack(t)
 	assertion := issuedAssertion(t, s, sessionID)
 
-	if err := validateAgainst(assertion, activeXMLCertificate(t, s, tenancydomain.DefaultRealm)); err != nil {
+	if err := validateAgainst(assertion, activeXMLCertificate(t, s)); err != nil {
 		t.Fatalf("default テナントの XML 証明書で検証できない: %v", err)
 	}
 
@@ -156,7 +157,7 @@ func TestSamlAssertionIsSignedOnlyByTheIssuingTenantsXmlFederationKey(t *testing
 //spec:covers EX-SIGNINGKEYS-006-01: 管理者が usage=XmlFederationSigning でローテートすると、次の Assertion は K2 で署名されて K1 では検証できず、猶予期間中の SAML と WS-Federation のメタデータは K1 と K2 の証明書を公開し、K1 の expires_at を過ぎると両メタデータから K1 が消えて K2 が残る。
 func TestAdministratorRotatesTheXmlFederationKeyWithoutBreakingTrust(t *testing.T) {
 	s, sessionID := newFederationStack(t)
-	k1 := activeXMLCertificate(t, s, tenancydomain.DefaultRealm)
+	k1 := activeXMLCertificate(t, s)
 	metadataPaths := []string{"/realms/default/saml/metadata", "/realms/default/federationmetadata/2007-06/federationmetadata.xml"}
 	for _, path := range metadataPaths {
 		if !publishedCertificates(t, getFrom(t, s, path).Body.Bytes())[encoded(k1)] {
@@ -164,18 +165,35 @@ func TestAdministratorRotatesTheXmlFederationKeyWithoutBreakingTrust(t *testing.
 		}
 	}
 
-	rotate := httptest.NewRequestWithContext(t.Context(), http.MethodPost, stack.Issuer+"/realms/default/api/admin/v1/keys/rotate",
-		strings.NewReader(`{"usage":"XmlFederationSigning"}`))
-	rotate.Header.Set("Content-Type", "application/json")
-	rotate.Header.Set("Origin", stack.Issuer)
-	rotate.Header.Set(support.CSRFHeader, exampleCSRFToken)
-	rotate.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: newSession(t, s, stack.AdminUserID)})
-	rotate.AddCookie(&http.Cookie{Name: support.CSRFCookie, Value: exampleCSRFToken})
-	if rotated := serve(t, s, rotate); rotated.Code != http.StatusOK {
-		t.Fatalf("rotate status=%d body=%s", rotated.Code, rotated.Body.String())
+	rotate := func(body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, stack.Issuer+"/realms/default/api/admin/v1/keys/rotate", strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Origin", stack.Issuer)
+		r.Header.Set(support.CSRFHeader, exampleCSRFToken)
+		r.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: newSession(t, s, stack.AdminUserID)})
+		r.AddCookie(&http.Cookie{Name: support.CSRFCookie, Value: exampleCSRFToken})
+		return serve(t, s, r)
+	}
+	prepared := rotate(`{"usage":"XmlFederationSigning"}`)
+	if prepared.Code != http.StatusOK {
+		t.Fatalf("prepare: %d %s", prepared.Code, prepared.Body.String())
+	}
+	var result struct {
+		Next struct {
+			Kid string `json:"kid"`
+		} `json:"next"`
+	}
+	if err := json.Unmarshal(prepared.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if !activeXMLCertificate(t, s).Equal(k1) {
+		t.Fatal("preparation switched the XML signature")
+	}
+	if r := rotate(`{"usage":"XmlFederationSigning","action":"activate","trust_updated":true,"kid":"` + result.Next.Kid + `"}`); r.Code != http.StatusOK {
+		t.Fatalf("activate: %d %s", r.Code, r.Body.String())
 	}
 
-	k2 := activeXMLCertificate(t, s, tenancydomain.DefaultRealm)
+	k2 := activeXMLCertificate(t, s)
 	if k2.Equal(k1) {
 		t.Fatal("ローテーション後も XML フェデレーション鍵が K1 のままである")
 	}

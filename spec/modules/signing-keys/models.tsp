@@ -7,8 +7,9 @@ enum SignatureAlgorithm {
 }
 
 
-@doc("SigningKeyLifecycle の内部の状態。Active は現在の署名鍵、Verifying はローテーション後の重複期間に発行済みのトークンの検証だけに使う鍵、Retired は JWKS から外れた鍵、Archived は監査のために保管する鍵である。")
+@doc("SigningKeyLifecycle の内部の状態。Prepared は署名開始前に公開する XML 鍵、Active は現在の署名鍵、Verifying は切り替え後の重複期間に検証だけに使う鍵、Retired は公開を終えた鍵、Archived は監査のために保管する鍵である。")
 enum SigningKeyState {
+  Prepared: "Prepared",
   Active: "Active",
   Verifying: "Verifying",
   Retired: "Retired",
@@ -77,8 +78,13 @@ model JWKS {
 }
 
 
-@doc("テナントの管理者に見せる署名鍵のメタデータ。秘密鍵も鍵の保管方法も返さず、JWKS と同じ公開 JWK だけを返す。現在の署名鍵と、ローテーション後の重複期間に発行済みのトークンを検証するだけの鍵を見分けられる程度に詳しい。")
+@doc("テナントの管理者に見せる署名鍵の公開メタデータ。用途、スコープ、有効と準備済みの状態、公開 JWK、XML 署名証明書を返し、秘密鍵の素材を返さない。")
 model AdminKeyResponse {
+  usage: KeyUsage;
+  scope_id: string;
+  prepared: boolean;
+  @doc("XML 署名証明書の公開部分の base64。JWT 用の鍵では省略する。")
+  signing_certificate?: string;
   @doc("JWK の鍵 ID。JWKS が公開するものと同じである。")
   kid: string;
   @doc("署名アルゴリズム。現在は PS256 だけである。")
@@ -98,8 +104,16 @@ model AdminKeyListResponse {
 }
 
 
-@doc("ローテーションでテナントのどの鍵を置き換えるか。ボディは任意で、ボディがないとき、または `usage` がないときは Signing の鍵をローテーションする。XmlFederationSigning は、WS-Federation とデフォルトの SAML IdP プロファイルが署名に使う、デフォルトのスコープの XML の鍵をローテーションする。それまでの証明書は SigningKeyMinJwksOverlap の間、SAML と WS-Federation のメタデータに残る。")
+@doc("操作と対象の鍵集合を指定する。ボディと usage を省略すると Signing の鍵を即時に切り替える。XmlFederationSigning の default スコープは WS-* と既定 SAML が共有し、事前公開と登録確認後の切り替えの二段階を必須とする。SAML 専用スコープでは二段階を任意に選べる。")
 model AdminRotateKeyRequest {
+  @doc("rotate は即時切り替え、prepare は XML 鍵の事前公開、activate は確認付きの切り替え。省略時は共有 XML 鍵では prepare、ほかでは rotate。")
+  action?: "rotate" | "prepare" | "activate";
+  @doc("activate で切り替える準備済みの kid。")
+  kid?: string;
+  @doc("この鍵を使う全連携先の信頼を更新済みと管理者が確認したこと。activate では true を要する。")
+  trust_updated?: boolean;
+  @doc("対象のスコープ。省略時は default。")
+  scope_id?: string;
   @doc("ローテーションする鍵の用途。デフォルトは Signing である。")
   usage?: KeyUsage;
 }
@@ -133,7 +147,14 @@ model TenantSigningKey {
 }
 
 
-@doc("JWKS の署名鍵をローテーションした。デフォルトでは 90 日ごと、または緊急のローテーションとして行う。")
+@doc("XML 鍵を事前公開した。署名に使う有効な鍵は変わっていない。")
+model SigningKeyPrepared {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  kid: string;
+}
+
+@doc("署名鍵を切り替えた。XML の共有鍵では連携先への登録を確認してから行う。")
 model SigningKeyRotated {
   occurredAt: utcDateTime;
   @doc("ローテーションした署名鍵が属するテナント。")

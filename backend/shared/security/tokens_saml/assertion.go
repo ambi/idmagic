@@ -254,6 +254,7 @@ func SignerScope(ctx context.Context) (scopeID string, ok bool) {
 type SignerProvider interface {
 	Resolve(ctx context.Context) (*Signer, error)
 	Certificates(ctx context.Context, now time.Time) ([]*x509.Certificate, error)
+	PreparedCertificate(ctx context.Context) (*x509.Certificate, error)
 }
 
 // Signer は SAML assertion を enveloped 署名する。SAML 1.1/2.0 で ID 参照属性が
@@ -261,6 +262,11 @@ type SignerProvider interface {
 type Signer struct {
 	cert *x509.Certificate
 	key  crypto.Signer
+}
+
+// 静的な署名器はローテーションを提供しない。
+func (s *Signer) PreparedCertificate(context.Context) (*x509.Certificate, error) {
+	return nil, nil //nolint:nilnil // 準備済みの証明書がないことを表す。
 }
 
 // NewSigner は federation 署名証明書 (X.509) と RSA 秘密鍵から署名器を作る。

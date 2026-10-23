@@ -45,6 +45,7 @@ type TransitEngine interface {
 
 // VaultKeyStore は TransitEngine を背にした tenant-aware な KeyStore。
 type VaultKeyStore struct {
+	states   KeyStateStore
 	engine   TransitEngine
 	prefix   string
 	mu       sync.RWMutex
@@ -52,10 +53,14 @@ type VaultKeyStore struct {
 }
 
 func NewVaultKeyStore(engine TransitEngine, keyNamePrefix string) *VaultKeyStore {
+	return NewVaultKeyStoreWithState(engine, keyNamePrefix, NewMemoryKeyStateStore())
+}
+
+func NewVaultKeyStoreWithState(engine TransitEngine, keyNamePrefix string, states KeyStateStore) *VaultKeyStore {
 	if keyNamePrefix == "" {
 		keyNamePrefix = "idmagic-signing-"
 	}
-	return &VaultKeyStore{engine: engine, prefix: keyNamePrefix, byTenant: map[string]*tenantKeys{}}
+	return &VaultKeyStore{engine: engine, prefix: keyNamePrefix, byTenant: map[string]*tenantKeys{}, states: states}
 }
 
 func (s *VaultKeyStore) keyName(tenantID string, usage signingdomain.KeyUsage, scopeID string) string {
@@ -67,6 +72,9 @@ func vaultSetID(tenantID string, usage signingdomain.KeyUsage, scopeID string) s
 }
 
 func (s *VaultKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
+	if signingports.KeyUsage(ctx) == signingdomain.KeyUsageXMLFederationSigning {
+		return s.xmlActive(ctx)
+	}
 	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
@@ -85,6 +93,9 @@ func (s *VaultKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.Signin
 }
 
 func (s *VaultKeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
+	if signingports.KeyUsage(ctx) == signingdomain.KeyUsageXMLFederationSigning {
+		return s.xmlKeys(ctx)
+	}
 	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
@@ -114,6 +125,18 @@ func (s *VaultKeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([]*s
 }
 
 func (s *VaultKeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
+	if signingports.KeyUsage(ctx) == signingdomain.KeyUsageXMLFederationSigning {
+		keys, err := s.xmlKeys(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, key := range keys {
+			if key.Kid == kid {
+				return key, nil
+			}
+		}
+		return nil, nil //nolint:nilnil // 存在しない鍵。
+	}
 	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
@@ -132,6 +155,10 @@ func (s *VaultKeyStore) FindByKID(ctx context.Context, kid string) (*signingdoma
 }
 
 func (s *VaultKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
+	if signingports.KeyUsage(ctx) == signingdomain.KeyUsageXMLFederationSigning {
+		result, err := s.changeXML(ctx, "rotate", "", now, grace)
+		return result.Next, err
+	}
 	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
@@ -142,6 +169,9 @@ func (s *VaultKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Du
 }
 
 func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
+	if signingports.KeyUsage(ctx) == signingdomain.KeyUsageXMLFederationSigning {
+		return s.disableXML(ctx, kid)
+	}
 	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
@@ -168,6 +198,9 @@ func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*signingdomain
 }
 
 func (s *VaultKeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {
+	if signingports.KeyUsage(ctx) == signingdomain.KeyUsageXMLFederationSigning {
+		return s.archiveXML(ctx, before)
+	}
 	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
@@ -192,7 +225,9 @@ func (s *VaultKeyStore) Provider() signingdomain.KeyProvider {
 	return signingdomain.KeyProviderVaultTransit
 }
 
-func (s *VaultKeyStore) Healthy(ctx context.Context) bool { return s.engine.Healthy(ctx) }
+func (s *VaultKeyStore) Healthy(ctx context.Context) bool {
+	return s.engine.Healthy(ctx) && s.states.Healthy(ctx)
+}
 
 // loadOrRotate は Vault の鍵を用意し、最新公開鍵をミラーに取り込んで active にする。
 // advance=true のときは新しいバージョンへ回転してから取り込む。

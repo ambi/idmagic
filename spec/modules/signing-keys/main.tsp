@@ -58,8 +58,9 @@ model ListAdminKeysError403 {
 @route("/api/admin/v1/keys")
 @get
 op ListAdminKeys(
-
-): ListAdminKeysSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminKeysError403;
+  @query usage?: IdMagic.Contract.KeyUsage,
+  @query scope_id?: string
+): ListAdminKeysSuccess_200 | RotateTenantSigningKeyError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminKeysError403;
 
 model GetAdminKeySuccess_200 {
   @statusCode statusCode: 200;
@@ -93,8 +94,10 @@ model GetAdminKeyError404 {
 @route("/api/admin/v1/keys/{kid}")
 @get
 op GetAdminKey(
-  @path kid: string
-): GetAdminKeySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminKeyError403 | GetAdminKeyError404;
+  @path kid: string,
+  @query usage?: IdMagic.Contract.KeyUsage,
+  @query scope_id?: string
+): GetAdminKeySuccess_200 | RotateTenantSigningKeyError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminKeyError403 | GetAdminKeyError404;
 
 model RotateTenantSigningKeySuccess_200 {
   @statusCode statusCode: 200;
@@ -134,7 +137,7 @@ model RotateTenantSigningKeyError503 {
   @body body: RotateTenantSigningKeyError503Body;
 }
 
-@doc("テナントの管理者が、求めた用途の新しい鍵を自身のテナントに生成し、有効な鍵をそれへ切り替える。それまで有効だった鍵は verifying として公開し続け（Signing では JWKS、XmlFederationSigning では SAML と WS-Federation のメタデータ）、SigningKeyMinJwksOverlap を過ぎると外す。アーカイブは別の運用ジョブである。ローテーションはテナントと用途ごとなので、影響範囲はそのテナントのその用途の鍵に限られる。`usage` が KeyUsage でないボディは InvalidRequestError になり、何もローテーションしない。")
+@doc("action で即時のローテーション、XML 鍵の準備、確認付きの切り替えを選ぶ。共有 XML 鍵では即時切り替えを拒否し、省略時は prepare を選ぶ。準備では旧鍵を有効に保ち、確認付きの切り替えで旧鍵の 7 日の猶予を開始する。準備済みでない kid と確認のない activate は 400 invalid_request で拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:write"])
 @TypeSpec.OpenAPI.operationId("RotateTenantSigningKey")
 @route("/api/admin/v1/keys/rotate")
@@ -197,7 +200,9 @@ model DisableTenantKeyError503 {
 @route("/api/admin/v1/keys/{kid}/disable")
 @post
 op DisableTenantKey(
-  @path kid: string,): DisableTenantKeySuccess_200 | DisableTenantKeyError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableTenantKeyError403 | DisableTenantKeyError404 | DisableTenantKeyError503;
+  @path kid: string,
+  @query usage?: IdMagic.Contract.KeyUsage,
+  @query scope_id?: string): DisableTenantKeySuccess_200 | DisableTenantKeyError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableTenantKeyError403 | DisableTenantKeyError404 | DisableTenantKeyError503;
 
 model ListTenantKeyHealthHttpResponse {
   tenants: IdMagic.Contract.TenantSigningKey[];

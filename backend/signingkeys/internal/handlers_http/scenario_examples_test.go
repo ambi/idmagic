@@ -324,12 +324,39 @@ func TestReadOnlyApiTokenCannotRotateOrDisable(t *testing.T) {
 // usage に XmlFederationSigning を指定したローテーションは XML フェデレーション鍵だけを入れ替え、
 // JWT の署名鍵には触れない。EX-SIGNINGKEYS-006-01 の入口であり、具体例の観測そのものは
 // SAML のメタデータと Assertion を読む backend/saml/handlers_http が持つ。
+//
+//spec:covers REQ-SIGNINGKEYS-006: 準備と切り替えは重複するイベントを発行せず、切り替えから 7 日の猶予を設けること。
 func TestRotationWithXmlFederationUsageRotatesOnlyTheXmlKey(t *testing.T) {
 	s := newExampleStack(t)
 	jwtKid := activeKid(t, s, realm, signingdomain.KeyUsageSigning)
 	xmlKid := activeKid(t, s, realm, signingdomain.KeyUsageXMLFederationSigning)
 
-	rotation := decodeRotation(t, signedInAdmin(t, s).post(t, rotatePath, `{"usage":"XmlFederationSigning"}`))
+	admin := signedInAdmin(t, s)
+	prepared := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning"}`))
+	if !prepared.Next.Prepared || prepared.Next.Active || activeKid(t, s, realm, signingdomain.KeyUsageXMLFederationSigning) != xmlKid {
+		t.Fatal("preparation changed the active XML key")
+	}
+	decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning"}`))
+	s.Events.AssertEmitted(t, "SigningKeyPrepared")
+	s.Events.AssertNotEmitted(t, "SigningKeyRotated")
+	before := time.Now().UTC()
+	rotation := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning","action":"activate","trust_updated":true,"kid":"`+prepared.Next.Kid+`"}`))
+	after := time.Now().UTC()
+	decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning","action":"activate","trust_updated":true,"kid":"`+prepared.Next.Kid+`"}`))
+	counts := map[string]int{}
+	for _, event := range s.Events.All() {
+		counts[event.EventType()]++
+		if event, ok := event.(*signingdomain.SigningKeyRotated); ok && event.PreviousKID != xmlKid {
+			t.Fatalf("rotation event has wrong previous kid: %+v", event)
+		}
+	}
+	if counts["SigningKeyPrepared"] != 1 || counts["SigningKeyRotated"] != 1 {
+		t.Fatalf("wrong event counts: %v", counts)
+	}
+	old, err := s.KeyStore.FindByKID(signingports.WithKeyUsage(s.RealmContext(t, realm), signingdomain.KeyUsageXMLFederationSigning), xmlKid)
+	if err != nil || old.ExpiresAt == nil || old.ExpiresAt.Before(before.Add(7*24*time.Hour)) || old.ExpiresAt.After(after.Add(7*24*time.Hour)) {
+		t.Fatalf("old key has the wrong grace: %v %+v", err, old)
+	}
 
 	if rotation.Previous == nil || rotation.Previous.Kid != xmlKid {
 		t.Fatalf("previous = %+v, want the XML key %q", rotation.Previous, xmlKid)
@@ -339,6 +366,42 @@ func TestRotationWithXmlFederationUsageRotatesOnlyTheXmlKey(t *testing.T) {
 	}
 	if current := activeKid(t, s, realm, signingdomain.KeyUsageSigning); current != jwtKid {
 		t.Fatalf("active JWT kid = %q, want %q untouched", current, jwtKid)
+	}
+}
+
+//spec:covers REQ-SIGNINGKEYS-006: 管理者は XML プロファイルを選んで準備済み鍵を取得と無効化ができ、他の集合の鍵は変えないこと。
+//verify:operation ListAdminKeys: usage と scope_id で選んだ XML 鍵を 200 で返し、不正な組み合わせは 400 で拒否する。
+//verify:operation GetAdminKey: 選択した XML 鍵の公開メタデータを返し、別のスコープの kid は 404 で拒否する。
+//verify:operation DisableTenantKey: 選択した準備済み XML 鍵を無効化し、200 と準備済みでない公開メタデータを返す。
+func TestAdminCanReadAndCancelPreparedXMLProfileKey(t *testing.T) {
+	s := newExampleStack(t)
+	admin := signedInAdmin(t, s)
+	prepared := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning","scope_id":"profile","action":"prepare"}`))
+	const query = "?usage=XmlFederationSigning&scope_id=profile"
+	get := func(path string) *httptest.ResponseRecorder {
+		r := newRequest(t, http.MethodGet, path, "")
+		r.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: admin.sessionID})
+		out := httptest.NewRecorder()
+		s.Echo.ServeHTTP(out, r)
+		return out
+	}
+	if r := get(adminKeysPath + query); r.Code != 200 || !strings.Contains(r.Body.String(), prepared.Next.Kid) {
+		t.Fatalf("profile list: %d %s", r.Code, r.Body.String())
+	}
+	if r := get(adminKeysPath + "/" + prepared.Next.Kid + query); r.Code != 200 || !strings.Contains(r.Body.String(), `"prepared":true`) {
+		t.Fatalf("profile key: %d %s", r.Code, r.Body.String())
+	}
+	if r := get(adminKeysPath + "/" + prepared.Next.Kid + "?usage=XmlFederationSigning"); r.Code != 404 {
+		t.Fatal("profile key escaped to the shared scope")
+	}
+	if r := get(adminKeysPath + "?usage=Signing&scope_id=profile"); r.Code != 400 {
+		t.Fatal("JWT profile query was accepted")
+	}
+	if r := admin.post(t, adminKeysPath+"/"+prepared.Next.Kid+"/disable"+query, ""); r.Code != 200 || !strings.Contains(r.Body.String(), `"prepared":false`) {
+		t.Fatalf("cancel candidate: %d %s", r.Code, r.Body.String())
+	}
+	if r := get(adminKeysPath + query); r.Code != 200 || strings.Contains(r.Body.String(), prepared.Next.Kid) {
+		t.Fatal("cancelled candidate is still listed")
 	}
 }
 

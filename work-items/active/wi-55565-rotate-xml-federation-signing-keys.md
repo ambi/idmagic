@@ -5,7 +5,7 @@ risk: medium
 reversibility: reversible
 created_at: 2026-09-23
 priority: p2
-depends_on: [wi-552-back-signing-keys-examples-with-tests]
+depends_on: [wi-552-back-signing-keys-examples-with-tests, wi-50764-rotate-xml-federation-keys-without-breaking-entra-sign-in]
 change_kind: feature
 affected_spec:
   - { path: docs/modules/signing-keys/features/lifecycle.md, requirement: REQ-SIGNINGKEYS-002 }
@@ -25,6 +25,9 @@ wi-552 は管理 API `RotateTenantSigningKey` に `usage` を足し、管理者�
 SAML の IdP プロファイルごとのスコープを持つ鍵も同じである。
 
 ## 対象範囲
+
+共有 XML 鍵の自動処理は候補の準備までとし、確認なしの有効化を行わない。
+専用プロファイルの即時切り替えと共有鍵の二段階の規則は SigningKeys の現在の仕様に従う。
 
 - `signing-key-lifecycle` が、各テナントの `XmlFederationSigning` 鍵を `Signing` 鍵と同じ周期と猶予期間でローテートし、猶予期間を過ぎた鍵をアーカイブする。
 - SAML の専用 IdP プロファイルのスコープを持つ鍵も対象にするかを Design で決める。

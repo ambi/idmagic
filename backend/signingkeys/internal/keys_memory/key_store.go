@@ -49,7 +49,8 @@ func (s *InMemoryKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.Sig
 	}
 	s.mu.RUnlock()
 	// まだ鍵の無いテナントは初回に遅延生成する。
-	return s.rotateInternal(tenantID, usage, scopeID, time.Now().UTC(), 7*24*time.Hour)
+	result, err := s.createKey(tenantID, usage, scopeID, time.Now().UTC(), 7*24*time.Hour, false, true)
+	return result.Next, err
 }
 
 func (s *InMemoryKeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
@@ -120,7 +121,9 @@ func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*signingdom
 			if tk.active == kid {
 				return nil, signingdomain.ErrActiveSigningKeyCannotBeDisabled
 			}
-			disabled = k
+			snapshot := *k
+			snapshot.Prepared = false
+			disabled = &snapshot
 			continue
 		}
 		remaining = append(remaining, k)
@@ -140,12 +143,15 @@ func (s *InMemoryKeyStore) ArchiveExpired(ctx context.Context, before time.Time)
 		return nil, nil
 	}
 	archived := []*signingdomain.SigningKey{}
-	for _, key := range tk.keys {
-		if key.ArchivedAt == nil && key.ExpiresAt != nil && !key.ExpiresAt.After(before) {
-			at := before.UTC()
-			key.ArchivedAt = &at
-			archived = append(archived, key)
+	for i, key := range tk.keys {
+		if key.ArchivedAt != nil || key.ExpiresAt == nil || key.ExpiresAt.After(before) {
+			continue
 		}
+		at := before.UTC()
+		snapshot := *key
+		snapshot.ArchivedAt = &at
+		tk.keys[i] = &snapshot
+		archived = append(archived, &snapshot)
 	}
 	return archived, nil
 }
@@ -161,11 +167,11 @@ func keySetID(tenantID string, usage signingdomain.KeyUsage, scopeID string) str
 }
 
 func (s *InMemoryKeyStore) rotateInternal(tenantID string, usage signingdomain.KeyUsage, scopeID string, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
-	priv, jwk, _, kid, err := keysJOSE.GenerateRSAJWKPair()
-	if err != nil {
-		return nil, err
-	}
+	result, err := s.createKey(tenantID, usage, scopeID, now, grace, false, false)
+	return result.Next, err
+}
 
+func (s *InMemoryKeyStore) createKey(tenantID string, usage signingdomain.KeyUsage, scopeID string, now time.Time, grace time.Duration, prepare, initialize bool) (signingdomain.RotationResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	tk := s.byTenant[keySetID(tenantID, usage, scopeID)]
@@ -173,17 +179,25 @@ func (s *InMemoryKeyStore) rotateInternal(tenantID string, usage signingdomain.K
 		tk = &tenantKeys{}
 		s.byTenant[keySetID(tenantID, usage, scopeID)] = tk
 	}
+	switch {
+	case prepare:
+		if previous := signingdomain.PreparedKey(tk.keys); previous != nil {
+			return signingdomain.RotationResult{Next: previous, Previous: signingdomain.ActiveKey(tk.keys)}, nil
+		}
+	case initialize && signingdomain.ActiveKey(tk.keys) != nil:
+		return signingdomain.RotationResult{Next: signingdomain.ActiveKey(tk.keys)}, nil
+	case signingdomain.ActiveKey(tk.keys) != nil && (signingdomain.RequiresPrepublication(usage, scopeID) || signingdomain.PreparedKey(tk.keys) != nil):
+		return signingdomain.RotationResult{}, signingdomain.ErrPrepublicationRequired
+	}
+	priv, jwk, _, kid, err := keysJOSE.GenerateRSAJWKPair()
+	if err != nil {
+		return signingdomain.RotationResult{}, err
+	}
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
 	if grace < 0 {
-		return nil, errors.New("signing key grace period must not be negative")
-	}
-	for _, k := range tk.keys {
-		k.Active = false
-		k.RetiredAt = &now
-		expires := now.Add(grace)
-		k.ExpiresAt = &expires
+		return signingdomain.RotationResult{}, errors.New("signing key grace period must not be negative")
 	}
 	key := &signingdomain.SigningKey{
 		TenantID:   tenantID,
@@ -195,16 +209,52 @@ func (s *InMemoryKeyStore) rotateInternal(tenantID string, usage signingdomain.K
 		PrivateKey: priv,
 		PublicKey:  &priv.PublicKey,
 		PublicJWK:  jwk,
-		Active:     true,
+		Active:     !prepare,
+		Prepared:   prepare,
 		CreatedAt:  now,
 	}
 	if usage == signingdomain.KeyUsageXMLFederationSigning {
 		key.CertificateDER, err = keysJOSE.NewFederationCertificate(tenantID, kid, priv, now)
 		if err != nil {
-			return nil, err
+			return signingdomain.RotationResult{}, err
 		}
 	}
 	tk.keys = append(tk.keys, key)
-	tk.active = kid
-	return key, nil
+	if prepare {
+		return signingdomain.RotationResult{Next: key, Previous: signingdomain.ActiveKey(tk.keys), Changed: true}, nil
+	}
+	// 有効化の共通核を通し、旧鍵の猶予をこの時刻から始める。
+	key.Active, key.Prepared = false, true
+	result, err := signingdomain.ActivatePrepared(tk.keys, kid, now, grace)
+	if err == nil {
+		tk.active = kid
+	}
+	return result, err
+}
+
+func (s *InMemoryKeyStore) Prepare(ctx context.Context, now time.Time) (signingdomain.RotationResult, error) {
+	if signingports.KeyUsage(ctx) != signingdomain.KeyUsageXMLFederationSigning {
+		return signingdomain.RotationResult{}, signingdomain.ErrKeyNotPrepared
+	}
+	if _, err := s.GetActiveKey(ctx); err != nil {
+		return signingdomain.RotationResult{}, err
+	}
+	return s.createKey(tenantports.TenantID(ctx), signingports.KeyUsage(ctx), signingports.KeyScope(ctx), now, 0, true, false)
+}
+
+func (s *InMemoryKeyStore) Activate(ctx context.Context, kid string, now time.Time, grace time.Duration) (signingdomain.RotationResult, error) {
+	if signingports.KeyUsage(ctx) != signingdomain.KeyUsageXMLFederationSigning {
+		return signingdomain.RotationResult{}, signingdomain.ErrKeyNotPrepared
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tk := s.byTenant[keySetID(tenantports.TenantID(ctx), signingports.KeyUsage(ctx), signingports.KeyScope(ctx))]
+	if tk == nil {
+		return signingdomain.RotationResult{}, signingdomain.ErrKeyNotPrepared
+	}
+	result, err := signingdomain.ActivatePrepared(tk.keys, kid, now, grace)
+	if err == nil {
+		tk.active = result.Next.Kid
+	}
+	return result, err
 }

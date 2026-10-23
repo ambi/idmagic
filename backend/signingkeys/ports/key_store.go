@@ -69,3 +69,9 @@ type KeyStore interface {
 type DueKeyRotator interface {
 	RotateIfDue(ctx context.Context, now time.Time, cadence, grace time.Duration) (*signingdomain.SigningKey, error)
 }
+
+// FederationKeyStore は、XML 鍵の公開と署名への選択を別々に確定する。
+type FederationKeyStore interface {
+	Prepare(ctx context.Context, now time.Time) (signingdomain.RotationResult, error)
+	Activate(ctx context.Context, kid string, now time.Time, grace time.Duration) (signingdomain.RotationResult, error)
+}

@@ -122,7 +122,7 @@ model ConfigureEntraFederationHttpRequest {
 model ConfigureEntraFederationHttpResponse {
   profile: IdMagic.Contract.EntraFederationProfile;
   relying_party: IdMagic.Contract.WsFedRelyingParty;
-  @doc("Microsoft Graph PowerShell のパラメーター名をキーとする。IssuerUri、PassiveSignInUri、ActiveSignInUri、MetadataExchangeUri、SignOutUri、SigningCertificate、PreferredAuthenticationProtocol、FederatedIdpMfaBehavior を含む。SigningCertificate は有効な XML 署名証明書の公開部分の base64、PreferredAuthenticationProtocol は wsFed、FederatedIdpMfaBehavior は acceptIfMfaDoneByFederatedIdp である。")
+  @doc("Microsoft Graph PowerShell のパラメーター名をキーとする。IssuerUri、PassiveSignInUri、ActiveSignInUri、MetadataExchangeUri、SignOutUri、SigningCertificate、PreferredAuthenticationProtocol、FederatedIdpMfaBehavior を含む。SigningCertificate は有効な XML 署名証明書の公開部分の base64 とし、準備済みの XML 鍵があるときはその証明書の公開部分の base64 を NextSigningCertificate として追加する。")
   powershell: Record<string>;
   @doc("値を埋めた作成と更新のコマンド。Microsoft Graph に接続した PowerShell で管理者が実行する。更新は同じドメインの既存の構成から ID を取得する。")
   commands: {
