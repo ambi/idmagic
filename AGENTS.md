@@ -43,7 +43,7 @@
 `go test`、`go vet`、`gofmt`、`golangci-lint`、`bun test` のような下位ツールは、1 パッケージだけの確認であっても直接呼ばない。その用途には `mise run test-go-package -- <package>`、`test-go-test`、`format-go`、`lint-go` を使う。
 
 `mise run test-ui-e2e`、`test-ui-e2e-file`、`verify-full` と Chrome／Bun.WebView の起動確認は、localhost の待受けとブラウザーの起動を必要とするため、初回からサンドボックスの外で実行する。
-`mise run verify` と Go の HTTP 統合テストも localhost の待受けを使うため、同じ実行方法に従う。
+`mise run verify`、`check-schema` と Go の HTTP 統合テストも localhost の待受けを使うため、同じ実行方法に従う。
 権限昇格が必要な実行環境では、最初の呼び出しから実行ツールの権限昇格を指定する。
 
 テストが規範の被覆を主張する場合は[規範 ID の参照](docs/development/specification-first-workflow.md#規範-id-をテストから参照する)に従う。

@@ -188,6 +188,40 @@ func TestPersistentClusterResetsSchemaOnStart(t *testing.T) {
 	}
 }
 
+// `check-schema` は psqldef に空のデータベースから適用させる。スキーマを投入した
+// データベースでは、最初の適用が差分を出さず、psqldef が拒否する DDL を見逃す。
+func TestSkipSchemaPublishesEmptyDatabase(t *testing.T) {
+	infra, ready, err := Start(t.Context(), Config{
+		PostgresPort: uint32(freePort(t)),
+		SchemaPath:   schemaPath(t),
+		SkipSchema:   true,
+		RuntimeDir:   t.TempDir(),
+		Logger:       io.Discard,
+	})
+	if err != nil {
+		t.Skipf("embedded PostgreSQL unavailable: %v", err)
+	}
+	t.Cleanup(func() { _ = infra.Close() })
+
+	pool, err := sharedpg.Open(t.Context(), ready.DatabaseURL, sharedpg.DBConfig{
+		MaxConns: 1, MinConns: 1, ConnectTimeout: 5 * time.Second,
+		MaxConnIdleTime: time.Minute, MaxConnLifetime: time.Minute, QueryTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	var count int
+	if err := pool.QueryRow(t.Context(),
+		"SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("public table count = %d, want 0", count)
+	}
+}
+
 // `dev.sh` は準備完了ファイルが現れるまで API と UI を起動しない。失敗した起動が
 // このファイルを残せば、壊れたデータベースへ向けて残りのプロセスが起動する。
 //

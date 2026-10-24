@@ -24,10 +24,13 @@ const DefaultPostgresPort uint32 = 55432
 type Config struct {
 	PostgresPort uint32
 	SchemaPath   string
-	ReadyFile    string
-	RuntimeDir   string
-	DataPath     string
-	Logger       io.Writer
+	// SkipSchema publishes an empty database so that psqldef can apply the
+	// schema itself (`mise run check-schema`).
+	SkipSchema bool
+	ReadyFile  string
+	RuntimeDir string
+	DataPath   string
+	Logger     io.Writer
 }
 
 type Ready struct {
@@ -110,8 +113,10 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 			return fail(err)
 		}
 	}
-	if err := applySchema(ctx, pool, cfg.SchemaPath); err != nil {
-		return fail(err)
+	if !cfg.SkipSchema {
+		if err := applySchema(ctx, pool, cfg.SchemaPath); err != nil {
+			return fail(err)
+		}
 	}
 	if cfg.ReadyFile != "" {
 		if err := writeReadyFile(cfg.ReadyFile, ready); err != nil {
