@@ -62,7 +62,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：182
+経路の数：183
 
 | 経路 | メソッド |
 | --- | --- |
@@ -238,6 +238,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/directory-connector/v1/heartbeat` | POST |
 | `/directory-connector/v1/ingestion-runs` | POST |
 | `/directory-connector/v1/ingestion-runs/{run_id}/complete` | POST |
+| `/directory-connector/v1/ingestion-runs/{run_id}/computer-batches` | POST |
 | `/directory-connector/v1/ingestion-runs/{run_id}/user-batches` | POST |
 | `/register` | POST |
 | `/scim/v2/Groups` | GET, POST |
