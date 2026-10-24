@@ -42,6 +42,8 @@ type Deps struct {
 type Sessions struct {
 	AuthnResolver  authdomain.AuthenticationContextResolver
 	SessionManager SessionRevoker
+	// Negotiate は Authentication の任意の認証方式を試す。未構成なら nil である。
+	Negotiate func(*echo.Context, string, bool) (bool, error)
 }
 
 // SecondFactorSteps は、Entra が MFA を求めた要求で、既存のセッションに第二要素の照合を求める操作である。

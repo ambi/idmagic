@@ -69,6 +69,8 @@ const (
 	// SignInNeedSecondFactor は、RP が求めた MFA のために、既存のセッションに第二要素の照合を
 	// 求めるべきことを表す。イベントは発行していない。
 	SignInNeedSecondFactor
+	// SignInNeedKerberos は有効な RP が実施していない Kerberos を求めていることを表す。
+	SignInNeedKerberos
 )
 
 // SignInOutcome は passive sign-in 判断の結果。
@@ -135,6 +137,14 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 	if user == nil || !user.IsActive() {
 		return SignInOutcome{Kind: SignInNeedLogin}, nil
 	}
+	if feddomain.RequiresKerberos(req.Wauth) {
+		if _, err := feddomain.ResolveAuthnMethod(req.Wauth, feddomain.PerformedAuthn{
+			AMR: authn.AMR, SecondFactor: authn.SecondFactorAuthenticated(),
+		}, *rp); err != nil {
+			//nolint:nilerr // 未実施の方式は HTTP 側で Negotiate を試す outcome へ写す。
+			return SignInOutcome{Kind: SignInNeedKerberos}, nil
+		}
+	}
 
 	now := time.Now().UTC()
 
@@ -153,7 +163,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 	if feddomain.RequiresFreshAuth(req.Wfresh, time.Unix(authn.AuthTime, 0), now) {
 		return SignInOutcome{Kind: SignInNeedLogin}, nil
 	}
-	// wauth: 要求された認証方式を尊重する。満たせない方式 (統合 Windows 等) は拒否し、
+	// wauth: 要求された認証方式を尊重する。満たせない方式は拒否し、
 	// Entra が求めた MFA には第二要素の照合を求める。
 	authnMethod, err := feddomain.ResolveAuthnMethod(req.Wauth, feddomain.PerformedAuthn{
 		AMR: authn.AMR, SecondFactor: authn.SecondFactorAuthenticated(),

@@ -14,6 +14,7 @@ import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	mfaports "github.com/ambi/idmagic/backend/authentication/internal/mfa/ports"
+	negotiateusecases "github.com/ambi/idmagic/backend/authentication/internal/negotiate/usecases"
 	authnports "github.com/ambi/idmagic/backend/authentication/internal/ports"
 	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
 	securitynotificationusecases "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/usecases"
@@ -88,7 +89,10 @@ type Deps struct {
 	// Application のアクセスの判定と同じ解決を使うため、組み立て地点が結ぶ。
 	ClientIP func(*http.Request) string
 	// Authorizations は、対話のログインが認証を終えたあとに続ける認可要求を引く。
-	Authorizations signinports.PendingAuthorizations
+	Authorizations         signinports.PendingAuthorizations
+	NegotiateService       *negotiateusecases.Service
+	NegotiateAttemptSecret []byte
+	AutomaticNegotiate     bool
 }
 
 // PasswordAuthentication は、対話のログインとほかのモジュールが共有するパスワード認証を組み立てる。

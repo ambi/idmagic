@@ -17,6 +17,9 @@ export const loginPageDictionary = defineDictionary(
     forgotPassword: 'パスワードを忘れた場合',
     alternativeSignIn: 'または外部アカウントで続行',
     continueWith: '{provider} で続行',
+    windowsSignIn: 'Windows でサインイン',
+    standardSignIn: '通常のログインを使う',
+    checkingWindows: 'サインイン方法を確認しています…',
     securityNote:
       '認証情報は保護された接続で送信されます。共有端末では、利用後に必ずログアウトしてください。',
   },
@@ -36,6 +39,9 @@ export const loginPageDictionary = defineDictionary(
     forgotPassword: 'Forgot your password?',
     alternativeSignIn: 'Or continue with an external account',
     continueWith: 'Continue with {provider}',
+    windowsSignIn: 'Sign in with Windows',
+    standardSignIn: 'Use standard sign-in',
+    checkingWindows: 'Checking sign-in options…',
     securityNote:
       'Your credentials are sent over a protected connection. Always sign out after using a shared device.',
   },

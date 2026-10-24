@@ -143,6 +143,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-039 | Spoofing | 外部 IdP が主張するメールアドレスを信じ、既存アカウントへ結び付ける | Authentication | REQ-AUTHENTICATION-001、REQ-AUTHENTICATION-002 | `covered` |
 | THREAT-040 | Repudiation | 資格情報の変更が本人に知られないまま行われる | Authentication | REQ-AUTHENTICATION-030、REQ-AUTHENTICATION-031、REQ-AUTHENTICATION-032、REQ-AUTHENTICATION-033 | `covered` |
 | THREAT-041 | Spoofing | 承認リクエストを繰り返し送り、利用者が誤って承認する | OAuth2 | CIBA-CORE-BINDING-MESSAGE、REQ-OAUTH2-043、REQ-OAUTH2-040 | `covered` |
+| THREAT-083 | Spoofing | 盗んだ Kerberos 応答を別の接続やレプリカで再送し、メールの一致で別 User へ結び付ける | Authentication | REQ-AUTHENTICATION-042: SPN、realm、CBT、期限、共有の再送拒否と明示的な User の対応付け | `covered` |
 
 ## プロトコルとトークン
 

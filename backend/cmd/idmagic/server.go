@@ -125,6 +125,11 @@ func Run() error {
 	deps.Authentication.SentinelPasswordHash = sentinelPasswordHash
 	deps.Authentication.SessionManager = sessionManager
 	deps.Authentication.AuthnResolver = sessionManager
+	if fingerprint, err := deps.Authentication.ConfigureNegotiate(api.NegotiateConfigFile, deps.IdManagement.UserRepo); err != nil {
+		return fmt.Errorf("configure Kerberos authentication: %w", err)
+	} else if fingerprint != "" {
+		logger.Info(context.Background(), "Kerberos trust configured", "configuration_sha256", fingerprint)
+	}
 
 	e := echo.New()
 

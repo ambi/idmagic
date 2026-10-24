@@ -26,6 +26,8 @@ type Deps struct{ httpdeps.Deps }
 
 // RegisterRoutes は対話のログインのエンドポイントを登録する。
 func RegisterRoutes(g *echo.Group, d Deps) {
+	g.GET("/api/auth/negotiate", d.handleNegotiateAvailability)
+	g.POST("/api/auth/negotiate", d.handleNegotiate)
 	g.POST("/api/auth/login", d.handleLoginAPI)
 	g.POST("/api/auth/totp", d.handleTOTPAPI)
 	g.POST("/api/auth/webauthn/challenge", d.handleWebAuthnChallengeAPI)

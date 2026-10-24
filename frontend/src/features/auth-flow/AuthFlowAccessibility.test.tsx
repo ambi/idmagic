@@ -183,12 +183,13 @@ describe('authentication screen accessibility', () => {
   it('identifies a failed submission in text and states how to correct it', async () => {
     stubGlobal(
       'fetch',
-      mock()
-        .mockResolvedValueOnce(response(200, readyBody))
-        .mockResolvedValueOnce(response(200, readyBody))
-        .mockResolvedValueOnce(
-          response(403, { error: 'csrf_token', message: 'csrf token mismatch' }),
+      mock((_input: RequestInfo | URL, init?: RequestInit) =>
+        Promise.resolve(
+          init?.method === 'POST'
+            ? response(403, { error: 'csrf_token', message: 'csrf token mismatch' })
+            : response(200, readyBody),
         ),
+      ),
     )
     render(<LoginPage csrfToken="csrf" returnTo="/return" />)
     fireEvent.change(screen.getByLabelText(loginT.usernameLabel), { target: { value: 'alice' } })
@@ -217,10 +218,13 @@ describe('authentication screen accessibility', () => {
   it('announces a submission failure through a live region without moving focus', async () => {
     stubGlobal(
       'fetch',
-      mock()
-        .mockResolvedValueOnce(response(200, readyBody))
-        .mockResolvedValueOnce(response(200, readyBody))
-        .mockResolvedValueOnce(response(401, { error: 'invalid_credentials' })),
+      mock((_input: RequestInfo | URL, init?: RequestInit) =>
+        Promise.resolve(
+          init?.method === 'POST'
+            ? response(401, { error: 'invalid_credentials' })
+            : response(200, readyBody),
+        ),
+      ),
     )
     render(<LoginPage csrfToken="csrf" returnTo="/return" />)
     const password = screen.getByLabelText(loginT.passwordLabel)

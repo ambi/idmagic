@@ -390,6 +390,32 @@ go run ./backend/cmd/idmagic-batch "$@"
 description = "Synchronize Go module requirements and checksums"
 run = "go mod tidy"
 
+[tasks.test-kerberos-ad]
+description = "Verify Kerberos tickets against an isolated Samba AD domain controller"
+run = 'bash scripts/test-kerberos-ad.sh "$@"'
+
+[tasks.setup-kerberos]
+description = "Guide an operator through Kerberos trust and browser setup"
+run = "bash scripts/setup-kerberos.sh"
+
+[tasks.check-kerberos-setup]
+description = "Check the Kerberos setup wizard and isolated AD fixture scripts"
+run = [
+  "bash -n scripts/setup-kerberos.sh",
+  "bash -n scripts/test-kerberos-ad.sh",
+  "bash -n infra/test/kerberos/start.sh",
+  "shellcheck -e SC2030,SC2031 scripts/setup-kerberos.sh scripts/test-kerberos-ad.sh infra/test/kerberos/start.sh",
+]
+
+[tasks.check-kerberos-config]
+description = "Validate Kerberos trust files without contacting Active Directory"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -eq 1 || { echo "usage: mise run check-kerberos-config -- <configuration.json>" >&2; exit 2; }
+go run ./backend/cmd/idmagic-kerberos --check-file "$1"
+'''
+
 [tasks.list-outdated-go-dependencies]
 description = "List Go module dependencies that have a newer release in their current module path"
 run = "go list -m -u -mod=readonly all"

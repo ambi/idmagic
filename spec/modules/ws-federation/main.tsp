@@ -14,12 +14,39 @@ model WsFederationSignInSuccess_200 {
 
 model WsFederationSignInSuccess_303 {
   @statusCode statusCode: 303;
+  @header wwwAuthenticate?: string;
 }
 
 model WsFederationSignInError400 {
   @statusCode statusCode: 400;
   @header contentType: "text/plain";
   @body body: string;
+}
+
+model WsFederationNegotiateChallenge {
+  @statusCode statusCode: 401;
+  @header wwwAuthenticate?: string;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+model WsFederationPolicyForbidden {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AccessDeniedError;
+}
+
+model WsFederationRateLimited {
+  @statusCode statusCode: 429;
+  @header contentType: "application/json";
+  @header("Retry-After") retryAfter: int32;
+  @body body: IdMagic.Contract.RateLimitedError;
+}
+
+model WsFederationQuotaExceeded {
+  @statusCode statusCode: 422;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.QuotaExceededError;
 }
 
 model WsFederationSignInError403 {
@@ -41,7 +68,7 @@ op WsFederationSignIn(
   @query wfresh?: string,
   @query wauth?: string,
   @query whr?: string
-): WsFederationSignInSuccess_200 | WsFederationSignInSuccess_303 | WsFederationSignInError400 | WsFederationSignInError403;
+): WsFederationSignInSuccess_200 | WsFederationSignInSuccess_303 | WsFederationSignInError400 | WsFederationSignInError403 | WsFederationNegotiateChallenge | WsFederationPolicyForbidden | WsFederationRateLimited | WsFederationQuotaExceeded | IdMagic.Contract.AuthenticationRequiredResponse;
 
 model WsTrustIssueSuccess_200 {
   @statusCode statusCode: 200;

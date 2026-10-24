@@ -251,7 +251,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `interactive_auth`
 
-経路の数：51
+経路の数：52
 
 | 経路 | メソッド |
 | --- | --- |
@@ -273,6 +273,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/auth/login` | POST |
 | `/api/auth/mfa/enrollment/totp/confirm` | POST |
 | `/api/auth/mfa/enrollment/totp/start` | POST |
+| `/api/auth/negotiate` | GET, POST |
 | `/api/auth/password-reset-context` | GET |
 | `/api/auth/recovery-code` | POST |
 | `/api/auth/reset-password` | POST |

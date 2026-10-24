@@ -269,7 +269,13 @@ func (m Module) RegisterFederationRoutes(
 }
 
 func (m Module) httpDeps(d RouteDeps) authhttp.Deps {
+	if m.negotiateService != nil && (m.SessionManager == nil || d.Emit == nil || d.ClientIP == nil) {
+		panic("authentication: Negotiate requires sessions, event emission and client IP resolution")
+	}
 	return authhttp.Deps{
+		NegotiateService:        m.negotiateService,
+		NegotiateAttemptSecret:  m.negotiateAttemptSecret,
+		AutomaticNegotiate:      m.automaticNegotiate,
 		Deps:                    d.Deps,
 		Authenticator:           d.Authenticator,
 		SessionManager:          m.SessionManager,

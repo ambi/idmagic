@@ -7,6 +7,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/internal/federation/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/internal/mfa/ports"
+	negotiateusecases "github.com/ambi/idmagic/backend/authentication/internal/negotiate/usecases"
 	"github.com/ambi/idmagic/backend/authentication/internal/ports"
 	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
@@ -25,6 +26,9 @@ import (
 // Module は authentication context が所有する永続化 port と実行時依存の束。
 // bootstrap は backend ごとの adapter を組み立て、起動時に実行時依存を補完する。
 type Module struct {
+	negotiateService         *negotiateusecases.Service
+	negotiateAttemptSecret   []byte
+	automaticNegotiate       bool
 	FederationConnectionRepo federationports.ConnectionRepository
 	FederationIdentityRepo   federationports.IdentityRepository
 	FederationAttemptStore   federationports.AttemptStore

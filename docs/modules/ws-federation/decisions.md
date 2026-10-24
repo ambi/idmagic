@@ -25,7 +25,7 @@ SOAP、WS-Security、WS-Addressing、SAML の署名は相互に関係する。
 ### 結果と再検討の条件
 
 リッチクライアントのサインインに要る経路だけを、フェイルクローズで検証すれば足りる。
-その代わり、Kerberos による統合認証や Hybrid Azure AD Join の端末の登録は使えない。
+その代わり、WS-Trust の Kerberos による統合認証や Hybrid Azure AD Join の端末の登録は使えない。
 対象のクライアントが `windowstransport` などの別の経路を必須とするようになった場合に見直す。
 
 ### 関連する要件
@@ -34,6 +34,38 @@ SOAP、WS-Security、WS-Addressing、SAML の署名は相互に関係する。
 | --- | --- |
 | REQ-WSFEDERATION-004 | [WS-Trust の能動的 STS](features/active-sts.md) |
 | REQ-WSFEDERATION-005 | [WS-Trust の能動的 STS](features/active-sts.md) |
+
+## パッシブの統合 Windows 認証を Authentication へ委ねる
+
+### 背景
+
+WS-Fed の RP は `wauth` で統合 Windows 認証を要求する。
+同じ本人確認を idmagic の通常ログインからも使うため、チケットの検証と鍵の管理には一つの所有者が必要である。
+
+### 決定
+
+WS-Fed は RP と返信先を検証した後、Authentication の公開操作で Negotiate を試す。
+Authentication が鍵、対応付け、再送拒否、サインインポリシーとセッションを所有し、WS-Fed は認証済みの AMR `wia` を Kerberos の Assertion へ変換する。
+チケットがない未認証の端末は通常ログインへ送り、別方式の認証だけで `wauth` を満たすことはない。
+
+### 検討した代替案
+
+| 案 | 利点 | 欠点 | 採らない理由 |
+| --- | --- | --- | --- |
+| WS-Fed が直接 keytab とチケットを検証する | WS-Fed の内側だけで完結する | 通常ログインと再送拒否、ポリシー、セッションの処理が重複する | 本人確認の所有者をプロトコルごとに増やす |
+| プロキシが利用者名をヘッダーで通知する | API に Kerberos の鍵をデプロイせずに済む | プロキシとの認証とヘッダーの信頼契約を別に管理する | 今回の直接 SPNEGO と混在させず、検証したチケットを唯一の入力にする |
+
+### 結果と再検討の条件
+
+既存のパッシブの要求、クレームと署名の経路を維持し、本人確認だけを共通の所有者へ委ねる。
+認証の提供方式を変える必要が生じた場合は、[Authentication の判断](../authentication/decisions.md)と合わせて見直す。
+
+### 関連する要件
+
+| 要件 | 機能仕様 |
+| --- | --- |
+| REQ-WSFEDERATION-002 | [パッシブサインイン](features/passive-sign-in.md) |
+| REQ-AUTHENTICATION-042 | [Kerberos による無音サインイン](../authentication/features/negotiate.md) |
 
 ## Entra のドメインフェデレーションを専用の定型設定として扱う
 

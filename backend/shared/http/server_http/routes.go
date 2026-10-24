@@ -473,7 +473,10 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		samlSessionRevoker = d.Authentication.SessionManager
 	}
 	d.WsFederation.Register(g, d.Deps, authenticator, appGate,
-		wsfederation.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: wsfedSessionRevoker},
+		wsfederation.Sessions{
+			AuthnResolver: d.Authentication.AuthnResolver, SessionManager: wsfedSessionRevoker,
+			Negotiate: d.Authentication.NegotiateSignIn(authRoutes),
+		},
 		d.Authentication.SignInSteps(authRoutes), d.IdManagement.UserRepo, d.FederationSigner,
 		d.OAuth2.ClientAssertionReplayStore, d.Authentication.PasswordAuthentication(authRoutes),
 		d.IdManagement.AttrSchemaRepo)

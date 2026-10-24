@@ -79,6 +79,8 @@ const (
 	AuthnContextPassword
 	// AuthnContextMultipleAuthn は第二要素を含む認証を表す。Entra はこの値で IdP の MFA を受け入れる。
 	AuthnContextMultipleAuthn
+	// AuthnContextKerberos は実施した Kerberos 認証を表す。
+	AuthnContextKerberos
 )
 
 // Attribute は assertion の 1 つの属性である。Name は属性の URI、Values は値の並びである。
@@ -164,6 +166,8 @@ func buildSAML20(in AssertionInput, id string) *etree.Element {
 		classRef = authnContextPassword
 	case AuthnContextMultipleAuthn:
 		classRef = authnMultipleAuthn
+	case AuthnContextKerberos:
+		classRef = "urn:oasis:names:tc:SAML:2.0:ac:classes:Kerberos"
 	}
 	authn.CreateElement("AuthnContext").CreateElement("AuthnContextClassRef").SetText(classRef)
 
@@ -204,6 +208,8 @@ func buildSAML11(in AssertionInput, id string) *etree.Element {
 		method = authnMethodPassword
 	case AuthnContextMultipleAuthn:
 		method = authnMultipleAuthn
+	case AuthnContextKerberos:
+		method = "urn:ietf:rfc:1510"
 	}
 	authn.CreateAttr("AuthenticationMethod", method)
 	authn.CreateAttr("AuthenticationInstant", in.AuthnInstant.UTC().Format(xmlDateTime))

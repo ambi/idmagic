@@ -9,6 +9,7 @@
 | [サービス管理](service-management.md) | SLO 評価、当番、障害対応、変更、サービス継続 |
 | [保守](maintenance.md) | 定期作業、更新、キャパシティ確認、廃止と引渡し |
 | [運用手順](../runbooks/) | 人が手で実行する運用作業と障害対応の手順。作業一つにつき一つ置く |
+| [Kerberos の導入](../runbooks/kerberos-setup.md) | AD の信頼、ブラウザー設定、導入確認と鍵の更新 |
 
 ## 関連する一次情報
 

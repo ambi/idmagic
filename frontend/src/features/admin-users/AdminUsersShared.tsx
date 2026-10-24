@@ -346,6 +346,7 @@ export function sessionAmrSummary(amr: string[], t: Record<string, string>): str
   if (amr.length === 0) return t.sessionAmrUnknown
   const labels: Record<string, string> = {
     pwd: t.sessionAmrPwd,
+    wia: t.sessionAmrWia,
     otp: t.sessionAmrOtp,
     webauthn: t.sessionAmrWebauthn,
     rc: t.sessionAmrRc,

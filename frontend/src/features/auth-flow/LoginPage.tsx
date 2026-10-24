@@ -7,12 +7,14 @@ import {
   IconLock,
   IconShieldLock,
 } from '@tabler/icons-react'
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { tenantURL } from '../../api/core'
 import {
   AuthenticationAPIError,
   continueBrowserFlow,
   listFederatedLoginProviders,
+  getNegotiateAvailability,
+  loginWithNegotiate,
   login,
   type FederatedLoginProvider,
 } from '../../api'
@@ -33,6 +35,58 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [providers, setProviders] = useState<FederatedLoginProvider[]>([])
+  const [windowsAvailable, setWindowsAvailable] = useState(false)
+  const [checkingWindows, setCheckingWindows] = useState(false)
+  const windowsAttempted = useRef(false)
+
+  useEffect(() => {
+    let active = true
+    getNegotiateAvailability()
+      .then(async (availability) => {
+        if (!active) return
+        setWindowsAvailable(availability.enabled)
+        if (
+          availability.automatic &&
+          !windowsAttempted.current &&
+          new URLSearchParams(window.location.search).get('negotiate') !== 'skip'
+        ) {
+          windowsAttempted.current = true
+          setCheckingWindows(true)
+          const result = await loginWithNegotiate(csrfToken, returnTo)
+          if (active && (result.redirect_to || result.next)) continueBrowserFlow(result)
+        }
+      })
+      .catch((cause) => {
+        if (active && cause instanceof AuthenticationAPIError) {
+          setError(
+            localizedErrorMessage(locale, cause.code, cause.message, cause.retryAfterSeconds),
+          )
+        }
+      })
+      .finally(() => {
+        if (active) setCheckingWindows(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [csrfToken, returnTo, locale])
+
+  async function signInWithWindows() {
+    setSubmitting(true)
+    setError('')
+    try {
+      const result = await loginWithNegotiate(csrfToken, returnTo)
+      if (result.redirect_to || result.next) continueBrowserFlow(result)
+    } catch (cause) {
+      setError(
+        cause instanceof AuthenticationAPIError
+          ? localizedErrorMessage(locale, cause.code, cause.message, cause.retryAfterSeconds)
+          : tCommon.networkError,
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -94,12 +148,30 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
           </Alert>
         ) : null}
 
+        {checkingWindows ? <p role="status">{t.checkingWindows}</p> : null}
         <LoginFormPresentation
-          submitting={submitting}
+          submitting={submitting || checkingWindows}
           showPassword={showPassword}
           onSubmit={handleSubmit}
           onTogglePassword={() => setShowPassword((visible) => !visible)}
         />
+        {windowsAvailable ? (
+          <section className="flex flex-col gap-3" aria-label={t.alternativeSignIn}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting || checkingWindows}
+              onClick={signInWithWindows}
+            >
+              {t.windowsSignIn}
+            </Button>
+            <a
+              href={`${tenantURL('/login')}?${new URLSearchParams({ negotiate: 'skip', ...(returnTo ? { return_to: returnTo } : {}) })}`}
+            >
+              {t.standardSignIn}
+            </a>
+          </section>
+        ) : null}
 
         {providers.length > 0 ? (
           <section className="flex flex-col gap-3" aria-label={t.alternativeSignIn}>

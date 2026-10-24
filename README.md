@@ -7,6 +7,7 @@ mise run dev
 ```
 
 詳しい起動方法は [ローカル開発](docs/development/local-development.md) を参照する。
+Windows のサインインを導入する場合は、`mise run setup-kerberos` と [Kerberos の導入手順](docs/runbooks/kerberos-setup.md)を使う。
 
 - プロダクトが解く問題、利用者、対象外：[Product Overview](docs/requirements/product-overview.md)
 - 仕様、設計、モジュール：[Whole-System Specification](docs/README.md)

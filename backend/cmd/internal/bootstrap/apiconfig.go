@@ -21,6 +21,7 @@ type APIConfig struct {
 	DrainGracePeriod      int // seconds
 
 	PaginationCursorSecret Secret
+	NegotiateConfigFile    string
 
 	RateLimits rlports.RateLimitConfigs
 
@@ -45,6 +46,7 @@ func LoadAPIConfig(l *ConfigLoader) APIConfig {
 	cfg.TrustedForwardedHops = l.NonNegativeInt("TRUSTED_FORWARDED_HOPS", 0)
 	cfg.DrainGracePeriod = l.NonNegativeInt("DRAIN_GRACE_PERIOD_SECONDS", 5)
 	cfg.PaginationCursorSecret = l.Secret("PAGINATION_CURSOR_SECRET")
+	cfg.NegotiateConfigFile = l.String("NEGOTIATE_CONFIG_FILE", "")
 
 	cfg.RateLimits = rlports.RateLimitConfigs{
 		"token": {

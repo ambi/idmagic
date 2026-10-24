@@ -74,6 +74,7 @@ HTTP の待ち受け、堅牢化、セキュリティヘッダー、エンドポ
 | `TRUSTED_FORWARDED_HOPS` | integer (>= 0) | `0` | いいえ | このプロセスの前段にある、信頼する X-Forwarded-For のホップ数。ログインの抑制とエンドポイントのレート制限で、実際のクライアント IP を解決するのに使う。`0` はこのヘッダーをまったく信頼しない。 |
 | `DRAIN_GRACE_PERIOD_SECONDS` | integer (>= 0) | `5` | いいえ | SIGTERM を受けてから待ち受けを閉じるまで処理を続ける秒数（idmagic）、または実行中のジョブを終えさせる秒数（idmagic-worker）。 |
 | `PAGINATION_CURSOR_SECRET` | secret | — | いいえ | キーセット方式のページングのカーソルに署名する HMAC のシークレット。複数のレプリカで動かすデプロイメントでは明示的に設定する。設定しないと各レプリカが起動時に自身の値を生成し、他のレプリカが発行したカーソルを拒否する。 |
+| `NEGOTIATE_CONFIG_FILE` | string | — | いいえ | Kerberos の信頼と利用者の明示的な対応付けを含む JSON ファイル。未設定なら Windows のサインインは無効。keytab と TLS 終端証明書をファイル参照で指定する。 |
 | `RATE_LIMIT_TOKEN_MAX_REQUESTS` | integer (> 0) | `60` | いいえ | `/token` の固定ウィンドウの上限。client_id と IP ごとに数える。 |
 | `RATE_LIMIT_TOKEN_WINDOW_SECONDS` | integer (> 0) | `60` | いいえ | `/token` の上限のウィンドウの長さ。 |
 | `RATE_LIMIT_AUTHORIZE_MAX_REQUESTS` | integer (> 0) | `30` | いいえ | `/authorize` の固定ウィンドウの上限。IP と client_id ごとに数える。 |

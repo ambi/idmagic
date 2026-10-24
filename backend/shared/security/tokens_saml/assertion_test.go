@@ -69,6 +69,49 @@ func sampleInput() AssertionInput {
 	}
 }
 
+//spec:covers REQ-WSFEDERATION-002: Kerberos の認証事実を SAML 1.1 と 2.0 の署名済み Assertion に保持する。
+func TestKerberosAuthenticationContextInBothSignedVersions(t *testing.T) {
+	cert, key := selfSignedCert(t)
+	signer, err := NewSigner(cert, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		version                                SAMLVersion
+		idAttribute, element, attribute, value string
+	}{
+		{SAML11, idAttribute11, "//AuthenticationStatement", "AuthenticationMethod", "urn:ietf:rfc:1510"},
+		{SAML20, idAttribute, "//AuthnContextClassRef", "", "urn:oasis:names:tc:SAML:2.0:ac:classes:Kerberos"},
+	} {
+		input := sampleInput()
+		input.Version, input.AuthnContext = tc.version, AuthnContextKerberos
+		signed, _, err := IssueSignedAssertion(input, signer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc := etree.NewDocument()
+		if err := doc.ReadFromBytes(signed); err != nil {
+			t.Fatal(err)
+		}
+		statement := doc.FindElement(tc.element)
+		if statement == nil {
+			t.Fatalf("authentication method missing: %s", tc.element)
+		}
+		method := statement.Text()
+		if tc.attribute != "" {
+			method = statement.SelectAttrValue(tc.attribute, "")
+		}
+		if method != tc.value {
+			t.Fatalf("method=%q want=%q", method, tc.value)
+		}
+		validation := dsig.NewDefaultValidationContext(&dsig.MemoryX509CertificateStore{Roots: []*x509.Certificate{cert}})
+		validation.IdAttribute = tc.idAttribute
+		if _, err := validation.Validate(doc.Root()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestIssueSignedAssertion_RoundTrip(t *testing.T) {
 	cert, key := selfSignedCert(t)
 	signer, err := NewSigner(cert, key)

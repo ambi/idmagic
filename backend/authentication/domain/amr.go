@@ -24,12 +24,14 @@ const (
 	AMRTrustedDevice = "tdev"
 	// AMRFederated は上流の IdP へ委ねた認証。IANA 未登録の本アプリ固有の値である。
 	AMRFederated = "federated"
+	// AMRKerberos は keytab で検証した Kerberos 認証。第二要素の充足を意味しない。
+	AMRKerberos = "wia"
 )
 
 // amrVocabulary は宣言された語彙。宣言順に並べる。
 var amrVocabulary = []string{
 	AMRPassword, AMROTP, AMRWebAuthn, AMRHardwareKey, AMRSoftwareKey,
-	AMRRecoveryCode, AMRTrustedDevice, AMRFederated,
+	AMRRecoveryCode, AMRTrustedDevice, AMRFederated, AMRKerberos,
 }
 
 // mfaAMRValues は acr を urn:idmagic:acr:mfa へ上げる部分集合。

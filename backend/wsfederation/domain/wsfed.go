@@ -126,6 +126,8 @@ type AuthnMethodClass string
 const (
 	// AuthnPassword はパスワード (フォーム) 認証。
 	AuthnPassword AuthnMethodClass = "password"
+	// AuthnKerberos は検証済みの Kerberos チケットによる認証。
+	AuthnKerberos AuthnMethodClass = "kerberos"
 	// AuthnUnspecified は方式を特定しない。
 	AuthnUnspecified AuthnMethodClass = "unspecified"
 	// AuthnMultipleAuthn は第二要素を含む認証であり、Entra へ MFA を済ませたことを伝える。
@@ -151,8 +153,7 @@ var (
 		"urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport":              {},
 		"http://schemas.microsoft.com/ws/2008/06/identity/authenticationmethod/password": {},
 	}
-	// 統合 Windows 認証 (WIA/Negotiate/Kerberos) はフォーム IdP では満たせない。
-	// 無音サインインは [[wi-65-kerberos-spnego-inbound-silent-sso]] が担う。
+	// 統合 Windows 認証は、実施した Kerberos の認証事実でだけ満たせる。
 	integratedWauthURIs = map[string]struct{}{
 		"urn:federation:authentication:windows":                                         {},
 		"urn:oasis:names:tc:SAML:2.0:ac:classes:Kerberos":                               {},
@@ -169,7 +170,7 @@ const mfaWauthURI = "http://schemas.microsoft.com/claims/multipleauthn"
 //   - wauth 未指定なら実施した方式をそのまま用いる。Entra の RP には、第二要素を済ませていれば
 //     multipleauthn を用いる。
 //   - wauth が password 系で、実施が password なら満たし、password を用いる。
-//   - wauth が統合 Windows 認証など本 IdP で満たせない方式なら error を返す (fail-closed)。
+//   - wauth が統合 Windows 認証なら、Kerberos を実施していなければ error を返す。
 //   - wauth が multipleauthn で RP が Entra なら、第二要素を済ませていなければ ErrSecondFactorRequired を返す。
 //     multipleauthn は Microsoft の語彙なので、Entra でない RP には未知の URI と同じく扱う。
 //   - wauth が未知の URI なら hint とみなし、実施した方式を用いる。
@@ -184,7 +185,10 @@ func ResolveAuthnMethod(wauth string, in PerformedAuthn, rp WsFedRelyingParty) (
 		return performed, nil
 	}
 	if _, ok := integratedWauthURIs[wauth]; ok {
-		return "", fmt.Errorf("wsfed: requested authentication method %q is not supported by this identity provider", wauth)
+		if !slices.Contains(in.AMR, "wia") {
+			return "", fmt.Errorf("wsfed: requested authentication method %q was not satisfied", wauth)
+		}
+		return AuthnKerberos, nil
 	}
 	if _, ok := passwordWauthURIs[wauth]; ok {
 		if !slices.Contains(in.AMR, "pwd") {
@@ -199,10 +203,19 @@ func ResolveAuthnMethod(wauth string, in PerformedAuthn, rp WsFedRelyingParty) (
 }
 
 func classFromAMR(amr []string) AuthnMethodClass {
+	if slices.Contains(amr, "wia") {
+		return AuthnKerberos
+	}
 	if slices.Contains(amr, "pwd") {
 		return AuthnPassword
 	}
 	return AuthnUnspecified
+}
+
+// RequiresKerberos は RP が統合 Windows 認証を明示しているかを返す。
+func RequiresKerberos(wauth string) bool {
+	_, exists := integratedWauthURIs[strings.TrimSpace(wauth)]
+	return exists
 }
 
 // resolveReplyURL は wreply を許可集合に対して fail-closed に解決する。

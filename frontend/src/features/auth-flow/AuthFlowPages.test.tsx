@@ -96,17 +96,16 @@ describe('auth-flow pages', () => {
   })
 
   it('shows a returned login error and allows a retry', async () => {
+    const submit = mock()
+      .mockResolvedValueOnce(
+        response(401, { error: 'invalid_credentials', message: 'The credentials are wrong.' }),
+      )
+      .mockResolvedValueOnce(response(200, { next: '/continue' }))
     stubGlobal(
       'fetch',
-      mock()
-        // AuthShell が mount 時に取得する /api/branding を最初に消費する。
-        .mockResolvedValueOnce(response(200, {}))
-        // LoginPage が有効な外部 IdP 一覧を取得する。
-        .mockResolvedValueOnce(response(200, { providers: [] }))
-        .mockResolvedValueOnce(
-          response(401, { error: 'invalid_credentials', message: 'The credentials are wrong.' }),
-        )
-        .mockResolvedValueOnce(response(200, { next: '/continue' })),
+      mock((_input: RequestInfo | URL, init?: RequestInit) =>
+        init?.method === 'POST' ? submit() : Promise.resolve(response(200, { providers: [] })),
+      ),
     )
     render(<LoginPage csrfToken="csrf" />)
     fireEvent.change(screen.getByLabelText(loginT.usernameLabel), { target: { value: 'alice' } })

@@ -8,6 +8,81 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.Authentication {
 
 namespace Operations {
+
+model NegotiateRequest {
+  return_to?: string;
+}
+
+model NegotiateAvailability {
+  enabled: boolean;
+  automatic: boolean;
+}
+
+model NegotiateAvailabilitySuccess {
+  @statusCode statusCode: 200;
+  @body body: NegotiateAvailability;
+}
+
+@doc("テナントの Kerberos が利用可能かと、出口の公開 IP からの自動試行が有効かを返す。設定の内容と鍵は公開しない。")
+@useAuth(NoAuth)
+@TypeSpec.OpenAPI.operationId("GetNegotiateAvailability")
+@route("/api/auth/negotiate")
+@get
+op GetNegotiateAvailability(): NegotiateAvailabilitySuccess;
+
+model NegotiateResult {
+  @doc("認証の後に進む画面または認可の継続先。省略時は通常のログインを続ける。")
+  redirect_to?: string;
+}
+
+model NegotiateSuccess {
+  @statusCode statusCode: 200;
+  @doc("相互認証が要求されたときの Negotiate の応答トークン。")
+  @header wwwAuthenticate?: string;
+  @body body: NegotiateResult;
+}
+
+model NegotiateChallenge {
+  @statusCode statusCode: 401;
+  @header wwwAuthenticate?: string;
+  @header contentType: "text/plain";
+  @body body: string;
+}
+
+model NegotiateBadRequest {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.InvalidRequestError;
+}
+
+model NegotiateForbidden {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: SubmitBrowserLoginError403Body;
+}
+
+model NegotiateRateLimited {
+  @statusCode statusCode: 429;
+  @header contentType: "application/json";
+  @header("Retry-After") retryAfter: int32;
+  @body body: IdMagic.Contract.RateLimitedError;
+}
+
+model NegotiateQuotaExceeded {
+  @statusCode statusCode: 422;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.QuotaExceededError;
+}
+
+@doc("社内のブラウザーで Kerberos を試す。Origin と CSRF を検証し、Negotiate のチャレンジを一度提示する。認証できれば既存の認可と必須操作を続け、未対応のブラウザーなら空の結果でフォーム認証へ戻す。")
+@useAuth(NoAuth)
+@TypeSpec.OpenAPI.operationId("AuthenticateWithNegotiate")
+@route("/api/auth/negotiate")
+@post
+op AuthenticateWithNegotiate(
+  @header authorization?: string,
+  @body body: NegotiateRequest
+): NegotiateSuccess | NegotiateChallenge | NegotiateBadRequest | NegotiateForbidden | NegotiateRateLimited | NegotiateQuotaExceeded | IdMagic.Contract.AuthenticationRequiredResponse;
 model GetAccountContextSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AccountContextResponse;

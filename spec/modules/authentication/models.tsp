@@ -1,5 +1,38 @@
 namespace IdMagic.Contract {
 
+@doc("ブラウザーから受け取る SPNEGO の資格情報。トークンはログと監査に記録しない。")
+model SpnegoCredential {
+  token: string;
+}
+
+@doc("テナントが信頼する Kerberos の realm と HTTP の SPN。")
+model KerberosServicePrincipal {
+  tenant_id: string;
+  realm: string;
+  service_principal: string;
+}
+
+@doc("検証済みの principal と、明示的に対応付けた内部 User。")
+model WindowsAuthenticatedPrincipal {
+  realm: string;
+  name: string;
+  user_id: string;
+}
+
+@doc("Kerberos の検証と明示的な User の対応付けに成功した。資格情報は含めない。")
+model NegotiateAuthSucceeded {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  userId: string;
+}
+
+@doc("Kerberos の検証か User の対応付けを拒否した。未検証 principal と資格情報は含めない。")
+model NegotiateAuthRejected {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  reason: string;
+}
+
 @doc("EmailSender のポートでメッセージを送った。ポートはフェイルオープンなので、送信の失敗はユースケースの層へ伝わらず、SIEM はこのイベントがあるかどうかでそれを観測する。`to` は SHA-256 のハッシュとして記録する。")
 model EmailSent {
   occurredAt: utcDateTime;
@@ -251,7 +284,7 @@ model LoginSession {
   user_id: string;
   @doc("認証が成功した Unix 秒。セッションの開始時刻として変わらず、一覧はこれで新しい順に並べる。")
   auth_time: int64;
-  @doc("認証が成功した方式。閉じた語彙から取り、RFC 8176 の登録済みの値の pwd、otp、webauthn、hwk、swk と、このアプリケーションの IANA に登録していない拡張の rc（リカバリーコード）、tdev（記憶した信頼済みデバイス）、federated（上流の IdP に委ねた認証）からなる。それ以外を含む LoginSession は保存しない（RFC8176-AMR-VOCABULARY）。")
+  @doc("認証が成功した方式。RFC 8176 の登録値 pwd、otp、webauthn、hwk、swk、wia と、非 IANA 拡張値 rc、tdev、federated の閉じた語彙だけを保存する。wia は第二要素の充足を意味しない（RFC8176-AMR-VOCABULARY）。")
   amr: string[];
   @doc("認証コンテキストのクラスの参照の URN。amr が otp、webauthn、hwk、swk、rc、tdev のいずれかを含むときは `urn:idmagic:acr:mfa`、それ以外は `urn:idmagic:acr:pwd` である。フェデレーションによるサインインは、上流の IdP が実際に何を検証したかをブローカーが判別できないので、pwd のままにする（OpenID Connect Core の 2 節と RFC 8176）。")
   acr: string;

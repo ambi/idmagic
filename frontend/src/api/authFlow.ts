@@ -44,6 +44,33 @@ export async function login(
   })
 }
 
+export type NegotiateAvailability = { enabled: boolean; automatic: boolean }
+
+export function getNegotiateAvailability(): Promise<NegotiateAvailability> {
+  return request('/api/auth/negotiate')
+}
+
+// OS がチケットを送らなければ、試行 Cookie を付けた一度の再要求で通常ログインへ戻る。
+export async function loginWithNegotiate(
+  csrfToken: string,
+  returnTo?: string,
+): Promise<BrowserFlowResponse> {
+  const send = () =>
+    fetch(tenantURL('/api/auth/negotiate'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      credentials: 'same-origin',
+      cache: 'no-store',
+      body: JSON.stringify({ return_to: returnTo }),
+    })
+  let response = await send()
+  if (response.status === 401 && response.headers.get('WWW-Authenticate') === 'Negotiate') {
+    response = await send()
+  }
+  if (!response.ok) throw await responseAPIError(response)
+  return response.json()
+}
+
 export async function submitConsent(
   csrfToken: string,
   action: 'allow' | 'deny',

@@ -1,5 +1,51 @@
 # Authentication の重要な設計判断
 
+## Kerberos の検証と利用者の同期を分ける
+
+### 背景
+
+Kerberos のサービスチケットはサービス鍵で検証できるが、検証した principal と内部 User の同一性は別の信頼判断である。
+Okta の Agentless Desktop SSO はクラウドで Kerberos を検証する一方、製品の前提として AD の統合と delegated authentication を求め、Classic Engine の JIT では AD Agent に UPN を照会する。
+「agentless」をディレクトリーへの照会も不要という意味では使わない。
+出典は [Okta の前提条件](https://help.okta.com/en-us/content/topics/directory/ad-dsso-prerequisites.htm)と [DSSO と JIT](https://help.okta.com/en-us/Content/Topics/Directory/ad-dsso-about-jit.htm)（2026-10-24 参照）である。
+
+### 決定
+
+Authentication は keytab で直接チケットを検証し、最初は運用管理者が確認した principal と User ID の明示的な対応付けを使う。
+API から AD への常時接続は置かない。
+この構成は、ディレクトリーの同期と認証の導入を分けるための選択であり、Okta の AD 連携全体と同じ構成ではない。
+keytab の利用には [Keycloak の Kerberos 構成](https://www.keycloak.org/docs/latest/server_admin/#_kerberos)の先例がある（2026-10-24 参照）。
+
+自動試行はデフォルトで無効とし、Windows のサインインを明示的に選べるようにする。
+任意の出口の公開 IP 条件は自動試行にだけ使う。
+Okta のルーティングにも `Anywhere` とネットワークゾーンの選択があり、固定 IP の登録は Kerberos の信頼の成立条件ではない。
+出典は [Okta のルーティング設定](https://help.okta.com/oie/en-us/content/Topics/directory/ad-dsso-update-default-idp.htm)（2026-10-24 参照）である。
+
+### 検討した代替案
+
+| 案 | 採否と理由 |
+| --- | --- |
+| LDAP の同期を先に必須にする | 採らない。明示的な対応付けで既存 User の本人確認を提供できるため、同期の運用を認証の前提に増やさない |
+| メールアドレスかユーザー名で自動リンクする | 採らない。KDC の principal と同じ文字列でも、既存 User の同一性の根拠にはならない |
+| プロキシの利用者名ヘッダーを信頼する | 採らない。ヘッダーの消毒とプロキシの認証という別の信頼境界を増やす |
+| OS の GSSAPI を使う | 採らない。静的バイナリと distroless の配布に追加の実行時依存を持ち込む |
+
+### 結果と再検討の条件
+
+同期の導入前は、AD の無効化と名前の再利用を自動検出しないため、運用管理者が対応付けまたは User を失効させる。
+同期管理へ移す際は、外部の不変 ID と既存 User を確認し、手動の書き手から明示的に管理を移す。
+
+channel binding は必須とし、未対応クライアントを受け付けない。
+ブラウザーの許可設定によっては OS の資格情報ダイアログが表示されるため、一度のチャレンジでダイアログを防げるとは保証しない。
+[Okta のブラウザー設定](https://help.okta.com/oie/en-us/Content/Topics/Directory/ad-dsso-configure-browsers.htm)と [Keycloak の注意点](https://www.keycloak.org/docs/latest/server_admin/#_kerberos)（2026-10-24 参照）に従い、対象 OS とブラウザーで実際の無音ログインを検証してから自動試行を広げる。
+
+### 関連する要件
+
+| 要件 | 機能仕様 |
+| --- | --- |
+| REQ-AUTHENTICATION-042 | [Kerberos による無音サインイン](features/negotiate.md) |
+| REQ-AUTHENTICATION-043 | [Kerberos による無音サインイン](features/negotiate.md) |
+
 この文書は、Authentication の設計判断のうち、代替案を比べたものと、見直す条件が要るものを扱う。
 一つの要件やモデルだけを正当化する判断は、機能仕様のその要件またはモデルの判断の欄に置く。
 

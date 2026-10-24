@@ -13,9 +13,31 @@ package main
 
 import (
 	"net"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+//spec:covers REQ-AUTHENTICATION-042: 起動入口が指定された Kerberos の信頼ファイルを読み、無効な信頼を無視して API を公開しない。
+func TestRunRefusesInvalidKerberosTrustBeforeListening(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = listener.Close() }()
+	// もし不正な信頼を無視して先へ進めば、占有済みポートへの bind の失敗を観測する。
+	t.Setenv("ADDR", listener.Addr().String())
+	t.Setenv("PERSISTENCE", "memory")
+	t.Setenv("OBSERVABILITY", "noop")
+	t.Setenv("AUTHZEN", "local")
+	t.Setenv("EMAIL_SENDER", "console")
+	t.Setenv("ISSUER", "https://sso.example.com")
+	t.Setenv("NEGOTIATE_CONFIG_FILE", filepath.Join(t.TempDir(), "missing-negotiate.json"))
+	err = Run()
+	if err == nil || !strings.Contains(err.Error(), "configure Kerberos authentication") {
+		t.Fatalf("startup error=%v, want Kerberos trust refusal before listen", err)
+	}
+}
 
 // freeLoopbackAddr は誰も待ち受けていない loopback のアドレスを返す。確保した listener は
 // すぐ閉じるので、このアドレスは「開いていない」状態から始まる。

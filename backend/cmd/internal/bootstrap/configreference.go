@@ -102,6 +102,7 @@ var configFieldDescriptions = map[string]string{
 	"TRUSTED_FORWARDED_HOPS":     "このプロセスの前段にある、信頼する X-Forwarded-For のホップ数。ログインの抑制とエンドポイントのレート制限で、実際のクライアント IP を解決するのに使う。`0` はこのヘッダーをまったく信頼しない。",
 	"DRAIN_GRACE_PERIOD_SECONDS": "SIGTERM を受けてから待ち受けを閉じるまで処理を続ける秒数（idmagic）、または実行中のジョブを終えさせる秒数（idmagic-worker）。",
 	"PAGINATION_CURSOR_SECRET":   "キーセット方式のページングのカーソルに署名する HMAC のシークレット。複数のレプリカで動かすデプロイメントでは明示的に設定する。設定しないと各レプリカが起動時に自身の値を生成し、他のレプリカが発行したカーソルを拒否する。",
+	"NEGOTIATE_CONFIG_FILE":      "Kerberos の信頼と利用者の明示的な対応付けを含む JSON ファイル。未設定なら Windows のサインインは無効。keytab と TLS 終端証明書をファイル参照で指定する。",
 
 	"ADMISSION_CONTROL_ENABLED":                         "プロセスが飽和したとき、リクエストの優先度クラスに応じて負荷を落とす。無効にすると、対話的な認証を管理系のトラフィックより優先させる唯一の仕組みがなくなる。誤って設定した閾値を、変更をデプロイせずに運用者が止められるようにするための設定である。",
 	"ADMISSION_MAX_CONCURRENT_REQUESTS":                 "対話的な認証まで拒否し始める前に、このプロセスが同時に実行してよいリクエストの数（ロードシェディングのステージ 5）。一つのリクエストが同時に保持する PostgreSQL の接続は一つまでなので、この値はプールの待ち行列の長さも抑える。",

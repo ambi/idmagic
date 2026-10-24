@@ -35,6 +35,8 @@ func samlVersion(t feddomain.WsFedTokenType) samltoken.SAMLVersion {
 // authnContext は認証方式クラスを assertion の認証コンテキストへ写す。
 func authnContext(m feddomain.AuthnMethodClass) samltoken.AuthnContext {
 	switch m {
+	case feddomain.AuthnKerberos:
+		return samltoken.AuthnContextKerberos
 	case feddomain.AuthnPassword:
 		return samltoken.AuthnContextPassword
 	case feddomain.AuthnMultipleAuthn:
@@ -81,7 +83,16 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 		return err
 	}
 	switch outcome.Kind {
-	case wsfedusecases.SignInNeedLogin:
+	case wsfedusecases.SignInNeedLogin, wsfedusecases.SignInNeedKerberos:
+		if d.Negotiate != nil {
+			if handled, err := d.Negotiate(c, c.Request().URL.RequestURI(), feddomain.RequiresKerberos(req.Wauth)); handled || err != nil {
+				return err
+			}
+		}
+		if outcome.Kind == wsfedusecases.SignInNeedKerberos {
+			d.emit(&feddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, Reason: "requested authentication method was not satisfied: Kerberos authentication unavailable"})
+			return c.String(http.StatusBadRequest, "The relying party requires Kerberos authentication, which is unavailable.")
+		}
 		return c.Redirect(http.StatusSeeOther, loginRedirect(c))
 	case wsfedusecases.SignInNeedSecondFactor:
 		return d.requireSecondFactor(c, outcome)
