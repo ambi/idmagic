@@ -53,15 +53,6 @@ StartTLS を使う場合は、`url` を `ldap://dc1.corp.example.com:389` にし
 平文の LDAP で bind する設定は起動時に拒否される。
 `base_dns` には同期する OU を並べる。互いに含み合う OU は拒否されるので、親の OU だけを書く。
 IdMagic へ HTTP プロキシを通して出る場合は、`idmagic:` の下に `proxy_url: http://proxy.corp.example.com:8080` を足す。LDAP への接続はプロキシを通らない。
-Microsoft Entra hybrid join のために AD のコンピューターアカウントも取り込む場合は、最上位に次の節を足す。`active_directory` の方言でだけ使える。
-
-```yaml
-computers:
-  base_dns:
-    - CN=Computers,DC=corp,DC=example,DC=com
-```
-
-`filter` を省くと `(objectCategory=computer)` を使う。サービスアカウントには、この起点の配下のコンピューターの読み取り権限も与える。
 
 5. IdMagic に送る前に、設定の確認のコマンドで LDAP の読み取りを確かめる。IdMagic へは何も送らず、登録も要らない。
 

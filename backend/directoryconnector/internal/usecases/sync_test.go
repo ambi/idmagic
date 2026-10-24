@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -56,11 +55,10 @@ func (d *fakeDirectory) Close() error { return nil }
 
 // recordingAPI は Connector API へ出した要求を順に記録し、予定した失敗を返す。
 type recordingAPI struct {
-	calls     []string
-	batches   map[string][]domain.Item
-	computers map[string][]domain.ComputerItem
-	failures  map[string][]error // 要求の名前ごとに、先頭から一つずつ返す失敗
-	runs      int
+	calls    []string
+	batches  map[string][]domain.Item
+	failures map[string][]error // 要求の名前ごとに、先頭から一つずつ返す失敗
+	runs     int
 }
 
 func (a *recordingAPI) fail(call string) error {
@@ -301,100 +299,5 @@ func TestRunRepeatsAfterAFailedSyncUntilStopped(t *testing.T) {
 	}
 	if !strings.Contains(h.log.String(), "sync failed") {
 		t.Fatalf("log = %s, want the failed sync", h.log.String())
-	}
-}
-
-func (a *recordingAPI) SendComputerBatch(_ context.Context, runID, batchID string, items []domain.ComputerItem) error {
-	if err := a.fail("computers " + batchID); err != nil {
-		return err
-	}
-	if a.computers == nil {
-		a.computers = map[string][]domain.ComputerItem{}
-	}
-	a.computers[batchID] = items
-	return nil
-}
-
-func adEntry(dn string, attributes map[string][]byte) domain.Entry {
-	entry := domain.Entry{DN: dn}
-	for _, name := range slices.Sorted(maps.Keys(attributes)) {
-		entry.Attributes = append(entry.Attributes, domain.Attribute{Name: name, Values: [][]byte{attributes[name]}})
-	}
-	return entry
-}
-
-func computerEntries(n int) []domain.Entry {
-	entries := make([]domain.Entry, n)
-	for i := range entries {
-		guid := make([]byte, 16)
-		guid[0] = byte(i)
-		sid := []byte{1, 2, 0, 0, 0, 0, 0, 5, 21, 0, 0, 0, byte(i), 0, 0, 0}
-		entries[i] = adEntry(fmt.Sprintf("CN=WS%d,CN=Computers,DC=corp,DC=example", i), map[string][]byte{
-			"objectGUID": guid, "objectSid": sid, "sAMAccountName": fmt.Appendf(nil, "WS%d$", i), "userAccountControl": []byte("4096"),
-		})
-	}
-	return entries
-}
-
-// 100 件ずつ <実行 ID>-computers-<連番> で送り、欠けたエントリを飛ばし、User とコンピューターの和で完了し、次の回は両方に uSNChanged の条件を付ける。
-//
-//spec:covers REQ-DIRECTORYCONNECTOR-004, REQ-DIRECTORYCONNECTOR-007: computers の節を持つ AD の同期は、User を送った後にコンピューターの起点を読み、
-func TestSyncSendsComputersAfterUsers(t *testing.T) {
-	h := newHarness(t, nil)
-	mapping, err := domain.EffectiveMapping(domain.ActiveDirectory, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	user := adEntry("CN=Alice,OU=Staff,DC=corp,DC=example", map[string][]byte{
-		"objectGUID": make([]byte, 16), "sAMAccountName": []byte("alice"), "userAccountControl": []byte("512"),
-	})
-	computers := slices.Insert(computerEntries(120), 50, adEntry("CN=Broken,CN=Computers,DC=corp,DC=example", map[string][]byte{
-		"objectGUID": make([]byte, 16), "sAMAccountName": []byte("BROKEN$"), "userAccountControl": []byte("4096"),
-	}))
-	h.dir.byBase = map[string][]domain.Entry{"OU=Staff,DC=corp,DC=example": {user}, "CN=Computers,DC=corp,DC=example": computers}
-	h.dir.root = domain.RootInfo{Server: "CN=DC1", HighestUSN: 70}
-	h.syncer.Dialect, h.syncer.Mapping = domain.ActiveDirectory, mapping
-	h.syncer.Scope = domain.Scope{BaseDNs: []string{"OU=Staff,DC=corp,DC=example"}, Filter: domain.DefaultUserFilter(domain.ActiveDirectory)}
-	h.syncer.Computers = &domain.Scope{BaseDNs: []string{"CN=Computers,DC=corp,DC=example"}, Filter: domain.DefaultComputerFilter}
-
-	result, err := h.syncer.SyncOnce(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	wantCalls := []string{"heartbeat", "start full", "batch run1-1", "computers run1-computers-1", "computers run1-computers-2", "complete run1 121"}
-	if !slices.Equal(h.api.calls, wantCalls) {
-		t.Fatalf("calls = %v, want %v", h.api.calls, wantCalls)
-	}
-	first, last := h.api.computers["run1-computers-1"][0], h.api.computers["run1-computers-2"][19]
-	if len(h.api.computers["run1-computers-1"]) != 100 || first.SAMAccountName != "WS0$" || first.Domain != "corp.example" ||
-		first.ObjectSID != "S-1-5-21-0" || last.SAMAccountName != "WS119$" || !first.Enabled {
-		t.Fatalf("first=%+v last=%+v", first, last)
-	}
-	if result.Items != 121 || result.Skipped != 1 {
-		t.Fatalf("result = %+v", result)
-	}
-	if !strings.Contains(h.log.String(), "CN=Broken,CN=Computers,DC=corp,DC=example") {
-		t.Fatalf("log does not name the skipped computer: %s", h.log.String())
-	}
-	if h.cursors.cursor == nil || h.cursors.cursor.Computers == nil {
-		t.Fatalf("cursor = %+v, want the computer scope", h.cursors.cursor)
-	}
-
-	if _, err := h.syncer.SyncOnce(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	if want := "(&" + domain.DefaultComputerFilter + "(uSNChanged>=71))"; h.dir.filters[len(h.dir.filters)-1] != want {
-		t.Fatalf("second computer filter = %s, want %s", h.dir.filters[len(h.dir.filters)-1], want)
-	}
-}
-
-//spec:covers REQ-DIRECTORYCONNECTOR-007: computers の節がない同期は、コンピューターを検索も送信もしない。
-func TestSyncWithoutComputersReadsOnlyUsers(t *testing.T) {
-	h := newHarness(t, people(3))
-	if _, err := h.syncer.SyncOnce(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	if len(h.dir.filters) != 1 || len(h.api.computers) != 0 {
-		t.Fatalf("filters = %v, computer batches = %v", h.dir.filters, h.api.computers)
 	}
 }

@@ -298,7 +298,6 @@ type runJSON struct {
 	CompletedAt *time.Time `json:"completed_at"`
 	Counts      struct {
 		Batches, Items, Created, Updated, Unchanged, Deleted, Failed, Disabled int
-		DisabledComputers                                                      int `json:"disabled_computers"`
 	} `json:"counts"`
 	Failures []struct {
 		BatchID    string `json:"batch_id"`
@@ -630,4 +629,21 @@ func TestAdministratorsReadIngestionRunsAndFailures(t *testing.T) {
 	expectStatus(t, h.do(request{method: http.MethodGet, path: base, admin: "other-admin", realm: "other"}), http.StatusNotFound, "directory_connector_not_found")
 	expectStatus(t, h.do(request{method: http.MethodGet, path: base + "/" + uuid.NewString(), admin: "admin"}), http.StatusNotFound, "ingestion_run_not_found")
 	expectStatus(t, h.do(request{method: http.MethodGet, path: base, admin: "member"}), http.StatusForbidden, "access_denied")
+}
+
+//spec:covers REQ-SOURCING-018: 実行は User のバッチだけを受け、完了の項目数を User のバッチの項目数の和と照合する。
+func TestIngestionRunsAcceptOnlyUserBatches(t *testing.T) {
+	h := newIngestion(t)
+	ad := h.enrolled()
+	run := h.startRun(ad, "full")
+	expectResults(t, h.apply(ad, run, "b1", alice("alice")), result{"guid-alice", "created", ""})
+	computers := h.do(request{
+		method: http.MethodPost, path: "/directory-connector/v1/ingestion-runs/" + run + "/computer-batches",
+		body: map[string]any{"batch_id": "c1", "items": []item{{"external_id": "guid-ws1"}}}, connector: ad,
+	})
+	if computers.Code != http.StatusNotFound && computers.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("computer batch status = %d, want no such route; body=%s", computers.Code, computers.Body.String())
+	}
+	expectStatus(t, h.complete(ad, run, 2), http.StatusConflict, "ingestion_run_incomplete")
+	expectStatus(t, h.complete(ad, run, 1), http.StatusOK, "")
 }

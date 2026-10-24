@@ -75,32 +75,6 @@ func TestMainRefusesAnInvalidConfiguration(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-DIRECTORYCONNECTOR-002, REQ-DIRECTORYCONNECTOR-007: computers の節は AD でだけ受け付けてデフォルトのフィルターを補い、AD でない方言、起点のない節、重なる起点、壊れたフィルターを拒否する。
-func TestLoadConfigReadsTheComputersSection(t *testing.T) {
-	dir := t.TempDir()
-	ad := strings.Replace(baseConfig(t, dir, "https://idp.test/realms/acme"), "dialect: openldap", "dialect: active_directory", 1)
-	plain, err := cli.LoadConfig(write(t, dir, "config.yaml", ad))
-	if err != nil || plain.Computers != nil {
-		t.Fatalf("no computers section: computers=%+v err=%v", plain.Computers, err)
-	}
-	config, err := cli.LoadConfig(write(t, dir, "config.yaml", ad+"computers:\n  base_dns: [\"CN=Computers,DC=example,DC=test\"]\n"))
-	if err != nil || config.Computers == nil || config.Computers.Filter != "(objectCategory=computer)" ||
-		len(config.Computers.BaseDNs) != 1 {
-		t.Fatalf("computers = %+v, err = %v", config.Computers, err)
-	}
-	for name, content := range map[string]string{
-		"openldap":       baseConfig(t, dir, "https://idp.test/realms/acme") + "computers:\n  base_dns: [\"ou=hosts,dc=example\"]\n",
-		"no base dns":    ad + "computers:\n  filter: (objectClass=computer)\n",
-		"nested":         ad + "computers:\n  base_dns: [\"DC=example,DC=test\", \"CN=Computers,DC=example,DC=test\"]\n",
-		"broken filter":  ad + "computers:\n  base_dns: [\"CN=Computers,DC=example,DC=test\"]\n  filter: (objectClass=computer\n",
-		"unknown option": ad + "computers:\n  base_dns: [\"CN=Computers,DC=example,DC=test\"]\n  attributes: {}\n",
-	} {
-		if _, err := cli.LoadConfig(write(t, dir, "config.yaml", content)); err == nil {
-			t.Errorf("%s: the configuration was accepted", name)
-		}
-	}
-}
-
 // 設定のデフォルト値は仕様の値であり、page_size は 1 と 1000 を受け付ける。
 func TestLoadConfigAppliesTheDefaultsAndPageSizeBounds(t *testing.T) {
 	dir := t.TempDir()

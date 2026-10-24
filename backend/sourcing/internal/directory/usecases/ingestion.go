@@ -34,7 +34,6 @@ var (
 type IngestionDeps struct {
 	Runs         ports.IngestionRunRepository
 	Correlations ports.CorrelationRepository
-	Computers    ports.ComputerRepository
 	Users        userports.UserRepository
 	Writes       directoryports.IdentityWrites
 	Lifecycle    directoryports.UserLifecycle
@@ -85,29 +84,14 @@ func (i *Ingestion) StartRun(ctx context.Context, tenantID, connectorID, mode st
 // ApplyUserBatch は項目を順に一件ずつ確定し、項目ごとの結果を返す。適用し終えたバッチは記録し、
 // 同じバッチの再送には適用し直さずに記録した結果を返す。
 func (i *Ingestion) ApplyUserBatch(ctx context.Context, tenantID, connectorID, runID, batchID string, items []domain.UserItem) ([]domain.ItemResult, error) {
-	return applyBatch(ctx, i, tenantID, connectorID, runID, batchID, items,
-		domain.ValidateUserBatch, domain.BatchDigest, i.applyItem)
-}
-
-// ApplyComputerBatch は、コンピューターの項目を User のバッチと同じ記録と再送の規則で確定する。
-func (i *Ingestion) ApplyComputerBatch(ctx context.Context, tenantID, connectorID, runID, batchID string, items []domain.ComputerItem) ([]domain.ItemResult, error) {
-	return applyBatch(ctx, i, tenantID, connectorID, runID, batchID, items,
-		domain.ValidateComputerBatch, domain.ComputerBatchDigest, i.applyComputer)
-}
-
-// applyBatch は、記録したバッチなら記録した結果を返し、そうでなければ項目を順に一件ずつ確定して記録する。
-func applyBatch[T any](ctx context.Context, i *Ingestion, tenantID, connectorID, runID, batchID string, items []T,
-	validate func(string, []T) error, digestOf func([]T) string,
-	apply func(context.Context, domain.IngestionRun, T) (domain.ItemResult, error),
-) ([]domain.ItemResult, error) {
 	run, err := i.findRun(ctx, tenantID, connectorID, runID)
 	if err != nil {
 		return nil, err
 	}
-	if err := validate(batchID, items); err != nil {
+	if err := domain.ValidateUserBatch(batchID, items); err != nil {
 		return nil, err
 	}
-	digest := digestOf(items)
+	digest := domain.BatchDigest(items)
 	if recorded, err := i.deps.Runs.FindBatch(ctx, tenantID, runID, batchID); err != nil || recorded != nil {
 		if err != nil {
 			return nil, err
@@ -119,7 +103,7 @@ func applyBatch[T any](ctx context.Context, i *Ingestion, tenantID, connectorID,
 	}
 	results := make([]domain.ItemResult, len(items))
 	for n, item := range items {
-		if results[n], err = apply(ctx, run, item); err != nil {
+		if results[n], err = i.applyItem(ctx, run, item); err != nil {
 			return nil, err
 		}
 	}
@@ -155,25 +139,21 @@ func (i *Ingestion) CompleteRun(ctx context.Context, tenantID, connectorID, runI
 	case itemCount != run.Counts.Items:
 		return domain.IngestionRun{}, ErrRunIncomplete
 	}
-	disabled, disabledComputers := 0, 0
+	disabled := 0
 	if run.Mode == domain.ModeFull {
 		if disabled, err = i.disableNotSeen(ctx, run); err != nil {
 			return domain.IngestionRun{}, err
 		}
-		if disabledComputers, err = i.deps.Computers.DisableNotSeenIn(ctx, tenantID, connectorID, runID, i.now().UTC()); err != nil {
-			return domain.IngestionRun{}, err
-		}
 	}
 	completedAt := i.now().UTC()
-	changed, err := i.deps.Runs.Complete(ctx, tenantID, runID, completedAt, disabled, disabledComputers)
+	changed, err := i.deps.Runs.Complete(ctx, tenantID, runID, completedAt, disabled)
 	if err != nil {
 		return domain.IngestionRun{}, err
 	}
 	if !changed {
 		return domain.IngestionRun{}, ErrRunClosed
 	}
-	run.Status, run.CompletedAt = domain.RunCompleted, &completedAt
-	run.Counts.Disabled, run.Counts.DisabledComputers = disabled, disabledComputers
+	run.Status, run.CompletedAt, run.Counts.Disabled = domain.RunCompleted, &completedAt, disabled
 	return run, nil
 }
 
@@ -325,69 +305,6 @@ func (i *Ingestion) applyToCorrelatedUser(ctx context.Context, run domain.Ingest
 		return outcome(item, domain.OutcomeUpdated), nil
 	}
 	return outcome(item, domain.OutcomeUnchanged), nil
-}
-
-// applyComputer は一つのコンピューターの項目を確定する。同じ SID か主体名を持つ同じ Connector の
-// 別の有効なコンピューターは無効にし、別の Connector が持っていれば項目を失敗にする (REQ-SOURCING-020)。
-func (i *Ingestion) applyComputer(ctx context.Context, run domain.IngestionRun, item domain.ComputerItem) (domain.ItemResult, error) {
-	result, err := i.writeComputer(ctx, run, item)
-	if err != nil {
-		return domain.ItemResult{}, err
-	}
-	if err := i.deps.Computers.MarkSeen(ctx, run.TenantID, run.ConnectorID, item.ExternalID, run.ID); err != nil {
-		return domain.ItemResult{}, err
-	}
-	return result, nil
-}
-
-func (i *Ingestion) writeComputer(ctx context.Context, run domain.IngestionRun, item domain.ComputerItem) (domain.ItemResult, error) {
-	existing, err := i.deps.Computers.Find(ctx, run.TenantID, run.ConnectorID, item.ExternalID)
-	if err != nil {
-		return domain.ItemResult{}, err
-	}
-	if existing != nil && existing.ComputerItem == item {
-		return computerOutcome(item, domain.OutcomeUnchanged), nil
-	}
-	if item.Enabled {
-		holders, err := i.deps.Computers.FindEnabledHolders(ctx, run.TenantID, item.ObjectSID, domain.PrincipalKey(item.SAMAccountName, item.Domain))
-		if err != nil {
-			return domain.ItemResult{}, err
-		}
-		for _, holder := range holders {
-			switch {
-			case holder.ConnectorID != run.ConnectorID:
-				return computerFailed(item), nil
-			case holder.ExternalID != item.ExternalID:
-				holder.Enabled, holder.UpdatedAt = false, i.now().UTC()
-				if err := i.deps.Computers.Save(ctx, holder); err != nil {
-					return domain.ItemResult{}, err
-				}
-			}
-		}
-	}
-	err = i.deps.Computers.Save(ctx, domain.Computer{
-		TenantID: run.TenantID, ConnectorID: run.ConnectorID, ComputerItem: item,
-		LastSeenRunID: run.ID, UpdatedAt: i.now().UTC(),
-	})
-	switch {
-	case errors.Is(err, domain.ErrComputerConflict):
-		// 確かめた後に別の Connector が同じ値を取った。
-		return computerFailed(item), nil
-	case err != nil:
-		return domain.ItemResult{}, err
-	case existing == nil:
-		return computerOutcome(item, domain.OutcomeCreated), nil
-	default:
-		return computerOutcome(item, domain.OutcomeUpdated), nil
-	}
-}
-
-func computerOutcome(item domain.ComputerItem, outcome domain.ItemOutcome) domain.ItemResult {
-	return domain.ItemResult{ExternalID: item.ExternalID, Outcome: outcome}
-}
-
-func computerFailed(item domain.ComputerItem) domain.ItemResult {
-	return domain.ItemResult{ExternalID: item.ExternalID, Outcome: domain.OutcomeFailed, Error: domain.ItemErrorComputerConflict}
 }
 
 // sourceAttributes は項目を取り込み元の属性へ写す。Directory Connector は manager を管理しない。

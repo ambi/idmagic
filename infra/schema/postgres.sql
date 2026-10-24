@@ -1314,36 +1314,6 @@ CREATE TABLE directory_user_correlations (
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE directory_computers (
-    tenant_id UUID NOT NULL,
-    connector_id UUID NOT NULL,
-    -- objectGUID の base64。正規化せずに比べる。
-    external_id TEXT NOT NULL,
-    sam_account_name TEXT NOT NULL,
-    object_sid TEXT NOT NULL,
-    domain TEXT NOT NULL,
-    dns_host_name TEXT NOT NULL,
-    -- 小文字にした <sam_account_name>@<domain>。Kerberos の主体名で引くときの鍵である。
-    principal_key TEXT NOT NULL,
-    enabled BOOLEAN NOT NULL,
-    -- 最後に現れた取り込みの実行。完全な再同期の完了が、現れなかったコンピューターを探すのに使う。
-    last_seen_run_id UUID NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (tenant_id, connector_id, external_id),
-    CONSTRAINT directory_computers_external_id_length
-        CHECK (char_length(external_id) BETWEEN 1 AND 256),
-    CONSTRAINT directory_computers_principal_key_lower
-        CHECK (principal_key = lower(sam_account_name) || '@' || lower(domain)),
-    CONSTRAINT directory_computers_connector_fkey
-        FOREIGN KEY (connector_id) REFERENCES directory_connectors(id) ON DELETE RESTRICT
-);
-
--- 有効なコンピューターの間で SID と主体名をそれぞれ一意にし、引く操作を一件に絞る。
-CREATE UNIQUE INDEX directory_computers_enabled_sid_key
-    ON directory_computers (tenant_id, object_sid) WHERE enabled;
-CREATE UNIQUE INDEX directory_computers_enabled_principal_key
-    ON directory_computers (tenant_id, principal_key) WHERE enabled;
-
 CREATE TABLE directory_ingestion_runs (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -1361,7 +1331,6 @@ CREATE TABLE directory_ingestion_runs (
     deleted INTEGER NOT NULL DEFAULT 0,
     failed INTEGER NOT NULL DEFAULT 0,
     disabled INTEGER NOT NULL DEFAULT 0,
-    disabled_computers INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT directory_ingestion_runs_mode_valid CHECK (mode IN ('full', 'incremental')),
     CONSTRAINT directory_ingestion_runs_status_valid CHECK (status IN ('running', 'completed', 'superseded')),
     CONSTRAINT directory_ingestion_runs_connector_fkey

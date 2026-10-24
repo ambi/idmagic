@@ -24,7 +24,6 @@ func NewMemoryModule() Module {
 	return Module{
 		ScimRepo: db_memory.NewScimRepository(), connectors: directorymemory.NewConnectorRepository(),
 		correlations: correlations, memoryCorrelations: correlations, runs: directorymemory.NewIngestionRunRepository(),
-		computers: directorymemory.NewComputerRepository(),
 	}
 }
 
@@ -34,7 +33,6 @@ func NewPostgresModule(pool postgres.DB) Module {
 		connectors:   &directorypostgres.ConnectorRepository{Pool: pool},
 		correlations: &directorypostgres.CorrelationRepository{Pool: pool},
 		runs:         &directorypostgres.IngestionRunRepository{Pool: pool},
-		computers:    &directorypostgres.ComputerRepository{Pool: pool},
 	}
 }
 

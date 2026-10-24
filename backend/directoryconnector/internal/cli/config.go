@@ -38,10 +38,6 @@ type fileConfig struct {
 		PageSize         *int              `yaml:"page_size"`
 		Attributes       map[string]string `yaml:"attributes"`
 	} `yaml:"ldap"`
-	Computers *struct {
-		BaseDNs []string `yaml:"base_dns"`
-		Filter  string   `yaml:"filter"`
-	} `yaml:"computers"`
 	Sync struct {
 		Interval     string `yaml:"interval"`
 		FullInterval string `yaml:"full_interval"`
@@ -53,13 +49,11 @@ type Config struct {
 	RealmURL   string
 	IdMagicTLS *tls.Config
 	// Proxy は IdMagic への要求を中継するプロキシである。nil なら直接つなぐ。
-	Proxy    *url.URL
-	StateDir string
-	LDAP     ldap_goldap.Config
-	Dialect  domain.Dialect
-	Scope    domain.Scope
-	// Computers は AD のコンピューターの検索の範囲である。computers の節がなければ nil である。
-	Computers    *domain.Scope
+	Proxy        *url.URL
+	StateDir     string
+	LDAP         ldap_goldap.Config
+	Dialect      domain.Dialect
+	Scope        domain.Scope
 	Mapping      domain.Mapping
 	Interval     time.Duration
 	FullInterval time.Duration
@@ -127,11 +121,6 @@ func LoadConfig(path string) (Config, error) {
 	if config.Mapping, err = domain.EffectiveMapping(config.Dialect, file.LDAP.Attributes); err != nil {
 		return Config{}, err
 	}
-	if file.Computers != nil {
-		if config.Computers, err = computerScope(config.Dialect, file.Computers.BaseDNs, file.Computers.Filter); err != nil {
-			return Config{}, err
-		}
-	}
 	pageSize := defaultPageSize
 	if file.LDAP.PageSize != nil {
 		pageSize = *file.LDAP.PageSize
@@ -162,22 +151,6 @@ func LoadConfig(path string) (Config, error) {
 		return Config{}, err
 	}
 	return config, nil
-}
-
-// computerScope は computers の節を検証し、フィルターのデフォルト値を補う (REQ-DIRECTORYCONNECTOR-002)。
-func computerScope(dialect domain.Dialect, baseDNs []string, filter string) (*domain.Scope, error) {
-	if dialect != domain.ActiveDirectory {
-		return nil, errors.New("computers needs ldap.dialect active_directory")
-	}
-	if err := domain.ValidateBaseDNs(baseDNs); err != nil {
-		return nil, fmt.Errorf("computers: %w", err)
-	}
-	if filter == "" {
-		filter = domain.DefaultComputerFilter
-	} else if err := ldap_goldap.ValidateFilter(filter); err != nil {
-		return nil, fmt.Errorf("computers.filter: %w", err)
-	}
-	return &domain.Scope{BaseDNs: baseDNs, Filter: filter}, nil
 }
 
 func tlsConfig(caFile, serverName, field string) (*tls.Config, error) {

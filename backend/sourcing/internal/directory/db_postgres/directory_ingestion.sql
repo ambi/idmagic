@@ -55,6 +55,5 @@ WHERE tenant_id = sqlc.arg(tenant_id) AND id = sqlc.arg(id);
 SELECT * FROM directory_ingestion_batches WHERE tenant_id = $1 AND run_id = $2 ORDER BY sequence;
 
 -- name: CompleteDirectoryIngestionRun :execrows
-UPDATE directory_ingestion_runs SET status = 'completed', completed_at = sqlc.arg(completed_at), disabled = sqlc.arg(disabled),
-    disabled_computers = sqlc.arg(disabled_computers)
+UPDATE directory_ingestion_runs SET status = 'completed', completed_at = sqlc.arg(completed_at), disabled = sqlc.arg(disabled)
 WHERE tenant_id = sqlc.arg(tenant_id) AND id = sqlc.arg(id) AND status = 'running';

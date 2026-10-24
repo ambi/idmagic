@@ -679,16 +679,6 @@ op SendDirectoryUserBatch(
   @body body: IdMagic.Contract.DirectoryUserBatchRequest
 ): DirectoryUserBatchSuccess_200 | DirectoryIngestionError400 | DirectoryConnectorInvalidTokenError401 | IngestionRunNotFoundError404 | SendDirectoryUserBatchError409;
 
-@doc("Directory Connector が `running` の実行へ AD のコンピューターアカウントの項目のバッチを送る。項目を順に一件ずつ確定し、項目ごとの結果を返す。同じ ID と同じ項目の再送は、適用し直さずに最初の結果を返す。")
-@TypeSpec.OpenAPI.operationId("SendDirectoryComputerBatch")
-@route("/directory-connector/v1/ingestion-runs/{run_id}/computer-batches")
-@post
-op SendDirectoryComputerBatch(
-  @header authorization: string,
-  @path run_id: string,
-  @body body: IdMagic.Contract.DirectoryComputerBatchRequest
-): DirectoryUserBatchSuccess_200 | DirectoryIngestionError400 | DirectoryConnectorInvalidTokenError401 | IngestionRunNotFoundError404 | SendDirectoryUserBatchError409;
-
 union CompleteDirectoryIngestionRunError409Body {
   IdMagic.Contract.IngestionRunIncompleteError,
   IdMagic.Contract.IngestionRunClosedError,

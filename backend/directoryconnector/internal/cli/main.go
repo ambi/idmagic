@@ -70,7 +70,7 @@ func check(ctx context.Context, config Config, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "check: %v\n", err)
 		return 2
 	}
-	result, err := usecases.Check(ctx, directory, config.Dialect, config.Scope, config.Computers, config.Mapping)
+	result, err := usecases.Check(ctx, directory, config.Dialect, config.Scope, config.Mapping)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "check: %v\n", err)
 		return 1
@@ -78,13 +78,6 @@ func check(ctx context.Context, config Config, stdout, stderr io.Writer) int {
 	_, _ = fmt.Fprintf(stdout, "%d users would be sent, %d entries would be skipped\n", result.Items, len(result.Skipped))
 	for _, skipped := range result.Skipped {
 		_, _ = fmt.Fprintf(stdout, "skipped %s: missing %s\n", skipped.DN, skipped.Attribute)
-	}
-	if config.Computers == nil {
-		return 0
-	}
-	_, _ = fmt.Fprintf(stdout, "%d computers would be sent, %d computer entries would be skipped\n", result.Computers, len(result.SkippedComputers))
-	for _, skipped := range result.SkippedComputers {
-		_, _ = fmt.Fprintf(stdout, "skipped computer %s: missing %s\n", skipped.DN, skipped.Attribute)
 	}
 	return 0
 }
@@ -124,7 +117,7 @@ func run(ctx context.Context, config Config, httpClient *http.Client, once bool,
 	}
 	syncer := usecases.Syncer{
 		Directory: directory, API: api_http.NewClient(config.RealmURL, httpClient, key, enrollment, time.Now), Cursors: store,
-		Dialect: config.Dialect, Scope: config.Scope, Computers: config.Computers, Mapping: config.Mapping, FullInterval: config.FullInterval,
+		Dialect: config.Dialect, Scope: config.Scope, Mapping: config.Mapping, FullInterval: config.FullInterval,
 		Now: time.Now, Sleep: sleep, Log: log,
 	}
 	if !once {

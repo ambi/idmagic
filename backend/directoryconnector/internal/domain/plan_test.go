@@ -66,7 +66,7 @@ func TestPlanRun(t *testing.T) {
 		},
 	}
 	for name, c := range cases {
-		plan := PlanRun(c.dialect, c.scope, nil, c.prev, c.root, started, day)
+		plan := PlanRun(c.dialect, c.scope, c.prev, c.root, started, day)
 		if plan.Mode != c.wantMode || plan.Filter != c.wantFilter {
 			t.Errorf("%s: mode=%s filter=%s, want %s %s", name, plan.Mode, plan.Filter, c.wantMode, c.wantFilter)
 		}
@@ -108,38 +108,6 @@ func TestValidateBaseDNs(t *testing.T) {
 	} {
 		if err := ValidateBaseDNs(baseDNs); err == nil {
 			t.Errorf("%s: accepted %v", name, baseDNs)
-		}
-	}
-}
-
-//spec:covers REQ-DIRECTORYCONNECTOR-003, REQ-DIRECTORYCONNECTOR-007: コンピューターの検索の範囲が位置と異なれば full にし、incremental ではコンピューターにも User と同じ uSNChanged の条件を付け、次の位置に範囲を残す。
-func TestPlanRunWithComputers(t *testing.T) {
-	started := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
-	users := Scope{BaseDNs: []string{"OU=Staff,DC=corp"}, Filter: DefaultUserFilter(ActiveDirectory)}
-	computers := &Scope{BaseDNs: []string{"CN=Computers,DC=corp"}, Filter: DefaultComputerFilter}
-	root := RootInfo{Server: "CN=NTDS Settings,CN=DC1", HighestUSN: 9000}
-	prev := &Cursor{Dialect: ActiveDirectory, Scope: users, Computers: computers, Server: root.Server, USN: 4000, LastFullAt: started.Add(-time.Hour)}
-
-	plan := PlanRun(ActiveDirectory, users, computers, prev, root, started, 24*time.Hour)
-	if plan.Mode != ModeIncremental || plan.ComputerFilter != "(&"+DefaultComputerFilter+"(uSNChanged>=4001))" {
-		t.Fatalf("incremental plan = %+v", plan)
-	}
-	if plan.Next.Computers == nil || !plan.Next.Computers.Equal(*computers) {
-		t.Fatalf("next cursor computers = %+v", plan.Next.Computers)
-	}
-	moved := &Scope{BaseDNs: []string{"OU=Laptops,DC=corp"}, Filter: DefaultComputerFilter}
-	for name, scope := range map[string]*Scope{"added": computers, "moved": moved, "removed": nil} {
-		previous := *prev
-		if name == "added" {
-			previous.Computers = nil
-		}
-		plan := PlanRun(ActiveDirectory, users, scope, &previous, root, started, 24*time.Hour)
-		wantFilter := ""
-		if scope != nil {
-			wantFilter = scope.Filter
-		}
-		if plan.Mode != ModeFull || plan.ComputerFilter != wantFilter {
-			t.Errorf("%s: plan = %+v, want a full run", name, plan)
 		}
 	}
 }

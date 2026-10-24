@@ -50,24 +50,21 @@ func (q *Queries) AddDirectoryIngestionRunCounts(ctx context.Context, arg AddDir
 }
 
 const completeDirectoryIngestionRun = `-- name: CompleteDirectoryIngestionRun :execrows
-UPDATE directory_ingestion_runs SET status = 'completed', completed_at = $1, disabled = $2,
-    disabled_computers = $3
-WHERE tenant_id = $4 AND id = $5 AND status = 'running'
+UPDATE directory_ingestion_runs SET status = 'completed', completed_at = $1, disabled = $2
+WHERE tenant_id = $3 AND id = $4 AND status = 'running'
 `
 
 type CompleteDirectoryIngestionRunParams struct {
-	CompletedAt       pgtype.Timestamptz
-	Disabled          int32
-	DisabledComputers int32
-	TenantID          string
-	ID                string
+	CompletedAt pgtype.Timestamptz
+	Disabled    int32
+	TenantID    string
+	ID          string
 }
 
 func (q *Queries) CompleteDirectoryIngestionRun(ctx context.Context, arg CompleteDirectoryIngestionRunParams) (int64, error) {
 	result, err := q.db.Exec(ctx, completeDirectoryIngestionRun,
 		arg.CompletedAt,
 		arg.Disabled,
-		arg.DisabledComputers,
 		arg.TenantID,
 		arg.ID,
 	)
@@ -129,7 +126,7 @@ func (q *Queries) FindDirectoryIngestionBatch(ctx context.Context, arg FindDirec
 }
 
 const findDirectoryIngestionRun = `-- name: FindDirectoryIngestionRun :one
-SELECT id, tenant_id, connector_id, mode, status, started_at, completed_at, batches, items, created, updated, unchanged, deleted, failed, disabled, disabled_computers FROM directory_ingestion_runs WHERE tenant_id = $1 AND connector_id = $2 AND id = $3
+SELECT id, tenant_id, connector_id, mode, status, started_at, completed_at, batches, items, created, updated, unchanged, deleted, failed, disabled FROM directory_ingestion_runs WHERE tenant_id = $1 AND connector_id = $2 AND id = $3
 `
 
 type FindDirectoryIngestionRunParams struct {
@@ -157,7 +154,6 @@ func (q *Queries) FindDirectoryIngestionRun(ctx context.Context, arg FindDirecto
 		&i.Deleted,
 		&i.Failed,
 		&i.Disabled,
-		&i.DisabledComputers,
 	)
 	return &i, err
 }
@@ -282,7 +278,7 @@ func (q *Queries) ListDirectoryIngestionBatches(ctx context.Context, arg ListDir
 }
 
 const listDirectoryIngestionRuns = `-- name: ListDirectoryIngestionRuns :many
-SELECT id, tenant_id, connector_id, mode, status, started_at, completed_at, batches, items, created, updated, unchanged, deleted, failed, disabled, disabled_computers FROM directory_ingestion_runs WHERE tenant_id = $1 AND connector_id = $2
+SELECT id, tenant_id, connector_id, mode, status, started_at, completed_at, batches, items, created, updated, unchanged, deleted, failed, disabled FROM directory_ingestion_runs WHERE tenant_id = $1 AND connector_id = $2
 ORDER BY started_at DESC, id DESC LIMIT $3
 `
 
@@ -317,7 +313,6 @@ func (q *Queries) ListDirectoryIngestionRuns(ctx context.Context, arg ListDirect
 			&i.Deleted,
 			&i.Failed,
 			&i.Disabled,
-			&i.DisabledComputers,
 		); err != nil {
 			return nil, err
 		}

@@ -81,42 +81,34 @@ type RootInfo struct {
 type Cursor struct {
 	Dialect       Dialect   `json:"dialect"`
 	Scope         Scope     `json:"scope"`
-	Computers     *Scope    `json:"computers,omitempty"`
 	Server        string    `json:"server,omitempty"`
 	USN           int64     `json:"usn,omitempty"`
 	ModifiedSince time.Time `json:"modified_since,omitzero"`
 	LastFullAt    time.Time `json:"last_full_at"`
 }
 
-// Plan は一回の実行の種類、検索のフィルター、完了したときに保存する位置である。ComputerFilter は
-// コンピューターを読まない設定では空である。
+// Plan は一回の実行の種類、検索のフィルター、完了したときに保存する位置である。
 type Plan struct {
-	Mode           Mode
-	Filter         string
-	ComputerFilter string
-	Next           Cursor
+	Mode   Mode
+	Filter string
+	Next   Cursor
 }
 
 // modifiedSinceOverlap は、OpenLDAP の差分で検索の最中の変更と時計のずれを重ねて読む幅である。
 const modifiedSinceOverlap = 5 * time.Minute
 
 // PlanRun は前回の位置から実行の種類を選ぶ (REQ-DIRECTORYCONNECTOR-003)。root は検索の前に読んだ値で、
-// startedAt は検索を始める時刻である。computers はコンピューターの検索の範囲で、読まない設定では nil である
-// (REQ-DIRECTORYCONNECTOR-007)。
-func PlanRun(dialect Dialect, scope Scope, computers *Scope, prev *Cursor, root RootInfo, startedAt time.Time, fullInterval time.Duration) Plan {
-	next := Cursor{Dialect: dialect, Scope: scope, Computers: computers, LastFullAt: startedAt}
+// startedAt は検索を始める時刻である。
+func PlanRun(dialect Dialect, scope Scope, prev *Cursor, root RootInfo, startedAt time.Time, fullInterval time.Duration) Plan {
+	next := Cursor{Dialect: dialect, Scope: scope, LastFullAt: startedAt}
 	switch dialect {
 	case ActiveDirectory:
 		next.Server, next.USN = root.Server, root.HighestUSN
 	case OpenLDAP:
 		next.ModifiedSince = startedAt.Add(-modifiedSinceOverlap).UTC()
 	}
-	if needsFullSync(dialect, scope, computers, prev, root, startedAt, fullInterval) {
-		plan := Plan{Mode: ModeFull, Filter: scope.Filter, Next: next}
-		if computers != nil {
-			plan.ComputerFilter = computers.Filter
-		}
-		return plan
+	if needsFullSync(dialect, scope, prev, root, startedAt, fullInterval) {
+		return Plan{Mode: ModeFull, Filter: scope.Filter, Next: next}
 	}
 	next.LastFullAt = prev.LastFullAt
 	var since string
@@ -125,18 +117,12 @@ func PlanRun(dialect Dialect, scope Scope, computers *Scope, prev *Cursor, root 
 	} else {
 		since = "(modifyTimestamp>=" + prev.ModifiedSince.UTC().Format("20060102150405Z") + ")"
 	}
-	plan := Plan{Mode: ModeIncremental, Filter: "(&" + scope.Filter + since + ")", Next: next}
-	if computers != nil {
-		plan.ComputerFilter = "(&" + computers.Filter + since + ")"
-	}
-	return plan
+	return Plan{Mode: ModeIncremental, Filter: "(&" + scope.Filter + since + ")", Next: next}
 }
 
-func needsFullSync(dialect Dialect, scope Scope, computers *Scope, prev *Cursor, root RootInfo, startedAt time.Time, fullInterval time.Duration) bool {
+func needsFullSync(dialect Dialect, scope Scope, prev *Cursor, root RootInfo, startedAt time.Time, fullInterval time.Duration) bool {
 	switch {
 	case prev == nil, prev.Dialect != dialect, !prev.Scope.Equal(scope):
-		return true
-	case (prev.Computers == nil) != (computers == nil), computers != nil && !prev.Computers.Equal(*computers):
 		return true
 	case dialect == ActiveDirectory && prev.Server != root.Server:
 		return true
