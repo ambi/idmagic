@@ -61,6 +61,61 @@ function kinds(sources: GoSource[], rows?: string[]): string[] {
 }
 
 describe('parseLogicalArchitecture', () => {
+  const frontendRow =
+    '| [Frontend](frontend/README.md) | `HTTP` | なし | `frontend/` | 画面とゲートウェイ |'
+  const implementationTable = (rows: string[]) =>
+    logicalArchitecture(rows).replace('Go パッケージ', '実装パス').replace(', `frontend/`', '')
+
+  it('HTTP 契約だけを使う非 Go モジュールを実装パスで分類する', () => {
+    const model = parseLogicalArchitecture(implementationTable([...ROWS, frontendRow]))
+
+    expect(model.modules).toContainEqual({
+      name: 'Frontend',
+      packagePrefixes: ['frontend'],
+      publicPackages: [],
+    })
+    expect(model.compositionPrefixes).toEqual(['backend/cmd', 'backend/shared/http/server_http'])
+  })
+
+  it.each([
+    [
+      frontendRow.replace('`frontend/`', 'なし'),
+      'Frontend: the responsibility table must declare an implementation path',
+    ],
+    [
+      frontendRow.replace('`frontend/`', '`backend/frontend`'),
+      'Frontend: HTTP modules must not declare backend implementation paths',
+    ],
+    [
+      frontendRow.replace('| なし |', '| `backend/supplier/ports` |'),
+      'Frontend: HTTP modules must not declare public Go packages',
+    ],
+    [
+      frontendRow.replace('`HTTP`', '`internal`'),
+      'Frontend: internal modules must declare only backend implementation paths',
+    ],
+  ])('不正な HTTP モジュールの宣言を拒否する: %s', (row, diagnostic) => {
+    expect(() => parseLogicalArchitecture(implementationTable([...ROWS, row]))).toThrow(diagnostic)
+  })
+
+  it('非 Go 実装を組み立て地点へ戻す宣言を拒否する', () => {
+    const table = implementationTable([...ROWS, frontendRow]).replace(
+      '`backend/cmd`',
+      '`backend/cmd`, `frontend`',
+    )
+    expect(() => parseLogicalArchitecture(table)).toThrow(
+      'System: composition points must declare only backend implementation paths',
+    )
+  })
+
+  it('非 Go 実装パスの重複した割り当てを拒否する', () => {
+    expect(() =>
+      parseLogicalArchitecture(
+        implementationTable([...ROWS, frontendRow, frontendRow.replace('Frontend', 'OtherUI')]),
+      ),
+    ).toThrow('frontend is assigned more than once')
+  })
+
   it('reads modules, public packages, and composition prefixes from the responsibility table', () => {
     expect(
       parseLogicalArchitecture(logicalArchitecture([PRIVATE_CUSTOMER_ROW, INTERNAL_SUPPLIER_ROW])),

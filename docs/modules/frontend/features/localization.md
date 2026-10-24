@@ -2,7 +2,7 @@
 
 ## 概要
 
-この文書は、ホステッドの認証画面、管理コンソール、アカウントポータルの表示言語の決め方と、API のエラーの言語の仕様である。
+この文書は、ホステッドの認証画面、管理コンソール、アカウントポータルの表示言語と、API のエラーを表示する言語の仕様である。
 
 | 項目 | 内容 |
 | --- | --- |
@@ -10,12 +10,15 @@
 | 行為者 | EndUser、Administrator、ResourceOwner、Operator、APIConsumer |
 | 扱わないもの | 通知メールの言語はテナントの設定と通知テンプレートが扱う |
 
+この機能の要件と例は System から配置を移し、既存の識別子と要件文を維持している。
+要件文の System は製品全体を指し、表示言語の解決は Frontend が担当する。
+
 ## モデル
 
 IdMagic が対応するロケールは `ja` と `en` だけであり、フォールバックのロケールは `en` である。
 起動時設定 `VITE_DEFAULT_LOCALE` は `ja` または `en` だけを受け付け、未設定または未対応の値であれば `en` を使う。
 言語の切り替えの UI で明示的に選んだ表示言語はブラウザーに保存し、以後のアクセスでは保存済みの設定を優先する。
-バックエンドの API のエラーは英語で返し、UI が既知のエラーコードを翻訳する。
+バックエンドのエラーの言語は [HTTP API の共通の振る舞い](../../system/features/http-api.md#req-system-013-バックエンド-api-のエラーは英語で返る)が定め、UI が既知のエラーコードを翻訳する。
 
 ## 操作
 
@@ -69,10 +72,3 @@ IdMagic が対応するロケールは `ja` と `en` だけであり、フォー
 - RFC 9457 の Problem Details の `type` を受けたとき、System は、`urn:idmagic:error:` の後の部分をエラーコードとして読む。
 - 未知のエラーコードか、任意の `message` か Problem Details だけの応答を受けた場合、System は、`message`、`error_description`、`detail`、`title` のうち読める文を英語のまま表示する。
 - **例**：EX-SYSTEM-011-01、EX-SYSTEM-011-02、EX-SYSTEM-011-03
-
-### API の利用者によるエラーの受け取り
-
-#### REQ-SYSTEM-013 バックエンド API のエラーは英語で返る
-
-- バックエンドの API がエラーを返すとき、System は、表示言語によらず、エラーコードと HTTP の状態コードを変えずに、英語の `message`、`error_description`、`detail` を返す。
-- **例**：EX-SYSTEM-013-01

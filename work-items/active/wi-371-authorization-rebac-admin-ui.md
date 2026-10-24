@@ -10,7 +10,7 @@ affected_spec:
   - { path: spec/modules/authorization/models.tsp, symbol: IdMagic.Contract.FgaCheckRequest }
   - { path: docs/modules/authorization/features/model.md, requirement: REQ-AUTHORIZATION-001 }
   - { path: docs/modules/authorization/features/check.md, requirement: REQ-AUTHORIZATION-005 }
-  - { path: docs/modules/system/features/localization.md, requirement: REQ-SYSTEM-010 }
+  - { path: docs/modules/frontend/features/localization.md, requirement: REQ-SYSTEM-010 }
 ---
 
 # 関係ベース細粒度認可 (ReBAC) の管理 UI を管理コンソールへ載せる

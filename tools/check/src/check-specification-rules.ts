@@ -44,6 +44,7 @@ const EARS_MODULES = new Set<string>([
   'jobs',
   'provisioning',
   'system',
+  'frontend',
   'authentication',
   'oauth2',
 ])
@@ -123,8 +124,10 @@ export async function checkSpecificationRules(snapshot: WorkspaceSnapshot): Prom
   }
 }
 
-/** 要件文の主体。モジュールの `README.md` の H1 を使う。 */
+/** 要件文の主体。移管前の要件文を維持する Frontend 以外は README の H1 を使う。 */
 async function responder(snapshot: WorkspaceSnapshot, module: string): Promise<string> {
+  // Frontend は既存の REQ-SYSTEM-* と製品全体を指す主体を維持し、配置だけを変える。
+  if (module === 'frontend') return 'System'
   const readme = await snapshot.read(`docs/modules/${module}/README.md`)
   return readme.match(/^# (.+)$/m)?.[1]?.trim() ?? module
 }

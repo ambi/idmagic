@@ -7,7 +7,7 @@ priority: p2
 change_kind: feature
 affected_spec:
   - { path: docs/modules/tenancy/features/branding.md, requirement: REQ-TENANCY-004 }
-  - { path: docs/modules/system/features/localization.md, requirement: REQ-SYSTEM-009 }
+  - { path: docs/modules/frontend/features/localization.md, requirement: REQ-SYSTEM-009 }
 depends_on: [wi-192-tenant-branding-logo-display-regression, wi-193-simplify-tenant-branding-color-validation]
 ---
 
@@ -17,7 +17,7 @@ depends_on: [wi-192-tenant-branding-logo-display-regression, wi-193-simplify-ten
 テナント管理者が設定したロゴ・ブランドカラーが利用者向け hosted UI にしか反映されず、日常的に利用する管理コンソールとのブランド体験が分断されている。テナント管理コンソールを同じブランドで一貫して操作できるようにする。
 
 ## Scope
-- `docs/modules/tenancy/features/branding.md` の `TenantBranding` の適用先と `GetTenantBranding` の利用側、`docs/modules/system/features/hosted-ui.md` の管理コンソールテーマ適用シナリオと fail-open の扱い。
+- `docs/modules/tenancy/features/branding.md` の `TenantBranding` の適用先と `GetTenantBranding` の利用側、`docs/modules/frontend/features/hosted-ui.md` の管理コンソールテーマ適用シナリオと fail-open の扱い。
 - tenant admin console の shell、ナビゲーション、ページ見出し、主要 action、選択・focus・link・status の色を branding の primary / accent color から導く semantic theme token へ移行する。
 - tenant branding の logo / product name を管理コンソール chrome に表示する。
 - branding 未設定・取得失敗・低コントラスト色でも管理コンソールを操作可能にする自動 foreground / neutral fallback と、主要画面の視覚回帰テスト。

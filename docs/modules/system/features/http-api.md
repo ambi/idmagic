@@ -25,6 +25,11 @@
 
 ### API の利用者による要求の拒否
 
+#### REQ-SYSTEM-013 バックエンド API のエラーは英語で返る
+
+- バックエンドの API がエラーを返すとき、System は、表示言語によらず、エラーコードと HTTP の状態コードを変えずに、英語の `message`、`error_description`、`detail` を返す。
+- **例**：EX-SYSTEM-013-01
+
 #### REQ-SYSTEM-022 汎用 API の拒否は RFC 9457 の Problem Details で返る
 
 - 汎用 API の操作がレートリミット以外の理由で要求を拒否するとき、System は、`Content-Type: application/problem+json` で、`type`、`title`、`status`、`detail`、`instance` を持つ本文を返す。

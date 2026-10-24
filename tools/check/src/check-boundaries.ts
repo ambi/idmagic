@@ -7,7 +7,7 @@ import {
   parseBoundaryDebt,
   parseLogicalArchitecture,
   reconcileBoundaryDebt,
-  RESPONSIBILITY_HEADER,
+  isResponsibilityHeader,
   type BoundaryAnalysis,
   type BoundaryDebtGroup,
   type GoSource,
@@ -162,7 +162,7 @@ async function responsibilityTable(snapshot: WorkspaceSnapshot): Promise<string>
   for (const path of [RESPONSIBILITY_TABLE_PATH, EARLIER_RESPONSIBILITY_TABLE_PATH]) {
     if (!snapshot.exists(path)) continue
     const source = await snapshot.read(path)
-    if (source.includes(RESPONSIBILITY_HEADER)) return source
+    if (source.split(/\r?\n/).some(isResponsibilityHeader)) return source
   }
   throw new Error(`${RESPONSIBILITY_TABLE_PATH} must contain the module responsibility table`)
 }

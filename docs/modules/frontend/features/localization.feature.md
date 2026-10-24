@@ -106,15 +106,3 @@
   | --- | --- | --- | --- |
   | EX-SYSTEM-011-02 | エラーコードが未知である、またはバックエンドが任意の `message` か Problem Details だけを返す | UI は `message`、`error_description`、`detail`、`title` のうち利用可能な人間可読文を英語のまま表示する | 有効なエラーレスポンスを受信した場合は通信障害用のフォールバックを表示しない |
   | EX-SYSTEM-011-03 | RFC 9457 Problem Details の `type` が既知の `stable` エラーコードを表す | UI は `type` の `urn:idmagic:error:` 接尾辞をエラーコードとして解釈する | UI が選択済みの `DisplayLanguage` の辞書にあるエラー文を表示する |
-
-## Rule: REQ-SYSTEM-013 バックエンド API のエラーは英語で返る
-
-### Example: EX-SYSTEM-013-01 通常経路
-
-- When APIConsumer が不正な JSON を HTTP API に送信する
-- Then System は既存のエラーコードと HTTP ステータスを返す
-- Then System は英語の `message` を返す
-- When OAuth / OIDC のリダイレクトエンドポイントがリクエストを拒否する
-- Then System は既存の OAuth エラーコードと英語の `error_description` を返す
-- When 未知の内部エラーが発生する
-- Then System は既存のエラーコードと HTTP ステータスを維持し、英語のエラー本文を返す

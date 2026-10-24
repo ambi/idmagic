@@ -296,7 +296,7 @@ Problem Details と標準のいずれにも該当しない独自形式は、次�
 
 ### エラーメッセージの言語
 
-エラーレスポンスの文字列を表示言語にかかわらず英語に固定することは [REQ-SYSTEM-013](../../modules/system/features/localization.md)、UI が安定したエラーコードをキーとして翻訳することは [REQ-SYSTEM-011](../../modules/system/features/localization.md) が定める。
+エラーレスポンスの文字列を表示言語にかかわらず英語に固定することは [REQ-SYSTEM-013](../../modules/system/features/http-api.md)、UI が安定したエラーコードをキーとして翻訳することは [REQ-SYSTEM-011](../../modules/frontend/features/localization.md) が定める。
 `Accept-Language` による切り替えも行わない。
 
 - **目的**：同一の障害がクライアントの設定によって異なる文字列になると、ログの突合と相互運用性が損なわれる。サーバーの文言を変更せずに UI の対応言語を追加できるようにする。

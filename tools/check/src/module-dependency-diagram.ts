@@ -6,7 +6,7 @@
  * リポジトリでもそのまま読めるようにする。古くなった図は境界検査が拒否する。
  */
 
-import { RESPONSIBILITY_HEADER, type ModuleDependency } from './boundary-fitness.ts'
+import { isResponsibilityHeader, type ModuleDependency } from './boundary-fitness.ts'
 
 export const MODULE_DEPENDENCY_DIAGRAM_START = '<!-- generated:module-dependencies:start -->'
 export const MODULE_DEPENDENCY_DIAGRAM_END = '<!-- generated:module-dependencies:end -->'
@@ -21,7 +21,7 @@ export function moduleGroups(markdown: string, composition: string): ModuleGroup
   for (const line of markdown.split(/\r?\n/)) {
     const h3 = line.match(/^### (.+)$/)?.[1]?.trim()
     if (h3 !== undefined) heading = h3
-    if (line.trim() === RESPONSIBILITY_HEADER) {
+    if (isResponsibilityHeader(line)) {
       inTable = true
       continue
     }

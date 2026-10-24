@@ -8,6 +8,7 @@
 
 export type ModuleDefinition = {
   name: string
+  /** 実装パスの接頭辞。HTTP 契約で接続するモジュールは Go パッケージを持たない。 */
   packagePrefixes: string[]
   /** 責務表の公開パッケージの列に挙げたパッケージ。ルートと `internal/` の外にあるのはこれだけである。 */
   publicPackages: string[]
@@ -79,8 +80,15 @@ export const SHARED_LIBRARY_NAME = 'shared'
 
 const SHARED_PREFIX = 'backend/shared'
 
-export const RESPONSIBILITY_HEADER =
+export const RESPONSIBILITY_HEADER = '| モジュール | 公開方式 | 公開パッケージ | 実装パス | 責務 |'
+
+const EARLIER_RESPONSIBILITY_HEADER =
   '| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |'
+
+/** 過去のリビジョンを使う負債比較でも責務表を読み取る。 */
+export function isResponsibilityHeader(line: string): boolean {
+  return [RESPONSIBILITY_HEADER, EARLIER_RESPONSIBILITY_HEADER].includes(line.trim())
+}
 
 type ImportSpec = {
   path: string
@@ -101,7 +109,7 @@ export type ModuleDependency = {
 function responsibilityRows(markdown: string): string[] | undefined {
   const lines = markdown.split(/\r?\n/)
   const headerIndexes = lines.flatMap((line, index) =>
-    line.trim() === RESPONSIBILITY_HEADER ? [index] : [],
+    isResponsibilityHeader(line) ? [index] : [],
   )
   if (headerIndexes.length === 0) return undefined
   return headerIndexes.flatMap((headerIndex) => {
@@ -124,7 +132,8 @@ export function responsibilityTableDirectories(markdown: string): string[] {
 }
 
 /**
- * 責務表からモジュール、公開パッケージ、組み立て地点を読む。公開方式は `internal` だけを受け付ける。
+ * 責務表からモジュール、公開パッケージ、組み立て地点を読む。
+ * Go の `internal` と、Go の内部型を共有せず HTTP 契約で接続する実装を分ける。
  * 責務表は区分ごとに同じ見出しの表へ分けてよく、見出しが一致する表をすべて読む。
  */
 export function parseLogicalArchitecture(markdown: string): ArchitectureModel {
@@ -134,22 +143,47 @@ export function parseLogicalArchitecture(markdown: string): ArchitectureModel {
   }
   const modules: ModuleDefinition[] = []
   let compositionPrefixes: string[] = []
+  const hasImplementationPaths = markdown
+    .split(/\r?\n/)
+    .some((line) => line.trim() === RESPONSIBILITY_HEADER)
   for (const line of rows) {
     const row = cells(line)
     const name = row[0]?.match(/^\[([^\]]+)\]/)?.[1]?.trim()
     if (!name) continue
-    const packages = backendPaths(row[3] ?? '')
+    const packages = repositoryPaths(row[3] ?? '')
     if (name === COMPOSITION_NAME) {
-      compositionPrefixes = packages
+      if (hasImplementationPaths && packages.some((path) => !within(path, 'backend'))) {
+        throw new Error(
+          `${name}: composition points must declare only backend implementation paths`,
+        )
+      }
+      compositionPrefixes = packages.filter((path) => within(path, 'backend'))
+      continue
+    }
+    const mode = row[1]?.replace(/`/g, '').trim()
+    const publicPackages = repositoryPaths(row[2] ?? '')
+    if (mode === 'HTTP') {
+      if (packages.length === 0) {
+        throw new Error(`${name}: the responsibility table must declare an implementation path`)
+      }
+      if (packages.some((path) => within(path, 'backend'))) {
+        throw new Error(`${name}: HTTP modules must not declare backend implementation paths`)
+      }
+      if (publicPackages.length > 0) {
+        throw new Error(`${name}: HTTP modules must not declare public Go packages`)
+      }
+      modules.push({ name, packagePrefixes: packages, publicPackages })
       continue
     }
     if (packages.length === 0) {
       throw new Error(`${name}: the responsibility table must declare a backend package`)
     }
-    if (row[1]?.replace(/`/g, '').trim() !== 'internal') {
+    if (mode !== 'internal') {
       throw new Error(`${name}: publication mode must be internal`)
     }
-    const publicPackages = backendPaths(row[2] ?? '')
+    if (packages.some((path) => !within(path, 'backend'))) {
+      throw new Error(`${name}: internal modules must declare only backend implementation paths`)
+    }
     for (const declared of publicPackages) {
       if (declared.split('/').includes('internal')) {
         throw new Error(`${name}: ${declared} is below internal/ and cannot be public`)
@@ -390,10 +424,9 @@ function cells(row: string): string[] {
   return parts
 }
 
-function backendPaths(cell: string): string[] {
+function repositoryPaths(cell: string): string[] {
   return [...cell.matchAll(/`([^`]+)`/g)]
     .map((match) => normalizeRepositoryPath(match[1] ?? ''))
-    .filter((path) => within(path, 'backend'))
     .sort()
 }
 

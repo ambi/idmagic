@@ -24,27 +24,28 @@
 ## モジュール
 
 **モジュール**は、次の責務表に宣言した責務と、その実装、モジュール設計文書、TypeSpec の対応を一つの単位として呼ぶ名前である。
-責務表の一行、`docs/modules/<module>/` のモジュール設計文書、`backend/` の実装のモジュールは一対一に対応し、名前、Go パッケージ、仕様のディレクトリの対応はこの表だけで定める。
+責務表の一行、`docs/modules/<module>/` のモジュール設計文書、実装パスの範囲は一対一に対応し、名前、実装と仕様のディレクトリの対応はこの表だけで定める。
+Go パッケージを持たず公開 HTTP 契約で接続する実装も、一つのモジュールとして宣言する。
 表の各列は、境界検査（`mise run check-boundaries`）の入力として次の意味を持つ。
 
 | 列 | 意味 |
 | --- | --- |
 | モジュール | モジュールの名前と、モジュール設計文書の入口 |
-| 公開方式 | `internal`。公開パッケージの列に挙げたパッケージだけを公開する（[公開範囲](../design/application/backend.md#公開範囲と-internal)）。System 行は組み立て地点を表す |
+| 公開方式 | `internal` は列挙した Go パッケージだけを公開する（[公開範囲](../design/application/backend.md#公開範囲と-internal)）。`HTTP` は公開 HTTP 契約で接続し Go パッケージを公開しない。System 行はサーバーの組み立て地点を表す |
 | 公開パッケージ | `internal` のモジュールがほかのモジュールへ公開するパッケージの完全なパス。配下のパッケージは自動的には公開しない |
-| Go パッケージ | モジュールに属するパッケージの接頭辞。System 行では組み立て地点の接頭辞 |
+| 実装パス | モジュールの実装の接頭辞。`internal` と System は `backend/` 内、`HTTP` はその外のパスを必須とする。同一パスの重複した割り当ては拒否する |
 | 責務 | モジュールが担う状態と操作 |
 
 公開方式と公開パッケージの判定、組み立て地点と共有ライブラリの扱いは[バックエンド設計](../design/application/backend.md#モジュール間の依存規則)が定める。
-モジュールは、扱う対象の性質で次の四つの区分に分けて並べる。
+モジュールは、扱う対象の性質で次の五つの区分に分けて並べる。
 
 ### 基盤
 
 テナント、実行基盤、鍵、監査のように、ほかのモジュールが前提にする状態と仕組みを持つ。System は組み立て地点であり、モジュールの間の依存の図には現れない。
 
-| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |
+| モジュール | 公開方式 | 公開パッケージ | 実装パス | 責務 |
 | --- | --- | --- | --- | --- |
-| [System](system/README.md) | 組み立て地点 | なし | `backend/cmd`, `backend/shared/http/server_http`, `backend/shared/http/testing_stack`, `backend/shared/testing/fixtures_postgres`, `frontend/` | 起動、機能選択、経路の組み立て、テスト前提の組み立て、健全性、画面 |
+| [System](system/README.md) | 組み立て地点 | なし | `backend/cmd`, `backend/shared/http/server_http`, `backend/shared/http/testing_stack`, `backend/shared/testing/fixtures_postgres` | 起動、機能選択、経路の組み立て、テスト前提の組み立て、健全性と共通の HTTP 境界 |
 | [Tenancy](tenancy/README.md) | `internal` | `backend/tenancy/domain`, `backend/tenancy/ports`, `backend/tenancy/testing_tenant` | `backend/tenancy` | Tenant と realm、テナント設定、属性スキーマ、制御面の管理 |
 | [Jobs](jobs/README.md) | `internal` | `backend/jobs/domain`, `backend/jobs/ports` | `backend/jobs` | テナント境界を保つ非同期ジョブ基盤 |
 | [Seeding](seeding/README.md) | `internal` | `backend/seeding/domain` | `backend/seeding` | 環境構成のプレビュー、計画、初期データ適用 |
@@ -53,11 +54,19 @@
 | [ApiTokens](api-tokens/README.md) | `internal` | `backend/apitoken/domain`, `backend/apitoken/ports` | `backend/apitoken` | 管理 API と SCIM API のテナント単位アクセストークン |
 | [Audit](audit/README.md) | `internal` | `backend/audit/ports` | `backend/audit` | 全モジュールの監査イベントを統合する Read Model と保持 |
 
+### フロントエンド
+
+ブラウザーの表示と入力、OIDC RP、静的ファイルの配信と公開 HTTP の中継を担当する。
+
+| モジュール | 公開方式 | 公開パッケージ | 実装パス | 責務 |
+| --- | --- | --- | --- | --- |
+| [Frontend](frontend/README.md) | `HTTP` | なし | `frontend/` | 認証画面、管理とアカウントのポータル、表示言語、公開 HTTP 契約の利用とゲートウェイの中継 |
+
 ### アイデンティティ
 
 主体（User、Group、Agent）とそのライフサイクル、外部との取り込みと送り出しを扱う。
 
-| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |
+| モジュール | 公開方式 | 公開パッケージ | 実装パス | 責務 |
 | --- | --- | --- | --- | --- |
 | [IdManagement](identity-management/README.md) | `internal` | `backend/idmanagement/domain`, `backend/idmanagement/user/domain`, `backend/idmanagement/user/ports`, `backend/idmanagement/group/domain`, `backend/idmanagement/group/ports`, `backend/idmanagement/agent/domain`, `backend/idmanagement/agent/ports` | `backend/idmanagement` | User、Group、Agent、プロフィール、アイデンティティのライフサイクル |
 | [IdGovernance](identity-governance/README.md) | `internal` | — | `backend/idgovernance` | LifecycleWorkflow のポリシーとオーケストレーション |
@@ -70,7 +79,7 @@
 
 ログインで本人を確かめ、アプリケーションへの割り当て、細粒度の認可、開示する属性を決める。
 
-| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |
+| モジュール | 公開方式 | 公開パッケージ | 実装パス | 責務 |
 | --- | --- | --- | --- | --- |
 | [Authentication](authentication/README.md) | `internal` | `backend/authentication/domain`, `backend/authentication/mfa/domain`, `backend/authentication/password/domain`, `backend/authentication/password/ports`, `backend/authentication/recovery/domain`, `backend/authentication/recovery/ports`, `backend/authentication/session/domain`, `backend/authentication/session/ports`, `backend/authentication/signin/ports`, `backend/authentication/testing_kerberos`, `backend/authentication/totp/domain`, `backend/authentication/totp/ports`, `backend/authentication/trusteddevice/domain`, `backend/authentication/trusteddevice/ports`, `backend/authentication/webauthn/domain`, `backend/authentication/webauthn/ports` | `backend/authentication` | 資格情報、MFA、ログインセッション、ステップアップ、認証イベント。`testing_kerberos` はテスト入力の生成専用 |
 | [Authorization](authorization/README.md) | `internal` | なし | `backend/authorization` | 細粒度認可モデル、関係タプル、グラフ評価、整合トークン |
@@ -82,7 +91,7 @@
 
 外部のアプリケーションやサービスと、標準のプロトコルで連携する。
 
-| モジュール | 公開方式 | 公開パッケージ | Go パッケージ | 責務 |
+| モジュール | 公開方式 | 公開パッケージ | 実装パス | 責務 |
 | --- | --- | --- | --- | --- |
 | [OAuth2](oauth2/README.md) | `internal` | `backend/oauth2/domain`, `backend/oauth2/ports`, `backend/oauth2/client/ports`, `backend/oauth2/consent/ports`, `backend/oauth2/logout/ports` | `backend/oauth2` | OAuth 2.0 と OIDC のプロトコル、クライアント、同意、トークン |
 | [Saml](saml/README.md) | `internal` | `backend/saml/domain`, `backend/saml/ports` | `backend/saml` | SAML 2.0 IdP、SP の信頼、SSO、SLO、メタデータ |
@@ -92,6 +101,7 @@
 ### モジュールの間の依存
 
 次の図は、本番の Go ソースの import から求めたモジュールの間の依存である。
+Frontend が公開 HTTP 契約を利用する関係は Go の import を生まず、この図の辺に含めない。
 矢印は、元のモジュールが先のモジュールの公開パッケージを使うことを表す。
 図は `mise run generate-module-dependencies` が生成し、手で書き換えない。
 コードと図が食い違うと、リポジトリの検査が拒否する。
@@ -109,7 +119,10 @@ flowchart LR
     ApiTokens
     Audit
   end
-  subgraph group1["アイデンティティ"]
+  subgraph group1["フロントエンド"]
+    Frontend
+  end
+  subgraph group2["アイデンティティ"]
     IdManagement
     IdGovernance
     Sourcing
@@ -117,14 +130,14 @@ flowchart LR
     Provisioning
     WorkloadIdentity
   end
-  subgraph group2["認証と認可"]
+  subgraph group3["認証と認可"]
     Authentication
     Authorization
     Application
     ApplicationCatalog
     ClaimMapping
   end
-  subgraph group3["連携プロトコル"]
+  subgraph group4["連携プロトコル"]
     OAuth2
     Saml
     WsFederation
