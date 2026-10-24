@@ -327,6 +327,8 @@ erDiagram
     }
     scim_group_refs {
     }
+    directory_connectors {
+    }
     jobs {
     }
     oauth2_logout_notifications {
@@ -359,6 +361,7 @@ erDiagram
     users ||--o| scim_user_refs : SCIM利用者に対応する
     tenants ||--o{ scim_group_refs : SCIMグループを持つ
     groups ||--o| scim_group_refs : SCIMグループに対応する
+    tenants ||--o{ directory_connectors : ディレクトリの取り込み元を持つ
     tenants ||--o{ jobs : ジョブを持つ
     tenants ||--o{ oauth2_logout_notifications : ログアウト通知を持つ
     tenants ||--o{ csv_artifacts : CSV成果物を持つ
@@ -382,6 +385,7 @@ erDiagram
 | --- | --- | --- | --- | --- |
 | `scim_user_refs` | SCIM クライアントが指定した外部 ID と利用者の対応 | Sourcing | `LOGGED` | 複合主キーの一部 |
 | `scim_group_refs` | SCIM クライアントが指定した外部 ID とグループの対応 | Sourcing | `LOGGED` | 複合主キーの一部 |
+| `directory_connectors` | 閉域のディレクトリから取り込む Directory Connector の登録と状態 | Sourcing | `LOGGED` | 非キーカラム |
 | `jobs` | 非同期ジョブのキュー。リースと再試行の状態を管理する | Jobs | `LOGGED` | 非キーカラム |
 | `oauth2_logout_notifications` | バックチャネルログアウト通知の一件ごとの配送状態 | OAuth2 | `LOGGED` | 非キーカラム |
 | `csv_artifacts` | CSV インポートの入力と結果の成果物。本体は分割片に置く | IdManagement | `LOGGED` | 非キーカラム |

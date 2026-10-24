@@ -100,15 +100,15 @@ groups:
       - record: idmagic:http_requests_by_family_status:rate5m
         labels: { family: management }
         expr: |
-          sum by (status_code) (rate(http_requests_total{route=~"(/realms/[^/]+)?/api/admin/v1/.*"}[5m]))
+          sum by (status_code) (rate(http_requests_total{route=~"(/realms/[^/]+)?/(api/admin|directory-connector)/v1/.*"}[5m]))
       - record: idmagic:http_request_duration_seconds_by_family:histogram_rate5m
         labels: { family: management }
         expr: |
-          sum by (le) (rate(http_request_duration_seconds_bucket{route=~"(/realms/[^/]+)?/api/admin/v1/.*"}[5m]))
+          sum by (le) (rate(http_request_duration_seconds_bucket{route=~"(/realms/[^/]+)?/(api/admin|directory-connector)/v1/.*"}[5m]))
       - record: idmagic:http_requests_in_flight_by_family:sum
         labels: { family: management }
         expr: |
-          sum(http_requests_in_flight{route=~"(/realms/[^/]+)?/api/admin/v1/.*"})
+          sum(http_requests_in_flight{route=~"(/realms/[^/]+)?/(api/admin|directory-connector)/v1/.*"})
 
       - record: idmagic:http_requests_by_family_status:rate5m
         labels: { family: scim }

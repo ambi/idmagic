@@ -46,10 +46,11 @@
 | 管理 API | `/api/admin/v1/` | この文書 |
 | アカウント API | `/api/account/v1/` | この文書 |
 | ブラウザー API | `/api/auth/` | この文書。バージョンを持たず、安定性区分は `internal` とする |
+| Connector API | `/directory-connector/v1/` | この文書。呼び出し元は閉域に置く IdMagic の Directory Connector である |
 | プロトコルエンドポイント | OAuth 2.0 と OIDC、Dynamic Client Registration、SAML、WS-Federation、SCIM、Shared Signals | 各標準。採用するバージョンと差分は各モジュールの `standards.md` が定める |
 | 運用エンドポイント | `/readyz`、`/startupz`、`/metrics` | 監視の慣行。この文書の命名とバージョンのルールは適用しない |
 
-以降、管理 API、アカウント API、ブラウザー API の 3 区分を総称して汎用 API と呼ぶ。
+以降、管理 API、アカウント API、ブラウザー API、Connector API の 4 区分を総称して汎用 API と呼ぶ。
 
 ## リソースの命名
 
@@ -735,7 +736,7 @@ HSTS は TLS を終端する側が設定する。
 
 ## インターフェースの安定性とバージョン管理
 
-管理 API とアカウント API は外部契約である。
+管理 API、アカウント API、Connector API は外部契約である。
 外部インターフェースは、次の 3 つの安定性区分に分類する。
 
 | 安定性区分 | 意味 |
@@ -747,7 +748,7 @@ HSTS は TLS を終端する側が設定する。
 ### 安定性区分の宣言
 
 各 API 操作の安定性区分は TypeSpec に宣言する。
-`/api/admin/v1/` と `/api/account/v1/` は `stable`、`/api/auth/` は `internal` とする。
+`/api/admin/v1/`、`/api/account/v1/`、`/directory-connector/v1/` は `stable`、`/api/auth/` は `internal` とする。
 
 - **目的**：安定性区分をパスの形式からの推測ではなく、API 契約から確定できるようにする。
 - **担保手段**：なし。

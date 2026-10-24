@@ -7,6 +7,8 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	directorymemory "github.com/ambi/idmagic/backend/sourcing/internal/directory/db_memory"
+	directorypostgres "github.com/ambi/idmagic/backend/sourcing/internal/directory/db_postgres"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/db_postgres"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/source_idmanagement"
@@ -16,11 +18,14 @@ import (
 )
 
 func NewMemoryModule() Module {
-	return Module{ScimRepo: db_memory.NewScimRepository()}
+	return Module{ScimRepo: db_memory.NewScimRepository(), connectors: directorymemory.NewConnectorRepository()}
 }
 
 func NewPostgresModule(pool postgres.DB) Module {
-	return Module{ScimRepo: &db_postgres.ScimRepository{Pool: pool}, begin: pool.Begin}
+	return Module{
+		ScimRepo: &db_postgres.ScimRepository{Pool: pool}, begin: pool.Begin,
+		connectors: &directorypostgres.ConnectorRepository{Pool: pool},
+	}
 }
 
 func (m Module) UserOwnershipGuard() userports.UserSourceOwnershipGuard {

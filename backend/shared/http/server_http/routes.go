@@ -509,7 +509,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 			AttrSchemaRepo: d.IdManagement.AttrSchemaRepo, QuotaRepo: d.Tenancy.QuotaRepo,
 		}, d.Sourcing, d.Emit)
 	}
-	d.Sourcing.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService)
+	d.Sourcing.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService,
+		d.OAuth2.ClientAssertionReplayStore)
 
 	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo, d.IdManagement.GroupRepo)
 }

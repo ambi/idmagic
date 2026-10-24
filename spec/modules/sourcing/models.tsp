@@ -157,4 +157,114 @@ model ScimSchema {
   attributes: ScimSchemaAttribute[];
 }
 
+
+@doc("Directory Connector の状態。`awaiting_enrollment` は公開鍵の登録を待ち、`active` は登録した鍵で呼び出せ、`disabled` は管理者が無効化した終端である。")
+enum DirectoryConnectorStatus {
+  awaiting_enrollment,
+  active,
+  disabled,
+}
+
+
+@doc("閉域の AD または LDAP から取り込む Directory Connector の登録。登録トークンもそのハッシュも含まない。")
+model DirectoryConnector {
+  @doc("IdMagic が採番する ID。Connector の JWT の `iss` と `sub` になる。")
+  id: string;
+  @doc("管理者が付けた名前。")
+  display_name: string;
+  status: DirectoryConnectorStatus;
+  created_at: utcDateTime;
+  @doc("`awaiting_enrollment` の間だけ、未使用の登録トークンの有効期限を返す。")
+  enrollment_expires_at?: utcDateTime;
+  @doc("公開鍵を登録した時刻。")
+  enrolled_at?: utcDateTime;
+  @doc("登録した公開鍵の RFC 7638 のサムプリント。`active` の間だけ返す。")
+  key_id?: string;
+  @doc("Connector が最後に認証された呼び出しを行った時刻。")
+  last_seen_at?: utcDateTime;
+  disabled_at?: utcDateTime;
+}
+
+
+@doc("Directory Connector を作成するリクエスト。")
+model CreateDirectoryConnectorRequest {
+  @doc("前後の空白を除いて保存する。空白だけの値は拒否する。")
+  @maxLength(200)
+  display_name: string;
+}
+
+
+@doc("登録トークンを一度だけ返す応答。トークンは再表示できない。")
+model DirectoryConnectorEnrollmentGrant {
+  connector: DirectoryConnector;
+  @doc("`idmagic_dce_` で始まる、一回だけ使える登録トークン。発行の 1 時間後に期限が切れる。")
+  enrollment_token: string;
+}
+
+
+@doc("Connector が公開鍵を登録するリクエスト。")
+model EnrollDirectoryConnectorRequest {
+  @doc("管理者から受け取った登録トークン。")
+  enrollment_token: string;
+  @doc("Connector が手元で作った鍵対の公開鍵の JWK（RFC 7517）。P-256 の EC 鍵か 2048 ビット以上の RSA 鍵であり、秘密鍵の成分を含まない。")
+  jwk: Record<unknown>;
+}
+
+
+@doc("登録が済んだ Connector が、以後の JWT に使う値。")
+model DirectoryConnectorEnrollment {
+  @doc("JWT の `iss` と `sub` に使う Connector の ID。")
+  connector_id: string;
+  @doc("JWT のヘッダーの `kid` に使える、登録した公開鍵の RFC 7638 のサムプリント。")
+  key_id: string;
+  @doc("JWT の `aud` に使う値。テナントの発行者識別子に `/directory-connector/v1` を続けたものである。")
+  audience: string;
+}
+
+
+@doc("Directory Connector が見つからない。存在しないか、別のテナントのものである。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:directory_connector_not_found` である。")
+model DirectoryConnectorNotFoundError is ProblemDetails;
+
+
+@doc("無効化した Directory Connector には登録トークンを再発行できない。新しい Connector を作る。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:directory_connector_disabled` である。")
+model DirectoryConnectorDisabledError is ProblemDetails;
+
+
+@doc("登録トークンまたは Connector の JWT を認証できない。トークンの不一致、期限切れ、使用済み、`jti` の再利用、署名、`aud`、無効化した Connector を区別しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_token` である。")
+model DirectoryConnectorInvalidTokenError is ProblemDetails;
+
+
+@doc("テナントの管理者が Directory Connector を作成した。登録トークンを含まない。")
+model DirectoryConnectorCreated {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  connectorId: string;
+}
+
+
+@doc("Directory Connector が公開鍵を登録し、呼び出せるようになった。")
+model DirectoryConnectorEnrolled {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  connectorId: string;
+  @doc("登録した公開鍵の RFC 7638 のサムプリント。")
+  keyId: string;
+}
+
+
+@doc("テナントの管理者が登録トークンを再発行し、登録済みの公開鍵を破棄した。登録トークンを含まない。")
+model DirectoryConnectorEnrollmentReissued {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  connectorId: string;
+}
+
+
+@doc("テナントの管理者が Directory Connector を無効化した。")
+model DirectoryConnectorDisabled {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  connectorId: string;
+}
+
 }

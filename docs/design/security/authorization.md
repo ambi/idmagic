@@ -12,6 +12,7 @@
 | ApiToken | テナント運用のための機械アクセス | `ApiTokens` が発行するテナント単位の API アクセストークン (`idmagic_pat_` で始まる) |
 | Client | 登録済みの連携アプリケーション | `client_secret_basic`、`client_secret_post`、`private_key_jwt`、`tls_client_auth`、`self_signed_tls_client_auth` |
 | Agent | 自律的に動く実行主体 | クライアント資格情報、または外部のアテステーション (`WorkloadIdentity`) |
+| DirectoryConnector | 閉域のディレクトリから取り込む実行単位 | 登録した公開鍵で署名した短命の JWT (`Sourcing`) |
 | 運用者 | プロセスを起動できる実行環境 | 権限ではなく実行環境そのものが境界 (`Seeding`) |
 
 主体の種類は境界ごとに制限する。管理 API が受け入れるのは User と ApiToken であり、Client の資格情報だけで管理操作へ到達する経路は設けない。

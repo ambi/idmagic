@@ -449,6 +449,170 @@ op DeleteScimGroup(
   @query tenant_id: string,
   @path id: string
 ): DeleteScimGroupSuccess_204 | DeleteScimGroupError400 | DeleteScimGroupError404;
+
+union DirectoryConnectorAdminReadError403Body {
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model DirectoryConnectorAdminReadError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: DirectoryConnectorAdminReadError403Body;
+}
+
+union DirectoryConnectorAdminWriteError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model DirectoryConnectorAdminWriteError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: DirectoryConnectorAdminWriteError403Body;
+}
+
+union DirectoryConnectorNotFoundError404Body {
+  IdMagic.Contract.DirectoryConnectorNotFoundError,
+}
+
+model DirectoryConnectorNotFoundError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: DirectoryConnectorNotFoundError404Body;
+}
+
+model DirectoryConnectorEnrollmentGrantSuccess_201 {
+  @statusCode statusCode: 201;
+  @header cacheControl: "no-store";
+  @body body: IdMagic.Contract.DirectoryConnectorEnrollmentGrant;
+}
+
+model DirectoryConnectorSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.DirectoryConnector;
+}
+
+union CreateDirectoryConnectorError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model CreateDirectoryConnectorError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: CreateDirectoryConnectorError400Body;
+}
+
+@doc("テナントの管理者が Directory Connector を作成する。Connector は `awaiting_enrollment` で始まり、応答は一回だけ使える登録トークンを含む。トークンを返すのはこのときと再発行のときだけである。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("CreateDirectoryConnector")
+@route("/api/admin/v1/directory-connectors")
+@post
+op CreateDirectoryConnector(
+  @body body: IdMagic.Contract.CreateDirectoryConnectorRequest
+): DirectoryConnectorEnrollmentGrantSuccess_201 | CreateDirectoryConnectorError400 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminWriteError403;
+
+model ListDirectoryConnectorsHttpResponse {
+  @doc("作成時刻の昇順。")
+  connectors: IdMagic.Contract.DirectoryConnector[];
+}
+
+model ListDirectoryConnectorsSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: ListDirectoryConnectorsHttpResponse;
+}
+
+@doc("テナントの Directory Connector を一覧する。登録トークンもそのハッシュも返さない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("ListDirectoryConnectors")
+@route("/api/admin/v1/directory-connectors")
+@get
+op ListDirectoryConnectors(
+): ListDirectoryConnectorsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminReadError403;
+
+@doc("テナントの Directory Connector を一つ読む。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("GetDirectoryConnector")
+@route("/api/admin/v1/directory-connectors/{connector_id}")
+@get
+op GetDirectoryConnector(
+  @path connector_id: string
+): DirectoryConnectorSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminReadError403 | DirectoryConnectorNotFoundError404;
+
+union ReissueDirectoryConnectorEnrollmentError409Body {
+  IdMagic.Contract.DirectoryConnectorDisabledError,
+}
+
+model ReissueDirectoryConnectorEnrollmentError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: ReissueDirectoryConnectorEnrollmentError409Body;
+}
+
+@doc("登録トークンを再発行する。以前の登録トークンと登録済みの公開鍵を破棄し、Connector を `awaiting_enrollment` に戻す。鍵の更新と、漏えいが疑われる鍵の失効に使う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("ReissueDirectoryConnectorEnrollment")
+@route("/api/admin/v1/directory-connectors/{connector_id}/enrollment-tokens")
+@post
+op ReissueDirectoryConnectorEnrollment(
+  @path connector_id: string
+): DirectoryConnectorEnrollmentGrantSuccess_201 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminWriteError403 | DirectoryConnectorNotFoundError404 | ReissueDirectoryConnectorEnrollmentError409;
+
+@doc("Directory Connector を無効化する。以後の登録と呼び出しを拒否する。無効化した Connector に繰り返しても成功し、何も変えない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("DisableDirectoryConnector")
+@route("/api/admin/v1/directory-connectors/{connector_id}/disable")
+@post
+op DisableDirectoryConnector(
+  @path connector_id: string
+): DirectoryConnectorSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminWriteError403 | DirectoryConnectorNotFoundError404;
+
+union DirectoryConnectorInvalidTokenError401Body {
+  IdMagic.Contract.DirectoryConnectorInvalidTokenError,
+}
+
+model DirectoryConnectorInvalidTokenError401 {
+  @statusCode statusCode: 401;
+  @header contentType: "application/problem+json";
+  @body body: DirectoryConnectorInvalidTokenError401Body;
+}
+
+model EnrollDirectoryConnectorSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.DirectoryConnectorEnrollment;
+}
+
+union EnrollDirectoryConnectorError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model EnrollDirectoryConnectorError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: EnrollDirectoryConnectorError400Body;
+}
+
+@doc("閉域の Directory Connector が、登録トークンとともに手元の公開鍵を登録する。認証の手段は本文の登録トークンだけである。応答の `connector_id` と `audience` を、以後の JWT の `iss`、`sub`、`aud` に使う。")
+@TypeSpec.OpenAPI.operationId("EnrollDirectoryConnector")
+@route("/directory-connector/v1/enrollment")
+@post
+op EnrollDirectoryConnector(
+  @body body: IdMagic.Contract.EnrollDirectoryConnectorRequest
+): EnrollDirectoryConnectorSuccess_200 | EnrollDirectoryConnectorError400 | DirectoryConnectorInvalidTokenError401;
+
+model ReportDirectoryConnectorHeartbeatSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
+@doc("登録済みの Directory Connector が接続を報告し、最終接続時刻を記録させる。`Authorization: Bearer` で、登録した秘密鍵で署名した JWT（`iss` と `sub` は Connector の ID、`aud` は登録の応答の `audience`、`exp` は 5 分以内、`jti` は一回限り、`alg` は ES256 か PS256）を提示する。")
+@TypeSpec.OpenAPI.operationId("ReportDirectoryConnectorHeartbeat")
+@route("/directory-connector/v1/heartbeat")
+@post
+op ReportDirectoryConnectorHeartbeat(
+  @header authorization: string
+): ReportDirectoryConnectorHeartbeatSuccess_204 | DirectoryConnectorInvalidTokenError401;
 }
 
 }

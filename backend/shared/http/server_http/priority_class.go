@@ -127,6 +127,8 @@ var routeClassRules = []routeClassRule{
 	// 経路の分類とは別の機構になる。
 	{path: "/scim/v2", class: support.ClassManagement},
 	{path: "/ssf", class: support.ClassManagement},
+	// Directory Connector は取り込みの一括処理を運ぶので、SCIM と同じく管理の段に置く。
+	{path: "/directory-connector/v1", class: support.ClassManagement},
 	{path: "/application-icons", class: support.ClassManagement},
 }
 

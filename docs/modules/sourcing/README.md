@@ -21,6 +21,8 @@
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
 | SCIM の要求 | 外部の IdP の `/realms/{realm_id}/scim/v2/...` への要求 | `api` が、トークンを認証してからユースケースを同期的に呼ぶ | [SCIM による取り込みの設計](features/scim.md#実現方式) |
+| Directory Connector の管理 | 管理者の `/api/admin/v1/directory-connectors/...` への要求 | `api` が、管理者を認可してからユースケースを同期的に呼ぶ | [Directory Connector による取り込み](features/directory.md#操作) |
+| Directory Connector の呼び出し | 閉域の Connector の `/realms/{realm_id}/directory-connector/v1/...` への要求 | `api` が、Connector の JWT を認証してからユースケースを同期的に呼ぶ | [Directory Connector による取り込み](features/directory.md#モデル) |
 
 ## 設計の要点
 
@@ -37,6 +39,7 @@
 | 機能 | 内容 |
 | --- | --- |
 | [SCIM による取り込み](features/scim.md) | 外部の IdP からの SCIM 2.0 による User と Group の同期 |
+| [Directory Connector による取り込み](features/directory.md) | 閉域の AD と LDAP を取り込み元とする Directory Connector の登録と、その呼び出しの認証 |
 
 ## 文書
 

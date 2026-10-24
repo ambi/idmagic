@@ -8,4 +8,6 @@
 | IngestionRun | 1 回の取り込みを観測する単位。対象の取り込み元、開始と終了、適用件数、失敗、再開位置を持つ。実行は Jobs の永続ジョブに委ね、失敗後に再開できる粒度で観測する。`scim` 機能は外部 IdP からのリクエスト単位で適用するため IngestionRun を持たず、`directory` 以降の機能で実体を追加する。 | ingestion run, 取り込み実行 |
 | SourceCursor | 前回の取り込みがどこまで進んだかを表す、取り込み元ごとの位置情報。差分取り込みと再同期の境界を決める。完全再同期は、カーソルを破棄して全件を読み直す操作として定義する。 | sync cursor, カーソル |
 | SourceDrift | 上流の取り込み元を正とする状態と IdMagic 内部の状態との乖離。取り込みの失敗、取り込み元での直接変更、相関情報の欠落などで生じ、検出と是正は取り込み元ごとの権威規則に従う。 | drift, 乖離 |
+| DirectoryConnector | 閉域の Active Directory または LDAP と同じネットワークに置き、IdMagic へ外向きの接続だけを行う実行単位と、その IdMagic 側の登録。`directory` 機能において IdentitySource を兼ね、登録した公開鍵に対応する秘密鍵で署名した JWT で IdMagic を呼ぶ。 | Directory Connector, Connector |
+| EnrollmentToken | 管理者が Directory Connector の作成または再発行で受け取り、Connector が公開鍵の登録に一度だけ使う、有効期限付きのシークレット。IdMagic はハッシュだけを保存する。 | enrollment token, 登録トークン |
 | ScimClient | テナント単位の Bearer トークンを提示して SCIM プロビジョニング API を呼び出す外部エージェント。`scim` 機能において IdentitySource を駆動する側である。 |  |

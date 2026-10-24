@@ -62,7 +62,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：171
+経路の数：177
 
 | 経路 | メソッド |
 | --- | --- |
@@ -140,6 +140,10 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/consents/{sub}/{client_id}` | DELETE, GET |
 | `/api/admin/v1/data-keys/health` | GET |
 | `/api/admin/v1/default-sign-in-policy` | GET, PUT |
+| `/api/admin/v1/directory-connectors` | GET, POST |
+| `/api/admin/v1/directory-connectors/{connector_id}` | GET |
+| `/api/admin/v1/directory-connectors/{connector_id}/disable` | POST |
+| `/api/admin/v1/directory-connectors/{connector_id}/enrollment-tokens` | POST |
 | `/api/admin/v1/groups` | GET, POST |
 | `/api/admin/v1/groups/{group_id}` | DELETE, GET, PATCH |
 | `/api/admin/v1/groups/{group_id}/dynamic-rule` | PUT |
@@ -228,6 +232,8 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/wsfed/entra-federation` | POST |
 | `/api/admin/v1/wsfed/relying-parties` | DELETE, GET, POST |
 | `/application-icons/{application_id}/{id}` | GET |
+| `/directory-connector/v1/enrollment` | POST |
+| `/directory-connector/v1/heartbeat` | POST |
 | `/register` | POST |
 | `/scim/v2/Groups` | GET, POST |
 | `/scim/v2/Groups/{id}` | DELETE, GET, PATCH, PUT |

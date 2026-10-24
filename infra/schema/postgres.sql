@@ -1258,6 +1258,44 @@ CREATE TABLE scim_group_refs (
         FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
 );
 
+CREATE TABLE directory_connectors (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    display_name TEXT NOT NULL,
+    status TEXT NOT NULL,
+    -- 未使用の登録トークンの SHA-256 の 16 進表記。登録と無効化で NULL にする。
+    enrollment_token_hash TEXT,
+    enrollment_expires_at TIMESTAMPTZ,
+    public_key JSONB,
+    key_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL,
+    enrolled_at TIMESTAMPTZ,
+    last_seen_at TIMESTAMPTZ,
+    disabled_at TIMESTAMPTZ,
+    revision BIGINT NOT NULL,
+    CONSTRAINT directory_connectors_status_valid
+        CHECK (status IN ('awaiting_enrollment', 'active', 'disabled')),
+    CONSTRAINT directory_connectors_display_name_length
+        CHECK (char_length(display_name) BETWEEN 1 AND 200),
+    CONSTRAINT directory_connectors_enrollment_token_hash_format
+        CHECK (enrollment_token_hash ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT directory_connectors_key_id_length
+        CHECK (char_length(key_id) <= 64 AND octet_length(key_id) <= 64),
+    CONSTRAINT directory_connectors_awaiting_has_token CHECK (
+        status <> 'awaiting_enrollment'
+        OR (enrollment_token_hash IS NOT NULL AND enrollment_expires_at IS NOT NULL)
+    ),
+    CONSTRAINT directory_connectors_active_has_key CHECK (
+        status <> 'active' OR (public_key IS NOT NULL AND key_id IS NOT NULL)
+    ),
+    CONSTRAINT directory_connectors_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX directory_connectors_tenant_id_created_at_idx ON directory_connectors (tenant_id, created_at, id);
+CREATE UNIQUE INDEX directory_connectors_enrollment_token_hash_key
+    ON directory_connectors (tenant_id, enrollment_token_hash) WHERE enrollment_token_hash IS NOT NULL;
+
 CREATE TABLE jobs (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
