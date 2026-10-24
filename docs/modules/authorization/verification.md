@@ -1,6 +1,6 @@
-# Authorization の検証
+# AccessControl の検証
 
-この文書は、Authorization の要件と統制のうち、例のテストのほかに確かめているものを扱う。
+この文書は、AccessControl の要件と統制のうち、例のテストのほかに確かめているものを扱う。
 システム全体の検証の方式は[検証設計](../../design/verification/README.md)に従う。
 
 ## パースの境界のファズテスト

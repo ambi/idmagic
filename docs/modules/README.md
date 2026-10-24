@@ -82,7 +82,7 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 | モジュール | 公開方式 | 公開パッケージ | 実装パス | 責務 |
 | --- | --- | --- | --- | --- |
 | [Authentication](authentication/README.md) | `internal` | `backend/authentication/domain`, `backend/authentication/mfa/domain`, `backend/authentication/password/domain`, `backend/authentication/password/ports`, `backend/authentication/recovery/domain`, `backend/authentication/recovery/ports`, `backend/authentication/session/domain`, `backend/authentication/session/ports`, `backend/authentication/signin/ports`, `backend/authentication/testing_kerberos`, `backend/authentication/totp/domain`, `backend/authentication/totp/ports`, `backend/authentication/trusteddevice/domain`, `backend/authentication/trusteddevice/ports`, `backend/authentication/webauthn/domain`, `backend/authentication/webauthn/ports` | `backend/authentication` | 資格情報、MFA、ログインセッション、ステップアップ、認証イベント。`testing_kerberos` はテスト入力の生成専用 |
-| [Authorization](authorization/README.md) | `internal` | なし | `backend/authorization` | 細粒度認可モデル、関係タプル、グラフ評価、整合トークン |
+| [AccessControl](authorization/README.md) | `internal` | `backend/accesscontrol/ports` | `backend/accesscontrol` | 認可の要求契約、管理ロールと権限の表示、細粒度認可モデル、関係タプル、グラフ評価、整合トークン |
 | [Application](application/README.md) | `internal` | `backend/application/domain`, `backend/application/ports`, `backend/application/usecases` | `backend/application` | Application、プロトコルのバインディング、割り当て、表示分類の状態と更新、サインインポリシーとアクセス判定 |
 | [ApplicationCatalog](application-catalog/README.md) | `internal` | なし | `backend/applicationcatalog` | Application と各プロトコルの管理の編成、管理とポータルの HTTP、表示用の変換 |
 | [ClaimMapping](claim-mapping/README.md) | `internal` | `backend/claimmapping/domain`, `backend/claimmapping/ports` | `backend/claimmapping` | プロトコル非依存のクレーム開示ポリシーとマッピング |
@@ -132,7 +132,7 @@ flowchart LR
   end
   subgraph group3["認証と認可"]
     Authentication
-    Authorization
+    AccessControl
     Application
     ApplicationCatalog
     ClaimMapping
@@ -143,6 +143,8 @@ flowchart LR
     WsFederation
     SharedSignals
   end
+  AccessControl --> IdManagement
+  AccessControl --> Tenancy
   ApiTokens --> OAuth2
   ApiTokens --> Tenancy
   Application --> IdManagement
@@ -158,8 +160,6 @@ flowchart LR
   Authentication --> Audit
   Authentication --> IdManagement
   Authentication --> Tenancy
-  Authorization --> IdManagement
-  Authorization --> OAuth2
   ClaimMapping --> IdManagement
   DataKeys --> Jobs
   DataKeys --> Tenancy
@@ -171,6 +171,7 @@ flowchart LR
   IdManagement --> Jobs
   IdManagement --> Tenancy
   Jobs --> Tenancy
+  OAuth2 --> AccessControl
   OAuth2 --> Application
   OAuth2 --> Authentication
   OAuth2 --> ClaimMapping

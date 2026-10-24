@@ -1,4 +1,4 @@
-# Authorization のデータ
+# AccessControl のデータ
 
 この文書は、Authorization の Aggregate を扱う。
 

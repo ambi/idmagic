@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ambi/idmagic/backend/accesscontrol"
+	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	"github.com/ambi/idmagic/backend/apitoken"
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	"github.com/ambi/idmagic/backend/application"
@@ -18,7 +20,6 @@ import (
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
-	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -100,7 +101,7 @@ type Deps struct {
 	// Deprecated: 移行中のテスト用互換入力。bootstrap は OAuth2.Module のみを設定する。
 	TokenIssuer       oauthports.TokenIssuer
 	TokenIntrospector oauthports.TokenIntrospector
-	Authorizer        oauthports.Authorizer
+	Authorizer        policyports.Authorizer
 	SigningKeys       signingkeys.Module
 	DataKeys          datakeys.Module
 	// Deprecated: tests may still provide the legacy direct field.
@@ -117,7 +118,7 @@ type Deps struct {
 	Provisioning     provisioning.Module
 	WorkloadIdentity workloadidentity.Module
 	SharedSignals    sharedsignals.Module
-	Authorization    authorization.Module
+	AccessControl    accesscontrol.Module
 
 	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
 }
@@ -353,7 +354,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AgentRepo: d.IdManagement.AgentRepo, FetchJWKS: fetchWorkloadJWKS,
 	})
 
-	d.Authorization.RegisterRoutes(g, authorization.RouteDeps{
+	d.AccessControl.RegisterRoutes(g, accesscontrol.RouteDeps{
 		Deps: d.Deps, Authenticator: authenticator,
 		Agents: d.IdManagement.AgentRepo, Users: d.IdManagement.UserRepo,
 		Authorizer: d.OAuth2.Authorizer,

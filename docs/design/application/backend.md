@@ -39,7 +39,7 @@ backend/<module>/
 
 `<technology>` の位置には外部技術の名前だけでなく、相手のモジュール名も入る。
 ほかのモジュールの公開契約を自分のポートの語彙へ変換するアダプターがその形を取る。
-現在は `backend/provisioning/internal/source_idmanagement`、`backend/authorization/internal/principals_idmanagement`、`backend/oauth2/internal/policy_tenancy`、`backend/sourcing/internal/scim/source_idmanagement` の 4 つである。
+現在は `backend/provisioning/internal/source_idmanagement`、`backend/accesscontrol/internal/principals_idmanagement`、`backend/oauth2/internal/policy_tenancy`、`backend/sourcing/internal/scim/source_idmanagement` の 4 つである。
 
 変換の意味は、変換した結果を使う利用側のモジュールが所有する。
 提供側を import する具象のアダプターは、利用側へ置くか、import の循環を避けるために組み立て地点へ置く。

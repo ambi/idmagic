@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -75,7 +77,7 @@ type ExchangeTokenDeps struct {
 	ClientRepo            ports.OAuth2ClientRepository
 	Introspector          ports.TokenIntrospector
 	TokenIssuer           ports.TokenIssuer
-	Authorizer            ports.Authorizer
+	Authorizer            policyports.Authorizer
 	AuthzDetailTypeRepo   ports.AuthorizationDetailTypeRepository
 	McpResourceServerRepo ports.McpResourceServerRepository
 	// AgentRepo は交換に関与する Agent の自律性区分を引く (REQ-OAUTH2-050)。nil の
@@ -338,7 +340,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 
 func evaluateTokenExchangePolicy(
 	ctx context.Context,
-	authorizer ports.Authorizer,
+	authorizer policyports.Authorizer,
 	client *domain.OAuth2Client,
 	actorUserID, subjectUserID, resource string,
 	scopes []string,

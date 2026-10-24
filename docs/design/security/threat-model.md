@@ -75,7 +75,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | 個人データ（User 属性、監査イベントの PII） | 法的義務の違反と当事者への直接の害 | IdManagement、Audit |
 | 監査記録 | 何が起きたかを後から言えなくなる | Audit |
 | テナントの信頼設定（外部 IdP、RP、SP、`WorkloadTrustBundle`） | サインイン経路の乗っ取り | Tenancy、Authentication、Saml、WsFederation、WorkloadIdentity |
-| 認可モデルと関係タプル | 細粒度認可の判定の書き換え | Authorization |
+| 認可モデルと関係タプル | 細粒度認可の判定の書き換え | AccessControl |
 | 起動時設定 | 全体の構成の掌握 | `backend/cmd/internal/bootstrap` |
 
 ## ブラウザーと gateway
@@ -108,8 +108,8 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-014 | Information disclosure | 未知のサブドメインがデフォルトテナントへ落ち、デフォルトテナントの情報が見える | Tenancy | REQ-TENANCY-008 | `covered` |
 | THREAT-015 | Information disclosure | 正規ロケーション以外の経路からテナントへ到達する | Tenancy | REQ-TENANCY-009、REQ-TENANCY-010 | `covered` |
 | THREAT-016 | Information disclosure | 別テナントで発行されたページングのカーソルを再利用する | Tenancy, Audit | docs/design/security/authorization.md: テナント境界、REQ-AUDIT-004 | `covered` |
-| THREAT-017 | Information disclosure | 権限のない対象と存在しない対象のレスポンス差から、他テナントの資源の存在を推測する | Tenancy, Authorization | docs/design/security/authorization.md: その他の境界の規則 | `covered` |
-| THREAT-018 | Elevation of privilege | 他テナントの関係タプルが細粒度認可の判定に寄与する | Authorization | REQ-AUTHORIZATION-006 | `covered` |
+| THREAT-017 | Information disclosure | 権限のない対象と存在しない対象のレスポンス差から、他テナントの資源の存在を推測する | Tenancy, AccessControl | docs/design/security/authorization.md: その他の境界の規則 | `covered` |
+| THREAT-018 | Elevation of privilege | 他テナントの関係タプルが細粒度認可の判定に寄与する | AccessControl | REQ-AUTHORIZATION-006 | `covered` |
 | THREAT-019 | Elevation of privilege | 非同期の実行が処理の途中で別テナントの範囲へ到達する | Jobs | REQ-JOBS-006、docs/design/security/authorization.md: テナント境界 | `covered` |
 | THREAT-020 | Spoofing | 他テナントの署名鍵で発行したトークンが受理される | SigningKeys, OAuth2 | REQ-SIGNINGKEYS-004、REQ-OAUTH2-034 | `covered` |
 | THREAT-021 | Elevation of privilege | 他テナントのワークロード信頼設定を使って資格情報を得る | WorkloadIdentity | REQ-WORKLOADIDENTITY-007、REQ-WORKLOADIDENTITY-009 | `covered` |
@@ -123,12 +123,12 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-024 | Elevation of privilege | 新設した管理 API がスコープ宣言を持たず、あらゆるスコープから到達できる | ApiTokens | docs/design/security/authorization.md: 対話セッション限定の操作、REQ-APITOKENS-004 | `covered` |
 | THREAT-025 | Elevation of privilege | トークン発行の操作を通じて、任意のスコープ集合を持つ資格情報を作る | ApiTokens, OAuth2 | docs/design/security/authorization.md: 対話セッション限定の操作、REQ-AUTHENTICATION-004 | `covered` |
 | THREAT-026 | Elevation of privilege | 外部 IdP の登録を通じて、任意のユーザーとしてサインインする経路を作る | Authentication | REQ-AUTHENTICATION-025 | `covered` |
-| THREAT-027 | Elevation of privilege | 代行または委譲が、元の主体の権限を超える | OAuth2, Authorization | RFC8693-DELEGATION-DEFAULT、RFC8693-DELEGATION-DEPTH、REQ-OAUTH2-048、REQ-TENANCY-021、REQ-AUTHORIZATION-004 | `covered` |
+| THREAT-027 | Elevation of privilege | 代行または委譲が、元の主体の権限を超える | OAuth2, AccessControl | RFC8693-DELEGATION-DEFAULT、RFC8693-DELEGATION-DEPTH、REQ-OAUTH2-048、REQ-TENANCY-021、REQ-AUTHORIZATION-004 | `covered` |
 | THREAT-028 | Repudiation | 代行による操作を本人の操作と区別できず、誰が行ったかを争える | Audit, OAuth2 | REQ-AUDIT-005、REQ-AUDIT-006、REQ-OAUTH2-049 | `covered` |
 | THREAT-029 | Spoofing | 無効化または削除した主体のセッションとトークンが生き残る | IdManagement, Authentication, OAuth2 | REQ-PLATFORM-001、REQ-PLATFORM-002、REQ-AUTHENTICATION-009、REQ-OAUTH2-046、REQ-OAUTH2-012 | `covered` |
 | THREAT-030 | Elevation of privilege | 通常のテナント管理者が制御面の操作へ到達する | Tenancy, SigningKeys | REQ-TENANCY-014、REQ-SIGNINGKEYS-009、REQ-DATAKEYS-006 | `covered` |
-| THREAT-031 | Elevation of privilege | 判定に必要な事実が得られない状況が、許可として扱われる | Authorization | REQ-AUTHORIZATION-005、AUTHZEN-FGA-FAIL-CLOSED、docs/design/security/authorization.md: その他の境界の規則 | `covered` |
-| THREAT-032 | Information disclosure | 列挙が打ち切りを隠し、権限のない対象の存在を推測させる | Authorization | REQ-AUTHORIZATION-007 | `covered` |
+| THREAT-031 | Elevation of privilege | 判定に必要な事実が得られない状況が、許可として扱われる | AccessControl | REQ-AUTHORIZATION-005、AUTHZEN-FGA-FAIL-CLOSED、docs/design/security/authorization.md: その他の境界の規則 | `covered` |
+| THREAT-032 | Information disclosure | 列挙が打ち切りを隠し、権限のない対象の存在を推測させる | AccessControl | REQ-AUTHORIZATION-007 | `covered` |
 
 ## 資格情報と認証
 

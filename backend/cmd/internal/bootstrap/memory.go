@@ -8,8 +8,8 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/audit"
 
+	"github.com/ambi/idmagic/backend/accesscontrol"
 	"github.com/ambi/idmagic/backend/authentication"
-	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -88,7 +88,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		Provisioning:     provisioningModule,
 		WorkloadIdentity: workloadidentity.NewMemoryModule(),
 		SharedSignals:    sharedsignals.NewMemoryModule(),
-		Authorization:    authorization.NewMemoryModule(),
+		AccessControl:    accesscontrol.NewMemoryModule(),
 		RateLimit: rlports.Module{
 			NewRateLimiter: func(configs rlports.RateLimitConfigs) rlports.RateLimiter {
 				return ratelimitmemory.NewRateLimiter(configs)

@@ -13,6 +13,7 @@ OAuth 2.0 と OIDC のプロトコル群の全責務を扱う。
 | その `client_id` にそもそも到達してよいかという関門 | `Application` |
 | Agent のアイデンティティとライフサイクル | `IdManagement` |
 | Agent の失効エポック | `SharedSignals` |
+| 汎用認可の要求ポートと管理ロールの表示 | [AccessControl](../authorization/README.md) |
 
 このモジュールが受け持つのは、それらの結果をプロトコルの語彙で組み立てて外部へ返す部分である。
 ApplicationCatalog からのクライアント管理にも公開操作を提供し、保存、関連付け、クレームとシークレットの更新をこのモジュールが担当する。
@@ -52,7 +53,9 @@ IdManagement からの完全削除では保存先ごとの本人の記録の削�
 | [プロトコルのエンドポイント](features/protocol-endpoints.md) | Discovery Metadata と流量の制限 |
 | [管理 API の認可](features/admin-access.md) | 管理 API のスコープとロールポリシー |
 
-プロトコルのエンドポイントと管理 API の認可は機能スライスを持たない。前者はルートの `handlers_http` が Discovery と流量の制限を、後者はルートの AuthZEN の規則表と `policy_tenancy` が扱う。
+プロトコルのエンドポイントと管理 API の認可は機能スライスを持たない。
+前者はルートの `handlers_http` が Discovery と流量の制限を扱う。
+管理 API の認可は仕様バインディングの規則表を利用し、ロール一覧の計算と HTTP 表示は AccessControl が担当する。
 
 ## 文書
 

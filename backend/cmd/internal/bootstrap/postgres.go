@@ -9,8 +9,8 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/audit"
 
+	"github.com/ambi/idmagic/backend/accesscontrol"
 	"github.com/ambi/idmagic/backend/authentication"
-	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -132,7 +132,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		Provisioning:     provisioningModule,
 		WorkloadIdentity: workloadidentity.NewPostgresModule(resilientDB),
 		SharedSignals:    sharedsignals.NewPostgresModule(resilientDB),
-		Authorization:    authorization.NewPostgresModule(resilientDB),
+		AccessControl:    accesscontrol.NewPostgresModule(resilientDB),
 		RateLimit: rlports.Module{
 			NewRateLimiter: func(configs rlports.RateLimitConfigs) rlports.RateLimiter {
 				return &ratelimitpostgres.RateLimiter{Pool: resilientDB, Configs: configs}

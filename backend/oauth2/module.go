@@ -10,6 +10,8 @@ package oauth2
 import (
 	"time"
 
+	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
@@ -59,7 +61,7 @@ type Module struct {
 	TokenIssuer                oauthports.TokenIssuer
 	TokenIntrospector          oauthports.TokenIntrospector
 	IDTokenHintVerifier        oauthports.IDTokenHintVerifier
-	Authorizer                 oauthports.Authorizer
+	Authorizer                 policyports.Authorizer
 	EventSink                  oauthports.EventSink
 	// WorkloadVerifier verifies external workload attestation tokens for the
 	// token-exchange grant ([[wi-54-workload-identity-federation-spiffe]]).

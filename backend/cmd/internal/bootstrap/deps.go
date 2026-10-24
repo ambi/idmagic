@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
+	"github.com/ambi/idmagic/backend/accesscontrol"
 	"github.com/ambi/idmagic/backend/apitoken"
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
-	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -49,7 +49,7 @@ type Dependencies struct {
 	Provisioning     provisioning.Module
 	WorkloadIdentity workloadidentity.Module
 	SharedSignals    sharedsignals.Module
-	Authorization    authorization.Module
+	AccessControl    accesscontrol.Module
 	Notification     notification.Module
 	RateLimit        ratelimit.Module
 	// SecurityNotifications はアカウントのセキュリティ通知の起動時配線 (wi-90)。

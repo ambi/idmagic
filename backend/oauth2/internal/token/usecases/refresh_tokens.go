@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+
 	"github.com/ambi/idmagic/backend/shared/security/entropy"
 
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -35,7 +37,7 @@ type RefreshDeps struct {
 	UserRepo     userports.UserRepository
 	RefreshStore ports.RefreshTokenStore
 	TokenIssuer  ports.TokenIssuer
-	Authorizer   ports.Authorizer
+	Authorizer   policyports.Authorizer
 	Emit         func(spec.DomainEvent)
 }
 
@@ -148,7 +150,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 
 func evaluateRefreshPolicy(
 	ctx context.Context,
-	authorizer ports.Authorizer,
+	authorizer policyports.Authorizer,
 	client *domain.OAuth2Client,
 	record *domain.RefreshTokenRecord,
 	in RefreshInput,

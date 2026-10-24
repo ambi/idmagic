@@ -1,4 +1,4 @@
-# Authorization の標準仕様
+# AccessControl の標準仕様
 
 ## OpenID AuthZEN Authorization API
 

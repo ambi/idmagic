@@ -1,4 +1,4 @@
-# Authorization の用語集
+# AccessControl の用語集
 
 | 用語 | 定義 | 別名 |
 |---|---|---|

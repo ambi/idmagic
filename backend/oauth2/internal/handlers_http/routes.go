@@ -2,8 +2,8 @@
 //
 // OAuth 2.0 / OIDC のプロトコルエンドポイント (authorize/token/introspect/revoke/
 // userinfo/par/device/discovery/register) と、認可トランザクションの画面 (transaction/
-// consent/end_session)、および client/consent/key/
-// role_policy の管理 API を所有する。監査 (audit_event) の管理 API は audit context が
+// consent/end_session)、および client/consent/key の管理 API を所有する。
+// 管理ロールの表示は Authorization、監査 (audit_event) の管理 API は audit context が
 // 所有する (wi-146)。共有基盤 support.Deps を受け取り router から登録される。
 package handlers_http
 
@@ -11,6 +11,8 @@ import (
 	"context"
 	"net/http"
 	"time"
+
+	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
@@ -75,7 +77,7 @@ type Deps struct {
 	ManagedTokenRevoker tokenusecases.ManagedTokenRevoker
 	BuiltinResource     tokenusecases.BuiltinResource
 	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
-	Authorizer          oauthports.Authorizer
+	Authorizer          policyports.Authorizer
 	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (client
 	// registration) and consents (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
@@ -182,7 +184,6 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/consents", d.handleListAdminConsents)
 	g.GET("/api/admin/v1/consents/:sub/:client_id", d.handleGetAdminConsent)
 	g.DELETE("/api/admin/v1/consents/:sub/:client_id", d.handleRevokeAdminConsent)
-	g.GET("/api/admin/v1/policy/roles", d.handleListAdminRolePolicies)
 	g.GET("/api/admin/v1/mcp-resource-servers", d.handleListAdminMcpResourceServers)
 	g.GET("/api/admin/v1/mcp-resource-servers/:id", d.handleGetAdminMcpResourceServer)
 	g.POST("/api/admin/v1/mcp-resource-servers", d.handleCreateAdminMcpResourceServer)

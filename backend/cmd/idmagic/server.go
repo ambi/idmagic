@@ -234,7 +234,7 @@ func Run() error {
 		Provisioning:     deps.Provisioning,
 		WorkloadIdentity: deps.WorkloadIdentity,
 		SharedSignals:    deps.SharedSignals,
-		Authorization:    deps.Authorization,
+		AccessControl:    deps.AccessControl,
 	})
 
 	// Register が入れた既定のエラーハンドラを、ログとメトリクスを持つ版へ差し替える。

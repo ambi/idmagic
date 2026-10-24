@@ -24,7 +24,7 @@ const MODULES = [
   { module: 'application', backend: 'backend/application' },
   { module: 'audit', backend: 'backend/audit' },
   { module: 'authentication', backend: 'backend/authentication' },
-  { module: 'authorization', backend: 'backend/authorization' },
+  { module: 'authorization', backend: 'backend/accesscontrol' },
   { module: 'claim-mapping', backend: 'backend/claimmapping' },
   { module: 'data-keys', backend: 'backend/datakeys' },
   { module: 'identity-governance', backend: 'backend/idgovernance' },

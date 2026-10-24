@@ -9,7 +9,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	oauth2http "github.com/ambi/idmagic/backend/oauth2/internal/handlers_http"
+	"github.com/ambi/idmagic/backend/accesscontrol"
 )
 
 func TestAdminRolePoliciesOmitInternalDocReferences(t *testing.T) {
@@ -105,10 +105,10 @@ func getAdminRolePolicies(e interface {
 	return rec
 }
 
-func decodeAdminRolePolicies(t *testing.T, rec *httptest.ResponseRecorder) []oauth2http.AdminRolePolicyResponse {
+func decodeAdminRolePolicies(t *testing.T, rec *httptest.ResponseRecorder) []accesscontrol.AdminRolePolicyResponse {
 	t.Helper()
 	var body struct {
-		Roles []oauth2http.AdminRolePolicyResponse `json:"roles"`
+		Roles []accesscontrol.AdminRolePolicyResponse `json:"roles"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
@@ -116,7 +116,7 @@ func decodeAdminRolePolicies(t *testing.T, rec *httptest.ResponseRecorder) []oau
 	return body.Roles
 }
 
-func hasAdminRolePermission(roles []oauth2http.AdminRolePolicyResponse, roleName, permissionName string) bool {
+func hasAdminRolePermission(roles []accesscontrol.AdminRolePolicyResponse, roleName, permissionName string) bool {
 	for _, role := range roles {
 		if role.Name != roleName {
 			continue
@@ -147,7 +147,7 @@ func TestAdminRolePoliciesListVisibleRolesPermissionsAndInterfaces(t *testing.T)
 	roles := decodeAdminRolePolicies(t, rec)
 
 	// 参照可能なロールが含まれる。
-	var admin *oauth2http.AdminRolePolicyResponse
+	var admin *accesscontrol.AdminRolePolicyResponse
 	for i, role := range roles {
 		if role.Name == "admin" {
 			admin = &roles[i]

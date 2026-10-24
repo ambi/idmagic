@@ -527,9 +527,9 @@ erDiagram
 | `ssf_receiver_configs` | 受信ストリームで信頼する発行者と鍵 | SharedSignals | `LOGGED` | 非キーカラム |
 | `security_event_deliveries` | 送信する SET の一件ごとの配送状態と再試行 | SharedSignals | `LOGGED` | 非キーカラム |
 | `received_security_events` | 受信した SET と、その検証結果、反映した時刻 | SharedSignals | `LOGGED` | 非キーカラム |
-| `authorization_models` | テナントの関係ベース認可のモデル定義と、そのバージョン | Authorization | `LOGGED` | 非キーカラム |
-| `authorization_relation_tuples` | リソースと主体の関係 | Authorization | `LOGGED` | 複合主キーの一部 |
-| `authorization_write_versions` | 関係を書き込むたびに進む、テナント単位のバージョン番号 | Authorization | `LOGGED` | 単独主キー |
+| `authorization_models` | テナントの関係ベース認可のモデル定義と、そのバージョン | AccessControl | `LOGGED` | 非キーカラム |
+| `authorization_relation_tuples` | リソースと主体の関係 | AccessControl | `LOGGED` | 複合主キーの一部 |
+| `authorization_write_versions` | 関係を書き込むたびに進む、テナント単位のバージョン番号 | AccessControl | `LOGGED` | 単独主キー |
 
 ### 所有と書き込みの境界
 
