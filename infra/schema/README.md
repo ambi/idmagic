@@ -89,7 +89,7 @@ psqldef -U idmagic -h localhost -p 5432 idmagic \
 
 ## CI での収束検査
 
-CI はプッシュとプルリクエストのたびに `mise run check-schema` を実行する。破棄可能な空の PostgreSQL データベース (開発スタックではなく、`idmagic-dev-infra --empty` が空いているポートで起動する組込み PostgreSQL) へ、`mise.toml` が固定した版の `psqldef` で `postgres.sql` を適用し、「適用 → プレビュー (何もしないこと) → 再適用 → プレビュー (引き続き何もしないこと)」の順で収束を検証する。これは `work-items/done/wi-308-reconsider-psqldef-adoption.md` に記録した psqldef の不具合群に対する、恒久的かつ機械検査可能な防御である。特に、対応する `ADD` を伴わない暗黙の `DROP CONSTRAINT` (下の Rules を参照) は、1 回のプレビューを人が確認するだけでは見落としやすい。Go の DB テストは `postgres.sql` を PostgreSQL へ直接流すため、`psqldef` だけが読めない DDL はこの検査でしか見つからない。ローカルでも Docker なしで次のコマンドで実行する:
+CI はプッシュとプルリクエストのたびに `mise run check-schema` を実行する。破棄可能な空の PostgreSQL データベース (開発スタックではなく、`idmagic-dev-infra --empty` が空いているポートで起動する組込み PostgreSQL) へ、`mise.toml` が固定したバージョンの `psqldef` で `postgres.sql` を適用し、「適用 → プレビュー (何もしないこと) → 再適用 → プレビュー (引き続き何もしないこと)」の順で収束を検証する。これは `work-items/done/wi-308-reconsider-psqldef-adoption.md` に記録した psqldef の不具合群に対する、恒久的かつ機械検査可能な防御である。特に、対応する `ADD` を伴わない暗黙の `DROP CONSTRAINT` (下の Rules を参照) は、1 回のプレビューを人が確認するだけでは見落としやすい。Go の DB テストは `postgres.sql` を PostgreSQL へ直接流すため、`psqldef` だけが読めない DDL はこの検査でしか見つからない。ローカルでも Docker なしで次のコマンドで実行する:
 
 ```bash
 mise run check-schema
