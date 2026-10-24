@@ -5,7 +5,6 @@ import (
 
 	"github.com/labstack/echo/v5"
 
-	appports "github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
@@ -32,6 +31,7 @@ import (
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -139,8 +139,8 @@ type RouteDeps struct {
 	LoginSessions oauth2http.LoginSessions
 	SignIn        oauth2http.SignInSteps
 
-	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
-	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
+	ApplicationSignInPolicyRepo policyports.SignInPolicyRepository
+	DefaultSignInPolicyRepo     policyports.DefaultSignInPolicyRepository
 }
 
 // RegisterRoutes は OAuth 2.0 と OIDC のプロトコル、認可トランザクションの画面、

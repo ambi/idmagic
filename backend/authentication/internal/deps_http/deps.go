@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"time"
 
-	appports "github.com/ambi/idmagic/backend/application/ports"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	mfaports "github.com/ambi/idmagic/backend/authentication/internal/mfa/ports"
@@ -32,6 +31,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
@@ -78,7 +78,7 @@ type Deps struct {
 	// DefaultSignInPolicyRepo はアカウントポータルに適用されるテナントデフォルトの sign-in policy。
 	// セキュリティ設定の応答で MFA の強制開始を予告し、対話のログインで IdMagic 自身の画面への
 	// サインインに適用する。nil ならどちらも行わない。
-	DefaultSignInPolicyRepo appports.DefaultSignInPolicyRepository
+	DefaultSignInPolicyRepo policyports.DefaultSignInPolicyRepository
 
 	// LoginAttemptThrottle、SentinelPasswordHash、TenantSaltStore は対話のログインの
 	// パスワードの照合と失敗の抑制に使う。

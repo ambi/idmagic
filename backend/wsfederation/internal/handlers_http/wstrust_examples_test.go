@@ -12,13 +12,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application"
-	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	"github.com/ambi/idmagic/backend/signinpolicy"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wstrust "github.com/ambi/idmagic/backend/wsfederation/internal/requests_wstrust"
@@ -277,15 +278,15 @@ func TestWsTrustIssue_RefusesAWrongCredentialWith401AndNoToken(t *testing.T) {
 // behindAnApplication の後に適用する。
 func requiringMFA(t *testing.T) func(*httpadapter.Deps) {
 	t.Helper()
-	policies := application.NewMemoryModule().SignInPolicyRepo
-	if err := policies.Save(context.Background(), &appdomain.AppSignInPolicy{
+	policies := signinpolicy.NewMemoryModule().ApplicationRepo
+	if err := policies.Save(context.Background(), &policydomain.AppSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "wsfed-app", UpdatedAt: time.Now().UTC(),
-		Rules: []appdomain.SignInRule{{RuleID: "rule-1", Name: "MFA", Enabled: true, RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa}}},
+		Rules: []policydomain.SignInRule{{RuleID: "rule-1", Name: "MFA", Enabled: true, RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa}}},
 	}); err != nil {
 		t.Fatal(err)
 	}
 	return func(deps *httpadapter.Deps) {
-		deps.Application.SignInPolicyRepo = policies
+		deps.SignInPolicy.ApplicationRepo = policies
 	}
 }
 

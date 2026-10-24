@@ -13,13 +13,11 @@ type ProtocolLinkers = db_postgres.ProtocolLinkers
 // 割り当ての保存先を読む Provisioning から組み立て地点が設定する。
 func NewMemoryModule() Module {
 	return Module{
-		Repo:                    db_memory.NewApplicationRepository(),
-		IconStore:               db_memory.NewApplicationIconStore(),
-		AssignmentRepo:          db_memory.NewApplicationAssignmentRepository(),
-		OrderingRepo:            db_memory.NewApplicationOrderingRepository(),
-		CategoryRepo:            db_memory.NewApplicationCategoryRepository(),
-		SignInPolicyRepo:        db_memory.NewSignInPolicyRepository(),
-		DefaultSignInPolicyRepo: db_memory.NewDefaultSignInPolicyRepository(),
+		Repo:           db_memory.NewApplicationRepository(),
+		IconStore:      db_memory.NewApplicationIconStore(),
+		AssignmentRepo: db_memory.NewApplicationAssignmentRepository(),
+		OrderingRepo:   db_memory.NewApplicationOrderingRepository(),
+		CategoryRepo:   db_memory.NewApplicationCategoryRepository(),
 	}
 }
 
@@ -27,12 +25,10 @@ func NewMemoryModule() Module {
 // 通知は、割り当ての保存先を読む Provisioning から組み立て地点が設定する。
 func NewPostgresModule(pool postgres.DB, linkers ProtocolLinkers) Module {
 	return Module{
-		Repo:                    db_postgres.NewApplicationRepository(pool, linkers),
-		IconStore:               &db_postgres.ApplicationIconStore{Pool: pool},
-		AssignmentRepo:          &db_postgres.ApplicationAssignmentRepository{Pool: pool},
-		OrderingRepo:            &db_postgres.ApplicationOrderingRepository{Pool: pool},
-		CategoryRepo:            &db_postgres.ApplicationCategoryRepository{Pool: pool},
-		SignInPolicyRepo:        &db_postgres.SignInPolicyRepository{Pool: pool},
-		DefaultSignInPolicyRepo: &db_postgres.DefaultSignInPolicyRepository{Pool: pool},
+		Repo:           db_postgres.NewApplicationRepository(pool, linkers),
+		IconStore:      &db_postgres.ApplicationIconStore{Pool: pool},
+		AssignmentRepo: &db_postgres.ApplicationAssignmentRepository{Pool: pool},
+		OrderingRepo:   &db_postgres.ApplicationOrderingRepository{Pool: pool},
+		CategoryRepo:   &db_postgres.ApplicationCategoryRepository{Pool: pool},
 	}
 }

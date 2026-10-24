@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+
 	"github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 )
@@ -163,11 +166,11 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 
 func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
-	repo := NewSignInPolicyRepository()
+	repo := signinpolicy.NewMemoryModule().ApplicationRepo
 
-	policy := &domain.AppSignInPolicy{
+	policy := &policydomain.AppSignInPolicy{
 		TenantID: "acme", ApplicationID: "app-1",
-		Rules: []domain.SignInRule{{RuleID: "r1", Name: "rule", Enabled: true}},
+		Rules: []policydomain.SignInRule{{RuleID: "r1", Name: "rule", Enabled: true}},
 	}
 	if err := repo.Save(ctx, policy); err != nil {
 		t.Fatal(err)
@@ -202,11 +205,11 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 
 func TestDefaultSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
-	repo := NewDefaultSignInPolicyRepository()
+	repo := signinpolicy.NewMemoryModule().DefaultRepo
 
-	policy := &domain.TenantDefaultSignInPolicy{
+	policy := &policydomain.TenantDefaultSignInPolicy{
 		TenantID: "acme",
-		Rules:    []domain.SignInRule{{RuleID: "r1", Name: "floor", Enabled: true}},
+		Rules:    []policydomain.SignInRule{{RuleID: "r1", Name: "floor", Enabled: true}},
 	}
 	if err := repo.Save(ctx, policy); err != nil {
 		t.Fatal(err)

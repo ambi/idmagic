@@ -13,13 +13,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+
 	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	appports "github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -31,7 +34,7 @@ const signInPolicyApplicationID = "policy-app"
 // 認可経路を建てる。サインインポリシーの保存先は呼び出し側が書き換えられるように返す。
 func signInPolicyStack(t *testing.T) (
 	*echo.Echo, *[]spec.DomainEvent,
-	appports.SignInPolicyRepository, appports.DefaultSignInPolicyRepository,
+	policyports.SignInPolicyRepository, policyports.DefaultSignInPolicyRepository,
 ) {
 	t.Helper()
 	now := time.Now().UTC()
@@ -40,8 +43,8 @@ func signInPolicyStack(t *testing.T) (
 	}
 	applications := application.NewMemoryModule().Repo
 	assignments := application.NewMemoryModule().AssignmentRepo
-	policies := application.NewMemoryModule().SignInPolicyRepo
-	defaults := application.NewMemoryModule().DefaultSignInPolicyRepo
+	policies := signinpolicy.NewMemoryModule().ApplicationRepo
+	defaults := signinpolicy.NewMemoryModule().DefaultRepo
 	if err := applications.Save(context.Background(), &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ID: signInPolicyApplicationID, Name: "Policy application",
 		Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
@@ -66,16 +69,16 @@ func signInPolicyStack(t *testing.T) (
 	e, emitted := newAuthorizeTestServer(t, authn, granted, func(deps *httpadapter.Deps) {
 		deps.Application = application.Module{
 			Repo: applications, AssignmentRepo: assignments,
-			SignInPolicyRepo: policies, DefaultSignInPolicyRepo: defaults,
 		}
+		deps.SignInPolicy = signinpolicy.Module{ApplicationRepo: policies, DefaultRepo: defaults}
 	})
 	return e, emitted, policies, defaults
 }
 
-func mfaRequiredRule(condition appdomain.AccessCondition) appdomain.SignInRule {
-	return appdomain.SignInRule{
+func mfaRequiredRule(condition policydomain.AccessCondition) policydomain.SignInRule {
+	return policydomain.SignInRule{
 		RuleID: "mfa", Name: "MFA", Enabled: true,
-		RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+		RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
 		Condition:     condition,
 	}
 }
@@ -105,9 +108,9 @@ func TestAppSignInPolicyIsEvaluatedBeforeTheAuthorizationCodeIsIssued(t *testing
 	}
 
 	now := time.Now().UTC()
-	if err := policies.Save(context.Background(), &appdomain.AppSignInPolicy{
+	if err := policies.Save(context.Background(), &policydomain.AppSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID, ApplicationID: signInPolicyApplicationID,
-		Rules:     []appdomain.SignInRule{mfaRequiredRule(appdomain.AccessCondition{})},
+		Rules:     []policydomain.SignInRule{mfaRequiredRule(policydomain.AccessCondition{})},
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatalf("save policy: %v", err)
@@ -128,12 +131,12 @@ func TestSignInPolicyRefusesAClientIPOutsideTheAllowedCIDR(t *testing.T) {
 	e, emitted, policies, _ := signInPolicyStack(t)
 
 	now := time.Now().UTC()
-	if err := policies.Save(context.Background(), &appdomain.AppSignInPolicy{
+	if err := policies.Save(context.Background(), &policydomain.AppSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID, ApplicationID: signInPolicyApplicationID,
-		Rules: []appdomain.SignInRule{{
+		Rules: []policydomain.SignInRule{{
 			RuleID: "network", Name: "Office only", Enabled: true,
-			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnPassword},
-			Condition:     appdomain.AccessCondition{NetworkAllowCIDRs: []string{"10.10.0.0/16"}},
+			RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnPassword},
+			Condition:     policydomain.AccessCondition{NetworkAllowCIDRs: []string{"10.10.0.0/16"}},
 		}},
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
@@ -163,9 +166,9 @@ func TestTenantDefaultSignInPolicyAppliesToAnApplicationWithoutItsOwn(t *testing
 	}
 
 	now := time.Now().UTC()
-	if err := defaults.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+	if err := defaults.Save(context.Background(), &policydomain.TenantDefaultSignInPolicy{
 		TenantID:  tenancydomain.DefaultTenantID,
-		Rules:     []appdomain.SignInRule{mfaRequiredRule(appdomain.AccessCondition{})},
+		Rules:     []policydomain.SignInRule{mfaRequiredRule(policydomain.AccessCondition{})},
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatalf("save default policy: %v", err)
@@ -186,8 +189,8 @@ func TestEmptyTenantDefaultSignInPolicyImposesNoExtraRequirement(t *testing.T) {
 	e, _, _, defaults := signInPolicyStack(t)
 
 	now := time.Now().UTC()
-	if err := defaults.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
-		TenantID: tenancydomain.DefaultTenantID, Rules: []appdomain.SignInRule{},
+	if err := defaults.Save(context.Background(), &policydomain.TenantDefaultSignInPolicy{
+		TenantID: tenancydomain.DefaultTenantID, Rules: []policydomain.SignInRule{},
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatalf("save default policy: %v", err)

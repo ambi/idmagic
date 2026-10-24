@@ -2,8 +2,8 @@
 package ports
 
 import (
-	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -23,7 +23,7 @@ type Authorization interface {
 	// 止めるときは support_http.ErrResponseWritten を包むエラーを返す。
 	Requirement(c *echo.Context, authn *authdomain.AuthenticationContext) (SignInRequirement, error)
 	// EnrollmentPolicy は、第二要素を持たない利用者に MFA の登録を始めさせるかの方針を返す。
-	EnrollmentPolicy(c *echo.Context, applicationID string) (*appdomain.MfaEnrollmentPolicy, error)
+	EnrollmentPolicy(c *echo.Context, applicationID string) (*policydomain.MfaEnrollmentPolicy, error)
 	// DeniedRedirect は、認可を拒否してクライアントへ戻す URL を返す。
 	DeniedRedirect(c *echo.Context, code, description string) string
 	// ContinueAfterPassword は、パスワードで完了した認証で認可を続け、応答を書く。

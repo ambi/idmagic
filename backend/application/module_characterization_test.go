@@ -12,6 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 
@@ -58,11 +62,11 @@ func (r *faultyAssignments) ListBySubjects(
 }
 
 type faultySignInPolicies struct {
-	*appmemory.SignInPolicyRepository
+	policyports.SignInPolicyRepository
 	getErr error
 }
 
-func (r *faultySignInPolicies) Get(ctx context.Context, tenantID, applicationID string) (*appdomain.AppSignInPolicy, error) {
+func (r *faultySignInPolicies) Get(ctx context.Context, tenantID, applicationID string) (*policydomain.AppSignInPolicy, error) {
 	if r.getErr != nil {
 		return nil, r.getErr
 	}
@@ -70,11 +74,11 @@ func (r *faultySignInPolicies) Get(ctx context.Context, tenantID, applicationID 
 }
 
 type faultyDefaultSignInPolicies struct {
-	*appmemory.DefaultSignInPolicyRepository
+	policyports.DefaultSignInPolicyRepository
 	getErr error
 }
 
-func (r *faultyDefaultSignInPolicies) Get(ctx context.Context, tenantID string) (*appdomain.TenantDefaultSignInPolicy, error) {
+func (r *faultyDefaultSignInPolicies) Get(ctx context.Context, tenantID string) (*policydomain.TenantDefaultSignInPolicy, error) {
 	if r.getErr != nil {
 		return nil, r.getErr
 	}
@@ -110,8 +114,8 @@ func newGateFixture(t *testing.T) *gateFixture {
 	f := &gateFixture{
 		apps:        &faultyApplications{ApplicationRepository: appmemory.NewApplicationRepository()},
 		assignments: &faultyAssignments{ApplicationAssignmentRepository: appmemory.NewApplicationAssignmentRepository()},
-		policies:    &faultySignInPolicies{SignInPolicyRepository: appmemory.NewSignInPolicyRepository()},
-		defaults:    &faultyDefaultSignInPolicies{DefaultSignInPolicyRepository: appmemory.NewDefaultSignInPolicyRepository()},
+		policies:    &faultySignInPolicies{SignInPolicyRepository: signinpolicy.NewMemoryModule().ApplicationRepo},
+		defaults:    &faultyDefaultSignInPolicies{DefaultSignInPolicyRepository: signinpolicy.NewMemoryModule().DefaultRepo},
 		groups:      &faultyGroups{GroupRepository: idmanagement.NewMemoryModule().GroupRepo},
 	}
 	if err := f.apps.Save(ctx, &appdomain.Application{
@@ -130,14 +134,13 @@ func newGateFixture(t *testing.T) *gateFixture {
 	}
 	f.module = application.Module{
 		Repo: f.apps, AssignmentRepo: f.assignments,
-		SignInPolicyRepo: f.policies, DefaultSignInPolicyRepo: f.defaults,
 	}
 	return f
 }
 
 func (f *gateFixture) evaluate(t *testing.T) (string, error) {
 	t.Helper()
-	decision, err := f.module.Gate(f.groups, 0).EvaluateApplicationAccess(
+	decision, err := f.module.Gate(f.groups, 0, f.policies, f.defaults).EvaluateApplicationAccess(
 		context.Background(), tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice",
 		&authdomain.AuthenticationContext{UserID: "alice", AMR: []string{"pwd"}}, "",
 	)

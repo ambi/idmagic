@@ -229,6 +229,7 @@ func Run() error {
 		Sourcing:         sourcingModule(deps, emit),
 		FederationSigner: federationSigner,
 		Application:      deps.Application,
+		SignInPolicy:     deps.SignInPolicy,
 		ApiTokens:        deps.ApiTokens,
 		Jobs:             jobsModule,
 		Provisioning:     deps.Provisioning,

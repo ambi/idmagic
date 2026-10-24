@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+
 	"github.com/ambi/idmagic/backend/application/domain"
 	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
 	"github.com/ambi/idmagic/backend/application/ports"
@@ -25,7 +27,7 @@ func fullAppDeps() appusecases.ApplicationDeps {
 		Repo:           appmemory.NewApplicationRepository(),
 		IconStore:      appmemory.NewApplicationIconStore(),
 		AssignmentRepo: appmemory.NewApplicationAssignmentRepository(),
-		PolicyRepo:     appmemory.NewSignInPolicyRepository(),
+		PolicyRepo:     signinpolicy.NewMemoryModule().ApplicationRepo,
 		QuotaRepo:      tenancy.NewMemoryModule().QuotaRepo,
 	}
 }

@@ -8,20 +8,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
-	"github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/signinpolicy/domain"
+	"github.com/ambi/idmagic/backend/signinpolicy/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 var (
+	ErrApplicationNotFound = errors.New("application not found")
 	ErrInvalidSignInPolicy = errors.New("invalid application sign-in policy")
 	ErrPolicyDenied        = errors.New("application sign-in policy denied access")
 	ErrPolicyStepUp        = errors.New("application sign-in policy requires step-up")
 )
 
 type SignInPolicyDeps struct {
-	AppRepo     ports.ApplicationRepository
+	AppRepo     ports.ApplicationLookup
 	PolicyRepo  ports.SignInPolicyRepository
 	DefaultRepo ports.DefaultSignInPolicyRepository
 	Emit        func(spec.DomainEvent)
@@ -327,15 +328,15 @@ func EvaluateSignInPolicy(policy *domain.AppSignInPolicy, authn domain.SignInAut
 	return domain.EvaluateSignInPolicy(policy, authn, clientIP, now)
 }
 
-func ensureApplicationExists(ctx context.Context, repo ports.ApplicationRepository, tenantID, applicationID string) error {
+func ensureApplicationExists(ctx context.Context, repo ports.ApplicationLookup, tenantID, applicationID string) error {
 	if repo == nil {
 		return ErrApplicationNotFound
 	}
-	app, err := repo.FindByID(ctx, tenantID, applicationID)
+	exists, err := repo.ApplicationExists(ctx, tenantID, applicationID)
 	if err != nil {
 		return err
 	}
-	if app == nil {
+	if !exists {
 		return ErrApplicationNotFound
 	}
 	return nil

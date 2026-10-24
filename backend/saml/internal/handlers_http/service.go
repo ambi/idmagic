@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	samlusecases "github.com/ambi/idmagic/backend/saml/internal/usecases"
@@ -17,7 +19,7 @@ type ApplicationGate interface {
 		tenantID string,
 		bindingType appdomain.ApplicationProtocolType,
 		bindingKey, sub string,
-		authn appdomain.SignInAuthentication,
+		authn policydomain.SignInAuthentication,
 		clientIP string,
 	) (appdomain.ApplicationAccessDecision, error)
 	ClientIP(r *http.Request) string

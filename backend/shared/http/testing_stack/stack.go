@@ -39,6 +39,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
+
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -206,8 +209,8 @@ type Stack struct {
 	Provisioning           provisioning.Module
 	// AppSignInPolicies と DefaultSignInPolicy は、サインインポリシーの具体例が
 	// 「保存されたか」を応答ではなく保存先で読み直せるように配る。
-	AppSignInPolicies   appports.SignInPolicyRepository
-	DefaultSignInPolicy appports.DefaultSignInPolicyRepository
+	AppSignInPolicies   policyports.SignInPolicyRepository
+	DefaultSignInPolicy policyports.DefaultSignInPolicyRepository
 	SamlSPs             saml.ServiceProviderRepository
 	WsFedRPs            wsfedports.WsFedRelyingPartyRepository
 	Sessions            *authentication.SessionManager
@@ -462,14 +465,16 @@ func WithAgentRevocation() Option {
 func WithApplicationApi() Option {
 	return func(b *builder) {
 		module := application.NewMemoryModule()
+		policies := signinpolicy.NewMemoryModule()
 		b.stack.Applications = module.Repo
 		b.stack.ApplicationAssignments = module.AssignmentRepo
 		b.stack.ApplicationOrderings = module.OrderingRepo
 		b.stack.ApplicationCategories = module.CategoryRepo
 		b.stack.ApplicationIcons = module.IconStore
-		b.stack.AppSignInPolicies = module.SignInPolicyRepo
-		b.stack.DefaultSignInPolicy = module.DefaultSignInPolicyRepo
+		b.stack.AppSignInPolicies = policies.ApplicationRepo
+		b.stack.DefaultSignInPolicy = policies.DefaultRepo
 		b.deps.Application = module
+		b.deps.SignInPolicy = policies
 	}
 }
 

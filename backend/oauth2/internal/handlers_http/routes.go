@@ -12,10 +12,11 @@ import (
 	"net/http"
 	"time"
 
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	appports "github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -30,6 +31,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
@@ -77,7 +79,7 @@ type Deps struct {
 	ManagedTokenRevoker tokenusecases.ManagedTokenRevoker
 	BuiltinResource     tokenusecases.BuiltinResource
 	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
-	Authorizer          policyports.Authorizer
+	Authorizer          accessports.Authorizer
 	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (client
 	// registration) and consents (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
@@ -92,8 +94,8 @@ type Deps struct {
 
 	// ApplicationSignInPolicyRepo と DefaultSignInPolicyRepo は、外部のアプリケーションへの
 	// 認可で MFA の登録を始めさせるかの方針を読む。ApplicationGate と同じ保存先を結ぶ。
-	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
-	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
+	ApplicationSignInPolicyRepo policyports.SignInPolicyRepository
+	DefaultSignInPolicyRepo     policyports.DefaultSignInPolicyRepository
 }
 
 // ResolveAuthentication はリクエストの認証を、AMR や保留の目的まで読める認証の文脈として返す。
@@ -113,7 +115,7 @@ type ApplicationGate interface {
 		tenantID string,
 		bindingType appdomain.ApplicationProtocolType,
 		bindingKey, sub string,
-		authn appdomain.SignInAuthentication,
+		authn policydomain.SignInAuthentication,
 		clientIP string,
 	) (appdomain.ApplicationAccessDecision, error)
 	ClientIP(r *http.Request) string

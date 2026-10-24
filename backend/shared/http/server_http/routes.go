@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+
 	"github.com/ambi/idmagic/backend/accesscontrol"
 	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	"github.com/ambi/idmagic/backend/apitoken"
@@ -113,6 +115,7 @@ type Deps struct {
 	Sourcing         sourcing.Module
 	FederationSigner samltoken.SignerProvider
 	Application      application.Module
+	SignInPolicy     signinpolicy.Module
 	ApiTokens        apitoken.Module
 	Jobs             jobs.Module
 	Provisioning     provisioning.Module
@@ -280,7 +283,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	apiTokenService := d.ApiTokens.Service()
 	authenticator := newAuthenticator(d, apiTokenService)
 
-	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops)
+	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops, d.SignInPolicy.ApplicationRepo, d.SignInPolicy.DefaultRepo)
 	clientDisplayNames := d.Application.ClientDisplayNames(applicationdeps.NewClientNames(d.OAuth2.ClientRepo))
 	jobEnqueuer := d.Jobs.Enqueuer
 
@@ -312,7 +315,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Notifier:                d.Notification.Notifier,
 		TenantSaltStore:         d.Audit.TenantSaltStore,
 		ClientIP:                appGate.ClientIP,
-		DefaultSignInPolicyRepo: d.Application.DefaultSignInPolicyRepo,
+		DefaultSignInPolicyRepo: d.SignInPolicy.DefaultRepo,
 	}
 	oauthRoutes := oauth2.RouteDeps{
 		WorkloadVerifier:          workloadVerifier,
@@ -339,8 +342,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AuthnResolver: d.Authentication.AuthnResolver,
 		SignIn:        d.Authentication.SignInSteps(authRoutes),
 
-		ApplicationSignInPolicyRepo: d.Application.SignInPolicyRepo,
-		DefaultSignInPolicyRepo:     d.Application.DefaultSignInPolicyRepo,
+		ApplicationSignInPolicyRepo: d.SignInPolicy.ApplicationRepo,
+		DefaultSignInPolicyRepo:     d.SignInPolicy.DefaultRepo,
 	}
 	// nil の *SessionManager を包んだ値はインターフェースの nil の確認をすり抜けるので、
 	// ないときはポートごと渡さない。
@@ -493,8 +496,9 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		ApplicationAssignmentRepo:   d.Application.AssignmentRepo,
 		ApplicationOrderingRepo:     d.Application.OrderingRepo,
 		ApplicationCategoryRepo:     d.Application.CategoryRepo,
-		ApplicationSignInPolicyRepo: d.Application.SignInPolicyRepo,
-		DefaultSignInPolicyRepo:     d.Application.DefaultSignInPolicyRepo,
+		PolicyApplications:          d.Application,
+		ApplicationSignInPolicyRepo: d.SignInPolicy.ApplicationRepo,
+		DefaultSignInPolicyRepo:     d.SignInPolicy.DefaultRepo,
 		AssignmentSubjectDirectory:  application.SubjectDirectory(d.IdManagement.UserRepo, d.IdManagement.GroupRepo),
 		GroupRepo:                   d.IdManagement.GroupRepo, UserRepo: d.IdManagement.UserRepo,
 		Clients:              d.OAuth2.ClientAdministration(d.Emit, d.Tenancy.QuotaRepo),

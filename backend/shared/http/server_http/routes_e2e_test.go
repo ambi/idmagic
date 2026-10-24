@@ -21,6 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
@@ -195,8 +198,8 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 	codeStore := oauth2.NewMemoryModule().CodeStore
 	applicationRepo := application.NewMemoryModule().Repo
 	assignmentRepo := application.NewMemoryModule().AssignmentRepo
-	signInPolicyRepo := application.NewMemoryModule().SignInPolicyRepo
-	defaultSignInPolicyRepo := application.NewMemoryModule().DefaultSignInPolicyRepo
+	signInPolicyRepo := signinpolicy.NewMemoryModule().ApplicationRepo
+	defaultSignInPolicyRepo := signinpolicy.NewMemoryModule().DefaultRepo
 	hasher := testing_passwords.NewHasher()
 
 	secretHash := domain.HashClientSecret(demoClientSecret)
@@ -239,7 +242,7 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 	}
 	if requireMFA {
 		enrollmentEnabled := opts.enrollment
-		var enrollmentPolicy *appdomain.MfaEnrollmentPolicy
+		var enrollmentPolicy *policydomain.MfaEnrollmentPolicy
 		if enrollmentEnabled {
 			deadlineIn := opts.enrollmentDeadlineIn
 			if deadlineIn == 0 {
@@ -249,7 +252,7 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 			// 置くには開始時刻を同じだけ過去へ動かす。
 			start := now.Add(deadlineIn - time.Hour)
 			grace := 3600
-			enrollmentPolicy = &appdomain.MfaEnrollmentPolicy{EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true}
+			enrollmentPolicy = &policydomain.MfaEnrollmentPolicy{EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true}
 			bypassExpiresAt := now.Add(15 * time.Minute)
 			if opts.expiredBypass {
 				bypassExpiresAt = now.Add(-time.Second)
@@ -276,11 +279,11 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 		}); err != nil {
 			t.Fatalf("seed assignment: %v", err)
 		}
-		if err := defaultSignInPolicyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+		if err := defaultSignInPolicyRepo.Save(context.Background(), &policydomain.TenantDefaultSignInPolicy{
 			TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
-			Rules: []appdomain.SignInRule{{
+			Rules: []policydomain.SignInRule{{
 				RuleID: "default", Name: "Require MFA", Enabled: true,
-				RequiredAuthn:      appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+				RequiredAuthn:      policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
 				MfaEnrollment:      enrollmentPolicy,
 				AllowTrustedDevice: opts.allowTrustedDevice,
 			}},
@@ -328,8 +331,8 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
 		Application: application.Module{
 			Repo: applicationRepo, AssignmentRepo: assignmentRepo,
-			SignInPolicyRepo: signInPolicyRepo, DefaultSignInPolicyRepo: defaultSignInPolicyRepo,
 		},
+		SignInPolicy: signinpolicy.Module{ApplicationRepo: signInPolicyRepo, DefaultRepo: defaultSignInPolicyRepo},
 	})
 	return httptest.NewServer(e), events
 }

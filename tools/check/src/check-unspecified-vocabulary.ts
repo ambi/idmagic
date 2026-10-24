@@ -22,6 +22,8 @@ const MODULES = [
   { module: 'tenancy', backend: 'backend/tenancy' },
   { module: 'api-tokens', backend: 'backend/apitoken' },
   { module: 'application', backend: 'backend/application' },
+  // SignInPolicy の実装も、識別子を維持した Application の公開契約に照合する。
+  { module: 'application', backend: 'backend/signinpolicy' },
   { module: 'audit', backend: 'backend/audit' },
   { module: 'authentication', backend: 'backend/authentication' },
   { module: 'authorization', backend: 'backend/accesscontrol' },

@@ -27,6 +27,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/application"
 	"github.com/ambi/idmagic/backend/saml"
+	"github.com/ambi/idmagic/backend/signinpolicy"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -36,9 +37,13 @@ import (
 )
 
 func newCatalogApplicationModule() application.Module {
-	module := application.NewMemoryModule()
+	return application.NewMemoryModule()
+}
+
+func newCatalogSignInPolicyModule() signinpolicy.Module {
+	module := signinpolicy.NewMemoryModule()
 	// この fixture は個別のサインインポリシーを保存しない構成を使う。
-	module.SignInPolicyRepo = nil
+	module.ApplicationRepo = nil
 	return module
 }
 
@@ -59,8 +64,8 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 		Issuer: "http://idp.test",
 
 		Emit: func(spec.DomainEvent) {}, UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo,
-		Application: newCatalogApplicationModule(),
-		Saml:        saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
+		Application: newCatalogApplicationModule(), SignInPolicy: newCatalogSignInPolicyModule(),
+		Saml: saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		OAuth2: oauth2.Module{
 			ClientRepo: oauth2.NewMemoryModule().ClientRepo,
 		},

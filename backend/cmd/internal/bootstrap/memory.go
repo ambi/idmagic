@@ -3,6 +3,8 @@ package bootstrap
 import (
 	"context"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+
 	"github.com/ambi/idmagic/backend/apitoken"
 
 	"github.com/ambi/idmagic/backend/application"
@@ -85,6 +87,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		ApiTokens:        apitoken.NewMemoryModule(),
 		Jobs:             jobs.NewMemoryModule(),
 		Application:      applicationModule,
+		SignInPolicy:     signinpolicy.NewMemoryModule(),
 		Provisioning:     provisioningModule,
 		WorkloadIdentity: workloadidentity.NewMemoryModule(),
 		SharedSignals:    sharedsignals.NewMemoryModule(),

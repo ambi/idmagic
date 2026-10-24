@@ -29,6 +29,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/saml"
+	"github.com/ambi/idmagic/backend/signinpolicy"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -424,6 +425,7 @@ func newApplicationHandlerWithProtocolOwners(
 		Emit:     events.record,
 		UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo,
 		Application:   application.NewMemoryModule(),
+		SignInPolicy:  signinpolicy.NewMemoryModule(),
 		IdManagement:  idmanagement.Module{AttrSchemaRepo: schema},
 		Saml:          samlModule,
 		OAuth2:        oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},

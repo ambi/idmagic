@@ -88,7 +88,7 @@ func newSecretExampleFixtureWithQuota(t *testing.T, quota tenantports.QuotaRepos
 		Tenancy:    tenancy.Module{QuotaRepo: quota},
 		Emit:       func(event spec.DomainEvent) { *events = append(*events, event) },
 		UserRepo:   users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo,
-		Application:  newCatalogApplicationModule(),
+		Application: newCatalogApplicationModule(), SignInPolicy: newCatalogSignInPolicyModule(),
 		Saml:         saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		WsFederation: wsfederation.NewMemoryModule(),
 		OAuth2: oauth2.Module{

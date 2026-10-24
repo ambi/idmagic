@@ -301,8 +301,8 @@ erDiagram
 | `refresh_tokens` | リフレッシュトークンのハッシュ。ローテーションの系譜をたどって再利用を検知する | OAuth2 | `LOGGED` | なし |
 | `agent_credential_bindings` | エージェントと、そのエージェントが使う OAuth クライアントの対応 | IdManagement | `LOGGED` | なし |
 | `application_icons` | アプリケーションのアイコン画像本体 | Application | `LOGGED` | なし |
-| `application_sign_in_policies` | アプリケーション単位のサインイン方針 | Application | `LOGGED` | なし |
-| `tenant_default_sign_in_policies` | 個別のサインイン方針が設定されていないアプリケーションに適用するデフォルトのサインイン方針 | Application | `LOGGED` | 単独主キー |
+| `application_sign_in_policies` | アプリケーション単位のサインイン方針 | SignInPolicy | `LOGGED` | なし |
+| `tenant_default_sign_in_policies` | 個別のサインイン方針が設定されていないアプリケーションに適用するデフォルトのサインイン方針 | SignInPolicy | `LOGGED` | 単独主キー |
 | `application_assignments` | アプリケーションを使える利用者とグループ、ポータルに表示するかどうか | Application | `LOGGED` | なし |
 | `saml_identity_provider_profiles` | SAML IdP として名乗る設定の組。SP ごとに選ぶ | Saml | `LOGGED` | 複合主キーの一部 |
 | `saml_service_providers` | SAML SP の登録内容 | Saml | `LOGGED` | 複合主キーの一部 |

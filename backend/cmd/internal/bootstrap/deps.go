@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+
 	"github.com/ambi/idmagic/backend/accesscontrol"
 	"github.com/ambi/idmagic/backend/apitoken"
 	"github.com/ambi/idmagic/backend/application"
@@ -44,6 +46,7 @@ type Dependencies struct {
 	Saml             saml.Module
 	Sourcing         sourcing.Module
 	Application      application.Module
+	SignInPolicy     signinpolicy.Module
 	ApiTokens        apitoken.Module
 	Jobs             jobs.Module
 	Provisioning     provisioning.Module

@@ -9,6 +9,7 @@ import (
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
@@ -25,8 +26,9 @@ type Deps struct {
 	ApplicationAssignmentRepo   appports.AssignmentRepository
 	ApplicationOrderingRepo     appports.ApplicationOrderingRepository
 	ApplicationCategoryRepo     appports.ApplicationCategoryRepository
-	ApplicationSignInPolicyRepo appports.SignInPolicyRepository
-	DefaultSignInPolicyRepo     appports.DefaultSignInPolicyRepository
+	ApplicationSignInPolicyRepo policyports.SignInPolicyRepository
+	DefaultSignInPolicyRepo     policyports.DefaultSignInPolicyRepository
+	PolicyApplications          policyports.ApplicationLookup
 	AssignmentSubjectDirectory  appports.SubjectDirectory
 	GroupRepo                   groupports.GroupRepository
 	UserRepo                    userports.UserRepository

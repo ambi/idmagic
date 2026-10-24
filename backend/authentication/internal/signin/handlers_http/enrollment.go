@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
@@ -28,7 +28,7 @@ func (d Deps) pendingAuthPath(c *echo.Context, authn *authdomain.AuthenticationC
 	return support.TenantRoute(c, "/totp")
 }
 
-func (d Deps) beginMfaEnrollment(c *echo.Context, authn *authdomain.AuthenticationContext, policy *appdomain.MfaEnrollmentPolicy) (bool, error) {
+func (d Deps) beginMfaEnrollment(c *echo.Context, authn *authdomain.AuthenticationContext, policy *policydomain.MfaEnrollmentPolicy) (bool, error) {
 	if policy == nil || policy.EnforcementStartAt == nil || policy.GracePeriodSeconds == nil || d.MfaEnrollmentBypassRepo == nil {
 		return false, nil
 	}

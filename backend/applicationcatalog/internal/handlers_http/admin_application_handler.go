@@ -10,6 +10,9 @@ import (
 	"sync"
 	"time"
 
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+	policyusecases "github.com/ambi/idmagic/backend/signinpolicy/usecases"
+
 	"github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
@@ -66,11 +69,11 @@ type assignmentResponse struct {
 }
 
 type signInPolicyRequest struct {
-	Rules []domain.SignInRule `json:"rules"`
+	Rules []policydomain.SignInRule `json:"rules"`
 }
 
 type defaultSignInPolicyRequest struct {
-	Rules []domain.SignInRule `json:"rules"`
+	Rules []policydomain.SignInRule `json:"rules"`
 }
 
 const (
@@ -140,7 +143,7 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 	}
 
 	// Bulkロード：個別ログインポリシー
-	policyMap := make(map[string]*domain.AppSignInPolicy)
+	policyMap := make(map[string]*policydomain.AppSignInPolicy)
 	if d.ApplicationSignInPolicyRepo != nil {
 		policies, err := d.ApplicationSignInPolicyRepo.ListAll(ctx, tenantID)
 		if err != nil {
@@ -232,7 +235,7 @@ func (d Deps) handleGetApplication(c *echo.Context) error {
 		return d.writeApplicationError(c, appusecases.ErrApplicationNotFound)
 	}
 	oidc, wsfed, saml := d.resolveProtocolConfig(c, app)
-	policy, err := appusecases.GetSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), app.ID)
+	policy, err := policyusecases.GetSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), app.ID)
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -461,21 +464,21 @@ func (d Deps) handleUnassignApplication(c *echo.Context) error {
 
 // signInPolicyView は app 個別・テナントデフォルト・上書き後 effective を区別して返す。
 // weaker_than_default はアプリ独自ポリシーがデフォルトより弱いときの UI 警告用フラグ。
-func (d Deps) signInPolicyView(c *echo.Context, policy *domain.AppSignInPolicy) (map[string]any, error) {
+func (d Deps) signInPolicyView(c *echo.Context, policy *policydomain.AppSignInPolicy) (map[string]any, error) {
 	deps := d.signInPolicyDeps()
-	defaultPolicy, err := appusecases.GetDefaultSignInPolicy(c.Request().Context(), deps)
+	defaultPolicy, err := policyusecases.GetDefaultSignInPolicy(c.Request().Context(), deps)
 	if err != nil {
 		return nil, err
 	}
-	effective := appusecases.EffectiveSignInRules(defaultPolicy, policy)
+	effective := policyusecases.EffectiveSignInRules(defaultPolicy, policy)
 	if effective == nil {
-		effective = []domain.SignInRule{}
+		effective = []policydomain.SignInRule{}
 	}
 	return map[string]any{
 		"policy":              policy,
 		"tenant_default":      defaultPolicy,
 		"effective_rules":     effective,
-		"weaker_than_default": appusecases.AppPolicyWeakerThanDefault(defaultPolicy, policy),
+		"weaker_than_default": policyusecases.AppPolicyWeakerThanDefault(defaultPolicy, policy),
 	}, nil
 }
 
@@ -483,7 +486,7 @@ func (d Deps) handleGetSignInPolicy(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	policy, err := appusecases.GetSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), c.Param("id"))
+	policy, err := policyusecases.GetSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), c.Param("id"))
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -506,7 +509,7 @@ func (d Deps) handleUpdateSignInPolicy(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	policy, err := appusecases.UpdateSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateSignInPolicyInput{
+	policy, err := policyusecases.UpdateSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), policyusecases.UpdateSignInPolicyInput{
 		ActorUserID: actor.ID, ApplicationID: c.Param("id"), Rules: req.Rules, Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -523,7 +526,7 @@ func (d Deps) handleGetDefaultSignInPolicy(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	policy, err := appusecases.GetDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps())
+	policy, err := policyusecases.GetDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps())
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -546,7 +549,7 @@ func (d Deps) handleUpdateDefaultSignInPolicy(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	policy, err := appusecases.UpdateDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateDefaultSignInPolicyInput{
+	policy, err := policyusecases.UpdateDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), policyusecases.UpdateDefaultSignInPolicyInput{
 		ActorUserID: actor.ID, Rules: req.Rules, Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -590,15 +593,15 @@ func (d Deps) assignmentDeps() appusecases.AssignmentDeps {
 	}
 }
 
-func (d Deps) signInPolicyDeps() appusecases.SignInPolicyDeps {
-	return appusecases.SignInPolicyDeps{
-		AppRepo: d.ApplicationRepo, PolicyRepo: d.ApplicationSignInPolicyRepo,
+func (d Deps) signInPolicyDeps() policyusecases.SignInPolicyDeps {
+	return policyusecases.SignInPolicyDeps{
+		AppRepo: d.PolicyApplications, PolicyRepo: d.ApplicationSignInPolicyRepo,
 		DefaultRepo: d.DefaultSignInPolicyRepo, Emit: d.Emit,
 	}
 }
 
 func (d Deps) writeApplicationError(c *echo.Context, err error) error {
-	if errors.Is(err, appusecases.ErrApplicationNotFound) {
+	if errors.Is(err, appusecases.ErrApplicationNotFound) || errors.Is(err, policyusecases.ErrApplicationNotFound) {
 		return support.WriteProblem(c, http.StatusNotFound, "application_not_found", "The application does not exist.")
 	}
 	if errors.Is(err, appusecases.ErrApplicationIconRequired) ||
@@ -606,7 +609,7 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 		errors.Is(err, appusecases.ErrApplicationIconFormat) {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_icon", err.Error())
 	}
-	if errors.Is(err, appusecases.ErrInvalidSignInPolicy) {
+	if errors.Is(err, policyusecases.ErrInvalidSignInPolicy) {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_sign_in_policy", err.Error())
 	}
 	if errors.Is(err, clientports.ErrClientSecretLimitExceeded) {
@@ -652,7 +655,7 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 	}
 
 	var policySummary string
-	var p *domain.AppSignInPolicy
+	var p *policydomain.AppSignInPolicy
 	var err error
 	if d.ApplicationSignInPolicyRepo != nil {
 		p, err = d.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ID)

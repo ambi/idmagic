@@ -9,12 +9,10 @@
 | --- | --- | --- |
 | `Application` | 名前、種類（`weblink`、`federated`、`service`）、起動の URL、状態、アイコン、カテゴリ、プロトコル設定への参照（`ApplicationProtocol`） | `Tenant` を `tenant_id` で参照する。プロトコル設定を最大一つ参照する |
 | `ApplicationAssignment` | 主体（`user` または `group`）、`visibility` | `Application` と、User または Group を参照する |
-| `AppSignInPolicy` | 順序付けた `SignInRule` の集合 | `Application` を参照する |
-| `TenantDefaultSignInPolicy` | テナントのデフォルトの `SignInRule` の集合 | `Tenant` を `tenant_id` で参照する |
 | `ApplicationCategory` | テナントの管理者が定義するカテゴリ | `Tenant` を `tenant_id` で参照する |
 | `ApplicationOrdering` | `(tenant_id, user_sub)` ごとの `application_id` の並び | User を参照する |
 
-- **判断**：テナントのデフォルトのサインインポリシーは、テナントの Aggregate ではなく、アプリケーションへのサインインの方法に関する概念なので、`Tenancy` ではなくこのモジュールに置く。
+サインイン条件の集約と保存は [SignInPolicy のデータ](../sign-in-policy/data.md)が扱う。
 - **判断**：ポータルでの手動の並び順とカテゴリは、IdManagement の User の Aggregate ではなく、`Application` の表示に関する概念なので、このモジュールに置く。
 
 ## Application とプロトコル設定の関係

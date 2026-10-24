@@ -5,18 +5,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 )
 
 func TestValidateSignInPolicyRulesAtMfaEnrollment(t *testing.T) {
 	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
 	start := now.Add(time.Hour)
 	grace := 900
-	rules := []domain.SignInRule{{
+	rules := []policydomain.SignInRule{{
 		Name: "mfa", Enabled: true,
-		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
-		MfaEnrollment: &domain.MfaEnrollmentPolicy{EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true},
+		RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
+		MfaEnrollment: &policydomain.MfaEnrollmentPolicy{EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true},
 	}}
 	if err := ValidateSignInPolicyRulesAt(rules, now); err != nil {
 		t.Fatalf("valid enrollment policy: %v", err)
@@ -29,9 +29,9 @@ func TestValidateSignInPolicyRulesAtMfaEnrollment(t *testing.T) {
 }
 
 func TestEvaluateSignInPolicyRequiresMFA(t *testing.T) {
-	policy := &domain.AppSignInPolicy{Rules: []domain.SignInRule{{
+	policy := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{{
 		RuleID: "rule-1", Name: "MFA", Enabled: true,
-		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
+		RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
 	}}}
 
 	got := EvaluateSignInPolicy(policy, &authdomain.AuthenticationContext{
@@ -44,9 +44,9 @@ func TestEvaluateSignInPolicyRequiresMFA(t *testing.T) {
 }
 
 func TestEvaluateSignInPolicyMfaSatisfied(t *testing.T) {
-	policy := &domain.AppSignInPolicy{Rules: []domain.SignInRule{{
+	policy := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{{
 		RuleID: "rule-1", Name: "MFA", Enabled: true,
-		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
+		RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
 	}}}
 
 	got := EvaluateSignInPolicy(policy, &authdomain.AuthenticationContext{
@@ -65,10 +65,10 @@ func TestEvaluateSignInPolicyDoesNotRequireMfaBeforeEnforcementStart(t *testing.
 	now := time.Now().UTC()
 	grace := 3600
 	future := now.Add(time.Hour)
-	policy := &domain.AppSignInPolicy{Rules: []domain.SignInRule{{
+	policy := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{{
 		RuleID: "rule-1", Name: "MFA", Enabled: true,
-		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
-		MfaEnrollment: &domain.MfaEnrollmentPolicy{
+		RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
+		MfaEnrollment: &policydomain.MfaEnrollmentPolicy{
 			EnforcementStartAt: &future, GracePeriodSeconds: &grace, AllowAdminBypass: true,
 		},
 	}}}
@@ -93,28 +93,28 @@ func TestEvaluateSignInPolicyDoesNotRequireMfaBeforeEnforcementStart(t *testing.
 func TestUpcomingMfaEnforcementStartReturnsOnlyAFutureStart(t *testing.T) {
 	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
 	grace := 3600
-	rule := func(strength domain.RequiredAuthnStrength, enabled bool, start time.Time) domain.SignInRule {
-		return domain.SignInRule{
+	rule := func(strength policydomain.RequiredAuthnStrength, enabled bool, start time.Time) policydomain.SignInRule {
+		return policydomain.SignInRule{
 			RuleID: "rule-1", Name: "MFA", Enabled: enabled,
-			RequiredAuthn: domain.RequiredAuthnLevel{Strength: strength},
-			MfaEnrollment: &domain.MfaEnrollmentPolicy{EnforcementStartAt: &start, GracePeriodSeconds: &grace},
+			RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: strength},
+			MfaEnrollment: &policydomain.MfaEnrollmentPolicy{EnforcementStartAt: &start, GracePeriodSeconds: &grace},
 		}
 	}
 	future := now.Add(time.Hour)
 
-	got := UpcomingMfaEnforcementStart([]domain.SignInRule{rule(domain.RequiredAuthnMfa, true, future)}, now)
+	got := UpcomingMfaEnforcementStart([]policydomain.SignInRule{rule(policydomain.RequiredAuthnMfa, true, future)}, now)
 	if got == nil || !got.Equal(future) {
 		t.Fatalf("強制開始前: got %v, want %v", got, future)
 	}
 
-	for name, rules := range map[string][]domain.SignInRule{
-		"開始時刻ちょうど":   {rule(domain.RequiredAuthnMfa, true, now)},
-		"強制開始後":      {rule(domain.RequiredAuthnMfa, true, now.Add(-time.Hour))},
-		"無効なルール":     {rule(domain.RequiredAuthnMfa, false, future)},
-		"MFA を要求しない": {rule(domain.RequiredAuthnPassword, true, future)},
+	for name, rules := range map[string][]policydomain.SignInRule{
+		"開始時刻ちょうど":   {rule(policydomain.RequiredAuthnMfa, true, now)},
+		"強制開始後":      {rule(policydomain.RequiredAuthnMfa, true, now.Add(-time.Hour))},
+		"無効なルール":     {rule(policydomain.RequiredAuthnMfa, false, future)},
+		"MFA を要求しない": {rule(policydomain.RequiredAuthnPassword, true, future)},
 		"登録期限の設定なし": {{
 			RuleID: "rule-1", Name: "MFA", Enabled: true,
-			RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
+			RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
 		}},
 		"ルールなし": nil,
 	} {
@@ -125,9 +125,9 @@ func TestUpcomingMfaEnforcementStartReturnsOnlyAFutureStart(t *testing.T) {
 }
 
 func TestEvaluateSignInPolicyNetworkCIDRAllows(t *testing.T) {
-	policy := &domain.AppSignInPolicy{Rules: []domain.SignInRule{{
+	policy := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{{
 		RuleID: "rule-1", Name: "Network", Enabled: true,
-		Condition: domain.AccessCondition{NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
+		Condition: policydomain.AccessCondition{NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
 	}}}
 	authn := &authdomain.AuthenticationContext{UserID: "alice", ACR: authdomain.ACRMFA, AMR: []string{"pwd", "otp"}}
 
@@ -146,9 +146,9 @@ func TestEvaluateSignInPolicyNetworkCIDRAllows(t *testing.T) {
 func TestEvaluateSignInPolicyReauthMaxAge(t *testing.T) {
 	maxAge := 300
 	now := time.Date(2026, 7, 4, 12, 0, 0, 0, time.UTC)
-	policy := &domain.AppSignInPolicy{Rules: []domain.SignInRule{{
+	policy := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{{
 		RuleID: "rule-1", Name: "Fresh", Enabled: true,
-		Condition: domain.AccessCondition{ReauthMaxAgeSeconds: &maxAge},
+		Condition: policydomain.AccessCondition{ReauthMaxAgeSeconds: &maxAge},
 	}}}
 
 	got := EvaluateSignInPolicy(policy, &authdomain.AuthenticationContext{
@@ -160,23 +160,23 @@ func TestEvaluateSignInPolicyReauthMaxAge(t *testing.T) {
 	}
 }
 
-func mfaRule(id string) domain.SignInRule {
-	return domain.SignInRule{
+func mfaRule(id string) policydomain.SignInRule {
+	return policydomain.SignInRule{
 		RuleID: id, Name: "MFA", Enabled: true,
-		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
+		RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
 	}
 }
 
-func passwordRule(id string) domain.SignInRule {
-	return domain.SignInRule{
+func passwordRule(id string) policydomain.SignInRule {
+	return policydomain.SignInRule{
 		RuleID: id, Name: "Password", Enabled: true,
-		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnPassword},
+		RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnPassword},
 	}
 }
 
 func TestEffectiveSignInRulesAppOverridesDefault(t *testing.T) {
-	def := &domain.TenantDefaultSignInPolicy{Rules: []domain.SignInRule{mfaRule("default-1")}}
-	app := &domain.AppSignInPolicy{Rules: []domain.SignInRule{passwordRule("app-1")}}
+	def := &policydomain.TenantDefaultSignInPolicy{Rules: []policydomain.SignInRule{mfaRule("default-1")}}
+	app := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{passwordRule("app-1")}}
 
 	// アプリが独自ポリシーを持てばデフォルトを完全に置換する (合成しない)。
 	got := EffectiveSignInRules(def, app)
@@ -186,34 +186,34 @@ func TestEffectiveSignInRulesAppOverridesDefault(t *testing.T) {
 }
 
 func TestEffectiveSignInRulesFallsBackToDefault(t *testing.T) {
-	def := &domain.TenantDefaultSignInPolicy{Rules: []domain.SignInRule{mfaRule("default-1")}}
+	def := &policydomain.TenantDefaultSignInPolicy{Rules: []policydomain.SignInRule{mfaRule("default-1")}}
 
 	// アプリが独自ポリシーを持たなければデフォルトを適用する。
-	got := EffectiveSignInRules(def, &domain.AppSignInPolicy{Rules: []domain.SignInRule{}})
+	got := EffectiveSignInRules(def, &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{}})
 	if len(got) != 1 || got[0].RuleID != "default-1" {
 		t.Fatalf("fallback result=%v, want only [default-1]", got)
 	}
 }
 
 func TestEffectivePolicyForEvaluationNoRulesReturnsNil(t *testing.T) {
-	if p := EffectivePolicyForEvaluation(nil, &domain.AppSignInPolicy{}); p != nil {
+	if p := EffectivePolicyForEvaluation(nil, &policydomain.AppSignInPolicy{}); p != nil {
 		t.Fatalf("expected nil policy for empty effective rules, got %+v", p)
 	}
 }
 
 func TestEffectivePolicyOverrideCanGoBelowDefault(t *testing.T) {
-	def := &domain.TenantDefaultSignInPolicy{Rules: []domain.SignInRule{mfaRule("default-1")}}
+	def := &policydomain.TenantDefaultSignInPolicy{Rules: []policydomain.SignInRule{mfaRule("default-1")}}
 	singleFactor := &authdomain.AuthenticationContext{UserID: "alice", ACR: authdomain.ACRPassword, AMR: []string{"pwd"}}
 
 	// アプリ独自ポリシーが無ければデフォルトの MFA 要求が適用される。
-	appNoPolicy := &domain.AppSignInPolicy{Rules: []domain.SignInRule{}}
+	appNoPolicy := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{}}
 	effective := EffectivePolicyForEvaluation(def, appNoPolicy)
 	if got := EvaluateSignInPolicy(effective, singleFactor, "", time.Now().UTC()); got.Decision != PolicyStepUpRequired {
 		t.Fatalf("default decision=%s, want %s", got.Decision, PolicyStepUpRequired)
 	}
 
 	// 上書きモデルではアプリ独自ポリシーがデフォルトより弱くても適用される (警告は別途)。
-	appWeaker := &domain.AppSignInPolicy{Rules: []domain.SignInRule{passwordRule("app-1")}}
+	appWeaker := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{passwordRule("app-1")}}
 	if got := EvaluateSignInPolicy(EffectivePolicyForEvaluation(def, appWeaker), singleFactor, "", time.Now().UTC()); got.Decision != PolicyAllow {
 		t.Fatalf("override decision=%s, want %s", got.Decision, PolicyAllow)
 	}
@@ -222,43 +222,43 @@ func TestEffectivePolicyOverrideCanGoBelowDefault(t *testing.T) {
 func TestAppPolicyWeakerThanDefault(t *testing.T) {
 	longer := 600
 	shorter := 300
-	def := &domain.TenantDefaultSignInPolicy{Rules: []domain.SignInRule{{
+	def := &policydomain.TenantDefaultSignInPolicy{Rules: []policydomain.SignInRule{{
 		RuleID: "d", Name: "d", Enabled: true,
-		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
-		Condition:     domain.AccessCondition{ReauthMaxAgeSeconds: &shorter, NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
+		RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
+		Condition:     policydomain.AccessCondition{ReauthMaxAgeSeconds: &shorter, NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
 	}}}
 
 	// 独自ポリシー無し → デフォルト適用なので弱くない。
-	if AppPolicyWeakerThanDefault(def, &domain.AppSignInPolicy{}) {
+	if AppPolicyWeakerThanDefault(def, &policydomain.AppSignInPolicy{}) {
 		t.Fatal("unconfigured app must not be weaker")
 	}
 	// 認証強度の引き下げ。
-	if !AppPolicyWeakerThanDefault(def, &domain.AppSignInPolicy{Rules: []domain.SignInRule{passwordRule("a")}}) {
+	if !AppPolicyWeakerThanDefault(def, &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{passwordRule("a")}}) {
 		t.Fatal("password override must be weaker than mfa default")
 	}
 	// 再認証時間の緩和 (延長)。
-	weakReauth := &domain.AppSignInPolicy{Rules: []domain.SignInRule{{
+	weakReauth := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{{
 		RuleID: "a", Name: "a", Enabled: true,
-		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
-		Condition:     domain.AccessCondition{ReauthMaxAgeSeconds: &longer, NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
+		RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
+		Condition:     policydomain.AccessCondition{ReauthMaxAgeSeconds: &longer, NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
 	}}}
 	if !AppPolicyWeakerThanDefault(def, weakReauth) {
 		t.Fatal("longer reauth window must be weaker")
 	}
 	// 許可ネットワークの緩和 (制限撤廃)。
-	noCIDR := &domain.AppSignInPolicy{Rules: []domain.SignInRule{{
+	noCIDR := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{{
 		RuleID: "a", Name: "a", Enabled: true,
-		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
-		Condition:     domain.AccessCondition{ReauthMaxAgeSeconds: &shorter},
+		RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
+		Condition:     policydomain.AccessCondition{ReauthMaxAgeSeconds: &shorter},
 	}}}
 	if !AppPolicyWeakerThanDefault(def, noCIDR) {
 		t.Fatal("removing network restriction must be weaker")
 	}
 	// 全項目でデフォルト以上 → 弱くない。
-	strong := &domain.AppSignInPolicy{Rules: []domain.SignInRule{{
+	strong := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{{
 		RuleID: "a", Name: "a", Enabled: true,
-		RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
-		Condition:     domain.AccessCondition{ReauthMaxAgeSeconds: &shorter, NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
+		RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
+		Condition:     policydomain.AccessCondition{ReauthMaxAgeSeconds: &shorter, NetworkAllowCIDRs: []string{"10.0.0.0/8"}},
 	}}}
 	if AppPolicyWeakerThanDefault(def, strong) {
 		t.Fatal("equal-strength override must not be weaker")
@@ -266,9 +266,9 @@ func TestAppPolicyWeakerThanDefault(t *testing.T) {
 }
 
 func TestValidateSignInPolicyRulesRejectsInvalidCIDR(t *testing.T) {
-	rules := []domain.SignInRule{{
+	rules := []policydomain.SignInRule{{
 		Name: "bad", Enabled: true,
-		Condition: domain.AccessCondition{NetworkAllowCIDRs: []string{"not-a-cidr"}},
+		Condition: policydomain.AccessCondition{NetworkAllowCIDRs: []string{"not-a-cidr"}},
 	}}
 	if err := ValidateSignInPolicyRules(rules); err == nil {
 		t.Fatal("expected invalid CIDR to be rejected")
@@ -276,14 +276,14 @@ func TestValidateSignInPolicyRulesRejectsInvalidCIDR(t *testing.T) {
 }
 
 func TestValidateSignInPolicyRulesDefaultsStrengthAndNormalizesCIDR(t *testing.T) {
-	rules := []domain.SignInRule{{
+	rules := []policydomain.SignInRule{{
 		Name: "ok", Enabled: true,
-		Condition: domain.AccessCondition{NetworkAllowCIDRs: []string{" 10.1.2.3/8 ", ""}},
+		Condition: policydomain.AccessCondition{NetworkAllowCIDRs: []string{" 10.1.2.3/8 ", ""}},
 	}}
 	if err := ValidateSignInPolicyRules(rules); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if rules[0].RequiredAuthn.Strength != domain.RequiredAuthnPassword {
+	if rules[0].RequiredAuthn.Strength != policydomain.RequiredAuthnPassword {
 		t.Fatalf("strength=%q, want Password default", rules[0].RequiredAuthn.Strength)
 	}
 	if len(rules[0].Condition.NetworkAllowCIDRs) != 1 || rules[0].Condition.NetworkAllowCIDRs[0] != "10.0.0.0/8" {
@@ -307,12 +307,12 @@ func TestEvaluateSignInPolicyTrustedDeviceSatisfiesMfaOnlyWhenAllowed(t *testing
 	}
 	now := time.Now().UTC()
 
-	allowing := &domain.AppSignInPolicy{Rules: []domain.SignInRule{mfaRule("rule-1")}}
+	allowing := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{mfaRule("rule-1")}}
 	if got := EvaluateSignInPolicy(allowing, trustedOnly, "", now); got.Decision != PolicyAllow {
 		t.Fatalf("decision=%s, want %s when the rule allows trusted devices", got.Decision, PolicyAllow)
 	}
 
-	everyTime := &domain.AppSignInPolicy{Rules: []domain.SignInRule{mfaRule("rule-1")}}
+	everyTime := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{mfaRule("rule-1")}}
 	everyTime.Rules[0].AllowTrustedDevice = &deny
 	if got := EvaluateSignInPolicy(everyTime, trustedOnly, "", now); got.Decision != PolicyStepUpRequired {
 		t.Fatalf("decision=%s, want %s when the rule requires MFA every time", got.Decision, PolicyStepUpRequired)
@@ -328,9 +328,9 @@ func TestEvaluateSignInPolicyTrustedDeviceSatisfiesMfaOnlyWhenAllowed(t *testing
 func TestAppPolicyWeakerThanDefaultDetectsTrustedDeviceRelaxation(t *testing.T) {
 	deny := false
 	allow := true
-	def := &domain.TenantDefaultSignInPolicy{Rules: []domain.SignInRule{mfaRule("default-1")}}
+	def := &policydomain.TenantDefaultSignInPolicy{Rules: []policydomain.SignInRule{mfaRule("default-1")}}
 	def.Rules[0].AllowTrustedDevice = &deny
-	app := &domain.AppSignInPolicy{Rules: []domain.SignInRule{mfaRule("app-1")}}
+	app := &policydomain.AppSignInPolicy{Rules: []policydomain.SignInRule{mfaRule("app-1")}}
 	app.Rules[0].AllowTrustedDevice = &allow
 
 	if !AppPolicyWeakerThanDefault(def, app) {
@@ -344,14 +344,14 @@ func TestAppPolicyWeakerThanDefaultDetectsTrustedDeviceRelaxation(t *testing.T) 
 
 // 既存の保存済みルール (allow_trusted_device 未設定) は既定の true として読む (wi-91)。
 func TestTrustedDeviceAllowedDefaultsToTrue(t *testing.T) {
-	if !(domain.SignInRule{}).TrustedDeviceAllowed() {
+	if !(policydomain.SignInRule{}).TrustedDeviceAllowed() {
 		t.Fatal("an unset allow_trusted_device must read as the declared default (true)")
 	}
-	if !TrustedDeviceAllowedByRules([]domain.SignInRule{mfaRule("rule-1")}) {
+	if !TrustedDeviceAllowedByRules([]policydomain.SignInRule{mfaRule("rule-1")}) {
 		t.Fatal("rules that do not set the field must allow trusted devices")
 	}
 	deny := false
-	rules := []domain.SignInRule{mfaRule("rule-1"), mfaRule("rule-2")}
+	rules := []policydomain.SignInRule{mfaRule("rule-1"), mfaRule("rule-2")}
 	rules[1].AllowTrustedDevice = &deny
 	if TrustedDeviceAllowedByRules(rules) {
 		t.Fatal("a single every-time-MFA rule must win over the others")

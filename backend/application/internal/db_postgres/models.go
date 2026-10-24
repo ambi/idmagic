@@ -40,10 +40,3 @@ type ApplicationOrdering struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
-
-type TenantDefaultSignInPolicy struct {
-	TenantID  string
-	Rules     []byte
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}

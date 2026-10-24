@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+
 	"github.com/ambi/idmagic/backend/apitoken"
 
 	"github.com/ambi/idmagic/backend/application"
@@ -129,6 +131,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		ApiTokens:        apitoken.NewPostgresModule(resilientDB),
 		Jobs:             jobs.NewPostgresModule(resilientDB),
 		Application:      applicationModule,
+		SignInPolicy:     signinpolicy.NewPostgresModule(resilientDB),
 		Provisioning:     provisioningModule,
 		WorkloadIdentity: workloadidentity.NewPostgresModule(resilientDB),
 		SharedSignals:    sharedsignals.NewPostgresModule(resilientDB),

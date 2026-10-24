@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v5"
 
-	appports "github.com/ambi/idmagic/backend/application/ports"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/internal/db_memory"
 	authnpostgres "github.com/ambi/idmagic/backend/authentication/internal/db_postgres"
@@ -54,6 +53,7 @@ import (
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -222,7 +222,7 @@ type RouteDeps struct {
 	Notifier                sharednotification.Notifier
 	TenantSaltStore         auditports.TenantSaltStore
 	ClientIP                func(*http.Request) string
-	DefaultSignInPolicyRepo appports.DefaultSignInPolicyRepository
+	DefaultSignInPolicyRepo policyports.DefaultSignInPolicyRepository
 }
 
 // RegisterRoutes は、対話のログイン、アカウントの資格情報、MFA、セッションの経路を登録する。

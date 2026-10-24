@@ -15,17 +15,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+
 	"github.com/ambi/idmagic/backend/authentication"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 
-	"github.com/ambi/idmagic/backend/application"
-	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	appports "github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	recoverydomain "github.com/ambi/idmagic/backend/authentication/recovery/domain"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -39,15 +40,15 @@ const (
 
 // mfaEveryTimePolicy は「毎回 MFA、記憶済みデバイスは認めない」という実効ポリシー。
 // allow_trusted_device=false にしてあるので、充足の判定は amr の第二要素そのものに掛かる。
-func mfaEveryTimePolicy(t *testing.T) appports.DefaultSignInPolicyRepository {
+func mfaEveryTimePolicy(t *testing.T) policyports.DefaultSignInPolicyRepository {
 	t.Helper()
-	repo := application.NewMemoryModule().DefaultSignInPolicyRepo
+	repo := signinpolicy.NewMemoryModule().DefaultRepo
 	allow := false
-	if err := repo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+	if err := repo.Save(context.Background(), &policydomain.TenantDefaultSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID,
-		Rules: []appdomain.SignInRule{{
+		Rules: []policydomain.SignInRule{{
 			RuleID: "mfa-every-time", Name: "MFA every time", Enabled: true,
-			RequiredAuthn:      appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+			RequiredAuthn:      policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
 			AllowTrustedDevice: &allow,
 		}},
 	}); err != nil {
@@ -92,7 +93,7 @@ func newRecoveryCodeServer(t *testing.T) (*echo.Echo, sessionports.SessionStore,
 			deps.SessionManager = manager
 			deps.RecoveryCodeRepo = codes
 			deps.MfaFactorRepo = factors
-			deps.Application.DefaultSignInPolicyRepo = mfaEveryTimePolicy(t)
+			deps.SignInPolicy.DefaultRepo = mfaEveryTimePolicy(t)
 		},
 	)
 	return e, store, manager

@@ -10,6 +10,7 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 )
 
 type idManagementSubjectDirectory struct {
@@ -55,13 +56,11 @@ func (d idManagementSubjectDirectory) SubjectExists(
 // Module は application context が所有する repository の束。bootstrap は永続化 backend
 // (memory / postgres) に応じてこれらを組み立て、Module へ渡すだけでよい。
 type Module struct {
-	Repo                    appports.ApplicationRepository
-	IconStore               appports.ApplicationIconStore
-	AssignmentRepo          appports.AssignmentRepository
-	OrderingRepo            appports.ApplicationOrderingRepository
-	CategoryRepo            appports.ApplicationCategoryRepository
-	SignInPolicyRepo        appports.SignInPolicyRepository
-	DefaultSignInPolicyRepo appports.DefaultSignInPolicyRepository
+	Repo           appports.ApplicationRepository
+	IconStore      appports.ApplicationIconStore
+	AssignmentRepo appports.AssignmentRepository
+	OrderingRepo   appports.ApplicationOrderingRepository
+	CategoryRepo   appports.ApplicationCategoryRepository
 	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45). nil means outbound provisioning is not wired.
 	ProvisioningNotifier appports.ProvisioningNotifier
 }
@@ -69,18 +68,30 @@ type Module struct {
 // Gate は Application 割当を fail-closed で判定する published capability を組み立てる
 // (Application の公開契約 ApplicationAssignmentRef)。oauth2 / saml /
 // wsfederation の federation 開始経路がこれを消費する。
-func (m Module) Gate(groupRepo groupports.GroupRepository, trustedForwardedHops int) *appusecases.AccessGate {
+func (m Module) Gate(groupRepo groupports.GroupRepository, trustedForwardedHops int, policyRepo policyports.SignInPolicyRepository, defaultRepo policyports.DefaultSignInPolicyRepository) *appusecases.AccessGate {
 	gate := &appusecases.AccessGate{
 		ApplicationRepo:             m.Repo,
 		ApplicationAssignmentRepo:   m.AssignmentRepo,
-		ApplicationSignInPolicyRepo: m.SignInPolicyRepo,
-		DefaultSignInPolicyRepo:     m.DefaultSignInPolicyRepo,
+		ApplicationSignInPolicyRepo: policyRepo,
+		DefaultSignInPolicyRepo:     defaultRepo,
 		GateTrustedForwardedHops:    trustedForwardedHops,
 	}
 	if groupRepo != nil {
 		gate.GroupMemberships = idManagementGroupMemberships{groups: groupRepo}
 	}
 	return gate
+}
+
+// ApplicationExists はポリシー管理へ、Application の保存型を渡さずに実在の事実を供給する。
+func (m Module) ApplicationExists(ctx context.Context, tenantID, applicationID string) (bool, error) {
+	if m.Repo == nil {
+		return false, nil
+	}
+	app, err := m.Repo.FindByID(ctx, tenantID, applicationID)
+	if err != nil {
+		return false, err
+	}
+	return app != nil, nil
 }
 
 // idManagementGroupMemberships は、割り当てのゲートが照合する Group の所属を IdManagement の

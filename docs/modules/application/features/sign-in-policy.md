@@ -84,13 +84,16 @@
 
 ### アーキテクチャ
 
+外向きの要件と TypeSpec の契約はこの機能で維持し、条件の定義、検証、選択、評価と保存は [SignInPolicy](../../sign-in-policy/README.md)が担当する。
+Application は割り当てを確認する関門で公開の評価を使い、Authentication は IdMagic 自身のサインインで同じ定義と評価を使う。
+
 `EffectiveSignInRules(default, app)` がテナントのデフォルトとアプリケーションごとのポリシーのどちらか一方を選び、共通のフェイルクローズの評価器に渡す。
 各アプリケーションに実際に適用されるポリシーを、一つの形で確かめられる。
 
-評価器は Application が定める読み取り専用の `SignInAuthentication` を入力にする。
+評価器は SignInPolicy が定める読み取り専用の `SignInAuthentication` を入力にする。
 認証待ち、MFA の成立、実際の第二要素の成立、認証時刻、ステップアップ時刻だけを読み、Authentication の保存表現と認証方式の語彙には依存しない。
 Authentication の認証結果がこの契約を満たし、ACR と AMR の解釈を既存の関数で認証事実へ射影する。
-記憶済み端末での充足を認めるかは Application がポリシーから判断し、実際の第二要素と記憶済み端末が同時にあっても区別を保つ。
+記憶済み端末での充足を認めるかは SignInPolicy がポリシーから判断し、実際の第二要素と記憶済み端末が同時にあっても区別を保つ。
 評価するルールがあるときは、認証結果がない場合も入力の認証待ちとして扱い、ポリシー評価を拒否する。
 
 `AppPolicyWeakerThanDefault(default, app)` は、要求する認証強度を下げる、再認証の時間の制限を緩めるか外す、許可するネットワークを広げる、デフォルトが禁じている信頼済みデバイスによる充足を許す場合に、`weaker_than_default` を立てる。

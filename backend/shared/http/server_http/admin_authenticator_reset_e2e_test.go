@@ -19,10 +19,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/application"
-	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/authentication"
 	recoverydomain "github.com/ambi/idmagic/backend/authentication/recovery/domain"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
@@ -33,6 +33,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
@@ -83,7 +84,7 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 	passwordHistoryRepo := authentication.NewMemoryModule(nil).PasswordHistoryRepo
 	requestStore := oauth2.NewMemoryModule().RequestStore
 	codeStore := oauth2.NewMemoryModule().CodeStore
-	defaultSignInPolicyRepo := application.NewMemoryModule().DefaultSignInPolicyRepo
+	defaultSignInPolicyRepo := signinpolicy.NewMemoryModule().DefaultRepo
 	hasher := testing_passwords.NewHasher()
 
 	secretHash := oauth2domain.HashClientSecret(demoClientSecret)
@@ -161,12 +162,12 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 
 	start := now.Add(-time.Minute)
 	grace := 3600
-	if err := defaultSignInPolicyRepo.Save(ctx, &appdomain.TenantDefaultSignInPolicy{
+	if err := defaultSignInPolicyRepo.Save(ctx, &policydomain.TenantDefaultSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
-		Rules: []appdomain.SignInRule{{
+		Rules: []policydomain.SignInRule{{
 			RuleID: "default", Name: "Require MFA", Enabled: true,
-			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
-			MfaEnrollment: &appdomain.MfaEnrollmentPolicy{
+			RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
+			MfaEnrollment: &policydomain.MfaEnrollmentPolicy{
 				EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true,
 			},
 		}},
@@ -202,7 +203,7 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 		PasswordHistoryRepo:    passwordHistoryRepo,
 		KeyStore:               keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
-		Application: application.Module{DefaultSignInPolicyRepo: defaultSignInPolicyRepo},
+		SignInPolicy: signinpolicy.Module{DefaultRepo: defaultSignInPolicyRepo},
 	})
 	return httptest.NewServer(e), events
 }

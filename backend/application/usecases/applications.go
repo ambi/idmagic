@@ -32,7 +32,7 @@ type ApplicationDeps struct {
 	Repo           ports.ApplicationRepository
 	IconStore      ports.ApplicationIconStore
 	AssignmentRepo ports.AssignmentRepository
-	PolicyRepo     ports.SignInPolicyRepository
+	PolicyRepo     ports.SignInPolicyDeleter
 	Emit           func(spec.DomainEvent)
 	// QuotaRepo enforces the tenant's Hard Quota on applications (wi-160). nil skips enforcement (wiring gaps in tests/tools);
 	// production bootstrap always sets it.

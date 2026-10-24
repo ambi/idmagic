@@ -47,11 +47,11 @@ func newApplicationPaginationHandler(t *testing.T) (*echo.Echo, appports.Applica
 		PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")),
 		UserRepo:        users,
 		GroupRepo:       idmanagement.NewMemoryModule().GroupRepo,
-		Application:     module,
-		Saml:            saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
-		OAuth2:          oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
-		WsFederation:    wsfederation.NewMemoryModule(),
-		AuthnResolver:   authentication.DemoHeaderResolver{},
+		Application:     module, SignInPolicy: newCatalogSignInPolicyModule(),
+		Saml:          saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
+		OAuth2:        oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
+		WsFederation:  wsfederation.NewMemoryModule(),
+		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
 	return e, appRepo
 }

@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
+
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
 )
@@ -21,8 +24,8 @@ type AccessGate struct {
 	ApplicationRepo             ports.ApplicationRepository
 	ApplicationAssignmentRepo   ports.AssignmentRepository
 	GroupMemberships            ports.GroupMemberships
-	ApplicationSignInPolicyRepo ports.SignInPolicyRepository
-	DefaultSignInPolicyRepo     ports.DefaultSignInPolicyRepository
+	ApplicationSignInPolicyRepo policyports.SignInPolicyRepository
+	DefaultSignInPolicyRepo     policyports.DefaultSignInPolicyRepository
 	GateTrustedForwardedHops    int
 }
 
@@ -55,7 +58,7 @@ func (g *AccessGate) EvaluateApplicationAccess(
 	tenantID string,
 	bindingType domain.ApplicationProtocolType,
 	bindingKey, sub string,
-	authn domain.SignInAuthentication,
+	authn policydomain.SignInAuthentication,
 	clientIP string,
 ) (domain.ApplicationAccessDecision, error) {
 	if g.ApplicationRepo == nil {
@@ -106,22 +109,22 @@ func (g *AccessGate) EvaluateApplicationAccess(
 		return domain.ApplicationAccessDecision{}, err
 	}
 	// アプリ個別ポリシーがあればそれを、なければテナントデフォルトを適用する (上書きモデル)。
-	var defaultPolicy *domain.TenantDefaultSignInPolicy
+	var defaultPolicy *policydomain.TenantDefaultSignInPolicy
 	if g.DefaultSignInPolicyRepo != nil {
 		defaultPolicy, err = g.DefaultSignInPolicyRepo.Get(ctx, tenantID)
 		if err != nil {
 			return domain.ApplicationAccessDecision{}, err
 		}
 	}
-	effective := EffectivePolicyForEvaluation(defaultPolicy, policy)
-	evaluation := EvaluateSignInPolicy(effective, authn, clientIP, time.Now().UTC())
+	effective := policydomain.EffectivePolicyForEvaluation(defaultPolicy, policy)
+	evaluation := policydomain.EvaluateSignInPolicy(effective, authn, clientIP, time.Now().UTC())
 	switch evaluation.Decision {
-	case PolicyAllow:
+	case policydomain.PolicyAllow:
 		return domain.ApplicationAccessDecision{Allowed: true, ApplicationID: app.ID}, nil
-	case PolicyStepUpRequired:
+	case policydomain.PolicyStepUpRequired:
 		return domain.ApplicationAccessDecision{
 			ApplicationID: app.ID, StepUpRequired: true, Reason: evaluation.Reason,
-			TrustedDeviceAllowed: effective != nil && TrustedDeviceAllowedByRules(effective.Rules),
+			TrustedDeviceAllowed: effective != nil && policydomain.TrustedDeviceAllowedByRules(effective.Rules),
 		}, nil
 	default:
 		return domain.ApplicationAccessDecision{ApplicationID: app.ID, Reason: evaluation.Reason}, nil

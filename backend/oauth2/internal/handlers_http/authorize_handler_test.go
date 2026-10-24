@@ -15,6 +15,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+
 	"github.com/ambi/idmagic/backend/authentication"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -214,20 +217,20 @@ func TestAuthorizeDeniedBySignInPolicyReturnsProblemDetails403(t *testing.T) {
 	authn := &authdomain.AuthenticationContext{
 		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
 	}
-	policyRepo := application.NewMemoryModule().DefaultSignInPolicyRepo
+	policyRepo := signinpolicy.NewMemoryModule().DefaultRepo
 	// 到達不能な CIDR だけを許可することで、どの試験用の client IP でも拒否させる。
-	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+	if err := policyRepo.Save(context.Background(), &policydomain.TenantDefaultSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID,
-		Rules: []appdomain.SignInRule{{
+		Rules: []policydomain.SignInRule{{
 			RuleID: "deny-all-networks", Name: "office only", Enabled: true,
-			Condition: appdomain.AccessCondition{NetworkAllowCIDRs: []string{"203.0.113.0/32"}},
+			Condition: policydomain.AccessCondition{NetworkAllowCIDRs: []string{"203.0.113.0/32"}},
 		}},
 	}); err != nil {
 		t.Fatal(err)
 	}
 
 	e, emitted := newAuthorizeTestServer(t, authn, nil, func(deps *httpadapter.Deps) {
-		deps.Application.DefaultSignInPolicyRepo = policyRepo
+		deps.SignInPolicy.DefaultRepo = policyRepo
 	})
 	q := authorizeQuery(url.Values{})
 	q.Set("client_id", authFirstPartyClientID)
@@ -275,19 +278,19 @@ func TestAuthorizeMfaRequiredWithoutSecondFactorIssuesNoCode(t *testing.T) {
 	authn := &authdomain.AuthenticationContext{
 		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
 	}
-	policyRepo := application.NewMemoryModule().DefaultSignInPolicyRepo
-	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+	policyRepo := signinpolicy.NewMemoryModule().DefaultRepo
+	if err := policyRepo.Save(context.Background(), &policydomain.TenantDefaultSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID,
-		Rules: []appdomain.SignInRule{{
+		Rules: []policydomain.SignInRule{{
 			RuleID: "mfa-required", Name: "mfa", Enabled: true,
-			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+			RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
 		}},
 	}); err != nil {
 		t.Fatal(err)
 	}
 
 	e, emitted := newAuthorizeTestServer(t, authn, nil, func(deps *httpadapter.Deps) {
-		deps.Application.DefaultSignInPolicyRepo = policyRepo
+		deps.SignInPolicy.DefaultRepo = policyRepo
 	})
 	q := authorizeQuery(url.Values{})
 	q.Set("client_id", authFirstPartyClientID)
@@ -318,12 +321,12 @@ func TestAuthorizeStepUpWithExpiredSessionIssuesNoCode(t *testing.T) {
 	authn := &authdomain.AuthenticationContext{
 		UserID: "user_alice", SessionID: "sess-gone", AuthTime: now.Unix(), AMR: []string{"pwd"},
 	}
-	policyRepo := application.NewMemoryModule().DefaultSignInPolicyRepo
-	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+	policyRepo := signinpolicy.NewMemoryModule().DefaultRepo
+	if err := policyRepo.Save(context.Background(), &policydomain.TenantDefaultSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID,
-		Rules: []appdomain.SignInRule{{
+		Rules: []policydomain.SignInRule{{
 			RuleID: "mfa-required", Name: "mfa", Enabled: true,
-			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+			RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
 		}},
 	}); err != nil {
 		t.Fatal(err)
@@ -338,7 +341,7 @@ func TestAuthorizeStepUpWithExpiredSessionIssuesNoCode(t *testing.T) {
 	}
 
 	e, emitted := newAuthorizeTestServer(t, authn, nil, func(deps *httpadapter.Deps) {
-		deps.Application.DefaultSignInPolicyRepo = policyRepo
+		deps.SignInPolicy.DefaultRepo = policyRepo
 		deps.MfaFactorRepo = factorRepo
 		deps.SessionManager = authentication.Module{SessionStore: authentication.NewMemoryModule(nil).SessionStore}.NewSessionManager()
 	})
@@ -507,12 +510,12 @@ func TestAuthorizeResumeCompletesFederatedSession(t *testing.T) {
 // 登録済みの状態を組み立てる。
 func defaultMfaPolicyWithTOTP(t *testing.T, now time.Time) func(*httpadapter.Deps) {
 	t.Helper()
-	policyRepo := application.NewMemoryModule().DefaultSignInPolicyRepo
-	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+	policyRepo := signinpolicy.NewMemoryModule().DefaultRepo
+	if err := policyRepo.Save(context.Background(), &policydomain.TenantDefaultSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID,
-		Rules: []appdomain.SignInRule{{
+		Rules: []policydomain.SignInRule{{
 			RuleID: "mfa-required", Name: "mfa", Enabled: true,
-			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+			RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
 		}},
 	}); err != nil {
 		t.Fatal(err)
@@ -525,7 +528,7 @@ func defaultMfaPolicyWithTOTP(t *testing.T, now time.Time) func(*httpadapter.Dep
 		t.Fatal(err)
 	}
 	return func(deps *httpadapter.Deps) {
-		deps.Application.DefaultSignInPolicyRepo = policyRepo
+		deps.SignInPolicy.DefaultRepo = policyRepo
 		deps.MfaFactorRepo = factorRepo
 	}
 }

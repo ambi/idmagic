@@ -21,6 +21,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/saml"
+	"github.com/ambi/idmagic/backend/signinpolicy"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -379,6 +380,7 @@ func newTwoTenantApplicationHandler(t *testing.T) *echo.Echo {
 		Emit:       func(spec.DomainEvent) {},
 		TenantRepo: tenants, UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo,
 		Application:   application.NewMemoryModule(),
+		SignInPolicy:  signinpolicy.NewMemoryModule(),
 		Saml:          saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		OAuth2:        oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
 		WsFederation:  wsfederation.NewMemoryModule(),

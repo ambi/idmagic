@@ -83,7 +83,8 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 | --- | --- | --- | --- | --- |
 | [Authentication](authentication/README.md) | `internal` | `backend/authentication/domain`, `backend/authentication/mfa/domain`, `backend/authentication/password/domain`, `backend/authentication/password/ports`, `backend/authentication/recovery/domain`, `backend/authentication/recovery/ports`, `backend/authentication/session/domain`, `backend/authentication/session/ports`, `backend/authentication/signin/ports`, `backend/authentication/testing_kerberos`, `backend/authentication/totp/domain`, `backend/authentication/totp/ports`, `backend/authentication/trusteddevice/domain`, `backend/authentication/trusteddevice/ports`, `backend/authentication/webauthn/domain`, `backend/authentication/webauthn/ports` | `backend/authentication` | 資格情報、MFA、ログインセッション、ステップアップ、認証イベント。`testing_kerberos` はテスト入力の生成専用 |
 | [AccessControl](authorization/README.md) | `internal` | `backend/accesscontrol/ports` | `backend/accesscontrol` | 認可の要求契約、管理ロールと権限の表示、細粒度認可モデル、関係タプル、グラフ評価、整合トークン |
-| [Application](application/README.md) | `internal` | `backend/application/domain`, `backend/application/ports`, `backend/application/usecases` | `backend/application` | Application、プロトコルのバインディング、割り当て、表示分類の状態と更新、サインインポリシーとアクセス判定 |
+| [Application](application/README.md) | `internal` | `backend/application/domain`, `backend/application/ports`, `backend/application/usecases` | `backend/application` | Application、プロトコルのバインディング、割り当て、表示分類の状態と更新、サインイン条件を適用するアクセス判定 |
+| [SignInPolicy](sign-in-policy/README.md) | `internal` | `backend/signinpolicy/domain`, `backend/signinpolicy/ports`, `backend/signinpolicy/usecases` | `backend/signinpolicy` | サインイン条件の定義、検証、デフォルトと上書きの選択、評価、保存と更新イベント |
 | [ApplicationCatalog](application-catalog/README.md) | `internal` | なし | `backend/applicationcatalog` | Application と各プロトコルの管理の編成、管理とポータルの HTTP、表示用の変換 |
 | [ClaimMapping](claim-mapping/README.md) | `internal` | `backend/claimmapping/domain`, `backend/claimmapping/ports` | `backend/claimmapping` | プロトコル非依存のクレーム開示ポリシーとマッピング |
 
@@ -134,6 +135,7 @@ flowchart LR
     Authentication
     AccessControl
     Application
+    SignInPolicy
     ApplicationCatalog
     ClaimMapping
   end
@@ -148,17 +150,19 @@ flowchart LR
   ApiTokens --> OAuth2
   ApiTokens --> Tenancy
   Application --> IdManagement
+  Application --> SignInPolicy
   Application --> Tenancy
   ApplicationCatalog --> Application
   ApplicationCatalog --> ClaimMapping
   ApplicationCatalog --> IdManagement
   ApplicationCatalog --> OAuth2
   ApplicationCatalog --> Saml
+  ApplicationCatalog --> SignInPolicy
   ApplicationCatalog --> Tenancy
   ApplicationCatalog --> WsFederation
-  Authentication --> Application
   Authentication --> Audit
   Authentication --> IdManagement
+  Authentication --> SignInPolicy
   Authentication --> Tenancy
   ClaimMapping --> IdManagement
   DataKeys --> Jobs
@@ -179,6 +183,7 @@ flowchart LR
   OAuth2 --> Jobs
   OAuth2 --> SharedSignals
   OAuth2 --> SigningKeys
+  OAuth2 --> SignInPolicy
   OAuth2 --> Tenancy
   OAuth2 --> WorkloadIdentity
   Provisioning --> Application
@@ -188,10 +193,12 @@ flowchart LR
   Saml --> Authentication
   Saml --> ClaimMapping
   Saml --> IdManagement
+  Saml --> SignInPolicy
   SharedSignals --> IdManagement
   SharedSignals --> SigningKeys
   SharedSignals --> Tenancy
   SigningKeys --> Tenancy
+  SignInPolicy --> Tenancy
   Sourcing --> ApiTokens
   Sourcing --> IdManagement
   WorkloadIdentity --> IdManagement
@@ -200,6 +207,7 @@ flowchart LR
   WsFederation --> Authentication
   WsFederation --> ClaimMapping
   WsFederation --> IdManagement
+  WsFederation --> SignInPolicy
 ```
 
 <!-- generated:module-dependencies:end -->

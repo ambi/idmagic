@@ -14,15 +14,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 
-	"github.com/ambi/idmagic/backend/application"
-	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	appports "github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/audit"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -52,7 +53,7 @@ type accountHandlerFixture struct {
 	audit    auditports.AuditEventRepository
 	webauthn *webauthnmemory.WebAuthnCredentialRepository
 	recovery *recoverymemory.RecoveryCodeRepository
-	policies appports.DefaultSignInPolicyRepository
+	policies policyports.DefaultSignInPolicyRepository
 }
 
 func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
@@ -63,7 +64,7 @@ func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
 	auditStore := audit.NewAuditEventStore(0)
 	webauthnRepo := webauthnmemory.NewWebAuthnCredentialRepository()
 	recoveryRepo := recoverymemory.NewRecoveryCodeRepository()
-	policies := application.NewMemoryModule().DefaultSignInPolicyRepo
+	policies := signinpolicy.NewMemoryModule().DefaultRepo
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -75,7 +76,7 @@ func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
 		MfaFactorRepo:          factors,
 		WebAuthnCredentialRepo: webauthnRepo,
 		RecoveryCodeRepo:       recoveryRepo,
-		Application:            application.Module{DefaultSignInPolicyRepo: policies},
+		SignInPolicy:           signinpolicy.Module{DefaultRepo: policies},
 	})
 	return &accountHandlerFixture{
 		e: e, users: users, consents: consents, factors: factors, audit: auditStore,
@@ -327,12 +328,12 @@ func TestHandleGetAccountSecurityAnnouncesUpcomingMfaEnforcement(t *testing.T) {
 	now := time.Now().UTC()
 	start := now.Add(72 * time.Hour).Truncate(time.Second)
 	grace := 3600
-	if err := f.policies.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+	if err := f.policies.Save(context.Background(), &policydomain.TenantDefaultSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
-		Rules: []appdomain.SignInRule{{
+		Rules: []policydomain.SignInRule{{
 			RuleID: "default", Name: "Require MFA", Enabled: true,
-			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
-			MfaEnrollment: &appdomain.MfaEnrollmentPolicy{
+			RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
+			MfaEnrollment: &policydomain.MfaEnrollmentPolicy{
 				EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true,
 			},
 		}},

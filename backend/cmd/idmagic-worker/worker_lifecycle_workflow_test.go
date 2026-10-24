@@ -293,7 +293,7 @@ func TestWorkerLifecycleWorkflowAppliesTheDirectAssignmentBesideAGroupAssignment
 	if row := rowOf(appdomain.AssignmentSubjectGroup, "engineering"); row == nil || *row != groupAssignment {
 		t.Fatalf("group assignment = %+v, want unchanged %+v", row, groupAssignment)
 	}
-	decision, err := deps.Application.Gate(groups, 0).EvaluateApplicationAccess(ctx, "tenant-a", appdomain.ApplicationProtocolOIDC, "portal-client", "alice", nil, "")
+	decision, err := deps.Application.Gate(groups, 0, deps.SignInPolicy.ApplicationRepo, deps.SignInPolicy.DefaultRepo).EvaluateApplicationAccess(ctx, "tenant-a", appdomain.ApplicationProtocolOIDC, "portal-client", "alice", nil, "")
 	if err != nil || !decision.Allowed {
 		t.Fatalf("federation decision = %+v, %v; want allowed through the group assignment", decision, err)
 	}

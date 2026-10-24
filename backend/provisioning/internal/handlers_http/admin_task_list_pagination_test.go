@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+
 	"github.com/ambi/idmagic/backend/authentication"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -46,13 +48,13 @@ func newAdminTaskPaginationHandler(t *testing.T) (*echo.Echo, *provisioningmemor
 		UserRepo:        users,
 		GroupRepo:       idmanagement.NewMemoryModule().GroupRepo,
 		Application: application.Module{
-			Repo:                    application.NewMemoryModule().Repo,
-			IconStore:               application.NewMemoryModule().IconStore,
-			AssignmentRepo:          application.NewMemoryModule().AssignmentRepo,
-			OrderingRepo:            application.NewMemoryModule().OrderingRepo,
-			CategoryRepo:            application.NewMemoryModule().CategoryRepo,
-			DefaultSignInPolicyRepo: application.NewMemoryModule().DefaultSignInPolicyRepo,
+			Repo:           application.NewMemoryModule().Repo,
+			IconStore:      application.NewMemoryModule().IconStore,
+			AssignmentRepo: application.NewMemoryModule().AssignmentRepo,
+			OrderingRepo:   application.NewMemoryModule().OrderingRepo,
+			CategoryRepo:   application.NewMemoryModule().CategoryRepo,
 		},
+		SignInPolicy: signinpolicy.NewMemoryModule(),
 		Provisioning: provisioning.Module{
 			ConnectionRepo: provisioningmemory.NewProvisioningConnectionRepository(),
 			RemoteLinkRepo: provisioningmemory.NewRemoteResourceLinkRepository(),

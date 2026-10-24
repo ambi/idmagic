@@ -3,6 +3,8 @@ package domain
 import (
 	"testing"
 	"time"
+
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 )
 
 // wi-172: shared/spec から移設した Application enum / event のカバレッジ (旧 wi-129 分)。
@@ -37,9 +39,9 @@ func TestApplicationEnumValid(t *testing.T) {
 		{"visibility hidden", AssignmentHidden, true},
 		{"visibility bad", AssignmentVisibility("x"), false},
 
-		{"authn password", RequiredAuthnPassword, true},
-		{"authn mfa", RequiredAuthnMfa, true},
-		{"authn bad", RequiredAuthnStrength("x"), false},
+		{"authn password", policydomain.RequiredAuthnPassword, true},
+		{"authn mfa", policydomain.RequiredAuthnMfa, true},
+		{"authn bad", policydomain.RequiredAuthnStrength("x"), false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -66,8 +68,8 @@ func TestApplicationEventsTypeAndOccurredAt(t *testing.T) {
 		{&ApplicationDeleted{At: at}, "ApplicationDeleted"},
 		{&ApplicationAssigned{At: at}, "ApplicationAssigned"},
 		{&ApplicationUnassigned{At: at}, "ApplicationUnassigned"},
-		{&AppSignInPolicyUpdated{At: at}, "AppSignInPolicyUpdated"},
-		{&TenantDefaultSignInPolicyUpdated{At: at}, "TenantDefaultSignInPolicyUpdated"},
+		{&policydomain.AppSignInPolicyUpdated{At: at}, "AppSignInPolicyUpdated"},
+		{&policydomain.TenantDefaultSignInPolicyUpdated{At: at}, "TenantDefaultSignInPolicyUpdated"},
 		{&AppAccessDeniedByPolicy{At: at}, "AppAccessDeniedByPolicy"},
 		{&AppStepUpRequired{At: at}, "AppStepUpRequired"},
 		{&ApplicationCategoryCreated{At: at}, "ApplicationCategoryCreated"},

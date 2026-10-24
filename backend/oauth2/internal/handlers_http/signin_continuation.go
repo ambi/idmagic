@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
@@ -71,7 +73,7 @@ func (p *pendingAuthorization) Requirement(
 	}, nil
 }
 
-func (p *pendingAuthorization) EnrollmentPolicy(c *echo.Context, applicationID string) (*appdomain.MfaEnrollmentPolicy, error) {
+func (p *pendingAuthorization) EnrollmentPolicy(c *echo.Context, applicationID string) (*policydomain.MfaEnrollmentPolicy, error) {
 	return p.d.applicationMfaEnrollmentPolicy(c, applicationID)
 }
 
@@ -112,14 +114,14 @@ func (p *pendingAuthorization) continueAuthorization(c *echo.Context, client *do
 
 // applicationMfaEnrollmentPolicy は、アプリケーションの実効のサインインポリシーから、第二要素を
 // 持たない利用者に MFA の登録を始めさせるかの方針を返す。
-func (d Deps) applicationMfaEnrollmentPolicy(c *echo.Context, applicationID string) (*appdomain.MfaEnrollmentPolicy, error) {
+func (d Deps) applicationMfaEnrollmentPolicy(c *echo.Context, applicationID string) (*policydomain.MfaEnrollmentPolicy, error) {
 	if d.ApplicationGate == nil {
-		return &appdomain.MfaEnrollmentPolicy{}, nil
+		return &policydomain.MfaEnrollmentPolicy{}, nil
 	}
 	ctx := c.Request().Context()
 	tenantID := support.RequestTenantID(c)
-	var appPolicy *appdomain.AppSignInPolicy
-	var defaultPolicy *appdomain.TenantDefaultSignInPolicy
+	var appPolicy *policydomain.AppSignInPolicy
+	var defaultPolicy *policydomain.TenantDefaultSignInPolicy
 	var err error
 	if d.ApplicationSignInPolicyRepo != nil {
 		appPolicy, err = d.ApplicationSignInPolicyRepo.Get(ctx, tenantID, applicationID)
@@ -133,7 +135,7 @@ func (d Deps) applicationMfaEnrollmentPolicy(c *echo.Context, applicationID stri
 			return nil, err
 		}
 	}
-	return appdomain.MfaEnrollmentPolicyFromRules(appdomain.EffectiveSignInRules(defaultPolicy, appPolicy)), nil
+	return policydomain.MfaEnrollmentPolicyFromRules(policydomain.EffectiveSignInRules(defaultPolicy, appPolicy)), nil
 }
 
 // extractClientIP は共有の support.ExtractClientIP へ委ねる。プロキシの信頼の規則を一か所に保つ。

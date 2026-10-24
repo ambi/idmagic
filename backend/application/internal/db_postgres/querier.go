@@ -10,21 +10,17 @@ import (
 
 type Querier interface {
 	CountApplicationsByTenant(ctx context.Context, tenantID string) (int64, error)
-	DeleteAppSignInPolicy(ctx context.Context, arg DeleteAppSignInPolicyParams) error
 	DeleteApplication(ctx context.Context, arg DeleteApplicationParams) error
 	DeleteApplicationAssignment(ctx context.Context, arg DeleteApplicationAssignmentParams) error
 	DeleteApplicationAssignmentsByApplication(ctx context.Context, arg DeleteApplicationAssignmentsByApplicationParams) error
 	DeleteApplicationCategory(ctx context.Context, arg DeleteApplicationCategoryParams) error
 	DeleteApplicationIconsByApplication(ctx context.Context, arg DeleteApplicationIconsByApplicationParams) error
 	FindApplicationByProtocol(ctx context.Context, arg FindApplicationByProtocolParams) (*Application, error)
-	GetAppSignInPolicy(ctx context.Context, arg GetAppSignInPolicyParams) (*GetAppSignInPolicyRow, error)
 	GetApplicationByID(ctx context.Context, arg GetApplicationByIDParams) (*Application, error)
 	GetApplicationCategoryByID(ctx context.Context, arg GetApplicationCategoryByIDParams) (*ApplicationCategory, error)
 	GetApplicationIcon(ctx context.Context, arg GetApplicationIconParams) (*GetApplicationIconRow, error)
 	GetApplicationOrdering(ctx context.Context, userID string) (*ApplicationOrdering, error)
 	GetApplicationProtocolKey(ctx context.Context, arg GetApplicationProtocolKeyParams) (string, error)
-	GetTenantDefaultSignInPolicy(ctx context.Context, tenantID string) (*TenantDefaultSignInPolicy, error)
-	ListAppSignInPoliciesByTenant(ctx context.Context, tenantID string) ([]*ListAppSignInPoliciesByTenantRow, error)
 	ListApplicationAssignmentsByApplication(ctx context.Context, arg ListApplicationAssignmentsByApplicationParams) ([]*ListApplicationAssignmentsByApplicationRow, error)
 	// First page of ListApplicationAssignments keyset pagination (wi-159):
 	// the (application_id, subject_type, subject_id) primary key
@@ -51,7 +47,6 @@ type Querier interface {
 	ListApplicationsByTenantPageBefore(ctx context.Context, arg ListApplicationsByTenantPageBeforeParams) ([]*Application, error)
 	ListApplicationsByTenantPageEnd(ctx context.Context, arg ListApplicationsByTenantPageEndParams) ([]*Application, error)
 	RemoveApplicationCategory(ctx context.Context, arg RemoveApplicationCategoryParams) error
-	UpsertAppSignInPolicy(ctx context.Context, arg UpsertAppSignInPolicyParams) error
 	UpsertApplication(ctx context.Context, arg UpsertApplicationParams) error
 	// ListApplicationAssignmentsBySubjects は (subject_type, subject_id) ペア配列との
 	// UNNEST 突き合わせが必要で、sqlc の静的解析が UNNEST の引数型を解決できない
@@ -60,7 +55,6 @@ type Querier interface {
 	UpsertApplicationCategory(ctx context.Context, arg UpsertApplicationCategoryParams) error
 	UpsertApplicationIcon(ctx context.Context, arg UpsertApplicationIconParams) error
 	UpsertApplicationOrdering(ctx context.Context, arg UpsertApplicationOrderingParams) error
-	UpsertTenantDefaultSignInPolicy(ctx context.Context, arg UpsertTenantDefaultSignInPolicyParams) error
 }
 
 var _ Querier = (*Queries)(nil)

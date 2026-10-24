@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 
 	"github.com/ambi/idmagic/backend/oauth2"
@@ -169,19 +172,19 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
 	app := seedApplication(t, db, tenant.ID)
-	repo := &SignInPolicyRepository{Pool: db}
+	repo := signinpolicy.NewPostgresModule(db).ApplicationRepo
 	ctx := context.Background()
 
 	now := pgfixtures.TestClock()
-	policy := &domain.AppSignInPolicy{
+	policy := &policydomain.AppSignInPolicy{
 		TenantID:      tenant.ID,
 		ApplicationID: app.ID,
-		Rules: []domain.SignInRule{
+		Rules: []policydomain.SignInRule{
 			{
 				RuleID:        "rule-1",
 				Name:          "require mfa",
 				Enabled:       true,
-				RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnMfa},
+				RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
 			},
 		},
 		CreatedAt: now,
@@ -195,7 +198,7 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("get: %v %+v", err, got)
 	}
-	if len(got.Rules) != 1 || got.Rules[0].RequiredAuthn.Strength != domain.RequiredAuthnMfa {
+	if len(got.Rules) != 1 || got.Rules[0].RequiredAuthn.Strength != policydomain.RequiredAuthnMfa {
 		t.Fatalf("rules not round-tripped: %+v", got.Rules)
 	}
 
@@ -216,7 +219,7 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 func TestDefaultSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
-	repo := &DefaultSignInPolicyRepository{Pool: db}
+	repo := signinpolicy.NewPostgresModule(db).DefaultRepo
 	ctx := context.Background()
 
 	if got, err := repo.Get(ctx, tenant.ID); err != nil || got != nil {
@@ -224,14 +227,14 @@ func TestDefaultSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	}
 
 	now := pgfixtures.TestClock()
-	policy := &domain.TenantDefaultSignInPolicy{
+	policy := &policydomain.TenantDefaultSignInPolicy{
 		TenantID: tenant.ID,
-		Rules: []domain.SignInRule{
+		Rules: []policydomain.SignInRule{
 			{
 				RuleID:        "floor",
 				Name:          "password floor",
 				Enabled:       true,
-				RequiredAuthn: domain.RequiredAuthnLevel{Strength: domain.RequiredAuthnPassword},
+				RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnPassword},
 			},
 		},
 		CreatedAt: now,
@@ -245,7 +248,7 @@ func TestDefaultSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	if err != nil || got == nil || len(got.Rules) != 1 {
 		t.Fatalf("get: %v %+v", err, got)
 	}
-	if got.Rules[0].RequiredAuthn.Strength != domain.RequiredAuthnPassword {
+	if got.Rules[0].RequiredAuthn.Strength != policydomain.RequiredAuthnPassword {
 		t.Fatalf("rule not round-tripped: %+v", got.Rules[0])
 	}
 }

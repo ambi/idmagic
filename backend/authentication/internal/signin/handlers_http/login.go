@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -206,23 +206,23 @@ func (d Deps) enforceDefaultSignInPolicy(
 	if policy == nil || len(policy.Rules) == 0 {
 		return false, nil
 	}
-	evaluation := appdomain.EvaluateSignInPolicy(
-		&appdomain.AppSignInPolicy{TenantID: policy.TenantID, Rules: policy.Rules},
+	evaluation := policydomain.EvaluateSignInPolicy(
+		&policydomain.AppSignInPolicy{TenantID: policy.TenantID, Rules: policy.Rules},
 		authn,
 		d.ClientIP(c.Request()),
 		time.Now().UTC(),
 	)
 	switch evaluation.Decision {
-	case appdomain.PolicyAllow:
+	case policydomain.PolicyAllow:
 		return false, nil
-	case appdomain.PolicyStepUpRequired:
+	case policydomain.PolicyStepUpRequired:
 		if !allowChallenge {
 			return true, nil
 		}
 		// 記憶済みの信頼済みデバイスは第二要素の提示を省略できる (wi-91)。成立すると
 		// authn は tdev 込みへ昇格し、遷移は起きない。
 		trusted, err := d.trustedDeviceSatisfiesSecondFactor(
-			c, appdomain.TrustedDeviceAllowedByRules(policy.Rules), authn,
+			c, policydomain.TrustedDeviceAllowedByRules(policy.Rules), authn,
 		)
 		if err != nil {
 			return false, err
@@ -231,7 +231,7 @@ func (d Deps) enforceDefaultSignInPolicy(
 			return false, nil
 		}
 		if len(d.secondFactorMethods(c, authn.UserID)) == 0 {
-			enrollment := appdomain.MfaEnrollmentPolicyFromRules(policy.Rules)
+			enrollment := policydomain.MfaEnrollmentPolicyFromRules(policy.Rules)
 			if begun, err := d.beginMfaEnrollment(c, authn, enrollment); err != nil {
 				return false, err
 			} else if begun {

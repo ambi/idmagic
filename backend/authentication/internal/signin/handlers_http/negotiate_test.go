@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/authentication"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
@@ -24,6 +23,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 	"github.com/labstack/echo/v5"
@@ -101,11 +101,11 @@ func newNegotiateFixture(t *testing.T, options ...func(*authentication.RouteDeps
 
 type negotiateMfaPolicy struct{}
 
-func (negotiateMfaPolicy) Get(_ context.Context, tenantID string) (*appdomain.TenantDefaultSignInPolicy, error) {
-	return &appdomain.TenantDefaultSignInPolicy{TenantID: tenantID, Rules: []appdomain.SignInRule{{Enabled: true, RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa}}}}, nil
+func (negotiateMfaPolicy) Get(_ context.Context, tenantID string) (*policydomain.TenantDefaultSignInPolicy, error) {
+	return &policydomain.TenantDefaultSignInPolicy{TenantID: tenantID, Rules: []policydomain.SignInRule{{Enabled: true, RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa}}}}, nil
 }
 
-func (negotiateMfaPolicy) Save(context.Context, *appdomain.TenantDefaultSignInPolicy) error {
+func (negotiateMfaPolicy) Save(context.Context, *policydomain.TenantDefaultSignInPolicy) error {
 	return nil
 }
 

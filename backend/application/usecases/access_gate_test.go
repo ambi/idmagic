@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/signinpolicy"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
@@ -71,7 +74,7 @@ func TestApplicationAccessEvaluatesSignInPolicy(t *testing.T) {
 	ctx := context.Background()
 	apps := appmemory.NewApplicationRepository()
 	assignments := appmemory.NewApplicationAssignmentRepository()
-	policies := appmemory.NewSignInPolicyRepository()
+	policies := signinpolicy.NewMemoryModule().ApplicationRepo
 	now := time.Now().UTC()
 	app := &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ID: "app-1", Name: "App", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
@@ -87,9 +90,9 @@ func TestApplicationAccessEvaluatesSignInPolicy(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := policies.Save(ctx, &appdomain.AppSignInPolicy{
+	if err := policies.Save(ctx, &policydomain.AppSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-1", UpdatedAt: now,
-		Rules: []appdomain.SignInRule{{RuleID: "rule-1", Name: "MFA", Enabled: true, RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa}}},
+		Rules: []policydomain.SignInRule{{RuleID: "rule-1", Name: "MFA", Enabled: true, RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa}}},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -112,8 +115,8 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 	ctx := context.Background()
 	apps := appmemory.NewApplicationRepository()
 	assignments := appmemory.NewApplicationAssignmentRepository()
-	policies := appmemory.NewSignInPolicyRepository()
-	defaults := appmemory.NewDefaultSignInPolicyRepository()
+	policies := signinpolicy.NewMemoryModule().ApplicationRepo
+	defaults := signinpolicy.NewMemoryModule().DefaultRepo
 	now := time.Now().UTC()
 	app := &appdomain.Application{
 		TenantID: tenancydomain.DefaultTenantID, ID: "app-1", Name: "App", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
@@ -130,9 +133,9 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	// テナントデフォルトで MFA を要求。アプリ個別ポリシーは未設定。
-	if err := defaults.Save(ctx, &appdomain.TenantDefaultSignInPolicy{
+	if err := defaults.Save(ctx, &policydomain.TenantDefaultSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID, UpdatedAt: now,
-		Rules: []appdomain.SignInRule{{RuleID: "def-1", Name: "MFA", Enabled: true, RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa}}},
+		Rules: []policydomain.SignInRule{{RuleID: "def-1", Name: "MFA", Enabled: true, RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa}}},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -152,9 +155,9 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 	}
 
 	// アプリ独自ポリシー (パスワードのみ) はデフォルトを上書きし、より弱くても適用される。
-	if err := policies.Save(ctx, &appdomain.AppSignInPolicy{
+	if err := policies.Save(ctx, &policydomain.AppSignInPolicy{
 		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-1", UpdatedAt: now,
-		Rules: []appdomain.SignInRule{{RuleID: "app-1", Name: "Password", Enabled: true, RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnPassword}}},
+		Rules: []policydomain.SignInRule{{RuleID: "app-1", Name: "Password", Enabled: true, RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnPassword}}},
 	}); err != nil {
 		t.Fatal(err)
 	}

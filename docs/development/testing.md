@@ -285,7 +285,17 @@ mise run test-go-mutation -- backend/oauth2/internal/handlers_http 2 off /tmp/id
 mise run test-go-mutation -- backend/idmanagement/group/domain 2 /tmp/idmagic-gomutants-cache.json
 ```
 
+変更先の振る舞いを呼び出し元のパッケージのテストが観測している場合は、第 6 引数へ `integration` を指定する。
+このモードは逆依存のテストまで被覆を広げ、変異を検出するテストを選ぶ。
+同じパッケージだけの調査はデフォルトの `local` を使い、呼び出し元にあるテストを実行していない結果から検出能力を判断しない。
+全体調査では比較基準を空文字列にする。
+
+```console
+mise run test-go-mutation -- backend/signinpolicy/domain 2 off /tmp/signin-policy-mutation.json '' integration
+```
+
 報告にある変異の安定した ID を指定して 1 件だけ再実行する場合は、キャッシュを使わない専用タスクを実行する。
+逆依存のテストも使う場合は、第 4 引数へ `integration` を指定する。
 
 ```console
 mise run test-go-mutation-mutant -- backend/idmanagement/group/domain '<mutant-id>'
