@@ -26,7 +26,7 @@ affected_spec:
    同じユーザーを個別に登録し続けることになる。人事異動のたびに N 箇所の付け替えが必要。
 2. **アプリ割当が階層を反映できない**。「営業本部配下の全員に CRM を割当」を表現できず、
    末端グループごとに割当を複製する。割当漏れが権限事故になる。
-3. **外部ディレクトリの構造が失われる**。LDAP/AD ([[wi-95-ldap-ad-user-federation]]) と
+3. **外部ディレクトリの構造が失われる**。LDAP/AD ([[wi-29505-ingest-directory-groups-and-direct-memberships]]) と
    SCIM ([[wi-246-scim-multivalued-core-attributes-and-nested-group-members]]) は入れ子
    グループを持つため、取り込み時に階層を平坦化するしかない。これは元データの意味を落とす
    不可逆な変換であり、上流に書き戻せない。
@@ -96,7 +96,7 @@ affected_spec:
 - グループ階層に基づく委任管理のスコープ。→ [[wi-94-delegated-administration]]
 - SCIM の nested group member 表現。→
   [[wi-246-scim-multivalued-core-attributes-and-nested-group-members]] (本 WI が土台を提供する)
-- LDAP/AD からの階層取り込み。→ [[wi-95-ldap-ad-user-federation]]
+- LDAP/AD からの階層取り込み。→ [[wi-29505-ingest-directory-groups-and-direct-memberships]]
 - 動的グループルールで祖先を参照する式。
 
 ## Plan

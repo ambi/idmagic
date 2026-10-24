@@ -4,7 +4,7 @@ authors: [tn]
 risk: medium
 created_at: 2026-10-23
 priority: p3
-depends_on: [wi-95-ldap-ad-user-federation]
+depends_on: [wi-69206-run-a-directory-connector-that-reads-ad-and-ldap]
 change_kind: feature
 affected_spec:
   - { path: docs/modules/ws-federation/features/active-sts.md, requirement: REQ-WSFEDERATION-004 }
@@ -16,7 +16,7 @@ affected_spec:
 
 Hybrid Join の端末の登録（wi-98213）では、端末を認証した STS が、コンピューターアカウントの `objectGUID`（`onpremobjectguid`）と `objectSid`（`primarysid`）をクレームとして発行する必要がある（[Microsoft Entra hybrid join の手動構成](https://learn.microsoft.com/en-us/entra/identity/devices/hybrid-join-manual)）。
 Kerberos のチケットの PAC はコンピューターの SID とグループの SID を運ぶが、`objectGUID` は運ばない。
-idmagic はコンピューターアカウントを一切持たず、wi-95 の Directory Connector もユーザーと最小限のグループだけを取り込む。
+idmagic はコンピューターアカウントを一切持たず、Directory Connector（[[wi-23043-ingest-directory-users-from-connector-batches]]、[[wi-29505-ingest-directory-groups-and-direct-memberships]]）もユーザーと選んだグループだけを取り込む。
 
 ## 対象範囲
 
@@ -36,8 +36,8 @@ idmagic はコンピューターアカウントを一切持たず、wi-95 の Di
 
 | 案 | 採否 | 理由 |
 | --- | --- | --- |
-| Directory Connector が同期する | 採る | wi-95 は、idmagic が AD の資格情報を持たず、Connector からの外向きの接続だけを使うと決めている。同じ経路で足りる |
-| 発行のたびに idmagic が LDAP で引く | 採らない | idmagic が AD への到達経路と資格情報を持つことになり、wi-95 の信頼境界に反する |
+| Directory Connector が同期する | 採る | Directory Connector の設計（[[wi-46712-enroll-a-directory-connector-and-authenticate-its-calls]]）は、idmagic が AD の資格情報を持たず、Connector からの外向きの接続だけを使うと決めている。同じ経路で足りる |
+| 発行のたびに idmagic が LDAP で引く | 採らない | idmagic が AD への到達経路と資格情報を持つことになり、Directory Connector の信頼境界に反する |
 | Kerberos の PAC だけから導く | 採らない | PAC は `objectGUID` を運ばない |
 
 保存先のモジュールは、境界を選ぶ判断手順で決める。
@@ -47,7 +47,7 @@ idmagic はコンピューターアカウントを一切持たず、wi-95 の Di
 ## 計画
 
 1. T001 で保存先のモジュールを境界の判断手順で決め、記録をこの設計に書く。
-2. wi-95 の Connector の同期の形（差分、削除の検出）をそのまま使い、コンピューターアカウントの種類を足す。
+2. [[wi-23043-ingest-directory-users-from-connector-batches]] と [[wi-69206-run-a-directory-connector-that-reads-ad-and-ldap]] の同期の形（差分、削除の検出）をそのまま使い、コンピューターアカウントの種類を足す。
 3. `affected_spec` は、取り込んだ値を使う能動的な STS の要件を指す。T002 で Directory Connector の要件を追加したら、その要件に差し替える。
 
 ## タスク

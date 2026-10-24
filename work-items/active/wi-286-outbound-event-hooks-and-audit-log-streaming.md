@@ -94,7 +94,7 @@ push される」汎用 outbound hook を導入する。
 - CAEP / SSF (Shared Signals Framework) 準拠の標準 security event 配信。
   → [[wi-58-continuous-access-evaluation-agent-revocation]]
 - inbound webhook (外部からの受信)。→ [[wi-30-inbound-federation-and-identity-broker]] /
-  [[wi-95-ldap-ad-user-federation]] の領域。
+  [[wi-23043-ingest-directory-users-from-connector-batches]] の領域。
 - イベント payload の任意テンプレート / 変換式。固定スキーマから始める。
 - テナントを跨いだ集約配送 (system admin 用の全テナント購読)。
 
