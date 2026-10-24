@@ -8,14 +8,17 @@ depends_on: [wi-69206-run-a-directory-connector-that-reads-ad-and-ldap]
 change_kind: feature
 affected_spec:
   - { path: docs/modules/authentication/features/sign-in.md, requirement: REQ-AUTHENTICATION-007 }
+  - { path: docs/modules/ws-federation/features/active-sts.md, requirement: REQ-WSFEDERATION-004 }
 ---
 
-# AD から取り込んだ User のパスワードの確認を、Directory Connector の LDAP の bind に委ねる
+# AD から取り込んだ User のパスワードの確認を Directory Connector の LDAP の bind に委ね、ログインと WS-Trust の usernamemixed で使えるようにする
 
 ## 動機
 
 Directory Connector で取り込んだ User はパスワードを持たない。
 AD を使い続ける組織では、利用者は AD のパスワードで IdMagic にサインインしたい。
+WS-Trust の能動的な STS（`/trust/usernamemixed`、REQ-WSFEDERATION-004）も UsernameToken のパスワードをログインと同じ照合で確かめるので、取り込んだ User は、MSAL のようなリッチクライアントから Entra のフェデレーションを経て Microsoft 365 などのトークンを得られない。
+Entra のドメインフェデレーションで想定する、AD を Entra Connect と IdMagic の両方へ同期する構成では、この経路が使えないことが連携の欠落になる。
 パスワードを IdMagic へ写さずにこれを実現するのが、認証の委譲である。
 
 | 製品 | 機能 |
@@ -33,6 +36,7 @@ Connector は外向きの接続だけを行うので、IdMagic から Connector 
 - パスワードは要求の中で Connector の公開鍵で暗号化し、IdMagic のログ、保存先、イベントに残さない。
 - Connector が応答しないときの扱い（失敗にする、ほかの認証方式へ誘導する）を決める。
 - AD のアカウントのロック、期限切れ、パスワードの変更の要求を、サインインの結果へ写す。
+- WS-Trust の usernamemixed の UsernameToken の照合も同じ委譲を使い、AD の結果を REQ-WSFEDERATION-004 の 401 と 403 の拒否へ写す。Connector が応答しないときの扱いは、ほかの認証方式へ誘導できない WS-Trust でも決める。
 
 ## 対象外
 
@@ -63,6 +67,7 @@ Connector は外向きの接続だけを行うので、IdMagic から Connector 
 ## 検証
 
 - OpenLDAP のコンテナと正式なルーターの E2E で、正しいパスワード、誤ったパスワード、Connector の停止のそれぞれのサインインの結果を確かめる。
+- 同じ三つの場合について、`/trust/usernamemixed` の RST が RSTR、401、Connector の停止時に決めた応答を返すことを確かめる。
 
 ## リスク
 
