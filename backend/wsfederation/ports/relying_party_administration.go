@@ -11,7 +11,9 @@ import (
 
 var (
 	ErrRelyingPartyNotFound = errors.New("relying party does not exist")
-	ErrInvalidTokenType     = errors.New("token type is invalid")
+	// ErrRelyingPartyAlreadyRegistered は、作成しようとした wtrealm の RP がテナントにすでにあることを表す。
+	ErrRelyingPartyAlreadyRegistered = errors.New("relying party is already registered")
+	ErrInvalidTokenType              = errors.New("token type is invalid")
 )
 
 // RelyingPartyAdministration は、Application のカタログが自身に属する RP を作成、更新、
@@ -19,6 +21,9 @@ var (
 type RelyingPartyAdministration interface {
 	// Find は wtrealm に一致する RP を返す。存在しなければ (nil, nil)。
 	Find(ctx context.Context, tenantID, wtrealm string) (*domain.WsFedRelyingParty, error)
+	// CreateForApplication は新しい RP を保存する。wtrealm が長さの上限を超えれば Validate のエラーを、
+	// 同じ wtrealm の RP があれば、Entra の RP か、どの Application に属するかを問わず
+	// ErrRelyingPartyAlreadyRegistered を返す。
 	CreateForApplication(ctx context.Context, in CreateApplicationRelyingPartyInput) error
 	// Update は指定した項目だけを変える。RP がなければ ErrRelyingPartyNotFound を返す。
 	Update(ctx context.Context, in UpdateRelyingPartyInput) error

@@ -6,6 +6,9 @@ model InvalidIconError is ProblemDetails;
 @doc("サインインポリシーの規則、認証強度、CIDR、再認証の期間、MFA の登録の猶予が不正なため拒否された。RFC 9457 の Problem Details で、type は urn:idmagic:error:invalid_sign_in_policy である。")
 model InvalidSignInPolicyError is ProblemDetails;
 
+@doc("作成しようとした Application の `wtrealm` または entityID は、テナントの既存の WS-Federation の RP または SAML の SP のものである。Entra の RP、別の Application に属するもの、どの Application にも属さないものを区別しない。HTTP 409 で返す。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:protocol_already_registered` である。")
+model ProtocolAlreadyRegisteredError is ProblemDetails;
+
 @doc("OAuth2 モジュールが所有するクライアントの種類を、公開契約として写したもの。送受信の値は RFC 6749 の 2.1 節に従う。")
 enum ClientType {
   Public: "public",
@@ -596,7 +599,7 @@ model ApplicationCreated {
 }
 
 
-@doc("Application のメタデータを更新した。")
+@doc("Application のメタデータか、関連付けたプロトコル設定を更新した。`changedFields` は、メタデータでは変えた項目、プロトコル設定では要求で指定した項目の JSON の名前である。")
 model ApplicationUpdated {
   occurredAt: utcDateTime;
   tenantId: string;

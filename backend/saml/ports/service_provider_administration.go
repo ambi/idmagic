@@ -11,6 +11,8 @@ import (
 
 var (
 	ErrServiceProviderNotFound = errors.New("service provider does not exist")
+	// ErrServiceProviderAlreadyRegistered は、作成しようとした entityID の SP がテナントにすでにあることを表す。
+	ErrServiceProviderAlreadyRegistered = errors.New("service provider is already registered")
 	// ErrSigningCertificateRequired は、AuthnRequest の署名を必須にした SP に検証できる証明書がないことを表す。
 	ErrSigningCertificateRequired = errors.New("authn request signing certificate is required")
 )
@@ -21,6 +23,8 @@ var (
 type ServiceProviderAdministration interface {
 	// Find は entityID に一致する SP を返す。存在しなければ (nil, nil)。
 	Find(ctx context.Context, tenantID, entityID string) (*domain.SamlServiceProvider, error)
+	// CreateForApplication は新しい SP を保存する。entityID が長さの上限を超えれば Validate のエラーを、
+	// 同じ entityID の SP があれば、どの Application に属するかを問わず ErrServiceProviderAlreadyRegistered を返す。
 	CreateForApplication(ctx context.Context, in CreateApplicationServiceProviderInput) error
 	// Update は指定した項目だけを変える。SP がなければ ErrServiceProviderNotFound を返す。
 	Update(ctx context.Context, in UpdateServiceProviderInput) error

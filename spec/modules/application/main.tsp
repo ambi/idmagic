@@ -127,6 +127,12 @@ model CreateAdminApplicationError422 {
   @body body: CreateAdminApplicationError422Body;
 }
 
+model CreateAdminApplicationError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.ProtocolAlreadyRegisteredError;
+}
+
 @doc("管理者が、一回の呼び出しで Application を作成する。種類に応じたプロトコルの行を用意し、Application と `application_id` の関係を一つのトランザクションでカタログへ公開する。プロトコルの種類は後から変えられない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminApplication")
@@ -134,7 +140,7 @@ model CreateAdminApplicationError422 {
 @post
 op CreateAdminApplication(
   @body body: IdMagic.Contract.AdminApplicationCreateRequest
-): CreateAdminApplicationSuccess_201 | CreateAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminApplicationError403 | CreateAdminApplicationError422;
+): CreateAdminApplicationSuccess_201 | CreateAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminApplicationError403 | CreateAdminApplicationError409 | CreateAdminApplicationError422;
 
 model UpdateAdminApplicationSuccess_200 {
   @statusCode statusCode: 200;

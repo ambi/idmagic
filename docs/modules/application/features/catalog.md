@@ -40,9 +40,12 @@ Application に属するプロトコル設定を、各プロトコルの管理 A
 - 管理者がアプリケーションを取得または一覧したとき、Application は、呼び出し元のテナントのアプリケーションだけを返す。
 - Application は、作成の後にプロトコル設定の再接続、切り離し、種別の変更を受け付けない。
 - テナントの `applications` または `oauth2_clients` の上限を超える作成を要求された場合、Application は、422 と `quota_exceeded` で拒否し、Application を作らない。
+- テナントに同じ `wtrealm` の WS-Federation の RP か同じ entityID の SAML の SP がある状態で、`wsfed` または `saml` のアプリケーションの作成を要求された場合、Application は、409 と `protocol_already_registered` で拒否し、既存の RP または SP を変えず、Application を作らない。
+- 2,048 文字または 2,048 バイトを超える `wtrealm` か entityID のアプリケーションの作成を要求された場合、Application は、422 と `field_length_exceeded` で拒否し、RP、SP、Application を作らない。
 - 別のテナントの主体か存在しない主体の割り当てを要求された場合、Application は、400 と `invalid_request` で拒否し、割り当てを作らない。
 - 存在しないか別のテナントのアプリケーションを指定された場合、Application は、存在しない ID と同じ 404 と `application_not_found` で拒否し、名前もプロトコル設定も返さない。
 - 不正なアプリケーションの作成または更新を要求された場合、Application は、400 と `invalid_request` で拒否し、Application を変えない。
+- **判断**：既存の RP と SP は、Entra の RP、別の Application に属するもの、どの Application にも属さないものを区別せずに拒否する。引き取ると、管理 API で登録した設定を作成の入力で置き換えるためである。
 - **例**：EX-APPLICATION-007-01、EX-APPLICATION-007-02、EX-APPLICATION-007-03
 
 #### REQ-APPLICATION-013 admin ロールを持たない利用者は Application を操作できない
@@ -77,8 +80,9 @@ Application に属するプロトコル設定を、各プロトコルの管理 A
 
 #### REQ-APPLICATION-005 管理者は Application の SAML プロトコル設定を更新できる
 
-- 管理者が SAML のアプリケーションの ACS の URL、署名の方針、クレームの規則、IdP プロファイルの割り当てを更新したとき、Application は、同じテナントの SAML の SP の設定だけを更新し、`ApplicationUpdated` を発行する。
-- 管理者が OIDC または WS-Federation のアプリケーションのプロトコル設定を更新したとき、Application は、関連付けたクライアントまたは RP の設定だけを更新し、`ApplicationUpdated` を発行する。
+- 管理者が SAML のアプリケーションの ACS の URL、署名の方針、クレームの規則、IdP プロファイルの割り当てを更新したとき、Application は、同じテナントの SAML の SP の設定だけを更新し、指定した項目の JSON の名前を `changedFields` に持つ `ApplicationUpdated` を発行する。
+- 管理者が OIDC または WS-Federation のアプリケーションのプロトコル設定を更新したとき、Application は、関連付けたクライアントまたは RP の設定だけを更新し、指定した項目の JSON の名前を `changedFields` に持つ `ApplicationUpdated` を発行する。
+- 管理者が項目を一つも指定せずにプロトコル設定を更新したとき、Application は、`ApplicationUpdated` を発行しない。
 - AuthnRequest の署名を必須にしたのに検証できる証明書がない SAML の設定を指定された場合、Application は、400 と `invalid_request` で拒否し、設定を変えない。
 - **例**：EX-APPLICATION-005-01、EX-APPLICATION-005-02
 

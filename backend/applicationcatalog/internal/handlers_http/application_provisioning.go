@@ -196,6 +196,9 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, DisplayName: req.Name, ReplyURLs: req.ReplyURLs,
 			NameIDFormat: req.NameIDFormat, NameIDSource: req.NameIDSource, Now: now,
 		}); err != nil {
+			if errors.Is(err, wsfederationports.ErrRelyingPartyAlreadyRegistered) {
+				return writeProtocolAlreadyRegistered(c)
+			}
 			return err
 		}
 		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
@@ -320,6 +323,36 @@ type updateOIDCRequest struct {
 	Rules              *[]claimdomain.ClaimMappingRule `json:"rules"`
 }
 
+// specifiedFields は、要求で指定した項目の JSON の名前を返す。
+func (r updateOIDCRequest) specifiedFields() []string {
+	return specified(
+		field{r.RedirectURIs != nil, "redirect_uris"},
+		field{r.GrantTypes != nil, "grant_types"},
+		field{r.ResponseTypes != nil, "response_types"},
+		field{r.Scope != nil, "scope"},
+		field{r.RequirePAR != nil, "require_pushed_authorization_requests"},
+		field{r.DpopBoundTokens != nil, "dpop_bound_access_tokens"},
+		field{r.SubSourceAttribute != nil, "sub_source_attribute"},
+		field{r.Rules != nil, "rules"},
+	)
+}
+
+// field は、更新の要求の一つの項目について、指定の有無と JSON の名前を組にする。
+type field struct {
+	set  bool
+	name string
+}
+
+func specified(fields ...field) []string {
+	var names []string
+	for _, f := range fields {
+		if f.set {
+			names = append(names, f.name)
+		}
+	}
+	return names
+}
+
 func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
@@ -373,7 +406,20 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(domain.ApplicationProtocolOIDC),
 		})
 	}
+	d.emitProtocolConfigUpdated(tenantID, actor.ID, app.ID, req.specifiedFields(), time.Now().UTC())
 	return c.NoContent(http.StatusNoContent)
+}
+
+// emitProtocolConfigUpdated は、成功したプロトコル設定の更新を、要求で指定した項目の
+// JSON の名前とともに ApplicationUpdated として記録する。値を比べないのは、変更の有無を
+// 所有者の保存が決め、カタログには返らないためである。項目を一つも指定しない更新は記録しない。
+func (d Deps) emitProtocolConfigUpdated(tenantID, actorUserID, applicationID string, fields []string, now time.Time) {
+	if len(fields) == 0 {
+		return
+	}
+	d.Emit(&domain.ApplicationUpdated{
+		At: now, TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID, ChangedFields: fields,
+	})
 }
 
 type updateWsFedRequest struct {
@@ -383,6 +429,18 @@ type updateWsFedRequest struct {
 	NameIDFormat *string                         `json:"name_id_format"`
 	NameIDSource *string                         `json:"name_id_source"`
 	Rules        *[]claimdomain.ClaimMappingRule `json:"rules"`
+}
+
+// specifiedFields は、要求で指定した項目の JSON の名前を返す。
+func (r updateWsFedRequest) specifiedFields() []string {
+	return specified(
+		field{r.ReplyURLs != nil, "reply_urls"},
+		field{r.Audience != nil, "audience"},
+		field{r.TokenType != nil, "token_type"},
+		field{r.NameIDFormat != nil, "name_id_format"},
+		field{r.NameIDSource != nil, "name_id_source"},
+		field{r.Rules != nil, "rules"},
+	)
 }
 
 func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
@@ -439,6 +497,7 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(domain.ApplicationProtocolWsFed),
 		})
 	}
+	d.emitProtocolConfigUpdated(tenantID, actor.ID, app.ID, req.specifiedFields(), now)
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -454,6 +513,23 @@ type updateSamlRequest struct {
 	WantAuthnRequestsSigned           *bool                           `json:"want_authn_requests_signed"`
 	AuthnRequestSigningCertificatePEM *string                         `json:"authn_request_signing_certificate_pem"`
 	Rules                             *[]claimdomain.ClaimMappingRule `json:"rules"`
+}
+
+// specifiedFields は、要求で指定した項目の JSON の名前を返す。
+func (r updateSamlRequest) specifiedFields() []string {
+	return specified(
+		field{r.IDPProfileID != nil, "idp_profile_id"},
+		field{r.ACSURLs != nil, "acs_urls"},
+		field{r.SLOURL != nil, "slo_url"},
+		field{r.Audience != nil, "audience"},
+		field{r.NameIDFormat != nil, "name_id_format"},
+		field{r.NameIDSource != nil, "name_id_source"},
+		field{r.SignAssertion != nil, "sign_assertion"},
+		field{r.SignResponse != nil, "sign_response"},
+		field{r.WantAuthnRequestsSigned != nil, "want_authn_requests_signed"},
+		field{r.AuthnRequestSigningCertificatePEM != nil, "authn_request_signing_certificate_pem"},
+		field{r.Rules != nil, "rules"},
+	)
 }
 
 func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
@@ -511,6 +587,7 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(domain.ApplicationProtocolSAML),
 		})
 	}
+	d.emitProtocolConfigUpdated(tenantID, actor.ID, app.ID, req.specifiedFields(), now)
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -522,9 +599,18 @@ func writeServiceProviderNotFound(c *echo.Context) error {
 	return support.WriteProblem(c, http.StatusNotFound, "not_found", "The service provider does not exist.")
 }
 
-// writeServiceProviderError は、Saml が拒否した SP の設定を 400 に写す。それ以外は大域のエラー写像へ渡す。
+// writeProtocolAlreadyRegistered は、作成しようとした wtrealm または entityID の RP と SP が
+// すでにあることを 409 に写す。Entra の RP か、どの Application に属するかを区別しない。
+func writeProtocolAlreadyRegistered(c *echo.Context) error {
+	return support.WriteProblem(c, http.StatusConflict, "protocol_already_registered", "A relying party or service provider with this identifier already exists.")
+}
+
+// writeServiceProviderError は、Saml が拒否した SP の設定を 400 または 409 に写す。それ以外は大域のエラー写像へ渡す。
+// 長さの上限のエラーは大域のエラー写像が 422 にする。
 func writeServiceProviderError(c *echo.Context, err error) error {
 	switch {
+	case errors.Is(err, samlports.ErrServiceProviderAlreadyRegistered):
+		return writeProtocolAlreadyRegistered(c)
 	case errors.Is(err, samlports.ErrSigningCertificateRequired):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify a certificate for AuthnRequest signature verification.")
 	case errors.Is(err, samldomain.ErrInvalidIDPProfile), errors.Is(err, samldomain.ErrDedicatedIDPProfileCardinality):

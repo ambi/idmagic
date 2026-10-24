@@ -344,20 +344,30 @@ func TestClaimRuleNamingAReservedClaimTypeIsRefusedAndSavesNothing(t *testing.T)
 // 「どのイベントが発行されるか」で書かれており、応答だけを読むテストは、設定は保存したが
 // 通知を出さない実装を通してしまう。
 type recordedEvents struct {
-	mu    sync.Mutex
-	names []string
+	mu     sync.Mutex
+	events []spec.DomainEvent
 }
 
 func (r *recordedEvents) record(event spec.DomainEvent) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.names = append(r.names, event.EventType())
+	r.events = append(r.events, event)
 }
 
 func (r *recordedEvents) types() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return slices.Clone(r.names)
+	names := make([]string, 0, len(r.events))
+	for _, event := range r.events {
+		names = append(names, event.EventType())
+	}
+	return names
+}
+
+func (r *recordedEvents) all() []spec.DomainEvent {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return slices.Clone(r.events)
 }
 
 func (r *recordedEvents) contains(name string) bool {
@@ -369,7 +379,7 @@ func (r *recordedEvents) contains(name string) bool {
 func (r *recordedEvents) reset() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.names = nil
+	r.events = nil
 }
 
 // newApplicationHandlerRecordingEvents は、既定の fixture が持たない 2 つの配線だけを足す。
@@ -377,6 +387,15 @@ func (r *recordedEvents) reset() {
 // 具体例の `Then` が言うイベントを観測できない。
 func newApplicationHandlerRecordingEvents(
 	t *testing.T,
+) (*echo.Echo, *recordedEvents, userschemaports.TenantUserAttributeSchemaRepository) {
+	t.Helper()
+	return newApplicationHandlerWithProtocolOwners(t, saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()}, wsfederation.NewMemoryModule())
+}
+
+// newApplicationHandlerWithProtocolOwners は、SP と RP の保存先を呼び出し側に渡す。所有者の
+// 管理 API や Entra の構成が先に置いた行を、カタログの作成がどう扱うかを観測するためである。
+func newApplicationHandlerWithProtocolOwners(
+	t *testing.T, samlModule saml.Module, wsfedModule wsfederation.Module,
 ) (*echo.Echo, *recordedEvents, userschemaports.TenantUserAttributeSchemaRepository) {
 	t.Helper()
 	users := idmanagement.NewMemoryModule().UserRepo
@@ -406,9 +425,9 @@ func newApplicationHandlerRecordingEvents(
 		UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo,
 		Application:   application.NewMemoryModule(),
 		IdManagement:  idmanagement.Module{AttrSchemaRepo: schema},
-		Saml:          saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
+		Saml:          samlModule,
 		OAuth2:        oauth2.Module{ClientRepo: oauth2.NewMemoryModule().ClientRepo},
-		WsFederation:  wsfederation.NewMemoryModule(),
+		WsFederation:  wsfedModule,
 		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
 	return e, events, schema

@@ -26,13 +26,24 @@ func (a RelyingPartyAdministration) Find(ctx context.Context, tenantID, wtrealm 
 }
 
 func (a RelyingPartyAdministration) CreateForApplication(ctx context.Context, in wsfedports.CreateApplicationRelyingPartyInput) error {
-	return a.RPRepo.Save(ctx, &feddomain.WsFedRelyingParty{
+	rp := &feddomain.WsFedRelyingParty{
 		TenantID: in.TenantID, Wtrealm: in.Wtrealm, DisplayName: in.DisplayName, ReplyURLs: in.ReplyURLs,
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{
 			Format: nonEmpty(in.NameIDFormat, defaultNameIDFormat), SourceAttribute: nonEmpty(in.NameIDSource, defaultNameIDSource),
 		}},
 		CreatedAt: in.Now,
-	})
+	}
+	if err := rp.Validate(); err != nil {
+		return err
+	}
+	existing, err := a.RPRepo.FindByWtrealm(ctx, in.TenantID, in.Wtrealm)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		return wsfedports.ErrRelyingPartyAlreadyRegistered
+	}
+	return a.RPRepo.Save(ctx, rp)
 }
 
 func (a RelyingPartyAdministration) Update(ctx context.Context, in wsfedports.UpdateRelyingPartyInput) error {

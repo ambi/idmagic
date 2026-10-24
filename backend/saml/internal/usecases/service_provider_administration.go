@@ -23,12 +23,7 @@ func (a ServiceProviderAdministration) Find(ctx context.Context, tenantID, entit
 }
 
 func (a ServiceProviderAdministration) CreateForApplication(ctx context.Context, in samlports.CreateApplicationServiceProviderInput) error {
-	if in.WantAuthnRequestsSigned {
-		if _, err := samldomain.ParseCertificatePEM(in.AuthnRequestSigningCertificatePEM); err != nil {
-			return samlports.ErrSigningCertificateRequired
-		}
-	}
-	return a.SPRepo.Save(ctx, &samldomain.SamlServiceProvider{
+	sp := &samldomain.SamlServiceProvider{
 		TenantID: in.TenantID, EntityID: in.EntityID, DisplayName: in.DisplayName,
 		IDPProfileID: nonEmpty(in.IDPProfileID, samldomain.DefaultIDPProfileID),
 		ACSURLs:      in.ACSURLs, SLOURL: strings.TrimSpace(in.SLOURL),
@@ -39,7 +34,23 @@ func (a ServiceProviderAdministration) CreateForApplication(ctx context.Context,
 		WantAuthnRequestsSigned:           in.WantAuthnRequestsSigned,
 		AuthnRequestSigningCertificatePEM: strings.TrimSpace(in.AuthnRequestSigningCertificatePEM),
 		CreatedAt:                         in.Now,
-	})
+	}
+	if err := sp.Validate(); err != nil {
+		return err
+	}
+	existing, err := a.SPRepo.FindByEntityID(ctx, in.TenantID, in.EntityID)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		return samlports.ErrServiceProviderAlreadyRegistered
+	}
+	if sp.WantAuthnRequestsSigned {
+		if _, err := samldomain.ParseCertificatePEM(sp.AuthnRequestSigningCertificatePEM); err != nil {
+			return samlports.ErrSigningCertificateRequired
+		}
+	}
+	return a.SPRepo.Save(ctx, sp)
 }
 
 func (a ServiceProviderAdministration) Update(ctx context.Context, in samlports.UpdateServiceProviderInput) error {
