@@ -72,7 +72,11 @@ test('Entra configuration displays Graph commands with the real signing certific
     }
     await waitForText(view, '作成コマンドをコピー')
     await waitForText(view, '更新コマンドをコピー')
-    await waitForText(view, 'Hybrid Azure AD Join のデバイス登録は未提供です。')
+    await waitForText(view, 'Microsoft Entra hybrid join の即時の登録は提供しません。')
+    await waitForText(
+      view,
+      'Windows 10 1803 以降の端末は、Microsoft Entra Connect がコンピューターを同期した後に登録されます。',
+    )
     expect(
       await view.evaluate(`document.body.textContent.includes('hybrid_join_not_supported')`),
     ).toBe(false)

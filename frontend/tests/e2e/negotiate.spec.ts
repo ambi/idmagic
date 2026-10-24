@@ -13,7 +13,8 @@ import {
 test('a browser without Windows authentication completes normal sign-in', async () => {
   const view = await openWebView({ width: 1280, height: 1600 })
   try {
-    await view.navigate(`${uiOrigin}${authorizePath('normal-without-ad')}`)
+    // 先に実行したテストの同意が保存済みでも、同意画面を明示的に要求する。
+    await view.navigate(`${uiOrigin}${authorizePath('normal-without-ad')}&prompt=consent`)
     await waitForPage(view, 'login')
     const availability = await view.evaluate<{
       enabled: boolean

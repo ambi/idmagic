@@ -25,7 +25,8 @@ import {
 test('authorize golden path: login -> consent -> callback keeps code and iss', async () => {
   const view = await openWebView({ width: 1280, height: 2000 })
   try {
-    await view.navigate(`${uiOrigin}${authorizePath('e2e-state')}`)
+    // 画面遷移の検証を、共有スタックの同意が未保存という前提に依存させない。
+    await view.navigate(`${uiOrigin}${authorizePath('e2e-state')}&prompt=consent`)
 
     // dispatcher 不変条件: ログイン画面が描画される。
     await waitForPage(view, 'login')

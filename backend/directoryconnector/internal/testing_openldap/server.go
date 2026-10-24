@@ -14,6 +14,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -69,11 +70,13 @@ func Start(t *testing.T) *Server {
 	s := &Server{
 		LDAPURL:  "ldap://" + strings.TrimSpace(docker(t, "port", id, "389/tcp")),
 		LDAPSURL: "ldaps://" + strings.TrimSpace(docker(t, "port", id, "636/tcp")),
+		CA:       ca,
 		id:       id,
 	}
+	// 初期設定用の slapd は平文 bind に応答する。本起動した LDAPS を確認してから返す。
 	deadline := time.Now().Add(60 * time.Second)
 	for {
-		conn, err := s.dialAdmin()
+		conn, err := s.dialAdmin(t)
 		if err == nil {
 			_ = conn.Close()
 			break
@@ -83,7 +86,6 @@ func Start(t *testing.T) *Server {
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	s.CA = ca
 	s.Do(t, func(conn *ldap.Conn) error {
 		add := ldap.NewAddRequest(PeopleDN, nil)
 		add.Attribute("objectClass", []string{"organizationalUnit"})
@@ -106,7 +108,7 @@ func (s *Server) TLS(t *testing.T) *tls.Config {
 // Do は管理者として bind した接続で change を行う。
 func (s *Server) Do(t *testing.T, change func(*ldap.Conn) error) {
 	t.Helper()
-	conn, err := s.dialAdmin()
+	conn, err := s.dialAdmin(t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,8 +151,11 @@ func (s *Server) EntryUUID(t *testing.T, uid string) string {
 	return value
 }
 
-func (s *Server) dialAdmin() (*ldap.Conn, error) {
-	conn, err := ldap.DialURL(s.LDAPURL)
+func (s *Server) dialAdmin(t *testing.T) (*ldap.Conn, error) {
+	t.Helper()
+	conn, err := ldap.DialURL(s.LDAPSURL,
+		ldap.DialWithTLSConfig(s.TLS(t)),
+		ldap.DialWithDialer(&net.Dialer{Timeout: time.Second}))
 	if err != nil {
 		return nil, err
 	}
