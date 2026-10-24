@@ -68,6 +68,8 @@ type RunCounts struct {
 	Deleted   int
 	Failed    int
 	Disabled  int
+	// DisabledComputers は、完全な再同期の完了で無効にしたコンピューターの数である。
+	DisabledComputers int
 }
 
 // UserItem は Connector が正規化して送る User の一件である。削除の項目では ExternalID だけを読む。
@@ -121,25 +123,40 @@ type IngestionBatch struct {
 
 // ValidateUserBatch は、どの項目も適用する前にバッチの形を検査する。
 func ValidateUserBatch(batchID string, items []UserItem) error {
-	if batchID == "" || utf8.RuneCountInString(batchID) > MaxBatchIDLength {
-		return fmt.Errorf("%w: batch_id must be 1 to %d characters", ErrInvalidBatch, MaxBatchIDLength)
-	}
-	if len(items) == 0 || len(items) > MaxBatchItems {
-		return fmt.Errorf("%w: a batch carries 1 to %d items", ErrInvalidBatch, MaxBatchItems)
+	if err := validateBatchShape(batchID, len(items)); err != nil {
+		return err
 	}
 	seen := make(map[string]bool, len(items))
 	for _, item := range items {
-		if item.ExternalID == "" || utf8.RuneCountInString(item.ExternalID) > MaxExternalIDLength {
-			return fmt.Errorf("%w: external_id must be 1 to %d characters", ErrInvalidBatch, MaxExternalIDLength)
+		if err := validateExternalID(item.ExternalID, seen); err != nil {
+			return err
 		}
-		if seen[item.ExternalID] {
-			return fmt.Errorf("%w: external_id %q appears twice", ErrInvalidBatch, item.ExternalID)
-		}
-		seen[item.ExternalID] = true
 		if !item.Deleted && item.PreferredUsername == "" {
 			return fmt.Errorf("%w: preferred_username is required unless the item is deleted", ErrInvalidBatch)
 		}
 	}
+	return nil
+}
+
+func validateBatchShape(batchID string, items int) error {
+	if batchID == "" || utf8.RuneCountInString(batchID) > MaxBatchIDLength {
+		return fmt.Errorf("%w: batch_id must be 1 to %d characters", ErrInvalidBatch, MaxBatchIDLength)
+	}
+	if items == 0 || items > MaxBatchItems {
+		return fmt.Errorf("%w: a batch carries 1 to %d items", ErrInvalidBatch, MaxBatchItems)
+	}
+	return nil
+}
+
+// validateExternalID は長さとバッチの中での重複を検査し、seen に記録する。
+func validateExternalID(externalID string, seen map[string]bool) error {
+	if externalID == "" || utf8.RuneCountInString(externalID) > MaxExternalIDLength {
+		return fmt.Errorf("%w: external_id must be 1 to %d characters", ErrInvalidBatch, MaxExternalIDLength)
+	}
+	if seen[externalID] {
+		return fmt.Errorf("%w: external_id %q appears twice", ErrInvalidBatch, externalID)
+	}
+	seen[externalID] = true
 	return nil
 }
 

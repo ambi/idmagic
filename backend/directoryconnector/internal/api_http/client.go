@@ -139,6 +139,11 @@ func (c *Client) SendBatch(ctx context.Context, runID, batchID string, items []d
 		map[string]any{"batch_id": batchID, "items": items}, nil)
 }
 
+func (c *Client) SendComputerBatch(ctx context.Context, runID, batchID string, items []domain.ComputerItem) error {
+	return c.signedCall(ctx, "/ingestion-runs/"+url.PathEscape(runID)+"/computer-batches",
+		map[string]any{"batch_id": batchID, "items": items}, nil)
+}
+
 func (c *Client) CompleteRun(ctx context.Context, runID string, itemCount int) error {
 	return c.signedCall(ctx, "/ingestion-runs/"+url.PathEscape(runID)+"/complete", map[string]any{"item_count": itemCount}, nil)
 }

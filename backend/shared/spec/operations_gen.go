@@ -291,6 +291,7 @@ var generatedOperations = map[string]Operation{
 	"SamlSingleLogoutDefault": {Method: "GET", Path: "/saml/slo", Deprecated: false, ApiTokenScopes: nil},
 	"SamlSingleSignOn": {Method: "GET", Path: "/saml/idp/{profile_id}/sso", Deprecated: false, ApiTokenScopes: nil},
 	"SamlSingleSignOnDefault": {Method: "GET", Path: "/saml/sso", Deprecated: false, ApiTokenScopes: nil},
+	"SendDirectoryComputerBatch": {Method: "POST", Path: "/directory-connector/v1/ingestion-runs/{run_id}/computer-batches", Deprecated: false, ApiTokenScopes: nil},
 	"SendDirectoryUserBatch": {Method: "POST", Path: "/directory-connector/v1/ingestion-runs/{run_id}/user-batches", Deprecated: false, ApiTokenScopes: nil},
 	"SendTestNotification": {Method: "POST", Path: "/api/admin/v1/tenant/notification-templates/{template_key}/{locale}/test", Deprecated: false, ApiTokenScopes: []string{"settings:write"}},
 	"SetApplicationCategories": {Method: "PUT", Path: "/api/admin/v1/applications/{id}/categories", Deprecated: false, ApiTokenScopes: []string{"applications:write"}},

@@ -42,6 +42,7 @@ type Module struct {
 	// memoryCorrelations は、トランザクションを持たないメモリ構成で対応を保存する先である。
 	memoryCorrelations directorywrites.CorrelationWriter
 	runs               directoryports.IngestionRunRepository
+	computers          directoryports.ComputerRepository
 }
 
 // Register は SCIM と Directory Connector の経路を登録する。replay は Connector の JWT の
@@ -59,7 +60,7 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 		Deps: deps, Authenticator: authenticator,
 		Service: directoryusecases.New(m.connectors, prefixedReplay{replay}, emit),
 		Ingestion: directoryusecases.NewIngestion(directoryusecases.IngestionDeps{
-			Runs: m.runs, Correlations: m.correlations, Users: userRepo,
+			Runs: m.runs, Correlations: m.correlations, Computers: m.computers, Users: userRepo,
 			Writes: m.DirectoryWrites, Lifecycle: m.DirectoryUserLifecycle,
 		}),
 	})

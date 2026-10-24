@@ -21,6 +21,25 @@ type CorrelationRepository interface {
 	CorrelatedUserIDs(ctx context.Context, tenantID string, userIDs []string) (map[string]bool, error)
 }
 
+// ComputerRepository は Connector と外部の不変 ID の組ごとにコンピューターを保存する。テナントの
+// 有効なコンピューターの間で、SID と主体名をそれぞれ一意に保つ。
+type ComputerRepository interface {
+	// Find は見つからなければ nil を返す。
+	Find(ctx context.Context, tenantID, connectorID, externalID string) (*domain.Computer, error)
+	// FindEnabledHolders は、objectSID か principalKey を持つ有効なコンピューターを返す。
+	FindEnabledHolders(ctx context.Context, tenantID, objectSID, principalKey string) ([]domain.Computer, error)
+	// Save はコンピューターを作るか置き換える。一意性に反すれば domain.ErrComputerConflict を返す。
+	Save(ctx context.Context, computer domain.Computer) error
+	// MarkSeen はコンピューターが runID の実行に現れたことを記録する。
+	MarkSeen(ctx context.Context, tenantID, connectorID, externalID, runID string) error
+	// DisableNotSeenIn は、Connector の有効なコンピューターのうち、runID の実行に現れなかったものを
+	// 無効にし、その数を返す。
+	DisableNotSeenIn(ctx context.Context, tenantID, connectorID, runID string, at time.Time) (int, error)
+	// FindEnabledBySID と FindEnabledByPrincipal は、見つからなければ nil を返す。
+	FindEnabledBySID(ctx context.Context, tenantID, objectSID string) (*domain.Computer, error)
+	FindEnabledByPrincipal(ctx context.Context, tenantID, samAccountName, realm string) (*domain.Computer, error)
+}
+
 // IngestionRunRepository は取り込みの実行と、その記録したバッチを保存する。
 type IngestionRunRepository interface {
 	// Start は run を保存し、同じ Connector の running の実行を superseded にする。
@@ -35,6 +54,6 @@ type IngestionRunRepository interface {
 	RecordBatch(ctx context.Context, batch domain.IngestionBatch) (domain.IngestionBatch, error)
 	// ListBatches は実行のバッチを記録した順に返す。
 	ListBatches(ctx context.Context, tenantID, runID string) ([]domain.IngestionBatch, error)
-	// Complete は running の実行だけを completed にし、変えたかを返す。
-	Complete(ctx context.Context, tenantID, runID string, completedAt time.Time, disabled int) (bool, error)
+	// Complete は running の実行だけを completed にし、無効にした User とコンピューターの数を記録して、変えたかを返す。
+	Complete(ctx context.Context, tenantID, runID string, completedAt time.Time, disabled, disabledComputers int) (bool, error)
 }

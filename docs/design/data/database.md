@@ -331,6 +331,8 @@ erDiagram
     }
     directory_user_correlations {
     }
+    directory_computers {
+    }
     directory_ingestion_runs {
     }
     directory_ingestion_batches {
@@ -370,6 +372,7 @@ erDiagram
     tenants ||--o{ directory_connectors : ディレクトリの取り込み元を持つ
     directory_connectors ||--o{ directory_user_correlations : 外部の不変IDを対応付ける
     users ||--o| directory_user_correlations : ディレクトリの利用者に対応する
+    directory_connectors ||--o{ directory_computers : コンピューターを写す
     directory_connectors ||--o{ directory_ingestion_runs : 取り込みを実行する
     directory_ingestion_runs ||--o{ directory_ingestion_batches : バッチを記録する
     tenants ||--o{ jobs : ジョブを持つ
@@ -397,6 +400,7 @@ erDiagram
 | `scim_group_refs` | SCIM クライアントが指定した外部 ID とグループの対応 | Sourcing | `LOGGED` | 複合主キーの一部 |
 | `directory_connectors` | 閉域のディレクトリから取り込む Directory Connector の登録と状態 | Sourcing | `LOGGED` | 非キーカラム |
 | `directory_user_correlations` | Connector と外部の不変 ID の組から利用者への対応と、最後に現れた取り込みの実行 | Sourcing | `LOGGED` | 複合主キーの一部 |
+| `directory_computers` | Connector と外部の不変 ID の組ごとの AD のコンピューターアカウントの写しと、最後に現れた取り込みの実行 | Sourcing | `LOGGED` | 複合主キーの一部 |
 | `directory_ingestion_runs` | Directory Connector の取り込みの実行の状態と結果ごとの件数 | Sourcing | `LOGGED` | 非キーカラム |
 | `directory_ingestion_batches` | 取り込みの実行に記録したバッチの項目のダイジェストと項目ごとの結果 | Sourcing | `LOGGED` | 非キーカラム |
 | `jobs` | 非同期ジョブのキュー。リースと再試行の状態を管理する | Jobs | `LOGGED` | 非キーカラム |

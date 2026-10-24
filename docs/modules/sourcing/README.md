@@ -41,7 +41,7 @@
 | 機能 | 内容 |
 | --- | --- |
 | [SCIM による取り込み](features/scim.md) | 外部の IdP からの SCIM 2.0 による User と Group の同期 |
-| [Directory Connector による取り込み](features/directory.md) | 閉域の AD と LDAP を取り込み元とする Directory Connector の登録、その呼び出しの認証、差分のバッチによる User の取り込み |
+| [Directory Connector による取り込み](features/directory.md) | 閉域の AD と LDAP を取り込み元とする Directory Connector の登録、その呼び出しの認証、差分のバッチによる User と AD のコンピューターアカウントの取り込み |
 ## 文書
 
 | 設計領域 | 文書 | 内容 |

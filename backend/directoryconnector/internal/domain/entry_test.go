@@ -138,3 +138,64 @@ func TestEffectiveMappingRefusesAnUnknownAttribute(t *testing.T) {
 		t.Fatal("unknown canonical attribute accepted")
 	}
 }
+
+// S-1-5-21-1004336348-1177238915-682003330-512 の objectSid の二進表現（MS-DTYP 2.4.2.2）。
+var sid = []byte{
+	0x01, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05,
+	0x15, 0x00, 0x00, 0x00, 0xdc, 0xf4, 0xdc, 0x3b, 0x83, 0x3d, 0x2b, 0x46, 0x82, 0x8b, 0xa6, 0x28, 0x00, 0x02, 0x00, 0x00,
+}
+
+// 欠けた属性、壊れた objectSid、DC= のない識別名のエントリを送らない。
+//
+//spec:covers REQ-DIRECTORYCONNECTOR-007: AD のコンピューターを、objectGUID の base64、ACCOUNTDISABLE、objectSid の文字列、識別名の DC= から導いたドメインで写し、
+func TestMapComputerEntry(t *testing.T) {
+	got, err := MapComputer(entry("CN=WS1,OU=Computers,DC=Corp, dc=Example,DC=test",
+		"objectGUID", guid, "sAMAccountName", "WS1$", "objectSid", sid,
+		"dNSHostName", "ws1.corp.example.test", "userAccountControl", "4098"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := ComputerItem{
+		ExternalID: "/xmWb4aLEdC0LQDAT8lk/w==", Enabled: false, SAMAccountName: "WS1$",
+		ObjectSID: "S-1-5-21-1004336348-1177238915-682003330-512", Domain: "corp.example.test", DNSHostName: "ws1.corp.example.test",
+	}
+	if got != want {
+		t.Fatalf("item = %+v, want %+v", got, want)
+	}
+	enabled, err := MapComputer(entry("CN=WS2,DC=corp,DC=example", "objectGUID", guid, "sAMAccountName", "WS2$", "objectSid", sid, "userAccountControl", "4096"))
+	if err != nil || !enabled.Enabled || enabled.DNSHostName != "" || enabled.Domain != "corp.example" {
+		t.Fatalf("enabled item = %+v, %v", enabled, err)
+	}
+
+	full := []any{"objectGUID", guid, "sAMAccountName", "WS1$", "objectSid", sid, "userAccountControl", "4096"}
+	without := func(name string) []any {
+		var kept []any
+		for i := 0; i < len(full); i += 2 {
+			if full[i] != name {
+				kept = append(kept, full[i], full[i+1])
+			}
+		}
+		return kept
+	}
+	authorityOnly := []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05}
+	truncated := sid[:len(sid)-1]
+	for name, c := range map[string]struct {
+		dn         string
+		attributes []any
+		missing    string
+	}{
+		"no objectGUID":         {"CN=WS1,DC=corp", without("objectGUID"), "objectGUID"},
+		"no sAMAccountName":     {"CN=WS1,DC=corp", without("sAMAccountName"), "sAMAccountName"},
+		"no objectSid":          {"CN=WS1,DC=corp", without("objectSid"), "objectSid"},
+		"no userAccountControl": {"CN=WS1,DC=corp", without("userAccountControl"), "userAccountControl"},
+		"truncated objectSid":   {"CN=WS1,DC=corp", append(without("objectSid"), "objectSid", truncated), "objectSid"},
+		"objectSid without rid": {"CN=WS1,DC=corp", append(without("objectSid"), "objectSid", authorityOnly), "objectSid"},
+		"no domain component":   {"CN=WS1,OU=Computers", full, "DC"},
+	} {
+		_, err := MapComputer(entry(c.dn, c.attributes...))
+		incomplete, ok := errors.AsType[*IncompleteEntryError](err)
+		if !ok || incomplete.Attribute != c.missing || incomplete.DN != c.dn {
+			t.Errorf("%s: error = %v, want missing %s", name, err, c.missing)
+		}
+	}
+}

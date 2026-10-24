@@ -15,11 +15,13 @@ import (
 
 // Syncer は一回の同期を行う。Now と Sleep は時刻と待ちの作用である。
 type Syncer struct {
-	Directory    ports.Directory
-	API          ports.IngestionAPI
-	Cursors      ports.CursorStore
-	Dialect      domain.Dialect
-	Scope        domain.Scope
+	Directory ports.Directory
+	API       ports.IngestionAPI
+	Cursors   ports.CursorStore
+	Dialect   domain.Dialect
+	Scope     domain.Scope
+	// Computers は AD のコンピューターの検索の範囲である。nil ならコンピューターを読まない。
+	Computers    *domain.Scope
 	Mapping      domain.Mapping
 	FullInterval time.Duration
 	Now          func() time.Time
@@ -58,7 +60,7 @@ func (s Syncer) SyncOnce(ctx context.Context) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("read root dse: %w", err)
 	}
-	plan := domain.PlanRun(s.Dialect, s.Scope, prev, root, s.Now(), s.FullInterval)
+	plan := domain.PlanRun(s.Dialect, s.Scope, s.Computers, prev, root, s.Now(), s.FullInterval)
 
 	result := Result{Mode: plan.Mode}
 	if err := s.retry(ctx, func() (err error) {
@@ -68,20 +70,29 @@ func (s Syncer) SyncOnce(ctx context.Context) (Result, error) {
 		return result, fmt.Errorf("start %s run: %w", plan.Mode, err)
 	}
 
-	sender := batchSender{syncer: s, ctx: ctx, runID: result.RunID}
-	err = readItems(ctx, session, s.Dialect, s.Scope.BaseDNs, plan.Filter, s.Mapping, sender.add, func(incomplete *domain.IncompleteEntryError) {
+	skip := func(incomplete *domain.IncompleteEntryError) {
 		result.Skipped++
 		s.Log.Warn("skipped an ldap entry", "dn", incomplete.DN, "missing_attribute", incomplete.Attribute)
-	})
-	if err == nil {
-		err = sender.flush()
 	}
-	result.Items = sender.sent
+	users := batchSender[domain.Item]{syncer: s, ctx: ctx, runID: result.RunID, prefix: result.RunID + "-", send: s.API.SendBatch}
+	err = readItems(ctx, session, s.Dialect, s.Scope.BaseDNs, plan.Filter, s.Mapping, users.add, skip)
+	if err == nil {
+		err = users.flush()
+	}
+	computers := batchSender[domain.ComputerItem]{
+		syncer: s, ctx: ctx, runID: result.RunID, prefix: result.RunID + "-computers-", send: s.API.SendComputerBatch,
+	}
+	if err == nil && s.Computers != nil {
+		if err = readComputers(ctx, session, s.Computers.BaseDNs, plan.ComputerFilter, computers.add, skip); err == nil {
+			err = computers.flush()
+		}
+	}
+	result.Items = users.sent + computers.sent
 	if err != nil {
 		return result, fmt.Errorf("send run %s: %w", result.RunID, err)
 	}
 
-	if err := s.retry(ctx, func() error { return s.API.CompleteRun(ctx, result.RunID, sender.sent) }); err != nil {
+	if err := s.retry(ctx, func() error { return s.API.CompleteRun(ctx, result.RunID, result.Items) }); err != nil {
 		return result, fmt.Errorf("complete run %s: %w", result.RunID, err)
 	}
 	if err := s.Cursors.Save(ctx, plan.Next); err != nil {
@@ -96,11 +107,25 @@ func (s Syncer) SyncOnce(ctx context.Context) (Result, error) {
 func readItems(ctx context.Context, session ports.DirectorySession, dialect domain.Dialect, baseDNs []string, filter string,
 	mapping domain.Mapping, emit func(domain.Item) error, skip func(*domain.IncompleteEntryError),
 ) error {
-	attributes := domain.RequestedAttributes(dialect, mapping)
+	mapEntry := func(entry domain.Entry) (domain.Item, error) { return domain.MapEntry(dialect, mapping, entry) }
+	return readEntries(ctx, session, baseDNs, filter, domain.RequestedAttributes(dialect, mapping), mapEntry, emit, skip)
+}
+
+// readComputers は起点を並べた順にコンピューターを検索し、写せたエントリを emit へ、写せないエントリを
+// skip へ渡す (REQ-DIRECTORYCONNECTOR-007)。
+func readComputers(ctx context.Context, session ports.DirectorySession, baseDNs []string, filter string,
+	emit func(domain.ComputerItem) error, skip func(*domain.IncompleteEntryError),
+) error {
+	return readEntries(ctx, session, baseDNs, filter, domain.ComputerAttributes(), domain.MapComputer, emit, skip)
+}
+
+func readEntries[T any](ctx context.Context, session ports.DirectorySession, baseDNs []string, filter string, attributes []string,
+	mapEntry func(domain.Entry) (T, error), emit func(T) error, skip func(*domain.IncompleteEntryError),
+) error {
 	for _, baseDN := range baseDNs {
 		err := session.Search(ctx, baseDN, filter, attributes, func(entries []domain.Entry) error {
 			for _, entry := range entries {
-				item, err := domain.MapEntry(dialect, mapping, entry)
+				item, err := mapEntry(entry)
 				if incomplete, ok := errors.AsType[*domain.IncompleteEntryError](err); ok {
 					skip(incomplete)
 					continue
@@ -134,17 +159,19 @@ func (s Syncer) Run(ctx context.Context, interval time.Duration) {
 	}
 }
 
-// batchSender は項目を読んだ順に 100 件ずつ、実行の ID と連番のバッチの ID で送る。
-type batchSender struct {
+// batchSender は項目を読んだ順に 100 件ずつ、prefix に連番を続けたバッチの ID で送る。
+type batchSender[T any] struct {
 	syncer  Syncer
 	ctx     context.Context
 	runID   string
-	pending []domain.Item
+	prefix  string
+	send    func(ctx context.Context, runID, batchID string, items []T) error
+	pending []T
 	batches int
 	sent    int
 }
 
-func (b *batchSender) add(item domain.Item) error {
+func (b *batchSender[T]) add(item T) error {
 	b.pending = append(b.pending, item)
 	if len(b.pending) < domain.MaxBatchItems {
 		return nil
@@ -152,14 +179,14 @@ func (b *batchSender) add(item domain.Item) error {
 	return b.flush()
 }
 
-func (b *batchSender) flush() error {
+func (b *batchSender[T]) flush() error {
 	if len(b.pending) == 0 {
 		return nil
 	}
 	b.batches++
-	batchID := fmt.Sprintf("%s-%d", b.runID, b.batches)
+	batchID := fmt.Sprintf("%s%d", b.prefix, b.batches)
 	items := b.pending
-	if err := b.syncer.retry(b.ctx, func() error { return b.syncer.API.SendBatch(b.ctx, b.runID, batchID, items) }); err != nil {
+	if err := b.syncer.retry(b.ctx, func() error { return b.send(b.ctx, b.runID, batchID, items) }); err != nil {
 		return fmt.Errorf("batch %s: %w", batchID, err)
 	}
 	b.sent += len(items)

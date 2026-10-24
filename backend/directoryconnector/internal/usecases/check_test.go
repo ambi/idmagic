@@ -15,7 +15,7 @@ func TestCheckCountsTheItemsWithoutSending(t *testing.T) {
 	h.dir.byBase = map[string][]domain.Entry{"ou=staff": append(people(3), incomplete), "ou=contractors": people(2)}
 	scope := domain.Scope{BaseDNs: []string{"ou=staff", "ou=contractors"}, Filter: domain.DefaultUserFilter(domain.OpenLDAP)}
 
-	result, err := Check(context.Background(), h.dir, domain.OpenLDAP, scope, h.syncer.Mapping)
+	result, err := Check(context.Background(), h.dir, domain.OpenLDAP, scope, nil, h.syncer.Mapping)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,6 +27,31 @@ func TestCheckCountsTheItemsWithoutSending(t *testing.T) {
 	}
 	if len(h.api.calls) != 0 || h.cursors.cursor != nil {
 		t.Fatalf("calls=%v cursor=%+v, want nothing sent or saved", h.api.calls, h.cursors.cursor)
+	}
+}
+
+//spec:covers REQ-DIRECTORYCONNECTOR-006, REQ-DIRECTORYCONNECTOR-007: computers の節を持つ確認は、コンピューターの範囲の全件も読み、写せた数と送らないエントリを User と分けて返す。
+func TestCheckCountsComputersApart(t *testing.T) {
+	h := newHarness(t, nil)
+	mapping, err := domain.EffectiveMapping(domain.ActiveDirectory, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	broken := adEntry("CN=Broken,CN=Computers,DC=corp", map[string][]byte{"sAMAccountName": []byte("BROKEN$")})
+	h.dir.byBase = map[string][]domain.Entry{"CN=Computers,DC=corp": append(computerEntries(4), broken)}
+	users := domain.Scope{BaseDNs: []string{"OU=Staff,DC=corp"}, Filter: domain.DefaultUserFilter(domain.ActiveDirectory)}
+	computers := &domain.Scope{BaseDNs: []string{"CN=Computers,DC=corp"}, Filter: domain.DefaultComputerFilter}
+
+	result, err := Check(context.Background(), h.dir, domain.ActiveDirectory, users, computers, mapping)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Items != 0 || len(result.Skipped) != 0 || result.Computers != 4 || len(result.SkippedComputers) != 1 ||
+		result.SkippedComputers[0].DN != broken.DN || result.SkippedComputers[0].Attribute != "objectGUID" {
+		t.Fatalf("result = %+v", result)
+	}
+	if !slices.Equal(h.dir.filters, []string{users.Filter, computers.Filter}) || len(h.api.calls) != 0 {
+		t.Fatalf("filters=%v calls=%v", h.dir.filters, h.api.calls)
 	}
 }
 

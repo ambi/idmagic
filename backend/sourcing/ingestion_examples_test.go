@@ -298,6 +298,7 @@ type runJSON struct {
 	CompletedAt *time.Time `json:"completed_at"`
 	Counts      struct {
 		Batches, Items, Created, Updated, Unchanged, Deleted, Failed, Disabled int
+		DisabledComputers                                                      int `json:"disabled_computers"`
 	} `json:"counts"`
 	Failures []struct {
 		BatchID    string `json:"batch_id"`

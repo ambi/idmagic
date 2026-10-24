@@ -332,6 +332,44 @@ model DirectoryUserBatchRequest {
 }
 
 
+@doc("Directory Connector が送る AD のコンピューターアカウントの項目。属性は Connector が正規化済みである。")
+model DirectoryComputerItem {
+  @doc("`objectGUID` の 16 バイトを標準の base64 にした値。バッチの中で重複できない。")
+  @minLength(1)
+  @maxLength(256)
+  external_id: string;
+  @doc("`false` ならコンピューターを無効にする。")
+  enabled?: boolean = true;
+  @doc("`sAMAccountName`。`$` で終わる。")
+  @minLength(2)
+  @maxLength(256)
+  @pattern("\\$$")
+  sam_account_name: string;
+  @doc("`objectSid` の文字列表現（`S-1-5-21-...`）。")
+  @maxLength(184)
+  @pattern("^S-1-[0-9]+(-[0-9]+)+$")
+  object_sid: string;
+  @doc("コンピューターのドメインの DNS 名。Kerberos の主体名 `<sam_account_name>@<domain>` の realm になる。")
+  @minLength(1)
+  @maxLength(253)
+  domain: string;
+  @maxLength(253)
+  dns_host_name?: string;
+}
+
+
+@doc("コンピューターの項目のバッチ。バッチの ID は同じ実行の User のバッチと同じ空間を使う。")
+model DirectoryComputerBatchRequest {
+  @doc("Connector が付けるバッチの ID。同じ実行で同じ ID と同じ項目の再送は、最初の結果を返す。")
+  @minLength(1)
+  @maxLength(128)
+  batch_id: string;
+  @minItems(1)
+  @maxItems(100)
+  items: DirectoryComputerItem[];
+}
+
+
 @doc("項目の適用の結果。")
 enum DirectoryItemOutcome {
   created,
@@ -349,6 +387,8 @@ enum DirectoryItemError {
   invalid_attribute,
   quota_exceeded,
   user_deleted,
+  @doc("別の Connector の有効なコンピューターが同じ `object_sid` か主体名を持つ。")
+  computer_conflict,
 }
 
 
@@ -387,6 +427,8 @@ model IngestionRunCounts {
   failed: int32;
   @doc("完全な再同期の完了で無効にした User の数。")
   disabled: int32;
+  @doc("完全な再同期の完了で無効にしたコンピューターの数。")
+  disabled_computers: int32;
 }
 
 

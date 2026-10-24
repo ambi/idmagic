@@ -24,13 +24,14 @@ import (
 // 正式なルーターが、Directory Connector の管理 API と Connector API を path style の正規位置に
 // 載せ、Connector の JWT の jti を組み立て地点の保存先で一度だけ受け付けることを確かめる。
 //
-//spec:covers REQ-SOURCING-008 REQ-SOURCING-009 REQ-SOURCING-010 REQ-SOURCING-016
+//spec:covers REQ-SOURCING-008 REQ-SOURCING-009 REQ-SOURCING-010 REQ-SOURCING-016 REQ-SOURCING-020
 //verify:operation CreateDirectoryConnector: 正規位置の管理 API が 201 で登録トークンを返す。
 //verify:operation EnrollDirectoryConnector: 正規位置の Connector API が登録の応答で aud を返す。
 //verify:operation ReportDirectoryConnectorHeartbeat: 同じ jti の二度目の提示を 401 で拒否する。
 //verify:operation StartDirectoryIngestionRun: 正規位置の Connector API が 201 で実行を返す。
 //verify:operation SendDirectoryUserBatch: 正規位置の Connector API が項目から User を作る。
-//verify:operation CompleteDirectoryIngestionRun: 正規位置の Connector API が 200 で実行を完了する。
+//verify:operation SendDirectoryComputerBatch: 正規位置の Connector API が項目からコンピューターを作る。
+//verify:operation CompleteDirectoryIngestionRun: 正規位置の Connector API が User とコンピューターの項目数の和で 200 を返し、実行を完了する。
 func TestDirectoryConnectorThroughTheRouter(t *testing.T) {
 	s := testing_stack.New(t, testing_stack.WithAuthorizationCodeFlow(), testing_stack.WithTokenIssuance(), testing_stack.WithSCIM())
 	session := s.AdminSessionCookie(t, "default")
@@ -157,7 +158,15 @@ func TestDirectoryConnectorThroughTheRouter(t *testing.T) {
 	if user, err := s.Users.FindByUsername(t.Context(), tenancydomain.DefaultTenantID, "from-ad"); err != nil || user == nil {
 		t.Fatalf("ingested user = %v, %v", user, err)
 	}
-	if rec := send("/directory-connector/v1/ingestion-runs/"+run.ID+"/complete", map[string]any{"item_count": 1}, sign()); rec.Code != http.StatusOK {
+	computers := send("/directory-connector/v1/ingestion-runs/"+run.ID+"/computer-batches", map[string]any{
+		"batch_id": "c1", "items": []any{map[string]any{
+			"external_id": "computer-guid", "sam_account_name": "WS1$", "object_sid": "S-1-5-21-1-2-3-1101", "domain": "corp.example.test",
+		}},
+	}, sign())
+	if computers.Code != http.StatusOK || !bytes.Contains(computers.Body.Bytes(), []byte(`"outcome":"created"`)) {
+		t.Fatalf("computer batch status = %d body=%s", computers.Code, computers.Body.String())
+	}
+	if rec := send("/directory-connector/v1/ingestion-runs/"+run.ID+"/complete", map[string]any{"item_count": 2}, sign()); rec.Code != http.StatusOK {
 		t.Fatalf("complete status = %d body=%s", rec.Code, rec.Body.String())
 	}
 }

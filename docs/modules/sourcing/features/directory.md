@@ -2,11 +2,11 @@
 
 ## 概要
 
-この文書は、閉域の Active Directory と LDAP を取り込み元とする Directory Connector を、テナントに登録し、その呼び出しを認証し、Connector が送る差分から User を取り込む仕様である。
+この文書は、閉域の Active Directory と LDAP を取り込み元とする Directory Connector を、テナントに登録し、その呼び出しを認証し、Connector が送る差分から User と AD のコンピューターアカウントを取り込む仕様である。
 
 | 項目 | 内容 |
 | --- | --- |
-| 責務 | Directory Connector の作成、登録、無効化、Connector の呼び出しの認証、User の取り込みと取り込みの実行の記録 |
+| 責務 | Directory Connector の作成、登録、無効化、Connector の呼び出しの認証、User とコンピューターの取り込みと取り込みの実行の記録 |
 | 行為者 | テナント管理者、Directory Connector |
 | 扱わないもの | グループの取り込みは提供しない。Connector の実行環境、LDAP の読み取り、LDAP の属性から正規の属性への対応付けは [DirectoryConnector](../../directory-connector/README.md) が担当する。二つのモジュールの契約は Connector API だけである |
 
@@ -43,15 +43,22 @@ Connector を再導入して位置を失ったときは、完全な再同期で�
 | 実行の種類 | `full` は取り込み元の全件を送る完全な再同期、`incremental` は前回からの差分である |
 | 実行の状態 | `running`、`completed`、`superseded` |
 | User の項目 | 外部の不変 ID、削除かどうか、有効かどうか、`preferred_username`、`name`、`given_name`、`family_name`、`email`、`employee_number`、`department` |
+| コンピューターの項目 | AD のコンピューターアカウントの外部の不変 ID（`objectGUID`）、有効かどうか、`sam_account_name`、`object_sid`、`domain`、`dns_host_name` |
 | 外部の不変 ID | AD の `objectGUID` や LDAP の `entryUUID` のような、名前の変更で変わらない ID。1 から 256 文字の文字列であり、正規化せずに比べる |
 | 対応 | Connector と外部の不変 ID の組から内部の User への対応（[用語集](../glossary.md)の SourceCorrelation）と、その対応が最後に現れた実行 |
-| バッチ | Connector が付けたバッチの ID、項目のダイジェスト、項目ごとの結果 |
+| コンピューター | Connector と外部の不変 ID の組ごとに保存するコンピューターの項目の写しと、有効かどうか、最後に現れた実行 |
+| 主体名 | コンピューターの Kerberos の主体名 `<sam_account_name>@<domain>`。大文字と小文字を区別せずに比べる |
+| バッチ | Connector が付けたバッチの ID、項目のダイジェスト、項目ごとの結果。User のバッチとコンピューターのバッチがある |
 | 項目の結果 | `created`、`updated`、`unchanged`、`deleted`、`failed` のどれか。`failed` はエラーコードを持つ |
 
 User の属性の対応は SCIM と同じであり、`employee_number` と `department` は User の同名の属性に保存する。
 取り込んだ User は、パスワードを持たず、メールアドレスを確認済みとし、CSV のインポートが変更しない取り込み元の管理下の User になる。
 
 - **判断**：User を外部の不変 ID で相関し、ユーザー名で既存の User に結び付けない。名前の一致だけで結び付けると、取り込み元の別人が既存のアカウントを乗っ取れるからである。
+
+コンピューターは、Hybrid Join の端末に WS-Trust のトークンを発行するときに、`objectSid` か主体名で引く AD の写しである。
+IdMagic はコンピューターを主体として扱わず、Connector の項目のほかに変える経路を持たない。
+テナントの有効なコンピューターの間で、`object_sid` と主体名はそれぞれ一意である。
 
 ## 状態遷移
 
@@ -97,11 +104,11 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 | Running | Connector による取り込みの実行の完了 | 報告した項目数が記録したバッチの項目数の和と一致する | Completed | — |
 | Running | Connector による取り込みの実行の開始 | 同じ Connector の新しい実行である | Superseded | — |
 
-| State | Connector による取り込みの実行の開始 | Connector による User のバッチの送信 | Connector による取り込みの実行の完了 |
-|---|---|---|---|
-| Running | → Superseded | 何もしない | → Completed（項目数が一致する）<br>拒否：409 ingestion_run_incomplete（項目数が一致しない） |
-| Completed | 何もしない | 何もしない（記録したバッチの再送）<br>拒否：409 ingestion_run_closed（記録していないバッチ） | 何もしない |
-| Superseded | 何もしない | 何もしない（記録したバッチの再送）<br>拒否：409 ingestion_run_closed（記録していないバッチ） | 拒否：409 ingestion_run_closed |
+| State | Connector による取り込みの実行の開始 | Connector による User のバッチの送信 | Connector によるコンピューターのバッチの送信 | Connector による取り込みの実行の完了 |
+|---|---|---|---|---|
+| Running | → Superseded | 何もしない | 何もしない | → Completed（項目数が一致する）<br>拒否：409 ingestion_run_incomplete（項目数が一致しない） |
+| Completed | 何もしない | 何もしない（記録したバッチの再送）<br>拒否：409 ingestion_run_closed（記録していないバッチ） | 何もしない（記録したバッチの再送）<br>拒否：409 ingestion_run_closed（記録していないバッチ） | 何もしない |
+| Superseded | 何もしない | 何もしない（記録したバッチの再送）<br>拒否：409 ingestion_run_closed（記録していないバッチ） | 何もしない（記録したバッチの再送）<br>拒否：409 ingestion_run_closed（記録していないバッチ） | 拒否：409 ingestion_run_closed |
 
 ## 操作
 
@@ -219,6 +226,26 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 - 実行に記録したバッチと同じ ID と同じ項目のバッチを受けたとき、Sourcing は、実行の状態を問わず、項目を適用し直さず、記録した結果を 200 で返す。
 - 実行に記録したバッチと同じ ID で、項目の異なるバッチを受けた場合、Sourcing は、409 と `batch_conflict` で拒否し、どの項目も適用しない。
 - `completed` か `superseded` の実行へ、記録していないバッチを送られた場合、Sourcing は、409 と `ingestion_run_closed` で拒否し、どの項目も適用しない。
+- 実行に記録した User のバッチと同じ ID のコンピューターのバッチ、またはその逆を受けた場合、Sourcing は、409 と `batch_conflict` で拒否し、どの項目も適用しない。
+
+### Connector によるコンピューターのバッチの送信
+
+#### REQ-SOURCING-020 コンピューターのバッチは、Connector と外部の不変 ID で対応するコンピューターを作成、変更、無効化する
+
+- **上位の要件**：[REQ-SOURCING-016](directory.md#connector-による-user-のバッチの送信)、[REQ-SOURCING-017](directory.md#connector-による-user-のバッチの送信)
+- Connector が `running` の実行へ 1 件から 100 件のコンピューターの項目のバッチを送ったとき、Sourcing は、項目を送られた順に一件ずつ適用して確定し、200 でバッチの ID と、項目ごとの外部の不変 ID、結果、`failed` のエラーコードを返す。
+- 同じ Connector の同じ外部の不変 ID のコンピューターがない項目を適用するとき、Sourcing は、項目の有効かどうかに合わせて有効か無効のコンピューターを作り、`created` を返す。
+- 同じ Connector の同じ外部の不変 ID のコンピューターがある項目を適用するとき、Sourcing は、項目のすべての値と有効かどうかでコンピューターを置き換え、`updated` を返す。
+- コンピューターの値と有効かどうかが項目と同じとき、Sourcing は、コンピューターを書かず、`unchanged` を返す。
+- 項目を適用したとき、Sourcing は、結果が `failed` でもそのコンピューターにこの実行に現れた印を付ける。
+- 有効な項目と同じ `object_sid` か主体名を持つ、同じ Connector の別の外部の不変 ID の有効なコンピューターがあるとき、Sourcing は、そのコンピューターを無効にしてから項目を確定する。
+- 有効な項目と同じ `object_sid` か主体名を持つ、別の Connector の有効なコンピューターがある場合、Sourcing は、コンピューターを作成も変更もせず、`failed` と `computer_conflict` を返す。
+- Sourcing は、コンピューターの作成、変更、無効化でドメインイベントを発行しない。
+- テナントの有効なコンピューターを `object_sid` か主体名で引くとき、Sourcing は、`object_sid` を正規化せずに、主体名を大文字と小文字を区別せずに比べ、無効なコンピューターと別のテナントのコンピューターを返さない。
+- JSON として読めない本文、空か 128 文字を超える `batch_id`、0 件か 101 件以上の項目、空か 256 文字を超えるかバッチの中で重複する外部の不変 ID、`$` で終わらないか 256 文字を超える `sam_account_name`、`S-1-` に続けて 10 進の数を `-` で区切って二つ以上並べた形でないか 184 文字を超える `object_sid`、空か 253 文字を超える `domain`、253 文字を超える `dns_host_name` のどれかを受けた場合、Sourcing は、400 と `invalid_request` で拒否し、どの項目も適用しない。
+- 存在しないか、別の Connector か別のテナントの実行を指定された場合、Sourcing は、404 と `ingestion_run_not_found` で拒否する。
+- **判断**：同じ Connector の古い記録を無効にするのは、AD で削除して同じ名前で作り直したコンピューターが、incremental に現れない古い記録と並ぶためである。同じドメインの今の状態を読んだ項目を正とする。
+- **判断**：イベントを発行しないのは、コンピューターが IdMagic の主体ではなく AD の写しであり、変化は取り込みの実行の件数で追えるからである。
 
 ### Connector による取り込みの実行の完了
 
@@ -227,7 +254,8 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 - **上位の要件**：[REQ-SOURCING-010](directory.md#connector-による接続の報告)
 - Connector が、`running` の実行の完了を、記録したバッチの項目数の和と同じ項目数で報告したとき、Sourcing は、実行を `completed` にし、完了時刻を記録し、200 で実行を返す。
 - `full` の実行を完了したとき、Sourcing は、同じ Connector の対応のうち、この実行に現れた印のない対応の `Active` の User を、IdManagement の無効化を通して `Disabled` にし、無効にした件数を実行に記録する。
-- `incremental` の実行を完了したとき、Sourcing は、どの User も無効にしない。
+- `full` の実行を完了したとき、Sourcing は、同じ Connector の有効なコンピューターのうち、この実行に現れた印のないものを無効にし、無効にした件数を実行に記録する。
+- `incremental` の実行を完了したとき、Sourcing は、どの User もコンピューターも無効にしない。
 - `completed` の実行の完了を報告されたとき、Sourcing は、実行も User も変えず、200 で実行を返す。
 - 報告した項目数が、記録したバッチの項目数の和と一致しない場合、Sourcing は、409 と `ingestion_run_incomplete` で拒否し、実行も User も変えない。
 - `superseded` の実行の完了を報告された場合、Sourcing は、409 と `ingestion_run_closed` で拒否し、実行も User も変えない。
@@ -239,7 +267,8 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 
 #### REQ-SOURCING-019 管理者は Connector の取り込みの実行の件数と失敗を照会できる
 
-- 管理者が Connector の取り込みの実行を一覧したとき、Sourcing は、開始時刻の新しい順に最大 50 件の実行を、ID、種類、状態、開始と完了の時刻、バッチの数、項目の数、結果ごとの項目の数、無効にした User の数とともに返す。
+- 管理者が Connector の取り込みの実行を一覧したとき、Sourcing は、開始時刻の新しい順に最大 50 件の実行を、ID、種類、状態、開始と完了の時刻、バッチの数、項目の数、結果ごとの項目の数、無効にした User の数、無効にしたコンピューターの数とともに返す。
+- 管理者が取り込みの実行を照会したとき、Sourcing は、User のバッチとコンピューターのバッチの両方をバッチ、項目、結果ごとの項目の数に含める。
 - 管理者が取り込みの実行を取得したとき、Sourcing は、一覧と同じ項目に加え、`failed` の項目の外部の不変 ID、エラーコード、バッチの ID を、バッチを記録した順に最大 100 件返す。
 - 存在しないか別のテナントの Connector の ID を指定された場合、Sourcing は、404 と `directory_connector_not_found` で拒否する。
 - 存在しないか別の Connector の実行の ID を指定された場合、Sourcing は、404 と `ingestion_run_not_found` で拒否する。
@@ -260,3 +289,5 @@ Connector の秘密鍵、AD の資格情報、利用者のパスワードは、I
 取り込みの実行と対応は、それを作った Connector に属する。
 Connector は、別の Connector の実行へバッチを送れず、別の Connector の対応の User を変えられない。
 外部の不変 ID が同じでも Connector が違えば別の対応であり、別の Connector の User にはユーザー名の衝突として失敗する。
+Connector は、別の Connector の有効なコンピューターの `object_sid` と主体名を奪えず、衝突として失敗する。
+Hybrid Join のトークンが、別の取り込み元のコンピューターの値を運ばないようにするためである。

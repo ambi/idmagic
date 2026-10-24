@@ -175,7 +175,7 @@ func (r *IngestionRunRepository) ListBatches(_ context.Context, tenantID, runID 
 	return result, nil
 }
 
-func (r *IngestionRunRepository) Complete(_ context.Context, tenantID, runID string, completedAt time.Time, disabled int) (bool, error) {
+func (r *IngestionRunRepository) Complete(_ context.Context, tenantID, runID string, completedAt time.Time, disabled, disabledComputers int) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	k := runKey{tenantID, runID}
@@ -183,7 +183,8 @@ func (r *IngestionRunRepository) Complete(_ context.Context, tenantID, runID str
 	if !ok || run.Status != domain.RunRunning {
 		return false, nil
 	}
-	run.Status, run.CompletedAt, run.Counts.Disabled = domain.RunCompleted, &completedAt, disabled
+	run.Status, run.CompletedAt = domain.RunCompleted, &completedAt
+	run.Counts.Disabled, run.Counts.DisabledComputers = disabled, disabledComputers
 	r.runs[k] = run
 	return true, nil
 }

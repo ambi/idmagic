@@ -15,6 +15,14 @@ func TestPersistenceContract(t *testing.T) {
 	})
 }
 
+//spec:covers REQ-SOURCING-018, REQ-SOURCING-020: メモリの保存先が、コンピューターの置き換え、有効な記録の間の一意性、主体名の照会、テナントの範囲、現れなかった記録の無効化を守る。
+func TestComputerPersistenceContract(t *testing.T) {
+	testing_contract.RunComputers(t, testing_contract.ComputerFixture{
+		Computers: NewComputerRepository(), TenantID: "tenant-a", OtherTenantID: "tenant-b",
+		NewConnector: func(*testing.T, string) string { return uuid.NewString() },
+	})
+}
+
 //spec:covers REQ-SOURCING-015, REQ-SOURCING-017, REQ-SOURCING-018: メモリの保存先が、対応の範囲、実行の打ち切り、バッチの一度だけの記録と件数、完了の条件を守る。
 func TestIngestionPersistenceContract(t *testing.T) {
 	newID := func(*testing.T, string) string { return uuid.NewString() }

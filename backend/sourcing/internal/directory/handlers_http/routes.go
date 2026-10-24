@@ -34,6 +34,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/directory-connectors/:connector_id/ingestion-runs/:run_id", h.getIngestionRun)
 	g.POST("/directory-connector/v1/ingestion-runs", h.startIngestionRun)
 	g.POST("/directory-connector/v1/ingestion-runs/:run_id/user-batches", h.sendUserBatch)
+	g.POST("/directory-connector/v1/ingestion-runs/:run_id/computer-batches", h.sendComputerBatch)
 	g.POST("/directory-connector/v1/ingestion-runs/:run_id/complete", h.completeIngestionRun)
 }
 

@@ -133,17 +133,18 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 			t.Fatalf("counts = %+v, want %+v", got.Counts, want)
 		}
 
-		if changed, err := f.Runs.Complete(ctx, f.TenantID, older.ID, base, 0); err != nil || changed {
+		if changed, err := f.Runs.Complete(ctx, f.TenantID, older.ID, base, 0, 0); err != nil || changed {
 			t.Fatalf("Complete of a superseded run = %v, %v", changed, err)
 		}
-		if changed, err := f.Runs.Complete(ctx, f.TenantID, newer.ID, base.Add(time.Hour), 4); err != nil || !changed {
+		if changed, err := f.Runs.Complete(ctx, f.TenantID, newer.ID, base.Add(time.Hour), 4, 2); err != nil || !changed {
 			t.Fatalf("Complete = %v, %v", changed, err)
 		}
 		completed, _ := f.Runs.Find(ctx, f.TenantID, connector, newer.ID)
-		if completed.Status != domain.RunCompleted || completed.CompletedAt == nil || !completed.CompletedAt.Equal(base.Add(time.Hour)) || completed.Counts.Disabled != 4 {
+		if completed.Status != domain.RunCompleted || completed.CompletedAt == nil || !completed.CompletedAt.Equal(base.Add(time.Hour)) ||
+			completed.Counts.Disabled != 4 || completed.Counts.DisabledComputers != 2 {
 			t.Fatalf("completed run = %+v", completed)
 		}
-		if changed, err := f.Runs.Complete(ctx, f.TenantID, newer.ID, base, 0); err != nil || changed {
+		if changed, err := f.Runs.Complete(ctx, f.TenantID, newer.ID, base, 0, 0); err != nil || changed {
 			t.Fatalf("Complete twice = %v, %v", changed, err)
 		}
 

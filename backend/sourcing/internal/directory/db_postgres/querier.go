@@ -13,18 +13,25 @@ type Querier interface {
 	CompleteDirectoryIngestionRun(ctx context.Context, arg CompleteDirectoryIngestionRunParams) (int64, error)
 	CreateDirectoryConnector(ctx context.Context, arg CreateDirectoryConnectorParams) error
 	CreateDirectoryIngestionRun(ctx context.Context, arg CreateDirectoryIngestionRunParams) error
+	DisableDirectoryComputersNotSeenIn(ctx context.Context, arg DisableDirectoryComputersNotSeenInParams) (int64, error)
+	FindDirectoryComputer(ctx context.Context, arg FindDirectoryComputerParams) (*DirectoryComputer, error)
 	FindDirectoryConnector(ctx context.Context, arg FindDirectoryConnectorParams) (*DirectoryConnector, error)
 	FindDirectoryConnectorByEnrollmentTokenHash(ctx context.Context, arg FindDirectoryConnectorByEnrollmentTokenHashParams) (*DirectoryConnector, error)
 	FindDirectoryIngestionBatch(ctx context.Context, arg FindDirectoryIngestionBatchParams) (*DirectoryIngestionBatch, error)
 	FindDirectoryIngestionRun(ctx context.Context, arg FindDirectoryIngestionRunParams) (*DirectoryIngestionRun, error)
 	FindDirectoryUserCorrelation(ctx context.Context, arg FindDirectoryUserCorrelationParams) (*DirectoryUserCorrelation, error)
+	FindEnabledDirectoryComputerByPrincipal(ctx context.Context, arg FindEnabledDirectoryComputerByPrincipalParams) (*DirectoryComputer, error)
+	FindEnabledDirectoryComputerBySID(ctx context.Context, arg FindEnabledDirectoryComputerBySIDParams) (*DirectoryComputer, error)
 	InsertDirectoryIngestionBatch(ctx context.Context, arg InsertDirectoryIngestionBatchParams) (int64, error)
 	ListDirectoryConnectors(ctx context.Context, tenantID string) ([]*DirectoryConnector, error)
 	ListDirectoryCorrelatedUserIDs(ctx context.Context, arg ListDirectoryCorrelatedUserIDsParams) ([]string, error)
 	ListDirectoryIngestionBatches(ctx context.Context, arg ListDirectoryIngestionBatchesParams) ([]*DirectoryIngestionBatch, error)
 	ListDirectoryIngestionRuns(ctx context.Context, arg ListDirectoryIngestionRunsParams) ([]*DirectoryIngestionRun, error)
 	ListDirectoryUserCorrelationsNotSeenIn(ctx context.Context, arg ListDirectoryUserCorrelationsNotSeenInParams) ([]*DirectoryUserCorrelation, error)
+	ListEnabledDirectoryComputerHolders(ctx context.Context, arg ListEnabledDirectoryComputerHoldersParams) ([]*DirectoryComputer, error)
+	MarkDirectoryComputerSeen(ctx context.Context, arg MarkDirectoryComputerSeenParams) error
 	MarkDirectoryUserCorrelationSeen(ctx context.Context, arg MarkDirectoryUserCorrelationSeenParams) error
+	SaveDirectoryComputer(ctx context.Context, arg SaveDirectoryComputerParams) error
 	SaveDirectoryUserCorrelation(ctx context.Context, arg SaveDirectoryUserCorrelationParams) error
 	SupersedeRunningDirectoryIngestionRuns(ctx context.Context, arg SupersedeRunningDirectoryIngestionRunsParams) error
 	TouchDirectoryConnectorLastSeen(ctx context.Context, arg TouchDirectoryConnectorLastSeenParams) error

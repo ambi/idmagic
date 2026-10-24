@@ -27,6 +27,7 @@ type IngestionAPI interface {
 	Heartbeat(ctx context.Context) error
 	StartRun(ctx context.Context, mode domain.Mode) (runID string, err error)
 	SendBatch(ctx context.Context, runID, batchID string, items []domain.Item) error
+	SendComputerBatch(ctx context.Context, runID, batchID string, items []domain.ComputerItem) error
 	CompleteRun(ctx context.Context, runID string, itemCount int) error
 }
 

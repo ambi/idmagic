@@ -203,9 +203,11 @@ func (r *IngestionRunRepository) ListBatches(ctx context.Context, tenantID, runI
 	return result, nil
 }
 
-func (r *IngestionRunRepository) Complete(ctx context.Context, tenantID, runID string, completedAt time.Time, disabled int) (bool, error) {
+func (r *IngestionRunRepository) Complete(ctx context.Context, tenantID, runID string, completedAt time.Time, disabled, disabledComputers int) (bool, error) {
 	changed, err := New(r.Pool).CompleteDirectoryIngestionRun(ctx, CompleteDirectoryIngestionRunParams{
-		CompletedAt: instant(completedAt), Disabled: int32(disabled), TenantID: tenantID, ID: runID, //nolint:gosec // 対応の数は int32 に収まる。
+		CompletedAt: instant(completedAt), TenantID: tenantID, ID: runID,
+		Disabled:          int32(disabled),          //nolint:gosec // 対応の数は int32 に収まる。
+		DisabledComputers: int32(disabledComputers), //nolint:gosec // コンピューターの数は int32 に収まる。
 	})
 	return changed > 0, err
 }
@@ -218,6 +220,7 @@ func runToDomain(row *DirectoryIngestionRun) domain.IngestionRun {
 		Counts: domain.RunCounts{
 			Batches: int(row.Batches), Items: int(row.Items), Created: int(row.Created), Updated: int(row.Updated),
 			Unchanged: int(row.Unchanged), Deleted: int(row.Deleted), Failed: int(row.Failed), Disabled: int(row.Disabled),
+			DisabledComputers: int(row.DisabledComputers),
 		},
 	}
 }

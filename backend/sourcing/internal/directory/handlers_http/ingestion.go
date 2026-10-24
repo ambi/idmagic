@@ -29,6 +29,8 @@ type countsResponse struct {
 	Deleted   int `json:"deleted"`
 	Failed    int `json:"failed"`
 	Disabled  int `json:"disabled"`
+
+	DisabledComputers int `json:"disabled_computers"`
 }
 
 type runSummaryResponse struct {
@@ -51,6 +53,7 @@ func runSummaryJSON(run domain.IngestionRun) runSummaryResponse {
 	return runSummaryResponse{runResponse: runJSON(run), Counts: countsResponse{
 		Batches: c.Batches, Items: c.Items, Created: c.Created, Updated: c.Updated,
 		Unchanged: c.Unchanged, Deleted: c.Deleted, Failed: c.Failed, Disabled: c.Disabled,
+		DisabledComputers: c.DisabledComputers,
 	}}
 }
 
@@ -99,6 +102,36 @@ func (h handler) sendUserBatch(c *echo.Context) error {
 		items[n].Enabled = item.Enabled == nil || *item.Enabled
 	}
 	results, err := h.deps.Ingestion.ApplyUserBatch(c.Request().Context(), support.RequestTenantID(c), connector.ID, c.Param("run_id"), request.BatchID, items)
+	if err != nil {
+		return writeIngestionError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"batch_id": request.BatchID, "results": results})
+}
+
+// computerItemRequest はコンピューターの項目の本文である。enabled を省いた項目は有効として扱う。
+type computerItemRequest struct {
+	domain.ComputerItem
+	Enabled *bool `json:"enabled"`
+}
+
+func (h handler) sendComputerBatch(c *echo.Context) error {
+	connector, ok, err := h.authenticateConnector(c)
+	if !ok {
+		return err
+	}
+	var request struct {
+		BatchID string                `json:"batch_id"`
+		Items   []computerItemRequest `json:"items"`
+	}
+	if err := support.DecodeJSON(c.Request(), &request); err != nil {
+		return writeInvalidIngestionRequest(c, "invalid computer batch")
+	}
+	items := make([]domain.ComputerItem, len(request.Items))
+	for n, item := range request.Items {
+		items[n] = item.ComputerItem
+		items[n].Enabled = item.Enabled == nil || *item.Enabled
+	}
+	results, err := h.deps.Ingestion.ApplyComputerBatch(c.Request().Context(), support.RequestTenantID(c), connector.ID, c.Param("run_id"), request.BatchID, items)
 	if err != nil {
 		return writeIngestionError(c, err)
 	}

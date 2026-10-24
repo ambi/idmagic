@@ -10,6 +10,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type DirectoryComputer struct {
+	TenantID       string
+	ConnectorID    string
+	ExternalID     string
+	SamAccountName string
+	ObjectSid      string
+	Domain         string
+	DnsHostName    string
+	PrincipalKey   string
+	Enabled        bool
+	LastSeenRunID  string
+	UpdatedAt      time.Time
+}
+
 type DirectoryConnector struct {
 	ID                  string
 	TenantID            string
@@ -37,21 +51,22 @@ type DirectoryIngestionBatch struct {
 }
 
 type DirectoryIngestionRun struct {
-	ID          string
-	TenantID    string
-	ConnectorID string
-	Mode        string
-	Status      string
-	StartedAt   time.Time
-	CompletedAt pgtype.Timestamptz
-	Batches     int32
-	Items       int32
-	Created     int32
-	Updated     int32
-	Unchanged   int32
-	Deleted     int32
-	Failed      int32
-	Disabled    int32
+	ID                string
+	TenantID          string
+	ConnectorID       string
+	Mode              string
+	Status            string
+	StartedAt         time.Time
+	CompletedAt       pgtype.Timestamptz
+	Batches           int32
+	Items             int32
+	Created           int32
+	Updated           int32
+	Unchanged         int32
+	Deleted           int32
+	Failed            int32
+	Disabled          int32
+	DisabledComputers int32
 }
 
 type DirectoryUserCorrelation struct {
