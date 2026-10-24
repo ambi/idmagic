@@ -99,10 +99,10 @@ C4 の Container は Docker のコンテナではなく、この文書群の実�
 ## 検証
 
 - `mise run test-tools`、`mise run lint-tools`、`mise run typecheck-tools`：描画器と境界の解析の変更を対象に選ぶ。
-- `mise run check-rendered-docs`、`mise run check-links`、`mise run check-terminology`、`mise run check-work-items`：移した図と文書の参照、用語、作業記録を対象に選ぶ。
+- `mise run check-site`、`mise run check-links`、`mise run check-terminology`、`mise run check-work-items`：移した図と文書の参照、用語、作業記録を対象に選ぶ。
 - `mise run check-boundaries`：境界検査の入力の解釈を共有するため、結果が変わらないことを確かめる。
 - `mise run spec-diff`：規範の差分がないことを確かめる。
-- `mise run render-docs` で再生成したページを、ヘッドレスの Chrome で `--screen-info` で画面幅を指定して確認する。
+- `mise run build-site` で再生成したページを、ヘッドレスの Chrome で `--screen-info` で画面幅を指定して確認する。
 
 ## リスク
 

@@ -234,7 +234,7 @@ initial_context:
 ## 検証
 
 - 追加差分の局所検査は `mise run test-tools-file -- verification/src/contract-evidence-inventory.test.ts verification/src/contract-evidence-inventory.acceptance.test.ts verification/src/evidence.test.ts` とする。影響の選択、参照の照合、CLI の配線を確認する。
-- 文書とスキルには `check-agent-guidance`、`check-work-items`、`check-links`、`check-spec`、`check-boundaries` を使い、`render-docs` で現在状態の表示を更新する。
+- 文書とスキルには `check-agent-guidance`、`check-work-items`、`check-links`、`check-spec`、`check-boundaries` を使い、`build-site` で現在状態の表示を更新する。
 - `check-terminology` で、追加した現在状態の文書の用語を確認する。最初の全体検証で検出した「既定」の 2 箇所を「デフォルト」へ修正した。
 - 案 10 の局所検査：`mise run test-tools-file -- verification/src/evidence.test.ts check/src/check-operation-references.test.ts check/src/registry.test.ts`。診断と収集の一致、registry の配線、既存の実行結果判定を確認する。
 - `mise run typecheck-tools` と `mise run lint-tools`：変更した TypeScript と呼び出し元を確認する。

@@ -98,7 +98,7 @@ const VERSION_VOCABULARY_ROOTS = [
 ]
 
 /** 禁じる語を書かずに規則を述べられないので、この規則を宣言するファイル自身は除く。 */
-const RULE_DECLARATION = 'tools/render-docs/src/documentation-quality.test.ts'
+const RULE_DECLARATION = 'tools/build-site/src/documentation-quality.test.ts'
 
 function prose(target: string): string[] {
   const absolute = resolve(repositoryRoot, target)

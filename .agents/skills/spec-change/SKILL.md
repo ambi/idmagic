@@ -56,9 +56,20 @@ current document kinds and grammar; read the relevant sections, not its rational
    TypeSpec records authentication and enforced operation scopes; `docs/design/security/authorization.md`
    owns the shared principal, scope, tenant-boundary, and fail-closed rules.
 9. Sync the work item's `affected_spec` with the requirement or standard id, or the TypeSpec symbol.
-10. Pass `mise run check-spec` and `mise run check-published-api-compat`. Regenerate derived views with `render-docs`
-    when the specification changed; generated OpenAPI and HTML remain untracked views.
-    告知と既存バージョン互換性の適用条件は `docs/development/release.md` に従う。
+10. Pass `mise run check-spec`, then regenerate and check the derived artifacts:
+    - Run `mise run build-site`. It compiles TypeSpec first, so the site never renders a stale OpenAPI.
+      Confirm that the OpenAPI carries per-module tags and that `site/index.html` is produced.
+    - When the change adds, removes, or alters a TypeSpec operation, also run `mise run generate-contract`.
+      It rewrites the tracked `backend/shared/spec/operations_gen.go`, which `check-generated-contract`
+      compares against TypeSpec; commit that file with the change.
+    - `mise run check-published-api-compat` で公開状態に応じた互換性を検査する。
+      初回公開前の差分を任意に調べる場合は `mise run check-api-compat` を使う。
+      公開状態と初回公開の切り替え、告知と既存バージョン互換性の適用条件は `docs/development/release.md` に従う。
+    - `spec/generated/` and `site/` are untracked views. Do not commit them.
+    - Update the baseline only during a release, with `mise run update-api-baseline`, as an explicit release
+      step. Never update it during an ordinary feature change to get around the compatibility check: skipping
+      the check lets a real regression ship, and a baseline frozen without a release describes something
+      nobody received.
 
 Use `update-design` as well only when modules, global structure, technology, runtime composition, or
 core design rules change.

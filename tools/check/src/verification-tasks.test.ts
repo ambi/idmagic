@@ -13,11 +13,11 @@ describe('実際の仕様ゲートと全体ゲートの包含関係', () => {
     expect(directTasks(tasks, 'check-spec-inputs')).toEqual([
       'compile-spec',
       'check-generated-contract',
-      'check-rendered-docs',
+      'check-site',
     ])
     for (const entry of ['check', 'check-spec']) {
       expect(directTasks(tasks, entry)).not.toContain('check-generated-contract')
-      expect(directTasks(tasks, entry)).not.toContain('check-rendered-docs')
+      expect(directTasks(tasks, entry)).not.toContain('check-site')
     }
     expect(tasks['check-spec']?.run).toBe('bun run check/src/runner.ts spec')
     const specification = selectChecks(['spec']).map((check) => check.name)

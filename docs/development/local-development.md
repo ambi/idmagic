@@ -80,9 +80,9 @@ flowchart LR
 
 | 変更した入力 | 再生成 |
 | --- | --- |
-| TypeSpec または一次情報の Markdown | `mise run render-docs`。TypeSpec の操作を変えたときは `mise run generate-contract` も実行する |
+| TypeSpec または一次情報の Markdown | `mise run build-site`。TypeSpec の操作を変えたときは `mise run generate-contract` も実行する |
 | 起動時設定の宣言 | `mise run generate-config-reference` |
-| SQL または sqlc のクエリ | `mise run sqlc-generate` |
+| SQL または sqlc のクエリ | `mise run generate-sqlc` |
 | フロントエンドの経路 | `mise run generate-routes` |
 
 生成結果を含むかどうかは各タスクの所有規則に従う。`spec/generated/` と `site/` は追跡しない派生表示であり、リリース用の OpenAPI 互換性ベースラインは [リリース](release.md) でだけ更新する。

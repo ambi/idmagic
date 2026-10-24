@@ -146,7 +146,7 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
 - [ ] T005 [Internal ID] T001 で見つかった「内部処理が `sub` を使っている箇所」を内部 ID に
       置換する。RED: 該当経路が pairwise クライアントでも動くテスト → GREEN。
 - [ ] T006 [Persistence] tenant salt と `(tenant, sector, pairwise_sub) -> user_id` の
-      マッピングを `infra/schema/postgres.sql` に追加し、`mise run sqlc-generate` を実行する。
+      マッピングを `infra/schema/postgres.sql` に追加し、`mise run generate-sqlc` を実行する。
       salt はテナント作成時に生成し不変とする。
 - [ ] T007 [Output paths] ID Token / access token / UserInfo / introspection の 4 経路が
       同一の写像を通ることを実装で強制する。RED: 4 経路で `sub` が一貫するテスト → GREEN。
@@ -161,7 +161,7 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
 - [ ] T012 [UI] Application の OIDC 詳細設定に `subject_type` と切り替え警告を追加する。
       RED: presentation logic の unit test → GREEN。
 - [ ] T013 [Docs] README に pairwise の設定・sector の決め方・切り替えの影響を追記する。
-- [ ] T014 [Verify] 下記 Verification を緑にする。`mise run render-docs` を実行する。
+- [ ] T014 [Verify] 下記 Verification を緑にする。`mise run build-site` を実行する。
 
 ## Verification
 

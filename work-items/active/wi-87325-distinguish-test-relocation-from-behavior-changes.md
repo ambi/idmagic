@@ -93,7 +93,7 @@ fixture、testdata、設定の内容が変われば、ファイル移動と同�
 - 不明な移動と解析失敗は従来の証拠を要求し、申告だけで成功にしない。
 - 変更分類の接続を外す故障と、表明または依存先の変更を無視する故障をそれぞれ注入し、検出する。
 - `mise run test-tools-file -- <変更したテストファイル>`、`typecheck-tools`、`lint-tools`、`check-work-items`、`check-links` を選ぶ。
-  文書の変更後に `render-docs` と `check-rendered-docs` を実行する。
+  文書の変更後に `build-site` と `check-site` を実行する。
 
 ## リスク
 

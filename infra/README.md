@@ -26,8 +26,8 @@ mise run deploy-monitoring-operator # Prometheus Operator を使う場合だけ
 k6 スモークテストは、テナント内に閉じた 1 組の seed フィクスチャーを使い、認可コードと S256 PKCE、リフレッシュトークンのローテーション、クライアントクレデンシャルズを扱う。デフォルトのクライアントには開発用 seed の固定 UUID を使い、テナントをまたぐデータの作成や再利用は行わない。最初に、意図的に seed を投入した開発環境の対象を起動する。デフォルト値を使えない場合は、使い捨てのフィクスチャー用資格情報だけを環境変数で渡す。
 
 ```bash
-mise run k6-smoke # デフォルト値: http://host.docker.internal:8080/realms/default
-# ローカルの `mise run dev-memory` API: mise run k6-smoke http://host.docker.internal:8081 http://localhost:5173
+mise run test-k6-smoke # デフォルト値: http://host.docker.internal:8080/realms/default
+# ローカルの `mise run dev-memory` API: mise run test-k6-smoke http://host.docker.internal:8081 http://localhost:5173
 mise run check-k6
 ```
 

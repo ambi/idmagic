@@ -143,7 +143,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
       (scenario `IdManagement.invitation_expired_rejected`) → GREEN。
 - [ ] T004 [Persistence] `invitations` テーブル ((tenant_id, email) の Pending 一意制約) と
       `users.user_kind` / ゲストメタデータ列を `infra/schema/postgres.sql` に追加し、
-      `mise run sqlc-generate` を実行する。RED: 既存ユーザーが Member として読めるテスト → GREEN。
+      `mise run generate-sqlc` を実行する。RED: 既存ユーザーが Member として読めるテスト → GREEN。
 - [ ] T005 [Authz] ゲストの既定 deny を認可に織り込む (ディレクトリ参照不可、
       アプリ割当なしでのアクセス不可)。RED: ゲストがユーザー一覧を引けないテストを
       先に書く → GREEN。
@@ -159,7 +159,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
 - [ ] T010 [UI] 招待画面 (作成 / 一覧 / 再送 / 失効)、ユーザー一覧の Member/Guest 区別と絞り込み、
       アクセス期限の表示・変更、受諾画面を追加する。RED: presentation logic の unit test → GREEN。
 - [ ] T011 [Docs] README に招待運用・ゲスト既定権限・期限・外部 IdP 前提を追記する。
-- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run render-docs` を実行する。
+- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run build-site` を実行する。
 
 ## Verification
 

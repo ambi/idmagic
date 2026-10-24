@@ -136,7 +136,7 @@ affected_spec:
       落ちるテストと、子所属者が親ロールを得るテストを先に書く
       (scenario `IdManagement.nested_group_role_inheritance`) → GREEN。
 - [ ] T004 [Persistence] `groups.parent_id` と `group_closure` を `infra/schema/postgres.sql` に
-      追加し、`mise run sqlc-generate` でクエリを再生成する。RED: 既存グループが全て根として
+      追加し、`mise run generate-sqlc` でクエリを再生成する。RED: 既存グループが全て根として
       読めるマイグレーション互換テスト → GREEN。
 - [ ] T005 [Closure] 作成 / 親変更 / 削除時の閉包更新をトランザクション内で実装する。
       RED: 深い階層の親を移動しても閉包が正しく再構築されるテスト、並行更新で閉包が
@@ -153,7 +153,7 @@ affected_spec:
 - [ ] T010 [Perf] 深さ上限・グループ数の想定上限で effective roles 解決の計測を行い、
       objective を満たすことを確認する (満たさない場合は closure のインデックスを見直す)。
 - [ ] T011 [Docs] README に階層の意味と運用上の注意を追記する。
-- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run render-docs` を実行する。
+- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run build-site` を実行する。
 
 ## Verification
 

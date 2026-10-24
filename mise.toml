@@ -35,7 +35,7 @@ description = "Resolve declared embedded tooling dependencies and update the loc
 dir = "tools"
 run = "bun install"
 
-[tasks.tool-versions]
+[tasks.show-tool-versions]
 description = "Show the development tool versions selected by mise"
 run = [
   "go version",
@@ -387,7 +387,7 @@ test "$#" -ge 1 || { echo "usage: mise run batch -- <task> [args...]" >&2; exit 
 go run ./backend/cmd/idmagic-batch "$@"
 '''
 
-[tasks.go-mod-tidy]
+[tasks.tidy-go-modules]
 description = "Synchronize Go module requirements and checksums"
 run = "go mod tidy"
 
@@ -581,7 +581,7 @@ version=${VERSION:-0.0.0-dev}
 go build -ldflags "-X github.com/ambi/idmagic/backend/shared/version.Version=$version -X github.com/ambi/idmagic/backend/shared/version.GitCommit=$git_commit -X github.com/ambi/idmagic/backend/shared/version.BuildDate=$build_date" ./...
 '''
 
-[tasks.sqlc-generate]
+[tasks.generate-sqlc]
 description = "Regenerate sqlc PostgreSQL query code"
 run = "sqlc generate"
 
@@ -733,11 +733,11 @@ test "$#" -le 1 || { echo "usage: mise run check-ci-spec -- [base-revision]" >&2
 mise run -c --skip-deps check-spec-inputs ::: check-repository ${1:+"$1"}
 '''
 
-[tasks.check-rendered-docs]
-description = "Compile TypeSpec, then check the rendered documentation site"
+[tasks.check-site]
+description = "Compile TypeSpec, then build the documentation site in memory and check it without writing"
 depends = ["compile-spec"]
 dir = "tools"
-run = "bun run render-docs/src/main.ts --check"
+run = "bun run build-site/src/main.ts --check"
 
 [tasks.check-links]
 # context: targets=docs,.agents,AGENTS.md,work-items
@@ -826,7 +826,7 @@ run = "bun run check/src/runner.ts agent-guidance"
 description = "Check generated specification inputs shared by both check suites"
 depends = ["compile-spec"]
 # 個別入口の前提は残し、この入口では上の依存が生成した OpenAPI を共有する。
-run = "mise run -c --skip-deps check-generated-contract ::: check-rendered-docs"
+run = "mise run -c --skip-deps check-generated-contract ::: check-site"
 
 [tasks.check-ci-results]
 description = "Reject failed, skipped, cancelled, or missing CI verification groups"
@@ -977,11 +977,11 @@ bun run spec-review-candidates/src/main.ts "$1"
 '''
 
 # 文書サイトは TypeSpec から生成した OpenAPI を読むので、先にコンパイルして古い生成物を描かない。
-[tasks.render-docs]
-description = "Compile TypeSpec, then render the browsable documentation and API reference site"
+[tasks.build-site]
+description = "Compile TypeSpec, then build the browsable documentation and API reference site into site/"
 depends = ["compile-spec"]
 dir = "tools"
-run = "bun run render-docs/src/main.ts"
+run = "bun run build-site/src/main.ts"
 
 [tasks.generate-module-dependencies]
 description = "Regenerate the module dependency diagram from production Go imports"
@@ -995,10 +995,10 @@ run = "bun run check/src/generate-spec-examples.ts"
 
 # Swagger UI は OpenAPI を fetch で読む。file:// で開くとブラウザーがその取得を拒むので、
 # API リファレンスだけが空になる。生成サイトは HTTP で配ってから読む。
-[tasks.serve-docs]
-description = "Serve the rendered documentation site over HTTP"
+[tasks.serve-site]
+description = "Serve the built documentation site over HTTP"
 dir = "tools"
-run = "bun run render-docs/src/serve.ts"
+run = "bun run build-site/src/serve.ts"
 
 [tasks.dev]
 description = "Start the local API and UI stack"
@@ -1127,7 +1127,7 @@ run = "kubectl apply -k infra/k8s/monitoring"
 description = "Apply Prometheus Operator monitoring assets"
 run = "kubectl apply -k infra/k8s/monitoring/operator"
 
-[tasks.k6-smoke]
+[tasks.test-k6-smoke]
 description = "Execute the tenant-local OAuth smoke test"
 run = '''
 #!/usr/bin/env sh

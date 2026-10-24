@@ -8,7 +8,7 @@
 | 種類 | 配置 | 責任 |
 | --- | --- | --- |
 | 検査 | `check/` | registry に登録した規則を共有 snapshot に対して実行し、所見を返す |
-| 生成 | `generate-contract/`、`render-docs/` | 正準入力から派生成果物を作る |
+| 生成 | `generate-contract/`、`build-site/` | 正準入力から派生成果物を作る |
 | 照会 | `brief/`、`changed-packages/`、`task-timing/`、`spec-diff/`、`spec-review-candidates/`、`security-test-gap-report/` | 作業対象、差分、時間、未検査の拒否、仕様漏れの候補を人へ報告する |
 | 作業記録の操作 | `work-item/`、`work-item-number/` | 作業項目の移動と参照更新、未使用番号の選択 |
 | 検証実行と報告 | `verification/` | Go の実行イベント、操作ごとの静的解析、引用の存在を別々の事実として保存し、必要な証拠の欠落を判定する |

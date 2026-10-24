@@ -132,7 +132,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
       (scenario `Audit.chain_verification_detects_mutation`) → GREEN。
 - [ ] T004 [Persistence] `sequence_no` / `prev_hash` / `entry_hash` 列、`(tenant_id, sequence_no)`
       一意制約、`audit_checkpoints` テーブルを `infra/schema/postgres.sql` に追加し、sqlc
-      クエリを再生成する (`mise run sqlc-generate`)。RED: 並行 INSERT で sequence が重複しない
+      クエリを再生成する (`mise run generate-sqlc`)。RED: 並行 INSERT で sequence が重複しない
       テスト (`mise run test-go-race`) → GREEN。
 - [ ] T005 [Write path] 監査イベント書き込みにチェーン連結を組み込む。RED: 連続書き込みで
       prev_hash が繋がるテスト → GREEN。既存の監査書き込み経路すべてを通ることを確認する。
@@ -148,7 +148,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
 - [ ] T009 [UI] 監査ログ画面に完全性ステータス、検証実行、検証可能エクスポートを追加する。
       RED: presentation logic の unit test → GREEN。
 - [ ] T010 [Docs] README に外部検証手順と検証失敗時のエスカレーションを追記する。
-- [ ] T011 [Verify] 下記 Verification を緑にする。`mise run render-docs` を実行する。
+- [ ] T011 [Verify] 下記 Verification を緑にする。`mise run build-site` を実行する。
 
 ## Verification
 

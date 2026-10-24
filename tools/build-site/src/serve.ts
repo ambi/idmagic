@@ -12,7 +12,7 @@ const root = resolve(import.meta.dir, '../../../site')
 const port = Number(process.argv[2] ?? 8085)
 
 if (!(await Bun.file(join(root, 'index.html')).exists())) {
-  throw new Error(`${root} is not rendered; run mise run render-docs first`)
+  throw new Error(`${root} is not built; run mise run build-site first`)
 }
 
 /** `..` を含む経路で site/ の外へ出られないようにしてから解決する。 */

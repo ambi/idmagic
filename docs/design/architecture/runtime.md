@@ -27,7 +27,7 @@ Worker と Batch は、長時間処理や再試行を HTTP リクエストから
 ### API
 
 API は、API リファレンスに載るすべてのエンドポイントを、[API ガイドライン](../application/api-guidelines.md)に従って実装する。
-API リファレンスは `spec/` の TypeSpec から生成し、`mise run render-docs` で生成する文書サイトの「API リファレンス」で読む。
+API リファレンスは `spec/` の TypeSpec から生成し、`mise run build-site` で生成する文書サイトの「API リファレンス」で読む。
 各エンドポイントの振る舞いは、TypeSpec の操作が属するモジュールの[シナリオ](../../modules/README.md)が定める。
 
 ### Worker
