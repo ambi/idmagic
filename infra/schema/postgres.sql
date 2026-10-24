@@ -1350,7 +1350,7 @@ CREATE TABLE directory_ingestion_batches (
     results JSONB NOT NULL,
     recorded_at TIMESTAMPTZ NOT NULL,
     -- 記録した順に並べるための値。
-    sequence BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY,
+    recorded_sequence BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY,
     PRIMARY KEY (run_id, batch_id),
     CONSTRAINT directory_ingestion_batches_batch_id_length CHECK (char_length(batch_id) BETWEEN 1 AND 128),
     CONSTRAINT directory_ingestion_batches_run_fkey

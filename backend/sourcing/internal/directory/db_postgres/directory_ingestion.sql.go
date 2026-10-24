@@ -101,7 +101,7 @@ func (q *Queries) CreateDirectoryIngestionRun(ctx context.Context, arg CreateDir
 }
 
 const findDirectoryIngestionBatch = `-- name: FindDirectoryIngestionBatch :one
-SELECT tenant_id, run_id, batch_id, digest, results, recorded_at, sequence FROM directory_ingestion_batches WHERE tenant_id = $1 AND run_id = $2 AND batch_id = $3
+SELECT tenant_id, run_id, batch_id, digest, results, recorded_at, recorded_sequence FROM directory_ingestion_batches WHERE tenant_id = $1 AND run_id = $2 AND batch_id = $3
 `
 
 type FindDirectoryIngestionBatchParams struct {
@@ -120,7 +120,7 @@ func (q *Queries) FindDirectoryIngestionBatch(ctx context.Context, arg FindDirec
 		&i.Digest,
 		&i.Results,
 		&i.RecordedAt,
-		&i.Sequence,
+		&i.RecordedSequence,
 	)
 	return &i, err
 }
@@ -241,7 +241,7 @@ func (q *Queries) ListDirectoryCorrelatedUserIDs(ctx context.Context, arg ListDi
 }
 
 const listDirectoryIngestionBatches = `-- name: ListDirectoryIngestionBatches :many
-SELECT tenant_id, run_id, batch_id, digest, results, recorded_at, sequence FROM directory_ingestion_batches WHERE tenant_id = $1 AND run_id = $2 ORDER BY sequence
+SELECT tenant_id, run_id, batch_id, digest, results, recorded_at, recorded_sequence FROM directory_ingestion_batches WHERE tenant_id = $1 AND run_id = $2 ORDER BY recorded_sequence
 `
 
 type ListDirectoryIngestionBatchesParams struct {
@@ -265,7 +265,7 @@ func (q *Queries) ListDirectoryIngestionBatches(ctx context.Context, arg ListDir
 			&i.Digest,
 			&i.Results,
 			&i.RecordedAt,
-			&i.Sequence,
+			&i.RecordedSequence,
 		); err != nil {
 			return nil, err
 		}

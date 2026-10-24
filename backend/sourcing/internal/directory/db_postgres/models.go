@@ -27,13 +27,13 @@ type DirectoryConnector struct {
 }
 
 type DirectoryIngestionBatch struct {
-	TenantID   string
-	RunID      string
-	BatchID    string
-	Digest     string
-	Results    []byte
-	RecordedAt time.Time
-	Sequence   int64
+	TenantID         string
+	RunID            string
+	BatchID          string
+	Digest           string
+	Results          []byte
+	RecordedAt       time.Time
+	RecordedSequence int64
 }
 
 type DirectoryIngestionRun struct {

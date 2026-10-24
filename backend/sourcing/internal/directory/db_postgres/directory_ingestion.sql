@@ -52,7 +52,7 @@ UPDATE directory_ingestion_runs SET
 WHERE tenant_id = sqlc.arg(tenant_id) AND id = sqlc.arg(id);
 
 -- name: ListDirectoryIngestionBatches :many
-SELECT * FROM directory_ingestion_batches WHERE tenant_id = $1 AND run_id = $2 ORDER BY sequence;
+SELECT * FROM directory_ingestion_batches WHERE tenant_id = $1 AND run_id = $2 ORDER BY recorded_sequence;
 
 -- name: CompleteDirectoryIngestionRun :execrows
 UPDATE directory_ingestion_runs SET status = 'completed', completed_at = sqlc.arg(completed_at), disabled = sqlc.arg(disabled)
