@@ -163,6 +163,7 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
       { literal: 'System Context', reason: 'C4 model のビュー名であり、設計の単位ではない' },
       { literal: 'C4Context', reason: 'Mermaid の C4 図のキーワードであり、設計の単位ではない' },
       { literal: 'W3C Trace Context', reason: 'W3C の規格名であり、設計の単位ではない' },
+      { literal: 'AuthnContextClassRef', reason: 'SAML 2.0 の要素名であり、設計の単位ではない' },
 
       // 標準の行の文面を変えると、振る舞いを固定する証拠が要る。語の差し替えだけでは
       // その証拠を作れないので、行に触れる次の作業が改名する。
