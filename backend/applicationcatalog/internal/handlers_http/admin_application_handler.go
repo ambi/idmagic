@@ -366,11 +366,11 @@ func (d Deps) handleDeleteApplication(c *echo.Context) error {
 				return err
 			}
 		case domain.ApplicationProtocolSAML:
-			if err := d.SamlSPRepo.Delete(c.Request().Context(), tenantID, app.Protocol.EntityID); err != nil {
+			if err := d.ServiceProviders.DeleteForApplication(c.Request().Context(), tenantID, app.Protocol.EntityID); err != nil {
 				return err
 			}
 		case domain.ApplicationProtocolWsFed:
-			if err := d.WsFedRPRepo.Delete(c.Request().Context(), tenantID, app.Protocol.Wtrealm); err != nil {
+			if err := d.RelyingParties.DeleteForApplication(c.Request().Context(), tenantID, app.Protocol.Wtrealm); err != nil {
 				return err
 			}
 		}

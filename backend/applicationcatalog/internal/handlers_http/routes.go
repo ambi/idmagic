@@ -31,10 +31,11 @@ type Deps struct {
 	GroupRepo                   groupports.GroupRepository
 	UserRepo                    userports.UserRepository
 	// Clients は OIDC の Application が持つクライアントを作成、更新し、シークレットを管理する。
-	Clients     clientports.ClientAdministration
-	ClientRepo  clientports.OAuth2ClientRepository
-	WsFedRPRepo wsfederationports.WsFedRelyingPartyRepository
-	SamlSPRepo  samlports.SamlServiceProviderRepository
+	Clients    clientports.ClientAdministration
+	ClientRepo clientports.OAuth2ClientRepository
+	// RelyingParties と ServiceProviders は WS-Fed の RP と SAML の SP を管理する。nil はそのプロトコルが使えないことを表す。
+	RelyingParties   wsfederationports.RelyingPartyAdministration
+	ServiceProviders samlports.ServiceProviderAdministration
 	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45). nil means outbound provisioning is not wired.
 	ProvisioningNotifier appports.ProvisioningNotifier
 	// QuotaRepo enforces the tenant's Hard Quota on applications (wi-160). nil skips enforcement.

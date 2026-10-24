@@ -21,9 +21,11 @@ import (
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
+	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -31,8 +33,6 @@ import (
 const (
 	defaultOIDCScope    = "openid profile email"
 	defaultServiceScope = "openid"
-	defaultNameIDFormat = "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
-	defaultNameIDSource = "user_id"
 )
 
 type createApplicationRequest struct {
@@ -189,17 +189,13 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if strings.TrimSpace(req.Wtrealm) == "" || len(req.ReplyURLs) == 0 {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify wtrealm and a reply URL.")
 		}
-		rp := &feddomain.WsFedRelyingParty{
-			TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, DisplayName: req.Name, ReplyURLs: req.ReplyURLs,
-			ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{
-				Format: nonEmpty(req.NameIDFormat, defaultNameIDFormat), SourceAttribute: nonEmpty(req.NameIDSource, defaultNameIDSource),
-			}},
-			CreatedAt: now,
-		}
-		if d.WsFedRPRepo == nil {
+		if d.RelyingParties == nil {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "WS-Federation is unavailable.")
 		}
-		if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
+		if err := d.RelyingParties.CreateForApplication(ctx, wsfederationports.CreateApplicationRelyingPartyInput{
+			TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, DisplayName: req.Name, ReplyURLs: req.ReplyURLs,
+			NameIDFormat: req.NameIDFormat, NameIDSource: req.NameIDSource, Now: now,
+		}); err != nil {
 			return err
 		}
 		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
@@ -213,31 +209,17 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if strings.TrimSpace(req.EntityID) == "" || len(req.ACSURLs) == 0 {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify an entity ID and an ACS URL.")
 		}
-		if d.SamlSPRepo == nil {
+		if d.ServiceProviders == nil {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
 		}
-		if req.WantAuthnRequestsSigned {
-			if _, err := samldomain.ParseCertificatePEM(req.AuthnRequestSigningCertificatePEM); err != nil {
-				return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify a certificate for AuthnRequest signature verification.")
-			}
-		}
-		sp := &samldomain.SamlServiceProvider{
+		if err := d.ServiceProviders.CreateForApplication(ctx, samlports.CreateApplicationServiceProviderInput{
 			TenantID: support.RequestTenantID(c), EntityID: req.EntityID, DisplayName: req.Name,
-			IDPProfileID: nonEmpty(req.IDPProfileID, samldomain.DefaultIDPProfileID),
-			ACSURLs:      req.ACSURLs, SLOURL: strings.TrimSpace(req.SLOURL),
-			ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{
-				Format: nonEmpty(req.NameIDFormat, samldomain.SamlNameIDFormatPersistent), SourceAttribute: nonEmpty(req.NameIDSource, defaultNameIDSource),
-			}},
-			SignAssertion: true, SignResponse: req.SignResponse,
-			WantAuthnRequestsSigned:           req.WantAuthnRequestsSigned,
-			AuthnRequestSigningCertificatePEM: strings.TrimSpace(req.AuthnRequestSigningCertificatePEM),
-			CreatedAt:                         now,
-		}
-		if err := d.SamlSPRepo.Save(ctx, sp); err != nil {
-			if errors.Is(err, samldomain.ErrInvalidIDPProfile) || errors.Is(err, samldomain.ErrDedicatedIDPProfileCardinality) {
-				return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
-			}
-			return err
+			IDPProfileID: req.IDPProfileID, ACSURLs: req.ACSURLs, SLOURL: req.SLOURL,
+			NameIDFormat: req.NameIDFormat, NameIDSource: req.NameIDSource,
+			SignResponse: req.SignResponse, WantAuthnRequestsSigned: req.WantAuthnRequestsSigned,
+			AuthnRequestSigningCertificatePEM: req.AuthnRequestSigningCertificatePEM, Now: now,
+		}); err != nil {
+			return writeServiceProviderError(c, err)
 		}
 		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
 			domain.ApplicationProtocol{Type: domain.ApplicationProtocolSAML, EntityID: req.EntityID})
@@ -268,26 +250,12 @@ func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req crea
 			return nil, err
 		}
 	case domain.ApplicationProtocolSAML:
-		sp, findErr := d.SamlSPRepo.FindByEntityID(ctx, app.TenantID, protocol.EntityID)
-		if findErr != nil {
-			return nil, findErr
-		}
-		if sp != nil {
-			sp.ApplicationID = app.ID
-			if saveErr := d.SamlSPRepo.Save(ctx, sp); saveErr != nil {
-				return nil, saveErr
-			}
+		if err := d.ServiceProviders.BindApplication(ctx, app.TenantID, protocol.EntityID, app.ID); err != nil {
+			return nil, err
 		}
 	case domain.ApplicationProtocolWsFed:
-		rp, findErr := d.WsFedRPRepo.FindByWtrealm(ctx, app.TenantID, protocol.Wtrealm)
-		if findErr != nil {
-			return nil, findErr
-		}
-		if rp != nil {
-			rp.ApplicationID = app.ID
-			if saveErr := d.WsFedRPRepo.Save(ctx, rp); saveErr != nil {
-				return nil, saveErr
-			}
+		if err := d.RelyingParties.BindApplication(ctx, app.TenantID, protocol.Wtrealm, app.ID); err != nil {
+			return nil, err
 		}
 	}
 	return app, nil
@@ -309,10 +277,10 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 				oidc = config
 			}
 		case domain.ApplicationProtocolWsFed:
-			if d.WsFedRPRepo == nil {
+			if d.RelyingParties == nil {
 				break
 			}
-			if rp, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, protocol.Wtrealm); err == nil && rp != nil {
+			if rp, err := d.RelyingParties.Find(ctx, tenantID, protocol.Wtrealm); err == nil && rp != nil {
 				wsfed = &wsfedConfig{
 					Wtrealm: rp.Wtrealm, ReplyURLs: rp.ReplyURLs,
 					Audience: rp.Audience, TokenType: rp.EffectiveTokenType(),
@@ -321,10 +289,10 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 				}
 			}
 		case domain.ApplicationProtocolSAML:
-			if d.SamlSPRepo == nil {
+			if d.ServiceProviders == nil {
 				break
 			}
-			if sp, err := d.SamlSPRepo.FindByEntityID(ctx, tenantID, protocol.EntityID); err == nil && sp != nil {
+			if sp, err := d.ServiceProviders.Find(ctx, tenantID, protocol.EntityID); err == nil && sp != nil {
 				saml = &samlConfig{
 					IDPProfileID: sp.EffectiveIDPProfileID(),
 					EntityID:     sp.EntityID, ACSURLs: sp.ACSURLs, SLOURL: sp.SLOURL,
@@ -430,14 +398,14 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 		return d.writeApplicationError(c, err)
 	}
 	wtrealm := bindingKeyOf(app, domain.ApplicationProtocolWsFed)
-	if wtrealm == "" || d.WsFedRPRepo == nil {
+	if wtrealm == "" || d.RelyingParties == nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The WS-Federation binding does not exist.")
 	}
 	ctx := c.Request().Context()
 	tenantID := support.RequestTenantID(c)
-	rp, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, wtrealm)
+	rp, err := d.RelyingParties.Find(ctx, tenantID, wtrealm)
 	if err != nil || rp == nil {
-		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The relying party does not exist.")
+		return writeRelyingPartyNotFound(c)
 	}
 	var req updateWsFedRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
@@ -452,30 +420,18 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 		}
 	}
-	if req.ReplyURLs != nil {
-		rp.ReplyURLs = *req.ReplyURLs
-	}
-	if req.Audience != nil {
-		rp.Audience = strings.TrimSpace(*req.Audience)
-	}
-	if req.TokenType != nil {
-		if *req.TokenType != "" && !req.TokenType.Valid() {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The token_type is invalid.")
-		}
-		rp.TokenType = *req.TokenType
-	}
-	if req.NameIDFormat != nil {
-		rp.ClaimPolicy.NameID.Format = *req.NameIDFormat
-	}
-	if req.NameIDSource != nil {
-		rp.ClaimPolicy.NameID.SourceAttribute = *req.NameIDSource
-	}
-	if req.Rules != nil {
-		rp.ClaimPolicy.Rules = *req.Rules
-	}
 	now := time.Now().UTC()
-	rp.UpdatedAt = now
-	if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
+	if err := d.RelyingParties.Update(ctx, wsfederationports.UpdateRelyingPartyInput{
+		TenantID: tenantID, Wtrealm: wtrealm,
+		ReplyURLs: req.ReplyURLs, Audience: req.Audience, TokenType: req.TokenType,
+		NameIDFormat: req.NameIDFormat, NameIDSource: req.NameIDSource, Rules: req.Rules, Now: now,
+	}); err != nil {
+		switch {
+		case errors.Is(err, wsfederationports.ErrInvalidTokenType):
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The token_type is invalid.")
+		case errors.Is(err, wsfederationports.ErrRelyingPartyNotFound):
+			return writeRelyingPartyNotFound(c)
+		}
 		return err
 	}
 	if req.NameIDSource != nil || req.Rules != nil {
@@ -513,14 +469,14 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 		return d.writeApplicationError(c, err)
 	}
 	entityID := bindingKeyOf(app, domain.ApplicationProtocolSAML)
-	if entityID == "" || d.SamlSPRepo == nil {
+	if entityID == "" || d.ServiceProviders == nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The SAML binding does not exist.")
 	}
 	ctx := c.Request().Context()
 	tenantID := support.RequestTenantID(c)
-	sp, err := d.SamlSPRepo.FindByEntityID(ctx, tenantID, entityID)
+	sp, err := d.ServiceProviders.Find(ctx, tenantID, entityID)
 	if err != nil || sp == nil {
-		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The service provider does not exist.")
+		return writeServiceProviderNotFound(c)
 	}
 	var req updateSamlRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
@@ -535,51 +491,20 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 		}
 	}
-	if req.ACSURLs != nil {
-		sp.ACSURLs = *req.ACSURLs
-	}
-	if req.IDPProfileID != nil {
-		sp.IDPProfileID = strings.TrimSpace(*req.IDPProfileID)
-	}
-	if req.SLOURL != nil {
-		sp.SLOURL = strings.TrimSpace(*req.SLOURL)
-	}
-	if req.Audience != nil {
-		sp.Audience = strings.TrimSpace(*req.Audience)
-	}
-	if req.NameIDFormat != nil {
-		sp.ClaimPolicy.NameID.Format = *req.NameIDFormat
-	}
-	if req.NameIDSource != nil {
-		sp.ClaimPolicy.NameID.SourceAttribute = *req.NameIDSource
-	}
-	if req.SignAssertion != nil {
-		sp.SignAssertion = *req.SignAssertion
-	}
-	if req.SignResponse != nil {
-		sp.SignResponse = *req.SignResponse
-	}
-	if req.WantAuthnRequestsSigned != nil {
-		sp.WantAuthnRequestsSigned = *req.WantAuthnRequestsSigned
-	}
-	if req.AuthnRequestSigningCertificatePEM != nil {
-		sp.AuthnRequestSigningCertificatePEM = strings.TrimSpace(*req.AuthnRequestSigningCertificatePEM)
-	}
-	if sp.WantAuthnRequestsSigned {
-		if _, err := samldomain.ParseCertificatePEM(sp.AuthnRequestSigningCertificatePEM); err != nil {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify a certificate for AuthnRequest signature verification.")
-		}
-	}
-	if req.Rules != nil {
-		sp.ClaimPolicy.Rules = *req.Rules
-	}
 	now := time.Now().UTC()
-	sp.UpdatedAt = now
-	if err := d.SamlSPRepo.Save(ctx, sp); err != nil {
-		if errors.Is(err, samldomain.ErrInvalidIDPProfile) || errors.Is(err, samldomain.ErrDedicatedIDPProfileCardinality) {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+	if err := d.ServiceProviders.Update(ctx, samlports.UpdateServiceProviderInput{
+		TenantID: tenantID, EntityID: entityID,
+		IDPProfileID: req.IDPProfileID, ACSURLs: req.ACSURLs, SLOURL: req.SLOURL, Audience: req.Audience,
+		NameIDFormat: req.NameIDFormat, NameIDSource: req.NameIDSource,
+		SignAssertion: req.SignAssertion, SignResponse: req.SignResponse,
+		WantAuthnRequestsSigned:           req.WantAuthnRequestsSigned,
+		AuthnRequestSigningCertificatePEM: req.AuthnRequestSigningCertificatePEM,
+		Rules:                             req.Rules, Now: now,
+	}); err != nil {
+		if errors.Is(err, samlports.ErrServiceProviderNotFound) {
+			return writeServiceProviderNotFound(c)
 		}
-		return err
+		return writeServiceProviderError(c, err)
 	}
 	if req.NameIDSource != nil || req.Rules != nil {
 		d.Emit(&domain.ApplicationClaimMappingUpdated{
@@ -587,6 +512,25 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 		})
 	}
 	return c.NoContent(http.StatusNoContent)
+}
+
+func writeRelyingPartyNotFound(c *echo.Context) error {
+	return support.WriteProblem(c, http.StatusNotFound, "not_found", "The relying party does not exist.")
+}
+
+func writeServiceProviderNotFound(c *echo.Context) error {
+	return support.WriteProblem(c, http.StatusNotFound, "not_found", "The service provider does not exist.")
+}
+
+// writeServiceProviderError は、Saml が拒否した SP の設定を 400 に写す。それ以外は大域のエラー写像へ渡す。
+func writeServiceProviderError(c *echo.Context, err error) error {
+	switch {
+	case errors.Is(err, samlports.ErrSigningCertificateRequired):
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify a certificate for AuthnRequest signature verification.")
+	case errors.Is(err, samldomain.ErrInvalidIDPProfile), errors.Is(err, samldomain.ErrDedicatedIDPProfileCardinality):
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	return err
 }
 
 func (d Deps) requireApp(c *echo.Context) (*domain.Application, error) {

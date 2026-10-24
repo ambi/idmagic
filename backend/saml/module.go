@@ -5,6 +5,7 @@ import (
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	samlhttp "github.com/ambi/idmagic/backend/saml/internal/handlers_http"
+	samlusecases "github.com/ambi/idmagic/backend/saml/internal/usecases"
 	"github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
@@ -31,4 +32,13 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 		SamlSPRepo: m.SPRepo, IDPProfileRepo: profileRepo, ReplayStore: m.ReplayStore,
 		FederationSigner: federationSigner, UserRepo: userRepo, AttrSchemaRepo: attrSchemaRepo,
 	})
+}
+
+// ServiceProviderAdministration は、Application のカタログが使う SP の管理操作を返す。
+// SP の保存先がなければ nil を返す。
+func (m Module) ServiceProviderAdministration() ports.ServiceProviderAdministration {
+	if m.SPRepo == nil {
+		return nil
+	}
+	return samlusecases.ServiceProviderAdministration{SPRepo: m.SPRepo}
 }
