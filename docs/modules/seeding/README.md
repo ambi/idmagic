@@ -33,7 +33,11 @@
 | --- | --- |
 | [seed の計画と適用](features/seed-run.md) | マニフェストの選択と検証、環境ポリシー、冪等な適用、ドリフトの検出 |
 
-コマンドの引数と設定から要求を組み立てるのは `backend/cmd/idmagic-seed`、リソースの種類ごとの計画と各モジュールの Repository への書き込みは `backend/cmd/internal/bootstrap` の `Contributor` であり、どちらもモジュールの外の組み立て地点にある。
+コマンドの引数と設定から要求を組み立てるのは `backend/cmd/idmagic-seed` である。
+`backend/cmd/internal/bootstrap` はシークレットの提供元、ハッシュ器と各所有者の保存契約を結び、Seeding の計画器へ渡す。
+リソースの生成、差分判定、適用順と再計画は Seeding が担当し、bootstrap はそれらの判断を持たない。
+ファーストパーティークライアントの生成と比較は、時刻を引数として受ける `domain` の計算である。
+所有者の Repository 契約を直接呼ぶ現在の制約は、[リスク](risks.md)で扱う。
 
 ## 文書
 

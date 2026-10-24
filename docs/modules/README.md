@@ -194,6 +194,15 @@ flowchart LR
   Saml --> ClaimMapping
   Saml --> IdManagement
   Saml --> SignInPolicy
+  Seeding --> Application
+  Seeding --> Authentication
+  Seeding --> ClaimMapping
+  Seeding --> IdManagement
+  Seeding --> OAuth2
+  Seeding --> Saml
+  Seeding --> SigningKeys
+  Seeding --> Tenancy
+  Seeding --> WsFederation
   SharedSignals --> IdManagement
   SharedSignals --> SigningKeys
   SharedSignals --> Tenancy

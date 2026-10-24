@@ -9,7 +9,14 @@ import (
 	"github.com/ambi/idmagic/backend/seeding/internal/usecases"
 )
 
-type MaterializedManifest = usecases.MaterializedManifest
+type (
+	MaterializedManifest = usecases.MaterializedManifest
+	ResourceDependencies = usecases.ResourceDependencies
+)
+
+func NewContributor(deps ResourceDependencies, manifest MaterializedManifest) usecases.Contributor {
+	return usecases.NewContributor(deps, manifest)
+}
 
 func LocateDefaultPath(profile domain.Profile) (string, error) {
 	return manifests_yaml.LocateDefaultPath(profile)
