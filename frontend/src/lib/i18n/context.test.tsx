@@ -76,24 +76,24 @@ describe('the selected locale reaches both the dictionary and the formatters', (
   })
 })
 
-describe('a key the selected dictionary lacks', () => {
-  // 空文字列は型検査を通る。値を持たないキーは、型を `as` で迂回した辞書を表す。
-  const partial = defineDictionary(
-    { translated: '訳あり', empty: '', missing: undefined as unknown as string },
-    { translated: 'Translated', empty: 'Empty in ja', missing: 'Missing in ja' },
+// 空文字列は型検査を通る。値を持たないキーは、型を `as` で迂回した辞書を表す。
+const partial = defineDictionary(
+  { translated: '訳あり', empty: '', missing: undefined as unknown as string },
+  { translated: 'Translated', empty: 'Empty in ja', missing: 'Missing in ja' },
+)
+
+function PartialProbe() {
+  const t = useDictionary(partial)
+  return (
+    <div>
+      <span data-testid="translated">{t.translated}</span>
+      <span data-testid="empty">{t.empty}</span>
+      <span data-testid="missing">{t.missing}</span>
+    </div>
   )
+}
 
-  function PartialProbe() {
-    const t = useDictionary(partial)
-    return (
-      <div>
-        <span data-testid="translated">{t.translated}</span>
-        <span data-testid="empty">{t.empty}</span>
-        <span data-testid="missing">{t.missing}</span>
-      </div>
-    )
-  }
-
+describe('a key the selected dictionary lacks', () => {
   //spec:covers EX-SYSTEM-010-03: ja を選んだ画面で ja 辞書に訳が無いキーは、en 辞書の同じキーの文言で表示されること。
   it('shows the en text for a key the ja dictionary lacks', () => {
     render(

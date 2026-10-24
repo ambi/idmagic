@@ -2,7 +2,7 @@ min_version = "2026.10.0"
 
 [tools]
 go = "1.27.3"
-bun = "1.4.3"
+bun = "1.4.4"
 "aqua:golangci/golangci-lint" = "2.15.0"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
 "aqua:sqldef/sqldef/psqldef" = "3.11.26"
@@ -16,7 +16,7 @@ bun = "1.4.3"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
 # 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでもバージョンを固定するのは、
 # 生成される変異の集合がバージョンで変わり、work item に残した一覧が再現できなくなるためである。
-"go:github.com/gomutants/gomutants" = "0.7.0"
+"go:github.com/gomutants/gomutants" = "0.7.2"
 
 [tasks.setup]
 description = "Install repository dependencies"
@@ -509,7 +509,7 @@ esac
 # 5 種類に固定する。gomutants の全 operator は survivor の仕分け量を測ってから別に判断する。
 operators="ARITHMETIC_BASE,CONDITIONALS_BOUNDARY,CONDITIONALS_NEGATION,INCREMENT_DECREMENT,INVERT_NEGATIVES"
 report="${4:-${TMPDIR:-/tmp}/idmagic-mutation-report.json}"
-# gomutants 0.7.0 の cache key は、対象 package が import する package の変更を完全には追跡しない。
+# gomutants 0.7.2 の cache key は、対象 package が import する package の変更を完全には追跡しない。
 # 既定では無効にし、同一変更を反復するときだけ第 3 引数へ cache file を明示する。
 gomutants --workers "${2:-2}" --cache "${3:-off}" --only "$operators" --output "$report" ${5:+--changed-since "$5"} "$target"
 '''
@@ -1076,7 +1076,7 @@ run = '''
 #!/usr/bin/env sh
 set -eu
 overlay=${1:-dev}
-docker run --rm -v "$PWD:/workspace:ro" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.1 build "infra/k8s/overlays/$overlay" | docker run --rm -i ghcr.io/yannh/kubeconform:v0.8.0 -strict -summary
+docker run --rm -v "$PWD:/workspace:ro" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.3 build "infra/k8s/overlays/$overlay" | docker run --rm -i ghcr.io/yannh/kubeconform:v0.8.0 -strict -summary
 '''
 
 [tasks.deploy-k8s]
@@ -1098,13 +1098,13 @@ kubectl rollout undo "deployment/${1:-idmagic-api}"
 [tasks.check-monitoring]
 description = "Validate Prometheus, Alloy, Grafana, and Kubernetes monitoring assets"
 run = [
-  "docker run --rm --entrypoint promtool -v \"$PWD:/workspace:ro\" prom/prometheus:v3.15.0 check rules /workspace/infra/docker/prometheus-rules.yml",
-  "docker run --rm -v \"$PWD:/workspace:ro\" grafana/alloy:v1.20.1 validate /workspace/infra/docker/alloy-config.alloy",
-  "docker run --rm -e HOSTNAME=validation-node -v \"$PWD:/workspace:ro\" grafana/alloy:v1.20.1 validate /workspace/infra/k8s/monitoring/loki/alloy-config.alloy",
+  "docker run --rm --entrypoint promtool -v \"$PWD:/workspace:ro\" prom/prometheus:v3.15.1 check rules /workspace/infra/docker/prometheus-rules.yml",
+  "docker run --rm -v \"$PWD:/workspace:ro\" grafana/alloy:v1.21.2 validate /workspace/infra/docker/alloy-config.alloy",
+  "docker run --rm -e HOSTNAME=validation-node -v \"$PWD:/workspace:ro\" grafana/alloy:v1.21.2 validate /workspace/infra/k8s/monitoring/loki/alloy-config.alloy",
   "jq empty infra/docker/grafana-dashboard.json",
-  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.1 build infra/k8s/monitoring > /dev/null",
-  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.1 build infra/k8s/monitoring/operator > /dev/null",
-  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.1 build infra/k8s/monitoring/loki > /dev/null",
+  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.3 build infra/k8s/monitoring > /dev/null",
+  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.3 build infra/k8s/monitoring/operator > /dev/null",
+  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.3 build infra/k8s/monitoring/loki > /dev/null",
 ]
 
 [tasks.deploy-monitoring]

@@ -8,8 +8,3 @@
 id = "GO-2026-5932"
 ignoreUntil = 2026-11-28
 reason = "IdMagic は golang.org/x/crypto/openpgp を import せず、mise run audit-go-reachability でも到達しない。x/crypto は Argon2 と Kerberos などで使う。2026-10-24 の最新安定版 v0.58.0 は OpenPGP の分離と削除の直前である。https://github.com/golang/go/issues/81227 の対応を含む安定版へ更新し、OSV の再検査で不要になったことを確認してこの抑止を削除する。"
-
-[[IgnoredVulns]]
-id = "GHSA-vfj7-8cjw-p6xm"
-ignoreUntil = 2026-11-28
-reason = "braces 3.0.3 is the latest release and OSV lists no fixed version. It reaches frontend/bun.lock only through the shadcn development CLI (shadcn, @shadcn/registry, ts-morph -> fast-glob -> micromatch -> braces), which expands glob patterns written by repository developers, never input from IdMagic users. Revisit when braces publishes a fixed release or shadcn drops fast-glob."

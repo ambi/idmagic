@@ -1,4 +1,4 @@
-FROM oven/bun:1.4.3-alpine AS build
+FROM oven/bun:1.4.4-alpine AS build
 ARG VITE_DEMO_LOGIN_ENABLED=false
 ENV VITE_DEMO_LOGIN_ENABLED=$VITE_DEMO_LOGIN_ENABLED
 WORKDIR /src
