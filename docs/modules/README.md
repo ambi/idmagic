@@ -62,6 +62,7 @@
 | [IdManagement](identity-management/README.md) | `internal` | `backend/idmanagement/domain`, `backend/idmanagement/user/domain`, `backend/idmanagement/user/ports`, `backend/idmanagement/group/domain`, `backend/idmanagement/group/ports`, `backend/idmanagement/agent/domain`, `backend/idmanagement/agent/ports` | `backend/idmanagement` | User、Group、Agent、プロフィール、アイデンティティのライフサイクル |
 | [IdGovernance](identity-governance/README.md) | `internal` | — | `backend/idgovernance` | LifecycleWorkflow のポリシーとオーケストレーション |
 | [Sourcing](sourcing/README.md) | `internal` | `backend/sourcing/scim/ports`, `backend/sourcing/directory/ports` | `backend/sourcing` | 上流の権威からの内向きアイデンティティ取り込み |
+| [DirectoryConnector](directory-connector/README.md) | `internal` | なし | `backend/directoryconnector` | 利用者の閉域で AD と OpenLDAP を読み、Connector API へ差分を送る別配布の実行単位 |
 | [Provisioning](provisioning/README.md) | `internal` | なし | `backend/provisioning` | IdMagic を正とする外向き SCIM プロビジョニング |
 | [WorkloadIdentity](workloadidentity/README.md) | `internal` | `backend/workloadidentity/domain` | `backend/workloadidentity` | 外部アテステーションと Agent の対応付け |
 
@@ -112,6 +113,7 @@ flowchart LR
     IdManagement
     IdGovernance
     Sourcing
+    DirectoryConnector
     Provisioning
     WorkloadIdentity
   end

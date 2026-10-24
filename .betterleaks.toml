@@ -35,6 +35,10 @@ paths = [
 ]
 
 [[allowlists]]
+description = "Directory Connector の統合テストが起動し、テストの終わりに消す OpenLDAP のコンテナの管理者パスワード。127.0.0.1 にだけ公開するテスト専用のコンテナのもので、リポジトリの外に対して何の権限も持たない。"
+paths = ['''^backend/directoryconnector/internal/testing_openldap/server\.go$''']
+
+[[allowlists]]
 description = "デモスクリプトが自分で起動したローカルサーバーに対して使う Basic 認証。demo.sh の手順そのものが公開の説明であり、値はデモ用のクライアント資格情報である。"
 paths = ['''^demo\.sh$''']
 

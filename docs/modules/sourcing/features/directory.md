@@ -8,7 +8,7 @@
 | --- | --- |
 | 責務 | Directory Connector の作成、登録、無効化、Connector の呼び出しの認証、User の取り込みと取り込みの実行の記録 |
 | 行為者 | テナント管理者、Directory Connector |
-| 扱わないもの | グループの取り込みは提供しない。Connector の実行環境、LDAP の読み取り、LDAP の属性から正規の属性への対応付けは DirectoryConnector が担当する設計とする（未実装） |
+| 扱わないもの | グループの取り込みは提供しない。Connector の実行環境、LDAP の読み取り、LDAP の属性から正規の属性への対応付けは [DirectoryConnector](../../directory-connector/README.md) が担当する。二つのモジュールの契約は Connector API だけである |
 
 Directory Connector は、AD と同じ閉域のネットワークに置く実行単位であり、IdMagic へ外向きの接続だけを行う。
 IdMagic は AD への到達経路も、AD の資格情報も持たない。

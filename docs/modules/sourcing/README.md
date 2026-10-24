@@ -8,7 +8,7 @@
 
 サーバー内の取り込み経路は、永続的な関連付けを持つ外部の権威があるかどうかで、このモジュールの担当を判断する。
 別々に配布される実行単位の配置は、先に[境界を選ぶ判断手順](../../design/application/design-guidelines.md#境界を選ぶ判断手順)の D9 で判断する。
-利用者の閉域で動く Connector の実行環境、LDAP の読み取りと属性の対応付けは、サーバー側の取り込みを担当する Sourcing から分け、DirectoryConnector が担当する設計とする（未実装）。
+利用者の閉域で動く Connector の実行環境、LDAP の読み取りと属性の対応付けは、サーバー側の取り込みを担当する Sourcing から分け、[DirectoryConnector](../directory-connector/README.md) が担当する。
 
 | 扱わないもの | 担当 |
 | --- | --- |
@@ -42,7 +42,6 @@
 | --- | --- |
 | [SCIM による取り込み](features/scim.md) | 外部の IdP からの SCIM 2.0 による User と Group の同期 |
 | [Directory Connector による取り込み](features/directory.md) | 閉域の AD と LDAP を取り込み元とする Directory Connector の登録、その呼び出しの認証、差分のバッチによる User の取り込み |
-
 ## 文書
 
 | 設計領域 | 文書 | 内容 |
