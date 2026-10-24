@@ -186,7 +186,6 @@ flowchart LR
   WsFederation --> Authentication
   WsFederation --> ClaimMapping
   WsFederation --> IdManagement
-  WsFederation --> OAuth2
 ```
 
 <!-- generated:module-dependencies:end -->

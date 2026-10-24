@@ -11,7 +11,6 @@ import (
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
@@ -27,10 +26,10 @@ type Deps struct {
 	Sessions
 	SecondFactors SecondFactorSteps
 
-	WsFedRPRepo                wsfederationports.WsFedRelyingPartyRepository
-	UserRepo                   userports.UserRepository
-	FederationSigner           samltoken.SignerProvider
-	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
+	WsFedRPRepo          wsfederationports.WsFedRelyingPartyRepository
+	UserRepo             userports.UserRepository
+	FederationSigner     samltoken.SignerProvider
+	MessageIDReplayStore wsfederationports.MessageIDReplayStore
 	// Passwords は UsernameToken を、対話のログインと同じ試行の制限と監査で認証する。
 	// Authentication が所有し、組み立て地点が結ぶ。
 	Passwords      signinports.PasswordAuthenticator

@@ -5,7 +5,6 @@ import (
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	wsfedhttp "github.com/ambi/idmagic/backend/wsfederation/internal/handlers_http"
@@ -21,13 +20,13 @@ type Module struct {
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
 	applicationGate wsfedhttp.ApplicationGate, sessions wsfedhttp.Sessions, secondFactors wsfedhttp.SecondFactorSteps,
 	userRepo userports.UserRepository, federationSigner samltoken.SignerProvider,
-	clientAssertionReplayStore oauthports.ClientAssertionReplayStore, passwords signinports.PasswordAuthenticator,
+	messageIDReplayStore wsfedports.MessageIDReplayStore, passwords signinports.PasswordAuthenticator,
 	attrSchemaRepo claimports.TenantAttributeSchemaRepo,
 ) {
 	wsfedhttp.RegisterRoutes(g, wsfedhttp.Deps{
 		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate, Sessions: sessions,
 		SecondFactors: secondFactors, WsFedRPRepo: m.RPRepo,
-		UserRepo: userRepo, FederationSigner: federationSigner, ClientAssertionReplayStore: clientAssertionReplayStore,
+		UserRepo: userRepo, FederationSigner: federationSigner, MessageIDReplayStore: messageIDReplayStore,
 		Passwords: passwords, AttrSchemaRepo: attrSchemaRepo,
 	})
 }

@@ -113,8 +113,8 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 }
 
 func (d Deps) recordWsTrustMessageID(c *echo.Context, messageID string, now time.Time) (bool, error) {
-	if d.ClientAssertionReplayStore == nil {
+	if d.MessageIDReplayStore == nil {
 		return true, nil
 	}
-	return d.ClientAssertionReplayStore.RecordIfNew(c.Request().Context(), "wstrust:"+messageID, int(assertionLifetime.Seconds()), now)
+	return d.MessageIDReplayStore.RecordIfNew(c.Request().Context(), "wstrust:"+messageID, int(assertionLifetime.Seconds()), now)
 }
