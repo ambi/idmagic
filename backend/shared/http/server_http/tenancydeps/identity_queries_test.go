@@ -3,11 +3,8 @@ package tenancydeps_test
 import (
 	"context"
 	"errors"
-	"reflect"
 	"testing"
 
-	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
@@ -47,23 +44,6 @@ func TestIdentityQueriesPreserveMissingUsersAndReadErrors(t *testing.T) {
 	if !errors.Is(err, want) || actor != nil {
 		t.Fatalf("operator read error changed: %#v, %v", actor, err)
 	}
-	references, err := tenancydeps.GroupAttributeReferences(groupRuleLookup{err: want})(ctx, "tenant")
-	if !errors.Is(err, want) || references != nil {
-		t.Fatalf("dynamic rule read error changed: %#v, %v", references, err)
-	}
-}
-
-func TestDynamicGroupReferencesPreserveTenantAndEveryReferencedKey(t *testing.T) {
-	reader := tenancydeps.GroupAttributeReferences(groupRuleLookup{rules: []*groupdomain.DynamicGroupRule{
-		{ReferencedAttributes: []string{"region", "department"}},
-		{ReferencedAttributes: []string{"cost_center"}},
-		{},
-	}})
-	references, err := reader(context.Background(), "tenant")
-	want := [][]string{{"region", "department"}, {"cost_center"}, nil}
-	if err != nil || !reflect.DeepEqual(references, want) {
-		t.Fatalf("dynamic rule references changed: %#v, error %v", references, err)
-	}
 }
 
 type userLookup struct {
@@ -77,17 +57,4 @@ func (s userLookup) FindBySub(_ context.Context, sub string) (*userdomain.User, 
 		return nil, errors.New("wrong operator")
 	}
 	return s.user, s.err
-}
-
-type groupRuleLookup struct {
-	groupports.GroupRepository
-	rules []*groupdomain.DynamicGroupRule
-	err   error
-}
-
-func (s groupRuleLookup) ListDynamicRules(_ context.Context, tenantID string) ([]*groupdomain.DynamicGroupRule, error) {
-	if tenantID != "tenant" {
-		return nil, errors.New("wrong tenant")
-	}
-	return s.rules, s.err
 }

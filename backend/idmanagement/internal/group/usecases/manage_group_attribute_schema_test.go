@@ -6,16 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/idmanagement"
+	memory "github.com/ambi/idmagic/backend/idmanagement/internal/group/db_memory"
 
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
 )
 
 func TestGetGroupAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
-	repo := tenancydeps.GroupAttributeSchemas(idmanagement.NewMemoryModule().GroupAttrSchemaRepo)
+	repo := memory.NewTenantGroupAttributeSchemaRepository()
 	schema, err := GetGroupAttributeSchema(context.Background(), repo, domain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
@@ -26,10 +26,10 @@ func TestGetGroupAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
 }
 
 func TestUpdateGroupAttributeSchemaPersistsCustomDefs(t *testing.T) {
-	repo := tenancydeps.GroupAttributeSchemas(idmanagement.NewMemoryModule().GroupAttrSchemaRepo)
+	repo := memory.NewTenantGroupAttributeSchemaRepository()
 	ctx := context.Background()
-	defs := []domain.GroupAttributeDef{
-		{Key: "cost_center", Type: string(idmdomain.AttributeTypeString)},
+	defs := []groupdomain.GroupAttributeDef{
+		{Key: "cost_center", Type: idmdomain.AttributeTypeString},
 	}
 	saved, err := UpdateGroupAttributeSchema(ctx, repo, domain.DefaultTenantID, defs, time.Now().UTC())
 	if err != nil {
@@ -48,10 +48,10 @@ func TestUpdateGroupAttributeSchemaPersistsCustomDefs(t *testing.T) {
 }
 
 func TestUpdateGroupAttributeSchemaRejectsDuplicateKey(t *testing.T) {
-	repo := tenancydeps.GroupAttributeSchemas(idmanagement.NewMemoryModule().GroupAttrSchemaRepo)
-	defs := []domain.GroupAttributeDef{
-		{Key: "cost_center", Type: string(idmdomain.AttributeTypeString)},
-		{Key: "cost_center", Type: string(idmdomain.AttributeTypeNumber)},
+	repo := memory.NewTenantGroupAttributeSchemaRepository()
+	defs := []groupdomain.GroupAttributeDef{
+		{Key: "cost_center", Type: idmdomain.AttributeTypeString},
+		{Key: "cost_center", Type: idmdomain.AttributeTypeNumber},
 	}
 	if _, err := UpdateGroupAttributeSchema(
 		context.Background(), repo, domain.DefaultTenantID, defs, time.Now().UTC(),
@@ -61,10 +61,10 @@ func TestUpdateGroupAttributeSchemaRejectsDuplicateKey(t *testing.T) {
 }
 
 func TestUpdateGroupAttributeSchemaAllowsEmptyClear(t *testing.T) {
-	repo := tenancydeps.GroupAttributeSchemas(idmanagement.NewMemoryModule().GroupAttrSchemaRepo)
+	repo := memory.NewTenantGroupAttributeSchemaRepository()
 	ctx := context.Background()
 	if _, err := UpdateGroupAttributeSchema(ctx, repo, domain.DefaultTenantID,
-		[]domain.GroupAttributeDef{{Key: "cost_center", Type: string(idmdomain.AttributeTypeString)}},
+		[]groupdomain.GroupAttributeDef{{Key: "cost_center", Type: idmdomain.AttributeTypeString}},
 		time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}

@@ -8,10 +8,13 @@
 package handlers_http
 
 import (
+	"slices"
+
 	agenthttp "github.com/ambi/idmagic/backend/idmanagement/internal/agent/handlers_http"
 	httpdeps "github.com/ambi/idmagic/backend/idmanagement/internal/deps_http"
 	grouphttp "github.com/ambi/idmagic/backend/idmanagement/internal/group/handlers_http"
 	userhttp "github.com/ambi/idmagic/backend/idmanagement/internal/user/handlers_http"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
 )
@@ -22,6 +25,10 @@ import (
 type Deps = httpdeps.Deps
 
 func RegisterRoutes(g *echo.Group, d Deps) {
+	g.GET("/api/admin/v1/tenant/user-attribute-schema", func(c *echo.Context) error { return handleGetUserAttributeSchema(d, c) })
+	g.PUT("/api/admin/v1/tenant/user-attribute-schema", func(c *echo.Context) error { return handleUpdateUserAttributeSchema(d, c) })
+	g.GET("/api/admin/v1/tenant/group-attribute-schema", func(c *echo.Context) error { return handleGetGroupAttributeSchema(d, c) })
+	g.PUT("/api/admin/v1/tenant/group-attribute-schema", func(c *echo.Context) error { return handleUpdateGroupAttributeSchema(d, c) })
 	g.GET("/api/account/v1/summary", func(c *echo.Context) error { return userhttp.HandleGetAccountSummary(d, c) })
 	g.GET("/api/account/v1/profile", func(c *echo.Context) error { return userhttp.HandleGetAccountProfile(d, c) })
 	g.PATCH("/api/account/v1/profile", func(c *echo.Context) error { return userhttp.HandleUpdateAccountProfile(d, c) })
@@ -87,4 +94,17 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.DELETE("/api/admin/v1/agents/:agent_id", func(c *echo.Context) error { return agenthttp.HandleDeleteAgent(d, c) })
 	g.POST("/api/admin/v1/agents/:agent_id/credentials", func(c *echo.Context) error { return agenthttp.HandleBindAgentCredential(d, c) })
 	g.DELETE("/api/admin/v1/agents/:agent_id/credentials/:client_id", func(c *echo.Context) error { return agenthttp.HandleUnbindAgentCredential(d, c) })
+}
+
+// 属性スキーマは admin と system_admin の双方を受け、解決済みテナントとの一致を要求する。
+func requireAttributeSchemaAdmin(d Deps, c *echo.Context) (*support.Principal, error) {
+	actor, err := d.ResolveAdminActor(c)
+	if err != nil {
+		return nil, err
+	}
+	if actor.TenantID != support.RequestTenantID(c) ||
+		(!slices.Contains(actor.Roles, "admin") && !slices.Contains(actor.Roles, "system_admin")) {
+		return nil, support.ErrAdminAccessDenied
+	}
+	return actor, nil
 }

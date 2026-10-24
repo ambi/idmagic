@@ -177,6 +177,8 @@ Soft の上限の現在の実装の状態は、[リスク](risks.md)に記す。
 ### 決定
 
 `TenantBranding`、`TenantUserAttributeSchema`、`TenantGroupAttributeSchema` は `Tenant` に埋め込まず、`tenant_id` をキーとする独立した Aggregate とする。
+外装は Tenancy、User と Group の属性スキーマの型、管理と保存は IdManagement が担当する。
+属性スキーマの公開 API のパスと規範 ID は、Tenancy の分類を維持する。
 
 ### 検討した代替案
 

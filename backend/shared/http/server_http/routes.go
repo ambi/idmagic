@@ -142,7 +142,6 @@ func Register(e *echo.Echo, d Deps) {
 	d.Authentication = mergeLegacyAuthenticationDeps(d.Authentication, d)
 	d.IdManagement = mergeLegacyIdManagementDeps(d.IdManagement, d)
 	d.Notification = mergeLegacyNotificationDeps(d.Notification, d)
-	d.Tenancy = mergeLegacyTenancyDeps(d.Tenancy, d)
 	// テナントの正規ロケーションは 2 形あり、どちらか一方だけが有効になる。
 	// subdomain style は origin 直下の bare path、path style は /realms/{realm} 配下。
 	// 到達経路と endpoint_style の一致は resolver 側で確かめる。
@@ -224,16 +223,6 @@ func mergeLegacyOAuth2Deps(module oauth2.Module, d Deps) oauth2.Module {
 	}
 	if module.Authorizer == nil {
 		module.Authorizer = d.Authorizer
-	}
-	return module
-}
-
-func mergeLegacyTenancyDeps(module tenancy.Module, d Deps) tenancy.Module {
-	if module.AttrSchemaRepo == nil {
-		module.AttrSchemaRepo = tenancydeps.UserAttributeSchemas(d.IdManagement.AttrSchemaRepo)
-	}
-	if module.GroupAttrSchemaRepo == nil {
-		module.GroupAttrSchemaRepo = tenancydeps.GroupAttributeSchemas(d.IdManagement.GroupAttrSchemaRepo)
 	}
 	return module
 }
@@ -459,13 +448,12 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	})
 
 	d.Tenancy.RegisterRoutes(g, tenancy.RouteDeps{
-		Deps:                     d.Deps,
-		Authenticator:            authenticator,
-		TenantRepo:               d.TenantRepo,
-		Notifier:                 d.Notification.Notifier,
-		TestNotificationActor:    tenancydeps.TestNotificationActors(d.IdManagement.UserRepo),
-		GroupAttributeReferences: tenancydeps.GroupAttributeReferences(d.IdManagement.GroupRepo),
-		FederationSigner:         d.FederationSigner,
+		Deps:                  d.Deps,
+		Authenticator:         authenticator,
+		TenantRepo:            d.TenantRepo,
+		Notifier:              d.Notification.Notifier,
+		TestNotificationActor: tenancydeps.TestNotificationActors(d.IdManagement.UserRepo),
+		FederationSigner:      d.FederationSigner,
 	})
 
 	// nil の *SessionManager をインターフェースへ入れると nil でなくなり、受け取り側の nil の確認を

@@ -41,7 +41,7 @@ type Module struct {
 	// プロビジョニングタスクを生むかどうかは接続の push_groups が決めるので、常に配線してよい。
 	GroupProvisioningNotifier groupports.ProvisioningNotifier
 	// AttrSchemaRepo と GroupAttrSchemaRepo は IdManagement が所有する属性定義の保存先である。
-	// 組み立て地点は管理用の値へ変換するアダプターを通して Tenancy へ渡す。
+	// 管理 API と属性値の検証が同じ定義を使う。
 	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
 	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
 }

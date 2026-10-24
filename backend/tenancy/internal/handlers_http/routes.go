@@ -1,6 +1,6 @@
 // Package http: tenancy コンテキストの HTTP アダプタ。
 //
-// テナント設定・ユーザ属性スキーマ・テナント CRUD (control-plane) のハンドラを所有し、
+// テナント設定とテナント CRUD (control-plane) のハンドラを所有し、
 // 共有基盤 support.Deps を受け取って shared/handlers_http/server から登録される。
 package handlers_http
 
@@ -22,32 +22,25 @@ type Deps struct {
 	support.Deps
 	*support.Authenticator
 	TenantRepo               tenantports.TenantRepository
-	AttrSchemaRepo           tenantports.TenantUserAttributeSchemaRepository
-	GroupAttrSchemaRepo      tenantports.TenantGroupAttributeSchemaRepository
 	BrandingRepo             tenantports.TenantBrandingRepository
 	BrandingAssetStore       tenantports.TenantBrandingAssetStore
 	NotificationTemplateRepo tenantports.NotificationTemplateRepository
 	// Notifier はテンプレート編集画面からのテスト送信に使う (wi-288)。
-	Notifier                 notificationports.Notifier
-	TestNotificationActor    tenantports.TestNotificationActorReader
-	GroupAttributeReferences tenantports.DynamicGroupAttributeReferences
-	QuotaRepo                tenantports.QuotaRepository
+	Notifier              notificationports.Notifier
+	TestNotificationActor tenantports.TestNotificationActorReader
+	QuotaRepo             tenantports.QuotaRepository
 	// FederationSigner resolves the request tenant's active public XML credential.
 	FederationSigner samltoken.SignerProvider
 }
 
-// RegisterRoutes はテナント解決済みグループに、テナント単位の admin 設定・
-// ユーザ属性スキーマ・branding のエンドポイントを登録する。branding の閲覧系
+// RegisterRoutes はテナント解決済みグループに、テナント単位の admin 設定と
+// branding のエンドポイントを登録する。branding の閲覧系
 // (GetTenantBranding / GetTenantBrandingAsset) は未認証の login 画面等が読むため
 // public とする (wi-89)。
 func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/settings", d.handleGetAdminSettings)
 	g.GET("/api/admin/v1/integration-endpoints", d.handleGetAdminIntegrationEndpoints)
 	g.PATCH("/api/admin/v1/settings", d.handleUpdateAdminSettings)
-	g.GET("/api/admin/v1/tenant/user-attribute-schema", d.handleGetUserAttributeSchema)
-	g.PUT("/api/admin/v1/tenant/user-attribute-schema", d.handleUpdateUserAttributeSchema)
-	g.GET("/api/admin/v1/tenant/group-attribute-schema", d.handleGetGroupAttributeSchema)
-	g.PUT("/api/admin/v1/tenant/group-attribute-schema", d.handleUpdateGroupAttributeSchema)
 	g.GET("/api/branding", d.handleGetBranding)
 	g.PUT("/api/admin/v1/tenant/branding", d.handleUpdateBranding)
 	g.POST("/api/admin/v1/tenant/branding/assets/:kind", d.handleUploadBrandingAsset)

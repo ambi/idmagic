@@ -46,7 +46,7 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 | モジュール | 公開方式 | 公開パッケージ | 実装パス | 責務 |
 | --- | --- | --- | --- | --- |
 | [System](system/README.md) | 組み立て地点 | なし | `backend/cmd`, `backend/shared/http/server_http`, `backend/shared/http/testing_stack`, `backend/shared/testing/fixtures_postgres` | 起動、機能選択、経路の組み立て、テスト前提の組み立て、健全性と共通の HTTP 境界 |
-| [Tenancy](tenancy/README.md) | `internal` | `backend/tenancy/domain`, `backend/tenancy/ports`, `backend/tenancy/testing_tenant` | `backend/tenancy` | Tenant と realm、テナント設定、属性スキーマ、制御面の管理 |
+| [Tenancy](tenancy/README.md) | `internal` | `backend/tenancy/domain`, `backend/tenancy/ports`, `backend/tenancy/testing_tenant` | `backend/tenancy` | Tenant と realm、テナント設定、制御面の管理 |
 | [Jobs](jobs/README.md) | `internal` | `backend/jobs/domain`, `backend/jobs/ports` | `backend/jobs` | テナント境界を保つ非同期ジョブ基盤 |
 | [Seeding](seeding/README.md) | `internal` | `backend/seeding/domain` | `backend/seeding` | 環境構成のプレビュー、計画、初期データ適用 |
 | [SigningKeys](signing-keys/README.md) | `internal` | `backend/signingkeys/domain`, `backend/signingkeys/ports` | `backend/signingkeys` | 用途別署名鍵、証明書、ローテーション、提供元アダプター |
@@ -68,7 +68,7 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 
 | モジュール | 公開方式 | 公開パッケージ | 実装パス | 責務 |
 | --- | --- | --- | --- | --- |
-| [IdManagement](identity-management/README.md) | `internal` | `backend/idmanagement/domain`, `backend/idmanagement/user/domain`, `backend/idmanagement/user/ports`, `backend/idmanagement/group/domain`, `backend/idmanagement/group/ports`, `backend/idmanagement/agent/domain`, `backend/idmanagement/agent/ports` | `backend/idmanagement` | User、Group、Agent、プロフィール、アイデンティティのライフサイクル |
+| [IdManagement](identity-management/README.md) | `internal` | `backend/idmanagement/domain`, `backend/idmanagement/user/domain`, `backend/idmanagement/user/ports`, `backend/idmanagement/group/domain`, `backend/idmanagement/group/ports`, `backend/idmanagement/agent/domain`, `backend/idmanagement/agent/ports` | `backend/idmanagement` | User、Group、Agent、プロフィール、属性定義の管理、アイデンティティのライフサイクル |
 | [IdGovernance](identity-governance/README.md) | `internal` | — | `backend/idgovernance` | LifecycleWorkflow のポリシーとオーケストレーション |
 | [Sourcing](sourcing/README.md) | `internal` | `backend/sourcing/scim/ports`, `backend/sourcing/directory/ports` | `backend/sourcing` | 上流の権威からの内向きアイデンティティ取り込み |
 | [DirectoryConnector](directory-connector/README.md) | `internal` | なし | `backend/directoryconnector` | 利用者の閉域で AD と OpenLDAP を読み、Connector API へ差分を送る別配布の実行単位 |

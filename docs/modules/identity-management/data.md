@@ -5,13 +5,14 @@
 
 ## 集約
 
-Aggregate root は `User`、`Group`、`Agent` の三つである。
+主体の Aggregate root は `User`、`Group`、`Agent` の三つであり、属性定義の集合も独立した Aggregate として持つ。
 
 | Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
 | --- | --- | --- |
 | `User` | 属性（`attributes`）、必須操作 | `Group` のメンバーになる。`Agent` の所有者になる |
 | `Group` | `GroupMembership`、`DynamicGroupRule` | メンバーの `User` を ID で参照する |
 | `Agent` | `AgentCredentialBinding` | 所有者の `User` または `Group` と、バインドする `OAuth2Client` を ID で参照する |
+| `TenantUserAttributeSchema`、`TenantGroupAttributeSchema` | User と Group のカスタム属性の定義 | `Tenant` を `tenant_id` で参照する |
 
 境界の内側にあるものは、その Aggregate root を経由せずに参照しない。
 `User` の実効ロールは、直接付与したロールと、所属する `Group` のロールの和集合である。
@@ -77,3 +78,7 @@ Agent を変える操作（管理者の更新、無効化と再有効化、停�
 
 `TenantUserAttributeSchema` は `Tenant` に埋め込まず、`tenant_id` をキーとする独立した Aggregate にする。
 スキーマはテナントの設定より頻繁に変わり、テナントを削除するときに明示的なカスケードが要るからである。
+`TenantGroupAttributeSchema` も独立して保存する。
+User のスライスは `tenant_user_attribute_schemas`、Group のスライスは `tenant_group_attribute_schemas` の型、検証、保存と管理ユースケースを担当する。
+HTTP はそれらのユースケースを呼び、Tenancy の管理用の型や保存先の変換を経由しない。
+参照の照会とスキーマの保存を新しいトランザクションへまとめず、既存値の一意性の検査とテナント削除の cascade は保存先が担う。

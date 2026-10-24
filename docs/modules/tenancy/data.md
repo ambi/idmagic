@@ -9,7 +9,6 @@
 | --- | --- | --- |
 | `Tenant` | `realm`、表示名、状態、`endpoint_style`、セキュリティポリシーの上書き、通知のデフォルト言語 | すべてのモジュールの Aggregate が `tenant_id` で参照する |
 | `TenantBranding` | ブランド設定の項目とアセット | `Tenant` を `tenant_id` で参照する |
-| `TenantUserAttributeSchema`、`TenantGroupAttributeSchema` | カスタム属性の定義 | `Tenant` を `tenant_id` で参照する |
 | `NotificationTemplate` | 一つの `template_key` と `locale` の文面の上書き | `Tenant` を `tenant_id` で参照する |
 | `TenantQuota` | リソースごとの上限の上書きと使用量 | `Tenant` を `tenant_id` で参照する |
 
@@ -53,4 +52,6 @@ URL の接頭辞、OIDC の発行者、Discovery Metadata など外部に示す�
 | `TenantBranding` | `tenant_brandings`、画像は `tenant_branding_assets` | `backend/tenancy/internal/db_postgres` |
 | `NotificationTemplate` | `notification_templates` | `backend/tenancy/internal/db_postgres` |
 | `TenantQuota` | 上限の上書きは `tenant_quotas`、使用量のカウンターは `tenant_usages` | `backend/tenancy/internal/db_postgres` |
-| `TenantUserAttributeSchema`、`TenantGroupAttributeSchema` | `tenant_user_attribute_schemas`、`tenant_group_attribute_schemas` | 管理用の値と要求側ポートは Tenancy、保存型と保存ポート、実装は IdManagement の `user` と `group` のスライスが定める |
+
+`TenantUserAttributeSchema` と `TenantGroupAttributeSchema` は、IdManagement が管理と保存を担当する独立した Aggregate である。
+`Tenant` との関係は [IdManagement のデータ](../identity-management/data.md#テナントの属性スキーマ)が扱う。

@@ -18,8 +18,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-// NewMemoryModule は Tenancy が所有する保存先をメモリで作る。属性スキーマは IdManagement の保存先を
-// 組み立て地点が設定する。
+// NewMemoryModule は Tenancy が所有する保存先をメモリで作る。
 func NewMemoryModule() Module {
 	return Module{
 		TenantRepo:            db_memory.NewTenantRepository(),
@@ -30,8 +29,7 @@ func NewMemoryModule() Module {
 	}
 }
 
-// NewPostgresModule は Tenancy が所有する保存先を PostgreSQL で作る。属性スキーマは IdManagement の
-// 保存先を組み立て地点が設定する。
+// NewPostgresModule は Tenancy が所有する保存先を PostgreSQL で作る。
 func NewPostgresModule(pool postgres.DB) Module {
 	return Module{
 		TenantRepo:            &db_postgres.TenantRepository{Pool: pool},
@@ -82,9 +80,8 @@ type RouteDeps struct {
 	*support.Authenticator
 	TenantRepo ports.TenantRepository
 	// Notifier はテンプレート編集画面からのテスト送信に使う。
-	Notifier                 notificationports.Notifier
-	TestNotificationActor    ports.TestNotificationActorReader
-	GroupAttributeReferences ports.DynamicGroupAttributeReferences
+	Notifier              notificationports.Notifier
+	TestNotificationActor ports.TestNotificationActorReader
 	// FederationSigner は要求テナントの有効な公開 XML 資格情報を解決する。
 	FederationSigner tenancyhttp.FederationSigner
 }
@@ -94,7 +91,7 @@ func (m Module) RegisterControlPlaneRoutes(g *echo.Group, d RouteDeps) {
 	tenancyhttp.RegisterControlPlaneRoutes(g, m.httpDeps(d))
 }
 
-// RegisterRoutes は、テナント単位の管理設定、属性スキーマ、branding、通知テンプレートの経路を登録する。
+// RegisterRoutes は、テナント単位の管理設定、branding、通知テンプレートの経路を登録する。
 func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
 	tenancyhttp.RegisterRoutes(g, m.httpDeps(d))
 }
@@ -104,14 +101,11 @@ func (m Module) httpDeps(d RouteDeps) tenancyhttp.Deps {
 		Deps:                     d.Deps,
 		Authenticator:            d.Authenticator,
 		TenantRepo:               d.TenantRepo,
-		AttrSchemaRepo:           m.AttrSchemaRepo,
-		GroupAttrSchemaRepo:      m.GroupAttrSchemaRepo,
 		BrandingRepo:             m.BrandingRepo,
 		BrandingAssetStore:       m.BrandingAssetStore,
 		NotificationTemplateRepo: m.NotificationTemplates,
 		Notifier:                 d.Notifier,
 		TestNotificationActor:    d.TestNotificationActor,
-		GroupAttributeReferences: d.GroupAttributeReferences,
 		QuotaRepo:                m.QuotaRepo,
 		FederationSigner:         d.FederationSigner,
 	}

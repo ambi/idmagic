@@ -135,7 +135,7 @@ URL、メールアドレス、IP アドレスの構文解析（`net/url`、`net/
 
 | 逆向きに必要になる機能 | 境界の選び方 | 実装状況 |
 | --- | --- | --- |
-| テナント設定からの属性定義と参照保護 | 管理 API は Tenancy、属性定義の意味と保存、組み込み属性、動的 Group の参照は IdManagement に残す。Tenancy の要求側ポートを組み立て地点の変換で実装する | 実装済み |
+| テナント設定として提供する属性定義と参照保護 | 管理 HTTP、定義の型、検証、組み込み属性、動的 Group の参照と保存を IdManagement に集約する。公開 API のパスと仕様の分類は Tenancy に維持する | 集約済み。Tenancy の管理用の型、要求側の保存ポートと組み立て地点の相互変換は持たない |
 | ポリシー評価で使う認証の結果 | SignInPolicy の読み取り専用の入力契約を Authentication の認証結果が満たす。ACR と AMR の解釈を認証事実へ射影し、ポリシー側へ認証方式の知識を複製しない | 実装済み |
 | カタログからのプロトコル設定の管理 | ApplicationCatalog が HTTP と管理の編成を担当し、Application の公開更新操作と各プロトコルを利用する。各プロトコルは Catalog を経由せず Application のアクセス判定を利用する | 分離済み。OIDC、SAML、WS-Fed は、それぞれ OAuth2、Saml、WsFederation の公開管理操作を直接利用し、表示へ写す処理は Catalog に置く |
 | 主体の管理からの資格情報の操作 | User の編成は IdManagement、資格情報の規則と保存は Authentication が担当する。連続する資格情報の削除は所有者の操作へ集約し、CSV は同じ Tx に参加する履歴 writer を要求する。Repository の保存型を要求側へ複製しない | 実装済み。必要最小限の要求契約と本人確認の操作を組み立て地点で結び、IdManagement から Authentication への本番 import はない |

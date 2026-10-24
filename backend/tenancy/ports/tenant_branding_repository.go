@@ -6,9 +6,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// TenantBrandingRepository はテナント単位の hosted UI ブランディング設定を保持する
-// (wi-89)。Tenant aggregate には埋め込まず、TenantUserAttributeSchemaRepository
-// と同じ理由で独立 entity として持つ。
+// TenantBrandingRepository は、Tenant の解決とは独立に更新する外装を保持する。
 type TenantBrandingRepository interface {
 	// FindByTenant は tenant の branding を返す。未設定なら nil, nil。
 	FindByTenant(ctx context.Context, tenantID string) (*domain.TenantBranding, error)

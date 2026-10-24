@@ -20,13 +20,20 @@ import (
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/internal/handlers_http"
 
 	"github.com/labstack/echo/v5"
 )
+
+type groupAttributeSchemaResponse struct {
+	TenantID   string                          `json:"tenant_id"`
+	Attributes []groupdomain.GroupAttributeDef `json:"attributes"`
+	CreatedAt  time.Time                       `json:"created_at"`
+	UpdatedAt  time.Time                       `json:"updated_at"`
+}
 
 func newGroupAttributeSchemaServer(
 	t *testing.T, actor *userdomain.User, tenants ...*domain.Tenant,
@@ -70,7 +77,7 @@ func TestGroupAttributeSchemaGetReturnsEmptyForUndefinedTenant(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	var body tenancyhttp.GroupAttributeSchemaResponse
+	var body groupAttributeSchemaResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +111,7 @@ func TestGroupAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	var body tenancyhttp.GroupAttributeSchemaResponse
+	var body groupAttributeSchemaResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}

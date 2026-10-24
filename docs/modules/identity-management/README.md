@@ -5,6 +5,8 @@
 テナント単位の `User`、`Group`、`Agent` の台帳を扱う。
 `User` は人間、`Group` は `User` を束ねてロールをまとめて付与する単位、`Agent` は非人間の行為者である。
 このモジュールは、それぞれのプロフィール、ロール、ライフサイクル、管理 API、セルフサービス API、CSV による一括の取り込みと書き出しを扱う。
+User と Group の属性スキーマは、定義の型、組み込み属性、管理 HTTP、更新の検証、動的 Group の参照保護と保存をこのモジュールに集める。
+公開 API の仕様、規範 ID とイベント名は、既存の [Tenancy の属性スキーマ](../tenancy/features/attribute-schema.md)を使う。
 
 | 扱わないもの | 担当 |
 | --- | --- |
@@ -77,6 +79,7 @@ User の無効化、再有効化、削除の予約は、管理 API の外から�
 | [アカウントのセルフサービス](features/account.md) | 本人によるプロフィール、メールアドレス、データエクスポートの操作 |
 | [エージェント](features/agent.md) | `Agent` の登録、資格情報のバインド、ライフサイクル |
 | [グループ](features/group.md) | `Group` の作成と更新、連絡先とカスタム属性、手動のメンバーシップ、実効ロール |
+| [属性スキーマ](../tenancy/features/attribute-schema.md) | User と Group の定義の管理。公開 API の分類は Tenancy に維持し、管理 HTTP をモジュールのルート、更新を各機能スライスに置く |
 | [動的グループ](features/dynamic-group.md) | CEL の規則の保存、プレビュー、全件の再評価による所属 |
 | [CSV の転送](features/csv-transfer.md) | User と Group の CSV が共有する、見出し、行、セルの読み書きと転送の上限 |
 | [ユーザー CSV](features/user-csv.md) | User の CSV のインポートとエクスポート |

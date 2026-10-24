@@ -2,9 +2,6 @@ package ports
 
 import "context"
 
-// DynamicGroupAttributeReferences は参照保護に必要な属性キーだけを返す。
-type DynamicGroupAttributeReferences func(ctx context.Context, tenantID string) ([][]string, error)
-
 type TestNotificationActor struct {
 	Email       string
 	DisplayName string

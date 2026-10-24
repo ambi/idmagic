@@ -2,13 +2,14 @@
 
 ## 責務と境界
 
-`Tenant`（Realm）と、テナントごとの設定、外装、属性スキーマ、通知テンプレート、リソース上限を扱う。
+`Tenant`（Realm）と、テナントごとの設定、外装、通知テンプレート、リソース上限を扱う。
 `Tenant` は IdMagic のすべての Aggregate が属する境界である。
 このモジュールは、HTTP リクエストからのテナントの解決と、制御面のテナント管理 API も扱う。
 
 | 扱わないもの | 担当 |
 | --- | --- |
 | テナントの中に置かれる User と Group | `IdManagement` |
+| User と Group の属性定義の管理、検証と保存 | `IdManagement`。公開 API の仕様と規範 ID は[属性スキーマ](features/attribute-schema.md)に置く |
 | テナントの中に置かれる Application | `Application` |
 | 資格情報とセッション | `Authentication` |
 | テナント分離の規則そのもの | [認可設計](../../design/security/authorization.md) |
@@ -49,8 +50,8 @@
 | テナントの設定 | [通知テンプレート](features/notification-template.md) | 通知メールの文面の上書き、プレビュー、試し送り |
 | テナントの設定 | [リソース上限](features/quota.md) | 上限のデフォルト値、上書き、超過時の拒否 |
 
-属性スキーマの管理用の値と要求側のポートは Tenancy が定める。
-属性定義の形式と保存先は IdManagement が担当し、組み立て地点で二つの表現を変換する。
+属性スキーマの管理 API は、IdManagement が定義の型、検証、参照保護と保存をまとめて実装する。
+API のパスと仕様の分類は維持し、Tenancy の管理用の型と組み立て地点での相互変換は持たない。
 
 ## 文書
 

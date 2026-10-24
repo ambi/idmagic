@@ -24,10 +24,17 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/internal/handlers_http"
 
 	"github.com/labstack/echo/v5"
 )
+
+type userAttributeSchemaResponse struct {
+	TenantID   string                        `json:"tenant_id"`
+	Attributes []userdomain.UserAttributeDef `json:"attributes"`
+	Builtin    []userdomain.UserAttributeDef `json:"builtin"`
+	CreatedAt  time.Time                     `json:"created_at"`
+	UpdatedAt  time.Time                     `json:"updated_at"`
+}
 
 func newUserAttributeSchemaServer(
 	t *testing.T, actor *userdomain.User, tenants ...*domain.Tenant,
@@ -105,7 +112,7 @@ func TestUserAttributeSchemaGetReturnsBuiltinForUndefinedTenant(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	var body tenancyhttp.UserAttributeSchemaResponse
+	var body userAttributeSchemaResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +149,7 @@ func TestUserAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	var body tenancyhttp.UserAttributeSchemaResponse
+	var body userAttributeSchemaResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}

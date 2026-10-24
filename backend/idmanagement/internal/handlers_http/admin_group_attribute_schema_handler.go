@@ -5,29 +5,30 @@ import (
 	"net/http"
 	"time"
 
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/internal/group/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )
 
 type GroupAttributeSchemaResponse struct {
-	TenantID   string                            `json:"tenant_id"`
-	Attributes []tenancydomain.GroupAttributeDef `json:"attributes"`
-	CreatedAt  time.Time                         `json:"created_at"`
-	UpdatedAt  time.Time                         `json:"updated_at"`
+	TenantID   string                          `json:"tenant_id"`
+	Attributes []groupdomain.GroupAttributeDef `json:"attributes"`
+	CreatedAt  time.Time                       `json:"created_at"`
+	UpdatedAt  time.Time                       `json:"updated_at"`
 }
 
 type groupAttributeSchemaUpdateRequest struct {
-	Attributes []tenancydomain.GroupAttributeDef `json:"attributes"`
+	Attributes []groupdomain.GroupAttributeDef `json:"attributes"`
 }
 
-func toGroupAttributeSchemaResponse(schema *tenancydomain.TenantGroupAttributeSchema) GroupAttributeSchemaResponse {
+func toGroupAttributeSchemaResponse(schema *groupdomain.TenantGroupAttributeSchema) GroupAttributeSchemaResponse {
 	attributes := schema.Attributes
 	if attributes == nil {
-		attributes = []tenancydomain.GroupAttributeDef{}
+		attributes = []groupdomain.GroupAttributeDef{}
 	}
 	return GroupAttributeSchemaResponse{
 		TenantID:   schema.TenantID,
@@ -37,23 +38,23 @@ func toGroupAttributeSchemaResponse(schema *tenancydomain.TenantGroupAttributeSc
 	}
 }
 
-func (d Deps) handleGetGroupAttributeSchema(c *echo.Context) error {
-	actor, err := d.requireTenantAdmin(c)
+func handleGetGroupAttributeSchema(d Deps, c *echo.Context) error {
+	actor, err := requireAttributeSchemaAdmin(d, c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	schema, err := tenantusecases.GetGroupAttributeSchema(c.Request().Context(), d.GroupAttrSchemaRepo, actor.TenantID)
+	schema, err := groupusecases.GetGroupAttributeSchema(c.Request().Context(), d.GroupAttrSchemaRepo, actor.TenantID)
 	if err != nil {
 		return err
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toGroupAttributeSchemaResponse(schema))
 }
 
-func (d Deps) handleUpdateGroupAttributeSchema(c *echo.Context) error {
+func handleUpdateGroupAttributeSchema(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.requireTenantAdmin(c)
+	actor, err := requireAttributeSchemaAdmin(d, c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
@@ -61,11 +62,11 @@ func (d Deps) handleUpdateGroupAttributeSchema(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	schema, err := tenantusecases.UpdateGroupAttributeSchema(
+	schema, err := groupusecases.UpdateGroupAttributeSchema(
 		c.Request().Context(), d.GroupAttrSchemaRepo, actor.TenantID, input.Attributes, time.Now().UTC(),
 	)
 	if err != nil {
-		if errors.Is(err, tenantusecases.ErrInvalidGroupAttributeSchema) {
+		if errors.Is(err, groupusecases.ErrInvalidGroupAttributeSchema) {
 			return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_attribute_schema", "The attribute definition is invalid.")
 		}
 		return err
