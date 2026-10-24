@@ -380,6 +380,51 @@ describe('spec-impact: 特性化テストの書き換え', () => {
     expect(result.code).toBe(0)
   })
 
+  /**
+   * none の work item に着手した後で、別の work item が特性化テストを移し、本文を変える。
+   * 移動は Spec-Impact: none のコミット、本文の変更は affected_spec を宣言する別の項目のコミットである。
+   */
+  async function changedByAnotherItem(otherStatus: 'completed' | 'in_progress') {
+    const { repo, base } = await characterized()
+    await repo.write(ITEM, notAffected('in_progress', CONCRETE_REASON))
+    await repo.commit('docs(work-items): start the none item')
+    const moved = 'backend/demo/moved_test.go'
+    await repo.git('mv', SERVICE_TEST, moved)
+    await repo.commit(`refactor(demo): move the test\n\nSpec-Impact: none — ${CONCRETE_REASON}`)
+    await repo.write(
+      NEXT_ITEM,
+      affected('in_progress', `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001 }`),
+    )
+    await repo.commit('docs(work-items): start the next item')
+    await repo.write(SERVICE, service('running'))
+    await repo.write(moved, characterization('running'))
+    await repo.write(SCENARIOS, scenario('the request is running'))
+    await repo.write(
+      NEXT_ITEM,
+      affected(otherStatus, `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001 }`),
+    )
+    await repo.commit('fix(demo): report running')
+    // none の項目の記録だけを変える。
+    await repo.write(ITEM, `${notAffected('in_progress', CONCRETE_REASON)}\n観察を足した。\n`)
+    return { repo, base }
+  }
+
+  it('進行中の none の作業範囲に、ほかの完了した work item が移して書き換えた特性化テストを帰属させない', async () => {
+    const { repo, base } = await changedByAnotherItem('completed')
+    const result = await repo.check(base)
+    expect(result.output).not.toContain('changes or removes characterization tests')
+    expect(result.code).toBe(0)
+  })
+
+  it('進行中の none の作業範囲で、進行中のほかの work item による特性化テストの変更は免除しない', async () => {
+    const { repo, base } = await changedByAnotherItem('in_progress')
+    const result = await repo.check(base)
+    expect(result.output).toContain(
+      `${ITEM}: spec_impact is none, but the work range changes or removes characterization tests`,
+    )
+    expect(result.code).toBe(1)
+  })
+
   it('affected_spec を宣言する work item は既存の特性化テストを書き換えられる', async () => {
     const { repo, base } = await characterized()
     await repo.write(SERVICE, service('running'))

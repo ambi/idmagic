@@ -265,6 +265,7 @@ async function checkedWorkItem(
     const range = await completedRange(other, head, git, repo)
     if (range) completed.push(range)
   }
+  const completedCommits = new Set(completed.flatMap((range) => range.commits))
   return {
     ...item,
     range: {
@@ -281,10 +282,12 @@ async function checkedWorkItem(
       changedTests: changed
         .filter((path) => TEST_FILE.test(path))
         .flatMap((path) => repo.read(path) ?? []),
-      changedCharacterizations: characterizationChanges(
-        changed,
-        (path) => git(['show', `${startSha}:${path}`]),
-        (path) => repo.read(path),
+      changedCharacterizations: rangeCharacterizationChanges(
+        [...activeCommits].filter((sha) => !completedCommits.has(sha)),
+        characterizationNames(changed, (path) => git(['show', `${startSha}:${path}`])),
+        head,
+        git,
+        repo,
       ),
     },
   }
@@ -298,9 +301,7 @@ async function checkedCommit(sha: string, git: Git, repo: Repository): Promise<C
     '--format=%(trailers:key=Spec-Impact,valueonly,unfold)',
     sha,
   ])?.trim()
-  const paths = lines(
-    git(['diff-tree', '--root', '--no-commit-id', '--name-only', '--no-renames', '-r', sha]),
-  )
+  const paths = commitPaths(sha, git)
   const exclusions = await repo.productionCodeExclusions()
   const checkpointed = subject.match(CHECKPOINT)?.[1]
   // checkpoint は work item のファイルを毎回変更するとは限らないので、件名が名指す記録を使う。
@@ -317,12 +318,60 @@ async function checkedCommit(sha: string, git: Git, repo: Repository): Promise<C
     ),
     trailer: trailer ? trailer : undefined,
     diff: repo.diffOf(sha, paths),
-    changedCharacterizations: characterizationChanges(
-      paths,
-      (path) => git(['show', `${sha}^:${path}`]),
-      (path) => git(['show', `${sha}:${path}`]),
-    ),
+    changedCharacterizations: commitCharacterizationChanges(sha, paths, git),
   }
+}
+
+function commitPaths(sha: string, git: Git): string[] {
+  return lines(
+    git(['diff-tree', '--root', '--no-commit-id', '--name-only', '--no-renames', '-r', sha]),
+  )
+}
+
+/** コミットが親と比べて変えたか消した特性化テスト。本文を保った移動は数えない。 */
+function commitCharacterizationChanges(sha: string, paths: readonly string[], git: Git): string[] {
+  return characterizationChanges(
+    paths,
+    (path) => git(['show', `${sha}^:${path}`]),
+    (path) => git(['show', `${sha}:${path}`]),
+  )
+}
+
+/**
+ * 作業範囲の特性化テストの変更を、範囲の各コミットの変更と、コミットしていない変更の和で求める。
+ * コミットごとに比べるので、ほかの項目が移した後に本文を変えても、変えたコミットへ帰属できる。
+ * 範囲の中で足した特性化テストは、範囲の起点にあった名前（existing）に含まれないので数えない。
+ */
+function rangeCharacterizationChanges(
+  commits: readonly string[],
+  existing: ReadonlySet<string>,
+  head: string,
+  git: Git,
+  repo: Repository,
+): string[] {
+  const committed = commits.flatMap((sha) =>
+    commitCharacterizationChanges(sha, commitPaths(sha, git), git),
+  )
+  const uncommitted = characterizationChanges(
+    repo.changedSince(head),
+    (path) => git(['show', `${head}:${path}`]),
+    (path) => repo.read(path),
+  )
+  return [...new Set([...committed, ...uncommitted])].filter((change) =>
+    existing.has(change.slice(change.lastIndexOf(' ') + 1)),
+  )
+}
+
+/** `paths` のうち Go のテストファイルが、`source` が読む内容で持つ特性化テストの名前。 */
+function characterizationNames(
+  paths: readonly string[],
+  source: (path: string) => string | undefined,
+): Set<string> {
+  return new Set(
+    paths
+      .filter((path) => GO_TEST_FILE.test(path))
+      .flatMap((path) => changedCharacterizations(source(path), undefined)),
+  )
 }
 
 export async function checkSpecImpact(
