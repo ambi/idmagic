@@ -127,6 +127,26 @@ func TestCheckEntraSourceAnchorValuesChecksOnlyFederatedUsers(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-WSFEDERATION-001: UPN がどの構成済みのドメインにも属さない削除されていない利用者を数え、サブドメインの利用者を数えず、ユーザー名の順で先頭の 5 人を返すこと。
+func TestUnfederatedUsersCountsUsersOutsideTheFederatedDomains(t *testing.T) {
+	profile := EntraFederationProfile{Domains: []EntraDomainFederation{{Domain: "contoso.com", IssuerURI: "urn:c"}}}
+	var users []*userdomain.User
+	for _, upn := range []string{"alice@contoso.com", "bob@corp.contoso.com", "zed", "f@corp.local", "e@fabrikam.com", "d", "c@notcontoso.com", "b@example.org"} {
+		users = append(users, &userdomain.User{ID: upn, PreferredUsername: upn})
+	}
+	gone := &userdomain.User{ID: "gone", PreferredUsername: "a-gone"}
+	gone.Lifecycle.Status = idmdomain.UserStatusDeleted
+	users = append(users, gone)
+
+	count, sample := UnfederatedUsers(profile, users)
+	if count != 6 || !slices.Equal(sample, []string{"b@example.org", "c@notcontoso.com", "d", "e@fabrikam.com", "f@corp.local"}) {
+		t.Fatalf("UnfederatedUsers = %d, %v", count, sample)
+	}
+	if count, sample := UnfederatedUsers(profile, users[:2]); count != 0 || len(sample) != 0 {
+		t.Fatalf("federated users only = %d, %v, want none", count, sample)
+	}
+}
+
 func TestBuildEntraClaimPolicy(t *testing.T) {
 	policy := BuildEntraClaimPolicy()
 	if policy.NameID.Format != EntraPersistentNameIDFormat {

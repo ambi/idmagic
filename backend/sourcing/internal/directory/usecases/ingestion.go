@@ -307,12 +307,14 @@ func (i *Ingestion) applyToCorrelatedUser(ctx context.Context, run domain.Ingest
 	return outcome(item, domain.OutcomeUnchanged), nil
 }
 
-// sourceAttributes は項目を取り込み元の属性へ写す。Directory Connector は manager を管理しない。
+// sourceAttributes は項目を取り込み元の属性へ写す。Directory Connector は manager を管理せず、
+// sourceAnchor を管理する。
 func sourceAttributes(item domain.UserItem) sourceuser.Attributes {
 	return sourceuser.Attributes{
 		PreferredUsername: item.PreferredUsername, Name: item.Name, GivenName: item.GivenName,
 		FamilyName: item.FamilyName, Email: item.Email,
 		EmployeeNumber: item.EmployeeNumber, Department: item.Department,
+		OnPremisesImmutableID: new(item.OnPremisesImmutableID),
 	}
 }
 
@@ -328,6 +330,8 @@ func writeOutcome(item domain.UserItem, success domain.ItemOutcome, err error) (
 		return failed(item, domain.ItemErrorEmailConflict), nil
 	case errors.Is(err, directoryports.ErrInvalidAttribute):
 		return failed(item, domain.ItemErrorInvalidAttribute), nil
+	case errors.Is(err, directoryports.ErrAttributeConflict):
+		return failed(item, domain.ItemErrorAttributeConflict), nil
 	case errors.As(err, &quota) && quota.IsQuotaExceeded():
 		return failed(item, domain.ItemErrorQuotaExceeded), nil
 	default:

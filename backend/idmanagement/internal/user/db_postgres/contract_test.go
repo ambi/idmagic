@@ -52,6 +52,7 @@ func assertPostgresImport(t *testing.T, db sharedpg.DB, mutation userports.UserI
 }
 
 //spec:covers REQ-IDMANAGEMENT-005, REQ-IDMANAGEMENT-042, REQ-IDMANAGEMENT-044: PostgreSQL のリポジトリが、状態が未設定の User を active の絞り込みの一覧と件数に含め、ユーザー名とメールアドレスを比較キーの列で引き、大文字と小文字だけが異なるユーザー名の二人目の User の保存を一意索引で拒否し、保持期限の削除の候補としてテナントの削除予約の User と lifecycle に pending_purge を持つ Tombstone だけを返すこと。
+//spec:covers REQ-IDMANAGEMENT-089: PostgreSQL のリポジトリが、属性スキーマのないテナントと、スキーマの保存と削除の後に、組み込みの unique の属性の値が同じ二人目の User の保存を一意性の表で拒否すること。
 func TestPersistenceContract(t *testing.T) {
 	testing_contract.Run(t, newContractFixture)
 }

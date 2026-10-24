@@ -476,6 +476,11 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		wsfedSessionRevoker = d.Authentication.SessionManager
 		samlSessionRevoker = d.Authentication.SessionManager
 	}
+	// 取り込み元の所有は SCIM の保存先を引くので、Sourcing を配線していない構成では渡さない。
+	var sourceOwnership userports.UserSourceOwnershipGuard
+	if d.Sourcing.ScimRepo != nil {
+		sourceOwnership = d.Sourcing.UserOwnershipGuard()
+	}
 	d.WsFederation.Register(g, d.Deps, authenticator, appGate,
 		wsfederation.Sessions{
 			AuthnResolver: d.Authentication.AuthnResolver, SessionManager: wsfedSessionRevoker,
@@ -483,7 +488,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		},
 		d.Authentication.SignInSteps(authRoutes), d.IdManagement.UserRepo, d.FederationSigner,
 		d.OAuth2.ClientAssertionReplayStore, d.Authentication.PasswordAuthentication(authRoutes),
-		d.IdManagement.AttrSchemaRepo)
+		d.IdManagement.AttrSchemaRepo, sourceOwnership)
 
 	d.Saml.Register(g, d.Deps, authenticator, appGate,
 		saml.Sessions{AuthnResolver: d.Authentication.AuthnResolver, SessionManager: samlSessionRevoker},

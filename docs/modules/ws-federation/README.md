@@ -11,6 +11,7 @@
 | SAML 2.0 の SP との信頼関係 | `SAML` |
 | ブラウザーのログインセッション、第二要素の照合の手順、UsernameToken の資格情報の検証の部品 | `Authentication` |
 | Application への割り当て | `Application` |
+| User が取り込み元の管理下かどうかの判定。Entra の構成は、IdManagement の `UserSourceOwnershipGuard` を通して結果だけを読む | `Sourcing` |
 
 ## 主な流れ
 

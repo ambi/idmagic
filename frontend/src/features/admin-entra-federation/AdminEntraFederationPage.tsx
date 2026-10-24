@@ -202,7 +202,7 @@ export function AdminEntraFederationAddPage({
 }) {
   const [domain, setDomain] = useState('')
   const [issuer, setIssuer] = useState('')
-  const [sourceAnchor, setSourceAnchor] = useState('object_guid')
+  const [sourceAnchor, setSourceAnchor] = useState('on_premises_immutable_id')
   const [replyURL, setReplyURL] = useState('https://login.microsoftonline.com/login.srf')
   const [result, setResult] = useState<ConfigureEntraFederationResponse | null>(null)
   const [error, setError] = useState('')
@@ -363,6 +363,11 @@ export function AdminEntraFederationAddPage({
             {result.known_limitations.map((limitation) => (
               <Alert key={limitation.code}>{t.hybridJoinNotProvidedNotice}</Alert>
             ))}
+            {result.unfederated_source_users ? (
+              <Alert>
+                {`${t.unfederatedSourceUsersNotice.replace('{count}', result.unfederated_source_users.user_count.toLocaleString(locale))} ${t.sourceAnchorSampleUsers.replace('{users}', result.unfederated_source_users.sample_usernames.join(', '))}`}
+              </Alert>
+            ) : null}
             <div>
               <Button
                 variant="outline"

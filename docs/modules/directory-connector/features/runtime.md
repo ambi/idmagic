@@ -67,15 +67,18 @@ Connector は、起動の引数で与えた YAML の設定ファイルと、そ�
 | User のフィルター | `(&(objectCategory=person)(objectClass=user))` | `(objectClass=inetOrgPerson)` |
 | 外部の不変 ID | `objectGUID` の 16 バイトを標準の base64（RFC 4648 の 4 節、パディング付き）にした値 | `entryUUID` の文字列 |
 | 有効かどうか | `userAccountControl` の `ACCOUNTDISABLE`（`0x2`）が立っていなければ有効 | 常に有効 |
-| `preferred_username` | `sAMAccountName` | `uid` |
+| `preferred_username` | `userPrincipalName` | `uid` |
 | `name` | `displayName` | `cn` |
 | `given_name` | `givenName` | `givenName` |
 | `family_name` | `sn` | `sn` |
 | `email` | `mail` | `mail` |
 | `employee_number` | `employeeNumber` | `employeeNumber` |
 | `department` | `department` | `departmentNumber` |
+| `on_premises_immutable_id` | `objectGUID` | なし。`ldap.attributes` でも指定できない |
 
-- **判断**：`objectGUID` を base64 にするのは、Entra Connect が `objectGUID` を sourceAnchor にするときと同じ表記にし、後の Entra の連携で同じ値を使えるようにするためである。
+- **判断**：`objectGUID` を base64 にするのは、Entra Connect が `objectGUID` を sourceAnchor にするときと同じ表記にし、Entra の連携で同じ値を使えるようにするためである。
+- **判断**：`preferred_username` を `userPrincipalName` にするのは、Entra と同じ名前でサインインし、Entra の定型設定が UPN として読む値をそろえるためである。`sAMAccountName` で取り込む運用者は `ldap.attributes` で上書きする。
+- **判断**：`on_premises_immutable_id` は外部の不変 ID と別に写す。`mS-DS-ConsistencyGuid` を sourceAnchor に選んだ AD でも、対応のキーを `objectGUID` に保ち、選択を変えても User を作り直さないためである。Entra Connect は OpenLDAP を同期しないので、`openldap` は写さない。
 
 ## 操作
 
@@ -125,6 +128,8 @@ Connector は、起動の引数で与えた YAML の設定ファイルと、そ�
 
 - DirectoryConnector は、`ldap.base_dns` の起点を並べた順に、それぞれの配下を `ldap.user_filter` で `ldap.page_size` 件ずつページングして検索し、対応付けに使う属性だけを要求する。
 - DirectoryConnector は、各エントリを[方言ごとのデフォルト値](#方言ごとのデフォルト値)と `ldap.attributes` の対応で User の項目へ写し、多値の属性は最初の値を使い、値のない属性を空にする。
+- `active_directory` のエントリを写すとき、DirectoryConnector は、`on_premises_immutable_id` に対応する属性の値のバイト列を標準の base64（RFC 4648 の 4 節、パディング付き）にして写す。
+- `openldap` の設定の `ldap.attributes` に `on_premises_immutable_id` がある場合、DirectoryConnector は、起動を拒否し、LDAP にも IdMagic にも接続しない。
 - DirectoryConnector は、写した項目を読んだ順に 100 件ずつ、`<実行の ID>-<1 から始まる連番>` のバッチの ID で送り、最後に送った項目の数で実行の完了を報告する。
 - 外部の不変 ID か `preferred_username` の属性がないエントリの場合、DirectoryConnector は、そのエントリを送らず、識別名と欠けた属性の名前をログへ出し、残りのエントリの同期を続ける。
 - DirectoryConnector は、属性の値をログへ出さない。

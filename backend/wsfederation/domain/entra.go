@@ -35,7 +35,7 @@ const (
 	EntraImmutableIDClaim        = "http://schemas.microsoft.com/LiveID/Federation/2008/05/ImmutableID"
 	EntraPersistentNameIDFormat  = "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"
 	EntraImmutableIDAttribute    = "entra_immutable_id"
-	DefaultEntraSourceAnchorAttr = "object_guid"
+	DefaultEntraSourceAnchorAttr = "on_premises_immutable_id"
 	DefaultEntraUPNAttribute     = "preferred_username"
 )
 
@@ -210,6 +210,22 @@ type SourceAnchorValueProblem struct {
 
 // sourceAnchorSampleSize は、構成の拒否に載せる利用者のユーザー名の数である。
 const sourceAnchorSampleSize = 5
+
+// UnfederatedUsers は、users のうち、profile で UPN がどの構成済みのドメインにも属さない削除されて
+// いない利用者の数と、ユーザー名の順で先頭の利用者のユーザー名を返す。
+func UnfederatedUsers(profile EntraFederationProfile, users []*userdomain.User) (int, []string) {
+	var names []string
+	for _, user := range users {
+		if user.IsDeleted() {
+			continue
+		}
+		if _, err := profile.IssuerFor(user.PreferredUsername); err != nil {
+			names = append(names, user.PreferredUsername)
+		}
+	}
+	slices.Sort(names)
+	return len(names), names[:min(len(names), sourceAnchorSampleSize)]
+}
 
 // CheckEntraSourceAnchorValues は、profile で UPN がフェデレーションするドメインに属する利用者の
 // sourceAnchor の値を確かめる。値のない利用者がいればそれを、いなければ使えない値の利用者を返し、

@@ -82,6 +82,8 @@ type UserItem struct {
 	Email             string `json:"email"`
 	EmployeeNumber    string `json:"employee_number"`
 	Department        string `json:"department"`
+	// OnPremisesImmutableID は Entra の sourceAnchor であり、User の同名の組み込みの属性に保存する。
+	OnPremisesImmutableID string `json:"on_premises_immutable_id"`
 }
 
 type ItemOutcome string
@@ -96,11 +98,12 @@ const (
 
 // 失敗した項目のエラーコード。
 const (
-	ItemErrorUsernameConflict = "username_conflict"
-	ItemErrorEmailConflict    = "email_conflict"
-	ItemErrorInvalidAttribute = "invalid_attribute"
-	ItemErrorQuotaExceeded    = "quota_exceeded"
-	ItemErrorUserDeleted      = "user_deleted"
+	ItemErrorUsernameConflict  = "username_conflict"
+	ItemErrorEmailConflict     = "email_conflict"
+	ItemErrorAttributeConflict = "attribute_conflict"
+	ItemErrorInvalidAttribute  = "invalid_attribute"
+	ItemErrorQuotaExceeded     = "quota_exceeded"
+	ItemErrorUserDeleted       = "user_deleted"
 )
 
 type ItemResult struct {

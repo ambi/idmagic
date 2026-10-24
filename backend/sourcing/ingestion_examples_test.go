@@ -29,6 +29,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sourcing"
+	"github.com/ambi/idmagic/backend/sourcing/internal/sourceuser"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -453,6 +454,51 @@ func TestDirectoryUserBatchesCorrelateByExternalID(t *testing.T) {
 }
 
 // 内容の違う同じ ID と閉じた実行への新しいバッチを拒否する。
+// 同じ値を持つほかの User との衝突を attribute_conflict の失敗にして User を作らず変えないこと。
+//
+//spec:covers REQ-SOURCING-016: 項目の on_premises_immutable_id を User の同名の組み込みの属性に保存して置き換え、項目になければ消し、
+func TestDirectoryUsersCarryTheEntraSourceAnchor(t *testing.T) {
+	h := newIngestion(t)
+	ad := h.enrolled()
+	run := h.startRun(ad, "incremental")
+	anchor := func(username string) string {
+		t.Helper()
+		value, _ := sourceuser.String(h.user(username).Attributes, "on_premises_immutable_id")
+		return value
+	}
+
+	expectResults(t, h.apply(ad, run, "b1",
+		item{"external_id": "guid-alice", "preferred_username": "alice@contoso.com", "on_premises_immutable_id": "/xmWb4aLEdC0LQDAT8lk/w=="},
+		item{"external_id": "guid-bob", "preferred_username": "bob@contoso.com", "on_premises_immutable_id": "/xmWb4aLEdC0LQDAT8lk/w=="},
+		item{"external_id": "guid-carol", "preferred_username": "carol@contoso.com", "on_premises_immutable_id": "ESIzRFVmd4iZqrvM3e7/AA=="},
+	), result{"guid-alice", "created", ""}, result{"guid-bob", "failed", "attribute_conflict"}, result{"guid-carol", "created", ""})
+	if got := anchor("alice@contoso.com"); got != "/xmWb4aLEdC0LQDAT8lk/w==" {
+		t.Fatalf("alice anchor = %q", got)
+	}
+	if h.user("bob@contoso.com") != nil {
+		t.Fatal("an item with a taken source anchor created a user")
+	}
+
+	expectResults(t, h.apply(ad, run, "b2",
+		item{"external_id": "guid-alice", "preferred_username": "alice@contoso.com", "on_premises_immutable_id": "/xmWb4aLEdC0LQDAT8lk/w=="},
+		item{"external_id": "guid-carol", "preferred_username": "carol@contoso.com", "on_premises_immutable_id": "/xmWb4aLEdC0LQDAT8lk/w=="},
+	), result{"guid-alice", "unchanged", ""}, result{"guid-carol", "failed", "attribute_conflict"})
+	if got := anchor("carol@contoso.com"); got != "ESIzRFVmd4iZqrvM3e7/AA==" {
+		t.Fatalf("a refused update changed carol's anchor to %q", got)
+	}
+
+	expectResults(t, h.apply(ad, run, "b3",
+		item{"external_id": "guid-alice", "preferred_username": "alice@contoso.com"},
+		item{"external_id": "guid-carol", "preferred_username": "carol@contoso.com", "on_premises_immutable_id": "8PHy8/T19vf4+fr7/P3+/w=="},
+	), result{"guid-alice", "updated", ""}, result{"guid-carol", "updated", ""})
+	if _, ok := h.user("alice@contoso.com").Attributes["on_premises_immutable_id"]; ok {
+		t.Fatal("an anchor missing from the item was kept")
+	}
+	if got := anchor("carol@contoso.com"); got != "8PHy8/T19vf4+fr7/P3+/w==" {
+		t.Fatalf("carol anchor = %q", got)
+	}
+}
+
 //
 //spec:covers REQ-SOURCING-016: User の Hard Quota を超える作成の項目は、User と対応を作らずに quota_exceeded で失敗し、後の項目の適用を続ける。
 func TestUserItemsBeyondTheQuotaFail(t *testing.T) {

@@ -38,6 +38,35 @@ func wantConflict(t *testing.T, err error, key, when string) {
 	}
 }
 
+// runBuiltinUniqueAttribute は、組み込みの unique の属性が、テナントの属性スキーマの有無と保存と
+// 削除によらず値を一意に保つことを確かめる。
+//
+//spec:covers REQ-IDMANAGEMENT-089: 組み込みの on_premises_immutable_id が、スキーマのないテナント、スキーマの保存と削除の後のどれでも、同じ値の二人目の User の保存を拒否すること。
+func runBuiltinUniqueAttribute(t *testing.T, newFixture NewFixture) {
+	t.Helper()
+	f := newFixture(t)
+	ctx := context.Background()
+	const key = "on_premises_immutable_id"
+	if err := f.Users.Save(ctx, withString(user(t, f.TenantA, "holder", f.Now), key, "/xmWb4aLEdC0LQDAT8lk/w==")); err != nil {
+		t.Fatalf("holder: Save: %v", err)
+	}
+	wantConflict(t, f.Users.Save(ctx, withString(user(t, f.TenantA, "no-schema", f.Now), key, "/xmWb4aLEdC0LQDAT8lk/w==")), key, "a tenant without a schema")
+
+	if err := f.Schemas.Save(ctx, uniqueSchema(f.TenantA, f, stringDef("employee_no", false))); err != nil {
+		t.Fatalf("Save schema: %v", err)
+	}
+	wantConflict(t, f.Users.Save(ctx, withString(user(t, f.TenantA, "with-schema", f.Now), key, "/xmWb4aLEdC0LQDAT8lk/w==")), key, "after a schema without the key is saved")
+
+	if err := f.Schemas.Delete(ctx, f.TenantA); err != nil {
+		t.Fatalf("Delete schema: %v", err)
+	}
+	wantConflict(t, f.Users.Save(ctx, withString(user(t, f.TenantA, "deleted-schema", f.Now), key, "/xmWb4aLEdC0LQDAT8lk/w==")), key, "after the schema is deleted")
+
+	if err := f.Users.Save(ctx, withString(user(t, f.TenantB, "other-tenant", f.Now), key, "/xmWb4aLEdC0LQDAT8lk/w==")); err != nil {
+		t.Fatalf("same value in another tenant: Save: %v", err)
+	}
+}
+
 // runUniqueAttributeValues は、unique の属性の値を保存のたびに一意に保ち、属性を unique に変える
 // スキーマの保存が既存の値を写すことを確かめる。
 func runUniqueAttributeValues(t *testing.T, newFixture NewFixture) {

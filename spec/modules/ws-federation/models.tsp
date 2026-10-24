@@ -39,7 +39,7 @@ model EntraFederationProfile {
   @doc("構成したドメインと IssuerUri の組。発行するトークンの発行者は、利用者の UPN のドメインに最も長く一致する組の IssuerUri である。")
   @minItems(1)
   domains: EntraDomainFederation[];
-  @doc("ImmutableID と同じ文字列を保存するユーザーの属性。属性スキーマで `unique` で、`editable_by_user` でない属性に限る。objectGUID を使う場合は、取り込みの側で base64 に符号化した値を保存する。")
+  @doc("ImmutableID と同じ文字列を保存するユーザーの属性。属性スキーマで `unique` で、`editable_by_user` でない属性に限る。objectGUID を使う場合は、取り込みの側で base64 に符号化した値を保存する。Directory Connector は AD の値を組み込みの属性 `on_premises_immutable_id` に保存する。")
   @minLength(1)
   source_anchor_attribute: string;
   @doc("sourceAnchor の値を変えずに ImmutableID として保存する合成の属性名。デフォルトは `entra_immutable_id` である。")

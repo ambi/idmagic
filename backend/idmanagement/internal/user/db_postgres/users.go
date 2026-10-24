@@ -369,8 +369,11 @@ func writeUniqueAttributeValues(ctx context.Context, q *Queries, u *userdomain.U
 		return err
 	}
 	schema, err := findUserAttributeSchema(ctx, q, u.TenantID)
-	if err != nil || schema == nil {
+	if err != nil {
 		return err
+	}
+	if schema == nil {
+		schema = &userdomain.TenantUserAttributeSchema{}
 	}
 	values := u.UniqueAttributeValues(schema.UniqueKeys())
 	for _, key := range schema.UniqueKeys() {

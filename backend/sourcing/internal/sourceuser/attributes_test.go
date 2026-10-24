@@ -10,7 +10,7 @@ import (
 func full() Attributes {
 	return Attributes{
 		PreferredUsername: "alice", Name: "Alice L", GivenName: "Alice", FamilyName: "Liddell", Email: "a@example.test",
-		EmployeeNumber: "E1", Department: "Sales", ManagerSub: new("manager"),
+		EmployeeNumber: "E1", Department: "Sales", ManagerSub: new("manager"), OnPremisesImmutableID: new("anchor"),
 	}
 }
 
@@ -37,6 +37,9 @@ func TestApplyReplacesManagedAttributesOnly(t *testing.T) {
 	if v, _ := String(user.Attributes, AttrManagerSub); v != "manager" {
 		t.Errorf("a source that does not manage manager_sub removed it")
 	}
+	if v, _ := String(user.Attributes, AttrOnPremisesImmutableID); v != "anchor" {
+		t.Errorf("a source that does not manage on_premises_immutable_id removed it")
+	}
 	if *user.Name != "" || *user.Email != "" {
 		t.Errorf("cleared strings = name %q email %q", *user.Name, *user.Email)
 	}
@@ -54,6 +57,7 @@ func TestMatchesNoticesEveryManagedAttribute(t *testing.T) {
 		func(a *Attributes) { a.GivenName = "x" }, func(a *Attributes) { a.FamilyName = "x" },
 		func(a *Attributes) { a.Email = "x" }, func(a *Attributes) { a.EmployeeNumber = "x" },
 		func(a *Attributes) { a.Department = "x" }, func(a *Attributes) { a.ManagerSub = new("x") },
+		func(a *Attributes) { a.OnPremisesImmutableID = new("x") },
 	}
 	for n, change := range variants {
 		changed := full()
@@ -63,9 +67,9 @@ func TestMatchesNoticesEveryManagedAttribute(t *testing.T) {
 		}
 	}
 	unmanaged := full()
-	unmanaged.ManagerSub = nil
+	unmanaged.ManagerSub, unmanaged.OnPremisesImmutableID = nil, nil
 	if !unmanaged.Matches(*user) {
-		t.Error("a source that does not manage manager_sub compared it")
+		t.Error("a source that does not manage manager_sub or on_premises_immutable_id compared it")
 	}
 	if !(Attributes{}).Matches(userdomain.User{}) {
 		t.Error("absent values did not match empty attributes")

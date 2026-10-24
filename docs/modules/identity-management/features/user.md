@@ -51,6 +51,9 @@
 | `claim_name`、`oidc_scope` | `visibility` が `claim_exposed` のときに使うクレーム名とスコープ |
 | `pii` | 個人情報か。デフォルトは `true` であり、保存と監査では平文ではなく SHA-256 の要約を記録する |
 
+組み込みの属性のうち `on_premises_immutable_id` は、Entra のドメインフェデレーションの sourceAnchor にする値であり、`unique` で、`editable_by_user` でなく、`visibility` が `admin_readable` で、`pii` でない。
+Directory Connector の取り込みが AD の値を保存し、取り込み元でない User には管理者が値を入れる。
+
 - **判断**：組み込みの属性とテナント定義の属性を、`UserAttributeDef` の一つの仕組みで扱う。管理者が設定するスキーマの形を一つに保つためである。
 - **判断**：`pii` のデフォルトを `true` にするのは、テナントの利便より開示の上限を優先する安全側のデフォルトだからである。
 

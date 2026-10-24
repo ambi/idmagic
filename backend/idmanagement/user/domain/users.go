@@ -337,10 +337,11 @@ func (s TenantUserAttributeSchema) Validate() error {
 	return nil
 }
 
-// UniqueKeys は、unique と定義した属性のキーを返す。
+// UniqueKeys は、組み込みとテナント定義のうち unique と定義した属性のキーを返す。スキーマのない
+// テナントでは、ゼロ値の TenantUserAttributeSchema が組み込みのキーを返す。
 func (s TenantUserAttributeSchema) UniqueKeys() []string {
 	var keys []string
-	for _, d := range s.Attributes {
+	for _, d := range s.EffectiveDefs() {
 		if d.Unique {
 			keys = append(keys, d.Key)
 		}

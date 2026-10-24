@@ -140,7 +140,7 @@ model ConfigureEntraFederationHttpRequest {
   domain: string;
   @doc("IssuerUri。空のままにすると、ドメインから安定して導く。")
   issuer_uri?: string;
-  @doc("ImmutableID の元になる、変わらないユーザーの属性。")
+  @doc("ImmutableID の元になる、変わらないユーザーの属性。Directory Connector が AD から取り込む値は組み込みの属性 `on_premises_immutable_id` にある。")
   source_anchor_attribute: string;
   @doc("Entra が `wreply` として使う URL。空のままにすると、Microsoft Online のデフォルトの URL を使う。")
   reply_url?: string;
@@ -160,6 +160,16 @@ model ConfigureEntraFederationHttpResponse {
   known_limitations: {
     code: "hybrid_join_not_supported";
   }[];
+  @doc("取り込み元の管理下の User のうち、UPN がどの構成済みのドメインにも属さない削除されていない User。該当する User がいなければ省く。構成は拒否しない。")
+  unfederated_source_users?: {
+    @doc("該当する User の数。")
+    @minValue(1)
+    user_count: int32;
+    @doc("該当する User のうち、ユーザー名の順で先頭の 5 人までのユーザー名。")
+    @minItems(1)
+    @maxItems(5)
+    sample_usernames: string[];
+  };
 }
 
 model ConfigureEntraFederationSuccess_200 {

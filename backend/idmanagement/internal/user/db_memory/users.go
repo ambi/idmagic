@@ -116,12 +116,15 @@ func (r *UserRepository) saveLocked(ctx context.Context, u *userdomain.User) err
 // checkUniqueLocked は r.mu を持った状態で、u の unique の属性の値を、同じテナントのほかの
 // 削除されていない User が持っていないことを確かめる。
 func (r *UserRepository) checkUniqueLocked(ctx context.Context, u *userdomain.User) error {
-	if r.schemas == nil {
-		return nil
-	}
-	schema, err := r.schemas.FindByTenant(ctx, u.TenantID)
-	if err != nil || schema == nil {
-		return err
+	schema := &userdomain.TenantUserAttributeSchema{}
+	if r.schemas != nil {
+		found, err := r.schemas.FindByTenant(ctx, u.TenantID)
+		if err != nil {
+			return err
+		}
+		if found != nil {
+			schema = found
+		}
 	}
 	return r.firstSharedLocked(u.TenantID, schema.UniqueKeys(), u, func(key string) error {
 		return &userports.UniqueAttributeConflictError{Key: key}

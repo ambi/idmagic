@@ -42,4 +42,6 @@ var (
 	ErrUsernameConflict = errors.New("directory ingestion: username conflict")
 	ErrEmailConflict    = errors.New("directory ingestion: email conflict")
 	ErrInvalidAttribute = errors.New("directory ingestion: invalid attribute")
+	// ErrAttributeConflict は、unique の属性の値をほかの User が持っていることを表す。
+	ErrAttributeConflict = errors.New("directory ingestion: unique attribute conflict")
 )

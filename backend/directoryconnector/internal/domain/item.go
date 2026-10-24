@@ -27,4 +27,6 @@ type Item struct {
 	Email             string `json:"email,omitempty"`
 	EmployeeNumber    string `json:"employee_number,omitempty"`
 	Department        string `json:"department,omitempty"`
+	// OnPremisesImmutableID は Entra の sourceAnchor にする値であり、AD だけが送る。
+	OnPremisesImmutableID string `json:"on_premises_immutable_id,omitempty"`
 }

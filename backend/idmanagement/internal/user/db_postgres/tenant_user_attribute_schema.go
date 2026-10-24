@@ -67,6 +67,14 @@ func (r *TenantUserAttributeSchemaRepository) Save(ctx context.Context, s *userd
 	}); err != nil {
 		return err
 	}
+	if err := rewriteUniqueAttributeValues(ctx, q, s); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// rewriteUniqueAttributeValues は、テナントの一意性の表を、s の unique の属性の値で写し直す。
+func rewriteUniqueAttributeValues(ctx context.Context, q *Queries, s *userdomain.TenantUserAttributeSchema) error {
 	if err := q.DeleteTenantUniqueAttributeValues(ctx, s.TenantID); err != nil {
 		return err
 	}
@@ -79,10 +87,10 @@ func (r *TenantUserAttributeSchemaRepository) Save(ctx context.Context, s *userd
 			return err
 		}
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 
-// Delete は、定義とテナントの一意性の表を消す。
+// Delete は、定義を消し、テナントの一意性の表を組み込みの unique の属性だけで写し直す。
 func (r *TenantUserAttributeSchemaRepository) Delete(ctx context.Context, tenantID string) error {
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {
@@ -93,7 +101,7 @@ func (r *TenantUserAttributeSchemaRepository) Delete(ctx context.Context, tenant
 	if err := q.LockUniqueAttributeValuesExclusive(ctx, tenantID); err != nil {
 		return err
 	}
-	if err := q.DeleteTenantUniqueAttributeValues(ctx, tenantID); err != nil {
+	if err := rewriteUniqueAttributeValues(ctx, q, &userdomain.TenantUserAttributeSchema{TenantID: tenantID}); err != nil {
 		return err
 	}
 	if err := q.DeleteTenantUserAttributeSchema(ctx, tenantID); err != nil {

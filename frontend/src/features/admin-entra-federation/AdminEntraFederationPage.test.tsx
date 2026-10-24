@@ -279,3 +279,53 @@ describe('Graph の構成結果', () => {
     })
   }
 })
+
+describe('UPN がフェデレーションしない取り込み元の User', () => {
+  afterEach(() => restoreGlobals())
+
+  //spec:covers REQ-WSFEDERATION-001: 組み込みの on_premises_immutable_id を sourceAnchor の初期値として送り、構成の結果の unfederated_source_users の件数とユーザー名を選択した言語で表示すること。
+  for (const locale of ['ja', 'en'] as const) {
+    it(`${locale}: 件数とユーザー名を表示する`, async () => {
+      const fetch = mock(
+        async (_input: RequestInfo | URL, _init?: RequestInit) =>
+          new Response(
+            JSON.stringify({
+              powershell: {},
+              commands: { create: 'New-Mg', update: 'Update-Mg' },
+              known_limitations: [],
+              unfederated_source_users: {
+                user_count: 1234,
+                sample_usernames: ['frank', 'grace@corp.local'],
+              },
+            }),
+            { status: 201, headers: { 'Content-Type': 'application/json' } },
+          ),
+      )
+      stubGlobal('fetch', fetch)
+      await renderWithRouter(<AdminEntraFederationAddPage csrfToken="csrf" />, { locale })
+      const dictionary = adminEntraFederationDictionary[locale]
+      fireEvent.change(screen.getByLabelText(dictionary.verifiedDomainLabel), {
+        target: { value: 'contoso.com' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: dictionary.save }))
+      const count = (1234).toLocaleString(locale)
+      await waitFor(() =>
+        expect(
+          screen.getByText(dictionary.unfederatedSourceUsersNotice.replace('{count}', count), {
+            exact: false,
+          }),
+        ).toBeInTheDocument(),
+      )
+      expect(
+        screen.getByText(
+          dictionary.sourceAnchorSampleUsers.replace('{users}', 'frank, grace@corp.local'),
+          {
+            exact: false,
+          },
+        ),
+      ).toBeInTheDocument()
+      const body = JSON.parse(String(fetch.mock.calls[0][1]?.body))
+      expect(body.source_anchor_attribute).toBe('on_premises_immutable_id')
+    })
+  }
+})

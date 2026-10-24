@@ -24,6 +24,8 @@ export const adminEntraFederationDictionary = defineDictionary(
     sourceAnchorInvalidError:
       'sourceAnchor を ImmutableID として使えないユーザーが {count} 人います。空白だけの値や @ を含む値を修正してください。',
     sourceAnchorSampleUsers: '対象のユーザー（先頭の 5 人まで）: {users}',
+    unfederatedSourceUsersNotice:
+      '取り込んだユーザーのうち {count} 人は、UPN がフェデレーションしたドメインに属さないため、Entra にサインインできません。',
     addPageTitle: 'ドメインフェデレーションを追加',
     addPageDescription:
       'Microsoft 365 のドメインフェデレーションに、検証済みドメインとその IssuerUri を追加します。構成済みのドメインを指定すると IssuerUri を置き換えます。',
@@ -70,6 +72,8 @@ export const adminEntraFederationDictionary = defineDictionary(
     sourceAnchorInvalidError:
       '{count} users have a sourceAnchor that cannot be an ImmutableID. Correct values that contain only whitespace or include @.',
     sourceAnchorSampleUsers: 'Affected users (first 5): {users}',
+    unfederatedSourceUsersNotice:
+      '{count} ingested users cannot sign in to Entra because their UPN is not in a federated domain.',
     addPageTitle: 'Add domain federation',
     addPageDescription:
       'Adds a verified domain and its IssuerUri to the Microsoft 365 domain federation. A configured domain has its IssuerUri replaced.',

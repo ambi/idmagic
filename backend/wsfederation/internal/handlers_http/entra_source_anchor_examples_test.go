@@ -6,11 +6,18 @@ package handlers_http_test
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
+	"github.com/ambi/idmagic/backend/sourcing"
+	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 type sourceAnchorProblem struct {
@@ -115,6 +122,58 @@ func TestEntraConfigurationChecksOnlyTheFederatedUsers(t *testing.T) {
 			}
 			assertNotConfigured(t, s)
 		})
+	}
+}
+
+// 取り込み元でない User とフェデレーションするドメインの User を数えず、該当者がいなければ unfederated_source_users を省くこと。
+//
+//spec:covers REQ-WSFEDERATION-001: Entra の構成が、取り込み元の管理下の User のうち UPN がフェデレーションするドメインに属さない User の数と先頭のユーザー名を返して構成を成功させ、
+//verify:operation ConfigureEntraFederation: unfederated_source_users の件数とユーザー名の順の先頭、該当者がいないときに省くこと
+func TestEntraConfigurationReportsUnfederatedSourceUsers(t *testing.T) {
+	frank := entraUser{"frank-1", "frank", ""}
+	grace := entraUser{"grace-1", "grace@corp.local", ""}
+	sourced := func(userIDs ...string) func(*httpadapter.Deps) {
+		return func(d *httpadapter.Deps) {
+			module := sourcing.NewMemoryModule()
+			for _, id := range userIDs {
+				if err := module.ScimRepo.SaveUserRef(t.Context(), &scimports.ScimUserRef{TenantID: tenancydomain.DefaultTenantID, ScimID: "scim-" + id, UserID: id}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			// 組み立て地点は、Sourcing を配線すると取り込みの書き込みも組み立てる。
+			d.Sourcing = module
+			d.GroupRepo = idmanagement.NewMemoryModule().GroupRepo
+			d.Tenancy.QuotaRepo = tenancy.NewMemoryModule().QuotaRepo
+		}
+	}
+	type unfederated struct {
+		UserCount       int      `json:"user_count"`
+		SampleUsernames []string `json:"sample_usernames"`
+	}
+	decode := func(t *testing.T, rec *httptest.ResponseRecorder) *unfederated {
+		t.Helper()
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("status=%d body=%s, want 201", rec.Code, rec.Body.String())
+		}
+		var body struct {
+			Unfederated *unfederated `json:"unfederated_source_users"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		return body.Unfederated
+	}
+	const contoso = `{"domain":"contoso.com","source_anchor_attribute":"object_guid"}`
+
+	s := newEntraServerConfigured(t, protectedSourceAnchor(), sourced(entraAlice.id, grace.id, frank.id), entraAlice, entraEve, frank, grace)
+	got := decode(t, configureEntra(s.e, contoso))
+	if got == nil || got.UserCount != 2 || !slices.Equal(got.SampleUsernames, []string{"frank", "grace@corp.local"}) {
+		t.Fatalf("unfederated_source_users = %+v, want frank and grace", got)
+	}
+
+	s = newEntraServerConfigured(t, protectedSourceAnchor(), sourced(entraAlice.id), entraAlice, entraEve, frank)
+	if got := decode(t, configureEntra(s.e, contoso)); got != nil {
+		t.Fatalf("unfederated_source_users = %+v, want it omitted", got)
 	}
 }
 

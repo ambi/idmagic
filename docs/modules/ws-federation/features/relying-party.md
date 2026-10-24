@@ -19,7 +19,7 @@ Entra はどのドメインの要求でも、自身の識別子 `urn:federation:
 | 要素 | 内容 |
 | --- | --- |
 | ドメインの組 | 検証済みのドメインと、そのドメインの IssuerUri。IssuerUri はドメインの間で重ならない |
-| sourceAnchor の属性 | 定型設定に一つ。属性スキーマで `unique` で、`editable_by_user` でない属性に限る。すべてのドメインの利用者の ImmutableID は、この属性の値そのものである |
+| sourceAnchor の属性 | 定型設定に一つ。属性スキーマで `unique` で、`editable_by_user` でない属性に限る。すべてのドメインの利用者の ImmutableID は、この属性の値そのものである。Directory Connector が AD から取り込む組み込みの属性 `on_premises_immutable_id` はこの条件を満たし、管理画面はこれを初期値にする |
 | エンドポイント | 受動、能動、MEX の各エンドポイント |
 
 | 必須のクレーム | 発行のしかた |
@@ -54,7 +54,11 @@ sourceAnchor の値の重なりは、属性が `unique` なので IdManagement �
 - 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、Microsoft Graph PowerShell の名前を持つ設定値、有効な XML 署名証明書の公開部分の base64、値を埋めた `New-MgDomainFederationConfiguration` と `Update-MgDomainFederationConfiguration` のコマンドを返す。
 - 準備済みの XML 鍵がある間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、その証明書の公開部分の base64 を `NextSigningCertificate` として設定値とコマンドに含める。
 - 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、`SignOutUri` に `wsignout1.0` を受ける受動的なエンドポイントを、`PreferredAuthenticationProtocol` に `wsFed` を、`FederatedIdpMfaBehavior` に `acceptIfMfaDoneByFederatedIdp` を返す。
+- 取り込み元の管理下の User のうち、構成した後の定型設定で UPN がどの構成済みのドメインにも属さない削除されていない User がいる間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、構成を拒否せず、該当する User の数（`unfederated_source_users.user_count`）と、ユーザー名の順で先頭の 5 人までのユーザー名（`unfederated_source_users.sample_usernames`）を返す。
+- 該当する取り込み元の管理下の User がいない間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、`unfederated_source_users` を返さない。
 - 管理者が構成の結果を表示したとき、WsFederation は、作成と更新のコマンドをそれぞれコピーできる形で表示し、制限のコードを選択した言語の辞書の文言で表示する。
+- 構成の結果が `unfederated_source_users` を持つ間、管理者が構成の結果を表示したとき、WsFederation は、該当する User の数とユーザー名を表示する。
+- **判断**：UPN がフェデレーションしない取り込み元の User を拒否の理由にしないのは、フェデレーションしないドメインの User が AD に正当に存在するからである。取り込み元の User に限るのは、管理者が手で作った User より、取り込みの対応付けの誤り（`userPrincipalName` の UPN サフィックスや `ldap.attributes` の上書き）で UPN を欠く方が起きやすく、サインインの時点まで気付かないからである。
 - 指定したドメインを構成していない間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、201 を返す。
 - 指定したドメインを構成している間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、200 を返す。
 - `wsfed:read` のスコープの API アクセストークンで呼び出されたとき、WsFederation は、RP の一覧だけを許可する。

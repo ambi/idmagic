@@ -22,13 +22,13 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 	applicationGate wsfedhttp.ApplicationGate, sessions wsfedhttp.Sessions, secondFactors wsfedhttp.SecondFactorSteps,
 	userRepo userports.UserRepository, federationSigner samltoken.SignerProvider,
 	messageIDReplayStore wsfedports.MessageIDReplayStore, passwords signinports.PasswordAuthenticator,
-	attrSchemaRepo claimports.TenantAttributeSchemaRepo,
+	attrSchemaRepo claimports.TenantAttributeSchemaRepo, sourceOwnership userports.UserSourceOwnershipGuard,
 ) {
 	wsfedhttp.RegisterRoutes(g, wsfedhttp.Deps{
 		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate, Sessions: sessions,
 		SecondFactors: secondFactors, WsFedRPRepo: m.RPRepo,
 		UserRepo: userRepo, FederationSigner: federationSigner, MessageIDReplayStore: messageIDReplayStore,
-		Passwords: passwords, AttrSchemaRepo: attrSchemaRepo,
+		Passwords: passwords, AttrSchemaRepo: attrSchemaRepo, SourceOwnership: sourceOwnership,
 	})
 }
 

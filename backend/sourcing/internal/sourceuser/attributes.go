@@ -14,19 +14,22 @@ const (
 	AttrEmployeeNumber = "employee_number"
 	AttrDepartment     = "department"
 	AttrManagerSub     = "manager_sub"
+	// AttrOnPremisesImmutableID は Entra のドメインフェデレーションの sourceAnchor である。
+	AttrOnPremisesImmutableID = "on_premises_immutable_id"
 )
 
 // Attributes は、取り込み元が管理する User の属性である。空の文字列は値がないことを表す。
-// ManagerSub が nil なら、その取り込み元は manager を管理せず、既存の値を変えない。
+// ManagerSub か OnPremisesImmutableID が nil なら、その取り込み元はその属性を管理せず、既存の値を変えない。
 type Attributes struct {
-	PreferredUsername string
-	Name              string
-	GivenName         string
-	FamilyName        string
-	Email             string
-	EmployeeNumber    string
-	Department        string
-	ManagerSub        *string
+	PreferredUsername     string
+	Name                  string
+	GivenName             string
+	FamilyName            string
+	Email                 string
+	EmployeeNumber        string
+	Department            string
+	ManagerSub            *string
+	OnPremisesImmutableID *string
 }
 
 // Apply は user の管理する属性を a で置き換える。値のない属性は空にするか消す。
@@ -39,6 +42,9 @@ func (a Attributes) Apply(user *userdomain.User) {
 	if a.ManagerSub != nil {
 		SetString(user, AttrManagerSub, *a.ManagerSub)
 	}
+	if a.OnPremisesImmutableID != nil {
+		SetString(user, AttrOnPremisesImmutableID, *a.OnPremisesImmutableID)
+	}
 }
 
 // Matches は user の管理する属性が a と同じかを返す。空の文字列と値のないことを区別しない。
@@ -50,6 +56,9 @@ func (a Attributes) Matches(user userdomain.User) bool {
 		stringOrEmpty(user.Attributes, AttrDepartment) == a.Department
 	if a.ManagerSub != nil {
 		same = same && stringOrEmpty(user.Attributes, AttrManagerSub) == *a.ManagerSub
+	}
+	if a.OnPremisesImmutableID != nil {
+		same = same && stringOrEmpty(user.Attributes, AttrOnPremisesImmutableID) == *a.OnPremisesImmutableID
 	}
 	return same
 }

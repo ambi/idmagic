@@ -317,6 +317,8 @@ model DirectoryUserItem {
   email?: string;
   employee_number?: string;
   department?: string;
+  @doc("Entra のドメインフェデレーションの sourceAnchor にする値。User の組み込みの属性 `on_premises_immutable_id` に保存する。AD の Connector は `objectGUID` のバイト列を標準の base64 にして送る。")
+  on_premises_immutable_id?: string;
 }
 
 
@@ -346,6 +348,8 @@ enum DirectoryItemOutcome {
 enum DirectoryItemError {
   username_conflict,
   email_conflict,
+  @doc("`unique` の属性の値が、同じテナントのほかの User と衝突する。")
+  attribute_conflict,
   invalid_attribute,
   quota_exceeded,
   user_deleted,

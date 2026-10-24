@@ -43,6 +43,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Run("tenant attribute schema", func(t *testing.T) { runTenantAttributeSchema(t, newFixture) })
 	t.Run("import row", func(t *testing.T) { runImportRow(t, newFixture) })
 	t.Run("unique attribute values", func(t *testing.T) { runUniqueAttributeValues(t, newFixture) })
+	t.Run("builtin unique attribute", func(t *testing.T) { runBuiltinUniqueAttribute(t, newFixture) })
 }
 
 func newID(t *testing.T) string {

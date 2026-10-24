@@ -724,6 +724,7 @@ export type ConfigureEntraFederationResponse = {
   powershell: Record<string, string>
   commands: { create: string; update: string }
   known_limitations: { code: 'hybrid_join_not_supported' }[]
+  unfederated_source_users?: { user_count: number; sample_usernames: string[] }
 }
 
 export async function configureEntraFederation(

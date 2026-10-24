@@ -35,21 +35,22 @@ func TestMapEntryFromActiveDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := MapEntry(ActiveDirectory, mapping, entry("CN=Alice,OU=Staff",
-		"objectGUID", guid, "sAMAccountName", "alice", "displayName", "Alice Liddell",
+		"objectGUID", guid, "sAMAccountName", "alice", "userPrincipalName", "alice@contoso.com", "displayName", "Alice Liddell",
 		"givenName", "Alice", "SN", "Liddell", "mail", []string{"alice@corp.example", "a@corp.example"},
 		"employeeNumber", "E-1", "userAccountControl", "514"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := Item{
-		ExternalID: "/xmWb4aLEdC0LQDAT8lk/w==", Enabled: false, PreferredUsername: "alice",
+		ExternalID: "/xmWb4aLEdC0LQDAT8lk/w==", Enabled: false, PreferredUsername: "alice@contoso.com",
 		Name: "Alice Liddell", GivenName: "Alice", FamilyName: "Liddell", Email: "alice@corp.example", EmployeeNumber: "E-1",
+		OnPremisesImmutableID: "/xmWb4aLEdC0LQDAT8lk/w==",
 	}
 	if got != want {
 		t.Fatalf("item = %+v, want %+v", got, want)
 	}
 
-	enabled, err := MapEntry(ActiveDirectory, mapping, entry("CN=Bob", "objectGUID", guid, "sAMAccountName", "bob", "userAccountControl", "512"))
+	enabled, err := MapEntry(ActiveDirectory, mapping, entry("CN=Bob", "objectGUID", guid, "userPrincipalName", "bob", "userAccountControl", "512"))
 	if err != nil || !enabled.Enabled {
 		t.Fatalf("userAccountControl 512: item=%+v err=%v, want enabled", enabled, err)
 	}
@@ -83,10 +84,10 @@ func TestMapEntryRefusesAnEntryWithoutIdentity(t *testing.T) {
 		entry   Entry
 		missing string
 	}{
-		"no objectGUID":      {entry("CN=X", "sAMAccountName", "x", "userAccountControl", "512"), "objectGUID"},
-		"short objectGUID":   {entry("CN=X", "objectGUID", guid[:15], "sAMAccountName", "x", "userAccountControl", "512"), "objectGUID"},
-		"no sAMAccountName":  {entry("CN=X", "objectGUID", guid, "userAccountControl", "512"), "sAMAccountName"},
-		"no account control": {entry("CN=X", "objectGUID", guid, "sAMAccountName", "x"), "userAccountControl"},
+		"no objectGUID":        {entry("CN=X", "userPrincipalName", "x", "userAccountControl", "512"), "objectGUID"},
+		"short objectGUID":     {entry("CN=X", "objectGUID", guid[:15], "userPrincipalName", "x", "userAccountControl", "512"), "objectGUID"},
+		"no userPrincipalName": {entry("CN=X", "objectGUID", guid, "userAccountControl", "512"), "userPrincipalName"},
+		"no account control":   {entry("CN=X", "objectGUID", guid, "userPrincipalName", "x"), "userAccountControl"},
 	}
 	for name, c := range cases {
 		_, err := MapEntry(ActiveDirectory, mapping, c.entry)
@@ -122,7 +123,7 @@ func TestDefaultsAndRequestedAttributesFollowTheDialect(t *testing.T) {
 		t.Fatalf("openldap filter = %s", got)
 	}
 	ad, _ := EffectiveMapping(ActiveDirectory, nil)
-	want := []string{"objectGUID", "userAccountControl", "department", "displayName", "employeeNumber", "givenName", "mail", "sAMAccountName", "sn"}
+	want := []string{"objectGUID", "userAccountControl", "department", "displayName", "employeeNumber", "givenName", "mail", "sn", "userPrincipalName"}
 	if got := RequestedAttributes(ActiveDirectory, ad); !slices.Equal(got, want) {
 		t.Fatalf("active directory attributes = %v, want %v", got, want)
 	}
@@ -130,6 +131,40 @@ func TestDefaultsAndRequestedAttributesFollowTheDialect(t *testing.T) {
 	want = []string{"entryUUID", "cn", "departmentNumber", "employeeNumber", "givenName", "mail", "sn", "uid"}
 	if got := RequestedAttributes(OpenLDAP, ldap); !slices.Equal(got, want) {
 		t.Fatalf("openldap attributes = %v, want %v", got, want)
+	}
+}
+
+//spec:covers REQ-DIRECTORYCONNECTOR-004: AD の on_premises_immutable_id を、デフォルトでは objectGUID の、上書きでは mS-DS-ConsistencyGuid のバイト列の標準の base64 にし、値のない属性を空にし、OpenLDAP の上書きを拒否する。
+func TestMapEntryCarriesTheEntraSourceAnchor(t *testing.T) {
+	// mS-DS-ConsistencyGuid は objectGUID と別の 16 バイトである。標準の base64 で + と / が現れる値にする。
+	consistency := []byte{0xfb, 0xff, 0xbf, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d}
+	account := func(attributes ...any) Entry {
+		return entry("CN=Alice", append([]any{"objectGUID", guid, "userPrincipalName", "alice@contoso.com", "userAccountControl", "512"}, attributes...)...)
+	}
+
+	defaults, _ := EffectiveMapping(ActiveDirectory, nil)
+	if got, err := MapEntry(ActiveDirectory, defaults, account("mS-DS-ConsistencyGuid", consistency)); err != nil || got.OnPremisesImmutableID != "/xmWb4aLEdC0LQDAT8lk/w==" {
+		t.Fatalf("default: item=%+v err=%v, want the objectGUID base64", got, err)
+	}
+
+	consistencyGuid, err := EffectiveMapping(ActiveDirectory, map[string]string{"on_premises_immutable_id": "mS-DS-ConsistencyGuid"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := MapEntry(ActiveDirectory, consistencyGuid, account("ms-ds-consistencyguid", consistency))
+	if err != nil || got.OnPremisesImmutableID != "+/+/AQIDBAUGBwgJCgsMDQ==" || got.ExternalID != "/xmWb4aLEdC0LQDAT8lk/w==" {
+		t.Fatalf("consistency guid: item=%+v err=%v, want the ConsistencyGuid base64 and the objectGUID external id", got, err)
+	}
+	if got, err := MapEntry(ActiveDirectory, consistencyGuid, account()); err != nil || got.OnPremisesImmutableID != "" {
+		t.Fatalf("no consistency guid: item=%+v err=%v, want an empty source anchor", got, err)
+	}
+
+	if _, err := EffectiveMapping(OpenLDAP, map[string]string{"on_premises_immutable_id": "entryUUID"}); err == nil {
+		t.Fatal("openldap accepted an on_premises_immutable_id mapping")
+	}
+	openldap, _ := EffectiveMapping(OpenLDAP, nil)
+	if got, err := MapEntry(OpenLDAP, openldap, entry("uid=x", "entryUUID", "u-1", "uid", "x")); err != nil || got.OnPremisesImmutableID != "" {
+		t.Fatalf("openldap: item=%+v err=%v, want no source anchor", got, err)
 	}
 }
 

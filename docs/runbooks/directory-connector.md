@@ -85,6 +85,32 @@ idmagic-directory-connector run -config /etc/idmagic-directory-connector/config.
 Linux では systemd のユニットとして、Windows ではタスク スケジューラの「起動時」のタスクとして、実行のアカウントで動かす。
 ログは JSON Lines で標準エラーへ出るので、サービスマネージャーのログへ集める。
 
+## Entra のドメインフェデレーションと併用する
+
+Entra Connect が同じ AD を Entra へ同期し、IdMagic が Entra のドメインフェデレーションのサインインを担う構成では、取り込んだ User の UPN と sourceAnchor を Entra の利用者に合わせる。
+AD の方言のデフォルトはこの構成に合わせてあり、Entra Connect の sourceAnchor が `objectGUID` なら設定を足す必要はない。
+
+| Entra の値 | IdMagic の User | AD の方言のデフォルト |
+| --- | --- | --- |
+| UPN | ユーザー名（`preferred_username`） | `userPrincipalName` |
+| `onPremisesImmutableId` | 組み込みの属性 `on_premises_immutable_id` | `objectGUID` のバイト列の base64 |
+
+Entra Connect の sourceAnchor が `mS-DS-ConsistencyGuid` の場合は、設定ファイルで上書きする。
+上書きしても、IdMagic が AD の User を見分けるキーは `objectGUID` のままなので、User は作り直されない。
+
+```yaml
+ldap:
+  attributes:
+    on_premises_immutable_id: mS-DS-ConsistencyGuid
+```
+
+`userPrincipalName` のない AD のアカウントは取り込まれず、`check` の出力に送らないエントリとして現れる。
+Entra を使わず `sAMAccountName` で取り込む場合は、`attributes:` に `preferred_username: sAMAccountName` を足す。
+
+取り込んだ後、管理画面の Entra ドメインフェデレーションの追加で、sourceAnchor 属性を初期値の `on_premises_immutable_id` のまま保存する。
+保存の結果に、UPN がフェデレーションしたドメインに属さない取り込んだユーザーの数が出た場合は、AD の UPN サフィックスか `attributes:` の上書きを確かめる。
+そのユーザーは Entra にサインインできない。
+
 ## 鍵の更新と失効
 
 1. 管理者が管理 API の `POST /api/admin/v1/directory-connectors/{connector_id}/enrollment-tokens` で登録トークンを再発行する。この時点で以前の鍵は使えなくなる。
@@ -105,5 +131,6 @@ Connector を廃止するときは、管理 API で Connector を無効化し、
 | 多数の User が無効になった | `base_dns` か `user_filter` の誤りで、完全な再同期に User が現れなかった | `check` で件数を確かめて設定を直す。次の完全な再同期で現れた User は再び有効になる。検索の範囲を変えると次の同期は自動で完全な再同期になる |
 | AD で削除した User が IdMagic に残る | 差分は削除を読まない | 次の完全な再同期で無効になる。急ぐ場合は Connector を止め、状態のディレクトリの `cursor.json` を消して起動し、完全な再同期を行わせる |
 | DC を入れ替えた | uSN は DC ごとの値である | 対応は要らない。接続先の DC が変わると、次の同期は自動で完全な再同期になる |
+| 取り込みの失敗に `attribute_conflict` が出る | 取り込んだ User の `on_premises_immutable_id` を、手で作った User などがすでに持っている | 重なる User の値を管理画面か CSV で直す。AD のエントリが変わらなければ差分に現れないので、次の完全な再同期で取り込まれる |
 
 取り込みの結果は、管理 API の取り込みの実行の一覧と詳細（REQ-SOURCING-019）で、件数と失敗した項目を確かめる。

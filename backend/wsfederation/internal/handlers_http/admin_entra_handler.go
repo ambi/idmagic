@@ -10,6 +10,7 @@ import (
 	"time"
 
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
@@ -90,6 +91,10 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	if handled, err := d.refuseUnusableSourceAnchors(c, profile); handled {
 		return err
 	}
+	unfederated, err := d.unfederatedSourceUsers(c, profile)
+	if err != nil {
+		return err
+	}
 	profile.ImmutableIDAttribute = feddomain.EntraImmutableIDAttribute
 	profile.PassiveLogOnURI = passive
 	profile.ActiveLogOnURI = active
@@ -145,13 +150,53 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	}
 	d.emit(&feddomain.EntraFederationConfigured{At: now, TenantID: tenantID, Domain: domain, IssuerURI: issuerURI})
 
-	return support.NoStoreJSON(c, status, map[string]any{
+	body := map[string]any{
 		"profile":           rp.EntraProfile,
 		"relying_party":     rp,
 		"powershell":        settings,
 		"commands":          entraPowerShellCommands(domain, settings),
 		"known_limitations": []map[string]string{{"code": "hybrid_join_not_supported"}},
-	})
+	}
+	if unfederated.UserCount > 0 {
+		body["unfederated_source_users"] = unfederated
+	}
+	return support.NoStoreJSON(c, status, body)
+}
+
+// unfederatedSourceUsersBody は、UPN がフェデレーションしない取り込み元の User の件数と先頭のユーザー名である。
+type unfederatedSourceUsersBody struct {
+	UserCount       int      `json:"user_count"`
+	SampleUsernames []string `json:"sample_usernames"`
+}
+
+// unfederatedSourceUsers は、取り込み元の管理下の User のうち、構成した後の profile で UPN がどの
+// ドメインにも属さない User を数える。取り込み元が配線されていなければ 0 件を返す。
+func (d Deps) unfederatedSourceUsers(c *echo.Context, profile feddomain.EntraFederationProfile) (unfederatedSourceUsersBody, error) {
+	if d.SourceOwnership == nil {
+		return unfederatedSourceUsersBody{}, nil
+	}
+	ctx := c.Request().Context()
+	tenantID := support.RequestTenantID(c)
+	users, err := d.UserRepo.FindAll(ctx, tenantID)
+	if err != nil {
+		return unfederatedSourceUsersBody{}, err
+	}
+	ids := make([]string, len(users))
+	for i, user := range users {
+		ids[i] = user.ID
+	}
+	managed, err := d.SourceOwnership.SourceManagedUserIDs(ctx, tenantID, ids)
+	if err != nil {
+		return unfederatedSourceUsersBody{}, err
+	}
+	var sourced []*userdomain.User
+	for _, user := range users {
+		if managed[user.ID] {
+			sourced = append(sourced, user)
+		}
+	}
+	count, sample := feddomain.UnfederatedUsers(profile, sourced)
+	return unfederatedSourceUsersBody{UserCount: count, SampleUsernames: sample}, nil
 }
 
 // sourceAnchorValueProblem は、値に問題のある利用者の件数と先頭のユーザー名を載せた Problem Details である。

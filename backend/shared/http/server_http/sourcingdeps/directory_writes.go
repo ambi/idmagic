@@ -8,6 +8,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sourcing"
 	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
@@ -59,6 +60,8 @@ func refusal(err error) error {
 		return errors.Join(directoryports.ErrEmailConflict, err)
 	case errors.Is(err, idmanagement.ErrSourceInvalidAttribute):
 		return errors.Join(directoryports.ErrInvalidAttribute, err)
+	case errors.As(err, new(*userports.UniqueAttributeConflictError)):
+		return errors.Join(directoryports.ErrAttributeConflict, err)
 	default:
 		return err
 	}

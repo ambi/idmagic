@@ -41,13 +41,17 @@ const (
 	attrEmail             = "email"
 	attrEmployeeNumber    = "employee_number"
 	attrDepartment        = "department"
+	// attrOnPremisesImmutableID は Entra の sourceAnchor である。AD だけが写し、値のバイト列を
+	// Entra Connect と同じ標準の base64 にする。
+	attrOnPremisesImmutableID = "on_premises_immutable_id"
 )
 
 func defaultMapping(dialect Dialect) Mapping {
 	if dialect == ActiveDirectory {
 		return Mapping{
-			attrPreferredUsername: "sAMAccountName", attrName: "displayName", attrGivenName: "givenName",
+			attrPreferredUsername: "userPrincipalName", attrName: "displayName", attrGivenName: "givenName",
 			attrFamilyName: "sn", attrEmail: "mail", attrEmployeeNumber: "employeeNumber", attrDepartment: "department",
+			attrOnPremisesImmutableID: adObjectGUID,
 		}
 	}
 	return Mapping{
@@ -84,7 +88,12 @@ func RequestedAttributes(dialect Dialect, mapping Mapping) []string {
 	if dialect == ActiveDirectory {
 		requested = []string{adObjectGUID, adAccountControl}
 	}
-	return append(requested, slices.Sorted(maps.Values(mapping))...)
+	for _, name := range slices.Compact(slices.Sorted(maps.Values(mapping))) {
+		if !slices.ContainsFunc(requested, func(r string) bool { return strings.EqualFold(r, name) }) {
+			requested = append(requested, name)
+		}
+	}
+	return requested
 }
 
 // IncompleteEntryError は、不変 ID かユーザー名に必要な属性がないエントリである。Connector は
@@ -137,5 +146,10 @@ func MapEntry(dialect Dialect, mapping Mapping, entry Entry) (Item, error) {
 	item.Email = value(attrEmail)
 	item.EmployeeNumber = value(attrEmployeeNumber)
 	item.Department = value(attrDepartment)
+	if dialect == ActiveDirectory {
+		if raw, ok := entry.first(mapping[attrOnPremisesImmutableID]); ok {
+			item.OnPremisesImmutableID = base64.StdEncoding.EncodeToString(raw)
+		}
+	}
 	return item, nil
 }

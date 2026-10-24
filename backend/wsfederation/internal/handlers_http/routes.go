@@ -34,6 +34,9 @@ type Deps struct {
 	// Authentication が所有し、組み立て地点が結ぶ。
 	Passwords      signinports.PasswordAuthenticator
 	AttrSchemaRepo claimports.TenantAttributeSchemaRepo
+	// SourceOwnership は取り込み元の管理下の User を選ぶ。Sourcing が所有し、組み立て地点が結ぶ。
+	// 取り込み元のない構成では nil であり、Entra の構成は取り込み元の User を示さない。
+	SourceOwnership userports.UserSourceOwnershipGuard
 }
 
 // Sessions は、パッシブサインインが読み、サインアウトが失効させるログインセッションである。

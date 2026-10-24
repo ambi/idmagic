@@ -42,13 +42,14 @@ Connector を再導入して位置を失ったときは、完全な再同期で�
 | --- | --- |
 | 実行の種類 | `full` は取り込み元の全件を送る完全な再同期、`incremental` は前回からの差分である |
 | 実行の状態 | `running`、`completed`、`superseded` |
-| User の項目 | 外部の不変 ID、削除かどうか、有効かどうか、`preferred_username`、`name`、`given_name`、`family_name`、`email`、`employee_number`、`department` |
+| User の項目 | 外部の不変 ID、削除かどうか、有効かどうか、`preferred_username`、`name`、`given_name`、`family_name`、`email`、`employee_number`、`department`、`on_premises_immutable_id` |
 | 外部の不変 ID | AD の `objectGUID` や LDAP の `entryUUID` のような、名前の変更で変わらない ID。1 から 256 文字の文字列であり、正規化せずに比べる |
 | 対応 | Connector と外部の不変 ID の組から内部の User への対応（[用語集](../glossary.md)の SourceCorrelation）と、その対応が最後に現れた実行 |
 | バッチ | Connector が付けたバッチの ID、項目のダイジェスト、項目ごとの結果 |
 | 項目の結果 | `created`、`updated`、`unchanged`、`deleted`、`failed` のどれか。`failed` はエラーコードを持つ |
 
 User の属性の対応は SCIM と同じであり、`employee_number` と `department` は User の同名の属性に保存する。
+`on_premises_immutable_id` は、Entra のドメインフェデレーションの sourceAnchor にする値であり、User の同名の組み込みの属性に保存する。SCIM はこの属性を変えない。
 取り込んだ User は、パスワードを持たず、メールアドレスを確認済みとし、CSV のインポートが変更しない取り込み元の管理下の User になる。
 
 - **判断**：User を外部の不変 ID で相関し、ユーザー名で既存の User に結び付けない。名前の一致だけで結び付けると、取り込み元の別人が既存のアカウントを乗っ取れるからである。
@@ -203,6 +204,7 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 - 対応のある外部の不変 ID の項目を適用したとき、Sourcing は、結果が `failed` でもその対応にこの実行に現れた印を付ける。
 - 対応のない既存の User か別の対応の User とユーザー名が衝突する項目の場合、Sourcing は、User を結び付けも作成も変更もせず、`failed` と `username_conflict` を返す。
 - 同じテナントのほかの User とメールアドレスが衝突する項目の場合、Sourcing は、User を作成も変更もせず、`failed` と `email_conflict` を返す。
+- 同じテナントのほかの User と `unique` の属性の値が衝突する項目の場合、Sourcing は、User を作成も変更もせず、`failed` と `attribute_conflict` を返す。
 - 属性がテナントの属性スキーマに違反する項目の場合、Sourcing は、User を作成も変更もせず、`failed` と `invalid_attribute` を返す。
 - User の Hard Quota を超える作成の項目の場合、Sourcing は、User と対応を作らず、使用量を変えず、`failed` と `quota_exceeded` を返す。
 - 対応の User が `PendingDeletion` か削除済みである、削除でない項目の場合、Sourcing は、User を変えず、`failed` と `user_deleted` を返す。
