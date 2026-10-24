@@ -27,7 +27,7 @@ OIDC 管理では OAuth2 の公開管理操作とその入力、結果とエラ�
 管理用の表示は HTTP の非公開の型へ写し、所有者の保存型をそのままシリアライズしない。
 資格情報の状態は OAuth2 の判定を使い、表示へ渡すのは識別子、作成時刻、期限、失効時刻と状態だけである。
 SAML と WS-Fed の設定も、Saml の `ServiceProviderAdministration` と WsFederation の `RelyingPartyAdministration` で作成、更新、関連付け、削除する。
-既定値、署名の設定と値の検査は各所有者が保ち、Catalog は所有者の保存型を組み立てず、Repository と直接の SQL を持たない。
+デフォルト値、署名の設定と値の検査は各所有者が保ち、Catalog は所有者の保存型を組み立てず、Repository と直接の SQL を持たない。
 
 ## 機能一覧
 
