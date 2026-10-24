@@ -17,7 +17,8 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	Service *usecases.Service
+	Service   *usecases.Service
+	Ingestion *usecases.Ingestion
 }
 
 func RegisterRoutes(g *echo.Group, d Deps) {
@@ -29,6 +30,11 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/v1/directory-connectors/:connector_id/disable", h.disableConnector)
 	g.POST("/directory-connector/v1/enrollment", h.enrollConnector)
 	g.POST("/directory-connector/v1/heartbeat", h.reportHeartbeat)
+	g.GET("/api/admin/v1/directory-connectors/:connector_id/ingestion-runs", h.listIngestionRuns)
+	g.GET("/api/admin/v1/directory-connectors/:connector_id/ingestion-runs/:run_id", h.getIngestionRun)
+	g.POST("/directory-connector/v1/ingestion-runs", h.startIngestionRun)
+	g.POST("/directory-connector/v1/ingestion-runs/:run_id/user-batches", h.sendUserBatch)
+	g.POST("/directory-connector/v1/ingestion-runs/:run_id/complete", h.completeIngestionRun)
 }
 
 type handler struct{ deps Deps }
@@ -186,8 +192,8 @@ func (h handler) enrollConnector(c *echo.Context) error {
 }
 
 func (h handler) reportHeartbeat(c *echo.Context) error {
-	assertion, ok := strings.CutPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
-	if !ok || assertion == "" {
+	assertion, ok := bearer(c)
+	if !ok {
 		return writeInvalidToken(c)
 	}
 	err := h.deps.Service.Heartbeat(c.Request().Context(), support.RequestTenantID(c), assertion, h.audience(c))
@@ -198,6 +204,24 @@ func (h handler) reportHeartbeat(c *echo.Context) error {
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)
+}
+
+func bearer(c *echo.Context) (string, bool) {
+	assertion, ok := strings.CutPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	return assertion, ok && assertion != ""
+}
+
+// authenticateConnector は Connector の JWT を検証し、拒否の応答を書いたかを返す。
+func (h handler) authenticateConnector(c *echo.Context) (domain.Connector, bool, error) {
+	assertion, ok := bearer(c)
+	if !ok {
+		return domain.Connector{}, false, writeInvalidToken(c)
+	}
+	connector, err := h.deps.Service.Authenticate(c.Request().Context(), support.RequestTenantID(c), assertion, h.audience(c))
+	if errors.Is(err, usecases.ErrInvalidToken) {
+		return domain.Connector{}, false, writeInvalidToken(c)
+	}
+	return connector, err == nil, err
 }
 
 // audience は、要求したテナントの Connector の JWT が aud に持つべき値を返す。

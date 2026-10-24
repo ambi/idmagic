@@ -267,4 +267,165 @@ model DirectoryConnectorDisabled {
   connectorId: string;
 }
 
+
+@doc("取り込みの実行の種類。`full` は取り込み元の全件を送る完全な再同期、`incremental` は前回からの差分である。")
+enum IngestionRunMode {
+  full,
+  incremental,
+}
+
+
+@doc("取り込みの実行の状態。`running` はバッチを受け付け、`completed` は Connector が完了を報告し、`superseded` は同じ Connector の新しい実行に打ち切られた。")
+enum IngestionRunStatus {
+  running,
+  completed,
+  superseded,
+}
+
+
+@doc("Directory Connector が取り込みの実行を始めるリクエスト。")
+model StartIngestionRunRequest {
+  mode: IngestionRunMode;
+}
+
+
+@doc("取り込みの実行。")
+model IngestionRun {
+  id: string;
+  mode: IngestionRunMode;
+  status: IngestionRunStatus;
+  started_at: utcDateTime;
+  completed_at?: utcDateTime;
+}
+
+
+@doc("Directory Connector が送る User の項目。属性は Connector が正規化済みである。")
+model DirectoryUserItem {
+  @doc("`objectGUID` や `entryUUID` のような、名前の変更で変わらない ID。バッチの中で重複できない。")
+  @minLength(1)
+  @maxLength(256)
+  external_id: string;
+  @doc("`true` なら User の削除を予約する。ほかの属性を読まない。")
+  deleted?: boolean = false;
+  @doc("`false` なら User を `disabled` にする。")
+  enabled?: boolean = true;
+  @doc("削除でない項目では必須である。")
+  preferred_username?: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
+  email?: string;
+  employee_number?: string;
+  department?: string;
+}
+
+
+@doc("User の項目のバッチ。")
+model DirectoryUserBatchRequest {
+  @doc("Connector が付けるバッチの ID。同じ実行で同じ ID と同じ項目の再送は、最初の結果を返す。")
+  @minLength(1)
+  @maxLength(128)
+  batch_id: string;
+  @minItems(1)
+  @maxItems(100)
+  items: DirectoryUserItem[];
+}
+
+
+@doc("項目の適用の結果。")
+enum DirectoryItemOutcome {
+  created,
+  updated,
+  unchanged,
+  deleted,
+  failed,
+}
+
+
+@doc("`failed` の項目のエラー。")
+enum DirectoryItemError {
+  username_conflict,
+  email_conflict,
+  invalid_attribute,
+  quota_exceeded,
+  user_deleted,
+}
+
+
+@doc("一つの項目の結果。")
+model DirectoryItemResult {
+  external_id: string;
+  outcome: DirectoryItemOutcome;
+  @doc("`outcome` が `failed` のときだけ返す。")
+  error?: DirectoryItemError;
+}
+
+
+@doc("バッチの項目ごとの結果。項目を送られた順に並ぶ。")
+model DirectoryUserBatchResult {
+  batch_id: string;
+  results: DirectoryItemResult[];
+}
+
+
+@doc("Directory Connector が取り込みの実行の完了を報告するリクエスト。")
+model CompleteIngestionRunRequest {
+  @doc("この実行で送ったバッチの項目の数の和。記録した数と一致しなければ完了を拒否する。")
+  @minValue(0)
+  item_count: int32;
+}
+
+
+@doc("取り込みの実行の結果ごとの項目の数。")
+model IngestionRunCounts {
+  batches: int32;
+  items: int32;
+  created: int32;
+  updated: int32;
+  unchanged: int32;
+  deleted: int32;
+  failed: int32;
+  @doc("完全な再同期の完了で無効にした User の数。")
+  disabled: int32;
+}
+
+
+@doc("管理者が読む取り込みの実行の要約。")
+model IngestionRunSummary {
+  ...IngestionRun;
+  counts: IngestionRunCounts;
+}
+
+
+@doc("`failed` の項目。")
+model IngestionRunFailure {
+  batch_id: string;
+  external_id: string;
+  error: DirectoryItemError;
+}
+
+
+@doc("管理者が読む取り込みの実行の詳細。")
+model IngestionRunDetail {
+  ...IngestionRunSummary;
+  @doc("バッチを記録した順に最大 100 件。")
+  failures: IngestionRunFailure[];
+}
+
+
+@doc("取り込みの実行が見つからない。存在しないか、別の Connector か別のテナントのものである。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:ingestion_run_not_found` である。")
+model IngestionRunNotFoundError is ProblemDetails;
+
+
+@doc("取り込みの実行は `completed` か `superseded` であり、記録していないバッチと `superseded` の完了を受け付けない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:ingestion_run_closed` である。")
+model IngestionRunClosedError is ProblemDetails;
+
+
+@doc("報告した項目の数が、記録したバッチの項目の数の和と一致しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:ingestion_run_incomplete` である。")
+model IngestionRunIncompleteError is ProblemDetails;
+
+
+@doc("同じ ID で記録したバッチと項目が異なる。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:batch_conflict` である。")
+model BatchConflictError is ProblemDetails;
+
 }

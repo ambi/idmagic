@@ -1296,6 +1296,67 @@ CREATE INDEX directory_connectors_tenant_id_created_at_idx ON directory_connecto
 CREATE UNIQUE INDEX directory_connectors_enrollment_token_hash_key
     ON directory_connectors (tenant_id, enrollment_token_hash) WHERE enrollment_token_hash IS NOT NULL;
 
+CREATE TABLE directory_user_correlations (
+    tenant_id UUID NOT NULL,
+    connector_id UUID NOT NULL,
+    -- objectGUID や entryUUID のような外部の不変 ID。正規化せずに比べる。
+    external_id TEXT NOT NULL,
+    user_id UUID NOT NULL,
+    -- 対応が最後に現れた取り込みの実行。完全な再同期の完了が、現れなかった対応を探すのに使う。
+    last_seen_run_id UUID NOT NULL,
+    PRIMARY KEY (tenant_id, connector_id, external_id),
+    CONSTRAINT directory_user_correlations_external_id_length
+        CHECK (char_length(external_id) BETWEEN 1 AND 256),
+    CONSTRAINT directory_user_correlations_user_id_key UNIQUE (tenant_id, user_id),
+    CONSTRAINT directory_user_correlations_connector_fkey
+        FOREIGN KEY (connector_id) REFERENCES directory_connectors(id) ON DELETE RESTRICT,
+    CONSTRAINT directory_user_correlations_user_id_fkey
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE directory_ingestion_runs (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    connector_id UUID NOT NULL,
+    mode TEXT NOT NULL,
+    status TEXT NOT NULL,
+    started_at TIMESTAMPTZ NOT NULL,
+    completed_at TIMESTAMPTZ,
+    -- 記録したバッチの結果の和。バッチを記録するときに同じトランザクションで足す。
+    batches INTEGER NOT NULL DEFAULT 0,
+    items INTEGER NOT NULL DEFAULT 0,
+    created INTEGER NOT NULL DEFAULT 0,
+    updated INTEGER NOT NULL DEFAULT 0,
+    unchanged INTEGER NOT NULL DEFAULT 0,
+    deleted INTEGER NOT NULL DEFAULT 0,
+    failed INTEGER NOT NULL DEFAULT 0,
+    disabled INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT directory_ingestion_runs_mode_valid CHECK (mode IN ('full', 'incremental')),
+    CONSTRAINT directory_ingestion_runs_status_valid CHECK (status IN ('running', 'completed', 'superseded')),
+    CONSTRAINT directory_ingestion_runs_connector_fkey
+        FOREIGN KEY (connector_id) REFERENCES directory_connectors(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX directory_ingestion_runs_connector_started_at_idx
+    ON directory_ingestion_runs (tenant_id, connector_id, started_at DESC, id DESC);
+
+CREATE TABLE directory_ingestion_batches (
+    tenant_id UUID NOT NULL,
+    run_id UUID NOT NULL,
+    batch_id TEXT NOT NULL,
+    -- 項目の SHA-256 の 16 進表記。同じ ID で項目の違う再送を拒否するのに使う。
+    digest TEXT NOT NULL,
+    -- 項目ごとの外部の不変 ID、結果、エラーコードの配列。
+    results JSONB NOT NULL,
+    recorded_at TIMESTAMPTZ NOT NULL,
+    -- 記録した順に並べるための値。
+    sequence BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY,
+    PRIMARY KEY (run_id, batch_id),
+    CONSTRAINT directory_ingestion_batches_batch_id_length CHECK (char_length(batch_id) BETWEEN 1 AND 128),
+    CONSTRAINT directory_ingestion_batches_run_fkey
+        FOREIGN KEY (run_id) REFERENCES directory_ingestion_runs(id) ON DELETE CASCADE
+);
+
 CREATE TABLE jobs (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,

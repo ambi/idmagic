@@ -22,7 +22,13 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// writes は、SCIM の対応表と所有者の作成を結び、通知を確定後へ遅らせる。
+// イベントの actor に記録する取り込み元の名前。
+const (
+	scimActor               = "scim"
+	directoryConnectorActor = "directory_connector"
+)
+
+// writes は、取り込み元の対応表と所有者の作成を結び、通知を確定後へ遅らせる。
 // 属性の投影と業務上の判断は含めない。
 type writes struct {
 	idmanagement.SourceCommands
@@ -30,21 +36,31 @@ type writes struct {
 	lifecycle idmanagement.LifecycleDeps
 	source    sourcing.Module
 	emit      func(spec.DomainEvent)
+	actor     string
 }
 
 func NewWrites(identity idmanagement.Module, lifecycle idmanagement.LifecycleDeps, source sourcing.Module, emit func(spec.DomainEvent)) scimports.IdentityWrites {
-	if identity.UserRepo == nil || identity.GroupRepo == nil || source.ScimRepo == nil || lifecycle.QuotaRepo == nil || emit == nil {
-		panic("SCIM writes require identity repositories, source references, quotas, and an event sink")
+	if source.ScimRepo == nil {
+		panic("SCIM writes require source references")
+	}
+	return newWrites(identity, lifecycle, source, emit, scimActor)
+}
+
+func newWrites(identity idmanagement.Module, lifecycle idmanagement.LifecycleDeps, source sourcing.Module, emit func(spec.DomainEvent), actor string) *writes {
+	if identity.UserRepo == nil || identity.GroupRepo == nil || lifecycle.QuotaRepo == nil || emit == nil {
+		panic("source writes require identity repositories, quotas, and an event sink")
 	}
 	return &writes{
-		identity: identity, lifecycle: lifecycle, source: source, emit: emit,
-		SourceCommands: identity.SourceCommands(lifecycle, func(event spec.DomainEvent) error { emit(event); return nil }),
+		identity: identity, lifecycle: lifecycle, source: source, emit: emit, actor: actor,
+		SourceCommands: identity.SourceCommands(lifecycle, actor, func(event spec.DomainEvent) error { emit(event); return nil }),
 	}
 }
 
-func (w *writes) create(ctx context.Context, apply func(idmanagement.SourceCommands, scimports.ScimRepository) error) error {
+// create は、inTransaction が開くトランザクションへ所有者の操作を結び付けて apply を実行する。
+// inTransaction はメモリの構成では nil の tx を渡す。
+func (w *writes) create(inTransaction func(body func(pgx.Tx) error) error, apply func(idmanagement.SourceCommands) error) error {
 	effects := &creationEffects{identity: w.identity, emit: w.emit}
-	err := w.source.CreateInTransaction(ctx, func(tx pgx.Tx, refs scimports.ScimRepository) error {
+	err := inTransaction(func(tx pgx.Tx) error {
 		identity, lifecycle := w.identity, w.lifecycle
 		if tx != nil {
 			db := postgres.BindTransaction(tx)
@@ -54,7 +70,7 @@ func (w *writes) create(ctx context.Context, apply func(idmanagement.SourceComma
 			lifecycle.AttrSchemaRepo = identity.AttrSchemaRepo
 		}
 		identity.ProvisioningNotifier, identity.GroupProvisioningNotifier = effects, effects
-		return apply(identity.SourceCommands(lifecycle, effects.record), refs)
+		return apply(identity.SourceCommands(lifecycle, w.actor, effects.record))
 	})
 	if err != nil {
 		// 上限による拒否は、作成のロールバック後も記録する。
@@ -72,9 +88,20 @@ func (w *writes) create(ctx context.Context, apply func(idmanagement.SourceComma
 	return notificationErrors
 }
 
+// inSCIMTransaction は SCIM の対応表を、所有者の作成と同じトランザクションへ束ね、bind へ渡す。
+func (w *writes) inSCIMTransaction(ctx context.Context, bind func(scimports.ScimRepository)) func(func(pgx.Tx) error) error {
+	return func(body func(pgx.Tx) error) error {
+		return w.source.CreateInTransaction(ctx, func(tx pgx.Tx, bound scimports.ScimRepository) error {
+			bind(bound)
+			return body(tx)
+		})
+	}
+}
+
 func (w *writes) CreateUser(ctx context.Context, scimID string, user *userdomain.User) (*userdomain.User, error) {
 	var created *userdomain.User
-	err := w.create(ctx, func(commands idmanagement.SourceCommands, refs scimports.ScimRepository) error {
+	var refs scimports.ScimRepository
+	err := w.create(w.inSCIMTransaction(ctx, func(bound scimports.ScimRepository) { refs = bound }), func(commands idmanagement.SourceCommands) error {
 		var err error
 		created, err = commands.CreateUser(ctx, user)
 		if err != nil {
@@ -90,7 +117,8 @@ func (w *writes) CreateUser(ctx context.Context, scimID string, user *userdomain
 
 func (w *writes) CreateGroup(ctx context.Context, scimID string, group *groupdomain.Group, members []string) (*groupdomain.Group, error) {
 	var created *groupdomain.Group
-	err := w.create(ctx, func(commands idmanagement.SourceCommands, refs scimports.ScimRepository) error {
+	var refs scimports.ScimRepository
+	err := w.create(w.inSCIMTransaction(ctx, func(bound scimports.ScimRepository) { refs = bound }), func(commands idmanagement.SourceCommands) error {
 		var err error
 		created, err = commands.CreateGroup(ctx, group)
 		if err != nil {

@@ -25,6 +25,7 @@ import (
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 	"github.com/ambi/idmagic/backend/sourcing"
+	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -198,6 +199,56 @@ func TestSCIMCreationRollsBackOnReferenceFailure(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+//spec:covers REQ-SOURCING-016: Directory Connector の作成で対応の保存に失敗すると、User、使用量、イベントを残さず、再送で User と対応を一組だけ作る。
+func TestDirectoryCreationRollsBackOnCorrelationFailure(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	ctx := tenantports.WithTenant(t.Context(), tenant, "", "")
+	connectorID := pgfixtures.NewUUID(t)
+	if _, err := pool.Exec(ctx, `INSERT INTO directory_connectors (id, tenant_id, display_name, status, created_at, revision)
+		VALUES ($1, $2, 'AD', 'disabled', now(), 1)`, connectorID, tenant.ID); err != nil {
+		t.Fatal(err)
+	}
+	identity := idmanagement.NewPostgresModule(pool)
+	quota := tenancy.NewPostgresModule(pool).QuotaRepo
+	db := &referenceFailureDB{DB: pool, table: "directory_user_correlations", fail: true}
+	source := sourcing.NewPostgresModule(db)
+	var events []spec.DomainEvent
+	writes := sourcingdeps.NewDirectoryWrites(identity, idmanagement.LifecycleDeps{QuotaRepo: quota}, source,
+		func(event spec.DomainEvent) { events = append(events, event) })
+	correlation := directoryports.UserCorrelation{ConnectorID: connectorID, ExternalID: "guid", LastSeenRunID: pgfixtures.NewUUID(t)}
+	create := func() (*userdomain.User, error) {
+		return writes.CreateUser(ctx, correlation, &userdomain.User{TenantID: tenant.ID, PreferredUsername: "from-ad", Roles: []string{}, CreatedAt: time.Now().UTC()})
+	}
+
+	if _, err := create(); !errors.Is(err, errReferenceSave) {
+		t.Fatalf("create error=%v, want correlation failure", err)
+	}
+	usage, err := quota.GetUsage(ctx, tenant.ID)
+	if err != nil || usage.Users != 0 || len(events) != 0 {
+		t.Fatalf("after rollback usage=%+v error=%v events=%v", usage, err, events)
+	}
+	if user, err := identity.UserRepo.FindByUsername(ctx, tenant.ID, "from-ad"); err != nil || user != nil {
+		t.Fatalf("rollback left user=%+v error=%v", user, err)
+	}
+
+	db.fail = false
+	created, err := create()
+	if err != nil {
+		t.Fatal(err)
+	}
+	managed, err := source.UserOwnershipGuard().SourceManagedUserIDs(ctx, tenant.ID, []string{created.ID})
+	if err != nil || !managed[created.ID] {
+		t.Fatalf("retry correlation managed=%v error=%v", managed, err)
+	}
+	if usage, err := quota.GetUsage(ctx, tenant.ID); err != nil || usage.Users != 1 || len(events) == 0 {
+		t.Fatalf("retry usage=%+v error=%v events=%v", usage, err, events)
+	}
+	if _, err := create(); !errors.Is(err, directoryports.ErrUsernameConflict) {
+		t.Fatalf("second create error=%v, want the username conflict refusal", err)
 	}
 }
 

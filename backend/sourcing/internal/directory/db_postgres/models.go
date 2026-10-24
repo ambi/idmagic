@@ -25,3 +25,39 @@ type DirectoryConnector struct {
 	DisabledAt          pgtype.Timestamptz
 	Revision            int64
 }
+
+type DirectoryIngestionBatch struct {
+	TenantID   string
+	RunID      string
+	BatchID    string
+	Digest     string
+	Results    []byte
+	RecordedAt time.Time
+	Sequence   int64
+}
+
+type DirectoryIngestionRun struct {
+	ID          string
+	TenantID    string
+	ConnectorID string
+	Mode        string
+	Status      string
+	StartedAt   time.Time
+	CompletedAt pgtype.Timestamptz
+	Batches     int32
+	Items       int32
+	Created     int32
+	Updated     int32
+	Unchanged   int32
+	Deleted     int32
+	Failed      int32
+	Disabled    int32
+}
+
+type DirectoryUserCorrelation struct {
+	TenantID      string
+	ConnectorID   string
+	ExternalID    string
+	UserID        string
+	LastSeenRunID string
+}

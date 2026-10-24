@@ -2,13 +2,13 @@
 
 ## 概要
 
-この文書は、閉域の Active Directory と LDAP を取り込み元とする Directory Connector を、テナントに登録し、その呼び出しを認証する仕様である。
+この文書は、閉域の Active Directory と LDAP を取り込み元とする Directory Connector を、テナントに登録し、その呼び出しを認証し、Connector が送る差分から User を取り込む仕様である。
 
 | 項目 | 内容 |
 | --- | --- |
-| 責務 | Directory Connector の作成、登録、無効化と、Connector の呼び出しの認証 |
+| 責務 | Directory Connector の作成、登録、無効化、Connector の呼び出しの認証、User の取り込みと取り込みの実行の記録 |
 | 行為者 | テナント管理者、Directory Connector |
-| 扱わないもの | ユーザーとグループの取り込み。Connector の実行環境と LDAP の読み取り |
+| 扱わないもの | グループの取り込み。Connector の実行環境、LDAP の読み取り、LDAP の属性から正規の属性への対応付け |
 
 Directory Connector は、AD と同じ閉域のネットワークに置く実行単位であり、IdMagic へ外向きの接続だけを行う。
 IdMagic は AD への到達経路も、AD の資格情報も持たない。
@@ -31,6 +31,27 @@ Connector の呼び出しは、Connector の秘密鍵で署名した JWT を `Au
 JWT の `aud` には、テナントの発行者識別子に `/directory-connector/v1` を続けた値を使う。
 
 - **判断**：mTLS を採らないのは、エッジに証明書の転送の設定を求めず、Connector の秘密鍵を閉域から出さずに、鍵の更新と失効を IdMagic 側の登録の差し替えだけで行うためである。
+
+### 取り込み
+
+Connector は、取り込みの実行（[用語集](../glossary.md)の IngestionRun）を始め、User の項目のバッチを送り、送った項目の数を添えて実行の完了を報告する。
+差分の位置（SourceCursor）は Connector の手元だけに置き、IdMagic は保存しない。
+Connector を再導入して位置を失ったときは、完全な再同期で回復する。
+
+| 項目 | 内容 |
+| --- | --- |
+| 実行の種類 | `full` は取り込み元の全件を送る完全な再同期、`incremental` は前回からの差分である |
+| 実行の状態 | `running`、`completed`、`superseded` |
+| User の項目 | 外部の不変 ID、削除かどうか、有効かどうか、`preferred_username`、`name`、`given_name`、`family_name`、`email`、`employee_number`、`department` |
+| 外部の不変 ID | AD の `objectGUID` や LDAP の `entryUUID` のような、名前の変更で変わらない ID。1 から 256 文字の文字列であり、正規化せずに比べる |
+| 対応 | Connector と外部の不変 ID の組から内部の User への対応（[用語集](../glossary.md)の SourceCorrelation）と、その対応が最後に現れた実行 |
+| バッチ | Connector が付けたバッチの ID、項目のダイジェスト、項目ごとの結果 |
+| 項目の結果 | `created`、`updated`、`unchanged`、`deleted`、`failed` のどれか。`failed` はエラーコードを持つ |
+
+User の属性の対応は SCIM と同じであり、`employee_number` と `department` は User の同名の属性に保存する。
+取り込んだ User は、パスワードを持たず、メールアドレスを確認済みとし、CSV のインポートが変更しない取り込み元の管理下の User になる。
+
+- **判断**：User を外部の不変 ID で相関し、ユーザー名で既存の User に結び付けない。名前の一致だけで結び付けると、取り込み元の別人が既存のアカウントを乗っ取れるからである。
 
 ## 状態遷移
 
@@ -59,6 +80,28 @@ JWT の `aud` には、テナントの発行者識別子に `/directory-connecto
 | AwaitingEnrollment | → Active（登録トークンが一致し、有効期限内であり、公開鍵が条件を満たす）<br>拒否：401 invalid_token（登録トークンが一致しないか、有効期限を過ぎている）<br>拒否：400 invalid_request（公開鍵が条件を満たさない） | 拒否：401 invalid_token | → AwaitingEnrollment | → Disabled |
 | Active | 拒否：401 invalid_token | 何もしない | → AwaitingEnrollment | → Disabled |
 | Disabled | 拒否：401 invalid_token | 拒否：401 invalid_token | 拒否：409 directory_connector_disabled | 何もしない |
+
+### IngestionRunLifecycle
+
+取り込みの実行は、始めると `running` になり、Connector が完了を報告すると `completed` になる。
+同じ Connector が新しい実行を始めると、`running` の実行は `superseded` になる。
+
+| State | Kind | Meaning |
+|---|---|---|
+| Running | initial | バッチを受け付けている |
+| Completed | terminal | Connector が完了を報告した。記録したバッチの再送だけに答える |
+| Superseded | terminal | 同じ Connector の新しい実行が始まり、打ち切られた。記録したバッチの再送だけに答える |
+
+| From | Event | Guard | To | Effects |
+|---|---|---|---|---|
+| Running | Connector による取り込みの実行の完了 | 報告した項目数が記録したバッチの項目数の和と一致する | Completed | — |
+| Running | Connector による取り込みの実行の開始 | 同じ Connector の新しい実行である | Superseded | — |
+
+| State | Connector による取り込みの実行の開始 | Connector による User のバッチの送信 | Connector による取り込みの実行の完了 |
+|---|---|---|---|
+| Running | → Superseded | 何もしない | → Completed（項目数が一致する）<br>拒否：409 ingestion_run_incomplete（項目数が一致しない） |
+| Completed | 何もしない | 何もしない（記録したバッチの再送）<br>拒否：409 ingestion_run_closed（記録していないバッチ） | 何もしない |
+| Superseded | 何もしない | 何もしない（記録したバッチの再送）<br>拒否：409 ingestion_run_closed（記録していないバッチ） | 拒否：409 ingestion_run_closed |
 
 ## 操作
 
@@ -135,6 +178,73 @@ JWT の `aud` には、テナントの発行者識別子に `/directory-connecto
 - 存在しないか別のテナントの Connector の ID を指定された場合、Sourcing は、404 と `directory_connector_not_found` で拒否する。
 - `admin` または `system_admin` のロールを持たない利用者が無効化を要求した場合、Sourcing は、403 と `access_denied` で拒否し、Connector を変えない。
 
+### Connector による取り込みの実行の開始
+
+#### REQ-SOURCING-015 取り込みの実行の開始は、同じ Connector の進行中の実行を打ち切り、新しい実行を返す
+
+- **上位の要件**：[REQ-SOURCING-010](directory.md#connector-による接続の報告)
+- `Active` の Connector が `full` か `incremental` を指定して取り込みの実行を始めたとき、Sourcing は、`running` の実行を作り、201 で実行の ID、種類、状態、開始時刻を返す。
+- Connector が取り込みの実行を始めたとき、Sourcing は、同じ Connector の `running` の実行を `superseded` にする。
+- 種類が `full` でも `incremental` でもない場合、Sourcing は、400 と `invalid_request` で拒否し、実行を作らない。
+- **判断**：打ち切るのは、古い完全な再同期の完了が、新しい実行にだけ現れた User を無効にしないためである。
+
+### Connector による User のバッチの送信
+
+#### REQ-SOURCING-016 User のバッチは、Connector と外部の不変 ID で対応する User へ、作成、変更、無効化、削除の予約を反映する
+
+- **上位の要件**：[REQ-SOURCING-010](directory.md#connector-による接続の報告)
+- Connector が `running` の実行へ 1 件から 100 件の User の項目のバッチを送ったとき、Sourcing は、項目を送られた順に一件ずつ適用して確定し、200 でバッチの ID と、項目ごとの外部の不変 ID、結果、`failed` のエラーコードを返す。
+- 対応のない外部の不変 ID の、削除でない項目を適用するとき、Sourcing は、IdManagement の作成を通し、項目の有効かどうかに合わせた `Active` か `Disabled` の User を作り、User と対応を一緒に確定し、`created` を返す。
+- 対応のある外部の不変 ID の、削除でない項目を適用するとき、Sourcing は、項目にない任意の属性を空として User の属性を IdManagement の変更を通して置き換え、項目の有効かどうかに合わせて IdManagement の無効化か再有効化を通し、`updated` を返す。
+- 対応のある User の属性と有効かどうかが項目と同じとき、Sourcing は、User を書かず、`unchanged` を返す。
+- 対応のある外部の不変 ID の削除の項目を適用するとき、Sourcing は、IdManagement の削除の予約を通して User を `PendingDeletion` にし、`deleted` を返す。
+- 対応のない外部の不変 ID の削除の項目か、対応の User が `PendingDeletion` か削除済みの削除の項目を適用するとき、Sourcing は、User を変えず、`unchanged` を返す。
+- Sourcing が User を作成または変更するとき、Sourcing は、管理 API と同じ使用量の確認、作成または変更のイベント、ライフサイクルワークフローの捕捉と下流への通知を伴わせ、イベントの actor を `directory_connector` にする。
+- 対応のある外部の不変 ID の項目を適用したとき、Sourcing は、結果が `failed` でもその対応にこの実行に現れた印を付ける。
+- 対応のない既存の User か別の対応の User とユーザー名が衝突する項目の場合、Sourcing は、User を結び付けも作成も変更もせず、`failed` と `username_conflict` を返す。
+- 同じテナントのほかの User とメールアドレスが衝突する項目の場合、Sourcing は、User を作成も変更もせず、`failed` と `email_conflict` を返す。
+- 属性がテナントの属性スキーマに違反する項目の場合、Sourcing は、User を作成も変更もせず、`failed` と `invalid_attribute` を返す。
+- User の Hard Quota を超える作成の項目の場合、Sourcing は、User と対応を作らず、使用量を変えず、`failed` と `quota_exceeded` を返す。
+- 対応の User が `PendingDeletion` か削除済みである、削除でない項目の場合、Sourcing は、User を変えず、`failed` と `user_deleted` を返す。
+- 作成で対応の保存に失敗した場合、Sourcing は、User を残さず、要求を失敗させる。
+- JSON として読めない本文、空か 128 文字を超える `batch_id`、0 件か 101 件以上の項目、空か 256 文字を超えるかバッチの中で重複する外部の不変 ID、`preferred_username` のない削除でない項目のどれかを受けた場合、Sourcing は、400 と `invalid_request` で拒否し、どの項目も適用しない。
+- 存在しないか、別の Connector か別のテナントの実行を指定された場合、Sourcing は、404 と `ingestion_run_not_found` で拒否する。
+- **判断**：項目ごとに確定し、バッチを不可分にしない。途中で失敗したバッチは、同じバッチの再送が適用済みの項目を `unchanged` として回収する。
+- **判断**：変わらない項目で User を書かないのは、完全な再同期で全件を送っても、変わらない User にイベントと下流への通知を出さないためである。
+
+#### REQ-SOURCING-017 同じバッチの再送は、適用をやり直さずに最初の結果を返す
+
+- **上位の要件**：[REQ-SOURCING-016](directory.md#connector-による-user-のバッチの送信)
+- Sourcing がバッチのすべての項目を適用したとき、Sourcing は、バッチの ID、項目のダイジェスト、項目ごとの結果を実行に記録する。
+- 実行に記録したバッチと同じ ID と同じ項目のバッチを受けたとき、Sourcing は、実行の状態を問わず、項目を適用し直さず、記録した結果を 200 で返す。
+- 実行に記録したバッチと同じ ID で、項目の異なるバッチを受けた場合、Sourcing は、409 と `batch_conflict` で拒否し、どの項目も適用しない。
+- `completed` か `superseded` の実行へ、記録していないバッチを送られた場合、Sourcing は、409 と `ingestion_run_closed` で拒否し、どの項目も適用しない。
+
+### Connector による取り込みの実行の完了
+
+#### REQ-SOURCING-018 実行の完了は、完全な再同期に現れなかった対応済みの User を無効にする
+
+- **上位の要件**：[REQ-SOURCING-010](directory.md#connector-による接続の報告)
+- Connector が、`running` の実行の完了を、記録したバッチの項目数の和と同じ項目数で報告したとき、Sourcing は、実行を `completed` にし、完了時刻を記録し、200 で実行を返す。
+- `full` の実行を完了したとき、Sourcing は、同じ Connector の対応のうち、この実行に現れた印のない対応の `Active` の User を、IdManagement の無効化を通して `Disabled` にし、無効にした件数を実行に記録する。
+- `incremental` の実行を完了したとき、Sourcing は、どの User も無効にしない。
+- `completed` の実行の完了を報告されたとき、Sourcing は、実行も User も変えず、200 で実行を返す。
+- 報告した項目数が、記録したバッチの項目数の和と一致しない場合、Sourcing は、409 と `ingestion_run_incomplete` で拒否し、実行も User も変えない。
+- `superseded` の実行の完了を報告された場合、Sourcing は、409 と `ingestion_run_closed` で拒否し、実行も User も変えない。
+- 存在しないか、別の Connector か別のテナントの実行を指定された場合、Sourcing は、404 と `ingestion_run_not_found` で拒否する。
+- **判断**：項目数を照合するのは、取りこぼしたバッチの User を、現れなかったものとして無効にしないためである。
+- **判断**：削除ではなく無効にとどめるのは、取り込み元の検索範囲の設定の誤りで多数の User が現れなかったとき、取り込み元を直した次の同期で回復できるようにするためである。
+
+### 管理者による取り込みの実行の照会
+
+#### REQ-SOURCING-019 管理者は Connector の取り込みの実行の件数と失敗を照会できる
+
+- 管理者が Connector の取り込みの実行を一覧したとき、Sourcing は、開始時刻の新しい順に最大 50 件の実行を、ID、種類、状態、開始と完了の時刻、バッチの数、項目の数、結果ごとの項目の数、無効にした User の数とともに返す。
+- 管理者が取り込みの実行を取得したとき、Sourcing は、一覧と同じ項目に加え、`failed` の項目の外部の不変 ID、エラーコード、バッチの ID を、バッチを記録した順に最大 100 件返す。
+- 存在しないか別のテナントの Connector の ID を指定された場合、Sourcing は、404 と `directory_connector_not_found` で拒否する。
+- 存在しないか別の Connector の実行の ID を指定された場合、Sourcing は、404 と `ingestion_run_not_found` で拒否する。
+- `admin` または `system_admin` のロールを持たない利用者が照会を要求した場合、Sourcing は、403 と `access_denied` で拒否する。
+
 ## セキュリティ上の考慮
 
 Connector の管理 API は、`admin` または `system_admin` のロールを持つ、有効かつ認証済みの利用者の対話のセッションに限り、API アクセストークンでは到達できない。
@@ -146,3 +256,7 @@ JWT の `iss` は、そのテナントの Connector の ID として引き、別
 
 IdMagic が保存するのは、登録トークンのハッシュと公開鍵だけである。
 Connector の秘密鍵、AD の資格情報、利用者のパスワードは、IdMagic のデータベース、API の応答、イベントのどれにも含まれない。
+
+取り込みの実行と対応は、それを作った Connector に属する。
+Connector は、別の Connector の実行へバッチを送れず、別の Connector の対応の User を変えられない。
+外部の不変 ID が同じでも Connector が違えば別の対応であり、別の Connector の User にはユーザー名の衝突として失敗する。

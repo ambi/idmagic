@@ -336,6 +336,7 @@ func TestDirectoryConnector_EnrollsAndReportsWithItsKey(t *testing.T) {
 // 主要ユースケース追跡: REQ-SOURCING-010。
 //
 //spec:covers REQ-SOURCING-010 REQ-SOURCING-011 REQ-SOURCING-012
+//verify:operation ReissueDirectoryConnectorEnrollment: 201 と no-store で、登録待ちに戻った Connector と新しい登録トークンを返す。
 func TestDirectoryConnector_RejectsCallsItCannotTrust(t *testing.T) {
 	s := newServer(t)
 	enrollment, key := s.enrolled("東京の AD")
@@ -410,6 +411,9 @@ func TestDirectoryConnector_RejectsCallsItCannotTrust(t *testing.T) {
 }
 
 //spec:covers REQ-SOURCING-008 REQ-SOURCING-009 REQ-SOURCING-011 REQ-SOURCING-012 REQ-SOURCING-013 REQ-SOURCING-014
+//verify:operation GetDirectoryConnector: 200 で Connector の本文を、存在しないか別のテナントの ID に 404 directory_connector_not_found を返す。
+//verify:operation DisableDirectoryConnector: 200 で無効化した Connector の本文を、存在しない ID に 404 を返す。
+//verify:operation ReissueDirectoryConnectorEnrollment: 無効化した Connector に 409 directory_connector_disabled、存在しない ID に 404 を返す。
 func TestDirectoryConnector_AdminOperations(t *testing.T) {
 	s := newServer(t)
 	admin := func(method, path string, body any) *httptest.ResponseRecorder {

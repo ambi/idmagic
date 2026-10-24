@@ -8,7 +8,8 @@ import (
 
 // CreateSourceUser は、取り込み元の属性から、パスワードを持たない User を作る。
 // 一意性、属性、使用量、変更の捕捉と下流通知はほかの作成経路と共有する。
-func CreateSourceUser(ctx context.Context, deps AdminUserDeps, source *userdomain.User) (*userdomain.User, error) {
+// actor は取り込み元の名前であり、イベントの actor に記録する。
+func CreateSourceUser(ctx context.Context, deps AdminUserDeps, actor string, source *userdomain.User) (*userdomain.User, error) {
 	return createUser(ctx, deps, newUser{
 		User: userdomain.User{
 			TenantID: source.TenantID, PreferredUsername: source.PreferredUsername,
@@ -16,6 +17,6 @@ func CreateSourceUser(ctx context.Context, deps AdminUserDeps, source *userdomai
 			Email: source.Email, EmailVerified: source.EmailVerified, Attributes: source.Attributes,
 			Lifecycle: userdomain.UserLifecycle{Status: source.Lifecycle.Status}, Roles: []string{},
 		},
-		ActorUserID: "scim",
+		ActorUserID: actor,
 	}, source.CreatedAt)
 }

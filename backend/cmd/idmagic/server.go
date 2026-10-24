@@ -315,14 +315,19 @@ func healthFeatureMetadata(metadata bootstrap.FeatureRuntimeMetadata) httpsuppor
 	return httpsupport.FeatureRuntimeMetadata{SchemaVersion: metadata.SchemaVersion, Enabled: enabled}
 }
 
-// sourcingModule は、SCIM の取り込みが User を止めるときに通す IdManagement の操作を、Sourcing へ渡す。
-// イベントの出力先は NewEmitFunc の後でしか決まらないので、ここで組み立てる。
+// sourcingModule は、SCIM と Directory Connector の取り込みが User を書く、止めるときに通す IdManagement の
+// 操作を、Sourcing へ渡す。イベントの出力先は NewEmitFunc の後でしか決まらないので、ここで組み立てる。
 func sourcingModule(deps *bootstrap.Dependencies, emit func(spec.DomainEvent)) sourcing.Module {
 	module := deps.Sourcing
 	module.UserLifecycle = deps.IdManagement.UserLifecycleCommands(deps.UserLifecycleDeps(), deps.ReactiveEmit(emit), scimActor)
+	module.DirectoryUserLifecycle = deps.IdManagement.UserLifecycleCommands(deps.UserLifecycleDeps(), deps.ReactiveEmit(emit), directoryConnectorActor)
 	module.Writes = sourcingdeps.NewWrites(deps.IdManagement, deps.UserLifecycleDeps(), module, emit)
+	module.DirectoryWrites = sourcingdeps.NewDirectoryWrites(deps.IdManagement, deps.UserLifecycleDeps(), module, emit)
 	return module
 }
 
-// scimActor は、SCIM の取り込みが止めた User と Agent の監査イベントに actor として記録する名前である。
-const scimActor = "scim"
+// 取り込みが止めた User と Agent の監査イベントに actor として記録する名前。
+const (
+	scimActor               = "scim"
+	directoryConnectorActor = "directory_connector"
+)

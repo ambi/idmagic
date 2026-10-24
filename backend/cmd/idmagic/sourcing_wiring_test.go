@@ -9,11 +9,13 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/sourcing"
+	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
 
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -118,5 +120,44 @@ func TestSCIMUserLifecycleAdvancesTheRevocationEpochOfOwnedAgents(t *testing.T) 
 	epoch, err := epochs.FindByAgent(ctx, tenant, "deploy-bot")
 	if err != nil || epoch == nil || epoch.Reason != ssdomain.RevocationReasonOwnerDisabled {
 		t.Fatalf("revocation epoch = %+v, %v; want advanced for %s", epoch, err, ssdomain.RevocationReasonOwnerDisabled)
+	}
+}
+
+// 完全な再同期の無効化が IdManagement の無効化を通り、どちらも directory_connector の操作者でイベントを発行すること。
+//
+//spec:covers REQ-SOURCING-016, REQ-SOURCING-018: API の起動が組み立てた Sourcing で、Directory Connector の作成が対応を一緒に確定し、
+func TestServerWiresDirectoryIngestionThroughIdManagement(t *testing.T) {
+	ctx := context.Background()
+	users := idmanagement.NewMemoryModule().UserRepo
+	deps := &bootstrap.Dependencies{
+		IdManagement: idmanagement.Module{UserRepo: users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo, AgentRepo: idmanagement.NewMemoryModule().AgentRepo},
+		Sourcing:     sourcing.NewMemoryModule(), Tenancy: tenancy.NewMemoryModule(),
+	}
+	var events []spec.DomainEvent
+	module := sourcingModule(deps, func(event spec.DomainEvent) { events = append(events, event) })
+
+	tenant := tenancydomain.DefaultTenantID
+	created, err := module.DirectoryWrites.CreateUser(ctx, directoryports.UserCorrelation{ConnectorID: "connector", ExternalID: "guid", LastSeenRunID: "run"},
+		&userdomain.User{TenantID: tenant, PreferredUsername: "alice", Roles: []string{}, CreatedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if managed, err := module.UserOwnershipGuard().SourceManagedUserIDs(ctx, tenant, []string{created.ID}); err != nil || !managed[created.ID] {
+		t.Fatalf("correlation for the created user = %v, %v", managed, err)
+	}
+	if changed, err := module.DirectoryUserLifecycle.SetUserDisabled(ctx, tenant, created.ID, true, time.Now()); err != nil || !changed {
+		t.Fatalf("SetUserDisabled = %v, %v", changed, err)
+	}
+	actors := map[string]string{}
+	for _, event := range events {
+		switch e := event.(type) {
+		case *idmdomain.UserCreated:
+			actors[e.EventType()] = e.ActorUserID
+		case *idmdomain.UserDisabled:
+			actors[e.EventType()] = e.ActorUserID
+		}
+	}
+	if actors["UserCreated"] != directoryConnectorActor || actors["UserDisabled"] != directoryConnectorActor {
+		t.Fatalf("actors = %v, want %q", actors, directoryConnectorActor)
 	}
 }

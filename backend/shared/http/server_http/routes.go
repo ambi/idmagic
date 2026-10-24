@@ -504,10 +504,12 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	d.ApiTokens.Register(g, d.Deps, authenticator)
 
+	sourceLifecycle := idmanagement.LifecycleDeps{AttrSchemaRepo: d.IdManagement.AttrSchemaRepo, QuotaRepo: d.Tenancy.QuotaRepo}
 	if d.Sourcing.ScimRepo != nil && d.Sourcing.Writes == nil {
-		d.Sourcing.Writes = sourcingdeps.NewWrites(d.IdManagement, idmanagement.LifecycleDeps{
-			AttrSchemaRepo: d.IdManagement.AttrSchemaRepo, QuotaRepo: d.Tenancy.QuotaRepo,
-		}, d.Sourcing, d.Emit)
+		d.Sourcing.Writes = sourcingdeps.NewWrites(d.IdManagement, sourceLifecycle, d.Sourcing, d.Emit)
+	}
+	if d.Sourcing.ScimRepo != nil && d.Sourcing.DirectoryWrites == nil {
+		d.Sourcing.DirectoryWrites = sourcingdeps.NewDirectoryWrites(d.IdManagement, sourceLifecycle, d.Sourcing, d.Emit)
 	}
 	d.Sourcing.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService,
 		d.OAuth2.ClientAssertionReplayStore)

@@ -14,6 +14,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	directorywrites "github.com/ambi/idmagic/backend/sourcing/directory/ports"
 	directoryhttp "github.com/ambi/idmagic/backend/sourcing/internal/directory/handlers_http"
 	directoryports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 	directoryusecases "github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
@@ -32,7 +33,15 @@ type Module struct {
 	// UserLifecycle は、SCIM が User を止める、削除を予約するときに通す IdManagement の操作である。
 	// イベントの出力先が決まった後で、組み立ての地点が設定する。
 	UserLifecycle ports.UserLifecycle
-	connectors    directoryports.ConnectorRepository
+	// DirectoryWrites と DirectoryUserLifecycle は、Directory Connector の取り込みが通す
+	// IdManagement の操作である。actor を directory_connector にして組み立て地点が設定する。
+	DirectoryWrites        directorywrites.IdentityWrites
+	DirectoryUserLifecycle directorywrites.UserLifecycle
+	connectors             directoryports.ConnectorRepository
+	correlations           directoryports.CorrelationRepository
+	// memoryCorrelations は、トランザクションを持たないメモリ構成で対応を保存する先である。
+	memoryCorrelations directorywrites.CorrelationWriter
+	runs               directoryports.IngestionRunRepository
 }
 
 // Register は SCIM と Directory Connector の経路を登録する。replay は Connector の JWT の
@@ -49,6 +58,10 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 	directoryhttp.RegisterRoutes(g, directoryhttp.Deps{
 		Deps: deps, Authenticator: authenticator,
 		Service: directoryusecases.New(m.connectors, prefixedReplay{replay}, emit),
+		Ingestion: directoryusecases.NewIngestion(directoryusecases.IngestionDeps{
+			Runs: m.runs, Correlations: m.correlations, Users: userRepo,
+			Writes: m.DirectoryWrites, Lifecycle: m.DirectoryUserLifecycle,
+		}),
 	})
 }
 

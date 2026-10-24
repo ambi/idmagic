@@ -613,6 +613,137 @@ model ReportDirectoryConnectorHeartbeatSuccess_204 {
 op ReportDirectoryConnectorHeartbeat(
   @header authorization: string
 ): ReportDirectoryConnectorHeartbeatSuccess_204 | DirectoryConnectorInvalidTokenError401;
+
+model IngestionRunSuccess_201 {
+  @statusCode statusCode: 201;
+  @body body: IdMagic.Contract.IngestionRun;
+}
+
+model IngestionRunSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.IngestionRun;
+}
+
+union DirectoryIngestionError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model DirectoryIngestionError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: DirectoryIngestionError400Body;
+}
+
+union IngestionRunNotFoundError404Body {
+  IdMagic.Contract.IngestionRunNotFoundError,
+}
+
+model IngestionRunNotFoundError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: IngestionRunNotFoundError404Body;
+}
+
+@doc("登録済みの Directory Connector が取り込みの実行を始める。同じ Connector の `running` の実行は `superseded` になる。認証は接続の報告と同じ JWT である。")
+@TypeSpec.OpenAPI.operationId("StartDirectoryIngestionRun")
+@route("/directory-connector/v1/ingestion-runs")
+@post
+op StartDirectoryIngestionRun(
+  @header authorization: string,
+  @body body: IdMagic.Contract.StartIngestionRunRequest
+): IngestionRunSuccess_201 | DirectoryIngestionError400 | DirectoryConnectorInvalidTokenError401;
+
+model DirectoryUserBatchSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.DirectoryUserBatchResult;
+}
+
+union SendDirectoryUserBatchError409Body {
+  IdMagic.Contract.BatchConflictError,
+  IdMagic.Contract.IngestionRunClosedError,
+}
+
+model SendDirectoryUserBatchError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: SendDirectoryUserBatchError409Body;
+}
+
+@doc("Directory Connector が `running` の実行へ User の項目のバッチを送る。項目を順に一件ずつ確定し、項目ごとの結果を返す。同じ ID と同じ項目の再送は、適用し直さずに最初の結果を返す。")
+@TypeSpec.OpenAPI.operationId("SendDirectoryUserBatch")
+@route("/directory-connector/v1/ingestion-runs/{run_id}/user-batches")
+@post
+op SendDirectoryUserBatch(
+  @header authorization: string,
+  @path run_id: string,
+  @body body: IdMagic.Contract.DirectoryUserBatchRequest
+): DirectoryUserBatchSuccess_200 | DirectoryIngestionError400 | DirectoryConnectorInvalidTokenError401 | IngestionRunNotFoundError404 | SendDirectoryUserBatchError409;
+
+union CompleteDirectoryIngestionRunError409Body {
+  IdMagic.Contract.IngestionRunIncompleteError,
+  IdMagic.Contract.IngestionRunClosedError,
+}
+
+model CompleteDirectoryIngestionRunError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: CompleteDirectoryIngestionRunError409Body;
+}
+
+@doc("Directory Connector が取り込みの実行の完了を報告する。`full` の実行では、同じ Connector の対応のうち、この実行に現れなかった `active` の User を `disabled` にする。")
+@TypeSpec.OpenAPI.operationId("CompleteDirectoryIngestionRun")
+@route("/directory-connector/v1/ingestion-runs/{run_id}/complete")
+@post
+op CompleteDirectoryIngestionRun(
+  @header authorization: string,
+  @path run_id: string,
+  @body body: IdMagic.Contract.CompleteIngestionRunRequest
+): IngestionRunSuccess_200 | DirectoryIngestionError400 | DirectoryConnectorInvalidTokenError401 | IngestionRunNotFoundError404 | CompleteDirectoryIngestionRunError409;
+
+model ListDirectoryIngestionRunsHttpResponse {
+  @doc("開始時刻の新しい順に最大 50 件。")
+  runs: IdMagic.Contract.IngestionRunSummary[];
+}
+
+model ListDirectoryIngestionRunsSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: ListDirectoryIngestionRunsHttpResponse;
+}
+
+@doc("Directory Connector の取り込みの実行を、結果ごとの項目の数とともに一覧する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("ListDirectoryIngestionRuns")
+@route("/api/admin/v1/directory-connectors/{connector_id}/ingestion-runs")
+@get
+op ListDirectoryIngestionRuns(
+  @path connector_id: string
+): ListDirectoryIngestionRunsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminReadError403 | DirectoryConnectorNotFoundError404;
+
+model IngestionRunDetailSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.IngestionRunDetail;
+}
+
+union GetDirectoryIngestionRunError404Body {
+  IdMagic.Contract.DirectoryConnectorNotFoundError,
+  IdMagic.Contract.IngestionRunNotFoundError,
+}
+
+model GetDirectoryIngestionRunError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GetDirectoryIngestionRunError404Body;
+}
+
+@doc("取り込みの実行を一つ読む。結果ごとの項目の数と、`failed` の項目を最大 100 件返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("GetDirectoryIngestionRun")
+@route("/api/admin/v1/directory-connectors/{connector_id}/ingestion-runs/{run_id}")
+@get
+op GetDirectoryIngestionRun(
+  @path connector_id: string,
+  @path run_id: string
+): IngestionRunDetailSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminReadError403 | GetDirectoryIngestionRunError404;
 }
 
 }

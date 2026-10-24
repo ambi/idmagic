@@ -12,6 +12,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	"github.com/ambi/idmagic/backend/sourcing/internal/sourceuser"
 )
 
 func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[string]any) (map[string]any, error) {
@@ -34,17 +35,16 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 	}
 	scimID := hex.EncodeToString(scimIDBytes)
 
+	attributes, err := u.sourceAttributes(ctx, tenantID, w)
+	if err != nil {
+		return nil, err
+	}
 	now := time.Now()
 	user := &userdomain.User{
-		TenantID:          tenantID,
-		PreferredUsername: w.UserName,
-		PasswordHash:      "", // SCIM users usually don't have local password initially
-		Name:              &w.Formatted,
-		GivenName:         &w.GivenName,
-		FamilyName:        &w.FamilyName,
-		Email:             &w.Email,
-		EmailVerified:     true,
-		Roles:             []string{},
+		TenantID:      tenantID,
+		PasswordHash:  "", // SCIM users usually don't have local password initially
+		EmailVerified: true,
+		Roles:         []string{},
 		Lifecycle: userdomain.UserLifecycle{
 			Status:          userStatusFromActive(w.Active),
 			StatusChangedAt: &now,
@@ -53,10 +53,7 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
-
-	if err := u.applyEnterpriseExtension(ctx, tenantID, user, w); err != nil {
-		return nil, err
-	}
+	attributes.Apply(user)
 
 	user, err = u.Writes.CreateUser(ctx, scimID, user)
 	if err != nil {
@@ -103,14 +100,11 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 		}
 	}
 
-	user.PreferredUsername = w.UserName
-	user.GivenName = &w.GivenName
-	user.FamilyName = &w.FamilyName
-	user.Name = &w.Formatted
-	user.Email = &w.Email
-	if err := u.applyEnterpriseExtension(ctx, tenantID, user, w); err != nil {
+	attributes, err := u.sourceAttributes(ctx, tenantID, w)
+	if err != nil {
 		return nil, err
 	}
+	attributes.Apply(user)
 	user.UpdatedAt = time.Now()
 
 	user, err = u.Writes.UpdateUser(ctx, user)
@@ -214,33 +208,15 @@ func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *
 		email, _ := op.Value.(string)
 		user.Email = &email
 	case domain.UserAttrEmployeeNumber:
-		ensureAttributes(user)
-		if isRemoveOp {
-			delete(user.Attributes, "employee_number")
-			return nil
-		}
-		v, _ := op.Value.(string)
-		setOrDeleteStringAttr(user.Attributes, "employee_number", v)
+		sourceuser.SetString(user, sourceuser.AttrEmployeeNumber, *patchStringField(op))
 	case domain.UserAttrDepartment:
-		ensureAttributes(user)
-		if isRemoveOp {
-			delete(user.Attributes, "department")
-			return nil
-		}
-		v, _ := op.Value.(string)
-		setOrDeleteStringAttr(user.Attributes, "department", v)
+		sourceuser.SetString(user, sourceuser.AttrDepartment, *patchStringField(op))
 	case domain.UserAttrManager:
-		ensureAttributes(user)
-		if isRemoveOp {
-			delete(user.Attributes, "manager_sub")
-			return nil
-		}
-		managerScimID, _ := op.Value.(string)
-		managerSub, err := u.resolveManagerSub(ctx, tenantID, managerScimID)
+		managerSub, err := u.resolveManagerSub(ctx, tenantID, *patchStringField(op))
 		if err != nil {
 			return err
 		}
-		setOrDeleteStringAttr(user.Attributes, "manager_sub", managerSub)
+		sourceuser.SetString(user, sourceuser.AttrManagerSub, managerSub)
 	}
 	return nil
 }
@@ -253,36 +229,6 @@ func editableCopy(user *userdomain.User) *userdomain.User {
 	clone := *user
 	clone.Attributes = maps.Clone(user.Attributes)
 	return &clone
-}
-
-// ensureAttributes guarantees user.Attributes is non-nil before a sparse
-// key is written; User.Attributes is a `map[string]AttributeValue,omitempty`
-// so a User loaded without any set attribute has a nil map.
-func ensureAttributes(user *userdomain.User) {
-	if user.Attributes == nil {
-		user.Attributes = make(map[string]userdomain.AttributeValue)
-	}
-}
-
-// setOrDeleteStringAttr sets attrs[key] to value, or deletes the key when
-// value is blank so an attribute reset by PUT/PATCH doesn't leave a stale
-// value behind.
-func setOrDeleteStringAttr(attrs map[string]userdomain.AttributeValue, key, value string) {
-	if strings.TrimSpace(value) == "" {
-		delete(attrs, key)
-		return
-	}
-	v := value
-	attrs[key] = userdomain.AttributeValue{Type: idmdomain.AttributeTypeString, String: &v}
-}
-
-// stringAttrValue reads a string-typed User.Attributes entry.
-func stringAttrValue(attrs map[string]userdomain.AttributeValue, key string) (string, bool) {
-	v, ok := attrs[key]
-	if !ok || v.Type != idmdomain.AttributeTypeString || v.String == nil {
-		return "", false
-	}
-	return *v.String, true
 }
 
 // resolveManagerSub resolves an enterprise extension "manager" SCIM id to
@@ -298,21 +244,17 @@ func (u *Usecases) resolveManagerSub(ctx context.Context, tenantID, managerScimI
 	return u.resolveLiveUserID(ctx, tenantID, "manager", managerScimID)
 }
 
-// applyEnterpriseExtension applies the RFC7643-ENTERPRISE-EXTENSION
-// adoption:partial subset (employee_number/department/manager_sub) onto
-// User.Attributes. w's fields already reflect PUT full-replace/PATCH
-// semantics (empty means "clear"), so this only needs to resolve manager
-// and write or delete each sparse key.
-func (u *Usecases) applyEnterpriseExtension(ctx context.Context, tenantID string, user *userdomain.User, w domain.UserWrite) error {
+// sourceAttributes は POST と PUT の属性を、manager を解決した取り込み元の属性へ写す。
+// w の空の値は属性を消すことを表す (PUT の完全な置換)。
+func (u *Usecases) sourceAttributes(ctx context.Context, tenantID string, w domain.UserWrite) (sourceuser.Attributes, error) {
 	managerSub, err := u.resolveManagerSub(ctx, tenantID, w.ManagerValue)
 	if err != nil {
-		return err
+		return sourceuser.Attributes{}, err
 	}
-	ensureAttributes(user)
-	setOrDeleteStringAttr(user.Attributes, "employee_number", w.EmployeeNumber)
-	setOrDeleteStringAttr(user.Attributes, "department", w.Department)
-	setOrDeleteStringAttr(user.Attributes, "manager_sub", managerSub)
-	return nil
+	return sourceuser.Attributes{
+		PreferredUsername: w.UserName, Name: w.Formatted, GivenName: w.GivenName, FamilyName: w.FamilyName, Email: w.Email,
+		EmployeeNumber: w.EmployeeNumber, Department: w.Department, ManagerSub: &managerSub,
+	}, nil
 }
 
 func patchStringField(op domain.UserPatchOp) *string {
@@ -456,13 +398,13 @@ func (u *Usecases) toScimUser(ctx context.Context, tenantID string, user *userdo
 
 	schemas := []string{"urn:ietf:params:scim:schemas:core:2.0:User"}
 	ext := map[string]any{}
-	if v, ok := stringAttrValue(user.Attributes, "employee_number"); ok {
+	if v, ok := sourceuser.String(user.Attributes, sourceuser.AttrEmployeeNumber); ok {
 		ext["employeeNumber"] = v
 	}
-	if v, ok := stringAttrValue(user.Attributes, "department"); ok {
+	if v, ok := sourceuser.String(user.Attributes, sourceuser.AttrDepartment); ok {
 		ext["department"] = v
 	}
-	if managerSub, ok := stringAttrValue(user.Attributes, "manager_sub"); ok {
+	if managerSub, ok := sourceuser.String(user.Attributes, sourceuser.AttrManagerSub); ok {
 		// 削除済みの manager は出さない (RFC7644-DELETE-SEMANTICS)。書き込みが
 		// 拒否する参照を読み取りが返すと、読んだ resource をそのまま送り返す
 		// read-modify-write が 400 になる。
