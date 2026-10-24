@@ -94,8 +94,11 @@ AD の objectGUID を sourceAnchor にする場合は、Entra Connect と同じ�
 GUID の文字列のまま保存した値は、base64 に符号化した ImmutableID と一致しない。
 Entra 側では原因を特定しにくいので、サインインの失敗が続く場合は、まず発行した ImmutableID と、Entra の利用者の `onPremisesImmutableId` を突き合わせる。
 
-Hybrid Azure AD Join の端末の登録（`windowstransport` とコンピューターアカウントの Kerberos）は範囲の外である。
-設定の案内では、managed や PHS、あるいは AD FS を併存させる配置へ誘導する。
+IdMagic は、Microsoft Entra hybrid join の即時の登録に要る `windowstransport` を提供しない（[判断](../decisions.md#ws-trust-の能動的な対応を-usernamemixed-の-issue-だけに絞る)）。
+フェデレーションしたドメインの端末は、Entra Connect による同期の後の登録（sync join）で Hybrid Join を終える。
+sync join には、Windows 10 1803 以降の端末であることと、Entra Connect が対象の OU のコンピューターとデフォルトの端末の属性を同期することが要る（[Microsoft Entra hybrid join の手動構成](https://learn.microsoft.com/en-us/entra/identity/devices/hybrid-join-manual)）。
+端末の最初の登録の試みは失敗し、Entra Connect がコンピューターの `userCertificate` を同期した後の試みで登録が終わる（[Okta の Hybrid Join の説明](https://help.okta.com/en-us/content/topics/provisioning/azure/haad-join/about-haad.htm)が同じ流れを示す）ので、構成の直後に登録が終わらなくても障害ではない。
+登録が終わらない場合は、Entra Connect の同期の範囲と、端末の `dsregcmd /status` の結果を確かめる。
 
 ### 証明書の交代
 

@@ -44,7 +44,7 @@ export const adminEntraFederationDictionary = defineDictionary(
     commandCopyFailedError:
       'コピーできませんでした。表示したコマンドを選択してコピーしてください。',
     hybridJoinNotProvidedNotice:
-      'Hybrid Azure AD Join のデバイス登録は未提供です。必要な場合は managed/PHS への切替または AD FS 併存を検討してください。',
+      'Microsoft Entra hybrid join の即時の登録は提供しません。Windows 10 1803 以降の端末は、Microsoft Entra Connect がコンピューターを同期した後に登録されます。',
     backToFederationList: 'フェデレーション一覧へ戻る',
   },
   {
@@ -89,7 +89,7 @@ export const adminEntraFederationDictionary = defineDictionary(
     commandCopiedNotice: 'Copied the command.',
     commandCopyFailedError: 'Could not copy. Select the displayed command and copy it manually.',
     hybridJoinNotProvidedNotice:
-      'Hybrid Azure AD Join device registration is not provided. If needed, consider switching to managed/PHS or keeping AD FS alongside.',
+      'Immediate Microsoft Entra hybrid join registration is not provided. Devices running Windows 10 1803 or later register after Microsoft Entra Connect syncs their computer objects.',
     backToFederationList: 'Back to federation list',
   },
 )

@@ -27,12 +27,12 @@ sourceAnchor 不一致によるアカウント重複を招く。これは個別 
 検証を一箇所に集約し、各 WI からは「実テナント検証は本 WI が担う」として範囲外にする。
 
 ## Scope
-- **verification**: 検証用 Entra テナントの検証済みドメインを idmagic に federation 設定 (managed → federated 切替) し、ブラウザサインイン (passive / wi-61) が成功し、発行 token に UPN / ImmutableID が 含まれることを確認する (wi-64)。, rich client / legacy active 認証経路 (WS-Trust usernamemixed / MEX、wi-62) で token が 発行され Microsoft 365 にサインインできることを確認する。, federation metadata (wi-63) を Entra が取り込み、issuer / passive / active endpoint / 署名証明書が一致することを確認する。, ドメイン参加 PC から Microsoft 365 への無音サインイン (wi-65) が成立することを確認する。, Hybrid Azure AD Join のデバイス登録が未提供である旨が設定時に診断・案内されることを実テナントで確認する (wi-64)。, 複数の検証済みドメインを 1 テナントで federation した場合に、ドメインごとに正しい profile / issuerUri へ解決されることを確認する。
+- **verification**: 検証用 Entra テナントの検証済みドメインを idmagic に federation 設定 (managed → federated 切替) し、ブラウザサインイン (passive / wi-61) が成功し、発行 token に UPN / ImmutableID が 含まれることを確認する (wi-64)。, rich client / legacy active 認証経路 (WS-Trust usernamemixed / MEX、wi-62) で token が 発行され Microsoft 365 にサインインできることを確認する。, federation metadata (wi-63) を Entra が取り込み、issuer / passive / active endpoint / 署名証明書が一致することを確認する。, ドメイン参加 PC から Microsoft 365 への無音サインイン (wi-65) が成立することを確認する。, フェデレーションしたドメインのドメイン参加 PC (Windows 10 1803 以降) が、即時の登録に失敗した後、Entra Connect がコンピューターを同期すると Hybrid Join の登録を終えることを確認する (wi-99128)。, 複数の検証済みドメインを 1 テナントで federation した場合に、ドメインごとに正しい profile / issuerUri へ解決されることを確認する。
 - **documentation**: 実テナント検証の手順・結果・既知の落とし穴 (claim 形状不一致・sourceAnchor 不一致) を運用ドキュメントに残す。
 
 ## Out of Scope
 - WS-Fed passive / WS-Trust active / metadata / Entra preset / 無音 SSO の実装 (wi-61〜65)。本 WI は実テナント検証のみ。
-- Hybrid Azure AD Join のデバイス登録対応。Okta 同様の既知制約として未提供 (`docs/modules/ws-federation/decisions.md`)。
+- WS-Trust の windowstransport による Hybrid Join の即時の登録。社外へ公開できないので提供しない (`docs/modules/ws-federation/decisions.md`)。
 - Entra Connect (オンプレ同期) の同梱。sourceAnchor の供給はオンプレ側責務とする。
 
 ## Plan
@@ -49,7 +49,7 @@ sourceAnchor 不一致によるアカウント重複を招く。これは個別 
 - [ ] T004 [Passive] browser sign-in と wrong realm/reply/sourceAnchor negative case を実行し、UPN/ImmutableID/persistent NameID と両側 log を採取する。
 - [ ] T005 [Active] WS-Trust usernamemixed/MEX から M365 token acquisition までを実行し、invalid To/Action/credential の fail-closed を確認する。
 - [ ] T006 [Routing] 複数 verified domain が各 profile/issuerUriへ解決され、別 tenant/domain に混線しないことを確認する。
-- [ ] T007 [Silent SSO] domain-joined test machine から SPNEGO→passive flow を実行し、fallback と未提供 Hybrid Join 診断も確認する。
+- [ ] T007 [Silent SSO] domain-joined test machine から SPNEGO→passive flow を実行し、fallback と、Entra Connect の同期の後の Hybrid Join の登録 (sync join) も確認する。
 - [ ] T008 [Evidence/Restore] version、時刻、主体、手順、要約値、artifact hash を記録し、設定を rollback して managed/federated 状態とサインインを再確認する。
 - [ ] T009 [Triage] product defect は該当 specification節・再現証跡を付けた別 WI として起票し、本 WI の手順書に既知の落とし穴を反映する。
 
@@ -57,7 +57,7 @@ sourceAnchor 不一致によるアカウント重複を招く。これは個別 
 - 手動 (実テナント): test Entra テナントの検証済みドメインを idmagic に federation 設定し、 ブラウザサインイン (passive) が成功し、token に UPN / ImmutableID が含まれることを確認する。
 - 手動 (実テナント): rich client / active 認証 (WS-Trust) で Microsoft 365 にサインインできることを確認する。
 - 手動 (実テナント): ドメイン参加 PC から Microsoft 365 への無音サインインが成立することを確認する。
-- 手動 (実テナント): Hybrid Join 設定を試みると未提供である旨が診断・案内されることを確認する。
+- 手動 (実テナント): ドメイン参加 PC の `dsregcmd /status` が、Entra Connect の同期の後に `AzureAdJoined : YES` になることを確認する。
 
 ## Risk Notes
 実テナント検証は domain federation 切替という破壊的変更を伴うため、本番ではなく検証用テナントで

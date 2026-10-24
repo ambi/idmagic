@@ -10,6 +10,8 @@
 SOAP、WS-Security、WS-Addressing、SAML の署名は相互に関係する。
 対応するバインディングを増やすほど、再送や XML 署名の包み替えへの攻撃面が広がる。
 能動的な WS-Trust を使うのは、主に Microsoft 365 型のリッチクライアントである。
+Microsoft Entra hybrid join の端末は、コンピューターアカウントの Kerberos で `windowstransport` を呼ぶ。
+Microsoft は `windowstransport` を社内向けの入口にだけ置き、社外へ公開してはならないと求める（[Microsoft Entra hybrid join の計画](https://learn.microsoft.com/en-us/entra/identity/devices/hybrid-join-plan)）。
 
 ### 決定
 
@@ -21,12 +23,14 @@ SOAP、WS-Security、WS-Addressing、SAML の署名は相互に関係する。
 | 案 | 利点 | 欠点 | 採らない理由 |
 | --- | --- | --- | --- |
 | WS-Trust の操作とバインディングを広く実装する | 汎用的な WS-Trust のクライアントと相互運用できる | 束縛を広く覆うほど、再送と XML の包み替えへの攻撃面が実質的に広がる | 対象のクライアントが使わない経路のために攻撃面を広げる |
+| `windowstransport` を実装し、テナントの社内の出口 IP だけから受ける | Hybrid Join の端末を、Entra Connect の同期を待たずに登録できる | インターネット上の入口になり、社内向けにだけ置けという Microsoft の要求に従えない。端末の登録のクライアントがインターネット上のホストへ Kerberos の資格情報を自動で送るかも確かめられない | 要求に従えず、sync join という文書化された代替がある |
 
 ### 結果と再検討の条件
 
 リッチクライアントのサインインに要る経路だけを、フェイルクローズで検証すれば足りる。
-その代わり、WS-Trust の Kerberos による統合認証や Hybrid Azure AD Join の端末の登録は使えない。
-対象のクライアントが `windowstransport` などの別の経路を必須とするようになった場合に見直す。
+その代わり、WS-Trust の Kerberos による統合認証と、フェデレーションによる Hybrid Join の即時の登録は使えない。
+Hybrid Join の端末は、即時の登録に失敗した後、Entra Connect がコンピューターを同期すると登録を終える（Windows 10 1803 以降。[Configure Microsoft Entra hybrid join](https://learn.microsoft.com/en-us/entra/identity/devices/how-to-hybrid-join) の Federation caveats）。
+社内に置く入口を IdMagic が持つようになるか、Microsoft が `windowstransport` を社外に置くことを認めた場合に見直す。
 
 ### 関連する要件
 
