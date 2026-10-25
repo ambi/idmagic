@@ -65,6 +65,9 @@ func (d *Dependencies) NewEmitFunc(logger logging.Logger) func(spec.DomainEvent)
 		// 書き込みと同じワイヤ表現を見るので、通知の対象は emit 済みの事実に一致する。
 		// 送信自体は切り離して走るため、この呼び出しは SMTP を待たない。
 		d.dispatchSecurityNotification(logger, emit, event)
+		if err := d.Audit.ObserveExportJob(eventCtx, d.Jobs.Repo, event, emit); err != nil {
+			logger.Error(eventCtx, "audit export lifecycle observation failed", "error", err)
+		}
 		if d.Audit.AuditEventRepo == nil {
 			return
 		}

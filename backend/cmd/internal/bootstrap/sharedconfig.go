@@ -4,6 +4,8 @@ import (
 	"strings"
 	"time"
 
+	auditdomain "github.com/ambi/idmagic/backend/audit/domain"
+
 	emailSMTP "github.com/ambi/idmagic/backend/shared/notification/email_smtp"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/resilience"
@@ -16,6 +18,7 @@ import (
 // process starts first. It is parsed once via LoadSharedConfig and passed
 // down instead of each adapter re-reading env (wi-103).
 type SharedConfig struct {
+	AuditExportPolicy auditdomain.ExportPolicy
 	// Issuer は API がトークンを、worker が失効を伝える SET を発行するときの公開 URL である。
 	Issuer string
 
@@ -69,6 +72,12 @@ type SharedConfig struct {
 // returned struct only after the caller has confirmed l.Err() == nil.
 func LoadSharedConfig(l *ConfigLoader) SharedConfig {
 	var cfg SharedConfig
+	defaults := auditdomain.DefaultExportPolicy()
+	cfg.AuditExportPolicy = auditdomain.ExportPolicy{
+		MaxEvents: l.PositiveInt("AUDIT_EXPORT_MAX_EVENTS", defaults.MaxEvents),
+		MaxBytes:  int64(l.PositiveInt("AUDIT_EXPORT_MAX_BYTES", int(defaults.MaxBytes))),
+		TTL:       l.PositiveDuration("AUDIT_EXPORT_TTL", defaults.TTL),
+	}
 
 	cfg.Issuer = l.URL("ISSUER", "http://localhost:8080")
 	cfg.Persistence = l.Enum("PERSISTENCE", "memory", "memory", "postgres")

@@ -1,5 +1,32 @@
 namespace IdMagic.Contract {
 
+@doc("要求者だけが参照する非同期の監査エクスポート。条件と内部カーソルは公開しない。")
+model AuditExport {
+  id: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "canceled" | "expired";
+  scope: "tenant" | "system";
+  format: "json";
+  requested_by: string;
+  created_at: utcDateTime;
+  expires_at?: utcDateTime;
+  events?: int64;
+  byte_size?: int64;
+  error_code?: string;
+  downloadable: boolean;
+}
+
+@doc("存在しないか、別の要求者または範囲の監査エクスポート。コードは audit_export_not_found。")
+model AuditExportNotFoundError is ProblemDetails;
+
+@doc("成功かつ期限内ではない監査成果物。コードは audit_export_unavailable。")
+model AuditExportUnavailableError is ProblemDetails;
+
+@doc("同期エクスポートがプロセスの二つの実行枠を使っている。コードは audit_export_busy。")
+model AuditExportBusyError is ProblemDetails;
+
+@doc("同期エクスポートが 16 MiB を超えた。コードは audit_export_limit_exceeded。")
+model AuditExportLimitExceededError is ProblemDetails;
+
 @doc("ListAdminAuditEvents のクエリパラメーター。`tenant_id` はコンテキストから得るので、ここのフィールドではない。`type` は `DomainEventEnvelope.type`、すなわち発行するモジュールがイベントに付けた種類の名前である。")
 model AuditEventQuery {
   @doc("`type` の完全一致。機械向けの低水準の絞り込みである。たとえば `AccessTokenIssued`。")

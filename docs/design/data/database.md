@@ -208,6 +208,8 @@ erDiagram
 | `tenant_user_attribute_schemas` | テナントが定義する利用者の拡張属性 | IdManagement | `LOGGED` | 単独主キー |
 | `tenant_group_attribute_schemas` | テナントが定義するグループの拡張属性 | IdManagement | `LOGGED` | 単独主キー |
 | `audit_events` | 各モジュールが発行した監査イベント。追記だけで保持する | Audit | `LOGGED` | 非キーカラム |
+| `audit_export_artifacts` | Job ID とテナントに束縛した監査成果物のメタデータと公開状態 | Audit | `LOGGED` | 非キーカラム |
+| `audit_export_chunks` | 公開前後の監査成果物を構成する固定サイズのチャンク | Audit | `LOGGED` | なし |
 | `authentication_event_buckets` | 同じ鍵から続く認証失敗を 5 分の時間枠で数える集計。攻撃による急増で監査イベントのレコードを増やさない | Authentication | `LOGGED` | 複合主キーの一部 |
 | `tenant_correlation_salts` | 利用者名や IP アドレスを相関用にハッシュするときのテナントごとのソルト | 共通基盤 | `LOGGED` | 単独主キー |
 | `audit_event_search_attributes` | 監査イベントの検索属性の索引。個人識別情報は変換済みの値だけを置く | Audit | `LOGGED` | 非キーカラム |
@@ -343,6 +345,10 @@ erDiagram
     }
     csv_artifact_chunks {
     }
+    audit_export_artifacts {
+    }
+    audit_export_chunks {
+    }
     lifecycle_workflows {
     }
     lifecycle_workflow_revisions {
@@ -376,6 +382,9 @@ erDiagram
     tenants ||--o{ oauth2_logout_notifications : ログアウト通知を持つ
     tenants ||--o{ csv_artifacts : CSV成果物を持つ
     csv_artifacts ||--o{ csv_artifact_chunks : 分割片を持つ
+    tenants ||--o{ audit_export_artifacts : 監査成果物を持つ
+    jobs ||--o{ audit_export_artifacts : 生成する
+    audit_export_artifacts ||--o{ audit_export_chunks : 分割片を持つ
     tenants ||--o{ lifecycle_workflows : ワークフローを持つ
     lifecycle_workflows ||--o{ lifecycle_workflow_revisions : 改訂する
     lifecycle_workflows ||--o{ lifecycle_workflow_runs : 実行する

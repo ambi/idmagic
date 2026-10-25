@@ -67,10 +67,12 @@ var routeClassRules = []routeClassRule{
 	// id 指定の 1 件取得は走査しないので下の management に残す。
 	{path: "/api/admin/v1/audit-events", exact: true, class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/audit-events/export", class: support.ClassManagementBulk},
+	{path: "/api/admin/v1/audit-events/exports", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/audit-events/search-options", class: support.ClassManagementBulk},
 	// 制御面の監査検索は同じ走査を全テナント分行うので、テナント側と同じクラスに置く。
 	{path: "/api/admin/v1/system/audit-events", exact: true, class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/system/audit-events/export", class: support.ClassManagementBulk},
+	{path: "/api/admin/v1/system/audit-events/exports", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/authentication-event-buckets", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/users/exports", class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/users/imports", class: support.ClassManagementBulk},

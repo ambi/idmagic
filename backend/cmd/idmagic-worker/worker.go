@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ambi/idmagic/backend/audit"
+
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -71,6 +73,9 @@ func RunWorker() error {
 		return fmt.Errorf("initialize metrics: %w", err)
 	}
 	deps.AuditFailures = appMetrics
+	if err := appMetrics.RegisterCollector(deps.Audit.ExportCollector()); err != nil {
+		return fmt.Errorf("register audit export metrics: %w", err)
+	}
 	defer func() { _ = appMetrics.Shutdown(context.Background()) }()
 	metricsServer := &http.Server{
 		Addr:              worker.Addr,
@@ -90,6 +95,7 @@ func RunWorker() error {
 
 	handlers := jobs.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
+	deps.Audit.RegisterExportHandler(handlers, audit.ExportJobDeps{Jobs: deps.Jobs.Repo, Emit: deps.NewEmitFunc(logger)})
 	oauth2.RegisterJobHandlers(handlers, oauth2.JobHandlerDeps{
 		Notifications: deps.OAuth2.LogoutNotificationStore, TokenSigner: oauth2.NewJWTSigner("", deps.SigningKeys.KeyStore),
 		BackChannelClient: oauth2.NewBackChannelLogoutClient(nil), Now: time.Now,

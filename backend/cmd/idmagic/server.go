@@ -141,6 +141,9 @@ func Run() error {
 		return fmt.Errorf("initialize metrics: %w", err)
 	}
 	deps.AuditFailures = appMetrics
+	if err := appMetrics.RegisterCollector(deps.Audit.ExportCollector()); err != nil {
+		return fmt.Errorf("register audit export metrics: %w", err)
+	}
 
 	// Echo フレームワークのログも同じ構造化ハンドラ (field 規約) に載せる。
 	e.Logger = slogLogger

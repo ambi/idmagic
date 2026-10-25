@@ -107,6 +107,9 @@ func Assemble(ctx context.Context, cfg SharedConfig) (*Dependencies, error) {
 	}
 	deps.Authentication.WebAuthnRP = rp
 	deps.Issuer = cfg.Issuer
+	if cfg.AuditExportPolicy.MaxEvents > 0 {
+		deps.Audit.ExportPolicy = cfg.AuditExportPolicy
+	}
 	// 通知はカタログ解決を含めてここで組み立て、API プロセスと worker プロセスが
 	// 同じ経路 (テナント上書き・locale 解決を含む) で送るようにする (wi-288)。
 	//nolint:contextcheck // 起動時の配線のみ。実際の I/O は送信ごとに呼び出し元の context で走る。

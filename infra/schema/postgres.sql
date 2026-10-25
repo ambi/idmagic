@@ -1408,6 +1408,27 @@ CREATE TABLE oauth2_logout_notifications (
 CREATE INDEX oauth2_logout_notifications_sid_idx
     ON oauth2_logout_notifications (tenant_id, sid);
 
+CREATE TABLE audit_export_artifacts (
+    id UUID PRIMARY KEY,
+    job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    events INT NOT NULL CHECK (events >= 0),
+    byte_size BIGINT NOT NULL CHECK (byte_size >= 0),
+    sha256 TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    published BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE UNIQUE INDEX audit_export_published_job_idx ON audit_export_artifacts(job_id) WHERE published;
+CREATE INDEX audit_export_expiry_idx ON audit_export_artifacts(expires_at, id);
+CREATE INDEX audit_export_tenant_idx ON audit_export_artifacts(tenant_id) WHERE published;
+
+CREATE TABLE audit_export_chunks (
+    artifact_id UUID NOT NULL REFERENCES audit_export_artifacts(id) ON DELETE CASCADE,
+    chunk_number INT NOT NULL CHECK (chunk_number >= 0),
+    payload BYTEA NOT NULL CHECK (octet_length(payload) <= 65536),
+    PRIMARY KEY (artifact_id, chunk_number)
+);
+
 CREATE TABLE csv_artifacts (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,

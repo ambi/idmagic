@@ -148,7 +148,6 @@ function AdminAuditEventsRoute() {
   return (
     <PageMarker kind="admin-audit-events">
       <AdminAuditEventsPage
-        key={JSON.stringify(search)}
         {...data}
         pagination={data}
         onSearch={(next) => navigate({ search: next })}

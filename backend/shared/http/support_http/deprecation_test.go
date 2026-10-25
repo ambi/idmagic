@@ -42,8 +42,8 @@ func TestDeprecationHeadersMiddleware(t *testing.T) {
 		wantDeprecated string
 		wantSunset     string
 	}{
-		{"tenant path-style routing", "/realms/acme/api/admin/v1/old-widgets", "Thu, 01 Jan 2026 00:00:00 GMT", "Fri, 01 Jan 2027 00:00:00 GMT"},
-		{"host-style tenant routing", "/api/admin/v1/old-widgets", "Thu, 01 Jan 2026 00:00:00 GMT", "Fri, 01 Jan 2027 00:00:00 GMT"},
+		{"tenant path-style routing", "/realms/acme/api/admin/v1/old-widgets", "@1767225600", "Fri, 01 Jan 2027 00:00:00 GMT"},
+		{"host-style tenant routing", "/api/admin/v1/old-widgets", "@1767225600", "Fri, 01 Jan 2027 00:00:00 GMT"},
 		{"non-deprecated interface", "/api/admin/v1/new-widgets", "", ""},
 	}
 	for _, tc := range cases {

@@ -385,6 +385,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		// bootstrap では設定されない。username -> user_id 解決 (wi-147) には
 		// d.IdManagement.UserRepo を使う。
 		LookupUsername: auditUsernameLookup(d.IdManagement.UserRepo),
+		Jobs:           d.Jobs.Repo, Enqueuer: d.Jobs.Enqueuer, Quotas: d.Tenancy.QuotaRepo,
 	})
 
 	d.Authentication.RegisterRoutes(g, authRoutes, d.OAuth2.SessionTokenRevoker(), d.OAuth2.SignInContinuation(oauthRoutes))

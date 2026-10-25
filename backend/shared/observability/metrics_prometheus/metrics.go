@@ -172,6 +172,14 @@ func (m *Metrics) Handler() http.Handler {
 	return promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{})
 }
 
+// RegisterCollector は利用モジュールの指標を同じスクレイプ先へ組み立てる。
+func (m *Metrics) RegisterCollector(collector prometheus.Collector) error {
+	if collector == nil {
+		return nil
+	}
+	return m.registry.Register(collector)
+}
+
 func (m *Metrics) Shutdown(ctx context.Context) error {
 	return m.provider.Shutdown(ctx)
 }

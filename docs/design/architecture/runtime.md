@@ -43,6 +43,7 @@ Worker は、ジョブのハンドラーと、プロセス内で周期的に動�
 | `group_membership_import_preview`、`group_membership_import_apply` | IdManagement | グループメンバーシップの CSV インポートを検証し、確定する | [グループ CSV の設計](../../modules/identity-management/features/group-csv.md#実現方式) |
 | `dynamic_group_reconcile` | IdManagement | 動的グループの規則を評価し、メンバーシップを収束させる | [動的グループ](../../modules/identity-management/features/dynamic-group.md) |
 | `data_export` | IdManagement | 管理者が要求した CSV データエクスポートを作る | [データエクスポートの設計](../../modules/identity-management/features/data-export.md#実現方式) |
+| `audit_export` | Audit | bulk レーンで監査の検索結果を JSON 成果物へ生成する | [監査エクスポート](../../modules/audit/features/event-export.md) |
 | `data_key_reencryption` | DataKeys | DEK のローテーション後に、各モジュールの秘密情報を新しいバージョンの DEK で再暗号化する | [DEK のライフサイクルの設計](../../modules/data-keys/features/lifecycle.md#実現方式) |
 | `lifecycle_workflow_run` | IdGovernance | ライフサイクルワークフローを一回実行する | [IdGovernance](../../modules/identity-governance/README.md) |
 | `provisioning_task` | Provisioning | 連携先のアプリケーションへ利用者とグループの変更を反映する | [Provisioning の内部設計](../../modules/provisioning/features/synchronization.md#実現方式) |

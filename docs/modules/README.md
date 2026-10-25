@@ -52,7 +52,7 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 | [SigningKeys](signing-keys/README.md) | `internal` | `backend/signingkeys/domain`, `backend/signingkeys/ports` | `backend/signingkeys` | 用途別署名鍵、証明書、ローテーション、提供元アダプター |
 | [DataKeys](data-keys/README.md) | `internal` | なし | `backend/datakeys` | 可逆な秘密情報を保護するテナント別 DEK のライフサイクル |
 | [ApiTokens](api-tokens/README.md) | `internal` | `backend/apitoken/domain`, `backend/apitoken/ports` | `backend/apitoken` | 管理 API と SCIM API のテナント単位アクセストークン |
-| [Audit](audit/README.md) | `internal` | `backend/audit/ports` | `backend/audit` | 全モジュールの監査イベントを統合する Read Model と保持 |
+| [Audit](audit/README.md) | `internal` | `backend/audit/ports`, `backend/audit/domain` | `backend/audit` | 全モジュールの監査イベントを統合する Read Model、保持と監査エクスポート |
 
 ### フロントエンド
 
@@ -160,6 +160,8 @@ flowchart LR
   ApplicationCatalog --> SignInPolicy
   ApplicationCatalog --> Tenancy
   ApplicationCatalog --> WsFederation
+  Audit --> Jobs
+  Audit --> Tenancy
   Authentication --> Audit
   Authentication --> IdManagement
   Authentication --> SignInPolicy

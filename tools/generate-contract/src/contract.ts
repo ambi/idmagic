@@ -2,6 +2,8 @@ export type OpenAPIOperation = {
   operationId?: string
   deprecated?: boolean
   'x-api-token-scopes'?: string[]
+  'x-deprecated-since'?: string
+  'x-sunset-at'?: string
 }
 
 export type OpenAPIDocument = {
@@ -14,6 +16,8 @@ export type ContractOperation = {
   path: string
   deprecated: boolean
   apiTokenScopes: string[]
+  deprecatedSince?: string
+  sunsetAt?: string
 }
 
 const HTTP_METHODS = new Set(['delete', 'get', 'head', 'options', 'patch', 'post', 'put'])
@@ -32,12 +36,30 @@ export function collectOperations(document: OpenAPIDocument): ContractOperation[
         )
       }
       seen.set(operation.operationId, current)
+      const since = operation['x-deprecated-since']
+      const sunset = operation['x-sunset-at']
+      if (since || sunset) {
+        const first = new Date(since ?? '')
+        const earliest = new Date(first)
+        earliest.setUTCFullYear(earliest.getUTCFullYear() + 1)
+        if (
+          !operation.deprecated ||
+          !since ||
+          !Number.isFinite(first.getTime()) ||
+          (sunset &&
+            (!Number.isFinite(Date.parse(sunset)) || Date.parse(sunset) < earliest.getTime()))
+        ) {
+          throw new Error(`invalid deprecation dates for ${operation.operationId}`)
+        }
+      }
       operations.push({
         name: operation.operationId,
         method: current.method,
         path,
         deprecated: operation.deprecated === true,
         apiTokenScopes: operation['x-api-token-scopes'] ?? [],
+        deprecatedSince: since,
+        sunsetAt: sunset,
       })
     }
   }
@@ -58,5 +80,12 @@ export function renderContract(operations: ContractOperation[]): string {
         `\t${quote(name)}: {Method: ${quote(method)}, Path: ${quote(path)}, Deprecated: ${deprecated}, ApiTokenScopes: ${scopeLiteral(apiTokenScopes)}},`,
     )
     .join('\n')
-  return `// Code generated from spec/main.tsp by mise run generate-contract; DO NOT EDIT.\n\npackage spec\n\nvar generatedOperations = map[string]Operation{\n${entries}\n}\n`
+  const deprecations = operations
+    .filter((operation) => operation.deprecatedSince)
+    .map(
+      (operation) =>
+        `\t${quote(operation.name)}: {Since: ${quote(operation.deprecatedSince!)}, Sunset: ${quote(operation.sunsetAt ?? '')}},`,
+    )
+    .join('\n')
+  return `// Code generated from spec/main.tsp by mise run generate-contract; DO NOT EDIT.\n\npackage spec\n\nvar generatedOperations = map[string]Operation{\n${entries}\n}\n\nvar generatedDeprecations = map[string]Deprecation{\n${deprecations}\n}\n`
 }

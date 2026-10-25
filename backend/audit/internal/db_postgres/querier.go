@@ -6,14 +6,24 @@ package db_postgres
 
 import (
 	"context"
+	"time"
 )
 
 type Querier interface {
 	AppendAuditEvent(ctx context.Context, arg AppendAuditEventParams) (int64, error)
 	AppendAuditEventSearchAttribute(ctx context.Context, arg AppendAuditEventSearchAttributeParams) error
+	AuditExportArtifactTotalBytes(ctx context.Context) (int64, error)
+	AuditExportArtifactUsage(ctx context.Context, tenantID string) (int64, error)
+	CreateAuditExportArtifact(ctx context.Context, arg CreateAuditExportArtifactParams) error
 	DeleteAuditEventsBeforeExceptTypes(ctx context.Context, arg DeleteAuditEventsBeforeExceptTypesParams) (int64, error)
 	DeleteAuditEventsByTypeBefore(ctx context.Context, arg DeleteAuditEventsByTypeBeforeParams) (int64, error)
+	DeleteUnpublishedAuditExport(ctx context.Context, id string) error
+	ExpireAuditExportArtifacts(ctx context.Context, expiresAt time.Time) ([]*AuditExportArtifact, error)
+	FindAuditExportArtifact(ctx context.Context, arg FindAuditExportArtifactParams) (*AuditExportArtifact, error)
 	GetAuditEventByID(ctx context.Context, id string) (*AuditEvent, error)
+	InsertAuditExportChunk(ctx context.Context, arg InsertAuditExportChunkParams) error
+	PublishAuditExportArtifact(ctx context.Context, id string) error
+	ReadAuditExportChunks(ctx context.Context, arg ReadAuditExportChunksParams) ([][]byte, error)
 }
 
 var _ Querier = (*Queries)(nil)

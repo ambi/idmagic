@@ -31,8 +31,11 @@ import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/jobs"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
 )
@@ -90,7 +93,12 @@ func newAuditAdminServer(t *testing.T, actor *userdomain.User, events []*auditpo
 	if actor != nil {
 		_ = userRepo.Save(context.Background(), actor)
 	}
-	auditStore := auditmemory.NewAuditEventStore(0)
+	auditModule := audit.NewMemoryModule(0)
+	auditStore := auditModule.AuditEventRepo
+	jobModule := jobs.NewMemoryModule()
+	tenantModule := tenancy.NewMemoryModule()
+	emit := func(spec.DomainEvent) {}
+	jobModule.Enqueuer = jobs.NewEnqueuer(jobModule.Repo, tenantModule.QuotaRepo, emit)
 	for _, ev := range events {
 		_ = auditStore.Append(context.Background(), ev)
 	}
@@ -102,11 +110,12 @@ func newAuditAdminServer(t *testing.T, actor *userdomain.User, events []*auditpo
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Issuer: "http://test",
+		Issuer:   "http://test",
+		Contract: spec.CurrentRuntimeContract(),
 		// カーソルを発行させる検査 (範囲ごとの束縛) がここの Link ヘッダーを読む。
 		PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")),
 		TenantRepo:      newSingleTenantRepo(), UserRepo: userRepo,
-		Audit: audit.Module{AuditEventRepo: auditStore}, AuthnResolver: resolver,
+		Audit: auditModule, AuthnResolver: resolver, Jobs: jobModule, Tenancy: tenantModule, Emit: emit,
 	})
 	return e
 }

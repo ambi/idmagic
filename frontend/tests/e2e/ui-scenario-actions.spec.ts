@@ -438,9 +438,12 @@ test('admin audit log can be filtered and export can be triggered', async () => 
     await navigateAndLogin(view, '/admin/audit_events', 'admin-audit-events')
     await view.evaluate(`(() => {
       window.__raAuditExportURL = ''
-      window.open = (url) => {
-        window.__raAuditExportURL = String(url ?? '')
-        return null
+      const originalFetch = window.fetch.bind(window)
+      window.fetch = (url, init) => {
+        if (init?.method === 'POST' && String(url).includes('/audit-events/exports?')) {
+          window.__raAuditExportURL = String(url)
+        }
+        return originalFetch(url, init)
       }
     })()`)
 
@@ -465,14 +468,38 @@ test('admin audit log can be filtered and export can be triggered', async () => 
     )
 
     await clickButtonByText(view, 'Export')
+    await waitForText(view, 'Queued')
     const exportURL = await view.evaluate('window.__raAuditExportURL ?? ""')
-    expect(String(exportURL)).toContain('/api/admin/v1/audit-events/export')
+    expect(String(exportURL)).toContain('/api/admin/v1/audit-events/exports?')
     expect(String(exportURL)).toContain('category=authentication')
     expect(String(exportURL)).toContain('user_id=00000000-0000-4000-8000-000000000001')
+    await clickButtonByText(view, 'Cancel export')
+    await waitForText(view, 'Canceled')
 
     await view.navigate(searchURL)
     await waitForPage(view, 'admin-audit-events', 30_000)
     await waitForText(view, 'UserAuthenticated')
+  } finally {
+    view.close()
+  }
+}, 60_000)
+
+test('system audit export can be requested and canceled', async () => {
+  const view = await openWebView({ width: 1280, height: 2000 })
+  try {
+    await navigateAndLogin(
+      view,
+      '/system/audit-events',
+      'system-audit-events',
+      demo.systemAdminUsername,
+    )
+    await clickButtonByText(view, 'Export')
+    await waitForText(view, 'Queued')
+    expect(
+      await view.evaluate('document.querySelector("[data-audit-export-id]")?.dataset.exportScope'),
+    ).toBe('system')
+    await clickButtonByText(view, 'Cancel export')
+    await waitForText(view, 'Canceled')
   } finally {
     view.close()
   }

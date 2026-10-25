@@ -50,6 +50,9 @@ var configReferenceSections = []configReferenceSection{
 // no process reads, both fail RenderConfigReference and its test, so this
 // table cannot drift into a stale parallel list of settings.
 var configFieldDescriptions = map[string]string{
+	"AUDIT_EXPORT_MAX_EVENTS": "監査エクスポート一件の最大イベント数。超過はジョブを失敗させる。",
+	"AUDIT_EXPORT_MAX_BYTES":  "監査エクスポート一件の JSON 全体の最大バイト数。部分成果物は公開しない。",
+	"AUDIT_EXPORT_TTL":        "完成した監査エクスポートを取得できる期間。",
 	// 共通
 	"PERSISTENCE":                  "ストレージのバックエンド。`postgres` には DATABASE_URL が必要である。",
 	"OBSERVABILITY":                "`otel` にすると OTLP でトレースとメトリクスを送る。この設定にかかわらず、取得型の /metrics は常に提供する。",

@@ -54,6 +54,7 @@ enum JobStatus {
 
 @doc("ワーカーのハンドラーのレジストリに登録したジョブの種類の許可リスト。新しいジョブの種類を加える利用側の機能は、実装を書く前に、その種類をこの列挙へ加え、同時にその ExecutionLane を宣言する（仕様先行）。中核のランタイムが加えるのは、疎通確認のための `noop_echo` だけである。`backchannel_logout_delivery` は、それを使う機能より先に宣言している。`data_key_reencryption` は、エンベロープ暗号化の再暗号化ジョブのために DataKeys が加える。")
 enum JobKind {
+  audit_export: "audit_export",
   noop_echo: "noop_echo",
   user_import_preview: "user_import_preview",
   user_import_apply: "user_import_apply",

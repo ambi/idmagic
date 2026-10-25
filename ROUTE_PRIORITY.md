@@ -24,7 +24,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management_bulk`
 
-経路の数：31
+経路の数：39
 
 | 経路 | メソッド |
 | --- | --- |
@@ -32,6 +32,10 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/applications/{id}/provisioning/full-resync` | POST |
 | `/api/admin/v1/audit-events` | GET |
 | `/api/admin/v1/audit-events/export` | GET |
+| `/api/admin/v1/audit-events/exports` | GET, POST |
+| `/api/admin/v1/audit-events/exports/{export_id}` | GET |
+| `/api/admin/v1/audit-events/exports/{export_id}/cancel` | POST |
+| `/api/admin/v1/audit-events/exports/{export_id}/download` | GET |
 | `/api/admin/v1/audit-events/search-options` | GET |
 | `/api/admin/v1/authentication-event-buckets` | GET |
 | `/api/admin/v1/groups/exports` | GET, POST |
@@ -52,6 +56,10 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/lifecycle-workflows/{workflow_id}/dry-run` | POST |
 | `/api/admin/v1/system/audit-events` | GET |
 | `/api/admin/v1/system/audit-events/export` | GET |
+| `/api/admin/v1/system/audit-events/exports` | GET, POST |
+| `/api/admin/v1/system/audit-events/exports/{export_id}` | GET |
+| `/api/admin/v1/system/audit-events/exports/{export_id}/cancel` | POST |
+| `/api/admin/v1/system/audit-events/exports/{export_id}/download` | GET |
 | `/api/admin/v1/users/exports` | GET, POST |
 | `/api/admin/v1/users/exports/{export_id}` | GET |
 | `/api/admin/v1/users/exports/{export_id}/cancel` | POST |

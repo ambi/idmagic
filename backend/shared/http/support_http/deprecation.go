@@ -3,6 +3,7 @@ package support_http
 import (
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,7 +31,7 @@ func DeprecationHeadersMiddleware(contract *spec.RuntimeContract) echo.Middlewar
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			if entry, ok := index[deprecationKey(c.Request().Method, c.RouteInfo().Path)]; ok {
-				if date, ok := httpDate(entry.deprecatedSince); ok {
+				if date, ok := deprecationDate(entry.deprecatedSince); ok {
 					c.Response().Header().Set("Deprecation", date)
 				}
 				if entry.sunsetAt != "" {
@@ -42,6 +43,15 @@ func DeprecationHeadersMiddleware(contract *spec.RuntimeContract) echo.Middlewar
 			return next(c)
 		}
 	}
+}
+
+func deprecationDate(value string) (string, bool) {
+	for _, layout := range []string{"2006-01-02", time.RFC3339} {
+		if date, err := time.Parse(layout, value); err == nil {
+			return "@" + strconv.FormatInt(date.Unix(), 10), true
+		}
+	}
+	return "", false
 }
 
 func buildDeprecationIndex(contract *spec.RuntimeContract) map[string]deprecationEntry {
@@ -88,7 +98,7 @@ func canonicalizeRuntimePath(path string) string {
 }
 
 // httpDate parses a date or date-time value and formats it
-// as an HTTP-date (RFC 7231 IMF-fixdate) for use in the Deprecation/Sunset
+// as an HTTP-date (RFC 7231 IMF-fixdate) for use in the Sunset
 // headers.
 func httpDate(value string) (string, bool) {
 	for _, layout := range []string{"2006-01-02", time.RFC3339} {

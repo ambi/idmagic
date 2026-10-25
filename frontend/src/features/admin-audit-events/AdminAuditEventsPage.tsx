@@ -1,7 +1,7 @@
 import {
   type AdminAuditEventSearchOptions,
   type AdminAuditEventsSearchParams,
-  adminAuditEventsExportURL,
+  adminAuditExports,
   listAdminAuditEvents,
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
@@ -15,6 +15,7 @@ import { AuditEventsBrowser } from './AuditEventsBrowser'
 // あり、操作者が `system_admin` であっても横断しない。横断はシステムコンソールが持つ
 // (REQ-SYSTEM-020)。そのため、このページはロールも realm も見ない。
 export function AdminAuditEventsPage({
+  csrfToken = '',
   actorUsername,
   events,
   pagination,
@@ -27,6 +28,7 @@ export function AdminAuditEventsPage({
   cursorReset = false,
   initialError,
 }: {
+  csrfToken?: string
   actorUsername?: string
   events: AdminAuditEvent[]
   pagination?: Omit<PageNavigationData, 'nextCursor' | 'previousCursor'>
@@ -55,7 +57,8 @@ export function AdminAuditEventsPage({
         search={search}
         searchOptions={searchOptions}
         listEvents={listAdminAuditEvents}
-        exportURL={adminAuditEventsExportURL}
+        exportClient={adminAuditExports}
+        csrfToken={csrfToken}
         onSearch={onSearch}
         onPage={onPage}
         cursorReset={cursorReset}

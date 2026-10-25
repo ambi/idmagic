@@ -46,6 +46,13 @@ groups:
           sum by (lane) (rate(jobs_retry_total[5m]))
           / (sum by (lane) (rate(jobs_outcome_total[5m])) + sum by (lane) (rate(jobs_retry_total[5m])))
 
+  - name: idmagic-audit-export
+    rules:
+      - record: idmagic:audit_export_failures:rate5m
+        expr: sum(rate(idmagic_audit_export_operations_total{operation="failed"}[5m]))
+      - record: idmagic:audit_export_limits:rate5m
+        expr: sum by (limit) (rate(idmagic_audit_export_limits_total[5m]))
+
   # wi-396: class is always a bounded support.PriorityClass
   # (interactive_auth/management/management_bulk/infrastructure/unclassified),
   # never a resolved path or tenant value.

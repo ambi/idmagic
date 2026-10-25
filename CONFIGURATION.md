@@ -16,6 +16,9 @@
 
 | 変数 | 型 | デフォルト値 | 必須 | 用途 |
 | --- | --- | --- | --- | --- |
+| `AUDIT_EXPORT_MAX_EVENTS` | integer (> 0) | `1000000` | いいえ | 監査エクスポート一件の最大イベント数。超過はジョブを失敗させる。 |
+| `AUDIT_EXPORT_MAX_BYTES` | integer (> 0) | `268435456` | いいえ | 監査エクスポート一件の JSON 全体の最大バイト数。部分成果物は公開しない。 |
+| `AUDIT_EXPORT_TTL` | duration (> 0) | `24h0m0s` | いいえ | 完成した監査エクスポートを取得できる期間。 |
 | `ISSUER` | url | `http://localhost:8080` | いいえ | このデプロイメントがトークンと Security Event Token を発行する公開のベース URL。Relying Party と SSF の受信者が解決する値と一致させる。 |
 | `PERSISTENCE` | enum: `memory`, `postgres` | `memory` | いいえ | ストレージのバックエンド。`postgres` には DATABASE_URL が必要である。 |
 | `OBSERVABILITY` | enum: `noop`, `otel` | `noop` | いいえ | `otel` にすると OTLP でトレースとメトリクスを送る。この設定にかかわらず、取得型の /metrics は常に提供する。 |

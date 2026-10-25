@@ -2,7 +2,7 @@ import {
   type AdminAuditEventSearchOptions,
   type AdminAuditEventsSearchParams,
   listSystemAuditEvents,
-  systemAuditEventsExportURL,
+  systemAuditExports,
 } from '../../api'
 import { SystemShell } from '../../components/SystemShell'
 import type { PageNavigationData } from '../../components/ui/page-navigation'
@@ -15,6 +15,7 @@ import { AuditEventsBrowser } from './AuditEventsBrowser'
 // 切り替える UI を持たない。検索、ページング、エクスポートはいずれも専用のシステム API を
 // 呼ぶ (REQ-AUDIT-007 / REQ-SYSTEM-020)。
 export function SystemAuditEventsPage({
+  csrfToken = '',
   actorUsername,
   events,
   pagination,
@@ -27,6 +28,7 @@ export function SystemAuditEventsPage({
   cursorReset = false,
   initialError,
 }: {
+  csrfToken?: string
   actorUsername?: string
   events: AdminAuditEvent[]
   pagination?: Omit<PageNavigationData, 'nextCursor' | 'previousCursor'>
@@ -55,7 +57,8 @@ export function SystemAuditEventsPage({
         search={search}
         searchOptions={searchOptions}
         listEvents={listSystemAuditEvents}
-        exportURL={systemAuditEventsExportURL}
+        exportClient={systemAuditExports}
+        csrfToken={csrfToken}
         onSearch={onSearch}
         onPage={onPage}
         cursorReset={cursorReset}

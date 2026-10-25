@@ -854,6 +854,37 @@ export function systemAuditEventsExportURL(query: AdminAuditEventQuery): string 
   return tenantURL(`/api/admin/v1/system/audit-events/export?${params.toString()}`)
 }
 
+export type AuditExport = {
+  id: string
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled' | 'expired'
+  scope: 'tenant' | 'system'
+  format: 'json'
+  requested_by: string
+  created_at: string
+  expires_at?: string
+  events?: number
+  byte_size?: number
+  error_code?: string
+  downloadable: boolean
+}
+
+function auditExportClient(base: string) {
+  return {
+    start: (csrfToken: string, query: AdminAuditEventQuery): Promise<AuditExport> => {
+      const { cursor: _cursor, limit: _limit, ...filters } = query
+      return request(`${base}?${auditEventParams(filters)}`, adminRequest(csrfToken, 'POST'))
+    },
+    list: (): Promise<{ exports: AuditExport[] }> => request(base),
+    cancel: (csrfToken: string, id: string): Promise<AuditExport> =>
+      request(`${base}/${encodeURIComponent(id)}/cancel`, adminRequest(csrfToken, 'POST')),
+    downloadURL: (id: string) => tenantURL(`${base}/${encodeURIComponent(id)}/download`),
+  }
+}
+
+export type AuditExportClient = ReturnType<typeof auditExportClient>
+export const adminAuditExports = auditExportClient('/api/admin/v1/audit-events/exports')
+export const systemAuditExports = auditExportClient('/api/admin/v1/system/audit-events/exports')
+
 // event.type / outcome / actor.type / delegation.mode を選択式にするための選択肢一覧
 // (wi-147 / wi-377)。UI 側でハードコードせず、Go 側の単一の正 (auditEventCategoryTypes /
 // eventOutcome / DelegationMode) から機械的に取得する。

@@ -5,7 +5,9 @@
 package audit
 
 import (
+	"github.com/ambi/idmagic/backend/audit/domain"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
 // Module は audit context が所有する repository の束。bootstrap は永続化 backend
@@ -13,4 +15,8 @@ import (
 type Module struct {
 	AuditEventRepo  auditports.AuditEventRepository
 	TenantSaltStore auditports.TenantSaltStore
+	ExportArtifacts auditports.ExportArtifactStore
+	ExportPolicy    domain.ExportPolicy
+	ExportCodec     *support.CursorCodec
+	metrics         *exportMetrics
 }

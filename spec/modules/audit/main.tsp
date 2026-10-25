@@ -1,6 +1,90 @@
 import "@typespec/http";
 import "@typespec/openapi";
 
+namespace IdMagic.Audit.Operations {
+model AuditExportAccepted { @statusCode statusCode: 202; @body body: IdMagic.Contract.AuditExport; }
+model AuditExportOK { @statusCode statusCode: 200; @body body: IdMagic.Contract.AuditExport; }
+model AuditExportsOK { @statusCode statusCode: 200; @body body: { exports: IdMagic.Contract.AuditExport[] }; }
+model AuditExportFileOK { @statusCode statusCode: 200; @body body: IdMagic.Contract.AdminAuditEventListResponse; }
+model AuditExportMissing { @statusCode statusCode: 404; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.AuditExportNotFoundError; }
+model AuditExportConflict { @statusCode statusCode: 409; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.AuditExportUnavailableError | IdMagic.Contract.JobNotCancelableError; }
+model AuditExportQuota { @statusCode statusCode: 429; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.ActiveJobQuotaExceededError; }
+model AuditExportMutationForbidden { @statusCode statusCode: 403; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.AccessDeniedError | IdMagic.Contract.InsufficientScopeError | IdMagic.Contract.CsrfFailedError | IdMagic.Contract.InvalidOriginError; }
+model AuditExportLegacyBusy { @statusCode statusCode: 429; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.AuditExportBusyError; }
+model AuditExportLegacyLimit { @statusCode statusCode: 422; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.AuditExportLimitExceededError; }
+
+@doc("条件を固定した監査エクスポートを bulk レーンへ投入する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
+@TypeSpec.OpenAPI.operationId("StartAdminAuditExport")
+@route("/api/admin/v1/audit-events/exports")
+@post
+op StartAdminAuditExport(@query query: IdMagic.Contract.AuditEventQuery): AuditExportAccepted | ExportAdminAuditEventsError400 | AuditExportQuota | IdMagic.Contract.AuthenticationRequiredResponse | AuditExportMutationForbidden;
+
+@doc("現在の要求者と経路の範囲に属する直近 20 件を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
+@TypeSpec.OpenAPI.operationId("ListAdminAuditExports")
+@route("/api/admin/v1/audit-events/exports")
+@get
+op ListAdminAuditExports(): AuditExportsOK | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403;
+
+@doc("要求者の監査エクスポートの状態を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
+@TypeSpec.OpenAPI.operationId("GetAdminAuditExport")
+@route("/api/admin/v1/audit-events/exports/{export_id}")
+@get
+op GetAdminAuditExport(@path export_id: string): AuditExportOK | AuditExportMissing | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403;
+
+@doc("要求者の未完了エクスポートを取り消す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
+@TypeSpec.OpenAPI.operationId("CancelAdminAuditExport")
+@route("/api/admin/v1/audit-events/exports/{export_id}/cancel")
+@post
+op CancelAdminAuditExport(@path export_id: string): AuditExportOK | AuditExportMissing | AuditExportConflict | IdMagic.Contract.AuthenticationRequiredResponse | AuditExportMutationForbidden;
+
+@doc("成功かつ期限内の成果物だけを attachment の JSON で返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
+@TypeSpec.OpenAPI.operationId("DownloadAdminAuditExport")
+@route("/api/admin/v1/audit-events/exports/{export_id}/download")
+@get
+op DownloadAdminAuditExport(@path export_id: string): AuditExportFileOK | AuditExportMissing | AuditExportConflict | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403;
+
+@doc("条件を固定した監査エクスポートを bulk レーンへ投入する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
+@TypeSpec.OpenAPI.operationId("StartSystemAuditExport")
+@route("/api/admin/v1/system/audit-events/exports")
+@post
+op StartSystemAuditExport(@query query: IdMagic.Contract.AuditEventQuery): AuditExportAccepted | ExportAdminAuditEventsError400 | AuditExportQuota | IdMagic.Contract.AuthenticationRequiredResponse | AuditExportMutationForbidden;
+
+@doc("現在の要求者と経路の範囲に属する直近 20 件を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
+@TypeSpec.OpenAPI.operationId("ListSystemAuditExports")
+@route("/api/admin/v1/system/audit-events/exports")
+@get
+op ListSystemAuditExports(): AuditExportsOK | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403;
+
+@doc("要求者の監査エクスポートの状態を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
+@TypeSpec.OpenAPI.operationId("GetSystemAuditExport")
+@route("/api/admin/v1/system/audit-events/exports/{export_id}")
+@get
+op GetSystemAuditExport(@path export_id: string): AuditExportOK | AuditExportMissing | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403;
+
+@doc("要求者の未完了エクスポートを取り消す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
+@TypeSpec.OpenAPI.operationId("CancelSystemAuditExport")
+@route("/api/admin/v1/system/audit-events/exports/{export_id}/cancel")
+@post
+op CancelSystemAuditExport(@path export_id: string): AuditExportOK | AuditExportMissing | AuditExportConflict | IdMagic.Contract.AuthenticationRequiredResponse | AuditExportMutationForbidden;
+
+@doc("成功かつ期限内の成果物だけを attachment の JSON で返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
+@TypeSpec.OpenAPI.operationId("DownloadSystemAuditExport")
+@route("/api/admin/v1/system/audit-events/exports/{export_id}/download")
+@get
+op DownloadSystemAuditExport(@path export_id: string): AuditExportFileOK | AuditExportMissing | AuditExportConflict | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403;
+}
+
+
 using TypeSpec.Http;
 using TypeSpec.OpenAPI;
 
@@ -72,11 +156,14 @@ model ExportAdminAuditEventsError403 {
 @doc("管理者が、自身のテナントの監査イベントを、認証のイベントも含めて、時間の範囲と絞り込み条件でエクスポートする。SIEM へのストリーミングは別の work item が扱い、このインターフェースは一回のダウンロードを返す。絞り込み条件は ListAdminAuditEvents と同じ AuditEventQuery（q / filter / category / type / 時間の範囲）で、`filter` に使えるのはレジストリの許可リストにあるフィールドだけである。範囲は ListAdminAuditEvents とまったく同じで、制御面の資格情報であっても、経路が決める呼び出し元自身のテナントである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ExportAdminAuditEvents")
+#deprecated "StartAdminAuditExport と成果物のダウンロードへ移行する。"
+@TypeSpec.OpenAPI.extension("x-deprecated-since", "2026-10-25")
+@TypeSpec.OpenAPI.extension("x-sunset-at", "2027-10-25")
 @route("/api/admin/v1/audit-events/export")
 @get
 op ExportAdminAuditEvents(
   @query query: IdMagic.Contract.AuditEventQuery
-): ExportAdminAuditEventsSuccess_200 | ExportAdminAuditEventsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403;
+): ExportAdminAuditEventsSuccess_200 | ExportAdminAuditEventsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403 | AuditExportLegacyBusy | AuditExportLegacyLimit;
 
 model GetAdminAuditEventSearchOptionsSuccess_200 {
   @statusCode statusCode: 200;
@@ -202,11 +289,14 @@ model ExportSystemAuditEventsError403 {
 @doc("制御面の運用者が、ListSystemAuditEvents と同じ時間の範囲と絞り込み条件で、すべてのテナントの監査イベントをエクスポートする。検索で見つけたものが、そのままダウンロードの内容になる。SIEM へのストリーミングは別の work item が扱い、このインターフェースは一回のダウンロードを返す。呼び出し元は、ListSystemAuditEvents が定める制御面の三つの条件を満たさなければならない（REQ-AUDIT-007）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ExportSystemAuditEvents")
+#deprecated "StartSystemAuditExport と成果物のダウンロードへ移行する。"
+@TypeSpec.OpenAPI.extension("x-deprecated-since", "2026-10-25")
+@TypeSpec.OpenAPI.extension("x-sunset-at", "2027-10-25")
 @route("/api/admin/v1/system/audit-events/export")
 @get
 op ExportSystemAuditEvents(
   @query query: IdMagic.Contract.AuditEventQuery
-): ExportSystemAuditEventsSuccess_200 | ExportSystemAuditEventsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ExportSystemAuditEventsError403;
+): ExportSystemAuditEventsSuccess_200 | ExportSystemAuditEventsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ExportSystemAuditEventsError403 | AuditExportLegacyBusy | AuditExportLegacyLimit;
 
 model GetSystemAuditEventSuccess_200 {
   @statusCode statusCode: 200;

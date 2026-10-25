@@ -25,7 +25,7 @@ import (
 // earlier test would otherwise be swept up by a later test's ClaimBatch call.
 func resetJobsTable(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
-	if _, err := pool.Exec(context.Background(), "TRUNCATE jobs"); err != nil {
+	if _, err := pool.Exec(context.Background(), "TRUNCATE jobs CASCADE"); err != nil {
 		t.Fatalf("truncate jobs: %v", err)
 	}
 }

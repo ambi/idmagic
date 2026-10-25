@@ -19,3 +19,14 @@ type AuditEvent struct {
 	OccurredAt time.Time
 	Payload    []byte
 }
+
+type AuditExportArtifact struct {
+	ID        string
+	JobID     string
+	TenantID  string
+	Events    int32
+	ByteSize  int64
+	Sha256    string
+	ExpiresAt time.Time
+	Published bool
+}

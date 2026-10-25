@@ -42,7 +42,7 @@ type Deprecation struct {
 
 // CurrentRuntimeContract returns the contract compiled into this build.
 func CurrentRuntimeContract() *RuntimeContract {
-	return &RuntimeContract{Operations: generatedOperations, Deprecations: map[string]Deprecation{}}
+	return &RuntimeContract{Operations: generatedOperations, Deprecations: generatedDeprecations}
 }
 
 func (c *RuntimeContract) Operation(name string) (Operation, bool) {

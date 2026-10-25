@@ -29,6 +29,12 @@ spec:
           expr: sum by (lane) (rate(jobs_retry_total[5m])) / (sum by (lane) (rate(jobs_outcome_total[5m])) + sum by (lane) (rate(jobs_retry_total[5m])))
         - record: idmagic:jobs_duration_seconds:p99_5m
           expr: histogram_quantile(0.99, sum by (lane, le) (rate(jobs_duration_seconds_bucket[5m])))
+    - name: idmagic-audit-export
+      rules:
+        - record: idmagic:audit_export_failures:rate5m
+          expr: sum(rate(idmagic_audit_export_operations_total{operation="failed"}[5m]))
+        - record: idmagic:audit_export_limits:rate5m
+          expr: sum by (limit) (rate(idmagic_audit_export_limits_total[5m]))
     - name: idmagic-admission-control
       rules:
         - record: idmagic:http_admission_shed_ratio:ratio_rate5m

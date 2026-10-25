@@ -114,7 +114,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-020 | Spoofing | 他テナントの署名鍵で発行したトークンが受理される | SigningKeys, OAuth2 | REQ-SIGNINGKEYS-004、REQ-OAUTH2-034 | `covered` |
 | THREAT-021 | Elevation of privilege | 他テナントのワークロード信頼設定を使って資格情報を得る | WorkloadIdentity | REQ-WORKLOADIDENTITY-007、REQ-WORKLOADIDENTITY-009 | `covered` |
 | THREAT-022 | Denial of service | 単一テナントの投入がレーンを占め、他テナントの非同期処理が滞る | Jobs, Tenancy | REQ-JOBS-009 | `planned` |
-| THREAT-023 | Information disclosure | 管理者が別テナントの監査記録を検索できる | Audit | REQ-AUDIT-001、docs/design/security/authorization.md: テナント境界 | `covered` |
+| THREAT-023 | Information disclosure | 管理者が別テナントの監査記録を検索し、別所有者や別範囲の監査成果物を取得できる | Audit | REQ-AUDIT-001、REQ-AUDIT-011、docs/design/security/authorization.md: テナント境界。成果物の各操作で現在の権限、所有者、範囲を照合し、成功状態と期限を検査する | `covered` |
 
 ## 主体と権限
 

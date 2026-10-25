@@ -64,8 +64,42 @@ function BrowserHistoryHarness() {
   )
 }
 
+function ExportSearchHarness() {
+  const [sub, setSub] = useState('alice')
+  return (
+    <>
+      <button type="button" onClick={() => setSub('bob')}>
+        Finish search loader
+      </button>
+      <AdminAuditEventsPage csrfToken="csrf" events={[event]} nextCursor={null} search={{ sub }} />
+    </>
+  )
+}
+
 describe('locale', () => {
   afterEach(() => restoreGlobals())
+
+  it('keeps the export visible when a search loader finishes after creation', async () => {
+    const job = {
+      id: 'export-1',
+      status: 'queued',
+      scope: 'tenant',
+      format: 'json',
+      requested_by: 'owner',
+      created_at: '2026-10-25T00:00:00Z',
+      downloadable: false,
+    }
+    stubGlobal(
+      'fetch',
+      mock(async () => response(202, job)),
+    )
+    await renderWithRouter(<ExportSearchHarness />)
+    fireEvent.click(screen.getByRole('button', { name: /^Export$/ }))
+    await screen.findByText('Queued')
+    fireEvent.click(screen.getByRole('button', { name: 'Finish search loader' }))
+    expect(screen.getByText('Queued')).toBeTruthy()
+    expect(screen.getByDisplayValue('bob')).toBeTruthy()
+  })
 
   it('renders the audit events page in English by default', async () => {
     await renderWithRouter(

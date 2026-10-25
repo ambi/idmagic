@@ -1,4 +1,4 @@
-import { IconDownload, IconPlus, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
+import { IconPlus, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
 import { type FormEvent, useEffect, useState } from 'react'
 import {
   type AdminAuditEventCategory,
@@ -6,6 +6,7 @@ import {
   type AdminAuditEventSearchOptions,
   type AdminAuditEventsSearchParams,
   AuthenticationAPIError,
+  type AuditExportClient,
 } from '../../api'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
@@ -22,6 +23,7 @@ import {
   adminAuditEventsDictionary,
   type AdminAuditEventsDictionary,
 } from './AdminAuditEventsPage.i18n'
+import { AuditExportPanel } from './AuditExportPanel'
 
 // wi-147: 「誰を検索するか」を含むすべての検索条件を1つの一覧に統一する。quick.* は
 // registry の filter attribute ではなく、トップレベル query param (category/sub/username) へ
@@ -222,7 +224,7 @@ function filtersFromSearch(search?: AdminAuditEventsSearchParams): AuditFilterRo
 
 // AuditEventsBrowser は監査イベントの検索フォーム、一覧、詳細、エクスポートを持つ。
 //
-// 権限判断はここに無い。どのテナントを扱うかは呼び出し側が渡す listEvents と exportURL が
+// 権限判断はここに無い。どのテナントを扱うかは呼び出し側が渡す listEvents と exportClient が
 // 決め、この部品は結果を描くだけである。範囲を切り替える入力も持たない (wi-462)。
 export function AuditEventsBrowser({
   events: initial,
@@ -232,7 +234,8 @@ export function AuditEventsBrowser({
   search,
   searchOptions,
   listEvents,
-  exportURL,
+  exportClient,
+  csrfToken,
   onSearch,
   onPage,
   cursorReset = false,
@@ -245,7 +248,8 @@ export function AuditEventsBrowser({
   search?: AdminAuditEventsSearchParams
   searchOptions?: AdminAuditEventSearchOptions
   listEvents: (query: AdminAuditEventsSearchParams) => Promise<AdminAuditEventPage>
-  exportURL: (query: AdminAuditEventsSearchParams) => string
+  exportClient: AuditExportClient
+  csrfToken: string
   onSearch?: (search: AdminAuditEventsSearchParams) => void
   onPage?: (cursor: string | null) => void
   cursorReset?: boolean
@@ -265,6 +269,17 @@ export function AuditEventsBrowser({
   const t = useDictionary(adminAuditEventsDictionary)
   const tCommon = useDictionary(commonDictionary)
   const { locale } = useLocale()
+
+  // URL の検索結果だけを同期し、進行中のエクスポートは検索の更新をまたいで保つ。
+  useEffect(() => {
+    setEvents(initial)
+    setSelected(initial[0] ?? null)
+    setAfter(isoToDatetimeLocal(search?.after))
+    setBefore(isoToDatetimeLocal(search?.before))
+    setLimit(search?.limit !== undefined ? String(search.limit) : '100')
+    setFilters(filtersFromSearch(search))
+    setError(initialError ?? '')
+  }, [initial, search, initialError])
 
   useEffect(() => {
     if (cursorReset) setNotice(tCommon.cursorResetNotice)
@@ -339,10 +354,6 @@ export function AuditEventsBrowser({
     } finally {
       setBusy(false)
     }
-  }
-
-  function handleExport() {
-    window.open(exportURL(buildQuery()), '_blank')
   }
 
   return (
@@ -514,13 +525,11 @@ export function AuditEventsBrowser({
               <IconSearch size={16} aria-hidden="true" />
               {t.filterAction}
             </Button>
-            <Button type="button" variant="ghost" onClick={handleExport} disabled={busy}>
-              <IconDownload size={16} aria-hidden="true" />
-              {t.exportAction}
-            </Button>
           </div>
         </form>
       </Card>
+
+      <AuditExportPanel client={exportClient} csrfToken={csrfToken} query={buildQuery} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
         <Card className="overflow-hidden">

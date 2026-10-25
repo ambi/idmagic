@@ -65,6 +65,7 @@ export const Route = createFileRoute('/system/audit-events')({
     }
     const searchOptions = await listAdminAuditEventSearchOptions().catch(() => undefined)
     return {
+      csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
       events,
       previousCursor,
@@ -101,7 +102,6 @@ function SystemAuditEventsRoute() {
   return (
     <PageMarker kind="system-audit-events">
       <SystemAuditEventsPage
-        key={JSON.stringify(search)}
         {...data}
         pagination={data}
         onSearch={(next) => navigate({ search: next })}

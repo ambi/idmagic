@@ -70,6 +70,31 @@ func (s *AuditEventStore) List(_ context.Context, q ports.AuditEventQuery) ([]*p
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if !q.FromEnd && q.BeforeOccurredAt.IsZero() && q.BeforeID == "" {
+		// 前進ページは一致件数によらず limit 件だけ保持する。
+		compare := func(a, b *ports.AuditEventRecord) int {
+			if order := b.OccurredAt.Compare(a.OccurredAt); order != 0 {
+				return order
+			}
+			return strings.Compare(b.ID, a.ID)
+		}
+		page := make([]*ports.AuditEventRecord, 0, limit)
+		boundary := &ports.AuditEventRecord{OccurredAt: q.AfterOccurredAt, ID: q.AfterID}
+		for _, rec := range s.events {
+			if !auditEventMatches(rec, q) || (!q.AfterOccurredAt.IsZero() && compare(rec, boundary) <= 0) {
+				continue
+			}
+			index, _ := slices.BinarySearchFunc(page, rec, compare)
+			if index >= limit {
+				continue
+			}
+			if len(page) == limit {
+				page = page[:limit-1]
+			}
+			page = slices.Insert(page, index, rec)
+		}
+		return page, nil
+	}
 	// Filter first, then apply the signed keyset boundary in canonical
 	// (occurred_at DESC, id DESC) order.
 	result := make([]*ports.AuditEventRecord, 0, auditMaxListLimit)

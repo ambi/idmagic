@@ -51,6 +51,14 @@ func measureSoftUsage(ctx context.Context, deps *Dependencies, tenantID string) 
 	if err != nil {
 		return domain.SoftQuotaUsage{}, err
 	}
+	auditBytes, err := deps.Audit.ExportUsage(ctx, tenantID)
+	if err != nil {
+		return domain.SoftQuotaUsage{}, err
+	}
+	if auditBytes > math.MaxInt64-bytes {
+		return domain.SoftQuotaUsage{}, errors.New("soft quota: artifact usage overflow")
+	}
+	bytes += auditBytes
 	if count > int64(math.MaxInt) || bytes > int64(math.MaxInt) {
 		return domain.SoftQuotaUsage{}, errors.New("soft quota: measured usage overflows int")
 	}

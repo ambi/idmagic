@@ -8,6 +8,7 @@ package handlers_http
 // 書き込み経路は定義しない。
 
 import (
+	"bytes"
 	"errors"
 	"net/http"
 	"slices"
@@ -321,21 +322,28 @@ func (d Deps) exportAuditEvents(c *echo.Context, actor *support.Principal, scope
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	query.Limit = adminAuditEventExportMaxLimit
-	var records []*auditports.AuditEventRecord
-	if d.AuditEventRepo != nil && !noMatch {
-		records, err = d.AuditEventRepo.List(c.Request().Context(), query)
-		if err != nil {
-			return support.WriteServerError(c, err)
-		}
+	select {
+	case legacyExportSlots <- struct{}{}:
+		defer func() { <-legacyExportSlots }()
+	default:
+		return support.WriteProblem(c, 429, "audit_export_busy", "The synchronous export is busy; use an asynchronous export.")
 	}
-	response := make([]AdminAuditEventResponse, len(records))
-	for i, rec := range records {
-		response[i] = toAdminAuditEventResponse(rec)
+	var response bytes.Buffer
+	p := auditports.ExportParams{Query: query, NoMatch: noMatch || d.AuditEventRepo == nil, RequestedBy: actor.ID, Format: "json", Policy: d.ExportPolicy}
+	p.Policy.MaxEvents = adminAuditEventExportMaxLimit
+	p.Policy.MaxBytes = 16 << 20
+	if _, err := auditusecases.StreamExport(c.Request().Context(), d.Exports, p, &response, nil, true); err != nil {
+		if errors.Is(err, auditusecases.ErrByteLimit) {
+			return support.WriteProblem(c, 422, "audit_export_limit_exceeded", "The synchronous export exceeds its byte limit; use an asynchronous export.")
+		}
+		return support.WriteServerError(c, err)
 	}
 	c.Response().Header().Set("Content-Disposition", "attachment; filename=\"audit_events.json\"")
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"events": response})
+	c.Response().Header().Set("Cache-Control", "no-store")
+	return c.Blob(http.StatusOK, "application/json", response.Bytes())
 }
+
+var legacyExportSlots = make(chan struct{}, 2)
 
 // AuditEventSearchOptionsResponse は SCL AuditEventSearchOptionsResponse の双子。
 type AuditEventSearchOptionsResponse struct {
