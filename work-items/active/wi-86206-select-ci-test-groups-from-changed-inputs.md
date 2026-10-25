@@ -16,7 +16,9 @@ spec_impact:
 
 ## 動機
 
-[現在の CI](../../.github/workflows/idmagic-ci.yaml)は、変更内容にかかわらず Go 全体の race 検査、UI の検証、ブラウザー E2E、スキーマ検査を実行する。
+[現在の CI](../../.github/workflows/idmagic-ci.yaml)は、変更内容にかかわらず Go 全体の通常テスト、UI の検証、ブラウザー E2E、スキーマ検査を実行する。
+2026-10-25 の棚卸しでは、Go のジョブは `mise run test-go` を呼んでいる。
+race 検査の自動実行への復帰は [wi-47187](wi-47187-restore-automated-go-race-testing.md) が扱い、本項目は入力に応じた検査群の選択を扱う。
 手元では[最終検査の選択](../../docs/development/specification-first-workflow.md#最終検査の選択)により文書変更の検査を絞れるが、CI には同じ選択がない。
 変更した入力に対応する検査群を選び、影響しない製品テストの起動費用を減らしたい。
 時間の削減量は未実測なので、同じ変更例による実行前後の記録を残す。

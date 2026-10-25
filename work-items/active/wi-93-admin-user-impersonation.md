@@ -9,6 +9,7 @@ change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-management/features/admin-access.md, requirement: REQ-IDMANAGEMENT-014 }
   - { path: docs/modules/authentication/features/session.md, requirement: REQ-AUTHENTICATION-021 }
+  - { path: docs/modules/authentication/features/security-notification.md, requirement: REQ-AUTHENTICATION-031 }
 ---
 
 # 管理者による代理ログイン (impersonation) を監査付きで導入する
@@ -24,13 +25,17 @@ affected_spec:
 専用権限・対象と時間の境界・厳格な監査 (actor chain、`docs/modules/oauth2/decisions.md` の委譲と actor chain に整合)・
 impersonation 中の可視バナー・機微操作の禁止を備えた形で導入する。
 
+2026-10-25 の棚卸しで、重複する [wi-59470](../done/wi-59470-administrator-impersonation-sessions.md) の対象範囲を本項目へ統合した。
+宣言済みの `SessionImpersonationStarted` と `SessionImpersonationEnded`、本人への `impersonation` 通知も本項目で配線する。
+語彙検査の例外を減らすことだけを理由に着手せず、サポート業務での需要と、権限、対象、期限、禁止操作、行為者の監査表現を確定してから実装する。
+
 ## Scope
 - **decision**:
   - `docs/modules/authentication/decisions.md` へ記録する決定: impersonation の許可条件 (専用権限 / 対象制限 / 時間制限)、監査 (開始・終了・操作を impersonator を含む actor chain で記録、 `docs/modules/oauth2/decisions.md` の委譲と actor chain に整合)、可視バナーによる不可視ななりすまし防止、機微操作 (パスワード / MFA 変更 / 削除) の禁止範囲、テナント設定での有効化を記録する。
 - **specification**:
   - §3.3 interfaces: StartImpersonation / EndImpersonation を追加する。
   - authorization と interface access: impersonation は専用権限に固定し fail-closed とする。
-  - §3.4 states/events: ImpersonationStarted / ImpersonationEnded を追加し、 session に impersonator を保持する。
+  - 宣言済みの `SessionImpersonationStarted` と `SessionImpersonationEnded` を開始と終了で発行し、session に impersonator を保持する。
   - 所有要素の constraints/contracts: 全操作が impersonator を含めて監査され、cross-tenant impersonation を禁止することを明示する。
 - **go**:
   - impersonation usecase を追加し、session に actor + impersonator を持たせ、 機微操作をブロックし、全操作を監査する。
@@ -40,6 +45,9 @@ impersonation 中の可視バナー・機微操作の禁止を備えた形で導
   - AdminUsers 詳細に「代理ログイン」、全画面に impersonation 中バナーを 追加する。
 - **documentation**:
   - README に impersonation の権限・制約・監査を追記する。
+- **通知と語彙の照合**:
+  - REQ-AUTHENTICATION-031 に従い、開始と終了で対象の User へ `impersonation` の通知を送る。
+  - 二つのイベントを実際の開始と終了から発行した後に、語彙検査の許容リストから外す。
 
 ## Out of Scope
 - 恒久的な delegated access ([[wi-94-delegated-administration]] とは別)。
@@ -47,7 +55,7 @@ impersonation 中の可視バナー・機微操作の禁止を備えた形で導
 - impersonation 中のパスワード / MFA 変更・アカウント削除。
 
 ## Plan
-- 既に authentication specification/events に `ImpersonationStarted/Ended` があるため語彙を再利用し、通常admin sessionとは別の `ImpersonationSession` を発行する。元actor sessionを保持し、subject sessionへroleをコピーしない。
+- 宣言済みの `SessionImpersonationStarted` と `SessionImpersonationEnded` を使い、通常の管理者セッションとは別の `ImpersonationSession` を発行する。元の行為者のセッションを保持し、対象の User のセッションへロールをコピーしない。
 - 開始は専用permission、step-up、ticket/reason、短いTTLを必須にし、self、system_admin、同等以上privilege、別tenant、disabled/deleted userを拒否する。対象userのeffective roleをそのまま上限とする。
 - portal OIDC token/sessionに `act`/impersonator claimとsession typeを載せ、全backend authorization/auditがactorとsubjectを分離して受け取る。token exchangeのdelegation/impersonationとは操作目的が異なるため混同しない。
 - frontendは全画面固定banner、対象/actor、残り時間、終了操作を表示し、危険操作（role変更、impersonation開始、secret/key管理等）はimpersonated sessionから禁止する。

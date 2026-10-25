@@ -9,11 +9,6 @@ depends_on: [wi-96676-transcribe-implicit-specifications-of-identity-management]
 change_kind: bugfix
 affected_spec:
   - { path: docs/modules/identity-management/features/data-export.md, requirement: REQ-IDMANAGEMENT-040 }
-  - { path: docs/modules/identity-management/features/user.md, requirement: REQ-IDMANAGEMENT-042 }
-  - { path: docs/modules/identity-management/features/user.md, requirement: REQ-IDMANAGEMENT-043 }
-  - { path: docs/modules/identity-management/features/user.md, requirement: REQ-IDMANAGEMENT-044 }
-  - { path: docs/modules/identity-management/features/user.md, requirement: REQ-IDMANAGEMENT-045 }
-  - { path: docs/modules/identity-management/features/user.lifecycle.md, requirement: REQ-IDMANAGEMENT-049 }
   - { path: docs/modules/identity-management/features/account.md, requirement: REQ-IDMANAGEMENT-051 }
   - { path: docs/modules/identity-management/features/account.md, requirement: REQ-IDMANAGEMENT-052 }
   - { path: docs/modules/identity-management/features/account.md, requirement: REQ-IDMANAGEMENT-053 }
@@ -35,11 +30,6 @@ IdManagement の既存コードを書き起こしたとき、意図が疑わし�
 | 規則 | 未決定の点 |
 | --- | --- |
 | REQ-IDMANAGEMENT-040 | エクスポートの一覧が種類で絞る前に直近 200 件で切るため、古いエクスポートが一覧から消える |
-| REQ-IDMANAGEMENT-042 | ユーザー名が大文字と小文字を区別する。管理者の作成がメールアドレスの重複を拒否しない |
-| REQ-IDMANAGEMENT-043 | JIT が作成した User を動的グループの規則で評価しない |
-| REQ-IDMANAGEMENT-044 | 猶予期間を過ぎた削除予約の User の完全削除が、ユーザー一覧の取得まで起きない |
-| REQ-IDMANAGEMENT-045 | 管理者がメールアドレスを変えても `email_verified` が `true` のまま残る |
-| REQ-IDMANAGEMENT-049 | 復元を下流のプロビジョニングへ通知しない |
 | REQ-IDMANAGEMENT-051 | 本人の更新が、値の変わらない属性も `changed_fields` に載せる |
 | REQ-IDMANAGEMENT-052 | 本人のデータのエクスポートが、`admin_readable` と `private` の属性を含めない |
 | REQ-IDMANAGEMENT-053 | 確認のメールの送信の失敗を、起票した本人へ伝えない |
@@ -48,6 +38,17 @@ IdManagement の既存コードを書き起こしたとき、意図が疑わし�
 | REQ-IDMANAGEMENT-070 | 動的な所属の変化が、メンバーごとのイベントを発行しない |
 | REQ-IDMANAGEMENT-076 | Agent の無効化と再有効化が、すでにその状態でも時刻を進めてイベントを重ねる |
 | REQ-IDMANAGEMENT-078 | 停止した Agent を削除できない |
+
+2026-10-25 の棚卸しで、次の五点は現在の仕様で方針が確定していたため、未決定の対象から外した。
+この整理は製品の振る舞いを変更せず、残る九点だけを本項目で扱う。
+
+| 除外した規則 | 現在の判断を持つ一次情報 |
+| --- | --- |
+| REQ-IDMANAGEMENT-042 | [値オブジェクト](../../docs/modules/identity-management/data.md#値オブジェクト) が名前を case folding で比較し、REQ-IDMANAGEMENT-042 と REQ-IDMANAGEMENT-089 がメールアドレスの重複を拒否する |
+| REQ-IDMANAGEMENT-043 | [作成の経路に共通する規則](../../docs/modules/identity-management/features/user.md#作成の経路に共通する規則) の REQ-IDMANAGEMENT-089 が JIT で作った User も動的グループの規則で評価する |
+| REQ-IDMANAGEMENT-044 | [保持期限の削除](../../docs/modules/identity-management/features/user.md#保持期限の削除) と wi-92312 が、一覧の取得から Batch へ完全削除を移した |
+| REQ-IDMANAGEMENT-045 | [ユーザーの仕様](../../docs/modules/identity-management/features/user.md) の REQ-IDMANAGEMENT-045 が、明示的な指定を伴わないメールアドレスの変更で `email_verified` を `false` にする |
+| REQ-IDMANAGEMENT-049 | [復元](../../docs/modules/identity-management/features/user.lifecycle.md#復元) が、User の再有効化として下流へ通知する |
 
 ## 対象範囲
 
