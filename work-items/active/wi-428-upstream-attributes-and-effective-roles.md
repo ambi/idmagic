@@ -1,5 +1,5 @@
 ---
-depends_on: []
+depends_on: [wi-20073-identify-upstream-attribute-authority]
 status: pending
 authors: [tn]
 risk: high
@@ -52,6 +52,33 @@ affected_spec:
 
 採る案は本 work item の中心的な判断であり、承認の対象になる。現時点の傾きは第二案と第三案の組み合わせだが、第二案の検査点（グループへロールを付ける時点と、規則を保存する時点の双方）を実装できるかを先に確かめる必要がある。
 
+### 着手前調査で判明した前提
+
+属性ごとの出どころは追跡されていないため、[属性の出どころと上流の書き込み範囲を識別する先行項目](wi-20073-identify-upstream-attribute-authority.md)へ切り出す。
+本項目は `pending` のまま依存の解決を待ち、T002 以降の実装と集約検査へ進まない。
+
+| 確認した入口と保存型 | 現在の情報 | 制限の判断に不足する情報 |
+| --- | --- | --- |
+| `backend/idmanagement/user/domain/users.go` の `User`、`AttributeValue`、`UserAttributeDef` | 属性の値、型、本人による編集可否 | 属性ごとの上流の識別と書き込み範囲 |
+| `backend/sourcing/internal/sourceuser/attributes.go` の `Attributes.Apply` | SCIM と Directory Connector の属性を同じ User のフィールドへ投影する | 値の出どころを投影後も識別する情報 |
+| `backend/sourcing/internal/scim/source_idmanagement/user_lookup.go` の `IsSCIMUser` | SCIM の対応表に User があるか | 各属性を上流が更新できるか。User 全体の由来表示では区別できない |
+| `backend/idmanagement/internal/user/usecases/federated_user.go` の `ProvisionFederatedUser` | JIT の属性を通常の `AttributeValue` として作成する | JIT で渡された各属性の出どころ |
+
+規則とロールの検査を追加する入口は存在する。
+`backend/idmanagement/internal/group/usecases/dynamic_groups.go` の `UpdateDynamicGroupRule` は、コンパイル済みの `References()` と Group のロールを保存前に参照できる。
+同じファイルの `SetDynamicGroupRuleEnabled` も、有効化時の検査候補になる。
+`backend/idmanagement/internal/group/usecases/admin_groups.go` の `CreateGroup` と `UpdateGroup` は、Group のロールを検査して保存する入口である。
+CSV の `group_import_planner.go` と適用経路も、管理 API だけに拒否を置いて回避されないように調査する必要がある。
+
+直接所属の経路は、属性の追跡とは別に残る。
+`backend/idmanagement/source_commands.go` の `SetGroupMembership` は管理用の所属操作へ委譲し、`REQ-SOURCING-005` は Group のロールを実効ロールへ反映することを定めている。
+再開時には、SCIM 管理の Group へのロール追加と、ロールのある Group を上流管理へ結び付ける操作の双方を扱う。
+
+現在の値に出どころを付けるだけで、第二案の保存時の検査が成立するとは限らない。
+User がまだいないときや、後から上流の属性マッピングが変わるときにも、規則の参照属性を上流が更新できるか判断できる必要がある。
+先行項目では、この利用条件を満たす分類を決めてから追跡を実装する。
+第一案、第二案、第三案の採否は未決であり、今回の調査だけで第二案と第三案を採用したことにはしない。
+
 ## Plan
 
 1. 属性の出どころを現在追跡しているかを確認する。追跡していなければ、追跡が先行作業になる。
@@ -61,7 +88,7 @@ affected_spec:
 
 ## Tasks
 
-- [ ] T001 [Baseline] 属性の出どころの追跡の有無と、検査点として使える箇所を確認する。
+- [x] T001 [Baseline] 属性の出どころの追跡の有無と、検査点として使える箇所を確認する。追跡はなく、wi-20073 を前提として切り出す。規則保存、有効化とロール変更の入口は上記の調査に記す。
 - [ ] T002 [Acceptance] 上流由来の属性を参照する規則がロール付与グループへ結び付く経路が、現在は何にも拒否されないことを観測する。
 - [ ] T003 [Spec] 方針を判断として書き、規範シナリオを足す。
 - [ ] T004 [App] 検査点を実装する。
@@ -69,6 +96,8 @@ affected_spec:
 
 ## Verification
 
+- 着手前調査と依存の追加だけの差分は、`mise run check-work-items` で形式と依存先、`mise run check-links` で追加したリンクを検査する。
+- 以下は先行項目の完了と方針の確定後に行う。本段階では製品コード、仕様とテストを変えず、`mise run verify` を実行しない。
 - 方針が拒否と定めた組み合わせが、規則の保存時とグループへのロール付与時の双方で拒否される。
 - 拒否の後に、動的な所属も実効ロールも変わっていない。
 - 正当な用途（権限へ波及しない属性ベースの所属）が引き続き成立する。
