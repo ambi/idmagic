@@ -18,7 +18,7 @@ export async function checkLinks(snapshot: WorkspaceSnapshot): Promise<CheckOutc
   const changed = changedWorkItemRecords(snapshot)
   const documents = new Map<string, string>()
   const existingPaths = new Set<string>()
-  for (const path of await snapshot.files('', ['.git', 'node_modules', '.worktrees'])) {
+  for (const path of await snapshot.files('', ['.git', 'node_modules', '.worktrees', '.notes'])) {
     if (excluded(path)) continue
     existingPaths.add(path)
     let parent = posix.dirname(path)

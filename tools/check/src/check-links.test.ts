@@ -44,6 +44,28 @@ async function committedWorkspace(files: Record<string, string>): Promise<string
 }
 
 describe('checkLinks', () => {
+  it('個人の作業メモ内のリンク切れは検査しない', async () => {
+    const root = await committedWorkspace({ 'README.md': '# 入口\n' })
+    await mkdir(join(root, '.notes', 'nested'), { recursive: true })
+    await writeFile(join(root, '.notes', 'draft.md'), BROKEN)
+    await writeFile(join(root, '.notes', 'nested', 'draft.md'), BROKEN)
+
+    const outcome = await checkLinks(createWorkspaceSnapshot(root))
+
+    expect(outcome).toEqual({ ok: true, lines: ['ok  Markdown links (1 document(s))'] })
+  })
+
+  it('Git への登録前でも通常の文書のリンク切れは検査する', async () => {
+    const root = await committedWorkspace({ 'README.md': '# 入口\n' })
+    await mkdir(join(root, 'docs'), { recursive: true })
+    await writeFile(join(root, 'docs', 'draft.md'), BROKEN)
+
+    const outcome = await checkLinks(createWorkspaceSnapshot(root))
+
+    expect(outcome.ok).toBe(false)
+    expect(outcome.lines.join('\n')).toContain('docs/draft.md:3:')
+  })
+
   it('基準から変わっていない完了済みの記録のリンクは検査しない', async () => {
     const root = await committedWorkspace({
       'README.md': '# 入口\n',
