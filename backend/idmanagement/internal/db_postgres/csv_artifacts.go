@@ -22,6 +22,10 @@ const csvArtifactChunkBytes = 64 << 10
 
 type CSVArtifactStore struct{ Pool sharedpg.DB }
 
+func (s *CSVArtifactStore) CSVArtifactUsage(ctx context.Context, tenantID string) (int64, error) {
+	return New(s.Pool).CSVArtifactUsage(ctx, tenantID)
+}
+
 type hashingArtifactWriter struct {
 	file io.Writer
 	hash hash.Hash

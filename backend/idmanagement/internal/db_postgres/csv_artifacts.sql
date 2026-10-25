@@ -24,3 +24,6 @@ WHERE a.tenant_id = $1 AND a.id = $2 AND c.chunk_number = $3;
 -- name: DeleteCSVArtifactsCreatedBefore :execrows
 -- 保持期限の削除。テナントをまたいで消し、分割片は外部キーの連鎖で消える。
 DELETE FROM csv_artifacts WHERE created_at < $1;
+
+-- name: CSVArtifactUsage :one
+SELECT COALESCE(SUM(byte_size), 0)::bigint AS byte_size FROM csv_artifacts WHERE tenant_id = $1;

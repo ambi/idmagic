@@ -117,28 +117,25 @@ var usageCounters = map[string]usageCounter{
 			return q.DecrementTenantUsageSsfStreams(ctx, DecrementTenantUsageSsfStreamsParams{TenantID: tenantID, Delta: delta})
 		},
 	},
-	"audit_events_retained": {
-		increment: func(ctx context.Context, q *Queries, tenantID string, delta, limit int32) error {
-			_, err := q.IncrementTenantUsageAuditEventsRetained(ctx, IncrementTenantUsageAuditEventsRetainedParams{TenantID: tenantID, Delta: delta, DefaultLimit: limit})
-			return err
-		},
-		decrement: func(ctx context.Context, q *Queries, tenantID string, delta int32) error {
-			return q.DecrementTenantUsageAuditEventsRetained(ctx, DecrementTenantUsageAuditEventsRetainedParams{TenantID: tenantID, Delta: delta})
-		},
-	},
-	"export_artifacts_bytes": {
-		increment: func(ctx context.Context, q *Queries, tenantID string, delta, limit int32) error {
-			_, err := q.IncrementTenantUsageExportArtifactsBytes(ctx, IncrementTenantUsageExportArtifactsBytesParams{TenantID: tenantID, Delta: delta, DefaultLimit: limit})
-			return err
-		},
-		decrement: func(ctx context.Context, q *Queries, tenantID string, delta int32) error {
-			return q.DecrementTenantUsageExportArtifactsBytes(ctx, DecrementTenantUsageExportArtifactsBytesParams{TenantID: tenantID, Delta: delta})
-		},
-	},
 }
 
 // CheckAndIncrement atomically increments the usage counter for the given resource.
 func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resource string, delta int) error {
+	if domain.IsSoftQuota(resource) {
+		if delta < 0 {
+			return errors.New("soft quota: negative increment")
+		}
+		queries := New(r.db)
+		if err := queries.EnsureTenantUsage(ctx, tenantID); err != nil {
+			return err
+		}
+		if resource == domain.ResourceAuditEventsRetained {
+			_, err := queries.IncrementTenantUsageAuditEventsRetained(ctx, IncrementTenantUsageAuditEventsRetainedParams{TenantID: tenantID, Delta: int64(delta)})
+			return err
+		}
+		_, err := queries.IncrementTenantUsageExportArtifactsBytes(ctx, IncrementTenantUsageExportArtifactsBytesParams{TenantID: tenantID, Delta: int64(delta)})
+		return err
+	}
 	counter, ok := usageCounters[resource]
 	if !ok {
 		return fmt.Errorf("unknown resource for quota increment: %s", resource)
@@ -157,6 +154,15 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 
 // Decrement atomically decreases the usage counter for the given resource.
 func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource string, delta int) error {
+	if domain.IsSoftQuota(resource) {
+		if delta < 0 {
+			return errors.New("soft quota: negative decrement")
+		}
+		if resource == domain.ResourceAuditEventsRetained {
+			return New(r.db).DecrementTenantUsageAuditEventsRetained(ctx, DecrementTenantUsageAuditEventsRetainedParams{TenantID: tenantID, Delta: int64(delta)})
+		}
+		return New(r.db).DecrementTenantUsageExportArtifactsBytes(ctx, DecrementTenantUsageExportArtifactsBytesParams{TenantID: tenantID, Delta: int64(delta)})
+	}
 	counter, ok := usageCounters[resource]
 	if !ok {
 		return fmt.Errorf("unknown resource for quota decrement: %s", resource)
@@ -165,11 +171,7 @@ func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource stri
 	return counter.decrement(ctx, New(r.db), tenantID, int32(delta))
 }
 
-// getDefaultQuota resolves the baseline limit for resource through
-// domain.DefaultTenantQuota (the single source of truth shared with the
-// memory backend's TenantQuota.EffectiveLimit) so the two persistence
-// implementations cannot drift apart. Soft-quota / undefined resources fall
-// back to 0 (unused by the Hard Quota enforcement paths that call this).
+// getDefaultQuota は Hard の SQL に渡す既定値をドメインの同じ定義から解決する。
 func getDefaultQuota(resource string) int {
 	return domain.DefaultTenantQuota[resource]
 }
@@ -188,8 +190,17 @@ func (r *QuotaRepository) SetQuota(ctx context.Context, tenantID string, quota *
 		Consents:             toPgtypeInt4(quota.Consents),
 		ActiveJobs:           toPgtypeInt4(quota.ActiveJobs),
 		SsfStreams:           toPgtypeInt4(quota.SsfStreams),
-		AuditEventsRetained:  toPgtypeInt4(quota.AuditEventsRetained),
-		ExportArtifactsBytes: toPgtypeInt4(quota.ExportArtifactsBytes),
+		AuditEventsRetained:  toPgtypeInt8(quota.AuditEventsRetained),
+		ExportArtifactsBytes: toPgtypeInt8(quota.ExportArtifactsBytes),
+	})
+}
+
+func (r *QuotaRepository) SetSoftUsage(ctx context.Context, tenantID string, measured domain.SoftQuotaUsage) error {
+	if err := measured.Validate(); err != nil {
+		return err
+	}
+	return New(r.db).SetSoftTenantUsage(ctx, SetSoftTenantUsageParams{
+		TenantID: tenantID, AuditEventsRetained: int64(measured.AuditEventsRetained), ExportArtifactsBytes: int64(measured.ExportArtifactsBytes),
 	})
 }
 
@@ -199,6 +210,21 @@ func toPgtypeInt4(v *int) pgtype.Int4 {
 	}
 	//nolint:gosec // we trust our input size
 	return pgtype.Int4{Int32: int32(*v), Valid: true}
+}
+
+func toPgtypeInt8(v *int) pgtype.Int8 {
+	if v == nil {
+		return pgtype.Int8{}
+	}
+	return pgtype.Int8{Int64: int64(*v), Valid: true}
+}
+
+func fromPgtypeInt8(v pgtype.Int8) *int {
+	if !v.Valid {
+		return nil
+	}
+	value := int(v.Int64)
+	return &value
 }
 
 func (r *QuotaRepository) GetQuota(ctx context.Context, tenantID string) (*domain.TenantQuota, error) {
@@ -229,8 +255,8 @@ func (r *QuotaRepository) GetQuota(ctx context.Context, tenantID string) (*domai
 		Consents:             fromPgtype(row.Consents),
 		ActiveJobs:           fromPgtype(row.ActiveJobs),
 		SsfStreams:           fromPgtype(row.SsfStreams),
-		AuditEventsRetained:  fromPgtype(row.AuditEventsRetained),
-		ExportArtifactsBytes: fromPgtype(row.ExportArtifactsBytes),
+		AuditEventsRetained:  fromPgtypeInt8(row.AuditEventsRetained),
+		ExportArtifactsBytes: fromPgtypeInt8(row.ExportArtifactsBytes),
 	}, nil
 }
 

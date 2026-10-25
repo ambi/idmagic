@@ -53,5 +53,12 @@ URL の接頭辞、OIDC の発行者、Discovery Metadata など外部に示す�
 | `NotificationTemplate` | `notification_templates` | `backend/tenancy/internal/db_postgres` |
 | `TenantQuota` | 上限の上書きは `tenant_quotas`、使用量のカウンターは `tenant_usages` | `backend/tenancy/internal/db_postgres` |
 
+Soft Quota の二列は、上限と使用量のどちらも `BIGINT` とし、2 GiB を超える成果物の合計を保持する。
+スキーマを先に広げてから対応するバイナリを展開する。
+旧バイナリの読み取り範囲を超える値を保存した後は、旧バイナリや `INT` の列への単純な後退を避け、前進修正で回復する。
+照合はこの二列だけを同時に置き換え、並行に加算される Hard Quota の列を書き戻さない。
+Soft の値は各保存先を読んだ時点の測定であり、全保存先の同時点スナップショットではない。
+通常の増減と照合が重なった差は次のバッチで回収する。
+
 `TenantUserAttributeSchema` と `TenantGroupAttributeSchema` は、IdManagement が管理と保存を担当する独立した Aggregate である。
 `Tenant` との関係は [IdManagement のデータ](../identity-management/data.md#テナントの属性スキーマ)が扱う。

@@ -67,8 +67,8 @@ type TenantQuota struct {
 	Consents             pgtype.Int4
 	ActiveJobs           pgtype.Int4
 	SsfStreams           pgtype.Int4
-	AuditEventsRetained  pgtype.Int4
-	ExportArtifactsBytes pgtype.Int4
+	AuditEventsRetained  pgtype.Int8
+	ExportArtifactsBytes pgtype.Int8
 }
 
 type TenantUsage struct {
@@ -82,6 +82,6 @@ type TenantUsage struct {
 	Consents             int32
 	ActiveJobs           int32
 	SsfStreams           int32
-	AuditEventsRetained  int32
-	ExportArtifactsBytes int32
+	AuditEventsRetained  int64
+	ExportArtifactsBytes int64
 }

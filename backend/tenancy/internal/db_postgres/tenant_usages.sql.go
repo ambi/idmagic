@@ -66,11 +66,11 @@ func (q *Queries) DecrementTenantUsageApplications(ctx context.Context, arg Decr
 }
 
 const decrementTenantUsageAuditEventsRetained = `-- name: DecrementTenantUsageAuditEventsRetained :exec
-UPDATE tenant_usages u SET audit_events_retained = GREATEST(0, u.audit_events_retained - $1::int) WHERE u.tenant_id = $2
+UPDATE tenant_usages u SET audit_events_retained = GREATEST(0, u.audit_events_retained - $1::bigint) WHERE u.tenant_id = $2
 `
 
 type DecrementTenantUsageAuditEventsRetainedParams struct {
-	Delta    int32
+	Delta    int64
 	TenantID string
 }
 
@@ -94,11 +94,11 @@ func (q *Queries) DecrementTenantUsageConsents(ctx context.Context, arg Decremen
 }
 
 const decrementTenantUsageExportArtifactsBytes = `-- name: DecrementTenantUsageExportArtifactsBytes :exec
-UPDATE tenant_usages u SET export_artifacts_bytes = GREATEST(0, u.export_artifacts_bytes - $1::int) WHERE u.tenant_id = $2
+UPDATE tenant_usages u SET export_artifacts_bytes = GREATEST(0, u.export_artifacts_bytes - $1::bigint) WHERE u.tenant_id = $2
 `
 
 type DecrementTenantUsageExportArtifactsBytesParams struct {
-	Delta    int32
+	Delta    int64
 	TenantID string
 }
 
@@ -258,21 +258,19 @@ func (q *Queries) IncrementTenantUsageApplications(ctx context.Context, arg Incr
 
 const incrementTenantUsageAuditEventsRetained = `-- name: IncrementTenantUsageAuditEventsRetained :one
 UPDATE tenant_usages u
-SET audit_events_retained = u.audit_events_retained + $1::int
+SET audit_events_retained = u.audit_events_retained + $1::bigint
 WHERE u.tenant_id = $2
-  AND COALESCE((SELECT q.audit_events_retained FROM tenant_quotas q WHERE q.tenant_id = u.tenant_id), $3::int) >= u.audit_events_retained + $1::int
 RETURNING u.audit_events_retained
 `
 
 type IncrementTenantUsageAuditEventsRetainedParams struct {
-	Delta        int32
-	TenantID     string
-	DefaultLimit int32
+	Delta    int64
+	TenantID string
 }
 
-func (q *Queries) IncrementTenantUsageAuditEventsRetained(ctx context.Context, arg IncrementTenantUsageAuditEventsRetainedParams) (int32, error) {
-	row := q.db.QueryRow(ctx, incrementTenantUsageAuditEventsRetained, arg.Delta, arg.TenantID, arg.DefaultLimit)
-	var audit_events_retained int32
+func (q *Queries) IncrementTenantUsageAuditEventsRetained(ctx context.Context, arg IncrementTenantUsageAuditEventsRetainedParams) (int64, error) {
+	row := q.db.QueryRow(ctx, incrementTenantUsageAuditEventsRetained, arg.Delta, arg.TenantID)
+	var audit_events_retained int64
 	err := row.Scan(&audit_events_retained)
 	return audit_events_retained, err
 }
@@ -300,21 +298,19 @@ func (q *Queries) IncrementTenantUsageConsents(ctx context.Context, arg Incremen
 
 const incrementTenantUsageExportArtifactsBytes = `-- name: IncrementTenantUsageExportArtifactsBytes :one
 UPDATE tenant_usages u
-SET export_artifacts_bytes = u.export_artifacts_bytes + $1::int
+SET export_artifacts_bytes = u.export_artifacts_bytes + $1::bigint
 WHERE u.tenant_id = $2
-  AND COALESCE((SELECT q.export_artifacts_bytes FROM tenant_quotas q WHERE q.tenant_id = u.tenant_id), $3::int) >= u.export_artifacts_bytes + $1::int
 RETURNING u.export_artifacts_bytes
 `
 
 type IncrementTenantUsageExportArtifactsBytesParams struct {
-	Delta        int32
-	TenantID     string
-	DefaultLimit int32
+	Delta    int64
+	TenantID string
 }
 
-func (q *Queries) IncrementTenantUsageExportArtifactsBytes(ctx context.Context, arg IncrementTenantUsageExportArtifactsBytesParams) (int32, error) {
-	row := q.db.QueryRow(ctx, incrementTenantUsageExportArtifactsBytes, arg.Delta, arg.TenantID, arg.DefaultLimit)
-	var export_artifacts_bytes int32
+func (q *Queries) IncrementTenantUsageExportArtifactsBytes(ctx context.Context, arg IncrementTenantUsageExportArtifactsBytesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, incrementTenantUsageExportArtifactsBytes, arg.Delta, arg.TenantID)
+	var export_artifacts_bytes int64
 	err := row.Scan(&export_artifacts_bytes)
 	return export_artifacts_bytes, err
 }
@@ -401,4 +397,23 @@ func (q *Queries) IncrementTenantUsageUsers(ctx context.Context, arg IncrementTe
 	var users int32
 	err := row.Scan(&users)
 	return users, err
+}
+
+const setSoftTenantUsage = `-- name: SetSoftTenantUsage :exec
+INSERT INTO tenant_usages (tenant_id, audit_events_retained, export_artifacts_bytes)
+VALUES ($1, $2, $3)
+ON CONFLICT (tenant_id) DO UPDATE SET
+    audit_events_retained = EXCLUDED.audit_events_retained,
+    export_artifacts_bytes = EXCLUDED.export_artifacts_bytes
+`
+
+type SetSoftTenantUsageParams struct {
+	TenantID             string
+	AuditEventsRetained  int64
+	ExportArtifactsBytes int64
+}
+
+func (q *Queries) SetSoftTenantUsage(ctx context.Context, arg SetSoftTenantUsageParams) error {
+	_, err := q.db.Exec(ctx, setSoftTenantUsage, arg.TenantID, arg.AuditEventsRetained, arg.ExportArtifactsBytes)
+	return err
 }

@@ -12,7 +12,9 @@ model TenantQuota {
   active_jobs: int64;
   @doc("SsfStream の上限。送信と受信を合わせて数える。")
   ssf_streams: int64;
+  @doc("監査件数の Soft Quota。既定は 1,000,000 件。超過しても作成を拒否せず、保持期限バッチで警告する。")
   audit_events_retained: int64;
+  @doc("確定済み CSV 成果物の合計バイト数の Soft Quota。既定は 1,073,741,824 バイト。超過しても作成を拒否せず、保持期限バッチで警告する。")
   export_artifacts_bytes: int64;
 }
 
@@ -28,7 +30,9 @@ model TenantUsage {
   consents: int64;
   active_jobs: int64;
   ssf_streams: int64;
+  @doc("最後の保持期限バッチが測定した保存済み監査件数。並行の作成と削除は次の実行で反映する。")
   audit_events_retained: int64;
+  @doc("最後の保持期限バッチが測定した確定済み CSV 成果物の合計バイト数。入力、結果ページとエクスポートを含む。")
   export_artifacts_bytes: int64;
 }
 
@@ -54,8 +58,10 @@ model TenantQuotaUpdateRequest {
   @minValue(0)
   ssf_streams?: int64;
   @minValue(0)
+  @doc("監査件数の Soft Quota の上書き。0 は使用量が正なら警告する。作成は拒否しない。")
   audit_events_retained?: int64;
   @minValue(0)
+  @doc("成果物バイト数の Soft Quota の上書き。0 は使用量が正なら警告する。作成は拒否しない。")
   export_artifacts_bytes?: int64;
 }
 

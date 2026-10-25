@@ -165,10 +165,7 @@ func (e *QuotaExceededError) IsQuotaExceeded() bool { return true }
 func (e *QuotaExceededError) GetResource() string   { return e.Resource }
 func (e *QuotaExceededError) GetTenantID() string   { return e.TenantID }
 
-// Hard Quota resource identifiers. These are the exact strings
-// QuotaRepository implementations switch on and TenantQuota/TenantUsage JSON
-// tags use; defining them here lets call sites avoid retyping raw strings
-// across the ~8 modules that enforce quota at creation time.
+// リソース名は使用量の保存と JSON のフィールドで共通に使う。
 const (
 	ResourceUsers          = "users"
 	ResourceGroups         = "groups"
@@ -182,29 +179,25 @@ const (
 	// Transmit and Receive share one limit because direction is an attribute of
 	// the same set, and the resources a stream consumes (a delivery target, a
 	// JWKS source, retained delivery records) do not differ by direction.
-	ResourceSsfStreams = "ssf_streams"
+	ResourceSsfStreams           = "ssf_streams"
+	ResourceAuditEventsRetained  = "audit_events_retained"
+	ResourceExportArtifactsBytes = "export_artifacts_bytes"
 )
 
-// DefaultTenantQuota is the baseline Hard Quota applied when a tenant
-// has no per-resource override. Unlike TenantQuota's fields, a system default
-// is never "unset", so plain ints are the right shape here (not *int) — it is
-// the single source of truth for these numbers: both the memory and postgres
-// QuotaRepository implementations resolve limits through
-// TenantQuota.EffectiveLimit instead of duplicating the values themselves, so
-// the two backends cannot silently drift apart (wi-160 scope: "memory /
-// postgres の両方で同じ quota enforcement を満たす"). An unrecognized resource
-// resolves to the zero value (0), which EffectiveLimit's caller treats as
-// fail-closed rather than unlimited.
+// DefaultTenantQuota は上書きのないリソースに適用する値である。
+// Hard では作成の拒否、Soft では警告の閾値として使う。
 var DefaultTenantQuota = map[string]int{
-	ResourceUsers:          10000,
-	ResourceGroups:         1000,
-	ResourceAgents:         100,
-	ResourceApplications:   50,
-	ResourceOAuth2Clients:  100,
-	ResourceActiveSessions: 50000,
-	ResourceConsents:       10000,
-	ResourceActiveJobs:     10,
-	ResourceSsfStreams:     20,
+	ResourceUsers:                10000,
+	ResourceGroups:               1000,
+	ResourceAgents:               100,
+	ResourceApplications:         50,
+	ResourceOAuth2Clients:        100,
+	ResourceActiveSessions:       50000,
+	ResourceConsents:             10000,
+	ResourceActiveJobs:           10,
+	ResourceSsfStreams:           20,
+	ResourceAuditEventsRetained:  1000000,
+	ResourceExportArtifactsBytes: 1 << 30,
 }
 
 // resourceOverride returns q's explicit limit for resource, or nil when q has
@@ -234,15 +227,17 @@ func (q *TenantQuota) resourceOverride(resource string) *int {
 		return q.ActiveJobs
 	case ResourceSsfStreams:
 		return q.SsfStreams
+	case ResourceAuditEventsRetained:
+		return q.AuditEventsRetained
+	case ResourceExportArtifactsBytes:
+		return q.ExportArtifactsBytes
 	default:
 		return nil
 	}
 }
 
-// EffectiveLimit returns the Hard Quota limit for resource: q's override when
-// set, otherwise the system default (DefaultTenantQuota). Unknown
-// resources return 0 (fail-closed: an unrecognized resource is never treated
-// as unlimited).
+// EffectiveLimit は上書き、既定値の順で上限を解決する。未知のリソースは 0 を返すが、
+// 保存先は名前自体を検査して拒否し、Soft の無制限と取り違えない。
 func (q *TenantQuota) EffectiveLimit(resource string) int {
 	if override := q.resourceOverride(resource); override != nil {
 		return *override

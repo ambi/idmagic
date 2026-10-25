@@ -3,6 +3,7 @@ package db_memory
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
@@ -27,6 +28,9 @@ func NewQuotaRepository() *QuotaRepository {
 func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resource string, delta int) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if domain.IsSoftQuota(resource) && delta < 0 {
+		return fmt.Errorf("soft quota: negative increment")
+	}
 
 	usage := r.usages[tenantID]
 	if usage == nil {
@@ -60,12 +64,19 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 		currentUsage = usage.ActiveJobs
 	case domain.ResourceSsfStreams:
 		currentUsage = usage.SsfStreams
+	case domain.ResourceAuditEventsRetained:
+		currentUsage = usage.AuditEventsRetained
+	case domain.ResourceExportArtifactsBytes:
+		currentUsage = usage.ExportArtifactsBytes
 	default:
 		return fmt.Errorf("unknown resource: %s", resource)
 	}
 	currentQuota := quota.EffectiveLimit(resource)
 
-	if currentUsage+delta > currentQuota {
+	if domain.IsSoftQuota(resource) && delta > math.MaxInt-currentUsage {
+		return fmt.Errorf("soft quota: usage overflow")
+	}
+	if !domain.IsSoftQuota(resource) && currentUsage+delta > currentQuota {
 		return &domain.QuotaExceededError{TenantID: tenantID, Resource: resource}
 	}
 
@@ -88,6 +99,10 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 		usage.ActiveJobs += delta
 	case domain.ResourceSsfStreams:
 		usage.SsfStreams += delta
+	case domain.ResourceAuditEventsRetained:
+		usage.AuditEventsRetained += delta
+	case domain.ResourceExportArtifactsBytes:
+		usage.ExportArtifactsBytes += delta
 	}
 
 	return nil
@@ -96,6 +111,9 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource string, delta int) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if domain.IsSoftQuota(resource) && delta < 0 {
+		return fmt.Errorf("soft quota: negative decrement")
+	}
 
 	usage := r.usages[tenantID]
 	if usage == nil {
@@ -128,6 +146,10 @@ func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource stri
 		decrementValue(&usage.ActiveJobs)
 	case domain.ResourceSsfStreams:
 		decrementValue(&usage.SsfStreams)
+	case domain.ResourceAuditEventsRetained:
+		decrementValue(&usage.AuditEventsRetained)
+	case domain.ResourceExportArtifactsBytes:
+		decrementValue(&usage.ExportArtifactsBytes)
 	default:
 		return fmt.Errorf("unknown resource: %s", resource)
 	}
@@ -138,6 +160,22 @@ func (r *QuotaRepository) SetQuota(ctx context.Context, tenantID string, quota *
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.quotas[tenantID] = quota
+	return nil
+}
+
+func (r *QuotaRepository) SetSoftUsage(_ context.Context, tenantID string, measured domain.SoftQuotaUsage) error {
+	if err := measured.Validate(); err != nil {
+		return err
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	usage := r.usages[tenantID]
+	if usage == nil {
+		usage = &domain.TenantUsage{}
+		r.usages[tenantID] = usage
+	}
+	usage.AuditEventsRetained = measured.AuditEventsRetained
+	usage.ExportArtifactsBytes = measured.ExportArtifactsBytes
 	return nil
 }
 
@@ -158,5 +196,6 @@ func (r *QuotaRepository) GetUsage(ctx context.Context, tenantID string) (*domai
 	if !ok {
 		return &domain.TenantUsage{}, nil
 	}
-	return usage, nil
+	snapshot := *usage
+	return &snapshot, nil
 }

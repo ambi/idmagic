@@ -27,3 +27,13 @@ func TestQuotaContract(t *testing.T) {
 		return testing_contract.QuotaFixture{Repository: NewQuotaRepository(db), TenantID: tenant.ID}
 	})
 }
+
+//spec:covers REQ-TENANCY-047: Soft の上限を超える加算、0 の上書き、2 GiB 超、負の量の拒否、並行の計数を PostgreSQL で確かめる。
+func TestSoftQuotaContract(t *testing.T) {
+	db := pgtest.Require(t)
+	testing_contract.RunSoftQuota(t, func(t *testing.T) testing_contract.QuotaFixture {
+		t.Helper()
+		tenant := seedQuotaTenant(context.Background(), t, db)
+		return testing_contract.QuotaFixture{Repository: NewQuotaRepository(db), TenantID: tenant.ID}
+	})
+}

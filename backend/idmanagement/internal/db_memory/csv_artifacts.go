@@ -87,6 +87,18 @@ func NewCSVArtifactStore() *CSVArtifactStore {
 	return &CSVArtifactStore{byScope: map[string]storedCSVArtifact{}}
 }
 
+func (s *CSVArtifactStore) CSVArtifactUsage(_ context.Context, tenantID string) (int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var size int64
+	for _, stored := range s.byScope {
+		if stored.metadata.TenantID == tenantID {
+			size += stored.metadata.ByteSize
+		}
+	}
+	return size, nil
+}
+
 func (s *CSVArtifactStore) PutCSVArtifact(_ context.Context, tenantID string, write func(io.Writer) error) (idmports.CSVArtifact, error) {
 	var content bytes.Buffer
 	if err := write(&content); err != nil {

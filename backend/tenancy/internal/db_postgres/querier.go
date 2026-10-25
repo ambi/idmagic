@@ -35,9 +35,9 @@ type Querier interface {
 	IncrementTenantUsageActiveSessions(ctx context.Context, arg IncrementTenantUsageActiveSessionsParams) (int32, error)
 	IncrementTenantUsageAgents(ctx context.Context, arg IncrementTenantUsageAgentsParams) (int32, error)
 	IncrementTenantUsageApplications(ctx context.Context, arg IncrementTenantUsageApplicationsParams) (int32, error)
-	IncrementTenantUsageAuditEventsRetained(ctx context.Context, arg IncrementTenantUsageAuditEventsRetainedParams) (int32, error)
+	IncrementTenantUsageAuditEventsRetained(ctx context.Context, arg IncrementTenantUsageAuditEventsRetainedParams) (int64, error)
 	IncrementTenantUsageConsents(ctx context.Context, arg IncrementTenantUsageConsentsParams) (int32, error)
-	IncrementTenantUsageExportArtifactsBytes(ctx context.Context, arg IncrementTenantUsageExportArtifactsBytesParams) (int32, error)
+	IncrementTenantUsageExportArtifactsBytes(ctx context.Context, arg IncrementTenantUsageExportArtifactsBytesParams) (int64, error)
 	IncrementTenantUsageGroups(ctx context.Context, arg IncrementTenantUsageGroupsParams) (int32, error)
 	IncrementTenantUsageOAuth2Clients(ctx context.Context, arg IncrementTenantUsageOAuth2ClientsParams) (int32, error)
 	IncrementTenantUsageSsfStreams(ctx context.Context, arg IncrementTenantUsageSsfStreamsParams) (int32, error)
@@ -46,6 +46,7 @@ type Querier interface {
 	SaveNotificationTemplate(ctx context.Context, arg SaveNotificationTemplateParams) error
 	SaveTenant(ctx context.Context, arg SaveTenantParams) error
 	SaveTenantBranding(ctx context.Context, arg SaveTenantBrandingParams) error
+	SetSoftTenantUsage(ctx context.Context, arg SetSoftTenantUsageParams) error
 	UpsertTenantBrandingAsset(ctx context.Context, arg UpsertTenantBrandingAssetParams) error
 	UpsertTenantQuota(ctx context.Context, arg UpsertTenantQuotaParams) error
 	UpsertTenantUsage(ctx context.Context, arg UpsertTenantUsageParams) error

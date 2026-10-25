@@ -10,6 +10,17 @@ import (
 	"time"
 )
 
+const cSVArtifactUsage = `-- name: CSVArtifactUsage :one
+SELECT COALESCE(SUM(byte_size), 0)::bigint AS byte_size FROM csv_artifacts WHERE tenant_id = $1
+`
+
+func (q *Queries) CSVArtifactUsage(ctx context.Context, tenantID string) (int64, error) {
+	row := q.db.QueryRow(ctx, cSVArtifactUsage, tenantID)
+	var byte_size int64
+	err := row.Scan(&byte_size)
+	return byte_size, err
+}
+
 const deleteCSVArtifactsCreatedBefore = `-- name: DeleteCSVArtifactsCreatedBefore :execrows
 DELETE FROM csv_artifacts WHERE created_at < $1
 `

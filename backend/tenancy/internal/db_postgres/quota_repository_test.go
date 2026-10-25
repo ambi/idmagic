@@ -13,11 +13,11 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// quotaResources は CheckAndIncrement と Decrement が受け付ける資源の全体である。
+// quotaResources は超過を拒否する Hard Quota の資源である。Soft は共有契約で検査する。
 var quotaResources = []string{
 	domain.ResourceUsers, domain.ResourceGroups, domain.ResourceAgents, domain.ResourceApplications,
 	domain.ResourceOAuth2Clients, domain.ResourceActiveSessions, domain.ResourceConsents, domain.ResourceActiveJobs,
-	domain.ResourceSsfStreams, "audit_events_retained", "export_artifacts_bytes",
+	domain.ResourceSsfStreams,
 }
 
 // seedQuotaTenant は tenant_usages の外部キーが指すテナントを作る。fixtures_postgres は

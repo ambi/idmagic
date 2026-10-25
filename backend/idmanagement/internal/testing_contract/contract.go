@@ -68,4 +68,20 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if page, _, err := f.Artifacts.ReadCSVArtifactPage(ctx, f.TenantA, pageMetadata.Ref, -1); page != nil || !errors.Is(err, ports.ErrCSVArtifactNotFound) {
 		t.Fatalf("negative ReadCSVArtifactPage = (%q, %v)", page, err)
 	}
+	usageReader, ok := f.Artifacts.(ports.CSVArtifactUsageReader)
+	if !ok {
+		t.Fatal("artifact store cannot measure its usage")
+	}
+	if _, err := f.Artifacts.PutCSVArtifact(ctx, f.TenantB, func(w io.Writer) error { _, err := w.Write([]byte("other")); return err }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Artifacts.PutCSVArtifact(ctx, f.TenantA, func(w io.Writer) error { _, _ = w.Write([]byte("partial")); return errors.New("failed write") }); err == nil {
+		t.Fatal("failed write succeeded")
+	}
+	for tenantID, want := range map[string]int64{f.TenantA: metadata.ByteSize + pageMetadata.ByteSize, f.TenantB: 5} {
+		got, err := usageReader.CSVArtifactUsage(ctx, tenantID)
+		if err != nil || got != want {
+			t.Fatalf("usage of %s=%d err=%v, want %d", tenantID, got, err, want)
+		}
+	}
 }

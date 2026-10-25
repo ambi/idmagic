@@ -1,6 +1,7 @@
 package db_memory
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -22,5 +23,15 @@ func TestPersistenceContract(t *testing.T) {
 func TestQuotaContract(t *testing.T) {
 	testing_contract.RunQuota(t, func(*testing.T) testing_contract.QuotaFixture {
 		return testing_contract.QuotaFixture{Repository: NewQuotaRepository(), TenantID: "tenant-quota"}
+	})
+}
+
+//spec:covers REQ-TENANCY-047: Soft の上限を超える加算、0 の上書き、2 GiB 超、負の量の拒否、並行の計数をメモリで確かめる。
+func TestSoftQuotaContract(t *testing.T) {
+	repository := NewQuotaRepository()
+	var next int
+	testing_contract.RunSoftQuota(t, func(*testing.T) testing_contract.QuotaFixture {
+		next++
+		return testing_contract.QuotaFixture{Repository: repository, TenantID: "soft-quota-" + strconv.Itoa(next)}
 	})
 }

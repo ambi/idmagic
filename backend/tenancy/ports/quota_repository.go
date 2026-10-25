@@ -9,7 +9,7 @@ import (
 // QuotaRepository provides atomic usage counters for Tenant resources (wi-160).
 type QuotaRepository interface {
 	// CheckAndIncrement atomically increments the usage counter for the given resource.
-	// It returns domain.QuotaExceededError if the increment would exceed the tenant's quota.
+	// Hard の上限を超える加算だけを QuotaExceededError で拒否し、Soft の超過では拒否しない。
 	CheckAndIncrement(ctx context.Context, tenantID, resource string, delta int) error
 
 	// Decrement atomically decreases the usage counter for the given resource.
@@ -24,4 +24,7 @@ type QuotaRepository interface {
 
 	// GetUsage retrieves the current usage for a tenant.
 	GetUsage(ctx context.Context, tenantID string) (*domain.TenantUsage, error)
+
+	// SetSoftUsage は測定した二列だけを同時に置換し、Hard の使用量を維持する。
+	SetSoftUsage(ctx context.Context, tenantID string, usage domain.SoftQuotaUsage) error
 }

@@ -77,6 +77,30 @@ func TestTenantQuotaResolvesRealmAndReturnsStoredQuota(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-TENANCY-047: TenantQuotaUpdateRequest の Soft の 0 と 2 GiB 超の上書きを TenantQuota に保存し、その値の後も TenantUsage を加算できる。
+//verify:operation UpdateTenantQuota: Soft の上書きの 200 JSON と保存した値を照合する。
+func TestTenantQuotaKeepsSoftOverridesWithoutRefusingUsage(t *testing.T) {
+	s, quotas := newQuotaContractServer(t)
+	const large = 3 << 30
+	rec := s.send(t, http.MethodPut, tenantsPath+"/"+quotaContractRealm+"/quota", map[string]int{"audit_events_retained": 0, "export_artifacts_bytes": large})
+	requireStatus(t, rec, http.StatusOK)
+	body := decodeJSON(t, rec)
+	if body["audit_events_retained"] != float64(0) || body["export_artifacts_bytes"] != float64(large) {
+		t.Fatalf("soft overrides=%v", body)
+	}
+	stored, err := quotas.GetQuota(t.Context(), quotaContractID)
+	if err != nil || stored.EffectiveLimit(domain.ResourceAuditEventsRetained) != 0 || stored.EffectiveLimit(domain.ResourceExportArtifactsBytes) != large {
+		t.Fatalf("quota=%+v err=%v", stored, err)
+	}
+	if err := quotas.CheckAndIncrement(t.Context(), quotaContractID, domain.ResourceAuditEventsRetained, 1); err != nil {
+		t.Fatal(err)
+	}
+	usage, err := quotas.GetUsage(t.Context(), quotaContractID)
+	if err != nil || usage.AuditEventsRetained != 1 {
+		t.Fatalf("usage=%+v err=%v", usage, err)
+	}
+}
+
 //spec:covers REQ-TENANCY-046: 不在の realm と内部 UUID は本文の妥当性によらず 404 となり、保存とイベントを行わない。
 //verify:operation UpdateTenantQuota: 未知 realm と内部 UUID に対する PUT は 404 tenant_not_found の Problem Details を返す。
 func TestTenantQuotaRefusesMissingRealm(t *testing.T) {

@@ -32,6 +32,11 @@ type CSVArtifactPurger interface {
 	DeleteCSVArtifactsCreatedBefore(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
+// CSVArtifactUsageReader は、確定済み成果物のメタデータだけから占有量を測る。
+type CSVArtifactUsageReader interface {
+	CSVArtifactUsage(ctx context.Context, tenantID string) (int64, error)
+}
+
 type CSVArtifactStore interface {
 	PutCSVArtifact(ctx context.Context, tenantID string, write func(io.Writer) error) (CSVArtifact, error)
 	OpenCSVArtifact(ctx context.Context, tenantID, ref string) (io.ReadCloser, CSVArtifact, error)

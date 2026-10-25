@@ -8,6 +8,7 @@ import (
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
+//spec:covers REQ-TENANCY-048: 確定した成果物だけの容量を、テナント別にメタデータから計測する。
 func TestPersistenceContract(t *testing.T) {
 	testing_contract.Run(t, func(t *testing.T) testing_contract.Fixture {
 		t.Helper()

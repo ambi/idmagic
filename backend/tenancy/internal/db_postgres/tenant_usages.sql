@@ -1,6 +1,13 @@
 -- name: EnsureTenantUsage :exec
 INSERT INTO tenant_usages (tenant_id) VALUES ($1) ON CONFLICT DO NOTHING;
 
+-- name: SetSoftTenantUsage :exec
+INSERT INTO tenant_usages (tenant_id, audit_events_retained, export_artifacts_bytes)
+VALUES ($1, $2, $3)
+ON CONFLICT (tenant_id) DO UPDATE SET
+    audit_events_retained = EXCLUDED.audit_events_retained,
+    export_artifacts_bytes = EXCLUDED.export_artifacts_bytes;
+
 -- name: IncrementTenantUsageUsers :one
 UPDATE tenant_usages u
 SET users = u.users + sqlc.arg(delta)::int
@@ -93,20 +100,18 @@ UPDATE tenant_usages u SET ssf_streams = GREATEST(0, u.ssf_streams - sqlc.arg(de
 
 -- name: IncrementTenantUsageAuditEventsRetained :one
 UPDATE tenant_usages u
-SET audit_events_retained = u.audit_events_retained + sqlc.arg(delta)::int
+SET audit_events_retained = u.audit_events_retained + sqlc.arg(delta)::bigint
 WHERE u.tenant_id = sqlc.arg(tenant_id)
-  AND COALESCE((SELECT q.audit_events_retained FROM tenant_quotas q WHERE q.tenant_id = u.tenant_id), sqlc.arg(default_limit)::int) >= u.audit_events_retained + sqlc.arg(delta)::int
 RETURNING u.audit_events_retained;
 
 -- name: DecrementTenantUsageAuditEventsRetained :exec
-UPDATE tenant_usages u SET audit_events_retained = GREATEST(0, u.audit_events_retained - sqlc.arg(delta)::int) WHERE u.tenant_id = sqlc.arg(tenant_id);
+UPDATE tenant_usages u SET audit_events_retained = GREATEST(0, u.audit_events_retained - sqlc.arg(delta)::bigint) WHERE u.tenant_id = sqlc.arg(tenant_id);
 
 -- name: IncrementTenantUsageExportArtifactsBytes :one
 UPDATE tenant_usages u
-SET export_artifacts_bytes = u.export_artifacts_bytes + sqlc.arg(delta)::int
+SET export_artifacts_bytes = u.export_artifacts_bytes + sqlc.arg(delta)::bigint
 WHERE u.tenant_id = sqlc.arg(tenant_id)
-  AND COALESCE((SELECT q.export_artifacts_bytes FROM tenant_quotas q WHERE q.tenant_id = u.tenant_id), sqlc.arg(default_limit)::int) >= u.export_artifacts_bytes + sqlc.arg(delta)::int
 RETURNING u.export_artifacts_bytes;
 
 -- name: DecrementTenantUsageExportArtifactsBytes :exec
-UPDATE tenant_usages u SET export_artifacts_bytes = GREATEST(0, u.export_artifacts_bytes - sqlc.arg(delta)::int) WHERE u.tenant_id = sqlc.arg(tenant_id);
+UPDATE tenant_usages u SET export_artifacts_bytes = GREATEST(0, u.export_artifacts_bytes - sqlc.arg(delta)::bigint) WHERE u.tenant_id = sqlc.arg(tenant_id);

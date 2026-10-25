@@ -34,10 +34,11 @@ func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 	if purged {
 		logging.Info(ctx, "csv artifact retention sweep completed", "deleted_csv_artifacts", deleted)
 	}
+	var purgeErr error
 	if deps.Tenancy.TenantRepo != nil && deps.IdManagement.UserRepo != nil {
-		return purgeExpiredUsers(ctx, deps, now)
+		purgeErr = purgeExpiredUsers(ctx, deps, now)
 	}
-	return nil
+	return errors.Join(purgeErr, reconcileSoftQuotas(ctx, deps, now))
 }
 
 // purgeExpiredUsers は、各テナントで猶予期間を過ぎた削除予約の User を完全削除し、匿名化の後に

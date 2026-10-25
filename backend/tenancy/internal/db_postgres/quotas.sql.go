@@ -90,8 +90,8 @@ type UpsertTenantQuotaParams struct {
 	Consents             pgtype.Int4
 	ActiveJobs           pgtype.Int4
 	SsfStreams           pgtype.Int4
-	AuditEventsRetained  pgtype.Int4
-	ExportArtifactsBytes pgtype.Int4
+	AuditEventsRetained  pgtype.Int8
+	ExportArtifactsBytes pgtype.Int8
 }
 
 func (q *Queries) UpsertTenantQuota(ctx context.Context, arg UpsertTenantQuotaParams) error {
@@ -143,8 +143,8 @@ type UpsertTenantUsageParams struct {
 	Consents             int32
 	ActiveJobs           int32
 	SsfStreams           int32
-	AuditEventsRetained  int32
-	ExportArtifactsBytes int32
+	AuditEventsRetained  int64
+	ExportArtifactsBytes int64
 }
 
 func (q *Queries) UpsertTenantUsage(ctx context.Context, arg UpsertTenantUsageParams) error {
