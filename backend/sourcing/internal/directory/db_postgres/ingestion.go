@@ -61,6 +61,18 @@ func (r *CorrelationRepository) ListNotSeenIn(ctx context.Context, tenantID, con
 	return result, nil
 }
 
+func (r *CorrelationRepository) List(ctx context.Context, tenantID, connectorID string) ([]directoryports.UserCorrelation, error) {
+	rows, err := New(r.Pool).ListDirectoryUserCorrelations(ctx, ListDirectoryUserCorrelationsParams{TenantID: tenantID, ConnectorID: connectorID})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]directoryports.UserCorrelation, len(rows))
+	for n, row := range rows {
+		result[n] = correlationToPort(row)
+	}
+	return result, nil
+}
+
 func (r *CorrelationRepository) CorrelatedUserIDs(ctx context.Context, tenantID string, userIDs []string) (map[string]bool, error) {
 	ids := make([]string, 0, len(userIDs))
 	for _, id := range userIDs {
@@ -98,6 +110,13 @@ var _ ports.IngestionRunRepository = (*IngestionRunRepository)(nil)
 func (r *IngestionRunRepository) Start(ctx context.Context, run domain.IngestionRun) error {
 	return pgx.BeginFunc(ctx, r.Pool, func(tx pgx.Tx) error {
 		q := New(tx)
+		applying, err := q.HasApplyingDirectoryIngestionRun(ctx, HasApplyingDirectoryIngestionRunParams{TenantID: run.TenantID, ConnectorID: run.ConnectorID})
+		if err != nil {
+			return err
+		}
+		if applying {
+			return ports.ErrRunBusy
+		}
 		if err := q.SupersedeRunningDirectoryIngestionRuns(ctx, SupersedeRunningDirectoryIngestionRunsParams{
 			TenantID: run.TenantID, ConnectorID: run.ConnectorID,
 		}); err != nil {
@@ -121,7 +140,8 @@ func (r *IngestionRunRepository) Find(ctx context.Context, tenantID, connectorID
 	if err != nil {
 		return nil, err
 	}
-	return new(runToDomain(row)), nil
+	run, err := runToDomain(row)
+	return &run, err
 }
 
 func (r *IngestionRunRepository) List(ctx context.Context, tenantID, connectorID string, limit int) ([]domain.IngestionRun, error) {
@@ -133,7 +153,9 @@ func (r *IngestionRunRepository) List(ctx context.Context, tenantID, connectorID
 	}
 	result := make([]domain.IngestionRun, len(rows))
 	for n, row := range rows {
-		result[n] = runToDomain(row)
+		if result[n], err = runToDomain(row); err != nil {
+			return nil, err
+		}
 	}
 	return result, nil
 }
@@ -210,8 +232,8 @@ func (r *IngestionRunRepository) Complete(ctx context.Context, tenantID, runID s
 	return changed > 0, err
 }
 
-func runToDomain(row *DirectoryIngestionRun) domain.IngestionRun {
-	return domain.IngestionRun{
+func runToDomain(row *DirectoryIngestionRun) (domain.IngestionRun, error) {
+	run := domain.IngestionRun{
 		TenantID: row.TenantID, ID: row.ID, ConnectorID: row.ConnectorID,
 		Mode: domain.IngestionMode(row.Mode), Status: domain.IngestionRunStatus(row.Status),
 		StartedAt: row.StartedAt.UTC(), CompletedAt: pointer(row.CompletedAt),
@@ -220,6 +242,42 @@ func runToDomain(row *DirectoryIngestionRun) domain.IngestionRun {
 			Unchanged: int(row.Unchanged), Deleted: int(row.Deleted), Failed: int(row.Failed), Disabled: int(row.Disabled),
 		},
 	}
+	if row.Protection != nil {
+		if err := json.Unmarshal(row.Protection, &run.Protection); err != nil {
+			return domain.IngestionRun{}, err
+		}
+	}
+	return run, nil
+}
+
+func (r *IngestionRunRepository) WithConnectorLock(ctx context.Context, tenantID, connectorID string, apply func() error) error {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	locked, err := New(tx).TryLockDirectoryIngestion(ctx, "directory-ingestion:"+tenantID+":"+connectorID)
+	if err != nil {
+		return err
+	}
+	if !locked {
+		return ports.ErrRunBusy
+	}
+	return apply()
+}
+
+func (r *IngestionRunRepository) SaveProgress(ctx context.Context, run domain.IngestionRun) error {
+	var protection []byte
+	if run.Protection != nil {
+		var err error
+		protection, err = json.Marshal(run.Protection)
+		if err != nil {
+			return err
+		}
+	}
+	return New(r.Pool).SaveDirectoryIngestionProgress(ctx, SaveDirectoryIngestionProgressParams{
+		TenantID: run.TenantID, ID: run.ID, Status: string(run.Status), CompletedAt: optional(run.CompletedAt), Disabled: int32(run.Counts.Disabled), Protection: protection, //nolint:gosec // User 件数は INTEGER の範囲。
+	})
 }
 
 func batchToDomain(row *DirectoryIngestionBatch) (domain.IngestionBatch, error) {

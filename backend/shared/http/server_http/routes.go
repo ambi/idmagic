@@ -512,6 +512,14 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	if d.Sourcing.ScimRepo != nil && d.Sourcing.DirectoryWrites == nil {
 		d.Sourcing.DirectoryWrites = sourcingdeps.NewDirectoryWrites(d.IdManagement, sourceLifecycle, d.Sourcing, d.Emit)
 	}
+	if d.Sourcing.ScimRepo != nil && d.Sourcing.DirectoryUserLifecycle == nil {
+		lifecycle := sourceLifecycle
+		lifecycle.TrustedDevices = d.Authentication.UserDeviceRevoker()
+		d.Sourcing.DirectoryUserLifecycle = d.IdManagement.UserLifecycleCommands(lifecycle, func(event spec.DomainEvent) error {
+			d.Emit(event)
+			return revocationReactor.React(context.Background(), event)
+		}, "directory_connector")
+	}
 	d.Sourcing.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService,
 		d.OAuth2.ClientAssertionReplayStore)
 

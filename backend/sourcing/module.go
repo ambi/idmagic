@@ -55,13 +55,18 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 		Usecases:              scimusecases.NewUsecases(m.ScimRepo, userRepo, groupRepo, m.UserLifecycle, emit, m.Writes),
 		ApiTokenAuthenticator: apiTokenAuthenticator,
 	})
+	// ルート列挙は依存のないゼロ値で呼ぶので、経路の登録と実行用の構築を分ける。
+	var ingestion *directoryusecases.Ingestion
+	if m.connectors != nil && emit != nil {
+		ingestion = directoryusecases.NewIngestion(directoryusecases.IngestionDeps{
+			Connectors: m.connectors, Emit: emit, Runs: m.runs, Correlations: m.correlations, Users: userRepo,
+			Writes: m.DirectoryWrites, Lifecycle: m.DirectoryUserLifecycle,
+		})
+	}
 	directoryhttp.RegisterRoutes(g, directoryhttp.Deps{
 		Deps: deps, Authenticator: authenticator,
-		Service: directoryusecases.New(m.connectors, prefixedReplay{replay}, emit),
-		Ingestion: directoryusecases.NewIngestion(directoryusecases.IngestionDeps{
-			Runs: m.runs, Correlations: m.correlations, Users: userRepo,
-			Writes: m.DirectoryWrites, Lifecycle: m.DirectoryUserLifecycle,
-		}),
+		Service:   directoryusecases.New(m.connectors, prefixedReplay{replay}, emit),
+		Ingestion: ingestion,
 	})
 }
 

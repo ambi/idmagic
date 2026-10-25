@@ -62,7 +62,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：182
+経路の数：186
 
 | 経路 | メソッド |
 | --- | --- |
@@ -142,10 +142,14 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/default-sign-in-policy` | GET, PUT |
 | `/api/admin/v1/directory-connectors` | GET, POST |
 | `/api/admin/v1/directory-connectors/{connector_id}` | GET |
+| `/api/admin/v1/directory-connectors/{connector_id}/deletion-thresholds` | PUT |
 | `/api/admin/v1/directory-connectors/{connector_id}/disable` | POST |
 | `/api/admin/v1/directory-connectors/{connector_id}/enrollment-tokens` | POST |
 | `/api/admin/v1/directory-connectors/{connector_id}/ingestion-runs` | GET |
 | `/api/admin/v1/directory-connectors/{connector_id}/ingestion-runs/{run_id}` | GET |
+| `/api/admin/v1/directory-connectors/{connector_id}/ingestion-runs/{run_id}/approve` | POST |
+| `/api/admin/v1/directory-connectors/{connector_id}/ingestion-runs/{run_id}/candidates` | GET |
+| `/api/admin/v1/directory-connectors/{connector_id}/ingestion-runs/{run_id}/discard` | POST |
 | `/api/admin/v1/groups` | GET, POST |
 | `/api/admin/v1/groups/{group_id}` | DELETE, GET, PATCH |
 | `/api/admin/v1/groups/{group_id}/dynamic-rule` | PUT |

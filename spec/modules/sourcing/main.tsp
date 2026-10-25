@@ -624,6 +624,22 @@ model IngestionRunSuccess_200 {
   @body body: IdMagic.Contract.IngestionRun;
 }
 
+model IngestionRunBusyError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.IngestionRunBusyError;
+}
+
+@doc("Connector ごとの無効化のしきい値を更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("UpdateDirectoryConnectorThresholds")
+@route("/api/admin/v1/directory-connectors/{connector_id}/deletion-thresholds")
+@put
+op UpdateDirectoryConnectorThresholds(
+  @path connector_id: string,
+  @body body: IdMagic.Contract.DirectoryConnectorThresholds
+): DirectoryConnectorSuccess_200 | CreateDirectoryConnectorError400 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminWriteError403 | DirectoryConnectorNotFoundError404;
+
 union DirectoryIngestionError400Body {
   IdMagic.Contract.InvalidRequestError,
 }
@@ -651,7 +667,7 @@ model IngestionRunNotFoundError404 {
 op StartDirectoryIngestionRun(
   @header authorization: string,
   @body body: IdMagic.Contract.StartIngestionRunRequest
-): IngestionRunSuccess_201 | DirectoryIngestionError400 | DirectoryConnectorInvalidTokenError401;
+): IngestionRunSuccess_201 | DirectoryIngestionError400 | DirectoryConnectorInvalidTokenError401 | IngestionRunBusyError409;
 
 model DirectoryUserBatchSuccess_200 {
   @statusCode statusCode: 200;
@@ -677,7 +693,7 @@ op SendDirectoryUserBatch(
   @header authorization: string,
   @path run_id: string,
   @body body: IdMagic.Contract.DirectoryUserBatchRequest
-): DirectoryUserBatchSuccess_200 | DirectoryIngestionError400 | DirectoryConnectorInvalidTokenError401 | IngestionRunNotFoundError404 | SendDirectoryUserBatchError409;
+): DirectoryUserBatchSuccess_200 | DirectoryIngestionError400 | DirectoryConnectorInvalidTokenError401 | IngestionRunNotFoundError404 | SendDirectoryUserBatchError409 | IngestionRunBusyError409;
 
 union CompleteDirectoryIngestionRunError409Body {
   IdMagic.Contract.IngestionRunIncompleteError,
@@ -698,7 +714,49 @@ op CompleteDirectoryIngestionRun(
   @header authorization: string,
   @path run_id: string,
   @body body: IdMagic.Contract.CompleteIngestionRunRequest
-): IngestionRunSuccess_200 | DirectoryIngestionError400 | DirectoryConnectorInvalidTokenError401 | IngestionRunNotFoundError404 | CompleteDirectoryIngestionRunError409;
+): IngestionRunSuccess_200 | DirectoryIngestionError400 | DirectoryConnectorInvalidTokenError401 | IngestionRunNotFoundError404 | CompleteDirectoryIngestionRunError409 | IngestionRunBusyError409;
+
+@doc("保留した完全再同期の無効化を承認し、保存した候補を適用する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("ApproveDirectoryIngestionRun")
+@route("/api/admin/v1/directory-connectors/{connector_id}/ingestion-runs/{run_id}/approve")
+@post
+op ApproveDirectoryIngestionRun(
+  @path connector_id: string,
+  @path run_id: string
+): IngestionRunSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminWriteError403 | GetDirectoryIngestionRunError404 | CompleteDirectoryIngestionRunError409 | IngestionRunBusyError409;
+
+@doc("保留した完全再同期の無効化を破棄する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("DiscardDirectoryIngestionRun")
+@route("/api/admin/v1/directory-connectors/{connector_id}/ingestion-runs/{run_id}/discard")
+@post
+op DiscardDirectoryIngestionRun(
+  @path connector_id: string,
+  @path run_id: string
+): IngestionRunSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminWriteError403 | GetDirectoryIngestionRunError404 | CompleteDirectoryIngestionRunError409 | IngestionRunBusyError409;
+
+model DirectoryIngestionCandidatesResponse {
+  candidates: IdMagic.Contract.DirectoryIngestionCandidate[];
+  total: int64;
+}
+
+model DirectoryIngestionCandidatesSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: DirectoryIngestionCandidatesResponse;
+}
+
+@doc("実行に保存した無効化の候補を照会する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("ListDirectoryIngestionCandidates")
+@route("/api/admin/v1/directory-connectors/{connector_id}/ingestion-runs/{run_id}/candidates")
+@get
+op ListDirectoryIngestionCandidates(
+  @path connector_id: string,
+  @path run_id: string,
+  @query @minValue(0) offset?: int64,
+  @query @minValue(1) @maxValue(100) limit?: int64
+): DirectoryIngestionCandidatesSuccess_200 | DirectoryIngestionError400 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminReadError403 | GetDirectoryIngestionRunError404;
 
 model ListDirectoryIngestionRunsHttpResponse {
   @doc("開始時刻の新しい順に最大 50 件。")

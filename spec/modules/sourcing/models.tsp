@@ -183,6 +183,22 @@ model DirectoryConnector {
   @doc("Connector が最後に認証された呼び出しを行った時刻。")
   last_seen_at?: utcDateTime;
   disabled_at?: utcDateTime;
+  @minValue(0)
+  @maxValue(2147483647)
+  accidental_deletion_count_threshold: int64;
+  @minValue(1)
+  @maxValue(100)
+  accidental_deletion_percent_threshold: int64;
+}
+
+@doc("Connector ごとの完全再同期の無効化のしきい値。")
+model DirectoryConnectorThresholds {
+  @minValue(0)
+  @maxValue(2147483647)
+  accidental_deletion_count_threshold: int64;
+  @minValue(1)
+  @maxValue(100)
+  accidental_deletion_percent_threshold: int64;
 }
 
 
@@ -278,6 +294,9 @@ enum IngestionRunMode {
 @doc("取り込みの実行の状態。`running` はバッチを受け付け、`completed` は Connector が完了を報告し、`superseded` は同じ Connector の新しい実行に打ち切られた。")
 enum IngestionRunStatus {
   running,
+  awaiting_approval,
+  applying,
+  discarded,
   completed,
   superseded,
 }
@@ -296,6 +315,63 @@ model IngestionRun {
   status: IngestionRunStatus;
   started_at: utcDateTime;
   completed_at?: utcDateTime;
+  protection?: DirectoryIngestionProtection;
+}
+
+@doc("保留時に保存した候補の判定値と管理者の判断。")
+model DirectoryIngestionProtection {
+  candidate_count: int64;
+  active_count: int64;
+  accidental_deletion_count_threshold: int64;
+  accidental_deletion_percent_threshold: int64;
+  held_at: utcDateTime;
+  approved_at?: utcDateTime;
+  approved_by?: string;
+  discarded_at?: utcDateTime;
+}
+
+@doc("保留時に保存した User の候補。")
+model DirectoryIngestionCandidate {
+  user_id: string;
+  external_id: string;
+}
+
+@doc("Connector の操作が競合している。Problem Details の type は urn:idmagic:error:ingestion_run_busy。")
+model IngestionRunBusyError is ProblemDetails;
+
+@doc("完全再同期の無効化を保留した。")
+model DirectoryIngestionRunHeld {
+  tenantId: string;
+  connectorId: string;
+  runId: string;
+  candidateCount: int64;
+  activeCount: int64;
+  countThreshold: int64;
+  percentThreshold: int64;
+}
+
+@doc("管理者が保留の適用を承認した。")
+model DirectoryIngestionRunApproved {
+  tenantId: string;
+  connectorId: string;
+  runId: string;
+  actorUserId: string;
+}
+
+@doc("管理者が保留の適用を破棄した。")
+model DirectoryIngestionRunDiscarded {
+  tenantId: string;
+  connectorId: string;
+  runId: string;
+  actorUserId: string;
+}
+
+@doc("管理者が Connector の無効化のしきい値を更新した。")
+model DirectoryConnectorThresholdsUpdated {
+  tenantId: string;
+  connectorId: string;
+  countThreshold: int64;
+  percentThreshold: int64;
 }
 
 

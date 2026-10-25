@@ -84,25 +84,37 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 
 ### IngestionRunLifecycle
 
-取り込みの実行は、始めると `running` になり、Connector が完了を報告すると `completed` になる。
-同じ Connector が新しい実行を始めると、`running` の実行は `superseded` になる。
+取り込みの実行は `running` で始まる。
+完全再同期の無効化がしきい値を超えると `awaiting_approval` になり、承認後は `applying` を経て `completed` になる。
+同じ Connector の新しい実行は、`running` と `awaiting_approval` を `superseded` にする。
 
 | State | Kind | Meaning |
 |---|---|---|
 | Running | initial | バッチを受け付けている |
+| AwaitingApproval | — | 候補を保存し、管理者の承認を待つ |
+| Applying | — | 保存した候補を適用している。失敗時は承認の再送で再開する |
 | Completed | terminal | Connector が完了を報告した。記録したバッチの再送だけに答える |
 | Superseded | terminal | 同じ Connector の新しい実行が始まり、打ち切られた。記録したバッチの再送だけに答える |
+| Discarded | terminal | 管理者が候補の無効化を破棄した |
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| Running | Connector による取り込みの実行の完了 | 報告した項目数が記録したバッチの項目数の和と一致する | Completed | — |
+| Running | Connector による取り込みの実行の完了 | 項目数が一致し、増分かしきい値以内の完全再同期である | Completed | — |
+| Running | Connector による取り込みの実行の完了 | 項目数が一致し、完全再同期の候補がしきい値を超える | AwaitingApproval | DirectoryIngestionRunHeld |
 | Running | Connector による取り込みの実行の開始 | 同じ Connector の新しい実行である | Superseded | — |
+| AwaitingApproval | Connector による取り込みの実行の開始 | 同じ Connector の新しい実行である | Superseded | — |
+| AwaitingApproval | 管理者による保留した無効化の承認 | — | Applying | DirectoryIngestionRunApproved |
+| Applying | 管理者による保留した無効化の承認 | 保存した候補の適用が終わった | Completed | — |
+| AwaitingApproval | 管理者による保留した無効化の破棄 | — | Discarded | DirectoryIngestionRunDiscarded |
 
-| State | Connector による取り込みの実行の開始 | Connector による User のバッチの送信 | Connector による取り込みの実行の完了 |
-|---|---|---|---|
-| Running | → Superseded | 何もしない | → Completed（項目数が一致する）<br>拒否：409 ingestion_run_incomplete（項目数が一致しない） |
-| Completed | 何もしない | 何もしない（記録したバッチの再送）<br>拒否：409 ingestion_run_closed（記録していないバッチ） | 何もしない |
-| Superseded | 何もしない | 何もしない（記録したバッチの再送）<br>拒否：409 ingestion_run_closed（記録していないバッチ） | 拒否：409 ingestion_run_closed |
+| State | Connector による取り込みの実行の開始 | Connector による User のバッチの送信 | Connector による取り込みの実行の完了 | 管理者による保留した無効化の承認 | 管理者による保留した無効化の破棄 |
+|---|---|---|---|---|---|
+| Running | → Superseded | 何もしない | → Completed（項目数一致、増分かしきい値以内）<br>→ AwaitingApproval（項目数一致、しきい値超過）<br>拒否：409 ingestion_run_incomplete（項目数不一致） | 拒否：409 ingestion_run_closed | 拒否：409 ingestion_run_closed |
+| AwaitingApproval | → Superseded | 何もしない（記録済みの同一バッチ）<br>拒否：409 ingestion_run_closed（新しいバッチ） | 何もしない | → Applying | → Discarded |
+| Applying | 拒否：409 ingestion_run_busy | 何もしない（記録済みの同一バッチ）<br>拒否：409 ingestion_run_closed（新しいバッチ） | 拒否：409 ingestion_run_closed | → Completed（全候補を処理）<br>何もしない（未完了なら再開） | 拒否：409 ingestion_run_closed |
+| Completed | 何もしない | 何もしない（記録済みの同一バッチ）<br>拒否：409 ingestion_run_closed（新しいバッチ） | 何もしない | 何もしない | 拒否：409 ingestion_run_closed |
+| Superseded | 何もしない | 何もしない（記録済みの同一バッチ）<br>拒否：409 ingestion_run_closed（新しいバッチ） | 拒否：409 ingestion_run_closed | 拒否：409 ingestion_run_closed | 拒否：409 ingestion_run_closed |
+| Discarded | 何もしない | 何もしない（記録済みの同一バッチ）<br>拒否：409 ingestion_run_closed（新しいバッチ） | 拒否：409 ingestion_run_closed | 拒否：409 ingestion_run_closed | 何もしない |
 
 ## 操作
 
@@ -185,7 +197,8 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 
 - **上位の要件**：[REQ-SOURCING-010](directory.md#connector-による接続の報告)
 - `Active` の Connector が `full` か `incremental` を指定して取り込みの実行を始めたとき、Sourcing は、`running` の実行を作り、201 で実行の ID、種類、状態、開始時刻を返す。
-- Connector が取り込みの実行を始めたとき、Sourcing は、同じ Connector の `running` の実行を `superseded` にする。
+- Connector が取り込みの実行を始めたとき、Sourcing は、同じ Connector の `running` と `awaiting_approval` の実行を `superseded` にする。
+- 同じ Connector の `applying` の実行があるか、開始、バッチ、完了、承認、破棄の処理が競合している場合、Sourcing は、409 と `ingestion_run_busy` で拒否し、要求の作用を行わない。
 - 種類が `full` でも `incremental` でもない場合、Sourcing は、400 と `invalid_request` で拒否し、実行を作らない。
 - **判断**：打ち切るのは、古い完全な再同期の完了が、新しい実行にだけ現れた User を無効にしないためである。
 
@@ -227,12 +240,16 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 #### REQ-SOURCING-018 実行の完了は、完全な再同期に現れなかった対応済みの User を無効にする
 
 - **上位の要件**：[REQ-SOURCING-010](directory.md#connector-による接続の報告)
-- Connector が、`running` の実行の完了を、記録したバッチの項目数の和と同じ項目数で報告したとき、Sourcing は、実行を `completed` にし、完了時刻を記録し、200 で実行を返す。
-- `full` の実行を完了したとき、Sourcing は、同じ Connector の対応のうち、この実行に現れた印のない対応の `Active` の User を、IdManagement の無効化を通して `Disabled` にし、無効にした件数を実行に記録する。
+- Connector が、`running` の実行の完了を、記録したバッチの項目数の和と同じ項目数で報告したとき、Sourcing は、以下のしきい値判定を行い、200 で実行を返す。
+- 実行を `completed` にしたとき、Sourcing は、完了時刻を記録する。
+- `full` の完了で、同じ Connector の対応を持つ `Active` の User のうち、この実行に現れなかった候補の件数が `accidental_deletion_count_threshold` を超えるか、その Active の User の総数に対する割合が `accidental_deletion_percent_threshold` を超える場合、Sourcing は、実行を `awaiting_approval` にし、候補、総数、判定したしきい値と保留時刻を保存し、候補の User を変更せず、200 で保留状態の実行を返し、`DirectoryIngestionRunHeld` を発行する。
+- 候補が 0 件か両方のしきい値以下の場合、Sourcing は、候補だけを IdManagement の無効化を通して `Disabled` にし、無効にした件数を実行に記録して `completed` にする。
+- `awaiting_approval` の完了を再送されたとき、Sourcing は、候補と User とイベントを変えずに、200 で保留状態の実行を返す。
+- `awaiting_approval` の実行では、Sourcing は、完了時刻を記録せず、後から送られた新しいバッチを 409 と `ingestion_run_closed` で拒否する。
 - `incremental` の実行を完了したとき、Sourcing は、どの User も無効にしない。
 - `completed` の実行の完了を報告されたとき、Sourcing は、実行も User も変えず、200 で実行を返す。
 - 報告した項目数が、記録したバッチの項目数の和と一致しない場合、Sourcing は、409 と `ingestion_run_incomplete` で拒否し、実行も User も変えない。
-- `superseded` の実行の完了を報告された場合、Sourcing は、409 と `ingestion_run_closed` で拒否し、実行も User も変えない。
+- `superseded`、`applying`、`discarded` の実行の完了を報告された場合、Sourcing は、409 と `ingestion_run_closed` で拒否し、実行も User も変えない。
 - 存在しないか、別の Connector か別のテナントの実行を指定された場合、Sourcing は、404 と `ingestion_run_not_found` で拒否する。
 - **判断**：項目数を照合するのは、取りこぼしたバッチの User を、現れなかったものとして無効にしないためである。
 - **判断**：削除ではなく無効にとどめるのは、取り込み元の検索範囲の設定の誤りで多数の User が現れなかったとき、取り込み元を直した次の同期で回復できるようにするためである。
@@ -243,9 +260,48 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 
 - 管理者が Connector の取り込みの実行を一覧したとき、Sourcing は、開始時刻の新しい順に最大 50 件の実行を、ID、種類、状態、開始と完了の時刻、バッチの数、項目の数、結果ごとの項目の数、無効にした User の数とともに返す。
 - 管理者が取り込みの実行を取得したとき、Sourcing は、一覧と同じ項目に加え、`failed` の項目の外部の不変 ID、エラーコード、バッチの ID を、バッチを記録した順に最大 100 件返す。
+- 保留を記録した実行を照会したとき、Sourcing は、候補件数、総数、判定時のしきい値、保留時刻、承認者、承認時刻、破棄時刻を返す。
+- 管理者が候補を照会したとき、Sourcing は、その実行に保存した候補の User ID と外部の不変 ID を、保存した順に、0 以上の `offset` と 1 以上 100 以下の `limit`（省略時 100）で返し、総件数を返す。
+- 不正なページ指定を受けた場合、Sourcing は、400 と `invalid_request` で拒否する。
 - 存在しないか別のテナントの Connector の ID を指定された場合、Sourcing は、404 と `directory_connector_not_found` で拒否する。
 - 存在しないか別の Connector の実行の ID を指定された場合、Sourcing は、404 と `ingestion_run_not_found` で拒否する。
 - `admin` または `system_admin` のロールを持たない利用者が照会を要求した場合、Sourcing は、403 と `access_denied` で拒否する。
+
+### 管理者による無効化のしきい値の更新
+
+#### REQ-SOURCING-020 管理者は Connector ごとに件数と割合のしきい値を変更できる
+
+- Connector を作成したとき、Sourcing は、`accidental_deletion_count_threshold` を 500、`accidental_deletion_percent_threshold` を 20 にする。
+- 管理者が Connector を取得または一覧したとき、Sourcing は、両方の設定値を返す。
+- 管理者が両方のしきい値を更新したとき、Sourcing は、Connector の設定を保存して 200 で Connector を返し、`DirectoryConnectorThresholdsUpdated` を発行する。
+- 件数が 0 以上 2,147,483,647 以下の整数でないか、割合が 1 以上 100 以下の整数でない場合、Sourcing は、400 と `invalid_request` で拒否し、設定を変えない。
+- 設定を変更したとき、Sourcing は、保存済みの保留とその候補を変えず、自動で承認しない。
+- 存在しないか別テナントの Connector を指定された場合、Sourcing は、404 と `directory_connector_not_found` で拒否する。
+- 管理者でない要求の場合、Sourcing は、403 と `access_denied` で拒否する。
+
+### 管理者による保留した無効化の承認
+
+#### REQ-SOURCING-021 承認は保存した候補だけを無効化する
+
+- 管理者が `awaiting_approval` の実行を承認したとき、Sourcing は、承認者と承認時刻を保存して `applying` にし、`DirectoryIngestionRunApproved` を発行し、保存した候補だけを IdManagement の無効化操作へ渡し、全候補の処理後に `completed` と完了時刻を記録して 200 で実行を返す。
+- 承認時に候補の User が不在、別テナント、対応を失っている、または `Active` でない場合、Sourcing は、その候補を無効化せずに処理済みにする。
+- 適用が失敗した場合、Sourcing は、`applying` と候補を保持し、承認の再送で未処理の候補から再開する。
+- `completed` の承認を再送されたとき、Sourcing は、User と実行を変えず 200 で実行を返す。
+- `running`、`superseded`、`discarded` の承認の場合、Sourcing は、409 と `ingestion_run_closed` で拒否し、User を変えない。
+- 操作が競合している場合、Sourcing は、409 と `ingestion_run_busy` で拒否し、User を変えない。
+- 存在しないか別テナントの Connector を指定された場合、Sourcing は、404 と `directory_connector_not_found` で拒否する。
+- 別 Connector か存在しない実行を指定された場合、Sourcing は、404 と `ingestion_run_not_found` で拒否する。
+- 管理者でない要求の場合、Sourcing は、403 と `access_denied` で拒否する。
+
+### 管理者による保留した無効化の破棄
+
+#### REQ-SOURCING-022 破棄は候補の User を変更しない
+
+- 管理者が `awaiting_approval` の実行を破棄したとき、Sourcing は、実行を `discarded` にし、破棄時刻を保存して 200 で実行を返し、`DirectoryIngestionRunDiscarded` を発行し、User を変更しない。
+- `discarded` の破棄を再送されたとき、Sourcing は、実行と User とイベントを変えずに 200 で実行を返す。
+- その他の状態では、Sourcing は、409 と `ingestion_run_closed` で拒否し、実行と User を変えない。
+- 操作が競合している場合、Sourcing は、409 と `ingestion_run_busy` で拒否し、実行と User を変えない。
+- 対象の不在か権限不足の場合、Sourcing は、承認と同じ条件で拒否する。
 
 ## セキュリティ上の考慮
 
@@ -262,3 +318,25 @@ Connector の秘密鍵、AD の資格情報、利用者のパスワードは、I
 取り込みの実行と対応は、それを作った Connector に属する。
 Connector は、別の Connector の実行へバッチを送れず、別の Connector の対応の User を変えられない。
 外部の不変 ID が同じでも Connector が違えば別の対応であり、別の Connector の User にはユーザー名の衝突として失敗する。
+
+## 実現方式
+
+### 無効化の保留と再開
+
+しきい値はテナント一括ではなく、同期設定である Connector に保存する。
+件数と割合の項目名、厳密な超過と論理和の比較は下流の Provisioning の設定とそろえる。
+今回の保護は完全再同期の不在を理由とする無効化に適用し、バッチの明示的な無効化と削除、SCIM、下流の既存ガードの適用範囲は変えない。
+
+同じ Connector の開始、バッチ、完了、承認、破棄は PostgreSQL のトランザクション単位の advisory lock で排他する。
+排他用のトランザクションは作用の実行中保持し、競合は待たずに拒否する。
+User のライフサイクル操作は既存の所有者が確定するため、この排他は全 User と実行の変更を一つのトランザクションにはしない。
+メモリ構成では同じ単位の mutex で排他する。
+
+保留では判定時の候補としきい値を保存し、承認では候補を再計算しない。
+`applying` は新しい同期による失効を防ぎ、候補ごとの進捗によって承認の再送で再開できる。
+無効化を試みた印を先に記録し、User の保存後に作用が失敗した場合も、再送は所有者の無効化操作へ戻る。
+部分適用と無効化件数の制限は [Sourcing のリスク](../risks.md) が扱う。
+
+保留の通知は監査イベントを使い、監査画面と実行の照会で確認できる。
+メール通知は今回見送るが、恒久的な対象外にはせず、メール通知全般の追加、拡充時には対応対象に含める。
+共有の通知基盤は既にあり、後続の対応では通知先の設定とテンプレートをその基盤へ接続する。

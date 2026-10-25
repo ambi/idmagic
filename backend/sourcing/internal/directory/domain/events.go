@@ -40,3 +40,52 @@ type DirectoryConnectorDisabled struct {
 
 func (e *DirectoryConnectorDisabled) EventType() string     { return "DirectoryConnectorDisabled" }
 func (e *DirectoryConnectorDisabled) OccurredAt() time.Time { return e.At }
+
+type DirectoryIngestionRunHeld struct {
+	At               time.Time `json:"-"`
+	TenantID         string    `json:"tenantId"`
+	ConnectorID      string    `json:"connectorId"`
+	RunID            string    `json:"runId"`
+	CandidateCount   int       `json:"candidateCount"`
+	ActiveCount      int       `json:"activeCount"`
+	CountThreshold   int       `json:"countThreshold"`
+	PercentThreshold int       `json:"percentThreshold"`
+}
+
+func (e *DirectoryIngestionRunHeld) EventType() string     { return "DirectoryIngestionRunHeld" }
+func (e *DirectoryIngestionRunHeld) OccurredAt() time.Time { return e.At }
+
+type DirectoryIngestionRunApproved struct {
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ConnectorID string    `json:"connectorId"`
+	RunID       string    `json:"runId"`
+	ActorUserID string    `json:"actorUserId"`
+}
+
+func (e *DirectoryIngestionRunApproved) EventType() string     { return "DirectoryIngestionRunApproved" }
+func (e *DirectoryIngestionRunApproved) OccurredAt() time.Time { return e.At }
+
+type DirectoryIngestionRunDiscarded struct {
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ConnectorID string    `json:"connectorId"`
+	RunID       string    `json:"runId"`
+	ActorUserID string    `json:"actorUserId"`
+}
+
+func (e *DirectoryIngestionRunDiscarded) EventType() string     { return "DirectoryIngestionRunDiscarded" }
+func (e *DirectoryIngestionRunDiscarded) OccurredAt() time.Time { return e.At }
+
+type DirectoryConnectorThresholdsUpdated struct {
+	At               time.Time `json:"-"`
+	TenantID         string    `json:"tenantId"`
+	ConnectorID      string    `json:"connectorId"`
+	CountThreshold   int       `json:"countThreshold"`
+	PercentThreshold int       `json:"percentThreshold"`
+}
+
+func (e *DirectoryConnectorThresholdsUpdated) EventType() string {
+	return "DirectoryConnectorThresholdsUpdated"
+}
+func (e *DirectoryConnectorThresholdsUpdated) OccurredAt() time.Time { return e.At }

@@ -126,7 +126,7 @@ func (q *Queries) FindDirectoryIngestionBatch(ctx context.Context, arg FindDirec
 }
 
 const findDirectoryIngestionRun = `-- name: FindDirectoryIngestionRun :one
-SELECT id, tenant_id, connector_id, mode, status, started_at, completed_at, batches, items, created, updated, unchanged, deleted, failed, disabled FROM directory_ingestion_runs WHERE tenant_id = $1 AND connector_id = $2 AND id = $3
+SELECT id, tenant_id, connector_id, mode, status, started_at, completed_at, batches, items, created, updated, unchanged, deleted, failed, disabled, protection FROM directory_ingestion_runs WHERE tenant_id = $1 AND connector_id = $2 AND id = $3
 `
 
 type FindDirectoryIngestionRunParams struct {
@@ -154,6 +154,7 @@ func (q *Queries) FindDirectoryIngestionRun(ctx context.Context, arg FindDirecto
 		&i.Deleted,
 		&i.Failed,
 		&i.Disabled,
+		&i.Protection,
 	)
 	return &i, err
 }
@@ -179,6 +180,22 @@ func (q *Queries) FindDirectoryUserCorrelation(ctx context.Context, arg FindDire
 		&i.LastSeenRunID,
 	)
 	return &i, err
+}
+
+const hasApplyingDirectoryIngestionRun = `-- name: HasApplyingDirectoryIngestionRun :one
+SELECT EXISTS(SELECT 1 FROM directory_ingestion_runs WHERE tenant_id = $1 AND connector_id = $2 AND status = 'applying')
+`
+
+type HasApplyingDirectoryIngestionRunParams struct {
+	TenantID    string
+	ConnectorID string
+}
+
+func (q *Queries) HasApplyingDirectoryIngestionRun(ctx context.Context, arg HasApplyingDirectoryIngestionRunParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasApplyingDirectoryIngestionRun, arg.TenantID, arg.ConnectorID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const insertDirectoryIngestionBatch = `-- name: InsertDirectoryIngestionBatch :execrows
@@ -278,7 +295,7 @@ func (q *Queries) ListDirectoryIngestionBatches(ctx context.Context, arg ListDir
 }
 
 const listDirectoryIngestionRuns = `-- name: ListDirectoryIngestionRuns :many
-SELECT id, tenant_id, connector_id, mode, status, started_at, completed_at, batches, items, created, updated, unchanged, deleted, failed, disabled FROM directory_ingestion_runs WHERE tenant_id = $1 AND connector_id = $2
+SELECT id, tenant_id, connector_id, mode, status, started_at, completed_at, batches, items, created, updated, unchanged, deleted, failed, disabled, protection FROM directory_ingestion_runs WHERE tenant_id = $1 AND connector_id = $2
 ORDER BY started_at DESC, id DESC LIMIT $3
 `
 
@@ -313,6 +330,42 @@ func (q *Queries) ListDirectoryIngestionRuns(ctx context.Context, arg ListDirect
 			&i.Deleted,
 			&i.Failed,
 			&i.Disabled,
+			&i.Protection,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDirectoryUserCorrelations = `-- name: ListDirectoryUserCorrelations :many
+SELECT tenant_id, connector_id, external_id, user_id, last_seen_run_id FROM directory_user_correlations WHERE tenant_id = $1 AND connector_id = $2 ORDER BY external_id
+`
+
+type ListDirectoryUserCorrelationsParams struct {
+	TenantID    string
+	ConnectorID string
+}
+
+func (q *Queries) ListDirectoryUserCorrelations(ctx context.Context, arg ListDirectoryUserCorrelationsParams) ([]*DirectoryUserCorrelation, error) {
+	rows, err := q.db.Query(ctx, listDirectoryUserCorrelations, arg.TenantID, arg.ConnectorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*DirectoryUserCorrelation
+	for rows.Next() {
+		var i DirectoryUserCorrelation
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ConnectorID,
+			&i.ExternalID,
+			&i.UserID,
+			&i.LastSeenRunID,
 		); err != nil {
 			return nil, err
 		}
@@ -384,6 +437,33 @@ func (q *Queries) MarkDirectoryUserCorrelationSeen(ctx context.Context, arg Mark
 	return err
 }
 
+const saveDirectoryIngestionProgress = `-- name: SaveDirectoryIngestionProgress :exec
+UPDATE directory_ingestion_runs SET status = $1, completed_at = $2,
+ disabled = $3, protection = $4
+WHERE tenant_id = $5 AND id = $6
+`
+
+type SaveDirectoryIngestionProgressParams struct {
+	Status      string
+	CompletedAt pgtype.Timestamptz
+	Disabled    int32
+	Protection  []byte
+	TenantID    string
+	ID          string
+}
+
+func (q *Queries) SaveDirectoryIngestionProgress(ctx context.Context, arg SaveDirectoryIngestionProgressParams) error {
+	_, err := q.db.Exec(ctx, saveDirectoryIngestionProgress,
+		arg.Status,
+		arg.CompletedAt,
+		arg.Disabled,
+		arg.Protection,
+		arg.TenantID,
+		arg.ID,
+	)
+	return err
+}
+
 const saveDirectoryUserCorrelation = `-- name: SaveDirectoryUserCorrelation :exec
 INSERT INTO directory_user_correlations (tenant_id, connector_id, external_id, user_id, last_seen_run_id)
 VALUES ($1, $2, $3, $4, $5)
@@ -410,7 +490,7 @@ func (q *Queries) SaveDirectoryUserCorrelation(ctx context.Context, arg SaveDire
 
 const supersedeRunningDirectoryIngestionRuns = `-- name: SupersedeRunningDirectoryIngestionRuns :exec
 UPDATE directory_ingestion_runs SET status = 'superseded'
-WHERE tenant_id = $1 AND connector_id = $2 AND status = 'running'
+WHERE tenant_id = $1 AND connector_id = $2 AND status IN ('running', 'awaiting_approval')
 `
 
 type SupersedeRunningDirectoryIngestionRunsParams struct {
@@ -421,4 +501,15 @@ type SupersedeRunningDirectoryIngestionRunsParams struct {
 func (q *Queries) SupersedeRunningDirectoryIngestionRuns(ctx context.Context, arg SupersedeRunningDirectoryIngestionRunsParams) error {
 	_, err := q.db.Exec(ctx, supersedeRunningDirectoryIngestionRuns, arg.TenantID, arg.ConnectorID)
 	return err
+}
+
+const tryLockDirectoryIngestion = `-- name: TryLockDirectoryIngestion :one
+SELECT pg_try_advisory_xact_lock(hashtextextended($1::text, 0))::boolean
+`
+
+func (q *Queries) TryLockDirectoryIngestion(ctx context.Context, lockKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, tryLockDirectoryIngestion, lockKey)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }

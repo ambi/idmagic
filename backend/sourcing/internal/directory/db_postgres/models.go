@@ -11,19 +11,21 @@ import (
 )
 
 type DirectoryConnector struct {
-	ID                  string
-	TenantID            string
-	DisplayName         string
-	Status              string
-	EnrollmentTokenHash pgtype.Text
-	EnrollmentExpiresAt pgtype.Timestamptz
-	PublicKey           []byte
-	KeyID               pgtype.Text
-	CreatedAt           time.Time
-	EnrolledAt          pgtype.Timestamptz
-	LastSeenAt          pgtype.Timestamptz
-	DisabledAt          pgtype.Timestamptz
-	Revision            int64
+	ID                                 string
+	TenantID                           string
+	DisplayName                        string
+	Status                             string
+	EnrollmentTokenHash                pgtype.Text
+	EnrollmentExpiresAt                pgtype.Timestamptz
+	PublicKey                          []byte
+	KeyID                              pgtype.Text
+	CreatedAt                          time.Time
+	EnrolledAt                         pgtype.Timestamptz
+	LastSeenAt                         pgtype.Timestamptz
+	DisabledAt                         pgtype.Timestamptz
+	Revision                           int64
+	AccidentalDeletionCountThreshold   int32
+	AccidentalDeletionPercentThreshold int32
 }
 
 type DirectoryIngestionBatch struct {
@@ -52,6 +54,7 @@ type DirectoryIngestionRun struct {
 	Deleted     int32
 	Failed      int32
 	Disabled    int32
+	Protection  []byte
 }
 
 type DirectoryUserCorrelation struct {

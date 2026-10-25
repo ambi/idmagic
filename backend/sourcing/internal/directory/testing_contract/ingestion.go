@@ -2,6 +2,7 @@ package testing_contract
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -61,6 +62,10 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 			t.Fatal(err)
 		}
 		notSeen, err := f.Correlations.ListNotSeenIn(ctx, f.TenantID, connector, second)
+		all, listErr := f.Correlations.List(ctx, f.TenantID, connector)
+		if listErr != nil || len(all) != 2 {
+			t.Fatalf("List = %+v, %v", all, listErr)
+		}
 		if err != nil || len(notSeen) != 1 || notSeen[0].ExternalID != "a-missed" {
 			t.Fatalf("ListNotSeenIn = %+v, %v", notSeen, err)
 		}
@@ -153,6 +158,66 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 		}
 		if listed, err := f.Runs.List(ctx, f.TenantID, connector, 1); err != nil || len(listed) != 1 {
 			t.Fatalf("List with a limit = %+v, %v", listed, err)
+		}
+	})
+
+	t.Run("protection and connector lock", func(t *testing.T) {
+		id := uuid.NewString()
+		run := domain.IngestionRun{TenantID: f.TenantID, ConnectorID: connector, ID: id, Mode: domain.ModeFull, Status: domain.RunRunning, StartedAt: base}
+		if err := f.Runs.Start(ctx, run); err != nil {
+			t.Fatal(err)
+		}
+		run.Status = domain.RunAwaitingApproval
+		run.Protection = &domain.IngestionProtection{Thresholds: domain.DisableThresholds{Count: 1, Percent: 20}, ActiveCount: 10, HeldAt: base, Candidates: []domain.DisableCandidate{{UserID: uuid.NewString(), ExternalID: "saved"}}}
+		if err := f.Runs.SaveProgress(ctx, run); err != nil {
+			t.Fatal(err)
+		}
+		got, err := f.Runs.Find(ctx, f.TenantID, connector, id)
+		if err != nil || got.Protection == nil || got.Protection.Candidates[0].ExternalID != "saved" || got.Protection.Thresholds.Count != 1 {
+			t.Fatalf("saved = %+v, %v", got, err)
+		}
+		got.Protection.Candidates[0].Done = true
+		again, _ := f.Runs.Find(ctx, f.TenantID, connector, id)
+		if again.Protection.Candidates[0].Done {
+			t.Fatal("read mutated saved candidates")
+		}
+		got.Status = domain.RunApplying
+		if err := f.Runs.SaveProgress(ctx, *got); err != nil {
+			t.Fatal(err)
+		}
+		newer := run
+		newer.ID = uuid.NewString()
+		newer.Status = domain.RunRunning
+		newer.Protection = nil
+		if err := f.Runs.Start(ctx, newer); !errors.Is(err, ports.ErrRunBusy) {
+			t.Fatalf("start while applying = %v", err)
+		}
+		called := false
+		if err := f.Runs.WithConnectorLock(ctx, f.TenantID, connector, func() error {
+			called = true
+			if err := f.Runs.WithConnectorLock(ctx, f.TenantID, connector, func() error { t.Fatal("competing operation ran"); return nil }); !errors.Is(err, ports.ErrRunBusy) {
+				t.Fatalf("competing lock = %v", err)
+			}
+			return f.Runs.WithConnectorLock(ctx, f.TenantID, sibling, func() error { return nil })
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if !called {
+			t.Fatal("acquired lock did not execute the operation")
+		}
+		if err := f.Runs.WithConnectorLock(ctx, f.TenantID, connector, func() error { return nil }); err != nil {
+			t.Fatalf("lock not released: %v", err)
+		}
+		got.Status = domain.RunAwaitingApproval
+		if err := f.Runs.SaveProgress(ctx, *got); err != nil {
+			t.Fatal(err)
+		}
+		if err := f.Runs.Start(ctx, newer); err != nil {
+			t.Fatal(err)
+		}
+		superseded, _ := f.Runs.Find(ctx, f.TenantID, connector, id)
+		if superseded.Status != domain.RunSuperseded {
+			t.Fatalf("held run = %s", superseded.Status)
 		}
 	})
 }

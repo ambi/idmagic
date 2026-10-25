@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/google/uuid"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -130,7 +131,7 @@ func (c *directoryConnectorClient) send(path string, body any) *httptest.Respons
 // 正式なルーターが、Directory Connector の管理 API と Connector API を path style の正規位置に
 // 載せ、Connector の JWT の jti を組み立て地点の保存先で一度だけ受け付けることを確かめる。
 //
-//spec:covers REQ-SOURCING-008 REQ-SOURCING-009 REQ-SOURCING-010 REQ-SOURCING-016
+//spec:covers REQ-SOURCING-008 REQ-SOURCING-009 REQ-SOURCING-010 REQ-SOURCING-016 REQ-SOURCING-018 REQ-SOURCING-021
 //verify:operation CreateDirectoryConnector: 正規位置の管理 API が 201 で登録トークンを返す。
 //verify:operation EnrollDirectoryConnector: 正規位置の Connector API が登録の応答で aud を返す。
 //verify:operation ReportDirectoryConnectorHeartbeat: 同じ jti の二度目の提示を 401 で拒否する。
@@ -173,5 +174,26 @@ func TestDirectoryConnectorThroughTheRouter(t *testing.T) {
 	}
 	if rec := connector.send("/directory-connector/v1/ingestion-runs/"+run.ID+"/complete", map[string]any{"item_count": 1}); rec.Code != http.StatusOK {
 		t.Fatalf("complete status = %d body=%s", rec.Code, rec.Body.String())
+	}
+	// 正式な配線を通り、空の完全再同期による全件無効化は保留してから承認する。
+	started = connector.send("/directory-connector/v1/ingestion-runs", map[string]any{"mode": "full"})
+	if err := json.Unmarshal(started.Body.Bytes(), &run); err != nil {
+		t.Fatal(err)
+	}
+	held := connector.send("/directory-connector/v1/ingestion-runs/"+run.ID+"/complete", map[string]any{"item_count": 0})
+	if held.Code != http.StatusOK || !bytes.Contains(held.Body.Bytes(), []byte(`"status":"awaiting_approval"`)) {
+		t.Fatalf("held = %d %s", held.Code, held.Body.String())
+	}
+	user, err := s.Users.FindByUsername(t.Context(), tenancydomain.DefaultTenantID, "from-ad")
+	if err != nil || user.Lifecycle.EffectiveStatus() != idmdomain.UserStatusActive {
+		t.Fatalf("held user = %+v, %v", user, err)
+	}
+	approved := adminPost(t, s, "/api/admin/v1/directory-connectors/"+connector.id+"/ingestion-runs/"+run.ID+"/approve", nil)
+	if approved.Code != http.StatusOK {
+		t.Fatalf("approved = %d %s", approved.Code, approved.Body.String())
+	}
+	user, err = s.Users.FindByUsername(t.Context(), tenancydomain.DefaultTenantID, "from-ad")
+	if err != nil || user.Lifecycle.EffectiveStatus() != idmdomain.UserStatusDisabled {
+		t.Fatalf("approved user = %+v, %v", user, err)
 	}
 }

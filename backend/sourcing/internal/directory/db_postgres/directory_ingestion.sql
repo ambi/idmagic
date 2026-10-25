@@ -14,12 +14,15 @@ SELECT * FROM directory_user_correlations
 WHERE tenant_id = sqlc.arg(tenant_id) AND connector_id = sqlc.arg(connector_id) AND last_seen_run_id <> sqlc.arg(run_id)
 ORDER BY external_id;
 
+-- name: ListDirectoryUserCorrelations :many
+SELECT * FROM directory_user_correlations WHERE tenant_id = $1 AND connector_id = $2 ORDER BY external_id;
+
 -- name: ListDirectoryCorrelatedUserIDs :many
 SELECT user_id FROM directory_user_correlations WHERE tenant_id = $1 AND user_id = ANY(sqlc.arg(user_ids)::text[]::uuid[]);
 
 -- name: SupersedeRunningDirectoryIngestionRuns :exec
 UPDATE directory_ingestion_runs SET status = 'superseded'
-WHERE tenant_id = $1 AND connector_id = $2 AND status = 'running';
+WHERE tenant_id = $1 AND connector_id = $2 AND status IN ('running', 'awaiting_approval');
 
 -- name: CreateDirectoryIngestionRun :exec
 INSERT INTO directory_ingestion_runs (id, tenant_id, connector_id, mode, status, started_at)
@@ -57,3 +60,14 @@ SELECT * FROM directory_ingestion_batches WHERE tenant_id = $1 AND run_id = $2 O
 -- name: CompleteDirectoryIngestionRun :execrows
 UPDATE directory_ingestion_runs SET status = 'completed', completed_at = sqlc.arg(completed_at), disabled = sqlc.arg(disabled)
 WHERE tenant_id = sqlc.arg(tenant_id) AND id = sqlc.arg(id) AND status = 'running';
+
+-- name: SaveDirectoryIngestionProgress :exec
+UPDATE directory_ingestion_runs SET status = sqlc.arg(status), completed_at = sqlc.arg(completed_at),
+ disabled = sqlc.arg(disabled), protection = sqlc.narg(protection)
+WHERE tenant_id = sqlc.arg(tenant_id) AND id = sqlc.arg(id);
+
+-- name: HasApplyingDirectoryIngestionRun :one
+SELECT EXISTS(SELECT 1 FROM directory_ingestion_runs WHERE tenant_id = $1 AND connector_id = $2 AND status = 'applying');
+
+-- name: TryLockDirectoryIngestion :one
+SELECT pg_try_advisory_xact_lock(hashtextextended(sqlc.arg(lock_key)::text, 0))::boolean;

@@ -28,6 +28,10 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/directory-connectors/:connector_id", h.getConnector)
 	g.POST("/api/admin/v1/directory-connectors/:connector_id/enrollment-tokens", h.reissueEnrollment)
 	g.POST("/api/admin/v1/directory-connectors/:connector_id/disable", h.disableConnector)
+	g.PUT("/api/admin/v1/directory-connectors/:connector_id/deletion-thresholds", h.updateThresholds)
+	g.GET("/api/admin/v1/directory-connectors/:connector_id/ingestion-runs/:run_id/candidates", h.listCandidates)
+	g.POST("/api/admin/v1/directory-connectors/:connector_id/ingestion-runs/:run_id/approve", h.approveRun)
+	g.POST("/api/admin/v1/directory-connectors/:connector_id/ingestion-runs/:run_id/discard", h.discardRun)
 	g.POST("/directory-connector/v1/enrollment", h.enrollConnector)
 	g.POST("/directory-connector/v1/heartbeat", h.reportHeartbeat)
 	g.GET("/api/admin/v1/directory-connectors/:connector_id/ingestion-runs", h.listIngestionRuns)
@@ -40,6 +44,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 type handler struct{ deps Deps }
 
 type connectorResponse struct {
+	domain.DisableThresholds
 	ID                  string     `json:"id"`
 	DisplayName         string     `json:"display_name"`
 	Status              string     `json:"status"`
@@ -55,7 +60,8 @@ type connectorResponse struct {
 // 鍵の ID は Active の間だけ、登録トークンの有効期限は登録待ちの間だけ返す。
 func connectorJSON(c domain.Connector) connectorResponse {
 	response := connectorResponse{
-		ID: c.ID, DisplayName: c.DisplayName, Status: string(c.Status), CreatedAt: c.CreatedAt,
+		DisableThresholds: c.Thresholds,
+		ID:                c.ID, DisplayName: c.DisplayName, Status: string(c.Status), CreatedAt: c.CreatedAt,
 		EnrolledAt: c.EnrolledAt, LastSeenAt: c.LastSeenAt, DisabledAt: c.DisabledAt,
 	}
 	switch c.Status {

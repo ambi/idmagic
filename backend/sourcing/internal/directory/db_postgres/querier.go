@@ -18,16 +18,20 @@ type Querier interface {
 	FindDirectoryIngestionBatch(ctx context.Context, arg FindDirectoryIngestionBatchParams) (*DirectoryIngestionBatch, error)
 	FindDirectoryIngestionRun(ctx context.Context, arg FindDirectoryIngestionRunParams) (*DirectoryIngestionRun, error)
 	FindDirectoryUserCorrelation(ctx context.Context, arg FindDirectoryUserCorrelationParams) (*DirectoryUserCorrelation, error)
+	HasApplyingDirectoryIngestionRun(ctx context.Context, arg HasApplyingDirectoryIngestionRunParams) (bool, error)
 	InsertDirectoryIngestionBatch(ctx context.Context, arg InsertDirectoryIngestionBatchParams) (int64, error)
 	ListDirectoryConnectors(ctx context.Context, tenantID string) ([]*DirectoryConnector, error)
 	ListDirectoryCorrelatedUserIDs(ctx context.Context, arg ListDirectoryCorrelatedUserIDsParams) ([]string, error)
 	ListDirectoryIngestionBatches(ctx context.Context, arg ListDirectoryIngestionBatchesParams) ([]*DirectoryIngestionBatch, error)
 	ListDirectoryIngestionRuns(ctx context.Context, arg ListDirectoryIngestionRunsParams) ([]*DirectoryIngestionRun, error)
+	ListDirectoryUserCorrelations(ctx context.Context, arg ListDirectoryUserCorrelationsParams) ([]*DirectoryUserCorrelation, error)
 	ListDirectoryUserCorrelationsNotSeenIn(ctx context.Context, arg ListDirectoryUserCorrelationsNotSeenInParams) ([]*DirectoryUserCorrelation, error)
 	MarkDirectoryUserCorrelationSeen(ctx context.Context, arg MarkDirectoryUserCorrelationSeenParams) error
+	SaveDirectoryIngestionProgress(ctx context.Context, arg SaveDirectoryIngestionProgressParams) error
 	SaveDirectoryUserCorrelation(ctx context.Context, arg SaveDirectoryUserCorrelationParams) error
 	SupersedeRunningDirectoryIngestionRuns(ctx context.Context, arg SupersedeRunningDirectoryIngestionRunsParams) error
 	TouchDirectoryConnectorLastSeen(ctx context.Context, arg TouchDirectoryConnectorLastSeenParams) error
+	TryLockDirectoryIngestion(ctx context.Context, lockKey string) (bool, error)
 	// 最終接続時刻は TouchDirectoryConnectorLastSeen だけが書くので、ここでは触れない。
 	UpdateDirectoryConnector(ctx context.Context, arg UpdateDirectoryConnectorParams) (int64, error)
 }

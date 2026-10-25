@@ -57,17 +57,25 @@ func (r *CorrelationRepository) MarkSeen(_ context.Context, tenantID, connectorI
 	return nil
 }
 
-func (r *CorrelationRepository) ListNotSeenIn(_ context.Context, tenantID, connectorID, runID string) ([]directoryports.UserCorrelation, error) {
+func (r *CorrelationRepository) List(_ context.Context, tenantID, connectorID string) ([]directoryports.UserCorrelation, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var result []directoryports.UserCorrelation
 	for k, c := range r.correlations {
-		if k.tenantID == tenantID && k.connectorID == connectorID && c.LastSeenRunID != runID {
+		if k.tenantID == tenantID && k.connectorID == connectorID {
 			result = append(result, c)
 		}
 	}
 	slices.SortFunc(result, func(a, b directoryports.UserCorrelation) int { return cmp.Compare(a.ExternalID, b.ExternalID) })
 	return result, nil
+}
+
+func (r *CorrelationRepository) ListNotSeenIn(ctx context.Context, tenantID, connectorID, runID string) ([]directoryports.UserCorrelation, error) {
+	all, err := r.List(ctx, tenantID, connectorID)
+	if err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(all, func(c directoryports.UserCorrelation) bool { return c.LastSeenRunID == runID }), nil
 }
 
 func (r *CorrelationRepository) CorrelatedUserIDs(_ context.Context, tenantID string, userIDs []string) (map[string]bool, error) {
@@ -86,9 +94,10 @@ type runKey struct{ tenantID, runID string }
 
 // IngestionRunRepository は取り込みの実行とバッチをメモリに保存する。
 type IngestionRunRepository struct {
-	mu      sync.Mutex
-	runs    map[runKey]domain.IngestionRun
-	batches map[runKey][]domain.IngestionBatch
+	operationLocks map[key]*sync.Mutex
+	mu             sync.Mutex
+	runs           map[runKey]domain.IngestionRun
+	batches        map[runKey][]domain.IngestionBatch
 }
 
 var _ ports.IngestionRunRepository = (*IngestionRunRepository)(nil)
@@ -100,8 +109,13 @@ func NewIngestionRunRepository() *IngestionRunRepository {
 func (r *IngestionRunRepository) Start(_ context.Context, run domain.IngestionRun) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	for _, existing := range r.runs {
+		if existing.TenantID == run.TenantID && existing.ConnectorID == run.ConnectorID && existing.Status == domain.RunApplying {
+			return ports.ErrRunBusy
+		}
+	}
 	for k, existing := range r.runs {
-		if existing.TenantID == run.TenantID && existing.ConnectorID == run.ConnectorID && existing.Status == domain.RunRunning {
+		if existing.TenantID == run.TenantID && existing.ConnectorID == run.ConnectorID && (existing.Status == domain.RunRunning || existing.Status == domain.RunAwaitingApproval) {
 			existing.Status = domain.RunSuperseded
 			r.runs[k] = existing
 		}
@@ -117,7 +131,7 @@ func (r *IngestionRunRepository) Find(_ context.Context, tenantID, connectorID, 
 	if !ok || run.ConnectorID != connectorID {
 		return nil, nil
 	}
-	return &run, nil
+	return new(cloneRun(run)), nil
 }
 
 func (r *IngestionRunRepository) List(_ context.Context, tenantID, connectorID string, limit int) ([]domain.IngestionRun, error) {
@@ -126,7 +140,7 @@ func (r *IngestionRunRepository) List(_ context.Context, tenantID, connectorID s
 	result := []domain.IngestionRun{}
 	for _, run := range r.runs {
 		if run.TenantID == tenantID && run.ConnectorID == connectorID {
-			result = append(result, run)
+			result = append(result, cloneRun(run))
 		}
 	}
 	slices.SortFunc(result, func(a, b domain.IngestionRun) int {
@@ -191,4 +205,42 @@ func (r *IngestionRunRepository) Complete(_ context.Context, tenantID, runID str
 func cloneBatch(batch domain.IngestionBatch) domain.IngestionBatch {
 	batch.Results = slices.Clone(batch.Results)
 	return batch
+}
+
+func (r *IngestionRunRepository) WithConnectorLock(_ context.Context, tenantID, connectorID string, apply func() error) error {
+	r.mu.Lock()
+	if r.operationLocks == nil {
+		r.operationLocks = map[key]*sync.Mutex{}
+	}
+	k := key{tenantID, connectorID}
+	lock := r.operationLocks[k]
+	if lock == nil {
+		lock = &sync.Mutex{}
+		r.operationLocks[k] = lock
+	}
+	r.mu.Unlock()
+	if !lock.TryLock() {
+		return ports.ErrRunBusy
+	}
+	defer lock.Unlock()
+	return apply()
+}
+
+func (r *IngestionRunRepository) SaveProgress(_ context.Context, run domain.IngestionRun) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	k := runKey{run.TenantID, run.ID}
+	stored := r.runs[k]
+	stored.Status, stored.CompletedAt, stored.Counts.Disabled, stored.Protection = run.Status, run.CompletedAt, run.Counts.Disabled, run.Protection
+	r.runs[k] = cloneRun(stored)
+	return nil
+}
+
+func cloneRun(run domain.IngestionRun) domain.IngestionRun {
+	if run.Protection != nil {
+		p := *run.Protection
+		p.Candidates = slices.Clone(p.Candidates)
+		run.Protection = &p
+	}
+	return run
 }

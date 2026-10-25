@@ -8,9 +8,9 @@
 | --- | --- | --- |
 | `ScimUserRef` | テナント、SCIM の ID、内部の User の ID | `User` を参照する |
 | `ScimGroupRef` | テナント、SCIM の ID、内部の Group の ID | `Group` を参照する |
-| `DirectoryConnector` | テナント、ID、表示名、状態、登録トークンのハッシュと有効期限、公開鍵と鍵の ID、作成、登録、最終接続、無効化の時刻 | なし |
+| `DirectoryConnector` | テナント、ID、表示名、状態、登録トークンのハッシュと有効期限、公開鍵と鍵の ID、作成、登録、最終接続、無効化の時刻、完全再同期の無効化の件数と割合のしきい値 | なし |
 | `DirectoryUserCorrelation` | テナント、Connector、外部の不変 ID、内部の User の ID、最後に現れた実行 | `DirectoryConnector` と `User` を参照する |
-| `IngestionRun` | テナント、ID、Connector、種類、状態、開始と完了の時刻、無効にした User の数、記録したバッチ（バッチの ID、項目のダイジェスト、項目ごとの結果、記録の時刻） | `DirectoryConnector` を参照する |
+| `IngestionRun` | テナント、ID、Connector、種類、状態、開始と完了の時刻、無効にした User の数、記録したバッチ（バッチの ID、項目のダイジェスト、項目ごとの結果、記録の時刻）、保留時の判定値と候補、承認者と承認時刻、破棄時刻、候補ごとの適用の進捗 | `DirectoryConnector` を参照する |
 
 - **判断**：取り込み元との対応（`ScimUserRef`、`ScimGroupRef`）は `User` と `Group` の Aggregate に埋め込まず、このモジュールの独立した Aggregate とする。埋め込むと、IdManagement の主体のモデルが取り込み元の存在を知ることになり、取り込み元の変更が IdManagement へ波及するからである。
 

@@ -29,6 +29,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sourcing"
+	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
 	"github.com/ambi/idmagic/backend/sourcing/internal/sourceuser"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -51,7 +52,7 @@ type ingestion struct {
 	events   []spec.DomainEvent
 }
 
-func newIngestion(t *testing.T) *ingestion {
+func newIngestion(t *testing.T, decorate ...func(directoryports.UserLifecycle) directoryports.UserLifecycle) *ingestion {
 	t.Helper()
 	h := &ingestion{t: t, identity: idmanagement.NewMemoryModule()}
 	for _, u := range []userdomain.User{
@@ -75,6 +76,9 @@ func newIngestion(t *testing.T) *ingestion {
 	lifecycle := idmanagement.LifecycleDeps{QuotaRepo: h.quotas}
 	module := sourcing.NewMemoryModule()
 	module.DirectoryUserLifecycle = h.identity.UserLifecycleCommands(lifecycle, func(event spec.DomainEvent) error { emit(event); return nil }, "directory_connector")
+	for _, wrap := range decorate {
+		module.DirectoryUserLifecycle = wrap(module.DirectoryUserLifecycle)
+	}
 	module.DirectoryWrites = sourcingdeps.NewDirectoryWrites(h.identity, lifecycle, module, emit)
 	module.Writes = sourcingdeps.NewWrites(h.identity, lifecycle, module, emit)
 	authenticator := &support.Authenticator{
@@ -559,6 +563,7 @@ func TestResentUserBatchReturnsTheFirstResults(t *testing.T) {
 func TestFullResyncCompletionDisablesOnlyUnseenUsers(t *testing.T) {
 	h := newIngestion(t)
 	ad := h.enrolled()
+	expectStatus(t, h.do(request{method: http.MethodPut, path: "/api/admin/v1/directory-connectors/" + ad.id + "/deletion-thresholds", admin: "admin", body: map[string]any{"accidental_deletion_count_threshold": 500, "accidental_deletion_percent_threshold": 100}}), http.StatusOK, "")
 	other := h.enrolled()
 	seed := h.startRun(ad, "incremental")
 	h.apply(ad, seed, "b1",

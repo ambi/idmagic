@@ -82,6 +82,23 @@ func (s *Service) List(ctx context.Context, tenantID string) ([]domain.Connector
 	return s.repository.List(ctx, tenantID)
 }
 
+func (s *Service) UpdateThresholds(ctx context.Context, tenantID, id string, thresholds domain.DisableThresholds) (domain.Connector, error) {
+	if err := thresholds.Validate(); err != nil {
+		return domain.Connector{}, err
+	}
+	var result domain.Connector
+	err := s.update(ctx, tenantID, id, func(c domain.Connector, _ time.Time) (domain.Connector, bool, error) {
+		c.Thresholds = thresholds
+		c.Revision++
+		result = c
+		return c, true, nil
+	})
+	if err == nil {
+		s.publish(&domain.DirectoryConnectorThresholdsUpdated{At: s.now().UTC(), TenantID: tenantID, ConnectorID: id, CountThreshold: thresholds.Count, PercentThreshold: thresholds.Percent})
+	}
+	return result, err
+}
+
 func (s *Service) Get(ctx context.Context, tenantID, id string) (domain.Connector, error) {
 	connector, err := s.repository.Find(ctx, tenantID, id)
 	if err != nil {

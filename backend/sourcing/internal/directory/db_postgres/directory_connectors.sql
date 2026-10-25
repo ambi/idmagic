@@ -1,8 +1,9 @@
 -- name: CreateDirectoryConnector :exec
 INSERT INTO directory_connectors (
     id, tenant_id, display_name, status, enrollment_token_hash, enrollment_expires_at,
-    public_key, key_id, created_at, enrolled_at, last_seen_at, disabled_at, revision
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
+    public_key, key_id, created_at, enrolled_at, last_seen_at, disabled_at, revision,
+    accidental_deletion_count_threshold, accidental_deletion_percent_threshold
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);
 
 -- name: UpdateDirectoryConnector :execrows
 -- 最終接続時刻は TouchDirectoryConnectorLastSeen だけが書くので、ここでは触れない。
@@ -15,7 +16,9 @@ UPDATE directory_connectors SET
     key_id = sqlc.narg(key_id),
     enrolled_at = sqlc.narg(enrolled_at),
     disabled_at = sqlc.narg(disabled_at),
-    revision = sqlc.arg(revision)
+    revision = sqlc.arg(revision),
+    accidental_deletion_count_threshold = sqlc.arg(accidental_deletion_count_threshold),
+    accidental_deletion_percent_threshold = sqlc.arg(accidental_deletion_percent_threshold)
 WHERE tenant_id = sqlc.arg(tenant_id) AND id = sqlc.arg(id) AND revision = sqlc.arg(revision) - 1;
 
 -- name: FindDirectoryConnector :one

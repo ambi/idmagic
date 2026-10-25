@@ -30,7 +30,8 @@ func (r *ConnectorRepository) Create(ctx context.Context, c domain.Connector) er
 		EnrollmentTokenHash: text(c.EnrollmentTokenHash), EnrollmentExpiresAt: instant(c.EnrollmentExpiresAt),
 		PublicKey: publicKey, KeyID: text(c.KeyID), CreatedAt: c.CreatedAt,
 		EnrolledAt: optional(c.EnrolledAt), LastSeenAt: optional(c.LastSeenAt), DisabledAt: optional(c.DisabledAt),
-		Revision: c.Revision,
+		Revision:                         c.Revision,
+		AccidentalDeletionCountThreshold: int32(c.Thresholds.Count), AccidentalDeletionPercentThreshold: int32(c.Thresholds.Percent), //nolint:gosec // 検証済みの INTEGER の範囲。
 	})
 }
 
@@ -45,6 +46,7 @@ func (r *ConnectorRepository) Update(ctx context.Context, c domain.Connector) er
 		PublicKey: publicKey, KeyID: text(c.KeyID),
 		EnrolledAt: optional(c.EnrolledAt), DisabledAt: optional(c.DisabledAt),
 		Revision: c.Revision, TenantID: c.TenantID, ID: c.ID,
+		AccidentalDeletionCountThreshold: int32(c.Thresholds.Count), AccidentalDeletionPercentThreshold: int32(c.Thresholds.Percent), //nolint:gosec // 検証済みの INTEGER の範囲。
 	})
 	if err != nil {
 		return err
@@ -110,6 +112,7 @@ func toDomain(row *DirectoryConnector) (domain.Connector, error) {
 		TenantID: row.TenantID, ID: row.ID, DisplayName: row.DisplayName, Status: domain.ConnectorStatus(row.Status),
 		EnrollmentTokenHash: row.EnrollmentTokenHash.String, KeyID: row.KeyID.String,
 		CreatedAt: row.CreatedAt.UTC(), Revision: row.Revision,
+		Thresholds: domain.DisableThresholds{Count: int(row.AccidentalDeletionCountThreshold), Percent: int(row.AccidentalDeletionPercentThreshold)},
 		EnrolledAt: pointer(row.EnrolledAt), LastSeenAt: pointer(row.LastSeenAt), DisabledAt: pointer(row.DisabledAt),
 	}
 	if row.EnrollmentExpiresAt.Valid {

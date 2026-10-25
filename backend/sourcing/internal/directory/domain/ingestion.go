@@ -41,14 +41,18 @@ func ParseIngestionMode(value string) (IngestionMode, error) {
 type IngestionRunStatus string
 
 const (
-	RunRunning    IngestionRunStatus = "running"
-	RunCompleted  IngestionRunStatus = "completed"
-	RunSuperseded IngestionRunStatus = "superseded"
+	RunRunning          IngestionRunStatus = "running"
+	RunAwaitingApproval IngestionRunStatus = "awaiting_approval"
+	RunApplying         IngestionRunStatus = "applying"
+	RunDiscarded        IngestionRunStatus = "discarded"
+	RunCompleted        IngestionRunStatus = "completed"
+	RunSuperseded       IngestionRunStatus = "superseded"
 )
 
 // IngestionRun は Connector が始めた一回の取り込みである。Counts は記録したバッチの結果の和で、
 // バッチを記録するときにだけ増える。
 type IngestionRun struct {
+	Protection  *IngestionProtection
 	TenantID    string
 	ID          string
 	ConnectorID string

@@ -104,6 +104,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	}
 
 	disabled, _ := enrolled.Disable(base.Add(3 * time.Second))
+	disabled.Thresholds = domain.DisableThresholds{Count: 7, Percent: 51}
 	if err := f.Repository.Update(ctx, disabled); err != nil {
 		t.Fatalf("Update to disabled: %v", err)
 	}

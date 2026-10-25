@@ -45,6 +45,7 @@ type Connector struct {
 	LastSeenAt          *time.Time
 	DisabledAt          *time.Time
 	Revision            int64
+	Thresholds          DisableThresholds
 }
 
 // NewConnector は、登録トークンのハッシュを持つ登録待ちの Connector を作る。
@@ -59,7 +60,7 @@ func NewConnector(tenantID, id, displayName, tokenHash string, now time.Time) (C
 	return Connector{
 		TenantID: tenantID, ID: id, DisplayName: name, Status: StatusAwaitingEnrollment,
 		EnrollmentTokenHash: tokenHash, EnrollmentExpiresAt: now.Add(EnrollmentLifetime),
-		CreatedAt: now, Revision: 1,
+		CreatedAt: now, Revision: 1, Thresholds: DefaultDisableThresholds(),
 	}, nil
 }
 

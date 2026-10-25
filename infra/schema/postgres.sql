@@ -1273,6 +1273,8 @@ CREATE TABLE directory_connectors (
     last_seen_at TIMESTAMPTZ,
     disabled_at TIMESTAMPTZ,
     revision BIGINT NOT NULL,
+    accidental_deletion_count_threshold INTEGER NOT NULL DEFAULT 500 CHECK (accidental_deletion_count_threshold >= 0),
+    accidental_deletion_percent_threshold INTEGER NOT NULL DEFAULT 20 CHECK (accidental_deletion_percent_threshold BETWEEN 1 AND 100),
     CONSTRAINT directory_connectors_status_valid
         CHECK (status IN ('awaiting_enrollment', 'active', 'disabled')),
     CONSTRAINT directory_connectors_display_name_length
@@ -1331,8 +1333,9 @@ CREATE TABLE directory_ingestion_runs (
     deleted INTEGER NOT NULL DEFAULT 0,
     failed INTEGER NOT NULL DEFAULT 0,
     disabled INTEGER NOT NULL DEFAULT 0,
+    protection JSONB,
     CONSTRAINT directory_ingestion_runs_mode_valid CHECK (mode IN ('full', 'incremental')),
-    CONSTRAINT directory_ingestion_runs_status_valid CHECK (status IN ('running', 'completed', 'superseded')),
+    CONSTRAINT directory_ingestion_runs_status_valid CHECK (status IN ('running', 'completed', 'superseded', 'awaiting_approval', 'applying', 'discarded')),
     CONSTRAINT directory_ingestion_runs_connector_fkey
         FOREIGN KEY (connector_id) REFERENCES directory_connectors(id) ON DELETE RESTRICT
 );
