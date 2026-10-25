@@ -46,6 +46,7 @@
 | `type` | `string`、`number`、`boolean`、`date`、`string_array` のいずれか |
 | `required` | 値を必須とするか |
 | `editable_by_user` | 本人のセルフサービスで変更できるか |
+| `write_authority` | `upstream` は上流からの書き込みを許し、`local` はローカル専用とする。省略した既存の定義は `upstream` とする |
 | `unique` | 同じテナントの削除されていないほかの User と同じ値を持てないか。設定できるのは、単一の値の `string` の属性だけである。値は保存した文字列の完全一致で比べる |
 | `visibility` | `private`、`self_readable`、`admin_readable`、`claim_exposed` のいずれか。relying party へ開示するのは `claim_exposed` だけである |
 | `claim_name`、`oidc_scope` | `visibility` が `claim_exposed` のときに使うクレーム名とスコープ |
@@ -53,6 +54,12 @@
 
 組み込みの属性のうち `on_premises_immutable_id` は、Entra のドメインフェデレーションの sourceAnchor にする値であり、`unique` で、`editable_by_user` でなく、`visibility` が `admin_readable` で、`pii` でない。
 Directory Connector の取り込みが AD の値を保存し、取り込み元でない User には管理者が値を入れる。
+
+書き込み権威は、値の最後の書き込み元ではなく、上流が今後その属性を変更できるかを表す。
+中核属性と組み込み属性は上流から更新可能とし、カスタム属性だけを管理者が `local` にできる。
+User と値の有無、ローカルでの上書き、取り込み元の解除と属性マッピングの変更によって分類を変えない。
+既存の値は出どころが不明なため、自動で `local` にしない。
+管理者が既存の定義を `local` に変えるときは、保存済みの値をローカルの判断として引き受ける。
 
 - **判断**：組み込みの属性とテナント定義の属性を、`UserAttributeDef` の一つの仕組みで扱う。管理者が設定するスキーマの形を一つに保つためである。
 - **判断**：`pii` のデフォルトを `true` にするのは、テナントの利便より開示の上限を優先する安全側のデフォルトだからである。
@@ -125,8 +132,10 @@ Directory Connector の取り込みが AD の値を保存し、取り込み元�
 
 #### REQ-IDMANAGEMENT-001 フェデレーションの JIT はパスワード資格情報を作らず有効な User を作成する
 
+- **上位の要件**：[REQ-IDMANAGEMENT-091](#外部の権威による属性の取り込み)
 - `Authentication` が上流のトークンまたは Assertion とテナントの JIT ポリシーを検証した後に `ProvisionFederatedUser` を呼んだとき、IdManagement は、対応付けたユーザー名と、任意の名前、メールアドレス、属性で、`password_hash` が空の `Active` の User を作り、`UserCreated` を発行する。
 - テナントのリソース上限を超えるか、ユーザー名またはメールアドレスが衝突するか、属性スキーマに違反する場合、IdManagement は、User を作らずにエラーを返す。
+- JIT が `write_authority=local` の属性を指定した場合、IdManagement は、属性スキーマへの違反として拒否し、User、動的な所属、使用量、イベントと通知を変えない。
 - **判断**：上流が認証の権威なので、ローカルの資格情報を設定しない。設定すると、上流で無効にした後もローカルのパスワードでサインインできる経路が残る。リソース上限、一意性、属性スキーマの検証は通常の作成と共通であり、この経路だけの近道はない。
 
 #### REQ-IDMANAGEMENT-043 フェデレーションの JIT が作る User は、ロールとパスワードの履歴を持たず、操作者に `identity-broker` を記録する
@@ -135,6 +144,16 @@ Directory Connector の取り込みが AD の値を保存し、取り込み元�
 - フェデレーションの JIT が User を作ったとき、IdManagement は、ロールを空にし、パスワードの履歴を作らない。
 - フェデレーションの JIT が User を作ったとき、IdManagement は、メールアドレスを[値オブジェクト](../data.md#値オブジェクト)の定義で正規化して保存する。
 - フェデレーションの JIT が User を作ったとき、IdManagement は、`UserCreated` の操作者に `identity-broker` を記録する。
+
+### 外部の権威による属性の取り込み
+
+#### REQ-IDMANAGEMENT-091 上流はローカル専用の属性を変更できない
+
+- SCIM、Directory Connector または JIT が属性を取り込むとき、IdManagement は、カスタム属性の `write_authority=local` をローカル専用とし、省略、`upstream` と定義のない参照キーを上流から更新可能として分類する。
+- 上流がローカル専用の属性を追加、置換または削除しようとした場合、IdManagement は、属性スキーマへの違反として拒否し、User、動的な所属、使用量、イベントと通知を変えない。
+- 上流が既存のローカル専用属性の値を保持したままほかの属性を変更したとき、IdManagement は、ローカル専用の値を保持し、通常の属性検証を通った変更を保存する。
+- 管理者が属性の書き込み権威に `local` と `upstream` 以外の値を指定した場合、IdManagement は、不正な属性定義として拒否する。
+- **判断**：現在の値に依存して分類すると、まだ存在しない User と、次の同期で変わる属性を規則保存時に扱えない。
 
 ### 一覧
 

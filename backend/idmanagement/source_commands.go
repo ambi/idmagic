@@ -43,11 +43,7 @@ func (c SourceCommands) CreateUser(ctx context.Context, user *userdomain.User) (
 }
 
 func (c SourceCommands) UpdateUser(ctx context.Context, user *userdomain.User) (*userdomain.User, error) {
-	return userusecases.UpdateUser(tenantports.WithTenantID(ctx, user.TenantID), c.users, userusecases.UpdateUserInput{
-		ActorUserID: c.actor, Sub: user.ID, PreferredUsername: &user.PreferredUsername,
-		Name: user.Name, GivenName: user.GivenName, FamilyName: user.FamilyName,
-		Email: user.Email, EmailVerified: &user.EmailVerified, Attributes: &user.Attributes, Now: user.UpdatedAt,
-	})
+	return userusecases.UpdateSourceUser(tenantports.WithTenantID(ctx, user.TenantID), c.users, c.actor, user)
 }
 
 func (c SourceCommands) CreateGroup(ctx context.Context, group *groupdomain.Group) (*groupdomain.Group, error) {

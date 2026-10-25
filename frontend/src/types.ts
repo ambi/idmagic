@@ -1032,6 +1032,7 @@ export type AttributeType = 'string' | 'number' | 'boolean' | 'date' | 'string_a
 export type AttrVisibility = 'private' | 'self_readable' | 'admin_readable' | 'claim_exposed'
 
 export type UserAttributeDef = {
+  write_authority?: 'upstream' | 'local'
   key: string
   label?: string
   type: AttributeType

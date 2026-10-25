@@ -8,6 +8,8 @@ import (
 
 	memory "github.com/ambi/idmagic/backend/idmanagement/internal/user/db_memory"
 
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/internal/group/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -22,6 +24,33 @@ func TestGetUserAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
 	}
 	if schema == nil || schema.TenantID != domain.DefaultTenantID || len(schema.Attributes) != 0 {
 		t.Fatalf("expected empty schema, got %#v", schema)
+	}
+}
+
+//spec:covers REQ-TENANCY-043: 参照中の属性は書き込み権威を変更できず、省略と upstream の相互変更は同じ分類として許す。
+func TestReferencedAttributeWriteAuthorityCannotChange(t *testing.T) {
+	ctx := context.Background()
+	repo := memory.NewTenantUserAttributeSchemaRepository()
+	groups := groupmemory.NewGroupRepository()
+	now := time.Now().UTC()
+	defs := []userdomain.UserAttributeDef{{Key: "approval", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityAdminReadable}}
+	if _, err := UpdateUserAttributeSchema(ctx, repo, groups, "acme", defs, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := groups.SaveDynamicRule(ctx, &groupdomain.DynamicGroupRule{TenantID: "acme", GroupID: "g", ReferencedAttributes: []string{"approval"}}); err != nil {
+		t.Fatal(err)
+	}
+	defs[0].WriteAuthority = userdomain.AttributeAuthorityLocal
+	if _, err := UpdateUserAttributeSchema(ctx, repo, groups, "acme", defs, now); !errors.Is(err, ErrAttributeReferencedByDynamicGroup) {
+		t.Fatalf("authority change err=%v, want referenced refusal", err)
+	}
+	stored, err := repo.FindByTenant(ctx, "acme")
+	if err != nil || stored.Attributes[0].WriteAuthority.Effective() != userdomain.AttributeAuthorityUpstream {
+		t.Fatalf("refusal changed schema: %+v, %v", stored, err)
+	}
+	defs[0].WriteAuthority = userdomain.AttributeAuthorityUpstream
+	if _, err := UpdateUserAttributeSchema(ctx, repo, groups, "acme", defs, now); err != nil {
+		t.Fatalf("equivalent classification refused: %v", err)
 	}
 }
 

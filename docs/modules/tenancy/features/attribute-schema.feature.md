@@ -23,7 +23,7 @@
 - But 既存 key と重複する key を追加する
 - Then 更新は InvalidGroupAttributeSchemaError で拒否される
 
-## Rule: REQ-TENANCY-043 動的グループの規則が参照するユーザー属性は、削除も型の変更もできない
+## Rule: REQ-TENANCY-043 動的グループの規則が参照するユーザー属性は、削除も型と書き込み権威の変更もできない
 
 ### Example: EX-TENANCY-043-01 参照されている属性を削除する
 

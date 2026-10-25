@@ -22,6 +22,8 @@ type newUser struct {
 	ActorUserID string
 	// PasswordHistoryHash が空なら、パスワードの履歴を作らない。
 	PasswordHistoryHash string
+	// FromUpstream は、ローカル専用属性への書き込みを作用の前に拒否する。
+	FromUpstream bool
 }
 
 // createUser は、User を作るすべての経路が共有する検証と作用をまとめる (REQ-IDMANAGEMENT-089)。
@@ -39,6 +41,11 @@ func createUser(ctx context.Context, deps AdminUserDeps, in newUser, now time.Ti
 		}
 		if err := userdomain.ValidateAttributes(user.Attributes, defs); err != nil {
 			return nil, errors.Join(ErrInvalidAttribute, err)
+		}
+		if in.FromUpstream {
+			if err := userdomain.ValidateUpstreamAttributeChanges(nil, user.Attributes, defs); err != nil {
+				return nil, errors.Join(ErrInvalidAttribute, err)
+			}
 		}
 	}
 	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, user.TenantID, tenancydomain.ResourceUsers, now); err != nil {

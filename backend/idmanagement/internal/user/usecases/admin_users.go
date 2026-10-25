@@ -176,6 +176,10 @@ type UpdateUserInput struct {
 }
 
 func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*userdomain.User, error) {
+	return updateUser(ctx, deps, in, false)
+}
+
+func updateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput, fromUpstream bool) (*userdomain.User, error) {
 	user, err := deps.UserRepo.FindBySub(ctx, in.Sub)
 	if err != nil {
 		return nil, err
@@ -220,6 +224,11 @@ func UpdateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput) (*u
 		}
 		if err := userdomain.ValidateAttributes(*in.Attributes, defs); err != nil {
 			return nil, errors.Join(ErrInvalidAttribute, err)
+		}
+		if fromUpstream {
+			if err := userdomain.ValidateUpstreamAttributeChanges(user.Attributes, *in.Attributes, defs); err != nil {
+				return nil, errors.Join(ErrInvalidAttribute, err)
+			}
 		}
 		updated.Attributes = *in.Attributes
 		changed = append(changed, changedAttributeFields(user.Attributes, updated.Attributes)...)

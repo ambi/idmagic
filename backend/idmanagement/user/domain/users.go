@@ -250,6 +250,7 @@ type UserAttributeDef struct {
 	MultiValued    bool                    `json:"multi_valued"`
 	Required       bool                    `json:"required"`
 	EditableByUser bool                    `json:"editable_by_user"`
+	WriteAuthority AttributeWriteAuthority `json:"write_authority,omitempty"`
 	// Unique は、同じテナントの削除されていないほかの User と同じ値を持てないことを表す。
 	// 単一の値の string の属性だけに付けられ、保存した文字列の完全一致で比べる。
 	Unique     bool                     `json:"unique"`
@@ -282,6 +283,12 @@ var userAttributeDefSchema = z.Struct(z.Shape{
 })
 
 func (d UserAttributeDef) Validate() error {
+	if d.WriteAuthority != "" && d.WriteAuthority != AttributeAuthorityUpstream && d.WriteAuthority != AttributeAuthorityLocal {
+		return fmt.Errorf("attribute %q: invalid write authority %q", d.Key, d.WriteAuthority)
+	}
+	if d.WriteAuthority == AttributeAuthorityLocal && coreUserAttribute(d.Key) {
+		return fmt.Errorf("attribute %q: core attributes cannot be local-only", d.Key)
+	}
 	if err := spec.Validate(userAttributeDefSchema, &d); err != nil {
 		return err
 	}

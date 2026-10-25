@@ -186,7 +186,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-064 | Spoofing | 署名が不正、または期限切れのアテステーションが受理される | WorkloadIdentity | REQ-WORKLOADIDENTITY-003、REQ-WORKLOADIDENTITY-004 | `covered` |
 | THREAT-065 | Elevation of privilege | 主体が複数の関連付けに一致し、意図しない Agent として扱われる | WorkloadIdentity | REQ-WORKLOADIDENTITY-005、REQ-WORKLOADIDENTITY-006 | `covered` |
 | THREAT-066 | Tampering | 取り込みが読み取り専用属性や未対応の操作で内部状態を壊す | Sourcing | REQ-SOURCING-004、RFC7644-PATCH | `covered` |
-| THREAT-067 | Elevation of privilege | 上流が書き込んだ属性が動的な所属を通じて実効ロールへ波及する | Sourcing, IdManagement | — | `planned` |
+| THREAT-067 | Elevation of privilege | 上流が書き込んだ属性が動的な所属を通じて実効ロールへ波及する | Sourcing, IdManagement | REQ-IDMANAGEMENT-091（ローカル専用属性の保護のみ） | `planned` |
 | THREAT-083 | Elevation of privilege | 上流が同期したグループ所属が、動的な規則を経ずに実効ロールを直接動かす | Sourcing, IdManagement | REQ-SOURCING-005 | `planned` |
 
 ## 下流の外部受信者

@@ -70,7 +70,7 @@ func handleUpdateUserAttributeSchema(d Deps, c *echo.Context) error {
 	)
 	if err != nil {
 		if errors.Is(err, userusecases.ErrAttributeReferencedByDynamicGroup) {
-			return support.WriteProblem(c, http.StatusConflict, "attribute_referenced_by_dynamic_group", "An attribute referenced by a dynamic group rule cannot be deleted or have its type changed.")
+			return support.WriteProblem(c, http.StatusConflict, "attribute_referenced_by_dynamic_group", "An attribute referenced by a dynamic group rule cannot be deleted or have its type or write authority changed.")
 		}
 		if errors.Is(err, userusecases.ErrInvalidUserAttributeSchema) {
 			return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_attribute_schema", "The attribute definition is invalid.")

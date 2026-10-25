@@ -490,7 +490,7 @@ model UpdateTenantUserAttributeSchemaError409 {
   @body body: UpdateTenantUserAttributeSchemaError409Body;
 }
 
-@doc("テナントの管理者が、カスタム属性の定義を丸ごと置き換える。対象を `context.tenant_id` に固定して各 UserAttributeDef を検証し、組み込みの属性と衝突するキーと重複するキーを拒否する。DynamicGroupRule がまだ参照しているキーは、削除も型の変更もできない。扱うのは定義だけで、値は保持しない。")
+@doc("テナントの管理者が、カスタム属性の定義を丸ごと置き換える。対象を `context.tenant_id` に固定して各 UserAttributeDef を検証し、組み込みの属性と衝突するキーと重複するキーを拒否する。DynamicGroupRule がまだ参照しているキーは、削除も型と書き込み権威の変更もできない。扱うのは定義だけで、値は保持しない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantUserAttributeSchema")
 @route("/api/admin/v1/tenant/user-attribute-schema")

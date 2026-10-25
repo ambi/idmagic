@@ -38,6 +38,7 @@ func ProvisionFederatedUser(
 			Name: in.Name, Email: normalizeEmail(in.Email), EmailVerified: in.EmailVerified,
 			Roles: []string{}, Attributes: in.Attributes,
 		},
-		ActorUserID: "identity-broker",
+		ActorUserID:  "identity-broker",
+		FromUpstream: true,
 	}, idmusecases.NormalizedNow(in.Now))
 }

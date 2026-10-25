@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -78,14 +77,14 @@ func protectReferencedUserAttributes(
 	if err != nil {
 		return err
 	}
-	nextTypes := make(map[string]idmdomain.AttributeType, len(defs))
+	nextDefs := make(map[string]userdomain.UserAttributeDef, len(defs))
 	for _, def := range defs {
-		nextTypes[def.Key] = def.Type
+		nextDefs[def.Key] = def
 	}
 	changed := map[string]bool{}
 	if existing != nil {
 		for _, def := range existing.Attributes {
-			if next, ok := nextTypes[def.Key]; !ok || next != def.Type {
+			if next, ok := nextDefs[def.Key]; !ok || next.Type != def.Type || next.WriteAuthority.Effective() != def.WriteAuthority.Effective() {
 				changed[def.Key] = true
 			}
 		}

@@ -10,8 +10,14 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	"github.com/ambi/idmagic/backend/idmanagement/internal/user/testing_contract"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
+
+//spec:covers REQ-IDMANAGEMENT-091: メモリに保存してもローカル専用と従来の省略値を区別できる。
+func TestAttributeWriteAuthorityRoundTrip(t *testing.T) {
+	testing_contract.AttributeWriteAuthorityRoundTrip(t, NewTenantUserAttributeSchemaRepository(), "acme")
+}
 
 // 実装がポートを満たすことをコンパイル時に保証する。
 var _ userschemaports.TenantUserAttributeSchemaRepository = (*TenantUserAttributeSchemaRepository)(nil)

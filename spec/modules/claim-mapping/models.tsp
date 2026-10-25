@@ -25,6 +25,8 @@ model UserAttributeDef {
   required: boolean = false;
   @doc("ユーザーが自身のセルフサービスのプロフィールからこの属性を編集できるかどうか。")
   editable_by_user: boolean = false;
+  @doc("上流からの書き込みを許す範囲。省略と既存の定義は upstream とし、local は管理者が明示的に信頼するローカル専用のカスタム属性である。SCIM、Directory Connector と JIT は local の値を追加、変更、削除できない。値の過去の書き込み元を証明する履歴ではない。動的規則が参照する属性の分類は変更できない。")
+  write_authority?: "upstream" | "local";
   @doc("同じテナントの削除されていないほかの User と同じ値を持てないかどうか。true にできるのは、`multi_valued` でない `string` の属性だけである。値は保存した文字列の完全一致で比べる。")
   unique: boolean = false;
   @doc("属性をクレームとして発行するときのクレーム名。省略するとキーそのものをクレーム名にする。")
