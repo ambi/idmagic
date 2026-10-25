@@ -220,7 +220,7 @@ model AttributeValue {
   string?: string;
   number?: float64;
   boolean?: boolean;
-  date?: string;
+  date?: plainDate;
   string_array?: string[];
 }
 
