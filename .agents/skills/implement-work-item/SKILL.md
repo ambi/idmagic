@@ -96,7 +96,7 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 
 テストの引用は[規範 ID の参照](../../../docs/development/specification-first-workflow.md#規範-id-をテストから参照する)に従う。
 `//verify:operation` を追加または変更したら `mise run check-operation-references` で形式と配置を局所検査する。
-手書きの解析、デコード、分割、正規化、比較には[プロパティテストとファジング](../../../docs/development/testing.md#プロパティテストとファジング)を適用する。
+手書きの解析、デコード、分割、正規化、比較では、[プロパティテストとファジング](../../../docs/development/testing.md#プロパティテストとファジング)から費用対効果のある検査を選ぶ。
 テスト補助を含むモジュール間の依存を追加したら、集約検査へ進む前に `mise run check-boundaries` を局所検査に選ぶ。
 各タスクが GREEN になったら、[チェックポイント](../../../docs/development/specification-first-workflow.md#チェックポイントと最終コミット)を作る。
 
@@ -105,8 +105,8 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 [現在状態の文書](../../../docs/development/specification-first-workflow.md#現在状態の文書)の条件に当たれば `update-design` を使う。
 境界を変える場合は、手順 4 で記録した比較に基づいて更新する。
 
-選んだ故障について、[ミューテーションテスト](../../../docs/development/testing.md#ミューテーションテスト)で変更耐性を検査する。
-変更した Go には `mise run test-go-mutation -- <package-directory>` を使い、ツールで表現できない配線の切断などだけを手で注入する。
+変異テストと fuzz テストの対象、実行量、終了条件は、[追加検査の費用対効果](../../../docs/development/testing.md#追加検査の費用対効果)で選ぶ。
+選んだ Go の故障には `mise run test-go-mutation -- <package-directory>` または少数の手動の故障注入を使い、変更した全パッケージへの一律の実行は求めない。
 比較基準、変更行と既存の全体調査の選択、生存変異の到達経路、並行時の時間超過の扱いは、同じ節から選ぶ。
 生存した変異を読み、未使用の補完、等価な変異、観測の不足を分け、仕様にない振る舞いがあれば手順 5 の分類へ戻る。
 
