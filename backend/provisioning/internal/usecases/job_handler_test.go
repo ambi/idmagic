@@ -171,7 +171,17 @@ func TestProvisioningTaskHandler_QuarantineNotifiesTheNotificationEmailOnce(t *t
 		t.Fatalf("Register() error = %v", err)
 	}
 
-	failTerminally(t, deps, taskRepo, 3)
+	failTerminally(t, deps, taskRepo, 2)
+	held := &domain.ProvisioningTask{
+		ID: idFor(2), TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
+		SourceVersion: 3, Operation: domain.OperationCreate, Status: domain.TaskInFlight, JobID: new("job-1"), CreatedAt: quarantinedAt, UpdatedAt: quarantinedAt,
+	}
+	if _, err := taskRepo.Save(t.Context(), held); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := usecases.ProvisioningTaskHandler(deps)(t.Context(), newTestJob(t, held.ID, testJobMaxAttempts)); err != nil {
+		t.Fatalf("quarantined task should be held: %v", err)
+	}
 
 	want := []notificationports.Notification{{
 		TenantID: testTenantID,
@@ -298,8 +308,21 @@ func TestProvisioningTaskHandler_TerminalFailureEmitsFailedThenQuarantinedOnce(t
 			ID: idFor(i), TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
 			SourceVersion: int64(i + 1), Operation: domain.OperationCreate, Status: domain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
 		}
+		if i == 2 {
+			d.JobID = new("job-1")
+		}
 		if _, err := taskRepo.Save(context.Background(), d); err != nil {
 			t.Fatalf("Save() error = %v", err)
+		}
+		if i == 2 {
+			if _, err := handler(t.Context(), newTestJob(t, d.ID, testJobMaxAttempts)); err != nil {
+				t.Fatalf("quarantined task should not fail terminally: %v", err)
+			}
+			stored, err := taskRepo.Find(t.Context(), testTenantID, d.ID)
+			if err != nil || stored.Status != domain.TaskPending {
+				t.Fatalf("held task=%+v error=%v", stored, err)
+			}
+			continue
 		}
 		if _, err := handler(context.Background(), newTestJob(t, d.ID, 1)); err == nil {
 			t.Fatal("handler() non-terminal attempt should return the downstream error")
@@ -309,7 +332,7 @@ func TestProvisioningTaskHandler_TerminalFailureEmitsFailedThenQuarantinedOnce(t
 		}
 	}
 
-	wantTypes := []string{"UserProvisioningFailed", "UserProvisioningFailed", "ConnectionQuarantined", "UserProvisioningFailed"}
+	wantTypes := []string{"UserProvisioningFailed", "UserProvisioningFailed", "ConnectionQuarantined"}
 	gotTypes := make([]string, 0, len(*emitted))
 	for _, e := range *emitted {
 		gotTypes = append(gotTypes, e.event.EventType())

@@ -219,14 +219,14 @@ func TestProvisioningTaskRepository_ListUnenqueued_OnlyPendingWithoutJob(t *test
 	_, _ = repo.Save(ctx, pending)
 	withJob := testTask("user-2", 1)
 	_, _ = repo.Save(ctx, withJob)
-	if _, err := repo.AttachJob(ctx, "tenant-a", withJob.ID, "job-1"); err != nil {
+	if _, err := repo.AttachJob(ctx, "tenant-a", withJob.ID, "job-1", nil); err != nil {
 		t.Fatalf("AttachJob() error = %v", err)
 	}
 	succeeded := testTask("user-3", 1)
 	succeeded.Status = domain.TaskSucceeded
 	_, _ = repo.Save(ctx, succeeded)
 
-	unenqueued, err := repo.ListUnenqueued(ctx, 10)
+	unenqueued, err := repo.ListUnenqueued(ctx, time.Time{}, "", 10)
 	if err != nil {
 		t.Fatalf("ListUnenqueued() error = %v", err)
 	}
@@ -240,11 +240,11 @@ func TestProvisioningTaskRepository_AttachJob_RejectsAlreadyAttached(t *testing.
 	ctx := context.Background()
 	d := testTask("user-1", 1)
 	_, _ = repo.Save(ctx, d)
-	attached, err := repo.AttachJob(ctx, "tenant-a", d.ID, "job-1")
+	attached, err := repo.AttachJob(ctx, "tenant-a", d.ID, "job-1", nil)
 	if err != nil || !attached {
 		t.Fatalf("first AttachJob() = (%v, %v), want (true, nil)", attached, err)
 	}
-	attached, err = repo.AttachJob(ctx, "tenant-a", d.ID, "job-2")
+	attached, err = repo.AttachJob(ctx, "tenant-a", d.ID, "job-2", nil)
 	if err != nil {
 		t.Fatalf("second AttachJob() error = %v", err)
 	}
@@ -276,7 +276,7 @@ func TestProvisioningTaskRepository_RetryDeadLetter_OnlyFromDeadLetter(t *testin
 	ctx := context.Background()
 	d := testTask("user-1", 1)
 	_, _ = repo.Save(ctx, d)
-	if _, err := repo.AttachJob(ctx, "tenant-a", d.ID, "job-1"); err != nil {
+	if _, err := repo.AttachJob(ctx, "tenant-a", d.ID, "job-1", nil); err != nil {
 		t.Fatalf("AttachJob() error = %v", err)
 	}
 

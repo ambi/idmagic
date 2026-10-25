@@ -39,13 +39,14 @@ type Querier interface {
 	ListProvisioningTasksByConnectionPageBefore(ctx context.Context, arg ListProvisioningTasksByConnectionPageBeforeParams) ([]*ProvisioningTask, error)
 	ListRemoteResourceLinksByConnection(ctx context.Context, arg ListRemoteResourceLinksByConnectionParams) ([]*ProvisioningRemoteLink, error)
 	ListTenantsWithActiveProvisioningConnections(ctx context.Context) ([]string, error)
-	ListUnenqueuedProvisioningTasks(ctx context.Context, limit int32) ([]*ProvisioningTask, error)
+	ListUnenqueuedProvisioningTasks(ctx context.Context, arg ListUnenqueuedProvisioningTasksParams) ([]*ProvisioningTask, error)
 	// インクリメンタル同期が User ごとに読む、確定していないか失敗したプロビジョニングタスク。
 	ListUnsettledProvisioningTasksByConnection(ctx context.Context, arg ListUnsettledProvisioningTasksByConnectionParams) ([]*ProvisioningTask, error)
 	// 予約の遷移とプロビジョニングタスクの挿入を一文で行い、取消と競合したときにプロビジョニングタスクだけが残らないようにする。
 	// 結果は遷移した予約の件数（0 または 1）である。
 	MaterializeProvisioningScheduledDeprovision(ctx context.Context, arg MaterializeProvisioningScheduledDeprovisionParams) (int64, error)
 	RetryDeadLetterProvisioningTask(ctx context.Context, arg RetryDeadLetterProvisioningTaskParams) (int64, error)
+	SuspendProvisioningTaskForQuarantine(ctx context.Context, arg SuspendProvisioningTaskForQuarantineParams) (int64, error)
 	TallyProvisioningFullResync(ctx context.Context, arg TallyProvisioningFullResyncParams) (*TallyProvisioningFullResyncRow, error)
 	UpdateProvisioningConnection(ctx context.Context, arg UpdateProvisioningConnectionParams) error
 	UpdateProvisioningConnectionWithSecret(ctx context.Context, arg UpdateProvisioningConnectionWithSecretParams) error

@@ -299,6 +299,9 @@ func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicatio
 	if conn == nil {
 		return nil, ErrConnectionNotFound
 	}
+	if conn.Health == domain.HealthQuarantined {
+		return nil, ErrConnectionQuarantined
+	}
 	if sourceType == domain.SourceTypeUser {
 		ok, err := inScope(ctx, deps.captureDeps(), *conn, tenantID, sourceID)
 		if err != nil {
@@ -335,6 +338,9 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 	}
 	if conn == nil {
 		return 0, ErrConnectionNotFound
+	}
+	if conn.Health == domain.HealthQuarantined {
+		return 0, ErrConnectionQuarantined
 	}
 	var subjectIDs []string
 	if conn.Scope == domain.ScopeAllUsers {

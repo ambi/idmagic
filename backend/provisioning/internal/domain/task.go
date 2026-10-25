@@ -76,6 +76,7 @@ const (
 	EventUserDeprovisioned       ProvisioningTaskLifecycleEvent = "UserDeprovisioned"
 	EventGroupPushed             ProvisioningTaskLifecycleEvent = "GroupPushed"
 	EventUserProvisioningFailed  ProvisioningTaskLifecycleEvent = "UserProvisioningFailed"
+	EventTaskQuarantined         ProvisioningTaskLifecycleEvent = "隔離による保留"
 )
 
 type provisioningTaskTransition struct {
@@ -92,6 +93,7 @@ var provisioningTaskTransitions = []provisioningTaskTransition{
 	{TaskInFlight, EventUserDeprovisioned, TaskSucceeded},
 	{TaskInFlight, EventGroupPushed, TaskSucceeded},
 	{TaskInFlight, EventUserProvisioningFailed, TaskDeadLetter},
+	{TaskInFlight, EventTaskQuarantined, TaskPending},
 }
 
 // TransitionProvisioningTaskLifecycle applies event to from and returns the
@@ -150,11 +152,8 @@ func (d ProvisioningTask) Validate() error {
 	return nil
 }
 
-// IdempotencyKey computes the (tenant_id, connection_id, source_type, source_id,
-// source_version) idempotency key (docs/modules/provisioning/
-// models.ProvisioningTask). Repositories use it as the unique constraint, and
-// dispatchers use it as the Jobs EnqueueJob dedup_key (mirroring IdGovernance's
-// "lifecycle-workflow-run:{run_id}" convention).
+// IdempotencyKey はタスクの一意性を定めるキーを返す。
+// Jobs の重複排除にも使い、隔離による保留後の投入では前のジョブの ID を添える。
 func (d ProvisioningTask) IdempotencyKey() string {
 	return fmt.Sprintf("provisioning-task:%s:%s:%s:%s:%d", d.TenantID, d.ConnectionID, d.SourceType, d.SourceID, d.SourceVersion)
 }

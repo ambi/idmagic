@@ -1586,7 +1586,7 @@ CREATE TABLE provisioning_tasks (
         UNIQUE (tenant_id, connection_id, source_type, source_id, source_version)
 );
 
-CREATE INDEX provisioning_tasks_unenqueued_idx ON provisioning_tasks (created_at) WHERE status = 'pending' AND job_id IS NULL;
+CREATE INDEX provisioning_tasks_unenqueued_idx ON provisioning_tasks (created_at, id) WHERE status = 'pending';
 -- id DESC tie-break backs ListProvisioningTasks keyset pagination
 -- (wi-159): created_at alone isn't unique enough for a stable cursor.
 CREATE INDEX provisioning_tasks_connection_idx ON provisioning_tasks (connection_id, created_at DESC, id DESC);

@@ -66,6 +66,8 @@ type provisioningTaskParams struct {
 // health, not one User's missing attribute.
 //
 // プロビジョニングタスクを succeeded または dead_letter として保存した後、それが属するフル同期の完了を判定する。
+// 隔離中はタスクを pending に戻してからジョブだけを完了し、成功と失敗の記録を行わない。
+// 保留済みか別のジョブへ関連付けたタスクの古いジョブは、保存も送信も行わず終了する。
 func ProvisioningTaskHandler(deps JobHandlerDeps) jobsports.Handler {
 	now := deps.Now
 	if now == nil {
@@ -76,7 +78,18 @@ func ProvisioningTaskHandler(deps JobHandlerDeps) jobsports.Handler {
 		if err := json.Unmarshal(job.Params, &params); err != nil {
 			return nil, err
 		}
+		task, err := deps.TaskRepo.Find(ctx, job.TenantID, params.TaskID)
+		if err != nil {
+			return nil, err
+		}
+		if task != nil && task.JobID != nil && (task.Status == domain.TaskPending || *task.JobID != job.ID) {
+			return nil, nil
+		}
 		event, execErr := ExecuteTask(ctx, deps.ExecuteTaskDeps, job.TenantID, params.TaskID, now())
+		if errors.Is(execErr, ErrConnectionQuarantined) {
+			_, err := deps.TaskRepo.SuspendForQuarantine(ctx, job.TenantID, params.TaskID, job.ID)
+			return nil, err
+		}
 		if execErr == nil {
 			if err := resetConsecutiveFailures(ctx, deps, job.TenantID, params.TaskID); err != nil {
 				return nil, err
@@ -91,7 +104,7 @@ func ProvisioningTaskHandler(deps JobHandlerDeps) jobsports.Handler {
 		if !failsClosed && job.Attempts < job.MaxAttempts {
 			return nil, execErr // non-terminal: Jobs will retry, task stays in_flight
 		}
-		task, err := deadLetter(ctx, deps, job.TenantID, params.TaskID, execErr.Error(), now())
+		task, err = deadLetter(ctx, deps, job.TenantID, params.TaskID, execErr.Error(), now())
 		if err != nil {
 			return nil, err
 		}

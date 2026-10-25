@@ -9,6 +9,7 @@ import (
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
+//spec:covers REQ-PROVISIONING-020: 保留はジョブとテナントを照合して保存され、再投入後の古いジョブでは変更できない。
 func TestPersistenceContract(t *testing.T) {
 	testing_contract.Run(t, func(t *testing.T) testing_contract.Fixture {
 		t.Helper()
@@ -17,7 +18,7 @@ func TestPersistenceContract(t *testing.T) {
 		tenantB := pgfixtures.SeedTenant(t, db)
 		application := seedApplication(t, db, tenantA.ID)
 		return testing_contract.Fixture{
-			Connections: &postgres.ProvisioningConnectionRepository{Pool: db}, TenantA: tenantA.ID, TenantB: tenantB.ID,
+			Connections: &postgres.ProvisioningConnectionRepository{Pool: db}, Tasks: &postgres.ProvisioningTaskRepository{Pool: db}, TenantA: tenantA.ID, TenantB: tenantB.ID,
 			Application: application.ID, CredentialID: pgfixtures.NewUUID(t), Now: pgfixtures.TestClock(),
 		}
 	})

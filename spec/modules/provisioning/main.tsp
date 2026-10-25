@@ -255,6 +255,7 @@ model ProvisionOnDemandError404 {
 
 union ProvisionOnDemandError409Body {
   IdMagic.Contract.ProvisioningSubjectNotInScopeError,
+  IdMagic.Contract.ProvisioningConnectionQuarantinedError,
 }
 
 model ProvisionOnDemandError409 {
@@ -305,6 +306,12 @@ model StartFullResyncHttpResponse {
   enqueued_count: int64;
 }
 
+model StartFullResyncError409 {
+  @statusCode statusCode: 409;
+  @header("Content-Type") contentType: "application/problem+json";
+  @body body: IdMagic.Contract.ProvisioningConnectionQuarantinedError;
+}
+
 model StartFullResyncSuccess_200 {
   @statusCode statusCode: 200;
   @body body: StartFullResyncHttpResponse;
@@ -339,7 +346,7 @@ model StartFullResyncError403 {
 @route("/api/admin/v1/applications/{id}/provisioning/full-resync")
 @post
 op StartFullResync(
-  @path id: string,): StartFullResyncSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | StartFullResyncError404 | StartFullResyncError403;
+  @path id: string,): StartFullResyncSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | StartFullResyncError404 | StartFullResyncError403 | StartFullResyncError409;
 
 model ListProvisioningTasksHttpResponse {
   tasks: IdMagic.Contract.ProvisioningTask[];

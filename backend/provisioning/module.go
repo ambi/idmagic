@@ -90,7 +90,7 @@ func (e jobEnqueuer) EnqueueProvisioningTask(ctx context.Context, tenantID, dedu
 // ProvisioningTaskStarted; it is a parameter rather than an optional field so
 // that the worker cannot build the dispatcher without deciding where it goes.
 func (m Module) DispatcherDeps(jobs jobsports.Enqueuer, emit func(spec.DomainEvent)) usecases.DispatcherDeps {
-	return usecases.DispatcherDeps{TaskRepo: m.TaskRepo, Enqueuer: jobEnqueuer{Jobs: jobs}, Emit: emit}
+	return usecases.DispatcherDeps{TaskRepo: m.TaskRepo, ConnectionRepo: m.ConnectionRepo, Enqueuer: jobEnqueuer{Jobs: jobs}, Emit: emit}
 }
 
 // ReconcileDeps はインクリメンタル同期の依存を組み立てる。User と割り当ては、インクリメンタル同期があるべき状態として読む記録の正である。

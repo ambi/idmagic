@@ -13,17 +13,25 @@ import (
 )
 
 const attachProvisioningTaskJob = `-- name: AttachProvisioningTaskJob :execrows
-UPDATE provisioning_tasks SET job_id=$3,status='in_flight',updated_at=now() WHERE tenant_id=$1 AND id=$2 AND job_id IS NULL AND status='pending'
+UPDATE provisioning_tasks SET job_id=$3,status='in_flight',updated_at=now()
+WHERE tenant_id=$1 AND id=$2 AND status='pending'
+  AND job_id IS NOT DISTINCT FROM $4::uuid
 `
 
 type AttachProvisioningTaskJobParams struct {
-	TenantID string
-	ID       string
-	JobID    pgtype.UUID
+	TenantID      string
+	ID            string
+	JobID         pgtype.UUID
+	PreviousJobID pgtype.UUID
 }
 
 func (q *Queries) AttachProvisioningTaskJob(ctx context.Context, arg AttachProvisioningTaskJobParams) (int64, error) {
-	result, err := q.db.Exec(ctx, attachProvisioningTaskJob, arg.TenantID, arg.ID, arg.JobID)
+	result, err := q.db.Exec(ctx, attachProvisioningTaskJob,
+		arg.TenantID,
+		arg.ID,
+		arg.JobID,
+		arg.PreviousJobID,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -1027,11 +1035,19 @@ func (q *Queries) ListTenantsWithActiveProvisioningConnections(ctx context.Conte
 
 const listUnenqueuedProvisioningTasks = `-- name: ListUnenqueuedProvisioningTasks :many
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_tasks WHERE status='pending' AND job_id IS NULL ORDER BY created_at LIMIT $1
+FROM provisioning_tasks WHERE status='pending'
+  AND ($1::timestamptz IS NULL OR (created_at, id) > ($1::timestamptz, $2::uuid))
+ORDER BY created_at ASC, id ASC LIMIT $3
 `
 
-func (q *Queries) ListUnenqueuedProvisioningTasks(ctx context.Context, limit int32) ([]*ProvisioningTask, error) {
-	rows, err := q.db.Query(ctx, listUnenqueuedProvisioningTasks, limit)
+type ListUnenqueuedProvisioningTasksParams struct {
+	AfterCreatedAt pgtype.Timestamptz
+	AfterID        string
+	PageLimit      int32
+}
+
+func (q *Queries) ListUnenqueuedProvisioningTasks(ctx context.Context, arg ListUnenqueuedProvisioningTasksParams) ([]*ProvisioningTask, error) {
+	rows, err := q.db.Query(ctx, listUnenqueuedProvisioningTasks, arg.AfterCreatedAt, arg.AfterID, arg.PageLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -1159,6 +1175,25 @@ type RetryDeadLetterProvisioningTaskParams struct {
 
 func (q *Queries) RetryDeadLetterProvisioningTask(ctx context.Context, arg RetryDeadLetterProvisioningTaskParams) (int64, error) {
 	result, err := q.db.Exec(ctx, retryDeadLetterProvisioningTask, arg.TenantID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const suspendProvisioningTaskForQuarantine = `-- name: SuspendProvisioningTaskForQuarantine :execrows
+UPDATE provisioning_tasks SET status='pending',updated_at=now()
+WHERE tenant_id=$1 AND id=$2 AND job_id=$3 AND status='in_flight'
+`
+
+type SuspendProvisioningTaskForQuarantineParams struct {
+	TenantID string
+	ID       string
+	JobID    pgtype.UUID
+}
+
+func (q *Queries) SuspendProvisioningTaskForQuarantine(ctx context.Context, arg SuspendProvisioningTaskForQuarantineParams) (int64, error) {
+	result, err := q.db.Exec(ctx, suspendProvisioningTaskForQuarantine, arg.TenantID, arg.ID, arg.JobID)
 	if err != nil {
 		return 0, err
 	}

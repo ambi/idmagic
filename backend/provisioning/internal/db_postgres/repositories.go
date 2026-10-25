@@ -607,8 +607,18 @@ func (r *ProvisioningTaskRepository) ListPageBeforeByConnection(ctx context.Cont
 	return out, nil
 }
 
-func (r *ProvisioningTaskRepository) ListUnenqueued(ctx context.Context, limit int) ([]*domain.ProvisioningTask, error) {
-	rows, err := New(r.Pool).ListUnenqueuedProvisioningTasks(ctx, int32(limit)) //nolint:gosec // safe downcast
+func (r *ProvisioningTaskRepository) ListUnenqueued(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningTask, error) {
+	var cursor pgtype.Timestamptz
+	if !afterCreatedAt.IsZero() {
+		cursor = pgTimestamptz(&afterCreatedAt)
+	}
+	if afterID == "" {
+		afterID = "00000000-0000-0000-0000-000000000000"
+	}
+	rows, err := New(r.Pool).ListUnenqueuedProvisioningTasks(ctx, ListUnenqueuedProvisioningTasksParams{
+		AfterCreatedAt: cursor, AfterID: afterID,
+		PageLimit: int32(limit), //nolint:gosec // 呼び出し元は正の小さなバッチ件数を渡す。
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -623,11 +633,12 @@ func (r *ProvisioningTaskRepository) ListUnenqueued(ctx context.Context, limit i
 	return out, nil
 }
 
-func (r *ProvisioningTaskRepository) AttachJob(ctx context.Context, tenantID, taskID, jobID string) (bool, error) {
+func (r *ProvisioningTaskRepository) AttachJob(ctx context.Context, tenantID, taskID, jobID string, previousJobID *string) (bool, error) {
 	affected, err := New(r.Pool).AttachProvisioningTaskJob(ctx, AttachProvisioningTaskJobParams{
-		TenantID: tenantID,
-		ID:       taskID,
-		JobID:    pgUUIDVal(jobID),
+		TenantID:      tenantID,
+		ID:            taskID,
+		JobID:         pgUUIDVal(jobID),
+		PreviousJobID: pgUUID(previousJobID),
 	})
 	return affected == 1, err
 }
@@ -639,6 +650,13 @@ func (r *ProvisioningTaskRepository) UpdateStatus(ctx context.Context, tenantID,
 		Status:    string(status),
 		LastError: pgText(lastError),
 	})
+}
+
+func (r *ProvisioningTaskRepository) SuspendForQuarantine(ctx context.Context, tenantID, taskID, jobID string) (bool, error) {
+	affected, err := New(r.Pool).SuspendProvisioningTaskForQuarantine(ctx, SuspendProvisioningTaskForQuarantineParams{
+		TenantID: tenantID, ID: taskID, JobID: pgUUIDVal(jobID),
+	})
+	return affected == 1, err
 }
 
 func (r *ProvisioningTaskRepository) RetryDeadLetter(ctx context.Context, tenantID, taskID string) (bool, error) {

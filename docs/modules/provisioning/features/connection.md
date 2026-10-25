@@ -50,6 +50,7 @@
 
 - 接続の適用範囲の中の主体を指定して On-Demand Provision を要求されたとき、Provisioning は、直ちに `pending` のプロビジョニングタスクを作り、201 とタスクを返す。
 - 適用範囲の外の主体（`scope=assigned_only` で割り当てのない User）を指定された場合、Provisioning は、409 と `provisioning_conflict` で拒否し、タスクを作らない。
+- 接続が隔離中の間、On-Demand Provision を要求された場合、Provisioning は、409 と `provisioning_conflict` で拒否し、タスクを作らない。
 - **例**：EX-PROVISIONING-012-01、EX-PROVISIONING-012-02
 
 ### 管理者によるフル同期
@@ -59,6 +60,7 @@
 - 管理者がフル同期を始めたとき、Provisioning は、適用範囲の中のすべての主体にプロビジョニングタスクを作り、200 と作った件数を返す。
 - フル同期のすべてのタスクが終端の状態に達したとき、Provisioning は、`FullResyncCompleted` を一度だけ発行する。
 - 適用範囲の中に主体がない間、管理者がフル同期を始めたとき、Provisioning は、直ちに `FullResyncCompleted` を発行する。
+- 接続が隔離中の間、フル同期を要求された場合、Provisioning は、409 と `provisioning_conflict` で拒否し、フル同期とタスクを作らず、`FullResyncCompleted` を発行しない。
 - **例**：EX-PROVISIONING-013-01
 
 ### 管理者による資格情報のローテーション

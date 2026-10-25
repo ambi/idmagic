@@ -18,7 +18,7 @@ func isNotFound(err error) bool {
 }
 
 func isConflict(err error) bool {
-	return errors.Is(err, ports.ErrConnectionAlreadyExists) || errors.Is(err, usecases.ErrTaskNotRetryable) || errors.Is(err, usecases.ErrSubjectNotInScope)
+	return errors.Is(err, ports.ErrConnectionAlreadyExists) || errors.Is(err, usecases.ErrTaskNotRetryable) || errors.Is(err, usecases.ErrSubjectNotInScope) || errors.Is(err, usecases.ErrConnectionQuarantined)
 }
 
 type credentialRequest struct {

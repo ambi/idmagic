@@ -19,7 +19,10 @@
 
 ### ProvisioningTaskLifecycle
 
-`ProvisioningTask.status` の状態遷移を表す。`pending` で作成し、ディスパッチャーが Jobs の `Job` を関連付けると `in_flight` に遷移する。Jobs 側で再試行している間は `in_flight` のまま保持し、`succeeded` または `dead_letter` で終了する。管理者が `dead_letter` のタスクを再試行すると、同じタスクを `job_id` のない `pending` に戻す。遷移の表の管理者による再試行は遷移の契機の名前であり、ドメインイベントとしては発行しない。
+`ProvisioningTask.status` の状態遷移を表す。`pending` で作成し、ディスパッチャーが Jobs の `Job` を関連付けると `in_flight` に遷移する。Jobs 側で再試行している間は `in_flight` のまま保持し、`succeeded` または `dead_letter` で終了する。
+実行時に隔離を観測した場合は、前の `job_id` を保った `pending` に戻し、解除後の再投入を待つ。
+管理者が `dead_letter` のタスクを再試行すると、同じタスクを `job_id` のない `pending` に戻す。
+遷移の表の管理者による再試行と隔離による保留は遷移の契機の名前であり、ドメインイベントとしては発行しない。
 
 | State | Kind | Meaning |
 |---|---|---|
@@ -35,14 +38,15 @@
 | in_flight | UserDeprovisioned | `source_type == 'user'` | succeeded |  |
 | in_flight | GroupPushed | `source_type == 'group'` | succeeded |  |
 | in_flight | UserProvisioningFailed | — | dead_letter |  |
+| in_flight | 隔離による保留 | — | pending | 前の job_id を保持する |
 | dead_letter | 管理者による再試行 | — | pending |  |
 
-| State | ディスパッチ | 試行の成功 | 試行の失敗 | 管理者による再試行 |
-|---|---|---|---|---|
-| pending | → in_flight | 何もしない | 何もしない | 拒否：409 provisioning_conflict |
-| in_flight | 何もしない | → succeeded | 何もしない（一時的な失敗で、試行が上限未満）<br>→ dead_letter（試行が上限に達したか、必須の属性を解決できない） | 拒否：409 provisioning_conflict |
-| succeeded | 何もしない | 何もしない | 何もしない | 拒否：409 provisioning_conflict |
-| dead_letter | 何もしない | 何もしない | 何もしない | → pending |
+| State | ディスパッチ | 試行の成功 | 試行の失敗 | 管理者による再試行 | 隔離による保留 |
+|---|---|---|---|---|---|
+| pending | → in_flight（隔離中は何もしない） | 何もしない | 何もしない | 拒否：409 provisioning_conflict | 何もしない |
+| in_flight | 何もしない | → succeeded | 何もしない（一時的な失敗で、試行が上限未満）<br>→ dead_letter（試行が上限に達したか、必須の属性を解決できない） | 拒否：409 provisioning_conflict | → pending |
+| succeeded | 何もしない | 何もしない | 何もしない | 拒否：409 provisioning_conflict | 何もしない |
+| dead_letter | 何もしない | 何もしない | 何もしない | → pending | 何もしない |
 
 ## 操作
 
@@ -72,6 +76,13 @@
 - 必須の属性マッピングの値を対象から解決できない場合、Provisioning は、下流へ何も送らず、試行の上限を待たずにタスクを `dead_letter` にし、`UserProvisioningFailed` を発行する。
 - **例**：EX-PROVISIONING-018-01
 
+#### REQ-PROVISIONING-020 隔離中の接続のタスクは送信せず保持し、解除後に再開する
+
+- タスクの実行開始時に接続が隔離中の場合、Provisioning は、下流へ何も送らず、タスクを前の `job_id` を持つ `pending` に戻して保持する。
+- 隔離によってタスクを保留したとき、Provisioning は、タスクの成功と失敗のイベントを発行せず、接続の連続失敗数を変えず、フル同期を完了させない。
+- 管理者が隔離を解除した後に保留したタスクを再投入したとき、Provisioning は、同じタスクを新しいジョブで実行する。
+- 保留済みまたは新しいジョブを関連付けたタスクに対して古いジョブを再実行された場合、Provisioning は、下流へ何も送らず、タスクと接続を変えない。
+
 #### REQ-PROVISIONING-010 試行上限を超えたプロビジョニングタスクは dead_letter となり、管理者が手動で再試行できる
 
 - 最後の試行も失敗した場合、Provisioning は、タスクを `dead_letter` にし、`UserProvisioningFailed` を発行する。
@@ -84,3 +95,15 @@
 ## セキュリティ上の考慮
 
 `worker` が下流へ示すのは、接続に保存した資格情報だけである。
+
+## 実現方式
+
+### 信頼性
+
+保留は関連付けたジョブの一致を条件にタスクを pending に戻し、前の job_id を記録する。
+次の関連付けも、走査時に読んだ前の job_id と保存済みの値の一致を条件とし、遅れて関連付ける worker による古いジョブへの巻き戻しを防ぐ。
+走査の索引は前の job_id の有無で絞らず、保留も pending の走査対象に含める。
+次の投入ではタスクの冪等キーに前の job_id を添えた重複排除キーを使う。
+解除と前のジョブの完了が競合しても、実行中の古いジョブへ再び関連付けないためである。
+前のジョブは保留の保存後に完了し、プロビジョニングの成功や失敗として扱わない。
+保留後に worker が停止して古いジョブを再実行しても、タスクの状態と job_id の照合で何もせず完了できる。

@@ -311,30 +311,48 @@ func (r *ProvisioningTaskRepository) ListPageBeforeByConnection(_ context.Contex
 	return sharedmem.KeysetPageBefore(out, key, true, beforePrimary, beforeID, limit), nil
 }
 
-func (r *ProvisioningTaskRepository) ListUnenqueued(_ context.Context, limit int) ([]*domain.ProvisioningTask, error) {
+func (r *ProvisioningTaskRepository) ListUnenqueued(_ context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningTask, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := []*domain.ProvisioningTask{}
 	for _, d := range r.tasks {
-		if d.Status == domain.TaskPending && d.JobID == nil {
+		if d.Status == domain.TaskPending {
 			out = append(out, cloneTask(d))
-			if limit > 0 && len(out) >= limit {
-				break
-			}
 		}
 	}
-	return out, nil
+	const chronologicalTime = "2006-01-02T15:04:05.000000000Z"
+	afterPrimary := ""
+	if !afterCreatedAt.IsZero() {
+		afterPrimary = afterCreatedAt.UTC().Format(chronologicalTime)
+	}
+	return sharedmem.KeysetPage(out, func(d *domain.ProvisioningTask) (string, string) {
+		return d.CreatedAt.UTC().Format(chronologicalTime), d.ID
+	}, false, afterPrimary, afterID, limit), nil
 }
 
-func (r *ProvisioningTaskRepository) AttachJob(_ context.Context, tenantID, taskID, jobID string) (bool, error) {
+func (r *ProvisioningTaskRepository) AttachJob(_ context.Context, tenantID, taskID, jobID string, previousJobID *string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	d := r.tasks[taskKey(tenantID, taskID)]
-	if d == nil || d.JobID != nil || d.Status != domain.TaskPending {
+	if d == nil || d.Status != domain.TaskPending {
+		return false, nil
+	}
+	if (d.JobID == nil) != (previousJobID == nil) || (d.JobID != nil && *d.JobID != *previousJobID) {
 		return false, nil
 	}
 	d.JobID = &jobID
 	d.Status = domain.TaskInFlight
+	return true, nil
+}
+
+func (r *ProvisioningTaskRepository) SuspendForQuarantine(_ context.Context, tenantID, taskID, jobID string) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	d := r.tasks[taskKey(tenantID, taskID)]
+	if d == nil || d.Status != domain.TaskInFlight || d.JobID == nil || *d.JobID != jobID {
+		return false, nil
+	}
+	d.Status = domain.TaskPending
 	return true, nil
 }
 

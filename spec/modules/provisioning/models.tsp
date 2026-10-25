@@ -41,6 +41,9 @@ model ProvisioningTaskNotRetryableError is ProblemDetails;
 @doc("ProvisionOnDemand が指定したサブジェクトが接続の範囲の外にある。`assigned_only` では、サブジェクトが割り当てられていないことを意味する。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:provisioning_conflict` である。")
 model ProvisioningSubjectNotInScopeError is ProblemDetails;
 
+@doc("接続が隔離中のため、オンデマンドまたはフル同期を開始できない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:provisioning_conflict` である。")
+model ProvisioningConnectionQuarantinedError is ProblemDetails;
+
 
 @doc("下流の SCIM のサービスプロバイダーへの認証の方法。どちらの方法でも送信するリクエストは `Authorization: Bearer` を含み、方法はその値の取得元を決める。`bearer_token` は保存した資格情報をそのまま提示する。`oauth2_client_credentials` は、保存したクライアントシークレットを接続のトークンエンドポイントでアクセストークンと交換し（RFC 6749 の 4.4 節）、それを提示する。トークンは期限の少し前まで再利用する。")
 enum ProvisioningAuthMethod {
@@ -292,7 +295,7 @@ model RemoteResourceLink {
 }
 
 
-@doc("一つの内部のライフサイクルのイベントに対する、一つのプロビジョニングタスク。冪等キー `(tenant_id, connection_id, source_type, source_id, source_version)` は一意性の制約であり、同じキーで再びキューへ入れても既存の行に対して何もしない。ディスパッチャーは Jobs へキューを入れた後に `job_id` を付け、それまでは設定しない。")
+@doc("一つの内部のライフサイクルのイベントに対する、一つのプロビジョニングタスク。冪等キー `(tenant_id, connection_id, source_type, source_id, source_version)` は一意性の制約であり、同じキーで再びキューへ入れても既存の行に対して何もしない。`job_id` は最後に関連付けた Jobs のジョブであり、初回の投入までは設定しない。隔離による保留では前の `job_id` を持つ `pending` になり、解除後の投入で新しいジョブへ置き換わる。")
 model ProvisioningTask {
   id: string;
   tenant_id: string;
@@ -409,7 +412,7 @@ model GroupPushed {
 }
 
 
-@doc("連続した失敗、または誤削除のガードを超えたことにより、`ProvisioningConnection.health` が quarantined になった。以降のタスクは作らない。")
+@doc("連続した失敗、または誤削除のガードを超えたことにより、`ProvisioningConnection.health` が quarantined になった。解除まで下流への送信と新しい同期要求を止める。既存のタスクと削除予約から実体化したタスクは保持し、解除後に再開する。")
 model ConnectionQuarantined {
   occurredAt: utcDateTime;
   tenantId: string;

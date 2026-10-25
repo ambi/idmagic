@@ -326,7 +326,7 @@ func TestProvisioningTaskRepository_ListUnenqueuedAttachJobRetry(t *testing.T) {
 		t.Fatalf("Save() error = %v", err)
 	}
 
-	unenqueued, err := repo.ListUnenqueued(ctx, 10)
+	unenqueued, err := repo.ListUnenqueued(ctx, time.Time{}, "", 10)
 	if err != nil {
 		t.Fatalf("ListUnenqueued() error = %v", err)
 	}
@@ -340,11 +340,11 @@ func TestProvisioningTaskRepository_ListUnenqueuedAttachJobRetry(t *testing.T) {
 		t.Errorf("ListUnenqueued() = %+v, want to include %q", unenqueued, d.ID)
 	}
 
-	attached, err := repo.AttachJob(ctx, tenant.ID, d.ID, pgfixtures.NewUUID(t))
+	attached, err := repo.AttachJob(ctx, tenant.ID, d.ID, pgfixtures.NewUUID(t), nil)
 	if err != nil || !attached {
 		t.Fatalf("AttachJob() = (%v, %v), want (true, nil)", attached, err)
 	}
-	attached, err = repo.AttachJob(ctx, tenant.ID, d.ID, pgfixtures.NewUUID(t))
+	attached, err = repo.AttachJob(ctx, tenant.ID, d.ID, pgfixtures.NewUUID(t), nil)
 	if err != nil || attached {
 		t.Fatalf("second AttachJob() = (%v, %v), want (false, nil)", attached, err)
 	}

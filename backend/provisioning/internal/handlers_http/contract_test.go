@@ -50,6 +50,46 @@ func assertProvisioningTimes(t *testing.T, body map[string]any, fields ...string
 	}
 }
 
+//spec:covers REQ-PROVISIONING-012, REQ-PROVISIONING-013: 隔離中の手動同期は 409 の Problem Details で拒否し、タスクを作らない。
+//verify:operation ProvisionOnDemand: 隔離中の要求は 409 と provisioning_conflict の Problem Details になり、タスクを作らない。
+//verify:operation StartFullResync: 隔離中の要求は 409 と provisioning_conflict の Problem Details になり、タスクを作らない。
+func TestQuarantineRejectsManualSynchronizationWithoutSideEffects(t *testing.T) {
+	request, connections, tasks := newProvisioningContractServer(t)
+	path := provisioningConnectionPath
+	provisioningContractJSON(t, request("admin", http.MethodPost, path, map[string]any{
+		"base_url": "https://downstream.example/scim/v2", "credential": map[string]any{"auth_method": "bearer_token", "bearer_token": "test-secret"},
+	}), http.StatusCreated)
+	provisioningContractJSON(t, request("admin", http.MethodPatch, path, map[string]any{"scope": "all_users"}), http.StatusOK)
+	ctx := t.Context()
+	conn, err := connections.Find(ctx, tenancydomain.DefaultTenantID, "app-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.Quarantine("downstream unavailable", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := connections.Update(ctx, conn, nil); err != nil {
+		t.Fatal(err)
+	}
+	for _, operation := range []struct {
+		path string
+		body any
+	}{
+		{path + "/on-demand", map[string]any{"subject_type": "user", "subject_id": "member"}},
+		{path + "/full-resync", nil},
+	} {
+		assertProvisioningProblem(t, request("admin", http.MethodPost, operation.path, operation.body), http.StatusConflict, "provisioning_conflict")
+	}
+	stored, err := tasks.ListByConnection(ctx, conn.TenantID, conn.ApplicationID, nil, 100)
+	if err != nil || len(stored) != 0 {
+		t.Fatalf("tasks=%v error=%v; want no tasks after rejected requests", stored, err)
+	}
+	after, err := connections.Find(ctx, conn.TenantID, conn.ApplicationID)
+	if err != nil || !reflect.DeepEqual(after, conn) {
+		t.Fatalf("connection=%+v error=%v; want unchanged %+v", after, err, conn)
+	}
+}
+
 func assertProvisioningConnection(t *testing.T, body map[string]any, scope string) {
 	t.Helper()
 	if body["application_id"] != "app-1" || body["tenant_id"] != tenancydomain.DefaultTenantID || body["status"] != "active" || body["health"] != "ok" || body["scope"] != scope || body["base_url"] != "https://downstream.example/scim/v2" {
@@ -142,7 +182,7 @@ func TestProvisioningManagementHTTPContracts(t *testing.T) {
 	if len(items) != 1 || !reflect.DeepEqual(items[0], onDemand) {
 		t.Fatalf("tasks=%v", taskList)
 	}
-	if _, err := tasks.AttachJob(context.Background(), tenancydomain.DefaultTenantID, id, "contract-job"); err != nil {
+	if _, err := tasks.AttachJob(context.Background(), tenancydomain.DefaultTenantID, id, "contract-job", nil); err != nil {
 		t.Fatal(err)
 	}
 	lastError := "downstream_unavailable"

@@ -123,10 +123,18 @@ ORDER BY created_at ASC, id ASC LIMIT sqlc.arg(page_limit);
 
 -- name: ListUnenqueuedProvisioningTasks :many
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_tasks WHERE status='pending' AND job_id IS NULL ORDER BY created_at LIMIT $1;
+FROM provisioning_tasks WHERE status='pending'
+  AND (sqlc.narg(after_created_at)::timestamptz IS NULL OR (created_at, id) > (sqlc.narg(after_created_at)::timestamptz, sqlc.arg(after_id)::uuid))
+ORDER BY created_at ASC, id ASC LIMIT sqlc.arg(page_limit);
 
 -- name: AttachProvisioningTaskJob :execrows
-UPDATE provisioning_tasks SET job_id=$3,status='in_flight',updated_at=now() WHERE tenant_id=$1 AND id=$2 AND job_id IS NULL AND status='pending';
+UPDATE provisioning_tasks SET job_id=$3,status='in_flight',updated_at=now()
+WHERE tenant_id=$1 AND id=$2 AND status='pending'
+  AND job_id IS NOT DISTINCT FROM sqlc.narg(previous_job_id)::uuid;
+
+-- name: SuspendProvisioningTaskForQuarantine :execrows
+UPDATE provisioning_tasks SET status='pending',updated_at=now()
+WHERE tenant_id=$1 AND id=$2 AND job_id=$3 AND status='in_flight';
 
 -- name: UpdateProvisioningTaskStatus :exec
 UPDATE provisioning_tasks SET status=$3, last_error=$4, updated_at=now(),

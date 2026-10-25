@@ -18,6 +18,132 @@ type fakeEnqueuer struct {
 	err     error
 }
 
+func dispatcherConnections(t *testing.T) *memory.ProvisioningConnectionRepository {
+	t.Helper()
+	repo := memory.NewProvisioningConnectionRepository()
+	for _, id := range []string{"app-1", "app-2"} {
+		if err := repo.Register(t.Context(), activeConnection(id, domain.ScopeAllUsers), "secret"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return repo
+}
+
+//spec:covers REQ-PROVISIONING-017: 隔離した接続のタスクが先頭のページを埋めても、正常な接続を走査して上限まで投入し、隔離したタスクは pending のまま残す。
+func TestDispatchPendingTasks_SkipsQuarantineWithoutStarvingHealthyTasks(t *testing.T) {
+	ctx := t.Context()
+	connections := dispatcherConnections(t)
+	conn, err := connections.Find(ctx, testTenantID, "app-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 10, 25, 0, 0, 0, 0, time.UTC)
+	if err := conn.Quarantine("unavailable", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := connections.Update(ctx, conn, nil); err != nil {
+		t.Fatal(err)
+	}
+	tasks := memory.NewProvisioningTaskRepository()
+	for index, id := range []string{"held-1", "held-2", "healthy"} {
+		connectionID := "app-1"
+		if id == "healthy" {
+			connectionID = "app-2"
+		}
+		_, err := tasks.Save(ctx, &domain.ProvisioningTask{
+			ID: id, TenantID: testTenantID, ConnectionID: connectionID, SourceType: domain.SourceTypeUser,
+			SourceID: id, SourceVersion: 1, Operation: domain.OperationDelete, Status: domain.TaskPending,
+			CreatedAt: now.Add(time.Duration(index) * time.Microsecond), UpdatedAt: now,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	enqueuer := &fakeEnqueuer{nextJob: "job-healthy"}
+	recorder := &eventRecorder{}
+	deps := usecases.DispatcherDeps{ConnectionRepo: connections, TaskRepo: tasks, Enqueuer: enqueuer, Emit: recorder.emit}
+	count, err := usecases.DispatchPendingTasks(ctx, deps, 1, now)
+	if err != nil || count != 1 || len(enqueuer.calls) != 1 || enqueuer.calls[0].taskID != "healthy" {
+		t.Fatalf("count=%d calls=%v error=%v; want healthy task despite held pages", count, enqueuer.calls, err)
+	}
+	for _, id := range []string{"held-1", "held-2"} {
+		stored, err := tasks.Find(ctx, testTenantID, id)
+		if err != nil || stored.Status != domain.TaskPending || stored.JobID != nil {
+			t.Fatalf("held task=%+v error=%v", stored, err)
+		}
+	}
+	if got := recorder.types(); len(got) != 1 || got[0] != "ProvisioningTaskStarted" {
+		t.Fatalf("events=%v; want only the healthy task's start", got)
+	}
+}
+
+//spec:covers REQ-PROVISIONING-020: 初回の走査から遅れた関連付けは、別の worker が保留したタスクを古いジョブの in_flight に戻さない。
+func TestDispatchPendingTasks_DelayedAttachDoesNotReviveSuspendedJob(t *testing.T) {
+	ctx := t.Context()
+	tasks := memory.NewProvisioningTaskRepository()
+	now := time.Now()
+	if _, err := tasks.Save(ctx, &domain.ProvisioningTask{
+		ID: "held", TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser,
+		SourceID: "user", SourceVersion: 1, Operation: domain.OperationDelete, Status: domain.TaskPending, CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	enqueuer := racingEnqueuer{attach: func() {
+		if changed, err := tasks.AttachJob(ctx, testTenantID, "held", "job-1", nil); err != nil || !changed {
+			t.Fatalf("first attach=%v error=%v", changed, err)
+		}
+		if changed, err := tasks.SuspendForQuarantine(ctx, testTenantID, "held", "job-1"); err != nil || !changed {
+			t.Fatalf("suspend=%v error=%v", changed, err)
+		}
+	}}
+	deps := usecases.DispatcherDeps{ConnectionRepo: dispatcherConnections(t), TaskRepo: tasks, Enqueuer: enqueuer}
+	if count, err := usecases.DispatchPendingTasks(ctx, deps, 1, now); err != nil || count != 0 {
+		t.Fatalf("delayed attach count=%d error=%v; want no reattachment", count, err)
+	}
+	stored, err := tasks.Find(ctx, testTenantID, "held")
+	if err != nil || stored.Status != domain.TaskPending || stored.JobID == nil || *stored.JobID != "job-1" {
+		t.Fatalf("held task=%+v error=%v", stored, err)
+	}
+}
+
+func TestDispatchPendingTasks_HonorsLimitAcrossQuarantinePages(t *testing.T) {
+	ctx := t.Context()
+	connections := dispatcherConnections(t)
+	conn, err := connections.Find(ctx, testTenantID, "app-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	if err := conn.Quarantine("unavailable", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := connections.Update(ctx, conn, nil); err != nil {
+		t.Fatal(err)
+	}
+	tasks := memory.NewProvisioningTaskRepository()
+	for index, id := range []string{"healthy-first", "held", "healthy-second", "healthy-extra"} {
+		connectionID := "app-2"
+		if id == "held" {
+			connectionID = "app-1"
+		}
+		if _, err := tasks.Save(ctx, &domain.ProvisioningTask{
+			ID: id, TenantID: testTenantID, ConnectionID: connectionID, SourceType: domain.SourceTypeUser, SourceID: id,
+			SourceVersion: 1, Operation: domain.OperationDelete, Status: domain.TaskPending, CreatedAt: now.Add(time.Duration(index) * time.Microsecond), UpdatedAt: now,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	enqueuer := &fakeEnqueuer{nextJob: "job"}
+	count, err := usecases.DispatchPendingTasks(ctx, usecases.DispatcherDeps{ConnectionRepo: connections, TaskRepo: tasks, Enqueuer: enqueuer}, 2, now)
+	if err != nil || count != 2 || len(enqueuer.calls) != 2 {
+		t.Fatalf("dispatched=%d calls=%v error=%v; want exactly two healthy tasks", count, enqueuer.calls, err)
+	}
+	extra, err := tasks.Find(ctx, testTenantID, "healthy-extra")
+	if err != nil || extra.Status != domain.TaskPending || extra.JobID != nil {
+		t.Fatalf("extra task=%+v error=%v; want left pending for the next batch", extra, err)
+	}
+}
+
 func (f *fakeEnqueuer) EnqueueProvisioningTask(_ context.Context, tenantID, dedupKey, taskID string) (string, error) {
 	f.calls = append(f.calls, struct{ tenantID, dedupKey, taskID string }{tenantID, dedupKey, taskID})
 	if f.err != nil {
@@ -34,7 +160,7 @@ func TestDispatchPendingTasks_AttachesJobToEachUnenqueuedTask(t *testing.T) {
 		t.Fatalf("Save() error = %v", err)
 	}
 	enqueuer := &fakeEnqueuer{nextJob: "job-1"}
-	dispatched, err := usecases.DispatchPendingTasks(ctx, usecases.DispatcherDeps{TaskRepo: taskRepo, Enqueuer: enqueuer}, 10, time.Now())
+	dispatched, err := usecases.DispatchPendingTasks(ctx, usecases.DispatcherDeps{ConnectionRepo: dispatcherConnections(t), TaskRepo: taskRepo, Enqueuer: enqueuer}, 10, time.Now())
 	if err != nil {
 		t.Fatalf("DispatchPendingTasks() error = %v", err)
 	}
@@ -55,10 +181,10 @@ func TestDispatchPendingTasks_SkipsAlreadyAttached(t *testing.T) {
 	ctx := context.Background()
 	d := &domain.ProvisioningTask{ID: "task-1", TenantID: "tenant-a", ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1", SourceVersion: 1, Operation: domain.OperationCreate, Status: domain.TaskPending, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 	_, _ = taskRepo.Save(ctx, d)
-	_, _ = taskRepo.AttachJob(ctx, "tenant-a", "task-1", "job-existing")
+	_, _ = taskRepo.AttachJob(ctx, "tenant-a", "task-1", "job-existing", nil)
 
 	enqueuer := &fakeEnqueuer{nextJob: "job-new"}
-	dispatched, err := usecases.DispatchPendingTasks(ctx, usecases.DispatcherDeps{TaskRepo: taskRepo, Enqueuer: enqueuer}, 10, time.Now())
+	dispatched, err := usecases.DispatchPendingTasks(ctx, usecases.DispatcherDeps{ConnectionRepo: dispatcherConnections(t), TaskRepo: taskRepo, Enqueuer: enqueuer}, 10, time.Now())
 	if err != nil {
 		t.Fatalf("DispatchPendingTasks() error = %v", err)
 	}
@@ -76,7 +202,7 @@ func TestDispatchPendingTasks_StartsTheTaskAndEmitsStartedAfterAttaching(t *test
 		t.Fatalf("Save() error = %v", err)
 	}
 	recorder := &eventRecorder{}
-	deps := usecases.DispatcherDeps{TaskRepo: taskRepo, Enqueuer: &fakeEnqueuer{nextJob: "job-1"}, Emit: recorder.emit}
+	deps := usecases.DispatcherDeps{ConnectionRepo: dispatcherConnections(t), TaskRepo: taskRepo, Enqueuer: &fakeEnqueuer{nextJob: "job-1"}, Emit: recorder.emit}
 
 	if _, err := usecases.DispatchPendingTasks(ctx, deps, 10, time.Now()); err != nil {
 		t.Fatalf("DispatchPendingTasks() error = %v", err)
@@ -98,8 +224,8 @@ func TestDispatchPendingTasks_EmitsNothingWhenAnotherWorkerAttachedFirst(t *test
 		t.Fatalf("Save() error = %v", err)
 	}
 	recorder := &eventRecorder{}
-	racing := racingEnqueuer{attach: func() { _, _ = taskRepo.AttachJob(ctx, "tenant-a", "task-1", "job-1") }}
-	deps := usecases.DispatcherDeps{TaskRepo: taskRepo, Enqueuer: racing, Emit: recorder.emit}
+	racing := racingEnqueuer{attach: func() { _, _ = taskRepo.AttachJob(ctx, "tenant-a", "task-1", "job-1", nil) }}
+	deps := usecases.DispatcherDeps{ConnectionRepo: dispatcherConnections(t), TaskRepo: taskRepo, Enqueuer: racing, Emit: recorder.emit}
 
 	if _, err := usecases.DispatchPendingTasks(ctx, deps, 10, time.Now()); err != nil {
 		t.Fatalf("DispatchPendingTasks() error = %v", err)
@@ -131,7 +257,7 @@ func TestDispatchPendingTasks_MaterializesAScheduledDeprovisionOnlyOnceDue(t *te
 		t.Fatalf("ScheduleDeprovision(other) error = %v", err)
 	}
 	enqueuer := &fakeEnqueuer{nextJob: "job-1"}
-	deps := usecases.DispatcherDeps{TaskRepo: taskRepo, Enqueuer: enqueuer}
+	deps := usecases.DispatcherDeps{ConnectionRepo: dispatcherConnections(t), TaskRepo: taskRepo, Enqueuer: enqueuer}
 
 	if _, err := usecases.DispatchPendingTasks(ctx, deps, 10, reservation.DueAt.Add(-time.Second)); err != nil {
 		t.Fatalf("DispatchPendingTasks(before due) error = %v", err)

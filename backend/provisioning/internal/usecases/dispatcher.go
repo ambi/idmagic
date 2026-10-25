@@ -9,28 +9,24 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// Enqueuer submits a pending ProvisioningTask as a durable Jobs.Job
-// (docs/modules/provisioning/ §配送・信頼性, kind provisioning_task).
-// dedupKey is the task's idempotency key, so a duplicate dispatch of the
-// same task is a no-op at the Jobs layer too.
+// Enqueuer は pending のタスクを永続化するジョブとして投入する。
+// dedupKey はタスクの冪等キーを基にし、保留後の再投入では前のジョブを区別する。
 type Enqueuer interface {
 	EnqueueProvisioningTask(ctx context.Context, tenantID, dedupKey, taskID string) (jobID string, err error)
 }
 
 // DispatcherDeps are DispatchPendingTasks's dependencies.
 type DispatcherDeps struct {
-	TaskRepo ports.ProvisioningTaskRepository
-	Enqueuer Enqueuer
+	TaskRepo       ports.ProvisioningTaskRepository
+	ConnectionRepo ports.ProvisioningConnectionRepository
+	Enqueuer       Enqueuer
 	// Emit は関連付けに成功したプロビジョニングタスクの ProvisioningTaskStarted を発行する。
 	Emit func(spec.DomainEvent)
 }
 
-// DispatchPendingTasks associates up to limit pending, unattached
-// tasks with a Jobs.Job (LifecycleWorkflowRunLifecycle's dispatcher
-// precedent: recovers from an API-process enqueue failure via periodic
-// re-scan). It is safe to call repeatedly and from multiple worker processes:
-// AttachJob only succeeds once per task (job_id IS NULL guard), so only the
-// worker that attached emits ProvisioningTaskStarted.
+// DispatchPendingTasks は隔離されていない接続の pending を上限までジョブへ関連付ける。
+// 関連付けは pending と走査時の job_id の一致を条件にし、成功した worker だけが
+// ProvisioningTaskStarted を発行する。隔離中のタスクはページを進めて読み飛ばす。
 //
 // 関連付けの前に、now の時点で期限に達した ScheduledDeprovision を pending の delete
 // プロビジョニングタスクへ変える。猶予期間つきの削除も、ほかのプロビジョニングタスクと同じ経路で下流へ届く。
@@ -38,24 +34,43 @@ func DispatchPendingTasks(ctx context.Context, deps DispatcherDeps, limit int, n
 	if err := materializeDueDeprovisions(ctx, deps.TaskRepo, limit, now); err != nil {
 		return 0, err
 	}
-	tasks, err := deps.TaskRepo.ListUnenqueued(ctx, limit)
-	if err != nil {
-		return 0, err
-	}
-	for _, d := range tasks {
-		jobID, err := deps.Enqueuer.EnqueueProvisioningTask(ctx, d.TenantID, d.IdempotencyKey(), d.ID)
+	var afterCreatedAt time.Time
+	var afterID string
+	for dispatched < limit {
+		tasks, err := deps.TaskRepo.ListUnenqueued(ctx, afterCreatedAt, afterID, limit-dispatched)
 		if err != nil {
 			return dispatched, err
 		}
-		attached, err := deps.TaskRepo.AttachJob(ctx, d.TenantID, d.ID, jobID)
-		if err != nil {
-			return dispatched, err
+		if len(tasks) == 0 {
+			break
 		}
-		if attached {
-			dispatched++
-			emit(deps.Emit, &domain.ProvisioningTaskStarted{
-				At: now.UTC(), TenantID: d.TenantID, ConnectionID: d.ConnectionID, TaskID: d.ID, JobID: jobID,
-			})
+		for _, d := range tasks {
+			afterCreatedAt, afterID = d.CreatedAt, d.ID
+			conn, err := deps.ConnectionRepo.Find(ctx, d.TenantID, d.ConnectionID)
+			if err != nil {
+				return dispatched, err
+			}
+			if conn == nil || conn.Health == domain.HealthQuarantined {
+				continue
+			}
+			dedupKey := d.IdempotencyKey()
+			if d.JobID != nil {
+				dedupKey += ":" + *d.JobID
+			}
+			jobID, err := deps.Enqueuer.EnqueueProvisioningTask(ctx, d.TenantID, dedupKey, d.ID)
+			if err != nil {
+				return dispatched, err
+			}
+			attached, err := deps.TaskRepo.AttachJob(ctx, d.TenantID, d.ID, jobID, d.JobID)
+			if err != nil {
+				return dispatched, err
+			}
+			if attached {
+				dispatched++
+				emit(deps.Emit, &domain.ProvisioningTaskStarted{
+					At: now.UTC(), TenantID: d.TenantID, ConnectionID: d.ConnectionID, TaskID: d.ID, JobID: jobID,
+				})
+			}
 		}
 	}
 	return dispatched, nil

@@ -134,6 +134,69 @@ func (r *lifecycleRun) task(id string) *domain.ProvisioningTask {
 	return d
 }
 
+//spec:covers REQ-PROVISIONING-020: 投入後の隔離は下流への送信と終端イベントを止め、解除後は同じタスクを新しいジョブで回収する。完了前の古いジョブとの重複排除でも失わない。
+func TestQuarantinedTasksResumeWithoutLosingQueuedWork(t *testing.T) {
+	h := newE2EHarness(t)
+	run := newLifecycleRun(h)
+	h.createUser("quarantine-resume")
+	run.dispatch()
+	job := run.claim()
+	var params struct {
+		TaskID string `json:"task_id"`
+	}
+	if err := json.Unmarshal(job.Params, &params); err != nil {
+		t.Fatal(err)
+	}
+	ctx := testing_tenant.Default(t.Context())
+	conn, err := h.connRepo.Find(ctx, h.tenantID, h.connectionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn.ConsecutiveFailureCount = 3
+	if err := conn.Quarantine("downstream unavailable", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.connRepo.Update(ctx, conn, nil); err != nil {
+		t.Fatal(err)
+	}
+	job.Attempts = job.MaxAttempts
+	if err := run.handle(job); err != nil {
+		t.Fatalf("quarantined handler: %v", err)
+	}
+	if got := run.task(params.TaskID); got.Status != domain.TaskPending || got.JobID == nil || *got.JobID != job.ID || h.downstream.count() != 0 {
+		t.Fatalf("held=%+v downstream=%d; want pending with previous job and no send", got, h.downstream.count())
+	}
+	stored, err := h.connRepo.Find(ctx, h.tenantID, h.connectionID)
+	if err != nil || stored.ConsecutiveFailureCount != 3 || !slices.Equal(run.types(), []string{"ProvisioningTaskStarted"}) {
+		t.Fatalf("connection=%+v events=%v error=%v; want no success/failure bookkeeping", stored, run.types(), err)
+	}
+	run.dispatch()
+	if err := run.handle(job); err != nil {
+		t.Fatalf("replayed held job: %v", err)
+	}
+	if _, err := usecases.ResumeConnection(ctx, usecases.AdminDeps{ConnectionRepo: h.connRepo, TaskRepo: h.taskRepo}, h.tenantID, h.connectionID, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	// 前のジョブを running のまま残しても、解除後の投入は新しいジョブへ関連付ける。
+	run.dispatch()
+	resumed := run.claim()
+	if resumed.ID == job.ID {
+		t.Fatal("resumed task was attached to the old running job")
+	}
+	if err := run.handle(job); err != nil {
+		t.Fatalf("stale job after resume: %v", err)
+	}
+	if h.downstream.count() != 0 {
+		t.Fatal("stale job sent downstream")
+	}
+	if err := run.handle(resumed); err != nil {
+		t.Fatal(err)
+	}
+	if got := run.task(params.TaskID); got.Status != domain.TaskSucceeded || h.downstream.count() != 1 || !slices.Equal(run.types(), []string{"ProvisioningTaskStarted", "ProvisioningTaskStarted", "UserProvisioned"}) {
+		t.Fatalf("resumed=%+v downstream=%d events=%v", got, h.downstream.count(), run.types())
+	}
+}
+
 // wire は監査が保存するのと同じワイヤ表現に変換する。
 func wire(t *testing.T, event spec.DomainEvent) map[string]any {
 	t.Helper()
