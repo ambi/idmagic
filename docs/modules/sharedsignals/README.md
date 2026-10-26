@@ -3,7 +3,7 @@
 ## 責務と境界
 
 Shared Signals Framework（SSF）と Continuous Access Evaluation Profile（CAEP）による、エージェントのほぼリアルタイムな失効を扱う。
-IdMagic は SSF の送信側と受信側の両方として振る舞う。
+SSF の送受信に必要なストリームと Agent ごとの失効エポックを所有し、IdManagement の通知と外部の SET を失効エポックの更新へ変換する。
 
 | 扱わないもの | 担当 |
 | --- | --- |

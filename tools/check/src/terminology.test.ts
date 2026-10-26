@@ -155,8 +155,7 @@ describe('用語検査', () => {
     }
   })
 
-  // 実装の単位は「モジュール」と書く。Go の型と C4 のビュー名は別概念なので通す。
-  it('設計の単位としての Context と公開言語を指摘し、Go の型と C4 のビュー名は通す', () => {
+  it('単独の Context を指摘し、モデルの境界と関係の正式な語は通す', () => {
     const findings = verifyTerminology([
       {
         file: 'docs/modules/jobs/README.md',
@@ -165,14 +164,16 @@ describe('用語検査', () => {
       },
     ])
 
-    expect(findings.map((finding) => finding.term)).toEqual([
-      'Context',
-      'Context',
-      'Context',
-      'Context',
-      '公開言語',
-      'Published Language',
-    ])
+    expect(findings.map((finding) => finding.term)).toEqual(['Context', 'Context'])
+    expect(
+      verifyTerminology([
+        {
+          file: 'docs/design/application/design-guidelines.md',
+          source:
+            'Bounded Context と Context Map、Shared Kernel、公開言語と Published Language。\n',
+        },
+      ]),
+    ).toEqual([])
     expect(
       verifyTerminology([
         {
@@ -273,7 +274,6 @@ describe('用語検査', () => {
     expect(findings.map((finding) => finding.term)).toEqual(['このディレクトリには', '話題の索引'])
   })
 
-  // 採らない概念として名指すドメイン駆動設計の Bounded Context は、設計の単位としてのコンテキストではない。
   it('ドメイン駆動設計の境界づけられたコンテキストは通し、単独のコンテキストは指摘する', () => {
     const findings = verifyTerminology([
       {

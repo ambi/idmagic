@@ -984,7 +984,7 @@ dir = "tools"
 run = "bun run build-site/src/main.ts"
 
 [tasks.generate-module-dependencies]
-description = "Regenerate the module dependency diagram from production Go imports"
+description = "Regenerate module references while preserving the diagram's relationship labels"
 dir = "tools"
 run = "bun run check/src/generate-module-dependencies.ts"
 

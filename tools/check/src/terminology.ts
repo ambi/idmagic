@@ -132,7 +132,7 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
       { literal: '認証コンテキスト', reason: '認証済み主体の情報であり、設計の単位ではない' },
       {
         literal: '境界づけられたコンテキスト',
-        reason: 'ドメイン駆動設計の Bounded Context を、採らない概念として名指している',
+        reason: 'ドメイン駆動設計のモデルの適用範囲であり、実装の単位とは区別する',
       },
       { literal: '実行コンテキスト', reason: '処理の実行の文脈であり、設計の単位ではない' },
       {
@@ -153,12 +153,12 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
       },
     ],
   },
-  // Bounded Context、Context Map、Context 間もこの規則で落ちる。Context Map は
-  // 置き換え先のない廃止した概念なので、採用語の指摘文で示す。
   {
     term: 'Context',
-    adopt: '「モジュール」。Context Map は廃止したので書かない',
+    adopt: '設計と実装の単位は「モジュール」。DDD の用語なら「Bounded Context」',
     allow: [
+      { literal: 'Bounded Context', reason: 'モデルと用語の適用範囲を表す DDD の概念である' },
+      { literal: 'Context Map', reason: 'モデル間の関係を表し、import の許可表とは区別する' },
       { literal: 'context.Context', reason: 'Go の標準ライブラリの型であり、設計の単位ではない' },
       { literal: 'System Context', reason: 'C4 model のビュー名であり、設計の単位ではない' },
       { literal: 'C4Context', reason: 'Mermaid の C4 図のキーワードであり、設計の単位ではない' },
@@ -171,14 +171,6 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
       { literal: 'OAuth2 Context', reason: '標準の行 GDPR-CONSENT-WITHDRAWAL の文面' },
       { literal: 'Audit Context', reason: '標準の行 GDPR-PROCESSING-RECORDS の文面' },
     ],
-  },
-  {
-    term: '公開言語',
-    adopt: 'import の可否なら「公開パッケージ」、型、意味、拒否、作用の約束なら「公開契約」',
-  },
-  {
-    term: 'Published Language',
-    adopt: 'import の可否なら「公開パッケージ」、型、意味、拒否、作用の約束なら「公開契約」',
   },
 ]
 

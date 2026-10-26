@@ -8,7 +8,7 @@ import {
 } from './module-dependency-diagram.ts'
 import type { CheckOutcome } from './runner.ts'
 
-/** モジュール設計文書の入口の依存の図を、現在の責務表と import の辺から作り直す。 */
+/** 責務表とコードの参照から図を作り直し、人が記した関係ラベルを保持する。 */
 export async function generatedModuleDependencies(
   snapshot: WorkspaceSnapshot,
 ): Promise<{ source: string; generated: string | undefined }> {
@@ -16,7 +16,7 @@ export async function generatedModuleDependencies(
   const source = await snapshot.read(RESPONSIBILITY_TABLE_PATH)
   const generated = withModuleDependencyDiagram(
     source,
-    moduleDependencyDiagram(moduleGroups(source, COMPOSITION_NAME), analysis.dependencies),
+    moduleDependencyDiagram(moduleGroups(source, COMPOSITION_NAME), analysis.dependencies, source),
   )
   return { source, generated }
 }

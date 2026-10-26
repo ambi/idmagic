@@ -14,7 +14,7 @@
 | 管理 API を誰が呼べるかというロールの認可 | 仕様バインディングの規則表と[認可設計](../../design/security/authorization.md) |
 | `Agent` の状態 | `IdManagement` |
 | OAuth の通信手順、同意、グラントとトークンの発行 | `OAuth2` |
-| サインインの条件、認証強度と再認証の期限の評価 | 現在は `Application`。実際の認証と追加認証は `Authentication` |
+| サインイン条件の定義と評価 | `SignInPolicy`。`Application` が割り当てと合わせてアクセスを判定し、`Authentication` が認証と追加認証を行う |
 
 このモジュールは、関係が成り立つかという事実を求め、評価器へ渡す。
 外部の PDP へ差し替えても、合成の規則が重複しない。

@@ -70,4 +70,34 @@ describe('module dependency diagram', () => {
     expect(replaced?.startsWith('# モジュール設計文書')).toBe(true)
     expect(withModuleDependencyDiagram('# 印のない文書\n', 'DIAGRAM')).toBeUndefined()
   })
+
+  it('図の関係ラベルを保持し、コード上の参照がない関係は破線で描く', () => {
+    const groups = moduleGroups(README, 'System')
+    const dependencies = [{ sourceModule: 'OAuth2', targetModule: 'Tenancy' }]
+    const source = withModuleDependencyDiagram(
+      README,
+      '```mermaid\nflowchart LR\n  OAuth2 -->|"Tenant を使う"| Tenancy\n  Tenancy -.->|"設定の変更を通知"| OAuth2\n  Tenancy --> OAuth2\n```',
+    )!
+    const diagram = moduleDependencyDiagram(groups, dependencies, source)
+    expect(diagram).toContain('OAuth2 -->|"Tenant を使う"| Tenancy')
+    expect(diagram).toContain('Tenancy -.->|"設定の変更を通知"| OAuth2')
+    expect(diagram).not.toContain('Tenancy --> OAuth2')
+    expect(
+      moduleDependencyDiagram(groups, dependencies, withModuleDependencyDiagram(source, diagram)!),
+    ).toBe(diagram)
+    expect(moduleDependencyDiagram(groups, [], source)).toContain(
+      'OAuth2 -.->|"Tenant を使う"| Tenancy',
+    )
+  })
+
+  it('責務表にないモジュールと、同じ組に重複した関係ラベルを拒否する', () => {
+    const groups = moduleGroups(README, 'System')
+    for (const relations of [
+      '  OAuth2 -.->|"公開 HTTP"| Unknown',
+      '  OAuth2 -->|"設定"| Tenancy\n  OAuth2 -.->|"通知"| Tenancy',
+    ]) {
+      const source = withModuleDependencyDiagram(README, `\`\`\`mermaid\n${relations}\n\`\`\``)!
+      expect(() => moduleDependencyDiagram(groups, [], source)).toThrow()
+    }
+  })
 })

@@ -16,6 +16,7 @@
 
 既存の公開 API、要件 ID と TypeSpec の識別子を保つため、外向きの契約は Application の[サインインポリシー](../application/features/sign-in-policy.md)を一次情報とする。
 要求と応答、保存する JSON、条件の意味と更新イベントの名前は変えず、定義と実装の所有者を分ける。
+Authentication が認証結果を読み取り専用の入力契約 `SignInAuthentication` に合わせて渡し、SignInPolicy はその事実と時刻から条件を評価する。
 
 ## 主な流れ
 
@@ -28,7 +29,6 @@
 
 ## 設計の要点
 
-評価器は読み取り専用の `SignInAuthentication` と時刻を入力にし、Authentication の型を import しない。
 管理操作は、要求側の `ApplicationLookup` で同じテナントのアプリの実在だけを問い合わせる。
 Application のルートが自分の保存先から存在の事実を返し、組み立て地点が渡すため、SignInPolicy から Application への依存はない。
 Application は削除のために保存型を受け取らず、必要な削除操作だけを要求する。

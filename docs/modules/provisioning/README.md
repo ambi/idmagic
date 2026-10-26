@@ -12,8 +12,8 @@
 | User と Group と割り当ての記録の正 | `IdManagement`、`Application` |
 | タスクを実行する Job のキューと再試行 | `Jobs` |
 
-`Sourcing` が外部から取り込むのに対し、このモジュールは外部へ送り出す。
-処理の向き、記録の正の所在、語彙が異なるので、`Tenancy`、`Application`、`IdManagement`、`Jobs` の公開するインターフェースを除いて、コードを共有しない。
+IdManagement の User と Group、Application の割り当てを読み、下流の属性、無効化、削除への変換は Provisioning が所有する。
+内向きの Sourcing とは処理の向き、記録の正、語彙が異なるので、`Tenancy`、`Application`、`IdManagement`、`Jobs` の公開するインターフェースを除いて、コードを共有しない。
 
 ## 主な流れ
 

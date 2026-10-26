@@ -3,13 +3,14 @@
 ## 責務と境界
 
 アプリケーションの管理とポータルの HTTP を提供し、Application と各プロトコルの公開操作を編成する。
-認可、入力と表示のワイヤ変換、プロトコル設定と Application の関連付けを扱う。
+Application と各プロトコルの公開する入力型と操作を使い、HTTP の入力と表示用データへの変換を担当する。
+状態の更新と規則の検証は所有側へ任せる。
 独自のテーブル、保存型とアクセス評価器は持たない。
 
 | 扱わないもの | 担当 |
 | --- | --- |
 | Application、割り当て、分類と並び順の保存と更新 | [Application](../application/README.md) |
-| サインインポリシーとアクセス判定 | [Application](../application/README.md) |
+| サインイン条件の定義、評価と保存、アクセス判定 | [SignInPolicy](../sign-in-policy/README.md) が条件を所有し、[Application](../application/README.md) が割り当てと合わせてアクセスを判定する |
 | クライアント、SP と RP の保存とプロトコルの実行 | OAuth2、Saml、WsFederation |
 | クレームの公開の下限 | ClaimMapping |
 
@@ -21,7 +22,6 @@
 
 ## 設計の要点
 
-Application の `usecases` は状態所有者の既存の更新操作をそのまま公開し、Catalog 用に同じ入力型と委譲関数を複製しない。
 同一トランザクションの関連付けは Application の保存実装と各プロトコルの linker が担当し、Catalog の分離で確定の境界を増やさない。
 OIDC 管理では OAuth2 の公開管理操作とその入力、結果とエラーを直接利用する。
 管理用の表示は HTTP の非公開の型へ写し、所有者の保存型をそのままシリアライズしない。
