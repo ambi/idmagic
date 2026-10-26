@@ -28,10 +28,15 @@ func HashRefreshToken(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// GrantsRefreshToken は、交換するスコープがリフレッシュトークンの発行を許すかを返す。
-// 認可コードと device_code の交換が共有する条件であり、offline_access を含むときだけ許す。
-func GrantsRefreshToken(scopes []string) bool {
-	return slices.Contains(scopes, "offline_access")
+// ExchangeScopes は、認可コードか device_code の交換で付与するスコープと、リフレッシュトークンを
+// 発行するかを返す。発行は refresh_token のグラントを許可したクライアントの offline_access に限る。
+// グラントのないクライアントのリフレッシュトークンはトークンエンドポイントが拒否して使えないので、
+// 付与するスコープからも offline_access を除く。scopes は書き換えない。
+func ExchangeScopes(grants []spec.GrantType, scopes []string) (granted []string, refresh bool) {
+	if !slices.Contains(grants, spec.GrantRefreshToken) {
+		return slices.DeleteFunc(slices.Clone(scopes), func(scope string) bool { return scope == "offline_access" }), false
+	}
+	return scopes, slices.Contains(scopes, "offline_access")
 }
 
 func GenerateInitialRefreshToken(clientID, sub string, scopes []string, sc *SenderConstraint, sid, resource *string, now time.Time, random entropy.Source) (*GeneratedRefreshToken, error) {

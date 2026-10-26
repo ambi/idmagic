@@ -165,7 +165,7 @@
 - Then 401 のエラー "InvalidTokenError" と `WWW-Authenticate: Bearer` challenge が返る
 - And レスポンスに `sub` とユーザークレームは含まれない
 
-## Rule: REQ-OAUTH2-021 リフレッシュトークンは `offline_access` スコープを付与したときだけ発行する
+## Rule: REQ-OAUTH2-021 リフレッシュトークンは `refresh_token` のグラントを許可したクライアントに `offline_access` スコープを付与したときだけ発行する
 
 ### Example: EX-OAUTH2-021-01 通常経路
 
@@ -183,6 +183,15 @@
 - Then "web-app" として scope "openid プロファイル" で認可リクエストを送る
 - And 発行された認可コードを verifier "v" で交換する
 - And レスポンスに refresh_token は含まれない
+
+### Example: EX-OAUTH2-021-03 refresh_token のグラントを許可していないクライアント
+
+- Given confidential クライアント "web-app" が grant_types に "refresh_token" を含めず、スコープに "offline_access" を含めて登録済みである
+- When "web-app" として scope "openid offline_access" で認可リクエストを送る
+- And クライアントが発行された認可コードを verifier "v" で交換する
+- Then レスポンスに refresh_token は含まれない
+- And レスポンスの scope は "openid" である
+- And "RefreshTokenIssued" は発行されず、リフレッシュトークンは保存されない
 
 ## Rule: REQ-OAUTH2-026 client_credentials グラントで M2M トークンが発行される
 

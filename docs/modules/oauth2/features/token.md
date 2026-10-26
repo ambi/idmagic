@@ -66,11 +66,13 @@ RefreshToken のライフサイクル。Rotate で子トークンに引き継が
 - ポータルの境界のスコープだけを持ち account のスコープを持たないトークンを受けたとき、OAuth2 は、audience の検査をしない。
 - **例**：EX-OAUTH2-001-01、EX-OAUTH2-001-02、EX-OAUTH2-001-03、EX-OAUTH2-001-04
 
-#### REQ-OAUTH2-021 リフレッシュトークンは `offline_access` スコープを付与したときだけ発行する
+#### REQ-OAUTH2-021 リフレッシュトークンは `refresh_token` のグラントを許可したクライアントに `offline_access` スコープを付与したときだけ発行する
 
-- `offline_access` を含むスコープの認可コードか `device_code` を交換したとき、OAuth2 は、リフレッシュトークンを返し、`RefreshTokenIssued` を発行する。
+- `refresh_token` のグラントを許可したクライアントが `offline_access` を含むスコープの認可コードか `device_code` を交換したとき、OAuth2 は、リフレッシュトークンを返し、`RefreshTokenIssued` を発行する。
 - `offline_access` を含まないスコープの認可コードか `device_code` を交換したとき、OAuth2 は、リフレッシュトークンを返さない。
-- **例**：EX-OAUTH2-021-01、EX-OAUTH2-021-02
+- `refresh_token` のグラントを許可していないクライアントが認可コードか `device_code` を交換したとき、OAuth2 は、リフレッシュトークンを返さず、応答とアクセストークンの `scope` から `offline_access` を除く。
+- **判断**：トークンエンドポイントは許可していないグラントを `unauthorized_client` で拒否するので、そのクライアントへ渡すリフレッシュトークンは一度も使えず、漏えいの影響だけを持つ。応答の `scope` は、RFC 6749 の 5.1 に従い、実際に付与したスコープを示す。
+- **例**：EX-OAUTH2-021-01、EX-OAUTH2-021-02、EX-OAUTH2-021-03
 
 #### REQ-OAUTH2-026 client_credentials グラントで M2M トークンが発行される
 

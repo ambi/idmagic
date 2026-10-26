@@ -138,6 +138,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		return nil, NewOAuthError("invalid_grant", "The authorization code was used by a concurrent request.")
 	}
 	rec = redeemed
+	scopes, issueRefresh := domain.ExchangeScopes(client.GrantTypes, rec.Scopes)
 
 	var sc *domain.SenderConstraint
 	if in.DpopJKT != "" {
@@ -153,7 +154,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
 		Client:               client,
 		Sub:                  user.ID,
-		Scopes:               rec.Scopes,
+		Scopes:               scopes,
 		SenderConstraint:     sc,
 		AuthTime:             rec.AuthTime,
 		AMR:                  rec.AMR,
@@ -164,18 +165,18 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	if err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: rec.Scopes, SenderConstraint: senderConstraintTag(sc)})
+	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: scopes, SenderConstraint: senderConstraintTag(sc)})
 	emit(deps.Emit, &domain.AuthorizationCodeRedeemed{At: now, TenantID: tenantID, ClientID: client.ClientID, UserID: user.ID})
 	if rec.Resource != nil {
-		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: *rec.Resource, Scopes: rec.Scopes})
+		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: *rec.Resource, Scopes: scopes})
 	}
 
 	var idToken string
-	if slices.Contains(rec.Scopes, "openid") {
+	if slices.Contains(scopes, "openid") {
 		idToken, err = deps.TokenIssuer.SignIDToken(ctx, ports.IDTokenInput{
 			Client:    client,
 			User:      user,
-			Scopes:    rec.Scopes,
+			Scopes:    scopes,
 			Nonce:     rec.Nonce,
 			AuthTime:  rec.AuthTime,
 			AMR:       rec.AMR,
@@ -191,8 +192,8 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	}
 
 	var refreshToken string
-	if deps.RefreshStore != nil && domain.GrantsRefreshToken(rec.Scopes) {
-		gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, rec.Sid, rec.Resource, now, entropy.Crypto())
+	if deps.RefreshStore != nil && issueRefresh {
+		gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, scopes, sc, rec.Sid, rec.Resource, now, entropy.Crypto())
 		if err != nil {
 			return nil, err
 		}
@@ -226,7 +227,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		RefreshToken: refreshToken,
 		TokenType:    tokenType,
 		ExpiresIn:    deps.TokenIssuer.AccessTokenTTLSeconds(),
-		Scope:        strings.Join(rec.Scopes, " "),
+		Scope:        strings.Join(scopes, " "),
 	}, nil
 }
 

@@ -119,7 +119,7 @@ PAR で発行した `request_uri` のライフサイクル。`/authorize` から
 - クライアントが `response_type=code`、登録済みの `redirect_uri`、`S256` の `code_challenge`、クライアントに登録したスコープで `/authorize` を要求したとき、OAuth2 は、10 分の有効期間の `Received` の認可リクエストを保存し、ログインか同意へ進ませる。
 - `scope` のない認可の要求を受けたとき、OAuth2 は、`openid` を要求したものとして扱う。
 - 認証済みの利用者が Application の割り当てと実効のサインインポリシーを満たし、要求したスコープを同意が覆うとき、OAuth2 は、60 秒以下の有効期間の認可コードを発行し、`state` と発行者の識別子とともに `redirect_uri` へ返し、`AuthorizationCodeIssued` を発行する。
-- クライアントが期限内の認可コードを、同じクライアント、同じ `redirect_uri`、一致する `code_verifier` で交換したとき、OAuth2 は、コードを `Redeemed` にし、アクセストークンと、`openid` のスコープには ID トークンを返し、`offline_access` のスコープにはリフレッシュトークンを返し、`AuthorizationCodeRedeemed`、`AccessTokenIssued` を発行する。
+- クライアントが期限内の認可コードを、同じクライアント、同じ `redirect_uri`、一致する `code_verifier` で交換したとき、OAuth2 は、コードを `Redeemed` にし、アクセストークンと、`openid` のスコープには ID トークンを返し、`refresh_token` のグラントを許可したクライアントの `offline_access` のスコープにはリフレッシュトークンを返し、`AuthorizationCodeRedeemed`、`AccessTokenIssued` を発行する。
 - `prompt=none` でセッションがない場合、OAuth2 は、画面もログインへのリダイレクトも出さずに、`state` と発行者の識別子を含む `login_required` を登録済みの `redirect_uri` へ返す。
 - 未登録の `redirect_uri` か `client_id` のない要求を受けた場合、OAuth2 は、リダイレクトせずに `invalid_request` のエラーの画面を返す。
 - 単一値の認可のパラメーターが重複するか、`prompt` に重複か未対応のトークンがあるか、`none` がほかの `prompt` のトークンと併用され、登録済みの `redirect_uri` を安全に確定できる場合、OAuth2 は、認可コードを発行せずに、`state` と発行者の識別子を含む `invalid_request` を `redirect_uri` へ返す。

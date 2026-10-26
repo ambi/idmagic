@@ -30,6 +30,11 @@ type deviceFixture struct {
 }
 
 func newDeviceFixture() deviceFixture {
+	return newDeviceFixtureWithGrants(spec.GrantDeviceCode, spec.GrantRefreshToken)
+}
+
+// newDeviceFixtureWithGrants は、"device-client" に grants だけを許可した fixture を返す。
+func newDeviceFixtureWithGrants(grants ...spec.GrantType) deviceFixture {
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	deviceStore := oauth2memory.NewDeviceCodeStore()
@@ -38,7 +43,7 @@ func newDeviceFixture() deviceFixture {
 	clientRepo.Seed(&domain.OAuth2Client{
 		ClientID: "device-client", ClientType: spec.ClientPublic,
 		RedirectURIs: []string{"https://device.example/cb"},
-		GrantTypes:   []spec.GrantType{spec.GrantDeviceCode, spec.GrantRefreshToken},
+		GrantTypes:   grants,
 		ResponseTypes: []spec.ResponseType{
 			spec.ResponseTypeCode,
 		},
@@ -180,18 +185,23 @@ func approveDeviceCode(t *testing.T, f deviceFixture, scope string, at time.Time
 	return auth.DeviceCode
 }
 
-//spec:covers REQ-OAUTH2-021, REQ-OAUTH2-027: device_code の交換は offline_access のスコープのときだけリフレッシュトークンを返して保存し、RefreshTokenIssued を発行する
+//spec:covers REQ-OAUTH2-021, REQ-OAUTH2-027: device_code の交換は refresh_token のグラントを許可したクライアントの offline_access のスコープのときだけリフレッシュトークンを返して保存し、RefreshTokenIssued を発行し、グラントのないクライアントでは応答とアクセストークンのスコープから offline_access を除く
 func TestExchangeDeviceCodeIssuesARefreshTokenOnlyForOfflineAccess(t *testing.T) {
+	withRefresh := []spec.GrantType{spec.GrantDeviceCode, spec.GrantRefreshToken}
 	cases := []struct {
+		name        string
+		grants      []spec.GrantType
 		scope       string
 		wantRefresh bool
+		wantScope   string
 	}{
-		{"openid", false},
-		{"openid offline_access", true},
+		{"openid", withRefresh, "openid", false, "openid"},
+		{"openid offline_access", withRefresh, "openid offline_access", true, "openid offline_access"},
+		{"offline_access without the refresh_token grant", []spec.GrantType{spec.GrantDeviceCode}, "openid offline_access", false, "openid"},
 	}
 	for _, tc := range cases {
-		t.Run(tc.scope, func(t *testing.T) {
-			f := newDeviceFixture()
+		t.Run(tc.name, func(t *testing.T) {
+			f := newDeviceFixtureWithGrants(tc.grants...)
 			var emitted []spec.DomainEvent
 			f.deps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
 			now := time.Now().UTC()
@@ -203,6 +213,10 @@ func TestExchangeDeviceCodeIssuesARefreshTokenOnlyForOfflineAccess(t *testing.T)
 			}
 			if out.AccessToken == "" || out.IDToken == "" {
 				t.Fatalf("result = %+v", out)
+			}
+			issuer := f.deps.TokenIssuer.(*fakeTokenIssuer)
+			if out.Scope != tc.wantScope || strings.Join(issuer.lastAccessTokenInput.Scopes, " ") != tc.wantScope {
+				t.Fatalf("scope = %q, access token scopes = %v, want %q", out.Scope, issuer.lastAccessTokenInput.Scopes, tc.wantScope)
 			}
 			var types []string
 			for _, e := range emitted {

@@ -365,6 +365,62 @@ func TestTokenConcurrentCodeExchangeIssuesExactlyOneToken(t *testing.T) {
 	}
 }
 
+// トークンエンドポイントは許可していない refresh_token のグラントを拒否するので、
+// そのクライアントへ渡すリフレッシュトークンは使えない。スコープに offline_access を
+// 登録し要求していても発行しない。
+//
+//spec:covers REQ-OAUTH2-021, EX-OAUTH2-021-03: refresh_token のグラントのないクライアントの交換は refresh_token を返さず、応答とアクセストークンのスコープから offline_access を除き、RefreshTokenIssued もファミリーの記録も残さない
+func TestTokenForClientWithoutRefreshGrantIssuesNoRefreshToken(t *testing.T) {
+	const clientID = "no-refresh-app"
+	fixture := newRefusalServer(t)
+	secretHash := domain.HashClientSecret(refusalClientSecret)
+	fixture.clients.Seed(&domain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID, ClientID: clientID, ClientSecretHash: &secretHash,
+		ClientType:              spec.ClientConfidential,
+		RedirectURIs:            []string{refusalRedirectURI},
+		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
+		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
+		TokenEndpointAuthMethod: domain.AuthMethodClientSecretPost,
+		Scope:                   "openid offline_access",
+		FapiProfile:             domain.FapiNone,
+		CreatedAt:               time.Now().UTC(),
+	})
+	seedAuthorizationCodeFor(t, fixture, tenancydomain.DefaultTenantID, "AC1", clientID, []string{"openid", "offline_access"})
+
+	response := postTokenForm(t, fixture, tenancydomain.DefaultRealm,
+		codeExchangeForm("AC1", clientID, refusalClientSecret))
+	if response.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	body := decodeTokenResponse(t, response)
+	if body["access_token"] == nil {
+		t.Fatalf("アクセストークンが返っていない: body=%s", response.Body.String())
+	}
+	if _, present := body["refresh_token"]; present {
+		t.Fatalf("refresh_token のグラントのないクライアントへ refresh_token が返った: body=%s", response.Body.String())
+	}
+	if body["scope"] != "openid" {
+		t.Fatalf("scope=%v、期待は offline_access を除いた openid", body["scope"])
+	}
+	for _, event := range *fixture.events {
+		switch event := event.(type) {
+		case *domain.RefreshTokenIssued:
+			t.Fatalf("refresh_token のグラントのないクライアントへ RefreshTokenIssued が発行された: %#v", event)
+		case *domain.AccessTokenIssued:
+			if strings.Join(event.Scopes, " ") != "openid" {
+				t.Fatalf("アクセストークンのスコープ=%v、期待は openid", event.Scopes)
+			}
+		}
+	}
+	code, err := fixture.codes.Find(context.Background(), "AC1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code.IssuedFamilyID != nil {
+		t.Fatalf("認可コードがリフレッシュトークンのファミリーへ結び付いた: %s", *code.IssuedFamilyID)
+	}
+}
+
 // 保存もしない。
 //
 //spec:covers EX-OAUTH2-021-02: offline_access を要求しない交換ではリフレッシュトークンを発行せず、

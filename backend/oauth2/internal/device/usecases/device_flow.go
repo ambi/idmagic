@@ -301,6 +301,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 	if !user.IsActive() {
 		return nil, NewOAuthError("invalid_grant", "user is disabled")
 	}
+	scopes, issueRefresh := domain.ExchangeScopes(client.GrantTypes, rec.Scopes)
 
 	var sc *domain.SenderConstraint
 	if in.ProofJKT != "" {
@@ -323,19 +324,19 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 	}
 
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
-		Client: client, Sub: user.ID, Scopes: rec.Scopes, SenderConstraint: sc, AuthTime: *rec.AuthTime,
+		Client: client, Sub: user.ID, Scopes: scopes, SenderConstraint: sc, AuthTime: *rec.AuthTime,
 		Audiences: audiences,
 	})
 	if err != nil {
 		return nil, err
 	}
 	if mcpResourceServer != nil {
-		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: mcpResourceServer.Resource, Scopes: rec.Scopes})
+		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: mcpResourceServer.Resource, Scopes: scopes})
 	}
-	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: rec.Scopes, SenderConstraint: senderConstraintTag(sc)})
+	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: scopes, SenderConstraint: senderConstraintTag(sc)})
 
 	idTok, err := deps.TokenIssuer.SignIDToken(ctx, ports.IDTokenInput{
-		Client: client, User: user, Scopes: rec.Scopes, AuthTime: *rec.AuthTime, AtHashFor: access,
+		Client: client, User: user, Scopes: scopes, AuthTime: *rec.AuthTime, AtHashFor: access,
 		ResolveAttributeDefs: deps.ResolveAttributeDefs,
 	})
 	if err != nil {
@@ -343,8 +344,8 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 	}
 
 	var refreshToken string
-	if domain.GrantsRefreshToken(rec.Scopes) {
-		refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, rec.Scopes, sc, nil, resource, now, entropy.Crypto())
+	if issueRefresh {
+		refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, scopes, sc, nil, resource, now, entropy.Crypto())
 		if err != nil {
 			return nil, err
 		}
@@ -366,7 +367,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		IDToken:      idTok,
 		TokenType:    tokenType,
 		ExpiresIn:    deps.TokenIssuer.AccessTokenTTLSeconds(),
-		Scope:        strings.Join(rec.Scopes, " "),
+		Scope:        strings.Join(scopes, " "),
 	}, nil
 }
 
