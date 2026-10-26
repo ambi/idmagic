@@ -256,6 +256,10 @@ func (r *UserRepository) Count(ctx context.Context, tenantID string) (int64, err
 	return New(r.Pool).CountUsersByTenant(ctx, tenantID)
 }
 
+func (r *UserRepository) CountHoldingQuota(ctx context.Context, tenantID string) (int64, error) {
+	return New(r.Pool).CountUsersHoldingQuota(ctx, tenantID)
+}
+
 func (r *UserRepository) CountFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus) (int64, error) {
 	filterStatus := ""
 	if status != nil {

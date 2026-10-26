@@ -24,6 +24,7 @@
 | テナント単位の管理 API | 解決済みのテナントの `/api/admin/v1/...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | 各機能仕様 |
 | 制御面のテナント管理 API | 解決済みのテナントの `/api/admin/v1/tenants/...` への要求 | `api` が、`RequireControlPlaneUser` で `system_admin` と制御面テナントへの所属を確かめてからユースケースを呼ぶ | [テナントのライフサイクル](features/lifecycle.md) |
 | 上限の確認 | ほかのモジュールのリソースの作成 | 作成する側のユースケースが、作成のトランザクションの中で `CheckAndIncrement` を呼ぶ | [リソース上限](features/quota.md) |
+| User の使用量の再集計 | 保持期限バッチ | System が IdManagement の件数を渡し、Tenancy が使用量の行を固定したまま件数で置き換える | [User の使用量の再集計](features/quota.md#req-tenancy-049-user-の使用量の再集計は使用量を占める-user-の件数で使用量を置き換える) |
 | Soft Quota の照合 | 保持期限バッチ | System が各保存先の使用量を測り、Tenancy が使用量の保存と超過の警告を行う | [Soft Quota の照合](features/quota.md#req-tenancy-048-soft-quota-の照合は実データの使用量を保存し超過を警告する) |
 | デフォルトテナントの作成 | プロセスの起動 | 起動処理が、存在しなければ作成する | [テナントのライフサイクル](features/lifecycle.md) |
 
@@ -37,6 +38,7 @@
 | パスワードのデフォルト値を設定の型と同じ公開パッケージに置く | `backend/tenancy/domain` の定数を、設定 API と Authentication が共に使う。上書きの解決とパスワードの検証は Authentication が行う |
 | 外装と属性スキーマを `Tenant` とは別の Aggregate にする | 認可と realm の解決が依存する `Tenant` を太らせない。詳細は[判断](decisions.md#外装と属性スキーマを-tenant-から独立した-aggregate-にする) |
 | Hard の上限の確認を、作成する側のトランザクションに委ねる | 作成と使用量の加算を同時に確定させる |
+| User の使用量のずれを実数の再集計で回収する | 加算と減算を作成と削除のトランザクションに入れない経路の失敗を、経路ごとの補償なしに次のバッチで直す |
 | Soft の警告を実データの照合で行う | 記録の作成を止めず、保存済みデータと削除による減少を次のバッチで反映する |
 
 ## 機能一覧

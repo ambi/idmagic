@@ -117,6 +117,12 @@ ORDER BY id;
 SELECT count(*) FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted');
 
+-- name: CountUsersHoldingQuota :one
+-- User.HoldsQuota と同じ条件。完全削除の使用量の減算を終えていない Tombstone を含める。
+SELECT count(*) FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted'
+  OR lifecycle->'pending_purge'->>'step' = 'release_usage');
+
 -- name: CountUsersByTenantFiltered :one
 SELECT count(*) FROM users
 WHERE tenant_id=sqlc.arg(tenant_id) AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')

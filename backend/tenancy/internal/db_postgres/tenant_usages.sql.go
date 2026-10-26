@@ -399,6 +399,18 @@ func (q *Queries) IncrementTenantUsageUsers(ctx context.Context, arg IncrementTe
 	return users, err
 }
 
+const lockTenantUsageUsers = `-- name: LockTenantUsageUsers :one
+SELECT users FROM tenant_usages WHERE tenant_id = $1 FOR UPDATE
+`
+
+// 再集計が置き換えるまで、同じテナントの使用量の加算と減算を待たせる。
+func (q *Queries) LockTenantUsageUsers(ctx context.Context, tenantID string) (int32, error) {
+	row := q.db.QueryRow(ctx, lockTenantUsageUsers, tenantID)
+	var users int32
+	err := row.Scan(&users)
+	return users, err
+}
+
 const setSoftTenantUsage = `-- name: SetSoftTenantUsage :exec
 INSERT INTO tenant_usages (tenant_id, audit_events_retained, export_artifacts_bytes)
 VALUES ($1, $2, $3)
@@ -415,5 +427,19 @@ type SetSoftTenantUsageParams struct {
 
 func (q *Queries) SetSoftTenantUsage(ctx context.Context, arg SetSoftTenantUsageParams) error {
 	_, err := q.db.Exec(ctx, setSoftTenantUsage, arg.TenantID, arg.AuditEventsRetained, arg.ExportArtifactsBytes)
+	return err
+}
+
+const setTenantUsageUsers = `-- name: SetTenantUsageUsers :exec
+UPDATE tenant_usages SET users = $1::int WHERE tenant_id = $2
+`
+
+type SetTenantUsageUsersParams struct {
+	Users    int32
+	TenantID string
+}
+
+func (q *Queries) SetTenantUsageUsers(ctx context.Context, arg SetTenantUsageUsersParams) error {
+	_, err := q.db.Exec(ctx, setTenantUsageUsers, arg.Users, arg.TenantID)
 	return err
 }

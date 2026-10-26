@@ -179,6 +179,29 @@ func (r *QuotaRepository) SetSoftUsage(_ context.Context, tenantID string, measu
 	return nil
 }
 
+func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource string, count func(context.Context) (int, error)) (int, error) {
+	if resource != domain.ResourceUsers {
+		return 0, fmt.Errorf("usage recount is not supported for %s", resource)
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	counted, err := count(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if counted < 0 {
+		return 0, fmt.Errorf("usage recount: negative count %d", counted)
+	}
+	usage := r.usages[tenantID]
+	if usage == nil {
+		usage = &domain.TenantUsage{}
+		r.usages[tenantID] = usage
+	}
+	previous := usage.Users
+	usage.Users = counted
+	return previous, nil
+}
+
 func (r *QuotaRepository) GetQuota(ctx context.Context, tenantID string) (*domain.TenantQuota, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

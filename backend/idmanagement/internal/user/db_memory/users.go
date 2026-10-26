@@ -300,6 +300,18 @@ func (r *UserRepository) Count(_ context.Context, tenantID string) (int64, error
 	return count, nil
 }
 
+func (r *UserRepository) CountHoldingQuota(_ context.Context, tenantID string) (int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var count int64
+	for _, user := range r.bySub {
+		if user.TenantID == tenantID && user.HoldsQuota() {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (r *UserRepository) CountFiltered(_ context.Context, tenantID, query string, status *idmdomain.UserStatus) (int64, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

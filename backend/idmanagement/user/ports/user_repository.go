@@ -30,6 +30,8 @@ type UserRepository interface {
 	// (PendingPurge を持つ) Tombstone を返す。猶予期間の判定は呼び出し側が行う。
 	ListPurgeCandidates(ctx context.Context, tenantID string) ([]*userdomain.User, error)
 	Count(ctx context.Context, tenantID string) (int64, error)
+	// CountHoldingQuota は、テナントの User の使用量を占める User (User.HoldsQuota) を数える。
+	CountHoldingQuota(ctx context.Context, tenantID string) (int64, error)
 	CountFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus) (int64, error)
 	Save(ctx context.Context, user *userdomain.User) error
 	// Update は sub の User の行を固定して読み直し、change をその最新の値に当てて保存し、

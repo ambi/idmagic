@@ -44,6 +44,20 @@ func (q *Queries) CountUsersByTenantFiltered(ctx context.Context, arg CountUsers
 	return count, err
 }
 
+const countUsersHoldingQuota = `-- name: CountUsersHoldingQuota :one
+SELECT count(*) FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted'
+  OR lifecycle->'pending_purge'->>'step' = 'release_usage')
+`
+
+// User.HoldsQuota と同じ条件。完全削除の使用量の減算を終えていない Tombstone を含める。
+func (q *Queries) CountUsersHoldingQuota(ctx context.Context, tenantID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersHoldingQuota, tenantID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteUserUniqueAttributeValues = `-- name: DeleteUserUniqueAttributeValues :exec
 DELETE FROM user_unique_attribute_values WHERE user_id = $1
 `

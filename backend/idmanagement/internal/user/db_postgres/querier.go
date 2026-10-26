@@ -13,6 +13,8 @@ type Querier interface {
 	CopyUniqueAttributeValues(ctx context.Context, arg CopyUniqueAttributeValuesParams) error
 	CountUsersByTenant(ctx context.Context, tenantID string) (int64, error)
 	CountUsersByTenantFiltered(ctx context.Context, arg CountUsersByTenantFilteredParams) (int64, error)
+	// User.HoldsQuota と同じ条件。完全削除の使用量の減算を終えていない Tombstone を含める。
+	CountUsersHoldingQuota(ctx context.Context, tenantID string) (int64, error)
 	DeleteEmailChangeTokensForSub(ctx context.Context, userID string) error
 	DeleteTenantUniqueAttributeValues(ctx context.Context, tenantID string) error
 	DeleteTenantUserAttributeSchema(ctx context.Context, tenantID string) error

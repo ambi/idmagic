@@ -609,7 +609,7 @@ Repository の保存は、Aggregate 全体を ID で上書きする（`ON CONFLI
 | --- | --- |
 | ログインセッションの失効 | `RevokeAuthenticationSession` が `revoked_at` と `revoke_reason` だけを、最初の一回だけ書く。セッションの丸ごとの保存はこの二列を書かない |
 | ログインセッションの最終アクセス | `TouchAuthenticationSession` が、前回から一定時間が過ぎたときだけ `last_seen_at` を書く |
-| テナントのリソースの使用量 | 使用量の加算を、上限を条件にした一つの更新文で行う |
+| テナントのリソースの使用量 | 使用量の加算を、上限を条件にした一つの更新文で行う。User の使用量の再集計は行を `FOR UPDATE` で固定したまま件数を数えて置き換え、その間の加算と減算を置き換えの後へ待たせる |
 | Authentication による User の記録 | ログイン、パスワードの変更と再設定、MFA の状態の記録が、`UserRepository.Update` で行を固定して読み直した User に変更を当てる。最終ログイン時刻、変更時刻、必須操作は無効化の状態と同じ `lifecycle` の列にあり、期限切れの判定も最新の値から行う。再設定はトークンの使用済み化と同じトランザクションで `UserWriter.Update` を使う |
 | トラストバンドルの JWKS の確認 | `RecordJWKSFetched` が `jwks_cached_at` だけを書き、取得中の設定の編集を保持する |
 | Agent の更新と状態の遷移 | 管理者の更新、無効化と再有効化、停止、所有者の停止に伴う無効化が、`AgentRepository.Update` で行を固定して読み直した Agent に変更を当てる。停止の拒否と変わった項目の判定も最新の値に対して行うので、停止の後に届いた操作が停止を取り消さない |

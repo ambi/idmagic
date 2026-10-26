@@ -182,6 +182,47 @@ func runUserRepository(t *testing.T, newFixture NewFixture) {
 		}
 	})
 
+	// 使用量の再集計は、完全削除されていない User と、使用量の減算を終えていない Tombstone を
+	// 使用量を占める User として数える (REQ-TENANCY-049)。
+	t.Run("quota holders are live users and tombstones before the usage release", func(t *testing.T) {
+		f := newFixture(t)
+		ctx := context.Background()
+		since := f.Now.Add(-time.Hour)
+		tombstone := func(step userdomain.PurgeStep) userdomain.UserLifecycle {
+			return userdomain.UserLifecycle{
+				Status: idmdomain.UserStatusDeleted, StatusChangedAt: &since,
+				PendingPurge: &userdomain.PendingPurge{Step: step, ActorUserID: "admin"},
+			}
+		}
+		for username, lifecycle := range map[string]userdomain.UserLifecycle{
+			"active":    {Status: idmdomain.UserStatusActive},
+			"unset":     {},
+			"disabled":  {Status: idmdomain.UserStatusDisabled, StatusChangedAt: &since},
+			"pending":   {Status: idmdomain.UserStatusPendingDeletion, StatusChangedAt: &since},
+			"releasing": tombstone(userdomain.PurgeStepReleaseUsage),
+			"announce":  tombstone(userdomain.PurgeStepAnnounce),
+			"finished":  {Status: idmdomain.UserStatusDeleted, StatusChangedAt: &since},
+		} {
+			stored := user(t, f.TenantA, username, f.Now)
+			stored.Lifecycle = lifecycle
+			if err := f.Users.Save(ctx, stored); err != nil {
+				t.Fatalf("Save(%s): %v", username, err)
+			}
+		}
+		other := user(t, f.TenantB, "other", f.Now)
+		if err := f.Users.Save(ctx, other); err != nil {
+			t.Fatalf("Save(other): %v", err)
+		}
+
+		got, err := f.Users.CountHoldingQuota(ctx, f.TenantA)
+		if err != nil {
+			t.Fatalf("CountHoldingQuota: %v", err)
+		}
+		if got != 5 {
+			t.Fatalf("CountHoldingQuota = %d, want the four live users and the tombstone before the usage release", got)
+		}
+	})
+
 	t.Run("same tenant rejects duplicate username", func(t *testing.T) {
 		f := newFixture(t)
 		ctx := context.Background()

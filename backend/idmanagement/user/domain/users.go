@@ -74,6 +74,13 @@ func (u User) Validate() error {
 // IsDeleted は User が tombstone 状態 (status == Deleted) かを返す。
 func (u User) IsDeleted() bool { return u.Lifecycle.EffectiveStatus() == idmdomain.UserStatusDeleted }
 
+// HoldsQuota は User がテナントの User の使用量を占めるかを返す。完全削除の使用量の減算を
+// 終えていない Tombstone は、再実行が後で減算するので、まだ占める。
+func (u User) HoldsQuota() bool {
+	pending := u.Lifecycle.PendingPurge
+	return !u.IsDeleted() || (pending != nil && pending.Step == PurgeStepReleaseUsage)
+}
+
 // IsSoftDeleted は User が削除予約状態 (status == PendingDeletion) かを返す。PII は
 // 温存されるが認証は Disabled / Deleted と同じく拒否される (IsActive が false)。
 func (u User) IsSoftDeleted() bool {

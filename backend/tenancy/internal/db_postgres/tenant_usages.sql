@@ -1,6 +1,13 @@
 -- name: EnsureTenantUsage :exec
 INSERT INTO tenant_usages (tenant_id) VALUES ($1) ON CONFLICT DO NOTHING;
 
+-- name: LockTenantUsageUsers :one
+-- 再集計が置き換えるまで、同じテナントの使用量の加算と減算を待たせる。
+SELECT users FROM tenant_usages WHERE tenant_id = $1 FOR UPDATE;
+
+-- name: SetTenantUsageUsers :exec
+UPDATE tenant_usages SET users = sqlc.arg(users)::int WHERE tenant_id = sqlc.arg(tenant_id);
+
 -- name: SetSoftTenantUsage :exec
 INSERT INTO tenant_usages (tenant_id, audit_events_retained, export_artifacts_bytes)
 VALUES ($1, $2, $3)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/ports"
@@ -108,6 +109,105 @@ func RunQuota(t *testing.T, newFixture NewQuotaFixture) {
 		}
 		requireQuotaExceeded(t, f.Repository.CheckAndIncrement(ctx, f.TenantID, domain.ResourceGroups, 1))
 		requireUsage(ctx, t, f, func(u *domain.TenantUsage) int { return u.Groups }, 3)
+	})
+
+	runRecountUsage(t, newFixture)
+}
+
+// runRecountUsage は、User の使用量の再集計が数えた件数で使用量を置き換え、数えている間の
+// 加算を失わないことを確かめる (REQ-TENANCY-049)。
+func runRecountUsage(t *testing.T, newFixture NewQuotaFixture) {
+	t.Helper()
+	ctx := context.Background()
+	users := func(u *domain.TenantUsage) int { return u.Users }
+	counted := func(n int) func(context.Context) (int, error) {
+		return func(context.Context) (int, error) { return n, nil }
+	}
+
+	t.Run("recount replaces the users usage and keeps the other resources", func(t *testing.T) {
+		f := newFixture(t)
+		if err := f.Repository.CheckAndIncrement(ctx, f.TenantID, domain.ResourceUsers, 3); err != nil {
+			t.Fatalf("increment users: %v", err)
+		}
+		if err := f.Repository.CheckAndIncrement(ctx, f.TenantID, domain.ResourceGroups, 2); err != nil {
+			t.Fatalf("increment groups: %v", err)
+		}
+		previous, err := f.Repository.RecountUsage(ctx, f.TenantID, domain.ResourceUsers, counted(1))
+		if err != nil || previous != 3 {
+			t.Fatalf("RecountUsage = %d, %v; want the previous usage 3", previous, err)
+		}
+		requireUsage(ctx, t, f, users, 1)
+		requireUsage(ctx, t, f, func(u *domain.TenantUsage) int { return u.Groups }, 2)
+	})
+
+	t.Run("recount of a tenant without usage stores the count", func(t *testing.T) {
+		f := newFixture(t)
+		previous, err := f.Repository.RecountUsage(ctx, f.TenantID, domain.ResourceUsers, counted(2))
+		if err != nil || previous != 0 {
+			t.Fatalf("RecountUsage = %d, %v; want the previous usage 0", previous, err)
+		}
+		requireUsage(ctx, t, f, users, 2)
+	})
+
+	t.Run("a count above the limit is stored and refuses the next creation", func(t *testing.T) {
+		f := newFixture(t)
+		one := 1
+		if err := f.Repository.SetQuota(ctx, f.TenantID, &domain.TenantQuota{Users: &one}); err != nil {
+			t.Fatalf("SetQuota: %v", err)
+		}
+		if _, err := f.Repository.RecountUsage(ctx, f.TenantID, domain.ResourceUsers, counted(2)); err != nil {
+			t.Fatalf("RecountUsage: %v", err)
+		}
+		requireUsage(ctx, t, f, users, 2)
+		requireQuotaExceeded(t, f.Repository.CheckAndIncrement(ctx, f.TenantID, domain.ResourceUsers, 1))
+	})
+
+	t.Run("a failed or negative count keeps the usage", func(t *testing.T) {
+		f := newFixture(t)
+		if err := f.Repository.CheckAndIncrement(ctx, f.TenantID, domain.ResourceUsers, 3); err != nil {
+			t.Fatalf("increment: %v", err)
+		}
+		failing := func(context.Context) (int, error) { return 0, errors.New("count unavailable") }
+		for name, count := range map[string]func(context.Context) (int, error){"failed": failing, "negative": counted(-1)} {
+			if _, err := f.Repository.RecountUsage(ctx, f.TenantID, domain.ResourceUsers, count); err == nil {
+				t.Fatalf("%s count was accepted", name)
+			}
+			requireUsage(ctx, t, f, users, 3)
+		}
+	})
+
+	t.Run("recount of a resource other than users fails and changes nothing", func(t *testing.T) {
+		f := newFixture(t)
+		if err := f.Repository.CheckAndIncrement(ctx, f.TenantID, domain.ResourceGroups, 2); err != nil {
+			t.Fatalf("increment: %v", err)
+		}
+		if _, err := f.Repository.RecountUsage(ctx, f.TenantID, domain.ResourceGroups, counted(0)); err == nil {
+			t.Fatal("recount of groups succeeded")
+		}
+		requireUsage(ctx, t, f, func(u *domain.TenantUsage) int { return u.Groups }, 2)
+	})
+
+	// 数えている間の加算が置き換えの前に確定すれば、置き換えがその加算を消す。加算が数え終わる
+	// まで待たされ、置き換えた件数に加わることを確かめる。
+	t.Run("an increment during the count is applied after the replacement", func(t *testing.T) {
+		f := newFixture(t)
+		incremented := make(chan error, 1)
+		count := func(context.Context) (int, error) {
+			go func() { incremented <- f.Repository.CheckAndIncrement(ctx, f.TenantID, domain.ResourceUsers, 1) }()
+			select {
+			case err := <-incremented:
+				incremented <- err
+			case <-time.After(200 * time.Millisecond):
+			}
+			return 5, nil
+		}
+		if _, err := f.Repository.RecountUsage(ctx, f.TenantID, domain.ResourceUsers, count); err != nil {
+			t.Fatalf("RecountUsage: %v", err)
+		}
+		if err := <-incremented; err != nil {
+			t.Fatalf("concurrent increment: %v", err)
+		}
+		requireUsage(ctx, t, f, users, 6)
 	})
 }
 

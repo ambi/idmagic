@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -202,6 +203,47 @@ func (r *QuotaRepository) SetSoftUsage(ctx context.Context, tenantID string, mea
 	return New(r.db).SetSoftTenantUsage(ctx, SetSoftTenantUsageParams{
 		TenantID: tenantID, AuditEventsRetained: int64(measured.AuditEventsRetained), ExportArtifactsBytes: int64(measured.ExportArtifactsBytes),
 	})
+}
+
+// RecountUsage は自分のトランザクションで使用量の行を固定するので、トランザクションを始められる
+// 接続で構築したリポジトリだけが受け付ける。count は別の接続で数えてよい。
+func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource string, count func(context.Context) (int, error)) (int, error) {
+	if resource != domain.ResourceUsers {
+		return 0, fmt.Errorf("usage recount is not supported for %s", resource)
+	}
+	beginner, ok := r.db.(interface {
+		Begin(ctx context.Context) (pgx.Tx, error)
+	})
+	if !ok {
+		return 0, errors.New("usage recount: requires a database that begins transactions")
+	}
+	tx, err := beginner.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // commit path makes rollback a no-op
+	queries := New(tx)
+	if err := queries.EnsureTenantUsage(ctx, tenantID); err != nil {
+		return 0, err
+	}
+	previous, err := queries.LockTenantUsageUsers(ctx, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	counted, err := count(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if counted < 0 || counted > math.MaxInt32 {
+		return 0, fmt.Errorf("usage recount: count %d is outside the usage column", counted)
+	}
+	if err := queries.SetTenantUsageUsers(ctx, SetTenantUsageUsersParams{TenantID: tenantID, Users: int32(counted)}); err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return int(previous), nil
 }
 
 func toPgtypeInt4(v *int) pgtype.Int4 {
