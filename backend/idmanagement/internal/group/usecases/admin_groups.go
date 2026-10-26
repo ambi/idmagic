@@ -186,14 +186,15 @@ func GetGroup(ctx context.Context, deps AdminGroupDeps, id string) (*groupdomain
 }
 
 type CreateGroupInput struct {
-	ActorUserID    string
-	Name           string
-	Description    *string
-	Email          *string
-	Attributes     map[string]userdomain.AttributeValue
-	Roles          []string
-	MembershipType groupdomain.GroupMembershipType
-	Now            time.Time
+	ActorUserID     string
+	Name            string
+	Description     *string
+	Email           *string
+	Attributes      map[string]userdomain.AttributeValue
+	Roles           []string
+	MembershipType  groupdomain.GroupMembershipType
+	UpstreamManaged bool
+	Now             time.Time
 }
 
 func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) (*groupdomain.Group, error) {
@@ -211,6 +212,10 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	}
 	if err := idmusecases.ValidateRoleAssignment(idmusecases.RoleTargetGroup, tenantID, nil, roles); err != nil {
 		return nil, err
+	}
+	roleTarget := groupdomain.Group{Roles: roles, MembershipType: in.MembershipType, UpstreamManaged: in.UpstreamManaged}
+	if err := roleTarget.ValidateAutomaticRoles(); err != nil {
+		return nil, errors.Join(idmusecases.ErrInvalidRole, err)
 	}
 	email, err := normalizeGroupEmail(in.Email)
 	if err != nil {
@@ -230,7 +235,7 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	group := &groupdomain.Group{
 		ID: id, TenantID: tenantID, Name: name, Description: idmusecases.NormalizeDescription(in.Description),
 		Email: email, Attributes: in.Attributes,
-		Roles: roles, MembershipType: in.MembershipType.Effective(), CreatedAt: now, UpdatedAt: now,
+		Roles: roles, MembershipType: in.MembershipType.Effective(), UpstreamManaged: in.UpstreamManaged, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := group.Validate(); err != nil {
 		return nil, err
@@ -321,6 +326,9 @@ func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) 
 		}
 		if !slices.Equal(roles, group.Roles) {
 			updated.Roles = roles
+			if err := updated.ValidateAutomaticRoles(); err != nil {
+				return nil, errors.Join(idmusecases.ErrInvalidRole, err)
+			}
 			changed = append(changed, "roles")
 		}
 	}

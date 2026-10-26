@@ -22,17 +22,19 @@ type DynamicGroupRule struct {
 }
 
 type Group struct {
-	ID             string
-	TenantID       string
-	Name           string
-	Description    pgtype.Text
-	Email          pgtype.Text
-	Attributes     []byte
-	Roles          []byte
-	MembershipType string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	NameKey        string
+	ID              string
+	TenantID        string
+	Name            string
+	Description     pgtype.Text
+	Email           pgtype.Text
+	Attributes      []byte
+	Roles           []byte
+	MembershipType  string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	NameKey         string
+	UpstreamManaged bool
+	RoleDelegation  []byte
 }
 
 type TenantGroupAttributeSchema struct {

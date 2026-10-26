@@ -18,6 +18,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
@@ -663,7 +664,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 
 // メンバーシップは保存先から、有効ロールは認可が使う Authenticator から読む。
 //
-//spec:covers EX-SOURCING-005-01: CreateScimGroup でグループを作り、PatchScimGroup のメンバー追加と削除が GroupMembership と User の有効ロールへ届き、応答のメンバーが type=User を持つ。
+//spec:covers REQ-IDMANAGEMENT-092, EX-SOURCING-005-01: CreateScimGroup は上流管理となり、未承認のロールを付与しない。明示委任後の PatchScimGroup の所属が業務ロールへ届き、応答のメンバーが type=User を持つ。
 func TestScimGroupSync(t *testing.T) {
 	ctx := context.Background()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
@@ -730,14 +731,23 @@ func TestScimGroupSync(t *testing.T) {
 			t.Fatalf("expected member user1, got %v", members)
 		}
 
-		// SCIM はグループのロールを運ばない。管理者がロールを割り当てた後の
-		// メンバー変更が、有効ロールへ届くかを次の段で読む。
+		// SCIM はロールと承認を運ばない。管理者が業務ロールを委任した後の
+		// メンバー変更だけが、有効ロールへ届くかを次の段で読む。
 		group, err := groupRepo.FindByID(ctx, tenancydomain.DefaultTenantID, ref.GroupID)
 		if err != nil || group == nil {
 			t.Fatalf("setup: find group: %v (%v)", group, err)
 		}
 		group.Roles = []string{"engineer"}
 		if err := groupRepo.Save(ctx, group); err != nil {
+			t.Fatal(err)
+		}
+		if !group.UpstreamManaged {
+			t.Fatal("SCIM group is not marked upstream managed")
+		}
+		if roles := authenticator.EffectiveRoles(ctx, support.Principal{ID: user1Sub, TenantID: group.TenantID}); slices.Contains(roles, "engineer") {
+			t.Fatalf("unapproved SCIM role escaped: %v", roles)
+		}
+		if err := groupRepo.SetRoleDelegation(ctx, group.TenantID, group.ID, &groupdomain.GroupRoleDelegation{Roles: group.Roles, Expression: "", ApprovedBy: "admin", ApprovedAt: time.Now().UTC()}, time.Now().UTC()); err != nil {
 			t.Fatal(err)
 		}
 	}

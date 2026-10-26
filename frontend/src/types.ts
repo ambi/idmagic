@@ -747,6 +747,15 @@ export type AdminGroup = {
   scim_source?: string
   membership_type?: 'manual' | 'dynamic'
   dynamic_rule?: DynamicGroupRule
+  upstream_managed?: boolean
+  role_delegation?: GroupRoleDelegation
+}
+
+export type GroupRoleDelegation = {
+  roles: string[]
+  expression: string
+  approved_by: string
+  approved_at: string
 }
 
 export type DynamicGroupRule = {

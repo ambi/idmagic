@@ -43,6 +43,9 @@ model Group {
   @doc("テナントの TenantGroupAttributeSchema に照らして検証するカスタム属性。")
   attributes?: Record<AttributeValue>;
   roles: string[];
+  @doc("上流が所属を同期する Group。通常の更新で解除できない。")
+  upstream_managed?: boolean;
+  role_delegation?: GroupRoleDelegation;
   membership_type: GroupMembershipType = GroupMembershipType.manual;
   created_at: utcDateTime;
   updated_at?: utcDateTime;
@@ -85,7 +88,7 @@ enum AgentKind {
 }
 
 
-@doc("`roles` に、サーバーが保存を拒否するロールが含まれる。空の名前か、保持してはならない対象に新たに割り当てる予約済みのロール `system_admin` である。`system_admin` は制御面に予約しているので、書き込みでこれを加えられるのは制御面テナントの User または Group だけで、どのテナントでも Agent には加えられない。判断は呼び出し元自身のロールではなく対象の種類とテナントを読み、結果の集合ではなく書き込みが加えるものを読むので、対象にすでに保存されている値は再び送ってよく、明示的な `roles` の更新でそれを外すこともできる。拒否した書き込みは、同じリクエストのほかのフィールドを含め、何も保存しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_role` であり、`detail` が二つの理由のどちらに当たるかを示す。")
+@doc("ロールの書き込みまたは業務ロールの委任を受け付けられない。空のロール名、対象に新しく割り当てられない system_admin、自動所属への admin または system_admin の設定、現在のロールと式に一致しない委任が該当する。system_admin を追加できるのは制御面テナントの User とローカルの手動 Group だけであり、Agent には追加できない。既存の値は明示的な roles 更新で除ける。拒否した書き込みは同じリクエストのほかのフィールドも保存しない。RFC 9457 の Problem Details で type は urn:idmagic:error:invalid_role である。")
 model InvalidRoleError is ProblemDetails;
 
 
@@ -864,6 +867,8 @@ model GroupSummaryResponse {
   member_count: int64;
   membership_type: GroupMembershipType;
   dynamic_rule?: DynamicGroupRule;
+  upstream_managed?: boolean;
+  role_delegation?: GroupRoleDelegation;
   created_at: utcDateTime;
   updated_at?: utcDateTime;
 }
@@ -1128,7 +1133,28 @@ model GroupUpdated {
   actorUserId: string;
   groupId: string;
   changedFields: string[];
+  @doc("委任の設定時のロール一覧。解除時は空であり、通常の Group の編集では省略する。")
+  delegatedRoles?: string[];
+  @doc("委任対象の動的規則の式の SHA-256。式と属性値の平文を監査へ複製しない。")
+  delegationRuleSha256?: string;
 }
+
+@doc("管理者が自動所属へ委任した業務ロール。現在のロール一覧と式が一致する間だけ有効で、管理権限は含められない。")
+model GroupRoleDelegation {
+  roles: string[];
+  expression: string;
+  approved_by: string;
+  approved_at: utcDateTime;
+}
+
+@doc("対話セッションの管理者が確認した現在のロールと動的規則。空の roles は解除であり、上流管理の手動 Group では expression は空である。")
+model GroupRoleDelegationRequest {
+  roles: string[];
+  expression: string;
+}
+
+@doc("Group が存在しないか、要求先とは異なるテナントに属する。type は urn:idmagic:error:group_not_found である。")
+model GroupNotFoundError is ProblemDetails;
 
 
 @doc("管理者がグループを削除した。メンバーシップは連鎖して解除し、それぞれ個別の GroupMemberRemoved を発行した。")

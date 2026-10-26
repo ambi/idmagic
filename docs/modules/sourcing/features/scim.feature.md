@@ -130,6 +130,7 @@
 - Given 有効な SCIM アクセストークンが発行されている
 - When SCIM クライアントが CreateScimGroup を呼び出す
 - Then グループが作成される
+- And 管理者が業務ロールを設定し、その一覧への委任を明示的に承認している
 - When SCIM クライアントが PatchScimGroup でメンバー追加を指定する
 - Then GroupMembership が同期され User の有効ロールが更新される
 - Then Group レスポンスの各メンバーは `type=User` を持つ

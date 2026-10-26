@@ -6,6 +6,7 @@
 
 - Given `department` 属性が定義され、Engineering の User と Sales の User が存在する
 - And `membership_type=dynamic` のグループが存在する
+- And 管理者が現在の業務ロールと規則の式への委任を承認している
 - When 管理者が `user.department == "Engineering"` を保存して有効化する
 - Then 全件の再評価後、Engineering の有効な User だけが動的規則を由来として所属する
 - Then 実効ロールと Application の割り当ては、その所属を参照する

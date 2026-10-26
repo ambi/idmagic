@@ -2099,6 +2099,22 @@ model DeleteGroupSuccess_204 {
   @statusCode statusCode: 204;
 }
 
+model SetGroupRoleDelegationNotFound {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.GroupNotFoundError;
+}
+
+@doc("対話セッションの管理者が、自動所属に現在の業務ロールを委任する。roles と expression が現在の値に一致することを要求し、空の roles は解除する。管理権限の委任と不一致は invalid_role で拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("SetGroupRoleDelegation")
+@route("/api/admin/v1/groups/{group_id}/role-delegation")
+@put
+op SetGroupRoleDelegation(
+  @path group_id: string,
+  @body body: IdMagic.Contract.GroupRoleDelegationRequest
+): UpdateGroupSuccess_200 | UpdateGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateGroupError403 | SetGroupRoleDelegationNotFound | UpdateGroupError422;
+
 union DeleteGroupError400Body {
   IdMagic.Contract.InvalidRequestError,
 }

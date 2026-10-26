@@ -10,12 +10,14 @@
 | Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
 | --- | --- | --- |
 | `User` | 属性（`attributes`）、必須操作 | `Group` のメンバーになる。`Agent` の所有者になる |
-| `Group` | `GroupMembership`、`DynamicGroupRule` | メンバーの `User` を ID で参照する |
+| `Group` | `GroupMembership`、`DynamicGroupRule`、`GroupRoleDelegation`、上流管理の印 | メンバーの `User` を ID で参照する |
 | `Agent` | `AgentCredentialBinding` | 所有者の `User` または `Group` と、バインドする `OAuth2Client` を ID で参照する |
 | `TenantUserAttributeSchema`、`TenantGroupAttributeSchema` | User と Group のカスタム属性の定義 | `Tenant` を `tenant_id` で参照する |
 
 境界の内側にあるものは、その Aggregate root を経由せずに参照しない。
-`User` の実効ロールは、直接付与したロールと、所属する `Group` のロールの和集合である。
+`User` の実効ロールは、直接付与したロールと、所属する `Group` から付与可能なロールの和集合である。
+自動所属の Group は、現在のロール一覧と規則の式への明示承認がある業務ロールだけを加える。
+判定は [REQ-IDMANAGEMENT-092](features/group.md#実効ロールの解決) が定める。
 
 ### 値オブジェクト
 
@@ -56,6 +58,9 @@ PostgreSQL の保存先は `NewPostgresModule` が作り、行の確定は必須
 
 IdManagement は、Aggregate の保存に楽観的な排他を使わない。
 リポジトリの保存は、Aggregate 全体を ID で上書きする（`ON CONFLICT (id) DO UPDATE`）。
+ただし、Group の通常保存は既存の `role_delegation` を上書きせず、`upstream_managed` を解除しない。
+承認と取消しだけが専用の保存操作で `role_delegation` と更新時刻を変えるため、古い通常保存が取消しを元に戻すことはない。
+所属経由の参照は、Group と現在の規則を同じ読み取りで取得し、承認のロール一覧と式を照合する。
 User の一部の値だけを記録するほかのモジュールのために、`UserRepository.Update` と `UserWriter.Update` が行を `FOR UPDATE` で固定して読み直し、その最新の値へ変更を当てる。
 Agent を変える操作（管理者の更新、無効化と再有効化、停止、所有者の停止に伴う無効化）は、`AgentRepository.Update` で同じことを行う。
 書き手ごとの保存の形は[同時の更新と排他](../../design/data/database.md#同時の更新と排他)に従う。

@@ -17,7 +17,7 @@
 #### REQ-IDMANAGEMENT-014 管理 API は、要求先のテナントで実効ロールに `admin` を持つ User の要求だけを受け付ける
 
 - 管理 API の要求を受けたとき、IdManagement は、要求先のテナントに属する有効な認証済みの User で、実効ロールに `admin` を含むものからの要求だけを受け付ける。
-- 管理 API の要求を受けたとき、IdManagement は、User に直接付与したロールと所属する Group のロールの和集合を、実効ロールとして判定する。
+- 管理 API の要求を受けたとき、IdManagement は、User に直接付与したロールと所属する Group の付与可能なロールの和集合を、実効ロールとして判定する。
 - 実効ロールに `admin` を含まない User の要求を受けた場合、IdManagement は、AccessDeniedError で拒否し、対象を変えない。
 - **例**：EX-IDMANAGEMENT-014-01、EX-IDMANAGEMENT-014-02
 

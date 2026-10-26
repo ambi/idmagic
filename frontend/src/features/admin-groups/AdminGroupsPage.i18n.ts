@@ -44,7 +44,7 @@ export const adminGroupsDictionary = defineDictionary(
     groupNameLabel: 'グループ名',
     groupNameHelp: 'テナント内で一意の表示名。',
     descriptionOptionalLabel: '説明 (任意)',
-    rolesHelp: 'カンマ区切り。所属ユーザーに一斉付与されます。',
+    rolesHelp: 'カンマ区切り。自動所属のグループでは、業務ロールの委任を別途承認してください。',
     create: '作成',
     cancel: 'キャンセル',
     groupCreateFailedError: 'グループを作成できませんでした。',
@@ -282,7 +282,8 @@ export const adminGroupsDictionary = defineDictionary(
     groupNameLabel: 'Group name',
     groupNameHelp: 'A display name unique within the tenant.',
     descriptionOptionalLabel: 'Description (optional)',
-    rolesHelp: 'Comma-separated. Granted to all members at once.',
+    rolesHelp:
+      'Comma-separated. Automatic membership requires separate business role delegation approval.',
     create: 'Create',
     cancel: 'Cancel',
     groupCreateFailedError: 'Could not create the group.',

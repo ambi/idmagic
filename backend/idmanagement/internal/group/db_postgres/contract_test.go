@@ -8,6 +8,7 @@ import (
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
 
+//spec:covers REQ-IDMANAGEMENT-092, REQ-IDMANAGEMENT-093: PostgreSQL 保存で所属を保って未承認ロールを除き、通常保存で承認の取消しを戻させない。
 func TestPersistenceContract(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)

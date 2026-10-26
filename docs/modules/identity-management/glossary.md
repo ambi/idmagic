@@ -15,10 +15,11 @@
 | SoftDelete | User を `Active` / `Disabled` から `PendingDeletion` へ遷移させる管理操作。個人識別情報、同意、リフレッシュトークン、セッションを残したまま削除を予約するため、誤操作を猶予期間内に取り消せる。 | soft_delete, soft-delete |
 | Restore | `PendingDeletion` の User を `Active` に戻す管理操作。猶予期間内だけ実行でき、個人識別情報と資格情報は保持しているため通常どおりログインを再開できる。 | restore |
 | Purge | User を `Active` / `Disabled` / `PendingDeletion` から `Deleted` に遷移させる確定削除操作。匿名化をカスケードし、猶予期間経過後の自動消去と、管理者による明示的な完全削除の双方から呼び出す。 | purge |
-| Group | テナント単位の Aggregate root。再利用できるロールの束を持ち、所属する User へまとめて付与する。階層、拒否規則、属性による自動所属は持たず、和集合だけで構成する。連絡先メールアドレスと、`TenantGroupAttributeSchema` に対して検証する独自属性も持つ。 | group, グループ, ロールグループ |
-| GroupMembership | User と Group の所属関係 (`GroupMember`)。`manual` は管理者操作、`dynamic` は有効な CEL 規則の評価結果だけから変更する。`effective_roles(user) = user.roles ∪ ⋃ membership.group.roles`。 | group membership, グループ所属, membership |
+| Group | テナント単位で User の所属と、付与可能なロールの束を持つ Aggregate root。所属は手動操作、動的な規則または上流同期によって決まり、自動所属による業務ロールの付与には GroupRoleDelegation を要する。 | group, グループ, ロールグループ |
+| GroupMembership | User と Group の所属関係 (`GroupMember`)。手動操作、動的な規則の評価、上流同期によって決まり、実効ロールには Group から付与可能なロールだけを加える。 | group membership, グループ所属, membership |
 | DynamicGroupRule | User の中核属性と TenantUserAttributeSchema で定義した属性だけを参照し、所属可否を Boolean で返す制限付き CEL 式。規則のバージョンが一致する動的メンバーシップだけを有効とする。 | dynamic membership rule, 動的グループルール |
-| EffectiveRoles | 認可判断で使う User の有効ロール集合。`User.roles` と所属 Group のロールの和集合であり、管理コンソールの RBAC 制御とアカウントポータルの双方が参照する。 | 有効ロール |
+| EffectiveRoles | 認可判断で使う User の有効ロール集合。User への直接付与と、所属 Group から付与可能なロールの和集合である。 | 有効ロール |
+| GroupRoleDelegation | 自動所属の Group について、管理者が現在のロール一覧と規則の式を指定して業務ロールの付与を許す承認。管理ロールは委任できない。 | 業務ロールの委任 |
 | Agent | テナント単位の非人間プリンシパル。自身の資格情報は持たず、AgentCredentialBinding で既存の OAuth2Client にバインドしてトークンを得る。所有者（同じテナントの User）は必須であり、所有者が止まると Agent も止まる。 | agent, エージェント, AI エージェント, 非人間アイデンティティ |
 | Killed | Agent の緊急停止 (kill-switch) による一方向終端状態。Killed からは復帰できず、新規トークンを一切発行しない (fail-closed)。 | killed |
 | DisableAgent | Agent を Active から Disabled に遷移させる可逆な運用停止。`/api/admin/agents/{agent_id}/disable` から発火。 | disable agent |

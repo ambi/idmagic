@@ -128,7 +128,8 @@ PATCH の `path` は、`employeeNumber` などの単純な名前と、Enterprise
 - SCIM クライアントが Group を作成、更新、削除するか所属を変えたとき、Sourcing は、IdManagement の操作を通し、管理 API と同じ使用量の確認、イベントと下流への通知を伴わせる。
 - SCIM クライアントが Group を作成したとき、Sourcing は、Group、初期の所属と SCIM の対応の記録を一緒に確定し、対応の記録の保存に失敗すると Group と初期の所属を残さない。
 - Group の Hard Quota を超える作成を要求された場合、Sourcing は、422 と `scimType` を省略した SCIM のエラーで拒否し、Group と対応の記録を作らず、使用量を変えない。
-- SCIM クライアントが Group のメンバーを追加または削除したとき、Sourcing は、直接所属する User のメンバーシップを同期し、User の実効ロールに Group のロールを反映する。
+- SCIM クライアントが Group のメンバーを追加または削除したとき、Sourcing は、直接所属する User のメンバーシップを同期し、User の実効ロールに Group の付与可能なロールを反映する。
+- SCIM の Group を作成したとき、Sourcing は、Group を上流管理として記録し、管理権限を付与せず、IdManagement の REQ-IDMANAGEMENT-092 に従って明示的に委任された業務ロールだけを所属へ反映する。
 - SCIM の Group を返すとき、Sourcing は、各メンバーに `type=User` を付ける。
 - SCIM クライアントが Group を削除したとき、Sourcing は、Group を削除し、204 を返す。
 - 同じテナントのほかの Group と同じ `displayName` を指定された場合、Sourcing は、409 と scimType `uniqueness` の SCIM のエラーで拒否し、Group を作成も変更もしない。

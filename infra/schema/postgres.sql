@@ -577,6 +577,8 @@ CREATE TABLE groups (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- Go の idmdomain.NameKey が作る比較キー。
     name_key TEXT NOT NULL,
+    upstream_managed BOOLEAN NOT NULL DEFAULT FALSE,
+    role_delegation JSONB,
     CONSTRAINT groups_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT groups_tenant_id_id_unique UNIQUE (tenant_id, id),

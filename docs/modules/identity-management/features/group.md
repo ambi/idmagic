@@ -24,9 +24,12 @@
 | `email` | 部署のメーリングリストのような連絡先。形式だけを検査し、確認済みの印も一意性も持たない |
 | `roles` | メンバーへまとめて付与するロール |
 | `membership_type` | `manual`（管理者が所属を決める）または `dynamic`（規則の評価だけが所属を決める）。作成のときにだけ選べる |
+| `upstream_managed` | 上流が所属を同期する Group である。取り込み元による作成で設定し、通常の編集で解除できない |
+| `role_delegation` | 自動所属からの業務ロールの付与を、管理者が承認したロール一覧と式、操作者と時刻に結び付けた記録 |
 | `attributes` | テナントの `TenantGroupAttributeSchema` で検証する疎な属性 |
 
-User の実効ロールは、User に直接付与したロールと、所属する Group のロールの和集合である。
+User の実効ロールは、User に直接付与したロールと、所属する Group の付与可能なロールの和集合である。
+自動所属の付与可能なロールは、規則 REQ-IDMANAGEMENT-092 が定める。
 どの Group にも属さない User の実効ロールは、直接付与したロールと同じである。
 
 - **判断**：実効ロールに優先順位や減算の規則を設けない。平らな和集合で足りるところに拒否の規則を入れると、評価の順序の複雑さだけが増える。
@@ -72,7 +75,7 @@ User の実効ロールは、User に直接付与したロールと、所属す�
 
 #### REQ-IDMANAGEMENT-015 User のメンバーへの追加は `GroupMemberAdded` を発行し、User の実効ロールに Group のロールを加える
 
-- 管理者が User を Group に所属させたとき、IdManagement は、メンバーシップを作り、`GroupMemberAdded` を発行し、下流のプロビジョニングへ通知し、User の実効ロールに Group のロールを加える。
+- 管理者が User を Group に所属させたとき、IdManagement は、メンバーシップを作り、`GroupMemberAdded` を発行し、下流のプロビジョニングへ通知し、User の実効ロールに Group の付与可能なロールを加える。
 - 管理者が User を Group から外したとき、IdManagement は、メンバーシップを消し、`GroupMemberRemoved` を発行し、下流のプロビジョニングへ通知する。
 - 管理者が同じ User を同じ Group へもう一度所属させた場合、IdManagement は、成功を返し、`GroupMemberAdded` を再発行しない。
 - **例**：EX-IDMANAGEMENT-015-01、EX-IDMANAGEMENT-015-02
@@ -103,12 +106,37 @@ User の実効ロールは、User に直接付与したロールと、所属す�
 - 存在しない User と別のテナントの User の参照を要求された場合、IdManagement は、404 と `user_not_found` で拒否する。
 - **例**：EX-IDMANAGEMENT-084-01
 
+### 実効ロールの解決
+
+#### REQ-IDMANAGEMENT-092 自動所属によるロールの付与は管理権限を除き明示した委任に限る
+
+- User の実効ロールを解決するとき、IdManagement は、動的または上流管理の Group から `admin` と `system_admin` を付与しない。
+- 動的または上流管理の Group の所属から業務ロールを解決するとき、IdManagement は、現在のロール一覧と現在の動的規則の式に一致する明示承認のあるロールだけを加える。
+- 承認がないか、ロール一覧または式が承認と異なる場合、IdManagement は、その自動所属の Group からロールを加えない。
+- ローカルで管理する手動 Group の所属からロールを解決するとき、IdManagement は、従来どおり Group のロールを加える。
+- 管理者または CSV が動的または上流管理の Group へ `admin` または `system_admin` を追加しようとした場合、IdManagement は、422 と `invalid_role` または CSV の `invalid_roles` で拒否し、Group、所属、イベントと通知を変えない。
+- 上流の属性が変わったとき、IdManagement は、所属を従来どおり評価し、ロールの承認がないことを理由に属性の取り込みと所属の更新を拒否しない。
+- **判断**：`local` の属性でも本人が編集できる属性はあり、属性の出どころだけで管理権限の安全性を判断できない。動的な所属はすべて同じ委任の対象にする。
+
+### 管理者による業務ロールの委任
+
+#### REQ-IDMANAGEMENT-093 管理者は現在の Group のロールと規則を確認して業務ロールの委任と解除を行う
+
+- 対話セッションの管理者が、自動所属の Group の現在のロール一覧と規則の式を指定して承認したとき、IdManagement は、その一覧、式、操作者と時刻を保存し、200 と Group を返す。
+- 管理者が空のロール一覧で解除を要求したとき、IdManagement は、承認を消し、以後の実効ロールの解決からその自動所属によるロールを除く。
+- 管理者が委任を設定または解除したとき、IdManagement は、`GroupUpdated` の `changedFields` に `role_delegation`、`delegatedRoles` に承認したロール一覧、`delegationRuleSha256` に式の SHA-256 を載せ、下流へ Group の変更を通知する。
+- 指定したロールと式が現在の Group に一致しないか、管理権限を含むか、対象がローカルの手動 Group である場合、IdManagement は、422 と `invalid_role` で拒否し、承認、Group、所属、イベントと通知を変えない。
+- 存在しないか別のテナントの Group を指定された場合、IdManagement は、404 と `group_not_found` で拒否する。
+- API アクセストークンから設定または解除を要求された場合、IdManagement は、403 と `insufficient_scope` で拒否し、承認を変えない。
+- 管理画面で管理者が委任するとき、IdManagement は、所属を変更できる上流と規則が承認した業務ロールの取得者を決められること、取り込み元ごとの限定を行わないこと、管理権限を委任できないことを表示する。
+- **判断**：承認は現在の式とロールに結び付ける。規則やロールを変更した後も過去の承認を無制限に流用できると、明示した範囲を越える委任になる。
+
 ## セキュリティ上の考慮
 
 | 観点 | 内容 |
 | --- | --- |
 | テナント境界 | テナントをまたぐメンバーシップは作らない。追加では対象の User を読み、別のテナントの User を存在しない User と同じ応答で拒否する |
-| ロールの付与 | Group のロールはメンバー全員の実効ロールに加わるので、Group のロールの変更は管理者の権限の変更と同じ重さを持つ。予約ロールの制限は[ロール](roles.md)が定める |
+| ロールの付与 | Group のロールの変更は管理者の権限の変更と同じ重さを持つ。自動所属の制限は規則 REQ-IDMANAGEMENT-092、予約ロールの制限は[ロール](roles.md)が定める |
 
 ## 実現方式
 
@@ -120,8 +148,9 @@ User の実効ロールは、User に直接付与したロールと、所属す�
 
 | 構成要素 | 責務 | 依存先 |
 | --- | --- | --- |
-| 管理者のユースケース | 作成、更新、削除、メンバーの追加と除外、所属グループの参照。変更を確定してから下流へ通知する | `GroupRepository`、`UserRepository`（メンバーの検証）、`EffectiveGroupAttributeSchemaReader`、`ProvisioningNotifier` |
-| 実効ロールの合成 | 直接付与したロールと所属する Group のロールを、重複を除いて昇順に並べる | なし（純粋な関数） |
+| 管理者のユースケース | 作成、更新、削除、委任と取消し、メンバーの追加と除外、所属グループの参照。変更を確定してから下流へ通知する | `GroupRepository`、`UserRepository`（メンバーの検証）、`EffectiveGroupAttributeSchemaReader`、`ProvisioningNotifier` |
+| 所属から付与可能なロールの解決 | 現在の規則と委任を同じ読み取りで取得し、純粋な `RolesForMembership` で付与可能なロールを選ぶ | `GroupRepository` のメモリ保存と PostgreSQL 保存 |
+| 実効ロールの合成 | 直接付与したロールと、所属から付与可能なロールを、重複を除いて昇順に並べる | なし（純粋な関数） |
 | 管理 API のハンドラー | 管理者の認可、入力の変換、応答の型への変換 | 管理者のユースケース |
 
 実効ロールは、管理コンソールの認可とアカウントのセルフサービスの両方が、User の直接のロールではなく合成した結果で判定する。

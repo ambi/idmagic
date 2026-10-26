@@ -77,6 +77,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/groups/:group_id", func(c *echo.Context) error { return grouphttp.HandleGetGroup(d, c) })
 	g.POST("/api/admin/v1/groups", func(c *echo.Context) error { return grouphttp.HandleCreateGroup(d, c) })
 	g.PATCH("/api/admin/v1/groups/:group_id", func(c *echo.Context) error { return grouphttp.HandleUpdateGroup(d, c) })
+	g.PUT("/api/admin/v1/groups/:group_id/role-delegation", func(c *echo.Context) error { return grouphttp.HandleSetGroupRoleDelegation(d, c) })
 	g.DELETE("/api/admin/v1/groups/:group_id", func(c *echo.Context) error { return grouphttp.HandleDeleteGroup(d, c) })
 	g.PUT("/api/admin/v1/groups/:group_id/dynamic-rule", func(c *echo.Context) error { return grouphttp.HandleUpdateDynamicGroupRule(d, c) })
 	g.POST("/api/admin/v1/groups/:group_id/dynamic-rule/preview", func(c *echo.Context) error { return grouphttp.HandlePreviewDynamicGroupRule(d, c) })

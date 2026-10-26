@@ -43,6 +43,7 @@ CSV の履歴は行と同じ Tx の writer を使い、通常の作成の履歴�
 | CSV のプレビューと適用 | 管理者の要求で `Jobs` のジョブを作る | `worker` | [CSV の転送の実現方式](features/csv-transfer.md#実現方式) |
 | データエクスポート | 管理者の要求で、種類 `data_export` のジョブを作る | `worker` | [データエクスポート](features/data-export.md) |
 | ドメインイベントの発行 | 状態を変えた操作 | ユースケースが発行し、監査と下流へ渡す | [イベントと監査の記録](observability.md) |
+| 自動所属からのロールの解決 | 認可と管理画面での所属の参照 | `GroupRepository.ListGroupsByUser` が現在の設定と承認を照合し、付与可能なロールを返す | [グループ](features/group.md#実効ロールの解決) |
 | CSV の成果物の削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、作成から 30 日を過ぎた成果物を消す | [CSV の転送](features/csv-transfer.md#成果物の保持) |
 | 猶予期間を過ぎた User の完全削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、各テナントで猶予期間を過ぎた削除予約の User と、途中で失敗した完全削除を完全削除する | [ユーザーの設計](features/user.md#信頼性) |
 | ほかのモジュールからの User の停止 | ライフサイクルワークフローの手順、SCIM の取り込み | `worker` と `api` が、User のユースケースを呼ぶ | [ほかのモジュールからの User の停止](#ほかのモジュールからの-user-の停止) |

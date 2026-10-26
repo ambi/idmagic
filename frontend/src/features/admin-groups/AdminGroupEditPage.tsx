@@ -19,6 +19,7 @@ import { GroupMembersSection } from './AdminGroupDetailCard'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 import { parseRoles } from './AdminGroupsShared'
 import { DynamicRuleEditor } from './DynamicRuleEditor'
+import { GroupRoleDelegationPanel } from './GroupRoleDelegationPanel'
 
 export function AdminGroupEditPage({
   csrfToken,
@@ -43,6 +44,7 @@ export function AdminGroupEditPage({
   const [roles, setRoles] = useState(group.roles.join(', '))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [currentRule, setCurrentRule] = useState(group.dynamic_rule)
   const t = useDictionary(adminGroupsDictionary)
 
   const trimmedName = name.trim()
@@ -209,6 +211,16 @@ export function AdminGroupEditPage({
             groupId={group.id}
             initialRule={group.dynamic_rule}
             customAttributes={schema.attributes}
+            onRuleChange={setCurrentRule}
+          />
+        </div>
+      ) : null}
+      {group.membership_type === 'dynamic' || group.upstream_managed || group.scim_source ? (
+        <div className="mt-6 max-w-2xl">
+          <GroupRoleDelegationPanel
+            csrfToken={csrfToken}
+            group={{ ...group, dynamic_rule: currentRule }}
+            unsavedChanges={changed}
           />
         </div>
       ) : null}

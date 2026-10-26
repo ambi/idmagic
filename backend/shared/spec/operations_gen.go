@@ -305,6 +305,7 @@ var generatedOperations = map[string]Operation{
 	"SendDirectoryUserBatch": {Method: "POST", Path: "/directory-connector/v1/ingestion-runs/{run_id}/user-batches", Deprecated: false, ApiTokenScopes: nil},
 	"SendTestNotification": {Method: "POST", Path: "/api/admin/v1/tenant/notification-templates/{template_key}/{locale}/test", Deprecated: false, ApiTokenScopes: []string{"settings:write"}},
 	"SetApplicationCategories": {Method: "PUT", Path: "/api/admin/v1/applications/{id}/categories", Deprecated: false, ApiTokenScopes: []string{"applications:write"}},
+	"SetGroupRoleDelegation": {Method: "PUT", Path: "/api/admin/v1/groups/{group_id}/role-delegation", Deprecated: false, ApiTokenScopes: []string{"interactive_session"}},
 	"SetTenantEndpointStyle": {Method: "PUT", Path: "/api/admin/v1/tenants/{tenant_id}/endpoint-style", Deprecated: false, ApiTokenScopes: []string{"tenants:write"}},
 	"SetUserRequiredAction": {Method: "POST", Path: "/api/admin/v1/users/{user_id}/required-actions", Deprecated: false, ApiTokenScopes: []string{"users:write"}},
 	"StartAdminAuditExport": {Method: "POST", Path: "/api/admin/v1/audit-events/exports", Deprecated: false, ApiTokenScopes: []string{"audit:read"}},

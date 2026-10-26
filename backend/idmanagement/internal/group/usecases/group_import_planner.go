@@ -403,6 +403,9 @@ func groupImportCandidate(
 	if existing == nil {
 		candidate.MembershipType = candidate.MembershipType.Effective()
 	}
+	if err := candidate.ValidateAutomaticRoles(); err != nil {
+		return nil, "roles", "invalid_roles"
+	}
 	// テナント定義の属性は、列の定義が固定した型の正規字句形で読む。空セルは
 	// その属性を消す意味であり、`required` な属性では拒否される。
 	attributeDefs := make([]groupdomain.GroupAttributeDef, 0)

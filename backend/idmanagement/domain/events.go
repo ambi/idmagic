@@ -235,11 +235,13 @@ func (e *GroupCreated) EventType() string     { return "GroupCreated" }
 func (e *GroupCreated) OccurredAt() time.Time { return e.At }
 
 type GroupUpdated struct {
-	At            time.Time `json:"-"`
-	TenantID      string    `json:"tenantId"`
-	ActorUserID   string    `json:"actorUserId"`
-	GroupID       string    `json:"groupId"`
-	ChangedFields []string  `json:"changedFields"`
+	At                   time.Time `json:"-"`
+	TenantID             string    `json:"tenantId"`
+	ActorUserID          string    `json:"actorUserId"`
+	GroupID              string    `json:"groupId"`
+	ChangedFields        []string  `json:"changedFields"`
+	DelegatedRoles       *[]string `json:"delegatedRoles,omitempty"`
+	DelegationRuleSHA256 string    `json:"delegationRuleSha256,omitempty"`
 }
 
 func (e *GroupUpdated) EventType() string     { return "GroupUpdated" }

@@ -48,7 +48,7 @@ func (c SourceCommands) UpdateUser(ctx context.Context, user *userdomain.User) (
 
 func (c SourceCommands) CreateGroup(ctx context.Context, group *groupdomain.Group) (*groupdomain.Group, error) {
 	return groupusecases.CreateGroup(tenantports.WithTenantID(ctx, group.TenantID), c.groups, groupusecases.CreateGroupInput{
-		ActorUserID: c.actor, Name: group.Name, Now: group.CreatedAt,
+		ActorUserID: c.actor, Name: group.Name, UpstreamManaged: true, Now: group.CreatedAt,
 	})
 }
 

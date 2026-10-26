@@ -154,12 +154,18 @@ func saveGroupInTx(ctx context.Context, tx pgx.Tx, group *groupdomain.Group) err
 	if err != nil {
 		return err
 	}
+	delegationJSON, err := json.Marshal(group.RoleDelegation)
+	if err != nil {
+		return err
+	}
 	return New(tx).SaveGroup(ctx, SaveGroupParams{
 		ID: group.ID, TenantID: group.TenantID, Name: group.Name, NameKey: idmdomain.NameKey(group.Name),
 		Description: textOrNil(group.Description), Email: textOrNil(group.Email),
 		Attributes: attributesJSON, Roles: rolesJSON,
-		MembershipType: string(group.MembershipType.Effective()),
-		CreatedAt:      group.CreatedAt, UpdatedAt: group.UpdatedAt,
+		MembershipType:  string(group.MembershipType.Effective()),
+		UpstreamManaged: group.UpstreamManaged,
+		RoleDelegation:  delegationJSON,
+		CreatedAt:       group.CreatedAt, UpdatedAt: group.UpdatedAt,
 	})
 }
 

@@ -69,7 +69,8 @@ func dynamicRuleFixture(
 	if err := groups.Save(ctx, &groupdomain.Group{
 		ID: "g1", TenantID: "acme", Name: "engineering",
 		MembershipType: groupdomain.GroupMembershipDynamic, Roles: []string{"catalog:read"},
-		CreatedAt: now, UpdatedAt: now,
+		RoleDelegation: &groupdomain.GroupRoleDelegation{Roles: []string{"catalog:read"}, Expression: `user.department == "Engineering"`, ApprovedBy: "admin", ApprovedAt: now},
+		CreatedAt:      now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -297,6 +298,10 @@ func TestDynamicGroupRuleVersionBumpDropsStaleMembershipAndFailuresGrantNothing(
 	}
 	if len(stale.EffectiveRoles) != 0 {
 		t.Fatalf("版が上がったのに旧版の所属が実効ロールに残った: %v", stale.EffectiveRoles)
+	}
+	// 変更した式へ再承認する。以下では所属の版だけによる権限の除外と復元を検査する。
+	if _, err := groupusecases.SetGroupRoleDelegation(ctx, adminDeps, groupusecases.SetGroupRoleDelegationInput{ActorUserID: "admin", GroupID: "g1", Roles: []string{"catalog:read"}, Expression: updated.Expression, Now: now.Add(time.Hour)}); err != nil {
+		t.Fatal(err)
 	}
 
 	// 評価できない User を 1 人混ぜて再評価する。規則が読む department を持たない

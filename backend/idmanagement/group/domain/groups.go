@@ -29,16 +29,18 @@ var groupAttrKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 // TenantGroupAttributeSchema に対して検証される sparse な custom 属性 bag で、値の型は
 // User の AttributeValue をそのまま再利用する。
 type Group struct {
-	ID             string                               `json:"id"`
-	TenantID       string                               `json:"tenant_id"`
-	Name           string                               `json:"name"`
-	Description    *string                              `json:"description,omitempty"`
-	Email          *string                              `json:"email,omitempty"`
-	Attributes     map[string]userdomain.AttributeValue `json:"attributes,omitempty"`
-	Roles          []string                             `json:"roles"`
-	MembershipType GroupMembershipType                  `json:"membership_type"`
-	CreatedAt      time.Time                            `json:"created_at"`
-	UpdatedAt      time.Time                            `json:"updated_at"`
+	ID              string                               `json:"id"`
+	TenantID        string                               `json:"tenant_id"`
+	Name            string                               `json:"name"`
+	Description     *string                              `json:"description,omitempty"`
+	Email           *string                              `json:"email,omitempty"`
+	Attributes      map[string]userdomain.AttributeValue `json:"attributes,omitempty"`
+	Roles           []string                             `json:"roles"`
+	MembershipType  GroupMembershipType                  `json:"membership_type"`
+	UpstreamManaged bool                                 `json:"upstream_managed"`
+	RoleDelegation  *GroupRoleDelegation                 `json:"role_delegation,omitempty"`
+	CreatedAt       time.Time                            `json:"created_at"`
+	UpdatedAt       time.Time                            `json:"updated_at"`
 }
 
 type GroupMembershipType string

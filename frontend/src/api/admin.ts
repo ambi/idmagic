@@ -1426,6 +1426,17 @@ export async function deleteAdminGroup(csrfToken: string, id: string): Promise<v
   await request(`/api/admin/v1/groups/${encodeURIComponent(id)}`, adminRequest(csrfToken, 'DELETE'))
 }
 
+export async function setAdminGroupRoleDelegation(
+  csrfToken: string,
+  id: string,
+  input: { roles: string[]; expression: string },
+): Promise<AdminGroup> {
+  return request(
+    `/api/admin/v1/groups/${encodeURIComponent(id)}/role-delegation`,
+    adminRequest(csrfToken, 'PUT', input),
+  )
+}
+
 export async function addAdminGroupMember(
   csrfToken: string,
   groupID: string,

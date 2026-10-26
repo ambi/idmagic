@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ambi/idmagic/backend/shared/kernel"
 
@@ -35,6 +36,11 @@ func NewGroupRepository() *GroupRepository {
 func cloneGroup(group *groupdomain.Group) *groupdomain.Group {
 	cloned := *group
 	cloned.Roles = slices.Clone(group.Roles)
+	if group.RoleDelegation != nil {
+		delegation := *group.RoleDelegation
+		delegation.Roles = slices.Clone(delegation.Roles)
+		cloned.RoleDelegation = &delegation
+	}
 	cloned.Attributes = maps.Clone(group.Attributes)
 	return &cloned
 }
@@ -105,7 +111,13 @@ func (r *GroupRepository) FindByID(_ context.Context, tenantID, id string) (*gro
 func (r *GroupRepository) Save(_ context.Context, group *groupdomain.Group) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.groups[sharedmem.ScopedKey(group.TenantID, group.ID, kernel.DefaultTenantID)] = cloneGroup(group)
+	key := sharedmem.ScopedKey(group.TenantID, group.ID, kernel.DefaultTenantID)
+	cloned := cloneGroup(group)
+	if previous := r.groups[key]; previous != nil {
+		cloned.UpstreamManaged = cloned.UpstreamManaged || previous.UpstreamManaged
+		cloned.RoleDelegation = cloneGroup(previous).RoleDelegation
+	}
+	r.groups[key] = cloned
 	return nil
 }
 
@@ -115,6 +127,21 @@ func (r *GroupRepository) Delete(_ context.Context, tenantID, id string) error {
 	delete(r.groups, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
 	delete(r.members, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
 	delete(r.rules, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
+	return nil
+}
+
+func (r *GroupRepository) SetRoleDelegation(_ context.Context, tenantID, groupID string, delegation *groupdomain.GroupRoleDelegation, now time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := sharedmem.ScopedKey(tenantID, groupID, kernel.DefaultTenantID)
+	group := r.groups[key]
+	if group == nil {
+		return groupdomain.ErrDelegationGroupNotFound
+	}
+	updated := *group
+	updated.RoleDelegation = delegation
+	updated.UpdatedAt = now
+	r.groups[key] = cloneGroup(&updated)
 	return nil
 }
 
@@ -182,7 +209,13 @@ func (r *GroupRepository) ListGroupsByUser(_ context.Context, tenantID, userID s
 		}
 		group := r.groups[key]
 		if group != nil && group.TenantID == tenantID && r.membershipEffective(key, group, membership) {
-			out = append(out, cloneGroup(group))
+			cloned := cloneGroup(group)
+			expression := ""
+			if rule := r.rules[key]; rule != nil && group.MembershipType.Effective() == groupdomain.GroupMembershipDynamic {
+				expression = rule.Expression
+			}
+			cloned.Roles = group.RolesForMembership(expression)
+			out = append(out, cloned)
 		}
 	}
 	slices.SortFunc(out, func(a, b *groupdomain.Group) int { return strings.Compare(a.Name, b.Name) })

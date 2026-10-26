@@ -99,7 +99,7 @@
 #### REQ-IDMANAGEMENT-020 有効な規則の全件の再評価は、規則に一致する User だけを規則由来のメンバーにする
 
 - 有効な規則の全件の再評価を終えたとき、IdManagement は、規則に一致する有効な User だけを、規則を由来として所属させる。
-- 全件の再評価を終えたとき、IdManagement は、実効ロールと Application の割り当ての判定に、その所属を使う。
+- 全件の再評価を終えたとき、IdManagement は、実効ロール（[REQ-IDMANAGEMENT-092](group.md#実効ロールの解決) の委任の範囲）と Application の割り当ての判定に、その所属を使う。
 - **例**：EX-IDMANAGEMENT-020-01
 
 #### REQ-IDMANAGEMENT-067 動的グループの規則に一致するのは `Active` の User だけである

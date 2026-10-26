@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
+	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
@@ -22,12 +23,13 @@ type GroupRepository struct{ Pool sharedpg.DB }
 
 func groupFromRow(row *Group) (*groupdomain.Group, error) {
 	g := &groupdomain.Group{
-		ID:             row.ID,
-		TenantID:       row.TenantID,
-		Name:           row.Name,
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
-		MembershipType: groupdomain.GroupMembershipType(row.MembershipType),
+		ID:              row.ID,
+		TenantID:        row.TenantID,
+		Name:            row.Name,
+		CreatedAt:       row.CreatedAt,
+		UpdatedAt:       row.UpdatedAt,
+		MembershipType:  groupdomain.GroupMembershipType(row.MembershipType),
+		UpstreamManaged: row.UpstreamManaged,
 	}
 	if row.Description.Valid {
 		g.Description = &row.Description.String
@@ -42,6 +44,11 @@ func groupFromRow(row *Group) (*groupdomain.Group, error) {
 	}
 	if err := json.Unmarshal(row.Roles, &g.Roles); err != nil {
 		return nil, err
+	}
+	if len(row.RoleDelegation) > 0 {
+		if err := json.Unmarshal(row.RoleDelegation, &g.RoleDelegation); err != nil {
+			return nil, err
+		}
 	}
 	if g.Roles == nil {
 		g.Roles = []string{}
@@ -165,18 +172,24 @@ func (r *GroupRepository) Save(ctx context.Context, group *groupdomain.Group) er
 	if err != nil {
 		return err
 	}
+	delegationJSON, err := json.Marshal(group.RoleDelegation)
+	if err != nil {
+		return err
+	}
 	return New(r.Pool).SaveGroup(ctx, SaveGroupParams{
-		ID:             group.ID,
-		TenantID:       group.TenantID,
-		Name:           group.Name,
-		NameKey:        idmdomain.NameKey(group.Name),
-		Description:    textOrNil(group.Description),
-		Email:          textOrNil(group.Email),
-		Attributes:     attributesJSON,
-		Roles:          rolesJSON,
-		MembershipType: string(group.MembershipType.Effective()),
-		CreatedAt:      group.CreatedAt,
-		UpdatedAt:      group.UpdatedAt,
+		ID:              group.ID,
+		TenantID:        group.TenantID,
+		Name:            group.Name,
+		NameKey:         idmdomain.NameKey(group.Name),
+		Description:     textOrNil(group.Description),
+		Email:           textOrNil(group.Email),
+		Attributes:      attributesJSON,
+		Roles:           rolesJSON,
+		MembershipType:  string(group.MembershipType.Effective()),
+		UpstreamManaged: group.UpstreamManaged,
+		RoleDelegation:  delegationJSON,
+		CreatedAt:       group.CreatedAt,
+		UpdatedAt:       group.UpdatedAt,
 	})
 }
 
@@ -210,10 +223,11 @@ func (r *GroupRepository) ListGroupsByUser(ctx context.Context, tenantID, userID
 	}
 	out := make([]*groupdomain.Group, 0, len(rows))
 	for _, row := range rows {
-		group, err := groupFromRow(row)
+		group, err := groupFromRow(&row.Group)
 		if err != nil {
 			return nil, err
 		}
+		group.Roles = group.RolesForMembership(row.DynamicExpression)
 		out = append(out, group)
 	}
 	return out, nil
@@ -222,6 +236,23 @@ func (r *GroupRepository) ListGroupsByUser(ctx context.Context, tenantID, userID
 func (r *GroupRepository) CountMembers(ctx context.Context, tenantID, groupID string) (int, error) {
 	count, err := New(r.Pool).CountGroupMembers(ctx, CountGroupMembersParams{TenantID: tenantID, GroupID: groupID})
 	return int(count), err
+}
+
+func (r *GroupRepository) SetRoleDelegation(ctx context.Context, tenantID, groupID string, delegation *groupdomain.GroupRoleDelegation, now time.Time) error {
+	encoded, err := json.Marshal(delegation)
+	if err != nil {
+		return err
+	}
+	count, err := New(r.Pool).SetGroupRoleDelegation(ctx, SetGroupRoleDelegationParams{
+		TenantID: tenantID, ID: groupID, RoleDelegation: encoded, UpdatedAt: now,
+	})
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return groupdomain.ErrDelegationGroupNotFound
+	}
+	return nil
 }
 
 func (r *GroupRepository) AddMember(ctx context.Context, member *groupdomain.GroupMember) (bool, error) {

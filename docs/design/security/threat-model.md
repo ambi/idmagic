@@ -186,8 +186,8 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-064 | Spoofing | 署名が不正、または期限切れのアテステーションが受理される | WorkloadIdentity | REQ-WORKLOADIDENTITY-003、REQ-WORKLOADIDENTITY-004 | `covered` |
 | THREAT-065 | Elevation of privilege | 主体が複数の関連付けに一致し、意図しない Agent として扱われる | WorkloadIdentity | REQ-WORKLOADIDENTITY-005、REQ-WORKLOADIDENTITY-006 | `covered` |
 | THREAT-066 | Tampering | 取り込みが読み取り専用属性や未対応の操作で内部状態を壊す | Sourcing | REQ-SOURCING-004、RFC7644-PATCH | `covered` |
-| THREAT-067 | Elevation of privilege | 上流が書き込んだ属性が動的な所属を通じて実効ロールへ波及する | Sourcing, IdManagement | REQ-IDMANAGEMENT-091（ローカル専用属性の保護のみ） | `planned` |
-| THREAT-083 | Elevation of privilege | 上流が同期したグループ所属が、動的な規則を経ずに実効ロールを直接動かす | Sourcing, IdManagement | REQ-SOURCING-005 | `planned` |
+| THREAT-067 | Elevation of privilege | 上流が書き込んだ属性が動的な所属を通じて未承認の実効ロールへ波及する | Sourcing, IdManagement | REQ-IDMANAGEMENT-091、REQ-IDMANAGEMENT-092、REQ-IDMANAGEMENT-093: 自動所属からの管理ロールを禁止し、業務ロールは現在の設定への明示委任に限る | `covered` |
+| THREAT-083 | Elevation of privilege | 上流が同期したグループ所属が、動的な規則を経ずに未承認の実効ロールを直接動かす | Sourcing, IdManagement | REQ-SOURCING-005、REQ-IDMANAGEMENT-092、REQ-IDMANAGEMENT-093: 上流管理の印を保持し、同じ委任の検査を所属の参照へ適用する | `covered` |
 
 ## 下流の外部受信者
 
@@ -232,6 +232,11 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 **THREAT-034（漏洩パスワードの使い回し）** — 漏洩との照合は `BreachedPasswordChecker` として存在するが、デフォルトは何もしないアダプターである。有効にした場合、同梱辞書との照合は確実に働き、外部の HIBP を使う追加の照合だけが障害時にフェイルオープンする。外部への依存をデフォルトで持ち込まないという判断の帰結として、**デフォルトの構成では漏洩照合が働かない**ことを受け入れている。**再検討の条件**は、同梱辞書だけでデフォルトを有効にできると判断したとき、または規制がこの照合を要求するときである。
 
 **THREAT-077（実行環境を取得した者）** — `Seeding` は権限ではなく実行環境そのものを境界とする。プロセスを起動できる者は既にデータベースへ到達できるので、この経路を塞いでも実効的な防御にならない。**再検討の条件**は、`Seeding` に HTTP の入口を与えるときである。
+
+**THREAT-067 と THREAT-083（承認済みの業務ロールへの上流の影響）**：未承認のロールと管理ロールへの波及を防いだ後も、管理者が委任した業務ロールは、属性や所属を書ける上流が取得者を決められる。
+業務用途の自動付与を残すため、この影響を明示承認した範囲で受け入れる。
+再検討の条件は、連携元ごとに委任の範囲を限定する必要が生じたときである。
+詳細は [IdManagement の設計判断](../../modules/identity-management/decisions.md#自動所属の業務ロールを明示的に委任する) が定める。
 
 ## 見直す条件
 

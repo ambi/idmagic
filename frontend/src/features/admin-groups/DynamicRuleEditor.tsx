@@ -59,11 +59,13 @@ export function DynamicRuleEditor({
   groupId,
   initialRule,
   customAttributes,
+  onRuleChange,
 }: {
   csrfToken: string
   groupId: string
   initialRule?: DynamicGroupRule
   customAttributes: UserAttributeDef[]
+  onRuleChange?: (rule: DynamicGroupRule) => void
 }) {
   const t = useDictionary(adminGroupsDictionary)
   const attributeOptions = builderAttributeOptions(customAttributes)
@@ -271,6 +273,7 @@ export function DynamicRuleEditor({
               void withRule(async () => {
                 const saved = await updateDynamicGroupRule(csrfToken, groupId, expression)
                 setRule(saved)
+                onRuleChange?.(saved)
               })
             }
           >
@@ -302,6 +305,7 @@ export function DynamicRuleEditor({
               void withRule(async () => {
                 const saved = await setDynamicGroupRuleEnabled(csrfToken, groupId, !rule?.enabled)
                 setRule(saved)
+                onRuleChange?.(saved)
               })
             }
           >

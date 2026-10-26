@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：186
+経路の数：187
 
 | 経路 | メソッド |
 | --- | --- |
@@ -164,6 +164,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/groups/{group_id}/dynamic-rule/disable` | POST |
 | `/api/admin/v1/groups/{group_id}/dynamic-rule/enable` | POST |
 | `/api/admin/v1/groups/{group_id}/members/{user_sub}` | DELETE, POST |
+| `/api/admin/v1/groups/{group_id}/role-delegation` | PUT |
 | `/api/admin/v1/identity-providers` | GET, POST |
 | `/api/admin/v1/identity-providers/metadata-preview` | POST |
 | `/api/admin/v1/identity-providers/{provider_id}` | DELETE, PUT |

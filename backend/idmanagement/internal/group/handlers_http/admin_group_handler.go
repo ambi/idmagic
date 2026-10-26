@@ -44,20 +44,27 @@ type groupUpdateRequest struct {
 	Roles       *[]string                             `json:"roles"`
 }
 
+type roleDelegationRequest struct {
+	Roles      *[]string `json:"roles"`
+	Expression *string   `json:"expression"`
+}
+
 type groupSummaryResponse struct {
-	ID             string                               `json:"id"`
-	TenantID       string                               `json:"tenant_id"`
-	Name           string                               `json:"name"`
-	Description    *string                              `json:"description,omitempty"`
-	Email          *string                              `json:"email,omitempty"`
-	Attributes     map[string]userdomain.AttributeValue `json:"attributes"`
-	Roles          []string                             `json:"roles"`
-	MemberCount    int                                  `json:"member_count"`
-	CreatedAt      time.Time                            `json:"created_at"`
-	UpdatedAt      time.Time                            `json:"updated_at"`
-	ScimSource     *string                              `json:"scim_source,omitempty"`
-	MembershipType groupdomain.GroupMembershipType      `json:"membership_type"`
-	DynamicRule    *groupdomain.DynamicGroupRule        `json:"dynamic_rule,omitempty"`
+	ID              string                               `json:"id"`
+	TenantID        string                               `json:"tenant_id"`
+	Name            string                               `json:"name"`
+	Description     *string                              `json:"description,omitempty"`
+	Email           *string                              `json:"email,omitempty"`
+	Attributes      map[string]userdomain.AttributeValue `json:"attributes"`
+	Roles           []string                             `json:"roles"`
+	MemberCount     int                                  `json:"member_count"`
+	CreatedAt       time.Time                            `json:"created_at"`
+	UpdatedAt       time.Time                            `json:"updated_at"`
+	ScimSource      *string                              `json:"scim_source,omitempty"`
+	MembershipType  groupdomain.GroupMembershipType      `json:"membership_type"`
+	DynamicRule     *groupdomain.DynamicGroupRule        `json:"dynamic_rule,omitempty"`
+	UpstreamManaged bool                                 `json:"upstream_managed"`
+	RoleDelegation  *groupdomain.GroupRoleDelegation     `json:"role_delegation,omitempty"`
 }
 
 type groupMemberResponse struct {
@@ -293,6 +300,29 @@ func HandleUpdateGroup(d Deps, c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, toGroupSummaryResponse(group, count))
 }
 
+func HandleSetGroupRoleDelegation(d Deps, c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	var input roleDelegationRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil || input.Roles == nil || input.Expression == nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Roles and expression are required.")
+	}
+	group, err := groupusecases.SetGroupRoleDelegation(c.Request().Context(), adminGroupDeps(d), groupusecases.SetGroupRoleDelegationInput{ActorUserID: actor.ID, GroupID: c.Param("group_id"), Roles: *input.Roles, Expression: *input.Expression, Now: time.Now().UTC()})
+	if err != nil {
+		return writeAdminGroupError(c, err)
+	}
+	count, err := d.GroupRepo.CountMembers(c.Request().Context(), group.TenantID, group.ID)
+	if err != nil {
+		return err
+	}
+	return support.NoStoreJSON(c, http.StatusOK, toGroupSummaryResponse(group, count))
+}
+
 func HandleDeleteGroup(d Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
@@ -397,6 +427,7 @@ func toGroupSummaryResponse(group *groupdomain.Group, memberCount int) groupSumm
 		ID: group.ID, TenantID: group.TenantID, Name: group.Name, Description: group.Description,
 		Email: group.Email, Attributes: attributes,
 		Roles: slices.Clone(group.Roles), MemberCount: memberCount,
+		UpstreamManaged: group.UpstreamManaged, RoleDelegation: group.RoleDelegation,
 		MembershipType: group.MembershipType.Effective(), CreatedAt: group.CreatedAt, UpdatedAt: group.UpdatedAt,
 	}
 }

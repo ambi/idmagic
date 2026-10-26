@@ -107,7 +107,7 @@ func (q *Queries) FindDynamicGroupRule(ctx context.Context, arg FindDynamicGroup
 }
 
 const findGroupByID = `-- name: FindGroupByID :one
-SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key,upstream_managed,role_delegation FROM groups
 WHERE tenant_id=$1 AND id=$2
 `
 
@@ -131,6 +131,8 @@ func (q *Queries) FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.NameKey,
+		&i.UpstreamManaged,
+		&i.RoleDelegation,
 	)
 	return &i, err
 }
@@ -205,7 +207,7 @@ func (q *Queries) ListGroupMembersByGroup(ctx context.Context, arg ListGroupMemb
 }
 
 const listGroupsByTenant = `-- name: ListGroupsByTenant :many
-SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key,upstream_managed,role_delegation FROM groups
 WHERE tenant_id=$1 ORDER BY name
 `
 
@@ -230,6 +232,8 @@ func (q *Queries) ListGroupsByTenant(ctx context.Context, tenantID string) ([]*G
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.NameKey,
+			&i.UpstreamManaged,
+			&i.RoleDelegation,
 		); err != nil {
 			return nil, err
 		}
@@ -242,7 +246,7 @@ func (q *Queries) ListGroupsByTenant(ctx context.Context, tenantID string) ([]*G
 }
 
 const listGroupsByTenantPage = `-- name: ListGroupsByTenantPage :many
-SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key,upstream_managed,role_delegation FROM groups
 WHERE tenant_id=$1
 ORDER BY name, id
 LIMIT $2
@@ -276,6 +280,8 @@ func (q *Queries) ListGroupsByTenantPage(ctx context.Context, arg ListGroupsByTe
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.NameKey,
+			&i.UpstreamManaged,
+			&i.RoleDelegation,
 		); err != nil {
 			return nil, err
 		}
@@ -288,7 +294,7 @@ func (q *Queries) ListGroupsByTenantPage(ctx context.Context, arg ListGroupsByTe
 }
 
 const listGroupsByTenantPageAfter = `-- name: ListGroupsByTenantPageAfter :many
-SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key,upstream_managed,role_delegation FROM groups
 WHERE tenant_id=$1
   AND (name, id) > ($2::text, $3::uuid)
 ORDER BY name, id
@@ -330,6 +336,8 @@ func (q *Queries) ListGroupsByTenantPageAfter(ctx context.Context, arg ListGroup
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.NameKey,
+			&i.UpstreamManaged,
+			&i.RoleDelegation,
 		); err != nil {
 			return nil, err
 		}
@@ -342,7 +350,7 @@ func (q *Queries) ListGroupsByTenantPageAfter(ctx context.Context, arg ListGroup
 }
 
 const listGroupsByTenantPageBefore = `-- name: ListGroupsByTenantPageBefore :many
-SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key,upstream_managed,role_delegation FROM groups
 WHERE tenant_id=$1
   AND (name, id) < ($2::text, $3::uuid)
 ORDER BY name DESC, id DESC
@@ -382,6 +390,8 @@ func (q *Queries) ListGroupsByTenantPageBefore(ctx context.Context, arg ListGrou
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.NameKey,
+			&i.UpstreamManaged,
+			&i.RoleDelegation,
 		); err != nil {
 			return nil, err
 		}
@@ -394,7 +404,7 @@ func (q *Queries) ListGroupsByTenantPageBefore(ctx context.Context, arg ListGrou
 }
 
 const listGroupsByTenantPageEnd = `-- name: ListGroupsByTenantPageEnd :many
-SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key,upstream_managed,role_delegation FROM groups
 WHERE tenant_id=$1
 ORDER BY name DESC, id DESC
 LIMIT $2
@@ -426,6 +436,8 @@ func (q *Queries) ListGroupsByTenantPageEnd(ctx context.Context, arg ListGroupsB
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.NameKey,
+			&i.UpstreamManaged,
+			&i.RoleDelegation,
 		); err != nil {
 			return nil, err
 		}
@@ -438,7 +450,7 @@ func (q *Queries) ListGroupsByTenantPageEnd(ctx context.Context, arg ListGroupsB
 }
 
 const listGroupsByUser = `-- name: ListGroupsByUser :many
-SELECT g.id,g.tenant_id,g.name,g.description,g.email,g.attributes,g.roles,g.membership_type,g.created_at,g.updated_at,g.name_key
+SELECT g.id, g.tenant_id, g.name, g.description, g.email, g.attributes, g.roles, g.membership_type, g.created_at, g.updated_at, g.name_key, g.upstream_managed, g.role_delegation, COALESCE(dgr.expression, '')::text AS dynamic_expression
 FROM groups g JOIN group_members gm ON gm.group_id=g.id
 LEFT JOIN dynamic_group_rules dgr ON dgr.group_id=g.id AND dgr.tenant_id=g.tenant_id
 WHERE g.tenant_id=$1 AND gm.user_id=$2
@@ -452,27 +464,35 @@ type ListGroupsByUserParams struct {
 	UserID   string
 }
 
-func (q *Queries) ListGroupsByUser(ctx context.Context, arg ListGroupsByUserParams) ([]*Group, error) {
+type ListGroupsByUserRow struct {
+	Group             Group
+	DynamicExpression string
+}
+
+func (q *Queries) ListGroupsByUser(ctx context.Context, arg ListGroupsByUserParams) ([]*ListGroupsByUserRow, error) {
 	rows, err := q.db.Query(ctx, listGroupsByUser, arg.TenantID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*Group
+	var items []*ListGroupsByUserRow
 	for rows.Next() {
-		var i Group
+		var i ListGroupsByUserRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.TenantID,
-			&i.Name,
-			&i.Description,
-			&i.Email,
-			&i.Attributes,
-			&i.Roles,
-			&i.MembershipType,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.NameKey,
+			&i.Group.ID,
+			&i.Group.TenantID,
+			&i.Group.Name,
+			&i.Group.Description,
+			&i.Group.Email,
+			&i.Group.Attributes,
+			&i.Group.Roles,
+			&i.Group.MembershipType,
+			&i.Group.CreatedAt,
+			&i.Group.UpdatedAt,
+			&i.Group.NameKey,
+			&i.Group.UpstreamManaged,
+			&i.Group.RoleDelegation,
+			&i.DynamicExpression,
 		); err != nil {
 			return nil, err
 		}
@@ -534,25 +554,28 @@ func (q *Queries) SaveDynamicGroupRule(ctx context.Context, arg SaveDynamicGroup
 }
 
 const saveGroup = `-- name: SaveGroup :exec
-INSERT INTO groups (id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+INSERT INTO groups (id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at,name_key,upstream_managed,role_delegation)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,name_key=EXCLUDED.name_key,description=EXCLUDED.description,
  email=EXCLUDED.email,attributes=EXCLUDED.attributes,
- roles=EXCLUDED.roles,updated_at=EXCLUDED.updated_at
+ roles=EXCLUDED.roles,updated_at=EXCLUDED.updated_at,
+ upstream_managed=groups.upstream_managed OR EXCLUDED.upstream_managed
 `
 
 type SaveGroupParams struct {
-	ID             string
-	TenantID       string
-	Name           string
-	Description    pgtype.Text
-	Email          pgtype.Text
-	Attributes     []byte
-	Roles          []byte
-	MembershipType string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	NameKey        string
+	ID              string
+	TenantID        string
+	Name            string
+	Description     pgtype.Text
+	Email           pgtype.Text
+	Attributes      []byte
+	Roles           []byte
+	MembershipType  string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	NameKey         string
+	UpstreamManaged bool
+	RoleDelegation  []byte
 }
 
 func (q *Queries) SaveGroup(ctx context.Context, arg SaveGroupParams) error {
@@ -568,6 +591,32 @@ func (q *Queries) SaveGroup(ctx context.Context, arg SaveGroupParams) error {
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.NameKey,
+		arg.UpstreamManaged,
+		arg.RoleDelegation,
 	)
 	return err
+}
+
+const setGroupRoleDelegation = `-- name: SetGroupRoleDelegation :execrows
+UPDATE groups SET role_delegation=$3, updated_at=$4 WHERE tenant_id=$1 AND id=$2
+`
+
+type SetGroupRoleDelegationParams struct {
+	TenantID       string
+	ID             string
+	RoleDelegation []byte
+	UpdatedAt      time.Time
+}
+
+func (q *Queries) SetGroupRoleDelegation(ctx context.Context, arg SetGroupRoleDelegationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setGroupRoleDelegation,
+		arg.TenantID,
+		arg.ID,
+		arg.RoleDelegation,
+		arg.UpdatedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

@@ -28,11 +28,12 @@ type Querier interface {
 	ListGroupsByTenantPageAfter(ctx context.Context, arg ListGroupsByTenantPageAfterParams) ([]*Group, error)
 	ListGroupsByTenantPageBefore(ctx context.Context, arg ListGroupsByTenantPageBeforeParams) ([]*Group, error)
 	ListGroupsByTenantPageEnd(ctx context.Context, arg ListGroupsByTenantPageEndParams) ([]*Group, error)
-	ListGroupsByUser(ctx context.Context, arg ListGroupsByUserParams) ([]*Group, error)
+	ListGroupsByUser(ctx context.Context, arg ListGroupsByUserParams) ([]*ListGroupsByUserRow, error)
 	RemoveGroupMember(ctx context.Context, arg RemoveGroupMemberParams) (int64, error)
 	SaveDynamicGroupRule(ctx context.Context, arg SaveDynamicGroupRuleParams) error
 	SaveGroup(ctx context.Context, arg SaveGroupParams) error
 	SaveTenantGroupAttributeSchema(ctx context.Context, arg SaveTenantGroupAttributeSchemaParams) error
+	SetGroupRoleDelegation(ctx context.Context, arg SetGroupRoleDelegationParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

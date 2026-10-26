@@ -18,6 +18,23 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
+//spec:covers REQ-IDMANAGEMENT-092: 動的な所属を持つ行の管理ロールを invalid_roles で拒否し、業務ロールだけの行を受け付ける。
+func TestGroupImportRefusesAutomaticAdministrativeRoles(t *testing.T) {
+	f := newGroupImportFixture(t)
+	f.seedGroup(t, "dynamic", "engineering", groupdomain.GroupMembershipDynamic, "catalog:read")
+	for _, role := range []string{"admin", "system_admin"} {
+		rows := planRows(t, f, "id,roles\ndynamic,"+role+"\n")
+		got := rowByNumber(t, rows, 2)
+		if got.Error == nil || got.Error.Code != "invalid_roles" || got.Error.Column != "roles" {
+			t.Fatalf("role=%s row=%+v", role, got)
+		}
+	}
+	rows := planRows(t, f, "name,membership_type,roles\nnew-group,dynamic,catalog:read\n")
+	if got := rowByNumber(t, rows, 2); got.Error != nil || got.Action != groupdomain.GroupImportCreate {
+		t.Fatalf("business roles row=%+v", got)
+	}
+}
+
 func planRows(t *testing.T, f *groupImportFixture, document string) []groupdomain.GroupImportRowPlan {
 	t.Helper()
 	_, rows := f.preview(t, document)

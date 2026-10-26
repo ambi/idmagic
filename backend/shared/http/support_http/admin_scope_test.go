@@ -149,6 +149,20 @@ func TestAdminApiTokenScopeRejectsAnOperationWithoutADeclaration(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-IDMANAGEMENT-093: 全スコープの API トークンでも業務ロールの委任は拒否する。
+func TestGroupRoleDelegationRequiresInteractiveSession(t *testing.T) {
+	c, authenticator := adminScopeContext(http.MethodPut, "/api/admin/v1/groups/:group_id/role-delegation", apitokendomain.ScopeGroupsWrite)
+	_, err := authenticator.resolveAuthentication(c)
+	var scopeErr *InsufficientScopeError
+	if !errors.As(err, &scopeErr) || scopeErr.Required != spec.InteractiveSessionScope {
+		t.Fatalf("error=%v, want interactive_session refusal", err)
+	}
+	err = requireAdminApiTokenScope(c, spec.CurrentRuntimeContract(), apitokendomain.AllScopes())
+	if !errors.As(err, &scopeErr) || scopeErr.Required != spec.InteractiveSessionScope {
+		t.Fatalf("all scopes error=%v", err)
+	}
+}
+
 // TestAdminPortalTokenSkipsGranularScopes は、粒度スコープを持たない主体の経路が
 // 変わっていないことを確かめる。ブラウザーのポータルが提示する通常の OAuth アクセス
 // トークンは従来どおり idmagic.admin だけで判定する。
