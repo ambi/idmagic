@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { resolve } from 'node:path'
 import { selectChecks } from './registry.ts'
 import { taskClosure } from './verification-tasks.ts'
+import { planCI } from '../../verification/src/ci-plan.ts'
 
 const root = resolve(import.meta.dir, '../../..')
 const config = Bun.TOML.parse(await Bun.file(resolve(root, 'mise.toml')).text()) as {
@@ -10,45 +11,118 @@ const config = Bun.TOML.parse(await Bun.file(resolve(root, 'mise.toml')).text())
 const workflow = Bun.YAML.parse(
   await Bun.file(resolve(root, '.github/workflows/idmagic-ci.yaml')).text(),
 ) as {
+  on: Record<string, Record<string, unknown> | null>
   jobs: Record<
     string,
     {
       needs?: string[]
+      name?: string
+      outputs?: Record<string, string>
       if?: string
       env?: Record<string, string>
-      steps?: { run?: string; if?: string; with?: Record<string, string | number | boolean> }[]
+      steps?: {
+        id?: string
+        run?: string
+        if?: string
+        env?: Record<string, string>
+        with?: Record<string, string | number | boolean>
+      }[]
     }
   >
 }
 
 describe('CI の全体結果', () => {
-  it('四群を待ち、先行する失敗があっても集約する', () => {
+  it('計画と全検査を待ち、先行する失敗があっても既存名で集約する', () => {
     const gate = workflow.jobs.verify!
-    expect(gate.needs?.toSorted()).toEqual(['go-lint', 'go-test', 'spec', 'ui'])
+    expect(gate.needs?.toSorted()).toEqual([
+      'go-lint',
+      'go-test',
+      'plan',
+      'schema-convergence',
+      'spec',
+      'ui',
+      'ui-e2e',
+    ])
+    expect(gate.name).toBe('Verify specification, backend, and UI')
     expect(gate.if).toContain('always()')
-    const run = gate.steps?.find((step) => step.run?.includes('check-ci-results'))?.run ?? ''
-    for (const job of gate.needs ?? []) expect(run).toContain(`needs.${job}.result`)
+    const step = gate.steps!.find((step) => step.run?.includes('check-ci-results'))!
+    expect(step.env?.CI_NEEDS).toBe(`\${{ toJSON(needs) }}`)
   })
 
-  it('成功だけを受理し、失敗、skip、取消、不足、過剰を拒否する', async () => {
+  it('mise の正式入口が文書変更を除外し、選択した skip と計画の欠落を拒否する', async () => {
     const script = config.tasks?.['check-ci-results']?.run
     expect(typeof script).toBe('string')
-    const execute = async (results: string[]) => {
-      const child = Bun.spawn(['sh', '-c', script!, 'check-ci-results', ...results], {
-        stdout: 'ignore',
-        stderr: 'ignore',
+    const execute = async (needs: unknown) => {
+      const child = Bun.spawn(['sh', '-c', script!], {
+        cwd: resolve(root, 'tools'),
+        env: { ...process.env, CI_NEEDS: JSON.stringify(needs), GITHUB_STEP_SUMMARY: '' },
+        stdout: 'pipe',
+        stderr: 'pipe',
       })
-      return child.exited
+      const output = await new Response(child.stdout).text()
+      return { code: await child.exited, output }
     }
-    expect(await execute(Array(4).fill('success'))).toBe(0)
-    for (let index = 0; index < 4; index++) {
-      for (const state of ['failure', 'cancelled', 'skipped', '', 'unknown']) {
-        const results = Array(4).fill('success')
-        results[index] = state
-        expect(await execute(results)).not.toBe(0)
+    for (const paths of [
+      ['work-items/a.md'],
+      ['frontend/src/app.tsx'],
+      ['backend/tenancy/user.go'],
+      ['spec/main.tsp'],
+    ]) {
+      const plan = planCI(paths)
+      const needs: Record<string, unknown> = {
+        plan: { result: 'success', outputs: { plan: JSON.stringify(plan) } },
+        spec: { result: 'success' },
       }
+      for (const job of ['go-lint', 'go-test', 'ui', 'ui-e2e', 'schema-convergence']) {
+        const config = workflow.jobs[job]!
+        expect(config.needs).toEqual(['plan'])
+        const group = {
+          'go-lint': 'go',
+          'go-test': 'go',
+          ui: 'ui',
+          'ui-e2e': 'browser',
+          'schema-convergence': 'schema',
+        }[job]!
+        expect(config.if).toBe(`\${{ needs.plan.outputs.${group} == 'true' }}`)
+        const selected = plan.groups[group as keyof typeof plan.groups].selected
+        needs[job] = { result: selected ? 'success' : 'skipped' }
+      }
+      expect((await execute(needs)).code).toBe(0)
+      const input = structuredClone(needs)
+      input.spec = { result: 'skipped' }
+      expect((await execute(input)).code).toBe(1)
+      if (plan.groups.browser.selected) {
+        input.spec = { result: 'success' }
+        input['ui-e2e'] = { result: 'skipped' }
+        expect((await execute(input)).code).toBe(1)
+      } else expect((await execute(needs)).output).toContain('not selected')
     }
-    for (const size of [0, 1, 3, 5]) expect(await execute(Array(size).fill('success'))).not.toBe(0)
+    expect((await execute({})).code).toBe(1)
+  })
+
+  it('計画だけに差分条件を置き、イベントの base と head を環境変数で渡す', () => {
+    const planner = workflow.jobs.plan!
+    expect(planner.if).toBeUndefined()
+    const step = planner.steps!.find((step) => step.run?.includes('mise run plan-ci'))!
+    expect(step.id).toBe('selection')
+    expect(step.env?.CI_BASE).toContain('pull_request.base.sha')
+    expect(step.env?.CI_BASE).toContain('github.event.before')
+    expect(step.env?.CI_HEAD).toContain('pull_request.head.sha')
+    expect(step.env?.CI_HEAD).toContain('github.sha')
+    expect(step.run).toBe('mise run plan-ci -- "$CI_BASE" "$CI_HEAD"')
+    expect(planner.steps?.some((step) => step.with?.['fetch-depth'] === 0)).toBe(true)
+    for (const group of ['plan', 'go', 'ui', 'browser', 'schema']) {
+      expect(planner.outputs?.[group]).toBe(`\${{ steps.selection.outputs.${group} }}`)
+    }
+    expect(workflow.jobs.spec!.if).toBeUndefined()
+    for (const event of ['push', 'pull_request']) {
+      expect(workflow.on[event]?.paths).toBeUndefined()
+      expect(workflow.on[event]?.['paths-ignore']).toBeUndefined()
+    }
+    for (const job of ['sast', 'dependency-audit']) {
+      expect(workflow.jobs[job]!.if).toBeUndefined()
+      expect(workflow.jobs[job]!.needs).toBeUndefined()
+    }
   })
 
   it('公開 API の互換性は全体検査へ一度だけ接続する', () => {

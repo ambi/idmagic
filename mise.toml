@@ -868,14 +868,18 @@ depends = ["compile-spec"]
 run = "mise run -c --skip-deps check-generated-contract ::: check-site"
 
 [tasks.check-ci-results]
-description = "Reject failed, skipped, cancelled, or missing CI verification groups"
+description = "Require the CI plan and every selected verification group to succeed"
+dir = "tools"
+run = "bun run verification/src/ci-main.ts results"
+
+[tasks.plan-ci]
+description = "Select CI verification groups from two Git revisions (all groups on unknown input)"
+dir = "tools"
 run = '''
 #!/usr/bin/env sh
 set -eu
-test "$#" -eq 4 || { echo "expected four CI group results" >&2; exit 1; }
-for result do
-  test "$result" = success || { echo "CI group did not succeed: $result" >&2; exit 1; }
-done
+test "$#" -le 2 || { echo "usage: mise run plan-ci -- [base head]" >&2; exit 2; }
+bun run verification/src/ci-main.ts plan "$@"
 '''
 
 # 生成検査と registry の spec group が、check にも含まれる共通の仕様ゲートである。
