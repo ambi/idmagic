@@ -314,3 +314,11 @@ Final — https://openid.net/specs/fapi-security-profile-2_0-final.html
 | FAPI2-PAR-PKCE | optional | MUST | FAPI クライアントは PAR と S256 PKCE を使用する。 |
 | FAPI2-CLIENT-AUTH | optional | MUST | FAPI クライアントは `private_key_jwt` または mTLS で認証する。 |
 | FAPI2-SENDER-CONSTRAINT | optional | MUST | FAPI アクセストークンに DPoP または mTLS による送信者制約を付ける。 |
+
+## AI Identity Management System
+
+draft-ietf-wimse-aims-00 — https://www.ietf.org/archive/id/draft-ietf-wimse-aims-00.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| AIMS00-AGENT-CLIENT-AUTH | required | MUST | Agent に束縛したクライアントのトークン要求は、`private_key_jwt` か `tls_client_auth` で認証したときだけ受け付け、共有シークレットの方式と `none` のクライアントはグラントの種類によらず拒否する。そのようなクライアントを Agent に束縛する操作も拒否する。 |

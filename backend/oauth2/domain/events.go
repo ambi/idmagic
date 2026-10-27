@@ -172,6 +172,23 @@ type AgentApprovalRequired struct {
 func (e *AgentApprovalRequired) EventType() string     { return "AgentApprovalRequired" }
 func (e *AgentApprovalRequired) OccurredAt() time.Time { return e.At }
 
+// AgentClientAuthenticationRejected は Agent に束縛したクライアントの認証方式が鍵の
+// 所有を証明しないため、トークン要求をグラントによらず拒否した (REQ-OAUTH2-055)。
+// 応答は束縛の有無を区別しない invalid_client なので、拒否の理由はここにだけ残る。
+type AgentClientAuthenticationRejected struct {
+	At                      time.Time `json:"-"`
+	TenantID                string    `json:"tenantId"`
+	AgentID                 string    `json:"agentId"`
+	ClientID                string    `json:"clientId"`
+	TokenEndpointAuthMethod string    `json:"tokenEndpointAuthMethod"`
+	GrantType               string    `json:"grantType"`
+}
+
+func (e *AgentClientAuthenticationRejected) EventType() string {
+	return "AgentClientAuthenticationRejected"
+}
+func (e *AgentClientAuthenticationRejected) OccurredAt() time.Time { return e.At }
+
 // ProtectedResourceMetadataServed は RFC 9728 — /.well-known/oauth-protected-resource
 // が登録済み McpResourceServer の metadata を配信した。
 type ProtectedResourceMetadataServed struct {

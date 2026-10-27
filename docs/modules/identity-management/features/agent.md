@@ -104,7 +104,9 @@
 - 空の `client_id` と、見つからない `client_id` を指定された場合、IdManagement は、422 と `client_not_found` で拒否する。
 - 別のテナントの `client_id` を指定された場合、IdManagement は、存在しない `client_id` と同じ OAuth2ClientNotFoundError で拒否し、束縛を作らない。
 - ほかの Agent に束縛済みの OAuth2Client を指定された場合、IdManagement は、409 と `agent_client_already_bound` で拒否する。
-- **例**：EX-IDMANAGEMENT-074-04、EX-IDMANAGEMENT-074-05
+- `token_endpoint_auth_method` が `private_key_jwt` でも `tls_client_auth` でもない OAuth2Client を指定された場合、IdManagement は、422 と `agent_client_auth_method_not_allowed` で拒否し、束縛を作らない。
+- **判断**：Agent の資格情報は、要求ごとに鍵の所有を証明できるものに限る（[AIMS00-AGENT-CLIENT-AUTH](../../oauth2/standards.md#ai-identity-management-system)）。束縛した後の認証方式の変更は OAuth2 がトークンの要求ごとに拒否する（REQ-OAUTH2-055）ので、ここでの拒否は誤った構成を作った時点で理由を知らせるためにある。
+- **例**：EX-IDMANAGEMENT-074-04、EX-IDMANAGEMENT-074-05、EX-IDMANAGEMENT-074-06
 
 ### 更新
 

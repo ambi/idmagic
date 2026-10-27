@@ -94,7 +94,7 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 
 | モジュール | 公開方式 | 公開パッケージ | 実装パス | 責務 |
 | --- | --- | --- | --- | --- |
-| [OAuth2](oauth2/README.md) | `internal` | `backend/oauth2/domain`, `backend/oauth2/ports`, `backend/oauth2/client/ports`, `backend/oauth2/consent/ports`, `backend/oauth2/logout/ports` | `backend/oauth2` | OAuth 2.0 と OIDC のプロトコル、クライアント、同意、トークン |
+| [OAuth2](oauth2/README.md) | `internal` | `backend/oauth2/domain`, `backend/oauth2/ports`, `backend/oauth2/client/ports`, `backend/oauth2/consent/ports`, `backend/oauth2/logout/ports`, `backend/oauth2/testing_clientauth` | `backend/oauth2` | OAuth 2.0 と OIDC のプロトコル、クライアント、同意、トークン。`testing_clientauth` はテスト入力の生成専用 |
 | [Saml](saml/README.md) | `internal` | `backend/saml/domain`, `backend/saml/ports` | `backend/saml` | SAML 2.0 IdP、SP の信頼、SSO、SLO、メタデータ |
 | [WsFederation](ws-federation/README.md) | `internal` | `backend/wsfederation/domain`, `backend/wsfederation/ports` | `backend/wsfederation` | WS-Federation、WS-Trust、メタデータ、RP の信頼 |
 | [SharedSignals](sharedsignals/README.md) | `internal` | `backend/sharedsignals/domain`, `backend/sharedsignals/ports` | `backend/sharedsignals` | SSF、SET、CAEP による継続的アクセス評価と失効 |

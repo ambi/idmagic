@@ -45,10 +45,11 @@ var successAuthEventTypes = map[string]bool{
 // 指すものとして扱い、agent.id 軸にだけ載せる。agent.id は「この Agent に関するイベント」、
 // actor.type は「その Agent が行為者だったか」を表す、別の問いに答える軸である。
 var agentActorEventTypes = map[string]bool{
-	"TokenExchanged":           true,
-	"WorkloadTokenExchanged":   true,
-	"AgentApprovalRequired":    true,
-	"BackchannelAuthRequested": true,
+	"TokenExchanged":                    true,
+	"WorkloadTokenExchanged":            true,
+	"AgentApprovalRequired":             true,
+	"AgentClientAuthenticationRejected": true,
+	"BackchannelAuthRequested":          true,
 }
 
 // ExtractSearchAttributes は監査イベントレコードから sidecar 検索属性 (attr_name -> 値の並び) を

@@ -1661,6 +1661,21 @@ model AgentApprovalRequired {
 }
 
 
+@doc("Agent に束縛したクライアントの認証方式が鍵の所有を証明しないので、トークンの要求をグラントの種類によらず拒否した（REQ-OAUTH2-055）。応答は束縛の有無を区別しない `invalid_client` なので、拒否の理由はこのイベントだけに残る。")
+model AgentClientAuthenticationRejected {
+  occurredAt: utcDateTime;
+  @doc("拒否が行われたテナント。")
+  tenantId: string;
+  agentId: string;
+  @doc("Agent が結び付き、認証に使ったクライアント。")
+  clientId: string;
+  @doc("判断に使ったクライアントの `token_endpoint_auth_method`。たとえば `client_secret_basic`。")
+  tokenEndpointAuthMethod: string;
+  @doc("拒否したリクエストが求めたグラントの種類。たとえば `client_credentials`。")
+  grantType: string;
+}
+
+
 @doc("CIBA Core の 7.3 節：人が確定する承認のリクエストを起こした。`auth_req_id` は bearer のシークレットで、監査ログに届かない。")
 model BackchannelAuthRequested {
   occurredAt: utcDateTime;

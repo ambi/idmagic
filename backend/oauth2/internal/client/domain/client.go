@@ -120,6 +120,14 @@ var fapi2ClientAuthMethods = []TokenEndpointAuthMethod{
 	AuthMethodPrivateKeyJwt, AuthMethodTlsClientAuth,
 }
 
+// ProvesKeyPossession はクライアントが要求ごとに秘密鍵の所有を証明して認証するかを返す。
+// Agent に束縛できるのはこの方式のクライアントだけである (AIMS00-AGENT-CLIENT-AUTH)。
+// 許可集合は FAPI 2.0 と同じで、どちらも共有シークレットと `none` を締め出すために
+// 置いた集合なので一つの定義を共有する。
+func (c OAuth2Client) ProvesKeyPossession() bool {
+	return slices.Contains(fapi2ClientAuthMethods, c.TokenEndpointAuthMethod)
+}
+
 func ValidateLogoutURI(raw string) bool {
 	parsed, err := url.Parse(raw)
 	return err == nil && parsed.Scheme == "https" && parsed.Host != "" && parsed.User == nil && parsed.Fragment == ""

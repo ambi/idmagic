@@ -357,6 +357,51 @@ func TestBindingAForeignTenantsCredentialLeavesTheAgentUnbound(t *testing.T) {
 	}
 }
 
+// 拒否だけでなく、関連付けとイベントが残らないことまで読む。バインドは 204 で終わる
+// ので、「束縛を書いてから拒否する」実装は応答では見分けられない。
+//
+//spec:covers REQ-IDMANAGEMENT-074, EX-IDMANAGEMENT-074-06: 共有シークレットで認証するクライアントのバインドが 422 の agent_client_auth_method_not_allowed で拒否され、Agent に関連付けも AgentCredentialBound も残らず、同じ Agent へ鍵の所有を証明するクライアントならバインドできること。
+func TestBindingASharedSecretClientLeavesTheAgentUnbound(t *testing.T) {
+	fixture := newIdmRefusalServer(t)
+	admin := fixture.seedSession(t, "sess-admin-secret-bind", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+	created := fixture.send(t, idmRefusalRequest{
+		method: http.MethodPost, path: "/api/admin/v1/agents", sessionID: admin, csrf: idmRefusalCSRF,
+		body: map[string]any{"name": "secret-agent", "kind": "autonomous"},
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("前提が壊れている: Agent 登録が status=%d body=%s", created.Code, created.Body.String())
+	}
+	var registered struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(created.Body.Bytes(), &registered); err != nil {
+		t.Fatalf("decode register: %v", err)
+	}
+	bind := func(clientID string) *httptest.ResponseRecorder {
+		return fixture.send(t, idmRefusalRequest{
+			method: http.MethodPost, path: "/api/admin/v1/agents/" + registered.ID + "/credentials",
+			sessionID: admin, csrf: idmRefusalCSRF, body: map[string]any{"client_id": clientID},
+		})
+	}
+	*fixture.events = (*fixture.events)[:0]
+
+	refused := bind(idmRefusalSecretClient)
+	if refused.Code != http.StatusUnprocessableEntity || idmProblemCode(t, refused) != "agent_client_auth_method_not_allowed" {
+		t.Fatalf("status=%d body=%s, want 422 agent_client_auth_method_not_allowed", refused.Code, refused.Body.String())
+	}
+	if ids := agentCredentialIDs(t, fixture, admin, registered.ID); len(ids) != 0 {
+		t.Fatalf("拒否されたのに client_ids=%v", ids)
+	}
+	if types := emittedTypes(fixture); slices.Contains(types, "AgentCredentialBound") {
+		t.Fatalf("拒否されたのに events=%v", types)
+	}
+
+	// 対照: 同じ Agent に鍵の所有を証明するクライアントならバインドできる。
+	if accepted := bind(idmRefusalClient); accepted.Code != http.StatusNoContent {
+		t.Fatalf("前提が壊れている: private_key_jwt のバインドが status=%d body=%s", accepted.Code, accepted.Body.String())
+	}
+}
+
 // problemWithoutInstance は応答の Problem Details から、要求ごとに変わる instance を除いたものを返す。
 func problemWithoutInstance(t *testing.T, recorder *httptest.ResponseRecorder) support.Problem {
 	t.Helper()

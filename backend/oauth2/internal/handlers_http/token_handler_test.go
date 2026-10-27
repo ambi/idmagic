@@ -94,7 +94,8 @@ func newTokenServer(t *testing.T) tokenFixture {
 		TenantRepo: tenancy.NewMemoryModule().TenantRepo,
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, RefreshStore: oauth2memory.NewRefreshTokenStore(), AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist(),
-			McpResourceServerRepo: mcpResourceServerRepo,
+			McpResourceServerRepo:      mcpResourceServerRepo,
+			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
 		},
 		IdManagement:      idmanagement.Module{AgentRepo: agentRepo, UserRepo: userRepo},
 		KeyStore:          keyStore,

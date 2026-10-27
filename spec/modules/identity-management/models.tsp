@@ -182,6 +182,10 @@ model AgentOwnerInactiveError is ProblemDetails;
 model AgentClientAlreadyBoundError is ProblemDetails;
 
 
+@doc("指定した OAuth2Client の `token_endpoint_auth_method` が `private_key_jwt` でも `tls_client_auth` でもない。Agent の資格情報は、要求ごとに鍵の所有を証明できる方式に限り、共有シークレットと `none` のクライアントを結び付けない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:agent_client_auth_method_not_allowed` である。")
+model AgentClientAuthMethodNotAllowedError is ProblemDetails;
+
+
 @doc("Agent の登録に `kind` がない。種類は、Agent が人の承認なしにトークンを得られるかを実行時に決めるので、デフォルト値で代えない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:agent_kind_required` である。")
 model AgentKindRequiredError is ProblemDetails;
 

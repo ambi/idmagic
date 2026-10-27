@@ -77,13 +77,20 @@ export function AdminAgentEditPage({
     }
   }
 
+  function credentialErrorMessage(cause: unknown): string {
+    if (!(cause instanceof AuthenticationAPIError)) return t.genericOpError
+    if (cause.code === 'agent_client_auth_method_not_allowed')
+      return t.agentClientAuthMethodNotAllowedError
+    return cause.message
+  }
+
   async function withCredential(action: () => Promise<void>) {
     setCredentialBusy(true)
     setError('')
     try {
       await action()
     } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericOpError)
+      setError(credentialErrorMessage(cause))
     } finally {
       setCredentialBusy(false)
     }

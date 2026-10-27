@@ -335,6 +335,28 @@
 - But "agent-app" にどの Agent も束縛されていない
 - Then 所有者の解決を行わず、リクエストは受理される
 
+## Rule: REQ-OAUTH2-055 Agent に束縛したクライアントのトークン要求は、鍵の所有を証明する認証方式のときだけ受け付ける
+
+### Example: EX-OAUTH2-055-01 共有シークレットのクライアントを束縛した Agent
+
+- Given `Active` の Agent "A1" が `token_endpoint_auth_method` が `client_secret_basic` のクライアント "agent-app" に束縛されている
+- When "agent-app" として正しいシークレットで client_credentials のトークンを要求する
+- Then エラー "InvalidClientError" で拒否され、トークンは発行されない
+- And "AgentClientAuthenticationRejected" が発行され、認証方式 `client_secret_basic` とグラントの種類 `client_credentials` が残る
+
+### Example: EX-OAUTH2-055-02 束縛の後で共有シークレットへ変えたクライアント
+
+- Given `Active` の Agent "A1" が `token_endpoint_auth_method` が `private_key_jwt` のクライアント "agent-app" に束縛されている
+- And 管理者が "agent-app" の `token_endpoint_auth_method` を `client_secret_post` へ変えた
+- When "agent-app" として正しいシークレットでトークン交換を要求する
+- Then エラー "InvalidClientError" で拒否され、トークンは発行されない
+
+### Example: EX-OAUTH2-055-03 鍵の所有を証明するクライアントを束縛した Agent
+
+- Given `Active` の Agent "A1" が `token_endpoint_auth_method` が `private_key_jwt` のクライアント "agent-app" に束縛されている
+- When "agent-app" として有効なクライアントアサーションで client_credentials のトークンを要求する
+- Then リクエストは受理され、`agent_id` に "A1" を載せたアクセストークンが発行される
+
 ## Rule: REQ-OAUTH2-047 管理コンソールとアカウントポータルの Bearer 認証も失効判定を通る
 
 ### Background:

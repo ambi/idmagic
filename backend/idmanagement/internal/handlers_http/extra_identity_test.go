@@ -127,7 +127,8 @@ func TestAdminAgentLifecycle(t *testing.T) {
 	_ = h.clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "client-1", ClientName: &clientName,
 		ClientType: spec.ClientConfidential, GrantTypes: []spec.GrantType{spec.GrantClientCredentials},
-		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
+		// Agent に束縛できるのは鍵の所有を証明する方式のクライアントだけである (REQ-IDMANAGEMENT-074)。
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodPrivateKeyJwt,
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 	})
 

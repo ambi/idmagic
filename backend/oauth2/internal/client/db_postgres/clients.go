@@ -95,9 +95,12 @@ func (r *OAuth2ClientRepository) FindByID(ctx context.Context, tenantID, clientI
 	return clientFromRow(row)
 }
 
-func (r *OAuth2ClientRepository) ClientExists(ctx context.Context, tenantID, clientID string) (bool, error) {
+func (r *OAuth2ClientRepository) LookupBindableClient(ctx context.Context, tenantID, clientID string) (bool, bool, error) {
 	client, err := r.FindByID(ctx, tenantID, clientID)
-	return client != nil, err
+	if err != nil || client == nil {
+		return false, false, err
+	}
+	return true, client.ProvesKeyPossession(), nil
 }
 
 func (r *OAuth2ClientRepository) FindAll(ctx context.Context, tenantID string) ([]*domain.OAuth2Client, error) {

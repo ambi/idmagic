@@ -169,6 +169,26 @@ func TestExtractSearchAttributesAgentActorWithoutAnActorSubUsesTheAgent(t *testi
 	}
 }
 
+// 認証方式による拒否は、Agent のクライアントが自らトークンを求めた結果である。
+//
+//spec:covers REQ-AUDIT-005: Agent に束縛したクライアントの認証方式による拒否 (AgentClientAuthenticationRejected) は、行為者をその Agent として記録すること。
+func TestExtractSearchAttributesAgentClientAuthenticationRejectionIsTheAgentsAct(t *testing.T) {
+	rec := &ports.AuditEventRecord{
+		Type: "AgentClientAuthenticationRejected",
+		Payload: map[string]any{
+			"agentId": "agent-a", "clientId": "agent-app",
+			"tokenEndpointAuthMethod": "client_secret_basic", "grantType": "client_credentials",
+		},
+	}
+	attrs := ExtractSearchAttributes(rec)
+	if got := attrs["actor.type"]; len(got) != 1 || got[0] != ports.ActorTypeAgent {
+		t.Fatalf("actor.type = %v, want [%s]", got, ports.ActorTypeAgent)
+	}
+	if got := attrs["agent.id"]; len(got) != 1 || got[0] != "agent-a" {
+		t.Fatalf("agent.id = %v, want [agent-a]", got)
+	}
+}
+
 // 既存の userId フォールバックはそのまま残る。
 //
 //spec:covers REQ-AUDIT-005: エージェントを名指さないイベントの行為者は利用者であり、

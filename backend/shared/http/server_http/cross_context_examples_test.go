@@ -23,6 +23,7 @@ import (
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/testing_clientauth"
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
@@ -38,8 +39,8 @@ func TestAdminDisablingAUserClosesEveryPathToItAtOnce(t *testing.T) {
 	agentIDs := []string{"A1", "A2"}
 	tokens := map[string]string{}
 	for _, agentID := range agentIDs {
-		clientID := seedOwnedAgent(t, s, agentID)
-		tokens[agentID] = issueClientCredentialsToken(t, s, clientID)
+		credential := seedOwnedAgent(t, s, agentID)
+		tokens[agentID] = issueClientCredentialsToken(t, s, credential)
 		if active := s.Introspect(t, "default", tokens[agentID])["active"]; active != true {
 			t.Fatalf("無効化の前に %s のトークンが active=%v、want true", agentID, active)
 		}
@@ -144,17 +145,19 @@ func TestScheduledDeletionClosesLoginAndRestoreReopensIt(t *testing.T) {
 }
 
 // seedOwnedAgent は stack.UserID が所有する Active の Agent を置き、client_credentials で
-// トークンを取れるクライアントを束縛して、そのクライアント id を返す。
-func seedOwnedAgent(t *testing.T, s *stack.Stack, agentID string) string {
+// トークンを取れるクライアントを束縛して、そのクライアントの署名鍵を返す。Agent のクライアントは
+// 鍵の所有を証明する方式でなければトークンを得られない (REQ-OAUTH2-055)。
+func seedOwnedAgent(t *testing.T, s *stack.Stack, agentID string) *testing_clientauth.PrivateKeyJWT {
 	t.Helper()
 	now := time.Now().UTC()
 	clientID := "agent-client-" + strings.ToLower(agentID)
-	secretHash := oauthdomain.HashClientSecret(clientID + "-secret")
+	credential := testing_clientauth.NewPrivateKeyJWT(t, clientID)
 	_ = s.Clients.Save(context.Background(), &oauthdomain.OAuth2Client{
-		TenantID: tenancydomain.DefaultTenantID, ClientID: clientID, ClientSecretHash: &secretHash,
+		TenantID: tenancydomain.DefaultTenantID, ClientID: clientID,
 		ClientType:              spec.ClientConfidential,
 		GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
-		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodPrivateKeyJwt,
+		JWKS:                    credential.JWKS(),
 		Scope:                   "openid",
 		FapiProfile:             oauthdomain.FapiNone,
 		CreatedAt:               now,
@@ -170,22 +173,22 @@ func seedOwnedAgent(t *testing.T, s *stack.Stack, agentID string) string {
 	}); err != nil {
 		t.Fatalf("seed binding %s: %v", agentID, err)
 	}
-	return clientID
+	return credential
 }
 
-func issueClientCredentialsToken(t *testing.T, s *stack.Stack, clientID string) string {
+func issueClientCredentialsToken(t *testing.T, s *stack.Stack, credential *testing_clientauth.PrivateKeyJWT) string {
 	t.Helper()
-	form := url.Values{"grant_type": {"client_credentials"}, "scope": {"openid"}}
-	request := httptest.NewRequest(http.MethodPost, stack.Issuer+"/realms/default/token", strings.NewReader(form.Encode()))
+	endpoint := stack.Issuer + "/realms/default/token"
+	form := credential.AuthenticateForm(t, url.Values{"grant_type": {"client_credentials"}, "scope": {"openid"}}, endpoint)
+	request := httptest.NewRequest(http.MethodPost, endpoint, strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.SetBasicAuth(clientID, clientID+"-secret")
 	recorder := httptest.NewRecorder()
 	s.Echo.ServeHTTP(recorder, request)
 	var body struct {
 		AccessToken string `json:"access_token"`
 	}
 	if recorder.Code != http.StatusOK || json.Unmarshal(recorder.Body.Bytes(), &body) != nil || body.AccessToken == "" {
-		t.Fatalf("%s の token status=%d body=%s", clientID, recorder.Code, recorder.Body.String())
+		t.Fatalf("token status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 	return body.AccessToken
 }

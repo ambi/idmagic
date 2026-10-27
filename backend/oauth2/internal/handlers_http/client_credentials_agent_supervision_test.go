@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -29,6 +28,8 @@ func TestTokenClientCredentials_supervisedAgent_rejected(t *testing.T) {
 	now := time.Now().UTC()
 
 	f := newTokenServer(t)
+	// 共有シークレットのクライアントは区分より前に認証方式で拒否される (REQ-OAUTH2-055)。
+	key := seedPrivateKeyJWTAgentClient(t, f)
 	if err := f.userRepo.Save(ctx, &userdomain.User{
 		ID: "owner-1", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "owner-1",
 		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive, StatusChangedAt: &now},
@@ -48,17 +49,14 @@ func TestTokenClientCredentials_supervisedAgent_rejected(t *testing.T) {
 	}
 	saveAgent(t, idmdomain.AgentKindAutonomous)
 	if _, err := f.agentRepo.AddBinding(ctx, &agentdomain.AgentCredentialBinding{
-		AgentID: "agent-1", ClientID: "client-conf", CreatedAt: now,
+		AgentID: "agent-1", ClientID: agentClientID, CreatedAt: now,
 	}); err != nil {
 		t.Fatalf("seed binding: %v", err)
 	}
 
 	requestToken := func(t *testing.T) (int, map[string]any) {
 		t.Helper()
-		form := url.Values{
-			"client_id": {"client-conf"}, "client_secret": {"secret-conf"},
-			"grant_type": {"client_credentials"}, "scope": {"openid"},
-		}
+		form := agentClientCredentialsForm(t, key)
 		req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()

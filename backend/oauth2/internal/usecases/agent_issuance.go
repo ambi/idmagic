@@ -59,6 +59,35 @@ func ResolveIssuableAgent(ctx context.Context, deps AgentIssuanceDeps, clientID 
 	return agent, nil
 }
 
+// RejectAgentClientWithoutKeyProof は、client が Agent に束縛されていて、その認証方式が
+// 鍵の所有を証明しない (共有シークレットか none) 場合に invalid_client を返す
+// (REQ-OAUTH2-055)。束縛が無い client では何もしない。
+//
+// 束縛の作成時にも同じ条件で拒否しているが、束縛の後でクライアントの認証方式を
+// 変えられるので、トークン要求ごとのこの判定を正とする。Agent を解決しないグラント
+// (認可コード、リフレッシュトークン、device_code) も Agent のクライアントの認証である
+// ことは変わらないため、呼び出し元はグラントの分岐より前で一度だけ呼ぶ。
+//
+// 応答は Agent の状態や所有者による拒否と同じ invalid_client にし、束縛の有無を外部へ
+// 区別させない。区別は AgentClientAuthenticationRejected にだけ残す。
+func RejectAgentClientWithoutKeyProof(
+	ctx context.Context, deps AgentIssuanceDeps, client *domain.OAuth2Client, grantType string, now time.Time,
+) error {
+	if deps.AgentRepo == nil || client.ProvesKeyPossession() {
+		return nil
+	}
+	tenantID := tenantports.TenantID(ctx)
+	agent, err := deps.AgentRepo.FindByClientID(ctx, tenantID, client.ClientID)
+	if err != nil || agent == nil {
+		return err
+	}
+	emit(deps.Emit, &domain.AgentClientAuthenticationRejected{
+		At: now, TenantID: tenantID, AgentID: agent.ID, ClientID: client.ClientID,
+		TokenEndpointAuthMethod: string(client.TokenEndpointAuthMethod), GrantType: grantType,
+	})
+	return NewOAuthError("invalid_client", "agent clients must authenticate with private_key_jwt or tls_client_auth")
+}
+
 // AgentOwnerIsActive は agent の所有者がオフボードされていないかを返す。所有者を
 // 解決できない場合 (ハード削除、別テナント) は false で、fail-closed に倒す。
 // userRepo が nil の配線では判定を行わず true を返す。

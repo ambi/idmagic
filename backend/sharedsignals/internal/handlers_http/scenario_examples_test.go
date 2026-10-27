@@ -40,6 +40,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/testing_clientauth"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
@@ -65,8 +66,9 @@ const (
 	trustedIssuer    = "https://issuer.example"
 	receiverAudience = "https://idp.test/ssf"
 
-	agentClientID     = "agent-client"
-	agentClientSecret = "agent-client-secret"
+	// agentClientID は Agent に束縛するクライアントで、private_key_jwt で認証する。
+	// 共有シークレットのクライアントには Agent のトークンが発行されない (REQ-OAUTH2-055)。
+	agentClientID = "agent-client"
 	// resourceServerID は `/introspect` のクライアント認証に使う。トークンの状態を
 	// 製品の入口から読むために要る。
 	resourceServerID     = "resource-server"
@@ -162,6 +164,7 @@ type exampleStack struct {
 	keyStore           signingkeys.KeyStore
 	csrf               string
 	cookie             *http.Cookie
+	agentCredential    *testing_clientauth.PrivateKeyJWT
 }
 
 func newExampleStack(t *testing.T) *exampleStack {
@@ -190,18 +193,27 @@ func newExampleStack(t *testing.T) *exampleStack {
 	}
 
 	clients := oauth2.NewMemoryModule().ClientRepo
-	for id, secret := range map[string]string{agentClientID: agentClientSecret, resourceServerID: resourceServerSecret} {
-		hash := oauthdomain.HashClientSecret(secret)
-		_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
-			TenantID: tenancydomain.DefaultTenantID, ClientID: id, ClientSecretHash: &hash,
-			ClientType:              spec.ClientConfidential,
-			GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
-			TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
-			Scope:                   "openid",
-			FapiProfile:             oauthdomain.FapiNone,
-			CreatedAt:               now,
-		})
-	}
+	resourceServerHash := oauthdomain.HashClientSecret(resourceServerSecret)
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID, ClientID: resourceServerID, ClientSecretHash: &resourceServerHash,
+		ClientType:              spec.ClientConfidential,
+		GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
+		Scope:                   "openid",
+		FapiProfile:             oauthdomain.FapiNone,
+		CreatedAt:               now,
+	})
+	agentCredential := testing_clientauth.NewPrivateKeyJWT(t, agentClientID)
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID, ClientID: agentClientID,
+		ClientType:              spec.ClientConfidential,
+		GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodPrivateKeyJwt,
+		JWKS:                    agentCredential.JWKS(),
+		Scope:                   "openid",
+		FapiProfile:             oauthdomain.FapiNone,
+		CreatedAt:               now,
+	})
 
 	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
@@ -216,6 +228,7 @@ func newExampleStack(t *testing.T) *exampleStack {
 
 	s := &exampleStack{
 		e: echo.New(), events: &eventLog{}, agents: idmanagement.NewMemoryModule().AgentRepo,
+		agentCredential:    agentCredential,
 		streams:            ssmemory.NewSsfStreamRepository(),
 		transmitterConfigs: &countingTransmitterConfigs{SsfTransmitterConfigRepository: ssmemory.NewSsfTransmitterConfigRepository()},
 		receiverConfigs:    &countingReceiverConfigs{SsfReceiverConfigRepository: ssmemory.NewSsfReceiverConfigRepository()},
@@ -231,6 +244,7 @@ func newExampleStack(t *testing.T) *exampleStack {
 		OAuth2: oauth2.Module{
 			ClientRepo: clients, TokenIssuer: signer, TokenIntrospector: signer,
 			RefreshStore: oauth2.NewMemoryModule().RefreshStore, AccessTokenDenylist: oauth2.NewMemoryModule().AccessTokenDenylist,
+			ClientAssertionReplayStore: oauth2.NewMemoryModule().ClientAssertionReplayStore,
 		},
 		Tenancy:     tenancy.Module{QuotaRepo: quotas},
 		JWKResolver: tokensjose.NewJWKResolver(),
@@ -388,10 +402,10 @@ func (s *exampleStack) epoch(t *testing.T, tenantID, agentID string) *ssdomain.A
 // issueAgentToken は Agent に束縛されたクライアントで `/token` から access token を取る。
 func (s *exampleStack) issueAgentToken(t *testing.T) string {
 	t.Helper()
-	form := url.Values{"grant_type": {"client_credentials"}, "scope": {"openid"}}
+	form := s.agentCredential.AuthenticateForm(t,
+		url.Values{"grant_type": {"client_credentials"}, "scope": {"openid"}}, exampleIssuer+"/realms/default/token")
 	req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(agentClientID, agentClientSecret)
 	rec := httptest.NewRecorder()
 	s.e.ServeHTTP(rec, req)
 	var body struct {

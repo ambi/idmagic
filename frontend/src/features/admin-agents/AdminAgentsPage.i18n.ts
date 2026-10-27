@@ -64,6 +64,8 @@ export const adminAgentsDictionary = defineDictionary(
     noCredentialsNotice: 'バインドされた資格情報はありません。',
     bindClientIdAria: 'バインドする client_id',
     bind: 'バインド',
+    agentClientAuthMethodNotAllowedError:
+      'このクライアントはバインドできません。エージェントには、private_key_jwt か tls_client_auth で認証するクライアントだけをバインドできます。',
     agentEyebrow: 'エージェント',
     editAgentHeading: 'エージェントを編集',
     basicInfoHeading: '基本情報',
@@ -138,6 +140,8 @@ export const adminAgentsDictionary = defineDictionary(
     noCredentialsNotice: 'No credentials are bound.',
     bindClientIdAria: 'client_id to bind',
     bind: 'Bind',
+    agentClientAuthMethodNotAllowedError:
+      'This client cannot be bound. Agents can only be bound to clients that authenticate with private_key_jwt or tls_client_auth.',
     agentEyebrow: 'Agent',
     editAgentHeading: 'Edit agent',
     basicInfoHeading: 'Basic information',

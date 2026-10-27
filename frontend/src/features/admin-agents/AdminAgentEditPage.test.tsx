@@ -65,6 +65,30 @@ describe('AdminAgentEditPage', () => {
     expect(window.location.assign).not.toHaveBeenCalled()
   })
 
+  it('explains why a shared-secret client cannot be bound', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() =>
+        Promise.resolve(
+          response(422, {
+            type: 'urn:idmagic:error:agent_client_auth_method_not_allowed',
+            detail:
+              'An agent can only be bound to a client that authenticates with private_key_jwt or tls_client_auth.',
+          }),
+        ),
+      ),
+    )
+    await renderWithRouter(<AdminAgentEditPage csrfToken="csrf" agent={agent} />)
+
+    fireEvent.change(screen.getByLabelText(t.bindClientIdAria), {
+      target: { value: 'secret-client' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t.bind }))
+
+    expect(await screen.findByText(t.agentClientAuthMethodNotAllowedError)).toBeInTheDocument()
+    expect(screen.getByLabelText(t.bindClientIdAria)).toHaveValue('secret-client')
+  })
+
   it('shows an error when binding a credential fails', async () => {
     stubGlobal(
       'fetch',

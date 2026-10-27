@@ -302,6 +302,11 @@ func writeAdminAgentError(c *echo.Context, err error) error {
 		return support.WriteProblem(c, http.StatusConflict, "agent_owner_inactive", "The agent owner is not active.")
 	case errors.Is(err, agentusecases.ErrAgentClientBound):
 		return support.WriteProblem(c, http.StatusConflict, "agent_client_already_bound", "The client is already bound to another agent.")
+	case errors.Is(err, agentusecases.ErrAgentClientAuthMethodNotAllowed):
+		return support.WriteProblem(
+			c, http.StatusUnprocessableEntity, "agent_client_auth_method_not_allowed",
+			"An agent can only be bound to a client that authenticates with private_key_jwt or tls_client_auth.",
+		)
 	case errors.Is(err, idmusecases.ErrReservedRole):
 		return support.WriteProblem(
 			c, http.StatusUnprocessableEntity, "invalid_role",

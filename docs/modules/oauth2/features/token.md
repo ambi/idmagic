@@ -93,6 +93,14 @@ RefreshToken のライフサイクル。Rotate で子トークンに引き継が
 - 束縛した Agent のないクライアントの要求を受けたとき、OAuth2 は、所有者を解決せずに要求を処理する。
 - **例**：EX-OAUTH2-046-01、EX-OAUTH2-046-02、EX-OAUTH2-046-03、EX-OAUTH2-046-04
 
+#### REQ-OAUTH2-055 Agent に束縛したクライアントのトークン要求は、鍵の所有を証明する認証方式のときだけ受け付ける
+
+- `token_endpoint_auth_method` が `private_key_jwt` か `tls_client_auth` の、Agent に束縛したクライアントがトークンエンドポイントで認証したとき、OAuth2 は、グラントの種類によらず認証方式による拒否をせずに要求を処理する。
+- `token_endpoint_auth_method` が `client_secret_basic`、`client_secret_post`、`none` のクライアントが Agent に束縛されている場合、OAuth2 は、401 と `invalid_client` で拒否し、トークンを発行せず、Agent、クライアント、認証方式、グラントの種類を載せた `AgentClientAuthenticationRejected` を発行する。
+- 束縛した Agent のないクライアントの要求を受けたとき、OAuth2 は、認証方式による拒否をしない。
+- **判断**：束縛の後でクライアントの認証方式が変わっても拒否できるように、束縛の作成ではなく要求ごとに判定する（REQ-IDMANAGEMENT-074 の束縛時の拒否は、誤った構成を早く知らせる補助である）。応答はほかの Agent の発行拒否（REQ-OAUTH2-046）と同じ `invalid_client` にし、束縛の有無を外部から区別させない。
+- **例**：EX-OAUTH2-055-01、EX-OAUTH2-055-02、EX-OAUTH2-055-03
+
 #### REQ-OAUTH2-034 トークンエンドポイントはテナント境界を越えた資格情報を受理しない
 
 - 別のテナントで発行した認可コード、リフレッシュトークン、`device_code` を受けた場合、OAuth2 は、400 と `invalid_grant` で拒否する。

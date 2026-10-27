@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -28,6 +27,9 @@ func TestTokenClientCredentials_offboardedOwner_rejected(t *testing.T) {
 
 	f := newTokenServer(t)
 	agentRepo, userRepo := f.agentRepo, f.userRepo
+	// 共有シークレットのクライアントは認証方式で invalid_client になる (REQ-OAUTH2-055)。
+	// 所有者による invalid_client と見分けられるよう、鍵の所有を証明するクライアントにする。
+	key := seedPrivateKeyJWTAgentClient(t, f)
 
 	if err := agentRepo.Save(ctx, &agentdomain.Agent{
 		ID: "agent-1", TenantID: tenancydomain.DefaultTenantID, Name: "agent-1",
@@ -37,7 +39,7 @@ func TestTokenClientCredentials_offboardedOwner_rejected(t *testing.T) {
 		t.Fatalf("seed agent: %v", err)
 	}
 	if _, err := agentRepo.AddBinding(ctx, &agentdomain.AgentCredentialBinding{
-		AgentID: "agent-1", ClientID: "client-conf", CreatedAt: now,
+		AgentID: "agent-1", ClientID: agentClientID, CreatedAt: now,
 	}); err != nil {
 		t.Fatalf("seed binding: %v", err)
 	}
@@ -54,10 +56,7 @@ func TestTokenClientCredentials_offboardedOwner_rejected(t *testing.T) {
 
 	requestToken := func(t *testing.T) (int, map[string]any) {
 		t.Helper()
-		form := url.Values{
-			"client_id": {"client-conf"}, "client_secret": {"secret-conf"},
-			"grant_type": {"client_credentials"}, "scope": {"openid"},
-		}
+		form := agentClientCredentialsForm(t, key)
 		req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()

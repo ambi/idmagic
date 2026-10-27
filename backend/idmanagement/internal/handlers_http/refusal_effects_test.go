@@ -125,6 +125,9 @@ const (
 	idmRefusalClient = "client-default"
 	// idmRefusalForeignClient は acme テナントの OAuth2 クライアント。
 	idmRefusalForeignClient = "client-acme"
+	// idmRefusalSecretClient は default テナントの、共有シークレットで認証する OAuth2
+	// クライアント。上の 2 つと違い、Agent に束縛できない (REQ-IDMANAGEMENT-074)。
+	idmRefusalSecretClient = "client-secret"
 )
 
 func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
@@ -225,14 +228,18 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 		consents:   oauth2.NewMemoryModule().ConsentRepo,
 		clients:    oauth2.NewMemoryModule().ClientRepo,
 	}
-	for tenantID, clientID := range map[string]string{
-		tenancydomain.DefaultTenantID: idmRefusalClient,
-		idmRefusalOtherTenant:         idmRefusalForeignClient,
+	for _, seed := range []struct {
+		tenantID, clientID string
+		method             oauthdomain.TokenEndpointAuthMethod
+	}{
+		{tenancydomain.DefaultTenantID, idmRefusalClient, oauthdomain.AuthMethodPrivateKeyJwt},
+		{idmRefusalOtherTenant, idmRefusalForeignClient, oauthdomain.AuthMethodPrivateKeyJwt},
+		{tenancydomain.DefaultTenantID, idmRefusalSecretClient, oauthdomain.AuthMethodClientSecretBasic},
 	} {
 		if err := fixture.clients.Save(ctx, &oauthdomain.OAuth2Client{
-			TenantID: tenantID, ClientID: clientID, ClientType: spec.ClientConfidential,
+			TenantID: seed.tenantID, ClientID: seed.clientID, ClientType: spec.ClientConfidential,
 			GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
-			TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
+			TokenEndpointAuthMethod:  seed.method,
 			IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 			CreatedAt:                now,
 		}); err != nil {

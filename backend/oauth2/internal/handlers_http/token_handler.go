@@ -70,6 +70,14 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	if client == nil {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_client", "unknown client_id"))
 	}
+	// Agent のクライアントの認証方式は、送信者制約と同じ理由でグラントの分岐より前に
+	// 1 度だけ判定する。Agent を解決しないグラント (認可コードなど) も Agent の資格情報で
+	// 認証していることは変わらない (AIMS00-AGENT-CLIENT-AUTH)。
+	if err := tokenusecases.RejectAgentClientWithoutKeyProof(c.Request().Context(), tokenusecases.AgentIssuanceDeps{
+		AgentRepo: d.AgentRepo, Emit: d.Emit,
+	}, client, grantType, time.Now().UTC()); err != nil {
+		return writeOAuthError(c, err)
+	}
 	if !slices.Contains(client.GrantTypes, spec.GrantType(grantType)) {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "undeclared grant_type"))
 	}

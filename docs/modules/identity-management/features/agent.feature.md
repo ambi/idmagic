@@ -77,6 +77,14 @@
 - And 応答は存在しない `client_id` を指定したときと同じである
 - And エージェント "batch-agent" にクライアント資格情報は関連付けられない
 
+### Example: EX-IDMANAGEMENT-074-06 共有シークレットで認証するクライアントをバインドする
+
+- Given ロール=["admin"] のユーザー "operator" がエージェント "batch-agent" を登録している
+- When 管理者 "operator" がエージェント "batch-agent" にクライアント資格情報をバインドする
+- But `token_endpoint_auth_method` が `client_secret_basic` のクライアントの `client_id` を指定する
+- Then エラー "AgentClientAuthMethodNotAllowedError"
+- And エージェント "batch-agent" にクライアント資格情報は関連付けられず、"AgentCredentialBound" は発行されない
+
 ## Rule: REQ-IDMANAGEMENT-075 Agent の更新は値が変わった項目だけを記録し、所有者の変更を別に記録する
 
 ### Example: EX-IDMANAGEMENT-075-01 所有者の変更

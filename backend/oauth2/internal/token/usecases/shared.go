@@ -16,6 +16,7 @@ var (
 	// 承認を記録しない発行経路の区分ゲート (REQ-OAUTH2-050)。
 	ResolveIssuableAgentWithoutApproval = sharedusecases.ResolveIssuableAgentWithoutApproval
 	RejectAgentIssuanceWithoutApproval  = sharedusecases.RejectAgentIssuanceWithoutApproval
+	RejectAgentClientWithoutKeyProof    = sharedusecases.RejectAgentClientWithoutKeyProof
 )
 
 type AgentIssuanceDeps = sharedusecases.AgentIssuanceDeps

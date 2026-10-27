@@ -35,13 +35,20 @@ func newAgentDeps(t *testing.T) (agentusecases.AdminAgentDeps, *[]spec.DomainEve
 	clientRepo := oauth2.NewMemoryModule().ClientRepo
 	userRepo := usermemory.NewUserRepository()
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
-	_ = clientRepo.Save(testing_tenant.Default(context.Background()), &oauthdomain.OAuth2Client{
-		TenantID: tenancydomain.DefaultTenantID, ClientID: "svc_client", ClientType: spec.ClientConfidential,
-		RedirectURIs:             []string{"https://app.example/cb"},
-		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
-		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
-		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
-	})
+	// svc_client は Agent に束縛できる方式、secret_client は束縛できない方式のクライアントである
+	// (REQ-IDMANAGEMENT-074)。
+	for clientID, method := range map[string]oauthdomain.TokenEndpointAuthMethod{
+		"svc_client":    oauthdomain.AuthMethodPrivateKeyJwt,
+		"secret_client": oauthdomain.AuthMethodClientSecretBasic,
+	} {
+		_ = clientRepo.Save(testing_tenant.Default(context.Background()), &oauthdomain.OAuth2Client{
+			TenantID: tenancydomain.DefaultTenantID, ClientID: clientID, ClientType: spec.ClientConfidential,
+			RedirectURIs:             []string{"https://app.example/cb"},
+			GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
+			TokenEndpointAuthMethod:  method,
+			IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
+		})
+	}
 	userRepo.Seed(&userdomain.User{
 		ID: "operator", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "operator",
 		PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
@@ -528,6 +535,35 @@ func TestBindCredentialRejectsClientOfAnotherTenant(t *testing.T) {
 		t.Fatalf("expected ErrAgentClientNotFound, got %v", err)
 	}
 	view, err := agentusecases.GetAgent(acme, deps, agent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.ClientIDs) != 0 || len(*events) != 0 {
+		t.Fatalf("client_ids = %v, events = %v", view.ClientIDs, agentEventTypes(*events))
+	}
+}
+
+// 拒否を書いた後に束縛する実装と区別するため、関連付けとイベントが残らないことまで読む。
+//
+//spec:covers EX-IDMANAGEMENT-074-06: 共有シークレットで認証するクライアントのバインドが ErrAgentClientAuthMethodNotAllowed で拒否され、Agent に関連付けもイベントも残らないこと。
+func TestBindCredentialRejectsSharedSecretClient(t *testing.T) {
+	ctx := defaultTenantCtx()
+	deps, events := newAgentDeps(t)
+	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
+	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
+		ActorUserID: "operator", Name: "batch-agent", Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*events = (*events)[:0]
+
+	err = agentusecases.BindCredential(ctx, deps, "operator", agent.ID, "secret_client", now)
+	if !errors.Is(err, agentusecases.ErrAgentClientAuthMethodNotAllowed) {
+		t.Fatalf("expected ErrAgentClientAuthMethodNotAllowed, got %v", err)
+	}
+	view, err := agentusecases.GetAgent(ctx, deps, agent.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2917,6 +2917,7 @@ model BindAgentCredentialError409 {
 
 union BindAgentCredentialError422Body {
   IdMagic.Contract.OAuth2ClientNotFoundError,
+  IdMagic.Contract.AgentClientAuthMethodNotAllowedError,
 }
 
 model BindAgentCredentialError422 {

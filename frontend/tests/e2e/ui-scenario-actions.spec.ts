@@ -689,27 +689,27 @@ test('admin application lifecycle and agent credential binding work from the bro
     await setInputValue(view, '#app-name', appName)
     await setInputValue(view, '#app-redirects', `https://client.example.test/callback/${suffix}`)
     await setInputValue(view, '#app-oidc-scope', 'openid profile email')
+    // Agents can only be bound to clients that prove key possession (REQ-IDMANAGEMENT-074),
+    // so the client authenticates with tls_client_auth. It has no secret to reveal, and
+    // creation redirects straight to the detail page.
+    await selectDropdownOption(view, 'client_secret_basic', 'tls_client_auth')
+    await setInputValue(view, '#app-tls-dn', `CN=e2e-agent-${suffix}`)
     await clickButtonByText(view, 'Create')
-    await waitForText(view, 'The client has been created.')
-
-    const clientID = String(
-      await view.evaluate(`(() => {
-        const values = [...document.querySelectorAll('code')]
-          .map((node) => node.textContent?.trim() ?? '')
-          .filter(Boolean)
-        return values[0] ?? ''
-      })()`),
-    )
-    expect(clientID).not.toBe('')
-
-    await clickButtonByText(view, 'Stored')
     // Excludes /new: that path also matches [^/]+$, so without the negative lookahead
     // this would resolve immediately against the still-current create-page URL instead
     // of waiting for the post-creation redirect to the real detail page.
     await waitForUrl(view, /\/admin\/applications\/(?!new$)[^/]+$/)
     const appDetailURL = view.url
     await waitForText(view, appName)
-    await waitForText(view, clientID)
+
+    const clientID = String(
+      await view.evaluate(`(() => {
+        const label = [...document.querySelectorAll('label')]
+          .find((node) => node.textContent?.trim() === 'Client ID')
+        return label?.parentElement?.querySelector('code')?.textContent?.trim() ?? ''
+      })()`),
+    )
+    expect(clientID).not.toBe('')
     await clickLinkByText(view, 'Edit')
     await waitForUrl(view, /\/admin\/applications\/[^/]+\/edit$/)
     await waitForText(view, demo.username)
