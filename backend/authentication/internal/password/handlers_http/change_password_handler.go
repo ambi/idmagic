@@ -77,15 +77,7 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "password_reuse", "The new password cannot reuse a recently used password.")
 	default:
 		if policyErr, ok := errors.AsType[*authusecases.PasswordPolicyError](err); ok {
-			violations := make([]string, len(policyErr.Violations))
-			for i, v := range policyErr.Violations {
-				violations[i] = string(v)
-			}
-			return support.NoStoreJSON(c, http.StatusBadRequest, map[string]any{
-				"error":      "password_policy",
-				"message":    "The password does not meet the security requirements.",
-				"violations": violations,
-			})
+			return writePasswordPolicyProblem(c, policyErr)
 		}
 		return err
 	}

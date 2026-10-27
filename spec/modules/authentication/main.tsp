@@ -396,6 +396,7 @@ model ChangePasswordError403 {
 
 union ChangePasswordError422Body {
   IdMagic.Contract.PasswordReuseError,
+  IdMagic.Contract.PasswordPolicyError,
 }
 
 model ChangePasswordError422 {
@@ -408,7 +409,7 @@ model ChangePasswordSuccess_204 {
   @statusCode statusCode: 204;
 }
 
-@doc("認証済みのユーザーが自身のパスワードを変更する。`current_password` を検証し、`new_password` は 12 から 128 文字の長さの制約を満たし、直近の `history_depth`（5）個のハッシュと異なっていなければならない（PasswordHistoryNoReuse）。")
+@doc("認証済みのユーザーが自身のパスワードを変更する。`current_password` を検証し、`new_password` は 12 から 128 文字の長さの制約を満たし、直近の `history_depth`（5）個のハッシュと異なっていなければならない（PasswordHistoryNoReuse）。ポリシーに違反する `new_password` は、違反した規則のコードとともに PasswordPolicyError で拒否する。")
 @TypeSpec.OpenAPI.operationId("ChangePassword")
 @route("/api/auth/change-password")
 @post
@@ -1555,6 +1556,7 @@ model ResetPasswordWithTokenError403 {
 
 union ResetPasswordWithTokenError422Body {
   IdMagic.Contract.PasswordReuseError,
+  IdMagic.Contract.PasswordPolicyError,
 }
 
 model ResetPasswordWithTokenError422 {
@@ -1573,7 +1575,7 @@ model ResetPasswordWithTokenError410 {
   @body body: ResetPasswordWithTokenError410Body;
 }
 
-@doc("リセットのリンクから戻ったユーザーが新しいパスワードを設定する。トークンは一度だけ使う。有効期間は 1800 秒で、`consumed_at` を設定した後は再利用できない。12 から 128 文字の長さの制約を満たし、直近の `history_depth`（5）個のハッシュと異なる `new_password` で `User.password_hash` を更新する（PasswordHistoryNoReuse）。成功すると PasswordChanged を発行する。")
+@doc("リセットのリンクから戻ったユーザーが新しいパスワードを設定する。トークンは一度だけ使う。有効期間は 1800 秒で、`consumed_at` を設定した後は再利用できない。12 から 128 文字の長さの制約を満たし、直近の `history_depth`（5）個のハッシュと異なる `new_password` で `User.password_hash` を更新する（PasswordHistoryNoReuse）。ポリシーに違反する `new_password` は、違反した規則のコードとともに PasswordPolicyError で拒否し、トークンを消費しない。成功すると PasswordChanged を発行する。")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ResetPasswordWithToken")
 @route("/api/auth/reset-password")

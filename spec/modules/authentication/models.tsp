@@ -181,6 +181,14 @@ model ExternalIdentityClaimsPreview {
 model PasswordReuseError is ProblemDetails;
 
 
+@doc("新しいパスワードまたは初期パスワードが、テナントに適用するパスワードポリシーに違反する。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:password_policy` である。パスワードの変更と再設定に加え、IdManagement の管理者による User の作成もこのモデルで拒否する。")
+model PasswordPolicyError {
+  ...ProblemDetails;
+  @doc("違反した規則のコード。値と順序は PasswordPolicy が定める。")
+  violations: string[];
+}
+
+
 @doc("対象のユーザーが、MFA の登録の回避の条件を満たさない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:mfa_enrollment_not_allowed` である。")
 model MfaEnrollmentNotAllowedError is ProblemDetails;
 

@@ -173,7 +173,12 @@ describe('auth-flow pages', () => {
     expect(await screen.findByText(recoveryT.passwordUpdated)).toBeInTheDocument()
     unmount()
 
-    stubGlobal('fetch', mock().mockResolvedValue(response(400, { error: 'password_policy' })))
+    stubGlobal(
+      'fetch',
+      mock().mockResolvedValue(
+        response(422, { type: 'urn:idmagic:error:password_policy', violations: ['too_short'] }),
+      ),
+    )
     render(<ResetPasswordPage csrfToken="csrf" token="reset-token" />)
     fireEvent.change(screen.getByLabelText(recoveryT.newPassword), {
       target: { value: 'a long new password' },

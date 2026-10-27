@@ -50,7 +50,7 @@
 
 - ステップアップ認証が有効な間、本人が正しい現在のパスワードとポリシーを満たす新しいパスワードを送ったとき、Authentication は、パスワードを変え、`password_changed_at` を更新し、パスワードの履歴に加え、本人の信頼済みデバイスをすべて失効させ、204 を返し、`PasswordChanged` を発行する。
 - パスワードを検証するとき、Authentication は、テナントの上書きを解決したポリシー（長さ 12 文字以上 128 文字以下、4 文字以上のユーザー名、メールアドレス、その local part を大文字と小文字を区別せずに含まない、同梱の辞書にない）を評価し、文字種の構成の規則と定期の変更を求めない。
-- ポリシーに反する新しいパスワードを受けた場合、Authentication は、400 と `password_policy` で、違反した規則とともに拒否し、パスワードを変えない。
+- ポリシーに反する新しいパスワードを受けた場合、Authentication は、422 と `password_policy` で、違反した規則とともに拒否し、パスワードを変えない。
 - 直近 5 件（テナントの `history_depth`）の履歴に一致する新しいパスワードを受けた場合、Authentication は、422 と `password_reuse` で拒否し、パスワードを変えない。
 - 現在のパスワードが一致しない場合、Authentication は、403 と `access_denied` で拒否する。
 - ステップアップ認証が有効でない場合、Authentication は、403 と `step_up_required` で拒否する。
@@ -67,7 +67,7 @@
 - リセットのリンクを `GET` か `HEAD` で読まれたとき、Authentication は、トークンを消費せず、パスワードを変えない。
 - 利用者が有効なトークンとポリシーを満たす新しいパスワードを送ったとき、Authentication は、パスワードを変え、トークンを使用済みにし、200 を返し、`PasswordChanged` を発行し、以後の新しいパスワードのログインを成功させる。
 - 期限切れか、不正か、確定済みか、別の用途で発行したトークンを受けた場合、Authentication は、410 と `invalid_reset_token` で拒否し、パスワードを変えない。
-- ポリシーに反する新しいパスワードを受けた場合、Authentication は、400 と `password_policy` で違反した規則とともに拒否し、トークンを未使用のまま残す。
+- ポリシーに反する新しいパスワードを受けた場合、Authentication は、422 と `password_policy` で違反した規則とともに拒否し、トークンを未使用のまま残す。
 - 履歴に一致する新しいパスワードを受けた場合、Authentication は、422 と `password_reuse` で拒否する。
 - **例**：EX-AUTHENTICATION-016-01、EX-AUTHENTICATION-016-02、EX-AUTHENTICATION-016-03、EX-AUTHENTICATION-016-04、EX-AUTHENTICATION-016-05、EX-AUTHENTICATION-016-06
 

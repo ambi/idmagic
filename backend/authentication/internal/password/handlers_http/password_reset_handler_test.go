@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -124,6 +125,54 @@ func TestPasswordResetPrefetchDoesNotConsumeTheToken(t *testing.T) {
 	})
 	if reset.Code != http.StatusOK {
 		t.Fatalf("reset after prefetch status=%d body=%s", reset.Code, reset.Body.String())
+	}
+}
+
+//spec:covers REQ-AUTHENTICATION-016, EX-AUTHENTICATION-016-06: 規則に反するパスワードを 422 の Problem Details と違反コードで拒否し、トークンを消費しない。
+func TestPasswordResetHTTPRejectsPolicyViolationAsProblemDetails(t *testing.T) {
+	e, userRepo, sender, hasher := newPasswordResetHandler(t)
+	csrf, cookie := passwordResetCSRF(t, e)
+
+	forgot := serveJSON(t, e, "/api/auth/forgot-password", csrf, cookie, map[string]string{
+		"email": "alice@example.com",
+	})
+	if forgot.Code != http.StatusNoContent {
+		t.Fatalf("forgot status=%d body=%s", forgot.Code, forgot.Body.String())
+	}
+	token := resetTokenFromEmail(t, sender.Sent[0].Text)
+
+	weak := serveJSON(t, e, "/api/auth/reset-password", csrf, cookie, map[string]string{
+		"token": token, "new_password": "short",
+	})
+	var body struct {
+		Type       string   `json:"type"`
+		Status     int      `json:"status"`
+		Violations []string `json:"violations"`
+	}
+	if err := json.Unmarshal(weak.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if weak.Code != http.StatusUnprocessableEntity || weak.Header().Get("Content-Type") != "application/problem+json" ||
+		body.Type != "urn:idmagic:error:password_policy" || body.Status != http.StatusUnprocessableEntity ||
+		!reflect.DeepEqual(body.Violations, []string{"too_short"}) {
+		t.Fatalf("status=%d content-type=%q body=%s, want 422 problem password_policy with too_short",
+			weak.Code, weak.Header().Get("Content-Type"), weak.Body.String())
+	}
+	user, err := userRepo.FindBySub(context.Background(), "user-alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unchanged, err := hasher.Verify("current-password-1", user.PasswordHash)
+	if err != nil || !unchanged {
+		t.Fatalf("the refused reset changed the password: matched=%v err=%v", unchanged, err)
+	}
+
+	// 拒否はトークンを消費しないので、同じトークンで規則を満たすパスワードへ再設定できる。
+	reset := serveJSON(t, e, "/api/auth/reset-password", csrf, cookie, map[string]string{
+		"token": token, "new_password": "fresh-password-9182",
+	})
+	if reset.Code != http.StatusOK {
+		t.Fatalf("reset after refusal status=%d body=%s", reset.Code, reset.Body.String())
 	}
 }
 

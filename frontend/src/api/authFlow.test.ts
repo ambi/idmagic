@@ -56,20 +56,23 @@ describe('auth flow API client', () => {
     )
   })
 
+  // REQ-AUTHENTICATION-010、REQ-AUTHENTICATION-016
   it('exposes password-policy violations from change and reset requests', async () => {
     stubGlobal(
       'fetch',
       mock().mockResolvedValue(
-        response(400, {
-          error: 'password_policy',
-          message: 'weak password',
-          violations: ['length'],
+        response(422, {
+          type: 'urn:idmagic:error:password_policy',
+          title: 'Password policy',
+          status: 422,
+          detail: 'The password does not meet the security requirements.',
+          violations: ['too_short'],
         }),
       ),
     )
     await expect(changePassword('csrf', 'old', 'new')).rejects.toMatchObject({
       name: 'PasswordPolicyError',
-      violations: ['length'],
+      violations: ['too_short'],
     })
     await expect(resetPassword('csrf', 'reset-token', 'new')).rejects.toBeInstanceOf(
       PasswordPolicyError,

@@ -203,7 +203,12 @@ describe('authentication screen accessibility', () => {
 
     // 入力の内容そのものが不正な失敗でも、直し方が本文に出る。
     document.body.innerHTML = ''
-    stubGlobal('fetch', mock().mockResolvedValue(response(400, { error: 'password_policy' })))
+    stubGlobal(
+      'fetch',
+      mock().mockResolvedValue(
+        response(422, { type: 'urn:idmagic:error:password_policy', violations: ['too_short'] }),
+      ),
+    )
     render(<ResetPasswordPage csrfToken="csrf" token="reset-token" />)
     fireEvent.change(screen.getByLabelText(recoveryT.newPassword), {
       target: { value: 'a long new password' },

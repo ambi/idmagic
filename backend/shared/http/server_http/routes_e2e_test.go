@@ -1414,19 +1414,19 @@ func TestChangePasswordReturnsViolationsForPolicyError(t *testing.T) {
 		t.Fatalf("POST /api/auth/change-password: %v", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
+	if resp.StatusCode != http.StatusUnprocessableEntity || resp.Header.Get("Content-Type") != "application/problem+json" {
 		body, _ := io.ReadAll(resp.Body)
-		t.Fatalf("status=%d, want 400; body=%s", resp.StatusCode, body)
+		t.Fatalf("status=%d content-type=%q, want 422 problem+json; body=%s", resp.StatusCode, resp.Header.Get("Content-Type"), body)
 	}
 	var body struct {
-		Error      string   `json:"error"`
+		Type       string   `json:"type"`
 		Violations []string `json:"violations"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if body.Error != "password_policy" {
-		t.Fatalf("error=%q, want password_policy", body.Error)
+	if body.Type != "urn:idmagic:error:password_policy" {
+		t.Fatalf("type=%q, want urn:idmagic:error:password_policy", body.Type)
 	}
 	found := false
 	for _, v := range body.Violations {
@@ -1439,7 +1439,7 @@ func TestChangePasswordReturnsViolationsForPolicyError(t *testing.T) {
 	}
 
 	// 拒否が変えなかったもの: もとのパスワードで依然としてログインできる。
-	// 400 を書いたうえで保存も続ける実装は、応答だけを読むテストを素通りする。
+	// 拒否を書いたうえで保存も続ける実装は、応答だけを読むテストを素通りする。
 	assertPasswordUnchangedAfterRefusal(t, client, srv.URL, transaction.CSRFToken, demoPassword)
 }
 

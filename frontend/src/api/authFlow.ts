@@ -195,11 +195,7 @@ export async function changePassword(
     cache: 'no-store',
   })
   if (response.status === 204) return
-  const body = (await response.json().catch(() => ({}))) as {
-    error?: string
-    message?: string
-    violations?: string[]
-  }
+  const body = (await response.json().catch(() => ({}))) as APIError & { violations?: string[] }
   if (apiErrorCode(body) === 'password_policy') {
     throw new PasswordPolicyError(apiErrorMessage(body), body.violations ?? [])
   }
