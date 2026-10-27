@@ -1031,10 +1031,10 @@ description = "Regenerate module references while preserving the diagram's relat
 dir = "tools"
 run = "bun run check/src/generate-module-dependencies.ts"
 
-[tasks.generate-spec-examples]
-description = "Regenerate documented examples from executable test data"
+[tasks.generate-spec-from-testdata]
+description = "Regenerate documented examples and state machines from their testdata"
 dir = "tools"
-run = "bun run check/src/generate-spec-examples.ts"
+run = "bun run check/src/generate-spec-from-testdata.ts"
 
 # Swagger UI は OpenAPI を fetch で読む。file:// で開くとブラウザーがその取得を拒むので、
 # API リファレンスだけが空になる。生成サイトは HTTP で配ってから読む。

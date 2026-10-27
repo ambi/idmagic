@@ -283,6 +283,20 @@ describe('diffSpecifications', () => {
     ])
   })
 
+  it('reads only the transition table, whether or not prose precedes the matrix', () => {
+    const matrix = ['| State | Run |', '|---|---|', '| Ready | → Done |'].join('\n')
+    const base = snapshot(
+      document(
+        scenario('REQ-DEMO-001', 'it succeeds'),
+        `${machine('emit Done')}\n\n説明。\n\n${matrix}`,
+      ),
+    )
+    const adjacent = snapshot(
+      document(scenario('REQ-DEMO-001', 'it succeeds'), `${machine('emit Done')}\n\n${matrix}`),
+    )
+    expect(diffSpecifications(base, adjacent).changedTransitions).toEqual([])
+  })
+
   it('reports a rule whose body changed even when its title and steps did not', () => {
     const rule = (limit: string): Snapshot =>
       new Map([

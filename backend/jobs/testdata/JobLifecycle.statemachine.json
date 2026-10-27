@@ -1,0 +1,224 @@
+{
+  "name": "JobLifecycle",
+  "states": [
+    {
+      "name": "queued",
+      "kind": "initial",
+      "meaning": "取得待ち。`run_at` に達すると自分のレーンの `worker` が取得できる"
+    },
+    {
+      "name": "running",
+      "kind": "—",
+      "meaning": "`worker` がリースを持ってハンドラーを実行している"
+    },
+    {
+      "name": "succeeded",
+      "kind": "terminal",
+      "meaning": "ハンドラーが正常終了した"
+    },
+    {
+      "name": "failed",
+      "kind": "terminal",
+      "meaning": "試行上限に達し、配信不能として確定した"
+    },
+    {
+      "name": "canceled",
+      "kind": "terminal",
+      "meaning": "終端に達する前に取り消した"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "queued",
+      "event": "JobStarted",
+      "guard": "—",
+      "to": "running",
+      "effects": ""
+    },
+    {
+      "from": "running",
+      "event": "JobStarted",
+      "guard": "`lease_expires_at` を過ぎた",
+      "to": "running",
+      "effects": ""
+    },
+    {
+      "from": "running",
+      "event": "JobSucceeded",
+      "guard": "—",
+      "to": "succeeded",
+      "effects": ""
+    },
+    {
+      "from": "running",
+      "event": "JobFailed",
+      "guard": "`attempts >= max_attempts`",
+      "to": "failed",
+      "effects": ""
+    },
+    {
+      "from": "running",
+      "event": "JobRetried",
+      "guard": "`attempts < max_attempts`",
+      "to": "queued",
+      "effects": ""
+    },
+    {
+      "from": "queued",
+      "event": "JobCanceled",
+      "guard": "—",
+      "to": "canceled",
+      "effects": ""
+    },
+    {
+      "from": "running",
+      "event": "JobCanceled",
+      "guard": "—",
+      "to": "canceled",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "取得",
+    "成功の報告",
+    "失敗の報告",
+    "取り消し"
+  ],
+  "matrix": {
+    "queued": {
+      "取得": [
+        {
+          "kind": "transition",
+          "to": "running",
+          "condition": "`run_at` に達した"
+        },
+        {
+          "kind": "noop",
+          "condition": "`run_at` の前"
+        }
+      ],
+      "成功の報告": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "失敗の報告": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "取り消し": [
+        {
+          "kind": "transition",
+          "to": "canceled"
+        }
+      ]
+    },
+    "running": {
+      "取得": [
+        {
+          "kind": "transition",
+          "to": "running",
+          "condition": "リースの期限を過ぎた"
+        },
+        {
+          "kind": "noop",
+          "condition": "リースの期限の前"
+        }
+      ],
+      "成功の報告": [
+        {
+          "kind": "transition",
+          "to": "succeeded"
+        }
+      ],
+      "失敗の報告": [
+        {
+          "kind": "transition",
+          "to": "queued",
+          "condition": "`attempts` が上限未満"
+        },
+        {
+          "kind": "transition",
+          "to": "failed",
+          "condition": "`attempts` が上限"
+        }
+      ],
+      "取り消し": [
+        {
+          "kind": "transition",
+          "to": "canceled"
+        }
+      ]
+    },
+    "succeeded": {
+      "取得": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "成功の報告": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "失敗の報告": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "取り消し": [
+        {
+          "kind": "refusal",
+          "response": "409 job_not_cancelable"
+        }
+      ]
+    },
+    "failed": {
+      "取得": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "成功の報告": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "失敗の報告": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "取り消し": [
+        {
+          "kind": "refusal",
+          "response": "409 job_not_cancelable"
+        }
+      ]
+    },
+    "canceled": {
+      "取得": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "成功の報告": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "失敗の報告": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "取り消し": [
+        {
+          "kind": "refusal",
+          "response": "409 job_not_cancelable"
+        }
+      ]
+    }
+  }
+}

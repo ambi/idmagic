@@ -16,8 +16,10 @@
 
 RFC 8628 デバイス認可グラントのライフサイクル。device_code と user_code がペアで進む。承認と拒否の要求は、`Issued` の記録をまずユーザーコードの入力として `UserCodeEntered` へ進め、同じ要求の中で続けて `Approved` か `Denied` へ進める。`Expired` は、記録の状態にかかわらず `expires_at` を過ぎたことの判定でもある。
 
+<!-- spec:state-machine backend/oauth2/testdata/DeviceCodeFlow.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Issued | initial | `device_code` と `user_code` を発行した。利用者の入力を待っている |
 | UserCodeEntered | — | 利用者が `user_code` を入力した。承認の判断を待っている |
 | Expired | terminal | 有効期間内に引き換えなかった |
@@ -26,7 +28,7 @@ RFC 8628 デバイス認可グラントのライフサイクル。device_code �
 | Exchanged | terminal | 承認済みコードをトークンへ引き換えた |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Issued | EnterUserCode | — | UserCodeEntered |  |
 | Issued | Expire | — | Expired |  |
 | UserCodeEntered | Approve | — | Approved |  |
@@ -36,13 +38,15 @@ RFC 8628 デバイス認可グラントのライフサイクル。device_code �
 | Approved | Expire | — | Expired |  |
 
 | State | 承認 | 拒否 | トークンの交換 | 有効期間の経過 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Issued | → UserCodeEntered（同じ要求で続けて承認する） | → UserCodeEntered（同じ要求で続けて拒否する） | 拒否：400 authorization_pending（間隔を守った）<br>拒否：400 slow_down（間隔より短い） | → Expired |
 | UserCodeEntered | → Approved | → Denied | 拒否：400 authorization_pending（間隔を守った）<br>拒否：400 slow_down（間隔より短い） | → Expired |
 | Approved | 拒否：400 invalid_request | 拒否：400 invalid_request | → Exchanged | → Expired |
 | Denied | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 access_denied | 何もしない |
 | Exchanged | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_grant | 何もしない |
 | Expired | 拒否：400 expired_token | 拒否：400 expired_token | 拒否：400 expired_token | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

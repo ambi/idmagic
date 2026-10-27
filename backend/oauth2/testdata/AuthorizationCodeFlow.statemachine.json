@@ -1,0 +1,604 @@
+{
+  "name": "AuthorizationCodeFlow",
+  "states": [
+    {
+      "name": "Received",
+      "kind": "initial",
+      "meaning": "`/authorize` が要求を受け取った。まだ検証していない"
+    },
+    {
+      "name": "AuthenticationPending",
+      "kind": "—",
+      "meaning": "要求は妥当で、主体を決めるログインを待っている"
+    },
+    {
+      "name": "Rejected",
+      "kind": "terminal",
+      "meaning": "検証、認証、同意のいずれかで拒否した"
+    },
+    {
+      "name": "Authenticated",
+      "kind": "—",
+      "meaning": "主体が決まった。同意の要否をこれから判定する"
+    },
+    {
+      "name": "Expired",
+      "kind": "terminal",
+      "meaning": "有効期間内に次の段へ進まなかった"
+    },
+    {
+      "name": "ConsentPending",
+      "kind": "—",
+      "meaning": "要求スコープが既存の同意で覆えず、同意画面のレスポンスを待っている"
+    },
+    {
+      "name": "CodeIssued",
+      "kind": "—",
+      "meaning": "認可コードを発行し、`/token` での引き換えを待っている"
+    },
+    {
+      "name": "Consented",
+      "kind": "—",
+      "meaning": "要求スコープを覆う同意が揃った"
+    },
+    {
+      "name": "Exchanged",
+      "kind": "terminal",
+      "meaning": "認可コードを引き換えた"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Received",
+      "event": "Validate",
+      "guard": "—",
+      "to": "AuthenticationPending",
+      "effects": ""
+    },
+    {
+      "from": "Received",
+      "event": "Reject",
+      "guard": "—",
+      "to": "Rejected",
+      "effects": ""
+    },
+    {
+      "from": "Received",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    },
+    {
+      "from": "AuthenticationPending",
+      "event": "AuthenticateUser",
+      "guard": "—",
+      "to": "Authenticated",
+      "effects": ""
+    },
+    {
+      "from": "AuthenticationPending",
+      "event": "Reject",
+      "guard": "—",
+      "to": "Rejected",
+      "effects": ""
+    },
+    {
+      "from": "AuthenticationPending",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    },
+    {
+      "from": "Authenticated",
+      "event": "RequestConsent",
+      "guard": "—",
+      "to": "ConsentPending",
+      "effects": ""
+    },
+    {
+      "from": "Authenticated",
+      "event": "IssueCode",
+      "guard": "—",
+      "to": "CodeIssued",
+      "effects": ""
+    },
+    {
+      "from": "ConsentPending",
+      "event": "GrantConsent",
+      "guard": "—",
+      "to": "Consented",
+      "effects": ""
+    },
+    {
+      "from": "ConsentPending",
+      "event": "Reject",
+      "guard": "—",
+      "to": "Rejected",
+      "effects": ""
+    },
+    {
+      "from": "ConsentPending",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    },
+    {
+      "from": "Consented",
+      "event": "IssueCode",
+      "guard": "—",
+      "to": "CodeIssued",
+      "effects": ""
+    },
+    {
+      "from": "CodeIssued",
+      "event": "RedeemCode",
+      "guard": "—",
+      "to": "Exchanged",
+      "effects": ""
+    },
+    {
+      "from": "CodeIssued",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "認証の開始",
+    "利用者の認証",
+    "同意の要求",
+    "同意の付与",
+    "認可コードの発行",
+    "認可コードの交換",
+    "認可の拒否",
+    "有効期間の経過"
+  ],
+  "matrix": {
+    "Received": {
+      "認証の開始": [
+        {
+          "kind": "transition",
+          "to": "AuthenticationPending"
+        }
+      ],
+      "利用者の認証": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の要求": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の付与": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの発行": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "認可の拒否": [
+        {
+          "kind": "transition",
+          "to": "Rejected"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "AuthenticationPending": {
+      "認証の開始": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "利用者の認証": [
+        {
+          "kind": "transition",
+          "to": "Authenticated"
+        }
+      ],
+      "同意の要求": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の付与": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの発行": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "認可の拒否": [
+        {
+          "kind": "transition",
+          "to": "Rejected"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "Authenticated": {
+      "認証の開始": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "利用者の認証": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の要求": [
+        {
+          "kind": "transition",
+          "to": "ConsentPending"
+        }
+      ],
+      "同意の付与": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの発行": [
+        {
+          "kind": "transition",
+          "to": "CodeIssued"
+        }
+      ],
+      "認可コードの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "認可の拒否": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "ConsentPending": {
+      "認証の開始": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "利用者の認証": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の要求": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の付与": [
+        {
+          "kind": "transition",
+          "to": "Consented"
+        }
+      ],
+      "認可コードの発行": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "認可の拒否": [
+        {
+          "kind": "transition",
+          "to": "Rejected"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "Consented": {
+      "認証の開始": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "利用者の認証": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の要求": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の付与": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの発行": [
+        {
+          "kind": "transition",
+          "to": "CodeIssued"
+        }
+      ],
+      "認可コードの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "認可の拒否": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "CodeIssued": {
+      "認証の開始": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "利用者の認証": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の要求": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の付与": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの発行": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの交換": [
+        {
+          "kind": "transition",
+          "to": "Exchanged"
+        }
+      ],
+      "認可の拒否": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "Rejected": {
+      "認証の開始": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "利用者の認証": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の要求": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の付与": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの発行": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "認可の拒否": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Expired": {
+      "認証の開始": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "利用者の認証": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の要求": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の付与": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの発行": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "認可の拒否": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Exchanged": {
+      "認証の開始": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "利用者の認証": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の要求": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "同意の付与": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの発行": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "認可コードの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "認可の拒否": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

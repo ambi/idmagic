@@ -33,8 +33,10 @@
 
 `worker` が取得すると `queued` から `running` へ遷移する。実行に失敗した場合、`attempts` が `max_attempts` 未満ならバックオフを伴って `queued` に戻り、上限に達していれば配信不能を表す `failed` へ遷移する。リースを持つ `worker` が止まり、リースの期限を過ぎた `running` のジョブは、別の `worker` が取得し直す。`succeeded`、`failed`、`canceled` は不可逆の終端状態である。
 
+<!-- spec:state-machine backend/jobs/testdata/JobLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | queued | initial | 取得待ち。`run_at` に達すると自分のレーンの `worker` が取得できる |
 | running | — | `worker` がリースを持ってハンドラーを実行している |
 | succeeded | terminal | ハンドラーが正常終了した |
@@ -42,7 +44,7 @@
 | canceled | terminal | 終端に達する前に取り消した |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | queued | JobStarted | — | running |  |
 | running | JobStarted | `lease_expires_at` を過ぎた | running |  |
 | running | JobSucceeded | — | succeeded |  |
@@ -52,12 +54,14 @@
 | running | JobCanceled | — | canceled |  |
 
 | State | 取得 | 成功の報告 | 失敗の報告 | 取り消し |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | queued | → running（`run_at` に達した）<br>何もしない（`run_at` の前） | 何もしない | 何もしない | → canceled |
 | running | → running（リースの期限を過ぎた）<br>何もしない（リースの期限の前） | → succeeded | → queued（`attempts` が上限未満）<br>→ failed（`attempts` が上限） | → canceled |
 | succeeded | 何もしない | 何もしない | 何もしない | 拒否：409 job_not_cancelable |
 | failed | 何もしない | 何もしない | 何もしない | 拒否：409 job_not_cancelable |
 | canceled | 何もしない | 何もしない | 何もしない | 拒否：409 job_not_cancelable |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

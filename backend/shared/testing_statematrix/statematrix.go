@@ -1,15 +1,16 @@
-// Package testing_statematrix は、機能仕様の状態遷移の節から一つの状態機械を読み、
+// Package testing_statematrix は、状態機械の一次情報 `testdata/<Machine>.statemachine.json` を読み、
 // モデルベースのテストが予測に使える形で返す。
 //
-// テストは表を手で写さず、この読み取りを通して仕様の文書そのものを予測の一次情報にする。
-// 書式は docs/formats/specification-format.md の「状態遷移」が定め、`mise run check-spec` が
-// 同じ書式を検査する。ここでは予測に要る形だけを読み、書式の誤りは見つけ次第エラーにする。
+// 機能仕様の状態遷移の節の三つの表は同じ一次情報から生成し、テストは文書の Markdown を
+// 読まない。形は docs/formats/specification-format.md の「状態遷移」が定め、`mise run check-spec` が
+// 一次情報と生成した表の一致を検査する。ここでは予測に要る形だけを確かめ、誤りは見つけ次第エラーにする。
 package testing_statematrix
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"regexp"
-	"strings"
+	"os"
 )
 
 // OutcomeKind は、状態遷移表（マトリクス形式）の一つの結果の種類である。
@@ -77,139 +78,85 @@ func (m Machine) Events() []string {
 	return events
 }
 
-const (
-	stateHeader      = "| State | Kind | Meaning |"
-	transitionHeader = "| From | Event | Guard | To | Effects |"
-)
+// source は一次情報の JSON の形である。表だけに要る列（Meaning、Guard、Effects）も、知らない欄を
+// 拒否するために受け取る。
+type source struct {
+	Name   string `json:"name"`
+	States []struct {
+		Name    string `json:"name"`
+		Kind    string `json:"kind"`
+		Meaning string `json:"meaning"`
+	} `json:"states"`
+	Transitions []struct {
+		From    string `json:"from"`
+		Event   string `json:"event"`
+		Guard   string `json:"guard"`
+		To      string `json:"to"`
+		Effects string `json:"effects"`
+	} `json:"transitions"`
+	Operations []string                              `json:"operations"`
+	Matrix     map[string]map[string][]sourceOutcome `json:"matrix"`
+}
 
-var outcomePattern = regexp.MustCompile(`^(?:→ ([^\s（]+)|(何もしない)|拒否：(\S.*?))(?:（([^（）]+)）)?$`)
+type sourceOutcome struct {
+	Kind      string `json:"kind"`
+	To        string `json:"to"`
+	Response  string `json:"response"`
+	Condition string `json:"condition"`
+}
 
-// Read は markdown の `### <name>` の状態機械を読む。状態遷移表（マトリクス形式）がない
-// 状態機械は、予測に使えないのでエラーにする。
-func Read(markdown, name string) (Machine, error) {
-	block, ok := machineBlock(markdown, name)
-	if !ok {
-		return Machine{}, fmt.Errorf("no state machine named %s", name)
+// Load は path の状態機械の一次情報を読む。path はテストのパッケージの `testdata` を指す。
+func Load(path string) (Machine, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Machine{}, err
 	}
-	var machine Machine
-	for _, cells := range tableRows(block, func(header string) bool { return header == stateHeader }) {
-		machine.States = append(machine.States, cells[0])
-		if len(cells) > 1 && cells[1] == "initial" {
-			machine.Initial = cells[0]
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var src source
+	if err := decoder.Decode(&src); err != nil {
+		return Machine{}, fmt.Errorf("%s: %w", path, err)
+	}
+	machine := Machine{Operations: src.Operations, cells: map[[2]string][]Outcome{}}
+	for _, state := range src.States {
+		machine.States = append(machine.States, state.Name)
+		if state.Kind == "initial" {
+			machine.Initial = state.Name
 		}
 	}
-	for _, cells := range tableRows(block, func(header string) bool { return header == transitionHeader }) {
-		if len(cells) < 4 {
-			return Machine{}, fmt.Errorf("%s: transition row %v has fewer than four cells", name, cells)
-		}
-		machine.Transitions = append(machine.Transitions, TransitionRow{From: cells[0], Event: cells[1], To: cells[3]})
+	for _, row := range src.Transitions {
+		machine.Transitions = append(machine.Transitions, TransitionRow{From: row.From, Event: row.Event, To: row.To})
 	}
-	isMatrix := func(header string) bool {
-		return strings.HasPrefix(header, "| State |") && header != stateHeader
-	}
-	header, ok := findHeader(block, isMatrix)
-	if !ok {
-		return Machine{}, fmt.Errorf("%s has no state matrix", name)
-	}
-	machine.Operations = splitRow(header)[1:]
-	machine.cells = map[[2]string][]Outcome{}
-	for _, cells := range tableRows(block, isMatrix) {
-		for column, operation := range machine.Operations {
-			cell := ""
-			if column+1 < len(cells) {
-				cell = cells[column+1]
-			}
-			outcomes, err := parseCell(cell)
+	for _, state := range machine.States {
+		for _, operation := range machine.Operations {
+			outcomes, err := parseCell(src.Matrix[state][operation])
 			if err != nil {
-				return Machine{}, fmt.Errorf("%s: %s × %s: %w", name, cells[0], operation, err)
+				return Machine{}, fmt.Errorf("%s: %s × %s: %w", src.Name, state, operation, err)
 			}
-			machine.cells[[2]string{cells[0], operation}] = outcomes
+			machine.cells[[2]string{state, operation}] = outcomes
 		}
 	}
 	return machine, nil
 }
 
-func parseCell(cell string) ([]Outcome, error) {
-	if cell == "" {
+func parseCell(cell []sourceOutcome) ([]Outcome, error) {
+	if len(cell) == 0 {
 		return nil, fmt.Errorf("the cell gives no outcome")
 	}
-	var outcomes []Outcome
-	for part := range strings.SplitSeq(cell, "<br>") {
-		match := outcomePattern.FindStringSubmatch(strings.TrimSpace(part))
-		if match == nil {
-			return nil, fmt.Errorf("outcome %q is not → <State>, 何もしない, or 拒否：<response>", part)
-		}
-		outcome := Outcome{Condition: match[4]}
-		switch {
-		case match[1] != "":
-			outcome.Kind, outcome.To = Transition, match[1]
-		case match[2] != "":
+	outcomes := make([]Outcome, 0, len(cell))
+	for _, item := range cell {
+		outcome := Outcome{Condition: item.Condition}
+		switch item.Kind {
+		case "transition":
+			outcome.Kind, outcome.To = Transition, item.To
+		case "noop":
 			outcome.Kind = NoOp
+		case "refusal":
+			outcome.Kind, outcome.Refusal = Refusal, item.Response
 		default:
-			outcome.Kind, outcome.Refusal = Refusal, match[3]
+			return nil, fmt.Errorf("outcome kind %q is not transition, noop, or refusal", item.Kind)
 		}
 		outcomes = append(outcomes, outcome)
 	}
 	return outcomes, nil
-}
-
-// machineBlock は `### <name>` から次の H2 または H3 までを返す。
-func machineBlock(markdown, name string) (string, bool) {
-	lines := strings.Split(markdown, "\n")
-	for start, line := range lines {
-		if strings.TrimSpace(line) != "### "+name {
-			continue
-		}
-		end := len(lines)
-		for index := start + 1; index < len(lines); index++ {
-			if strings.HasPrefix(lines[index], "## ") || strings.HasPrefix(lines[index], "### ") {
-				end = index
-				break
-			}
-		}
-		return strings.Join(lines[start+1:end], "\n"), true
-	}
-	return "", false
-}
-
-func findHeader(block string, isHeader func(string) bool) (string, bool) {
-	for line := range strings.SplitSeq(block, "\n") {
-		if row := strings.TrimSpace(line); isHeader(row) {
-			return row, true
-		}
-	}
-	return "", false
-}
-
-// tableRows は、isHeader に当たる見出し行から始まる表の本文の行を、セルに分けて返す。
-func tableRows(block string, isHeader func(string) bool) [][]string {
-	var rows [][]string
-	inTable := false
-	for line := range strings.SplitSeq(block, "\n") {
-		row := strings.TrimSpace(line)
-		switch {
-		case isHeader(row):
-			inTable = true
-		case !inTable:
-		case !strings.HasPrefix(row, "|"):
-			inTable = false
-		case strings.Trim(row, "|-: ") == "":
-		default:
-			rows = append(rows, splitRow(row))
-		}
-	}
-	return rows
-}
-
-// splitRow は表の一行をセルに分ける。ガードの `\|` はセルの区切りではない。
-func splitRow(row string) []string {
-	parts := strings.Split(strings.ReplaceAll(row, `\|`, "\x00"), "|")
-	if len(parts) < 2 {
-		return nil
-	}
-	cells := make([]string, 0, len(parts)-2)
-	for _, part := range parts[1 : len(parts)-1] {
-		cells = append(cells, strings.ReplaceAll(strings.TrimSpace(part), "\x00", `\|`))
-	}
-	return cells
 }

@@ -1,0 +1,174 @@
+{
+  "name": "DataEncryptionKeyLifecycle",
+  "states": [
+    {
+      "name": "active",
+      "kind": "initial",
+      "meaning": "新規の暗号化操作に使う。テナントごとに高々 1 本だけ存在する"
+    },
+    {
+      "name": "retiring",
+      "kind": "—",
+      "meaning": "新規の暗号化には使わないが、既存の暗号文の復号には引き続き使う"
+    },
+    {
+      "name": "disabled",
+      "kind": "—",
+      "meaning": "鍵素材の危殆化などにより手動で即時に無効化した。以後この鍵による復号はフェイルクローズで拒否する"
+    },
+    {
+      "name": "destroyed",
+      "kind": "terminal",
+      "meaning": "`wrapped_dek` を破棄し、暗号学的消去が成立した。元に戻せない"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "active",
+      "event": "DataEncryptionKeyRotated",
+      "guard": "—",
+      "to": "retiring",
+      "effects": ""
+    },
+    {
+      "from": "retiring",
+      "event": "DataEncryptionKeyDisabled",
+      "guard": "—",
+      "to": "disabled",
+      "effects": ""
+    },
+    {
+      "from": "retiring",
+      "event": "DataEncryptionKeyDestroyed",
+      "guard": "—",
+      "to": "destroyed",
+      "effects": ""
+    },
+    {
+      "from": "disabled",
+      "event": "DataEncryptionKeyDestroyed",
+      "guard": "—",
+      "to": "destroyed",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "ローテーション",
+    "無効化",
+    "破棄",
+    "暗号文の復号"
+  ],
+  "matrix": {
+    "active": {
+      "ローテーション": [
+        {
+          "kind": "transition",
+          "to": "retiring"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "InvalidRequestError"
+        }
+      ],
+      "破棄": [
+        {
+          "kind": "refusal",
+          "response": "InvalidRequestError"
+        }
+      ],
+      "暗号文の復号": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "retiring": {
+      "ローテーション": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "transition",
+          "to": "disabled"
+        }
+      ],
+      "破棄": [
+        {
+          "kind": "transition",
+          "to": "destroyed",
+          "condition": "参照の移行が完了"
+        },
+        {
+          "kind": "refusal",
+          "response": "DataKeyStillReferencedError",
+          "condition": "未移行の参照が残る"
+        }
+      ],
+      "暗号文の復号": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "disabled": {
+      "ローテーション": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "InvalidRequestError"
+        }
+      ],
+      "破棄": [
+        {
+          "kind": "transition",
+          "to": "destroyed",
+          "condition": "参照の移行が完了"
+        },
+        {
+          "kind": "refusal",
+          "response": "DataKeyStillReferencedError",
+          "condition": "未移行の参照が残る"
+        }
+      ],
+      "暗号文の復号": [
+        {
+          "kind": "refusal",
+          "response": "DataKeyUnavailableError"
+        }
+      ]
+    },
+    "destroyed": {
+      "ローテーション": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "InvalidRequestError"
+        }
+      ],
+      "破棄": [
+        {
+          "kind": "refusal",
+          "response": "InvalidRequestError"
+        }
+      ],
+      "暗号文の復号": [
+        {
+          "kind": "refusal",
+          "response": "DataKeyUnavailableError"
+        }
+      ]
+    }
+  }
+}

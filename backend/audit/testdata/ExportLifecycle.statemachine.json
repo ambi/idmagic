@@ -1,0 +1,270 @@
+{
+  "name": "ExportLifecycle",
+  "states": [
+    {
+      "name": "queued",
+      "kind": "initial",
+      "meaning": "実行待ち"
+    },
+    {
+      "name": "running",
+      "kind": "—",
+      "meaning": "生成中"
+    },
+    {
+      "name": "succeeded",
+      "kind": "—",
+      "meaning": "完成し期限内"
+    },
+    {
+      "name": "failed",
+      "kind": "terminal",
+      "meaning": "生成を失敗として確定"
+    },
+    {
+      "name": "canceled",
+      "kind": "terminal",
+      "meaning": "未完了の要求を取消し"
+    },
+    {
+      "name": "expired",
+      "kind": "terminal",
+      "meaning": "成功した成果物の有効期限に到達"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "queued",
+      "event": "Started",
+      "guard": "—",
+      "to": "running",
+      "effects": "開始を監査へ記録"
+    },
+    {
+      "from": "queued",
+      "event": "Canceled",
+      "guard": "—",
+      "to": "canceled",
+      "effects": "取消しを監査へ記録"
+    },
+    {
+      "from": "running",
+      "event": "Succeeded",
+      "guard": "—",
+      "to": "succeeded",
+      "effects": "成果物を公開"
+    },
+    {
+      "from": "running",
+      "event": "Failed",
+      "guard": "—",
+      "to": "failed",
+      "effects": "部分成果物を非公開のまま破棄"
+    },
+    {
+      "from": "running",
+      "event": "Canceled",
+      "guard": "—",
+      "to": "canceled",
+      "effects": "部分成果物を非公開のまま破棄"
+    },
+    {
+      "from": "succeeded",
+      "event": "Expired",
+      "guard": "現在時刻が expires_at 以上",
+      "to": "expired",
+      "effects": "ダウンロードを拒否"
+    }
+  ],
+  "operations": [
+    "状態の取得",
+    "生成",
+    "取消し",
+    "ダウンロード",
+    "期限到達"
+  ],
+  "matrix": {
+    "queued": {
+      "状態の取得": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "生成": [
+        {
+          "kind": "transition",
+          "to": "running"
+        }
+      ],
+      "取消し": [
+        {
+          "kind": "transition",
+          "to": "canceled"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "refusal",
+          "response": "409 audit_export_unavailable"
+        }
+      ],
+      "期限到達": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "running": {
+      "状態の取得": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "生成": [
+        {
+          "kind": "transition",
+          "to": "succeeded",
+          "condition": "生成成功"
+        },
+        {
+          "kind": "transition",
+          "to": "failed",
+          "condition": "生成失敗"
+        }
+      ],
+      "取消し": [
+        {
+          "kind": "transition",
+          "to": "canceled"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "refusal",
+          "response": "409 audit_export_unavailable"
+        }
+      ],
+      "期限到達": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "succeeded": {
+      "状態の取得": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "生成": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "取消し": [
+        {
+          "kind": "refusal",
+          "response": "409 job_not_cancelable"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "期限到達": [
+        {
+          "kind": "transition",
+          "to": "expired"
+        }
+      ]
+    },
+    "failed": {
+      "状態の取得": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "生成": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "取消し": [
+        {
+          "kind": "refusal",
+          "response": "409 job_not_cancelable"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "refusal",
+          "response": "409 audit_export_unavailable"
+        }
+      ],
+      "期限到達": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "canceled": {
+      "状態の取得": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "生成": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "取消し": [
+        {
+          "kind": "refusal",
+          "response": "409 job_not_cancelable"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "refusal",
+          "response": "409 audit_export_unavailable"
+        }
+      ],
+      "期限到達": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "expired": {
+      "状態の取得": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "生成": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "取消し": [
+        {
+          "kind": "refusal",
+          "response": "409 job_not_cancelable"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "refusal",
+          "response": "409 audit_export_unavailable"
+        }
+      ],
+      "期限到達": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

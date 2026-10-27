@@ -27,8 +27,10 @@ PKCE の要否はクライアントごとのメタデータ（`require_pkce`）�
 
 `/authorize` から `/token` に至る認可リクエストのライフサイクル。ログインの完了は、`Received` の要求を一つの処理の中で `AuthenticationPending`、`Authenticated`、`CodeIssued` へ進める。
 
+<!-- spec:state-machine backend/oauth2/testdata/AuthorizationCodeFlow.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Received | initial | `/authorize` が要求を受け取った。まだ検証していない |
 | AuthenticationPending | — | 要求は妥当で、主体を決めるログインを待っている |
 | Rejected | terminal | 検証、認証、同意のいずれかで拒否した |
@@ -40,7 +42,7 @@ PKCE の要否はクライアントごとのメタデータ（`require_pkce`）�
 | Exchanged | terminal | 認可コードを引き換えた |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Received | Validate | — | AuthenticationPending |  |
 | Received | Reject | — | Rejected |  |
 | Received | Expire | — | Expired |  |
@@ -57,7 +59,7 @@ PKCE の要否はクライアントごとのメタデータ（`require_pkce`）�
 | CodeIssued | Expire | — | Expired |  |
 
 | State | 認証の開始 | 利用者の認証 | 同意の要求 | 同意の付与 | 認可コードの発行 | 認可コードの交換 | 認可の拒否 | 有効期間の経過 |
-|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Received | → AuthenticationPending | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_grant | → Rejected | → Expired |
 | AuthenticationPending | 拒否：400 invalid_request | → Authenticated | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_grant | → Rejected | → Expired |
 | Authenticated | 拒否：400 invalid_request | 拒否：400 invalid_request | → ConsentPending | 拒否：400 invalid_request | → CodeIssued | 拒否：400 invalid_grant | 拒否：400 invalid_request | 何もしない |
@@ -68,47 +70,57 @@ PKCE の要否はクライアントごとのメタデータ（`require_pkce`）�
 | Expired | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_grant | 何もしない | 何もしない |
 | Exchanged | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_grant | 何もしない | 何もしない |
 
+<!-- /spec:state-machine -->
+
 ### AuthorizationCodeRecordLifecycle
 
 発行された AuthorizationCode 本体のライフサイクル。AuthorizationCodeFlow（AuthorizationRequest 側）の Exchanged に対応するのが Redeemed。期限を過ぎて一度も提示されなかったコードは `Issued` のまま残り、提示された時点で `Expired` になる。
 
+<!-- spec:state-machine backend/oauth2/testdata/AuthorizationCodeRecordLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Issued | initial | 発行済み。1 回だけ引き換えられる |
 | Redeemed | terminal | 引き換え済み。再提示は再利用として拒否する |
 | Expired | terminal | 有効期間 (60 秒以下) を過ぎた |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Issued | RedeemCode | now() < expires_at | Redeemed |  |
 | Issued | Expire | — | Expired |  |
 
 | State | 認可コードの交換 |
-|---|---|
+| --- | --- |
 | Issued | → Redeemed（期限内）<br>→ Expired（期限切れ。400 invalid_grant を返す） |
 | Redeemed | 拒否：400 invalid_grant |
 | Expired | 拒否：400 invalid_grant |
+
+<!-- /spec:state-machine -->
 
 ### PARRecordLifecycle
 
 PAR で発行した `request_uri` のライフサイクル。`/authorize` から一度だけ参照できる（RFC 9126）。`Expired` は保存した状態ではなく、`expires_at` を過ぎたことの判定である。
 
+<!-- spec:state-machine backend/oauth2/testdata/PARRecordLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Stored | initial | `request_uri` を発行した。`/authorize` から 1 回だけ参照できる |
 | Used | terminal | `/authorize` が参照した |
 | Expired | terminal | 有効期間 (600 秒以下) を過ぎた |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Stored | Use | now() < expires_at | Used |  |
 | Stored | Expire | — | Expired |  |
 
 | State | request_uri による認可の要求 | 有効期間の経過 |
-|---|---|---|
+| --- | --- | --- |
 | Stored | → Used | → Expired |
 | Used | 拒否：400 invalid_request_uri | 何もしない |
 | Expired | 拒否：400 invalid_request_uri | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

@@ -157,6 +157,14 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 ## 状態遷移
 
 機能仕様の `## 状態遷移` の節では、各状態機械に H3 見出しを付け、その下に三つの表をこの順で置く。
+三つの表は、状態機械の一次情報 `testdata/<Machine>.statemachine.json` から生成する。
+
+- 見出しの下の説明の後に `<!-- spec:state-machine backend/<package>/testdata/<Machine>.statemachine.json -->` と `<!-- /spec:state-machine -->` を置く。その区間は `mise run generate-spec-from-testdata` が生成し、手で編集しない。区間のない状態機械と、一次情報とずれた区間は `mise run check-spec` が拒否する *(checked)*。
+- 一次情報の `name` は H3 見出しと一致する *(checked)*。一次情報は `states`（`name`、`kind`、`meaning`）、`transitions`（`from`、`event`、`guard`、`to`、`effects`）、`operations`、`matrix` を持つ。`matrix` は状態ごとに操作から結果の配列への対応を持ち、結果は `{"kind": "transition", "to": …}`、`{"kind": "noop"}`、`{"kind": "refusal", "response": …}` のどれかに任意の `condition` を添える。表の行の順序は `states` と `transitions` と `matrix` の順序に従う。
+- 一次情報は、その状態機械のモデルテストを持つパッケージの `testdata` に置く。テストのない状態機械は、[モジュール](../modules/README.md#モジュール)の表が示すモジュールの根のパッケージの `testdata` に置き、テストを加えるときにテストのパッケージへ移す。テストは文書の Markdown を読まない *(checked)*。
+- 表の間に説明を挟まない。説明は区間の前に書く。
+
+生成される表の形は次のとおりである。
 
 ```markdown
 | State | Kind | Meaning |
@@ -380,7 +388,7 @@ SCIM の RFC（RFC 7643 と RFC 7644）に倣い、次の H2 をこの順で一�
 ### 実行可能な具体例と派生表示
 
 - 例は、実装に隣接する `testdata/*.examples.json` を一次情報にして生成することを優先する。一次情報は各例の `id`、`title`、`given`、`input`、`expected` からなる JSON 配列である。
-- `<feature>.feature.md` の親の `Rule` の下に `<!-- spec:examples backend/<module>/<feature>/.../testdata/<name>.examples.json -->` と `<!-- /spec:examples -->` を置く。その区間は `mise run generate-spec-examples` が生成し、手で編集しない。
+- `<feature>.feature.md` の親の `Rule` の下に `<!-- spec:examples backend/<module>/<feature>/.../testdata/<name>.examples.json -->` と `<!-- /spec:examples -->` を置く。その区間は `mise run generate-spec-from-testdata` が生成し、手で編集しない。
 - `mise run check-spec` は一次情報との差を拒否する *(checked)*。
 - 生成した EX にも通常の検査を適用し、データを実行して期待結果を表明するテストを要する。テストの `//spec:covers` にその EX の ID を追加する。
 - 実装から得た出力を期待結果として自動採用しない。

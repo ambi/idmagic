@@ -1,0 +1,306 @@
+{
+  "name": "DataExportLifecycle",
+  "states": [
+    {
+      "name": "queued",
+      "kind": "initial",
+      "meaning": "受理済み。`worker` の実行を待つ"
+    },
+    {
+      "name": "running",
+      "kind": "—",
+      "meaning": "`worker` が CSV を生成している"
+    },
+    {
+      "name": "succeeded",
+      "kind": "—",
+      "meaning": "生成が完了し、保持期限までダウンロードできる"
+    },
+    {
+      "name": "failed",
+      "kind": "terminal",
+      "meaning": "生成に失敗した。不完全なファイルはダウンロードできない"
+    },
+    {
+      "name": "canceled",
+      "kind": "terminal",
+      "meaning": "終了前に取り消した"
+    },
+    {
+      "name": "expired",
+      "kind": "terminal",
+      "meaning": "保持期限を過ぎ、ファイル本体を完全削除した。メタデータと監査記録だけが残る"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "queued",
+      "event": "DataExportStarted",
+      "guard": "—",
+      "to": "running",
+      "effects": "DataExportStarted"
+    },
+    {
+      "from": "running",
+      "event": "DataExportSucceeded",
+      "guard": "—",
+      "to": "succeeded",
+      "effects": "DataExportSucceeded"
+    },
+    {
+      "from": "running",
+      "event": "JobRetried",
+      "guard": "job.attempts < job.max_attempts",
+      "to": "queued",
+      "effects": "DataExportFailed"
+    },
+    {
+      "from": "running",
+      "event": "DataExportFailed",
+      "guard": "job.attempts >= job.max_attempts",
+      "to": "failed",
+      "effects": "DataExportFailed"
+    },
+    {
+      "from": "queued",
+      "event": "DataExportCanceled",
+      "guard": "—",
+      "to": "canceled",
+      "effects": "DataExportCanceled"
+    },
+    {
+      "from": "running",
+      "event": "DataExportCanceled",
+      "guard": "—",
+      "to": "canceled",
+      "effects": "DataExportCanceled"
+    },
+    {
+      "from": "canceled",
+      "event": "DataExportSucceeded",
+      "guard": "—",
+      "to": "canceled",
+      "effects": "DataExportSucceeded"
+    },
+    {
+      "from": "canceled",
+      "event": "DataExportFailed",
+      "guard": "—",
+      "to": "canceled",
+      "effects": "DataExportFailed"
+    },
+    {
+      "from": "succeeded",
+      "event": "DataExportDownloaded",
+      "guard": "—",
+      "to": "succeeded",
+      "effects": "DataExportDownloaded"
+    },
+    {
+      "from": "succeeded",
+      "event": "DataExportExpired",
+      "guard": "duration_since(completed_at) >= duration('2592000s')",
+      "to": "expired",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "生成の開始",
+    "生成の終了",
+    "ダウンロード",
+    "取り消し",
+    "保持期限の経過"
+  ],
+  "matrix": {
+    "queued": {
+      "生成の開始": [
+        {
+          "kind": "transition",
+          "to": "running"
+        }
+      ],
+      "生成の終了": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "refusal",
+          "response": "409 data_export_not_downloadable"
+        }
+      ],
+      "取り消し": [
+        {
+          "kind": "transition",
+          "to": "canceled"
+        }
+      ],
+      "保持期限の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "running": {
+      "生成の開始": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "生成の終了": [
+        {
+          "kind": "transition",
+          "to": "succeeded",
+          "condition": "生成が成功した"
+        },
+        {
+          "kind": "transition",
+          "to": "queued",
+          "condition": "生成が失敗し、試行が上限に達していない"
+        },
+        {
+          "kind": "transition",
+          "to": "failed",
+          "condition": "生成が失敗し、試行が上限に達した"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "refusal",
+          "response": "409 data_export_not_downloadable"
+        }
+      ],
+      "取り消し": [
+        {
+          "kind": "transition",
+          "to": "canceled"
+        }
+      ],
+      "保持期限の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "succeeded": {
+      "生成の開始": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "生成の終了": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "transition",
+          "to": "succeeded"
+        }
+      ],
+      "取り消し": [
+        {
+          "kind": "refusal",
+          "response": "409 data_export_not_cancelable"
+        }
+      ],
+      "保持期限の経過": [
+        {
+          "kind": "transition",
+          "to": "expired"
+        }
+      ]
+    },
+    "failed": {
+      "生成の開始": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "生成の終了": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "refusal",
+          "response": "409 data_export_not_downloadable"
+        }
+      ],
+      "取り消し": [
+        {
+          "kind": "refusal",
+          "response": "409 data_export_not_cancelable"
+        }
+      ],
+      "保持期限の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "canceled": {
+      "生成の開始": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "生成の終了": [
+        {
+          "kind": "transition",
+          "to": "canceled",
+          "condition": "取り消す前に始めた生成が終わった"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "refusal",
+          "response": "409 data_export_not_downloadable"
+        }
+      ],
+      "取り消し": [
+        {
+          "kind": "refusal",
+          "response": "409 data_export_not_cancelable"
+        }
+      ],
+      "保持期限の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "expired": {
+      "生成の開始": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "生成の終了": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "ダウンロード": [
+        {
+          "kind": "refusal",
+          "response": "409 data_export_not_downloadable"
+        }
+      ],
+      "取り消し": [
+        {
+          "kind": "refusal",
+          "response": "409 data_export_not_cancelable"
+        }
+      ],
+      "保持期限の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

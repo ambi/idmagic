@@ -25,14 +25,16 @@ JIT は接続ごとに個別に有効にし、メールのドメインの許可�
 
 上流との接続は、利用できる `Active` と経路を止めた `Disabled` を行き来し、削除で `Deleted` になる。作成直後は `Disabled` である。`Active` の接続で信頼の根拠にあたる項目（プロトコル、issuer、クライアント ID、エンドポイント、署名の証明書など）を更新すると、接続は `Disabled` に戻る。メタデータの再取得の失敗や、信頼の根拠にあたらない項目の更新は状態を変えず、最後に成功した内容を保持する。遷移の表の `IdentityProviderConnectionActivated` と `IdentityProviderConnectionDisabled` は遷移の契機の名前であり、ドメインイベントとしては発行しない。
 
+<!-- spec:state-machine backend/authentication/testdata/IdentityProviderConnectionLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Disabled | initial | 経路を止めている。作成直後はこの状態である |
 | Active | — | 上流との接続を利用できる |
 | Deleted | terminal | 接続を削除した。どの操作からも見えない |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Active | IdentityProviderConnectionDisabled | — | Disabled |  |
 | Active | 信頼の根拠の更新 | — | Disabled |  |
 | Disabled | IdentityProviderConnectionActivated | 接続の設定が検証を通る | Active |  |
@@ -40,10 +42,12 @@ JIT は接続ごとに個別に有効にし、メールのドメインの許可�
 | Disabled | 管理者による削除 | 連携した外部アイデンティティがない | Deleted |  |
 
 | State | 外部 IdP のログイン | 接続の有効化 | 接続の無効化 | 接続の更新 | 接続の削除 |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Disabled | 拒否：400 invalid_request | → Active（設定が検証を通る）<br>拒否：400 invalid_state（設定が検証を通らない） | 何もしない | 何もしない | → Deleted（連携が残っていない）<br>拒否：409 connection_in_use（連携が残っている） |
 | Active | 何もしない | 拒否：400 invalid_state | → Disabled | → Disabled（信頼の根拠を変える）<br>何もしない（信頼の根拠を変えない） | → Deleted（連携が残っていない）<br>拒否：409 connection_in_use（連携が残っている） |
 | Deleted | 拒否：400 invalid_request | 拒否：404 not_found | 拒否：404 not_found | 拒否：404 not_found | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

@@ -24,15 +24,17 @@
 管理者が `dead_letter` のタスクを再試行すると、同じタスクを `job_id` のない `pending` に戻す。
 遷移の表の管理者による再試行と隔離による保留は遷移の契機の名前であり、ドメインイベントとしては発行しない。
 
+<!-- spec:state-machine backend/provisioning/testdata/ProvisioningTaskLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | pending | initial | 作成直後または再試行の後。ディスパッチャーが Job を関連付けるのを待つ |
 | in_flight | — | Job を関連付け、Jobs 側の再試行を含めて実行中である |
 | succeeded | terminal | 下流への反映が完了した |
 | dead_letter | — | 実行できずに終了した。管理者が再試行できる |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | pending | ProvisioningTaskStarted | — | in_flight |  |
 | in_flight | UserProvisioned | `source_type == 'user'` | succeeded |  |
 | in_flight | UserDeprovisioned | `source_type == 'user'` | succeeded |  |
@@ -42,11 +44,13 @@
 | dead_letter | 管理者による再試行 | — | pending |  |
 
 | State | ディスパッチ | 試行の成功 | 試行の失敗 | 管理者による再試行 | 隔離による保留 |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | pending | → in_flight（隔離中は何もしない） | 何もしない | 何もしない | 拒否：409 provisioning_conflict | 何もしない |
 | in_flight | 何もしない | → succeeded | 何もしない（一時的な失敗で、試行が上限未満）<br>→ dead_letter（試行が上限に達したか、必須の属性を解決できない） | 拒否：409 provisioning_conflict | → pending |
 | succeeded | 何もしない | 何もしない | 何もしない | 拒否：409 provisioning_conflict | 何もしない |
 | dead_letter | 何もしない | 何もしない | 何もしない | → pending | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

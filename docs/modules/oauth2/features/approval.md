@@ -28,8 +28,10 @@ CIBA の配信のモードは `poll` だけを実装する。
 
 人間の承認を待つ ApprovalRequest のライフサイクル。Pending から Approved / Denied / Expired へ一方向に進み、Consumed へ到達できるのは Approved からだけである。Consume は保存層の CAS でちょうど一度だけ成立し、並行するポーリングが二重にトークンを得ることはない。
 
+<!-- spec:state-machine backend/oauth2/testdata/ApprovalRequestLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Pending | initial | 起票済み。人間の判断を待っている |
 | Approved | — | 人間が承認した。1 回だけトークンへ引き換えられる |
 | Denied | terminal | 人間が拒否した |
@@ -37,7 +39,7 @@ CIBA の配信のモードは `poll` だけを実装する。
 | Consumed | terminal | 承認をトークンへ引き換えた。CAS によりちょうど一度だけ成立する |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Pending | Approve | now() < expires_at | Approved |  |
 | Pending | Deny | — | Denied |  |
 | Pending | Expire | — | Expired |  |
@@ -45,12 +47,14 @@ CIBA の配信のモードは `poll` だけを実装する。
 | Approved | Expire | — | Expired |  |
 
 | State | 承認 | 拒否 | トークンの交換 | 有効期間の経過 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Pending | → Approved（期限内）<br>拒否：400 invalid_request（期限切れ） | → Denied（期限内）<br>拒否：400 invalid_request（期限切れ） | 拒否：400 authorization_pending（間隔を守った）<br>拒否：400 slow_down（間隔より短い）<br>→ Expired（期限切れ。400 expired_token を返す） | → Expired |
 | Approved | 拒否：400 invalid_request | 拒否：400 invalid_request | → Consumed（期限内）<br>→ Expired（期限切れ。400 expired_token を返す） | → Expired |
 | Denied | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 access_denied | 何もしない |
 | Expired | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 expired_token | 何もしない |
 | Consumed | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_grant | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

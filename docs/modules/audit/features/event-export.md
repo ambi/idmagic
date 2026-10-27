@@ -28,6 +28,8 @@
 
 ### ExportLifecycle
 
+<!-- spec:state-machine backend/audit/testdata/ExportLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
 | --- | --- | --- |
 | queued | initial | 実行待ち |
@@ -54,6 +56,8 @@
 | failed | 何もしない | 何もしない | 拒否：409 job_not_cancelable | 拒否：409 audit_export_unavailable | 何もしない |
 | canceled | 何もしない | 何もしない | 拒否：409 job_not_cancelable | 拒否：409 audit_export_unavailable | 何もしない |
 | expired | 何もしない | 何もしない | 拒否：409 job_not_cancelable | 拒否：409 audit_export_unavailable | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

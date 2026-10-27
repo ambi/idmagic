@@ -37,15 +37,17 @@
 `Active` 以外の Agent には、新しいトークンを発行しない。
 `Deleted` は記録を消した後の状態であり、以後の操作は存在しない Agent と同じに扱う。
 
+<!-- spec:state-machine backend/idmanagement/testdata/AgentLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Active | initial | 通常稼働。新しいトークンを発行できる唯一の状態である |
 | Disabled | — | 復元可能な運用停止 |
 | Killed | terminal | 一方向の緊急停止。復元できない |
 | Deleted | terminal | 記録と束縛を消した |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Active | AgentUpdated | — | Active |  |
 | Disabled | AgentUpdated | — | Disabled |  |
 | Active | AgentDisabled | — | Disabled |  |
@@ -63,11 +65,13 @@
 | Killed | AgentCredentialUnbound | — | Killed |  |
 
 | State | 更新 | 無効化 | 再有効化 | 停止 | 削除 | 資格情報の束縛 | 束縛の解除 | 所有者の停止に伴う無効化 |
-|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Active | → Active（値が変わる）<br>何もしない（値が変わらない） | → Disabled | → Active（所有者が Active）<br>拒否：409 agent_owner_inactive（所有者が Active でない） | → Killed | → Deleted | → Active（束縛していない）<br>何もしない（同じ Agent に束縛済み） | → Active（束縛している）<br>何もしない（束縛していない） | → Disabled |
 | Disabled | → Disabled（値が変わる）<br>何もしない（値が変わらない） | → Disabled | → Active（所有者が Active）<br>拒否：409 agent_owner_inactive（所有者が Active でない） | → Killed | → Deleted | → Disabled（束縛していない）<br>何もしない（同じ Agent に束縛済み） | → Disabled（束縛している）<br>何もしない（束縛していない） | 何もしない |
 | Killed | 拒否：409 agent_killed | 拒否：409 agent_killed | 拒否：409 agent_killed | 拒否：409 agent_killed | 拒否：409 agent_killed | 拒否：409 agent_killed | → Killed（束縛している）<br>何もしない（束縛していない） | 何もしない |
 | Deleted | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 拒否：404 agent_not_found | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

@@ -1,0 +1,24 @@
+{
+  "name": "TaskLifecycle",
+  "states": [
+    { "name": "Ready", "kind": "initial", "meaning": "受理直後" },
+    { "name": "Done", "kind": "terminal", "meaning": "完了" }
+  ],
+  "transitions": [
+    { "from": "Ready", "event": "TaskDone", "guard": "input.force == true || expired", "to": "Done", "effects": "TaskDone" }
+  ],
+  "operations": ["実行", "取り消し"],
+  "matrix": {
+    "Ready": {
+      "実行": [{ "kind": "transition", "to": "Done" }],
+      "取り消し": [
+        { "kind": "noop", "condition": "期限内" },
+        { "kind": "refusal", "response": "409 task_expired", "condition": "期限後" }
+      ]
+    },
+    "Done": {
+      "実行": [{ "kind": "noop" }],
+      "取り消し": [{ "kind": "refusal", "response": "404 task_not_found" }]
+    }
+  }
+}

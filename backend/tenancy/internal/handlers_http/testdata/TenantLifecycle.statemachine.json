@@ -1,0 +1,97 @@
+{
+  "name": "TenantLifecycle",
+  "states": [
+    {
+      "name": "Active",
+      "kind": "initial",
+      "meaning": "通常稼働。正規ロケーションへの要求を受け付ける"
+    },
+    {
+      "name": "Disabled",
+      "kind": "—",
+      "meaning": "正規ロケーションへの要求を拒否している。再開で `Active` に戻る"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Active",
+      "event": "TenantDisabled",
+      "guard": "realm != 'default'",
+      "to": "Disabled",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "TenantDisabled",
+      "guard": "—",
+      "to": "Disabled",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "TenantEnabled",
+      "guard": "—",
+      "to": "Active",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "TenantEnabled",
+      "guard": "—",
+      "to": "Active",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "無効化",
+    "再開",
+    "正規ロケーションへの要求"
+  ],
+  "matrix": {
+    "Active": {
+      "無効化": [
+        {
+          "kind": "transition",
+          "to": "Disabled",
+          "condition": "default 以外"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request",
+          "condition": "default"
+        }
+      ],
+      "再開": [
+        {
+          "kind": "transition",
+          "to": "Active"
+        }
+      ],
+      "正規ロケーションへの要求": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Disabled": {
+      "無効化": [
+        {
+          "kind": "transition",
+          "to": "Disabled"
+        }
+      ],
+      "再開": [
+        {
+          "kind": "transition",
+          "to": "Active"
+        }
+      ],
+      "正規ロケーションへの要求": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ]
+    }
+  }
+}

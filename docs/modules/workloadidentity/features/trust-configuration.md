@@ -21,47 +21,55 @@ JWKS の再取得は到達確認を行い、成功時に取得時刻を記録す
 
 登録時に `enabled` として作成する。無効化すると `disabled` に遷移し、それ以降は配下の関連付けを交換に使えない。再有効化すれば `enabled` に戻せる。削除はレコードと配下の関連付けを取り除く終端の操作であり、以後の操作は存在しない信頼設定として拒否する。
 
+<!-- spec:state-machine backend/workloadidentity/testdata/WorkloadTrustBundleLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | enabled | initial | 配下の関連付けを交換に使える |
 | disabled | — | 配下の関連付けを交換に使えない。再有効化できる |
 | deleted | terminal | レコードと配下の関連付けを削除した |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | enabled | WorkloadTrustBundleDisabled | — | disabled |  |
 | disabled | WorkloadTrustBundleEnabled | — | enabled |  |
 | enabled | WorkloadTrustBundleDeleted | — | deleted |  |
 | disabled | WorkloadTrustBundleDeleted | — | deleted |  |
 
 | State | 無効化 | 再有効化 | 削除 | トークンの交換 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | enabled | → disabled | 何もしない | → deleted | 何もしない |
 | disabled | 何もしない | → enabled | → deleted | 拒否：invalid_grant（理由 `trust_bundle_disabled`） |
 | deleted | 拒否：404 workload_trust_bundle_not_found | 拒否：404 workload_trust_bundle_not_found | 拒否：404 workload_trust_bundle_not_found | 拒否：invalid_grant（理由 `unregistered_issuer`） |
+
+<!-- /spec:state-machine -->
 
 ### AgentWorkloadBindingLifecycle
 
 作成時は `enabled` とする。無効化すると `disabled` に遷移し、それ以降の交換には使えない。再有効化すれば `enabled` に戻せる。削除はレコードを取り除く終端の操作である。
 
+<!-- spec:state-machine backend/workloadidentity/testdata/AgentWorkloadBindingLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | enabled | initial | 交換に使える |
 | disabled | — | 交換に使えない。再有効化できる |
 | deleted | terminal | レコードを削除した |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | enabled | AgentWorkloadBindingDisabled | — | disabled |  |
 | disabled | AgentWorkloadBindingEnabled | — | enabled |  |
 | enabled | AgentWorkloadBindingDeleted | — | deleted |  |
 | disabled | AgentWorkloadBindingDeleted | — | deleted |  |
 
 | State | 無効化 | 再有効化 | 削除 | トークンの交換 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | enabled | → disabled | 何もしない | → deleted | 何もしない（ほかの有効な関連付けに一致しない）<br>拒否：invalid_grant（理由 `ambiguous_match`、ほかの有効な関連付けにも一致する） |
 | disabled | 何もしない | → enabled | → deleted | 拒否：invalid_grant（理由 `no_binding_match`、ほかの有効な関連付けに一致しない）<br>何もしない（ほかの有効な関連付けの一つだけに一致する） |
 | deleted | 拒否：404 agent_workload_binding_not_found | 拒否：404 agent_workload_binding_not_found | 拒否：404 agent_workload_binding_not_found | 拒否：invalid_grant（理由 `no_binding_match`、ほかの有効な関連付けに一致しない）<br>何もしない（ほかの有効な関連付けの一つだけに一致する） |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

@@ -26,8 +26,10 @@
 
 `WorkflowRun` は `queued` で作成し、ディスパッチャーが `job_id` を関連付けて最初のステップを開始すると `running` に遷移する。1 回の試行では、未完了のステップを定義順にすべて実行する。すべてのステップが成功すると `succeeded` で終了する。失敗したステップが残る間は Jobs の再試行に任せて `running` のままにし、Job の試行の上限に達した時点で、成功と失敗が混在していれば `partially_failed`、成功が 1 つもなければ `failed` で終了する。`no_op` は成功として扱う。`partially_failed` と `failed` の実行は、管理者の再試行で `queued` に戻る。ワークフローを無効化すると、未開始の `queued` の実行は `canceled` になり、`running` の実行は現在のステップのチェックポイント後、次のステップを始める前に `canceled` になる。遷移の表の管理者による再試行は遷移の契機の名前であり、ドメインイベントとしては発行しない。
 
+<!-- spec:state-machine backend/idgovernance/testdata/WorkflowRunLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | queued | initial | 作成直後または再試行の後。ディスパッチャーが `job_id` を関連付けるのを待つ |
 | running | — | 未完了のステップを定義順に実行している |
 | succeeded | terminal | 全ステップが成功した |
@@ -36,7 +38,7 @@
 | canceled | terminal | ワークフローの無効化により、開始前またはステップの区切りで打ち切った |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | queued | LifecycleWorkflowRunStarted | — | running |  |
 | running | LifecycleWorkflowRunSucceeded | — | succeeded |  |
 | running | LifecycleWorkflowRunPartiallyFailed | — | partially_failed |  |
@@ -47,13 +49,15 @@
 | failed | 管理者による再試行 | — | queued |  |
 
 | State | 実行の開始 | 試行の終了 | ワークフローの無効化 | 管理者による再試行 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | queued | → running（同じ User の先行する実行が終わっている）<br>何もしない（先行する実行が終わっていない） | 何もしない | → canceled | 拒否：400 invalid_request |
 | running | 何もしない | → succeeded（すべてのステップが成功）<br>何もしない（失敗したステップが残り、試行が上限未満）<br>→ partially_failed（試行が上限に達し、成功と失敗が混在）<br>→ failed（試行が上限に達し、成功が一つもない） | → canceled（次のステップの前） | 拒否：400 invalid_request |
 | succeeded | 何もしない | 何もしない | 何もしない | 拒否：400 invalid_request |
 | partially_failed | 何もしない | 何もしない | 何もしない | → queued（ワークフローが `enabled`）<br>拒否：400 invalid_request（ワークフローが `enabled` でない） |
 | failed | 何もしない | 何もしない | 何もしない | → queued（ワークフローが `enabled`）<br>拒否：400 invalid_request（ワークフローが `enabled` でない） |
 | canceled | 何もしない | 何もしない | 何もしない | 拒否：400 invalid_request |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

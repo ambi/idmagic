@@ -1,0 +1,74 @@
+{
+  "name": "TrustedDeviceLifecycle",
+  "states": [
+    {
+      "name": "Active",
+      "kind": "initial",
+      "meaning": "期限内であれば第二要素の提示を肩代わりする。期限切れは状態ではなく時刻の判定である"
+    },
+    {
+      "name": "Revoked",
+      "kind": "terminal",
+      "meaning": "二度と第二要素を肩代わりしない。レコードは削除せず `revoked_at` と `revoke_reason` を持つ tombstone として残る"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Active",
+      "event": "TrustedDeviceRevoked",
+      "guard": "—",
+      "to": "Revoked",
+      "effects": "revoked_at と revoke_reason を設定する"
+    }
+  ],
+  "operations": [
+    "記憶した端末でのログイン",
+    "信頼済みデバイスの失効",
+    "資格情報の変更"
+  ],
+  "matrix": {
+    "Active": {
+      "記憶した端末でのログイン": [
+        {
+          "kind": "noop",
+          "condition": "期限内"
+        },
+        {
+          "kind": "refusal",
+          "response": "第二要素を求める",
+          "condition": "期限切れ"
+        }
+      ],
+      "信頼済みデバイスの失効": [
+        {
+          "kind": "transition",
+          "to": "Revoked"
+        }
+      ],
+      "資格情報の変更": [
+        {
+          "kind": "transition",
+          "to": "Revoked"
+        }
+      ]
+    },
+    "Revoked": {
+      "記憶した端末でのログイン": [
+        {
+          "kind": "refusal",
+          "response": "第二要素を求める"
+        }
+      ],
+      "信頼済みデバイスの失効": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "資格情報の変更": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

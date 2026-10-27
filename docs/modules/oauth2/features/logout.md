@@ -23,22 +23,26 @@ RP-Initiated Logout の `/end_session` は、ブラウザーの遷移で使う G
 
 LogoutNotification のライフサイクル。Deliver で成功確定、Exhaust で max_attempts 到達による最終失敗確定 (dead-letter)。Jobs 側の Retry は Pending のまま attempts のみ増やす (状態遷移ではない)。
 
+<!-- spec:state-machine backend/oauth2/testdata/LogoutNotificationLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Pending | initial | 配信待ち。Jobs 側の再試行中もこの状態にとどまる |
 | Delivered | terminal | RP が 2xx を返した |
 | Failed | terminal | `max_attempts` に達した。配信不能として確定する |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Pending | Deliver | — | Delivered |  |
 | Pending | Exhaust | — | Failed |  |
 
 | State | ログアウトトークンの配信 |
-|---|---|
+| --- | --- |
 | Pending | → Delivered（RP が 2xx を返した）<br>何もしない（一時的に失敗し、再試行が残る）<br>→ Failed（`max_attempts` に達した） |
 | Delivered | 何もしない |
 | Failed | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

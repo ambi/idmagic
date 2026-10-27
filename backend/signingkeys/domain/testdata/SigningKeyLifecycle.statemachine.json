@@ -1,0 +1,242 @@
+{
+  "name": "SigningKeyLifecycle",
+  "states": [
+    {
+      "name": "Active",
+      "kind": "initial",
+      "meaning": "新しいメッセージへの署名に使う。テナント、用途、スコープの組ごとに 1 本だけ存在する"
+    },
+    {
+      "name": "Prepared",
+      "kind": "—",
+      "meaning": "メタデータに事前公開する XML 鍵。署名には使わず、集合ごとに一つだけ存在する"
+    },
+    {
+      "name": "Verifying",
+      "kind": "—",
+      "meaning": "署名には使わないが、JWKS とフェデレーションメタデータに載せて検証に使う"
+    },
+    {
+      "name": "Retired",
+      "kind": "—",
+      "meaning": "公開の重複期間（`expires_at`）を過ぎ、JWKS から除外した。公開しない"
+    },
+    {
+      "name": "Archived",
+      "kind": "terminal",
+      "meaning": "監査保管。退役した鍵で署名された監査トークンを検証できるよう鍵素材を保持する"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Active",
+      "event": "SigningKeyRotated",
+      "guard": "—",
+      "to": "Verifying",
+      "effects": ""
+    },
+    {
+      "from": "Prepared",
+      "event": "SigningKeyRotated",
+      "guard": "管理者が信頼の更新を確認した",
+      "to": "Active",
+      "effects": ""
+    },
+    {
+      "from": "Prepared",
+      "event": "管理者による無効化",
+      "guard": "—",
+      "to": "Archived",
+      "effects": ""
+    },
+    {
+      "from": "Verifying",
+      "event": "SigningKeyRetired",
+      "guard": "`expires_at` を過ぎた",
+      "to": "Retired",
+      "effects": ""
+    },
+    {
+      "from": "Retired",
+      "event": "SigningKeyArchived",
+      "guard": "—",
+      "to": "Archived",
+      "effects": ""
+    },
+    {
+      "from": "Verifying",
+      "event": "管理者による無効化",
+      "guard": "—",
+      "to": "Archived",
+      "effects": ""
+    },
+    {
+      "from": "Retired",
+      "event": "管理者による無効化",
+      "guard": "—",
+      "to": "Archived",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "ローテーション",
+    "検証用の鍵の無効化",
+    "重複期間の経過",
+    "アーカイブの実行",
+    "確認付きの有効化"
+  ],
+  "matrix": {
+    "Active": {
+      "ローテーション": [
+        {
+          "kind": "transition",
+          "to": "Verifying",
+          "condition": "共有 XML 以外"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request",
+          "condition": "共有 XML"
+        }
+      ],
+      "検証用の鍵の無効化": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "重複期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "アーカイブの実行": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "確認付きの有効化": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Prepared": {
+      "ローテーション": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "検証用の鍵の無効化": [
+        {
+          "kind": "transition",
+          "to": "Archived"
+        }
+      ],
+      "重複期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "アーカイブの実行": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "確認付きの有効化": [
+        {
+          "kind": "transition",
+          "to": "Active"
+        }
+      ]
+    },
+    "Verifying": {
+      "ローテーション": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "検証用の鍵の無効化": [
+        {
+          "kind": "transition",
+          "to": "Archived"
+        }
+      ],
+      "重複期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Retired"
+        }
+      ],
+      "アーカイブの実行": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "確認付きの有効化": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ]
+    },
+    "Retired": {
+      "ローテーション": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "検証用の鍵の無効化": [
+        {
+          "kind": "transition",
+          "to": "Archived"
+        }
+      ],
+      "重複期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "アーカイブの実行": [
+        {
+          "kind": "transition",
+          "to": "Archived"
+        }
+      ],
+      "確認付きの有効化": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ]
+    },
+    "Archived": {
+      "ローテーション": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "検証用の鍵の無効化": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "重複期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "アーカイブの実行": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "確認付きの有効化": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ]
+    }
+  }
+}

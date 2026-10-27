@@ -1,0 +1,231 @@
+{
+  "name": "ApprovalRequestLifecycle",
+  "states": [
+    {
+      "name": "Pending",
+      "kind": "initial",
+      "meaning": "起票済み。人間の判断を待っている"
+    },
+    {
+      "name": "Approved",
+      "kind": "—",
+      "meaning": "人間が承認した。1 回だけトークンへ引き換えられる"
+    },
+    {
+      "name": "Denied",
+      "kind": "terminal",
+      "meaning": "人間が拒否した"
+    },
+    {
+      "name": "Expired",
+      "kind": "terminal",
+      "meaning": "判断または引き換えの前に有効期間が切れた"
+    },
+    {
+      "name": "Consumed",
+      "kind": "terminal",
+      "meaning": "承認をトークンへ引き換えた。CAS によりちょうど一度だけ成立する"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Pending",
+      "event": "Approve",
+      "guard": "now() < expires_at",
+      "to": "Approved",
+      "effects": ""
+    },
+    {
+      "from": "Pending",
+      "event": "Deny",
+      "guard": "—",
+      "to": "Denied",
+      "effects": ""
+    },
+    {
+      "from": "Pending",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    },
+    {
+      "from": "Approved",
+      "event": "Consume",
+      "guard": "now() < expires_at",
+      "to": "Consumed",
+      "effects": ""
+    },
+    {
+      "from": "Approved",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "承認",
+    "拒否",
+    "トークンの交換",
+    "有効期間の経過"
+  ],
+  "matrix": {
+    "Pending": {
+      "承認": [
+        {
+          "kind": "transition",
+          "to": "Approved",
+          "condition": "期限内"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request",
+          "condition": "期限切れ"
+        }
+      ],
+      "拒否": [
+        {
+          "kind": "transition",
+          "to": "Denied",
+          "condition": "期限内"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request",
+          "condition": "期限切れ"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 authorization_pending",
+          "condition": "間隔を守った"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 slow_down",
+          "condition": "間隔より短い"
+        },
+        {
+          "kind": "transition",
+          "to": "Expired",
+          "condition": "期限切れ。400 expired_token を返す"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "Approved": {
+      "承認": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "拒否": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "transition",
+          "to": "Consumed",
+          "condition": "期限内"
+        },
+        {
+          "kind": "transition",
+          "to": "Expired",
+          "condition": "期限切れ。400 expired_token を返す"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "Denied": {
+      "承認": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "拒否": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 access_denied"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Expired": {
+      "承認": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "拒否": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 expired_token"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Consumed": {
+      "承認": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "拒否": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

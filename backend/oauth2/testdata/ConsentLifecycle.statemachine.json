@@ -1,0 +1,136 @@
+{
+  "name": "ConsentLifecycle",
+  "states": [
+    {
+      "name": "Granted",
+      "kind": "initial",
+      "meaning": "付与済みスコープ集合が有効である"
+    },
+    {
+      "name": "Revoked",
+      "kind": "—",
+      "meaning": "利用者か管理者が取り消した。改めて同意するまで認可には使えない"
+    },
+    {
+      "name": "Expired",
+      "kind": "—",
+      "meaning": "付与から 365 日が経過した。改めて同意するまで認可には使えない"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Granted",
+      "event": "GrantConsent",
+      "guard": "—",
+      "to": "Granted",
+      "effects": "スコープの集合と `expires_at` を更新する"
+    },
+    {
+      "from": "Revoked",
+      "event": "GrantConsent",
+      "guard": "—",
+      "to": "Granted",
+      "effects": ""
+    },
+    {
+      "from": "Expired",
+      "event": "GrantConsent",
+      "guard": "—",
+      "to": "Granted",
+      "effects": ""
+    },
+    {
+      "from": "Granted",
+      "event": "RevokeConsent",
+      "guard": "—",
+      "to": "Revoked",
+      "effects": ""
+    },
+    {
+      "from": "Revoked",
+      "event": "RevokeConsent",
+      "guard": "—",
+      "to": "Revoked",
+      "effects": ""
+    },
+    {
+      "from": "Expired",
+      "event": "RevokeConsent",
+      "guard": "—",
+      "to": "Revoked",
+      "effects": ""
+    },
+    {
+      "from": "Granted",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "認可での同意",
+    "同意の撤回",
+    "有効期間の経過"
+  ],
+  "matrix": {
+    "Granted": {
+      "認可での同意": [
+        {
+          "kind": "transition",
+          "to": "Granted"
+        }
+      ],
+      "同意の撤回": [
+        {
+          "kind": "transition",
+          "to": "Revoked"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "Revoked": {
+      "認可での同意": [
+        {
+          "kind": "transition",
+          "to": "Granted"
+        }
+      ],
+      "同意の撤回": [
+        {
+          "kind": "transition",
+          "to": "Revoked"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Expired": {
+      "認可での同意": [
+        {
+          "kind": "transition",
+          "to": "Granted"
+        }
+      ],
+      "同意の撤回": [
+        {
+          "kind": "transition",
+          "to": "Revoked"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

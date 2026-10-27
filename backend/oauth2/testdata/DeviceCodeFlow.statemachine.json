@@ -1,0 +1,261 @@
+{
+  "name": "DeviceCodeFlow",
+  "states": [
+    {
+      "name": "Issued",
+      "kind": "initial",
+      "meaning": "`device_code` と `user_code` を発行した。利用者の入力を待っている"
+    },
+    {
+      "name": "UserCodeEntered",
+      "kind": "—",
+      "meaning": "利用者が `user_code` を入力した。承認の判断を待っている"
+    },
+    {
+      "name": "Expired",
+      "kind": "terminal",
+      "meaning": "有効期間内に引き換えなかった"
+    },
+    {
+      "name": "Approved",
+      "kind": "—",
+      "meaning": "利用者が承認した。`/token` での引き換えを待っている"
+    },
+    {
+      "name": "Denied",
+      "kind": "terminal",
+      "meaning": "利用者が拒否した"
+    },
+    {
+      "name": "Exchanged",
+      "kind": "terminal",
+      "meaning": "承認済みコードをトークンへ引き換えた"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Issued",
+      "event": "EnterUserCode",
+      "guard": "—",
+      "to": "UserCodeEntered",
+      "effects": ""
+    },
+    {
+      "from": "Issued",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    },
+    {
+      "from": "UserCodeEntered",
+      "event": "Approve",
+      "guard": "—",
+      "to": "Approved",
+      "effects": ""
+    },
+    {
+      "from": "UserCodeEntered",
+      "event": "Deny",
+      "guard": "—",
+      "to": "Denied",
+      "effects": ""
+    },
+    {
+      "from": "UserCodeEntered",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    },
+    {
+      "from": "Approved",
+      "event": "Exchange",
+      "guard": "—",
+      "to": "Exchanged",
+      "effects": ""
+    },
+    {
+      "from": "Approved",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "承認",
+    "拒否",
+    "トークンの交換",
+    "有効期間の経過"
+  ],
+  "matrix": {
+    "Issued": {
+      "承認": [
+        {
+          "kind": "transition",
+          "to": "UserCodeEntered",
+          "condition": "同じ要求で続けて承認する"
+        }
+      ],
+      "拒否": [
+        {
+          "kind": "transition",
+          "to": "UserCodeEntered",
+          "condition": "同じ要求で続けて拒否する"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 authorization_pending",
+          "condition": "間隔を守った"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 slow_down",
+          "condition": "間隔より短い"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "UserCodeEntered": {
+      "承認": [
+        {
+          "kind": "transition",
+          "to": "Approved"
+        }
+      ],
+      "拒否": [
+        {
+          "kind": "transition",
+          "to": "Denied"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 authorization_pending",
+          "condition": "間隔を守った"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 slow_down",
+          "condition": "間隔より短い"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "Approved": {
+      "承認": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "拒否": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "transition",
+          "to": "Exchanged"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "Denied": {
+      "承認": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "拒否": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 access_denied"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Exchanged": {
+      "承認": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "拒否": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Expired": {
+      "承認": [
+        {
+          "kind": "refusal",
+          "response": "400 expired_token"
+        }
+      ],
+      "拒否": [
+        {
+          "kind": "refusal",
+          "response": "400 expired_token"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 expired_token"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

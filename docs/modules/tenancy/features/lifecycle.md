@@ -24,22 +24,26 @@
 テナントは `Active` で通常稼働し、無効化で正規ロケーションへのすべての要求を止め、再開で `Active` に戻る。
 テナントを物理削除する操作はない。
 
+<!-- spec:state-machine backend/tenancy/internal/handlers_http/testdata/TenantLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Active | initial | 通常稼働。正規ロケーションへの要求を受け付ける |
 | Disabled | — | 正規ロケーションへの要求を拒否している。再開で `Active` に戻る |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Active | TenantDisabled | realm != 'default' | Disabled |  |
 | Disabled | TenantDisabled | — | Disabled |  |
 | Disabled | TenantEnabled | — | Active |  |
 | Active | TenantEnabled | — | Active |  |
 
 | State | 無効化 | 再開 | 正規ロケーションへの要求 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Active | → Disabled（default 以外）<br>拒否：400 invalid_request（default） | → Active | 何もしない |
 | Disabled | → Disabled | → Active | 拒否：400 invalid_request |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

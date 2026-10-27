@@ -17,10 +17,12 @@ import { checkRawSql } from './check-raw-sql.ts'
 import { checkSchemaTables } from './check-schema-tables.ts'
 import { checkSecurityControls } from './check-security-controls.ts'
 import { checkSpecificationRules } from './check-specification-rules.ts'
+import { checkStateMachines } from './check-state-machines.ts'
 import { checkSloReferences } from './check-slo-references.ts'
 import { checkSpecImpact } from './check-spec-impact.ts'
 import { checkStatusDrift } from './check-status-drift.ts'
 import { checkTerminology } from './check-terminology.ts'
+import { checkTestDocumentReads } from './test-document-reads.ts'
 import { checkUnspecifiedVocabulary } from './check-unspecified-vocabulary.ts'
 import { checkVulnerabilitySuppressions } from './check-vulnerability-suppressions.ts'
 import { checkWorkItems } from './check-work-items.ts'
@@ -28,6 +30,7 @@ import type { RepositoryCheck } from './runner.ts'
 
 export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'executable-examples', groups: ['all', 'spec'], run: checkExecutableExamples },
+  { name: 'state-machines', groups: ['all', 'spec'], run: checkStateMachines },
   { name: 'documents', groups: ['all', 'spec'], run: checkDocuments },
   { name: 'specification-rules', groups: ['all', 'spec'], run: checkSpecificationRules },
   { name: 'boundary-debt-ratchet', groups: ['all'], run: checkBoundaryDebtRatchet },
@@ -40,6 +43,7 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'boundaries', groups: ['all'], run: checkBoundaries },
   { name: 'module-dependencies', groups: ['all'], run: checkModuleDependencies },
   { name: 'raw-sql', groups: ['all'], run: checkRawSql },
+  { name: 'test-document-reads', groups: ['all'], run: checkTestDocumentReads },
   { name: 'command-map', groups: ['all'], run: checkCommandMap },
   { name: 'agent-guidance', groups: ['all'], run: checkAgentGuidance },
   { name: 'admin-scopes', groups: ['all'], run: checkAdminScopes },

@@ -1,0 +1,181 @@
+{
+  "name": "IdentityProviderConnectionLifecycle",
+  "states": [
+    {
+      "name": "Disabled",
+      "kind": "initial",
+      "meaning": "経路を止めている。作成直後はこの状態である"
+    },
+    {
+      "name": "Active",
+      "kind": "—",
+      "meaning": "上流との接続を利用できる"
+    },
+    {
+      "name": "Deleted",
+      "kind": "terminal",
+      "meaning": "接続を削除した。どの操作からも見えない"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Active",
+      "event": "IdentityProviderConnectionDisabled",
+      "guard": "—",
+      "to": "Disabled",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "信頼の根拠の更新",
+      "guard": "—",
+      "to": "Disabled",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "IdentityProviderConnectionActivated",
+      "guard": "接続の設定が検証を通る",
+      "to": "Active",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "管理者による削除",
+      "guard": "連携した外部アイデンティティがない",
+      "to": "Deleted",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "管理者による削除",
+      "guard": "連携した外部アイデンティティがない",
+      "to": "Deleted",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "外部 IdP のログイン",
+    "接続の有効化",
+    "接続の無効化",
+    "接続の更新",
+    "接続の削除"
+  ],
+  "matrix": {
+    "Disabled": {
+      "外部 IdP のログイン": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "接続の有効化": [
+        {
+          "kind": "transition",
+          "to": "Active",
+          "condition": "設定が検証を通る"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 invalid_state",
+          "condition": "設定が検証を通らない"
+        }
+      ],
+      "接続の無効化": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "接続の更新": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "接続の削除": [
+        {
+          "kind": "transition",
+          "to": "Deleted",
+          "condition": "連携が残っていない"
+        },
+        {
+          "kind": "refusal",
+          "response": "409 connection_in_use",
+          "condition": "連携が残っている"
+        }
+      ]
+    },
+    "Active": {
+      "外部 IdP のログイン": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "接続の有効化": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_state"
+        }
+      ],
+      "接続の無効化": [
+        {
+          "kind": "transition",
+          "to": "Disabled"
+        }
+      ],
+      "接続の更新": [
+        {
+          "kind": "transition",
+          "to": "Disabled",
+          "condition": "信頼の根拠を変える"
+        },
+        {
+          "kind": "noop",
+          "condition": "信頼の根拠を変えない"
+        }
+      ],
+      "接続の削除": [
+        {
+          "kind": "transition",
+          "to": "Deleted",
+          "condition": "連携が残っていない"
+        },
+        {
+          "kind": "refusal",
+          "response": "409 connection_in_use",
+          "condition": "連携が残っている"
+        }
+      ]
+    },
+    "Deleted": {
+      "外部 IdP のログイン": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "接続の有効化": [
+        {
+          "kind": "refusal",
+          "response": "404 not_found"
+        }
+      ],
+      "接続の無効化": [
+        {
+          "kind": "refusal",
+          "response": "404 not_found"
+        }
+      ],
+      "接続の更新": [
+        {
+          "kind": "refusal",
+          "response": "404 not_found"
+        }
+      ],
+      "接続の削除": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

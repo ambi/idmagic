@@ -1,6 +1,8 @@
 package testing_statematrix_test
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -8,37 +10,10 @@ import (
 	"github.com/ambi/idmagic/backend/shared/testing_statematrix"
 )
 
-const specification = `# タスク
+const fixture = "testdata/TaskLifecycle.statemachine.json"
 
-## 状態遷移
-
-### OtherLifecycle
-
-| State | Kind | Meaning |
-|---|---|---|
-| Open | initial | 別の状態機械 |
-
-### TaskLifecycle
-
-| State | Kind | Meaning |
-|---|---|---|
-| Ready | initial | 受理直後 |
-| Done | terminal | 完了 |
-
-| From | Event | Guard | To | Effects |
-|---|---|---|---|---|
-| Ready | TaskDone | input.force == true \|\| expired | Done | TaskDone |
-
-| State | 実行 | 取り消し |
-|---|---|---|
-| Ready | → Done | 何もしない（期限内）<br>拒否：409 task_expired（期限後） |
-| Done | 何もしない | 拒否：404 task_not_found |
-
-## 操作
-`
-
-func TestReadReturnsTheNamedMachineWithEveryCell(t *testing.T) {
-	machine, err := testing_statematrix.Read(specification, "TaskLifecycle")
+func TestLoadReturnsTheMachineWithEveryCell(t *testing.T) {
+	machine, err := testing_statematrix.Load(fixture)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,18 +44,8 @@ func TestReadReturnsTheNamedMachineWithEveryCell(t *testing.T) {
 	}
 }
 
-func TestReadReadsAMachineAtTheEndOfTheDocument(t *testing.T) {
-	machine, err := testing_statematrix.Read(strings.TrimSuffix(specification, "## 操作\n"), "TaskLifecycle")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(machine.Outcomes("Done", "取り消し")) != 1 {
-		t.Fatalf("Outcomes(Done, 取り消し)=%+v, want the last row read", machine.Outcomes("Done", "取り消し"))
-	}
-}
-
 func TestEventForNamesTheTransitionTableEvent(t *testing.T) {
-	machine, err := testing_statematrix.Read(specification, "TaskLifecycle")
+	machine, err := testing_statematrix.Load(fixture)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,15 +60,29 @@ func TestEventForNamesTheTransitionTableEvent(t *testing.T) {
 	}
 }
 
-func TestReadRejectsAMissingMachineAndAMissingMatrix(t *testing.T) {
-	for _, tc := range []struct{ name, markdown, machine, want string }{
-		{"machine", specification, "GoneLifecycle", "GoneLifecycle"},
-		{"matrix", specification, "OtherLifecycle", "state matrix"},
-		{"outcome", strings.Replace(specification, "| Done | 何もしない |", "| Done | 未定 |", 1), "TaskLifecycle", "未定"},
-		{"short row", strings.Replace(specification, "| Done | 何もしない | 拒否：404 task_not_found |", "| Done | 何もしない |", 1), "TaskLifecycle", "no outcome"},
+// 一次情報の形の誤りは `check-spec` も拒否するが、テストが誤った一次情報から予測を始めないよう、
+// 読み取りでも予測に要る形を確かめる。
+func TestLoadRejectsAMalformedSource(t *testing.T) {
+	data, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(data)
+	for _, tc := range []struct{ name, source, want string }{
+		{"missing file", "", "no such file"},
+		{"unknown field", strings.Replace(source, `"operations"`, `"extra": 1, "operations"`, 1), "extra"},
+		{"unknown kind", strings.Replace(source, `"kind": "noop" }]`, `"kind": "skip" }]`, 1), "skip"},
+		{"missing cell", strings.Replace(source, `"取り消し": [{ "kind": "refusal", "response": "404 task_not_found" }]`, `"取り消し": []`, 1), "Done × 取り消し"},
+		{"missing row", strings.Replace(source, `"Done": {`, `"Gone": {`, 1), "Done"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := testing_statematrix.Read(tc.markdown, tc.machine)
+			path := filepath.Join(t.TempDir(), "machine.statemachine.json")
+			if tc.source != "" {
+				if err := os.WriteFile(path, []byte(tc.source), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			_, err := testing_statematrix.Load(path)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err=%v, want an error naming %q", err, tc.want)
 			}

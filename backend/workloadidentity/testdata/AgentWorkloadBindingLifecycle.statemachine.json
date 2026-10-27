@@ -1,0 +1,149 @@
+{
+  "name": "AgentWorkloadBindingLifecycle",
+  "states": [
+    {
+      "name": "enabled",
+      "kind": "initial",
+      "meaning": "交換に使える"
+    },
+    {
+      "name": "disabled",
+      "kind": "—",
+      "meaning": "交換に使えない。再有効化できる"
+    },
+    {
+      "name": "deleted",
+      "kind": "terminal",
+      "meaning": "レコードを削除した"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "enabled",
+      "event": "AgentWorkloadBindingDisabled",
+      "guard": "—",
+      "to": "disabled",
+      "effects": ""
+    },
+    {
+      "from": "disabled",
+      "event": "AgentWorkloadBindingEnabled",
+      "guard": "—",
+      "to": "enabled",
+      "effects": ""
+    },
+    {
+      "from": "enabled",
+      "event": "AgentWorkloadBindingDeleted",
+      "guard": "—",
+      "to": "deleted",
+      "effects": ""
+    },
+    {
+      "from": "disabled",
+      "event": "AgentWorkloadBindingDeleted",
+      "guard": "—",
+      "to": "deleted",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "無効化",
+    "再有効化",
+    "削除",
+    "トークンの交換"
+  ],
+  "matrix": {
+    "enabled": {
+      "無効化": [
+        {
+          "kind": "transition",
+          "to": "disabled"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "transition",
+          "to": "deleted"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "noop",
+          "condition": "ほかの有効な関連付けに一致しない"
+        },
+        {
+          "kind": "refusal",
+          "response": "invalid_grant",
+          "condition": "理由 `ambiguous_match`、ほかの有効な関連付けにも一致する"
+        }
+      ]
+    },
+    "disabled": {
+      "無効化": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "transition",
+          "to": "enabled"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "transition",
+          "to": "deleted"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "invalid_grant",
+          "condition": "理由 `no_binding_match`、ほかの有効な関連付けに一致しない"
+        },
+        {
+          "kind": "noop",
+          "condition": "ほかの有効な関連付けの一つだけに一致する"
+        }
+      ]
+    },
+    "deleted": {
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "404 agent_workload_binding_not_found"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "refusal",
+          "response": "404 agent_workload_binding_not_found"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "refusal",
+          "response": "404 agent_workload_binding_not_found"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "invalid_grant",
+          "condition": "理由 `no_binding_match`、ほかの有効な関連付けに一致しない"
+        },
+        {
+          "kind": "noop",
+          "condition": "ほかの有効な関連付けの一つだけに一致する"
+        }
+      ]
+    }
+  }
+}

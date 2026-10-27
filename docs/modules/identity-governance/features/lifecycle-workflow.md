@@ -22,15 +22,17 @@
 
 `LifecycleWorkflow` は `draft` で作成する。完全な検証に成功したリビジョンを有効化すると、新しいトリガーの評価対象になる。有効化した後の編集は下書きとして `current_revision` に残り、有効化し直すまで評価に使わない。無効化すると新しいトリガーを止め、後から再び有効化できる。管理者は `draft`、`enabled`、`disabled` のどの状態からも削除できる。`enabled` から削除した場合は新しいトリガーを止め、`queued` の WorkflowRun をキャンセルする。削除済みの定義は参照整合性を保つため、内部では終端状態の `archived` として保持するが、管理画面と通常の API には公開しない。実行履歴と `LifecycleWorkflowDeleted` 監査イベントは保持する。
 
+<!-- spec:state-machine backend/idgovernance/testdata/WorkflowDefinitionLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | draft | initial | 作成直後。トリガーの評価対象にならない |
 | enabled | — | 新しいトリガーの評価対象になる |
 | disabled | — | 新しいトリガーを止めている。再び有効化できる |
 | archived | terminal | 削除済み。参照整合性のために保持し、管理画面と通常の API には公開しない |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | draft | LifecycleWorkflowEnabled | — | enabled |  |
 | enabled | LifecycleWorkflowEnabled | — | enabled |  |
 | enabled | LifecycleWorkflowDisabled | — | disabled |  |
@@ -42,11 +44,13 @@
 | disabled | LifecycleWorkflowDeleted | — | archived |  |
 
 | State | 編集 | 有効化 | 無効化 | 削除 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | draft | → draft | → enabled（検証に成功）<br>拒否：400 invalid_request（検証に失敗） | 拒否：400 invalid_request | → archived |
 | enabled | → enabled | → enabled（検証に成功）<br>拒否：400 invalid_request（検証に失敗） | → disabled | → archived |
 | disabled | → disabled | → enabled（検証に成功）<br>拒否：400 invalid_request（検証に失敗） | 拒否：400 invalid_request | → archived |
 | archived | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_request |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

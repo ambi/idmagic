@@ -72,15 +72,17 @@ User と値の有無、ローカルでの上書き、取り込み元の解除と
 削除のデフォルトは予約であり、`PendingDeletion` に入ってから猶予期間の 30 日の間は `Active` へ戻せる。
 `Deleted` は、Tombstone へ置き換えて匿名化した終端状態であり、復元できない。
 
+<!-- spec:state-machine backend/idmanagement/internal/handlers_http/testdata/UserLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Active | initial | 通常稼働。認証を許可するのはこの状態だけである |
 | Disabled | — | 復元可能な無効化 |
 | PendingDeletion | — | 削除予約。猶予期間内は復元できる |
 | Deleted | terminal | Tombstone 化して匿名化した。復元できない |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Active | UserDisabled | — | Disabled |  |
 | Disabled | UserEnabled | — | Active |  |
 | Active | UserSoftDeleted | — | PendingDeletion |  |
@@ -91,11 +93,13 @@ User と値の有無、ローカルでの上書き、取り込み元の解除と
 | Disabled | UserDeleted | input.purge == true | Deleted | UserDeleted |
 
 | State | 無効化 | 再有効化 | 削除の予約 | 復元 | 完全削除 | 保持期限の削除 |
-|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- |
 | Active | → Disabled | 何もしない | → PendingDeletion | 拒否：409 not_pending_deletion | → Deleted | 何もしない |
 | Disabled | 何もしない | → Active | → PendingDeletion | 拒否：409 not_pending_deletion | → Deleted | 何もしない |
 | PendingDeletion | 拒否：409 user_pending_deletion | 拒否：409 user_pending_deletion | 何もしない | → Active（猶予期間内）<br>拒否：409 restore_grace_expired（猶予期間後） | → Deleted | 何もしない（猶予期間内）<br>→ Deleted（猶予期間後） |
 | Deleted | 拒否：404 user_not_found | 拒否：404 user_not_found | 拒否：404 user_not_found | 拒否：404 user_not_found | 何もしない | 何もしない |
+
+<!-- /spec:state-machine -->
 
 - **判断**：猶予期間の 30 日は、業界で一般的な 7 日から 30 日の範囲に合わせた。
 - **判断**：削除を物理削除ではなく Tombstone で行う理由は、[User の削除を物理削除ではなく Tombstone で行う](../decisions.md#user-の削除を物理削除ではなく-tombstone-で行う)に書く。

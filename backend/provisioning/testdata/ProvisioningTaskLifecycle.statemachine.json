@@ -1,0 +1,207 @@
+{
+  "name": "ProvisioningTaskLifecycle",
+  "states": [
+    {
+      "name": "pending",
+      "kind": "initial",
+      "meaning": "作成直後または再試行の後。ディスパッチャーが Job を関連付けるのを待つ"
+    },
+    {
+      "name": "in_flight",
+      "kind": "—",
+      "meaning": "Job を関連付け、Jobs 側の再試行を含めて実行中である"
+    },
+    {
+      "name": "succeeded",
+      "kind": "terminal",
+      "meaning": "下流への反映が完了した"
+    },
+    {
+      "name": "dead_letter",
+      "kind": "—",
+      "meaning": "実行できずに終了した。管理者が再試行できる"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "pending",
+      "event": "ProvisioningTaskStarted",
+      "guard": "—",
+      "to": "in_flight",
+      "effects": ""
+    },
+    {
+      "from": "in_flight",
+      "event": "UserProvisioned",
+      "guard": "`source_type == 'user'`",
+      "to": "succeeded",
+      "effects": ""
+    },
+    {
+      "from": "in_flight",
+      "event": "UserDeprovisioned",
+      "guard": "`source_type == 'user'`",
+      "to": "succeeded",
+      "effects": ""
+    },
+    {
+      "from": "in_flight",
+      "event": "GroupPushed",
+      "guard": "`source_type == 'group'`",
+      "to": "succeeded",
+      "effects": ""
+    },
+    {
+      "from": "in_flight",
+      "event": "UserProvisioningFailed",
+      "guard": "—",
+      "to": "dead_letter",
+      "effects": ""
+    },
+    {
+      "from": "in_flight",
+      "event": "隔離による保留",
+      "guard": "—",
+      "to": "pending",
+      "effects": "前の job_id を保持する"
+    },
+    {
+      "from": "dead_letter",
+      "event": "管理者による再試行",
+      "guard": "—",
+      "to": "pending",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "ディスパッチ",
+    "試行の成功",
+    "試行の失敗",
+    "管理者による再試行",
+    "隔離による保留"
+  ],
+  "matrix": {
+    "pending": {
+      "ディスパッチ": [
+        {
+          "kind": "transition",
+          "to": "in_flight",
+          "condition": "隔離中は何もしない"
+        }
+      ],
+      "試行の成功": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "試行の失敗": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "管理者による再試行": [
+        {
+          "kind": "refusal",
+          "response": "409 provisioning_conflict"
+        }
+      ],
+      "隔離による保留": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "in_flight": {
+      "ディスパッチ": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "試行の成功": [
+        {
+          "kind": "transition",
+          "to": "succeeded"
+        }
+      ],
+      "試行の失敗": [
+        {
+          "kind": "noop",
+          "condition": "一時的な失敗で、試行が上限未満"
+        },
+        {
+          "kind": "transition",
+          "to": "dead_letter",
+          "condition": "試行が上限に達したか、必須の属性を解決できない"
+        }
+      ],
+      "管理者による再試行": [
+        {
+          "kind": "refusal",
+          "response": "409 provisioning_conflict"
+        }
+      ],
+      "隔離による保留": [
+        {
+          "kind": "transition",
+          "to": "pending"
+        }
+      ]
+    },
+    "succeeded": {
+      "ディスパッチ": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "試行の成功": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "試行の失敗": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "管理者による再試行": [
+        {
+          "kind": "refusal",
+          "response": "409 provisioning_conflict"
+        }
+      ],
+      "隔離による保留": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "dead_letter": {
+      "ディスパッチ": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "試行の成功": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "試行の失敗": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "管理者による再試行": [
+        {
+          "kind": "transition",
+          "to": "pending"
+        }
+      ],
+      "隔離による保留": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

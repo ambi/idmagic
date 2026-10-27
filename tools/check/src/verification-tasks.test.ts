@@ -23,6 +23,7 @@ describe('実際の仕様ゲートと全体ゲートの包含関係', () => {
     const specification = selectChecks(['spec']).map((check) => check.name)
     expect(specification).toEqual([
       'executable-examples',
+      'state-machines',
       'documents',
       'specification-rules',
       'document-layout',

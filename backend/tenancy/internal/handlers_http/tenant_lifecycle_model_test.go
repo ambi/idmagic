@@ -1,8 +1,9 @@
 package handlers_http_test
 
-// テナントのライフサイクルを、機能仕様の状態遷移表（マトリクス形式）から予測し、制御面の
-// 管理 API と正規ロケーションの入口で観測した結果と比べる。表は実行時に仕様の文書から読み、
-// ここへ写さない。表のセルを書き換えれば、このテストの予測もそのまま変わる。
+// テナントのライフサイクルを、状態遷移表（マトリクス形式）から予測し、制御面の管理 API と
+// 正規ロケーションの入口で観測した結果と比べる。表は実行時に状態機械の一次情報
+// testdata/TenantLifecycle.statemachine.json から読み、ここへ写さない。機能仕様の表は同じ一次情報から
+// 生成するので、一次情報のセルを書き換えれば、仕様の表とこのテストの予測がそろって変わる。
 //
 // テストの側に置くのは、表が書かない三つの対応だけである。操作の列の名前から HTTP 要求、
 // 括弧の条件から対象のテナント、状態の名前から TenantStatus の値への変換である。
@@ -15,7 +16,6 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -27,7 +27,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-const tenantLifecycleSpecification = "../../../../docs/modules/tenancy/features/lifecycle.md"
+const tenantLifecycleSource = "testdata/TenantLifecycle.statemachine.json"
 
 // tenantLifecycleRequests は、状態遷移表の操作の列から、その操作を起こす要求を作る。
 var tenantLifecycleRequests = map[string]func(realm string) (method, path string){
@@ -100,11 +100,7 @@ func TestTenantLifecycleFollowsTheStateMatrixAlongRandomWalks(t *testing.T) {
 
 func readTenantLifecycle(t *testing.T) testing_statematrix.Machine {
 	t.Helper()
-	markdown, err := os.ReadFile(tenantLifecycleSpecification)
-	if err != nil {
-		t.Fatal(err)
-	}
-	machine, err := testing_statematrix.Read(string(markdown), "TenantLifecycle")
+	machine, err := testing_statematrix.Load(tenantLifecycleSource)
 	if err != nil {
 		t.Fatal(err)
 	}

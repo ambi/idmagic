@@ -27,8 +27,10 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 `succeeded` は保持期限を過ぎると `expired` になる。
 保持期限の 30 日は、Jobs のデフォルトの記録の保持期間に合わせた。
 
+<!-- spec:state-machine backend/idmanagement/testdata/DataExportLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | queued | initial | 受理済み。`worker` の実行を待つ |
 | running | — | `worker` が CSV を生成している |
 | succeeded | — | 生成が完了し、保持期限までダウンロードできる |
@@ -37,7 +39,7 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 | expired | terminal | 保持期限を過ぎ、ファイル本体を完全削除した。メタデータと監査記録だけが残る |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | queued | DataExportStarted | — | running | DataExportStarted |
 | running | DataExportSucceeded | — | succeeded | DataExportSucceeded |
 | running | JobRetried | job.attempts < job.max_attempts | queued | DataExportFailed |
@@ -50,13 +52,15 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 | succeeded | DataExportExpired | duration_since(completed_at) >= duration('2592000s') | expired |  |
 
 | State | 生成の開始 | 生成の終了 | ダウンロード | 取り消し | 保持期限の経過 |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | queued | → running | 何もしない | 拒否：409 data_export_not_downloadable | → canceled | 何もしない |
 | running | 何もしない | → succeeded（生成が成功した）<br>→ queued（生成が失敗し、試行が上限に達していない）<br>→ failed（生成が失敗し、試行が上限に達した） | 拒否：409 data_export_not_downloadable | → canceled | 何もしない |
 | succeeded | 何もしない | 何もしない | → succeeded | 拒否：409 data_export_not_cancelable | → expired |
 | failed | 何もしない | 何もしない | 拒否：409 data_export_not_downloadable | 拒否：409 data_export_not_cancelable | 何もしない |
 | canceled | 何もしない | → canceled（取り消す前に始めた生成が終わった） | 拒否：409 data_export_not_downloadable | 拒否：409 data_export_not_cancelable | 何もしない |
 | expired | 何もしない | 何もしない | 拒否：409 data_export_not_downloadable | 拒否：409 data_export_not_cancelable | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

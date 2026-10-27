@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -10,11 +9,7 @@ import (
 
 //spec:covers REQ-SIGNINGKEYS-006: SigningKeyLifecycle のマトリクスの確認付きの有効化を、すべての状態から予測すること。
 func TestPreparedActivationMatchesTheStateMatrix(t *testing.T) {
-	markdown, err := os.ReadFile("../../../docs/modules/signing-keys/features/lifecycle.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	machine, err := testing_statematrix.Read(string(markdown), "SigningKeyLifecycle")
+	machine, err := testing_statematrix.Load("testdata/SigningKeyLifecycle.statemachine.json")
 	if err != nil {
 		t.Fatal(err)
 	}

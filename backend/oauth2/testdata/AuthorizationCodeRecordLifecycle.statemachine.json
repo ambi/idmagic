@@ -1,0 +1,71 @@
+{
+  "name": "AuthorizationCodeRecordLifecycle",
+  "states": [
+    {
+      "name": "Issued",
+      "kind": "initial",
+      "meaning": "発行済み。1 回だけ引き換えられる"
+    },
+    {
+      "name": "Redeemed",
+      "kind": "terminal",
+      "meaning": "引き換え済み。再提示は再利用として拒否する"
+    },
+    {
+      "name": "Expired",
+      "kind": "terminal",
+      "meaning": "有効期間 (60 秒以下) を過ぎた"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Issued",
+      "event": "RedeemCode",
+      "guard": "now() < expires_at",
+      "to": "Redeemed",
+      "effects": ""
+    },
+    {
+      "from": "Issued",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "認可コードの交換"
+  ],
+  "matrix": {
+    "Issued": {
+      "認可コードの交換": [
+        {
+          "kind": "transition",
+          "to": "Redeemed",
+          "condition": "期限内"
+        },
+        {
+          "kind": "transition",
+          "to": "Expired",
+          "condition": "期限切れ。400 invalid_grant を返す"
+        }
+      ]
+    },
+    "Redeemed": {
+      "認可コードの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ]
+    },
+    "Expired": {
+      "認可コードの交換": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ]
+    }
+  }
+}

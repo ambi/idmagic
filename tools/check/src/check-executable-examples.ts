@@ -17,7 +17,7 @@ export async function checkExecutableExamples(snapshot: WorkspaceSnapshot): Prom
         snapshot.exists(path) ? snapshot.readSync(path) : undefined,
       )
       if (generated !== source)
-        lines.push(`${path}: executable examples drift; run mise run generate-spec-examples`)
+        lines.push(`${path}: executable examples drift; run mise run generate-spec-from-testdata`)
     } catch (error) {
       lines.push(`${path}: ${error instanceof Error ? error.message : String(error)}`)
     }

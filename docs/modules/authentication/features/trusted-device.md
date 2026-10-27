@@ -39,19 +39,23 @@
 
 利用そのものは状態を変えない。期限内の照合が成功するたびに verifier を回転させて `last_used_at` を進め、cookie を再発行するが、レコードは `Active` のままである。
 
+<!-- spec:state-machine backend/authentication/testdata/TrustedDeviceLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Active | initial | 期限内であれば第二要素の提示を肩代わりする。期限切れは状態ではなく時刻の判定である |
 | Revoked | terminal | 二度と第二要素を肩代わりしない。レコードは削除せず `revoked_at` と `revoke_reason` を持つ tombstone として残る |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Active | TrustedDeviceRevoked | — | Revoked | revoked_at と revoke_reason を設定する |
 
 | State | 記憶した端末でのログイン | 信頼済みデバイスの失効 | 資格情報の変更 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Active | 何もしない（期限内）<br>拒否：第二要素を求める（期限切れ） | → Revoked | → Revoked |
 | Revoked | 拒否：第二要素を求める | 何もしない | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

@@ -1,0 +1,122 @@
+{
+  "name": "SecurityEventDeliveryLifecycle",
+  "states": [
+    {
+      "name": "pending",
+      "kind": "initial",
+      "meaning": "配送待ち。生成直後と再試行の時刻の到来後がこの状態である"
+    },
+    {
+      "name": "delivered",
+      "kind": "terminal",
+      "meaning": "受信側へ配送できた"
+    },
+    {
+      "name": "failed",
+      "kind": "—",
+      "meaning": "配送に失敗し、再試行を予定している"
+    },
+    {
+      "name": "dead_letter",
+      "kind": "terminal",
+      "meaning": "`max_delivery_attempts` を使い切った。以後は配送しない"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "pending",
+      "event": "SecurityEventTransmitted",
+      "guard": "—",
+      "to": "delivered",
+      "effects": ""
+    },
+    {
+      "from": "pending",
+      "event": "SecurityEventDeliveryFailed",
+      "guard": "`attempt_count < max_delivery_attempts`",
+      "to": "failed",
+      "effects": ""
+    },
+    {
+      "from": "pending",
+      "event": "SecurityEventDeliveryDeadLettered",
+      "guard": "`attempt_count = max_delivery_attempts`",
+      "to": "dead_letter",
+      "effects": ""
+    },
+    {
+      "from": "failed",
+      "event": "SecurityEventDeliveryRetried",
+      "guard": "—",
+      "to": "pending",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "配送の試行",
+    "再試行の時刻の到来"
+  ],
+  "matrix": {
+    "pending": {
+      "配送の試行": [
+        {
+          "kind": "transition",
+          "to": "delivered",
+          "condition": "受信側が受理"
+        },
+        {
+          "kind": "transition",
+          "to": "failed",
+          "condition": "失敗し、試行の回数が上限未満"
+        },
+        {
+          "kind": "transition",
+          "to": "dead_letter",
+          "condition": "失敗し、試行の回数が上限"
+        }
+      ],
+      "再試行の時刻の到来": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "delivered": {
+      "配送の試行": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "再試行の時刻の到来": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "failed": {
+      "配送の試行": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "再試行の時刻の到来": [
+        {
+          "kind": "transition",
+          "to": "pending"
+        }
+      ]
+    },
+    "dead_letter": {
+      "配送の試行": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "再試行の時刻の到来": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

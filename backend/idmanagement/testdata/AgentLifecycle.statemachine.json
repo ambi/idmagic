@@ -1,0 +1,388 @@
+{
+  "name": "AgentLifecycle",
+  "states": [
+    {
+      "name": "Active",
+      "kind": "initial",
+      "meaning": "通常稼働。新しいトークンを発行できる唯一の状態である"
+    },
+    {
+      "name": "Disabled",
+      "kind": "—",
+      "meaning": "復元可能な運用停止"
+    },
+    {
+      "name": "Killed",
+      "kind": "terminal",
+      "meaning": "一方向の緊急停止。復元できない"
+    },
+    {
+      "name": "Deleted",
+      "kind": "terminal",
+      "meaning": "記録と束縛を消した"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Active",
+      "event": "AgentUpdated",
+      "guard": "—",
+      "to": "Active",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "AgentUpdated",
+      "guard": "—",
+      "to": "Disabled",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "AgentDisabled",
+      "guard": "—",
+      "to": "Disabled",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "AgentDisabled",
+      "guard": "—",
+      "to": "Disabled",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "AgentEnabled",
+      "guard": "owner.status == 'Active'",
+      "to": "Active",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "AgentEnabled",
+      "guard": "owner.status == 'Active'",
+      "to": "Active",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "AgentKilled",
+      "guard": "—",
+      "to": "Killed",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "AgentKilled",
+      "guard": "—",
+      "to": "Killed",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "AgentDeleted",
+      "guard": "—",
+      "to": "Deleted",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "AgentDeleted",
+      "guard": "—",
+      "to": "Deleted",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "AgentCredentialBound",
+      "guard": "—",
+      "to": "Active",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "AgentCredentialBound",
+      "guard": "—",
+      "to": "Disabled",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "AgentCredentialUnbound",
+      "guard": "—",
+      "to": "Active",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "AgentCredentialUnbound",
+      "guard": "—",
+      "to": "Disabled",
+      "effects": ""
+    },
+    {
+      "from": "Killed",
+      "event": "AgentCredentialUnbound",
+      "guard": "—",
+      "to": "Killed",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "更新",
+    "無効化",
+    "再有効化",
+    "停止",
+    "削除",
+    "資格情報の束縛",
+    "束縛の解除",
+    "所有者の停止に伴う無効化"
+  ],
+  "matrix": {
+    "Active": {
+      "更新": [
+        {
+          "kind": "transition",
+          "to": "Active",
+          "condition": "値が変わる"
+        },
+        {
+          "kind": "noop",
+          "condition": "値が変わらない"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "transition",
+          "to": "Disabled"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "transition",
+          "to": "Active",
+          "condition": "所有者が Active"
+        },
+        {
+          "kind": "refusal",
+          "response": "409 agent_owner_inactive",
+          "condition": "所有者が Active でない"
+        }
+      ],
+      "停止": [
+        {
+          "kind": "transition",
+          "to": "Killed"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "transition",
+          "to": "Deleted"
+        }
+      ],
+      "資格情報の束縛": [
+        {
+          "kind": "transition",
+          "to": "Active",
+          "condition": "束縛していない"
+        },
+        {
+          "kind": "noop",
+          "condition": "同じ Agent に束縛済み"
+        }
+      ],
+      "束縛の解除": [
+        {
+          "kind": "transition",
+          "to": "Active",
+          "condition": "束縛している"
+        },
+        {
+          "kind": "noop",
+          "condition": "束縛していない"
+        }
+      ],
+      "所有者の停止に伴う無効化": [
+        {
+          "kind": "transition",
+          "to": "Disabled"
+        }
+      ]
+    },
+    "Disabled": {
+      "更新": [
+        {
+          "kind": "transition",
+          "to": "Disabled",
+          "condition": "値が変わる"
+        },
+        {
+          "kind": "noop",
+          "condition": "値が変わらない"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "transition",
+          "to": "Disabled"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "transition",
+          "to": "Active",
+          "condition": "所有者が Active"
+        },
+        {
+          "kind": "refusal",
+          "response": "409 agent_owner_inactive",
+          "condition": "所有者が Active でない"
+        }
+      ],
+      "停止": [
+        {
+          "kind": "transition",
+          "to": "Killed"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "transition",
+          "to": "Deleted"
+        }
+      ],
+      "資格情報の束縛": [
+        {
+          "kind": "transition",
+          "to": "Disabled",
+          "condition": "束縛していない"
+        },
+        {
+          "kind": "noop",
+          "condition": "同じ Agent に束縛済み"
+        }
+      ],
+      "束縛の解除": [
+        {
+          "kind": "transition",
+          "to": "Disabled",
+          "condition": "束縛している"
+        },
+        {
+          "kind": "noop",
+          "condition": "束縛していない"
+        }
+      ],
+      "所有者の停止に伴う無効化": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Killed": {
+      "更新": [
+        {
+          "kind": "refusal",
+          "response": "409 agent_killed"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "409 agent_killed"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "refusal",
+          "response": "409 agent_killed"
+        }
+      ],
+      "停止": [
+        {
+          "kind": "refusal",
+          "response": "409 agent_killed"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "refusal",
+          "response": "409 agent_killed"
+        }
+      ],
+      "資格情報の束縛": [
+        {
+          "kind": "refusal",
+          "response": "409 agent_killed"
+        }
+      ],
+      "束縛の解除": [
+        {
+          "kind": "transition",
+          "to": "Killed",
+          "condition": "束縛している"
+        },
+        {
+          "kind": "noop",
+          "condition": "束縛していない"
+        }
+      ],
+      "所有者の停止に伴う無効化": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Deleted": {
+      "更新": [
+        {
+          "kind": "refusal",
+          "response": "404 agent_not_found"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "404 agent_not_found"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "refusal",
+          "response": "404 agent_not_found"
+        }
+      ],
+      "停止": [
+        {
+          "kind": "refusal",
+          "response": "404 agent_not_found"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "refusal",
+          "response": "404 agent_not_found"
+        }
+      ],
+      "資格情報の束縛": [
+        {
+          "kind": "refusal",
+          "response": "404 agent_not_found"
+        }
+      ],
+      "束縛の解除": [
+        {
+          "kind": "refusal",
+          "response": "404 agent_not_found"
+        }
+      ],
+      "所有者の停止に伴う無効化": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

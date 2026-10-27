@@ -1,0 +1,73 @@
+{
+  "name": "LogoutNotificationLifecycle",
+  "states": [
+    {
+      "name": "Pending",
+      "kind": "initial",
+      "meaning": "配信待ち。Jobs 側の再試行中もこの状態にとどまる"
+    },
+    {
+      "name": "Delivered",
+      "kind": "terminal",
+      "meaning": "RP が 2xx を返した"
+    },
+    {
+      "name": "Failed",
+      "kind": "terminal",
+      "meaning": "`max_attempts` に達した。配信不能として確定する"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Pending",
+      "event": "Deliver",
+      "guard": "—",
+      "to": "Delivered",
+      "effects": ""
+    },
+    {
+      "from": "Pending",
+      "event": "Exhaust",
+      "guard": "—",
+      "to": "Failed",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "ログアウトトークンの配信"
+  ],
+  "matrix": {
+    "Pending": {
+      "ログアウトトークンの配信": [
+        {
+          "kind": "transition",
+          "to": "Delivered",
+          "condition": "RP が 2xx を返した"
+        },
+        {
+          "kind": "noop",
+          "condition": "一時的に失敗し、再試行が残る"
+        },
+        {
+          "kind": "transition",
+          "to": "Failed",
+          "condition": "`max_attempts` に達した"
+        }
+      ]
+    },
+    "Delivered": {
+      "ログアウトトークンの配信": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Failed": {
+      "ログアウトトークンの配信": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "name": "WorkloadTrustBundleLifecycle",
+  "states": [
+    {
+      "name": "enabled",
+      "kind": "initial",
+      "meaning": "配下の関連付けを交換に使える"
+    },
+    {
+      "name": "disabled",
+      "kind": "—",
+      "meaning": "配下の関連付けを交換に使えない。再有効化できる"
+    },
+    {
+      "name": "deleted",
+      "kind": "terminal",
+      "meaning": "レコードと配下の関連付けを削除した"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "enabled",
+      "event": "WorkloadTrustBundleDisabled",
+      "guard": "—",
+      "to": "disabled",
+      "effects": ""
+    },
+    {
+      "from": "disabled",
+      "event": "WorkloadTrustBundleEnabled",
+      "guard": "—",
+      "to": "enabled",
+      "effects": ""
+    },
+    {
+      "from": "enabled",
+      "event": "WorkloadTrustBundleDeleted",
+      "guard": "—",
+      "to": "deleted",
+      "effects": ""
+    },
+    {
+      "from": "disabled",
+      "event": "WorkloadTrustBundleDeleted",
+      "guard": "—",
+      "to": "deleted",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "無効化",
+    "再有効化",
+    "削除",
+    "トークンの交換"
+  ],
+  "matrix": {
+    "enabled": {
+      "無効化": [
+        {
+          "kind": "transition",
+          "to": "disabled"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "transition",
+          "to": "deleted"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "disabled": {
+      "無効化": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "transition",
+          "to": "enabled"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "transition",
+          "to": "deleted"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "invalid_grant",
+          "condition": "理由 `trust_bundle_disabled`"
+        }
+      ]
+    },
+    "deleted": {
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "404 workload_trust_bundle_not_found"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "refusal",
+          "response": "404 workload_trust_bundle_not_found"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "refusal",
+          "response": "404 workload_trust_bundle_not_found"
+        }
+      ],
+      "トークンの交換": [
+        {
+          "kind": "refusal",
+          "response": "invalid_grant",
+          "condition": "理由 `unregistered_issuer`"
+        }
+      ]
+    }
+  }
+}

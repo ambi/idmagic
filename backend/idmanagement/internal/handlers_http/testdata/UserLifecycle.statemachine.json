@@ -1,0 +1,249 @@
+{
+  "name": "UserLifecycle",
+  "states": [
+    {
+      "name": "Active",
+      "kind": "initial",
+      "meaning": "通常稼働。認証を許可するのはこの状態だけである"
+    },
+    {
+      "name": "Disabled",
+      "kind": "—",
+      "meaning": "復元可能な無効化"
+    },
+    {
+      "name": "PendingDeletion",
+      "kind": "—",
+      "meaning": "削除予約。猶予期間内は復元できる"
+    },
+    {
+      "name": "Deleted",
+      "kind": "terminal",
+      "meaning": "Tombstone 化して匿名化した。復元できない"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Active",
+      "event": "UserDisabled",
+      "guard": "—",
+      "to": "Disabled",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "UserEnabled",
+      "guard": "—",
+      "to": "Active",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "UserSoftDeleted",
+      "guard": "—",
+      "to": "PendingDeletion",
+      "effects": ""
+    },
+    {
+      "from": "Disabled",
+      "event": "UserSoftDeleted",
+      "guard": "—",
+      "to": "PendingDeletion",
+      "effects": ""
+    },
+    {
+      "from": "PendingDeletion",
+      "event": "UserRestored",
+      "guard": "—",
+      "to": "Active",
+      "effects": ""
+    },
+    {
+      "from": "PendingDeletion",
+      "event": "UserDeleted",
+      "guard": "input.purge == true || duration_since(status_changed_at) > duration('2592000s')",
+      "to": "Deleted",
+      "effects": "UserDeleted"
+    },
+    {
+      "from": "Active",
+      "event": "UserDeleted",
+      "guard": "input.purge == true",
+      "to": "Deleted",
+      "effects": "UserDeleted"
+    },
+    {
+      "from": "Disabled",
+      "event": "UserDeleted",
+      "guard": "input.purge == true",
+      "to": "Deleted",
+      "effects": "UserDeleted"
+    }
+  ],
+  "operations": [
+    "無効化",
+    "再有効化",
+    "削除の予約",
+    "復元",
+    "完全削除",
+    "保持期限の削除"
+  ],
+  "matrix": {
+    "Active": {
+      "無効化": [
+        {
+          "kind": "transition",
+          "to": "Disabled"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "削除の予約": [
+        {
+          "kind": "transition",
+          "to": "PendingDeletion"
+        }
+      ],
+      "復元": [
+        {
+          "kind": "refusal",
+          "response": "409 not_pending_deletion"
+        }
+      ],
+      "完全削除": [
+        {
+          "kind": "transition",
+          "to": "Deleted"
+        }
+      ],
+      "保持期限の削除": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Disabled": {
+      "無効化": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "transition",
+          "to": "Active"
+        }
+      ],
+      "削除の予約": [
+        {
+          "kind": "transition",
+          "to": "PendingDeletion"
+        }
+      ],
+      "復元": [
+        {
+          "kind": "refusal",
+          "response": "409 not_pending_deletion"
+        }
+      ],
+      "完全削除": [
+        {
+          "kind": "transition",
+          "to": "Deleted"
+        }
+      ],
+      "保持期限の削除": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "PendingDeletion": {
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "409 user_pending_deletion"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "refusal",
+          "response": "409 user_pending_deletion"
+        }
+      ],
+      "削除の予約": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "復元": [
+        {
+          "kind": "transition",
+          "to": "Active",
+          "condition": "猶予期間内"
+        },
+        {
+          "kind": "refusal",
+          "response": "409 restore_grace_expired",
+          "condition": "猶予期間後"
+        }
+      ],
+      "完全削除": [
+        {
+          "kind": "transition",
+          "to": "Deleted"
+        }
+      ],
+      "保持期限の削除": [
+        {
+          "kind": "noop",
+          "condition": "猶予期間内"
+        },
+        {
+          "kind": "transition",
+          "to": "Deleted",
+          "condition": "猶予期間後"
+        }
+      ]
+    },
+    "Deleted": {
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "404 user_not_found"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "refusal",
+          "response": "404 user_not_found"
+        }
+      ],
+      "削除の予約": [
+        {
+          "kind": "refusal",
+          "response": "404 user_not_found"
+        }
+      ],
+      "復元": [
+        {
+          "kind": "refusal",
+          "response": "404 user_not_found"
+        }
+      ],
+      "完全削除": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "保持期限の削除": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

@@ -262,6 +262,11 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
         inTransitions = true
         continue
       }
+      // 空行だけを挟んで続くマトリクスも、遷移の表の続きとして読まない。
+      if (row.startsWith('| State |')) {
+        inTransitions = false
+        continue
+      }
       if (!row.startsWith('|')) {
         if (row.length > 0) inTransitions = false
         continue

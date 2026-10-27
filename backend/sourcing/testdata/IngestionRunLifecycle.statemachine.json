@@ -1,0 +1,320 @@
+{
+  "name": "IngestionRunLifecycle",
+  "states": [
+    {
+      "name": "Running",
+      "kind": "initial",
+      "meaning": "バッチを受け付けている"
+    },
+    {
+      "name": "AwaitingApproval",
+      "kind": "—",
+      "meaning": "候補を保存し、管理者の承認を待つ"
+    },
+    {
+      "name": "Applying",
+      "kind": "—",
+      "meaning": "保存した候補を適用している。失敗時は承認の再送で再開する"
+    },
+    {
+      "name": "Completed",
+      "kind": "terminal",
+      "meaning": "Connector が完了を報告した。記録したバッチの再送だけに答える"
+    },
+    {
+      "name": "Superseded",
+      "kind": "terminal",
+      "meaning": "同じ Connector の新しい実行が始まり、打ち切られた。記録したバッチの再送だけに答える"
+    },
+    {
+      "name": "Discarded",
+      "kind": "terminal",
+      "meaning": "管理者が候補の無効化を破棄した"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Running",
+      "event": "Connector による取り込みの実行の完了",
+      "guard": "項目数が一致し、増分かしきい値以内の完全再同期である",
+      "to": "Completed",
+      "effects": "—"
+    },
+    {
+      "from": "Running",
+      "event": "Connector による取り込みの実行の完了",
+      "guard": "項目数が一致し、完全再同期の候補がしきい値を超える",
+      "to": "AwaitingApproval",
+      "effects": "DirectoryIngestionRunHeld"
+    },
+    {
+      "from": "Running",
+      "event": "Connector による取り込みの実行の開始",
+      "guard": "同じ Connector の新しい実行である",
+      "to": "Superseded",
+      "effects": "—"
+    },
+    {
+      "from": "AwaitingApproval",
+      "event": "Connector による取り込みの実行の開始",
+      "guard": "同じ Connector の新しい実行である",
+      "to": "Superseded",
+      "effects": "—"
+    },
+    {
+      "from": "AwaitingApproval",
+      "event": "管理者による保留した無効化の承認",
+      "guard": "—",
+      "to": "Applying",
+      "effects": "DirectoryIngestionRunApproved"
+    },
+    {
+      "from": "Applying",
+      "event": "管理者による保留した無効化の承認",
+      "guard": "保存した候補の適用が終わった",
+      "to": "Completed",
+      "effects": "—"
+    },
+    {
+      "from": "AwaitingApproval",
+      "event": "管理者による保留した無効化の破棄",
+      "guard": "—",
+      "to": "Discarded",
+      "effects": "DirectoryIngestionRunDiscarded"
+    }
+  ],
+  "operations": [
+    "Connector による取り込みの実行の開始",
+    "Connector による User のバッチの送信",
+    "Connector による取り込みの実行の完了",
+    "管理者による保留した無効化の承認",
+    "管理者による保留した無効化の破棄"
+  ],
+  "matrix": {
+    "Running": {
+      "Connector による取り込みの実行の開始": [
+        {
+          "kind": "transition",
+          "to": "Superseded"
+        }
+      ],
+      "Connector による User のバッチの送信": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "Connector による取り込みの実行の完了": [
+        {
+          "kind": "transition",
+          "to": "Completed",
+          "condition": "項目数一致、増分かしきい値以内"
+        },
+        {
+          "kind": "transition",
+          "to": "AwaitingApproval",
+          "condition": "項目数一致、しきい値超過"
+        },
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_incomplete",
+          "condition": "項目数不一致"
+        }
+      ],
+      "管理者による保留した無効化の承認": [
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed"
+        }
+      ],
+      "管理者による保留した無効化の破棄": [
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed"
+        }
+      ]
+    },
+    "AwaitingApproval": {
+      "Connector による取り込みの実行の開始": [
+        {
+          "kind": "transition",
+          "to": "Superseded"
+        }
+      ],
+      "Connector による User のバッチの送信": [
+        {
+          "kind": "noop",
+          "condition": "記録済みの同一バッチ"
+        },
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed",
+          "condition": "新しいバッチ"
+        }
+      ],
+      "Connector による取り込みの実行の完了": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "管理者による保留した無効化の承認": [
+        {
+          "kind": "transition",
+          "to": "Applying"
+        }
+      ],
+      "管理者による保留した無効化の破棄": [
+        {
+          "kind": "transition",
+          "to": "Discarded"
+        }
+      ]
+    },
+    "Applying": {
+      "Connector による取り込みの実行の開始": [
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_busy"
+        }
+      ],
+      "Connector による User のバッチの送信": [
+        {
+          "kind": "noop",
+          "condition": "記録済みの同一バッチ"
+        },
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed",
+          "condition": "新しいバッチ"
+        }
+      ],
+      "Connector による取り込みの実行の完了": [
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed"
+        }
+      ],
+      "管理者による保留した無効化の承認": [
+        {
+          "kind": "transition",
+          "to": "Completed",
+          "condition": "全候補を処理"
+        },
+        {
+          "kind": "noop",
+          "condition": "未完了なら再開"
+        }
+      ],
+      "管理者による保留した無効化の破棄": [
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed"
+        }
+      ]
+    },
+    "Completed": {
+      "Connector による取り込みの実行の開始": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "Connector による User のバッチの送信": [
+        {
+          "kind": "noop",
+          "condition": "記録済みの同一バッチ"
+        },
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed",
+          "condition": "新しいバッチ"
+        }
+      ],
+      "Connector による取り込みの実行の完了": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "管理者による保留した無効化の承認": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "管理者による保留した無効化の破棄": [
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed"
+        }
+      ]
+    },
+    "Superseded": {
+      "Connector による取り込みの実行の開始": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "Connector による User のバッチの送信": [
+        {
+          "kind": "noop",
+          "condition": "記録済みの同一バッチ"
+        },
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed",
+          "condition": "新しいバッチ"
+        }
+      ],
+      "Connector による取り込みの実行の完了": [
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed"
+        }
+      ],
+      "管理者による保留した無効化の承認": [
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed"
+        }
+      ],
+      "管理者による保留した無効化の破棄": [
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed"
+        }
+      ]
+    },
+    "Discarded": {
+      "Connector による取り込みの実行の開始": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "Connector による User のバッチの送信": [
+        {
+          "kind": "noop",
+          "condition": "記録済みの同一バッチ"
+        },
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed",
+          "condition": "新しいバッチ"
+        }
+      ],
+      "Connector による取り込みの実行の完了": [
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed"
+        }
+      ],
+      "管理者による保留した無効化の承認": [
+        {
+          "kind": "refusal",
+          "response": "409 ingestion_run_closed"
+        }
+      ],
+      "管理者による保留した無効化の破棄": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

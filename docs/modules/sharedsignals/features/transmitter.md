@@ -16,26 +16,30 @@
 
 生成時に `pending` として作成する。配送の試行に成功すると終端状態の `delivered` へ、失敗すると `failed` へ遷移して再試行を予定する。再試行の時刻が来ると `pending` に戻って試行し、`max_delivery_attempts` 回目の試行に失敗すると終端状態の `dead_letter` へ遷移する。
 
+<!-- spec:state-machine backend/sharedsignals/testdata/SecurityEventDeliveryLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | pending | initial | 配送待ち。生成直後と再試行の時刻の到来後がこの状態である |
 | delivered | terminal | 受信側へ配送できた |
 | failed | — | 配送に失敗し、再試行を予定している |
 | dead_letter | terminal | `max_delivery_attempts` を使い切った。以後は配送しない |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | pending | SecurityEventTransmitted | — | delivered |  |
 | pending | SecurityEventDeliveryFailed | `attempt_count < max_delivery_attempts` | failed |  |
 | pending | SecurityEventDeliveryDeadLettered | `attempt_count = max_delivery_attempts` | dead_letter |  |
 | failed | SecurityEventDeliveryRetried | — | pending |  |
 
 | State | 配送の試行 | 再試行の時刻の到来 |
-|---|---|---|
+| --- | --- | --- |
 | pending | → delivered（受信側が受理）<br>→ failed（失敗し、試行の回数が上限未満）<br>→ dead_letter（失敗し、試行の回数が上限） | 何もしない |
 | delivered | 何もしない | 何もしない |
 | failed | 何もしない | → pending |
 | dead_letter | 何もしない | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

@@ -1,0 +1,122 @@
+{
+  "name": "DynamicMembershipEvaluationLifecycle",
+  "states": [
+    {
+      "name": "queued",
+      "kind": "initial",
+      "meaning": "全件再評価を受理した。実行を待つ"
+    },
+    {
+      "name": "running",
+      "kind": "—",
+      "meaning": "全件再評価を実行している"
+    },
+    {
+      "name": "succeeded",
+      "kind": "terminal",
+      "meaning": "全件再評価が完了した"
+    },
+    {
+      "name": "failed",
+      "kind": "terminal",
+      "meaning": "全件再評価が失敗した"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "queued",
+      "event": "DynamicMembershipEvaluationStarted",
+      "guard": "—",
+      "to": "running",
+      "effects": ""
+    },
+    {
+      "from": "running",
+      "event": "DynamicMembershipEvaluated",
+      "guard": "—",
+      "to": "succeeded",
+      "effects": "DynamicMembershipEvaluated"
+    },
+    {
+      "from": "running",
+      "event": "JobRetried",
+      "guard": "job.attempts < job.max_attempts",
+      "to": "queued",
+      "effects": ""
+    },
+    {
+      "from": "running",
+      "event": "DynamicMembershipEvaluationFailed",
+      "guard": "job.attempts >= job.max_attempts",
+      "to": "failed",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "実行の開始",
+    "全件の再評価の終了"
+  ],
+  "matrix": {
+    "queued": {
+      "実行の開始": [
+        {
+          "kind": "transition",
+          "to": "running"
+        }
+      ],
+      "全件の再評価の終了": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "running": {
+      "実行の開始": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "全件の再評価の終了": [
+        {
+          "kind": "transition",
+          "to": "succeeded",
+          "condition": "評価を終えた、または規則がない、無効である、版が異なる"
+        },
+        {
+          "kind": "transition",
+          "to": "queued",
+          "condition": "失敗し、試行が上限に達していない"
+        },
+        {
+          "kind": "transition",
+          "to": "failed",
+          "condition": "失敗し、試行が上限に達した"
+        }
+      ]
+    },
+    "succeeded": {
+      "実行の開始": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "全件の再評価の終了": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "failed": {
+      "実行の開始": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "全件の再評価の終了": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

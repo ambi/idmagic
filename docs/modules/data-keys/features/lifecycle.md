@@ -27,29 +27,33 @@
 
 `bootstrap` で最初の鍵を `active` として生成する。ローテーションで新しいバージョンが `active` になると、旧バージョンは `retiring` へ遷移する。`retiring` の鍵は `disable` で即時に無効化できる。`retiring` または `disabled` の鍵を `destroyed` へ遷移できるのは、すべての参照を再暗号化したことを `Jobs` 経由で確認した後だけである。`active` の鍵は直接 `disable` または `destroy` できず、先にローテーションする必要がある。
 
+状態遷移表（マトリクス形式）の行は鍵のバージョンの状態、列はそのバージョンへの操作である。
+ローテーションはテナントの `active` のバージョンだけを退役させ、ほかのバージョンを変えない。
+
+<!-- spec:state-machine backend/datakeys/testdata/DataEncryptionKeyLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | active | initial | 新規の暗号化操作に使う。テナントごとに高々 1 本だけ存在する |
 | retiring | — | 新規の暗号化には使わないが、既存の暗号文の復号には引き続き使う |
 | disabled | — | 鍵素材の危殆化などにより手動で即時に無効化した。以後この鍵による復号はフェイルクローズで拒否する |
 | destroyed | terminal | `wrapped_dek` を破棄し、暗号学的消去が成立した。元に戻せない |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | active | DataEncryptionKeyRotated | — | retiring |  |
 | retiring | DataEncryptionKeyDisabled | — | disabled |  |
 | retiring | DataEncryptionKeyDestroyed | — | destroyed |  |
 | disabled | DataEncryptionKeyDestroyed | — | destroyed |  |
 
-行は鍵のバージョンの状態、列はそのバージョンへの操作である。
-ローテーションはテナントの `active` のバージョンだけを退役させ、ほかのバージョンを変えない。
-
 | State | ローテーション | 無効化 | 破棄 | 暗号文の復号 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | active | → retiring | 拒否：InvalidRequestError | 拒否：InvalidRequestError | 何もしない |
 | retiring | 何もしない | → disabled | → destroyed（参照の移行が完了）<br>拒否：DataKeyStillReferencedError（未移行の参照が残る） | 何もしない |
 | disabled | 何もしない | 拒否：InvalidRequestError | → destroyed（参照の移行が完了）<br>拒否：DataKeyStillReferencedError（未移行の参照が残る） | 拒否：DataKeyUnavailableError |
 | destroyed | 何もしない | 拒否：InvalidRequestError | 拒否：InvalidRequestError | 拒否：DataKeyUnavailableError |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

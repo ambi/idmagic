@@ -31,26 +31,30 @@
 全件の再評価は、`queued` から `running` を経て、`succeeded` または `failed` で終わる。
 失敗した再評価は、`Jobs` の試行の上限まで `queued` に戻してやり直す。
 
+<!-- spec:state-machine backend/idmanagement/testdata/DynamicMembershipEvaluationLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | queued | initial | 全件再評価を受理した。実行を待つ |
 | running | — | 全件再評価を実行している |
 | succeeded | terminal | 全件再評価が完了した |
 | failed | terminal | 全件再評価が失敗した |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | queued | DynamicMembershipEvaluationStarted | — | running |  |
 | running | DynamicMembershipEvaluated | — | succeeded | DynamicMembershipEvaluated |
 | running | JobRetried | job.attempts < job.max_attempts | queued |  |
 | running | DynamicMembershipEvaluationFailed | job.attempts >= job.max_attempts | failed |  |
 
 | State | 実行の開始 | 全件の再評価の終了 |
-|---|---|---|
+| --- | --- | --- |
 | queued | → running | 何もしない |
 | running | 何もしない | → succeeded（評価を終えた、または規則がない、無効である、版が異なる）<br>→ queued（失敗し、試行が上限に達していない）<br>→ failed（失敗し、試行が上限に達した） |
 | succeeded | 何もしない | 何もしない |
 | failed | 何もしない | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

@@ -1,8 +1,9 @@
 package handlers_http_test
 
-// User のライフサイクルを、機能仕様の状態遷移表（マトリクス形式）から予測し、管理 API の
-// 正式な入口で観測した結果と比べる。表は実行時に仕様の文書から読み、ここへ写さない。
-// 表のセルを書き換えれば、このテストの予測もそのまま変わる。
+// User のライフサイクルを、状態遷移表（マトリクス形式）から予測し、管理 API の正式な入口で
+// 観測した結果と比べる。表は実行時に状態機械の一次情報 testdata/UserLifecycle.statemachine.json
+// から読み、ここへ写さない。機能仕様の表は同じ一次情報から生成するので、一次情報のセルを書き換えれば、
+// 仕様の表とこのテストの予測がそろって変わる。
 //
 // テストの側に置くのは、表が書かない三つの対応だけである。操作の列の名前から HTTP 要求
 // （HTTP の入口のない保持期限の削除はユースケースの呼び出し）、括弧の条件から
@@ -14,7 +15,6 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -32,7 +32,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
-const userLifecycleSpecification = "../../../../docs/modules/identity-management/features/user.md"
+const userLifecycleSource = "testdata/UserLifecycle.statemachine.json"
 
 // userLifecycleOperations は、状態遷移表の操作の列から、その操作を起こして応答を返す手順を作る。
 var userLifecycleOperations = map[string]func(m *userLifecycleModel) *httptest.ResponseRecorder{
@@ -128,11 +128,7 @@ func TestUserLifecycleFollowsTheStateMatrixAlongRandomWalks(t *testing.T) {
 
 func readUserLifecycle(t *testing.T) testing_statematrix.Machine {
 	t.Helper()
-	markdown, err := os.ReadFile(userLifecycleSpecification)
-	if err != nil {
-		t.Fatal(err)
-	}
-	machine, err := testing_statematrix.Read(string(markdown), "UserLifecycle")
+	machine, err := testing_statematrix.Load(userLifecycleSource)
 	if err != nil {
 		t.Fatal(err)
 	}

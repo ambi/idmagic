@@ -1,0 +1,220 @@
+{
+  "name": "WorkflowDefinitionLifecycle",
+  "states": [
+    {
+      "name": "draft",
+      "kind": "initial",
+      "meaning": "作成直後。トリガーの評価対象にならない"
+    },
+    {
+      "name": "enabled",
+      "kind": "—",
+      "meaning": "新しいトリガーの評価対象になる"
+    },
+    {
+      "name": "disabled",
+      "kind": "—",
+      "meaning": "新しいトリガーを止めている。再び有効化できる"
+    },
+    {
+      "name": "archived",
+      "kind": "terminal",
+      "meaning": "削除済み。参照整合性のために保持し、管理画面と通常の API には公開しない"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "draft",
+      "event": "LifecycleWorkflowEnabled",
+      "guard": "—",
+      "to": "enabled",
+      "effects": ""
+    },
+    {
+      "from": "enabled",
+      "event": "LifecycleWorkflowEnabled",
+      "guard": "—",
+      "to": "enabled",
+      "effects": ""
+    },
+    {
+      "from": "enabled",
+      "event": "LifecycleWorkflowDisabled",
+      "guard": "—",
+      "to": "disabled",
+      "effects": ""
+    },
+    {
+      "from": "disabled",
+      "event": "LifecycleWorkflowEnabled",
+      "guard": "—",
+      "to": "enabled",
+      "effects": ""
+    },
+    {
+      "from": "draft",
+      "event": "LifecycleWorkflowUpdated",
+      "guard": "—",
+      "to": "draft",
+      "effects": ""
+    },
+    {
+      "from": "disabled",
+      "event": "LifecycleWorkflowUpdated",
+      "guard": "—",
+      "to": "disabled",
+      "effects": ""
+    },
+    {
+      "from": "draft",
+      "event": "LifecycleWorkflowDeleted",
+      "guard": "—",
+      "to": "archived",
+      "effects": ""
+    },
+    {
+      "from": "enabled",
+      "event": "LifecycleWorkflowDeleted",
+      "guard": "—",
+      "to": "archived",
+      "effects": ""
+    },
+    {
+      "from": "disabled",
+      "event": "LifecycleWorkflowDeleted",
+      "guard": "—",
+      "to": "archived",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "編集",
+    "有効化",
+    "無効化",
+    "削除"
+  ],
+  "matrix": {
+    "draft": {
+      "編集": [
+        {
+          "kind": "transition",
+          "to": "draft"
+        }
+      ],
+      "有効化": [
+        {
+          "kind": "transition",
+          "to": "enabled",
+          "condition": "検証に成功"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request",
+          "condition": "検証に失敗"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "transition",
+          "to": "archived"
+        }
+      ]
+    },
+    "enabled": {
+      "編集": [
+        {
+          "kind": "transition",
+          "to": "enabled"
+        }
+      ],
+      "有効化": [
+        {
+          "kind": "transition",
+          "to": "enabled",
+          "condition": "検証に成功"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request",
+          "condition": "検証に失敗"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "transition",
+          "to": "disabled"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "transition",
+          "to": "archived"
+        }
+      ]
+    },
+    "disabled": {
+      "編集": [
+        {
+          "kind": "transition",
+          "to": "disabled"
+        }
+      ],
+      "有効化": [
+        {
+          "kind": "transition",
+          "to": "enabled",
+          "condition": "検証に成功"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request",
+          "condition": "検証に失敗"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "transition",
+          "to": "archived"
+        }
+      ]
+    },
+    "archived": {
+      "編集": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "有効化": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request"
+        }
+      ]
+    }
+  }
+}

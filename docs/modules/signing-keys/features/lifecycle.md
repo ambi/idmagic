@@ -42,8 +42,10 @@ SAML 専用プロファイルのスコープでは、即時のローテーショ
 
 署名鍵は `Active` からローテーションによって `Verifying` へ遷移し、公開の重複期間を過ぎると JWKS から外れて `Retired` になり、アーカイブの実行で `Archived` に移る。管理者が検証用の鍵を無効化すると、その鍵は直ちに `Archived` になる。遷移の表の `SigningKeyRetired` と無効化は遷移の契機の名前であり、ドメインイベントとしては発行しない。
 
+<!-- spec:state-machine backend/signingkeys/domain/testdata/SigningKeyLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Active | initial | 新しいメッセージへの署名に使う。テナント、用途、スコープの組ごとに 1 本だけ存在する |
 | Prepared | — | メタデータに事前公開する XML 鍵。署名には使わず、集合ごとに一つだけ存在する |
 | Verifying | — | 署名には使わないが、JWKS とフェデレーションメタデータに載せて検証に使う |
@@ -51,7 +53,7 @@ SAML 専用プロファイルのスコープでは、即時のローテーショ
 | Archived | terminal | 監査保管。退役した鍵で署名された監査トークンを検証できるよう鍵素材を保持する |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Active | SigningKeyRotated | — | Verifying |  |
 | Prepared | SigningKeyRotated | 管理者が信頼の更新を確認した | Active |  |
 | Prepared | 管理者による無効化 | — | Archived |  |
@@ -61,12 +63,14 @@ SAML 専用プロファイルのスコープでは、即時のローテーショ
 | Retired | 管理者による無効化 | — | Archived |  |
 
 | State | ローテーション | 検証用の鍵の無効化 | 重複期間の経過 | アーカイブの実行 | 確認付きの有効化 |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Active | → Verifying（共有 XML 以外）<br>拒否：400 invalid_request（共有 XML） | 拒否：400 invalid_request | 何もしない | 何もしない | 何もしない |
 | Prepared | 何もしない | → Archived | 何もしない | 何もしない | → Active |
 | Verifying | 何もしない | → Archived | → Retired | 何もしない | 拒否：400 invalid_request |
 | Retired | 何もしない | → Archived | 何もしない | → Archived | 拒否：400 invalid_request |
 | Archived | 何もしない | 何もしない | 何もしない | 何もしない | 拒否：400 invalid_request |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

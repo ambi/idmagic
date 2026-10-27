@@ -1,0 +1,139 @@
+{
+  "name": "SsfStreamLifecycle",
+  "states": [
+    {
+      "name": "enabled",
+      "kind": "initial",
+      "meaning": "配送と受信を行う"
+    },
+    {
+      "name": "disabled",
+      "kind": "—",
+      "meaning": "配送も受信も行わない。再有効化できる"
+    },
+    {
+      "name": "deleted",
+      "kind": "terminal",
+      "meaning": "レコードと付随する設定を削除した"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "enabled",
+      "event": "SsfStreamDisabled",
+      "guard": "—",
+      "to": "disabled",
+      "effects": ""
+    },
+    {
+      "from": "disabled",
+      "event": "SsfStreamEnabled",
+      "guard": "—",
+      "to": "enabled",
+      "effects": ""
+    },
+    {
+      "from": "enabled",
+      "event": "SsfStreamDeleted",
+      "guard": "—",
+      "to": "deleted",
+      "effects": ""
+    },
+    {
+      "from": "disabled",
+      "event": "SsfStreamDeleted",
+      "guard": "—",
+      "to": "deleted",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "無効化",
+    "再有効化",
+    "削除",
+    "SET の受信"
+  ],
+  "matrix": {
+    "enabled": {
+      "無効化": [
+        {
+          "kind": "transition",
+          "to": "disabled"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "transition",
+          "to": "deleted"
+        }
+      ],
+      "SET の受信": [
+        {
+          "kind": "noop",
+          "condition": "受信側のストリーム"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 security_event_rejected",
+          "condition": "送信側のストリーム"
+        }
+      ]
+    },
+    "disabled": {
+      "無効化": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "transition",
+          "to": "enabled"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "transition",
+          "to": "deleted"
+        }
+      ],
+      "SET の受信": [
+        {
+          "kind": "refusal",
+          "response": "400 security_event_rejected"
+        }
+      ]
+    },
+    "deleted": {
+      "無効化": [
+        {
+          "kind": "refusal",
+          "response": "404 ssf_stream_not_found"
+        }
+      ],
+      "再有効化": [
+        {
+          "kind": "refusal",
+          "response": "404 ssf_stream_not_found"
+        }
+      ],
+      "削除": [
+        {
+          "kind": "refusal",
+          "response": "404 ssf_stream_not_found"
+        }
+      ],
+      "SET の受信": [
+        {
+          "kind": "refusal",
+          "response": "400 security_event_rejected"
+        }
+      ]
+    }
+  }
+}

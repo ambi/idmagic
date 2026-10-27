@@ -62,14 +62,16 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 再発行は登録済みの公開鍵を破棄して登録待ちへ戻す。
 無効化は終端であり、置き換えるときは新しい Connector を作る。
 
+<!-- spec:state-machine backend/sourcing/testdata/DirectoryConnectorLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | AwaitingEnrollment | initial | 登録トークンを発行し、公開鍵の登録を待っている |
 | Active | — | 公開鍵を登録し、その鍵で署名した JWT で呼び出せる |
 | Disabled | terminal | 管理者が無効化した。登録も呼び出しも受け付けない |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | AwaitingEnrollment | Connector による登録 | 登録トークンが一致し、有効期限内であり、公開鍵が条件を満たす | Active | DirectoryConnectorEnrolled |
 | AwaitingEnrollment | 管理者による登録トークンの再発行 | — | AwaitingEnrollment | DirectoryConnectorEnrollmentReissued |
 | Active | 管理者による登録トークンの再発行 | — | AwaitingEnrollment | DirectoryConnectorEnrollmentReissued |
@@ -77,10 +79,12 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 | Active | 管理者による Connector の無効化 | — | Disabled | DirectoryConnectorDisabled |
 
 | State | Connector による登録 | Connector による接続の報告 | 管理者による登録トークンの再発行 | 管理者による Connector の無効化 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | AwaitingEnrollment | → Active（登録トークンが一致し、有効期限内であり、公開鍵が条件を満たす）<br>拒否：401 invalid_token（登録トークンが一致しないか、有効期限を過ぎている）<br>拒否：400 invalid_request（公開鍵が条件を満たさない） | 拒否：401 invalid_token | → AwaitingEnrollment | → Disabled |
 | Active | 拒否：401 invalid_token | 何もしない | → AwaitingEnrollment | → Disabled |
 | Disabled | 拒否：401 invalid_token | 拒否：401 invalid_token | 拒否：409 directory_connector_disabled | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ### IngestionRunLifecycle
 
@@ -88,8 +92,10 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 完全再同期の無効化がしきい値を超えると `awaiting_approval` になり、承認後は `applying` を経て `completed` になる。
 同じ Connector の新しい実行は、`running` と `awaiting_approval` を `superseded` にする。
 
+<!-- spec:state-machine backend/sourcing/testdata/IngestionRunLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Running | initial | バッチを受け付けている |
 | AwaitingApproval | — | 候補を保存し、管理者の承認を待つ |
 | Applying | — | 保存した候補を適用している。失敗時は承認の再送で再開する |
@@ -98,7 +104,7 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 | Discarded | terminal | 管理者が候補の無効化を破棄した |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Running | Connector による取り込みの実行の完了 | 項目数が一致し、増分かしきい値以内の完全再同期である | Completed | — |
 | Running | Connector による取り込みの実行の完了 | 項目数が一致し、完全再同期の候補がしきい値を超える | AwaitingApproval | DirectoryIngestionRunHeld |
 | Running | Connector による取り込みの実行の開始 | 同じ Connector の新しい実行である | Superseded | — |
@@ -108,13 +114,15 @@ User の属性の対応は SCIM と同じであり、`employee_number` と `depa
 | AwaitingApproval | 管理者による保留した無効化の破棄 | — | Discarded | DirectoryIngestionRunDiscarded |
 
 | State | Connector による取り込みの実行の開始 | Connector による User のバッチの送信 | Connector による取り込みの実行の完了 | 管理者による保留した無効化の承認 | 管理者による保留した無効化の破棄 |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Running | → Superseded | 何もしない | → Completed（項目数一致、増分かしきい値以内）<br>→ AwaitingApproval（項目数一致、しきい値超過）<br>拒否：409 ingestion_run_incomplete（項目数不一致） | 拒否：409 ingestion_run_closed | 拒否：409 ingestion_run_closed |
 | AwaitingApproval | → Superseded | 何もしない（記録済みの同一バッチ）<br>拒否：409 ingestion_run_closed（新しいバッチ） | 何もしない | → Applying | → Discarded |
 | Applying | 拒否：409 ingestion_run_busy | 何もしない（記録済みの同一バッチ）<br>拒否：409 ingestion_run_closed（新しいバッチ） | 拒否：409 ingestion_run_closed | → Completed（全候補を処理）<br>何もしない（未完了なら再開） | 拒否：409 ingestion_run_closed |
 | Completed | 何もしない | 何もしない（記録済みの同一バッチ）<br>拒否：409 ingestion_run_closed（新しいバッチ） | 何もしない | 何もしない | 拒否：409 ingestion_run_closed |
 | Superseded | 何もしない | 何もしない（記録済みの同一バッチ）<br>拒否：409 ingestion_run_closed（新しいバッチ） | 拒否：409 ingestion_run_closed | 拒否：409 ingestion_run_closed | 拒否：409 ingestion_run_closed |
 | Discarded | 何もしない | 何もしない（記録済みの同一バッチ）<br>拒否：409 ingestion_run_closed（新しいバッチ） | 拒否：409 ingestion_run_closed | 拒否：409 ingestion_run_closed | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

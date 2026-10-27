@@ -22,14 +22,16 @@
 
 同意レコードのライフサイクル。GDPR Art.7(3) により Granted → Revoked が可能。撤回した同意も期限の切れた同意も、利用者が認可で改めて同意すると `Granted` に戻る。`Expired` は保存した状態ではなく、付与から 365 日の `expires_at` を過ぎたことの判定である。遷移の表の `GrantConsent` と `RevokeConsent` は遷移の契機の名前であり、それぞれ `ConsentGranted` と `ConsentRevoked` を発行する。
 
+<!-- spec:state-machine backend/oauth2/testdata/ConsentLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Granted | initial | 付与済みスコープ集合が有効である |
 | Revoked | — | 利用者か管理者が取り消した。改めて同意するまで認可には使えない |
 | Expired | — | 付与から 365 日が経過した。改めて同意するまで認可には使えない |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Granted | GrantConsent | — | Granted | スコープの集合と `expires_at` を更新する |
 | Revoked | GrantConsent | — | Granted |  |
 | Expired | GrantConsent | — | Granted |  |
@@ -39,10 +41,12 @@
 | Granted | Expire | — | Expired |  |
 
 | State | 認可での同意 | 同意の撤回 | 有効期間の経過 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Granted | → Granted | → Revoked | → Expired |
 | Revoked | → Granted | → Revoked | 何もしない |
 | Expired | → Granted | → Revoked | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

@@ -24,22 +24,26 @@
 
 クライアントシークレット資格情報は発行時に `Active` となり、期限到達で `Expired`、管理者による個別の失効で `Revoked` となる。`Revoked` は期限切れより優先して表示する。`Expired` は保存した状態ではなく、`expires_at` を過ぎたことの判定である。
 
+<!-- spec:state-machine backend/oauth2/testdata/ClientSecretCredentialLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Active | initial | クライアント認証に使える |
 | Expired | terminal | `expires_at` に達した。認証には使えない |
 | Revoked | terminal | 管理者が個別に失効させた。期限切れより優先して表示する |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Active | Expire | now() >= expires_at | Expired |  |
 | Active | ClientSecretRevoked | — | Revoked |  |
 
 | State | 資格情報の個別の失効 | 有効期間の経過 |
-|---|---|---|
+| --- | --- | --- |
 | Active | → Revoked | → Expired |
 | Expired | 拒否：400 invalid_request | 何もしない |
 | Revoked | 何もしない | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

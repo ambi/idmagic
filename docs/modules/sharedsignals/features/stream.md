@@ -22,24 +22,28 @@
 
 登録時に `enabled` として作成する。無効化すると `disabled` に遷移し、それ以降は配送も受信も行わない。再有効化すれば `enabled` に戻せる。削除はレコードと付随する送信側設定と受信側設定を取り除く終端の操作であり、以後の操作は存在しないストリームとして拒否する。
 
+<!-- spec:state-machine backend/sharedsignals/testdata/SsfStreamLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | enabled | initial | 配送と受信を行う |
 | disabled | — | 配送も受信も行わない。再有効化できる |
 | deleted | terminal | レコードと付随する設定を削除した |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | enabled | SsfStreamDisabled | — | disabled |  |
 | disabled | SsfStreamEnabled | — | enabled |  |
 | enabled | SsfStreamDeleted | — | deleted |  |
 | disabled | SsfStreamDeleted | — | deleted |  |
 
 | State | 無効化 | 再有効化 | 削除 | SET の受信 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | enabled | → disabled | 何もしない | → deleted | 何もしない（受信側のストリーム）<br>拒否：400 security_event_rejected（送信側のストリーム） |
 | disabled | 何もしない | → enabled | → deleted | 拒否：400 security_event_rejected |
 | deleted | 拒否：404 ssf_stream_not_found | 拒否：404 ssf_stream_not_found | 拒否：404 ssf_stream_not_found | 拒否：400 security_event_rejected |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

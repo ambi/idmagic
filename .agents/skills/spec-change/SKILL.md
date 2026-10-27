@@ -25,7 +25,8 @@ current document kinds and grammar; read the relevant sections, not its rational
    chapter `<feature>.<chapter>.md` beside it). Give each operation its own H3 under `## 操作` holding only requirements, ordered normal
    path, state-dependent branches, then refusals. Do not write a per-operation summary table or an `## エラー`
    section. Each state machine carries the state table, the transition table, and the state transition matrix
-   with every cell filled. Put a module's allocated quality requirements in `docs/modules/<module>/quality.md`
+   with every cell filled. Edit them in the machine's `testdata/<Machine>.statemachine.json`, never in the
+   feature specification, then run `mise run generate-spec-from-testdata`. Put a module's allocated quality requirements in `docs/modules/<module>/quality.md`
    and a feature's share under `## 品質`. The feature node matches the code slice `backend/<module>/<feature>/`
    by file name (drop the hyphens to compare names). Put a mechanism shared by features in `## 実現方式` of the
    feature that implements it, or in the module's design area document such as `observability.md`; a

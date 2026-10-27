@@ -1,0 +1,152 @@
+{
+  "name": "DirectoryConnectorLifecycle",
+  "states": [
+    {
+      "name": "AwaitingEnrollment",
+      "kind": "initial",
+      "meaning": "登録トークンを発行し、公開鍵の登録を待っている"
+    },
+    {
+      "name": "Active",
+      "kind": "—",
+      "meaning": "公開鍵を登録し、その鍵で署名した JWT で呼び出せる"
+    },
+    {
+      "name": "Disabled",
+      "kind": "terminal",
+      "meaning": "管理者が無効化した。登録も呼び出しも受け付けない"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "AwaitingEnrollment",
+      "event": "Connector による登録",
+      "guard": "登録トークンが一致し、有効期限内であり、公開鍵が条件を満たす",
+      "to": "Active",
+      "effects": "DirectoryConnectorEnrolled"
+    },
+    {
+      "from": "AwaitingEnrollment",
+      "event": "管理者による登録トークンの再発行",
+      "guard": "—",
+      "to": "AwaitingEnrollment",
+      "effects": "DirectoryConnectorEnrollmentReissued"
+    },
+    {
+      "from": "Active",
+      "event": "管理者による登録トークンの再発行",
+      "guard": "—",
+      "to": "AwaitingEnrollment",
+      "effects": "DirectoryConnectorEnrollmentReissued"
+    },
+    {
+      "from": "AwaitingEnrollment",
+      "event": "管理者による Connector の無効化",
+      "guard": "—",
+      "to": "Disabled",
+      "effects": "DirectoryConnectorDisabled"
+    },
+    {
+      "from": "Active",
+      "event": "管理者による Connector の無効化",
+      "guard": "—",
+      "to": "Disabled",
+      "effects": "DirectoryConnectorDisabled"
+    }
+  ],
+  "operations": [
+    "Connector による登録",
+    "Connector による接続の報告",
+    "管理者による登録トークンの再発行",
+    "管理者による Connector の無効化"
+  ],
+  "matrix": {
+    "AwaitingEnrollment": {
+      "Connector による登録": [
+        {
+          "kind": "transition",
+          "to": "Active",
+          "condition": "登録トークンが一致し、有効期限内であり、公開鍵が条件を満たす"
+        },
+        {
+          "kind": "refusal",
+          "response": "401 invalid_token",
+          "condition": "登録トークンが一致しないか、有効期限を過ぎている"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request",
+          "condition": "公開鍵が条件を満たさない"
+        }
+      ],
+      "Connector による接続の報告": [
+        {
+          "kind": "refusal",
+          "response": "401 invalid_token"
+        }
+      ],
+      "管理者による登録トークンの再発行": [
+        {
+          "kind": "transition",
+          "to": "AwaitingEnrollment"
+        }
+      ],
+      "管理者による Connector の無効化": [
+        {
+          "kind": "transition",
+          "to": "Disabled"
+        }
+      ]
+    },
+    "Active": {
+      "Connector による登録": [
+        {
+          "kind": "refusal",
+          "response": "401 invalid_token"
+        }
+      ],
+      "Connector による接続の報告": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "管理者による登録トークンの再発行": [
+        {
+          "kind": "transition",
+          "to": "AwaitingEnrollment"
+        }
+      ],
+      "管理者による Connector の無効化": [
+        {
+          "kind": "transition",
+          "to": "Disabled"
+        }
+      ]
+    },
+    "Disabled": {
+      "Connector による登録": [
+        {
+          "kind": "refusal",
+          "response": "401 invalid_token"
+        }
+      ],
+      "Connector による接続の報告": [
+        {
+          "kind": "refusal",
+          "response": "401 invalid_token"
+        }
+      ],
+      "管理者による登録トークンの再発行": [
+        {
+          "kind": "refusal",
+          "response": "409 directory_connector_disabled"
+        }
+      ],
+      "管理者による Connector の無効化": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

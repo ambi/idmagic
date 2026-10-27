@@ -1,0 +1,152 @@
+{
+  "name": "RefreshTokenLifecycle",
+  "states": [
+    {
+      "name": "Active",
+      "kind": "initial",
+      "meaning": "提示するとローテーションしてトークンを再発行できる"
+    },
+    {
+      "name": "Rotated",
+      "kind": "—",
+      "meaning": "子トークンへ引き継いだ。再提示は再利用として family 全体の失効を招く"
+    },
+    {
+      "name": "Revoked",
+      "kind": "terminal",
+      "meaning": "利用者の操作、ログアウト、または family 失効で無効にした"
+    },
+    {
+      "name": "Expired",
+      "kind": "terminal",
+      "meaning": "スライディング期限または絶対期限に達した"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Active",
+      "event": "Rotate",
+      "guard": "now() < absolute_expires_at",
+      "to": "Rotated",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "RevokeToken",
+      "guard": "—",
+      "to": "Revoked",
+      "effects": ""
+    },
+    {
+      "from": "Active",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    },
+    {
+      "from": "Rotated",
+      "event": "RevokeToken",
+      "guard": "—",
+      "to": "Revoked",
+      "effects": ""
+    },
+    {
+      "from": "Rotated",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "リフレッシュトークンのローテーション",
+    "トークンの失効",
+    "有効期間の経過"
+  ],
+  "matrix": {
+    "Active": {
+      "リフレッシュトークンのローテーション": [
+        {
+          "kind": "transition",
+          "to": "Rotated",
+          "condition": "絶対期限内"
+        },
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant",
+          "condition": "絶対期限切れ"
+        }
+      ],
+      "トークンの失効": [
+        {
+          "kind": "transition",
+          "to": "Revoked"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "Rotated": {
+      "リフレッシュトークンのローテーション": [
+        {
+          "kind": "transition",
+          "to": "Revoked",
+          "condition": "再利用としてファミリー全体を失効させ、400 invalid_grant を返す"
+        }
+      ],
+      "トークンの失効": [
+        {
+          "kind": "transition",
+          "to": "Revoked"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "Revoked": {
+      "リフレッシュトークンのローテーション": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "トークンの失効": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Expired": {
+      "リフレッシュトークンのローテーション": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_grant"
+        }
+      ],
+      "トークンの失効": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}

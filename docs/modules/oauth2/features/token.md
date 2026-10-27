@@ -30,15 +30,17 @@
 
 RefreshToken のライフサイクル。Rotate で子トークンに引き継がれ、Revoke で失効、Expire で期限切れ。Rotated 後も家族失効により Revoked へ遷移しうる（RFC 9700 §4.14）。
 
+<!-- spec:state-machine backend/oauth2/testdata/RefreshTokenLifecycle.statemachine.json -->
+
 | State | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | Active | initial | 提示するとローテーションしてトークンを再発行できる |
 | Rotated | — | 子トークンへ引き継いだ。再提示は再利用として family 全体の失効を招く |
 | Revoked | terminal | 利用者の操作、ログアウト、または family 失効で無効にした |
 | Expired | terminal | スライディング期限または絶対期限に達した |
 
 | From | Event | Guard | To | Effects |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Active | Rotate | now() < absolute_expires_at | Rotated |  |
 | Active | RevokeToken | — | Revoked |  |
 | Active | Expire | — | Expired |  |
@@ -46,11 +48,13 @@ RefreshToken のライフサイクル。Rotate で子トークンに引き継が
 | Rotated | Expire | — | Expired |  |
 
 | State | リフレッシュトークンのローテーション | トークンの失効 | 有効期間の経過 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Active | → Rotated（絶対期限内）<br>拒否：400 invalid_grant（絶対期限切れ） | → Revoked | → Expired |
 | Rotated | → Revoked（再利用としてファミリー全体を失効させ、400 invalid_grant を返す） | → Revoked | → Expired |
 | Revoked | 拒否：400 invalid_grant | 何もしない | 何もしない |
 | Expired | 拒否：400 invalid_grant | 何もしない | 何もしない |
+
+<!-- /spec:state-machine -->
 
 ## 操作
 

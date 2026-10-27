@@ -1,0 +1,82 @@
+{
+  "name": "PARRecordLifecycle",
+  "states": [
+    {
+      "name": "Stored",
+      "kind": "initial",
+      "meaning": "`request_uri` を発行した。`/authorize` から 1 回だけ参照できる"
+    },
+    {
+      "name": "Used",
+      "kind": "terminal",
+      "meaning": "`/authorize` が参照した"
+    },
+    {
+      "name": "Expired",
+      "kind": "terminal",
+      "meaning": "有効期間 (600 秒以下) を過ぎた"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Stored",
+      "event": "Use",
+      "guard": "now() < expires_at",
+      "to": "Used",
+      "effects": ""
+    },
+    {
+      "from": "Stored",
+      "event": "Expire",
+      "guard": "—",
+      "to": "Expired",
+      "effects": ""
+    }
+  ],
+  "operations": [
+    "request_uri による認可の要求",
+    "有効期間の経過"
+  ],
+  "matrix": {
+    "Stored": {
+      "request_uri による認可の要求": [
+        {
+          "kind": "transition",
+          "to": "Used"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "transition",
+          "to": "Expired"
+        }
+      ]
+    },
+    "Used": {
+      "request_uri による認可の要求": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request_uri"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    },
+    "Expired": {
+      "request_uri による認可の要求": [
+        {
+          "kind": "refusal",
+          "response": "400 invalid_request_uri"
+        }
+      ],
+      "有効期間の経過": [
+        {
+          "kind": "noop"
+        }
+      ]
+    }
+  }
+}
