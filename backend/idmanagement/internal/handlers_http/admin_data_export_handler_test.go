@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -162,6 +163,89 @@ func TestDataExportHTTPRejectsAnUnavailableJobService(t *testing.T) {
 			h.assertNoRunnableExportJobs(t)
 			if len(requested) != 0 {
 				t.Fatalf("refused export emitted %d DataExportRequested event(s)", len(requested))
+			}
+		})
+	}
+}
+
+//spec:covers REQ-IDMANAGEMENT-027: テナント定義の列を使って開始し、選択列をジョブとイベントに保持する。許可外の列ではジョブとイベントを残さない。
+//verify:operation StartGroupCsvExport: テナント定義の列への 202 の本文と投入結果、許可外の列への 422 の Problem Details と無作用。
+func TestDataExportHTTP_GroupCustomColumns(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		columns []string
+		accept  bool
+	}{
+		{"defined", []string{"custom:cost_center", "name", "email", "roles", "membership_type", "id"}, true},
+		{"unknown", []string{"name", "custom:unknown"}, false},
+		{"other-tenant", []string{"name", "custom:other_only"}, false},
+		{"duplicate", []string{"custom:cost_center", "custom:cost_center"}, false},
+		{"password", []string{"name", "password_hash"}, false},
+		{"attribute-alias", []string{"name", "attr:cost_center"}, false},
+		{"empty", []string{}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			schemas := groupmemory.NewTenantGroupAttributeSchemaRepository()
+			now := time.Now().UTC()
+			for tenantID, key := range map[string]string{tenancydomain.DefaultTenantID: "cost_center", "other": "other_only"} {
+				if err := schemas.Save(ctx, &groupdomain.TenantGroupAttributeSchema{
+					TenantID: tenantID, CreatedAt: now, UpdatedAt: now,
+					Attributes: []groupdomain.GroupAttributeDef{{Key: key, Type: idmdomain.AttributeTypeString}},
+				}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var events []*idmdomain.DataExportRequested
+			h := newExportTestHandler(t, func(deps *httpadapter.Deps) {
+				deps.IdManagement.GroupAttrSchemaRepo = schemas
+				deps.Emit = func(event spec.DomainEvent) {
+					if requested, ok := event.(*idmdomain.DataExportRequested); ok {
+						events = append(events, requested)
+					}
+				}
+			})
+			csrf, cookie := adminCSRF(t, h.echo)
+			response := adminJSONRequest(t, h.echo, http.MethodPost, "/api/admin/v1/groups/exports", csrf, cookie, map[string]any{"columns": tc.columns})
+			if !tc.accept {
+				idmContractProblem(t, response, http.StatusUnprocessableEntity, "invalid_columns")
+				h.assertNoRunnableExportJobs(t)
+				if len(events) != 0 {
+					t.Fatalf("refused export emitted events: %+v", events)
+				}
+				return
+			}
+			if response.Code != http.StatusAccepted || response.Header().Get("Content-Type") != "application/json" {
+				t.Fatalf("start status=%d content-type=%q body=%s", response.Code, response.Header().Get("Content-Type"), response.Body.String())
+			}
+			var started struct {
+				ID               string   `json:"id"`
+				Status           string   `json:"status"`
+				Target           string   `json:"target"`
+				Format           string   `json:"format"`
+				RequestedBy      string   `json:"requested_by"`
+				RequestedColumns []string `json:"requested_columns"`
+			}
+			if err := json.Unmarshal(response.Body.Bytes(), &started); err != nil {
+				t.Fatal(err)
+			}
+			if started.ID == "" || started.Status != "queued" || started.Target != "group" || started.Format != "csv" || started.RequestedBy != "admin" || !slices.Equal(started.RequestedColumns, tc.columns) {
+				t.Fatalf("unexpected start body: %s", response.Body.String())
+			}
+			queued, err := h.jobRepo.ClaimBatch(ctx, "w1", jobsdomain.LaneBulk, 10, time.Minute, now.Add(time.Minute))
+			if err != nil || len(queued) != 1 {
+				t.Fatalf("runnable jobs=%+v err=%v, want one export", queued, err)
+			}
+			job := queued[0]
+			var params idmusecases.DataExportParams
+			if err := json.Unmarshal(job.Params, &params); err != nil {
+				t.Fatal(err)
+			}
+			if job.ID != started.ID || job.Kind != idmusecases.KindDataExport || job.TenantID != tenancydomain.DefaultTenantID || params.Target != "group" || params.ActorUserID != "admin" || !slices.Equal(params.Columns, tc.columns) {
+				t.Fatalf("job=%+v params=%+v, want requested group columns", job, params)
+			}
+			if len(events) != 1 || events[0].ExportID != started.ID || events[0].TenantID != tenancydomain.DefaultTenantID || events[0].ActorUserID != "admin" || events[0].Target != "group" || !slices.Equal(events[0].RequestedColumns, tc.columns) {
+				t.Fatalf("requested events=%+v, want one event with requested columns", events)
 			}
 		})
 	}

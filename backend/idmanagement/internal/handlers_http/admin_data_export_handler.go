@@ -40,6 +40,12 @@ func exportUsecaseDeps(d Deps) idmusecases.DataExportDeps {
 	return idmusecases.DataExportDeps{
 		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, JobRepo: d.JobRepo,
 		UserCSVExporter: exporter, GroupMembershipCSVExporter: membershipExporter, CSVArtifacts: d.CSVArtifacts,
+		GroupCSVExporter: groupusecases.GroupCSVExporter{
+			Deps: groupusecases.GroupCSVExportDeps{
+				GroupRepo: d.GroupRepo, SchemaReader: groupusecases.TenantGroupCSVSchemaReader{Repository: d.GroupAttrSchemaRepo}, Artifacts: d.CSVArtifacts,
+			},
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
+		},
 		Emit: d.LegacyEmit(), Enqueuer: d.JobEnqueuer,
 	}
 }
