@@ -22,11 +22,14 @@ description: Integrate a completed work-item branch into main or another target 
    chooses them for a change, from two path sets: the source's own changes
    (`git diff --name-only main...work-item/wi-42`) and what the rebase brought in
    (`git diff --name-only "$source_tree" 'work-item/wi-42^{tree}'`).
-   - When both sets touch only Markdown under `work-items/` and `docs/`, run `check-work-items` and
-     `check-links`, plus `check-agent-guidance` when agent guidance changed. The incoming changes were verified
-     on the target, and Markdown cannot change what the code checks observe.
-   - When either set touches code, TypeSpec, `mise.toml`, or tooling, run `mise run check` and
-     `mise run verify` in the source worktree, because the two sides may interact.
+   - Only Markdown under `work-items/` and `docs/development/` is outside every build and test input. Any
+     other file is a test input, including Markdown elsewhere: model tests read the state tables in
+     `docs/modules/`.
+   - When either set touches only that Markdown, skip `verify`, even if the other set touches code. Each side
+     was verified on its own tree, and that Markdown cannot change what builds and tests observe. Run
+     `check-work-items` and `check-links`.
+   - Otherwise run `mise run verify` in the source worktree, because the two sides may interact. It already
+     includes `check`.
    - Always rerun the narrow checks that the conflict resolution itself requires.
 
    Do not create a merge commit. Integrate one source branch at a time, and start the next work item from the
