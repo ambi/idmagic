@@ -258,6 +258,16 @@ describe('mise mutation testing boundary', () => {
     expect(canary).toContain('mutation-canary')
   })
 
+  it('個別計測を省いて呼び出し側を選ぶ補助タスクを提供する', () => {
+    expect(config.tools?.['go:github.com/quality-gates/mutago/v2/cmd/mutago']).toBe('2.10.40')
+    const selected = String(config.tasks?.['test-go-mutation-selected']?.run ?? '')
+    expect(selected).toContain('--test-flags=')
+    expect(selected).toContain('--run-mutant-id')
+    expect(selected).not.toContain('--per-test')
+    expect(selected).not.toContain('--coverage')
+    expect(canary).toContain('mutation-selected-canary')
+  })
+
   /**
    * 探索的な fuzz と同じ理由でゲートには入れない。対象と無関係な変更でも生成される変異の
    * 集合が変わるうえ、実行時間が対象パッケージではなくリポジトリ全体の大きさに比例する。
@@ -266,6 +276,7 @@ describe('mise mutation testing boundary', () => {
     for (const suite of ['check', 'verify', 'verify-serial', 'verify-full']) {
       expect(members(suite)).not.toContain('test-go-mutation')
       expect(members(suite)).not.toContain('test-go-mutation-mutant')
+      expect(members(suite)).not.toContain('test-go-mutation-selected')
       expect(members(suite)).not.toContain('check-go-mutation-tool')
     }
   })

@@ -18,6 +18,7 @@ bun = "1.4.4"
 # 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでもバージョンを固定するのは、
 # 生成される変異の集合がバージョンで変わり、work item に残した一覧が再現できなくなるためである。
 "go:github.com/gomutants/gomutants" = "0.7.2"
+"go:github.com/quality-gates/mutago/v2/cmd/mutago" = "2.10.40"
 
 [tasks.setup]
 description = "Install repository dependencies"
@@ -549,6 +550,43 @@ gomutants \
   "$target"
 '''
 
+[tasks.test-go-mutation-selected]
+description = "Mutate one Go package using explicitly selected caller tests without per-test mapping"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 2 || { echo "usage: mise run test-go-mutation-selected -- <package-directory> <test-package-pattern> [report-file] [mutant-id]" >&2; exit 2; }
+repository="$PWD"
+directory=$(cd "$1" && pwd -P)
+report="${3:-${TMPDIR:-/tmp}/idmagic-selected-mutation-report.json}"
+case "$report" in
+  /*) ;;
+  *) report="$repository/$report" ;;
+esac
+selected_tmp=$(mktemp -d)
+trap 'rm -rf "$selected_tmp"' EXIT
+(
+  cd "$directory"
+  module_file=$(go env GOMOD)
+  test "$module_file" != /dev/null || { echo "target must belong to a Go module" >&2; exit 2; }
+  cd "$(dirname "$module_file")"
+  test_packages=$(go list "$2")
+  test -n "$test_packages" || { echo "test pattern matched no packages" >&2; exit 2; }
+  test_packages=$(printf '%s\n' "$test_packages" | tr '\n' ' ')
+  echo "Selected caller tests: $test_packages" >&2
+  # Go は flags と package 引数を同じ引数列から読む。固定版のこの経路を canary で検算する。
+  # 対象自身のテストも常に実行し、個別計測と未被覆による枝刈りは行わない。
+  cd "$selected_tmp"
+  mutago --config "$repository/tools/mutation-selected.yaml" \
+    --workers=2 --timeout-coefficient=10 \
+    --logger-agentic-json \
+    --test-flags="-count=1 $test_packages" \
+    ${4:+--run-mutant-id "$4"} "$directory"
+)
+cp "$selected_tmp/report.json" "$report"
+echo "Report: $report"
+'''
+
 [tasks.check-go-mutation-tool]
 description = "Check mutation survivor and compile-failure verdicts against a fixed canary"
 run = '''
@@ -568,6 +606,7 @@ for attempt in first cached; do
     ./tools/check/testdata/mutation-canary
   (cd tools && bun run check/src/mutation-canary.ts "$report")
 done
+(cd tools && bun run check/src/mutation-selected-canary.ts)
 '''
 
 [tasks.build-go]

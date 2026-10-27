@@ -1,0 +1,9 @@
+# 既存の 5 演算子と同系統の故障に絞る。increment/decrement に相当する演算子はない。
+enable_mutators:
+  - arithmetic/base
+  - arithmetic/negate
+  - conditional/negated
+  - expression/comparison
+# 呼び出し側にだけテストがあるパッケージも対象にする。
+skip_without_test: false
+json_output: true
