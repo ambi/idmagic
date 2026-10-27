@@ -5,7 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-10-04
 priority: p2
-depends_on: [wi-89346-detect-unspecified-behavior-mechanically, wi-83002-rewrite-remaining-identity-management-features-in-the-requirement-format]
+depends_on: [wi-89346-detect-unspecified-behavior-mechanically, wi-83002-rewrite-remaining-identity-management-features-in-the-requirement-format, wi-40431-generate-state-matrices-from-testdata]
 change_kind: tooling
 spec_impact:
   kind: none

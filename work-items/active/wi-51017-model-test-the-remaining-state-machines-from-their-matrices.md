@@ -5,7 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-10-04
 priority: p2
-depends_on: [wi-86874-model-test-identity-management-state-machines-from-their-matrices, wi-35451-rewrite-remaining-context-specifications-in-the-requirement-format]
+depends_on: [wi-86874-model-test-identity-management-state-machines-from-their-matrices, wi-35451-rewrite-remaining-context-specifications-in-the-requirement-format, wi-40431-generate-state-matrices-from-testdata]
 change_kind: tooling
 spec_impact:
   kind: none
