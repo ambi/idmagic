@@ -125,7 +125,7 @@ User と値の有無、ローカルでの上書き、取り込み元の解除と
 - 同じテナントの削除されていない User と名前が同じユーザー名を指定された場合、IdManagement は、409 と `username_conflict` で拒否し、User を作らない。
 - 同じテナントの削除されていない User とメールアドレスが同じメールアドレスを指定された場合、IdManagement は、409 と `email_taken` で拒否し、User を作らない。
 - 前後の空白を除くと空になるユーザー名を指定された場合、IdManagement は、拒否し、User を作らない。
-- テナントのパスワードポリシーに違反するパスワードを指定された場合、IdManagement は、拒否し、User を作らない。
+- テナントのパスワードポリシーに違反するパスワードを指定された場合、IdManagement は、422 と `password_policy` で、違反した規則のコードとともに拒否し、User を作らない。
 - **例**：EX-IDMANAGEMENT-042-01、EX-IDMANAGEMENT-042-02
 
 ### フェデレーションによる作成

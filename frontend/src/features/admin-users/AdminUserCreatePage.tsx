@@ -5,7 +5,8 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { useDictionary } from '../../lib/i18n'
+import { useDictionary, useLocale } from '../../lib/i18n'
+import { localizedErrorMessage } from '../../lib/i18n/errorMessage'
 import { LENGTH } from '../../lib/lengthLimits'
 import { adminUsersDictionary } from './AdminUsersPage.i18n'
 import { Field, optionalValue, parseRoles } from './AdminUsersPrimitives'
@@ -21,6 +22,7 @@ export function AdminUserCreatePage({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const t = useDictionary(adminUsersDictionary)
+  const { locale } = useLocale()
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -45,7 +47,11 @@ export function AdminUserCreatePage({
       })
       window.location.assign(tenantURL(`/admin/users/${encodeURIComponent(created.id)}`))
     } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : t.createUserFailedError)
+      setError(
+        cause instanceof AuthenticationAPIError
+          ? localizedErrorMessage(locale, cause.code, cause.message)
+          : t.createUserFailedError,
+      )
       setBusy(false)
     }
   }

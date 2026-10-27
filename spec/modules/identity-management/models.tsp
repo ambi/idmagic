@@ -91,6 +91,13 @@ enum AgentKind {
 @doc("ロールの書き込みまたは業務ロールの委任を受け付けられない。空のロール名、対象に新しく割り当てられない system_admin、自動所属への admin または system_admin の設定、現在のロールと式に一致しない委任が該当する。system_admin を追加できるのは制御面テナントの User とローカルの手動 Group だけであり、Agent には追加できない。既存の値は明示的な roles 更新で除ける。拒否した書き込みは同じリクエストのほかのフィールドも保存しない。RFC 9457 の Problem Details で type は urn:idmagic:error:invalid_role である。")
 model InvalidRoleError is ProblemDetails;
 
+@doc("初期パスワードが、テナントに適用するパスワードポリシーに違反する。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:password_policy` である。")
+model PasswordPolicyError {
+  ...ProblemDetails;
+  @doc("違反した規則のコード。値と順序は Authentication モジュールの PasswordPolicy が定め、IdManagement はそのまま返す。")
+  violations: string[];
+}
+
 
 @doc("求めた `preferred_username` は、テナントの別の User がすでに使っている。名前は前後の空白を除き Unicode の大文字と小文字の畳み込みをしてから比べるので、大文字と小文字だけが違う名前も衝突する。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:username_conflict` である。")
 model UsernameConflictError is ProblemDetails;

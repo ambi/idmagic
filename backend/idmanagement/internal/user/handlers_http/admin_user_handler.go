@@ -376,13 +376,21 @@ func writeAdminUserError(c *echo.Context, err error) error {
 			return writeAttributeValueConflict(c)
 		}
 		if policyErr, ok := errors.AsType[userports.PasswordPolicyRejection](err); ok {
-			return support.NoStoreJSON(c, http.StatusBadRequest, map[string]any{
-				"error": "password_policy", "message": "The password does not meet the security requirements.",
-				"violations": policyErr.PasswordPolicyViolations(),
+			return support.WriteProblemBody(c, http.StatusUnprocessableEntity, passwordPolicyProblem{
+				Problem: support.NewProblem(
+					c, http.StatusUnprocessableEntity, "password_policy", "The password does not meet the security requirements.",
+				),
+				Violations: policyErr.PasswordPolicyViolations(),
 			})
 		}
 		return err
 	}
+}
+
+// passwordPolicyProblem は、Authentication が決めた違反のコードを載せた Problem Details である。
+type passwordPolicyProblem struct {
+	support.Problem
+	Violations []string `json:"violations"`
 }
 
 // writeAttributeValueConflict は、unique の属性の値がほかの User と重なった書き込みを 409 で返す。

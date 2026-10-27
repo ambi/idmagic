@@ -399,6 +399,7 @@ model CreateAdminUserError409 {
 union CreateAdminUserError422Body {
   IdMagic.Contract.QuotaExceededError,
   IdMagic.Contract.InvalidRoleError,
+  IdMagic.Contract.PasswordPolicyError,
 }
 
 model CreateAdminUserError422 {
@@ -407,7 +408,7 @@ model CreateAdminUserError422 {
   @body body: CreateAdminUserError422Body;
 }
 
-@doc("管理者が、Authentication モジュールの PasswordPolicy を満たす初期パスワードでユーザーを作成する。`roles` に予約済みのロール `system_admin` を含められるのは、制御面テナントだけである。InvalidRoleError を参照する。")
+@doc("管理者が、Authentication モジュールの PasswordPolicy を満たす初期パスワードでユーザーを作成する。`roles` に予約済みのロール `system_admin` を含められるのは、制御面テナントだけである。InvalidRoleError を参照する。ポリシーに違反する初期パスワードは、違反した規則のコードとともに PasswordPolicyError で拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminUser")
 @route("/api/admin/v1/users")
