@@ -26,8 +26,10 @@ depends = ["setup-tools", "install-ui"]
 
 [tasks.setup-tools]
 description = "Install embedded tooling dependencies"
+sources = ["tools/package.json", "tools/bun.lock"]
+outputs = ["tools/node_modules/.install-stamp"]
 run = [
-  "cd tools && bun install --frozen-lockfile",
+  "cd tools && bun install --frozen-lockfile && touch node_modules/.install-stamp",
   "ln -sfn tools/node_modules node_modules",
 ]
 
@@ -89,10 +91,14 @@ depends = ["compile-spec"]
 dir = "tools"
 run = "bun run generate-contract/src/main.ts --check"
 
+# 入力より新しい印があれば何もしないので、ほかのタスクの前提に置いても費用はほぼない。
+# bun は導入済みの印を作らないので、導入の後に印を置く。
 [tasks.install-ui]
 description = "Install UI dependencies"
 dir = "frontend"
-run = "bun install --frozen-lockfile"
+sources = ["package.json", "bun.lock"]
+outputs = ["node_modules/.install-stamp"]
+run = "bun install --frozen-lockfile && touch node_modules/.install-stamp"
 
 [tasks.verify]
 description = "Run the standard verification suite in parallel, reporting every gate that failed"
@@ -214,6 +220,7 @@ bun test $(fd -e ts -g '*.repository.ts' . --exclude node_modules | sed 's#^#./#
 [tasks.test-tools]
 description = "Run embedded repository tooling tests"
 dir = "tools"
+depends = ["setup-tools"]
 run = "bun test"
 
 [tasks.test-tools-file]
@@ -231,6 +238,7 @@ bun test "$@"
 # context: targets=tools
 description = "Type-check embedded repository tooling"
 dir = "tools"
+depends = ["setup-tools"]
 run = "bun run typecheck"
 
 [tasks.format-tools]
@@ -242,6 +250,7 @@ run = "bun run format"
 # context: targets=tools
 description = "Lint embedded repository tooling"
 dir = "tools"
+depends = ["setup-tools"]
 run = "bun run lint"
 
 [tasks.list-outdated-tools-dependencies]
@@ -686,6 +695,7 @@ depends = [
 [tasks.check-ui-dependencies]
 description = "Check UI dependency declarations against actual usage"
 dir = "frontend"
+depends = ["install-ui"]
 run = "bun run check:deps"
 
 [tasks.list-outdated-ui-dependencies]
@@ -711,6 +721,7 @@ bun run add:component "$@"
 [tasks.format-check-ui]
 description = "Check UI formatting"
 dir = "frontend"
+depends = ["install-ui"]
 run = "bun run format:check"
 
 [tasks.format-ui]
@@ -721,12 +732,14 @@ run = "bun run format"
 [tasks.lint-ui]
 description = "Lint UI"
 dir = "frontend"
+depends = ["install-ui"]
 run = "bun run lint"
 
 [tasks.typecheck-ui]
 # context: targets=frontend
 description = "Type-check UI"
 dir = "frontend"
+depends = ["install-ui"]
 run = "bun run typecheck"
 
 [tasks.generate-routes]
@@ -737,6 +750,7 @@ run = "bun run generate:routes"
 [tasks.test-ui-unit]
 description = "Run UI unit tests"
 dir = "frontend"
+depends = ["install-ui"]
 run = "bun run test:unit"
 
 [tasks.test-ui-unit-file]
@@ -758,6 +772,7 @@ run = "bun run test:unit:coverage"
 [tasks.build-ui]
 description = "Build UI"
 dir = "frontend"
+depends = ["install-ui"]
 run = "bun run build"
 
 [tasks.test-ui-e2e]

@@ -67,6 +67,17 @@ if (dryRun) {
   if (plan.go.selected) console.log(`go packages: ${plan.go.packages.length} of ${packages.length}`)
   process.exit(0)
 }
+// 検査は別々の mise の実行として並列に起動するので、依存の導入が同時に走らないよう先に一度だけ行う。
+// 導入済みなら setup は何もしない。
+if (gates.some((gate) => gate.layer === 'ui' || gate.layer === 'tools')) {
+  const setup = Bun.spawnSync(['mise', 'run', 'setup'], {
+    cwd: root,
+    stdout: 'inherit',
+    stderr: 'inherit',
+  })
+  if (setup.exitCode !== 0) process.exit(setup.exitCode ?? 1)
+}
+
 // verify と同じく並列に走らせ、出力が混ざらないよう各検査の出力は終わったときにまとめて出す。
 const results = await Promise.all(
   gates.map(async (gate) => {

@@ -1,6 +1,6 @@
 ---
 name: implement-work-item
-description: 選択した作業項目を専用 worktree で実装し、仕様、故障に合う検証、要約への縮約、コミットまで仕上げる。
+description: 選択した作業項目を専用のブランチで実装し、仕様、故障に合う検証、要約への縮約、コミットまで仕上げる。
 ---
 
 # 作業項目の実装
@@ -9,23 +9,27 @@ description: 選択した作業項目を専用 worktree で実装し、仕様、
 規則の形式と判断は、各段階の参照先に従う。
 参照先は通読せず、今回の条件に当たる節を読む。
 
-## 1. 専用の作業場所
+## 1. 作業場所
 
-一つの項目には `work-item/<work-item-id>` ブランチと `.worktrees/<work-item-id>` worktree を使う。
-現在の worktree がそのブランチ専用なら、そのまま使う。
-そうでなければ `git status --short` で既存の変更を確認して保ち、利用者が指定した base、未指定なら現在のブランチから作る。
+一つの項目には `work-item/<work-item-id>` ブランチを使う。
+作業場所は、既定のチェックアウト（リポジトリの根）が空いていればそこにし、使用中のときだけ worktree を作る。
+新しいディレクトリでは Go のビルドと lint のキャッシュが初回だけ効かず、十数秒余計にかかるためである。
 
-```sh
-git worktree add -b work-item/wi-42 .worktrees/wi-42 <base-branch>
-```
+- 現在のチェックアウトがそのブランチを開いていれば、そのまま使う。
+- 既定のチェックアウトが base（利用者が指定したもの、未指定なら `main`）を開き、`git status --short` が空なら、そこでブランチを切る。
 
-ブランチが既に存在し、別の worktree で使用されていなければ接続する。
+  ```sh
+  git switch -c work-item/wi-42
+  ```
 
-```sh
-git worktree add .worktrees/wi-42 work-item/wi-42
-```
+- そうでなければ、既定のチェックアウトの変更には触れず、`.worktrees/` に worktree を作り、依存を入れる。ブランチが既にあり、どこでも開かれていなければ `-b` を付けずに接続する。
 
-`git status --short --branch` でブランチとクリーンな作業場所を確認し、その worktree 内で続ける。
+  ```sh
+  git worktree add -b work-item/wi-42 .worktrees/wi-42 <base-branch>
+  mise -C .worktrees/wi-42 run setup
+  ```
+
+`git status --short --branch` でブランチとクリーンな作業場所を確認し、その作業場所の中で続ける。
 worktree は `.worktrees/` に置き、`/tmp` や `$TMPDIR` へ置かない。
 
 ## 2. 着手前の確認
