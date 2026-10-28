@@ -2,7 +2,8 @@
 
 ## 一次情報
 
-CI で実行するジョブと検査の一次情報は [`.github/workflows/idmagic-ci.yaml`](../../.github/workflows/idmagic-ci.yaml) である。
+push と Pull Request で実行するジョブと検査の一次情報は [`.github/workflows/idmagic-ci.yaml`](../../.github/workflows/idmagic-ci.yaml) である。
+main に対する Go race 検査の定期実行の一次情報は [`.github/workflows/idmagic-race.yaml`](../../.github/workflows/idmagic-race.yaml) である。
 
 ## CI で検証するもの
 
@@ -42,11 +43,19 @@ GitHub Actions の [依存ジョブと `always()` の仕様](https://docs.github
 Go テストが作ったビルド結果を利用し、仕様ジョブでバックエンドを別にコンパイルする費用を避ける。
 手元の `check` は引き続き両方の検査を含む。
 
-CI の Go 全体テストは `mise run test-go` による通常構成とし、race 検査の自動実行はいったん停止している。
-実行履歴や経過日数による切り替えは行わない。
-race の自動実行は、待ち時間と構成の単純さを比較して再導入する。
-手元の `mise run test-go-race` と、race を含む既存のローカル検証タスクは利用できる。
+push と Pull Request の Go 全体テストは `mise run test-go` による通常構成とし、race 検出器を使わない。
+data race の自動検査は、main の全体を `mise run test-go-race` で検査する定期実行だけが担う。
+実行は毎日一回（UTC 18:17）と手動の起動（`workflow_dispatch`）で、実行履歴や経過日数による切り替えは行わない。
+構成は Go 全体テストと同じく DB を必須にし、検証の証拠を失敗時も artifact として残す。
 通常テストの成功は data race を検査した証拠にはしない。
+
+定期実行が失敗すると、GitHub は cron を最後に変更した利用者へ通知する。
+data race は実行のたびに現れるとは限らないので、次の順で原因を探す。
+
+1. 失敗した実行の artifact とログから、`DATA RACE` を報告したパッケージとテストを特定する。
+2. 失敗した実行と、直前に成功した実行の、それぞれのコミットを Actions の実行一覧で確かめる。原因はその範囲にある。
+3. 手元で、該当パッケージを race 検出器付きで実行して再現する（`mise run test-go-package -- <package>`）。一度で現れなければ、繰り返し実行する。
+4. 再現したら範囲を二分して原因のコミットを特定し、通常の作業項目として直す。
 
 既存バージョン API との互換性は[公開状態](release.md#公開状態と日常開発)に応じて検査する。
 初回公開前は互換性比較を省略し、公開後は破壊的変更を拒否する。

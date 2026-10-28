@@ -1,0 +1,49 @@
+name: IdMagic race
+
+# main の全体を race 検出器付きで検査する唯一の自動実行。push と PR の CI（idmagic-ci.yaml）は
+# 待ち時間を増やさないよう通常のビルドだけを使い、data race はここが拾う。
+# 失敗は、GitHub が定期実行の失敗を cron を最後に変更した利用者へ通知する既定の経路で届く。
+# 原因の探し方は docs/development/continuous-integration.md が定める。
+on:
+  schedule:
+    # 毎日 UTC 18:17（日本時間 3:17）。混雑する毎時 0 分を避ける。
+    - cron: "17 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: idmagic-race
+  cancel-in-progress: false
+
+jobs:
+  go-race:
+    name: Test Go with the race detector
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VERIFICATION_REQUIRE_DB: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.18
+      - name: Install dependencies
+        run: mise run setup-tools
+      - name: Test Go with the race detector
+        run: mise run test-go-race
+      - name: Publish verification results
+        if: ${{ !cancelled() }}
+        run: mise run report-verification -- .verification/test-go-race.json
+      - name: Upload verification evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: race-verification-evidence
+          path: .verification/
+          include-hidden-files: true
+          if-no-files-found: error
