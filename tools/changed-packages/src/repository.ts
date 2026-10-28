@@ -1,6 +1,9 @@
 /** Read the Go package graph and the changed paths of a Git workspace. */
 
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { type GoPackage, parseGoList } from './changed-packages.ts'
+import { type MiseChange, miseChange } from './mise-change.ts'
 
 function run(root: string, command: string[]): string {
   const result = Bun.spawnSync(command, { cwd: root, stderr: 'pipe' })
@@ -53,4 +56,17 @@ export function commit(root: string, revision: string): string {
 
 export function mergeBase(root: string, left: string, right: string): string {
   return run(root, ['git', 'merge-base', left, right]).trim()
+}
+
+/** to を省略した場合は、ステージの状態ではなく実際の作業ツリーを読む。 */
+export function readMiseChange(root: string, from: string, to?: string): MiseChange {
+  try {
+    const before = run(root, ['git', 'show', `${from}:mise.toml`])
+    const after = to
+      ? run(root, ['git', 'show', `${to}:mise.toml`])
+      : readFileSync(join(root, 'mise.toml'), 'utf8')
+    return miseChange(before, after)
+  } catch {
+    return { all: true, reasons: ['mise.toml cannot be read on both sides'], layers: [] }
+  }
 }

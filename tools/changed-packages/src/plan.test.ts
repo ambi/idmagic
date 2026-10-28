@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import type { GoPackage } from './changed-packages.ts'
+import { miseChange } from './mise-change.ts'
 import { intersectPlans, planChange } from './plan.ts'
 
 const PACKAGES: GoPackage[] = [
@@ -45,6 +46,50 @@ describe('planChange', () => {
       go: [],
       ui: false,
       tools: false,
+    })
+  })
+
+  it('mise のタスク変更と通常のファイル変更の影響を合成する', () => {
+    const before = '[tasks.deploy]\nrun = "old"'
+    const after = '[tasks.deploy]\nrun = "new"'
+    const change = miseChange(before, after)
+    expect(selected(planChange(['mise.toml'], PACKAGES, change))).toEqual({
+      check: true,
+      go: [],
+      ui: false,
+      tools: false,
+    })
+    expect(
+      selected(
+        planChange(['mise.toml', 'backend/jobs/run.go', 'frontend/src/App.tsx'], PACKAGES, change),
+      ),
+    ).toEqual({
+      check: true,
+      go: ['app/jobs'],
+      ui: true,
+      tools: false,
+    })
+  })
+
+  it('Go のタスク変更では全パッケージを選ぶ', () => {
+    const change = miseChange('[tasks.test-go]\nrun = "old"', '[tasks.test-go]\nrun = "new"')
+    const plan = planChange(['mise.toml'], PACKAGES, change)
+    expect(plan.go.all).toBe(true)
+    expect(selected(plan)).toEqual({
+      check: true,
+      go: ['app/domain', 'app/handlers', 'app/jobs'],
+      ui: false,
+      tools: false,
+    })
+  })
+
+  it('mise の限定判定があっても別の未知のパスは全層へ戻す', () => {
+    const change = miseChange('', '')
+    expect(selected(planChange(['mise.toml', '.unknown'], PACKAGES, change))).toEqual({
+      check: true,
+      go: ['app/domain', 'app/handlers', 'app/jobs'],
+      ui: true,
+      tools: true,
     })
   })
 })

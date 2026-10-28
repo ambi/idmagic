@@ -5,6 +5,7 @@
  */
 
 import { type GoPackage, goImpact } from './changed-packages.ts'
+import type { Layer, MiseChange } from './mise-change.ts'
 
 export type Decision = { selected: boolean; reasons: string[] }
 export type GoDecision = Decision & { all: boolean; packages: string[] }
@@ -29,17 +30,31 @@ function decision(selected: boolean, reasons: string[]): Decision {
 }
 
 /** The layers one change set needs. `check` reads the whole repository and is cheap. */
-export function planChange(files: readonly string[], packages: readonly GoPackage[]): Plan {
-  const unowned = files
+export function planChange(
+  files: readonly string[],
+  packages: readonly GoPackage[],
+  mise?: MiseChange,
+): Plan {
+  const taskChange = files.includes('mise.toml') && mise?.all === false ? mise : undefined
+  const paths = taskChange ? files.filter((path) => path !== 'mise.toml') : files
+  const unowned = paths
     .filter((path) => !OWNED.some((prefix) => path.startsWith(prefix)))
     .map((path) => `${path} is outside every layer`)
   /** A layer that owns a prefix runs when a path under it, or a path no layer owns, changes. */
-  const owning = (prefix: string): Decision => {
-    const touched = files.find((path) => path.startsWith(prefix))
+  const owning = (layer: Layer, prefix: string): Decision => {
+    const touched = paths.find((path) => path.startsWith(prefix))
     if (unowned.length > 0) return decision(true, unowned)
+    if (taskChange?.layers.includes(layer))
+      return decision(true, [`mise.toml changes tasks reached by ${layer} checks`])
     return decision(touched !== undefined, [`${touched} changed`])
   }
-  const impact = goImpact(files, packages)
+  const impact = taskChange?.layers.includes('go')
+    ? {
+        all: true,
+        packages: packages.map((one) => one.importPath).sort(),
+        reasons: ['mise.toml changes tasks reached by go checks'],
+      }
+    : goImpact(paths, packages)
   return {
     check: decision(files.length > 0, [`${files.length} changed path(s)`]),
     go: {
@@ -50,8 +65,8 @@ export function planChange(files: readonly string[], packages: readonly GoPackag
       all: impact.all,
       packages: impact.packages,
     },
-    ui: owning('frontend/'),
-    tools: owning('tools/'),
+    ui: owning('ui', 'frontend/'),
+    tools: owning('tools', 'tools/'),
   }
 }
 

@@ -22,7 +22,14 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { gatesFor } from './gates.ts'
 import { type Plan, intersectPlans, planChange } from './plan.ts'
-import { changedBetween, changedSince, commit, goPackages, mergeBase } from './repository.ts'
+import {
+  changedBetween,
+  changedSince,
+  commit,
+  goPackages,
+  mergeBase,
+  readMiseChange,
+} from './repository.ts'
 
 const root = resolve(import.meta.dir, '../../..')
 const args = process.argv.slice(2)
@@ -32,13 +39,16 @@ const packages = goPackages(root)
 
 function select(): { plan: Plan; inputs: Record<string, string[]> } {
   if (mode === 'changed') {
-    const files = changedSince(root, revision || 'main')
-    return { plan: planChange(files, packages), inputs: { changed: files } }
+    const base = mergeBase(root, revision || 'main', 'HEAD')
+    const files = changedSince(root, base)
+    const mise = files.includes('mise.toml') ? readMiseChange(root, base) : undefined
+    return { plan: planChange(files, packages, mise), inputs: { changed: files } }
   }
   if (mode === 'integration' && revision) {
     const source = commit(root, revision)
     const result = commit(root, rebased || 'HEAD')
-    const own = changedBetween(root, mergeBase(root, source, result), source)
+    const base = mergeBase(root, source, result)
+    const own = changedBetween(root, base, source)
     const incoming = [
       ...new Set([
         ...changedBetween(root, source, result),
@@ -46,7 +56,20 @@ function select(): { plan: Plan; inputs: Record<string, string[]> } {
       ]),
     ]
     return {
-      plan: intersectPlans(planChange(own, packages), planChange(incoming, packages)),
+      plan: intersectPlans(
+        planChange(
+          own,
+          packages,
+          own.includes('mise.toml') ? readMiseChange(root, base, source) : undefined,
+        ),
+        planChange(
+          incoming,
+          packages,
+          incoming.includes('mise.toml')
+            ? readMiseChange(root, source, rebased ? result : undefined)
+            : undefined,
+        ),
+      ),
       inputs: { source: own, incoming },
     }
   }
