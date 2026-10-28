@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { resolve } from 'node:path'
-import { directTasks, parseMiseTasks } from './verification-tasks.ts'
+import { directTasks, parseMiseTasks } from '../src/verification-tasks.ts'
 
 type MiseConfig = {
   tools?: Record<string, unknown>

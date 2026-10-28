@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import MarkdownIt from 'markdown-it'
 import { markdownAnchors } from '../../check/src/markdown-links.ts'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
-import { deriveContext } from './context.ts'
+import { deriveContext } from '../src/context.ts'
 
 const root = resolve(import.meta.dir, '../../..')
 const markdown = new MarkdownIt({ html: true })

@@ -139,44 +139,7 @@ const minimalRecord = (title: string, status = 'pending') =>
   ].join('\n')
 
 describe('checkWorkItems', () => {
-  it('同じ機能追加の記録を未公開では通し、公開後は告知不足で拒否する', async () => {
-    const root = await unpublishedWorkspace()
-    await mkdir(join(root, 'work-items', 'active'), { recursive: true })
-    await mkdir(join(root, 'docs'), { recursive: true })
-    await mkdir(join(root, 'spec', 'generated', 'openapi'), { recursive: true })
-    await writeFile(join(root, 'docs', 'feature.md'), '### REQ-SYSTEM-001: 機能の規則\n')
-    await writeFile(join(root, 'spec', 'idmagic.openapi.baseline.json'), '{"paths":{}}')
-    await writeFile(join(root, 'spec', 'generated', 'openapi', 'current.json'), '{"paths":{}}')
-    const metadata = [
-      'evidence_policy: risk-based-v4',
-      'initial_context: { specification: [], typespec: [], source: [], tests: [], stop_before_reading: [] }',
-      'documentation_impact: { level: none, reason: "初回公開前であり、利用者向けの告知差分はない。", references: [] }',
-      'affected_spec: [{ path: docs/feature.md, requirement: REQ-SYSTEM-001 }]',
-      'primary_use_cases:',
-      '  - id: feature',
-      '    requirement: REQ-SYSTEM-001',
-      '    observable_result: 機能の結果を観測できる。',
-      '    boundary: unit',
-      '    test: { path: backend/feature_test.go, name: TestFeature, task: test-go-race }',
-      '    fault_model: 機能を実行しない。',
-    ].join('\n')
-    const source = minimalRecord('機能追加', 'in_progress')
-      .replace('change_kind: tooling', 'change_kind: feature')
-      .replace('---\n\n#', `${metadata}\n---\n\n#`)
-    await writeFile(join(root, 'work-items', 'active', 'wi-40318-feature.md'), source)
-
-    const before = await checkWorkItems(createWorkspaceSnapshot(root))
-    expect(before).toEqual({ ok: true, lines: ['ok  1 work-item dependency record(s)'] })
-
-    await writeFile(join(root, 'spec', 'release-state.json'), '{"phase":"published"}')
-    const after = await checkWorkItems(createWorkspaceSnapshot(root))
-    expect(after.ok).toBe(false)
-    expect(after.lines).toEqual([
-      'work-items/active/wi-40318-feature.md: documentation_impact none is weaker than inferred release_note',
-    ])
-  })
-
-  it('公開状態が欠落している workspace を告知免除にしない', async () => {
+  it('公開状態が欠落している workspace を成熟度の検査から免除しない', async () => {
     const root = await unpublishedWorkspace()
     await mkdir(join(root, 'work-items'), { recursive: true })
     await rm(join(root, 'spec', 'release-state.json'))
@@ -282,14 +245,9 @@ describe('checkWorkItems', () => {
     })
   })
 
-  it('公開後の改名で、取り除いた宣言の告知を旧名を挙げる記録だけに求める', async () => {
-    const impactNone =
-      'documentation_impact: { level: none, reason: "利用者向けの告知差分はない。", references: [] }'
+  it('改名で取り除いた宣言を、旧名として挙げる参照を受け入れる', async () => {
     const withMetadata = (title: string, metadata: string[]) =>
-      minimalRecord(title, 'in_progress').replace(
-        '---\n\n#',
-        `${[impactNone, ...metadata].join('\n')}\n---\n\n#`,
-      )
+      minimalRecord(title, 'in_progress').replace('---\n\n#', `${metadata.join('\n')}\n---\n\n#`)
     const root = await committedWorkspace({
       // 仕様の差分は docs と spec の両方を読むので、docs が欠けると差分を取れない。
       'docs/README.md': '# Docs\n',
@@ -315,9 +273,7 @@ describe('checkWorkItems', () => {
 
     const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
 
-    expect(outcome.lines).toEqual([
-      'work-items/active/wi-10007-rename.md: documentation_impact none is weaker than inferred removal_notice',
-    ])
+    expect(outcome).toEqual({ ok: true, lines: ['ok  2 work-item dependency record(s)'] })
   })
 
   it('旧配置と status に反するディレクトリを拒否する', async () => {

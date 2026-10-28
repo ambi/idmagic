@@ -1,16 +1,12 @@
 import { basename } from 'node:path'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { readReleasePhase } from './release-state.ts'
-import { compareOpenApi, type JsonSchema } from './api-compat.ts'
 import { isArchived, missingArchivedRevisions, verifyArchivedShape } from './archived-work-item.ts'
 import {
-  addedSpecificationElements,
-  claimsSpecificationElement,
   diffFeatureMaturities,
-  type DocumentationImpactEnvironment,
-  removedSpecificationElements,
-  verifyDocumentationImpact,
-} from './documentation-impact.ts'
+  type MaturityEnvironment,
+  verifyMaturityPromotions,
+} from './maturity-promotion.ts'
 import { validateMarkdownRecord } from './work-item-markdown.ts'
 import type { PrimaryUseCaseEnvironment } from './primary-use-case-evidence.ts'
 import { verifyPrimaryUseCaseEvidence } from './primary-use-case-evidence.ts'
@@ -29,7 +25,7 @@ import {
   verifyWorkItemIdentifiers,
 } from './work-item-dependencies.ts'
 import type { ReferenceEnvironment } from './work-item-references.ts'
-import { verifyWorkItemReferences } from './work-item-references.ts'
+import { removedSpecificationElements, verifyWorkItemReferences } from './work-item-references.ts'
 
 export type ParsedWorkItem = {
   id: string
@@ -112,24 +108,17 @@ function revisionFile(snapshot: WorkspaceSnapshot, ref: string, path: string): s
   return result.exitCode === 0 ? result.stdout.toString() : ''
 }
 
-function specificationElementsClaimed(
-  elements: readonly string[],
-  changed: ReadonlySet<string> | undefined,
-  records: readonly ParsedWorkItem[],
-): boolean {
-  if (elements.length === 0 || changed === undefined) return false
-  return records.some(
-    (record) =>
-      changed.has(record.id) &&
-      record.data !== undefined &&
-      claimsSpecificationElement(record.data, elements),
-  )
-}
-
-function referenceEnvironment(
-  snapshot: WorkspaceSnapshot,
-  diff: SpecificationDiff,
-): ReferenceEnvironment {
+/**
+ * 記録の参照を解決する環境。規範要素を取り除くか改名する記録は旧名を名指すので、
+ * 基準からの仕様差分がその削除を持つ間は解決できなくても受け入れる。
+ */
+async function referenceEnvironment(snapshot: WorkspaceSnapshot): Promise<ReferenceEnvironment> {
+  let diff: SpecificationDiff = diffSpecifications(new Map(), new Map())
+  try {
+    diff = await diffWorkspaceSpecifications(snapshot.root)
+  } catch {
+    // 最小 fixture は Git 履歴や仕様文書を持たない。
+  }
   return {
     exists: (path) => snapshot.exists(path),
     read: (path) => (snapshot.exists(path) ? snapshot.readSync(path) : undefined),
@@ -137,46 +126,19 @@ function referenceEnvironment(
   }
 }
 
-async function documentationImpactEnvironment(
+async function maturityEnvironment(
   snapshot: WorkspaceSnapshot,
-  records: readonly ParsedWorkItem[],
   changed: ReadonlySet<string> | undefined,
-): Promise<DocumentationImpactEnvironment> {
-  const releasePhase = await readReleasePhase(snapshot)
+): Promise<MaturityEnvironment> {
   const featureRegistryPath = 'backend/cmd/internal/bootstrap/features.go'
-  let specificationDiff = diffSpecifications(new Map(), new Map())
-  try {
-    specificationDiff = await diffWorkspaceSpecifications(snapshot.root)
-  } catch {
-    // 最小 fixture は Git 履歴や仕様文書を持たない。
-  }
-  let breakingApiChanges: string[] = []
-  if (releasePhase === 'published') {
-    breakingApiChanges = compareOpenApi(
-      JSON.parse(await snapshot.read(await snapshot.openApiBaseline())) as JsonSchema,
-      JSON.parse(await snapshot.read(await snapshot.generatedOpenApi())) as JsonSchema,
-    ).map((finding) => `${finding.operation}: ${finding.message}`)
-  }
   return {
-    releasePhase,
+    releasePhase: await readReleasePhase(snapshot),
     read: (path) => (snapshot.exists(path) ? snapshot.readSync(path) : undefined),
-    specificationDiff,
     changedRecords: changed,
-    specificationAdditionsClaimed: specificationElementsClaimed(
-      addedSpecificationElements(specificationDiff),
-      changed,
-      records,
-    ),
-    specificationRemovalsClaimed: specificationElementsClaimed(
-      removedSpecificationElements(specificationDiff),
-      changed,
-      records,
-    ),
     maturityChanges: diffFeatureMaturities(
       revisionFile(snapshot, 'main', featureRegistryPath),
       snapshot.exists(featureRegistryPath) ? snapshot.readSync(featureRegistryPath) : '',
     ),
-    breakingApiChanges,
   }
 }
 
@@ -196,17 +158,17 @@ export async function verifyCompletion(
   )
   const findings = result.findings.map((finding) => finding.message)
   if (!result.data) return findings
-  const parsed = await loadWorkItems(snapshot)
-  const changed = changedWorkItemRecords(snapshot)
-  const documentationEnvironment = await documentationImpactEnvironment(snapshot, parsed, changed)
-  const repository = referenceEnvironment(snapshot, documentationEnvironment.specificationDiff)
+  const repository = await referenceEnvironment(snapshot)
   findings.push(
     ...verifyWorkItemReferences(result.data, repository),
     ...verifyPrimaryUseCaseEvidence(result.data, {
       read: repository.read,
       requiredTasks: await requiredVerificationTasks(snapshot),
     }),
-    ...verifyDocumentationImpact(result.data, documentationEnvironment),
+    ...verifyMaturityPromotions(
+      result.data,
+      await maturityEnvironment(snapshot, changedWorkItemRecords(snapshot)),
+    ),
   )
   if (findings.length === 0) {
     const impact = await checkSpecImpact(
@@ -236,8 +198,8 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
       )
     }
   }
-  const documentationEnvironment = await documentationImpactEnvironment(snapshot, parsed, changed)
-  const repository = referenceEnvironment(snapshot, documentationEnvironment.specificationDiff)
+  const repository = await referenceEnvironment(snapshot)
+  const maturity = await maturityEnvironment(snapshot, changed)
   const primaryEnvironment: PrimaryUseCaseEnvironment = {
     read: repository.read,
     requiredTasks: await requiredVerificationTasks(snapshot),
@@ -271,7 +233,7 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
       ...verifyPrimaryUseCaseEvidence(record.data, primaryEnvironment).map(
         (finding) => `${record.path}: ${finding}`,
       ),
-      ...verifyDocumentationImpact(record.data, documentationEnvironment).map(
+      ...verifyMaturityPromotions(record.data, maturity).map(
         (finding) => `${record.path}: ${finding}`,
       ),
     )

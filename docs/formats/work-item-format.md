@@ -31,11 +31,6 @@ created_at: 2026-01-01
 priority: p1
 depends_on: []
 change_kind: feature
-documentation_impact: # 公開後に着手する項目では必須
-  level: release_note
-  reason: 新たにサポートする機能をリリースの読者へ知らせる必要がある。
-  references:
-    - { kind: release_note, path: docs/releases/changes/wi-<number>-start-task.md }
 affected_spec:
   - { path: docs/modules/system/features/operations.md, requirement: REQ-SYSTEM-001 }
   - { path: spec/modules/system/main.tsp, symbol: Product.System.Operations.StartTask }
@@ -169,24 +164,7 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 手順と制約は[設計ガイドライン](../design/application/design-guidelines.md#境界を選ぶ判断手順)が定める。
 境界を変えない局所的な変更には、この記録を求めない。
 
-## 文書影響と成熟度
-
-[公開状態](../development/release.md#公開状態と日常開発)が `published` の間に着手する作業項目は、`documentation_impact` を一つ宣言し、完了まで同じ構造化フィールドを保つ。初回公開前は宣言しない。
-`level` には `none`、`release_note`、`upgrade_note`、`deprecation_notice`、`removal_notice` のいずれかを指定する。
-`none` には具体的な理由が必要であり、リリース文書への参照を含めない。
-それ以外の水準では、実装前にリリース文書の予定パスを宣言する。
-完了時には、そのパスが存在し、作業項目名を記載し、`affected_spec` の要件または TypeSpec のシンボルへリンクしていなければならない。
-リリース文書のファイル名には、識別番号とケバブケースの題名を含む作業項目の完全なファイル名から、拡張子を除いた部分を使う。
-たとえば、`work-items/active/wi-<number>-start-task.md` のリリースノートには `docs/releases/changes/wi-<number>-start-task.md`、アップグレードノートには `docs/releases/upgrades/wi-<number>-start-task.md` を使う。
-既存のリリース文書は、対応する作業項目が完了したときの名前を保つ。
-この規則へ合わせるためだけに過去の記録を改名しない。
-`upgrade_note`、`deprecation_notice`、`removal_notice` では、注目すべき差分と、必要な操作または互換性情報を読者へ示すため、両方の種類の文書が必要になる。
-検査は、変更種別、規範仕様の差分、TypeSpec の非推奨指定、機能レジストリの成熟度の差分から最低水準を導く。
-規範要素の追加と除去による水準は、その要素を `affected_spec` に挙げる記録だけに求める。
-変更された記録のどれもその要素を挙げていなければ、差分を持つすべての記録に求める。
-作成者は最低水準より強い水準を選べるが、弱い水準は選べない。
-
-明示的に宣言した告知文書への参照は公開状態によらず検査する。
+## 成熟度の昇格
 
 機能レジストリの差分で `experimental` から `preview`、または `preview` から `supported` へ昇格する場合は、完了の前に、昇格した機能ごとの `maturity_evidence` も記録する。
 各項目には、正確な遷移、セキュリティ検査の結果、互換性情報または移行情報を書く。

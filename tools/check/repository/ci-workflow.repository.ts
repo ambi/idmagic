@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { resolve } from 'node:path'
-import { selectChecks } from './registry.ts'
-import { taskClosure } from './verification-tasks.ts'
+import { selectChecks } from '../src/registry.ts'
+import { taskClosure } from '../src/verification-tasks.ts'
 import { planCI } from '../../verification/src/ci-plan.ts'
 
 const root = resolve(import.meta.dir, '../../..')

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'bun:test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { missingArchivedRevisions } from './archived-work-item.ts'
 import { checkWorkItems } from './check-work-items.ts'
@@ -59,12 +59,21 @@ describe('archived work items', () => {
     expect(outcome.lines.join('\n')).toContain('archived record must be completed or cancelled')
   })
 
-  it('reports a revision that does not hold the full record', () => {
-    const root = resolve(import.meta.dir, '../../..')
-    const head = Bun.spawnSync(['git', 'rev-parse', 'HEAD'], { cwd: root }).stdout.toString().trim()
+  it('reports a revision that does not hold the full record', async () => {
+    const root = await workspaceWith('wi-10003-kept.md', archived('status: completed'))
+    const git = (...args: string[]) =>
+      Bun.spawnSync(['git', '-c', 'user.name=t', '-c', 'user.email=t@example.test', ...args], {
+        cwd: root,
+      })
+        .stdout.toString()
+        .trim()
+    git('init', '-q')
+    git('add', '.')
+    git('commit', '-q', '-m', 'records')
+    const head = git('rev-parse', 'HEAD')
     expect(
       missingArchivedRevisions(root, [
-        { path: 'AGENTS.md', revision: head },
+        { path: 'work-items/done/wi-10003-kept.md', revision: head },
         { path: 'work-items/done/wi-10004-missing.md', revision: head },
       ]),
     ).toEqual([

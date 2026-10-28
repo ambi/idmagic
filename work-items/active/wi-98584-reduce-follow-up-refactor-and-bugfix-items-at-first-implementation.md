@@ -9,10 +9,6 @@ depends_on: []
 change_kind: tooling
 spec_impact: { kind: none, reason: "作業項目を実装するときの手順、検査、スキルを改善するだけで、製品の振る舞いは変えない。" }
 evidence_policy: risk-based-v4
-documentation_impact:
-  level: none
-  reason: "開発時の設計とテストの判断手順を改善する。製品の公開契約、既存データ、成熟度は変えない。"
-  references: []
 initial_context:
   specification:
     - docs/design/application/design-guidelines.md

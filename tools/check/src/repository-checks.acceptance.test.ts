@@ -131,25 +131,6 @@ async function checkTerminology(root: string): Promise<{ code: number; output: s
   return { code, output: `${stdout}${stderr}` }
 }
 
-/** work item 参照の検査を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
-async function checkWorkItemReferences(root: string): Promise<{ code: number; output: string }> {
-  const proc = Bun.spawn(
-    ['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), 'work-item-references'],
-    {
-      cwd: TOOLS_DIR,
-      env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
-  )
-  const [stdout, stderr, code] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ])
-  return { code, output: `${stdout}${stderr}` }
-}
-
 /** work item 検査を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
 async function checkWorkItems(root: string): Promise<{ code: number; output: string }> {
   const proc = Bun.spawn(['bun', 'run', resolve(TOOLS_DIR, 'check/src/runner.ts'), 'work-items'], {
@@ -426,61 +407,6 @@ The fixture must remain otherwise valid.
     expect(result.output).toContain(`duplicate work item '${name.replace(/\.md$/, '')}'`)
   })
 
-  it('rejects completing an item whose declared release note is missing', async () => {
-    const root = await workspace()
-    await mkdir(join(root, 'work-items', 'active'), { recursive: true })
-    await writeFile(
-      join(root, 'work-items', 'active', 'wi-452-missing-release-note.md'),
-      `---
-status: in_progress
-authors: [tn]
-risk: low
-created_at: 2026-08-31
-depends_on: []
-change_kind: tooling
-spec_impact: { kind: none, reason: "The fixture changes repository tooling only." }
-documentation_impact:
-  level: release_note
-  reason: The declared release note must exist when the item is complete.
-  references:
-    - { kind: release_note, path: docs/releases/changes/wi-452-missing-release-note.md }
----
-
-# Missing required release note
-
-## Motivation
-
-Exercise the documentation gate.
-
-## Scope
-
-- Work item validation
-
-## Out of Scope
-
-- Product behavior
-
-## Verification
-
-- mise run verify
-
-## Risk Notes
-
-The gate must reject an absent document.
-
-## 要約
-
-The fixture declares a release note that is absent.
-`,
-    )
-
-    const result = await completeWorkItem(root, 'wi-452')
-    expect(result.code).not.toBe(0)
-    expect(result.output).toContain(
-      'documentation reference does not exist: docs/releases/changes/wi-452-missing-release-note.md',
-    )
-  })
-
   it('rejects an applicable in-progress item without a primary-use-case plan', async () => {
     const root = await workspace()
     await mkdir(join(root, 'work-items', 'active'), { recursive: true })
@@ -496,11 +422,6 @@ created_at: 2026-08-30
 depends_on: []
 change_kind: feature
 evidence_policy: risk-based-v4
-documentation_impact:
-  level: release_note
-  reason: The planned feature is noteworthy to release readers.
-  references:
-    - { kind: release_note, path: docs/releases/changes/wi-439-missing-primary-use-case.md }
 initial_context:
   source: [docs/modules/demo/features/run.md]
 affected_spec:
@@ -671,29 +592,6 @@ describe('用語検査', () => {
 
     expect(result.code).toBe(0)
     expect(result.output).toContain('ok  terminology')
-  })
-})
-
-describe('現在状態の文書からの work item 参照の検査', () => {
-  it('設計文書の work item 参照を、位置つきで拒否する', async () => {
-    const root = await workspace()
-    await writeFile(
-      join(root, 'docs', 'design', 'architecture', 'deployment.md'),
-      '# 概要\n\n試験は [wi-165](../../work-items/wi-165-ha.md) が扱う。\n',
-    )
-
-    const result = await checkWorkItemReferences(root)
-
-    expect(result.code).not.toBe(0)
-    expect(result.output).toContain('docs/design/architecture/deployment.md:3:6')
-    expect(result.output).toContain('wi-165')
-  })
-
-  it('work item を参照しない作業ツリーを通す', async () => {
-    const result = await checkWorkItemReferences(await workspace())
-
-    expect(result.code).toBe(0)
-    expect(result.output).toContain('ok  work-item-references')
   })
 })
 

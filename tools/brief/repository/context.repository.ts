@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'bun:test'
 import { resolve } from 'node:path'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
-import { deriveContext, measureCandidates, neighborCandidates, renderContext } from './context.ts'
+import {
+  deriveContext,
+  measureCandidates,
+  neighborCandidates,
+  renderContext,
+} from '../src/context.ts'
 
 const root = resolve(import.meta.dir, '../../..')
 const workspace = () => createWorkspaceSnapshot(root)

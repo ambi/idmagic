@@ -2,7 +2,7 @@ import { afterEach, expect, it } from 'bun:test'
 import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import type { CIPlan } from './ci-plan.ts'
+import type { CIPlan } from '../src/ci-plan.ts'
 
 const roots: string[] = []
 const repository = resolve(import.meta.dir, '../../..')
@@ -35,12 +35,15 @@ async function workspace() {
 }
 
 async function run(root: string, ...args: string[]) {
-  const child = Bun.spawn([process.execPath, resolve(import.meta.dir, 'ci-main.ts'), ...args], {
-    cwd: root,
-    env: { ...process.env, GITHUB_OUTPUT: '', GITHUB_STEP_SUMMARY: '' },
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
+  const child = Bun.spawn(
+    [process.execPath, resolve(import.meta.dir, '../src/ci-main.ts'), ...args],
+    {
+      cwd: root,
+      env: { ...process.env, GITHUB_OUTPUT: '', GITHUB_STEP_SUMMARY: '' },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  )
   const output = await new Response(child.stdout).text()
   const error = await new Response(child.stderr).text()
   expect(await child.exited, error).toBe(0)

@@ -1,7 +1,12 @@
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { agentGuidanceFiles, verifyAgentGuidance } from './agent-guidance.ts'
-import { taskNames } from './command-map.ts'
 import type { CheckOutcome } from './runner.ts'
+
+/** mise.toml が宣言するタスクの名前。 */
+function taskNames(miseToml: string): Set<string> {
+  const document = Bun.TOML.parse(miseToml) as { tasks?: Record<string, unknown> }
+  return new Set(Object.keys(document.tasks ?? {}))
+}
 
 export async function checkAgentGuidance(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
   const documents = await Promise.all(

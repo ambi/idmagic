@@ -176,6 +176,18 @@ mise run -c \
   lint-tools
 '''
 
+# tools のテストのうち、実リポジトリの文書や設定を入力にするものは `*.repository.ts` として
+# `tools/*/repository/` に置く。`bun test` の走査は拾わないので、リポジトリ全体を入力とする
+# `check` から明示して実行し、`test-tools` を文書や設定だけの変更から切り離す。
+[tasks.check-repository-tests]
+description = "Run tooling tests that read the repository's own documents and configuration"
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+bun test $(fd -e ts -g '*.repository.ts' . --exclude node_modules | sed 's#^#./#')
+'''
+
 [tasks.test-tools]
 description = "Run embedded repository tooling tests"
 dir = "tools"
@@ -748,7 +760,8 @@ mise run -c --skip-deps \
   check-repository ${1:+"$1"} ::: \
   check-config-reference ::: \
   check-route-reference ::: \
-  check-gateway-routes
+  check-gateway-routes ::: \
+  check-repository-tests
 '''
 
 [tasks.check-repository]
@@ -788,11 +801,6 @@ run = "bun run check/src/runner.ts links"
 description = "Check design documents against the adopted terminology"
 dir = "tools"
 run = "bun run check/src/runner.ts terminology"
-
-[tasks.check-work-item-references]
-description = "Reject work item references in current-state documents"
-dir = "tools"
-run = "bun run check/src/runner.ts work-item-references"
 
 [tasks.check-security-controls]
 description = "Reject guards that cannot refuse and declared refusals no test names"
@@ -840,20 +848,10 @@ description = "Check that every declared error code and domain event appears in 
 dir = "tools"
 run = "bun run check/src/runner.ts unspecified-vocabulary"
 
-[tasks.check-slo-references]
-description = "Check that monitoring assets name declared service level objectives"
-dir = "tools"
-run = "bun run check/src/runner.ts slo-references"
-
 [tasks.check-schema-tables]
 description = "Check the table descriptions in the database design against the schema"
 dir = "tools"
 run = "bun run check/src/runner.ts schema-tables"
-
-[tasks.check-command-map]
-description = "Check workflow calls against mise tasks"
-dir = "tools"
-run = "bun run check/src/runner.ts command-map"
 
 [tasks.check-agent-guidance]
 # context: targets=.agents,AGENTS.md,tools/check/src/agent-guidance.ts

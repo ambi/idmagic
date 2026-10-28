@@ -3,8 +3,6 @@ import { checkAgentGuidance } from './check-agent-guidance.ts'
 import { checkApiCompat, checkPublishedApiCompat } from './check-api-compat.ts'
 import { checkBoundaries } from './check-boundaries.ts'
 import { checkBoundaryDebtRatchet } from './boundary-debt-ratchet.ts'
-import { checkCommandMap } from './check-command-map.ts'
-import { checkDocsWorkItemLinks } from './check-docs-work-item-links.ts'
 import { checkDocumentLayout } from './check-document-layout.ts'
 import { checkContractDrift } from './check-contract-drift.ts'
 import { checkOperationReferences } from './check-operation-references.ts'
@@ -18,11 +16,11 @@ import { checkSchemaTables } from './check-schema-tables.ts'
 import { checkSecurityControls } from './check-security-controls.ts'
 import { checkSpecificationRules } from './check-specification-rules.ts'
 import { checkStateMachines } from './check-state-machines.ts'
-import { checkSloReferences } from './check-slo-references.ts'
 import { checkSpecImpact } from './check-spec-impact.ts'
 import { checkStatusDrift } from './check-status-drift.ts'
 import { checkTerminology } from './check-terminology.ts'
 import { checkTestDocumentReads } from './test-document-reads.ts'
+import { checkToolTestInputs } from './tool-test-inputs.ts'
 import { checkUnspecifiedVocabulary } from './check-unspecified-vocabulary.ts'
 import { checkVulnerabilitySuppressions } from './check-vulnerability-suppressions.ts'
 import { checkWorkItems } from './check-work-items.ts'
@@ -39,12 +37,11 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'spec-impact', groups: ['all'], run: checkSpecImpact },
   { name: 'links', groups: ['all'], run: checkLinks },
   { name: 'terminology', groups: ['all'], run: checkTerminology },
-  { name: 'work-item-references', groups: ['all'], run: checkDocsWorkItemLinks },
   { name: 'boundaries', groups: ['all'], run: checkBoundaries },
   { name: 'module-dependencies', groups: ['all'], run: checkModuleDependencies },
   { name: 'raw-sql', groups: ['all'], run: checkRawSql },
   { name: 'test-document-reads', groups: ['all'], run: checkTestDocumentReads },
-  { name: 'command-map', groups: ['all'], run: checkCommandMap },
+  { name: 'tool-test-inputs', groups: ['all'], run: checkToolTestInputs },
   { name: 'agent-guidance', groups: ['all'], run: checkAgentGuidance },
   { name: 'admin-scopes', groups: ['all'], run: checkAdminScopes },
   { name: 'contract-drift', groups: ['all'], run: checkContractDrift },
@@ -53,7 +50,6 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'event-contract', groups: ['all'], run: checkEventContract },
   { name: 'security-controls', groups: ['all'], run: checkSecurityControls },
   { name: 'unspecified-vocabulary', groups: ['all'], run: checkUnspecifiedVocabulary },
-  { name: 'slo-references', groups: ['all'], run: checkSloReferences },
   { name: 'schema-tables', groups: ['all'], run: checkSchemaTables },
   {
     name: 'vulnerability-suppressions',

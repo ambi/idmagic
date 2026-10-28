@@ -7,9 +7,54 @@
  * completing record by `move-work-item` before it is collapsed.
  */
 
-import { namesSpecificationElement } from './documentation-impact.ts'
 import { specificationRules } from './feature-specification.ts'
 import { parseScenarioDocument } from './gherkin-scenarios.ts'
+import type { SpecificationDiff } from './spec-diff.ts'
+
+/** 基準からの仕様差分が取り除いた要素を、差分の綴りで返す。 */
+export function removedSpecificationElements(diff: SpecificationDiff): string[] {
+  return [...diff.removedScenarios, ...diff.removedStandards, ...diff.removedDeclarations]
+}
+
+function nonEmpty(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+/**
+ * Whether one reference names one diff element. A scenario row is spelled
+ * `<path>#<id>` and a TypeSpec declaration `<path>:<name>`; both halves are
+ * required, so a record cannot claim a same-named element of another document.
+ */
+function referenceNames(reference: Record<string, unknown>, element: string): boolean {
+  for (const field of ['requirement', 'symbol']) {
+    if (nonEmpty(reference[field]) && reference[field].trim() === element) return true
+  }
+  const row = element.lastIndexOf('#')
+  if (row >= 0) {
+    if (!nonEmpty(reference.path) || !nonEmpty(reference.requirement)) return false
+    return (
+      reference.path.trim() === element.slice(0, row) &&
+      reference.requirement.trim() === element.slice(row + 1)
+    )
+  }
+  const separator = element.lastIndexOf(':')
+  if (separator < 0) return false
+  if (!nonEmpty(reference.path) || !nonEmpty(reference.symbol)) return false
+  return (
+    reference.path.trim() === element.slice(0, separator) &&
+    reference.symbol.trim().split('.').at(-1) === element.slice(separator + 1)
+  )
+}
+
+function namesSpecificationElement(
+  reference: Record<string, unknown>,
+  elements: Iterable<string>,
+): boolean {
+  for (const element of elements) {
+    if (referenceNames(reference, element)) return true
+  }
+  return false
+}
 
 export type WorkItemRecord = {
   status?: unknown

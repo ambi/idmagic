@@ -7,7 +7,7 @@
  * that failed. Both forms are in use, and three consumers need the membership
  * regardless of which form a task chose: the timing table walks it, the
  * primary-use-case checker asks whether a declared test task is reachable from
- * the standard suite, and the command-map tests assert that the parallel and
+ * the standard suite, and the mise configuration tests assert that the parallel and
  * serial suites still carry the same set. Reading only `depends` would report
  * an aggregate written the second way as having no members at all, which is
  * the failure mode that says nothing and passes everything.

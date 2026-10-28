@@ -80,7 +80,6 @@
 | Kubernetes のオーバーレイ | `mise run check-k8s -- dev`、`mise run check-k8s -- prod` | 双方のオーバーレイがレンダリングでき、結果が API スキーマに厳密に適合する |
 | Docker Compose の開発スタック | `mise run check-compose` | 構成が解決でき、参照する環境変数とイメージが揃う |
 | Prometheus の規則、収集エージェントの構成、ダッシュボード、監視のオーバーレイ | `mise run check-monitoring` | 規則と構成が構文として妥当で、ダッシュボードが JSON として読め、監視のオーバーレイがレンダリングできる |
-| 監視資産が名指す `SLO-*` | `mise run check-slo-references` | 規則とダッシュボードが宣言済みの SLO ID だけを名指す |
 | PostgreSQL スキーマの収束 | `mise run check-schema` | 空のデータベースへ適用したあと、再適用が差分を出さない |
 | 固定した第三者イメージ | `mise run check-container-images -- <image...>` | 宣言したダイジェストまたはタグが解決できる |
 | 負荷試験スクリプト | `mise run check-k6` | スクリプトが解析でき、宣言したシナリオと閾値を読み出せる |

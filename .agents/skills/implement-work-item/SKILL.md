@@ -65,7 +65,7 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 
 [証拠の要件](../../../docs/development/specification-first-workflow.md#証拠の要件)から、行う証拠の手順を選ぶ。
 主要ユースケースを要求する作業では、[テスト方針](../../../docs/development/testing.md#主要ユースケース)から観測結果、`fault_model`、最小の境界を選び、[記入形式](../../../docs/formats/work-item-format.md#主要ユースケースの証拠)に従って `primary_use_cases` に書く。
-公開後は[文書影響と成熟度](../../../docs/formats/work-item-format.md#文書影響と成熟度)も記入する。
+機能の成熟度を上げる作業では、[成熟度の昇格](../../../docs/formats/work-item-format.md#成熟度の昇格)も記入する。
 `status: in_progress` にして `mise run check-work-items` を通す。
 中核ロジックは型と操作のシグネチャ、境界変更は候補の比較を、コードの前に設計へ記す。
 依存の構築条件を変える、または同じ操作の呼び出し元を追加する場合は、[依存の向きと差し替え点](../../../docs/design/application/design-guidelines.md#依存の向きと差し替え点)で公開の経路と必須の作用を比べる。
