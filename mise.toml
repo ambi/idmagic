@@ -122,6 +122,29 @@ description = "Run the standard verification suite and the browser end-to-end te
 # ここと CI の独立した job が後退検出を持つ。
 run = "mise run -c verify ::: test-ui-e2e"
 
+# 変更が届き得る層だけを検証する。Go は変更したパッケージとそのテストの逆依存に絞り、
+# どの層も持たないパスや、Go のテストが読み得るパッケージ外のパスでは全体へ戻す。
+# 選ばなかった層は理由とともに .verification/verify-selection.json へ書き、成功として数えない。
+[tasks.verify-changed]
+description = "Verify only the layers and Go packages the working tree's change can affect"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -le 1 || { echo "usage: mise run verify-changed -- [base-revision]" >&2; exit 2; }
+bun run tools/changed-packages/src/verify.ts changed "$@"
+'''
+
+# rebase 後の統合の検証。両側は各自のツリーで検証済みなので、両側の変更が届く層と
+# パッケージの共通部分だけを再実行する。引数は rebase 前に検証したソースのコミット。
+[tasks.verify-integration]
+description = "Verify a rebased branch only where its own change and the incoming change overlap"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -eq 1 || { echo "usage: mise run verify-integration -- <verified-source-revision>" >&2; exit 2; }
+bun run tools/changed-packages/src/verify.ts integration "$1"
+'''
+
 [tasks.verify-serial]
 description = "Run the standard verification suite serially, reporting every gate that failed"
 # 逐次実行でも規律は同じで、落ちたものを全部並べて終わる。

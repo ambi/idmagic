@@ -9,28 +9,26 @@ description: Integrate a completed work-item branch into main or another target 
    named target, use the current branch. Inspect both worktrees and preserve unrelated user changes. The source
    worktree must be clean, its work item completed, and its final commit already verified by
    `implement-work-item`.
-2. Record the verified source tree before changing commits or refs:
+2. Record the verified source commit and tree before changing commits or refs:
 
    ```sh
+   source_commit=$(git rev-parse 'work-item/wi-42^{commit}')
    source_tree=$(git rev-parse 'work-item/wi-42^{tree}')
    ```
 
 3. Keep the history linear. When the source is not already based on the target, rebase the source onto the
    target; use `resolving-merge-conflicts` for an in-progress conflict. Compare the rebased source tree with
-   the recorded verified source tree. If they differ, the rebase composed a new tree. Choose the checks for that
-   new tree the way [最終検査の選択](../../../docs/development/specification-first-workflow.md#最終検査の選択)
-   chooses them for a change, from two path sets: the source's own changes
-   (`git diff --name-only main...work-item/wi-42`) and what the rebase brought in
-   (`git diff --name-only "$source_tree" 'work-item/wi-42^{tree}'`).
-   - Only Markdown under `work-items/` and `docs/development/` is outside every build and test input. Any
-     other file is a test input, including Markdown elsewhere: model tests read the state tables in
-     `docs/modules/`.
-   - When either set touches only that Markdown, skip `verify`, even if the other set touches code. Each side
-     was verified on its own tree, and that Markdown cannot change what builds and tests observe. Run
-     `check-work-items` and `check-links`.
-   - Otherwise run `mise run verify` in the source worktree, because the two sides may interact. It already
-     includes `check`.
-   - Always rerun the narrow checks that the conflict resolution itself requires.
+   the recorded verified source tree. If they differ, the rebase composed a new tree. Verify it in the source
+   worktree with:
+
+   ```sh
+   mise run verify-integration -- "$source_commit"
+   ```
+
+   Each side was verified on its own tree, so the task reruns only the layers and Go packages that both the
+   source's own change and the incoming change can reach. It records what it ran and what it skipped in
+   `.verification/verify-selection.json`.
+   Also rerun the narrow checks that the conflict resolution itself requires.
 
    Do not create a merge commit. Integrate one source branch at a time, and start the next work item from the
    updated target so that it needs no rebase.
