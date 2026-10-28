@@ -106,7 +106,7 @@ mise run -c \
   lint-tools ::: \
   lint-repo ::: \
   lint-go ::: \
-  test-go-race ::: \
+  test-go ::: \
   check-ui-dependencies ::: \
   format-check-ui ::: \
   lint-ui ::: \
@@ -166,7 +166,7 @@ gate mise run typecheck-tools
 gate mise run lint-tools
 gate mise run lint-repo
 gate mise run lint-go
-gate mise run test-go-race
+gate mise run test-go
 gate mise run check-ui-dependencies
 gate mise run format-check-ui
 gate mise run lint-ui
@@ -322,8 +322,8 @@ description = "Scan the whole Git history for secrets"
 run = "betterleaks git . --redact --no-banner"
 
 [tasks.verify-go]
-description = "Verify Go with lint and race-enabled tests"
-depends = ["lint-go", "test-go-race"]
+description = "Verify Go with lint and tests"
+depends = ["lint-go", "test-go"]
 
 [tasks.lint-go]
 # context: targets=backend
@@ -353,29 +353,42 @@ depends = ["compile-spec"]
 run = "bun run tools/verification/src/main.ts --full --report .verification/test-go.json -- ./..."
 
 [tasks.test-go-package]
-description = "Run race-enabled Go tests for one package"
-# 最後のゲートと同じ -race のビルド構成を使い、ビルドキャッシュを共有する。
+description = "Run Go tests for one package; pass --race to add the race detector"
+# 通常のビルドが既定で、並行処理そのものを作る作業だけが --race を付ける。
 # runner は -count=1 で結果キャッシュを無効にし、今回の実行とスキップを記録する。
 run = '''
 #!/usr/bin/env sh
 set -eu
-test "$#" -ge 1 || { echo "usage: mise run test-go-package -- <package>" >&2; exit 2; }
-bun run tools/verification/src/main.ts --report .verification/test-go-package.json -- -race "$1"
+case "$#:${2:-}" in
+  1:) race="" ;;
+  2:--race) race="-race" ;;
+  *) echo "usage: mise run test-go-package -- <package> [--race]" >&2; exit 2 ;;
+esac
+bun run tools/verification/src/main.ts --report .verification/test-go-package.json -- $race "$1"
 '''
 
 [tasks.test-go-changed]
-description = "Run race-enabled Go tests for the changed packages and their reverse dependencies"
+description = "Run Go tests for the changed packages and their reverse dependencies; pass --race to add the race detector"
 # どこが関係するかを見極めるより回してしまった方が楽、という判断は正しい。だから見極めを
 # 人ではなく go list の依存グラフにやらせる。省いた分は最後のゲートが拾う。
 run = '''
 #!/usr/bin/env sh
 set -eu
-packages=$(bun run tools/changed-packages/src/main.ts "$@")
+race=""
+base=""
+for arg in "$@"; do
+  case "$arg" in
+    --race) race="-race" ;;
+    -*) echo "usage: mise run test-go-changed -- [base-revision] [--race]" >&2; exit 2 ;;
+    *) test -z "$base" || { echo "usage: mise run test-go-changed -- [base-revision] [--race]" >&2; exit 2; }; base="$arg" ;;
+  esac
+done
+packages=$(bun run tools/changed-packages/src/main.ts $base)
 if [ -z "$packages" ]; then
   echo "no changed Go packages" >&2
   exit 0
 fi
-echo "$packages" | tr '\n' ' ' | xargs bun run tools/verification/src/main.ts --report .verification/test-go-changed.json -- -race
+echo "$packages" | tr '\n' ' ' | xargs bun run tools/verification/src/main.ts --report .verification/test-go-changed.json -- $race
 '''
 
 [tasks.test-go-test]

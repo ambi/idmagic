@@ -321,7 +321,7 @@ IDだけでは何を観測したか分からず、検査対象を増やさずに
 5. 振る舞いが GREEN になったら、変更した層を担当する検査を実行する。
    Go では `mise run lint-go`、仕様を再生成した管理 API または DTO では `mise run check-contract-drift` と `mise run check-published-api-compat`、作業項目の frontmatter では `mise run check-work-items` を使う。
 6. 変更したパッケージと、それを使う側への影響を確認してテストの対象を広げる。
-   Go の複数パッケージと逆依存に race 検査が必要なら `mise run test-go-changed` を使う。
+   Go の複数パッケージと逆依存には `mise run test-go-changed` を使う。
 7. `medium` 以上のリスクでは、選択した変更への耐性検査（[ミューテーションテスト](testing.md#ミューテーションテスト)と手書きの故障注入）を行う。
 8. 作業項目を完了する前に、[最終検査の選択](#最終検査の選択)に従って必要な検査の成功を確認する。
 
@@ -378,7 +378,7 @@ Go の検査後に完了記録を更新した場合は、今回必要な範囲�
    `input.dirty` が `false` の場合だけ、その revision を検証時のクリーンな作業ツリーとして比較の基準にできる。
 
    ```console
-   jq '.input | {revision, dirty}' .verification/test-go-race.json
+   jq '.input | {revision, dirty}' .verification/test-go-selected.json
    ```
 
 2. `<input.revision>` を読み取った revision に置き換え、そこから現在の作業ツリーまでの追跡ファイルの差分と、未追跡ファイルを列挙する。

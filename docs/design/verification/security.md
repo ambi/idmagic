@@ -11,7 +11,7 @@
 
 | 状態 | 求める証拠 | 実行 |
 | --- | --- | --- |
-| `covered` | `Controls` 列が指す規範 ID を名指すテスト | `mise run test-go-race`、`mise run test-ui-e2e` |
+| `covered` | `Controls` 列が指す規範 ID を名指すテスト | `mise run test-go`、`mise run test-ui-e2e` |
 | `planned` | 応える規範が無いか規範化されていないため、テストではなく、その欠落を担う作業項目の存在 | `mise run spec-where THREAT-NNN` |
 | `accepted` | 受容の理由と再検討の条件が[脅威モデル](../security/threat-model.md#受容した残留リスク)に書かれていること | `mise run check-links` が見出しの実在を確かめる |
 | `retired` | 追加の証拠を要さない | 実行しない |
@@ -23,11 +23,11 @@
 
 | 制御の種類 | 検証手段 | 実行 | 合否条件 | 実行環境 |
 | --- | --- | --- | --- | --- |
-| 認証、認可、テナント境界で許可しない操作 | 受け入れテスト | `mise run test-go-race` | エラーを返すだけでなく、状態の変更、トークンの発行、外部への通知のいずれも残らない | リポジトリ内 |
+| 認証、認可、テナント境界で許可しない操作 | 受け入れテスト | `mise run test-go` | エラーを返すだけでなく、状態の変更、トークンの発行、外部への通知のいずれも残らない | リポジトリ内 |
 | 許可しないと宣言した制御の被覆 | 静的検査 | `mise run check-security-controls`、`mise run report-security-test-gaps` | 許可しないと宣言する制御にテストがあり、拒めない guard が無い | リポジトリ内 |
 | 信頼境界での値の解析、分割、正規化、比較 | プロパティテスト、ファジング | `mise run test-go-fuzz-all` | 仕様から導いた不変条件、往復、受け付けなかったあとに何も変わらないことが破れない | リポジトリ内 |
 | レスポンスヘッダー、Cookie 属性、同一オリジンの前提 | E2E | `mise run test-ui-e2e` | ブラウザーが実際に受け取る値が規範のとおりである | リポジトリ内 |
-| 鍵素材の秘匿と失効 | 単体、アダプター統合 | `mise run test-go-race` | 鍵素材が API、ログ、設定リファレンスへ出ず、失効後の暗号文を復号できない | リポジトリ内 |
+| 鍵素材の秘匿と失効 | 単体、アダプター統合 | `mise run test-go` | 鍵素材が API、ログ、設定リファレンスへ出ず、失効後の暗号文を復号できない | リポジトリ内 |
 | 依存の既知脆弱性 | 依存監査 | `mise run audit-dependencies`、`mise run audit-go-reachability`、`mise run check-vulnerability-suppressions` | 未処理の既知脆弱性と、理由または期限を欠く抑制が無い | リポジトリ内 |
 | リポジトリへ混入したシークレット | 走査 | `mise run lint-repo`、`mise run audit-secrets-history` | 作業ツリーと Git 履歴のどちらにも検出が無い | リポジトリ内 |
 | 危険な実装パターン | 静的解析 | CI の CodeQL | 新たな警告が無い | リポジトリ内 |

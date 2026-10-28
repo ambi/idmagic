@@ -88,7 +88,7 @@ mise run report-contract-evidence -- --changed --base-revision main --target bac
 結果は Git リビジョン、追跡ファイルと未追跡ファイルの fingerprint、基準リビジョン、コマンド、DB モードとともに `.verification/` へ保存する。
 生の Go イベントも JSON Lines で保存する。
 実行中に入力が変われば検証を失敗にし、過去の結果を現在の入力で実行した結果とは扱わない。
-`mise run report-verification` は全体の race テストの結果を表示し、現在の入力と異なる結果を `stale` と明示する。
+`mise run report-verification` は全体の Go テスト（`test-go`）の結果を表示し、現在の入力と異なる結果を `stale` と明示する。
 別のタスクの結果は `mise run report-verification -- .verification/test-go-package.json` のように指定する。
 
 `stale` の判定には全追跡ファイルを含むため、完了記録の移動やコミットだけでもこの表示になる。
@@ -206,16 +206,19 @@ HTTP の契約を変えるときは、要件と TypeSpec から同じ操作の�
 
 ## Go の通常テストと race 検査
 
-Go のテスト対象と `-race` の有無は別々に判断する。
-純粋な計算や局所的な分岐を変え、共有状態や並行実行へ影響しないと確認できる場合は通常テストを使う。
-`mise run test-go-test -- <package> <test>` は通常テストを実行し、テスト名へ `'.*'` を指定すればそのパッケージ全体を検査できる。
-共有する可変状態、goroutine、同期、キャッシュ、並行リクエストの処理を変える場合や、その影響が不明な場合は race 検査を選ぶ。
-`test-go-package` と `test-go-changed` は常に `-race` を付け、`test-go-race` は Go 全体を検査する。
+手元の Go のテストは通常のビルドで実行する。
+`test-go-test`、`test-go-package`、`test-go-changed`、`test-go`、`verify`、`verify-changed`、`verify-integration` はどれも race 検出器を使わない。
+data race の自動検査は、main の全体を race 検出器付きで検査する[定期実行](continuous-integration.md)だけが担う。
+
+- **判断**：変更ごとに race の要否を判断させない。ゴルーチンや同期に触れなくても、共有するマップやキャッシュへの書き込み一行で data race は生まれ、迷えば毎回 race を選ぶことになる。race 付きの全体テストは通常の約 1.5 倍かかってビルドのキャッシュも別になる一方、履歴に race 検出器が見つけた data race の修正はない（2026-10-29）。
+
+goroutine、チャネル、同期、リースやキャッシュのような共有状態の管理を新しく書くか変える作業では、作業者が明示して race を選ぶ。
+`mise run test-go-package -- <package> --race` と `mise run test-go-changed -- [base] --race` が race 検出器を付け、`mise run test-go-race` は Go 全体を検査する。
+race 検査でも、問題となる並行経路を実行するテストが必要である。
+
+`mise run test-go-test -- <package> <test>` はテストを一つ実行し、テスト名へ `'.*'` を指定すればそのパッケージ全体を検査できる。
 `test-go-changed` は、変更したファイルを含むパッケージ（`testdata` や埋め込むファイルを含む）と、テストのバイナリがそれを取り込むパッケージを選ぶ。
 どのパッケージにも属さず、Go のテストが読まないと保証できないパス（`infra/`、`spec/`、`go.mod` など）の変更では、Go 全体を選ぶ。
-race 検査でも、問題となる並行経路を実行するテストが必要である。
-通常構成と race 構成のビルドキャッシュは別なので、race 検査が必要な局所検査にはその構成を使う。
-キャッシュを揃える目的だけで、race 検査の必要性を決めない。
 
 ## 性質、ファジング、変異、特性化
 

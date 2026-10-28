@@ -53,9 +53,9 @@
 | --- | --- | --- | --- | --- |
 | 一次情報文書と TypeSpec の規範の形式、ID、参照、生成物 | 静的解析 | `mise run check-spec`、`mise run verify-spec` | 形式、ID の一意性、参照の解決、再生成した成果物との一致がすべて成立する | リポジトリ内 |
 | 実行可能な具体例の表示と実行 | 一次情報の共有とドリフト検査、製品テスト | `mise run check-spec` と対象のテストタスク | 同じ独立した期待結果から表示した例が一致し、その例を被覆する製品テストが通る | リポジトリ内 |
-| モジュールの規範シナリオ `REQ-*` | 単体、アダプター統合、受け入れ | `mise run test-go-race`、`mise run test-ui-unit` | 当該 ID を `//spec:covers` で名指すテストが通る | リポジトリ内 |
+| モジュールの規範シナリオ `REQ-*` | 単体、アダプター統合、受け入れ | `mise run test-go`、`mise run test-ui-unit` | 当該 ID を `//spec:covers` で名指すテストが通る | リポジトリ内 |
 | [全体の標準仕様](../../requirements/standards.md)とモジュールの標準仕様の規範 ID | 引用の検査と対応する実行結果 | `mise run check-spec` と対象のテストタスク | 引用が解決し、必要な対応テストがスキップせず成功する。引用の検査だけでは実行を示さない | リポジトリ内 |
-| 公開契約の OpenAPI、経路、状態コード、イベント語彙 | 契約と実装の差分検査、解析対象外の変更操作の契約テスト | `mise run check-contract-drift`、`mise run check-generated-contract`、`mise run check-status-drift`、`mise run check-event-contract`、`mise run test-go-race`、`mise run check-published-api-compat` | 解析できた範囲に差分がなく、解析対象外の変更操作に代替証拠がある。互換性は公開状態に応じて判定する | リポジトリ内 |
+| 公開契約の OpenAPI、経路、状態コード、イベント語彙 | 契約と実装の差分検査、解析対象外の変更操作の契約テスト | `mise run check-contract-drift`、`mise run check-generated-contract`、`mise run check-status-drift`、`mise run check-event-contract`、`mise run test-go`、`mise run check-published-api-compat` | 解析できた範囲に差分がなく、解析対象外の変更操作に代替証拠がある。互換性は公開状態に応じて判定する | リポジトリ内 |
 | 利用者経路とブラウザー固有の振る舞い | E2E | `mise run test-ui-e2e` | 正式な入口から最終効果までが実配線で成立する | リポジトリ内 |
 | WCAG 2.2 のアクセシビリティ規範 | 単体、E2E | `mise run test-ui-unit`、`mise run test-ui-e2e` | 当該規範 ID を名指すテストが通る | リポジトリ内 |
 | 脅威モデルの `THREAT-NNN` と許可しない操作 | セキュリティ検証 | `mise run check-security-controls`、`mise run report-security-test-gaps` と対象のテストタスク | 無作用を観測するテストが実行され成功する。ソース調査の候補と不足件数だけでは実行も検出能力も示さない | リポジトリ内。脅威ごとの手段は[セキュリティ検証設計](security.md)が示す |

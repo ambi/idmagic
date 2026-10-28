@@ -39,7 +39,7 @@ primary_use_cases: # feature、bugfix、standards.md の変更では着手後に
     requirement: REQ-SYSTEM-001
     observable_result: 呼び出し元がタスクの実行開始を観測できる。
     boundary: acceptance
-    test: { path: backend/system/usecases/start_task_test.go, name: TestStartTask_REQ_SYSTEM_001, task: test-go-race }
+    test: { path: backend/system/usecases/start_task_test.go, name: TestStartTask_REQ_SYSTEM_001, task: test-go }
     fault_model: ユースケースが開始コマンドを発行しない。
 maturity_evidence: # 成熟度を昇格する場合は完了前に必須。告知パスは公開後に必須
   - feature: start-task-v1

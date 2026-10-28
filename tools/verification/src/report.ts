@@ -50,7 +50,7 @@ export function renderVerificationReport(
 
 if (import.meta.main) {
   const snapshot = createWorkspaceSnapshot(process.cwd())
-  const path = process.argv[2] ?? '.verification/test-go-race.json'
+  const path = process.argv[2] ?? '.verification/test-go.json'
   const report = (await Bun.file(snapshot.path(path)).json()) as VerificationReport
   const current = await verificationInput(snapshot)
   const text = renderVerificationReport(report, current.fingerprint)
