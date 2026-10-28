@@ -6,6 +6,8 @@
  * 所有モジュールは宣言として読み、境界検査がクエリの書き込み先と照合する。
  */
 
+import { tableRowCells } from './markdown-table.ts'
+
 export type TenantIdPlacement = 'primary-key' | 'primary-key-part' | 'column' | 'absent'
 
 /** `CREATE TABLE` 一つから読み取った事実。 */
@@ -82,15 +84,6 @@ function tenantIdPlacement(body: readonly string[]): TenantIdPlacement {
   return columns.length === 1 ? 'primary-key' : 'primary-key-part'
 }
 
-function cells(line: string): string[] {
-  return line
-    .trim()
-    .replace(/^\|/, '')
-    .replace(/\|$/, '')
-    .split('|')
-    .map((cell) => cell.trim())
-}
-
 /** 先頭の見出しが「テーブル」である Markdown 表から行を集める。 */
 export function describedTables(markdown: string): DescribedTable[] {
   const rows: DescribedTable[] = []
@@ -102,7 +95,7 @@ export function describedTables(markdown: string): DescribedTable[] {
       columns = undefined
       return
     }
-    const row = cells(line)
+    const row = tableRowCells(line)
     if (!inTable) {
       inTable = true
       columns =

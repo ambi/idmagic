@@ -6,6 +6,8 @@
  * `docs/design/application/backend.md` が定める。
  */
 
+import { tableRowCells } from './markdown-table.ts'
+
 export type ModuleDefinition = {
   name: string
   /** 実装パスの接頭辞。HTTP 契約で接続するモジュールは Go パッケージを持たない。 */
@@ -126,7 +128,7 @@ function responsibilityRows(markdown: string): string[] | undefined {
  */
 export function responsibilityTableDirectories(markdown: string): string[] {
   return (responsibilityRows(markdown) ?? []).flatMap((line) => {
-    const directory = cells(line)[0]?.match(/^\[[^\]]+\]\(([^)/]+)\/README\.md\)/)?.[1]
+    const directory = tableRowCells(line)[0]?.match(/^\[[^\]]+\]\(([^)/]+)\/README\.md\)/)?.[1]
     return directory ? [directory] : []
   })
 }
@@ -147,7 +149,7 @@ export function parseLogicalArchitecture(markdown: string): ArchitectureModel {
     .split(/\r?\n/)
     .some((line) => line.trim() === RESPONSIBILITY_HEADER)
   for (const line of rows) {
-    const row = cells(line)
+    const row = tableRowCells(line)
     const name = row[0]?.match(/^\[([^\]]+)\]/)?.[1]?.trim()
     if (!name) continue
     const packages = repositoryPaths(row[3] ?? '')
@@ -415,13 +417,6 @@ export function compareById(left: { id: string }, right: { id: string }): number
 /** ディレクトリ区画で照合する。`backend/cmd` は `backend/cmdx` を含めない。 */
 function within(path: string, prefix: string): boolean {
   return path === prefix || path.startsWith(`${prefix}/`)
-}
-
-function cells(row: string): string[] {
-  const parts = row.split('|').map((cell) => cell.trim())
-  if (parts[0] === '') parts.shift()
-  if (parts.at(-1) === '') parts.pop()
-  return parts
 }
 
 function repositoryPaths(cell: string): string[] {

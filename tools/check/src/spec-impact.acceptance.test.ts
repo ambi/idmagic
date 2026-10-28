@@ -1,8 +1,10 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'bun:test'
-import { TOOLS_DIR } from '../../workspace/src/workspace.ts'
+import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
+import { checkSpecImpact } from './check-spec-impact.ts'
+import { defaultBaseRevision } from './runner.ts'
 
 const cleanup: string[] = []
 afterAll(async () => {
@@ -118,18 +120,16 @@ async function repository(): Promise<Repository & { base: string }> {
     git,
     write,
     commit,
-    check: (revision) =>
-      run(
-        TOOLS_DIR,
-        [
-          'bun',
-          'run',
-          resolve(TOOLS_DIR, 'check/src/runner.ts'),
-          'spec-impact',
-          ...(revision === undefined ? [] : ['--base-revision', revision]),
-        ],
-        { SPEC_WORKSPACE_ROOT: root },
-      ),
+    // CLI は検査の結果を終了コードと出力の行へ写すだけなので、起動せずに同じ写像を作る。
+    // 引数の解釈とレポートの書き出しは、リポジトリ検査の受け入れテストが CLI を通して確かめる。
+    check: async (revision) => {
+      const outcome = await checkSpecImpact(createWorkspaceSnapshot(root), {
+        verbose: false,
+        listUnresolved: false,
+        baseRevision: revision ?? defaultBaseRevision(root),
+      })
+      return { code: outcome.ok ? 0 : 1, output: outcome.lines.join('\n') }
+    },
   }
 }
 
