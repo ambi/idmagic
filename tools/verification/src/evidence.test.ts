@@ -163,6 +163,15 @@ test('DB パッケージのテストがゼロ、スキップ、起動失敗な�
       { Action: 'pass', Package: pkg, Test: 'TestStore' },
       { Action: 'pass', Package: pkg },
     ],
+    [
+      {
+        Action: 'output',
+        Package: pkg,
+        Output: 'pgtest: cannot allocate port: denied; DB unavailable\n',
+      },
+      { Action: 'pass', Package: pkg, Test: 'TestWithoutDatabase' },
+      { Action: 'pass', Package: pkg },
+    ],
   ]) {
     expect(databaseResults([pkg], events, executionResults(events))[0]?.state).toBe('unverified')
   }

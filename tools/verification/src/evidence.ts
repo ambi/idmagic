@@ -290,7 +290,10 @@ export function databaseResults(
     const reasons: string[] = []
     if (
       events.some(
-        (event) => event.Package === packageName && event.Output?.includes('skipping DB tests'),
+        (event) =>
+          event.Package === packageName &&
+          (event.Output?.includes('skipping DB tests') ||
+            event.Output?.includes('; DB unavailable')),
       )
     )
       reasons.push('DB unavailable')

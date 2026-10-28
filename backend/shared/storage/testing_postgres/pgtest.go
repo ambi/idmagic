@@ -3,8 +3,7 @@
 // テストパッケージは自身の TestMain から Main を呼び、DB 依存テストは
 // Require で利用可否を確認する。embedded-postgres を起動できない環境
 // (ネットワーク遮断された CI、SysV 共有メモリを扱えない macOS のサンドボックス等) では
-// テストをスキップしグリーンを維持する。スキップは警告を出すだけなので、DB テストを
-// 実行したことを確かめるにはその警告が出ていないことを見る。
+// DB 依存テストを失敗にする。PGTEST_ALLOW_SKIP=1 のときだけスキップを許す。
 //
 // 強制終了されたテストバイナリが残した postgres と共有メモリは、次の起動が
 // reclaimAbandonedInstances で回収する。
@@ -28,7 +27,7 @@ import (
 )
 
 // Pool は Main が起動した embedded-postgres への共有接続プール。
-// 起動できなかった場合は nil のままとなり、Require がテストをスキップする。
+// 起動できなかった場合は nil のままとなり、Require が DB 依存テストを失敗にする。
 var Pool *pgxpool.Pool
 
 // Main は embedded-postgres を起動し infra/schema/postgres.sql を投入した上で
@@ -136,7 +135,7 @@ func start() (*pgxpool.Pool, func()) {
 }
 
 func warn(msg string, err error) {
-	fmt.Fprintf(os.Stderr, "pgtest: %s: %v; skipping DB tests\n", msg, err)
+	fmt.Fprintf(os.Stderr, "pgtest: %s: %v; DB unavailable\n", msg, err)
 }
 
 func loadSchema(ctx context.Context, pool *pgxpool.Pool) error {
@@ -189,12 +188,16 @@ func freePort(ctx context.Context) (uint32, error) {
 	return uint32(addr.Port), nil //nolint:gosec // G115: bounded by TCP port range, see above
 }
 
-// Require は DB を利用できない環境でテストをスキップし、利用できる場合は
-// 共有プールを返す (*pgxpool.Pool は呼び出し側の DB interface を構造的に満たす)。
+// Require は共有プールを返し、DB を利用できなければテストを失敗にする。
+// PGTEST_ALLOW_SKIP=1 のときだけスキップし、DB の検証を省略する。
 func Require(tb testing.TB) *pgxpool.Pool {
 	tb.Helper()
 	if Pool == nil {
-		tb.Skip("embedded-postgres unavailable; skipping DB-backed test")
+		// Go の結果キャッシュが許可の変更を追跡できるよう、テスト内で環境を読む。
+		if os.Getenv("PGTEST_ALLOW_SKIP") == "1" {
+			tb.Skip("embedded-postgres unavailable; skipping DB-backed test (PGTEST_ALLOW_SKIP=1)")
+		}
+		tb.Fatal("embedded-postgres unavailable; run DB-backed tests outside the sandbox (PGTEST_ALLOW_SKIP=1 allows skipping)")
 	}
 	return Pool
 }

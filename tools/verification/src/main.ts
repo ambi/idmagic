@@ -37,7 +37,9 @@ const reportPath = resolve(
   reportIndex < 0 ? '.verification/go-tests.json' : options[reportIndex + 1]!,
 )
 const baseRevision = process.env.VERIFICATION_BASE_REVISION || defaultBaseRevision(snapshot.root)
-const requireDB = process.env.VERIFICATION_REQUIRE_DB === '1'
+// CI は Skip 許可が混入しても未検証を拒否する。手元も明示の許可がない限り必須とする。
+const requireDB =
+  process.env.VERIFICATION_REQUIRE_DB === '1' || process.env.PGTEST_ALLOW_SKIP !== '1'
 const command = ['go', 'test', '-json', '-count=1', ...args.slice(separator + 1)]
 const input = await verificationInput(snapshot, full ? baseRevision : undefined)
 const files = await repositoryGoFiles(snapshot, true)
@@ -93,6 +95,8 @@ const dbPackages = [
       .filter(
         (file) =>
           file.path.endsWith('_test.go') &&
+          // go test ./... は testdata 配下の子プロセス用 fixture を列挙しない。
+          !file.path.split('/').includes('testdata') &&
           file.source.includes('/shared/storage/testing_postgres"'),
       )
       .map((file) => `${modulePath}/${dirname(file.path)}`),

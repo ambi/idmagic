@@ -1,4 +1,4 @@
-import { extname } from 'node:path'
+import { dirname, extname } from 'node:path'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import {
   findBoundaryViolations,
@@ -14,6 +14,8 @@ import {
 } from './boundary-fitness.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
 import { describedTables, tableOwners } from './schema-tables.ts'
+import { productionCodeExclusions } from './production-code.ts'
+import { repositoryGoFiles } from './repository-inputs.ts'
 import {
   extractTableWrites,
   parseSqlFiles,
@@ -210,6 +212,11 @@ async function layerAndConfigurationFindings(snapshot: WorkspaceSnapshot): Promi
   const goModule = (await snapshot.read('go.mod')).match(/^module\s+(\S+)$/m)?.[1]
   if (!goModule) throw new Error('go.mod must declare a module path')
   const backendImportPrefix = `${goModule}/backend/`
+  const goFiles = snapshot.exists('backend') ? await repositoryGoFiles(snapshot) : []
+  const { testSupportPackages } = productionCodeExclusions(
+    goModule,
+    new Map(goFiles.map(({ path, source }) => [path, source])),
+  )
   const lines: string[] = []
   for (const rel of await snapshot.files('', EXCLUDED_DIRECTORIES)) {
     if (rel === 'architecture.yaml' || rel.endsWith('/architecture.yaml')) {
@@ -225,7 +232,8 @@ async function layerAndConfigurationFindings(snapshot: WorkspaceSnapshot): Promi
       // `*_env` adapter は起動設定ではなく、実行時 locator を解決するので対象外とする。
       const ownsEnvAccess =
         rel.startsWith('backend/cmd/internal/bootstrap/') || /\/[a-z0-9]+_env\//.test(rel)
-      if (!ownsEnvAccess) {
+      // 本番から到達しないテスト支援の設定は、製品の起動設定に含めない。
+      if (!ownsEnvAccess && !testSupportPackages.has(dirname(rel))) {
         const envReads = [...source.matchAll(/os\.(?:Getenv|LookupEnv|Environ)\b/g)].filter(
           (match) =>
             !source

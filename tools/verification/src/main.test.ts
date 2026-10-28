@@ -12,6 +12,11 @@ test('変更操作だけに同一実行の契約テストを要求し、子の�
       await mkdir(join(root, directory), { recursive: true })
     await writeFile(join(root, 'go.mod'), 'module example\n')
     await writeFile(join(root, '.gitignore'), '.verification/\nbin/\nspec/generated/\n')
+    await mkdir(join(root, 'backend/demo/testdata/unavailable'), { recursive: true })
+    await writeFile(
+      join(root, 'backend/demo/testdata/unavailable/fixture_test.go'),
+      'package fixture\nimport _ "example/backend/shared/storage/testing_postgres"\n',
+    )
     const handlerPath = join(root, 'backend/demo/handlers_http/handler.go')
     const handler = `package demo
 func Register(g *echo.Group, d Deps) {
@@ -103,6 +108,7 @@ ${['passed', 'skipped', 'edited'].includes(scenario) ? '//verify:operation Creat
       ])
       expect(code, stdout + stderr).toBe(['unchanged', 'passed'].includes(scenario) ? 0 : 1)
       const result = await Bun.file(join(root, '.verification/go-tests.json')).json()
+      expect(result.databases).toEqual([])
       expect(result.checks[0].operations[0].state).toBe('unverified')
       expect(result.changedOperations).toEqual(scenario === 'unchanged' ? [] : ['Create'])
       if (scenario === 'edited')
@@ -115,7 +121,7 @@ ${['passed', 'skipped', 'edited'].includes(scenario) ? '//verify:operation Creat
   }
 })
 
-test('実プロセスの DB スキップは任意モードで未検証、必須モードで失敗になる', async () => {
+test('DB スキップは既定で失敗し、明示の許可時だけ未検証として残す', async () => {
   const root = await mkdtemp(join(tmpdir(), 'idmagic-verification-'))
   try {
     await mkdir(join(root, 'bin'))
@@ -163,8 +169,15 @@ func TestStore(t *testing.T) {
     ]) {
       expect(Bun.spawnSync(['git', ...args], { cwd: root }).exitCode).toBe(0)
     }
-    for (const required of [false, true]) {
-      const report = `.verification/${required ? 'required' : 'optional'}.json`
+    for (const scenario of [
+      { name: 'default', allowSkip: '', forceRequired: '', required: true },
+      { name: 'allowed', allowSkip: '1', forceRequired: '', required: false },
+      { name: 'zero', allowSkip: '0', forceRequired: '', required: true },
+      { name: 'true', allowSkip: 'true', forceRequired: '', required: true },
+      { name: 'ci', allowSkip: '1', forceRequired: '1', required: true },
+      { name: 'legacy-zero', allowSkip: '', forceRequired: '0', required: true },
+    ]) {
+      const report = `.verification/${scenario.name}.json`
       const child = Bun.spawn(
         [process.execPath, runner, '--report', report, '--', './backend/demo/db_postgres'],
         {
@@ -172,7 +185,8 @@ func TestStore(t *testing.T) {
           env: {
             ...process.env,
             PATH: `${join(root, 'bin')}:${process.env.PATH}`,
-            VERIFICATION_REQUIRE_DB: required ? '1' : '0',
+            PGTEST_ALLOW_SKIP: scenario.allowSkip,
+            VERIFICATION_REQUIRE_DB: scenario.forceRequired,
           },
           stdout: 'pipe',
           stderr: 'pipe',
@@ -183,8 +197,9 @@ func TestStore(t *testing.T) {
         new Response(child.stderr).text(),
         child.exited,
       ])
-      expect(code, stdout + stderr).toBe(required ? 1 : 0)
+      expect(code, stdout + stderr).toBe(scenario.required ? 1 : 0)
       const result = await Bun.file(join(root, report)).json()
+      expect(result.requireDB).toBe(scenario.required)
       expect(result.databases[0].state).toBe('unverified')
       expect(result.tests.find((entry: { name: string }) => entry.name === 'TestStore').state).toBe(
         'skipped',

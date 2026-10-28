@@ -33,6 +33,20 @@ async function failureFor(files: Record<string, string>): Promise<string> {
 }
 
 describe('checkBoundaries module rules', () => {
+  it('テスト専用の環境読み取りを許し、本番から到達した場合は拒否する', async () => {
+    const support = {
+      'backend/shared/testing_fixture/harness.go':
+        'package fixture\nimport "os"\nfunc AllowSkip() bool { return os.Getenv("PGTEST_ALLOW_SKIP") == "1" }\n',
+    }
+    expect((await outcomeFor(support)).ok).toBe(true)
+    const lines = await failureFor({
+      ...support,
+      'backend/cmd/server/main.go':
+        'package main\nimport _ "example.com/product/backend/shared/testing_fixture"\nfunc main() {}\n',
+    })
+    expect(lines).toContain('harness.go: startup configuration must be read through bootstrap')
+  })
+
   const implementationTable = `${BOUNDARY_FIXTURE['docs/modules/README.md']!.replace(
     'Go パッケージ',
     '実装パス',
