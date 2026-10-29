@@ -132,6 +132,10 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 		claims["agent_id"] = in.AgentID
 		claims["principal_type"] = domain.PrincipalTypeAgent
 	}
+	// 発行時に権限を支えた Agent。失効判定が現在の束縛ではなくこの集合を読む (REQ-OAUTH2-012)。
+	if len(in.AgentChain) > 0 {
+		claims["agent_chain"] = in.AgentChain
+	}
 	tok, err := SignPS256(key, map[string]string{"typ": "at+jwt"}, claims)
 	if err != nil {
 		return "", "", err
@@ -321,6 +325,13 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*o
 	}
 	if v, ok := payload["agent_id"].(string); ok {
 		res.AgentID = v
+	}
+	if chain, ok := payload["agent_chain"].([]any); ok {
+		for _, v := range chain {
+			if id, ok := v.(string); ok {
+				res.AgentChain = append(res.AgentChain, id)
+			}
+		}
 	}
 	if act, ok := payload["act"].(map[string]any); ok {
 		res.Act = act

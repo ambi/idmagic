@@ -35,8 +35,9 @@
 
 - 管理者が Agent を強制終了、無効化するか、資格情報の束縛を解除したとき、SharedSignals は、その Agent の失効エポックを現在時刻へ進め、`RevocationEpochAdvanced` と `AgentAccessRevoked` を発行する。
 - 所有者の User を無効化または削除したとき、SharedSignals は、テナントの中で所有者が一致するすべての Agent の失効エポックを進める。
-- 発行時刻が Agent の失効エポックより前のアクセストークンのイントロスペクションを受けたとき、SharedSignals は、トークンを `active=false` として判定させる。
-- 発行時刻が失効エポック以後のトークンのイントロスペクションを受けたとき、SharedSignals は、そのトークンを失効の対象にしない。
+- 発行時刻が、トークンの発行時の Agent（REQ-OAUTH2-012）の失効エポックより前のアクセストークンのイントロスペクションを受けたとき、SharedSignals は、トークンを `active=false` として判定させる。
+- 発行時刻が、発行時の Agent の失効エポック以後のトークンのイントロスペクションを受けたとき、SharedSignals は、そのトークンを失効の対象にしない。
+- **判断**：束縛を解除した後も、解除前のトークンは解除した Agent のエポックで判定させる。束縛の解除はエポックを進めるが、現在の束縛からは解除した Agent を引けないからである。
 - 失効エポックを既存の値と同じかそれより前の時刻へ進める要求を受けた場合、SharedSignals は、エポックを変えず、`RevocationEpochAdvanced` と `AgentAccessRevoked` を発行しない。
 - 失効エポックを判定できない場合、SharedSignals は、トークンを無効とみなさせる。
 - **例**：EX-SHAREDSIGNALS-001-01、EX-SHAREDSIGNALS-001-02

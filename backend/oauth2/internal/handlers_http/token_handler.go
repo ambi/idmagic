@@ -78,6 +78,16 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	}, client, grantType, time.Now().UTC()); err != nil {
 		return writeOAuthError(c, err)
 	}
+	// 要求したクライアントの Agent も同じ理由でグラントの分岐より前に 1 度だけ引き、どの
+	// グラントで発行したトークンにも発行時の Agent として載せる (REQ-OAUTH2-012)。以降の
+	// d.TokenIssuer はこの要求に限った発行器である。
+	requestingAgentID, err := tokenusecases.RequestingAgentID(c.Request().Context(), tokenusecases.AgentIssuanceDeps{
+		AgentRepo: d.AgentRepo,
+	}, client.ClientID)
+	if err != nil {
+		return writeOAuthError(c, err)
+	}
+	d.TokenIssuer = tokenusecases.IssuerForRequestingAgent(d.TokenIssuer, requestingAgentID)
 	if !slices.Contains(client.GrantTypes, spec.GrantType(grantType)) {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "undeclared grant_type"))
 	}
@@ -292,7 +302,8 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			return writeOAuthError(c, err)
 		}
 		res, err := tokenusecases.ExchangeToken(ctx, tokenusecases.ExchangeTokenDeps{
-			ClientRepo: d.ClientRepo, Introspector: d.TokenIntrospector,
+			// 入力のトークンは /introspect と同じ失効判定を通す (RFC8693-SUBJECT-TOKEN)。
+			ClientRepo: d.ClientRepo, Introspector: tokenusecases.RevocationCheckingIntrospector{Deps: d.introspectDeps()},
 			TokenIssuer: d.TokenIssuer, Authorizer: d.Authorizer,
 			AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, McpResourceServerRepo: d.McpResourceServerRepo,
 			AgentRepo:        d.AgentRepo,
@@ -357,6 +368,15 @@ func (d Deps) handleRevoke(c *echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+// introspectDeps は /introspect とトークン交換の入力の検証が共有する失効判定の依存である。
+func (d Deps) introspectDeps() tokenusecases.IntrospectDeps {
+	return tokenusecases.IntrospectDeps{
+		Introspector: d.TokenIntrospector, RefreshStore: d.RefreshStore,
+		AccessTokenDenylist: d.AccessTokenDenylist,
+		AgentRepo:           d.AgentRepo, RevocationEpochRepo: d.RevocationEpochRepo,
+	}
+}
+
 func (d Deps) handleIntrospect(c *echo.Context) error {
 	if err := c.Request().ParseForm(); err != nil {
 		return c.JSON(http.StatusBadRequest, support.OAuthErrorBody("invalid_request", "form parse"))
@@ -365,11 +385,7 @@ func (d Deps) handleIntrospect(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
-	resp, err := tokenusecases.IntrospectToken(c.Request().Context(), tokenusecases.IntrospectDeps{
-		Introspector: d.TokenIntrospector, RefreshStore: d.RefreshStore,
-		AccessTokenDenylist: d.AccessTokenDenylist,
-		AgentRepo:           d.AgentRepo, RevocationEpochRepo: d.RevocationEpochRepo,
-	}, tokenusecases.IntrospectInput{
+	resp, err := tokenusecases.IntrospectToken(c.Request().Context(), d.introspectDeps(), tokenusecases.IntrospectInput{
 		Token:         c.Request().PostFormValue("token"),
 		TokenTypeHint: c.Request().PostFormValue("token_type_hint"),
 	}, time.Now().UTC())

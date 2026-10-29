@@ -31,6 +31,9 @@ type IntrospectionResult struct {
 	// プリンシパルかどうかをここで見る。
 	PrincipalType string
 	AgentID       string
+	// AgentChain は発行時に権限を支えた Agent (agent_chain claim, REQ-OAUTH2-012)。
+	// 失効判定は現在の束縛ではなく、この集合と AgentID の Agent を読む。
+	AgentChain []string
 }
 
 type TokenIntrospector interface {

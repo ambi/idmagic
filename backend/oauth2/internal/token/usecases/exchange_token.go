@@ -2,7 +2,8 @@
 //
 // 本実装は に忠実に、以下に限定する (fail-closed):
 //   - SELF-ISSUED トークンのみ: subject_token / actor_token は本 IdP が発行し、
-//     既存の IntrospectAccessToken (署名検証 + active) を通過したものに限る。
+//     /introspect と同じ失効判定を重ねた Introspector (RevocationCheckingIntrospector)
+//     で active と判定したものに限る。
 //     外部/フェデレーショントークンは対象外 (将来 wi-54 / wi-57)。
 //   - DELEGATION ONLY: 発行トークンの sub は subject_token.sub を維持し、必ず act を
 //     設定する。impersonation (act 省略 / sub 差し替え) は対象外 (将来、gated)。
@@ -169,6 +170,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 
 	// --- actor_token (任意) ---
 	currentActorSub := in.ClientID
+	var actorAgents []string
 	if in.ActorToken != "" {
 		if in.ActorTokenType != "" && in.ActorTokenType != tokenTypeAccessTokenURN {
 			return reject("", NewOAuthError("invalid_request", "unsupported actor_token_type"))
@@ -181,6 +183,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 			return reject("", NewOAuthError("invalid_grant", "actor_token is invalid or revoked"))
 		}
 		currentActorSub = actor.Sub
+		actorAgents = domain.MergeAgentChain([]string{actor.AgentID}, actor.AgentChain)
 	}
 	if currentActorSub == "" {
 		return reject("", NewOAuthError("invalid_request", "The current actor cannot be determined."))
@@ -289,11 +292,15 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	if workloadGrant != nil {
 		agentID = workloadGrant.AgentID
 	}
+	// 入力のトークンが持っていた発行時の Agent を引き継ぎ、連鎖のどの Agent を止めても
+	// 交換後のトークンが無効になるようにする (REQ-OAUTH2-012)。要求したクライアントの Agent は、
+	// 全グラントに共通して token ハンドラーが発行器で加える。
+	agentChain := domain.MergeAgentChain([]string{subject.AgentID}, subject.AgentChain, actorAgents, []string{agentID})
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
 		Client: client, Sub: subject.Sub, Scopes: grantedScopes,
 		SenderConstraint: sc, AuthTime: now.Unix(),
 		Audiences: []string{resource}, Act: act,
-		AuthorizationDetails: grantedDetails, AgentID: agentID,
+		AuthorizationDetails: grantedDetails, AgentID: agentID, AgentChain: agentChain,
 	})
 	if err != nil {
 		return nil, err

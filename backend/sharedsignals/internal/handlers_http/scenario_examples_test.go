@@ -529,7 +529,7 @@ func (s *exampleStack) killAgent(t *testing.T) (time.Time, time.Time) {
 
 // assertEpochAdvancedByKill は、強制終了が A1 の失効エポックを要求の時刻まで進め、
 // RevocationEpochAdvanced と AgentAccessRevoked をその Agent について発行したことを確かめる。
-func (s *exampleStack) assertEpochAdvancedByKill(t *testing.T, before, after time.Time) *ssdomain.AgentRevocationEpoch {
+func (s *exampleStack) assertEpochAdvancedByKill(t *testing.T, before, after time.Time) {
 	t.Helper()
 	const agentID = exampleAgentID
 	epoch := s.epoch(t, tenancydomain.DefaultTenantID, agentID)
@@ -551,7 +551,6 @@ func (s *exampleStack) assertEpochAdvancedByKill(t *testing.T, before, after tim
 	if !advanced || !revoked {
 		t.Fatalf("RevocationEpochAdvanced=%v AgentAccessRevoked=%v for %s; events=%v", advanced, revoked, agentID, s.events.all())
 	}
-	return epoch
 }
 
 // 強制終了の前に `/token` が発行したトークンを、強制終了の前後で `/introspect` へ
@@ -574,19 +573,27 @@ func TestKillAgentRevokesTokensIssuedBeforeIt(t *testing.T) {
 	}
 }
 
-// 強制終了の後に発行したトークンは、同じ Agent のものでも失効対象にしない。比較の向きを
-// 取り違えた実装を見分けるため、強制終了の前に発行したトークンが無効のままであることも
-// 同じテストで観測する。
+// 無効化から再有効化した後に発行したトークンは、同じ Agent のものでも失効対象にしない。
+// 比較の向きを取り違えた実装を見分けるため、無効化の前に発行したトークンが無効のままで
+// あることも同じテストで観測する。強制終了は一方向の終端で、発行時の Agent が Active で
+// なければエポックによらず無効になる (REQ-OAUTH2-012) ので、この対照には使えない。
 //
-//spec:covers EX-SHAREDSIGNALS-001-02: KillAgent が失効エポックを進めてイベントを発行した後、`issued_at` が新しいエポックより後のトークンは `/introspect` で active=true と client_id を返し、エポックより前のトークンは active=false のままである。
-func TestTokenIssuedAfterTheKillEpochStaysActive(t *testing.T) {
+//spec:covers EX-SHAREDSIGNALS-001-02: DisableAgent が失効エポックを進めた後に EnableAgent で再有効化すると、`issued_at` が新しいエポックより後のトークンは `/introspect` で active=true と client_id を返し、エポックより前のトークンは active=false のままである。
+func TestTokenIssuedAfterTheEpochStaysActive(t *testing.T) {
 	s := newExampleStack(t)
 	s.seedAgent(t, tenancydomain.DefaultTenantID, exampleAgentID)
 	at1 := s.issueAgentToken(t)
 
-	before, after := s.killAgent(t)
+	for _, action := range []string{"disable", "enable"} {
+		if rec := s.admin(t, http.MethodPost, "/api/admin/v1/agents/"+exampleAgentID+"/"+action, nil); rec.Code != http.StatusNoContent {
+			t.Fatalf("%s status=%d body=%s", action, rec.Code, rec.Body.String())
+		}
+	}
 
-	epoch := s.assertEpochAdvancedByKill(t, before, after)
+	epoch := s.epoch(t, tenancydomain.DefaultTenantID, exampleAgentID)
+	if epoch == nil || epoch.Reason != ssdomain.RevocationReasonAgentDisabled {
+		t.Fatalf("epoch=%+v, want reason=AgentDisabled", epoch)
+	}
 	reissued := s.reissueAt(t, at1, epoch.Epoch.Add(time.Second))
 	body := s.introspect(t, reissued)
 	if body["active"] != true || body["client_id"] != agentClientID {

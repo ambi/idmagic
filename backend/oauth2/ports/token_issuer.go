@@ -21,6 +21,10 @@ type AccessTokenInput struct {
 	// AgentID は client_credentials で発行したトークンに束縛された Agent の id。
 	// 非空のとき agent_id / principal_type=agent claim を付与する。
 	AgentID string
+	// AgentChain は発行時に権限を支えた Agent の集合 (REQ-OAUTH2-012)。要求したクライアントに
+	// 束縛された Agent と、トークン交換の入力が持っていた Agent である。非空のとき
+	// agent_chain claim を付与する。principal_type は変えない。
+	AgentChain []string
 	// Audiences は発行トークンの aud を明示指定する (RFC 8707 / RFC 8693)。
 	// 空のときは Scopes からデフォルトの資源を推定し (RFC 9068 §3)、account スコープを含めば
 	// レルムの発行者識別子 (レルムの IdMagic API) を、含まなければ Client.ClientID を

@@ -27,7 +27,8 @@ func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
 	agentRepo := idmanagement.NewMemoryModule().AgentRepo
 	if err := agentRepo.Save(context.Background(), &agentdomain.Agent{
 		ID: "agent_1", TenantID: tenancydomain.DefaultTenantID, Name: "agent_1",
-		Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "user_1", Status: idmdomain.AgentStatusKilled,
+		// 無効化でエポックを進めた後に再有効化した Agent である。
+		Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "user_1", Status: idmdomain.AgentStatusActive,
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatalf("seed agent: %v", err)
@@ -42,7 +43,7 @@ func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
 	epoch := now
 	if err := epochRepo.Advance(context.Background(), ssdomain.AgentRevocationEpoch{
 		AgentID: "agent_1", TenantID: tenancydomain.DefaultTenantID,
-		Epoch: epoch, Reason: ssdomain.RevocationReasonAgentKilled, AdvancedAt: epoch,
+		Epoch: epoch, Reason: ssdomain.RevocationReasonAgentDisabled, AdvancedAt: epoch,
 	}); err != nil {
 		t.Fatalf("seed epoch: %v", err)
 	}
@@ -77,7 +78,7 @@ func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
 			t.Fatal("expected a token issued after the revocation epoch to stay active")
 		}
 		if resp.Sub != "agent_client" || resp.Scope != "openid" {
-			t.Fatalf("kill 後に再発行された token の claim が失われている: %+v", resp)
+			t.Fatalf("再有効化の後に再発行された token の claim が失われている: %+v", resp)
 		}
 	})
 

@@ -88,7 +88,7 @@
 - When トークン "AT1" を検査する
 - Then レスポンスは active=false のみで他のフィールドを含まない
 
-## Rule: REQ-OAUTH2-012 キルスイッチ作動後の Agent トークンはイントロスペクションで active=false になる
+## Rule: REQ-OAUTH2-012 停止した Agent が発行に関わったトークンはイントロスペクションで active=false になる
 
 ### Example: EX-OAUTH2-012-01 通常経路
 
@@ -97,12 +97,12 @@
 - When トークン "AT1" を検査する
 - Then レスポンスは active=false のみで他のフィールドを含まない
 
-### Example: EX-OAUTH2-012-02 "AT1" が revocation epoch より後に発行された (kill 後に再発行された) トークンである
+### Example: EX-OAUTH2-012-02 "AT1" が revocation epoch より後に発行された (再有効化の後に再発行された) トークンである
 
 - Given Agent "A1" に issued_at が古い access トークン "AT1" が発行済みである
-- And "A1" は kill-switch により revocation epoch が "AT1" の issued_at より後へ前進している
+- And "A1" は無効化により revocation epoch が "AT1" の issued_at より後へ前進し、その後に再有効化されて `Active` である
 - When トークン "AT1" を検査する
-- But "AT1" が revocation epoch より後に発行された (kill 後に再発行された) トークンである
+- But "AT1" が revocation epoch より後に発行された (再有効化の後に再発行された) トークンである
 - Then レスポンスは通常どおり active=true と claim を返す
 
 ## Rule: REQ-OAUTH2-013 UserInfo は openid スコープのトークンに sub を返す

@@ -9,6 +9,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -31,12 +32,13 @@ type AgentIssuanceDeps struct {
 //
 // 発行を止める条件は 2 つある。Agent 自身が Active でない (kill-switch / 無効化) 場合と、
 // 所有者がオフボードされている場合である。後者は Agent の status を書き換える一度きりの
-// 状態遷移ではなく、発行のたびの評価として実装する。一度きりの書き込みは、それを行う
-// 反応が届かなかった配備でガードごと失われるためで、この形なら所有者が復帰すれば発行も
-// 自動的に再開する。所有者を解決できない場合 (ハード削除) も fail-closed で拒否する。
+// 状態遷移ではなく、発行のたびの評価として実装する。所有者の停止に伴う Agent の無効化
+// (REQ-IDMANAGEMENT-081) を行う反応が届かなかった配備でも、ガードを失わないための安全網で
+// ある。所有者が復帰しても、無効化した Agent は Disabled のまま発行を再開しない。所有者を
+// 解決できない場合 (ハード削除) も fail-closed で拒否する。
 //
-// 既に発行済みのトークンはこの評価では止まらない。それは SharedSignals の失効エポックが
-// 受け持つ (IntrospectToken)。
+// 既に発行済みのトークンはこの評価では止まらない。それは発行時の Agent の状態と
+// SharedSignals の失効エポックが受け持つ (AccessTokenIsRevoked)。
 func ResolveIssuableAgent(ctx context.Context, deps AgentIssuanceDeps, clientID string) (*agentdomain.Agent, error) {
 	if deps.AgentRepo == nil {
 		return nil, nil
@@ -86,6 +88,43 @@ func RejectAgentClientWithoutKeyProof(
 		TokenEndpointAuthMethod: string(client.TokenEndpointAuthMethod), GrantType: grantType,
 	})
 	return NewOAuthError("invalid_client", "agent clients must authenticate with private_key_jwt or tls_client_auth")
+}
+
+// IssuerForRequestingAgent は、トークンを要求したクライアントに束縛された Agent を、発行する
+// すべてのアクセストークンの agent_chain へ加える発行器を返す (REQ-OAUTH2-012)。束縛した
+// Agent のないクライアント (agentID == "") には issuer をそのまま返す。
+//
+// グラントごとのユースケースではなく発行器で加えるのは、送信者制約と同じく、グラントを
+// 足すたびに同じ記録を書き写さずに済ませ、書き忘れた経路だけ解除後の失効を見落とすことを
+// 防ぐためである。
+func IssuerForRequestingAgent(issuer ports.TokenIssuer, agentID string) ports.TokenIssuer {
+	if agentID == "" {
+		return issuer
+	}
+	return requestingAgentIssuer{TokenIssuer: issuer, agentID: agentID}
+}
+
+type requestingAgentIssuer struct {
+	ports.TokenIssuer
+	agentID string
+}
+
+func (i requestingAgentIssuer) SignAccessToken(ctx context.Context, in ports.AccessTokenInput) (string, string, error) {
+	in.AgentChain = domain.MergeAgentChain([]string{i.agentID}, in.AgentChain)
+	return i.TokenIssuer.SignAccessToken(ctx, in)
+}
+
+// RequestingAgentID は clientID に束縛された Agent の識別子を返す。束縛がない client と、
+// AgentRepo を組み立てない配線では空文字列を返す。
+func RequestingAgentID(ctx context.Context, deps AgentIssuanceDeps, clientID string) (string, error) {
+	if deps.AgentRepo == nil {
+		return "", nil
+	}
+	agent, err := deps.AgentRepo.FindByClientID(ctx, tenantports.TenantID(ctx), clientID)
+	if err != nil || agent == nil {
+		return "", err
+	}
+	return agent.ID, nil
 }
 
 // AgentOwnerIsActive は agent の所有者がオフボードされていないかを返す。所有者を

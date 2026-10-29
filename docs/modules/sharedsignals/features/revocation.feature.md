@@ -13,11 +13,11 @@
 ### Example: EX-SHAREDSIGNALS-001-02 トークンの `issued_at` が新しい失効エポックより後である
 
 - Given `Active` の Agent "A1" に紐づくアクセストークン "AT1" が発行済みである
-- When 管理者が KillAgent で "A1" を強制終了する
-- Then "A1" の AgentRevocationEpoch が現在時刻へ前進する
-- Then "RevocationEpochAdvanced" と "AgentAccessRevoked" が発行される
+- When 管理者が DisableAgent で "A1" を無効化し、EnableAgent で再有効化する
+- Then "A1" の AgentRevocationEpoch が無効化の時刻へ前進する
 - Then トークンの `issued_at` が新しい失効エポックより後である
-- Then イントロスペクションは `active=true` を返す（強制終了後に再発行されたトークンは失効対象にしない）
+- Then イントロスペクションは `active=true` を返す（再有効化の後に発行したトークンは失効対象にしない）
+- Then "AT1" のイントロスペクションは `active=false` のままである
 
 ## Rule: REQ-SHAREDSIGNALS-007 受信側の障害はローカル失効を遅らせない
 
