@@ -358,7 +358,8 @@ run = "golangci-lint run --fix ./..."
 
 [tasks.clean-go-test-cache]
 description = "Clear the Go test result cache"
-# 前後比較のための計測は、キャッシュから返った項目を含めると意味を失う。
+# Go のテストのタスクは入力が変わらないパッケージの結果を再生する。実際に実行し直したいとき、
+# または前後比較の計測で、キャッシュから返った項目を含めないときに使う。
 run = "go clean -testcache"
 
 [tasks.clean-lint-cache]
@@ -377,7 +378,6 @@ run = "bun run tools/verification/src/main.ts --full --report .verification/test
 [tasks.test-go-package]
 description = "Run Go tests for one package; pass --race to add the race detector"
 # 通常のビルドが既定で、並行処理そのものを作る作業だけが --race を付ける。
-# runner は -count=1 で結果キャッシュを無効にし、今回の実行とスキップを記録する。
 run = '''
 #!/usr/bin/env sh
 set -eu
@@ -413,14 +413,14 @@ fi
 echo "$packages" | tr '\n' ' ' | xargs bun run tools/verification/src/main.ts --report .verification/test-go-changed.json -- $race
 '''
 
-[tasks.test-go-test]
+[tasks.test-go-one]
 # context: targets=backend
 description = "Run one Go test by name in one package"
 run = '''
 #!/usr/bin/env sh
 set -eu
-test "$#" -ge 2 || { echo "usage: mise run test-go-test -- <package> <test>" >&2; exit 2; }
-bun run tools/verification/src/main.ts --report .verification/test-go-test.json -- "$1" -run "^$2\$"
+test "$#" -ge 2 || { echo "usage: mise run test-go-one -- <package> <test>" >&2; exit 2; }
+bun run tools/verification/src/main.ts --report .verification/test-go-one.json -- "$1" -run "^$2\$"
 '''
 
 [tasks.benchmark-go-package]

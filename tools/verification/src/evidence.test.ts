@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test'
 import {
+  cachedPackages,
   evaluateVerification,
   executionResults,
   changedOperations,
@@ -121,6 +122,31 @@ test('fuzz: イベントの JSON 往復を保存し、壊した形を成功へ�
     }
     expect(parseGoEvents(`invalid-${seed}`).failures).toHaveLength(1)
   }
+})
+
+test('結果キャッシュから返したパッケージを、再生されたテストの状態と別に識別する', () => {
+  const events = [
+    { Action: 'skip', Package: 'example/cached', Test: 'TestSkipped' },
+    { Action: 'output', Package: 'example/cached', Output: 'ok  \texample/cached\t(cached)\n' },
+    { Action: 'pass', Package: 'example/cached' },
+    {
+      Action: 'output',
+      Package: 'example/covered',
+      Output: 'ok  \texample/covered\t(cached)\tcoverage: 50.0% of statements\n',
+    },
+    { Action: 'output', Package: 'example/run', Output: 'ok  \texample/run\t0.172s\n' },
+    // テストが自分の出力に同じ文字列を書いても、パッケージの結果行ではない。
+    {
+      Action: 'output',
+      Package: 'example/run',
+      Test: 'TestLog',
+      Output: 'ok  \texample/run\t(cached)\n',
+    },
+  ]
+  expect(cachedPackages(events)).toEqual(['example/cached', 'example/covered'])
+  expect(executionResults(events).find((test) => test.name === 'TestSkipped')?.state).toBe(
+    'skipped',
+  )
 })
 
 test('規範参照だけがあり実行イベントがないテストは未実行のまま残る', () => {

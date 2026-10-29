@@ -212,3 +212,108 @@ func TestStore(t *testing.T) {
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('結果キャッシュから再生したパッケージを報告に分けて残し、実行ごとの識別子を渡す', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'idmagic-verification-cache-'))
+  try {
+    for (const directory of ['bin', 'docs', 'spec', 'backend/demo/db_postgres'])
+      await mkdir(join(root, directory), { recursive: true })
+    await writeFile(join(root, 'go.mod'), 'module example\n')
+    await writeFile(join(root, '.gitignore'), '.verification/\nbin/\n')
+    await writeFile(
+      join(root, 'backend/demo/db_postgres/store_test.go'),
+      `package demo
+import pgtest "example/backend/shared/storage/testing_postgres"
+func TestStore(t *testing.T) {
+  pgtest.Require(t)
+}
+`,
+    )
+    const pkg = 'example/backend/demo/db_postgres'
+    const plain = 'example/backend/demo/plain'
+    const events = [
+      { Action: 'run', Package: pkg, Test: 'TestStore' },
+      { Action: 'pass', Package: pkg, Test: 'TestStore' },
+      { Action: 'output', Package: pkg, Output: `ok  \t${pkg}\t(cached)\n` },
+      { Action: 'pass', Package: pkg },
+      { Action: 'skip', Package: plain, Test: 'TestOptional' },
+      { Action: 'output', Package: plain, Output: `ok  \t${plain}\t(cached)\n` },
+      { Action: 'pass', Package: plain },
+    ]
+    // 引数と実行ごとの識別子を記録し、キャッシュからの結果を返す代役。
+    await writeFile(
+      join(root, 'bin/go'),
+      `#!/bin/sh\nprintf '%s|%s\\n' "$*" "$VERIFICATION_RUN_ID" >> "$GO_CALLS"\nprintf '%s\\n' '${events.map((event) => JSON.stringify(event)).join('\n')}'\n`,
+      { mode: 0o755 },
+    )
+    for (const args of [
+      ['init', '-q'],
+      ['add', '.'],
+      [
+        '-c',
+        'user.name=fixture',
+        '-c',
+        'user.email=fixture@example.invalid',
+        'commit',
+        '-qm',
+        'fixture',
+      ],
+    ])
+      expect(Bun.spawnSync(['git', ...args], { cwd: root }).exitCode).toBe(0)
+    const calls = join(root, 'bin/go-calls.txt')
+    const run = async (options: string[]) => {
+      const child = Bun.spawn(
+        [process.execPath, runner, ...options, '--', './backend/demo/db_postgres'],
+        {
+          cwd: root,
+          env: {
+            ...process.env,
+            PATH: `${join(root, 'bin')}:${process.env.PATH}`,
+            GO_CALLS: calls,
+            PGTEST_ALLOW_SKIP: '',
+            VERIFICATION_REQUIRE_DB: '',
+          },
+          stdout: 'pipe',
+          stderr: 'pipe',
+        },
+      )
+      const [stdout, stderr, code] = await Promise.all([
+        new Response(child.stdout).text(),
+        new Response(child.stderr).text(),
+        child.exited,
+      ])
+      return { code, output: stdout + stderr }
+    }
+
+    for (const report of ['first', 'second']) {
+      const { code, output } = await run(['--report', `.verification/${report}.json`])
+      expect(code, output).toBe(0)
+      const result = await Bun.file(join(root, `.verification/${report}.json`)).json()
+      expect(result.cachedPackages).toEqual([pkg, plain])
+      expect(result.command).not.toContain('-count=1')
+      expect(result.databases).toEqual([{ package: pkg, state: 'verified', reasons: [] }])
+      expect(
+        result.tests.map((entry: { package: string; name: string; state: string }) => [
+          entry.package,
+          entry.name,
+          entry.state,
+        ]),
+      ).toEqual([
+        [pkg, 'TestStore', 'passed'],
+        [pkg, '', 'passed'],
+        [plain, 'TestOptional', 'skipped'],
+        [plain, '', 'passed'],
+      ])
+      expect(output).toContain('cached packages: 2')
+    }
+
+    const [first, second, ...rest] = (await Bun.file(calls).text()).trim().split('\n')
+    expect(rest).toEqual([])
+    const ids = [first, second].map((line) => line!.split('|')[1])
+    // 外部の状態に依存するテストはこの値を読み、Go の結果キャッシュの鍵を毎回変える。
+    expect(ids.every((id) => /^[0-9a-f-]{36}$/.test(id!))).toBe(true)
+    expect(new Set(ids).size).toBe(2)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})

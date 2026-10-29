@@ -28,11 +28,12 @@ describe('main に対する Go race 検査の定期実行', () => {
     expect(parsed.permissions).toEqual({ contents: 'read' })
   })
 
-  it('DB 必須で全体の race 検査を実行し、その証拠を失敗時も保存する', async () => {
+  it('DB 必須で全体の race 検査を結果キャッシュなしで実行し、その証拠を失敗時も保存する', async () => {
     const jobs = Object.values((await workflow()).jobs)
     expect(jobs).toHaveLength(1)
     const job = jobs[0]!
     expect(job.env?.VERIFICATION_REQUIRE_DB).toBe('1')
+    expect(job.env?.GOFLAGS).toBe('-count=1')
     const steps = job.steps ?? []
     expect(steps.some((step) => step.run === 'mise run test-go-race')).toBe(true)
     const report = steps.find((step) => step.run?.includes('report-verification'))!

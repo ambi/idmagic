@@ -14,6 +14,7 @@ import { checkContractDrift } from '../../check/src/check-contract-drift.ts'
 import { checkStatusDrift } from '../../check/src/check-status-drift.ts'
 import { defaultBaseRevision, runChecks } from '../../check/src/runner.ts'
 import {
+  cachedPackages,
   changedOperations,
   moduleDependencies,
   collectReferences,
@@ -40,7 +41,9 @@ const baseRevision = process.env.VERIFICATION_BASE_REVISION || defaultBaseRevisi
 // CI は Skip 許可が混入しても未検証を拒否する。手元も明示の許可がない限り必須とする。
 const requireDB =
   process.env.VERIFICATION_REQUIRE_DB === '1' || process.env.PGTEST_ALLOW_SKIP !== '1'
-const command = ['go', 'test', '-json', '-count=1', ...args.slice(separator + 1)]
+// 入力が変わらないパッケージは Go の結果キャッシュから返り、報告の cachedPackages に残る。
+// 実行し直すには clean-test-cache を使い、CI は GOFLAGS=-count=1 で再利用を止める。
+const command = ['go', 'test', '-json', ...args.slice(separator + 1)]
 const input = await verificationInput(snapshot, full ? baseRevision : undefined)
 const files = await repositoryGoFiles(snapshot, true)
 const modulePath = (await snapshot.read('go.mod'))
@@ -104,7 +107,13 @@ const dbPackages = [
 ]
 
 await mkdir(dirname(reportPath), { recursive: true })
-const child = Bun.spawn(command, { cwd: snapshot.root, stdout: 'pipe', stderr: 'pipe' })
+// Go の鍵に入らない入力へ依存するテストは、この値を読んで毎回の実行に結果を結び付ける。
+const child = Bun.spawn(command, {
+  cwd: snapshot.root,
+  env: { ...process.env, VERIFICATION_RUN_ID: crypto.randomUUID() },
+  stdout: 'pipe',
+  stderr: 'pipe',
+})
 const [output, stderr, code] = await Promise.all([
   new Response(child.stdout).text(),
   new Response(child.stderr).text(),
@@ -117,6 +126,7 @@ const { events, failures } = parseGoEvents(output)
 if (code !== 0) failures.push(`go test exited ${code}`)
 if (events.length === 0) failures.push('go test produced no execution events')
 const tests = executionResults(events)
+const cached = cachedPackages(events)
 if (tests.some((test) => test.state === 'failed'))
   failures.push('go test reported failed execution')
 const facts = referenceResults(references, tests)
@@ -141,6 +151,7 @@ const result = {
   command,
   requireDB,
   scope: full ? 'full' : 'selected',
+  cachedPackages: cached,
   eventLog,
   checks,
   changedOperations: [...changed],
@@ -161,6 +172,7 @@ for (const db of databases)
   )
 for (const state of ['passed', 'failed', 'skipped', 'not-run'])
   console.log(`tests ${state}: ${tests.filter((test) => test.name && test.state === state).length}`)
+console.log(`cached packages: ${cached.length}; replayed from an earlier run with the same inputs`)
 console.log(
   `normative references: ${facts.filter((fact) => fact.normativeIds.length).length} test(s); execution and change-resistance are separate facts`,
 )

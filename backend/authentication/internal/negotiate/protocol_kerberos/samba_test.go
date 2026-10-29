@@ -24,6 +24,8 @@ func TestVerifierAgainstSambaAD(t *testing.T) {
 	if address == "" {
 		t.Skip("run mise run test-kerberos-ad to start the isolated domain controller")
 	}
+	// KDC の状態は Go の結果キャッシュの鍵に入らないため、実行ごとの値で再利用を防ぐ。
+	_ = os.Getenv("VERIFICATION_RUN_ID")
 	deadline := time.Now().Add(20 * time.Second)
 	for {
 		connection, err := net.DialTimeout("tcp", address, time.Second)

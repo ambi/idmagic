@@ -15,6 +15,13 @@ export type VerificationReport = {
   command?: string[]
   requireDB?: boolean
   scope?: string
+  cachedPackages?: string[]
+}
+
+function resultCacheLine(cached: readonly string[] | undefined): string {
+  if (!cached) return 'Result cache: not recorded'
+  if (cached.length === 0) return 'Result cache: every package executed in this run'
+  return `Result cache: **${cached.length} package(s) replayed from an earlier run with the same inputs** (${cached.join(', ')})`
 }
 
 export function renderVerificationReport(
@@ -31,6 +38,7 @@ export function renderVerificationReport(
     `Verification revision: \`${report.input.revision}\``,
     `Input identity: **${current ? 'current' : 'stale; unverified for the current tree'}** (\`${report.input.fingerprint}\`)`,
     `Command: \`${report.command?.join(' ') ?? 'not recorded'}\`; scope=${report.scope ?? 'not recorded'}, required DB=${report.requireDB ?? 'not recorded'}`,
+    resultCacheLine(report.cachedPackages),
     '',
     '| Execution state | Tests | Tests citing normative IDs |',
     '| --- | ---: | ---: |',

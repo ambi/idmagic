@@ -96,6 +96,8 @@ jobs:
     if: ${{ needs.plan.outputs.go == 'true' }}
     runs-on: ubuntu-latest
     env:
+      # Go のキャッシュを復元するようにしても、前回の成功を再生せず実際に実行する。
+      GOFLAGS: -count=1
       VERIFICATION_REQUIRE_DB: "1"
       VERIFICATION_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.event.before }}
     steps:

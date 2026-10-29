@@ -32,4 +32,4 @@ docker cp "$container_id:/shared/http.keytab" "$fixture_dir/http.keytab"
 KERBEROS_KDC_ADDR=$(docker port "$container_id" 88/tcp)
 export KERBEROS_KDC_ADDR
 export KERBEROS_KEYTAB_FILE="$fixture_dir/http.keytab"
-mise run test-go-test -- ./backend/authentication/internal/negotiate/protocol_kerberos TestVerifierAgainstSambaAD
+mise run test-go-one -- ./backend/authentication/internal/negotiate/protocol_kerberos TestVerifierAgainstSambaAD

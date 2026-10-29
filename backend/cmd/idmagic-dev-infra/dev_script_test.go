@@ -60,6 +60,8 @@ type devScriptRun struct {
 // 実物のビルド、組込み PostgreSQL、Vite を起動せず、起動の順序と環境だけを観測する。
 func runDevScript(t *testing.T, infraOutcome string) devScriptRun {
 	t.Helper()
+	// 子の bash が読む dev.sh は Go の結果キャッシュの鍵に入らないため、実行ごとの値で再利用を防ぐ。
+	_ = os.Getenv("VERIFICATION_RUN_ID")
 	_, file, _, _ := runtime.Caller(0)
 	script := filepath.Join(filepath.Dir(file), "..", "..", "..", "dev.sh")
 

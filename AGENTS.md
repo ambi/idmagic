@@ -40,7 +40,7 @@
 
 一度だけの調査または移行に使い、反復利用しないコマンドは `mise` タスクにせず直接実行する。
 
-`go test`、`go vet`、`gofmt`、`golangci-lint`、`bun test` のような下位ツールは、1 パッケージだけの確認であっても直接呼ばない。その用途には `mise run test-go-package -- <package>`、`test-go-test`、`format-go`、`lint-go` を使う。
+`go test`、`go vet`、`gofmt`、`golangci-lint`、`bun test` のような下位ツールは、1 パッケージだけの確認であっても直接呼ばない。その用途には `mise run test-go-package -- <package>`、`test-go-one`、`format-go`、`lint-go` を使う。
 
 `mise run test-ui-e2e`、`test-ui-e2e-file`、`verify-full` と Chrome／Bun.WebView の起動確認は、localhost の待受けとブラウザーの起動を必要とするため、初回からサンドボックスの外で実行する。
 `mise run verify`、`check-schema`、Go の HTTP 統合テストと DB を使うテストも localhost の待受けを使うため、同じ実行方法に従う。

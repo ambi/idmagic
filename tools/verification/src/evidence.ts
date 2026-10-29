@@ -80,6 +80,19 @@ export function executionResults(events: readonly GoTestEvent[]): TestExecution[
   })
 }
 
+/** Go は再生したテストのイベントに印を付けず、パッケージの結果行だけでキャッシュを示す。 */
+export function cachedPackages(events: readonly GoTestEvent[]): string[] {
+  return [
+    ...new Set(
+      events
+        .filter(
+          (event) => event.Test === undefined && /^ok\s+\S+\s+\(cached\)/.test(event.Output ?? ''),
+        )
+        .map((event) => event.Package),
+    ),
+  ]
+}
+
 export function referenceResults(
   references: readonly TestReference[],
   tests: readonly TestExecution[],

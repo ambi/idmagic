@@ -330,7 +330,7 @@ IDだけでは何を観測したか分からず、検査対象を増やさずに
 7. 追加検査の要否は [追加検査の費用対効果](testing.md#追加検査の費用対効果)に従って判断し、選んだ検査を行う。
 8. 作業項目を完了する前に、[最終検査の選択](#最終検査の選択)に従って必要な検査の成功を確認する。
 
-RED、GREEN、故障注入の反復には、Go は `mise run test-go-test -- <package> <test>`、UI は `mise run test-ui-unit-file -- <file>` を使う。
+RED、GREEN、故障注入の反復には、Go は `mise run test-go-one -- <package> <test>`、UI は `mise run test-ui-unit-file -- <file>` を使う。
 複数の独立したパッケージ検査が必要なら、`mise run -c test-go-package <package> ::: test-go-package <package>` で並列に実行する。
 この形では `--` を入れない。`mise run <task> -- <args> ::: ...` は `:::` 以降のタスクを実行しないためである。
 `-c` は一つが失敗しても各タスクの結果を報告する。

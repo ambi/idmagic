@@ -1,6 +1,7 @@
 package testing_postgres
 
 import (
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -9,6 +10,8 @@ import (
 )
 
 func TestRequireUnavailable(t *testing.T) {
+	// 子の go test が読む testdata は Go の結果キャッシュの鍵に入らないため、実行ごとの値で再利用を防ぐ。
+	_ = os.Getenv("VERIFICATION_RUN_ID")
 	cases := []struct {
 		name       string
 		allowSkip  string

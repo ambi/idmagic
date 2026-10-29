@@ -153,9 +153,10 @@ describe('CI の全体結果', () => {
     }
   })
 
-  it('DB 必須の通常テストを実行し、その実行の証拠を失敗時も保存する', () => {
+  it('DB 必須の通常テストを結果キャッシュなしで実行し、その実行の証拠を失敗時も保存する', () => {
     const job = workflow.jobs['go-test']!
     expect(job.env?.VERIFICATION_REQUIRE_DB).toBe('1')
+    expect(job.env?.GOFLAGS).toBe('-count=1')
     expect(job.env?.VERIFICATION_BASE_REVISION).toContain('pull_request.base.sha')
     const steps = job.steps ?? []
     expect(steps.some((step) => step.with?.['fetch-depth'] === 0)).toBe(true)

@@ -97,7 +97,7 @@ spec_impact:
 ## 検証
 
 - `mise run report-contract-evidence` をタスク定義の引数に従って実行し、変更予定の HTTP 契約と未解析の証拠を着手前に照合する。
-- `mise run test-go-test -- <package> <test>` または `mise run test-go-package -- <package>` を、実際の引数を確認して選ぶ。
+- `mise run test-go-one -- <package> <test>` または `mise run test-go-package -- <package>` を、実際の引数を確認して選ぶ。
 - 正式な HTTP 入口で TypeSpec に対応するフィールドと値を比較し、変換の omission 条件、列挙値、入れ子の欠落を検出する。
 - `mise run check-contract-drift`、`mise run check-status-drift`、`mise run check-boundaries` で公開形と境界の整合を確認する。
 - `mise run test-go-mutation -- <変換を変更した package directory>` を実行し、対応するフィールドを落とす、null と省略を入れ替える故障は必要な場合だけ手動注入する。
