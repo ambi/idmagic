@@ -1,5 +1,5 @@
 // Package cimd_http fetches and resolves OAuth Client ID Metadata Documents
-// (CIMD, draft-ietf-oauth-client-id-metadata-document-00) over an SSRF-safe
+// (CIMD, draft-ietf-oauth-client-id-metadata-document-02) over an SSRF-safe
 // HTTP client, and adapts resolution into the existing OAuth2ClientRepository
 // lookup path via a decorator. Resolution results are never persisted.
 package cimd_http
@@ -40,7 +40,6 @@ func NewFetcher() *Fetcher {
 		DialTimeout:    2 * time.Second,
 		TLSTimeout:     2 * time.Second,
 		RequestTimeout: 3 * time.Second,
-		MaxRedirects:   3,
 		ValidateURL:    validateClientIDURL,
 	}))
 }
@@ -51,7 +50,17 @@ func NewFetcher() *Fetcher {
 // by shared/security/safehttp's own tests plus
 // TestFetcher_RealFetcherRejectsLoopbackViaSSRFDialer.
 func newFetcherWithClient(client *http.Client) *Fetcher {
-	return &Fetcher{cache: map[string]cachedDocument{}, client: client}
+	return &Fetcher{cache: map[string]cachedDocument{}, client: withoutRedirects(client)}
+}
+
+// withoutRedirects は client の複製を、リダイレクトを追従せず 3xx の応答をそのまま返す
+// ように設定する (CIMD02-NO-REDIRECT)。3xx は 200 以外の応答として Fetch が拒否する。
+// 共有の safehttp ではなくここで設定するのは、jwks_uri など別の用途のリダイレクト方針を
+// 変えないためと、テストで差し替えた HTTP クライアントにも同じ方針を効かせるためである。
+func withoutRedirects(client *http.Client) *http.Client {
+	copied := *client
+	copied.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return &copied
 }
 
 func validateClientIDURL(raw string) error {

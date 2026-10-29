@@ -73,17 +73,20 @@ RFC 7591 — https://www.rfc-editor.org/rfc/rfc7591.html
 
 ## OAuth Client ID Metadata Document
 
-draft-ietf-oauth-client-id-metadata-document-00 — https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-00.html
+draft-ietf-oauth-client-id-metadata-document-02 — https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| CIMD00-URL-SHAPE | required | MUST | `client_id` は `https` スキームと空でないパスを持つ URL でなければならない。 |
-| CIMD00-FETCH | required | SHOULD | URL 形式の `client_id` を検出したら、その URL から Client ID Metadata Document を取得する。 |
-| CIMD00-CLIENT-ID-MATCH | required | MUST | 取得した文書内の `client_id` フィールドが取得元 URL と厳密に一致することを検証する。 |
-| CIMD00-REDIRECT-VALIDATE | required | MUST | 認可リクエストの `redirect_uri` が文書の `redirect_uris` 一覧に含まれることを検証する。 |
-| CIMD00-STRUCTURE | required | MUST | 文書が正しい JSON であり、`client_id`、`client_name`、空でない `redirect_uris` を含むことを検証する。不正な場合は fail-closed で拒否する。 |
-| CIMD00-CACHE | partial | SHOULD | HTTP キャッシュヘッダーに従って文書をキャッシュする。 |
-| CIMD00-PRIVATE-KEY-JWT | excluded | MAY | `private_key_jwt` クライアント認証をインラインの `jwks` または `jwks_uri` 経由で提供してよい。 |
+| CIMD02-URL-SHAPE | required | MUST | `client_id` は `https` スキームとパスを持ち、userinfo、fragment、単独の `.` か `..` のパス要素を持たない URL でなければならない。IdMagic は、パーセント復号すると `.` か `..` になる要素も同じ形の外れとして扱い、形の外れた URL を取得しない。query は推奨に反するが受理する。 |
+| CIMD02-FETCH | required | SHOULD | URL 形式の `client_id` を検出したら、その URL から Client ID Metadata Document を取得する。 |
+| CIMD02-NO-REDIRECT | required | MUST | 文書は 200 の応答だけを受け付け、ほかの状態コードを誤りとして扱い、HTTP リダイレクトを自動で追従しない。 |
+| CIMD02-CLIENT-ID-MATCH | required | MUST | 取得した文書内の `client_id` フィールドが取得元 URL と単純な文字列比較で一致することを検証する。 |
+| CIMD02-REDIRECT-VALIDATE | required | MUST | 認可リクエストの `redirect_uri` が文書の `redirect_uris` 一覧に含まれることを検証する。 |
+| CIMD02-STRUCTURE | required | MUST | 文書が正しい JSON であり、`client_id`、`client_name`、空でない `redirect_uris` を含むことを検証する。不正な場合は fail-closed で拒否する。 |
+| CIMD02-CREDENTIAL-MATERIAL | required | MUST | 文書は共有シークレットに基づく認証方式、`client_secret`、`client_secret_expires_at`、秘密鍵を含めてはならない。IdMagic は、これらを含む文書（値が `null` のプロパティ、秘密鍵の成分を持つ `jwks` の鍵、鍵の配列として読めない `jwks` を含む）を解決せずに拒否し、公開鍵だけの `jwks` は拒否しない。 |
+| CIMD02-CACHE | partial | SHOULD | HTTP キャッシュヘッダーに従って文書をキャッシュする。IdMagic はヘッダーを読まず、解決した文書を一律 5 分保持する。 |
+| CIMD02-NO-ERROR-CACHE | required | MUST | 誤りの応答と、不正な文書をキャッシュしない。 |
+| CIMD02-PRIVATE-KEY-JWT | excluded | MAY | `private_key_jwt` クライアント認証をインラインの `jwks` または `jwks_uri` 経由で提供してよい。 |
 
 ## Proof Key for Code Exchange by OAuth Public Clients
 

@@ -1,7 +1,7 @@
 package cimd_http
 
 // docs/modules/oauth2/standards.md の `OAuth Client ID Metadata Document`
-// (draft-ietf-oauth-client-id-metadata-document-00) が宣言する 7 行を、
+// (draft-ietf-oauth-client-id-metadata-document-02) が宣言する行を、
 // 製品の解決経路そのもので観測する。
 //
 // 観測の入口は 2 つある。文書の形と取得を言う 6 行は
@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -157,7 +158,7 @@ func requireRefused(t *testing.T, resolved *clientdomain.OAuth2Client, emitted [
 // 取得数を読むのは、形の検査が通信の前に立っていることを固定するためである。
 // 応答だけでは、取得してから捨てる実装と区別できない。
 //
-//spec:covers CIMD00-FETCH / CIMD00-URL-SHAPE:
+//spec:covers CIMD02-FETCH / CIMD02-URL-SHAPE:
 func TestClientIDMetadataDocumentIsFetchedOnlyForHTTPSURLClientIDs(t *testing.T) {
 	host := newMetadataHost(t, validDocument)
 	repository, emitted := host.resolution()
@@ -205,7 +206,12 @@ func TestClientIDMetadataDocumentIsFetchedOnlyForHTTPSURLClientIDs(t *testing.T)
 		"パスを持たない":      {host, host.server.URL},
 		"userinfo を持つ": {host, strings.Replace(host.clientIDURL(), "https://", "https://user:pass@", 1)},
 		"fragment を持つ": {host, host.clientIDURL() + "#frag"},
-		"URL ではない":     {host, "opaque-client-id"},
+		// 取得経路の正規化で別の経路になりうる dot segment は、パーセント符号化しても通さない。
+		"単独の . の要素を持つ":            {host, host.server.URL + "/oauth/./client-metadata.json"},
+		"単独の .. の要素を持つ":           {host, host.server.URL + "/other/../oauth/client-metadata.json"},
+		"末尾が .. の要素":              {host, host.server.URL + "/oauth/.."},
+		"%2e%2e で符号化した .. の要素を持つ": {host, host.server.URL + "/other/%2e%2E/oauth/client-metadata.json"},
+		"URL ではない":                {host, "opaque-client-id"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			before := target.host.requests.Load()
@@ -228,7 +234,7 @@ func TestClientIDMetadataDocumentIsFetchedOnlyForHTTPSURLClientIDs(t *testing.T)
 // 末尾スラッシュ 1 文字違いとホスト名の大文字化も試す。正規化して受け入れる
 // 実装へ緩めば、攻撃者は自分の配る文書で別の client_id を名乗れる。
 //
-//spec:covers CIMD00-CLIENT-ID-MATCH:
+//spec:covers CIMD02-CLIENT-ID-MATCH:
 func TestClientIDMetadataDocumentMustNameTheURLItWasFetchedFrom(t *testing.T) {
 	// 対照: 完全に一致する文書は解決される。
 	resolved, emitted := resolveDocument(t, validDocument)
@@ -259,6 +265,170 @@ func TestClientIDMetadataDocumentMustNameTheURLItWasFetchedFrom(t *testing.T) {
 	}
 }
 
+// scriptedHost は経路ごとに応答を決める TLS サーバーである。requests は経路ごとの
+// 要求数で、リダイレクト先や再取得に要求が届いたかを直接読むために持つ。
+type scriptedHost struct {
+	server   *httptest.Server
+	mu       sync.Mutex
+	requests map[string]int
+}
+
+func newScriptedHost(t *testing.T, respond func(host *scriptedHost, w http.ResponseWriter, r *http.Request)) *scriptedHost {
+	t.Helper()
+	host := &scriptedHost{requests: map[string]int{}}
+	host.server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host.mu.Lock()
+		host.requests[r.URL.Path]++
+		host.mu.Unlock()
+		respond(host, w, r)
+	}))
+	t.Cleanup(host.server.Close)
+	return host
+}
+
+func (h *scriptedHost) count(path string) int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.requests[path]
+}
+
+func (h *scriptedHost) clientIDURL() string { return h.server.URL + documentPath }
+
+func (h *scriptedHost) resolution() (*ClientRepositoryWithCIMD, *[]spec.DomainEvent) {
+	emitted := &[]spec.DomainEvent{}
+	return &ClientRepositoryWithCIMD{
+		OAuth2ClientRepository: clientmemory.NewClientRepository(),
+		Fetcher:                newFetcherWithClient(h.server.Client()),
+		Emit:                   func(event spec.DomainEvent) { *emitted = append(*emitted, event) },
+	}, emitted
+}
+
+// 文書の URL がリダイレクトを返したら、その応答を 200 以外の誤りとして拒否し、
+// リダイレクト先へは 1 度も要求を送らない。
+//
+// リダイレクト先には、元の client_id を名乗る正しい文書を置く。追従する実装は
+// その文書で解決に成功してしまうので、拒否とリダイレクト先の要求数 0 を対で読める。
+// リダイレクト先を同じサーバーに置くのは、別の証明書のサーバーでは追従しても
+// TLS の段で失敗し、追従しないことと区別できないためである。
+//
+//spec:covers CIMD02-NO-REDIRECT:
+func TestClientIDMetadataDocumentRedirectIsNeverFollowed(t *testing.T) {
+	const movedPath = "/moved/client-metadata.json"
+	for _, status := range []int{
+		http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
+		http.StatusTemporaryRedirect, http.StatusPermanentRedirect,
+	} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			host := newScriptedHost(t, func(host *scriptedHost, w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == documentPath {
+					http.Redirect(w, r, movedPath, status)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = io.WriteString(w, validDocument(host.clientIDURL()))
+			})
+			repository, emitted := host.resolution()
+
+			resolved, err := repository.FindByID(testing_tenant.Default(t.Context()), "default", host.clientIDURL())
+			if err != nil {
+				t.Fatalf("解決は「未知の client_id」へ畳まれるべきで、err ではない: %v", err)
+			}
+			requireRefused(t, resolved, *emitted)
+			if got := host.count(movedPath); got != 0 {
+				t.Fatalf("リダイレクト先が %d 件の要求を受けた。追従してはならない", got)
+			}
+		})
+	}
+}
+
+// 4.1 節が文書に禁じる素材 (共有秘密の方式、client_secret、秘密鍵) を含む文書は解決しない。
+// 公開鍵だけの jwks を持つ文書は、同じ鍵の公開部分を秘密と誤判定せずに解決する。
+//
+//spec:covers CIMD02-CREDENTIAL-MATERIAL:
+func TestClientIDMetadataDocumentWithCredentialMaterialIsRefused(t *testing.T) {
+	const publicRSA = `{"kty": "RSA", "kid": "k1", "n": "AQAB", "e": "AQAB"}`
+	for name, extra := range map[string]string{
+		"client_secret_basic":          `"token_endpoint_auth_method": "client_secret_basic"`,
+		"client_secret_post":           `"token_endpoint_auth_method": "client_secret_post"`,
+		"client_secret_jwt":            `"token_endpoint_auth_method": "client_secret_jwt"`,
+		"client_secret を持つ":            `"client_secret": "s3cr3t"`,
+		"client_secret が null":         `"client_secret": null`,
+		"client_secret_expires_at を持つ": `"client_secret_expires_at": 0`,
+		"RSA の秘密指数 d を持つ jwks":         `"jwks": {"keys": [{"kty": "RSA", "kid": "k1", "n": "AQAB", "e": "AQAB", "d": "AQAB"}]}`,
+		"RSA の素因数だけを持つ jwks":           `"jwks": {"keys": [{"kty": "RSA", "kid": "k1", "n": "AQAB", "e": "AQAB", "p": "AQAB", "q": "AQAB"}]}`,
+		"EC の秘密鍵 d を持つ jwks":           `"jwks": {"keys": [{"kty": "EC", "crv": "P-256", "x": "AQAB", "y": "AQAB", "d": "AQAB"}]}`,
+		"対称鍵 k を持つ jwks":               `"jwks": {"keys": [{"kty": "oct", "k": "AQAB"}]}`,
+		"2 本目の鍵だけが秘密鍵":                 `"jwks": {"keys": [` + publicRSA + `, {"kty": "OKP", "crv": "Ed25519", "x": "AQAB", "d": "AQAB"}]}`,
+		"keys が配列でない jwks":             `"jwks": {"keys": {"kty": "RSA"}}`,
+		"オブジェクトでない jwks":               `"jwks": "not-a-jwk-set"`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			resolved, emitted := resolveDocument(t, func(clientIDURL string) string {
+				return `{
+					"client_id": "` + clientIDURL + `",
+					"client_name": "` + documentClientName + `",
+					"redirect_uris": ["` + documentRedirect + `"],
+					` + extra + `
+				}`
+			})
+			requireRefused(t, resolved, emitted)
+		})
+	}
+
+	// 対照: 公開鍵だけの jwks と、宣言のない未知の拡張は拒否しない。
+	resolved, _ := resolveDocument(t, func(clientIDURL string) string {
+		return `{
+			"client_id": "` + clientIDURL + `",
+			"client_name": "` + documentClientName + `",
+			"redirect_uris": ["` + documentRedirect + `"],
+			"jwks": {"keys": [` + publicRSA + `, {"kty": "EC", "crv": "P-256", "x": "AQAB", "y": "AQAB"}]},
+			"x_vendor_extension": {"nested": true}
+		}`
+	})
+	if resolved == nil {
+		t.Fatal("公開鍵だけの jwks と未知の拡張を持つ文書が拒否された")
+	}
+}
+
+// 誤りの応答と不正な文書はキャッシュしない。直後の同じ client_id の解決は、
+// サーバーへ取得し直し、直った文書で成功する。
+//
+//spec:covers CIMD02-NO-ERROR-CACHE:
+func TestClientIDMetadataDocumentFailuresAreNotCached(t *testing.T) {
+	for name, fail := range map[string]func(host *scriptedHost, w http.ResponseWriter){
+		"500 の応答": func(_ *scriptedHost, w http.ResponseWriter) { w.WriteHeader(http.StatusInternalServerError) },
+		"404 の応答": func(_ *scriptedHost, w http.ResponseWriter) { w.WriteHeader(http.StatusNotFound) },
+		"不正な文書": func(_ *scriptedHost, w http.ResponseWriter) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"client_id": "https://attacker.example/c.json"}`)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			host := newScriptedHost(t, func(host *scriptedHost, w http.ResponseWriter, _ *http.Request) {
+				if host.count(documentPath) == 1 {
+					fail(host, w)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = io.WriteString(w, validDocument(host.clientIDURL()))
+			})
+			repository, _ := host.resolution()
+
+			first, err := repository.FindByID(testing_tenant.Default(t.Context()), "default", host.clientIDURL())
+			if err != nil || first != nil {
+				t.Fatalf("1 回目は拒否されるべき: client=%#v err=%v", first, err)
+			}
+			second, err := repository.FindByID(testing_tenant.Default(t.Context()), "default", host.clientIDURL())
+			if err != nil || second == nil {
+				t.Fatalf("2 回目は取得し直して解決されるべき: client=%#v err=%v", second, err)
+			}
+			if got := host.count(documentPath); got != 2 {
+				t.Fatalf("文書の URL が受けた要求は %d 件、期待は 2 件 (失敗を再利用しない)", got)
+			}
+		})
+	}
+}
+
 // 文書が正しい JSON であり、client_id、client_name、空でない redirect_uris を
 // 含むことを検証する。欠けていればフェイルクローズで拒否する。
 //
@@ -266,7 +436,7 @@ func TestClientIDMetadataDocumentMustNameTheURLItWasFetchedFrom(t *testing.T) {
 // 既定値で埋めて組み立てる実装も、その 1 点では同じに見える。ここでは
 // クライアントが 1 つも組み立てられていないことと、拒否が監査に残ることを対で読む。
 //
-//spec:covers CIMD00-STRUCTURE:
+//spec:covers CIMD02-STRUCTURE:
 func TestMalformedClientIDMetadataDocumentIsRefusedFailClosed(t *testing.T) {
 	for name, body := range map[string]string{
 		"JSON ではない":   `not json at all`,
@@ -314,7 +484,7 @@ func TestMalformedClientIDMetadataDocumentIsRefusedFailClosed(t *testing.T) {
 //     クライアントへ 1 つも入らない。文書に書いてあっても private_key_jwt の
 //     資格情報にはならない。
 //
-//spec:covers CIMD00-PRIVATE-KEY-JWT (excluded):
+//spec:covers CIMD02-PRIVATE-KEY-JWT (excluded):
 func TestClientIDMetadataDocumentDoesNotOfferPrivateKeyJwtAuthentication(t *testing.T) {
 	const inlineJWKS = `"jwks": {"keys": [{"kty": "RSA", "kid": "k1", "n": "AQAB", "e": "AQAB"}]}`
 
@@ -369,7 +539,7 @@ func TestClientIDMetadataDocumentDoesNotOfferPrivateKeyJwtAuthentication(t *test
 // 採らなかった側を no-store で観測するのは、この行が partial である理由を
 // 記録に残すためである。ここが required へ変わるなら、まずこのテストが落ちる。
 //
-//spec:covers CIMD00-CACHE (partial):
+//spec:covers CIMD02-CACHE (partial):
 func TestResolvedClientIDMetadataDocumentIsCachedRegardlessOfHTTPCacheHeaders(t *testing.T) {
 	host := newMetadataHost(t, validDocument)
 	// 採っていない側: 標準に従うなら、この応答は再利用してはならない。
@@ -409,7 +579,7 @@ func TestResolvedClientIDMetadataDocumentIsCachedRegardlessOfHTTPCacheHeaders(t 
 // 拒否は「拒否した」だけでは足りない。認可リクエストが保存されていないことを
 // 併せて読む。保存してから拒否する実装は、後続の経路へ材料を残す。
 //
-//spec:covers CIMD00-REDIRECT-VALIDATE:
+//spec:covers CIMD02-REDIRECT-VALIDATE:
 func TestAuthorizationRequestRedirectURIMustBeListedInTheFetchedDocument(t *testing.T) {
 	host := newMetadataHost(t, validDocument)
 	repository, _ := host.resolution()

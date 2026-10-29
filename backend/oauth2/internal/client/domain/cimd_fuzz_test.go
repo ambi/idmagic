@@ -2,6 +2,7 @@ package domain
 
 import (
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -55,6 +56,7 @@ func FuzzIsClientIDMetadataDocumentURL(f *testing.F) {
 	f.Add("https://client.example/id#frag")
 	f.Add("HTTPS://client.example/id")
 	f.Add("https:/\\/evil.example/id")
+	f.Add("https://client.example/a/%2e%2e/id")
 
 	f.Fuzz(func(t *testing.T, clientID string) {
 		if len(clientID) > 8192 {
@@ -78,6 +80,11 @@ func FuzzIsClientIDMetadataDocumentURL(f *testing.F) {
 		}
 		if parsed.Fragment != "" {
 			t.Fatalf("accepted a client_id carrying a fragment: %q", clientID)
+		}
+		for segment := range strings.SplitSeq(parsed.Path, "/") {
+			if segment == "." || segment == ".." {
+				t.Fatalf("accepted a client_id carrying a dot segment: %q", clientID)
+			}
 		}
 	})
 }

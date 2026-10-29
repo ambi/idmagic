@@ -157,7 +157,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-047 | Tampering | PAR の `request_uri` を再利用する | OAuth2 | RFC9126-SINGLE-USE、REQ-OAUTH2-009 | `covered` |
 | THREAT-048 | Spoofing | クライアントアサーションを改竄または再生してクライアントになりすます | OAuth2 | RFC7523-CLIENT-ASSERTION、REQ-OAUTH2-028、REQ-OAUTH2-007 | `covered` |
 | THREAT-049 | Information disclosure | クライアント認証の失敗理由の差から、登録済みクライアントの存在を見分ける | OAuth2 | REQ-OAUTH2-007 | `covered` |
-| THREAT-050 | Information disclosure | クライアントメタデータの取得を通じて、内部ネットワークへ到達させる | OAuth2 | REQ-OAUTH2-017、CIMD00-URL-SHAPE、CIMD00-FETCH | `covered` |
+| THREAT-050 | Information disclosure | クライアントメタデータの取得を通じて、内部ネットワークへ到達させる | OAuth2 | REQ-OAUTH2-017、CIMD02-URL-SHAPE、CIMD02-FETCH | `covered` |
 | THREAT-051 | Denial of service | プロトコルエンドポイントへの大量リクエストで正規の利用を妨げる | OAuth2 | REQ-OAUTH2-040、design/performance/scaling.md: アドミッションコントロール、design/reliability/availability.md: 縮退 | `covered` |
 | THREAT-052 | Tampering | 署名アルゴリズムの取り違えを突いて署名検証を回避する | OAuth2, SigningKeys | RFC7518-SIGNATURE-ALGORITHMS、RFC9068-ASYMMETRIC-SIGNATURE | `covered` |
 | THREAT-083 | Information disclosure | 登録したバックチャネルログアウト通知先を経由して内部ネットワークへ到達する | OAuth2 | docs/modules/oauth2/features/logout.md: OIDC セッションの関連付けとログアウトの伝播、REQ-OAUTH2-025 | `covered` |

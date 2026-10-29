@@ -11,6 +11,12 @@ func TestIsClientIDMetadataDocumentURL(t *testing.T) {
 	for _, valid := range []string{
 		"https://app.example.com/oauth/client-metadata.json",
 		"https://app.example.com:8443/client.json",
+		// dot segment は要素全体が . か .. のときだけで、名前の一部の点は拒否しない。
+		"https://app.example.com/.well-known/client.json",
+		"https://app.example.com/..client/x.json",
+		"https://app.example.com/v1.2/client.json",
+		// query は SHOULD NOT だが受理する (CIMD02-URL-SHAPE)。
+		"https://app.example.com/client.json?v=1",
 	} {
 		if !IsClientIDMetadataDocumentURL(valid) {
 			t.Errorf("%s rejected, want accepted", valid)
@@ -21,6 +27,12 @@ func TestIsClientIDMetadataDocumentURL(t *testing.T) {
 		"https://app.example.com",
 		"https://user:pass@app.example.com/client.json",
 		"https://app.example.com/client.json#fragment",
+		"https://app.example.com/./client.json",
+		"https://app.example.com/a/../client.json",
+		"https://app.example.com/a/..",
+		"https://app.example.com/a/.",
+		"https://app.example.com/a/%2e/client.json",
+		"https://app.example.com/a/%2E%2e/client.json",
 		"not-a-url",
 		"my-registered-client-id",
 	} {
