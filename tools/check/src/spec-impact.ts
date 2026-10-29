@@ -6,16 +6,13 @@
  * ここにあるのは値の上の判断だけで、Git と作業ツリーの読み取りは check-spec-impact.ts が担う。
  */
 
-import { citedNormativeIds } from './normative-coverage.ts'
 import type { SpecificationDiff } from './spec-diff.ts'
 
-export type Impact = 'modifies' | 'conforms'
-
+/** `affected_spec` の一項目。この work item が触れる規範要素を名指す。 */
 export type SpecReference = {
   path: string
   requirement?: string
   symbol?: string
-  impact: Impact
 }
 
 export type SpecImpactDeclaration =
@@ -23,15 +20,11 @@ export type SpecImpactDeclaration =
   | { kind: 'none'; reason: string }
 
 export type WorkRange = {
-  /** 作業範囲の起点から作業ツリーまでの仕様差分。 */
-  diff: SpecificationDiff
-  /** 同じ範囲で変更された別の work item が `modifies` として挙げた規範要素。 */
+  /** 作業範囲から完了した作業の区間を除いた、区間ごとの仕様差分。 */
+  diffs: readonly SpecificationDiff[]
+  /** 同じ範囲で変更された、進行中の別の work item が `affected_spec` に挙げた規範要素。 */
   claimedByOthers: readonly SpecReference[]
-  /** 同じ範囲で完了した作業の実際の仕様差分。宣言は保存しない。 */
-  completedDiffs?: readonly SpecificationDiff[]
-  /** 同じ範囲で追加または変更されたテストファイルの本文。 */
-  changedTests: readonly string[]
-  /** 起点に存在し、同じ範囲で変わったか消えた特性化テスト。 */
+  /** 作業範囲の起点に存在し、区間の中で変わったか消えた特性化テスト。 */
   changedCharacterizations: readonly string[]
 }
 
@@ -42,14 +35,11 @@ export type CheckedWorkItem = {
   range: WorkRange | undefined
 }
 
+/** どの作業範囲にも完了した作業の区間にも入らないコミット。 */
 export type CheckedCommit = {
   sha: string
   subject: string
   productionPaths: readonly string[]
-  /** 同じコミットで変更した work item、または checkpoint が名指す work item に宣言がある。 */
-  workItemDeclared: boolean
-  /** 宣言を捨てた完了済みの作業範囲に含まれる。 */
-  workItemCompleted?: boolean
   /** `Spec-Impact` トレーラーの値。トレーラーがなければ undefined。 */
   trailer: string | undefined
   /** このコミット自体の仕様差分。 */
@@ -61,10 +51,8 @@ export type CheckedCommit = {
 export type SpecImpactInput = {
   items: readonly CheckedWorkItem[]
   commits: readonly CheckedCommit[]
-  /** 完了範囲の外にあるコミットと未コミットの仕様差分。 */
-  uncompletedDiffs?: readonly SpecificationDiff[]
-  /** 基準から作業ツリーまでの仕様差分。 */
-  diff: SpecificationDiff
+  /** 基準から作業ツリーまでのうち、完了した作業の区間を除いた区間ごとの仕様差分。 */
+  diffs: readonly SpecificationDiff[]
 }
 
 function object(value: unknown): Record<string, unknown> | undefined {
@@ -91,7 +79,6 @@ export function specImpactDeclaration(
       path: reference.path,
       requirement: typeof reference.requirement === 'string' ? reference.requirement : undefined,
       symbol: typeof reference.symbol === 'string' ? reference.symbol : undefined,
-      impact: reference.impact === 'conforms' ? 'conforms' : 'modifies',
     })
   }
   return { kind: 'affected', references }
@@ -112,15 +99,6 @@ export function referencedElement(reference: SpecReference): string | undefined 
   const example = requirement.match(/^EX-(.+)-\d+$/)
   if (example) return `REQ-${example[1]}`
   return `${reference.path}#${requirement}`
-}
-
-function label(reference: SpecReference): string {
-  return `${reference.path} ${reference.requirement ?? reference.symbol ?? ''}`.trim()
-}
-
-/** 規範要素として `affected_spec` から名指せる差分。追加、変更、削除のすべて。 */
-function touchedElements(diff: SpecificationDiff): Set<string> {
-  return new Set([...claimableElements(diff), ...removedElements(diff)])
 }
 
 /** 申告を求める差分。削除した要素は `affected_spec` から解決できないので含めない。 */
@@ -145,87 +123,33 @@ function transitionChanges(diff: SpecificationDiff): string[] {
 }
 
 /** 規範仕様の差分のすべて。 */
-function normativeChanges(diff: SpecificationDiff): string[] {
+function normativeChanges(diffs: readonly SpecificationDiff[]): string[] {
   return [
-    ...new Set([
-      ...touchedElements(diff),
-      ...diff.addedDeprecations,
-      ...diff.removedDeprecations,
-      ...transitionChanges(diff),
-    ]),
+    ...new Set(
+      diffs.flatMap((diff) => [
+        ...claimableElements(diff),
+        ...removedElements(diff),
+        ...diff.addedDeprecations,
+        ...diff.removedDeprecations,
+        ...transitionChanges(diff),
+      ]),
+    ),
   ].sort()
 }
 
-function modifiedElements(references: readonly SpecReference[]): Set<string> {
-  const elements = new Set<string>()
-  for (const reference of references) {
-    const element = reference.impact === 'modifies' ? referencedElement(reference) : undefined
-    if (element !== undefined) elements.add(element)
-  }
-  return elements
+function claimedElements(references: readonly SpecReference[]): Set<string> {
+  return new Set(references.flatMap((reference) => referencedElement(reference) ?? []))
 }
 
-function escapeForPattern(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-/**
- * 変更されたテストが、参照する規範要素を引いているか。
- *
- * 規則は、その規則自体か子の例のどれかを引けばよい。TypeSpec のシンボルには
- * `//spec:covers` で引く ID がないので、宣言名がテストに現れることを求める。
- */
-function citedByChangedTest(reference: SpecReference, tests: readonly string[]): boolean {
-  if (reference.symbol !== undefined) {
-    const name = escapeForPattern(reference.symbol.split('.').at(-1) ?? '')
-    const named = new RegExp(`(?<![A-Za-z0-9_])${name}(?![A-Za-z0-9_])`)
-    return tests.some((source) => named.test(source))
+/** `Spec-Impact` トレーラーの値を確かめる。値は `none` だけを認め、理由は読む人に任せる。 */
+export function parseSpecImpactTrailer(value: string): { error: string } | undefined {
+  const kind = value.trim().match(/^[^\s—–:-]*/)?.[0] ?? ''
+  if (kind === 'none') return undefined
+  return {
+    error:
+      `Spec-Impact accepts only "none", not "${kind}". ` +
+      'A change that alters the specification needs a work item.',
   }
-  const requirement = reference.requirement
-  if (requirement === undefined) return false
-  const candidates = [requirement]
-  if (requirement.startsWith('REQ-')) {
-    const example = new RegExp(`EX-${escapeForPattern(requirement.slice('REQ-'.length))}-\\d+`, 'g')
-    for (const source of tests) candidates.push(...(source.match(example) ?? []))
-  }
-  return citedNormativeIds(tests, candidates).size > 0
-}
-
-const BOILERPLATE = [
-  /リファクタリング|振る舞い|挙動|動作|仕様|機能|影響|変更|修正|内部|構造|整理|実装|コード/g,
-  /単なる|純粋な|のみ|だけ|なし|ない|ません|しない|変え|変わら|与え|です|である|する|した/g,
-  /\b(?:refactor(?:ing|ed)?|behaviou?r(?:al)?|functional(?:ity)?|spec(?:ification)?|impact)\b/gi,
-  /\b(?:change[sd]?|unchanged|affect(?:s|ed)?|internal|structur(?:e|al)|implementation)\b/gi,
-  /\b(?:clean(?:\s*up)?|code|pure(?:ly)?|only|just|simple|minor|same|none|n\/a|no|not)\b/gi,
-  /\b(?:is|are|the|a|an|it|this|does|do|and|or|of|to|in)\b/gi,
-]
-
-/**
- * 理由が定型句だけで終わるか。
- *
- * 機械にできるのは、何が維持されるかを一つも名指さない理由を拒否するところまでである。
- * 名指したものが正しいかはレビューで判断する。
- */
-export function isBoilerplateReason(reason: string): boolean {
-  let rest = reason
-  for (const phrase of BOILERPLATE) rest = rest.replace(phrase, ' ')
-  // 助詞と句読点は、定型句を除いた後に何も名指していないことを隠す。
-  const named = rest.replace(/[\s\p{P}\p{S}]|[はをにがもでとのへや]/gu, '')
-  return named.length < 4
-}
-
-/** `Spec-Impact` トレーラーの値から理由を読む。値は `none — <理由>` の形だけを認める。 */
-export function parseSpecImpactTrailer(value: string): { reason: string } | { error: string } {
-  const match = value.trim().match(/^(\S+?)(?:\s*(?:—|–|--|-|:)\s*|\s+|$)([\s\S]*)$/)
-  const kind = match?.[1] ?? ''
-  if (kind !== 'none') {
-    return {
-      error:
-        `Spec-Impact accepts only "none", not "${kind}". ` +
-        'A change that alters the specification needs a work item.',
-    }
-  }
-  return { reason: (match?.[2] ?? '').trim() }
 }
 
 const CHARACTERIZATION = /^func (TestCharacterize\w*)\(/gm
@@ -258,6 +182,11 @@ export function changedCharacterizations(
 
 const STARTED = new Set(['in_progress', 'completed', 'cancelled'])
 
+/** 状態が pending でなくなった後のものか。 */
+export function isStarted(status: string | undefined): boolean {
+  return status !== undefined && STARTED.has(status)
+}
+
 /**
  * work item の作業範囲の起点を返す。
  *
@@ -271,96 +200,58 @@ export function workRangeStart(
   committedStatus: string | undefined,
   head: string,
 ): string | undefined {
-  const started = history.find(
-    (commit) => commit.status !== undefined && STARTED.has(commit.status),
-  )
+  const started = history.find((commit) => isStarted(commit.status))
   if (started) return `${started.sha}^`
-  return committedStatus !== undefined && STARTED.has(committedStatus) ? undefined : head
+  return isStarted(committedStatus) ? undefined : head
 }
 
 function verifyWorkItem(item: CheckedWorkItem): string[] {
-  const findings: string[] = []
   const { declaration, range } = item
-  if (declaration.kind === 'none' && isBoilerplateReason(declaration.reason)) {
-    findings.push(
-      'spec_impact.reason names nothing that stays the same; say which results, state, events, or calls are preserved',
-    )
-  }
   if (range === undefined) {
     return [
-      ...findings,
       'cannot find the commit where this work item left pending, so its work range is unknown',
     ]
   }
-  const claimedByOthers = new Set([
-    ...modifiedElements(range.claimedByOthers),
-    ...(range.completedDiffs ?? []).flatMap(normativeChanges),
-  ])
-  if (declaration.kind === 'none') {
-    // 状態遷移と削除した宣言は affected_spec で名指せないので、同じ範囲に仕様を変える別の
-    // work item があれば、その作業のものとして扱う。
-    const unattributable = new Set(
-      claimedByOthers.size > 0
-        ? [...transitionChanges(range.diff), ...removedElements(range.diff)]
-        : [],
+  if (declaration.kind === 'affected') return []
+  const findings: string[] = []
+  const claimedByOthers = claimedElements(range.claimedByOthers)
+  // 状態遷移と削除した宣言は affected_spec で名指せないので、同じ範囲に仕様を変える別の
+  // work item があれば、その作業のものとして扱う。
+  const unattributable = new Set(
+    claimedByOthers.size > 0
+      ? range.diffs.flatMap((diff) => [...transitionChanges(diff), ...removedElements(diff)])
+      : [],
+  )
+  const changes = normativeChanges(range.diffs).filter(
+    (change) => !claimedByOthers.has(change) && !unattributable.has(change),
+  )
+  if (changes.length > 0) {
+    findings.push(
+      `spec_impact is none, but the work range changes the normative specification: ${changes.join(', ')}`,
     )
-    const changes = normativeChanges(range.diff).filter(
-      (change) => !claimedByOthers.has(change) && !unattributable.has(change),
-    )
-    if (changes.length > 0) {
-      findings.push(
-        `spec_impact is none, but the work range changes the normative specification: ${changes.join(', ')}`,
-      )
-    }
-    if (range.changedCharacterizations.length > 0) {
-      findings.push(
-        `spec_impact is none, but the work range changes or removes characterization tests: ${range.changedCharacterizations.join(', ')}`,
-      )
-    }
-    return findings
   }
-  const touched = touchedElements(range.diff)
-  for (const reference of declaration.references) {
-    const element = referencedElement(reference)
-    if (element === undefined) continue
-    if (reference.impact === 'modifies') {
-      if (!touched.has(element)) {
-        findings.push(
-          `affected_spec ${label(reference)} is impact: modifies, but the work range does not change it; ` +
-            'change the specification, or declare impact: conforms',
-        )
-      }
-      continue
-    }
-    if (touched.has(element) && !claimedByOthers.has(element)) {
-      findings.push(
-        `affected_spec ${label(reference)} is impact: conforms, but the work range changes it`,
-      )
-    }
-    if (!citedByChangedTest(reference, range.changedTests)) {
-      findings.push(
-        `affected_spec ${label(reference)} is impact: conforms, but no test added or changed in the work range names it`,
-      )
-    }
+  if (range.changedCharacterizations.length > 0) {
+    findings.push(
+      `spec_impact is none, but the work range changes or removes characterization tests: ${range.changedCharacterizations.join(', ')}`,
+    )
   }
   return findings
 }
 
 function verifyCommit(commit: CheckedCommit): string[] {
-  if (commit.workItemCompleted) return []
   const findings: string[] = []
   if (commit.trailer === undefined) {
-    if (commit.productionPaths.length > 0 && !commit.workItemDeclared) {
+    if (commit.productionPaths.length > 0) {
       const [first, ...others] = commit.productionPaths
       const more = others.length > 0 ? ` and ${others.length} more` : ''
       findings.push(
         `changes production code (${first}${more}) without declaring its specification impact; ` +
-          'change the work item that declares affected_spec or spec_impact in the same commit, ' +
+          'commit it within the work range of a work item that declares affected_spec or spec_impact, ' +
           'or add a "Spec-Impact: none — <what stays the same>" trailer',
       )
     }
     // 宣言のないコミットで書き換えられると、特性化テストが検出した振る舞いの変化を消せる。
-    if (commit.changedCharacterizations.length > 0 && !commit.workItemDeclared) {
+    if (commit.changedCharacterizations.length > 0) {
       findings.push(
         `changes or removes characterization tests (${commit.changedCharacterizations.join(', ')}) ` +
           'without a work item that declares affected_spec',
@@ -369,13 +260,8 @@ function verifyCommit(commit: CheckedCommit): string[] {
     return findings
   }
   const trailer = parseSpecImpactTrailer(commit.trailer)
-  if ('error' in trailer) return [trailer.error]
-  if (isBoilerplateReason(trailer.reason)) {
-    findings.push(
-      'Spec-Impact reason names nothing that stays the same; say which results, state, events, or calls are preserved',
-    )
-  }
-  const changes = normativeChanges(commit.diff)
+  if (trailer) return [trailer.error]
+  const changes = normativeChanges([commit.diff])
   if (changes.length > 0) {
     findings.push(
       `declares Spec-Impact: none, but changes the normative specification: ${changes.join(', ')}`,
@@ -401,19 +287,17 @@ export function verifySpecImpact(input: SpecImpactInput): string[] {
       ),
     )
   }
-  const claimed = modifiedElements(
+  const claimed = claimedElements(
     input.items.flatMap((item) =>
       item.declaration.kind === 'affected' ? item.declaration.references : [],
     ),
   )
-  const unclaimed = [
-    ...new Set((input.uncompletedDiffs ?? [input.diff]).flatMap(claimableElements)),
-  ]
+  const unclaimed = [...new Set(input.diffs.flatMap(claimableElements))]
     .filter((element) => !claimed.has(element))
     .sort()
   for (const element of unclaimed) {
     findings.push(
-      `${element}: the specification changes here, but no work item changed in this range lists it in affected_spec as impact: modifies`,
+      `${element}: the specification changes here, but no work item changed in this range lists it in affected_spec`,
     )
   }
   return findings

@@ -129,23 +129,26 @@ describe('validateAgainstSchema — work-item', () => {
     ).toEqual([])
   })
 
-  it('accepts modifies or conforms as the impact of a specification target, and nothing else', () => {
-    const withImpact = (impact: string) =>
+  it('accepts a specification target without impact, and rejects the retired impact field', () => {
+    const target = (extra: Record<string, string>) =>
       validateAgainstSchema(
         'work-item',
         {
           ...validWorkItem,
           change_kind: 'bugfix',
           affected_spec: [
-            { path: 'docs/modules/demo/scenarios.feature.md', requirement: 'REQ-DEMO-001', impact },
-            { path: 'spec/modules/demo/main.tsp', symbol: 'Demo.Task', impact },
+            {
+              path: 'docs/modules/demo/scenarios.feature.md',
+              requirement: 'REQ-DEMO-001',
+              ...extra,
+            },
+            { path: 'spec/modules/demo/main.tsp', symbol: 'Demo.Task', ...extra },
           ],
         },
         '',
       )
-    expect(withImpact('modifies')).toEqual([])
-    expect(withImpact('conforms')).toEqual([])
-    expect(withImpact('none')).not.toEqual([])
+    expect(target({})).toEqual([])
+    expect(target({ impact: 'conforms' })).not.toEqual([])
   })
 
   it('requires a concrete no-impact reason for maintenance without specification targets', () => {

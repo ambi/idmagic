@@ -8,10 +8,10 @@ priority: p2
 depends_on: [wi-95422-reject-csv-imports-that-exceed-the-row-or-field-limit]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/modules/identity-management/features/user-csv.md, requirement: REQ-IDMANAGEMENT-004, impact: conforms }
-  - { path: docs/modules/identity-management/features/user-csv.md, requirement: REQ-IDMANAGEMENT-055, impact: conforms }
-  - { path: docs/modules/identity-management/features/group-csv.md, requirement: REQ-IDMANAGEMENT-026, impact: conforms }
-  - { path: docs/modules/identity-management/features/group-csv.md, requirement: REQ-IDMANAGEMENT-029, impact: conforms }
+  - { path: docs/modules/identity-management/features/user-csv.md, requirement: REQ-IDMANAGEMENT-004 }
+  - { path: docs/modules/identity-management/features/user-csv.md, requirement: REQ-IDMANAGEMENT-055 }
+  - { path: docs/modules/identity-management/features/group-csv.md, requirement: REQ-IDMANAGEMENT-026 }
+  - { path: docs/modules/identity-management/features/group-csv.md, requirement: REQ-IDMANAGEMENT-029 }
 ---
 
 # 見出しが不正な CSV のインポートを、投入の時点で拒否する

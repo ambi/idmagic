@@ -8,7 +8,7 @@ priority: p2
 depends_on: [wi-307-datakeys-rotation-lifecycle-operations]
 change_kind: bugfix
 affected_spec:
-  - { path: docs/modules/data-keys/features/lifecycle.md, requirement: REQ-DATAKEYS-003, impact: conforms }
+  - { path: docs/modules/data-keys/features/lifecycle.md, requirement: REQ-DATAKEYS-003 }
 ---
 
 # DEK の無効化とローテーションを、すべてのプロセスの DEK の保持へ伝える

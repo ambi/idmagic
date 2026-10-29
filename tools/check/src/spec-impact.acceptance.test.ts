@@ -205,14 +205,14 @@ describe('spec-impact: 本番コードを変更するコミットの宣言', () 
     expect(result.code).toBe(0)
   })
 
-  it('理由が定型句だけのトレーラーを拒否する', async () => {
+  it('トレーラーの理由の言い回しを判定しない', async () => {
     const repo = await repository()
     await repo.write(SERVICE, `${service('started')}\nfunc helper() {}\n`)
     await repo.commit('refactor(demo): extract helper\n\nSpec-Impact: none — refactoring only')
 
     const result = await repo.check(repo.base)
-    expect(result.output).toContain('Spec-Impact reason names nothing that stays the same')
-    expect(result.code).toBe(1)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
   })
 
   it('Spec-Impact: none のコミットが規範シナリオを変更していれば拒否する', async () => {
@@ -239,21 +239,20 @@ describe('spec-impact: 本番コードを変更するコミットの宣言', () 
     expect(result.code).toBe(0)
   })
 
-  it('checkpoint コミットは、件名が名指す work item の宣言を使う', async () => {
+  it('着手した work item の作業範囲のコミットは、件名を問わずその宣言を使う', async () => {
     const repo = await repository()
+    await repo.write(SERVICE, `${service('started')}\nfunc before() {}\n`)
+    await repo.commit('refactor(demo): change before the item starts')
     await repo.write(ITEM, notAffected('in_progress', CONCRETE_REASON))
-    await repo.commit('checkpoint(wi-10001): T001 record started')
-    await repo.write(SERVICE, `${service('started')}\nfunc helper() {}\n`)
-    await repo.commit('checkpoint(wi-10001): T002 helper extracted')
+    await repo.commit('docs(work-items): start the item')
+    await repo.write(SERVICE, `${service('started')}\nfunc after() {}\n`)
+    await repo.commit('refactor(demo): change after the item starts')
 
-    expect((await repo.check(repo.base)).code).toBe(0)
-
-    await repo.write(SERVICE, `${service('started')}\nfunc other() {}\n`)
-    await repo.commit('checkpoint(wi-99999): T001 names no record')
     const result = await repo.check(repo.base)
     expect(result.output).toContain(
-      'checkpoint(wi-99999): T001 names no record: changes production code',
+      'refactor(demo): change before the item starts: changes production code',
     )
+    expect(result.output).not.toContain('change after the item starts')
     expect(result.code).toBe(1)
   })
 })
@@ -487,14 +486,11 @@ describe('spec-impact: 完了済みの作業範囲', () => {
     expect(result.code).toBe(0)
   })
 
-  it('完了した conforms の宣言を、後で消えたテストで照合し直さない', async () => {
+  it('仕様を変えずに完了した宣言を、後で消えたテストで照合し直さない', async () => {
     const repo = await repository()
     await repo.write(
       ACTIVE_ITEM,
-      affected(
-        'in_progress',
-        `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001, impact: conforms }`,
-      ),
+      affected('in_progress', `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001 }`),
     )
     await repo.write(
       SERVICE_TEST,
@@ -533,22 +529,21 @@ describe('spec-impact: 完了済みの作業範囲', () => {
 })
 
 describe('spec-impact: 宣言と仕様差分の整合', () => {
-  it('impact: modifies の規範要素を変更していなければ拒否する', async () => {
+  it('affected_spec の規範要素を作業範囲で変えなくても通す', async () => {
     const repo = await repository()
     await repo.write(SERVICE, service('running'))
     await repo.write(
       ITEM,
       affected('in_progress', `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001 }`),
     )
+    await repo.commit('fix(demo): report running')
 
     const result = await repo.check(repo.base)
-    expect(result.output).toContain(
-      `${ITEM}: affected_spec ${SCENARIOS} REQ-DEMO-001 is impact: modifies, but the work range does not change it`,
-    )
-    expect(result.code).toBe(1)
+    expect(result.output).toContain('ok  spec impact')
+    expect(result.code).toBe(0)
   })
 
-  it('impact: modifies の規範要素を作業ツリーで変更していれば通す', async () => {
+  it('affected_spec の規範要素を作業ツリーで変更していれば通す', async () => {
     const repo = await repository()
     await repo.write(SCENARIOS, scenario('the request is accepted'))
     await repo.write(
@@ -561,7 +556,7 @@ describe('spec-impact: 宣言と仕様差分の整合', () => {
     expect(result.code).toBe(0)
   })
 
-  it('TypeSpec のモデルの項目を変えた変更を、シンボルの modifies として受け入れる', async () => {
+  it('TypeSpec のモデルの項目を変えた変更を、シンボルの申告として受け入れる', async () => {
     const repo = await repository()
     await repo.write(TYPESPEC, 'model Task {\n  id: string;\n  name: string;\n}\n')
     await repo.write(ITEM, affected('in_progress', `{ path: ${TYPESPEC}, symbol: Demo.Task }`))
@@ -603,44 +598,6 @@ describe('spec-impact: 宣言と仕様差分の整合', () => {
       ['---', 'status: completed', '---', '', '# Demo change', '', '名前を足した。', ''].join('\n'),
     )
     await repo.commit('docs(work-items): complete naming tasks')
-
-    const result = await repo.check(repo.base)
-    expect(result.output).toContain('ok  spec impact')
-    expect(result.code).toBe(0)
-  })
-
-  it('impact: conforms の規範要素を引くテストが作業範囲になければ拒否する', async () => {
-    const repo = await repository()
-    await repo.write(SERVICE, service('running'))
-    await repo.write(
-      ITEM,
-      affected(
-        'in_progress',
-        `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001, impact: conforms }`,
-      ),
-    )
-
-    const result = await repo.check(repo.base)
-    expect(result.output).toContain(
-      'REQ-DEMO-001 is impact: conforms, but no test added or changed in the work range names it',
-    )
-    expect(result.code).toBe(1)
-  })
-
-  it('impact: conforms の規範要素を引くテストを同じ作業で追加していれば通す', async () => {
-    const repo = await repository()
-    await repo.write(SERVICE, service('running'))
-    await repo.write(
-      SERVICE_TEST,
-      'package demo\n\n//spec:covers EX-DEMO-001-01: 返す値\nfunc TestStart(t *testing.T) {}\n',
-    )
-    await repo.write(
-      ITEM,
-      affected(
-        'in_progress',
-        `{ path: ${SCENARIOS}, requirement: REQ-DEMO-001, impact: conforms }`,
-      ),
-    )
 
     const result = await repo.check(repo.base)
     expect(result.output).toContain('ok  spec impact')
@@ -784,11 +741,11 @@ describe('spec-impact: 比較基準を渡さないときの既定値', () => {
     await repo.git('fetch', '--quiet', 'origin')
     await repo.git('branch', '--set-upstream-to', 'origin/main', 'main')
     await repo.write(SERVICE, service('running'))
-    await repo.commit('refactor(demo): rename the result\n\nSpec-Impact: none')
+    await repo.commit('fix(demo): report running')
 
     const result = await repo.check()
     expect(result.output).toContain(
-      'refactor(demo): rename the result: Spec-Impact reason names nothing that stays the same',
+      'fix(demo): report running: changes production code (backend/demo/service.go) without declaring',
     )
     expect(result.code).toBe(1)
   })
@@ -797,11 +754,11 @@ describe('spec-impact: 比較基準を渡さないときの既定値', () => {
     const repo = await repository()
     await repo.git('switch', '--quiet', '--create', 'topic')
     await repo.write(SERVICE, service('running'))
-    await repo.commit('refactor(demo): rename the result\n\nSpec-Impact: none')
+    await repo.commit('fix(demo): report running')
 
     const result = await repo.check()
     expect(result.output).toContain(
-      'refactor(demo): rename the result: Spec-Impact reason names nothing that stays the same',
+      'fix(demo): report running: changes production code (backend/demo/service.go) without declaring',
     )
     expect(result.code).toBe(1)
   })

@@ -9,7 +9,7 @@ depends_on: [wi-13438-publish-oauth2-consent-revocation-and-client-administratio
 change_kind: bugfix
 affected_spec:
   - { path: docs/modules/oauth2/features/consent.md, requirement: REQ-OAUTH2-032 }
-  - { path: docs/modules/tenancy/features/quota.md, requirement: REQ-TENANCY-036, impact: conforms }
+  - { path: docs/modules/tenancy/features/quota.md, requirement: REQ-TENANCY-036 }
 ---
 
 # 本人による同意の撤回でも consents のクォータの枠を空ける

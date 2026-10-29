@@ -116,28 +116,21 @@ maturity_evidence: # 成熟度を昇格する場合は完了前に必須。告�
 spec_impact: { kind: none, reason: "具体的な理由。" }
 ```
 
-`affected_spec` の各項目には、規範要素との関係を `impact` で示す。
-
-| `impact` | 意味 | 機械検査が求めるもの |
-| --- | --- | --- |
-| `modifies`（省略時の値） | 規範要素を追加、変更、廃止する | 作業範囲の仕様差分に、その規範要素が現れる |
-| `conforms` | 規範要素を変えず、実装をそれに合わせる | 作業範囲の仕様差分にその規範要素が現れず、それを引くテストを同じ作業範囲で追加または変更している |
+`affected_spec` には、その作業項目が触れる規範要素を挙げる。
+規範要素を変える作業も、変えずに実装を合わせる作業も、同じ形で書く。
 
 ```yaml
 affected_spec:
   - { path: docs/modules/system/features/operations.md, requirement: REQ-SYSTEM-001 }
-  - { path: docs/modules/system/features/operations.md, requirement: REQ-SYSTEM-002, impact: conforms }
+  - { path: docs/modules/system/features/operations.md, requirement: REQ-SYSTEM-002 }
 ```
 
-`conforms` の項目を引くテストとは、規則またはその子の例を `//spec:covers` で引くテストである。
-TypeSpec のシンボルには引く ID がないため、宣言名を含むテストファイルの追加または変更を求める。
 作業範囲は、その作業項目の `status` が `pending` でなくなったコミットの親から作業ツリーまでである。
-`impact` は、導入後に着手または完了する記録に書く。
-完了済みの記録へ遡って書き加えない。
+作業範囲の仕様差分が変えた規範要素を、範囲で変わったどの作業項目も挙げていなければ、機械検査が拒否する。
 
 `spec_impact.reason` には、何が変わらないかを名指して書く。
-「リファクタリングのみ」「振る舞いは変えない」のように、維持する結果、永続状態、イベント、外向きの呼び出しを一つも名指さない理由は、機械検査が拒否する。
-`spec_impact: none` を宣言した作業範囲に規範仕様の差分があれば、同じく拒否する。
+理由の言い回しは機械が判定せず、レビューで読む。
+`spec_impact: none` を宣言した作業範囲に規範仕様の差分か、既存の特性化テストの本文の変更があれば、機械検査が拒否する。
 これらの検査は `mise run check` が行い、仕様影響の判断とコミットのトレーラーは[仕様先行の開発ワークフロー](../development/specification-first-workflow.md#仕様影響の宣言)が定める。
 
 ## 着手時の文脈と設計

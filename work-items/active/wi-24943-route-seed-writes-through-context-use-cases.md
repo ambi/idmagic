@@ -8,8 +8,8 @@ priority: p2
 depends_on: []
 change_kind: bugfix
 affected_spec:
-  - { path: docs/modules/seeding/features/seed-run.md, requirement: REQ-SEEDING-009, impact: conforms }
-  - { path: docs/modules/seeding/features/seed-run.md, requirement: REQ-SEEDING-010, impact: conforms }
+  - { path: docs/modules/seeding/features/seed-run.md, requirement: REQ-SEEDING-009 }
+  - { path: docs/modules/seeding/features/seed-run.md, requirement: REQ-SEEDING-010 }
 ---
 
 # seed の適用を記録の正を持つ Context のユースケースへ通し、プロセスをまたいで排他する

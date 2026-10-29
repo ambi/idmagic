@@ -173,9 +173,6 @@
               "requirement": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9-]+$"
-              },
-              "impact": {
-                "$ref": "#/$defs/specImpact"
               }
             }
           },
@@ -191,9 +188,6 @@
               "symbol": {
                 "type": "string",
                 "minLength": 1
-              },
-              "impact": {
-                "$ref": "#/$defs/specImpact"
               }
             }
           }
@@ -335,11 +329,6 @@
           "minLength": 1
         }
       }
-    },
-    "specImpact": {
-      "description": "規範要素を変更するか (modifies)、変更せずに実装を合わせるか (conforms)。省略時は modifies。",
-      "type": "string",
-      "enum": ["modifies", "conforms"]
     },
     "maturityEvidence": {
       "type": "object",
