@@ -53,6 +53,7 @@ type (
 	PARRecord                         = authorizationdomain.PARRecord
 	DeviceAuthorization               = devicedomain.DeviceAuthorization
 	SenderConstraint                  = tokendomain.SenderConstraint
+	ExchangeProof                     = tokendomain.ExchangeProof
 	RefreshTokenRecord                = tokendomain.RefreshTokenRecord
 	AccessTokenClaims                 = tokendomain.AccessTokenClaims
 	IDTokenClaims                     = tokendomain.IDTokenClaims
@@ -117,4 +118,5 @@ var (
 	IsRefreshTokenReplay          = tokendomain.IsRefreshTokenReplay
 	IsRefreshTokenAbsoluteExpired = tokendomain.IsRefreshTokenAbsoluteExpired
 	PresentationTokenType         = tokendomain.PresentationTokenType
+	DecideExchangeBinding         = tokendomain.DecideExchangeBinding
 )

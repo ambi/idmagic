@@ -14,6 +14,8 @@
 //   - RESOURCE INDICATORS (RFC 8707): resource を必須・1 個のみとし、登録済み
 //     Active な McpResourceServer に限定する。未登録・Disabled は invalid_target で
 //     fail-closed 拒否する。発行トークン aud = [resource]。
+//   - SENDER CONSTRAINT: 束縛した subject_token は同じ方式の同じ鍵の証明があるときだけ
+//     交換し、同じ cnf を引き継ぐ。別の鍵への再束縛と制約の除去は invalid_grant。
 //   - REFRESH TOKEN は発行しない。
 package usecases
 
@@ -274,12 +276,12 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		return reject(currentActorSub, NewOAuthError("invalid_grant", "Token exchange was rejected: "+strings.Join(d.Reasons, ", ")))
 	}
 
-	// --- sender constraint (DPoP / mTLS) ---
-	var sc *domain.SenderConstraint
-	if in.ProofJKT != "" {
-		sc = &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: in.ProofJKT}
-	} else if in.ProofX5TS256 != "" {
-		sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.ProofX5TS256}
+	// --- sender constraint (DPoP / mTLS, REQ-OAUTH2-056) ---
+	// 束縛した subject_token は同じ鍵の証明があるときだけ交換でき、同じ制約を引き継ぐ。
+	// 外部 workload の subject は introspection を通らないため制約を持たない。
+	sc, bound := domain.DecideExchangeBinding(subject.SenderConstraint, domain.ExchangeProof{JKT: in.ProofJKT, X5TS256: in.ProofX5TS256})
+	if !bound {
+		return reject(currentActorSub, NewOAuthError("invalid_grant", "The proof does not match the key bound to the subject_token."))
 	}
 
 	// --- 発行 (DELEGATION ONLY: sub = subject.sub, aud = [resource], act 必須) ---
