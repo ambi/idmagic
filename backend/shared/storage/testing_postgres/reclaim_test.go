@@ -1,9 +1,52 @@
 package testing_postgres
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 )
+
+func TestPostgresControlPathUsesRecordedDistribution(t *testing.T) {
+	for _, executable := range []string{
+		"/cache/v1/bin/postgres",
+		"/cache/v2/18.6.1/darwin-arm64/bin/postgres",
+		"/cache/with spaces/bin/postgres",
+	} {
+		t.Run(executable, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.MkdirAll(dataDir(dir), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dataDir(dir), "postmaster.opts"), []byte(`"`+executable+`" "-D" "/data"`), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			got, err := postgresControlPath(dir)
+			want := filepath.Join(filepath.Dir(executable), "pg_ctl")
+			if err != nil || got != want {
+				t.Fatalf("postgresControlPath = %q, %v; want %q, nil", got, err, want)
+			}
+		})
+	}
+}
+
+func TestPostgresControlPathRejectsUnusableRecord(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := postgresControlPath(dir); err == nil {
+		t.Fatal("missing postmaster.opts must fail")
+	}
+	if err := os.MkdirAll(dataDir(dir), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, opts := range []string{"", "postgres -D /data", `"relative/bin/postgres"`, `"/cache/bin/other"`, `"/cache/bin/postgres`} {
+		if err := os.WriteFile(filepath.Join(dataDir(dir), "postmaster.opts"), []byte(opts), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := postgresControlPath(dir); err == nil {
+			t.Fatalf("invalid postmaster.opts %q must fail", opts)
+		}
+	}
+}
 
 func TestDecideReclaim(t *testing.T) {
 	const owner, postmaster = 100, 200

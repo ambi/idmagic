@@ -5,7 +5,8 @@ go = "1.27.3"
 bun = "1.4.4"
 "aqua:golangci/golangci-lint" = "2.15.0"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
-"aqua:sqldef/sqldef/psqldef" = "3.11.26"
+"aqua:kubernetes-sigs/kustomize" = "5.8.3"
+"aqua:sqldef/sqldef/psqldef" = "3.11.28"
 "aqua:jqlang/jq" = "1.8.2"
 "aqua:koalaman/shellcheck" = "0.11.0"
 "aqua:zizmorcore/zizmor" = "1.31.1"
@@ -61,6 +62,18 @@ run = "mise outdated --bump --local"
 [tasks.update-development-tools]
 description = "Update development runtimes and standalone CLI tools to the latest releases"
 run = "mise upgrade --bump --local"
+
+[tasks.list-dependency-releases]
+description = "List stable upstream releases for dependency repositories"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run list-dependency-releases -- <owner/repository...>" >&2; exit 2; }
+for dependency_repository in "$@"; do
+  echo "$dependency_repository"
+  gh api "repos/$dependency_repository/releases?per_page=20" --jq '[.[] | select(.prerelease == false and .draft == false)] | .[:5] | .[] | {tag_name, html_url}'
+done
+'''
 
 [tasks.setup-cli-tools]
 description = "Install host CLI tools used by repository instructions"
@@ -479,9 +492,27 @@ go run ./backend/cmd/idmagic-kerberos --check-file "$1"
 description = "List Go module dependencies that have a newer release in their current module path"
 run = "go list -m -u -mod=readonly all"
 
+[tasks.list-go-package-dependencies]
+description = "List modules supplying repository packages and their tests"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+go list -deps -test -json ./... | jq -r 'select(.Module != null) | [.Module.Path, .Module.Version] | @tsv' | sort -u
+'''
+
 [tasks.update-go-dependencies]
 description = "Update Go module requirements to the latest minor and patch releases"
 run = ["go get -u -t ./...", "go mod tidy"]
+
+[tasks.update-go-module]
+description = "Select explicit Go module versions, including major-version migrations"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run update-go-module -- <module@version...>" >&2; exit 2; }
+go get "$@"
+go mod tidy
+'''
 
 [tasks.test-go-race]
 description = "Run race-enabled Go tests"
@@ -1180,7 +1211,10 @@ run = '''
 #!/usr/bin/env sh
 set -eu
 overlay=${1:-dev}
-docker run --rm -v "$PWD:/workspace:ro" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.3 build "infra/k8s/overlays/$overlay" | docker run --rm -i ghcr.io/yannh/kubeconform:v0.8.0 -strict -summary
+rendered=$(mktemp)
+trap 'rm -f "$rendered"' EXIT HUP INT TERM
+kustomize build "infra/k8s/overlays/$overlay" > "$rendered"
+docker run --rm -i ghcr.io/yannh/kubeconform:v0.8.0 -strict -summary < "$rendered"
 '''
 
 [tasks.deploy-k8s]
@@ -1206,9 +1240,9 @@ run = [
   "docker run --rm -v \"$PWD:/workspace:ro\" grafana/alloy:v1.21.2 validate /workspace/infra/docker/alloy-config.alloy",
   "docker run --rm -e HOSTNAME=validation-node -v \"$PWD:/workspace:ro\" grafana/alloy:v1.21.2 validate /workspace/infra/k8s/monitoring/loki/alloy-config.alloy",
   "jq empty infra/docker/grafana-dashboard.json",
-  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.3 build infra/k8s/monitoring > /dev/null",
-  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.3 build infra/k8s/monitoring/operator > /dev/null",
-  "docker run --rm -v \"$PWD:/workspace:ro\" -w /workspace registry.k8s.io/kustomize/kustomize:v5.8.3 build infra/k8s/monitoring/loki > /dev/null",
+  "kustomize build infra/k8s/monitoring > /dev/null",
+  "kustomize build infra/k8s/monitoring/operator > /dev/null",
+  "kustomize build infra/k8s/monitoring/loki > /dev/null",
 ]
 
 [tasks.deploy-monitoring]

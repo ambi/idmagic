@@ -71,7 +71,10 @@ CI の通常テストの報告には `.verification/test-go.json` を明示し�
 
 ## CI で検証しないもの
 
-**infra の宣言的アセットは CI で検証しない。** Docker Compose の構成、Kubernetes のオーバーレイ、Prometheus の規則、k6 のモジュールには、それぞれ `mise run check-compose` / `check-k8s` / `check-monitoring` / `check-k6` があるが、どの集約タスクにも CI にも入れていない。いずれも kustomize、kubeconform、promtool、k6 のイメージを取得してから実行するため、1 回あたりの所要が他の全検査の合計を超える。得られるのは変更頻度の低いアセットの構文検査であり、**最も変わらない入力に、最も重い検査を毎 Pull Request で払う形になる**ので採らない。
+**infra の宣言的アセットは CI で検証しない。**
+Docker Compose の構成、Kubernetes のオーバーレイ、Prometheus の規則、k6 のモジュールには、それぞれ `mise run check-compose` / `check-k8s` / `check-monitoring` / `check-k6` があるが、どの集約タスクにも CI にも入れていない。
+Kubernetes の描画には mise が固定するネイティブの kustomize を使い、描画に成功した出力を kubeconform のイメージへ渡す。
+監視設定や負荷テストにも promtool、Alloy、k6 のイメージ取得と Docker の実行環境が必要になるため、変更頻度の低いアセットの検査を毎 Pull Request で実行する構成は採らない。
 
 これらのタスクは `mise tasks` から個別に呼べる状態を保つ。`infra/` を変更したときは、対応するタスクを手元で実行してから Pull Request を出す。PostgreSQL のスキーマ収束 (`check-schema`) だけは例外で、データの意味に直結するため CI で実行する。
 

@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"time"
 
-	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
+	embeddedpostgres "github.com/fergusstrange/embedded-postgres/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -68,17 +68,20 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 		return nil, Ready{}, err
 	}
 
-	binariesPath := postgresBinaryDir()
-	if err := repairIncompletePostgresExtraction(binariesPath); err != nil {
-		return fail(err)
+	dataPath := cfg.DataPath
+	if dataPath == "" {
+		dataPath = filepath.Join(cfg.RuntimeDir, "data")
 	}
 	postgresConfig := embeddedpostgres.DefaultConfig().
 		Port(cfg.PostgresPort).
 		Database("idmagic").
 		Username("idmagic").
 		Password("idmagic").
-		RuntimePath(filepath.Join(cfg.RuntimeDir, "runtime")).
-		BinariesPath(binariesPath).
+		Storage(embeddedpostgres.Storage{
+			CacheDir: postgresBinaryDir(),
+			WorkDir:  filepath.Join(cfg.RuntimeDir, "runtime"),
+			DataDir:  dataPath,
+		}).
 		StartParameters(map[string]string{
 			// The development cluster is recreated logically on every start, so
 			// durability settings only slow the local feedback loop.
@@ -89,11 +92,6 @@ func Start(ctx context.Context, cfg Config) (*Runtime, Ready, error) {
 		}).
 		Logger(cfg.Logger).
 		StartTimeout(90 * time.Second)
-	if cfg.DataPath != "" {
-		postgresConfig = postgresConfig.DataPath(cfg.DataPath)
-	} else {
-		postgresConfig = postgresConfig.DataPath(filepath.Join(cfg.RuntimeDir, "data"))
-	}
 	pg := embeddedpostgres.NewDatabase(postgresConfig)
 	if err := pg.Start(); err != nil {
 		return fail(fmt.Errorf("start embedded PostgreSQL: %w", err))
@@ -161,41 +159,9 @@ func writeReadyFile(path string, ready Ready) error {
 	return nil
 }
 
-// https://github.com/fergusstrange/embedded-postgres/issues/154
 func postgresBinaryDir() string {
 	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, ".embedded-postgres-go", "extracted")
-}
-
-// repairIncompletePostgresExtraction makes embedded-postgres retry extraction
-// when a previously interrupted extraction left its pg_ctl sentinel behind.
-func repairIncompletePostgresExtraction(binariesPath string) error {
-	pgCtlPath := filepath.Join(binariesPath, "bin", "pg_ctl")
-	if _, err := os.Stat(pgCtlPath); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("inspect embedded PostgreSQL pg_ctl: %w", err)
-	}
-
-	requiredPaths := []string{
-		filepath.Join(binariesPath, "bin", "initdb"),
-		filepath.Join(binariesPath, "bin", "postgres"),
-		filepath.Join(binariesPath, "share", "postgresql", "postgres.bki"),
-		filepath.Join(binariesPath, "share", "postgresql", "postgresql.conf.sample"),
-	}
-	for _, requiredPath := range requiredPaths {
-		if _, err := os.Stat(requiredPath); err != nil {
-			if !os.IsNotExist(err) {
-				return fmt.Errorf("inspect embedded PostgreSQL binary set: %w", err)
-			}
-			if err := os.Remove(pgCtlPath); err != nil && !os.IsNotExist(err) {
-				return fmt.Errorf("invalidate incomplete embedded PostgreSQL extraction: %w", err)
-			}
-			return nil
-		}
-	}
-	return nil
+	return filepath.Join(homeDir, ".embedded-postgres-go", "v2")
 }
 
 func (r *Runtime) Close() error {

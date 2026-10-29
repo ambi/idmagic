@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
+	embeddedpostgres "github.com/fergusstrange/embedded-postgres/v2"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -58,8 +58,7 @@ func start() (*pgxpool.Pool, func()) {
 		}
 	}
 	// 強制終了で後始末が飛んだとき、次の起動がこのディレクトリを回収できるように
-	// 持ち主を残す (reclaimAbandonedInstances)。embedded-postgres は起動時に
-	// RuntimePath を消して作り直すので、持ち主はその外に置く。
+	// 持ち主を残す (reclaimAbandonedInstances)。データの配置は v1 の残骸と共通にする。
 	if err := os.WriteFile(filepath.Join(instanceDir, ownerFile), []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
 		warn("cannot record runtime directory owner", err)
 		removeRuntimePath()
@@ -76,17 +75,15 @@ func start() (*pgxpool.Pool, func()) {
 	pg := embeddedpostgres.NewDatabase(
 		embeddedpostgres.DefaultConfig().
 			Port(port).
-			// `go test ./...` runs package test binaries concurrently. The library's
-			// default runtime/data path is shared across processes, so one package
-			// can otherwise remove another package's live PostgreSQL files.
-			RuntimePath(runtimePath).
-			// The immutable binaries are safe to share and expensive to extract.
-			// Keep only mutable runtime/data files in the isolated directory.
-			BinariesPath(binariesPath).
+			Storage(embeddedpostgres.Storage{
+				CacheDir: binariesPath,
+				WorkDir:  runtimePath,
+				DataDir:  filepath.Join(runtimePath, "data"),
+			}).
 			Logger(nil).
 			StartTimeout(90 * time.Second),
 	)
-	if err := startWithSharedBinaries(binariesPath, pg.Start); err != nil {
+	if err := pg.Start(); err != nil {
 		warn("embedded-postgres unavailable", err)
 		removeRuntimePath()
 		return nil, noop
@@ -168,6 +165,7 @@ func postgresBinariesPath() string {
 		cachePath,
 		"idmagic",
 		"embedded-postgres",
+		"v2",
 		string(embeddedpostgres.V18),
 		runtime.GOOS+"-"+runtime.GOARCH,
 	)

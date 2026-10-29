@@ -19,8 +19,8 @@ const runtimeDirPattern = "idmagic-pgtest-*"
 // ownerFile は実行時ディレクトリを作ったテストバイナリの pid を置くファイルである。
 const ownerFile = "owner.pid"
 
-// runtimeSubdir は embedded-postgres に渡す RuntimePath である。ライブラリは起動時に
-// RuntimePath を消して作り直すので、ownerFile と同じ階層には置けない。
+// runtimeSubdir は embedded-postgres の作業領域とデータを置くディレクトリである。
+// v1 の残骸も回収できるように、dataDir の相対配置を維持する。
 const runtimeSubdir = "runtime"
 
 func dataDir(instanceDir string) string {
@@ -144,10 +144,31 @@ func processAlive(pid int) bool {
 func stopOrphanedPostmaster(dir string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	pgCtl := filepath.Join(postgresBinariesPath(), "bin", "pg_ctl")
+	pgCtl, err := postgresControlPath(dir)
+	if err != nil {
+		return err
+	}
 	out, err := exec.CommandContext(ctx, pgCtl, "stop", "-m", "immediate", "-w", "-D", dataDir(dir)).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
+}
+
+// v1 と v2 はバイナリキャッシュの配置が異なる。起動した postgres 自身の記録から
+// 同じ配布物の pg_ctl を選び、更新前のプロセスも回収できるようにする。
+func postgresControlPath(dir string) (string, error) {
+	opts, err := os.ReadFile(filepath.Join(dataDir(dir), "postmaster.opts"))
+	if err != nil {
+		return "", err
+	}
+	command := strings.TrimSpace(string(opts))
+	if !strings.HasPrefix(command, `"`) {
+		return "", fmt.Errorf("postmaster.opts does not start with a quoted executable path")
+	}
+	executable, _, ok := strings.Cut(command[1:], `"`)
+	if !ok || !filepath.IsAbs(executable) || filepath.Base(executable) != "postgres" {
+		return "", fmt.Errorf("postmaster.opts does not name an absolute postgres executable")
+	}
+	return filepath.Join(filepath.Dir(executable), "pg_ctl"), nil
 }
