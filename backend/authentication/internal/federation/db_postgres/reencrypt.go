@@ -48,13 +48,18 @@ func (m *ConnectionSecretReencryptor) ReencryptBatch(ctx context.Context, tenant
 		if err != nil {
 			return migrated, err
 		}
-		if err := New(m.Repo.Pool).UpdateIdentityProviderConnectionSecretCiphertext(ctx, UpdateIdentityProviderConnectionSecretCiphertextParams{
-			TenantID:         tenantID,
-			ID:               row.ID,
-			SecretKeyVersion: pgtype.Int4{Int32: int32(version), Valid: true}, //nolint:gosec // G115: DEK version is a small monotonic counter, well under int32 max
-			SecretCiphertext: ciphertext,
-		}); err != nil {
+		updated, err := New(m.Repo.Pool).UpdateIdentityProviderConnectionSecretCiphertext(ctx, UpdateIdentityProviderConnectionSecretCiphertextParams{
+			TenantID:            tenantID,
+			ID:                  row.ID,
+			SecretKeyVersion:    pgtype.Int4{Int32: int32(version), Valid: true}, //nolint:gosec // G115: DEK version is a small monotonic counter, well under int32 max
+			SecretCiphertext:    ciphertext,
+			ReadSecretReference: row.SecretReference, ReadSecretCiphertext: row.SecretCiphertext,
+		})
+		if err != nil {
 			return migrated, err
+		}
+		if updated == 0 {
+			continue // 読んだ後に変わった行は、新しい値を残す。
 		}
 		migrated++
 	}

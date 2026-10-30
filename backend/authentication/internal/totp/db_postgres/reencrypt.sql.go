@@ -86,27 +86,37 @@ func (q *Queries) ListMfaFactorsPendingReencryption(ctx context.Context, arg Lis
 	return items, nil
 }
 
-const updateMfaFactorCiphertext = `-- name: UpdateMfaFactorCiphertext :exec
+const updateMfaFactorCiphertext = `-- name: UpdateMfaFactorCiphertext :execrows
 UPDATE mfa_factors
-SET secret = NULL, secret_key_version = $3, secret_ciphertext = $4, updated_at = now()
-WHERE user_id = $1 AND type = $2
+SET secret = NULL, secret_key_version = $1, secret_ciphertext = $2, updated_at = now()
+WHERE user_id = $3 AND type = $4
+  AND secret IS NOT DISTINCT FROM $5
+  AND secret_ciphertext IS NOT DISTINCT FROM $6
 `
 
 type UpdateMfaFactorCiphertextParams struct {
-	UserID           string
-	Type             string
-	SecretKeyVersion pgtype.Int4
-	SecretCiphertext []byte
+	SecretKeyVersion     pgtype.Int4
+	SecretCiphertext     []byte
+	UserID               string
+	Type                 string
+	ReadSecret           pgtype.Text
+	ReadSecretCiphertext []byte
 }
 
 // Writes back a re-encrypted secret without touching label/created_at/
 // last_used_at, and always clears the legacy plaintext column.
-func (q *Queries) UpdateMfaFactorCiphertext(ctx context.Context, arg UpdateMfaFactorCiphertextParams) error {
-	_, err := q.db.Exec(ctx, updateMfaFactorCiphertext,
-		arg.UserID,
-		arg.Type,
+// 読んだ後に登録し直された値を書き戻さないように、読んだ値のままの行だけを更新する。
+func (q *Queries) UpdateMfaFactorCiphertext(ctx context.Context, arg UpdateMfaFactorCiphertextParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateMfaFactorCiphertext,
 		arg.SecretKeyVersion,
 		arg.SecretCiphertext,
+		arg.UserID,
+		arg.Type,
+		arg.ReadSecret,
+		arg.ReadSecretCiphertext,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

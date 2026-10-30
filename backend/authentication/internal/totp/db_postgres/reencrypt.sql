@@ -19,9 +19,12 @@ WHERE u.tenant_id = $1
   AND (m.secret IS NOT NULL OR m.secret_ciphertext IS NOT NULL)
   AND (m.secret_key_version IS NULL OR m.secret_key_version <> $2);
 
--- name: UpdateMfaFactorCiphertext :exec
+-- name: UpdateMfaFactorCiphertext :execrows
 -- Writes back a re-encrypted secret without touching label/created_at/
 -- last_used_at, and always clears the legacy plaintext column.
+-- 読んだ後に登録し直された値を書き戻さないように、読んだ値のままの行だけを更新する。
 UPDATE mfa_factors
-SET secret = NULL, secret_key_version = $3, secret_ciphertext = $4, updated_at = now()
-WHERE user_id = $1 AND type = $2;
+SET secret = NULL, secret_key_version = @secret_key_version, secret_ciphertext = @secret_ciphertext, updated_at = now()
+WHERE user_id = @user_id AND type = @type
+  AND secret IS NOT DISTINCT FROM @read_secret
+  AND secret_ciphertext IS NOT DISTINCT FROM @read_secret_ciphertext;

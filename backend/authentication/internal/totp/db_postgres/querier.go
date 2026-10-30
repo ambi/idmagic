@@ -21,7 +21,8 @@ type Querier interface {
 	ListMfaFactorsPendingReencryption(ctx context.Context, arg ListMfaFactorsPendingReencryptionParams) ([]*ListMfaFactorsPendingReencryptionRow, error)
 	// Writes back a re-encrypted secret without touching label/created_at/
 	// last_used_at, and always clears the legacy plaintext column.
-	UpdateMfaFactorCiphertext(ctx context.Context, arg UpdateMfaFactorCiphertextParams) error
+	// 読んだ後に登録し直された値を書き戻さないように、読んだ値のままの行だけを更新する。
+	UpdateMfaFactorCiphertext(ctx context.Context, arg UpdateMfaFactorCiphertextParams) (int64, error)
 	UpsertMfaFactor(ctx context.Context, arg UpsertMfaFactorParams) error
 }
 

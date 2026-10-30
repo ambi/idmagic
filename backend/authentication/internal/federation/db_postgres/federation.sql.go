@@ -624,27 +624,37 @@ func (q *Queries) SaveIdentityProviderConnection(ctx context.Context, arg SaveId
 	return err
 }
 
-const updateIdentityProviderConnectionSecretCiphertext = `-- name: UpdateIdentityProviderConnectionSecretCiphertext :exec
+const updateIdentityProviderConnectionSecretCiphertext = `-- name: UpdateIdentityProviderConnectionSecretCiphertext :execrows
 UPDATE identity_provider_connections
-SET secret_reference = NULL, secret_key_version = $3, secret_ciphertext = $4, updated_at = now()
-WHERE tenant_id = $1 AND id = $2
+SET secret_reference = NULL, secret_key_version = $1, secret_ciphertext = $2, updated_at = now()
+WHERE tenant_id = $3 AND id = $4
+  AND secret_reference IS NOT DISTINCT FROM $5
+  AND secret_ciphertext IS NOT DISTINCT FROM $6
 `
 
 type UpdateIdentityProviderConnectionSecretCiphertextParams struct {
-	TenantID         string
-	ID               string
-	SecretKeyVersion pgtype.Int4
-	SecretCiphertext []byte
+	SecretKeyVersion     pgtype.Int4
+	SecretCiphertext     []byte
+	TenantID             string
+	ID                   string
+	ReadSecretReference  pgtype.Text
+	ReadSecretCiphertext []byte
 }
 
 // Writes back a (re-)encrypted secret and always clears the legacy plaintext
 // secret_reference column, mirroring UpdateMfaFactorCiphertext.
-func (q *Queries) UpdateIdentityProviderConnectionSecretCiphertext(ctx context.Context, arg UpdateIdentityProviderConnectionSecretCiphertextParams) error {
-	_, err := q.db.Exec(ctx, updateIdentityProviderConnectionSecretCiphertext,
-		arg.TenantID,
-		arg.ID,
+// 読んだ後に入れ替えられた値を書き戻さないように、読んだ値のままの行だけを更新する。
+func (q *Queries) UpdateIdentityProviderConnectionSecretCiphertext(ctx context.Context, arg UpdateIdentityProviderConnectionSecretCiphertextParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateIdentityProviderConnectionSecretCiphertext,
 		arg.SecretKeyVersion,
 		arg.SecretCiphertext,
+		arg.TenantID,
+		arg.ID,
+		arg.ReadSecretReference,
+		arg.ReadSecretCiphertext,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

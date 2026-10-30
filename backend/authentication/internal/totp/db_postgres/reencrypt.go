@@ -61,13 +61,18 @@ func (m *MfaFactorReencryptor) ReencryptBatch(ctx context.Context, tenantID stri
 		if err != nil {
 			return migrated, err
 		}
-		if err := m.Repo.queries().UpdateMfaFactorCiphertext(ctx, UpdateMfaFactorCiphertextParams{
+		updated, err := m.Repo.queries().UpdateMfaFactorCiphertext(ctx, UpdateMfaFactorCiphertextParams{
 			UserID:           row.UserID,
 			Type:             row.Type,
 			SecretKeyVersion: pgtype.Int4{Int32: int32(version), Valid: true}, //nolint:gosec // G115: DEK version is a small monotonic counter
 			SecretCiphertext: ciphertext,
-		}); err != nil {
+			ReadSecret:       row.Secret, ReadSecretCiphertext: row.SecretCiphertext,
+		})
+		if err != nil {
 			return migrated, err
+		}
+		if updated == 0 {
+			continue // 読んだ後に変わった行は、新しい値を残す。
 		}
 		migrated++
 	}

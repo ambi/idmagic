@@ -279,3 +279,58 @@ func TestMfaFactorReencryptor_NoPlaintextSurvivesBackfillAcrossTenants(t *testin
 		t.Fatalf("expected 0 rows with legacy plaintext remaining, got %d", remainingPlaintext)
 	}
 }
+
+// racingSecretCipher は再暗号化の最中に一度だけ onEncrypt を呼ぶ。読んだ後の変更を、
+// タイミングに依らず同じ順序で起こす。
+type racingSecretCipher struct {
+	*datakeys.FieldCipher
+	onEncrypt func()
+}
+
+func (c *racingSecretCipher) Encrypt(ctx context.Context, tenantID, recordContext, table, recordID, field, plaintext string) (int, []byte, error) {
+	if hook := c.onEncrypt; hook != nil {
+		c.onEncrypt = nil
+		hook()
+	}
+	return c.FieldCipher.Encrypt(ctx, tenantID, recordContext, table, recordID, field, plaintext)
+}
+
+//spec:covers REQ-DATAKEYS-002: 再暗号化が読んだ後に登録し直された TOTP のシードを、古いシードで書き戻さない。
+func TestMfaFactorReencryptorKeepsSeedEnrolledDuringBatch(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
+	stack := newTestDataKeyStack(t, tenant.ID)
+	ctx := context.Background()
+	if err := New(db).UpsertMfaFactor(ctx, UpsertMfaFactorParams{
+		UserID: user.ID, Type: string(spec.MfaFactorTOTP),
+		Secret: pgtype.Text{String: "old-seed", Valid: true}, CreatedAt: pgfixtures.TestClock(),
+	}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	cipher := &racingSecretCipher{FieldCipher: stack.cipher}
+	repo := &MfaFactorRepository{Pool: db, Cipher: cipher}
+	cipher.onEncrypt = func() {
+		if err := New(db).UpsertMfaFactor(ctx, UpsertMfaFactorParams{
+			UserID: user.ID, Type: string(spec.MfaFactorTOTP),
+			Secret: pgtype.Text{String: "new-seed", Valid: true}, CreatedAt: pgfixtures.TestClock(),
+		}); err != nil {
+			t.Errorf("re-enroll: %v", err)
+		}
+	}
+	migrated, err := (&MfaFactorReencryptor{Repo: repo}).ReencryptBatch(ctx, tenant.ID, stack.activeVersion(t, tenant.ID), 10)
+	if err != nil {
+		t.Fatalf("ReencryptBatch: %v", err)
+	}
+	if migrated != 0 {
+		t.Errorf("migrated = %d, want 0 for the row that changed", migrated)
+	}
+	var secret pgtype.Text
+	if err := db.QueryRow(ctx, `SELECT secret FROM mfa_factors WHERE user_id = $1`, user.ID).Scan(&secret); err != nil {
+		t.Fatal(err)
+	}
+	if secret.String != "new-seed" {
+		t.Fatalf("stored seed = %q, want the seed enrolled during the batch", secret.String)
+	}
+}

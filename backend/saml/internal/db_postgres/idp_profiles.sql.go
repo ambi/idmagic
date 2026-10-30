@@ -85,6 +85,26 @@ func (q *Queries) EnsureDefaultSamlIDPProfile(ctx context.Context, tenantID stri
 	return &i, err
 }
 
+const ensureSamlIDPProfileRow = `-- name: EnsureSamlIDPProfileRow :exec
+INSERT INTO saml_identity_provider_profiles
+    (tenant_id, profile_id, name, mode, is_default, created_at)
+VALUES ($1, $2, '', 'shared', $2::text = 'default', $3)
+ON CONFLICT (tenant_id, profile_id) DO NOTHING
+`
+
+type EnsureSamlIDPProfileRowParams struct {
+	TenantID  string
+	ProfileID string
+	CreatedAt time.Time
+}
+
+// 行がなければ後続の行ロックは何も固定しないので、先に行を作り、同時の作成の確定を待つ。
+// 値は同じトランザクションの保存が置き換える。
+func (q *Queries) EnsureSamlIDPProfileRow(ctx context.Context, arg EnsureSamlIDPProfileRowParams) error {
+	_, err := q.db.Exec(ctx, ensureSamlIDPProfileRow, arg.TenantID, arg.ProfileID, arg.CreatedAt)
+	return err
+}
+
 const getSamlIDPProfile = `-- name: GetSamlIDPProfile :one
 SELECT tenant_id, profile_id, name, mode, is_default, created_at, updated_at
 FROM saml_identity_provider_profiles

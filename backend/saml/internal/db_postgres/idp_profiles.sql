@@ -10,6 +10,14 @@ SELECT tenant_id, profile_id, name, mode, is_default, created_at, updated_at
 FROM saml_identity_provider_profiles
 WHERE tenant_id = $1 AND profile_id = $2;
 
+-- name: EnsureSamlIDPProfileRow :exec
+-- 行がなければ後続の行ロックは何も固定しないので、先に行を作り、同時の作成の確定を待つ。
+-- 値は同じトランザクションの保存が置き換える。
+INSERT INTO saml_identity_provider_profiles
+    (tenant_id, profile_id, name, mode, is_default, created_at)
+VALUES (@tenant_id, @profile_id, '', 'shared', @profile_id::text = 'default', @created_at)
+ON CONFLICT (tenant_id, profile_id) DO NOTHING;
+
 -- name: GetSamlIDPProfileForUpdate :one
 SELECT tenant_id, profile_id, name, mode, is_default, created_at, updated_at
 FROM saml_identity_provider_profiles

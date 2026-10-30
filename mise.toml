@@ -933,6 +933,12 @@ description = "Reject forbidden source dependencies"
 dir = "tools"
 run = "bun run check/src/runner.ts boundaries \"$@\""
 
+[tasks.check-sql-concurrency]
+# context: targets=backend
+description = "Reject unguarded writes after reads of the same table"
+dir = "tools"
+run = "bun run check/src/runner.ts sql-concurrency"
+
 [tasks.check-boundary-debt-ratchet]
 description = "Reject boundary violations added beyond a Git revision"
 dir = "tools"

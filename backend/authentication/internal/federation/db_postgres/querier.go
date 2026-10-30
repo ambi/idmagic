@@ -37,7 +37,8 @@ type Querier interface {
 	SaveIdentityProviderConnection(ctx context.Context, arg SaveIdentityProviderConnectionParams) error
 	// Writes back a (re-)encrypted secret and always clears the legacy plaintext
 	// secret_reference column, mirroring UpdateMfaFactorCiphertext.
-	UpdateIdentityProviderConnectionSecretCiphertext(ctx context.Context, arg UpdateIdentityProviderConnectionSecretCiphertextParams) error
+	// 読んだ後に入れ替えられた値を書き戻さないように、読んだ値のままの行だけを更新する。
+	UpdateIdentityProviderConnectionSecretCiphertext(ctx context.Context, arg UpdateIdentityProviderConnectionSecretCiphertextParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

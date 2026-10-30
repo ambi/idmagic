@@ -66,12 +66,15 @@ WHERE tenant_id = $1
   AND (secret_reference IS NOT NULL OR secret_ciphertext IS NOT NULL)
   AND (secret_key_version IS NULL OR secret_key_version <> $2);
 
--- name: UpdateIdentityProviderConnectionSecretCiphertext :exec
+-- name: UpdateIdentityProviderConnectionSecretCiphertext :execrows
 -- Writes back a (re-)encrypted secret and always clears the legacy plaintext
 -- secret_reference column, mirroring UpdateMfaFactorCiphertext.
+-- 読んだ後に入れ替えられた値を書き戻さないように、読んだ値のままの行だけを更新する。
 UPDATE identity_provider_connections
-SET secret_reference = NULL, secret_key_version = $3, secret_ciphertext = $4, updated_at = now()
-WHERE tenant_id = $1 AND id = $2;
+SET secret_reference = NULL, secret_key_version = @secret_key_version, secret_ciphertext = @secret_ciphertext, updated_at = now()
+WHERE tenant_id = @tenant_id AND id = @id
+  AND secret_reference IS NOT DISTINCT FROM @read_secret_reference
+  AND secret_ciphertext IS NOT DISTINCT FROM @read_secret_ciphertext;
 
 -- name: CreateFederatedIdentity :exec
 INSERT INTO federated_identities

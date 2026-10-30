@@ -155,3 +155,58 @@ func TestConnectionSecretReencryptorSkipsRowsWithNoSecretConfigured(t *testing.T
 		t.Fatalf("pending=%d, want 0 (nothing to migrate)", pending)
 	}
 }
+
+type racingSecretCipher struct {
+	*datakeys.FieldCipher
+	onEncrypt func()
+}
+
+func (c *racingSecretCipher) Encrypt(ctx context.Context, tenantID, recordContext, table, recordID, field, plaintext string) (int, []byte, error) {
+	if hook := c.onEncrypt; hook != nil {
+		c.onEncrypt = nil
+		hook()
+	}
+	return c.FieldCipher.Encrypt(ctx, tenantID, recordContext, table, recordID, field, plaintext)
+}
+
+//spec:covers REQ-DATAKEYS-002: 再暗号化が読んだ後に管理者が入れ替えたシークレットを、古い値で書き戻さない。
+func TestConnectionSecretReencryptorKeepsSecretChangedDuringBatch(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	ctx, now := context.Background(), pgtest.Now()
+	cipher := newTestCipher(t, tenant.ID)
+	legacy := &db_postgres.ConnectionRepository{Pool: pool}
+	connection := testConnection(t, tenant.ID, now)
+	connection.ID = "changing"
+	connection.SecretReference = "env:OIDC_SECRET"
+	if err := legacy.Save(ctx, connection); err != nil {
+		t.Fatalf("seed Save: %v", err)
+	}
+
+	admin := &db_postgres.ConnectionRepository{Pool: pool, Cipher: cipher}
+	racing := &racingSecretCipher{FieldCipher: cipher}
+	racing.onEncrypt = func() {
+		connection.SecretReference = "new-admin-secret"
+		if err := admin.Save(ctx, connection); err != nil {
+			t.Errorf("admin Save: %v", err)
+		}
+	}
+	migrator := &db_postgres.ConnectionSecretReencryptor{
+		Repo:        &db_postgres.ConnectionRepository{Pool: pool, Cipher: racing},
+		EnvResolver: stubEnvResolver{values: map[string]string{"env:OIDC_SECRET": "old-env-secret"}},
+	}
+	migrated, err := migrator.ReencryptBatch(ctx, tenant.ID, activeVersion(t, cipher, tenant.ID), 10)
+	if err != nil {
+		t.Fatalf("ReencryptBatch: %v", err)
+	}
+	if migrated != 0 {
+		t.Errorf("migrated = %d, want 0 for the row that changed", migrated)
+	}
+	stored, err := admin.Find(ctx, tenant.ID, connection.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.SecretReference != "new-admin-secret" {
+		t.Fatalf("stored secret = %q, want the secret saved during the batch", stored.SecretReference)
+	}
+}

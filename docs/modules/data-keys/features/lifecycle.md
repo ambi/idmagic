@@ -73,6 +73,7 @@
 - テナントの DEK をローテーションしたとき、DataKeys は、次のバージョンの DEK を `active` にし、それまでの `active` のバージョンを `retiring` にし、`DataEncryptionKeyRotated` を発行する。
 - テナントの DEK をローテーションしたとき、DataKeys は、登録したすべての `FieldMigrator` について、そのテナントの再暗号化のジョブを `Jobs` に予約する。
 - 再暗号化のジョブの予約に失敗した場合、DataKeys は、ローテーションを取り消さず、REQ-DATAKEYS-007 の定期実行で後から回収する。
+- 再暗号化のために読んだ値が書き戻す前に変わった場合、DataKeys は、新しい値を残し、その行を移行済みに数えない。
 - バージョンが `retiring` の間、そのバージョンで暗号化した値を復号するとき、DataKeys は、そのバージョンで復号する。
 - DataKeys は、`active` のバージョンだけを新しい暗号化に使う。
 - **例**：EX-DATAKEYS-002-01

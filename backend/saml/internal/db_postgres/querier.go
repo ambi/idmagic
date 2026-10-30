@@ -16,6 +16,9 @@ type Querier interface {
 	DeleteSamlIDPProfile(ctx context.Context, arg DeleteSamlIDPProfileParams) error
 	DeleteSamlServiceProvider(ctx context.Context, arg DeleteSamlServiceProviderParams) error
 	EnsureDefaultSamlIDPProfile(ctx context.Context, tenantID string) (*SamlIdentityProviderProfile, error)
+	// 行がなければ後続の行ロックは何も固定しないので、先に行を作り、同時の作成の確定を待つ。
+	// 値は同じトランザクションの保存が置き換える。
+	EnsureSamlIDPProfileRow(ctx context.Context, arg EnsureSamlIDPProfileRowParams) error
 	GetSamlIDPProfile(ctx context.Context, arg GetSamlIDPProfileParams) (*SamlIdentityProviderProfile, error)
 	GetSamlIDPProfileForUpdate(ctx context.Context, arg GetSamlIDPProfileForUpdateParams) (*SamlIdentityProviderProfile, error)
 	GetSamlServiceProvider(ctx context.Context, arg GetSamlServiceProviderParams) (*SamlServiceProvider, error)

@@ -64,6 +64,16 @@ func (r *SamlIdentityProviderProfileRepository) SaveIDPProfile(ctx context.Conte
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := New(tx)
+	now := time.Now().UTC()
+	createdAt := profile.CreatedAt
+	if createdAt.IsZero() {
+		createdAt = now
+	}
+	if err := q.EnsureSamlIDPProfileRow(ctx, EnsureSamlIDPProfileRowParams{
+		TenantID: profile.TenantID, ProfileID: profile.ProfileID, CreatedAt: createdAt,
+	}); err != nil {
+		return err
+	}
 	existing, err := q.GetSamlIDPProfileForUpdate(ctx, GetSamlIDPProfileForUpdateParams{
 		TenantID: profile.TenantID, ProfileID: profile.ProfileID,
 	})
@@ -82,12 +92,8 @@ func (r *SamlIdentityProviderProfileRepository) SaveIDPProfile(ctx context.Conte
 	if err := profile.Validate(int(count)); err != nil {
 		return err
 	}
-	now := time.Now().UTC()
-	createdAt := profile.CreatedAt
 	if existing != nil {
 		createdAt = existing.CreatedAt
-	} else if createdAt.IsZero() {
-		createdAt = now
 	}
 	if err := q.UpsertSamlIDPProfile(ctx, UpsertSamlIDPProfileParams{
 		TenantID: profile.TenantID, ProfileID: profile.ProfileID, Name: profile.Name,
