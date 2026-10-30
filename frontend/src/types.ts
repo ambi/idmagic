@@ -589,12 +589,21 @@ export type AuthorizationDetailType = {
   updated_at: string
 }
 
+export type ResourceAccessRule = {
+  resource_type: string
+  relation: string
+  scopes: string[]
+  authorization_detail_type?: string
+}
+
 export type McpResourceServer = {
   tenant_id: string
   id: string
   resource: string
   name: string
   scopes: string[]
+  client_id?: string
+  access_rules?: ResourceAccessRule[]
   state: 'Active' | 'Disabled'
   created_at: string
   updated_at: string

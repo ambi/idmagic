@@ -8,6 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // McpResourceServerRepository は MCP resource server 登録 を PostgreSQL に
@@ -21,12 +22,18 @@ func mcpResourceServerFromRow(row *McpResourceServer) (*domain.McpResourceServer
 		ID:        row.ID,
 		Resource:  row.Resource,
 		Name:      row.Name,
+		ClientID:  row.ClientID.String,
 		State:     domain.McpResourceServerState(row.State),
 		CreatedAt: row.CreatedAt,
 		UpdatedAt: row.UpdatedAt,
 	}
 	if len(row.Scopes) > 0 {
 		if err := json.Unmarshal(row.Scopes, &m.Scopes); err != nil {
+			return nil, err
+		}
+	}
+	if len(row.AccessRules) > 0 {
+		if err := json.Unmarshal(row.AccessRules, &m.AccessRules); err != nil {
 			return nil, err
 		}
 	}
@@ -75,20 +82,43 @@ func (r *McpResourceServerRepository) FindByResource(ctx context.Context, tenant
 	return mcpResourceServerFromRow(row)
 }
 
+func (r *McpResourceServerRepository) FindByClientID(ctx context.Context, tenantID, clientID string) (*domain.McpResourceServer, error) {
+	row, err := New(r.Pool).GetMcpResourceServerByClientID(ctx, GetMcpResourceServerByClientIDParams{
+		TenantID: tenantID, ClientID: pgtype.Text{String: clientID, Valid: clientID != ""},
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return mcpResourceServerFromRow(row)
+}
+
 func (r *McpResourceServerRepository) Save(ctx context.Context, m *domain.McpResourceServer) error {
 	scopes, err := json.Marshal(m.Scopes)
 	if err != nil {
 		return err
 	}
+	rules := m.AccessRules
+	if rules == nil {
+		rules = []domain.ResourceAccessRule{}
+	}
+	accessRules, err := json.Marshal(rules)
+	if err != nil {
+		return err
+	}
 	return New(r.Pool).UpsertMcpResourceServer(ctx, UpsertMcpResourceServerParams{
-		TenantID:  m.TenantID,
-		ID:        m.ID,
-		Resource:  m.Resource,
-		Name:      m.Name,
-		Scopes:    scopes,
-		State:     string(m.State),
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
+		TenantID:    m.TenantID,
+		ID:          m.ID,
+		Resource:    m.Resource,
+		Name:        m.Name,
+		Scopes:      scopes,
+		ClientID:    pgtype.Text{String: m.ClientID, Valid: m.ClientID != ""},
+		AccessRules: accessRules,
+		State:       string(m.State),
+		CreatedAt:   m.CreatedAt,
+		UpdatedAt:   m.UpdatedAt,
 	})
 }
 

@@ -111,6 +111,7 @@ var auditEventCategoryTypes = map[string][]string{
 		"RefreshTokenRotated",
 		"TokenRevoked",
 		"TokenIntrospected",
+		"ResourceAccessEvaluated",
 		"RefreshTokenReuseDetected",
 		"PARStored",
 		"DeviceAuthorizationRequested",

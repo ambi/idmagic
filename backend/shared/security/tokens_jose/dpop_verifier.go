@@ -26,6 +26,10 @@ const (
 	dpopJTIReplayWindowSeconds = 600
 )
 
+// ErrDPoPReplayStoreUnavailable は、リプレイ記録へ届かず証明を判定できなかったことを表す。
+// 証明の不正とは区別し、呼び出し側が判定不能として扱えるようにする。
+var ErrDPoPReplayStoreUnavailable = errors.New("dpop: replay store unavailable")
+
 type DPoPResult struct {
 	JKT string
 }
@@ -156,7 +160,7 @@ func verifyDPoP(
 	}
 	isNew, err := replay.RecordIfNew(ctx, jti, dpopJTIReplayWindowSeconds, now)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrDPoPReplayStoreUnavailable, err)
 	}
 	if !isNew {
 		return nil, errors.New("dpop: jti replay detected")

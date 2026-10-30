@@ -308,11 +308,15 @@ func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
 	now := testClock()
 	resourceServerID := newUUID(t)
 	m := &domain.McpResourceServer{
-		TenantID:  tenant.ID,
-		ID:        resourceServerID,
-		Resource:  "https://mcp.example.com/tools/github",
-		Name:      "GitHub MCP Tools",
-		Scopes:    []string{"mcp.read", "mcp.write"},
+		TenantID: tenant.ID,
+		ID:       resourceServerID,
+		Resource: "https://mcp.example.com/tools/github",
+		Name:     "GitHub MCP Tools",
+		Scopes:   []string{"mcp.read", "mcp.write"},
+		ClientID: "rs-client",
+		AccessRules: []domain.ResourceAccessRule{{
+			ResourceType: "document", Relation: "viewer", Scopes: []string{"mcp.read"}, AuthorizationDetailType: "doc",
+		}},
 		State:     domain.McpResourceServerActive,
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -324,6 +328,20 @@ func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
 	got, err := repo.FindByID(ctx, tenant.ID, resourceServerID)
 	if err != nil || got == nil {
 		t.Fatalf("find by id: %v %+v", err, got)
+	}
+	byClient, err := repo.FindByClientID(ctx, tenant.ID, "rs-client")
+	if err != nil || byClient == nil || byClient.ID != resourceServerID ||
+		len(byClient.AccessRules) != 1 || byClient.AccessRules[0].AuthorizationDetailType != "doc" {
+		t.Fatalf("find by client: %v %+v", err, byClient)
+	}
+	if missing, err := repo.FindByClientID(ctx, tenant.ID, ""); err != nil || missing != nil {
+		t.Fatalf("空の client_id は登録へ解決しない: %v %+v", err, missing)
+	}
+	duplicate := *m
+	duplicate.ID = newUUID(t)
+	duplicate.Resource = "https://mcp.example.com/tools/other"
+	if err := repo.Save(ctx, &duplicate); err == nil {
+		t.Fatal("同じテナントの別の登録へ同じ client_id を束縛できた")
 	}
 	if got.Resource != m.Resource || got.State != domain.McpResourceServerActive {
 		t.Fatalf("unexpected resource server: %+v", got)

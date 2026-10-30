@@ -51,13 +51,13 @@ spec:
       rules:
         - record: idmagic:http_requests_by_family_status:rate5m
           labels: { family: authentication }
-          expr: sum by (status_code) (rate(http_requests_total{route=~"(/realms/[^/]+)?(/\\.well-known/.*|/authorize(/.*)?|/token|/introspect|/revoke|/userinfo|/par|/bc-authorize|/device_authorization|/end_session|/register|/jwks|/session/check|/saml(/.*)?|/wsfed|/federationmetadata/.*|/trust/.*|/api/auth/.*|/api/branding(/.*)?|/tenant-branding-assets/.*|/application-icons/.*)"}[5m]))
+          expr: sum by (status_code) (rate(http_requests_total{route=~"(/realms/[^/]+)?(/\\.well-known/.*|/authorize(/.*)?|/token|/introspect|/resource-access/evaluate|/revoke|/userinfo|/par|/bc-authorize|/device_authorization|/end_session|/register|/jwks|/session/check|/saml(/.*)?|/wsfed|/federationmetadata/.*|/trust/.*|/api/auth/.*|/api/branding(/.*)?|/tenant-branding-assets/.*|/application-icons/.*)"}[5m]))
         - record: idmagic:http_request_duration_seconds_by_family:histogram_rate5m
           labels: { family: authentication }
-          expr: sum by (le) (rate(http_request_duration_seconds_bucket{route=~"(/realms/[^/]+)?(/\\.well-known/.*|/authorize(/.*)?|/token|/introspect|/revoke|/userinfo|/par|/bc-authorize|/device_authorization|/end_session|/register|/jwks|/session/check|/saml(/.*)?|/wsfed|/federationmetadata/.*|/trust/.*|/api/auth/.*|/api/branding(/.*)?|/tenant-branding-assets/.*|/application-icons/.*)"}[5m]))
+          expr: sum by (le) (rate(http_request_duration_seconds_bucket{route=~"(/realms/[^/]+)?(/\\.well-known/.*|/authorize(/.*)?|/token|/introspect|/resource-access/evaluate|/revoke|/userinfo|/par|/bc-authorize|/device_authorization|/end_session|/register|/jwks|/session/check|/saml(/.*)?|/wsfed|/federationmetadata/.*|/trust/.*|/api/auth/.*|/api/branding(/.*)?|/tenant-branding-assets/.*|/application-icons/.*)"}[5m]))
         - record: idmagic:http_requests_in_flight_by_family:sum
           labels: { family: authentication }
-          expr: sum(http_requests_in_flight{route=~"(/realms/[^/]+)?(/\\.well-known/.*|/authorize(/.*)?|/token|/introspect|/revoke|/userinfo|/par|/bc-authorize|/device_authorization|/end_session|/register|/jwks|/session/check|/saml(/.*)?|/wsfed|/federationmetadata/.*|/trust/.*|/api/auth/.*|/api/branding(/.*)?|/tenant-branding-assets/.*|/application-icons/.*)"})
+          expr: sum(http_requests_in_flight{route=~"(/realms/[^/]+)?(/\\.well-known/.*|/authorize(/.*)?|/token|/introspect|/resource-access/evaluate|/revoke|/userinfo|/par|/bc-authorize|/device_authorization|/end_session|/register|/jwks|/session/check|/saml(/.*)?|/wsfed|/federationmetadata/.*|/trust/.*|/api/auth/.*|/api/branding(/.*)?|/tenant-branding-assets/.*|/application-icons/.*)"})
         - record: idmagic:http_requests_by_family_status:rate5m
           labels: { family: portal }
           expr: sum by (status_code) (rate(http_requests_total{route=~"(/realms/[^/]+)?/api/account/v1/.*"}[5m]))

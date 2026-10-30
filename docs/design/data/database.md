@@ -215,7 +215,7 @@ erDiagram
 | `audit_event_search_attributes` | 監査イベントの検索属性の索引。個人識別情報は変換済みの値だけを置く | Audit | `LOGGED` | 非キーカラム |
 | `agents` | エージェントの Aggregate。所有者、状態、ロールを格納する | IdManagement | `LOGGED` | 非キーカラム |
 | `authorization_detail_types` | テナントが受け付ける `authorization_details` の型の定義 | OAuth2 | `LOGGED` | 複合主キーの一部 |
-| `mcp_resource_servers` | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ | OAuth2 | `LOGGED` | 非キーカラム |
+| `mcp_resource_servers` | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ、評価用のクライアントと規則 | OAuth2 | `LOGGED` | 非キーカラム |
 | `workload_trust_bundles` | ワークロード ID のトークンを検証する信頼ドメインと鍵 | WorkloadIdentity | `LOGGED` | 非キーカラム |
 | `agent_workload_bindings` | 信頼ドメインのワークロード主体とエージェントの対応 | WorkloadIdentity | `LOGGED` | 非キーカラム |
 | `agent_revocation_epochs` | エージェントの失効世代。世代を進めると、それより前に発行したトークンを受け付けない | SharedSignals | `LOGGED` | 非キーカラム |

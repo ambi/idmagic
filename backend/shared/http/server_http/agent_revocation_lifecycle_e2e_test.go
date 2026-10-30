@@ -40,7 +40,13 @@ type agentRevocationFixture struct {
 
 func newAgentRevocationFixture(t *testing.T, agentIDs ...string) *agentRevocationFixture {
 	t.Helper()
-	s := stack.New(t, stack.WithOAuth2Clients(), stack.WithTokenIssuance(), stack.WithApiTokens(), stack.WithAgentRevocation())
+	return newAgentRevocationFixtureWith(t, nil, agentIDs...)
+}
+
+func newAgentRevocationFixtureWith(t *testing.T, extra []stack.Option, agentIDs ...string) *agentRevocationFixture {
+	t.Helper()
+	options := append([]stack.Option{stack.WithOAuth2Clients(), stack.WithTokenIssuance(), stack.WithApiTokens(), stack.WithAgentRevocation()}, extra...)
+	s := stack.New(t, options...)
 	now := time.Now().UTC()
 	if err := s.McpResourceServers.Save(context.Background(), &oauthdomain.McpResourceServer{
 		TenantID: tenancydomain.DefaultTenantID, ID: "mcp-agent-revocation", Resource: agentRevocationResource,

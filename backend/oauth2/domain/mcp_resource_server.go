@@ -29,14 +29,18 @@ func (s McpResourceServerState) Valid() bool {
 }
 
 type McpResourceServer struct {
-	TenantID  string                 `json:"tenant_id"`
-	ID        string                 `json:"id"`
-	Resource  string                 `json:"resource"`
-	Name      string                 `json:"name"`
-	Scopes    []string               `json:"scopes"`
-	State     McpResourceServerState `json:"state"`
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt time.Time              `json:"updated_at"`
+	TenantID string   `json:"tenant_id"`
+	ID       string   `json:"id"`
+	Resource string   `json:"resource"`
+	Name     string   `json:"name"`
+	Scopes   []string `json:"scopes"`
+	// ClientID は /resource-access/evaluate を呼べるクライアント。空なら評価できない。
+	ClientID string `json:"client_id,omitempty"`
+	// AccessRules は評価できる操作。ここにない操作は不許可になる。
+	AccessRules []ResourceAccessRule   `json:"access_rules"`
+	State       McpResourceServerState `json:"state"`
+	CreatedAt   time.Time              `json:"created_at"`
+	UpdatedAt   time.Time              `json:"updated_at"`
 }
 
 func (m McpResourceServer) IsActive() bool { return m.State == McpResourceServerActive }
@@ -66,5 +70,8 @@ var mcpResourceServerSchema = z.Struct(z.Shape{
 })
 
 func (m McpResourceServer) Validate() error {
-	return spec.Validate(mcpResourceServerSchema, &m)
+	if err := spec.Validate(mcpResourceServerSchema, &m); err != nil {
+		return err
+	}
+	return m.validateAccessRules()
 }

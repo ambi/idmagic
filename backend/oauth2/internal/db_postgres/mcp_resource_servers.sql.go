@@ -8,6 +8,8 @@ package db_postgres
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deleteMcpResourceServer = `-- name: DeleteMcpResourceServer :exec
@@ -25,7 +27,7 @@ func (q *Queries) DeleteMcpResourceServer(ctx context.Context, arg DeleteMcpReso
 }
 
 const getMcpResourceServer = `-- name: GetMcpResourceServer :one
-SELECT tenant_id, id, resource, name, scopes, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at
 FROM mcp_resource_servers
 WHERE tenant_id = $1 AND id = $2
 `
@@ -44,6 +46,37 @@ func (q *Queries) GetMcpResourceServer(ctx context.Context, arg GetMcpResourceSe
 		&i.Resource,
 		&i.Name,
 		&i.Scopes,
+		&i.ClientID,
+		&i.AccessRules,
+		&i.State,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const getMcpResourceServerByClientID = `-- name: GetMcpResourceServerByClientID :one
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at
+FROM mcp_resource_servers
+WHERE tenant_id = $1 AND client_id = $2
+`
+
+type GetMcpResourceServerByClientIDParams struct {
+	TenantID string
+	ClientID pgtype.Text
+}
+
+func (q *Queries) GetMcpResourceServerByClientID(ctx context.Context, arg GetMcpResourceServerByClientIDParams) (*McpResourceServer, error) {
+	row := q.db.QueryRow(ctx, getMcpResourceServerByClientID, arg.TenantID, arg.ClientID)
+	var i McpResourceServer
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.Resource,
+		&i.Name,
+		&i.Scopes,
+		&i.ClientID,
+		&i.AccessRules,
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -52,7 +85,7 @@ func (q *Queries) GetMcpResourceServer(ctx context.Context, arg GetMcpResourceSe
 }
 
 const getMcpResourceServerByResource = `-- name: GetMcpResourceServerByResource :one
-SELECT tenant_id, id, resource, name, scopes, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at
 FROM mcp_resource_servers
 WHERE tenant_id = $1 AND resource = $2
 `
@@ -71,6 +104,8 @@ func (q *Queries) GetMcpResourceServerByResource(ctx context.Context, arg GetMcp
 		&i.Resource,
 		&i.Name,
 		&i.Scopes,
+		&i.ClientID,
+		&i.AccessRules,
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -79,7 +114,7 @@ func (q *Queries) GetMcpResourceServerByResource(ctx context.Context, arg GetMcp
 }
 
 const listMcpResourceServersByTenant = `-- name: ListMcpResourceServersByTenant :many
-SELECT tenant_id, id, resource, name, scopes, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at
 FROM mcp_resource_servers
 WHERE tenant_id = $1
 ORDER BY resource
@@ -100,6 +135,8 @@ func (q *Queries) ListMcpResourceServersByTenant(ctx context.Context, tenantID s
 			&i.Resource,
 			&i.Name,
 			&i.Scopes,
+			&i.ClientID,
+			&i.AccessRules,
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -115,24 +152,28 @@ func (q *Queries) ListMcpResourceServersByTenant(ctx context.Context, tenantID s
 }
 
 const upsertMcpResourceServer = `-- name: UpsertMcpResourceServer :exec
-INSERT INTO mcp_resource_servers (tenant_id, id, resource, name, scopes, state, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO mcp_resource_servers (tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   scopes = EXCLUDED.scopes,
+  client_id = EXCLUDED.client_id,
+  access_rules = EXCLUDED.access_rules,
   state = EXCLUDED.state,
   updated_at = EXCLUDED.updated_at
 `
 
 type UpsertMcpResourceServerParams struct {
-	TenantID  string
-	ID        string
-	Resource  string
-	Name      string
-	Scopes    []byte
-	State     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	TenantID    string
+	ID          string
+	Resource    string
+	Name        string
+	Scopes      []byte
+	ClientID    pgtype.Text
+	AccessRules []byte
+	State       string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 func (q *Queries) UpsertMcpResourceServer(ctx context.Context, arg UpsertMcpResourceServerParams) error {
@@ -142,6 +183,8 @@ func (q *Queries) UpsertMcpResourceServer(ctx context.Context, arg UpsertMcpReso
 		arg.Resource,
 		arg.Name,
 		arg.Scopes,
+		arg.ClientID,
+		arg.AccessRules,
 		arg.State,
 		arg.CreatedAt,
 		arg.UpdatedAt,

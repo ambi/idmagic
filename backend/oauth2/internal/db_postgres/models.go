@@ -22,14 +22,16 @@ type AuthorizationDetailType struct {
 }
 
 type McpResourceServer struct {
-	TenantID  string
-	ID        string
-	Resource  string
-	Name      string
-	Scopes    []byte
-	State     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	TenantID    string
+	ID          string
+	Resource    string
+	Name        string
+	Scopes      []byte
+	ClientID    pgtype.Text
+	AccessRules []byte
+	State       string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type Oauth2Client struct {

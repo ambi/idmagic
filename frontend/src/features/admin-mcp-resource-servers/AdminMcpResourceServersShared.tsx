@@ -1,7 +1,7 @@
 import { tenantURL } from '../../api'
 import { Label } from '../../components/ui/label'
 import { Input } from '../../components/ui/input'
-import type { McpResourceServer } from '../../types'
+import type { McpResourceServer, ResourceAccessRule } from '../../types'
 import type { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
 
 type Dictionary = (typeof adminMcpResourceServersDictionary)['en']
@@ -10,6 +10,8 @@ export type FormState = {
   resource: string
   name: string
   scopes: string
+  clientId: string
+  accessRules: string
   state: McpResourceServer['state']
 }
 
@@ -17,20 +19,37 @@ export const emptyForm: FormState = {
   resource: '',
   name: '',
   scopes: '',
+  clientId: '',
+  accessRules: '',
   state: 'Active',
 }
 
 export function toForm(resourceServer: McpResourceServer): FormState {
+  const rules = resourceServer.access_rules ?? []
   return {
     resource: resourceServer.resource,
     name: resourceServer.name,
     scopes: resourceServer.scopes.join(' '),
+    clientId: resourceServer.client_id ?? '',
+    accessRules: rules.length > 0 ? JSON.stringify(rules, null, 2) : '',
     state: resourceServer.state,
   }
 }
 
 export function parseScopes(scopes: string): string[] {
   return scopes.split(/[\s,]+/).filter(Boolean)
+}
+
+// parseAccessRules は規則の入力を配列へ読む。項目の検証はサーバーが行い、ここでは保存を試みる
+// 前に JSON の配列であることだけを確かめる。読めなければ null を返す。
+export function parseAccessRules(text: string): ResourceAccessRule[] | null {
+  if (text.trim() === '') return []
+  try {
+    const parsed: unknown = JSON.parse(text)
+    return Array.isArray(parsed) ? (parsed as ResourceAccessRule[]) : null
+  } catch {
+    return null
+  }
 }
 
 export function listURL(): string {
@@ -91,6 +110,27 @@ export function McpResourceServerFormFields({
           required
         />
         <p className="text-xs leading-5 text-slate-500">{t.scopesHelp}</p>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="client-id">{t.clientIdLabel}</Label>
+        <Input
+          id="client-id"
+          value={form.clientId}
+          onChange={(event) => onChange({ ...form, clientId: event.target.value })}
+        />
+        <p className="text-xs leading-5 text-slate-500">{t.clientIdHelp}</p>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="access-rules">{t.accessRulesLabel}</Label>
+        <textarea
+          id="access-rules"
+          value={form.accessRules}
+          rows={6}
+          placeholder={t.accessRulesPlaceholder}
+          onChange={(event) => onChange({ ...form, accessRules: event.target.value })}
+          className="rounded-md border border-slate-300 bg-white p-2 font-mono text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+        />
+        <p className="text-xs leading-5 text-slate-500">{t.accessRulesHelp}</p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="state">{t.stateLabel}</Label>

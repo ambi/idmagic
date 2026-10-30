@@ -35,6 +35,7 @@ func (r *McpResourceServerRepository) Seed(m *domain.McpResourceServer) {
 func cloneMcpResourceServer(m *domain.McpResourceServer) *domain.McpResourceServer {
 	cloned := *m
 	cloned.Scopes = slices.Clone(m.Scopes)
+	cloned.AccessRules = slices.Clone(m.AccessRules)
 	return &cloned
 }
 
@@ -69,6 +70,17 @@ func (r *McpResourceServerRepository) FindByResource(_ context.Context, tenantID
 		return nil, nil
 	}
 	return cloneMcpResourceServer(m), nil
+}
+
+func (r *McpResourceServerRepository) FindByClientID(_ context.Context, tenantID, clientID string) (*domain.McpResourceServer, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, m := range r.byID {
+		if m.TenantID == tenantID && clientID != "" && m.ClientID == clientID {
+			return cloneMcpResourceServer(m), nil
+		}
+	}
+	return nil, nil
 }
 
 func (r *McpResourceServerRepository) Save(_ context.Context, m *domain.McpResourceServer) error {

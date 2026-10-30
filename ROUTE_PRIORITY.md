@@ -269,7 +269,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `interactive_auth`
 
-経路の数：52
+経路の数：53
 
 | 経路 | メソッド |
 | --- | --- |
@@ -309,6 +309,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/introspect` | POST |
 | `/jwks` | GET |
 | `/par` | POST |
+| `/resource-access/evaluate` | POST |
 | `/revoke` | POST |
 | `/saml/idp/{profile_id}/metadata` | GET |
 | `/saml/idp/{profile_id}/signing-certificate.pem` | GET |

@@ -11,6 +11,7 @@ import {
   emptyForm,
   listURL,
   McpResourceServerFormFields,
+  parseAccessRules,
   parseScopes,
 } from './AdminMcpResourceServersShared'
 
@@ -31,12 +32,19 @@ export function AdminMcpResourceServerCreatePage({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError('')
+    const accessRules = parseAccessRules(form.accessRules)
+    if (accessRules === null) {
+      setError(t.accessRulesInvalidError)
+      return
+    }
     setSaving(true)
     try {
       await createMcpResourceServer(csrfToken, {
         resource: form.resource,
         name: form.name,
         scopes: parseScopes(form.scopes),
+        ...(form.clientId ? { client_id: form.clientId } : {}),
+        ...(accessRules.length > 0 ? { access_rules: accessRules } : {}),
         state: form.state,
       })
       window.location.assign(listURL())

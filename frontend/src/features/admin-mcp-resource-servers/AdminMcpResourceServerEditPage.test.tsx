@@ -55,6 +55,43 @@ describe('AdminMcpResourceServerEditPage', () => {
     )
   })
 
+  it('sends the evaluation client and rules and refuses rules that are not a JSON array', async () => {
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
+      'fetch',
+      mock(() => Promise.resolve(response(200, resourceServer))),
+    )
+    await renderWithRouter(
+      <AdminMcpResourceServerEditPage csrfToken="csrf" resourceServer={resourceServer} />,
+    )
+
+    fireEvent.change(screen.getByLabelText(t.clientIdLabel), { target: { value: 'rs-client' } })
+    fireEvent.change(screen.getByLabelText(t.accessRulesLabel), { target: { value: '{}' } })
+    fireEvent.click(screen.getByRole('button', { name: t.update }))
+    expect(await screen.findByText(t.accessRulesInvalidError)).toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalled()
+
+    const rules = [{ resource_type: 'document', relation: 'viewer', scopes: ['mcp.read'] }]
+    fireEvent.change(screen.getByLabelText(t.accessRulesLabel), {
+      target: { value: JSON.stringify(rules) },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t.update }))
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/admin/v1/mcp-resource-servers/resource-server-1'),
+        expect.objectContaining({
+          body: JSON.stringify({
+            name: resourceServer.name,
+            scopes: resourceServer.scopes,
+            client_id: 'rs-client',
+            access_rules: rules,
+            state: 'Active',
+          }),
+        }),
+      ),
+    )
+  })
+
   it('shows an error and keeps the form when updating fails', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     stubGlobal(

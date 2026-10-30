@@ -1,0 +1,207 @@
+package usecases
+
+import (
+	"context"
+	"errors"
+	"slices"
+	"testing"
+	"time"
+
+	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
+	"github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
+)
+
+const (
+	evalTenant   = "tenant-1"
+	evalResource = "https://mcp.example/"
+	evalClient   = "rs-client"
+)
+
+type evalTokens struct {
+	result *ports.IntrospectionResult
+	err    error
+}
+
+func (e evalTokens) IntrospectAccessToken(context.Context, string) (*ports.IntrospectionResult, error) {
+	return e.result, e.err
+}
+
+type evalRelations struct {
+	decision policyports.RelationDecision
+	err      error
+	got      []policyports.RelationCheck
+}
+
+func (r *evalRelations) CheckRelation(_ context.Context, check policyports.RelationCheck) (policyports.RelationDecision, error) {
+	r.got = append(r.got, check)
+	return r.decision, r.err
+}
+
+func evalServer(t *testing.T, rules ...domain.ResourceAccessRule) ports.McpResourceServerRepository {
+	t.Helper()
+	repo := db_memory.NewMcpResourceServerRepository()
+	if err := repo.Save(context.Background(), &domain.McpResourceServer{
+		TenantID: evalTenant, ID: "rs-1", Resource: evalResource, Name: "rs", Scopes: []string{"docs:read"},
+		ClientID: evalClient, AccessRules: rules, State: domain.McpResourceServerActive,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return repo
+}
+
+func evalRequest() ResourceAccessRequest {
+	return ResourceAccessRequest{
+		TenantID: evalTenant, ClientID: evalClient, Token: "token",
+		ResourceType: "document", ResourceID: "d1", Relation: "viewer",
+	}
+}
+
+func evalAgentToken() *ports.IntrospectionResult {
+	return &ports.IntrospectionResult{
+		Active: true, JTI: "jti", Sub: "agent-client", ClientID: "agent-client", Scope: "docs:read",
+		Aud: []string{evalResource}, PrincipalType: domain.PrincipalTypeAgent, AgentID: "A1",
+	}
+}
+
+var evalRule = domain.ResourceAccessRule{ResourceType: "document", Relation: "viewer", Scopes: []string{"docs:read"}}
+
+//spec:covers REQ-OAUTH2-062: 不許可の理由と、関係の判定へ進まないこと
+func TestEvaluateResourceAccessDenials(t *testing.T) {
+	detailRule := evalRule
+	detailRule.AuthorizationDetailType = "document_access"
+	withToken := func(mutate func(*ports.IntrospectionResult)) *ports.IntrospectionResult {
+		token := evalAgentToken()
+		mutate(token)
+		return token
+	}
+	cases := []struct {
+		name   string
+		rule   domain.ResourceAccessRule
+		token  *ports.IntrospectionResult
+		mutate func(*ResourceAccessRequest)
+		reason string
+	}{
+		{name: "無効なトークン", rule: evalRule, token: &ports.IntrospectionResult{Active: false}, reason: domain.ReasonTokenRejected},
+		{name: "別の資源宛て", rule: evalRule, token: withToken(func(r *ports.IntrospectionResult) { r.Aud = []string{"https://other.example/"} }), reason: domain.ReasonTokenRejected},
+		{name: "未登録の関係", rule: evalRule, token: evalAgentToken(), mutate: func(r *ResourceAccessRequest) { r.Relation = "owner" }, reason: domain.ReasonOperationNotRegistered},
+		{name: "未登録の型", rule: evalRule, token: evalAgentToken(), mutate: func(r *ResourceAccessRequest) { r.ResourceType = "folder" }, reason: domain.ReasonOperationNotRegistered},
+		{name: "詳細がない", rule: detailRule, token: evalAgentToken(), reason: domain.ReasonAuthorizationDetailMismatch},
+		{name: "詳細の action が違う", rule: detailRule, token: withToken(func(r *ports.IntrospectionResult) {
+			r.AuthorizationDetails = []spec.AuthorizationDetail{{Type: "document_access", Locations: []string{evalResource}, Actions: []string{"editor"}}}
+		}), reason: domain.ReasonAuthorizationDetailMismatch},
+		{name: "詳細の identifier が違う", rule: detailRule, token: withToken(func(r *ports.IntrospectionResult) {
+			r.AuthorizationDetails = []spec.AuthorizationDetail{{Type: "document_access", Locations: []string{evalResource}, Actions: []string{"viewer"}, Identifier: "d2"}}
+		}), reason: domain.ReasonAuthorizationDetailMismatch},
+		{name: "Agent へ解決できない act", rule: evalRule, token: withToken(func(r *ports.IntrospectionResult) {
+			r.PrincipalType, r.AgentID, r.Sub = "", "", "alice"
+			r.Act = map[string]any{"sub": "some-client"}
+		}), reason: domain.ReasonPrincipalUnresolved},
+		{name: "mTLS の拇印がない", rule: evalRule, token: withToken(func(r *ports.IntrospectionResult) {
+			r.SenderConstraint = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "thumb"}
+		}), reason: domain.ReasonSenderProofInvalid},
+		{name: "mTLS の拇印が違う", rule: evalRule, token: withToken(func(r *ports.IntrospectionResult) {
+			r.SenderConstraint = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "thumb"}
+		}), mutate: func(r *ResourceAccessRequest) { r.CertificateThumbprint = "other" }, reason: domain.ReasonSenderProofInvalid},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			relations := &evalRelations{decision: policyports.RelationDecision{Permitted: true}}
+			in := evalRequest()
+			if tc.mutate != nil {
+				tc.mutate(&in)
+			}
+			decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
+				Servers: evalServer(t, tc.rule), Tokens: evalTokens{result: tc.token}, Relations: relations,
+			}, in, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if decision.Permitted || !slices.Equal(decision.Reasons, []string{tc.reason}) {
+				t.Fatalf("decision=%+v, want reason %s", decision, tc.reason)
+			}
+			if decision.Scope != "" || decision.AuthorizationDetails != nil {
+				t.Fatalf("不許可でクレームを返した: %+v", decision)
+			}
+			if len(relations.got) != 0 {
+				t.Fatalf("関係の判定へ進んだ: %+v", relations.got)
+			}
+		})
+	}
+}
+
+//spec:covers REQ-OAUTH2-062: 主体と行為者をトークンから導き、規則のスコープを求めること
+func TestEvaluateResourceAccessDerivesPrincipalsFromToken(t *testing.T) {
+	token := evalAgentToken()
+	token.PrincipalType, token.AgentID, token.Sub = "", "A1", "alice"
+	token.AgentChain = []string{"A1", "A2"}
+	token.Act = map[string]any{"sub": "agent-client"}
+	token.AuthorizationDetails = []spec.AuthorizationDetail{{Type: "t"}}
+	relations := &evalRelations{decision: policyports.RelationDecision{Permitted: true}}
+	var events []spec.DomainEvent
+
+	decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
+		Servers: evalServer(t, evalRule), Tokens: evalTokens{result: token}, Relations: relations,
+		Emit: func(event spec.DomainEvent) { events = append(events, event) },
+	}, evalRequest(), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !decision.Permitted || decision.DelegationMode != domain.DelegationModeOnBehalfOf || len(decision.AuthorizationDetails) != 1 {
+		t.Fatalf("decision=%+v", decision)
+	}
+	got := relations.got[0]
+	want := []policyports.PrincipalRef{{Type: "agent", ID: "A1"}, {Type: "agent", ID: "A2"}}
+	if got.Subject != (policyports.PrincipalRef{Type: "user", ID: "alice"}) || !slices.Equal(got.Actors, want) {
+		t.Fatalf("subject=%+v actors=%+v", got.Subject, got.Actors)
+	}
+	if got.TenantID != evalTenant || !slices.Equal(got.RequiredScopes, []string{"docs:read"}) || !slices.Equal(got.GrantedScopes, []string{"docs:read"}) {
+		t.Fatalf("check=%+v", got)
+	}
+	event, ok := events[0].(*domain.ResourceAccessEvaluated)
+	if !ok || !event.Permitted || event.ResourceServerID != "rs-1" || event.TokenID != "jti" {
+		t.Fatalf("event=%+v", events)
+	}
+}
+
+//spec:covers REQ-OAUTH2-062, REQ-AUTHORIZATION-005: 評価不能を許可へ倒さないこと
+func TestEvaluateResourceAccessFailsClosed(t *testing.T) {
+	boom := errors.New("down")
+	server := evalServer(t, evalRule)
+	cases := map[string]ResourceAccessDeps{
+		"トークンの検証の失敗": {Servers: server, Tokens: evalTokens{err: boom}, Relations: &evalRelations{}},
+		"関係のストアの失敗":  {Servers: server, Tokens: evalTokens{result: evalAgentToken()}, Relations: &evalRelations{err: boom}},
+		"未配線":        {Servers: server, Tokens: evalTokens{result: evalAgentToken()}},
+	}
+	for name, deps := range cases {
+		t.Run(name, func(t *testing.T) {
+			decision, err := EvaluateResourceAccess(context.Background(), deps, evalRequest(), time.Now())
+			if err == nil || decision.Permitted {
+				t.Fatalf("decision=%+v err=%v", decision, err)
+			}
+		})
+	}
+}
+
+//spec:covers REQ-OAUTH2-063: htu の範囲を文字列の前方一致で判定しないこと
+func TestHTUWithinResource(t *testing.T) {
+	cases := []struct {
+		htu, resource string
+		want          bool
+	}{
+		{"https://mcp.example/tools/a", "https://mcp.example/", true},
+		{"https://mcp.example/mcp/a", "https://mcp.example/mcp", true},
+		{"https://mcp.example/mcp", "https://mcp.example/mcp", true},
+		{"https://mcp.example/mcpx", "https://mcp.example/mcp", false},
+		{"https://mcp.example.evil/a", "https://mcp.example", false},
+		{"http://mcp.example/a", "https://mcp.example/", false},
+		{"://bad", "https://mcp.example/", false},
+	}
+	for _, tc := range cases {
+		if got := htuWithinResource(tc.htu, tc.resource); got != tc.want {
+			t.Errorf("htuWithinResource(%q, %q)=%v", tc.htu, tc.resource, got)
+		}
+	}
+}

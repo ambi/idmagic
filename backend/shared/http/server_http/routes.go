@@ -333,6 +333,11 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 		ApplicationSignInPolicyRepo: d.SignInPolicy.ApplicationRepo,
 		DefaultSignInPolicyRepo:     d.SignInPolicy.DefaultRepo,
+
+		RelationChecker: d.AccessControl.RelationChecker(accesscontrol.RelationCheckerDeps{
+			Agents: d.IdManagement.AgentRepo, Users: d.IdManagement.UserRepo,
+			Authorizer: d.OAuth2.Authorizer, Emit: d.Emit,
+		}),
 	}
 	// nil の *SessionManager を包んだ値はインターフェースの nil の確認をすり抜けるので、
 	// ないときはポートごと渡さない。

@@ -91,6 +91,7 @@ var routeClassRules = []routeClassRule{
 	{path: "/authorize", class: support.ClassInteractiveAuth},
 	{path: "/token", class: support.ClassInteractiveAuth},
 	{path: "/introspect", class: support.ClassInteractiveAuth},
+	{path: "/resource-access/evaluate", class: support.ClassInteractiveAuth},
 	{path: "/revoke", class: support.ClassInteractiveAuth},
 	{path: "/userinfo", class: support.ClassInteractiveAuth},
 	{path: "/par", class: support.ClassInteractiveAuth},

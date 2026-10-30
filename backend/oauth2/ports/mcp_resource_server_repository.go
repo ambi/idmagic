@@ -13,6 +13,8 @@ type McpResourceServerRepository interface {
 	FindByID(ctx context.Context, tenantID, resourceServerID string) (*domain.McpResourceServer, error)
 	// FindByResource は resource indicator 検証で使う。tenant 内で resource URI により解決する。
 	FindByResource(ctx context.Context, tenantID, resource string) (*domain.McpResourceServer, error)
+	// FindByClientID は評価を求めたクライアントに束縛した登録を解決する。
+	FindByClientID(ctx context.Context, tenantID, clientID string) (*domain.McpResourceServer, error)
 	Save(ctx context.Context, m *domain.McpResourceServer) error
 	Delete(ctx context.Context, tenantID, resourceServerID string) error
 }

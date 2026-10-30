@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,7 +17,9 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -25,6 +28,10 @@ import (
 )
 
 func newAdminMcpResourceServerHandler() *echo.Echo {
+	return newAdminMcpResourceServerHandlerWith(oauth2.NewMemoryModule().ClientRepo)
+}
+
+func newAdminMcpResourceServerHandlerWith(clients oauthports.OAuth2ClientRepository) *echo.Echo {
 	users := idmanagement.NewMemoryModule().UserRepo
 	servers := oauth2memory.NewMcpResourceServerRepository()
 	now := time.Now().UTC()
@@ -39,7 +46,7 @@ func newAdminMcpResourceServerHandler() *echo.Echo {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer: "http://idp.test",
-		Emit:   func(spec.DomainEvent) {}, UserRepo: users, OAuth2: oauth2.Module{McpResourceServerRepo: servers},
+		Emit:   func(spec.DomainEvent) {}, UserRepo: users, OAuth2: oauth2.Module{McpResourceServerRepo: servers, ClientRepo: clients},
 		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
 	return e
@@ -190,5 +197,65 @@ func TestAdminMcpResourceServerRequiresAdmin(t *testing.T) {
 	e.ServeHTTP(res, req)
 	if res.Code == http.StatusOK {
 		t.Fatalf("non-admin must not list resource servers, got %d", res.Code)
+	}
+}
+
+//spec:covers REQ-OAUTH2-064: 束縛と規則の往復、省略した更新、不正な束縛と規則の拒否
+//verify:operation CreateAdminMcpResourceServer: client_id と access_rules の本文、拒否の状態コード
+//verify:operation UpdateAdminMcpResourceServer: client_id と access_rules の本文、拒否の状態コード
+func TestAdminMcpResourceServerAccessRules(t *testing.T) {
+	clients := oauth2.NewMemoryModule().ClientRepo
+	for _, clientID := range []string{"rs-a", "rs-b"} {
+		if err := clients.Save(context.Background(), &oauthdomain.OAuth2Client{
+			TenantID: tenancydomain.DefaultTenantID, ClientID: clientID, ClientType: spec.ClientConfidential,
+			TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
+			GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	e := newAdminMcpResourceServerHandlerWith(clients)
+	csrf, cookie := adminCSRF(t, e)
+	rules := []map[string]any{{"resource_type": "document", "relation": "viewer", "scopes": []string{"mcp.read"}}}
+	payload := validMcpResourceServerPayload()
+	payload["client_id"] = "rs-a"
+	payload["access_rules"] = rules
+
+	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, payload)
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
+	}
+	var body struct {
+		ID          string           `json:"id"`
+		ClientID    string           `json:"client_id"`
+		AccessRules []map[string]any `json:"access_rules"`
+	}
+	if err := json.Unmarshal(created.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.ClientID != "rs-a" || len(body.AccessRules) != 1 {
+		t.Fatalf("created=%s", created.Body.String())
+	}
+
+	path := "/api/admin/v1/mcp-resource-servers/" + body.ID
+	updated := adminJSONRequest(t, e, http.MethodPatch, path, csrf, cookie, map[string]any{"name": "renamed", "scopes": []string{"mcp.read"}})
+	if updated.Code != http.StatusOK || !strings.Contains(updated.Body.String(), `"client_id":"rs-a"`) || !strings.Contains(updated.Body.String(), `"relation":"viewer"`) {
+		t.Fatalf("省略した更新: status=%d body=%s", updated.Code, updated.Body.String())
+	}
+
+	other := validMcpResourceServerPayload()
+	other["resource"] = "https://mcp.example.com/tools/other"
+	other["client_id"] = "rs-a"
+	if rec := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, other); rec.Code != http.StatusBadRequest {
+		t.Fatalf("束縛の重複: status=%d", rec.Code)
+	}
+	other["client_id"] = "unknown"
+	if rec := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, other); rec.Code != http.StatusBadRequest {
+		t.Fatalf("未知のクライアント: status=%d", rec.Code)
+	}
+	other["client_id"] = "rs-b"
+	other["access_rules"] = []map[string]any{{"resource_type": "document", "relation": "viewer", "scopes": []string{"not-allowed"}}}
+	if rec := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, other); rec.Code != http.StatusBadRequest {
+		t.Fatalf("範囲外のスコープ: status=%d", rec.Code)
 	}
 }

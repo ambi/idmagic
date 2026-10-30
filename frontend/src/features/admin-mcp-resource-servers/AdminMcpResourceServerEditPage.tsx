@@ -11,6 +11,7 @@ import { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage
 import {
   listURL,
   McpResourceServerFormFields,
+  parseAccessRules,
   parseScopes,
   toForm,
 } from './AdminMcpResourceServersShared'
@@ -33,11 +34,18 @@ export function AdminMcpResourceServerEditPage({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError('')
+    const accessRules = parseAccessRules(form.accessRules)
+    if (accessRules === null) {
+      setError(t.accessRulesInvalidError)
+      return
+    }
     setSaving(true)
     try {
       await updateMcpResourceServer(csrfToken, resourceServer.id, {
         name: form.name,
         scopes: parseScopes(form.scopes),
+        client_id: form.clientId,
+        access_rules: accessRules,
         state: form.state,
       })
       window.location.assign(listURL())

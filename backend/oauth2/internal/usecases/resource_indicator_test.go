@@ -33,6 +33,10 @@ func (r *fakeMcpResourceServerRepo) FindByResource(_ context.Context, tenantID, 
 	return r.byResource[tenantID+"|"+resource], nil
 }
 
+func (r *fakeMcpResourceServerRepo) FindByClientID(context.Context, string, string) (*domain.McpResourceServer, error) {
+	return nil, nil //nolint:nilnil // 束縛のない登録を表す。
+}
+
 func (r *fakeMcpResourceServerRepo) Save(context.Context, *domain.McpResourceServer) error {
 	return nil
 }

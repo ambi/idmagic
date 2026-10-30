@@ -102,6 +102,7 @@ var generatedOperations = map[string]Operation{
 	"EnableWorkloadTrustBundle": {Method: "POST", Path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/enable", Deprecated: false, ApiTokenScopes: []string{"workload-identity:write"}},
 	"EndSession": {Method: "GET", Path: "/end_session", Deprecated: false, ApiTokenScopes: nil},
 	"EnrollDirectoryConnector": {Method: "POST", Path: "/directory-connector/v1/enrollment", Deprecated: false, ApiTokenScopes: nil},
+	"EvaluateResourceAccess": {Method: "POST", Path: "/resource-access/evaluate", Deprecated: false, ApiTokenScopes: nil},
 	"ExportAccountData": {Method: "GET", Path: "/api/account/v1/data-export", Deprecated: false, ApiTokenScopes: nil},
 	"ExportAdminAuditEvents": {Method: "GET", Path: "/api/admin/v1/audit-events/export", Deprecated: true, ApiTokenScopes: []string{"audit:read"}},
 	"ExportSystemAuditEvents": {Method: "GET", Path: "/api/admin/v1/system/audit-events/export", Deprecated: true, ApiTokenScopes: []string{"audit:read"}},

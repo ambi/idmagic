@@ -11,10 +11,12 @@ import (
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/handlers_http"
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/principals_idmanagement"
+	"github.com/ambi/idmagic/backend/accesscontrol/internal/usecases"
 	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 
 	"github.com/labstack/echo/v5"
@@ -58,6 +60,27 @@ type RouteDeps struct {
 
 // AdminRolePolicyResponse は組み立て地点を通した HTTP テストで応答を読むための型である。
 type AdminRolePolicyResponse = handlers_http.AdminRolePolicyResponse
+
+// RelationCheckerDeps は RelationChecker が AccessControl の外から受け取る依存である。
+type RelationCheckerDeps struct {
+	Agents     agentports.AgentRepository
+	Users      userports.UserRepository
+	Authorizer policyports.Authorizer
+	Emit       func(spec.DomainEvent)
+}
+
+// RelationChecker は、外部の資源の評価へ関係の判定を渡す入口を返す。
+// 保存先を組み立てていない Module は nil を返し、呼び出し側が評価不能として扱う。
+func (m Module) RelationChecker(d RelationCheckerDeps) policyports.RelationChecker {
+	if m.TupleRepo == nil || m.ModelRepo == nil {
+		return nil
+	}
+	return usecases.RelationChecker{Deps: usecases.Deps{
+		Tuples: m.TupleRepo, Models: m.ModelRepo,
+		Principals: principals_idmanagement.Resolver{Agents: d.Agents, Users: d.Users},
+		Authorizer: d.Authorizer, Emit: d.Emit,
+	}}
+}
 
 // RegisterRoutes は認可モデル、関係の判定と管理ロール一覧の経路を登録する。
 func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {

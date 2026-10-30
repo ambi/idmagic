@@ -768,6 +768,8 @@ CREATE TABLE mcp_resource_servers (
     resource TEXT NOT NULL,
     name TEXT NOT NULL,
     scopes JSONB NOT NULL,
+    client_id TEXT,
+    access_rules JSONB NOT NULL DEFAULT '[]',
     state TEXT NOT NULL DEFAULT 'Active'
         CHECK (state IN ('Active', 'Disabled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -776,6 +778,8 @@ CREATE TABLE mcp_resource_servers (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT mcp_resource_servers_tenant_resource_unique
         UNIQUE (tenant_id, resource),
+    CONSTRAINT mcp_resource_servers_tenant_client_unique
+        UNIQUE (tenant_id, client_id),
     CONSTRAINT mcp_resource_servers_name_length CHECK (char_length(name) BETWEEN 1 AND 200)
 );
 

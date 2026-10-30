@@ -26,6 +26,7 @@ IdManagement からの完全削除では保存先ごとの本人の記録の削�
 | --- | --- | --- | --- |
 | 認可 | ブラウザーの `/authorize` | `api` が、セッション、割り当て、ポリシー、同意を確かめて認可コードを発行する | [認可の設計](features/authorization.md#実現方式) |
 | トークン | クライアントの `/token`、`/introspect`、`/revoke`、`/userinfo` | `api` が、クライアントを認証してから同期的に処理する | [トークンの設計](features/token.md#実現方式) |
+| リソースアクセスの評価 | リソースサーバーの `/resource-access/evaluate` | `api` が、クライアントを認証し、トークンを検証して AccessControl の判定と合成する | [リソースアクセスの評価](features/resource-access.md#実現方式) |
 | 承認 | クライアントのバックチャネル認可要求と、本人の承認の画面 | `api` が、判断とポーリングをストアで直列化する | [承認リクエストの設計](features/approval.md#実現方式) |
 | バックチャネルのログアウト | セッションの失効 | `worker` が配信のジョブを実行する | [ログアウトの設計](features/logout.md#実現方式) |
 
@@ -48,6 +49,7 @@ IdManagement からの完全削除では保存先ごとの本人の記録の削�
 | [同意](features/consent.md) | 同意の付与、参照、撤回 |
 | [デバイス認可](features/device.md) | Device Authorization Grant |
 | [トークン](features/token.md) | 発行、ローテーション、イントロスペクション、失効、UserInfo、送信者制約、委譲 |
+| [リソースアクセスの評価](features/resource-access.md) | 登録したリソースサーバーによる、提示トークンでの操作の評価 |
 | [承認リクエスト](features/approval.md) | Agent の操作に対する人間の承認（CIBA） |
 | [ログアウト](features/logout.md) | RP-Initiated Logout とバックチャネルのログアウト |
 | [プロトコルのエンドポイント](features/protocol-endpoints.md) | Discovery Metadata と流量の制限 |

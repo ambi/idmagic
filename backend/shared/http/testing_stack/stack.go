@@ -48,9 +48,11 @@ import (
 
 	"github.com/labstack/echo/v5"
 
+	"github.com/ambi/idmagic/backend/accesscontrol"
 	"github.com/ambi/idmagic/backend/apitoken"
 	"github.com/ambi/idmagic/backend/audit"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	authorizationlocal "github.com/ambi/idmagic/backend/shared/policy/authorization_local"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
@@ -462,6 +464,14 @@ func WithAgentRevocation() Option {
 		b.stack.RevocationEpochs = sharedsignals.NewAgentRevocationEpochRepository()
 		b.deps.IdManagement.AgentRepo = b.stack.Agents
 		b.deps.SharedSignals = sharedsignals.Module{RevocationEpochRepo: b.stack.RevocationEpochs}
+	}
+}
+
+// WithAccessControl は関係タプルの保存先と、製品のローカル評価器を配線する。
+func WithAccessControl() Option {
+	return func(b *builder) {
+		b.deps.AccessControl = accesscontrol.NewMemoryModule()
+		b.deps.OAuth2.Authorizer = authorizationlocal.Local{}
 	}
 }
 

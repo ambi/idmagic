@@ -64,6 +64,13 @@
 - 存在しないリソースサーバーの取得か更新を受けた場合、OAuth2 は、404 と `resource_server_not_found` で拒否する。
 - 検証を通らないリソースサーバーを受けた場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
 
+#### REQ-OAUTH2-064 管理者はリソースサーバーへ評価用のクライアントと規則を設定できる
+
+- 管理者がテナントの機密クライアントの `client_id` と `access_rules` を指定して作成か更新をしたとき、OAuth2 は、それらを保存し、応答に含める。
+- 更新の本文に `client_id` か `access_rules` がないとき、OAuth2 は、その項目を変えない。
+- `client_id` が、テナントにないクライアント、機密でないクライアント、同じテナントの別の登録に束縛済みのクライアントである場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
+- 規則の `resource_type` か `relation` が `^[a-z][a-z0-9_]*$` の形でないか 65 文字以上であるか、`resource_type` と `relation` の組が重複するか、`scopes` が空か登録の `scopes` の部分集合でないか、規則が 100 件を超える場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
+
 ## セキュリティ上の考慮
 
 管理 API では、API アクセストークンにロールに加えて、リソースごとのスコープを求める。

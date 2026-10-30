@@ -32,6 +32,7 @@ import type {
   SamlIDPProfileMode,
   AuthorizationDetailType,
   McpResourceServer,
+  ResourceAccessRule,
   TenantUserAttributeSchema,
   GroupAttributeDef,
   TenantGroupAttributeSchema,
@@ -528,6 +529,8 @@ export type McpResourceServerInput = {
   resource?: string
   name: string
   scopes: string[]
+  client_id?: string
+  access_rules?: ResourceAccessRule[]
   state?: McpResourceServer['state']
 }
 

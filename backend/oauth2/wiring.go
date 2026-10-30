@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
@@ -118,6 +119,8 @@ type BuiltinResource = tokenusecases.BuiltinResource
 type RouteDeps struct {
 	support.Deps
 	*support.Authenticator
+	// RelationChecker は /resource-access/evaluate へ関係の判定を渡す。AccessControl が実装する。
+	RelationChecker           accessports.RelationChecker
 	ApplicationGate           oauth2http.ApplicationGate
 	ClientDisplayNameResolver oauth2http.ClientDisplayNameResolver
 	KeyStore                  signingports.KeyStore
@@ -210,6 +213,7 @@ func (m Module) httpDeps(d RouteDeps) oauth2http.Deps {
 		BuiltinResource:             d.BuiltinResource,
 		AttrSchemaRepo:              d.AttrSchemaRepo,
 		Authorizer:                  m.Authorizer,
+		RelationChecker:             d.RelationChecker,
 		QuotaRepo:                   d.QuotaRepo,
 		AuthnResolver:               d.AuthnResolver,
 		LoginSessions:               d.LoginSessions,

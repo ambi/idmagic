@@ -478,6 +478,45 @@ op Introspect(
   @body body: IdMagic.Contract.IntrospectionRequest
 ): IntrospectSuccess_200 | IntrospectError400 | IntrospectError401;
 
+model EvaluateResourceAccessSuccess_200 {
+  @statusCode statusCode: 200;
+  @header cacheControl: "no-store";
+  @body body: IdMagic.Contract.ResourceAccessEvaluationResponse;
+}
+
+model EvaluateResourceAccessError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/json";
+  @body body: IdMagic.Contract.OAuthInvalidRequestError;
+}
+
+model EvaluateResourceAccessError401 {
+  @statusCode statusCode: 401;
+  @header contentType: "application/json";
+  @body body: IdMagic.Contract.InvalidClientError;
+}
+
+model EvaluateResourceAccessError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/json";
+  @body body: IdMagic.Contract.OAuthAccessDeniedError;
+}
+
+model EvaluateResourceAccessError503 {
+  @statusCode statusCode: 503;
+  @header contentType: "application/json";
+  @body body: IdMagic.Contract.TemporarilyUnavailableError;
+}
+
+@doc("登録したリソースサーバーが、提示されたトークンで自身の資源への操作を実行してよいかを評価する。主体と行為者はトークンから導き、本文の申告を使わない。`decision` が `true` でなければ、どの応答でも業務処理を実行してはならない。")
+@TypeSpec.OpenAPI.operationId("EvaluateResourceAccess")
+@route("/resource-access/evaluate")
+@post
+op EvaluateResourceAccess(
+  @header contentType: "application/x-www-form-urlencoded",
+  @body body: IdMagic.Contract.ResourceAccessEvaluationRequest
+): EvaluateResourceAccessSuccess_200 | EvaluateResourceAccessError400 | EvaluateResourceAccessError401 | EvaluateResourceAccessError403 | EvaluateResourceAccessError503;
+
 model RevokeSuccess_200 {
   @statusCode statusCode: 200;
 }

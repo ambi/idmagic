@@ -52,6 +52,7 @@ type Querier interface {
 	GetClientByID(ctx context.Context, arg GetClientByIDParams) (*Oauth2Client, error)
 	GetConsent(ctx context.Context, arg GetConsentParams) (*GetConsentRow, error)
 	GetMcpResourceServer(ctx context.Context, arg GetMcpResourceServerParams) (*McpResourceServer, error)
+	GetMcpResourceServerByClientID(ctx context.Context, arg GetMcpResourceServerByClientIDParams) (*McpResourceServer, error)
 	GetMcpResourceServerByResource(ctx context.Context, arg GetMcpResourceServerByResourceParams) (*McpResourceServer, error)
 	GetRefreshTokenByHash(ctx context.Context, hash string) (*GetRefreshTokenByHashRow, error)
 	GetRefreshTokenRotationState(ctx context.Context, id string) (*GetRefreshTokenRotationStateRow, error)

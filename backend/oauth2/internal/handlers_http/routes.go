@@ -80,6 +80,8 @@ type Deps struct {
 	BuiltinResource     tokenusecases.BuiltinResource
 	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
 	Authorizer          accessports.Authorizer
+	// RelationChecker は /resource-access/evaluate の関係の判定。nil なら評価不能を返す。
+	RelationChecker accessports.RelationChecker
 	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (client
 	// registration) and consents (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
@@ -160,6 +162,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/token", d.handleToken)
 	g.POST("/revoke", d.handleRevoke)
 	g.POST("/introspect", d.handleIntrospect)
+	g.POST("/resource-access/evaluate", d.handleEvaluateResourceAccess)
 	g.GET("/userinfo", d.handleUserInfo)
 	g.POST("/userinfo", d.handleUserInfo)
 	g.POST("/register", d.handleRegisterClient)

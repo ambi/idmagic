@@ -174,6 +174,7 @@ enum OAuthErrorCode {
   InvalidAuthorizationDetails: "invalid_authorization_details",
   UnknownUserId: "unknown_user_id",
   InvalidBindingMessage: "invalid_binding_message",
+  TemporarilyUnavailable: "temporarily_unavailable",
 }
 
 
@@ -337,6 +338,11 @@ model McpResourceServer {
   name: string;
   @doc("このリソースにアクセスするときに許すスコープの許可リスト。`resource` とともに求めるスコープは、その部分集合でなければならない。")
   scopes: string[];
+  @doc("`/resource-access/evaluate` を呼べるクライアント。テナントの中で一つの登録だけに束縛できる。なければ評価できない。")
+  client_id?: string;
+  @doc("評価できる操作の規則。")
+  @maxItems(100)
+  access_rules: ResourceAccessRule[];
   state: McpResourceServerState = McpResourceServerState.Active;
   created_at: utcDateTime;
   updated_at: utcDateTime;
@@ -369,6 +375,11 @@ model McpResourceServerRequest {
   @maxLength(200)
   name: string;
   scopes: string[];
+  @doc("更新で省くと変えない。")
+  client_id?: string;
+  @doc("更新で省くと変えない。")
+  @maxItems(100)
+  access_rules?: ResourceAccessRule[];
   state?: McpResourceServerState;
 }
 
@@ -380,6 +391,8 @@ model McpResourceServerResponse {
   resource: url;
   name: string;
   scopes: string[];
+  client_id?: string;
+  access_rules: ResourceAccessRule[];
   state: McpResourceServerState;
   created_at: utcDateTime;
   updated_at: utcDateTime;
@@ -1116,6 +1129,57 @@ model IntrospectionResponse {
 }
 
 
+@doc("リソースサーバーが、提示されたトークンで自身の資源への操作を実行してよいかを尋ねる `/resource-access/evaluate` のリクエスト。主体、行為者、テナントは受け取らず、トークンと要求先のテナントから導く。")
+model ResourceAccessEvaluationRequest {
+  @doc("リソースサーバーへ提示されたアクセストークン。")
+  token: string;
+  @doc("認可モデルの資源の型。")
+  resource_type: string;
+  @doc("資源の識別子。")
+  resource_id: string;
+  @doc("操作に必要な関係。")
+  relation: string;
+  @doc("リソースサーバーが受け取った DPoP の証明。DPoP に束縛したトークンで必須である。")
+  dpop_proof?: string;
+  @doc("DPoP の証明が対象とする HTTP メソッド。")
+  htm?: string;
+  @doc("DPoP の証明が対象とする URI。登録の `resource` の配下でなければならない。")
+  htu?: string;
+  @doc("リソースサーバーが終端した mTLS の接続のクライアント証明書の SHA-256 拇印。mTLS に束縛したトークンで必須である。")
+  client_certificate_thumbprint?: string;
+}
+
+
+@doc("`/resource-access/evaluate` のレスポンス。応答は再利用せず、業務操作ごとに評価する。不許可ではトークンのクレームを返さない。")
+model ResourceAccessEvaluationResponse {
+  @doc("`true` のときだけ業務処理を実行してよい。")
+  decision: boolean;
+  @doc("不許可の理由。識別子を含まない。")
+  reasons?: string[];
+  @doc("許可したトークンのスコープ。")
+  scope?: string;
+  delegation_mode?: DelegationMode;
+  @doc("許可したトークンの構造化された権限。リソースサーバーが業務上の上限を確かめるために使う。")
+  authorization_details?: AuthorizationDetail[];
+}
+
+
+@doc("リソースサーバーが評価を求められる操作の規則。登録にない操作は不許可になる。")
+model ResourceAccessRule {
+  @pattern("^[a-z][a-z0-9_]*$")
+  @maxLength(64)
+  resource_type: string;
+  @pattern("^[a-z][a-z0-9_]*$")
+  @maxLength(64)
+  relation: string;
+  @doc("この操作にトークンが持つべきスコープ。登録の `scopes` の部分集合である。")
+  @minItems(1)
+  scopes: string[];
+  @doc("指定すると、この `type` の一致する `authorization_details` をトークンに求める。")
+  authorization_detail_type?: string;
+}
+
+
 @doc("指定したトークンを失効させる `/revoke` のリクエスト（RFC 7009 の 2.1 節）。")
 model RevokeRequest {
   token: string;
@@ -1303,6 +1367,10 @@ model OAuthInvalidRequestError is OAuthError;
 
 @doc("リソースオーナーまたは認可サーバーがリクエストを拒否した（RFC 6749 の 5.2 節、access_denied）。RFC 6749 の 5.2 節はトークンエンドポイントのエラーのステータスを 400 と定め、401 は invalid_client にだけ許すので、ユーザーが CIBA やデバイスフローで示した拒否は、`/token` には 403 ではなく 400 として届く。汎用の API は同じ条件を RFC 9457 の Problem Details のボディである AccessDeniedError として報告し、`/authorize` がリダイレクトせずにブラウザーへ書く唯一の拒否も同じである。")
 model OAuthAccessDeniedError is OAuthError;
+
+
+@doc("トークンの状態、失効、関係のストア、提示の証明のリプレイ記録のどれかを読めず、評価できなかった（temporarily_unavailable）。リソースサーバーは、これを許可として扱わず、業務処理を呼ばない。")
+model TemporarilyUnavailableError is OAuthError;
 
 
 @doc("OAuth 2.0 / OpenID Connect の共有のエラーのレスポンスのボディ（RFC 6749 の 5.2 節）。`support_http.OAuthErrorBody` が `Content-Type: application/json` で書く。エラーの形を標準が定めるすべてのエンドポイントは、既製のクライアントが読めるように、RFC 9457 の Problem Details ではなくこのボディを返す。`is OAuthError` として宣言した名前付きの `*Error` モデルはこのボディを共有し、`error` の値で区別する。")
@@ -1618,6 +1686,20 @@ model TokenIntrospected {
   rsClientId: string;
   tokenId: string;
   active: boolean;
+}
+
+
+@doc("`/resource-access/evaluate` で操作を評価した。主体と資源の識別子を含めない。")
+model ResourceAccessEvaluated {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  rsClientId: string;
+  resourceServerId: string;
+  tokenId: string;
+  resourceType: string;
+  relation: string;
+  permitted: boolean;
+  reasons: string[];
 }
 
 

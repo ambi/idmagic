@@ -333,3 +333,20 @@ type DeviceAuthorizationDenied struct {
 
 func (e *DeviceAuthorizationDenied) EventType() string     { return "DeviceAuthorizationDenied" }
 func (e *DeviceAuthorizationDenied) OccurredAt() time.Time { return e.At }
+
+// ResourceAccessEvaluated は /resource-access/evaluate の結果 (REQ-OAUTH2-062)。
+// 主体と資源の識別子は残さない。資源の相関は AccessControl の FgaCheckEvaluated が担う。
+type ResourceAccessEvaluated struct {
+	At               time.Time `json:"-"`
+	TenantID         string    `json:"tenantId"`
+	RSClientID       string    `json:"rsClientId"`
+	ResourceServerID string    `json:"resourceServerId"`
+	TokenID          string    `json:"tokenId"`
+	ResourceType     string    `json:"resourceType"`
+	Relation         string    `json:"relation"`
+	Permitted        bool      `json:"permitted"`
+	Reasons          []string  `json:"reasons"`
+}
+
+func (e *ResourceAccessEvaluated) EventType() string     { return "ResourceAccessEvaluated" }
+func (e *ResourceAccessEvaluated) OccurredAt() time.Time { return e.At }
