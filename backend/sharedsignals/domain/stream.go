@@ -19,6 +19,11 @@ type SsfStream struct {
 	Status     SsfStreamStatus
 	CreatedAt  time.Time
 	UpdatedAt  *time.Time
+	// AuditEventTypes は送信側のストリームが配送する監査イベントの種類である。空は購読しない。
+	AuditEventTypes []string
+	// ConsecutiveFailures と FirstFailureAt は自動無効化の判定に使う。配送の結果だけが更新する。
+	ConsecutiveFailures int
+	FirstFailureAt      *time.Time
 }
 
 var ssfStreamSchema = z.Struct(z.Shape{
@@ -36,12 +41,13 @@ var ssfStreamSchema = z.Struct(z.Shape{
 })
 
 // Validate は構造的妥当性 (docs/modules/sharedsignals/ SsfStream) を検証する:
-// event_types は非空で、各要素が CaepEventType として有効でなければならない。
+// event_types と audit_event_types の少なくとも一方は非空で、event_types の各要素は
+// CaepEventType として有効でなければならない。
 func (s SsfStream) Validate() error {
 	if err := spec.Validate(ssfStreamSchema, &s); err != nil {
 		return err
 	}
-	if len(s.EventTypes) == 0 {
+	if len(s.EventTypes) == 0 && len(s.AuditEventTypes) == 0 {
 		return errEmptyEventTypes
 	}
 	for _, t := range s.EventTypes {

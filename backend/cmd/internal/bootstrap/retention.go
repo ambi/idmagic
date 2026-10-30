@@ -38,6 +38,13 @@ func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 	if err := deps.Audit.PurgeExpiredExports(ctx, deps.Jobs.Repo, now, deps.NewEmitFunc(logging.Default())); err != nil {
 		return err
 	}
+	if deps.SharedSignals.DeliveryRepo != nil {
+		deletedDeliveries, err := deps.SharedSignals.PurgeExpiredDeliveries(ctx, now)
+		if err != nil {
+			return err
+		}
+		logging.Info(ctx, "security event delivery retention sweep completed", "deleted_security_event_deliveries", deletedDeliveries)
+	}
 	var purgeErr error
 	if deps.Tenancy.TenantRepo != nil && deps.IdManagement.UserRepo != nil {
 		purgeErr = purgeExpiredUsers(ctx, deps, now)

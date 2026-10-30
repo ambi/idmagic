@@ -16,7 +16,7 @@
 | `AgentRevocationEpoch` | `Agent` ごとの失効エポックと、最後に進めた理由 | `Agent` を参照する |
 | `UserRevocationEpoch` | `User` ごとの失効エポックと、最後に進めた理由 | `User` を参照する |
 | `SsfStream` | 向き（`Transmit` または `Receive`）、状態、送信側の設定または受信側の設定 | `Tenant` を `tenant_id` で参照する |
-| `SecurityEventDelivery` | 送信するストリーム、SET、状態、試行の回数、次の試行の時刻 | `SsfStream` を参照する |
+| `SecurityEventDelivery` | 送信するストリーム、SET または監査の配送の内容、状態、試行の回数、次の試行の時刻 | `SsfStream` を参照する。監査の記録の保持に依存しないよう、内容を自身に持つ |
 | `ReceivedSecurityEvent` | 受信したストリーム、`jti`、検証の結果 | `SsfStream` を参照する |
 
 - **判断**：失効を一つの時刻に畳む理由は、[失効を Agent ごとの一つの時刻に集約する](decisions.md#失効を-agent-ごとの一つの時刻に集約する)。

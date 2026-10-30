@@ -53,6 +53,9 @@
 
 - 管理者が送信側のストリームを登録したとき、SharedSignals は、配送先、audience、購読する CAEP のイベントの種類、配送の試行の上限（デフォルト 8 回）を持つ `enabled` のストリームを作り、テナントの `ssf_streams` の使用量を一つ増やし、201 とストリームを返し、`SsfStreamRegistered` を発行する。
 - 管理者が受信側のストリームを登録したとき、SharedSignals は、`trusted_issuer`、鍵の取得先、受理する audience、購読する種類を持つ `enabled` のストリームを作り、テナントの `ssf_streams` の使用量を一つ増やし、201 とストリームを返し、`SsfStreamRegistered` を発行する。
+- 管理者が送信側のストリームに `audit_event_types` を指定したとき、SharedSignals は、`*` または指定の種類の監査イベントを配送の対象にし、`event_types` が空でも受け付ける。
+- `audit_event_types` が `*` と別の値の併用、形式の誤り、100 件超、`SecurityEvent` で始まる種類のどれかを含む場合、SharedSignals は、422 と `ssf_stream_event_type_invalid` で拒否する。
+- 受信側のストリームへの `audit_event_types` の指定を受けた場合、SharedSignals は、422 と `ssf_stream_event_type_invalid` で拒否する。
 - 管理者がストリームの購読する種類を更新したとき、SharedSignals は、200 とストリームを返し、`SsfStreamUpdated` を発行する。
 - 管理者がストリームを削除したとき、SharedSignals は、ストリームと付随する設定を消し、テナントの `ssf_streams` の使用量を一つ減らし、204 を返し、`SsfStreamDeleted` を発行する。
 - 管理者がストリームまたは配送の一覧を取得したとき、SharedSignals は、テナントのストリームまたはそのストリームの配送を 200 で返す。

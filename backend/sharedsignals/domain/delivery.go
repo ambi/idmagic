@@ -22,6 +22,8 @@ type SecurityEventDelivery struct {
 	LastError     *string
 	CreatedAt     time.Time
 	DeliveredAt   *time.Time
+	// AuditEvent は監査の配送の内容である。あれば Set を持たず、送信時に署名する。
+	AuditEvent *AuditSetEvent
 }
 
 var securityEventDeliverySchema = z.Struct(z.Shape{

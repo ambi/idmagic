@@ -3,7 +3,6 @@ package db_postgres
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
@@ -19,35 +18,24 @@ func deliveryFromRow(row *SecurityEventDelivery) (*ssdomain.SecurityEventDeliver
 	if err := json.Unmarshal(row.SetPayload, &set); err != nil {
 		return nil, err
 	}
+	var auditEvent *ssdomain.AuditSetEvent
+	if len(row.AuditEvent) > 0 {
+		auditEvent = &ssdomain.AuditSetEvent{}
+		if err := json.Unmarshal(row.AuditEvent, auditEvent); err != nil {
+			return nil, err
+		}
+	}
 	return &ssdomain.SecurityEventDelivery{
 		ID: row.ID, TenantID: row.TenantID, StreamID: row.StreamID, SetJTI: row.SetJti,
 		Set: set, Status: ssdomain.SecurityEventDeliveryStatus(row.Status),
 		AttemptCount: int(row.AttemptCount), NextAttemptAt: timestamptzPtrOrNil(row.NextAttemptAt),
 		LastError: textPtrOrNil(row.LastError), CreatedAt: row.CreatedAt,
-		DeliveredAt: timestamptzPtrOrNil(row.DeliveredAt),
+		DeliveredAt: timestamptzPtrOrNil(row.DeliveredAt), AuditEvent: auditEvent,
 	}, nil
 }
 
 func (r *SecurityEventDeliveryRepository) ListByStream(ctx context.Context, tenantID, streamID string) ([]*ssdomain.SecurityEventDelivery, error) {
 	rows, err := New(r.Pool).ListSecurityEventDeliveriesByStream(ctx, ListSecurityEventDeliveriesByStreamParams{TenantID: tenantID, StreamID: streamID})
-	if err != nil {
-		return nil, err
-	}
-	out := make([]*ssdomain.SecurityEventDelivery, 0, len(rows))
-	for _, row := range rows {
-		d, err := deliveryFromRow(row)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, d)
-	}
-	return out, nil
-}
-
-func (r *SecurityEventDeliveryRepository) ListDue(ctx context.Context, now time.Time, limit int) ([]*ssdomain.SecurityEventDelivery, error) {
-	rows, err := New(r.Pool).ListDueSecurityEventDeliveries(ctx, ListDueSecurityEventDeliveriesParams{
-		NextAttemptAt: timestamptzOrNilPtr(&now), RowLimit: int32(limit), //nolint:gosec // G115: caller-supplied small batch size
-	})
 	if err != nil {
 		return nil, err
 	}

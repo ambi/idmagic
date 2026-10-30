@@ -6,11 +6,15 @@ package db_postgres
 
 import (
 	"context"
+	"time"
 )
 
 type Querier interface {
 	AdvanceAgentRevocationEpoch(ctx context.Context, arg AdvanceAgentRevocationEpochParams) (*AgentRevocationEpoch, error)
 	AdvanceUserRevocationEpoch(ctx context.Context, arg AdvanceUserRevocationEpochParams) (*UserRevocationEpoch, error)
+	CaptureAuditEventDeliveries(ctx context.Context, arg CaptureAuditEventDeliveriesParams) error
+	ClaimDueSecurityEventDeliveries(ctx context.Context, arg ClaimDueSecurityEventDeliveriesParams) ([]*SecurityEventDelivery, error)
+	ClearSsfStreamDeliveryFailures(ctx context.Context, arg ClearSsfStreamDeliveryFailuresParams) error
 	DeleteSsfReceiverConfig(ctx context.Context, arg DeleteSsfReceiverConfigParams) error
 	DeleteSsfStream(ctx context.Context, arg DeleteSsfStreamParams) error
 	DeleteSsfTransmitterConfig(ctx context.Context, arg DeleteSsfTransmitterConfigParams) error
@@ -20,9 +24,10 @@ type Querier interface {
 	FindSsfStreamByID(ctx context.Context, arg FindSsfStreamByIDParams) (*SsfStream, error)
 	FindSsfTransmitterConfigByStream(ctx context.Context, arg FindSsfTransmitterConfigByStreamParams) (*SsfTransmitterConfig, error)
 	FindUserRevocationEpoch(ctx context.Context, arg FindUserRevocationEpochParams) (*UserRevocationEpoch, error)
-	ListDueSecurityEventDeliveries(ctx context.Context, arg ListDueSecurityEventDeliveriesParams) ([]*SecurityEventDelivery, error)
 	ListSecurityEventDeliveriesByStream(ctx context.Context, arg ListSecurityEventDeliveriesByStreamParams) ([]*SecurityEventDelivery, error)
 	ListSsfStreamsByTenant(ctx context.Context, tenantID string) ([]*SsfStream, error)
+	PurgeSettledSecurityEventDeliveries(ctx context.Context, createdAt time.Time) (int64, error)
+	RecordSsfStreamDeliveryFailure(ctx context.Context, arg RecordSsfStreamDeliveryFailureParams) (*RecordSsfStreamDeliveryFailureRow, error)
 	RedeliverDeadLetteredSecurityEventDeliveries(ctx context.Context, arg RedeliverDeadLetteredSecurityEventDeliveriesParams) ([]*SecurityEventDelivery, error)
 	SaveReceivedSecurityEvent(ctx context.Context, arg SaveReceivedSecurityEventParams) error
 	SaveSecurityEventDelivery(ctx context.Context, arg SaveSecurityEventDeliveryParams) error

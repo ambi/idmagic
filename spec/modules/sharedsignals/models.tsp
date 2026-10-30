@@ -149,7 +149,9 @@ model SecurityEventToken {
 
 @doc("管理者が `direction=Transmit` の SsfStream を登録するために送る JSON のリクエスト。")
 model SsfTransmitterStreamRegisterRequest {
-  event_types: CaepEventType[];
+  event_types?: CaepEventType[];
+  @doc("配送する監査イベントの種類。`[\"*\"]` は全種別である。`event_types` と少なくとも一方が必要である。")
+  audit_event_types?: string[];
   delivery_endpoint: url;
   audience: string;
   delivery_authorization?: string;
@@ -170,6 +172,7 @@ model SsfReceiverStreamRegisterRequest {
 @doc("管理者が SsfStream の `event_types` を更新するために送る JSON のリクエスト。省いたフィールドは現在の値を保つ。")
 model SsfStreamUpdateRequest {
   event_types?: CaepEventType[];
+  audit_event_types?: string[];
 }
 
 
@@ -209,6 +212,8 @@ model SsfStream {
   direction: SsfStreamDirection;
   @doc("このストリームが送る、または受け付けるイベントの種類の部分集合。")
   event_types: CaepEventType[];
+  @doc("送信側のストリームが配送する監査イベントの種類。`[\"*\"]` は全種別、空は配送しないことを表す。受信側のストリームでは常に空である。")
+  audit_event_types: string[];
   status: SsfStreamStatus = SsfStreamStatus.enabled;
   created_at: utcDateTime;
   updated_at?: utcDateTime;
@@ -423,6 +428,17 @@ model SecurityEventStreamNotFoundError {
   err: string;
   @doc("人が読む説明。常に英語で、ローカライズしない。")
   description: string;
+}
+
+}
+
+namespace IdMagic.Contract {
+
+@doc("連続の失敗でストリームを自動的に無効化した。")
+model SsfStreamAutoDisabled {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  streamId: string;
 }
 
 }

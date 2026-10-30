@@ -12,23 +12,65 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listDueSecurityEventDeliveries = `-- name: ListDueSecurityEventDeliveries :many
-SELECT id,tenant_id,stream_id,set_jti,set_payload,status,attempt_count,next_attempt_at,
-last_error,created_at,delivered_at
-FROM security_event_deliveries
-WHERE status IN ('pending','failed')
-  AND (next_attempt_at IS NULL OR next_attempt_at <= $1)
-ORDER BY created_at
-LIMIT NULLIF($2::int, 0)
+const captureAuditEventDeliveries = `-- name: CaptureAuditEventDeliveries :exec
+INSERT INTO security_event_deliveries (id,tenant_id,stream_id,set_jti,set_payload,status,audit_event,created_at)
+SELECT gen_random_uuid(),s.tenant_id,s.id,gen_random_uuid()::text,'{}'::jsonb,'pending',$1::jsonb,$2::timestamptz
+FROM ssf_streams s
+WHERE s.tenant_id=$3 AND s.direction='Transmit' AND s.status='enabled'
+  AND ('*'=ANY(s.audit_event_types) OR $4::text=ANY(s.audit_event_types))
 `
 
-type ListDueSecurityEventDeliveriesParams struct {
-	NextAttemptAt pgtype.Timestamptz
-	RowLimit      int32
+type CaptureAuditEventDeliveriesParams struct {
+	AuditEvent []byte
+	Now        time.Time
+	TenantID   string
+	EventType  string
 }
 
-func (q *Queries) ListDueSecurityEventDeliveries(ctx context.Context, arg ListDueSecurityEventDeliveriesParams) ([]*SecurityEventDelivery, error) {
-	rows, err := q.db.Query(ctx, listDueSecurityEventDeliveries, arg.NextAttemptAt, arg.RowLimit)
+func (q *Queries) CaptureAuditEventDeliveries(ctx context.Context, arg CaptureAuditEventDeliveriesParams) error {
+	_, err := q.db.Exec(ctx, captureAuditEventDeliveries,
+		arg.AuditEvent,
+		arg.Now,
+		arg.TenantID,
+		arg.EventType,
+	)
+	return err
+}
+
+const claimDueSecurityEventDeliveries = `-- name: ClaimDueSecurityEventDeliveries :many
+WITH ranked AS (
+  SELECT d.id,row_number() OVER (PARTITION BY d.stream_id ORDER BY d.created_at,d.id) AS position
+  FROM security_event_deliveries d JOIN ssf_streams s ON s.id=d.stream_id
+  WHERE d.status IN ('pending','failed') AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=$2::timestamptz)
+    AND s.status='enabled'
+), locked AS (
+  SELECT d.id FROM security_event_deliveries d JOIN ranked r ON r.id=d.id
+  WHERE r.position<=$3::bigint AND d.status IN ('pending','failed')
+    AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=$2::timestamptz)
+  ORDER BY d.created_at,d.id
+  LIMIT $4::int
+  FOR UPDATE OF d SKIP LOCKED
+)
+UPDATE security_event_deliveries SET next_attempt_at=$1::timestamptz
+WHERE id IN (SELECT id FROM locked)
+RETURNING id,tenant_id,stream_id,set_jti,set_payload,status,attempt_count,next_attempt_at,
+last_error,created_at,delivered_at,audit_event
+`
+
+type ClaimDueSecurityEventDeliveriesParams struct {
+	LeaseUntil time.Time
+	Now        time.Time
+	PerStream  int64
+	RowLimit   int32
+}
+
+func (q *Queries) ClaimDueSecurityEventDeliveries(ctx context.Context, arg ClaimDueSecurityEventDeliveriesParams) ([]*SecurityEventDelivery, error) {
+	rows, err := q.db.Query(ctx, claimDueSecurityEventDeliveries,
+		arg.LeaseUntil,
+		arg.Now,
+		arg.PerStream,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +90,7 @@ func (q *Queries) ListDueSecurityEventDeliveries(ctx context.Context, arg ListDu
 			&i.LastError,
 			&i.CreatedAt,
 			&i.DeliveredAt,
+			&i.AuditEvent,
 		); err != nil {
 			return nil, err
 		}
@@ -61,7 +104,7 @@ func (q *Queries) ListDueSecurityEventDeliveries(ctx context.Context, arg ListDu
 
 const listSecurityEventDeliveriesByStream = `-- name: ListSecurityEventDeliveriesByStream :many
 SELECT id,tenant_id,stream_id,set_jti,set_payload,status,attempt_count,next_attempt_at,
-last_error,created_at,delivered_at
+last_error,created_at,delivered_at,audit_event
 FROM security_event_deliveries WHERE tenant_id=$1 AND stream_id=$2 ORDER BY created_at
 `
 
@@ -91,6 +134,7 @@ func (q *Queries) ListSecurityEventDeliveriesByStream(ctx context.Context, arg L
 			&i.LastError,
 			&i.CreatedAt,
 			&i.DeliveredAt,
+			&i.AuditEvent,
 		); err != nil {
 			return nil, err
 		}
@@ -102,12 +146,24 @@ func (q *Queries) ListSecurityEventDeliveriesByStream(ctx context.Context, arg L
 	return items, nil
 }
 
+const purgeSettledSecurityEventDeliveries = `-- name: PurgeSettledSecurityEventDeliveries :execrows
+DELETE FROM security_event_deliveries WHERE status IN ('delivered','dead_letter') AND created_at<$1
+`
+
+func (q *Queries) PurgeSettledSecurityEventDeliveries(ctx context.Context, createdAt time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeSettledSecurityEventDeliveries, createdAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const redeliverDeadLetteredSecurityEventDeliveries = `-- name: RedeliverDeadLetteredSecurityEventDeliveries :many
 UPDATE security_event_deliveries
 SET status='pending',attempt_count=0,next_attempt_at=NULL,last_error=NULL
 WHERE tenant_id=$1 AND stream_id=$2 AND status='dead_letter'
 RETURNING id,tenant_id,stream_id,set_jti,set_payload,status,attempt_count,next_attempt_at,
-last_error,created_at,delivered_at
+last_error,created_at,delivered_at,audit_event
 `
 
 type RedeliverDeadLetteredSecurityEventDeliveriesParams struct {
@@ -136,6 +192,7 @@ func (q *Queries) RedeliverDeadLetteredSecurityEventDeliveries(ctx context.Conte
 			&i.LastError,
 			&i.CreatedAt,
 			&i.DeliveredAt,
+			&i.AuditEvent,
 		); err != nil {
 			return nil, err
 		}

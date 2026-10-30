@@ -165,6 +165,9 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-085 | Spoofing | 持ち出した送信者制約付きのトークンを、証明を確かめないリソースサーバーで使う | OAuth2 | REQ-OAUTH2-063 | `covered` |
 | THREAT-086 | Tampering | 人が一件の操作として承認したトークンを、別の対象や引数に使うか、同じ操作を別の業務要求として再実行する | OAuth2 | REQ-OAUTH2-065 | `covered` |
 | THREAT-087 | Elevation of privilege | 無効化、パスワードの変更、セッションの失効の後も、発行済みの User のトークンで資源へ到達し続けるか、refresh で取り直す | OAuth2, SharedSignals | REQ-SHAREDSIGNALS-012 | `covered` |
+| THREAT-088 | Elevation of privilege | テナントの管理者が配送先に内部のアドレスを指定し、サーバーから内部の資源やメタデータへ到達する | SharedSignals | REQ-SHAREDSIGNALS-017 | `covered` |
+| THREAT-089 | Information disclosure | 監査イベントの配送を通じて、個人情報や資格情報がテナントの外へ渡る | SharedSignals, Audit | REQ-SHAREDSIGNALS-016 | `covered` |
+| THREAT-090 | Denial of service | 応答しない配送先への配送が溜まり、ほかのテナントの配送を遅らせる | SharedSignals | REQ-SHAREDSIGNALS-018 | `covered` |
 | THREAT-053 | Tampering | XML 署名の構造を組み替え、検証を通したまま別の内容を主張する | Saml, WsFederation | contexts/saml/decisions.md、contexts/saml/internals.md | `covered` |
 | THREAT-054 | Denial of service | 圧縮された受信リクエストの展開でメモリを枯渇させる | Saml | contexts/saml/internals.md | `covered` |
 

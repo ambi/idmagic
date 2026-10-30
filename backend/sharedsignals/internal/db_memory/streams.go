@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
@@ -24,6 +25,7 @@ func NewSsfStreamRepository() *SsfStreamRepository {
 func cloneStream(s *ssdomain.SsfStream) *ssdomain.SsfStream {
 	cloned := *s
 	cloned.EventTypes = slices.Clone(s.EventTypes)
+	cloned.AuditEventTypes = slices.Clone(s.AuditEventTypes)
 	return &cloned
 }
 
@@ -61,5 +63,36 @@ func (r *SsfStreamRepository) Delete(_ context.Context, tenantID, id string) err
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.streams, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
+	return nil
+}
+
+// RecordDeliveryFailure は連続の失敗を数え、閾値で無効化したときに true を返す。
+func (r *SsfStreamRepository) RecordDeliveryFailure(_ context.Context, tenantID, id string, now time.Time) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	s := r.streams[sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)]
+	if s == nil {
+		return false, nil
+	}
+	s.ConsecutiveFailures++
+	if s.FirstFailureAt == nil {
+		first := now
+		s.FirstFailureAt = &first
+	}
+	if !s.IsEnabled() || s.ConsecutiveFailures < ssdomain.AutoDisableFailures || now.Sub(*s.FirstFailureAt) < ssdomain.AutoDisableElapsed {
+		return false, nil
+	}
+	s.Status = ssdomain.SsfStreamStatusDisabled
+	return true, nil
+}
+
+// RecordDeliverySuccess は連続の失敗の記録を消す。
+func (r *SsfStreamRepository) RecordDeliverySuccess(_ context.Context, tenantID, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if s := r.streams[sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)]; s != nil {
+		s.ConsecutiveFailures = 0
+		s.FirstFailureAt = nil
+	}
 	return nil
 }

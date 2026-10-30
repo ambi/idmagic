@@ -31,6 +31,7 @@ type SecurityEventDelivery struct {
 	LastError     pgtype.Text
 	CreatedAt     time.Time
 	DeliveredAt   pgtype.Timestamptz
+	AuditEvent    []byte
 }
 
 type SsfReceiverConfig struct {
@@ -43,13 +44,16 @@ type SsfReceiverConfig struct {
 }
 
 type SsfStream struct {
-	ID         string
-	TenantID   string
-	Direction  string
-	EventTypes []byte
-	Status     string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID                  string
+	TenantID            string
+	Direction           string
+	EventTypes          []byte
+	Status              string
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	AuditEventTypes     []string
+	ConsecutiveFailures int32
+	FirstFailureAt      pgtype.Timestamptz
 }
 
 type SsfTransmitterConfig struct {

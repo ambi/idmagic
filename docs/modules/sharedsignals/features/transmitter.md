@@ -67,6 +67,57 @@
 - 存在しないか別のテナントのストリームを指定された場合、SharedSignals は、404 と `ssf_stream_not_found` で拒否する。
 - **例**：EX-SHAREDSIGNALS-013-01、EX-SHAREDSIGNALS-013-02
 
+### SET の形
+
+#### REQ-SHAREDSIGNALS-014 送信する SET は最上位に sub_id を持つ
+
+- SET を署名するとき、SharedSignals は、最上位に `format` が `opaque` の `sub_id` を含め、`sub` と `exp` を含めない。
+- 失効の SET を署名するとき、SharedSignals は、`sub_id` の `id` を失効した主体の識別子にする。
+- **例**：EX-SHAREDSIGNALS-014-01
+
+### 監査イベントの配送
+
+#### REQ-SHAREDSIGNALS-015 監査の記録と配送を同時に確定する
+
+- 監査の記録を新しく追記したとき、SharedSignals は、同じトランザクションで、テナントの `enabled` の送信側のストリームのうち `audit_event_types` が `*` または記録の種類を含むものごとに、`pending` の配送を一つ作る。
+- 監査の追記が確定しなかった場合、SharedSignals は、配送も残さない。
+- 配送を作れなかった場合、SharedSignals は、失敗を返して監査の追記を確定させない。
+- 同じ ID の監査の記録を再び受け取ったとき、SharedSignals は、配送を増やさない。
+- `SecurityEvent` で始まる種類の記録を追記したとき、SharedSignals は、配送を作らない。
+- テナントを持たない記録を追記したとき、SharedSignals は、配送を作らない。
+- **例**：EX-SHAREDSIGNALS-015-01、EX-SHAREDSIGNALS-015-02
+
+#### REQ-SHAREDSIGNALS-016 監査の SET は許可した識別子だけを持つ
+
+- `worker` が監査の配送を試行するとき、SharedSignals は、`urn:idmagic:secevent:audit:<種類>` をイベントの種類とする SET をその時点の鍵で署名して送り、配送の行が持つ `jti` を再試行でも変えない。
+- 監査の SET を署名するとき、SharedSignals は、イベントに `event_timestamp`、`audit_event_id`、`tenant_id`、任意の `actor`（`type` と `id`）、任意の `target_id` だけを含め、ユーザー名、メールアドレス、IP アドレス、トークン、資格情報を含めない。
+- 監査の SET を署名するとき、SharedSignals は、`sub_id` の `id` を `target_id`、行為者の識別子、テナントの識別子の順で最初にあるものにする。
+- 監査の配送が受理されたとき、SharedSignals は、配送を `delivered` にし、`SecurityEventTransmitted` を発行しない。
+- `failed` の監査の配送を再試行するとき、SharedSignals は、`SecurityEventDeliveryRetried` を発行しない。
+- 監査の配送の試行が失敗したとき、SharedSignals は、REQ-SHAREDSIGNALS-006 と同じ回数と間隔で再試行し、失敗と配信不能のイベントを発行する。
+- **例**：EX-SHAREDSIGNALS-016-01
+
+### 配送先と配送の隔離
+
+#### REQ-SHAREDSIGNALS-017 配送先は公開の HTTPS に限り、接続のたびに検査する
+
+- 管理者が送信側のストリームを登録するとき、SharedSignals は、配送先のすべての解決先が公開アドレスであることを確かめる。
+- 配送先が `https` でない、userinfo を含む、または公開アドレスへ解決しない場合、SharedSignals は、422 と `ssf_transmitter_delivery_endpoint_invalid` で拒否する。
+- 配送を試行するとき、SharedSignals は、配送先を解決し直して全アドレスを検査し、環境のプロキシと接続の再利用を使わずに、検査したアドレスへだけ接続する。
+- 受信側がリダイレクトを返した場合、SharedSignals は、転送先へ接続せず、試行を失敗として記録する。
+- 試行の失敗を記録するとき、SharedSignals は、`last_error` に内部のアドレスを含めない。
+- **例**：EX-SHAREDSIGNALS-017-01、EX-SHAREDSIGNALS-017-02
+
+#### REQ-SHAREDSIGNALS-018 連続失敗でストリームを無効化し、配送を隔離する
+
+- 連続の失敗が 20 回に達し、かつ最初の失敗から 1 時間以上が過ぎたとき、SharedSignals は、ストリームを `disabled` にし、`SsfStreamAutoDisabled` を発行する。
+- 配送が受理されたとき、SharedSignals は、連続の失敗の記録を消す。
+- 管理者がストリームを再有効化したとき、SharedSignals は、連続の失敗の記録を消し、保留していた配送の送信を再開する。
+- ストリームが `disabled` の間、SharedSignals は、配送を送らず、配送の行を残す。
+- 一周の配送でストリームの送信が失敗したとき、SharedSignals は、そのストリームの残りの配送をその周では送らず、残りの試行の回数を使わない。
+- `delivered` と `dead_letter` の配送の作成から 30 日が過ぎたとき、SharedSignals は、`idmagic-batch` の掃引でその配送を消す。
+- **例**：EX-SHAREDSIGNALS-018-01
+
 ## 実現方式
 
 ### アーキテクチャ
@@ -74,8 +125,14 @@
 失効エポックを進めた反応が `AgentAccessRevoked` を発行すると、同じプロセスが、有効な送信側のストリームごとに SET を署名し、`pending` の配送を作る。
 この投影は 5 秒の期限で行い、失敗してもログに残すだけで、ローカルの失効の結果を変えない。
 
-`worker` の配送のループは、一定の間隔で、試行の時刻の来た配送を 100 件ずつ読み、受信側のエンドポイントへ送る。
-一件の送信の失敗はその配送の状態に記録し、ほかの配送の処理を止めない。
+監査の配送は、[Audit](../../audit/README.md) の追記が組み立て地点から受け取った関数を同じトランザクションで呼び、一文の `INSERT ... SELECT` で作る。
+Audit と SharedSignals は互いを import しない。
+署名はトランザクションの外で行うために送信時まで遅らせる。
+
+`worker` の配送のループは、一定の間隔で、試行の時刻の来た配送を `FOR UPDATE SKIP LOCKED` で 100 件まで選び、時刻を 2 分先へ進めてリースする。
+一つのストリームからは一周に 10 件までとし、ストリームごとに 8 並行で送る。
+`worker` が途中で止まっても、時刻の到来で別の周期が拾う。
+一件の送信の失敗はその配送の状態に記録し、ほかのストリームの処理を止めない。
 
 ### 信頼性
 

@@ -53,7 +53,8 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	// (below) never encrypts, so there is nothing for the
 	// data_key_reencryption job to migrate (dev/test only).
 	tenancyModule := tenancy.NewMemoryModule()
-	auditModule := audit.NewMemoryModule(0)
+	sharedSignalsModule := sharedsignals.NewMemoryModule().WithDeliveryEndpointCheck()
+	auditModule := audit.NewMemoryModule(0).WithCapture(nil, captureAuditRecordInMemory(sharedSignalsModule))
 	idmModule := idmanagement.NewMemoryModule()
 	authnModule := authentication.NewMemoryModule(idmModule.UserRepo)
 	idmModule = idmModule.WithMemoryUserImport(authnModule.PasswordHistoryRepo, tenancyModule.QuotaRepo, auditModule.AuditEventRepo)
@@ -87,7 +88,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		SignInPolicy:     signinpolicy.NewMemoryModule(),
 		Provisioning:     provisioningModule,
 		WorkloadIdentity: workloadidentity.NewMemoryModule(),
-		SharedSignals:    sharedsignals.NewMemoryModule(),
+		SharedSignals:    sharedSignalsModule,
 		AccessControl:    accesscontrol.NewMemoryModule(),
 		RateLimit: rlports.Module{
 			NewRateLimiter: func(configs rlports.RateLimitConfigs) rlports.RateLimiter {

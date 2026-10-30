@@ -32,7 +32,15 @@ const (
 	auditMaxListLimit     = 1000
 )
 
-type AuditEventRepository struct{ Pool sharedpg.DB }
+type AuditEventRepository struct {
+	Pool sharedpg.DB
+	// CaptureInTx は新しい記録と同じ Tx で呼ぶ。失敗は追記を巻き戻す。Audit は呼び先を知らず、
+	// 組み立て地点が渡す。
+	CaptureInTx CaptureInTx
+}
+
+// CaptureInTx は監査の記録と同時に確定する作用である。
+type CaptureInTx func(ctx context.Context, tx pgx.Tx, rec *ports.AuditEventRecord) error
 
 const auditEventSelect = `SELECT id,tenant_id,type,occurred_at,payload FROM audit_events`
 
@@ -66,8 +74,15 @@ func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEvent
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := appendAuditRecord(ctx, New(tx), rec, userID, false); err != nil {
+	created, err := appendAuditRecord(ctx, New(tx), rec, userID, false)
+	if err != nil {
 		return err
+	}
+	// 再配信された記録は作用を繰り返さない。
+	if created && r.CaptureInTx != nil {
+		if err := r.CaptureInTx(ctx, tx, rec); err != nil {
+			return err
+		}
 	}
 	return tx.Commit(ctx)
 }
@@ -75,41 +90,56 @@ func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEvent
 // RecordWriterInTx は検索の対象を明示して、監査を呼び出し側と同時に確定する。
 // 通常の Append が持つ payload.userId の解釈を CSV の監査へ適用しない。
 func RecordWriterInTx(tx pgx.Tx) ports.AuditEventWriter {
+	return RecordWriterInTxCapturing(tx, nil)
+}
+
+// RecordWriterInTxCapturing は RecordWriterInTx に、記録と同時に確定する作用を加える。
+func RecordWriterInTxCapturing(tx pgx.Tx, capture CaptureInTx) ports.AuditEventWriter {
 	if tx == nil {
 		panic("audit: RecordWriterInTx requires a transaction")
 	}
-	return recordWriter{tx: tx}
+	return recordWriter{tx: tx, capture: capture}
 }
 
-type recordWriter struct{ tx pgx.Tx }
+type recordWriter struct {
+	tx      pgx.Tx
+	capture CaptureInTx
+}
 
 func (w recordWriter) Append(ctx context.Context, rec ports.AuditEventRecord, indexedUserID string) error {
 	var userID pgtype.UUID
 	if err := userID.Scan(indexedUserID); err != nil {
 		return err
 	}
-	return appendAuditRecord(ctx, New(w.tx), &rec, userID, true)
+	if _, err := appendAuditRecord(ctx, New(w.tx), &rec, userID, true); err != nil {
+		return err
+	}
+	if w.capture != nil {
+		return w.capture(ctx, w.tx, &rec)
+	}
+	return nil
 }
 
-func appendAuditRecord(ctx context.Context, queries *Queries, rec *ports.AuditEventRecord, userID pgtype.UUID, requireNew bool) error {
+// appendAuditRecord は記録を追記し、新しく作ったかを返す。
+func appendAuditRecord(ctx context.Context, queries *Queries, rec *ports.AuditEventRecord, userID pgtype.UUID, requireNew bool) (bool, error) {
 	payload := rec.Payload
 	if payload == nil {
 		payload = map[string]any{}
 	}
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
-		return err
+		return false, err
 	}
 	created, err := queries.AppendAuditEvent(ctx, AppendAuditEventParams{
 		ID: rec.ID, TenantID: rec.TenantID, Type: rec.Type, UserID: userID,
 		OccurredAt: rec.OccurredAt, Payload: payloadJSON,
 	})
 	if err != nil {
-		return err
+		return false, err
 	}
 	// 通常の Append は再配信を受け付けるが、CSV は新しい監査が欠ければ行も確定しない。
 	if requireNew && created == 0 {
-		return errors.New("audit event already exists")
+		return false, errors.New("audit event already exists")
 	}
 	// wi-145: sidecar 検索属性を書く。attr_name は AuditSearchRegistry の Field。冪等 (ON CONFLICT)。
 	// wi-377: 1 属性が複数の値を持ちうる (委譲チェーンの参加者)。値ごとに 1 行を書き、
@@ -122,11 +152,11 @@ func appendAuditRecord(ctx context.Context, queries *Queries, rec *ports.AuditEv
 			if err := queries.AppendAuditEventSearchAttribute(ctx, AppendAuditEventSearchAttributeParams{
 				EventID: rec.ID, TenantID: rec.TenantID, AttrName: name, AttrValue: value, OccurredAt: rec.OccurredAt,
 			}); err != nil {
-				return err
+				return false, err
 			}
 		}
 	}
-	return nil
+	return created > 0, nil
 }
 
 func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery) ([]*ports.AuditEventRecord, error) {

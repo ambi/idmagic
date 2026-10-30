@@ -143,3 +143,33 @@ func TestBuildAndSignSecurityEventToken_OmitsReasonWhenNil(t *testing.T) {
 		t.Fatalf("expected no reason claim, got %+v", eventClaims)
 	}
 }
+
+//spec:covers REQ-SHAREDSIGNALS-014: 署名する claims の最上位に opaque の sub_id がある。
+//spec:covers EX-SHAREDSIGNALS-014-01: 失効の SET。
+//spec:covers SSF10-SUB-ID: 最上位の sub_id が opaque の形式で、sub を含まない。
+func TestSignedSetCarriesSubID(t *testing.T) {
+	signer := &capturingSigner{}
+	event := ssdomain.CaepEvent{
+		EventType:        ssdomain.CaepEventTypeSessionRevoked,
+		Subject:          ssdomain.SsfSubject{SubjectType: ssdomain.SsfSubjectTypeAgent, TenantID: "tenant-a", PrincipalID: "A1"},
+		EventTimestamp:   time.Unix(1700000000, 0),
+		InitiatingEntity: ssdomain.InitiatingEntityAdmin,
+	}
+	if _, err := ssusecases.BuildAndSignSecurityEventToken(context.Background(), signer, "https://idp.example", "aud", event); err != nil {
+		t.Fatal(err)
+	}
+	subID, ok := signer.claims["sub_id"].(map[string]any)
+	if !ok || subID["format"] != "opaque" || subID["id"] != "A1" {
+		t.Fatalf("sub_id = %#v", signer.claims["sub_id"])
+	}
+	if _, present := signer.claims["sub"]; present {
+		t.Fatal("sub must not be present")
+	}
+}
+
+type capturingSigner struct{ claims map[string]any }
+
+func (s *capturingSigner) Sign(_ context.Context, _ string, claims map[string]any) (string, error) {
+	s.claims = claims
+	return "signed", nil
+}

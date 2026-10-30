@@ -30,7 +30,34 @@ type AdminStreamDeps struct {
 	// (REQ-SHAREDSIGNALS-009). nil skips enforcement, matching this codebase's
 	// other optional-by-construction quota ports.
 	QuotaRepo tenantports.QuotaRepository
-	Emit      func(spec.DomainEvent) error
+	// CheckDeliveryEndpoint は配送先の解決先を検査する。nil なら字句の検査だけを行う。
+	CheckDeliveryEndpoint func(ctx context.Context, endpoint string) error
+	Emit                  func(spec.DomainEvent) error
+}
+
+func checkDeliveryEndpoint(ctx context.Context, deps AdminStreamDeps, endpoint string) error {
+	if deps.CheckDeliveryEndpoint != nil {
+		if err := deps.CheckDeliveryEndpoint(ctx, endpoint); err != nil {
+			return ErrDeliveryEndpointInvalid
+		}
+		return nil
+	}
+	if err := ssdomain.ValidateDeliveryEndpoint(endpoint); err != nil {
+		return ErrDeliveryEndpointInvalid
+	}
+	return nil
+}
+
+// validateTransmitTypes は送信側のストリームの種類の指定を検査し、正規化した監査の種類を返す。
+func validateTransmitTypes(eventTypes []ssdomain.CaepEventType, auditEventTypes []string) ([]string, error) {
+	normalized, err := ssdomain.NormalizeAuditEventTypes(auditEventTypes)
+	if err != nil {
+		return nil, ErrEventTypeInvalid
+	}
+	if len(normalized) > 0 && len(eventTypes) == 0 {
+		return normalized, nil
+	}
+	return normalized, validateEventTypes(eventTypes)
 }
 
 // checkStreamQuota reserves one `ssf_streams` slot before a stream row exists,
@@ -102,7 +129,7 @@ func saveTransmitterStream(
 	}
 	stream := &ssdomain.SsfStream{
 		ID: id, TenantID: tenantID, Direction: ssdomain.SsfStreamDirectionTransmit,
-		EventTypes: in.EventTypes, Status: ssdomain.SsfStreamStatusEnabled, CreatedAt: now,
+		EventTypes: in.EventTypes, AuditEventTypes: in.AuditEventTypes, Status: ssdomain.SsfStreamStatusEnabled, CreatedAt: now,
 	}
 	if err := stream.Validate(); err != nil {
 		return nil, err
@@ -126,6 +153,7 @@ func saveTransmitterStream(
 // RegisterSsfTransmitterStreamInput mirrors SsfTransmitterStreamRegisterRequest.
 type RegisterSsfTransmitterStreamInput struct {
 	EventTypes            []ssdomain.CaepEventType
+	AuditEventTypes       []string
 	DeliveryEndpoint      string
 	Audience              string
 	DeliveryAuthorization *string
@@ -134,11 +162,16 @@ type RegisterSsfTransmitterStreamInput struct {
 
 func RegisterSsfTransmitterStream(ctx context.Context, deps AdminStreamDeps, in RegisterSsfTransmitterStreamInput, now time.Time) (*ssdomain.SsfStream, error) {
 	tenantID := tenantports.TenantID(ctx)
-	if err := validateEventTypes(in.EventTypes); err != nil {
+	auditEventTypes, err := validateTransmitTypes(in.EventTypes, in.AuditEventTypes)
+	if err != nil {
 		return nil, err
 	}
+	in.AuditEventTypes = auditEventTypes
 	if in.DeliveryEndpoint == "" || !strings.HasPrefix(in.DeliveryEndpoint, "https://") {
 		return nil, ErrDeliveryEndpointInvalid
+	}
+	if err := checkDeliveryEndpoint(ctx, deps, in.DeliveryEndpoint); err != nil {
+		return nil, err
 	}
 	if in.Audience == "" {
 		return nil, ErrAudienceRequired
@@ -236,7 +269,8 @@ func RegisterSsfReceiverStream(ctx context.Context, deps AdminStreamDeps, in Reg
 // UpdateSsfStreamInput mirrors SsfStreamUpdateRequest: event_types のみ更新可能、
 // 省略 (nil) は現状維持。
 type UpdateSsfStreamInput struct {
-	EventTypes *[]ssdomain.CaepEventType
+	EventTypes      *[]ssdomain.CaepEventType
+	AuditEventTypes *[]string
 }
 
 func UpdateSsfStream(ctx context.Context, deps AdminStreamDeps, id string, in UpdateSsfStreamInput, now time.Time) (*ssdomain.SsfStream, error) {
@@ -248,14 +282,25 @@ func UpdateSsfStream(ctx context.Context, deps AdminStreamDeps, id string, in Up
 	if stream == nil {
 		return nil, ErrStreamNotFound
 	}
-	if in.EventTypes == nil {
+	if in.EventTypes == nil && in.AuditEventTypes == nil {
 		return stream, nil
 	}
-	if err := validateEventTypes(*in.EventTypes); err != nil {
+	updated := *stream
+	if in.EventTypes != nil {
+		updated.EventTypes = *in.EventTypes
+	}
+	if in.AuditEventTypes != nil {
+		// 監査の配送は送信側だけが持つ。
+		if stream.Direction != ssdomain.SsfStreamDirectionTransmit && len(*in.AuditEventTypes) > 0 {
+			return nil, ErrEventTypeInvalid
+		}
+		updated.AuditEventTypes = *in.AuditEventTypes
+	}
+	normalized, err := validateTransmitTypes(updated.EventTypes, updated.AuditEventTypes)
+	if err != nil {
 		return nil, err
 	}
-	updated := *stream
-	updated.EventTypes = *in.EventTypes
+	updated.AuditEventTypes = normalized
 	updated.UpdatedAt = &now
 	if err := updated.Validate(); err != nil {
 		return nil, err
@@ -297,6 +342,12 @@ func setStreamStatus(ctx context.Context, deps AdminStreamDeps, id string, statu
 	}
 	if err := deps.StreamRepo.Save(ctx, &updated); err != nil {
 		return nil, err
+	}
+	// 再有効化は連続の失敗の記録を消す。残すと次の一回の失敗で再び無効化される。
+	if status == ssdomain.SsfStreamStatusEnabled {
+		if err := deps.StreamRepo.RecordDeliverySuccess(ctx, tenantID, id); err != nil {
+			return nil, err
+		}
 	}
 	var event spec.DomainEvent
 	if status == ssdomain.SsfStreamStatusDisabled {

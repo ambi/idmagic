@@ -25,6 +25,14 @@ type AuditEventStore struct {
 	events    []*ports.AuditEventRecord
 	byID      map[string]*ports.AuditEventRecord
 	maxEvents int
+	capture   func(context.Context, *ports.AuditEventRecord) error
+}
+
+// SetCapture は新しい記録と同時に行う作用を結ぶ。失敗すると記録を追記しない。
+func (s *AuditEventStore) SetCapture(capture func(context.Context, *ports.AuditEventRecord) error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.capture = capture
 }
 
 // NewAuditEventStore は maxEvents を上限とするリングバッファ。0 を渡すと 10000 件を使う。
@@ -39,7 +47,7 @@ func NewAuditEventStore(maxEvents int) *AuditEventStore {
 	}
 }
 
-func (s *AuditEventStore) Append(_ context.Context, rec *ports.AuditEventRecord) error {
+func (s *AuditEventStore) Append(ctx context.Context, rec *ports.AuditEventRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if rec.ID == "" || rec.Type == "" {
@@ -47,6 +55,11 @@ func (s *AuditEventStore) Append(_ context.Context, rec *ports.AuditEventRecord)
 	}
 	if _, exists := s.byID[rec.ID]; exists {
 		return nil
+	}
+	if s.capture != nil {
+		if err := s.capture(ctx, rec); err != nil {
+			return err
+		}
 	}
 	s.events = append(s.events, rec)
 	s.byID[rec.ID] = rec

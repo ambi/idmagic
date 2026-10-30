@@ -10,6 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/sharedsignals/internal/db_memory"
 	"github.com/ambi/idmagic/backend/sharedsignals/internal/db_postgres"
 	"github.com/ambi/idmagic/backend/sharedsignals/internal/handlers_http"
@@ -20,6 +21,7 @@ import (
 	"github.com/ambi/idmagic/backend/sharedsignals/ports"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/labstack/echo/v5"
 )
@@ -101,16 +103,65 @@ func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
 		ReceivedEventRepo: m.ReceivedEventRepo, EpochRepo: m.RevocationEpochRepo, UserEpochRepo: m.UserRevocationEpochRepo,
 		Users: d.Users, EndUserSessions: d.EndUserSessions,
 		AgentRepo: d.AgentRepo, Verifier: &verify_jose.Verifier{JWKResolver: d.JWKResolver},
-		QuotaRepo: d.QuotaRepo, Emit: d.Emit,
+		QuotaRepo: d.QuotaRepo, CheckDeliveryEndpoint: m.CheckDeliveryEndpoint, Emit: d.Emit,
 	})
 }
 
-func (m Module) DeliveryProcessor(emit func(spec.DomainEvent) error) func(context.Context, time.Time, int) (int, error) {
-	d := usecases.DeliverDeps{
-		DeliveryRepo: m.DeliveryRepo, TransmitterConfigRepo: m.TransmitterConfigRepo,
-		Pusher: push_http.NewHTTPSecurityEventPusher(), Emit: emit,
-	}
+// WithDeliveryEndpointCheck は登録時の配送先の検査に、接続時と同じ解決先の検査を使う。
+func (m Module) WithDeliveryEndpointCheck() Module {
+	m.CheckDeliveryEndpoint = push_http.NewHTTPSecurityEventPusher().CheckDestination
+	return m
+}
+
+// DeliveryProcessor は worker の配送のループの一周を返す。keys と issuer は監査の SET を送信時に署名する。
+func (m Module) DeliveryProcessor(keys signingports.KeyStore, issuer string, emit func(spec.DomainEvent) error) func(context.Context, time.Time, int) (int, error) {
+	d := m.deliverDeps(push_http.NewHTTPSecurityEventPusher(), keys, issuer, emit)
 	return func(ctx context.Context, now time.Time, limit int) (int, error) {
 		return usecases.ProcessDueDeliveries(ctx, d, now, limit)
 	}
+}
+
+func (m Module) deliverDeps(pusher ports.SecurityEventPusher, keys signingports.KeyStore, issuer string, emit func(spec.DomainEvent) error) usecases.DeliverDeps {
+	return usecases.DeliverDeps{
+		DeliveryRepo: m.DeliveryRepo, TransmitterConfigRepo: m.TransmitterConfigRepo, StreamRepo: m.StreamRepo,
+		Pusher: pusher, Signer: &sign_jose.Signer{KeyStore: keys}, Issuer: issuer, Emit: emit,
+	}
+}
+
+// DeliveryProcessorWithPusher は送信先を差し替えた配送のループの一周を返す。公開アドレスへの
+// 接続の制限を受けない受信側で、組み立てを確かめるテストのためのものである。
+func (m Module) DeliveryProcessorWithPusher(pusher ports.SecurityEventPusher, keys signingports.KeyStore, issuer string, emit func(spec.DomainEvent) error) func(context.Context, time.Time, int) (int, error) {
+	d := m.deliverDeps(pusher, keys, issuer, emit)
+	return func(ctx context.Context, now time.Time, limit int) (int, error) {
+		return usecases.ProcessDueDeliveries(ctx, d, now, limit)
+	}
+}
+
+// AuditCapture は監査の記録から配送の内容を作る入力である。
+type AuditCapture struct {
+	EventID, EventType, TenantID string
+	OccurredAt                   time.Time
+	Payload                      map[string]any
+}
+
+func (c AuditCapture) event() domain.AuditSetEvent {
+	return domain.NewAuditSetEvent(c.EventID, c.EventType, c.TenantID, c.OccurredAt, c.Payload)
+}
+
+// CaptureAuditEventInTx は監査の記録と同じ Tx で配送を作る（REQ-SHAREDSIGNALS-015）。
+func CaptureAuditEventInTx(ctx context.Context, tx pgx.Tx, capture AuditCapture, now time.Time) error {
+	return db_postgres.CaptureAuditEventInTx(ctx, tx, capture.event(), now)
+}
+
+// CaptureAuditEvent はメモリの保存先の経路で、監査の記録の追記と同時に配送を作る。
+func (m Module) CaptureAuditEvent(ctx context.Context, capture AuditCapture, now time.Time) error {
+	if !domain.CapturableAuditType(capture.EventType) || capture.TenantID == "" {
+		return nil
+	}
+	return usecases.CaptureAuditEvent(ctx, m.StreamRepo, m.DeliveryRepo, capture.event(), now)
+}
+
+// PurgeExpiredDeliveries は保持期間を過ぎた終端の配送を消す。
+func (m Module) PurgeExpiredDeliveries(ctx context.Context, now time.Time) (int64, error) {
+	return m.DeliveryRepo.PurgeSettled(ctx, now.Add(-domain.DeliveryRetention))
 }

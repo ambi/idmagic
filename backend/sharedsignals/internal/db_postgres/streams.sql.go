@@ -10,6 +10,20 @@ import (
 	"time"
 )
 
+const clearSsfStreamDeliveryFailures = `-- name: ClearSsfStreamDeliveryFailures :exec
+UPDATE ssf_streams SET consecutive_failures=0,first_failure_at=NULL WHERE tenant_id=$1 AND id=$2
+`
+
+type ClearSsfStreamDeliveryFailuresParams struct {
+	TenantID string
+	ID       string
+}
+
+func (q *Queries) ClearSsfStreamDeliveryFailures(ctx context.Context, arg ClearSsfStreamDeliveryFailuresParams) error {
+	_, err := q.db.Exec(ctx, clearSsfStreamDeliveryFailures, arg.TenantID, arg.ID)
+	return err
+}
+
 const deleteSsfStream = `-- name: DeleteSsfStream :exec
 DELETE FROM ssf_streams WHERE tenant_id=$1 AND id=$2
 `
@@ -25,7 +39,7 @@ func (q *Queries) DeleteSsfStream(ctx context.Context, arg DeleteSsfStreamParams
 }
 
 const findSsfStreamByID = `-- name: FindSsfStreamByID :one
-SELECT id,tenant_id,direction,event_types,status,created_at,updated_at
+SELECT id,tenant_id,direction,event_types,status,created_at,updated_at,audit_event_types,consecutive_failures,first_failure_at
 FROM ssf_streams WHERE tenant_id=$1 AND id=$2
 `
 
@@ -45,12 +59,15 @@ func (q *Queries) FindSsfStreamByID(ctx context.Context, arg FindSsfStreamByIDPa
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AuditEventTypes,
+		&i.ConsecutiveFailures,
+		&i.FirstFailureAt,
 	)
 	return &i, err
 }
 
 const listSsfStreamsByTenant = `-- name: ListSsfStreamsByTenant :many
-SELECT id,tenant_id,direction,event_types,status,created_at,updated_at
+SELECT id,tenant_id,direction,event_types,status,created_at,updated_at,audit_event_types,consecutive_failures,first_failure_at
 FROM ssf_streams WHERE tenant_id=$1 ORDER BY created_at
 `
 
@@ -71,6 +88,9 @@ func (q *Queries) ListSsfStreamsByTenant(ctx context.Context, tenantID string) (
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.AuditEventTypes,
+			&i.ConsecutiveFailures,
+			&i.FirstFailureAt,
 		); err != nil {
 			return nil, err
 		}
@@ -82,21 +102,64 @@ func (q *Queries) ListSsfStreamsByTenant(ctx context.Context, tenantID string) (
 	return items, nil
 }
 
+const recordSsfStreamDeliveryFailure = `-- name: RecordSsfStreamDeliveryFailure :one
+WITH prior AS (
+  SELECT status FROM ssf_streams WHERE tenant_id=$4 AND id=$5 FOR UPDATE
+)
+UPDATE ssf_streams s SET
+  consecutive_failures=s.consecutive_failures+1,
+  first_failure_at=COALESCE(s.first_failure_at,$1::timestamptz),
+  status=CASE WHEN s.status='enabled' AND s.consecutive_failures+1>=$2::int
+    AND $1::timestamptz-COALESCE(s.first_failure_at,$1::timestamptz)>=make_interval(secs=>$3::float8)
+    THEN 'disabled' ELSE s.status END
+FROM prior
+WHERE s.tenant_id=$4 AND s.id=$5
+RETURNING prior.status AS previous_status,s.status AS new_status
+`
+
+type RecordSsfStreamDeliveryFailureParams struct {
+	Now               time.Time
+	Threshold         int32
+	MinElapsedSeconds float64
+	TenantID          string
+	ID                string
+}
+
+type RecordSsfStreamDeliveryFailureRow struct {
+	PreviousStatus string
+	NewStatus      string
+}
+
+func (q *Queries) RecordSsfStreamDeliveryFailure(ctx context.Context, arg RecordSsfStreamDeliveryFailureParams) (*RecordSsfStreamDeliveryFailureRow, error) {
+	row := q.db.QueryRow(ctx, recordSsfStreamDeliveryFailure,
+		arg.Now,
+		arg.Threshold,
+		arg.MinElapsedSeconds,
+		arg.TenantID,
+		arg.ID,
+	)
+	var i RecordSsfStreamDeliveryFailureRow
+	err := row.Scan(&i.PreviousStatus, &i.NewStatus)
+	return &i, err
+}
+
 const saveSsfStream = `-- name: SaveSsfStream :exec
-INSERT INTO ssf_streams (id,tenant_id,direction,event_types,status,created_at,updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7)
+INSERT INTO ssf_streams (id,tenant_id,direction,event_types,status,created_at,updated_at,audit_event_types)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
 ON CONFLICT (id) DO UPDATE SET
- event_types=EXCLUDED.event_types,status=EXCLUDED.status,updated_at=EXCLUDED.updated_at
+ event_types=EXCLUDED.event_types,status=EXCLUDED.status,updated_at=EXCLUDED.updated_at,
+ audit_event_types=EXCLUDED.audit_event_types
 `
 
 type SaveSsfStreamParams struct {
-	ID         string
-	TenantID   string
-	Direction  string
-	EventTypes []byte
-	Status     string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID              string
+	TenantID        string
+	Direction       string
+	EventTypes      []byte
+	Status          string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	AuditEventTypes []string
 }
 
 func (q *Queries) SaveSsfStream(ctx context.Context, arg SaveSsfStreamParams) error {
@@ -108,6 +171,7 @@ func (q *Queries) SaveSsfStream(ctx context.Context, arg SaveSsfStreamParams) er
 		arg.Status,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.AuditEventTypes,
 	)
 	return err
 }

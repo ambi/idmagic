@@ -67,6 +67,7 @@ func BuildAndSignSecurityEventToken(ctx context.Context, signer ssports.Security
 		"jti":    jti,
 		"iat":    now.Unix(),
 		"aud":    audience,
+		"sub_id": ssdomain.OpaqueSubjectID(event.Subject.PrincipalID),
 		"events": map[string]any{caepEventTypeURI(event.EventType): eventClaims},
 	}
 	compact, err := signer.Sign(ctx, event.Subject.TenantID, claims)
@@ -81,4 +82,27 @@ func BuildAndSignSecurityEventToken(ctx context.Context, signer ssports.Security
 		return ssdomain.SecurityEventToken{}, err
 	}
 	return set, nil
+}
+
+// SignAuditSecurityEventToken は監査の配送の SET を署名する。jti は配送の行が持つ値を使う。
+func SignAuditSecurityEventToken(ctx context.Context, signer ssports.SecurityEventTokenSigner, issuer, audience, jti string, event ssdomain.AuditSetEvent) (string, error) {
+	eventClaims := map[string]any{
+		"event_timestamp": event.OccurredAt.Unix(),
+		"audit_event_id":  event.EventID,
+		"tenant_id":       event.TenantID,
+	}
+	if event.Actor != nil {
+		eventClaims["actor"] = map[string]any{"type": event.Actor.Type, "id": event.Actor.ID}
+	}
+	if event.TargetID != "" {
+		eventClaims["target_id"] = event.TargetID
+	}
+	return signer.Sign(ctx, event.TenantID, map[string]any{
+		"iss":    issuer,
+		"jti":    jti,
+		"iat":    time.Now().UTC().Unix(),
+		"aud":    audience,
+		"sub_id": event.SubjectID(),
+		"events": map[string]any{ssdomain.AuditSetEventURIPrefix + event.EventType: eventClaims},
+	})
 }

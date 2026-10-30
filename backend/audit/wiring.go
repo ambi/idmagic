@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"context"
 	"crypto/rand"
 
 	"github.com/ambi/idmagic/backend/audit/domain"
@@ -36,6 +37,26 @@ func NewPostgresModule(pool postgres.DB) Module {
 
 // RecordWriterInTx は同じ Tx へ監査を追記し、検索の対象を明示できる書き込み操作を返す。
 func RecordWriterInTx(tx pgx.Tx) ports.AuditEventWriter { return db_postgres.RecordWriterInTx(tx) }
+
+// CaptureInTx は監査の記録と同時に確定する作用である。失敗は追記を巻き戻す。
+type CaptureInTx = db_postgres.CaptureInTx
+
+// RecordWriterInTxCapturing は RecordWriterInTx に、記録と同時に確定する作用を加える。
+func RecordWriterInTxCapturing(capture CaptureInTx) func(pgx.Tx) ports.AuditEventWriter {
+	return func(tx pgx.Tx) ports.AuditEventWriter { return db_postgres.RecordWriterInTxCapturing(tx, capture) }
+}
+
+// WithCapture は記録と同時に確定する作用を結ぶ。Audit は呼び先を知らず、組み立て地点が渡す。
+// PostgreSQL は inTx を同じ Tx で、メモリは inMemory を追記の中で呼ぶ。
+func (m Module) WithCapture(inTx CaptureInTx, inMemory func(context.Context, *ports.AuditEventRecord) error) Module {
+	switch repo := m.AuditEventRepo.(type) {
+	case *db_postgres.AuditEventRepository:
+		repo.CaptureInTx = inTx
+	case *db_memory.AuditEventStore:
+		repo.SetCapture(inMemory)
+	}
+	return m
+}
 
 type RouteDeps struct {
 	support.Deps

@@ -31,6 +31,10 @@ type SsfStreamRepository interface {
 	FindByID(ctx context.Context, tenantID, id string) (*ssdomain.SsfStream, error)
 	Save(ctx context.Context, stream *ssdomain.SsfStream) error
 	Delete(ctx context.Context, tenantID, id string) error
+	// RecordDeliveryFailure は連続の失敗を数え、閾値で enabled から disabled にしたときに true を返す。
+	RecordDeliveryFailure(ctx context.Context, tenantID, id string, now time.Time) (bool, error)
+	// RecordDeliverySuccess は連続の失敗の記録を消す。
+	RecordDeliverySuccess(ctx context.Context, tenantID, id string) error
 }
 
 // SsfTransmitterConfigRepository は SsfTransmitterConfig を永続化する (stream_id に 1 対 1)。
@@ -50,9 +54,12 @@ type SsfReceiverConfigRepository interface {
 // SecurityEventDeliveryRepository は outbound SET 配送 (outbox) を永続化する。
 type SecurityEventDeliveryRepository interface {
 	ListByStream(ctx context.Context, tenantID, streamID string) ([]*ssdomain.SecurityEventDelivery, error)
-	// ListDue は next_attempt_at <= now の pending/failed 配送を返す (projector/worker が消費する)。
-	ListDue(ctx context.Context, now time.Time, limit int) ([]*ssdomain.SecurityEventDelivery, error)
+	// ClaimDue は next_attempt_at <= now の pending/failed 配送を、ストリームごとに perStream 件、
+	// 全体で limit 件まで取得し、next_attempt_at を leaseUntil へ進める。並行した呼び出しは同じ行を返さない。
+	ClaimDue(ctx context.Context, now, leaseUntil time.Time, perStream, limit int) ([]*ssdomain.SecurityEventDelivery, error)
 	Save(ctx context.Context, delivery *ssdomain.SecurityEventDelivery) error
+	// PurgeSettled は before より前に作られた delivered と dead_letter の配送を消す。
+	PurgeSettled(ctx context.Context, before time.Time) (int64, error)
 	// RedeliverDeadLettered は stream の dead_letter の配送を不可分に pending へ戻し、
 	// 戻した配送を返す。並行した要求でも、各配送を戻すのは一方だけである。
 	RedeliverDeadLettered(ctx context.Context, tenantID, streamID string) ([]*ssdomain.SecurityEventDelivery, error)

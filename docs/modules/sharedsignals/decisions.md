@@ -95,3 +95,37 @@ SSF の送信側の認証に、標準が別の方式を求めるようになっ�
 | REQ-SHAREDSIGNALS-003 | [SET の受信](features/receiver.md) |
 | REQ-SHAREDSIGNALS-004 | [SET の受信](features/receiver.md) |
 | REQ-SHAREDSIGNALS-005 | [SET の受信](features/receiver.md) |
+
+## テナントへの継続配送を独自 Webhook ではなく SSF で行う
+
+### 背景
+
+テナントが監査イベントを自分の宛先へ継続的に受け取る手段が必要である。
+SSF の送信は失効の伝播だけを扱っていた。
+
+### 決定
+
+監査イベントを `urn:idmagic:secevent:audit:<種類>` の SET として、送信側のストリームで配送する。
+配送は監査の記録と同じトランザクションで作り、署名は送信時に行う。
+本文は許可した識別子だけとする。
+
+### 検討した代替案
+
+| 案 | 利点 | 欠点 | 採らない理由 |
+| --- | --- | --- | --- |
+| 独自 Webhook と HMAC を併存する | 受信側の検証が短い。Okta の Event Hooks に近い | 配送の仕組みと公開形式を二つ維持する。SIEM には結局中継が要る | 差が費用に見合わない。必要になれば後から足せる |
+| 配送ごとに永続ジョブを投入する | リースと再試行を再利用できる | `JobEnqueued` の監査が捕捉へ戻る。`active_jobs` の上限が監査を失敗させる | 増幅と監査の失敗を避ける |
+| 確定後の配信点で配送を作る | 監査の Tx を変えない | 記録だけが残る状態を作る | 外部保全の用途で欠落を検知できない |
+
+### 結果と再検討の条件
+
+独自 URI の監査イベントは、標準の CAEP の受信側には解釈されない。
+SET を受けられない具体的な受信側が確認できたら、Webhook の追加を検討する。
+全ログ転送の量が push の 1 要求 1 SET で足りなくなったら、RFC 8936 の poll を検討する。
+
+### 関連する要件
+
+| 要件 | 機能仕様 |
+| --- | --- |
+| REQ-SHAREDSIGNALS-015 | [SET の配送](features/transmitter.md) |
+| REQ-SHAREDSIGNALS-016 | [SET の配送](features/transmitter.md) |

@@ -12,6 +12,7 @@ username の解決には IdManagement の User から ID と存在の有無だ�
 | イベントの発行 | 事実を発生させる各モジュール |
 | 監査の記録の保持期間と一括削除 | [データのライフサイクル](../../design/data/lifecycle.md)と、`idmagic-batch` の保持期間の掃引 |
 | ドメインイベントを監査の記録へ写す配信点 | 起動処理（`backend/cmd/internal/bootstrap`） |
+| 監査イベントの外部への継続配送 | [SharedSignals](../sharedsignals/features/transmitter.md)。Audit は記録と同時に確定する作用を組み立て地点から受け取るだけで、配送を知らない |
 
 ## 主な流れ
 

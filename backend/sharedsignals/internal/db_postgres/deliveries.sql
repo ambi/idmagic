@@ -1,23 +1,14 @@
 -- name: ListSecurityEventDeliveriesByStream :many
 SELECT id,tenant_id,stream_id,set_jti,set_payload,status,attempt_count,next_attempt_at,
-last_error,created_at,delivered_at
+last_error,created_at,delivered_at,audit_event
 FROM security_event_deliveries WHERE tenant_id=$1 AND stream_id=$2 ORDER BY created_at;
-
--- name: ListDueSecurityEventDeliveries :many
-SELECT id,tenant_id,stream_id,set_jti,set_payload,status,attempt_count,next_attempt_at,
-last_error,created_at,delivered_at
-FROM security_event_deliveries
-WHERE status IN ('pending','failed')
-  AND (next_attempt_at IS NULL OR next_attempt_at <= $1)
-ORDER BY created_at
-LIMIT NULLIF(sqlc.arg(row_limit)::int, 0);
 
 -- name: RedeliverDeadLetteredSecurityEventDeliveries :many
 UPDATE security_event_deliveries
 SET status='pending',attempt_count=0,next_attempt_at=NULL,last_error=NULL
 WHERE tenant_id=$1 AND stream_id=$2 AND status='dead_letter'
 RETURNING id,tenant_id,stream_id,set_jti,set_payload,status,attempt_count,next_attempt_at,
-last_error,created_at,delivered_at;
+last_error,created_at,delivered_at,audit_event;
 
 -- name: SaveSecurityEventDelivery :exec
 INSERT INTO security_event_deliveries (id,tenant_id,stream_id,set_jti,set_payload,status,
@@ -27,3 +18,32 @@ ON CONFLICT (id) DO UPDATE SET
  status=EXCLUDED.status,attempt_count=EXCLUDED.attempt_count,
  next_attempt_at=EXCLUDED.next_attempt_at,last_error=EXCLUDED.last_error,
  delivered_at=EXCLUDED.delivered_at;
+
+-- name: CaptureAuditEventDeliveries :exec
+INSERT INTO security_event_deliveries (id,tenant_id,stream_id,set_jti,set_payload,status,audit_event,created_at)
+SELECT gen_random_uuid(),s.tenant_id,s.id,gen_random_uuid()::text,'{}'::jsonb,'pending',sqlc.arg(audit_event)::jsonb,sqlc.arg(now)::timestamptz
+FROM ssf_streams s
+WHERE s.tenant_id=sqlc.arg(tenant_id) AND s.direction='Transmit' AND s.status='enabled'
+  AND ('*'=ANY(s.audit_event_types) OR sqlc.arg(event_type)::text=ANY(s.audit_event_types));
+
+-- name: ClaimDueSecurityEventDeliveries :many
+WITH ranked AS (
+  SELECT d.id,row_number() OVER (PARTITION BY d.stream_id ORDER BY d.created_at,d.id) AS position
+  FROM security_event_deliveries d JOIN ssf_streams s ON s.id=d.stream_id
+  WHERE d.status IN ('pending','failed') AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=sqlc.arg(now)::timestamptz)
+    AND s.status='enabled'
+), locked AS (
+  SELECT d.id FROM security_event_deliveries d JOIN ranked r ON r.id=d.id
+  WHERE r.position<=sqlc.arg(per_stream)::bigint AND d.status IN ('pending','failed')
+    AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=sqlc.arg(now)::timestamptz)
+  ORDER BY d.created_at,d.id
+  LIMIT sqlc.arg(row_limit)::int
+  FOR UPDATE OF d SKIP LOCKED
+)
+UPDATE security_event_deliveries SET next_attempt_at=sqlc.arg(lease_until)::timestamptz
+WHERE id IN (SELECT id FROM locked)
+RETURNING id,tenant_id,stream_id,set_jti,set_payload,status,attempt_count,next_attempt_at,
+last_error,created_at,delivered_at,audit_event;
+
+-- name: PurgeSettledSecurityEventDeliveries :execrows
+DELETE FROM security_event_deliveries WHERE status IN ('delivered','dead_letter') AND created_at<$1;

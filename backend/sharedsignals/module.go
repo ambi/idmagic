@@ -3,6 +3,8 @@
 package sharedsignals
 
 import (
+	"context"
+
 	"github.com/ambi/idmagic/backend/sharedsignals/ports"
 )
 
@@ -18,4 +20,7 @@ type Module struct {
 	ReceiverConfigRepo      ports.SsfReceiverConfigRepository
 	DeliveryRepo            ports.SecurityEventDeliveryRepository
 	ReceivedEventRepo       ports.ReceivedSecurityEventRepository
+	// CheckDeliveryEndpoint は登録時に配送先の解決先を検査する。nil なら字句の検査だけを行う。
+	// 解決を伴うので、組み立て地点が WithDeliveryEndpointCheck で有効にする。
+	CheckDeliveryEndpoint func(ctx context.Context, endpoint string) error
 }

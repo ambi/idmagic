@@ -57,7 +57,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	tenancyModule := tenancy.NewPostgresModule(resilientDB)
 	idmModule := idmanagement.NewPostgresModule(resilientDB).WithPostgresImports(resilientDB, idmanagement.PostgresImportDeps{
 		QuotasInTx:  tenancy.QuotaRepositoryInTx,
-		AuditInTx:   audit.RecordWriterInTx,
+		AuditInTx:   audit.RecordWriterInTxCapturing(captureAuditRecordInTx),
 		HistoryInTx: authentication.PasswordHistoryWriterInTx,
 	})
 	// NewKeyStore bootstraps the default tenant signing key, whose FK requires
@@ -121,7 +121,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		OAuth2:           oauth2Module,
 		SigningKeys:      signingkeys.Module{KeyStore: selectedKeyStore},
 		DataKeys:         dataKeysModule,
-		Audit:            audit.NewPostgresModule(resilientDB),
+		Audit:            audit.NewPostgresModule(resilientDB).WithCapture(captureAuditRecordInTx, nil),
 		WsFederation:     wsfederation.NewPostgresModule(resilientDB),
 		Saml:             saml.NewPostgresModule(resilientDB),
 		Sourcing:         sourcing.NewPostgresModule(resilientDB),
@@ -131,7 +131,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		SignInPolicy:     signinpolicy.NewPostgresModule(resilientDB),
 		Provisioning:     provisioningModule,
 		WorkloadIdentity: workloadidentity.NewPostgresModule(resilientDB),
-		SharedSignals:    sharedsignals.NewPostgresModule(resilientDB),
+		SharedSignals:    sharedsignals.NewPostgresModule(resilientDB).WithDeliveryEndpointCheck(),
 		AccessControl:    accesscontrol.NewPostgresModule(resilientDB),
 		RateLimit: rlports.Module{
 			NewRateLimiter: func(configs rlports.RateLimitConfigs) rlports.RateLimiter {

@@ -6,7 +6,7 @@
 
 ## データの区分と消え方
 
-データは、消え方の違いで次の五つに分かれる。
+データは、消え方の違いで次の区分に分かれる。
 同じ「削除」でも、区分によって消えた後に何が残るかが違う。
 
 | 区分 | 代表的なテーブル | 消え方 | 消えた後に残るもの |
@@ -16,6 +16,7 @@
 | 監査イベント | `audit_events`、`authentication_event_buckets` | 種別ごとの保持期間を過ぎたものだけが一括で消える | 保持期間内の記録 |
 | 鍵素材 | `signing_keys`、`tenant_data_encryption_keys` | 世代交代で退役し、DEK は鍵素材だけを破棄する | バージョンとライフサイクルの履歴 |
 | 資産 | `tenant_branding_assets`、`application_icons` | 設定の置き換えや親の削除で消える | 親が残る限り、置き換えられていない資産 |
+| SET の配送 | `security_event_deliveries` | 作成から 30 日を過ぎた `delivered` と `dead_letter` が、Batch の保持期限の削除で消える。ストリームの削除でも消える | 保持期間内の配送 |
 | CSV の成果物 | `csv_artifacts`、`csv_artifact_chunks` | 作成から 30 日を過ぎたものが、Batch の保持期限の削除で分割片ごと消える | 保持期間内の成果物 |
 
 短命な認証状態では、有効かどうかを読み取り時に `expires_at` で判定する。

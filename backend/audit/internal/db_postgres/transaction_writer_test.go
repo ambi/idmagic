@@ -1,12 +1,15 @@
 package db_postgres
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
+	"github.com/jackc/pgx/v5"
 )
 
 func TestAuditWriterUsesTheCallerTransactionAndExplicitUser(t *testing.T) {
@@ -98,5 +101,71 @@ func TestTransactionalAuditWriterRejectsADuplicateRecord(t *testing.T) {
 	}
 	if err := writer.Append(ctx, record, id); err == nil {
 		t.Fatal("duplicate audit accepted, want row rejection")
+	}
+}
+
+//spec:covers REQ-SHAREDSIGNALS-015: 捕捉の失敗は追記を巻き戻し、再配信は捕捉を繰り返さない。
+func TestAppendRunsCaptureInTheSameTransaction(t *testing.T) {
+	db := pgtest.Require(t)
+	ctx := t.Context()
+	id, err := spec.NewUUIDv4()
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := &ports.AuditEventRecord{ID: id, TenantID: id, Type: "UserCreated", OccurredAt: time.Now().UTC()}
+	failing := &AuditEventRepository{Pool: db, CaptureInTx: func(context.Context, pgx.Tx, *ports.AuditEventRecord) error {
+		return errors.New("capture failed")
+	}}
+	if err := failing.Append(ctx, record); err == nil {
+		t.Fatal("capture failure must fail the append")
+	}
+	if found, err := failing.FindByID(ctx, id); err != nil || found != nil {
+		t.Fatalf("record survived a failed capture: %+v err=%v", found, err)
+	}
+	captures := 0
+	repo := &AuditEventRepository{Pool: db, CaptureInTx: func(_ context.Context, tx pgx.Tx, rec *ports.AuditEventRecord) error {
+		captures++
+		if tx == nil || rec.ID != id {
+			t.Fatalf("capture received tx=%v rec=%+v", tx, rec)
+		}
+		return nil
+	}}
+	for range 2 {
+		if err := repo.Append(ctx, record); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if captures != 1 {
+		t.Fatalf("captures = %d, want 1 for a redelivered record", captures)
+	}
+	if found, err := repo.FindByID(ctx, id); err != nil || found == nil {
+		t.Fatalf("record missing: %+v err=%v", found, err)
+	}
+}
+
+//spec:covers REQ-SHAREDSIGNALS-015: 呼び出し側の Tx に参加する追記も同じ捕捉を呼ぶ。
+func TestRecordWriterCaptures(t *testing.T) {
+	db := pgtest.Require(t)
+	ctx := t.Context()
+	id, err := spec.NewUUIDv4()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	captures := 0
+	writer := RecordWriterInTxCapturing(tx, func(context.Context, pgx.Tx, *ports.AuditEventRecord) error {
+		captures++
+		return nil
+	})
+	record := ports.AuditEventRecord{ID: id, TenantID: id, Type: "UserCreated", OccurredAt: time.Now().UTC()}
+	if err := writer.Append(ctx, record, "11111111-1111-4111-8111-111111111111"); err != nil {
+		t.Fatal(err)
+	}
+	if captures != 1 {
+		t.Fatalf("captures = %d", captures)
 	}
 }

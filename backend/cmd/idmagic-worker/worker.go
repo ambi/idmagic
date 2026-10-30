@@ -342,7 +342,7 @@ func sharedSignalsDeliveryLoop(ctx context.Context, deps *bootstrap.Dependencies
 	// audit writes rather than this loop's ctx, so an audit record isn't lost
 	// just because the process is shutting down mid-tick.
 	emit := deps.NewEmitFunc(logger) //nolint:contextcheck // see comment above
-	process := deps.SharedSignals.DeliveryProcessor(func(event spec.DomainEvent) error {
+	process := deps.SharedSignals.DeliveryProcessor(deps.SigningKeys.KeyStore, deps.Issuer, func(event spec.DomainEvent) error {
 		emit(event)
 		return nil
 	})

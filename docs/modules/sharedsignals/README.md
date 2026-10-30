@@ -19,6 +19,7 @@ SSF の送受信に必要なストリームと Agent、User ごとの失効エ�
 | 失効エポックの前進 | `IdManagement` の Agent と User のイベント | イベントを発行した操作の中で、発行の後に反応を呼ぶ。管理 API の操作は `api` で、管理 API の外から User を止める操作（ライフサイクルワークフローの `disable_user` は `worker`、SCIM の取り込みは `api`）はそれを実行するプロセスで呼ぶ。反応の組み立ては `usecases.NewAgentRevocationReactor` の一つである | [失効エポック](features/revocation.md) |
 | 配送の作成 | `AgentAccessRevoked` | 失効を進めた同じプロセスが、5 秒の期限で配送を作る。SET の `iss` には、どのプロセスでも共有の設定の `ISSUER` を使う | [SET の配送の設計](features/transmitter.md#実現方式) |
 | User の失効エポックの前進 | Authentication と OAuth2 のイベント | `api` の組み立て地点がイベントを `UserRevocation` へ変換し、発行の後に呼ぶ。失敗はログに残して続ける | [失効エポック](features/revocation.md) |
+| 監査の配送の作成 | 監査の記録の追記 | 追記と同じトランザクションで、組み立て地点が結んだ捕捉が作る | [SET の配送の設計](features/transmitter.md#実現方式) |
 | 配送の試行 | 一定の間隔 | `worker` の配送のループ | [SET の配送の設計](features/transmitter.md#実現方式) |
 | SET の受信 | 外部の送信側の `/ssf/streams/{stream_id}/events` への要求 | `api` が同期的に検証し、失効エポックを進める | [SET の受信](features/receiver.md) |
 | 管理 API | 解決済みのテナントの `/api/admin/v1/shared-signals/...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [SSF ストリームの管理](features/stream.md) |
@@ -29,6 +30,7 @@ SSF の送受信に必要なストリームと Agent、User ごとの失効エ�
 | --- | --- |
 | 失効を Agent ごとの一つの時刻に集約する | 発行済みのトークンを列挙せずに、一度にすべてを無効にできる。詳細は[判断](decisions.md#失効を-agent-ごとの一つの時刻に集約する) |
 | ローカルの失効を先に確定させ、外部への伝播を切り離す | 受信側の障害や遅延がローカルの失効を妨げない。詳細は[判断](decisions.md#ローカルの失効を外部への伝播より先に確定させる) |
+| テナントへの継続配送を SSF で行う | 受信側が一つの方式に対応すれば済む。詳細は[判断](decisions.md#テナントへの継続配送を独自-webhook-ではなく-ssf-で行う) |
 | 受信のエンドポイントを SET の署名で認証する | 外部の送信側はブラウザーのセッションを持たない。詳細は[判断](decisions.md#受信のエンドポイントを管理-api-の認証ではなく-set-の検証で守る) |
 
 ## 機能一覧

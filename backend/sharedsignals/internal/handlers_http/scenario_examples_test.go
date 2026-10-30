@@ -697,10 +697,7 @@ func TestSetNamingAnotherTenantsAgentIsRejected(t *testing.T) {
 //spec:covers EX-SHAREDSIGNALS-007-01: 受信側へ到達できない送信ストリームがあっても、KillAgent の応答の時点で失効エポックは進んでトークンの `/introspect` は active=false を返し、そのストリームの SecurityEventDelivery は試行 0 回の pending として配送待ちの一覧に載る。
 func TestKillAdvancesTheEpochWhileTheReceiverIsUnreachable(t *testing.T) {
 	s := newExampleStack(t)
-	unreachable := httptest.NewTLSServer(http.NotFoundHandler())
-	endpoint := unreachable.URL
-	unreachable.Close()
-	streamID := s.registerTransmitter(t, endpoint)
+	streamID := s.registerTransmitter(t, "https://unreachable.invalid/events")
 	s.seedAgent(t, tenancydomain.DefaultTenantID, exampleAgentID)
 	at1 := s.issueAgentToken(t)
 
@@ -717,7 +714,8 @@ func TestKillAdvancesTheEpochWhileTheReceiverIsUnreachable(t *testing.T) {
 	if len(deliveries) != 1 || deliveries[0].Status != ssdomain.SecurityEventDeliveryStatusPending || deliveries[0].AttemptCount != 0 {
 		t.Fatalf("deliveries=%+v, want one pending delivery with no attempt", deliveries)
 	}
-	due, err := s.deliveries.ListDue(context.Background(), time.Now().UTC(), 10)
+	now := time.Now().UTC()
+	due, err := s.deliveries.ClaimDue(context.Background(), now, now.Add(time.Minute), 10, 10)
 	if err != nil {
 		t.Fatal(err)
 	}

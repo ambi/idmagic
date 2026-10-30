@@ -41,28 +41,6 @@ func (r *SecurityEventDeliveryRepository) ListByStream(_ context.Context, tenant
 	return out, nil
 }
 
-// ListDue は status が pending/failed かつ next_attempt_at が now 以前 (または未設定) の
-// 配送を、created_at 昇順で最大 limit 件返す。
-func (r *SecurityEventDeliveryRepository) ListDue(_ context.Context, now time.Time, limit int) ([]*ssdomain.SecurityEventDelivery, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	out := make([]*ssdomain.SecurityEventDelivery, 0)
-	for _, d := range r.deliveries {
-		if d.IsSettled() {
-			continue
-		}
-		if d.NextAttemptAt != nil && d.NextAttemptAt.After(now) {
-			continue
-		}
-		out = append(out, cloneDelivery(d))
-	}
-	slices.SortFunc(out, func(a, b *ssdomain.SecurityEventDelivery) int { return a.CreatedAt.Compare(b.CreatedAt) })
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
-	}
-	return out, nil
-}
-
 // RedeliverDeadLettered は stream の dead_letter の配送を pending へ戻し、created_at 昇順で返す。
 func (r *SecurityEventDeliveryRepository) RedeliverDeadLettered(_ context.Context, tenantID, streamID string) ([]*ssdomain.SecurityEventDelivery, error) {
 	r.mu.Lock()
@@ -84,4 +62,46 @@ func (r *SecurityEventDeliveryRepository) Save(_ context.Context, d *ssdomain.Se
 	defer r.mu.Unlock()
 	r.deliveries[sharedmem.ScopedKey(d.TenantID, d.ID, kernel.DefaultTenantID)] = cloneDelivery(d)
 	return nil
+}
+
+// ClaimDue は配送の時刻が来た配送を、ストリームごとに perStream 件まで取得し、時刻を leaseUntil へ進める。
+// ストリームの状態を知らないので、無効化の判定は呼び出し側が行う。
+func (r *SecurityEventDeliveryRepository) ClaimDue(_ context.Context, now, leaseUntil time.Time, perStream, limit int) ([]*ssdomain.SecurityEventDelivery, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	due := make([]*ssdomain.SecurityEventDelivery, 0)
+	for _, d := range r.deliveries {
+		if d.IsSettled() || (d.NextAttemptAt != nil && d.NextAttemptAt.After(now)) {
+			continue
+		}
+		due = append(due, d)
+	}
+	slices.SortFunc(due, func(a, b *ssdomain.SecurityEventDelivery) int { return a.CreatedAt.Compare(b.CreatedAt) })
+	counts := map[string]int{}
+	out := make([]*ssdomain.SecurityEventDelivery, 0)
+	for _, d := range due {
+		key := d.TenantID + "/" + d.StreamID
+		if counts[key] >= perStream || len(out) >= limit {
+			continue
+		}
+		counts[key]++
+		lease := leaseUntil
+		d.NextAttemptAt = &lease
+		out = append(out, cloneDelivery(d))
+	}
+	return out, nil
+}
+
+// PurgeSettled は before より前に作られた終端の配送を消す。
+func (r *SecurityEventDeliveryRepository) PurgeSettled(_ context.Context, before time.Time) (int64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var deleted int64
+	for key, d := range r.deliveries {
+		if d.IsSettled() && d.CreatedAt.Before(before) {
+			delete(r.deliveries, key)
+			deleted++
+		}
+	}
+	return deleted, nil
 }

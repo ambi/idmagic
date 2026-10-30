@@ -43,6 +43,7 @@ type Deps struct {
 	AgentRepo             agentports.AgentRepository
 	Verifier              ssports.SecurityEventTokenVerifier
 	QuotaRepo             tenantports.QuotaRepository
+	CheckDeliveryEndpoint func(ctx context.Context, endpoint string) error
 	Emit                  func(spec.DomainEvent) error
 }
 
@@ -50,7 +51,7 @@ func (d Deps) adminDeps() usecases.AdminStreamDeps {
 	return usecases.AdminStreamDeps{
 		StreamRepo: d.StreamRepo, TransmitterConfigRepo: d.TransmitterConfigRepo,
 		ReceiverConfigRepo: d.ReceiverConfigRepo, DeliveryRepo: d.DeliveryRepo,
-		QuotaRepo: d.QuotaRepo, Emit: d.Emit,
+		QuotaRepo: d.QuotaRepo, CheckDeliveryEndpoint: d.CheckDeliveryEndpoint, Emit: d.Emit,
 	}
 }
 
@@ -100,18 +101,24 @@ func (d Deps) handleReceiveSecurityEvent(c *echo.Context) error {
 // ---- SsfStream ----
 
 type ssfStreamResponse struct {
-	ID         string     `json:"id"`
-	TenantID   string     `json:"tenant_id"`
-	Direction  string     `json:"direction"`
-	EventTypes []string   `json:"event_types"`
-	Status     string     `json:"status"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  *time.Time `json:"updated_at,omitempty"`
+	ID         string   `json:"id"`
+	TenantID   string   `json:"tenant_id"`
+	Direction  string   `json:"direction"`
+	EventTypes []string `json:"event_types"`
+	// AuditEventTypes は空でも配列で返す。受信側のストリームでは常に空である。
+	AuditEventTypes []string   `json:"audit_event_types"`
+	Status          string     `json:"status"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       *time.Time `json:"updated_at,omitempty"`
 }
 
 func toSsfStreamResponse(s *ssdomain.SsfStream) ssfStreamResponse {
+	auditEventTypes := s.AuditEventTypes
+	if auditEventTypes == nil {
+		auditEventTypes = []string{}
+	}
 	return ssfStreamResponse{
-		ID: s.ID, TenantID: s.TenantID, Direction: string(s.Direction), EventTypes: caepEventTypesToStrings(s.EventTypes),
+		ID: s.ID, TenantID: s.TenantID, Direction: string(s.Direction), EventTypes: caepEventTypesToStrings(s.EventTypes), AuditEventTypes: auditEventTypes,
 		Status: string(s.Status), CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
 	}
 }
@@ -134,6 +141,7 @@ func caepEventTypesFromStrings(values []string) []ssdomain.CaepEventType {
 
 type registerTransmitterStreamRequest struct {
 	EventTypes            []string `json:"event_types"`
+	AuditEventTypes       []string `json:"audit_event_types"`
 	DeliveryEndpoint      string   `json:"delivery_endpoint"`
 	Audience              string   `json:"audience"`
 	DeliveryAuthorization *string  `json:"delivery_authorization"`
@@ -149,7 +157,8 @@ type registerReceiverStreamRequest struct {
 }
 
 type updateStreamRequest struct {
-	EventTypes *[]string `json:"event_types"`
+	EventTypes      *[]string `json:"event_types"`
+	AuditEventTypes *[]string `json:"audit_event_types"`
 }
 
 func (d Deps) handleListStreams(c *echo.Context) error {
@@ -190,7 +199,7 @@ func (d Deps) handleRegisterTransmitterStream(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	stream, err := usecases.RegisterSsfTransmitterStream(c.Request().Context(), d.adminDeps(), usecases.RegisterSsfTransmitterStreamInput{
-		EventTypes: caepEventTypesFromStrings(req.EventTypes), DeliveryEndpoint: req.DeliveryEndpoint,
+		EventTypes: caepEventTypesFromStrings(req.EventTypes), AuditEventTypes: req.AuditEventTypes, DeliveryEndpoint: req.DeliveryEndpoint,
 		Audience: req.Audience, DeliveryAuthorization: req.DeliveryAuthorization, MaxDeliveryAttempts: req.MaxDeliveryAttempts,
 	}, time.Now().UTC())
 	if err != nil {
@@ -237,7 +246,7 @@ func (d Deps) handleUpdateStream(c *echo.Context) error {
 		eventTypes = &converted
 	}
 	stream, err := usecases.UpdateSsfStream(c.Request().Context(), d.adminDeps(), c.Param("stream_id"), usecases.UpdateSsfStreamInput{
-		EventTypes: eventTypes,
+		EventTypes: eventTypes, AuditEventTypes: req.AuditEventTypes,
 	}, time.Now().UTC())
 	if err != nil {
 		return writeAdminSharedSignalsError(c, err)

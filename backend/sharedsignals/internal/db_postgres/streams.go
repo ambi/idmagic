@@ -19,6 +19,8 @@ func streamFromRow(row *SsfStream) (*ssdomain.SsfStream, error) {
 		Direction: ssdomain.SsfStreamDirection(row.Direction),
 		Status:    ssdomain.SsfStreamStatus(row.Status),
 		CreatedAt: row.CreatedAt, UpdatedAt: &row.UpdatedAt,
+		AuditEventTypes: row.AuditEventTypes, ConsecutiveFailures: int(row.ConsecutiveFailures),
+		FirstFailureAt: timestamptzPtrOrNil(row.FirstFailureAt),
 	}
 	if err := json.Unmarshal(row.EventTypes, &s.EventTypes); err != nil {
 		return nil, err
@@ -66,10 +68,14 @@ func (r *SsfStreamRepository) Save(ctx context.Context, s *ssdomain.SsfStream) e
 	if s.UpdatedAt != nil {
 		updatedAt = *s.UpdatedAt
 	}
+	auditEventTypes := s.AuditEventTypes
+	if auditEventTypes == nil {
+		auditEventTypes = []string{}
+	}
 	return New(r.Pool).SaveSsfStream(ctx, SaveSsfStreamParams{
 		ID: s.ID, TenantID: s.TenantID, Direction: string(s.Direction),
 		EventTypes: eventTypesJSON, Status: string(s.Status),
-		CreatedAt: s.CreatedAt, UpdatedAt: updatedAt,
+		CreatedAt: s.CreatedAt, UpdatedAt: updatedAt, AuditEventTypes: auditEventTypes,
 	})
 }
 

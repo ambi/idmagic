@@ -1909,6 +1909,9 @@ CREATE TABLE ssf_streams (
     status TEXT NOT NULL DEFAULT 'enabled' CHECK (status IN ('enabled', 'disabled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    audit_event_types TEXT[] NOT NULL DEFAULT '{}',
+    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+    first_failure_at TIMESTAMPTZ,
     CONSTRAINT ssf_streams_tenant_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
@@ -1955,6 +1958,8 @@ CREATE TABLE security_event_deliveries (
     last_error TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     delivered_at TIMESTAMPTZ,
+    -- 監査の配送は送信時に署名するので、set_payload ではなくここに内容を持つ。
+    audit_event JSONB,
     CONSTRAINT security_event_deliveries_tenant_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT security_event_deliveries_stream_fkey
@@ -1965,6 +1970,10 @@ CREATE INDEX security_event_deliveries_stream_idx
 CREATE INDEX security_event_deliveries_due_idx
     ON security_event_deliveries (status, next_attempt_at)
     WHERE status IN ('pending', 'failed');
+
+CREATE INDEX security_event_deliveries_settled_idx
+    ON security_event_deliveries (created_at)
+    WHERE status IN ('delivered', 'dead_letter');
 
 CREATE TABLE received_security_events (
     id UUID PRIMARY KEY,

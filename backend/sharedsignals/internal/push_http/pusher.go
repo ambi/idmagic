@@ -9,56 +9,50 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 	"time"
 
+	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 )
 
+var errNonPublicDestination = errors.New("delivery_endpoint does not resolve to a public address")
+
 // HTTPSecurityEventPusher POSTs the SET's compact serialization to the
-// receiver's delivery_endpoint. It re-validates the target on every call
-// (DNS-rebinding safe) and re-validates redirect targets, mirroring the
-// established per-context precedent for outbound admin-configured URLs
-// (backend/shared/security/tokens_jose.JWKResolver,
-// backend/provisioning/client_scim's transport) rather than sharing one
-// central client.
+// receiver's delivery_endpoint. 接続のたびに解決先を検査し、検査したアドレスへだけ接続する
+// (REQ-SHAREDSIGNALS-017)。環境のプロキシを使うと検査がプロキシへ向かい、接続の再利用は次の要求の
+// 解決先を検査しないので、どちらも使わない。リダイレクトには従わない。
 type HTTPSecurityEventPusher struct {
 	// Client is exported so tests can inject httptest.Server.Client()
 	// directly, bypassing the public-IP dial restriction against loopback
 	// test servers (backend/provisioning/client_scim.Client.HTTPClient
 	// precedent). NewHTTPSecurityEventPusher sets it to the SSRF-safe
 	// client; production code should always go through that constructor.
-	Client   *http.Client
-	resolver *net.Resolver
+	Client *http.Client
+	lookup func(ctx context.Context, host string) ([]netip.Addr, error)
 }
 
 // NewHTTPSecurityEventPusher builds the production pusher.
 func NewHTTPSecurityEventPusher() *HTTPSecurityEventPusher {
-	p := &HTTPSecurityEventPusher{resolver: net.DefaultResolver}
-	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-			host, port, err := net.SplitHostPort(address)
-			if err != nil {
-				return nil, err
-			}
-			ips, err := p.safeIPs(ctx, host)
-			if err != nil {
-				return nil, err
-			}
-			return (&net.Dialer{Timeout: 3 * time.Second}).DialContext(ctx, network, net.JoinHostPort(ips[0].String(), port))
-		},
-		TLSHandshakeTimeout: 3 * time.Second,
-	}
+	return newPusher(func(ctx context.Context, host string) ([]netip.Addr, error) {
+		return net.DefaultResolver.LookupNetIP(ctx, "ip", host)
+	})
+}
+
+func newPusher(lookup func(ctx context.Context, host string) ([]netip.Addr, error)) *HTTPSecurityEventPusher {
+	p := &HTTPSecurityEventPusher{lookup: lookup}
 	p.Client = &http.Client{
-		Transport: transport,
-		Timeout:   10 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 3 {
-				return errors.New("sharedsignals/push_http: too many redirects")
-			}
-			return validateDeliveryEndpoint(req.URL.String())
+		Transport: &http.Transport{
+			Proxy:               nil,
+			DialContext:         p.dial,
+			TLSHandshakeTimeout: 3 * time.Second,
+			DisableKeepAlives:   true,
+		},
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
 		},
 	}
 	return p
@@ -66,13 +60,72 @@ func NewHTTPSecurityEventPusher() *HTTPSecurityEventPusher {
 
 var _ ssports.SecurityEventPusher = (*HTTPSecurityEventPusher)(nil)
 
+func (p *HTTPSecurityEventPusher) dial(ctx context.Context, network, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+	addrs, err := p.safeAddrs(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	dialer := &net.Dialer{Timeout: 3 * time.Second}
+	var lastErr error
+	for _, addr := range addrs {
+		conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(addr.String(), port))
+		if err == nil {
+			return conn, nil
+		}
+		lastErr = err
+	}
+	return nil, lastErr
+}
+
+// safeAddrs は解決先を返す。一つでも非公開なら拒否し、公開と非公開を混ぜた応答で検査を抜けさせない。
+func (p *HTTPSecurityEventPusher) safeAddrs(ctx context.Context, host string) ([]netip.Addr, error) {
+	if addr, err := netip.ParseAddr(host); err == nil {
+		if !ssdomain.IsPublicAddress(addr) {
+			return nil, errNonPublicDestination
+		}
+		return []netip.Addr{addr}, nil
+	}
+	addrs, err := p.lookup(ctx, host)
+	if err != nil {
+		return nil, errors.New("delivery_endpoint could not be resolved")
+	}
+	if len(addrs) == 0 {
+		return nil, errNonPublicDestination
+	}
+	for _, addr := range addrs {
+		if !ssdomain.IsPublicAddress(addr) {
+			return nil, errNonPublicDestination
+		}
+	}
+	return addrs, nil
+}
+
+// CheckDestination は配送先の字句と解決先を検査する。登録時に使う。
+func (p *HTTPSecurityEventPusher) CheckDestination(ctx context.Context, endpoint string) error {
+	if err := ssdomain.ValidateDeliveryEndpoint(endpoint); err != nil {
+		return err
+	}
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return ssdomain.ErrDeliveryEndpointNotAllowed
+	}
+	if _, err := p.safeAddrs(ctx, parsed.Hostname()); err != nil {
+		return fmt.Errorf("%w: %s", ssdomain.ErrDeliveryEndpointNotAllowed, err.Error())
+	}
+	return nil
+}
+
 // Push POSTs compactSET to endpoint per SSF push-based delivery:
 // Content-Type: application/secevent+jwt, body = the raw compact JWT.
 // authorization, if non-empty, is sent as the Authorization header verbatim
 // (SsfTransmitterConfig.DeliveryAuthorization, e.g. "Bearer <token>"). Any
 // non-2xx response or transport failure is returned as an error; the caller
 // (usecases.ProcessDueDeliveries) turns that into retry/backoff/dead-letter
-// state.
+// state. エラーは配送の last_error として管理者へ見えるので、内部のアドレスを含めない。
 func (p *HTTPSecurityEventPusher) Push(ctx context.Context, endpoint, authorization, compactSET string) error {
 	if err := validateDeliveryEndpoint(endpoint); err != nil {
 		return err
@@ -87,7 +140,7 @@ func (p *HTTPSecurityEventPusher) Push(ctx context.Context, endpoint, authorizat
 	}
 	resp, err := p.Client.Do(req)
 	if err != nil {
-		return fmt.Errorf("push security event token: %w", err)
+		return fmt.Errorf("push security event token: %w", sanitizeTransportError(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -96,10 +149,21 @@ func (p *HTTPSecurityEventPusher) Push(ctx context.Context, endpoint, authorizat
 	return nil
 }
 
+func sanitizeTransportError(err error) error {
+	if errors.Is(err, errNonPublicDestination) {
+		return errNonPublicDestination
+	}
+	var timeout interface{ Timeout() bool }
+	if errors.As(err, &timeout) && timeout.Timeout() {
+		return errors.New("the receiver timed out")
+	}
+	return errors.New("the receiver could not be reached")
+}
+
 func validateDeliveryEndpoint(raw string) error {
 	parsed, err := url.Parse(raw)
 	if err != nil {
-		return fmt.Errorf("delivery_endpoint: %w", err)
+		return errors.New("delivery_endpoint: the URL is invalid")
 	}
 	if parsed.Scheme != "https" {
 		return errors.New("delivery_endpoint: https is required")
@@ -108,39 +172,4 @@ func validateDeliveryEndpoint(raw string) error {
 		return errors.New("delivery_endpoint: invalid authority or userinfo")
 	}
 	return nil
-}
-
-func (p *HTTPSecurityEventPusher) safeIPs(ctx context.Context, host string) ([]net.IP, error) {
-	if ip := net.ParseIP(host); ip != nil {
-		if !isPublicIP(ip) {
-			return nil, errors.New("delivery_endpoint resolves to a non-public address")
-		}
-		return []net.IP{ip}, nil
-	}
-	addresses, err := p.resolver.LookupIPAddr(ctx, host)
-	if err != nil {
-		return nil, fmt.Errorf("resolve delivery_endpoint host: %w", err)
-	}
-	out := make([]net.IP, 0, len(addresses))
-	for _, address := range addresses {
-		if !isPublicIP(address.IP) {
-			return nil, errors.New("delivery_endpoint resolves to a non-public address")
-		}
-		out = append(out, address.IP)
-	}
-	if len(out) == 0 {
-		return nil, errors.New("delivery_endpoint host has no addresses")
-	}
-	return out, nil
-}
-
-func isPublicIP(ip net.IP) bool {
-	return ip != nil &&
-		!ip.IsPrivate() &&
-		!ip.IsLoopback() &&
-		!ip.IsLinkLocalUnicast() &&
-		!ip.IsLinkLocalMulticast() &&
-		!ip.IsUnspecified() &&
-		!ip.IsMulticast() &&
-		!strings.HasPrefix(ip.String(), "100.64.")
 }

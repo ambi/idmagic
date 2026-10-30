@@ -127,7 +127,7 @@ func TestSecurityEventDeliveryRepository_ListDue(t *testing.T) {
 		}
 	}
 
-	got, err := repo.ListDue(context.Background(), now, 0)
+	got, err := repo.ClaimDue(context.Background(), now, now.Add(time.Minute), 100, 100)
 	if err != nil {
 		t.Fatalf("ListDue: %v", err)
 	}

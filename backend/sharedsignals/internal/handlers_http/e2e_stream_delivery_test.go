@@ -62,6 +62,8 @@ func TestTransmitterStreamLifecycleAndDelivery(t *testing.T) {
 			StreamRepo: streams, TransmitterConfigRepo: configs, ReceiverConfigRepo: sharedsignalsmemory.NewSsfReceiverConfigRepository(),
 			DeliveryRepo: deliveries, ReceivedEventRepo: sharedsignalsmemory.NewReceivedSecurityEventRepository(),
 			RevocationEpochRepo: sharedsignalsmemory.NewAgentRevocationEpochRepository(),
+			// 受信側はループバックの試験サーバーなので、配送先の検査を除く。
+			CheckDeliveryEndpoint: func(context.Context, string) error { return nil },
 		},
 	})
 	csrf, cookie := sharedSignalsAdminCSRF(t, e)
