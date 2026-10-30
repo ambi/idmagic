@@ -44,6 +44,12 @@ func (l *RateLimiter) Allow(ctx context.Context, policyID, key string, now time.
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := New(tx)
 
+	if err := q.EnsureRateLimitCounter(ctx, EnsureRateLimitCounterParams{
+		TenantID: tenantID, PolicyID: policyID, KeyHash: hash,
+		WindowExpiresAt: now.Add(time.Duration(config.WindowSeconds) * time.Second),
+	}); err != nil {
+		return rlports.RateLimitResult{}, err
+	}
 	row, err := q.LockRateLimitCounter(ctx, LockRateLimitCounterParams{TenantID: tenantID, PolicyID: policyID, KeyHash: hash})
 	var (
 		count     int

@@ -2,7 +2,9 @@ package db_postgres
 
 import (
 	"context"
+	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -92,5 +94,50 @@ func TestRateLimiterConcurrentAllow(t *testing.T) {
 	wg.Wait()
 	if allowed != 8 {
 		t.Fatalf("allowed=%d, want exactly 8 (MaxRequests) out of %d concurrent callers", allowed, concurrency)
+	}
+}
+
+// TestRateLimiterFirstBurstOnNewKeysStaysWithinLimit は、行のないキーへの同時の最初の要求でも
+// 上限を超えないことを確かめる。行がなければ FOR UPDATE はロックを取らないので、
+// 同時に始まる要求を新しいキーごとに繰り返して競合を起こす。
+//
+//spec:covers REQ-OAUTH2-040: 行のないキーへの同時の最初の要求でも、許可は上限の数に収まる。
+func TestRateLimiterFirstBurstOnNewKeysStaysWithinLimit(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	limiter := &RateLimiter{Pool: db, Configs: rlports.RateLimitConfigs{
+		"token": {MaxRequests: 8, WindowSeconds: 120},
+	}}
+	ctx := withTenant(context.Background(), tenant)
+	now := pgtest.Now()
+
+	const concurrency = 16
+	for round := range 30 {
+		key := fmt.Sprintf("burst-%d", round)
+		start := make(chan struct{})
+		var (
+			wg      sync.WaitGroup
+			allowed atomic.Int32
+		)
+		wg.Add(concurrency)
+		for range concurrency {
+			go func() {
+				defer wg.Done()
+				<-start
+				r, err := limiter.Allow(ctx, "token", key, now)
+				if err != nil {
+					t.Errorf("Allow: %v", err)
+					return
+				}
+				if r.Allowed {
+					allowed.Add(1)
+				}
+			}()
+		}
+		close(start)
+		wg.Wait()
+		if got := allowed.Load(); got != 8 {
+			t.Fatalf("round %d: allowed=%d, want exactly 8", round, got)
+		}
 	}
 }

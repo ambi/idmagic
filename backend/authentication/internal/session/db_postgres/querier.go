@@ -18,6 +18,8 @@ type Querier interface {
 	// window と lock の双方が過ぎた行だけを回収する (fail-closed 前提を GC で崩さない)。
 	DeleteExpiredThrottleCountersBatch(ctx context.Context, arg DeleteExpiredThrottleCountersBatchParams) (int64, error)
 	DeleteThrottleCounter(ctx context.Context, arg DeleteThrottleCounterParams) error
+	// 行がなければ FOR UPDATE はロックを取らないので、先に行を作る。同時の挿入はここで直列化される。
+	EnsureThrottleCounter(ctx context.Context, arg EnsureThrottleCounterParams) error
 	// 認証解決用の fail-closed lookup。tenant_id / revoked_at / expires_at を DB 層で検証し、
 	// 別 tenant または失効・期限切れの行を返さない。
 	FindActiveAuthenticationSession(ctx context.Context, arg FindActiveAuthenticationSessionParams) (*FindActiveAuthenticationSessionRow, error)

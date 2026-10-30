@@ -75,6 +75,12 @@ func (t *LoginAttemptThrottle) RecordFailure(ctx context.Context, kind sessionpo
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := New(tx)
 
+	if err := q.EnsureThrottleCounter(ctx, EnsureThrottleCounterParams{
+		TenantID: tenantID, Kind: string(kind), IdentifierHash: hash,
+		WindowExpiresAt: now.Add(time.Duration(config.WindowSeconds) * time.Second),
+	}); err != nil {
+		return sessionports.LoginThrottleResult{}, err
+	}
 	row, err := q.LockThrottleCounter(ctx, LockThrottleCounterParams{TenantID: tenantID, Kind: string(kind), IdentifierHash: hash})
 	var (
 		failures    int

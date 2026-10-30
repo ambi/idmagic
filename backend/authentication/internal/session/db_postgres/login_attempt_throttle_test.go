@@ -2,6 +2,9 @@ package db_postgres
 
 import (
 	"context"
+	"fmt"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -73,5 +76,49 @@ func TestLoginAttemptThrottle(t *testing.T) {
 	// GC removes fully-expired rows.
 	if n, err := throttle.DeleteExpiredBatch(ctx, now.Add(3600*time.Second), 100); err != nil || n < 1 {
 		t.Fatalf("gc n=%d err=%v (want >=1)", n, err)
+	}
+}
+
+// TestLoginAttemptThrottleFirstBurstCountsEveryFailure は、行のない識別子への同時の失敗を
+// すべて数えることを確かめる。しきい値と同じ数の同時の失敗で、ちょうど一件がロックを張る。
+//
+//spec:covers REQ-AUTHENTICATION-007: 行のない識別子への同時の失敗をすべて数え、しきい値でロックを張る。
+func TestLoginAttemptThrottleFirstBurstCountsEveryFailure(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	const concurrency = 16
+	throttle := &LoginAttemptThrottle{Pool: db, Configs: sessionports.LoginThrottleConfigs{
+		Account: sessionports.LoginThrottleConfig{WindowSeconds: 120, MaxFailures: concurrency, LockoutSeconds: 300},
+	}}
+	ctx := withTenant(context.Background(), tenant)
+	now := pgtest.Now()
+
+	for round := range 30 {
+		key := fmt.Sprintf("burst-%d", round)
+		start := make(chan struct{})
+		var (
+			wg     sync.WaitGroup
+			locked atomic.Int32
+		)
+		wg.Add(concurrency)
+		for range concurrency {
+			go func() {
+				defer wg.Done()
+				<-start
+				r, err := throttle.RecordFailure(ctx, sessionports.LoginThrottleAccount, key, now)
+				if err != nil {
+					t.Errorf("RecordFailure: %v", err)
+					return
+				}
+				if r.Locked {
+					locked.Add(1)
+				}
+			}()
+		}
+		close(start)
+		wg.Wait()
+		if got := locked.Load(); got != 1 {
+			t.Fatalf("round %d: locked results=%d, want exactly 1", round, got)
+		}
 	}
 }

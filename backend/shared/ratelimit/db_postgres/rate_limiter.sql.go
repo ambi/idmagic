@@ -33,6 +33,30 @@ func (q *Queries) DeleteExpiredRateLimitCountersBatch(ctx context.Context, arg D
 	return result.RowsAffected(), nil
 }
 
+const ensureRateLimitCounter = `-- name: EnsureRateLimitCounter :exec
+INSERT INTO endpoint_rate_limit_counters (tenant_id, policy_id, key_hash, count, window_expires_at)
+VALUES ($1, $2, $3, 0, $4)
+ON CONFLICT (tenant_id, policy_id, key_hash) DO NOTHING
+`
+
+type EnsureRateLimitCounterParams struct {
+	TenantID        string
+	PolicyID        string
+	KeyHash         string
+	WindowExpiresAt time.Time
+}
+
+// 行がなければ FOR UPDATE はロックを取らないので、先に行を作る。同時の挿入はここで直列化される。
+func (q *Queries) EnsureRateLimitCounter(ctx context.Context, arg EnsureRateLimitCounterParams) error {
+	_, err := q.db.Exec(ctx, ensureRateLimitCounter,
+		arg.TenantID,
+		arg.PolicyID,
+		arg.KeyHash,
+		arg.WindowExpiresAt,
+	)
+	return err
+}
+
 const lockRateLimitCounter = `-- name: LockRateLimitCounter :one
 SELECT count, window_expires_at FROM endpoint_rate_limit_counters
 WHERE tenant_id = $1 AND policy_id = $2 AND key_hash = $3

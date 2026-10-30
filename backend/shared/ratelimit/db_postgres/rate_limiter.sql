@@ -1,3 +1,9 @@
+-- name: EnsureRateLimitCounter :exec
+-- 行がなければ FOR UPDATE はロックを取らないので、先に行を作る。同時の挿入はここで直列化される。
+INSERT INTO endpoint_rate_limit_counters (tenant_id, policy_id, key_hash, count, window_expires_at)
+VALUES (@tenant_id, @policy_id, @key_hash, 0, @window_expires_at)
+ON CONFLICT (tenant_id, policy_id, key_hash) DO NOTHING;
+
 -- name: LockRateLimitCounter :one
 -- Allow の read-modify-write を直列化する行ロック取得。
 SELECT count, window_expires_at FROM endpoint_rate_limit_counters

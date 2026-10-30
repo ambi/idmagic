@@ -3,6 +3,12 @@
 SELECT locked_until FROM login_throttle_counters
 WHERE tenant_id = @tenant_id AND kind = @kind AND identifier_hash = @identifier_hash;
 
+-- name: EnsureThrottleCounter :exec
+-- 行がなければ FOR UPDATE はロックを取らないので、先に行を作る。同時の挿入はここで直列化される。
+INSERT INTO login_throttle_counters (tenant_id, kind, identifier_hash, failures, window_expires_at)
+VALUES (@tenant_id, @kind, @identifier_hash, 0, @window_expires_at)
+ON CONFLICT (tenant_id, kind, identifier_hash) DO NOTHING;
+
 -- name: LockThrottleCounter :one
 -- RecordFailure の read-modify-write を直列化する行ロック取得。
 SELECT failures, window_expires_at, locked_until FROM login_throttle_counters

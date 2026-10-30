@@ -52,6 +52,30 @@ func (q *Queries) DeleteThrottleCounter(ctx context.Context, arg DeleteThrottleC
 	return err
 }
 
+const ensureThrottleCounter = `-- name: EnsureThrottleCounter :exec
+INSERT INTO login_throttle_counters (tenant_id, kind, identifier_hash, failures, window_expires_at)
+VALUES ($1, $2, $3, 0, $4)
+ON CONFLICT (tenant_id, kind, identifier_hash) DO NOTHING
+`
+
+type EnsureThrottleCounterParams struct {
+	TenantID        string
+	Kind            string
+	IdentifierHash  string
+	WindowExpiresAt time.Time
+}
+
+// 行がなければ FOR UPDATE はロックを取らないので、先に行を作る。同時の挿入はここで直列化される。
+func (q *Queries) EnsureThrottleCounter(ctx context.Context, arg EnsureThrottleCounterParams) error {
+	_, err := q.db.Exec(ctx, ensureThrottleCounter,
+		arg.TenantID,
+		arg.Kind,
+		arg.IdentifierHash,
+		arg.WindowExpiresAt,
+	)
+	return err
+}
+
 const getThrottleLock = `-- name: GetThrottleLock :one
 SELECT locked_until FROM login_throttle_counters
 WHERE tenant_id = $1 AND kind = $2 AND identifier_hash = $3

@@ -10,6 +10,8 @@ import (
 
 type Querier interface {
 	DeleteExpiredRateLimitCountersBatch(ctx context.Context, arg DeleteExpiredRateLimitCountersBatchParams) (int64, error)
+	// 行がなければ FOR UPDATE はロックを取らないので、先に行を作る。同時の挿入はここで直列化される。
+	EnsureRateLimitCounter(ctx context.Context, arg EnsureRateLimitCounterParams) error
 	// Allow の read-modify-write を直列化する行ロック取得。
 	LockRateLimitCounter(ctx context.Context, arg LockRateLimitCounterParams) (*LockRateLimitCounterRow, error)
 	UpsertRateLimitCounter(ctx context.Context, arg UpsertRateLimitCounterParams) error
