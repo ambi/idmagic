@@ -53,6 +53,9 @@ type SecurityEventDeliveryRepository interface {
 	// ListDue は next_attempt_at <= now の pending/failed 配送を返す (projector/worker が消費する)。
 	ListDue(ctx context.Context, now time.Time, limit int) ([]*ssdomain.SecurityEventDelivery, error)
 	Save(ctx context.Context, delivery *ssdomain.SecurityEventDelivery) error
+	// RedeliverDeadLettered は stream の dead_letter の配送を不可分に pending へ戻し、
+	// 戻した配送を返す。並行した要求でも、各配送を戻すのは一方だけである。
+	RedeliverDeadLettered(ctx context.Context, tenantID, streamID string) ([]*ssdomain.SecurityEventDelivery, error)
 }
 
 // ReceivedSecurityEventRepository は inbound SET の受理記録を永続化し、jti 重複を検知する。

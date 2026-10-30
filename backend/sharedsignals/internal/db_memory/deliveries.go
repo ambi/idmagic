@@ -48,7 +48,7 @@ func (r *SecurityEventDeliveryRepository) ListDue(_ context.Context, now time.Ti
 	defer r.mu.RUnlock()
 	out := make([]*ssdomain.SecurityEventDelivery, 0)
 	for _, d := range r.deliveries {
-		if d.IsTerminal() {
+		if d.IsSettled() {
 			continue
 		}
 		if d.NextAttemptAt != nil && d.NextAttemptAt.After(now) {
@@ -60,6 +60,22 @@ func (r *SecurityEventDeliveryRepository) ListDue(_ context.Context, now time.Ti
 	if limit > 0 && len(out) > limit {
 		out = out[:limit]
 	}
+	return out, nil
+}
+
+// RedeliverDeadLettered は stream の dead_letter の配送を pending へ戻し、created_at 昇順で返す。
+func (r *SecurityEventDeliveryRepository) RedeliverDeadLettered(_ context.Context, tenantID, streamID string) ([]*ssdomain.SecurityEventDelivery, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]*ssdomain.SecurityEventDelivery, 0)
+	for _, d := range r.deliveries {
+		if d.TenantID != tenantID || d.StreamID != streamID || d.Status != ssdomain.SecurityEventDeliveryStatusDeadLetter {
+			continue
+		}
+		d.Status, d.AttemptCount, d.NextAttemptAt, d.LastError = ssdomain.SecurityEventDeliveryStatusPending, 0, nil, nil
+		out = append(out, cloneDelivery(d))
+	}
+	slices.SortFunc(out, func(a, b *ssdomain.SecurityEventDelivery) int { return a.CreatedAt.Compare(b.CreatedAt) })
 	return out, nil
 }
 

@@ -264,6 +264,7 @@ var generatedOperations = map[string]Operation{
 	"PutAuthorizationModel": {Method: "POST", Path: "/api/admin/v1/authorization/model", Deprecated: false, ApiTokenScopes: []string{"interactive_session"}},
 	"ReadinessProbe": {Method: "GET", Path: "/readyz", Deprecated: false, ApiTokenScopes: nil},
 	"ReceiveSecurityEvent": {Method: "POST", Path: "/ssf/streams/{stream_id}/events", Deprecated: false, ApiTokenScopes: nil},
+	"RedeliverDeadLetteredDeliveries": {Method: "POST", Path: "/api/admin/v1/shared-signals/streams/{stream_id}/deliveries/redeliver", Deprecated: false, ApiTokenScopes: []string{"shared-signals:write"}},
 	"RefreshWorkloadTrustBundleJWKS": {Method: "POST", Path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/refresh", Deprecated: false, ApiTokenScopes: []string{"workload-identity:write"}},
 	"RegisterAgent": {Method: "POST", Path: "/api/admin/v1/agents", Deprecated: false, ApiTokenScopes: []string{"agents:write"}},
 	"RegisterClient": {Method: "POST", Path: "/register", Deprecated: false, ApiTokenScopes: nil},

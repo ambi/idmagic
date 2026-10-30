@@ -38,7 +38,7 @@ SSF の送受信に必要なストリームと Agent、User ごとの失効エ�
 | [失効エポック](features/revocation.md) | 失効エポックの前進と、イントロスペクションへの即時の反映 |
 | [SSF ストリームの管理](features/stream.md) | 送信側と受信側のストリームの登録、更新、無効化と再有効化、削除 |
 | [SET の受信](features/receiver.md) | 外部の送信側からの SET の検証、主体の解決、失効エポックへの反映 |
-| [SET の配送](features/transmitter.md) | 外部の受信側への CAEP のイベントの配送、再試行、配信不能 |
+| [SET の配送](features/transmitter.md) | 外部の受信側への CAEP のイベントの配送、再試行、配信不能、配信不能の配送のやり直し |
 
 ## 文書
 

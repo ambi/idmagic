@@ -125,6 +125,18 @@ func (e *SecurityEventDeliveryDeadLettered) EventType() string {
 }
 func (e *SecurityEventDeliveryDeadLettered) OccurredAt() time.Time { return e.At }
 
+type SecurityEventDeliveryRedeliveryRequested struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	StreamID string    `json:"streamId"`
+	SetJTI   string    `json:"setJti"`
+}
+
+func (e *SecurityEventDeliveryRedeliveryRequested) EventType() string {
+	return "SecurityEventDeliveryRedeliveryRequested"
+}
+func (e *SecurityEventDeliveryRedeliveryRequested) OccurredAt() time.Time { return e.At }
+
 type SecurityEventReceived struct {
 	At       time.Time     `json:"-"`
 	TenantID string        `json:"tenantId"`

@@ -102,6 +102,51 @@ func (q *Queries) ListSecurityEventDeliveriesByStream(ctx context.Context, arg L
 	return items, nil
 }
 
+const redeliverDeadLetteredSecurityEventDeliveries = `-- name: RedeliverDeadLetteredSecurityEventDeliveries :many
+UPDATE security_event_deliveries
+SET status='pending',attempt_count=0,next_attempt_at=NULL,last_error=NULL
+WHERE tenant_id=$1 AND stream_id=$2 AND status='dead_letter'
+RETURNING id,tenant_id,stream_id,set_jti,set_payload,status,attempt_count,next_attempt_at,
+last_error,created_at,delivered_at
+`
+
+type RedeliverDeadLetteredSecurityEventDeliveriesParams struct {
+	TenantID string
+	StreamID string
+}
+
+func (q *Queries) RedeliverDeadLetteredSecurityEventDeliveries(ctx context.Context, arg RedeliverDeadLetteredSecurityEventDeliveriesParams) ([]*SecurityEventDelivery, error) {
+	rows, err := q.db.Query(ctx, redeliverDeadLetteredSecurityEventDeliveries, arg.TenantID, arg.StreamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*SecurityEventDelivery
+	for rows.Next() {
+		var i SecurityEventDelivery
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.StreamID,
+			&i.SetJti,
+			&i.SetPayload,
+			&i.Status,
+			&i.AttemptCount,
+			&i.NextAttemptAt,
+			&i.LastError,
+			&i.CreatedAt,
+			&i.DeliveredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const saveSecurityEventDelivery = `-- name: SaveSecurityEventDelivery :exec
 INSERT INTO security_event_deliveries (id,tenant_id,stream_id,set_jti,set_payload,status,
  attempt_count,next_attempt_at,last_error,created_at,delivered_at)

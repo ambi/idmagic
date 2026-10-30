@@ -71,21 +71,21 @@ func TestSecurityEventDeliveryValidateHappyAndFailure(t *testing.T) {
 	}
 }
 
-func TestSecurityEventDeliveryIsTerminal(t *testing.T) {
+func TestSecurityEventDeliveryIsSettled(t *testing.T) {
 	d := validDelivery()
-	if d.IsTerminal() {
+	if d.IsSettled() {
 		t.Fatal("pending delivery must not be terminal")
 	}
 	d.Status = ssdomain.SecurityEventDeliveryStatusDelivered
-	if !d.IsTerminal() {
+	if !d.IsSettled() {
 		t.Fatal("delivered must be terminal")
 	}
 	d.Status = ssdomain.SecurityEventDeliveryStatusDeadLetter
-	if !d.IsTerminal() {
+	if !d.IsSettled() {
 		t.Fatal("dead_letter must be terminal")
 	}
 	d.Status = ssdomain.SecurityEventDeliveryStatusFailed
-	if d.IsTerminal() {
+	if d.IsSettled() {
 		t.Fatal("failed must not be terminal (still retryable)")
 	}
 }

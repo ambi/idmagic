@@ -351,3 +351,31 @@ func ListSecurityEventDeliveries(ctx context.Context, deps AdminStreamDeps, stre
 	}
 	return deps.DeliveryRepo.ListByStream(ctx, tenantID, streamID)
 }
+
+// RedeliverDeadLetteredDeliveries は stream の dead_letter の配送を pending へ戻し、
+// 戻した件数を返す (REQ-SHAREDSIGNALS-013)。SET は作り直さないので、受信側は同じ jti で
+// 重複を見分けられる。戻した後のイベントの失敗は残りの発行を止めず、まとめて返す。
+func RedeliverDeadLetteredDeliveries(ctx context.Context, deps AdminStreamDeps, streamID string, now time.Time) (int, error) {
+	tenantID := tenantports.TenantID(ctx)
+	stream, err := deps.StreamRepo.FindByID(ctx, tenantID, streamID)
+	if err != nil {
+		return 0, err
+	}
+	if stream == nil {
+		return 0, ErrStreamNotFound
+	}
+	if !stream.IsEnabled() {
+		return 0, ErrStreamDisabled
+	}
+	redelivered, err := deps.DeliveryRepo.RedeliverDeadLettered(ctx, tenantID, streamID)
+	if err != nil {
+		return 0, err
+	}
+	var emitErrs []error
+	for _, d := range redelivered {
+		emitErrs = append(emitErrs, emit(deps.Emit, &ssdomain.SecurityEventDeliveryRedeliveryRequested{
+			At: now, TenantID: tenantID, StreamID: streamID, SetJTI: d.SetJTI,
+		}))
+	}
+	return len(redelivered), errors.Join(emitErrs...)
+}

@@ -66,7 +66,7 @@
 
 #### REQ-SHAREDSIGNALS-011 SsfStream の登録と状態変更は管理者に限られる
 
-- `admin` のロールを持たない利用者がストリームの登録、一覧、取得、更新、無効化、再有効化、削除、配送の一覧を要求した場合、SharedSignals は、403 と `access_denied` で拒否し、ストリームを変えない。
+- `admin` のロールを持たない利用者がストリームの登録、一覧、取得、更新、無効化、再有効化、削除、配送の一覧、配送のやり直しを要求した場合、SharedSignals は、403 と `access_denied` で拒否し、ストリームを変えない。
 - **例**：EX-SHAREDSIGNALS-011-01、EX-SHAREDSIGNALS-011-02
 
 ### 管理者によるストリームの無効化

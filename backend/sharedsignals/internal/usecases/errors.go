@@ -10,6 +10,7 @@ import "errors"
 // path (matches the established convention, e.g. workloadidentity/usecases).
 var (
 	ErrStreamNotFound          = errors.New("ssf stream not found")
+	ErrStreamDisabled          = errors.New("ssf stream is disabled")
 	ErrEventTypesEmpty         = errors.New("event_types must not be empty")
 	ErrEventTypeInvalid        = errors.New("event_types contains an unknown caep event type")
 	ErrDeliveryEndpointInvalid = errors.New("delivery_endpoint is required and must be an https URL")

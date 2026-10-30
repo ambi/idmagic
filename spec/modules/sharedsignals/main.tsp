@@ -360,6 +360,58 @@ op ListSecurityEventDeliveries(
   @path stream_id: string
 ): ListSecurityEventDeliveriesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListSecurityEventDeliveriesError400 | ListSecurityEventDeliveriesError403;
 
+model RedeliverDeadLetteredDeliveriesHttpResponse {
+  @doc("`pending` に戻した配送の件数。`dead_letter` の配送がなければ 0 である。")
+  redelivered_count: int64;
+}
+
+model RedeliverDeadLetteredDeliveriesSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: RedeliverDeadLetteredDeliveriesHttpResponse;
+}
+
+union RedeliverDeadLetteredDeliveriesError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model RedeliverDeadLetteredDeliveriesError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: RedeliverDeadLetteredDeliveriesError403Body;
+}
+
+union RedeliverDeadLetteredDeliveriesError404Body {
+  IdMagic.Contract.SsfStreamNotFoundError,
+}
+
+model RedeliverDeadLetteredDeliveriesError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: RedeliverDeadLetteredDeliveriesError404Body;
+}
+
+union RedeliverDeadLetteredDeliveriesError409Body {
+  IdMagic.Contract.SsfStreamDisabledError,
+}
+
+model RedeliverDeadLetteredDeliveriesError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: RedeliverDeadLetteredDeliveriesError409Body;
+}
+
+@doc("管理者が、受信側の復旧の後に、SsfStream の `dead_letter` の配送をすべて `pending` に戻す。SET は作り直さず、同じ `jti` のまま送る。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
+@TypeSpec.OpenAPI.operationId("RedeliverDeadLetteredDeliveries")
+@route("/api/admin/v1/shared-signals/streams/{stream_id}/deliveries/redeliver")
+@post
+op RedeliverDeadLetteredDeliveries(
+  @path stream_id: string
+): RedeliverDeadLetteredDeliveriesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | RedeliverDeadLetteredDeliveriesError403 | RedeliverDeadLetteredDeliveriesError404 | RedeliverDeadLetteredDeliveriesError409;
+
 model ReceiveSecurityEventSuccess_202 {
   @statusCode statusCode: 202;
 }

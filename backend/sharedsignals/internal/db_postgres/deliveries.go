@@ -62,6 +62,22 @@ func (r *SecurityEventDeliveryRepository) ListDue(ctx context.Context, now time.
 	return out, nil
 }
 
+func (r *SecurityEventDeliveryRepository) RedeliverDeadLettered(ctx context.Context, tenantID, streamID string) ([]*ssdomain.SecurityEventDelivery, error) {
+	rows, err := New(r.Pool).RedeliverDeadLetteredSecurityEventDeliveries(ctx, RedeliverDeadLetteredSecurityEventDeliveriesParams{TenantID: tenantID, StreamID: streamID})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*ssdomain.SecurityEventDelivery, 0, len(rows))
+	for _, row := range rows {
+		d, err := deliveryFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, nil
+}
+
 func (r *SecurityEventDeliveryRepository) Save(ctx context.Context, d *ssdomain.SecurityEventDelivery) error {
 	payload, err := json.Marshal(d.Set)
 	if err != nil {

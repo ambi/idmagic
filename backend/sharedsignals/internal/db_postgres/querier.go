@@ -23,6 +23,7 @@ type Querier interface {
 	ListDueSecurityEventDeliveries(ctx context.Context, arg ListDueSecurityEventDeliveriesParams) ([]*SecurityEventDelivery, error)
 	ListSecurityEventDeliveriesByStream(ctx context.Context, arg ListSecurityEventDeliveriesByStreamParams) ([]*SecurityEventDelivery, error)
 	ListSsfStreamsByTenant(ctx context.Context, tenantID string) ([]*SsfStream, error)
+	RedeliverDeadLetteredSecurityEventDeliveries(ctx context.Context, arg RedeliverDeadLetteredSecurityEventDeliveriesParams) ([]*SecurityEventDelivery, error)
 	SaveReceivedSecurityEvent(ctx context.Context, arg SaveReceivedSecurityEventParams) error
 	SaveSecurityEventDelivery(ctx context.Context, arg SaveSecurityEventDeliveryParams) error
 	SaveSsfReceiverConfig(ctx context.Context, arg SaveSsfReceiverConfigParams) error

@@ -18,8 +18,8 @@
     },
     {
       "name": "dead_letter",
-      "kind": "terminal",
-      "meaning": "`max_delivery_attempts` を使い切った。以後は配送しない"
+      "kind": "—",
+      "meaning": "`max_delivery_attempts` を使い切った。管理者がやり直すまで配送しない"
     }
   ],
   "transitions": [
@@ -50,11 +50,19 @@
       "guard": "—",
       "to": "pending",
       "effects": ""
+    },
+    {
+      "from": "dead_letter",
+      "event": "SecurityEventDeliveryRedeliveryRequested",
+      "guard": "—",
+      "to": "pending",
+      "effects": ""
     }
   ],
   "operations": [
     "配送の試行",
-    "再試行の時刻の到来"
+    "再試行の時刻の到来",
+    "管理者によるやり直し"
   ],
   "matrix": {
     "pending": {
@@ -79,6 +87,11 @@
         {
           "kind": "noop"
         }
+      ],
+      "管理者によるやり直し": [
+        {
+          "kind": "noop"
+        }
       ]
     },
     "delivered": {
@@ -88,6 +101,11 @@
         }
       ],
       "再試行の時刻の到来": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "管理者によるやり直し": [
         {
           "kind": "noop"
         }
@@ -104,6 +122,11 @@
           "kind": "transition",
           "to": "pending"
         }
+      ],
+      "管理者によるやり直し": [
+        {
+          "kind": "noop"
+        }
       ]
     },
     "dead_letter": {
@@ -115,6 +138,12 @@
       "再試行の時刻の到来": [
         {
           "kind": "noop"
+        }
+      ],
+      "管理者によるやり直し": [
+        {
+          "kind": "transition",
+          "to": "pending"
         }
       ]
     }

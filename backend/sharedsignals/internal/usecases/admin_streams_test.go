@@ -288,3 +288,34 @@ func TestListSecurityEventDeliveries_ReturnsStreamDeliveries(t *testing.T) {
 		t.Fatalf("expected ErrStreamNotFound, got %v", err)
 	}
 }
+
+// 監査の欠落は許容するので、一件のイベントの失敗で残りの発行を止めず、失敗は呼び出し元へ返す。
+//
+//spec:covers REQ-SHAREDSIGNALS-013: イベントの発行に失敗しても、戻した配送ごとの発行をすべて試みる。
+func TestRedeliverDeadLetteredDeliveries_EmitFailureDoesNotStopTheRest(t *testing.T) {
+	ctx := adminStreamTestCtx()
+	deps, _ := newAdminStreamDeps(t)
+	now := time.Now().UTC()
+	stream, err := ssusecases.RegisterSsfTransmitterStream(ctx, deps, ssusecases.RegisterSsfTransmitterStreamInput{
+		EventTypes: []ssdomain.CaepEventType{ssdomain.CaepEventTypeSessionRevoked}, DeliveryEndpoint: "https://receiver.example/hook", Audience: "aud",
+	}, now)
+	if err != nil {
+		t.Fatalf("RegisterSsfTransmitterStream: %v", err)
+	}
+	for _, id := range []string{"d1", "d2"} {
+		if err := deps.DeliveryRepo.Save(ctx, &ssdomain.SecurityEventDelivery{
+			ID: id, TenantID: "tenant-a", StreamID: stream.ID, SetJTI: id,
+			Status: ssdomain.SecurityEventDeliveryStatusDeadLetter, CreatedAt: now,
+		}); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+	}
+	emitFailure := errors.New("audit down")
+	attempts := 0
+	deps.Emit = func(spec.DomainEvent) error { attempts++; return emitFailure }
+
+	count, err := ssusecases.RedeliverDeadLetteredDeliveries(ctx, deps, stream.ID, now)
+	if count != 2 || attempts != 2 || !errors.Is(err, emitFailure) {
+		t.Fatalf("count=%d attempts=%d err=%v, want 2 attempts and the failure returned", count, attempts, err)
+	}
+}

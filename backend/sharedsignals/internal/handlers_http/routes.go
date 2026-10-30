@@ -74,6 +74,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/v1/shared-signals/streams/:stream_id/enable", d.handleEnableStream)
 	g.DELETE("/api/admin/v1/shared-signals/streams/:stream_id", d.handleDeleteStream)
 	g.GET("/api/admin/v1/shared-signals/streams/:stream_id/deliveries", d.handleListSecurityEventDeliveries)
+	g.POST("/api/admin/v1/shared-signals/streams/:stream_id/deliveries/redeliver", d.handleRedeliverDeadLetteredDeliveries)
 	g.POST("/ssf/streams/:stream_id/events", d.handleReceiveSecurityEvent)
 }
 
@@ -316,6 +317,20 @@ func (d Deps) handleListSecurityEventDeliveries(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"deliveries": out})
 }
 
+func (d Deps) handleRedeliverDeadLetteredDeliveries(c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	if _, err := d.RequireAdmin(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	count, err := usecases.RedeliverDeadLetteredDeliveries(c.Request().Context(), d.adminDeps(), c.Param("stream_id"), time.Now().UTC())
+	if err != nil {
+		return writeAdminSharedSignalsError(c, err)
+	}
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"redelivered_count": count})
+}
+
 // writeAdminSharedSignalsError は管理 API のエラーを返す。管理 API は汎用 API なので
 // 既定の envelope である RFC 9457 Problem Details を使う (docs/design/application/api-guidelines.md
 // の「エラーレスポンスの形式」)。inbound SET receiver は形式が違うので
@@ -324,6 +339,8 @@ func writeAdminSharedSignalsError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, usecases.ErrStreamNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "ssf_stream_not_found", "The SSF stream does not exist.")
+	case errors.Is(err, usecases.ErrStreamDisabled):
+		return support.WriteProblem(c, http.StatusConflict, "ssf_stream_disabled", "The SSF stream is disabled.")
 	case errors.Is(err, usecases.ErrEventTypesEmpty):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_stream_event_types_required", "event_types must not be empty.")
 	case errors.Is(err, usecases.ErrEventTypeInvalid):

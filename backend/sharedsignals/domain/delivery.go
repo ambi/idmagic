@@ -44,8 +44,9 @@ func (d SecurityEventDelivery) Validate() error {
 	return d.Set.Validate()
 }
 
-// IsTerminal は SecurityEventDeliveryLifecycle の終端状態 (delivered / dead_letter) かを返す。
-func (d SecurityEventDelivery) IsTerminal() bool {
+// IsSettled は worker の試行の対象でない状態 (delivered / dead_letter) かを返す。
+// dead_letter は管理者のやり直しで pending へ戻るので、終端状態ではない。
+func (d SecurityEventDelivery) IsSettled() bool {
 	return d.Status == SecurityEventDeliveryStatusDelivered || d.Status == SecurityEventDeliveryStatusDeadLetter
 }
 

@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：192
+経路の数：193
 
 | 経路 | メソッド |
 | --- | --- |
@@ -206,6 +206,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/shared-signals/streams/transmitter` | POST |
 | `/api/admin/v1/shared-signals/streams/{stream_id}` | DELETE, GET, PATCH |
 | `/api/admin/v1/shared-signals/streams/{stream_id}/deliveries` | GET |
+| `/api/admin/v1/shared-signals/streams/{stream_id}/deliveries/redeliver` | POST |
 | `/api/admin/v1/shared-signals/streams/{stream_id}/disable` | POST |
 | `/api/admin/v1/shared-signals/streams/{stream_id}/enable` | POST |
 | `/api/admin/v1/system/audit-events/{id}` | GET |

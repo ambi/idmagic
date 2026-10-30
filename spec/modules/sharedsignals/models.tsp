@@ -29,6 +29,14 @@ model SsfStreamEventTypeInvalidError is ProblemDetails;
 model SsfTransmitterDeliveryEndpointInvalidError is ProblemDetails;
 
 
+@doc("パスの `stream_id` が、このテナントの SsfStream を指さない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:ssf_stream_not_found` である。")
+model SsfStreamNotFoundError is ProblemDetails;
+
+
+@doc("SsfStream が `disabled` なので、配送をやり直せない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:ssf_stream_disabled` である。")
+model SsfStreamDisabledError is ProblemDetails;
+
+
 @doc("`audience` がない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:ssf_transmitter_audience_required` である。")
 model SsfTransmitterAudienceRequiredError is ProblemDetails;
 
@@ -364,6 +372,15 @@ model SecurityEventDeliveryRetried {
 
 @doc("SecurityEventDelivery が `max_delivery_attempts` を使い切り、dead_letter へ移った。")
 model SecurityEventDeliveryDeadLettered {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  streamId: string;
+  setJti: string;
+}
+
+
+@doc("管理者のやり直しで、dead_letter の SecurityEventDelivery を pending へ戻した。")
+model SecurityEventDeliveryRedeliveryRequested {
   occurredAt: utcDateTime;
   tenantId: string;
   streamId: string;
