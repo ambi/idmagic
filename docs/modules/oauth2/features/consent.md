@@ -70,6 +70,8 @@
 
 - 本人が接続済みのアプリを一覧したとき、OAuth2 は、200 と本人の `Granted` の同意だけを返す。
 - 本人がクライアントの同意を撤回したとき、OAuth2 は、204 を返し、同意を `Revoked` にして `revoked_at` を記録し、`ConsentRevoked` を発行する。
+- 本人が `Granted` の同意を撤回したとき、OAuth2 は、所属テナントの `consents` の使用量を 1 減らす。
+- 本人が `Granted` ではない同意を撤回したとき、OAuth2 は、`consents` の使用量を変えない。
 - 本人に同意のないクライアントの撤回を受けた場合、OAuth2 は、404 と `consent_not_found` で拒否する。
 - **例**：EX-OAUTH2-032-01
 

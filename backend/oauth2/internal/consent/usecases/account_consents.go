@@ -32,17 +32,18 @@ func ListConsentsForSub(ctx context.Context, deps ConsentDeps, sub string) ([]*d
 	return mine, nil
 }
 
-// AccountConsents は consentports.AccountConsents を実装する。管理者の撤回と異なり
-// QuotaRepo を持たないので、本人の撤回は consents のクォータの枠を空けない。
+// AccountConsents は consentports.AccountConsents を実装する。本人の撤回も管理者の撤回と
+// 同じく、Granted からの遷移で consents のクォータの枠を空ける。
 type AccountConsents struct {
 	ConsentRepo consentports.ConsentRepository
 	Emit        func(spec.DomainEvent)
+	QuotaRepo   tenantports.QuotaRepository
 }
 
 var _ consentports.AccountConsents = AccountConsents{}
 
 func (a AccountConsents) deps() ConsentDeps {
-	return ConsentDeps{ConsentRepo: a.ConsentRepo, Emit: a.Emit}
+	return ConsentDeps(a)
 }
 
 func (a AccountConsents) ListGranted(ctx context.Context, sub string) ([]*domain.Consent, error) {

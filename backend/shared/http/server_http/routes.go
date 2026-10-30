@@ -412,7 +412,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		SCIMUsers:               d.Sourcing.SCIMUserLookup(),
 		SCIMGroups:              d.Sourcing.SCIMGroupLookup(),
 		GroupAttrSchemaRepo:     d.IdManagement.GroupAttrSchemaRepo,
-		Consents:                accountConsentExport(d.OAuth2.AccountConsents(d.Emit)),
+		Consents:                accountConsentExport(d.OAuth2.AccountConsents(d.Emit, d.Tenancy.QuotaRepo)),
 		EmailSender:             d.Notification.EmailSender,
 		Notifier:                d.Notification.Notifier,
 		JobRepo:                 d.Jobs.Repo,

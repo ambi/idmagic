@@ -70,8 +70,8 @@ type Module struct {
 }
 
 // AccountConsents は、利用者本人の同意の一覧と撤回の操作を返す。
-func (m Module) AccountConsents(emit func(spec.DomainEvent)) consentports.AccountConsents {
-	return consentusecases.AccountConsents{ConsentRepo: m.ConsentRepo, Emit: emit}
+func (m Module) AccountConsents(emit func(spec.DomainEvent), quota tenantports.QuotaRepository) consentports.AccountConsents {
+	return consentusecases.AccountConsents{ConsentRepo: m.ConsentRepo, Emit: emit, QuotaRepo: quota}
 }
 
 // SessionTokenRevoker は、ログインセッション単位でトークンを失効させる操作を返す。

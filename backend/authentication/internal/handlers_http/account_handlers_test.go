@@ -40,7 +40,9 @@ import (
 	consentdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -54,6 +56,7 @@ type accountHandlerFixture struct {
 	webauthn *webauthnmemory.WebAuthnCredentialRepository
 	recovery *recoverymemory.RecoveryCodeRepository
 	policies policyports.DefaultSignInPolicyRepository
+	quotas   tenantports.QuotaRepository
 }
 
 func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
@@ -65,6 +68,7 @@ func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
 	webauthnRepo := webauthnmemory.NewWebAuthnCredentialRepository()
 	recoveryRepo := recoverymemory.NewRecoveryCodeRepository()
 	policies := signinpolicy.NewMemoryModule().DefaultRepo
+	quotas := tenancy.NewMemoryModule().QuotaRepo
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -72,6 +76,7 @@ func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
 		UserRepo:               users,
 		AuthnResolver:          authusecases.DemoHeaderResolver{},
 		OAuth2:                 oauth2.Module{ConsentRepo: consents},
+		Tenancy:                tenancy.Module{QuotaRepo: quotas},
 		Audit:                  audit.Module{AuditEventRepo: auditStore},
 		MfaFactorRepo:          factors,
 		WebAuthnCredentialRepo: webauthnRepo,
@@ -80,7 +85,7 @@ func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
 	})
 	return &accountHandlerFixture{
 		e: e, users: users, consents: consents, factors: factors, audit: auditStore,
-		webauthn: webauthnRepo, recovery: recoveryRepo, policies: policies,
+		webauthn: webauthnRepo, recovery: recoveryRepo, policies: policies, quotas: quotas,
 	}
 }
 
@@ -234,6 +239,83 @@ func TestHandleRevokeAccountConsentSucceeds(t *testing.T) {
 	stored, err := f.consents.Find(context.Background(), tenancydomain.DefaultTenantID, "alice", "client-1")
 	if err != nil || stored == nil || stored.State != consentdomain.ConsentRevoked || stored.RevokedAt == nil {
 		t.Fatalf("revoked consent=%+v err=%v", stored, err)
+	}
+}
+
+// revokeConsent は、CSRF の cookie とトークンを揃えて本人の撤回を要求する。
+func (f *accountHandlerFixture) revokeConsent(t *testing.T, sub, clientID string) *httptest.ResponseRecorder {
+	t.Helper()
+	ctxReq := httptest.NewRequest(http.MethodGet, defaultRealmPath("/api/auth/account"), http.NoBody)
+	ctxReq.Header.Set("X-Demo-Sub", sub)
+	ctxResp := httptest.NewRecorder()
+	f.e.ServeHTTP(ctxResp, ctxReq)
+	cookies := ctxResp.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatalf("expected a CSRF cookie from account context, status=%d body=%s", ctxResp.Code, ctxResp.Body.String())
+	}
+	csrfCookie := cookies[0]
+
+	request := httptest.NewRequest(http.MethodPost, defaultRealmPath("/api/account/v1/consents/"+clientID+"/revoke"), http.NoBody)
+	request.Header.Set("X-Demo-Sub", sub)
+	request.Header.Set("Origin", "http://idp.test")
+	request.Header.Set("X-Csrf-Token", csrfCookie.Value)
+	request.AddCookie(csrfCookie)
+	response := httptest.NewRecorder()
+	f.e.ServeHTTP(response, request)
+	return response
+}
+
+// seedGrantedConsents は、付与の経路と同じく同意ごとに consents の使用量を足す。
+func (f *accountHandlerFixture) seedGrantedConsents(t *testing.T, sub string, clientIDs ...string) {
+	t.Helper()
+	now := time.Now().UTC()
+	for _, clientID := range clientIDs {
+		if err := f.quotas.CheckAndIncrement(context.Background(), tenancydomain.DefaultTenantID, tenancydomain.ResourceConsents, 1); err != nil {
+			t.Fatal(err)
+		}
+		if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &consentdomain.Consent{
+			UserID: sub, ClientID: clientID, Scopes: []string{"openid"},
+			State: consentdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func (f *accountHandlerFixture) consentUsage(t *testing.T) int {
+	t.Helper()
+	usage, err := f.quotas.GetUsage(context.Background(), tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return usage.Consents
+}
+
+//spec:covers REQ-OAUTH2-032: 本人が Granted の同意を撤回すると consents の使用量が 1 減り、ほかの同意の分は残る
+func TestHandleRevokeAccountConsentReleasesConsentQuota(t *testing.T) {
+	f := newAccountHandlerFixture(t)
+	f.seedUser(t, "alice")
+	f.seedGrantedConsents(t, "alice", "client-1", "client-2")
+
+	authContractEmpty(t, f.revokeConsent(t, "alice", "client-1"))
+
+	if got := f.consentUsage(t); got != 1 {
+		t.Fatalf("consents usage=%d, want 1", got)
+	}
+}
+
+//spec:covers REQ-OAUTH2-032: 撤回済みの同意をもう一度撤回しても consents の使用量は変わらない
+func TestHandleRevokeAccountConsentAgainKeepsConsentQuota(t *testing.T) {
+	f := newAccountHandlerFixture(t)
+	f.seedUser(t, "alice")
+	f.seedGrantedConsents(t, "alice", "client-1", "client-2")
+	authContractEmpty(t, f.revokeConsent(t, "alice", "client-1"))
+	usageAfterFirst := f.consentUsage(t)
+
+	authContractEmpty(t, f.revokeConsent(t, "alice", "client-1"))
+
+	if got := f.consentUsage(t); got != usageAfterFirst {
+		t.Fatalf("consents usage=%d after the repeated revoke, want %d", got, usageAfterFirst)
 	}
 }
 

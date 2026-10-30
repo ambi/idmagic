@@ -35,7 +35,7 @@ func toAccountConsentResponse(consent *domain.Consent, clientName string) accoun
 // accountConsents は本人の操作に使う同意の usecase である。管理者の撤回と異なり
 // クォータの枠を空けない。
 func (d Deps) accountConsents() consentusecases.AccountConsents {
-	return consentusecases.AccountConsents{ConsentRepo: d.ConsentRepo, Emit: d.Emit}
+	return consentusecases.AccountConsents{ConsentRepo: d.ConsentRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo}
 }
 
 func (d Deps) handleListMyConsents(c *echo.Context) error {
