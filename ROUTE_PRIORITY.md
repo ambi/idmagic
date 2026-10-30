@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：193
+経路の数：195
 
 | 経路 | メソッド |
 | --- | --- |
@@ -223,6 +223,8 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/tenant/user-attribute-schema` | GET, PUT |
 | `/api/admin/v1/tenants` | GET, POST |
 | `/api/admin/v1/tenants/{target_tenant_id}` | GET, PATCH |
+| `/api/admin/v1/tenants/{target_tenant_id}/data-key/rotate` | POST |
+| `/api/admin/v1/tenants/{target_tenant_id}/data-key/versions/{version}/disable` | POST |
 | `/api/admin/v1/tenants/{target_tenant_id}/disable` | POST |
 | `/api/admin/v1/tenants/{target_tenant_id}/enable` | POST |
 | `/api/admin/v1/tenants/{target_tenant_id}/endpoint-style` | PUT |

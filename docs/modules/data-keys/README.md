@@ -22,7 +22,9 @@ DEK はマスターキーのプロバイダーでラップしてデータベー�
 | 項目の暗号化と復号 | 項目を持つモジュールの保存と読み取り | 呼び出し元のプロセスが `FieldCipher` を同期的に呼ぶ | [DataKeys のセキュリティ](security.md) |
 | 再暗号化 | ローテーションと、`idmagic-batch data-key-reencryption-sweep` | `worker` が `data_key_reencryption` のジョブを実行する | [DEK のライフサイクルの設計](features/lifecycle.md#実現方式) |
 | 健全性の一覧 | 制御面の管理 API への要求 | `api` が、`RequireControlPlaneUser` で制御面主体を確かめてからユースケースを呼ぶ | [DEK の健全性の一覧](features/health.md) |
-| ローテーション、無効化、破棄 | なし | 呼び出す経路がない | [DataKeys のリスク](risks.md) |
+| 定期のローテーションと再暗号化の回収 | `idmagic-batch data-key-lifecycle` の CronJob（毎日） | `batch` がすべてのテナントを順に処理する | [DEK のライフサイクル](features/lifecycle.md#req-datakeys-007-周期を過ぎた-dek-を定期的にローテーションする) |
+| 緊急のローテーションと無効化 | 制御面の管理 API への要求 | `api` が、`RequireControlPlaneUser` で制御面主体を確かめてからユースケースを呼ぶ | [DEK のライフサイクル](features/lifecycle.md#req-datakeys-008-制御面主体はテナントの-dek-をローテーションできる) |
+| 破棄 | なし | 呼び出す経路がない | [DataKeys のリスク](risks.md) |
 
 ## 設計の要点
 

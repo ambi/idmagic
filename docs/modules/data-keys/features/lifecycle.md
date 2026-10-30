@@ -7,7 +7,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | 責務 | 初回の暗号化での DEK の生成、ローテーション、危殆化に備えた即時の無効化、すべての参照の再暗号化の後の破棄 |
-| 行為者 | System（ライフサイクルのユースケースと再暗号化のジョブ） |
+| 行為者 | System（ライフサイクルのユースケース、定期実行のバッチ、再暗号化のジョブ）、System 管理者（制御面主体） |
 | 扱わないもの | 再暗号化するレコードの読み書きは、項目を持つ各モジュールの `FieldMigrator` が扱う。DEK の状態の一覧は[DEK の健全性の一覧](health.md)が扱う |
 
 ## モデル
@@ -19,7 +19,7 @@
 破棄はレコードを削除せず、`wrapped_dek` だけを消す。
 鍵素材を失った後も、そのバージョンがいつ有効化され、いつ退役し、いつ破棄されたかを参照できるようにするためである。
 
-- **判断**：ライフサイクルの操作を HTTP に公開しない理由は、[DEK のライフサイクルの操作を HTTP に公開しない](../decisions.md#dek-のライフサイクルの操作を-http-に公開しない)。
+- **判断**：テナント管理者へ公開しない理由は、[DEK のライフサイクルの操作をテナント管理者に公開しない](../decisions.md#dek-のライフサイクルの操作をテナント管理者に公開しない)。
 
 ## 状態遷移
 
@@ -66,22 +66,41 @@
 - `MasterKey` のプロバイダーに到達できないか、ラップに失敗した場合、DataKeys は、DataKeyUnavailableError で失敗し、DEK を作らず、イベントを発行しない。
 - **例**：EX-DATAKEYS-001-01、EX-DATAKEYS-001-02
 
-### System による DEK のローテーション
+### DEK のローテーション
 
 #### REQ-DATAKEYS-002 DEK をローテーションしても既存の暗号文を復号できる
 
-- System がテナントの DEK をローテーションしたとき、DataKeys は、次のバージョンの DEK を `active` にし、それまでの `active` のバージョンを `retiring` にし、`DataEncryptionKeyRotated` を発行する。
-- System がテナントの DEK をローテーションしたとき、DataKeys は、登録したすべての `FieldMigrator` について、そのテナントの再暗号化のジョブを `Jobs` に予約する。
-- 再暗号化のジョブの予約に失敗した場合、DataKeys は、ローテーションを取り消さず、定期の再暗号化で後から回収する。
+- テナントの DEK をローテーションしたとき、DataKeys は、次のバージョンの DEK を `active` にし、それまでの `active` のバージョンを `retiring` にし、`DataEncryptionKeyRotated` を発行する。
+- テナントの DEK をローテーションしたとき、DataKeys は、登録したすべての `FieldMigrator` について、そのテナントの再暗号化のジョブを `Jobs` に予約する。
+- 再暗号化のジョブの予約に失敗した場合、DataKeys は、ローテーションを取り消さず、REQ-DATAKEYS-007 の定期実行で後から回収する。
 - バージョンが `retiring` の間、そのバージョンで暗号化した値を復号するとき、DataKeys は、そのバージョンで復号する。
 - DataKeys は、`active` のバージョンだけを新しい暗号化に使う。
 - **例**：EX-DATAKEYS-002-01
 
-### System による DEK の無効化
+#### REQ-DATAKEYS-007 周期を過ぎた DEK を定期的にローテーションする
+
+- `idmagic-batch data-key-lifecycle` の実行で、`active` のバージョンの有効化からの経過が周期（デフォルトは 90 日）以上のテナントを処理するとき、DataKeys は、DEK をローテーションする。
+- 経過が周期より短いテナントを処理するとき、DataKeys は、ローテーションせず、未移行の行を報告した `FieldMigrator` の再暗号化のジョブだけを `Jobs` に予約する。
+- DEK を持たないテナントを処理するとき、DataKeys は、DEK を作らず、何もしない。
+- 一つのテナントの処理に失敗した場合、DataKeys は、残りのテナントの処理を続け、バッチを失敗で終了する。
+- 周期に正の整数の日数以外を指定された場合、DataKeys は、依存を組み立てる前に設定のエラーでバッチを終了する。
+- **判断**：一つのテナントの失敗で止めると、先頭の失敗が解消するまで後続のテナントの DEK が永久に入れ替わらない。
+
+#### REQ-DATAKEYS-008 制御面主体はテナントの DEK をローテーションできる
+
+- 制御面主体が制御面テナントの経路で対象のテナントの DEK のローテーションを要求したとき、DataKeys は、REQ-DATAKEYS-002 のとおりローテーションし、200 で `tenant_id`、`active_version`、`previous_version` を返し、`DataEncryptionKeyRotated` に操作者を `actorUserId` として残す。
+- 応答を返すとき、DataKeys は、`wrapped_dek`、平文の DEK、`MasterKey` の識別子を応答に含めない。
+- 対象のテナントが存在しない場合、DataKeys は、404 と TenantNotFoundError で拒否する。
+- 対象のテナントが DEK を持たない場合、DataKeys は、400 と InvalidRequestError で拒否し、DEK を作らない。
+- `system_admin` を持たないか、制御面テナントに所属しないか、要求先が制御面テナントでない利用者が要求した場合、DataKeys は、403 と `access_denied` で拒否し、DEK を変えない。
+- API アクセストークンで要求された場合、DataKeys は、トークンのスコープによらず 403 と `insufficient_scope` で拒否する。
+- ブラウザーからの要求であることを証明できない場合、DataKeys は、403 で拒否し、DEK を変えない。
+
+### DEK の無効化
 
 #### REQ-DATAKEYS-003 retiring の DEK を即時にロックアウトできる
 
-- バージョンが `retiring` の間、System がそのバージョンを無効化したとき、DataKeys は、バージョンを `disabled` にし、キャッシュした DEK を捨て、`DataEncryptionKeyDisabled` を発行する。
+- バージョンが `retiring` の間、そのバージョンを無効化したとき、DataKeys は、バージョンを `disabled` にし、キャッシュした DEK を捨て、`DataEncryptionKeyDisabled` を発行する。
 - バージョンが `disabled` または `destroyed` の間、そのバージョンで暗号化した値の復号を要求されたとき、DataKeys は、DataKeyUnavailableError で拒否する。
 - **例**：EX-DATAKEYS-003-01
 
@@ -90,6 +109,15 @@
 - `active` のバージョンの無効化または破棄を要求された場合、DataKeys は、InvalidRequestError で拒否し、バージョンを `active` のまま残し、イベントを発行しない。
 - `retiring` でないバージョンの無効化を要求された場合、DataKeys は、InvalidRequestError で拒否し、バージョンを変えない。
 - **例**：EX-DATAKEYS-004-01
+
+#### REQ-DATAKEYS-009 制御面主体は retiring の DEK を無効化できる
+
+- 制御面主体が制御面テナントの経路で対象のテナントのバージョンの無効化を要求したとき、DataKeys は、REQ-DATAKEYS-003 と REQ-DATAKEYS-004 のとおり処理する。
+- 無効化に成功したとき、DataKeys は、204 を返し、`DataEncryptionKeyDisabled` に操作者を `actorUserId` として残す。
+- REQ-DATAKEYS-004 で拒否する場合、DataKeys は、400 と InvalidRequestError で応答する。
+- 対象のテナントが存在しない場合、DataKeys は、404 と TenantNotFoundError で拒否する。
+- 対象のバージョンが存在しない場合、DataKeys は、404 と DataKeyVersionNotFoundError で拒否する。
+- 制御面主体でない利用者、API アクセストークン、ブラウザーからの要求であることを証明できない要求の場合、DataKeys は、REQ-DATAKEYS-008 と同じ応答で拒否し、バージョンを変えない。
 
 ### System による DEK の破棄
 
@@ -129,8 +157,9 @@ DEK を生成するときにプロバイダーへ到達できなければ、テ�
 ### 信頼性
 
 ローテーションの後のジョブの投入に失敗しても、ローテーション自体は確定したままにし、警告のログだけを残す。
-取りこぼしは、`idmagic-batch data-key-reencryption-sweep` で回収する。
-この掃引は、すべてのテナントとすべての `FieldMigrator` の組にジョブを投入し、重複排除により、何度実行しても安全である。
+取りこぼしは、毎日の `idmagic-batch data-key-lifecycle` が、未移行の行を報告する組にジョブを投入して回収する。
+`idmagic-batch data-key-reencryption-sweep` は、運用者が手で起動し、すべてのテナントとすべての `FieldMigrator` の組にジョブを投入する。
+どちらも重複排除により、何度実行しても安全である。
 
 DEK を持たないテナントのジョブは、`ErrNoActiveDataKey` で失敗する。
 そのテナントで次に項目を暗号化したときに DEK が生成されるので、その後に掃引を実行し直す。

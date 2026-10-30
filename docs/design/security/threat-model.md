@@ -179,6 +179,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-056 | Elevation of privilege | マスターキー提供元へ到達できないときに平文へ退避する | DataKeys | docs/design/data/database.md: 可逆な秘密情報のエンベロープ暗号 | `covered` |
 | THREAT-057 | Information disclosure | 破棄したはずの鍵で、残った暗号文が復号できる | DataKeys | REQ-DATAKEYS-003、REQ-DATAKEYS-005 | `covered` |
 | THREAT-058 | Information disclosure | 管理 API またはエラーレスポンスから鍵素材が出る | DataKeys, SigningKeys | REQ-DATAKEYS-006、docs/design/security/authorization.md: レスポンスが決して含まないもの | `covered` |
+| THREAT-091 | Denial of service | テナントの管理者や API アクセストークンが DEK の無効化を起動し、テナントのシークレットを読めなくする | DataKeys | REQ-DATAKEYS-008、REQ-DATAKEYS-009 | `covered` |
 | THREAT-059 | Denial of service | 鍵提供元の障害が、発行と検証の両方を止める | SigningKeys, OAuth2 | REQ-OAUTH2-039、REQ-SIGNINGKEYS-008、REQ-SIGNINGKEYS-001 | `covered` |
 | THREAT-060 | Tampering | 攻撃者の鍵を JWKS へ紛れ込ませ、偽造したトークンを信頼させる | SigningKeys | REQ-SIGNINGKEYS-004、REQ-SIGNINGKEYS-010、REQ-SIGNINGKEYS-011 | `covered` |
 | THREAT-083 | Denial of service | 連携先が知らない XML 鍵へ署名を切り替え、フェデレーションした利用者がサインインできなくなる | SigningKeys, WsFederation | REQ-SIGNINGKEYS-006、REQ-SIGNINGKEYS-007、REQ-WSFEDERATION-001 | `covered` |

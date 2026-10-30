@@ -385,6 +385,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Deps:          d.Deps,
 		Authenticator: authenticator,
 		TenantRepo:    d.TenantRepo,
+		Jobs:          d.Jobs.Enqueuer,
 	})
 
 	d.Audit.RegisterRoutes(g, audit.RouteDeps{

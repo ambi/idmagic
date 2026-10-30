@@ -12,6 +12,7 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -43,6 +44,20 @@ func (m Module) RotateTenantDataKey(ctx context.Context, tenantID string, now ti
 	return usecases.RotateTenantDataKey(ctx, usecases.Deps{Repository: m.Repository, Crypto: m.Crypto, Cache: m.Cache}, tenantID, now)
 }
 
+// LifecycleEffects は、ライフサイクルの操作がプロセスの外へ出す作用の宛先である。
+type LifecycleEffects struct {
+	Emit func(spec.DomainEvent)
+	Jobs jobsports.Enqueuer
+}
+
+// RunLifecycle は、定期実行が一つのテナントについて行う処理である（REQ-DATAKEYS-007）。
+func (m Module) RunLifecycle(ctx context.Context, effects LifecycleEffects, tenantID string, now time.Time, cadence time.Duration) error {
+	return usecases.RunTenantDataKeyLifecycle(ctx, usecases.Deps{
+		Repository: m.Repository, Crypto: m.Crypto, Cache: m.Cache, Migrators: m.Migrators,
+		Emit: effects.Emit, Jobs: effects.Jobs,
+	}, tenantID, now, cadence)
+}
+
 func (m Module) ReencryptionHandler(jobs jobsports.Enqueuer) jobsports.Handler {
 	return usecases.ReencryptionHandler(usecases.ReencryptDeps{Repository: m.Repository, Migrators: m.Migrators, Jobs: jobs})
 }
@@ -55,8 +70,12 @@ type RouteDeps struct {
 	support.Deps
 	*support.Authenticator
 	TenantRepo tenantports.TenantRepository
+	Jobs       jobsports.Enqueuer
 }
 
 func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
-	handlers_http.RegisterRoutes(g, handlers_http.Deps{Deps: d.Deps, Authenticator: d.Authenticator, Repository: m.Repository, Crypto: m.Crypto, TenantRepo: d.TenantRepo})
+	handlers_http.RegisterRoutes(g, handlers_http.Deps{
+		Deps: d.Deps, Authenticator: d.Authenticator, Repository: m.Repository, Crypto: m.Crypto, TenantRepo: d.TenantRepo,
+		Cache: m.Cache, Migrators: m.Migrators, Jobs: d.Jobs,
+	})
 }

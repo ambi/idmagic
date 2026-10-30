@@ -657,7 +657,7 @@ Repository の保存は、Aggregate 全体を ID で上書きする（`ON CONFLI
 - ローテーションでは新しい DEK のバージョンを以後の書き込み用に有効化し、直前のバージョンを復号可能な `retiring` のまま残す。`backend/jobs` の `JobKind` と `HandlerRegistry` に登録した再開可能な再暗号化ジョブがすべての参照を移行し終えた後にだけ、古いバージョンを破棄できる。`FieldMigrator` ポート（`backend/datakeys/ports`）により、各モジュールは自身の一括再暗号化処理と残件数の算出を登録する。これにより、`DataKeys` はこのポートを利用するモジュールのスキーマへ依存しない。ローテーションは登録された移行処理ごとにジョブを自動投入し、いずれかの移行処理が残件を報告している間はラップされた DEK の消去を拒否する。
 - アンラップに失敗した場合、プロバイダーへ到達できない場合、追加認証データが一致しない場合、または改ざんを検知した場合は、フェイルクローズで復号を拒否する。呼び出し元は平文へフォールバックしたり、項目を読み飛ばしたりしない。
 - マスターキーの提供元は OpenBao（Vault Transit 互換の HTTP API）である。開発環境とローカル環境では Tink の平文鍵セットを使うため、OpenBao は不要である。提供元は設計上差し替え可能である。
-- 唯一の HTTP 接点は、読み取り専用で `system_admin` に限定した `GET /api/admin/data-keys/health`（`backend/datakeys/handlers_http`）である。各テナントで有効な DEK のバージョンとステータス、マスターキー提供元の名前と到達性を報告し、鍵素材は決して返さない。ローテーション、無効化、破棄は内部操作とし、管理用エンドポイントを公開しない。
+- HTTP の接点は `system_admin` に限定した制御面の管理 API だけである（`backend/datakeys/internal/handlers_http`）。`GET /api/admin/v1/data-keys/health` は各テナントで有効な DEK のバージョンとステータス、マスターキー提供元の名前と到達性を報告する。緊急のローテーションと無効化も同じ境界で公開する。どの応答も鍵素材を返さない。破棄は内部操作とし、管理用エンドポイントを公開しない。
 
 署名鍵の秘密鍵はこの規範の対象ではない。`signing_keys.private_jwk` に何が入るかは `KeyProvider` の選択で決まり、その規範は [SigningKeys の集約](../../modules/signing-keys/data.md#集約) が定める。
 

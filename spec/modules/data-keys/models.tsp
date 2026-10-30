@@ -12,6 +12,10 @@ model DataKeyStillReferencedError {
 }
 
 
+@doc("指定したテナントに、指定したバージョンの DEK がない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:data_key_version_not_found` である。")
+model DataKeyVersionNotFoundError is ProblemDetails;
+
+
 @doc("DataEncryptionKeyLifecycle の状態。")
 enum DataKeyStatus {
   active: "active",
@@ -77,6 +81,8 @@ model DataEncryptionKeyRotated {
   tenantId: string;
   previousVersion: int64;
   newVersion: int64;
+  @doc("操作した制御面主体。定期実行のローテーションにはない。")
+  actorUserId?: string;
 }
 
 
@@ -86,6 +92,8 @@ model DataEncryptionKeyDisabled {
   tenantId: string;
   version: int64;
   reason?: string;
+  @doc("操作した制御面主体。")
+  actorUserId?: string;
 }
 
 

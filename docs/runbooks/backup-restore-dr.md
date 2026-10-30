@@ -114,6 +114,22 @@ mise run restore-postgres <backup-file> [database-url]
 2. Vault / OpenBao 側のスナップショットからキーストアを復旧できる場合は復旧し、`signing_keys` の公開鍵の写しと Vault 側の `kid` が一致することを確認する。
 3. 復旧できない場合は緊急ローテーションへ進み、新しい署名鍵を発行して古い `kid` を JWKS から段階的に外す。この間、古い `kid` で署名されたトークンの検証を継続できないことを利用者へ告知する。
 
+### テナントの DEK の緊急の入れ替え
+
+バージョンの確認と操作は、制御面テナントの `system_admin` の対話セッションで行う。
+ローテーションと無効化はそれを実行したプロセスの DEK の保持だけを破棄するので、`api` と `worker` の再起動を手順に含める（[DataKeys のリスク](../modules/data-keys/risks.md)）。
+
+1. `GET /api/admin/v1/data-keys/health` で、対象の `tenant_id` と `active_version` を確かめる。
+2. `POST /api/admin/v1/tenants/{tenant_id}/data-key/rotate` を実行する。応答の `previous_version` が漏洩したバージョンであることを確かめる。
+3. `kubectl rollout restart` で `api` と `worker` を再起動し、新しい暗号化を新しいバージョンへ揃える。
+4. 読み取りを止めるより値を残すことを優先できるなら、`data_key_reencryption` のジョブの完了を待つ。無効化の時点で移っていない値は読めなくなる。
+5. `POST /api/admin/v1/tenants/{tenant_id}/data-key/versions/{version}/disable` を実行する。
+6. もう一度 `api` と `worker` を再起動し、保持した DEK を捨てる。再起動が終わるまで、ほかのプロセスは無効化したバージョンで復号を続ける。
+7. 監査イベントの `DataEncryptionKeyRotated` と `DataEncryptionKeyDisabled` に、操作者が残っていることを確かめる。
+
+マスターキー自体のローテーションは OpenBao の `auto_rotate_period` で設定できる。
+ただし、ラップ済みの DEK を新しいバージョンへ再ラップする経路はプロダクトにない。
+
 ### 部分的な復元
 
 1. 対象範囲を限定した `pg_dump`（`pg_dump --table=...` など）からの復元は、外部キー制約や `jobs` / `signing_keys` などの整合性を壊しやすいため、整合性検査を必ず通す。

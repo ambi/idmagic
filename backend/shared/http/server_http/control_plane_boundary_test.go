@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -50,6 +53,7 @@ type controlPlaneBoundaryServer struct {
 	jobs           jobports.JobRepository
 	otherJob       *jobdomain.Job
 	dataKeys       datakeys.Module
+	events         *[]spec.DomainEvent
 	otherAuditID   string
 	controlAuditID string
 }
@@ -92,6 +96,7 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 	if _, err := dataKeyModule.RotateTenantDataKey(t.Context(), "acme", now.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
+	dataKeyModule.Migrators.Register("fixture", dataKeyMigrator{})
 
 	jobStore := jobs.NewJobRepository()
 	lane, ok := jobdomain.LaneFor(jobdomain.KindNoopEcho)
@@ -124,17 +129,19 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 		}
 	}
 
+	events := &[]spec.DomainEvent{}
+	emit := func(event spec.DomainEvent) { *events = append(*events, event) }
 	e := echo.New()
 	Register(e, Deps{
 		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
-		TenantRepo: tenants, UserRepo: users, AuthnResolver: resolver,
+		TenantRepo: tenants, UserRepo: users, AuthnResolver: resolver, Emit: emit,
 		SigningKeys: signingkeys.Module{KeyStore: keyStore},
 		DataKeys:    dataKeyModule,
-		Jobs:        jobs.Module{Repo: jobStore},
+		Jobs:        jobs.Module{Repo: jobStore, Enqueuer: jobs.NewEnqueuer(jobStore, tenancy.NewMemoryModule().QuotaRepo, emit)},
 		Audit:       audit.Module{AuditEventRepo: auditStore},
 	})
 	return &controlPlaneBoundaryServer{
-		e: e, tenants: tenants, jobs: jobStore, otherJob: otherJob, dataKeys: dataKeyModule,
+		e: e, tenants: tenants, jobs: jobStore, otherJob: otherJob, dataKeys: dataKeyModule, events: events,
 		otherAuditID: "audit-acme", controlAuditID: "audit-control",
 	}
 }
@@ -246,7 +253,8 @@ func TestControlPlaneDataKeyHealthListsEveryTenantWithoutKeyMaterial(t *testing.
 // browserPost はブラウザー経路の変更操作を、CSRF トークンと Origin を揃えて送る。
 func browserPost(t *testing.T, e *echo.Echo, path string) *httptest.ResponseRecorder {
 	t.Helper()
-	account := getControlPlaneBoundary(e, "/realms/default/api/auth/account")
+	realmPrefix, _, _ := strings.Cut(path, "/api/")
+	account := getControlPlaneBoundary(e, realmPrefix+"/api/auth/account")
 	if account.Code != http.StatusOK {
 		t.Fatalf("account status = %d, body = %s", account.Code, account.Body.String())
 	}
@@ -417,5 +425,198 @@ func TestTenantAdminApisStayInsideRequestTenant(t *testing.T) {
 	}
 	if got.Status == jobdomain.StatusCanceled {
 		t.Fatalf("tenant route canceled another tenant's job %q", srv.otherJob.ID)
+	}
+}
+
+// dataKeyMigrator は再暗号化の投入先を観測するための登録である。投入そのものは本番の Enqueuer を通す。
+type dataKeyMigrator struct{}
+
+func (dataKeyMigrator) ReencryptBatch(context.Context, string, int, int) (int, error) { return 0, nil }
+
+func (dataKeyMigrator) PendingCount(context.Context, string, int) (int, error) { return 0, nil }
+
+func (s *controlPlaneBoundaryServer) activeDataKeyVersion(t *testing.T, tenantID string) int {
+	t.Helper()
+	key, err := s.dataKeys.Repository.FindActive(t.Context(), tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return key.Version
+}
+
+func (s *controlPlaneBoundaryServer) reencryptionJobs(t *testing.T, tenantID string) []*jobdomain.Job {
+	t.Helper()
+	found, err := s.jobs.ListByTenantAndKinds(t.Context(), tenantID, []jobdomain.JobKind{jobdomain.KindDataKeyReencryption}, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return found
+}
+
+//spec:covers REQ-DATAKEYS-008, REQ-DATAKEYS-002: 制御面主体の要求で、パスが指すテナントだけがローテーションされ、応答に鍵素材がなく、操作者付きのイベントと再暗号化のジョブが残る。
+//verify:operation RotateTenantDataKey: 200 の本文の tenant_id、active_version、previous_version と、保存後の active のバージョンを照合する。
+func TestControlPlaneRotatesTenantDataKeyWithAuditAndReencryption(t *testing.T) {
+	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("control-operator", tenancydomain.DefaultTenantID, "system_admin"))
+
+	rec := browserPost(t, srv.e, "/realms/default/api/admin/v1/tenants/acme/data-key/rotate")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]any{"tenant_id": "acme", "active_version": float64(3), "previous_version": float64(2)}
+	if !maps.Equal(body, want) {
+		t.Fatalf("body = %v, want %v", body, want)
+	}
+	if got := srv.activeDataKeyVersion(t, "acme"); got != 3 {
+		t.Fatalf("acme active version = %d, want 3", got)
+	}
+	if got := srv.activeDataKeyVersion(t, tenancydomain.DefaultTenantID); got != 1 {
+		t.Fatalf("requesting tenant was rotated: active version = %d, want 1", got)
+	}
+	if got := srv.reencryptionJobs(t, "acme"); len(got) != 1 {
+		t.Fatalf("acme reencryption jobs = %d, want 1", len(got))
+	}
+
+	var rotated map[string]any
+	for _, event := range *srv.events {
+		if event.EventType() == "DataEncryptionKeyRotated" {
+			payload, err := json.Marshal(event)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(payload, &rotated); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if rotated["actorUserId"] != "control-operator" || rotated["tenantId"] != "acme" || rotated["newVersion"] != float64(3) {
+		t.Fatalf("DataEncryptionKeyRotated payload = %v", rotated)
+	}
+}
+
+//spec:covers REQ-DATAKEYS-008, REQ-DATAKEYS-009: テナントの system_admin は、自テナントを指しても 403 access_denied で拒否され、バージョンは変わらない。
+func TestControlPlaneDataKeyActionsRefuseActorOutsideControlPlane(t *testing.T) {
+	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("acme-operator", "acme", "system_admin", "admin"))
+
+	for _, path := range []string{
+		"/realms/acme/api/admin/v1/tenants/acme/data-key/rotate",
+		"/realms/acme/api/admin/v1/tenants/acme/data-key/versions/1/disable",
+	} {
+		rec := browserPost(t, srv.e, path)
+		if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "access_denied") {
+			t.Errorf("%s: status = %d, body = %s", path, rec.Code, rec.Body.String())
+		}
+	}
+	if got := srv.activeDataKeyVersion(t, "acme"); got != 2 {
+		t.Fatalf("active version = %d, want 2", got)
+	}
+	retired, err := srv.dataKeys.Repository.FindByVersion(t.Context(), "acme", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if retired.Status != "retiring" {
+		t.Fatalf("version 1 status = %q, want retiring", retired.Status)
+	}
+}
+
+//spec:covers REQ-DATAKEYS-008, REQ-DATAKEYS-009: ブラウザーからの要求であることを証明できない操作は、DEK を変えずに拒否される。
+func TestControlPlaneDataKeyActionsRefuseWithoutBrowserProof(t *testing.T) {
+	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("control-operator", tenancydomain.DefaultTenantID, "system_admin"))
+
+	for _, path := range []string{
+		"/realms/default/api/admin/v1/tenants/acme/data-key/rotate",
+		"/realms/default/api/admin/v1/tenants/acme/data-key/versions/1/disable",
+	} {
+		rec := httptest.NewRecorder()
+		srv.e.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, path, http.NoBody))
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("%s: status = %d, want 403; body = %s", path, rec.Code, rec.Body.String())
+		}
+	}
+	if got := srv.activeDataKeyVersion(t, "acme"); got != 2 {
+		t.Fatalf("active version = %d, want 2", got)
+	}
+}
+
+//spec:covers REQ-DATAKEYS-009, REQ-DATAKEYS-003, REQ-DATAKEYS-004: retiring のバージョンは 204 で disabled になり、保持した DEK も捨てられて復号が拒否される。active のバージョンの無効化は 400 で状態を変えない。
+//verify:operation DisableTenantDataKey: 204 と保存後の復号の拒否、active の指定への 400 invalid_request を照合する。
+func TestControlPlaneDisablesRetiringDataKeyAndRefusesActive(t *testing.T) {
+	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("control-operator", tenancydomain.DefaultTenantID, "system_admin"))
+	cipher := srv.dataKeys.FieldCipher()
+	ctx := t.Context()
+	version, ciphertext, err := cipher.Encrypt(ctx, "acme", "ctx", "table", "record", "field", "secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec := browserPost(t, srv.e, "/realms/default/api/admin/v1/tenants/acme/data-key/rotate"); rec.Code != http.StatusOK {
+		t.Fatalf("rotate status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	// 復号して DEK を保持させる。保持を捨てなければ、無効化の後も復号できてしまう。
+	if _, err := cipher.Decrypt(ctx, "acme", "ctx", "table", "record", "field", version, ciphertext); err != nil {
+		t.Fatalf("decrypt under retiring version: %v", err)
+	}
+
+	active := srv.activeDataKeyVersion(t, "acme")
+	refused := browserPost(t, srv.e, fmt.Sprintf("/realms/default/api/admin/v1/tenants/acme/data-key/versions/%d/disable", active))
+	if refused.Code != http.StatusBadRequest || !strings.Contains(refused.Body.String(), "invalid_request") {
+		t.Fatalf("disable active: status = %d, body = %s", refused.Code, refused.Body.String())
+	}
+	if got := srv.activeDataKeyVersion(t, "acme"); got != active {
+		t.Fatalf("refused disable changed active version to %d", got)
+	}
+
+	rec := browserPost(t, srv.e, fmt.Sprintf("/realms/default/api/admin/v1/tenants/acme/data-key/versions/%d/disable", version))
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("disable status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if _, err := cipher.Decrypt(ctx, "acme", "ctx", "table", "record", "field", version, ciphertext); !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
+		t.Fatalf("decrypt after disable error = %v, want ErrDataKeyUnavailable", err)
+	}
+	var actor string
+	for _, event := range *srv.events {
+		if disabled, err := json.Marshal(event); err == nil && event.EventType() == "DataEncryptionKeyDisabled" {
+			var payload map[string]any
+			if err := json.Unmarshal(disabled, &payload); err != nil {
+				t.Fatal(err)
+			}
+			actor, _ = payload["actorUserId"].(string)
+		}
+	}
+	if actor != "control-operator" {
+		t.Fatalf("DataEncryptionKeyDisabled actor = %q", actor)
+	}
+}
+
+//spec:covers REQ-DATAKEYS-008, REQ-DATAKEYS-009: 存在しないテナントとバージョンは 404、DEK を持たないテナントは 400 で、DEK を作らない。
+//verify:operation RotateTenantDataKey: 存在しないテナントへの 404 tenant_not_found と、DEK のないテナントへの 400 invalid_request の本文を照合する。
+//verify:operation DisableTenantDataKey: 存在しないテナントとバージョンへの 404 と、不正なバージョンへの 400 の本文を照合する。
+func TestControlPlaneDataKeyActionsMapMissingTargets(t *testing.T) {
+	srv := newControlPlaneBoundaryServer(t, controlPlaneTestUser("control-operator", tenancydomain.DefaultTenantID, "system_admin"))
+	now := time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC)
+	if err := srv.tenants.Save(t.Context(), &tenancydomain.Tenant{ID: "empty", Realm: "empty", DisplayName: "Empty", Status: tenancydomain.TenantStatusActive, CreatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		path   string
+		status int
+		code   string
+	}{
+		{"/realms/default/api/admin/v1/tenants/missing/data-key/rotate", http.StatusNotFound, "tenant_not_found"},
+		{"/realms/default/api/admin/v1/tenants/missing/data-key/versions/1/disable", http.StatusNotFound, "tenant_not_found"},
+		{"/realms/default/api/admin/v1/tenants/acme/data-key/versions/99/disable", http.StatusNotFound, "data_key_version_not_found"},
+		{"/realms/default/api/admin/v1/tenants/acme/data-key/versions/nope/disable", http.StatusBadRequest, "invalid_request"},
+		{"/realms/default/api/admin/v1/tenants/empty/data-key/rotate", http.StatusBadRequest, "invalid_request"},
+	} {
+		rec := browserPost(t, srv.e, tc.path)
+		if rec.Code != tc.status || !strings.Contains(rec.Body.String(), tc.code) {
+			t.Errorf("%s: status = %d, body = %s; want %d %s", tc.path, rec.Code, rec.Body.String(), tc.status, tc.code)
+		}
+	}
+	if _, err := srv.dataKeys.Repository.FindActive(t.Context(), "empty"); err == nil {
+		t.Fatal("rotate created a DEK for a tenant without one")
 	}
 }

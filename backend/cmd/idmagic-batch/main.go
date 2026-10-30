@@ -22,7 +22,7 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-const usage = "usage: idmagic-batch <retention-sweep|signing-key-lifecycle|data-key-reencryption-sweep|restore-consistency-check> [flags]"
+const usage = "usage: idmagic-batch <retention-sweep|signing-key-lifecycle|data-key-lifecycle|data-key-reencryption-sweep|restore-consistency-check> [flags]"
 
 func main() {
 	buildInfo := version.Get()
@@ -63,6 +63,14 @@ func run(ctx context.Context, args []string, in launch) error {
 		return withDependencies(ctx, in, func(deps *bootstrap.Dependencies) error {
 			return runSigningKeyLifecycle(ctx, deps, cfg, time.Now().UTC())
 		})
+	case "data-key-lifecycle":
+		cfg, err := parseDataKeyLifecycleConfig(args[1:])
+		if err != nil {
+			return err
+		}
+		return withDependencies(ctx, in, func(deps *bootstrap.Dependencies) error {
+			return runDataKeyLifecycle(ctx, deps, cfg, time.Now().UTC())
+		})
 	case "data-key-reencryption-sweep":
 		if len(args) != 1 {
 			return errors.New("data-key-reencryption-sweep accepts no flags")
@@ -99,6 +107,42 @@ func parseSigningKeyLifecycleConfig(args []string) (signingKeyLifecycleConfig, e
 		cadence: time.Duration(*cadenceDays) * 24 * time.Hour,
 		grace:   time.Duration(*graceDays) * 24 * time.Hour,
 	}, nil
+}
+
+type dataKeyLifecycleConfig struct {
+	cadence time.Duration
+}
+
+func parseDataKeyLifecycleConfig(args []string) (dataKeyLifecycleConfig, error) {
+	flags := flag.NewFlagSet("data-key-lifecycle", flag.ContinueOnError)
+	cadenceDays := flags.Int("cadence-days", 90, "rotation cadence in days")
+	if err := flags.Parse(args); err != nil {
+		return dataKeyLifecycleConfig{}, err
+	}
+	if flags.NArg() != 0 || *cadenceDays <= 0 {
+		return dataKeyLifecycleConfig{}, errors.New("cadence-days must be positive")
+	}
+	return dataKeyLifecycleConfig{cadence: time.Duration(*cadenceDays) * 24 * time.Hour}, nil
+}
+
+// runDataKeyLifecycle は、一つのテナントの失敗で後続のテナントの DEK が入れ替わらなくならないように、
+// すべてのテナントを処理してから失敗をまとめて返す（REQ-DATAKEYS-007）。
+func runDataKeyLifecycle(ctx context.Context, deps *bootstrap.Dependencies, cfg dataKeyLifecycleConfig, now time.Time) error {
+	tenants, err := deps.Tenancy.TenantRepo.FindAll(ctx)
+	if err != nil {
+		return err
+	}
+	//nolint:contextcheck // Batch events use the bounded independent audit context.
+	emit := deps.NewEmitFunc(logging.Default())
+	effects := datakeys.LifecycleEffects{Emit: emit, Jobs: jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)}
+	var failures []error
+	for _, tenant := range tenants {
+		if err := deps.DataKeys.RunLifecycle(ctx, effects, tenant.ID, now, cfg.cadence); err != nil {
+			logging.Error(ctx, "datakeys: lifecycle failed for tenant", "error", err, "tenant_id", tenant.ID)
+			failures = append(failures, fmt.Errorf("data key lifecycle for tenant %s: %w", tenant.ID, err))
+		}
+	}
+	return errors.Join(failures...)
 }
 
 // runDataKeyReencryptionSweep enqueues the data_key_reencryption Job for

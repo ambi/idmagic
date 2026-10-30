@@ -62,6 +62,16 @@ type TenantDataEncryptionKey struct {
 	DestroyedAt *time.Time
 }
 
+// RotationDue は、active の版が有効化から cadence 以上たったかを判定する。経過がちょうど
+// cadence の版も対象にする。有効化の時刻を持たない版は作成の時刻から数える。
+func RotationDue(active *TenantDataEncryptionKey, now time.Time, cadence time.Duration) bool {
+	since := active.CreatedAt
+	if active.ActivatedAt != nil {
+		since = *active.ActivatedAt
+	}
+	return now.Sub(since) >= cadence
+}
+
 // TenantDataKeyHealth is the system_admin-facing health snapshot
 // (docs/modules/data-keys/ TenantDataKeyHealth) — never carries key
 // material.

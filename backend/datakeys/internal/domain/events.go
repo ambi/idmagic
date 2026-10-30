@@ -16,15 +16,17 @@ type DataEncryptionKeyRotated struct {
 	TenantID        string    `json:"tenantId"`
 	PreviousVersion int       `json:"previousVersion"`
 	NewVersion      int       `json:"newVersion"`
+	ActorUserID     string    `json:"actorUserId,omitempty"`
 }
 
 func (e *DataEncryptionKeyRotated) EventType() string     { return "DataEncryptionKeyRotated" }
 func (e *DataEncryptionKeyRotated) OccurredAt() time.Time { return e.At }
 
 type DataEncryptionKeyDisabled struct {
-	At       time.Time `json:"-"`
-	TenantID string    `json:"tenantId"`
-	Version  int       `json:"version"`
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	Version     int       `json:"version"`
+	ActorUserID string    `json:"actorUserId,omitempty"`
 }
 
 func (e *DataEncryptionKeyDisabled) EventType() string     { return "DataEncryptionKeyDisabled" }

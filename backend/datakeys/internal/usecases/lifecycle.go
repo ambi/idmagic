@@ -32,6 +32,8 @@ type Deps struct {
 	// Jobs enqueues the data_key_reencryption Job that Rotate triggers. nil
 	// skips enqueueing, same rationale as Migrators.
 	Jobs jobsports.Enqueuer
+	// ActorUserID は操作した制御面主体である。定期実行では空のままにする。
+	ActorUserID string
 }
 
 func BootstrapTenantDataKey(ctx context.Context, deps Deps, tenantID string, now time.Time) (*domain.TenantDataEncryptionKey, error) {
@@ -70,7 +72,7 @@ func RotateTenantDataKey(ctx context.Context, deps Deps, tenantID string, now ti
 		deps.Cache.Invalidate(tenantID)
 	}
 	if deps.Emit != nil {
-		deps.Emit(&domain.DataEncryptionKeyRotated{At: now, TenantID: tenantID, PreviousVersion: previous.Version, NewVersion: next.Version})
+		deps.Emit(&domain.DataEncryptionKeyRotated{At: now, TenantID: tenantID, PreviousVersion: previous.Version, NewVersion: next.Version, ActorUserID: deps.ActorUserID})
 	}
 	if deps.Migrators != nil && deps.Jobs != nil {
 		for _, name := range deps.Migrators.Names() {
@@ -94,7 +96,7 @@ func DisableTenantDataKey(ctx context.Context, deps Deps, tenantID string, versi
 		deps.Cache.Invalidate(tenantID)
 	}
 	if deps.Emit != nil {
-		deps.Emit(&domain.DataEncryptionKeyDisabled{At: now, TenantID: tenantID, Version: version})
+		deps.Emit(&domain.DataEncryptionKeyDisabled{At: now, TenantID: tenantID, Version: version, ActorUserID: deps.ActorUserID})
 	}
 	return nil
 }
