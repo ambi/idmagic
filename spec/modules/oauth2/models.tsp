@@ -1477,6 +1477,8 @@ model AccessTokenIssued {
   userId: string;
   scopes: string[];
   senderConstraint: AccessTokenSenderConstraint = AccessTokenSenderConstraint.None;
+  @doc("トークンを要求したクライアントに結び付いた Agent。Agent の棚卸しが最終の発行時刻を読む（REQ-IDMANAGEMENT-094）。client_credentials、CIBA、トークン交換の発行で載せる。")
+  agentId?: string;
 }
 
 

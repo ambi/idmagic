@@ -189,6 +189,7 @@ var generatedOperations = map[string]Operation{
 	"ListAdminOAuth2Clients": {Method: "GET", Path: "/api/admin/v1/clients", Deprecated: false, ApiTokenScopes: []string{"oauth-clients:read"}},
 	"ListAdminRolePolicies": {Method: "GET", Path: "/api/admin/v1/policy/roles", Deprecated: false, ApiTokenScopes: []string{"settings:read"}},
 	"ListAdminUsers": {Method: "GET", Path: "/api/admin/v1/users", Deprecated: false, ApiTokenScopes: []string{"users:read"}},
+	"ListAgentInventory": {Method: "GET", Path: "/api/admin/v1/agent-inventory", Deprecated: false, ApiTokenScopes: []string{"agents:read"}},
 	"ListAgents": {Method: "GET", Path: "/api/admin/v1/agents", Deprecated: false, ApiTokenScopes: []string{"agents:read"}},
 	"ListAgentWorkloadBindings": {Method: "GET", Path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/bindings", Deprecated: false, ApiTokenScopes: []string{"workload-identity:read"}},
 	"ListApiTokens": {Method: "GET", Path: "/api/admin/v1/api-tokens", Deprecated: false, ApiTokenScopes: []string{"interactive_session"}},

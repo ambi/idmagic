@@ -1,4 +1,4 @@
-import { IconPlus, IconRefresh, IconRobot } from '@tabler/icons-react'
+import { IconListSearch, IconPlus, IconRefresh, IconRobot } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { AuthenticationAPIError, listAdminAgentsPage, tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
@@ -100,6 +100,15 @@ export function AdminAgentsPage({
             disabled={busy}
           >
             <IconRefresh size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            nativeButton={false}
+            render={<a href={tenantURL('/admin/agents/inventory')} />}
+          >
+            <IconListSearch size={16} aria-hidden="true" />
+            {t.openInventory}
           </Button>
           <Button
             disabled={busy}

@@ -86,6 +86,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/v1/groups/:group_id/members/:user_sub", func(c *echo.Context) error { return grouphttp.HandleAddGroupMember(d, c) })
 	g.DELETE("/api/admin/v1/groups/:group_id/members/:user_sub", func(c *echo.Context) error { return grouphttp.HandleRemoveGroupMember(d, c) })
 	g.GET("/api/admin/v1/agents", func(c *echo.Context) error { return agenthttp.HandleListAgents(d, c) })
+	g.GET("/api/admin/v1/agent-inventory", func(c *echo.Context) error { return agenthttp.HandleListAgentInventory(d, c) })
 	g.GET("/api/admin/v1/agents/:agent_id", func(c *echo.Context) error { return agenthttp.HandleGetAgent(d, c) })
 	g.POST("/api/admin/v1/agents", func(c *echo.Context) error { return agenthttp.HandleRegisterAgent(d, c) })
 	g.PATCH("/api/admin/v1/agents/:agent_id", func(c *echo.Context) error { return agenthttp.HandleUpdateAgent(d, c) })

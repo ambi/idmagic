@@ -309,6 +309,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	emit(deps.Emit, &domain.AccessTokenIssued{
 		At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID,
 		UserID: subject.Sub, Scopes: grantedScopes, SenderConstraint: senderConstraintTag(sc),
+		AgentID: actingAgentID,
 	})
 	// 委譲モードは introspection と同じ導出関数を通す。ここで別の規則を書くと、
 	// 監査とリソースサーバーの見え方が食い違い、しかもその不整合は調査のときに

@@ -2,8 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"time"
 
 	auditusecases "github.com/ambi/idmagic/backend/audit"
@@ -18,33 +16,9 @@ type AuditFailureMetrics interface {
 	RecordAuditFailure(stage string)
 }
 
+// NewAuditEventRecord は Audit が持つ変換をそのまま使う。
 func NewAuditEventRecord(e spec.DomainEvent) (*auditports.AuditEventRecord, error) {
-	wire, err := spec.MarshalDomainEvent(e)
-	if err != nil {
-		return nil, err
-	}
-	var payload map[string]any
-	if err := json.Unmarshal(wire, &payload); err != nil {
-		return nil, err
-	}
-	id, err := spec.NewUUIDv4()
-	if err != nil {
-		return nil, err
-	}
-	rec := &auditports.AuditEventRecord{
-		ID:         id,
-		Type:       e.EventType(),
-		OccurredAt: e.OccurredAt(),
-		Payload:    payload,
-	}
-	if tenantID, ok := payload["tenantId"].(string); ok {
-		rec.TenantID = tenantID
-	}
-	if rec.Payload == nil {
-		return nil, fmt.Errorf("audit event %s: empty payload", e.EventType())
-	}
-	rec.SearchAttributes = auditusecases.ExtractSearchAttributes(rec)
-	return rec, nil
+	return auditusecases.NewEventRecord(e)
 }
 
 // NewEmitFunc builds the shared "write DomainEvent to EventSink, then mirror it

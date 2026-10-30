@@ -49,6 +49,8 @@ import (
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/apitoken"
+	"github.com/ambi/idmagic/backend/audit"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
@@ -220,6 +222,8 @@ type Stack struct {
 	// Agents と RevocationEpochs は WithAgentRevocation が配る。
 	Agents           agentports.AgentRepository
 	RevocationEpochs sharedsignalsports.AgentRevocationEpochRepository
+	// AuditEvents は WithAudit が配る監査の保存先である。
+	AuditEvents auditports.AuditEventRepository
 
 	apiTokens *apitoken.Service
 	// owner は New を呼んだテストである。HTTP サーバーの後始末はここへ登録する。
@@ -458,6 +462,33 @@ func WithAgentRevocation() Option {
 		b.stack.RevocationEpochs = sharedsignals.NewAgentRevocationEpochRepository()
 		b.deps.IdManagement.AgentRepo = b.stack.Agents
 		b.deps.SharedSignals = sharedsignals.Module{RevocationEpochRepo: b.stack.RevocationEpochs}
+	}
+}
+
+// WithAudit は監査の保存先を配線し、`Deps.Emit` が受けたイベントを製品と同じ変換
+// (audit.NewEventRecord) で監査へ追記する。製品では cmd/internal/bootstrap の
+// NewEmitFunc が同じことをする。検索属性から読む機能 (Agent の棚卸しの最終発行など) は、
+// この追記が無いと何も記録されていない状態しか観測できない。
+func WithAudit() Option {
+	return func(b *builder) {
+		module := audit.NewMemoryModule(10_000)
+		b.stack.AuditEvents = module.AuditEventRepo
+		b.deps.Audit = module
+		record := b.deps.Emit
+		b.deps.Emit = func(event spec.DomainEvent) {
+			record(event)
+			rec, err := audit.NewEventRecord(event)
+			if err != nil {
+				b.t.Fatalf("audit record for %s: %v", event.EventType(), err)
+			}
+			ctx := context.Background()
+			if rec.TenantID != "" {
+				ctx = tenantports.WithTenantID(ctx, rec.TenantID)
+			}
+			if err := module.AuditEventRepo.Append(ctx, rec); err != nil {
+				b.t.Fatalf("append audit %s: %v", event.EventType(), err)
+			}
+		}
 	}
 }
 

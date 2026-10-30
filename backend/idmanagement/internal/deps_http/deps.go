@@ -62,6 +62,7 @@ type Deps struct {
 	JobRepo             jobsports.JobRepository
 	JobEnqueuer         jobsports.Enqueuer
 	ClientRepo          agentports.ClientLookup
+	AgentActivity       agentports.AgentActivityReader
 	SCIMUsers           userports.SCIMUserLookup
 	SCIMGroups          groupports.SCIMGroupLookup
 	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository

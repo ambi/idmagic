@@ -137,6 +137,23 @@ func (s *AuditEventStore) Count(_ context.Context, q ports.AuditEventQuery) (int
 	return count, nil
 }
 
+func (s *AuditEventStore) LatestByAgent(_ context.Context, tenantID string, agentIDs, eventTypes []string) (map[string]time.Time, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	latest := map[string]time.Time{}
+	for _, rec := range s.events {
+		if rec.TenantID != tenantID || !slices.Contains(eventTypes, rec.Type) {
+			continue
+		}
+		for _, agentID := range rec.SearchAttributes["agent.id"] {
+			if slices.Contains(agentIDs, agentID) && rec.OccurredAt.After(latest[agentID]) {
+				latest[agentID] = rec.OccurredAt
+			}
+		}
+	}
+	return latest, nil
+}
+
 func (s *AuditEventStore) FindByID(_ context.Context, id string) (*ports.AuditEventRecord, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

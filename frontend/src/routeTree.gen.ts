@@ -60,6 +60,7 @@ import { Route as AccountEmailVerifyRouteImport } from './routes/account/email/v
 import { Route as AccountProfileIndexRouteImport } from './routes/account/profile_/index'
 import { Route as AccountProfileEditRouteImport } from './routes/account/profile_/edit'
 import { Route as AdminAgentsAgentIdRouteImport } from './routes/admin/agents_/$agentId'
+import { Route as AdminAgentsInventoryRouteImport } from './routes/admin/agents_/inventory'
 import { Route as AdminAgentsNewRouteImport } from './routes/admin/agents_/new'
 import { Route as AdminApplicationsApplicationIdRouteImport } from './routes/admin/applications_/$applicationId'
 import { Route as AdminApplicationsNewRouteImport } from './routes/admin/applications_/new'
@@ -362,6 +363,11 @@ const AccountProfileEditRoute = AccountProfileEditRouteImport.update({
 const AdminAgentsAgentIdRoute = AdminAgentsAgentIdRouteImport.update({
   id: '/agents_/$agentId',
   path: '/agents/$agentId',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAgentsInventoryRoute = AdminAgentsInventoryRouteImport.update({
+  id: '/agents_/inventory',
+  path: '/agents/inventory',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAgentsNewRoute = AdminAgentsNewRouteImport.update({
@@ -678,6 +684,7 @@ export interface FileRoutesByFullPath {
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile/edit': typeof AccountProfileEditRoute
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdRouteWithChildren
+  '/admin/agents/inventory': typeof AdminAgentsInventoryRoute
   '/admin/agents/new': typeof AdminAgentsNewRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/applications/new': typeof AdminApplicationsNewRoute
@@ -774,6 +781,7 @@ export interface FileRoutesByTo {
   '/system': typeof SystemIndexRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile/edit': typeof AccountProfileEditRoute
+  '/admin/agents/inventory': typeof AdminAgentsInventoryRoute
   '/admin/agents/new': typeof AdminAgentsNewRoute
   '/admin/applications/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types/new': typeof AdminAuthorizationDetailTypesNewRoute
@@ -868,6 +876,7 @@ export interface FileRoutesById {
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile_/edit': typeof AccountProfileEditRoute
   '/admin/agents_/$agentId': typeof AdminAgentsAgentIdRouteWithChildren
+  '/admin/agents_/inventory': typeof AdminAgentsInventoryRoute
   '/admin/agents_/new': typeof AdminAgentsNewRoute
   '/admin/applications_/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/applications_/new': typeof AdminApplicationsNewRoute
@@ -970,6 +979,7 @@ export interface FileRouteTypes {
     | '/account/email/verify'
     | '/account/profile/edit'
     | '/admin/agents/$agentId'
+    | '/admin/agents/inventory'
     | '/admin/agents/new'
     | '/admin/applications/$applicationId'
     | '/admin/applications/new'
@@ -1066,6 +1076,7 @@ export interface FileRouteTypes {
     | '/system'
     | '/account/email/verify'
     | '/account/profile/edit'
+    | '/admin/agents/inventory'
     | '/admin/agents/new'
     | '/admin/applications/new'
     | '/admin/authorization-detail-types/new'
@@ -1159,6 +1170,7 @@ export interface FileRouteTypes {
     | '/account/email/verify'
     | '/account/profile_/edit'
     | '/admin/agents_/$agentId'
+    | '/admin/agents_/inventory'
     | '/admin/agents_/new'
     | '/admin/applications_/$applicationId'
     | '/admin/applications_/new'
@@ -1582,6 +1594,13 @@ declare module '@tanstack/react-router' {
       path: '/agents/$agentId'
       fullPath: '/admin/agents/$agentId'
       preLoaderRoute: typeof AdminAgentsAgentIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/agents_/inventory': {
+      id: '/admin/agents_/inventory'
+      path: '/agents/inventory'
+      fullPath: '/admin/agents/inventory'
+      preLoaderRoute: typeof AdminAgentsInventoryRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/agents_/new': {
@@ -2089,6 +2108,7 @@ interface AdminRouteRouteChildren {
   AdminWorkloadIdentityRoute: typeof AdminWorkloadIdentityRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminAgentsAgentIdRoute: typeof AdminAgentsAgentIdRouteWithChildren
+  AdminAgentsInventoryRoute: typeof AdminAgentsInventoryRoute
   AdminAgentsNewRoute: typeof AdminAgentsNewRoute
   AdminApplicationsApplicationIdRoute: typeof AdminApplicationsApplicationIdRouteWithChildren
   AdminApplicationsNewRoute: typeof AdminApplicationsNewRoute
@@ -2141,6 +2161,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminWorkloadIdentityRoute: AdminWorkloadIdentityRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminAgentsAgentIdRoute: AdminAgentsAgentIdRouteWithChildren,
+  AdminAgentsInventoryRoute: AdminAgentsInventoryRoute,
   AdminAgentsNewRoute: AdminAgentsNewRoute,
   AdminApplicationsApplicationIdRoute:
     AdminApplicationsApplicationIdRouteWithChildren,

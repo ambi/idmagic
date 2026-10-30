@@ -35,6 +35,7 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-agent-detail': `エージェント詳細 | ${ADMIN}`,
   'admin-agent-create': `エージェントを登録 | ${ADMIN}`,
   'admin-agent-edit': `エージェントを編集 | ${ADMIN}`,
+  'admin-agent-inventory': `エージェントの棚卸し | ${ADMIN}`,
   'admin-applications': `アプリケーション | ${ADMIN}`,
   'admin-application-detail': `アプリケーション詳細 | ${ADMIN}`,
   'admin-application-create': `アプリケーションを追加 | ${ADMIN}`,

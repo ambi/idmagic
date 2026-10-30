@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/ambi/idmagic/backend/audit/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -280,6 +281,23 @@ func handleAuditListError(err error) ([]*ports.AuditEventRecord, error) {
 		return []*ports.AuditEventRecord{}, nil
 	}
 	return nil, err
+}
+
+func (r *AuditEventRepository) LatestByAgent(ctx context.Context, tenantID string, agentIDs, eventTypes []string) (map[string]time.Time, error) {
+	latest := map[string]time.Time{}
+	if len(agentIDs) == 0 || len(eventTypes) == 0 {
+		return latest, nil
+	}
+	rows, err := New(r.Pool).LatestAuditEventByAgent(ctx, LatestAuditEventByAgentParams{
+		TenantID: tenantID, AgentIds: agentIDs, EventTypes: eventTypes,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		latest[row.AgentID] = row.Latest
+	}
+	return latest, nil
 }
 
 func (r *AuditEventRepository) FindByID(ctx context.Context, id string) (*ports.AuditEventRecord, error) {

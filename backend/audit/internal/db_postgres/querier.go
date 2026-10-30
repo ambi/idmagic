@@ -22,6 +22,7 @@ type Querier interface {
 	FindAuditExportArtifact(ctx context.Context, arg FindAuditExportArtifactParams) (*AuditExportArtifact, error)
 	GetAuditEventByID(ctx context.Context, id string) (*AuditEvent, error)
 	InsertAuditExportChunk(ctx context.Context, arg InsertAuditExportChunkParams) error
+	LatestAuditEventByAgent(ctx context.Context, arg LatestAuditEventByAgentParams) ([]*LatestAuditEventByAgentRow, error)
 	PublishAuditExportArtifact(ctx context.Context, id string) error
 	ReadAuditExportChunks(ctx context.Context, arg ReadAuditExportChunksParams) ([][]byte, error)
 }

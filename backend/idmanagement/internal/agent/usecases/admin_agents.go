@@ -48,7 +48,9 @@ type AdminAgentDeps struct {
 	AgentRepo  agentports.AgentRepository
 	ClientRepo agentports.ClientLookup
 	UserRepo   userports.UserRepository
-	Emit       func(spec.DomainEvent) error
+	// Activity は棚卸しが最終のトークン発行を読む先である。nil の配線では棚卸しを失敗させる。
+	Activity agentports.AgentActivityReader
+	Emit     func(spec.DomainEvent) error
 	// QuotaRepo enforces the tenant's Hard Quota on agents (wi-160).
 	// nil skips enforcement (wiring gaps in tests/tools); production
 	// bootstrap always sets it.

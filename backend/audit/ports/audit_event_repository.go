@@ -73,6 +73,10 @@ type AuditEventRepository interface {
 	Count(ctx context.Context, q AuditEventQuery) (int64, error)
 	// FindByID は ID で 1 件取得。テナント境界フィルタは呼び出し側の責務。
 	FindByID(ctx context.Context, id string) (*AuditEventRecord, error)
+	// LatestByAgent は、テナントの中で検索属性 agent.id が agentIDs のいずれかに一致し、
+	// 種別が eventTypes のいずれかの記録の、Agent ごとの最新の発生時刻を返す。記録の無い
+	// Agent は結果に含めない。Agent の棚卸しが最終のトークン発行を読む (REQ-IDMANAGEMENT-094)。
+	LatestByAgent(ctx context.Context, tenantID string, agentIDs, eventTypes []string) (map[string]time.Time, error)
 }
 
 // RetentionCutoff は 保持期間 sweep が「どの type をいつより前に消すか」を

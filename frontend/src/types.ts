@@ -807,6 +807,21 @@ export type AdminAgent = {
   killed_at?: string
 }
 
+export type AgentInventoryFinding = 'owner_missing' | 'dormant' | 'unbound'
+
+export type AgentInventoryEntry = {
+  agent: AdminAgent
+  owner_status: 'active' | 'disabled' | 'pending_deletion' | 'missing'
+  last_token_issued_at?: string
+  missing_client_ids: string[]
+  findings: AgentInventoryFinding[]
+}
+
+export type AgentInventory = {
+  dormant_days: number
+  agents: AgentInventoryEntry[]
+}
+
 export type AdminTenant = {
   id: string
   realm: string

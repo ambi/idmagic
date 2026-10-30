@@ -267,8 +267,10 @@ type RouteDeps struct {
 	support.Deps
 	*support.Authenticator
 	// Reactor は管理 API の User と Agent の操作が発行したイベントに反応する。
-	Reactor             idmhttpdeps.EventReactor
-	ClientRepo          agentports.ClientLookup
+	Reactor    idmhttpdeps.EventReactor
+	ClientRepo agentports.ClientLookup
+	// AgentActivity は Agent の棚卸しが最終のトークン発行を読む先である。
+	AgentActivity       agentports.AgentActivityReader
 	SCIMUsers           userports.SCIMUserLookup
 	SCIMGroups          groupports.SCIMGroupLookup
 	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
@@ -308,6 +310,7 @@ func (m Module) httpDeps(d RouteDeps) idmhttp.Deps {
 		GroupProvisioningNotifier: m.GroupProvisioningNotifier,
 		Reactor:                   d.Reactor,
 		ClientRepo:                d.ClientRepo,
+		AgentActivity:             d.AgentActivity,
 		SCIMUsers:                 d.SCIMUsers,
 		SCIMGroups:                d.SCIMGroups,
 		AttrSchemaRepo:            d.AttrSchemaRepo,

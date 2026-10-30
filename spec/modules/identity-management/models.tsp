@@ -1005,6 +1005,46 @@ model AgentListResponse {
 }
 
 
+@doc("Agent の棚卸しの所見（REQ-IDMANAGEMENT-094）。")
+enum AgentInventoryFinding {
+  @doc("所有者の User が同じテナントに存在しないか、`Active` でない。")
+  OwnerMissing: "owner_missing",
+  @doc("`Active` の Agent で、登録と最終のトークン発行のうち新しい方から `dormant_days` 日を過ぎている。")
+  Dormant: "dormant",
+  @doc("束縛した OAuth2Client が一つもないか、束縛先のクライアントが存在しない。")
+  Unbound: "unbound",
+}
+
+
+@doc("棚卸しが読んだ所有者の状態。`missing` は同じテナントに所有者の User が存在しない。")
+enum AgentOwnerStatus {
+  Active: "active",
+  Disabled: "disabled",
+  PendingDeletion: "pending_deletion",
+  Missing: "missing",
+}
+
+
+@doc("棚卸しの Agent 一件。")
+model AgentInventoryEntry {
+  agent: AgentSummaryResponse;
+  owner_status: AgentOwnerStatus;
+  @doc("その Agent を `agentId` に持つ `AccessTokenIssued` と `TokenExchanged` の監査の記録のうち、最新の発生時刻。記録がなければ省く。")
+  last_token_issued_at?: utcDateTime;
+  @doc("束縛しているが、存在しないクライアントの id。")
+  missing_client_ids: string[];
+  findings: AgentInventoryFinding[];
+}
+
+
+@doc("管理 API の Agent の棚卸し。Agent は名前の昇順（同じなら id の順）に並ぶ。")
+model AgentInventoryResponse {
+  @doc("休眠の判定に使った日数。")
+  dormant_days: int32;
+  agents: AgentInventoryEntry[];
+}
+
+
 @doc("エンドユーザーが主たるメールアドレスの変更を申し出て、新しいアドレスへ確認のリンクを送った（セルフサービス）。ConfirmEmailChange までメールアドレスそのものは変わらない。`newEmailHash` は SHA-256 なので、平文が監査ログに届くことはない。")
 model EmailChangeRequested {
   occurredAt: utcDateTime;

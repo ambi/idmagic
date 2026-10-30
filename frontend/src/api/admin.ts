@@ -1,5 +1,7 @@
 import type {
   AdminAgent,
+  AgentInventory,
+  AgentInventoryFinding,
   AdminApplication,
   AdminApplicationDetail,
   AdminAuditEvent,
@@ -1496,6 +1498,19 @@ export async function listAdminAgentsPage(params?: {
 
 export async function getAdminAgent(id: string): Promise<AdminAgent> {
   return request<AdminAgent>(`/api/admin/v1/agents/${encodeURIComponent(id)}`)
+}
+
+// getAgentInventory は所有者不在、休眠、未束縛の所見を付けた Agent の棚卸しを返す
+// (REQ-IDMANAGEMENT-094)。finding を省くと全件、dormantDays を省くとサーバーの既定 (90 日) を使う。
+export async function getAgentInventory(params?: {
+  finding?: AgentInventoryFinding
+  dormantDays?: number
+}): Promise<AgentInventory> {
+  const search = new URLSearchParams()
+  if (params?.finding) search.set('finding', params.finding)
+  if (params?.dormantDays !== undefined) search.set('dormant_days', String(params.dormantDays))
+  const query = search.toString()
+  return request<AgentInventory>(`/api/admin/v1/agent-inventory${query ? `?${query}` : ''}`)
 }
 
 export type RegisterAdminAgentInput = {

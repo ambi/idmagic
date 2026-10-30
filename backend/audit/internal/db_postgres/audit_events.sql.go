@@ -123,3 +123,45 @@ func (q *Queries) GetAuditEventByID(ctx context.Context, id string) (*AuditEvent
 	)
 	return &i, err
 }
+
+const latestAuditEventByAgent = `-- name: LatestAuditEventByAgent :many
+SELECT a.attr_value::text AS agent_id, max(e.occurred_at)::timestamptz AS latest
+FROM audit_event_search_attributes a
+JOIN audit_events e ON e.id = a.event_id
+WHERE a.tenant_id = $1
+  AND a.attr_name = 'agent.id'
+  AND a.attr_value = ANY($2::text[])
+  AND e.type = ANY($3::text[])
+GROUP BY a.attr_value
+`
+
+type LatestAuditEventByAgentParams struct {
+	TenantID   string
+	AgentIds   []string
+	EventTypes []string
+}
+
+type LatestAuditEventByAgentRow struct {
+	AgentID string
+	Latest  time.Time
+}
+
+func (q *Queries) LatestAuditEventByAgent(ctx context.Context, arg LatestAuditEventByAgentParams) ([]*LatestAuditEventByAgentRow, error) {
+	rows, err := q.db.Query(ctx, latestAuditEventByAgent, arg.TenantID, arg.AgentIds, arg.EventTypes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*LatestAuditEventByAgentRow
+	for rows.Next() {
+		var i LatestAuditEventByAgentRow
+		if err := rows.Scan(&i.AgentID, &i.Latest); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

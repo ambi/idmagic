@@ -68,6 +68,9 @@ type AccessTokenIssued struct {
 	UserID           string    `json:"userId"`
 	Scopes           []string  `json:"scopes"`
 	SenderConstraint string    `json:"senderConstraint"` // "none" | "dpop" | "mtls"
+	// AgentID はトークンを要求したクライアントに結び付いた Agent。Agent の棚卸しが最終の
+	// 発行時刻を監査の agent.id 軸から読む (REQ-IDMANAGEMENT-094)。
+	AgentID string `json:"agentId,omitempty"`
 }
 
 func (e *AccessTokenIssued) EventType() string     { return "AccessTokenIssued" }

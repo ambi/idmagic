@@ -236,7 +236,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			if sc != nil {
 				tag = string(sc.Type)
 			}
-			d.Emit(&domain.AccessTokenIssued{At: now, TenantID: support.RequestTenantID(c), JTI: jti, ClientID: client.ClientID, UserID: client.ClientID, Scopes: scopes, SenderConstraint: tag})
+			d.Emit(&domain.AccessTokenIssued{At: now, TenantID: support.RequestTenantID(c), JTI: jti, ClientID: client.ClientID, UserID: client.ClientID, Scopes: scopes, SenderConstraint: tag, AgentID: agentID})
 			if mcpResourceServer != nil {
 				d.Emit(&domain.ResourceScopedTokenIssued{At: now, TenantID: support.RequestTenantID(c), ClientID: client.ClientID, Resource: mcpResourceServer.Resource, Scopes: scopes})
 			}

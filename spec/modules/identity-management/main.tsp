@@ -2465,6 +2465,42 @@ op ListAgents(
   @query limit?: int64
 ): ListAgentsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAgentsError403 | ListAgentsError400;
 
+model ListAgentInventorySuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.AgentInventoryResponse;
+}
+
+union ListAgentInventoryError403Body {
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model ListAgentInventoryError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: ListAgentInventoryError403Body;
+}
+
+union ListAgentInventoryError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model ListAgentInventoryError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: ListAgentInventoryError400Body;
+}
+
+@doc("管理者が、自身のテナントの Agent を、所有者の状態、最終のトークン発行時刻、存在しない束縛先とともに棚卸しし、所有者不在、休眠、未束縛の所見を得る。`finding` を指定するとその所見を持つ Agent だけを返す。`dormant_days` は 1 から 365 で、既定は 90 である（REQ-IDMANAGEMENT-094）。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
+@TypeSpec.OpenAPI.operationId("ListAgentInventory")
+@route("/api/admin/v1/agent-inventory")
+@get
+op ListAgentInventory(
+  @query finding?: IdMagic.Contract.AgentInventoryFinding,
+  @query dormant_days?: int32
+): ListAgentInventorySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAgentInventoryError403 | ListAgentInventoryError400;
+
 model GetAgentSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AgentSummaryResponse;

@@ -65,6 +65,19 @@ func agentClientID(agentID string) string {
 // seedAgent は Agent と、その Agent が使うクライアントを置く。束縛は管理 API で作る。
 func (f *agentRevocationFixture) seedAgent(t *testing.T, agentID string) {
 	t.Helper()
+	f.seedClient(t, agentID)
+	now := time.Now().UTC()
+	if err := f.s.Agents.Save(context.Background(), &agentdomain.Agent{
+		ID: agentID, TenantID: tenancydomain.DefaultTenantID, Name: agentID, Kind: idmdomain.AgentKindAutonomous,
+		OwnerUserID: stack.UserID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatalf("seed agent %s: %v", agentID, err)
+	}
+}
+
+// seedClient は Agent が使う private_key_jwt のクライアントだけを置く。
+func (f *agentRevocationFixture) seedClient(t *testing.T, agentID string) {
+	t.Helper()
 	now := time.Now().UTC()
 	clientID := agentClientID(agentID)
 	credential := testing_clientauth.NewPrivateKeyJWT(t, clientID)
@@ -80,12 +93,6 @@ func (f *agentRevocationFixture) seedAgent(t *testing.T, agentID string) {
 		CreatedAt:               now,
 	}); err != nil {
 		t.Fatal(err)
-	}
-	if err := f.s.Agents.Save(context.Background(), &agentdomain.Agent{
-		ID: agentID, TenantID: tenancydomain.DefaultTenantID, Name: agentID, Kind: idmdomain.AgentKindAutonomous,
-		OwnerUserID: stack.UserID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now,
-	}); err != nil {
-		t.Fatalf("seed agent %s: %v", agentID, err)
 	}
 }
 
