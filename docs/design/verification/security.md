@@ -28,7 +28,7 @@
 | 信頼境界での値の解析、分割、正規化、比較 | プロパティテスト、ファジング | `mise run test-go-fuzz-all` | 仕様から導いた不変条件、往復、受け付けなかったあとに何も変わらないことが破れない | リポジトリ内 |
 | レスポンスヘッダー、Cookie 属性、同一オリジンの前提 | E2E | `mise run test-ui-e2e` | ブラウザーが実際に受け取る値が規範のとおりである | リポジトリ内 |
 | 鍵素材の秘匿と失効 | 単体、アダプター統合 | `mise run test-go` | 鍵素材が API、ログ、設定リファレンスへ出ず、失効後の暗号文を復号できない | リポジトリ内 |
-| 依存の既知脆弱性 | 依存監査 | `mise run audit-dependencies`、`mise run audit-go-reachability`、`mise run check-vulnerability-suppressions` | 未処理の既知脆弱性と、理由または期限を欠く抑制が無い | リポジトリ内 |
+| 依存の既知脆弱性 | 依存監査と Go の到達性解析 | `mise run audit-dependencies`、`mise run check-vulnerability-suppressions` | 未処理の既知脆弱性と、理由または期限を欠く抑制が無い | リポジトリ内 |
 | リポジトリへ混入したシークレット | 走査 | `mise run lint-repo`、`mise run audit-secrets-history` | 作業ツリーと Git 履歴のどちらにも検出が無い | リポジトリ内 |
 | 危険な実装パターン | 静的解析 | CI の CodeQL | 新たな警告が無い | リポジトリ内 |
 | 取り込んだ依存物と配布する成果物の来歴 | 供給鎖の検証 | 定めていない | 来歴を確かめられ、差し替えを識別できる | 手段が未定 |

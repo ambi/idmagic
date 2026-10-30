@@ -12,14 +12,9 @@ bun = "1.4.4"
 "aqua:zizmorcore/zizmor" = "1.31.1"
 "aqua:betterleaks/betterleaks" = "1.9.0"
 "aqua:google/osv-scanner" = "2.7.0"
-# govulncheck は配布バイナリではなく go: バックエンドで固定する。到達性の判定は go.mod が
-# 宣言する言語バージョンでビルドされていないと成立せず、配布バイナリはリリース時点の Go で焼き固め
-# られるためである。詳細は wi-291。
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
 # 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでもバージョンを固定するのは、
 # 生成される変異の集合がバージョンで変わり、work item に残した一覧が再現できなくなるためである。
 "go:github.com/gomutants/gomutants" = "0.7.2"
-"go:github.com/quality-gates/mutago/v2/cmd/mutago" = "2.10.40"
 
 [tasks.setup]
 description = "Install repository dependencies"
@@ -51,7 +46,6 @@ run = [
   "zizmor --version",
   "betterleaks version",
   "osv-scanner --version",
-  "govulncheck -version",
   "gomutants -version",
 ]
 
@@ -312,26 +306,20 @@ fi
 description = "Scan Go and Bun dependencies for known vulnerabilities"
 # 対象は列挙する。--recursive にすると、後から増えた依存定義ファイルが所有者と抑止方針の
 # 決まらないうちにゲートへ入り、CI の意味が黙って変わる。
-# 呼び出し解析は切る。OSV-Scanner は go/types を自分のバイナリに焼き込むので、go.mod が
-# 宣言する言語バージョンを配布バイナリのビルド Go が下回った瞬間に解析が壊れ、しかもそれが検出結果に
-# 現れない。到達性は audit-go-reachability が持つ。--call-analysis=none は「none という言語」
-# として一般エラーになるだけで、無効化にはならない。
+# 到達性は判断材料とし、未到達の検出も理由と期限を付けて抑止する。
 # 出力引数は透過する。CI は同じ対象定義のまま --format=sarif を足して呼ぶ。
 run = '''
 #!/usr/bin/env sh
 set -eu
 exec osv-scanner scan source \
   --config=osv-scanner.toml \
-  --no-call-analysis=go \
+  --call-analysis=go \
+  --all-vulns \
   --lockfile=go.mod \
   --lockfile=frontend/bun.lock \
   --lockfile=tools/bun.lock \
   "$@"
 '''
-
-[tasks.audit-go-reachability]
-description = "Report Go vulnerabilities the code actually reaches"
-run = "govulncheck ./..."
 
 [tasks.check-vulnerability-suppressions]
 description = "Require a reason and an unexpired deadline on every vulnerability suppression"
@@ -638,43 +626,6 @@ gomutants \
   "$target"
 '''
 
-[tasks.test-go-mutation-selected]
-description = "Mutate one Go package using explicitly selected caller tests without per-test mapping"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -ge 2 || { echo "usage: mise run test-go-mutation-selected -- <package-directory> <test-package-pattern> [report-file] [mutant-id]" >&2; exit 2; }
-repository="$PWD"
-directory=$(cd "$1" && pwd -P)
-report="${3:-${TMPDIR:-/tmp}/idmagic-selected-mutation-report.json}"
-case "$report" in
-  /*) ;;
-  *) report="$repository/$report" ;;
-esac
-selected_tmp=$(mktemp -d)
-trap 'rm -rf "$selected_tmp"' EXIT
-(
-  cd "$directory"
-  module_file=$(go env GOMOD)
-  test "$module_file" != /dev/null || { echo "target must belong to a Go module" >&2; exit 2; }
-  cd "$(dirname "$module_file")"
-  test_packages=$(go list "$2")
-  test -n "$test_packages" || { echo "test pattern matched no packages" >&2; exit 2; }
-  test_packages=$(printf '%s\n' "$test_packages" | tr '\n' ' ')
-  echo "Selected caller tests: $test_packages" >&2
-  # Go は flags と package 引数を同じ引数列から読む。固定版のこの経路を canary で検算する。
-  # 対象自身のテストも常に実行し、個別計測と未被覆による枝刈りは行わない。
-  cd "$selected_tmp"
-  mutago --config "$repository/tools/mutation-selected.yaml" \
-    --workers=2 --timeout-coefficient=10 \
-    --logger-agentic-json \
-    --test-flags="-count=1 $test_packages" \
-    ${4:+--run-mutant-id "$4"} "$directory"
-)
-cp "$selected_tmp/report.json" "$report"
-echo "Report: $report"
-'''
-
 [tasks.check-go-mutation-tool]
 description = "Check mutation survivor and compile-failure verdicts against a fixed canary"
 run = '''
@@ -694,7 +645,6 @@ for attempt in first cached; do
     ./tools/check/testdata/mutation-canary
   (cd tools && bun run check/src/mutation-canary.ts "$report")
 done
-(cd tools && bun run check/src/mutation-selected-canary.ts)
 '''
 
 [tasks.build-go]

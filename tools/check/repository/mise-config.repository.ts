@@ -78,24 +78,15 @@ describe('mise dependency audit boundary', () => {
     expect(flagValues('config')).toEqual(['osv-scanner.toml'])
   })
 
-  /**
-   * OSV-Scanner は go/types を自分のバイナリに焼き込むので、go.mod の言語バージョンを配布バイナリの
-   * ビルド Go が下回ると解析が壊れ、それが検出結果には現れない。到達性は govulncheck が持つ。
-   * `--call-analysis=none` は none という言語名として一般エラーになるだけで無効化にならない。
-   */
-  it('disables Go call analysis with the flag that actually disables it', () => {
-    expect(flagValues('no-call-analysis')).toEqual(['go'])
-    expect(auditDependencies).not.toContain('--call-analysis=none')
-  })
-
-  it('hands Go reachability to govulncheck', () => {
-    expect(String(config.tasks?.['audit-go-reachability']?.run ?? '')).toContain('govulncheck')
+  it('Go の到達性も OSV-Scanner で解析する', () => {
+    expect(flagValues('call-analysis')).toEqual(['go'])
+    expect(flagValues('no-call-analysis')).toEqual([])
+    expect(auditDependencies).toContain('--all-vulns')
   })
 
   /** バージョンが動くと検出も到達性の判定も動くため、可動指定やバージョン範囲を許さない。 */
-  it('pins both scanners to an exact version', () => {
+  it('OSV-Scanner のバージョンを固定する', () => {
     const exactVersion = /^\d+\.\d+\.\d+$/
-    expect(config.tools?.['go:golang.org/x/vuln/cmd/govulncheck']).toMatch(exactVersion)
     expect(config.tools?.['aqua:google/osv-scanner']).toMatch(exactVersion)
   })
 
@@ -113,7 +104,6 @@ describe('mise dependency audit boundary', () => {
   it('keeps the network-dependent scans out of both offline verification suites', () => {
     for (const suite of ['verify', 'verify-serial']) {
       expect(members(suite)).not.toContain('audit-dependencies')
-      expect(members(suite)).not.toContain('audit-go-reachability')
     }
   })
 })
@@ -258,16 +248,6 @@ describe('mise mutation testing boundary', () => {
     expect(canary).toContain('mutation-canary')
   })
 
-  it('個別計測を省いて呼び出し側を選ぶ補助タスクを提供する', () => {
-    expect(config.tools?.['go:github.com/quality-gates/mutago/v2/cmd/mutago']).toBe('2.10.40')
-    const selected = String(config.tasks?.['test-go-mutation-selected']?.run ?? '')
-    expect(selected).toContain('--test-flags=')
-    expect(selected).toContain('--run-mutant-id')
-    expect(selected).not.toContain('--per-test')
-    expect(selected).not.toContain('--coverage')
-    expect(canary).toContain('mutation-selected-canary')
-  })
-
   /**
    * 探索的な fuzz と同じ理由でゲートには入れない。対象と無関係な変更でも生成される変異の
    * 集合が変わるうえ、実行時間が対象パッケージではなくリポジトリ全体の大きさに比例する。
@@ -276,7 +256,6 @@ describe('mise mutation testing boundary', () => {
     for (const suite of ['check', 'verify', 'verify-serial', 'verify-full']) {
       expect(members(suite)).not.toContain('test-go-mutation')
       expect(members(suite)).not.toContain('test-go-mutation-mutant')
-      expect(members(suite)).not.toContain('test-go-mutation-selected')
       expect(members(suite)).not.toContain('check-go-mutation-tool')
     }
   })

@@ -36,7 +36,7 @@ keyless 署名（GitHub OIDC）+ SBOM attestation + 検証可能な provenance �
 ## Out of Scope
 - Kubernetes admission controller 本体のデプロイ・運用（前提として記述のみ）。
 - SLSA L4（two-person review）。到達目標は GitHub-hosted runner で成立する範囲に留める。
-- 脆弱性の検知面（govulncheck / osv-scanner / Trivy / semgrep ruleset と対応方針）。[[wi-291-dependency-vulnerability-management-and-disclosure-policy]] が担う。本 work item は真正性の面だけを担う。
+- 脆弱性の検知面（OSV-Scanner による依存監査と到達性解析、および対応方針）。[[wi-291-dependency-vulnerability-management-and-disclosure-policy]] が担う。本 work item は真正性の面だけを担う。
 - アプリケーションコード・HTTP API の変更。
 - UI バンドルの本番堅牢化。
 

@@ -393,44 +393,14 @@ mise run test-go-mutation -- backend/signinpolicy/domain 2 off /tmp/signin-polic
 mise run test-go-mutation-mutant -- backend/idmanagement/group/domain '<mutant-id>'
 ```
 
-#### 呼び出し側のテストを選んだ検査
+#### 統合モードの準備時間と判定の検算
 
 gomutants の統合モードは、テストを一つずつ実行して、各変異を検査するテストの対応表を作る。
 固定した 0.7.2 のバージョンでは、対象の被覆が 0% の逆依存パッケージも個別計測し、一件の変異指定でもこの準備を繰り返す。
 `--changed-since` と変異 ID は変異の範囲を絞るが、この費用を減らさない。
 
-重要な故障とそれを観測するテストを選べる場合は、`test-go-mutation-selected` で Mutago 2.10.40 を使う。
-第 1 引数は変異対象のパッケージディレクトリ、第 2 引数はテストのパッケージ pattern とする。
-pattern は対象が属する Go module の root から解決する。
-対象自身のテストに加えて、指定したパッケージの全テストを各変異で実行し、テストごとの被覆計測は行わない。
-pattern が解決できない場合や、選択したテストが最初から失敗している場合は、変異の判定へ進まない。
-
-```console
-mise run test-go-mutation-selected -- backend/shared/storage/db_memory ./backend/shared/storage/db_memory /tmp/selected-mutation.json
-```
-
-呼び出し側にだけあるテストを使うときは、そのパッケージを第 2 引数へ指定する。
-対象を広げる前に、選ぶテストが目的の故障を観測することを確かめる。
-選択外の呼び出し側の検出能力は未収集として扱い、全逆依存を使う `integration` の結果と同等とはみなさない。
-一度に指定する pattern の範囲が広いと、各変異でその範囲の初期化を繰り返す費用が生じる。
-
-報告は Mutago の JSON 形式で一時領域へ保存し、第 3 引数で保存先を変えられる。
-`killed`、`escaped`、`skipped` はそれぞれ検出、生存、構築不能などによる実行の省略を表す。
-報告中の `id` を第 4 引数へ渡すと、同じ対象とテストで一件だけ再実行する。
-ID はツール固有であり、gomutants の報告から転用しない。
-
-```console
-mise run test-go-mutation-selected -- backend/shared/storage/db_memory ./backend/shared/storage/db_memory /tmp/selected-rerun.json '<mutago-id>'
-```
-
-この補助タスクの演算子は、算術、比較の境界、条件の否定、符号の反転に絞る。
-既存タスクの `INCREMENT_DECREMENT` と同じ演算子はなく、生成する変異集合も一致しない。
-不足する故障は既存タスクまたは手動の故障注入で調べる。
-キャッシュは使わず、ソースの適用と構築失敗の分類は Mutago の実行系に任せる。
-追加パッケージは Mutago の `--test-flags` から Go のパッケージ引数へ渡すため、固定したバージョンを更新するときは実物の canary を通して、この経路が維持されることを確認する。
-
 ツールのバージョンを更新した後と、変更への耐性の証拠を作る前には、結果が分かっている固定の対象で、生存（`lived`）と構築不能（`not viable`）の分類を検算する。
-同じ検算は、選択した呼び出し側による検出、同じ ID の再実行、構築失敗の区別、失敗する基準テストの拒否、選択外テストの非実行も確認する。
+同じ検算をキャッシュの再利用時にも行う。
 
 ```console
 mise run check-go-mutation-tool

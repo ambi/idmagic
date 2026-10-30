@@ -234,10 +234,6 @@ jobs:
           status=$?
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit "$status"
-      # 走査が落ちたときこそ到達性の出力が要る。抑止の理由はこれを根拠に書くためである。
-      - name: Report Go vulnerabilities the code reaches
-        if: ${{ !cancelled() }}
-        run: mise run audit-go-reachability
       # fork からの Pull Request には security-events: write が渡らないので、アップロードだけを飛ばす。
       # 検査器自身が失敗したときも飛ばす。中身が 0 件の SARIF を上げると、code scanning 側では
       # 既存のアラートが解決済みとして閉じられ、問い合わせ障害が「脆弱性 0 件」として残る。

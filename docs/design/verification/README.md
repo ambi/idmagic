@@ -59,7 +59,7 @@
 | 利用者経路とブラウザー固有の振る舞い | E2E | `mise run test-ui-e2e` | 正式な入口から最終効果までが実配線で成立する | リポジトリ内 |
 | WCAG 2.2 のアクセシビリティ規範 | 単体、E2E | `mise run test-ui-unit`、`mise run test-ui-e2e` | 当該規範 ID を名指すテストが通る | リポジトリ内 |
 | 脅威モデルの `THREAT-NNN` と許可しない操作 | セキュリティ検証 | `mise run check-security-controls`、`mise run report-security-test-gaps` と対象のテストタスク | 無作用を観測するテストが実行され成功する。ソース調査の候補と不足件数だけでは実行も検出能力も示さない | リポジトリ内。脅威ごとの手段は[セキュリティ検証設計](security.md)が示す |
-| 依存と供給鎖 | 依存監査、シークレット走査、静的解析 | `mise run audit-dependencies`、`mise run audit-go-reachability`、`mise run check-vulnerability-suppressions`、`mise run lint-repo`、CI の CodeQL | 未処理の既知脆弱性と、理由または期限を欠く抑制が無い | リポジトリ内。成果物の来歴の確認は手段が未定 |
+| 依存と供給鎖 | 依存監査と Go の到達性解析、シークレット走査、静的解析 | `mise run audit-dependencies`、`mise run check-vulnerability-suppressions`、`mise run lint-repo`、CI の CodeQL | 未処理の既知脆弱性と、理由または期限を欠く抑制が無い | リポジトリ内。成果物の来歴の確認は手段が未定 |
 | `SLO-*` を判定する監視資産 | 運用検証 | [宣言的なファイルの検証](#宣言的なファイルの検証)が定める | 同じ節が定める | リポジトリ内 |
 | `SLO-*` の達成 | 稼働中の指標の評価 | 監視基盤が記録した指標を[品質要件](../../requirements/quality.md#測定境界)の母集団で集計する | 30 日の移動窓で目標を満たす | 実環境が必要 |
 | `CAP-*` のキャパシティ受入れ | 負荷試験 | 想定ワークロードのデータを投入し、負荷生成器でピークを与える。`mise run test-k6-smoke` は経路の疎通だけを確かめる | ウォームアップ後の 60 分間、必要リクエスト率で対応する SLO を満たす | 実環境が必要 |
