@@ -448,7 +448,7 @@ func TestWorkerDisableUserStepRevokesTheTokensOfTheAgentsTheUserOwns(t *testing.
 		epochs = append(epochs, epoch.Epoch)
 		accessTokens := oauth2.Module{TokenIntrospector: staticIntrospection{result: &oauthports.IntrospectionResult{
 			Active: true, Sub: id, ClientID: id + "-client", Iat: issuedAt.Unix(),
-		}}}.ResourceAccessTokens(f.deps.IdManagement.AgentRepo, f.epochs)
+		}}}.ResourceAccessTokens(f.deps.IdManagement.AgentRepo, f.epochs, nil, nil)
 		verified, err := accessTokens.IntrospectAccessToken(ctx, id+"-token")
 		if err != nil || verified != nil {
 			t.Fatalf("token of %s issued before the disable: verified = %+v, %v; want revoked", id, verified, err)

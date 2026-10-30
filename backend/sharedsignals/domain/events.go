@@ -23,6 +23,18 @@ type AgentAccessRevoked struct {
 func (e *AgentAccessRevoked) EventType() string     { return "AgentAccessRevoked" }
 func (e *AgentAccessRevoked) OccurredAt() time.Time { return e.At }
 
+// UserAccessRevoked は User の失効を記録する (REQ-SHAREDSIGNALS-012)。
+type UserAccessRevoked struct {
+	At               time.Time        `json:"-"`
+	TenantID         string           `json:"tenantId"`
+	UserID           string           `json:"userId"`
+	Reason           RevocationReason `json:"reason"`
+	InitiatingEntity InitiatingEntity `json:"initiatingEntity"`
+}
+
+func (e *UserAccessRevoked) EventType() string     { return "UserAccessRevoked" }
+func (e *UserAccessRevoked) OccurredAt() time.Time { return e.At }
+
 type SsfStreamRegistered struct {
 	At        time.Time          `json:"-"`
 	TenantID  string             `json:"tenantId"`

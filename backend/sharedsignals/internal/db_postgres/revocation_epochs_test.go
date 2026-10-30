@@ -125,3 +125,44 @@ func TestAgentRevocationEpochRepository_CascadesOnAgentDelete(t *testing.T) {
 		t.Fatalf("expected epoch to be cascade-deleted with agent, got %+v", got)
 	}
 }
+
+// TestUserRevocationEpochRepository は単調増加と、User の物理削除の連鎖を DB の制約で確かめる。
+//
+//spec:covers REQ-SHAREDSIGNALS-012: エポックが保存層で後退せず、UUID でない主体を未失効と読むこと
+func TestUserRevocationEpochRepository(t *testing.T) {
+	db := pgtest.Require(t)
+	repo := &UserRevocationEpochRepository{Pool: db}
+	tenant := seedTenant(t, db)
+	agent := seedAgent(t, db, tenant.ID)
+	now := testClock()
+	first := ssdomain.UserRevocationEpoch{
+		UserID: agent.OwnerUserID, TenantID: tenant.ID, Epoch: now,
+		Reason: ssdomain.RevocationReasonSessionRevoked, AdvancedAt: now,
+	}
+	ctx := context.Background()
+	if err := repo.Advance(ctx, first); err != nil {
+		t.Fatalf("first Advance: %v", err)
+	}
+	for _, at := range []time.Time{now, now.Add(-time.Hour)} {
+		stale := first
+		stale.Epoch = at
+		if err := repo.Advance(ctx, stale); !errors.Is(err, ssdomain.ErrEpochNotAdvancing) {
+			t.Fatalf("Advance %v = %v", at, err)
+		}
+	}
+	later := first
+	later.Epoch = now.Add(time.Hour)
+	if err := repo.Advance(ctx, later); err != nil {
+		t.Fatalf("later Advance: %v", err)
+	}
+	got, err := repo.FindByUser(ctx, tenant.ID, agent.OwnerUserID)
+	if err != nil || got == nil || !got.Epoch.Equal(later.Epoch) {
+		t.Fatalf("got=%+v err=%v", got, err)
+	}
+	if other, err := repo.FindByUser(ctx, seedTenant(t, db).ID, agent.OwnerUserID); err != nil || other != nil {
+		t.Fatalf("別テナント got=%+v err=%v", other, err)
+	}
+	if none, err := repo.FindByUser(ctx, tenant.ID, "not-a-uuid"); err != nil || none != nil {
+		t.Fatalf("UUID でない主体 got=%+v err=%v", none, err)
+	}
+}

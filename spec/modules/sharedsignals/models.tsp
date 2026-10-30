@@ -76,6 +76,13 @@ enum RevocationReason {
   OwnerDisabled: "OwnerDisabled",
   OwnerDeleted: "OwnerDeleted",
   ManualAdmin: "ManualAdmin",
+  UserDisabled: "UserDisabled",
+  UserSoftDeleted: "UserSoftDeleted",
+  UserDeleted: "UserDeleted",
+  SessionRevoked: "SessionRevoked",
+  PasswordChanged: "PasswordChanged",
+  AuthenticatorChanged: "AuthenticatorChanged",
+  RefreshTokenReuse: "RefreshTokenReuse",
   InboundSecurityEvent: "InboundSecurityEvent",
 }
 
@@ -176,6 +183,17 @@ model AgentRevocationEpoch {
 }
 
 
+@doc("User ごとの失効エポック。行のない User は未失効を表す。")
+model UserRevocationEpoch {
+  user_id: string;
+  tenant_id: string;
+  epoch: utcDateTime;
+  reason: RevocationReason;
+  advanced_at: utcDateTime;
+  source_event_id?: string;
+}
+
+
 @doc("テナントが登録するすべての SSF のストリームに共通するメタデータ。向きに応じて、SsfTransmitterConfig か SsfReceiverConfig のちょうど一つが付随する。")
 model SsfStream {
   id: string;
@@ -251,6 +269,17 @@ model RevocationEpochAdvanced {
   agentId: string;
   reason: RevocationReason;
   epoch: utcDateTime;
+}
+
+
+@doc("User のアクセスを即座に失効させたことを記録する、監査とガバナンスのための要約のイベント。")
+model UserAccessRevoked {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  userId: string;
+  reason: RevocationReason;
+  @doc("`policy`、`admin`、`user` のいずれか。")
+  initiatingEntity: string;
 }
 
 

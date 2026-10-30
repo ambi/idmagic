@@ -116,7 +116,7 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 		Sessions: authentication.Module{AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
 			UserID: actor.ID, AuthTime: now.Unix(), AMR: []string{"pwd"},
 		}}}.SessionAuthentications(),
-		AccessTokens: oauth2.Module{TokenIntrospector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}}.ResourceAccessTokens(nil, nil),
+		AccessTokens: oauth2.Module{TokenIntrospector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}}.ResourceAccessTokens(nil, nil, nil, nil),
 	}
 	e := echo.New()
 	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", testing_tenant.ResolveDefault), tenancyhttp.Deps{
@@ -143,7 +143,7 @@ func TestUpdateTenantQuotaHTTPContractRefusesAuthenticationAndScope(t *testing.T
 		t.Run(tc.name, func(t *testing.T) {
 			srv := newQuotaControlPlaneServer(t)
 			srv.authn.Sessions = authentication.Module{AuthnResolver: &fakeAuthnResolver{}}.SessionAuthentications()
-			srv.authn.AccessTokens = oauth2.Module{TokenIntrospector: staticIntrospector{sub: "ops", scope: tc.scope}}.ResourceAccessTokens(nil, nil)
+			srv.authn.AccessTokens = oauth2.Module{TokenIntrospector: staticIntrospector{sub: "ops", scope: tc.scope}}.ResourceAccessTokens(nil, nil, nil, nil)
 			rec := srv.updateQuota(func(req *http.Request) {
 				withBrowserCredentials(quotaTestIssuer, "token", "token")(req)
 				if tc.scope != "" {

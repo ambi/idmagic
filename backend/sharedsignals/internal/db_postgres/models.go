@@ -60,3 +60,12 @@ type SsfTransmitterConfig struct {
 	DeliveryAuthorization pgtype.Text
 	MaxDeliveryAttempts   int32
 }
+
+type UserRevocationEpoch struct {
+	UserID        string
+	TenantID      string
+	Epoch         time.Time
+	Reason        string
+	AdvancedAt    time.Time
+	SourceEventID pgtype.Text
+}

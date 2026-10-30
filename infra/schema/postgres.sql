@@ -1884,6 +1884,23 @@ CREATE TABLE agent_revocation_epochs (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
+CREATE TABLE user_revocation_epochs (
+    user_id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    epoch TIMESTAMPTZ NOT NULL,
+    reason TEXT NOT NULL
+        CHECK (reason IN (
+            'UserDisabled', 'UserSoftDeleted', 'SessionRevoked', 'PasswordChanged',
+            'AuthenticatorChanged', 'RefreshTokenReuse', 'InboundSecurityEvent'
+        )),
+    advanced_at TIMESTAMPTZ NOT NULL,
+    source_event_id TEXT,
+    CONSTRAINT user_revocation_epochs_user_fkey
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT user_revocation_epochs_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+);
+
 CREATE TABLE ssf_streams (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,

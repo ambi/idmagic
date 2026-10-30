@@ -43,3 +43,45 @@ func (e AgentRevocationEpoch) Validate() error {
 func (e AgentRevocationEpoch) Supersedes(issuedAt time.Time) bool {
 	return issuedAt.Before(e.Epoch)
 }
+
+// UserRevocationEpoch は User ごとの revocation epoch である (REQ-SHAREDSIGNALS-012)。
+// 行が存在しない User は未失効を意味する。
+type UserRevocationEpoch struct {
+	UserID        string
+	TenantID      string
+	Epoch         time.Time
+	Reason        RevocationReason
+	AdvancedAt    time.Time
+	SourceEventID *string
+}
+
+var userRevocationEpochSchema = z.Struct(z.Shape{
+	"UserID":   z.String().Min(1).Required(),
+	"TenantID": z.String().Min(1).Required(),
+	"Epoch":    z.Time().Required(),
+	"Reason": z.StringLike[RevocationReason]().TestFunc(
+		func(value *RevocationReason, _ z.Ctx) bool { return value.Valid() },
+		z.Message("revocation reason is not in enum"),
+	).Required(),
+	"AdvancedAt": z.Time().Required(),
+})
+
+// Validate は構造的妥当性を検証する。
+func (e UserRevocationEpoch) Validate() error {
+	return spec.Validate(userRevocationEpochSchema, &e)
+}
+
+// Supersedes は、issuedAt が本 epoch より前かどうかを判定する。境界は AgentRevocationEpoch と同じである。
+func (e UserRevocationEpoch) Supersedes(issuedAt time.Time) bool {
+	return issuedAt.Before(e.Epoch)
+}
+
+// UserRevocation は User の失効の 1 回の要求である。
+type UserRevocation struct {
+	TenantID      string
+	UserID        string
+	Reason        RevocationReason
+	Initiator     InitiatingEntity
+	SourceEventID *string
+	At            time.Time
+}

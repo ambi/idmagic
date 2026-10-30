@@ -14,6 +14,7 @@
 | Aggregate | 境界の内側にあるもの | 他の Aggregate との関係 |
 | --- | --- | --- |
 | `AgentRevocationEpoch` | `Agent` ごとの失効エポックと、最後に進めた理由 | `Agent` を参照する |
+| `UserRevocationEpoch` | `User` ごとの失効エポックと、最後に進めた理由 | `User` を参照する |
 | `SsfStream` | 向き（`Transmit` または `Receive`）、状態、送信側の設定または受信側の設定 | `Tenant` を `tenant_id` で参照する |
 | `SecurityEventDelivery` | 送信するストリーム、SET、状態、試行の回数、次の試行の時刻 | `SsfStream` を参照する |
 | `ReceivedSecurityEvent` | 受信したストリーム、`jti`、検証の結果 | `SsfStream` を参照する |

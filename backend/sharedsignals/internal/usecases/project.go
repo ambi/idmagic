@@ -44,14 +44,7 @@ func initiatingEntityForReason(reason ssdomain.RevocationReason) ssdomain.Initia
 // (log-and-continue) reaction to AgentAccessRevoked, not inline inside the
 // revocation call itself.
 func ProjectAgentAccessRevoked(ctx context.Context, deps ProjectorDeps, event *ssdomain.AgentAccessRevoked) error {
-	if deps.StreamRepo == nil {
-		return nil
-	}
-	streams, err := deps.StreamRepo.ListAll(ctx, event.TenantID)
-	if err != nil {
-		return err
-	}
-	caepEvent := ssdomain.CaepEvent{
+	return projectSessionRevoked(ctx, deps, ssdomain.CaepEvent{
 		EventType: ssdomain.CaepEventTypeSessionRevoked,
 		Subject: ssdomain.SsfSubject{
 			SubjectType: ssdomain.SsfSubjectTypeAgent, TenantID: event.TenantID, PrincipalID: event.AgentID,
@@ -59,12 +52,36 @@ func ProjectAgentAccessRevoked(ctx context.Context, deps ProjectorDeps, event *s
 		Reason:           &event.Reason,
 		EventTimestamp:   event.At,
 		InitiatingEntity: initiatingEntityForReason(event.Reason),
+	}, event.TenantID, event.At)
+}
+
+// ProjectUserAccessRevoked は User の失効を、ProjectAgentAccessRevoked と同じく購読するストリームへ
+// 投影する。ローカルの失効の後に、切り離して呼ぶ (REQ-SHAREDSIGNALS-012)。
+func ProjectUserAccessRevoked(ctx context.Context, deps ProjectorDeps, event *ssdomain.UserAccessRevoked) error {
+	return projectSessionRevoked(ctx, deps, ssdomain.CaepEvent{
+		EventType: ssdomain.CaepEventTypeSessionRevoked,
+		Subject: ssdomain.SsfSubject{
+			SubjectType: ssdomain.SsfSubjectTypeUser, TenantID: event.TenantID, PrincipalID: event.UserID,
+		},
+		Reason:           &event.Reason,
+		EventTimestamp:   event.At,
+		InitiatingEntity: event.InitiatingEntity,
+	}, event.TenantID, event.At)
+}
+
+func projectSessionRevoked(ctx context.Context, deps ProjectorDeps, caepEvent ssdomain.CaepEvent, tenantID string, at time.Time) error {
+	if deps.StreamRepo == nil {
+		return nil
+	}
+	streams, err := deps.StreamRepo.ListAll(ctx, tenantID)
+	if err != nil {
+		return err
 	}
 	for _, stream := range streams {
 		if stream.Direction != ssdomain.SsfStreamDirectionTransmit || !stream.IsEnabled() || !stream.Subscribes(ssdomain.CaepEventTypeSessionRevoked) {
 			continue
 		}
-		if err := deliverToStream(ctx, deps, stream, caepEvent, event.At); err != nil {
+		if err := deliverToStream(ctx, deps, stream, caepEvent, at); err != nil {
 			return err
 		}
 	}

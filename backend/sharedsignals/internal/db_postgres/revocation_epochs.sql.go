@@ -52,6 +52,46 @@ func (q *Queries) AdvanceAgentRevocationEpoch(ctx context.Context, arg AdvanceAg
 	return &i, err
 }
 
+const advanceUserRevocationEpoch = `-- name: AdvanceUserRevocationEpoch :one
+INSERT INTO user_revocation_epochs (user_id,tenant_id,epoch,reason,advanced_at,source_event_id)
+VALUES ($1,$2,$3,$4,$5,$6)
+ON CONFLICT (user_id) DO UPDATE SET
+ epoch=EXCLUDED.epoch,reason=EXCLUDED.reason,advanced_at=EXCLUDED.advanced_at,
+ source_event_id=EXCLUDED.source_event_id
+ WHERE EXCLUDED.epoch > user_revocation_epochs.epoch
+RETURNING user_id,tenant_id,epoch,reason,advanced_at,source_event_id
+`
+
+type AdvanceUserRevocationEpochParams struct {
+	UserID        string
+	TenantID      string
+	Epoch         time.Time
+	Reason        string
+	AdvancedAt    time.Time
+	SourceEventID pgtype.Text
+}
+
+func (q *Queries) AdvanceUserRevocationEpoch(ctx context.Context, arg AdvanceUserRevocationEpochParams) (*UserRevocationEpoch, error) {
+	row := q.db.QueryRow(ctx, advanceUserRevocationEpoch,
+		arg.UserID,
+		arg.TenantID,
+		arg.Epoch,
+		arg.Reason,
+		arg.AdvancedAt,
+		arg.SourceEventID,
+	)
+	var i UserRevocationEpoch
+	err := row.Scan(
+		&i.UserID,
+		&i.TenantID,
+		&i.Epoch,
+		&i.Reason,
+		&i.AdvancedAt,
+		&i.SourceEventID,
+	)
+	return &i, err
+}
+
 const findAgentRevocationEpoch = `-- name: FindAgentRevocationEpoch :one
 SELECT agent_id,tenant_id,epoch,reason,advanced_at,source_event_id
 FROM agent_revocation_epochs WHERE tenant_id=$1 AND agent_id=$2
@@ -67,6 +107,30 @@ func (q *Queries) FindAgentRevocationEpoch(ctx context.Context, arg FindAgentRev
 	var i AgentRevocationEpoch
 	err := row.Scan(
 		&i.AgentID,
+		&i.TenantID,
+		&i.Epoch,
+		&i.Reason,
+		&i.AdvancedAt,
+		&i.SourceEventID,
+	)
+	return &i, err
+}
+
+const findUserRevocationEpoch = `-- name: FindUserRevocationEpoch :one
+SELECT user_id,tenant_id,epoch,reason,advanced_at,source_event_id
+FROM user_revocation_epochs WHERE tenant_id=$1 AND user_id=$2
+`
+
+type FindUserRevocationEpochParams struct {
+	TenantID string
+	UserID   string
+}
+
+func (q *Queries) FindUserRevocationEpoch(ctx context.Context, arg FindUserRevocationEpochParams) (*UserRevocationEpoch, error) {
+	row := q.db.QueryRow(ctx, findUserRevocationEpoch, arg.TenantID, arg.UserID)
+	var i UserRevocationEpoch
+	err := row.Scan(
+		&i.UserID,
 		&i.TenantID,
 		&i.Epoch,
 		&i.Reason,

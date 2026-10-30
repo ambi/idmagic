@@ -5,12 +5,14 @@
 package handlers_http
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
 	"time"
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
@@ -35,6 +37,9 @@ type Deps struct {
 	DeliveryRepo          ssports.SecurityEventDeliveryRepository
 	ReceivedEventRepo     ssports.ReceivedSecurityEventRepository
 	EpochRepo             ssports.AgentRevocationEpochRepository
+	UserEpochRepo         ssports.UserRevocationEpochRepository
+	Users                 userports.UserRepository
+	EndUserSessions       func(ctx context.Context, userID string) error
 	AgentRepo             agentports.AgentRepository
 	Verifier              ssports.SecurityEventTokenVerifier
 	QuotaRepo             tenantports.QuotaRepository
@@ -52,7 +57,8 @@ func (d Deps) adminDeps() usecases.AdminStreamDeps {
 func (d Deps) receiveDeps() usecases.ReceiveDeps {
 	return usecases.ReceiveDeps{
 		StreamRepo: d.StreamRepo, ReceiverConfigRepo: d.ReceiverConfigRepo, ReceivedEventRepo: d.ReceivedEventRepo,
-		EpochRepo: d.EpochRepo, AgentRepo: d.AgentRepo, Verifier: d.Verifier, Emit: d.Emit,
+		EpochRepo: d.EpochRepo, UserEpochRepo: d.UserEpochRepo, AgentRepo: d.AgentRepo, Users: d.Users,
+		EndUserSessions: d.EndUserSessions, Verifier: d.Verifier, Emit: d.Emit,
 	}
 }
 

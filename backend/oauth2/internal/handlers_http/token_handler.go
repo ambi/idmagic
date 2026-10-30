@@ -160,7 +160,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		}
 		res, err := tokenusecases.RefreshTokens(ctx, tokenusecases.RefreshDeps{
 			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo,
-			RefreshStore: d.RefreshStore, TokenIssuer: d.TokenIssuer,
+			RefreshStore: d.RefreshStore, UserEpochs: d.UserRevocationEpochRepo, TokenIssuer: d.TokenIssuer,
 			Authorizer: d.Authorizer, Emit: d.Emit,
 		}, tokenusecases.RefreshInput{
 			ClientID: clientStub.ID, RefreshToken: rt,
@@ -375,6 +375,7 @@ func (d Deps) introspectDeps() tokenusecases.IntrospectDeps {
 		AccessTokenDenylist: d.AccessTokenDenylist,
 		AgentRepo:           d.AgentRepo, RevocationEpochRepo: d.RevocationEpochRepo,
 		Consents: d.ConsentRepo, Clients: d.ClientRepo,
+		Users: d.UserRepo, UserEpochs: d.UserRevocationEpochRepo,
 	}
 }
 

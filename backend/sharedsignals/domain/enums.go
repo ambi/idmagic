@@ -64,12 +64,21 @@ const (
 	RevocationReasonOwnerDeleted           RevocationReason = "OwnerDeleted"
 	RevocationReasonManualAdmin            RevocationReason = "ManualAdmin"
 	RevocationReasonInboundSecurityEvent   RevocationReason = "InboundSecurityEvent"
+	RevocationReasonUserDisabled           RevocationReason = "UserDisabled"
+	RevocationReasonUserSoftDeleted        RevocationReason = "UserSoftDeleted"
+	RevocationReasonUserDeleted            RevocationReason = "UserDeleted"
+	RevocationReasonSessionRevoked         RevocationReason = "SessionRevoked"
+	RevocationReasonPasswordChanged        RevocationReason = "PasswordChanged"
+	RevocationReasonAuthenticatorChanged   RevocationReason = "AuthenticatorChanged"
+	RevocationReasonRefreshTokenReuse      RevocationReason = "RefreshTokenReuse"
 )
 
 func (r RevocationReason) Valid() bool {
 	switch r {
 	case RevocationReasonAgentKilled, RevocationReasonAgentDisabled, RevocationReasonAgentCredentialUnbound,
-		RevocationReasonOwnerDisabled, RevocationReasonOwnerDeleted, RevocationReasonManualAdmin, RevocationReasonInboundSecurityEvent:
+		RevocationReasonOwnerDisabled, RevocationReasonOwnerDeleted, RevocationReasonManualAdmin, RevocationReasonInboundSecurityEvent,
+		RevocationReasonUserDisabled, RevocationReasonUserSoftDeleted, RevocationReasonUserDeleted, RevocationReasonSessionRevoked,
+		RevocationReasonPasswordChanged, RevocationReasonAuthenticatorChanged, RevocationReasonRefreshTokenReuse:
 		return true
 	}
 	return false

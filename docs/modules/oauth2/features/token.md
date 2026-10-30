@@ -259,7 +259,7 @@ RefreshToken のライフサイクル。Rotate で子トークンに引き継が
 #### REQ-OAUTH2-047 管理コンソールとアカウントポータルの Bearer 認証も失効判定を通る
 
 - 管理コンソールかアカウントポータルの API へ Bearer のアクセストークンを提示されたとき、OAuth2 は、イントロスペクションと同じ失効の判定を通す。
-- `jti` が失効のリストに載っているか、REQ-OAUTH2-012 が `active=false` とするトークンを提示された場合、OAuth2 は、401 と `invalid_token` で拒否する。
+- `jti` が失効のリストに載っているか、REQ-OAUTH2-012 が `active=false` とするトークンか、REQ-SHAREDSIGNALS-012 が無効とする User のトークンを提示された場合、OAuth2 は、401 と `invalid_token` で拒否する。
 - 失効のリストに載らず、REQ-OAUTH2-012 が `active=true` とするトークンを提示されたとき、OAuth2 は、認証を成立させ、スコープとロールの境界で判定させる。
 - **例**：EX-OAUTH2-047-01、EX-OAUTH2-047-02、EX-OAUTH2-047-03
 

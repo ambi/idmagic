@@ -2,11 +2,11 @@
 
 ## 概要
 
-この文書は、Agent ごとの失効エポックを進め、発行済みのトークンをイントロスペクションで即時に無効にする仕様である。
+この文書は、Agent と User ごとの失効エポックを進め、発行済みのトークンをイントロスペクションで即時に無効にする仕様である。
 
 | 項目 | 内容 |
 | --- | --- |
-| 責務 | Agent のイベントと受信した SET を契機とする失効エポックの前進、イントロスペクションへの反映、外部への伝播との切り離し |
+| 責務 | Agent と User のイベントと受信した SET を契機とする失効エポックの前進、イントロスペクションへの反映、外部への伝播との切り離し |
 | 行為者 | テナント管理者（Agent の強制終了）、System（イベントへの反応） |
 | 扱わないもの | Agent の状態の変更は `IdManagement` が、外部への配送は[SET の配送](transmitter.md)が扱う |
 
@@ -20,7 +20,8 @@
 | --- | --- |
 | `KillAgent`、`DisableAgent`、`UnbindAgentCredential` | その Agent |
 | 所有者（`owner_user_id`）の無効化と削除 | 対象テナントの中で `owner_user_id` が一致するすべての Agent |
-| 受理した SET | SET が指す Agent |
+| 受理した SET | SET が指す Agent か User |
+| User の無効化、論理削除、セッションの失効、資格情報の変更、リフレッシュトークンの再利用の検出 | その User |
 
 所有者の停止と、それに伴う Agent の無効化（`IdManagement` の `AgentDisabled`）は同じ時刻を持つ。
 そのため、Agent ごとの失効は一度だけ記録され、理由は先に届いた所有者の停止になる。
@@ -41,6 +42,19 @@
 - 失効エポックを既存の値と同じかそれより前の時刻へ進める要求を受けた場合、SharedSignals は、エポックを変えず、`RevocationEpochAdvanced` と `AgentAccessRevoked` を発行しない。
 - 失効エポックを判定できない場合、SharedSignals は、トークンを無効とみなさせる。
 - **例**：EX-SHAREDSIGNALS-001-01、EX-SHAREDSIGNALS-001-02
+
+#### REQ-SHAREDSIGNALS-012 User の失効は発行済みのトークンを即時に無効にして外部へ伝える
+
+- User を無効化するか論理削除したか、本人か管理者がセッションを失効させたか、パスワードか MFA の資格情報が変わったか、リフレッシュトークンの再利用を検出したとき、SharedSignals は、その User の失効エポックを現在時刻へ進め、`UserAccessRevoked` を発行し、購読する送信側のストリームへ `session-revoked` の配送を作る。
+- User を物理削除したとき、SharedSignals は、エポックを記録せずに `UserAccessRevoked` を発行し、配送を作る。
+- 発行時刻が User の失効エポックより前のアクセストークンのイントロスペクションを受けたとき、SharedSignals は、トークンを `active=false` として判定させる。
+- User を再び有効にしたとき、SharedSignals は、エポックを戻さず、以前のトークンを無効のままにさせる。
+- 発行時刻が失効エポックより前のリフレッシュトークンの交換を受けた場合、SharedSignals は、OAuth2 に family を失効させ、400 と `invalid_grant` で拒否させる。
+- サブジェクトの User が存在しないか `Active` でないアクセストークンのイントロスペクションを受けたとき、SharedSignals は、トークンを `active=false` として判定させる。
+- ログアウト、アイドル、絶対期限でセッションが終わったとき、SharedSignals は、エポックを進めず、配送を作らない。
+- エポックを既存の値と同じかそれより前の時刻へ進める要求を受けた場合、SharedSignals は、エポックを変えず、`UserAccessRevoked` を発行しない。
+- User のエポックか User を読めない場合、SharedSignals は、トークンを無効とみなさせる。
+- **判断**：通常のログアウトで進めない。エポックは User 単位なので、一つの端末のログアウトが全端末のトークンを止めるからである。
 
 #### REQ-SHAREDSIGNALS-007 受信側の障害はローカル失効を遅らせない
 

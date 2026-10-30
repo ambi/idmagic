@@ -16,6 +16,7 @@ func newAuthenticator(d Deps, apiTokens apitokenports.Authenticator) *support.Au
 		// admin / account portal の Bearer にも /introspect と同じ失効判定を通す (REQ-OAUTH2-047)。
 		authenticator.AccessTokens = d.OAuth2.ResourceAccessTokens(
 			d.IdManagement.AgentRepo, d.SharedSignals.RevocationEpochRepo,
+			d.IdManagement.UserRepo, d.SharedSignals.UserRevocationEpochRepo,
 		)
 	}
 	if apiTokens != nil {

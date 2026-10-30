@@ -47,3 +47,35 @@ func (r *AgentRevocationEpochRepository) Advance(_ context.Context, epoch ssdoma
 	r.epochs[key] = cloneRevocationEpoch(&epoch)
 	return nil
 }
+
+// UserRevocationEpochRepository は UserRevocationEpoch の in-memory 実装。
+type UserRevocationEpochRepository struct {
+	mu     sync.RWMutex
+	epochs map[string]ssdomain.UserRevocationEpoch // key: sharedmem.ScopedKey(tenant_id, user_id)
+}
+
+func NewUserRevocationEpochRepository() *UserRevocationEpochRepository {
+	return &UserRevocationEpochRepository{epochs: map[string]ssdomain.UserRevocationEpoch{}}
+}
+
+func (r *UserRevocationEpochRepository) FindByUser(_ context.Context, tenantID, userID string) (*ssdomain.UserRevocationEpoch, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	e, ok := r.epochs[sharedmem.ScopedKey(tenantID, userID, kernel.DefaultTenantID)]
+	if !ok {
+		return nil, nil
+	}
+	return &e, nil
+}
+
+// Advance は既存より後の epoch だけを受け付け、それ以外は ErrEpochNotAdvancing を返す。
+func (r *UserRevocationEpochRepository) Advance(_ context.Context, epoch ssdomain.UserRevocationEpoch) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := sharedmem.ScopedKey(epoch.TenantID, epoch.UserID, kernel.DefaultTenantID)
+	if existing, ok := r.epochs[key]; ok && !epoch.Epoch.After(existing.Epoch) {
+		return ssdomain.ErrEpochNotAdvancing
+	}
+	r.epochs[key] = epoch
+	return nil
+}

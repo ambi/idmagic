@@ -7,6 +7,7 @@ import (
 	"time"
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -55,6 +56,10 @@ type IntrospectDeps struct {
 	Consents ports.ConsentRepository
 	// Clients は、サブジェクトが利用者かクライアントかを見分ける。
 	Clients ports.OAuth2ClientRepository
+	// Users と UserEpochs は、サブジェクトの User の状態と失効エポックを引く (REQ-SHAREDSIGNALS-012)。
+	// Users か Clients が nil なら User の判定を行わない。
+	Users      userports.UserRepository
+	UserEpochs ssports.UserRevocationEpochRepository
 }
 
 // AccessTokenIsRevoked は署名検証を通過済みの access token が、その後に失効させられて
@@ -84,11 +89,14 @@ func AccessTokenIsRevoked(ctx context.Context, deps IntrospectDeps, r *ports.Int
 			return revoked, err
 		}
 	}
+	tenantID := tenantports.TenantID(ctx)
+	issuedAt := time.Unix(r.Iat, 0)
+	if revoked, err := userRevoked(ctx, deps, tenantID, r.Sub, issuedAt); err != nil || revoked {
+		return revoked, err
+	}
 	if deps.AgentRepo == nil {
 		return false, nil
 	}
-	tenantID := tenantports.TenantID(ctx)
-	issuedAt := time.Unix(r.Iat, 0)
 	for _, agentID := range domain.MergeAgentChain([]string{r.AgentID}, r.AgentChain) {
 		agent, err := deps.AgentRepo.FindByID(ctx, tenantID, agentID)
 		if err != nil {
@@ -112,6 +120,33 @@ func AccessTokenIsRevoked(ctx context.Context, deps IntrospectDeps, r *ports.Int
 		return false, err
 	}
 	return epochSupersedes(ctx, deps, tenantID, bound.ID, issuedAt)
+}
+
+// userRevoked は、サブジェクトの User がいないか Active でないか、失効エポックが発行より後にあるかを
+// 判定する (REQ-SHAREDSIGNALS-012)。物理削除はエポックの行も消すので、不在を失効として扱う。
+func userRevoked(ctx context.Context, deps IntrospectDeps, tenantID, sub string, issuedAt time.Time) (bool, error) {
+	if deps.Users == nil || deps.Clients == nil {
+		return false, nil
+	}
+	isUser, err := isUserSubject(ctx, deps.Clients, tenantID, sub)
+	if err != nil || !isUser {
+		return false, err
+	}
+	user, err := deps.Users.FindBySub(ctx, sub)
+	if err != nil {
+		return false, err
+	}
+	if user == nil || user.TenantID != tenantID || !user.IsActive() {
+		return true, nil
+	}
+	if deps.UserEpochs == nil {
+		return false, nil
+	}
+	epoch, err := deps.UserEpochs.FindByUser(ctx, tenantID, sub)
+	if err != nil {
+		return false, err
+	}
+	return epoch != nil && epoch.Supersedes(issuedAt), nil
 }
 
 // delegationWithdrawn は、利用者を代行するトークンの発行時の Agent のどれかについて、本人の

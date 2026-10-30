@@ -131,6 +131,7 @@ type RouteDeps struct {
 	Notifier                  notificationports.Notifier
 	AgentRepo                 agentports.AgentRepository
 	RevocationEpochRepo       ssports.AgentRevocationEpochRepository
+	UserRevocationEpochRepo   ssports.UserRevocationEpochRepository
 	// WorkloadVerifier は token exchange の外部ワークロードのトークンを検証する。nil は拒否する。
 	WorkloadVerifier    oauthports.WorkloadTokenVerifier
 	ManagedTokenRevoker tokenusecases.ManagedTokenRevoker
@@ -162,6 +163,7 @@ func (m Module) SignInContinuation(d RouteDeps) signinports.PendingAuthorization
 // 失効の判定と DPoP の検証を渡す検証器を返す。
 func (m Module) ResourceAccessTokens(
 	agents agentports.AgentRepository, epochs ssports.AgentRevocationEpochRepository,
+	users userports.UserRepository, userEpochs ssports.UserRevocationEpochRepository,
 ) support.AccessTokenVerifier {
 	return oauth2http.ResourceAccessTokens{
 		Introspector: m.TokenIntrospector,
@@ -171,6 +173,8 @@ func (m Module) ResourceAccessTokens(
 			RevocationEpochRepo: epochs,
 			Consents:            m.ConsentRepo,
 			Clients:             m.ClientRepo,
+			Users:               users,
+			UserEpochs:          userEpochs,
 		},
 		DpopReplayStore: m.DpopReplayStore,
 	}
@@ -205,6 +209,7 @@ func (m Module) httpDeps(d RouteDeps) oauth2http.Deps {
 		TokenIssuer:                 m.TokenIssuer,
 		AgentRepo:                   d.AgentRepo,
 		RevocationEpochRepo:         d.RevocationEpochRepo,
+		UserRevocationEpochRepo:     d.UserRevocationEpochRepo,
 		WorkloadVerifier:            d.WorkloadVerifier,
 		TokenIntrospector:           m.TokenIntrospector,
 		IDTokenHintVerifier:         m.IDTokenHintVerifier,

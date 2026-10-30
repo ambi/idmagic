@@ -238,6 +238,8 @@ type RefreshTokenReuseDetected struct {
 	FamilyID string    `json:"familyId"`
 	TokenID  string    `json:"tokenId"`
 	ClientID string    `json:"clientId"`
+	// UserID は再利用されたトークンの主体で、User の失効の入力になる。
+	UserID string `json:"userId,omitempty"`
 }
 
 func (e *RefreshTokenReuseDetected) EventType() string     { return "RefreshTokenReuseDetected" }

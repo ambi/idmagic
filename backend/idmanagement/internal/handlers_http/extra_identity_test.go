@@ -286,7 +286,7 @@ func TestAdminAgentKill_AdvancesRevocationEpoch(t *testing.T) {
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	accessTokens := oauth2.Module{TokenIntrospector: activeAgentTokenIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: created.ID, ClientID: "agent-client", JTI: "issued-before-kill", Iat: epoch.Epoch.Add(-time.Second).Unix(), Exp: now.Add(time.Hour).Unix(),
-	}}}.ResourceAccessTokens(agentRepo, epochRepo)
+	}}}.ResourceAccessTokens(agentRepo, epochRepo, nil, nil)
 	verified, err := accessTokens.IntrospectAccessToken(ctx, "issued-before-kill")
 	if err != nil {
 		t.Fatal(err)

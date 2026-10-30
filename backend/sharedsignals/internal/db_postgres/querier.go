@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	AdvanceAgentRevocationEpoch(ctx context.Context, arg AdvanceAgentRevocationEpochParams) (*AgentRevocationEpoch, error)
+	AdvanceUserRevocationEpoch(ctx context.Context, arg AdvanceUserRevocationEpochParams) (*UserRevocationEpoch, error)
 	DeleteSsfReceiverConfig(ctx context.Context, arg DeleteSsfReceiverConfigParams) error
 	DeleteSsfStream(ctx context.Context, arg DeleteSsfStreamParams) error
 	DeleteSsfTransmitterConfig(ctx context.Context, arg DeleteSsfTransmitterConfigParams) error
@@ -18,6 +19,7 @@ type Querier interface {
 	FindSsfReceiverConfigByStream(ctx context.Context, arg FindSsfReceiverConfigByStreamParams) (*SsfReceiverConfig, error)
 	FindSsfStreamByID(ctx context.Context, arg FindSsfStreamByIDParams) (*SsfStream, error)
 	FindSsfTransmitterConfigByStream(ctx context.Context, arg FindSsfTransmitterConfigByStreamParams) (*SsfTransmitterConfig, error)
+	FindUserRevocationEpoch(ctx context.Context, arg FindUserRevocationEpochParams) (*UserRevocationEpoch, error)
 	ListDueSecurityEventDeliveries(ctx context.Context, arg ListDueSecurityEventDeliveriesParams) ([]*SecurityEventDelivery, error)
 	ListSecurityEventDeliveriesByStream(ctx context.Context, arg ListSecurityEventDeliveriesByStreamParams) ([]*SecurityEventDelivery, error)
 	ListSsfStreamsByTenant(ctx context.Context, tenantID string) ([]*SsfStream, error)

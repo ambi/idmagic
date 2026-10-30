@@ -69,6 +69,8 @@ type Deps struct {
 	// RevocationEpochRepo backs Introspect's fail-closed Agent revocation
 	// check (wi-58). nil skips the check.
 	RevocationEpochRepo ssports.AgentRevocationEpochRepository
+	// UserRevocationEpochRepo backs the User revocation check (REQ-SHAREDSIGNALS-012).
+	UserRevocationEpochRepo ssports.UserRevocationEpochRepository
 	// WorkloadVerifier is the composition-root wiring point for workload
 	// identity federation ([[wi-54-workload-identity-federation-spiffe]]).
 	// nil rejects subject_token_type=JWT URN token-exchange as unsupported.

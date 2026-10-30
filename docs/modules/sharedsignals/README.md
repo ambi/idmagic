@@ -2,8 +2,8 @@
 
 ## 責務と境界
 
-Shared Signals Framework（SSF）と Continuous Access Evaluation Profile（CAEP）による、エージェントのほぼリアルタイムな失効を扱う。
-SSF の送受信に必要なストリームと Agent ごとの失効エポックを所有し、IdManagement の通知と外部の SET を失効エポックの更新へ変換する。
+Shared Signals Framework（SSF）と Continuous Access Evaluation Profile（CAEP）による、エージェントと人間の User のほぼリアルタイムな失効を扱う。
+SSF の送受信に必要なストリームと Agent、User ごとの失効エポックを所有し、IdManagement、Authentication、OAuth2 の通知と外部の SET を失効エポックの更新へ変換する。
 
 | 扱わないもの | 担当 |
 | --- | --- |
@@ -18,6 +18,7 @@ SSF の送受信に必要なストリームと Agent ごとの失効エポック
 | --- | --- | --- | --- |
 | 失効エポックの前進 | `IdManagement` の Agent と User のイベント | イベントを発行した操作の中で、発行の後に反応を呼ぶ。管理 API の操作は `api` で、管理 API の外から User を止める操作（ライフサイクルワークフローの `disable_user` は `worker`、SCIM の取り込みは `api`）はそれを実行するプロセスで呼ぶ。反応の組み立ては `usecases.NewAgentRevocationReactor` の一つである | [失効エポック](features/revocation.md) |
 | 配送の作成 | `AgentAccessRevoked` | 失効を進めた同じプロセスが、5 秒の期限で配送を作る。SET の `iss` には、どのプロセスでも共有の設定の `ISSUER` を使う | [SET の配送の設計](features/transmitter.md#実現方式) |
+| User の失効エポックの前進 | Authentication と OAuth2 のイベント | `api` の組み立て地点がイベントを `UserRevocation` へ変換し、発行の後に呼ぶ。失敗はログに残して続ける | [失効エポック](features/revocation.md) |
 | 配送の試行 | 一定の間隔 | `worker` の配送のループ | [SET の配送の設計](features/transmitter.md#実現方式) |
 | SET の受信 | 外部の送信側の `/ssf/streams/{stream_id}/events` への要求 | `api` が同期的に検証し、失効エポックを進める | [SET の受信](features/receiver.md) |
 | 管理 API | 解決済みのテナントの `/api/admin/v1/shared-signals/...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [SSF ストリームの管理](features/stream.md) |

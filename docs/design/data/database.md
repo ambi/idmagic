@@ -172,6 +172,8 @@ erDiagram
     }
     agent_revocation_epochs {
     }
+    user_revocation_epochs {
+    }
     tenants ||--o{ identity_provider_connections : 接続を持つ
     identity_provider_connections ||--o{ federated_identities : 外部主体を結ぶ
     identity_provider_connections ||--o{ federated_login_attempts : 試行を処理する
@@ -194,6 +196,7 @@ erDiagram
     workload_trust_bundles ||--o{ agent_workload_bindings : 主体を許可する
     agents ||--o{ agent_workload_bindings : ワークロードに結ばれる
     agents ||--|| agent_revocation_epochs : 失効世代を持つ
+    users ||--o| user_revocation_epochs : 失効世代を持つ
 ```
 
 | テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
@@ -219,6 +222,7 @@ erDiagram
 | `workload_trust_bundles` | ワークロード ID のトークンを検証する信頼ドメインと鍵 | WorkloadIdentity | `LOGGED` | 非キーカラム |
 | `agent_workload_bindings` | 信頼ドメインのワークロード主体とエージェントの対応 | WorkloadIdentity | `LOGGED` | 非キーカラム |
 | `agent_revocation_epochs` | エージェントの失効世代。世代を進めると、それより前に発行したトークンを受け付けない | SharedSignals | `LOGGED` | 非キーカラム |
+| `user_revocation_epochs` | User の失効世代。世代を進めると、それより前に発行したトークンを受け付けない | SharedSignals | `LOGGED` | 非キーカラム |
 
 `audit_events`、`authentication_event_buckets`、`tenant_correlation_salts`、`audit_event_search_attributes` は、監査データの保持や匿名化を独立して制御するため、`tenants` テーブルへの外部キーを置かない。
 

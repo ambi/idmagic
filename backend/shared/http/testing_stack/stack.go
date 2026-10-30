@@ -223,8 +223,9 @@ type Stack struct {
 	// セッションが失効したか」を言っていて、それは応答ではなくここにしか現れない。
 	SessionStore sessionports.SessionStore
 	// Agents と RevocationEpochs は WithAgentRevocation が配る。
-	Agents           agentports.AgentRepository
-	RevocationEpochs sharedsignalsports.AgentRevocationEpochRepository
+	Agents               agentports.AgentRepository
+	RevocationEpochs     sharedsignalsports.AgentRevocationEpochRepository
+	UserRevocationEpochs sharedsignalsports.UserRevocationEpochRepository
 	// AuditEvents は WithAudit が配る監査の保存先である。
 	AuditEvents auditports.AuditEventRepository
 
@@ -465,8 +466,9 @@ func WithAgentRevocation() Option {
 	return func(b *builder) {
 		b.stack.Agents = idmanagement.NewMemoryModule().AgentRepo
 		b.stack.RevocationEpochs = sharedsignals.NewAgentRevocationEpochRepository()
+		b.stack.UserRevocationEpochs = sharedsignals.NewUserRevocationEpochRepository()
 		b.deps.IdManagement.AgentRepo = b.stack.Agents
-		b.deps.SharedSignals = sharedsignals.Module{RevocationEpochRepo: b.stack.RevocationEpochs}
+		b.deps.SharedSignals = sharedsignals.Module{RevocationEpochRepo: b.stack.RevocationEpochs, UserRevocationEpochRepo: b.stack.UserRevocationEpochs}
 	}
 }
 

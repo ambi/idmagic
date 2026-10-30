@@ -11,10 +11,11 @@ import (
 // pipeline need. Bootstrap assembles these per persistence backend (memory /
 // postgres) and passes the Module through.
 type Module struct {
-	RevocationEpochRepo   ports.AgentRevocationEpochRepository
-	StreamRepo            ports.SsfStreamRepository
-	TransmitterConfigRepo ports.SsfTransmitterConfigRepository
-	ReceiverConfigRepo    ports.SsfReceiverConfigRepository
-	DeliveryRepo          ports.SecurityEventDeliveryRepository
-	ReceivedEventRepo     ports.ReceivedSecurityEventRepository
+	RevocationEpochRepo     ports.AgentRevocationEpochRepository
+	UserRevocationEpochRepo ports.UserRevocationEpochRepository
+	StreamRepo              ports.SsfStreamRepository
+	TransmitterConfigRepo   ports.SsfTransmitterConfigRepository
+	ReceiverConfigRepo      ports.SsfReceiverConfigRepository
+	DeliveryRepo            ports.SecurityEventDeliveryRepository
+	ReceivedEventRepo       ports.ReceivedSecurityEventRepository
 }

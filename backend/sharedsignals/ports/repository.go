@@ -17,6 +17,14 @@ type AgentRevocationEpochRepository interface {
 	Advance(ctx context.Context, epoch ssdomain.AgentRevocationEpoch) error
 }
 
+// UserRevocationEpochRepository は User ごとの revocation epoch を永続化する。
+// User が未失効の場合 FindByUser は (nil, nil) を返す。
+type UserRevocationEpochRepository interface {
+	FindByUser(ctx context.Context, tenantID, userID string) (*ssdomain.UserRevocationEpoch, error)
+	// Advance は AgentRevocationEpochRepository.Advance と同じ単調増加を保証する。
+	Advance(ctx context.Context, epoch ssdomain.UserRevocationEpoch) error
+}
+
 // SsfStreamRepository は SsfStream を永続化する。
 type SsfStreamRepository interface {
 	ListAll(ctx context.Context, tenantID string) ([]*ssdomain.SsfStream, error)

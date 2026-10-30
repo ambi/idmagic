@@ -1803,6 +1803,8 @@ model RefreshTokenReuseDetected {
   familyId: string;
   tokenId: string;
   clientId?: string;
+  @doc("再利用されたトークンの主体。")
+  userId?: string;
 }
 
 

@@ -70,6 +70,31 @@ func CheckRevocationEpoch(ctx context.Context, deps RevocationDeps, tenantID, ag
 	return deps.EpochRepo.FindByAgent(ctx, tenantID, agentID)
 }
 
+// AdvanceUserRevocationEpoch は User の失効エポックを進め、UserAccessRevoked を発行する
+// (REQ-SHAREDSIGNALS-012)。物理削除は FK の連鎖で行が消えるので記録せず、判定は User の不在で閉じる。
+// 既存以後のエポックがあれば、不変条件はすでに成り立つので何もしない。
+func AdvanceUserRevocationEpoch(ctx context.Context, repo ssports.UserRevocationEpochRepository, sink func(spec.DomainEvent) error, revocation ssdomain.UserRevocation) error {
+	if revocation.Reason != ssdomain.RevocationReasonUserDeleted {
+		epoch := ssdomain.UserRevocationEpoch{
+			UserID: revocation.UserID, TenantID: revocation.TenantID, Epoch: revocation.At, Reason: revocation.Reason,
+			AdvancedAt: revocation.At, SourceEventID: revocation.SourceEventID,
+		}
+		if err := epoch.Validate(); err != nil {
+			return err
+		}
+		if err := repo.Advance(ctx, epoch); err != nil {
+			if errors.Is(err, ssdomain.ErrEpochNotAdvancing) {
+				return nil
+			}
+			return err
+		}
+	}
+	return emit(sink, &ssdomain.UserAccessRevoked{
+		At: revocation.At, TenantID: revocation.TenantID, UserID: revocation.UserID,
+		Reason: revocation.Reason, InitiatingEntity: revocation.Initiator,
+	})
+}
+
 // AgentRevocationReactor reacts to IdManagement DomainEvents that IdManagement
 // already emits unconditionally for audit (KillAgent/SetAgentDisabled/
 // UnbindCredential/SetUserDisabled/SoftDeleteUser/DeleteUser), and
@@ -83,6 +108,8 @@ func CheckRevocationEpoch(ctx context.Context, deps RevocationDeps, tenantID, ag
 // human User sessions (more event types, same reactor pattern).
 type AgentRevocationReactor struct {
 	EpochRepo ssports.AgentRevocationEpochRepository
+	// UserEpochRepo は User の失効エポックを保存する。nil なら User の失効を反映しない。
+	UserEpochRepo ssports.UserRevocationEpochRepository
 	// AgentRepo resolves the agent set owned by a disabled/deleted user
 	// (SharedSignals depends on IdManagement's AgentRepository through its
 	// public ports package).
@@ -95,9 +122,10 @@ type AgentRevocationReactor struct {
 
 // RevocationReactorDeps は、組み立ての地点が NewAgentRevocationReactor へ渡す依存である。
 type RevocationReactorDeps struct {
-	EpochRepo ssports.AgentRevocationEpochRepository
-	AgentRepo agentports.AgentRepository
-	Projector ProjectorDeps
+	EpochRepo     ssports.AgentRevocationEpochRepository
+	UserEpochRepo ssports.UserRevocationEpochRepository
+	AgentRepo     agentports.AgentRepository
+	Projector     ProjectorDeps
 	// Emit は派生イベント (RevocationEpochAdvanced、AgentAccessRevoked) を記録する配信点である。
 	Emit func(spec.DomainEvent)
 }
@@ -107,8 +135,9 @@ type RevocationReactorDeps struct {
 // 遅らせも失敗させもしない (REQ-SHAREDSIGNALS-007) ので、自前の 5 秒の期限で走らせ、失敗は記録して続ける。
 func NewAgentRevocationReactor(deps RevocationReactorDeps) *AgentRevocationReactor {
 	return &AgentRevocationReactor{
-		EpochRepo: deps.EpochRepo,
-		AgentRepo: deps.AgentRepo,
+		EpochRepo:     deps.EpochRepo,
+		UserEpochRepo: deps.UserEpochRepo,
+		AgentRepo:     deps.AgentRepo,
 		Emit: func(event spec.DomainEvent) error {
 			if deps.Emit != nil {
 				deps.Emit(event)
@@ -120,9 +149,38 @@ func NewAgentRevocationReactor(deps RevocationReactorDeps) *AgentRevocationReact
 					logging.Error(projectCtx, "sharedsignals: SET projection failed", "error", err, "agent_id", revoked.AgentID, "tenant_id", revoked.TenantID)
 				}
 			}
+			if revoked, ok := event.(*ssdomain.UserAccessRevoked); ok {
+				projectCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := ProjectUserAccessRevoked(projectCtx, deps.Projector, revoked); err != nil {
+					logging.Error(projectCtx, "sharedsignals: SET projection failed", "error", err, "user_id", revoked.UserID, "tenant_id", revoked.TenantID)
+				}
+			}
 			return nil
 		},
 	}
+}
+
+// RevokeUser は User の失効エポックを進め、外部への伝播へ投影する。Authentication と OAuth2 の
+// イベントは、依存の向きのために組み立ての地点がこの要求へ変換して呼ぶ。
+func (r *AgentRevocationReactor) RevokeUser(ctx context.Context, revocation ssdomain.UserRevocation) error {
+	if r.UserEpochRepo == nil {
+		return nil
+	}
+	return AdvanceUserRevocationEpoch(ctx, r.UserEpochRepo, r.Emit, revocation)
+}
+
+// reactToUserStop は、User の停止の失効を、所有する Agent の失効より先に確定させる。
+func (r *AgentRevocationReactor) reactToUserStop(
+	ctx context.Context, deps RevocationDeps, tenantID, userID string,
+	userReason, ownerReason ssdomain.RevocationReason, now time.Time,
+) error {
+	if err := r.RevokeUser(ctx, ssdomain.UserRevocation{
+		TenantID: tenantID, UserID: userID, Reason: userReason, Initiator: ssdomain.InitiatingEntityAdmin, At: now,
+	}); err != nil {
+		return err
+	}
+	return r.notifyOwner(ctx, deps, tenantID, userID, ownerReason, now)
 }
 
 // React implements the deps_http.EventReactor shape structurally
@@ -144,11 +202,11 @@ func (r *AgentRevocationReactor) React(ctx context.Context, event spec.DomainEve
 	case *idmdomain.AgentCredentialUnbound:
 		return AdvanceRevocationEpoch(ctx, deps, e.TenantID, []string{e.AgentID}, ssdomain.RevocationReasonAgentCredentialUnbound, nil, e.At)
 	case *idmdomain.UserDisabled:
-		return r.notifyOwner(ctx, deps, e.TenantID, e.TargetUserID, ssdomain.RevocationReasonOwnerDisabled, e.At)
+		return r.reactToUserStop(ctx, deps, e.TenantID, e.TargetUserID, ssdomain.RevocationReasonUserDisabled, ssdomain.RevocationReasonOwnerDisabled, e.At)
 	case *idmdomain.UserSoftDeleted:
-		return r.notifyOwner(ctx, deps, e.TenantID, e.TargetUserID, ssdomain.RevocationReasonOwnerDisabled, e.At)
+		return r.reactToUserStop(ctx, deps, e.TenantID, e.TargetUserID, ssdomain.RevocationReasonUserSoftDeleted, ssdomain.RevocationReasonOwnerDisabled, e.At)
 	case *idmdomain.UserDeleted:
-		return r.notifyOwner(ctx, deps, e.TenantID, e.TargetUserID, ssdomain.RevocationReasonOwnerDeleted, e.At)
+		return r.reactToUserStop(ctx, deps, e.TenantID, e.TargetUserID, ssdomain.RevocationReasonUserDeleted, ssdomain.RevocationReasonOwnerDeleted, e.At)
 	}
 	return nil
 }

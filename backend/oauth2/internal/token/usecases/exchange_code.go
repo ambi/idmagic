@@ -253,6 +253,6 @@ func revokeReplayedFamily(
 	}
 	revokeFamilyAndNotify(ctx, deps.RefreshStore, deps.Emit, *rec.IssuedFamilyID, tenantID, now)
 	emit(deps.Emit, &domain.RefreshTokenReuseDetected{
-		At: now, TenantID: tenantID, FamilyID: *rec.IssuedFamilyID, ClientID: rec.ClientID,
+		At: now, TenantID: tenantID, FamilyID: *rec.IssuedFamilyID, ClientID: rec.ClientID, UserID: rec.UserID,
 	})
 }

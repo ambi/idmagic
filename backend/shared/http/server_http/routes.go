@@ -279,6 +279,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	// 管理 API の User と Agent の操作は、IdManagement の経路の ReactiveEmit が発行の後にこの反応器を呼ぶ。
 	// 管理 API の外から User を止める経路は、組み立ての地点の UserLifecycleCommands が同じ反応器を使う。
 	revocationReactor := d.SharedSignals.AgentRevocationReactor(d.IdManagement.AgentRepo, d.SigningKeys.KeyStore, d.Issuer, d.Emit)
+	// 以降の経路が発行する Authentication と OAuth2 のイベントは、記録の後に User の失効へ反応させる。
+	d.Emit = userRevocationEmit(d.Emit, revocationReactor)
 
 	// fetchWorkloadJWKS resolves a WorkloadTrustBundle's signing keys (inline
 	// jwks or jwks_uri) via the shared, SSRF-safe JWKResolver (基盤の
@@ -320,6 +322,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Notifier:                  d.Notification.Notifier,
 		AgentRepo:                 d.IdManagement.AgentRepo,
 		RevocationEpochRepo:       d.SharedSignals.RevocationEpochRepo,
+		UserRevocationEpochRepo:   d.SharedSignals.UserRevocationEpochRepo,
 		ManagedTokenRevoker:       apiTokenService,
 		BuiltinResource: oauth2.BuiltinResource{
 			Scopes:             apitokendomain.AllScopes(),
@@ -360,6 +363,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	d.SharedSignals.RegisterRoutes(g, sharedsignals.RouteDeps{
 		Deps: d.Deps, Authenticator: authenticator,
 		AgentRepo: d.IdManagement.AgentRepo, JWKResolver: d.JWKResolver,
+		Users: d.IdManagement.UserRepo, EndUserSessions: endUserSessions(d.Authentication.SessionStore),
 		QuotaRepo: d.Tenancy.QuotaRepo,
 		Emit: func(event spec.DomainEvent) error {
 			if d.Emit != nil {

@@ -14,6 +14,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -36,9 +37,11 @@ type RefreshDeps struct {
 	ClientRepo   ports.OAuth2ClientRepository
 	UserRepo     userports.UserRepository
 	RefreshStore ports.RefreshTokenStore
-	TokenIssuer  ports.TokenIssuer
-	Authorizer   policyports.Authorizer
-	Emit         func(spec.DomainEvent)
+	// UserEpochs は User の失効エポックより前の発行を拒む (REQ-SHAREDSIGNALS-012)。nil なら判定しない。
+	UserEpochs  ssports.UserRevocationEpochRepository
+	TokenIssuer ports.TokenIssuer
+	Authorizer  policyports.Authorizer
+	Emit        func(spec.DomainEvent)
 }
 
 func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now time.Time) (*RefreshResult, error) {
@@ -66,12 +69,12 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	}
 	if record.ClientID != client.ClientID {
 		_, _ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
-		emit(deps.Emit, &domain.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID})
+		emit(deps.Emit, &domain.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID, UserID: record.UserID})
 		return nil, NewOAuthError("invalid_grant", "The refresh token owner does not match.")
 	}
 	if domain.IsRefreshTokenReplay(record) {
 		revokeFamilyAndNotify(ctx, deps.RefreshStore, deps.Emit, record.FamilyID, tenantID, now)
-		emit(deps.Emit, &domain.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID})
+		emit(deps.Emit, &domain.RefreshTokenReuseDetected{At: now, TenantID: tenantID, FamilyID: record.FamilyID, TokenID: record.ID, ClientID: client.ClientID, UserID: record.UserID})
 		return nil, NewOAuthError("invalid_grant", "The refresh token has already been used.")
 	}
 	if domain.IsRefreshTokenAbsoluteExpired(record, now) {
@@ -91,6 +94,16 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	if !user.IsActive() {
 		_, _ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
 		return nil, NewOAuthError("invalid_grant", "user is disabled")
+	}
+	if deps.UserEpochs != nil {
+		epoch, err := deps.UserEpochs.FindByUser(ctx, tenantID, record.UserID)
+		if err != nil {
+			return nil, err
+		}
+		if epoch != nil && epoch.Supersedes(record.IssuedAt) {
+			_, _ = deps.RefreshStore.RevokeFamily(ctx, record.FamilyID)
+			return nil, NewOAuthError("invalid_grant", "The refresh token was revoked.")
+		}
 	}
 
 	d, err := evaluateRefreshPolicy(ctx, deps.Authorizer, client, record, in, now)

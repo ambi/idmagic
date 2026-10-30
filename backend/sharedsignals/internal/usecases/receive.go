@@ -7,6 +7,7 @@ import (
 
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
@@ -27,9 +28,13 @@ type ReceiveDeps struct {
 	ReceiverConfigRepo ssports.SsfReceiverConfigRepository
 	ReceivedEventRepo  ssports.ReceivedSecurityEventRepository
 	EpochRepo          ssports.AgentRevocationEpochRepository
+	UserEpochRepo      ssports.UserRevocationEpochRepository
 	AgentRepo          agentports.AgentRepository
-	Verifier           ssports.SecurityEventTokenVerifier
-	Emit               func(spec.DomainEvent) error
+	// Users と EndUserSessions は User の主体の反映に使う。Users が nil なら User へ解決しない。
+	Users           userports.UserRepository
+	EndUserSessions func(ctx context.Context, userID string) error
+	Verifier        ssports.SecurityEventTokenVerifier
+	Emit            func(spec.DomainEvent) error
 }
 
 // ReceiveSecurityEvent implements the SCL interface ReceiveSecurityEvent
@@ -75,19 +80,25 @@ func ReceiveSecurityEvent(ctx context.Context, deps ReceiveDeps, streamID, token
 
 	// requires: security_event_subject_resolves_to_tenant_local_principal(...)
 	eventType, subject, ok := extractCaepEventAndSubject(verified.Events, config, tenantID)
-	if !ok || subject.SubjectType != ssdomain.SsfSubjectTypeAgent || subject.TenantID != tenantID {
+	if !ok || subject.TenantID != tenantID {
 		return rejectEvent(ctx, deps, tenantID, streamID, verified.JTI, now, ssdomain.SecurityEventVerificationRejectedSubjectUnresolved)
 	}
-	agent, err := resolveAgentPrincipal(ctx, deps, tenantID, subject.PrincipalID)
+	// 解決できた Agent か User の識別子で記録する。RFC 9493 形式は束縛先クライアントの
+	// 識別子を名乗ることがあり、その場合の principal_id は Agent のものに正規化する。
+	subject, resolved, err := resolvePrincipal(ctx, deps, tenantID, subject)
 	if err != nil {
 		return err
 	}
-	if agent == nil {
+	if !resolved {
 		return rejectEvent(ctx, deps, tenantID, streamID, verified.JTI, now, ssdomain.SecurityEventVerificationRejectedSubjectUnresolved)
 	}
-	// 解決できた Agent の識別子で記録する。RFC 9493 形式は束縛先クライアントの
-	// 識別子を名乗ることがあり、その場合の principal_id は Agent のものに正規化する。
-	subject.PrincipalID = agent.ID
+	// セッションの終了は記録の前に行う。失敗した SET を再送で反映し直せるようにするためで、
+	// 終了は繰り返しても同じ結果になる。
+	if subject.SubjectType == ssdomain.SsfSubjectTypeUser && deps.EndUserSessions != nil {
+		if err := deps.EndUserSessions(ctx, subject.PrincipalID); err != nil {
+			return err
+		}
+	}
 
 	// Accepted: record, reflect as LocalRevocation, emit.
 	recordID, err := ssdomain.NewReceivedSecurityEventID()
@@ -104,7 +115,15 @@ func ReceiveSecurityEvent(ctx context.Context, deps ReceiveDeps, streamID, token
 	if err := deps.ReceivedEventRepo.Save(ctx, &record); err != nil {
 		return err
 	}
-	if err := AdvanceRevocationEpoch(ctx, RevocationDeps{EpochRepo: deps.EpochRepo, Emit: deps.Emit}, tenantID, []string{agent.ID}, ssdomain.RevocationReasonInboundSecurityEvent, &recordID, now); err != nil {
+	if subject.SubjectType == ssdomain.SsfSubjectTypeUser {
+		err = AdvanceUserRevocationEpoch(ctx, deps.UserEpochRepo, deps.Emit, ssdomain.UserRevocation{
+			TenantID: tenantID, UserID: subject.PrincipalID, Reason: ssdomain.RevocationReasonInboundSecurityEvent,
+			Initiator: ssdomain.InitiatingEntityPolicy, SourceEventID: &recordID, At: now,
+		})
+	} else {
+		err = AdvanceRevocationEpoch(ctx, RevocationDeps{EpochRepo: deps.EpochRepo, Emit: deps.Emit}, tenantID, []string{subject.PrincipalID}, ssdomain.RevocationReasonInboundSecurityEvent, &recordID, now)
+	}
+	if err != nil {
 		return err
 	}
 	return emit(deps.Emit, &ssdomain.SecurityEventReceived{At: now, TenantID: tenantID, StreamID: streamID, SetJTI: verified.JTI, CaepType: eventType})
@@ -172,11 +191,11 @@ func extractCaepEventAndSubject(events map[string]any, config *ssdomain.SsfRecei
 	return "", ssdomain.SsfSubject{}, false
 }
 
-// subjectFromIdentifier maps an RFC 9493 Subject Identifier onto an Agent
-// subject in the receiving stream's tenant. Only `iss_sub` and `opaque` are
+// subjectFromIdentifier maps an RFC 9493 Subject Identifier onto a subject of
+// unknown type (resolvePrincipal decides) in the receiving stream's tenant. Only `iss_sub` and `opaque` are
 // interpreted; every other format (`email`, `phone_number`, `did`, `uri`,
-// `account`, `aliases`) names something this context cannot revoke — Agent
-// revocation is what SharedSignals owns today — so it is fail-closed rejected
+// `account`, `aliases`) names something this context cannot resolve to one
+// principal, so it is fail-closed rejected
 // rather than guessed at.
 //
 // `iss_sub` additionally pins `iss` to the stream's registered trusted_issuer
@@ -203,8 +222,35 @@ func subjectFromIdentifier(format string, claims map[string]any, config *ssdomai
 		return ssdomain.SsfSubject{}, false
 	}
 	return ssdomain.SsfSubject{
-		SubjectType: ssdomain.SsfSubjectTypeAgent, TenantID: tenantID, PrincipalID: identifier,
+		TenantID: tenantID, PrincipalID: identifier,
 	}, true
+}
+
+// resolvePrincipal は主体を確定する。自身の形式は名乗った種類だけを探し、RFC 9493 の形式は種類を
+// 持たないので Agent、束縛先のクライアント、User の順に探す。User はストリームのテナントに限る。
+func resolvePrincipal(ctx context.Context, deps ReceiveDeps, tenantID string, subject ssdomain.SsfSubject) (ssdomain.SsfSubject, bool, error) {
+	if subject.SubjectType != ssdomain.SsfSubjectTypeUser {
+		agent, err := resolveAgentPrincipal(ctx, deps, tenantID, subject.PrincipalID)
+		if err != nil {
+			return subject, false, err
+		}
+		if agent != nil {
+			subject.SubjectType, subject.PrincipalID = ssdomain.SsfSubjectTypeAgent, agent.ID
+			return subject, true, nil
+		}
+		if subject.SubjectType != "" {
+			return subject, false, nil
+		}
+	}
+	if deps.Users == nil || deps.UserEpochRepo == nil {
+		return subject, false, nil
+	}
+	user, err := deps.Users.FindBySub(ctx, subject.PrincipalID)
+	if err != nil || user == nil || user.TenantID != tenantID {
+		return subject, false, err
+	}
+	subject.SubjectType = ssdomain.SsfSubjectTypeUser
+	return subject, true, nil
 }
 
 // resolveAgentPrincipal resolves an inbound subject's identifier to an Agent:
