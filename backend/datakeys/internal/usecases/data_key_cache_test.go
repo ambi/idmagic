@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -59,11 +60,9 @@ func TestGetActiveFailsClosedWhenNoActiveKey(t *testing.T) {
 	}
 }
 
-// TestInvalidateForcesReUnwrapAfterRotate ensures a cached DEK is dropped on
-// Invalidate, so a subsequent GetActive re-resolves the new active version
-// rather than serving the pre-rotation DEK from a stale cache entry
-// (no worker replica keeps encrypting with a superseded DEK).
-func TestInvalidateForcesReUnwrapAfterRotate(t *testing.T) {
+// TestGetActiveResolvesRotatedVersion ensures GetActive re-resolves the new
+// active version after a rotation rather than serving the pre-rotation DEK.
+func TestGetActiveResolvesRotatedVersion(t *testing.T) {
 	repo := db_memory.NewDataKeyRepository()
 	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
 	if err != nil {
@@ -100,6 +99,54 @@ func TestInvalidateForcesReUnwrapAfterRotate(t *testing.T) {
 	}
 	if secondVersion != next.Version {
 		t.Fatalf("expected cache to resolve the rotated version %d, got %d (stale cache not invalidated)", next.Version, secondVersion)
+	}
+}
+
+// countingMasterKeyProvider はアンラップの回数を数える。
+type countingMasterKeyProvider struct {
+	envelope_crypto.MasterKeyProvider
+	unwraps atomic.Int32
+}
+
+func (p *countingMasterKeyProvider) UnwrapDataKey(ctx context.Context, tenantID string, wrapped []byte, masterKeyID string) ([]byte, error) {
+	p.unwraps.Add(1)
+	return p.MasterKeyProvider.UnwrapDataKey(ctx, tenantID, wrapped, masterKeyID)
+}
+
+// 状態は毎回読むが、バージョンごとのアンラップは 1 回だけである。
+func TestRepeatedLookupsUnwrapOncePerVersion(t *testing.T) {
+	repo := db_memory.NewDataKeyRepository()
+	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
+	if err != nil {
+		t.Fatalf("NewCleartextMasterKeyProvider failed: %v", err)
+	}
+	provider := &countingMasterKeyProvider{MasterKeyProvider: master}
+	crypto := envelope_crypto.NewTinkEnvelopeCrypto(provider)
+	ctx := context.Background()
+	key, err := BootstrapTenantDataKey(ctx, Deps{Repository: repo, Crypto: crypto}, "tenant-a", time.Now().UTC())
+	if err != nil {
+		t.Fatalf("BootstrapTenantDataKey failed: %v", err)
+	}
+
+	cache := NewDataKeyCache(repo, crypto)
+	for range 3 {
+		if _, _, err := cache.GetActive(ctx, "tenant-a"); err != nil {
+			t.Fatalf("GetActive failed: %v", err)
+		}
+		if _, err := cache.GetByVersion(ctx, "tenant-a", key.Version); err != nil {
+			t.Fatalf("GetByVersion failed: %v", err)
+		}
+	}
+	if got := provider.unwraps.Load(); got != 1 {
+		t.Fatalf("unwraps = %d, want 1", got)
+	}
+
+	cache.Invalidate("tenant-a")
+	if _, _, err := cache.GetActive(ctx, "tenant-a"); err != nil {
+		t.Fatalf("GetActive after Invalidate failed: %v", err)
+	}
+	if got := provider.unwraps.Load(); got != 2 {
+		t.Fatalf("unwraps after Invalidate = %d, want 2", got)
 	}
 }
 

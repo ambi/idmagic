@@ -1,9 +1,8 @@
 package ports
 
-// CacheInvalidator lets lifecycle usecases invalidate a cached unwrapped DEK
-// without depending on a concrete cache type. Implementations must be safe
-// for concurrent worker replicas (no replica keeps encrypting with a
-// DEK that is no longer active after rotate/disable/destroy).
+// CacheInvalidator lets lifecycle usecases drop this process's cached unwrapped
+// DEKs without depending on a concrete cache type. It reaches only this process:
+// the cache itself must not rely on it to stop using a version.
 type CacheInvalidator interface {
 	Invalidate(tenantID string)
 }

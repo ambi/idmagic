@@ -25,6 +25,13 @@
 - Then バージョン 2 が `active` になり、バージョン 1 は `retiring` に遷移する
 - Then バージョン 1 で暗号化済みの既存 EncryptedSecret は、バージョン 1 が `retiring` である間、引き続き復号できる
 
+### Example: EX-DATAKEYS-002-02 操作していないプロセスも新しいバージョンで暗号化する
+
+- Given プロセス A とプロセス B がテナント "tenant-a" の `active` のバージョン 1 の DEK を保持している
+- When プロセス A がテナント "tenant-a" の DEK をローテーションする
+- Then プロセス B の次の暗号化はバージョン 2 を使う
+- Then プロセス B はバージョン 1 で暗号化された EncryptedSecret を引き続き復号できる
+
 ## Rule: REQ-DATAKEYS-003 retiring の DEK を即時にロックアウトできる
 
 ### Example: EX-DATAKEYS-003-01 通常経路
@@ -33,6 +40,13 @@
 - When テナント "tenant-a" のバージョン 1 に対して DisableTenantDataKey を呼ぶ
 - Then バージョン 1 が `disabled` に遷移する
 - Then バージョン 1 で暗号化された EncryptedSecret の以後の復号リクエストは DataKeyUnavailableError でフェイルクローズに拒否される
+
+### Example: EX-DATAKEYS-003-02 操作していないプロセスも復号を止める
+
+- Given プロセス A とプロセス B がテナント "tenant-a" の `retiring` のバージョン 1 の DEK を保持している
+- When プロセス A がバージョン 1 を無効化する
+- Then プロセス B のバージョン 1 の EncryptedSecret の復号は DataKeyUnavailableError で拒否される
+- Then プロセス B の `active` のバージョン 2 の EncryptedSecret の復号は成功する
 
 ## Rule: REQ-DATAKEYS-004 active の DEK は直接 disable できない
 

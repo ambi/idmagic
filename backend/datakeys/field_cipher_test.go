@@ -8,6 +8,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/datakeys/internal/db_memory"
 	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	"github.com/ambi/idmagic/backend/datakeys/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
@@ -111,6 +112,154 @@ func TestFieldCipherDecryptFailsClosedAfterDisablingTheRetiringVersion(t *testin
 	plaintext, err := fieldCipher.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", version, ciphertext)
 	if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
 		t.Fatalf("Decrypt under disabled v1 = (%q, %v), want ErrDataKeyUnavailable", plaintext, err)
+	}
+}
+
+// otherProcessFieldCipher は、同じ保存先を見る別のプロセスの FieldCipher を作る。ライフサイクルの操作はこのキャッシュへ届かない。
+func otherProcessFieldCipher(deps usecases.Deps) *FieldCipher {
+	return &FieldCipher{Repository: deps.Repository, Cache: usecases.NewDataKeyCache(deps.Repository, deps.Crypto), Crypto: deps.Crypto}
+}
+
+//spec:covers EX-DATAKEYS-002-02: プロセス A がローテーションすると、版 1 を保持するプロセス B の次の暗号化は版 2 を使い、版 1 の暗号文も復号できる。
+func TestFieldCipherOtherProcessEncryptsWithTheRotatedVersion(t *testing.T) {
+	fieldCipher, deps := newTestFieldCipher(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
+	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+		t.Fatal(err)
+	}
+	other := otherProcessFieldCipher(deps)
+	oldVersion, oldCiphertext, err := other.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := usecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+
+	newVersion, newCiphertext, err := other.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-2:totp", "secret", "KRSXG5CTMVRXEZLU")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if newVersion != oldVersion+1 {
+		t.Fatalf("Encrypt in the other process used version %d, want %d", newVersion, oldVersion+1)
+	}
+	for _, sealed := range []struct {
+		name       string
+		recordID   string
+		version    int
+		ciphertext []byte
+		want       string
+	}{
+		{"retiring", "user-1:totp", oldVersion, oldCiphertext, "JBSWY3DPEHPK3PXP"},
+		{"active", "user-2:totp", newVersion, newCiphertext, "KRSXG5CTMVRXEZLU"},
+	} {
+		for processName, cipher := range map[string]*FieldCipher{"operating": fieldCipher, "other": other} {
+			plaintext, err := cipher.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", sealed.recordID, "secret", sealed.version, sealed.ciphertext)
+			if err != nil || plaintext != sealed.want {
+				t.Fatalf("%s process, %s version: Decrypt = (%q, %v), want %q", processName, sealed.name, plaintext, err, sealed.want)
+			}
+		}
+	}
+}
+
+//spec:covers EX-DATAKEYS-003-02: プロセス A が版 1 を無効化または破棄すると、版 1 を保持するプロセス B の版 1 の復号は拒否され、版 2 の復号は成功する。
+func TestFieldCipherOtherProcessStopsDecryptingAfterLockout(t *testing.T) {
+	for name, lockOut := range map[string]func(context.Context, usecases.Deps, int, time.Time) error{
+		"disable": func(ctx context.Context, deps usecases.Deps, version int, now time.Time) error {
+			return usecases.DisableTenantDataKey(ctx, deps, "tenant-a", version, now)
+		},
+		"destroy": func(ctx context.Context, deps usecases.Deps, version int, now time.Time) error {
+			return usecases.DestroyTenantDataKey(ctx, deps, "tenant-a", version, now)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, deps := newTestFieldCipher(t)
+			ctx := context.Background()
+			now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
+			if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+				t.Fatal(err)
+			}
+			other := otherProcessFieldCipher(deps)
+			lockedVersion, lockedCiphertext, err := other.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := usecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+				t.Fatal(err)
+			}
+			activeVersion, activeCiphertext, err := other.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-2:totp", "secret", "KRSXG5CTMVRXEZLU")
+			if err != nil {
+				t.Fatal(err)
+			}
+			// 操作の前に復号が通ることを確かめ、版 1 の DEK を別のプロセスの保持に載せる。
+			if _, err := other.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", lockedVersion, lockedCiphertext); err != nil {
+				t.Fatalf("Decrypt before the lockout failed: %v", err)
+			}
+
+			if err := lockOut(ctx, deps, lockedVersion, now.Add(2*time.Hour)); err != nil {
+				t.Fatal(err)
+			}
+
+			plaintext, err := other.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", lockedVersion, lockedCiphertext)
+			if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
+				t.Fatalf("Decrypt under the locked version = (%q, %v), want ErrDataKeyUnavailable", plaintext, err)
+			}
+			plaintext, err = other.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-2:totp", "secret", activeVersion, activeCiphertext)
+			if err != nil || plaintext != "KRSXG5CTMVRXEZLU" {
+				t.Fatalf("Decrypt under the active version = (%q, %v)", plaintext, err)
+			}
+		})
+	}
+}
+
+// unreadableDataKeyRepository は、保存先へ到達できない間の読み取りを失敗させる。
+type unreadableDataKeyRepository struct {
+	ports.DataKeyRepository
+	unreadable bool
+}
+
+var errDataKeyStoreUnreachable = errors.New("fake: data key store unreachable")
+
+func (r *unreadableDataKeyRepository) FindActive(ctx context.Context, tenantID string) (*domain.TenantDataEncryptionKey, error) {
+	if r.unreadable {
+		return nil, errDataKeyStoreUnreachable
+	}
+	return r.DataKeyRepository.FindActive(ctx, tenantID)
+}
+
+func (r *unreadableDataKeyRepository) FindByVersion(ctx context.Context, tenantID string, version int) (*domain.TenantDataEncryptionKey, error) {
+	if r.unreadable {
+		return nil, errDataKeyStoreUnreachable
+	}
+	return r.DataKeyRepository.FindByVersion(ctx, tenantID, version)
+}
+
+//spec:covers REQ-DATAKEYS-003: バージョンの状態を読めない間は、保持した DEK があっても暗号化と復号に失敗し、読めるようになれば戻る。
+func TestFieldCipherFailsClosedWhileKeyStateIsUnreadable(t *testing.T) {
+	_, deps := newTestFieldCipher(t)
+	ctx := context.Background()
+	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	repository := &unreadableDataKeyRepository{DataKeyRepository: deps.Repository}
+	cipher := &FieldCipher{Repository: repository, Cache: usecases.NewDataKeyCache(repository, deps.Crypto), Crypto: deps.Crypto}
+	version, ciphertext, err := cipher.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	repository.unreadable = true
+	if _, _, err := cipher.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP"); !errors.Is(err, errDataKeyStoreUnreachable) {
+		t.Fatalf("Encrypt while unreadable: err = %v", err)
+	}
+	if plaintext, err := cipher.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", version, ciphertext); !errors.Is(err, errDataKeyStoreUnreachable) {
+		t.Fatalf("Decrypt while unreadable = (%q, %v)", plaintext, err)
+	}
+
+	repository.unreadable = false
+	if plaintext, err := cipher.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", version, ciphertext); err != nil || plaintext != "JBSWY3DPEHPK3PXP" {
+		t.Fatalf("Decrypt after recovery = (%q, %v)", plaintext, err)
 	}
 }
 

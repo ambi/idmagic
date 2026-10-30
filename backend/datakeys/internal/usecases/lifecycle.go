@@ -19,8 +19,9 @@ import (
 type Deps struct {
 	Repository ports.DataKeyRepository
 	Crypto     envelope_crypto.EnvelopeCrypto
-	// Cache is invalidated on Rotate/Disable/Destroy so no worker replica
-	// keeps encrypting with a DEK that is no longer active.
+	// Cache is invalidated on Rotate/Disable/Destroy to drop this process's key
+	// material early. Other processes observe the change through the state that
+	// DataKeyCache reads on every call.
 	Cache ports.CacheInvalidator
 	Emit  func(spec.DomainEvent)
 	// Migrators lists every owning module's registered FieldMigrator
