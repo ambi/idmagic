@@ -331,7 +331,8 @@ func requiredAccountScope(method, path string) (string, bool) {
 		return "account:mfa:write", true
 	case strings.Contains(path, "/api/account/v1/sessions/") && method != http.MethodGet:
 		return "account:sessions:write", true
-	case strings.Contains(path, "/api/account/v1/consents/") && method != http.MethodGet:
+	case strings.Contains(path, "/api/account/v1/consents/") && method != http.MethodGet,
+		strings.Contains(path, "/api/account/v1/agent-delegations/") && method != http.MethodGet:
 		return "account:consents:write", true
 	case strings.HasSuffix(path, "/api/auth/change-password"):
 		return "account:password:write", true

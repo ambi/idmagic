@@ -1620,6 +1620,177 @@ model RevokeMyConsentError404 {
 op RevokeMyConsent(
   @path client_id: string,): RevokeMyConsentSuccess_204 | RevokeMyConsentError400 | RevokeMyConsentError403 | RevokeMyConsentError404;
 
+model ListDelegableAgentsSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.DelegableAgentListResponse;
+}
+
+union ListDelegableAgentsError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model ListDelegableAgentsError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: ListDelegableAgentsError403Body;
+}
+
+@doc("認証済みのユーザーが、自分を代行してよい Agent として選べる、所属テナントの `Active` な Agent を一覧する。")
+@TypeSpec.OpenAPI.operationId("ListDelegableAgents")
+@route("/api/account/v1/delegable-agents")
+@get
+op ListDelegableAgents(
+
+): ListDelegableAgentsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListDelegableAgentsError403;
+
+model ListMyAgentDelegationsSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.AccountAgentDelegationListResponse;
+}
+
+union ListMyAgentDelegationsError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model ListMyAgentDelegationsError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: ListMyAgentDelegationsError403Body;
+}
+
+@doc("認証済みのユーザーが、自分を代行できる Agent、すなわち `Granted` の代行の付与を一覧する。対象は `actor.id` に固定される。")
+@TypeSpec.OpenAPI.operationId("ListMyAgentDelegations")
+@route("/api/account/v1/agent-delegations")
+@get
+op ListMyAgentDelegations(
+
+): ListMyAgentDelegationsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListMyAgentDelegationsError403;
+
+model GrantMyAgentDelegationSuccess_201 {
+  @statusCode statusCode: 201;
+  @body body: IdMagic.Contract.AccountAgentDelegationResponse;
+}
+
+union GrantMyAgentDelegationError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model GrantMyAgentDelegationError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: GrantMyAgentDelegationError400Body;
+}
+
+union GrantMyAgentDelegationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model GrantMyAgentDelegationError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: GrantMyAgentDelegationError403Body;
+}
+
+union GrantMyAgentDelegationError422Body {
+  IdMagic.Contract.QuotaExceededError,
+}
+
+model GrantMyAgentDelegationError422 {
+  @statusCode statusCode: 422;
+  @header contentType: "application/problem+json";
+  @body body: GrantMyAgentDelegationError422Body;
+}
+
+union GrantMyAgentDelegationError404Body {
+  IdMagic.Contract.AgentNotFoundError,
+}
+
+model GrantMyAgentDelegationError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: GrantMyAgentDelegationError404Body;
+}
+
+@doc("認証済みのユーザーが、ブラウザーセッションで、Agent に自分の代行を付与する。Bearer と DPoP のアクセストークンは受け付けない（REQ-OAUTH2-057）。")
+@TypeSpec.OpenAPI.operationId("GrantMyAgentDelegation")
+@route("/api/account/v1/agent-delegations")
+@post
+op GrantMyAgentDelegation(
+  @body body: IdMagic.Contract.AgentDelegationGrantRequest
+): GrantMyAgentDelegationSuccess_201 | IdMagic.Contract.AuthenticationRequiredResponse | GrantMyAgentDelegationError400 | GrantMyAgentDelegationError403 | GrantMyAgentDelegationError404 | GrantMyAgentDelegationError422;
+
+model RevokeMyAgentDelegationSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
+union RevokeMyAgentDelegationError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InvalidOriginError,
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model RevokeMyAgentDelegationError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: RevokeMyAgentDelegationError403Body;
+}
+
+union RevokeMyAgentDelegationError404Body {
+  IdMagic.Contract.ConsentNotFoundError,
+}
+
+model RevokeMyAgentDelegationError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: RevokeMyAgentDelegationError404Body;
+}
+
+@doc("認証済みのユーザーが、指定した Agent への自身の代行の付与を撤回する。そのユーザーの発行済みの代行トークンはイントロスペクションで即座に無効になり、同じ Agent の他のユーザーの代行は止まらない（REQ-OAUTH2-061）。")
+@TypeSpec.OpenAPI.operationId("RevokeMyAgentDelegation")
+@route("/api/account/v1/agent-delegations/{agent_id}/revoke")
+@post
+op RevokeMyAgentDelegation(
+  @path agent_id: string
+): RevokeMyAgentDelegationSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeMyAgentDelegationError403 | RevokeMyAgentDelegationError404;
+
+model ListAdminAgentDelegationsSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.AdminAgentDelegationListResponse;
+}
+
+union ListAdminAgentDelegationsError403Body {
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model ListAdminAgentDelegationsError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: ListAdminAgentDelegationsError403Body;
+}
+
+union ListAdminAgentDelegationsError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model ListAdminAgentDelegationsError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: ListAdminAgentDelegationsError400Body;
+}
+
+@doc("管理者が、自身のテナントの代行の付与を `user_id` と `agent_id` の昇順に、双方向のキーセットページングで一覧する。カーソルはレスポンスの Link レスポンスヘッダー（`rel=\"prev\"` と `rel=\"next\"`）から得る。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["consents:read"])
+@TypeSpec.OpenAPI.operationId("ListAdminAgentDelegations")
+@route("/api/admin/v1/agent-delegations")
+@get
+op ListAdminAgentDelegations(
+  @query cursor?: string,
+  @query limit?: int64
+): ListAdminAgentDelegationsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminAgentDelegationsError403 | ListAdminAgentDelegationsError400;
+
 model ListMyApprovalRequestsSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AccountApprovalRequestListResponse;

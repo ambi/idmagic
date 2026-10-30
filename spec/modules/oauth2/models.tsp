@@ -237,7 +237,12 @@ model ClientSecretCredential {
 @doc("GDPR の同意の記録。状態は ConsentLifecycle の状態機械に従う。`user_id` と `client_id` は既存の User と OAuth2Client を指す。")
 model Consent {
   user_id: string;
-  client_id: string;
+  @doc("同意の相手のクライアント。`agent_id` とどちらか一方だけを持つ。")
+  client_id?: string;
+  @doc("代行を許した Agent（REQ-OAUTH2-057）。`client_id` とどちらか一方だけを持つ。")
+  agent_id?: string;
+  @doc("代行の付与を最後に Token Exchange で使った時刻。クライアントの同意と、まだ使っていない付与では省く。")
+  last_used_at?: utcDateTime;
   scopes: string[];
   state: ConsentState;
   created_at: utcDateTime;
@@ -960,6 +965,74 @@ model AdminConsentListResponse {
 }
 
 
+@doc("本人が代行を付与できる Agent の一つ。")
+model DelegableAgentResponse {
+  agent_id: string;
+  name: string;
+  @doc("所有者の表示名。解決できないときは省く。")
+  owner_name?: string;
+}
+
+
+@doc("本人が代行を付与できる、所属テナントの `Active` な Agent の一覧。")
+model DelegableAgentListResponse {
+  agents: DelegableAgentResponse[];
+}
+
+
+@doc("本人が Agent へ代行を付与するリクエスト。")
+model AgentDelegationGrantRequest {
+  agent_id: string;
+  @doc("代行を許すスコープ。空は拒否する。")
+  @minItems(1)
+  scopes: string[];
+  @doc("付与の期限。省くと 365 日後である。過去か 365 日より先は拒否する。")
+  expires_at?: utcDateTime;
+}
+
+
+@doc("本人の代行の付与（セルフサービス）。")
+model AccountAgentDelegationResponse {
+  agent_id: string;
+  agent_name: string;
+  @doc("所有者の表示名。解決できないときは省く。")
+  owner_name?: string;
+  scopes: string[];
+  state: ConsentState;
+  granted_at: utcDateTime;
+  expires_at: utcDateTime;
+  last_used_at?: utcDateTime;
+}
+
+
+@doc("本人の `Granted` の代行の付与の一覧。")
+model AccountAgentDelegationListResponse {
+  delegations: AccountAgentDelegationResponse[];
+}
+
+
+@doc("管理 API でのテナントの代行の付与の表現。参照だけで、管理者は付与も撤回もできない。")
+model AdminAgentDelegationResponse {
+  user_id: string;
+  @doc("user_id から解決した表示名。該当する User が見つからないときは省く。")
+  preferred_username?: string;
+  agent_id: string;
+  agent_name: string;
+  scopes: string[];
+  state: ConsentState;
+  granted_at: utcDateTime;
+  expires_at: utcDateTime;
+  revoked_at?: utcDateTime;
+  last_used_at?: utcDateTime;
+}
+
+
+@doc("テナントの代行の付与のページ。")
+model AdminAgentDelegationListResponse {
+  delegations: AdminAgentDelegationResponse[];
+}
+
+
 @doc("エンドユーザー自身の接続済みのアプリケーション、すなわち有効な Consent（セルフサービス）。")
 model AccountConsentListResponse {
   consents: AccountConsentResponse[];
@@ -1398,6 +1471,26 @@ model ConsentGranted {
   userId: string;
   clientId: string;
   scopes: string[];
+}
+
+
+@doc("利用者が、Agent に自分の代行を許した（REQ-OAUTH2-057）。")
+model AgentDelegationGranted {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  userId: string;
+  agentId: string;
+  scopes: string[];
+  expiresAt: utcDateTime;
+}
+
+
+@doc("利用者が、Agent への代行の付与を撤回した（REQ-OAUTH2-058）。その利用者の発行済みの代行トークンは、以後イントロスペクションで無効になる。")
+model AgentDelegationRevoked {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  userId: string;
+  agentId: string;
 }
 
 

@@ -87,6 +87,9 @@ type ExchangeTokenDeps struct {
 	// 配線ではこのゲートを行わない。Agent を持たない構成の軽量な配線に合わせた、
 	// 本コードベース共通の nil-skips-enforcement に倣う。
 	AgentRepo agentports.AgentRepository
+	// Consents は、関わる Agent への本人の代行の付与を引く (REQ-OAUTH2-060)。関わる Agent が
+	// ある交換で nil なら拒否する。
+	Consents ports.ConsentRepository
 	// WorkloadVerifier verifies external workload attestation tokens
 	// (subject_token_type=JWT URN) and maps them to a bound Agent's client
 	// ([[wi-54-workload-identity-federation-spiffe]]). nil rejects
@@ -287,6 +290,25 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		return reject(currentActorSub, NewOAuthError("invalid_grant", "The proof does not match the key bound to the subject_token."))
 	}
 
+	// --- 本人の代行の付与 (REQ-OAUTH2-060) ---
+	var delegatingAgents []string
+	if agents := domain.MergeAgentChain([]string{subject.AgentID}, subject.AgentChain, actorAgents, []string{actingAgentID}); workloadGrant == nil && len(agents) > 0 {
+		user, err := isUserSubject(ctx, deps.ClientRepo, tenantID, subject.Sub)
+		if err != nil {
+			return nil, err
+		}
+		if user {
+			delegatingAgents = agents
+		}
+	}
+	granted, err := delegationsPermit(ctx, deps.Consents, tenantID, subject.Sub, delegatingAgents, grantedScopes, now)
+	if err != nil {
+		return nil, err
+	}
+	if !granted {
+		return reject(currentActorSub, NewOAuthError("invalid_grant", "The user has not granted delegation to the agent."))
+	}
+
 	// --- 発行 (DELEGATION ONLY: sub = subject.sub, aud = [resource], act 必須) ---
 	var agentID string
 	if workloadGrant != nil {
@@ -304,6 +326,11 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	})
 	if err != nil {
 		return nil, err
+	}
+	for _, delegatingAgent := range delegatingAgents {
+		if err := deps.Consents.TouchAgentDelegation(ctx, tenantID, subject.Sub, delegatingAgent, now); err != nil {
+			return nil, err
+		}
 	}
 
 	emit(deps.Emit, &domain.AccessTokenIssued{
@@ -346,6 +373,26 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		Scope:                strings.Join(grantedScopes, " "),
 		AuthorizationDetails: grantedDetails,
 	}, nil
+}
+
+// delegationsPermit は、agents のすべてに sub の付与があり、scopes の代行を許すかを判定する。
+func delegationsPermit(ctx context.Context, consents ports.ConsentRepository, tenantID, sub string, agents, scopes []string, now time.Time) (bool, error) {
+	if len(agents) == 0 {
+		return true, nil
+	}
+	if consents == nil {
+		return false, nil
+	}
+	for _, agentID := range agents {
+		grant, err := consents.FindAgentDelegation(ctx, tenantID, sub, agentID)
+		if err != nil {
+			return false, err
+		}
+		if grant == nil || !grant.PermitsDelegation(scopes, now) {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func evaluateTokenExchangePolicy(

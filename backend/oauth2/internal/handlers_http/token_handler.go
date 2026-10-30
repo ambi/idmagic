@@ -306,7 +306,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			ClientRepo: d.ClientRepo, Introspector: tokenusecases.RevocationCheckingIntrospector{Deps: d.introspectDeps()},
 			TokenIssuer: d.TokenIssuer, Authorizer: d.Authorizer,
 			AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, McpResourceServerRepo: d.McpResourceServerRepo,
-			AgentRepo:        d.AgentRepo,
+			AgentRepo: d.AgentRepo, Consents: d.ConsentRepo,
 			WorkloadVerifier: d.WorkloadVerifier, Emit: d.Emit,
 			DelegationPolicy: policytenancy.DelegationPolicyResolver{Tenants: d.TenantRepo},
 		}, tokenusecases.ExchangeTokenInput{
@@ -374,6 +374,7 @@ func (d Deps) introspectDeps() tokenusecases.IntrospectDeps {
 		Introspector: d.TokenIntrospector, RefreshStore: d.RefreshStore,
 		AccessTokenDenylist: d.AccessTokenDenylist,
 		AgentRepo:           d.AgentRepo, RevocationEpochRepo: d.RevocationEpochRepo,
+		Consents: d.ConsentRepo, Clients: d.ClientRepo,
 	}
 }
 

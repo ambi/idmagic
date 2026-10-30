@@ -1,14 +1,15 @@
 import { IconApps, IconTrash } from '@tabler/icons-react'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { AuthenticationAPIError, revokeAccountConsent } from '../../api'
 import { AccountShell } from '../../components/AccountShell'
 import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import type { AccountConsent } from '../../types'
+import type { AccountAgentDelegation, AccountConsent, DelegableAgent } from '../../types'
 import { useDictionary, useFormatters } from '../../lib/i18n'
 import { accountApplicationsDictionary } from './AccountApplicationsPage.i18n'
+import { AgentDelegationsSection } from './AgentDelegationsSection'
 
 export function formatAccountConsentDate(value: string): string {
   const date = new Date(value)
@@ -23,11 +24,15 @@ export function AccountApplicationsPage({
   username,
   consents: initial,
   isAdmin,
+  delegations = [],
+  delegableAgents = [],
 }: {
   csrfToken: string
   username: string
   consents: AccountConsent[]
   isAdmin: boolean
+  delegations?: AccountAgentDelegation[]
+  delegableAgents?: DelegableAgent[]
 }) {
   const t = useDictionary(accountApplicationsDictionary)
   const [consents, setConsents] = useState<AccountConsent[]>(initial)
@@ -61,7 +66,13 @@ export function AccountApplicationsPage({
       notice={notice}
       onDismissNotice={() => setNotice('')}
       onRevoke={handleRevoke}
-    />
+    >
+      <AgentDelegationsSection
+        csrfToken={csrfToken}
+        delegations={delegations}
+        delegableAgents={delegableAgents}
+      />
+    </AccountApplicationsPresentation>
   )
 }
 
@@ -74,6 +85,7 @@ export function AccountApplicationsPresentation({
   notice,
   onDismissNotice,
   onRevoke,
+  children,
 }: {
   username: string
   consents: AccountConsent[]
@@ -83,6 +95,7 @@ export function AccountApplicationsPresentation({
   notice: string
   onDismissNotice: () => void
   onRevoke: (consent: AccountConsent) => void
+  children?: ReactNode
 }) {
   const t = useDictionary(accountApplicationsDictionary)
   const { formatDate } = useFormatters()
@@ -144,6 +157,7 @@ export function AccountApplicationsPresentation({
           ))}
         </div>
       )}
+      {children}
     </AccountShell>
   )
 }

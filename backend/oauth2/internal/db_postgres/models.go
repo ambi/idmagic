@@ -21,17 +21,6 @@ type AuthorizationDetailType struct {
 	UpdatedAt       time.Time
 }
 
-type Consent struct {
-	UserID    string
-	ClientID  string
-	Scopes    []byte
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	GrantedAt time.Time
-	ExpiresAt time.Time
-	RevokedAt pgtype.Timestamptz
-}
-
 type McpResourceServer struct {
 	TenantID  string
 	ID        string

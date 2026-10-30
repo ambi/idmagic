@@ -50,6 +50,11 @@ type IntrospectDeps struct {
 	// Agent's revocation epoch (kill-switch, owner offboard, inbound SET) is
 	// fail-closed reported as inactive. nil skips the check.
 	RevocationEpochRepo ssports.AgentRevocationEpochRepository
+	// Consents は、代行のトークンの発行時の Agent への本人の付与を引く (REQ-OAUTH2-061)。
+	// AgentRepo がある配線で nil なら、代行のトークンを失効として扱う。
+	Consents ports.ConsentRepository
+	// Clients は、サブジェクトが利用者かクライアントかを見分ける。
+	Clients ports.OAuth2ClientRepository
 }
 
 // AccessTokenIsRevoked は署名検証を通過済みの access token が、その後に失効させられて
@@ -96,6 +101,9 @@ func AccessTokenIsRevoked(ctx context.Context, deps IntrospectDeps, r *ports.Int
 			return revoked, err
 		}
 	}
+	if withdrawn, err := delegationWithdrawn(ctx, deps, tenantID, r, issuedAt); err != nil || withdrawn {
+		return withdrawn, err
+	}
 	if r.ClientID == "" {
 		return false, nil
 	}
@@ -104,6 +112,54 @@ func AccessTokenIsRevoked(ctx context.Context, deps IntrospectDeps, r *ports.Int
 		return false, err
 	}
 	return epochSupersedes(ctx, deps, tenantID, bound.ID, issuedAt)
+}
+
+// delegationWithdrawn は、利用者を代行するトークンの発行時の Agent のどれかについて、本人の
+// 付与がもうトークンを許さないかを判定する (REQ-OAUTH2-061)。失効エポックは Agent 単位で、
+// 進めると他の利用者の代行まで止まるので使わない。granted_at より前の発行を無効にするのは、
+// 撤回の後の再付与で古いトークンを復活させないためである。
+func delegationWithdrawn(ctx context.Context, deps IntrospectDeps, tenantID string, r *ports.IntrospectionResult, issuedAt time.Time) (bool, error) {
+	agents := domain.MergeAgentChain([]string{r.AgentID}, r.AgentChain)
+	if len(r.Act) == 0 || len(agents) == 0 {
+		return false, nil
+	}
+	user, err := isUserSubject(ctx, deps.Clients, tenantID, r.Sub)
+	if err != nil || !user {
+		return false, err
+	}
+	if deps.Consents == nil {
+		return true, nil
+	}
+	now := time.Now().UTC()
+	scopes := strings.Fields(r.Scope)
+	for _, agentID := range agents {
+		grant, err := deps.Consents.FindAgentDelegation(ctx, tenantID, r.Sub, agentID)
+		if err != nil {
+			return false, err
+		}
+		if grant == nil || !grant.PermitsDelegation(scopes, now) || issuedAt.Before(grant.GrantedAt.Truncate(time.Second)) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// isUserSubject は、トークンのサブジェクトが代行される利用者かを判定する。client_credentials の
+// トークンのサブジェクトはクライアント自身で、交換の後は別のクライアントのトークンになるので、
+// sub と client_id の比較では見分けられない。登録されたクライアントでなければ利用者として扱い、
+// 付与を求める側に倒す。
+func isUserSubject(ctx context.Context, clients ports.OAuth2ClientRepository, tenantID, sub string) (bool, error) {
+	if sub == "" {
+		return false, nil
+	}
+	if clients == nil {
+		return true, nil
+	}
+	client, err := clients.FindByID(ctx, tenantID, sub)
+	if err != nil {
+		return false, err
+	}
+	return client == nil, nil
 }
 
 func epochSupersedes(ctx context.Context, deps IntrospectDeps, tenantID, agentID string, issuedAt time.Time) (bool, error) {

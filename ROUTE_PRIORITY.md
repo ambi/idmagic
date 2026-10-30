@@ -70,16 +70,19 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：188
+経路の数：192
 
 | 経路 | メソッド |
 | --- | --- |
+| `/api/account/v1/agent-delegations` | GET, POST |
+| `/api/account/v1/agent-delegations/{agent_id}/revoke` | POST |
 | `/api/account/v1/applications` | GET |
 | `/api/account/v1/applications/order` | GET, PUT |
 | `/api/account/v1/approval-requests` | GET |
 | `/api/account/v1/approval-requests/{id}/decision` | POST |
 | `/api/account/v1/consents` | GET |
 | `/api/account/v1/consents/{client_id}/revoke` | POST |
+| `/api/account/v1/delegable-agents` | GET |
 | `/api/account/v1/email/change-request` | POST |
 | `/api/account/v1/email/verify` | POST |
 | `/api/account/v1/email/verify-context` | GET |
@@ -104,6 +107,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/account/v1/trusted-devices` | GET |
 | `/api/account/v1/trusted-devices/revoke-all` | POST |
 | `/api/account/v1/trusted-devices/{id}/revoke` | POST |
+| `/api/admin/v1/agent-delegations` | GET |
 | `/api/admin/v1/agent-inventory` | GET |
 | `/api/admin/v1/agents` | GET, POST |
 | `/api/admin/v1/agents/{agent_id}` | DELETE, GET, PATCH |

@@ -8,7 +8,8 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { useDictionary, useLocale } from '../../lib/i18n'
-import type { AdminConsent } from '../../types'
+import type { AdminAgentDelegation, AdminConsent } from '../../types'
+import { AdminAgentDelegationsSection } from './AdminAgentDelegationsSection'
 import { adminConsentsDictionary } from './AdminConsentsPage.i18n'
 
 export function filterAdminConsents(consents: AdminConsent[], query: string): AdminConsent[] {
@@ -30,10 +31,12 @@ export function AdminConsentsPage({
   csrfToken,
   actorUsername,
   consents: initial,
+  delegations = [],
 }: {
   csrfToken: string
   actorUsername?: string
   consents: AdminConsent[]
+  delegations?: AdminAgentDelegation[]
 }) {
   const [consents, setConsents] = useState(initial)
   const [query, setQuery] = useState('')
@@ -233,6 +236,7 @@ export function AdminConsentsPage({
           busy={busy}
         />
       ) : null}
+      <AdminAgentDelegationsSection delegations={delegations} />
     </AdminShell>
   )
 }

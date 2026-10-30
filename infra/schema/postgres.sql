@@ -892,22 +892,32 @@ CREATE TABLE oauth2_client_secrets (
 CREATE INDEX oauth2_client_secrets_client_id_idx ON oauth2_client_secrets (client_id);
 
 CREATE TABLE consents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
-    client_id UUID NOT NULL,
+    client_id UUID,
+    agent_id UUID,
     scopes JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     granted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL,
     revoked_at TIMESTAMPTZ,
-    PRIMARY KEY (user_id, client_id),
+    last_used_at TIMESTAMPTZ,
+    CONSTRAINT consents_client_or_agent_check
+        CHECK ((client_id IS NULL) <> (agent_id IS NULL)),
     CONSTRAINT consents_client_fkey
         FOREIGN KEY (client_id)
         REFERENCES oauth2_clients(client_id) ON DELETE RESTRICT,
+    CONSTRAINT consents_agent_fkey
+        FOREIGN KEY (agent_id)
+        REFERENCES agents(id) ON DELETE CASCADE,
     CONSTRAINT consents_user_fkey
         FOREIGN KEY (user_id)
         REFERENCES users(id) ON DELETE RESTRICT
 );
+
+CREATE UNIQUE INDEX consents_user_client_key ON consents (user_id, client_id) WHERE client_id IS NOT NULL;
+CREATE UNIQUE INDEX consents_user_agent_key ON consents (user_id, agent_id) WHERE agent_id IS NOT NULL;
 
 CREATE TABLE refresh_tokens (
     id UUID PRIMARY KEY,

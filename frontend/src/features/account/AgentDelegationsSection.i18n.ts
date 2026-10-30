@@ -1,0 +1,48 @@
+import { defineDictionary } from '../../lib/i18n'
+
+export const agentDelegationsDictionary = defineDictionary(
+  {
+    heading: 'あなたを代行できるエージェント',
+    description:
+      'ここで許可したエージェントだけが、あなたとして動作できます。取り消すと、そのエージェントの発行済みのアクセスもただちに無効になります。',
+    empty: '代行を許可したエージェントはありません。',
+    owner: '所有者: {name}',
+    expires: '期限: {date}',
+    lastUsed: '最終利用: {date}',
+    neverUsed: '未使用',
+    revoke: '代行を取り消す',
+    revoking: '取り消し中…',
+    revokedNotice: '「{name}」の代行を取り消しました。',
+    revokeFailed: '代行を取り消せませんでした。',
+    grantHeading: 'エージェントに代行を許可する',
+    agentLabel: 'エージェント',
+    agentPlaceholder: 'エージェントを選択',
+    scopesLabel: '許可するスコープ（空白で区切る）',
+    grant: '代行を許可する',
+    granting: '許可しています…',
+    grantedNotice: '「{name}」に代行を許可しました。',
+    grantFailed: '代行を許可できませんでした。',
+  },
+  {
+    heading: 'Agents that can act for you',
+    description:
+      'Only the agents you allow here can act as you. Revoking also invalidates the access that agent already holds right away.',
+    empty: 'No agents have been allowed to act for you.',
+    owner: 'Owner: {name}',
+    expires: 'Expires: {date}',
+    lastUsed: 'Last used: {date}',
+    neverUsed: 'Not used yet',
+    revoke: 'Revoke delegation',
+    revoking: 'Revoking…',
+    revokedNotice: 'Delegation to “{name}” has been revoked.',
+    revokeFailed: 'Could not revoke the delegation.',
+    grantHeading: 'Allow an agent to act for you',
+    agentLabel: 'Agent',
+    agentPlaceholder: 'Select an agent',
+    scopesLabel: 'Scopes to allow (separated by spaces)',
+    grant: 'Allow delegation',
+    granting: 'Allowing…',
+    grantedNotice: '“{name}” can now act for you.',
+    grantFailed: 'Could not allow the delegation.',
+  },
+)

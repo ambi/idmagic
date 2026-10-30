@@ -1,10 +1,12 @@
 import type {
+  AccountAgentDelegation,
   AccountConsent,
   AccountProfile,
   AccountSecurity,
   AccountSession,
   AccountSignInActivity,
   AccountSummary,
+  DelegableAgent,
   MyApplication,
   PortalCategory,
   TotpEnrollmentStart,
@@ -460,4 +462,42 @@ export async function updateNotificationPreferences(
     '/api/account/v1/notification-preferences',
     adminRequest(csrfToken, 'PUT', { disabled_categories: disabledCategories }),
   )
+}
+
+export async function listAccountAgentDelegations(): Promise<AccountAgentDelegation[]> {
+  return (
+    await request<{ delegations: AccountAgentDelegation[] }>('/api/account/v1/agent-delegations')
+  ).delegations
+}
+
+export async function listDelegableAgents(): Promise<DelegableAgent[]> {
+  return (await request<{ agents: DelegableAgent[] }>('/api/account/v1/delegable-agents')).agents
+}
+
+export async function grantAccountAgentDelegation(
+  csrfToken: string,
+  agentId: string,
+  scopes: string[],
+): Promise<AccountAgentDelegation> {
+  return request<AccountAgentDelegation>(
+    '/api/account/v1/agent-delegations',
+    adminRequest(csrfToken, 'POST', { agent_id: agentId, scopes }),
+  )
+}
+
+export async function revokeAccountAgentDelegation(
+  csrfToken: string,
+  agentId: string,
+): Promise<void> {
+  const response = await fetch(
+    tenantURL(`/api/account/v1/agent-delegations/${encodeURIComponent(agentId)}/revoke`),
+    {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+      credentials: 'same-origin',
+      cache: 'no-store',
+    },
+  )
+  if (response.status === 204) return
+  throw await responseAPIError(response)
 }

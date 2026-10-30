@@ -40,6 +40,8 @@ type (
 	ConsentState                      = consentdomain.ConsentState
 	ConsentGrantedEvent               = consentdomain.ConsentGrantedEvent
 	ConsentRevokedEvent               = consentdomain.ConsentRevokedEvent
+	AgentDelegationGranted            = consentdomain.AgentDelegationGranted
+	AgentDelegationRevoked            = consentdomain.AgentDelegationRevoked
 	AuthorizationRequest              = authorizationdomain.AuthorizationRequest
 	AuthorizationCodeRecord           = authorizationdomain.AuthorizationCodeRecord
 	AuthorizationCodeInput            = authorizationdomain.AuthorizationCodeInput

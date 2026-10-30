@@ -100,6 +100,8 @@ var auditEventCategoryTypes = map[string][]string{
 	"consent": {
 		"ConsentGranted",
 		"ConsentRevoked",
+		"AgentDelegationGranted",
+		"AgentDelegationRevoked",
 	},
 	"token": {
 		"AuthorizationCodeIssued",

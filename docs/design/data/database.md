@@ -299,7 +299,7 @@ erDiagram
 | `oauth2_clients` | OAuth 2.0 と OIDC のクライアントの登録内容 | OAuth2 | `LOGGED` | 非キーカラム |
 | `oauth2_client_sessions` | 一つのサインインセッションでトークンを受け取ったクライアント。ログアウトを伝える先を決める | OAuth2 | `LOGGED` | 複合主キーの一部 |
 | `oauth2_client_secrets` | ローテーション中に並存するクライアントシークレットのハッシュと期限 | OAuth2 | `LOGGED` | なし |
-| `consents` | 利用者がクライアントに与えた同意とスコープ | OAuth2 | `LOGGED` | なし |
+| `consents` | 利用者がクライアントに与えた同意と、Agent に与えた代行の付与。スコープを持つ | OAuth2 | `LOGGED` | なし |
 | `refresh_tokens` | リフレッシュトークンのハッシュ。ローテーションの系譜をたどって再利用を検知する | OAuth2 | `LOGGED` | なし |
 | `agent_credential_bindings` | エージェントと、そのエージェントが使う OAuth クライアントの対応 | IdManagement | `LOGGED` | なし |
 | `application_icons` | アプリケーションのアイコン画像本体 | Application | `LOGGED` | なし |

@@ -47,9 +47,10 @@ type Querier interface {
 	// 期限フィルタは付けない (memory adapter とのパリティ: 期限判定は呼び出し側の domain が行う)。
 	// tenant_id は fail-closed 述語として必ず含める。used 列を read で payload に overlay する。
 	FindPARRequest(ctx context.Context, arg FindPARRequestParams) (*FindPARRequestRow, error)
+	GetAgentDelegation(ctx context.Context, arg GetAgentDelegationParams) (*GetAgentDelegationRow, error)
 	GetAuthorizationDetailType(ctx context.Context, arg GetAuthorizationDetailTypeParams) (*AuthorizationDetailType, error)
 	GetClientByID(ctx context.Context, arg GetClientByIDParams) (*Oauth2Client, error)
-	GetConsent(ctx context.Context, arg GetConsentParams) (*Consent, error)
+	GetConsent(ctx context.Context, arg GetConsentParams) (*GetConsentRow, error)
 	GetMcpResourceServer(ctx context.Context, arg GetMcpResourceServerParams) (*McpResourceServer, error)
 	GetMcpResourceServerByResource(ctx context.Context, arg GetMcpResourceServerByResourceParams) (*McpResourceServer, error)
 	GetRefreshTokenByHash(ctx context.Context, hash string) (*GetRefreshTokenByHashRow, error)
@@ -60,6 +61,10 @@ type Querier interface {
 	IsOauth2AccessTokenRevoked(ctx context.Context, arg IsOauth2AccessTokenRevokedParams) (bool, error)
 	LinkApplication(ctx context.Context, arg LinkApplicationParams) error
 	LinkAuthorizationCodeFamily(ctx context.Context, arg LinkAuthorizationCodeFamilyParams) (int64, error)
+	ListAgentDelegationsByTenantPage(ctx context.Context, arg ListAgentDelegationsByTenantPageParams) ([]*ListAgentDelegationsByTenantPageRow, error)
+	ListAgentDelegationsByTenantPageAfter(ctx context.Context, arg ListAgentDelegationsByTenantPageAfterParams) ([]*ListAgentDelegationsByTenantPageAfterRow, error)
+	ListAgentDelegationsByTenantPageBefore(ctx context.Context, arg ListAgentDelegationsByTenantPageBeforeParams) ([]*ListAgentDelegationsByTenantPageBeforeRow, error)
+	ListAgentDelegationsForUser(ctx context.Context, userID string) ([]*ListAgentDelegationsForUserRow, error)
 	ListAuthorizationDetailTypesByTenant(ctx context.Context, tenantID string) ([]*AuthorizationDetailType, error)
 	ListClientSecretCredentials(ctx context.Context, clientID string) ([]*Oauth2ClientSecret, error)
 	ListClientSessionsBySid(ctx context.Context, arg ListClientSessionsBySidParams) ([]*Oauth2ClientSession, error)
@@ -72,14 +77,14 @@ type Querier interface {
 	// the caller saw.
 	ListClientsByTenantPageAfter(ctx context.Context, arg ListClientsByTenantPageAfterParams) ([]*Oauth2Client, error)
 	ListClientsByTenantPageBefore(ctx context.Context, arg ListClientsByTenantPageBeforeParams) ([]*Oauth2Client, error)
-	ListConsentsByTenant(ctx context.Context, tenantID string) ([]*Consent, error)
+	ListConsentsByTenant(ctx context.Context, tenantID string) ([]*ListConsentsByTenantRow, error)
 	// First page of ListAdminConsents keyset pagination (wi-159): the
-	// (user_id, client_id) primary key already backs this range scan.
-	ListConsentsByTenantPage(ctx context.Context, arg ListConsentsByTenantPageParams) ([]*Consent, error)
+	// (user_id, client_id) unique index already backs this range scan.
+	ListConsentsByTenantPage(ctx context.Context, arg ListConsentsByTenantPageParams) ([]*ListConsentsByTenantPageRow, error)
 	// Continuation page: resumes strictly after the (user_id, client_id) keyset
 	// of the last row the caller saw.
-	ListConsentsByTenantPageAfter(ctx context.Context, arg ListConsentsByTenantPageAfterParams) ([]*Consent, error)
-	ListConsentsByTenantPageBefore(ctx context.Context, arg ListConsentsByTenantPageBeforeParams) ([]*Consent, error)
+	ListConsentsByTenantPageAfter(ctx context.Context, arg ListConsentsByTenantPageAfterParams) ([]*ListConsentsByTenantPageAfterRow, error)
+	ListConsentsByTenantPageBefore(ctx context.Context, arg ListConsentsByTenantPageBeforeParams) ([]*ListConsentsByTenantPageBeforeRow, error)
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
 	ListPendingApprovalRequestsForUser(ctx context.Context, arg ListPendingApprovalRequestsForUserParams) ([]*ListPendingApprovalRequestsForUserRow, error)
 	// tx 内の read-modify-write を直列化するための行ロック取得。
@@ -96,6 +101,7 @@ type Querier interface {
 	// false で 0 行 (ErrNoRows)、期限切れの残骸は上書きして 1 行、未存在は INSERT で 1 行。
 	// 行が返れば新規予約成功。kind で dpop / client_assertion を名前空間分けする。
 	ReserveOauth2ReplayJTI(ctx context.Context, arg ReserveOauth2ReplayJTIParams) (string, error)
+	RevokeAgentDelegation(ctx context.Context, arg RevokeAgentDelegationParams) error
 	RevokeConsent(ctx context.Context, arg RevokeConsentParams) error
 	// revoked = FALSE の行だけを対象にし、この呼び出しで新たに失効させた id を返す。
 	// 既に revoked だった行を対象から外すことで、繰り返し呼んでも同じ id を返さない。
@@ -108,8 +114,10 @@ type Querier interface {
 	SaveDeviceCode(ctx context.Context, arg SaveDeviceCodeParams) error
 	SaveLogoutNotification(ctx context.Context, arg SaveLogoutNotificationParams) error
 	SavePARRequest(ctx context.Context, arg SavePARRequestParams) error
+	TouchAgentDelegation(ctx context.Context, arg TouchAgentDelegationParams) error
 	UpdateAuthorizationRequestPayload(ctx context.Context, arg UpdateAuthorizationRequestPayloadParams) error
 	UpdateClientSecretCredential(ctx context.Context, arg UpdateClientSecretCredentialParams) error
+	UpsertAgentDelegation(ctx context.Context, arg UpsertAgentDelegationParams) error
 	UpsertAuthorizationDetailType(ctx context.Context, arg UpsertAuthorizationDetailTypeParams) error
 	UpsertClient(ctx context.Context, arg UpsertClientParams) error
 	UpsertClientSession(ctx context.Context, arg UpsertClientSessionParams) error

@@ -21,6 +21,42 @@ func (q *Queries) DeleteConsentsForSub(ctx context.Context, userID string) error
 	return err
 }
 
+const getAgentDelegation = `-- name: GetAgentDelegation :one
+SELECT user_id, agent_id, scopes, granted_at, expires_at, revoked_at, last_used_at
+FROM consents
+WHERE user_id = $1 AND agent_id = $2
+`
+
+type GetAgentDelegationParams struct {
+	UserID  string
+	AgentID pgtype.UUID
+}
+
+type GetAgentDelegationRow struct {
+	UserID     string
+	AgentID    pgtype.UUID
+	Scopes     []byte
+	GrantedAt  time.Time
+	ExpiresAt  time.Time
+	RevokedAt  pgtype.Timestamptz
+	LastUsedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetAgentDelegation(ctx context.Context, arg GetAgentDelegationParams) (*GetAgentDelegationRow, error) {
+	row := q.db.QueryRow(ctx, getAgentDelegation, arg.UserID, arg.AgentID)
+	var i GetAgentDelegationRow
+	err := row.Scan(
+		&i.UserID,
+		&i.AgentID,
+		&i.Scopes,
+		&i.GrantedAt,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.LastUsedAt,
+	)
+	return &i, err
+}
+
 const getConsent = `-- name: GetConsent :one
 SELECT user_id, client_id, scopes, created_at, updated_at, granted_at, expires_at, revoked_at
 FROM consents
@@ -29,12 +65,23 @@ WHERE user_id = $1 AND client_id = $2
 
 type GetConsentParams struct {
 	UserID   string
-	ClientID string
+	ClientID pgtype.UUID
 }
 
-func (q *Queries) GetConsent(ctx context.Context, arg GetConsentParams) (*Consent, error) {
+type GetConsentRow struct {
+	UserID    string
+	ClientID  pgtype.UUID
+	Scopes    []byte
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	GrantedAt time.Time
+	ExpiresAt time.Time
+	RevokedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetConsent(ctx context.Context, arg GetConsentParams) (*GetConsentRow, error) {
 	row := q.db.QueryRow(ctx, getConsent, arg.UserID, arg.ClientID)
-	var i Consent
+	var i GetConsentRow
 	err := row.Scan(
 		&i.UserID,
 		&i.ClientID,
@@ -48,23 +95,251 @@ func (q *Queries) GetConsent(ctx context.Context, arg GetConsentParams) (*Consen
 	return &i, err
 }
 
+const listAgentDelegationsByTenantPage = `-- name: ListAgentDelegationsByTenantPage :many
+SELECT c.user_id, c.agent_id, c.scopes, c.granted_at, c.expires_at, c.revoked_at, c.last_used_at
+FROM consents c
+JOIN users u ON c.user_id = u.id
+WHERE u.tenant_id = $1 AND c.agent_id IS NOT NULL
+ORDER BY c.user_id, c.agent_id
+LIMIT $2
+`
+
+type ListAgentDelegationsByTenantPageParams struct {
+	TenantID  string
+	PageLimit int32
+}
+
+type ListAgentDelegationsByTenantPageRow struct {
+	UserID     string
+	AgentID    pgtype.UUID
+	Scopes     []byte
+	GrantedAt  time.Time
+	ExpiresAt  time.Time
+	RevokedAt  pgtype.Timestamptz
+	LastUsedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListAgentDelegationsByTenantPage(ctx context.Context, arg ListAgentDelegationsByTenantPageParams) ([]*ListAgentDelegationsByTenantPageRow, error) {
+	rows, err := q.db.Query(ctx, listAgentDelegationsByTenantPage, arg.TenantID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListAgentDelegationsByTenantPageRow
+	for rows.Next() {
+		var i ListAgentDelegationsByTenantPageRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.AgentID,
+			&i.Scopes,
+			&i.GrantedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.LastUsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAgentDelegationsByTenantPageAfter = `-- name: ListAgentDelegationsByTenantPageAfter :many
+SELECT c.user_id, c.agent_id, c.scopes, c.granted_at, c.expires_at, c.revoked_at, c.last_used_at
+FROM consents c
+JOIN users u ON c.user_id = u.id
+WHERE u.tenant_id = $1 AND c.agent_id IS NOT NULL
+  AND (c.user_id, c.agent_id) > ($2::uuid, $3::uuid)
+ORDER BY c.user_id, c.agent_id
+LIMIT $4
+`
+
+type ListAgentDelegationsByTenantPageAfterParams struct {
+	TenantID     string
+	AfterUserID  string
+	AfterAgentID string
+	PageLimit    int32
+}
+
+type ListAgentDelegationsByTenantPageAfterRow struct {
+	UserID     string
+	AgentID    pgtype.UUID
+	Scopes     []byte
+	GrantedAt  time.Time
+	ExpiresAt  time.Time
+	RevokedAt  pgtype.Timestamptz
+	LastUsedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListAgentDelegationsByTenantPageAfter(ctx context.Context, arg ListAgentDelegationsByTenantPageAfterParams) ([]*ListAgentDelegationsByTenantPageAfterRow, error) {
+	rows, err := q.db.Query(ctx, listAgentDelegationsByTenantPageAfter,
+		arg.TenantID,
+		arg.AfterUserID,
+		arg.AfterAgentID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListAgentDelegationsByTenantPageAfterRow
+	for rows.Next() {
+		var i ListAgentDelegationsByTenantPageAfterRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.AgentID,
+			&i.Scopes,
+			&i.GrantedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.LastUsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAgentDelegationsByTenantPageBefore = `-- name: ListAgentDelegationsByTenantPageBefore :many
+SELECT c.user_id, c.agent_id, c.scopes, c.granted_at, c.expires_at, c.revoked_at, c.last_used_at
+FROM consents c
+JOIN users u ON c.user_id = u.id
+WHERE u.tenant_id = $1 AND c.agent_id IS NOT NULL
+  AND (c.user_id, c.agent_id) < ($2::uuid, $3::uuid)
+ORDER BY c.user_id DESC, c.agent_id DESC
+LIMIT $4
+`
+
+type ListAgentDelegationsByTenantPageBeforeParams struct {
+	TenantID      string
+	BeforeUserID  string
+	BeforeAgentID string
+	PageLimit     int32
+}
+
+type ListAgentDelegationsByTenantPageBeforeRow struct {
+	UserID     string
+	AgentID    pgtype.UUID
+	Scopes     []byte
+	GrantedAt  time.Time
+	ExpiresAt  time.Time
+	RevokedAt  pgtype.Timestamptz
+	LastUsedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListAgentDelegationsByTenantPageBefore(ctx context.Context, arg ListAgentDelegationsByTenantPageBeforeParams) ([]*ListAgentDelegationsByTenantPageBeforeRow, error) {
+	rows, err := q.db.Query(ctx, listAgentDelegationsByTenantPageBefore,
+		arg.TenantID,
+		arg.BeforeUserID,
+		arg.BeforeAgentID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListAgentDelegationsByTenantPageBeforeRow
+	for rows.Next() {
+		var i ListAgentDelegationsByTenantPageBeforeRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.AgentID,
+			&i.Scopes,
+			&i.GrantedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.LastUsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAgentDelegationsForUser = `-- name: ListAgentDelegationsForUser :many
+SELECT user_id, agent_id, scopes, granted_at, expires_at, revoked_at, last_used_at
+FROM consents
+WHERE user_id = $1 AND agent_id IS NOT NULL
+ORDER BY agent_id
+`
+
+type ListAgentDelegationsForUserRow struct {
+	UserID     string
+	AgentID    pgtype.UUID
+	Scopes     []byte
+	GrantedAt  time.Time
+	ExpiresAt  time.Time
+	RevokedAt  pgtype.Timestamptz
+	LastUsedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListAgentDelegationsForUser(ctx context.Context, userID string) ([]*ListAgentDelegationsForUserRow, error) {
+	rows, err := q.db.Query(ctx, listAgentDelegationsForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListAgentDelegationsForUserRow
+	for rows.Next() {
+		var i ListAgentDelegationsForUserRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.AgentID,
+			&i.Scopes,
+			&i.GrantedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.LastUsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listConsentsByTenant = `-- name: ListConsentsByTenant :many
 SELECT c.user_id, c.client_id, c.scopes, c.created_at, c.updated_at, c.granted_at, c.expires_at, c.revoked_at
 FROM consents c
 JOIN users u ON c.user_id = u.id
-WHERE u.tenant_id = $1
+WHERE u.tenant_id = $1 AND c.client_id IS NOT NULL
 ORDER BY c.user_id, c.client_id
 `
 
-func (q *Queries) ListConsentsByTenant(ctx context.Context, tenantID string) ([]*Consent, error) {
+type ListConsentsByTenantRow struct {
+	UserID    string
+	ClientID  pgtype.UUID
+	Scopes    []byte
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	GrantedAt time.Time
+	ExpiresAt time.Time
+	RevokedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListConsentsByTenant(ctx context.Context, tenantID string) ([]*ListConsentsByTenantRow, error) {
 	rows, err := q.db.Query(ctx, listConsentsByTenant, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*Consent
+	var items []*ListConsentsByTenantRow
 	for rows.Next() {
-		var i Consent
+		var i ListConsentsByTenantRow
 		if err := rows.Scan(
 			&i.UserID,
 			&i.ClientID,
@@ -89,7 +364,7 @@ const listConsentsByTenantPage = `-- name: ListConsentsByTenantPage :many
 SELECT c.user_id, c.client_id, c.scopes, c.created_at, c.updated_at, c.granted_at, c.expires_at, c.revoked_at
 FROM consents c
 JOIN users u ON c.user_id = u.id
-WHERE u.tenant_id = $1
+WHERE u.tenant_id = $1 AND c.client_id IS NOT NULL
 ORDER BY c.user_id, c.client_id
 LIMIT $2
 `
@@ -99,17 +374,28 @@ type ListConsentsByTenantPageParams struct {
 	PageLimit int32
 }
 
+type ListConsentsByTenantPageRow struct {
+	UserID    string
+	ClientID  pgtype.UUID
+	Scopes    []byte
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	GrantedAt time.Time
+	ExpiresAt time.Time
+	RevokedAt pgtype.Timestamptz
+}
+
 // First page of ListAdminConsents keyset pagination (wi-159): the
-// (user_id, client_id) primary key already backs this range scan.
-func (q *Queries) ListConsentsByTenantPage(ctx context.Context, arg ListConsentsByTenantPageParams) ([]*Consent, error) {
+// (user_id, client_id) unique index already backs this range scan.
+func (q *Queries) ListConsentsByTenantPage(ctx context.Context, arg ListConsentsByTenantPageParams) ([]*ListConsentsByTenantPageRow, error) {
 	rows, err := q.db.Query(ctx, listConsentsByTenantPage, arg.TenantID, arg.PageLimit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*Consent
+	var items []*ListConsentsByTenantPageRow
 	for rows.Next() {
-		var i Consent
+		var i ListConsentsByTenantPageRow
 		if err := rows.Scan(
 			&i.UserID,
 			&i.ClientID,
@@ -134,7 +420,7 @@ const listConsentsByTenantPageAfter = `-- name: ListConsentsByTenantPageAfter :m
 SELECT c.user_id, c.client_id, c.scopes, c.created_at, c.updated_at, c.granted_at, c.expires_at, c.revoked_at
 FROM consents c
 JOIN users u ON c.user_id = u.id
-WHERE u.tenant_id = $1
+WHERE u.tenant_id = $1 AND c.client_id IS NOT NULL
   AND (c.user_id, c.client_id) > ($2::uuid, $3::uuid)
 ORDER BY c.user_id, c.client_id
 LIMIT $4
@@ -147,9 +433,20 @@ type ListConsentsByTenantPageAfterParams struct {
 	PageLimit     int32
 }
 
+type ListConsentsByTenantPageAfterRow struct {
+	UserID    string
+	ClientID  pgtype.UUID
+	Scopes    []byte
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	GrantedAt time.Time
+	ExpiresAt time.Time
+	RevokedAt pgtype.Timestamptz
+}
+
 // Continuation page: resumes strictly after the (user_id, client_id) keyset
 // of the last row the caller saw.
-func (q *Queries) ListConsentsByTenantPageAfter(ctx context.Context, arg ListConsentsByTenantPageAfterParams) ([]*Consent, error) {
+func (q *Queries) ListConsentsByTenantPageAfter(ctx context.Context, arg ListConsentsByTenantPageAfterParams) ([]*ListConsentsByTenantPageAfterRow, error) {
 	rows, err := q.db.Query(ctx, listConsentsByTenantPageAfter,
 		arg.TenantID,
 		arg.AfterUserID,
@@ -160,9 +457,9 @@ func (q *Queries) ListConsentsByTenantPageAfter(ctx context.Context, arg ListCon
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*Consent
+	var items []*ListConsentsByTenantPageAfterRow
 	for rows.Next() {
-		var i Consent
+		var i ListConsentsByTenantPageAfterRow
 		if err := rows.Scan(
 			&i.UserID,
 			&i.ClientID,
@@ -187,7 +484,7 @@ const listConsentsByTenantPageBefore = `-- name: ListConsentsByTenantPageBefore 
 SELECT c.user_id, c.client_id, c.scopes, c.created_at, c.updated_at, c.granted_at, c.expires_at, c.revoked_at
 FROM consents c
 JOIN users u ON c.user_id = u.id
-WHERE u.tenant_id = $1
+WHERE u.tenant_id = $1 AND c.client_id IS NOT NULL
   AND (c.user_id, c.client_id) < ($2::uuid, $3::uuid)
 ORDER BY c.user_id DESC, c.client_id DESC
 LIMIT $4
@@ -200,7 +497,18 @@ type ListConsentsByTenantPageBeforeParams struct {
 	PageLimit      int32
 }
 
-func (q *Queries) ListConsentsByTenantPageBefore(ctx context.Context, arg ListConsentsByTenantPageBeforeParams) ([]*Consent, error) {
+type ListConsentsByTenantPageBeforeRow struct {
+	UserID    string
+	ClientID  pgtype.UUID
+	Scopes    []byte
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	GrantedAt time.Time
+	ExpiresAt time.Time
+	RevokedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListConsentsByTenantPageBefore(ctx context.Context, arg ListConsentsByTenantPageBeforeParams) ([]*ListConsentsByTenantPageBeforeRow, error) {
 	rows, err := q.db.Query(ctx, listConsentsByTenantPageBefore,
 		arg.TenantID,
 		arg.BeforeUserID,
@@ -211,9 +519,9 @@ func (q *Queries) ListConsentsByTenantPageBefore(ctx context.Context, arg ListCo
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*Consent
+	var items []*ListConsentsByTenantPageBeforeRow
 	for rows.Next() {
-		var i Consent
+		var i ListConsentsByTenantPageBeforeRow
 		if err := rows.Scan(
 			&i.UserID,
 			&i.ClientID,
@@ -234,6 +542,21 @@ func (q *Queries) ListConsentsByTenantPageBefore(ctx context.Context, arg ListCo
 	return items, nil
 }
 
+const revokeAgentDelegation = `-- name: RevokeAgentDelegation :exec
+UPDATE consents SET revoked_at = now(), updated_at = now()
+WHERE user_id = $1 AND agent_id = $2 AND revoked_at IS NULL
+`
+
+type RevokeAgentDelegationParams struct {
+	UserID  string
+	AgentID pgtype.UUID
+}
+
+func (q *Queries) RevokeAgentDelegation(ctx context.Context, arg RevokeAgentDelegationParams) error {
+	_, err := q.db.Exec(ctx, revokeAgentDelegation, arg.UserID, arg.AgentID)
+	return err
+}
+
 const revokeConsent = `-- name: RevokeConsent :exec
 UPDATE consents SET revoked_at = now(), updated_at = now()
 WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL
@@ -241,7 +564,7 @@ WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL
 
 type RevokeConsentParams struct {
 	UserID   string
-	ClientID string
+	ClientID pgtype.UUID
 }
 
 func (q *Queries) RevokeConsent(ctx context.Context, arg RevokeConsentParams) error {
@@ -249,10 +572,56 @@ func (q *Queries) RevokeConsent(ctx context.Context, arg RevokeConsentParams) er
 	return err
 }
 
+const touchAgentDelegation = `-- name: TouchAgentDelegation :exec
+UPDATE consents SET last_used_at = $3
+WHERE user_id = $1 AND agent_id = $2
+`
+
+type TouchAgentDelegationParams struct {
+	UserID     string
+	AgentID    pgtype.UUID
+	LastUsedAt pgtype.Timestamptz
+}
+
+func (q *Queries) TouchAgentDelegation(ctx context.Context, arg TouchAgentDelegationParams) error {
+	_, err := q.db.Exec(ctx, touchAgentDelegation, arg.UserID, arg.AgentID, arg.LastUsedAt)
+	return err
+}
+
+const upsertAgentDelegation = `-- name: UpsertAgentDelegation :exec
+INSERT INTO consents (user_id, agent_id, scopes, granted_at, expires_at, revoked_at)
+VALUES ($1, $2, $3, $4, $5, NULL)
+ON CONFLICT (user_id, agent_id) WHERE agent_id IS NOT NULL DO UPDATE SET
+  scopes = EXCLUDED.scopes,
+  granted_at = EXCLUDED.granted_at,
+  expires_at = EXCLUDED.expires_at,
+  revoked_at = NULL,
+  updated_at = now()
+`
+
+type UpsertAgentDelegationParams struct {
+	UserID    string
+	AgentID   pgtype.UUID
+	Scopes    []byte
+	GrantedAt time.Time
+	ExpiresAt time.Time
+}
+
+func (q *Queries) UpsertAgentDelegation(ctx context.Context, arg UpsertAgentDelegationParams) error {
+	_, err := q.db.Exec(ctx, upsertAgentDelegation,
+		arg.UserID,
+		arg.AgentID,
+		arg.Scopes,
+		arg.GrantedAt,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
 const upsertConsent = `-- name: UpsertConsent :exec
 INSERT INTO consents (user_id, client_id, scopes, granted_at, expires_at, revoked_at)
 VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (user_id, client_id) DO UPDATE SET
+ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL DO UPDATE SET
   scopes = EXCLUDED.scopes,
   granted_at = EXCLUDED.granted_at,
   expires_at = EXCLUDED.expires_at,
@@ -262,7 +631,7 @@ ON CONFLICT (user_id, client_id) DO UPDATE SET
 
 type UpsertConsentParams struct {
 	UserID    string
-	ClientID  string
+	ClientID  pgtype.UUID
 	Scopes    []byte
 	GrantedAt time.Time
 	ExpiresAt time.Time

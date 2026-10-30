@@ -3,6 +3,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	consentdomain "github.com/ambi/idmagic/backend/oauth2/internal/consent/domain"
 )
@@ -21,4 +22,19 @@ type ConsentRepository interface {
 	// DeleteAllForSub は anonymize cascade から呼ばれる。
 	// 対象 sub の Consent を物理削除する。
 	DeleteAllForSub(ctx context.Context, sub string) error
+
+	// 以降は Agent への代行の付与の操作である。付与は同意と同じ保管先の別の行で、上の
+	// クライアントの同意の操作には現れない。
+	FindAgentDelegation(ctx context.Context, tenantID, sub, agentID string) (*consentdomain.Consent, error)
+	// ListAgentDelegations は sub のすべての状態の付与を agent_id の昇順に返す。
+	ListAgentDelegations(ctx context.Context, tenantID, sub string) ([]*consentdomain.Consent, error)
+	// ListAgentDelegationPage は tenantID の付与を (user_id, agent_id) の昇順に、キーセットの
+	// 後から limit 件まで返す。最初のページには "", "" を渡す。
+	ListAgentDelegationPage(ctx context.Context, tenantID, afterUserID, afterAgentID string, limit int) ([]*consentdomain.Consent, error)
+	ListAgentDelegationPageBefore(ctx context.Context, tenantID, beforeUserID, beforeAgentID string, limit int) ([]*consentdomain.Consent, error)
+	// SaveAgentDelegation は付与を Granted で置き換える。last_used_at は保つ。
+	SaveAgentDelegation(ctx context.Context, tenantID string, c *consentdomain.Consent) error
+	RevokeAgentDelegation(ctx context.Context, tenantID, sub, agentID string) error
+	// TouchAgentDelegation は付与の last_used_at を at にする。
+	TouchAgentDelegation(ctx context.Context, tenantID, sub, agentID string, at time.Time) error
 }

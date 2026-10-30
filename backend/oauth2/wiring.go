@@ -166,6 +166,8 @@ func (m Module) ResourceAccessTokens(
 			AccessTokenDenylist: m.AccessTokenDenylist,
 			AgentRepo:           agents,
 			RevocationEpochRepo: epochs,
+			Consents:            m.ConsentRepo,
+			Clients:             m.ClientRepo,
 		},
 		DpopReplayStore: m.DpopReplayStore,
 	}

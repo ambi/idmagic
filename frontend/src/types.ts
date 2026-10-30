@@ -1282,3 +1282,33 @@ export type ApiToken = {
   expires_at?: string
   revoked_at?: string
 }
+
+export type DelegableAgent = {
+  agent_id: string
+  name: string
+  owner_name?: string
+}
+
+export type AccountAgentDelegation = {
+  agent_id: string
+  agent_name: string
+  owner_name?: string
+  scopes: string[]
+  state: string
+  granted_at: string
+  expires_at: string
+  last_used_at?: string
+}
+
+export type AdminAgentDelegation = {
+  user_id: string
+  preferred_username?: string
+  agent_id: string
+  agent_name: string
+  scopes: string[]
+  state: 'granted' | 'revoked' | 'expired'
+  granted_at: string
+  expires_at: string
+  revoked_at?: string
+  last_used_at?: string
+}

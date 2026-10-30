@@ -6,6 +6,7 @@ import type {
   AdminApplicationDetail,
   AdminAuditEvent,
   ApplicationCategory,
+  AdminAgentDelegation,
   AdminConsent,
   AdminGroup,
   AdminGroupMember,
@@ -742,6 +743,14 @@ export async function listAdminConsents(): Promise<AdminConsent[]> {
   return (
     await request<AdminConsentListResponse>(`/api/admin/v1/consents?limit=${PICKER_LIST_LIMIT}`)
   ).consents
+}
+
+export async function listAdminAgentDelegations(): Promise<AdminAgentDelegation[]> {
+  return (
+    await request<{ delegations: AdminAgentDelegation[] }>(
+      `/api/admin/v1/agent-delegations?limit=${PICKER_LIST_LIMIT}`,
+    )
+  ).delegations
 }
 
 export async function revokeAdminConsent(

@@ -128,7 +128,7 @@ func TestExchangeTokenRejectsSupervisedActingClient(t *testing.T) {
 func TestExchangeTokenAllowsAutonomousAgents(t *testing.T) {
 	issuer := &recordingIssuer{}
 	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
-		"subj": {Active: true, Sub: "agent-bound-client", Scope: "read write", AgentID: "agent_1"},
+		"subj": {Active: true, Sub: "client", Scope: "read write", AgentID: "agent_1"},
 	})
 	agentRepo := idmanagement.NewMemoryModule().AgentRepo
 	seedSupervisionAgent(t, agentRepo, "agent_1", "agent-bound-client", idmdomain.AgentKindAutonomous)
