@@ -25,6 +25,9 @@ type AccessTokenInput struct {
 	// 束縛された Agent と、トークン交換の入力が持っていた Agent である。非空のとき
 	// agent_chain claim を付与する。principal_type は変えない。
 	AgentChain []string
+	// ApprovalRequestID は CIBA の承認から発行するときの承認リクエスト。交換の派生へ継承しない
+	// (REQ-OAUTH2-065)。
+	ApprovalRequestID string
 	// Audiences は発行トークンの aud を明示指定する (RFC 8707 / RFC 8693)。
 	// 空のときは Scopes からデフォルトの資源を推定し (RFC 9068 §3)、account スコープを含めば
 	// レルムの発行者識別子 (レルムの IdMagic API) を、含まなければ Client.ClientID を

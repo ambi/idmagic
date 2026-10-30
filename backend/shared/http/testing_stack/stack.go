@@ -201,6 +201,7 @@ type Stack struct {
 	Consents               oauthports.ConsentRepository
 	AuthzDetailTypes       oauthports.AuthorizationDetailTypeRepository
 	McpResourceServers     oauthports.McpResourceServerRepository
+	ApprovalRequests       oauthports.ApprovalRequestStore
 	Codes                  oauthports.AuthorizationCodeStore
 	PAR                    oauthports.PARStore
 	Refresh                oauthports.RefreshTokenStore
@@ -266,6 +267,8 @@ func WithOAuth2Clients() Option {
 		b.deps.OAuth2.ClientRepo = b.stack.Clients
 		b.deps.OAuth2.AuthzDetailTypeRepo = b.stack.AuthzDetailTypes
 		b.deps.OAuth2.McpResourceServerRepo = b.stack.McpResourceServers
+		b.stack.ApprovalRequests = oauth2.NewMemoryModule().ApprovalRequestStore
+		b.deps.OAuth2.ApprovalRequestStore = b.stack.ApprovalRequests
 	}
 }
 

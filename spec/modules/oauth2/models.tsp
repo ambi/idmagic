@@ -1147,6 +1147,21 @@ model ResourceAccessEvaluationRequest {
   htu?: string;
   @doc("リソースサーバーが終端した mTLS の接続のクライアント証明書の SHA-256 拇印。mTLS に束縛したトークンで必須である。")
   client_certificate_thumbprint?: string;
+  @doc("業務作用を一回に保つ、資源が決めた鍵。規則が `requires_approved_operation` を持つ操作で必須である。")
+  @maxLength(256)
+  operation_key?: string;
+  @doc("実行しようとする引数の JSON オブジェクトを表す文字列。承認した明細の `fields` と比べる。")
+  operation_parameters?: string;
+}
+
+
+@doc("評価が許可した、人が承認した操作の相関。資源は実行の結果とともに記録する。")
+model ApprovedOperationUse {
+  approval_request_id: string;
+  @doc("正規化した引数の SHA-256 の 16 進表現。")
+  operation_digest: string;
+  @doc("同じ `operation_key` の再送である。資源は作用を繰り返さない。")
+  replayed: boolean;
 }
 
 
@@ -1161,6 +1176,7 @@ model ResourceAccessEvaluationResponse {
   delegation_mode?: DelegationMode;
   @doc("許可したトークンの構造化された権限。リソースサーバーが業務上の上限を確かめるために使う。")
   authorization_details?: AuthorizationDetail[];
+  approved_operation?: ApprovedOperationUse;
 }
 
 
@@ -1177,6 +1193,8 @@ model ResourceAccessRule {
   scopes: string[];
   @doc("指定すると、この `type` の一致する `authorization_details` をトークンに求める。")
   authorization_detail_type?: string;
+  @doc("真のとき、人が承認した一回の操作だけを許可する。`authorization_detail_type` を必須とする。")
+  requires_approved_operation?: boolean;
 }
 
 
@@ -1700,6 +1718,11 @@ model ResourceAccessEvaluated {
   relation: string;
   permitted: boolean;
   reasons: string[];
+  @doc("許可した、人が承認した操作の承認リクエスト。")
+  approvalRequestId?: string;
+  @doc("正規化した引数の SHA-256 の 16 進表現。")
+  operationDigest?: string;
+  replayed?: boolean;
 }
 
 

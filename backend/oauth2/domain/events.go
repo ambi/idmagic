@@ -346,6 +346,10 @@ type ResourceAccessEvaluated struct {
 	Relation         string    `json:"relation"`
 	Permitted        bool      `json:"permitted"`
 	Reasons          []string  `json:"reasons"`
+	// 以下は承認した操作の相関 (REQ-OAUTH2-065)。引数と operation_key の平文は残さない。
+	ApprovalRequestID string `json:"approvalRequestId,omitempty"`
+	OperationDigest   string `json:"operationDigest,omitempty"`
+	Replayed          bool   `json:"replayed,omitempty"`
 }
 
 func (e *ResourceAccessEvaluated) EventType() string     { return "ResourceAccessEvaluated" }

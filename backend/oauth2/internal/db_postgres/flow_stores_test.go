@@ -234,3 +234,60 @@ func TestDeviceCodeStore(t *testing.T) {
 		t.Fatalf("find after delete=%+v err=%v (want nil)", got, err)
 	}
 }
+
+// 別の鍵の並行要求で使用権を得るのは一つだけであり、未消費と期限切れには記録しない。
+//
+//spec:covers REQ-OAUTH2-065: 使用権の比較交換が保存層で一度だけ成立すること
+func TestApprovalRequestClaimUseHasOneWinner(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	user := seedUser(t, db, tenant.ID)
+	client := seedClient(t, db, tenant.ID)
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	store := &oauth2postgres.ApprovalRequestStore{Pool: db}
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	id := newUUID(t)
+	rec := &approvaldomain.ApprovalRequest{
+		ID: id, ClientID: client.ClientID, UserID: user.ID, Scopes: []string{"openid"}, State: spec.ApprovalPending,
+		AuthReqIDHash: id, IntervalSeconds: 5, RequestedAt: now, ExpiresAt: now.Add(time.Minute),
+	}
+	if err := store.Save(ctx, rec); err != nil {
+		t.Fatal(err)
+	}
+	if claimed, recorded, err := store.ClaimUse(ctx, id, approvaldomain.ApprovalUse{KeyHash: "early", ClaimedAt: now}, now); err != nil || recorded || claimed != nil {
+		t.Fatalf("pending request accepted a use: %+v %v %v", claimed, recorded, err)
+	}
+	if _, err := store.Decide(ctx, id, user.ID, spec.ApprovalEventApprove, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Consume(ctx, id, now); err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	winners := 0
+	for _, key := range []string{"a", "b", "c", "d"} {
+		wg.Go(func() {
+			_, recorded, err := store.ClaimUse(ctx, id, approvaldomain.ApprovalUse{KeyHash: key, ClaimedAt: now}, now)
+			if err != nil {
+				t.Errorf("claim: %v", err)
+			}
+			if recorded {
+				mu.Lock()
+				winners++
+				mu.Unlock()
+			}
+		})
+	}
+	wg.Wait()
+	if winners != 1 {
+		t.Fatalf("winners = %d, want 1", winners)
+	}
+	current, recorded, err := store.ClaimUse(ctx, id, approvaldomain.ApprovalUse{KeyHash: "late", ClaimedAt: now}, now)
+	if err != nil || recorded || current == nil || current.Use == nil || current.Use.KeyHash == "late" {
+		t.Fatalf("loser did not see the holder: %+v %v %v", current, recorded, err)
+	}
+	if expired, recorded, err := store.ClaimUse(ctx, id, approvaldomain.ApprovalUse{KeyHash: "late", ClaimedAt: now}, now.Add(time.Minute)); err != nil || recorded || expired != nil {
+		t.Fatalf("expired request returned a holder: %+v %v %v", expired, recorded, err)
+	}
+}

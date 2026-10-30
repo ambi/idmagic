@@ -163,6 +163,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-083 | Information disclosure | 登録したバックチャネルログアウト通知先を経由して内部ネットワークへ到達する | OAuth2 | docs/modules/oauth2/features/logout.md: OIDC セッションの関連付けとログアウトの伝播、REQ-OAUTH2-025 | `covered` |
 | THREAT-084 | Elevation of privilege | リソースサーバーが評価の入口を使い、任意の主体や他の資源の関係を探索するか、別の資源宛てのトークンで許可を得る | OAuth2, AccessControl | REQ-OAUTH2-062、REQ-OAUTH2-064 | `covered` |
 | THREAT-085 | Spoofing | 持ち出した送信者制約付きのトークンを、証明を確かめないリソースサーバーで使う | OAuth2 | REQ-OAUTH2-063 | `covered` |
+| THREAT-086 | Tampering | 人が一件の操作として承認したトークンを、別の対象や引数に使うか、同じ操作を別の業務要求として再実行する | OAuth2 | REQ-OAUTH2-065 | `covered` |
 | THREAT-053 | Tampering | XML 署名の構造を組み替え、検証を通したまま別の内容を主張する | Saml, WsFederation | contexts/saml/decisions.md、contexts/saml/internals.md | `covered` |
 | THREAT-054 | Denial of service | 圧縮された受信リクエストの展開でメモリを枯渇させる | Saml | contexts/saml/internals.md | `covered` |
 

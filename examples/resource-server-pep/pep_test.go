@@ -70,3 +70,36 @@ func TestProtectRunsTheHandlerOnlyOnAnExplicitPermit(t *testing.T) {
 type roundTrip func(*http.Request) (*http.Response, error)
 
 func (f roundTrip) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+// The ledger is what makes a retried request safe: IdMagic permits the same key again.
+func TestOperationLedgerDistinguishesFailureFromUnknown(t *testing.T) {
+	cases := []struct {
+		name  string
+		first ExecuteResult
+		runs  int
+	}{
+		{name: "success is not repeated", first: ExecuteSucceeded, runs: 1},
+		{name: "unknown is not repeated", first: ExecuteUnknown, runs: 1},
+		{name: "definite failure may run again", first: ExecuteFailed, runs: 2},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var ledger OperationLedger
+			runs := 0
+			effect := func() ExecuteResult {
+				runs++
+				if runs == 1 {
+					return tc.first
+				}
+				return ExecuteSucceeded
+			}
+			if got := ledger.Run("k", effect); got != tc.first {
+				t.Fatalf("first result = %d", got)
+			}
+			ledger.Run("k", effect)
+			if runs != tc.runs {
+				t.Fatalf("runs = %d, want %d", runs, tc.runs)
+			}
+		})
+	}
+}

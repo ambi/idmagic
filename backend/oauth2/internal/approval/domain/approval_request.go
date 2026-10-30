@@ -52,6 +52,8 @@ type ApprovalRequest struct {
 	ExpiresAt   time.Time  `json:"expires_at"`
 	DecidedAt   *time.Time `json:"decided_at,omitempty"`
 	ConsumedAt  *time.Time `json:"consumed_at,omitempty"`
+	// Use is the single right to execute the approved operation (REQ-OAUTH2-065).
+	Use *ApprovalUse `json:"use,omitempty"`
 }
 
 func (a ApprovalRequest) Validate() error { return spec.ValidateApprovalRequest(&a) }

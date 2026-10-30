@@ -8,7 +8,7 @@
 | --- | --- |
 | 責務 | バックチャネル認可要求の受け付け、対象のユーザーによる承認と拒否、承認の成立の後のトークンの発行、`Supervised` な Agent の承認の要求 |
 | 行為者 | Agent、登録済みのクライアント、ResourceOwner（承認する本人） |
-| 扱わないもの | `supervised` の Agent に承認を義務付けるかの方針は、ガバナンスの層が決める |
+| 扱わないもの | 実行する操作と承認の照合は[リソースアクセスの評価](resource-access.md#承認した操作の評価)が扱う。トークンの発行の一回性は操作の一回性を意味しない |
 
 ## モデル
 
@@ -64,6 +64,7 @@ CIBA の配信のモードは `poll` だけを実装する。
 
 - CIBA のグラントを許可したクライアントが、`openid` を含む許可済みのスコープと、テナントの `Active` な User を解決する `login_hint` か `id_token_hint` のどちらか一つでバックチャネル認可を要求したとき、OAuth2 は、`Pending` の承認リクエストを作り、200 と `auth_req_id`、`expires_in`、`interval` を返し、`BackchannelAuthRequested` を発行し、対象の User のメールアドレスへ承認の依頼を通知する。
 - クライアントが `Approved` で期限内の `auth_req_id` を交換したとき、OAuth2 は、承認リクエストを Compare-and-Set で `Consumed` にし、要求したスコープと承認した User の `sub` のアクセストークンと ID トークンを返し、`AccessTokenIssued` を発行する。
+- 承認した `authorization_details` の `locations` が登録済みの `Active` なリソースサーバーを指すとき、OAuth2 は、そのリソースをアクセストークンの `aud` にする。
 - クライアントが期限を過ぎた `auth_req_id` を交換したとき、OAuth2 は、承認リクエストを `Expired` にし、`BackchannelAuthExpired` を発行し、400 と `expired_token` を返す。
 - `Pending` の `auth_req_id` の交換を受けたとき、OAuth2 は、ポーリングの時刻を記録し、400 と `authorization_pending` を返す。
 - `interval` より短い間隔の交換を受けた場合、OAuth2 は、400 と `slow_down` で拒否する。
@@ -111,7 +112,7 @@ CIBA の配信のモードは `poll` だけを実装する。
 
 #### エージェント操作に対するバックチャネルでの人による承認（CIBA）
 
-送金、データ削除、外部公開など重大な行為を始める自律型エージェントには、その場にいない人間による事前承認を要求できる。`POST /bc-authorize`（OpenID CIBA Core）により、認証済みクライアントは帯域外で承認リクエストを起票できる。`/token` の `urn:openid:params:grant-type:ciba` グラントは、人間が判断するまで要求を保留する。どの Agent にこの承認を義務付けるかはガバナンス層が決定し、OAuth2 モジュールは `AgentKind.Supervised` だけを理由にすべてのグラントを一律に拒否しない。
+送金、データ削除、外部公開など重大な行為を始める自律型エージェントには、その場にいない人間による事前承認を要求できる。`POST /bc-authorize`（OpenID CIBA Core）により、認証済みクライアントは帯域外で承認リクエストを起票できる。`/token` の `urn:openid:params:grant-type:ciba` グラントは、人間が判断するまで要求を保留する。`supervised` の Agent は、REQ-OAUTH2-050 により client_credentials と Token Exchange でトークンを得られず、この承認を経る。
 
 CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能としてモデル化し、同意やステップアップ認証を置き換えない。同意は長命な `(subject, client_id)` のスコープグラントのままであり、承認リクエストは 1 つの行為に対する短命な判断である。ステップアップ認証はバックチャネルフローに置き換えられず、承認対象の行為を保護する。アカウントポータルは判断を記録する前に再認証を要求する。
 

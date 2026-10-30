@@ -34,6 +34,8 @@ type IntrospectionResult struct {
 	// AgentChain は発行時に権限を支えた Agent (agent_chain claim, REQ-OAUTH2-012)。
 	// 失効判定は現在の束縛ではなく、この集合と AgentID の Agent を読む。
 	AgentChain []string
+	// ApprovalRequestID は CIBA の承認から発行したトークンの承認リクエスト (REQ-OAUTH2-065)。
+	ApprovalRequestID string
 }
 
 type TokenIntrospector interface {

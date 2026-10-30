@@ -2,16 +2,23 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	approvalmemory "github.com/ambi/idmagic/backend/oauth2/internal/approval/db_memory"
+	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	"github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const (
@@ -203,5 +210,202 @@ func TestHTUWithinResource(t *testing.T) {
 		if got := htuWithinResource(tc.htu, tc.resource); got != tc.want {
 			t.Errorf("htuWithinResource(%q, %q)=%v", tc.htu, tc.resource, got)
 		}
+	}
+}
+
+func approvedRule() domain.ResourceAccessRule {
+	rule := evalRule
+	rule.AuthorizationDetailType = "payment"
+	rule.RequiresApprovedOperation = true
+	return rule
+}
+
+func approvedDetail() spec.AuthorizationDetail {
+	return spec.AuthorizationDetail{
+		Type: "payment", Locations: []string{evalResource}, Actions: []string{"viewer"}, Identifier: "d1",
+		Fields: map[string]any{"amount": float64(100)},
+	}
+}
+
+func approvedToken() *ports.IntrospectionResult {
+	token := evalAgentToken()
+	token.ApprovalRequestID = "approval-1"
+	token.AuthorizationDetails = []spec.AuthorizationDetail{approvedDetail()}
+	return token
+}
+
+func approvedStore(t *testing.T, now time.Time) *approvalmemory.ApprovalRequestStore {
+	t.Helper()
+	store := approvalmemory.NewApprovalRequestStore()
+	if err := store.Save(evalTenantContext(), &approvaldomain.ApprovalRequest{
+		ID: "approval-1", ClientID: "agent-client", UserID: "agent-client", AuthReqIDHash: "hash",
+		State: spec.ApprovalConsumed, AuthorizationDetails: []spec.AuthorizationDetail{approvedDetail()},
+		RequestedAt: now.Add(-time.Minute), ExpiresAt: now.Add(time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return store
+}
+
+func evalTenantContext() context.Context {
+	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: evalTenant}, "", "")
+}
+
+func approvedRequest(key, parameters string) ResourceAccessRequest {
+	in := evalRequest()
+	in.OperationKey, in.OperationParameters = key, parameters
+	return in
+}
+
+// 拒否は承認を消費しない。消費してしまうと、拒否された後の正しい操作を実行できなくなる。
+//
+//spec:covers REQ-OAUTH2-065: 不許可の要求が使用権を記録しないこと
+func TestApprovedOperationDenialsDoNotClaim(t *testing.T) {
+	now := time.Now().UTC()
+	allow := policyports.RelationDecision{Permitted: true}
+	cases := []struct {
+		name     string
+		token    *ports.IntrospectionResult
+		relation policyports.RelationDecision
+		in       ResourceAccessRequest
+		reason   string
+	}{
+		{name: "引数の不一致", token: approvedToken(), relation: allow, in: approvedRequest("k", `{"amount":1}`), reason: domain.ReasonApprovedOperationMismatch},
+		{name: "比較できない引数", token: approvedToken(), relation: allow, in: approvedRequest("k", `[]`), reason: domain.ReasonApprovedOperationMismatch},
+		{name: "関係の不許可", token: approvedToken(), relation: policyports.RelationDecision{Reasons: []string{"denied"}}, in: approvedRequest("k", `{"amount":100}`), reason: "denied"},
+		{name: "承認の識別子がない", token: func() *ports.IntrospectionResult {
+			token := approvedToken()
+			token.ApprovalRequestID = ""
+			return token
+		}(), relation: allow, in: approvedRequest("k", `{"amount":100}`), reason: domain.ReasonApprovalRequired},
+		{name: "別のクライアントのトークン", token: func() *ports.IntrospectionResult {
+			token := approvedToken()
+			token.ClientID = "other"
+			return token
+		}(), relation: allow, in: approvedRequest("k", `{"amount":100}`), reason: domain.ReasonApprovalExpired},
+		{name: "別の主体のトークン", token: func() *ports.IntrospectionResult {
+			token := approvedToken()
+			token.Sub = "other"
+			return token
+		}(), relation: allow, in: approvedRequest("k", `{"amount":100}`), reason: domain.ReasonApprovalExpired},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := evalTenantContext()
+			store := approvedStore(t, now)
+			decision, err := EvaluateResourceAccess(ctx, ResourceAccessDeps{
+				Servers: evalServer(t, approvedRule()), Tokens: evalTokens{result: tc.token},
+				Relations: &evalRelations{decision: tc.relation}, Approvals: store,
+			}, tc.in, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if decision.Permitted || !slices.Equal(decision.Reasons, []string{tc.reason}) {
+				t.Fatalf("decision=%+v, want %s", decision, tc.reason)
+			}
+			rec, err := store.FindByID(ctx, "approval-1")
+			if err != nil || rec.Use != nil {
+				t.Fatalf("使用権を記録した: %+v %v", rec, err)
+			}
+		})
+	}
+}
+
+// 別の鍵で並行しても許可は一つだけで、勝者の鍵の再送は許可のままである。
+//
+//spec:covers REQ-OAUTH2-065: 並行する別の鍵の要求で一方だけを許可すること
+func TestApprovedOperationConcurrentKeysHaveOneWinner(t *testing.T) {
+	now := time.Now().UTC()
+	ctx := evalTenantContext()
+	store := approvedStore(t, now)
+	deps := ResourceAccessDeps{
+		Servers: evalServer(t, approvedRule()), Tokens: evalTokens{result: approvedToken()},
+		Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}}, Approvals: store,
+	}
+	// evalRelations は呼び出しを記録するので、並行の主題は比較交換に絞って一つのストアへ向ける。
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	winners := []string{}
+	for _, key := range []string{"k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8"} {
+		wg.Go(func() {
+			local := deps
+			local.Relations = &evalRelations{decision: policyports.RelationDecision{Permitted: true}}
+			decision, err := EvaluateResourceAccess(ctx, local, approvedRequest(key, `{"amount":100}`), now)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if decision.Permitted {
+				mu.Lock()
+				winners = append(winners, key)
+				mu.Unlock()
+			}
+		})
+	}
+	wg.Wait()
+	if len(winners) != 1 {
+		t.Fatalf("winners=%v, want exactly one", winners)
+	}
+	replay, err := EvaluateResourceAccess(ctx, deps, approvedRequest(winners[0], `{"amount":100}`), now)
+	if err != nil || !replay.Permitted || replay.ApprovedOperation == nil || !replay.ApprovedOperation.Replayed {
+		t.Fatalf("replay=%+v err=%v", replay, err)
+	}
+}
+
+//spec:covers REQ-OAUTH2-065: 監査が引数と鍵の平文を持たず、相関を持つこと
+func TestApprovedOperationEventCarriesNoSecretValues(t *testing.T) {
+	now := time.Now().UTC()
+	var events []spec.DomainEvent
+	in := approvedRequest("secret-operation-key", `{"amount":100}`)
+	decision, err := EvaluateResourceAccess(evalTenantContext(), ResourceAccessDeps{
+		Servers: evalServer(t, approvedRule()), Tokens: evalTokens{result: approvedToken()},
+		Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}}, Approvals: approvedStore(t, now),
+		Emit: func(event spec.DomainEvent) { events = append(events, event) },
+	}, in, now)
+	if err != nil || !decision.Permitted || len(events) != 1 {
+		t.Fatalf("decision=%+v err=%v events=%v", decision, err, events)
+	}
+	raw, err := json.Marshal(events[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded := string(raw)
+	if strings.Contains(encoded, "secret-operation-key") || strings.Contains(encoded, `"amount"`) {
+		t.Fatalf("event leaks arguments: %s", encoded)
+	}
+	if !strings.Contains(encoded, `"approvalRequestId":"approval-1"`) || !strings.Contains(encoded, decision.ApprovedOperation.OperationDigest) {
+		t.Fatalf("event lacks correlation: %s", encoded)
+	}
+}
+
+type failingClaimStore struct {
+	*approvalmemory.ApprovalRequestStore
+	err error
+}
+
+func (s failingClaimStore) ClaimUse(context.Context, string, approvaldomain.ApprovalUse, time.Time) (*approvaldomain.ApprovalRequest, bool, error) {
+	return nil, false, s.err
+}
+
+//spec:covers REQ-OAUTH2-065: 使用権の記録の失敗と鍵の欠落と未配線を許可へ倒さないこと
+func TestApprovedOperationFailsClosed(t *testing.T) {
+	now := time.Now().UTC()
+	ctx := evalTenantContext()
+	base := ResourceAccessDeps{
+		Servers: evalServer(t, approvedRule()), Tokens: evalTokens{result: approvedToken()},
+		Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}},
+	}
+	unwired := base
+	if decision, err := EvaluateResourceAccess(ctx, unwired, approvedRequest("k", `{"amount":100}`), now); !errors.Is(err, ErrResourceAccessNotConfigured) || decision.Permitted {
+		t.Fatalf("未配線 decision=%+v err=%v", decision, err)
+	}
+	boom := errors.New("down")
+	failing := base
+	failing.Approvals = failingClaimStore{ApprovalRequestStore: approvedStore(t, now), err: boom}
+	if decision, err := EvaluateResourceAccess(ctx, failing, approvedRequest("k", `{"amount":100}`), now); !errors.Is(err, boom) || decision.Permitted {
+		t.Fatalf("記録の失敗 decision=%+v err=%v", decision, err)
+	}
+	if decision, err := EvaluateResourceAccess(ctx, failing, approvedRequest("", `{"amount":100}`), now); !errors.Is(err, ErrOperationKeyRequired) || decision.Permitted {
+		t.Fatalf("鍵の欠落 decision=%+v err=%v", decision, err)
 	}
 }

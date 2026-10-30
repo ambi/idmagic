@@ -594,6 +594,7 @@ export type ResourceAccessRule = {
   relation: string
   scopes: string[]
   authorization_detail_type?: string
+  requires_approved_operation?: boolean
 }
 
 export type McpResourceServer = {

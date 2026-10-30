@@ -24,6 +24,10 @@ type ApprovalRequestStore interface {
 	Decide(ctx context.Context, id, userID string, event spec.ApprovalRequestEvent, now time.Time) (*approvaldomain.ApprovalRequest, error)
 	// Consume advances only an approved request. Exactly one concurrent caller receives a result.
 	Consume(ctx context.Context, authReqIDHash string, now time.Time) (*approvaldomain.ApprovalRequest, error)
+	// ClaimUse records use on a consumed, unexpired request that has no use yet. The bool
+	// reports whether this call recorded it; the returned record shows the current holder.
+	// A nil record means the request is absent or no longer usable.
+	ClaimUse(ctx context.Context, id string, use approvaldomain.ApprovalUse, now time.Time) (*approvaldomain.ApprovalRequest, bool, error)
 	// DeleteAllForSub participates in the user-anonymization cascade.
 	DeleteAllForSub(ctx context.Context, sub string) error
 }

@@ -140,6 +140,27 @@ func (s *ApprovalRequestStore) Consume(ctx context.Context, hash string, now tim
 	return rec, err
 }
 
+func (s *ApprovalRequestStore) ClaimUse(ctx context.Context, id string, use approvaldomain.ApprovalUse, now time.Time) (*approvaldomain.ApprovalRequest, bool, error) {
+	encoded, err := json.Marshal(use)
+	if err != nil {
+		return nil, false, err
+	}
+	row, err := New(s.Pool).ClaimApprovalRequestUse(ctx, ClaimApprovalRequestUseParams{ApprovalUse: encoded, ID: id, TenantID: tenantports.TenantID(ctx), Now: now})
+	if err == nil {
+		rec, decodeErr := approvalFromPayload(row.Payload, row.State, row.IntervalSeconds, row.LastPolledAt)
+		return rec, decodeErr == nil, decodeErr
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, false, err
+	}
+	// 比較交換に負けたか、使えない。負けたなら記録済みの保持者を返す。
+	current, err := s.FindByID(ctx, id)
+	if err != nil || current == nil || current.State != spec.ApprovalConsumed || !now.Before(current.ExpiresAt) {
+		return nil, false, err
+	}
+	return current, false, nil
+}
+
 func (s *ApprovalRequestStore) DeleteAllForSub(ctx context.Context, sub string) error {
 	return New(s.Pool).DeleteApprovalRequestsForUser(ctx, DeleteApprovalRequestsForUserParams{TenantID: tenantports.TenantID(ctx), UserID: sub})
 }

@@ -283,7 +283,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		result, err := approvalusecases.ExchangeApproval(ctx, approvalusecases.ExchangeApprovalDeps{
 			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, AgentRepo: d.AgentRepo,
 			Store: d.ApprovalRequestStore, TokenIssuer: d.TokenIssuer,
-			ResolveAttributeDefs: d.effectiveUserAttributeDefs, Emit: d.Emit,
+			ResolveAttributeDefs: d.effectiveUserAttributeDefs, ResourceServers: d.McpResourceServerRepo, Emit: d.Emit,
 		}, approvalusecases.ExchangeApprovalInput{
 			ClientID: clientStub.ID, AuthReqID: c.Request().PostFormValue("auth_req_id"),
 			ProofJKT: dpopJKT, ProofX5TS256: clientStub.MTLSThumbprintS256,

@@ -136,6 +136,9 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 	if len(in.AgentChain) > 0 {
 		claims["agent_chain"] = in.AgentChain
 	}
+	if in.ApprovalRequestID != "" {
+		claims["approval_request_id"] = in.ApprovalRequestID
+	}
 	tok, err := SignPS256(key, map[string]string{"typ": "at+jwt"}, claims)
 	if err != nil {
 		return "", "", err
@@ -325,6 +328,9 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*o
 	}
 	if v, ok := payload["agent_id"].(string); ok {
 		res.AgentID = v
+	}
+	if v, ok := payload["approval_request_id"].(string); ok {
+		res.ApprovalRequestID = v
 	}
 	if chain, ok := payload["agent_chain"].([]any); ok {
 		for _, v := range chain {

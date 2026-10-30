@@ -147,6 +147,20 @@ func (s *ApprovalRequestStore) Consume(ctx context.Context, authReqIDHash string
 	return cloneApprovalRequest(rec), nil
 }
 
+func (s *ApprovalRequestStore) ClaimUse(ctx context.Context, id string, use approvaldomain.ApprovalUse, now time.Time) (*approvaldomain.ApprovalRequest, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	rec := s.byID[id]
+	if rec == nil || rec.TenantID != tenantports.TenantID(ctx) || rec.State != spec.ApprovalConsumed || !now.Before(rec.ExpiresAt) {
+		return nil, false, nil
+	}
+	if rec.Use != nil {
+		return cloneApprovalRequest(rec), false, nil
+	}
+	rec.Use = &use
+	return cloneApprovalRequest(rec), true, nil
+}
+
 func (s *ApprovalRequestStore) DeleteAllForSub(ctx context.Context, sub string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

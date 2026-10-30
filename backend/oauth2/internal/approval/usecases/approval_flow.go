@@ -205,6 +205,7 @@ type ExchangeApprovalDeps struct {
 	Store                approvalports.ApprovalRequestStore
 	TokenIssuer          oauthports.TokenIssuer
 	ResolveAttributeDefs func(context.Context, string) ([]userdomain.UserAttributeDef, error)
+	ResourceServers      oauthports.McpResourceServerRepository
 	Emit                 func(spec.DomainEvent)
 }
 
@@ -308,6 +309,10 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 			return nil, sharedusecases.NewOAuthError("invalid_grant", "agent owner is offboarded")
 		}
 	}
+	audiences, err := approvedAudiences(ctx, deps.ResourceServers, rec)
+	if err != nil {
+		return nil, err
+	}
 	consumed, err := deps.Store.Consume(ctx, hash, now)
 	if err != nil {
 		return nil, err
@@ -329,6 +334,7 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 		Client: client, Sub: user.ID, Scopes: consumed.Scopes, SenderConstraint: constraint,
 		AuthTime: authTime, AgentID: agentID, AuthorizationDetails: consumed.AuthorizationDetails,
+		Audiences: audiences, ApprovalRequestID: consumed.ID,
 	})
 	if err != nil {
 		return nil, err
@@ -343,6 +349,30 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 	emit(deps.Emit, &oauthdomain.AccessTokenIssued{At: now, TenantID: consumed.TenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: slices.Clone(consumed.Scopes), SenderConstraint: senderConstraintTag(constraint), AgentID: agentID})
 	tokenType := oauthdomain.PresentationTokenType(constraint)
 	return &ExchangeApprovalResult{AccessToken: access, IDToken: idToken, TokenType: tokenType, ExpiresIn: deps.TokenIssuer.AccessTokenTTLSeconds(), Scope: strings.Join(consumed.Scopes, " ")}, nil
+}
+
+// approvedAudiences は、承認した明細の locations のうち登録済みの Active なリソースを返す
+// (REQ-OAUTH2-041)。未登録の location を aud にすると、任意の宛先のトークンを作れてしまう。
+func approvedAudiences(ctx context.Context, servers oauthports.McpResourceServerRepository, rec *approvaldomain.ApprovalRequest) ([]string, error) {
+	if servers == nil {
+		return nil, nil
+	}
+	var audiences []string
+	for _, detail := range rec.AuthorizationDetails {
+		for _, location := range detail.Locations {
+			if slices.Contains(audiences, location) {
+				continue
+			}
+			server, err := servers.FindByResource(ctx, tenantports.TenantID(ctx), location)
+			if err != nil {
+				return nil, err
+			}
+			if server != nil && server.IsActive() {
+				audiences = append(audiences, location)
+			}
+		}
+	}
+	return audiences, nil
 }
 
 func ListPendingApprovals(ctx context.Context, store approvalports.ApprovalRequestStore, userID string) ([]*approvaldomain.ApprovalRequest, error) {

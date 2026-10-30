@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 )
 
 const maxResponseBytes = 1 << 20
@@ -25,13 +26,27 @@ type Operation struct {
 	ResourceType string
 	ResourceID   string
 	Relation     string
+	// Key and Parameters apply to rules with requires_approved_operation. Key must keep the
+	// same value across retries of one business request, and Parameters must be a JSON object
+	// built from the values the handler will actually use, not copied from the approval.
+	Key        string
+	Parameters string
+}
+
+// ApprovedOperation correlates a permitted use with the human approval. Store it with the
+// business result.
+type ApprovedOperation struct {
+	ApprovalRequestID string `json:"approval_request_id"`
+	OperationDigest   string `json:"operation_digest"`
+	Replayed          bool   `json:"replayed"`
 }
 
 // Decision is the part of the evaluation response a resource server acts on.
 type Decision struct {
-	Permitted bool     `json:"decision"`
-	Reasons   []string `json:"reasons"`
-	Scope     string   `json:"scope"`
+	Permitted         bool               `json:"decision"`
+	Reasons           []string           `json:"reasons"`
+	Scope             string             `json:"scope"`
+	ApprovedOperation *ApprovedOperation `json:"approved_operation"`
 }
 
 // ErrUnavailable means the evaluation did not produce a decision. Treat it as a denial.
@@ -61,6 +76,12 @@ func (e Enforcer) Evaluate(ctx context.Context, r *http.Request, op Operation) (
 		"resource_id":   {op.ResourceID},
 		"relation":      {op.Relation},
 	}
+	if op.Key != "" {
+		form.Set("operation_key", op.Key)
+	}
+	if op.Parameters != "" {
+		form.Set("operation_parameters", op.Parameters)
+	}
 	if proof := r.Header.Get("DPoP"); proof != "" {
 		form.Set("dpop_proof", proof)
 		form.Set("htm", r.Method)
@@ -89,6 +110,42 @@ func (e Enforcer) Evaluate(ctx context.Context, r *http.Request, op Operation) (
 		return Decision{}, fmt.Errorf("%w: %w", ErrUnavailable, err)
 	}
 	return decision, nil
+}
+
+// ExecuteResult is what a resource server knows about one attempt at a business effect.
+type ExecuteResult int
+
+const (
+	// ExecuteSucceeded means the effect is committed.
+	ExecuteSucceeded ExecuteResult = iota
+	// ExecuteFailed means the effect certainly did not happen.
+	ExecuteFailed
+	// ExecuteUnknown means the attempt ended without knowing, for example on a timeout.
+	ExecuteUnknown
+)
+
+// OperationLedger is the resource server's own idempotency record, committed with the
+// business effect. IdMagic cannot make an operation run once without it.
+type OperationLedger struct {
+	mu      sync.Mutex
+	results map[string]ExecuteResult
+}
+
+// Run executes effect at most once per key while its result is success or unknown. An
+// unknown result is returned again instead of re-executing: only the business system can
+// resolve it. A definite failure may run again under the same key.
+func (l *OperationLedger) Run(key string, effect func() ExecuteResult) ExecuteResult {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if previous, seen := l.results[key]; seen && previous != ExecuteFailed {
+		return previous
+	}
+	if l.results == nil {
+		l.results = map[string]ExecuteResult{}
+	}
+	result := effect()
+	l.results[key] = result
+	return result
 }
 
 // Protect runs next only when the evaluation of the request's operation permits it.

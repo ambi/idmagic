@@ -12,6 +12,46 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimApprovalRequestUse = `-- name: ClaimApprovalRequestUse :one
+UPDATE oauth2_approval_requests
+SET payload = jsonb_set(payload, '{use}', $1::jsonb),
+    updated_at = now()
+WHERE id = $2 AND tenant_id = $3
+  AND state = 'consumed' AND expires_at > $4 AND payload->'use' IS NULL
+RETURNING payload, state, interval_seconds, last_polled_at
+`
+
+type ClaimApprovalRequestUseParams struct {
+	ApprovalUse []byte
+	ID          string
+	TenantID    string
+	Now         time.Time
+}
+
+type ClaimApprovalRequestUseRow struct {
+	Payload         []byte
+	State           string
+	IntervalSeconds int32
+	LastPolledAt    pgtype.Timestamptz
+}
+
+func (q *Queries) ClaimApprovalRequestUse(ctx context.Context, arg ClaimApprovalRequestUseParams) (*ClaimApprovalRequestUseRow, error) {
+	row := q.db.QueryRow(ctx, claimApprovalRequestUse,
+		arg.ApprovalUse,
+		arg.ID,
+		arg.TenantID,
+		arg.Now,
+	)
+	var i ClaimApprovalRequestUseRow
+	err := row.Scan(
+		&i.Payload,
+		&i.State,
+		&i.IntervalSeconds,
+		&i.LastPolledAt,
+	)
+	return &i, err
+}
+
 const consumeApprovalRequest = `-- name: ConsumeApprovalRequest :one
 UPDATE oauth2_approval_requests
 SET state = 'consumed',

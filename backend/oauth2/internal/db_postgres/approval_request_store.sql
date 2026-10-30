@@ -70,6 +70,14 @@ WHERE auth_req_id_hash = @auth_req_id_hash AND tenant_id = @tenant_id
   AND state = 'approved' AND expires_at > @consumed_at
 RETURNING payload, state, interval_seconds, last_polled_at;
 
+-- name: ClaimApprovalRequestUse :one
+UPDATE oauth2_approval_requests
+SET payload = jsonb_set(payload, '{use}', @approval_use::jsonb),
+    updated_at = now()
+WHERE id = @id AND tenant_id = @tenant_id
+  AND state = 'consumed' AND expires_at > @now AND payload->'use' IS NULL
+RETURNING payload, state, interval_seconds, last_polled_at;
+
 -- name: DeleteApprovalRequestsForUser :exec
 DELETE FROM oauth2_approval_requests WHERE tenant_id = @tenant_id AND user_id = @user_id;
 

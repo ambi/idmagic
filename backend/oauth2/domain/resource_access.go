@@ -27,6 +27,10 @@ const (
 	ReasonAuthorizationDetailMismatch = "authorization_detail_mismatch"
 	ReasonPrincipalUnresolved         = "principal_unresolved"
 	ReasonSenderProofInvalid          = "sender_proof_invalid"
+	ReasonApprovalRequired            = "approval_required"
+	ReasonApprovedOperationMismatch   = "approved_operation_mismatch"
+	ReasonApprovalExpired             = "approval_expired"
+	ReasonApprovalAlreadyUsed         = "approval_already_used"
 )
 
 // ResourceAccessRule は評価できる 1 つの操作と、その操作がトークンへ求める制約である。
@@ -35,6 +39,8 @@ type ResourceAccessRule struct {
 	Relation                string   `json:"relation"`
 	Scopes                  []string `json:"scopes"`
 	AuthorizationDetailType string   `json:"authorization_detail_type,omitempty"`
+	// RequiresApprovedOperation は、人が承認した一回の操作だけを許可する (REQ-OAUTH2-065)。
+	RequiresApprovedOperation bool `json:"requires_approved_operation,omitempty"`
 }
 
 // PermitsDetails は、規則が求める構造化された権限をトークンが持つかを判定する。
@@ -76,6 +82,9 @@ func (m McpResourceServer) validateAccessRules() error {
 			return errors.New("access_rules must not repeat a resource_type and relation pair")
 		}
 		seen[key] = struct{}{}
+		if rule.RequiresApprovedOperation && rule.AuthorizationDetailType == "" {
+			return errors.New("access_rules requires_approved_operation needs authorization_detail_type")
+		}
 		if len(rule.Scopes) == 0 {
 			return errors.New("access_rules scopes must not be empty")
 		}

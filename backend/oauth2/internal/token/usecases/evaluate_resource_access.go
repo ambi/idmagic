@@ -12,6 +12,8 @@ import (
 
 	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
+	approvalports "github.com/ambi/idmagic/backend/oauth2/internal/approval/ports"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -23,6 +25,9 @@ var ErrResourceServerNotRegistered = errors.New("no active resource server is bo
 // ErrResourceAccessNotConfigured は、必須の依存を配線していない組み立てを表す。
 var ErrResourceAccessNotConfigured = errors.New("resource access evaluation is not configured")
 
+// ErrOperationKeyRequired は、承認した操作の評価に operation_key がないことを表す。
+var ErrOperationKeyRequired = errors.New("operation_key is required")
+
 // ResourceAccessDeps は評価の境界である。Tokens は失効の判定まで済ませた結果を返す。
 type ResourceAccessDeps struct {
 	Servers   ports.McpResourceServerRepository
@@ -30,6 +35,8 @@ type ResourceAccessDeps struct {
 	Clients   ports.OAuth2ClientRepository
 	Relations policyports.RelationChecker
 	Replay    ports.DpopReplayStore
+	// Approvals は承認した操作の照合と使用権に使う。該当の規則を未配線で評価しない。
+	Approvals approvalports.ApprovalRequestStore
 	Emit      func(spec.DomainEvent)
 }
 
@@ -46,6 +53,15 @@ type ResourceAccessRequest struct {
 	HTM                   string
 	HTU                   string
 	CertificateThumbprint string
+	OperationKey          string
+	OperationParameters   string
+}
+
+// ApprovedOperationUse は、許可した承認済みの操作をリソースサーバーの結果と結ぶ相関である。
+type ApprovedOperationUse struct {
+	ApprovalRequestID string
+	OperationDigest   string
+	Replayed          bool
 }
 
 // ResourceAccessDecision は評価の結果である。不許可ではトークンのクレームを持たない。
@@ -55,6 +71,7 @@ type ResourceAccessDecision struct {
 	Scope                string
 	DelegationMode       domain.DelegationMode
 	AuthorizationDetails []spec.AuthorizationDetail
+	ApprovedOperation    *ApprovedOperationUse
 }
 
 // EvaluateResourceAccess は登録、規則、トークン、提示の証明、関係の判定の論理積で許可する。
@@ -75,11 +92,15 @@ func EvaluateResourceAccess(ctx context.Context, deps ResourceAccessDeps, in Res
 		return ResourceAccessDecision{}, err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&domain.ResourceAccessEvaluated{
+		event := &domain.ResourceAccessEvaluated{
 			At: now, TenantID: in.TenantID, RSClientID: in.ClientID, ResourceServerID: server.ID,
 			TokenID: tokenID, ResourceType: in.ResourceType, Relation: in.Relation,
 			Permitted: decision.Permitted, Reasons: decision.Reasons,
-		})
+		}
+		if use := decision.ApprovedOperation; use != nil {
+			event.ApprovalRequestID, event.OperationDigest, event.Replayed = use.ApprovalRequestID, use.OperationDigest, use.Replayed
+		}
+		deps.Emit(event)
 	}
 	return decision, nil
 }
@@ -90,6 +111,9 @@ func evaluateForServer(
 	rule, ok := server.RuleFor(in.ResourceType, in.Relation)
 	if !ok {
 		return denyResourceAccess(domain.ReasonOperationNotRegistered), "", nil
+	}
+	if rule.RequiresApprovedOperation && in.OperationKey == "" {
+		return ResourceAccessDecision{}, "", ErrOperationKeyRequired
 	}
 	token, err := deps.Tokens.IntrospectAccessToken(ctx, in.Token)
 	if err != nil {
@@ -126,14 +150,72 @@ func evaluateForServer(
 	if !relation.Permitted {
 		return ResourceAccessDecision{Reasons: relation.Reasons}, token.JTI, nil
 	}
+	var approved *ApprovedOperationUse
+	if rule.RequiresApprovedOperation {
+		// 使用権は最後に得る。ほかの理由で不許可の要求に承認を消費させない。
+		use, reason, err := claimApprovedOperation(ctx, deps, server, rule, token, in, now)
+		if err != nil {
+			return ResourceAccessDecision{}, token.JTI, err
+		}
+		if reason != "" {
+			return denyResourceAccess(reason), token.JTI, nil
+		}
+		approved = use
+	}
 	return ResourceAccessDecision{
-		Permitted: true,
-		Scope:     token.Scope,
+		Permitted:         true,
+		ApprovedOperation: approved,
+		Scope:             token.Scope,
 		DelegationMode: domain.DeriveDelegationMode(domain.DelegationSubject{
 			Sub: token.Sub, ClientID: token.ClientID, PrincipalType: token.PrincipalType, Act: token.Act,
 		}),
 		AuthorizationDetails: token.AuthorizationDetails,
 	}, token.JTI, nil
+}
+
+// claimApprovedOperation は実際の操作を承認と照合し、一致すれば使用権を得る (REQ-OAUTH2-065)。
+// 同じ鍵の再送は、結果の不明な要求を資源の冪等性へ委ねるために許可する。
+func claimApprovedOperation(
+	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, rule domain.ResourceAccessRule,
+	token *ports.IntrospectionResult, in ResourceAccessRequest, now time.Time,
+) (*ApprovedOperationUse, string, error) {
+	if deps.Approvals == nil {
+		return nil, "", ErrResourceAccessNotConfigured
+	}
+	if token.ApprovalRequestID == "" {
+		return nil, domain.ReasonApprovalRequired, nil
+	}
+	rec, err := deps.Approvals.FindByID(ctx, token.ApprovalRequestID)
+	if err != nil {
+		return nil, "", err
+	}
+	if rec == nil || rec.UserID != token.Sub || rec.ClientID != token.ClientID {
+		return nil, domain.ReasonApprovalExpired, nil
+	}
+	digest, err := approvaldomain.CanonicalizeOperationParameters(in.OperationParameters)
+	if err != nil {
+		return nil, domain.ReasonApprovedOperationMismatch, nil //nolint:nilerr // 比較できない引数は評価不能ではなく不一致である。
+	}
+	switch approvaldomain.MatchApprovedOperation(rec, approvaldomain.OperationBinding{
+		DetailType: rule.AuthorizationDetailType, Location: server.Resource, Action: in.Relation, Identifier: in.ResourceID,
+	}, digest, now) {
+	case approvaldomain.ApprovedOperationExpired:
+		return nil, domain.ReasonApprovalExpired, nil
+	case approvaldomain.ApprovedOperationMismatched:
+		return nil, domain.ReasonApprovedOperationMismatch, nil
+	}
+	keyHash := approvaldomain.HashOperationKey(in.ClientID, in.OperationKey)
+	claimed, recorded, err := deps.Approvals.ClaimUse(ctx, rec.ID, approvaldomain.ApprovalUse{KeyHash: keyHash, ClaimedAt: now}, now)
+	if err != nil {
+		return nil, "", err
+	}
+	if claimed == nil || claimed.Use == nil {
+		return nil, domain.ReasonApprovalExpired, nil
+	}
+	if claimed.Use.KeyHash != keyHash {
+		return nil, domain.ReasonApprovalAlreadyUsed, nil
+	}
+	return &ApprovedOperationUse{ApprovalRequestID: rec.ID, OperationDigest: digest, Replayed: !recorded}, "", nil
 }
 
 func denyResourceAccess(reason string) ResourceAccessDecision {
