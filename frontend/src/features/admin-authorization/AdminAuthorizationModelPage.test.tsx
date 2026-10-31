@@ -43,6 +43,11 @@ describe('AdminAuthorizationModelPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('announces the publication made on the previous page', async () => {
+    await renderWithRouter(<AdminAuthorizationModelPage model={model} justPublished />)
+    expect(screen.getByRole('status')).toHaveTextContent(t.publishedNotice)
+  })
+
   it('offers publication when no model exists', async () => {
     await renderWithRouter(<AdminAuthorizationModelPage model={null} />)
     expect(screen.getByText(t.noModel)).toBeInTheDocument()

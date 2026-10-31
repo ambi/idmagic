@@ -86,6 +86,8 @@ export const adminAuthorizationDictionary = defineDictionary(
     publishing: '発行しています…',
     backToEdit: '編集に戻る',
     backToModel: '認可モデルに戻る',
+    publishedNotice: '認可モデルを発行しました。',
+    tupleAddedNotice: '関係タプルを追加しました。',
 
     tuplesEmpty: '条件に合う関係タプルはありません。条件を変えるか、関係タプルを追加してください。',
     tuplesLimitReached:
@@ -248,6 +250,8 @@ export const adminAuthorizationDictionary = defineDictionary(
     publishing: 'Publishing…',
     backToEdit: 'Back to editing',
     backToModel: 'Back to authorization model',
+    publishedNotice: 'Published the authorization model.',
+    tupleAddedNotice: 'Added the relation tuple.',
 
     tuplesEmpty: 'No relation tuples match. Change the conditions or add a relation tuple.',
     tuplesLimitReached:

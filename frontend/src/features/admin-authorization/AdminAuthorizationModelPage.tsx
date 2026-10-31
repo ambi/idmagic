@@ -1,9 +1,11 @@
 import { IconPencil } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
+import { useState } from 'react'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { Toast } from '../../components/ui/toast'
 import { useDictionary, useFormatters } from '../../lib/i18n'
 import type { AuthorizationModel } from '../../types'
 import { adminAuthorizationDictionary } from './AdminAuthorizationPage.i18n'
@@ -30,12 +32,15 @@ export function AdminAuthorizationModelPage({
   actorUsername,
   model,
   requestedVersion,
+  justPublished = false,
 }: {
   actorUsername?: string
   model: AuthorizationModel | null
   requestedVersion?: number
+  justPublished?: boolean
 }) {
   const t = useDictionary(adminAuthorizationDictionary)
+  const [notice, setNotice] = useState(justPublished ? t.publishedNotice : '')
   const { formatDateTime } = useFormatters()
   const rewriteSentence = useRewriteSentence()
   const draft = model && toModelDraft(model.resource_types)
@@ -55,6 +60,7 @@ export function AdminAuthorizationModelPage({
       }
     >
       <AuthorizationSectionNav active="model" />
+      <Toast message={notice} onDismiss={() => setNotice('')} />
       {missingVersion ? (
         <Alert variant="destructive">
           {t.versionNotFound.replace('{version}', String(requestedVersion))}

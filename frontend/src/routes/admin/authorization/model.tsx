@@ -3,6 +3,7 @@ import { findAuthorizationModel } from '../../../api/admin'
 import { AdminAuthorizationModelPage } from '../../../features/admin-authorization/AdminAuthorizationModelPage'
 import { requirePortalAccount } from '../../-guards'
 import { PageMarker } from '../../-page'
+import { useAuthorizationNotice } from './-notice'
 
 export function validateModelSearch(search: Record<string, unknown>): { version?: number } {
   const version = search.version
@@ -26,9 +27,10 @@ export const Route = createFileRoute('/admin/authorization/model')({
 
 function AdminAuthorizationModelRoute() {
   const data = Route.useLoaderData()
+  const notice = useAuthorizationNotice()
   return (
     <PageMarker kind="admin-authorization-model">
-      <AdminAuthorizationModelPage {...data} />
+      <AdminAuthorizationModelPage {...data} justPublished={notice === 'published'} />
     </PageMarker>
   )
 }

@@ -90,6 +90,31 @@ describe('AdminAuthorizationTuplesPage', () => {
     expect(posts).toEqual([])
   })
 
+  it('moves the focus into the dialog and closes it with Escape without deleting', async () => {
+    const posts = stubAPI()
+    await renderPage([tuple])
+    fireEvent.click(screen.getByRole('button', { name: t.delete }))
+    const dialog = await screen.findByRole('dialog')
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true))
+    fireEvent.keyDown(document.activeElement as Element, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(posts).toEqual([])
+  })
+
+  it('announces the tuple added on the previous page', async () => {
+    await renderWithRouter(
+      <AdminAuthorizationTuplesPage
+        csrfToken="csrf"
+        tuples={[tuple]}
+        consistency="c"
+        filters={{}}
+        justAdded
+        onFiltersChange={() => {}}
+      />,
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(t.tupleAddedNotice)
+  })
+
   it('warns about both sides before deleting an object', async () => {
     const posts = stubAPI()
     await renderPage([tuple])

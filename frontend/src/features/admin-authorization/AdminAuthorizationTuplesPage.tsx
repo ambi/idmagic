@@ -40,6 +40,7 @@ export function AdminAuthorizationTuplesPage({
   tuples: initialTuples,
   consistency: initialConsistency,
   filters,
+  justAdded = false,
   onFiltersChange,
 }: {
   csrfToken: string
@@ -47,6 +48,7 @@ export function AdminAuthorizationTuplesPage({
   tuples: RelationTuple[]
   consistency: string
   filters: RelationTupleFilters
+  justAdded?: boolean
   onFiltersChange: (filters: RelationTupleFilters) => void
 }) {
   const t = useDictionary(adminAuthorizationDictionary)
@@ -58,7 +60,7 @@ export function AdminAuthorizationTuplesPage({
   const [pending, setPending] = useState<PendingDelete | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
+  const [notice, setNotice] = useState(justAdded ? t.tupleAddedNotice : '')
 
   async function confirmDelete() {
     if (!pending) return

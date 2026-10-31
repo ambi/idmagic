@@ -24,7 +24,12 @@ function AdminAuthorizationTupleCreateRoute() {
     <PageMarker kind="admin-authorization-tuple-create">
       <AdminAuthorizationTupleCreatePage
         {...data}
-        onCreated={() => void router.navigate({ to: '/admin/authorization/relation-tuples' })}
+        onCreated={() =>
+          void router.navigate({
+            to: '/admin/authorization/relation-tuples',
+            state: { authorizationNotice: 'tuple-added' },
+          })
+        }
       />
     </PageMarker>
   )

@@ -4,6 +4,7 @@ import { AdminAuthorizationTuplesPage } from '../../../features/admin-authorizat
 import type { RelationTupleFilters } from '../../../types'
 import { requirePortalAccount } from '../../-guards'
 import { PageMarker } from '../../-page'
+import { useAuthorizationNotice } from './-notice'
 
 const FILTER_KEYS = [
   'resource_type',
@@ -43,6 +44,7 @@ export const Route = createFileRoute('/admin/authorization/relation-tuples')({
 
 function AdminAuthorizationTuplesRoute() {
   const data = Route.useLoaderData()
+  const notice = useAuthorizationNotice()
   const router = useRouter()
   return (
     <PageMarker kind="admin-authorization-tuples">
@@ -51,6 +53,7 @@ function AdminAuthorizationTuplesRoute() {
         // 条件か整合トークンが変わったら作り直す。
         key={`${JSON.stringify(data.filters)}:${data.consistency}`}
         {...data}
+        justAdded={notice === 'tuple-added'}
         onFiltersChange={(search) =>
           void router.navigate({ to: '/admin/authorization/relation-tuples', search })
         }

@@ -1,3 +1,4 @@
+import { Dialog } from '@base-ui/react/dialog'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import { AuthenticationAPIError } from '../../api'
@@ -111,29 +112,36 @@ export function DestructiveConfirmDialog({
 }) {
   const t = useDictionary(adminAuthorizationDictionary)
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-5 backdrop-blur-[2px]"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="authorization-confirm-title"
+    // フォーカスの移動と閉じ込め、Esc は Dialog に任せる。初期フォーカスは先頭のキャンセルに置く。
+    <Dialog.Root
+      open
+      disablePointerDismissal
+      onOpenChange={(open) => {
+        if (!open && !busy) onClose()
+      }}
     >
-      <Card className="relative flex w-full max-w-lg flex-col gap-3 p-6 shadow-2xl">
-        <h2 id="authorization-confirm-title" className="flex items-center gap-2 font-semibold">
-          <IconAlertTriangle size={18} aria-hidden="true" className="text-red-600" />
-          {title}
-        </h2>
-        <p className="break-all font-mono text-sm">{target}</p>
-        <p className="text-sm text-slate-700">{result}</p>
-        <p className="text-sm font-medium text-red-700">{t.irreversibleWarning}</p>
-        <div className="flex justify-end gap-2.5">
-          <Button variant="outline" disabled={busy} onClick={onClose}>
-            {t.cancel}
-          </Button>
-          <Button variant="destructive" disabled={busy} onClick={onConfirm}>
-            {busy ? t.deleting : t.deleteConfirm}
-          </Button>
-        </div>
-      </Card>
-    </div>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-[2px]" />
+        <Dialog.Popup className="fixed inset-0 z-50 m-auto flex h-fit w-full max-w-lg p-5 outline-none">
+          <Card className="flex w-full flex-col gap-3 p-6 shadow-2xl">
+            <Dialog.Title className="flex items-center gap-2 font-semibold">
+              <IconAlertTriangle size={18} aria-hidden="true" className="text-red-600" />
+              {title}
+            </Dialog.Title>
+            <p className="break-all font-mono text-sm">{target}</p>
+            <p className="text-sm text-slate-700">{result}</p>
+            <p className="text-sm font-medium text-red-700">{t.irreversibleWarning}</p>
+            <div className="flex justify-end gap-2.5">
+              <Button variant="outline" disabled={busy} onClick={onClose}>
+                {t.cancel}
+              </Button>
+              <Button variant="destructive" disabled={busy} onClick={onConfirm}>
+                {busy ? t.deleting : t.deleteConfirm}
+              </Button>
+            </div>
+          </Card>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
