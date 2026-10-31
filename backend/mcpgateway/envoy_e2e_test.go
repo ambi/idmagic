@@ -69,9 +69,13 @@ func serverPort(t *testing.T, server *httptest.Server) int {
 
 func docker(t *testing.T, args ...string) string {
 	t.Helper()
-	output, err := exec.Command("docker", args...).CombinedOutput()
+	// 標準出力だけを結果にする。docker create はイメージの取得の経過を標準エラーへ書く。
+	var stderr bytes.Buffer
+	command := exec.Command("docker", args...)
+	command.Stderr = &stderr
+	output, err := command.Output()
 	if err != nil {
-		t.Fatalf("docker %s: %v\n%s", strings.Join(args, " "), err, output)
+		t.Fatalf("docker %s: %v\n%s", strings.Join(args, " "), err, stderr.String())
 	}
 	return strings.TrimSpace(string(output))
 }
