@@ -96,6 +96,31 @@ describe('admin API client', () => {
     expect(calls[1][1]).toEqual(expect.objectContaining({ method: 'DELETE' }))
   })
 
+  it('Directory Connector の実行を正しい URL と envelope で読み、無効化に CSRF を送る', async () => {
+    fetchMock = mock()
+      .mockResolvedValueOnce(response(200, { runs: null }))
+      .mockResolvedValueOnce(response(200, { id: 'run/1' }))
+      .mockResolvedValueOnce(response(200, { id: 'connector/1' }))
+    stubGlobal('fetch', fetchMock)
+
+    await expect(adminAPI.listDirectoryIngestionRuns('connector/1')).resolves.toEqual([])
+    await adminAPI.getDirectoryIngestionRun('connector/1', 'run/1')
+    await adminAPI.disableDirectoryConnector('csrf-token', 'connector/1')
+
+    const calls = fetchMock.mock.calls as [string, RequestInit][]
+    expect(calls[0][0]).toContain('/api/admin/v1/directory-connectors/connector%2F1/ingestion-runs')
+    expect(calls[1][0]).toContain(
+      '/api/admin/v1/directory-connectors/connector%2F1/ingestion-runs/run%2F1',
+    )
+    expect(calls[2][0]).toContain('/api/admin/v1/directory-connectors/connector%2F1/disable')
+    expect(calls[2][1]).toEqual(
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token' }),
+      }),
+    )
+  })
+
   it('MCP resource server 管理契約を公開する', () => {
     expect(adminAPI).toEqual(
       expect.objectContaining({

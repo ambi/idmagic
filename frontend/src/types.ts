@@ -1532,3 +1532,67 @@ export type FgaListAccessibleResourcesResult = {
   model_version: number
   consistency: string
 }
+
+export type DirectoryConnectorStatus = 'awaiting_enrollment' | 'active' | 'disabled'
+
+// DirectoryConnector は登録トークンもそのハッシュも含まない。トークンは DirectoryConnectorEnrollmentGrant だけが運ぶ。
+export type DirectoryConnector = {
+  id: string
+  display_name: string
+  status: DirectoryConnectorStatus
+  created_at: string
+  enrollment_expires_at?: string
+  enrolled_at?: string
+  key_id?: string
+  last_seen_at?: string
+  disabled_at?: string
+  accidental_deletion_count_threshold: number
+  accidental_deletion_percent_threshold: number
+}
+
+export type DirectoryConnectorEnrollmentGrant = {
+  connector: DirectoryConnector
+  enrollment_token: string
+}
+
+export type IngestionRunCounts = {
+  batches: number
+  items: number
+  created: number
+  updated: number
+  unchanged: number
+  deleted: number
+  failed: number
+  disabled: number
+}
+
+export type DirectoryIngestionProtection = {
+  candidate_count: number
+  active_count: number
+  accidental_deletion_count_threshold: number
+  accidental_deletion_percent_threshold: number
+  held_at: string
+  approved_at?: string
+  approved_by?: string
+  discarded_at?: string
+}
+
+export type IngestionRunSummary = {
+  id: string
+  mode: 'full' | 'incremental'
+  status: 'running' | 'awaiting_approval' | 'applying' | 'discarded' | 'completed' | 'superseded'
+  started_at: string
+  completed_at?: string
+  protection?: DirectoryIngestionProtection
+  counts: IngestionRunCounts
+}
+
+export type IngestionRunFailure = {
+  batch_id: string
+  external_id: string
+  error: string
+}
+
+export type IngestionRunDetail = IngestionRunSummary & {
+  failures: IngestionRunFailure[] | null
+}

@@ -76,6 +76,10 @@ import type {
   ProvisioningSourceType,
   ProvisioningTestConnectionResult,
   ClientSecretCredentialMetadata,
+  DirectoryConnector,
+  DirectoryConnectorEnrollmentGrant,
+  IngestionRunDetail,
+  IngestionRunSummary,
   WorkloadTrustBundle,
   WorkloadTrustBundleRefreshResult,
   AgentWorkloadBinding,
@@ -2498,4 +2502,64 @@ export async function listAccessibleResources(
       adminRequest(csrfToken, 'POST', input),
     )
   ).result
+}
+
+const DIRECTORY_CONNECTORS = '/api/admin/v1/directory-connectors'
+
+function directoryConnectorPath(connectorID: string): string {
+  return `${DIRECTORY_CONNECTORS}/${encodeURIComponent(connectorID)}`
+}
+
+export async function listDirectoryConnectors(): Promise<DirectoryConnector[]> {
+  const response = await request<{ connectors: DirectoryConnector[] | null }>(DIRECTORY_CONNECTORS)
+  return response.connectors ?? []
+}
+
+export function getDirectoryConnector(connectorID: string): Promise<DirectoryConnector> {
+  return request<DirectoryConnector>(directoryConnectorPath(connectorID))
+}
+
+export function createDirectoryConnector(
+  csrfToken: string,
+  displayName: string,
+): Promise<DirectoryConnectorEnrollmentGrant> {
+  return request(
+    DIRECTORY_CONNECTORS,
+    adminRequest(csrfToken, 'POST', { display_name: displayName }),
+  )
+}
+
+export function reissueDirectoryConnectorEnrollment(
+  csrfToken: string,
+  connectorID: string,
+): Promise<DirectoryConnectorEnrollmentGrant> {
+  return request(
+    `${directoryConnectorPath(connectorID)}/enrollment-tokens`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export function disableDirectoryConnector(
+  csrfToken: string,
+  connectorID: string,
+): Promise<DirectoryConnector> {
+  return request(`${directoryConnectorPath(connectorID)}/disable`, adminRequest(csrfToken, 'POST'))
+}
+
+export async function listDirectoryIngestionRuns(
+  connectorID: string,
+): Promise<IngestionRunSummary[]> {
+  const response = await request<{ runs: IngestionRunSummary[] | null }>(
+    `${directoryConnectorPath(connectorID)}/ingestion-runs`,
+  )
+  return response.runs ?? []
+}
+
+export function getDirectoryIngestionRun(
+  connectorID: string,
+  runID: string,
+): Promise<IngestionRunDetail> {
+  return request<IngestionRunDetail>(
+    `${directoryConnectorPath(connectorID)}/ingestion-runs/${encodeURIComponent(runID)}`,
+  )
 }

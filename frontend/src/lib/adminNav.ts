@@ -9,6 +9,7 @@ import {
   IconListCheck,
   IconNetwork,
   IconRobot,
+  IconServer,
   IconSettings,
   IconSitemap,
   IconArrowsExchange,
@@ -32,6 +33,7 @@ export type AdminNavKey =
   | 'roles'
   | 'applications'
   | 'provisioning'
+  | 'directory-connectors'
   | 'sign-in-policy'
   | 'entra-federation'
   | 'identity-providers'
@@ -115,6 +117,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
       icon: IconCloudUpload,
       href: tenantURL('/admin/provisioning'),
       active: active === 'provisioning',
+    },
+    {
+      key: 'directory-connectors',
+      label: t.directoryConnectors,
+      icon: IconServer,
+      href: tenantURL('/admin/directory-connectors'),
+      active: active === 'directory-connectors',
     },
     {
       key: 'token-vault',
