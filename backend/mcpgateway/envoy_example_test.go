@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml"
@@ -37,6 +38,40 @@ type exampleExtAuthz struct {
 	Disabled bool `yaml:"disabled"`
 }
 
+type exampleLocalReplyMapper struct {
+	Filter struct {
+		AndFilter struct {
+			Filters []struct {
+				StatusCodeFilter struct {
+					Comparison struct {
+						Op    string `yaml:"op"`
+						Value struct {
+							DefaultValue int `yaml:"default_value"`
+						} `yaml:"value"`
+					} `yaml:"comparison"`
+				} `yaml:"status_code_filter"`
+				ResponseFlagFilter struct {
+					Flags []string `yaml:"flags"`
+				} `yaml:"response_flag_filter"`
+			} `yaml:"filters"`
+		} `yaml:"and_filter"`
+	} `yaml:"filter"`
+	BodyFormatOverride struct {
+		TextFormat string `yaml:"text_format"`
+	} `yaml:"body_format_override"`
+}
+
+// convertsUnavailableReply は、判定の入口の障害で Envoy が作る 503 だけを MCP のエラーへ変換するかを判定する。
+func (m exampleLocalReplyMapper) convertsUnavailableReply() bool {
+	status, flagged := false, false
+	for _, filter := range m.Filter.AndFilter.Filters {
+		comparison := filter.StatusCodeFilter.Comparison
+		status = status || (comparison.Op == "EQ" && comparison.Value.DefaultValue == 503)
+		flagged = flagged || slices.Contains(filter.ResponseFlagFilter.Flags, "UAEX")
+	}
+	return status && flagged && strings.Contains(m.BodyFormatOverride.TextFormat, `"code":-32002`)
+}
+
 type exampleRoute struct {
 	Match struct {
 		Path string `yaml:"path"`
@@ -54,6 +89,12 @@ type exampleConfig struct {
 			FilterChains []struct {
 				Filters []struct {
 					TypedConfig struct {
+						UseRemoteAddress *bool `yaml:"use_remote_address"`
+						NormalizePath    *bool `yaml:"normalize_path"`
+						MergeSlashes     *bool `yaml:"merge_slashes"`
+						LocalReplyConfig struct {
+							Mappers []exampleLocalReplyMapper `yaml:"mappers"`
+						} `yaml:"local_reply_config"`
 						RouteConfig struct {
 							VirtualHosts []struct {
 								Routes []exampleRoute `yaml:"routes"`
@@ -77,7 +118,7 @@ func (m exampleMatchers) allows(want exampleMatcher) bool { return slices.Contai
 // 実物を起動しなくても、迂回につながる設定の誤りを毎回の実行で検出する。Envoy が設定どおりに動くことは
 // TestEnvoy* が確かめる。
 //
-//spec:covers REQ-MCPGATEWAY-007: 設定例は失敗時と断片の本文を通さず、判定に要るヘッダーを渡し、上流への経路で判定を省かない
+//spec:covers REQ-MCPGATEWAY-007: 設定例は失敗時と断片の本文を通さず、判定に要るヘッダーを渡し、障害の応答を MCP のエラーにし、パスを正規化し、上流への経路で判定を省かない
 func TestEnvoyExampleDoesNotAllowABypass(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "examples", "envoy-mcp-gateway", "envoy.yaml"))
 	if err != nil {
@@ -91,6 +132,17 @@ func TestEnvoyExampleDoesNotAllowABypass(t *testing.T) {
 		t.Fatalf("listeners = %d; check every listener before adding one", len(config.StaticResources.Listeners))
 	}
 	manager := config.StaticResources.Listeners[0].FilterChains[0].Filters[0].TypedConfig
+
+	for name, value := range map[string]*bool{
+		"use_remote_address": manager.UseRemoteAddress, "normalize_path": manager.NormalizePath, "merge_slashes": manager.MergeSlashes,
+	} {
+		if value == nil || !*value {
+			t.Errorf("%s must be true", name)
+		}
+	}
+	if !slices.ContainsFunc(manager.LocalReplyConfig.Mappers, exampleLocalReplyMapper.convertsUnavailableReply) {
+		t.Error("local_reply_config must turn the 503 of an unavailable decision into JSON-RPC -32002")
+	}
 
 	filters := manager.HTTPFilters
 	if len(filters) != 2 || filters[0].Name != extAuthzFilter || filters[1].Name != "envoy.filters.http.router" {
