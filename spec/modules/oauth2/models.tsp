@@ -1208,6 +1208,19 @@ model ResourceAccessCondition {
 }
 
 
+@doc("操作を許可する回数の固定窓の上限。流量と総回数は窓の長さで区別する。")
+model ResourceAccessLimit {
+  @doc("回数を分ける単位。省くと規則の操作の全体で一つの回数を持つ。")
+  by?: ("agent" | "user" | "resource")[];
+  @minValue(1)
+  @maxValue(1000000000)
+  max_requests: int32;
+  @minValue(1)
+  @maxValue(2592000)
+  window_seconds: int32;
+}
+
+
 @doc("リソースサーバーが評価を求められる操作の規則。登録にない操作は不許可になる。")
 model ResourceAccessRule {
   @pattern("^[a-z][a-z0-9_]*$")
@@ -1225,6 +1238,9 @@ model ResourceAccessRule {
   requires_approved_operation?: boolean;
   @doc("指定すると、ほかの制約を満たす操作に条件を適用する。`require_approval_when` は `requires_approved_operation` と併用できない。")
   condition?: ResourceAccessCondition;
+  @doc("この操作を許可する回数の上限。ほかの制約を満たす評価だけを数える。")
+  @maxItems(8)
+  limits?: ResourceAccessLimit[];
 }
 
 
@@ -1759,6 +1775,10 @@ model ResourceAccessEvaluated {
   conditionOutcome?: "allow" | "deny" | "require_approval" | "indeterminate";
   @doc("リソースサーバーが申告した `attributes` の SHA-256 の 16 進表現。読めない申告は生の文字列の値である。平文は残さない。")
   declaredAttributesDigest?: string;
+  @doc("超えた上限の `by`。全体の上限では空である。理由が `limit_exceeded` のときだけ持つ。")
+  exceededLimitBy?: ("agent" | "user" | "resource")[];
+  @doc("超えた上限の窓の秒数。")
+  exceededLimitWindowSeconds?: int32;
 }
 
 

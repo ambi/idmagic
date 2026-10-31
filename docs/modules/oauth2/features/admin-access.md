@@ -72,6 +72,7 @@
 - 規則の `resource_type` か `relation` が `^[a-z][a-z0-9_]*$` の形でないか 65 文字以上であるか、`resource_type` と `relation` の組が重複するか、`scopes` が空か登録の `scopes` の部分集合でないか、`requires_approved_operation` を持つ規則に `authorization_detail_type` がないか、規則が 100 件を超える場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
 - 規則の `condition` に `deny_when` と `require_approval_when` のどちらもないか、式が 1 KiB を超えるか、コンパイルできないか、真偽値を返さないか、内包が入れ子であるか、`require_approval_when` に `approval_detail_type` がないか、`approval_detail_type` だけがあるか、`require_approval_when` と `requires_approved_operation` を併せ持つ場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
 - 規則の `condition` を返すとき、OAuth2 は、内容から導いた `version` を含め、本文の `version` を読まない。
+- 規則の `limits` が 9 件以上であるか、`by` が `agent`、`user`、`resource` 以外か重複を含むか、`max_requests` が 1 から 1000000000 の外であるか、`window_seconds` が 1 から 2592000 の外であるか、`by` の集合と `window_seconds` の組が重複する場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
 
 ## セキュリティ上の考慮
 

@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/url"
 	"slices"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	approvalports "github.com/ambi/idmagic/backend/oauth2/internal/approval/ports"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -39,8 +41,13 @@ type ResourceAccessDeps struct {
 	Replay    ports.DpopReplayStore
 	// Approvals は承認した操作の照合と使用権に使う。該当の規則を未配線で評価しない。
 	Approvals approvalports.ApprovalRequestStore
-	Emit      func(spec.DomainEvent)
+	// Limiter は規則の上限を数える。上限を持つ規則を未配線で評価しない。
+	Limiter rlports.RateLimiter
+	Emit    func(spec.DomainEvent)
 }
+
+// resourceAccessLimitPolicyID は規則の上限の回数の名前空間で、入口の resource_access の予算と分ける。
+const resourceAccessLimitPolicyID = "resource_access_rule_limit"
 
 // ResourceAccessRequest は 1 回の評価の入力である。ClientID は認証済みの値で、主体と行為者は
 // 受け取らない。
@@ -108,6 +115,9 @@ func EvaluateResourceAccess(ctx context.Context, deps ResourceAccessDeps, in Res
 			event.ApprovalRequestID, event.OperationDigest, event.Replayed = use.ApprovalRequestID, use.OperationDigest, use.Replayed
 		}
 		event.ConditionVersion, event.ConditionOutcome, event.DeclaredAttributesDigest = audit.conditionVersion, string(audit.conditionOutcome), audit.attributesDigest
+		if exceeded := audit.exceededLimit; exceeded != nil {
+			event.ExceededLimitBy, event.ExceededLimitWindowSeconds = exceeded.By, exceeded.WindowSeconds
+		}
 		deps.Emit(event)
 	}
 	return decision, nil
@@ -124,6 +134,8 @@ type evaluationAudit struct {
 	conditionVersion string
 	conditionOutcome domain.ConditionOutcome
 	attributesDigest string
+	// exceededLimit は不許可の原因になった上限である。
+	exceededLimit *domain.ResourceAccessLimit
 }
 
 func newEvaluationAudit(tokenID string, subject policyports.PrincipalRef, actors []policyports.PrincipalRef) evaluationAudit {
@@ -226,10 +238,30 @@ func evaluateForServer(
 			}
 		}
 	}
-	var approved *ApprovedOperationUse
+	var approval *matchedApproval
 	if approvalDetailType != "" {
+		matched, reason, err := matchApprovedOperation(ctx, deps, server, approvalDetailType, token, in, now)
+		if err != nil {
+			return ResourceAccessDecision{}, audit, err
+		}
+		if reason != "" {
+			return denyResourceAccess(reason), audit, nil
+		}
+		approval = matched
+	}
+	// 上限は照合の後に数え、不一致の要求に予算を減らさせない。
+	limit, exceeded, err := enforceResourceAccessLimits(ctx, deps, server, rule, audit, in, now)
+	if err != nil {
+		return ResourceAccessDecision{}, audit, err
+	}
+	if exceeded {
+		audit.exceededLimit = &limit
+		return denyResourceAccess(domain.ReasonLimitExceeded), audit, nil
+	}
+	var approved *ApprovedOperationUse
+	if approval != nil {
 		// 使用権は最後に得る。ほかの理由で不許可の要求に承認を消費させない。
-		use, reason, err := claimApprovedOperation(ctx, deps, server, approvalDetailType, token, in, now)
+		use, reason, err := claimApprovedOperation(ctx, deps, approval, now)
 		if err != nil {
 			return ResourceAccessDecision{}, audit, err
 		}
@@ -249,12 +281,59 @@ func evaluateForServer(
 	}, audit, nil
 }
 
-// claimApprovedOperation は実際の操作を承認と照合し、一致すれば使用権を得る (REQ-OAUTH2-065)。
-// 同じ鍵の再送は、結果の不明な要求を資源の冪等性へ委ねるために許可する。
-func claimApprovedOperation(
+// enforceResourceAccessLimits は規則の上限を順に数え、超えた上限を返す。超えた上限より後は数えない。
+func enforceResourceAccessLimits(
+	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, rule domain.ResourceAccessRule,
+	audit evaluationAudit, in ResourceAccessRequest, now time.Time,
+) (domain.ResourceAccessLimit, bool, error) {
+	if len(rule.Limits) == 0 {
+		return domain.ResourceAccessLimit{}, false, nil
+	}
+	if deps.Limiter == nil {
+		return domain.ResourceAccessLimit{}, false, ErrResourceAccessNotConfigured
+	}
+	subject := domain.ResourceAccessLimitSubject{AgentID: audit.agentID, UserID: audit.userID, ResourceID: in.ResourceID}
+	for _, limit := range rule.OrderedLimits() {
+		key, applies := resourceAccessLimitKey(server, rule, limit, subject, in.TenantID)
+		if !applies {
+			continue
+		}
+		result, err := deps.Limiter.AllowWithin(ctx, resourceAccessLimitPolicyID, key,
+			rlports.RateLimitPolicyConfig{MaxRequests: limit.MaxRequests, WindowSeconds: limit.WindowSeconds}, now)
+		if err != nil {
+			return domain.ResourceAccessLimit{}, false, err
+		}
+		if !result.Allowed {
+			return limit, true, nil
+		}
+	}
+	return domain.ResourceAccessLimit{}, false, nil
+}
+
+// resourceAccessLimitKey は回数の鍵を作る。識別子を含むので、応答とログへ出さない。
+func resourceAccessLimitKey(
+	server *domain.McpResourceServer, rule domain.ResourceAccessRule, limit domain.ResourceAccessLimit,
+	subject domain.ResourceAccessLimitSubject, tenantID string,
+) (string, bool) {
+	bucket, applies := limit.Bucket(subject)
+	if !applies {
+		return "", false
+	}
+	return fmt.Sprintf("%q:%q:%q:%q:%s", tenantID, server.ID, rule.ResourceType, rule.Relation, bucket), true
+}
+
+// matchedApproval は照合を通った承認で、使用権の記録に渡す。
+type matchedApproval struct {
+	requestID string
+	digest    string
+	keyHash   string
+}
+
+// matchApprovedOperation は実際の操作を承認と照合する。読むだけで、使用権を記録しない (REQ-OAUTH2-065)。
+func matchApprovedOperation(
 	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, detailType string,
 	token *ports.IntrospectionResult, in ResourceAccessRequest, now time.Time,
-) (*ApprovedOperationUse, string, error) {
+) (*matchedApproval, string, error) {
 	if deps.Approvals == nil {
 		return nil, "", ErrResourceAccessNotConfigured
 	}
@@ -281,17 +360,26 @@ func claimApprovedOperation(
 		return nil, domain.ReasonApprovedOperationMismatch, nil
 	}
 	keyHash := approvaldomain.HashOperationKey(in.ClientID, in.OperationKey)
-	claimed, recorded, err := deps.Approvals.ClaimUse(ctx, rec.ID, approvaldomain.ApprovalUse{KeyHash: keyHash, ClaimedAt: now}, now)
+	if rec.Use != nil && rec.Use.KeyHash != keyHash {
+		return nil, domain.ReasonApprovalAlreadyUsed, nil
+	}
+	return &matchedApproval{requestID: rec.ID, digest: digest, keyHash: keyHash}, "", nil
+}
+
+// claimApprovedOperation は照合を通った承認の使用権を得る。並行した別の鍵にはここで負ける。
+// 同じ鍵の再送は、結果の不明な要求を資源の冪等性へ委ねるために許可する。
+func claimApprovedOperation(ctx context.Context, deps ResourceAccessDeps, approval *matchedApproval, now time.Time) (*ApprovedOperationUse, string, error) {
+	claimed, recorded, err := deps.Approvals.ClaimUse(ctx, approval.requestID, approvaldomain.ApprovalUse{KeyHash: approval.keyHash, ClaimedAt: now}, now)
 	if err != nil {
 		return nil, "", err
 	}
 	if claimed == nil || claimed.Use == nil {
 		return nil, domain.ReasonApprovalExpired, nil
 	}
-	if claimed.Use.KeyHash != keyHash {
+	if claimed.Use.KeyHash != approval.keyHash {
 		return nil, domain.ReasonApprovalAlreadyUsed, nil
 	}
-	return &ApprovedOperationUse{ApprovalRequestID: rec.ID, OperationDigest: digest, Replayed: !recorded}, "", nil
+	return &ApprovedOperationUse{ApprovalRequestID: approval.requestID, OperationDigest: approval.digest, Replayed: !recorded}, "", nil
 }
 
 // declaredAttributes は申告を読み、監査のダイジェストとともに返す。読めない申告は nil で、

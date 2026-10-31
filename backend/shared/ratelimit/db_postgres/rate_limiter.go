@@ -70,7 +70,8 @@ func (l *RateLimiter) AllowWithin(ctx context.Context, policyID, key string, con
 		count = 1
 		windowExp = now.Add(time.Duration(config.WindowSeconds) * time.Second)
 	default:
-		count = int(row.Count) + 1
+		// 超過の後も増えるので、長い窓で桁あふれして負の値へ戻り、上限が解けないように止める。
+		count = min(int(row.Count)+1, math.MaxInt32)
 		windowExp = row.WindowExpiresAt
 	}
 

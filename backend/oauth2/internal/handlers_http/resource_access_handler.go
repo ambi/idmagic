@@ -95,7 +95,7 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 		Servers: d.McpResourceServerRepo,
 		Tokens:  tokenusecases.RevocationCheckingIntrospector{Deps: d.introspectDeps()},
 		Clients: d.ClientRepo, Relations: d.RelationChecker, Replay: d.DpopReplayStore,
-		Approvals: d.ApprovalRequestStore, Emit: d.Emit,
+		Approvals: d.ApprovalRequestStore, Limiter: d.RateLimiter, Emit: d.Emit,
 	}, in, time.Now().UTC())
 	if errors.Is(err, tokenusecases.ErrOperationKeyRequired) {
 		return support.NoStoreJSON(c, http.StatusBadRequest,

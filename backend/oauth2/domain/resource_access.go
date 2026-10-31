@@ -33,6 +33,7 @@ const (
 	ReasonApprovalAlreadyUsed         = "approval_already_used"
 	ReasonConditionDenied             = "condition_denied"
 	ReasonConditionIndeterminate      = "condition_indeterminate"
+	ReasonLimitExceeded               = "limit_exceeded"
 )
 
 // ResourceAccessRule は評価できる 1 つの操作と、その操作がトークンへ求める制約である。
@@ -45,6 +46,8 @@ type ResourceAccessRule struct {
 	RequiresApprovedOperation bool `json:"requires_approved_operation,omitempty"`
 	// Condition は、ほかの制約を満たす操作の結果を分ける。
 	Condition *ResourceAccessCondition `json:"condition,omitempty"`
+	// Limits は、ほかの制約を満たす操作を許可する回数を抑える。
+	Limits []ResourceAccessLimit `json:"limits,omitempty"`
 }
 
 // PermitsDetails は、規則が求める構造化された権限をトークンが持つかを判定する。
@@ -96,6 +99,9 @@ func (m McpResourceServer) validateAccessRules() error {
 			if rule.RequiresApprovedOperation && rule.Condition.RequireApprovalWhen != "" {
 				return errors.New("access_rules require_approval_when must not be combined with requires_approved_operation")
 			}
+		}
+		if err := validateResourceAccessLimits(rule.Limits); err != nil {
+			return err
 		}
 		if len(rule.Scopes) == 0 {
 			return errors.New("access_rules scopes must not be empty")

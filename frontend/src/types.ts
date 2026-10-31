@@ -596,6 +596,12 @@ export type ResourceAccessCondition = {
   version?: string
 }
 
+export type ResourceAccessLimit = {
+  by?: Array<'agent' | 'user' | 'resource'>
+  max_requests: number
+  window_seconds: number
+}
+
 export type ResourceAccessRule = {
   resource_type: string
   relation: string
@@ -603,6 +609,7 @@ export type ResourceAccessRule = {
   authorization_detail_type?: string
   requires_approved_operation?: boolean
   condition?: ResourceAccessCondition
+  limits?: ResourceAccessLimit[]
 }
 
 export type McpResourceServer = {

@@ -19,6 +19,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -170,6 +171,88 @@ func TestResourceAccessConfiguredBudgetReachesHTTP(t *testing.T) {
 	}
 }
 
+// 二つの組み立ては別々の接続プールとリミッターを持ち、同じ PostgreSQL だけを共有するので、
+// API プロセスを増やした構成と同じ条件で計数の原子性を観測できる。
+//
+//spec:covers REQ-OAUTH2-062: 複数のプロセスの並行した評価でも許可の合計が上限と等しいこと
+func TestResourceAccessLimitHoldsAcrossProcesses(t *testing.T) {
+	const limit, attemptsPerProcess = 9, 24
+	settings := map[string]string{"RATE_LIMIT_RESOURCE_ACCESS_MAX_REQUESTS": "100000", "RATE_LIMIT_RESOURCE_ACCESS_WINDOW_SECONDS": "60"}
+	first := newResourceLoadFixture(t, "postgres", settings)
+	second := *first
+	second.e = first.newProcess(t, settings)
+	server, err := first.deps.OAuth2.McpResourceServerRepo.FindByClientID(first.ctx, first.tenantID, first.evaluator)
+	if err != nil || server == nil {
+		t.Fatalf("登録: %v %v", server, err)
+	}
+	server.AccessRules[0].Limits = []oauthdomain.ResourceAccessLimit{{
+		By: []oauthdomain.ResourceAccessLimitUnit{oauthdomain.ResourceAccessLimitByAgent}, MaxRequests: limit, WindowSeconds: 3600,
+	}}
+	if err := first.deps.OAuth2.McpResourceServerRepo.Save(first.ctx, server); err != nil {
+		t.Fatal(err)
+	}
+	token, _, err := first.signer.SignAccessToken(first.ctx, oauthports.AccessTokenInput{
+		Client: &oauthdomain.OAuth2Client{ClientID: first.agentClient}, Sub: first.agentClient, AgentID: first.agentID,
+		Scopes: []string{"tools:read"}, Audiences: []string{first.resource},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	form := url.Values{"token": {token}, "resource_type": {"document"}, "resource_id": {first.evaluator + "-d0"}, "relation": {"viewer"}}.Encode()
+	var permitted, exceeded atomic.Int64
+	var wg sync.WaitGroup
+	for _, process := range []*resourceLoadFixture{first, &second} {
+		for range attemptsPerProcess {
+			wg.Go(func() {
+				w := process.response(form)
+				var body struct {
+					Decision bool     `json:"decision"`
+					Reasons  []string `json:"reasons"`
+				}
+				if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || w.Code != http.StatusOK {
+					t.Errorf("評価: status=%d body=%s err=%v", w.Code, w.Body.String(), err)
+					return
+				}
+				switch {
+				case body.Decision:
+					permitted.Add(1)
+				case len(body.Reasons) == 1 && body.Reasons[0] == oauthdomain.ReasonLimitExceeded:
+					exceeded.Add(1)
+				default:
+					t.Errorf("想定しない不許可: %s", w.Body.String())
+				}
+			})
+		}
+	}
+	wg.Wait()
+	if permitted.Load() != limit || exceeded.Load() != 2*attemptsPerProcess-limit {
+		t.Fatalf("許可 %d、超過 %d、上限 %d", permitted.Load(), exceeded.Load(), limit)
+	}
+}
+
+// newProcess は同じ設定で別の組み立てを作り、そこへ評価の入口を登録する。DB だけを共有する。
+func (f *resourceLoadFixture) newProcess(tb testing.TB, settings map[string]string) *echo.Echo {
+	tb.Helper()
+	env := map[string]string{
+		"PERSISTENCE": "postgres", "ISSUER": "https://load.example", "KEY_PROVIDER": "local",
+		"DATABASE_URL": pgtest.Require(tb).Config().ConnString(),
+	}
+	maps.Copy(env, settings)
+	loader := NewConfigLoader(func(key string) string { return env[key] })
+	shared, api := LoadSharedConfig(loader), LoadAPIConfig(loader)
+	if err := loader.Err(); err != nil {
+		tb.Fatal(err)
+	}
+	deps, err := Assemble(context.Background(), shared)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	tb.Cleanup(deps.Close)
+	e := echo.New()
+	registerResourceLoadRoutes(tb, e, deps, shared, api)
+	return e
+}
+
 // 公開モジュールの正式なアダプターを Assemble し、モデルとタプルは管理 HTTP 契約から入れる。
 func newResourceLoadFixture(tb testing.TB, storage string, settings map[string]string) *resourceLoadFixture {
 	tb.Helper()
@@ -241,30 +324,7 @@ func newResourceLoadFixture(tb testing.TB, storage string, settings map[string]s
 	}); err != nil {
 		tb.Fatal(err)
 	}
-	f.signer = oauth2.NewJWTSigner(shared.Issuer, deps.SigningKeys.KeyStore)
-	deps.OAuth2.TokenIssuer, deps.OAuth2.TokenIntrospector = f.signer, oauth2.NewJWTSigner(shared.Issuer, deps.SigningKeys.KeyStore)
-	deps.OAuth2.Authorizer = AssembleAuthorizer(shared)
-	deps.Authentication.SessionManager = deps.Authentication.NewSessionManager()
-	// ログ出力先の速度を測らず、イベントの直列化と監査 DB への追記は本番と同じにする。
-	deps.OAuth2.EventSink = resourceLoadSink{}
-	emit := deps.NewEmitFunc(logging.Default())
-	observations, err := metrics.NewMetrics("resource-load", "")
-	if err != nil {
-		tb.Fatal(err)
-	}
-	tb.Cleanup(func() {
-		if err := observations.Shutdown(context.Background()); err != nil {
-			tb.Error(err)
-		}
-	})
-	f.e.Use(support.MetricsMiddleware(observations))
-	httpadapter.Register(f.e, httpadapter.Deps{
-		Issuer: shared.Issuer, TenantRepo: deps.Tenancy.TenantRepo,
-		Contract: spec.CurrentRuntimeContract(), RateLimiter: deps.RateLimit.NewRateLimiter(api.RateLimits), Emit: emit, Metrics: observations,
-		TrustedForwardedHops: api.TrustedForwardedHops,
-		Tenancy:              deps.Tenancy, IdManagement: deps.IdManagement, Authentication: deps.Authentication, OAuth2: deps.OAuth2,
-		ApiTokens: deps.ApiTokens, SigningKeys: deps.SigningKeys, AccessControl: deps.AccessControl, SharedSignals: deps.SharedSignals,
-	})
+	f.signer = registerResourceLoadRoutes(tb, f.e, deps, shared, api)
 	authn, err := deps.Authentication.SessionManager.Create(ctx, owner.ID, []string{"pwd"}, now)
 	if err != nil {
 		tb.Fatal(err)
@@ -304,6 +364,36 @@ func newResourceLoadFixture(tb testing.TB, storage string, settings map[string]s
 	}
 	admin("/api/admin/v1/authorization/relation-tuples", map[string]any{"writes": writes})
 	return f
+}
+
+// registerResourceLoadRoutes は組み立てを本番と同じ HTTP の入口へ登録し、トークンの署名器を返す。
+func registerResourceLoadRoutes(tb testing.TB, e *echo.Echo, deps *Dependencies, shared SharedConfig, api APIConfig) oauthports.TokenIssuer {
+	tb.Helper()
+	signer := oauth2.NewJWTSigner(shared.Issuer, deps.SigningKeys.KeyStore)
+	deps.OAuth2.TokenIssuer, deps.OAuth2.TokenIntrospector = signer, oauth2.NewJWTSigner(shared.Issuer, deps.SigningKeys.KeyStore)
+	deps.OAuth2.Authorizer = AssembleAuthorizer(shared)
+	deps.Authentication.SessionManager = deps.Authentication.NewSessionManager()
+	// ログ出力先の速度を測らず、イベントの直列化と監査 DB への追記は本番と同じにする。
+	deps.OAuth2.EventSink = resourceLoadSink{}
+	emit := deps.NewEmitFunc(logging.Default())
+	observations, err := metrics.NewMetrics("resource-load", "")
+	if err != nil {
+		tb.Fatal(err)
+	}
+	tb.Cleanup(func() {
+		if err := observations.Shutdown(context.Background()); err != nil {
+			tb.Error(err)
+		}
+	})
+	e.Use(support.MetricsMiddleware(observations))
+	httpadapter.Register(e, httpadapter.Deps{
+		Issuer: shared.Issuer, TenantRepo: deps.Tenancy.TenantRepo,
+		Contract: spec.CurrentRuntimeContract(), RateLimiter: deps.RateLimit.NewRateLimiter(api.RateLimits), Emit: emit, Metrics: observations,
+		TrustedForwardedHops: api.TrustedForwardedHops,
+		Tenancy:              deps.Tenancy, IdManagement: deps.IdManagement, Authentication: deps.Authentication, OAuth2: deps.OAuth2,
+		ApiTokens: deps.ApiTokens, SigningKeys: deps.SigningKeys, AccessControl: deps.AccessControl, SharedSignals: deps.SharedSignals,
+	})
+	return signer
 }
 
 func (f *resourceLoadFixture) evaluate(tb testing.TB, form string, permitted bool) {

@@ -361,6 +361,9 @@ type ResourceAccessEvaluated struct {
 	ConditionVersion         string `json:"conditionVersion,omitempty"`
 	ConditionOutcome         string `json:"conditionOutcome,omitempty"`
 	DeclaredAttributesDigest string `json:"declaredAttributesDigest,omitempty"`
+	// 以下は超えた上限。応答では語らず、管理者が監査で確かめる。
+	ExceededLimitBy            []ResourceAccessLimitUnit `json:"exceededLimitBy,omitempty"`
+	ExceededLimitWindowSeconds int                       `json:"exceededLimitWindowSeconds,omitempty"`
 }
 
 func (e *ResourceAccessEvaluated) EventType() string     { return "ResourceAccessEvaluated" }

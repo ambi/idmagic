@@ -3,6 +3,7 @@ package db_postgres
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -53,6 +54,27 @@ func TestRateLimiter(t *testing.T) {
 	// GC removes fully-expired rows.
 	if n, err := limiter.DeleteExpiredBatch(ctx, now.Add(3600*time.Second), 100); err != nil || n < 1 {
 		t.Fatalf("gc n=%d err=%v (want >=1)", n, err)
+	}
+}
+
+// A long window keeps counting after the limit, so a full counter must stay over the limit
+// rather than wrap to a negative count.
+func TestRateLimiterSaturatesInsteadOfWrapping(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	limiter := &RateLimiter{Pool: db}
+	ctx := withTenant(context.Background(), tenant)
+	now := pgtest.Now()
+	config := rlports.RateLimitPolicyConfig{MaxRequests: 1, WindowSeconds: 60}
+	if err := New(db).UpsertRateLimitCounter(ctx, UpsertRateLimitCounterParams{
+		TenantID: tenant.ID, PolicyID: "saturation", KeyHash: hashRateLimitKey("key"), Count: math.MaxInt32, WindowExpiresAt: now.Add(time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for i := range 2 {
+		if r, err := limiter.AllowWithin(ctx, "saturation", "key", config, now); err != nil || r.Allowed {
+			t.Fatalf("attempt %d=%+v err=%v (want blocked)", i+1, r, err)
+		}
 	}
 }
 
