@@ -30,7 +30,7 @@ type Module struct {
 }
 
 // NewMemoryModule はプロセス内に保存する Module を作る。
-// タプルとモデルの書き込み版は 1 つの Store が共有する。
+// タプルとモデルの書き込みバージョンは 1 つの Store が共有する。
 func NewMemoryModule() Module {
 	store := db_memory.NewStore()
 	return Module{

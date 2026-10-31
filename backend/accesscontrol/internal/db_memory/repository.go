@@ -12,13 +12,13 @@ import (
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
 )
 
-// Store は 1 テナント分の関係タプル・モデルの版・書き込み版をまとめて持つ。
-// 書き込み版はタプルとモデルで共有するため、両 Repository が同じ Store を指す。
+// Store は 1 テナント分の関係タプル・モデルのバージョン・書き込みバージョンをまとめて持つ。
+// 書き込みバージョンはタプルとモデルで共有するため、両 Repository が同じ Store を指す。
 type Store struct {
 	mu       sync.RWMutex
 	tuples   map[string]map[string]domain.RelationTuple // tenantID -> tuple key -> tuple
 	models   map[string][]*domain.AuthorizationModel    // tenantID -> version 昇順
-	versions map[string]int64                           // tenantID -> 書き込み版
+	versions map[string]int64                           // tenantID -> 書き込みバージョン
 }
 
 func NewStore() *Store {
@@ -29,7 +29,7 @@ func NewStore() *Store {
 	}
 }
 
-// bumpVersion は呼び出し側が mu を保持している前提で書き込み版を進める。
+// bumpVersion は呼び出し側が mu を保持している前提で書き込みバージョンを進める。
 func (s *Store) bumpVersion(tenantID string) int64 {
 	s.versions[tenantID]++
 	return s.versions[tenantID]
@@ -152,7 +152,7 @@ func (r *RelationTupleRepository) Version(_ context.Context, tenantID string) (i
 	return r.store.versions[tenantID], nil
 }
 
-// AuthorizationModelRepository は Store 上の追記のみのモデル版アダプター。
+// AuthorizationModelRepository は Store 上の追記のみのモデルのバージョンのアダプター。
 type AuthorizationModelRepository struct{ store *Store }
 
 func NewAuthorizationModelRepository(store *Store) *AuthorizationModelRepository {

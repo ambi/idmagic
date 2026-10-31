@@ -166,7 +166,7 @@ func ListAccessibleResources(ctx context.Context, d Deps, input ListAccessibleRe
 		}
 	}
 	if out.Consistency == "" {
-		// 候補が 1 件も無い場合でも、呼び出し側が読んだ時点の版は返す。
+		// 候補が 1 件も無い場合でも、呼び出し側が読んだ時点のバージョンは返す。
 		version, err := d.Tuples.Version(ctx, input.TenantID)
 		if err != nil {
 			return ListedResources{}, err
@@ -186,7 +186,7 @@ func ListAccessibleResources(ctx context.Context, d Deps, input ListAccessibleRe
 	return out, nil
 }
 
-// assertConsistency は提示された整合トークンをストアの書き込み版と突き合わせる。
+// assertConsistency は提示された整合トークンをストアの書き込みバージョンと突き合わせる。
 // トークンが別テナントのもの、壊れている、ストアがまだ追いついていない場合は拒否する。
 func (d Deps) assertConsistency(ctx context.Context, tenantID, token string) (int64, error) {
 	storeVersion, err := d.Tuples.Version(ctx, tenantID)

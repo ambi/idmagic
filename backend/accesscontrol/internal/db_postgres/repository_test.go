@@ -60,9 +60,9 @@ func TestAuthorizationModelRepositoryContract(t *testing.T) {
 	testing_contract.RunAuthorizationModelRepositoryContract(t, newFixture)
 }
 
-// 同じ版を 2 つ作らない。採番を読み書き 2 回に分ければここで衝突する。
+// 同じバージョンを 2 つ作らない。採番を読み書き 2 回に分ければここで衝突する。
 //
-//spec:covers REQ-AUTHORIZATION-001: 版の採番は INSERT の中で行うので、同時に published しても
+//spec:covers REQ-AUTHORIZATION-001: バージョンの採番は INSERT の中で行うので、同時に published しても
 func TestConcurrentPublishNeverReusesAVersion(t *testing.T) {
 	f := newFixture(t, "tenant-a")
 	tenantA := f.Tenant("tenant-a")
@@ -102,7 +102,7 @@ func TestConcurrentPublishNeverReusesAVersion(t *testing.T) {
 	published := 0
 	for i, err := range errs {
 		if err != nil {
-			// 一意制約による衝突は「版を採り損ねた」だけで、重複した版は残らない。
+			// 一意制約による衝突は「バージョンを採り損ねた」だけで、重複したバージョンは残らない。
 			continue
 		}
 		if seen[versions[i]] {

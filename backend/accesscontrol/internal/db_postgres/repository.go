@@ -1,5 +1,5 @@
 // Package db_postgres は Authorization モジュールの PostgreSQL アダプター。
-// 差分の適用と書き込み版の前進は 1 トランザクションで行い、部分適用を残さない。
+// 差分の適用と書き込みバージョンの前進は 1 トランザクションで行い、部分適用を残さない。
 package db_postgres
 
 import (
@@ -141,8 +141,8 @@ func (r *RelationTupleRepository) Version(ctx context.Context, tenantID string) 
 	return version, nil
 }
 
-// AuthorizationModelRepository は認可モデルの版を PostgreSQL に永続化する。
-// 版の採番は INSERT の中で行い、同時登録が同じ版を採らないようにする。
+// AuthorizationModelRepository は認可モデルのバージョンを PostgreSQL に永続化する。
+// バージョンの採番は INSERT の中で行い、同時登録が同じバージョンを採らないようにする。
 type AuthorizationModelRepository struct{ Pool sharedpg.DB }
 
 func (r *AuthorizationModelRepository) Publish(ctx context.Context, model *domain.AuthorizationModel) (*domain.AuthorizationModel, int64, error) {
@@ -193,7 +193,7 @@ func (r *AuthorizationModelRepository) Latest(ctx context.Context, tenantID stri
 }
 
 func (r *AuthorizationModelRepository) FindByVersion(ctx context.Context, tenantID string, version int) (*domain.AuthorizationModel, error) {
-	// 版は列の型 (INTEGER) を超えられないので、範囲外の要求は存在しない版として扱う。
+	// バージョンは列の型 (INTEGER) を超えられないので、範囲外の要求は存在しないバージョンとして扱う。
 	if version <= 0 || version > math.MaxInt32 {
 		return nil, nil
 	}

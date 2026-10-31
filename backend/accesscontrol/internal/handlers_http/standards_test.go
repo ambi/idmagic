@@ -509,7 +509,7 @@ func TestAuthorizationFailsClosedWhenTheDecisionCannotBeAnswered(t *testing.T) {
 	})
 
 	t.Run("facts that could never be built are not a permit", func(t *testing.T) {
-		// モデルが 1 版も無いテナントでは関係の事実を組み立てられない。
+		// モデルが 1 バージョンも無いテナントでは関係の事実を組み立てられない。
 		f := newStandardsFixture(t, standardsSeams{})
 		rec, _ := f.check(t, checkRequest("d1", "alice"))
 		assertNoPermit(t, rec)

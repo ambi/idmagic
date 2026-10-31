@@ -166,7 +166,7 @@ func decode(t *testing.T, rec *httptest.ResponseRecorder, into any) {
 	}
 }
 
-//verify:operation PutAuthorizationModel: JSON のモデル登録に対する 201 本文の版、型と整合トークン、および非管理者の 403 本文を照合する。
+//verify:operation PutAuthorizationModel: JSON のモデル登録に対する 201 本文のバージョン、型と整合トークン、および非管理者の 403 本文を照合する。
 //verify:operation GetAuthorizationModel: 登録済みモデルを読む 200 本文と、未登録時 404、非管理者の 403 の本文を照合する。
 //verify:operation WriteRelationTuples: タプルの書き込みの 200 本文の件数と整合トークン、および非管理者の 403 本文を照合する。
 //verify:operation ListRelationTuples: GET の 200 本文から保存済みタプルと整合トークンを読み、非管理者の 403 本文を照合する。
@@ -421,10 +421,10 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 	})
 
 	//spec:covers REQ-AUTHORIZATION-010: 認可モデルとタプルの更新も判定の呼び出しも管理者に限られる。
-	//spec:covers EX-AUTHORIZATION-010-01: PutAuthorizationModel と WriteRelationTuples が拒否され、認可モデルの版が 1 つも作られず、タプルが 1 件も書き込まれない。
+	//spec:covers EX-AUTHORIZATION-010-01: PutAuthorizationModel と WriteRelationTuples が拒否され、認可モデルのバージョンが 1 つも作られず、タプルが 1 件も書き込まれない。
 	//spec:covers EX-AUTHORIZATION-010-02: CheckAccess と ListAccessibleResources が拒否され、応答が判定を載せない。
 	// 拒否は 403 だけでは確かめたことにならない。妥当な本文をそのまま送って拒否させ、
-	// 版もタプルも 1 つも増えていないことを保管庫から読み直す。判定の 2 つは保管庫を
+	// バージョンもタプルも 1 つも増えていないことを保管庫から読み直す。判定の 2 つは保管庫を
 	// 変えないので、拒否が防いだ効果は「応答が判定を載せていないこと」で読む。
 	t.Run("a non-administrator is rejected on every endpoint", func(t *testing.T) {
 		e, _, store := newServer(t, actor("alice", nil))

@@ -74,7 +74,7 @@ type harness struct {
 }
 
 // newBareHarness は参照モデルを published していない組み立てを返す。モデルの未登録が
-// 観測点になる具体例は、newHarness が先に版を作ってしまうと作れない。
+// 観測点になる具体例は、newHarness が先にバージョンを作ってしまうと作れない。
 func newBareHarness() *harness {
 	store := db_memory.NewStore()
 	h := &harness{}
@@ -95,7 +95,7 @@ func newHarness(t *testing.T) *harness {
 	return h
 }
 
-// publish は指定テナントへ参照モデルを published し、その版を返す。
+// publish は指定テナントへ参照モデルを published し、そのバージョンを返す。
 func (h *harness) publish(t *testing.T, tenant string) usecases.PublishedModel {
 	t.Helper()
 	published, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenant, referenceTypes(), now)
@@ -555,7 +555,7 @@ func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 		t.Fatalf("ResourceIDs = %v, want at most the bound of 2", listed.ResourceIDs)
 	}
 
-	// 候補が 1 件も無いテナントでも、版と整合トークンは返る。ここを通らないと、
+	// 候補が 1 件も無いテナントでも、バージョンと整合トークンは返る。ここを通らないと、
 	// 走査の中でしかトークンを組み立てない実装が空の一覧でトークンを落とす。
 	h.publish(t, otherTenantID)
 	empty, err := usecases.ListAccessibleResources(context.Background(), h.deps, usecases.ListAccessibleResourcesInput{
@@ -664,8 +664,8 @@ func TestDeletingAnObjectStopsTheRelationsItCarried(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-AUTHORIZATION-001: 整合しないモデルは版を作らない。
-//spec:covers EX-AUTHORIZATION-001-02: 宣言されていない関係を参照するモデルが ErrModelInvalid で拒否され、published 済みの版が 1 つも増えない。
+//spec:covers REQ-AUTHORIZATION-001: 整合しないモデルはバージョンを作らない。
+//spec:covers EX-AUTHORIZATION-001-02: 宣言されていない関係を参照するモデルが ErrModelInvalid で拒否され、published 済みのバージョンが 1 つも増えない。
 func TestPutAuthorizationModelRejectsAnInconsistentModel(t *testing.T) {
 	h := newHarness(t)
 	_, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, []domain.ResourceTypeDefinition{
@@ -687,7 +687,7 @@ func TestPutAuthorizationModelRejectsAnInconsistentModel(t *testing.T) {
 	}
 }
 
-//spec:covers EX-AUTHORIZATION-001-01: 版がテナント内で単調増加し以前の版が書き換わらないこと、レスポンスが整合トークンを含み、GetAuthorizationModel が新しい版を最新として返すこと。
+//spec:covers EX-AUTHORIZATION-001-01: バージョンがテナント内で単調増加し以前のバージョンが書き換わらないこと、レスポンスが整合トークンを含み、GetAuthorizationModel が新しいバージョンを最新として返すこと。
 func TestPutAuthorizationModelAddsAVersionWithoutRewritingTheOldOne(t *testing.T) {
 	h := newHarness(t)
 	first, err := usecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, 0)
@@ -698,7 +698,7 @@ func TestPutAuthorizationModelAddsAVersionWithoutRewritingTheOldOne(t *testing.T
 		t.Fatalf("the first published version = %d, want 1", first.Model.Version)
 	}
 
-	// 2 つ目の版は 1 つ目と形が違う。以前の版を読み直したときに、上書きされたのか
+	// 2 つ目のバージョンは 1 つ目と形が違う。以前のバージョンを読み直したときに、上書きされたのか
 	// 残っているのかを中身で見分けられるようにする。
 	extended := append(referenceTypes(), domain.ResourceTypeDefinition{Name: "folder"})
 	second, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, extended, now)
@@ -732,15 +732,15 @@ func TestPutAuthorizationModelAddsAVersionWithoutRewritingTheOldOne(t *testing.T
 			len(previous.Model.ResourceTypes))
 	}
 
-	// テナントごとの採番。別テナントの版数に引きずられる実装はここで落ちる。
+	// テナントごとの採番。別テナントのバージョン番号に引きずられる実装はここで落ちる。
 	other := h.publish(t, otherTenantID)
 	if other.Model.Version != 1 {
 		t.Fatalf("the first version of %s = %d, want 1", otherTenantID, other.Model.Version)
 	}
 }
 
-//spec:covers EX-AUTHORIZATION-001-03: 書き換え規則が循環するモデルが ErrModelInvalid で拒否され、版が 1 つも増えない。
-//spec:covers EX-AUTHORIZATION-001-04: 型名または関係名がフォーマットに反するモデルが ErrModelInvalid で拒否され、版が 1 つも増えない。
+//spec:covers EX-AUTHORIZATION-001-03: 書き換え規則が循環するモデルが ErrModelInvalid で拒否され、バージョンが 1 つも増えない。
+//spec:covers EX-AUTHORIZATION-001-04: 型名または関係名がフォーマットに反するモデルが ErrModelInvalid で拒否され、バージョンが 1 つも増えない。
 func TestPutAuthorizationModelLeavesNoVersionBehindWhenItRefuses(t *testing.T) {
 	cases := map[string][]domain.ResourceTypeDefinition{
 		"a cyclic rewrite": {
@@ -776,7 +776,7 @@ func TestPutAuthorizationModelLeavesNoVersionBehindWhenItRefuses(t *testing.T) {
 			if _, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, types, now); !errors.Is(err, domain.ErrModelInvalid) {
 				t.Fatalf("err = %v, want %v", err, domain.ErrModelInvalid)
 			}
-			// 拒否が防いだ効果。採番してから検証する実装は、版を 2 へ進めてここで落ちる。
+			// 拒否が防いだ効果。採番してから検証する実装は、バージョンを 2 へ進めてここで落ちる。
 			published, err := usecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, 0)
 			if err != nil {
 				t.Fatalf("GetAuthorizationModel: %v", err)
@@ -844,9 +844,9 @@ func TestWriteRelationTuplesAppliesTheDiffAtOnceAndIsIdempotent(t *testing.T) {
 		t.Fatalf("RelationTupleWritten emitted %d times, want the idempotent re-add to emit none", after-written)
 	}
 
-	// 返ったトークンはそのまま判定へ渡せる。書き込みが進めた版より古いトークンを
+	// 返ったトークンはそのまま判定へ渡せる。書き込みが進めたバージョンより古いトークンを
 	// 返す実装なら通ってしまうので、直後の判定で拒否されないことだけでなく、
-	// トークンが実際に版を指していることを、1 つ先のトークンの拒否と対で読む。
+	// トークンが実際にバージョンを指していることを、1 つ先のトークンの拒否と対で読む。
 	input := baseInput()
 	input.MinimumConsistency = outcome.Consistency
 	if _, err := usecases.CheckAccess(context.Background(), h.deps, input, now); err != nil {

@@ -9,14 +9,14 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// PublishedModel は published した版と、その時点の整合トークン。
+// PublishedModel は published したバージョンと、その時点の整合トークン。
 type PublishedModel struct {
 	Model       *domain.AuthorizationModel
 	Consistency string
 }
 
-// PutAuthorizationModel は検証を通ったモデルを新しい版として published する。
-// 検証に落ちた版は保存しないので、実行時に初めて壊れるモデルは残らない。
+// PutAuthorizationModel は検証を通ったモデルを新しいバージョンとして published する。
+// 検証に落ちたバージョンは保存しないので、実行時に初めて壊れるモデルは残らない。
 func PutAuthorizationModel(
 	ctx context.Context,
 	d Deps,
@@ -45,8 +45,8 @@ func PutAuthorizationModel(
 	return PublishedModel{Model: stored, Consistency: domain.EncodeConsistencyToken(tenantID, version)}, nil
 }
 
-// GetAuthorizationModel は最新版、または version を指定した版を返す。
-// 版が存在しない場合は ErrModelNotFound を返す。
+// GetAuthorizationModel は最新バージョン、または version を指定したバージョンを返す。
+// バージョンが存在しない場合は ErrModelNotFound を返す。
 func GetAuthorizationModel(ctx context.Context, d Deps, tenantID string, version int) (PublishedModel, error) {
 	model, err := loadModel(ctx, d, tenantID, version)
 	if err != nil {

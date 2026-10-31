@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// AuthorizationModelPublished は管理者が認可モデルの新しい版を published したことを表す。
+// AuthorizationModelPublished は管理者が認可モデルの新しいバージョンを published したことを表す。
 type AuthorizationModelPublished struct {
 	At                time.Time `json:"-"`
 	TenantID          string    `json:"tenantId"`

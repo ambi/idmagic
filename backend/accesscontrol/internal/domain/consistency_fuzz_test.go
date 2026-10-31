@@ -8,7 +8,7 @@ import (
 )
 
 // tenantIDShape は tenancy が受け入れるテナント ID の形 (tenancy.tenantIDPattern と同じ)。
-// 整合トークンは tenantID と版を ":" で連結して符号化するため、往復が成り立つのは
+// 整合トークンは tenantID とバージョンを ":" で連結して符号化するため、往復が成り立つのは
 // テナント ID が ":" を含まないというこの制約に依っている。
 var tenantIDShape = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
 
@@ -49,7 +49,7 @@ func FuzzConsistencyTokenRoundTrip(f *testing.F) {
 	})
 }
 
-// FuzzDecodeConsistencyToken は、任意の文字列から版を取り出さないことを表明する。
+// FuzzDecodeConsistencyToken は、任意の文字列からバージョンを取り出さないことを表明する。
 func FuzzDecodeConsistencyToken(f *testing.F) {
 	f.Add("", "tenant-a")
 	f.Add("dGVuYW50LWE6MQ", "tenant-a")
@@ -70,7 +70,7 @@ func FuzzDecodeConsistencyToken(f *testing.F) {
 			}
 			return
 		}
-		// 受理したなら、そのテナントで同じ版を符号化し直したものと一致しなければならない。
+		// 受理したなら、そのテナントで同じバージョンを符号化し直したものと一致しなければならない。
 		if reissued := domain.EncodeConsistencyToken(tenantID, version); reissued != token {
 			t.Fatalf("accepted %q for tenant %q, but that tenant and version encode to %q",
 				token, tenantID, reissued)

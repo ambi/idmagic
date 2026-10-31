@@ -69,7 +69,7 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 		if first.WrittenCount != 2 {
 			t.Fatalf("WrittenCount = %d, want 2", first.WrittenCount)
 		}
-		// 同じ組の再書き込みは冪等 (件数に数えないが、版は進む)。
+		// 同じ組の再書き込みは冪等 (件数に数えないが、バージョンは進む)。
 		second, err := f.Tuples.Write(ctx, tenantA, ports.TupleWrite{Writes: []domain.RelationTuple{
 			tuple("d1", "viewer", "alice"),
 		}})
@@ -219,7 +219,7 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 	})
 }
 
-// RunAuthorizationModelRepositoryContract は認可モデルの版ストアの契約を検証する。
+// RunAuthorizationModelRepositoryContract は認可モデルのバージョンストアの契約を検証する。
 func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 
@@ -273,7 +273,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		}
 	})
 
-	// 書き込みの版はテナントに一つで、モデルの登録とタプルの書き込みが同じ版を進める。
+	// 書き込みのバージョンはテナントに一つで、モデルの登録とタプルの書き込みが同じバージョンを進める。
 	// 別々に進めると、登録が返した整合トークンを判定で提示したときに満たされない。
 	t.Run("model publish and tuple writes advance one write version", func(t *testing.T) {
 		f := newFixture(t, "tenant-a")
@@ -299,7 +299,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		}
 	})
 
-	// REQ-AUTHORIZATION-006: 版の採番はテナントごとに独立している。
+	// REQ-AUTHORIZATION-006: バージョンの採番はテナントごとに独立している。
 	t.Run("version numbering is per tenant", func(t *testing.T) {
 		f := newFixture(t, "tenant-a", "tenant-b")
 		ctx := context.Background()

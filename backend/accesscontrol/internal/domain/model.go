@@ -47,7 +47,7 @@ type ResourceTypeDefinition struct {
 	Relations []RelationDefinition `json:"relations"`
 }
 
-// AuthorizationModel はテナントの認可モデルの 1 版。版は追記のみで、最新版が判定に使われる。
+// AuthorizationModel はテナントの認可モデルの 1 バージョン。バージョンは追記のみで、最新バージョンが判定に使われる。
 type AuthorizationModel struct {
 	ID            string                   `json:"id"`
 	TenantID      string                   `json:"tenant_id"`
