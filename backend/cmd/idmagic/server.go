@@ -236,6 +236,7 @@ func Run() error {
 		ApiTokens:        deps.ApiTokens,
 		Jobs:             jobsModule,
 		Provisioning:     deps.Provisioning,
+		TokenVault:       deps.TokenVault,
 		WorkloadIdentity: deps.WorkloadIdentity,
 		SharedSignals:    deps.SharedSignals,
 		AccessControl:    deps.AccessControl,

@@ -27,6 +27,7 @@ import { Route as AccountActivityRouteImport } from './routes/account/activity'
 import { Route as AccountApplicationsRouteImport } from './routes/account/applications'
 import { Route as AccountApprovalsRouteImport } from './routes/account/approvals'
 import { Route as AccountAppsRouteImport } from './routes/account/apps'
+import { Route as AccountConnectionsRouteImport } from './routes/account/connections'
 import { Route as AccountDataRouteImport } from './routes/account/data'
 import { Route as AccountEmailsRouteImport } from './routes/account/emails'
 import { Route as AccountPasswordRouteImport } from './routes/account/password'
@@ -48,6 +49,7 @@ import { Route as AdminProvisioningRouteImport } from './routes/admin/provisioni
 import { Route as AdminRolesRouteImport } from './routes/admin/roles'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminSignInPolicyRouteImport } from './routes/admin/sign-in-policy'
+import { Route as AdminTokenVaultRouteImport } from './routes/admin/token-vault'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminWorkloadIdentityRouteImport } from './routes/admin/workload-identity'
 import { Route as SystemIndexRouteImport } from './routes/system/index'
@@ -199,6 +201,11 @@ const AccountAppsRoute = AccountAppsRouteImport.update({
   path: '/apps',
   getParentRoute: () => AccountRouteRoute,
 } as any)
+const AccountConnectionsRoute = AccountConnectionsRouteImport.update({
+  id: '/connections',
+  path: '/connections',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
 const AccountDataRoute = AccountDataRouteImport.update({
   id: '/data',
   path: '/data',
@@ -303,6 +310,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
 const AdminSignInPolicyRoute = AdminSignInPolicyRouteImport.update({
   id: '/sign-in-policy',
   path: '/sign-in-policy',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminTokenVaultRoute = AdminTokenVaultRouteImport.update({
+  id: '/token-vault',
+  path: '/token-vault',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -651,6 +663,7 @@ export interface FileRoutesByFullPath {
   '/account/applications': typeof AccountApplicationsRoute
   '/account/approvals': typeof AccountApprovalsRoute
   '/account/apps': typeof AccountAppsRoute
+  '/account/connections': typeof AccountConnectionsRoute
   '/account/data': typeof AccountDataRoute
   '/account/emails': typeof AccountEmailsRoute
   '/account/password': typeof AccountPasswordRoute
@@ -671,6 +684,7 @@ export interface FileRoutesByFullPath {
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
+  '/admin/token-vault': typeof AdminTokenVaultRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/workload-identity': typeof AdminWorkloadIdentityRoute
   '/system/audit-events': typeof SystemAuditEventsRoute
@@ -749,6 +763,7 @@ export interface FileRoutesByTo {
   '/account/applications': typeof AccountApplicationsRoute
   '/account/approvals': typeof AccountApprovalsRoute
   '/account/apps': typeof AccountAppsRoute
+  '/account/connections': typeof AccountConnectionsRoute
   '/account/data': typeof AccountDataRoute
   '/account/emails': typeof AccountEmailsRoute
   '/account/password': typeof AccountPasswordRoute
@@ -769,6 +784,7 @@ export interface FileRoutesByTo {
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
+  '/admin/token-vault': typeof AdminTokenVaultRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/workload-identity': typeof AdminWorkloadIdentityRoute
   '/system/audit-events': typeof SystemAuditEventsRoute
@@ -843,6 +859,7 @@ export interface FileRoutesById {
   '/account/applications': typeof AccountApplicationsRoute
   '/account/approvals': typeof AccountApprovalsRoute
   '/account/apps': typeof AccountAppsRoute
+  '/account/connections': typeof AccountConnectionsRoute
   '/account/data': typeof AccountDataRoute
   '/account/emails': typeof AccountEmailsRoute
   '/account/password': typeof AccountPasswordRoute
@@ -863,6 +880,7 @@ export interface FileRoutesById {
   '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
+  '/admin/token-vault': typeof AdminTokenVaultRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/workload-identity': typeof AdminWorkloadIdentityRoute
   '/system/audit-events': typeof SystemAuditEventsRoute
@@ -946,6 +964,7 @@ export interface FileRouteTypes {
     | '/account/applications'
     | '/account/approvals'
     | '/account/apps'
+    | '/account/connections'
     | '/account/data'
     | '/account/emails'
     | '/account/password'
@@ -966,6 +985,7 @@ export interface FileRouteTypes {
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/sign-in-policy'
+    | '/admin/token-vault'
     | '/admin/users'
     | '/admin/workload-identity'
     | '/system/audit-events'
@@ -1044,6 +1064,7 @@ export interface FileRouteTypes {
     | '/account/applications'
     | '/account/approvals'
     | '/account/apps'
+    | '/account/connections'
     | '/account/data'
     | '/account/emails'
     | '/account/password'
@@ -1064,6 +1085,7 @@ export interface FileRouteTypes {
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/sign-in-policy'
+    | '/admin/token-vault'
     | '/admin/users'
     | '/admin/workload-identity'
     | '/system/audit-events'
@@ -1137,6 +1159,7 @@ export interface FileRouteTypes {
     | '/account/applications'
     | '/account/approvals'
     | '/account/apps'
+    | '/account/connections'
     | '/account/data'
     | '/account/emails'
     | '/account/password'
@@ -1157,6 +1180,7 @@ export interface FileRouteTypes {
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/sign-in-policy'
+    | '/admin/token-vault'
     | '/admin/users'
     | '/admin/workload-identity'
     | '/system/audit-events'
@@ -1365,6 +1389,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountAppsRouteImport
       parentRoute: typeof AccountRouteRoute
     }
+    '/account/connections': {
+      id: '/account/connections'
+      path: '/connections'
+      fullPath: '/account/connections'
+      preLoaderRoute: typeof AccountConnectionsRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
     '/account/data': {
       id: '/account/data'
       path: '/data'
@@ -1510,6 +1541,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in-policy'
       fullPath: '/admin/sign-in-policy'
       preLoaderRoute: typeof AdminSignInPolicyRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/token-vault': {
+      id: '/admin/token-vault'
+      path: '/token-vault'
+      fullPath: '/admin/token-vault'
+      preLoaderRoute: typeof AdminTokenVaultRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/users': {
@@ -1940,6 +1978,7 @@ interface AccountRouteRouteChildren {
   AccountApplicationsRoute: typeof AccountApplicationsRoute
   AccountApprovalsRoute: typeof AccountApprovalsRoute
   AccountAppsRoute: typeof AccountAppsRoute
+  AccountConnectionsRoute: typeof AccountConnectionsRoute
   AccountDataRoute: typeof AccountDataRoute
   AccountEmailsRoute: typeof AccountEmailsRoute
   AccountPasswordRoute: typeof AccountPasswordRoute
@@ -1956,6 +1995,7 @@ const AccountRouteRouteChildren: AccountRouteRouteChildren = {
   AccountApplicationsRoute: AccountApplicationsRoute,
   AccountApprovalsRoute: AccountApprovalsRoute,
   AccountAppsRoute: AccountAppsRoute,
+  AccountConnectionsRoute: AccountConnectionsRoute,
   AccountDataRoute: AccountDataRoute,
   AccountEmailsRoute: AccountEmailsRoute,
   AccountPasswordRoute: AccountPasswordRoute,
@@ -2104,6 +2144,7 @@ interface AdminRouteRouteChildren {
   AdminRolesRoute: typeof AdminRolesRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSignInPolicyRoute: typeof AdminSignInPolicyRoute
+  AdminTokenVaultRoute: typeof AdminTokenVaultRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminWorkloadIdentityRoute: typeof AdminWorkloadIdentityRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -2157,6 +2198,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminRolesRoute: AdminRolesRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSignInPolicyRoute: AdminSignInPolicyRoute,
+  AdminTokenVaultRoute: AdminTokenVaultRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminWorkloadIdentityRoute: AdminWorkloadIdentityRoute,
   AdminIndexRoute: AdminIndexRoute,

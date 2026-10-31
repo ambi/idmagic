@@ -98,6 +98,7 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 | [Saml](saml/README.md) | `internal` | `backend/saml/domain`, `backend/saml/ports` | `backend/saml` | SAML 2.0 IdP、SP の信頼、SSO、SLO、メタデータ |
 | [WsFederation](ws-federation/README.md) | `internal` | `backend/wsfederation/domain`, `backend/wsfederation/ports` | `backend/wsfederation` | WS-Federation、WS-Trust、メタデータ、RP の信頼 |
 | [SharedSignals](sharedsignals/README.md) | `internal` | `backend/sharedsignals/domain`, `backend/sharedsignals/ports` | `backend/sharedsignals` | SSF、SET、CAEP による継続的アクセス評価と失効 |
+| [TokenVault](token-vault/README.md) | `internal` | なし | `backend/tokenvault` | 外部サービスのコネクタと本人の接続、上流トークンの保管と更新、Agent の要求の代理実行 |
 
 ### モジュールの間の依存
 
@@ -144,6 +145,7 @@ flowchart LR
     Saml
     WsFederation
     SharedSignals
+    TokenVault
   end
   AccessControl --> IdManagement
   AccessControl --> Tenancy
@@ -212,6 +214,7 @@ flowchart LR
   SignInPolicy --> Tenancy
   Sourcing --> ApiTokens
   Sourcing -->|"外部の属性と操作を User と Group へ変換"| IdManagement
+  TokenVault --> OAuth2
   WorkloadIdentity -->|"外部の主体を Agent へ対応付け"| IdManagement
   WorkloadIdentity --> Tenancy
   WsFederation --> Application

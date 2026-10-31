@@ -24,6 +24,7 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/sourcing"
 	"github.com/ambi/idmagic/backend/tenancy"
+	"github.com/ambi/idmagic/backend/tokenvault"
 	"github.com/ambi/idmagic/backend/workloadidentity"
 	"github.com/ambi/idmagic/backend/wsfederation"
 
@@ -50,6 +51,7 @@ type Dependencies struct {
 	ApiTokens        apitoken.Module
 	Jobs             jobs.Module
 	Provisioning     provisioning.Module
+	TokenVault       tokenvault.Module
 	WorkloadIdentity workloadidentity.Module
 	SharedSignals    sharedsignals.Module
 	AccessControl    accesscontrol.Module

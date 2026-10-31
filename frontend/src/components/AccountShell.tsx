@@ -7,6 +7,7 @@ import {
   IconLayoutGrid,
   IconLogout,
   IconMail,
+  IconPlugConnected,
   IconShieldLock,
   IconUser,
   IconUserCircle,
@@ -42,6 +43,7 @@ export type AccountNavKey =
   | 'activity'
   | 'approvals'
   | 'applications'
+  | 'connections'
   | 'data'
 
 type AccountShellProps = {
@@ -71,6 +73,12 @@ export function AccountShell({
     { key: 'activity', label: t.activity, href: '/account/activity', icon: IconHistory },
     { key: 'approvals', label: t.approvals, href: '/account/approvals', icon: IconChecklist },
     { key: 'applications', label: t.connectedApps, href: '/account/applications', icon: IconApps },
+    {
+      key: 'connections',
+      label: t.externalServices,
+      href: '/account/connections',
+      icon: IconPlugConnected,
+    },
     { key: 'data', label: t.dataAndPrivacy, href: '/account/data', icon: IconDatabaseCog },
   ]
   const branding = useTenantBranding()

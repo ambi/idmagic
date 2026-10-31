@@ -43,6 +43,7 @@ const EARS_MODULES = new Set<string>([
   'identity-governance',
   'jobs',
   'provisioning',
+  'token-vault',
   'system',
   'frontend',
   'authentication',

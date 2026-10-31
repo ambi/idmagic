@@ -221,6 +221,9 @@ erDiagram
 | `mcp_resource_servers` | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ、評価用のクライアントと規則 | OAuth2 | `LOGGED` | 非キーカラム |
 | `workload_trust_bundles` | ワークロード ID のトークンを検証する信頼ドメインと鍵 | WorkloadIdentity | `LOGGED` | 非キーカラム |
 | `agent_workload_bindings` | 信頼ドメインのワークロード主体とエージェントの対応 | WorkloadIdentity | `LOGGED` | 非キーカラム |
+| `token_vault_connectors` | 外部サービスのコネクタ。クライアントシークレットは暗号化する | TokenVault | `LOGGED` | 非キーカラム |
+| `token_vault_connections` | 本人とコネクタの組ごとの上流トークン。トークンは暗号化する | TokenVault | `LOGGED` | 非キーカラム |
+| `token_vault_attempts` | 連携の `state` のハッシュと暗号化した PKCE の検証子。一度だけ消費する | TokenVault | `LOGGED` | 非キーカラム |
 | `agent_revocation_epochs` | エージェントの失効世代。世代を進めると、それより前に発行したトークンを受け付けない | SharedSignals | `LOGGED` | 非キーカラム |
 | `user_revocation_epochs` | User の失効世代。世代を進めると、それより前に発行したトークンを受け付けない | SharedSignals | `LOGGED` | 非キーカラム |
 
@@ -361,6 +364,12 @@ erDiagram
     }
     lifecycle_workflow_steps {
     }
+    token_vault_connectors {
+    }
+    token_vault_connections {
+    }
+    token_vault_attempts {
+    }
     provisioning_connections {
     }
     provisioning_remote_links {
@@ -394,6 +403,11 @@ erDiagram
     lifecycle_workflows ||--o{ lifecycle_workflow_runs : 実行する
     users ||--o{ lifecycle_workflow_runs : 対象になる
     lifecycle_workflow_runs ||--o{ lifecycle_workflow_steps : 手順を持つ
+    tenants ||--o{ token_vault_connectors : コネクタを分離する
+    token_vault_connectors ||--o{ token_vault_connections : 接続を持つ
+    token_vault_connectors ||--o{ token_vault_attempts : 連携を持つ
+    users ||--o{ token_vault_connections : 接続を持つ
+    users ||--o{ token_vault_attempts : 連携を開始する
     applications ||--o| provisioning_connections : 接続を持つ
     tenants ||--o{ provisioning_connections : 接続を分離する
     provisioning_connections ||--o{ provisioning_remote_links : 遠隔主体を結ぶ

@@ -119,6 +119,8 @@ var routeClassRules = []routeClassRule{
 	// 動的クライアント登録は docs/design/performance/capacity.md がステージ 4 の例として名指ししている。
 	{path: "/register", class: support.ClassManagement},
 	{path: "/api/admin/v1", class: support.ClassManagement},
+	// 代理実行は上流を最大 30 秒待つので、受付の枠を認証と分ける。
+	{path: "/api/token-vault", class: support.ClassManagement},
 	{path: "/api/account/v1", class: support.ClassManagement},
 	// SCIM は一覧も含めてここに置く。全同期は容量計画上いちばん大きな一括処理
 	// (1 テナント 20〜10,000 リクエスト、同時 50 テナント) なので、これをステージ 3 で

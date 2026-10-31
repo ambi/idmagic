@@ -66,7 +66,7 @@ API の指標は `route` ラベルを持つが、登録済みの経路は 500 �
 | 種別 | `family` | 経路 |
 | --- | --- | --- |
 | 認証とプロトコル | `authentication` | OAuth2/OIDC のプロトコル経路、Discovery、JWKS、SAML、WS-Federation、`/api/auth/*`、ログイン画面を描くのに要するブランディングとアイコン |
-| アカウントポータル | `portal` | `/api/account/v1/*` |
+| アカウントポータル | `portal` | `/api/account/v1/*`、`/api/token-vault/v1/*` |
 | 管理 | `management` | `/api/admin/v1/*` |
 | SCIM | `scim` | `/scim/v2/*` |
 | Shared Signals | `shared_signals` | `/ssf/*` |

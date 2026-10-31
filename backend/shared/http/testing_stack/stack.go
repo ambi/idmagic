@@ -69,6 +69,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/provisioning"
+	"github.com/ambi/idmagic/backend/tokenvault"
 
 	"github.com/ambi/idmagic/backend/saml"
 
@@ -532,6 +533,13 @@ func WithProvisioning() Option {
 		}
 		b.stack.Provisioning = provisioning.NewMemoryModule()
 		b.deps.Provisioning = b.stack.Provisioning
+	}
+}
+
+// WithTokenVault は TokenVault の経路を配線する。外向きの通信は client を通る。
+func WithTokenVault(client *http.Client) Option {
+	return func(b *builder) {
+		b.deps.TokenVault = tokenvault.NewMemoryModule().WithUpstreamHTTPClient(client)
 	}
 }
 

@@ -1,0 +1,39 @@
+{
+  "name": "ConnectionLifecycle",
+  "states": [
+    { "name": "active", "kind": "initial", "meaning": "トークンを保管し、代理実行に使える" },
+    { "name": "reauthorization_required", "kind": "—", "meaning": "上流がトークンを受け付けなくなり、トークンを消した。本人の再連携を待つ" },
+    { "name": "removed", "kind": "terminal", "meaning": "本人が解除したか、コネクタを削除した。行は残らない" }
+  ],
+  "transitions": [
+    { "from": "active", "event": "TokenVaultConnectionReauthorizationRequired", "guard": "`invalid_grant`、または更新トークンのない期限切れ", "to": "reauthorization_required", "effects": "保管したトークンを消す" },
+    { "from": "reauthorization_required", "event": "TokenVaultConnectionLinked", "guard": "—", "to": "active", "effects": "" },
+    { "from": "active", "event": "TokenVaultConnectionLinked", "guard": "再連携", "to": "active", "effects": "トークンと付与スコープを置き換える" },
+    { "from": "active", "event": "TokenVaultConnectionUnlinked", "guard": "—", "to": "removed", "effects": "行を消す" },
+    { "from": "reauthorization_required", "event": "TokenVaultConnectionUnlinked", "guard": "—", "to": "removed", "effects": "行を消す" }
+  ],
+  "operations": ["再連携", "更新の成功", "再認可が必要な更新の失敗", "解除", "代理実行"],
+  "matrix": {
+    "active": {
+      "再連携": [{ "kind": "transition", "to": "active" }],
+      "更新の成功": [{ "kind": "noop" }],
+      "再認可が必要な更新の失敗": [{ "kind": "transition", "to": "reauthorization_required" }],
+      "解除": [{ "kind": "transition", "to": "removed" }],
+      "代理実行": [{ "kind": "noop" }]
+    },
+    "reauthorization_required": {
+      "再連携": [{ "kind": "transition", "to": "active" }],
+      "更新の成功": [{ "kind": "noop" }],
+      "再認可が必要な更新の失敗": [{ "kind": "noop" }],
+      "解除": [{ "kind": "transition", "to": "removed" }],
+      "代理実行": [{ "kind": "refusal", "response": "409 connection_reauthorization_required" }]
+    },
+    "removed": {
+      "再連携": [{ "kind": "noop", "condition": "新しい行を作る" }],
+      "更新の成功": [{ "kind": "noop" }],
+      "再認可が必要な更新の失敗": [{ "kind": "noop" }],
+      "解除": [{ "kind": "refusal", "response": "404 connection_not_found" }],
+      "代理実行": [{ "kind": "refusal", "response": "404 connection_not_found" }]
+    }
+  }
+}

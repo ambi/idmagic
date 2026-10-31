@@ -41,6 +41,8 @@ enum ApiTokenScope {
   wsfed_write: "wsfed:write",
   provisioning_read: "provisioning:read",
   provisioning_write: "provisioning:write",
+  connectors_read: "connectors:read",
+  connectors_write: "connectors:write",
   workload_identity_read: "workload-identity:read",
   workload_identity_write: "workload-identity:write",
   shared_signals_read: "shared-signals:read",

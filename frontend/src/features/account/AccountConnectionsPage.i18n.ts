@@ -1,0 +1,48 @@
+import { defineDictionary } from '../../lib/i18n'
+
+export const accountConnectionsDictionary = defineDictionary(
+  {
+    title: '外部サービス',
+    description:
+      'エージェントがあなたに代わって使える外部サービスを連携します。解除すると、次の呼び出しから使えなくなります。',
+    empty: '連携できる外部サービスはありません。',
+    link: '連携',
+    relink: '再連携',
+    unlink: '解除',
+    statusActive: '連携済み',
+    statusReauthorization: '再連携が必要',
+    statusNotLinked: '未連携',
+    connectorDisabled: '管理者が停止中',
+    scopes: 'スコープ',
+    lastUsed: '最終利用',
+    neverUsed: '未使用',
+    unlinkedNotice: '連携を解除しました。',
+    genericError: '操作を完了できませんでした。',
+    resultLinked: '外部サービスを連携しました。',
+    resultInvalidState: '連携を確認できませんでした。もう一度やり直してください。',
+    resultDenied: '外部サービスが連携を許可しませんでした。',
+    resultExchangeFailed: '外部サービスとの連携に失敗しました。',
+  },
+  {
+    title: 'External services',
+    description:
+      'Link external services that agents can use on your behalf. Unlinking stops access from the next call.',
+    empty: 'No external services are available.',
+    link: 'Link',
+    relink: 'Link again',
+    unlink: 'Unlink',
+    statusActive: 'Linked',
+    statusReauthorization: 'Needs linking again',
+    statusNotLinked: 'Not linked',
+    connectorDisabled: 'Stopped by an administrator',
+    scopes: 'Scopes',
+    lastUsed: 'Last used',
+    neverUsed: 'Never',
+    unlinkedNotice: 'The service was unlinked.',
+    genericError: 'The action could not be completed.',
+    resultLinked: 'The external service was linked.',
+    resultInvalidState: 'The link could not be verified. Try again.',
+    resultDenied: 'The external service did not allow the link.',
+    resultExchangeFailed: 'Linking with the external service failed.',
+  },
+)

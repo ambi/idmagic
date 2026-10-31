@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：195
+経路の数：202
 
 | 経路 | メソッド |
 | --- | --- |
@@ -104,6 +104,9 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/account/v1/sessions/{id}/revoke` | POST |
 | `/api/account/v1/signin-activity` | GET |
 | `/api/account/v1/summary` | GET |
+| `/api/account/v1/token-vault/connections` | GET |
+| `/api/account/v1/token-vault/connections/{connector_id}` | DELETE |
+| `/api/account/v1/token-vault/connections/{connector_id}/authorize` | POST |
 | `/api/account/v1/trusted-devices` | GET |
 | `/api/account/v1/trusted-devices/revoke-all` | POST |
 | `/api/account/v1/trusted-devices/{id}/revoke` | POST |
@@ -229,6 +232,8 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/tenants/{target_tenant_id}/enable` | POST |
 | `/api/admin/v1/tenants/{target_tenant_id}/endpoint-style` | PUT |
 | `/api/admin/v1/tenants/{target_tenant_id}/quota` | PUT |
+| `/api/admin/v1/token-vault/connectors` | GET, POST |
+| `/api/admin/v1/token-vault/connectors/{id}` | DELETE, GET, PATCH |
 | `/api/admin/v1/users` | GET, POST |
 | `/api/admin/v1/users/{sub}` | DELETE, GET, PATCH |
 | `/api/admin/v1/users/{sub}/authenticator-reset` | POST |
@@ -254,6 +259,8 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/refresh` | POST |
 | `/api/admin/v1/wsfed/entra-federation` | POST |
 | `/api/admin/v1/wsfed/relying-parties` | DELETE, GET, POST |
+| `/api/token-vault/v1/callback/{connector_id}` | GET |
+| `/api/token-vault/v1/connectors/{connector_id}/execute` | POST |
 | `/application-icons/{application_id}/{id}` | GET |
 | `/directory-connector/v1/enrollment` | POST |
 | `/directory-connector/v1/heartbeat` | POST |

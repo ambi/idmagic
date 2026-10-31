@@ -50,6 +50,8 @@ const (
 	ScopeWsFedWrite                    Scope = "wsfed:write"
 	ScopeProvisioningRead              Scope = "provisioning:read"
 	ScopeProvisioningWrite             Scope = "provisioning:write"
+	ScopeConnectorsRead                Scope = "connectors:read"
+	ScopeConnectorsWrite               Scope = "connectors:write"
 	ScopeScimUsersRead                 Scope = "scim:users:read"
 	ScopeScimUsersWrite                Scope = "scim:users:write"
 	ScopeScimGroupsRead                Scope = "scim:groups:read"
@@ -73,7 +75,7 @@ var validScopes = map[Scope]struct{}{
 	ScopeAuthorizationDetailTypesRead: {}, ScopeAuthorizationDetailTypesWrite: {},
 	ScopeMcpResourceServersRead: {}, ScopeMcpResourceServersWrite: {}, ScopeSamlRead: {},
 	ScopeSamlWrite: {}, ScopeWsFedRead: {}, ScopeWsFedWrite: {}, ScopeProvisioningRead: {},
-	ScopeProvisioningWrite: {}, ScopeScimUsersRead: {},
+	ScopeProvisioningWrite: {}, ScopeConnectorsRead: {}, ScopeConnectorsWrite: {}, ScopeScimUsersRead: {},
 	ScopeScimUsersWrite: {}, ScopeScimGroupsRead: {}, ScopeScimGroupsWrite: {},
 	ScopeAccountRead: {}, ScopeAccountWrite: {}, ScopeAccountMFAWrite: {},
 	ScopeAccountSessionsWrite: {}, ScopeAccountConsentsWrite: {}, ScopeAccountPasswordWrite: {},

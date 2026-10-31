@@ -1230,6 +1230,7 @@ CREATE TABLE api_tokens (
             'saml:read', 'saml:write',
             'wsfed:read', 'wsfed:write',
             'provisioning:read', 'provisioning:write',
+            'connectors:read', 'connectors:write',
             'scim:users:read', 'scim:users:write',
             'scim:groups:read', 'scim:groups:write',
             'account:read', 'account:write',
@@ -1535,6 +1536,80 @@ CREATE TABLE lifecycle_workflow_steps (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (run_id, step_index),
     CONSTRAINT lifecycle_workflow_steps_run_fkey FOREIGN KEY (run_id) REFERENCES lifecycle_workflow_runs(id) ON DELETE CASCADE
+);
+
+CREATE TABLE token_vault_connectors (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
+    authorization_endpoint TEXT NOT NULL,
+    token_endpoint TEXT NOT NULL,
+    revocation_endpoint TEXT NOT NULL DEFAULT '',
+    client_id TEXT NOT NULL,
+    token_endpoint_auth_method TEXT NOT NULL
+        CHECK (token_endpoint_auth_method IN ('client_secret_basic', 'client_secret_post')),
+    secret_key_version INTEGER NOT NULL,
+    secret_ciphertext BYTEA NOT NULL,
+    allowed_scopes JSONB NOT NULL,
+    rules JSONB NOT NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT token_vault_connectors_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    CONSTRAINT token_vault_connectors_tenant_name_key UNIQUE (tenant_id, name),
+    CONSTRAINT token_vault_connectors_tenant_id_id_key UNIQUE (tenant_id, id)
+);
+
+CREATE TABLE token_vault_connections (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    connector_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('active', 'reauthorization_required')),
+    granted_scopes JSONB NOT NULL,
+    -- 保存の版は同じ DEK で 2 項目を暗号化するので 1 列で足りる。トークンを消した行は NULL である。
+    token_key_version INTEGER,
+    access_token_ciphertext BYTEA,
+    refresh_token_ciphertext BYTEA,
+    expires_at TIMESTAMPTZ,
+    token_version BIGINT NOT NULL DEFAULT 1,
+    refresh_lease_until TIMESTAMPTZ,
+    last_used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT token_vault_connections_connector_fkey
+        FOREIGN KEY (tenant_id, connector_id) REFERENCES token_vault_connectors(tenant_id, id) ON DELETE CASCADE,
+    CONSTRAINT token_vault_connections_user_fkey
+        FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE,
+    CONSTRAINT token_vault_connections_owner_key UNIQUE (tenant_id, connector_id, user_id),
+    -- 再認可を待つ行にトークンを残さない。
+    CONSTRAINT token_vault_connections_tokens_check
+        CHECK (status = 'active' AND access_token_ciphertext IS NOT NULL AND token_key_version IS NOT NULL
+            OR status = 'reauthorization_required' AND access_token_ciphertext IS NULL
+                AND refresh_token_ciphertext IS NULL AND token_key_version IS NULL)
+);
+
+CREATE INDEX token_vault_connections_user_idx ON token_vault_connections (tenant_id, user_id);
+CREATE INDEX token_vault_connections_key_version_idx ON token_vault_connections (tenant_id, token_key_version);
+
+CREATE TABLE token_vault_attempts (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    connector_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    state_hash BYTEA NOT NULL,
+    verifier_key_version INTEGER NOT NULL,
+    verifier_ciphertext BYTEA NOT NULL,
+    requested_scopes JSONB NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT token_vault_attempts_connector_fkey
+        FOREIGN KEY (tenant_id, connector_id) REFERENCES token_vault_connectors(tenant_id, id) ON DELETE CASCADE,
+    CONSTRAINT token_vault_attempts_user_fkey
+        FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE,
+    CONSTRAINT token_vault_attempts_owner_key UNIQUE (tenant_id, connector_id, user_id),
+    CONSTRAINT token_vault_attempts_state_key UNIQUE (tenant_id, state_hash)
 );
 
 CREATE TABLE provisioning_connections (

@@ -37,6 +37,7 @@ import (
 	"github.com/ambi/idmagic/backend/saml"
 	"github.com/ambi/idmagic/backend/shared/http/server_http/applicationdeps"
 	"github.com/ambi/idmagic/backend/shared/http/server_http/sourcingdeps"
+	"github.com/ambi/idmagic/backend/tokenvault"
 
 	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -119,6 +120,7 @@ type Deps struct {
 	ApiTokens        apitoken.Module
 	Jobs             jobs.Module
 	Provisioning     provisioning.Module
+	TokenVault       tokenvault.Module
 	WorkloadIdentity workloadidentity.Module
 	SharedSignals    sharedsignals.Module
 	AccessControl    accesscontrol.Module
@@ -536,6 +538,11 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		d.OAuth2.ClientAssertionReplayStore)
 
 	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo, d.IdManagement.GroupRepo)
+
+	d.TokenVault.Register(g, d.Deps, authenticator, d.OAuth2.RevocationCheckedTokens(
+		d.IdManagement.AgentRepo, d.SharedSignals.RevocationEpochRepo,
+		d.IdManagement.UserRepo, d.SharedSignals.UserRevocationEpochRepo,
+	), d.OAuth2.DpopReplayStore)
 }
 
 // accountConsentExport は、同意の保存型を本人データに含める表示値へ写す。

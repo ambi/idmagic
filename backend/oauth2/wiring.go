@@ -180,6 +180,24 @@ func (m Module) ResourceAccessTokens(
 	}
 }
 
+// RevocationCheckedTokens は、/introspect と同じ失効の判定を重ねたイントロスペクションを返す。
+// クレームを読むリソースが、判定を写さずに同じ規則を使うための入口である。
+func (m Module) RevocationCheckedTokens(
+	agents agentports.AgentRepository, epochs ssports.AgentRevocationEpochRepository,
+	users userports.UserRepository, userEpochs ssports.UserRevocationEpochRepository,
+) oauthports.TokenIntrospector {
+	return tokenusecases.RevocationCheckingIntrospector{Deps: tokenusecases.IntrospectDeps{
+		Introspector:        m.TokenIntrospector,
+		AccessTokenDenylist: m.AccessTokenDenylist,
+		AgentRepo:           agents,
+		RevocationEpochRepo: epochs,
+		Consents:            m.ConsentRepo,
+		Clients:             m.ClientRepo,
+		Users:               users,
+		UserEpochs:          userEpochs,
+	}}
+}
+
 func (m Module) httpDeps(d RouteDeps) oauth2http.Deps {
 	return oauth2http.Deps{
 		Deps:                        d.Deps,

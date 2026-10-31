@@ -33,6 +33,8 @@ import "./modules/seeding/models.tsp";
 import "./modules/seeding/main.tsp";
 import "./modules/provisioning/models.tsp";
 import "./modules/provisioning/main.tsp";
+import "./modules/token-vault/models.tsp";
+import "./modules/token-vault/main.tsp";
 import "./modules/sourcing/models.tsp";
 import "./modules/sourcing/main.tsp";
 import "./modules/identity-governance/models.tsp";

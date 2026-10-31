@@ -8,9 +8,9 @@ import {
   IconLayoutDashboard,
   IconListCheck,
   IconNetwork,
-  IconPlugConnected,
   IconRobot,
   IconSettings,
+  IconPlugConnected,
   IconShieldLock,
   IconUsersGroup,
   IconUserShield,
@@ -37,6 +37,7 @@ export type AdminNavKey =
   | 'mcp-resource-servers'
   | 'workload-identity'
   | 'consents'
+  | 'token-vault'
   | 'audit-events'
   | 'jobs'
   | 'keys'
@@ -110,6 +111,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
       icon: IconCloudUpload,
       href: tenantURL('/admin/provisioning'),
       active: active === 'provisioning',
+    },
+    {
+      key: 'token-vault',
+      label: t.tokenVault,
+      icon: IconPlugConnected,
+      href: tenantURL('/admin/token-vault'),
+      active: active === 'token-vault',
     },
     {
       key: 'sign-in-policy',

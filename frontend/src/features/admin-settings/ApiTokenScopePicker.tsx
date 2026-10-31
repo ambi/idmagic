@@ -51,6 +51,7 @@ const managementResources: ScopeResource[] = [
   resource('samlScopeResourceLabel', 'saml:read', 'saml:write'),
   resource('wsfedScopeResourceLabel', 'wsfed:read', 'wsfed:write'),
   resource('provisioningScopeResourceLabel', 'provisioning:read', 'provisioning:write'),
+  resource('connectorsScopeResourceLabel', 'connectors:read', 'connectors:write'),
 ]
 
 const scopeGroups: ScopeGroup[] = [

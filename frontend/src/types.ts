@@ -1268,6 +1268,8 @@ export type ApiTokenScope =
   | 'wsfed:write'
   | 'provisioning:read'
   | 'provisioning:write'
+  | 'connectors:read'
+  | 'connectors:write'
   | 'scim:users:read'
   | 'scim:users:write'
   | 'scim:groups:read'
@@ -1320,5 +1322,53 @@ export type AdminAgentDelegation = {
   granted_at: string
   expires_at: string
   revoked_at?: string
+  last_used_at?: string
+}
+
+export type TokenVaultConnectorStatus = 'active' | 'disabled'
+export type TokenVaultConnectionStatus = 'active' | 'reauthorization_required'
+
+export type TokenVaultExecutionRule = {
+  id: string
+  method: string
+  origin: string
+  path_prefix: string
+  required_scopes: string[]
+}
+
+export type TokenVaultConnector = {
+  id: string
+  tenant_id: string
+  name: string
+  status: TokenVaultConnectorStatus
+  authorization_endpoint: string
+  token_endpoint: string
+  revocation_endpoint?: string
+  client_id: string
+  token_endpoint_auth_method: 'client_secret_basic' | 'client_secret_post'
+  client_secret_configured: boolean
+  allowed_scopes: string[]
+  rules: TokenVaultExecutionRule[]
+  created_at: string
+  updated_at: string
+}
+
+export type TokenVaultConnectorCreateInput = {
+  name: string
+  authorization_endpoint: string
+  token_endpoint: string
+  revocation_endpoint?: string
+  client_id: string
+  client_secret: string
+  allowed_scopes: string[]
+  rules: TokenVaultExecutionRule[]
+}
+
+export type TokenVaultMyConnection = {
+  connector_id: string
+  connector_name: string
+  connector_status: TokenVaultConnectorStatus
+  status?: TokenVaultConnectionStatus
+  granted_scopes: string[]
   last_used_at?: string
 }

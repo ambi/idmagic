@@ -207,6 +207,11 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-071 | Information disclosure | ジョブの入出力に混ざった個人データやシークレットが管理 API から出る | Jobs | REQ-JOBS-014、contexts/jobs/decisions.md | `covered` |
 | THREAT-072 | Denial of service | 下流の障害が実行枠を占有し、同じレーンの他の非同期処理を止める | Jobs, Provisioning | REQ-JOBS-005、REQ-JOBS-009 | `planned` |
 
+| THREAT-092 | Information disclosure | Agent が代理実行を通じて上流のトークンを読み出す | TokenVault | REQ-TOKENVAULT-008、REQ-TOKENVAULT-011、REQ-TOKENVAULT-015 | `covered` |
+| THREAT-093 | Elevation of privilege | 代理実行で内部のアドレスやリダイレクト先へトークンを送らせる | TokenVault | REQ-TOKENVAULT-009、REQ-TOKENVAULT-010 | `covered` |
+| THREAT-094 | Spoofing | 攻撃者の上流アカウントを被害者の接続へ結ぶ | TokenVault | REQ-TOKENVAULT-004、REQ-TOKENVAULT-005 | `covered` |
+| THREAT-095 | Denial of service | 回転する更新トークンの競合で接続を壊す | TokenVault | REQ-TOKENVAULT-012、REQ-TOKENVAULT-013 | `covered` |
+
 ## 永続化と非同期実行
 
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |

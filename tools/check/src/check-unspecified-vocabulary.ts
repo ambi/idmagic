@@ -39,6 +39,7 @@ const MODULES = [
   { module: 'signing-keys', backend: 'backend/signingkeys' },
   { module: 'sourcing', backend: 'backend/sourcing' },
   { module: 'system', backend: 'backend/shared/spec' },
+  { module: 'token-vault', backend: 'backend/tokenvault' },
   { module: 'workloadidentity', backend: 'backend/workloadidentity' },
   { module: 'ws-federation', backend: 'backend/wsfederation' },
 ]

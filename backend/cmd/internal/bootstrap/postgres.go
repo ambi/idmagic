@@ -19,6 +19,7 @@ import (
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/provisioning"
+	"github.com/ambi/idmagic/backend/tokenvault"
 
 	"github.com/ambi/idmagic/backend/saml"
 
@@ -101,6 +102,10 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	})
 	assignmentRepo := applicationModule.AssignmentRepo
 	provisioningModule := provisioning.NewPostgresModule(resilientDB)
+	tokenVaultModule := tokenvault.NewPostgresModule(resilientDB, dataKeysModule.FieldCipher())
+	tokenVaultModule.RegisterFieldMigrators(func(name string, migrator tokenvault.FieldMigrator) {
+		dataKeysModule.Migrators.Register(name, migrator)
+	})
 	// CIMD の解決のイベントの発行先は NewEmitFunc の後で cmd/idmagic/server.go が結ぶ。
 	oauth2Module := oauth2.NewPostgresModule(resilientDB).WithClientMetadataDocuments()
 	oauth2Module.EventSink = sinks_console.NewConsoleSink()
@@ -130,6 +135,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		Application:      applicationModule,
 		SignInPolicy:     signinpolicy.NewPostgresModule(resilientDB),
 		Provisioning:     provisioningModule,
+		TokenVault:       tokenVaultModule,
 		WorkloadIdentity: workloadidentity.NewPostgresModule(resilientDB),
 		SharedSignals:    sharedsignals.NewPostgresModule(resilientDB).WithDeliveryEndpointCheck(),
 		AccessControl:    accesscontrol.NewPostgresModule(resilientDB),

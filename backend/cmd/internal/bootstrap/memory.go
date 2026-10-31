@@ -18,6 +18,7 @@ import (
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/provisioning"
+	"github.com/ambi/idmagic/backend/tokenvault"
 
 	"github.com/ambi/idmagic/backend/saml"
 
@@ -87,6 +88,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		Application:      applicationModule,
 		SignInPolicy:     signinpolicy.NewMemoryModule(),
 		Provisioning:     provisioningModule,
+		TokenVault:       tokenvault.NewMemoryModule(),
 		WorkloadIdentity: workloadidentity.NewMemoryModule(),
 		SharedSignals:    sharedSignalsModule,
 		AccessControl:    accesscontrol.NewMemoryModule(),

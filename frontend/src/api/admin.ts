@@ -75,6 +75,9 @@ import type {
   WorkloadTrustBundle,
   WorkloadTrustBundleRefreshResult,
   AgentWorkloadBinding,
+  TokenVaultConnector,
+  TokenVaultConnectorCreateInput,
+  TokenVaultConnectorStatus,
 } from '../types'
 import {
   authenticationAPIError,
@@ -2267,4 +2270,34 @@ export async function listAdminTenantProvisioningConnections(): Promise<Provisio
       '/api/admin/v1/provisioning/connections',
     )
   ).connections
+}
+
+export async function listTokenVaultConnectors(): Promise<TokenVaultConnector[]> {
+  return (await request<{ items: TokenVaultConnector[] }>('/api/admin/v1/token-vault/connectors'))
+    .items
+}
+
+export async function createTokenVaultConnector(
+  csrfToken: string,
+  input: TokenVaultConnectorCreateInput,
+): Promise<TokenVaultConnector> {
+  return request('/api/admin/v1/token-vault/connectors', adminRequest(csrfToken, 'POST', input))
+}
+
+export async function setTokenVaultConnectorStatus(
+  csrfToken: string,
+  id: string,
+  status: TokenVaultConnectorStatus,
+): Promise<TokenVaultConnector> {
+  return request(
+    `/api/admin/v1/token-vault/connectors/${encodeURIComponent(id)}`,
+    adminRequest(csrfToken, 'PATCH', { status }),
+  )
+}
+
+export async function deleteTokenVaultConnector(csrfToken: string, id: string): Promise<void> {
+  await request(
+    `/api/admin/v1/token-vault/connectors/${encodeURIComponent(id)}`,
+    adminRequest(csrfToken, 'DELETE'),
+  )
 }

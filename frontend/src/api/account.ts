@@ -9,6 +9,7 @@ import type {
   DelegableAgent,
   MyApplication,
   PortalCategory,
+  TokenVaultMyConnection,
   TotpEnrollmentStart,
 } from '../types'
 import { adminRequest, AuthenticationAPIError, request, responseAPIError, tenantURL } from './core'
@@ -500,4 +501,31 @@ export async function revokeAccountAgentDelegation(
   )
   if (response.status === 204) return
   throw await responseAPIError(response)
+}
+
+export async function listMyTokenVaultConnections(): Promise<TokenVaultMyConnection[]> {
+  return (
+    await request<{ items: TokenVaultMyConnection[] }>('/api/account/v1/token-vault/connections')
+  ).items
+}
+
+export async function authorizeMyTokenVaultConnection(
+  csrfToken: string,
+  connectorId: string,
+): Promise<string> {
+  const response = await request<{ authorization_url: string }>(
+    `/api/account/v1/token-vault/connections/${encodeURIComponent(connectorId)}/authorize`,
+    adminRequest(csrfToken, 'POST', {}),
+  )
+  return response.authorization_url
+}
+
+export async function unlinkMyTokenVaultConnection(
+  csrfToken: string,
+  connectorId: string,
+): Promise<void> {
+  await request(
+    `/api/account/v1/token-vault/connections/${encodeURIComponent(connectorId)}`,
+    adminRequest(csrfToken, 'DELETE'),
+  )
 }
