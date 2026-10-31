@@ -49,6 +49,10 @@ func LoadAPIConfig(l *ConfigLoader) APIConfig {
 	cfg.NegotiateConfigFile = l.String("NEGOTIATE_CONFIG_FILE", "")
 
 	cfg.RateLimits = rlports.RateLimitConfigs{
+		"resource_access": {
+			MaxRequests:   l.PositiveInt("RATE_LIMIT_RESOURCE_ACCESS_MAX_REQUESTS", 100),
+			WindowSeconds: l.PositiveInt("RATE_LIMIT_RESOURCE_ACCESS_WINDOW_SECONDS", 1),
+		},
 		"token": {
 			MaxRequests:   l.PositiveInt("RATE_LIMIT_TOKEN_MAX_REQUESTS", 60),
 			WindowSeconds: l.PositiveInt("RATE_LIMIT_TOKEN_WINDOW_SECONDS", 60),

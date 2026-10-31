@@ -12,7 +12,8 @@
 | 仮定値 | 構成を算出するための未実測の入力値であり、達成済みであることを示さない |
 | 実測値 | 日付、ソースのバージョン、実行環境、データ分布、負荷構成、試験時間、結果の保存先を伴う再現可能な実測値 |
 
-現時点で実測値はない。
+リソースアクセス評価の局所測定は[性能設計](../design/performance/scaling.md#リソースアクセス評価の局所測定の結果)に記録する。
+それ以外のサービス目標と本番のキャパシティ受入れについては実測値がない。
 ステージングでの測定も、まだ行っていない。
 
 ## 測定境界
@@ -42,6 +43,7 @@ API のメトリクス収集対象が区分を通じて一つ以上利用可能�
 | SLO-PAR-LATENCY | `POST /par` | p99 ≤ 200 ms | `http_request_duration_seconds` |
 | SLO-TOKEN-LATENCY | `POST /token` | p99 ≤ 300 ms | `http_request_duration_seconds` |
 | SLO-INTROSPECT-LATENCY | `POST /introspect` | p99 ≤ 50 ms | `http_request_duration_seconds` |
+| SLO-RESOURCE-ACCESS-LATENCY | `POST /resource-access/evaluate` | p99 ≤ 100 ms | `http_request_duration_seconds` |
 | SLO-REVOKE-LATENCY | `POST /revoke` | p99 ≤ 100 ms | `http_request_duration_seconds` |
 | SLO-USERINFO-LATENCY | `GET` と `POST /userinfo` | p99 ≤ 100 ms | `http_request_duration_seconds` |
 | SLO-DISCOVERY-LATENCY | OIDC Discovery と OAuth Authorization Server Metadata | p99 ≤ 20 ms | `http_request_duration_seconds` |
@@ -71,6 +73,15 @@ SAML IdP、管理 API、SCIM、監査、ワーカー、バッチの数値目標�
 | CAP-INTROSPECT-THROUGHPUT | `POST /introspect` | 20,000 rps | SLO-INTROSPECT-LATENCY と SLO-LOOKUP-ERRORS |
 
 流量制限で返した 429 は非 5xx 比率には含むが、Required rate の処理済み要求には数えない。
+
+## リソースアクセス評価の局所測定
+
+| ID | 母集団と条件 | 目標 |
+| --- | --- | --- |
+| CAP-RESOURCE-ACCESS-THROUGHPUT | 同一プロセスの正式な HTTP ルート。メモリと PostgreSQL の両構成で、一クライアント、並行数 8、64 件のウォームアップ後の 2,048 件を測る。直接関係と深さ 4、Bearer と DPoP、失効済みトークンを個別に測る | 各条件で 500 件/秒以上、SLO-RESOURCE-ACCESS-LATENCY を満たし、期待する許可または拒否を全件返す |
+
+この目標は局所的な性能劣化の判断に使う。
+ソケット、TLS、ネットワーク、混合負荷と本番規模のデータは含めず、上記のキャパシティ受入れや 30 日の SLO 達成の証拠にはしない。
 
 ## 復旧目標
 

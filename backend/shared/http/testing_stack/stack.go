@@ -451,6 +451,11 @@ func WithEndpointRateLimitReached(policy, key string) Option {
 	}
 }
 
+// WithRateLimiter は実物のカウンターまたは到達不能のストアを、正式な HTTP 経路へ配線する。
+func WithRateLimiter(limiter rlports.RateLimiter) Option {
+	return func(b *builder) { b.deps.RateLimiter = limiter }
+}
+
 // WithApiTokens は管理発行の API アクセストークンを配線する。
 //
 // `OAuth2.TokenIntrospector` へ渡すのは生の署名検証器ではなく、管理発行トークンの

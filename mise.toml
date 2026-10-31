@@ -420,6 +420,16 @@ test "$#" -ge 2 || { echo "usage: mise run benchmark-go-package -- <package> <be
 go test "$1" -run '^$' -bench "$2" -benchmem -count "${3:-5}"
 '''
 
+[tasks.measure-resource-access]
+description = "Measure resource access evaluation with memory and PostgreSQL adapters"
+run = '''
+#!/usr/bin/env sh
+set -eu
+mkdir -p .verification
+go test ./backend/cmd/internal/bootstrap -run '^TestResourceAccessConfiguredBudgetReachesHTTP$' -bench '^BenchmarkResourceAccessLoad$' -benchtime=1x -count=1 -json "$@" > .verification/resource-access-load.jsonl
+jq -r 'select(.Action == "output") | .Output // empty' .verification/resource-access-load.jsonl
+'''
+
 [tasks.seed]
 description = "Plan or apply an explicit environment seed"
 run = '''

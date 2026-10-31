@@ -48,6 +48,13 @@
 - 認証したクライアントに束縛した `Active` の登録がない場合、OAuth2 は、403 と `access_denied` で拒否する。
 - REQ-OAUTH2-065 の操作でないものを許可したとき、OAuth2 は、応答と `ResourceAccessEvaluated` に承認の相関を含めない。
 - `token`、`resource_type`、`resource_id`、`relation` のどれかがない場合、OAuth2 は、400 と `invalid_request` で拒否する。
+- クライアントの認証と入力の検査を通る評価を受けたとき、OAuth2 は、テナントと認証したクライアント ID の組ごとに、`resource_access` ポリシーの固定窓の回数を数え、上限までは評価を続ける。
+- 同じ窓の上限を超えた場合、OAuth2 は、評価せずに 429 と `rate_limited`、`Cache-Control: no-store`、窓の残り秒数を切り上げた同じ値の `Retry-After` と `retry_after_seconds` を返す。
+- 要求元の IP、提示トークン、資源、操作が変わっても認証したクライアントが同じ場合、OAuth2 は、同じ予算を使い、許可と不許可の両方を数える。
+- 制限の設定が省略されているとき、OAuth2 は、一クライアント当たり 1 秒の固定窓で 100 回を上限にし、運用者が API プロセスの `RATE_LIMIT_RESOURCE_ACCESS_MAX_REQUESTS` と `RATE_LIMIT_RESOURCE_ACCESS_WINDOW_SECONDS` で正の整数へ変更できるようにする。
+- 共有カウンターを読み書きできない場合、OAuth2 は、評価せずに 429 と `rate_limited`、`Cache-Control: no-store`、30 秒の `Retry-After` と `retry_after_seconds` を返す。
+- レートリミッターが配線されていない場合、OAuth2 は、503 と `temporarily_unavailable` を返し、評価しない。
+- 流量制限で評価しない場合、OAuth2 は、`ResourceAccessEvaluated` を発行せず、DPoP の証明と承認の使用権を消費しない。
 - トークンの状態、失効、関係のストア、提示の証明のリプレイ記録を読めない場合、OAuth2 は、503 と `temporarily_unavailable` を返し、許可しない。
 - **判断**：トークンの拒否の理由を語り分けない。リソースサーバーは拒否の種類で動作を変える必要がなく、語り分けると別の資源宛てのトークンの有効性を知らせることになる。
 - **判断**：応答を再利用させない。停止の保証を「次の評価から不許可」とするためであり、評価の後に確定した業務操作は取り消さない。
@@ -92,6 +99,11 @@ IdMagic は実行の結果を持たず、この冪等性のないリソースサ
 - 使用権の記録を読み書きできない場合、OAuth2 は、503 と `temporarily_unavailable` を返し、許可しない。
 - **判断**：短い予約と確定を採らない。予約の期限が切れた後の再試行は、結果の不明な一回目と二重に実行され得る。同じ鍵の再送だけを許し、重複の排除をその鍵で資源へ委ねる。
 - **判断**：使用の期限をトークンの期限で延ばさない。人が判断した有効期間を超えて操作を実行させないためである。
+
+## 品質
+
+評価の応答時間は [SLO-RESOURCE-ACCESS-LATENCY](../../../requirements/quality.md#サービス目標) に従う。
+処理量の局所測定は [CAP-RESOURCE-ACCESS-THROUGHPUT](../../../requirements/quality.md#リソースアクセス評価の局所測定) に従い、本番のキャパシティ受入れとは区別する。
 
 ## セキュリティ上の考慮
 

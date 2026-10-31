@@ -23,6 +23,31 @@ func TestLoadAPIConfigDefaults(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-OAUTH2-062: 評価予算の既定値と明示的な設定、正でない値の起動時の拒否
+func TestResourceAccessRateLimitConfiguration(t *testing.T) {
+	t.Parallel()
+	defaults := NewConfigLoader(stubEnv(nil))
+	policy := LoadAPIConfig(defaults).RateLimits["resource_access"]
+	if defaults.Err() != nil || policy.MaxRequests != 100 || policy.WindowSeconds != 1 {
+		t.Fatalf("既定の予算: %+v err=%v", policy, defaults.Err())
+	}
+	settings := map[string]string{"RATE_LIMIT_RESOURCE_ACCESS_MAX_REQUESTS": "2", "RATE_LIMIT_RESOURCE_ACCESS_WINDOW_SECONDS": "60"}
+	loader := NewConfigLoader(stubEnv(settings))
+	policy = LoadAPIConfig(loader).RateLimits["resource_access"]
+	if loader.Err() != nil || policy.MaxRequests != 2 || policy.WindowSeconds != 60 {
+		t.Fatalf("設定の予算: %+v err=%v", policy, loader.Err())
+	}
+	for _, key := range []string{"RATE_LIMIT_RESOURCE_ACCESS_MAX_REQUESTS", "RATE_LIMIT_RESOURCE_ACCESS_WINDOW_SECONDS"} {
+		for _, value := range []string{"0", "-1", "invalid"} {
+			l := NewConfigLoader(stubEnv(map[string]string{key: value}))
+			LoadAPIConfig(l)
+			if err := l.Err(); err == nil || !strings.Contains(err.Error(), key) {
+				t.Fatalf("%s=%s: err=%v", key, value, err)
+			}
+		}
+	}
+}
+
 // TestLoadAPIConfigRejectsMalformedTrustedForwardedHops guards the exact
 // scenario named in wi-103's motivation: a typo'd TRUSTED_FORWARDED_HOPS
 // used to silently keep the default (0, trust nothing) instead of failing

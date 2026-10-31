@@ -125,6 +125,8 @@ var configFieldDescriptions = map[string]string{
 	"HSTS_INCLUDE_SUBDOMAINS": "Strict-Transport-Security に includeSubDomains を付ける。",
 
 	"RATE_LIMIT_TOKEN_MAX_REQUESTS":                        "`/token` の固定ウィンドウの上限。client_id と IP ごとに数える。",
+	"RATE_LIMIT_RESOURCE_ACCESS_MAX_REQUESTS":              "`/resource-access/evaluate` の固定窓の上限。テナントと認証したクライアント ID ごとに数える。",
+	"RATE_LIMIT_RESOURCE_ACCESS_WINDOW_SECONDS":            "`/resource-access/evaluate` の固定窓の長さ（秒）。",
 	"RATE_LIMIT_TOKEN_WINDOW_SECONDS":                      "`/token` の上限のウィンドウの長さ。",
 	"RATE_LIMIT_AUTHORIZE_MAX_REQUESTS":                    "`/authorize` の固定ウィンドウの上限。IP と client_id ごとに数える。",
 	"RATE_LIMIT_AUTHORIZE_WINDOW_SECONDS":                  "`/authorize` の上限のウィンドウの長さ。",

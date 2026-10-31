@@ -23,6 +23,8 @@ func TestImportsOnlyTheStandardLibrary(t *testing.T) {
 }
 
 // Every outcome other than decision=true must leave the wrapped handler uncalled.
+//
+//spec:covers REQ-OAUTH2-062: 429 を含む非 200 で業務処理を呼ばず、自動再送もしない
 func TestProtectRunsTheHandlerOnlyOnAnExplicitPermit(t *testing.T) {
 	cases := []struct {
 		name          string
@@ -37,15 +39,18 @@ func TestProtectRunsTheHandlerOnlyOnAnExplicitPermit(t *testing.T) {
 		{"missing decision", http.StatusOK, `{}`, "Bearer t", http.StatusForbidden, 0},
 		{"malformed body", http.StatusOK, `{`, "Bearer t", http.StatusServiceUnavailable, 0},
 		{"unavailable", http.StatusServiceUnavailable, `{"decision":true}`, "Bearer t", http.StatusServiceUnavailable, 0},
+		{"rate limited", http.StatusTooManyRequests, `{"decision":true,"retry_after_seconds":30}`, "Bearer t", http.StatusServiceUnavailable, 0},
 		{"unbound", http.StatusForbidden, `{"decision":true}`, "Bearer t", http.StatusServiceUnavailable, 0},
 		{"no token", http.StatusOK, `{"decision":true}`, "", http.StatusForbidden, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			effects := 0
+			calls := 0
 			handler := Enforcer{
 				EvaluateURL: "http://evaluator.test/resource-access/evaluate",
 				HTTPClient: &http.Client{Transport: roundTrip(func(*http.Request) (*http.Response, error) {
+					calls++
 					recorder := httptest.NewRecorder()
 					recorder.WriteHeader(tc.status)
 					_, _ = recorder.WriteString(tc.body)
@@ -62,6 +67,13 @@ func TestProtectRunsTheHandlerOnlyOnAnExplicitPermit(t *testing.T) {
 			handler.ServeHTTP(recorder, request)
 			if recorder.Code != tc.want || effects != tc.effects {
 				t.Fatalf("status=%d effects=%d, want %d %d", recorder.Code, effects, tc.want, tc.effects)
+			}
+			wantCalls := 1
+			if tc.authorization == "" {
+				wantCalls = 0
+			}
+			if calls != wantCalls {
+				t.Fatalf("evaluation calls=%d, want %d", calls, wantCalls)
 			}
 		})
 	}

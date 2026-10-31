@@ -508,6 +508,15 @@ model EvaluateResourceAccessError503 {
   @body body: IdMagic.Contract.TemporarilyUnavailableError;
 }
 
+model EvaluateResourceAccessError429 {
+  @statusCode statusCode: 429;
+  @header contentType: "application/json";
+  @header cacheControl: "no-store";
+  @doc("本文の retry_after_seconds と同じ再試行待ち時間（秒）。")
+  @header("Retry-After") retryAfter: int32;
+  @body body: IdMagic.Contract.RateLimitedError;
+}
+
 @doc("登録したリソースサーバーが、提示されたトークンで自身の資源への操作を実行してよいかを評価する。主体と行為者はトークンから導き、本文の申告を使わない。`decision` が `true` でなければ、どの応答でも業務処理を実行してはならない。")
 @TypeSpec.OpenAPI.operationId("EvaluateResourceAccess")
 @route("/resource-access/evaluate")
@@ -515,7 +524,7 @@ model EvaluateResourceAccessError503 {
 op EvaluateResourceAccess(
   @header contentType: "application/x-www-form-urlencoded",
   @body body: IdMagic.Contract.ResourceAccessEvaluationRequest
-): EvaluateResourceAccessSuccess_200 | EvaluateResourceAccessError400 | EvaluateResourceAccessError401 | EvaluateResourceAccessError403 | EvaluateResourceAccessError503;
+): EvaluateResourceAccessSuccess_200 | EvaluateResourceAccessError400 | EvaluateResourceAccessError401 | EvaluateResourceAccessError403 | EvaluateResourceAccessError429 | EvaluateResourceAccessError503;
 
 model RevokeSuccess_200 {
   @statusCode statusCode: 200;

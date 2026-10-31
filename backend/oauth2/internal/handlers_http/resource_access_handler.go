@@ -3,6 +3,7 @@ package handlers_http
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -69,6 +70,18 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 	if in.Token == "" || in.ResourceType == "" || in.ResourceID == "" || in.Relation == "" {
 		return support.NoStoreJSON(c, http.StatusBadRequest,
 			support.OAuthErrorBody("invalid_request", "token, resource_type, resource_id and relation are required"))
+	}
+	// 評価の必須依存なので、共通ヘルパーの nil 時の通過規則を使わない。
+	if d.RateLimiter == nil {
+		return support.NoStoreJSON(c, http.StatusServiceUnavailable,
+			support.OAuthErrorBody("temporarily_unavailable", "the evaluation rate limiter is not configured"))
+	}
+	// 引用した二つの文字列を鍵にし、区切り文字を含むクライアント ID でも衝突させない。
+	key := fmt.Sprintf("%q:%q", in.TenantID, client.ID)
+	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "resource_access", key); err != nil {
+		return err
+	} else if blocked {
+		return nil
 	}
 	decision, err := tokenusecases.EvaluateResourceAccess(c.Request().Context(), tokenusecases.ResourceAccessDeps{
 		Servers: d.McpResourceServerRepo,

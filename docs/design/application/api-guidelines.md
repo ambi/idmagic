@@ -528,11 +528,11 @@ CSV の一括転送の上限（1 ファイルあたり 100,000 行、64 MiB、1 
 
 ### レートリミットの適用範囲
 
-レートリミットは、認証とトークン発行の経路に `EndpointRateLimitPolicy` として適用し、超過を 429 と `Retry-After` で通知する。
-対象は、ログイン、トークン、PAR、デバイス認可、バックチャネル認証である。
-閾値と対象の経路は [REQ-OAUTH2-040](../../modules/oauth2/features/protocol-endpoints.md) と [REQ-AUTHENTICATION-007](../../modules/authentication/features/sign-in.md)、拒否の応答の形式は [REQ-SYSTEM-030](../../modules/system/features/http-api.md) が定める。
+レートリミットは、認証、トークン発行、リソースアクセス評価の経路に `EndpointRateLimitPolicy` として適用し、超過を 429 と `Retry-After` で通知する。
+対象は、ログイン、トークン、PAR、デバイス認可、バックチャネル認証、リソースアクセス評価である。
+閾値と対象の経路は [REQ-OAUTH2-040](../../modules/oauth2/features/protocol-endpoints.md)、[REQ-OAUTH2-062](../../modules/oauth2/features/resource-access.md)、[REQ-AUTHENTICATION-007](../../modules/authentication/features/sign-in.md)、拒否の応答の形式は [REQ-SYSTEM-030](../../modules/system/features/http-api.md) が定める。
 
-- **目的**：クレデンシャルの総当たり攻撃と、トークン発行の濫用を抑止する。
+- **目的**：クレデンシャルの総当たり攻撃、トークン発行の濫用、同期評価への過大な流入を抑止する。
 - **担保手段**：HTTP 境界の共通処理のレートリミットの判定。
 - **適用状況**：全面適用。管理 API とアカウント API には API トークン単位のレートリミットがなく、アドミッションコントロールのみが流入を制限する。
 

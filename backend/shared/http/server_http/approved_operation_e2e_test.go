@@ -19,6 +19,7 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -36,8 +37,13 @@ type approvedOperationFixture struct {
 
 func newApprovedOperationFixture(t *testing.T) *approvedOperationFixture {
 	t.Helper()
+	return newApprovedOperationFixtureWithLimiter(t, newResourceAccessLimiter(100_000))
+}
+
+func newApprovedOperationFixtureWithLimiter(t *testing.T, limiter rlports.RateLimiter) *approvedOperationFixture {
+	t.Helper()
 	f := &approvedOperationFixture{
-		resourceAccessFixture: newResourceAccessFixture(t, "A1"),
+		resourceAccessFixture: newResourceAccessFixtureWithLimiter(t, limiter, "A1"),
 		clientID:              agentClientID("A1"),
 	}
 	f.grantD1(t)
@@ -78,6 +84,29 @@ func newApprovedOperationFixture(t *testing.T) *approvedOperationFixture {
 		t.Fatal(err)
 	}
 	return f
+}
+
+//spec:covers REQ-OAUTH2-062, REQ-OAUTH2-065: 超過時に承認の使用権を消費せず、別の操作キーで最初の許可を得られる
+func TestResourceAccessRateLimitDoesNotClaimApproval(t *testing.T) {
+	limiter := newResourceAccessLimiter(1)
+	f := newApprovedOperationFixtureWithLimiter(t, limiter)
+	token := f.approvedToken(t)
+	if w, _ := f.evaluate(t, evalResourceServerClient, evalResourceServerSecret, approvedForm("invalid", "burn", approvedParameters)); w.Code != http.StatusOK {
+		t.Fatalf("予算の消費: %d", w.Code)
+	}
+	before := len(f.s.Events.All())
+	if w, _ := f.evaluate(t, evalResourceServerClient, evalResourceServerSecret, approvedForm(token, "blocked", approvedParameters)); w.Code != http.StatusTooManyRequests {
+		t.Fatalf("超過: %d", w.Code)
+	}
+	if len(f.s.Events.All()) != before {
+		t.Fatal("超過した評価がイベントを発行した")
+	}
+	limiter.now = limiter.now.Add(time.Minute)
+	w, body := f.evaluate(t, evalResourceServerClient, evalResourceServerSecret, approvedForm(token, "first-use", approvedParameters))
+	approved, _ := body["approved_operation"].(map[string]any)
+	if w.Code != http.StatusOK || body["decision"] != true || approved["replayed"] != false {
+		t.Fatalf("未消費の承認: %d %v", w.Code, body)
+	}
 }
 
 func (f *approvedOperationFixture) tenantContext() context.Context {
