@@ -48,6 +48,17 @@ func TestLoadConfigAcceptsTheDocumentedForm(t *testing.T) {
 	}
 }
 
+func TestLoadConfigAcceptsEnvoyExtAuthzWithoutUpstream(t *testing.T) {
+	content := "mode: envoy_ext_authz\n" + strings.ReplaceAll(validConfig, "upstream: http://127.0.0.1:9000/mcp\n", "")
+	config, err := LoadConfig(writeConfig(t, content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !config.EnvoyExtAuthz || config.Upstream != nil {
+		t.Fatalf("config = %+v", config)
+	}
+}
+
 //spec:covers REQ-MCPGATEWAY-001: 未知のキー、不足、URL の誤り、平文の resource と realm、操作の宣言の誤りでは起動せず、理由にシークレットを含めない
 func TestLoadConfigRejectsMistakes(t *testing.T) {
 	replace := func(from, to string) string {
@@ -71,6 +82,9 @@ func TestLoadConfigRejectsMistakes(t *testing.T) {
 		"tools/call method":   replace("tools/list:", "tools/call:"),
 		"method argument":     replace("resource_id: main", "resource_id_argument: id"),
 		"bad timeout":         replace("  client_id: rs\n", "  client_id: rs\n  timeout: soon\n"),
+		"unknown mode":        "mode: sidecar\n" + validConfig,
+		"envoy with upstream": "mode: envoy_ext_authz\n" + validConfig,
+		"proxy no upstream":   "mode: proxy\n" + replace("upstream: http://127.0.0.1:9000/mcp\n", ""),
 	}
 	for name, content := range cases {
 		t.Run(name, func(t *testing.T) {

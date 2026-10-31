@@ -112,6 +112,8 @@ jobs:
         run: mise run setup-tools
       - name: Test Go
         run: mise run test-go
+      - name: Test the MCP gateway behind a real Envoy
+        run: mise run test-envoy-mcp-gateway
       - name: Verify generated Go references
         run: |
           mise run check-config-reference

@@ -34,6 +34,7 @@ const (
 
 const (
 	outcomeForwarded       = "forwarded"
+	outcomePermitted       = "permitted"
 	outcomeDenied          = "denied"
 	outcomeUnauthenticated = "unauthenticated"
 	outcomeInvalid         = "invalid"
@@ -44,6 +45,10 @@ const (
 const (
 	metadataPath   = "/.well-known/oauth-protected-resource"
 	maxLoggedValue = 128
+	// envoyPartialBodyHeader は Envoy が ext_authz の呼び出しへ必ず付け、呼び出し元の値を上書きする。
+	envoyPartialBodyHeader   = "X-Envoy-Auth-Partial-Body"
+	envoyHeadersToRemove     = "X-Envoy-Auth-Headers-To-Remove"
+	credentialHeadersToStrip = "authorization, dpop, cookie"
 )
 
 // Evaluator は評価の呼び出しである。
@@ -59,8 +64,10 @@ type Recorder interface {
 
 // Options はハンドラーの依存である。
 type Options struct {
-	Resource       *url.URL
-	Upstream       *url.URL
+	Resource *url.URL
+	Upstream *url.URL
+	// EnvoyExtAuthz なら Upstream を持たず、許可を Envoy への応答で伝える。
+	EnvoyExtAuthz  bool
 	RealmURL       string
 	AllowedOrigins []string
 	MaxBodyBytes   int64
@@ -120,6 +127,11 @@ type recordKey struct{}
 // ServeHTTP は REQ-MCPGATEWAY-002 から 006 を編成する。転送は評価の許可の後の一か所だけにある。
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == metadataPath || r.URL.Path == metadataPath+h.path {
+		// Envoy は判定の 200 を許可と読むので、判定の呼び出しへメタデータを返すと要求が上流へ届く。
+		if h.options.EnvoyExtAuthz && r.Header.Get(envoyPartialBodyHeader) != "" {
+			http.NotFound(w, r)
+			return
+		}
 		h.serveMetadata(w, r)
 		return
 	}
@@ -131,7 +143,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *requestRecord) {
-	if r.URL.EscapedPath() != h.path {
+	// ext_authz はクエリを除けないので、判定していない値を上流へ渡さないよう拒否する。
+	if r.URL.EscapedPath() != h.path || (h.options.EnvoyExtAuthz && r.URL.RawQuery != "") {
 		http.NotFound(w, r)
 		return
 	}
@@ -146,6 +159,11 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 	}
 	if !acceptableContent(r.Header) {
 		http.Error(w, "unsupported media type", http.StatusUnsupportedMediaType)
+		return
+	}
+	// 断片を判定すると、読んでいない後続が上流へ届く。
+	if h.options.EnvoyExtAuthz && r.Header.Get(envoyPartialBodyHeader) != "false" {
+		http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 	token, ok := presentedToken(r.Header)
@@ -185,7 +203,7 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 	}
 	record.methodLabel = message.Method
 	proof := r.Header.Values("DPoP")
-	if len(proof) > 1 {
+	if len(proof) > 1 || (len(proof) == 1 && strings.Contains(proof[0], ",")) {
 		record.outcome = outcomeUnauthenticated
 		h.challenge(w, message.ID, `error="invalid_token"`)
 		return
@@ -228,6 +246,12 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		record.outcome = outcomeDenied
 		record.reasons = []string{"tool_not_mapped"}
 		writeError(w, http.StatusForbidden, message.ID, codeForbidden, "forbidden", nil)
+		return
+	}
+	if h.options.EnvoyExtAuthz {
+		record.outcome = outcomePermitted
+		w.Header().Set(envoyHeadersToRemove, credentialHeadersToStrip)
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 	record.outcome = outcomeForwarded
@@ -310,14 +334,14 @@ func acceptableContent(headers http.Header) bool {
 	return len(encodings) == 0 || (len(encodings) == 1 && strings.EqualFold(encodings[0], "identity"))
 }
 
-// presentedToken はトークンを解析せずに取り出す。
+// presentedToken はトークンを解析せずに取り出す。Envoy は重複したヘッダーをカンマで連結するので、カンマは複数の値を表す。
 func presentedToken(headers http.Header) (string, bool) {
 	values := headers.Values("Authorization")
 	if len(values) != 1 {
 		return "", false
 	}
 	scheme, token, found := strings.Cut(values[0], " ")
-	if !found || token == "" || (!strings.EqualFold(scheme, "Bearer") && !strings.EqualFold(scheme, "DPoP")) {
+	if !found || token == "" || strings.Contains(token, ",") || (!strings.EqualFold(scheme, "Bearer") && !strings.EqualFold(scheme, "DPoP")) {
 		return "", false
 	}
 	return token, true

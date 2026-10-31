@@ -464,6 +464,17 @@ run = "go mod tidy"
 description = "Verify Kerberos tickets against an isolated Samba AD domain controller"
 run = 'bash scripts/test-kerberos-ad.sh "$@"'
 
+[tasks.test-envoy-mcp-gateway]
+description = "Verify the MCP gateway behind a real Envoy loaded with the distributed example configuration"
+env = { ENVOY_IMAGE = "envoyproxy/envoy:v1.40.2" }
+run = '''
+#!/usr/bin/env sh
+set -eu
+VERIFICATION_RUN_ID=$(date +%s)
+export VERIFICATION_RUN_ID
+bun run tools/verification/src/main.ts --report .verification/test-envoy-mcp-gateway.json -- ./backend/mcpgateway -run '^TestEnvoy'
+'''
+
 [tasks.setup-kerberos]
 description = "Guide an operator through Kerberos trust and browser setup"
 run = "bash scripts/setup-kerberos.sh"

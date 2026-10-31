@@ -20,6 +20,8 @@ import (
 const (
 	defaultMaxBodyBytes = 4 << 20
 	defaultTimeout      = 5 * time.Second
+	modeProxy           = "proxy"
+	modeEnvoyExtAuthz   = "envoy_ext_authz"
 )
 
 type fileOperation struct {
@@ -31,6 +33,7 @@ type fileOperation struct {
 
 // fileConfig は設定ファイルの形である。未知のキーは読み取りで拒否する (REQ-MCPGATEWAY-001)。
 type fileConfig struct {
+	Mode          string `yaml:"mode"`
 	Listen        string `yaml:"listen"`
 	MetricsListen string `yaml:"metrics_listen"`
 	Resource      string `yaml:"resource"`
@@ -56,6 +59,7 @@ type Config struct {
 	MetricsListen  string
 	Resource       *url.URL
 	Upstream       *url.URL
+	EnvoyExtAuthz  bool
 	RealmURL       string
 	TLS            *tls.Config
 	ClientID       string
@@ -89,8 +93,19 @@ func LoadConfig(path string) (Config, error) {
 	if config.Resource, err = absoluteURL("resource", file.Resource, "https"); err != nil {
 		return Config{}, err
 	}
-	if config.Upstream, err = absoluteURL("upstream", file.Upstream, "http", "https"); err != nil {
-		return Config{}, err
+	switch file.Mode {
+	case "", modeProxy:
+		if config.Upstream, err = absoluteURL("upstream", file.Upstream, "http", "https"); err != nil {
+			return Config{}, err
+		}
+	case modeEnvoyExtAuthz:
+		// 転送の先を持つと、Envoy を通らない経路があるように読める。
+		if file.Upstream != "" {
+			return Config{}, errors.New("upstream must not be set when mode is envoy_ext_authz")
+		}
+		config.EnvoyExtAuthz = true
+	default:
+		return Config{}, fmt.Errorf("mode must be %s or %s", modeProxy, modeEnvoyExtAuthz)
 	}
 	realm, err := absoluteURL("idmagic.realm_url", file.IdMagic.RealmURL, "https")
 	if err != nil {

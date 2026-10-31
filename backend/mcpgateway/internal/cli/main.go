@@ -33,7 +33,7 @@ func Load(path string, audit io.Writer) (*Gateway, error) {
 	upstreamTransport := &http.Transport{ForceAttemptHTTP2: true}
 	metrics := proxy_http.NewMetrics()
 	handler, err := proxy_http.NewHandler(proxy_http.Options{
-		Resource: config.Resource, Upstream: config.Upstream, RealmURL: config.RealmURL,
+		Resource: config.Resource, Upstream: config.Upstream, EnvoyExtAuthz: config.EnvoyExtAuthz, RealmURL: config.RealmURL,
 		AllowedOrigins: config.AllowedOrigins, MaxBodyBytes: config.MaxBodyBytes, Mapping: config.Mapping,
 		Evaluator: evaluation_http.Client{
 			EvaluateURL: config.RealmURL + "/resource-access/evaluate",

@@ -431,3 +431,131 @@ func TestAuditBoundsCallerControlledValues(t *testing.T) {
 		t.Fatalf("audit = %s", h.audit)
 	}
 }
+
+func envoyMode(options *Options) {
+	options.EnvoyExtAuthz = true
+	options.Upstream = nil
+}
+
+func envoyCheck(t *testing.T, target, name string) *http.Request {
+	t.Helper()
+	request := toolRequest(t, target, name)
+	request.Header.Set(envoyPartialBodyHeader, "false")
+	return request
+}
+
+//spec:covers REQ-MCPGATEWAY-007: 許可は本文のない 200 と除くヘッダーだけを返し、ゲートウェイ自身は転送しない
+func TestEnvoyExtAuthzAnswersWithoutForwarding(t *testing.T) {
+	h := newHarness(t, accepted, envoyMode)
+	response, err := http.DefaultClient.Do(envoyCheck(t, h.gateway.URL, "read"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	body, _ := io.ReadAll(response.Body)
+
+	if response.StatusCode != http.StatusOK || len(body) != 0 {
+		t.Fatalf("status=%d body=%q", response.StatusCode, body)
+	}
+	if got := response.Header.Get("X-Envoy-Auth-Headers-To-Remove"); got != "authorization, dpop, cookie" {
+		t.Fatalf("headers to remove = %q", got)
+	}
+	if h.calls.Load() != 0 {
+		t.Fatal("the gateway forwarded the request itself")
+	}
+	if !strings.Contains(h.audit.String(), `"outcome":"permitted"`) {
+		t.Fatalf("audit = %s", h.audit)
+	}
+	if got := testutil.ToFloat64(h.metrics.requests.WithLabelValues("tools/call", "read", "permitted")); got != 1 {
+		t.Fatalf("permitted requests = %v", got)
+	}
+}
+
+//spec:covers REQ-MCPGATEWAY-007: 断片の本文、クエリ、Envoy 経由のメタデータと、評価の不許可は Envoy へ許可を返さない
+func TestEnvoyExtAuthzNeverPermitsWhatItDidNotDecide(t *testing.T) {
+	cases := []struct {
+		name       string
+		change     func(*http.Request)
+		denied     bool
+		status     int
+		evaluation bool
+	}{
+		{name: "partial body", change: func(r *http.Request) { r.Header.Set(envoyPartialBodyHeader, "true") }, status: http.StatusRequestEntityTooLarge},
+		{name: "unknown partial marker", change: func(r *http.Request) { r.Header.Set(envoyPartialBodyHeader, "False ") }, status: http.StatusRequestEntityTooLarge},
+		{name: "no partial marker", change: func(r *http.Request) { r.Header.Del(envoyPartialBodyHeader) }, status: http.StatusRequestEntityTooLarge},
+		{name: "query", change: func(r *http.Request) { r.URL.RawQuery = "a=b" }, status: http.StatusNotFound},
+		{name: "denied", denied: true, status: http.StatusForbidden, evaluation: true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness(t, accepted, envoyMode)
+			if c.denied {
+				h.evaluator.result.Permitted = false
+			}
+			request := envoyCheck(t, h.gateway.URL, "read")
+			if c.change != nil {
+				c.change(request)
+			}
+			response, _ := do(t, request)
+			if response.StatusCode != c.status {
+				t.Fatalf("status = %d, want %d", response.StatusCode, c.status)
+			}
+			if response.Header.Get("X-Envoy-Auth-Headers-To-Remove") != "" {
+				t.Fatal("a refusal told Envoy to remove headers")
+			}
+			if (h.evaluator.calls.Load() == 1) != c.evaluation {
+				t.Fatalf("evaluations = %d", h.evaluator.calls.Load())
+			}
+		})
+	}
+}
+
+//spec:covers REQ-MCPGATEWAY-007: Envoy の判定の呼び出しへメタデータの 200 を返さず、判定を通らない直接の GET にだけ返す
+func TestEnvoyExtAuthzKeepsMetadataOutOfTheDecision(t *testing.T) {
+	h := newHarness(t, accepted, envoyMode)
+	for _, path := range []string{metadataPath, metadataPath + "/mcp"} {
+		request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, h.gateway.URL+path, http.NoBody)
+		if err != nil {
+			t.Fatal(err)
+		}
+		direct, _ := do(t, request.Clone(t.Context()))
+		if direct.StatusCode != http.StatusOK {
+			t.Fatalf("direct metadata status = %d", direct.StatusCode)
+		}
+		request.Header.Set(envoyPartialBodyHeader, "false")
+		check, _ := do(t, request)
+		if check.StatusCode != http.StatusNotFound {
+			t.Fatalf("metadata through ext_authz status = %d", check.StatusCode)
+		}
+	}
+}
+
+//spec:covers REQ-MCPGATEWAY-003: Envoy が連結した複数の値は、評価へ送らず未認証として拒否する
+func TestCommaJoinedCredentialsAreNotEvaluated(t *testing.T) {
+	cases := []struct {
+		name      string
+		change    func(*http.Request)
+		parameter string
+	}{
+		{name: "authorization", change: func(r *http.Request) { r.Header.Set("Authorization", "Bearer a,Bearer b") }},
+		{name: "proof", change: func(r *http.Request) { r.Header.Set("DPoP", "a,b") }, parameter: `error="invalid_token"`},
+		{name: "two proofs", change: func(r *http.Request) { r.Header.Add("DPoP", "a"); r.Header.Add("DPoP", "b") }, parameter: `error="invalid_token"`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness(t, accepted, nil)
+			request := toolRequest(t, h.gateway.URL, "read")
+			c.change(request)
+			response, body := do(t, request)
+			if response.StatusCode != http.StatusUnauthorized || errorCode(body) != codeUnauthenticated {
+				t.Fatalf("status=%d body=%v", response.StatusCode, body)
+			}
+			if !strings.Contains(response.Header.Get("WWW-Authenticate"), c.parameter) {
+				t.Fatalf("WWW-Authenticate = %q", response.Header.Get("WWW-Authenticate"))
+			}
+			if h.evaluator.calls.Load() != 0 || h.calls.Load() != 0 {
+				t.Fatalf("evaluations=%d upstream=%d", h.evaluator.calls.Load(), h.calls.Load())
+			}
+		})
+	}
+}
