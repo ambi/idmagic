@@ -7,9 +7,15 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
-import type { AgentInventory, AgentInventoryEntry, AgentInventoryFinding } from '../../types'
+import type {
+  AgentInventory,
+  AgentInventoryEntry,
+  AgentInventoryFinding,
+  AgentObservation,
+} from '../../types'
 import { adminAgentInventoryDictionary } from './AdminAgentInventoryPage.i18n'
 import { StatusBadge } from './AdminAgentsShared'
+import { AgentObservationsPanel } from './AgentObservationsPanel'
 
 type Dictionary = (typeof adminAgentInventoryDictionary)['ja']
 
@@ -50,11 +56,15 @@ function ownerLabel(status: AgentInventoryEntry['owner_status'], t: Dictionary) 
 export function AdminAgentInventoryPage({
   actorUsername,
   inventory,
+  csrfToken,
+  observations,
   finding,
   onFilter,
 }: {
   actorUsername?: string
   inventory: AgentInventory
+  csrfToken: string
+  observations: AgentObservation[]
   finding?: AgentInventoryFinding
   onFilter: (filter: { finding?: AgentInventoryFinding; dormantDays?: number }) => void
 }) {
@@ -174,6 +184,14 @@ export function AdminAgentInventoryPage({
                       <span className="font-mono">{entry.missing_client_ids.join(', ')}</span>
                     </div>
                   ) : null}
+                  {entry.confirmed_observations.length > 0 ? (
+                    <div className="mt-1 text-xs text-slate-500">
+                      {t.confirmedObservationsLabel}:{' '}
+                      <span className="font-mono">
+                        {entry.confirmed_observations.map((item) => item.subject).join(', ')}
+                      </span>
+                    </div>
+                  ) : null}
                 </td>
               </tr>
             ))}
@@ -186,6 +204,11 @@ export function AdminAgentInventoryPage({
           </div>
         ) : null}
       </Card>
+      <AgentObservationsPanel
+        csrfToken={csrfToken}
+        agents={inventory.agents.map((entry) => entry.agent)}
+        observations={observations}
+      />
     </AdminShell>
   )
 }

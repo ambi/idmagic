@@ -429,6 +429,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Reactor:                 revocationReactor,
 		ClientRepo:              d.OAuth2.ClientRepo,
 		AgentActivity:           newAuditAgentActivity(d.Audit.AuditEventRepo),
+		WorkloadSubjects:        d.WorkloadIdentity.SubjectMatcher(),
 		SCIMUsers:               d.Sourcing.SCIMUserLookup(),
 		SCIMGroups:              d.Sourcing.SCIMGroupLookup(),
 		GroupAttrSchemaRepo:     d.IdManagement.GroupAttrSchemaRepo,

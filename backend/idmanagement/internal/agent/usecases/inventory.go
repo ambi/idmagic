@@ -19,7 +19,7 @@ var (
 	ErrInvalidInventoryFinding = errors.New("finding must be owner_missing, dormant, or unbound")
 	// errInventorySourceMissing は所見の材料を読む先が配線されていない。所見を欠いた一覧を
 	// 正常として返さないため、配線の欠落も失敗にする。
-	errInventorySourceMissing = errors.New("agent inventory requires user, client, and activity sources")
+	errInventorySourceMissing = errors.New("agent inventory requires user, client, activity, and observation sources")
 )
 
 // InventoryFilter は棚卸しの条件である。Finding が空なら所見で絞り込まない。
@@ -32,6 +32,8 @@ type InventoryFilter struct {
 type InventoryEntry struct {
 	Facts    agentdomain.InventoryFacts
 	Findings []agentdomain.InventoryFinding
+	// ConfirmedObservations は管理者がこの Agent との一致を確認した観測である。
+	ConfirmedObservations []*agentdomain.AgentObservation
 }
 
 // ListAgentInventory は、テナントのすべての Agent について所有者、束縛先、最終のトークン発行を
@@ -48,7 +50,7 @@ func ListAgentInventory(ctx context.Context, deps AdminAgentDeps, filter Invento
 	if filter.Finding != "" && !filter.Finding.Valid() {
 		return nil, ErrInvalidInventoryFinding
 	}
-	if deps.UserRepo == nil || deps.ClientRepo == nil || deps.Activity == nil {
+	if deps.UserRepo == nil || deps.ClientRepo == nil || deps.Activity == nil || deps.Observations == nil {
 		return nil, errInventorySourceMissing
 	}
 	tenantID := tenantports.TenantID(ctx)
@@ -66,6 +68,14 @@ func ListAgentInventory(ctx context.Context, deps AdminAgentDeps, filter Invento
 	lastIssued, err := deps.Activity.LastTokenIssuedAt(ctx, tenantID, agentIDs)
 	if err != nil {
 		return nil, err
+	}
+	confirmed, err := deps.Observations.ListConfirmed(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	observationsByAgent := map[string][]*agentdomain.AgentObservation{}
+	for _, observation := range confirmed {
+		observationsByAgent[*observation.ConfirmedAgentID] = append(observationsByAgent[*observation.ConfirmedAgentID], observation)
 	}
 	owners := map[string]agentdomain.OwnerStatus{}
 	entries := make([]InventoryEntry, 0, len(agents))
@@ -95,7 +105,7 @@ func ListAgentInventory(ctx context.Context, deps AdminAgentDeps, filter Invento
 		if filter.Finding != "" && !slices.Contains(findings, filter.Finding) {
 			continue
 		}
-		entries = append(entries, InventoryEntry{Facts: facts, Findings: findings})
+		entries = append(entries, InventoryEntry{Facts: facts, Findings: findings, ConfirmedObservations: observationsByAgent[agent.ID]})
 	}
 	return entries, nil
 }

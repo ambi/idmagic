@@ -21,6 +21,8 @@ type AgentRepository struct {
 	mu       sync.RWMutex
 	agents   map[string]*agentdomain.Agent                    // key: sharedmem.TenantKey(tenant_id, id)
 	bindings map[string][]*agentdomain.AgentCredentialBinding // key: sharedmem.TenantKey(tenant_id, agent_id)
+	// observations は削除に連動する確認の解除先である。nil なら連動しない。
+	observations *AgentObservationRepository
 }
 
 func NewAgentRepository() *AgentRepository {
@@ -133,6 +135,9 @@ func (r *AgentRepository) Delete(_ context.Context, tenantID, id string) error {
 	defer r.mu.Unlock()
 	delete(r.agents, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
 	delete(r.bindings, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
+	if r.observations != nil {
+		r.observations.releaseAgent(tenantID, id)
+	}
 	return nil
 }
 

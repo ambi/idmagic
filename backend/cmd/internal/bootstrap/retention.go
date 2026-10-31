@@ -34,6 +34,11 @@ func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 	if purged {
 		logging.Info(ctx, "csv artifact retention sweep completed", "deleted_csv_artifacts", deleted)
 	}
+	deletedObservations, err := deps.IdManagement.PurgeExpiredAgentObservations(ctx, now)
+	if err != nil {
+		return err
+	}
+	logging.Info(ctx, "agent observation retention sweep completed", "deleted_agent_observations", deletedObservations)
 	//nolint:contextcheck // バッチの監査は独立した期限付きの配信点を使う。
 	if err := deps.Audit.PurgeExpiredExports(ctx, deps.Jobs.Repo, now, deps.NewEmitFunc(logging.Default())); err != nil {
 		return err

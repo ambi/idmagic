@@ -14,11 +14,20 @@ import (
 )
 
 type agentInventoryEntryResponse struct {
-	Agent             agentSummaryResponse           `json:"agent"`
-	OwnerStatus       agentdomain.OwnerStatus        `json:"owner_status"`
-	LastTokenIssuedAt *time.Time                     `json:"last_token_issued_at,omitempty"`
-	MissingClientIDs  []string                       `json:"missing_client_ids"`
-	Findings          []agentdomain.InventoryFinding `json:"findings"`
+	Agent                 agentSummaryResponse                `json:"agent"`
+	OwnerStatus           agentdomain.OwnerStatus             `json:"owner_status"`
+	LastTokenIssuedAt     *time.Time                          `json:"last_token_issued_at,omitempty"`
+	MissingClientIDs      []string                            `json:"missing_client_ids"`
+	Findings              []agentdomain.InventoryFinding      `json:"findings"`
+	ConfirmedObservations []agentConfirmedObservationResponse `json:"confirmed_observations"`
+}
+
+type agentConfirmedObservationResponse struct {
+	ID         string    `json:"id"`
+	Issuer     string    `json:"issuer"`
+	Subject    string    `json:"subject"`
+	ObservedAt time.Time `json:"observed_at"`
+	Stale      bool      `json:"stale"`
 }
 
 type agentInventoryResponse struct {
@@ -41,7 +50,8 @@ func HandleListAgentInventory(d Deps, c *echo.Context) error {
 		}
 		filter.DormantDays = days
 	}
-	entries, err := agentusecases.ListAgentInventory(c.Request().Context(), adminAgentDeps(d), filter, time.Now().UTC())
+	now := time.Now().UTC()
+	entries, err := agentusecases.ListAgentInventory(c.Request().Context(), adminAgentDeps(d), filter, now)
 	if errors.Is(err, agentusecases.ErrInvalidDormantDays) || errors.Is(err, agentusecases.ErrInvalidInventoryFinding) {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
@@ -50,12 +60,20 @@ func HandleListAgentInventory(d Deps, c *echo.Context) error {
 	}
 	agents := make([]agentInventoryEntryResponse, len(entries))
 	for i, entry := range entries {
+		confirmed := make([]agentConfirmedObservationResponse, len(entry.ConfirmedObservations))
+		for j, observation := range entry.ConfirmedObservations {
+			confirmed[j] = agentConfirmedObservationResponse{
+				ID: observation.ID, Issuer: observation.Issuer, Subject: observation.Subject,
+				ObservedAt: observation.ObservedAt, Stale: observation.Stale(now),
+			}
+		}
 		agents[i] = agentInventoryEntryResponse{
-			Agent:             toAgentSummaryResponse(entry.Facts.Agent, entry.Facts.ClientIDs),
-			OwnerStatus:       entry.Facts.OwnerStatus,
-			LastTokenIssuedAt: entry.Facts.LastTokenIssuedAt,
-			MissingClientIDs:  entry.Facts.MissingClientIDs,
-			Findings:          entry.Findings,
+			Agent:                 toAgentSummaryResponse(entry.Facts.Agent, entry.Facts.ClientIDs),
+			OwnerStatus:           entry.Facts.OwnerStatus,
+			LastTokenIssuedAt:     entry.Facts.LastTokenIssuedAt,
+			MissingClientIDs:      entry.Facts.MissingClientIDs,
+			Findings:              entry.Findings,
+			ConfirmedObservations: confirmed,
 		}
 	}
 	return c.JSON(http.StatusOK, agentInventoryResponse{DormantDays: filter.DormantDays, Agents: agents})

@@ -184,7 +184,8 @@
 - 所見を指定した棚卸しを要求されたとき、IdManagement は、その所見を持つ Agent だけを返す。
 - `dormant_days` を指定しない棚卸しを要求されたとき、IdManagement は、90 日として判定する。
 - `dormant_days` が 1 から 365 の範囲にないか、未知の所見を指定された場合、IdManagement は、400 と `invalid_request` で拒否する。
-- 所有者、束縛先のクライアント、監査の記録のどれかを読めない場合、IdManagement は、所見を欠いた一覧を返さずに要求を失敗させる。
+- 管理者が棚卸しを要求したとき、IdManagement は、各 Agent に[確認した外部の観測](agent-observation.md)を添え、確認していない観測を添えない。
+- 所有者、束縛先のクライアント、監査の記録、確認した観測のどれかを読めない場合、IdManagement は、所見を欠いた一覧を返さずに要求を失敗させる。
 - **判断**：`Disabled` と `Killed` の Agent は休眠にしない。止めた Agent が使われないのは運用の結果であり、棚卸しが見つけたいのは動けるのに使われていない Agent だからである。
 - **判断**：`dormant_days` の上限は、成功の監査の保持期間（365 日）に合わせる。それより長い期間の発行は記録が消えているので判定できない。
 - **判断**：棚卸しは Agent、User、監査を読んで組み立てるだけで、状態を持たない。所見が Agent の第二の正本にならないようにするためである。
@@ -211,7 +212,7 @@
 | --- | --- | --- |
 | 管理者のユースケース | 登録、更新、束縛と解除、無効化と再有効化、停止、削除。所有者の検証と、テナントの Agent の使用量の増減 | `AgentRepository`、`UserRepository`（所有者の検証）、`OAuth2` の `OAuth2Client` の読み取り、テナントのリソース上限 |
 | 所有者の停止に伴う無効化 | 止めた User が所有する `Active` の Agent を `Disabled` にし、`AgentDisabled` を発行する | `AgentRepository` |
-| 棚卸し | Agent、所有者、束縛先、最終のトークン発行を読み、所見を計算する。状態を持たない | `AgentRepository`、`UserRepository`、`ClientLookup`、`AgentActivityReader`（組み立ての地点が `Audit` の検索属性 `agent.id` の読み取りを渡す） |
+| 棚卸し | Agent、所有者、束縛先、最終のトークン発行、確認した観測を読み、所見を計算する。状態を持たない | `AgentRepository`、`UserRepository`、`ClientLookup`、`AgentObservationRepository`、`AgentActivityReader`（組み立ての地点が `Audit` の検索属性 `agent.id` の読み取りを渡す） |
 | 管理 API のハンドラー | 管理者の認可、入力の変換、応答の型への変換 | 管理者のユースケース |
 
 Agent のトークンの発行の可否は、この機能ではなく `OAuth2` が、束縛した `OAuth2Client` のトークンの発行の境界で Agent の状態を読んで判定する。

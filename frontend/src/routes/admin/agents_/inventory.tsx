@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getAgentInventory } from '../../../api'
+import { getAgentInventory, listAgentObservations } from '../../../api'
 import { AdminAgentInventoryPage } from '../../../features/admin-agents/AdminAgentInventoryPage'
 import type { AgentInventoryFinding } from '../../../types'
 import { requirePortalAccount } from '../../-guards'
@@ -19,11 +19,16 @@ export const Route = createFileRoute('/admin/agents_/inventory')({
   loaderDeps: ({ search }) => search,
   loader: async ({ deps, location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const inventory = await getAgentInventory({
-      finding: deps.finding,
-      dormantDays: deps.dormant_days,
-    })
-    return { actorUsername: account.preferred_username, inventory }
+    const [inventory, observations] = await Promise.all([
+      getAgentInventory({ finding: deps.finding, dormantDays: deps.dormant_days }),
+      listAgentObservations({ decision: 'pending' }),
+    ])
+    return {
+      actorUsername: account.preferred_username,
+      csrfToken: account.csrf_token,
+      inventory,
+      observations,
+    }
   },
   component: AdminAgentInventoryRoute,
 })
@@ -38,6 +43,8 @@ function AdminAgentInventoryRoute() {
         key={`${search.finding ?? ''}:${data.inventory.dormant_days}`}
         actorUsername={data.actorUsername}
         inventory={data.inventory}
+        csrfToken={data.csrfToken}
+        observations={data.observations}
         finding={search.finding}
         onFilter={({ finding, dormantDays }) =>
           navigate({

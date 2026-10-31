@@ -261,6 +261,8 @@ erDiagram
     }
     agent_credential_bindings {
     }
+    agent_observations {
+    }
     application_icons {
     }
     application_sign_in_policies {
@@ -293,6 +295,8 @@ erDiagram
     oauth2_clients ||--o{ refresh_tokens : トークンを持つ
     users ||--o{ refresh_tokens : トークンを持つ
     agents ||--o{ agent_credential_bindings : 資格情報に結ばれる
+    agents |o--o{ agent_observations : 確認した観測を持つ
+    tenants ||--o{ agent_observations : 観測を持つ
     oauth2_clients ||--o| agent_credential_bindings : エージェントに結ばれる
     applications ||--o{ application_icons : アイコンを持つ
     applications ||--o| application_sign_in_policies : サインイン方針を持つ
@@ -317,6 +321,7 @@ erDiagram
 | `consents` | 利用者がクライアントに与えた同意と、Agent に与えた代行の付与。スコープを持つ | OAuth2 | `LOGGED` | なし |
 | `refresh_tokens` | リフレッシュトークンのハッシュ。ローテーションの系譜をたどって再利用を検知する | OAuth2 | `LOGGED` | なし |
 | `agent_credential_bindings` | エージェントと、そのエージェントが使う OAuth クライアントの対応 | IdManagement | `LOGGED` | なし |
+| `agent_observations` | 外部の発見器が報告した未確認の観測と、管理者の決定。認可とトークンの発行は読まない | IdManagement | `LOGGED` | 非キーカラム |
 | `application_icons` | アプリケーションのアイコン画像本体 | Application | `LOGGED` | なし |
 | `application_sign_in_policies` | アプリケーション単位のサインイン方針 | SignInPolicy | `LOGGED` | なし |
 | `tenant_default_sign_in_policies` | 個別のサインイン方針が設定されていないアプリケーションに適用するデフォルトのサインイン方針 | SignInPolicy | `LOGGED` | 単独主キー |

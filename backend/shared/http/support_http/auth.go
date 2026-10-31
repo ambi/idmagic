@@ -97,6 +97,7 @@ type AccessTokenVerifier interface {
 
 // ApiTokenPrincipal は、管理発行の API アクセストークンの有効な記録である。
 type ApiTokenPrincipal struct {
+	TokenID  string
 	UserID   string
 	ClientID string
 	Scopes   []string
@@ -127,6 +128,8 @@ type PrincipalDirectory interface {
 type accessTokenAuthentication struct {
 	subject  string
 	authTime int64
+	// apiTokenID は管理発行の API アクセストークンの記録の ID である。ほかのトークンでは空である。
+	apiTokenID string
 }
 
 func (a accessTokenAuthentication) Subject() string        { return a.subject }
@@ -293,7 +296,11 @@ func (a *Authenticator) authenticateAccessToken(c *echo.Context, raw, scheme str
 	if token.Managed {
 		authTime = time.Now().UTC().Unix()
 	}
-	return accessTokenAuthentication{subject: token.Subject, authTime: authTime}, nil
+	result := accessTokenAuthentication{subject: token.Subject, authTime: authTime}
+	if apiToken != nil {
+		result.apiTokenID = apiToken.TokenID
+	}
+	return result, nil
 }
 
 // accountScopedTokenNamesRealmAPI は、account スコープを持つトークンの audience がリクエスト先
@@ -374,6 +381,28 @@ func (a *Authenticator) RequireAdmin(c *echo.Context) (*Principal, error) {
 	if err != nil {
 		return nil, err
 	}
+	return a.requireAdminPrincipal(c, authn)
+}
+
+// RequireAdminApiToken は、管理者の管理発行の API アクセストークンによる要求だけを受け付け、主体と
+// トークンの ID を返す。認証は DPoP の証明を記録するので、一つの要求で一度だけ行う。
+func (a *Authenticator) RequireAdminApiToken(c *echo.Context) (*Principal, string, error) {
+	authn, err := a.Authenticate(c)
+	if err != nil {
+		return nil, "", err
+	}
+	principal, err := a.requireAdminPrincipal(c, authn)
+	if err != nil {
+		return nil, "", err
+	}
+	token, ok := authn.(accessTokenAuthentication)
+	if !ok || token.apiTokenID == "" {
+		return nil, "", ErrAdminAccessDenied
+	}
+	return principal, token.apiTokenID, nil
+}
+
+func (a *Authenticator) requireAdminPrincipal(c *echo.Context, authn Authentication) (*Principal, error) {
 	if authn == nil || authn.Pending() {
 		return nil, ErrAdminAuthenticationRequired
 	}

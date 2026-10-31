@@ -35,6 +35,9 @@ CSV の履歴は行と同じ Tx の writer を使い、通常の作成の履歴�
 本人データの同意は、OAuth2 の本人向け照会から `user/ports` の表示値へ組み立て地点で変換して受け取る。
 同意の保存型とクライアントの設定を受け取らず、User の削除順と Agent の束縛の判断はこのモジュールに残す。
 
+外部の発見器の観測は、権威ある取り込みである `Sourcing` に置かず、Agent の確認と同じ所有者であるこのモジュールが未確認の報告として持つ。
+観測の候補が読む有効な関連付けは `agent/ports` の `WorkloadSubjectMatcher` を要求し、組み立て地点が `WorkloadIdentity` の公開操作を渡す。
+
 ## 主な流れ
 
 | 流れ | 契機 | 実行する場所 | 詳細 |
@@ -81,6 +84,7 @@ User の無効化、再有効化、削除の予約は、管理 API の外から�
 | [ユーザー](features/user.md) | 管理者による `User` の作成、一覧、更新、無効化、削除、属性 |
 | [アカウントのセルフサービス](features/account.md) | 本人によるプロフィール、メールアドレス、データエクスポートの操作 |
 | [エージェント](features/agent.md) | `Agent` の登録、資格情報のバインド、ライフサイクル |
+| [エージェントの観測](features/agent-observation.md) | 外部の発見器からの未確認の観測の取り込み、管理済みの `Agent` との突き合わせ、一致の確認と除外 |
 | [グループ](features/group.md) | `Group` の作成と更新、連絡先とカスタム属性、手動のメンバーシップ、実効ロール |
 | [属性スキーマ](../tenancy/features/attribute-schema.md) | User と Group の定義の管理。公開 API の分類は Tenancy に維持し、管理 HTTP をモジュールのルート、更新を各機能スライスに置く |
 | [動的グループ](features/dynamic-group.md) | CEL の規則の保存、プレビュー、全件の再評価による所属 |

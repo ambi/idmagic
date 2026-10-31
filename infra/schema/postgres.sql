@@ -1004,6 +1004,40 @@ CREATE TABLE agent_credential_bindings (
 CREATE INDEX agent_credential_bindings_client_idx
     ON agent_credential_bindings (client_id);
 
+-- 外部の発見器が報告した未確認の観測 (wi-39443)。Agent の第二の正本ではなく、認可とトークンの発行は
+-- この表を読まない。確認は confirmed_agent_id の有無で表し、Agent の削除と同じ確定で解除する。
+CREATE TABLE agent_observations (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    issuer TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    external_registration_id TEXT,
+    display_name TEXT,
+    resources JSONB NOT NULL DEFAULT '[]'::jsonb,
+    responsible_candidate TEXT,
+    observed_at TIMESTAMPTZ NOT NULL,
+    source_token_id TEXT NOT NULL,
+    excluded BOOLEAN NOT NULL DEFAULT FALSE,
+    confirmed_agent_id UUID,
+    decided_at TIMESTAMPTZ,
+    decided_by_user_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT agent_observations_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT agent_observations_confirmed_agent_fkey
+        FOREIGN KEY (confirmed_agent_id) REFERENCES agents(id) ON DELETE SET NULL,
+    CONSTRAINT agent_observations_tenant_issuer_subject_key UNIQUE (tenant_id, issuer, subject),
+    CONSTRAINT agent_observations_one_decision
+        CHECK (NOT (excluded AND confirmed_agent_id IS NOT NULL))
+);
+
+CREATE INDEX agent_observations_tenant_subject_idx
+    ON agent_observations (tenant_id, subject, id);
+CREATE INDEX agent_observations_confirmed_agent_idx
+    ON agent_observations (confirmed_agent_id) WHERE confirmed_agent_id IS NOT NULL;
+CREATE INDEX agent_observations_unconfirmed_observed_at_idx
+    ON agent_observations (observed_at) WHERE confirmed_agent_id IS NULL;
+
 -- Workload identity federation for agent runtimes (wi-54).
 CREATE TABLE workload_trust_bundles (
     id UUID PRIMARY KEY,

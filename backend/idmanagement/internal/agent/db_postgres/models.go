@@ -31,3 +31,21 @@ type AgentCredentialBinding struct {
 	ClientID  string
 	CreatedAt time.Time
 }
+
+type AgentObservation struct {
+	ID                     string
+	TenantID               string
+	Issuer                 string
+	Subject                string
+	ExternalRegistrationID pgtype.Text
+	DisplayName            pgtype.Text
+	Resources              []byte
+	ResponsibleCandidate   pgtype.Text
+	ObservedAt             time.Time
+	SourceTokenID          string
+	Excluded               bool
+	ConfirmedAgentID       pgtype.UUID
+	DecidedAt              pgtype.Timestamptz
+	DecidedByUserID        pgtype.Text
+	CreatedAt              time.Time
+}

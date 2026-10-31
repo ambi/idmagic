@@ -14,6 +14,7 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/internal/agent/db_memory"
 	agentpostgres "github.com/ambi/idmagic/backend/idmanagement/internal/agent/db_postgres"
+	agentusecases "github.com/ambi/idmagic/backend/idmanagement/internal/agent/usecases"
 	idmmemory "github.com/ambi/idmagic/backend/idmanagement/internal/db_memory"
 	idmpostgres "github.com/ambi/idmagic/backend/idmanagement/internal/db_postgres"
 	idmhttpdeps "github.com/ambi/idmagic/backend/idmanagement/internal/deps_http"
@@ -43,10 +44,12 @@ import (
 func NewMemoryModule() Module {
 	users, userSchemas := usermemory.NewUserStore()
 	groups := groupmemory.NewGroupRepository()
+	agents := agentmemory.NewAgentRepository()
 	return Module{
 		UserRepo:              users,
 		GroupRepo:             groups,
-		AgentRepo:             agentmemory.NewAgentRepository(),
+		AgentRepo:             agents,
+		AgentObservationRepo:  agentmemory.NewAgentObservationRepository(agents),
 		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(users),
 		CSVArtifacts:          idmmemory.NewCSVArtifactStore(),
 		newGroupImportCommitter: func(_ func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer, _ func(spec.DomainEvent)) groupports.GroupImportRowCommitter {
@@ -76,6 +79,7 @@ func NewPostgresModule(pool postgres.DB) Module {
 		UserRepo:              &userpostgres.UserRepository{Pool: pool},
 		GroupRepo:             &grouppostgres.GroupRepository{Pool: pool},
 		AgentRepo:             &agentpostgres.AgentRepository{Pool: pool},
+		AgentObservationRepo:  &agentpostgres.AgentObservationRepository{Pool: pool},
 		EmailChangeTokenStore: &userpostgres.EmailChangeTokenStore{Pool: pool},
 		CSVArtifacts:          &idmpostgres.CSVArtifactStore{Pool: pool},
 		AttrSchemaRepo:        &userpostgres.TenantUserAttributeSchemaRepository{Pool: pool},
@@ -254,6 +258,14 @@ func (m Module) PurgeExpiredCSVArtifacts(ctx context.Context, now time.Time) (de
 	return deleted, true, err
 }
 
+// PurgeExpiredAgentObservations は保持期限を過ぎた、確認していない観測を消し、件数を返す。
+func (m Module) PurgeExpiredAgentObservations(ctx context.Context, now time.Time) (int64, error) {
+	if m.AgentObservationRepo == nil {
+		return 0, nil
+	}
+	return agentusecases.PurgeExpiredObservations(ctx, m.AgentObservationRepo, now)
+}
+
 // Principals は、管理 API と account API の認証が主体の User と所属 Group を引く先を返す。
 func (m Module) Principals() support.PrincipalDirectory {
 	return idmhttpdeps.Principals{Users: m.UserRepo, Groups: m.GroupRepo}
@@ -270,7 +282,9 @@ type RouteDeps struct {
 	Reactor    idmhttpdeps.EventReactor
 	ClientRepo agentports.ClientLookup
 	// AgentActivity は Agent の棚卸しが最終のトークン発行を読む先である。
-	AgentActivity       agentports.AgentActivityReader
+	AgentActivity agentports.AgentActivityReader
+	// WorkloadSubjects は観測の候補が有効な関連付けを読む先である。
+	WorkloadSubjects    agentports.WorkloadSubjectMatcher
 	SCIMUsers           userports.SCIMUserLookup
 	SCIMGroups          groupports.SCIMGroupLookup
 	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
@@ -311,6 +325,8 @@ func (m Module) httpDeps(d RouteDeps) idmhttp.Deps {
 		Reactor:                   d.Reactor,
 		ClientRepo:                d.ClientRepo,
 		AgentActivity:             d.AgentActivity,
+		AgentObservationRepo:      m.AgentObservationRepo,
+		WorkloadSubjects:          d.WorkloadSubjects,
 		SCIMUsers:                 d.SCIMUsers,
 		SCIMGroups:                d.SCIMGroups,
 		AttrSchemaRepo:            d.AttrSchemaRepo,

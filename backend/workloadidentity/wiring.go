@@ -46,3 +46,26 @@ func (m Module) TokenVerifier(agents agentports.AgentRepository, fetch func(cont
 		SVIDVerifier: verification_jose.NewVerifier(), FetchJWKS: fetch, Emit: emit,
 	}}
 }
+
+// SubjectMatcher は、外部の issuer と subject に一致する有効な関連付けの Agent を返す照会である。
+// 保存先のない組み立てでは nil を返す。
+func (m Module) SubjectMatcher() agentports.WorkloadSubjectMatcher {
+	if m.TrustBundleRepo == nil || m.BindingRepo == nil {
+		return nil
+	}
+	return m
+}
+
+// AgentsForSubject は、issuer の Enabled の信頼設定にある Enabled の関連付けのうち、subject に
+// 一致するものの Agent をすべて返す。トークン交換と異なり、複数の一致も一つの結果である。
+func (m Module) AgentsForSubject(ctx context.Context, tenantID, issuer, subject string) ([]string, error) {
+	bundle, err := m.TrustBundleRepo.FindByIssuer(ctx, tenantID, issuer)
+	if err != nil || bundle == nil || bundle.Status != domain.WorkloadTrustBundleStatusEnabled {
+		return nil, err
+	}
+	bindings, err := m.BindingRepo.ListByTrustBundle(ctx, tenantID, bundle.ID)
+	if err != nil {
+		return nil, err
+	}
+	return domain.MatchingAgentIDs(bindings, subject), nil
+}

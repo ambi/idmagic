@@ -86,3 +86,17 @@ func MatchAgent(bindings []AgentWorkloadBinding, subject string) (*AgentWorkload
 func NewAgentWorkloadBindingID() (string, error) {
 	return spec.NewUUIDv4()
 }
+
+// MatchingAgentIDs は Enabled な binding のうち subject に一致するものの Agent を返す。
+func MatchingAgentIDs(bindings []*AgentWorkloadBinding, subject string) []string {
+	agentIDs := []string{}
+	for _, b := range bindings {
+		if !b.IsEnabled() {
+			continue
+		}
+		if ok, err := path.Match(b.SubjectPattern, subject); err == nil && ok {
+			agentIDs = append(agentIDs, b.AgentID)
+		}
+	}
+	return agentIDs
+}

@@ -1034,6 +1034,192 @@ model AgentInventoryEntry {
   @doc("束縛しているが、存在しないクライアントの id。")
   missing_client_ids: string[];
   findings: AgentInventoryFinding[];
+  @doc("管理者がこの Agent との一致を確認した外部の観測。未確認の観測は含めない。")
+  confirmed_observations: AgentConfirmedObservation[];
+}
+
+
+@doc("棚卸しの Agent に結ばれた、確認済みの外部の観測。")
+model AgentConfirmedObservation {
+  id: string;
+  issuer: string;
+  subject: string;
+  observed_at: utcDateTime;
+  stale: boolean;
+}
+
+
+@doc("取り込む観測の一件。すべて未確認の報告として扱う。")
+model AgentObservationInput {
+  @doc("外部の発行者。前後の空白を除いて 1 から 512 文字。")
+  issuer: string;
+  @doc("外部の主体。前後の空白を除いて 1 から 512 文字。")
+  subject: string;
+  @doc("外部の登録 ID。256 文字以内。")
+  external_registration_id?: string;
+  @doc("表示名。256 文字以内。主体の照合には使わない。")
+  display_name?: string;
+  @doc("利用する資源の名前。20 件以内で、各 256 文字以内。")
+  resources?: string[];
+  @doc("責任者の候補。256 文字以内。所有者には反映しない。")
+  responsible_candidate?: string;
+  @doc("観測した時刻。受信の時刻より 5 分を超えて未来の値は拒否する。")
+  observed_at: utcDateTime;
+}
+
+
+@doc("観測のバッチの取り込み要求。")
+model ImportAgentObservationsRequest {
+  @doc("1 から 100 件の観測。")
+  observations: AgentObservationInput[];
+}
+
+
+@doc("観測のバッチの取り込み結果。")
+model ImportAgentObservationsResponse {
+  created: int32;
+  updated: int32;
+  unchanged: int32;
+}
+
+
+@doc("管理者による観測の決定。")
+enum AgentObservationDecision {
+  Pending: "pending",
+  Confirmed: "confirmed",
+  Excluded: "excluded",
+}
+
+
+@doc("決定と候補から導いた観測の状態。")
+enum AgentObservationState {
+  @doc("未決定で、候補がない。")
+  Unregistered: "unregistered",
+  @doc("未決定で、候補が一つ以上ある。")
+  Candidate: "candidate",
+  @doc("管理者が一致を確認した。")
+  Confirmed: "confirmed",
+  @doc("管理者が除外した。")
+  Excluded: "excluded",
+}
+
+
+@doc("候補の根拠。")
+enum AgentObservationMatchReason {
+  @doc("`Enabled` の Workload binding が `issuer` と `subject` に一致する。")
+  WorkloadBinding: "workload_binding",
+  @doc("`external_registration_id` と同じ `client_id` のクライアントが Agent に束縛されている。")
+  ClientBinding: "client_binding",
+}
+
+
+@doc("観測の一致の候補。")
+model AgentObservationCandidate {
+  agent_id: string;
+  agent_name: string;
+  reasons: AgentObservationMatchReason[];
+}
+
+
+@doc("観測の一件と、その状態、候補、発見元、鮮度。")
+model AgentObservationEntry {
+  id: string;
+  issuer: string;
+  subject: string;
+  external_registration_id?: string;
+  display_name?: string;
+  resources: string[];
+  responsible_candidate?: string;
+  observed_at: utcDateTime;
+  @doc("最新の属性を報告した API アクセストークンの ID。")
+  source_token_id: string;
+  state: AgentObservationState;
+  @doc("最終の観測時刻から 30 日を過ぎている。")
+  stale: boolean;
+  candidates: AgentObservationCandidate[];
+  @doc("確認した Agent。確認していなければ省く。")
+  confirmed_agent_id?: string;
+}
+
+
+@doc("観測の一覧。")
+model AgentObservationListResponse {
+  observations: AgentObservationEntry[];
+}
+
+
+@doc("観測を Agent に結ぶ要求。")
+model ConfirmAgentObservationRequest {
+  agent_id: string;
+}
+
+
+@doc("観測のバッチの件数が 1 から 100 の範囲にない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:agent_observation_batch_invalid` である。")
+model AgentObservationBatchInvalidError is ProblemDetails;
+
+
+@doc("観測の項目が必須の値を欠くか、長さや時刻の上限の外にある。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:agent_observation_invalid` である。")
+model AgentObservationInvalidError is ProblemDetails;
+
+
+@doc("保存するとテナントの観測が上限を超える。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:agent_observation_limit_exceeded` である。")
+model AgentObservationLimitExceededError is ProblemDetails;
+
+
+@doc("指定した観測は要求先のテナントに存在しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:agent_observation_not_found` である。")
+model AgentObservationNotFoundError is ProblemDetails;
+
+
+@doc("観測にはすでに別の決定がある。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:agent_observation_already_decided` である。")
+model AgentObservationAlreadyDecidedError is ProblemDetails;
+
+
+@doc("外部の発見器のバッチが観測を作るか更新した。属性の値は載せない。")
+model AgentObservationsImported {
+  occurredAt: utcDateTime;
+  @doc("観測が属するテナント。")
+  tenantId: string;
+  actorUserId: string;
+  @doc("バッチを送った API アクセストークン。")
+  sourceTokenId: string;
+  created: int32;
+  updated: int32;
+  unchanged: int32;
+}
+
+
+@doc("管理者が観測と Agent の一致を確認した。権限は変えない。")
+model AgentObservationConfirmed {
+  occurredAt: utcDateTime;
+  @doc("観測が属するテナント。")
+  tenantId: string;
+  actorUserId: string;
+  observationId: string;
+  agentId: string;
+  @doc("確認の時点の候補の根拠。空なら候補でない Agent を指定した。")
+  reasons: string[];
+}
+
+
+@doc("管理者が観測を除外した。")
+model AgentObservationExcluded {
+  occurredAt: utcDateTime;
+  @doc("観測が属するテナント。")
+  tenantId: string;
+  actorUserId: string;
+  observationId: string;
+}
+
+
+@doc("管理者が確認または除外した観測を未決定へ戻した。権限は変えない。")
+model AgentObservationReopened {
+  occurredAt: utcDateTime;
+  @doc("観測が属するテナント。")
+  tenantId: string;
+  actorUserId: string;
+  observationId: string;
+  @doc("戻す前に確認していた Agent。除外していたなら省く。")
+  previousAgentId?: string;
 }
 
 

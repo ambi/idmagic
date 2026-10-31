@@ -25,6 +25,10 @@ const managementResources: ScopeResource[] = [
   resource('usersScopeResourceLabel', 'users:read', 'users:write'),
   resource('groupsScopeResourceLabel', 'groups:read', 'groups:write'),
   resource('agentsScopeResourceLabel', 'agents:read', 'agents:write'),
+  {
+    labelKey: 'agentObservationsScopeResourceLabel',
+    permissions: [{ scope: 'agent-observations:import', action: 'write' }],
+  },
   resource('sessionsScopeResourceLabel', 'sessions:read', 'sessions:write'),
   resource('consentsScopeResourceLabel', 'consents:read', 'consents:write'),
   resource(

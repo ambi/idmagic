@@ -12,6 +12,7 @@
 | `User` | 属性（`attributes`）、必須操作 | `Group` のメンバーになる。`Agent` の所有者になる |
 | `Group` | `GroupMembership`、`DynamicGroupRule`、`GroupRoleDelegation`、上流管理の印 | メンバーの `User` を ID で参照する |
 | `Agent` | `AgentCredentialBinding` | 所有者の `User` または `Group` と、バインドする `OAuth2Client` を ID で参照する |
+| `AgentObservation` | 外部の主体の報告の属性と、管理者の決定 | 確認した `Agent` を ID で参照する。`Agent` の第二の正本ではない |
 | `TenantUserAttributeSchema`、`TenantGroupAttributeSchema` | User と Group のカスタム属性の定義 | `Tenant` を `tenant_id` で参照する |
 
 境界の内側にあるものは、その Aggregate root を経由せずに参照しない。
@@ -37,6 +38,7 @@
 | `User` | 一つの Aggregate を一つのレコードとして保存する。属性は疎な対応表として保存し、値を設定したキーだけが領域を使う |
 | `Group` | `Group` を経由して保存し、メンバーシップと規則を単独で変えない |
 | `Agent` | `Agent` を経由して保存する |
+| `AgentObservation` | テナント、`issuer`、`subject` の組に一行を保存する。確認は `agents` への外部キー（`ON DELETE SET NULL`）で表す |
 
 User の状態の一次情報は、`lifecycle.status` と `status_changed_at` の組だけである。
 遷移の時刻の記録は、`UserDisabled` や `UserDeleted` などのイベントに残す。
@@ -53,6 +55,7 @@ PostgreSQL の保存先は `NewPostgresModule` が作り、行の確定は必須
 | `User` | 完全削除は物理削除ではなく、Tombstone へ置き換える。`sub` は保持し、再利用しない。ユーザー名の一意性の索引は削除済みの User を除外するので、Tombstone の値は将来の User と衝突せず、解放した名前は再び使える |
 | CSV の成果物 | テナント単位の不変な成果物ストアに保存し、上限付きのまとまりで書く。成果物と同じ大きさの単一のデータベース値を作らない。作成から 30 日を過ぎた成果物は、Batch の保持期限の削除が分割片ごと消す（REQ-IDMANAGEMENT-080） |
 | データエクスポートのファイル | 状態 `expired` へ遷移すると、ファイル本体を消し、メタデータと監査記録だけを残す |
+| `AgentObservation` | 最終の観測時刻から 180 日を過ぎた未決定と除外の観測を、Batch の保持期限の削除が消す。確認した観測は Agent がある間は残す（REQ-IDMANAGEMENT-102） |
 
 ## 排他と一意性
 
@@ -74,6 +77,8 @@ Agent を変える操作（管理者の更新、無効化と再有効化、停�
 | 同じメンバーシップを二つ作らない | Group と User の組の一意性の制約と `ON CONFLICT DO NOTHING` |
 | テナントのリソース上限 | 使用量の加算を、上限の条件付きの一つの更新文で行う。上限を超える加算は行を更新せず、上限の超過として返る |
 | 同じ再評価のジョブを重ねない | ジョブの `dedup_key` と、`queued` と `running` のジョブに限った部分一意索引 |
+| 観測の決定を上書きしない | 未決定の行だけを更新する条件付きの更新 |
+| 観測の件数の上限 | テナントの助言ロックの下で数えてから保存する |
 | CSV の適用と同時の変更 | 適用は現在の状態に対して計画をやり直す（[CSV の転送の実現方式](features/csv-transfer.md#実現方式)） |
 
 それ以外の更新は後勝ちである。

@@ -23,6 +23,7 @@ const (
 	ScopeGroupsWrite                   Scope = "groups:write"
 	ScopeAgentsRead                    Scope = "agents:read"
 	ScopeAgentsWrite                   Scope = "agents:write"
+	ScopeAgentObservationsImport       Scope = "agent-observations:import"
 	ScopeSessionsRead                  Scope = "sessions:read"
 	ScopeSessionsWrite                 Scope = "sessions:write"
 	ScopeConsentsRead                  Scope = "consents:read"
@@ -66,7 +67,7 @@ const (
 
 var validScopes = map[Scope]struct{}{
 	ScopeUsersRead: {}, ScopeUsersWrite: {}, ScopeGroupsRead: {}, ScopeGroupsWrite: {},
-	ScopeAgentsRead: {}, ScopeAgentsWrite: {}, ScopeSessionsRead: {}, ScopeSessionsWrite: {},
+	ScopeAgentsRead: {}, ScopeAgentsWrite: {}, ScopeAgentObservationsImport: {}, ScopeSessionsRead: {}, ScopeSessionsWrite: {},
 	ScopeConsentsRead: {}, ScopeConsentsWrite: {}, ScopeLifecycleWorkflowsRead: {},
 	ScopeLifecycleWorkflowsWrite: {}, ScopeTenantsRead: {}, ScopeTenantsWrite: {},
 	ScopeSettingsRead: {}, ScopeSettingsWrite: {}, ScopeSigningKeysRead: {},

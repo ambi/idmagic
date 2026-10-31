@@ -89,6 +89,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	"github.com/ambi/idmagic/backend/workloadidentity"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
@@ -227,6 +228,7 @@ type Stack struct {
 	SessionStore sessionports.SessionStore
 	// Agents と RevocationEpochs は WithAgentRevocation が配る。
 	Agents               agentports.AgentRepository
+	WorkloadIdentity     workloadidentity.Module
 	RevocationEpochs     sharedsignalsports.AgentRevocationEpochRepository
 	UserRevocationEpochs sharedsignalsports.UserRevocationEpochRepository
 	// AuditEvents は WithAudit が配る監査の保存先である。
@@ -500,10 +502,14 @@ func WithAccountApi() Option {
 // 発行済みトークンを無効と判定する。エポックの保存先が nil だと反応器は何もしない。
 func WithAgentRevocation() Option {
 	return func(b *builder) {
-		b.stack.Agents = idmanagement.NewMemoryModule().AgentRepo
+		idmModule := idmanagement.NewMemoryModule()
+		b.stack.Agents = idmModule.AgentRepo
+		b.stack.WorkloadIdentity = workloadidentity.NewMemoryModule()
 		b.stack.RevocationEpochs = sharedsignals.NewAgentRevocationEpochRepository()
 		b.stack.UserRevocationEpochs = sharedsignals.NewUserRevocationEpochRepository()
 		b.deps.IdManagement.AgentRepo = b.stack.Agents
+		b.deps.IdManagement.AgentObservationRepo = idmModule.AgentObservationRepo
+		b.deps.WorkloadIdentity = b.stack.WorkloadIdentity
 		b.deps.SharedSignals = sharedsignals.Module{RevocationEpochRepo: b.stack.RevocationEpochs, UserRevocationEpochRepo: b.stack.UserRevocationEpochs}
 	}
 }

@@ -2,6 +2,8 @@ import type {
   AdminAgent,
   AgentInventory,
   AgentInventoryFinding,
+  AgentObservation,
+  AgentObservationDecision,
   AdminApplication,
   AdminApplicationDetail,
   AdminAuditEvent,
@@ -1528,6 +1530,49 @@ export async function getAgentInventory(params?: {
   if (params?.dormantDays !== undefined) search.set('dormant_days', String(params.dormantDays))
   const query = search.toString()
   return request<AgentInventory>(`/api/admin/v1/agent-inventory${query ? `?${query}` : ''}`)
+}
+
+// listAgentObservations は未確認の観測を候補とともに返す (REQ-IDMANAGEMENT-098)。
+export async function listAgentObservations(params?: {
+  decision?: AgentObservationDecision
+}): Promise<AgentObservation[]> {
+  const search = new URLSearchParams({ limit: '100' })
+  if (params?.decision) search.set('decision', params.decision)
+  const body = await request<{ observations: AgentObservation[] }>(
+    `/api/admin/v1/agent-observations?${search.toString()}`,
+  )
+  return body.observations
+}
+
+export async function confirmAgentObservation(
+  csrfToken: string,
+  id: string,
+  agentID: string,
+): Promise<AgentObservation> {
+  return request<AgentObservation>(
+    `/api/admin/v1/agent-observations/${encodeURIComponent(id)}/confirm`,
+    adminRequest(csrfToken, 'POST', { agent_id: agentID }),
+  )
+}
+
+export async function excludeAgentObservation(
+  csrfToken: string,
+  id: string,
+): Promise<AgentObservation> {
+  return request<AgentObservation>(
+    `/api/admin/v1/agent-observations/${encodeURIComponent(id)}/exclude`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function reopenAgentObservation(
+  csrfToken: string,
+  id: string,
+): Promise<AgentObservation> {
+  return request<AgentObservation>(
+    `/api/admin/v1/agent-observations/${encodeURIComponent(id)}/reopen`,
+    adminRequest(csrfToken, 'POST'),
+  )
 }
 
 export type RegisterAdminAgentInput = {

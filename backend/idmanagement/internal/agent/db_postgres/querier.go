@@ -6,17 +6,25 @@ package db_postgres
 
 import (
 	"context"
+	"time"
 )
 
 type Querier interface {
 	AddAgentBinding(ctx context.Context, arg AddAgentBindingParams) (int64, error)
+	ConfirmAgentObservation(ctx context.Context, arg ConfirmAgentObservationParams) (int64, error)
+	CountAgentObservations(ctx context.Context, arg CountAgentObservationsParams) (int64, error)
 	CountAgentsByTenant(ctx context.Context, tenantID string) (int64, error)
 	DeleteAgent(ctx context.Context, arg DeleteAgentParams) error
+	ExcludeAgentObservation(ctx context.Context, arg ExcludeAgentObservationParams) (int64, error)
 	FindAgentByClientID(ctx context.Context, arg FindAgentByClientIDParams) (*Agent, error)
 	FindAgentByID(ctx context.Context, arg FindAgentByIDParams) (*Agent, error)
 	// Update が最新の値へ変更を当てるまで、ほかの書き込みを待たせる。
 	FindAgentByIDForUpdate(ctx context.Context, arg FindAgentByIDForUpdateParams) (*Agent, error)
+	FindAgentObservationByID(ctx context.Context, arg FindAgentObservationByIDParams) (*AgentObservation, error)
+	FindAgentObservationByIDForUpdate(ctx context.Context, arg FindAgentObservationByIDForUpdateParams) (*AgentObservation, error)
 	ListAgentBindingsByAgent(ctx context.Context, arg ListAgentBindingsByAgentParams) ([]*AgentCredentialBinding, error)
+	ListAgentObservationsPage(ctx context.Context, arg ListAgentObservationsPageParams) ([]*AgentObservation, error)
+	ListAgentObservationsPageBefore(ctx context.Context, arg ListAgentObservationsPageBeforeParams) ([]*AgentObservation, error)
 	ListAgentsByTenant(ctx context.Context, tenantID string) ([]*Agent, error)
 	// First page of ListAgents keyset pagination (wi-159): stable sort
 	// by (name, id) so admins see the pre-existing alphabetical order.
@@ -26,8 +34,16 @@ type Querier interface {
 	ListAgentsByTenantPageAfter(ctx context.Context, arg ListAgentsByTenantPageAfterParams) ([]*Agent, error)
 	ListAgentsByTenantPageBefore(ctx context.Context, arg ListAgentsByTenantPageBeforeParams) ([]*Agent, error)
 	ListAgentsByTenantPageEnd(ctx context.Context, arg ListAgentsByTenantPageEndParams) ([]*Agent, error)
+	ListConfirmedAgentObservations(ctx context.Context, tenantID string) ([]*AgentObservation, error)
+	// 同じテナントの取り込みを直列にし、件数の上限を確かめてから書く。
+	LockAgentObservationsTenant(ctx context.Context, tenantID string) error
+	PurgeExpiredAgentObservations(ctx context.Context, observedAt time.Time) (int64, error)
 	RemoveAgentBinding(ctx context.Context, arg RemoveAgentBindingParams) (int64, error)
+	ReopenAgentObservation(ctx context.Context, arg ReopenAgentObservationParams) error
 	SaveAgent(ctx context.Context, arg SaveAgentParams) error
+	// 保存値より新しい観測だけが属性を更新し、決定の列には触れない。
+	// 行を返さなければ変更なしである。
+	UpsertAgentObservation(ctx context.Context, arg UpsertAgentObservationParams) (bool, error)
 }
 
 var _ Querier = (*Queries)(nil)

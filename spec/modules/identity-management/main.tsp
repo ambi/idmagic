@@ -2501,6 +2501,105 @@ op ListAgentInventory(
   @query dormant_days?: int32
 ): ListAgentInventorySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAgentInventoryError403 | ListAgentInventoryError400;
 
+model AgentObservationError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.CsrfFailedError | IdMagic.Contract.InsufficientScopeError | IdMagic.Contract.InvalidOriginError | IdMagic.Contract.AccessDeniedError;
+}
+
+model AgentObservationError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.InvalidRequestError;
+}
+
+model ImportAgentObservationsSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.ImportAgentObservationsResponse;
+}
+
+model ImportAgentObservationsError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AgentObservationLimitExceededError;
+}
+
+model ImportAgentObservationsError422 {
+  @statusCode statusCode: 422;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AgentObservationBatchInvalidError | IdMagic.Contract.AgentObservationInvalidError;
+}
+
+@doc("外部の発見器が、観測のバッチを未確認の報告として取り込む。`agent-observations:import` のスコープの API アクセストークンだけが呼べる。全件を保存するか一件も保存せず、Agent、束縛、ロールは変えない（REQ-IDMANAGEMENT-095、REQ-IDMANAGEMENT-096、REQ-IDMANAGEMENT-097、REQ-IDMANAGEMENT-101）。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agent-observations:import"])
+@TypeSpec.OpenAPI.operationId("ImportAgentObservations")
+@route("/api/admin/v1/agent-observations/import")
+@post
+op ImportAgentObservations(
+  @body body: IdMagic.Contract.ImportAgentObservationsRequest
+): ImportAgentObservationsSuccess_200 | AgentObservationError400 | IdMagic.Contract.AuthenticationRequiredResponse | AgentObservationError403 | ImportAgentObservationsError409 | ImportAgentObservationsError422;
+
+model ListAgentObservationsSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.AgentObservationListResponse;
+}
+
+@doc("管理者が、自身のテナントの観測を、状態、候補、発見元、鮮度とともに `subject` の昇順（同じなら id の順）で一覧する。`decision` を指定するとその決定の観測だけを返す。カーソルは Link レスポンスヘッダーから得る（REQ-IDMANAGEMENT-098、REQ-IDMANAGEMENT-102）。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
+@TypeSpec.OpenAPI.operationId("ListAgentObservations")
+@route("/api/admin/v1/agent-observations")
+@get
+op ListAgentObservations(
+  @query decision?: IdMagic.Contract.AgentObservationDecision,
+  @query cursor?: string,
+  @query limit?: int64
+): ListAgentObservationsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | AgentObservationError403 | AgentObservationError400;
+
+model AgentObservationDecisionSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.AgentObservationEntry;
+}
+
+model AgentObservationDecisionError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AgentObservationNotFoundError | IdMagic.Contract.AgentNotFoundError;
+}
+
+model AgentObservationDecisionError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AgentObservationAlreadyDecidedError;
+}
+
+@doc("管理者が、未決定の観測を同じテナントの Agent に結ぶ。先の別の決定は上書きせず、権限は付与しない（REQ-IDMANAGEMENT-099、REQ-IDMANAGEMENT-101）。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
+@TypeSpec.OpenAPI.operationId("ConfirmAgentObservation")
+@route("/api/admin/v1/agent-observations/{observation_id}/confirm")
+@post
+op ConfirmAgentObservation(
+  @path observation_id: string,
+  @body body: IdMagic.Contract.ConfirmAgentObservationRequest
+): AgentObservationDecisionSuccess_200 | AgentObservationError400 | IdMagic.Contract.AuthenticationRequiredResponse | AgentObservationError403 | AgentObservationDecisionError404 | AgentObservationDecisionError409;
+
+@doc("管理者が、未決定の観測を除外する（REQ-IDMANAGEMENT-100）。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
+@TypeSpec.OpenAPI.operationId("ExcludeAgentObservation")
+@route("/api/admin/v1/agent-observations/{observation_id}/exclude")
+@post
+op ExcludeAgentObservation(
+  @path observation_id: string
+): AgentObservationDecisionSuccess_200 | AgentObservationError400 | IdMagic.Contract.AuthenticationRequiredResponse | AgentObservationError403 | AgentObservationDecisionError404 | AgentObservationDecisionError409;
+
+@doc("管理者が、確認または除外した観測を未決定へ戻す。既存の権限は増減しない（REQ-IDMANAGEMENT-100、REQ-IDMANAGEMENT-101）。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
+@TypeSpec.OpenAPI.operationId("ReopenAgentObservation")
+@route("/api/admin/v1/agent-observations/{observation_id}/reopen")
+@post
+op ReopenAgentObservation(
+  @path observation_id: string
+): AgentObservationDecisionSuccess_200 | AgentObservationError400 | IdMagic.Contract.AuthenticationRequiredResponse | AgentObservationError403 | AgentObservationDecisionError404;
+
 model GetAgentSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AgentSummaryResponse;

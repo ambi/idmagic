@@ -190,6 +190,56 @@ type AgentDeleted struct {
 func (e *AgentDeleted) EventType() string     { return "AgentDeleted" }
 func (e *AgentDeleted) OccurredAt() time.Time { return e.At }
 
+// AgentObservationsImported は外部の発見器のバッチが観測を作るか更新したことを表す。属性の値は載せない。
+type AgentObservationsImported struct {
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ActorUserID   string    `json:"actorUserId"`
+	SourceTokenID string    `json:"sourceTokenId"`
+	Created       int       `json:"created"`
+	Updated       int       `json:"updated"`
+	Unchanged     int       `json:"unchanged"`
+}
+
+func (e *AgentObservationsImported) EventType() string     { return "AgentObservationsImported" }
+func (e *AgentObservationsImported) OccurredAt() time.Time { return e.At }
+
+// AgentObservationConfirmed は管理者が観測と Agent の一致を確認したことを表す。
+type AgentObservationConfirmed struct {
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ActorUserID   string    `json:"actorUserId"`
+	ObservationID string    `json:"observationId"`
+	AgentID       string    `json:"agentId"`
+	Reasons       []string  `json:"reasons"`
+}
+
+func (e *AgentObservationConfirmed) EventType() string     { return "AgentObservationConfirmed" }
+func (e *AgentObservationConfirmed) OccurredAt() time.Time { return e.At }
+
+// AgentObservationExcluded は管理者が観測を除外したことを表す。
+type AgentObservationExcluded struct {
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ActorUserID   string    `json:"actorUserId"`
+	ObservationID string    `json:"observationId"`
+}
+
+func (e *AgentObservationExcluded) EventType() string     { return "AgentObservationExcluded" }
+func (e *AgentObservationExcluded) OccurredAt() time.Time { return e.At }
+
+// AgentObservationReopened は管理者が確認または除外した観測を未決定へ戻したことを表す。
+type AgentObservationReopened struct {
+	At              time.Time `json:"-"`
+	TenantID        string    `json:"tenantId"`
+	ActorUserID     string    `json:"actorUserId"`
+	ObservationID   string    `json:"observationId"`
+	PreviousAgentID *string   `json:"previousAgentId,omitempty"`
+}
+
+func (e *AgentObservationReopened) EventType() string     { return "AgentObservationReopened" }
+func (e *AgentObservationReopened) OccurredAt() time.Time { return e.At }
+
 type AgentOwnerChanged struct {
 	At                  time.Time `json:"-"`
 	TenantID            string    `json:"tenantId"`

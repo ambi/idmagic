@@ -819,17 +819,48 @@ export type AdminAgent = {
 
 export type AgentInventoryFinding = 'owner_missing' | 'dormant' | 'unbound'
 
+export type AgentConfirmedObservation = {
+  id: string
+  issuer: string
+  subject: string
+  observed_at: string
+  stale: boolean
+}
+
 export type AgentInventoryEntry = {
   agent: AdminAgent
   owner_status: 'active' | 'disabled' | 'pending_deletion' | 'missing'
   last_token_issued_at?: string
   missing_client_ids: string[]
   findings: AgentInventoryFinding[]
+  confirmed_observations: AgentConfirmedObservation[]
 }
 
 export type AgentInventory = {
   dormant_days: number
   agents: AgentInventoryEntry[]
+}
+
+export type AgentObservationDecision = 'pending' | 'confirmed' | 'excluded'
+
+export type AgentObservationState = 'unregistered' | 'candidate' | 'confirmed' | 'excluded'
+
+export type AgentObservationMatchReason = 'workload_binding' | 'client_binding'
+
+export type AgentObservation = {
+  id: string
+  issuer: string
+  subject: string
+  external_registration_id?: string
+  display_name?: string
+  resources: string[]
+  responsible_candidate?: string
+  observed_at: string
+  source_token_id: string
+  state: AgentObservationState
+  stale: boolean
+  candidates: { agent_id: string; agent_name: string; reasons: AgentObservationMatchReason[] }[]
+  confirmed_agent_id?: string
 }
 
 export type AdminTenant = {
@@ -1241,6 +1272,7 @@ export type ApiTokenScope =
   | 'groups:write'
   | 'agents:read'
   | 'agents:write'
+  | 'agent-observations:import'
   | 'sessions:read'
   | 'sessions:write'
   | 'consents:read'

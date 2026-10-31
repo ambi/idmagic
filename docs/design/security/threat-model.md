@@ -211,6 +211,8 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-093 | Elevation of privilege | 代理実行で内部のアドレスやリダイレクト先へトークンを送らせる | TokenVault | REQ-TOKENVAULT-009、REQ-TOKENVAULT-010 | `covered` |
 | THREAT-094 | Spoofing | 攻撃者の上流アカウントを被害者の接続へ結ぶ | TokenVault | REQ-TOKENVAULT-004、REQ-TOKENVAULT-005 | `covered` |
 | THREAT-095 | Denial of service | 回転する更新トークンの競合で接続を壊す | TokenVault | REQ-TOKENVAULT-012、REQ-TOKENVAULT-013 | `covered` |
+| THREAT-096 | Spoofing | 偽の発見結果を取り込ませ、未登録の主体を管理済みの Agent として扱わせるか権限を得る | IdManagement | REQ-IDMANAGEMENT-095、REQ-IDMANAGEMENT-098、REQ-IDMANAGEMENT-101 | `covered` |
+| THREAT-097 | Denial of service | 取り込みの件数と未来の時刻で台帳を埋めるか、以後の観測を止める | IdManagement | REQ-IDMANAGEMENT-096、REQ-IDMANAGEMENT-097、REQ-IDMANAGEMENT-102 | `covered` |
 
 ## 永続化と非同期実行
 

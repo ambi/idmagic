@@ -28,19 +28,28 @@ const inventory: AgentInventory = {
       last_token_issued_at: '2026-10-01T00:00:00Z',
       missing_client_ids: [],
       findings: [],
+      confirmed_observations: [],
     },
     {
       agent: agent('ghost-bot'),
       owner_status: 'disabled',
       missing_client_ids: ['lost-client'],
       findings: ['owner_missing', 'unbound'],
+      confirmed_observations: [],
     },
   ],
 }
 
 describe('AdminAgentInventoryPage', () => {
   it('shows findings, owner status, and missing clients for each agent', async () => {
-    await renderWithRouter(<AdminAgentInventoryPage inventory={inventory} onFilter={mock()} />)
+    await renderWithRouter(
+      <AdminAgentInventoryPage
+        csrfToken="csrf"
+        observations={[]}
+        inventory={inventory}
+        onFilter={mock()}
+      />,
+    )
 
     const ghost = screen.getByRole('row', { name: /ghost-bot/ })
     expect(ghost).toHaveTextContent(t.findingOwnerMissing)
@@ -53,7 +62,14 @@ describe('AdminAgentInventoryPage', () => {
 
   it('filters by finding and keeps the current dormant days', async () => {
     const onFilter = mock()
-    await renderWithRouter(<AdminAgentInventoryPage inventory={inventory} onFilter={onFilter} />)
+    await renderWithRouter(
+      <AdminAgentInventoryPage
+        csrfToken="csrf"
+        observations={[]}
+        inventory={inventory}
+        onFilter={onFilter}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: t.findingDormant }))
 
@@ -63,7 +79,13 @@ describe('AdminAgentInventoryPage', () => {
   it('applies the entered dormant days and keeps the current finding', async () => {
     const onFilter = mock()
     await renderWithRouter(
-      <AdminAgentInventoryPage inventory={inventory} finding="unbound" onFilter={onFilter} />,
+      <AdminAgentInventoryPage
+        csrfToken="csrf"
+        observations={[]}
+        inventory={inventory}
+        finding="unbound"
+        onFilter={onFilter}
+      />,
     )
 
     fireEvent.change(screen.getByLabelText(t.dormantDaysLabel), { target: { value: '30' } })
@@ -74,7 +96,12 @@ describe('AdminAgentInventoryPage', () => {
 
   it('tells the administrator when no agent matches', async () => {
     await renderWithRouter(
-      <AdminAgentInventoryPage inventory={{ dormant_days: 90, agents: [] }} onFilter={mock()} />,
+      <AdminAgentInventoryPage
+        csrfToken="csrf"
+        observations={[]}
+        inventory={{ dormant_days: 90, agents: [] }}
+        onFilter={mock()}
+      />,
     )
 
     expect(screen.getByText(t.emptyNotice)).toBeInTheDocument()

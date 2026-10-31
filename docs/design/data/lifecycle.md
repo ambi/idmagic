@@ -18,6 +18,7 @@
 | 資産 | `tenant_branding_assets`、`application_icons` | 設定の置き換えや親の削除で消える | 親が残る限り、置き換えられていない資産 |
 | SET の配送 | `security_event_deliveries` | 作成から 30 日を過ぎた `delivered` と `dead_letter` が、Batch の保持期限の削除で消える。ストリームの削除でも消える | 保持期間内の配送 |
 | CSV の成果物 | `csv_artifacts`、`csv_artifact_chunks` | 作成から 30 日を過ぎたものが、Batch の保持期限の削除で分割片ごと消える | 保持期間内の成果物 |
+| エージェントの観測 | `agent_observations` | 最終の観測時刻から 180 日を過ぎた未決定と除外の観測が、Batch の保持期限の削除で消える。確認した観測は Agent がある間は残す | 保持期間内の観測と確認した観測 |
 
 短命な認証状態では、有効かどうかを読み取り時に `expires_at` で判定する。
 掃除が遅れても有効期間は延びず、掃除は保存容量のためだけに行う。

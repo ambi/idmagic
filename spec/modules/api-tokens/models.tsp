@@ -12,6 +12,7 @@ enum ApiTokenScope {
   groups_write: "groups:write",
   agents_read: "agents:read",
   agents_write: "agents:write",
+  agent_observations_import: "agent-observations:import",
   sessions_read: "sessions:read",
   sessions_write: "sessions:write",
   consents_read: "consents:read",

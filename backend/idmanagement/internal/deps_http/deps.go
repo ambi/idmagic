@@ -58,16 +58,18 @@ type Deps struct {
 	// Reactor fail-closed reacts to emitted DomainEvents (currently
 	// SharedSignals' Agent revocation epoch enforcement; wi-58).
 	// nil skips reaction. See ReactiveEmit.
-	Reactor             EventReactor
-	JobRepo             jobsports.JobRepository
-	JobEnqueuer         jobsports.Enqueuer
-	ClientRepo          agentports.ClientLookup
-	AgentActivity       agentports.AgentActivityReader
-	SCIMUsers           userports.SCIMUserLookup
-	SCIMGroups          groupports.SCIMGroupLookup
-	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
-	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
-	ConsentRepo         userports.UserRecordsPurger
+	Reactor              EventReactor
+	JobRepo              jobsports.JobRepository
+	JobEnqueuer          jobsports.Enqueuer
+	ClientRepo           agentports.ClientLookup
+	AgentActivity        agentports.AgentActivityReader
+	AgentObservationRepo agentports.AgentObservationRepository
+	WorkloadSubjects     agentports.WorkloadSubjectMatcher
+	SCIMUsers            userports.SCIMUserLookup
+	SCIMGroups           groupports.SCIMGroupLookup
+	AttrSchemaRepo       userports.TenantUserAttributeSchemaRepository
+	GroupAttrSchemaRepo  groupports.TenantGroupAttributeSchemaRepository
+	ConsentRepo          userports.UserRecordsPurger
 	// Consents はデータエクスポートが本人の Granted の同意を読む先である。
 	Consents             func(context.Context, string) ([]userports.AccountConsent, error)
 	RefreshStore         userports.UserRecordsPurger

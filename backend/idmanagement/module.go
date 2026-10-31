@@ -22,6 +22,7 @@ type Module struct {
 	UserRepo              userports.UserRepository
 	GroupRepo             groupports.GroupRepository
 	AgentRepo             agentports.AgentRepository
+	AgentObservationRepo  agentports.AgentObservationRepository
 	EmailChangeTokenStore userports.EmailChangeTokenStore
 	CSVArtifacts          idmports.CSVArtifactStore
 	UserImportCommitter   userports.UserImportRowCommitter

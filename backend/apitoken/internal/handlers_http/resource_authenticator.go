@@ -20,6 +20,6 @@ func (r ResourceAuthenticator) AuthenticateApiToken(ctx context.Context, token s
 		return support.ApiTokenPrincipal{}, err
 	}
 	return support.ApiTokenPrincipal{
-		UserID: principal.UserID, ClientID: principal.ClientID, Scopes: principal.Scopes.Strings(),
+		TokenID: principal.TokenID, UserID: principal.UserID, ClientID: principal.ClientID, Scopes: principal.Scopes.Strings(),
 	}, nil
 }
