@@ -1564,3 +1564,7 @@ func TestSensitiveOperationsWithoutStepUpChangeNothing(t *testing.T) {
 		})
 	}
 }
+
+func (l *authRefusalRateLimiter) AllowWithin(ctx context.Context, policyID, key string, _ rlports.RateLimitPolicyConfig, now time.Time) (rlports.RateLimitResult, error) {
+	return l.Allow(ctx, policyID, key, now)
+}

@@ -27,6 +27,9 @@ type RateLimiter interface {
 	// throttle, every call consumes budget regardless of the request's outcome. Tenant scoping
 	// (postgres adapter) is resolved from ctx via tenantports.TenantID, matching LoginAttemptThrottle.
 	Allow(ctx context.Context, policyID, key string, now time.Time) (RateLimitResult, error)
+	// AllowWithin is Allow with a threshold chosen per request, for limits administrators declare
+	// per subject instead of per route. A changed window takes effect when the current one ends.
+	AllowWithin(ctx context.Context, policyID, key string, config RateLimitPolicyConfig, now time.Time) (RateLimitResult, error)
 }
 
 // Module bundles the shared rate limiter capability for composition roots. It is a

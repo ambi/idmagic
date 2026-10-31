@@ -1596,3 +1596,32 @@ export type IngestionRunFailure = {
 export type IngestionRunDetail = IngestionRunSummary & {
   failures: IngestionRunFailure[] | null
 }
+
+export type AgentGuardrailAction = 'deny' | 'require_approval'
+
+export type AgentGuardrailLimits = {
+  allowed_resources?: string[]
+  allowed_authorization_detail_types?: string[]
+  issuance_rate?: { max_issuances: number; window_seconds: number }
+  max_token_ttl_seconds?: number
+  expires_at?: string
+  max_delegation_depth?: number
+  require_approval?: boolean
+  on_violation?: {
+    allowed_resources?: AgentGuardrailAction
+    allowed_authorization_detail_types?: AgentGuardrailAction
+    issuance_rate?: AgentGuardrailAction
+    expires_at?: AgentGuardrailAction
+  }
+}
+
+export type AgentGuardrailPolicy = AgentGuardrailLimits & {
+  agent_id?: string
+  version: string
+  updated_at: string
+}
+
+export type AgentGuardrailPolicySet = {
+  agent?: AgentGuardrailPolicy
+  tenant_default?: AgentGuardrailPolicy
+}

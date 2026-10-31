@@ -48,6 +48,7 @@ type Module struct {
 	ConsentRepo            oauthports.ConsentRepository
 	AuthzDetailTypeRepo    oauthports.AuthorizationDetailTypeRepository
 	McpResourceServerRepo  oauthports.McpResourceServerRepository
+	AgentGuardrailPolicies oauthports.AgentGuardrailPolicyRepository
 	CrossAppAccessPolicies oauthports.CrossAppAccessPolicyRepository
 	IDJAGReplayStore       oauthports.ClientAssertionReplayStore
 	// IDTokenAssertionVerifier と IDJAGSigner は組み立て地点が設定する。

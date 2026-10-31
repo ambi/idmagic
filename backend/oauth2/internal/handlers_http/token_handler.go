@@ -14,6 +14,7 @@ import (
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/internal/token/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -87,7 +88,11 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
-	d.TokenIssuer = tokenusecases.IssuerForRequestingAgent(d.TokenIssuer, requestingAgentID)
+	d.TokenIssuer = tokenusecases.IssuerWithAgentGuardrail(tokenusecases.IssuerForRequestingAgent(d.TokenIssuer, requestingAgentID), tokenusecases.AgentGuardrailDeps{
+		Policies: d.AgentGuardrailPolicies, Limiter: d.RateLimiter, AgentRepo: d.AgentRepo, UserRepo: d.UserRepo, Emit: d.Emit,
+		ClientID: client.ClientID, GrantType: grantType, RequestID: logging.RequestIDFromContext(c.Request().Context()),
+		RequestingAgentID: requestingAgentID, Now: time.Now().UTC(),
+	})
 	if !slices.Contains(client.GrantTypes, spec.GrantType(grantType)) {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "undeclared grant_type"))
 	}

@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：211
+経路の数：213
 
 | 経路 | メソッド |
 | --- | --- |
@@ -111,6 +111,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/account/v1/trusted-devices/revoke-all` | POST |
 | `/api/account/v1/trusted-devices/{id}/revoke` | POST |
 | `/api/admin/v1/agent-delegations` | GET |
+| `/api/admin/v1/agent-guardrail-default` | DELETE, GET, PUT |
 | `/api/admin/v1/agent-inventory` | GET |
 | `/api/admin/v1/agent-observations` | GET |
 | `/api/admin/v1/agent-observations/import` | POST |
@@ -123,6 +124,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/agents/{agent_id}/credentials/{client_id}` | DELETE |
 | `/api/admin/v1/agents/{agent_id}/disable` | POST |
 | `/api/admin/v1/agents/{agent_id}/enable` | POST |
+| `/api/admin/v1/agents/{agent_id}/guardrail-policy` | DELETE, GET, PUT |
 | `/api/admin/v1/agents/{agent_id}/kill` | POST |
 | `/api/admin/v1/api-tokens` | GET, POST |
 | `/api/admin/v1/api-tokens/{id}` | DELETE |

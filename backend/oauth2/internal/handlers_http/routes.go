@@ -45,6 +45,8 @@ type Deps struct {
 
 	AuthzDetailTypeRepo   oauthports.AuthorizationDetailTypeRepository
 	McpResourceServerRepo oauthports.McpResourceServerRepository
+	// AgentGuardrailPolicies は Agent の発行の上限である (REQ-OAUTH2-073)。
+	AgentGuardrailPolicies oauthports.AgentGuardrailPolicyRepository
 	// CrossAppAccessPolicies から IDJAGReplayStore までは ID-JAG の発行と償還の依存である。
 	CrossAppAccessPolicies     oauthports.CrossAppAccessPolicyRepository
 	IDJAGTrust                 oauthports.IDJAGIssuerTrust
@@ -207,6 +209,12 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/v1/mcp-resource-servers", d.handleCreateAdminMcpResourceServer)
 	g.PATCH("/api/admin/v1/mcp-resource-servers/:id", d.handleUpdateAdminMcpResourceServer)
 	g.DELETE("/api/admin/v1/mcp-resource-servers/:id", d.handleDeleteAdminMcpResourceServer)
+	g.GET("/api/admin/v1/agents/:agent_id/guardrail-policy", d.handleGetAdminAgentGuardrailPolicy)
+	g.PUT("/api/admin/v1/agents/:agent_id/guardrail-policy", d.handlePutAdminAgentGuardrailPolicy)
+	g.DELETE("/api/admin/v1/agents/:agent_id/guardrail-policy", d.handleDeleteAdminAgentGuardrailPolicy)
+	g.GET("/api/admin/v1/agent-guardrail-default", d.handleGetAdminAgentGuardrailDefault)
+	g.PUT("/api/admin/v1/agent-guardrail-default", d.handlePutAdminAgentGuardrailDefault)
+	g.DELETE("/api/admin/v1/agent-guardrail-default", d.handleDeleteAdminAgentGuardrailDefault)
 	g.GET("/api/admin/v1/cross-app-access/issue-policies", d.handleListAdminCrossAppAccessIssuePolicies)
 	g.POST("/api/admin/v1/cross-app-access/issue-policies", d.handleCreateAdminCrossAppAccessIssuePolicy)
 	g.DELETE("/api/admin/v1/cross-app-access/issue-policies/:id", d.handleDeleteAdminCrossAppAccessIssuePolicy)

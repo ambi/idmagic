@@ -31,6 +31,8 @@ const (
 type ApplicationAccessCheck func(ctx context.Context, clientID string, assertion *ports.IDTokenAssertion) (bool, error)
 
 type IssueIDJAGDeps struct {
+	// Guard は発行を Agent のガードレールで評価する (REQ-OAUTH2-073)。
+	Guard      ports.IssuanceGuard
 	ClientRepo ports.OAuth2ClientRepository
 	UserRepo   userports.UserRepository
 	Policies   ports.CrossAppAccessPolicyRepository
@@ -163,6 +165,14 @@ func IssueIDJAG(ctx context.Context, deps IssueIDJAGDeps, in IssueIDJAGInput, no
 	}
 
 	details := filterAuthorizationDetailsByType(in.AuthorizationDetails, policy.AuthorizationDetailTypes)
+	if deps.Guard != nil {
+		if err := deps.Guard.Precheck(ctx, ports.AccessTokenInput{Sub: assertion.Subject, Scopes: scopes, Audiences: resources, AuthorizationDetails: details}); err != nil {
+			if oe, ok := errors.AsType[*OAuthError](err); ok {
+				return nil, reject(oe.Code, oe.Description)
+			}
+			return nil, err
+		}
+	}
 	input := ports.IDJAGInput{
 		Subject: assertion.Subject, Audience: policy.Audience, ClientID: policy.TargetClientID,
 		Resources: resources, Scopes: scopes, AuthorizationDetails: details,
@@ -175,6 +185,9 @@ func IssueIDJAG(ctx context.Context, deps IssueIDJAGDeps, in IssueIDJAGInput, no
 	token, jti, err := deps.Signer.SignIDJAG(ctx, input)
 	if err != nil {
 		return nil, err
+	}
+	if deps.Guard != nil {
+		deps.Guard.Confirm(jti)
 	}
 	emit(deps.Emit, &domain.IdJagIssued{
 		At: now, TenantID: tenantID, ClientID: in.ClientID, UserID: assertion.Subject,

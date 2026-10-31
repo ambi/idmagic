@@ -51,6 +51,7 @@ IdManagement からの完全削除では保存先ごとの本人の記録の削�
 | [トークン](features/token.md) | 発行、ローテーション、イントロスペクション、失効、UserInfo、送信者制約、委譲、ID-JAG の発行と償還 |
 | [リソースアクセスの評価](features/resource-access.md) | 登録したリソースサーバーによる、提示トークンでの操作の評価 |
 | [承認リクエスト](features/approval.md) | Agent の操作に対する人間の承認（CIBA） |
+| [Agent のガードレール](features/guardrail.md) | 管理者が宣言する発行の上限と、超過時の拒否と承認への降格 |
 | [ログアウト](features/logout.md) | RP-Initiated Logout とバックチャネルのログアウト |
 | [プロトコルのエンドポイント](features/protocol-endpoints.md) | Discovery Metadata と流量の制限 |
 | [管理 API の認可](features/admin-access.md) | 管理 API のスコープとロールポリシー |

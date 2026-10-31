@@ -10,7 +10,9 @@ import (
 )
 
 func TestPersistenceContract(t *testing.T) {
-	testing_contract.Run(t, func(*testing.T) testing_contract.Fixture {
+	newFixture := func(*testing.T) testing_contract.Fixture {
 		return testing_contract.Fixture{Limiter: NewRateLimiter(ports.RateLimitConfigs{"contract": {MaxRequests: 2, WindowSeconds: 60}, "other-policy": {MaxRequests: 2, WindowSeconds: 60}}), Context: context.Background(), Now: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)}
-	})
+	}
+	testing_contract.Run(t, newFixture)
+	testing_contract.RunAllowWithin(t, newFixture)
 }

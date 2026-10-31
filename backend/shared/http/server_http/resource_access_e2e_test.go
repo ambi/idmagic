@@ -587,3 +587,7 @@ func TestEvaluateRequiresSenderProof(t *testing.T) {
 	_, body = f.evaluate(t, evalResourceServerClient, evalResourceServerSecret, withProof(proof, htu))
 	requireReason(t, body, oauthdomain.ReasonSenderProofInvalid)
 }
+
+func (l *resourceAccessClock) AllowWithin(ctx context.Context, policy, key string, _ rlports.RateLimitPolicyConfig, now time.Time) (rlports.RateLimitResult, error) {
+	return l.Allow(ctx, policy, key, now)
+}

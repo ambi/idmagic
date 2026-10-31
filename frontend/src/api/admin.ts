@@ -1,5 +1,8 @@
 import type {
   AdminAgent,
+  AgentGuardrailLimits,
+  AgentGuardrailPolicy,
+  AgentGuardrailPolicySet,
   AgentInventory,
   AgentInventoryFinding,
   AgentObservation,
@@ -2561,5 +2564,31 @@ export function getDirectoryIngestionRun(
 ): Promise<IngestionRunDetail> {
   return request<IngestionRunDetail>(
     `${directoryConnectorPath(connectorID)}/ingestion-runs/${encodeURIComponent(runID)}`,
+  )
+}
+
+export async function getAgentGuardrailPolicy(agentID: string): Promise<AgentGuardrailPolicySet> {
+  return request(`/api/admin/v1/agents/${encodeURIComponent(agentID)}/guardrail-policy`)
+}
+
+export async function putAgentGuardrailPolicy(
+  csrfToken: string,
+  agentID: string,
+  limits: AgentGuardrailLimits,
+  expectedVersion: string,
+): Promise<AgentGuardrailPolicy> {
+  return request(
+    `/api/admin/v1/agents/${encodeURIComponent(agentID)}/guardrail-policy`,
+    adminRequest(csrfToken, 'PUT', { ...limits, expected_version: expectedVersion }),
+  )
+}
+
+export async function deleteAgentGuardrailPolicy(
+  csrfToken: string,
+  agentID: string,
+): Promise<void> {
+  await request(
+    `/api/admin/v1/agents/${encodeURIComponent(agentID)}/guardrail-policy`,
+    adminRequest(csrfToken, 'DELETE'),
   )
 }

@@ -18,6 +18,7 @@ type Querier interface {
 	// 単発消費の CAS。未使用かつ未期限の行だけを used=true にして 1 行返す。それ以外は 0 行。
 	ConsumePARRequest(ctx context.Context, arg ConsumePARRequestParams) ([]byte, error)
 	DecideApprovalRequest(ctx context.Context, arg DecideApprovalRequestParams) (*DecideApprovalRequestRow, error)
+	DeleteAgentGuardrailPolicy(ctx context.Context, arg DeleteAgentGuardrailPolicyParams) error
 	DeleteApprovalRequestsForUser(ctx context.Context, arg DeleteApprovalRequestsForUserParams) error
 	DeleteAuthorizationDetailType(ctx context.Context, arg DeleteAuthorizationDetailTypeParams) error
 	DeleteClient(ctx context.Context, arg DeleteClientParams) error
@@ -51,6 +52,7 @@ type Querier interface {
 	// tenant_id は fail-closed 述語として必ず含める。used 列を read で payload に overlay する。
 	FindPARRequest(ctx context.Context, arg FindPARRequestParams) (*FindPARRequestRow, error)
 	GetAgentDelegation(ctx context.Context, arg GetAgentDelegationParams) (*GetAgentDelegationRow, error)
+	GetAgentGuardrailPolicy(ctx context.Context, arg GetAgentGuardrailPolicyParams) (*GetAgentGuardrailPolicyRow, error)
 	GetAuthorizationDetailType(ctx context.Context, arg GetAuthorizationDetailTypeParams) (*AuthorizationDetailType, error)
 	GetClientByID(ctx context.Context, arg GetClientByIDParams) (*Oauth2Client, error)
 	GetConsent(ctx context.Context, arg GetConsentParams) (*GetConsentRow, error)
@@ -62,6 +64,7 @@ type Querier interface {
 	GetMcpResourceServerByResource(ctx context.Context, arg GetMcpResourceServerByResourceParams) (*McpResourceServer, error)
 	GetRefreshTokenByHash(ctx context.Context, hash string) (*GetRefreshTokenByHashRow, error)
 	GetRefreshTokenRotationState(ctx context.Context, id string) (*GetRefreshTokenRotationStateRow, error)
+	InsertAgentGuardrailPolicy(ctx context.Context, arg InsertAgentGuardrailPolicyParams) (int64, error)
 	InsertClientSecretCredential(ctx context.Context, arg InsertClientSecretCredentialParams) error
 	InsertCrossAppAccessIssuePolicy(ctx context.Context, arg InsertCrossAppAccessIssuePolicyParams) (int64, error)
 	InsertCrossAppAccessRedeemPolicy(ctx context.Context, arg InsertCrossAppAccessRedeemPolicyParams) (int64, error)
@@ -96,6 +99,7 @@ type Querier interface {
 	ListConsentsByTenantPageBefore(ctx context.Context, arg ListConsentsByTenantPageBeforeParams) ([]*ListConsentsByTenantPageBeforeRow, error)
 	ListCrossAppAccessIssuePolicies(ctx context.Context, tenantID string) ([]*CrossAppAccessIssuePolicy, error)
 	ListCrossAppAccessRedeemPolicies(ctx context.Context, tenantID string) ([]*CrossAppAccessRedeemPolicy, error)
+	ListEffectiveAgentGuardrailPolicies(ctx context.Context, arg ListEffectiveAgentGuardrailPoliciesParams) ([]*ListEffectiveAgentGuardrailPoliciesRow, error)
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
 	ListPendingApprovalRequestsForUser(ctx context.Context, arg ListPendingApprovalRequestsForUserParams) ([]*ListPendingApprovalRequestsForUserRow, error)
 	// tx 内の read-modify-write を直列化するための行ロック取得。
@@ -126,6 +130,7 @@ type Querier interface {
 	SaveLogoutNotification(ctx context.Context, arg SaveLogoutNotificationParams) error
 	SavePARRequest(ctx context.Context, arg SavePARRequestParams) error
 	TouchAgentDelegation(ctx context.Context, arg TouchAgentDelegationParams) error
+	UpdateAgentGuardrailPolicy(ctx context.Context, arg UpdateAgentGuardrailPolicyParams) (int64, error)
 	UpdateAuthorizationRequestPayload(ctx context.Context, arg UpdateAuthorizationRequestPayloadParams) error
 	UpdateClientSecretCredential(ctx context.Context, arg UpdateClientSecretCredentialParams) error
 	UpsertAgentDelegation(ctx context.Context, arg UpsertAgentDelegationParams) error

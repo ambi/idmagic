@@ -28,6 +28,7 @@ import {
 import { useDictionary } from '../../lib/i18n'
 import type { AdminAgent } from '../../types'
 import { AgentDetailCard } from './AdminAgentDetailCard'
+import { AgentGuardrailPanel } from './AgentGuardrailPanel'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 
 // AdminAgentDetailPage はエージェントの状態操作を扱う参照専用の詳細画面 (wi-49)。
@@ -210,6 +211,9 @@ export function AdminAgentDetailPage({
           showActions={false}
           onDeleted={() => window.location.assign(tenantURL('/admin/agents'))}
         />
+      </div>
+      <div className="mt-4 max-w-3xl">
+        <AgentGuardrailPanel agentID={agent.id} />
       </div>
     </AdminShell>
   )

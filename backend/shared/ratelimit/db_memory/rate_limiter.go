@@ -26,7 +26,7 @@ func NewRateLimiter(configs rlports.RateLimitConfigs) *RateLimiter {
 }
 
 func (l *RateLimiter) Allow(
-	_ context.Context,
+	ctx context.Context,
 	policyID, key string,
 	now time.Time,
 ) (rlports.RateLimitResult, error) {
@@ -34,6 +34,15 @@ func (l *RateLimiter) Allow(
 	if !ok {
 		return rlports.RateLimitResult{}, fmt.Errorf("ratelimit: unknown policy %q", policyID)
 	}
+	return l.AllowWithin(ctx, policyID, key, config, now)
+}
+
+func (l *RateLimiter) AllowWithin(
+	_ context.Context,
+	policyID, key string,
+	config rlports.RateLimitPolicyConfig,
+	now time.Time,
+) (rlports.RateLimitResult, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	counterKey := policyID + ":" + key

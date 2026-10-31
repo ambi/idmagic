@@ -379,3 +379,7 @@ func TestGetNegotiateAvailabilityHTTPContract(t *testing.T) {
 		t.Fatalf("response=%d %s", w.Code, w.Body.String())
 	}
 }
+
+func (l negotiateLimited) AllowWithin(ctx context.Context, policyID, key string, _ rlports.RateLimitPolicyConfig, now time.Time) (rlports.RateLimitResult, error) {
+	return l.Allow(ctx, policyID, key, now)
+}

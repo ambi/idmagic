@@ -273,6 +273,7 @@ func WithOAuth2Clients() Option {
 		b.deps.OAuth2.ClientRepo = b.stack.Clients
 		b.deps.OAuth2.AuthzDetailTypeRepo = b.stack.AuthzDetailTypes
 		b.deps.OAuth2.McpResourceServerRepo = b.stack.McpResourceServers
+		b.deps.OAuth2.AgentGuardrailPolicies = oauth2.NewMemoryModule().AgentGuardrailPolicies
 		b.stack.ApprovalRequests = oauth2.NewMemoryModule().ApprovalRequestStore
 		b.deps.OAuth2.ApprovalRequestStore = b.stack.ApprovalRequests
 	}
@@ -431,6 +432,10 @@ func WithLoginThrottle(accountFailures, ipFailures int) Option {
 type blockingRateLimiter struct {
 	policy string
 	key    string
+}
+
+func (l *blockingRateLimiter) AllowWithin(ctx context.Context, policyID, key string, _ rlports.RateLimitPolicyConfig, now time.Time) (rlports.RateLimitResult, error) {
+	return l.Allow(ctx, policyID, key, now)
 }
 
 func (l *blockingRateLimiter) Allow(

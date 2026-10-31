@@ -19,6 +19,7 @@ import { LENGTH } from '../../lib/lengthLimits'
 import type { AdminAgent } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { parseRoles } from './AdminAgentsShared'
+import { AgentGuardrailPanel } from './AgentGuardrailPanel'
 
 // AdminAgentEditPage はエージェントの編集専用画面 (wi-314 T012)。従来
 // AgentEditorDialog がモーダルとして担っていたプロフィール編集に加え、資格情報の
@@ -258,6 +259,9 @@ export function AdminAgentEditPage({
           </div>
         </form>
       </Card>
+      <div className="mt-4">
+        <AgentGuardrailPanel agentID={agent.id} csrfToken={csrfToken} />
+      </div>
     </AdminShell>
   )
 }

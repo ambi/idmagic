@@ -34,6 +34,10 @@ func (l *RateLimiter) Allow(ctx context.Context, policyID, key string, now time.
 	if !ok {
 		return rlports.RateLimitResult{}, errors.New("ratelimit: unknown policy " + policyID)
 	}
+	return l.AllowWithin(ctx, policyID, key, config, now)
+}
+
+func (l *RateLimiter) AllowWithin(ctx context.Context, policyID, key string, config rlports.RateLimitPolicyConfig, now time.Time) (rlports.RateLimitResult, error) {
 	tenantID := tenantcontext.TenantID(ctx)
 	hash := hashRateLimitKey(key)
 

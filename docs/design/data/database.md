@@ -164,6 +164,8 @@ erDiagram
     }
     authorization_detail_types {
     }
+    agent_guardrail_policies {
+    }
     mcp_resource_servers {
     }
     cross_app_access_issue_policies {
@@ -195,6 +197,8 @@ erDiagram
     users ||--o{ agents : 所有する
     tenants ||--o{ authorization_detail_types : 認可詳細型を持つ
     tenants ||--o{ mcp_resource_servers : リソースサーバーを持つ
+    tenants ||--o{ agent_guardrail_policies : ガードレールを持つ
+    agents ||--o| agent_guardrail_policies : ガードレールを持つ
     tenants ||--o{ cross_app_access_issue_policies : ID-JAG の発行を許可する
     tenants ||--o{ cross_app_access_redeem_policies : ID-JAG の受け入れを許可する
     tenants ||--o{ workload_trust_bundles : 信頼束を持つ
@@ -225,6 +229,7 @@ erDiagram
 | `agents` | エージェントの Aggregate。所有者、状態、ロールを格納する | IdManagement | `LOGGED` | 非キーカラム |
 | `authorization_detail_types` | テナントが受け付ける `authorization_details` の型の定義 | OAuth2 | `LOGGED` | 複合主キーの一部 |
 | `mcp_resource_servers` | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ、評価用のクライアントと規則 | OAuth2 | `LOGGED` | 非キーカラム |
+| `agent_guardrail_policies` | Agent の発行の上限とテナントのデフォルト、内容から導いたバージョン | OAuth2 | `LOGGED` | 複合主キーの一部 |
 | `cross_app_access_issue_policies` | ID-JAG の発行の許可 | OAuth2 | `LOGGED` | 非キーカラム |
 | `cross_app_access_redeem_policies` | ID-JAG の受け入れの許可 | OAuth2 | `LOGGED` | 非キーカラム |
 | `workload_trust_bundles` | ワークロード ID のトークンを検証する信頼ドメインと鍵 | WorkloadIdentity | `LOGGED` | 非キーカラム |

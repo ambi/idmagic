@@ -2300,4 +2300,96 @@ model ConsentNotFoundError is ProblemDetails;
 @doc("同じ `resource` が、このテナントの MCP のリソースサーバーとしてすでに登録されている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:resource_exists` である。")
 model McpResourceServerExistsError is ProblemDetails;
 
+
+@doc("ガードレールの超過の扱い。`deny` は拒否し、`require_approval` は Agent の所有者の承認へ降格する。")
+union AgentGuardrailViolationAction {
+  Deny: "deny",
+  RequireApproval: "require_approval",
+}
+
+@doc("発行の流量の上限。")
+model AgentGuardrailIssuanceRate {
+  @minValue(1)
+  @maxValue(1000000)
+  max_issuances: int32;
+  @minValue(1)
+  @maxValue(86400)
+  window_seconds: int32;
+}
+
+@doc("種別ごとの超過の扱い。省略は `deny` である。委譲深さは降格できない。")
+model AgentGuardrailOnViolation {
+  allowed_resources?: AgentGuardrailViolationAction;
+  allowed_authorization_detail_types?: AgentGuardrailViolationAction;
+  issuance_rate?: AgentGuardrailViolationAction;
+  expires_at?: AgentGuardrailViolationAction;
+}
+
+@doc("ガードレールの宣言。未設定の項目は制限しない。空の配列は何も許さない。")
+model AgentGuardrailLimits {
+  @maxItems(100)
+  allowed_resources?: string[];
+  @maxItems(100)
+  allowed_authorization_detail_types?: string[];
+  issuance_rate?: AgentGuardrailIssuanceRate;
+  @minValue(1)
+  @maxValue(86400)
+  max_token_ttl_seconds?: int32;
+  expires_at?: utcDateTime;
+  @minValue(0)
+  @maxValue(16)
+  max_delegation_depth?: int32;
+  require_approval?: boolean;
+  on_violation?: AgentGuardrailOnViolation;
+}
+
+@doc("ガードレールの保存の要求。`expected_version` は読んだバージョンで、ポリシーがなければ空文字列である。")
+model AgentGuardrailPolicyRequest {
+  ...AgentGuardrailLimits;
+  expected_version: string;
+}
+
+@doc("保存したガードレール。`version` は内容から導く。`agent_id` がなければテナントのデフォルトである。")
+model AgentGuardrailPolicy {
+  ...AgentGuardrailLimits;
+  agent_id?: string;
+  version: string;
+  updated_at: utcDateTime;
+}
+
+@doc("Agent に効くガードレールの二層。実効の判定は層ごとに行う。")
+model AgentGuardrailPolicySet {
+  agent?: AgentGuardrailPolicy;
+  tenant_default?: AgentGuardrailPolicy;
+}
+
+@doc("保存の `expected_version` が現在のバージョンと異なる。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:agent_guardrail_conflict` である。")
+model AgentGuardrailConflictError is ProblemDetails;
+
+@doc("ガードレールの宣言が検証を通らない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_agent_guardrail` である。")
+model InvalidAgentGuardrailError is ProblemDetails;
+
+@doc("発行のガードレールの評価（REQ-OAUTH2-078）。")
+model AgentGuardrailEvaluated {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  agentId: string;
+  clientId: string;
+  grantType: string;
+  outcome: "allowed" | "approved" | "approval_required" | "denied";
+  reasons: string[];
+  policyVersions: string[];
+  requestId?: string;
+  tokenId?: string;
+}
+
+@doc("ガードレールの保存か削除。`policy` は変更後の内容で、削除ではない。")
+model AgentGuardrailPolicyChanged {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  agentId?: string;
+  actorUserId: string;
+  policy?: AgentGuardrailPolicy;
+}
+
 }

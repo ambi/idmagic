@@ -429,3 +429,35 @@ type CrossAppAccessPolicyDeleted struct {
 
 func (e *CrossAppAccessPolicyDeleted) EventType() string     { return "CrossAppAccessPolicyDeleted" }
 func (e *CrossAppAccessPolicyDeleted) OccurredAt() time.Time { return e.At }
+
+// AgentGuardrailEvaluated は発行のガードレールの評価である (REQ-OAUTH2-078)。
+// authorization_details の値は残さない。
+type AgentGuardrailEvaluated struct {
+	At             time.Time `json:"-"`
+	TenantID       string    `json:"tenantId"`
+	AgentID        string    `json:"agentId"`
+	ClientID       string    `json:"clientId"`
+	GrantType      string    `json:"grantType"`
+	Outcome        string    `json:"outcome"`
+	Reasons        []string  `json:"reasons"`
+	PolicyVersions []string  `json:"policyVersions"`
+	RequestID      string    `json:"requestId,omitempty"`
+	TokenID        string    `json:"tokenId,omitempty"`
+}
+
+func (e *AgentGuardrailEvaluated) EventType() string     { return "AgentGuardrailEvaluated" }
+func (e *AgentGuardrailEvaluated) OccurredAt() time.Time { return e.At }
+
+// AgentGuardrailPolicyChanged はガードレールの保存か削除である (REQ-OAUTH2-078)。Limits は
+// 変更後の内容で、削除では nil である。バージョンの内容の履歴はこのイベントで辿る。
+type AgentGuardrailPolicyChanged struct {
+	At          time.Time             `json:"-"`
+	TenantID    string                `json:"tenantId"`
+	AgentID     string                `json:"agentId,omitempty"`
+	ActorUserID string                `json:"actorUserId"`
+	Version     string                `json:"version,omitempty"`
+	Limits      *AgentGuardrailLimits `json:"limits,omitempty"`
+}
+
+func (e *AgentGuardrailPolicyChanged) EventType() string     { return "AgentGuardrailPolicyChanged" }
+func (e *AgentGuardrailPolicyChanged) OccurredAt() time.Time { return e.At }

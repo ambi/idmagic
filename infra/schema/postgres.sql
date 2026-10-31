@@ -783,6 +783,23 @@ CREATE TABLE mcp_resource_servers (
     CONSTRAINT mcp_resource_servers_name_length CHECK (char_length(name) BETWEEN 1 AND 200)
 );
 
+-- Agent のガードレール (REQ-OAUTH2-077)。scope_key は Agent の id で、テナントのデフォルトは空文字列である。
+CREATE TABLE agent_guardrail_policies (
+    tenant_id UUID NOT NULL,
+    scope_key TEXT NOT NULL,
+    agent_id UUID,
+    limits JSONB NOT NULL,
+    version TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, scope_key),
+    CONSTRAINT agent_guardrail_policies_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT agent_guardrail_policies_agent_id_fkey
+        FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+    CONSTRAINT agent_guardrail_policies_scope_matches_agent
+        CHECK (scope_key = COALESCE(agent_id::text, ''))
+);
+
 CREATE TABLE cross_app_access_issue_policies (
     tenant_id UUID NOT NULL,
     id UUID PRIMARY KEY,

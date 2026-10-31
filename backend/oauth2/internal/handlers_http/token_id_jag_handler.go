@@ -39,7 +39,9 @@ func (d Deps) issueIDJAG(c *echo.Context, client authedClient, dpopJKT string) e
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
+	guard, _ := d.TokenIssuer.(oauthports.IssuanceGuard)
 	res, err := tokenusecases.IssueIDJAG(ctx, tokenusecases.IssueIDJAGDeps{
+		Guard:      guard,
 		ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, Policies: d.CrossAppAccessPolicies,
 		Verifier: d.IDTokenAssertionVerifier, Signer: d.IDJAGSigner,
 		ApplicationAccess: d.applicationAccess(c), UserEpochs: d.UserRevocationEpochRepo, AgentRepo: d.AgentRepo, Consents: d.ConsentRepo, Emit: d.Emit,

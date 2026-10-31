@@ -114,6 +114,17 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		return nil, NewOAuthError("invalid_grant", "Refresh was rejected: "+strings.Join(d.Reasons, ", "))
 	}
 
+	// ローテーションの確定後に拒否すると、再試行が再利用と判定されファミリーごと失効する (REQ-OAUTH2-075)。
+	if guard, ok := deps.TokenIssuer.(ports.IssuanceGuard); ok {
+		var audiences []string
+		if record.Resource != nil {
+			audiences = []string{*record.Resource}
+		}
+		if err := guard.Precheck(ctx, ports.AccessTokenInput{Client: client, Sub: record.UserID, Scopes: record.Scopes, Audiences: audiences}); err != nil {
+			return nil, err
+		}
+	}
+
 	newTok, err := domain.RotateRefreshToken(record, now, entropy.Crypto())
 	if err != nil {
 		return nil, err

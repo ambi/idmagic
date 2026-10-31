@@ -2014,6 +2014,115 @@ op DecideMyApprovalRequest(
   @path id: string,
   @body body: IdMagic.Contract.AccountApprovalDecisionRequest
 ): DecideMyApprovalRequestSuccess_204 | DecideMyApprovalRequestError400 | IdMagic.Contract.AuthenticationRequiredResponse | DecideMyApprovalRequestError403;
+
+
+model AgentGuardrailValidationError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.InvalidRequestError | IdMagic.Contract.InvalidAgentGuardrailError;
+}
+
+union AgentGuardrailWriteError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model AgentGuardrailWriteError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: AgentGuardrailWriteError403Body;
+}
+
+union AgentGuardrailReadError403Body {
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model AgentGuardrailReadError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: AgentGuardrailReadError403Body;
+}
+
+model AgentGuardrailAgentNotFound404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AgentNotFoundError;
+}
+
+model AgentGuardrailConflict409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AgentGuardrailConflictError;
+}
+
+model AgentGuardrailPolicySuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.AgentGuardrailPolicy;
+}
+
+model AgentGuardrailPolicySetSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.AgentGuardrailPolicySet;
+}
+
+model AgentGuardrailDeleted_204 {
+  @statusCode statusCode: 204;
+}
+
+@doc("管理者が、Agent に効くガードレールの二層を読む（REQ-OAUTH2-077）。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
+@TypeSpec.OpenAPI.operationId("GetAdminAgentGuardrailPolicy")
+@route("/api/admin/v1/agents/{agent_id}/guardrail-policy")
+@get
+op GetAdminAgentGuardrailPolicy(
+  @path agent_id: string
+): AgentGuardrailPolicySetSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | AgentGuardrailReadError403 | AgentGuardrailAgentNotFound404;
+
+@doc("管理者が、Agent 別のガードレールを読んだバージョンに対して保存する（REQ-OAUTH2-077）。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
+@TypeSpec.OpenAPI.operationId("PutAdminAgentGuardrailPolicy")
+@route("/api/admin/v1/agents/{agent_id}/guardrail-policy")
+@put
+op PutAdminAgentGuardrailPolicy(
+  @path agent_id: string,
+  @body body: IdMagic.Contract.AgentGuardrailPolicyRequest
+): AgentGuardrailPolicySuccess_200 | AgentGuardrailValidationError400 | IdMagic.Contract.AuthenticationRequiredResponse | AgentGuardrailWriteError403 | AgentGuardrailAgentNotFound404 | AgentGuardrailConflict409;
+
+@doc("管理者が、Agent 別のガードレールを削除する。ポリシーがなくても 204 を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
+@TypeSpec.OpenAPI.operationId("DeleteAdminAgentGuardrailPolicy")
+@route("/api/admin/v1/agents/{agent_id}/guardrail-policy")
+@delete
+op DeleteAdminAgentGuardrailPolicy(
+  @path agent_id: string
+): AgentGuardrailDeleted_204 | IdMagic.Contract.AuthenticationRequiredResponse | AgentGuardrailWriteError403 | AgentGuardrailAgentNotFound404;
+
+@doc("管理者が、テナントのデフォルトのガードレールを読む。ポリシーがなければ `tenant_default` を省く。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
+@TypeSpec.OpenAPI.operationId("GetAdminAgentGuardrailDefault")
+@route("/api/admin/v1/agent-guardrail-default")
+@get
+op GetAdminAgentGuardrailDefault(): AgentGuardrailPolicySetSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | AgentGuardrailReadError403;
+
+@doc("管理者が、テナントのデフォルトのガードレールを読んだバージョンに対して保存する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
+@TypeSpec.OpenAPI.operationId("PutAdminAgentGuardrailDefault")
+@route("/api/admin/v1/agent-guardrail-default")
+@put
+op PutAdminAgentGuardrailDefault(
+  @body body: IdMagic.Contract.AgentGuardrailPolicyRequest
+): AgentGuardrailPolicySuccess_200 | AgentGuardrailValidationError400 | IdMagic.Contract.AuthenticationRequiredResponse | AgentGuardrailWriteError403 | AgentGuardrailConflict409;
+
+@doc("管理者が、テナントのデフォルトのガードレールを削除する。ポリシーがなくても 204 を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
+@TypeSpec.OpenAPI.operationId("DeleteAdminAgentGuardrailDefault")
+@route("/api/admin/v1/agent-guardrail-default")
+@delete
+op DeleteAdminAgentGuardrailDefault(): AgentGuardrailDeleted_204 | IdMagic.Contract.AuthenticationRequiredResponse | AgentGuardrailWriteError403;
+
 }
 
 }

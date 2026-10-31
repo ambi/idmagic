@@ -20,6 +20,10 @@ type stubRateLimiter struct {
 	err    error
 }
 
+func (s stubRateLimiter) AllowWithin(ctx context.Context, policyID, key string, _ rlports.RateLimitPolicyConfig, now time.Time) (rlports.RateLimitResult, error) {
+	return s.Allow(ctx, policyID, key, now)
+}
+
 func (s stubRateLimiter) Allow(context.Context, string, string, time.Time) (rlports.RateLimitResult, error) {
 	return s.result, s.err
 }
