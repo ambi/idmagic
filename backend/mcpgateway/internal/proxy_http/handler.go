@@ -22,6 +22,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/evaluation_http"
+	"github.com/ambi/idmagic/backend/mcpgateway/internal/exchange_http"
 )
 
 // 実装が定義できる範囲 (-32000 から -32019) から割り当てるコードである。
@@ -56,6 +57,11 @@ type Evaluator interface {
 	Evaluate(ctx context.Context, in evaluation_http.Request) (evaluation_http.Result, error)
 }
 
+// Exchanger は許可を下流宛のトークンへ交換する。
+type Exchanger interface {
+	Exchange(ctx context.Context, subjectToken, grant, correlationID string) (exchange_http.Credential, error)
+}
+
 // Recorder はツール別の指標を記録する。
 type Recorder interface {
 	Request(method, tool, outcome string)
@@ -73,9 +79,12 @@ type Options struct {
 	MaxBodyBytes   int64
 	Mapping        domain.Mapping
 	Evaluator      Evaluator
-	Audit          *slog.Logger
-	Metrics        Recorder
-	Transport      http.RoundTripper
+	// DownstreamResource と Downstream があれば、転送ごとにトークンを差し替える (REQ-MCPGATEWAY-008)。
+	DownstreamResource string
+	Downstream         Exchanger
+	Audit              *slog.Logger
+	Metrics            Recorder
+	Transport          http.RoundTripper
 }
 
 // Handler は MCP の入口である。
@@ -120,6 +129,7 @@ type requestRecord struct {
 	operation                                           domain.Operation
 	outcome, evaluationRequestID                        string
 	reasons                                             []string
+	downstream                                          exchange_http.Credential
 }
 
 type recordKey struct{}
@@ -215,6 +225,10 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 	if len(proof) == 1 {
 		in.DPoPProof = proof[0]
 	}
+	// 転送しない宣言のないツールには、下流へ渡す根拠を発行させない。
+	if evaluation.Kind == domain.EvaluateAndForward {
+		in.TokenExchangeResource = h.options.DownstreamResource
+	}
 	result, err := h.options.Evaluator.Evaluate(r.Context(), in)
 	h.options.Metrics.Evaluation(time.Since(started))
 	record.evaluationRequestID = result.RequestID
@@ -254,10 +268,31 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+	if h.options.Downstream != nil {
+		if !h.obtainDownstream(r.Context(), record, token, result.TokenExchangeGrant) {
+			writeError(w, http.StatusServiceUnavailable, message.ID, codeUnavailable, "authorization is unavailable", nil)
+			return
+		}
+	}
 	record.outcome = outcomeForwarded
 	r.Body = io.NopCloser(bytes.NewReader(body))
 	r.ContentLength = int64(len(body))
 	h.proxy.ServeHTTP(w, r)
+}
+
+// obtainDownstream は下流の資格情報を得る。得られなければ転送しない。
+func (h *Handler) obtainDownstream(ctx context.Context, record *requestRecord, token, grant string) bool {
+	if grant != "" {
+		credential, err := h.options.Downstream.Exchange(ctx, token, grant, record.correlationID)
+		if err == nil {
+			record.downstream = credential
+			return true
+		}
+		h.options.Audit.LogAttrs(ctx, slog.LevelWarn, "token exchange failed",
+			slog.String("correlation_id", record.correlationID), slog.String("error", err.Error()))
+	}
+	record.outcome, record.reasons = outcomeUnavailable, []string{"token_exchange_failed"}
+	return false
 }
 
 func (h *Handler) serveMetadata(w http.ResponseWriter, r *http.Request) {
@@ -279,6 +314,10 @@ func (h *Handler) rewrite(request *httputil.ProxyRequest) {
 	request.Out.Header.Del("Cookie")
 	if record, ok := request.In.Context().Value(recordKey{}).(*requestRecord); ok {
 		request.Out.Header.Set("X-Request-ID", record.correlationID)
+		if record.downstream.Token != "" {
+			request.Out.Header.Set("Authorization", "DPoP "+record.downstream.Token)
+			request.Out.Header.Set("DPoP", record.downstream.Proof)
+		}
 	}
 }
 

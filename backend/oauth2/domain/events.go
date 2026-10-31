@@ -141,6 +141,8 @@ type TokenExchanged struct {
 	// ActorChain は発行トークンの act チェーンに現れる主体を外側から順に並べたもの。
 	// 深さと両端だけでは中間の行為者を辿れないため、参加者そのものを残す。
 	ActorChain []string `json:"actorChain"`
+	// SenderConstraintRebound は、交換の許可で別の鍵へ束縛したことを表す (REQ-OAUTH2-079)。
+	SenderConstraintRebound bool `json:"senderConstraintRebound,omitempty"`
 }
 
 func (e *TokenExchanged) EventType() string     { return "TokenExchanged" }

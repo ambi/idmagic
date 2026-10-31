@@ -94,6 +94,28 @@ func TestMcpResourceServer_IsActive(t *testing.T) {
 }
 
 //spec:covers REQ-OAUTH2-064: 規則の形、重複、スコープの範囲、件数の上限
+//spec:covers REQ-OAUTH2-079: 宛先の宣言は https に限り、承認を求める操作と併用できない
+func TestTokenExchangeResourcesValidation(t *testing.T) {
+	validate := func(rule ResourceAccessRule) error {
+		rule.ResourceType, rule.Relation, rule.Scopes = "document", "viewer", []string{"read"}
+		server := validMcpResourceServer()
+		server.Scopes, server.AccessRules = []string{"read"}, []ResourceAccessRule{rule}
+		return server.Validate()
+	}
+	if err := validate(ResourceAccessRule{TokenExchangeResources: []string{"https://down.example/mcp"}}); err != nil {
+		t.Fatal(err)
+	}
+	for name, rule := range map[string]ResourceAccessRule{
+		"plain":    {TokenExchangeResources: []string{"http://down.example"}},
+		"approval": {TokenExchangeResources: []string{"https://down.example"}, RequiresApprovedOperation: true, AuthorizationDetailType: "x"},
+		"too many": {TokenExchangeResources: make([]string, maxTokenExchangeResources+1)},
+	} {
+		if err := validate(rule); err == nil {
+			t.Errorf("%s accepted", name)
+		}
+	}
+}
+
 func TestMcpResourceServerValidateAccessRules(t *testing.T) {
 	valid := ResourceAccessRule{ResourceType: "document", Relation: "viewer", Scopes: []string{"mcp.read"}}
 	many := make([]ResourceAccessRule, MaxResourceAccessRules+1)

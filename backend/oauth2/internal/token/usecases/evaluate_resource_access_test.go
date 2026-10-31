@@ -498,3 +498,99 @@ func TestEvaluateResourceAccessIgnoresAttributesWithoutCondition(t *testing.T) {
 		t.Fatalf("err=%v decision=%+v event=%+v", err, decision, event)
 	}
 }
+
+type failingGrantStore struct{ ports.TokenExchangeGrantStore }
+
+func (failingGrantStore) Save(context.Context, string, domain.TokenExchangeGrant) error {
+	return errors.New("unavailable")
+}
+
+//spec:covers REQ-OAUTH2-079: 宣言した宛先だけに一度の許可を発行し、宣言のない宛先、未配線、保存の失敗で許可を返さない
+func TestEvaluateIssuesATokenExchangeGrant(t *testing.T) {
+	rule := evalRule
+	rule.TokenExchangeResources = []string{"https://down.example/mcp"}
+	now := time.Now().UTC()
+	evaluate := func(store ports.TokenExchangeGrantStore, resource string) (ResourceAccessDecision, error) {
+		in := evalRequest()
+		in.TokenExchangeResource = resource
+		return EvaluateResourceAccess(evalTenantContext(), ResourceAccessDeps{
+			Servers: evalServer(t, rule), Tokens: evalTokens{result: evalAgentToken()},
+			Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}}, Grants: store,
+		}, in, now)
+	}
+	store := db_memory.NewTokenExchangeGrantStore()
+	decision, err := evaluate(store, "https://down.example/mcp")
+	if err != nil || !decision.Permitted || decision.TokenExchangeGrant == "" {
+		t.Fatalf("decision=%+v err=%v", decision, err)
+	}
+	claimed, err := store.Claim(evalTenantContext(), domain.HashTokenExchangeGrant(decision.TokenExchangeGrant), domain.TokenExchangeGrant{
+		ClientID: evalClient, SubjectTokenID: "jti", Resource: "https://down.example/mcp",
+	}, now.Add(domain.TokenExchangeGrantTTL-time.Second))
+	if err != nil || !claimed {
+		t.Fatalf("claimed=%v err=%v", claimed, err)
+	}
+
+	if decision, err := evaluate(store, ""); err != nil || !decision.Permitted || decision.TokenExchangeGrant != "" {
+		t.Fatalf("without a destination: decision=%+v err=%v", decision, err)
+	}
+	decision, err = evaluate(store, "https://other.example/mcp")
+	if err != nil || decision.Permitted || decision.TokenExchangeGrant != "" || decision.Reasons[0] != domain.ReasonTokenExchangeNotPermitted {
+		t.Fatalf("undeclared: decision=%+v err=%v", decision, err)
+	}
+	if _, err := evaluate(nil, "https://down.example/mcp"); !errors.Is(err, ErrResourceAccessNotConfigured) {
+		t.Fatalf("no store: err=%v", err)
+	}
+	if decision, err := evaluate(failingGrantStore{}, "https://down.example/mcp"); err == nil || decision.Permitted {
+		t.Fatalf("failed save: decision=%+v err=%v", decision, err)
+	}
+}
+
+//spec:covers REQ-OAUTH2-079: 承認の操作は交換を求めると不許可になり、使用権を記録しない
+func TestApprovedOperationGetsNoTokenExchangeGrant(t *testing.T) {
+	now := time.Now().UTC()
+	ctx := evalTenantContext()
+	store := approvedStore(t, now)
+	in := approvedRequest("k", `{"amount":100}`)
+	in.TokenExchangeResource = "https://down.example/mcp"
+	rule := approvedRule()
+	rule.TokenExchangeResources = []string{"https://down.example/mcp"}
+	decision, err := EvaluateResourceAccess(ctx, ResourceAccessDeps{
+		Servers: evalServer(t, rule), Tokens: evalTokens{result: approvedToken()},
+		Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}}, Approvals: store,
+		Grants: db_memory.NewTokenExchangeGrantStore(),
+	}, in, now)
+	if err != nil || decision.Permitted || decision.Reasons[0] != domain.ReasonTokenExchangeNotPermitted {
+		t.Fatalf("decision=%+v err=%v", decision, err)
+	}
+	record, err := store.FindByID(ctx, approvedToken().ApprovalRequestID)
+	if err != nil || record.Use != nil {
+		t.Fatalf("use=%+v err=%v", record.Use, err)
+	}
+}
+
+//spec:covers REQ-OAUTH2-079: Agent の主体の act がゲートウェイだけなら主体を導き、登録のないクライアントでは導かない
+func TestEvaluateResolvesAnAgentBehindAGateway(t *testing.T) {
+	token := evalAgentToken()
+	token.Act = map[string]any{"sub": evalClient}
+	relations := &evalRelations{decision: policyports.RelationDecision{Permitted: true}}
+	evaluate := func() ResourceAccessDecision {
+		decision, err := EvaluateResourceAccess(evalTenantContext(), ResourceAccessDeps{
+			Servers: evalServer(t, evalRule), Tokens: evalTokens{result: token}, Relations: relations,
+		}, evalRequest(), time.Now().UTC())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return decision
+	}
+	if decision := evaluate(); !decision.Permitted {
+		t.Fatalf("gateway: %+v", decision)
+	}
+	token.Act = map[string]any{"sub": "unregistered"}
+	if decision := evaluate(); decision.Permitted || decision.Reasons[0] != domain.ReasonPrincipalUnresolved {
+		t.Fatalf("unregistered: %+v", decision)
+	}
+	token.Act = map[string]any{"sub": evalClient, "act": map[string]any{"sub": "other"}}
+	if decision := evaluate(); decision.Permitted {
+		t.Fatalf("nested: %+v", decision)
+	}
+}

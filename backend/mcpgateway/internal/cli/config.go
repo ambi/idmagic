@@ -2,8 +2,11 @@
 package cli
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/url"
@@ -45,6 +48,10 @@ type fileConfig struct {
 		ClientSecretFile string `yaml:"client_secret_file"`
 		Timeout          string `yaml:"timeout"`
 	} `yaml:"idmagic"`
+	Downstream struct {
+		Resource    string `yaml:"resource"`
+		DPoPKeyFile string `yaml:"dpop_key_file"`
+	} `yaml:"downstream"`
 	AllowedOrigins []string `yaml:"allowed_origins"`
 	MaxBodyBytes   *int64   `yaml:"max_body_bytes"`
 	Mapping        struct {
@@ -55,19 +62,22 @@ type fileConfig struct {
 
 // Config は検証済みの設定である。
 type Config struct {
-	Listen         string
-	MetricsListen  string
-	Resource       *url.URL
-	Upstream       *url.URL
-	EnvoyExtAuthz  bool
-	RealmURL       string
-	TLS            *tls.Config
-	ClientID       string
-	ClientSecret   string
-	Timeout        time.Duration
-	AllowedOrigins []string
-	MaxBodyBytes   int64
-	Mapping        domain.Mapping
+	Listen        string
+	MetricsListen string
+	Resource      *url.URL
+	Upstream      *url.URL
+	EnvoyExtAuthz bool
+	// DownstreamResource が空でなければ、転送ごとに DownstreamKey で束縛したトークンへ差し替える。
+	DownstreamResource string
+	DownstreamKey      *ecdsa.PrivateKey
+	RealmURL           string
+	TLS                *tls.Config
+	ClientID           string
+	ClientSecret       string
+	Timeout            time.Duration
+	AllowedOrigins     []string
+	MaxBodyBytes       int64
+	Mapping            domain.Mapping
 }
 
 // LoadConfig は設定ファイルを読み、どの誤りも起動前に拒否する。
@@ -112,6 +122,9 @@ func LoadConfig(path string) (Config, error) {
 		return Config{}, err
 	}
 	config.RealmURL = strings.TrimSuffix(realm.String(), "/")
+	if err := loadDownstream(file, &config); err != nil {
+		return Config{}, err
+	}
 	if file.MaxBodyBytes != nil {
 		if *file.MaxBodyBytes <= 0 {
 			return Config{}, errors.New("max_body_bytes must be positive")
@@ -133,6 +146,46 @@ func LoadConfig(path string) (Config, error) {
 		return Config{}, err
 	}
 	return config, nil
+}
+
+func loadDownstream(file fileConfig, config *Config) error {
+	if file.Downstream.Resource == "" && file.Downstream.DPoPKeyFile == "" {
+		return nil
+	}
+	if config.EnvoyExtAuthz {
+		return errors.New("downstream must not be set when mode is envoy_ext_authz")
+	}
+	resource, err := absoluteURL("downstream.resource", file.Downstream.Resource, "https")
+	if err != nil {
+		return err
+	}
+	config.DownstreamResource = resource.String()
+	config.DownstreamKey, err = readP256Key(file.Downstream.DPoPKeyFile)
+	return err
+}
+
+func readP256Key(path string) (*ecdsa.PrivateKey, error) {
+	invalid := errors.New("downstream.dpop_key_file must hold a P-256 private key")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, invalid
+	}
+	block, _ := pem.Decode(raw)
+	if block == nil {
+		return nil, invalid
+	}
+	key, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		parsed, pkcs8Err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		var ok bool
+		if key, ok = parsed.(*ecdsa.PrivateKey); pkcs8Err != nil || !ok {
+			return nil, invalid
+		}
+	}
+	if key.Curve != elliptic.P256() {
+		return nil, invalid
+	}
+	return key, nil
 }
 
 func absoluteURL(name, value string, schemes ...string) (*url.URL, error) {

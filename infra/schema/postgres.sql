@@ -1941,6 +1941,21 @@ CREATE UNLOGGED TABLE oauth2_replay_jtis (
 CREATE INDEX oauth2_replay_jtis_expires_at_idx
     ON oauth2_replay_jtis (expires_at);
 
+CREATE UNLOGGED TABLE oauth2_token_exchange_grants (
+    tenant_id UUID NOT NULL,
+    grant_hash TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    subject_token_id TEXT NOT NULL,
+    resource TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, grant_hash),
+    CONSTRAINT oauth2_token_exchange_grants_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+CREATE INDEX oauth2_token_exchange_grants_expires_at_idx
+    ON oauth2_token_exchange_grants (expires_at);
+
 CREATE TABLE oauth2_access_token_denylist (
     tenant_id UUID NOT NULL,
     jti TEXT NOT NULL,

@@ -71,6 +71,7 @@ type Deps struct {
 	ApprovalRequestStore       oauthports.ApprovalRequestStore
 	Notifier                   notificationports.Notifier
 	DpopReplayStore            oauthports.DpopReplayStore
+	TokenExchangeGrantStore    oauthports.TokenExchangeGrantStore
 	RefreshStore               oauthports.RefreshTokenStore
 	TokenIssuer                oauthports.TokenIssuer
 	AgentRepo                  agentports.AgentRepository

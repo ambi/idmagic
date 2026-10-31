@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/evaluation_http"
+	"github.com/ambi/idmagic/backend/mcpgateway/internal/exchange_http"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/proxy_http"
 )
 
@@ -32,17 +33,26 @@ func Load(path string, audit io.Writer) (*Gateway, error) {
 	evaluationTransport := &http.Transport{TLSClientConfig: config.TLS, ForceAttemptHTTP2: true}
 	upstreamTransport := &http.Transport{ForceAttemptHTTP2: true}
 	metrics := proxy_http.NewMetrics()
+	backchannel := &http.Client{
+		Transport: evaluationTransport, Timeout: config.Timeout,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	var downstream proxy_http.Exchanger
+	if config.DownstreamResource != "" {
+		downstream = exchange_http.Client{
+			TokenURL: config.RealmURL + "/token", ClientID: config.ClientID, ClientSecret: config.ClientSecret,
+			Resource: config.DownstreamResource, Key: config.DownstreamKey, HTTPClient: backchannel,
+		}
+	}
 	handler, err := proxy_http.NewHandler(proxy_http.Options{
 		Resource: config.Resource, Upstream: config.Upstream, EnvoyExtAuthz: config.EnvoyExtAuthz, RealmURL: config.RealmURL,
 		AllowedOrigins: config.AllowedOrigins, MaxBodyBytes: config.MaxBodyBytes, Mapping: config.Mapping,
 		Evaluator: evaluation_http.Client{
 			EvaluateURL: config.RealmURL + "/resource-access/evaluate",
 			ClientID:    config.ClientID, ClientSecret: config.ClientSecret,
-			HTTPClient: &http.Client{
-				Transport: evaluationTransport, Timeout: config.Timeout,
-				CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-			},
+			HTTPClient: backchannel,
 		},
+		DownstreamResource: config.DownstreamResource, Downstream: downstream,
 		Audit:     slog.New(slog.NewJSONHandler(audit, nil)),
 		Metrics:   metrics,
 		Transport: upstreamTransport,

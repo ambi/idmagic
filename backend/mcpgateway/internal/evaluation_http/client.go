@@ -24,6 +24,8 @@ type Request struct {
 	// DPoPProof があれば htm と htu を添える。
 	DPoPProof string
 	HTU       string
+	// TokenExchangeResource があれば、許可とともに交換の許可を求める。
+	TokenExchangeResource string
 }
 
 // Result は評価の結果である。Available が偽なら判断はなく、許可として扱わない。
@@ -33,6 +35,8 @@ type Result struct {
 	Reasons    []string
 	RequestID  string
 	RetryAfter string
+	// TokenExchangeGrant は下流宛の交換の根拠で、ログへ出さない。
+	TokenExchangeGrant string
 }
 
 // Client は機密クライアントの資格情報で評価を呼ぶ。
@@ -57,6 +61,9 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 		form.Set("htm", http.MethodPost)
 		form.Set("htu", in.HTU)
 	}
+	if in.TokenExchangeResource != "" {
+		form.Set("token_exchange_resource", in.TokenExchangeResource)
+	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.EvaluateURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return Result{}, err
@@ -77,8 +84,9 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 		return result, fmt.Errorf("evaluation returned status %d", response.StatusCode)
 	}
 	var body struct {
-		Decision *bool    `json:"decision"`
-		Reasons  []string `json:"reasons"`
+		Decision           *bool    `json:"decision"`
+		Reasons            []string `json:"reasons"`
+		TokenExchangeGrant string   `json:"token_exchange_grant"`
 	}
 	if err := json.NewDecoder(io.LimitReader(response.Body, maxResponseBytes)).Decode(&body); err != nil {
 		return result, fmt.Errorf("evaluation response: %w", err)
@@ -87,5 +95,6 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 		return result, fmt.Errorf("evaluation response has no decision")
 	}
 	result.Available, result.Permitted, result.Reasons = true, *body.Decision, body.Reasons
+	result.TokenExchangeGrant = body.TokenExchangeGrant
 	return result, nil
 }

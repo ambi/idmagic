@@ -106,6 +106,7 @@ Container は Docker のコンテナではなく、個別に起動する実行�
 Directory Connector と MCP Gateway は利用者が配置し、IdMagic の公開 HTTP エンドポイントを呼び出す。
 MCP クライアントとの TLS 接続は利用者側の前段で終端し、MCP サーバーには MCP Gateway からだけ到達できるようにする。
 利用者の Envoy を執行の位置にする構成では、MCP Gateway は `ext_authz` の判定だけを返し、MCP サーバーへは Envoy からだけ到達できるようにする。
+MCP Gateway に下流の設定があれば、許可した呼び出しごとに IdMagic のトークンエンドポイントで下流宛のトークンを得て、自身の鍵で束縛して MCP サーバーへ渡す。
 各 CLI の通信の詳細は、それぞれの実行環境の文書が定める。
 
 ```mermaid

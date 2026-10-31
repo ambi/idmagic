@@ -39,6 +39,7 @@ func RunEphemeralSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 		{"device_codes", deps.OAuth2.DeviceCodeStore},
 		{"approval_requests", deps.OAuth2.ApprovalRequestStore},
 		{"dpop_replay", deps.OAuth2.DpopReplayStore},
+		{"token_exchange_grants", deps.OAuth2.TokenExchangeGrantStore},
 		{"client_assertion_replay", deps.OAuth2.ClientAssertionReplayStore},
 		{"access_token_denylist", deps.OAuth2.AccessTokenDenylist},
 		{"webauthn_sessions", deps.Authentication.WebAuthnSessionStore},

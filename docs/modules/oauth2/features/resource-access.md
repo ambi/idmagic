@@ -95,6 +95,27 @@
 - 送信者制約のないトークンの評価で証明を受けたとき、OAuth2 は、証明を検証せず、`jti` を記録しない。
 - **判断**：検証を IdMagic に置く。リソースサーバーの実装漏れが許可へ倒れないようにするためである。mTLS の接続はリソースサーバーが終端するので、拇印は認証済みのリソースサーバーの申告として受ける。
 
+#### REQ-OAUTH2-079 評価は規則が宣言した宛先への一回限りの交換の許可を発行できる
+
+- `token_exchange_resource` を持つ評価が REQ-OAUTH2-062 の論理積を満たし、値が規則の `token_exchange_resources` にあるとき、OAuth2 は、`decision=true` と、有効期間が 60 秒で一回だけ使える `token_exchange_grant` を返す。
+- `token_exchange_resource` がない評価を許可したとき、OAuth2 は、`token_exchange_grant` を返さない。
+- `token_exchange_resource` が規則の `token_exchange_resources` にないか、人の承認を求める操作の場合、OAuth2 は、ほかの論理積を満たす評価に 200 と `decision=false`、理由 `token_exchange_not_permitted` を返し、承認の使用権を記録しない。
+- ほかの理由で不許可を返すとき、OAuth2 は、`token_exchange_grant` を返さない。
+- 許可を保存できない場合、OAuth2 は、503 と `temporarily_unavailable` を返し、許可しない。
+- `token_exchange_grant` を伴う Token Exchange を受けたとき、OAuth2 は、許可を発行した評価のクライアント、`subject_token`、宛先のすべてが要求と一致し、期限内で未使用であることを確かめる。
+- 許可を確かめられないか、使用済みか、期限切れか、一致しない場合、OAuth2 は、400 と `invalid_grant` で拒否し、トークンを発行せず、`TokenExchangeRejected` を発行する。
+- 別のクライアント、`subject_token`、宛先の要求を拒否するとき、OAuth2 は、許可を消費しない。
+- 同じ許可の Token Exchange が並行した場合、OAuth2 は、ちょうど一方だけにトークンを発行する。
+- `token_exchange_grant` を `actor_token` か外部ワークロードの `subject_token` とともに受けた場合、OAuth2 は、400 と `invalid_request` で拒否する。
+- 許可を伴う交換で発行したとき、OAuth2 は、`TokenExchanged` の `senderConstraintRebound` を真にする。
+- 主体が Agent の `subject_token` を許可とともに交換したとき、OAuth2 は、発行するトークンの主体を同じ Agent のままにする。
+- 主体が Agent で、`act` が `Active` の登録に束縛したクライアントだけであるトークンを評価するとき、OAuth2 は、そのクライアントを行為者に数えず、主体を導く。
+- `subject_token` の Agent か利用者を失効させた後の評価と交換では、OAuth2 は、許可を発行せず、発行済みの許可でも交換を拒否する。
+- **判断**：許可を評価に載せる。評価は元の鍵の証明を確かめる唯一の場所であり、登録だけを根拠にすると盗んだトークンをゲートウェイへ持ち込める。
+- **判断**：宛先を規則で宣言する。トークンの権限の範囲内でも、操作ごとにどの資源へ渡してよいかは管理者の判断である。
+- **判断**：承認の操作へ許可を出さない。交換の派生は承認を引き継がないので、下流で承認の照合が成り立たない。
+- **判断**：有効期間を短くする。許可は呼び出しごとに得るので、再利用する理由がなく、ゲートウェイの鍵の漏洩の影響を抑える。
+
 ### 条件の評価
 
 規則の `condition` は、[CEL](https://cel.dev/) の真偽式で操作ごとの結果を分ける。
@@ -204,6 +225,8 @@ IdMagic は実行の結果を持たず、この冪等性のないリソースサ
 この入口は、管理 API の診断の経路とは別である。
 リソースサーバーは、提示されたトークンの主体についてだけ、自身が登録した種類の資源を尋ねられる。
 任意の主体の権限を探索する経路はない。
+
+`token_exchange_grant` は送信者制約の保証を弱める値で、ログと監査イベントへ出さず、PostgreSQL にはハッシュだけを保存する。
 
 `Disabled` にした登録、登録の削除、クライアントの削除は、次の評価から効く。
 

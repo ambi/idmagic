@@ -63,6 +63,7 @@ type Module struct {
 	DeviceCodeStore            oauthports.DeviceCodeStore
 	ApprovalRequestStore       oauthports.ApprovalRequestStore
 	DpopReplayStore            oauthports.DpopReplayStore
+	TokenExchangeGrantStore    oauthports.TokenExchangeGrantStore
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
 	ClientSessionStore         logoutports.ClientSessionStore
 	LogoutNotificationStore    logoutports.LogoutNotificationStore

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	oauth2consentpostgres "github.com/ambi/idmagic/backend/oauth2/internal/consent/db_postgres"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
 	oauth2tokenpostgres "github.com/ambi/idmagic/backend/oauth2/internal/token/db_postgres"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // testClock は決定的なタイムスタンプ生成に用いる基準時刻。
@@ -477,5 +479,43 @@ func TestRefreshTokenStoreRevokeFamily_ReportsNewlyRevokedIDs(t *testing.T) {
 	}
 	if len(again) != 0 {
 		t.Fatalf("expected no newly revoked ids on repeat call, got %v", again)
+	}
+}
+
+//spec:covers REQ-OAUTH2-079: 流用は消費せず、期限の境界と並行の消費は一度だけ成功する
+func TestTokenExchangeGrantStoreClaimsOnce(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	store := &oauth2postgres.TokenExchangeGrantStore{Pool: db}
+	ctx := tenantports.WithTenantID(context.Background(), tenant.ID)
+	now := testClock()
+	grant := domain.TokenExchangeGrant{ClientID: "gateway", SubjectTokenID: "jti", Resource: "https://down.example/mcp", ExpiresAt: now.Add(domain.TokenExchangeGrantTTL)}
+	if err := store.Save(ctx, "hash", grant); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	other := grant
+	other.ClientID = "other"
+	if claimed, err := store.Claim(ctx, "hash", other, now); err != nil || claimed {
+		t.Fatalf("another client: claimed=%v err=%v", claimed, err)
+	}
+	if claimed, err := store.Claim(ctx, "hash", grant, grant.ExpiresAt); err != nil || claimed {
+		t.Fatalf("at expiry: claimed=%v err=%v", claimed, err)
+	}
+	var wins atomic.Int32
+	var group sync.WaitGroup
+	for range 8 {
+		group.Go(func() {
+			claimed, err := store.Claim(ctx, "hash", grant, now)
+			if err != nil {
+				t.Error(err)
+			}
+			if claimed {
+				wins.Add(1)
+			}
+		})
+	}
+	group.Wait()
+	if wins.Load() != 1 {
+		t.Fatalf("wins = %d", wins.Load())
 	}
 }

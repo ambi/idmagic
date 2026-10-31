@@ -121,4 +121,5 @@ var (
 	IsRefreshTokenAbsoluteExpired = tokendomain.IsRefreshTokenAbsoluteExpired
 	PresentationTokenType         = tokendomain.PresentationTokenType
 	DecideExchangeBinding         = tokendomain.DecideExchangeBinding
+	ReboundExchangeBinding        = tokendomain.ReboundExchangeBinding
 )

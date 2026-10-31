@@ -3,6 +3,7 @@ package usecases
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
@@ -43,7 +44,9 @@ type ResourceAccessDeps struct {
 	Approvals approvalports.ApprovalRequestStore
 	// Limiter は規則の上限を数える。上限を持つ規則を未配線で評価しない。
 	Limiter rlports.RateLimiter
-	Emit    func(spec.DomainEvent)
+	// Grants は交換の許可を保存する。交換を求める評価を未配線で許可しない。
+	Grants ports.TokenExchangeGrantStore
+	Emit   func(spec.DomainEvent)
 }
 
 // resourceAccessLimitPolicyID は規則の上限の回数の名前空間で、入口の resource_access の予算と分ける。
@@ -66,6 +69,8 @@ type ResourceAccessRequest struct {
 	OperationParameters   string
 	// Attributes はリソースサーバーが申告する条件の入力で、規則が条件を持つときだけ読む。
 	Attributes string
+	// TokenExchangeResource は許可の後に交換する宛先である (REQ-OAUTH2-079)。
+	TokenExchangeResource string
 	// RequestID は応答の X-Request-ID と同じ値で、監査イベントの相関に使う。
 	RequestID string
 }
@@ -85,6 +90,8 @@ type ResourceAccessDecision struct {
 	DelegationMode       domain.DelegationMode
 	AuthorizationDetails []spec.AuthorizationDetail
 	ApprovedOperation    *ApprovedOperationUse
+	// TokenExchangeGrant は宛先への一回限りの交換の許可で、ログと監査へ出さない。
+	TokenExchangeGrant string
 }
 
 // EvaluateResourceAccess は登録、規則、トークン、提示の証明、関係の判定の論理積で許可する。
@@ -183,7 +190,7 @@ func evaluateForServer(
 	if !proved {
 		return denyResourceAccess(reasonFor(domain.ReasonSenderProofInvalid)), audit, nil
 	}
-	subject, actors, resolved, err := principalsFromToken(ctx, deps.Clients, in.TenantID, token)
+	subject, actors, resolved, err := principalsFromToken(ctx, deps, in.TenantID, token)
 	if err != nil {
 		return ResourceAccessDecision{}, audit, err
 	}
@@ -238,6 +245,10 @@ func evaluateForServer(
 			}
 		}
 	}
+	// 承認の使用権と上限の回数を減らす前に断る。交換の派生は承認を引き継がないので、承認の操作には出さない。
+	if in.TokenExchangeResource != "" && (approvalDetailType != "" || !rule.PermitsTokenExchange(in.TokenExchangeResource) || token.JTI == "") {
+		return denyResourceAccess(domain.ReasonTokenExchangeNotPermitted), audit, nil
+	}
 	var approval *matchedApproval
 	if approvalDetailType != "" {
 		matched, reason, err := matchApprovedOperation(ctx, deps, server, approvalDetailType, token, in, now)
@@ -270,15 +281,38 @@ func evaluateForServer(
 		}
 		approved = use
 	}
+	grant, err := issueTokenExchangeGrant(ctx, deps, in, token.JTI, now)
+	if err != nil {
+		return ResourceAccessDecision{}, audit, err
+	}
 	return ResourceAccessDecision{
-		Permitted:         true,
-		ApprovedOperation: approved,
-		Scope:             token.Scope,
+		Permitted:          true,
+		ApprovedOperation:  approved,
+		TokenExchangeGrant: grant,
+		Scope:              token.Scope,
 		DelegationMode: domain.DeriveDelegationMode(domain.DelegationSubject{
 			Sub: token.Sub, ClientID: token.ClientID, PrincipalType: token.PrincipalType, Act: token.Act,
 		}),
 		AuthorizationDetails: token.AuthorizationDetails,
 	}, audit, nil
+}
+
+// issueTokenExchangeGrant は許可の判断の後に許可を保存する。保存できなければ評価不能にし、値のない許可を返さない。
+func issueTokenExchangeGrant(ctx context.Context, deps ResourceAccessDeps, in ResourceAccessRequest, subjectTokenID string, now time.Time) (string, error) {
+	if in.TokenExchangeResource == "" {
+		return "", nil
+	}
+	if deps.Grants == nil {
+		return "", ErrResourceAccessNotConfigured
+	}
+	grant := rand.Text()
+	if err := deps.Grants.Save(ctx, domain.HashTokenExchangeGrant(grant), domain.TokenExchangeGrant{
+		ClientID: in.ClientID, SubjectTokenID: subjectTokenID, Resource: in.TokenExchangeResource,
+		ExpiresAt: now.Add(domain.TokenExchangeGrantTTL),
+	}); err != nil {
+		return "", err
+	}
+	return grant, nil
 }
 
 // enforceResourceAccessLimits は規則の上限を順に数え、超えた上限を返す。超えた上限より後は数えない。
@@ -477,14 +511,14 @@ func htuWithinResource(htu, resource string) bool {
 // principalsFromToken は主体と行為者を検証済みのトークンだけから導く。Agent へ解決できない act を
 // 持つトークンは、代行の連鎖を確かめられないので解決できないものとして扱う。
 func principalsFromToken(
-	ctx context.Context, clients ports.OAuth2ClientRepository, tenantID string, token *ports.IntrospectionResult,
+	ctx context.Context, deps ResourceAccessDeps, tenantID string, token *ports.IntrospectionResult,
 ) (policyports.PrincipalRef, []policyports.PrincipalRef, bool, error) {
 	agents := domain.MergeAgentChain([]string{token.AgentID}, token.AgentChain)
 	var subject policyports.PrincipalRef
 	if token.PrincipalType == domain.PrincipalTypeAgent && token.AgentID != "" {
 		subject = policyports.PrincipalRef{Type: domain.PrincipalTypeAgent, ID: token.AgentID}
 	} else {
-		user, err := isUserSubject(ctx, clients, tenantID, token.Sub)
+		user, err := isUserSubject(ctx, deps.Clients, tenantID, token.Sub)
 		if err != nil {
 			return policyports.PrincipalRef{}, nil, false, err
 		}
@@ -501,7 +535,24 @@ func principalsFromToken(
 		actors = append(actors, policyports.PrincipalRef{Type: domain.PrincipalTypeAgent, ID: agentID})
 	}
 	if len(token.Act) > 0 && len(actors) == 0 {
-		return policyports.PrincipalRef{}, nil, false, nil
+		intermediary, err := actIsResourceServer(ctx, deps, tenantID, subject, token.Act)
+		if err != nil || !intermediary {
+			return policyports.PrincipalRef{}, nil, false, err
+		}
 	}
 	return subject, actors, true, nil
+}
+
+// actIsResourceServer は、Agent の主体の act がゲートウェイ一人だけかを判定する。ゲートウェイは
+// 執行の中継で権限を足さないので、代行の連鎖として確かめる行為者がいなくても主体を導ける (REQ-OAUTH2-079)。
+func actIsResourceServer(ctx context.Context, deps ResourceAccessDeps, tenantID string, subject policyports.PrincipalRef, act map[string]any) (bool, error) {
+	clientID, _ := act["sub"].(string)
+	if subject.Type != domain.PrincipalTypeAgent || clientID == "" || act["act"] != nil {
+		return false, nil
+	}
+	server, err := deps.Servers.FindByClientID(ctx, tenantID, clientID)
+	if err != nil {
+		return false, err
+	}
+	return server != nil && server.IsActive(), nil
 }

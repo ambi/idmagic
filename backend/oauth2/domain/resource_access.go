@@ -7,6 +7,7 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"slices"
 
@@ -34,9 +35,12 @@ const (
 	ReasonConditionDenied             = "condition_denied"
 	ReasonConditionIndeterminate      = "condition_indeterminate"
 	ReasonLimitExceeded               = "limit_exceeded"
+	ReasonTokenExchangeNotPermitted   = "token_exchange_not_permitted"
 )
 
 // ResourceAccessRule は評価できる 1 つの操作と、その操作がトークンへ求める制約である。
+const maxTokenExchangeResources = 8
+
 type ResourceAccessRule struct {
 	ResourceType            string   `json:"resource_type"`
 	Relation                string   `json:"relation"`
@@ -48,6 +52,13 @@ type ResourceAccessRule struct {
 	Condition *ResourceAccessCondition `json:"condition,omitempty"`
 	// Limits は、ほかの制約を満たす操作を許可する回数を抑える。
 	Limits []ResourceAccessLimit `json:"limits,omitempty"`
+	// TokenExchangeResources は、許可の後にトークンを交換できる宛先である (REQ-OAUTH2-079)。
+	TokenExchangeResources []string `json:"token_exchange_resources,omitempty"`
+}
+
+// PermitsTokenExchange は、規則が宛先への交換を宣言しているかを判定する。
+func (r ResourceAccessRule) PermitsTokenExchange(resource string) bool {
+	return slices.Contains(r.TokenExchangeResources, resource)
 }
 
 // PermitsDetails は、規則が求める構造化された権限をトークンが持つかを判定する。
@@ -103,6 +114,9 @@ func (m McpResourceServer) validateAccessRules() error {
 		if err := validateResourceAccessLimits(rule.Limits); err != nil {
 			return err
 		}
+		if err := rule.validateTokenExchangeResources(); err != nil {
+			return err
+		}
 		if len(rule.Scopes) == 0 {
 			return errors.New("access_rules scopes must not be empty")
 		}
@@ -117,4 +131,23 @@ func (m McpResourceServer) validateAccessRules() error {
 
 func validResourceAccessName(value string) bool {
 	return len(value) <= maxResourceAccessNameLength && resourceAccessNamePattern.MatchString(value)
+}
+
+// validateTokenExchangeResources は宛先の宣言を確かめる。交換の派生は承認を引き継がないので、承認を求める操作には宣言できない。
+func (r ResourceAccessRule) validateTokenExchangeResources() error {
+	if len(r.TokenExchangeResources) == 0 {
+		return nil
+	}
+	if len(r.TokenExchangeResources) > maxTokenExchangeResources {
+		return fmt.Errorf("access_rules token_exchange_resources must not exceed %d", maxTokenExchangeResources)
+	}
+	if r.RequiresApprovedOperation || (r.Condition != nil && r.Condition.RequireApprovalWhen != "") {
+		return errors.New("access_rules token_exchange_resources must not be combined with an approval")
+	}
+	for _, resource := range r.TokenExchangeResources {
+		if parsed, err := url.Parse(resource); err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+			return errors.New("access_rules token_exchange_resources must be https URLs")
+		}
+	}
+	return nil
 }

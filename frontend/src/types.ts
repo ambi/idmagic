@@ -610,6 +610,7 @@ export type ResourceAccessRule = {
   requires_approved_operation?: boolean
   condition?: ResourceAccessCondition
   limits?: ResourceAccessLimit[]
+  token_exchange_resources?: string[]
 }
 
 export type McpResourceServer = {

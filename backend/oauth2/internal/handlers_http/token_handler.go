@@ -326,6 +326,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			AgentRepo: d.AgentRepo, Consents: d.ConsentRepo,
 			WorkloadVerifier: d.WorkloadVerifier, Emit: d.Emit,
 			DelegationPolicy: policytenancy.DelegationPolicyResolver{Tenants: d.TenantRepo},
+			Grants:           d.TokenExchangeGrantStore,
 		}, tokenusecases.ExchangeTokenInput{
 			ClientID:             clientStub.ID,
 			SubjectToken:         c.Request().PostFormValue("subject_token"),
@@ -338,6 +339,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			ProofJKT:             dpopJKT,
 			ProofX5TS256:         clientStub.MTLSThumbprintS256,
 			AuthorizationDetails: exchangeDetails,
+			TokenExchangeGrant:   c.Request().PostFormValue("token_exchange_grant"),
 		}, now)
 		if err != nil {
 			return writeOAuthError(c, err)

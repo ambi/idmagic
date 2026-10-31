@@ -26,6 +26,7 @@ type resourceAccessResponse struct {
 	DelegationMode       domain.DelegationMode      `json:"delegation_mode,omitempty"`
 	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
 	ApprovedOperation    *approvedOperationResponse `json:"approved_operation,omitempty"`
+	TokenExchangeGrant   string                     `json:"token_exchange_grant,omitempty"`
 }
 
 type approvedOperationResponse struct {
@@ -64,8 +65,9 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 		DPoPProof: form("dpop_proof"), HTM: form("htm"), HTU: form("htu"),
 		CertificateThumbprint: form("client_certificate_thumbprint"),
 		OperationKey:          form("operation_key"), OperationParameters: form("operation_parameters"),
-		Attributes: form("attributes"),
-		RequestID:  logging.RequestIDFromContext(c.Request().Context()),
+		Attributes:            form("attributes"),
+		TokenExchangeResource: form("token_exchange_resource"),
+		RequestID:             logging.RequestIDFromContext(c.Request().Context()),
 	}
 	if !validOperationInput(in.OperationKey, in.OperationParameters) {
 		return support.NoStoreJSON(c, http.StatusBadRequest,
@@ -95,7 +97,7 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 		Servers: d.McpResourceServerRepo,
 		Tokens:  tokenusecases.RevocationCheckingIntrospector{Deps: d.introspectDeps()},
 		Clients: d.ClientRepo, Relations: d.RelationChecker, Replay: d.DpopReplayStore,
-		Approvals: d.ApprovalRequestStore, Limiter: d.RateLimiter, Emit: d.Emit,
+		Approvals: d.ApprovalRequestStore, Limiter: d.RateLimiter, Grants: d.TokenExchangeGrantStore, Emit: d.Emit,
 	}, in, time.Now().UTC())
 	if errors.Is(err, tokenusecases.ErrOperationKeyRequired) {
 		return support.NoStoreJSON(c, http.StatusBadRequest,
@@ -114,6 +116,7 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 	response := resourceAccessResponse{
 		Decision: decision.Permitted, Reasons: decision.Reasons, Scope: decision.Scope,
 		DelegationMode: decision.DelegationMode, AuthorizationDetails: decision.AuthorizationDetails,
+		TokenExchangeGrant: decision.TokenExchangeGrant,
 	}
 	if use := decision.ApprovedOperation; use != nil {
 		response.ApprovedOperation = &approvedOperationResponse{

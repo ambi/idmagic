@@ -32,6 +32,7 @@ FROM (VALUES
   ('oauth2_par_requests', EXISTS (SELECT 1 FROM oauth2_par_requests)),
   ('oauth2_device_codes', EXISTS (SELECT 1 FROM oauth2_device_codes)),
   ('oauth2_replay_jtis', EXISTS (SELECT 1 FROM oauth2_replay_jtis)),
+  ('oauth2_token_exchange_grants', EXISTS (SELECT 1 FROM oauth2_token_exchange_grants)),
   ('oauth2_access_token_denylist', EXISTS (SELECT 1 FROM oauth2_access_token_denylist)),
   ('webauthn_sessions', EXISTS (SELECT 1 FROM webauthn_sessions)),
   ('login_throttle_counters', EXISTS (SELECT 1 FROM login_throttle_counters)),

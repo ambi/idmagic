@@ -1,6 +1,11 @@
 package cli
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,6 +64,32 @@ func TestLoadConfigAcceptsEnvoyExtAuthzWithoutUpstream(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-MCPGATEWAY-001: P-256 の鍵だけを受け、P-384 を拒否する
+func TestLoadConfigReadsTheDownstreamKey(t *testing.T) {
+	load := func(curve elliptic.Curve) error {
+		key, err := ecdsa.GenerateKey(curve, rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		der, err := x509.MarshalPKCS8PrivateKey(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(t.TempDir(), "key.pem")
+		if err := os.WriteFile(path, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		_, err = LoadConfig(writeConfig(t, validConfig+"downstream:\n  resource: https://down.example/mcp\n  dpop_key_file: "+path+"\n"))
+		return err
+	}
+	if err := load(elliptic.P256()); err != nil {
+		t.Fatalf("P-256: %v", err)
+	}
+	if err := load(elliptic.P384()); err == nil {
+		t.Fatal("P-384 accepted")
+	}
+}
+
 //spec:covers REQ-MCPGATEWAY-001: 未知のキー、不足、URL の誤り、平文の resource と realm、操作の宣言の誤りでは起動せず、理由にシークレットを含めない
 func TestLoadConfigRejectsMistakes(t *testing.T) {
 	replace := func(from, to string) string {
@@ -68,23 +99,27 @@ func TestLoadConfigRejectsMistakes(t *testing.T) {
 		return strings.ReplaceAll(validConfig, from, to)
 	}
 	cases := map[string]string{
-		"unknown key":         validConfig + "surprise: true\n",
-		"no listen":           replace("listen: 127.0.0.1:8080\n", ""),
-		"plain resource":      replace("resource: https://", "resource: http://"),
-		"plain realm":         replace("realm_url: https://", "realm_url: http://"),
-		"resource with query": replace("example.test/mcp", "example.test/mcp?x=1"),
-		"bad upstream scheme": replace("upstream: http://", "upstream: ftp://"),
-		"no client":           replace("  client_id: rs\n", ""),
-		"missing secret":      replace("client_secret_file: SECRET", "client_secret_file: /no/such/file"),
-		"both ids":            replace("resource_id_argument: id", "resource_id_argument: id, resource_id: x"),
-		"neither id":          replace(", resource_id_argument: id", ""),
-		"no relation":         replace("relation: viewer, ", ""),
-		"tools/call method":   replace("tools/list:", "tools/call:"),
-		"method argument":     replace("resource_id: main", "resource_id_argument: id"),
-		"bad timeout":         replace("  client_id: rs\n", "  client_id: rs\n  timeout: soon\n"),
-		"unknown mode":        "mode: sidecar\n" + validConfig,
-		"envoy with upstream": "mode: envoy_ext_authz\n" + validConfig,
-		"proxy no upstream":   "mode: proxy\n" + replace("upstream: http://127.0.0.1:9000/mcp\n", ""),
+		"unknown key":                 validConfig + "surprise: true\n",
+		"no listen":                   replace("listen: 127.0.0.1:8080\n", ""),
+		"plain resource":              replace("resource: https://", "resource: http://"),
+		"plain realm":                 replace("realm_url: https://", "realm_url: http://"),
+		"resource with query":         replace("example.test/mcp", "example.test/mcp?x=1"),
+		"bad upstream scheme":         replace("upstream: http://", "upstream: ftp://"),
+		"no client":                   replace("  client_id: rs\n", ""),
+		"missing secret":              replace("client_secret_file: SECRET", "client_secret_file: /no/such/file"),
+		"both ids":                    replace("resource_id_argument: id", "resource_id_argument: id, resource_id: x"),
+		"neither id":                  replace(", resource_id_argument: id", ""),
+		"no relation":                 replace("relation: viewer, ", ""),
+		"tools/call method":           replace("tools/list:", "tools/call:"),
+		"method argument":             replace("resource_id: main", "resource_id_argument: id"),
+		"bad timeout":                 replace("  client_id: rs\n", "  client_id: rs\n  timeout: soon\n"),
+		"unknown mode":                "mode: sidecar\n" + validConfig,
+		"envoy with upstream":         "mode: envoy_ext_authz\n" + validConfig,
+		"proxy no upstream":           "mode: proxy\n" + replace("upstream: http://127.0.0.1:9000/mcp\n", ""),
+		"downstream without key":      validConfig + "downstream:\n  resource: https://down.example/mcp\n",
+		"plain downstream":            validConfig + "downstream:\n  resource: http://down.example/mcp\n  dpop_key_file: SECRET\n",
+		"downstream key is not a key": validConfig + "downstream:\n  resource: https://down.example/mcp\n  dpop_key_file: SECRET\n",
+		"envoy with downstream":       "mode: envoy_ext_authz\n" + replace("upstream: http://127.0.0.1:9000/mcp\n", "") + "downstream:\n  resource: https://down.example/mcp\n  dpop_key_file: SECRET\n",
 	}
 	for name, content := range cases {
 		t.Run(name, func(t *testing.T) {

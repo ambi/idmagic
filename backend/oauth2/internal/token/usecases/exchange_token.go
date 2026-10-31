@@ -18,6 +18,7 @@
 //     fail-closed 拒否する。発行トークン aud = [resource]。
 //   - SENDER CONSTRAINT: 束縛した subject_token は同じ方式の同じ鍵の証明があるときだけ
 //     交換し、同じ cnf を引き継ぐ。別の鍵への再束縛と制約の除去は invalid_grant。
+//     例外は評価が発行した一回限りの許可 (REQ-OAUTH2-079) を伴う要求で、示した鍵へ束縛する。
 //   - REFRESH TOKEN は発行しない。
 package usecases
 
@@ -66,6 +67,8 @@ type ExchangeTokenInput struct {
 	ProofJKT             string
 	ProofX5TS256         string
 	AuthorizationDetails []spec.AuthorizationDetail // RFC 9396 — 交換で要求する縮小詳細 (任意)
+	// TokenExchangeGrant は評価が発行した再束縛の根拠である (REQ-OAUTH2-079)。
+	TokenExchangeGrant string
 }
 
 type ExchangeTokenResult struct {
@@ -100,7 +103,9 @@ type ExchangeTokenDeps struct {
 	// テナント上書きの上限でもある DefaultMaxDelegationDepth を使うため、未配線でも
 	// 製品既定より広い許可にはならない。解決器が error を返した場合は交換を拒否する。
 	DelegationPolicy ports.DelegationPolicyResolver
-	Emit             func(spec.DomainEvent)
+	// Grants は再束縛の許可を消費する。許可を伴う交換で nil なら拒否する。
+	Grants ports.TokenExchangeGrantStore
+	Emit   func(spec.DomainEvent)
 }
 
 func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeTokenInput, now time.Time) (*ExchangeTokenResult, error) {
@@ -128,6 +133,12 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	resource := mcpResourceServer.Resource
 	if in.RequestedTokenType != "" && in.RequestedTokenType != tokenTypeAccessTokenURN {
 		return reject("", NewOAuthError("invalid_request", "unsupported requested_token_type"))
+	}
+
+	// 行為者の出所を増やすと、許可が根拠にした連鎖と発行する連鎖が食い違う。
+	rebinding := in.TokenExchangeGrant != ""
+	if rebinding && (in.ActorToken != "" || in.SubjectTokenType == tokenTypeJWTURN) {
+		return reject("", NewOAuthError("invalid_request", "token_exchange_grant cannot be combined with actor_token or a workload subject_token"))
 	}
 
 	// --- subject_token (必須) ---
@@ -212,6 +223,9 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	act := map[string]any{"sub": currentActorSub}
 	if subject.Act != nil {
 		act["act"] = subject.Act
+	} else if rebinding && subject.ClientID != "" && subject.ClientID != subject.Sub {
+		// 元のトークンの持ち主を連鎖に残す。ゲートウェイだけでは、代行した Agent を act から辿れない。
+		act["act"] = map[string]any{"sub": subject.ClientID}
 	}
 	depth := actDepth(act)
 	maxDepth, err := resolveMaxDelegationDepth(ctx, deps.DelegationPolicy, tenantID)
@@ -286,7 +300,11 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	// --- sender constraint (DPoP / mTLS, REQ-OAUTH2-056) ---
 	// 束縛した subject_token は同じ鍵の証明があるときだけ交換でき、同じ制約を引き継ぐ。
 	// 外部 workload の subject は introspection を通らないため制約を持たない。
-	sc, bound := domain.DecideExchangeBinding(subject.SenderConstraint, domain.ExchangeProof{JKT: in.ProofJKT, X5TS256: in.ProofX5TS256})
+	proof := domain.ExchangeProof{JKT: in.ProofJKT, X5TS256: in.ProofX5TS256}
+	sc, bound := domain.DecideExchangeBinding(subject.SenderConstraint, proof)
+	if rebinding {
+		sc, bound = domain.ReboundExchangeBinding(proof)
+	}
 	if !bound {
 		return reject(currentActorSub, NewOAuthError("invalid_grant", "The proof does not match the key bound to the subject_token."))
 	}
@@ -310,10 +328,30 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		return reject(currentActorSub, NewOAuthError("invalid_grant", "The user has not granted delegation to the agent."))
 	}
 
+	// --- 再束縛の許可 (REQ-OAUTH2-079) ---
+	// 消費は最後の判定にする。ほかの理由で拒否する要求に許可を失わせない。
+	var expiresAt int64
+	expiresIn := deps.TokenIssuer.AccessTokenTTLSeconds()
+	if rebinding {
+		claimed, err := claimTokenExchangeGrant(ctx, deps.Grants, in, subject.JTI, resource, now)
+		if err != nil {
+			return nil, err
+		}
+		if !claimed {
+			return reject(currentActorSub, NewOAuthError("invalid_grant", "The token_exchange_grant is invalid or expired."))
+		}
+		expiresAt = min(now.Add(domain.TokenExchangeGrantTTL).Unix(), subject.Exp)
+		expiresIn = int(expiresAt - now.Unix())
+	}
+
 	// --- 発行 (DELEGATION ONLY: sub = subject.sub, aud = [resource], act 必須) ---
 	var agentID string
 	if workloadGrant != nil {
 		agentID = workloadGrant.AgentID
+	}
+	// 再束縛は同じ主体のトークンを別の経路へ渡すだけなので、Agent の主体を保つ。
+	if rebinding && subject.PrincipalType == domain.PrincipalTypeAgent {
+		agentID = subject.AgentID
 	}
 	// 入力のトークンが持っていた発行時の Agent を引き継ぎ、連鎖のどの Agent を止めても
 	// 交換後のトークンが無効になるようにする (REQ-OAUTH2-012)。要求したクライアントの Agent は、
@@ -324,6 +362,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		SenderConstraint: sc, AuthTime: now.Unix(),
 		Audiences: []string{resource}, Act: act,
 		AuthorizationDetails: grantedDetails, AgentID: agentID, AgentChain: agentChain,
+		ExpiresAt: expiresAt,
 	})
 	if err != nil {
 		return nil, err
@@ -357,6 +396,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		// ID 連携の grant 由来に限る) より広い。監査は資格情報の束縛による代行も
 		// Agent の操作として区別する必要がある。
 		AgentID: actingAgentID, ActorChain: domain.ActorChainParticipants(act, subject.Sub),
+		SenderConstraintRebound: rebinding,
 	})
 	if workloadGrant != nil {
 		emit(deps.Emit, &workloaddomain.WorkloadTokenExchanged{
@@ -370,10 +410,20 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		AccessToken:          access,
 		IssuedTokenType:      tokenTypeAccessTokenURN,
 		TokenType:            tokenType,
-		ExpiresIn:            deps.TokenIssuer.AccessTokenTTLSeconds(),
+		ExpiresIn:            expiresIn,
 		Scope:                strings.Join(grantedScopes, " "),
 		AuthorizationDetails: grantedDetails,
 	}, nil
+}
+
+// claimTokenExchangeGrant は、発行した評価と同じクライアント、トークン、宛先の許可だけを消費する。
+func claimTokenExchangeGrant(ctx context.Context, store ports.TokenExchangeGrantStore, in ExchangeTokenInput, subjectTokenID, resource string, now time.Time) (bool, error) {
+	if store == nil || subjectTokenID == "" {
+		return false, nil
+	}
+	return store.Claim(ctx, domain.HashTokenExchangeGrant(in.TokenExchangeGrant), domain.TokenExchangeGrant{
+		ClientID: in.ClientID, SubjectTokenID: subjectTokenID, Resource: resource,
+	}, now)
 }
 
 // delegationsPermit は、agents のすべてに sub の付与があり、scopes の代行を許すかを判定する。

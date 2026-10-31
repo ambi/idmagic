@@ -489,6 +489,8 @@ erDiagram
     }
     oauth2_replay_jtis {
     }
+    oauth2_token_exchange_grants {
+    }
     oauth2_access_token_denylist {
     }
     webauthn_sessions {
@@ -508,6 +510,7 @@ erDiagram
     oauth2_clients ||--o{ oauth2_approval_requests : 承認を求める
     users ||--o{ oauth2_approval_requests : 承認する
     tenants ||--o{ oauth2_replay_jtis : 再送識別子を持つ
+    tenants ||--o{ oauth2_token_exchange_grants : 交換の許可を持つ
     tenants ||--o{ oauth2_access_token_denylist : 拒否対象を持つ
     tenants ||--o{ webauthn_sessions : WebAuthn状態を持つ
     tenants ||--o{ login_throttle_counters : サインイン回数を持つ
@@ -523,6 +526,7 @@ erDiagram
 | `oauth2_device_codes` | デバイス認可フローのコードと承認の状態 | OAuth2 | `UNLOGGED` | 非キーカラム |
 | `oauth2_approval_requests` | CIBA の承認要求と、クライアントのポーリングの状態 | OAuth2 | `UNLOGGED` | 非キーカラム |
 | `oauth2_replay_jtis` | 一度だけ受け付ける JWT の `jti`。同じ JWT の再送を拒否する | OAuth2 | `UNLOGGED` | 複合主キーの一部 |
+| `oauth2_token_exchange_grants` | 評価が発行した一回限りの交換の許可のハッシュ。別の鍵への束縛の根拠を一度だけ受け付ける | OAuth2 | `UNLOGGED` | 複合主キーの一部 |
 | `oauth2_access_token_denylist` | 失効させたアクセストークンの `jti`。トークンの期限まで拒否する | OAuth2 | `LOGGED` | 複合主キーの一部 |
 | `webauthn_sessions` | WebAuthn の登録と認証で発行したチャレンジ | Authentication | `UNLOGGED` | 複合主キーの一部 |
 | `login_throttle_counters` | サインイン失敗の回数とロックアウトの期限 | Authentication | `LOGGED` | 複合主キーの一部 |

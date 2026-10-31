@@ -14,6 +14,8 @@ type Querier interface {
 	// 失効マーカーを追加する。同一 jti は同一トークンを指し exp も決定的なので冪等 (DO NOTHING)。
 	AddOauth2AccessTokenDenylist(ctx context.Context, arg AddOauth2AccessTokenDenylistParams) error
 	ClaimApprovalRequestUse(ctx context.Context, arg ClaimApprovalRequestUseParams) (*ClaimApprovalRequestUseRow, error)
+	// 全項目が一致する行だけを消すので、流用の試みは正当な許可を消費しない。並行した要求の一方だけが行を得る。
+	ClaimOauth2TokenExchangeGrant(ctx context.Context, arg ClaimOauth2TokenExchangeGrantParams) (string, error)
 	ConsumeApprovalRequest(ctx context.Context, arg ConsumeApprovalRequestParams) (*ConsumeApprovalRequestRow, error)
 	// 単発消費の CAS。未使用かつ未期限の行だけを used=true にして 1 行返す。それ以外は 0 行。
 	ConsumePARRequest(ctx context.Context, arg ConsumePARRequestParams) ([]byte, error)
@@ -32,6 +34,7 @@ type Querier interface {
 	DeleteExpiredDeviceCodesBatch(ctx context.Context, arg DeleteExpiredDeviceCodesBatchParams) (int64, error)
 	DeleteExpiredOauth2AccessTokenDenylistBatch(ctx context.Context, arg DeleteExpiredOauth2AccessTokenDenylistBatchParams) (int64, error)
 	DeleteExpiredOauth2ReplayJTIsBatch(ctx context.Context, arg DeleteExpiredOauth2ReplayJTIsBatchParams) (int64, error)
+	DeleteExpiredOauth2TokenExchangeGrantsBatch(ctx context.Context, arg DeleteExpiredOauth2TokenExchangeGrantsBatchParams) (int64, error)
 	DeleteExpiredPARRequestsBatch(ctx context.Context, arg DeleteExpiredPARRequestsBatchParams) (int64, error)
 	DeleteMcpResourceServer(ctx context.Context, arg DeleteMcpResourceServerParams) error
 	DeleteRefreshTokensForSub(ctx context.Context, userID string) error
@@ -68,6 +71,7 @@ type Querier interface {
 	InsertClientSecretCredential(ctx context.Context, arg InsertClientSecretCredentialParams) error
 	InsertCrossAppAccessIssuePolicy(ctx context.Context, arg InsertCrossAppAccessIssuePolicyParams) (int64, error)
 	InsertCrossAppAccessRedeemPolicy(ctx context.Context, arg InsertCrossAppAccessRedeemPolicyParams) (int64, error)
+	InsertOauth2TokenExchangeGrant(ctx context.Context, arg InsertOauth2TokenExchangeGrantParams) error
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error
 	// 期限切れマーカーは revoked とみなさない (正しさは expires_at > now が担保、GC は空間回収のみ)。
 	IsOauth2AccessTokenRevoked(ctx context.Context, arg IsOauth2AccessTokenRevokedParams) (bool, error)

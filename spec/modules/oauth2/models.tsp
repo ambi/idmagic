@@ -1084,6 +1084,8 @@ model TokenRequest {
   @doc("RFC 8693 のトークン交換のグラントの任意の `actor_token`。自身が発行したアクセストークンでなければならない。")
   actor_token?: string;
   actor_token_type?: string;
+  @doc("REQ-OAUTH2-079 の評価が発行した一回限りの交換の許可。別の鍵への束縛の根拠になる。")
+  token_exchange_grant?: string;
   requested_token_type?: string;
   @doc("RFC 9396：トークン交換で絞り込みを求める、構造化された詳細の JSON の文字列。任意である。")
   authorization_details?: string;
@@ -1164,6 +1166,8 @@ model ResourceAccessEvaluationRequest {
   operation_parameters?: string;
   @doc("規則の `condition` が `attributes` として読む JSON オブジェクトを表す文字列。リソースサーバーの申告であり、IdMagic は業務の事実を保証しない。16 KiB まで。")
   attributes?: string;
+  @doc("許可の後にトークンを交換する宛先の `resource`。規則の `token_exchange_resources` になければ不許可である。")
+  token_exchange_resource?: string;
 }
 
 
@@ -1189,6 +1193,8 @@ model ResourceAccessEvaluationResponse {
   @doc("許可したトークンの構造化された権限。リソースサーバーが業務上の上限を確かめるために使う。")
   authorization_details?: AuthorizationDetail[];
   approved_operation?: ApprovedOperationUse;
+  @doc("`token_exchange_resource` への一回限りの交換の許可。60 秒で失効する。")
+  token_exchange_grant?: string;
 }
 
 
@@ -1241,6 +1247,9 @@ model ResourceAccessRule {
   @doc("この操作を許可する回数の上限。ほかの制約を満たす評価だけを数える。")
   @maxItems(8)
   limits?: ResourceAccessLimit[];
+  @doc("この操作の許可の後に交換できる宛先の `resource`。人の承認を求める操作には指定できない。")
+  @maxItems(8)
+  token_exchange_resources?: string[];
 }
 
 
@@ -1799,6 +1808,8 @@ model TokenExchanged {
   maxDelegationDepth: int64;
   @doc("発行したトークンの委任のモード。イントロスペクションと同じ導出の関数が生成する。")
   delegationMode: DelegationMode;
+  @doc("REQ-OAUTH2-079 の交換の許可で別の鍵へ束縛したとき真である。")
+  senderConstraintRebound?: boolean;
   @doc("交換するクライアントが Agent に結び付いているときの、その Agent。操作者の種類を推測ではなくイベントから読めるようにし、監査の `actor.type` と `agent.id` の軸が必要とする（REQ-AUDIT-005）。")
   agentId?: string;
   @doc("発行したトークンの `act` の連鎖のすべての主体。現在の操作者を先頭に、サブジェクトを最後に、それぞれ一度ずつ並べる。深さだけでは委任がどこまで及んだかは分かっても誰を経由したかは分からず、途中の操作者を見つけられない。このリストが、監査の `delegation.actor` の軸が検索するものである（REQ-AUDIT-006）。これらは Agent の id ではなくトークンのサブジェクトである。交換の時点で解決できるのは現在の操作者の Agent だけで、それだけを示すと、連鎖のどこに Agent がいたかを取り違える。Agent の単位の問いには、代わりに `agentId` が答える。ResolvableUserEventPayloadPolicy に従い、識別子だけを含め、ユーザー名は含めない。")

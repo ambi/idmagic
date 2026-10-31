@@ -143,6 +143,8 @@ RefreshToken のライフサイクル。Rotate で子トークンに引き継が
 - テナントの委譲のポリシーを解決できない場合、OAuth2 は、システムのデフォルトへ退避せずに 400 と `invalid_request` で拒否する。
 - `subject_token` のスコープを超えるスコープを要求された場合、OAuth2 は、400 と `invalid_scope` で拒否する。
 - `subject_token` の `authorization_details` を超えるか検証を通らない `authorization_details` を要求された場合、OAuth2 は、400 と `invalid_authorization_details` で拒否する。
+- REQ-OAUTH2-079 の交換の許可を伴う交換で、`subject_token` が `act` を持たず、そのクライアントがサブジェクトと異なるとき、OAuth2 は、`act` の入れ子の内側に `subject_token` のクライアントを置き、深さの判定に数える。
+- REQ-OAUTH2-079 の交換の許可を伴う交換で発行するとき、OAuth2 は、有効期間を 60 秒と `subject_token` の残りの短いほうにする。
 - 未対応の `subject_token_type` か `actor_token_type`、決められない現在の行為者を受けた場合、OAuth2 は、400 と `invalid_request` で拒否する。
 - 無効か失効した `subject_token` か `actor_token`、`may_act` に含まれない行為者、ポリシーが拒否した交換を受けた場合、OAuth2 は、400 と `invalid_grant` で拒否し、`TokenExchangeRejected` を発行する。
 - `subject_token` か `actor_token` を、イントロスペクションと同じ失効の判定（REQ-OAUTH2-011、REQ-OAUTH2-012）で確かめたとき、OAuth2 は、`active=false` になるトークンを失効したトークンとして扱う。
@@ -153,6 +155,8 @@ RefreshToken のライフサイクル。Rotate で子トークンに引き継が
 - サブジェクトが利用者の Token Exchange を受けたとき、OAuth2 は、`subject_token` と `actor_token` の発行時の Agent と、要求したクライアントに束縛された Agent のすべてについて、本人の付与を確かめる。
 - どの Agent にも、`Granted` で期限内で、発行するスコープを含む付与があるとき、OAuth2 は、拒否せずに要求を処理し、それらの付与の `last_used_at` を更新する。
 - 付与がないか、`Granted` でないか、期限切れか、発行するスコープを含まない Agent がある場合、OAuth2 は、400 と `invalid_grant` で拒否し、トークンを発行せず、`TokenExchangeRejected` を発行する。
+- REQ-OAUTH2-079 の交換の許可を伴う Token Exchange を受けたとき、OAuth2 は、許可のない交換と同じ付与を確かめる。
+- REQ-OAUTH2-079 の交換の許可を伴う Token Exchange を付与の不足で拒否するとき、OAuth2 は、許可を消費しない。
 - 付与を読めない場合、OAuth2 は、トークンを発行しない。
 - 関わる Agent がない Token Exchange か、サブジェクトが登録されたクライアントの Token Exchange か、ワークロード ID 連携の Token Exchange を受けたとき、OAuth2 は、付与を確かめない。
 - **判断**：`client_credentials` のトークンは別のクライアントの交換の後に `sub` と `client_id` が異なるので、両者の比較では利用者を見分けられない。サブジェクトを登録されたクライアントとして解決できなければ、利用者として付与を求める。
@@ -168,10 +172,13 @@ RefreshToken のライフサイクル。Rotate で子トークンに引き継が
 | なし | DPoP または mTLS | 示した鍵（両方なら DPoP）に結び付けたトークンを発行する |
 | あり | `subject_token` と同じ方式の同じ鍵を含む | `subject_token` と同じ `cnf` のトークンを発行する |
 | あり | `subject_token` と同じ方式の同じ鍵を含まない | 400 と `invalid_grant` で拒否する |
+| あり、またはなし | REQ-OAUTH2-079 の交換の許可と、DPoP または mTLS | 示した鍵（両方なら DPoP）に結び付けたトークンを発行する |
+| あり、またはなし | REQ-OAUTH2-079 の交換の許可だけで証明なし | 400 と `invalid_grant` で拒否する |
 
 - OAuth2 は、外部ワークロードのアテステーションの `subject_token` を、送信者制約のない `subject_token` として扱う。
 - 表によって Token Exchange を拒否したとき、OAuth2 は、トークンを発行せず、`AccessTokenIssued` と `TokenExchanged` を発行せず、`TokenExchangeRejected` を発行する。
-- **判断**：クライアント認証とは別に、元のトークンを使う権利を鍵の所有で示させる。証明を省けるなら、交換を許可されたクライアントが盗んだ送信者制約付きのトークンを、別の鍵か Bearer のトークンへ書き換えられる。委譲先の鍵への付け替えは、委譲の許可を発行する仕組みがないため受け付けない。
+- **判断**：クライアント認証とは別に、元のトークンを使う権利を鍵の所有で示させる。証明を省けるなら、交換を許可されたクライアントが盗んだ送信者制約付きのトークンを、別の鍵か Bearer のトークンへ書き換えられる。
+- **判断**：委譲先の鍵への付け替えは、元の鍵の証明を確かめた評価が発行した一回限りの許可があるときだけ受け付ける。ゲートウェイは Agent の鍵を持たないが、Agent の証明を確かめた評価の結果なら、元のトークンを使う権利を間接に示せる。Bearer への書き換えは許可があっても受け付けない。
 
 ### クライアントによる ID-JAG の取得
 

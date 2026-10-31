@@ -8,7 +8,7 @@
 | --- | --- |
 | 責務 | 2026-07-28 版の MCP の要求の解釈、評価する操作の選択、[リソースアクセスの評価](../../oauth2/features/resource-access.md)の呼び出し、許可した要求の転送、監査ログと指標 |
 | 行為者 | ゲートウェイを配置する運用者、MCP クライアント、McpGateway |
-| 扱わないもの | 判断と主体の導出は OAuth2 と AccessControl が扱う。`tools/list` の絞り込み、下流向けのトークンの差し替え、Envoy の `ext_proc`、`requires_approved_operation` の操作、mTLS に束縛したトークン |
+| 扱わないもの | 判断と主体の導出は OAuth2 と AccessControl が扱う。`tools/list` の絞り込み、Envoy の `ext_proc` と Envoy の構成での下流向けのトークンの差し替え、`requires_approved_operation` の操作、mTLS に束縛したトークン |
 
 ゲートウェイは単体のバイナリで、状態を持たない。
 対象は [MCP の 2026-07-28 版](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)の Streamable HTTP に固定する。
@@ -33,6 +33,8 @@
 | `idmagic.timeout` | 一回の評価の上限 | `5s` |
 | `allowed_origins` | 受け入れる `Origin` の値の一覧 | なし |
 | `max_body_bytes` | 要求の本文の上限 | `4194304` |
+| `downstream.resource` | 下流へ渡すトークンの宛先で、IdMagic に登録した `resource`。指定すると転送ごとにトークンを差し替える | なし（資格情報を除いて転送する） |
+| `downstream.dpop_key_file` | 下流のトークンを束縛する P-256 の秘密鍵の PEM。`downstream.resource` を指定すると必須 | なし |
 | `mapping.methods` | `tools/call` 以外で転送する方法から操作への対応 | なし |
 | `mapping.tools` | ツール名から操作への対応 | なし |
 
@@ -68,6 +70,7 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - 必須の項目がないか、未知のキーがあるか、`resource`、`upstream`、`realm_url` の URL が不正な場合、McpGateway は、起動せず、標準エラーへ理由を出して 0 以外で終了する。
 - `realm_url` か `resource` が `https://` でない場合、McpGateway は、起動しない。
 - `mode` が `proxy` と `envoy_ext_authz` のどちらでもないか、`mode` が `envoy_ext_authz` で `upstream` を持つ場合、McpGateway は、起動しない。
+- `downstream.resource` が `https://` の URL でないか、`downstream.dpop_key_file` を P-256 の秘密鍵として読めないか、`mode` が `envoy_ext_authz` で `downstream` を持つ場合、McpGateway は、起動しない。
 - 操作が `resource_id` と `resource_id_argument` の両方を持つか、どちらも持たないか、`mapping.methods` が `tools/call` を名指す場合、McpGateway は、起動しない。
 - ログと指標を書くとき、McpGateway は、提示されたトークン、DPoP の証明、クライアントシークレット、`resource_id_argument` で名指したもの以外のツールの引数を含めない。
 - **判断**：`resource` にも `https://` を求める。トークンの宛先と DPoP の `htu` になる値であり、TLS を前段で終端しても利用者から見える URL は `https://` である。
@@ -113,6 +116,7 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 #### REQ-MCPGATEWAY-004 転送は提示された資格情報を上流へ渡さず、応答を逐次返す
 
 - 上流へ転送するとき、McpGateway は、`Authorization`、`DPoP`、`Cookie` のヘッダーと URL のクエリを除く。
+- `downstream` がないとき、McpGateway は、上流へ `Authorization` と `DPoP` を送らない。
 - 上流の応答を受けたとき、McpGateway は、状態コード、ヘッダー、本文を変えずに返し、`text/event-stream` の各イベントをためずに書き出す。
 - MCP クライアントが接続を閉じたとき、McpGateway は、上流への要求を取り消す。
 - 上流へ接続できない場合、McpGateway は、502 と JSON-RPC の `-32003` を返し、再送しない。
@@ -154,6 +158,17 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - **判断**：上流へ接続できないときの応答は Envoy の 503 のままにする。認可の結果ではなく、JSON-RPC への変換に設定を増やす理由がない。
 - **例**：EX-MCPGATEWAY-007-01
 
+#### REQ-MCPGATEWAY-008 `downstream` があれば許可した呼び出しごとに下流宛のトークンへ差し替える
+
+- `downstream` があるとき、McpGateway は、評価の要求の `token_exchange_resource` に `downstream.resource` を載せる。
+- 許可の判断と `token_exchange_grant` を受けたとき、McpGateway は、提示されたトークンと許可を `downstream.dpop_key_file` の鍵の証明とともに `/token` で交換し、結果を `Authorization: DPoP` と `downstream.resource` を `htu` にした新しい証明で上流へ一回だけ転送する。
+- 許可の判断に `token_exchange_grant` がないか、交換が失敗した場合、McpGateway は、503 と JSON-RPC の `-32002` を返し、上流へ送らない。
+- 交換の結果の `token_type` が `DPoP` でない場合、McpGateway は、503 と JSON-RPC の `-32002` を返し、上流へ送らない。
+- 交換が失敗した要求を記録するとき、McpGateway は、結果を `unavailable`、判断の理由を `token_exchange_failed` にし、トークンと許可をログへ出さない。
+- `downstream` がないとき、McpGateway は、`token_exchange_resource` を送らず、交換しない。
+- **判断**：トークンを呼び出しごとに得て、再利用しない。REQ-OAUTH2-079 の許可は一回限りで、結果を保持しないことでゲートウェイを状態のないままにできる。
+- **判断**：`htu` に `downstream.resource` を使う。REQ-MCPGATEWAY の公開 URL と同じ考え方で、下流の前段で内部の URL が変わっても値は変わらない。
+
 ### 例
 
 #### EX-MCPGATEWAY-002-01 重複したキーで読み替える要求は上流へ届かない
@@ -188,6 +203,9 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 クライアントシークレットのファイルは、ゲートウェイを動かすアカウントだけが読めるように置く。
 ゲートウェイは TLS を終端しないので、MCP クライアントとの間に TLS を終端する前段を置く。
 指標の待ち受けは認証を持たないので、内部のネットワークにだけ公開する。
+
+下流の DPoP の鍵のファイルは、クライアントシークレットと同じく、ゲートウェイを動かすアカウントだけが読めるように置く。
+下流へ差し替えるとき、ゲートウェイのクライアントには `urn:ietf:params:oauth:grant-type:token-exchange` のグラントと交換するスコープを許可し、評価の規則の `token_exchange_resources` に下流の `resource` を宣言する。
 
 `envoy_ext_authz` では、上流へ Envoy 以外から到達できず、Envoy のすべての経路が `ext_authz` を通ることが執行の前提になる。
 `allowed_headers` から `origin` を除くと `Origin` の検査だけが効かなくなり、ゲートウェイから検出できない。

@@ -20,6 +20,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/evaluation_http"
+	"github.com/ambi/idmagic/backend/mcpgateway/internal/exchange_http"
 )
 
 const resourceURL = "https://mcp.example.test/mcp"
@@ -558,4 +559,73 @@ func TestCommaJoinedCredentialsAreNotEvaluated(t *testing.T) {
 			}
 		})
 	}
+}
+
+type stubExchanger struct {
+	credential exchange_http.Credential
+	err        error
+	calls      atomic.Int32
+}
+
+func (s *stubExchanger) Exchange(context.Context, string, string, string) (exchange_http.Credential, error) {
+	s.calls.Add(1)
+	return s.credential, s.err
+}
+
+func downstreamMode(exchanger Exchanger) func(*Options) {
+	return func(options *Options) {
+		options.DownstreamResource, options.Downstream = "https://down.example/mcp", exchanger
+	}
+}
+
+//spec:covers REQ-MCPGATEWAY-008: 許可の値か交換がなければ上流へ送らず、差し替えた資格情報だけを渡し、値をログへ出さない
+func TestDownstreamCredentialReplacesThePresentedToken(t *testing.T) {
+	exchanger := &stubExchanger{credential: exchange_http.Credential{Token: "downstream-token", Proof: "downstream-proof"}}
+	h := newHarness(t, accepted, downstreamMode(exchanger))
+	h.evaluator.result.TokenExchangeGrant = "grant-value"
+	request := toolRequest(t, h.gateway.URL, "read")
+	request.Header.Set("DPoP", "agent-proof")
+	response, _ := do(t, request)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", response.StatusCode)
+	}
+	got := h.received.Load().(*http.Request)
+	if got.Header.Get("Authorization") != "DPoP downstream-token" || got.Header.Get("DPoP") != "downstream-proof" {
+		t.Fatalf("headers = %v", got.Header)
+	}
+	if h.evaluator.last.TokenExchangeResource != "https://down.example/mcp" {
+		t.Fatalf("evaluation = %+v", h.evaluator.last)
+	}
+	for _, secret := range []string{"downstream-token", "downstream-proof", "grant-value"} {
+		if strings.Contains(h.audit.String(), secret) {
+			t.Fatalf("%s in audit: %s", secret, h.audit)
+		}
+	}
+
+	t.Run("no grant", func(t *testing.T) {
+		h := newHarness(t, accepted, downstreamMode(exchanger))
+		response, body := do(t, toolRequest(t, h.gateway.URL, "read"))
+		if response.StatusCode != http.StatusServiceUnavailable || errorCode(body) != codeUnavailable || h.calls.Load() != 0 {
+			t.Fatalf("status=%d body=%v upstream=%d", response.StatusCode, body, h.calls.Load())
+		}
+		if !strings.Contains(h.audit.String(), "token_exchange_failed") {
+			t.Fatalf("audit = %s", h.audit)
+		}
+	})
+	t.Run("exchange failure", func(t *testing.T) {
+		h := newHarness(t, accepted, downstreamMode(&stubExchanger{err: errors.New("status 400")}))
+		h.evaluator.result.TokenExchangeGrant = "grant-value"
+		response, body := do(t, toolRequest(t, h.gateway.URL, "read"))
+		if response.StatusCode != http.StatusServiceUnavailable || errorCode(body) != codeUnavailable || h.calls.Load() != 0 {
+			t.Fatalf("status=%d body=%v upstream=%d", response.StatusCode, body, h.calls.Load())
+		}
+	})
+	t.Run("undeclared tool asks for no grant", func(t *testing.T) {
+		exchanger := &stubExchanger{}
+		h := newHarness(t, accepted, downstreamMode(exchanger))
+		response, _ := do(t, toolRequest(t, h.gateway.URL, "unknown"))
+		if response.StatusCode != http.StatusForbidden || h.evaluator.last.TokenExchangeResource != "" || exchanger.calls.Load() != 0 {
+			t.Fatalf("status=%d evaluation=%+v", response.StatusCode, h.evaluator.last)
+		}
+	})
 }

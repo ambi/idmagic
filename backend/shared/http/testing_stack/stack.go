@@ -313,6 +313,7 @@ func WithTokenIssuance() Option {
 		b.deps.OAuth2.RefreshStore = b.stack.Refresh
 		b.deps.OAuth2.AccessTokenDenylist = oauth2.NewMemoryModule().AccessTokenDenylist
 		b.deps.OAuth2.DpopReplayStore = oauth2.NewMemoryModule().DpopReplayStore
+		b.deps.OAuth2.TokenExchangeGrantStore = oauth2.NewMemoryModule().TokenExchangeGrantStore
 		b.deps.OAuth2.ClientAssertionReplayStore = oauth2.NewMemoryModule().ClientAssertionReplayStore
 	}
 }

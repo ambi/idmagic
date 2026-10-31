@@ -37,3 +37,15 @@ func DecideExchangeBinding(subject *SenderConstraint, proof ExchangeProof) (*Sen
 	}
 	return nil, false
 }
+
+// ReboundExchangeBinding は交換の許可があるときの送信者制約を決める (REQ-OAUTH2-056)。
+// 許可は元の鍵の証明に代わる根拠で、Bearer への書き換えの根拠にはならないので、証明を必須にする。
+func ReboundExchangeBinding(proof ExchangeProof) (*SenderConstraint, bool) {
+	switch {
+	case proof.JKT != "":
+		return &SenderConstraint{Type: SenderConstraintDPoP, JKT: proof.JKT}, true
+	case proof.X5TS256 != "":
+		return &SenderConstraint{Type: SenderConstraintMTLS, X5TS256: proof.X5TS256}, true
+	}
+	return nil, false
+}
