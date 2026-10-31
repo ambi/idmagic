@@ -356,3 +356,67 @@ type ResourceAccessEvaluated struct {
 
 func (e *ResourceAccessEvaluated) EventType() string     { return "ResourceAccessEvaluated" }
 func (e *ResourceAccessEvaluated) OccurredAt() time.Time { return e.At }
+
+// IdJagIssued は ID-JAG を発行した。本文と利用者のデータは載せない (REQ-OAUTH2-066)。
+type IdJagIssued struct {
+	At        time.Time `json:"-"`
+	TenantID  string    `json:"tenantId"`
+	ClientID  string    `json:"clientId"`
+	UserID    string    `json:"userId"`
+	Audience  string    `json:"audience"`
+	Resources []string  `json:"resources"`
+	Scopes    []string  `json:"scopes"`
+	JTI       string    `json:"jti"`
+}
+
+func (e *IdJagIssued) EventType() string     { return "IdJagIssued" }
+func (e *IdJagIssued) OccurredAt() time.Time { return e.At }
+
+// IdJagRedeemed は ID-JAG をアクセストークンへ償還した (REQ-OAUTH2-070)。
+type IdJagRedeemed struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	Issuer   string    `json:"issuer"`
+	ClientID string    `json:"clientId"`
+	UserID   string    `json:"userId"`
+	JTI      string    `json:"jti"`
+}
+
+func (e *IdJagRedeemed) EventType() string     { return "IdJagRedeemed" }
+func (e *IdJagRedeemed) OccurredAt() time.Time { return e.At }
+
+// IdJagRejected は ID-JAG の発行か償還を拒否した (REQ-OAUTH2-067、REQ-OAUTH2-069)。
+type IdJagRejected struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	ClientID string    `json:"clientId"`
+	Stage    string    `json:"stage"`
+	Reason   string    `json:"reason"`
+}
+
+func (e *IdJagRejected) EventType() string     { return "IdJagRejected" }
+func (e *IdJagRejected) OccurredAt() time.Time { return e.At }
+
+// CrossAppAccessPolicyCreated はアプリ間アクセスの許可を登録した (REQ-OAUTH2-072)。
+type CrossAppAccessPolicyCreated struct {
+	At        time.Time `json:"-"`
+	TenantID  string    `json:"tenantId"`
+	PolicyID  string    `json:"policyId"`
+	Direction string    `json:"direction"`
+	ClientID  string    `json:"clientId"`
+}
+
+func (e *CrossAppAccessPolicyCreated) EventType() string     { return "CrossAppAccessPolicyCreated" }
+func (e *CrossAppAccessPolicyCreated) OccurredAt() time.Time { return e.At }
+
+// CrossAppAccessPolicyDeleted はアプリ間アクセスの許可を削除した (REQ-OAUTH2-072)。
+type CrossAppAccessPolicyDeleted struct {
+	At        time.Time `json:"-"`
+	TenantID  string    `json:"tenantId"`
+	PolicyID  string    `json:"policyId"`
+	Direction string    `json:"direction"`
+	ClientID  string    `json:"clientId"`
+}
+
+func (e *CrossAppAccessPolicyDeleted) EventType() string     { return "CrossAppAccessPolicyDeleted" }
+func (e *CrossAppAccessPolicyDeleted) OccurredAt() time.Time { return e.At }

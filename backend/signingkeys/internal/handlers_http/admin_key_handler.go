@@ -276,7 +276,7 @@ func rotationRequest(request *http.Request) (rotateKeyRequest, error) {
 			body.Action = "prepare"
 		}
 	}
-	if !body.Usage.Valid() || strings.TrimSpace(body.ScopeID) != body.ScopeID || body.Usage == signingdomain.KeyUsageSigning && body.ScopeID != signingports.DefaultKeyScope {
+	if !body.Usage.Valid() || strings.TrimSpace(body.ScopeID) != body.ScopeID || body.Usage != signingdomain.KeyUsageXMLFederationSigning && body.ScopeID != signingports.DefaultKeyScope {
 		return body, fmt.Errorf("invalid key usage or scope")
 	}
 	switch body.Action {
@@ -310,7 +310,7 @@ func selectKeyQuery(c *echo.Context) error {
 	if scope == "" {
 		scope = signingports.DefaultKeyScope
 	}
-	if !usage.Valid() || strings.TrimSpace(scope) != scope || usage == signingdomain.KeyUsageSigning && scope != signingports.DefaultKeyScope {
+	if !usage.Valid() || strings.TrimSpace(scope) != scope || usage != signingdomain.KeyUsageXMLFederationSigning && scope != signingports.DefaultKeyScope {
 		return fmt.Errorf("invalid key usage or scope")
 	}
 	ctx := signingports.WithKeyScope(signingports.WithKeyUsage(c.Request().Context(), usage), scope)

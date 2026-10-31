@@ -8,6 +8,7 @@
 package oauth2
 
 import (
+	"context"
 	"time"
 
 	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
@@ -43,10 +44,17 @@ func RegisterJobHandlers(registry jobsports.HandlerRegistrar, deps JobHandlerDep
 // Module は oauth2 context が所有する repository の束。bootstrap は永続化 backend
 // (memory / postgres) に応じてこれらを組み立て、Module へ渡すだけでよい。
 type Module struct {
-	ClientRepo                 oauthports.OAuth2ClientRepository
-	ConsentRepo                oauthports.ConsentRepository
-	AuthzDetailTypeRepo        oauthports.AuthorizationDetailTypeRepository
-	McpResourceServerRepo      oauthports.McpResourceServerRepository
+	ClientRepo             oauthports.OAuth2ClientRepository
+	ConsentRepo            oauthports.ConsentRepository
+	AuthzDetailTypeRepo    oauthports.AuthorizationDetailTypeRepository
+	McpResourceServerRepo  oauthports.McpResourceServerRepository
+	CrossAppAccessPolicies oauthports.CrossAppAccessPolicyRepository
+	IDJAGReplayStore       oauthports.ClientAssertionReplayStore
+	// IDTokenAssertionVerifier と IDJAGSigner は組み立て地点が設定する。
+	IDTokenAssertionVerifier oauthports.IDTokenAssertionVerifier
+	IDJAGSigner              oauthports.IDJAGSigner
+	// IDJAGFetchJWKS は発行者の jwks_uri を読む。nil なら組み立て地点の JWKResolver を使う。
+	IDJAGFetchJWKS             func(ctx context.Context, jwksURI string) ([]map[string]any, error)
 	RequestStore               oauthports.AuthorizationRequestStore
 	CodeStore                  oauthports.AuthorizationCodeStore
 	PARStore                   oauthports.PARStore

@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：202
+経路の数：206
 
 | 経路 | メソッド |
 | --- | --- |
@@ -154,6 +154,10 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/clients/{client_id}` | DELETE, GET, PATCH |
 | `/api/admin/v1/consents` | GET |
 | `/api/admin/v1/consents/{sub}/{client_id}` | DELETE, GET |
+| `/api/admin/v1/cross-app-access/issue-policies` | GET, POST |
+| `/api/admin/v1/cross-app-access/issue-policies/{id}` | DELETE |
+| `/api/admin/v1/cross-app-access/redeem-policies` | GET, POST |
+| `/api/admin/v1/cross-app-access/redeem-policies/{id}` | DELETE |
 | `/api/admin/v1/data-keys/health` | GET |
 | `/api/admin/v1/default-sign-in-policy` | GET, PUT |
 | `/api/admin/v1/directory-connectors` | GET, POST |

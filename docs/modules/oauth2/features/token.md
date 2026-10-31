@@ -173,6 +173,99 @@ RefreshToken のライフサイクル。Rotate で子トークンに引き継が
 - 表によって Token Exchange を拒否したとき、OAuth2 は、トークンを発行せず、`AccessTokenIssued` と `TokenExchanged` を発行せず、`TokenExchangeRejected` を発行する。
 - **判断**：クライアント認証とは別に、元のトークンを使う権利を鍵の所有で示させる。証明を省けるなら、交換を許可されたクライアントが盗んだ送信者制約付きのトークンを、別の鍵か Bearer のトークンへ書き換えられる。委譲先の鍵への付け替えは、委譲の許可を発行する仕組みがないため受け付けない。
 
+### クライアントによる ID-JAG の取得
+
+#### REQ-OAUTH2-066 発行の許可があるクライアントは ID Token を ID-JAG に交換できる
+
+- `requested_token_type` が `urn:ietf:params:oauth:token-type:id-jag` で、認証したクライアント、`audience`、`resource` が `CrossAppAccessIssuePolicy` と一致し、`subject_token` が有効な ID Token である Token Exchange を受けたとき、OAuth2 は、`typ` が `oauth-id-jag+jwt` で有効期間が 300 秒の JWT を `IdJagSigning` の鍵で署名して返す。
+- OAuth2 は、ID-JAG の `iss` を自身の発行者、`sub` を `subject_token` の `sub`、`aud` を `audience`、`client_id` をポリシーの `target_client_id`、`resource` を要求のとおりの値にし、`subject_token` の `auth_time`、`amr`、`acr` を引き継ぐ。
+- ポリシーの `release_email` が有効で、利用者のメールアドレスが確認済みのとき、OAuth2 は、ID-JAG に `email` を載せる。
+- `scope` を省いた要求を受けたとき、OAuth2 は、ポリシーのスコープすべてを与える。
+- `scope` を指定した要求を受けたとき、OAuth2 は、ポリシーのスコープとの共通部分を与え、結果を応答の `scope` と ID-JAG の `scope` に載せる。
+- `authorization_details` を指定した要求を受けたとき、OAuth2 は、ポリシーの `authorization_detail_types` に含まれる型の詳細だけを ID-JAG と応答に載せる。
+- ID-JAG を発行したとき、OAuth2 は、応答の `issued_token_type` を ID-JAG の URN、`token_type` を `N_A` にし、リフレッシュトークンを返さず、クライアント、`audience`、リソース、スコープを載せた `IdJagIssued` を発行する。
+- **判断**：IdP を介した委任の監査を発行の時点で残す。ID-JAG の本文と利用者のデータはイベントへ載せない。
+
+#### REQ-OAUTH2-067 発行の許可の外にある ID-JAG の要求は拒否される
+
+- 認証しないか `public` のクライアントの要求を受けた場合、OAuth2 は、`invalid_client` で拒否する。
+- `actor_token` を含む要求か、`audience` が 1 個でない要求を受けた場合、OAuth2 は、400 と `invalid_request` で拒否する。
+- `subject_token_type` が `urn:ietf:params:oauth:token-type:id_token` でない要求を受けた場合、OAuth2 は、400 と `invalid_request` で拒否する。
+- `subject_token` の `typ` ヘッダーがあるか、`token_use` が `id_token` でないか、署名か `iss` か `exp` が正しくないか、`aud` が認証したクライアントだけでないか、利用者の失効エポックが `subject_token` の `iat` より後である場合、OAuth2 は、400 と `invalid_grant` で拒否する。
+- `audience` がテナントのどの `CrossAppAccessIssuePolicy` にもない場合、OAuth2 は、400 と `invalid_target` で拒否する。
+- `resource` がないか、ポリシーの `resources` にない `resource` を含む場合、OAuth2 は、400 と `invalid_target` で拒否する。
+- 認証したクライアントのポリシーがその `audience` にないか、与えるスコープが空であるか、利用者が停止しているか、`relying_party_client_id` の Application への利用者のアクセスが許可されない場合、OAuth2 は、400 と `access_denied` で拒否する。
+- 要求したクライアントに Agent が束縛され、その区分が人間の承認を要する場合、OAuth2 は、REQ-OAUTH2-050 と同じ判定で拒否する。
+- 要求したクライアントに束縛された Agent に本人の代行の付与がない場合、OAuth2 は、400 と `access_denied` で拒否する。
+- 要求を拒否したとき、OAuth2 は、ID-JAG を返さず、`IdJagIssued` を発行せず、理由を載せた `IdJagRejected` を発行する。
+
+#### REQ-OAUTH2-068 ID-JAG の送信者制約は要求の証明から決まる
+
+- 有効な DPoP Proof を伴う要求を受けたとき、OAuth2 は、ID-JAG の `cnf.jkt` をその鍵の JWK SHA-256 Thumbprint にする。
+- DPoP Proof を伴わず、mTLS でクライアントを認証した要求を受けたとき、OAuth2 は、ID-JAG の `cnf.x5t#S256` をその証明書の thumbprint にする。
+- どちらも伴わない要求を受けたとき、OAuth2 は、`cnf` のない ID-JAG を発行する。
+- OAuth2 は、一つの ID-JAG に DPoP と mTLS の両方の束縛を載せない。
+
+### クライアントによる ID-JAG の償還
+
+#### REQ-OAUTH2-069 受け入れの許可がある ID-JAG だけをアクセストークンへ償還する
+
+- `grant_type` が `urn:ietf:params:oauth:grant-type:jwt-bearer` か `urn:ietf:params:oauth:grant-type:jwt-dpop` で、`assertion` が次の条件をすべて満たす ID-JAG である要求を受けたとき、OAuth2 は、アクセストークンを発行する。
+  - `typ` が `oauth-id-jag+jwt`、`alg` が RS256、ES256、PS256 のどれかで、発行者の `jwks_uri` の鍵で署名を検証できる。
+  - `iss` が自身の発行者ではなく、テナントの有効な OIDC の `IdentityProviderConnection` の発行者のうち、ただ一つと一致する。
+  - `aud` が自身の発行者だけである。
+  - `iat`、`exp`、`jti` があり、`iat` が現在から 60 秒より先でなく、`exp` に 60 秒を足した時刻が現在より後で、`exp` と `iat` の差が 600 秒以下である。
+  - `client_id` が認証したクライアントである。
+  - `act` がない。
+  - `resource` があり、値のすべてがテナントの Active な `McpResourceServer` である。
+  - その接続と認証したクライアントの組の `CrossAppAccessRedeemPolicy` がある。
+  - `sub` がその接続の `FederatedIdentity` から有効な利用者へ解決できる。
+- `jti` をまだ受け付けていないとき、OAuth2 は、発行者と `jti` の組を `exp` に 60 秒を足した時刻まで記憶し、同じ組を再び受けたら拒否する。
+- 署名か `typ`、`iss`、`aud`、時刻、`jti`、`client_id`、`act`、`resource` の条件を満たさない場合、OAuth2 は、400 と `invalid_grant` で拒否する。
+- ポリシーがないか、`sub` を解決できないか、利用者が停止しているか、与えるスコープが空である場合、OAuth2 は、400 と `access_denied` で拒否する。
+- 認証しないか `public` のクライアントの要求を受けた場合、OAuth2 は、`invalid_client` で拒否する。
+- 要求を拒否したとき、OAuth2 は、トークンを発行せず、その要求で検証に失敗した ID-JAG の `jti` を記憶せず、理由を載せた `IdJagRejected` を発行する。
+- **判断**：§9.4 の明示の設定は設けず、自身が発行した ID-JAG を常に拒否する。同じデプロイメントの別テナントは発行者が異なるので受け入れられる。
+
+#### REQ-OAUTH2-070 償還で発行するトークンは ID-JAG とテナントの許可の範囲に限る
+
+- ID-JAG を償還するとき、OAuth2 は、`sub` を解決した利用者、`aud` を `resource` のすべて、スコープを ID-JAG の `scope`、`CrossAppAccessRedeemPolicy` のスコープ、クライアントのスコープ、リソースのスコープの共通部分にしたアクセストークンを発行する。
+- OAuth2 は、ID-JAG の `authorization_details` のうち登録した型で検証を通るものだけをトークンと応答に載せる。
+- OAuth2 は、償還の応答でリフレッシュトークンを返さない。
+- 償還でトークンを発行したとき、OAuth2 は、`AccessTokenIssued` と、リソースごとの `ResourceScopedTokenIssued` と、発行者とクライアントを載せた `IdJagRedeemed` を発行する。
+- 要求したクライアントに Agent が束縛され、その区分が人間の承認を要する場合、OAuth2 は、REQ-OAUTH2-050 と同じ判定で拒否する。
+- 要求したクライアントに束縛された Agent に本人の代行の付与がない場合、OAuth2 は、400 と `access_denied` で拒否する。
+
+#### REQ-OAUTH2-071 送信者制約付きの ID-JAG は束縛した鍵の証明でだけ償還できる
+
+- OAuth2 は、ID-JAG の `cnf` と要求の証明から、次の表に従って結果を決める。
+
+| ID-JAG の `cnf` | `grant_type` | 要求の証明 | 結果 |
+| --- | --- | --- | --- |
+| `jkt` | `jwt-dpop` | 同じ鍵の DPoP Proof | 同じ鍵に結び付けたトークンを発行する |
+| `jkt` | `jwt-dpop` | 別の鍵の DPoP Proof | 400 と `invalid_grant` で拒否する |
+| `jkt` | `jwt-dpop` | DPoP Proof なし | 400 と `invalid_dpop_proof` で拒否する |
+| `jkt` | `jwt-bearer` | 問わない | 400 と `invalid_grant` で拒否する |
+| `x5t#S256` | `jwt-bearer` | 同じ証明書 | 同じ証明書に結び付けたトークンを発行する |
+| `x5t#S256` | `jwt-bearer` | 別の証明書か証明書なし | 400 と `invalid_grant` で拒否する |
+| ほかの方式か、`jkt` 以外の `jwt-dpop` | 問わない | 問わない | 400 と `invalid_grant` で拒否する |
+| なし | `jwt-bearer` | DPoP Proof または mTLS | 示した鍵（両方なら DPoP）に結び付けたトークンを発行する |
+| なし | `jwt-bearer` | なし | 送信者制約のないトークンを発行する |
+| なし | `jwt-dpop` | 問わない | 400 と `invalid_grant` で拒否する |
+
+- **判断**：DPoP に束縛した assertion を `jwt-bearer` で受けると、束縛が Bearer へ格下げされる。proof の失敗で `jti` を記憶しないのは、クライアントが nonce に応じて同じ ID-JAG で再試行できるようにするためである。
+
+### 管理者によるアプリ間アクセスの許可の管理
+
+#### REQ-OAUTH2-072 管理者はアプリ間アクセスの許可を登録、一覧、削除できる
+
+- 管理者が要求したとき、OAuth2 は、自身のテナントの `CrossAppAccessIssuePolicy` と `CrossAppAccessRedeemPolicy` を登録、一覧、削除する。
+- 同じクライアントと `audience` の発行の許可か、同じ接続とクライアントの受け入れの許可を登録しようとした場合、OAuth2 は、409 と `cross_app_access_policy_exists` で拒否する。
+- 存在しないクライアントか接続を指す許可、`resources` か `scopes` が空の許可、`audience` か `resources` が絶対 URI でない許可を登録しようとした場合、OAuth2 は、400 で拒否する。
+- 許可を登録または削除したとき、OAuth2 は、`CrossAppAccessPolicyCreated` か `CrossAppAccessPolicyDeleted` を発行する。
+- 許可を削除したとき、OAuth2 は、以後の発行と償還を拒否し、発行済みの ID-JAG とアクセストークンを有効期限まで失効させない。
+- ほかのテナントの許可か存在しない許可の削除を要求された場合、OAuth2 は、404 と `cross_app_access_policy_not_found` で拒否する。
+
 ### リソースサーバーによるイントロスペクション
 
 #### REQ-OAUTH2-011 失効済みトークンのイントロスペクションは `active=false` だけを返す

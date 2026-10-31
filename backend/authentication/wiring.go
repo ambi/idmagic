@@ -317,3 +317,59 @@ type DemoHeaderResolver = authusecases.DemoHeaderResolver
 func GenerateTOTP(secretBase32 string, unixSeconds int64) (string, error) {
 	return totpusecases.GenerateTOTP(secretBase32, unixSeconds)
 }
+
+// IDJAGIssuer は ID-JAG の発行者として信頼できる接続の見方である。
+type IDJAGIssuer struct {
+	ProviderID string
+	JWKSURI    string
+}
+
+// FindIDJAGIssuer は有効な OIDC の接続のうち issuer と一致するものを返す。一致がないか、
+// 複数あって決められなければ nil を返す。
+func (m Module) FindIDJAGIssuer(ctx context.Context, tenantID, issuer string) (*IDJAGIssuer, error) {
+	if m.FederationConnectionRepo == nil {
+		return nil, nil //nolint:nilnil // 接続を持たない構成では何も信頼しない。
+	}
+	connections, err := m.FederationConnectionRepo.List(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	var found *IDJAGIssuer
+	for _, connection := range connections {
+		if !connection.Active() || connection.Protocol != federationdomain.ProtocolOIDC || connection.Issuer != issuer {
+			continue
+		}
+		if found != nil {
+			return nil, nil //nolint:nilnil // 曖昧な発行者は信頼しない。
+		}
+		found = &IDJAGIssuer{ProviderID: connection.ID, JWKSURI: connection.JWKSURI}
+	}
+	return found, nil
+}
+
+// FederationProviderExists は接続がテナントにあるかを返す。
+func (m Module) FederationProviderExists(ctx context.Context, tenantID, providerID string) (bool, error) {
+	if m.FederationConnectionRepo == nil {
+		return false, nil
+	}
+	connection, err := m.FederationConnectionRepo.Find(ctx, tenantID, providerID)
+	if err != nil {
+		return false, err
+	}
+	return connection != nil, nil
+}
+
+// FederatedLocalUserID は外部の主体に連携した利用者を返す。連携がなければ空を返す。
+func (m Module) FederatedLocalUserID(ctx context.Context, tenantID, providerID, externalSubject string) (string, error) {
+	if m.FederationIdentityRepo == nil {
+		return "", nil
+	}
+	identity, err := m.FederationIdentityRepo.FindBySubject(ctx, tenantID, providerID, externalSubject)
+	if err != nil {
+		return "", err
+	}
+	if identity == nil {
+		return "", nil
+	}
+	return identity.LocalUserID, nil
+}

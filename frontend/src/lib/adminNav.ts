@@ -10,6 +10,7 @@ import {
   IconNetwork,
   IconRobot,
   IconSettings,
+  IconArrowsExchange,
   IconPlugConnected,
   IconShieldLock,
   IconUsersGroup,
@@ -35,6 +36,7 @@ export type AdminNavKey =
   | 'identity-providers'
   | 'authz-detail-types'
   | 'mcp-resource-servers'
+  | 'cross-app-access'
   | 'workload-identity'
   | 'consents'
   | 'token-vault'
@@ -139,6 +141,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
       icon: IconPlugConnected,
       href: tenantURL('/admin/mcp-resource-servers'),
       active: active === 'mcp-resource-servers',
+    },
+    {
+      key: 'cross-app-access',
+      label: t.crossAppAccess,
+      icon: IconArrowsExchange,
+      href: tenantURL('/admin/cross-app-access'),
+      active: active === 'cross-app-access',
     },
     {
       key: 'workload-identity',

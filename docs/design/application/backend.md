@@ -50,6 +50,7 @@ IdManagement が Sourcing を import すると二つのモジュールの間に�
 
 変換する語彙の差がなければ、専用のパッケージも置かない。
 WorkloadIdentity と OAuth2 の関係では、OAuth2 が `ports.WorkloadTokenVerifier` を宣言し、`backend/workloadidentity/usecases` で実装して、組み立て地点で結ぶ。
+OAuth2 は ID-JAG の信頼の解決にも `ports.IDJAGIssuerTrust` を宣言し、Authentication の公開操作を組み立て地点の `idJagIssuerTrust` で結ぶ。
 越えるのが WorkloadIdentity の公開契約に含まれる戻り値の型 1 つだけであり、そこにアダプターを挟むと委譲だけの浅いモジュールが残るからである。
 
 起動時設定と実行時に選択可能な機能の定義は一点に集める。すべてのバックエンドプロセス (`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`) は `backend/cmd/internal/bootstrap` が定義する単一の `Config` を通して環境を読み、`bootstrap` の外で環境変数を直接読まない。`FeatureRegistry` は実行時選択と更新影響だけを持ち、各モジュールの API、標準対応、テナント設定を複製しない。読み取り点や選択規則が散らばると、あるプロセスだけが検証されない値または異なる機能集合を持つ状態が作れてしまうためである。運用者向けの設定リファレンスと機能メタデータはこれらの定義から生成し、手書きの一覧を併存させない。利用者の閉域で動く `idmagic-directory-connector` は IdMagic の構成を持たないので、`bootstrap` を使わず、自分の設定ファイルだけを読み、環境変数を読まない（[Directory Connector の実行環境](../../modules/directory-connector/features/runtime.md#設定)）。

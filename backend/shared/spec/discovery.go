@@ -53,7 +53,12 @@ func (c *RuntimeContract) BuildDiscoveryDocument(issuer string) (map[string]any,
 	doc["grant_types_supported"] = []string{
 		string(GrantAuthorizationCode), string(GrantRefreshToken), string(GrantClientCredentials),
 		string(GrantDeviceCode), string(GrantTokenExchange), string(GrantCiba),
+		string(GrantJWTBearer), string(GrantJWTDPoP),
 	}
+	// draft-ietf-oauth-identity-assertion-authz-grant-05 の 7 節。信頼する発行者は載せない (9.7 節)。
+	doc["identity_chaining_requested_token_types_supported"] = []string{"urn:ietf:params:oauth:token-type:id-jag"}
+	doc["id_jag_signing_alg_values_supported"] = []string{"RS256"}
+	doc["authorization_grant_profiles_supported"] = []string{"urn:ietf:params:oauth:grant-profile:id-jag"}
 	// CIBA Core section 4: only poll mode is implemented and user_code is unsupported.
 	doc["backchannel_token_delivery_modes_supported"] = []string{"poll"}
 	doc["backchannel_user_code_parameter_supported"] = false

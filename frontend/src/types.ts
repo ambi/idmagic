@@ -1372,3 +1372,27 @@ export type TokenVaultMyConnection = {
   granted_scopes: string[]
   last_used_at?: string
 }
+
+// アプリ間アクセスの許可 (REQ-OAUTH2-072)。
+export type CrossAppAccessIssuePolicy = {
+  tenant_id: string
+  id: string
+  client_id: string
+  audience: string
+  relying_party_client_id: string
+  target_client_id: string
+  resources: string[]
+  scopes: string[]
+  authorization_detail_types: string[]
+  release_email: boolean
+  created_at: string
+}
+
+export type CrossAppAccessRedeemPolicy = {
+  tenant_id: string
+  id: string
+  provider_id: string
+  client_id: string
+  scopes: string[]
+  created_at: string
+}

@@ -29,6 +29,7 @@ enum KeyProvider {
 enum KeyUsage {
   Signing: "Signing",
   XmlFederationSigning: "XmlFederationSigning",
+  IdJagSigning: "IdJagSigning",
 }
 
 

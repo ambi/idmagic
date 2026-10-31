@@ -15,3 +15,11 @@ func TestPersistenceContract(t *testing.T) {
 		}
 	})
 }
+
+//spec:covers REQ-OAUTH2-072: メモリの保存先が許可の共有契約を満たすこと
+func TestCrossAppAccessPolicyRepositoryContract(t *testing.T) {
+	testing_contract.RunCrossAppAccess(t, testing_contract.CrossAppAccessFixture{
+		Policies: NewCrossAppAccessPolicyRepository(), TenantA: "tenant-a", TenantB: "tenant-b",
+		Now: time.Now().UTC().Truncate(time.Microsecond),
+	})
+}

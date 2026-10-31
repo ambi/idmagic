@@ -783,6 +783,37 @@ CREATE TABLE mcp_resource_servers (
     CONSTRAINT mcp_resource_servers_name_length CHECK (char_length(name) BETWEEN 1 AND 200)
 );
 
+CREATE TABLE cross_app_access_issue_policies (
+    tenant_id UUID NOT NULL,
+    id UUID PRIMARY KEY,
+    client_id TEXT NOT NULL,
+    audience TEXT NOT NULL,
+    relying_party_client_id TEXT NOT NULL,
+    target_client_id TEXT NOT NULL,
+    resources JSONB NOT NULL,
+    scopes JSONB NOT NULL,
+    authorization_detail_types JSONB NOT NULL DEFAULT '[]',
+    release_email BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT cross_app_access_issue_policies_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT cross_app_access_issue_policies_unique
+        UNIQUE (tenant_id, client_id, audience)
+);
+
+CREATE TABLE cross_app_access_redeem_policies (
+    tenant_id UUID NOT NULL,
+    id UUID PRIMARY KEY,
+    provider_id TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    scopes JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT cross_app_access_redeem_policies_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT cross_app_access_redeem_policies_unique
+        UNIQUE (tenant_id, provider_id, client_id)
+);
+
 CREATE TABLE applications (
     tenant_id UUID NOT NULL,
     id UUID PRIMARY KEY,

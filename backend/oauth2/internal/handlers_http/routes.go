@@ -43,8 +43,14 @@ type Deps struct {
 	*support.Authenticator
 	ApplicationGate
 
-	AuthzDetailTypeRepo        oauthports.AuthorizationDetailTypeRepository
-	McpResourceServerRepo      oauthports.McpResourceServerRepository
+	AuthzDetailTypeRepo   oauthports.AuthorizationDetailTypeRepository
+	McpResourceServerRepo oauthports.McpResourceServerRepository
+	// CrossAppAccessPolicies から IDJAGReplayStore までは ID-JAG の発行と償還の依存である。
+	CrossAppAccessPolicies     oauthports.CrossAppAccessPolicyRepository
+	IDJAGTrust                 oauthports.IDJAGIssuerTrust
+	IDTokenAssertionVerifier   oauthports.IDTokenAssertionVerifier
+	IDJAGSigner                oauthports.IDJAGSigner
+	IDJAGReplayStore           oauthports.ClientAssertionReplayStore
 	ClientRepo                 oauthports.OAuth2ClientRepository
 	ConsentRepo                oauthports.ConsentRepository
 	ClientDisplayNameResolver  ClientDisplayNameResolver
@@ -201,6 +207,12 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/v1/mcp-resource-servers", d.handleCreateAdminMcpResourceServer)
 	g.PATCH("/api/admin/v1/mcp-resource-servers/:id", d.handleUpdateAdminMcpResourceServer)
 	g.DELETE("/api/admin/v1/mcp-resource-servers/:id", d.handleDeleteAdminMcpResourceServer)
+	g.GET("/api/admin/v1/cross-app-access/issue-policies", d.handleListAdminCrossAppAccessIssuePolicies)
+	g.POST("/api/admin/v1/cross-app-access/issue-policies", d.handleCreateAdminCrossAppAccessIssuePolicy)
+	g.DELETE("/api/admin/v1/cross-app-access/issue-policies/:id", d.handleDeleteAdminCrossAppAccessIssuePolicy)
+	g.GET("/api/admin/v1/cross-app-access/redeem-policies", d.handleListAdminCrossAppAccessRedeemPolicies)
+	g.POST("/api/admin/v1/cross-app-access/redeem-policies", d.handleCreateAdminCrossAppAccessRedeemPolicy)
+	g.DELETE("/api/admin/v1/cross-app-access/redeem-policies/:id", d.handleDeleteAdminCrossAppAccessRedeemPolicy)
 	g.GET("/.well-known/oauth-protected-resource", d.handleProtectedResourceMetadata)
 }
 

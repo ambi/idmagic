@@ -202,6 +202,8 @@ type Stack struct {
 	Consents               oauthports.ConsentRepository
 	AuthzDetailTypes       oauthports.AuthorizationDetailTypeRepository
 	McpResourceServers     oauthports.McpResourceServerRepository
+	CrossAppAccessPolicies oauthports.CrossAppAccessPolicyRepository
+	Federation             authentication.Module
 	ApprovalRequests       oauthports.ApprovalRequestStore
 	Codes                  oauthports.AuthorizationCodeStore
 	PAR                    oauthports.PARStore
@@ -357,6 +359,39 @@ func WithBrowserFlow() Option {
 		}
 		user.PasswordHash = hash
 		_ = b.stack.Users.Save(context.Background(), user)
+	}
+}
+
+// WithCrossAppAccess は ID-JAG の発行と償還を配線する。発行者の JWKS は、配信先を HTTP で
+// 読む代わりに同じ Echo の `/jwks` を読む。SSRF の防御がループバックを拒否するためである。
+func WithCrossAppAccess() Option {
+	return func(b *builder) {
+		if b.stack.Sessions == nil {
+			WithBrowserFlow()(b)
+		}
+		memory := oauth2.NewMemoryModule()
+		b.stack.CrossAppAccessPolicies = memory.CrossAppAccessPolicies
+		b.deps.OAuth2.CrossAppAccessPolicies = memory.CrossAppAccessPolicies
+		b.deps.OAuth2.IDJAGReplayStore = memory.IDJAGReplayStore
+		b.deps.OAuth2.IDJAGSigner = b.stack.Signer
+		b.deps.OAuth2.IDTokenAssertionVerifier = b.stack.Signer
+		federation := authentication.NewMemoryModule(b.stack.Users)
+		b.deps.Authentication.FederationConnectionRepo = federation.FederationConnectionRepo
+		b.deps.Authentication.FederationIdentityRepo = federation.FederationIdentityRepo
+		b.stack.Federation = federation
+		stack := b.stack
+		b.deps.OAuth2.IDJAGFetchJWKS = func(ctx context.Context, jwksURI string) ([]map[string]any, error) {
+			request := httptest.NewRequestWithContext(ctx, http.MethodGet, jwksURI, http.NoBody)
+			recorder := httptest.NewRecorder()
+			stack.Echo.ServeHTTP(recorder, request)
+			var document struct {
+				Keys []map[string]any `json:"keys"`
+			}
+			if err := json.Unmarshal(recorder.Body.Bytes(), &document); err != nil {
+				return nil, err
+			}
+			return document.Keys, nil
+		}
 	}
 }
 

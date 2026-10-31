@@ -203,7 +203,7 @@ func (s *InMemoryKeyStore) createKey(tenantID string, usage signingdomain.KeyUsa
 	case signingdomain.ActiveKey(tk.keys) != nil && (signingdomain.RequiresPrepublication(usage, scopeID) || signingdomain.PreparedKey(tk.keys) != nil):
 		return signingdomain.RotationResult{}, signingdomain.ErrPrepublicationRequired
 	}
-	priv, jwk, _, kid, err := keysJOSE.GenerateRSAJWKPair()
+	priv, jwk, _, kid, err := keysJOSE.GenerateRSAJWKPairFor(signingdomain.AlgorithmFor(usage))
 	if err != nil {
 		return signingdomain.RotationResult{}, err
 	}
@@ -216,7 +216,7 @@ func (s *InMemoryKeyStore) createKey(tenantID string, usage signingdomain.KeyUsa
 	key := &signingdomain.SigningKey{
 		TenantID:   tenantID,
 		Kid:        kid,
-		Alg:        signingdomain.SigAlgPS256,
+		Alg:        signingdomain.AlgorithmFor(usage),
 		Provider:   signingdomain.KeyProviderLocal,
 		Usage:      usage,
 		ScopeID:    scopeID,

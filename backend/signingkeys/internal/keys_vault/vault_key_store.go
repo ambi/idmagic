@@ -270,12 +270,12 @@ func (s *VaultKeyStore) loadOrRotate(ctx context.Context, tenantID string, usage
 		return nil, err
 	}
 	publicJWK["kid"] = kid
-	publicJWK["alg"] = string(signingdomain.SigAlgPS256)
+	publicJWK["alg"] = string(signingdomain.AlgorithmFor(usage))
 	publicJWK["use"] = "sig"
 	key := &signingdomain.SigningKey{
 		TenantID:   tenantID,
 		Kid:        kid,
-		Alg:        signingdomain.SigAlgPS256,
+		Alg:        signingdomain.AlgorithmFor(usage),
 		Provider:   signingdomain.KeyProviderVaultTransit,
 		Usage:      usage,
 		ScopeID:    scopeID,

@@ -4,7 +4,8 @@
 //   - SELF-ISSUED トークンのみ: subject_token / actor_token は本 IdP が発行し、
 //     /introspect と同じ失効判定を重ねた Introspector (RevocationCheckingIntrospector)
 //     で active と判定したものに限る。
-//     外部/フェデレーショントークンは対象外 (将来 wi-54 / wi-57)。
+//     外部/フェデレーショントークンは対象外 (wi-54 が別経路で扱う)。ID-JAG の発行は
+//     issue_id_jag.go が扱い、この交換とは入力も検証も共有しない。
 //   - DELEGATION ONLY: 発行トークンの sub は subject_token.sub を維持し、必ず act を
 //     設定する。impersonation (act 省略 / sub 差し替え) は対象外 (将来、gated)。
 //   - MAX DELEGATION DEPTH: act の入れ子はテナントが定める上限まで。超過は invalid_request。

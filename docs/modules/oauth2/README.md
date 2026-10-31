@@ -48,7 +48,7 @@ IdManagement からの完全削除では保存先ごとの本人の記録の削�
 | [認可](features/authorization.md) | 認可コードフロー、PKCE、PAR |
 | [同意](features/consent.md) | 同意の付与、参照、撤回 |
 | [デバイス認可](features/device.md) | Device Authorization Grant |
-| [トークン](features/token.md) | 発行、ローテーション、イントロスペクション、失効、UserInfo、送信者制約、委譲 |
+| [トークン](features/token.md) | 発行、ローテーション、イントロスペクション、失効、UserInfo、送信者制約、委譲、ID-JAG の発行と償還 |
 | [リソースアクセスの評価](features/resource-access.md) | 登録したリソースサーバーによる、提示トークンでの操作の評価 |
 | [承認リクエスト](features/approval.md) | Agent の操作に対する人間の承認（CIBA） |
 | [ログアウト](features/logout.md) | RP-Initiated Logout とバックチャネルのログアウト |

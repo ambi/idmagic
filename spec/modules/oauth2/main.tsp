@@ -1435,6 +1435,123 @@ op DeleteAdminMcpResourceServer(
   @path id: string
 ): DeleteAdminMcpResourceServerSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminMcpResourceServerError403;
 
+model ListAdminCrossAppAccessIssuePoliciesSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.CrossAppAccessIssuePolicyListResponse;
+}
+
+union AdminCrossAppAccessError403Body {
+  IdMagic.Contract.CsrfFailedError,
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.InvalidOriginError,
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model AdminCrossAppAccessError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: AdminCrossAppAccessError403Body;
+}
+
+union AdminCrossAppAccessError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model AdminCrossAppAccessError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: AdminCrossAppAccessError400Body;
+}
+
+union AdminCrossAppAccessError404Body {
+  IdMagic.Contract.CrossAppAccessPolicyNotFoundError,
+}
+
+model AdminCrossAppAccessError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: AdminCrossAppAccessError404Body;
+}
+
+union AdminCrossAppAccessError409Body {
+  IdMagic.Contract.CrossAppAccessPolicyExistsError,
+}
+
+model AdminCrossAppAccessError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: AdminCrossAppAccessError409Body;
+}
+
+@doc("管理者が、自身のテナントの ID-JAG の発行の許可を一覧する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:read"])
+@TypeSpec.OpenAPI.operationId("ListAdminCrossAppAccessIssuePolicies")
+@route("/api/admin/v1/cross-app-access/issue-policies")
+@get
+op ListAdminCrossAppAccessIssuePolicies(): ListAdminCrossAppAccessIssuePoliciesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | AdminCrossAppAccessError403;
+
+model CreateAdminCrossAppAccessIssuePolicySuccess_201 {
+  @statusCode statusCode: 201;
+  @body body: IdMagic.Contract.CrossAppAccessIssuePolicy;
+}
+
+@doc("管理者が、ID-JAG の発行の許可を登録する。クライアントと `audience` の組はテナントの中で一意である。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
+@TypeSpec.OpenAPI.operationId("CreateAdminCrossAppAccessIssuePolicy")
+@route("/api/admin/v1/cross-app-access/issue-policies")
+@post
+op CreateAdminCrossAppAccessIssuePolicy(
+  @body body: IdMagic.Contract.CrossAppAccessIssuePolicyRequest
+): CreateAdminCrossAppAccessIssuePolicySuccess_201 | AdminCrossAppAccessError400 | IdMagic.Contract.AuthenticationRequiredResponse | AdminCrossAppAccessError403 | AdminCrossAppAccessError409;
+
+model DeleteAdminCrossAppAccessPolicySuccess_204 {
+  @statusCode statusCode: 204;
+}
+
+@doc("管理者が、ID-JAG の発行の許可を削除する。以降の発行を拒否する。発行済みの ID-JAG は期限が切れるまで有効なままである。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
+@TypeSpec.OpenAPI.operationId("DeleteAdminCrossAppAccessIssuePolicy")
+@route("/api/admin/v1/cross-app-access/issue-policies/{id}")
+@delete
+op DeleteAdminCrossAppAccessIssuePolicy(
+  @path id: string
+): DeleteAdminCrossAppAccessPolicySuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | AdminCrossAppAccessError403 | AdminCrossAppAccessError404;
+
+model ListAdminCrossAppAccessRedeemPoliciesSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.CrossAppAccessRedeemPolicyListResponse;
+}
+
+@doc("管理者が、自身のテナントの ID-JAG の受け入れの許可を一覧する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:read"])
+@TypeSpec.OpenAPI.operationId("ListAdminCrossAppAccessRedeemPolicies")
+@route("/api/admin/v1/cross-app-access/redeem-policies")
+@get
+op ListAdminCrossAppAccessRedeemPolicies(): ListAdminCrossAppAccessRedeemPoliciesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | AdminCrossAppAccessError403;
+
+model CreateAdminCrossAppAccessRedeemPolicySuccess_201 {
+  @statusCode statusCode: 201;
+  @body body: IdMagic.Contract.CrossAppAccessRedeemPolicy;
+}
+
+@doc("管理者が、ID-JAG の受け入れの許可を登録する。接続とクライアントの組はテナントの中で一意である。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
+@TypeSpec.OpenAPI.operationId("CreateAdminCrossAppAccessRedeemPolicy")
+@route("/api/admin/v1/cross-app-access/redeem-policies")
+@post
+op CreateAdminCrossAppAccessRedeemPolicy(
+  @body body: IdMagic.Contract.CrossAppAccessRedeemPolicyRequest
+): CreateAdminCrossAppAccessRedeemPolicySuccess_201 | AdminCrossAppAccessError400 | IdMagic.Contract.AuthenticationRequiredResponse | AdminCrossAppAccessError403 | AdminCrossAppAccessError409;
+
+@doc("管理者が、ID-JAG の受け入れの許可を削除する。以降の償還を拒否する。発行済みのアクセストークンは期限が切れるまで有効なままである。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
+@TypeSpec.OpenAPI.operationId("DeleteAdminCrossAppAccessRedeemPolicy")
+@route("/api/admin/v1/cross-app-access/redeem-policies/{id}")
+@delete
+op DeleteAdminCrossAppAccessRedeemPolicy(
+  @path id: string
+): DeleteAdminCrossAppAccessPolicySuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | AdminCrossAppAccessError403 | AdminCrossAppAccessError404;
+
 model ListAdminConsentsSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminConsentListResponse;

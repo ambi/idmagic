@@ -74,6 +74,11 @@ test('admin console scenarios are reachable after admin-audience login', async (
         '/admin/mcp-resource-servers',
         'admin-mcp-resource-servers',
       ],
+      [
+        ['アプリ間アクセス', 'Cross-app access'],
+        '/admin/cross-app-access',
+        'admin-cross-app-access',
+      ],
       [['署名鍵', 'Signing keys'], '/admin/keys', 'admin-keys'],
       [['ユーザー属性', 'User attributes'], '/admin/tenant/attributes', 'admin-tenant-attributes'],
       [['設定', 'Settings'], '/admin/settings', 'admin-settings'],

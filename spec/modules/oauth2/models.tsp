@@ -737,6 +737,12 @@ model DiscoveryDocument {
   authorization_response_iss_parameter_supported?: boolean;
   dpop_signing_alg_values_supported?: SignatureAlgorithm[];
   tls_client_certificate_bound_access_tokens?: boolean;
+  @doc("ID-JAG を発行できることを示す（draft-ietf-oauth-identity-assertion-authz-grant-05 の 7.1 節）。")
+  identity_chaining_requested_token_types_supported?: string[];
+  @doc("ID-JAG の署名の方式。")
+  id_jag_signing_alg_values_supported?: string[];
+  @doc("処理できる認可グラントのプロファイル。信頼する発行者の一覧ではない（同 7.2 節）。")
+  authorization_grant_profiles_supported?: string[];
   @doc("client_id を、HTTPS の URL である Client ID Metadata Document として、リクエストのたびに解決してもよいことを示す。")
   client_id_metadata_document_supported: boolean = true;
   subject_types_supported: string[] = #["public"];
@@ -1062,12 +1068,16 @@ model TokenRequest {
   device_code?: string;
   @doc("CIBA のグラント（`urn:openid:params:grant-type:ciba`）の `auth_req_id`。承認が確定するまでは `authorization_pending` または `slow_down` を返し、確定した後はちょうど一度だけトークンと交換する。")
   auth_req_id?: string;
+  @doc("draft-ietf-oauth-identity-assertion-authz-grant-05：`requested_token_type` が `urn:ietf:params:oauth:token-type:id-jag` のトークン交換で、ID-JAG の宛先にするリソースの認可サーバーの発行者識別子。1 個だけ指定する。")
+  audience?: string;
+  @doc("JWT の認可グラント（`urn:ietf:params:oauth:grant-type:jwt-bearer` と `urn:ietf:params:oauth:grant-type:jwt-dpop`）で提示する ID-JAG。")
+  assertion?: string;
   client_id?: string;
   client_secret?: string;
   client_assertion?: string;
   client_assertion_type?: string;
   scope?: string;
-  @doc("RFC 8693 のトークン交換のグラントの `subject_token`。自身が発行したアクセストークン（`urn:ietf:params:oauth:token-type:access_token`）か、登録した WorkloadTrustBundle の発行者が発行した外部のアテステーションの JWT（`urn:ietf:params:oauth:token-type:jwt`）のどちらかである。")
+  @doc("RFC 8693 のトークン交換のグラントの `subject_token`。自身が発行したアクセストークン（`urn:ietf:params:oauth:token-type:access_token`）か、登録した WorkloadTrustBundle の発行者が発行した外部のアテステーションの JWT（`urn:ietf:params:oauth:token-type:jwt`）か、ID-JAG を要求するときの自身が発行した ID Token（`urn:ietf:params:oauth:token-type:id_token`）である。")
   subject_token?: string;
   @doc("`subject_token` の種類を示す URN。省くと自身が発行したアクセストークンとして扱う。")
   subject_token_type?: string;
@@ -1077,7 +1087,7 @@ model TokenRequest {
   requested_token_type?: string;
   @doc("RFC 9396：トークン交換で絞り込みを求める、構造化された詳細の JSON の文字列。任意である。")
   authorization_details?: string;
-  @doc("RFC 8707：authorization_code の引き換え、client_credentials、device_code、トークン交換のためのリソースインジケーター。パラメーターを複数回指定すると `invalid_target` になる。refresh_token のグラントは明示的に指定せず、最初の発行で結び付けたリソースをローテーションを通じて自動で引き継ぐ。")
+  @doc("RFC 8707：authorization_code の引き換え、client_credentials、device_code、トークン交換のためのリソースインジケーター。ID-JAG の発行を除き、パラメーターを複数回指定すると `invalid_target` になる。refresh_token のグラントは明示的に指定せず、最初の発行で結び付けたリソースをローテーションを通じて自動で引き継ぐ。")
   resource?: ResourceIndicator;
 }
 
@@ -1759,6 +1769,143 @@ model TokenExchangeRejected {
   actorUserId?: string;
   @doc("拒否した理由。たとえば OAuth のエラーコード。")
   reason: string;
+}
+
+
+@doc("ID-JAG の発行の許可。テナントの中のクライアントが、どのリソースの認可サーバーへの ID-JAG を得られるかを定める。")
+model CrossAppAccessIssuePolicy {
+  tenant_id: string;
+  @minLength(1)
+  id: string;
+  @doc("ID-JAG を要求する、このテナントのクライアント。")
+  client_id: string;
+  @doc("リソースの認可サーバーの発行者識別子。ID-JAG の `aud` になる。")
+  audience: string;
+  @doc("リソースの認可サーバーをシングルサインオンの RP として登録した、このテナントのクライアント。利用者のアクセスの判定に使う。")
+  relying_party_client_id: string;
+  @doc("リソースの認可サーバーでのクライアント識別子。ID-JAG の `client_id` になる。")
+  target_client_id: string;
+  @doc("要求を許すリソース識別子。")
+  resources: string[];
+  @doc("与えてよいスコープ。リソースの認可サーバーでの意味を持つ。")
+  scopes: string[];
+  @doc("載せてよい `authorization_details` の種類。")
+  authorization_detail_types: string[];
+  @doc("確認済みのメールアドレスを ID-JAG に載せるかどうか。")
+  release_email: boolean;
+  created_at: utcDateTime;
+}
+
+
+@doc("`CrossAppAccessIssuePolicy` を登録するリクエスト。")
+model CrossAppAccessIssuePolicyRequest {
+  client_id: string;
+  audience: string;
+  relying_party_client_id: string;
+  target_client_id: string;
+  resources: string[];
+  scopes: string[];
+  authorization_detail_types?: string[];
+  release_email?: boolean;
+}
+
+
+model CrossAppAccessIssuePolicyListResponse {
+  policies: CrossAppAccessIssuePolicy[];
+}
+
+
+@doc("ID-JAG の受け入れの許可。どの ID プロバイダーの接続が発行した ID-JAG を、どのクライアントが償還できるかを定める。")
+model CrossAppAccessRedeemPolicy {
+  tenant_id: string;
+  @minLength(1)
+  id: string;
+  @doc("信頼する、このテナントの OIDC の IdentityProviderConnection。")
+  provider_id: string;
+  @doc("償還するクライアント。")
+  client_id: string;
+  @doc("与えてよいスコープ。")
+  scopes: string[];
+  created_at: utcDateTime;
+}
+
+
+@doc("`CrossAppAccessRedeemPolicy` を登録するリクエスト。")
+model CrossAppAccessRedeemPolicyRequest {
+  provider_id: string;
+  client_id: string;
+  scopes: string[];
+}
+
+
+model CrossAppAccessRedeemPolicyListResponse {
+  policies: CrossAppAccessRedeemPolicy[];
+}
+
+
+@doc("指定したアプリ間アクセスの許可が、このテナントに存在しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:cross_app_access_policy_not_found` である。")
+model CrossAppAccessPolicyNotFoundError is ProblemDetails;
+
+
+@doc("同じ組のアプリ間アクセスの許可が、このテナントにすでにある。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:cross_app_access_policy_exists` である。")
+model CrossAppAccessPolicyExistsError is ProblemDetails;
+
+
+@doc("ID-JAG を発行した（draft-ietf-oauth-identity-assertion-authz-grant-05 の 9.2 節）。本文は載せない。")
+model IdJagIssued {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  clientId: string;
+  userId: string;
+  audience: string;
+  resources: string[];
+  scopes: string[];
+  jti: string;
+}
+
+
+@doc("ID-JAG をアクセストークンへ償還した。")
+model IdJagRedeemed {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  issuer: string;
+  clientId: string;
+  userId: string;
+  jti: string;
+}
+
+
+@doc("ID-JAG の発行または償還を拒否した。")
+model IdJagRejected {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  clientId: string;
+  @doc("`issue` または `redeem`。")
+  stage: string;
+  @doc("OAuth のエラーコード。")
+  reason: string;
+}
+
+
+@doc("アプリ間アクセスの許可を登録した。")
+model CrossAppAccessPolicyCreated {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  policyId: string;
+  @doc("`issue` または `redeem`。")
+  direction: string;
+  clientId: string;
+}
+
+
+@doc("アプリ間アクセスの許可を削除した。")
+model CrossAppAccessPolicyDeleted {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  policyId: string;
+  @doc("`issue` または `redeem`。")
+  direction: string;
+  clientId: string;
 }
 
 

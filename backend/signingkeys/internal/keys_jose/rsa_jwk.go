@@ -14,6 +14,11 @@ import (
 )
 
 func GenerateRSAJWKPair() (*rsa.PrivateKey, map[string]any, map[string]any, string, error) {
+	return GenerateRSAJWKPairFor(signingdomain.SigAlgPS256)
+}
+
+// GenerateRSAJWKPairFor は、JWK の alg を指定した RSA の鍵の組を作る。
+func GenerateRSAJWKPairFor(alg signingdomain.SignatureAlgorithm) (*rsa.PrivateKey, map[string]any, map[string]any, string, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, nil, nil, "", err
@@ -24,12 +29,12 @@ func GenerateRSAJWKPair() (*rsa.PrivateKey, map[string]any, map[string]any, stri
 		return nil, nil, nil, "", err
 	}
 	publicJWK["kid"] = kid
-	publicJWK["alg"] = string(signingdomain.SigAlgPS256)
+	publicJWK["alg"] = string(alg)
 	publicJWK["use"] = "sig"
 	privateJWK := map[string]any{
 		"kty": "RSA",
 		"kid": kid,
-		"alg": string(signingdomain.SigAlgPS256),
+		"alg": string(alg),
 		"n":   base64.RawURLEncoding.EncodeToString(priv.N.Bytes()),
 		"e":   base64.RawURLEncoding.EncodeToString(bigIntFromInt(priv.E)),
 		"d":   base64.RawURLEncoding.EncodeToString(priv.D.Bytes()),

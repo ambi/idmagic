@@ -8,7 +8,7 @@
 | ResourceServer | アクセストークンを提示したクライアントへ保護リソースを返す、本アプリ外部のサーバー。 | resource_server |
 | McpResourceServer | MCP エコシステムでツールやデータソースを提供するリソースサーバーのテナント単位の登録。正規リソース URI と許可するスコープを持ち、Protected Resource Metadata とリソース指示子の検証基準になる。評価用のクライアントと規則を設定すると、リソースアクセスの評価を呼べる。 | mcp_resource_server |
 | ResourceAccessRule | リソースサーバーが評価を求められる操作の規則。資源の型、関係、必須のスコープ、任意で求める `authorization_details` の種類、人が承認した一回の操作を求めるかを持つ。 | resource_access_rule |
-| ResourceIndicator | RFC 8707 の `resource` パラメーター。要求する `audience` を表す、フラグメントを含まない絶対 URI。1 トークンにつき 1 個だけを許可し、複数指定、未登録、無効のいずれかであれば fail-closed で拒否する。 | resource_indicator |
+| ResourceIndicator | RFC 8707 の `resource` パラメーター。要求する `audience` を表す、フラグメントを含まない絶対 URI。1 トークンにつき 1 個だけを許可し（ID-JAG の発行と償還を除く）、複数指定、未登録、無効のいずれかであれば fail-closed で拒否する。 | resource_indicator |
 | Public | `client_secret` を安全に保持できないクライアント（SPA、ネイティブアプリ）。PKCE を必須とする。 | public |
 | Confidential | サーバー側で `client_secret` または秘密鍵を保持できるクライアント。 | confidential |
 | AuthorizationCode | 短命（60秒以下）の一度限り使用される中間トークン。/authorize で発行され /tokenで交換される。grant_type 値「authorization_code」と同じ文字列を共有する（RFC 6749 §4.1）。 | authorization_code, 認可コード |
@@ -16,6 +16,9 @@
 | ClientCredentials | クライアント自身が認可主体となる M2M フロー（RFC 6749 §4.4）。`confidential` クライアントだけが利用できる。 | client_credentials, M2M グラント |
 | DeviceCode | 入力制約のあるデバイス向けのデバイス認可グラント (RFC 8628)。grant_type は URN。 | urn:ietf:params:oauth:grant-type:device_code, device_code, デバイスコード |
 | TokenExchange | 既存のトークンを別のトークンへ交換するグラント（RFC 8693）。本アプリは 2 種類の `subject_token` を扱う。（1）自己発行トークンの委任では、`subject_token` と `actor_token` を本 IdP が発行し、`IntrospectAccessToken` を通過したものに限定する。（2）ワークロードアイデンティティ連携では、`subject_token_type` が `JwtSvid` のときに外部のアテステーショントークンを WorkloadIdentity の `VerifyWorkloadAttestation` で検証し、テナントに登録された `AgentWorkloadBinding` に対応する Agent の資格情報として発行する。`grant_type` は URN。 | urn:ietf:params:oauth:grant-type:token-exchange, token-exchange, トークン交換 |
+| IdJag | Identity Assertion JWT Authorization Grant（draft-ietf-oauth-identity-assertion-authz-grant-05）。IdP の認可サーバーが ID Token と引き換えに発行し、別のトラストドメインのリソースの認可サーバーが JWT Bearer グラントで償還する JWT。`typ` は `oauth-id-jag+jwt`。 | ID-JAG, Cross-App Access, XAA |
+| CrossAppAccessIssuePolicy | クライアントが、どのリソースの認可サーバーへのどのリソースとスコープの ID-JAG を得られるかを定めるテナント単位の許可。 | 発行の許可 |
+| CrossAppAccessRedeemPolicy | どの IdP の接続が発行した ID-JAG を、どのクライアントがどのスコープで償還できるかを定めるテナント単位の許可。 | 受け入れの許可 |
 | Ciba | Client-Initiated Backchannel Authentication（OpenID CIBA Core）。クライアントが帯域外の認証デバイスを介して ResourceOwner の判断を求める、分離型のフロー。本アプリはポーリングモードだけを実装し、`grant_type` には URN を使う。 | urn:openid:params:grant-type:ciba, ciba, CIBA, backchannel authentication |
 | ApprovalRequest | 人間が承認するまでクライアントの要求を保留する承認リクエスト。承認対象の User、要求元のクライアントまたは Agent、要求するスコープと `AuthorizationDetails`、バインディングメッセージ、期限を持ち、`Pending` から一方向に遷移する。CIBA の転送方式に固有の語彙に依存しない一般形で保持する。 | approval_request, 承認リクエスト |
 | AuthReqId | `/bc-authorize` が発行する承認リクエストのベアラーシークレット（CIBA Core §7.3）。トークンエンドポイントの CIBA グラントで提示する。保存するのは SHA-256 ハッシュだけとし、画面にも監査ログにも出さない。 | auth_req_id |

@@ -340,7 +340,7 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now tim
 		return nil, errors.New("signing key grace period must not be negative")
 	}
 	expires := now.Add(grace)
-	priv, publicJWK, privateJWK, kid, err := signingcrypto.GenerateRSAJWKPair()
+	priv, publicJWK, privateJWK, kid, err := signingcrypto.GenerateRSAJWKPairFor(signingdomain.AlgorithmFor(usage))
 	if err != nil {
 		return nil, err
 	}
@@ -427,7 +427,7 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now tim
 		return nil, err
 	}
 	return &signingdomain.SigningKey{
-		TenantID: tenantID, Kid: kid, Alg: signingdomain.SigAlgPS256,
+		TenantID: tenantID, Kid: kid, Alg: signingdomain.AlgorithmFor(usage),
 		Provider: signingdomain.KeyProviderDatabase, Usage: usage,
 		ScopeID:    scopeID,
 		PrivateKey: priv, PublicKey: &priv.PublicKey,

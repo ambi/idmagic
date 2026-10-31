@@ -32,7 +32,12 @@ import (
 const (
 	accessTokenTTLSeconds = 600
 	idTokenTTLSeconds     = 3600
+	// idJagTTLSeconds は ID-JAG の有効期間である (REQ-OAUTH2-066)。
+	idJagTTLSeconds = 300
 )
+
+// tokenUseIDToken は ID Token の token_use クレームの値である。
+const tokenUseIDToken = "id_token"
 
 type JWTSigner struct {
 	Issuer   string
@@ -160,6 +165,8 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput)
 		"iat":       now,
 		"exp":       now + idTokenTTLSeconds,
 		"auth_time": in.AuthTime,
+		// ID Token を積極的に見分ける印 (draft-05 §4.3.3)。後のクレームは既存のキーを上書きしない。
+		"token_use": tokenUseIDToken,
 	}
 	if in.Nonce != nil && *in.Nonce != "" {
 		claims["nonce"] = *in.Nonce

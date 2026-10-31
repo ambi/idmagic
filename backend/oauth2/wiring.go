@@ -52,6 +52,8 @@ func NewMemoryModule() Module {
 		ConsentRepo:                db_memory.NewConsentRepository(),
 		AuthzDetailTypeRepo:        db_memory.NewAuthorizationDetailTypeRepository(),
 		McpResourceServerRepo:      db_memory.NewMcpResourceServerRepository(),
+		CrossAppAccessPolicies:     db_memory.NewCrossAppAccessPolicyRepository(),
+		IDJAGReplayStore:           db_memory.NewClientAssertionReplayStore(),
 		RequestStore:               db_memory.NewAuthorizationRequestStore(),
 		CodeStore:                  db_memory.NewAuthorizationCodeStore(),
 		PARStore:                   db_memory.NewPARStore(),
@@ -74,6 +76,8 @@ func NewPostgresModule(pool postgres.DB) Module {
 		ConsentRepo:                &consentpostgres.ConsentRepository{Pool: pool},
 		AuthzDetailTypeRepo:        &db_postgres.AuthorizationDetailTypeRepository{Pool: pool},
 		McpResourceServerRepo:      &db_postgres.McpResourceServerRepository{Pool: pool},
+		CrossAppAccessPolicies:     &db_postgres.CrossAppAccessPolicyRepository{Pool: pool},
+		IDJAGReplayStore:           &db_postgres.ReplayStore{Pool: pool, Kind: "id_jag"},
 		RequestStore:               &db_postgres.AuthorizationRequestStore{Pool: pool},
 		CodeStore:                  &db_postgres.AuthorizationCodeStore{Pool: pool},
 		PARStore:                   &db_postgres.PARStore{Pool: pool},
@@ -133,7 +137,9 @@ type RouteDeps struct {
 	RevocationEpochRepo       ssports.AgentRevocationEpochRepository
 	UserRevocationEpochRepo   ssports.UserRevocationEpochRepository
 	// WorkloadVerifier は token exchange の外部ワークロードのトークンを検証する。nil は拒否する。
-	WorkloadVerifier    oauthports.WorkloadTokenVerifier
+	WorkloadVerifier oauthports.WorkloadTokenVerifier
+	// IDJAGTrust は ID-JAG の発行者と主体を Authentication の接続から解決する。
+	IDJAGTrust          oauthports.IDJAGIssuerTrust
 	ManagedTokenRevoker tokenusecases.ManagedTokenRevoker
 	BuiltinResource     BuiltinResource
 	AttrSchemaRepo      userports.TenantUserAttributeSchemaRepository
@@ -205,6 +211,11 @@ func (m Module) httpDeps(d RouteDeps) oauth2http.Deps {
 		ApplicationGate:             d.ApplicationGate,
 		AuthzDetailTypeRepo:         m.AuthzDetailTypeRepo,
 		McpResourceServerRepo:       m.McpResourceServerRepo,
+		CrossAppAccessPolicies:      m.CrossAppAccessPolicies,
+		IDJAGTrust:                  d.IDJAGTrust,
+		IDTokenAssertionVerifier:    m.IDTokenAssertionVerifier,
+		IDJAGSigner:                 m.IDJAGSigner,
+		IDJAGReplayStore:            m.IDJAGReplayStore,
 		ClientRepo:                  m.ClientRepo,
 		ConsentRepo:                 m.ConsentRepo,
 		ClientDisplayNameResolver:   d.ClientDisplayNameResolver,

@@ -32,6 +32,8 @@ enum GrantType {
   DeviceCode: "urn:ietf:params:oauth:grant-type:device_code",
   TokenExchange: "urn:ietf:params:oauth:grant-type:token-exchange",
   Ciba: "urn:openid:params:grant-type:ciba",
+  JwtBearer: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+  JwtDpop: "urn:ietf:params:oauth:grant-type:jwt-dpop",
 }
 
 

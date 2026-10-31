@@ -14,6 +14,9 @@ type SignatureAlgorithm string
 const (
 	SigAlgPS256 SignatureAlgorithm = "PS256"
 	SigAlgES256 SignatureAlgorithm = "ES256"
+	// SigAlgRS256 は ID-JAG の専用鍵だけが使う (REQ-SIGNINGKEYS-013)。クライアントが選べる
+	// ID Token の署名方式ではないので、Valid には含めない。
+	SigAlgRS256 SignatureAlgorithm = "RS256"
 )
 
 func (s SignatureAlgorithm) Valid() bool { return s == SigAlgPS256 || s == SigAlgES256 }
@@ -35,10 +38,20 @@ type KeyUsage string
 const (
 	KeyUsageSigning              KeyUsage = "Signing"
 	KeyUsageXMLFederationSigning KeyUsage = "XmlFederationSigning"
+	// KeyUsageIdJagSigning は ID-JAG の署名に使う。
+	KeyUsageIdJagSigning KeyUsage = "IdJagSigning"
 )
 
 func (u KeyUsage) Valid() bool {
-	return u == KeyUsageSigning || u == KeyUsageXMLFederationSigning
+	return u == KeyUsageSigning || u == KeyUsageXMLFederationSigning || u == KeyUsageIdJagSigning
+}
+
+// AlgorithmFor は用途の鍵が宣言する署名方式を返す。
+func AlgorithmFor(usage KeyUsage) SignatureAlgorithm {
+	if usage == KeyUsageIdJagSigning {
+		return SigAlgRS256
+	}
+	return SigAlgPS256
 }
 
 type SigningKey struct {

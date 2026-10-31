@@ -21,3 +21,13 @@ func TestPersistenceContract(t *testing.T) {
 		}
 	})
 }
+
+//spec:covers REQ-OAUTH2-072: PostgreSQL の保存先が許可の共有契約を満たすこと
+func TestCrossAppAccessPolicyRepositoryContract(t *testing.T) {
+	db := pgtest.Require(t)
+	testing_contract.RunCrossAppAccess(t, testing_contract.CrossAppAccessFixture{
+		Policies: &oauth2postgres.CrossAppAccessPolicyRepository{Pool: db},
+		TenantA:  seedTenant(t, db).ID, TenantB: seedTenant(t, db).ID,
+		Now: testClock(),
+	})
+}

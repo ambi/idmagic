@@ -21,6 +21,29 @@ type AuthorizationDetailType struct {
 	UpdatedAt       time.Time
 }
 
+type CrossAppAccessIssuePolicy struct {
+	TenantID                 string
+	ID                       string
+	ClientID                 string
+	Audience                 string
+	RelyingPartyClientID     string
+	TargetClientID           string
+	Resources                []byte
+	Scopes                   []byte
+	AuthorizationDetailTypes []byte
+	ReleaseEmail             bool
+	CreatedAt                time.Time
+}
+
+type CrossAppAccessRedeemPolicy struct {
+	TenantID   string
+	ID         string
+	ProviderID string
+	ClientID   string
+	Scopes     []byte
+	CreatedAt  time.Time
+}
+
 type McpResourceServer struct {
 	TenantID    string
 	ID          string

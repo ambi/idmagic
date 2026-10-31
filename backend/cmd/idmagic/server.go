@@ -117,6 +117,8 @@ func Run() error {
 	deps.OAuth2.TokenIssuer = tokenSigner
 	deps.OAuth2.TokenIntrospector = managedTokenIntrospector
 	deps.OAuth2.IDTokenHintVerifier = tokenSigner
+	deps.OAuth2.IDTokenAssertionVerifier = tokenSigner
+	deps.OAuth2.IDJAGSigner = tokenSigner
 	deps.OAuth2.Authorizer = authorizer
 	deps.Authentication.PasswordHasher = hasher
 	deps.Authentication.BreachedPasswordChecker = breachedChecker

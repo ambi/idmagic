@@ -23,7 +23,7 @@
 
 #### REQ-OAUTH2-003 管理 API クライアントは OAuth リソースのスコープで許可された操作だけを実行できる
 
-- 管理者の API アクセストークンで OAuth2 の管理 API を要求されたとき、OAuth2 は、`oauth-clients:read` で OAuth2 のクライアントの参照を、`oauth-clients:write` でその変更を、`authorization-detail-types:read` と `authorization-detail-types:write` で認可詳細の種類の参照と変更を、`mcp-resource-servers:read` と `mcp-resource-servers:write` で MCP のリソースサーバーの参照と変更を許可する。
+- 管理者の API アクセストークンで OAuth2 の管理 API を要求されたとき、OAuth2 は、`oauth-clients:read` で OAuth2 のクライアントの参照を、`oauth-clients:write` でその変更を、`authorization-detail-types:read` と `authorization-detail-types:write` で認可詳細の種類の参照と変更を、`mcp-resource-servers:read` と `mcp-resource-servers:write` で MCP のリソースサーバーとアプリ間アクセスの許可の参照と変更を許可する。
 - 読み取りのスコープだけで変更を要求されるか、別のリソースのスコープで操作を要求された場合、OAuth2 は、403 と `insufficient_scope` で拒否する。
 - トークンのテナントとリクエスト先のテナントが一致しない場合、OAuth2 は、401 と `invalid_token` で拒否する。
 - `authorize()` のポートが判定を返せないか、事実が欠けているか、ストアへ到達できない場合、OAuth2 は、許可せずに拒否する。

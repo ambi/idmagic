@@ -22,6 +22,8 @@ type Querier interface {
 	DeleteAuthorizationDetailType(ctx context.Context, arg DeleteAuthorizationDetailTypeParams) error
 	DeleteClient(ctx context.Context, arg DeleteClientParams) error
 	DeleteConsentsForSub(ctx context.Context, userID string) error
+	DeleteCrossAppAccessIssuePolicy(ctx context.Context, arg DeleteCrossAppAccessIssuePolicyParams) error
+	DeleteCrossAppAccessRedeemPolicy(ctx context.Context, arg DeleteCrossAppAccessRedeemPolicyParams) error
 	DeleteDeviceCodesForUser(ctx context.Context, arg DeleteDeviceCodesForUserParams) error
 	DeleteExpiredApprovalRequestsBatch(ctx context.Context, arg DeleteExpiredApprovalRequestsBatchParams) (int64, error)
 	DeleteExpiredAuthorizationCodesBatch(ctx context.Context, arg DeleteExpiredAuthorizationCodesBatchParams) (int64, error)
@@ -52,12 +54,17 @@ type Querier interface {
 	GetAuthorizationDetailType(ctx context.Context, arg GetAuthorizationDetailTypeParams) (*AuthorizationDetailType, error)
 	GetClientByID(ctx context.Context, arg GetClientByIDParams) (*Oauth2Client, error)
 	GetConsent(ctx context.Context, arg GetConsentParams) (*GetConsentRow, error)
+	GetCrossAppAccessIssuePolicy(ctx context.Context, arg GetCrossAppAccessIssuePolicyParams) (*CrossAppAccessIssuePolicy, error)
+	GetCrossAppAccessRedeemPolicy(ctx context.Context, arg GetCrossAppAccessRedeemPolicyParams) (*CrossAppAccessRedeemPolicy, error)
+	GetCrossAppAccessRedeemPolicyFor(ctx context.Context, arg GetCrossAppAccessRedeemPolicyForParams) (*CrossAppAccessRedeemPolicy, error)
 	GetMcpResourceServer(ctx context.Context, arg GetMcpResourceServerParams) (*McpResourceServer, error)
 	GetMcpResourceServerByClientID(ctx context.Context, arg GetMcpResourceServerByClientIDParams) (*McpResourceServer, error)
 	GetMcpResourceServerByResource(ctx context.Context, arg GetMcpResourceServerByResourceParams) (*McpResourceServer, error)
 	GetRefreshTokenByHash(ctx context.Context, hash string) (*GetRefreshTokenByHashRow, error)
 	GetRefreshTokenRotationState(ctx context.Context, id string) (*GetRefreshTokenRotationStateRow, error)
 	InsertClientSecretCredential(ctx context.Context, arg InsertClientSecretCredentialParams) error
+	InsertCrossAppAccessIssuePolicy(ctx context.Context, arg InsertCrossAppAccessIssuePolicyParams) (int64, error)
+	InsertCrossAppAccessRedeemPolicy(ctx context.Context, arg InsertCrossAppAccessRedeemPolicyParams) (int64, error)
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error
 	// 期限切れマーカーは revoked とみなさない (正しさは expires_at > now が担保、GC は空間回収のみ)。
 	IsOauth2AccessTokenRevoked(ctx context.Context, arg IsOauth2AccessTokenRevokedParams) (bool, error)
@@ -87,6 +94,8 @@ type Querier interface {
 	// of the last row the caller saw.
 	ListConsentsByTenantPageAfter(ctx context.Context, arg ListConsentsByTenantPageAfterParams) ([]*ListConsentsByTenantPageAfterRow, error)
 	ListConsentsByTenantPageBefore(ctx context.Context, arg ListConsentsByTenantPageBeforeParams) ([]*ListConsentsByTenantPageBeforeRow, error)
+	ListCrossAppAccessIssuePolicies(ctx context.Context, tenantID string) ([]*CrossAppAccessIssuePolicy, error)
+	ListCrossAppAccessRedeemPolicies(ctx context.Context, tenantID string) ([]*CrossAppAccessRedeemPolicy, error)
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
 	ListPendingApprovalRequestsForUser(ctx context.Context, arg ListPendingApprovalRequestsForUserParams) ([]*ListPendingApprovalRequestsForUserRow, error)
 	// tx 内の read-modify-write を直列化するための行ロック取得。

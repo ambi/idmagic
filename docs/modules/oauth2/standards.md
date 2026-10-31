@@ -166,8 +166,23 @@ RFC 8693 — https://www.rfc-editor.org/rfc/rfc8693.html
 |---|---|---|---|
 | RFC8693-DELEGATION-DEFAULT | required | MUST | 交換のデフォルトは委譲とする。発行するトークンは元のユーザーを `sub` に保ち、現在の行為者を `act` に記録し、以前の行為者を §4.1 に従って内側へ入れ子にする。 |
 | RFC8693-IMPERSONATION | optional | MAY | なりすまし (`act` を落として `sub` を置き換える形) は、クライアントまたは Agent へ明示的に許可した場合だけ受け付ける。 |
-| RFC8693-SUBJECT-TOKEN | required | MUST | 受け付ける `subject_token` は、自身が発行しイントロスペクションを通過したトークンか、`subject_token_type` が JWT-SVID の登録済み外部アテステーションに限る。 |
+| RFC8693-SUBJECT-TOKEN | required | MUST | 受け付ける `subject_token` は、自身が発行しイントロスペクションを通過したトークンか、`subject_token_type` が JWT-SVID の登録済み外部アテステーションに限る。 ID-JAG の発行では、自身が発行した ID Token に限る。 |
 | RFC8693-DELEGATION-DEPTH | required | MUST | `act` チェーンの長さをテナントの実効委譲深さで制限する。テナントはシステムデフォルトを下げられるが上げられず、ポリシーを解決できない場合は交換を拒否する。 |
+
+## Identity Assertion JWT Authorization Grant
+
+draft-ietf-oauth-identity-assertion-authz-grant-05 — https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-assertion-authz-grant-05
+
+Internet-Draft である。`-05` に固定し、相互運用を主張しない。
+SAML の Assertion とリフレッシュトークンを `subject_token` にする経路は提供しない。
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| IDJAG-ISSUANCE | optional | MAY | IdP の認可サーバーとして、自身が発行した ID Token を `subject_token` とする Token Exchange で ID-JAG を発行する。§4.3 の `audience`、`resource`、エラーの割り当てに従う。 |
+| IDJAG-REDEMPTION | optional | MAY | リソースの認可サーバーとして、§4.4 の検証を通る ID-JAG を JWT Bearer グラントで償還し、自身が発行した ID-JAG を拒否する。 |
+| IDJAG-SIGNING-ALG | required | MUST | ID-JAG の発行と受け入れの双方で RS256 を実装する。受け入れは ES256 も扱う。 |
+| IDJAG-SENDER-CONSTRAINT | optional | MAY | §9.11 の DPoP と mTLS の束縛を発行と償還で扱い、DPoP の束縛は `urn:ietf:params:oauth:grant-type:jwt-dpop` でだけ償還する。 |
+| IDJAG-METADATA | optional | SHOULD | Authorization Server Metadata に `identity_chaining_requested_token_types_supported`、`id_jag_signing_alg_values_supported`、`authorization_grant_profiles_supported` と JWT Bearer の `grant_types_supported` を載せ、信頼する発行者の一覧を載せない。 |
 
 ## OAuth 2.0 Rich Authorization Requests
 

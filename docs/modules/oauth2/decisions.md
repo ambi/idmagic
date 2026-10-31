@@ -299,3 +299,38 @@ RP の間でのセッションの相関を防ぐ要件が出た場合に見直�
 | 要件 | 機能仕様 |
 | --- | --- |
 | REQ-OAUTH2-025 | [ログアウト](features/logout.md) |
+
+## ID-JAG の発行と償還を既存のトークン交換から分ける
+
+### 背景
+
+Identity Assertion JWT Authorization Grant（draft-ietf-oauth-identity-assertion-authz-grant-05）は、IdP への Token Exchange と、リソースの認可サーバーへの JWT Bearer グラントの 2 ホップである。
+IdMagic はテナントごとに発行者が分かれるので、どちらの役割にもなる。
+
+### 決定
+
+発行は Token Exchange の `requested_token_type` で別のユースケースへ分け、償還は `jwt-bearer` と `jwt-dpop` のグラントとして新設する。
+許可は OAuth2 が所有し、Application は割り当ての関門としてだけ関わる。
+受け入れ側の信頼は、SSO に使う `IdentityProviderConnection` と `FederatedIdentity` の上に置く。
+`actor_token` と `act` は draft が処理を定めないので、両ホップで拒否する。
+
+### 検討した代替案
+
+| 案 | 利点 | 欠点 | 採らない理由 |
+| --- | --- | --- | --- |
+| 既存の `ExchangeToken` へ分岐を足す | 入口が一つで済む | `act` 必須やスコープの部分集合という不変条件に例外が要る | 一方の緩和がもう一方へ漏れる |
+| 許可を Application が所有する | 割り当てと一か所で管理できる | `audience`、リソース、スコープというプロトコルの語彙が入る | Application はプロトコル設定を中身に依存せず参照する |
+| 受け入れ側の信頼を別に登録する | SSO と独立に設定できる | 同じ発行者の一覧が二つになる | draft は SSO で信頼する IdP を前提とする |
+
+### 結果と再検討の条件
+
+判定の共有は Agent の区分と付与の確認に限られ、draft の改訂の波及は OAuth2 の ID-JAG のユースケースに閉じる。
+Internet-Draft なので `-05` に固定し、相互運用は主張しない。
+RFC になったとき、または `actor_token` のプロファイルが定まったときに見直す。
+
+### 関連する要件
+
+| 要件 | 機能仕様 |
+| --- | --- |
+| REQ-OAUTH2-066 | [トークン](features/token.md) |
+| REQ-OAUTH2-069 | [トークン](features/token.md) |

@@ -27,6 +27,20 @@ func RunSigningKeyLifecycle(ctx context.Context, deps SigningKeyLifecycleDeps, n
 	if _, err := ArchiveExpiredSigningKeys(signing, archive, now); err != nil {
 		return err
 	}
+	// ID-JAG の鍵は発行で初めて作るので、鍵を持たないテナントでは作らない。
+	idJag := ports.WithKeyUsage(ctx, signingdomain.KeyUsageIdJagSigning)
+	idJagScopes, err := deps.KeyStore.KeyScopes(idJag)
+	if err != nil {
+		return err
+	}
+	if len(idJagScopes) > 0 {
+		if _, err := RotateSigningKeyIfDue(idJag, RotateSigningKeyDeps{KeyStore: deps.KeyStore, Emit: deps.Emit, Grace: grace}, now, cadence); err != nil {
+			return err
+		}
+		if _, err := ArchiveExpiredSigningKeys(idJag, archive, now); err != nil {
+			return err
+		}
+	}
 	xml := ports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning)
 	scopes, err := deps.KeyStore.KeyScopes(xml)
 	if err != nil {

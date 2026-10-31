@@ -38,12 +38,15 @@ const (
 	GrantDeviceCode        GrantType = "urn:ietf:params:oauth:grant-type:device_code"
 	GrantTokenExchange     GrantType = "urn:ietf:params:oauth:grant-type:token-exchange"
 	GrantCiba              GrantType = "urn:openid:params:grant-type:ciba"
+	// GrantJWTBearer は RFC 7523 の認可グラント、GrantJWTDPoP は DPoP に束縛した JWT の認可グラントである。
+	GrantJWTBearer GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+	GrantJWTDPoP   GrantType = "urn:ietf:params:oauth:grant-type:jwt-dpop"
 )
 
 func (g GrantType) Valid() bool {
 	switch g {
 	case GrantAuthorizationCode, GrantRefreshToken, GrantClientCredentials, GrantDeviceCode,
-		GrantTokenExchange, GrantCiba:
+		GrantTokenExchange, GrantCiba, GrantJWTBearer, GrantJWTDPoP:
 		return true
 	}
 	return false

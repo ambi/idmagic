@@ -16,6 +16,7 @@
 | --- | --- | --- |
 | `Signing` | OAuth2 と OIDC の JWT。用途とスコープを明示しない呼び出し元にはこれとデフォルトのスコープを適用する | デフォルトのスコープ |
 | `XmlFederationSigning` | SAML と WS-Federation の XML 署名 | SAML では IdP のプロファイルの ID |
+| `IdJagSigning` | ID-JAG の RS256 の署名。JWKS に `Signing` の鍵と並べて公開する | スコープは使わない |
 
 | 提供元（`KeyProvider`） | 秘密鍵の置き場所 | 署名する主体 |
 | --- | --- | --- |

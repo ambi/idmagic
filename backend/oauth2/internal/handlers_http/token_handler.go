@@ -296,7 +296,19 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			"token_type": result.TokenType, "expires_in": result.ExpiresIn, "scope": result.Scope,
 		})
 
+	case string(spec.GrantJWTBearer), string(spec.GrantJWTDPoP):
+		if d.CrossAppAccessPolicies == nil || d.IDJAGReplayStore == nil {
+			return writeOAuthError(c, tokenusecases.NewOAuthError("unsupported_grant_type", "Unsupported grant_type: "+grantType))
+		}
+		return d.redeemIDJAG(c, clientStub, grantType, dpopJKT)
+
 	case "urn:ietf:params:oauth:grant-type:token-exchange":
+		if c.Request().PostFormValue("requested_token_type") == tokenusecases.TokenTypeIDJAGURN {
+			if d.CrossAppAccessPolicies == nil || d.IDJAGSigner == nil || d.IDTokenAssertionVerifier == nil {
+				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "unsupported requested_token_type"))
+			}
+			return d.issueIDJAG(c, clientStub, dpopJKT)
+		}
 		exchangeDetails, err := tokenusecases.ParseAuthorizationDetails(c.Request().PostFormValue("authorization_details"))
 		if err != nil {
 			return writeOAuthError(c, err)

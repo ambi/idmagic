@@ -39,6 +39,7 @@ import { Route as AdminApplicationsRouteImport } from './routes/admin/applicatio
 import { Route as AdminAudit_eventsRouteImport } from './routes/admin/audit_events'
 import { Route as AdminAuthorizationDetailTypesRouteImport } from './routes/admin/authorization-detail-types'
 import { Route as AdminConsentsRouteImport } from './routes/admin/consents'
+import { Route as AdminCrossAppAccessRouteImport } from './routes/admin/cross-app-access'
 import { Route as AdminGroupsRouteImport } from './routes/admin/groups'
 import { Route as AdminIdentityProvidersRouteImport } from './routes/admin/identity-providers'
 import { Route as AdminJobsRouteImport } from './routes/admin/jobs'
@@ -67,6 +68,8 @@ import { Route as AdminAgentsNewRouteImport } from './routes/admin/agents_/new'
 import { Route as AdminApplicationsApplicationIdRouteImport } from './routes/admin/applications_/$applicationId'
 import { Route as AdminApplicationsNewRouteImport } from './routes/admin/applications_/new'
 import { Route as AdminAuthorizationDetailTypesNewRouteImport } from './routes/admin/authorization-detail-types_/new'
+import { Route as AdminCrossAppAccessNewIssueRouteImport } from './routes/admin/cross-app-access_/new-issue'
+import { Route as AdminCrossAppAccessNewRedeemRouteImport } from './routes/admin/cross-app-access_/new-redeem'
 import { Route as AdminFederationEntraRouteImport } from './routes/admin/federation/entra'
 import { Route as AdminGroupsGroupIdRouteImport } from './routes/admin/groups_/$groupId'
 import { Route as AdminGroupsExportsRouteImport } from './routes/admin/groups_/exports'
@@ -262,6 +265,11 @@ const AdminConsentsRoute = AdminConsentsRouteImport.update({
   path: '/consents',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminCrossAppAccessRoute = AdminCrossAppAccessRouteImport.update({
+  id: '/cross-app-access',
+  path: '/cross-app-access',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminGroupsRoute = AdminGroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
@@ -402,6 +410,18 @@ const AdminAuthorizationDetailTypesNewRoute =
   AdminAuthorizationDetailTypesNewRouteImport.update({
     id: '/authorization-detail-types_/new',
     path: '/authorization-detail-types/new',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminCrossAppAccessNewIssueRoute =
+  AdminCrossAppAccessNewIssueRouteImport.update({
+    id: '/cross-app-access_/new-issue',
+    path: '/cross-app-access/new-issue',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminCrossAppAccessNewRedeemRoute =
+  AdminCrossAppAccessNewRedeemRouteImport.update({
+    id: '/cross-app-access_/new-redeem',
+    path: '/cross-app-access/new-redeem',
     getParentRoute: () => AdminRouteRoute,
   } as any)
 const AdminFederationEntraRoute = AdminFederationEntraRouteImport.update({
@@ -674,6 +694,7 @@ export interface FileRoutesByFullPath {
   '/admin/audit_events': typeof AdminAudit_eventsRoute
   '/admin/authorization-detail-types': typeof AdminAuthorizationDetailTypesRoute
   '/admin/consents': typeof AdminConsentsRoute
+  '/admin/cross-app-access': typeof AdminCrossAppAccessRoute
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/identity-providers': typeof AdminIdentityProvidersRoute
   '/admin/jobs': typeof AdminJobsRoute
@@ -703,6 +724,8 @@ export interface FileRoutesByFullPath {
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/applications/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types/new': typeof AdminAuthorizationDetailTypesNewRoute
+  '/admin/cross-app-access/new-issue': typeof AdminCrossAppAccessNewIssueRoute
+  '/admin/cross-app-access/new-redeem': typeof AdminCrossAppAccessNewRedeemRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
   '/admin/groups/exports': typeof AdminGroupsExportsRoute
@@ -774,6 +797,7 @@ export interface FileRoutesByTo {
   '/admin/audit_events': typeof AdminAudit_eventsRoute
   '/admin/authorization-detail-types': typeof AdminAuthorizationDetailTypesRoute
   '/admin/consents': typeof AdminConsentsRoute
+  '/admin/cross-app-access': typeof AdminCrossAppAccessRoute
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/identity-providers': typeof AdminIdentityProvidersRoute
   '/admin/jobs': typeof AdminJobsRoute
@@ -801,6 +825,8 @@ export interface FileRoutesByTo {
   '/admin/agents/new': typeof AdminAgentsNewRoute
   '/admin/applications/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types/new': typeof AdminAuthorizationDetailTypesNewRoute
+  '/admin/cross-app-access/new-issue': typeof AdminCrossAppAccessNewIssueRoute
+  '/admin/cross-app-access/new-redeem': typeof AdminCrossAppAccessNewRedeemRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups/exports': typeof AdminGroupsExportsRoute
   '/admin/groups/import': typeof AdminGroupsImportRoute
@@ -870,6 +896,7 @@ export interface FileRoutesById {
   '/admin/audit_events': typeof AdminAudit_eventsRoute
   '/admin/authorization-detail-types': typeof AdminAuthorizationDetailTypesRoute
   '/admin/consents': typeof AdminConsentsRoute
+  '/admin/cross-app-access': typeof AdminCrossAppAccessRoute
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/identity-providers': typeof AdminIdentityProvidersRoute
   '/admin/jobs': typeof AdminJobsRoute
@@ -899,6 +926,8 @@ export interface FileRoutesById {
   '/admin/applications_/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/applications_/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types_/new': typeof AdminAuthorizationDetailTypesNewRoute
+  '/admin/cross-app-access_/new-issue': typeof AdminCrossAppAccessNewIssueRoute
+  '/admin/cross-app-access_/new-redeem': typeof AdminCrossAppAccessNewRedeemRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups_/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
   '/admin/groups_/exports': typeof AdminGroupsExportsRoute
@@ -975,6 +1004,7 @@ export interface FileRouteTypes {
     | '/admin/audit_events'
     | '/admin/authorization-detail-types'
     | '/admin/consents'
+    | '/admin/cross-app-access'
     | '/admin/groups'
     | '/admin/identity-providers'
     | '/admin/jobs'
@@ -1004,6 +1034,8 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId'
     | '/admin/applications/new'
     | '/admin/authorization-detail-types/new'
+    | '/admin/cross-app-access/new-issue'
+    | '/admin/cross-app-access/new-redeem'
     | '/admin/federation/entra'
     | '/admin/groups/$groupId'
     | '/admin/groups/exports'
@@ -1075,6 +1107,7 @@ export interface FileRouteTypes {
     | '/admin/audit_events'
     | '/admin/authorization-detail-types'
     | '/admin/consents'
+    | '/admin/cross-app-access'
     | '/admin/groups'
     | '/admin/identity-providers'
     | '/admin/jobs'
@@ -1102,6 +1135,8 @@ export interface FileRouteTypes {
     | '/admin/agents/new'
     | '/admin/applications/new'
     | '/admin/authorization-detail-types/new'
+    | '/admin/cross-app-access/new-issue'
+    | '/admin/cross-app-access/new-redeem'
     | '/admin/federation/entra'
     | '/admin/groups/exports'
     | '/admin/groups/import'
@@ -1170,6 +1205,7 @@ export interface FileRouteTypes {
     | '/admin/audit_events'
     | '/admin/authorization-detail-types'
     | '/admin/consents'
+    | '/admin/cross-app-access'
     | '/admin/groups'
     | '/admin/identity-providers'
     | '/admin/jobs'
@@ -1199,6 +1235,8 @@ export interface FileRouteTypes {
     | '/admin/applications_/$applicationId'
     | '/admin/applications_/new'
     | '/admin/authorization-detail-types_/new'
+    | '/admin/cross-app-access_/new-issue'
+    | '/admin/cross-app-access_/new-redeem'
     | '/admin/federation/entra'
     | '/admin/groups_/$groupId'
     | '/admin/groups_/exports'
@@ -1473,6 +1511,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminConsentsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/cross-app-access': {
+      id: '/admin/cross-app-access'
+      path: '/cross-app-access'
+      fullPath: '/admin/cross-app-access'
+      preLoaderRoute: typeof AdminCrossAppAccessRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/groups': {
       id: '/admin/groups'
       path: '/groups'
@@ -1667,6 +1712,20 @@ declare module '@tanstack/react-router' {
       path: '/authorization-detail-types/new'
       fullPath: '/admin/authorization-detail-types/new'
       preLoaderRoute: typeof AdminAuthorizationDetailTypesNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/cross-app-access_/new-issue': {
+      id: '/admin/cross-app-access_/new-issue'
+      path: '/cross-app-access/new-issue'
+      fullPath: '/admin/cross-app-access/new-issue'
+      preLoaderRoute: typeof AdminCrossAppAccessNewIssueRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/cross-app-access_/new-redeem': {
+      id: '/admin/cross-app-access_/new-redeem'
+      path: '/cross-app-access/new-redeem'
+      fullPath: '/admin/cross-app-access/new-redeem'
+      preLoaderRoute: typeof AdminCrossAppAccessNewRedeemRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/federation/entra': {
@@ -2134,6 +2193,7 @@ interface AdminRouteRouteChildren {
   AdminAudit_eventsRoute: typeof AdminAudit_eventsRoute
   AdminAuthorizationDetailTypesRoute: typeof AdminAuthorizationDetailTypesRoute
   AdminConsentsRoute: typeof AdminConsentsRoute
+  AdminCrossAppAccessRoute: typeof AdminCrossAppAccessRoute
   AdminGroupsRoute: typeof AdminGroupsRoute
   AdminIdentityProvidersRoute: typeof AdminIdentityProvidersRoute
   AdminJobsRoute: typeof AdminJobsRoute
@@ -2154,6 +2214,8 @@ interface AdminRouteRouteChildren {
   AdminApplicationsApplicationIdRoute: typeof AdminApplicationsApplicationIdRouteWithChildren
   AdminApplicationsNewRoute: typeof AdminApplicationsNewRoute
   AdminAuthorizationDetailTypesNewRoute: typeof AdminAuthorizationDetailTypesNewRoute
+  AdminCrossAppAccessNewIssueRoute: typeof AdminCrossAppAccessNewIssueRoute
+  AdminCrossAppAccessNewRedeemRoute: typeof AdminCrossAppAccessNewRedeemRoute
   AdminFederationEntraRoute: typeof AdminFederationEntraRoute
   AdminGroupsGroupIdRoute: typeof AdminGroupsGroupIdRouteWithChildren
   AdminGroupsExportsRoute: typeof AdminGroupsExportsRoute
@@ -2188,6 +2250,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAudit_eventsRoute: AdminAudit_eventsRoute,
   AdminAuthorizationDetailTypesRoute: AdminAuthorizationDetailTypesRoute,
   AdminConsentsRoute: AdminConsentsRoute,
+  AdminCrossAppAccessRoute: AdminCrossAppAccessRoute,
   AdminGroupsRoute: AdminGroupsRoute,
   AdminIdentityProvidersRoute: AdminIdentityProvidersRoute,
   AdminJobsRoute: AdminJobsRoute,
@@ -2209,6 +2272,8 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
     AdminApplicationsApplicationIdRouteWithChildren,
   AdminApplicationsNewRoute: AdminApplicationsNewRoute,
   AdminAuthorizationDetailTypesNewRoute: AdminAuthorizationDetailTypesNewRoute,
+  AdminCrossAppAccessNewIssueRoute: AdminCrossAppAccessNewIssueRoute,
+  AdminCrossAppAccessNewRedeemRoute: AdminCrossAppAccessNewRedeemRoute,
   AdminFederationEntraRoute: AdminFederationEntraRoute,
   AdminGroupsGroupIdRoute: AdminGroupsGroupIdRouteWithChildren,
   AdminGroupsExportsRoute: AdminGroupsExportsRoute,

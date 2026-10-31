@@ -2,11 +2,13 @@
 package handlers_http
 
 import (
+	"context"
 	"net/http"
 	"sync"
 	"time"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	"github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/labstack/echo/v5"
@@ -32,7 +34,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 
 func (d Deps) handleJWKS(c *echo.Context) error {
 	tenantID := support.RequestTenantID(c)
-	keys, err := d.KeyStore.ListPublicKeys(c.Request().Context(), time.Now().UTC())
+	keys, err := publicKeys(c.Request().Context(), d.KeyStore)
 	if err != nil {
 		if cachedKeys, ok := jwksCache.Load(tenantID); ok {
 			if keysList, ok := cachedKeys.([]map[string]any); ok {
@@ -47,4 +49,18 @@ func (d Deps) handleJWKS(c *echo.Context) error {
 	}
 	jwksCache.Store(tenantID, jwks)
 	return c.JSON(http.StatusOK, map[string]any{"keys": jwks})
+}
+
+// publicKeys は JWKS に載せる用途の鍵を集める (REQ-SIGNINGKEYS-013)。
+func publicKeys(ctx context.Context, store ports.KeyStore) ([]*signingdomain.SigningKey, error) {
+	now := time.Now().UTC()
+	keys, err := store.ListPublicKeys(ctx, now)
+	if err != nil {
+		return nil, err
+	}
+	idJag, err := store.ListPublicKeys(ports.WithKeyUsage(ctx, signingdomain.KeyUsageIdJagSigning), now)
+	if err != nil {
+		return nil, err
+	}
+	return append(keys, idJag...), nil
 }

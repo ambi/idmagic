@@ -296,6 +296,13 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		workloadVerifier = d.WorkloadIdentity.TokenVerifier(d.IdManagement.AgentRepo, fetchWorkloadJWKS, d.Emit)
 	}
 
+	idJagTrust := idJagIssuerTrust{authentication: d.Authentication, fetch: d.OAuth2.IDJAGFetchJWKS}
+	if idJagTrust.fetch == nil {
+		idJagTrust.fetch = func(ctx context.Context, jwksURI string) ([]map[string]any, error) {
+			return d.JWKResolver.ResolveJWKSSource(ctx, &jwksURI, nil)
+		}
+	}
+
 	// 対話のログインは Authentication が処理し、認証を終えたら OAuth2 の認可要求を続ける。
 	// OAuth2 は既存のセッションに追加の認証を求めるときに Authentication の Steps を使う。
 	authRoutes := authentication.RouteDeps{
@@ -312,6 +319,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	}
 	oauthRoutes := oauth2.RouteDeps{
 		WorkloadVerifier:          workloadVerifier,
+		IDJAGTrust:                idJagTrust,
 		Deps:                      d.Deps,
 		Authenticator:             authenticator,
 		ApplicationGate:           appGate,

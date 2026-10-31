@@ -31,6 +31,8 @@ import type {
   SignInRule,
   SamlIDPProfileMode,
   AuthorizationDetailType,
+  CrossAppAccessIssuePolicy,
+  CrossAppAccessRedeemPolicy,
   McpResourceServer,
   ResourceAccessRule,
   TenantUserAttributeSchema,
@@ -2298,6 +2300,72 @@ export async function setTokenVaultConnectorStatus(
 export async function deleteTokenVaultConnector(csrfToken: string, id: string): Promise<void> {
   await request(
     `/api/admin/v1/token-vault/connectors/${encodeURIComponent(id)}`,
+    adminRequest(csrfToken, 'DELETE'),
+  )
+}
+
+// アプリ間アクセスの許可 (REQ-OAUTH2-072) の管理 API クライアント。
+export type CrossAppAccessIssuePolicyInput = {
+  client_id: string
+  audience: string
+  relying_party_client_id: string
+  target_client_id: string
+  resources: string[]
+  scopes: string[]
+  authorization_detail_types?: string[]
+  release_email?: boolean
+}
+
+export type CrossAppAccessRedeemPolicyInput = {
+  provider_id: string
+  client_id: string
+  scopes: string[]
+}
+
+const crossAppAccessIssuePoliciesPath = '/api/admin/v1/cross-app-access/issue-policies'
+const crossAppAccessRedeemPoliciesPath = '/api/admin/v1/cross-app-access/redeem-policies'
+
+export async function listCrossAppAccessIssuePolicies(): Promise<CrossAppAccessIssuePolicy[]> {
+  return (await request<{ policies: CrossAppAccessIssuePolicy[] }>(crossAppAccessIssuePoliciesPath))
+    .policies
+}
+
+export async function createCrossAppAccessIssuePolicy(
+  csrfToken: string,
+  input: CrossAppAccessIssuePolicyInput,
+): Promise<CrossAppAccessIssuePolicy> {
+  return request(crossAppAccessIssuePoliciesPath, adminRequest(csrfToken, 'POST', input))
+}
+
+export async function deleteCrossAppAccessIssuePolicy(
+  csrfToken: string,
+  policyID: string,
+): Promise<void> {
+  await request(
+    `${crossAppAccessIssuePoliciesPath}/${encodeURIComponent(policyID)}`,
+    adminRequest(csrfToken, 'DELETE'),
+  )
+}
+
+export async function listCrossAppAccessRedeemPolicies(): Promise<CrossAppAccessRedeemPolicy[]> {
+  return (
+    await request<{ policies: CrossAppAccessRedeemPolicy[] }>(crossAppAccessRedeemPoliciesPath)
+  ).policies
+}
+
+export async function createCrossAppAccessRedeemPolicy(
+  csrfToken: string,
+  input: CrossAppAccessRedeemPolicyInput,
+): Promise<CrossAppAccessRedeemPolicy> {
+  return request(crossAppAccessRedeemPoliciesPath, adminRequest(csrfToken, 'POST', input))
+}
+
+export async function deleteCrossAppAccessRedeemPolicy(
+  csrfToken: string,
+  policyID: string,
+): Promise<void> {
+  await request(
+    `${crossAppAccessRedeemPoliciesPath}/${encodeURIComponent(policyID)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
 }
