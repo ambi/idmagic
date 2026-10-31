@@ -115,7 +115,8 @@ describe('AdminDirectoryConnectorDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: t.disable }))
     fireEvent.click(screen.getByRole('button', { name: t.disableConfirm }))
-    await waitFor(() => expect(screen.queryByText(t.disableConfirmMessage)).toBeNull())
+    // 要素を expect に渡すと、失敗のたびに DOM 全体を整形して 1 回で 1 秒近くかかる。
+    await waitFor(() => expect(screen.queryByText(t.disableConfirmMessage) === null).toBe(true))
     expect(screen.queryByText('idmagic_dce_shown')).toBeNull()
     expect(screen.getByRole('alert')).toBeTruthy()
   })
