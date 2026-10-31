@@ -5,6 +5,7 @@ import { afterAll, describe, expect, it } from 'bun:test'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { BOUNDARY_FIXTURE } from './boundary-fixture.ts'
 import { checkBoundaries } from './check-boundaries.ts'
+import { generatedModuleDependencies } from './check-module-dependencies.ts'
 import { checkSpecificationRules } from './check-specification-rules.ts'
 
 const cleanup: string[] = []
@@ -33,6 +34,36 @@ async function failureFor(files: Record<string, string>): Promise<string> {
 }
 
 describe('checkBoundaries module rules', () => {
+  it('サイトの生成図は本番 import と関係の表と負債を合わせ、テストの import を除く', async () => {
+    const root = await boundaryWorkspace({
+      'docs/modules/README.md':
+        BOUNDARY_FIXTURE['docs/modules/README.md']! +
+        '\n| 利用元 | 利用先 | 関係 |\n| --- | --- | --- |\n| Customer | Supplier | モデルを利用 |\n',
+      'backend/customer/service.go':
+        'package customer\nimport _ "example.com/product/backend/supplier/domain"\n',
+      'backend/supplier/service_test.go':
+        'package supplier\nimport _ "example.com/product/backend/customer/domain"\n',
+      'tools/check/boundary-debt.json': JSON.stringify({
+        violations: [
+          {
+            id: 'private-import:Customer:Supplier',
+            sourceModule: 'Customer',
+            targetModule: 'Supplier',
+            violations: ['private-import:Customer:Supplier:model'],
+            reason: '移行中のモデル参照をこの組に限定して記録する。',
+          },
+        ],
+      }),
+    })
+    const diagram = await generatedModuleDependencies(createWorkspaceSnapshot(root))
+    expect(diagram).toContain(
+      '[!](../../modules/README.md#モジュールの間の依存 "Customer → Supplier：境界の負債、モデルを利用")',
+    )
+    expect(diagram).toContain('| 1 Supplier | — | — |')
+    expect(diagram).not.toContain('System')
+    expect(diagram).not.toContain('shared')
+  })
+
   it('テスト専用の環境読み取りを許し、本番から到達した場合は拒否する', async () => {
     const support = {
       'backend/shared/testing_fixture/harness.go':

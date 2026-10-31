@@ -100,9 +100,94 @@ Seed は、環境ごとの初期データを宣言したマニフェストを読
 
 ## 通信
 
+次の Container 図は、デプロイ先に依存しないサーバー側と利用者側の実行単位と通信を示す。
+Container は Docker のコンテナではなく、個別に起動する実行単位を指す。
+エッジでの TLS 終端、スケジューラー、スキーマ適用、初期投入の起動順は、[デプロイメントアーキテクチャの共通トポロジー](deployment.md#共通トポロジー)が扱う。
+Directory Connector と MCP Gateway は利用者が配置し、IdMagic の公開 HTTP エンドポイントを呼び出す。
+MCP クライアントとの TLS 接続は利用者側の前段で終端し、MCP サーバーには MCP Gateway からだけ到達できるようにする。
+各 CLI の通信の詳細は、それぞれの実行環境の文書が定める。
+
+```mermaid
+---
+config:
+  c4:
+    width: 230
+    c4ShapeMargin: 110
+    diagramMarginX: 30
+    diagramMarginY: 30
+---
+C4Container
+  System_Ext(directory, "AD または OpenLDAP", "利用者の閉域のディレクトリ")
+  System_Ext(mcpserver, "保護対象の MCP サーバー", "MCP Gateway からだけ到達")
+  System_Ext(mcpclient, "MCP クライアント", "トークンを取得して MCP を利用")
+  Container(connector, "Directory Connector", "Go", "利用者の閉域に配置<br/>秘密鍵と差分の位置を手元に保持")
+  Container_Ext(mcptls, "MCP の TLS 終端", "リバースプロキシ", "利用者が配置")
+  Container(mcpgateway, "MCP Gateway", "Go", "利用者が配置<br/>IdMagic の評価結果で要求を執行")
+  Person(browser, "利用者と管理者", "ブラウザーから利用")
+  Container(front, "フロントエンドゲートウェイ", "idmagic-frontend", "静的アセットの配信と API 中継")
+  System_Ext(apps, "連携アプリケーション", "OAuth、OIDC、SAML、SCIM のクライアント")
+  System_Ext(upstream, "上流の IdP", "OIDC プロバイダーと SAML IdP")
+  Container(api, "API", "idmagic-api", "公開 HTTP エンドポイントの処理")
+  System_Ext(downstream, "下流の送信先", "SCIM サーバー、SSF の受信側、SMTP サーバー")
+  Container(w1, "Worker：latency_sensitive", "idmagic-worker", "短い待ち時間を求めるジョブ")
+  ContainerDb(pg, "PostgreSQL", "PostgreSQL", "業務データ、短命状態、ジョブ")
+  Container(w2, "Worker：default", "idmagic-worker", "通常のジョブ")
+  Container(batch, "Batch", "idmagic-batch", "保守処理を一回実行")
+  Container(w3, "Worker：bulk", "idmagic-worker", "大量処理のジョブ")
+  Container(seed, "Seed", "idmagic-seed", "初期データを一回投入")
+  Rel(connector, directory, "属性と差分を読み取る", "LDAPS または StartTLS")
+  Rel(connector, front, "登録、接続報告、差分の送信", "HTTPS：Connector API")
+  Rel(mcpclient, front, "認可とトークン取得", "HTTPS：OAuth")
+  Rel(mcpclient, mcptls, "MCP の要求", "HTTPS：Streamable HTTP")
+  Rel(mcptls, mcpgateway, "TLS 終端後の要求を中継", "HTTP")
+  Rel(mcpgateway, front, "要求ごとにリソースアクセスを評価", "HTTPS")
+  Rel(mcpgateway, mcpserver, "許可した要求だけを転送", "Streamable HTTP")
+  Rel(browser, front, "画面と API を使う", "HTTP")
+  Rel(apps, front, "公開 API を使う", "HTTP")
+  Rel(front, api, "API の経路だけを中継", "HTTP")
+  BiRel(api, upstream, "メタデータ、トークン<br/>公開鍵", "HTTP")
+  Rel(api, downstream, "プロビジョニング<br/>イベントとメールを送信")
+  Rel(api, pg, "状態を読み書き")
+  Rel(w1, pg, "ジョブを取得し確定")
+  Rel(w2, pg, "ジョブを取得し確定")
+  Rel(w3, pg, "ジョブを取得し確定")
+  Rel(batch, pg, "保守対象を更新")
+  Rel(seed, pg, "初期データを保存")
+  Rel(w1, downstream, "送信")
+  Rel(w2, downstream, "送信")
+  Rel(w3, downstream, "送信")
+  UpdateRelStyle(connector, directory, $offsetX="15")
+  UpdateRelStyle(connector, front, $offsetX="-40", $offsetY="-60")
+  UpdateRelStyle(mcpclient, front, $offsetX="-240", $offsetY="160")
+  UpdateRelStyle(mcpclient, mcptls, $offsetX="50", $offsetY="-60")
+  UpdateRelStyle(mcptls, mcpgateway, $offsetX="-180", $offsetY="65")
+  UpdateRelStyle(mcpgateway, front, $offsetX="35", $offsetY="10")
+  UpdateRelStyle(mcpgateway, mcpserver, $offsetX="-140", $offsetY="-10")
+  UpdateRelStyle(browser, front, $offsetY="-25")
+  UpdateRelStyle(apps, front, $offsetY="-25")
+  UpdateRelStyle(front, api, $offsetX="15")
+  UpdateRelStyle(api, upstream, $offsetX="-80", $offsetY="-60")
+  UpdateRelStyle(api, downstream, $offsetX="-60", $offsetY="-60")
+  UpdateRelStyle(api, pg, $offsetX="15")
+  UpdateRelStyle(w1, pg, $offsetY="-25")
+  UpdateRelStyle(w2, pg, $offsetY="-25")
+  UpdateRelStyle(w3, pg, $offsetX="15")
+  UpdateRelStyle(batch, pg, $offsetX="-65")
+  UpdateRelStyle(seed, pg, $offsetX="30")
+  UpdateRelStyle(w1, downstream, $offsetX="40", $offsetY="-50")
+  UpdateRelStyle(w2, downstream, $offsetX="15")
+  UpdateRelStyle(w3, downstream, $offsetX="60", $offsetY="20")
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
+```
+
 ブラウザーはフロントエンドゲートウェイと通信し、フロントエンドゲートウェイが API へ HTTP リクエストを中継する。
 ブラウザー Cookie を用いる画面と API は同一オリジンで公開する。
 外部クライアントと上流の IdP は公開 HTTP エンドポイントへ到達し、API と Worker は PostgreSQL を共有する。
+
+Directory Connector は、TLS で保護した LDAP 接続で利用者側のディレクトリを読み、公開入口を通じて Connector API へ登録、接続報告、User の差分を送る。
+MCP クライアントは公開入口からトークンを取得し、利用者側の TLS 終端を経由して MCP Gateway へ要求を送る。
+MCP Gateway は、公開入口を通じてリソースアクセスの評価を要求し、許可された要求だけを MCP サーバーへ転送する。
+Directory Connector と MCP Gateway は、IdMagic の PostgreSQL へ直接接続しない。
 
 モジュール間の同期処理は、公開されたポートを `backend/cmd/internal/bootstrap` の組み立て地点で接続する。監査とセキュリティ通知に渡すドメインイベントは同じ組み立て地点の単一の配信点を通り、発行側と消費側を直接依存させない。公開するイベント語彙と互換性は [バックエンド設計](../application/backend.md#モジュール間イベント) で定める。
 

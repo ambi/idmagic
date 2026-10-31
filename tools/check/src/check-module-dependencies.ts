@@ -1,42 +1,34 @@
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
-import { COMPOSITION_NAME } from './boundary-fitness.ts'
-import { analyzeModuleBoundaries, RESPONSIBILITY_TABLE_PATH } from './check-boundaries.ts'
+import { COMPOSITION_NAME, parseBoundaryDebt } from './boundary-fitness.ts'
 import {
-  moduleDependencyDiagram,
-  moduleGroups,
-  withModuleDependencyDiagram,
-} from './module-dependency-diagram.ts'
+  analyzeModuleBoundaries,
+  BOUNDARY_DEBT_PATH,
+  RESPONSIBILITY_TABLE_PATH,
+} from './check-boundaries.ts'
+import { moduleDependencyMatrix, moduleGroups } from './module-dependency-diagram.ts'
 import type { CheckOutcome } from './runner.ts'
 
-/** 責務表とコードの参照から図を作り直し、人が記した関係ラベルを保持する。 */
-export async function generatedModuleDependencies(
-  snapshot: WorkspaceSnapshot,
-): Promise<{ source: string; generated: string | undefined }> {
+/** 責務表と境界検査の参照に、人が表へ記した関係と負債の区別を加える。 */
+export async function generatedModuleDependencies(snapshot: WorkspaceSnapshot): Promise<string> {
   const analysis = await analyzeModuleBoundaries(snapshot)
   const source = await snapshot.read(RESPONSIBILITY_TABLE_PATH)
-  const generated = withModuleDependencyDiagram(
-    source,
-    moduleDependencyDiagram(moduleGroups(source, COMPOSITION_NAME), analysis.dependencies, source),
+  const debt = parseBoundaryDebt(await snapshot.read(BOUNDARY_DEBT_PATH)).flatMap((entry) =>
+    entry.targetModule
+      ? [{ sourceModule: entry.sourceModule, targetModule: entry.targetModule }]
+      : [],
   )
-  return { source, generated }
+  return moduleDependencyMatrix(
+    moduleGroups(source, COMPOSITION_NAME),
+    analysis.dependencies,
+    source,
+    debt,
+  )
 }
 
-/** 入口の依存の図が、作り直した図と一致することを確かめる。 */
+/** 生成図の入力となる関係の表で、未知のモジュールと重複を拒否する。 */
 export async function checkModuleDependencies(snapshot: WorkspaceSnapshot): Promise<CheckOutcome> {
-  if (!snapshot.exists('backend')) return { ok: true, lines: ['ok  module dependency diagram'] }
-  const { source, generated } = await generatedModuleDependencies(snapshot)
-  if (generated === undefined) {
-    return {
-      ok: false,
-      lines: [`${RESPONSIBILITY_TABLE_PATH}: the module dependency diagram markers are missing`],
-    }
-  }
-  return generated === source
-    ? { ok: true, lines: ['ok  module dependency diagram'] }
-    : {
-        ok: false,
-        lines: [
-          `${RESPONSIBILITY_TABLE_PATH}: the module dependency diagram is stale; run mise run generate-module-dependencies`,
-        ],
-      }
+  if (!snapshot.exists('backend'))
+    return { ok: true, lines: ['ok  module dependency relationships'] }
+  await generatedModuleDependencies(snapshot)
+  return { ok: true, lines: ['ok  module dependency relationships'] }
 }

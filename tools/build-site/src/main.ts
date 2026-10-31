@@ -11,7 +11,8 @@ import {
   documentAllowance,
   SYSTEM_DOCUMENT_DIRECTORIES,
 } from '../../workspace/src/document-layout.ts'
-import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
+import { createWorkspaceSnapshot, discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
+import { generatedModuleDependencies } from '../../check/src/check-module-dependencies.ts'
 import { renderDocumentationSite, type SourceDocument } from './render.ts'
 import { extractTypeSpecCatalog } from './typespec-catalog.ts'
 
@@ -125,6 +126,7 @@ const result = renderDocumentationSite({
   openapiFileName: basename(openapiPath),
   models: catalog.symbols,
   moduleTags: catalog.moduleTags,
+  moduleDependencyMatrix: await generatedModuleDependencies(createWorkspaceSnapshot(root)),
 })
 
 const validationWindow = new Window()

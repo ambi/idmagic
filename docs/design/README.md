@@ -60,7 +60,7 @@
 | プラットフォーム | コンピューティング、ストレージ、環境差、構成管理、IaC の責任範囲 | [プラットフォーム設計](infrastructure/platform.md) |
 | コンピューティング | 構成要素を動かす CPU とメモリの提供元 | [プラットフォーム設計](infrastructure/platform.md#コンピューティング) |
 | 構成ファイル | `infra/` の Docker Compose ファイル、Kubernetes マニフェスト、Terraform | [デプロイメントアーキテクチャ](architecture/deployment.md) |
-| 共通トポロジー | デプロイ先によらず共通する実行単位と接続関係 | [デプロイメントアーキテクチャ](architecture/deployment.md#共通トポロジー) |
+| 共通トポロジー | デプロイ先によらず共通する公開入口と起動の対応 | [デプロイメントアーキテクチャ](architecture/deployment.md#共通トポロジー) |
 | デプロイプロファイル | 共通トポロジーを特定の製品とリソースで実現する構成例。実際に稼働中の環境を示すものではない | [デプロイメントアーキテクチャ](architecture/deployment.md#デプロイプロファイル) |
 | シークレット | 認証情報、暗号鍵、トークンなど、漏えいを防ぐ必要があり、リポジトリへ保存しない設定値 | [シークレット設計](security/secrets.md) |
 | キャパシティ | 処理能力とその算出。ストレージの量は「保存容量」と呼ぶ | [キャパシティ設計](performance/capacity.md) |

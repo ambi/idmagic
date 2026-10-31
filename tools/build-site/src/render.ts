@@ -530,6 +530,24 @@ function markdownRenderer(
     return `<${level} id="${prefix}-${slug(inline?.content ?? '')}">`
   }
 
+  md.core.ruler.push('module_dependency_matrix', (state) => {
+    let inMatrix = false
+    for (const [index, token] of state.tokens.entries()) {
+      if (token.type === 'table_open') {
+        inMatrix = state.tokens[index + 4]?.content === '利用元＼利用先'
+        if (inMatrix) token.attrSet('class', 'module-dependency-matrix')
+      }
+      if (token.type === 'table_close') inMatrix = false
+      if (!inMatrix) continue
+      if (token.type === 'th_open') token.attrSet('scope', 'col')
+      if (token.type === 'td_open' && state.tokens[index - 1]?.type === 'tr_open') {
+        token.tag = 'th'
+        token.attrSet('scope', 'row')
+        state.tokens[index + 2]!.tag = 'th'
+      }
+    }
+  })
+
   // Gherkin のキーワードは英語の普通の語でもある。印を付けるのは規範シナリオの
   // 一次情報に限り、方法論文書の "When the work is complete, ..." のような本文や、
   // その中の箇条書きは対象にしない。キーワードと主役の名札は行頭にしか立たない
@@ -1455,6 +1473,7 @@ code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;backgroun
 .hero{margin:0 0 44px;padding:0 0 30px;border-bottom:1px solid var(--line)}.hero h1{font-size:34px}.hero p{color:var(--muted);font-size:17px}.hero-links{display:flex;flex-wrap:wrap;gap:20px;margin:0;font-size:15px;font-weight:600}
 .module-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin:1em 0;padding:0;list-style:none;font-size:14px}
 .table-wrap,table{max-width:100%;overflow:auto}table{width:100%;margin:1.4em 0;border-collapse:collapse;display:block;font-size:14.5px;line-height:1.65}th,td{padding:9px 14px 9px 0;border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}thead th{padding-left:10px;border-bottom:1px solid var(--line-strong);background:var(--bg-soft);font-size:13px}tbody th[scope=row]{font-weight:600}.term-table td:first-child{white-space:nowrap}
+.module-dependency-matrix{max-height:75vh;font-size:12px;white-space:nowrap}.module-dependency-matrix :is(th,td){min-width:34px;padding:5px 8px;text-align:center}.module-dependency-matrix tr>:first-child{position:sticky;left:0;z-index:1;min-width:190px;text-align:left;background:var(--bg-soft)}.module-dependency-matrix thead th{position:sticky;top:0;z-index:2}.module-dependency-matrix thead th:first-child{z-index:3}
 .diagram-shell{position:relative;max-width:100%;overflow:auto;margin:1.6em 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.diagram-shell .mermaid{min-width:560px;background:transparent}:is(.diagram-shell .mermaid,.diagram-canvas) svg :is(.edgePath path,.flowchart-link,.transition){stroke:var(--diagram-line)!important;stroke-width:2.4px!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] [stroke="#444444"]{stroke:var(--diagram-line)}:is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] text[fill="#444444"]{fill:var(--text)}
 .diagram-zoom,.diagram-viewer-toolbar button{padding:4px 12px;color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;font:inherit;font-size:13px;cursor:pointer}.diagram-zoom:hover,.diagram-viewer-toolbar button:hover{background:var(--accent-soft)}.diagram-zoom:focus-visible,.diagram-viewer-toolbar button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.diagram-zoom{display:block;width:fit-content;margin:-6px -6px 6px auto}
 .diagram-viewer{width:100vw;max-width:none;height:100vh;max-height:none;margin:0;padding:0;border:0;color:var(--text);background:var(--bg)}.diagram-viewer::backdrop{background:rgba(20,23,28,.6)}.diagram-viewer-toolbar{position:absolute;z-index:1;top:12px;right:12px;display:flex;gap:8px}.diagram-viewport{width:100%;height:100%;overflow:hidden;cursor:grab;touch-action:none}.diagram-viewport.dragging{cursor:grabbing}.diagram-canvas{transform-origin:0 0}.diagram-canvas svg{display:block;max-width:none}
@@ -1682,8 +1701,32 @@ export function renderDocumentationSite(args: {
   openapiFileName: string
   models: CatalogSymbol[]
   moduleTags?: Record<string, string[]>
+  moduleDependencyMatrix?: string
 }): RenderedDocumentationSite {
-  const documents = inResponsibilityOrder(args.documents.map(documentMetadata))
+  const documents = inResponsibilityOrder(
+    args.documents.map((document, index) => {
+      if (
+        document.path === 'docs/design/architecture/logical.md' &&
+        (args.moduleDependencyMatrix !== undefined ||
+          document.source.includes('<!-- generated:module-dependencies -->'))
+      ) {
+        if (args.moduleDependencyMatrix === undefined) {
+          throw new Error('Logical architecture needs a generated module dependency matrix')
+        }
+        if (!document.source.includes('<!-- generated:module-dependencies -->')) {
+          throw new Error('Logical architecture needs the module dependency insertion marker')
+        }
+        document = {
+          ...document,
+          source: document.source.replace(
+            '<!-- generated:module-dependencies -->',
+            args.moduleDependencyMatrix,
+          ),
+        }
+      }
+      return documentMetadata(document, index)
+    }),
+  )
   const openapi = inspectOpenApi(args.openapi)
   const modelPaths = new Map<string, string>()
   for (const model of args.models) {

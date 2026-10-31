@@ -311,6 +311,54 @@ const childLabels = (html: string | undefined) => {
 }
 
 describe('renderDocumentationSite', () => {
+  it('論理アーキテクチャだけに生成した依存行列を挿入する', () => {
+    const matrix = '| 利用元＼利用先 | 1 |\n| --- | --- |\n| 1 OAuth2 | ● |'
+    const logical = {
+      path: 'docs/design/architecture/logical.md',
+      source:
+        '# 論理アーキテクチャ\n\n## モジュールの構成\n\n責務表への参照。\n\n<!-- generated:module-dependencies -->\n\n## 品質要件の割り当て\n',
+    }
+    const result = renderDocumentationSite({
+      documents: [
+        { path: 'docs/README.md', source: '# 文書\n\n[モジュール](modules/README.md)\n' },
+        logical,
+        { path: 'docs/modules/README.md', source: '# モジュール設計文書\n' },
+      ],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/site',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+      moduleDependencyMatrix: matrix,
+    })
+    const page = result.files['docs/design/architecture/logical.html']!
+    expect(page).toContain('class="module-dependency-matrix"')
+    expect(page).toContain('<th scope="col">1</th>')
+    expect(page).toContain('<th scope="row">1 OAuth2</th>')
+    expect(page.indexOf('責務表への参照')).toBeLessThan(page.indexOf('1 OAuth2'))
+    expect(page.indexOf('1 OAuth2')).toBeLessThan(page.lastIndexOf('品質要件の割り当て'))
+    expect(result.files['docs/modules/index.html']).not.toContain('1 OAuth2')
+    expect(result.mermaidSources).toEqual([])
+  })
+
+  it('生成行列の配線が抜けた論理アーキテクチャを拒否する', () => {
+    expect(() =>
+      renderDocumentationSite({
+        documents: [
+          {
+            path: 'docs/design/architecture/logical.md',
+            source: '# 論理アーキテクチャ\n\n<!-- generated:module-dependencies -->\n',
+          },
+        ],
+        repositoryRoot: '/repo',
+        outputDirectory: '/repo/site',
+        openapiFileName: 'example.openapi.json',
+        openapi: {},
+        models: [],
+      }),
+    ).toThrow('Logical architecture needs a generated module dependency matrix')
+  })
+
   it('renders development documents as their own navigable plane', () => {
     const result = renderDocumentationSite({
       documents: [rootDocument, developmentDocument, releaseDocument],

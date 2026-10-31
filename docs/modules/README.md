@@ -103,143 +103,51 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 
 ### モジュールの間の依存
 
-矢印は、元のモジュールが先のモジュールの型や操作を利用する向きである。
-実線は本番コードから抽出した参照、破線はコードの参照に現れない主要な HTTP 接続やポート越しの呼び出しを示す。
-ラベルは各モジュールの「責務と境界」を要約し、モデルの利用、変換、更新の担当を示す。
-`mise run generate-module-dependencies` はコードの参照と区分を更新し、図に記したラベルを保持する。
-ラベルの意味は設計としてレビューし、コードの参照と図の一致、未知のモジュール、同じ組のラベルの重複は検査する。
+コード上の参照とモデルの関係を重ねた行列は、[論理アーキテクチャのモジュールの構成](../design/architecture/logical.md#モジュールの構成)で読む。
+次の表は各モジュールの「責務と境界」を要約し、モデルの利用、変換、更新の担当を示す。
+サイト生成時に、このラベルを境界検査が抽出する import の辺と合わせる。
+コードの参照に現れない HTTP とポート越しの関係も表に含める。
+未知のモジュールと同じ組の重複は検査し、ラベルの意味は設計としてレビューする。
 
-<!-- generated:module-dependencies:start -->
-
-```mermaid
-flowchart LR
-  subgraph group0["基盤"]
-    Tenancy
-    Jobs
-    Seeding
-    SigningKeys
-    DataKeys
-    ApiTokens
-    Audit
-  end
-  subgraph group1["フロントエンド"]
-    Frontend
-  end
-  subgraph group2["アイデンティティ"]
-    IdManagement
-    IdGovernance
-    Sourcing
-    DirectoryConnector
-    Provisioning
-    WorkloadIdentity
-  end
-  subgraph group3["認証と認可"]
-    Authentication
-    AccessControl
-    Application
-    SignInPolicy
-    ApplicationCatalog
-    ClaimMapping
-  end
-  subgraph group4["連携プロトコル"]
-    OAuth2
-    Saml
-    WsFederation
-    SharedSignals
-    TokenVault
-    McpGateway
-  end
-  AccessControl --> IdManagement
-  AccessControl --> Tenancy
-  ApiTokens --> OAuth2
-  ApiTokens --> Tenancy
-  Application --> IdManagement
-  Application -->|"サインイン条件を評価"| SignInPolicy
-  Application --> Tenancy
-  ApplicationCatalog -->|"Application の更新を依頼"| Application
-  ApplicationCatalog --> ClaimMapping
-  ApplicationCatalog --> IdManagement
-  ApplicationCatalog -->|"クライアントを管理"| OAuth2
-  ApplicationCatalog -->|"SP を管理"| Saml
-  ApplicationCatalog -->|"条件の更新を依頼"| SignInPolicy
-  ApplicationCatalog --> Tenancy
-  ApplicationCatalog -->|"RP を管理"| WsFederation
-  Audit --> Jobs
-  Audit --> Tenancy
-  Authentication --> Audit
-  Authentication -->|"User を照会"| IdManagement
-  Authentication -->|"認証事実を渡して評価"| SignInPolicy
-  Authentication -->|"設定とデフォルト値を利用"| Tenancy
-  ClaimMapping -->|"属性定義を利用"| IdManagement
-  DataKeys --> Jobs
-  DataKeys --> Tenancy
-  IdGovernance -->|"割り当ての更新を依頼"| Application
-  IdGovernance -->|"User の更新を依頼"| IdManagement
-  IdGovernance --> Jobs
-  IdGovernance --> Tenancy
-  IdManagement --> Audit
-  IdManagement --> Jobs
-  IdManagement --> Tenancy
-  Jobs --> Tenancy
-  OAuth2 --> AccessControl
-  OAuth2 -->|"アクセスを判定"| Application
-  OAuth2 -->|"認証結果を利用"| Authentication
-  OAuth2 -->|"クレームを組み立て"| ClaimMapping
-  OAuth2 --> IdManagement
-  OAuth2 --> Jobs
-  OAuth2 -->|"失効エポックを照会"| SharedSignals
-  OAuth2 -->|"署名と公開鍵を利用"| SigningKeys
-  OAuth2 --> SignInPolicy
-  OAuth2 --> Tenancy
-  OAuth2 --> WorkloadIdentity
-  Provisioning -->|"割り当てを照会"| Application
-  Provisioning -->|"User と Group を読み下流向けに変換"| IdManagement
-  Provisioning --> Jobs
-  Saml --> Application
-  Saml --> Authentication
-  Saml -->|"クレームを Assertion へ変換"| ClaimMapping
-  Saml --> IdManagement
-  Saml --> SignInPolicy
-  Seeding --> Application
-  Seeding --> Authentication
-  Seeding --> ClaimMapping
-  Seeding --> IdManagement
-  Seeding --> OAuth2
-  Seeding --> Saml
-  Seeding --> SigningKeys
-  Seeding --> Tenancy
-  Seeding --> WsFederation
-  SharedSignals -->|"Agent と資格情報の束縛を照会"| IdManagement
-  SharedSignals --> SigningKeys
-  SharedSignals --> Tenancy
-  SigningKeys --> Tenancy
-  SignInPolicy --> Tenancy
-  Sourcing --> ApiTokens
-  Sourcing -->|"外部の属性と操作を User と Group へ変換"| IdManagement
-  TokenVault --> OAuth2
-  WorkloadIdentity -->|"外部の主体を Agent へ対応付け"| IdManagement
-  WorkloadIdentity --> Tenancy
-  WsFederation --> Application
-  WsFederation --> Authentication
-  WsFederation -->|"クレームを WS-Fed の表現へ変換"| ClaimMapping
-  WsFederation --> IdManagement
-  WsFederation --> SignInPolicy
-  DirectoryConnector -.->|"LDAP の属性を Connector API へ変換"| Sourcing
-  McpGateway -.->|"MCP の要求を評価の HTTP へ変換"| OAuth2
-  Frontend -.->|"管理とポータルの HTTP"| ApplicationCatalog
-  Frontend -.->|"認証の HTTP"| Authentication
-  Frontend -.->|"User と Group の管理 HTTP"| IdManagement
-  Frontend -.->|"OIDC RP として認可を要求"| OAuth2
-  IdManagement -.->|"資格情報の更新と削除を依頼"| Authentication
-  IdManagement -.->|"User の変更時にワークフローを捕捉"| IdGovernance
-  IdManagement -.->|"同意の照会と削除を依頼"| OAuth2
-  IdManagement -.->|"確定後に同期を通知"| Provisioning
-  IdManagement -.->|"Agent と所有者の停止を通知"| SharedSignals
-  Audit -.->|"username を User の ID へ対応付け"| IdManagement
-  SignInPolicy -.->|"アプリの実在を照会"| Application
-```
-
-<!-- generated:module-dependencies:end -->
+| 利用元 | 利用先 | 関係 |
+| --- | --- | --- |
+| Application | SignInPolicy | サインイン条件を評価 |
+| ApplicationCatalog | Application | Application の更新を依頼 |
+| ApplicationCatalog | OAuth2 | クライアントを管理 |
+| ApplicationCatalog | Saml | SP を管理 |
+| ApplicationCatalog | SignInPolicy | 条件の更新を依頼 |
+| ApplicationCatalog | WsFederation | RP を管理 |
+| Authentication | IdManagement | User を照会 |
+| Authentication | SignInPolicy | 認証事実を渡して評価 |
+| Authentication | Tenancy | 設定とデフォルト値を利用 |
+| ClaimMapping | IdManagement | 属性定義を利用 |
+| IdGovernance | Application | 割り当ての更新を依頼 |
+| IdGovernance | IdManagement | User の更新を依頼 |
+| OAuth2 | Application | アクセスを判定 |
+| OAuth2 | Authentication | 認証結果を利用 |
+| OAuth2 | ClaimMapping | クレームを組み立て |
+| OAuth2 | SharedSignals | 失効エポックを照会 |
+| OAuth2 | SigningKeys | 署名と公開鍵を利用 |
+| Provisioning | Application | 割り当てを照会 |
+| Provisioning | IdManagement | User と Group を読み下流向けに変換 |
+| Saml | ClaimMapping | クレームを Assertion へ変換 |
+| SharedSignals | IdManagement | Agent と資格情報の束縛を照会 |
+| Sourcing | IdManagement | 外部の属性と操作を User と Group へ変換 |
+| WorkloadIdentity | IdManagement | 外部の主体を Agent へ対応付け |
+| WsFederation | ClaimMapping | クレームを WS-Fed の表現へ変換 |
+| DirectoryConnector | Sourcing | LDAP の属性を Connector API へ変換 |
+| McpGateway | OAuth2 | MCP の要求を評価の HTTP へ変換 |
+| Frontend | ApplicationCatalog | 管理とポータルの HTTP |
+| Frontend | Authentication | 認証の HTTP |
+| Frontend | IdManagement | User と Group の管理 HTTP |
+| Frontend | OAuth2 | OIDC RP として認可を要求 |
+| IdManagement | Authentication | 資格情報の更新と削除を依頼 |
+| IdManagement | IdGovernance | User の変更時にワークフローを捕捉 |
+| IdManagement | OAuth2 | 同意の照会と削除を依頼 |
+| IdManagement | Provisioning | 確定後に同期を通知 |
+| IdManagement | SharedSignals | Agent と所有者の停止を通知 |
+| Audit | IdManagement | username を User の ID へ対応付け |
+| SignInPolicy | Application | アプリの実在を照会 |
 
 イベントの語彙と配信点は[モジュール間イベント](../design/application/backend.md#モジュール間イベント)、複数のモジュールにまたがる保証は[横断シナリオ](scenarios.feature.md)が定める。
 

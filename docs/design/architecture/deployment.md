@@ -6,76 +6,31 @@
 
 ## 共通トポロジー
 
-**共通トポロジー**は、どのデプロイ先でも変わらない構成要素の並びと、通信の向きである。
-製品名を含まず、特定のクラウドへ適用した構成も表さない。
+**共通トポロジー**は、どのデプロイ先でも共通する公開入口と、実行単位の起動の対応である。
+実行単位と通信の全体は、[ランタイムアーキテクチャの通信](runtime.md#通信)の Container 図で示す。
+配置では、次の順序を保つ。
 
-```mermaid
-flowchart TB
-  Browser["利用者と管理者のブラウザー"]
-  Apps["連携アプリケーション<br/>OAuth、OIDC、SAML、SCIM のクライアント"]
-  Edge["エッジ<br/>ロードバランサー"]
-  Front["idmagic-frontend<br/>フロントエンドゲートウェイ"]
-  Api["idmagic-api<br/>API"]
-  subgraph WorkerG["idmagic-worker（Worker）"]
-    W1["latency_sensitive レーン"]
-    W2["default レーン"]
-    W3["bulk レーン"]
-  end
-  Batch["idmagic-batch<br/>Batch"]
-  Seed["idmagic-seed<br/>Seed"]
-  Schema["psqldef<br/>スキーマ適用"]
-  Pg[("PostgreSQL<br/>業務データと短命状態")]
-  Upstream["上流の IdP"]
-  Downstream["下流の送信先<br/>SCIM サーバー、SSF の受信側、SMTP サーバー"]
-  Sched["スケジューラー"]
-  Deploy["デプロイ工程"]
-
-  Browser --> Edge
-  Apps --> Edge
-  Edge --> Front
-  Front -->|API の経路だけを中継| Api
-  Api --> Pg
-  WorkerG --> Pg
-  Batch --> Pg
-  Schema --> Pg
-  Seed --> Pg
-  Sched -->|定期的に起動| Batch
-  Deploy -->|リリースごとに起動| Schema
-  Deploy -->|環境の初回だけ起動| Seed
-  Api <-->|"フェデレーション<br/>メタデータ、トークン、公開鍵"| Upstream
-  Api -->|送信| Downstream
-  WorkerG -->|送信| Downstream
-```
-
-図は次の順に読む。
-
-1. 利用者と管理者はブラウザーから、連携アプリケーションは直接、同じエッジへ到達する。
-2. エッジは TLS を終端し、リクエストを `idmagic-frontend` へ渡す。
-3. `idmagic-frontend` は、フロントエンドの静的アセット（HTML、CSS、JavaScript）を自分で返し、API の経路に当たるリクエストだけを `idmagic-api` へ中継する。
-4. `idmagic-api` は PostgreSQL を読み書きし、フェデレーションでは上流の IdP と通信する。
-5. `idmagic-worker` は PostgreSQL のキューからジョブを取り出し、下流へ送る。
-6. `idmagic-batch` はスケジューラーが、`psqldef` と `idmagic-seed` はデプロイ工程が起動する。いずれも処理を終えると停止する。
+1. 利用者と管理者のブラウザーと連携アプリケーションは、同じエッジへ到達する。
+2. エッジは TLS を終端し、健全な `idmagic-frontend` へ負荷を分散する。ローカル Docker Compose はエッジを設けず、フロントエンドがホストのポートを直接開く。
+3. リリース工程は、新しい API の起動前に `psqldef` でスキーマを適用する。
+4. 環境の初回には `idmagic-seed` を起動する。ローカル Docker Compose は API の起動時に初期投入を行う。
+5. スケジューラーは保守処理ごとに `idmagic-batch` を起動する。一回限りの処理は完了後に停止する。
 
 ### 構成要素
 
-| 構成要素 | 役割 | 保持する状態 | 実行形態 |
-| --- | --- | --- | --- |
-| エッジ | TLS の終端と、健全な `idmagic-frontend` への負荷分散 | なし | デプロイ先のロードバランサーまたは Ingress |
-| `idmagic-frontend` | 静的アセットの配信と、API の経路の中継。両者を同じオリジンに並べ、Cookie と CSRF 対策の前提を保つ | なし | 複数インスタンスの常駐プロセス |
-| `idmagic-api` | OAuth2、OIDC、SAML、SCIM、管理 API などの HTTP リクエストの処理 | なし。正となる状態は PostgreSQL に置き、どのインスタンスも同じ判断をする | 複数インスタンスの常駐プロセス |
-| `idmagic-worker` | キューに記録された遅延処理と再試行の実行 | PostgreSQL 上のジョブ状態 | 実行レーン（`latency_sensitive`、`default`、`bulk`）ごとの常駐プロセス。台数はレーンごとに決める |
-| `idmagic-batch` | 保持期限による削除、署名鍵の更新などの保守処理 | PostgreSQL 上の処理対象 | スケジューラーが処理ごとに起動する一回限りのプロセス |
-| `idmagic-seed` | 環境の初期データの投入 | PostgreSQL 上の初期データ | 環境の作成直後に一度だけ起動するプロセス |
-| `psqldef` | 宣言的なスキーマ定義の適用 | PostgreSQL のスキーマ | リリースごとに、新しい `idmagic-api` の起動前に一度だけ起動するプロセス |
-| PostgreSQL | 業務データ、BLOB、認証セッション、認可コード、ジョブの保持 | IdMagic の全状態 | デプロイ先のマネージドサービスまたはオペレーター |
-| 上流の IdP | 外部の OIDC プロバイダーと SAML IdP。`idmagic-api` がメタデータ、トークン、公開鍵を取得する | 対象外 | 外部サービス |
-| 下流の送信先 | ユーザーとグループを反映する SaaS の SCIM サーバー、失効を伝える SSF の受信側、メールを送る SMTP サーバー。`idmagic-api` と `idmagic-worker` が送信する | 対象外 | 外部サービス |
+| 構成要素 | 実行形態 |
+| --- | --- |
+| エッジ | デプロイ先のロードバランサーまたは Ingress |
+| `idmagic-frontend`、`idmagic-api` | 複数インスタンスの常駐プロセス |
+| `idmagic-worker` | 実行レーン（`latency_sensitive`、`default`、`bulk`）ごとの常駐プロセス。台数はレーンごとに決める |
+| `idmagic-batch` | スケジューラーが処理ごとに起動する一回限りのプロセス |
+| `idmagic-seed` | 環境の作成直後に一度だけ起動するプロセス |
+| `psqldef` | リリースごとに、新しい API の起動前に一度だけ起動するプロセス |
+| PostgreSQL | デプロイ先のマネージドサービスまたはオペレーター |
 
 レーンが与える隔離と順序の扱いは[Jobs の内部設計](../../modules/jobs/features/queue.md#実現方式)で定める。
 ローカル Docker Compose だけは、一つのプロセスで全レーンを処理する。
-
-`idmagic-frontend` が中継するパスは、設定上の許可リストで管理する。
-経路の一覧はこの文書へ重複して記載しない。
+フロントエンドゲートウェイの中継パスは設定上の許可リストで管理し、経路の契約は[フロントエンド設計](../application/frontend.md#画面の一覧)で定める。
 
 ## デプロイプロファイル
 
@@ -114,6 +69,7 @@ Job として起動するには、イメージへ加える必要がある（仮�
 ### プロファイルごとの構成
 
 各図の破線の要素は（仮）であり、構成ファイルがまだ無い。
+プロファイルの図は、通信、基盤からの制御、未作成の構成要素を一図で区別するため、flowchart を使う。
 
 #### ローカル Docker Compose
 

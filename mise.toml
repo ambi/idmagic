@@ -1072,11 +1072,6 @@ depends = ["compile-spec"]
 dir = "tools"
 run = "bun run build-site/src/main.ts"
 
-[tasks.generate-module-dependencies]
-description = "Regenerate module references while preserving the diagram's relationship labels"
-dir = "tools"
-run = "bun run check/src/generate-module-dependencies.ts"
-
 [tasks.generate-spec-from-testdata]
 description = "Regenerate documented examples and state machines from their testdata"
 dir = "tools"
