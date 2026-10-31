@@ -9,7 +9,23 @@ import type { Layer, MiseChange } from './mise-change.ts'
 
 export type Decision = { selected: boolean; reasons: string[] }
 export type GoDecision = Decision & { all: boolean; packages: string[] }
-export type Plan = { check: Decision; go: GoDecision; ui: Decision; tools: Decision }
+export type Plan = {
+  check: Decision
+  go: GoDecision
+  ui: Decision
+  tools: Decision
+  audit: Decision
+}
+
+const DEPENDENCY_INPUTS = new Set([
+  'go.mod',
+  'go.sum',
+  'frontend/package.json',
+  'frontend/bun.lock',
+  'tools/package.json',
+  'tools/bun.lock',
+  'osv-scanner.toml',
+])
 
 /** Top-level areas some layer owns. A change elsewhere may affect every layer. */
 const OWNED = [
@@ -57,6 +73,11 @@ export function planChange(
     : goImpact(paths, packages)
   return {
     check: decision(files.length > 0, [`${files.length} changed path(s)`]),
+    audit: decision(
+      paths.some((path) => DEPENDENCY_INPUTS.has(path)) ||
+        (files.includes('mise.toml') && (!taskChange || taskChange.layers.includes('audit'))),
+      ['dependency inputs or the audit task changed'],
+    ),
     go: {
       ...decision(
         impact.packages.length > 0,
@@ -88,6 +109,7 @@ export function intersectPlans(source: Plan, incoming: Plan): Plan {
           : source.go.packages.filter((name) => incoming.go.packages.includes(name))
   return {
     check: both(source.check, incoming.check),
+    audit: both(source.audit, incoming.audit),
     go: {
       ...decision(packages.length > 0, ['packages both sides of the rebase reach']),
       all: source.go.all && incoming.go.all,

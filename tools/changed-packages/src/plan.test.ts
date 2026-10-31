@@ -95,6 +95,13 @@ describe('planChange', () => {
 })
 
 describe('intersectPlans', () => {
+  it('依存入力の変更が両側で重なる統合だけ監査を選ぶ', () => {
+    const dependency = planChange(['frontend/bun.lock'], PACKAGES)
+    const sourceOnly = planChange(['frontend/src/App.tsx'], PACKAGES)
+    expect(intersectPlans(dependency, dependency).audit.selected).toBe(true)
+    expect(intersectPlans(dependency, sourceOnly).audit.selected).toBe(false)
+    expect(intersectPlans(sourceOnly, dependency).audit.selected).toBe(false)
+  })
   it('runs only what both sides of a rebase can affect', () => {
     const source = planChange(['backend/domain/user.go', 'frontend/src/App.tsx'], PACKAGES)
     const incoming = planChange(['backend/jobs/run.go', 'backend/handlers/h.go'], PACKAGES)

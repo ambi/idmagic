@@ -14,6 +14,8 @@ export type Gate = { layer: keyof Plan; command: string[] }
 export function gatesFor(plan: Plan, packages: readonly GoPackage[]): Gate[] {
   const gates: Gate[] = []
   if (plan.check.selected) gates.push({ layer: 'check', command: ['mise', 'run', 'check'] })
+  if (plan.audit.selected)
+    gates.push({ layer: 'audit', command: ['mise', 'run', 'audit-dependencies'] })
   if (plan.go.selected && plan.go.all) {
     gates.push({ layer: 'go', command: ['mise', 'run', 'lint-go'] })
     gates.push({ layer: 'go', command: ['mise', 'run', 'test-go'] })

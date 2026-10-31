@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import type { GoPackage } from './changed-packages.ts'
 import { gatesFor } from './gates.ts'
 import { planChange } from './plan.ts'
+import { miseChange } from './mise-change.ts'
 
 const PACKAGES: GoPackage[] = [
   { importPath: 'app/domain', dir: 'backend/domain', deps: [] },
@@ -9,6 +10,43 @@ const PACKAGES: GoPackage[] = [
 ]
 
 describe('gatesFor', () => {
+  it('監査タスク自体を変えたときも監査を選ぶ', () => {
+    const change = miseChange(
+      '[tasks.audit-dependencies]\nrun = "old"',
+      '[tasks.audit-dependencies]\nrun = "new"',
+    )
+    const gates = gatesFor(planChange(['mise.toml'], PACKAGES, change), PACKAGES)
+    expect(gates.some((gate) => gate.command.join(' ') === 'mise run audit-dependencies')).toBe(
+      true,
+    )
+  })
+  it('依存入力が変わったときだけ既存の脆弱性監査を選ぶ', () => {
+    const inputs = [
+      'go.mod',
+      'go.sum',
+      'frontend/package.json',
+      'frontend/bun.lock',
+      'tools/package.json',
+      'tools/bun.lock',
+      'osv-scanner.toml',
+    ]
+    for (const path of inputs) {
+      const gates = gatesFor(planChange([path], PACKAGES), PACKAGES)
+      expect(gates.some((gate) => gate.command.join(' ') === 'mise run audit-dependencies')).toBe(
+        true,
+      )
+    }
+    for (const path of [
+      'backend/jobs/run.go',
+      'frontend/src/App.tsx',
+      'docs/development/testing.md',
+    ]) {
+      const gates = gatesFor(planChange([path], PACKAGES), PACKAGES)
+      expect(gates.some((gate) => gate.command.join(' ') === 'mise run audit-dependencies')).toBe(
+        false,
+      )
+    }
+  })
   /**
    * The race detector runs on a schedule against main (wi-47187), and on
    * request while building concurrent code. The selected gates use the

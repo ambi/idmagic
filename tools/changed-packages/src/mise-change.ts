@@ -3,7 +3,7 @@
 import { isDeepStrictEqual } from 'node:util'
 import { type MiseTasks, taskClosure } from '../../check/src/verification-tasks.ts'
 
-export type Layer = 'go' | 'ui' | 'tools'
+export type Layer = 'go' | 'ui' | 'tools' | 'audit'
 
 export type MiseChange = {
   /** タスク以外の変更や読み取り失敗により、全層へ影響する。 */
@@ -18,6 +18,7 @@ const ROOTS: Record<Layer, string[]> = {
   go: ['lint-go', 'test-go'],
   ui: ['verify-ui'],
   tools: ['test-tools', 'typecheck-tools', 'lint-tools'],
+  audit: ['audit-dependencies'],
 }
 
 type Document = Record<string, unknown> & { tasks?: MiseTasks }

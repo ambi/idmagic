@@ -65,6 +65,10 @@ IdMagic は ID プロバイダーなので、次の境界が破れることを�
 
 依存の既知脆弱性は CI が毎 Pull Request で検査します。手元でも同じ検査を実行できます。
 
+`mise run verify-changed` は、依存定義、lockfile、監査設定を変更した場合に、この監査を選びます。
+通常のコード変更には監査を加えません。
+依存が変わらない間にも脆弱性は新たに公開されるため、CI は引き続き毎回検査します。
+
 ```bash
 mise run audit-dependencies      # go.mod / frontend/bun.lock / tools/bun.lock の既知脆弱性と Go の到達性
 ```
