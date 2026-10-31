@@ -68,6 +68,9 @@ import { Route as AdminAgentsNewRouteImport } from './routes/admin/agents_/new'
 import { Route as AdminApplicationsApplicationIdRouteImport } from './routes/admin/applications_/$applicationId'
 import { Route as AdminApplicationsNewRouteImport } from './routes/admin/applications_/new'
 import { Route as AdminAuthorizationDetailTypesNewRouteImport } from './routes/admin/authorization-detail-types_/new'
+import { Route as AdminAuthorizationCheckRouteImport } from './routes/admin/authorization/check'
+import { Route as AdminAuthorizationModelRouteImport } from './routes/admin/authorization/model'
+import { Route as AdminAuthorizationRelationTuplesRouteImport } from './routes/admin/authorization/relation-tuples'
 import { Route as AdminCrossAppAccessNewIssueRouteImport } from './routes/admin/cross-app-access_/new-issue'
 import { Route as AdminCrossAppAccessNewRedeemRouteImport } from './routes/admin/cross-app-access_/new-redeem'
 import { Route as AdminFederationEntraRouteImport } from './routes/admin/federation/entra'
@@ -95,6 +98,8 @@ import { Route as AdminApplicationsApplicationIdIndexRouteImport } from './route
 import { Route as AdminApplicationsApplicationIdEditRouteImport } from './routes/admin/applications_/$applicationId.edit'
 import { Route as AdminApplicationsApplicationIdProvisioningRouteImport } from './routes/admin/applications_/$applicationId.provisioning'
 import { Route as AdminAuthorizationDetailTypesTypeEditRouteImport } from './routes/admin/authorization-detail-types_/$type.edit'
+import { Route as AdminAuthorizationModelEditRouteImport } from './routes/admin/authorization/model_/edit'
+import { Route as AdminAuthorizationRelationTuplesNewRouteImport } from './routes/admin/authorization/relation-tuples_/new'
 import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
 import { Route as AdminGroupsGroupIdIndexRouteImport } from './routes/admin/groups_/$groupId.index'
 import { Route as AdminGroupsGroupIdEditRouteImport } from './routes/admin/groups_/$groupId.edit'
@@ -412,6 +417,22 @@ const AdminAuthorizationDetailTypesNewRoute =
     path: '/authorization-detail-types/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminAuthorizationCheckRoute = AdminAuthorizationCheckRouteImport.update({
+  id: '/authorization/check',
+  path: '/authorization/check',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAuthorizationModelRoute = AdminAuthorizationModelRouteImport.update({
+  id: '/authorization/model',
+  path: '/authorization/model',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAuthorizationRelationTuplesRoute =
+  AdminAuthorizationRelationTuplesRouteImport.update({
+    id: '/authorization/relation-tuples',
+    path: '/authorization/relation-tuples',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminCrossAppAccessNewIssueRoute =
   AdminCrossAppAccessNewIssueRouteImport.update({
     id: '/cross-app-access_/new-issue',
@@ -559,6 +580,18 @@ const AdminAuthorizationDetailTypesTypeEditRoute =
   AdminAuthorizationDetailTypesTypeEditRouteImport.update({
     id: '/authorization-detail-types_/$type/edit',
     path: '/authorization-detail-types/$type/edit',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminAuthorizationModelEditRoute =
+  AdminAuthorizationModelEditRouteImport.update({
+    id: '/authorization/model_/edit',
+    path: '/authorization/model/edit',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminAuthorizationRelationTuplesNewRoute =
+  AdminAuthorizationRelationTuplesNewRouteImport.update({
+    id: '/authorization/relation-tuples_/new',
+    path: '/authorization/relation-tuples/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
 const AdminFederationEntraNewRoute = AdminFederationEntraNewRouteImport.update({
@@ -724,6 +757,9 @@ export interface FileRoutesByFullPath {
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/applications/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types/new': typeof AdminAuthorizationDetailTypesNewRoute
+  '/admin/authorization/check': typeof AdminAuthorizationCheckRoute
+  '/admin/authorization/model': typeof AdminAuthorizationModelRoute
+  '/admin/authorization/relation-tuples': typeof AdminAuthorizationRelationTuplesRoute
   '/admin/cross-app-access/new-issue': typeof AdminCrossAppAccessNewIssueRoute
   '/admin/cross-app-access/new-redeem': typeof AdminCrossAppAccessNewRedeemRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
@@ -750,6 +786,8 @@ export interface FileRoutesByFullPath {
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/authorization-detail-types/$type/edit': typeof AdminAuthorizationDetailTypesTypeEditRoute
+  '/admin/authorization/model/edit': typeof AdminAuthorizationModelEditRoute
+  '/admin/authorization/relation-tuples/new': typeof AdminAuthorizationRelationTuplesNewRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/identity-providers/$id/edit': typeof AdminIdentityProvidersIdEditRoute
@@ -825,6 +863,9 @@ export interface FileRoutesByTo {
   '/admin/agents/new': typeof AdminAgentsNewRoute
   '/admin/applications/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types/new': typeof AdminAuthorizationDetailTypesNewRoute
+  '/admin/authorization/check': typeof AdminAuthorizationCheckRoute
+  '/admin/authorization/model': typeof AdminAuthorizationModelRoute
+  '/admin/authorization/relation-tuples': typeof AdminAuthorizationRelationTuplesRoute
   '/admin/cross-app-access/new-issue': typeof AdminCrossAppAccessNewIssueRoute
   '/admin/cross-app-access/new-redeem': typeof AdminCrossAppAccessNewRedeemRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
@@ -846,6 +887,8 @@ export interface FileRoutesByTo {
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/authorization-detail-types/$type/edit': typeof AdminAuthorizationDetailTypesTypeEditRoute
+  '/admin/authorization/model/edit': typeof AdminAuthorizationModelEditRoute
+  '/admin/authorization/relation-tuples/new': typeof AdminAuthorizationRelationTuplesNewRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/identity-providers/$id/edit': typeof AdminIdentityProvidersIdEditRoute
@@ -926,6 +969,9 @@ export interface FileRoutesById {
   '/admin/applications_/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/applications_/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types_/new': typeof AdminAuthorizationDetailTypesNewRoute
+  '/admin/authorization/check': typeof AdminAuthorizationCheckRoute
+  '/admin/authorization/model': typeof AdminAuthorizationModelRoute
+  '/admin/authorization/relation-tuples': typeof AdminAuthorizationRelationTuplesRoute
   '/admin/cross-app-access_/new-issue': typeof AdminCrossAppAccessNewIssueRoute
   '/admin/cross-app-access_/new-redeem': typeof AdminCrossAppAccessNewRedeemRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
@@ -952,6 +998,8 @@ export interface FileRoutesById {
   '/admin/applications_/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications_/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/authorization-detail-types_/$type/edit': typeof AdminAuthorizationDetailTypesTypeEditRoute
+  '/admin/authorization/model_/edit': typeof AdminAuthorizationModelEditRoute
+  '/admin/authorization/relation-tuples_/new': typeof AdminAuthorizationRelationTuplesNewRoute
   '/admin/federation/entra_/new': typeof AdminFederationEntraNewRoute
   '/admin/groups_/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/identity-providers_/$id/edit': typeof AdminIdentityProvidersIdEditRoute
@@ -1034,6 +1082,9 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId'
     | '/admin/applications/new'
     | '/admin/authorization-detail-types/new'
+    | '/admin/authorization/check'
+    | '/admin/authorization/model'
+    | '/admin/authorization/relation-tuples'
     | '/admin/cross-app-access/new-issue'
     | '/admin/cross-app-access/new-redeem'
     | '/admin/federation/entra'
@@ -1060,6 +1111,8 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId/edit'
     | '/admin/applications/$applicationId/provisioning'
     | '/admin/authorization-detail-types/$type/edit'
+    | '/admin/authorization/model/edit'
+    | '/admin/authorization/relation-tuples/new'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
     | '/admin/identity-providers/$id/edit'
@@ -1135,6 +1188,9 @@ export interface FileRouteTypes {
     | '/admin/agents/new'
     | '/admin/applications/new'
     | '/admin/authorization-detail-types/new'
+    | '/admin/authorization/check'
+    | '/admin/authorization/model'
+    | '/admin/authorization/relation-tuples'
     | '/admin/cross-app-access/new-issue'
     | '/admin/cross-app-access/new-redeem'
     | '/admin/federation/entra'
@@ -1156,6 +1212,8 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId/edit'
     | '/admin/applications/$applicationId/provisioning'
     | '/admin/authorization-detail-types/$type/edit'
+    | '/admin/authorization/model/edit'
+    | '/admin/authorization/relation-tuples/new'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
     | '/admin/identity-providers/$id/edit'
@@ -1235,6 +1293,9 @@ export interface FileRouteTypes {
     | '/admin/applications_/$applicationId'
     | '/admin/applications_/new'
     | '/admin/authorization-detail-types_/new'
+    | '/admin/authorization/check'
+    | '/admin/authorization/model'
+    | '/admin/authorization/relation-tuples'
     | '/admin/cross-app-access_/new-issue'
     | '/admin/cross-app-access_/new-redeem'
     | '/admin/federation/entra'
@@ -1261,6 +1322,8 @@ export interface FileRouteTypes {
     | '/admin/applications_/$applicationId/edit'
     | '/admin/applications_/$applicationId/provisioning'
     | '/admin/authorization-detail-types_/$type/edit'
+    | '/admin/authorization/model_/edit'
+    | '/admin/authorization/relation-tuples_/new'
     | '/admin/federation/entra_/new'
     | '/admin/groups_/$groupId/edit'
     | '/admin/identity-providers_/$id/edit'
@@ -1714,6 +1777,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthorizationDetailTypesNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/authorization/check': {
+      id: '/admin/authorization/check'
+      path: '/authorization/check'
+      fullPath: '/admin/authorization/check'
+      preLoaderRoute: typeof AdminAuthorizationCheckRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/authorization/model': {
+      id: '/admin/authorization/model'
+      path: '/authorization/model'
+      fullPath: '/admin/authorization/model'
+      preLoaderRoute: typeof AdminAuthorizationModelRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/authorization/relation-tuples': {
+      id: '/admin/authorization/relation-tuples'
+      path: '/authorization/relation-tuples'
+      fullPath: '/admin/authorization/relation-tuples'
+      preLoaderRoute: typeof AdminAuthorizationRelationTuplesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/cross-app-access_/new-issue': {
       id: '/admin/cross-app-access_/new-issue'
       path: '/cross-app-access/new-issue'
@@ -1901,6 +1985,20 @@ declare module '@tanstack/react-router' {
       path: '/authorization-detail-types/$type/edit'
       fullPath: '/admin/authorization-detail-types/$type/edit'
       preLoaderRoute: typeof AdminAuthorizationDetailTypesTypeEditRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/authorization/model_/edit': {
+      id: '/admin/authorization/model_/edit'
+      path: '/authorization/model/edit'
+      fullPath: '/admin/authorization/model/edit'
+      preLoaderRoute: typeof AdminAuthorizationModelEditRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/authorization/relation-tuples_/new': {
+      id: '/admin/authorization/relation-tuples_/new'
+      path: '/authorization/relation-tuples/new'
+      fullPath: '/admin/authorization/relation-tuples/new'
+      preLoaderRoute: typeof AdminAuthorizationRelationTuplesNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/federation/entra_/new': {
@@ -2214,6 +2312,9 @@ interface AdminRouteRouteChildren {
   AdminApplicationsApplicationIdRoute: typeof AdminApplicationsApplicationIdRouteWithChildren
   AdminApplicationsNewRoute: typeof AdminApplicationsNewRoute
   AdminAuthorizationDetailTypesNewRoute: typeof AdminAuthorizationDetailTypesNewRoute
+  AdminAuthorizationCheckRoute: typeof AdminAuthorizationCheckRoute
+  AdminAuthorizationModelRoute: typeof AdminAuthorizationModelRoute
+  AdminAuthorizationRelationTuplesRoute: typeof AdminAuthorizationRelationTuplesRoute
   AdminCrossAppAccessNewIssueRoute: typeof AdminCrossAppAccessNewIssueRoute
   AdminCrossAppAccessNewRedeemRoute: typeof AdminCrossAppAccessNewRedeemRoute
   AdminFederationEntraRoute: typeof AdminFederationEntraRoute
@@ -2236,6 +2337,8 @@ interface AdminRouteRouteChildren {
   AdminWorkloadIdentityTrustBundleIdRoute: typeof AdminWorkloadIdentityTrustBundleIdRouteWithChildren
   AdminWorkloadIdentityNewRoute: typeof AdminWorkloadIdentityNewRoute
   AdminAuthorizationDetailTypesTypeEditRoute: typeof AdminAuthorizationDetailTypesTypeEditRoute
+  AdminAuthorizationModelEditRoute: typeof AdminAuthorizationModelEditRoute
+  AdminAuthorizationRelationTuplesNewRoute: typeof AdminAuthorizationRelationTuplesNewRoute
   AdminFederationEntraNewRoute: typeof AdminFederationEntraNewRoute
   AdminLifecycleWorkflowsWorkflowIdEditRoute: typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
   AdminMcpResourceServersResourceServerIdEditRoute: typeof AdminMcpResourceServersResourceServerIdEditRoute
@@ -2272,6 +2375,9 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
     AdminApplicationsApplicationIdRouteWithChildren,
   AdminApplicationsNewRoute: AdminApplicationsNewRoute,
   AdminAuthorizationDetailTypesNewRoute: AdminAuthorizationDetailTypesNewRoute,
+  AdminAuthorizationCheckRoute: AdminAuthorizationCheckRoute,
+  AdminAuthorizationModelRoute: AdminAuthorizationModelRoute,
+  AdminAuthorizationRelationTuplesRoute: AdminAuthorizationRelationTuplesRoute,
   AdminCrossAppAccessNewIssueRoute: AdminCrossAppAccessNewIssueRoute,
   AdminCrossAppAccessNewRedeemRoute: AdminCrossAppAccessNewRedeemRoute,
   AdminFederationEntraRoute: AdminFederationEntraRoute,
@@ -2296,6 +2402,9 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminWorkloadIdentityNewRoute: AdminWorkloadIdentityNewRoute,
   AdminAuthorizationDetailTypesTypeEditRoute:
     AdminAuthorizationDetailTypesTypeEditRoute,
+  AdminAuthorizationModelEditRoute: AdminAuthorizationModelEditRoute,
+  AdminAuthorizationRelationTuplesNewRoute:
+    AdminAuthorizationRelationTuplesNewRoute,
   AdminFederationEntraNewRoute: AdminFederationEntraNewRoute,
   AdminLifecycleWorkflowsWorkflowIdEditRoute:
     AdminLifecycleWorkflowsWorkflowIdEditRoute,

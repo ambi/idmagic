@@ -177,6 +177,16 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 		e, events, _ := newServer(t, actor("admin", []string{"admin"}))
 
 		assertAuthorizationProblem(t, get(t, e, realmPrefix+"/api/admin/v1/authorization/model"), http.StatusNotFound, "authorization_model_not_found")
+		// TypeSpec が未登録を 404 と宣言する 3 操作を、実際の応答と照合する。
+		assertAuthorizationProblem(t, post(t, e, realmPrefix+"/api/admin/v1/authorization/relation-tuples", map[string]any{
+			"writes": []map[string]any{{"resource_type": "document", "resource_id": "d1", "relation": "viewer", "subject_type": "user", "subject_id": "u1"}},
+		}), http.StatusNotFound, "authorization_model_not_found")
+		assertAuthorizationProblem(t, post(t, e, realmPrefix+"/api/admin/v1/authorization/check", map[string]any{
+			"resource_type": "document", "resource_id": "d1", "relation": "viewer", "subject_type": "user", "subject_id": "u1",
+		}), http.StatusNotFound, "authorization_model_not_found")
+		assertAuthorizationProblem(t, post(t, e, realmPrefix+"/api/admin/v1/authorization/list-accessible-resources", map[string]any{
+			"resource_type": "document", "relation": "viewer", "subject_type": "user", "subject_id": "u1",
+		}), http.StatusNotFound, "authorization_model_not_found")
 
 		rec := post(t, e, realmPrefix+"/api/admin/v1/authorization/model", referenceModelRequest())
 		if rec.Code != http.StatusCreated {

@@ -1428,3 +1428,99 @@ export type CrossAppAccessRedeemPolicy = {
   scopes: string[]
   created_at: string
 }
+
+export type RelationRewriteKind = 'direct' | 'computed_userset' | 'tuple_to_userset'
+
+export type RelationRewrite = {
+  kind: RelationRewriteKind
+  computed_relation?: string
+  tupleset_relation?: string
+  direct_subject_types?: string[]
+}
+
+export type RelationDefinition = {
+  name: string
+  rewrites: RelationRewrite[]
+}
+
+export type ResourceTypeDefinition = {
+  name: string
+  relations: RelationDefinition[]
+}
+
+export type AuthorizationModel = {
+  id: string
+  tenant_id: string
+  version: number
+  resource_types: ResourceTypeDefinition[]
+  created_at: string
+}
+
+export type PublishedAuthorizationModel = {
+  authorization_model: AuthorizationModel
+  consistency: string
+}
+
+export type RelationTuple = {
+  resource_type: string
+  resource_id: string
+  relation: string
+  subject_type: string
+  subject_id: string
+  subject_relation?: string
+}
+
+export type RelationTupleFilters = {
+  resource_type?: string
+  resource_id?: string
+  relation?: string
+  subject_type?: string
+  subject_id?: string
+}
+
+export type RelationTupleWriteInput = {
+  writes?: RelationTuple[]
+  deletes?: RelationTuple[]
+  delete_objects?: { type: string; id: string }[]
+}
+
+export type RelationTupleWriteResult = {
+  written_count: number
+  deleted_count: number
+  consistency: string
+}
+
+export type FgaActor = {
+  type: string
+  id: string
+}
+
+export type ListAccessibleResourcesInput = {
+  resource_type: string
+  relation: string
+  subject_type: string
+  subject_id: string
+  actor_chain?: FgaActor[]
+  minimum_consistency?: string
+  granted_scopes?: string[]
+  required_scopes?: string[]
+}
+
+export type CheckAccessInput = ListAccessibleResourcesInput & {
+  resource_id: string
+}
+
+export type FgaCheckResult = {
+  permitted: boolean
+  model_version: number
+  consistency: string
+  relation_path: string[]
+  reasons: string[]
+}
+
+export type FgaListAccessibleResourcesResult = {
+  resource_ids: string[]
+  truncated: boolean
+  model_version: number
+  consistency: string
+}

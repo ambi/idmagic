@@ -33,6 +33,12 @@
 - テナントに認可モデルを登録していない間、管理者が認可モデルを取得したとき、AccessControl は、404 と `authorization_model_not_found` で拒否する。
 - **例**：EX-AUTHORIZATION-001-01、EX-AUTHORIZATION-001-02、EX-AUTHORIZATION-001-03、EX-AUTHORIZATION-001-04
 
+#### REQ-AUTHORIZATION-011 管理コンソールは認可モデルの発行を確定する前に差分を示す
+
+- 管理者が管理コンソールで発行の内容を確認するとき、AccessControl は、その時点の最新の版と比べて追加と削除される型、関係、書き換えの規則を示す。
+- 確認した差分に削除が含まれる場合、AccessControl は、既存の関係タプルが判定に数えられなくなることがあると警告する。
+- 管理者が管理コンソールで発行を確定するまでの間、AccessControl は、新しい版を作らない。
+
 #### REQ-AUTHORIZATION-010 認可モデルとタプルの更新も判定の呼び出しも管理者に限られる
 
 - `admin` のロールを持たない利用者が認可モデルの登録と取得、関係タプルの書き込みと一覧、判定、列挙を要求した場合、AccessControl は、403 と `access_denied` で拒否し、版もタプルも作らない。

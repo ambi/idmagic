@@ -82,6 +82,16 @@ import type {
   TokenVaultConnector,
   TokenVaultConnectorCreateInput,
   TokenVaultConnectorStatus,
+  CheckAccessInput,
+  FgaCheckResult,
+  FgaListAccessibleResourcesResult,
+  ListAccessibleResourcesInput,
+  PublishedAuthorizationModel,
+  RelationTuple,
+  RelationTupleFilters,
+  RelationTupleWriteInput,
+  RelationTupleWriteResult,
+  ResourceTypeDefinition,
 } from '../types'
 import {
   authenticationAPIError,
@@ -2413,4 +2423,79 @@ export async function deleteCrossAppAccessRedeemPolicy(
     `${crossAppAccessRedeemPoliciesPath}/${encodeURIComponent(policyID)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
+}
+
+// 関係ベース認可 (ReBAC) の管理 API クライアント。
+const authorizationModelPath = '/api/admin/v1/authorization/model'
+const relationTuplesPath = '/api/admin/v1/authorization/relation-tuples'
+
+// サーバーの一覧の上限と同じ値を明示して要求し、応答の件数から打ち切りの可能性を判定する
+// (REQ-AUTHORIZATION-012)。応答は打ち切りを示すフィールドを持たない。
+export const RELATION_TUPLE_LIST_LIMIT = 1000
+
+// findAuthorizationModel は未登録または存在しないバージョンを null で返す。
+export async function findAuthorizationModel(
+  version?: number,
+): Promise<PublishedAuthorizationModel | null> {
+  const url =
+    version === undefined ? authorizationModelPath : `${authorizationModelPath}?version=${version}`
+  try {
+    return await request<PublishedAuthorizationModel>(url)
+  } catch (cause) {
+    if (cause instanceof AuthenticationAPIError && cause.code === 'authorization_model_not_found') {
+      return null
+    }
+    throw cause
+  }
+}
+
+export async function publishAuthorizationModel(
+  csrfToken: string,
+  resourceTypes: ResourceTypeDefinition[],
+): Promise<PublishedAuthorizationModel> {
+  return request(
+    authorizationModelPath,
+    adminRequest(csrfToken, 'POST', { resource_types: resourceTypes }),
+  )
+}
+
+export async function listRelationTuples(
+  filters: RelationTupleFilters,
+): Promise<{ tuples: RelationTuple[]; consistency: string }> {
+  const query = new URLSearchParams({ limit: String(RELATION_TUPLE_LIST_LIMIT) })
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) query.set(key, value)
+  }
+  return request(`${relationTuplesPath}?${query}`)
+}
+
+export async function writeRelationTuples(
+  csrfToken: string,
+  input: RelationTupleWriteInput,
+): Promise<RelationTupleWriteResult> {
+  return request(relationTuplesPath, adminRequest(csrfToken, 'POST', input))
+}
+
+export async function checkAccess(
+  csrfToken: string,
+  input: CheckAccessInput,
+): Promise<FgaCheckResult> {
+  return (
+    await request<{ result: FgaCheckResult }>(
+      '/api/admin/v1/authorization/check',
+      adminRequest(csrfToken, 'POST', input),
+    )
+  ).result
+}
+
+export async function listAccessibleResources(
+  csrfToken: string,
+  input: ListAccessibleResourcesInput,
+): Promise<FgaListAccessibleResourcesResult> {
+  return (
+    await request<{ result: FgaListAccessibleResourcesResult }>(
+      '/api/admin/v1/authorization/list-accessible-resources',
+      adminRequest(csrfToken, 'POST', input),
+    )
+  ).result
 }

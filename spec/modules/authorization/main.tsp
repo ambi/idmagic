@@ -173,9 +173,18 @@ model WriteRelationTuplesError403 {
   @body body: WriteRelationTuplesError403Body;
 }
 
+union WriteRelationTuplesError404Body {
+  IdMagic.Contract.AuthorizationModelNotFoundError,
+}
+
+model WriteRelationTuplesError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: WriteRelationTuplesError404Body;
+}
+
 union WriteRelationTuplesError422Body {
   IdMagic.Contract.RelationTupleInvalidError,
-  IdMagic.Contract.AuthorizationModelNotFoundError,
 }
 
 model WriteRelationTuplesError422 {
@@ -191,7 +200,7 @@ model WriteRelationTuplesError422 {
 @post
 op WriteRelationTuples(
   @body body: IdMagic.Contract.RelationTupleWriteRequest
-): WriteRelationTuplesSuccess_200 | WriteRelationTuplesError400 | IdMagic.Contract.AuthenticationRequiredResponse | WriteRelationTuplesError403 | WriteRelationTuplesError422;
+): WriteRelationTuplesSuccess_200 | WriteRelationTuplesError400 | IdMagic.Contract.AuthenticationRequiredResponse | WriteRelationTuplesError403 | WriteRelationTuplesError404 | WriteRelationTuplesError422;
 
 model CheckAccessHttpResponse {
   result: IdMagic.Contract.FgaCheckResult;
@@ -225,9 +234,18 @@ model CheckAccessError403 {
   @body body: CheckAccessError403Body;
 }
 
+union CheckAccessError404Body {
+  IdMagic.Contract.AuthorizationModelNotFoundError,
+}
+
+model CheckAccessError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: CheckAccessError404Body;
+}
+
 union CheckAccessError422Body {
   IdMagic.Contract.ConsistencyNotSatisfiedError,
-  IdMagic.Contract.AuthorizationModelNotFoundError,
 }
 
 model CheckAccessError422 {
@@ -243,7 +261,7 @@ model CheckAccessError422 {
 @post
 op CheckAccess(
   @body body: IdMagic.Contract.FgaCheckRequest
-): CheckAccessSuccess_200 | CheckAccessError400 | IdMagic.Contract.AuthenticationRequiredResponse | CheckAccessError403 | CheckAccessError422;
+): CheckAccessSuccess_200 | CheckAccessError400 | IdMagic.Contract.AuthenticationRequiredResponse | CheckAccessError403 | CheckAccessError404 | CheckAccessError422;
 
 model ListAccessibleResourcesHttpRequest {
   @minLength(1)
@@ -294,9 +312,18 @@ model ListAccessibleResourcesError403 {
   @body body: ListAccessibleResourcesError403Body;
 }
 
+union ListAccessibleResourcesError404Body {
+  IdMagic.Contract.AuthorizationModelNotFoundError,
+}
+
+model ListAccessibleResourcesError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: ListAccessibleResourcesError404Body;
+}
+
 union ListAccessibleResourcesError422Body {
   IdMagic.Contract.ConsistencyNotSatisfiedError,
-  IdMagic.Contract.AuthorizationModelNotFoundError,
 }
 
 model ListAccessibleResourcesError422 {
@@ -312,7 +339,7 @@ model ListAccessibleResourcesError422 {
 @post
 op ListAccessibleResources(
   @body body: ListAccessibleResourcesHttpRequest
-): ListAccessibleResourcesSuccess_200 | ListAccessibleResourcesError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListAccessibleResourcesError403 | ListAccessibleResourcesError422;
+): ListAccessibleResourcesSuccess_200 | ListAccessibleResourcesError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListAccessibleResourcesError403 | ListAccessibleResourcesError404 | ListAccessibleResourcesError422;
 }
 
 }

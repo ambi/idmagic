@@ -10,6 +10,7 @@ import {
   IconNetwork,
   IconRobot,
   IconSettings,
+  IconSitemap,
   IconArrowsExchange,
   IconPlugConnected,
   IconShieldLock,
@@ -34,6 +35,7 @@ export type AdminNavKey =
   | 'sign-in-policy'
   | 'entra-federation'
   | 'identity-providers'
+  | 'authorization'
   | 'authz-detail-types'
   | 'mcp-resource-servers'
   | 'cross-app-access'
@@ -127,6 +129,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
       icon: IconShieldLock,
       href: tenantURL('/admin/sign-in-policy'),
       active: active === 'sign-in-policy',
+    },
+    {
+      key: 'authorization',
+      label: t.authorization,
+      icon: IconSitemap,
+      href: tenantURL('/admin/authorization/model'),
+      active: active === 'authorization',
     },
     {
       key: 'authz-detail-types',
