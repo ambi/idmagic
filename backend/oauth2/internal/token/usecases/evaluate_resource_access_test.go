@@ -409,3 +409,18 @@ func TestApprovedOperationFailsClosed(t *testing.T) {
 		t.Fatalf("鍵の欠落 decision=%+v err=%v", decision, err)
 	}
 }
+
+//spec:covers REQ-OAUTH2-062: 利用者の主体と代行の Agent、Agent の主体の記録の形
+func TestEvaluationAuditNamesThePrincipals(t *testing.T) {
+	agent := func(id string) policyports.PrincipalRef {
+		return policyports.PrincipalRef{Type: domain.PrincipalTypeAgent, ID: id}
+	}
+	delegated := newEvaluationAudit("j", policyports.PrincipalRef{Type: "user", ID: "alice"}, []policyports.PrincipalRef{agent("A1"), agent("A2")})
+	if delegated.userID != "alice" || delegated.agentID != "A1" || len(delegated.actorChain) != 2 {
+		t.Fatalf("delegated = %+v", delegated)
+	}
+	autonomous := newEvaluationAudit("j", agent("A1"), nil)
+	if autonomous.userID != "" || autonomous.agentID != "A1" || autonomous.actorChain != nil {
+		t.Fatalf("autonomous = %+v", autonomous)
+	}
+}

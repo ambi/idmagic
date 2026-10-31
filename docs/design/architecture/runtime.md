@@ -14,9 +14,11 @@
 | Seed | `backend/cmd/idmagic-seed` | 初期データを投入する一回限りの管理実行単位 | PostgreSQL に結果を確定する |
 | フロントエンドゲートウェイ | `frontend` | ブラウザー向け画面と同一オリジンの API 中継を提供する | ブラウザーセッション以外の正となる業務状態を保存しない |
 | Directory Connector | `backend/cmd/idmagic-directory-connector` | 利用者の閉域で AD または OpenLDAP を読み、差分を Connector API へ送る | 秘密鍵、登録の情報、差分の位置を手元の状態のディレクトリに置く。IdMagic のデータベースに接続しない |
+| MCP Gateway | `backend/cmd/idmagic-mcp-gateway` | 既存の MCP サーバーの手前で要求を解釈し、IdMagic の評価が許可した要求だけを転送する | 状態を持たない。IdMagic のデータベースに接続しない |
 
 API は複数のモジュールを一つのプロセスに組み立てる。
 Directory Connector は IdMagic の運用者ではなく利用者が配置し、仕様は [Directory Connector の実行環境](../../modules/directory-connector/features/runtime.md)が定める。
+MCP Gateway も利用者が配置し、仕様は [MCP Gateway の実行環境](../../modules/mcp-gateway/features/runtime.md)が定める。
 Worker と Batch は、長時間処理や再試行を HTTP リクエストから分離する。
 
 ## 実行単位が実装する機能
@@ -111,7 +113,7 @@ API と Worker は共通配信点が検知した変換と追記の失敗を `/me
 
 ## 実行時の規則
 
-- すべてのバックエンド実行単位は `backend/cmd/internal/bootstrap` の共通設定と依存注入を使い、その外で環境変数を直接読まない。利用者の閉域で動く Directory Connector だけは、`bootstrap` を使わず、自分の設定ファイルを読み、環境変数を読まない。
+- すべてのバックエンド実行単位は `backend/cmd/internal/bootstrap` の共通設定と依存注入を使い、その外で環境変数を直接読まない。利用者の環境で動く Directory Connector と MCP Gateway だけは、`bootstrap` を使わず、自分の設定ファイルを読み、環境変数を読まない。
 - API のレプリカ間で正となる状態を共有メモリに置かない。認証セッション、認可コード、ジョブ、スロットルなどの共有状態は PostgreSQL に置く。
 - HTTP の生存性と準備状態は異なるプローブで表す。データベースへ到達できず新しいリクエストを安全に処理できない API は準備完了にしない。
 - 停止時は新規要求の受け入れを止め、処理中のリクエストまたはジョブへ定めた猶予を与えてから終了する。

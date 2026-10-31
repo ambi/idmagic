@@ -55,6 +55,8 @@ type ResourceAccessRequest struct {
 	CertificateThumbprint string
 	OperationKey          string
 	OperationParameters   string
+	// RequestID は応答の X-Request-ID と同じ値で、監査イベントの相関に使う。
+	RequestID string
 }
 
 // ApprovedOperationUse は、許可した承認済みの操作をリソースサーバーの結果と結ぶ相関である。
@@ -87,14 +89,15 @@ func EvaluateResourceAccess(ctx context.Context, deps ResourceAccessDeps, in Res
 	if server == nil || !server.IsActive() {
 		return ResourceAccessDecision{}, ErrResourceServerNotRegistered
 	}
-	decision, tokenID, err := evaluateForServer(ctx, deps, server, in, now)
+	decision, audit, err := evaluateForServer(ctx, deps, server, in, now)
 	if err != nil {
 		return ResourceAccessDecision{}, err
 	}
 	if deps.Emit != nil {
 		event := &domain.ResourceAccessEvaluated{
 			At: now, TenantID: in.TenantID, RSClientID: in.ClientID, ResourceServerID: server.ID,
-			TokenID: tokenID, ResourceType: in.ResourceType, Relation: in.Relation,
+			TokenID: audit.tokenID, UserID: audit.userID, AgentID: audit.agentID, ActorChain: audit.actorChain, RequestID: in.RequestID,
+			ResourceType: in.ResourceType, Relation: in.Relation,
 			Permitted: decision.Permitted, Reasons: decision.Reasons,
 		}
 		if use := decision.ApprovedOperation; use != nil {
@@ -105,39 +108,75 @@ func EvaluateResourceAccess(ctx context.Context, deps ResourceAccessDeps, in Res
 	return decision, nil
 }
 
+// evaluationAudit は判断を記録するための相関である。主体は、トークンと提示の証明が成り立つときだけ持つ。
+// 成り立たないトークンの持ち主を記録すると、盗んだトークンの試行が本人の操作に見える (REQ-OAUTH2-062)。
+type evaluationAudit struct {
+	tokenID    string
+	userID     string
+	agentID    string
+	actorChain []string
+}
+
+func newEvaluationAudit(tokenID string, subject policyports.PrincipalRef, actors []policyports.PrincipalRef) evaluationAudit {
+	audit := evaluationAudit{tokenID: tokenID}
+	if subject.Type == domain.PrincipalTypeAgent {
+		audit.agentID = subject.ID
+	} else {
+		audit.userID = subject.ID
+	}
+	for _, actor := range actors {
+		audit.actorChain = append(audit.actorChain, actor.ID)
+	}
+	if audit.agentID == "" && len(audit.actorChain) > 0 {
+		audit.agentID = audit.actorChain[0]
+	}
+	return audit
+}
+
 func evaluateForServer(
 	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, in ResourceAccessRequest, now time.Time,
-) (ResourceAccessDecision, string, error) {
-	rule, ok := server.RuleFor(in.ResourceType, in.Relation)
-	if !ok {
-		return denyResourceAccess(domain.ReasonOperationNotRegistered), "", nil
+) (ResourceAccessDecision, evaluationAudit, error) {
+	rule, registered := server.RuleFor(in.ResourceType, in.Relation)
+	if registered && rule.RequiresApprovedOperation && in.OperationKey == "" {
+		return ResourceAccessDecision{}, evaluationAudit{}, ErrOperationKeyRequired
 	}
-	if rule.RequiresApprovedOperation && in.OperationKey == "" {
-		return ResourceAccessDecision{}, "", ErrOperationKeyRequired
+	// 規則にない操作も試行者を記録するためにトークンを確かめるが、理由は語り分けない。
+	reasonFor := func(reason string) string {
+		if !registered {
+			return domain.ReasonOperationNotRegistered
+		}
+		return reason
 	}
 	token, err := deps.Tokens.IntrospectAccessToken(ctx, in.Token)
 	if err != nil {
-		return ResourceAccessDecision{}, "", err
+		return ResourceAccessDecision{}, evaluationAudit{}, err
 	}
 	if token == nil || !token.Active || !slices.Contains(token.Aud, server.Resource) {
-		return denyResourceAccess(domain.ReasonTokenRejected), "", nil
+		return denyResourceAccess(reasonFor(domain.ReasonTokenRejected)), evaluationAudit{}, nil
 	}
+	audit := evaluationAudit{tokenID: token.JTI}
 	proved, err := senderProofHolds(ctx, deps, server, token, in, now)
 	if err != nil {
-		return ResourceAccessDecision{}, token.JTI, err
+		return ResourceAccessDecision{}, audit, err
 	}
 	if !proved {
-		return denyResourceAccess(domain.ReasonSenderProofInvalid), token.JTI, nil
-	}
-	if !rule.PermitsDetails(token.AuthorizationDetails, server.Resource, in.ResourceID) {
-		return denyResourceAccess(domain.ReasonAuthorizationDetailMismatch), token.JTI, nil
+		return denyResourceAccess(reasonFor(domain.ReasonSenderProofInvalid)), audit, nil
 	}
 	subject, actors, resolved, err := principalsFromToken(ctx, deps.Clients, in.TenantID, token)
 	if err != nil {
-		return ResourceAccessDecision{}, token.JTI, err
+		return ResourceAccessDecision{}, audit, err
+	}
+	if resolved {
+		audit = newEvaluationAudit(token.JTI, subject, actors)
+	}
+	if !registered {
+		return denyResourceAccess(domain.ReasonOperationNotRegistered), audit, nil
+	}
+	if !rule.PermitsDetails(token.AuthorizationDetails, server.Resource, in.ResourceID) {
+		return denyResourceAccess(domain.ReasonAuthorizationDetailMismatch), audit, nil
 	}
 	if !resolved {
-		return denyResourceAccess(domain.ReasonPrincipalUnresolved), token.JTI, nil
+		return denyResourceAccess(domain.ReasonPrincipalUnresolved), audit, nil
 	}
 	relation, err := deps.Relations.CheckRelation(ctx, policyports.RelationCheck{
 		TenantID: in.TenantID, ResourceType: in.ResourceType, ResourceID: in.ResourceID, Relation: in.Relation,
@@ -145,20 +184,20 @@ func evaluateForServer(
 		GrantedScopes: strings.Fields(token.Scope), RequiredScopes: rule.Scopes,
 	})
 	if err != nil {
-		return ResourceAccessDecision{}, token.JTI, err
+		return ResourceAccessDecision{}, audit, err
 	}
 	if !relation.Permitted {
-		return ResourceAccessDecision{Reasons: relation.Reasons}, token.JTI, nil
+		return ResourceAccessDecision{Reasons: relation.Reasons}, audit, nil
 	}
 	var approved *ApprovedOperationUse
 	if rule.RequiresApprovedOperation {
 		// 使用権は最後に得る。ほかの理由で不許可の要求に承認を消費させない。
 		use, reason, err := claimApprovedOperation(ctx, deps, server, rule, token, in, now)
 		if err != nil {
-			return ResourceAccessDecision{}, token.JTI, err
+			return ResourceAccessDecision{}, audit, err
 		}
 		if reason != "" {
-			return denyResourceAccess(reason), token.JTI, nil
+			return denyResourceAccess(reason), audit, nil
 		}
 		approved = use
 	}
@@ -170,7 +209,7 @@ func evaluateForServer(
 			Sub: token.Sub, ClientID: token.ClientID, PrincipalType: token.PrincipalType, Act: token.Act,
 		}),
 		AuthorizationDetails: token.AuthorizationDetails,
-	}, token.JTI, nil
+	}, audit, nil
 }
 
 // claimApprovedOperation は実際の操作を承認と照合し、一致すれば使用権を得る (REQ-OAUTH2-065)。

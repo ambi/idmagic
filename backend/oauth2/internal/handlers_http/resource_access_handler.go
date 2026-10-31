@@ -13,6 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/internal/token/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -62,6 +63,7 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 		DPoPProof: form("dpop_proof"), HTM: form("htm"), HTU: form("htu"),
 		CertificateThumbprint: form("client_certificate_thumbprint"),
 		OperationKey:          form("operation_key"), OperationParameters: form("operation_parameters"),
+		RequestID: logging.RequestIDFromContext(c.Request().Context()),
 	}
 	if !validOperationInput(in.OperationKey, in.OperationParameters) {
 		return support.NoStoreJSON(c, http.StatusBadRequest,

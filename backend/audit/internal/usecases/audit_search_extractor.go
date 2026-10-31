@@ -50,6 +50,7 @@ var agentActorEventTypes = map[string]bool{
 	"AgentApprovalRequired":             true,
 	"AgentClientAuthenticationRejected": true,
 	"BackchannelAuthRequested":          true,
+	"ResourceAccessEvaluated":           true,
 }
 
 // ExtractSearchAttributes は監査イベントレコードから sidecar 検索属性 (attr_name -> 値の並び) を

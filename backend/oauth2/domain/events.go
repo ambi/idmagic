@@ -337,17 +337,22 @@ func (e *DeviceAuthorizationDenied) EventType() string     { return "DeviceAutho
 func (e *DeviceAuthorizationDenied) OccurredAt() time.Time { return e.At }
 
 // ResourceAccessEvaluated は /resource-access/evaluate の結果 (REQ-OAUTH2-062)。
-// 主体と資源の識別子は残さない。資源の相関は AccessControl の FgaCheckEvaluated が担う。
+// 資源の識別子は残さない。資源の相関は AccessControl の FgaCheckEvaluated が担う。
 type ResourceAccessEvaluated struct {
-	At               time.Time `json:"-"`
-	TenantID         string    `json:"tenantId"`
-	RSClientID       string    `json:"rsClientId"`
-	ResourceServerID string    `json:"resourceServerId"`
-	TokenID          string    `json:"tokenId"`
-	ResourceType     string    `json:"resourceType"`
-	Relation         string    `json:"relation"`
-	Permitted        bool      `json:"permitted"`
-	Reasons          []string  `json:"reasons"`
+	At         time.Time `json:"-"`
+	TenantID   string    `json:"tenantId"`
+	RSClientID string    `json:"rsClientId"`
+	// 以下は検証したトークンと提示の証明から導いた主体と相関。未検証のトークンでは空のまま (REQ-OAUTH2-062)。
+	UserID           string   `json:"userId,omitempty"`
+	AgentID          string   `json:"agentId,omitempty"`
+	ActorChain       []string `json:"actorChain,omitempty"`
+	RequestID        string   `json:"requestId,omitempty"`
+	ResourceServerID string   `json:"resourceServerId"`
+	TokenID          string   `json:"tokenId"`
+	ResourceType     string   `json:"resourceType"`
+	Relation         string   `json:"relation"`
+	Permitted        bool     `json:"permitted"`
+	Reasons          []string `json:"reasons"`
 	// 以下は承認した操作の相関 (REQ-OAUTH2-065)。引数と operation_key の平文は残さない。
 	ApprovalRequestID string `json:"approvalRequestId,omitempty"`
 	OperationDigest   string `json:"operationDigest,omitempty"`

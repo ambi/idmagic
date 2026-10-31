@@ -99,6 +99,7 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 | [WsFederation](ws-federation/README.md) | `internal` | `backend/wsfederation/domain`, `backend/wsfederation/ports` | `backend/wsfederation` | WS-Federation、WS-Trust、メタデータ、RP の信頼 |
 | [SharedSignals](sharedsignals/README.md) | `internal` | `backend/sharedsignals/domain`, `backend/sharedsignals/ports` | `backend/sharedsignals` | SSF、SET、CAEP による継続的アクセス評価と失効 |
 | [TokenVault](token-vault/README.md) | `internal` | なし | `backend/tokenvault` | 外部サービスのコネクタと本人の接続、上流トークンの保管と更新、Agent の要求の代理実行 |
+| [McpGateway](mcp-gateway/README.md) | `internal` | なし | `backend/mcpgateway` | 利用者の環境で既存の MCP サーバーの手前に置き、IdMagic の評価が許可した要求だけを転送する別配布の実行単位 |
 
 ### モジュールの間の依存
 
@@ -146,6 +147,7 @@ flowchart LR
     WsFederation
     SharedSignals
     TokenVault
+    McpGateway
   end
   AccessControl --> IdManagement
   AccessControl --> Tenancy
@@ -223,6 +225,7 @@ flowchart LR
   WsFederation --> IdManagement
   WsFederation --> SignInPolicy
   DirectoryConnector -.->|"LDAP の属性を Connector API へ変換"| Sourcing
+  McpGateway -.->|"MCP の要求を評価の HTTP へ変換"| OAuth2
   Frontend -.->|"管理とポータルの HTTP"| ApplicationCatalog
   Frontend -.->|"認証の HTTP"| Authentication
   Frontend -.->|"User と Group の管理 HTTP"| IdManagement

@@ -10,7 +10,7 @@ affected_spec:
   - { path: docs/modules/oauth2/features/resource-access.md, requirement: REQ-OAUTH2-062 }
 ---
 
-# MCP の執行部品を Envoy へ接続する
+# MCP のMCP ゲートウェイを Envoy へ接続する
 
 ## 動機
 
@@ -19,7 +19,7 @@ affected_spec:
 
 ## 対象範囲
 
-- 執行部品の中核を Envoy の外部処理から使う接続。
+- MCP ゲートウェイの中核を Envoy の外部処理から使う接続。
 - 本文を読む必要に合う方式の選択と、失敗時に不許可となる設定例。
 
 ## 対象外

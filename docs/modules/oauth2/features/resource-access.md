@@ -46,6 +46,10 @@
 - 不許可を返すとき、OAuth2 は、トークンのクレームを返さない。
 - クライアントを認証できない場合、OAuth2 は、401 と `invalid_client` で拒否する。
 - 認証したクライアントに束縛した `Active` の登録がない場合、OAuth2 は、403 と `access_denied` で拒否する。
+- 組が `access_rules` にない評価を受けたとき、OAuth2 は、トークンと提示の証明を確かめ、拒否の理由を `operation_not_registered` のままにする。
+- トークンが有効で提示の証明が成り立ち、主体を導けた評価を記録するとき、OAuth2 は、`ResourceAccessEvaluated` に、利用者である主体の `userId`、主体か先頭の行為者である Agent の `agentId`、行為者の Agent の `actorChain` を含める。
+- 評価を記録するとき、OAuth2 は、`ResourceAccessEvaluated` に応答の `X-Request-ID` と同じ `requestId` を含める。
+- トークンが無効か提示の証明が成り立たない評価を記録するとき、OAuth2 は、`ResourceAccessEvaluated` に主体と Agent を含めない。
 - REQ-OAUTH2-065 の操作でないものを許可したとき、OAuth2 は、応答と `ResourceAccessEvaluated` に承認の相関を含めない。
 - `token`、`resource_type`、`resource_id`、`relation` のどれかがない場合、OAuth2 は、400 と `invalid_request` で拒否する。
 - クライアントの認証と入力の検査を通る評価を受けたとき、OAuth2 は、テナントと認証したクライアント ID の組ごとに、`resource_access` ポリシーの固定窓の回数を数え、上限までは評価を続ける。
@@ -58,6 +62,7 @@
 - トークンの状態、失効、関係のストア、提示の証明のリプレイ記録を読めない場合、OAuth2 は、503 と `temporarily_unavailable` を返し、許可しない。
 - **判断**：トークンの拒否の理由を語り分けない。リソースサーバーは拒否の種類で動作を変える必要がなく、語り分けると別の資源宛てのトークンの有効性を知らせることになる。
 - **判断**：応答を再利用させない。停止の保証を「次の評価から不許可」とするためであり、評価の後に確定した業務操作は取り消さない。
+- **判断**：主体を応答ではなく監査イベントへ残す。不許可の試行も記録でき、リソースサーバーへ渡す情報を増やさない。提示の証明が成り立たないトークンの持ち主を記録すると、盗んだトークンの試行が本人の操作に見えるので記録しない。
 
 #### REQ-OAUTH2-063 送信者制約付きのトークンの評価は IdMagic が提示の証明を確かめる
 
