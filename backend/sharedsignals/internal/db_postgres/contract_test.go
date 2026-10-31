@@ -5,6 +5,7 @@ import (
 
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	"github.com/ambi/idmagic/backend/sharedsignals/internal/testing_contract"
+	"github.com/google/uuid"
 )
 
 func TestPersistenceContract(t *testing.T) {
@@ -16,7 +17,7 @@ func TestPersistenceContract(t *testing.T) {
 		agent := seedAgent(t, db, tenantA.ID)
 		return testing_contract.Fixture{
 			Epochs: &AgentRevocationEpochRepository{Pool: db}, TenantA: tenantA.ID, TenantB: tenantB.ID,
-			AgentID: agent.ID, Now: testClock(),
+			AgentID: agent.ID, DeletedAgentID: uuid.NewString(), Now: testClock(),
 		}
 	})
 }

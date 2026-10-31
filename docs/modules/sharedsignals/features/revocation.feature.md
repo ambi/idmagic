@@ -19,6 +19,16 @@
 - Then イントロスペクションは `active=true` を返す（再有効化の後に発行したトークンは失効対象にしない）
 - Then "AT1" のイントロスペクションは `active=false` のままである
 
+### Example: EX-SHAREDSIGNALS-001-03 Agent の削除を外部へ伝える
+
+- Given `Active` の Agent "A1" に紐づくアクセストークン "AT1" が発行済みである
+- Given `session-revoked` を購読する `direction=Transmit` の SsfStream "S1" がある
+- When 管理者が DeleteAgent で "A1" を削除する
+- Then "A1" の AgentRevocationEpoch が理由 `AgentDeleted` で削除の時刻へ前進し、Agent の削除の後も残る
+- Then "RevocationEpochAdvanced" と "AgentAccessRevoked" が発行される
+- Then "S1" 向けに、主体が "A1"、`reason` が `AgentDeleted`、`initiating_entity` が `admin` の SecurityEventDelivery が `pending` で作られる
+- Then "AT1" のイントロスペクションは `active=false` を返す
+
 ## Rule: REQ-SHAREDSIGNALS-007 受信側の障害はローカル失効を遅らせない
 
 ### Example: EX-SHAREDSIGNALS-007-01 通常経路

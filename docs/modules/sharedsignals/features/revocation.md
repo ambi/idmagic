@@ -18,13 +18,16 @@
 
 | 契機 | 進める対象 |
 | --- | --- |
-| `KillAgent`、`DisableAgent`、`UnbindAgentCredential` | その Agent |
+| `KillAgent`、`DisableAgent`、`UnbindAgentCredential`、`DeleteAgent` | その Agent |
 | 所有者（`owner_user_id`）の無効化と削除 | 対象テナントの中で `owner_user_id` が一致するすべての Agent |
 | 受理した SET | SET が指す Agent か User |
 | User の無効化、論理削除、セッションの失効、資格情報の変更、リフレッシュトークンの再利用の検出 | その User |
 
 所有者の停止と、それに伴う Agent の無効化（`IdManagement` の `AgentDisabled`）は同じ時刻を持つ。
 そのため、Agent ごとの失効は一度だけ記録され、理由は先に届いた所有者の停止になる。
+
+削除した Agent のエポックは無期限に保持する。
+行は Agent ごとに 1 行で、Agent の識別子は再利用しない。
 
 - **判断**：外部への伝播をローカルの失効の後に行う理由は、[ローカルの失効を外部への伝播より先に確定させる](../decisions.md#ローカルの失効を外部への伝播より先に確定させる)。
 
@@ -34,14 +37,15 @@
 
 #### REQ-SHAREDSIGNALS-001 キルスイッチは発行済みトークンをイントロスペクションで即時無効化する
 
-- 管理者が Agent を強制終了、無効化するか、資格情報の束縛を解除したとき、SharedSignals は、その Agent の失効エポックを現在時刻へ進め、`RevocationEpochAdvanced` と `AgentAccessRevoked` を発行する。
+- 管理者が Agent を強制終了、無効化、削除するか、資格情報の束縛を解除したとき、SharedSignals は、その Agent の失効エポックを現在時刻へ進め、`RevocationEpochAdvanced` と `AgentAccessRevoked` を発行する。
 - 所有者の User を無効化または削除したとき、SharedSignals は、テナントの中で所有者が一致するすべての Agent の失効エポックを進める。
 - 発行時刻が、トークンの発行時の Agent（REQ-OAUTH2-012）の失効エポックより前のアクセストークンのイントロスペクションを受けたとき、SharedSignals は、トークンを `active=false` として判定させる。
 - 発行時刻が、発行時の Agent の失効エポック以後のトークンのイントロスペクションを受けたとき、SharedSignals は、そのトークンを失効の対象にしない。
 - **判断**：束縛を解除した後も、解除前のトークンは解除した Agent のエポックで判定させる。束縛の解除はエポックを進めるが、現在の束縛からは解除した Agent を引けないからである。
+- **判断**：Agent の削除でもエポックを記録する。User の物理削除と異なり、エポックの行は Agent の行に連鎖して消えないので、発行の経路を他の停止と一つにできる。
 - 失効エポックを既存の値と同じかそれより前の時刻へ進める要求を受けた場合、SharedSignals は、エポックを変えず、`RevocationEpochAdvanced` と `AgentAccessRevoked` を発行しない。
 - 失効エポックを判定できない場合、SharedSignals は、トークンを無効とみなさせる。
-- **例**：EX-SHAREDSIGNALS-001-01、EX-SHAREDSIGNALS-001-02
+- **例**：EX-SHAREDSIGNALS-001-01、EX-SHAREDSIGNALS-001-02、EX-SHAREDSIGNALS-001-03
 
 #### REQ-SHAREDSIGNALS-012 User の失効は発行済みのトークンを即時に無効にして外部へ伝える
 

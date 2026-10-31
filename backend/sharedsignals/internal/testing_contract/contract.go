@@ -16,7 +16,9 @@ type Fixture struct {
 	TenantA string
 	TenantB string
 	AgentID string
-	Now     time.Time
+	// DeletedAgentID は Agent の記録を持たない識別子である。
+	DeletedAgentID string
+	Now            time.Time
 }
 
 type NewFixture func(t *testing.T) Fixture
@@ -67,5 +69,17 @@ func Run(t *testing.T, newFixture NewFixture) {
 	advanced, err := f.Epochs.FindByAgent(ctx, f.TenantA, f.AgentID)
 	if err != nil || advanced == nil || !advanced.Epoch.Equal(later.Epoch) || advanced.Reason != later.Reason {
 		t.Fatalf("FindByAgent after forward Advance = (%+v, %v)", advanced, err)
+	}
+	// 反応器は削除の確定より後に動くので、Agent の記録がなくてもエポックを記録できる。
+	deleted := domain.AgentRevocationEpoch{
+		AgentID: f.DeletedAgentID, TenantID: f.TenantA, Epoch: f.Now,
+		Reason: domain.RevocationReasonAgentDeleted, AdvancedAt: f.Now,
+	}
+	if err := f.Epochs.Advance(ctx, deleted); err != nil {
+		t.Fatalf("Advance for deleted agent: %v", err)
+	}
+	recorded, err := f.Epochs.FindByAgent(ctx, f.TenantA, f.DeletedAgentID)
+	if err != nil || recorded == nil || recorded.Reason != domain.RevocationReasonAgentDeleted {
+		t.Fatalf("FindByAgent for deleted agent = (%+v, %v)", recorded, err)
 	}
 }

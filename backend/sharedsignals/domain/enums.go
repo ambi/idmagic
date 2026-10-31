@@ -60,6 +60,7 @@ const (
 	RevocationReasonAgentKilled            RevocationReason = "AgentKilled"
 	RevocationReasonAgentDisabled          RevocationReason = "AgentDisabled"
 	RevocationReasonAgentCredentialUnbound RevocationReason = "AgentCredentialUnbound"
+	RevocationReasonAgentDeleted           RevocationReason = "AgentDeleted"
 	RevocationReasonOwnerDisabled          RevocationReason = "OwnerDisabled"
 	RevocationReasonOwnerDeleted           RevocationReason = "OwnerDeleted"
 	RevocationReasonManualAdmin            RevocationReason = "ManualAdmin"
@@ -75,7 +76,7 @@ const (
 
 func (r RevocationReason) Valid() bool {
 	switch r {
-	case RevocationReasonAgentKilled, RevocationReasonAgentDisabled, RevocationReasonAgentCredentialUnbound,
+	case RevocationReasonAgentKilled, RevocationReasonAgentDisabled, RevocationReasonAgentCredentialUnbound, RevocationReasonAgentDeleted,
 		RevocationReasonOwnerDisabled, RevocationReasonOwnerDeleted, RevocationReasonManualAdmin, RevocationReasonInboundSecurityEvent,
 		RevocationReasonUserDisabled, RevocationReasonUserSoftDeleted, RevocationReasonUserDeleted, RevocationReasonSessionRevoked,
 		RevocationReasonPasswordChanged, RevocationReasonAuthenticatorChanged, RevocationReasonRefreshTokenReuse:

@@ -99,30 +99,64 @@ func TestAgentRevocationEpochRepository_FindByAgentUnknownReturnsNil(t *testing.
 	}
 }
 
-// TestAgentRevocationEpochRepository_CascadesOnAgentDelete は
-// agent_revocation_epochs.agent_id の ON DELETE CASCADE を検証する: 削除された
-// Agent の epoch は Agent と一緒に消える (epoch が孤立レコードとして残らない)。
-func TestAgentRevocationEpochRepository_CascadesOnAgentDelete(t *testing.T) {
+// TestAgentRevocationEpochRepository_OutlivesAgentDelete は、Agent の行を消しても epoch が
+// 残り、削除の確定より後に動く反応器が epoch を記録して前進させられることを DB の制約で確かめる。
+//
+//spec:covers REQ-SHAREDSIGNALS-001: 削除した Agent の失効エポックが保存層に残り、理由 AgentDeleted で記録と前進ができること
+func TestAgentRevocationEpochRepository_OutlivesAgentDelete(t *testing.T) {
 	db := pgtest.Require(t)
 	repo := &AgentRevocationEpochRepository{Pool: db}
 	tenant := seedTenant(t, db)
-	agent := seedAgent(t, db, tenant.ID)
 	now := testClock()
+	deleteAgent := func(id string) {
+		t.Helper()
+		if _, err := db.Exec(context.Background(), "DELETE FROM agents WHERE id=$1", id); err != nil {
+			t.Fatalf("delete agent: %v", err)
+		}
+	}
 
+	revoked := seedAgent(t, db, tenant.ID)
 	if err := repo.Advance(context.Background(), ssdomain.AgentRevocationEpoch{
-		AgentID: agent.ID, TenantID: tenant.ID, Epoch: now, Reason: ssdomain.RevocationReasonAgentKilled, AdvancedAt: now,
+		AgentID: revoked.ID, TenantID: tenant.ID, Epoch: now, Reason: ssdomain.RevocationReasonAgentDisabled, AdvancedAt: now,
 	}); err != nil {
-		t.Fatalf("Advance: %v", err)
+		t.Fatalf("Advance before delete: %v", err)
 	}
-	if _, err := db.Exec(context.Background(), "DELETE FROM agents WHERE id=$1", agent.ID); err != nil {
-		t.Fatalf("delete agent: %v", err)
-	}
-	got, err := repo.FindByAgent(context.Background(), tenant.ID, agent.ID)
+	deleteAgent(revoked.ID)
+	kept, err := repo.FindByAgent(context.Background(), tenant.ID, revoked.ID)
 	if err != nil {
-		t.Fatalf("FindByAgent after cascade: %v", err)
+		t.Fatalf("FindByAgent after delete: %v", err)
 	}
-	if got != nil {
-		t.Fatalf("expected epoch to be cascade-deleted with agent, got %+v", got)
+	if kept == nil || !kept.Epoch.Equal(now) || kept.Reason != ssdomain.RevocationReasonAgentDisabled {
+		t.Fatalf("epoch after delete = %+v, want the disabled epoch kept", kept)
+	}
+	deletedAt := now.Add(time.Minute)
+	if err := repo.Advance(context.Background(), ssdomain.AgentRevocationEpoch{
+		AgentID: revoked.ID, TenantID: tenant.ID, Epoch: deletedAt, Reason: ssdomain.RevocationReasonAgentDeleted, AdvancedAt: deletedAt,
+	}); err != nil {
+		t.Fatalf("Advance after delete: %v", err)
+	}
+	advanced, err := repo.FindByAgent(context.Background(), tenant.ID, revoked.ID)
+	if err != nil {
+		t.Fatalf("FindByAgent after advance: %v", err)
+	}
+	if advanced == nil || !advanced.Epoch.Equal(deletedAt) || advanced.Reason != ssdomain.RevocationReasonAgentDeleted {
+		t.Fatalf("epoch after advance = %+v, want AgentDeleted at %s", advanced, deletedAt)
+	}
+
+	// 一度も失効していない Agent は、削除の後に最初の行を作る。
+	fresh := seedAgent(t, db, tenant.ID)
+	deleteAgent(fresh.ID)
+	if err := repo.Advance(context.Background(), ssdomain.AgentRevocationEpoch{
+		AgentID: fresh.ID, TenantID: tenant.ID, Epoch: now, Reason: ssdomain.RevocationReasonAgentDeleted, AdvancedAt: now,
+	}); err != nil {
+		t.Fatalf("first Advance after delete: %v", err)
+	}
+	recorded, err := repo.FindByAgent(context.Background(), tenant.ID, fresh.ID)
+	if err != nil {
+		t.Fatalf("FindByAgent: %v", err)
+	}
+	if recorded == nil || recorded.Reason != ssdomain.RevocationReasonAgentDeleted {
+		t.Fatalf("epoch = %+v, want the AgentDeleted epoch recorded", recorded)
 	}
 }
 

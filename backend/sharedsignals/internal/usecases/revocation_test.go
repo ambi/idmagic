@@ -124,6 +124,7 @@ func TestAgentRevocationReactor_ReactsToAgentEvents(t *testing.T) {
 		{"AgentKilled", &idmdomain.AgentKilled{At: now, TenantID: "tenant-a", AgentID: "agent_1"}, ssdomain.RevocationReasonAgentKilled},
 		{"AgentDisabled", &idmdomain.AgentDisabled{At: now, TenantID: "tenant-a", AgentID: "agent_1"}, ssdomain.RevocationReasonAgentDisabled},
 		{"AgentCredentialUnbound", &idmdomain.AgentCredentialUnbound{At: now, TenantID: "tenant-a", AgentID: "agent_1"}, ssdomain.RevocationReasonAgentCredentialUnbound},
+		{"AgentDeleted", &idmdomain.AgentDeleted{At: now, TenantID: "tenant-a", AgentID: "agent_1"}, ssdomain.RevocationReasonAgentDeleted},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

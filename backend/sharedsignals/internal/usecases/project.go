@@ -21,7 +21,7 @@ type ProjectorDeps struct {
 
 // initiatingEntityForReason maps IdManagement/SharedSignals' RevocationReason
 // to CaepEvent.InitiatingEntity. All of wi-58's current triggers originate
-// from an admin console action (kill/disable/unbind, owner disable/delete);
+// from an admin console action (kill/disable/unbind/delete, owner disable/delete);
 // InboundSecurityEvent is the one case that echoes an externally-received
 // signal rather than a local admin decision.
 func initiatingEntityForReason(reason ssdomain.RevocationReason) ssdomain.InitiatingEntity {

@@ -2013,13 +2013,11 @@ CREATE TABLE agent_revocation_epochs (
     epoch TIMESTAMPTZ NOT NULL,
     reason TEXT NOT NULL
         CHECK (reason IN (
-            'AgentKilled', 'AgentDisabled', 'AgentCredentialUnbound',
-            'OwnerDisabled', 'OwnerDeleted', 'ManualAdmin', 'InboundSecurityEvent'
+            'AgentCredentialUnbound', 'AgentDeleted', 'AgentDisabled', 'AgentKilled',
+            'InboundSecurityEvent', 'ManualAdmin', 'OwnerDeleted', 'OwnerDisabled'
         )),
     advanced_at TIMESTAMPTZ NOT NULL,
     source_event_id TEXT,
-    CONSTRAINT agent_revocation_epochs_agent_fkey
-        FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
     CONSTRAINT agent_revocation_epochs_tenant_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );

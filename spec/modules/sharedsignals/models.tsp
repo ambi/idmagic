@@ -81,6 +81,7 @@ enum RevocationReason {
   AgentKilled: "AgentKilled",
   AgentDisabled: "AgentDisabled",
   AgentCredentialUnbound: "AgentCredentialUnbound",
+  AgentDeleted: "AgentDeleted",
   OwnerDisabled: "OwnerDisabled",
   OwnerDeleted: "OwnerDeleted",
   ManualAdmin: "ManualAdmin",

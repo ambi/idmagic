@@ -724,6 +724,57 @@ func TestKillAdvancesTheEpochWhileTheReceiverIsUnreachable(t *testing.T) {
 	}
 }
 
+// 削除は Agent の行を消す。削除の確定より後に動く反応器がエポックを記録でき、Agent を引かずに
+// SET の主体を組めることを、管理 API の削除から観測する。
+//
+//spec:covers REQ-SHAREDSIGNALS-001, EX-SHAREDSIGNALS-001-03: DeleteAgent が失効エポックを理由 AgentDeleted で削除の時刻へ進めて RevocationEpochAdvanced と AgentAccessRevoked を発行し、送信ストリームに主体が削除した Agent、reason が AgentDeleted、initiating_entity が admin の pending の配送を作り、削除の前に発行したトークンの `/introspect` が active=false を返す。
+func TestDeletingAgentPropagatesRevocation(t *testing.T) {
+	s := newExampleStack(t)
+	streamID := s.registerTransmitter(t, "https://receiver.example/events")
+	s.seedAgent(t, tenancydomain.DefaultTenantID, exampleAgentID)
+	at1 := s.issueAgentToken(t)
+	if active := s.introspect(t, at1)["active"]; active != true {
+		t.Fatalf("before delete active=%v, want true", active)
+	}
+
+	before := time.Now().UTC().Add(-time.Second)
+	if rec := s.admin(t, http.MethodDelete, "/api/admin/v1/agents/"+exampleAgentID, nil); rec.Code != http.StatusNoContent {
+		t.Fatalf("delete status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	after := time.Now().UTC().Add(time.Second)
+
+	epoch := s.epoch(t, tenancydomain.DefaultTenantID, exampleAgentID)
+	if epoch == nil || epoch.Reason != ssdomain.RevocationReasonAgentDeleted || epoch.Epoch.Before(before) || epoch.Epoch.After(after) {
+		t.Fatalf("epoch=%+v, want reason=AgentDeleted within [%s, %s]", epoch, before, after)
+	}
+	var advanced, revoked bool
+	for _, event := range s.events.all() {
+		switch e := event.(type) {
+		case *ssdomain.RevocationEpochAdvanced:
+			advanced = advanced || (e.AgentID == exampleAgentID && e.Reason == ssdomain.RevocationReasonAgentDeleted)
+		case *ssdomain.AgentAccessRevoked:
+			revoked = revoked || (e.AgentID == exampleAgentID && e.Reason == ssdomain.RevocationReasonAgentDeleted)
+		}
+	}
+	if !advanced || !revoked {
+		t.Fatalf("RevocationEpochAdvanced=%v AgentAccessRevoked=%v; events=%v", advanced, revoked, s.events.all())
+	}
+	deliveries, err := s.deliveries.ListByStream(context.Background(), tenancydomain.DefaultTenantID, streamID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(deliveries) != 1 || deliveries[0].Status != ssdomain.SecurityEventDeliveryStatusPending {
+		t.Fatalf("deliveries=%+v, want one pending delivery", deliveries)
+	}
+	set := deliveries[0].Set.Event
+	if set.Subject.PrincipalID != exampleAgentID || set.Reason == nil || *set.Reason != ssdomain.RevocationReasonAgentDeleted || set.InitiatingEntity != ssdomain.InitiatingEntityAdmin {
+		t.Fatalf("SET event=%+v, want subject %s, reason AgentDeleted, initiating_entity admin", set, exampleAgentID)
+	}
+	if body := s.introspect(t, at1); body["active"] != false {
+		t.Fatalf("after delete introspection=%v, want active=false", body)
+	}
+}
+
 // 無効化したストリームと、有効なまま残したストリームを並べる。有効なほうが受理し、
 // 配送を作ることが対照になる。
 //

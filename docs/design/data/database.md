@@ -201,7 +201,7 @@ erDiagram
     tenants ||--o{ agent_workload_bindings : 対応を持つ
     workload_trust_bundles ||--o{ agent_workload_bindings : 主体を許可する
     agents ||--o{ agent_workload_bindings : ワークロードに結ばれる
-    agents ||--|| agent_revocation_epochs : 失効世代を持つ
+    tenants ||--o{ agent_revocation_epochs : 失効世代を持つ
     users ||--o| user_revocation_epochs : 失効世代を持つ
 ```
 
@@ -232,7 +232,7 @@ erDiagram
 | `token_vault_connectors` | 外部サービスのコネクタ。クライアントシークレットは暗号化する | TokenVault | `LOGGED` | 非キーカラム |
 | `token_vault_connections` | 本人とコネクタの組ごとの上流トークン。トークンは暗号化する | TokenVault | `LOGGED` | 非キーカラム |
 | `token_vault_attempts` | 連携の `state` のハッシュと暗号化した PKCE の検証子。一度だけ消費する | TokenVault | `LOGGED` | 非キーカラム |
-| `agent_revocation_epochs` | エージェントの失効世代。世代を進めると、それより前に発行したトークンを受け付けない | SharedSignals | `LOGGED` | 非キーカラム |
+| `agent_revocation_epochs` | エージェントの失効世代。世代を進めると、それより前に発行したトークンを受け付けない。削除の確定後に記録するので `agents` への外部キーを持たず、削除したエージェントの行も保持する | SharedSignals | `LOGGED` | 非キーカラム |
 | `user_revocation_epochs` | User の失効世代。世代を進めると、それより前に発行したトークンを受け付けない | SharedSignals | `LOGGED` | 非キーカラム |
 
 `audit_events`、`authentication_event_buckets`、`tenant_correlation_salts`、`audit_event_search_attributes` は、監査データの保持や匿名化を独立して制御するため、`tenants` テーブルへの外部キーを置かない。

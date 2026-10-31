@@ -97,7 +97,7 @@ func AdvanceUserRevocationEpoch(ctx context.Context, repo ssports.UserRevocation
 
 // AgentRevocationReactor reacts to IdManagement DomainEvents that IdManagement
 // already emits unconditionally for audit (KillAgent/SetAgentDisabled/
-// UnbindCredential/SetUserDisabled/SoftDeleteUser/DeleteUser), and
+// UnbindCredential/DeleteAgent/SetUserDisabled/SoftDeleteUser/DeleteUser), and
 // fail-closed advances the affected agent(s)' revocation epoch (
 // wi-58). Every path that emits those events builds it with
 // NewAgentRevocationReactor and calls it after each Emit: the admin API through
@@ -201,6 +201,8 @@ func (r *AgentRevocationReactor) React(ctx context.Context, event spec.DomainEve
 		return AdvanceRevocationEpoch(ctx, deps, e.TenantID, []string{e.AgentID}, ssdomain.RevocationReasonAgentDisabled, nil, e.At)
 	case *idmdomain.AgentCredentialUnbound:
 		return AdvanceRevocationEpoch(ctx, deps, e.TenantID, []string{e.AgentID}, ssdomain.RevocationReasonAgentCredentialUnbound, nil, e.At)
+	case *idmdomain.AgentDeleted:
+		return AdvanceRevocationEpoch(ctx, deps, e.TenantID, []string{e.AgentID}, ssdomain.RevocationReasonAgentDeleted, nil, e.At)
 	case *idmdomain.UserDisabled:
 		return r.reactToUserStop(ctx, deps, e.TenantID, e.TargetUserID, ssdomain.RevocationReasonUserDisabled, ssdomain.RevocationReasonOwnerDisabled, e.At)
 	case *idmdomain.UserSoftDeleted:
