@@ -3,7 +3,9 @@ package db_postgres
 import (
 	"context"
 	"errors"
+	"math"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -122,5 +124,59 @@ func TestFindActiveReturnsErrNoActiveDataKeyForUnknownTenant(t *testing.T) {
 
 	if _, err := repo.FindActive(context.Background(), tenant.ID); !errors.Is(err, domain.ErrNoActiveDataKey) {
 		t.Fatalf("expected ErrNoActiveDataKey, got %v", err)
+	}
+}
+
+//spec:covers REQ-DATAKEYS-009: 存在しない版は別の版へ折り返さず、無効化も行わないこと
+//spec:covers REQ-DATAKEYS-005: 指定していない版の鍵素材を破棄しないこと
+func TestOutOfRangeVersionsDoNotAliasExistingKeys(t *testing.T) {
+	if strconv.IntSize < 64 {
+		t.Skip("int32 を超える入力は 64 ビット環境で検査する")
+	}
+	pool := pgtest.Require(t)
+	ctx := context.Background()
+	repo, err := NewDataKeyRepository(ctx, pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tenant := seedTenant(t, repo)
+	now := pgtest.Now()
+	if _, err := repo.Bootstrap(ctx, tenant.ID, []byte("wrapped-1"), "master-1", now); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := repo.Rotate(ctx, tenant.ID, []byte("wrapped-2"), "master-1", now); err != nil {
+		t.Fatal(err)
+	}
+	for _, version64 := range []int64{0, -1, math.MaxInt32, math.MaxInt32 + 1, 1<<32 + 1, -(1 << 32) + 1} {
+		t.Run(strconv.FormatInt(version64, 10), func(t *testing.T) {
+			version := int(version64)
+			if key, err := repo.FindByVersion(ctx, tenant.ID, version); key != nil || !errors.Is(err, domain.ErrDataKeyNotFound) {
+				t.Errorf("FindByVersion(%d) = (%v, %v), want nil, ErrDataKeyNotFound", version, key, err)
+			}
+			if key, err := repo.Disable(ctx, tenant.ID, version, now); key != nil || !errors.Is(err, domain.ErrDataKeyNotFound) {
+				t.Errorf("Disable(%d) = (%v, %v), want nil, ErrDataKeyNotFound", version, key, err)
+			}
+			if key, err := repo.Destroy(ctx, tenant.ID, version, now); key != nil || !errors.Is(err, domain.ErrDataKeyNotFound) {
+				t.Errorf("Destroy(%d) = (%v, %v), want nil, ErrDataKeyNotFound", version, key, err)
+			}
+			key, err := repo.FindByVersion(ctx, tenant.ID, 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if key.Status != domain.DataKeyStatusRetiring || string(key.WrappedDEK) != "wrapped-1" {
+				t.Fatalf("v1 status=%s wrapped_dek=%q, want retiring and original material", key.Status, key.WrappedDEK)
+			}
+		})
+	}
+	limitTenant := seedTenant(t, repo)
+	if err := New(pool).InsertDataKey(ctx, InsertDataKeyParams{
+		ID: mustUUID(t), TenantID: limitTenant.ID, Version: math.MaxInt32,
+		WrappedDek: []byte("wrapped-limit"), MasterKeyID: "master-1", CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	key, err := repo.FindByVersion(ctx, limitTenant.ID, math.MaxInt32)
+	if err != nil || key == nil || key.Version != math.MaxInt32 {
+		t.Fatalf("FindByVersion(MaxInt32) = (%v, %v), want the existing key", key, err)
 	}
 }

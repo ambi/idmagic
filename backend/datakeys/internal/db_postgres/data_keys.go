@@ -4,6 +4,7 @@ package db_postgres
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -133,6 +134,10 @@ func (r *DataKeyRepository) Rotate(ctx context.Context, tenantID string, wrapped
 }
 
 func (r *DataKeyRepository) Disable(ctx context.Context, tenantID string, version int, now time.Time) (*domain.TenantDataEncryptionKey, error) {
+	storedVersion, err := postgresVersion(version)
+	if err != nil {
+		return nil, err
+	}
 	key, err := r.FindByVersion(ctx, tenantID, version)
 	if err != nil {
 		return nil, err
@@ -145,7 +150,7 @@ func (r *DataKeyRepository) Disable(ctx context.Context, tenantID string, versio
 	}
 	if err := New(r.Pool).DisableDataKey(ctx, DisableDataKeyParams{
 		TenantID:   tenantID,
-		Version:    int32(version), //nolint:gosec // G115: DEK version is a small monotonic counter, well under int32 max
+		Version:    storedVersion,
 		DisabledAt: timeToPg(&now),
 	}); err != nil {
 		return nil, err
@@ -156,6 +161,10 @@ func (r *DataKeyRepository) Disable(ctx context.Context, tenantID string, versio
 }
 
 func (r *DataKeyRepository) Destroy(ctx context.Context, tenantID string, version int, now time.Time) (*domain.TenantDataEncryptionKey, error) {
+	storedVersion, err := postgresVersion(version)
+	if err != nil {
+		return nil, err
+	}
 	key, err := r.FindByVersion(ctx, tenantID, version)
 	if err != nil {
 		return nil, err
@@ -168,7 +177,7 @@ func (r *DataKeyRepository) Destroy(ctx context.Context, tenantID string, versio
 	}
 	if err := New(r.Pool).DestroyDataKey(ctx, DestroyDataKeyParams{
 		TenantID:    tenantID,
-		Version:     int32(version), //nolint:gosec // G115: DEK version is a small monotonic counter, well under int32 max
+		Version:     storedVersion,
 		DestroyedAt: timeToPg(&now),
 	}); err != nil {
 		return nil, err
@@ -191,7 +200,11 @@ func (r *DataKeyRepository) FindActive(ctx context.Context, tenantID string) (*d
 }
 
 func (r *DataKeyRepository) FindByVersion(ctx context.Context, tenantID string, version int) (*domain.TenantDataEncryptionKey, error) {
-	row, err := New(r.Pool).GetDataKeyByVersion(ctx, GetDataKeyByVersionParams{TenantID: tenantID, Version: int32(version)}) //nolint:gosec // G115: DEK version is a small monotonic counter, well under int32 max
+	storedVersion, err := postgresVersion(version)
+	if err != nil {
+		return nil, err
+	}
+	row, err := New(r.Pool).GetDataKeyByVersion(ctx, GetDataKeyByVersionParams{TenantID: tenantID, Version: storedVersion})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, domain.ErrDataKeyNotFound
 	}
@@ -199,6 +212,14 @@ func (r *DataKeyRepository) FindByVersion(ctx context.Context, tenantID string, 
 		return nil, err
 	}
 	return byVersionRowToDomain(row), nil
+}
+
+// postgresVersion は保存できない版を存在しないものとして扱い、別の版への折り返しを防ぐ。
+func postgresVersion(version int) (int32, error) {
+	if version < 1 || version > math.MaxInt32 {
+		return 0, domain.ErrDataKeyNotFound
+	}
+	return int32(version), nil
 }
 
 func (r *DataKeyRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.TenantDataEncryptionKey, error) {
