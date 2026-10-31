@@ -7,7 +7,7 @@
 | AuthorizationServer | ResourceOwner を認証し、クライアントへトークンを発行するサーバー。本アプリそのもの。OIDC では IdP と同義。 | authorization_server, IdP, IdentityProvider |
 | ResourceServer | アクセストークンを提示したクライアントへ保護リソースを返す、本アプリ外部のサーバー。 | resource_server |
 | McpResourceServer | MCP エコシステムでツールやデータソースを提供するリソースサーバーのテナント単位の登録。正規リソース URI と許可するスコープを持ち、Protected Resource Metadata とリソース指示子の検証基準になる。評価用のクライアントと規則を設定すると、リソースアクセスの評価を呼べる。 | mcp_resource_server |
-| ResourceAccessRule | リソースサーバーが評価を求められる操作の規則。資源の型、関係、必須のスコープ、任意で求める `authorization_details` の種類、人が承認した一回の操作を求めるかを持つ。 | resource_access_rule |
+| ResourceAccessRule | リソースサーバーが評価を求められる操作の規則。資源の型、関係、必須のスコープ、任意で求める `authorization_details` の種類、人が承認した一回の操作を求めるか、結果を分ける条件を持つ。 | resource_access_rule |
 | ResourceIndicator | RFC 8707 の `resource` パラメーター。要求する `audience` を表す、フラグメントを含まない絶対 URI。1 トークンにつき 1 個だけを許可し（ID-JAG の発行と償還を除く）、複数指定、未登録、無効のいずれかであれば fail-closed で拒否する。 | resource_indicator |
 | Public | `client_secret` を安全に保持できないクライアント（SPA、ネイティブアプリ）。PKCE を必須とする。 | public |
 | Confidential | サーバー側で `client_secret` または秘密鍵を保持できるクライアント。 | confidential |

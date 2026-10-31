@@ -424,3 +424,77 @@ func TestEvaluationAuditNamesThePrincipals(t *testing.T) {
 		t.Fatalf("autonomous = %+v", autonomous)
 	}
 }
+
+//spec:covers REQ-OAUTH2-062: 条件は関係の判定の後に評価し、監査に版と結果と申告のダイジェストを残して平文を残さないこと
+func TestEvaluateResourceAccessCondition(t *testing.T) {
+	condition := &domain.ResourceAccessCondition{DenyWhen: `attributes.tool == "delete"`}
+	rule := evalRule
+	rule.Condition = condition
+	const secretValue = "delete"
+	run := func(t *testing.T, relations *evalRelations, token *ports.IntrospectionResult, attributes string) (ResourceAccessDecision, *domain.ResourceAccessEvaluated) {
+		t.Helper()
+		var event *domain.ResourceAccessEvaluated
+		in := evalRequest()
+		in.Attributes = attributes
+		decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
+			Servers: evalServer(t, rule), Tokens: evalTokens{result: token}, Relations: relations,
+			Emit: func(recorded spec.DomainEvent) { event, _ = recorded.(*domain.ResourceAccessEvaluated) },
+		}, in, time.Now().UTC())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return decision, event
+	}
+	permit := func() *evalRelations {
+		return &evalRelations{decision: policyports.RelationDecision{Permitted: true}}
+	}
+
+	decision, event := run(t, permit(), evalAgentToken(), `{"tool":"`+secretValue+`"}`)
+	if decision.Permitted || !slices.Equal(decision.Reasons, []string{domain.ReasonConditionDenied}) {
+		t.Fatalf("拒否: %+v", decision)
+	}
+	if event.ConditionVersion != condition.Version() || event.ConditionOutcome != "deny" || len(event.DeclaredAttributesDigest) != 64 {
+		t.Fatalf("監査: %+v", event)
+	}
+	raw, err := json.Marshal(event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), secretValue) {
+		t.Fatalf("監査に申告の平文がある: %s", raw)
+	}
+
+	decision, event = run(t, permit(), evalAgentToken(), `{`)
+	if decision.Permitted || !slices.Equal(decision.Reasons, []string{domain.ReasonConditionIndeterminate}) || event.ConditionOutcome != "indeterminate" || len(event.DeclaredAttributesDigest) != 64 {
+		t.Fatalf("読めない申告: %+v %+v", decision, event)
+	}
+
+	decision, event = run(t, permit(), evalAgentToken(), `{"tool":"read"}`)
+	if !decision.Permitted || event.ConditionOutcome != "allow" {
+		t.Fatalf("許可: %+v %+v", decision, event)
+	}
+
+	// 無効なトークンと関係の不許可では条件を評価しないので、申告で条件を探らせない。
+	if decision, event = run(t, permit(), &ports.IntrospectionResult{Active: false}, `{"tool":"delete"}`); !slices.Equal(decision.Reasons, []string{domain.ReasonTokenRejected}) || event.ConditionOutcome != "" {
+		t.Fatalf("無効なトークン: %+v %+v", decision, event)
+	}
+	denied := &evalRelations{decision: policyports.RelationDecision{Reasons: []string{"no_relation"}}}
+	if decision, event = run(t, denied, evalAgentToken(), `{"tool":"delete"}`); !slices.Equal(decision.Reasons, []string{"no_relation"}) || event.ConditionVersion != "" || event.DeclaredAttributesDigest != "" {
+		t.Fatalf("関係の不許可: %+v %+v", decision, event)
+	}
+}
+
+//spec:covers REQ-OAUTH2-062: 条件のない規則は申告を読まず、読めない申告でも結果を変えないこと
+func TestEvaluateResourceAccessIgnoresAttributesWithoutCondition(t *testing.T) {
+	in := evalRequest()
+	in.Attributes = `{`
+	var event *domain.ResourceAccessEvaluated
+	decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
+		Servers: evalServer(t, evalRule), Tokens: evalTokens{result: evalAgentToken()},
+		Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}},
+		Emit:      func(recorded spec.DomainEvent) { event, _ = recorded.(*domain.ResourceAccessEvaluated) },
+	}, in, time.Now().UTC())
+	if err != nil || !decision.Permitted || event.ConditionVersion != "" || event.DeclaredAttributesDigest != "" {
+		t.Fatalf("err=%v decision=%+v event=%+v", err, decision, event)
+	}
+}

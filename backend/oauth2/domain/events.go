@@ -357,6 +357,10 @@ type ResourceAccessEvaluated struct {
 	ApprovalRequestID string `json:"approvalRequestId,omitempty"`
 	OperationDigest   string `json:"operationDigest,omitempty"`
 	Replayed          bool   `json:"replayed,omitempty"`
+	// 以下は評価した条件の相関。属性はリソースサーバーの申告であり、平文を残さない。
+	ConditionVersion         string `json:"conditionVersion,omitempty"`
+	ConditionOutcome         string `json:"conditionOutcome,omitempty"`
+	DeclaredAttributesDigest string `json:"declaredAttributesDigest,omitempty"`
 }
 
 func (e *ResourceAccessEvaluated) EventType() string     { return "ResourceAccessEvaluated" }

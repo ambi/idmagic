@@ -31,6 +31,8 @@ const (
 	ReasonApprovedOperationMismatch   = "approved_operation_mismatch"
 	ReasonApprovalExpired             = "approval_expired"
 	ReasonApprovalAlreadyUsed         = "approval_already_used"
+	ReasonConditionDenied             = "condition_denied"
+	ReasonConditionIndeterminate      = "condition_indeterminate"
 )
 
 // ResourceAccessRule は評価できる 1 つの操作と、その操作がトークンへ求める制約である。
@@ -41,6 +43,8 @@ type ResourceAccessRule struct {
 	AuthorizationDetailType string   `json:"authorization_detail_type,omitempty"`
 	// RequiresApprovedOperation は、人が承認した一回の操作だけを許可する (REQ-OAUTH2-065)。
 	RequiresApprovedOperation bool `json:"requires_approved_operation,omitempty"`
+	// Condition は、ほかの制約を満たす操作の結果を分ける。
+	Condition *ResourceAccessCondition `json:"condition,omitempty"`
 }
 
 // PermitsDetails は、規則が求める構造化された権限をトークンが持つかを判定する。
@@ -84,6 +88,14 @@ func (m McpResourceServer) validateAccessRules() error {
 		seen[key] = struct{}{}
 		if rule.RequiresApprovedOperation && rule.AuthorizationDetailType == "" {
 			return errors.New("access_rules requires_approved_operation needs authorization_detail_type")
+		}
+		if rule.Condition != nil {
+			if err := rule.Condition.Validate(); err != nil {
+				return err
+			}
+			if rule.RequiresApprovedOperation && rule.Condition.RequireApprovalWhen != "" {
+				return errors.New("access_rules require_approval_when must not be combined with requires_approved_operation")
+			}
 		}
 		if len(rule.Scopes) == 0 {
 			return errors.New("access_rules scopes must not be empty")

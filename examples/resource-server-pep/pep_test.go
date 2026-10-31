@@ -115,3 +115,28 @@ func TestOperationLedgerDistinguishesFailureFromUnknown(t *testing.T) {
 		})
 	}
 }
+
+//spec:covers REQ-OAUTH2-062: 参照 PEP が申告した属性を評価へ送ること
+func TestEvaluateSendsDeclaredAttributes(t *testing.T) {
+	var got string
+	enforcer := Enforcer{
+		EvaluateURL: "http://evaluator.test/resource-access/evaluate",
+		HTTPClient: &http.Client{Transport: roundTrip(func(request *http.Request) (*http.Response, error) {
+			if err := request.ParseForm(); err != nil {
+				t.Fatal(err)
+			}
+			got = request.PostForm.Get("attributes")
+			recorder := httptest.NewRecorder()
+			_, _ = recorder.WriteString(`{"decision":true}`)
+			return recorder.Result(), nil
+		})},
+	}
+	request := httptest.NewRequest(http.MethodPost, "http://rs.test/tool", http.NoBody)
+	request.Header.Set("Authorization", "Bearer t")
+	if _, err := enforcer.Evaluate(request.Context(), request, Operation{Attributes: `{"amount":100}`}); err != nil {
+		t.Fatal(err)
+	}
+	if got != `{"amount":100}` {
+		t.Fatalf("attributes=%q", got)
+	}
+}

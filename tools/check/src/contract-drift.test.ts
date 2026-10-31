@@ -330,6 +330,24 @@ describe('diffContract', () => {
     },
   })
 
+  it('does not expect a request to decode a readOnly property', () => {
+    const go = goSources(
+      `
+	var req createThingRequest
+	_ = support.DecodeJSON(c.Request(), &req)
+	return nil`,
+      `type createThingRequest struct {
+	Name string \`json:"name"\`
+}`,
+    )
+    const result = diffContract(
+      documentWith(requestBody({ name: {}, version: { readOnly: true } })),
+      go.routes,
+      [...go.handlers, ...go.structs],
+    )
+    expect(result.findings.map((f) => f.message)).toEqual([])
+  })
+
   it('reports a request property the Go struct does not decode', () => {
     // wi-381's defect: the contract declares fields the handler never reads.
     const go = goSources(

@@ -20,7 +20,8 @@
 4. 送信者制約付きのトークンなら、提示の証明が一致する。
 5. 規則が `authorization_detail_type` を指定するなら、トークンの `authorization_details` に一致するものがある。
 6. トークンから導いた主体と行為者について、AccessControl が規則の `scopes` を含めて許可する。
-7. 規則が `requires_approved_operation` を持つなら、[承認した操作の評価](#承認した操作の評価)が許可する。
+7. 規則が `condition` を持つなら、[条件の評価](#条件の評価)が拒否せず、評価でき、承認を求めるなら 8 へ進む。
+8. 規則が `requires_approved_operation` を持つか、条件が承認を求めるなら、[承認した操作の評価](#承認した操作の評価)が許可する。
 
 主体と行為者は、提示されたトークンだけから導く。
 
@@ -50,6 +51,15 @@
 - トークンが有効で提示の証明が成り立ち、主体を導けた評価を記録するとき、OAuth2 は、`ResourceAccessEvaluated` に、利用者である主体の `userId`、主体か先頭の行為者である Agent の `agentId`、行為者の Agent の `actorChain` を含める。
 - 評価を記録するとき、OAuth2 は、`ResourceAccessEvaluated` に応答の `X-Request-ID` と同じ `requestId` を含める。
 - トークンが無効か提示の証明が成り立たない評価を記録するとき、OAuth2 は、`ResourceAccessEvaluated` に主体と Agent を含めない。
+- 規則が `condition` を持つ操作で、ほかの論理積を満たし、`deny_when` と `require_approval_when` のどちらも偽であるとき、OAuth2 は、人の承認を求めずに許可する。
+- `deny_when` が真である場合、OAuth2 は、`require_approval_when` の値によらず、200 と `decision=false`、理由 `condition_denied` を返す。
+- `deny_when` が偽で `require_approval_when` が真である場合、OAuth2 は、REQ-OAUTH2-065 の判定へ進む。
+- 式の参照する属性がないか、属性の型が演算に合わないか、`attributes` が JSON のオブジェクトでないか、キーが重複するか、絶対値が 2 の 53 乗以上の数か有効桁が 15 桁を超える数を含むか、実行の費用が上限を超えるか、保存済みの式をコンパイルできない場合、OAuth2 は、200 と `decision=false`、理由 `condition_indeterminate` を返す。
+- 規則が `condition` を持たないとき、OAuth2 は、`attributes` を読まない。
+- `attributes` が 16 KiB を超える場合、OAuth2 は、400 と `invalid_request` で拒否する。
+- トークンの拒否、送信者の証明の不正、明細の不一致、主体の未解決、関係の不許可で不許可を返すとき、OAuth2 は、条件を評価しない。
+- 条件を評価した評価を記録するとき、OAuth2 は、`ResourceAccessEvaluated` に `conditionVersion`、`conditionOutcome`、`declaredAttributesDigest` を含め、属性の平文を含めない。
+- 管理者が条件を差し替えたとき、OAuth2 は、次の評価から新しい条件を適用し、その版を記録する。
 - REQ-OAUTH2-065 の操作でないものを許可したとき、OAuth2 は、応答と `ResourceAccessEvaluated` に承認の相関を含めない。
 - `token`、`resource_type`、`resource_id`、`relation` のどれかがない場合、OAuth2 は、400 と `invalid_request` で拒否する。
 - クライアントの認証と入力の検査を通る評価を受けたとき、OAuth2 は、テナントと認証したクライアント ID の組ごとに、`resource_access` ポリシーの固定窓の回数を数え、上限までは評価を続ける。
@@ -72,10 +82,35 @@
 - 送信者制約のないトークンの評価で証明を受けたとき、OAuth2 は、証明を検証せず、`jti` を記録しない。
 - **判断**：検証を IdMagic に置く。リソースサーバーの実装漏れが許可へ倒れないようにするためである。mTLS の接続はリソースサーバーが終端するので、拇印は認証済みのリソースサーバーの申告として受ける。
 
+### 条件の評価
+
+規則の `condition` は、[CEL](https://cel.dev/) の真偽式で操作ごとの結果を分ける。
+
+| 変数 | 内容 | 出どころ |
+| --- | --- | --- |
+| `token` | 検証済みのトークンの `sub`、`client_id`、`scope`（文字列のリスト）、`aud`、`iat`、`exp`、`principal_type`、`agent_id`、`agent_chain`、`delegation_mode`。値のないクレームはキーを持たない | IdMagic が検証する |
+| `now` | 評価の時刻の `timestamp` | IdMagic が決める |
+| `operation` | `resource_type`、`resource_id`、`relation` | リソースサーバーの要求。論理積の他の段と同じ値である |
+| `attributes` | 要求の `attributes` の JSON オブジェクト。数は `double` になる | リソースサーバーの申告 |
+
+| `deny_when` | `require_approval_when` | 結果 |
+| --- | --- | --- |
+| 真 | 問わない | 拒否 |
+| 評価不能 | 問わない | 評価不能 |
+| 偽か省略 | 真 | 承認要求 |
+| 偽か省略 | 評価不能 | 評価不能 |
+| 偽か省略 | 偽か省略 | 許可 |
+
+条件の `version` は、`deny_when`、`require_approval_when`、`approval_detail_type` の内容から導く。
+同じ内容は同じ版になるので、監査イベントの版を管理の記録と突き合わせられる。
+
+MCP ゲートウェイは `attributes` を送らないので、ゲートウェイの配下の操作では、`attributes` のキーを読む式は評価不能になる。
+ツール名は `operation.resource_id` で判定できる。
+
 ### 承認した操作の評価
 
-規則の `requires_approved_operation` が真の操作は、人が承認した一回の操作として評価する。
-対象は、承認リクエストの `authorization_details` のうち、`type` が規則の `authorization_detail_type`、`locations` が登録の `resource` を含み、`actions` が `relation` を含み、`identifier` が `resource_id` と等しい明細である。
+規則の `requires_approved_operation` が真の操作と、規則の `condition` が承認を求めた操作は、人が承認した一回の操作として評価する。
+対象は、承認リクエストの `authorization_details` のうち、`type` が規則の `authorization_detail_type`（条件が求めた場合は `approval_detail_type`）、`locations` が登録の `resource` を含み、`actions` が `relation` を含み、`identifier` が `resource_id` と等しい明細である。
 引数は明細の `fields` と比べる。
 承認の使用権はリソースサーバーと `operation_key` の組が得る。
 
@@ -91,18 +126,22 @@ IdMagic は実行の結果を持たず、この冪等性のないリソースサ
 
 #### REQ-OAUTH2-065 承認が必要な操作は承認と同じ対象と引数で一度だけ許可する
 
-- 規則が `requires_approved_operation` を持つ操作で、REQ-OAUTH2-062 の論理積を満たし、トークンの承認リクエストの明細が操作と一致し、`operation_parameters` が明細の `fields` と等しく、使用権が未使用か同じ組のものであるとき、OAuth2 は、200 と `decision=true`、`approved_operation` の `approval_request_id`、`operation_digest`、`replayed` を返し、それらを載せた `ResourceAccessEvaluated` を発行する。
+- 規則が `requires_approved_operation` を持つか条件が承認を求めた操作で、REQ-OAUTH2-062 の論理積を満たし、トークンの承認リクエストの明細が操作と一致し、`operation_parameters` が明細の `fields` と等しく、使用権が未使用か同じ組のものであるとき、OAuth2 は、200 と `decision=true`、`approved_operation` の `approval_request_id`、`operation_digest`、`replayed` を返し、それらを載せた `ResourceAccessEvaluated` を発行する。
 - `operation_parameters` と `fields` を比べるとき、OAuth2 は、キーの順序と空白を無視し、文字列を正規化せず、どちらもないものを等しいものとして扱う。
 - 明細が一致しないか、引数が等しくない場合、OAuth2 は、200 と `decision=false`、理由 `approved_operation_mismatch` を返し、使用権を記録しない。
 - `operation_parameters` が JSON のオブジェクトでないか、キーが重複するか、絶対値が 2 の 53 乗以上の数か有効桁が 15 桁を超える数を含む場合、OAuth2 は、200 と `decision=false`、理由 `approved_operation_mismatch` を返す。
 - 規則の明細を満たすトークンが、CIBA の承認から発行されたものでないか、トークン交換で派生したものである場合、OAuth2 は、200 と `decision=false`、理由 `approval_required` を返す。
+- 条件が承認を求めた操作で、トークンが CIBA の承認から発行されたものでないか、`approval_detail_type` の一致する明細を持たない場合、OAuth2 は、200 と `decision=false`、理由 `approval_required` を返す。
+- 条件が承認を求めなかった操作を許可するとき、OAuth2 は、トークンが持つ承認の使用権を記録しない。
 - 承認リクエストの `expires_at` を過ぎたか、承認リクエストが残っていないか、トークンの主体とクライアントが承認リクエストと異なる場合、OAuth2 は、200 と `decision=false`、理由 `approval_expired` を返す。
 - 別の `operation_key` で使用権が記録済みの場合、OAuth2 は、200 と `decision=false`、理由 `approval_already_used` を返す。
 - 別の `operation_key` の要求が並行した場合、OAuth2 は、ちょうど一方だけを許可する。
 - トークンの拒否、送信者の証明の不正、関係の不許可で不許可を返すとき、OAuth2 は、使用権を記録しない。
-- `operation_key` がないか 256 文字を超えるか制御文字を含むか、`operation_parameters` が 64 KiB を超える場合、OAuth2 は、400 と `invalid_request` で拒否する。
+- `requires_approved_operation` を持つ規則で `operation_key` がないか、`operation_key` が 256 文字を超えるか制御文字を含むか、`operation_parameters` が 64 KiB を超える場合、OAuth2 は、400 と `invalid_request` で拒否する。
+- 条件が承認を求め、トークンが一致する明細の承認を持つ操作で `operation_key` がない場合、OAuth2 は、400 と `invalid_request` で拒否する。
 - 使用権の記録を読み書きできない場合、OAuth2 は、503 と `temporarily_unavailable` を返し、許可しない。
 - **判断**：短い予約と確定を採らない。予約の期限が切れた後の再試行は、結果の不明な一回目と二重に実行され得る。同じ鍵の再送だけを許し、重複の排除をその鍵で資源へ委ねる。
+- **判断**：条件の承認の明細の種類を規則の `authorization_detail_type` と分ける。後者は常にトークンへ求めるので、流用すると閾値以下の自動許可が成り立たない。
 - **判断**：使用の期限をトークンの期限で延ばさない。人が判断した有効期間を超えて操作を実行させないためである。
 
 ## 品質
@@ -111,6 +150,10 @@ IdMagic は実行の結果を持たず、この冪等性のないリソースサ
 処理量の局所測定は [CAP-RESOURCE-ACCESS-THROUGHPUT](../../../requirements/quality.md#リソースアクセス評価の局所測定) に従い、本番のキャパシティ受入れとは区別する。
 
 ## セキュリティ上の考慮
+
+`attributes` はリソースサーバーの申告であり、IdMagic は業務の事実を保証しない。
+申告を偽るリソースサーバーは自身の資源についての条件を回避できるので、条件はリソースサーバーの実装の誤りと Agent の行動を抑えるものであり、リソースサーバー自身を抑えない。
+シークレットの値は `attributes` に入れない。
 
 `fields` は承認の画面に表示し、トークンにも載る。
 シークレットの値は `fields` に入れず、必要なら資源と取り決めた鍵付きハッシュを置く。
@@ -128,4 +171,5 @@ IdMagic は実行の結果を持たず、この冪等性のないリソースサ
 
 OAuth2 が入口と編成を持ち、関係の判定は `accesscontrol/ports.RelationChecker` を通して AccessControl へ委ねる。
 失効の判定は `/introspect` と同じ `AccessTokenIsRevoked` を通す。
+条件はドメインの計算で、式は評価ごとにコンパイルする。
 リソースサーバーとは公開の HTTP 契約だけで結ぶ。参照の実装は `examples/resource-server-pep` にある。

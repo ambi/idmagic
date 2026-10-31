@@ -3,7 +3,9 @@ package usecases
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"net/url"
 	"slices"
@@ -55,6 +57,8 @@ type ResourceAccessRequest struct {
 	CertificateThumbprint string
 	OperationKey          string
 	OperationParameters   string
+	// Attributes はリソースサーバーが申告する条件の入力で、規則が条件を持つときだけ読む。
+	Attributes string
 	// RequestID は応答の X-Request-ID と同じ値で、監査イベントの相関に使う。
 	RequestID string
 }
@@ -103,6 +107,7 @@ func EvaluateResourceAccess(ctx context.Context, deps ResourceAccessDeps, in Res
 		if use := decision.ApprovedOperation; use != nil {
 			event.ApprovalRequestID, event.OperationDigest, event.Replayed = use.ApprovalRequestID, use.OperationDigest, use.Replayed
 		}
+		event.ConditionVersion, event.ConditionOutcome, event.DeclaredAttributesDigest = audit.conditionVersion, string(audit.conditionOutcome), audit.attributesDigest
 		deps.Emit(event)
 	}
 	return decision, nil
@@ -115,6 +120,10 @@ type evaluationAudit struct {
 	userID     string
 	agentID    string
 	actorChain []string
+	// 以下は評価した条件の相関。関係の判定まで届いた評価だけが持つ。
+	conditionVersion string
+	conditionOutcome domain.ConditionOutcome
+	attributesDigest string
 }
 
 func newEvaluationAudit(tokenID string, subject policyports.PrincipalRef, actors []policyports.PrincipalRef) evaluationAudit {
@@ -189,10 +198,38 @@ func evaluateForServer(
 	if !relation.Permitted {
 		return ResourceAccessDecision{Reasons: relation.Reasons}, audit, nil
 	}
-	var approved *ApprovedOperationUse
+	approvalDetailType := ""
 	if rule.RequiresApprovedOperation {
+		approvalDetailType = rule.AuthorizationDetailType
+	}
+	if rule.Condition != nil {
+		attributes, digest := declaredAttributes(in.Attributes)
+		outcome := domain.ConditionIndeterminate
+		if attributes != nil {
+			outcome = rule.Condition.Evaluate(conditionInput(token, in, attributes, now))
+		}
+		audit.conditionVersion, audit.conditionOutcome, audit.attributesDigest = rule.Condition.Version(), outcome, digest
+		switch outcome {
+		case domain.ConditionDeny:
+			return denyResourceAccess(domain.ReasonConditionDenied), audit, nil
+		case domain.ConditionIndeterminate:
+			return denyResourceAccess(domain.ReasonConditionIndeterminate), audit, nil
+		case domain.ConditionRequireApproval:
+			approvalDetailType = rule.Condition.ApprovalDetailType
+			detail := domain.ResourceAccessRule{AuthorizationDetailType: approvalDetailType, Relation: in.Relation}
+			if token.ApprovalRequestID == "" || !detail.PermitsDetails(token.AuthorizationDetails, server.Resource, in.ResourceID) {
+				return denyResourceAccess(domain.ReasonApprovalRequired), audit, nil
+			}
+			// 規則だけでは鍵が要るか決まらないので、承認の経路へ進むときに確かめる。
+			if in.OperationKey == "" {
+				return ResourceAccessDecision{}, audit, ErrOperationKeyRequired
+			}
+		}
+	}
+	var approved *ApprovedOperationUse
+	if approvalDetailType != "" {
 		// 使用権は最後に得る。ほかの理由で不許可の要求に承認を消費させない。
-		use, reason, err := claimApprovedOperation(ctx, deps, server, rule, token, in, now)
+		use, reason, err := claimApprovedOperation(ctx, deps, server, approvalDetailType, token, in, now)
 		if err != nil {
 			return ResourceAccessDecision{}, audit, err
 		}
@@ -215,7 +252,7 @@ func evaluateForServer(
 // claimApprovedOperation は実際の操作を承認と照合し、一致すれば使用権を得る (REQ-OAUTH2-065)。
 // 同じ鍵の再送は、結果の不明な要求を資源の冪等性へ委ねるために許可する。
 func claimApprovedOperation(
-	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, rule domain.ResourceAccessRule,
+	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, detailType string,
 	token *ports.IntrospectionResult, in ResourceAccessRequest, now time.Time,
 ) (*ApprovedOperationUse, string, error) {
 	if deps.Approvals == nil {
@@ -236,7 +273,7 @@ func claimApprovedOperation(
 		return nil, domain.ReasonApprovedOperationMismatch, nil //nolint:nilerr // 比較できない引数は評価不能ではなく不一致である。
 	}
 	switch approvaldomain.MatchApprovedOperation(rec, approvaldomain.OperationBinding{
-		DetailType: rule.AuthorizationDetailType, Location: server.Resource, Action: in.Relation, Identifier: in.ResourceID,
+		DetailType: detailType, Location: server.Resource, Action: in.Relation, Identifier: in.ResourceID,
 	}, digest, now) {
 	case approvaldomain.ApprovedOperationExpired:
 		return nil, domain.ReasonApprovalExpired, nil
@@ -255,6 +292,45 @@ func claimApprovedOperation(
 		return nil, domain.ReasonApprovalAlreadyUsed, nil
 	}
 	return &ApprovedOperationUse{ApprovalRequestID: rec.ID, OperationDigest: digest, Replayed: !recorded}, "", nil
+}
+
+// declaredAttributes は申告を読み、監査のダイジェストとともに返す。読めない申告は nil で、
+// 平文を残さずに試行を突き合わせられるよう生の文字列のダイジェストを返す。
+func declaredAttributes(raw string) (map[string]any, string) {
+	attributes, err := approvaldomain.DecodeStrictJSONObject(raw)
+	if err != nil {
+		sum := sha256.Sum256([]byte(raw))
+		return nil, hex.EncodeToString(sum[:])
+	}
+	digest, err := approvaldomain.DigestOperationFields(attributes)
+	if err != nil {
+		return nil, ""
+	}
+	return attributes, digest
+}
+
+// conditionInput は式へ渡す値を作る。値のないクレームはキーを持たず、式が has で区別する。
+func conditionInput(token *ports.IntrospectionResult, in ResourceAccessRequest, attributes map[string]any, now time.Time) domain.ConditionInput {
+	claims := map[string]any{
+		"scope": strings.Fields(token.Scope), "aud": token.Aud, "iat": token.Iat, "exp": token.Exp,
+		"delegation_mode": string(domain.DeriveDelegationMode(domain.DelegationSubject{
+			Sub: token.Sub, ClientID: token.ClientID, PrincipalType: token.PrincipalType, Act: token.Act,
+		})),
+	}
+	for key, value := range map[string]string{
+		"sub": token.Sub, "client_id": token.ClientID, "principal_type": token.PrincipalType, "agent_id": token.AgentID,
+	} {
+		if value != "" {
+			claims[key] = value
+		}
+	}
+	if len(token.AgentChain) > 0 {
+		claims["agent_chain"] = token.AgentChain
+	}
+	return domain.ConditionInput{
+		Token: claims, Now: now, Attributes: attributes,
+		Operation: map[string]any{"resource_type": in.ResourceType, "resource_id": in.ResourceID, "relation": in.Relation},
+	}
 }
 
 func denyResourceAccess(reason string) ResourceAccessDecision {

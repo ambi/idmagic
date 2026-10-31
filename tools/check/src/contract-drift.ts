@@ -387,7 +387,10 @@ function compareRequestObject(
   if (seen.has(`${structName}@${prefix}`)) return
   seen.add(`${structName}@${prefix}`)
 
-  const declared = Object.keys(schema?.properties ?? {})
+  // A readOnly property exists only in responses (OpenAPI 3.1 Schema Object), so no request decodes it.
+  const declared = Object.entries(schema?.properties ?? {})
+    .filter(([, property]) => (property as { readOnly?: boolean }).readOnly !== true)
+    .map(([name]) => name)
   const fields = structFields.get(structName)
   if (!fields) return
   const at = prefix === '' ? '' : ` at ${prefix}`

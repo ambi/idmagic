@@ -59,23 +59,32 @@ func HashOperationKey(resourceServerClientID, operationKey string) string {
 // object. Duplicate keys and numbers a float64 would round are refused: approved values are
 // decoded as float64, so a rounded number could match an amount the human never saw.
 func CanonicalizeOperationParameters(raw string) (string, error) {
+	fields, err := DecodeStrictJSONObject(raw)
+	if err != nil {
+		return "", err
+	}
+	return DigestOperationFields(fields)
+}
+
+// DecodeStrictJSONObject reads a JSON object under the same refusals. An empty input is an empty object.
+func DecodeStrictJSONObject(raw string) (map[string]any, error) {
 	if strings.TrimSpace(raw) == "" {
-		return DigestOperationFields(nil)
+		return map[string]any{}, nil
 	}
 	decoder := json.NewDecoder(strings.NewReader(raw))
 	decoder.UseNumber()
 	value, err := decodeStrictJSON(decoder)
 	if err != nil {
-		return "", ErrInvalidOperationParameters
+		return nil, ErrInvalidOperationParameters
 	}
 	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
-		return "", ErrInvalidOperationParameters
+		return nil, ErrInvalidOperationParameters
 	}
 	fields, ok := value.(map[string]any)
 	if !ok {
-		return "", ErrInvalidOperationParameters
+		return nil, ErrInvalidOperationParameters
 	}
-	return DigestOperationFields(fields)
+	return fields, nil
 }
 
 func decodeStrictJSON(decoder *json.Decoder) (any, error) {

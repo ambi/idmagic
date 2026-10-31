@@ -31,6 +31,9 @@ type Operation struct {
 	// built from the values the handler will actually use, not copied from the approval.
 	Key        string
 	Parameters string
+	// Attributes is a JSON object of business facts a rule's condition reads. IdMagic treats
+	// it as this server's declaration, so build it from the values the handler will use.
+	Attributes string
 }
 
 // ApprovedOperation correlates a permitted use with the human approval. Store it with the
@@ -81,6 +84,9 @@ func (e Enforcer) Evaluate(ctx context.Context, r *http.Request, op Operation) (
 	}
 	if op.Parameters != "" {
 		form.Set("operation_parameters", op.Parameters)
+	}
+	if op.Attributes != "" {
+		form.Set("attributes", op.Attributes)
 	}
 	if proof := r.Header.Get("DPoP"); proof != "" {
 		form.Set("dpop_proof", proof)

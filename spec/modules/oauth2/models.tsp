@@ -1162,6 +1162,8 @@ model ResourceAccessEvaluationRequest {
   operation_key?: string;
   @doc("実行しようとする引数の JSON オブジェクトを表す文字列。承認した明細の `fields` と比べる。")
   operation_parameters?: string;
+  @doc("規則の `condition` が `attributes` として読む JSON オブジェクトを表す文字列。リソースサーバーの申告であり、IdMagic は業務の事実を保証しない。16 KiB まで。")
+  attributes?: string;
 }
 
 
@@ -1190,6 +1192,22 @@ model ResourceAccessEvaluationResponse {
 }
 
 
+@doc("操作ごとに結果を分ける CEL の条件。式は `token`、`now`、`operation`、`attributes` を読み、真偽値を返す。少なくとも一方の式を持つ。")
+model ResourceAccessCondition {
+  @doc("真なら拒否する。`require_approval_when` より優先する。")
+  @maxLength(1024)
+  deny_when?: string;
+  @doc("真なら人の承認を求める。`approval_detail_type` を必須とする。")
+  @maxLength(1024)
+  require_approval_when?: string;
+  @doc("承認を求めるとき、承認リクエストの明細に求める `type`。")
+  approval_detail_type?: string;
+  @doc("条件の内容から導いた SHA-256 の 16 進表現。リクエストでは読まない。")
+  @visibility(Lifecycle.Read)
+  version?: string;
+}
+
+
 @doc("リソースサーバーが評価を求められる操作の規則。登録にない操作は不許可になる。")
 model ResourceAccessRule {
   @pattern("^[a-z][a-z0-9_]*$")
@@ -1205,6 +1223,8 @@ model ResourceAccessRule {
   authorization_detail_type?: string;
   @doc("真のとき、人が承認した一回の操作だけを許可する。`authorization_detail_type` を必須とする。")
   requires_approved_operation?: boolean;
+  @doc("指定すると、ほかの制約を満たす操作に条件を適用する。`require_approval_when` は `requires_approved_operation` と併用できない。")
+  condition?: ResourceAccessCondition;
 }
 
 
@@ -1733,6 +1753,12 @@ model ResourceAccessEvaluated {
   @doc("正規化した引数の SHA-256 の 16 進表現。")
   operationDigest?: string;
   replayed?: boolean;
+  @doc("評価した条件の版。")
+  conditionVersion?: string;
+  @doc("条件の結果。")
+  conditionOutcome?: "allow" | "deny" | "require_approval" | "indeterminate";
+  @doc("リソースサーバーが申告した `attributes` の SHA-256 の 16 進表現。読めない申告は生の文字列の値である。平文は残さない。")
+  declaredAttributesDigest?: string;
 }
 
 

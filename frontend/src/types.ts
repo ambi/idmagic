@@ -589,12 +589,20 @@ export type AuthorizationDetailType = {
   updated_at: string
 }
 
+export type ResourceAccessCondition = {
+  deny_when?: string
+  require_approval_when?: string
+  approval_detail_type?: string
+  version?: string
+}
+
 export type ResourceAccessRule = {
   resource_type: string
   relation: string
   scopes: string[]
   authorization_detail_type?: string
   requires_approved_operation?: boolean
+  condition?: ResourceAccessCondition
 }
 
 export type McpResourceServer = {

@@ -38,6 +38,7 @@ type approvedOperationResponse struct {
 const (
 	maxOperationKeyLength        = 256
 	maxOperationParametersLength = 64 << 10
+	maxAttributesLength          = 16 << 10
 )
 
 // validOperationInput は REQ-OAUTH2-065 の形だけを確かめる。鍵を要求するかは規則が決めるので、
@@ -63,11 +64,16 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 		DPoPProof: form("dpop_proof"), HTM: form("htm"), HTU: form("htu"),
 		CertificateThumbprint: form("client_certificate_thumbprint"),
 		OperationKey:          form("operation_key"), OperationParameters: form("operation_parameters"),
-		RequestID: logging.RequestIDFromContext(c.Request().Context()),
+		Attributes: form("attributes"),
+		RequestID:  logging.RequestIDFromContext(c.Request().Context()),
 	}
 	if !validOperationInput(in.OperationKey, in.OperationParameters) {
 		return support.NoStoreJSON(c, http.StatusBadRequest,
 			support.OAuthErrorBody("invalid_request", "operation_key or operation_parameters is not acceptable"))
+	}
+	if len(in.Attributes) > maxAttributesLength {
+		return support.NoStoreJSON(c, http.StatusBadRequest,
+			support.OAuthErrorBody("invalid_request", "attributes is not acceptable"))
 	}
 	if in.Token == "" || in.ResourceType == "" || in.ResourceID == "" || in.Relation == "" {
 		return support.NoStoreJSON(c, http.StatusBadRequest,
