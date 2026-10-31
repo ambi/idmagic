@@ -119,7 +119,7 @@ describe('CI の全体結果', () => {
       expect(workflow.on[event]?.paths).toBeUndefined()
       expect(workflow.on[event]?.['paths-ignore']).toBeUndefined()
     }
-    for (const job of ['sast', 'dependency-audit']) {
+    for (const job of ['dependency-audit']) {
       expect(workflow.jobs[job]!.if).toBeUndefined()
       expect(workflow.jobs[job]!.needs).toBeUndefined()
     }

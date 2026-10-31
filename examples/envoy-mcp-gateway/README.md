@@ -3,6 +3,7 @@
 既存の Envoy を執行の位置にし、`idmagic-mcp-gateway` を HTTP 版の `ext_authz` の判定の入口として使う設定例である。
 振る舞いの仕様は [REQ-MCPGATEWAY-007](../../docs/modules/mcp-gateway/features/runtime.md#req-mcpgateway-007-envoy-の-ext_authz-の入口は判定だけを返し設定例は失敗時に通さない) が定める。
 `mise run test-envoy-mcp-gateway` は、実在の Envoy でこの [`envoy.yaml`](envoy.yaml) そのものを試験する。
+CI では毎日の定期実行で動くので、設定例を変えたら手元でも実行する。
 
 ## 手順
 

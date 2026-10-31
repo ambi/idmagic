@@ -4,6 +4,7 @@
 
 push と Pull Request で実行するジョブと検査の一次情報は [`.github/workflows/idmagic-ci.yaml`](../../.github/workflows/idmagic-ci.yaml) である。
 main に対する Go race 検査の定期実行の一次情報は [`.github/workflows/idmagic-race.yaml`](../../.github/workflows/idmagic-race.yaml) である。
+実在の Envoy の試験と CodeQL の定期実行の一次情報は [`.github/workflows/idmagic-scheduled.yaml`](../../.github/workflows/idmagic-scheduled.yaml) である。
 
 ## CI で検証するもの
 
@@ -48,6 +49,12 @@ data race の自動検査は、main の全体を `mise run test-go-race` で検�
 実行は毎日一回（UTC 18:17）と手動の起動（`workflow_dispatch`）で、実行履歴や経過日数による切り替えは行わない。
 構成は Go 全体テストと同じく DB を必須にし、検証の証拠を失敗時も artifact として残す。
 通常テストの成功は data race を検査した証拠にはしない。
+
+実在の Envoy の試験（`mise run test-envoy-mcp-gateway`）と CodeQL は、毎日一回（UTC 18:47）と手動の起動で実行する。
+どちらも時間に比べて日常の変更で結果が変わりにくいためである。
+Envoy の設定例の迂回につながる誤りは、通常テストの `TestEnvoyExampleDoesNotAllowABypass` が毎回検出する。
+CodeQL の新たな警告と Envoy の更新や設定例の変更による破損は、取り込みの後、次の定期実行で分かる。
+設定例か `backend/mcpgateway/` を変えるときは、手元で `mise run test-envoy-mcp-gateway` を実行する。
 
 定期実行が失敗すると、GitHub は cron を最後に変更した利用者へ通知する。
 data race は実行のたびに現れるとは限らないので、次の順で原因を探す。
