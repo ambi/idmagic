@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, mock } from 'bun:test'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminUserDetailPage } from './AdminUserDetailPage'
 import { adminUsersDictionary } from './AdminUsersPage.i18n'
@@ -37,6 +37,40 @@ const user: AdminUser = {
 
 describe('AdminUserDetailPage', () => {
   afterEach(() => restoreGlobals())
+
+  //spec:covers REQ-AUTHENTICATION-022: リセットで既存のトークンが失効しても成功結果を表示すること
+  it('リセット成功後は失効したトークンで再取得せず応答から状態を更新する', async () => {
+    const fetcher = mock((url: string) => {
+      if (url.endsWith('/authenticator-reset')) {
+        return Promise.resolve(response(200, { mfa_enrolled: false, reenrollment_required: true }))
+      }
+      if (url.includes('/groups')) {
+        return Promise.resolve(
+          response(200, { groups: [], group_roles: [], effective_roles: user.roles }),
+        )
+      }
+      if (url.includes('/sessions')) return Promise.resolve(response(200, { sessions: [] }))
+      return Promise.resolve(response(401, { error: 'invalid_token' }))
+    })
+    stubGlobal('fetch', fetcher)
+    await renderWithRouter(
+      <AdminUserDetailPage
+        csrfToken="csrf"
+        user={{ ...user, mfa_enrolled: true }}
+        schema={emptySchema}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: t.userActionsAriaLabel }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: t.resetAuthenticators }))
+    fireEvent.click(screen.getByRole('checkbox', { name: t.resetTargetTotp }))
+    fireEvent.click(screen.getByRole('button', { name: t.resetConfirm }))
+    expect(await screen.findByText(t.authenticatorResetReenrollmentNotice)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: t.userActionsAriaLabel }))
+    expect(
+      await screen.findByRole('menuitem', { name: t.issueMfaEnrollmentBypass }),
+    ).toBeInTheDocument()
+    expect(fetcher.mock.calls.some(([url]) => url.endsWith('/users/user-1'))).toBe(false)
+  })
 
   it('is fully read-only: no group/required-action/session edit controls (policy)', async () => {
     stubGlobal(

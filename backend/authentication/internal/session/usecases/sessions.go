@@ -107,7 +107,7 @@ func RevokeOwnSession(
 		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
 			return err
 		}
-		emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, now)
+		emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, false, now)
 	}
 	return nil
 }
@@ -138,7 +138,7 @@ func RevokeOtherSessions(
 		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
 			return nil, err
 		}
-		emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, now)
+		emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, false, now)
 		revokedIDs = append(revokedIDs, sess.ID)
 	}
 	return revokedIDs, nil
@@ -205,7 +205,7 @@ func AdminRevokeSession(
 		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
 			return err
 		}
-		emitSessionEnded(deps.Emit, sess, actorUserID, spec.SessionEndAdminRevoke, now)
+		emitSessionEnded(deps.Emit, sess, actorUserID, spec.SessionEndAdminRevoke, false, now)
 	}
 	return nil
 }
@@ -232,7 +232,7 @@ func AdminRevokeUserSessions(
 		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
 			return nil, err
 		}
-		emitSessionEnded(deps.Emit, sess, actorUserID, spec.SessionEndAdminRevoke, now)
+		emitSessionEnded(deps.Emit, sess, actorUserID, spec.SessionEndAdminRevoke, true, now)
 		revokedIDs = append(revokedIDs, sess.ID)
 	}
 	return revokedIDs, nil
@@ -266,7 +266,7 @@ func EndSession(
 	if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
 		return err
 	}
-	emitSessionEnded(deps.Emit, sess, sess.UserID, spec.SessionEndLogout, now)
+	emitSessionEnded(deps.Emit, sess, sess.UserID, spec.SessionEndLogout, false, now)
 	return nil
 }
 
@@ -275,6 +275,7 @@ func emitSessionEnded(
 	sess *domain.LoginSession,
 	actorUserID string,
 	reason spec.SessionEndReason,
+	allSessions bool,
 	now time.Time,
 ) {
 	if emit == nil {
@@ -282,7 +283,7 @@ func emitSessionEnded(
 	}
 	emit(&authdomain.SessionEnded{
 		At: authusecases.NormalizedNow(now), TenantID: sess.TenantID, UserID: sess.UserID,
-		SessionID: sess.ID, ActorUserID: actorUserID, Reason: reason,
+		SessionID: sess.ID, ActorUserID: actorUserID, Reason: reason, AllSessions: allSessions,
 	})
 }
 

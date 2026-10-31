@@ -6,6 +6,7 @@ import {
   confirmTotpEnrollment,
   generateRecoveryCodes,
   isStepUpRequired,
+  listAccountSessions,
   registerPasskey,
   removePasskey,
   removeTotpFactor,
@@ -17,7 +18,7 @@ import {
   startStepUp,
   startTotpEnrollment,
 } from './account'
-import { AuthenticationAPIError } from './core'
+import { AuthenticationAPIError, setBearerTokenProvider } from './core'
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
@@ -47,7 +48,36 @@ const passkey = (kind: 'assertion' | 'registration') => ({
 
 describe('account API client', () => {
   beforeEach(() => stubGlobal('fetch', mock().mockResolvedValue(response(204))))
-  afterEach(() => restoreGlobals())
+  afterEach(() => {
+    setBearerTokenProvider(() => null)
+    restoreGlobals()
+  })
+
+  //spec:covers REQ-AUTHENTICATION-013: 一覧と失効が同じブラウザーセッションを見ること
+  it('セッション一覧は Bearer があっても失効操作と同じ Cookie 認証を使う', async () => {
+    setBearerTokenProvider(() => 'portal-token')
+    const sessions = [
+      {
+        id: 'current',
+        current: true,
+        amr: ['pwd'],
+        acr: 'urn:idmagic:acr:password',
+        started_at: '2026-10-31T00:00:00Z',
+        expires_at: '2026-10-31T01:00:00Z',
+      },
+    ]
+    const fetcher = mock((_url: RequestInfo | URL, _options?: RequestInit) =>
+      Promise.resolve(response(200, { sessions })),
+    )
+    stubGlobal('fetch', fetcher)
+    expect(await listAccountSessions()).toEqual(sessions)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/account/v1/sessions'),
+      expect.objectContaining({ credentials: 'same-origin', cache: 'no-store' }),
+    )
+    const options = fetcher.mock.calls[0]?.[1]
+    expect(new Headers(options?.headers).has('Authorization')).toBe(false)
+  })
 
   it('sends protected no-content account operations to their endpoint', async () => {
     await requestEmailChange('csrf', 'new@example.com')

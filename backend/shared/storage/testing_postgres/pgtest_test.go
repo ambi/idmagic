@@ -31,6 +31,9 @@ func TestRequireUnavailable(t *testing.T) {
 			// fixture の Main はランタイムディレクトリを作れず、Pool が nil になる。
 			// 子は結果キャッシュを有効にして、許可の変更が鍵に入ることも観測する。
 			cmd := exec.CommandContext(t.Context(), "go", "test", "-v", "./testdata/unavailable")
+			// 子はキャッシュそのものを検査する。CI の -count=1 や計測用のフラグを
+			// 継承すると前提が崩れるので、この子だけ標準の Go フラグに固定する。
+			cmd.Env = append(os.Environ(), "GOFLAGS=")
 			output, err := cmd.CombinedOutput()
 			if (err != nil) != tc.wantFailed {
 				t.Fatalf("go test error = %v, want failure = %v\n%s", err, tc.wantFailed, output)

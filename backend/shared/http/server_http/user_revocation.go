@@ -22,6 +22,9 @@ type userRevoker interface {
 func userRevocationFor(event spec.DomainEvent) (ssdomain.UserRevocation, bool) {
 	switch e := event.(type) {
 	case *authdomain.SessionEnded:
+		if (e.Reason == spec.SessionEndSelfRevoke || e.Reason == spec.SessionEndAdminRevoke) && !e.AllSessions {
+			return ssdomain.UserRevocation{}, false
+		}
 		initiator := ssdomain.InitiatingEntityAdmin
 		if e.ActorUserID == e.UserID {
 			initiator = ssdomain.InitiatingEntityUser

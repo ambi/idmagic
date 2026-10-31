@@ -1166,7 +1166,7 @@ model TrustedDeviceRevoked {
 }
 
 
-@doc("LoginSession が終わった。ユーザーまたは管理者が明示的に失効させたときは、`actorUserId` は操作した者で、`reason` は `self_revoke` または `admin_revoke` である。`sessionId` は OIDC の `sid` に等しく、OAuth2 の境界づけられたコンテキストはこれをキーに、`RefreshTokenRecord.sid` が一致するリフレッシュトークンのファミリーを失効させ、登録済みの Relying Party へフロントチャネルとバックチャネルのログアウトで通知する。アクセストークンそのものはこのイベントでは即座に失効させず、短い TTL に任せる。")
+@doc("LoginSession が終わった。ユーザーまたは管理者が明示的に失効させたときは、`actorUserId` は操作した者で、`reason` は `self_revoke` または `admin_revoke` である。`sessionId` は OIDC の `sid` に等しく、OAuth2 はこれをキーに、`RefreshTokenRecord.sid` が一致するリフレッシュトークンのファミリーを失効させ、登録済みの Relying Party へフロントチャネルとバックチャネルのログアウトで通知する。個別失効のアクセストークンは短い TTL に任せる。管理者の全失効では `allSessions=true` を持ち、SharedSignals が User 全体の失効エポックを進め、発行済みのトークンも無効にする。")
 model SessionEnded {
   occurredAt: utcDateTime;
   @doc("対象のユーザーが属するテナント。")
@@ -1176,6 +1176,8 @@ model SessionEnded {
   @doc("失効を行った者の `sub`。自身による失効ではユーザー本人である。")
   actorUserId: string;
   reason: SessionEndReason;
+  @doc("管理者による全セッションの失効だけ true。reason が self_revoke または admin_revoke の場合、省略は個別の失効を表し、User 全体の失効エポックを進めない。資格情報の変更による全体失効は reason から判断する。")
+  allSessions?: boolean;
 }
 
 

@@ -4,6 +4,7 @@ package usecases_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
 	"testing"
@@ -213,6 +214,7 @@ func TestAdminRevokeSessionRejectsSessionOfOtherUser(t *testing.T) {
 	if !ok || ended.ActorUserID != "admin-1" {
 		t.Fatalf("ActorUserID should be the admin, got %#v", events[0])
 	}
+	assertSessionEndScopeJSON(t, events[0], false)
 	// 失効の理由は行に残る。本人による失効と管理者による失効を後から区別できるのは
 	// この値だけなので、失効したことと併せて読む。
 	revoked, err := store.FindOwned(ctx, "s1", "alice")
@@ -233,7 +235,10 @@ func TestAdminRevokeUserSessionsRevokesAllWithNoExclusion(t *testing.T) {
 	seedSession(t, store, "s2", "alice", base.Add(time.Minute))
 	seedSession(t, store, "s3", "bob", base)
 
-	revokedIDs, err := usecases.AdminRevokeUserSessions(ctx, usecases.SessionDeps{Store: store}, "admin-1", "alice", base)
+	var events []spec.DomainEvent
+	revokedIDs, err := usecases.AdminRevokeUserSessions(ctx, usecases.SessionDeps{
+		Store: store, Emit: func(event spec.DomainEvent) { events = append(events, event) },
+	}, "admin-1", "alice", base)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,6 +251,28 @@ func TestAdminRevokeUserSessionsRevokesAllWithNoExclusion(t *testing.T) {
 	}
 	if sess, _ := store.Find(ctx, "s3"); sess == nil {
 		t.Fatal("bob's session must not be revoked")
+	}
+	if len(events) != 2 {
+		t.Fatalf("events=%d, want 2", len(events))
+	}
+	for _, event := range events {
+		assertSessionEndScopeJSON(t, event, true)
+	}
+}
+
+func assertSessionEndScopeJSON(t *testing.T, event spec.DomainEvent, all bool) {
+	t.Helper()
+	raw, err := json.Marshal(event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatal(err)
+	}
+	value, present := payload["allSessions"]
+	if present != all || (all && string(value) != "true") {
+		t.Fatalf("allSessions=%s present=%v, want true only for all-session revocation=%v", value, present, all)
 	}
 }
 

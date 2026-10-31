@@ -177,7 +177,8 @@ export function AdminUserDetailPage({
     try {
       const result = await resetUserAuthenticators(csrfToken, user.id, targets)
       setShowResetAuthenticators(false)
-      await reload()
+      // 自身のリセットでは既存トークンも失効するため、成功応答から状態を更新する。
+      setUser((current) => ({ ...current, mfa_enrolled: result.mfa_enrolled }))
       setNotice(
         result.reenrollment_required
           ? t.authenticatorResetReenrollmentNotice

@@ -5,6 +5,7 @@ package server_http_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -133,5 +134,60 @@ func TestDeletedUserTokenIsInactive(t *testing.T) {
 	}
 	if active := s.Introspect(t, "default", token)["active"]; active != false {
 		t.Fatalf("active=%v", active)
+	}
+}
+
+//spec:covers REQ-AUTHENTICATION-013: 個別失効で対象以外のセッションとトークンを維持すること
+//spec:covers REQ-AUTHENTICATION-021: 管理者の個別失効も User 全体へ広げないこと
+//spec:covers REQ-SHAREDSIGNALS-012: 個別失効では User のエポックを進めないこと
+func TestIndividualSessionRevocationKeepsOtherUserTokens(t *testing.T) {
+	for _, admin := range []bool{false, true} {
+		t.Run(fmt.Sprintf("admin=%v", admin), func(t *testing.T) {
+			s := newUserRevocationStack(t)
+			current := signedInBrowser(t, s)
+			target := signedInBrowser(t, s)
+			token := userToken(t, s)
+			seedUserRefreshToken(t, s, time.Now().UTC().Add(-time.Minute))
+			ctx := s.RealmContext(t, "default")
+			original, err := s.Refresh.FindByHash(ctx, oauthdomain.HashRefreshToken(userRevocationRefreshToken))
+			if err != nil || original == nil {
+				t.Fatalf("refresh fixture: %v", err)
+			}
+			for _, browser := range []*stack.Browser{current, target} {
+				sid := browser.SessionCookie(t)
+				record := *original
+				record.ID, record.FamilyID, record.Hash, record.Sid = sid, sid, oauthdomain.HashRefreshToken(sid), &sid
+				if err := s.Refresh.Save(ctx, &record); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var status int
+			if admin {
+				adminToken, _ := s.IssueApiToken(t, "default", apitokendomain.ScopeSessionsWrite)
+				recorder := adminUserRequest(t, s, adminToken, http.MethodPost, "/api/admin/v1/users/"+stack.UserID+"/sessions/"+target.SessionCookie(t)+"/revoke")
+				status = recorder.Code
+			} else {
+				_, account := current.Get(t, "/api/auth/account")
+				status, _ = current.PostRawJSON(t, "/api/account/v1/sessions/"+target.SessionCookie(t)+"/revoke", account["csrf_token"].(string), "{}")
+			}
+			if status != http.StatusNoContent {
+				t.Fatalf("revoke status=%d", status)
+			}
+			if status, _ := current.Get(t, "/api/auth/account"); status != http.StatusOK {
+				t.Fatalf("現在のセッション status=%d, want 200", status)
+			}
+			if status, _ := target.Get(t, "/api/auth/account"); status != http.StatusUnauthorized {
+				t.Fatalf("失効したセッション status=%d, want 401", status)
+			}
+			if active := s.Introspect(t, "default", token)["active"]; active != true {
+				t.Fatalf("別セッションの token active=%v, want true", active)
+			}
+			for _, browser := range []*stack.Browser{current, target} {
+				record, err := s.Refresh.FindByHash(ctx, oauthdomain.HashRefreshToken(browser.SessionCookie(t)))
+				if err != nil || record == nil || record.Revoked != (browser == target) {
+					t.Fatalf("refresh target=%v record=%+v err=%v", browser == target, record, err)
+				}
+			}
+		})
 	}
 }

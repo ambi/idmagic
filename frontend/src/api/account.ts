@@ -147,7 +147,13 @@ export async function getSignInActivity(): Promise<AccountSignInActivity[]> {
 }
 
 export async function listAccountSessions(): Promise<AccountSession[]> {
-  return (await request<{ sessions: AccountSession[] }>('/api/account/v1/sessions')).sessions
+  // 一覧の current と失効操作が同じ Cookie セッションを参照するよう、Bearer を付けない。
+  const response = await fetch(tenantURL('/api/account/v1/sessions'), {
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+  if (!response.ok) throw await responseAPIError(response)
+  return ((await response.json()) as { sessions: AccountSession[] }).sessions
 }
 
 export async function revokeAccountSession(csrfToken: string, id: string): Promise<void> {

@@ -262,6 +262,7 @@ type SessionEnded struct {
 	SessionID   string                `json:"sessionId"`
 	ActorUserID string                `json:"actorUserId"`
 	Reason      spec.SessionEndReason `json:"reason"`
+	AllSessions bool                  `json:"allSessions,omitempty"`
 }
 
 func (e *SessionEnded) EventType() string     { return "SessionEnded" }

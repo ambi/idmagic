@@ -45,7 +45,8 @@
 
 #### REQ-SHAREDSIGNALS-012 User の失効は発行済みのトークンを即時に無効にして外部へ伝える
 
-- User を無効化するか論理削除したか、本人か管理者がセッションを失効させたか、パスワードか MFA の資格情報が変わったか、リフレッシュトークンの再利用を検出したとき、SharedSignals は、その User の失効エポックを現在時刻へ進め、`UserAccessRevoked` を発行し、購読する送信側のストリームへ `session-revoked` の配送を作る。
+- User を無効化するか論理削除したか、管理者がその User の全セッションを失効させたか、パスワードか MFA の資格情報が変わったか、リフレッシュトークンの再利用を検出したとき、SharedSignals は、その User の失効エポックを現在時刻へ進め、`UserAccessRevoked` を発行し、購読する送信側のストリームへ `session-revoked` の配送を作る。
+- 本人か管理者がセッションを個別に失効させたか、本人が現在以外のセッションを一括で失効させたとき、SharedSignals は、User の失効エポックを進めず、User 全体の配送を作らない。
 - User を物理削除したとき、SharedSignals は、エポックを記録せずに `UserAccessRevoked` を発行し、配送を作る。
 - 発行時刻が User の失効エポックより前のアクセストークンのイントロスペクションを受けたとき、SharedSignals は、トークンを `active=false` として判定させる。
 - User を再び有効にしたとき、SharedSignals は、エポックを戻さず、以前のトークンを無効のままにさせる。

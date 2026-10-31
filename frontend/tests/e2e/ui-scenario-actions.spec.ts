@@ -416,7 +416,6 @@ test('account session list can revoke a different browser session', async () => 
         // 消えていることを確かめ、失効が実際に保存されたことまで観測する。
         await currentSession.navigate(`${uiOrigin}/account/activity`)
         await waitForPage(currentSession, 'account-activity')
-        await waitForText(currentSession, 'End other sessions')
         const reloadedRowExists = Boolean(
           await currentSession.evaluate(`(() => [...document.querySelectorAll('[data-session-id]')]
             .some((row) => row.getAttribute('data-session-id') === ${JSON.stringify(revokedSessionID)}))()`),
