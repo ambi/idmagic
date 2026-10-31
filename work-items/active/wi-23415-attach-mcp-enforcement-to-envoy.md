@@ -10,7 +10,7 @@ affected_spec:
   - { path: docs/modules/oauth2/features/resource-access.md, requirement: REQ-OAUTH2-062 }
 ---
 
-# MCP のMCP ゲートウェイを Envoy へ接続する
+# MCP ゲートウェイを Envoy へ接続する
 
 ## 動機
 

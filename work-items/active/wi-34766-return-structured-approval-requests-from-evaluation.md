@@ -4,7 +4,7 @@ authors: [tn]
 risk: medium
 created_at: 2026-10-31
 priority: p2
-depends_on: []
+depends_on: [wi-83492-decide-approved-operations-through-the-mcp-gateway]
 change_kind: feature
 affected_spec:
   - { path: docs/modules/oauth2/features/resource-access.md, requirement: REQ-OAUTH2-065 }
@@ -46,7 +46,7 @@ MCP クライアントへの伝え方は、ツールのエラー結果か elicit
 - [ ] T001 [Design] 応答の形と MCP での伝え方を確定する。
 - [ ] T002 [Spec] REQ-OAUTH2-065 と TypeSpec を更新する。
 - [ ] T003 [Acceptance] 不許可から実行までの RED を観測する。
-- [ ] T004 [App] 評価とMCP ゲートウェイを実装する。
+- [ ] T004 [App] 評価と MCP ゲートウェイを実装する。
 - [ ] T005 [Verify] 引数の変更、期限切れ、並行の要求を検証する。
 
 ## 検証

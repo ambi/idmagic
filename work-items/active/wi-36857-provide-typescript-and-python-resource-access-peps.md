@@ -14,7 +14,7 @@ spec_impact: { kind: none, reason: "`EvaluateResourceAccess` の公開契約を�
 ## 動機
 
 参照 PEP は Go だけだが、MCP サーバーは TypeScript と Python で書かれることが多い。
-無改修のMCP ゲートウェイを置けない環境でも、組み込みで評価を使えるようにする。
+無改修の MCP ゲートウェイを置けない環境でも、組み込みで評価を使えるようにする。
 
 ## 対象範囲
 
