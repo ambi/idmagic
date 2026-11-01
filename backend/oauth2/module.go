@@ -92,6 +92,6 @@ func (m Module) SessionTokenRevoker() tokenusecases.SessionTokenRevoker {
 // ClientAdministration は、ほかのモジュールの管理画面が使うクライアントの管理操作を返す。
 func (m Module) ClientAdministration(emit func(spec.DomainEvent), quota tenantports.QuotaRepository) clientports.ClientAdministration {
 	return clientusecases.ClientAdministration{Deps: clientusecases.AdminOAuth2ClientDeps{
-		ClientRepo: m.ClientRepo, Emit: emit, QuotaRepo: quota,
+		ClientRepo: m.ClientRepo, Emit: emit, QuotaRepo: quota, DeleteClientState: m.deleteApplicationClientState,
 	}}
 }

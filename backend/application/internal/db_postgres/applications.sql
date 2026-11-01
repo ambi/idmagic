@@ -86,6 +86,9 @@ WHERE a.tenant_id = $1
 -- name: DeleteApplication :exec
 DELETE FROM applications WHERE tenant_id = $1 AND id = $2;
 
+-- name: LockApplicationForDeletion :one
+SELECT id FROM applications WHERE tenant_id = $1 AND id = $2 FOR UPDATE;
+
 -- name: RemoveApplicationCategory :exec
 UPDATE applications SET category_ids = array_remove(category_ids, $2), updated_at = now()
 WHERE tenant_id = $1 AND $2 = ANY(category_ids);

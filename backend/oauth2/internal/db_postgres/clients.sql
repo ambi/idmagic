@@ -98,6 +98,18 @@ ON CONFLICT (client_id) DO UPDATE SET
 -- name: DeleteClient :exec
 DELETE FROM oauth2_clients WHERE tenant_id = $1 AND client_id = $2;
 
+-- name: LockClientForApplicationDeletion :one
+SELECT first_party FROM oauth2_clients WHERE tenant_id = $1 AND client_id = $2 FOR UPDATE;
+
+-- name: DeleteRefreshTokensForClient :exec
+DELETE FROM refresh_tokens WHERE client_id = $1;
+
+-- name: DeleteClientSessionsForClient :exec
+DELETE FROM oauth2_client_sessions WHERE client_id = $1;
+
+-- name: DeleteConsentsForClient :execrows
+DELETE FROM consents WHERE client_id = $1;
+
 -- name: ListClientSecretCredentials :many
 SELECT id, client_id, secret_hash, created_at, expires_at, revoked_at
 FROM oauth2_client_secrets

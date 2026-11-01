@@ -17,6 +17,17 @@ func NewClientSessionStore() *ClientSessionStore {
 	return &ClientSessionStore{sessions: map[string]*domain.ClientSession{}}
 }
 
+func (s *ClientSessionStore) DeleteForClient(_ context.Context, tenantID, clientID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for key, session := range s.sessions {
+		if session.ClientID == clientID && session.TenantID == tenantID {
+			delete(s.sessions, key)
+		}
+	}
+	return nil
+}
+
 func (s *ClientSessionStore) Upsert(_ context.Context, session *domain.ClientSession) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

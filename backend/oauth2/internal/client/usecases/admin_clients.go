@@ -29,7 +29,8 @@ type AdminOAuth2ClientDeps struct {
 	Emit       func(spec.DomainEvent)
 	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (wi-160)
 	// , bridged into RegisterClient which owns the actual check.
-	QuotaRepo tenantports.QuotaRepository
+	QuotaRepo         tenantports.QuotaRepository
+	DeleteClientState func(context.Context, string, string) (int, error)
 }
 
 type CreateAdminOAuth2ClientInput = clientports.CreateAdminOAuth2ClientInput

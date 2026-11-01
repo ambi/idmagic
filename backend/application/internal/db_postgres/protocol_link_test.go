@@ -6,19 +6,31 @@ import (
 	"testing"
 
 	"github.com/ambi/idmagic/backend/application/domain"
+	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/saml"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
+	"github.com/ambi/idmagic/backend/tenancy"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	"github.com/jackc/pgx/v5"
 )
 
 func testProtocolLinkers() ProtocolLinkers {
-	return ProtocolLinkers{OIDC: oauth2.LinkApplicationInTx, SAML: saml.LinkApplicationInTx, WsFed: wsfederation.LinkApplicationInTx}
+	return ProtocolLinkers{
+		OIDC: oauth2.LinkApplicationInTx, SAML: saml.LinkApplicationInTx, WsFed: wsfederation.LinkApplicationInTx,
+		QuotaInTx: tenancy.QuotaRepositoryInTx,
+		DeleteOIDC: func(ctx context.Context, tx pgx.Tx, tenantID, clientID string) (int, error) {
+			count, err := oauth2.PrepareApplicationDeletionInTx(ctx, tx, tenantID, clientID)
+			if err != nil {
+				return 0, err
+			}
+			return count, idmanagement.DeleteClientBindingsInTx(ctx, tx, tenantID, clientID)
+		},
+	}
 }
 
 func seedProtocolSetting(t *testing.T, db sharedpg.DB, tenantID string, kind domain.ApplicationProtocolType) (*domain.ApplicationProtocol, func() string) {

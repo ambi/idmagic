@@ -24,6 +24,8 @@ type Querier interface {
 	DeleteApprovalRequestsForUser(ctx context.Context, arg DeleteApprovalRequestsForUserParams) error
 	DeleteAuthorizationDetailType(ctx context.Context, arg DeleteAuthorizationDetailTypeParams) error
 	DeleteClient(ctx context.Context, arg DeleteClientParams) error
+	DeleteClientSessionsForClient(ctx context.Context, clientID string) error
+	DeleteConsentsForClient(ctx context.Context, clientID pgtype.UUID) (int64, error)
 	DeleteConsentsForSub(ctx context.Context, userID string) error
 	DeleteCrossAppAccessIssuePolicy(ctx context.Context, arg DeleteCrossAppAccessIssuePolicyParams) error
 	DeleteCrossAppAccessRedeemPolicy(ctx context.Context, arg DeleteCrossAppAccessRedeemPolicyParams) error
@@ -37,6 +39,7 @@ type Querier interface {
 	DeleteExpiredOauth2TokenExchangeGrantsBatch(ctx context.Context, arg DeleteExpiredOauth2TokenExchangeGrantsBatchParams) (int64, error)
 	DeleteExpiredPARRequestsBatch(ctx context.Context, arg DeleteExpiredPARRequestsBatchParams) (int64, error)
 	DeleteMcpResourceServer(ctx context.Context, arg DeleteMcpResourceServerParams) error
+	DeleteRefreshTokensForClient(ctx context.Context, clientID string) error
 	DeleteRefreshTokensForSub(ctx context.Context, userID string) error
 	// 単発 exchange の CAS。state='approved' の行だけを exchanged にして 1 行返す。
 	ExchangeDeviceCode(ctx context.Context, arg ExchangeDeviceCodeParams) (*ExchangeDeviceCodeRow, error)
@@ -108,6 +111,7 @@ type Querier interface {
 	ListPendingApprovalRequestsForUser(ctx context.Context, arg ListPendingApprovalRequestsForUserParams) ([]*ListPendingApprovalRequestsForUserRow, error)
 	// tx 内の read-modify-write を直列化するための行ロック取得。
 	LockAuthorizationRequest(ctx context.Context, arg LockAuthorizationRequestParams) ([]byte, error)
+	LockClientForApplicationDeletion(ctx context.Context, arg LockClientForApplicationDeletionParams) (bool, error)
 	LockClientForSecretIssuance(ctx context.Context, clientID string) (string, error)
 	// 単発 expire の CAS。state='issued' の行だけを expired にして 1 行返す。
 	// 既に redeemed または expired の行は対象にしない (0 行)。

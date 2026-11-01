@@ -361,7 +361,7 @@ model DeleteAdminApplicationError409 {
   @body body: IdMagic.Contract.FirstPartyClientProtectedError;
 }
 
-@doc("管理者が、Application を冪等に削除する。関連するプロトコルの行は、同じトランザクションで連鎖して削除する。first_party クライアントに結び付く Application は、関連状態の変更前に HTTP 409 と FirstPartyClientProtectedError で拒否する。")
+@doc("管理者が、Application を削除する。専用のリフレッシュトークン、同意、資格情報の束縛、プロトコル設定、割り当て、アイコン、ポリシーと使用量を同じトランザクションで削除する（REQ-APPLICATION-018）。first_party クライアントに結び付く Application は、関連状態の変更前に HTTP 409 と FirstPartyClientProtectedError で拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminApplication")
 @route("/api/admin/v1/applications/{id}")

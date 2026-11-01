@@ -3,6 +3,10 @@ SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents
 WHERE tenant_id=$1 ORDER BY name;
 
+-- name: DeleteClientCredentialBindings :exec
+DELETE FROM agent_credential_bindings b USING agents a
+WHERE b.agent_id = a.id AND a.tenant_id = $1 AND b.client_id = $2;
+
 -- name: ListAgentsByTenantPage :many
 -- First page of ListAgents keyset pagination (wi-159): stable sort
 -- by (name, id) so admins see the pre-existing alphabetical order.

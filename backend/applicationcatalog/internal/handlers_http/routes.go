@@ -2,6 +2,8 @@
 package handlers_http
 
 import (
+	"context"
+
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	claimports "github.com/ambi/idmagic/backend/claimmapping/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
@@ -33,8 +35,9 @@ type Deps struct {
 	GroupRepo                   groupports.GroupRepository
 	UserRepo                    userports.UserRepository
 	// Clients は OIDC の Application が持つクライアントを作成、更新し、シークレットを管理する。
-	Clients    clientports.ClientAdministration
-	ClientRepo clientports.OAuth2ClientRepository
+	Clients              clientports.ClientAdministration
+	ClientRepo           clientports.OAuth2ClientRepository
+	DeleteClientBindings func(context.Context, string, string) error
 	// RelyingParties と ServiceProviders は WS-Fed の RP と SAML の SP を管理する。nil はそのプロトコルが使えないことを表す。
 	RelyingParties   wsfederationports.RelyingPartyAdministration
 	ServiceProviders samlports.ServiceProviderAdministration

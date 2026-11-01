@@ -54,12 +54,24 @@ func (a ClientAdministration) UpdateClaims(ctx context.Context, tenantID, client
 }
 
 func (a ClientAdministration) DeleteForApplication(ctx context.Context, tenantID, clientID string) error {
+	_, err := a.DeleteForApplicationWithState(ctx, tenantID, clientID)
+	return err
+}
+
+func (a ClientAdministration) DeleteForApplicationWithState(ctx context.Context, tenantID, clientID string) (int, error) {
 	client, err := a.Deps.ClientRepo.FindByID(ctx, tenantID, clientID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if client != nil && client.FirstParty {
-		return clientports.ErrFirstPartyClientProtected
+		return 0, clientports.ErrFirstPartyClientProtected
 	}
-	return a.Deps.ClientRepo.Delete(ctx, tenantID, clientID)
+	consents := 0
+	if client != nil && a.Deps.DeleteClientState != nil {
+		consents, err = a.Deps.DeleteClientState(ctx, tenantID, clientID)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return consents, a.Deps.ClientRepo.Delete(ctx, tenantID, clientID)
 }

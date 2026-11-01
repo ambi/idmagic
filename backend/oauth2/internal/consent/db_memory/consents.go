@@ -31,6 +31,19 @@ func NewConsentRepository() *ConsentRepository {
 	return &ConsentRepository{consents: map[string]*memConsent{}, delegations: map[string]*memConsent{}}
 }
 
+func (r *ConsentRepository) DeleteForClient(_ context.Context, tenantID, clientID string) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	count := 0
+	for key, consent := range r.consents {
+		if consent.TenantID == tenantID && consent.ClientID == clientID {
+			delete(r.consents, key)
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (r *ConsentRepository) Find(_ context.Context, tenantID, sub, clientID string) (*domain.Consent, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

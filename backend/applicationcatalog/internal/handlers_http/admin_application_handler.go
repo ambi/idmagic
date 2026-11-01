@@ -374,23 +374,6 @@ func (d Deps) handleDeleteApplication(c *echo.Context) error {
 	); err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	if app.Protocol != nil {
-		tenantID := support.RequestTenantID(c)
-		switch app.Protocol.Type {
-		case domain.ApplicationProtocolOIDC:
-			if err := d.Clients.DeleteForApplication(c.Request().Context(), tenantID, app.Protocol.ClientID); err != nil {
-				return err
-			}
-		case domain.ApplicationProtocolSAML:
-			if err := d.ServiceProviders.DeleteForApplication(c.Request().Context(), tenantID, app.Protocol.EntityID); err != nil {
-				return err
-			}
-		case domain.ApplicationProtocolWsFed:
-			if err := d.RelyingParties.DeleteForApplication(c.Request().Context(), tenantID, app.Protocol.Wtrealm); err != nil {
-				return err
-			}
-		}
-	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }
@@ -593,8 +576,31 @@ func (d Deps) applicationDeps() appusecases.ApplicationDeps {
 	return appusecases.ApplicationDeps{
 		Repo: d.ApplicationRepo, IconStore: d.ApplicationIconStore,
 		AssignmentRepo: d.ApplicationAssignmentRepo, PolicyRepo: d.ApplicationSignInPolicyRepo, Emit: d.Emit,
-		QuotaRepo: d.QuotaRepo,
+		QuotaRepo:      d.QuotaRepo,
+		DeleteProtocol: d.deleteApplicationProtocol,
 	}
+}
+
+func (d Deps) deleteApplicationProtocol(ctx context.Context, app *domain.Application) (int, error) {
+	if app.Protocol == nil {
+		return 0, nil
+	}
+	switch app.Protocol.Type {
+	case domain.ApplicationProtocolOIDC:
+		count, err := d.Clients.DeleteForApplicationWithState(ctx, app.TenantID, app.Protocol.ClientID)
+		if err != nil {
+			return 0, err
+		}
+		if d.DeleteClientBindings != nil {
+			err = d.DeleteClientBindings(ctx, app.TenantID, app.Protocol.ClientID)
+		}
+		return count, err
+	case domain.ApplicationProtocolSAML:
+		return 0, d.ServiceProviders.DeleteForApplication(ctx, app.TenantID, app.Protocol.EntityID)
+	case domain.ApplicationProtocolWsFed:
+		return 0, d.RelyingParties.DeleteForApplication(ctx, app.TenantID, app.Protocol.Wtrealm)
+	}
+	return 0, nil
 }
 
 func (d Deps) assignmentDeps() appusecases.AssignmentDeps {

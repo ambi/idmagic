@@ -518,6 +518,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AssignmentSubjectDirectory:  application.SubjectDirectory(d.IdManagement.UserRepo, d.IdManagement.GroupRepo),
 		GroupRepo:                   d.IdManagement.GroupRepo, UserRepo: d.IdManagement.UserRepo,
 		Clients:              d.OAuth2.ClientAdministration(d.Emit, d.Tenancy.QuotaRepo),
+		DeleteClientBindings: d.IdManagement.DeleteClientBindings,
 		ClientRepo:           d.OAuth2.ClientRepo,
 		RelyingParties:       d.WsFederation.RelyingPartyAdministration(),
 		ServiceProviders:     d.Saml.ServiceProviderAdministration(),

@@ -50,6 +50,7 @@ type secretExampleFixture struct {
 	events  *[]spec.DomainEvent
 	csrf    string
 	cookie  *http.Cookie
+	oauth   oauth2.Module
 }
 
 func newSecretExampleFixture(t *testing.T) *secretExampleFixture {
@@ -86,6 +87,8 @@ func newSecretExampleFixtureWithPolicy(t *testing.T, quota tenantports.QuotaRepo
 	signer := oauth2.NewJWTSigner("http://idp.test", keyStore)
 
 	clients := oauth2.NewMemoryModule().ClientRepo
+	state := oauth2.NewMemoryModule()
+	state.ClientRepo = clients
 	events := &[]spec.DomainEvent{}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -97,14 +100,12 @@ func newSecretExampleFixtureWithPolicy(t *testing.T, quota tenantports.QuotaRepo
 		Application: newCatalogApplicationModule(), SignInPolicy: policies,
 		Saml:         saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		WsFederation: wsfederation.NewMemoryModule(),
-		OAuth2: oauth2.Module{
-			ClientRepo: clients, RefreshStore: oauth2.NewMemoryModule().RefreshStore,
-		},
-		KeyStore: keyStore, TokenIssuer: signer, TokenIntrospector: signer,
+		OAuth2:       state,
+		KeyStore:     keyStore, TokenIssuer: signer, TokenIntrospector: signer,
 		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
 	csrf, cookie := appCSRF(t, e)
-	return &secretExampleFixture{e: e, clients: clients, events: events, csrf: csrf, cookie: cookie}
+	return &secretExampleFixture{e: e, clients: clients, events: events, csrf: csrf, cookie: cookie, oauth: state}
 }
 
 // createClientCredentialsApplication は client_credentials を宣言した confidential な

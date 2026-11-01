@@ -19,6 +19,15 @@ import (
 // (wi-173); Pool は oauth2pg.DBTX を構造的に満たす。
 type ConsentRepository struct{ Pool sharedpg.DB }
 
+func (r *ConsentRepository) DeleteForClient(ctx context.Context, _, clientID string) (int, error) {
+	var clientUUID pgtype.UUID
+	if err := clientUUID.Scan(clientID); err != nil {
+		return 0, err
+	}
+	count, err := oauth2pg.New(r.Pool).DeleteConsentsForClient(ctx, clientUUID)
+	return int(count), err
+}
+
 // consentRow は、問い合わせごとに生成される行の型に共通する列である。
 type consentRow struct {
 	user                  string

@@ -26,6 +26,36 @@ func (q *Queries) DeleteClient(ctx context.Context, arg DeleteClientParams) erro
 	return err
 }
 
+const deleteClientSessionsForClient = `-- name: DeleteClientSessionsForClient :exec
+DELETE FROM oauth2_client_sessions WHERE client_id = $1
+`
+
+func (q *Queries) DeleteClientSessionsForClient(ctx context.Context, clientID string) error {
+	_, err := q.db.Exec(ctx, deleteClientSessionsForClient, clientID)
+	return err
+}
+
+const deleteConsentsForClient = `-- name: DeleteConsentsForClient :execrows
+DELETE FROM consents WHERE client_id = $1
+`
+
+func (q *Queries) DeleteConsentsForClient(ctx context.Context, clientID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteConsentsForClient, clientID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteRefreshTokensForClient = `-- name: DeleteRefreshTokensForClient :exec
+DELETE FROM refresh_tokens WHERE client_id = $1
+`
+
+func (q *Queries) DeleteRefreshTokensForClient(ctx context.Context, clientID string) error {
+	_, err := q.db.Exec(ctx, deleteRefreshTokensForClient, clientID)
+	return err
+}
+
 const getClientByID = `-- name: GetClientByID :one
 SELECT tenant_id, client_id, application_id, application_protocol_type, client_secret_hash, client_name, client_type, redirect_uris,
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
@@ -402,6 +432,22 @@ func (q *Queries) ListClientsByTenantPageBefore(ctx context.Context, arg ListCli
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockClientForApplicationDeletion = `-- name: LockClientForApplicationDeletion :one
+SELECT first_party FROM oauth2_clients WHERE tenant_id = $1 AND client_id = $2 FOR UPDATE
+`
+
+type LockClientForApplicationDeletionParams struct {
+	TenantID string
+	ClientID string
+}
+
+func (q *Queries) LockClientForApplicationDeletion(ctx context.Context, arg LockClientForApplicationDeletionParams) (bool, error) {
+	row := q.db.QueryRow(ctx, lockClientForApplicationDeletion, arg.TenantID, arg.ClientID)
+	var first_party bool
+	err := row.Scan(&first_party)
+	return first_party, err
 }
 
 const lockClientForSecretIssuance = `-- name: LockClientForSecretIssuance :one

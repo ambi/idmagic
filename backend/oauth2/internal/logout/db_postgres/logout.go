@@ -14,6 +14,10 @@ import (
 
 type ClientSessionStore struct{ Pool sharedpg.DB }
 
+func (s *ClientSessionStore) DeleteForClient(ctx context.Context, _, clientID string) error {
+	return oauth2pg.New(s.Pool).DeleteClientSessionsForClient(ctx, clientID)
+}
+
 func (s *ClientSessionStore) Upsert(ctx context.Context, session *domain.ClientSession) error {
 	return oauth2pg.New(s.Pool).UpsertClientSession(ctx, oauth2pg.UpsertClientSessionParams{
 		TenantID: session.TenantID, Sid: session.Sid, ClientID: session.ClientID,

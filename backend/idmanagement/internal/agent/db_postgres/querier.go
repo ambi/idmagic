@@ -15,6 +15,7 @@ type Querier interface {
 	CountAgentObservations(ctx context.Context, arg CountAgentObservationsParams) (int64, error)
 	CountAgentsByTenant(ctx context.Context, tenantID string) (int64, error)
 	DeleteAgent(ctx context.Context, arg DeleteAgentParams) error
+	DeleteClientCredentialBindings(ctx context.Context, arg DeleteClientCredentialBindingsParams) error
 	ExcludeAgentObservation(ctx context.Context, arg ExcludeAgentObservationParams) (int64, error)
 	FindAgentByClientID(ctx context.Context, arg FindAgentByClientIDParams) (*Agent, error)
 	FindAgentByID(ctx context.Context, arg FindAgentByIDParams) (*Agent, error)

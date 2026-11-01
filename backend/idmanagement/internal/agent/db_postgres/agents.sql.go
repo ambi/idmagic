@@ -57,6 +57,21 @@ func (q *Queries) DeleteAgent(ctx context.Context, arg DeleteAgentParams) error 
 	return err
 }
 
+const deleteClientCredentialBindings = `-- name: DeleteClientCredentialBindings :exec
+DELETE FROM agent_credential_bindings b USING agents a
+WHERE b.agent_id = a.id AND a.tenant_id = $1 AND b.client_id = $2
+`
+
+type DeleteClientCredentialBindingsParams struct {
+	TenantID string
+	ClientID string
+}
+
+func (q *Queries) DeleteClientCredentialBindings(ctx context.Context, arg DeleteClientCredentialBindingsParams) error {
+	_, err := q.db.Exec(ctx, deleteClientCredentialBindings, arg.TenantID, arg.ClientID)
+	return err
+}
+
 const findAgentByClientID = `-- name: FindAgentByClientID :one
 SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents

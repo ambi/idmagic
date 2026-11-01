@@ -19,6 +19,10 @@ type RefreshTokenStore struct{ Pool sharedpg.DB }
 
 func (s *RefreshTokenStore) queries() *oauth2pg.Queries { return oauth2pg.New(s.Pool) }
 
+func (s *RefreshTokenStore) DeleteForClient(ctx context.Context, _, clientID string) error {
+	return s.queries().DeleteRefreshTokensForClient(ctx, clientID)
+}
+
 func (s *RefreshTokenStore) FindByHash(ctx context.Context, hash string) (*domain.RefreshTokenRecord, error) {
 	row, err := s.queries().GetRefreshTokenByHash(ctx, hash)
 	if errors.Is(err, pgx.ErrNoRows) {

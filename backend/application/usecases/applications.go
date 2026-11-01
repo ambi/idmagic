@@ -18,7 +18,7 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-var ErrApplicationNotFound = errors.New("application not found")
+var ErrApplicationNotFound = ports.ErrApplicationNotFound
 
 var (
 	ErrApplicationIconRequired = errors.New("application icon file is required")
@@ -36,7 +36,8 @@ type ApplicationDeps struct {
 	Emit           func(spec.DomainEvent)
 	// QuotaRepo enforces the tenant's Hard Quota on applications (wi-160). nil skips enforcement (wiring gaps in tests/tools);
 	// production bootstrap always sets it.
-	QuotaRepo tenantports.QuotaRepository
+	QuotaRepo      tenantports.QuotaRepository
+	DeleteProtocol func(context.Context, *domain.Application) (int, error)
 }
 
 // checkApplicationQuota enforces the tenant's applications Hard Quota
@@ -155,26 +156,11 @@ func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorUserID, a
 	if app == nil {
 		return ErrApplicationNotFound
 	}
-	if err := deps.AssignmentRepo.DeleteByApplication(ctx, tenantID, applicationID); err != nil {
+	if err := deps.Repo.DeleteWithRelated(ctx, app, ports.DeletionParticipants{
+		Assignments: deps.AssignmentRepo, Policy: deps.PolicyRepo, Icons: deps.IconStore,
+		Quota: deps.QuotaRepo, DeleteProtocol: deps.DeleteProtocol,
+	}); err != nil {
 		return err
-	}
-	if deps.PolicyRepo != nil {
-		if err := deps.PolicyRepo.Delete(ctx, tenantID, applicationID); err != nil {
-			return err
-		}
-	}
-	if err := deps.Repo.Delete(ctx, tenantID, applicationID); err != nil {
-		return err
-	}
-	if deps.QuotaRepo != nil {
-		if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceApplications, 1); err != nil {
-			return err
-		}
-		if app.Protocol != nil && app.Protocol.Type == domain.ApplicationProtocolOIDC {
-			if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceOAuth2Clients, 1); err != nil {
-				return err
-			}
-		}
 	}
 	emit(deps.Emit, &domain.ApplicationDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID})
 	return nil

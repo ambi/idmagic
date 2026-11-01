@@ -3,9 +3,13 @@ package ports
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ambi/idmagic/backend/application/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
+
+var ErrApplicationNotFound = errors.New("application not found")
 
 // ApplicationRepository は Application aggregate の永続境界 (wi-69)。
 type ApplicationRepository interface {
@@ -29,9 +33,20 @@ type ApplicationRepository interface {
 	Create(ctx context.Context, app *domain.Application) error
 	// Delete は application_id に一致する Application を削除する (冪等)。
 	Delete(ctx context.Context, tenantID, applicationID string) error
+	// DeleteWithRelated は関連状態と使用量を一つの確定境界で削除する。
+	DeleteWithRelated(ctx context.Context, app *domain.Application, participants DeletionParticipants) error
 	// RemoveCategory はテナント内の全 Application の category_ids から指定カテゴリを除く
 	// (カテゴリ削除時のクリーンアップ, wi-70)。
 	RemoveCategory(ctx context.Context, tenantID, categoryID string) error
+}
+
+// DeletionParticipants は、削除に伴って同じ確定境界へ参加する操作である。
+type DeletionParticipants struct {
+	Assignments    AssignmentRepository
+	Policy         SignInPolicyDeleter
+	Icons          ApplicationIconStore
+	Quota          tenantports.QuotaRepository
+	DeleteProtocol func(context.Context, *domain.Application) (int, error)
 }
 
 // ApplicationIconStore は Application icon blob の保存境界。

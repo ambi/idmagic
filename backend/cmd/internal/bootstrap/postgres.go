@@ -99,6 +99,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	governanceModule := idgovernance.NewPostgresModule(resilientDB, userRepo, idmanagement.UserWriterInTx)
 	applicationModule := application.NewPostgresModule(resilientDB, application.ProtocolLinkers{
 		OIDC: oauth2.LinkApplicationInTx, SAML: saml.LinkApplicationInTx, WsFed: wsfederation.LinkApplicationInTx,
+		DeleteOIDC: deleteApplicationClientInTx, QuotaInTx: tenancy.QuotaRepositoryInTx,
 	})
 	assignmentRepo := applicationModule.AssignmentRepo
 	provisioningModule := provisioning.NewPostgresModule(resilientDB)

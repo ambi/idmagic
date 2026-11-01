@@ -46,6 +46,7 @@ type Querier interface {
 	ListApplicationsByTenantPageAfter(ctx context.Context, arg ListApplicationsByTenantPageAfterParams) ([]*Application, error)
 	ListApplicationsByTenantPageBefore(ctx context.Context, arg ListApplicationsByTenantPageBeforeParams) ([]*Application, error)
 	ListApplicationsByTenantPageEnd(ctx context.Context, arg ListApplicationsByTenantPageEndParams) ([]*Application, error)
+	LockApplicationForDeletion(ctx context.Context, arg LockApplicationForDeletionParams) (string, error)
 	RemoveApplicationCategory(ctx context.Context, arg RemoveApplicationCategoryParams) error
 	UpsertApplication(ctx context.Context, arg UpsertApplicationParams) error
 	// ListApplicationAssignmentsBySubjects は (subject_type, subject_id) ペア配列との

@@ -53,6 +53,7 @@ func (r *OAuth2ClientRepository) Delete(_ context.Context, tenantID, clientID st
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.clients, sharedmem.ScopedKey(tenantID, clientID, kernel.DefaultTenantID))
+	delete(r.credentials, clientID)
 	return nil
 }
 

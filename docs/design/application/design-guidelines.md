@@ -221,6 +221,7 @@ import の向きが許可されていることだけでは、更新時の保証�
 | User の CSV の一行が、User、パスワードの履歴、使用量と監査の記録を同じ PostgreSQL トランザクションで確定する | 失敗した行の一部だけが残る | [User CSV](../../modules/identity-management/features/user-csv.md#インポート) |
 | SCIM の作成が、User または Group と初期所属、使用量、ワークフロー捕捉と対応表を同じ PostgreSQL トランザクションで確定する | 対応表のない User や Group が残り、外部の IdP から操作できなくなる | [SCIM による取り込み](../../modules/sourcing/features/scim.md#信頼性) |
 | アクショントークンの使用済み化と、そのトークンが認可した用途別の作用 | 同じリンクで作用が二度成功するか、利用者が正当な回復手段だけを失う | [Authentication のパスワードの判断](../../modules/authentication/features/password.md#実現方式)、[メールアドレスの変更の規則](../../modules/identity-management/features/account.md#メールアドレスの変更の確定) |
+| Application と専用の認可状態、プロトコル設定、割り当て、ポリシーと使用量の削除 | 利用できないアプリだけが残るか、削除失敗の応答で割り当てだけを失う | [Application の削除の原子性](../../modules/application/data.md#削除の原子性) |
 
 User の完全削除は、関連する記録の保存先ごとに確定し、ポートをまたぐトランザクションを持たない。
 [ユーザーの設計](../../modules/identity-management/features/user.md#信頼性)が定める Tombstone の進捗と再実行で、途中の失敗を回収する。

@@ -29,6 +29,18 @@ func NewRefreshTokenStore() *RefreshTokenStore {
 	}
 }
 
+func (s *RefreshTokenStore) DeleteForClient(_ context.Context, tenantID, clientID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for hash, token := range s.byHash {
+		if token.ClientID == clientID && token.TenantID == tenantID {
+			delete(s.byHash, hash)
+			delete(s.byID, token.ID)
+		}
+	}
+	return nil
+}
+
 func (s *RefreshTokenStore) FindByHash(_ context.Context, hash string) (*domain.RefreshTokenRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

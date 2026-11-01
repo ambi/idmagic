@@ -377,6 +377,22 @@ func (q *Queries) ListApplicationsByTenantPageEnd(ctx context.Context, arg ListA
 	return items, nil
 }
 
+const lockApplicationForDeletion = `-- name: LockApplicationForDeletion :one
+SELECT id FROM applications WHERE tenant_id = $1 AND id = $2 FOR UPDATE
+`
+
+type LockApplicationForDeletionParams struct {
+	TenantID string
+	ID       string
+}
+
+func (q *Queries) LockApplicationForDeletion(ctx context.Context, arg LockApplicationForDeletionParams) (string, error) {
+	row := q.db.QueryRow(ctx, lockApplicationForDeletion, arg.TenantID, arg.ID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const removeApplicationCategory = `-- name: RemoveApplicationCategory :exec
 UPDATE applications SET category_ids = array_remove(category_ids, $2), updated_at = now()
 WHERE tenant_id = $1 AND $2 = ANY(category_ids)

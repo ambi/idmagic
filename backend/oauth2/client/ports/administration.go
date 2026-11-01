@@ -29,6 +29,7 @@ type ClientAdministration interface {
 	UpdateClaims(ctx context.Context, tenantID, clientID string, in ClientClaimUpdate) error
 	// DeleteForApplication は、カタログが所有するクライアントを Application の削除の後に消す。
 	DeleteForApplication(ctx context.Context, tenantID, clientID string) error
+	DeleteForApplicationWithState(ctx context.Context, tenantID, clientID string) (int, error)
 }
 
 type ClientClaimUpdate struct {
