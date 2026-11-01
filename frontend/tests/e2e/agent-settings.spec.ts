@@ -55,6 +55,7 @@ test('administrator edits agent settings in separate workflows', async () => {
     await clickButtonByText(view, 'Save guardrails')
     await waitForPage(view, 'admin-agent-detail')
     await waitForText(view, 'Saved.')
+    await waitForText(view, 'Maximum token lifetime (seconds)')
     expect(
       await view.evaluate(`(() => {
       const notice = document.querySelector('[role="status"]')
@@ -72,6 +73,7 @@ test('administrator edits agent settings in separate workflows', async () => {
     await setInputValue(view, '#guardrail-ttl', '120')
     await clickLinkByText(view, 'Cancel')
     await waitForPage(view, 'admin-agent-detail')
+    await waitForText(view, 'Maximum token lifetime (seconds)')
     expect(
       await view.evaluate(
         `[...document.querySelectorAll('dd')].some(node => node.textContent === '90')`,

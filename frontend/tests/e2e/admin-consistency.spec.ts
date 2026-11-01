@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test'
 import {
   clickButtonByText,
+  clickEnabledButtonByText,
   clickLinkByText,
   clickSummaryByText,
   navigateAndLogin,
@@ -39,7 +40,7 @@ test('connector creation uses a dedicated route', async () => {
     expect(layout.twoColumns).toBe(true)
     expect(layout.sameRow).toBe(true)
     expect(layout.width).toBeGreaterThan(750)
-    await Bun.write('/private/tmp/wi-11794-connector-form.png', await view.screenshot())
+
     const name = `Calendar ${Date.now()}`
     await setInputValue(view, '#service-connection-name', name)
     await setInputValue(view, '#service-connection-client_id', 'calendar-agent')
@@ -57,7 +58,7 @@ test('connector creation uses a dedicated route', async () => {
     await setInputValue(view, '#service-connection-allowed_scopes', 'read')
     await clickButtonByText(view, 'Add destination')
     await waitForPage(view, 'admin-token-vault')
-    await Bun.write('/private/tmp/wi-11794-connector-saved.png', await view.screenshot())
+
     await waitForText(view, name)
     expect(await view.evaluate(`document.querySelectorAll('main form').length`)).toBe(0)
   } finally {
@@ -94,7 +95,6 @@ test('resource lists share counts and refresh while agent destinations stay grou
       return link?.closest('details')?.querySelector('summary')?.textContent
     })()`),
     ).toBe('Agents')
-    await Bun.write('/private/tmp/wi-11794-agent-navigation.png', await view.screenshot())
   } finally {
     view.close()
   }
@@ -108,7 +108,8 @@ test('personal token issuance and revocation work from the account portal', asyn
     await waitForText(view, 'Connection info')
     await clickLinkByText(view, 'Issue token')
     await waitForPage(view, 'account-api-token-create')
-    await setInputValue(view, '#token-desc', `Personal ${Date.now()}`)
+    const description = `Personal ${Date.now()}`
+    await setInputValue(view, '#token-desc', description)
     await clickSummaryByText(view, 'Account API')
     expect(
       await view.evaluate(`document.querySelector('input[value="users:write"]') === null`),
@@ -118,7 +119,8 @@ test('personal token issuance and revocation work from the account portal', asyn
     await waitForText(view, 'Back to token list')
     await clickLinkByText(view, 'Back to token list')
     await waitForPage(view, 'account-api-tokens')
-    await clickButtonByText(view, 'Revoke')
+    await waitForText(view, description)
+    await clickEnabledButtonByText(view, 'Revoke')
     expect(await view.evaluate(`document.querySelector('[role="dialog"]') !== null`)).toBe(true)
     await view.click('[role="dialog"] button:last-child')
     await waitForText(view, 'Revoked')
@@ -138,7 +140,6 @@ test('creation forms use one column on a narrow screen', async () => {
     })()`)
     expect(layout.stacked).toBe(true)
     expect(layout.overflow).toBe(false)
-    await Bun.write('/private/tmp/wi-11794-mobile-form.png', await view.screenshot())
   } finally {
     view.close()
   }

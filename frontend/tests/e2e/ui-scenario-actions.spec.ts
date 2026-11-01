@@ -565,6 +565,10 @@ test('admin user attribute schema can add and delete a custom attribute', async 
     await waitForText(view, key)
 
     await clickElementByAriaLabel(view, `Delete ${key}`)
+    expect(
+      await view.evaluate(`document.querySelector('[role="dialog"]')?.textContent ?? ''`),
+    ).toContain(key)
+    await view.click('[role="dialog"] button:last-child')
     await waitForText(view, 'The attribute has been deleted.')
     await waitForText(view, 'There are no custom attributes yet.')
   } finally {

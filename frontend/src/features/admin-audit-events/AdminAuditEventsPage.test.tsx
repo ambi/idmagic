@@ -76,6 +76,30 @@ function ExportSearchHarness() {
   )
 }
 
+function PaginationLoaderHarness() {
+  const [currentPage, setCurrentPage] = useState(1)
+  return (
+    <>
+      <button type="button" onClick={() => setCurrentPage((page) => (page === 1 ? 2 : 1))}>
+        Finish page loader
+      </button>
+      <AdminAuditEventsPage
+        events={currentPage === 1 ? [event] : [previousEvent]}
+        pagination={{
+          currentPage,
+          totalItems: 2,
+          totalPages: 2,
+          hasFirst: currentPage > 1,
+          lastCursor: currentPage === 1 ? 'last' : null,
+        }}
+        previousCursor={currentPage > 1 ? 'previous' : null}
+        nextCursor={currentPage === 1 ? 'next' : null}
+        onPage={() => {}}
+      />
+    </>
+  )
+}
+
 describe('locale', () => {
   afterEach(() => restoreGlobals())
 
@@ -126,6 +150,31 @@ describe('locale', () => {
 
 describe('AdminAuditEventsPage', () => {
   afterEach(() => restoreGlobals())
+
+  //spec:covers REQ-AUDIT-004, REQ-FRONTEND-001: loader の更新後も一覧とページ位置を一致させる。
+  it('synchronizes pagination when a route loader finishes without remounting', async () => {
+    await renderWithRouter(<PaginationLoaderHarness />)
+    expect(screen.getByText('1 / 2')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: tCommon.firstPage })).toBeDisabled()
+    expect(screen.getByRole('button', { name: tCommon.lastPage })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish page loader' }))
+    expect(screen.getAllByText(friendlyEventName(previousEvent.type, 'en')).length).toBeGreaterThan(
+      0,
+    )
+    expect(screen.getByText('2 / 2')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: tCommon.firstPage })).toBeEnabled()
+    expect(screen.getByRole('button', { name: tCommon.previousPage })).toBeEnabled()
+    expect(screen.getByRole('button', { name: tCommon.nextPage })).toBeDisabled()
+    expect(screen.getByRole('button', { name: tCommon.lastPage })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish page loader' }))
+    expect(screen.getByText('1 / 2')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: tCommon.firstPage })).toBeDisabled()
+    expect(screen.getByRole('button', { name: tCommon.previousPage })).toBeDisabled()
+    expect(screen.getByRole('button', { name: tCommon.nextPage })).toBeEnabled()
+    expect(screen.getByRole('button', { name: tCommon.lastPage })).toBeEnabled()
+  })
 
   it('shows an empty state when a filtered query returns no events', async () => {
     stubGlobal(

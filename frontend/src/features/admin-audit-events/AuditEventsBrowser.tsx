@@ -275,13 +275,14 @@ export function AuditEventsBrowser({
   // URL の検索結果だけを同期し、進行中のエクスポートは検索の更新をまたいで保つ。
   useEffect(() => {
     setEvents(initial)
+    setPage(pagination)
     setSelected(initial[0] ?? null)
     setAfter(isoToDatetimeLocal(search?.after))
     setBefore(isoToDatetimeLocal(search?.before))
     setLimit(search?.limit !== undefined ? String(search.limit) : '100')
     setFilters(filtersFromSearch(search))
     setError(initialError ?? '')
-  }, [initial, search, initialError])
+  }, [initial, pagination, search, initialError])
 
   useEffect(() => {
     if (cursorReset) setNotice(tCommon.cursorResetNotice)
