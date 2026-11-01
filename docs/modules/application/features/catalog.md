@@ -53,6 +53,16 @@ Application に属するプロトコル設定を、各プロトコルの管理 A
 - `admin` のロールを持たない利用者がアプリケーション、プロトコル設定、カテゴリ、割り当て、サインインポリシー、テナントのデフォルトのサインインポリシーの管理 API を要求した場合、Application は、403 と `access_denied` で拒否し、どれも変えない。
 - **例**：EX-APPLICATION-013-01
 
+### 管理者によるアプリケーションの削除
+
+#### REQ-APPLICATION-017 組み込みアプリケーションの削除は、関連状態を変えずに拒否される
+
+- `first_party` が真の OAuth2 クライアントに関連付くアプリケーションの削除を要求された場合、Application は、409 と `first_party_client_protected` で拒否し、Application、プロトコル設定、割り当て、サインインポリシーと使用量を変えず、削除のイベントを発行しない。
+- 管理者がアプリケーションを一覧または取得したとき、Application は、関連付いた OAuth2 クライアントの `first_party` を `deletion_protected` として返す。
+- OAuth2 クライアントに関連付かないアプリケーションを一覧または取得したとき、Application は、`deletion_protected` に偽を返す。
+- `deletion_protected` が真のアプリケーションの一覧または詳細を開いたとき、Application は、削除の操作を表示しない。
+- **判断**：利用者がサインインする管理コンソールとポータルを、発行済みトークンの有無によらず維持する。
+
 ### 管理者によるアプリケーションの参照
 
 #### REQ-APPLICATION-001 管理者はアプリケーション詳細で IdMagic 側の連携設定を確認できる

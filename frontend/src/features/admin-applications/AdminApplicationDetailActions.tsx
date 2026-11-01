@@ -30,10 +30,12 @@ export function AdminApplicationDetailActions({
         <IconPencil size={16} aria-hidden="true" />
         {t.edit}
       </Button>
-      <Button type="button" variant="destructive" disabled={busy} onClick={onDelete}>
-        <IconTrash size={16} aria-hidden="true" />
-        {t.delete}
-      </Button>
+      {!app.deletion_protected && (
+        <Button type="button" variant="destructive" disabled={busy} onClick={onDelete}>
+          <IconTrash size={16} aria-hidden="true" />
+          {t.delete}
+        </Button>
+      )}
     </div>
   )
 }

@@ -76,6 +76,19 @@ describe('locale', () => {
 describe('AdminApplicationsPage', () => {
   afterEach(() => restoreGlobals())
 
+  //spec:covers REQ-APPLICATION-017: 一覧の詳細ペインにも組み込みアプリケーションの削除操作を出さない。
+  it('hides deletion for a protected application', async () => {
+    const protectedApp = { ...app, deletion_protected: true }
+    stubGlobal(
+      'fetch',
+      mock(() => Promise.resolve(response(200, { applications: [protectedApp] }))),
+    )
+    await renderWithRouter(
+      <AdminApplicationsPage csrfToken="csrf" applications={[protectedApp]} nextCursor={null} />,
+    )
+    expect(screen.queryByRole('button', { name: t.deleteApplication })).not.toBeInTheDocument()
+  })
+
   it('links "add application" to the dedicated create route instead of a modal', async () => {
     stubGlobal(
       'fetch',

@@ -37,6 +37,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
+	"github.com/ambi/idmagic/backend/signinpolicy"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -57,6 +58,11 @@ func newSecretExampleFixture(t *testing.T) *secretExampleFixture {
 }
 
 func newSecretExampleFixtureWithQuota(t *testing.T, quota tenantports.QuotaRepository) *secretExampleFixture {
+	t.Helper()
+	return newSecretExampleFixtureWithPolicy(t, quota, newCatalogSignInPolicyModule())
+}
+
+func newSecretExampleFixtureWithPolicy(t *testing.T, quota tenantports.QuotaRepository, policies signinpolicy.Module) *secretExampleFixture {
 	t.Helper()
 	now := time.Now().UTC()
 	users := idmanagement.NewMemoryModule().UserRepo
@@ -88,7 +94,7 @@ func newSecretExampleFixtureWithQuota(t *testing.T, quota tenantports.QuotaRepos
 		Tenancy:    tenancy.Module{QuotaRepo: quota},
 		Emit:       func(event spec.DomainEvent) { *events = append(*events, event) },
 		UserRepo:   users, GroupRepo: idmanagement.NewMemoryModule().GroupRepo,
-		Application: newCatalogApplicationModule(), SignInPolicy: newCatalogSignInPolicyModule(),
+		Application: newCatalogApplicationModule(), SignInPolicy: policies,
 		Saml:         saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()},
 		WsFederation: wsfederation.NewMemoryModule(),
 		OAuth2: oauth2.Module{

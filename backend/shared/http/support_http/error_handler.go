@@ -92,7 +92,7 @@ func problemFallback(c *echo.Context, err error, code int) {
 
 	detail := http.StatusText(code)
 	var httpErr *echo.HTTPError
-	if errors.As(err, &httpErr) && httpErr.Message != "" {
+	if code < http.StatusInternalServerError && errors.As(err, &httpErr) && httpErr.Message != "" {
 		detail = httpErr.Message
 	}
 

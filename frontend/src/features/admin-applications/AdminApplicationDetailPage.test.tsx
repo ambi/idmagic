@@ -83,6 +83,20 @@ const integrationEndpoints = {
 describe('AdminApplicationDetailPage', () => {
   afterEach(() => restoreGlobals())
 
+  //spec:covers REQ-APPLICATION-017: 組み込みアプリケーションの詳細から削除を開始できない。
+  it('hides deletion for a protected application', async () => {
+    stubGlobal('fetch', assignmentFetch)
+    await renderWithRouter(
+      <AdminApplicationDetailPage
+        csrfToken="csrf"
+        detail={{ application: { ...app, deletion_protected: true } }}
+        integrationEndpoints={integrationEndpoints}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: t.delete })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.edit })).toBeInTheDocument()
+  })
+
   it('shows an error and keeps the confirmation open when deletion fails', async () => {
     stubGlobal(
       'fetch',

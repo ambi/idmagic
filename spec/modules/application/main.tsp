@@ -355,14 +355,20 @@ model DeleteAdminApplicationError404 {
   @body body: DeleteAdminApplicationError404Body;
 }
 
-@doc("管理者が、Application を冪等に削除する。関連するプロトコルの行は、同じトランザクションで連鎖して削除する。")
+model DeleteAdminApplicationError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.FirstPartyClientProtectedError;
+}
+
+@doc("管理者が、Application を冪等に削除する。関連するプロトコルの行は、同じトランザクションで連鎖して削除する。first_party クライアントに結び付く Application は、関連状態の変更前に HTTP 409 と FirstPartyClientProtectedError で拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminApplication")
 @route("/api/admin/v1/applications/{id}")
 @delete
 op DeleteAdminApplication(
   @path id: string
-): DeleteAdminApplicationSuccess_204 | DeleteAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminApplicationError403 | DeleteAdminApplicationError404;
+): DeleteAdminApplicationSuccess_204 | DeleteAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminApplicationError403 | DeleteAdminApplicationError404 | DeleteAdminApplicationError409;
 
 model UpdateApplicationOidcConfigSuccess_204 {
   @statusCode statusCode: 204;

@@ -32,6 +32,7 @@ type applicationProtocolResponse struct {
 
 type applicationResponse struct {
 	ID                   string                       `json:"id"`
+	DeletionProtected    bool                         `json:"deletion_protected"`
 	Name                 string                       `json:"name"`
 	Kind                 domain.ApplicationKind       `json:"kind"`
 	Status               domain.ApplicationStatus     `json:"status"`
@@ -192,6 +193,7 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 
 		out[i] = applicationResponse{
 			ID:                   app.ID,
+			DeletionProtected:    d.applicationDeletionProtected(ctx, tenantID, app),
 			Name:                 app.Name,
 			Kind:                 app.Kind,
 			Status:               app.Status,
@@ -355,6 +357,17 @@ func (d Deps) handleDeleteApplication(c *echo.Context) error {
 	app, err := d.requireApp(c)
 	if err != nil {
 		return d.writeApplicationError(c, err)
+	}
+	// Application の削除は PostgreSQL でプロトコル設定へ連鎖するため、
+	// 割り当てやポリシーを変更する前に所有クライアントの保護を確かめる。
+	if app.Protocol != nil && app.Protocol.Type == domain.ApplicationProtocolOIDC {
+		client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), app.Protocol.ClientID)
+		if err != nil {
+			return err
+		}
+		if client != nil && client.FirstParty {
+			return d.writeApplicationError(c, clientports.ErrFirstPartyClientProtected)
+		}
 	}
 	if err := appusecases.DeleteApplication(
 		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("id"), time.Now().UTC(),
@@ -601,6 +614,9 @@ func (d Deps) signInPolicyDeps() policyusecases.SignInPolicyDeps {
 }
 
 func (d Deps) writeApplicationError(c *echo.Context, err error) error {
+	if errors.Is(err, clientports.ErrFirstPartyClientProtected) {
+		return support.WriteProblem(c, http.StatusConflict, "first_party_client_protected", "IdMagic's built-in applications cannot be deleted.")
+	}
 	if errors.Is(err, appusecases.ErrApplicationNotFound) || errors.Is(err, policyusecases.ErrApplicationNotFound) {
 		return support.WriteProblem(c, http.StatusNotFound, "application_not_found", "The application does not exist.")
 	}
@@ -621,7 +637,38 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 	if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 		return err
 	}
-	return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+	for _, invalid := range []error{
+		domain.ErrNameRequired, domain.ErrInvalidKind, domain.ErrInvalidStatus,
+		domain.ErrWeblinkLaunchURL, domain.ErrWeblinkHasProtocol, domain.ErrProtocolRequired,
+		domain.ErrServiceRequiresOIDC, domain.ErrInvalidProtocolType, domain.ErrOIDCClientID,
+		domain.ErrWsFedWtrealm, domain.ErrSAMLEntityID,
+		appusecases.ErrInvalidSubjectType, appusecases.ErrSubjectRequired,
+		appusecases.ErrSubjectNotFound, appusecases.ErrInvalidVisibility,
+	} {
+		if errors.Is(err, invalid) {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", invalid.Error())
+		}
+	}
+	// OAuth2 の所有する型を import せず、入力検証として分類済みのエラーだけを公開する。
+	if metadata, ok := errors.AsType[interface {
+		error
+		IsInvalidClientMetadata() bool
+	}](err); ok && metadata.IsInvalidClientMetadata() {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", metadata.Error())
+	}
+	return err
+}
+
+func (d Deps) applicationDeletionProtected(ctx context.Context, tenantID string, app *domain.Application) bool {
+	if app.Protocol == nil || app.Protocol.Type != domain.ApplicationProtocolOIDC {
+		return false
+	}
+	if d.ClientRepo == nil {
+		return true
+	}
+	client, err := d.ClientRepo.FindByID(ctx, tenantID, app.Protocol.ClientID)
+	// 保護の状態を解決できない間は、画面から削除を選べないようにする。
+	return err != nil || client != nil && client.FirstParty
 }
 
 func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app *domain.Application) applicationResponse {
@@ -673,6 +720,7 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 	}
 	return applicationResponse{
 		ID:                   app.ID,
+		DeletionProtected:    d.applicationDeletionProtected(ctx, tenantID, app),
 		Name:                 app.Name,
 		Kind:                 app.Kind,
 		Status:               app.Status,

@@ -3,7 +3,11 @@ package handlers_http_test
 import (
 	"encoding/json"
 	"net/http"
+	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/ambi/idmagic/backend/signinpolicy"
 
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -160,4 +164,80 @@ func TestOIDCCatalogDeleteReleasesQuotaAndRemovesTheOwnedClient(t *testing.T) {
 		t.Fatalf("usage=%+v err=%v", usage, err)
 	}
 	f.createApplication(t)
+}
+
+//spec:covers REQ-APPLICATION-017: 組み込みクライアントの Application は、関連状態と使用量を変えずに削除を拒否する。
+//verify:operation DeleteAdminApplication: 組み込みアプリケーションは 409 の Problem Details で削除を拒否する。
+func TestFirstPartyApplicationDeletionIsRefused(t *testing.T) {
+	quotas := tenancy.NewMemoryModule().QuotaRepo
+	f := newSecretExampleFixtureWithPolicy(t, quotas, signinpolicy.NewMemoryModule())
+	applicationID, clientID, _ := f.createApplication(t)
+	client, err := f.clients.FindByID(t.Context(), tenancydomain.DefaultTenantID, clientID)
+	if err != nil || client == nil {
+		t.Fatalf("client=%+v err=%v", client, err)
+	}
+	client.FirstParty = true
+	if err := f.clients.Save(t.Context(), client); err != nil {
+		t.Fatal(err)
+	}
+	path := "/api/admin/v1/applications/" + applicationID
+	assignment := adminJSON(t, f.e, http.MethodPost, path+"/assignments", f.csrf, f.cookie, map[string]any{
+		"subject_type": "user", "subject_id": "admin", "visibility": "visible",
+	})
+	if assignment.Code != http.StatusCreated && assignment.Code != http.StatusOK {
+		t.Fatalf("assignment status=%d body=%s", assignment.Code, assignment.Body.String())
+	}
+	policy := adminJSON(t, f.e, http.MethodPut, path+"/sign-in-policy", f.csrf, f.cookie, map[string]any{
+		"rules": []map[string]any{{"name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "Mfa"}}},
+	})
+	if policy.Code != http.StatusOK {
+		t.Fatalf("policy status=%d body=%s", policy.Code, policy.Body.String())
+	}
+	assignmentsBefore := adminJSON(t, f.e, http.MethodGet, path+"/assignments", f.csrf, f.cookie, nil)
+	before := adminJSON(t, f.e, http.MethodGet, "/api/admin/v1/applications/"+applicationID, f.csrf, f.cookie, nil)
+	usageBefore, err := quotas.GetUsage(t.Context(), tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventCount := len(*f.events)
+	for range 2 {
+		response := adminJSON(t, f.e, http.MethodDelete, "/api/admin/v1/applications/"+applicationID, f.csrf, f.cookie, nil)
+		if response.Code != http.StatusConflict || !strings.Contains(response.Body.String(), "urn:idmagic:error:first_party_client_protected") {
+			t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+		}
+	}
+	after := adminJSON(t, f.e, http.MethodGet, "/api/admin/v1/applications/"+applicationID, f.csrf, f.cookie, nil)
+	var beforeBody, afterBody map[string]any
+	if err := json.Unmarshal(before.Body.Bytes(), &beforeBody); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(after.Body.Bytes(), &afterBody); err != nil {
+		t.Fatal(err)
+	}
+	if after.Code != http.StatusOK || !reflect.DeepEqual(beforeBody["application"], afterBody["application"]) || !reflect.DeepEqual(beforeBody["oidc"], afterBody["oidc"]) {
+		t.Fatalf("before=%s after=%s", before.Body.String(), after.Body.String())
+	}
+	if !strings.Contains(after.Body.String(), `"deletion_protected":true`) {
+		t.Fatalf("protection missing: %s", after.Body.String())
+	}
+	policyAfter := adminJSON(t, f.e, http.MethodGet, path+"/sign-in-policy", f.csrf, f.cookie, nil)
+	assignmentsAfter := adminJSON(t, f.e, http.MethodGet, path+"/assignments", f.csrf, f.cookie, nil)
+	var policyBeforeBody, policyAfterBody map[string]any
+	if err := json.Unmarshal(policy.Body.Bytes(), &policyBeforeBody); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(policyAfter.Body.Bytes(), &policyAfterBody); err != nil {
+		t.Fatal(err)
+	}
+	if assignmentsAfter.Code != http.StatusOK || assignmentsAfter.Body.String() != assignmentsBefore.Body.String() || policyAfter.Code != http.StatusOK || !reflect.DeepEqual(policyBeforeBody["policy"], policyAfterBody["policy"]) {
+		t.Fatalf("assignments=%s policy=%s", assignmentsAfter.Body.String(), policyAfter.Body.String())
+	}
+	usageAfter, err := quotas.GetUsage(t.Context(), tenancydomain.DefaultTenantID)
+	if err != nil || !reflect.DeepEqual(usageBefore, usageAfter) || len(*f.events) != eventCount {
+		t.Fatalf("usage before=%+v after=%+v err=%v events=%v", usageBefore, usageAfter, err, *f.events)
+	}
+	stored, err := f.clients.FindByID(t.Context(), tenancydomain.DefaultTenantID, clientID)
+	if err != nil || !reflect.DeepEqual(stored, client) {
+		t.Fatalf("client=%+v err=%v", stored, err)
+	}
 }

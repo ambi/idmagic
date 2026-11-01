@@ -54,5 +54,12 @@ func (a ClientAdministration) UpdateClaims(ctx context.Context, tenantID, client
 }
 
 func (a ClientAdministration) DeleteForApplication(ctx context.Context, tenantID, clientID string) error {
+	client, err := a.Deps.ClientRepo.FindByID(ctx, tenantID, clientID)
+	if err != nil {
+		return err
+	}
+	if client != nil && client.FirstParty {
+		return clientports.ErrFirstPartyClientProtected
+	}
 	return a.Deps.ClientRepo.Delete(ctx, tenantID, clientID)
 }

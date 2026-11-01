@@ -16,6 +16,11 @@ func (e *OAuthError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Code, e.Description)
 }
 
+// IsInvalidClientMetadata は、所有する型を公開しない管理経路でも入力検証の拒否を識別する。
+func (e *OAuthError) IsInvalidClientMetadata() bool {
+	return e.Code == "invalid_client_metadata"
+}
+
 func NewOAuthError(code, description string) *OAuthError {
 	return &OAuthError{Code: code, Description: description}
 }

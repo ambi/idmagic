@@ -15,6 +15,8 @@ var ErrClientSecretLimitExceeded = errors.New("active client secret limit exceed
 
 var ErrCatalogClientNotFound = errors.New("client does not exist")
 
+var ErrFirstPartyClientProtected = errors.New("first-party clients cannot be deleted")
+
 // ClientAdministration は、ほかのモジュールの管理画面が OAuth2 クライアントを作成、更新し、
 // シークレットを管理する操作である。シークレットの上限、クォータ、発行するイベントは OAuth2 が保つ。
 type ClientAdministration interface {

@@ -2,9 +2,20 @@ package db_postgres_test
 
 import (
 	"context"
+	"errors"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/ambi/idmagic/backend/idmanagement"
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
+	clientusecases "github.com/ambi/idmagic/backend/oauth2/internal/client/usecases"
+	tokenpg "github.com/ambi/idmagic/backend/oauth2/internal/token/db_postgres"
+	tokendomain "github.com/ambi/idmagic/backend/oauth2/internal/token/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/ambi/idmagic/backend/oauth2/internal/client/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2/internal/client/domain"
@@ -62,5 +73,49 @@ func TestOAuth2ClientRepositoryListPage(t *testing.T) {
 	}
 	if len(all) != 5 {
 		t.Fatalf("expected 5, got %d", len(all))
+	}
+}
+
+//spec:covers REQ-OAUTH2-080: 実 DB に参照トークンがあっても、組み込みクライアントの削除は SQL の実行前に業務上の拒否となる。
+func TestFirstPartyDeletionWithRefreshToken(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	repo := &db_postgres.OAuth2ClientRepository{Pool: db}
+	client := pgfixtures.SeedClient(t, repo, tenant.ID)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
+	store := &tokenpg.RefreshTokenStore{Pool: db}
+	now := pgfixtures.TestClock()
+	token := &tokendomain.RefreshTokenRecord{
+		ID: pgfixtures.NewUUID(t), FamilyID: pgfixtures.NewUUID(t), Hash: pgfixtures.UniqueID("refresh"),
+		TenantID: tenant.ID, ClientID: client.ClientID, UserID: user.ID,
+		Scopes: []string{"openid"}, IssuedAt: now, ExpiresAt: now.Add(time.Hour), AbsoluteExpiresAt: now.Add(24 * time.Hour),
+	}
+	if err := store.Save(t.Context(), token); err != nil {
+		t.Fatal(err)
+	}
+	// 元の制約違反を再現し、トークン参照による拒否と組み込み保護の拒否を区別する。
+	err := repo.Delete(t.Context(), tenant.ID, client.ClientID)
+	pgerr, ok := errors.AsType[*pgconn.PgError](err)
+	if !ok || pgerr.Code != "23001" || pgerr.ConstraintName != "refresh_tokens_client_fkey" {
+		t.Fatalf("delete error=%v", err)
+	}
+	client.FirstParty = true
+	if err := repo.Save(t.Context(), client); err != nil {
+		t.Fatal(err)
+	}
+	before, err := repo.FindByID(t.Context(), tenant.ID, client.ClientID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := tenantports.WithTenantID(t.Context(), tenant.ID)
+	if err := clientusecases.DeleteAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: repo}, "admin", client.ClientID, now); !errors.Is(err, clientports.ErrFirstPartyClientProtected) {
+		t.Fatalf("delete first-party client: %v", err)
+	}
+	stored, err := repo.FindByID(ctx, tenant.ID, client.ClientID)
+	if err != nil || !reflect.DeepEqual(stored, before) {
+		t.Fatalf("client=%+v err=%v", stored, err)
+	}
+	if storedToken, err := store.FindByHash(ctx, token.Hash); err != nil || storedToken == nil || storedToken.Revoked {
+		t.Fatalf("token=%+v err=%v", storedToken, err)
 	}
 }

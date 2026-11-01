@@ -1,5 +1,8 @@
 namespace IdMagic.Contract {
 
+@doc("IdMagic の管理コンソールやポータルが使う first_party クライアントの削除は拒否する。HTTP 409 の Problem Details で、type は urn:idmagic:error:first_party_client_protected である。")
+model FirstPartyClientProtectedError is ProblemDetails;
+
 @doc("エンドユーザーのアカウントポータルが返す、接続済みのアプリケーションの一つ（セルフサービス）。呼び出し元自身の `sub` に固定されるので、`sub` も `tenant_id` も現れない。表示のために、client_id、表示名、付与したスコープ、付与と期限の時刻を返す。")
 model AccountConsentResponse {
   client_id: string;

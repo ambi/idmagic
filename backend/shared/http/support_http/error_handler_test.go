@@ -1,14 +1,17 @@
 package support_http
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"unicode"
 
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/labstack/echo/v5"
 )
@@ -73,6 +76,46 @@ func TestErrorHandler_FallbackWritesProblemDetailsForPlainError(t *testing.T) {
 	}
 	if strings.Contains(rec.Body.String(), "10.0.0.5") {
 		t.Errorf("body discloses the original error: %s", rec.Body.String())
+	}
+}
+
+//spec:covers REQ-SYSTEM-023: HTTPError に内部障害が包まれても、5xx の文面は公開しない。
+func TestErrorHandlerDoesNotDiscloseServerHTTPError(t *testing.T) {
+	for _, status := range []int{http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable} {
+		e := echo.New()
+		e.HTTPErrorHandler = ErrorHandler(nil, nil)
+		e.GET("/probe", func(c *echo.Context) error {
+			return echo.NewHTTPError(status, "database refresh_tokens failed at 10.0.0.5:5432")
+		})
+		response := httptest.NewRecorder()
+		e.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/probe", http.NoBody))
+		var problem Problem
+		if err := json.Unmarshal(response.Body.Bytes(), &problem); err != nil {
+			t.Fatal(err)
+		}
+		if response.Code != status || problem.Detail != http.StatusText(status) || strings.Contains(response.Body.String(), "refresh_tokens") {
+			t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+		}
+	}
+}
+
+//spec:covers REQ-SYSTEM-023: 公開しない原因はサーバー側に相関 ID とともに残す。
+func TestInternalErrorIsLoggedWithRequestID(t *testing.T) {
+	var logs bytes.Buffer
+	e := echo.New()
+	e.HTTPErrorHandler = ErrorHandler(logging.New(&logs, slog.LevelError, "test", ""), nil)
+	e.GET("/probe", func(c *echo.Context) error {
+		return errors.New("private-marker: database failure")
+	})
+	request := httptest.NewRequest(http.MethodGet, "/probe", http.NoBody)
+	request = request.WithContext(logging.ContextWithRequestID(request.Context(), "request-42"))
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	if !strings.Contains(logs.String(), "private-marker") || !strings.Contains(logs.String(), "request-42") {
+		t.Fatalf("diagnostic log=%s", logs.String())
+	}
+	if strings.Contains(response.Body.String(), "private-marker") || !strings.Contains(response.Body.String(), "request-42") {
+		t.Fatalf("public response=%s", response.Body.String())
 	}
 }
 

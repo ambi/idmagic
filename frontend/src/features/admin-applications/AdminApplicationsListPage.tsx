@@ -225,14 +225,18 @@ function ApplicationSummaryCard({
             detailHref={detailURL(app.id)}
             editHref={editURL(app.id)}
             busy={busy}
-            actions={[
-              {
-                label: t.deleteApplication,
-                icon: IconTrash,
-                onClick: () => setConfirmDelete(true),
-                tone: 'danger',
-              },
-            ]}
+            actions={
+              app.deletion_protected
+                ? []
+                : [
+                    {
+                      label: t.deleteApplication,
+                      icon: IconTrash,
+                      onClick: () => setConfirmDelete(true),
+                      tone: 'danger',
+                    },
+                  ]
+            }
           />
         </div>
       </div>

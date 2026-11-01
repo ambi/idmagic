@@ -213,6 +213,8 @@ model TenantDefaultSignInPolicy {
 @doc("管理 API での Application の表現。")
 model AdminApplicationResponse {
   id: string;
+  @doc("関連する OAuth2 クライアントが first_party のとき真。真のアプリケーションは削除できない。省略時は偽として扱う。")
+  deletion_protected?: boolean;
   name: string;
   kind: ApplicationKind;
   status: ApplicationStatus;

@@ -5,6 +5,8 @@ package handlers_http_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -22,6 +24,7 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -298,8 +301,14 @@ func newAdminOAuth2ClientHandler(
 	t *testing.T,
 ) (*echo.Echo, *oauth2memory.OAuth2ClientRepository, *[]spec.DomainEvent) {
 	t.Helper()
-	users := idmanagement.NewMemoryModule().UserRepo
 	clients := oauth2memory.NewClientRepository()
+	e, events := newAdminOAuth2ClientHandlerUsingRepository(t, clients)
+	return e, clients, events
+}
+
+func newAdminOAuth2ClientHandlerUsingRepository(t *testing.T, clients clientports.OAuth2ClientRepository) (*echo.Echo, *[]spec.DomainEvent) {
+	t.Helper()
+	users := idmanagement.NewMemoryModule().UserRepo
 	now := time.Now().UTC()
 	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
@@ -319,5 +328,67 @@ func newAdminOAuth2ClientHandler(
 		}, OAuth2: oauth2.Module{ClientRepo: clients}, UserRepo: users,
 		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
-	return e, clients, &events
+	return e, &events
+}
+
+type failingClientDeletion struct {
+	clientports.OAuth2ClientRepository
+	err error
+}
+
+func (r failingClientDeletion) Delete(context.Context, string, string) error { return r.err }
+
+//spec:covers REQ-SYSTEM-023: 保存先から返る内部障害を、クライアント削除の実経路が公開しない。
+//verify:operation DeleteAdminOAuth2Client: 未分類の保存障害は 500 の Problem Details となり、クライアントとイベントを変えない。
+func TestClientDeletionDoesNotDiscloseDependencyErrors(t *testing.T) {
+	for _, failure := range []error{
+		errors.New("refresh_tokens_client_fkey SQLSTATE 23001"),
+		errors.New("runtime: private-marker\ngoroutine 42\n/internal/library.go:123"),
+		fmt.Errorf("dependency failed: %w", errors.New("private-marker: driver library error at 10.0.0.5:5432")),
+	} {
+		repo := oauth2memory.NewClientRepository()
+		client := &oauthdomain.OAuth2Client{TenantID: tenancydomain.DefaultTenantID, ClientID: "client"}
+		repo.Seed(client)
+		e, events := newAdminOAuth2ClientHandlerUsingRepository(t, failingClientDeletion{OAuth2ClientRepository: repo, err: failure})
+		csrf, cookie := adminCSRF(t, e)
+		response := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/clients/client", csrf, cookie, nil)
+		if response.Code != http.StatusInternalServerError || !strings.Contains(response.Body.String(), "urn:idmagic:error:internal_server_error") {
+			t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+		}
+		for _, content := range []string{response.Body.String(), fmt.Sprint(response.Header())} {
+			for _, secret := range []string{"refresh_tokens", "SQLSTATE", "private-marker", "goroutine", "/internal/", "10.0.0.5"} {
+				if strings.Contains(content, secret) {
+					t.Fatalf("internal detail was disclosed: %s", content)
+				}
+			}
+		}
+		stored, err := repo.FindByID(t.Context(), client.TenantID, client.ClientID)
+		if err != nil || !reflect.DeepEqual(stored, client) || len(*events) != 0 {
+			t.Fatalf("stored=%+v err=%v events=%v", stored, err, *events)
+		}
+	}
+}
+
+//spec:covers REQ-OAUTH2-080: 管理コンソールとポータルの名前を変えても、組み込みクライアントは削除できない。
+//verify:operation DeleteAdminOAuth2Client: 組み込みクライアントの削除は 409 の Problem Details となり、保存状態とイベントは変わらない。
+func TestFirstPartyClientDeletionIsRefused(t *testing.T) {
+	for _, clientID := range []string{"console", "portal"} {
+		t.Run(clientID, func(t *testing.T) {
+			e, clients, events := newAdminOAuth2ClientHandler(t)
+			client := &oauthdomain.OAuth2Client{
+				TenantID: tenancydomain.DefaultTenantID, ClientID: clientID,
+				ClientName: new("Renamed application"), FirstParty: true,
+			}
+			clients.Seed(client)
+			csrf, cookie := adminCSRF(t, e)
+			response := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/clients/"+clientID, csrf, cookie, nil)
+			if response.Code != http.StatusConflict || !strings.Contains(response.Body.String(), "urn:idmagic:error:first_party_client_protected") {
+				t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+			}
+			stored, err := clients.FindByID(t.Context(), client.TenantID, clientID)
+			if err != nil || !reflect.DeepEqual(stored, client) || len(*events) != 0 {
+				t.Fatalf("stored=%+v error=%v events=%v", stored, err, *events)
+			}
+		})
+	}
 }

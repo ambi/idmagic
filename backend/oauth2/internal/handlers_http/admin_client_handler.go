@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
+
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -210,6 +212,9 @@ func (d Deps) adminClientDeps() clientusecases.AdminOAuth2ClientDeps {
 }
 
 func (d Deps) writeAdminOAuth2ClientError(c *echo.Context, err error) error {
+	if errors.Is(err, clientports.ErrFirstPartyClientProtected) {
+		return support.WriteProblem(c, http.StatusConflict, "first_party_client_protected", "IdMagic's built-in applications cannot be deleted.")
+	}
 	if errors.Is(err, clientusecases.ErrClientNotFound) {
 		return support.WriteProblem(c, http.StatusNotFound, "client_not_found", "The client does not exist.")
 	}
@@ -226,7 +231,7 @@ func (d Deps) writeAdminOAuth2ClientError(c *echo.Context, err error) error {
 	if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 		return err
 	}
-	return support.WriteProblem(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
+	return err
 }
 
 func toAdminOAuth2ClientResponse(client *oauthdomain.OAuth2Client) adminClientResponse {

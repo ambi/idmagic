@@ -1246,6 +1246,7 @@ model DeleteAdminOAuth2ClientError404 {
 
 union DeleteAdminOAuth2ClientError409Body {
   IdMagic.Contract.ApplicationOwnedProtocolError,
+  IdMagic.Contract.FirstPartyClientProtectedError,
 }
 
 model DeleteAdminOAuth2ClientError409 {

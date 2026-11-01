@@ -144,7 +144,7 @@ func (d Deps) writeCategoryError(c *echo.Context, err error) error {
 	case errors.Is(err, appusecases.ErrUnknownCategory):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "unknown_category", "A nonexistent category cannot be assigned.")
 	default:
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return err
 	}
 }
 

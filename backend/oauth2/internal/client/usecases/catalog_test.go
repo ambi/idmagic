@@ -68,6 +68,23 @@ func TestCatalogOperationsPreserveUnchangedClientState(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-OAUTH2-080: Catalog の公開操作からも組み込みクライアントは削除できない。
+func TestCatalogDeletionProtectsFirstPartyClient(t *testing.T) {
+	repo := db_memory.NewClientRepository()
+	client := &domain.OAuth2Client{TenantID: "tenant", ClientID: "client", FirstParty: true, ApplicationID: "app"}
+	if err := repo.Save(t.Context(), client); err != nil {
+		t.Fatal(err)
+	}
+	a := ClientAdministration{Deps: AdminOAuth2ClientDeps{ClientRepo: repo}}
+	if err := a.DeleteForApplication(t.Context(), "tenant", "client"); !errors.Is(err, clientports.ErrFirstPartyClientProtected) {
+		t.Fatalf("delete: %v", err)
+	}
+	stored, err := repo.FindByID(t.Context(), "tenant", "client")
+	if err != nil || !reflect.DeepEqual(stored, client) {
+		t.Fatalf("stored=%+v err=%v", stored, err)
+	}
+}
+
 type catalogFailureRepository struct {
 	clientports.OAuth2ClientRepository
 	findErr, saveErr, deleteErr error

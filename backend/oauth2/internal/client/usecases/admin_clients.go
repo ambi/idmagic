@@ -121,7 +121,7 @@ func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in
 	}
 	updated.UpdatedAt = adminNow(in.Now)
 	if err := updated.Validate(); err != nil {
-		return nil, err
+		return nil, NewOAuthError("invalid_client_metadata", err.Error())
 	}
 	if err := deps.ClientRepo.Save(ctx, &updated); err != nil {
 		return nil, err
@@ -146,6 +146,9 @@ func DeleteAdminOAuth2Client(
 	}
 	if client == nil {
 		return ErrClientNotFound
+	}
+	if client.FirstParty {
+		return clientports.ErrFirstPartyClientProtected
 	}
 	if client.ApplicationID != "" {
 		return ErrProtocolOwnedByApplication

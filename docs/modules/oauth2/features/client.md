@@ -90,6 +90,12 @@
 - Application が所有するクライアントの更新か削除を受けた場合、OAuth2 は、409 と `application_owned_protocol` で拒否する。
 - **例**：EX-OAUTH2-035-01、EX-OAUTH2-035-02
 
+#### REQ-OAUTH2-080 組み込みクライアントの削除は、利用状況によらず拒否される
+
+- `first_party` が真のクライアントの削除を要求された場合、OAuth2 は、409 と `first_party_client_protected` で拒否し、クライアントと使用量を変えず、削除のイベントを発行しない。
+- Application 経由で `first_party` が真のクライアントの削除を要求された場合、OAuth2 は、クライアントを削除せず、`first_party_client_protected` に対応する拒否を呼び出し元へ返す。
+- **判断**：管理コンソールとポータルの利用経路を維持するため、表示名や発行済みトークンの有無で削除可否を変えない。
+
 ### 管理者によるクライアントシークレットの管理
 
 #### REQ-OAUTH2-036 管理者は Application から期限付きクライアントシークレットを追加発行し、個別に失効できる

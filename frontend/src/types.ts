@@ -278,6 +278,7 @@ export type ApplicationProtocol = {
 
 export type AdminApplication = {
   id: string
+  deletion_protected?: boolean
   name: string
   kind: ApplicationKind
   status: ApplicationStatus
