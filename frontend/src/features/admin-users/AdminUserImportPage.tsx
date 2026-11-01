@@ -1,4 +1,10 @@
-import { IconArrowLeft, IconCheck, IconClock, IconDownload, IconUpload } from '@tabler/icons-react'
+import {
+  IconArrowLeft,
+  IconCheck,
+  IconClock,
+  IconDownload,
+  IconFileImport,
+} from '@tabler/icons-react'
 import { type ChangeEvent, useState } from 'react'
 import {
   applyAdminUserImport,
@@ -301,7 +307,7 @@ export function AdminUserImportPage({
             </a>
             {step === 'select' && (
               <Button type="button" disabled={!canRunPreview} onClick={() => void runPreview()}>
-                <IconUpload size={16} aria-hidden="true" />
+                <IconFileImport size={16} aria-hidden="true" />
                 {t.runPreview}
               </Button>
             )}

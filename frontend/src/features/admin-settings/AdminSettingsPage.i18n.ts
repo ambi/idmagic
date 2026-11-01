@@ -189,13 +189,14 @@ export const adminSettingsDictionary = defineDictionary(
     accountApiBaseUrlLabel: 'アカウント API ベースURL',
     accountApiHelp:
       '発行者本人のプロフィールやセキュリティ設定を操作するとき、この URL にリソースのパスを続けます。',
-    apiTokensListHeading: '発行済みトークン',
-    issueToken: 'トークンを発行',
+    apiTokensListHeading: 'このテナントの発行済みトークン',
+    issueToken: '自分のトークンを発行',
     issuedTokenHeading: '発行された API アクセストークン',
     issuedTokenWarning:
       'セキュリティのため、このトークンは一度しか表示されません。必ずコピーして安全な場所に保管してください。',
     tokenCopiedNotice: 'トークンをコピーしました。',
-    noTokensNotice: '有効なアクセストークンがありません。「トークンを発行」から作成してください。',
+    noTokensNotice:
+      '発行済みのアクセストークンがありません。「自分のトークンを発行」から作成できます。',
     tableHeaderDescription: '説明',
     tableHeaderScopes: 'Scope',
     tableHeaderCreatedAt: '作成日時',
@@ -203,12 +204,18 @@ export const adminSettingsDictionary = defineDictionary(
     tableHeaderAction: 'アクション',
     noneLabel: 'なし',
     revoke: '失効',
-    newTokenHeading: '新規アクセストークンの作成',
+    newTokenHeading: '自分の API アクセストークンを発行',
+    tokenIdentityHeading: 'トークンの主体と操作対象',
+    tokenIssuerLabel: '発行者（あなた）',
+    currentUserLabel: 'ログイン中のユーザー',
+    tokenTenantLabel: '操作対象のテナント',
+    tokenIdentityDescription:
+      'このトークンはあなた本人の資格情報として発行されます。テナントで共有する資格情報ではありません。管理 API の操作には、選択したスコープとあなたの現在の管理者権限の両方が必要です。',
     tokenDescriptionLabel: 'トークンの説明',
     tenantTokenDescription:
       'このテナントで発行されたトークンを管理します。トークンの主体は発行者本人です。管理 API の利用にはスコープと現在の管理者ロールの両方が必要です。',
     personalTokenDescription:
-      '本人が発行したトークンを管理します。ここから発行するトークンは本人のアカウント API だけに使えます。管理者が本人名義で発行した記録も表示します。',
+      '本人が発行したトークンを管理します。ここから発行するトークンは本人のアカウント API だけに使えます。管理コンソールからあなたが発行したトークンも表示します。',
     tokenOwnerLabel: '発行者（主体）',
     tokenRevokeConfirm:
       'このトークンを使う API 呼び出しを停止します。失効は取り消せません。必要なら新しく発行してください。',
@@ -452,13 +459,13 @@ export const adminSettingsDictionary = defineDictionary(
     accountApiBaseUrlLabel: 'Account API base URL',
     accountApiHelp:
       "Append a resource path to this URL when managing the issuer's own profile or security settings.",
-    apiTokensListHeading: 'Issued tokens',
-    issueToken: 'Issue token',
+    apiTokensListHeading: 'Tokens issued in this tenant',
+    issueToken: 'Issue my token',
     issuedTokenHeading: 'Issued API access token',
     issuedTokenWarning:
       'For security, this token is shown only once. Be sure to copy it and store it somewhere safe.',
     tokenCopiedNotice: 'Copied the token.',
-    noTokensNotice: 'There are no active access tokens. Create one from "Issue token."',
+    noTokensNotice: 'No access tokens have been issued. Create one with "Issue my token".',
     tableHeaderDescription: 'Description',
     tableHeaderScopes: 'Scopes',
     tableHeaderCreatedAt: 'Created at',
@@ -466,12 +473,18 @@ export const adminSettingsDictionary = defineDictionary(
     tableHeaderAction: 'Action',
     noneLabel: 'None',
     revoke: 'Revoke',
-    newTokenHeading: 'Create a new access token',
+    newTokenHeading: 'Issue my API access token',
+    tokenIdentityHeading: 'Token identity',
+    tokenIssuerLabel: 'Issuer (you)',
+    currentUserLabel: 'Signed-in user',
+    tokenTenantLabel: 'Target tenant',
+    tokenIdentityDescription:
+      'This token is issued as your personal credential, not a shared tenant credential. Management API calls require both the selected scopes and your current administrator permissions.',
     tokenDescriptionLabel: 'Token description',
     tenantTokenDescription:
       'Manage tokens issued in this tenant. Each token acts as its issuer. Management API access requires both its scopes and the issuer’s current administrator role.',
     personalTokenDescription:
-      'Manage tokens you issued. Tokens issued here can only access your account API. Records issued in your name by an administrator are also shown.',
+      'Manage tokens you issued. Tokens issued here can only access your account API. Tokens you issued from the admin console are also shown.',
     tokenOwnerLabel: 'Issuer (subject)',
     tokenRevokeConfirm:
       'API calls using this token will stop. Revocation cannot be undone. Issue a new token if needed.',

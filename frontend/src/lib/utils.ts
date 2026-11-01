@@ -2,14 +2,30 @@ import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import type { DomainLabelsDictionary } from './i18n/domainLabels.i18n'
 import type { UserAttributeDef } from '../types'
+import type { Locale } from './i18n'
+import { builtinAttributesDictionary } from './i18n/builtinAttributes.i18n'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// attributeLabel は属性を「日本語表示名 (key)」で表す。label が無ければ key のみ。
-export function attributeLabel(def: Pick<UserAttributeDef, 'key' | 'label'>): string {
-  return def.label ? `${def.label} (${def.key})` : def.key
+export function attributeDisplayName(
+  def: Pick<UserAttributeDef, 'key' | 'label'>,
+  locale: Locale,
+): string {
+  const labels = builtinAttributesDictionary[locale]
+  // 組み込みキーは予約済みであり、カスタム属性には使えない。
+  return Object.hasOwn(labels, def.key)
+    ? labels[def.key as keyof typeof labels]
+    : def.label || def.key
+}
+
+export function attributeLabel(
+  def: Pick<UserAttributeDef, 'key' | 'label'>,
+  locale: Locale = 'en',
+): string {
+  const name = attributeDisplayName(def, locale)
+  return name === def.key ? def.key : `${name} (${def.key})`
 }
 
 const organizationAttributeKeys = new Set([
@@ -23,6 +39,10 @@ const organizationAttributeKeys = new Set([
   'employee_id',
   'cost_center',
   'manager',
+  'manager_sub',
+  'hire_date',
+  'termination_date',
+  'employment_type',
 ])
 
 export type AttributeGroupKey = 'profile' | 'organization' | 'custom'

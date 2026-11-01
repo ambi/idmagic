@@ -5,7 +5,8 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { useDictionary } from '../../lib/i18n'
+import { useDictionary, useLocale } from '../../lib/i18n'
+import { attributeDisplayName } from '../../lib/utils'
 import type { DataExportJob, DataExportStatus } from '../../types'
 import { dataExportDictionary } from './DataExportPage.i18n'
 import { EXPORT_COLUMNS, type ExportColumn, type ExportTarget } from './dataExportColumns'
@@ -66,6 +67,7 @@ export function DataExportPage({
   backPath?: string
 }) {
   const t = useDictionary(dataExportDictionary)
+  const { locale } = useLocale()
   const baseColumns = EXPORT_COLUMNS[target]
   const listPath = backPath || tenantURL(target === 'users' ? '/admin/users' : '/admin/groups')
   const [attributeColumns, setAttributeColumns] = useState<ExportColumn[]>([])
@@ -108,7 +110,7 @@ export function DataExportPage({
         const resolved = [
           ...schema.builtin.map((attribute) => ({
             key: `attr:${attribute.key}`,
-            label: attribute.label,
+            attribute,
             pii: attribute.pii,
           })),
           ...schema.attributes.map((attribute) => ({
@@ -237,7 +239,9 @@ export function DataExportPage({
                   />
                   <span className="flex flex-col">
                     <span>
-                      {column.label ?? (column.labelKey ? t[column.labelKey] : column.key)}
+                      {column.attribute
+                        ? attributeDisplayName(column.attribute, locale)
+                        : (column.label ?? (column.labelKey ? t[column.labelKey] : column.key))}
                     </span>
                     <span className="font-mono text-[11px] text-slate-400">({column.key})</span>
                   </span>

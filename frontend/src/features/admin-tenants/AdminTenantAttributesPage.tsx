@@ -9,7 +9,8 @@ import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { useDictionary } from '../../lib/i18n'
+import { useDictionary, useLocale } from '../../lib/i18n'
+import { attributeDisplayName } from '../../lib/utils'
 import type { UserAttributeDef, TenantUserAttributeSchema } from '../../types'
 import { adminTenantAttributesDictionary } from './AdminTenantAttributesPage.i18n'
 import {
@@ -245,6 +246,7 @@ function AttributeEditorDialog({
 
 function BuiltinReference({ builtin }: { builtin: UserAttributeDef[] }) {
   const t = useDictionary(adminTenantAttributesDictionary)
+  const { locale } = useLocale()
   return (
     <Card className="p-6">
       <h2 className="text-base font-semibold text-slate-900">{t.builtinAttributesHeading}</h2>
@@ -263,7 +265,7 @@ function BuiltinReference({ builtin }: { builtin: UserAttributeDef[] }) {
           <tbody>
             {builtin.map((def) => (
               <tr key={def.key} className="border-b border-slate-100">
-                <td className="py-2 pr-4 text-slate-800">{def.label || '—'}</td>
+                <td className="py-2 pr-4 text-slate-800">{attributeDisplayName(def, locale)}</td>
                 <td className="py-2 pr-4 font-mono text-slate-600">{def.key}</td>
                 <td className="py-2 pr-4 text-slate-600">{def.type}</td>
                 <td className="py-2 pr-4 text-slate-600">{visibilityLabel(def.visibility, t)}</td>

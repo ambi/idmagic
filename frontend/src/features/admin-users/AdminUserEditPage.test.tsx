@@ -58,6 +58,47 @@ describe('AdminUserEditPage', () => {
   const originalLocation = window.location
   afterEach(() => restoreGlobals())
 
+  //spec:covers REQ-SYSTEM-010: API が英語で返す組み込み属性を日本語で表示し、カスタム属性のラベルと送信キーを維持する。
+  it('localizes built-in attribute labels while preserving custom labels', async () => {
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    const fetcher = routeFetch(() => response(200, user))
+    stubGlobal('fetch', fetcher)
+    const def = {
+      type: 'string' as const,
+      multi_valued: false,
+      required: false,
+      editable_by_user: true,
+      visibility: 'self_readable' as const,
+      pii: false,
+    }
+    await renderWithRouter(
+      <AdminUserEditPage
+        csrfToken="csrf"
+        user={user}
+        schema={{
+          ...emptySchema,
+          builtin: [
+            { ...def, key: 'middle_name', label: 'Middle name', oidc_scope: 'profile' },
+            { ...def, key: 'department', label: 'Department' },
+          ],
+          attributes: [{ ...def, key: 'staff_code', label: 'Staff code' }],
+        }}
+      />,
+      { locale: 'ja' },
+    )
+    expect(screen.getByLabelText('ミドルネーム (middle_name)')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('部署 (department)'), { target: { value: '開発部' } })
+    expect(screen.getByLabelText('Staff code (staff_code)')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: adminUsersDictionary.ja.save }))
+    await waitFor(() => {
+      const patch = fetcher.mock.calls.find(([, init]) => init?.method === 'PATCH')
+      expect(JSON.parse(String(patch?.[1]?.body)).attributes.department).toEqual({
+        type: 'string',
+        string: '開発部',
+      })
+    })
+  })
+
   it('shows an error and keeps the form when updating profile fields fails', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     stubGlobal(

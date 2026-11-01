@@ -1,11 +1,11 @@
 import { IconChevronDown, IconLogout, IconUserCircle } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import { logout, tenantRouterPath } from '../api'
-import { adminNavGroups, adminNavItems, type AdminNavKey } from '../lib/adminNav'
-import { cn } from '../lib/utils'
+import { logout } from '../api'
+import { adminNavItems, type AdminNavKey } from '../lib/adminNav'
 import { useDictionary, useLocale } from '../lib/i18n'
 import { Brand } from './Brand'
+import { AdminNavigation } from './AdminNavigation'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { shellDictionary } from './shell.i18n'
 import { ResourceListToolbar, type ResourceListOptions } from './ResourceListToolbar'
@@ -47,6 +47,7 @@ export function AdminShell({
       <header className="app-header">
         <div className="flex h-16 items-center justify-between px-5 lg:px-7">
           <div className="flex items-center gap-5">
+            <AdminNavigation active={active} mobile />
             <Link
               to="/admin"
               aria-current={active === 'dashboard' ? 'page' : undefined}
@@ -57,7 +58,7 @@ export function AdminShell({
             </Link>
             <div className="hidden h-4 w-px bg-slate-200 sm:block" />
             <span className="hidden text-sm font-medium text-slate-500 sm:inline">
-              Default organization
+              {t.adminConsole}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -120,39 +121,9 @@ export function AdminShell({
         </div>
       </header>
 
-      <div className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-[248px_minmax(0,1fr)]">
-        <aside className="app-sidebar">
-          <nav className="flex flex-1 flex-col gap-1 p-4" aria-label={t.adminNavigation}>
-            {adminNavGroups(active, locale).map((group) => (
-              <details
-                key={group.key}
-                open={group.items.some((item) => item.active)}
-                className="group py-1"
-              >
-                <summary className="cursor-pointer rounded-md px-3 py-2 text-xs font-semibold tracking-wide text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30">
-                  {group.label}
-                </summary>
-                <div className="mt-1 space-y-1">
-                  {group.items.map((item) => (
-                    <Link
-                      key={item.key}
-                      to={tenantRouterPath(item.href)}
-                      className={cn(
-                        'flex h-9 w-full items-center gap-3 rounded-md border-l-2 px-3 text-left text-sm transition-colors',
-                        item.active
-                          ? 'border-accent font-semibold text-slate-950'
-                          : 'border-transparent font-medium text-slate-600 hover:text-slate-950',
-                      )}
-                      aria-current={item.active ? 'page' : undefined}
-                    >
-                      <item.icon size={18} stroke={1.8} aria-hidden="true" />
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              </details>
-            ))}
-          </nav>
+      <div className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-[264px_minmax(0,1fr)]">
+        <aside className="app-sidebar sticky top-16 h-[calc(100dvh-4rem)] overflow-y-auto">
+          <AdminNavigation active={active} />
         </aside>
 
         <main className="app-main">

@@ -10,7 +10,7 @@ import {
   IconSearch,
   IconShieldCheck,
   IconTrash,
-  IconUpload,
+  IconFileImport,
   IconUser,
   IconUserPlus,
 } from '@tabler/icons-react'
@@ -209,7 +209,7 @@ export function AdminUsersPage({
               nativeButton={false}
               render={<a href={tenantURL('/admin/users/import')} />}
             >
-              <IconUpload size={17} aria-hidden="true" />
+              <IconFileImport size={17} aria-hidden="true" />
               {t.importUsers}
             </Button>
             <Button nativeButton={false} render={<a href={tenantURL('/admin/users/new')} />}>

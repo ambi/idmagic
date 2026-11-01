@@ -224,13 +224,13 @@ test('admin API access token lifecycle works with selected SCIM scopes', async (
     await navigateAndLogin(view, '/admin/api-tokens', 'admin-api-tokens')
     await waitForText(view, 'Connection info')
 
-    await clickLinkByText(view, 'Issue token')
+    await clickLinkByText(view, 'Issue my token')
     await waitForPage(view, 'admin-api-token-create')
     await setInputValue(view, '#token-desc', `SCIM E2E ${Date.now()}`)
     await clickSummaryByText(view, 'SCIM 2.0 API')
     await view.click('input[value="scim:users:read"]')
     await view.click('input[value="scim:users:write"]')
-    await clickButtonByText(view, 'Issue token')
+    await clickButtonByText(view, 'Issue my token')
 
     await waitForText(view, 'Issued the API access token.')
     expect(

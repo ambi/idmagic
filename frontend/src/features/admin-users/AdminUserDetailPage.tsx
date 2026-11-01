@@ -507,6 +507,7 @@ function AttributeGroup({
   user: AdminUser
 }) {
   const t = useDictionary(adminUsersDictionary)
+  const { locale } = useLocale()
   const rows = defs
     .map((def) => ({ def, value: user.attributes?.[def.key] }))
     .filter((row): row is { def: UserAttributeDef; value: AttributeValue } => Boolean(row.value))
@@ -519,7 +520,7 @@ function AttributeGroup({
         <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
           {rows.map(({ def, value }) => (
             <div key={def.key} className="grid gap-0.5">
-              <dt className="text-xs text-slate-500">{attributeLabel(def)}</dt>
+              <dt className="text-xs text-slate-500">{attributeLabel(def, locale)}</dt>
               <dd className="min-w-0 break-all text-slate-800">{attributeValueToText(value)}</dd>
             </div>
           ))}

@@ -25,6 +25,7 @@ export function AdminApiTokensPage({
       <ApiTokensTab
         csrfToken={csrfToken}
         integrationEndpoints={integrationEndpoints}
+        actorUsername={actorUsername}
         screen={create ? 'create' : 'list'}
       />
     </AdminShell>

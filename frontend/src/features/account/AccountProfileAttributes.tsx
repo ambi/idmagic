@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { useDictionary } from '../../lib/i18n'
+import { useDictionary, useLocale } from '../../lib/i18n'
 import {
   domainLabelsDictionary,
   type DomainLabelsDictionary,
@@ -100,6 +100,7 @@ export function ProfileAttributeGroups({
   values: AccountProfile['attributes']
 }) {
   const accountT = useDictionary(accountProfileDictionary)
+  const { locale } = useLocale()
   const knownKeys = new Set(defs.map((def) => def.key))
   const readOnlyDefs: UserAttributeDef[] = Object.entries(values)
     .filter(([key]) => !knownKeys.has(key))
@@ -126,7 +127,7 @@ export function ProfileAttributeGroups({
             {group.defs.map((def) => (
               <ProfileReadField
                 key={def.key}
-                label={attributeLabel(def)}
+                label={attributeLabel(def, locale)}
                 value={
                   values[def.key] ? valueToDisplayText(values[def.key], accountT) : accountT.notSet
                 }
@@ -193,6 +194,7 @@ function AttributeField({
   onChange: (next: string) => void
 }) {
   const t = useDictionary(accountProfileDictionary)
+  const { locale } = useLocale()
   const id = `attr-${def.key}`
   if (def.type === 'boolean') {
     return (
@@ -204,13 +206,13 @@ function AttributeField({
           onChange={(event) => onChange(event.target.checked ? 'true' : 'false')}
           className="h-4 w-4 rounded border-slate-300"
         />
-        {attributeLabel(def)}
+        {attributeLabel(def, locale)}
       </label>
     )
   }
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={id}>{attributeLabel(def)}</Label>
+      <Label htmlFor={id}>{attributeLabel(def, locale)}</Label>
       <Input
         id={id}
         type={def.type === 'number' ? 'number' : def.type === 'date' ? 'date' : 'text'}

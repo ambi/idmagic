@@ -18,11 +18,13 @@ import { ApiTokenScopePicker } from './ApiTokenScopePicker'
 export function ApiTokensTab({
   csrfToken,
   integrationEndpoints,
+  actorUsername,
   personal = false,
   screen,
 }: {
   csrfToken: string
   integrationEndpoints?: AdminIntegrationEndpointCatalog
+  actorUsername?: string
   personal?: boolean
   screen?: 'list' | 'create'
 }) {
@@ -147,6 +149,28 @@ export function ApiTokensTab({
       <div className="mt-6 grid gap-6">
         {error ? <Alert variant="destructive">{error}</Alert> : null}
         <Toast message={notice} onDismiss={() => setNotice('')} />
+        {creating && !personal ? (
+          <section
+            aria-label={t.tokenIdentityHeading}
+            className="rounded-lg border border-blue-200 bg-blue-50 p-4"
+          >
+            <dl className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs font-medium text-slate-600">{t.tokenIssuerLabel}</dt>
+                <dd className="mt-1 text-sm font-semibold text-slate-950">
+                  {actorUsername ?? t.currentUserLabel}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-slate-600">{t.tokenTenantLabel}</dt>
+                <dd className="mt-1 break-all font-mono text-xs text-slate-900">
+                  {integrationEndpoints?.issuer}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-3 text-sm text-slate-700">{t.tokenIdentityDescription}</p>
+          </section>
+        ) : null}
         {screen !== 'create' ? (
           <ResourceListToolbar
             total={tokens.length}
@@ -234,7 +258,11 @@ export function ApiTokensTab({
 
         <div className="grid gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">{t.apiTokensListHeading}</h3>
+            {screen !== 'create' ? (
+              <h3 className="text-sm font-semibold text-slate-900">
+                {personal ? t.personalTokensHeading : t.apiTokensListHeading}
+              </h3>
+            ) : null}
             {!creating && screen === 'list' ? (
               <Button nativeButton={false} render={<a href={tenantURL(`${basePath}/new`)} />}>
                 {t.issueToken}

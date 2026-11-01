@@ -12,6 +12,64 @@ import {
   waitForText,
 } from './fixtures'
 
+test('navigation fits a short desktop and opens another area with keyboard or pointer', async () => {
+  const view = await openWebView({ width: 1280, height: 768 })
+  try {
+    await navigateAndLogin(view, '/admin/api-tokens', 'admin-api-tokens')
+    expect(
+      await view.evaluate(`(() => {
+      const sidebar = document.querySelector('aside')
+      return sidebar.scrollHeight <= sidebar.clientHeight
+    })()`),
+    ).toBe(true)
+    const trigger = 'aside section[aria-label="Directory"] button'
+    await view.evaluate(`(() => {
+      const trigger = document.querySelector(${JSON.stringify(trigger)})
+      trigger.focus()
+      trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    })()`)
+    await waitForText(view, 'User attributes')
+    expect(
+      await view.evaluate(
+        `document.querySelector('[role="menuitem"][href$="/admin/users"]') !== null`,
+      ),
+    ).toBe(true)
+    await view.evaluate(
+      `document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`,
+    )
+    expect(
+      await view.evaluate(
+        `(async () => {
+          const trigger = document.querySelector(${JSON.stringify(trigger)})
+          for (let frame = 0; frame < 60; frame++) {
+            if (document.activeElement === trigger) return true
+            await new Promise(requestAnimationFrame)
+          }
+          return false
+        })()`,
+      ),
+    ).toBe(true)
+    await view.evaluate('window.__navigationMarker = "kept"')
+    await view.evaluate(`(() => {
+      const trigger = document.querySelector(${JSON.stringify(trigger)})
+      trigger.dispatchEvent(new PointerEvent('pointerover', { pointerType: 'mouse', bubbles: true }))
+      trigger.dispatchEvent(new MouseEvent('mouseenter'))
+      trigger.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }))
+    })()`)
+    await waitForText(view, 'User attributes')
+    await view.click('[role="menuitem"][href$="/admin/users"]')
+    await waitForPage(view, 'admin-users')
+    expect(await view.evaluate('window.__navigationMarker')).toBe('kept')
+    expect(
+      await view.evaluate(
+        `document.querySelector('aside a[aria-current="page"]')?.textContent.trim()`,
+      ),
+    ).toBe('Users')
+  } finally {
+    view.close()
+  }
+}, 60_000)
+
 //spec:covers REQ-FRONTEND-002: 一覧から専用の追加画面を経由し、保存した接続先を再取得する。
 test('connector creation uses a dedicated route', async () => {
   const view = await openWebView({ width: 1440, height: 1100 })
@@ -92,7 +150,7 @@ test('resource lists share counts and refresh while agent destinations stay grou
     expect(
       await view.evaluate(`(() => {
       const link = document.querySelector('aside a[href$="/admin/token-vault"]')
-      return link?.closest('details')?.querySelector('summary')?.textContent
+      return link?.closest('section')?.getAttribute('aria-label')
     })()`),
     ).toBe('Agents')
   } finally {
@@ -106,7 +164,7 @@ test('personal token issuance and revocation work from the account portal', asyn
   try {
     await navigateAndLogin(view, '/account/api-tokens', 'account-api-tokens')
     await waitForText(view, 'Connection info')
-    await clickLinkByText(view, 'Issue token')
+    await clickLinkByText(view, 'Issue my token')
     await waitForPage(view, 'account-api-token-create')
     const description = `Personal ${Date.now()}`
     await setInputValue(view, '#token-desc', description)
@@ -115,7 +173,7 @@ test('personal token issuance and revocation work from the account portal', asyn
       await view.evaluate(`document.querySelector('input[value="users:write"]') === null`),
     ).toBe(true)
     await view.click('input[value="account:read"]')
-    await clickButtonByText(view, 'Issue token')
+    await clickButtonByText(view, 'Issue my token')
     await waitForText(view, 'Back to token list')
     await clickLinkByText(view, 'Back to token list')
     await waitForPage(view, 'account-api-tokens')

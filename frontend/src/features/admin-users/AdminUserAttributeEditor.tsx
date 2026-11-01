@@ -1,6 +1,6 @@
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { useDictionary } from '../../lib/i18n'
+import { useDictionary, useLocale } from '../../lib/i18n'
 import { domainLabelsDictionary } from '../../lib/i18n/domainLabels.i18n'
 import { attributeLabel } from '../../lib/utils'
 import type { AdminUser, AttributeValue, UserAttributeDef } from '../../types'
@@ -66,7 +66,8 @@ export function AdminAttributeField({
   readOnly?: boolean
 }) {
   const id = `user-editor-attr-${def.key}`
-  const label = attributeLabel(def)
+  const { locale } = useLocale()
+  const label = attributeLabel(def, locale)
   const t = useDictionary(adminUsersDictionary)
   if (def.type === 'boolean') {
     return (
@@ -79,13 +80,13 @@ export function AdminAttributeField({
           disabled={readOnly}
           className="size-4 rounded border-slate-300 disabled:opacity-50"
         />
-        <span className="font-mono">{label}</span>
+        <span>{label}</span>
       </label>
     )
   }
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={id} className="font-mono text-xs">
+      <Label htmlFor={id} className="text-xs">
         {label}
       </Label>
       <Input

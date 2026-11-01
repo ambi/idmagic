@@ -13,7 +13,6 @@ import {
   openWebView,
   authorizePath,
   clickButtonByAnyText,
-  clickNavLinkByAnyText,
   demo,
   loginFromCurrentPage,
   uiOrigin,
@@ -74,7 +73,8 @@ test('admin sidebar navigation is client-side (no full reload)', async () => {
     await view.evaluate('window.__raSpaMarker = "kept"')
 
     // サイドバーの「ユーザー」リンクを click (TanStack Link → client-side 遷移)。
-    await clickNavLinkByAnyText(view, ['管理メニュー', 'Admin navigation'], ['ユーザー', 'Users'])
+    await clickButtonByAnyText(view, ['ディレクトリ', 'Directory'])
+    await view.click('[role="menuitem"][href$="/admin/users"]')
 
     // client-side 遷移は history.pushState のため WebView の view.url には出ない。
     // 実際の location.pathname とページ種別で遷移完了を判定する。

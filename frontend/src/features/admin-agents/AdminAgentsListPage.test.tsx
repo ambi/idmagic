@@ -45,7 +45,7 @@ describe('locale', () => {
     )
     await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[]} nextCursor={null} />)
     expect(
-      screen.getByRole('heading', { name: adminAgentsDictionary.en.pageTitle }),
+      screen.getByRole('heading', { level: 1, name: adminAgentsDictionary.en.pageTitle }),
     ).toBeInTheDocument()
     expect(screen.getByText(adminAgentsDictionary.en.selectAgentPrompt)).toBeInTheDocument()
   })
@@ -59,7 +59,7 @@ describe('locale', () => {
       locale: 'ja',
     })
     expect(
-      screen.getByRole('heading', { name: adminAgentsDictionary.ja.pageTitle }),
+      screen.getByRole('heading', { level: 1, name: adminAgentsDictionary.ja.pageTitle }),
     ).toBeInTheDocument()
   })
 })

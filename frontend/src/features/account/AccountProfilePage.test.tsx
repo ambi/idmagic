@@ -144,7 +144,7 @@ describe('AccountProfilePresentation', () => {
         onDismissNotice={mock()}
       />,
     )
-    expect(screen.getByText('nickname')).toBeInTheDocument()
+    expect(screen.getByText('ニックネーム (nickname)')).toBeInTheDocument()
     expect(screen.getByText('たろう')).toBeInTheDocument()
   })
 
@@ -186,7 +186,9 @@ describe('EditableAttributeGroups', () => {
       />,
     )
 
-    fireEvent.change(screen.getByLabelText('nickname'), { target: { value: 'after' } })
+    fireEvent.change(screen.getByLabelText('ニックネーム (nickname)'), {
+      target: { value: 'after' },
+    })
     expect(onChange).toHaveBeenCalledWith('nickname', 'after')
   })
 })

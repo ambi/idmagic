@@ -4,6 +4,7 @@ import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { ApiTokensTab } from './ApiTokensTab'
+import { AdminApiTokensPage } from './AdminApiTokensPage'
 
 const t = adminSettingsDictionary.en
 
@@ -108,6 +109,24 @@ function scopeCheckboxes(row: HTMLElement): string[] {
 
 describe('ApiTokensTab', () => {
   afterEach(() => restoreGlobals())
+
+  //spec:covers REQ-APITOKENS-001: 正式な発行画面でログイン中の発行者本人と対象テナントを別々に示す。
+  it('identifies the signed-in issuer separately from the tenant audience', async () => {
+    await renderWithRouter(
+      <AdminApiTokensPage
+        csrfToken="csrf"
+        actorUsername="alice"
+        integrationEndpoints={integrationEndpoints}
+        create
+      />,
+    )
+    const identity = within(screen.getByRole('region', { name: 'Token identity' }))
+    expect(identity.getByText('alice')).toBeInTheDocument()
+    expect(identity.getByText(integrationEndpoints.issuer)).toBeInTheDocument()
+    expect(identity.getByText('Issuer (you)')).toBeInTheDocument()
+    expect(identity.getByText('Target tenant')).toBeInTheDocument()
+    expect(screen.getByText(/not a shared tenant credential/)).toBeInTheDocument()
+  })
 
   //spec:covers EX-APITOKENS-001-01: 見出しの階層と 3 つの Base URL・用途を表示し、スコープを API の種類とリソースでまとめて正式な値と read / write の意味を示し、選んだスコープだけを発行要求へ載せること。
   it('groups scopes by API and resource and issues only the selected ones', async () => {

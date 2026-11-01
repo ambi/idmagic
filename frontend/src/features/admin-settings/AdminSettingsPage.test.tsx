@@ -318,7 +318,8 @@ describe('AdminSettingsPage', () => {
     )
 
     expect(screen.queryByRole('button', { name: t.tabApiTokensLabel })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: t.tabApiTokensLabel, hidden: true })).toHaveAttribute(
+    fireEvent.click(screen.getByRole('button', { name: 'Access control' }))
+    expect(await screen.findByRole('menuitem', { name: t.tabApiTokensLabel })).toHaveAttribute(
       'href',
       '/admin/api-tokens',
     )
