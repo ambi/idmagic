@@ -37,7 +37,6 @@ export function AdminJobsPage({
         t={t}
         listJobs={listAdminJobs}
         cancelJob={(job) => cancelAdminJob(csrfToken, job.id)}
-        confirmCancel={() => window.confirm(t.cancelConfirm)}
         initialError={initialError}
       />
     </AdminShell>

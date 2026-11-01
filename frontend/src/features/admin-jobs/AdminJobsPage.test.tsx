@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock } from 'bun:test'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { AdminJob } from '../../api'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { renderWithRouter } from '../../test/renderWithRouter'
@@ -103,7 +103,9 @@ describe('AdminJobsPage', () => {
     await renderPage([job()])
 
     fireEvent.click(screen.getByRole('button', { name: t.cancelAction }))
-
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: t.cancelAction }),
+    )
     expect(await screen.findByText(t.cancelSucceededNotice)).toBeInTheDocument()
     expect(screen.getAllByText(t.statusCanceled).length).toBeGreaterThan(0)
   })

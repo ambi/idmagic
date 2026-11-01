@@ -329,6 +329,9 @@ func requiredPortalScope(path string) string {
 }
 
 func requiredAccountScope(method, path string) (string, bool) {
+	if strings.HasSuffix(path, "/api/account/v1/api-tokens") || strings.Contains(path, "/api/account/v1/api-tokens/") {
+		return spec.InteractiveSessionScope, true
+	}
 	switch {
 	case strings.Contains(path, "/api/account/v1/step-up/"),
 		strings.HasSuffix(path, "/api/account/v1/email/verify"),
@@ -351,6 +354,9 @@ func requiredAccountScope(method, path string) (string, bool) {
 }
 
 func hasRequiredAccountScope(granted []string, required, path string) bool {
+	if required == spec.InteractiveSessionScope {
+		return slices.Contains(granted, "idmagic.account")
+	}
 	accepted := []string{"idmagic.account", required}
 	// AccountContext は両 portal が共有する bootstrap endpoint なので、管理 portal の
 	// scope もこの route に限って同等の read scope として扱う。

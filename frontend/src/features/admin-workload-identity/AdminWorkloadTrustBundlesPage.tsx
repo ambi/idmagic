@@ -1,4 +1,6 @@
 import { IconPlus, IconShieldCheck } from '@tabler/icons-react'
+import { useState } from 'react'
+import { listWorkloadTrustBundles } from '../../api/admin'
 import { AdminShell } from '../../components/AdminShell'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -14,7 +16,7 @@ import { attestationRejections, formatDateTime } from './presentation'
 // 見ないまま操作できてしまう。
 export function AdminWorkloadTrustBundlesPage({
   actorUsername,
-  trustBundles,
+  trustBundles: initial,
   rejectionEvents,
   rejectionsUnavailable = false,
   rejectionsTruncated = false,
@@ -26,6 +28,7 @@ export function AdminWorkloadTrustBundlesPage({
   rejectionsTruncated?: boolean
 }) {
   const t = useDictionary(adminWorkloadIdentityDictionary)
+  const [trustBundles, setTrustBundles] = useState(initial)
   const { locale } = useLocale()
   const rejections = attestationRejections(rejectionEvents)
 
@@ -35,6 +38,11 @@ export function AdminWorkloadTrustBundlesPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        total: trustBundles.length,
+        displayed: trustBundles.length,
+        onRefresh: async () => setTrustBundles(await listWorkloadTrustBundles()),
+      }}
       actions={
         <Button nativeButton={false} render={<a href={newURL()} />}>
           <IconPlus size={17} aria-hidden="true" />

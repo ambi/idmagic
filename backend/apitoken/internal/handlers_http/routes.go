@@ -15,7 +15,14 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	Service *usecases.Service
+	Service          *usecases.Service
+	PersonalIdentity PersonalTokenIdentity
+}
+
+// PersonalTokenIdentity は、機微な account スコープを発行する前の本人再認証を所有者へ委ねる。
+type PersonalTokenIdentity interface {
+	RequireStepUpSub(c *echo.Context) (string, error)
+	WriteAuthenticationError(c *echo.Context, err error) (bool, error)
 }
 
 type issueRequest struct {
@@ -53,6 +60,9 @@ func RegisterRoutes(group *echo.Group, deps Deps) {
 	group.GET("/api/admin/v1/api-tokens", handler.list)
 	group.POST("/api/admin/v1/api-tokens", handler.issue)
 	group.DELETE("/api/admin/v1/api-tokens/:id", handler.revoke)
+	group.GET("/api/account/v1/api-tokens", handler.listPersonal)
+	group.POST("/api/account/v1/api-tokens", handler.issuePersonal)
+	group.DELETE("/api/account/v1/api-tokens/:id", handler.revokePersonal)
 }
 
 type handler struct{ deps Deps }

@@ -95,8 +95,8 @@ describe('AdminUsersPage', () => {
       />,
     )
 
-    expect(screen.getByText('73')).toBeInTheDocument()
-    expect(screen.getByText(t.totalUsers)).toBeInTheDocument()
+    expect(screen.getByText(tCommon.totalCount.replace('{count}', '73'))).toBeInTheDocument()
+    expect(screen.getByText(tCommon.displayedCount.replace('{count}', '1'))).toBeInTheDocument()
     expect(screen.queryByText(t.activeAccounts)).toBeNull()
     expect(screen.queryByText(t.admins)).toBeNull()
     expect(screen.queryByText(t.mfaEnrolled)).toBeNull()
@@ -111,8 +111,8 @@ describe('AdminUsersPage', () => {
       <AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} onFilter={() => {}} />,
     )
 
-    expect(screen.getByText(t.totalUsers)).toBeInTheDocument()
-    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText(tCommon.totalCount.replace('{count}', '1'))).toBeInTheDocument()
+    expect(screen.getByText(tCommon.displayedCount.replace('{count}', '1'))).toBeInTheDocument()
   })
 
   it('resets addressable paging when a server-side filter changes', async () => {
@@ -210,9 +210,9 @@ describe('AdminUsersPage', () => {
     )
     await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} />)
 
-    fireEvent.click(screen.getByRole('button', { name: t.reloadAriaLabel }))
+    fireEvent.click(screen.getByRole('button', { name: tCommon.refresh }))
 
-    expect(await screen.findByText('Could not fetch the list.')).toBeInTheDocument()
+    expect(await screen.findByText(tCommon.refreshFailed)).toHaveAttribute('role', 'alert')
   })
 
   it('shows required actions as read-only badges, not toggle buttons (T009)', async () => {

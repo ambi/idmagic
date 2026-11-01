@@ -1,7 +1,9 @@
 import { IconPlus, IconServer2, IconTrash } from '@tabler/icons-react'
 import { useState } from 'react'
-import { AuthenticationAPIError, deleteMcpResourceServer } from '../../api'
+import { AuthenticationAPIError, deleteMcpResourceServer, listMcpResourceServers } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -26,15 +28,22 @@ export function AdminMcpResourceServersPage({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const dict = useDictionary(adminMcpResourceServersDictionary)
+  const common = useDictionary(commonDictionary)
+  const [target, setTarget] = useState<McpResourceServer | null>(null)
+  const [busy, setBusy] = useState(false)
 
   async function handleDelete(resourceServer: McpResourceServer) {
     setError('')
+    setBusy(true)
     try {
       await deleteMcpResourceServer(csrfToken, resourceServer.id)
       setItems((previous) => previous.filter((item) => item.id !== resourceServer.id))
       setNotice(dict.deletedNotice.replace('{resource}', resourceServer.resource))
+      setTarget(null)
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : dict.deleteFailedError)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -44,6 +53,11 @@ export function AdminMcpResourceServersPage({
       actorUsername={actorUsername}
       title={dict.pageTitle}
       description={dict.pageDescription}
+      list={{
+        total: items.length,
+        displayed: items.length,
+        onRefresh: async () => setItems(await listMcpResourceServers()),
+      }}
       actions={
         <Button nativeButton={false} render={<a href={newURL()} />}>
           <IconPlus size={17} aria-hidden="true" />
@@ -88,11 +102,16 @@ export function AdminMcpResourceServersPage({
                   </Button>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="destructive"
+                    disabled={busy}
                     aria-label={`${dict.delete}: ${item.resource}`}
-                    onClick={() => void handleDelete(item)}
+                    onClick={() => {
+                      setError('')
+                      setTarget(item)
+                    }}
                   >
                     <IconTrash size={16} aria-hidden="true" />
+                    {dict.delete}
                   </Button>
                 </div>
               </div>
@@ -117,6 +136,18 @@ export function AdminMcpResourceServersPage({
           ))}
         </div>
       )}
+      {target ? (
+        <ConfirmActionDialog
+          title={dict.delete}
+          target={target.name || target.resource}
+          description={common.deleteResourceDescription}
+          confirmLabel={dict.delete}
+          busy={busy}
+          error={error}
+          onClose={() => setTarget(null)}
+          onConfirm={() => void handleDelete(target)}
+        />
+      ) : null}
     </AdminShell>
   )
 }

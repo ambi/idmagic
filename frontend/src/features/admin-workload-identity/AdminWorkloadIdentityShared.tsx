@@ -94,7 +94,9 @@ export function TrustBundleFormFields({
   return (
     <>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="name">{t.nameLabel}</Label>
+        <Label htmlFor="name" required>
+          {t.nameLabel}
+        </Label>
         <Input
           id="name"
           value={form.name}
@@ -104,7 +106,9 @@ export function TrustBundleFormFields({
         <p className="text-xs leading-5 text-slate-500">{t.nameHelp}</p>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="trust_domain">{t.trustDomainLabel}</Label>
+        <Label htmlFor="trust_domain" required>
+          {t.trustDomainLabel}
+        </Label>
         <Input
           id="trust_domain"
           value={form.trustDomain}
@@ -116,7 +120,9 @@ export function TrustBundleFormFields({
         <p className="text-xs leading-5 text-slate-500">{t.trustDomainHelp}</p>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="issuer">{t.issuerLabel}</Label>
+        <Label htmlFor="issuer" required>
+          {t.issuerLabel}
+        </Label>
         <Input
           id="issuer"
           type="url"
@@ -139,7 +145,7 @@ export function TrustBundleFormFields({
         />
         <p className="text-xs leading-5 text-slate-500">{t.jwksUriHelp}</p>
       </div>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5 md:col-span-2">
         <Label htmlFor="jwks">{t.jwksLabel}</Label>
         <textarea
           id="jwks"
@@ -152,7 +158,9 @@ export function TrustBundleFormFields({
         <p className="text-xs leading-5 text-slate-500">{t.jwksHelp}</p>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="accepted_audiences">{t.acceptedAudiencesLabel}</Label>
+        <Label htmlFor="accepted_audiences" required>
+          {t.acceptedAudiencesLabel}
+        </Label>
         <Input
           id="accepted_audiences"
           value={form.acceptedAudiences}
@@ -163,7 +171,9 @@ export function TrustBundleFormFields({
         <p className="text-xs leading-5 text-slate-500">{t.acceptedAudiencesHelp}</p>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="max_ttl">{t.maxTtlLabel}</Label>
+        <Label htmlFor="max_ttl" required>
+          {t.maxTtlLabel}
+        </Label>
         <Input
           id="max_ttl"
           type="number"

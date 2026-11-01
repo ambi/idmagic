@@ -25,12 +25,13 @@ function AdminAuthorizationModelEditRoute() {
       <AdminAuthorizationModelEditPage
         key={data.model?.version ?? 0}
         {...data}
-        onPublished={() =>
-          void router.navigate({
+        onPublished={async () => {
+          await router.invalidate()
+          await router.navigate({
             to: '/admin/authorization/model',
             state: { authorizationNotice: 'published' },
           })
-        }
+        }}
       />
     </PageMarker>
   )

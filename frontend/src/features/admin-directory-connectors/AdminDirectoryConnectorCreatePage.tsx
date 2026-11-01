@@ -54,7 +54,7 @@ export function AdminDirectoryConnectorCreatePage({
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      <Card className="w-full max-w-2xl p-4">
+      <Card className="w-full admin-form p-4">
         {grant ? (
           <div className="flex flex-col gap-4">
             <EnrollmentTokenNotice token={grant.enrollment_token} t={t} />
@@ -67,7 +67,9 @@ export function AdminDirectoryConnectorCreatePage({
         ) : (
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="display_name">{t.displayNameLabel}</Label>
+              <Label htmlFor="display_name" required>
+                {t.displayNameLabel}
+              </Label>
               <Input
                 id="display_name"
                 value={displayName}

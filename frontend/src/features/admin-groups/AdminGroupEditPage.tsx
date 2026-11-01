@@ -99,7 +99,7 @@ export function AdminGroupEditPage({
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t.editGroup}</h1>
       </div>
 
-      <div className="mt-6 max-w-2xl">
+      <div className="mt-6 admin-form">
         <Card className="shadow-[0_1px_2px_rgb(15_23_42/4%)]">
           <form onSubmit={handleSubmit}>
             <div className="grid gap-6 p-6">
@@ -124,7 +124,9 @@ export function AdminGroupEditPage({
                   {t.basicInfoHeading}
                 </h3>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="group-editor-name">{t.groupNameLabel}</Label>
+                  <Label htmlFor="group-editor-name" required>
+                    {t.groupNameLabel}
+                  </Label>
                   <Input
                     id="group-editor-name"
                     value={name}
@@ -198,14 +200,14 @@ export function AdminGroupEditPage({
         </Card>
       </div>
 
-      <div className="mt-6 max-w-2xl">
+      <div className="mt-6 admin-form">
         <Card className="overflow-hidden">
           <GroupMembersSection group={group} csrfToken={csrfToken} />
         </Card>
       </div>
 
       {group.membership_type === 'dynamic' ? (
-        <div className="mt-6 max-w-2xl">
+        <div className="mt-6 admin-form">
           <DynamicRuleEditor
             csrfToken={csrfToken}
             groupId={group.id}
@@ -216,7 +218,7 @@ export function AdminGroupEditPage({
         </div>
       ) : null}
       {group.membership_type === 'dynamic' || group.upstream_managed || group.scim_source ? (
-        <div className="mt-6 max-w-2xl">
+        <div className="mt-6 admin-form">
           <GroupRoleDelegationPanel
             csrfToken={csrfToken}
             group={{ ...group, dynamic_rule: currentRule }}

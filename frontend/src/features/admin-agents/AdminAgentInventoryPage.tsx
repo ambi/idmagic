@@ -1,6 +1,7 @@
 import { IconArrowLeft, IconRobot } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
 import { tenantURL } from '../../api'
+import { getAgentInventory } from '../../api/admin'
 import { AdminShell } from '../../components/AdminShell'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -55,7 +56,7 @@ function ownerLabel(status: AgentInventoryEntry['owner_status'], t: Dictionary) 
 // (REQ-IDMANAGEMENT-094)。絞り込みと日数は URL の検索条件に置き、読み込みはルートが行う。
 export function AdminAgentInventoryPage({
   actorUsername,
-  inventory,
+  inventory: initial,
   csrfToken,
   observations,
   finding,
@@ -69,6 +70,7 @@ export function AdminAgentInventoryPage({
   onFilter: (filter: { finding?: AgentInventoryFinding; dormantDays?: number }) => void
 }) {
   const t = useDictionary(adminAgentInventoryDictionary)
+  const [inventory, setInventory] = useState(initial)
   const [dormantDays, setDormantDays] = useState(String(inventory.dormant_days))
 
   function applyDays(event: FormEvent) {
@@ -82,6 +84,11 @@ export function AdminAgentInventoryPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        displayed: inventory.agents.length,
+        onRefresh: async () =>
+          setInventory(await getAgentInventory({ finding, dormantDays: inventory.dormant_days })),
+      }}
       actions={
         <Button
           variant="outline"
@@ -108,7 +115,9 @@ export function AdminAgentInventoryPage({
         </fieldset>
         <form onSubmit={applyDays} className="flex items-end gap-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="dormant-days">{t.dormantDaysLabel}</Label>
+            <Label htmlFor="dormant-days" required>
+              {t.dormantDaysLabel}
+            </Label>
             <Input
               id="dormant-days"
               type="number"

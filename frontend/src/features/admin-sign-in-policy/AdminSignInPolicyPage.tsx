@@ -269,7 +269,9 @@ export function DefaultPolicyFormPresentation({
       {strength === 'Mfa' ? (
         <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
           <div className="grid gap-1.5">
-            <Label htmlFor="mfa-enforcement-start">{t.enforcementStartLabel}</Label>
+            <Label htmlFor="mfa-enforcement-start" required>
+              {t.enforcementStartLabel}
+            </Label>
             <Input
               id="mfa-enforcement-start"
               type="datetime-local"
@@ -280,7 +282,9 @@ export function DefaultPolicyFormPresentation({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="mfa-grace-period">{t.gracePeriodLabel}</Label>
+            <Label htmlFor="mfa-grace-period" required>
+              {t.gracePeriodLabel}
+            </Label>
             <Input
               id="mfa-grace-period"
               type="number"

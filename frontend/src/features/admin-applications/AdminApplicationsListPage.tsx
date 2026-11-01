@@ -1,4 +1,4 @@
-import { IconApps, IconExternalLink, IconPlus, IconRefresh, IconTrash } from '@tabler/icons-react'
+import { IconApps, IconExternalLink, IconPlus, IconTrash } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { deleteAdminApplication, listAdminApplicationsPage } from '../../api'
 import { AdminPaneActions } from '../../components/AdminPaneActions'
@@ -99,22 +99,17 @@ export function AdminApplicationsPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        total: page?.totalItems ?? totalItems,
+        displayed: applications.length,
+        busy,
+        onRefresh: () => refresh(),
+      }}
       actions={
-        <>
-          <Button
-            variant="outline"
-            className="size-9 px-0"
-            aria-label={t.reloadAriaLabel}
-            onClick={() => run(() => refresh(), t.listRefreshedNotice)}
-            disabled={busy}
-          >
-            <IconRefresh size={16} aria-hidden="true" />
-          </Button>
-          <Button disabled={busy} nativeButton={false} render={<a href={newURL()} />}>
-            <IconPlus size={16} aria-hidden="true" />
-            {t.addApplication}
-          </Button>
-        </>
+        <Button disabled={busy} nativeButton={false} render={<a href={newURL()} />}>
+          <IconPlus size={16} aria-hidden="true" />
+          {t.addApplication}
+        </Button>
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}

@@ -54,7 +54,7 @@ export function ConnectForm({
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <form className="grid gap-4" onSubmit={(e) => void submit(e)}>
         <div className="grid gap-1.5">
-          <Label>{t.baseUrlFieldLabel}</Label>
+          <Label required>{t.baseUrlFieldLabel}</Label>
           <Input
             required
             placeholder={t.baseUrlPlaceholder}

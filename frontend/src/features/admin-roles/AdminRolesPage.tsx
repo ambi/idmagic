@@ -15,17 +15,21 @@ import { Card } from '../../components/ui/card'
 import { useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import type { AdminRole, AdminUser } from '../../types'
+import { request } from '../../api/core'
+import { listAdminRoleUsers } from '../../api/admin'
 import { adminRolesDictionary } from './AdminRolesPage.i18n'
 
 export function AdminRolesPage({
   actorUsername,
-  roles,
-  users,
+  roles: initialRoles,
+  users: initialUsers,
 }: {
   actorUsername?: string
   roles: AdminRole[]
   users: AdminUser[]
 }) {
+  const [data, setData] = useState({ roles: initialRoles, users: initialUsers })
+  const { roles, users } = data
   const [selectedName, setSelectedName] = useState(roles[0]?.name ?? '')
   const selected = roles.find((role) => role.name === selectedName)
   const t = useDictionary(adminRolesDictionary)
@@ -46,18 +50,18 @@ export function AdminRolesPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        total: roles.length,
+        displayed: roles.length,
+        onRefresh: async () => {
+          const [result, users] = await Promise.all([
+            request<{ roles: AdminRole[] }>('/api/admin/v1/policy/roles'),
+            listAdminRoleUsers(),
+          ])
+          setData({ roles: result.roles, users })
+        },
+      }}
     >
-      <section className="grid gap-3 sm:grid-cols-2" aria-label={t.overviewSectionLabel}>
-        {roles.map((role) => (
-          <MetricCard
-            key={role.name}
-            label={role.name}
-            value={roleCounts[role.name] ?? 0}
-            hint={t.operationsCountHint.replace('{count}', String(role.permissions.length))}
-          />
-        ))}
-      </section>
-
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
         <Card className="overflow-hidden">
           <table className="w-full text-left text-sm">
@@ -272,15 +276,5 @@ function RoleDetails({
         )}
       </section>
     </div>
-  )
-}
-
-function MetricCard({ label, value, hint }: { label: string; value: number; hint: string }) {
-  return (
-    <Card className="p-5">
-      <p className="font-mono text-xs font-semibold text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-semibold text-slate-950">{value}</p>
-      <p className="mt-1 text-xs text-slate-500">{hint}</p>
-    </Card>
   )
 }

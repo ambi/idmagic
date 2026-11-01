@@ -364,7 +364,9 @@ export function AdminWorkloadTrustBundleDetailPage({
           onSubmit={handleAddBinding}
         >
           <div className="flex min-w-[22rem] flex-1 flex-col gap-1.5">
-            <Label htmlFor="subject_pattern">{t.subjectPatternLabel}</Label>
+            <Label htmlFor="subject_pattern" required>
+              {t.subjectPatternLabel}
+            </Label>
             <Input
               id="subject_pattern"
               value={subjectPattern}

@@ -185,7 +185,7 @@ export const adminSettingsDictionary = defineDictionary(
     scimBaseUrlLabel: 'SCIM 2.0 ベースURL',
     urlCopiedNotice: 'URLをクリップボードにコピーしました。',
     copy: 'コピー',
-    scimConnectorHelp: '外部 IDP の SCIM コネクタ設定でこの URL を指定します。',
+    scimConnectorHelp: '外部 IDP の SCIM コネクター設定でこの URL を指定します。',
     accountApiBaseUrlLabel: 'アカウント API ベースURL',
     accountApiHelp:
       '発行者本人のプロフィールやセキュリティ設定を操作するとき、この URL にリソースのパスを続けます。',
@@ -205,6 +205,16 @@ export const adminSettingsDictionary = defineDictionary(
     revoke: '失効',
     newTokenHeading: '新規アクセストークンの作成',
     tokenDescriptionLabel: 'トークンの説明',
+    tenantTokenDescription:
+      'このテナントで発行されたトークンを管理します。トークンの主体は発行者本人です。管理 API の利用にはスコープと現在の管理者ロールの両方が必要です。',
+    personalTokenDescription:
+      '本人が発行したトークンを管理します。ここから発行するトークンは本人のアカウント API だけに使えます。管理者が本人名義で発行した記録も表示します。',
+    tokenOwnerLabel: '発行者（主体）',
+    tokenRevokeConfirm:
+      'このトークンを使う API 呼び出しを停止します。失効は取り消せません。必要なら新しく発行してください。',
+    revokedLabel: '失効済み',
+    backToTokens: 'トークン一覧へ戻る',
+    personalTokensHeading: '個人用 API トークン',
     tokenDescriptionPlaceholder: '例: Okta-SCIM-Integration',
     tokenExpiryLabel: '有効期間 (日数)',
     tokenScopesLabel: '許可する操作 (scope)',
@@ -239,7 +249,7 @@ export const adminSettingsDictionary = defineDictionary(
     samlScopeResourceLabel: 'SAML サービスプロバイダー',
     wsfedScopeResourceLabel: 'WS-Federation トラスト',
     provisioningScopeResourceLabel: 'プロビジョニング接続',
-    connectorsScopeResourceLabel: '外部サービスのコネクタ',
+    connectorsScopeResourceLabel: '外部 API の代理実行先',
     accountProfileScopeLabel: 'プロフィール',
     accountProfileScopeDescription: '発行者本人のプロフィールを参照・変更します。',
     accountMfaScopeLabel: 'MFA',
@@ -458,6 +468,16 @@ export const adminSettingsDictionary = defineDictionary(
     revoke: 'Revoke',
     newTokenHeading: 'Create a new access token',
     tokenDescriptionLabel: 'Token description',
+    tenantTokenDescription:
+      'Manage tokens issued in this tenant. Each token acts as its issuer. Management API access requires both its scopes and the issuer’s current administrator role.',
+    personalTokenDescription:
+      'Manage tokens you issued. Tokens issued here can only access your account API. Records issued in your name by an administrator are also shown.',
+    tokenOwnerLabel: 'Issuer (subject)',
+    tokenRevokeConfirm:
+      'API calls using this token will stop. Revocation cannot be undone. Issue a new token if needed.',
+    revokedLabel: 'Revoked',
+    backToTokens: 'Back to token list',
+    personalTokensHeading: 'Personal API tokens',
     tokenDescriptionPlaceholder: 'e.g., Okta-SCIM-Integration',
     tokenExpiryLabel: 'Expiry (days)',
     tokenScopesLabel: 'Allowed operations (scopes)',

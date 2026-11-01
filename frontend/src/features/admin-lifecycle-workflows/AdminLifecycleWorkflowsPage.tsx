@@ -4,6 +4,7 @@ import {
   deleteLifecycleWorkflow,
   dryRunLifecycleWorkflow,
   listLifecycleWorkflowRuns,
+  listLifecycleWorkflows,
   retryLifecycleWorkflowRun,
   setLifecycleWorkflowState,
 } from '../../api/admin'
@@ -148,6 +149,11 @@ export function AdminLifecycleWorkflowsPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        total: workflows.length,
+        displayed: workflows.length,
+        onRefresh: async () => setWorkflows(await listLifecycleWorkflows()),
+      }}
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <div className="mb-6 flex justify-end">

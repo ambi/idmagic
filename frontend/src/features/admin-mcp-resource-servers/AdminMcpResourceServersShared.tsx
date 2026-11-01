@@ -80,7 +80,9 @@ export function McpResourceServerFormFields({
   return (
     <>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="resource">{t.resourceLabel}</Label>
+        <Label htmlFor="resource" required>
+          {t.resourceLabel}
+        </Label>
         <Input
           id="resource"
           type="url"
@@ -92,7 +94,9 @@ export function McpResourceServerFormFields({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="name">{t.nameLabel}</Label>
+        <Label htmlFor="name" required>
+          {t.nameLabel}
+        </Label>
         <Input
           id="name"
           value={form.name}
@@ -101,7 +105,9 @@ export function McpResourceServerFormFields({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="scopes">{t.scopesLabel}</Label>
+        <Label htmlFor="scopes" required>
+          {t.scopesLabel}
+        </Label>
         <Input
           id="scopes"
           value={form.scopes}
@@ -120,7 +126,7 @@ export function McpResourceServerFormFields({
         />
         <p className="text-xs leading-5 text-slate-500">{t.clientIdHelp}</p>
       </div>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5 md:col-span-2">
         <Label htmlFor="access-rules">{t.accessRulesLabel}</Label>
         <textarea
           id="access-rules"

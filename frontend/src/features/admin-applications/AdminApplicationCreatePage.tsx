@@ -135,7 +135,7 @@ export function AdminApplicationCreatePage({
         </Button>
       }
     >
-      <Card className="w-full max-w-2xl overflow-hidden">
+      <Card className="w-full admin-form overflow-hidden">
         {secret ? (
           <div className="grid gap-4 p-6">
             <Alert variant="success">
@@ -192,7 +192,9 @@ export function AdminApplicationCreatePage({
               <section className="grid gap-4 border-t border-slate-200 pt-5">
                 <SectionTitle>{t.basicInfoHeading}</SectionTitle>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="app-name">{t.nameFieldLabel}</Label>
+                  <Label htmlFor="app-name" required>
+                    {t.nameFieldLabel}
+                  </Label>
                   <Input
                     id="app-name"
                     value={name}
@@ -203,7 +205,7 @@ export function AdminApplicationCreatePage({
                 </div>
                 {type !== 'service' ? (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="app-launch">
+                    <Label htmlFor="app-launch" optional>
                       {type === 'weblink' ? t.linkUrlFieldLabel : t.launchUrlOptionalFieldLabel}
                     </Label>
                     <Input
@@ -224,7 +226,9 @@ export function AdminApplicationCreatePage({
                 <section className="grid gap-4 border-t border-slate-200 pt-5">
                   <SectionTitle>{t.serviceKindSectionHeading}</SectionTitle>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="app-scope">{t.scopeOptionalFieldLabel}</Label>
+                    <Label htmlFor="app-scope" optional>
+                      {t.scopeOptionalFieldLabel}
+                    </Label>
                     <Input
                       id="app-scope"
                       value={scope}
@@ -241,7 +245,9 @@ export function AdminApplicationCreatePage({
                 <section className="grid gap-4 border-t border-slate-200 pt-5">
                   <SectionTitle>{t.oidcSectionHeading}</SectionTitle>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="app-redirects">{t.redirectUriFieldLabel}</Label>
+                    <Label htmlFor="app-redirects" required>
+                      {t.redirectUriFieldLabel}
+                    </Label>
                     <textarea
                       id="app-redirects"
                       value={redirectURIs}
@@ -254,7 +260,9 @@ export function AdminApplicationCreatePage({
                     <p className="text-xs text-slate-500">{t.oidcRedirectHelp}</p>
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="app-oidc-scope">{t.scopeOptionalFieldLabel}</Label>
+                    <Label htmlFor="app-oidc-scope" optional>
+                      {t.scopeOptionalFieldLabel}
+                    </Label>
                     <Input
                       id="app-oidc-scope"
                       value={scope}
@@ -292,7 +300,9 @@ export function AdminApplicationCreatePage({
                   </div>
                   {authMethod === 'private_key_jwt' ? (
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-jwks-uri">{t.jwksUriFieldLabel}</Label>
+                      <Label htmlFor="app-jwks-uri" required>
+                        {t.jwksUriFieldLabel}
+                      </Label>
                       <Input
                         id="app-jwks-uri"
                         type="url"
@@ -306,7 +316,9 @@ export function AdminApplicationCreatePage({
                   ) : null}
                   {authMethod === 'tls_client_auth' ? (
                     <div className="grid gap-1.5">
-                      <Label htmlFor="app-tls-dn">{t.tlsClientCertSubjectDnFieldLabel}</Label>
+                      <Label htmlFor="app-tls-dn" required>
+                        {t.tlsClientCertSubjectDnFieldLabel}
+                      </Label>
                       <Input
                         id="app-tls-dn"
                         value={tlsSubjectDN}
@@ -325,7 +337,9 @@ export function AdminApplicationCreatePage({
                 <section className="grid gap-4 border-t border-slate-200 pt-5">
                   <SectionTitle>{t.wsFedSectionHeading}</SectionTitle>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="app-wtrealm">{t.wtrealmFieldLabel}</Label>
+                    <Label htmlFor="app-wtrealm" required>
+                      {t.wtrealmFieldLabel}
+                    </Label>
                     <Input
                       id="app-wtrealm"
                       value={wtrealm}
@@ -337,7 +351,9 @@ export function AdminApplicationCreatePage({
                     />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="app-replies">{t.replyUrlFieldLabel}</Label>
+                    <Label htmlFor="app-replies" required>
+                      {t.replyUrlFieldLabel}
+                    </Label>
                     <textarea
                       id="app-replies"
                       value={replyURLs}
@@ -372,7 +388,9 @@ export function AdminApplicationCreatePage({
                 <section className="grid gap-4 border-t border-slate-200 pt-5">
                   <SectionTitle>{t.samlSectionHeading}</SectionTitle>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="app-saml-entity">{t.entityIdFieldLabel}</Label>
+                    <Label htmlFor="app-saml-entity" required>
+                      {t.entityIdFieldLabel}
+                    </Label>
                     <Input
                       id="app-saml-entity"
                       value={samlEntityID}
@@ -384,7 +402,9 @@ export function AdminApplicationCreatePage({
                     />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="app-saml-acs">{t.acsUrlFieldLabel}</Label>
+                    <Label htmlFor="app-saml-acs" required>
+                      {t.acsUrlFieldLabel}
+                    </Label>
                     <textarea
                       id="app-saml-acs"
                       value={samlACSURLs}
@@ -397,7 +417,9 @@ export function AdminApplicationCreatePage({
                     <p className="text-xs text-slate-500">{t.redirectUriHelp}</p>
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="app-saml-slo">{t.sloUrlOptionalFieldLabel}</Label>
+                    <Label htmlFor="app-saml-slo" optional>
+                      {t.sloUrlOptionalFieldLabel}
+                    </Label>
                     <Input
                       id="app-saml-slo"
                       value={samlSLOURL}

@@ -12,9 +12,12 @@ import {
   configureEntraFederation,
   type ConfigureEntraFederationResponse,
   deleteWsFedRelyingParty,
+  listWsFedRelyingParties,
   tenantURL,
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
@@ -78,16 +81,23 @@ export function AdminEntraFederationPage({
   const [items, setItems] = useState(relyingParties.filter((rp) => rp.entra_profile))
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [pending, setPending] = useState<WsFedRelyingParty | null>(null)
+  const [busy, setBusy] = useState(false)
+  const common = useDictionary(commonDictionary)
   const t = useDictionary(adminEntraFederationDictionary)
 
   async function handleDelete(rp: WsFedRelyingParty) {
     setError('')
+    setBusy(true)
     try {
       await deleteWsFedRelyingParty(csrfToken, rp.wtrealm)
       setItems((prev) => prev.filter((item) => item.wtrealm !== rp.wtrealm))
       setNotice(t.federationDeletedNotice.replace('{domain}', federatedDomainNames(rp)))
+      setPending(null)
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.deleteFailedError)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -97,6 +107,11 @@ export function AdminEntraFederationPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        displayed: items.length,
+        onRefresh: async () =>
+          setItems((await listWsFedRelyingParties()).filter((rp) => rp.entra_profile)),
+      }}
       actions={
         <Button nativeButton={false} render={<a href={tenantURL(ADD_PATH)} />}>
           <IconPlus size={16} aria-hidden="true" />
@@ -125,7 +140,19 @@ export function AdminEntraFederationPage({
         )}
       </div>
 
-      <EntraFederationList items={items} onDelete={handleDelete} />
+      <EntraFederationList items={items} onDelete={(item) => setPending(item)} />
+      {pending ? (
+        <ConfirmActionDialog
+          title={t.deleteAriaLabel.replace('{wtrealm}', pending.wtrealm)}
+          target={federatedDomainNames(pending)}
+          description={common.deleteResourceDescription}
+          confirmLabel={t.deleteAriaLabel.replace('{wtrealm}', pending.wtrealm)}
+          busy={busy}
+          error={error}
+          onClose={() => setPending(null)}
+          onConfirm={() => void handleDelete(pending)}
+        />
+      ) : null}
     </AdminShell>
   )
 }
@@ -178,7 +205,7 @@ export function EntraFederationList({
           </div>
           <Button
             type="button"
-            variant="ghost"
+            variant="destructive"
             aria-label={t.deleteAriaLabel.replace('{wtrealm}', relyingParty.wtrealm)}
             onClick={() => onDelete(relyingParty)}
           >
@@ -293,7 +320,9 @@ export function AdminEntraFederationAddPage({
       <Card className="grid gap-4 p-4">
         <form className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]" onSubmit={handleConfigure}>
           <div className="grid gap-1.5">
-            <Label htmlFor="entra_domain">{t.verifiedDomainLabel}</Label>
+            <Label htmlFor="entra_domain" required>
+              {t.verifiedDomainLabel}
+            </Label>
             <Input
               id="entra_domain"
               value={domain}
@@ -303,7 +332,9 @@ export function AdminEntraFederationAddPage({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="entra_source_anchor">{t.sourceAnchorAttributeLabel}</Label>
+            <Label htmlFor="entra_source_anchor" required>
+              {t.sourceAnchorAttributeLabel}
+            </Label>
             <Input
               id="entra_source_anchor"
               value={sourceAnchor}

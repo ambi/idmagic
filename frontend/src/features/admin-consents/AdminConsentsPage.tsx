@@ -1,4 +1,4 @@
-import { IconBan, IconRefresh } from '@tabler/icons-react'
+import { IconBan } from '@tabler/icons-react'
 import { useMemo, useState } from 'react'
 import { AuthenticationAPIError, listAdminConsents, revokeAdminConsent } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
@@ -87,6 +87,7 @@ export function AdminConsentsPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{ displayed: filtered.length, busy, onRefresh: () => refresh(selected ?? undefined) }}
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Toast message={notice} onDismiss={() => setNotice('')} />
@@ -98,15 +99,6 @@ export function AdminConsentsPage({
           onChange={(e) => setQuery(e.target.value)}
           className="max-w-md"
         />
-        <Button
-          variant="outline"
-          className="size-9 shrink-0 px-0"
-          aria-label={t.reloadAriaLabel}
-          disabled={busy}
-          onClick={() => run(() => refresh(selected ?? undefined), t.listRefreshedNotice)}
-        >
-          <IconRefresh size={16} aria-hidden="true" />
-        </Button>
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">

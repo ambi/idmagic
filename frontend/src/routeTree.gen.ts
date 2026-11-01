@@ -24,6 +24,7 @@ import { Route as SystemRouteRouteImport } from './routes/system/route'
 import { Route as TotpRouteImport } from './routes/totp'
 import { Route as AccountIndexRouteImport } from './routes/account/index'
 import { Route as AccountActivityRouteImport } from './routes/account/activity'
+import { Route as AccountApiTokensRouteImport } from './routes/account/api-tokens'
 import { Route as AccountApplicationsRouteImport } from './routes/account/applications'
 import { Route as AccountApprovalsRouteImport } from './routes/account/approvals'
 import { Route as AccountAppsRouteImport } from './routes/account/apps'
@@ -35,6 +36,7 @@ import { Route as AccountProfileRouteImport } from './routes/account/profile'
 import { Route as AccountSecurityRouteImport } from './routes/account/security'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAgentsRouteImport } from './routes/admin/agents'
+import { Route as AdminApiTokensRouteImport } from './routes/admin/api-tokens'
 import { Route as AdminApplicationsRouteImport } from './routes/admin/applications'
 import { Route as AdminAudit_eventsRouteImport } from './routes/admin/audit_events'
 import { Route as AdminAuthorizationDetailTypesRouteImport } from './routes/admin/authorization-detail-types'
@@ -60,12 +62,14 @@ import { Route as SystemDataKeysRouteImport } from './routes/system/data-keys'
 import { Route as SystemJobsRouteImport } from './routes/system/jobs'
 import { Route as SystemKeysRouteImport } from './routes/system/keys'
 import { Route as SystemTenantsRouteImport } from './routes/system/tenants'
+import { Route as AccountApiTokensNewRouteImport } from './routes/account/api-tokens_/new'
 import { Route as AccountEmailVerifyRouteImport } from './routes/account/email/verify'
 import { Route as AccountProfileIndexRouteImport } from './routes/account/profile_/index'
 import { Route as AccountProfileEditRouteImport } from './routes/account/profile_/edit'
 import { Route as AdminAgentsAgentIdRouteImport } from './routes/admin/agents_/$agentId'
 import { Route as AdminAgentsInventoryRouteImport } from './routes/admin/agents_/inventory'
 import { Route as AdminAgentsNewRouteImport } from './routes/admin/agents_/new'
+import { Route as AdminApiTokensNewRouteImport } from './routes/admin/api-tokens_/new'
 import { Route as AdminApplicationsApplicationIdRouteImport } from './routes/admin/applications_/$applicationId'
 import { Route as AdminApplicationsNewRouteImport } from './routes/admin/applications_/new'
 import { Route as AdminAuthorizationDetailTypesNewRouteImport } from './routes/admin/authorization-detail-types_/new'
@@ -89,6 +93,7 @@ import { Route as AdminRolesNameRouteImport } from './routes/admin/roles_/$name'
 import { Route as AdminSettingsSamlIdpProfilesRouteImport } from './routes/admin/settings_/saml-idp-profiles'
 import { Route as AdminTenantAttributesRouteImport } from './routes/admin/tenant/attributes'
 import { Route as AdminTenantGroup_attributesRouteImport } from './routes/admin/tenant/group_attributes'
+import { Route as AdminTokenVaultNewRouteImport } from './routes/admin/token-vault_/new'
 import { Route as AdminUsersIdRouteImport } from './routes/admin/users_/$id'
 import { Route as AdminUsersExportsRouteImport } from './routes/admin/users_/exports'
 import { Route as AdminUsersImportRouteImport } from './routes/admin/users_/import'
@@ -103,6 +108,7 @@ import { Route as AdminApplicationsApplicationIdEditRouteImport } from './routes
 import { Route as AdminApplicationsApplicationIdProvisioningRouteImport } from './routes/admin/applications_/$applicationId.provisioning'
 import { Route as AdminAuthorizationDetailTypesTypeEditRouteImport } from './routes/admin/authorization-detail-types_/$type.edit'
 import { Route as AdminAuthorizationModelEditRouteImport } from './routes/admin/authorization/model_/edit'
+import { Route as AdminAuthorizationModelNewRouteImport } from './routes/admin/authorization/model_/new'
 import { Route as AdminAuthorizationRelationTuplesNewRouteImport } from './routes/admin/authorization/relation-tuples_/new'
 import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
 import { Route as AdminGroupsGroupIdIndexRouteImport } from './routes/admin/groups_/$groupId.index'
@@ -114,6 +120,7 @@ import { Route as AdminMcpResourceServersResourceServerIdEditRouteImport } from 
 import { Route as AdminSettingsSamlIdpProfilesProfileIdRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId'
 import { Route as AdminSettingsSamlIdpProfilesNewRouteImport } from './routes/admin/settings_/saml-idp-profiles_/new'
 import { Route as AdminTenantAttributesNewRouteImport } from './routes/admin/tenant/attributes_/new'
+import { Route as AdminTenantGroup_attributesNewRouteImport } from './routes/admin/tenant/group_attributes_/new'
 import { Route as AdminUsersIdIndexRouteImport } from './routes/admin/users_/$id.index'
 import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.edit'
 import { Route as AdminWorkloadIdentityTrustBundleIdIndexRouteImport } from './routes/admin/workload-identity_/$trustBundleId.index'
@@ -199,6 +206,11 @@ const AccountActivityRoute = AccountActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => AccountRouteRoute,
 } as any)
+const AccountApiTokensRoute = AccountApiTokensRouteImport.update({
+  id: '/api-tokens',
+  path: '/api-tokens',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
 const AccountApplicationsRoute = AccountApplicationsRouteImport.update({
   id: '/applications',
   path: '/applications',
@@ -252,6 +264,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminAgentsRoute = AdminAgentsRouteImport.update({
   id: '/agents',
   path: '/agents',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminApiTokensRoute = AdminApiTokensRouteImport.update({
+  id: '/api-tokens',
+  path: '/api-tokens',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminApplicationsRoute = AdminApplicationsRouteImport.update({
@@ -381,6 +398,11 @@ const SystemTenantsRoute = SystemTenantsRouteImport.update({
   path: '/tenants',
   getParentRoute: () => SystemRouteRoute,
 } as any)
+const AccountApiTokensNewRoute = AccountApiTokensNewRouteImport.update({
+  id: '/api-tokens_/new',
+  path: '/api-tokens/new',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
 const AccountEmailVerifyRoute = AccountEmailVerifyRouteImport.update({
   id: '/email/verify',
   path: '/email/verify',
@@ -409,6 +431,11 @@ const AdminAgentsInventoryRoute = AdminAgentsInventoryRouteImport.update({
 const AdminAgentsNewRoute = AdminAgentsNewRouteImport.update({
   id: '/agents_/new',
   path: '/agents/new',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminApiTokensNewRoute = AdminApiTokensNewRouteImport.update({
+  id: '/api-tokens_/new',
+  path: '/api-tokens/new',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminApplicationsApplicationIdRoute =
@@ -539,6 +566,11 @@ const AdminTenantGroup_attributesRoute =
     path: '/tenant/group_attributes',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminTokenVaultNewRoute = AdminTokenVaultNewRouteImport.update({
+  id: '/token-vault_/new',
+  path: '/token-vault/new',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminUsersIdRoute = AdminUsersIdRouteImport.update({
   id: '/users_/$id',
   path: '/users/$id',
@@ -617,6 +649,12 @@ const AdminAuthorizationModelEditRoute =
     path: '/authorization/model/edit',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminAuthorizationModelNewRoute =
+  AdminAuthorizationModelNewRouteImport.update({
+    id: '/authorization/model_/new',
+    path: '/authorization/model/new',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminAuthorizationRelationTuplesNewRoute =
   AdminAuthorizationRelationTuplesNewRouteImport.update({
     id: '/authorization/relation-tuples_/new',
@@ -678,6 +716,12 @@ const AdminTenantAttributesNewRoute =
   AdminTenantAttributesNewRouteImport.update({
     id: '/tenant/attributes_/new',
     path: '/tenant/attributes/new',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminTenantGroup_attributesNewRoute =
+  AdminTenantGroup_attributesNewRouteImport.update({
+    id: '/tenant/group_attributes_/new',
+    path: '/tenant/group_attributes/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
 const AdminUsersIdIndexRoute = AdminUsersIdIndexRouteImport.update({
@@ -748,6 +792,7 @@ export interface FileRoutesByFullPath {
   '/status': typeof StatusRoute
   '/totp': typeof TotpRoute
   '/account/activity': typeof AccountActivityRoute
+  '/account/api-tokens': typeof AccountApiTokensRoute
   '/account/applications': typeof AccountApplicationsRoute
   '/account/approvals': typeof AccountApprovalsRoute
   '/account/apps': typeof AccountAppsRoute
@@ -758,6 +803,7 @@ export interface FileRoutesByFullPath {
   '/account/profile': typeof AccountProfileRoute
   '/account/security': typeof AccountSecurityRoute
   '/admin/agents': typeof AdminAgentsRoute
+  '/admin/api-tokens': typeof AdminApiTokensRoute
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit_events': typeof AdminAudit_eventsRoute
   '/admin/authorization-detail-types': typeof AdminAuthorizationDetailTypesRoute
@@ -785,11 +831,13 @@ export interface FileRoutesByFullPath {
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/system/': typeof SystemIndexRoute
+  '/account/api-tokens/new': typeof AccountApiTokensNewRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile/edit': typeof AccountProfileEditRoute
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdRouteWithChildren
   '/admin/agents/inventory': typeof AdminAgentsInventoryRoute
   '/admin/agents/new': typeof AdminAgentsNewRoute
+  '/admin/api-tokens/new': typeof AdminApiTokensNewRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/applications/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types/new': typeof AdminAuthorizationDetailTypesNewRoute
@@ -813,6 +861,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/tenant/group_attributes': typeof AdminTenantGroup_attributesRoute
+  '/admin/token-vault/new': typeof AdminTokenVaultNewRoute
   '/admin/users/$id': typeof AdminUsersIdRouteWithChildren
   '/admin/users/exports': typeof AdminUsersExportsRoute
   '/admin/users/import': typeof AdminUsersImportRoute
@@ -826,6 +875,7 @@ export interface FileRoutesByFullPath {
   '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/authorization-detail-types/$type/edit': typeof AdminAuthorizationDetailTypesTypeEditRoute
   '/admin/authorization/model/edit': typeof AdminAuthorizationModelEditRoute
+  '/admin/authorization/model/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples/new': typeof AdminAuthorizationRelationTuplesNewRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
@@ -835,6 +885,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings/saml-idp-profiles/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
   '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/tenant/attributes/new': typeof AdminTenantAttributesNewRoute
+  '/admin/tenant/group_attributes/new': typeof AdminTenantGroup_attributesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/workload-identity/$trustBundleId/edit': typeof AdminWorkloadIdentityTrustBundleIdEditRoute
   '/admin/agents/$agentId/': typeof AdminAgentsAgentIdIndexRoute
@@ -861,6 +912,7 @@ export interface FileRoutesByTo {
   '/status': typeof StatusRoute
   '/totp': typeof TotpRoute
   '/account/activity': typeof AccountActivityRoute
+  '/account/api-tokens': typeof AccountApiTokensRoute
   '/account/applications': typeof AccountApplicationsRoute
   '/account/approvals': typeof AccountApprovalsRoute
   '/account/apps': typeof AccountAppsRoute
@@ -871,6 +923,7 @@ export interface FileRoutesByTo {
   '/account/profile': typeof AccountProfileIndexRoute
   '/account/security': typeof AccountSecurityRoute
   '/admin/agents': typeof AdminAgentsRoute
+  '/admin/api-tokens': typeof AdminApiTokensRoute
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit_events': typeof AdminAudit_eventsRoute
   '/admin/authorization-detail-types': typeof AdminAuthorizationDetailTypesRoute
@@ -898,10 +951,12 @@ export interface FileRoutesByTo {
   '/account': typeof AccountIndexRoute
   '/admin': typeof AdminIndexRoute
   '/system': typeof SystemIndexRoute
+  '/account/api-tokens/new': typeof AccountApiTokensNewRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile/edit': typeof AccountProfileEditRoute
   '/admin/agents/inventory': typeof AdminAgentsInventoryRoute
   '/admin/agents/new': typeof AdminAgentsNewRoute
+  '/admin/api-tokens/new': typeof AdminApiTokensNewRoute
   '/admin/applications/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types/new': typeof AdminAuthorizationDetailTypesNewRoute
   '/admin/authorization/check': typeof AdminAuthorizationCheckRoute
@@ -922,6 +977,7 @@ export interface FileRoutesByTo {
   '/admin/settings/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/tenant/group_attributes': typeof AdminTenantGroup_attributesRoute
+  '/admin/token-vault/new': typeof AdminTokenVaultNewRoute
   '/admin/users/exports': typeof AdminUsersExportsRoute
   '/admin/users/import': typeof AdminUsersImportRoute
   '/admin/users/new': typeof AdminUsersNewRoute
@@ -932,6 +988,7 @@ export interface FileRoutesByTo {
   '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/authorization-detail-types/$type/edit': typeof AdminAuthorizationDetailTypesTypeEditRoute
   '/admin/authorization/model/edit': typeof AdminAuthorizationModelEditRoute
+  '/admin/authorization/model/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples/new': typeof AdminAuthorizationRelationTuplesNewRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
@@ -940,6 +997,7 @@ export interface FileRoutesByTo {
   '/admin/mcp-resource-servers/$resourceServerId/edit': typeof AdminMcpResourceServersResourceServerIdEditRoute
   '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/tenant/attributes/new': typeof AdminTenantAttributesNewRoute
+  '/admin/tenant/group_attributes/new': typeof AdminTenantGroup_attributesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/workload-identity/$trustBundleId/edit': typeof AdminWorkloadIdentityTrustBundleIdEditRoute
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdIndexRoute
@@ -970,6 +1028,7 @@ export interface FileRoutesById {
   '/status': typeof StatusRoute
   '/totp': typeof TotpRoute
   '/account/activity': typeof AccountActivityRoute
+  '/account/api-tokens': typeof AccountApiTokensRoute
   '/account/applications': typeof AccountApplicationsRoute
   '/account/approvals': typeof AccountApprovalsRoute
   '/account/apps': typeof AccountAppsRoute
@@ -980,6 +1039,7 @@ export interface FileRoutesById {
   '/account/profile': typeof AccountProfileRoute
   '/account/security': typeof AccountSecurityRoute
   '/admin/agents': typeof AdminAgentsRoute
+  '/admin/api-tokens': typeof AdminApiTokensRoute
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit_events': typeof AdminAudit_eventsRoute
   '/admin/authorization-detail-types': typeof AdminAuthorizationDetailTypesRoute
@@ -1007,11 +1067,13 @@ export interface FileRoutesById {
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/system/': typeof SystemIndexRoute
+  '/account/api-tokens_/new': typeof AccountApiTokensNewRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile_/edit': typeof AccountProfileEditRoute
   '/admin/agents_/$agentId': typeof AdminAgentsAgentIdRouteWithChildren
   '/admin/agents_/inventory': typeof AdminAgentsInventoryRoute
   '/admin/agents_/new': typeof AdminAgentsNewRoute
+  '/admin/api-tokens_/new': typeof AdminApiTokensNewRoute
   '/admin/applications_/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/applications_/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types_/new': typeof AdminAuthorizationDetailTypesNewRoute
@@ -1035,6 +1097,7 @@ export interface FileRoutesById {
   '/admin/settings_/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/tenant/group_attributes': typeof AdminTenantGroup_attributesRoute
+  '/admin/token-vault_/new': typeof AdminTokenVaultNewRoute
   '/admin/users_/$id': typeof AdminUsersIdRouteWithChildren
   '/admin/users_/exports': typeof AdminUsersExportsRoute
   '/admin/users_/import': typeof AdminUsersImportRoute
@@ -1048,6 +1111,7 @@ export interface FileRoutesById {
   '/admin/applications_/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/authorization-detail-types_/$type/edit': typeof AdminAuthorizationDetailTypesTypeEditRoute
   '/admin/authorization/model_/edit': typeof AdminAuthorizationModelEditRoute
+  '/admin/authorization/model_/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples_/new': typeof AdminAuthorizationRelationTuplesNewRoute
   '/admin/federation/entra_/new': typeof AdminFederationEntraNewRoute
   '/admin/groups_/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
@@ -1057,6 +1121,7 @@ export interface FileRoutesById {
   '/admin/settings_/saml-idp-profiles_/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
   '/admin/settings_/saml-idp-profiles_/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/tenant/attributes_/new': typeof AdminTenantAttributesNewRoute
+  '/admin/tenant/group_attributes_/new': typeof AdminTenantGroup_attributesNewRoute
   '/admin/users_/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/workload-identity_/$trustBundleId/edit': typeof AdminWorkloadIdentityTrustBundleIdEditRoute
   '/admin/agents_/$agentId/': typeof AdminAgentsAgentIdIndexRoute
@@ -1088,6 +1153,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/totp'
     | '/account/activity'
+    | '/account/api-tokens'
     | '/account/applications'
     | '/account/approvals'
     | '/account/apps'
@@ -1098,6 +1164,7 @@ export interface FileRouteTypes {
     | '/account/profile'
     | '/account/security'
     | '/admin/agents'
+    | '/admin/api-tokens'
     | '/admin/applications'
     | '/admin/audit_events'
     | '/admin/authorization-detail-types'
@@ -1125,11 +1192,13 @@ export interface FileRouteTypes {
     | '/account/'
     | '/admin/'
     | '/system/'
+    | '/account/api-tokens/new'
     | '/account/email/verify'
     | '/account/profile/edit'
     | '/admin/agents/$agentId'
     | '/admin/agents/inventory'
     | '/admin/agents/new'
+    | '/admin/api-tokens/new'
     | '/admin/applications/$applicationId'
     | '/admin/applications/new'
     | '/admin/authorization-detail-types/new'
@@ -1153,6 +1222,7 @@ export interface FileRouteTypes {
     | '/admin/settings/saml-idp-profiles'
     | '/admin/tenant/attributes'
     | '/admin/tenant/group_attributes'
+    | '/admin/token-vault/new'
     | '/admin/users/$id'
     | '/admin/users/exports'
     | '/admin/users/import'
@@ -1166,6 +1236,7 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId/provisioning'
     | '/admin/authorization-detail-types/$type/edit'
     | '/admin/authorization/model/edit'
+    | '/admin/authorization/model/new'
     | '/admin/authorization/relation-tuples/new'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
@@ -1175,6 +1246,7 @@ export interface FileRouteTypes {
     | '/admin/settings/saml-idp-profiles/$profileId'
     | '/admin/settings/saml-idp-profiles/new'
     | '/admin/tenant/attributes/new'
+    | '/admin/tenant/group_attributes/new'
     | '/admin/users/$id/edit'
     | '/admin/workload-identity/$trustBundleId/edit'
     | '/admin/agents/$agentId/'
@@ -1201,6 +1273,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/totp'
     | '/account/activity'
+    | '/account/api-tokens'
     | '/account/applications'
     | '/account/approvals'
     | '/account/apps'
@@ -1211,6 +1284,7 @@ export interface FileRouteTypes {
     | '/account/profile'
     | '/account/security'
     | '/admin/agents'
+    | '/admin/api-tokens'
     | '/admin/applications'
     | '/admin/audit_events'
     | '/admin/authorization-detail-types'
@@ -1238,10 +1312,12 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/system'
+    | '/account/api-tokens/new'
     | '/account/email/verify'
     | '/account/profile/edit'
     | '/admin/agents/inventory'
     | '/admin/agents/new'
+    | '/admin/api-tokens/new'
     | '/admin/applications/new'
     | '/admin/authorization-detail-types/new'
     | '/admin/authorization/check'
@@ -1262,6 +1338,7 @@ export interface FileRouteTypes {
     | '/admin/settings/saml-idp-profiles'
     | '/admin/tenant/attributes'
     | '/admin/tenant/group_attributes'
+    | '/admin/token-vault/new'
     | '/admin/users/exports'
     | '/admin/users/import'
     | '/admin/users/new'
@@ -1272,6 +1349,7 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId/provisioning'
     | '/admin/authorization-detail-types/$type/edit'
     | '/admin/authorization/model/edit'
+    | '/admin/authorization/model/new'
     | '/admin/authorization/relation-tuples/new'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
@@ -1280,6 +1358,7 @@ export interface FileRouteTypes {
     | '/admin/mcp-resource-servers/$resourceServerId/edit'
     | '/admin/settings/saml-idp-profiles/new'
     | '/admin/tenant/attributes/new'
+    | '/admin/tenant/group_attributes/new'
     | '/admin/users/$id/edit'
     | '/admin/workload-identity/$trustBundleId/edit'
     | '/admin/agents/$agentId'
@@ -1309,6 +1388,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/totp'
     | '/account/activity'
+    | '/account/api-tokens'
     | '/account/applications'
     | '/account/approvals'
     | '/account/apps'
@@ -1319,6 +1399,7 @@ export interface FileRouteTypes {
     | '/account/profile'
     | '/account/security'
     | '/admin/agents'
+    | '/admin/api-tokens'
     | '/admin/applications'
     | '/admin/audit_events'
     | '/admin/authorization-detail-types'
@@ -1346,11 +1427,13 @@ export interface FileRouteTypes {
     | '/account/'
     | '/admin/'
     | '/system/'
+    | '/account/api-tokens_/new'
     | '/account/email/verify'
     | '/account/profile_/edit'
     | '/admin/agents_/$agentId'
     | '/admin/agents_/inventory'
     | '/admin/agents_/new'
+    | '/admin/api-tokens_/new'
     | '/admin/applications_/$applicationId'
     | '/admin/applications_/new'
     | '/admin/authorization-detail-types_/new'
@@ -1374,6 +1457,7 @@ export interface FileRouteTypes {
     | '/admin/settings_/saml-idp-profiles'
     | '/admin/tenant/attributes'
     | '/admin/tenant/group_attributes'
+    | '/admin/token-vault_/new'
     | '/admin/users_/$id'
     | '/admin/users_/exports'
     | '/admin/users_/import'
@@ -1387,6 +1471,7 @@ export interface FileRouteTypes {
     | '/admin/applications_/$applicationId/provisioning'
     | '/admin/authorization-detail-types_/$type/edit'
     | '/admin/authorization/model_/edit'
+    | '/admin/authorization/model_/new'
     | '/admin/authorization/relation-tuples_/new'
     | '/admin/federation/entra_/new'
     | '/admin/groups_/$groupId/edit'
@@ -1396,6 +1481,7 @@ export interface FileRouteTypes {
     | '/admin/settings_/saml-idp-profiles_/$profileId'
     | '/admin/settings_/saml-idp-profiles_/new'
     | '/admin/tenant/attributes_/new'
+    | '/admin/tenant/group_attributes_/new'
     | '/admin/users_/$id/edit'
     | '/admin/workload-identity_/$trustBundleId/edit'
     | '/admin/agents_/$agentId/'
@@ -1534,6 +1620,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountActivityRouteImport
       parentRoute: typeof AccountRouteRoute
     }
+    '/account/api-tokens': {
+      id: '/account/api-tokens'
+      path: '/api-tokens'
+      fullPath: '/account/api-tokens'
+      preLoaderRoute: typeof AccountApiTokensRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
     '/account/applications': {
       id: '/account/applications'
       path: '/applications'
@@ -1609,6 +1702,13 @@ declare module '@tanstack/react-router' {
       path: '/agents'
       fullPath: '/admin/agents'
       preLoaderRoute: typeof AdminAgentsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/api-tokens': {
+      id: '/admin/api-tokens'
+      path: '/api-tokens'
+      fullPath: '/admin/api-tokens'
+      preLoaderRoute: typeof AdminApiTokensRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/applications': {
@@ -1786,6 +1886,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SystemTenantsRouteImport
       parentRoute: typeof SystemRouteRoute
     }
+    '/account/api-tokens_/new': {
+      id: '/account/api-tokens_/new'
+      path: '/api-tokens/new'
+      fullPath: '/account/api-tokens/new'
+      preLoaderRoute: typeof AccountApiTokensNewRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
     '/account/email/verify': {
       id: '/account/email/verify'
       path: '/email/verify'
@@ -1826,6 +1933,13 @@ declare module '@tanstack/react-router' {
       path: '/agents/new'
       fullPath: '/admin/agents/new'
       preLoaderRoute: typeof AdminAgentsNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/api-tokens_/new': {
+      id: '/admin/api-tokens_/new'
+      path: '/api-tokens/new'
+      fullPath: '/admin/api-tokens/new'
+      preLoaderRoute: typeof AdminApiTokensNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/applications_/$applicationId': {
@@ -1989,6 +2103,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTenantGroup_attributesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/token-vault_/new': {
+      id: '/admin/token-vault_/new'
+      path: '/token-vault/new'
+      fullPath: '/admin/token-vault/new'
+      preLoaderRoute: typeof AdminTokenVaultNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/users_/$id': {
       id: '/admin/users_/$id'
       path: '/users/$id'
@@ -2087,6 +2208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthorizationModelEditRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/authorization/model_/new': {
+      id: '/admin/authorization/model_/new'
+      path: '/authorization/model/new'
+      fullPath: '/admin/authorization/model/new'
+      preLoaderRoute: typeof AdminAuthorizationModelNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/authorization/relation-tuples_/new': {
       id: '/admin/authorization/relation-tuples_/new'
       path: '/authorization/relation-tuples/new'
@@ -2164,6 +2292,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTenantAttributesNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/tenant/group_attributes_/new': {
+      id: '/admin/tenant/group_attributes_/new'
+      path: '/tenant/group_attributes/new'
+      fullPath: '/admin/tenant/group_attributes/new'
+      preLoaderRoute: typeof AdminTenantGroup_attributesNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/users_/$id/': {
       id: '/admin/users_/$id/'
       path: '/'
@@ -2232,6 +2367,7 @@ declare module '@tanstack/react-router' {
 
 interface AccountRouteRouteChildren {
   AccountActivityRoute: typeof AccountActivityRoute
+  AccountApiTokensRoute: typeof AccountApiTokensRoute
   AccountApplicationsRoute: typeof AccountApplicationsRoute
   AccountApprovalsRoute: typeof AccountApprovalsRoute
   AccountAppsRoute: typeof AccountAppsRoute
@@ -2242,6 +2378,7 @@ interface AccountRouteRouteChildren {
   AccountProfileRoute: typeof AccountProfileRoute
   AccountSecurityRoute: typeof AccountSecurityRoute
   AccountIndexRoute: typeof AccountIndexRoute
+  AccountApiTokensNewRoute: typeof AccountApiTokensNewRoute
   AccountEmailVerifyRoute: typeof AccountEmailVerifyRoute
   AccountProfileEditRoute: typeof AccountProfileEditRoute
   AccountProfileIndexRoute: typeof AccountProfileIndexRoute
@@ -2249,6 +2386,7 @@ interface AccountRouteRouteChildren {
 
 const AccountRouteRouteChildren: AccountRouteRouteChildren = {
   AccountActivityRoute: AccountActivityRoute,
+  AccountApiTokensRoute: AccountApiTokensRoute,
   AccountApplicationsRoute: AccountApplicationsRoute,
   AccountApprovalsRoute: AccountApprovalsRoute,
   AccountAppsRoute: AccountAppsRoute,
@@ -2259,6 +2397,7 @@ const AccountRouteRouteChildren: AccountRouteRouteChildren = {
   AccountProfileRoute: AccountProfileRoute,
   AccountSecurityRoute: AccountSecurityRoute,
   AccountIndexRoute: AccountIndexRoute,
+  AccountApiTokensNewRoute: AccountApiTokensNewRoute,
   AccountEmailVerifyRoute: AccountEmailVerifyRoute,
   AccountProfileEditRoute: AccountProfileEditRoute,
   AccountProfileIndexRoute: AccountProfileIndexRoute,
@@ -2391,6 +2530,7 @@ const AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren =
 
 interface AdminRouteRouteChildren {
   AdminAgentsRoute: typeof AdminAgentsRoute
+  AdminApiTokensRoute: typeof AdminApiTokensRoute
   AdminApplicationsRoute: typeof AdminApplicationsRoute
   AdminAudit_eventsRoute: typeof AdminAudit_eventsRoute
   AdminAuthorizationDetailTypesRoute: typeof AdminAuthorizationDetailTypesRoute
@@ -2414,6 +2554,7 @@ interface AdminRouteRouteChildren {
   AdminAgentsAgentIdRoute: typeof AdminAgentsAgentIdRouteWithChildren
   AdminAgentsInventoryRoute: typeof AdminAgentsInventoryRoute
   AdminAgentsNewRoute: typeof AdminAgentsNewRoute
+  AdminApiTokensNewRoute: typeof AdminApiTokensNewRoute
   AdminApplicationsApplicationIdRoute: typeof AdminApplicationsApplicationIdRouteWithChildren
   AdminApplicationsNewRoute: typeof AdminApplicationsNewRoute
   AdminAuthorizationDetailTypesNewRoute: typeof AdminAuthorizationDetailTypesNewRoute
@@ -2437,6 +2578,7 @@ interface AdminRouteRouteChildren {
   AdminSettingsSamlIdpProfilesRoute: typeof AdminSettingsSamlIdpProfilesRoute
   AdminTenantAttributesRoute: typeof AdminTenantAttributesRoute
   AdminTenantGroup_attributesRoute: typeof AdminTenantGroup_attributesRoute
+  AdminTokenVaultNewRoute: typeof AdminTokenVaultNewRoute
   AdminUsersIdRoute: typeof AdminUsersIdRouteWithChildren
   AdminUsersExportsRoute: typeof AdminUsersExportsRoute
   AdminUsersImportRoute: typeof AdminUsersImportRoute
@@ -2445,6 +2587,7 @@ interface AdminRouteRouteChildren {
   AdminWorkloadIdentityNewRoute: typeof AdminWorkloadIdentityNewRoute
   AdminAuthorizationDetailTypesTypeEditRoute: typeof AdminAuthorizationDetailTypesTypeEditRoute
   AdminAuthorizationModelEditRoute: typeof AdminAuthorizationModelEditRoute
+  AdminAuthorizationModelNewRoute: typeof AdminAuthorizationModelNewRoute
   AdminAuthorizationRelationTuplesNewRoute: typeof AdminAuthorizationRelationTuplesNewRoute
   AdminFederationEntraNewRoute: typeof AdminFederationEntraNewRoute
   AdminLifecycleWorkflowsWorkflowIdEditRoute: typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
@@ -2452,10 +2595,12 @@ interface AdminRouteRouteChildren {
   AdminSettingsSamlIdpProfilesProfileIdRoute: typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
   AdminSettingsSamlIdpProfilesNewRoute: typeof AdminSettingsSamlIdpProfilesNewRoute
   AdminTenantAttributesNewRoute: typeof AdminTenantAttributesNewRoute
+  AdminTenantGroup_attributesNewRoute: typeof AdminTenantGroup_attributesNewRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAgentsRoute: AdminAgentsRoute,
+  AdminApiTokensRoute: AdminApiTokensRoute,
   AdminApplicationsRoute: AdminApplicationsRoute,
   AdminAudit_eventsRoute: AdminAudit_eventsRoute,
   AdminAuthorizationDetailTypesRoute: AdminAuthorizationDetailTypesRoute,
@@ -2479,6 +2624,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAgentsAgentIdRoute: AdminAgentsAgentIdRouteWithChildren,
   AdminAgentsInventoryRoute: AdminAgentsInventoryRoute,
   AdminAgentsNewRoute: AdminAgentsNewRoute,
+  AdminApiTokensNewRoute: AdminApiTokensNewRoute,
   AdminApplicationsApplicationIdRoute:
     AdminApplicationsApplicationIdRouteWithChildren,
   AdminApplicationsNewRoute: AdminApplicationsNewRoute,
@@ -2504,6 +2650,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSettingsSamlIdpProfilesRoute: AdminSettingsSamlIdpProfilesRoute,
   AdminTenantAttributesRoute: AdminTenantAttributesRoute,
   AdminTenantGroup_attributesRoute: AdminTenantGroup_attributesRoute,
+  AdminTokenVaultNewRoute: AdminTokenVaultNewRoute,
   AdminUsersIdRoute: AdminUsersIdRouteWithChildren,
   AdminUsersExportsRoute: AdminUsersExportsRoute,
   AdminUsersImportRoute: AdminUsersImportRoute,
@@ -2514,6 +2661,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAuthorizationDetailTypesTypeEditRoute:
     AdminAuthorizationDetailTypesTypeEditRoute,
   AdminAuthorizationModelEditRoute: AdminAuthorizationModelEditRoute,
+  AdminAuthorizationModelNewRoute: AdminAuthorizationModelNewRoute,
   AdminAuthorizationRelationTuplesNewRoute:
     AdminAuthorizationRelationTuplesNewRoute,
   AdminFederationEntraNewRoute: AdminFederationEntraNewRoute,
@@ -2525,6 +2673,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
     AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren,
   AdminSettingsSamlIdpProfilesNewRoute: AdminSettingsSamlIdpProfilesNewRoute,
   AdminTenantAttributesNewRoute: AdminTenantAttributesNewRoute,
+  AdminTenantGroup_attributesNewRoute: AdminTenantGroup_attributesNewRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

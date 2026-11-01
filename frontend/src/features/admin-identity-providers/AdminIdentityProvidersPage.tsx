@@ -10,6 +10,7 @@ import {
 } from '../../api'
 import { AdminPaneActions } from '../../components/AdminPaneActions'
 import { AdminShell } from '../../components/AdminShell'
+import { listIdentityProviderConnections } from '../../api/admin'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -100,6 +101,12 @@ export function AdminIdentityProvidersPage({
         actorUsername={actorUsername}
         title={t.pageTitle}
         description={t.pageDescription}
+        list={{
+          total: connections.length,
+          displayed: connections.length,
+          busy: !!busyId,
+          onRefresh: async () => setConnections(await listIdentityProviderConnections()),
+        }}
         actions={
           <Button
             nativeButton={false}

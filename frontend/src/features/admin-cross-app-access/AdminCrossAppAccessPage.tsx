@@ -4,9 +4,13 @@ import {
   AuthenticationAPIError,
   deleteCrossAppAccessIssuePolicy,
   deleteCrossAppAccessRedeemPolicy,
+  listCrossAppAccessIssuePolicies,
+  listCrossAppAccessRedeemPolicies,
   tenantURL,
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -32,15 +36,26 @@ export function AdminCrossAppAccessPage({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminCrossAppAccessDictionary)
+  const common = useDictionary(commonDictionary)
+  const [pending, setPending] = useState<{
+    target: string
+    action: () => Promise<void>
+    onDeleted: () => void
+  } | null>(null)
+  const [busy, setBusy] = useState(false)
 
   async function remove(action: () => Promise<void>, onDeleted: () => void) {
     setError('')
+    setBusy(true)
     try {
       await action()
       onDeleted()
       setNotice(t.deletedNotice)
+      setPending(null)
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.deleteFailedError)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -50,6 +65,18 @@ export function AdminCrossAppAccessPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        total: issueItems.length + redeemItems.length,
+        displayed: issueItems.length + redeemItems.length,
+        onRefresh: async () => {
+          const [issue, redeem] = await Promise.all([
+            listCrossAppAccessIssuePolicies(),
+            listCrossAppAccessRedeemPolicies(),
+          ])
+          setIssueItems(issue)
+          setRedeemItems(redeem)
+        },
+      }}
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Toast message={notice} onDismiss={() => setNotice('')} />
@@ -85,12 +112,14 @@ export function AdminCrossAppAccessPage({
                 </p>
               </div>
               <Button
-                variant="outline"
+                variant="destructive"
                 onClick={() =>
-                  remove(
-                    () => deleteCrossAppAccessIssuePolicy(csrfToken, policy.id),
-                    () => setIssueItems((items) => items.filter((item) => item.id !== policy.id)),
-                  )
+                  setPending({
+                    target: `${policy.client_id} → ${policy.audience}`,
+                    action: () => deleteCrossAppAccessIssuePolicy(csrfToken, policy.id),
+                    onDeleted: () =>
+                      setIssueItems((items) => items.filter((item) => item.id !== policy.id)),
+                  })
                 }
               >
                 <IconTrash size={16} aria-hidden="true" />
@@ -129,12 +158,14 @@ export function AdminCrossAppAccessPage({
                 </p>
               </div>
               <Button
-                variant="outline"
+                variant="destructive"
                 onClick={() =>
-                  remove(
-                    () => deleteCrossAppAccessRedeemPolicy(csrfToken, policy.id),
-                    () => setRedeemItems((items) => items.filter((item) => item.id !== policy.id)),
-                  )
+                  setPending({
+                    target: `${policy.provider_id} → ${policy.client_id}`,
+                    action: () => deleteCrossAppAccessRedeemPolicy(csrfToken, policy.id),
+                    onDeleted: () =>
+                      setRedeemItems((items) => items.filter((item) => item.id !== policy.id)),
+                  })
                 }
               >
                 <IconTrash size={16} aria-hidden="true" />
@@ -144,6 +175,18 @@ export function AdminCrossAppAccessPage({
           ))
         )}
       </section>
+      {pending ? (
+        <ConfirmActionDialog
+          title={t.delete}
+          target={pending.target}
+          description={common.deleteResourceDescription}
+          confirmLabel={t.delete}
+          busy={busy}
+          error={error}
+          onClose={() => setPending(null)}
+          onConfirm={() => void remove(pending.action, pending.onDeleted)}
+        />
+      ) : null}
     </AdminShell>
   )
 }

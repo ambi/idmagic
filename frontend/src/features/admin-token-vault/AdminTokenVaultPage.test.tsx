@@ -2,7 +2,8 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, mock } from 'bun:test'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import type { TokenVaultConnector } from '../../types'
-import { AdminTokenVaultPage, parseRules } from './AdminTokenVaultPage'
+import { AdminTokenVaultPage } from './AdminTokenVaultPage'
+import { AdminTokenVaultCreatePage, parseRules } from './AdminTokenVaultCreatePage'
 import { adminTokenVaultDictionary } from './AdminTokenVaultPage.i18n'
 
 const t = adminTokenVaultDictionary.en
@@ -49,6 +50,9 @@ describe('AdminTokenVaultPage', () => {
     }) as unknown as typeof fetch
     await renderWithRouter(<AdminTokenVaultPage csrfToken="csrf" connectors={[connector]} />)
     fireEvent.click(screen.getByRole('button', { name: t.disable }))
+    fireEvent.click(
+      (await screen.findByRole('dialog')).querySelector('button:last-child') as HTMLButtonElement,
+    )
     await waitFor(() => expect(screen.getByRole('button', { name: t.enable })).toBeInTheDocument())
     expect(calls[0]).toEqual({ method: 'PATCH', body: JSON.stringify({ status: 'disabled' }) })
   })
@@ -56,9 +60,7 @@ describe('AdminTokenVaultPage', () => {
   it('does not delete without confirmation', async () => {
     const fetcher = mock(async () => new Response(null, { status: 204 }))
     globalThis.fetch = fetcher as unknown as typeof fetch
-    await renderWithRouter(
-      <AdminTokenVaultPage csrfToken="csrf" connectors={[connector]} confirmDelete={() => false} />,
-    )
+    await renderWithRouter(<AdminTokenVaultPage csrfToken="csrf" connectors={[connector]} />)
     fireEvent.click(screen.getByRole('button', { name: t.delete }))
     expect(fetcher).not.toHaveBeenCalled()
   })
@@ -66,7 +68,7 @@ describe('AdminTokenVaultPage', () => {
   it('refuses rules that are not an array before calling the server', async () => {
     const fetcher = mock(async () => new Response(null, { status: 500 }))
     globalThis.fetch = fetcher as unknown as typeof fetch
-    await renderWithRouter(<AdminTokenVaultPage csrfToken="csrf" connectors={[]} />)
+    await renderWithRouter(<AdminTokenVaultCreatePage csrfToken="csrf" onCreated={() => {}} />)
     fireEvent.change(screen.getByLabelText(t.rules), { target: { value: '{}' } })
     fireEvent.submit(screen.getByRole('button', { name: t.add }).closest('form') as HTMLFormElement)
     expect(screen.getByText(t.rulesInvalid)).toBeInTheDocument()

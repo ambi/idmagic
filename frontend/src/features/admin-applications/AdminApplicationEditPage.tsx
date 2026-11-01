@@ -356,13 +356,15 @@ export function AdminApplicationEditPage({
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      <div className="grid max-w-3xl gap-6">
+      <div className="grid admin-form gap-6">
         <Card className="p-6">
           <form onSubmit={submit} className="grid gap-6">
             <section className="grid gap-4">
               <SectionTitle>{t.basicInfoHeading}</SectionTitle>
               <div className="grid gap-1.5">
-                <Label htmlFor="edit-name">{t.nameFieldLabel}</Label>
+                <Label htmlFor="edit-name" required>
+                  {t.nameFieldLabel}
+                </Label>
                 <Input
                   id="edit-name"
                   value={name}
@@ -593,7 +595,9 @@ export function AdminApplicationEditPage({
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="grid gap-1.5">
-                    <Label htmlFor="edit-audience">{t.audienceOptionalFieldLabel}</Label>
+                    <Label htmlFor="edit-audience" optional>
+                      {t.audienceOptionalFieldLabel}
+                    </Label>
                     <Input
                       id="edit-audience"
                       value={audience}

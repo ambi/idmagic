@@ -120,7 +120,9 @@ export function AdminApplicationSamlFormSection(props: Props) {
         <p className="text-xs text-slate-500">{t.acsUrlHelp}</p>
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="edit-saml-slo">{t.sloUrlOptionalFieldLabel}</Label>
+        <Label htmlFor="edit-saml-slo" optional>
+          {t.sloUrlOptionalFieldLabel}
+        </Label>
         <Input
           id="edit-saml-slo"
           value={props.slo}
@@ -148,7 +150,9 @@ export function AdminApplicationSamlFormSection(props: Props) {
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="edit-saml-audience">{t.audienceOptionalFieldLabel}</Label>
+          <Label htmlFor="edit-saml-audience" optional>
+            {t.audienceOptionalFieldLabel}
+          </Label>
           <Input
             id="edit-saml-audience"
             value={props.audience}

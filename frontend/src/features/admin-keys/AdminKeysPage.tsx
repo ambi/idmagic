@@ -1,4 +1,4 @@
-import { IconKey, IconRefresh, IconRotateClockwise, IconTrash } from '@tabler/icons-react'
+import { IconKey, IconRotateClockwise, IconTrash } from '@tabler/icons-react'
 import { useState } from 'react'
 import {
   AuthenticationAPIError,
@@ -93,24 +93,19 @@ export function AdminKeysPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        total: keys.length,
+        displayed: keys.length,
+        busy,
+        onRefresh: () => refresh(selected?.kid),
+      }}
       actions={
-        <>
-          <Button
-            variant="outline"
-            className="size-9 px-0"
-            aria-label={t.reloadAriaLabel}
-            onClick={() => run(() => refresh(selected?.kid), t.listRefreshedNotice)}
-            disabled={busy}
-          >
-            <IconRefresh size={16} aria-hidden="true" />
+        canManage ? (
+          <Button onClick={() => setConfirm(true)} disabled={busy}>
+            <IconRotateClockwise size={16} aria-hidden="true" />
+            {t.rotate}
           </Button>
-          {canManage ? (
-            <Button onClick={() => setConfirm(true)} disabled={busy}>
-              <IconRotateClockwise size={16} aria-hidden="true" />
-              {t.rotate}
-            </Button>
-          ) : null}
-        </>
+        ) : null
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}

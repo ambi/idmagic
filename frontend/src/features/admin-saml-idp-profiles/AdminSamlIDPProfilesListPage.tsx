@@ -1,4 +1,6 @@
 import { IconArrowLeft, IconPlus } from '@tabler/icons-react'
+import { useState } from 'react'
+import { listSamlIDPProfiles } from '../../api/admin'
 import { tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Button } from '../../components/ui/button'
@@ -9,12 +11,13 @@ import { adminSamlIDPProfilesDictionary } from './AdminSamlIDPProfilesPage.i18n'
 
 export function AdminSamlIDPProfilesListPage({
   actorUsername,
-  profiles,
+  profiles: initial,
 }: {
   actorUsername?: string
   profiles: AdminSamlIDPProfile[]
 }) {
   const t = useDictionary(adminSamlIDPProfilesDictionary)
+  const [profiles, setProfiles] = useState(initial)
 
   return (
     <AdminShell
@@ -22,6 +25,11 @@ export function AdminSamlIDPProfilesListPage({
       actorUsername={actorUsername}
       title={t.listTitle}
       description={t.listDescription}
+      list={{
+        total: profiles.length,
+        displayed: profiles.length,
+        onRefresh: async () => setProfiles(await listSamlIDPProfiles()),
+      }}
       actions={
         <>
           <Button

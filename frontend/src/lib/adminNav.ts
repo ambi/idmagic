@@ -50,6 +50,7 @@ export type AdminNavKey =
   | 'tenant-attributes'
   | 'tenant-group-attributes'
   | 'settings'
+  | 'api-tokens'
 
 export type AdminNavItem = {
   key: AdminNavKey
@@ -85,14 +86,14 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
     },
     {
       key: 'agents',
-      label: t.agents,
+      label: t.agentList,
       icon: IconRobot,
       href: tenantURL('/admin/agents'),
       active: active === 'agents',
     },
     {
       key: 'workflows',
-      label: 'ワークフロー',
+      label: t.workflows,
       icon: IconActivity,
       href: tenantURL('/admin/lifecycle-workflows'),
       active: active === 'workflows',
@@ -241,5 +242,67 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
     href: tenantURL('/admin/settings'),
     active: active === 'settings',
   })
+  items.push({
+    key: 'api-tokens',
+    label: t.apiTokens,
+    icon: IconShieldLock,
+    href: tenantURL('/admin/api-tokens'),
+    active: active === 'api-tokens',
+  })
   return items
+}
+
+type AdminNavGroupKey =
+  | 'overview'
+  | 'directory'
+  | 'agents'
+  | 'integrations'
+  | 'access'
+  | 'operations'
+
+const navGroup: Record<AdminNavKey, AdminNavGroupKey> = {
+  dashboard: 'overview',
+  users: 'directory',
+  groups: 'directory',
+  agents: 'agents',
+  workflows: 'directory',
+  'tenant-attributes': 'directory',
+  'tenant-group-attributes': 'directory',
+  applications: 'integrations',
+  provisioning: 'integrations',
+  'directory-connectors': 'integrations',
+  'token-vault': 'agents',
+  'entra-federation': 'integrations',
+  'identity-providers': 'integrations',
+  roles: 'access',
+  'sign-in-policy': 'access',
+  authorization: 'access',
+  'authz-detail-types': 'access',
+  'mcp-resource-servers': 'agents',
+  'cross-app-access': 'access',
+  'workload-identity': 'agents',
+  consents: 'access',
+  'api-tokens': 'access',
+  'audit-events': 'operations',
+  jobs: 'operations',
+  keys: 'operations',
+  settings: 'operations',
+}
+
+export function adminNavGroups(active: AdminNavKey, locale: Locale = 'ja') {
+  const t = shellDictionary[locale]
+  const items = adminNavItems(active, locale)
+  const labels: Record<AdminNavGroupKey, string> = {
+    overview: t.navOverview,
+    directory: t.navDirectory,
+    agents: t.navAgents,
+    integrations: t.navIntegrations,
+    access: t.navAccess,
+    operations: t.navOperations,
+  }
+  return (Object.keys(labels) as AdminNavGroupKey[]).map((key) => ({
+    key,
+    label: labels[key],
+    items: items.filter((item) => navGroup[item.key] === key),
+  }))
 }

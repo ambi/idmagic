@@ -45,6 +45,7 @@ export type AccountNavKey =
   | 'applications'
   | 'connections'
   | 'data'
+  | 'api-tokens'
 
 type AccountShellProps = {
   active: AccountNavKey
@@ -80,6 +81,12 @@ export function AccountShell({
       icon: IconPlugConnected,
     },
     { key: 'data', label: t.dataAndPrivacy, href: '/account/data', icon: IconDatabaseCog },
+    {
+      key: 'api-tokens',
+      label: t.personalApiTokens,
+      href: '/account/api-tokens',
+      icon: IconShieldLock,
+    },
   ]
   const branding = useTenantBranding()
   return (

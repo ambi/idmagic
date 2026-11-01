@@ -67,7 +67,9 @@ export function AuthorizationDetailTypeFormFields({
   return (
     <>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="type">{t.typeIdLabel}</Label>
+        <Label htmlFor="type" required>
+          {t.typeIdLabel}
+        </Label>
         <Input
           id="type"
           value={form.type}
@@ -86,7 +88,9 @@ export function AuthorizationDetailTypeFormFields({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="display_template">{t.displayTemplateLabel}</Label>
+        <Label htmlFor="display_template" required>
+          {t.displayTemplateLabel}
+        </Label>
         <Input
           id="display_template"
           value={form.displayTemplate}
@@ -95,7 +99,7 @@ export function AuthorizationDetailTypeFormFields({
           required
         />
       </div>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5 md:col-span-2">
         <Label htmlFor="schema">{t.schemaLabel}</Label>
         <textarea
           id="schema"

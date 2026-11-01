@@ -1,6 +1,7 @@
 import { IconPencil } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
+import { findAuthorizationModel } from '../../api/admin'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
@@ -30,7 +31,7 @@ function useRewriteSentence() {
 
 export function AdminAuthorizationModelPage({
   actorUsername,
-  model,
+  model: initial,
   requestedVersion,
   justPublished = false,
 }: {
@@ -40,6 +41,7 @@ export function AdminAuthorizationModelPage({
   justPublished?: boolean
 }) {
   const t = useDictionary(adminAuthorizationDictionary)
+  const [model, setModel] = useState(initial)
   const [notice, setNotice] = useState(justPublished ? t.publishedNotice : '')
   const { formatDateTime } = useFormatters()
   const rewriteSentence = useRewriteSentence()
@@ -52,10 +54,22 @@ export function AdminAuthorizationModelPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        displayed: model?.resource_types.length ?? 0,
+        onRefresh: async () =>
+          setModel((await findAuthorizationModel(requestedVersion))?.authorization_model ?? null),
+      }}
       actions={
-        <Button nativeButton={false} render={<Link to="/admin/authorization/model/edit" />}>
+        <Button
+          nativeButton={false}
+          render={
+            <Link
+              to={model ? '/admin/authorization/model/edit' : '/admin/authorization/model/new'}
+            />
+          }
+        >
           <IconPencil size={16} aria-hidden="true" />
-          {t.editModel}
+          {model ? t.editModel : t.createTitle}
         </Button>
       }
     >

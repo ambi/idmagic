@@ -60,3 +60,13 @@
 - When 管理者が RevokeApiToken でトークンを失効する
 - But 指定した ID のトークンが存在しない
 - Then 冪等に成功として扱い、副作用を起こさない
+
+## Rule: REQ-APITOKENS-005 個人用トークンの管理は本人と所属テナントに限定される
+
+### Example: EX-APITOKENS-005-01 有効なセッションでも古い本人認証ではトークンを発行しない
+
+- Given 管理者ロールを持たないユーザーの対話セッションが有効である
+- And 本人認証から 1 時間が過ぎ、本人再認証も行っていない
+- When ユーザーが account:read と 7 日の有効期間で IssuePersonalApiToken を要求する
+- Then 403 の StepUpRequiredError（`step_up_required`）で拒否される
+- And トークンの記録は増減せず、JWT も返らない

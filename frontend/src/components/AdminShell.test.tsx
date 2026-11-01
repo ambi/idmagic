@@ -4,9 +4,33 @@ import { restoreGlobals, stubGlobal } from '../test/globals'
 import { renderWithRouter } from '../test/renderWithRouter'
 import { AdminShell } from './AdminShell'
 import { shellDictionary } from './shell.i18n'
+import { commonDictionary } from '../lib/i18n/common.i18n'
 
 describe('AdminShell', () => {
   afterEach(() => restoreGlobals())
+
+  //spec:covers REQ-FRONTEND-001: 総数と表示件数を区別し、一覧を保持して更新する。
+  it('shows list totals and refreshes without dropping the current list', async () => {
+    const refresh = mock(async () => {})
+    await renderWithRouter(
+      <AdminShell
+        active="groups"
+        title="Groups"
+        list={{ total: 1234, displayed: 25, onRefresh: refresh }}
+      >
+        <p>current list</p>
+      </AdminShell>,
+    )
+    expect(
+      screen.getByText(commonDictionary.en.totalCount.replace('{count}', '1,234')),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(commonDictionary.en.displayedCount.replace('{count}', '25')),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: commonDictionary.en.refresh }))
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1))
+    expect(screen.getByText('current list')).toBeInTheDocument()
+  })
 
   it('marks the active nav item and shows a two-level breadcrumb', async () => {
     await renderWithRouter(

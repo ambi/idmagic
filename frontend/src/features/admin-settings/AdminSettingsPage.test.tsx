@@ -304,7 +304,7 @@ describe('AdminSettingsPage', () => {
     expect(JSON.parse(init.body)).toEqual({ default_locale: 'ja' })
   })
 
-  it('keeps a contextual heading and distinguishes the issued token list', async () => {
+  it('moves API tokens out of tenant settings', async () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(200, { tokens: [] })))
     await renderWithRouter(
       <AdminSettingsPage
@@ -317,13 +317,11 @@ describe('AdminSettingsPage', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: t.tabApiTokensLabel }))
-
-    await screen.findByText(t.noTokensNotice)
-    expect(screen.getByRole('heading', { level: 2, name: t.tabApiTokensLabel })).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { level: 3, name: t.apiTokensListHeading }),
-    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: t.tabApiTokensLabel })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: t.tabApiTokensLabel, hidden: true })).toHaveAttribute(
+      'href',
+      '/admin/api-tokens',
+    )
   })
 
   //spec:covers EX-TENANCY-001-01: 連携情報をプロトコル別に読み取り専用で表示し、SAML profile の値を copy または証明書 download に使える。

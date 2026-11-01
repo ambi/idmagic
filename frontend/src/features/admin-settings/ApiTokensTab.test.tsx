@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, mock } from 'bun:test'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { renderWithRouter } from '../../test/renderWithRouter'
@@ -237,9 +237,12 @@ describe('ApiTokensTab', () => {
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: t.revoke }))
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: t.revoke }),
+      )
       await new Promise((resolve) => setTimeout(resolve, 0))
     })
-    expect(screen.queryByText('scim:users:read')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.revokedLabel })).toBeDisabled()
   })
 
   it('offers account self-service scopes without a client selection', async () => {

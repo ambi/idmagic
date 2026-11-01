@@ -71,16 +71,19 @@ export function AdminUserCreatePage({
         >
           <IconArrowLeft size={18} aria-hidden="true" />
         </a>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t.addUser}</h1>
       </div>
 
-      <div className="mt-6 max-w-2xl">
+      <div className="mt-6 admin-form">
         <Card className="shadow-[0_1px_2px_rgb(15_23_42/4%)]">
           <form onSubmit={handleSubmit}>
-            <div className="grid gap-6 p-6">
-              {error && <Alert variant="destructive">{error}</Alert>}
+            <div className="grid gap-6 p-6 md:grid-cols-2">
+              {error && (
+                <Alert className="md:col-span-2" variant="destructive">
+                  {error}
+                </Alert>
+              )}
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:col-span-2">
                 <Field
                   id="preferred_username"
                   label={t.username}
@@ -108,7 +111,7 @@ export function AdminUserCreatePage({
                 description={t.initialRolesDescription}
               />
 
-              <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 cursor-pointer">
+              <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 cursor-pointer md:col-span-2">
                 <input
                   name="email_verified"
                   type="checkbox"

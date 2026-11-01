@@ -122,6 +122,46 @@ func (s *Service) Issue(ctx context.Context, tenantID, userID, description strin
 	return literal, token.Metadata(), nil
 }
 
+// IssuePersonal は本人向けの発行で権限と期限を制限し、署名と保存は共通の発行へ委ねる。
+func (s *Service) IssuePersonal(ctx context.Context, tenantID, userID, description string, scopeValues []string, expiryDays int, dpopJKT string) (string, domain.Metadata, error) {
+	if expiryDays < 1 || expiryDays > 365 || len(scopeValues) == 0 {
+		return "", domain.Metadata{}, ErrInvalidRequest
+	}
+	for _, value := range scopeValues {
+		if !spec.IsAccountScope(value) {
+			return "", domain.Metadata{}, ErrInvalidRequest
+		}
+	}
+	return s.Issue(ctx, tenantID, userID, description, scopeValues, expiryDays, dpopJKT)
+}
+
+func (s *Service) ListPersonal(ctx context.Context, tenantID, userID string) ([]domain.Metadata, error) {
+	tokens, err := s.List(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]domain.Metadata, 0, len(tokens))
+	for _, token := range tokens {
+		if token.UserID == userID {
+			result = append(result, token)
+		}
+	}
+	return result, nil
+}
+
+func (s *Service) RevokePersonal(ctx context.Context, tenantID, userID, id string) error {
+	tokens, err := s.ListPersonal(ctx, tenantID, userID)
+	if err != nil {
+		return err
+	}
+	for _, token := range tokens {
+		if token.ID == id {
+			return s.Revoke(ctx, tenantID, id)
+		}
+	}
+	return nil
+}
+
 func (s *Service) AuthenticateClaims(ctx context.Context, tenantID string, claims oauthports.IntrospectionResult) (domain.Principal, error) {
 	if !claims.Active || !claims.Managed || claims.JTI == "" {
 		return domain.Principal{}, ErrAccessDenied

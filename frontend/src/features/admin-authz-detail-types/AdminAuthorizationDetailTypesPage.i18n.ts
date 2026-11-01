@@ -2,6 +2,7 @@ import { defineDictionary } from '../../lib/i18n'
 
 export const adminAuthorizationDetailTypesDictionary = defineDictionary(
   {
+    delete: '削除',
     schemaInvalidError: 'スキーマ JSON が不正です。',
     updatedNotice: '{type} を更新しました。',
     registeredNotice: '{type} を登録しました。',
@@ -32,6 +33,7 @@ export const adminAuthorizationDetailTypesDictionary = defineDictionary(
     editType: '{type} を編集',
   },
   {
+    delete: 'Delete',
     schemaInvalidError: 'The schema JSON is invalid.',
     updatedNotice: '{type} has been updated.',
     registeredNotice: '{type} has been registered.',

@@ -16,6 +16,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary } from '../../lib/i18n'
+import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
 import { LENGTH } from '../../lib/lengthLimits'
 import type {
   NotificationTemplateDetail,
@@ -80,6 +81,7 @@ export function NotificationTemplatesTab({ csrfToken }: { csrfToken: string }) {
   const [draft, setDraft] = useState<EditorState | null>(null)
   const [preview, setPreview] = useState<NotificationTemplatePreview | null>(null)
   const [busy, setBusy] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
@@ -157,13 +159,13 @@ export function NotificationTemplatesTab({ csrfToken }: { csrfToken: string }) {
 
   async function handleReset() {
     if (!detail) return
-    if (!window.confirm(t.resetConfirm)) return
     setError('')
     setNotice('')
     setBusy(true)
     try {
       applyDetail(await resetNotificationTemplate(csrfToken, detail.template_key, detail.locale))
       setNotice(t.resetNotice)
+      setConfirmReset(false)
       await loadList()
     } catch (cause) {
       failed(cause, t.resetFailedError)
@@ -231,7 +233,7 @@ export function NotificationTemplatesTab({ csrfToken }: { csrfToken: string }) {
             onChange={setDraft}
             onBack={closeEditor}
             onSave={handleSave}
-            onReset={handleReset}
+            onReset={() => setConfirmReset(true)}
             onPreview={handlePreview}
             onSendTest={handleSendTest}
           />
@@ -239,6 +241,18 @@ export function NotificationTemplatesTab({ csrfToken }: { csrfToken: string }) {
           <TemplateList t={t} summaries={summaries} onEdit={openEditor} />
         )}
       </div>
+      {confirmReset && detail ? (
+        <ConfirmActionDialog
+          title={t.resetToDefault}
+          target={`${detail.template_key} / ${detail.locale}`}
+          description={t.resetConfirm}
+          confirmLabel={t.resetToDefault}
+          busy={busy}
+          error={error}
+          onClose={() => setConfirmReset(false)}
+          onConfirm={() => void handleReset()}
+        />
+      ) : null}
     </Card>
   )
 }

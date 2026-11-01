@@ -40,11 +40,6 @@ export function SystemJobsPage({
         tenantColumn
         listJobs={listSystemJobs}
         cancelJob={(job) => cancelSystemJob(csrfToken, job.id)}
-        confirmCancel={(job) =>
-          window.confirm(
-            `${t.systemCancelConfirm}\n\n${t.tableHeaderTenant}: ${job.tenant_id}\n${t.tableHeaderKind}: ${job.kind}\n${t.idLabel}: ${job.id}`,
-          )
-        }
         initialError={initialError}
       />
     </SystemShell>

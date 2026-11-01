@@ -527,7 +527,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AttrSchemaRepo:       d.IdManagement.AttrSchemaRepo,
 	})
 
-	d.ApiTokens.Register(g, d.Deps, authenticator)
+	d.ApiTokens.Register(g, d.Deps, authenticator, authentication.AccountIdentity(authenticator))
 
 	sourceLifecycle := idmanagement.LifecycleDeps{AttrSchemaRepo: d.IdManagement.AttrSchemaRepo, QuotaRepo: d.Tenancy.QuotaRepo}
 	if d.Sourcing.ScimRepo != nil && d.Sourcing.Writes == nil {

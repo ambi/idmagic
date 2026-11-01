@@ -74,18 +74,17 @@ export function AdminGroupCreatePage({
         >
           <IconArrowLeft size={18} aria-hidden="true" />
         </a>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t.addGroup}</h1>
       </div>
 
-      <div className="mt-6 max-w-2xl">
+      <div className="mt-6 admin-form">
         <Card className="shadow-[0_1px_2px_rgb(15_23_42/4%)]">
           <form onSubmit={handleSubmit}>
-            <div className="grid gap-6 p-6">
+            <div className="grid gap-6 p-6 md:grid-cols-2">
               {error && <Alert variant="destructive">{error}</Alert>}
 
               <div className="grid gap-1.5">
-                <Label htmlFor="group-name">
-                  {t.groupNameLabel} <span className="text-red-500">*</span>
+                <Label htmlFor="group-name" required>
+                  {t.groupNameLabel}
                 </Label>
                 <Input
                   id="group-name"
@@ -113,7 +112,9 @@ export function AdminGroupCreatePage({
               </div>
               {membershipType === 'dynamic' ? (
                 <div className="grid gap-1.5">
-                  <Label htmlFor="group-dynamic-rule">{t.dynamicRuleExpression}</Label>
+                  <Label htmlFor="group-dynamic-rule" required>
+                    {t.dynamicRuleExpression}
+                  </Label>
                   <textarea
                     id="group-dynamic-rule"
                     name="dynamic-rule"
@@ -126,7 +127,9 @@ export function AdminGroupCreatePage({
               ) : null}
 
               <div className="grid gap-1.5">
-                <Label htmlFor="group-description">{t.descriptionOptionalLabel}</Label>
+                <Label htmlFor="group-description" optional>
+                  {t.descriptionOptionalLabel}
+                </Label>
                 <Input
                   id="group-description"
                   name="description"
@@ -136,7 +139,9 @@ export function AdminGroupCreatePage({
               </div>
 
               <div className="grid gap-1.5">
-                <Label htmlFor="group-email">{t.emailOptionalLabel}</Label>
+                <Label htmlFor="group-email" optional>
+                  {t.emailOptionalLabel}
+                </Label>
                 <Input id="group-email" name="email" type="email" maxLength={LENGTH.email} />
                 <p className="text-xs text-slate-500">{t.emailHelp}</p>
               </div>

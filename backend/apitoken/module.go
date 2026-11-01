@@ -21,8 +21,8 @@ func (m Module) Service() *usecases.Service {
 	return usecases.New(m.Repo, usecases.WithTokenIssuer(m.TokenIssuer), usecases.WithTokenIntrospector(m.TokenIntrospector))
 }
 
-func (m Module) Register(group *echo.Group, deps support.Deps, authenticator *support.Authenticator) {
+func (m Module) Register(group *echo.Group, deps support.Deps, authenticator *support.Authenticator, personalIdentity apitokenhttp.PersonalTokenIdentity) {
 	apitokenhttp.RegisterRoutes(group, apitokenhttp.Deps{
-		Deps: deps, Authenticator: authenticator, Service: m.Service(),
+		Deps: deps, Authenticator: authenticator, Service: m.Service(), PersonalIdentity: personalIdentity,
 	})
 }

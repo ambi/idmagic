@@ -71,7 +71,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | DEK とマスターキー | 可逆なシークレット全体の復号 | DataKeys、マスターキーは OpenBao |
 | ログインセッション | 本人としての操作の継続 | `authentication_sessions` |
 | 認可コード、`request_uri`、デバイスコード、リフレッシュトークン | 認可の横取りと権限の継続的な取得 | OAuth2 |
-| API アクセストークン | テナント運用権限での機械アクセス | ApiTokens |
+| API アクセストークン | テナント運用または本人のアカウント権限での機械アクセス | ApiTokens |
 | 個人データ（User 属性、監査イベントの PII） | 法的義務の違反と当事者への直接の害 | IdManagement、Audit |
 | 監査記録 | 何が起きたかを後から言えなくなる | Audit |
 | テナントの信頼設定（外部 IdP、RP、SP、`WorkloadTrustBundle`） | サインイン経路の乗っ取り | Tenancy、Authentication、Saml、WsFederation、WorkloadIdentity |
@@ -121,7 +121,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-024 | Elevation of privilege | 新設した管理 API がスコープ宣言を持たず、あらゆるスコープから到達できる | ApiTokens | docs/design/security/authorization.md: 対話セッション限定の操作、REQ-APITOKENS-004 | `covered` |
-| THREAT-025 | Elevation of privilege | トークン発行の操作を通じて、任意のスコープ集合を持つ資格情報を作る | ApiTokens, OAuth2 | docs/design/security/authorization.md: 対話セッション限定の操作、REQ-AUTHENTICATION-004 | `covered` |
+| THREAT-025 | Elevation of privilege | トークン発行の操作を通じて、任意のスコープ集合を持つ資格情報を作る | ApiTokens, OAuth2 | docs/design/security/authorization.md: 対話セッション限定の操作、REQ-AUTHENTICATION-004、REQ-APITOKENS-005 | `covered` |
 | THREAT-026 | Elevation of privilege | 外部 IdP の登録を通じて、任意のユーザーとしてサインインする経路を作る | Authentication | REQ-AUTHENTICATION-025 | `covered` |
 | THREAT-027 | Elevation of privilege | 代行または委譲が、元の主体の権限を超える | OAuth2, AccessControl | RFC8693-DELEGATION-DEFAULT、RFC8693-DELEGATION-DEPTH、REQ-OAUTH2-048、REQ-TENANCY-021、REQ-AUTHORIZATION-004 | `covered` |
 | THREAT-028 | Repudiation | 代行による操作を本人の操作と区別できず、誰が行ったかを争える | Audit, OAuth2 | REQ-AUDIT-005、REQ-AUDIT-006、REQ-OAUTH2-049 | `covered` |

@@ -1,5 +1,15 @@
 namespace IdMagic.Contract {
 
+@doc("本人向けの発行経路で選べる account API のスコープ。管理 API と SCIM API の権限は含まない。")
+enum PersonalApiTokenScope {
+  account_read: "account:read",
+  account_write: "account:write",
+  account_mfa_write: "account:mfa:write",
+  account_sessions_write: "account:sessions:write",
+  account_consents_write: "account:consents:write",
+  account_password_write: "account:password:write",
+}
+
 @doc("提示した API アクセストークンのスコープが、求めた汎用 API の操作を満たさない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:insufficient_scope` である。OAuth 2.0 と OpenID Connect のエンドポイントは、同じ条件を代わりに OAuthInsufficientScopeError として報告する。")
 model InsufficientScopeError is ProblemDetails;
 

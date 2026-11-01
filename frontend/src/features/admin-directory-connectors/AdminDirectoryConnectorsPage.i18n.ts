@@ -4,7 +4,7 @@ import { defineDictionary } from '../../lib/i18n'
 // DirectoryItemError に対応する。仕様が値を増やしたらここも増やす。
 export const adminDirectoryConnectorsDictionary = defineDictionary(
   {
-    pageTitle: 'Directory Connector',
+    pageTitle: 'ディレクトリ同期（Directory Connector）',
     pageDescription:
       '閉域の Active Directory と LDAP から User を取り込む Connector を登録し、同期の状態を確かめます。',
     createConnector: 'Connector を作成',

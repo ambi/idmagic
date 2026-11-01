@@ -1,4 +1,6 @@
 import { IconPlus, IconServer } from '@tabler/icons-react'
+import { useState } from 'react'
+import { listDirectoryConnectors } from '../../api/admin'
 import { AdminShell } from '../../components/AdminShell'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -9,12 +11,13 @@ import { connectorStatusLabel, detailURL, newURL } from './presentation'
 
 export function AdminDirectoryConnectorsPage({
   actorUsername,
-  connectors,
+  connectors: initial,
 }: {
   actorUsername?: string
   connectors: DirectoryConnector[]
 }) {
   const t = useDictionary(adminDirectoryConnectorsDictionary)
+  const [connectors, setConnectors] = useState(initial)
   const { formatDateTime } = useFormatters()
 
   return (
@@ -23,6 +26,11 @@ export function AdminDirectoryConnectorsPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        total: connectors.length,
+        displayed: connectors.length,
+        onRefresh: async () => setConnectors(await listDirectoryConnectors()),
+      }}
       actions={
         <Button nativeButton={false} render={<a href={newURL()} />}>
           <IconPlus size={17} aria-hidden="true" />

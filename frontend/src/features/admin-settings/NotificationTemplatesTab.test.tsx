@@ -210,6 +210,9 @@ describe('NotificationTemplatesTab', () => {
 
     fireEvent.click((await screen.findAllByRole('button', { name: t.edit }))[0])
     fireEvent.click(await screen.findByRole('button', { name: t.resetToDefault }))
+    fireEvent.click(
+      (await screen.findByRole('dialog')).querySelector('button:last-child') as HTMLButtonElement,
+    )
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
     const [url, init] = fetch.mock.calls[2]

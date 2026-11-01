@@ -108,6 +108,15 @@ export function AdminAuthorizationTuplesPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        displayed: tuples.length,
+        busy,
+        onRefresh: async () => {
+          const result = await listRelationTuples(filters)
+          setTuples(result.tuples)
+          setConsistency(result.consistency)
+        },
+      }}
       actions={
         <Button
           nativeButton={false}

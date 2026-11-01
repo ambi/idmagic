@@ -47,12 +47,14 @@ export function AdminSamlIDPProfileCreatePage({
       title={t.newTitle}
       description={t.newDescription}
     >
-      <Card className="max-w-2xl">
+      <Card className="admin-form">
         <form onSubmit={submit}>
           <div className="grid gap-5 p-6">
             {error ? <Alert variant="destructive">{error}</Alert> : null}
             <div className="grid gap-1.5">
-              <Label htmlFor="saml-profile-name">{t.profileName}</Label>
+              <Label htmlFor="saml-profile-name" required>
+                {t.profileName}
+              </Label>
               <Input
                 id="saml-profile-name"
                 value={name}

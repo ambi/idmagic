@@ -80,7 +80,7 @@ export function AdminAgentEditPage({
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      <Card className="w-full max-w-2xl overflow-hidden">
+      <Card className="w-full admin-form overflow-hidden">
         <div className="border-b border-slate-200 px-6 py-5">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700">
             {t.agentEyebrow}
@@ -94,7 +94,9 @@ export function AdminAgentEditPage({
                 {t.basicInfoHeading}
               </h3>
               <div className="grid gap-1.5">
-                <Label htmlFor="agent-editor-name">{t.agentNameLabel}</Label>
+                <Label htmlFor="agent-editor-name" required>
+                  {t.agentNameLabel}
+                </Label>
                 <Input
                   id="agent-editor-name"
                   value={name}

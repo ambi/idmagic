@@ -70,12 +70,14 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：213
+経路の数：215
 
 | 経路 | メソッド |
 | --- | --- |
 | `/api/account/v1/agent-delegations` | GET, POST |
 | `/api/account/v1/agent-delegations/{agent_id}/revoke` | POST |
+| `/api/account/v1/api-tokens` | GET, POST |
+| `/api/account/v1/api-tokens/{id}` | DELETE |
 | `/api/account/v1/applications` | GET |
 | `/api/account/v1/applications/order` | GET, PUT |
 | `/api/account/v1/approval-requests` | GET |

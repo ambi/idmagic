@@ -51,9 +51,9 @@ describe('AdminAuthorizationModelPage', () => {
   it('offers publication when no model exists', async () => {
     await renderWithRouter(<AdminAuthorizationModelPage model={null} />)
     expect(screen.getByText(t.noModel)).toBeInTheDocument()
-    expect(screen.getByText(t.editModel).closest('a')).toHaveAttribute(
+    expect(screen.getByText(t.createTitle).closest('a')).toHaveAttribute(
       'href',
-      '/admin/authorization/model/edit',
+      '/admin/authorization/model/new',
     )
   })
 

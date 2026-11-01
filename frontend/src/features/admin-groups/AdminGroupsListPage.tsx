@@ -1,10 +1,4 @@
-import {
-  IconFileExport,
-  IconFileImport,
-  IconRefresh,
-  IconUsersGroup,
-  IconUsersPlus,
-} from '@tabler/icons-react'
+import { IconFileExport, IconFileImport, IconUsersGroup, IconUsersPlus } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { AuthenticationAPIError, listAdminGroupsPage, tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
@@ -95,17 +89,14 @@ export function AdminGroupsPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        total: page?.totalItems ?? totalItems,
+        displayed: groups.length,
+        busy,
+        onRefresh: () => refresh(),
+      }}
       actions={
         <>
-          <Button
-            variant="outline"
-            className="size-9 px-0"
-            aria-label={t.reloadAriaLabel}
-            onClick={() => run(() => refresh(), t.listRefreshedNotice)}
-            disabled={busy}
-          >
-            <IconRefresh size={16} aria-hidden="true" />
-          </Button>
           <Button
             variant="outline"
             disabled={busy}

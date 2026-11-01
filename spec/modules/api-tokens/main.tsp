@@ -113,6 +113,45 @@ op RevokeApiToken(
   @query tenant_id: string,
   @path id: string
 ): RevokeApiTokenSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeApiTokenError403;
+
+@doc("本人が所属テナントで発行した API トークンのメタデータだけを返す。ポータルの対話セッションに限る。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("ListPersonalApiTokens")
+@route("/api/account/v1/api-tokens")
+@get
+op ListPersonalApiTokens(): ListApiTokensSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListApiTokensError403;
+
+@doc("本人の account スコープだけを持つ個人用トークンを発行する。expiry_days は 1 から 365。JWT は発行時に一度だけ返す。ポータルの対話セッションに限る。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("IssuePersonalApiToken")
+@route("/api/account/v1/api-tokens")
+@post
+op IssuePersonalApiToken(@body body: IssuePersonalApiTokenHttpRequest): IssueApiTokenSuccess_201 | IssueApiTokenError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssuePersonalApiTokenError403;
+
+model IssuePersonalApiTokenHttpRequest {
+  description: string;
+  scopes: IdMagic.Contract.PersonalApiTokenScope[];
+  @minValue(1) @maxValue(365) expiry_days: int64;
+  dpop_jkt?: string;
+}
+
+union IssuePersonalApiTokenError403Body {
+  IssueApiTokenError403Body,
+  IdMagic.Contract.StepUpRequiredError,
+}
+
+model IssuePersonalApiTokenError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: IssuePersonalApiTokenError403Body;
+}
+
+@doc("本人の API トークンを失効させる。他人、別テナントまたは不在の ID は 204 とし、記録を変えない。ポータルの対話セッションに限る。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("RevokePersonalApiToken")
+@route("/api/account/v1/api-tokens/{id}")
+@delete
+op RevokePersonalApiToken(@path id: string): RevokeApiTokenSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeApiTokenError403;
 }
 
 }

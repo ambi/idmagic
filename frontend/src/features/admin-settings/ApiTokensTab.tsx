@@ -1,5 +1,9 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { createApiToken, listApiTokens, revokeApiToken } from '../../api'
+import { request, adminRequest, tenantURL } from '../../api/core'
+import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
+import { useStepUpGuard } from '../../components/StepUpDialog'
+import { ResourceListToolbar } from '../../components/ResourceListToolbar'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -14,27 +18,42 @@ import { ApiTokenScopePicker } from './ApiTokenScopePicker'
 export function ApiTokensTab({
   csrfToken,
   integrationEndpoints,
+  personal = false,
+  screen,
 }: {
   csrfToken: string
-  integrationEndpoints: AdminIntegrationEndpointCatalog
+  integrationEndpoints?: AdminIntegrationEndpointCatalog
+  personal?: boolean
+  screen?: 'list' | 'create'
 }) {
   const [tokens, setTokens] = useState<ApiToken[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(screen !== 'create')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [tokenDesc, setTokenDesc] = useState('')
   const [tokenExpiry, setTokenExpiry] = useState('7')
   const [selectedScopes, setSelectedScopes] = useState<ApiTokenScope[]>([])
   const [generatedToken, setGeneratedToken] = useState('')
-  const [creating, setCreating] = useState(false)
+  const [creating, setCreating] = useState(screen === 'create')
+  const [busy, setBusy] = useState(false)
+  const [pendingRevoke, setPendingRevoke] = useState<ApiToken | null>(null)
   const t = useDictionary(adminSettingsDictionary)
   const { locale } = useLocale()
+  const { guard, dialog } = useStepUpGuard(csrfToken)
+  const basePath = personal ? '/account/api-tokens' : '/admin/api-tokens'
+  const personalAPI = '/api/account/v1/api-tokens'
+  const listTokens = async () =>
+    personal ? (await request<{ tokens: ApiToken[] }>(personalAPI)).tokens : listApiTokens()
+  async function refresh() {
+    setTokens(await listTokens())
+  }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 初回マウント時のみ取得する
   useEffect(() => {
+    if (screen === 'create') return
     async function loadData() {
       try {
-        const tList = await listApiTokens()
+        const tList = await listTokens()
         setTokens(tList)
       } catch {
         setError(t.apiTokensFetchFailedError)
@@ -47,6 +66,7 @@ export function ApiTokensTab({
 
   async function handleCreateToken(e: FormEvent) {
     e.preventDefault()
+    if (busy) return
     setError('')
     setNotice('')
     setGeneratedToken('')
@@ -55,20 +75,30 @@ export function ApiTokensTab({
       return
     }
     try {
-      const res = await createApiToken(csrfToken, {
+      setBusy(true)
+      const input = {
         description: tokenDesc.trim(),
         scopes: selectedScopes,
         expiry_days: Number.parseInt(tokenExpiry, 10),
-      })
+      }
+      const res = personal
+        ? await guard(() =>
+            request<{ token: string; meta: ApiToken }>(
+              personalAPI,
+              adminRequest(csrfToken, 'POST', input),
+            ),
+          )
+        : await createApiToken(csrfToken, input)
       setGeneratedToken(res.token)
       setTokenDesc('')
       setSelectedScopes([])
       setCreating(false)
-      const tList = await listApiTokens()
-      setTokens(tList)
+      if (screen !== 'create') await refresh()
       setNotice(t.apiTokenIssuedNotice)
     } catch {
       setError(t.tokenIssueFailedError)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -76,11 +106,21 @@ export function ApiTokensTab({
     setError('')
     setNotice('')
     try {
-      await revokeApiToken(csrfToken, id)
-      setTokens(tokens.filter((token) => token.id !== id))
+      setBusy(true)
+      if (personal)
+        await request(`${personalAPI}/${encodeURIComponent(id)}`, adminRequest(csrfToken, 'DELETE'))
+      else await revokeApiToken(csrfToken, id)
+      setTokens(
+        tokens.map((token) =>
+          token.id === id ? { ...token, revoked_at: new Date().toISOString() } : token,
+        ),
+      )
+      setPendingRevoke(null)
       setNotice(t.tokenRevokedNotice)
     } catch {
       setError(t.tokenRevokeFailedError)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -88,70 +128,85 @@ export function ApiTokensTab({
     return <div className="text-sm text-slate-500">{t.loadingNotice}</div>
   }
 
-  const {
-    management_api_base_url: managementApiBaseUrl,
-    scim_base_url: scimBaseUrl,
-    account_api_base_url: accountApiBaseUrl,
-  } = integrationEndpoints.apis
+  const managementApiBaseUrl = integrationEndpoints?.apis.management_api_base_url ?? ''
+  const scimBaseUrl = integrationEndpoints?.apis.scim_base_url ?? ''
+  const accountApiBaseUrl =
+    integrationEndpoints?.apis.account_api_base_url ??
+    new URL(tenantURL('/api/account/v1'), window.location.origin).href
 
   return (
     <Card className="p-6">
+      {dialog}
       <header>
         <h2 className="text-base font-semibold text-slate-900">{t.apiTokensHeading}</h2>
-        <p className="mt-1 text-sm text-slate-600">{t.apiTokensDescription}</p>
+        <p className="mt-1 text-sm text-slate-600">
+          {personal ? t.personalTokenDescription : t.tenantTokenDescription}
+        </p>
       </header>
 
       <div className="mt-6 grid gap-6">
         {error ? <Alert variant="destructive">{error}</Alert> : null}
         <Toast message={notice} onDismiss={() => setNotice('')} />
+        {screen !== 'create' ? (
+          <ResourceListToolbar
+            total={tokens.length}
+            displayed={tokens.length}
+            busy={busy}
+            onRefresh={refresh}
+          />
+        ) : null}
 
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
           <h3 className="text-sm font-semibold text-slate-900">{t.connectionInfoHeading}</h3>
           <div className="mt-3 grid gap-3">
-            <div>
-              <Label htmlFor="management-api-base-url">{t.managementApiBaseUrlLabel}</Label>
-              <div className="mt-1 flex items-center gap-2">
-                <input
-                  id="management-api-base-url"
-                  readOnly
-                  value={managementApiBaseUrl}
-                  className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    navigator.clipboard.writeText(managementApiBaseUrl)
-                    setNotice(t.urlCopiedNotice)
-                  }}
-                >
-                  {t.copy}
-                </Button>
+            {!personal ? (
+              <div>
+                <Label htmlFor="management-api-base-url">{t.managementApiBaseUrlLabel}</Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    id="management-api-base-url"
+                    readOnly
+                    value={managementApiBaseUrl}
+                    className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText(managementApiBaseUrl)
+                      setNotice(t.urlCopiedNotice)
+                    }}
+                  >
+                    {t.copy}
+                  </Button>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">{t.managementApiHelp}</p>
               </div>
-              <p className="mt-1 text-xs text-slate-500">{t.managementApiHelp}</p>
-            </div>
-            <div>
-              <Label htmlFor="scim-api-base-url">{t.scimBaseUrlLabel}</Label>
-              <div className="mt-1 flex items-center gap-2">
-                <input
-                  id="scim-api-base-url"
-                  readOnly
-                  value={scimBaseUrl}
-                  className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    navigator.clipboard.writeText(scimBaseUrl)
-                    setNotice(t.urlCopiedNotice)
-                  }}
-                >
-                  {t.copy}
-                </Button>
+            ) : null}
+            {!personal ? (
+              <div>
+                <Label htmlFor="scim-api-base-url">{t.scimBaseUrlLabel}</Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    id="scim-api-base-url"
+                    readOnly
+                    value={scimBaseUrl}
+                    className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText(scimBaseUrl)
+                      setNotice(t.urlCopiedNotice)
+                    }}
+                  >
+                    {t.copy}
+                  </Button>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">{t.scimConnectorHelp}</p>
               </div>
-              <p className="mt-1 text-xs text-slate-500">{t.scimConnectorHelp}</p>
-            </div>
+            ) : null}
             <div>
               <Label htmlFor="account-api-base-url">{t.accountApiBaseUrlLabel}</Label>
               <div className="mt-1 flex items-center gap-2">
@@ -180,7 +235,11 @@ export function ApiTokensTab({
         <div className="grid gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-slate-900">{t.apiTokensListHeading}</h3>
-            {!creating ? (
+            {!creating && screen === 'list' ? (
+              <Button nativeButton={false} render={<a href={tenantURL(`${basePath}/new`)} />}>
+                {t.issueToken}
+              </Button>
+            ) : !creating && screen === undefined ? (
               <Button type="button" variant="outline" onClick={() => setCreating(true)}>
                 {t.issueToken}
               </Button>
@@ -211,7 +270,7 @@ export function ApiTokensTab({
             </div>
           ) : null}
 
-          {tokens.length === 0 ? (
+          {screen === 'create' ? null : tokens.length === 0 ? (
             <p className="text-sm text-slate-500">{t.noTokensNotice}</p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-slate-200">
@@ -220,6 +279,7 @@ export function ApiTokensTab({
                   <tr>
                     <th className="px-4 py-2">{t.tableHeaderDescription}</th>
                     <th className="px-4 py-2">{t.tableHeaderScopes}</th>
+                    <th className="px-4 py-2">{t.tokenOwnerLabel}</th>
                     <th className="px-4 py-2">{t.tableHeaderCreatedAt}</th>
                     <th className="px-4 py-2">{t.tableHeaderExpiresAt}</th>
                     <th className="px-4 py-2">{t.tableHeaderAction}</th>
@@ -241,6 +301,7 @@ export function ApiTokensTab({
                           ))}
                         </div>
                       </td>
+                      <td className="px-4 py-3 font-mono text-xs">{tok.user_id}</td>
                       <td className="px-4 py-3">
                         {new Date(tok.created_at).toLocaleString(
                           locale === 'ja' ? 'ja-JP' : 'en-US',
@@ -256,11 +317,11 @@ export function ApiTokensTab({
                       <td className="px-4 py-3">
                         <Button
                           type="button"
-                          variant="ghost"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleRevokeToken(tok.id)}
+                          variant="destructive"
+                          disabled={busy || !!tok.revoked_at}
+                          onClick={() => setPendingRevoke(tok)}
                         >
-                          {t.revoke}
+                          {tok.revoked_at ? t.revokedLabel : t.revoke}
                         </Button>
                       </td>
                     </tr>
@@ -278,19 +339,25 @@ export function ApiTokensTab({
               <h4 className="text-sm font-semibold text-slate-900">{t.newTokenHeading}</h4>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="token-desc">{t.tokenDescriptionLabel}</Label>
+                  <Label htmlFor="token-desc" required>
+                    {t.tokenDescriptionLabel}
+                  </Label>
                   <Input
                     id="token-desc"
+                    required
                     placeholder={t.tokenDescriptionPlaceholder}
                     value={tokenDesc}
                     onChange={(e) => setTokenDesc(e.target.value)}
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="token-expiry">{t.tokenExpiryLabel}</Label>
+                  <Label htmlFor="token-expiry" required>
+                    {t.tokenExpiryLabel}
+                  </Label>
                   <Input
                     id="token-expiry"
                     type="number"
+                    required
                     min={1}
                     max={365}
                     value={tokenExpiry}
@@ -301,27 +368,59 @@ export function ApiTokensTab({
               <ApiTokenScopePicker
                 t={t}
                 selectedScopes={selectedScopes}
+                personal={personal}
                 onChange={setSelectedScopes}
               />
               <div className="mt-4 flex items-center gap-2">
-                <Button type="submit">{t.issueToken}</Button>
                 <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setTokenDesc('')
-                    setSelectedScopes([])
-                    setError('')
-                    setCreating(false)
-                  }}
+                  type="submit"
+                  disabled={busy || !tokenDesc.trim() || selectedScopes.length === 0}
                 >
-                  {t.cancel}
+                  {t.issueToken}
                 </Button>
+                {screen === 'create' ? (
+                  <Button
+                    variant="outline"
+                    nativeButton={false}
+                    render={<a href={tenantURL(basePath)} />}
+                  >
+                    {t.cancel}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setTokenDesc('')
+                      setSelectedScopes([])
+                      setError('')
+                      setCreating(false)
+                    }}
+                  >
+                    {t.cancel}
+                  </Button>
+                )}
               </div>
             </form>
           ) : null}
+          {screen === 'create' && generatedToken ? (
+            <Button nativeButton={false} render={<a href={tenantURL(basePath)} />}>
+              {t.backToTokens}
+            </Button>
+          ) : null}
         </div>
       </div>
+      {pendingRevoke ? (
+        <ConfirmActionDialog
+          title={t.revoke}
+          target={pendingRevoke.description || pendingRevoke.id}
+          description={t.tokenRevokeConfirm}
+          confirmLabel={t.revoke}
+          busy={busy}
+          onClose={() => setPendingRevoke(null)}
+          onConfirm={() => void handleRevokeToken(pendingRevoke.id)}
+        />
+      ) : null}
     </Card>
   )
 }

@@ -221,11 +221,11 @@ test('admin can create a shared SAML identity provider profile', async () => {
 test('admin API access token lifecycle works with selected SCIM scopes', async () => {
   const view = await openWebView({ width: 1280, height: 2200 })
   try {
-    await navigateAndLogin(view, '/admin/settings', 'admin-settings')
-    await clickButtonByText(view, 'API access tokens')
+    await navigateAndLogin(view, '/admin/api-tokens', 'admin-api-tokens')
     await waitForText(view, 'Connection info')
 
-    await clickButtonByText(view, 'Issue token')
+    await clickLinkByText(view, 'Issue token')
+    await waitForPage(view, 'admin-api-token-create')
     await setInputValue(view, '#token-desc', `SCIM E2E ${Date.now()}`)
     await clickSummaryByText(view, 'SCIM 2.0 API')
     await view.click('input[value="scim:users:read"]')
@@ -238,10 +238,12 @@ test('admin API access token lifecycle works with selected SCIM scopes', async (
         .map((input) => input.value)
         .find((value) => value.split('.').length === 3) ?? '')()`),
     ).toMatch(/^[^.]+\.[^.]+\.[^.]+$/)
+    await clickLinkByText(view, 'Back to token list')
+    await waitForPage(view, 'admin-api-tokens')
     await waitForText(view, 'scim:users:read')
-    await waitForText(view, 'scim:users:write')
 
     await clickButtonByText(view, 'Revoke')
+    await view.click('[role="dialog"] button:last-child')
     await waitForText(view, 'Revoked the token.')
   } finally {
     view.close()
@@ -277,6 +279,7 @@ test('admin MCP resource server lifecycle works from the browser', async () => {
     await waitForText(view, 'Disabled')
 
     await clickElementByAriaLabel(view, `Delete: ${resource}`)
+    await view.click('[role="dialog"] button:last-child')
     await waitForText(view, `${resource} has been deleted.`)
     await waitForText(view, 'No MCP resource servers have been registered yet.')
   } finally {

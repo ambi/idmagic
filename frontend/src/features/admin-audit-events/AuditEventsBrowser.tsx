@@ -1,5 +1,6 @@
 import { IconPlus, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
 import { type FormEvent, useEffect, useState } from 'react'
+import { ResourceListToolbar } from '../../components/ResourceListToolbar'
 import {
   type AdminAuditEventCategory,
   type AdminAuditEventPage,
@@ -258,6 +259,7 @@ export function AuditEventsBrowser({
   initialError?: string
 }) {
   const [events, setEvents] = useState(initial)
+  const [page, setPage] = useState(pagination)
   const [selected, setSelected] = useState<AdminAuditEvent | null>(initial[0] ?? null)
   const [after, setAfter] = useState(isoToDatetimeLocal(search?.after))
   const [before, setBefore] = useState(isoToDatetimeLocal(search?.before))
@@ -346,6 +348,7 @@ export function AuditEventsBrowser({
     try {
       const next = await listEvents(query)
       setEvents(next.events)
+      setPage(next)
       setSelected(next.events[0] ?? null)
     } catch (cause) {
       setError(
@@ -358,6 +361,17 @@ export function AuditEventsBrowser({
 
   return (
     <>
+      <ResourceListToolbar
+        total={page?.totalItems}
+        displayed={events.length}
+        busy={busy}
+        onRefresh={async () => {
+          const next = await listEvents(search ?? {})
+          setEvents(next.events)
+          setPage(next)
+          setSelected(next.events[0] ?? null)
+        }}
+      />
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Toast message={notice} onDismiss={() => setNotice('')} />
 
@@ -579,7 +593,7 @@ export function AuditEventsBrowser({
           </table>
           {onPage ? (
             <PageNavigation
-              {...pagination}
+              {...page}
               previousCursor={previousCursor}
               nextCursor={initialNextCursor}
               onNavigate={onPage}

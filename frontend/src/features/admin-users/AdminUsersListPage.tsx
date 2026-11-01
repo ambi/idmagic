@@ -13,7 +13,6 @@ import {
   IconUpload,
   IconUser,
   IconUserPlus,
-  IconUsers,
 } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import {
@@ -41,7 +40,6 @@ import { adminUsersDictionary } from './AdminUsersPage.i18n'
 import {
   DetailRow,
   formatDateTime,
-  Metric,
   RoleList,
   StatusBadge,
   UserAvatar,
@@ -97,6 +95,7 @@ export function AdminUsersPage({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [lastUpdated, setLastUpdated] = useState(() => new Date().toISOString())
   const t = useDictionary(adminUsersDictionary)
   const tCommon = useDictionary(commonDictionary)
   const { locale } = useLocale()
@@ -114,6 +113,7 @@ export function AdminUsersPage({
       status: initialStatus === 'all' ? undefined : initialStatus || 'active',
     })
     setResult({ users: next.users, page: next, totalUsers: next.totalUsers })
+    setLastUpdated(new Date().toISOString())
     const nextSelected = next.users.find((user) => user.id === preferredUserId) ?? next.users[0]
     setSelectedUserId(nextSelected?.id ?? '')
   }
@@ -188,6 +188,12 @@ export function AdminUsersPage({
         actorUsername={actorUsername}
         title={t.pageTitle}
         description={t.pageDescription}
+        list={{
+          total: displayTotalUsers,
+          displayed: users.length,
+          busy,
+          onRefresh: () => refresh(),
+        }}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -213,10 +219,6 @@ export function AdminUsersPage({
           </div>
         }
       >
-        <section aria-label={t.overviewSectionLabel}>
-          <Metric label={t.totalUsers} value={displayTotalUsers} icon={IconUsers} tone="blue" />
-        </section>
-
         {error && <Alert variant="destructive">{error}</Alert>}
         <Toast message={notice} onDismiss={() => setNotice('')} />
 
@@ -281,15 +283,6 @@ export function AdminUsersPage({
                   </button>
                 ))}
               </div>
-              <Button
-                variant="outline"
-                className="size-9 px-0"
-                disabled={busy}
-                aria-label={t.reloadAriaLabel}
-                onClick={() => void run(() => refresh(), t.listRefreshedNotice)}
-              >
-                <IconRefresh size={16} aria-hidden="true" />
-              </Button>
             </div>
           </div>
 
@@ -392,9 +385,7 @@ export function AdminUsersPage({
           </div>
           <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/70 px-5 py-3 text-xs text-slate-500">
             <span>{t.countDisplayed.replace('{count}', String(users.length))}</span>
-            <span>
-              {t.lastUpdated.replace('{date}', formatDateTime(new Date().toISOString(), locale))}
-            </span>
+            <span>{t.lastUpdated.replace('{date}', formatDateTime(lastUpdated, locale))}</span>
           </div>
         </Card>
       </AdminShell>

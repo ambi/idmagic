@@ -28,6 +28,9 @@ export const adminAuthorizationDictionary = defineDictionary(
     ruleTupleToUserset: '{tupleset} でたどった先のオブジェクトの {relation} を持つ主体を含む',
 
     editTitle: '認可モデルを編集',
+    createTitle: '認可モデルを作成',
+    modelAlreadyExists:
+      '別の管理者が認可モデルを作成しました。一覧へ戻って最新のモデルを確認してください。',
     modeLabel: '編集の形式',
     modeForm: 'フォーム',
     modeJson: 'JSON',
@@ -192,6 +195,9 @@ export const adminAuthorizationDictionary = defineDictionary(
       'Includes subjects with {relation} on the objects reached through {tupleset}',
 
     editTitle: 'Edit authorization model',
+    createTitle: 'Create authorization model',
+    modelAlreadyExists:
+      'Another administrator created an authorization model. Return to the model page to review it.',
     modeLabel: 'Editing format',
     modeForm: 'Form',
     modeJson: 'JSON',

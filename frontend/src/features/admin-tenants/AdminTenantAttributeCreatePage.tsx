@@ -68,7 +68,7 @@ export function AdminTenantAttributeCreatePage({
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      <Card className="w-full max-w-2xl p-6">
+      <Card className="w-full admin-form p-6">
         <form onSubmit={handleSubmit}>
           <AttributeFormFields draft={draft} onChange={patch} t={t} />
           <div className="mt-5 flex justify-end gap-2">

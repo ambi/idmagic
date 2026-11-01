@@ -38,6 +38,10 @@
 }
 
 @layer components {
+  .admin-form {
+    @apply w-full max-w-[1120px];
+  }
+
   .auth-background {
     @apply relative min-h-screen bg-background;
   }

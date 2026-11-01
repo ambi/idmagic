@@ -2,12 +2,13 @@ import { IconChevronDown, IconLogout, IconUserCircle } from '@tabler/icons-react
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { logout, tenantRouterPath } from '../api'
-import { adminNavItems, type AdminNavKey } from '../lib/adminNav'
+import { adminNavGroups, adminNavItems, type AdminNavKey } from '../lib/adminNav'
 import { cn } from '../lib/utils'
 import { useDictionary, useLocale } from '../lib/i18n'
 import { Brand } from './Brand'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { shellDictionary } from './shell.i18n'
+import { ResourceListToolbar, type ResourceListOptions } from './ResourceListToolbar'
 
 import {
   DropdownMenu,
@@ -24,6 +25,7 @@ type AdminShellProps = {
   title: string
   description?: string
   actions?: ReactNode
+  list?: ResourceListOptions
   children: ReactNode
 }
 
@@ -33,6 +35,7 @@ export function AdminShell({
   title,
   description,
   actions,
+  list,
   children,
 }: AdminShellProps) {
   const t = useDictionary(shellDictionary)
@@ -120,21 +123,34 @@ export function AdminShell({
       <div className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-[248px_minmax(0,1fr)]">
         <aside className="app-sidebar">
           <nav className="flex flex-1 flex-col gap-1 p-4" aria-label={t.adminNavigation}>
-            {items.map((item) => (
-              <Link
-                key={item.key}
-                to={tenantRouterPath(item.href)}
-                className={cn(
-                  'flex h-9 w-full items-center gap-3 rounded-md border-l-2 px-3 text-left text-sm transition-colors',
-                  item.active
-                    ? 'border-accent font-semibold text-slate-950'
-                    : 'border-transparent font-medium text-slate-600 hover:text-slate-950',
-                )}
-                aria-current={item.active ? 'page' : undefined}
+            {adminNavGroups(active, locale).map((group) => (
+              <details
+                key={group.key}
+                open={group.items.some((item) => item.active)}
+                className="group py-1"
               >
-                <item.icon size={18} stroke={1.8} aria-hidden="true" />
-                {item.label}
-              </Link>
+                <summary className="cursor-pointer rounded-md px-3 py-2 text-xs font-semibold tracking-wide text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30">
+                  {group.label}
+                </summary>
+                <div className="mt-1 space-y-1">
+                  {group.items.map((item) => (
+                    <Link
+                      key={item.key}
+                      to={tenantRouterPath(item.href)}
+                      className={cn(
+                        'flex h-9 w-full items-center gap-3 rounded-md border-l-2 px-3 text-left text-sm transition-colors',
+                        item.active
+                          ? 'border-accent font-semibold text-slate-950'
+                          : 'border-transparent font-medium text-slate-600 hover:text-slate-950',
+                      )}
+                      aria-current={item.active ? 'page' : undefined}
+                    >
+                      <item.icon size={18} stroke={1.8} aria-hidden="true" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </details>
             ))}
           </nav>
         </aside>
@@ -170,6 +186,7 @@ export function AdminShell({
               </div>
               {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
             </div>
+            {list ? <ResourceListToolbar {...list} /> : null}
             {children}
           </div>
         </main>

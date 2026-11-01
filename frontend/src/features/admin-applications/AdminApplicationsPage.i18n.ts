@@ -190,7 +190,7 @@ export const adminApplicationsDictionary = defineDictionary(
     requirePARLabel: 'PAR (Pushed Authorization Requests) を必須にする',
     requireDpopLabel: 'DPoP bound access token を要求する',
     wsFedSectionHeading: 'WS-Federation',
-    audienceOptionalFieldLabel: 'Audience (任意)',
+    audienceOptionalFieldLabel: 'Audience',
     audiencePlaceholderDefault: '未指定なら wtrealm を使用',
     tokenTypeSamlVersionFieldLabel: 'トークン種別 (SAML バージョン)',
     claimMappingRulesHelp:
@@ -238,7 +238,7 @@ export const adminApplicationsDictionary = defineDictionary(
     idpProfileCreateFailedError: '専用IdPプロファイルを作成できませんでした。',
     acsUrlHelp:
       '改行区切りで複数指定できます。AuthnRequest の ACS はこの許可集合に対して検証します (open redirect 防止)。',
-    sloUrlOptionalFieldLabel: 'SLO URL (任意)',
+    sloUrlOptionalFieldLabel: 'SLO URL',
     audienceEntityDefault: '未指定ならエンティティ ID を使用',
     signAssertionLabel: 'アサーションに署名する',
     signResponseLabel: 'レスポンス全体に署名する',
@@ -306,9 +306,9 @@ export const adminApplicationsDictionary = defineDictionary(
     storedConfirm: '保管しました',
     typeSectionHeading: '種別',
     linkUrlFieldLabel: 'リンク先 URL',
-    launchUrlOptionalFieldLabel: 'アプリケーション URL (任意)',
+    launchUrlOptionalFieldLabel: 'アプリケーション URL',
     launchUrlHelp: 'ポータルのタイルから開く初期ログイン URL。後から設定もできます。',
-    scopeOptionalFieldLabel: 'スコープ (任意)',
+    scopeOptionalFieldLabel: 'スコープ',
     serviceScopeHelp:
       'client_credentials で発行されるトークンのスコープ。クライアント ID とシークレットは自動生成されます。',
     oidcRedirectHelp:
@@ -546,7 +546,7 @@ export const adminApplicationsDictionary = defineDictionary(
     requirePARLabel: 'Require PAR (Pushed Authorization Requests)',
     requireDpopLabel: 'Require DPoP-bound access tokens',
     wsFedSectionHeading: 'WS-Federation',
-    audienceOptionalFieldLabel: 'Audience (optional)',
+    audienceOptionalFieldLabel: 'Audience',
     audiencePlaceholderDefault: 'If unspecified, wtrealm is used',
     tokenTypeSamlVersionFieldLabel: 'Token type (SAML version)',
     claimMappingRulesHelp:
@@ -561,7 +561,7 @@ export const adminApplicationsDictionary = defineDictionary(
     idpProfileCreateFailedError: 'Could not create the dedicated IdP profile.',
     acsUrlHelp:
       'Enter one per line for multiple values. The AuthnRequest ACS is validated against this allow-list (to prevent open redirects).',
-    sloUrlOptionalFieldLabel: 'SLO URL (optional)',
+    sloUrlOptionalFieldLabel: 'SLO URL',
     audienceEntityDefault: 'If unspecified, the entity ID is used',
     signAssertionLabel: 'Sign the assertion',
     signResponseLabel: 'Sign the entire response',
@@ -630,10 +630,10 @@ export const adminApplicationsDictionary = defineDictionary(
     storedConfirm: 'Stored',
     typeSectionHeading: 'Kind',
     linkUrlFieldLabel: 'Link URL',
-    launchUrlOptionalFieldLabel: 'Application URL (optional)',
+    launchUrlOptionalFieldLabel: 'Application URL',
     launchUrlHelp:
       'The initial sign-in URL opened from the portal tile. You can also set this later.',
-    scopeOptionalFieldLabel: 'Scope (optional)',
+    scopeOptionalFieldLabel: 'Scope',
     serviceScopeHelp:
       'The scope of tokens issued via client_credentials. The client ID and secret are generated automatically.',
     oidcRedirectHelp:

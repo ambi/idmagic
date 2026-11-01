@@ -110,7 +110,7 @@ export function AdminAuthorizationModelEditPage({
   csrfToken: string
   actorUsername?: string
   model: AuthorizationModel | null
-  onPublished: () => void
+  onPublished: () => void | Promise<void>
 }) {
   const t = useDictionary(adminAuthorizationDictionary)
   const initialTypes = model?.resource_types ?? []
@@ -155,6 +155,10 @@ export function AdminAuthorizationModelEditPage({
     // 画面を開いた後に別の管理者が発行したバージョンとの差分を見逃さないよう、確認の直前に読み直す。
     void run(async () => {
       const latest = await findAuthorizationModel()
+      if (!model && latest) {
+        setError(t.modelAlreadyExists)
+        return
+      }
       setReview({
         resourceTypes,
         entries: diffModels(latest?.authorization_model.resource_types ?? [], resourceTypes),
@@ -166,7 +170,7 @@ export function AdminAuthorizationModelEditPage({
     if (!review) return
     void run(async () => {
       await publishAuthorizationModel(csrfToken, review.resourceTypes)
-      onPublished()
+      await onPublished()
     })
   }
 
@@ -174,7 +178,7 @@ export function AdminAuthorizationModelEditPage({
     <AdminShell
       active="authorization"
       actorUsername={actorUsername}
-      title={t.editTitle}
+      title={model ? t.editTitle : t.createTitle}
       description={t.pageDescription}
       actions={
         <Button

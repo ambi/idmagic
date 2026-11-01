@@ -67,19 +67,18 @@ export function AdminAgentCreatePage({
         >
           <IconArrowLeft size={18} aria-hidden="true" />
         </a>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          {t.registerAgentHeading}
-        </h1>
       </div>
 
-      <div className="mt-6 max-w-2xl">
+      <div className="mt-6 admin-form">
         <Card className="shadow-[0_1px_2px_rgb(15_23_42/4%)]">
           <form onSubmit={handleSubmit}>
-            <div className="grid gap-6 p-6">
+            <div className="grid gap-6 p-6 md:grid-cols-2">
               {error && <Alert variant="destructive">{error}</Alert>}
 
               <div className="grid gap-1.5">
-                <Label htmlFor="agent-name">{t.agentNameLabel}</Label>
+                <Label htmlFor="agent-name" required>
+                  {t.agentNameLabel}
+                </Label>
                 <Input
                   id="agent-name"
                   name="name"
@@ -90,7 +89,9 @@ export function AdminAgentCreatePage({
                 <p className="text-xs text-slate-500">{t.agentNameHelp}</p>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="agent-description">{t.descriptionOptionalLabel}</Label>
+                <Label htmlFor="agent-description" optional>
+                  {t.descriptionOptionalLabel}
+                </Label>
                 <Input
                   id="agent-description"
                   name="description"
@@ -111,7 +112,9 @@ export function AdminAgentCreatePage({
                 </select>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="agent-owner">{t.ownerOptionalLabel}</Label>
+                <Label htmlFor="agent-owner" optional>
+                  {t.ownerOptionalLabel}
+                </Label>
                 <Input id="agent-owner" name="owner_user_id" placeholder="user-1234" />
                 <p className="text-xs text-slate-500">{t.ownerHelp}</p>
               </div>

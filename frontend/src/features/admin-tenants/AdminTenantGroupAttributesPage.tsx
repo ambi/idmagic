@@ -2,6 +2,10 @@ import { IconPencil, IconPlus, IconTrash, IconX } from '@tabler/icons-react'
 import { useState } from 'react'
 import { AuthenticationAPIError, updateTenantGroupAttributeSchema } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
+import { getTenantGroupAttributeSchema } from '../../api/admin'
+import { tenantURL } from '../../api/core'
 import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
@@ -43,6 +47,8 @@ export function AdminTenantGroupAttributesPage({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminTenantGroupAttributesDictionary)
+  const common = useDictionary(commonDictionary)
+  const [deleteKey, setDeleteKey] = useState<string | null>(null)
 
   async function persist(next: GroupAttributeDef[], success: string) {
     setSaving(true)
@@ -71,11 +77,12 @@ export function AdminTenantGroupAttributesPage({
     if (ok) setEditingIndex(null)
   }
 
-  async function handleDelete(index: number) {
-    await persist(
-      attributes.filter((_, i) => i !== index),
+  async function handleDelete(key: string) {
+    const deleted = await persist(
+      attributes.filter((def) => def.key !== key),
       t.deletedNotice,
     )
+    if (deleted) setDeleteKey(null)
   }
 
   return (
@@ -84,8 +91,17 @@ export function AdminTenantGroupAttributesPage({
       actorUsername={actorUsername}
       title={t.pageTitle}
       description={t.pageDescription}
+      list={{
+        total: attributes.length,
+        displayed: attributes.length,
+        busy: saving || editingIndex !== null,
+        onRefresh: async () => setAttributes((await getTenantGroupAttributeSchema()).attributes),
+      }}
       actions={
-        <Button onClick={() => setEditingIndex('new')}>
+        <Button
+          nativeButton={false}
+          render={<a href={tenantURL('/admin/tenant/group_attributes/new')} />}
+        >
           <IconPlus size={16} stroke={1.8} aria-hidden="true" />
           <span className="ml-1">{t.addAttribute}</span>
         </Button>
@@ -140,7 +156,7 @@ export function AdminTenantGroupAttributesPage({
                           variant="destructive"
                           aria-label={t.deleteAttributeAria.replace('{key}', def.key)}
                           disabled={saving}
-                          onClick={() => void handleDelete(index)}
+                          onClick={() => setDeleteKey(def.key)}
                         >
                           <IconTrash size={15} aria-hidden="true" />
                           {t.delete}
@@ -164,11 +180,23 @@ export function AdminTenantGroupAttributesPage({
           onSubmit={(draft) => void handleSubmit(draft, editingIndex)}
         />
       ) : null}
+      {deleteKey ? (
+        <ConfirmActionDialog
+          title={t.deleteAttributeAria.replace('{key}', deleteKey)}
+          target={deleteKey}
+          description={common.deleteResourceDescription}
+          confirmLabel={t.deleteAttributeAria.replace('{key}', deleteKey)}
+          busy={saving}
+          error={error}
+          onClose={() => setDeleteKey(null)}
+          onConfirm={() => void handleDelete(deleteKey)}
+        />
+      ) : null}
     </AdminShell>
   )
 }
 
-function AttributeEditorDialog({
+export function AttributeEditorDialog({
   initial,
   isNew,
   saving,
@@ -190,19 +218,8 @@ function AttributeEditorDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="group-attribute-editor-title"
-    >
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        aria-label={t.close}
-        onClick={onClose}
-      />
-      <Card className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden shadow-2xl">
+    <section className="admin-form" aria-labelledby="group-attribute-editor-title">
+      <Card className="flex w-full flex-col overflow-hidden">
         <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
           <h2 id="group-attribute-editor-title" className="text-xl font-semibold">
             {isNew ? t.addAttributeTitle : t.editAttributeTitle}
@@ -283,6 +300,6 @@ function AttributeEditorDialog({
           </div>
         </form>
       </Card>
-    </div>
+    </section>
   )
 }

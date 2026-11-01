@@ -173,6 +173,18 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
     .users
 }
 
+// ロールの付与人数は、選択肢向けの先頭 200 件ではなく全ページから数える。
+export async function listAdminRoleUsers(): Promise<AdminUser[]> {
+  const users: AdminUser[] = []
+  let cursor: string | undefined
+  do {
+    const page = await listAdminUsersPage({ limit: PICKER_LIST_LIMIT, cursor })
+    users.push(...page.users)
+    cursor = page.nextCursor ?? undefined
+  } while (cursor)
+  return users
+}
+
 // listAdminUsersPage はユーザー一覧画面専用の addressable cursor pagination 専用の関数である。
 export async function listAdminUsersPage(params?: {
   cursor?: string

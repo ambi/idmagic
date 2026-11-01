@@ -1,7 +1,14 @@
 import { IconPlus, IconShieldCheck, IconTrash } from '@tabler/icons-react'
 import { useState } from 'react'
-import { AuthenticationAPIError, deleteAuthorizationDetailType, tenantURL } from '../../api'
+import {
+  AuthenticationAPIError,
+  deleteAuthorizationDetailType,
+  listAuthorizationDetailTypes,
+  tenantURL,
+} from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
@@ -26,15 +33,22 @@ export function AdminAuthorizationDetailTypesPage({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const dict = useDictionary(adminAuthorizationDetailTypesDictionary)
+  const common = useDictionary(commonDictionary)
+  const [target, setTarget] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
   async function handleDelete(detailType: string) {
     setError('')
+    setBusy(true)
     try {
       await deleteAuthorizationDetailType(csrfToken, detailType)
       setItems((prev) => prev.filter((item) => item.type !== detailType))
       setNotice(dict.deletedNotice.replace('{type}', detailType))
+      setTarget(null)
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : dict.deleteFailedError)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -44,6 +58,11 @@ export function AdminAuthorizationDetailTypesPage({
       actorUsername={actorUsername}
       title={dict.pageTitle}
       description={dict.pageDescription}
+      list={{
+        total: items.length,
+        displayed: items.length,
+        onRefresh: async () => setItems(await listAuthorizationDetailTypes()),
+      }}
       actions={
         <Button nativeButton={false} render={<a href={newURL()} />}>
           <IconPlus size={17} aria-hidden="true" />
@@ -88,10 +107,15 @@ export function AdminAuthorizationDetailTypesPage({
                   </Button>
                   <Button
                     type="button"
-                    variant="ghost"
-                    onClick={() => void handleDelete(item.type)}
+                    variant="destructive"
+                    disabled={busy}
+                    onClick={() => {
+                      setError('')
+                      setTarget(item.type)
+                    }}
                   >
                     <IconTrash size={16} aria-hidden="true" />
+                    {dict.delete}
                   </Button>
                 </div>
               </div>
@@ -121,6 +145,18 @@ export function AdminAuthorizationDetailTypesPage({
         </a>{' '}
         {dict.footerText}
       </p>
+      {target ? (
+        <ConfirmActionDialog
+          title={dict.delete}
+          target={target}
+          description={common.deleteResourceDescription}
+          confirmLabel={dict.delete}
+          busy={busy}
+          error={error}
+          onClose={() => setTarget(null)}
+          onConfirm={() => void handleDelete(target)}
+        />
+      ) : null}
     </AdminShell>
   )
 }

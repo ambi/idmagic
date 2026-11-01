@@ -68,10 +68,10 @@ export function AdminAuthorizationDetailTypeCreatePage({
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      <Card className="w-full max-w-2xl p-4">
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <Card className="w-full admin-form p-4">
+        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
           <AuthorizationDetailTypeFormFields form={form} onChange={setForm} locked={false} t={t} />
-          <div className="flex gap-2.5">
+          <div className="flex gap-2.5 md:col-span-2">
             <Button type="submit" disabled={saving}>
               {t.register}
             </Button>

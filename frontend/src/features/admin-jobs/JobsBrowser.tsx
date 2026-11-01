@@ -1,5 +1,7 @@
 import { IconRefresh, IconSearch, IconX } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
+import { ResourceListToolbar } from '../../components/ResourceListToolbar'
+import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
 import {
   type AdminJob,
   type AdminJobLane,
@@ -30,7 +32,7 @@ export type JobsBrowserProps = {
   listJobs: (query: AdminJobQuery) => Promise<AdminJobPage>
   cancelJob: (job: AdminJob) => Promise<AdminJob>
   // confirmCancel は取り消し前の確認。対象テナントを再掲するかどうかは呼び出し側が決める。
-  confirmCancel: (job: AdminJob) => boolean
+  confirmCancel?: (job: AdminJob) => boolean
   // tenantColumn は一覧に対象テナントの列を常時出すかどうか。横断一覧では必須である。
   tenantColumn?: boolean
   initialError?: string
@@ -90,6 +92,7 @@ export function JobsBrowser({
   const [kind, setKind] = useState('')
   const [lane, setLane] = useState<AdminJobLane | ''>('')
   const [busy, setBusy] = useState(false)
+  const [cancelTarget, setCancelTarget] = useState<AdminJob | null>(null)
   const [error, setError] = useState(initialError ?? '')
   const [notice, setNotice] = useState('')
   const { locale } = useLocale()
@@ -135,7 +138,7 @@ export function JobsBrowser({
   }
 
   async function handleCancel(job: AdminJob) {
-    if (!confirmCancel(job)) return
+    if (confirmCancel && !confirmCancel(job)) return
     setBusy(true)
     setError('')
     try {
@@ -143,6 +146,7 @@ export function JobsBrowser({
       setJobs((current) => current.map((j) => (j.id === canceled.id ? canceled : j)))
       setSelected(canceled)
       setNotice(t.cancelSucceededNotice)
+      setCancelTarget(null)
     } catch (cause) {
       // 409 は「すでに終わっていた」ことの通知であり、失敗ではなく事実として伝える。
       if (cause instanceof AuthenticationAPIError && cause.code === 'job_not_cancelable') {
@@ -159,6 +163,27 @@ export function JobsBrowser({
 
   return (
     <>
+      <ResourceListToolbar
+        displayed={jobs.length}
+        busy={busy}
+        onRefresh={async () => {
+          const page = await listJobs(buildQuery())
+          setJobs(page.jobs)
+          setNextCursor(page.next_cursor)
+          setSelected(page.jobs[0] ?? null)
+        }}
+      />
+      {cancelTarget ? (
+        <ConfirmActionDialog
+          title={t.cancelAction}
+          target={`${cancelTarget.tenant_id} / ${cancelTarget.kind} / ${cancelTarget.id}`}
+          description={t.cancelConfirm}
+          confirmLabel={t.cancelAction}
+          busy={busy}
+          onClose={() => setCancelTarget(null)}
+          onConfirm={() => void handleCancel(cancelTarget)}
+        />
+      ) : null}
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Toast message={notice} onDismiss={() => setNotice('')} />
 
@@ -286,8 +311,8 @@ export function JobsBrowser({
             <h2 className="text-sm font-semibold text-slate-700">{t.detailHeading}</h2>
             {selected && isCancelable(selected) ? (
               <Button
-                variant="ghost"
-                onClick={() => handleCancel(selected)}
+                variant="destructive"
+                onClick={() => setCancelTarget(selected)}
                 disabled={busy}
                 className="text-rose-700"
               >

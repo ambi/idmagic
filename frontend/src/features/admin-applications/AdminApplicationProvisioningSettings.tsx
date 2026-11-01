@@ -141,7 +141,7 @@ export function ConnectionSettingsForm({
       {notice ? <Alert variant="success">{notice}</Alert> : null}
       <form className="grid gap-6" onSubmit={(e) => void submit(e)}>
         <div className="grid gap-1.5">
-          <Label>{t.baseUrlFieldLabel}</Label>
+          <Label required>{t.baseUrlFieldLabel}</Label>
           <Input required value={baseURL} onChange={(e) => setBaseURL(e.target.value)} />
         </div>
 

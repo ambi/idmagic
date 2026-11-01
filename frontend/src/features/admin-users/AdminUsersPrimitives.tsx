@@ -163,7 +163,9 @@ type FieldProps = {
 export function Field({ id, label, type = 'text', description, ...props }: FieldProps) {
   return (
     <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} required={props.required}>
+        {label}
+      </Label>
       <Input id={id} name={id} type={type} {...props} />
       {description && <p className="text-xs leading-5 text-slate-500">{description}</p>}
     </div>

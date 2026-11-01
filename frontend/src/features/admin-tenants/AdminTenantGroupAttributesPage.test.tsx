@@ -3,6 +3,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { AdminTenantGroupAttributesPage } from './AdminTenantGroupAttributesPage'
+import { AdminTenantGroupAttributeCreatePage } from './AdminTenantGroupAttributeCreatePage'
 import { adminTenantGroupAttributesDictionary } from './AdminTenantGroupAttributesPage.i18n'
 import type { GroupAttributeDef, TenantGroupAttributeSchema } from '../../types'
 
@@ -65,33 +66,25 @@ describe('AdminTenantGroupAttributesPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('adds a new attribute via the dialog and persists it', async () => {
+  it('adds a new attribute on a dedicated page and persists it', async () => {
+    const assign = mock()
+    stubGlobal('location', { ...window.location, assign })
     stubGlobal(
       'fetch',
-      mock(() => Promise.resolve(response(200, { ...schema, attributes: [attribute] }))),
+      mock((_url: string, init?: RequestInit) =>
+        Promise.resolve(
+          response(200, { ...schema, attributes: init?.method === 'PUT' ? [attribute] : [] }),
+        ),
+      ),
     )
-    await renderWithRouterBase(<AdminTenantGroupAttributesPage csrfToken="csrf" schema={schema} />)
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: new RegExp(adminTenantGroupAttributesDictionary.en.addAttribute),
-      }),
-    )
+    await renderWithRouterBase(<AdminTenantGroupAttributeCreatePage csrfToken="csrf" />)
     fireEvent.change(screen.getByLabelText(adminTenantGroupAttributesDictionary.en.keyFieldLabel), {
       target: { value: 'cost_center' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: adminTenantGroupAttributesDictionary.en.add }),
     )
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', {
-          name: adminTenantGroupAttributesDictionary.en.editAttributeAria.replace(
-            '{key}',
-            'cost_center',
-          ),
-        }),
-      ).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/admin/tenant/group_attributes'))
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/admin/v1/tenant/group-attribute-schema'),
       expect.objectContaining({ method: 'PUT' }),

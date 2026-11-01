@@ -1,7 +1,8 @@
 import { provisioningDictionary } from '../admin-applications/AdminApplicationProvisioning.i18n'
 import { provisioningURL } from '../admin-applications/AdminApplicationsShared'
 import { AdminShell } from '../../components/AdminShell'
-import { Alert } from '../../components/ui/alert'
+import { useState } from 'react'
+import { listAdminTenantProvisioningConnections } from '../../api/admin'
 import { Card } from '../../components/ui/card'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminApplication, ProvisioningConnection } from '../../types'
@@ -13,7 +14,7 @@ function formatDate(value: string | null | undefined, locale: string, unknown: s
 
 export function AdminProvisioningOverviewPage({
   actorUsername,
-  connections,
+  connections: initial,
   applications,
 }: {
   actorUsername?: string
@@ -21,6 +22,7 @@ export function AdminProvisioningOverviewPage({
   applications: AdminApplication[]
 }) {
   const t = useDictionary(provisioningDictionary)
+  const [connections, setConnections] = useState(initial)
   const { locale } = useLocale()
   const appNames = new Map(applications.map((a) => [a.id, a.name]))
 
@@ -30,15 +32,17 @@ export function AdminProvisioningOverviewPage({
       actorUsername={actorUsername}
       title={t.overviewHeading}
       description={t.overviewDescription}
+      list={{
+        displayed: connections.length,
+        onRefresh: async () => setConnections(await listAdminTenantProvisioningConnections()),
+      }}
     >
       <p className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
         {t.overviewGuidanceNotice}
       </p>
       <Card className="overflow-hidden">
         {connections.length === 0 ? (
-          <Alert variant="destructive" className="m-5">
-            {t.overviewEmptyNotice}
-          </Alert>
+          <p className="m-5 text-sm text-slate-600">{t.overviewEmptyNotice}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

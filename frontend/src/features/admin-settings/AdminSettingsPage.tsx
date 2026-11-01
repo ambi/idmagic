@@ -6,7 +6,6 @@ import {
   IconPalette,
   IconShieldLock,
   IconTag,
-  IconUsers,
 } from '@tabler/icons-react'
 import { useState } from 'react'
 import { AdminShell } from '../../components/AdminShell'
@@ -25,7 +24,6 @@ import { GeneralTab } from './GeneralTab'
 import { NotificationTemplatesTab } from './NotificationTemplatesTab'
 import { PasswordPolicyTab } from './PasswordPolicyTab'
 import { TrustedDeviceTab } from './TrustedDeviceTab'
-import { ApiTokensTab } from './ApiTokensTab'
 import { IntegrationEndpointsTab } from './IntegrationEndpointsTab'
 
 const DEFAULT_REALM = 'default'
@@ -38,7 +36,6 @@ type TabKey =
   | 'branding'
   | 'integration-endpoints'
   | 'email'
-  | 'api-tokens'
 
 type Tab = {
   key: TabKey
@@ -87,12 +84,6 @@ function tabs(t: AdminSettingsDictionary): Tab[] {
       icon: IconLink,
     },
     {
-      key: 'api-tokens',
-      label: t.tabApiTokensLabel,
-      description: t.tabApiTokensDescription,
-      icon: IconUsers,
-    },
-    {
       key: 'email',
       label: t.tabEmailLabel,
       description: t.tabEmailDescription,
@@ -122,7 +113,17 @@ export function AdminSettingsPage({
   const [active, setActive] = useState<TabKey>(() =>
     (() => {
       const selected = new URLSearchParams(window.location.search).get('tab')
-      return selected === 'integration-endpoints' ? selected : 'general'
+      return [
+        'general',
+        'password-policy',
+        'delegation-policy',
+        'trusted-device',
+        'branding',
+        'integration-endpoints',
+        'email',
+      ].includes(selected ?? '')
+        ? (selected as TabKey)
+        : 'general'
     })(),
   )
   const isSystemAdminOnDefault = actorRoles.includes('system_admin') && actorRealm === DEFAULT_REALM
@@ -132,7 +133,7 @@ export function AdminSettingsPage({
   function selectTab(key: TabKey) {
     setActive(key)
     const url = new URL(window.location.href)
-    if (key === 'integration-endpoints') {
+    if (key !== 'general') {
       url.searchParams.set('tab', key)
     } else {
       url.searchParams.delete('tab')
@@ -223,9 +224,6 @@ export function AdminSettingsPage({
               catalog={integrationEndpoints}
               initialSamlIDPProfiles={samlIDPProfiles}
             />
-          ) : null}
-          {active === 'api-tokens' ? (
-            <ApiTokensTab csrfToken={csrfToken} integrationEndpoints={integrationEndpoints} />
           ) : null}
           {active === 'email' ? <NotificationTemplatesTab csrfToken={csrfToken} /> : null}
         </div>

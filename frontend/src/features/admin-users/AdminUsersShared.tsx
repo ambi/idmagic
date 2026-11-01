@@ -18,6 +18,7 @@ import {
   tenantURL,
 } from '../../api'
 import { Alert } from '../../components/ui/alert'
+import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
 import { Button } from '../../components/ui/button'
 import { SearchableSelect } from '../../components/ui/combobox'
 import { useDictionary, useLocale } from '../../lib/i18n'
@@ -429,6 +430,7 @@ export function UserSessionsSection({
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [busyAll, setBusyAll] = useState(false)
+  const [confirmAll, setConfirmAll] = useState(false)
   const { id } = user
   const t = useDictionary(adminUsersDictionary)
 
@@ -460,12 +462,12 @@ export function UserSessionsSection({
   }
 
   async function handleRevokeAll() {
-    if (!window.confirm(t.sessionsRevokeAllConfirm)) return
     setBusyAll(true)
     setError('')
     try {
       await revokeAllAdminUserSessions(csrfToken, id)
       await load()
+      setConfirmAll(false)
     } catch (err) {
       setError(err instanceof AuthenticationAPIError ? err.message : t.sessionsRevokeAllError)
     } finally {
@@ -483,10 +485,10 @@ export function UserSessionsSection({
         {allowEditing && sessions && sessions.length > 0 ? (
           <Button
             type="button"
-            variant="outline"
+            variant="destructive"
             className="h-9 px-3 text-xs"
             disabled={busyAll}
-            onClick={() => void handleRevokeAll()}
+            onClick={() => setConfirmAll(true)}
           >
             {t.revokeAllSessions}
           </Button>
@@ -518,6 +520,18 @@ export function UserSessionsSection({
           </ul>
         )}
       </div>
+      {confirmAll ? (
+        <ConfirmActionDialog
+          title={t.revokeAllSessions}
+          target={user.preferred_username}
+          description={t.sessionsRevokeAllConfirm}
+          confirmLabel={t.revokeAllSessions}
+          busy={busyAll}
+          error={error}
+          onClose={() => setConfirmAll(false)}
+          onConfirm={() => void handleRevokeAll()}
+        />
+      ) : null}
     </section>
   )
 }
