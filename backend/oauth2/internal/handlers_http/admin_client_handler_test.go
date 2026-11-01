@@ -25,6 +25,7 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/testing_clientauth"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -243,6 +244,42 @@ func TestAdminOAuth2ClientOfAnotherTenantIsAnsweredAsNonexistent(t *testing.T) {
 	}
 	if len(*events) != 0 {
 		t.Fatalf("拒否した操作がイベントを発行した: %v", *events)
+	}
+}
+
+//spec:covers REQ-OAUTH2-035: デモの非対称認証と CIBA のグラントを管理 API から登録できる。
+func TestAdminRegistersAgentDemoClient(t *testing.T) {
+	e, clients, _ := newAdminOAuth2ClientHandler(t)
+	csrf, cookie := adminCSRF(t, e)
+	credential := testing_clientauth.NewPrivateKeyJWT(t, "agent-demo")
+	grants := []string{"client_credentials", "urn:openid:params:grant-type:ciba"}
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/clients", csrf, cookie, map[string]any{
+		"client_name": "文書閲覧エージェントのデモ", "client_type": "confidential",
+		"redirect_uris": []string{}, "grant_types": grants,
+		"token_endpoint_auth_method": "private_key_jwt", "scope": "openid profile tools:read",
+		"jwks": credential.JWKS(), "fapi_profile": "none",
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
+	}
+	body := oauthContractJSON(t, create, http.StatusCreated)
+	clientBody := body["client"].(map[string]any)
+	clientID, _ := clientBody["client_id"].(string)
+	if clientID == "" || clientBody["token_endpoint_auth_method"] != "private_key_jwt" ||
+		!reflect.DeepEqual(clientBody["grant_types"], []any{grants[0], grants[1]}) {
+		t.Fatalf("created metadata=%v", clientBody)
+	}
+	if _, hasSecret := body["client_secret"]; hasSecret {
+		t.Fatal("private_key_jwt client was issued a shared secret")
+	}
+	saved, err := clients.FindByID(context.Background(), tenancydomain.DefaultTenantID, clientID)
+	if err != nil || saved == nil {
+		t.Fatalf("saved client missing: %v", err)
+	}
+	if saved.TokenEndpointAuthMethod != oauthdomain.AuthMethodPrivateKeyJwt ||
+		!reflect.DeepEqual(saved.GrantTypes, []spec.GrantType{spec.GrantClientCredentials, spec.GrantCiba}) ||
+		len(saved.RedirectURIs) != 0 || !reflect.DeepEqual(saved.JWKS, credential.JWKS()) {
+		t.Fatal("saved metadata does not match the requested grants and credentials")
 	}
 }
 

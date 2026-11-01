@@ -49,11 +49,32 @@ func TestParseAuthorizeRequestRejectsDuplicateSecurityParameter(t *testing.T) {
 
 func TestValidateRegisterClientRequestRejectsUnknownGrant(t *testing.T) {
 	request := &registerClientRequest{
-		RedirectURIs: []string{"https://example.com/callback"},
-		GrantTypes:   []string{"password"},
+		ClientType: "confidential", RedirectURIs: []string{"https://example.com/callback"},
+		GrantTypes: []string{"password"}, TokenEndpointAuthMethod: "client_secret_basic", FapiProfile: "none",
 	}
 	if err := validateRegisterClientRequest(request); err == nil {
 		t.Fatal("expected validation error")
+	}
+}
+
+func TestValidateRegisterClientRequestSupportedGrants(t *testing.T) {
+	for _, grant := range []string{
+		"authorization_code", "refresh_token", "client_credentials",
+		"urn:ietf:params:oauth:grant-type:device_code",
+		"urn:ietf:params:oauth:grant-type:token-exchange",
+		"urn:openid:params:grant-type:ciba",
+		"urn:ietf:params:oauth:grant-type:jwt-bearer",
+		"urn:ietf:params:oauth:grant-type:jwt-dpop",
+	} {
+		t.Run(grant, func(t *testing.T) {
+			request := &registerClientRequest{
+				ClientType: "confidential", RedirectURIs: []string{"https://example.com/callback"},
+				GrantTypes: []string{grant}, TokenEndpointAuthMethod: "client_secret_basic", FapiProfile: "none",
+			}
+			if err := validateRegisterClientRequest(request); err != nil {
+				t.Fatalf("supported grant %q: %v", grant, err)
+			}
+		})
 	}
 }
 

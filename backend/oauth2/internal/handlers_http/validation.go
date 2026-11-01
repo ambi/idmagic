@@ -92,12 +92,9 @@ var registerClientRequestSchema = z.Struct(z.Shape{
 	"ClientName":   spec.CharsAtMost(spec.LengthDisplayName),
 	"ClientType":   z.String().OneOf([]string{"public", "confidential"}),
 	"RedirectURIs": z.Slice(z.String().URL()).Min(1),
-	"GrantTypes": z.Slice(z.String().OneOf([]string{
-		"authorization_code",
-		"refresh_token",
-		"client_credentials",
-		"urn:ietf:params:oauth:grant-type:device_code",
-	})),
+	"GrantTypes": z.Slice(z.String().TestFunc(func(value *string, _ z.Ctx) bool {
+		return spec.GrantType(*value).Valid()
+	}, z.Message("grant_type is not in enum"))),
 	"ResponseTypes": z.Slice(z.String().OneOf([]string{"code"})),
 	"TokenEndpointAuthMethod": z.String().OneOf([]string{
 		"client_secret_basic",
