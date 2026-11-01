@@ -2,6 +2,7 @@ import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { basename, dirname, posix } from 'node:path'
 import MarkdownIt, { type Env, type Token } from 'markdown-it'
 import { verifyCompletion } from '../../check/src/check-work-items.ts'
+import { checkTerminology } from '../../check/src/check-terminology.ts'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { collapseRecord } from './archive.ts'
 
@@ -208,7 +209,11 @@ export async function moveWorkItem(
   const text = await snapshot.read(from)
   const collapsed = collapseRecord(text, status, from)
   if (status === 'completed') {
-    const findings = await verifyCompletion(snapshot, from, text)
+    const [findings, terminology] = await Promise.all([
+      verifyCompletion(snapshot, from, text),
+      checkTerminology(snapshot, { verbose: false, listUnresolved: false }),
+    ])
+    if (!terminology.ok) findings.push(...terminology.lines)
     if (findings.length > 0)
       throw new Error(`${from} does not pass the completion checks:\n${findings.join('\n')}`)
   }

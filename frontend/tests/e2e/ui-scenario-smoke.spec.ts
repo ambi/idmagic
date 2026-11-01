@@ -2,6 +2,7 @@
 // ブラウザ E2E として固定する。低レベル usecase の重複検査ではなく、
 // SPA route loader、OIDC RP ログイン、サイドバー遷移、フォーム送信の接続を検証する。
 import { test } from 'bun:test'
+import { adminNavigationPages, clickAdminNavigation } from './admin-navigation'
 import {
   openWebView,
   clickNavLinkByAnyText,
@@ -64,30 +65,10 @@ test('admin console scenarios are reachable after admin-audience login', async (
   try {
     await navigateAndLogin(view, '/admin', 'admin-dashboard')
 
-    const pages = [
-      [['アプリケーション', 'Applications'], '/admin/applications', 'admin-applications'],
-      [['グループ', 'Groups'], '/admin/groups', 'admin-groups'],
-      [['エージェント一覧', 'Agent list'], '/admin/agents', 'admin-agents'],
-      [['監査イベント', 'Audit events'], '/admin/audit_events', 'admin-audit-events'],
-      [
-        ['MCP リソースサーバー', 'MCP resource servers'],
-        '/admin/mcp-resource-servers',
-        'admin-mcp-resource-servers',
-      ],
-      [
-        ['アプリ間アクセス', 'Cross-app access'],
-        '/admin/cross-app-access',
-        'admin-cross-app-access',
-      ],
-      [['署名鍵', 'Signing keys'], '/admin/keys', 'admin-keys'],
-      [['ユーザー属性', 'User attributes'], '/admin/tenant/attributes', 'admin-tenant-attributes'],
-      [['設定', 'Settings'], '/admin/settings', 'admin-settings'],
-    ] as const
-
-    for (const [label, path, marker] of pages) {
-      await clickNavLinkByAnyText(view, ['管理メニュー', 'Admin navigation'], [...label])
-      await waitForLocationPath(view, path)
-      await waitForPage(view, marker)
+    for (const page of adminNavigationPages) {
+      await clickAdminNavigation(view, page)
+      await waitForLocationPath(view, page.path)
+      await waitForPage(view, page.marker)
     }
   } finally {
     view.close()

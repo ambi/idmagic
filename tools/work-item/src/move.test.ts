@@ -50,6 +50,33 @@ async function workspace(documents: Map<string, string>): Promise<string> {
 const record = (status: string, summary = '\n## 要約\n\n文書の表記を直した。\n') =>
   `---\nstatus: ${status}\nauthors: [tn]\nrisk: low\ncreated_at: 2026-10-15\ndepends_on: []\nchange_kind: docs\nspec_impact: { kind: none, reason: "文書の表記だけを直し、HTTP 応答、永続状態、イベントは変えない。" }\n---\n\n# 項目\n\n## 動機\n\n[文書](../../docs/README.md) を直す。\n\n## 対象範囲\n\n- 表記\n\n## 対象外\n\n- 内容\n\n## 検証\n\n- check-links\n\n## リスク\n\nない。\n${summary}`
 
+it('最終編集で禁止表記が入った文書があれば、完了前に拒否して記録を残す', async () => {
+  const text = record('in_progress')
+  const root = await workspace(
+    new Map([
+      [from, text],
+      ['docs/development/example.md', '# 手順\n\n既定の値を使う。\n'],
+    ]),
+  )
+  await expect(moveWorkItem(root, 'wi-10001')).rejects.toThrow('docs/development/example.md')
+  expect(await readFile(join(root, from), 'utf8')).toBe(text)
+  expect(await Bun.file(join(root, to)).exists()).toBe(false)
+  await writeFile(join(root, 'docs/development/example.md'), '# 手順\n\nデフォルト値を使う。\n')
+  await moveWorkItem(root, 'wi-10001')
+  expect(await Bun.file(join(root, to)).exists()).toBe(true)
+})
+
+it('中止は文書の禁止表記が残っていても記録できる', async () => {
+  const root = await workspace(
+    new Map([
+      [from, record('in_progress')],
+      ['docs/development/example.md', '# 手順\n\n既定の値を使う。\n'],
+    ]),
+  )
+  await moveWorkItem(root, 'wi-10001', 'cancelled')
+  expect(await readFile(join(root, to), 'utf8')).toContain('status: cancelled')
+})
+
 for (const [flags, status] of [
   [[], 'completed'],
   [['--cancel'], 'cancelled'],

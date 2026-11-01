@@ -7,6 +7,9 @@ import { createServer, type Server, type Socket } from 'node:net'
 import { spawn, spawnSync, type Subprocess } from 'bun'
 import { WebViewCallExpired, withCallDeadlines } from './webview-deadline'
 import { createWebViewProcessLease } from './webview-process-lease'
+import { POLL_INTERVAL_MS } from './polling'
+
+export { POLL_INTERVAL_MS } from './polling'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const uiDir = resolve(here, '../..')
@@ -69,9 +72,6 @@ type CapturedEmail = {
   text: string
 }
 
-// 待ち合わせの刻み。1 回の待ちにつき最大でこの時間だけ余計に待つので、待ちの回数だけ
-// 遅延として積み上がる。上限のタイムアウトは変えていない。
-export const POLL_INTERVAL_MS = 25
 // 起動待ちは HTTP 要求そのものが刻みになるため、画面のポーリングより粗くてよい。
 const BOOT_POLL_INTERVAL_MS = 100
 
