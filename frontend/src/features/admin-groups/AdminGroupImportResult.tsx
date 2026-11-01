@@ -156,7 +156,7 @@ export function GroupImportResultSummary({
         </Alert>
       )}
       {success && result.deleted_rows > 0 && (
-        <Alert>
+        <Alert variant="destructive">
           {t.importApplyDeletedNotice
             .replace('{groups}', String(result.deleted_rows))
             .replace('{memberships}', String(result.deleted_memberships))}

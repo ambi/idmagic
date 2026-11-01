@@ -133,7 +133,7 @@ function DefaultPolicyCard({
       </header>
       <div className="mt-5">
         {unenrolledUserCount > 0 ? (
-          <Alert className="mb-4">
+          <Alert variant="destructive" className="mb-4">
             {t.unenrolledWarning.replace('{count}', String(unenrolledUserCount))}
           </Alert>
         ) : null}

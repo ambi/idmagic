@@ -92,7 +92,9 @@ export function AdminAuthorizationModelPage({
         </div>
       ) : null}
       {model && requestedVersion !== undefined ? (
-        <Alert>{t.pastVersion.replace('{version}', String(model.version))}</Alert>
+        <Alert variant="destructive">
+          {t.pastVersion.replace('{version}', String(model.version))}
+        </Alert>
       ) : null}
       {model && !draft ? (
         <Card className="p-4">

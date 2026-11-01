@@ -119,7 +119,7 @@ export function TotpPage({
         </header>
 
         {error ? (
-          <Alert className="flex gap-3" aria-live="polite">
+          <Alert variant="destructive" className="flex gap-3" aria-live="polite">
             <IconAlertCircle
               className="mt-0.5 shrink-0 text-red-600"
               size={19}

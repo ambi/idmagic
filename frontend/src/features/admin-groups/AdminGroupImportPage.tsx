@@ -226,7 +226,11 @@ export function AdminGroupImportPage({
       </div>
 
       <div className="mt-6 max-w-3xl">
-        {error && <Alert className="mb-4">{error}</Alert>}
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            {error}
+          </Alert>
+        )}
 
         <Card className="shadow-[0_1px_2px_rgb(15_23_42/4%)]">
           <div className="grid gap-6 p-6">

@@ -3,6 +3,13 @@ import { defineDictionary } from '../../lib/i18n'
 export const agentGuardrailDictionary = defineDictionary(
   {
     title: 'ガードレール',
+    edit: 'ガードレールを編集',
+    editTitle: 'ガードレールを編集',
+    cancel: 'キャンセル',
+    loading: 'ガードレールを読み込んでいます…',
+    removed: 'ガードレールを削除しました。',
+    confirmRemove:
+      'このエージェントのガードレールを削除します。エージェント固有の制限がなくなり、テナントのデフォルトだけが適用されます。必要なら設定し直せます。',
     description:
       'トークンの発行に課す上限です。空の項目は制限しません。テナントのデフォルトとこのエージェントの設定のうち、厳しい方が効きます。変更は次の発行から効き、発行済みのトークンは変わりません。',
     resourcesLabel: '許可する資源（1 行に 1 つ）',
@@ -30,6 +37,13 @@ export const agentGuardrailDictionary = defineDictionary(
   },
   {
     title: 'Guardrails',
+    edit: 'Edit guardrails',
+    editTitle: 'Edit guardrails',
+    cancel: 'Cancel',
+    loading: 'Loading guardrails…',
+    removed: 'Guardrails have been deleted.',
+    confirmRemove:
+      'Delete this agent’s guardrails? Agent-specific limits will be removed and only the tenant defaults will apply. You can configure them again.',
     description:
       'Limits on token issuance. Blank fields do not limit. The stricter of the tenant default and this agent applies. Changes apply from the next issuance and do not affect issued tokens.',
     resourcesLabel: 'Allowed resources (one per line)',

@@ -6,7 +6,7 @@ import {
   IconPower,
   IconTrash,
 } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AuthenticationAPIError,
   deleteAdminAgent,
@@ -19,6 +19,7 @@ import {
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
+import { Toast } from '../../components/ui/toast'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,9 +31,10 @@ import type { AdminAgent } from '../../types'
 import { AgentDetailCard } from './AdminAgentDetailCard'
 import { AgentGuardrailPanel } from './AgentGuardrailPanel'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
+import { takeAgentNotice } from './agentNavigation'
 
 // AdminAgentDetailPage はエージェントの状態操作を扱う参照専用の詳細画面 (wi-49)。
-// プロフィール編集・資格情報のバインド/解除は編集画面に一本化されている (wi-314 T012)。
+// 各編集と資格情報の管理は専用画面へ進み、詳細は確定済みの設定を表示する。
 export function AdminAgentDetailPage({
   csrfToken,
   actorUsername,
@@ -47,6 +49,11 @@ export function AdminAgentDetailPage({
   const [confirmKill, setConfirmKill] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  useEffect(() => {
+    const message = takeAgentNotice(initialAgent.id)
+    if (message) setNotice(message)
+  }, [initialAgent.id])
   const t = useDictionary(adminAgentsDictionary)
 
   async function reload(id: string) {
@@ -106,7 +113,7 @@ export function AdminAgentDetailPage({
             render={<a href={tenantURL(`/admin/agents/${encodeURIComponent(agent.id)}/edit`)} />}
           >
             <IconPencil size={16} aria-hidden="true" />
-            {t.edit}
+            {t.editBasicInfo}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -165,6 +172,7 @@ export function AdminAgentDetailPage({
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
+      <Toast message={notice} onDismiss={() => setNotice('')} />
       {confirmKill ? (
         <Alert variant="destructive" className="flex flex-wrap items-center justify-between gap-2">
           <span>{t.confirmKillPrompt}</span>
@@ -213,7 +221,14 @@ export function AdminAgentDetailPage({
         />
       </div>
       <div className="mt-4 max-w-3xl">
-        <AgentGuardrailPanel agentID={agent.id} />
+        <AgentGuardrailPanel
+          agentID={agent.id}
+          editHref={
+            killed
+              ? undefined
+              : tenantURL(`/admin/agents/${encodeURIComponent(agent.id)}/guardrail/edit`)
+          }
+        />
       </div>
     </AdminShell>
   )

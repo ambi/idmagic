@@ -16,6 +16,7 @@
 | 機能と振る舞いの変更 <!-- context: kinds=feature,bugfix,operations --> | [仕様の漏れを探す観点](docs/development/specification-first-workflow.md#仕様の漏れを探す観点)、[主要ユースケース](docs/development/testing.md#主要ユースケース) |
 | 文書、コメント、UI 文言の執筆または推敲 <!-- context: kinds=docs targets=docs,.agents,AGENTS.md,frontend --> | [文章の言語](docs/development/writing-language.md)。日本語の文章品質と整形には `japanese-tech-writing` スキルを使う |
 | コードに含む文章の変更 <!-- context: targets=backend,frontend,tools,.agents,AGENTS.md --> | [文章の言語](docs/development/writing-language.md) |
+| 画面、フォーム、通知、画面遷移の編集またはレビュー <!-- context: targets=frontend/src --> | UI 設計の[ナビゲーション](docs/design/application/user-interface.md#ナビゲーション)、[表示状態](docs/design/application/user-interface.md#表示状態)、[フォームと検証](docs/design/application/user-interface.md#フォームと検証)から、変更する操作の節を読む |
 | 本番コード（`backend/`、`frontend/src/`）の変更 <!-- context: targets=backend,frontend/src --> | [仕様影響の宣言](docs/development/specification-first-workflow.md#仕様影響の宣言)に従って判断と宣言を残す |
 | コードの編集またはレビュー <!-- context: kinds=feature,bugfix,refactor,tooling,maintenance,operations targets=backend,frontend,tools --> | [コーディングスタイルの使い方](docs/development/coding-style.md#使い方)。七つの視点のうち、触れる判断の節へ進む |
 | テスト水準、実行境界、テストダブルの選択 <!-- context: kinds=feature,bugfix,refactor,tooling,maintenance,operations targets=backend,frontend,tools --> | [テスト方針](docs/development/testing.md#主要ユースケース)。水準の表と、触れる依存の[テストダブル](docs/development/testing.md#テストダブル)を選ぶ |

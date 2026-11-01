@@ -35,6 +35,8 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-agent-detail': `エージェント詳細 | ${ADMIN}`,
   'admin-agent-create': `エージェントを登録 | ${ADMIN}`,
   'admin-agent-edit': `エージェントを編集 | ${ADMIN}`,
+  'admin-agent-guardrail-edit': `ガードレールを編集 | ${ADMIN}`,
+  'admin-agent-credentials': `資格情報を管理 | ${ADMIN}`,
   'admin-agent-inventory': `エージェントの棚卸し | ${ADMIN}`,
   'admin-applications': `アプリケーション | ${ADMIN}`,
   'admin-application-detail': `アプリケーション詳細 | ${ADMIN}`,
@@ -122,6 +124,8 @@ const PAGE_TITLES_JA: Record<string, string> = {
 const PAGE_TITLES_EN: Record<string, string> = {
   ...Object.fromEntries(Object.keys(PAGE_TITLES_JA).map((kind) => [kind, `${kind} | ${BRAND}`])),
   'admin-saml-idp-profiles': `SAML IdP profiles | ${BRAND} Admin Console`,
+  'admin-agent-guardrail-edit': `Edit guardrails | ${BRAND} Admin Console`,
+  'admin-agent-credentials': `Manage credentials | ${BRAND} Admin Console`,
   'admin-saml-idp-profile-detail': `SAML IdP profile details | ${BRAND} Admin Console`,
   'admin-saml-idp-profile-create': `Create SAML IdP profile | ${BRAND} Admin Console`,
   'admin-saml-idp-profile-edit': `Edit SAML IdP profile | ${BRAND} Admin Console`,

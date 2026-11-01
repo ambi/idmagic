@@ -135,7 +135,9 @@ export function AdminAuthorizationTuplesPage({
           </div>
         </form>
       </Card>
-      {tuples.length >= RELATION_TUPLE_LIST_LIMIT ? <Alert>{t.tuplesLimitReached}</Alert> : null}
+      {tuples.length >= RELATION_TUPLE_LIST_LIMIT ? (
+        <Alert variant="destructive">{t.tuplesLimitReached}</Alert>
+      ) : null}
       {tuples.length === 0 ? (
         <Card className="p-6 text-sm text-slate-600">{t.tuplesEmpty}</Card>
       ) : (

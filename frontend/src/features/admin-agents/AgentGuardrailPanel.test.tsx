@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock, spyOn } from 'bun:test'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import * as api from '../../api'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import type { AgentGuardrailLimits } from '../../types'
@@ -44,7 +44,8 @@ describe('AgentGuardrailPanel', () => {
     expect(limits.issuance_rate).toEqual({ max_issuances: 5, window_seconds: 60 })
     // 空の許可は「何も許さない」なので、空欄から送らない。
     expect(limits.allowed_resources).toBeUndefined()
-    await screen.findByText(t.saved)
+    expect(await screen.findByRole('status')).toHaveTextContent(t.saved)
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('tells the administrator about a concurrent change', async () => {
@@ -63,5 +64,19 @@ describe('AgentGuardrailPanel', () => {
     await screen.findByText(t.agentNone)
     expect(screen.queryByRole('button', { name: t.save })).toBeNull()
     expect(screen.getByText('60')).toBeTruthy()
+  })
+
+  it('requires confirmation before deleting and keeps a failure in the dialog', async () => {
+    spyOn(api, 'getAgentGuardrailPolicy').mockResolvedValue({ agent: policy })
+    const remove = spyOn(api, 'deleteAgentGuardrailPolicy').mockRejectedValue(
+      new Error('unavailable'),
+    )
+    await renderWithRouter(<AgentGuardrailPanel agentID="bot" csrfToken="csrf" />)
+    fireEvent.click(await screen.findByRole('button', { name: t.remove }))
+    const dialog = await screen.findByRole('dialog')
+    expect(remove).not.toHaveBeenCalled()
+    fireEvent.click(within(dialog).getByRole('button', { name: t.remove }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(t.failed)
+    expect(screen.queryByRole('status')).toBeNull()
   })
 })

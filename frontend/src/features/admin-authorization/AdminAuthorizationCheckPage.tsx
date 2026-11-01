@@ -110,7 +110,7 @@ function ListResultCard({ result }: { result: FgaListAccessibleResourcesResult }
           {t.resultModelVersion.replace('{version}', String(result.model_version))}
         </span>
       </div>
-      {result.truncated ? <Alert>{t.listTruncated}</Alert> : null}
+      {result.truncated ? <Alert variant="destructive">{t.listTruncated}</Alert> : null}
       {result.resource_ids.length === 0 ? (
         <p className="text-sm text-slate-600">{t.listEmpty}</p>
       ) : (

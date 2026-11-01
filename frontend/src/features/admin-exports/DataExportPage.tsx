@@ -211,7 +211,7 @@ export function DataExportPage({
       </div>
 
       <div className="mt-6 grid max-w-4xl gap-6">
-        {error && <Alert>{error}</Alert>}
+        {error && <Alert variant="destructive">{error}</Alert>}
         {notice && <Alert variant="success">{notice}</Alert>}
 
         {target === 'users' && (

@@ -1,10 +1,15 @@
 import { describe, it, expect } from 'bun:test'
+import type { ComponentProps } from 'react'
 import { render, screen } from '@testing-library/react'
 import { Alert } from './alert'
 
+// @ts-expect-error 表示種類の省略を型検査で拒否する。既定値が復活すると、この負例が失敗する。
+const missingVariant: ComponentProps<typeof Alert> = { children: 'Saved' }
+void missingVariant
+
 describe('Alert Component', () => {
-  it('renders alert with destructive variant by default', () => {
-    render(<Alert>Something went wrong</Alert>)
+  it('renders an explicitly destructive alert', () => {
+    render(<Alert variant="destructive">Something went wrong</Alert>)
     const alert = screen.getByRole('alert')
     expect(alert).toBeInTheDocument()
     expect(alert).toHaveClass('border-red-200')
@@ -21,7 +26,11 @@ describe('Alert Component', () => {
   })
 
   it('applies custom className', () => {
-    render(<Alert className="custom-alert">Message</Alert>)
+    render(
+      <Alert variant="destructive" className="custom-alert">
+        Message
+      </Alert>,
+    )
     const alert = screen.getByRole('alert')
     expect(alert).toHaveClass('custom-alert')
   })

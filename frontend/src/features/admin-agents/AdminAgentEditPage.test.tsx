@@ -1,8 +1,9 @@
 import { afterEach, describe, it, expect, mock } from 'bun:test'
-import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { AdminAgentEditPage } from './AdminAgentEditPage'
+import { AdminAgentCredentialsPage } from './AdminAgentCredentialsPage'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import type { AdminAgent } from '../../types'
 
@@ -26,10 +27,13 @@ const agent: AdminAgent = {
   created_at: '2026-01-01T00:00:00Z',
 }
 
-describe('AdminAgentEditPage', () => {
-  const originalLocation = window.location
-  afterEach(() => restoreGlobals())
+const originalLocation = window.location
+afterEach(() => {
+  restoreGlobals()
+  sessionStorage.clear()
+})
 
+describe('AdminAgentEditPage', () => {
   it('updates the agent and redirects to its detail page', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     stubGlobal(
@@ -37,6 +41,9 @@ describe('AdminAgentEditPage', () => {
       mock(() => Promise.resolve(response(200, { ...agent, name: 'renamed-bot' }))),
     )
     await renderWithRouter(<AdminAgentEditPage csrfToken="csrf" agent={agent} />)
+
+    expect(screen.queryByLabelText(t.bindClientIdAria)).toBeNull()
+    expect(screen.queryByText('Guardrails')).toBeNull()
 
     fireEvent.change(screen.getByLabelText(t.agentNameLabel), {
       target: { value: 'renamed-bot' },
@@ -64,7 +71,9 @@ describe('AdminAgentEditPage', () => {
     expect(await screen.findByText('Could not update the agent.')).toBeInTheDocument()
     expect(window.location.assign).not.toHaveBeenCalled()
   })
+})
 
+describe('AdminAgentCredentialsPage', () => {
   it('explains why a shared-secret client cannot be bound', async () => {
     stubGlobal(
       'fetch',
@@ -78,7 +87,7 @@ describe('AdminAgentEditPage', () => {
         ),
       ),
     )
-    await renderWithRouter(<AdminAgentEditPage csrfToken="csrf" agent={agent} />)
+    await renderWithRouter(<AdminAgentCredentialsPage csrfToken="csrf" agent={agent} />)
 
     fireEvent.change(screen.getByLabelText(t.bindClientIdAria), {
       target: { value: 'secret-client' },
@@ -94,7 +103,7 @@ describe('AdminAgentEditPage', () => {
       'fetch',
       mock(() => Promise.resolve(response(409, { message: 'This client_id is already in use.' }))),
     )
-    await renderWithRouter(<AdminAgentEditPage csrfToken="csrf" agent={agent} />)
+    await renderWithRouter(<AdminAgentCredentialsPage csrfToken="csrf" agent={agent} />)
 
     fireEvent.change(screen.getByLabelText(t.bindClientIdAria), {
       target: { value: 'client-x' },
@@ -116,11 +125,14 @@ describe('AdminAgentEditPage', () => {
       }),
     )
     await renderWithRouter(
-      <AdminAgentEditPage csrfToken="csrf" agent={{ ...agent, client_ids: ['client-a'] }} />,
+      <AdminAgentCredentialsPage csrfToken="csrf" agent={{ ...agent, client_ids: ['client-a'] }} />,
     )
 
     expect(screen.getByText('client-a')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: t.unbind }))
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: t.unbind }),
+    )
 
     await waitFor(() => expect(screen.getByText(t.noCredentialsNotice)).toBeInTheDocument())
   })

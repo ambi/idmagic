@@ -106,7 +106,7 @@ export function AdminGroupEditPage({
               {error && <Alert variant="destructive">{error}</Alert>}
 
               {group.scim_source && (
-                <Alert className="mb-2">
+                <Alert variant="destructive" className="mb-2">
                   <div className="flex gap-3">
                     <IconAlertTriangle className="mt-0.5 shrink-0 text-blue-700" size={19} />
                     <div>

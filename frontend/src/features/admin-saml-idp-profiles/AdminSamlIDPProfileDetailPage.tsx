@@ -73,8 +73,10 @@ export function AdminSamlIDPProfileDetailPage({
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      {profile.is_default ? <Alert>{t.defaultImmutable}</Alert> : null}
-      {deleteDisabled && !profile.is_default ? <Alert>{t.profileInUse}</Alert> : null}
+      {profile.is_default ? <Alert variant="destructive">{t.defaultImmutable}</Alert> : null}
+      {deleteDisabled && !profile.is_default ? (
+        <Alert variant="destructive">{t.profileInUse}</Alert>
+      ) : null}
       {confirmDelete ? (
         <Alert variant="destructive" className="flex items-center justify-between gap-3">
           <span>{t.confirmDelete}</span>

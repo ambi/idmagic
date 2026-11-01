@@ -718,9 +718,7 @@ test('admin application lifecycle and agent credential binding work from the bro
 
     await view.navigate(`${uiOrigin}/admin/agents`)
     await waitForPage(view, 'admin-agents')
-    // wi-314 T012: registering redirects straight to the new agent's own detail
-    // page (no list-page notice to wait for), and credential bind/unbind moved
-    // off the detail page onto the edit page, so it must be reached explicitly.
+    // 資格情報の操作は専用の管理画面で即時に確定する。
     await clickLinkByText(view, 'Add agent')
     await waitForUrl(view, /\/admin\/agents\/new$/)
     await setInputValue(view, '#agent-name', agentName)
@@ -730,13 +728,14 @@ test('admin application lifecycle and agent credential binding work from the bro
     await view.click('form button[type="submit"]')
     await waitForText(view, agentName)
 
-    await clickLinkByText(view, 'Edit')
-    await waitForUrl(view, /\/admin\/agents\/[^/]+\/edit$/)
-    await setInputValue(view, 'input[aria-label="client_id to bind"]', clientID)
+    await clickLinkByText(view, 'Manage credentials')
+    await waitForPage(view, 'admin-agent-credentials')
+    await setInputValue(view, '#agent-credential-client', clientID)
     await clickButtonByText(view, 'Bind')
     await waitForText(view, clientID)
 
     await clickButtonByText(view, 'Unbind')
+    await view.evaluate(`document.querySelector('[role="dialog"] button:last-child').click()`)
     await waitForText(view, 'No credentials are bound.')
 
     await view.navigate(appDetailURL)

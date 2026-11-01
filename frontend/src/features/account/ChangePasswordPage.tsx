@@ -161,7 +161,11 @@ export function ChangePasswordPresentation({
         </header>
 
         {success ? (
-          <Alert className="flex gap-3 border-emerald-200 bg-emerald-50" aria-live="polite">
+          <Alert
+            variant="destructive"
+            className="flex gap-3 border-emerald-200 bg-emerald-50"
+            aria-live="polite"
+          >
             <IconCircleCheck
               className="mt-0.5 shrink-0 text-emerald-600"
               size={19}
@@ -182,7 +186,7 @@ export function ChangePasswordPresentation({
         ) : null}
 
         {error ? (
-          <Alert className="flex gap-3" aria-live="polite">
+          <Alert variant="destructive" className="flex gap-3" aria-live="polite">
             <IconAlertCircle
               className="mt-0.5 shrink-0 text-red-600"
               size={19}

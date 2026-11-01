@@ -147,7 +147,9 @@ export function AdminAuthorizationTupleCreatePage({
               value={resourceType}
               onChange={selectResourceType}
             />
-            {resourceType && relations?.length === 0 ? <Alert>{t.noDirectRelation}</Alert> : null}
+            {resourceType && relations?.length === 0 ? (
+              <Alert variant="destructive">{t.noDirectRelation}</Alert>
+            ) : null}
             <TextField
               id="tuple-resource-id"
               label={t.resourceId}

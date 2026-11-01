@@ -75,7 +75,7 @@ export function MfaEnrollmentPage({
           <p className="page-description">{t.description}</p>
         </header>
         {error ? (
-          <Alert className="flex gap-3" aria-live="polite">
+          <Alert variant="destructive" className="flex gap-3" aria-live="polite">
             <IconAlertCircle size={19} aria-hidden="true" />
             <p>{error}</p>
           </Alert>

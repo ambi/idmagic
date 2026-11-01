@@ -4,7 +4,7 @@ import { cn } from '../../lib/utils'
 type AlertVariant = 'destructive' | 'success'
 
 type AlertProps = HTMLAttributes<HTMLDivElement> & {
-  variant?: AlertVariant
+  variant: AlertVariant
 }
 
 const variantStyles: Record<AlertVariant, string> = {
@@ -12,7 +12,7 @@ const variantStyles: Record<AlertVariant, string> = {
   success: 'border-emerald-200 bg-emerald-50 text-emerald-900',
 }
 
-export function Alert({ className, variant = 'destructive', ...props }: AlertProps) {
+export function Alert({ className, variant, ...props }: AlertProps) {
   return (
     <div
       role={variant === 'destructive' ? 'alert' : 'status'}

@@ -88,7 +88,7 @@ export function AuditExportPanel({
           {t.exportHistory}
         </Button>
       </div>
-      {error ? <Alert>{error}</Alert> : null}
+      {error ? <Alert variant="destructive">{error}</Alert> : null}
       {opened ? (
         <div aria-live="polite" className="space-y-3">
           <p className="text-sm text-slate-600">{t.exportHint}</p>

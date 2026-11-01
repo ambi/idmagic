@@ -36,7 +36,9 @@ export function AdminProvisioningOverviewPage({
       </p>
       <Card className="overflow-hidden">
         {connections.length === 0 ? (
-          <Alert className="m-5">{t.overviewEmptyNotice}</Alert>
+          <Alert variant="destructive" className="m-5">
+            {t.overviewEmptyNotice}
+          </Alert>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

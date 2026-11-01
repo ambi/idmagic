@@ -45,13 +45,17 @@ export function ForgotPasswordPage({ csrfToken }: { csrfToken: string }) {
           <p className="page-description">{t.forgotDescription}</p>
         </header>
         {submitted ? (
-          <Alert className="flex gap-3 border-emerald-200 bg-emerald-50" aria-live="polite">
+          <Alert
+            variant="destructive"
+            className="flex gap-3 border-emerald-200 bg-emerald-50"
+            aria-live="polite"
+          >
             <IconCircleCheck className="mt-0.5 text-emerald-600" size={19} aria-hidden="true" />
             <p className="text-sm text-emerald-900">{t.resetSent}</p>
           </Alert>
         ) : null}
         {error ? (
-          <Alert className="flex gap-3" aria-live="polite">
+          <Alert variant="destructive" className="flex gap-3" aria-live="polite">
             <IconAlertCircle className="mt-0.5 text-red-600" size={19} aria-hidden="true" />
             <p className="text-sm text-red-800">{error}</p>
           </Alert>

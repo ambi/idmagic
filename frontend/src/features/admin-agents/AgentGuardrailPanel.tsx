@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { Toast } from '../../components/ui/toast'
 import { useDictionary } from '../../lib/i18n'
 import type {
   AgentGuardrailAction,
@@ -18,6 +19,7 @@ import type {
   AgentGuardrailPolicySet,
 } from '../../types'
 import { agentGuardrailDictionary } from './AgentGuardrailPanel.i18n'
+import { AgentActionConfirmation } from './AgentActionConfirmation'
 
 type FormState = {
   resources: string
@@ -147,10 +149,18 @@ function ActionSelect({
 // 専用である。読んだバージョンを保存の expected_version に渡し、同時の編集を上書きしない。
 export function AgentGuardrailPanel({
   agentID,
+  agentName,
   csrfToken,
+  cancelHref,
+  editHref,
+  onSaved,
 }: {
   agentID: string
+  agentName?: string
   csrfToken?: string
+  cancelHref?: string
+  editHref?: string
+  onSaved?: (result: 'saved' | 'removed') => void
 }) {
   const t = useDictionary(agentGuardrailDictionary)
   const [policies, setPolicies] = useState<AgentGuardrailPolicySet>()
@@ -158,6 +168,7 @@ export function AgentGuardrailPanel({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -185,7 +196,7 @@ export function AgentGuardrailPanel({
 
   const save = async (event: FormEvent) => {
     event.preventDefault()
-    if (!csrfToken) return
+    if (!csrfToken || busy || !policies) return
     setBusy(true)
     setError('')
     setNotice('')
@@ -197,7 +208,8 @@ export function AgentGuardrailPanel({
         policies?.agent?.version ?? '',
       )
       setPolicies({ ...policies, agent: saved })
-      setNotice(t.saved)
+      if (onSaved) onSaved('saved')
+      else setNotice(t.saved)
     } catch (cause) {
       setError(failure(cause))
     } finally {
@@ -206,7 +218,7 @@ export function AgentGuardrailPanel({
   }
 
   const remove = async () => {
-    if (!csrfToken) return
+    if (!csrfToken || busy || !policies) return
     setBusy(true)
     setError('')
     setNotice('')
@@ -214,6 +226,9 @@ export function AgentGuardrailPanel({
       await deleteAgentGuardrailPolicy(csrfToken, agentID)
       setPolicies({ ...policies, agent: undefined })
       setForm(toForm())
+      setConfirmRemove(false)
+      if (onSaved) onSaved('removed')
+      else setNotice(t.removed)
     } catch (cause) {
       setError(failure(cause))
     } finally {
@@ -239,95 +254,135 @@ export function AgentGuardrailPanel({
 
   return (
     <Card className="w-full max-w-2xl space-y-4 p-6">
-      <div>
-        <h2 className="text-base font-semibold">{t.title}</h2>
-        <p className="text-sm text-slate-600">{t.description}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold">{t.title}</h2>
+          <p className="text-sm text-slate-600">{t.description}</p>
+        </div>
+        {editHref ? (
+          <Button variant="outline" nativeButton={false} render={<a href={editHref} />}>
+            {t.edit}
+          </Button>
+        ) : null}
       </div>
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      {notice ? <Alert>{notice}</Alert> : null}
-      <section className="space-y-2">
-        <h3 className="text-sm font-medium">{t.tenantDefaultTitle}</h3>
-        {policies?.tenant_default ? (
-          <PolicySummary policy={policies.tenant_default} />
-        ) : (
-          <p className="text-sm text-slate-600">{t.tenantDefaultNone}</p>
-        )}
-      </section>
-      {!csrfToken ? (
-        policies?.agent ? (
-          <PolicySummary policy={policies.agent} />
-        ) : (
-          <p className="text-sm text-slate-600">{t.agentNone}</p>
-        )
+      <Toast message={notice} onDismiss={() => setNotice('')} />
+      {!policies ? (
+        <p className="text-sm text-slate-500">{error ? '' : t.loading}</p>
       ) : (
-        <form className="space-y-4" onSubmit={save}>
-          <div className="space-y-1">
-            <Label htmlFor="guardrail-resources">{t.resourcesLabel}</Label>
-            <textarea
-              id="guardrail-resources"
-              className="w-full rounded border border-slate-300 p-2 text-sm"
-              value={form.resources}
-              onChange={(event) => set('resources', event.target.value)}
-            />
-            <ActionSelect
-              id="guardrail-resources-action"
-              value={form.resourcesAction}
-              onChange={(v) => set('resourcesAction', v)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="guardrail-detail-types">{t.detailTypesLabel}</Label>
-            <textarea
-              id="guardrail-detail-types"
-              className="w-full rounded border border-slate-300 p-2 text-sm"
-              value={form.detailTypes}
-              onChange={(event) => set('detailTypes', event.target.value)}
-            />
-            <ActionSelect
-              id="guardrail-detail-types-action"
-              value={form.detailTypesAction}
-              onChange={(v) => set('detailTypesAction', v)}
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {text('maxIssuances', t.maxIssuancesLabel)}
-            {text('windowSeconds', t.windowSecondsLabel)}
-          </div>
-          <ActionSelect
-            id="guardrail-rate-action"
-            value={form.rateAction}
-            onChange={(v) => set('rateAction', v)}
-          />
-          {text('expiresAt', t.expiresAtLabel)}
-          <ActionSelect
-            id="guardrail-expires-action"
-            value={form.expiresAction}
-            onChange={(v) => set('expiresAction', v)}
-          />
-          <div className="grid gap-3 sm:grid-cols-2">
-            {text('ttl', t.ttlLabel)}
-            {text('depth', t.depthLabel)}
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.requireApproval}
-              onChange={(event) => set('requireApproval', event.target.checked)}
-            />
-            {t.requireApprovalLabel}
-          </label>
-          <div className="flex justify-end gap-2">
-            {policies?.agent ? (
-              <Button type="button" variant="outline" disabled={busy} onClick={remove}>
-                {t.remove}
-              </Button>
-            ) : null}
-            <Button type="submit" disabled={busy}>
-              {t.save}
-            </Button>
-          </div>
-        </form>
+        <>
+          <section className="space-y-2">
+            <h3 className="text-sm font-medium">{t.tenantDefaultTitle}</h3>
+            {policies?.tenant_default ? (
+              <PolicySummary policy={policies.tenant_default} />
+            ) : (
+              <p className="text-sm text-slate-600">{t.tenantDefaultNone}</p>
+            )}
+          </section>
+          {!csrfToken ? (
+            policies?.agent ? (
+              <PolicySummary policy={policies.agent} />
+            ) : (
+              <p className="text-sm text-slate-600">{t.agentNone}</p>
+            )
+          ) : (
+            <form onSubmit={save}>
+              <fieldset disabled={busy} className="space-y-4">
+                <div className="space-y-1">
+                  <Label htmlFor="guardrail-resources">{t.resourcesLabel}</Label>
+                  <textarea
+                    id="guardrail-resources"
+                    className="w-full rounded border border-slate-300 p-2 text-sm"
+                    value={form.resources}
+                    onChange={(event) => set('resources', event.target.value)}
+                  />
+                  <ActionSelect
+                    id="guardrail-resources-action"
+                    value={form.resourcesAction}
+                    onChange={(v) => set('resourcesAction', v)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="guardrail-detail-types">{t.detailTypesLabel}</Label>
+                  <textarea
+                    id="guardrail-detail-types"
+                    className="w-full rounded border border-slate-300 p-2 text-sm"
+                    value={form.detailTypes}
+                    onChange={(event) => set('detailTypes', event.target.value)}
+                  />
+                  <ActionSelect
+                    id="guardrail-detail-types-action"
+                    value={form.detailTypesAction}
+                    onChange={(v) => set('detailTypesAction', v)}
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {text('maxIssuances', t.maxIssuancesLabel)}
+                  {text('windowSeconds', t.windowSecondsLabel)}
+                </div>
+                <ActionSelect
+                  id="guardrail-rate-action"
+                  value={form.rateAction}
+                  onChange={(v) => set('rateAction', v)}
+                />
+                {text('expiresAt', t.expiresAtLabel)}
+                <ActionSelect
+                  id="guardrail-expires-action"
+                  value={form.expiresAction}
+                  onChange={(v) => set('expiresAction', v)}
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {text('ttl', t.ttlLabel)}
+                  {text('depth', t.depthLabel)}
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.requireApproval}
+                    onChange={(event) => set('requireApproval', event.target.checked)}
+                  />
+                  {t.requireApprovalLabel}
+                </label>
+                <div className="flex justify-end gap-2">
+                  {cancelHref ? (
+                    <Button
+                      variant="outline"
+                      disabled={busy}
+                      nativeButton={false}
+                      render={<a href={cancelHref} />}
+                    >
+                      {t.cancel}
+                    </Button>
+                  ) : null}
+                  {policies?.agent ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={busy}
+                      onClick={() => setConfirmRemove(true)}
+                    >
+                      {t.remove}
+                    </Button>
+                  ) : null}
+                  <Button type="submit" disabled={busy}>
+                    {t.save}
+                  </Button>
+                </div>
+              </fieldset>
+            </form>
+          )}
+        </>
       )}
+      {confirmRemove ? (
+        <AgentActionConfirmation
+          title={t.remove}
+          description={`${agentName ?? agentID}: ${t.confirmRemove}`}
+          busy={busy}
+          error={error}
+          onConfirm={() => void remove()}
+          onCancel={() => setConfirmRemove(false)}
+        />
+      ) : null}
     </Card>
   )
 }

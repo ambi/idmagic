@@ -751,7 +751,7 @@ export function RecoveryCodesPanel({
     <>
       {generatedCodes ? (
         <div className="flex flex-col gap-3 border-t border-slate-100 pt-4">
-          <Alert>{t.codesWarning}</Alert>
+          <Alert variant="destructive">{t.codesWarning}</Alert>
           <ul className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-3 font-mono text-sm text-slate-800">
             {generatedCodes.map((code) => (
               <li key={code} className="tracking-wider">

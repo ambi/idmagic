@@ -361,12 +361,12 @@ export function AdminEntraFederationAddPage({
               </div>
             ))}
             {result.known_limitations.map((limitation) => (
-              <Alert key={limitation.code}>{t.hybridJoinNotProvidedNotice}</Alert>
+              <Alert variant="destructive" key={limitation.code}>
+                {t.hybridJoinNotProvidedNotice}
+              </Alert>
             ))}
             {result.unfederated_source_users ? (
-              <Alert>
-                {`${t.unfederatedSourceUsersNotice.replace('{count}', result.unfederated_source_users.user_count.toLocaleString(locale))} ${t.sourceAnchorSampleUsers.replace('{users}', result.unfederated_source_users.sample_usernames.join(', '))}`}
-              </Alert>
+              <Alert variant="destructive">{`${t.unfederatedSourceUsersNotice.replace('{count}', result.unfederated_source_users.user_count.toLocaleString(locale))} ${t.sourceAnchorSampleUsers.replace('{users}', result.unfederated_source_users.sample_usernames.join(', '))}`}</Alert>
             ) : null}
             <div>
               <Button

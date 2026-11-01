@@ -46,13 +46,17 @@ export function ResetPasswordPage({ csrfToken, token }: { csrfToken: string; tok
           <p className="page-description">{t.resetDescription}</p>
         </header>
         {success ? (
-          <Alert className="flex gap-3 border-emerald-200 bg-emerald-50" aria-live="polite">
+          <Alert
+            variant="destructive"
+            className="flex gap-3 border-emerald-200 bg-emerald-50"
+            aria-live="polite"
+          >
             <IconCircleCheck className="mt-0.5 text-emerald-600" size={19} aria-hidden="true" />
             <p className="text-sm text-emerald-900">{t.passwordUpdated}</p>
           </Alert>
         ) : null}
         {error ? (
-          <Alert className="flex gap-3" aria-live="polite">
+          <Alert variant="destructive" className="flex gap-3" aria-live="polite">
             <IconAlertCircle className="mt-0.5 text-red-600" size={19} aria-hidden="true" />
             <p className="text-sm text-red-800">{error}</p>
           </Alert>

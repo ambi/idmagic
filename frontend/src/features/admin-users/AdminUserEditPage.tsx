@@ -196,7 +196,7 @@ export function AdminUserEditPage({
         </Button>
       }
     >
-      {error && <Alert>{error}</Alert>}
+      {error && <Alert variant="destructive">{error}</Alert>}
       <Toast message={notice} onDismiss={() => setNotice('')} />
       <Card className="w-full max-w-6xl overflow-hidden">
         <div className="border-b border-slate-200 px-6 py-5">
@@ -241,7 +241,7 @@ export function AdminUserEditPage({
               <div className="grid gap-6 p-6 xl:grid-cols-3">
                 <div className="flex flex-col gap-6 xl:col-span-2">
                   {user.scim_source && (
-                    <Alert>
+                    <Alert variant="destructive">
                       <div className="flex gap-3">
                         <IconAlertTriangle className="mt-0.5 shrink-0 text-blue-700" size={19} />
                         <div>

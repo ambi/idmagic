@@ -217,7 +217,7 @@ export function AdminUsersPage({
           <Metric label={t.totalUsers} value={displayTotalUsers} icon={IconUsers} tone="blue" />
         </section>
 
-        {error && <Alert>{error}</Alert>}
+        {error && <Alert variant="destructive">{error}</Alert>}
         <Toast message={notice} onDismiss={() => setNotice('')} />
 
         <Card className="overflow-hidden shadow-[0_1px_2px_rgb(15_23_42/4%)]">

@@ -290,7 +290,7 @@ export function AdminUserDetailPage({
           </div>
         }
       >
-        {error && <Alert>{error}</Alert>}
+        {error && <Alert variant="destructive">{error}</Alert>}
         <Toast message={notice} onDismiss={() => setNotice('')} />
 
         <div className="flex items-center gap-3">

@@ -43,6 +43,15 @@ export const adminAgentsDictionary = defineDictionary(
     agentDeleteFailedError: 'エージェントを削除できませんでした。',
     backToAgentList: 'エージェント一覧',
     edit: '編集',
+    editBasicInfo: '基本情報を編集',
+    manageCredentials: '資格情報を管理',
+    credentialsImmediate: '追加と解除は、それぞれの操作で即時に反映されます。',
+    credentialsReloadFailed:
+      '操作は完了しましたが、資格情報の一覧を再取得できませんでした。画面を再読み込みして確認してください。',
+    credentialBound: '資格情報を追加しました。',
+    credentialUnbound: '資格情報を解除しました。',
+    confirmUnbind:
+      'クライアント {client} とこのエージェントの束縛を解除します。発行済みトークンは無効になります。同じクライアントを追加し直すことはできます。',
     agentActionsAriaLabel: 'エージェント操作',
     disable: '無効化',
     enable: '有効化',
@@ -121,6 +130,15 @@ export const adminAgentsDictionary = defineDictionary(
     agentDeleteFailedError: 'Could not delete the agent.',
     backToAgentList: 'Agent list',
     edit: 'Edit',
+    editBasicInfo: 'Edit basic information',
+    manageCredentials: 'Manage credentials',
+    credentialsImmediate: 'Each addition and removal takes effect immediately.',
+    credentialsReloadFailed:
+      'The operation completed, but the credential list could not be refreshed. Reload the page to check the current credentials.',
+    credentialBound: 'The credential has been added.',
+    credentialUnbound: 'The credential has been removed.',
+    confirmUnbind:
+      'Unbind client {client} from this agent? Issued tokens will become invalid. You can bind the same client again.',
     agentActionsAriaLabel: 'Agent actions',
     disable: 'Disable',
     enable: 'Enable',

@@ -148,7 +148,7 @@ export function AdminSettingsPage({
       description={t.pageDescription}
     >
       {isSystemAdminOnDefault ? (
-        <Alert>
+        <Alert variant="destructive">
           <p className="text-sm text-slate-700">
             {t.crossTenantNoticePrefix}
             <a href="/system/tenants" className="ml-1 font-medium text-blue-700 hover:underline">

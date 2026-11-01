@@ -10,7 +10,7 @@ import type { AdminAgent } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { kindLabel, StatusBadge } from './AdminAgentsShared'
 
-// 資格情報のバインド/解除は編集画面 (AdminAgentEditPage) に一本化されており、
+// 資格情報のバインドと解除は専用の管理画面に置き、
 // この一覧右ペイン/詳細画面カードは読み取り専用 (policy #1, wi-314 T012)。
 // confirmDelete 等のローカル state を選択エージェント切り替え時にリセットするため、
 // 呼び出し側は `key={agent?.id}` を指定して選択が変わるたびに再マウントさせること。
@@ -171,6 +171,17 @@ export function AgentDetailCard({
       </dl>
 
       <section className="border-t border-slate-100 p-5">
+        <div className="mb-4 flex justify-end">
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={
+              <a href={tenantURL(`/admin/agents/${encodeURIComponent(agent.id)}/credentials`)} />
+            }
+          >
+            {t.manageCredentials}
+          </Button>
+        </div>
         <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
           {t.credentialsHeading.replace('{count}', String(agent.client_ids.length))}
         </h3>
