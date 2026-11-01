@@ -1,6 +1,6 @@
 ---
 status: pending
-authors: [codex]
+authors: [tn]
 risk: medium
 reversibility: reversible
 created_at: 2026-11-01
