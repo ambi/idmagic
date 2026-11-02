@@ -119,9 +119,7 @@ func RunWorker() error {
 
 	// Users と Groups の両方を解決できる供給元を渡す。User だけを渡すと、Group の
 	// プロビジョニングタスクは「対象が無い」として何も送らずに成功で終わる (wi-441 が直した形)。
-	handlers.Register(provisioning.KindProvisioningTask, deps.Provisioning.TaskHandler(deps.IdManagement.UserRepo, deps.IdManagement.GroupRepo, provisioning.NewTargetClient, deps.NewEmitFunc(logger), deps.Notification.Notifier))
-	go provisioningDispatchLoop(ctx, deps, logger)
-	go provisioningReconcileLoop(ctx, deps, logger, worker.ProvisioningReconcileInterval)
+	startProvisioningWorker(ctx, deps, logger, handlers, provisioning.NewTargetClient, worker.ProvisioningReconcileInterval)
 	go ephemeralSweepLoop(ctx, deps, worker.EphemeralSweepInterval)
 	go sharedSignalsDeliveryLoop(ctx, deps, worker.SharedSignalsDeliveryInterval)
 
@@ -304,6 +302,14 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies,
 		case <-ticker.C:
 		}
 	}
+}
+
+// テストでは下流への通信だけを差し替え、本番と同じ登録・起動処理を通す。
+func startProvisioningWorker(ctx context.Context, deps *bootstrap.Dependencies, logger logging.Logger, handlers ports.HandlerRegistrar, newClient provisioning.TargetClientFactory, reconcileInterval time.Duration) {
+	emit := deps.NewEmitFunc(logger) //nolint:contextcheck // 監査の記録は要求と独立した期限を使う。
+	handlers.Register(provisioning.KindProvisioningTask, deps.Provisioning.TaskHandler(deps.IdManagement.UserRepo, deps.IdManagement.GroupRepo, newClient, emit, deps.Notification.Notifier))
+	go provisioningDispatchLoop(ctx, deps, logger)
+	go provisioningReconcileLoop(ctx, deps, logger, reconcileInterval)
 }
 
 // provisioningReconcileLimit は 1 回のインクリメンタル同期で 1 接続に作るプロビジョニングタスクの上限である。

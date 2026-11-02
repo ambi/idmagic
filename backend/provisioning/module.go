@@ -35,6 +35,9 @@ func NewTargetClient(conn *domain.ProvisioningConnection, secret string) (ports.
 	return provisioningscim.NewClient(conn.BaseURL, conn.Credential, secret)
 }
 
+// TargetClientFactory は、worker の通信先をテストで差し替えるために使う。
+type TargetClientFactory = func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error)
+
 // Module holds the Provisioning module's persistence dependencies.
 type Module struct {
 	ConnectionRepo ports.ProvisioningConnectionRepository
@@ -126,12 +129,12 @@ func (m Module) JobHandlerDeps(
 
 // Register registers the Application-detail "provisioning" subroute and the
 // tenant-wide aggregate view (docs/modules/provisioning/ §設定の置き場所).
-func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator, assignmentRepo appports.AssignmentRepository, userRepo userports.UserRepository, groupRepo groupports.GroupRepository) {
+func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator, assignmentRepo appports.AssignmentRepository, userRepo userports.UserRepository, groupRepo groupports.GroupRepository, newClient TargetClientFactory) {
 	provisioninghttp.RegisterRoutes(g, provisioninghttp.Deps{
 		Deps: deps, Authenticator: authenticator,
 		ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo,
 		AssignmentRepo: assignmentRepo, UserRepo: userRepo, GroupRepo: groupRepo,
-		NewTargetClient: NewTargetClient,
+		NewTargetClient: newClient,
 	})
 }
 

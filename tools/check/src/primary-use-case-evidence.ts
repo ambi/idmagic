@@ -1,8 +1,12 @@
+import { specCitingTests } from '../../spec-review-candidates/src/candidates.ts'
+
 export type PrimaryUseCaseEnvironment = {
   /** リポジトリ相対パスの本文。存在しない場合は undefined。 */
   read: (path: string) => string | undefined
   /** 標準の verify または CI から到達する mise タスク。 */
   requiredTasks: ReadonlySet<string>
+  /** 現在の入力で、この規範を引用するテストが成功したか。完了時だけ照合する。 */
+  executed?: (path: string, name: string, requirement: string) => boolean
 }
 
 type RecordValue = Record<string, unknown>
@@ -72,6 +76,16 @@ function verifyTestReference(
   if (!source.includes(requirement)) {
     findings.push(`primary_use_cases ${useCaseId} requirement ${requirement} not found in ${path}`)
   }
+  if (path.endsWith('_test.go') && name && !specCitingTests(source, [requirement]).includes(name)) {
+    findings.push(
+      `primary_use_cases ${useCaseId} ${role} test ${name} does not cite ${requirement} in ${path}`,
+    )
+  }
+  if (path.endsWith('_test.go') && name && !environment.executed?.(path, name, requirement)) {
+    findings.push(
+      `primary_use_cases ${useCaseId} ${role} test has no current passed execution: ${path} ${name}`,
+    )
+  }
   return findings
 }
 
@@ -114,6 +128,11 @@ export function verifyPrimaryUseCaseEvidence(
       findings.push(
         `primary_use_cases ${id} requirement is not declared in affected_spec: ${requirement}`,
       )
+    }
+    const setup = object(plan.setup)
+    for (const field of ['state', 'entry_points', 'fixtures']) {
+      if (!text(setup?.[field])?.trim())
+        findings.push(`primary_use_cases ${id} setup requires ${field}`)
     }
     if (plan.boundary === 'e2e' && !text(plan.reason)?.trim())
       findings.push(`primary_use_cases ${id} E2E requires a narrower-boundary reason`)

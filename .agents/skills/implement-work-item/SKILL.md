@@ -68,7 +68,7 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 ## 4. 着手の記録
 
 [証拠の要件](../../../docs/development/specification-first-workflow.md#証拠の要件)から、行う証拠の手順を選ぶ。
-主要ユースケースを要求する作業では、[テスト方針](../../../docs/development/testing.md#主要ユースケース)から観測結果、`fault_model`、最小の境界を選び、[記入形式](../../../docs/formats/work-item-format.md#主要ユースケースの証拠)に従って `primary_use_cases` に書く。
+主要ユースケースを要求する作業では、[テスト方針](../../../docs/development/testing.md#主要ユースケース)から準備方法、観測結果、`fault_model`、最小の境界を選び、[記入形式](../../../docs/formats/work-item-format.md#主要ユースケースの証拠)に従って `primary_use_cases` に書く。
 機能の成熟度を上げる作業では、[成熟度の昇格](../../../docs/formats/work-item-format.md#成熟度の昇格)も記入する。
 `status: in_progress` にして `mise run check-work-items` を通す。
 中核ロジックは型と操作のシグネチャ、境界変更は候補の比較を、コードの前に設計へ記す。
@@ -88,6 +88,7 @@ frontmatter を変える前に、項目、直接の規範と標準の宣言、�
 既存の `TestCharacterize*` の失敗は期待値を書き換えて通さず、変更を戻すか、利用者に分類を確認する。
 
 [検証の進め方](../../../docs/development/specification-first-workflow.md#検証の進め方)に従い、選んだ最小の検査で一つの振る舞いを RED、GREEN にし、GREEN を保ってリファクタリングする。
+主要ユースケースでは、計画した準備方法とテストが一致することも確かめる。
 必要な範囲で Domain、Use Cases、Adapters、Infrastructure、UI へ進み、各層の局所検査をその場で実行する。
 選んだ recipe はタスクに記し、同じ選択を繰り返さない。
 タスクには、実際の失敗、テスト名、規範 ID、該当しない境界の理由と代替検査を残す。

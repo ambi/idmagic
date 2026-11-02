@@ -8,12 +8,13 @@ const requirement = 'REQ-DEMO-001'
 const unitPath = 'backend/demo/usecases/demo_test.go'
 const e2ePath = 'backend/demo/e2e_test.go'
 const files: Record<string, string> = {
-  [unitPath]: `func TestDemoRule_REQ_DEMO_001(t *testing.T) { /* ${requirement} */ }`,
-  [e2ePath]: `func TestE2E_Demo_REQ_DEMO_001(t *testing.T) { /* ${requirement} */ }`,
+  [unitPath]: `//spec:covers ${requirement}: 保存した結果を読み戻す。\nfunc TestDemoRule_REQ_DEMO_001(t *testing.T) {}`,
+  [e2ePath]: `//spec:covers ${requirement}: 正式な入口から結果を読み戻す。\nfunc TestE2E_Demo_REQ_DEMO_001(t *testing.T) {}`,
 }
 const environment: PrimaryUseCaseEnvironment = {
   read: (path) => files[path],
   requiredTasks: new Set(['test-go-race']),
+  executed: () => true,
 }
 
 const plan = {
@@ -23,6 +24,11 @@ const plan = {
   boundary: 'acceptance',
   test: { path: unitPath, name: 'TestDemoRule_REQ_DEMO_001', task: 'test-go-race' },
   fault_model: '保存を行わない。',
+  setup: {
+    state: '保存対象がある。',
+    entry_points: '公開された保存操作を使う。',
+    fixtures: '外部の保存先はメモリの実装に置き換える。',
+  },
 }
 
 const applicable = {
@@ -32,7 +38,7 @@ const applicable = {
 }
 
 describe('verifyPrimaryUseCaseEvidence', () => {
-  it('最小境界を一つ選んだ計画を受理し、完了時は計画したテストの実在だけを確かめる', () => {
+  it('準備方法を記した計画を受理し、完了時にテストの参照と実行を確認する', () => {
     const record = { ...applicable, primary_use_cases: [plan] }
     expect(verifyPrimaryUseCaseEvidence(record, environment)).toEqual([])
     const completed = { ...record, status: 'completed' }
@@ -177,5 +183,34 @@ describe('verifyPrimaryUseCaseEvidence', () => {
         'primary_use_cases is required for feature, bugfix, and standards work',
       ])
     }
+  })
+
+  it('コメント内のテスト名や別のテストの規範引用を、選んだ Go テストの証拠に数えない', () => {
+    const selected = 'TestSelected'
+    const source = `// ${selected}\n//spec:covers ${requirement}: 別の処理を検査する。\nfunc TestOther(t *testing.T) {}\nfunc ${selected}(t *testing.T) {}`
+    const findings = verifyPrimaryUseCaseEvidence(
+      {
+        ...applicable,
+        status: 'completed',
+        primary_use_cases: [{ ...plan, test: { ...plan.test, name: selected } }],
+      },
+      { ...environment, read: () => source },
+    )
+    expect(findings).toContain(
+      `primary_use_cases demo-success acceptance test ${selected} does not cite ${requirement} in ${unitPath}`,
+    )
+  })
+
+  it('準備の不足と、完了時の未実行を成功にしない', () => {
+    const record = { ...applicable, primary_use_cases: [{ ...plan, setup: undefined }] }
+    expect(verifyPrimaryUseCaseEvidence(record, environment)).toHaveLength(3)
+    expect(
+      verifyPrimaryUseCaseEvidence(
+        { ...applicable, status: 'completed', primary_use_cases: [plan] },
+        { ...environment, executed: () => false },
+      ),
+    ).toContain(
+      `primary_use_cases demo-success acceptance test has no current passed execution: ${unitPath} ${plan.test.name}`,
+    )
   })
 })

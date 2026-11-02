@@ -72,7 +72,7 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 | [IdGovernance](identity-governance/README.md) | `internal` | — | `backend/idgovernance` | LifecycleWorkflow のポリシーとオーケストレーション |
 | [Sourcing](sourcing/README.md) | `internal` | `backend/sourcing/scim/ports`, `backend/sourcing/directory/ports` | `backend/sourcing` | 上流の権威からの内向きアイデンティティ取り込み |
 | [DirectoryConnector](directory-connector/README.md) | `internal` | なし | `backend/directoryconnector` | 利用者の閉域で AD と OpenLDAP を読み、Connector API へ差分を送る別配布の実行単位 |
-| [Provisioning](provisioning/README.md) | `internal` | なし | `backend/provisioning` | IdMagic を正とする外向き SCIM プロビジョニング |
+| [Provisioning](provisioning/README.md) | `internal` | `backend/provisioning/testing_scim` | `backend/provisioning` | IdMagic を正とする外向き SCIM プロビジョニング。`testing_scim` はテスト用の下流 HTTP クライアントの組み立て専用 |
 | [WorkloadIdentity](workloadidentity/README.md) | `internal` | `backend/workloadidentity/domain` | `backend/workloadidentity` | 外部アテステーションと Agent の対応付け |
 
 ### 認証と認可

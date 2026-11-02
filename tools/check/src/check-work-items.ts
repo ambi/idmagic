@@ -10,6 +10,7 @@ import {
 import { validateMarkdownRecord } from './work-item-markdown.ts'
 import type { PrimaryUseCaseEnvironment } from './primary-use-case-evidence.ts'
 import { verifyPrimaryUseCaseEvidence } from './primary-use-case-evidence.ts'
+import { primaryUseCaseExecution } from './primary-use-case-execution.ts'
 import { defaultBaseRevision, type CheckOutcome } from './runner.ts'
 import { checkSpecImpact } from './check-spec-impact.ts'
 import {
@@ -164,6 +165,7 @@ export async function verifyCompletion(
     ...verifyPrimaryUseCaseEvidence(result.data, {
       read: repository.read,
       requiredTasks: await requiredVerificationTasks(snapshot),
+      executed: await primaryUseCaseExecution(snapshot),
     }),
     ...verifyMaturityPromotions(
       result.data,

@@ -295,6 +295,16 @@
           "type": "string",
           "minLength": 1
         },
+        "setup": {
+          "type": "object",
+          "required": ["state", "entry_points", "fixtures"],
+          "additionalProperties": false,
+          "properties": {
+            "state": { "type": "string", "minLength": 1 },
+            "entry_points": { "type": "string", "minLength": 1 },
+            "fixtures": { "type": "string", "minLength": 1 }
+          }
+        },
         "reason": {
           "type": "string",
           "minLength": 1

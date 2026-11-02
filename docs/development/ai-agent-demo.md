@@ -406,10 +406,16 @@ unfunction admin_json b64url client_assertion agent_post issue_agent_token intro
 実際の MCP ツールへの転送と業務作用の抑止は、既存の HTTP 統合テストでも確認できる。
 テストはデモ画面とは別の隔離された環境を使う。
 
+次の登録テストは、手順 2 と同じ CIBA のグラントを管理 API に指定し、Agent の利用や承認後の発行まで確認する。
+初期管理者などは fixture を使うため、シェルや画面を含むデモ全体の検証ではない。
+
 ```zsh
+mise run test-go-one -- ./backend/shared/http/server_http 'TestRegisteredAutonomousAgentUsesResourceAuthorization|TestRegisteredSupervisedAgentRequiresApproval'
 mise run test-go-one -- ./backend/shared/http/server_http TestMcpGatewayRunsOnlyPermittedToolCalls
 mise run test-go-one -- ./backend/shared/http/server_http TestExternalPEPStopsBusinessEffectAfterAgentKill
 ```
+
+`mise run report-verification -- .verification/test-go-one.json` で、最後に実行したテストの結果を表示できる。
 
 手元の MCP サーバーへつなぐ場合のゲートウェイ設定は、[MCP Gateway の実行環境](../modules/mcp-gateway/features/runtime.md)と[Envoy の構成例](../../examples/envoy-mcp-gateway/README.md)を参照する。
 利用者の代理で動く委譲は、[トークン交換](../modules/oauth2/features/token.md)で主体と行為者の扱いを確認してから試す。

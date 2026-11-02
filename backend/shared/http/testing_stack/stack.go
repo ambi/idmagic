@@ -293,6 +293,7 @@ func WithAuthorizationCodeFlow() Option {
 		}
 		b.stack.Codes = oauth2.NewMemoryModule().CodeStore
 		authn := authentication.NewMemoryModule(b.stack.Users)
+		b.deps.Authentication.PasswordHistoryRepo = authn.PasswordHistoryRepo
 		b.stack.SessionStore = authn.SessionStore
 		b.stack.Sessions = authn.NewSessionManager()
 		b.deps.OAuth2.RequestStore = oauth2.NewMemoryModule().RequestStore
@@ -696,6 +697,27 @@ func New(t *testing.T, options ...Option) *Stack {
 	}
 	for _, option := range options {
 		option(b)
+	}
+	if b.deps.Sourcing.ScimRepo != nil {
+		// 本番の sourcingModule と同じく、オプションがそろった後に所有者の操作と失効を接続する。
+		lifecycle := idmanagement.LifecycleDeps{
+			AttrSchemaRepo: b.deps.IdManagement.AttrSchemaRepo, QuotaRepo: b.deps.Tenancy.QuotaRepo,
+			ConsentRepo: b.deps.OAuth2.ConsentRepo, RefreshStore: b.deps.OAuth2.RefreshStore,
+			DeviceCodeStore: b.deps.OAuth2.DeviceCodeStore, ApprovalRequestStore: b.deps.OAuth2.ApprovalRequestStore,
+			UserCredentials: b.deps.Authentication.UserCredentials(), TrustedDevices: b.deps.Authentication.UserDeviceRevoker(),
+			ValidateInitialPassword: authentication.ValidateInitialPassword,
+			PasswordHasher:          b.deps.PasswordHasher, PasswordHistoryRepo: b.deps.Authentication.PasswordHistoryRepo,
+		}
+		if b.stack.Sessions != nil {
+			lifecycle.SessionStore = b.stack.Sessions.Store
+		}
+		reactor := b.deps.SharedSignals.AgentRevocationReactor(b.deps.IdManagement.AgentRepo, b.deps.SigningKeys.KeyStore, Issuer, b.deps.Emit)
+		b.deps.Sourcing.UserLifecycle = b.deps.IdManagement.UserLifecycleCommands(lifecycle, func(event spec.DomainEvent) error {
+			b.deps.Emit(event)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			return reactor.React(ctx, event)
+		}, "scim")
 	}
 	httpadapter.Register(stack.Echo, b.deps)
 	return stack

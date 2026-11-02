@@ -25,6 +25,8 @@ IdManagement の User と Group、Application の割り当てを読み、下流�
 | タスクの実行 | `provisioning_task` の Job | `worker` の `default` のレーン | [プロビジョニングタスクの実行](features/task.md) |
 | 管理 API | 解決済みのテナントの管理 API への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [接続の管理](features/connection.md) |
 
+`testing_scim` はテスト用の HTTP クライアントを使い、SCIM の変換と送信をローカルで検証するための補助である。
+
 ## 設計の要点
 
 | 方針 | 理由 |

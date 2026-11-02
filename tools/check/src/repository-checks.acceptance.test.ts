@@ -2,7 +2,8 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterAll, describe, expect, it } from 'bun:test'
-import { TOOLS_DIR } from '../../workspace/src/workspace.ts'
+import { TOOLS_DIR, createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
+import { verificationInput } from '../../verification/src/input.ts'
 
 const cleanup: string[] = []
 afterAll(async () => {
@@ -489,7 +490,7 @@ The feature could remain disconnected.
     )
     await writeFile(
       join(root, 'backend', 'demo', 'rule_test.go'),
-      'func TestDemoRule_REQ_DEMO_001(t *testing.T) { /* REQ-DEMO-001 */ }\n',
+      '//spec:covers REQ-DEMO-001: 保存後の結果を確認する。\nfunc TestDemoRule_REQ_DEMO_001(t *testing.T) {}\n',
     )
     const workItem = (task: string): string => `---
 status: in_progress
@@ -507,6 +508,7 @@ primary_use_cases:
     boundary: acceptance
     test: { path: backend/demo/rule_test.go, name: TestDemoRule_REQ_DEMO_001, task: ${task} }
     fault_model: The use case skips the effect.
+    setup: { state: 保存する値がある。, entry_points: 公開の保存操作。, fixtures: 保存先はメモリ。 }
 ---
 
 # Feature with primary evidence
@@ -542,6 +544,33 @@ The demo route now produces its final effect.
     expect(unreachable.output).toContain('task is not required by verify or CI: test-go')
 
     await writeFile(path, workItem('test-go-race'))
+    const unexecuted = await completeWorkItem(root, 'wi-445')
+    expect(unexecuted.code).not.toBe(0)
+    expect(unexecuted.output).toContain('has no current passed execution')
+    await writeFile(join(root, '.gitignore'), '.verification/\n')
+    await mkdir(join(root, '.verification'))
+    const input = await verificationInput(createWorkspaceSnapshot(root))
+    await writeFile(
+      join(root, '.verification', 'test-go.json'),
+      JSON.stringify({
+        input: { ...input, fingerprint: 'stale' },
+        failures: [],
+        tests: [{ package: 'demo', name: 'TestDemoRule_REQ_DEMO_001', state: 'passed' }],
+        references: [
+          {
+            package: 'demo',
+            path: 'backend/demo/rule_test.go',
+            name: 'TestDemoRule_REQ_DEMO_001',
+            normativeIds: ['REQ-DEMO-001'],
+            state: 'passed',
+          },
+        ],
+      }),
+    )
+    expect((await completeWorkItem(root, 'wi-445')).code).not.toBe(0)
+    const reportPath = join(root, '.verification', 'test-go.json')
+    const report = await Bun.file(reportPath).json()
+    await writeFile(reportPath, JSON.stringify({ ...report, input }))
     expect((await completeWorkItem(root, 'wi-445')).code).toBe(0)
     expect((await checkWorkItems(root)).code).toBe(0)
   })

@@ -108,22 +108,23 @@ type Deps struct {
 	SigningKeys       signingkeys.Module
 	DataKeys          datakeys.Module
 	// Deprecated: tests may still provide the legacy direct field.
-	KeyStore         signingports.KeyStore
-	Audit            audit.Module
-	JWKResolver      *tokens_jose.JWKResolver
-	WsFederation     wsfederation.Module
-	Saml             saml.Module
-	Sourcing         sourcing.Module
-	FederationSigner samltoken.SignerProvider
-	Application      application.Module
-	SignInPolicy     signinpolicy.Module
-	ApiTokens        apitoken.Module
-	Jobs             jobs.Module
-	Provisioning     provisioning.Module
-	TokenVault       tokenvault.Module
-	WorkloadIdentity workloadidentity.Module
-	SharedSignals    sharedsignals.Module
-	AccessControl    accesscontrol.Module
+	KeyStore                        signingports.KeyStore
+	Audit                           audit.Module
+	JWKResolver                     *tokens_jose.JWKResolver
+	WsFederation                    wsfederation.Module
+	Saml                            saml.Module
+	Sourcing                        sourcing.Module
+	FederationSigner                samltoken.SignerProvider
+	Application                     application.Module
+	SignInPolicy                    signinpolicy.Module
+	ApiTokens                       apitoken.Module
+	Jobs                            jobs.Module
+	Provisioning                    provisioning.Module
+	ProvisioningTargetClientFactory provisioning.TargetClientFactory
+	TokenVault                      tokenvault.Module
+	WorkloadIdentity                workloadidentity.Module
+	SharedSignals                   sharedsignals.Module
+	AccessControl                   accesscontrol.Module
 
 	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
 }
@@ -144,6 +145,9 @@ func Register(e *echo.Echo, d Deps) {
 	d.Authentication = mergeLegacyAuthenticationDeps(d.Authentication, d)
 	d.IdManagement = mergeLegacyIdManagementDeps(d.IdManagement, d)
 	d.Notification = mergeLegacyNotificationDeps(d.Notification, d)
+	if d.ProvisioningTargetClientFactory == nil {
+		d.ProvisioningTargetClientFactory = provisioning.NewTargetClient
+	}
 	// テナントの正規ロケーションは 2 形あり、どちらか一方だけが有効になる。
 	// subdomain style は origin 直下の bare path、path style は /realms/{realm} 配下。
 	// 到達経路と endpoint_style の一致は resolver 側で確かめる。
@@ -547,7 +551,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	d.Sourcing.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService,
 		d.OAuth2.ClientAssertionReplayStore)
 
-	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo, d.IdManagement.GroupRepo)
+	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.ProvisioningTargetClientFactory)
 
 	d.TokenVault.Register(g, d.Deps, authenticator, d.OAuth2.RevocationCheckedTokens(
 		d.IdManagement.AgentRepo, d.SharedSignals.RevocationEpochRepo,
