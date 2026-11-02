@@ -19,9 +19,21 @@ function portalReauthTarget(): { audience: PortalAudience; returnTo: string } | 
   return null
 }
 
-function ErrorScreen({ error }: { error: unknown }) {
+export function ErrorScreen({ error }: { error: unknown }) {
   const t = useDictionary(commonDictionary)
   markErrorPage()
+  // 描画の失敗は認証の問題ではない。再ログインへ誘導しても同じ失敗を繰り返すだけである。
+  if (!(error instanceof AuthenticationAPIError)) {
+    console.error(error)
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+        <div className="w-full max-w-md rounded-2xl border bg-white p-8 text-center shadow-lg">
+          <h1 className="text-xl font-semibold text-slate-950">{t.pageFailedTitle}</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{t.pageFailedMessage}</p>
+        </div>
+      </main>
+    )
+  }
   const rawMessage =
     error instanceof AuthenticationAPIError ? error.message : t.authenticationUnavailable
   const expiredLogin = rawMessage.toLowerCase().includes('transaction')

@@ -2,6 +2,7 @@ package handlers_http
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -45,8 +46,12 @@ func FuzzOIDCProjection(f *testing.F) {
 		if sub == "" {
 			wantSub = "user_id"
 		}
-		if got.ClientID != id || got.ClientType != client.ClientType || got.TokenEndpointAuthMethod != method || got.Scope != sub || got.FapiProfile != sub || got.SubSourceAttribute != wantSub || !reflect.DeepEqual(got.RedirectURIs, client.RedirectURIs) || !reflect.DeepEqual(got.GrantTypes, client.GrantTypes) || !reflect.DeepEqual(got.ResponseTypes, client.ResponseTypes) || !reflect.DeepEqual(got.Rules, client.ClaimPolicy.Rules) {
+		if got.ClientID != id || got.ClientType != client.ClientType || got.TokenEndpointAuthMethod != method || got.Scope != sub || got.FapiProfile != sub || got.SubSourceAttribute != wantSub || !slices.Equal(got.RedirectURIs, client.RedirectURIs) || !slices.Equal(got.GrantTypes, client.GrantTypes) || !slices.Equal(got.ResponseTypes, client.ResponseTypes) || !reflect.DeepEqual(got.Rules, client.ClaimPolicy.Rules) {
 			t.Fatalf("projection=%+v input=%+v", got, client)
+		}
+		// 契約の配列は必須なので、値がなくても null にしない。
+		if got.RedirectURIs == nil || got.GrantTypes == nil || got.ResponseTypes == nil {
+			t.Fatalf("projection has a null array: %+v", got)
 		}
 		if got.ClientSecretRotatable != (method == "client_secret_basic" || method == "client_secret_post") {
 			t.Fatalf("rotatable=%v method=%q", got.ClientSecretRotatable, method)

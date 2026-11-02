@@ -139,6 +139,7 @@ export function AdminAuthorizationTupleCreatePage({
       ) : (
         <Card className="w-full admin-form p-4">
           <form className="flex flex-col gap-4" onSubmit={submit}>
+            <p className="text-sm leading-6 text-slate-600">{t.tupleFormHelp}</p>
             <FormSelect
               id="tuple-resource-type"
               label={t.resourceType}

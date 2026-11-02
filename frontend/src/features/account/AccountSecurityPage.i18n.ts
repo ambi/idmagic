@@ -90,7 +90,7 @@ export const accountSecurityDictionary = defineDictionary(
     trustedDeviceRevokeFailed: 'デバイスの記憶を取り消せませんでした。',
     notifications: 'セキュリティ通知',
     notificationsDescription:
-      'アカウントに起きた変化をメールでお知らせします。乗っ取りに早く気づくための通知なので、資格情報や連絡先に関わるものは止められません。',
+      'アカウントに起きた変化をメールでお知らせします。乗っ取りに早く気づくための通知なので、クレデンシャルや連絡先に関わるものは止められません。',
     notificationMandatory: '常に通知',
     notificationUpdated: '通知の設定を変更しました。',
     notificationUpdateFailed: '通知の設定を変更できませんでした。',

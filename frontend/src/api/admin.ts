@@ -168,13 +168,10 @@ export type AdminUserPage = PaginationPageMetadata & {
   totalUsers: number
 }
 
-export async function listAdminUsers(): Promise<AdminUser[]> {
-  return (await request<AdminUserListResponse>(`/api/admin/v1/users?limit=${PICKER_LIST_LIMIT}`))
-    .users
-}
-
-// ロールの付与人数は、選択肢向けの先頭 200 件ではなく全ページから数える。
-export async function listAdminRoleUsers(): Promise<AdminUser[]> {
+export async function listAdminUsers({ all = false } = {}): Promise<AdminUser[]> {
+  if (!all)
+    return (await request<AdminUserListResponse>(`/api/admin/v1/users?limit=${PICKER_LIST_LIMIT}`))
+      .users
   const users: AdminUser[] = []
   let cursor: string | undefined
   do {
@@ -183,6 +180,11 @@ export async function listAdminRoleUsers(): Promise<AdminUser[]> {
     cursor = page.nextCursor ?? undefined
   } while (cursor)
   return users
+}
+
+// ロールの付与人数は、選択肢向けの先頭 200 件ではなく全ページから数える。
+export async function listAdminRoleUsers(): Promise<AdminUser[]> {
+  return listAdminUsers({ all: true })
 }
 
 // listAdminUsersPage はユーザー一覧画面専用の addressable cursor pagination 専用の関数である。
@@ -1661,6 +1663,26 @@ export async function killAdminAgent(csrfToken: string, id: string): Promise<voi
 
 export async function deleteAdminAgent(csrfToken: string, id: string): Promise<void> {
   await request(`/api/admin/v1/agents/${encodeURIComponent(id)}`, adminRequest(csrfToken, 'DELETE'))
+}
+
+export async function createAdminAgentKeyClient(
+  csrfToken: string,
+  input: { name: string; scope: string; jwks: { keys: Record<string, unknown>[] } },
+): Promise<string> {
+  const result = await request<{ client: { client_id: string } }>(
+    '/api/admin/v1/clients',
+    adminRequest(csrfToken, 'POST', {
+      client_name: input.name,
+      client_type: 'confidential',
+      redirect_uris: [],
+      grant_types: ['client_credentials', 'urn:openid:params:grant-type:ciba'],
+      token_endpoint_auth_method: 'private_key_jwt',
+      scope: input.scope,
+      jwks: input.jwks,
+      fapi_profile: 'none',
+    }),
+  )
+  return result.client.client_id
 }
 
 export async function bindAdminAgentCredential(

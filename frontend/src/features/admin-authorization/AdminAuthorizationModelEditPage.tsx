@@ -24,6 +24,17 @@ import {
 } from './authorizationModel'
 import { ModelDraftForm } from './ModelDraftForm'
 
+const DOCUMENT_VIEWER_TEMPLATE = [
+  { name: 'user', relations: [] },
+  { name: 'agent', relations: [] },
+  {
+    name: 'document',
+    relations: [
+      { name: 'viewer', rewrites: [{ kind: 'direct', direct_subject_types: ['user', 'agent'] }] },
+    ],
+  },
+]
+
 type Dictionary = (typeof adminAuthorizationDictionary)['en']
 
 const ISSUE_MESSAGE_KEYS: Record<ModelDraftIssueCode, keyof Dictionary> = {
@@ -211,6 +222,18 @@ export function AdminAuthorizationModelEditPage({
           {t.modeJson}
         </Button>
       </fieldset>
+      {mode === 'form' && draft.resourceTypes.length === 0 ? (
+        <Card className="flex flex-col items-start gap-3 p-4 text-sm text-slate-600">
+          {t.modelTemplateHelp}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setDraft(toModelDraft(DOCUMENT_VIEWER_TEMPLATE) ?? draft)}
+          >
+            {t.modelTemplateButton}
+          </Button>
+        </Card>
+      ) : null}
       {mode === 'form' ? (
         <ModelDraftForm
           draft={draft}

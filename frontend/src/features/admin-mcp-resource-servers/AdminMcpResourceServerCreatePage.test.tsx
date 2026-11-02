@@ -17,6 +17,21 @@ describe('AdminMcpResourceServerCreatePage', () => {
   const originalLocation = window.location
   afterEach(() => restoreGlobals())
 
+  it.each(['[null]', '[{"scopes":{}}]', '[{"resource_type":{}}]'])(
+    'keeps invalid rule JSON editable: %s',
+    async (value) => {
+      await renderWithRouter(<AdminMcpResourceServerCreatePage csrfToken="csrf" />)
+      fireEvent.change(screen.getByLabelText(t.scopesLabel), { target: { value: 'tools:read' } })
+
+      fireEvent.change(screen.getByLabelText(t.accessRulesLabel), { target: { value } })
+
+      expect(screen.getByLabelText(t.accessRulesLabel)).toHaveValue(value)
+      expect(screen.getByText(t.accessRulesUnreadable)).toBeInTheDocument()
+      fireEvent.change(screen.getByLabelText(t.accessRulesLabel), { target: { value: '[]' } })
+      expect(screen.getByRole('button', { name: t.ruleAdd })).toBeInTheDocument()
+    },
+  )
+
   it('splits comma and whitespace separated scopes when registering', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     stubGlobal(

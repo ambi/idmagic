@@ -1244,6 +1244,23 @@ description = "Run the OAuth2/OIDC demo"
 raw = true
 run = "./demo.sh"
 
+[tasks.demo-agent]
+description = "Run the AI agent governance demo with the local stack"
+raw = true
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+./dev.sh memory &
+stack=$!
+trap 'kill "$stack" 2>/dev/null || true' EXIT
+until curl -fsS http://localhost:5173/realms/default/.well-known/openid-configuration >/dev/null 2>&1; do
+  kill -0 "$stack" 2>/dev/null || { echo "The local stack exited before becoming ready" >&2; exit 1; }
+  sleep 1
+done
+echo "Open the demo at http://localhost:5180/"
+go run ./examples/agent-demo
+'''
+
 [tasks.demo-ciba]
 description = "Run the interactive CIBA approval demo"
 raw = true

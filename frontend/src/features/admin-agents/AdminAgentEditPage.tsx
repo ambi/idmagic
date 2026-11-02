@@ -9,9 +9,9 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
 import { LENGTH } from '../../lib/lengthLimits'
-import type { AdminAgent } from '../../types'
+import type { AdminAgent, AdminUser } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
-import { parseRoles } from './AdminAgentsShared'
+import { OwnerSelect, parseRoles } from './AdminAgentsShared'
 import { returnToAgent } from './agentNavigation'
 
 // 基本情報とロールを一度の保存で確定する。資格情報とガードレールは別の作業へ分ける。
@@ -19,10 +19,12 @@ export function AdminAgentEditPage({
   csrfToken,
   actorUsername,
   agent,
+  users = [],
 }: {
   csrfToken: string
   actorUsername?: string
   agent: AdminAgent
+  users?: AdminUser[]
 }) {
   const detailPath = tenantURL(`/admin/agents/${encodeURIComponent(agent.id)}`)
   const [name, setName] = useState(agent.name)
@@ -81,12 +83,6 @@ export function AdminAgentEditPage({
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Card className="w-full admin-form overflow-hidden">
-        <div className="border-b border-slate-200 px-6 py-5">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700">
-            {t.agentEyebrow}
-          </p>
-          <h2 className="mt-1 text-xl font-semibold">{t.editAgentHeading}</h2>
-        </div>
         <form onSubmit={handleSubmit} className="flex flex-col">
           <div className="grid gap-6 p-6">
             <section className="grid gap-4">
@@ -132,18 +128,17 @@ export function AdminAgentEditPage({
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="agent-editor-owner">{t.ownerSubLabel}</Label>
-                <Input
+                <OwnerSelect
                   id="agent-editor-owner"
                   value={ownerSub}
-                  onChange={(e) => setOwnerSub(e.target.value)}
+                  onChange={setOwnerSub}
+                  users={users}
                   disabled={killed}
                 />
+                <p className="text-xs text-slate-500">{t.ownerEditHelp}</p>
               </div>
             </section>
             <section className="grid gap-3 border-t border-slate-200 pt-5">
-              <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
-                {t.rolesLabel}
-              </h3>
               <div className="grid gap-1.5">
                 <Label htmlFor="agent-editor-roles">{t.rolesLabel}</Label>
                 <Input

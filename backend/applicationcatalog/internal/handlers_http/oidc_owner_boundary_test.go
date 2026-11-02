@@ -83,6 +83,32 @@ func assertManagementCredential(t *testing.T, raw json.RawMessage) string {
 	return id
 }
 
+//spec:covers REQ-APPLICATION-002: サービスのクライアントはリダイレクトを持たないが、詳細の応答は契約どおり null でなく空の配列を返す。
+func TestServiceApplicationDetailReturnsEmptyArrays(t *testing.T) {
+	f := newSecretExampleFixture(t)
+	created := adminJSON(t, f.e, http.MethodPost, "/api/admin/v1/applications", f.csrf, f.cookie, map[string]any{"name": "Service detail", "type": "service"})
+	var body struct {
+		Application struct {
+			ID string `json:"id"`
+		} `json:"application"`
+	}
+	if created.Code != http.StatusCreated || json.Unmarshal(created.Body.Bytes(), &body) != nil {
+		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
+	}
+	detail := adminJSON(t, f.e, http.MethodGet, "/api/admin/v1/applications/"+body.Application.ID, f.csrf, f.cookie, nil)
+	var fields struct {
+		OIDC map[string]json.RawMessage `json:"oidc"`
+	}
+	if detail.Code != http.StatusOK || json.Unmarshal(detail.Body.Bytes(), &fields) != nil {
+		t.Fatalf("detail status=%d body=%s", detail.Code, detail.Body.String())
+	}
+	for _, name := range []string{"redirect_uris", "response_types"} {
+		if string(fields.OIDC[name]) != "[]" {
+			t.Fatalf("%s=%s, want []", name, fields.OIDC[name])
+		}
+	}
+}
+
 //spec:covers REQ-APPLICATION-002: 管理の HTTP が受け取った公開鍵と TLS の設定を、所有者の登録へ渡す。
 func TestOIDCCatalogRegistrationKeepsPublicKeySettings(t *testing.T) {
 	f := newSecretExampleFixture(t)

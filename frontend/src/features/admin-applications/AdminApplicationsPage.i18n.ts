@@ -77,7 +77,7 @@ export const adminApplicationsDictionary = defineDictionary(
     secretLimitNotice:
       '有効なシークレットは最大2件です。追加発行するには、使用していないシークレットを先に失効してください。',
     secretNoCredentialsNotice: '表示できるシークレット情報はありません。',
-    secretCredentialIdHeader: '資格情報 ID',
+    secretCredentialIdHeader: 'クレデンシャル ID',
     secretCreatedAtHeader: '作成日時',
     secretExpiresAtHeader: '有効期限',
     secretStatusHeader: '状態',
@@ -310,7 +310,7 @@ export const adminApplicationsDictionary = defineDictionary(
     launchUrlHelp: 'ポータルのタイルから開く初期ログイン URL。後から設定もできます。',
     scopeOptionalFieldLabel: 'スコープ',
     serviceScopeHelp:
-      'client_credentials で発行されるトークンのスコープ。クライアント ID とシークレットは自動生成されます。',
+      'このサービスが自分用のトークンを取得するときの権限です。MCP サーバーのゲートウェイなど、問い合わせだけに使うなら空のままで構いません。クライアント ID とシークレットは自動生成されます。',
     oidcRedirectHelp:
       '改行区切りで複数指定できます。クライアント ID とシークレットは自動生成されます。',
     clientTypeFieldLabel: 'クライアント種別',
@@ -635,7 +635,7 @@ export const adminApplicationsDictionary = defineDictionary(
       'The initial sign-in URL opened from the portal tile. You can also set this later.',
     scopeOptionalFieldLabel: 'Scope',
     serviceScopeHelp:
-      'The scope of tokens issued via client_credentials. The client ID and secret are generated automatically.',
+      'The permissions of tokens this service obtains for itself. Leave this empty for a service that only asks for decisions, such as an MCP gateway. The client ID and secret are generated automatically.',
     oidcRedirectHelp:
       'Enter one per line for multiple values. The client ID and secret are generated automatically.',
     clientTypeFieldLabel: 'Client type',

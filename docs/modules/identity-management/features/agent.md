@@ -97,6 +97,16 @@
 
 ### 資格情報の束縛と解除
 
+#### REQ-IDMANAGEMENT-103 管理画面は、公開鍵から Agent 用のクライアントを作成して束縛する
+
+- 管理者が資格情報の画面で公開鍵とスコープを指定したとき、IdManagement は、`private_key_jwt`、`client_credentials`、CIBA のグラントを持つ `OAuth2Client` を作成し、その Agent に束縛する。
+- 管理者が `PUBLIC KEY` の PEM の RSA か P-256 の公開鍵を指定したとき、IdManagement は、`PS256` か `ES256` の JWK に変換して登録する。
+- 入力が PEM、JWK、`keys` を持つ JWKS のいずれでもない場合、IdManagement は、クライアントを作成しない。
+- 入力が秘密鍵の PEM か、秘密鍵の要素（`d`、`p`、`q`、`dp`、`dq`、`qi`、`k`）を含む場合、IdManagement は、クライアントを作成せず、秘密鍵を貼らないよう案内する。
+- 管理者がスコープを選ぶとき、IdManagement は、MCP リソースサーバーに登録したスコープを選択肢に示す。
+- クライアントの作成後に束縛が失敗した場合、IdManagement は、作成した `client_id` を束縛の入力欄へ残し、再試行できるようにする。
+- **判断**：グラントを両方持たせる。Agent の区分は後から変えられ、区分の変更のたびに資格情報を作り直さずに済む。発行の可否は区分が決める（REQ-OAUTH2-050）。
+
 #### REQ-IDMANAGEMENT-074 Agent の資格情報の束縛は、同じテナントの OAuth2Client を一つの Agent にだけ結び、同じ束縛には何もしない
 
 - 管理者が束縛したとき、IdManagement は、Agent に同じテナントの `OAuth2Client` の資格情報を結び、`AgentCredentialBound` を発行する。

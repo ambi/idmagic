@@ -49,6 +49,9 @@ export const commonDictionary = defineDictionary(
     authenticationUnavailable: '認証画面を読み込めませんでした。',
     loginRequestExpired: 'ログイン要求が終了しています',
     cannotContinueAuthentication: '認証を続行できません',
+    pageFailedTitle: 'この画面を表示できません',
+    pageFailedMessage:
+      '画面の表示中に問題が発生しました。再読み込みしても直らない場合は、管理者に連絡してください。',
     expiredLoginMessage:
       '前のログイン要求は完了または期限切れになっています。利用したい画面をもう一度開いてログインしてください。',
     sessionExpiredMessage:
@@ -112,6 +115,9 @@ export const commonDictionary = defineDictionary(
     authenticationUnavailable: 'Could not load the authentication screen.',
     loginRequestExpired: 'The sign-in request has ended',
     cannotContinueAuthentication: 'Cannot continue authentication',
+    pageFailedTitle: 'This page could not be displayed',
+    pageFailedMessage:
+      'Something went wrong while displaying this page. If reloading does not help, contact your administrator.',
     expiredLoginMessage:
       'The previous sign-in request has completed or expired. Open the page you want to use and sign in again.',
     sessionExpiredMessage: 'Your session has expired. Sign in again to return to this page.',

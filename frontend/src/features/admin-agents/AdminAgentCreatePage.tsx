@@ -9,18 +9,20 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
 import { LENGTH } from '../../lib/lengthLimits'
-import type { AdminAgent } from '../../types'
+import type { AdminAgent, AdminUser } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
-import { optionalValue, parseRoles } from './AdminAgentsShared'
+import { OwnerSelect, optionalValue, parseRoles } from './AdminAgentsShared'
 
 // AdminAgentCreatePage はエージェント登録の専用画面 (wi-314 T012)。従来
 // AdminAgentsListPage 内のインラインモーダルだった登録フォームを、専用ルートへ移す。
 export function AdminAgentCreatePage({
   csrfToken,
   actorUsername,
+  users = [],
 }: {
   csrfToken: string
   actorUsername?: string
+  users?: AdminUser[]
 }) {
   const listPath = tenantURL('/admin/agents')
   const [busy, setBusy] = useState(false)
@@ -115,7 +117,12 @@ export function AdminAgentCreatePage({
                 <Label htmlFor="agent-owner" optional>
                   {t.ownerOptionalLabel}
                 </Label>
-                <Input id="agent-owner" name="owner_user_id" placeholder="user-1234" />
+                <OwnerSelect
+                  id="agent-owner"
+                  name="owner_user_id"
+                  users={users}
+                  emptyLabel={t.ownerDefaultOption}
+                />
                 <p className="text-xs text-slate-500">{t.ownerHelp}</p>
               </div>
               <div className="grid gap-1.5">

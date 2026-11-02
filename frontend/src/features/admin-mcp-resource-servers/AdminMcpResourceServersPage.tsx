@@ -77,9 +77,7 @@ export function AdminMcpResourceServersPage({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="break-all font-mono text-sm font-semibold text-slate-900">
-                      {item.resource}
-                    </p>
+                    <p className="break-all text-sm font-semibold text-slate-900">{item.name}</p>
                     <span
                       className={
                         item.state === 'Active'
@@ -90,7 +88,9 @@ export function AdminMcpResourceServersPage({
                       {item.state}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-xs leading-5 text-slate-500">{item.name}</p>
+                  <p className="mt-0.5 break-all font-mono text-xs leading-5 text-slate-500">
+                    {item.resource}
+                  </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <Button

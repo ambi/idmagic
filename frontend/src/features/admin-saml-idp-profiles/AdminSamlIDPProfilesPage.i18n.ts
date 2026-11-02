@@ -4,7 +4,7 @@ export const adminSamlIDPProfilesDictionary = defineDictionary(
   {
     listTitle: 'SAML IdPプロファイル',
     listDescription:
-      'SAML 2.0 IdPのエンティティID、エンドポイント、署名資格情報を分離するプロファイルを管理します。',
+      'SAML 2.0 IdPのエンティティID、エンドポイント、署名クレデンシャルを分離するプロファイルを管理します。',
     backToSettings: '連携エンドポイントへ戻る',
     createProfile: 'プロファイルを作成',
     profileName: 'プロファイル名',

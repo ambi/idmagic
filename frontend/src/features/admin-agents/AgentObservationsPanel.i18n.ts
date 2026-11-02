@@ -4,7 +4,7 @@ export const agentObservationsDictionary = defineDictionary(
   {
     sectionTitle: '外部で観測されたエージェント',
     sectionDescription:
-      '外部の発見器が報告した未確認の情報です。確認や除外をしても、エージェント、資格情報、ロールは変わりません。',
+      '外部の発見器が報告した未確認の情報です。確認や除外をしても、エージェント、クレデンシャル、ロールは変わりません。',
     filterAriaLabel: '決定で絞り込む',
     decisionPending: '未決定',
     decisionConfirmed: '確認済み',
@@ -21,7 +21,7 @@ export const agentObservationsDictionary = defineDictionary(
     stateConfirmed: '一致を確認済み',
     stateExcluded: '除外',
     reasonWorkloadBinding: 'ワークロードの関連付け',
-    reasonClientBinding: 'クライアントの束縛',
+    reasonClientBinding: 'クライアントの紐付け',
     agentSelectLabel: '一致を確認するエージェント',
     agentSelectPlaceholder: 'エージェントを選択',
     confirmAction: '一致を確認',

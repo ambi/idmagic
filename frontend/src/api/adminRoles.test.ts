@@ -1,11 +1,14 @@
 import { afterEach, expect, it, mock } from 'bun:test'
 import { restoreGlobals, stubGlobal } from '../test/globals'
-import { listAdminRoleUsers } from './admin'
+import { listAdminRoleUsers, listAdminUsers } from './admin'
 
 afterEach(() => restoreGlobals())
 
 //spec:covers REQ-FRONTEND-001: ロールの集計はカーソルを辿り、先頭ページのユーザーだけに切り詰めない。
-it('reads every user page before computing role membership', async () => {
+it.each([
+  ['role membership', listAdminRoleUsers],
+  ['agent owner choices', () => listAdminUsers({ all: true })],
+] as const)('reads every user page for %s', async (_purpose, listUsers) => {
   const urls: string[] = []
   stubGlobal(
     'fetch',
@@ -30,7 +33,7 @@ it('reads every user page before computing role membership', async () => {
       )
     }),
   )
-  expect((await listAdminRoleUsers()).map((user) => user.id)).toEqual(['first-user', 'last-user'])
+  expect((await listUsers()).map((user) => user.id)).toEqual(['first-user', 'last-user'])
   expect(urls).toHaveLength(2)
   expect(urls[1]).toContain('cursor=second')
 })

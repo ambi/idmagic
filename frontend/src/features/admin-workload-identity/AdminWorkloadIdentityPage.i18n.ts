@@ -78,7 +78,7 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     agentLabel: 'エージェント',
     addBinding: 'バインディングを追加',
     multipleCredentialsWarning:
-      'このエージェントは資格情報バインディングを複数持ちます。交換に使われるのはそのうち 1 つだけです。',
+      'このエージェントはクレデンシャルの紐付けを複数持ちます。交換に使われるのはそのうち 1 つだけです。',
     noAgentsNotice: '対応付けられるエージェントがありません。先にエージェントを登録してください。',
 
     rejectionsTitle: 'アテステーションの拒否',
@@ -101,7 +101,7 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     reasonNoBindingMatch: '一致するバインディングが無い',
     reasonAmbiguousMatch: '複数のバインディングに一致',
     reasonAgentNotActive: '対応先エージェントが有効でない',
-    reasonAgentUnbound: '対応先エージェントに資格情報が無い',
+    reasonAgentUnbound: '対応先エージェントにクレデンシャルが無い',
 
     deleteBundleTitle: '信頼バンドルを削除',
     deleteBundleMessage:

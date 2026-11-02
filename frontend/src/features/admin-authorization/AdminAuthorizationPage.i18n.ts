@@ -122,6 +122,11 @@ export const adminAuthorizationDictionary = defineDictionary(
     deleteObjectResult:
       'リソース側と主体側の両方の関係タプルが消え、それらに依存していた間接的なアクセスも成立しなくなります。',
     noModelForTuples: '関係タプルを追加するには、先に認可モデルを発行してください。',
+    tupleFormHelp:
+      '「誰が（主体）」「どのリソースに」「どの関係を持つか」を一件登録します。リソース ID は対象を表す文字列で、問い合わせるサーバーが使う ID と同じ値にします。',
+    modelTemplateHelp:
+      '認可モデルは、どんな種類のものに、誰がどんな関係を持てるかの定義です。テンプレートから始めると、利用者とエージェントが文書の閲覧者になれるモデルを入力します。',
+    modelTemplateButton: 'テンプレート：文書の閲覧',
     noDirectRelation: 'このリソース型には、直接の関係タプルを受け入れる関係がありません。',
     backToTuples: '一覧に戻る',
 
@@ -289,6 +294,11 @@ export const adminAuthorizationDictionary = defineDictionary(
     deleteObjectResult:
       'Tuples on both the resource side and the subject side are removed, and indirect access that depended on them stops.',
     noModelForTuples: 'Publish an authorization model before adding relation tuples.',
+    tupleFormHelp:
+      'Register one fact: who (the subject) has which relation to which resource. The resource ID is a string naming the target, and must match the ID the asking server uses.',
+    modelTemplateHelp:
+      'An authorization model defines the kinds of things and who can have which relation to them. The template fills in a model where users and agents can be viewers of documents.',
+    modelTemplateButton: 'Template: document viewers',
     noDirectRelation: 'This resource type has no relation that accepts direct relation tuples.',
     backToTuples: 'Back to list',
 

@@ -63,7 +63,8 @@ func configuration(client *oauthdomain.OAuth2Client, credentials []oauthdomain.C
 	}
 	return &oidcConfig{
 		ClientID: client.ClientID, ClientType: client.ClientType,
-		RedirectURIs: slices.Clone(client.RedirectURIs), GrantTypes: slices.Clone(client.GrantTypes), ResponseTypes: slices.Clone(client.ResponseTypes),
+		// サービスのクライアントはリダイレクトと応答の種類を持たない。契約どおり null でなく空の配列で返す。
+		RedirectURIs: append([]string{}, client.RedirectURIs...), GrantTypes: append([]spec.GrantType{}, client.GrantTypes...), ResponseTypes: append([]spec.ResponseType{}, client.ResponseTypes...),
 		TokenEndpointAuthMethod: string(client.TokenEndpointAuthMethod), Scope: client.Scope,
 		RequirePAR: client.RequirePushedAuthorizationRequests, DpopBoundAccessTokens: client.DpopBoundAccessTokens,
 		FapiProfile:           string(client.FapiProfile),

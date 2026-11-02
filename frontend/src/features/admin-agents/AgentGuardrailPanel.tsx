@@ -256,7 +256,8 @@ export function AgentGuardrailPanel({
     <Card className="w-full max-w-2xl space-y-4 p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold">{t.title}</h2>
+          {/* 編集画面ではページの見出しが同じことを述べている。 */}
+          {cancelHref ? null : <h2 className="text-base font-semibold">{t.title}</h2>}
           <p className="text-sm text-slate-600">{t.description}</p>
         </div>
         {editHref ? (

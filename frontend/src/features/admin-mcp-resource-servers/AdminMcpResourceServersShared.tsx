@@ -1,4 +1,5 @@
 import { tenantURL } from '../../api'
+import { Button } from '../../components/ui/button'
 import { Label } from '../../components/ui/label'
 import { Input } from '../../components/ui/input'
 import type { McpResourceServer, ResourceAccessRule } from '../../types'
@@ -64,6 +65,103 @@ export function newURL(): string {
   return tenantURL('/admin/mcp-resource-servers/new')
 }
 
+// AccessRuleRows は規則の基本の項目を行で編集する。JSON を正とし、行にない項目（条件や上限など）は保つ。
+function AccessRuleRows({
+  form,
+  onChange,
+  t,
+}: {
+  form: FormState
+  onChange: (next: FormState) => void
+  t: Dictionary
+}) {
+  const rules = parseAccessRules(form.accessRules)
+  if (
+    rules === null ||
+    !rules.every(
+      (rule) =>
+        typeof rule === 'object' &&
+        rule !== null &&
+        (rule.resource_type === undefined || typeof rule.resource_type === 'string') &&
+        (rule.relation === undefined || typeof rule.relation === 'string') &&
+        (rule.scopes === undefined ||
+          (Array.isArray(rule.scopes) && rule.scopes.every((scope) => typeof scope === 'string'))),
+    )
+  )
+    return <p className="text-sm text-slate-600">{t.accessRulesUnreadable}</p>
+  const scopes = parseScopes(form.scopes)
+  const save = (next: ResourceAccessRule[]) =>
+    onChange({ ...form, accessRules: next.length > 0 ? JSON.stringify(next, null, 2) : '' })
+  const update = (index: number, change: Partial<ResourceAccessRule>) =>
+    save(rules.map((rule, position) => (position === index ? { ...rule, ...change } : rule)))
+  return (
+    <div className="flex flex-col gap-2">
+      {rules.map((rule, index) => (
+        // 行は内容で識別できず、並べ替えもない。
+        // biome-ignore lint/suspicious/noArrayIndexKey: 位置だけが行を識別する。
+        <div key={index} className="flex flex-wrap items-end gap-3 rounded-md border p-3">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`rule-type-${index}`}>{t.ruleResourceType}</Label>
+            <Input
+              id={`rule-type-${index}`}
+              value={rule.resource_type}
+              placeholder="document"
+              onChange={(event) => update(index, { resource_type: event.target.value })}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`rule-relation-${index}`}>{t.ruleRelation}</Label>
+            <Input
+              id={`rule-relation-${index}`}
+              value={rule.relation}
+              placeholder="viewer"
+              onChange={(event) => update(index, { relation: event.target.value })}
+            />
+          </div>
+          <fieldset className="flex flex-col gap-1">
+            <legend className="text-sm font-medium">{t.ruleScopes}</legend>
+            {scopes.length === 0 ? (
+              <span className="text-xs text-slate-500">{t.ruleScopesEmpty}</span>
+            ) : null}
+            {scopes.map((name) => (
+              <label key={name} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={rule.scopes?.includes(name) ?? false}
+                  onChange={(event) =>
+                    update(index, {
+                      scopes: event.target.checked
+                        ? [...(rule.scopes ?? []), name]
+                        : (rule.scopes ?? []).filter((item) => item !== name),
+                    })
+                  }
+                />
+                <code className="text-xs">{name}</code>
+              </label>
+            ))}
+          </fieldset>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => save(rules.filter((_, position) => position !== index))}
+          >
+            {t.ruleRemove}
+          </Button>
+        </div>
+      ))}
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => save([...rules, { resource_type: '', relation: '', scopes }])}
+        >
+          {t.ruleAdd}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 // McpResourceServerFormFields は作成/編集ページで共有するフォーム本体。
 // resource (URI) は編集時のみ変更不可にする (locked)。
 export function McpResourceServerFormFields({
@@ -126,17 +224,24 @@ export function McpResourceServerFormFields({
         />
         <p className="text-xs leading-5 text-slate-500">{t.clientIdHelp}</p>
       </div>
-      <div className="flex flex-col gap-1.5 md:col-span-2">
-        <Label htmlFor="access-rules">{t.accessRulesLabel}</Label>
-        <textarea
-          id="access-rules"
-          value={form.accessRules}
-          rows={6}
-          placeholder={t.accessRulesPlaceholder}
-          onChange={(event) => onChange({ ...form, accessRules: event.target.value })}
-          className="rounded-md border border-slate-300 bg-white p-2 font-mono text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
-        />
+      <div className="flex flex-col gap-2 md:col-span-2">
+        <p className="text-sm font-medium">{t.operationsHeading}</p>
         <p className="text-xs leading-5 text-slate-500">{t.accessRulesHelp}</p>
+        <AccessRuleRows form={form} onChange={onChange} t={t} />
+        <details className="text-sm">
+          <summary className="cursor-pointer text-slate-600">{t.accessRulesAdvanced}</summary>
+          <div className="mt-2 flex flex-col gap-1.5">
+            <Label htmlFor="access-rules">{t.accessRulesLabel}</Label>
+            <textarea
+              id="access-rules"
+              value={form.accessRules}
+              rows={6}
+              placeholder={t.accessRulesPlaceholder}
+              onChange={(event) => onChange({ ...form, accessRules: event.target.value })}
+              className="rounded-md border border-slate-300 bg-white p-2 font-mono text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+        </details>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="state">{t.stateLabel}</Label>

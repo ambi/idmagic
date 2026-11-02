@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI エージェント統制デモ</title>
+<style>
+:root{--bg:#f6f4ef;--panel:#fffdf8;--ink:#1f2421;--muted:#626a64;--line:#d9d4c8;--accent:#14532d;--allow:#166534;--allow-bg:#dcf3e2;--deny:#991b1b;--deny-bg:#fbe4e1;--info:#1e4e8c;--info-bg:#e1ecfa}
+@media (prefers-color-scheme:dark){:root{--bg:#141714;--panel:#1d211d;--ink:#ecebe4;--muted:#a3aaa3;--line:#343a34;--accent:#86d39d;--allow:#86d39d;--allow-bg:#1b3323;--deny:#f3a39b;--deny-bg:#3d1f1c;--info:#9cc2f3;--info-bg:#1c2c42}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 "Hiragino Sans","Noto Sans JP",system-ui,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:40px 16px 96px}
+h1{font-size:30px;line-height:1.3;margin:0 0 8px}
+h2{font-size:21px;margin:56px 0 4px;padding-top:16px;border-top:2px solid var(--ink)}
+h3{font-size:16px;margin:0 0 4px}
+p{margin:6px 0}.lead,.note{color:var(--muted)}.note{font-size:14px}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+button{font:inherit;font-size:14px;font-weight:600;padding:7px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--bg);cursor:pointer}
+button.ghost{background:transparent;color:var(--accent);padding:2px 10px;font-size:13px}
+button:disabled{opacity:.5;cursor:default}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+ol.setup{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:12px}
+.setup li{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.setup a{color:var(--accent);font-weight:600}
+.field{display:grid;grid-template-columns:150px 1fr auto;gap:8px;align-items:center;margin-top:6px;font-size:14px}
+code,.value{font:13px/1.5 ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
+.value{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:3px 6px;max-height:64px;overflow:auto}
+input{font:13px ui-monospace,Menlo,monospace;width:100%;padding:6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
+.step{border-left:4px solid var(--line);padding:6px 0 6px 12px;margin-top:10px}
+.step.allowed{border-color:var(--allow)}.step.denied{border-color:var(--deny)}.step.info{border-color:var(--info)}
+.badge{display:inline-block;font-size:12px;font-weight:700;border-radius:4px;padding:0 6px;margin-right:6px}
+.allowed .badge{background:var(--allow-bg);color:var(--allow)}.denied .badge{background:var(--deny-bg);color:var(--deny)}.info .badge{background:var(--info-bg);color:var(--info)}
+.chips{font-size:12px;color:var(--muted)}
+.evidence{font-size:13px;color:var(--muted)}
+table{border-collapse:collapse;width:100%;margin-top:12px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+.tablewrap{overflow-x:auto}
+a{color:var(--accent)}
+.error{color:var(--deny);font-weight:600}
+.howto{margin-top:12px}
+.progress{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 8px}
+.progress button{background:transparent;color:var(--muted);border-color:var(--line);font-weight:500;padding:3px 10px;font-size:13px}
+.progress button.current{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+.card[hidden]{display:none}
+.why{margin:4px 0 10px}
+.open{display:inline-block;margin-bottom:6px;color:var(--accent);font-weight:600}
+.keep{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+.nav{display:flex;justify-content:space-between;margin-top:14px}
+@media (max-width:700px){.compare{grid-template-columns:1fr}.field{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>AI エージェントに、社内文書を安全に任せる</h1>
+<p class="lead">社内文書アシスタントが、改修していない MCP サーバーの文書を扱います。コードも MCP サーバーも変えず、管理画面の設定だけで「誰が・何を・いつまで」を統制します。</p>
+<p class="note">実在のもの：IdMagic、MCP ゲートウェイ、MCP サーバー、暗号署名。台本のもの：エージェントの判断（LLM は使わず、依頼を決め打ちで実行します）。</p>
+
+<h2>1. これまで：共有キーのエージェントは何でもできる</h2>
+<p>同じ MCP サーバーへ、共有の API キーだけで直接つなぎます。キーを持つものは全員同じ権限で、誰の操作かも区別できません。</p>
+<div class="panel">
+  <div class="actions"><button data-run="unmanaged" data-out="unmanaged-out">統制なしで 3 つの依頼を実行</button></div>
+  <div id="unmanaged-out"></div>
+</div>
+
+<h2>2. 設定：管理画面だけで統制する</h2>
+<div class="panel howto">
+  <h3>進め方</h3>
+  <p>このページと IdMagic の管理画面を、別のタブで行き来します。各手順で「この画面を開く」を押し、表の<strong>入力欄</strong>に<strong>値</strong>をコピーして保存し、このページへ戻って「次へ」を押します。シェルもコードの変更も不要です。ログインは <code>alice</code> / <code>demo-password-1234</code> です。</p>
+</div>
+<div class="progress" id="progress"></div>
+<div id="setup"></div>
+
+<h2>3. これから：同じ依頼を、もう一度</h2>
+<div class="compare">
+  <div class="panel">
+    <h3>エージェントへの依頼</h3>
+    <div class="actions">
+      <button data-run="read-public" data-out="governed-out">就業規則を読む</button>
+      <button data-run="read-secret" data-out="governed-out">給与テーブルを読む</button>
+      <button data-run="delete" data-out="governed-out">就業規則を削除する</button>
+    </div>
+    <div id="governed-out"></div>
+  </div>
+  <div class="panel">
+    <h3>権限をその場で変える</h3>
+    <p class="note">トークンを取り直さなくても、判定は要求ごとに行われます。</p>
+    <p>給与テーブルも読めるようにするには、関係タプルを 1 件追加して、左の「給与テーブルを読む」をもう一度押します。削除すれば、また拒否に戻ります。</p>
+    <p><a id="tuples-link" target="_blank" rel="noreferrer">関係タプルを追加する画面を開く</a></p>
+    <div id="grant-fields"></div>
+  </div>
+</div>
+
+<h2>4. 緊急時：画面の 1 操作で止める</h2>
+<div class="compare">
+  <div class="panel">
+    <h3>暴走したエージェントを止める</h3>
+    <p>エージェントの詳細で「無効化」を選んでから実行します。手元の有効期限内のトークンも、新しい発行も止まります。「緊急停止」は取り消せないので最後に試します。</p>
+    <div class="actions"><button data-run="after-stop" data-out="stop-out">依頼を再実行</button></div>
+    <div id="stop-out"></div>
+  </div>
+  <div class="panel">
+    <h3>重要な操作は人が承認する</h3>
+    <p>再度有効にして、種別を「監督下」へ変えてから依頼します。エージェントは自分だけではトークンを得られず、所有者の承認を待ちます。</p>
+    <div class="actions"><button id="approval">承認を依頼</button></div>
+    <p><a id="approvals-link" target="_blank" rel="noreferrer">alice の承認画面を開く</a></p>
+    <div id="approval-out"></div>
+  </div>
+</div>
+
+<h2>5. 何が使われているか</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>場面</th><th>技術と仕様</th><th>解決すること</th></tr></thead>
+<tbody>
+<tr><td>エージェントの ID</td><td>Agent プリンシパル、所有者、区分</td><td>人にも共有アカウントにも寄せず、責任者のいる ID として管理する</td></tr>
+<tr><td>認証</td><td>private_key_jwt (RFC 7523)、Client Credentials (RFC 6749)</td><td>漏えいし得る共有シークレットをなくし、鍵は手元から出さない</td></tr>
+<tr><td>宛先の限定</td><td>Resource Indicators (RFC 8707)、Protected Resource Metadata (RFC 9728)</td><td>文書サーバー宛のトークンを他のサーバーで使わせない</td></tr>
+<tr><td>実行前の認可</td><td>MCP 2026-07-28、MCP ゲートウェイ、ReBAC</td><td>MCP サーバーを改修せず、文書ごと、呼び出しごとに判定する</td></tr>
+<tr><td>人の承認</td><td>OpenID Connect CIBA</td><td>その場にいない責任者に帯域外で判断してもらう</td></tr>
+<tr><td>停止と記録</td><td>発行済みトークンの即時失効、監査イベント</td><td>有効期限を待たずに止め、後から追跡する</td></tr>
+</tbody>
+</table></div>
+<p class="note">設定の履歴は IdMagic の「監査イベント」、棚卸しは「エージェント」→「棚卸し」で確認できます。</p>
+</main>
+<script>
+const $ = (id) => document.getElementById(id)
+const post = async (path, body = {}) => {
+  const response = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const result = await response.json()
+  if (!response.ok) throw new Error(result.error)
+  return result
+}
+const LABEL = { allowed: '実行', denied: '拒否', info: '待機' }
+function renderSteps(target, steps, append) {
+  if (!append) target.replaceChildren()
+  for (const item of steps ?? []) {
+    const box = document.createElement('div')
+    box.className = `step ${item.outcome}`
+    const head = document.createElement('div')
+    const badge = document.createElement('span')
+    badge.className = 'badge'
+    badge.textContent = LABEL[item.outcome]
+    head.append(badge, item.title)
+    box.append(head)
+    for (const [text, name] of [[item.detail, ''], [item.evidence, 'evidence'], [(item.specs ?? []).join(' ・ '), 'chips']]) {
+      if (!text) continue
+      const line = document.createElement('div')
+      line.className = name
+      line.textContent = text
+      box.append(line)
+    }
+    target.append(box)
+  }
+}
+function renderError(target, error) {
+  const line = document.createElement('p')
+  line.className = 'error'
+  line.textContent = error.message
+  target.replaceChildren(line)
+}
+document.addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-run]')
+  if (!button) return
+  const out = $(button.dataset.out)
+  button.disabled = true
+  try {
+    renderSteps(out, (await post('/api/run', { scenario: button.dataset.run })).steps)
+  } catch (error) { renderError(out, error) } finally { button.disabled = false }
+})
+function field(label, value) {
+  const row = document.createElement('div')
+  row.className = 'field'
+  const name = document.createElement('span')
+  name.textContent = label
+  const text = document.createElement('div')
+  text.className = 'value'
+  text.textContent = value
+  const copy = document.createElement('button')
+  copy.className = 'ghost'
+  copy.type = 'button'
+  copy.textContent = 'コピー'
+  copy.onclick = async () => {
+    await navigator.clipboard.writeText(value)
+    copy.textContent = 'コピー済み'
+  }
+  row.append(name, text, copy)
+  return row
+}
+function inputField(id, label, type = 'text') {
+  const row = document.createElement('label')
+  row.className = 'field'
+  const name = document.createElement('span')
+  name.textContent = label
+  const input = document.createElement('input')
+  input.id = id
+  input.type = type
+  input.autocomplete = 'off'
+  row.append(name, input)
+  return row
+}
+async function init() {
+  const state = await (await fetch('/api/state')).json()
+  $('tuples-link').href = `${state.console}/admin/authorization/relation-tuples/new`
+  $('approvals-link').href = `${state.console}/account/approvals`
+  const value = (id) => () => $(id)?.value || '（前の手順で控えた値）'
+  const steps = [
+    {
+      title: '認可モデル', path: '/admin/authorization/model/edit',
+      why: '「どんな種類のものに、誰がどんな関係を持てるか」を定義します。ここでは、エージェントが文書の閲覧者になれるようにします。',
+      todo: '「テンプレート：文書の閲覧」を押し、「発行内容を確認」、「発行」の順に押します。入力はありません。',
+      fields: [],
+    },
+    {
+      title: 'ゲートウェイ', path: '/admin/applications/new',
+      why: 'MCP サーバーの手前で要求を止めるゲートウェイの ID です。ゲートウェイはこの ID で IdMagic に「この要求を通してよいか」を問い合わせます。',
+      todo: '種類に「サービス (M2M)」を選びます。スコープは空のままで構いません。作成後に一度だけ出る値を下へ控えます。',
+      fields: [['名前', '文書ゲートウェイ']],
+      keep: [['gateway-client', 'クライアント ID'], ['gateway-secret', 'クライアントシークレット', 'password']],
+    },
+    {
+      title: 'MCP サーバー', path: '/admin/mcp-resource-servers/new',
+      why: '保護する MCP サーバーを登録します。許可スコープはこのサーバーの権限の名前です。「許可を判定する操作」は、文書を読む要求を「文書の閲覧者（viewer）なら許可」と判定するための設定です。',
+      todo: '「操作を追加」を押して、対象の種類と必要な関係を入れます。必要なスコープのチェックはそのままにします。',
+      fields: [['リソース URI', state.resource], ['表示名', '社内文書 MCP'], ['許可スコープ', state.scope], ['評価用のクライアント ID', value('gateway-client')], ['対象の種類（リソース型）', 'document'], ['必要な関係', 'viewer']],
+    },
+    {
+      title: 'エージェント', path: '/admin/agents/new',
+      why: 'エージェントの ID です。登録した管理者が所有者（責任者）になります。種別は「自律」のままにします。',
+      todo: '登録後の詳細画面で、名前の下に出る ID を下へ控えます。',
+      fields: [['エージェント名', '社内文書アシスタント']],
+      keep: [['agent-id', 'エージェントの ID']],
+    },
+    {
+      title: 'クレデンシャル', path: '/admin/agents',
+      why: 'エージェントが本物であることを、秘密鍵の署名で証明できるようにします。IdMagic へ渡すのは公開鍵だけで、共有のシークレットはありません。',
+      todo: '手順 4 のエージェントの詳細で「クレデンシャルを管理」を開きます。公開鍵を貼り、スコープの tools:read にチェックを付け、「作成して紐付ける」を押します。一覧に出る ID を下へ控えます。',
+      fields: [['公開鍵', state.public_key]],
+      keep: [['agent-client', '一覧に出たクライアント ID']],
+    },
+    {
+      title: '閲覧の許可', path: '/admin/authorization/relation-tuples/new',
+      why: '「このエージェントは就業規則の閲覧者である」という事実を一件登録します。給与テーブルは登録しないので読めません。',
+      todo: '次の値を入れて「関係タプルを追加」を押します。主体の形を選ぶと主体 ID の欄が出ます。',
+      fields: [['リソース型', 'document'], ['リソース ID', state.public_document], ['関係', 'viewer'], ['主体の形', 'agent'], ['主体 ID', value('agent-id')]],
+    },
+  ]
+  const cards = []
+  const renders = []
+  const show = (index) => {
+    cards.forEach((card, position) => { card.hidden = position !== index })
+    renders[index]?.()
+    for (const [position, tab] of [...$('progress').children].entries()) {
+      tab.className = position === index ? 'current' : ''
+    }
+  }
+  const navigation = (index, last) => {
+    const nav = document.createElement('div')
+    nav.className = 'nav'
+    const back = document.createElement('button')
+    back.className = 'ghost'
+    back.textContent = '前へ'
+    back.disabled = index === 0
+    back.onclick = () => show(index - 1)
+    nav.append(back)
+    if (!last) {
+      const next = document.createElement('button')
+      next.textContent = '次へ'
+      next.onclick = () => show(index + 1)
+      nav.append(next)
+    }
+    return nav
+  }
+  const addTab = (index, label) => {
+    const tab = document.createElement('button')
+    tab.textContent = `${index + 1}. ${label}`
+    tab.onclick = () => show(index)
+    $('progress').append(tab)
+  }
+  steps.forEach((step, index) => {
+    addTab(index, step.title)
+    const card = document.createElement('section')
+    card.className = 'card'
+    const title = document.createElement('h3')
+    title.textContent = `手順 ${index + 1}　${step.title}`
+    const why = document.createElement('p')
+    why.className = 'why'
+    why.textContent = step.why
+    const link = document.createElement('a')
+    link.className = 'open'
+    link.href = state.console + step.path
+    link.target = '_blank'
+    link.rel = 'noreferrer'
+    link.textContent = 'この画面を開く'
+    const todo = document.createElement('p')
+    todo.textContent = step.todo
+    const rows = document.createElement('div')
+    renders[index] = () => rows.replaceChildren(...step.fields.map(([label, item]) => field(label, typeof item === 'function' ? item() : item)))
+    card.append(title, why, link, todo, rows)
+    if (step.keep) {
+      const keep = document.createElement('div')
+      keep.className = 'keep'
+      keep.append(...step.keep.map(([id, label, type]) => inputField(id, label, type)))
+      card.append(keep)
+    }
+    card.append(navigation(index, false))
+    cards.push(card)
+    $('setup').append(card)
+  })
+  const connectIndex = steps.length
+  addTab(connectIndex, '接続')
+  const connect = document.createElement('section')
+  connect.className = 'card'
+  const title = document.createElement('h3')
+  title.textContent = `手順 ${connectIndex + 1}　接続`
+  const text = document.createElement('p')
+  text.className = 'why'
+  text.textContent = '控えた値をエージェントとゲートウェイへ渡します。実運用で配置時に設定ファイルへ書く値です。'
+  const button = document.createElement('button')
+  button.id = 'connect'
+  button.textContent = '接続して確かめる'
+  const actions = document.createElement('div')
+  actions.className = 'actions'
+  actions.append(button)
+  const out = document.createElement('div')
+  out.id = 'connect-out'
+  connect.append(title, text, actions, out, navigation(connectIndex, true))
+  cards.push(connect)
+  $('setup').append(connect)
+  show(0)
+  const renderGrant = () => $('grant-fields').replaceChildren(...[
+    ['リソース型', 'document'], ['リソース ID', state.secret_document], ['関係', 'viewer'], ['主体の形', 'agent'], ['主体 ID', value('agent-id')()],
+  ].map(([label, item]) => field(label, item)))
+  renderGrant()
+  $('agent-id').addEventListener('input', renderGrant)
+  button.onclick = async () => {
+    button.disabled = true
+    try {
+      const result = await post('/api/connect', { agent_client_id: $('agent-client').value, gateway_client_id: $('gateway-client').value, gateway_client_secret: $('gateway-secret').value })
+      renderSteps(out, result.steps)
+    } catch (error) { renderError(out, error) } finally { button.disabled = false }
+  }
+  $('approval').onclick = async () => {
+    const target = $('approval-out')
+    try {
+      const started = await post('/api/approval/start')
+      renderSteps(target, started.steps)
+      const wait = ((started.interval ?? 5) + 1) * 1000
+      const poll = async () => {
+        const result = await post('/api/approval/poll')
+        if (result.pending) { setTimeout(poll, wait); return }
+        renderSteps(target, result.steps, true)
+      }
+      setTimeout(poll, wait)
+    } catch (error) { renderError(target, error) }
+  }
+}
+init()
+</script>
+</body>
+</html>

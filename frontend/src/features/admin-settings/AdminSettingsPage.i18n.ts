@@ -210,7 +210,7 @@ export const adminSettingsDictionary = defineDictionary(
     currentUserLabel: 'ログイン中のユーザー',
     tokenTenantLabel: '操作対象のテナント',
     tokenIdentityDescription:
-      'このトークンはあなた本人の資格情報として発行されます。テナントで共有する資格情報ではありません。管理 API の操作には、選択したスコープとあなたの現在の管理者権限の両方が必要です。',
+      'このトークンはあなた本人のクレデンシャルとして発行されます。テナントで共有するクレデンシャルではありません。管理 API の操作には、選択したスコープとあなたの現在の管理者権限の両方が必要です。',
     tokenDescriptionLabel: 'トークンの説明',
     tenantTokenDescription:
       'このテナントで発行されたトークンを管理します。トークンの主体は発行者本人です。管理 API の利用にはスコープと現在の管理者ロールの両方が必要です。',
