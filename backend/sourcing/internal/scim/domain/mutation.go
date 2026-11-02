@@ -127,7 +127,11 @@ func ParseUserWrite(body map[string]any) (UserWrite, error) {
 	if nameMap, ok := body["name"].(map[string]any); ok {
 		w.GivenName, _ = nameMap["givenName"].(string)
 		w.FamilyName, _ = nameMap["familyName"].(string)
-		w.Formatted, _ = nameMap["formatted"].(string)
+	}
+	var err error
+	w.Formatted, err = projectCanonicalName(body)
+	if err != nil {
+		return UserWrite{}, err
 	}
 
 	if rawEmails, exists := body["emails"]; exists {
@@ -175,6 +179,35 @@ func ParseUserWrite(body map[string]any) (UserWrite, error) {
 	}
 
 	return w, nil
+}
+
+// 既存の formatted の明示値を保ち、null と省略だけを displayName へ委ねる。
+// 選ばれない属性の型も検証し、同じ入力を経路ごとに異なる意味で受け付けない。
+func projectCanonicalName(body map[string]any) (string, error) {
+	display, err := parseNameValue(body["displayName"], "displayName")
+	if err != nil {
+		return "", err
+	}
+	name, _ := body["name"].(map[string]any)
+	formatted, err := parseNameValue(name["formatted"], "name.formatted")
+	if err != nil {
+		return "", err
+	}
+	if name["formatted"] != nil {
+		return formatted, nil
+	}
+	return display, nil
+}
+
+func parseNameValue(value any, path string) (string, error) {
+	if value == nil {
+		return "", nil
+	}
+	name, ok := value.(string)
+	if !ok {
+		return "", newMutationError("invalidValue", "%s must be a string or null", path)
+	}
+	return name, nil
 }
 
 // parseEnterpriseStringAttr validates an enterprise extension string
@@ -232,6 +265,7 @@ var userPatchAttrs = map[string]UserAttr{
 	"name.givenname":  UserAttrGivenName,
 	"name.familyname": UserAttrFamilyName,
 	"name.formatted":  UserAttrFormatted,
+	"displayname":     UserAttrFormatted,
 	"emails":          UserAttrEmails,
 	"active":          UserAttrActive,
 	// enterprise extension attributes accept both the bare name and the
@@ -287,6 +321,22 @@ func ParseUserPatchOps(body map[string]any) ([]UserPatchOp, error) {
 		}
 
 		value := opMap["value"]
+		if attr == UserAttrFormatted && op != "remove" {
+			parsed, err := parseNameValue(value, path)
+			if err != nil {
+				return nil, err
+			}
+			value = parsed
+		}
+		if attr == UserAttrName && op != "remove" {
+			name, isObject := value.(map[string]any)
+			if !isObject {
+				return nil, newMutationError("invalidValue", "name value must be an object")
+			}
+			if _, err := parseNameValue(name["formatted"], "name.formatted"); err != nil {
+				return nil, err
+			}
+		}
 		if attr == UserAttrActive && op != "remove" {
 			if _, isBool := value.(bool); !isBool {
 				return nil, newMutationError("invalidValue", "active value must be a boolean")

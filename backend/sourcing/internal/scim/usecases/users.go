@@ -443,6 +443,9 @@ func (u *Usecases) toScimUser(ctx context.Context, tenantID string, user *userdo
 			"location":     "/scim/v2/Users/" + scimID,
 		},
 	}
+	if formattedName != "" {
+		resource["displayName"] = formattedName
+	}
 	if user.Email != nil && strings.TrimSpace(*user.Email) != "" {
 		resource["emails"] = []map[string]any{{
 			"value":   *user.Email,

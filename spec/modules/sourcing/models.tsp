@@ -29,7 +29,7 @@ model ScimGroupRef {
 }
 
 
-@doc("/Users と /Groups のエンドポイントへ送り、そこから返る SCIM のリソース（RFC 7643）。含まれる属性はリソースが `schemas` で宣言するスキーマによって決まるので、契約は一つの属性の集合に固定せず、開いた JSON オブジェクトとして記録する。サーバーが従う属性の定義は GetScimSchemas が報告する。IdMagic は User と Group のコアスキーマと、User の enterprise 拡張に対応する。")
+@doc("/Users と /Groups のエンドポイントへ送り、そこから返る SCIM のリソース（RFC 7643）。含まれる属性はリソースが `schemas` で宣言するスキーマによって決まるので、契約は一つの属性の集合に固定せず、開いた JSON オブジェクトとして記録する。サーバーが従う属性の定義は GetScimSchemas が報告する。IdMagic は User と Group のコアスキーマと、User の enterprise 拡張に対応する。User の作成と置換では、文字列の name.formatted（空文字列を含む）を優先し、省略または null のときは displayName を正規の名前に使う。両方が未割当なら空にする。二つの名前は文字列または null とし、型の不正な値は invalidValue で拒否する。読み戻しの name.formatted は正規の名前を示し、空でなければ displayName も同じ値を示す。")
 model ScimResource is Record<unknown>;
 
 

@@ -79,6 +79,22 @@ PATCH の `path` は、`employeeNumber` などの単純な名前と、Enterprise
 - JSON として読めない本文を受けた場合、Sourcing は、400 と scimType `invalidSyntax` の SCIM のエラーで拒否する。
 - **例**：EX-SOURCING-002-01、EX-SOURCING-002-02、EX-SOURCING-002-03、EX-SOURCING-002-04、EX-SOURCING-002-05
 
+#### REQ-SOURCING-025 SCIM の二つの名前は一つの正規の名前へ投影される
+
+- SCIM クライアントが User を作成または置換したとき、Sourcing は、次の表に従って正規の `User.name` に保存する名前を決める。
+
+| `name.formatted` | `displayName` | 正規の名前 |
+| --- | --- | --- |
+| 文字列（空文字列を含む） | 文字列、省略、null | `name.formatted` の値 |
+| 省略、null | 文字列 | `displayName` の値 |
+| 省略、null | 省略、null | 空文字列 |
+
+- 二つの名前のいずれかが文字列でも null でもない場合、Sourcing は、400 と scimType `invalidValue` の SCIM のエラーで拒否し、User を作成も変更もしない。
+- 正規の名前が空でない User の SCIM 表現を返すとき、Sourcing は、正規の名前を `name.formatted` と `displayName` に返す。
+- 正規の名前が空の User の SCIM 表現を返すとき、Sourcing は、`name.formatted` を空にし、`displayName` を省略する。
+- SCIM クライアントがスキーマを取得したとき、Sourcing は、User の `displayName` を書き込み可能な単一の文字列として広告し、`name.formatted` と一つの正規の名前へ投影することを説明する。
+- **判断**：既存の `name.formatted` の入力結果を保ち、別の名前の保存先を増やさずに `displayName` 単独の入力を使えるようにする。null は RFC 7643 の 2.5 節に従って未割当とする。
+
 #### REQ-SOURCING-006 SCIM の複数メールアドレスを正規メールアドレスへ決定的に投影する
 
 - SCIM クライアントが複数の `emails` を送ったとき、Sourcing は、`primary=true` の要素、`type` が大文字と小文字を区別せず `work` の最初の要素、通信上の最初の要素の順に一つを選び、その `value` だけを `User.email` に保存する。
@@ -114,7 +130,11 @@ PATCH の `path` は、`employeeNumber` などの単純な名前と、Enterprise
 
 #### REQ-SOURCING-004 外部 IdP による未対応の PATCH パスや読み取り専用属性への書き込みを拒否する
 
-- SCIM クライアントが対応するパス（User の `userName`、`name`、`active`、`emails`、Enterprise 拡張の属性、Group の `displayName`、`members`）への `add`、`replace`、`remove` を送ったとき、Sourcing は、その属性だけを更新し、ほかの属性を変えず、200 と更新後のリソースを返す。
+- SCIM クライアントが対応するパス（User の `userName`、`name`、`displayName`、`active`、`emails`、Enterprise 拡張の属性、Group の `displayName`、`members`）への `add`、`replace`、`remove` を送ったとき、Sourcing は、その属性だけを更新し、ほかの属性を変えず、200 と更新後のリソースを返す。
+- User の `displayName` または `name.formatted` への `add` と `replace` を送られたとき、Sourcing は、文字列を正規の名前に保存し、null を空に写し、文字列でも null でもない値を `invalidValue` で拒否する。
+- User の `displayName` または `name.formatted` への `remove` を送られたとき、Sourcing は、正規の名前を空にする。
+- User の `name` オブジェクトの `formatted` が文字列でも null でもない場合、Sourcing は、`invalidValue` で拒否し、User を変更しない。
+- 二つの名前を一つの PATCH 操作列で更新するとき、Sourcing は、操作列の順に同じ正規の名前を更新する。
 - 対応する属性の一覧にないか、存在しない属性を指す `path` を受けた場合、Sourcing は、400 と scimType `invalidPath` の SCIM のエラーで拒否し、リソースを変えない。
 - 読み取り専用の `id`、`meta`、`schemas` を指す `path` を受けた場合、Sourcing は、400 と scimType `mutability` の SCIM のエラーで拒否し、リソースを変えない。
 - `op` が `add`、`replace`、`remove` のどれでもないか、RFC 7644 の PATCH の要件を満たさない本文を受けた場合、Sourcing は、400 と scimType `invalidValue` の SCIM のエラーで拒否し、リソースを変えない。

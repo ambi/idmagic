@@ -23,6 +23,49 @@ func TestParseUserWriteRequiresUserName(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SOURCING-025: 名前の優先順位、明示的な空、null と省略を区別し、選択されない属性を含めて型を検証する。
+func TestParseUserWriteCanonicalName(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		body map[string]any
+		want string
+	}{
+		{"display only", map[string]any{"displayName": "Display"}, "Display"},
+		{"formatted only", map[string]any{"name": map[string]any{"formatted": "Formatted"}}, "Formatted"},
+		{"formatted wins", map[string]any{"displayName": "Display", "name": map[string]any{"formatted": "Formatted"}}, "Formatted"},
+		{"explicit empty wins", map[string]any{"displayName": "Display", "name": map[string]any{"formatted": ""}}, ""},
+		{"null formatted is unassigned", map[string]any{"displayName": "Display", "name": map[string]any{"formatted": nil}}, "Display"},
+		{"null name is unassigned", map[string]any{"displayName": "Display", "name": nil}, "Display"},
+		{"null display", map[string]any{"displayName": nil}, ""},
+		{"empty display", map[string]any{"displayName": ""}, ""},
+		{"both omitted", map[string]any{}, ""},
+		{"both null", map[string]any{"displayName": nil, "name": map[string]any{"formatted": nil}}, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			test.body["userName"] = "name-projection"
+			write, err := domain.ParseUserWrite(test.body)
+			if err != nil || write.Formatted != test.want {
+				t.Fatalf("name=%q error=%v, want %q", write.Formatted, err, test.want)
+			}
+		})
+	}
+	for _, body := range []map[string]any{
+		{"displayName": 42},
+		{"displayName": true},
+		{"displayName": []any{"Display"}},
+		{"displayName": map[string]any{"value": "Display"}},
+		{"displayName": 42, "name": map[string]any{"formatted": "Valid"}},
+		{"displayName": "Valid", "name": map[string]any{"formatted": 42}},
+	} {
+		body["userName"] = "invalid-name"
+		write, err := domain.ParseUserWrite(body)
+		var mutation *domain.MutationError
+		if !errors.As(err, &mutation) || mutation.ScimType != "invalidValue" || write != (domain.UserWrite{}) {
+			t.Errorf("input=%v write=%+v error=%v, want invalidValue and no partial write", body, write, err)
+		}
+	}
+}
+
 // 省略した mutable 属性は既定値にリセットされる (PUT full-replace semantics)。
 func TestParseUserWriteDefaultsOmittedAttributes(t *testing.T) {
 	w, err := domain.ParseUserWrite(map[string]any{"userName": "bjensen"})

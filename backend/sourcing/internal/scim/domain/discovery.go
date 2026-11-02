@@ -11,6 +11,7 @@ func UserCoreSchema() Schema {
 		Attributes: []SchemaAttribute{
 			{Name: "id", Type: "string", Mutability: "readOnly", Returned: "always", Uniqueness: "server"},
 			{Name: "userName", Type: "string", Required: true, CaseExact: false, Mutability: "readWrite", Returned: "default", Uniqueness: "server"},
+			{Name: "displayName", Type: "string", Mutability: "readWrite", Returned: "default", Description: "name.formatted と一つの正規の名前へ投影する。作成と置換では文字列の name.formatted を優先する。"},
 			{
 				Name: "name", Type: "complex", Mutability: "readWrite", Returned: "default",
 				SubAttributes: []SchemaAttribute{

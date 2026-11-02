@@ -29,6 +29,9 @@ func FuzzParseUserWrite(f *testing.F) {
 	f.Add(`{"userName":"  "}`)
 	f.Add(`{"userName":"alice","phoneNumbers":[]}`)
 	f.Add(`{"userName":"alice","name":{"givenName":"A","familyName":"B"}}`)
+	f.Add(`{"userName":"alice","displayName":"表示名"}`)
+	f.Add(`{"userName":"alice","displayName":42,"name":{"formatted":"有効な名前"}}`)
+	f.Add(`{"userName":"alice","displayName":"表示名","name":{"formatted":null}}`)
 	f.Add(`{}`)
 
 	f.Fuzz(func(t *testing.T, raw string) {
