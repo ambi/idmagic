@@ -73,7 +73,7 @@ func (q *Queries) DeleteClientCredentialBindings(ctx context.Context, arg Delete
 }
 
 const findAgentByClientID = `-- name: FindAgentByClientID :one
-SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents
 WHERE tenant_id=$1 AND id IN (
   SELECT agent_id FROM agent_credential_bindings WHERE client_id=$2
@@ -96,7 +96,6 @@ func (q *Queries) FindAgentByClientID(ctx context.Context, arg FindAgentByClient
 		&i.Kind,
 		&i.OwnerUserID,
 		&i.Status,
-		&i.Roles,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DisabledAt,
@@ -107,7 +106,7 @@ func (q *Queries) FindAgentByClientID(ctx context.Context, arg FindAgentByClient
 }
 
 const findAgentByID = `-- name: FindAgentByID :one
-SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents
 WHERE tenant_id=$1 AND id=$2
 `
@@ -128,7 +127,6 @@ func (q *Queries) FindAgentByID(ctx context.Context, arg FindAgentByIDParams) (*
 		&i.Kind,
 		&i.OwnerUserID,
 		&i.Status,
-		&i.Roles,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DisabledAt,
@@ -139,7 +137,7 @@ func (q *Queries) FindAgentByID(ctx context.Context, arg FindAgentByIDParams) (*
 }
 
 const findAgentByIDForUpdate = `-- name: FindAgentByIDForUpdate :one
-SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents
 WHERE tenant_id=$1 AND id=$2
 FOR UPDATE
@@ -162,7 +160,6 @@ func (q *Queries) FindAgentByIDForUpdate(ctx context.Context, arg FindAgentByIDF
 		&i.Kind,
 		&i.OwnerUserID,
 		&i.Status,
-		&i.Roles,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DisabledAt,
@@ -204,7 +201,7 @@ func (q *Queries) ListAgentBindingsByAgent(ctx context.Context, arg ListAgentBin
 }
 
 const listAgentsByTenant = `-- name: ListAgentsByTenant :many
-SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents
 WHERE tenant_id=$1 ORDER BY name
 `
@@ -226,7 +223,6 @@ func (q *Queries) ListAgentsByTenant(ctx context.Context, tenantID string) ([]*A
 			&i.Kind,
 			&i.OwnerUserID,
 			&i.Status,
-			&i.Roles,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DisabledAt,
@@ -244,7 +240,7 @@ func (q *Queries) ListAgentsByTenant(ctx context.Context, tenantID string) ([]*A
 }
 
 const listAgentsByTenantPage = `-- name: ListAgentsByTenantPage :many
-SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents
 WHERE tenant_id=$1
 ORDER BY name, id
@@ -275,7 +271,6 @@ func (q *Queries) ListAgentsByTenantPage(ctx context.Context, arg ListAgentsByTe
 			&i.Kind,
 			&i.OwnerUserID,
 			&i.Status,
-			&i.Roles,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DisabledAt,
@@ -293,7 +288,7 @@ func (q *Queries) ListAgentsByTenantPage(ctx context.Context, arg ListAgentsByTe
 }
 
 const listAgentsByTenantPageAfter = `-- name: ListAgentsByTenantPageAfter :many
-SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents
 WHERE tenant_id=$1
   AND (name, id) > ($2::text, $3::uuid)
@@ -332,7 +327,6 @@ func (q *Queries) ListAgentsByTenantPageAfter(ctx context.Context, arg ListAgent
 			&i.Kind,
 			&i.OwnerUserID,
 			&i.Status,
-			&i.Roles,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DisabledAt,
@@ -350,7 +344,7 @@ func (q *Queries) ListAgentsByTenantPageAfter(ctx context.Context, arg ListAgent
 }
 
 const listAgentsByTenantPageBefore = `-- name: ListAgentsByTenantPageBefore :many
-SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents
 WHERE tenant_id=$1
   AND (name, id) < ($2::text, $3::uuid)
@@ -387,7 +381,6 @@ func (q *Queries) ListAgentsByTenantPageBefore(ctx context.Context, arg ListAgen
 			&i.Kind,
 			&i.OwnerUserID,
 			&i.Status,
-			&i.Roles,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DisabledAt,
@@ -405,7 +398,7 @@ func (q *Queries) ListAgentsByTenantPageBefore(ctx context.Context, arg ListAgen
 }
 
 const listAgentsByTenantPageEnd = `-- name: ListAgentsByTenantPageEnd :many
-SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,
 created_at,updated_at,disabled_at,killed_at,name_key FROM agents
 WHERE tenant_id=$1
 ORDER BY name DESC, id DESC
@@ -434,7 +427,6 @@ func (q *Queries) ListAgentsByTenantPageEnd(ctx context.Context, arg ListAgentsB
 			&i.Kind,
 			&i.OwnerUserID,
 			&i.Status,
-			&i.Roles,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DisabledAt,
@@ -472,11 +464,11 @@ func (q *Queries) RemoveAgentBinding(ctx context.Context, arg RemoveAgentBinding
 }
 
 const saveAgent = `-- name: SaveAgent :exec
-INSERT INTO agents (id,tenant_id,name,description,kind,owner_user_id,status,roles,
+INSERT INTO agents (id,tenant_id,name,description,kind,owner_user_id,status,
  created_at,updated_at,disabled_at,killed_at,name_key)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,name_key=EXCLUDED.name_key,description=EXCLUDED.description,
- kind=EXCLUDED.kind,owner_user_id=EXCLUDED.owner_user_id,status=EXCLUDED.status,roles=EXCLUDED.roles,
+ kind=EXCLUDED.kind,owner_user_id=EXCLUDED.owner_user_id,status=EXCLUDED.status,
  updated_at=EXCLUDED.updated_at,disabled_at=EXCLUDED.disabled_at,killed_at=EXCLUDED.killed_at
 `
 
@@ -488,7 +480,6 @@ type SaveAgentParams struct {
 	Kind        string
 	OwnerUserID string
 	Status      string
-	Roles       []byte
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DisabledAt  pgtype.Timestamptz
@@ -505,7 +496,6 @@ func (q *Queries) SaveAgent(ctx context.Context, arg SaveAgentParams) error {
 		arg.Kind,
 		arg.OwnerUserID,
 		arg.Status,
-		arg.Roles,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.DisabledAt,

@@ -33,7 +33,7 @@ func newLifecycleFixture(t *testing.T, status idmdomain.UserStatus) *lifecycleFi
 	})
 	if err := f.agents.Save(context.Background(), &agentdomain.Agent{
 		ID: "deploy-bot", TenantID: "tenant-a", Name: "deploy-bot", Kind: idmdomain.AgentKindAutonomous,
-		OwnerUserID: "alice", Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: lifecycleNow, UpdatedAt: lifecycleNow,
+		OwnerUserID: "alice", Status: idmdomain.AgentStatusActive, CreatedAt: lifecycleNow, UpdatedAt: lifecycleNow,
 	}); err != nil {
 		t.Fatal(err)
 	}

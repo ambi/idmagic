@@ -2530,7 +2530,7 @@ model ImportAgentObservationsError422 {
   @body body: IdMagic.Contract.AgentObservationBatchInvalidError | IdMagic.Contract.AgentObservationInvalidError;
 }
 
-@doc("外部の発見器が、観測のバッチを未確認の報告として取り込む。`agent-observations:import` のスコープの API アクセストークンだけが呼べる。全件を保存するか一件も保存せず、Agent、束縛、ロールは変えない（REQ-IDMANAGEMENT-095、REQ-IDMANAGEMENT-096、REQ-IDMANAGEMENT-097、REQ-IDMANAGEMENT-101）。")
+@doc("外部の発見器が、観測のバッチを未確認の報告として取り込む。`agent-observations:import` のスコープの API アクセストークンだけが呼べる。全件を保存するか一件も保存せず、Agent と束縛は変えない（REQ-IDMANAGEMENT-095、REQ-IDMANAGEMENT-096、REQ-IDMANAGEMENT-097、REQ-IDMANAGEMENT-101）。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agent-observations:import"])
 @TypeSpec.OpenAPI.operationId("ImportAgentObservations")
 @route("/api/admin/v1/agent-observations/import")
@@ -2690,7 +2690,6 @@ union RegisterAgentError422Body {
   IdMagic.Contract.InvalidAgentKindError,
   IdMagic.Contract.AgentOwnerRequiredError,
   IdMagic.Contract.AgentOwnerNotFoundError,
-  IdMagic.Contract.InvalidRoleError,
 }
 
 model RegisterAgentError422 {
@@ -2699,7 +2698,7 @@ model RegisterAgentError422 {
   @body body: RegisterAgentError422Body;
 }
 
-@doc("管理者が、自身のテナントに Agent を登録する。名前はテナントの中で一意で、`owner_user_id` を省くと呼び出し元が所有者になる。Agent はシステムの運用者とは別の種類の主体なので、`roles` には、どのテナントでも予約済みのロール `system_admin` を含められない。InvalidRoleError を参照する。")
+@doc("管理者が、自身のテナントに Agent を登録する。名前はテナントの中で一意で、`owner_user_id` を省くと呼び出し元が所有者になる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("RegisterAgent")
 @route("/api/admin/v1/agents")
@@ -2762,7 +2761,6 @@ union UpdateAgentError422Body {
   IdMagic.Contract.InvalidAgentKindError,
   IdMagic.Contract.AgentOwnerRequiredError,
   IdMagic.Contract.AgentOwnerNotFoundError,
-  IdMagic.Contract.InvalidRoleError,
 }
 
 model UpdateAgentError422 {
@@ -2771,7 +2769,7 @@ model UpdateAgentError422 {
   @body body: UpdateAgentError422Body;
 }
 
-@doc("管理者が、Agent の名前、説明、種類、`owner_user_id`、またはロールを更新する。`owner_user_id` の変更は所有権の移転である。予約済みのロール `system_admin` の追加はどのテナントでも拒否し、拒否したときは同じリクエストのほかのフィールドも書き込まない。InvalidRoleError を参照する。")
+@doc("管理者が、Agent の名前、説明、種類、または `owner_user_id` を更新する。`owner_user_id` の変更は所有権の移転である。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAgent")
 @route("/api/admin/v1/agents/{agent_id}")

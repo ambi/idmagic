@@ -11,10 +11,10 @@ import { useDictionary } from '../../lib/i18n'
 import { LENGTH } from '../../lib/lengthLimits'
 import type { AdminAgent, AdminUser } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
-import { OwnerSelect, parseRoles } from './AdminAgentsShared'
+import { OwnerSelect } from './AdminAgentsShared'
 import { returnToAgent } from './agentNavigation'
 
-// 基本情報とロールを一度の保存で確定する。資格情報とガードレールは別の作業へ分ける。
+// 基本情報を一度の保存で確定する。クレデンシャルとガードレールは別の作業へ分ける。
 export function AdminAgentEditPage({
   csrfToken,
   actorUsername,
@@ -31,20 +31,17 @@ export function AdminAgentEditPage({
   const [description, setDescription] = useState(agent.description ?? '')
   const [kind, setKind] = useState<AdminAgent['kind']>(agent.kind)
   const [ownerSub, setOwnerSub] = useState(agent.owner_user_id)
-  const [roles, setRoles] = useState(agent.roles.join(', '))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const t = useDictionary(adminAgentsDictionary)
 
   const trimmedName = name.trim()
-  const nextRoles = parseRoles(roles)
   const nameInvalid = trimmedName === ''
   const changed =
     trimmedName !== agent.name ||
     description.trim() !== (agent.description ?? '') ||
     kind !== agent.kind ||
-    ownerSub.trim() !== agent.owner_user_id ||
-    nextRoles.join(',') !== agent.roles.join(',')
+    ownerSub.trim() !== agent.owner_user_id
   const killed = agent.status === 'killed'
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -59,7 +56,6 @@ export function AdminAgentEditPage({
           description.trim() !== (agent.description ?? '') ? description.trim() : undefined,
         kind: kind !== agent.kind ? kind : undefined,
         owner_user_id: ownerSub.trim() !== agent.owner_user_id ? ownerSub.trim() : undefined,
-        roles: nextRoles.join(',') !== agent.roles.join(',') ? nextRoles : undefined,
       })
       returnToAgent(agent.id, t.agentUpdatedNotice)
     } catch (cause) {
@@ -136,19 +132,6 @@ export function AdminAgentEditPage({
                   disabled={killed}
                 />
                 <p className="text-xs text-slate-500">{t.ownerEditHelp}</p>
-              </div>
-            </section>
-            <section className="grid gap-3 border-t border-slate-200 pt-5">
-              <div className="grid gap-1.5">
-                <Label htmlFor="agent-editor-roles">{t.rolesLabel}</Label>
-                <Input
-                  id="agent-editor-roles"
-                  value={roles}
-                  onChange={(e) => setRoles(e.target.value)}
-                  placeholder="invoice:read, invoice:write"
-                  disabled={killed}
-                />
-                <p className="text-xs text-slate-500">{t.rolesHelp}</p>
               </div>
             </section>
           </div>

@@ -11,7 +11,7 @@ import { useDictionary } from '../../lib/i18n'
 import { LENGTH } from '../../lib/lengthLimits'
 import type { AdminAgent, AdminUser } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
-import { OwnerSelect, optionalValue, parseRoles } from './AdminAgentsShared'
+import { OwnerSelect, optionalValue } from './AdminAgentsShared'
 
 // AdminAgentCreatePage はエージェント登録の専用画面 (wi-314 T012)。従来
 // AdminAgentsListPage 内のインラインモーダルだった登録フォームを、専用ルートへ移す。
@@ -45,7 +45,6 @@ export function AdminAgentCreatePage({
         description: optionalValue(data.get('description')),
         kind,
         owner_user_id: optionalValue(data.get('owner_user_id')),
-        roles: parseRoles(String(data.get('roles') ?? '')),
       })
       window.location.assign(tenantURL(`/admin/agents/${encodeURIComponent(created.id)}`))
     } catch (cause) {
@@ -124,11 +123,6 @@ export function AdminAgentCreatePage({
                   emptyLabel={t.ownerDefaultOption}
                 />
                 <p className="text-xs text-slate-500">{t.ownerHelp}</p>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="agent-roles">{t.rolesLabel}</Label>
-                <Input id="agent-roles" name="roles" placeholder="invoice:read, invoice:write" />
-                <p className="text-xs text-slate-500">{t.rolesHelp}</p>
               </div>
             </div>
 

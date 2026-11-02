@@ -226,7 +226,7 @@ erDiagram
 | `authentication_event_buckets` | 同じ鍵から続く認証失敗を 5 分の時間枠で数える集計。攻撃による急増で監査イベントのレコードを増やさない | Authentication | `LOGGED` | 複合主キーの一部 |
 | `tenant_correlation_salts` | 利用者名や IP アドレスを相関用にハッシュするときのテナントごとのソルト | 共通基盤 | `LOGGED` | 単独主キー |
 | `audit_event_search_attributes` | 監査イベントの検索属性の索引。個人識別情報は変換済みの値だけを置く | Audit | `LOGGED` | 非キーカラム |
-| `agents` | エージェントの Aggregate。所有者、状態、ロールを格納する | IdManagement | `LOGGED` | 非キーカラム |
+| `agents` | エージェントの Aggregate。所有者と状態を格納する | IdManagement | `LOGGED` | 非キーカラム |
 | `authorization_detail_types` | テナントが受け付ける `authorization_details` の型の定義 | OAuth2 | `LOGGED` | 複合主キーの一部 |
 | `mcp_resource_servers` | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ、評価用のクライアントと規則 | OAuth2 | `LOGGED` | 非キーカラム |
 | `agent_guardrail_policies` | Agent の発行の上限とテナントのデフォルト、内容から導いたバージョン | OAuth2 | `LOGGED` | 複合主キーの一部 |

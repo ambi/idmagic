@@ -311,7 +311,7 @@ func TestWorkerDisableUserStepStopsTheAgentsTheUserOwns(t *testing.T) {
 	workflows, runs := governance.LifecycleWorkflowRepo, governance.LifecycleWorkflowRunRepo
 	_ = users.Save(context.Background(), &userdomain.User{ID: "alice", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "unused", Roles: []string{}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now})
 	agents := idmanagement.NewMemoryModule().AgentRepo
-	if err := agents.Save(ctx, &agentdomain.Agent{ID: "deploy-bot", TenantID: "tenant-a", Name: "deploy-bot", Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "alice", Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: now, UpdatedAt: now}); err != nil {
+	if err := agents.Save(ctx, &agentdomain.Agent{ID: "deploy-bot", TenantID: "tenant-a", Name: "deploy-bot", Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "alice", Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
 	if err := saveWorkflowFixture(ctx, t, governance, &workflowFixture{ID: "workflow-1", TenantID: "tenant-a", Name: "Leaver", Status: "enabled", CurrentRevision: 1, EnabledRevision: new(int64(1)), CreatedAt: now, UpdatedAt: now}); err != nil {
@@ -374,7 +374,7 @@ func newRevocationFixture(t *testing.T) *revocationFixture {
 		agentIDs: []string{"deploy-bot", "report-bot"},
 	}
 	for _, id := range f.agentIDs {
-		if err := agents.Save(ctx, &agentdomain.Agent{ID: id, TenantID: "tenant-a", Name: id, Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "alice", Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: now, UpdatedAt: now}); err != nil {
+		if err := agents.Save(ctx, &agentdomain.Agent{ID: id, TenantID: "tenant-a", Name: id, Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "alice", Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now}); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := agents.AddBinding(ctx, &agentdomain.AgentCredentialBinding{AgentID: id, ClientID: id + "-client", CreatedAt: now}); err != nil {

@@ -132,7 +132,7 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 	if err != nil {
 		return nil, err
 	}
-	if err := idmusecases.ValidateRoleAssignment(idmusecases.RoleTargetUser, tenantID, nil, roles); err != nil {
+	if err := idmusecases.ValidateRoleAssignment(tenantID, nil, roles); err != nil {
 		return nil, err
 	}
 	passwordHash, err := deps.PasswordHasher.Hash(in.Password)
@@ -253,9 +253,7 @@ func updateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput, fro
 		if err != nil {
 			return nil, err
 		}
-		if err := idmusecases.ValidateRoleAssignment(
-			idmusecases.RoleTargetUser, user.TenantID, user.Roles, roles,
-		); err != nil {
+		if err := idmusecases.ValidateRoleAssignment(user.TenantID, user.Roles, roles); err != nil {
 			return nil, err
 		}
 		if !slices.Equal(roles, user.Roles) {

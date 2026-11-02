@@ -22,7 +22,6 @@
 | `name`、`description` | 名前と説明。名前の正規化、比較、一意性は[名前](../data.md#値オブジェクト)の定義に従う |
 | `kind` | `autonomous`（人の都度の承認なしに動く）または `supervised`（人の監督の下で動く） |
 | `owner_sub` | 所有者の User |
-| `roles` | ロール |
 | `status` | `Active`、`Disabled`、`Killed` |
 | 束縛 | 束縛した `OAuth2Client` の `client_id` の集合。一つの `OAuth2Client` は一つの Agent にだけ束縛できる |
 
@@ -88,6 +87,7 @@
 #### REQ-IDMANAGEMENT-073 Agent の登録は、名前を正規化し、同じテナントの `Active` の User だけを所有者に受け付ける
 
 - 管理者が Agent を登録したとき、IdManagement は、`Active` の Agent を作り、テナントの Agent の使用量を一つ増やし、`AgentRegistered` を発行する。
+- 管理者が Agent を登録したとき、IdManagement は、ロールを持たない Agent を保存し、応答に `roles` を含めない。
 - 管理者が Agent を登録したとき、IdManagement は、名前を前後の空白を除いて保存する。
 - 管理者が所有者を指定せずに登録したとき、IdManagement は、登録した管理者を所有者として保存する。
 - 前後の空白を除くと空になる名前を指定された場合、IdManagement は、422 と `agent_name_required` で拒否する。
@@ -126,7 +126,7 @@
 
 #### REQ-IDMANAGEMENT-075 Agent の更新は値が変わった項目だけを記録し、所有者の変更を別に記録する
 
-- 管理者が Agent を更新したとき、IdManagement は、値が変わった項目だけを保存し、`name`、`description`、`kind`、`owner_sub`、`roles` のうち値が変わった項目だけを `changed_fields` に載せた `AgentUpdated` を発行する。
+- 管理者が Agent を更新したとき、IdManagement は、値が変わった項目だけを保存し、`name`、`description`、`kind`、`owner_sub` のうち値が変わった項目だけを `changed_fields` に載せた `AgentUpdated` を発行する。
 - 管理者が所有者を変えたとき、IdManagement は、`AgentUpdated` に続けて、変更前と変更後の所有者を載せた `AgentOwnerChanged` を発行する。
 - 管理者がどの項目の値も変えない更新を要求した場合、IdManagement は、成功を返し、`updated_at` を進めず、イベントを発行しない。
 - 前後の空白を除くと空になる所有者を指定された場合、IdManagement は、422 と `agent_owner_required` で拒否し、Agent を変えない。

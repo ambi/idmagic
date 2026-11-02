@@ -11,7 +11,7 @@ export const adminAgentsDictionary = defineDictionary(
     agentRegisteredNotice: 'エージェントを登録しました。',
     pageTitle: 'エージェント',
     pageDescription:
-      '非人間プリンシパルとしてのエージェントを登録し、ロールとクライアントクレデンシャルを管理します。',
+      '非人間プリンシパルとしてのエージェントを登録し、クライアントクレデンシャルを管理します。',
     reloadAriaLabel: '一覧を再読み込み',
     listRefreshedNotice: '一覧を更新しました。',
     addAgent: 'エージェントを追加',
@@ -21,7 +21,7 @@ export const adminAgentsDictionary = defineDictionary(
     tableHeaderKind: '種別',
     tableHeaderOwner: '所有者',
     tableHeaderStatus: '状態',
-    tableHeaderRolesCredentials: 'ロール / クレデンシャル',
+    tableHeaderCredentials: 'クレデンシャル',
     emptyAgentsNotice: 'エージェントはまだありません。',
     agentUpdatedNotice: 'エージェントを更新しました。',
     agentDeletedNotice: 'エージェントを削除しました。',
@@ -39,9 +39,6 @@ export const adminAgentsDictionary = defineDictionary(
     ownerEditHelp:
       'このエージェントの責任者です。所有者が無効になると、エージェントも無効になります。',
     ownerHelp: '省略時は操作した管理者が所有者になります。',
-    rolesLabel: 'ロール',
-    rolesHelp:
-      '分類のためのラベルで、カンマ区切りで自由に付けられます（system_admin を除く）。文書やツールへのアクセスの可否には影響しません。可否は細粒度認可で決まります。',
     cancel: 'キャンセル',
     agentReloadFailedError: 'エージェントの再取得に失敗しました。',
     agentDeleteFailedError: 'エージェントを削除できませんでした。',
@@ -117,8 +114,7 @@ export const adminAgentsDictionary = defineDictionary(
     genericActionError: 'Could not complete the agent action.',
     agentRegisteredNotice: 'The agent has been registered.',
     pageTitle: 'Agents',
-    pageDescription:
-      'Register agents as non-human principals and manage their roles and client credentials.',
+    pageDescription: 'Register agents as non-human principals and manage their client credentials.',
     reloadAriaLabel: 'Reload the list',
     listRefreshedNotice: 'The list has been refreshed.',
     addAgent: 'Add agent',
@@ -128,7 +124,7 @@ export const adminAgentsDictionary = defineDictionary(
     tableHeaderKind: 'Kind',
     tableHeaderOwner: 'Owner',
     tableHeaderStatus: 'Status',
-    tableHeaderRolesCredentials: 'Roles / credentials',
+    tableHeaderCredentials: 'Credentials',
     emptyAgentsNotice: 'There are no agents yet.',
     agentUpdatedNotice: 'The agent has been updated.',
     agentDeletedNotice: 'The agent has been deleted.',
@@ -146,9 +142,6 @@ export const adminAgentsDictionary = defineDictionary(
     ownerEditHelp:
       'The person responsible for this agent. The agent is disabled when its owner is disabled.',
     ownerHelp: 'If omitted, the admin performing this action becomes the owner.',
-    rolesLabel: 'Roles',
-    rolesHelp:
-      'Labels for classification, comma-separated and free-form (except system_admin). They do not affect access to documents or tools, which fine-grained authorization decides.',
     cancel: 'Cancel',
     agentReloadFailedError: 'Could not reload the agent.',
     agentDeleteFailedError: 'Could not delete the agent.',

@@ -14,7 +14,7 @@ import (
 func TestPersistenceContract(t *testing.T) {
 	testing_contract.Run(t, func(*testing.T) testing_contract.Fixture {
 		now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-		return testing_contract.Fixture{Repository: NewAgentRepository(), TenantID: "tenant-contract", Agent: &domain.Agent{ID: "agent-contract", TenantID: "tenant-contract", Name: "contract-agent", Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "user-contract", Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: now, UpdatedAt: now}}
+		return testing_contract.Fixture{Repository: NewAgentRepository(), TenantID: "tenant-contract", Agent: &domain.Agent{ID: "agent-contract", TenantID: "tenant-contract", Name: "contract-agent", Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "user-contract", Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now}}
 	})
 }
 
@@ -26,7 +26,7 @@ func TestAgentObservationContract(t *testing.T) {
 		t.Helper()
 		agents := NewAgentRepository()
 		now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-		agent := &domain.Agent{ID: "agent-contract", TenantID: "tenant-contract", Name: "contract-agent", Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "user-contract", Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: now, UpdatedAt: now}
+		agent := &domain.Agent{ID: "agent-contract", TenantID: "tenant-contract", Name: "contract-agent", Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "user-contract", Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now}
 		if err := agents.Save(context.Background(), agent); err != nil {
 			t.Fatal(err)
 		}

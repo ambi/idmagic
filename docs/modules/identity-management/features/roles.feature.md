@@ -49,13 +49,6 @@
 - Then 作成は `InvalidRequestError` で拒否され、エラー "invalid_role" を返す
 - And グループ "escalation" は作成されず、"GroupCreated" も発行されない
 
-### Example: EX-IDMANAGEMENT-032-05 制御面テナントの Agent へ割り当てる
-
-- Given 制御面テナント `default` にロール=["admin"] のユーザー "operator" と在籍中の Agent "batch" が存在する
-- When 管理者 "operator" が Agent "batch" のロールを ["system_admin"] へ更新する
-- Then 更新は `InvalidRequestError` で拒否され、エラー "invalid_role" を返す
-- And Agent "batch" の `roles` と `updated_at` は変更されず、"AgentUpdated" も発行されない
-
 ### Example: EX-IDMANAGEMENT-032-06 制御面テナント以外のテナントの User CSV の行が `system_admin` を含む
 
 - Given 制御面テナントではないテナント "acme" にロール=["support"] のユーザー "alice" が存在する

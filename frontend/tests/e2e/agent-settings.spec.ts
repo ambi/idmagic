@@ -16,16 +16,22 @@ test('administrator edits agent settings in separate workflows', async () => {
   try {
     const name = `settings-${Date.now()}`
     await navigateAndLogin(view, '/realms/default/admin/agents/new', 'admin-agent-create')
+    expect(await view.evaluate(`document.querySelector('#agent-roles') === null`)).toBe(true)
     await setInputValue(view, '#agent-name', name)
     await clickButtonByText(view, 'Register')
     await waitForPage(view, 'admin-agent-detail')
+    expect(
+      await view.evaluate(
+        `Array.from(document.querySelectorAll('dt')).some(node => node.textContent.trim() === 'Roles')`,
+      ),
+    ).toBe(false)
     const detailPath = String(await view.evaluate('window.location.pathname'))
 
     await clickLinkByText(view, 'Edit basic information')
     await waitForPage(view, 'admin-agent-edit')
     expect(
       await view.evaluate(
-        `document.querySelector('#guardrail-ttl') === null && document.querySelector('#agent-credential-client') === null`,
+        `document.querySelector('#guardrail-ttl') === null && document.querySelector('#agent-credential-client') === null && document.querySelector('#agent-editor-roles') === null`,
       ),
     ).toBe(true)
     await setInputValue(view, '#agent-editor-name', `${name}-cancelled`)

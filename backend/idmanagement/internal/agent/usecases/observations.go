@@ -35,7 +35,7 @@ type ObservationView struct {
 }
 
 // ImportObservations はバッチを未確認の報告として取り込む (REQ-IDMANAGEMENT-096、097)。全件を検証
-// してから保存し、Agent、束縛、ロールには触れない (REQ-IDMANAGEMENT-101)。
+// してから保存し、Agent と束縛には触れない (REQ-IDMANAGEMENT-101)。
 func ImportObservations(
 	ctx context.Context, deps AdminAgentDeps, actorUserID, sourceTokenID string, batch []*agentdomain.AgentObservation, now time.Time,
 ) (agentports.ObservationImportCounts, error) {

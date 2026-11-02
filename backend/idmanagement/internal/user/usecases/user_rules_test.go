@@ -961,7 +961,7 @@ func TestStoppingAStoppedUserAgainReportsAPropagationFailure(t *testing.T) {
 func (f *userRulesFixture) seedAgent(id, ownerUserID string, status idmdomain.AgentStatus) {
 	if err := f.agents.Save(testing_tenant.Default(context.Background()), &agentdomain.Agent{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, Name: id, Kind: idmdomain.AgentKindAutonomous,
-		OwnerUserID: ownerUserID, Status: status, Roles: []string{},
+		OwnerUserID: ownerUserID, Status: status,
 		CreatedAt: userRulesNow.Add(-time.Hour), UpdatedAt: userRulesNow.Add(-time.Hour),
 	}); err != nil {
 		panic(err)

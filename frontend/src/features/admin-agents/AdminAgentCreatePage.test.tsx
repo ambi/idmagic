@@ -21,7 +21,6 @@ const agent: AdminAgent = {
   kind: 'autonomous',
   owner_user_id: 'user-1',
   status: 'active',
-  roles: ['invoice:read'],
   client_ids: [],
   created_at: '2026-01-01T00:00:00Z',
 }
@@ -38,6 +37,7 @@ describe('AdminAgentCreatePage', () => {
     )
     await renderWithRouter(<AdminAgentCreatePage csrfToken="csrf" />)
 
+    expect(document.querySelector('#agent-roles')).toBeNull()
     fireEvent.change(screen.getByLabelText(t.agentNameLabel), {
       target: { value: 'billing-bot' },
     })
@@ -45,6 +45,12 @@ describe('AdminAgentCreatePage', () => {
 
     await waitFor(() =>
       expect(window.location.assign).toHaveBeenCalledWith('/admin/agents/agent-2'),
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/admin/v1/agents'),
+      expect.objectContaining({
+        body: JSON.stringify({ name: 'billing-bot', kind: 'autonomous' }),
+      }),
     )
   })
 

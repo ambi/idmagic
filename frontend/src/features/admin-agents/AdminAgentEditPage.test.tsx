@@ -23,7 +23,6 @@ const agent: AdminAgent = {
   kind: 'autonomous',
   owner_user_id: 'user-1',
   status: 'active',
-  roles: ['invoice:read'],
   client_ids: [],
   created_at: '2026-01-01T00:00:00Z',
 }
@@ -45,6 +44,7 @@ describe('AdminAgentEditPage', () => {
 
     expect(screen.queryByLabelText(t.bindClientIdAria)).toBeNull()
     expect(screen.queryByText('Guardrails')).toBeNull()
+    expect(document.querySelector('#agent-editor-roles')).toBeNull()
 
     fireEvent.change(screen.getByLabelText(t.agentNameLabel), {
       target: { value: 'renamed-bot' },
@@ -53,6 +53,10 @@ describe('AdminAgentEditPage', () => {
 
     await waitFor(() =>
       expect(window.location.assign).toHaveBeenCalledWith('/admin/agents/agent-1'),
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/admin/v1/agents/agent-1'),
+      expect.objectContaining({ body: JSON.stringify({ name: 'renamed-bot' }) }),
     )
   })
 

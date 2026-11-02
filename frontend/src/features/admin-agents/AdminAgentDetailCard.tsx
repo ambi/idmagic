@@ -149,25 +149,6 @@ export function AgentDetailCard({
           </dt>
           <dd className="mt-1 text-sm text-slate-700">{agent.description || '—'}</dd>
         </div>
-        <div>
-          <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">
-            {t.rolesLabel}
-          </dt>
-          <dd className="mt-1 flex flex-wrap gap-1.5">
-            {agent.roles.length > 0 ? (
-              agent.roles.map((role) => (
-                <span
-                  key={role}
-                  className="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700"
-                >
-                  {role}
-                </span>
-              ))
-            ) : (
-              <span className="text-sm text-slate-400">{t.noneLabel}</span>
-            )}
-          </dd>
-        </div>
       </dl>
 
       <section className="border-t border-slate-100 p-5">

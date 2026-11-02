@@ -24,7 +24,6 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	agentusecases "github.com/ambi/idmagic/backend/idmanagement/internal/agent/usecases"
-	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -107,7 +106,7 @@ func TestRegisterAgentNameUniquenessAndOwnerDefault(t *testing.T) {
 
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
 		Kind:        idmdomain.AgentKindAutonomous,
-		ActorUserID: "operator", Name: "deploy-bot", Roles: []string{"deploy:run"}, Now: now,
+		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -218,15 +217,13 @@ func TestListAgentsAndUpdateDetails(t *testing.T) {
 	newName := "deploy-bot-renamed"
 	desc := "  deploy automation  "
 	kind := idmdomain.AgentKindAutonomous
-	roles := []string{"deploy:run", "deploy:read"}
-	normalizedRoles := []string{"deploy:read", "deploy:run"}
 	updated, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
-		ActorUserID: "operator", ID: agent.ID, Name: &newName, Description: &desc, Kind: &kind, Roles: &roles, Now: now.Add(time.Hour),
+		ActorUserID: "operator", ID: agent.ID, Name: &newName, Description: &desc, Kind: &kind, Now: now.Add(time.Hour),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Name != newName || updated.Description == nil || *updated.Description != "deploy automation" || updated.Kind != kind || !slices.Equal(updated.Roles, normalizedRoles) {
+	if updated.Name != newName || updated.Description == nil || *updated.Description != "deploy automation" || updated.Kind != kind {
 		t.Fatalf("updated = %+v", updated)
 	}
 	if !slices.Equal(agentEventTypes(*events), []string{"AgentUpdated"}) {
@@ -281,12 +278,6 @@ func TestAgentInputValidationErrors(t *testing.T) {
 	}); !errors.Is(err, agentusecases.ErrAgentOwnerRequired) {
 		t.Fatalf("expected ErrAgentOwnerRequired, got %v", err)
 	}
-	roles := []string{" "}
-	if _, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
-		ActorUserID: "operator", ID: agent.ID, Roles: &roles,
-	}); err == nil {
-		t.Fatal("expected invalid role error")
-	}
 	if _, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
 		ActorUserID: "operator", ID: "ghost", Name: &blankName,
 	}); !errors.Is(err, agentusecases.ErrAgentNotFound) {
@@ -296,7 +287,7 @@ func TestAgentInputValidationErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after == nil || after.Name != "deploy-bot" || after.OwnerUserID != "operator" || len(after.Roles) != 0 {
+	if after == nil || after.Name != "deploy-bot" || after.OwnerUserID != "operator" {
 		t.Fatalf("rejected updates changed the agent: %+v", after)
 	}
 	if len(*events) != 1 {
@@ -644,68 +635,5 @@ func TestDeleteKilledAgentIsRejected(t *testing.T) {
 	}
 	if found.Agent.Status != idmdomain.AgentStatusKilled {
 		t.Fatalf("agent was deleted or changed: %+v", found.Agent)
-	}
-}
-
-// Agent には制御面テナントでも `system_admin` を割り当てられず、拒否は割当て枠も消費しない。
-//
-// 登録の拒否は use case の内側でしか観測できない効果を 1 つ持つ。検査を割当て枠の
-// 加算より後ろへ置いた実装は、拒否を返しながら枠を食い潰す。HTTP 境界の受入テストは
-// そこを見られないので、ここで読む。
-//
-//spec:covers EX-IDMANAGEMENT-032-05: 制御面テナントの Agent への `system_admin` の付与が登録でも更新でも ErrReservedRole で拒否され、Agent も割当て枠の消費も生じないこと。
-func TestAgentReservedRoleRefusedEvenInsideTheControlPlane(t *testing.T) {
-	ctx := testing_tenant.Default(context.Background())
-	deps, events := newAgentDeps(t)
-	now := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
-
-	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
-		ActorUserID: "operator", Name: "privileged-agent", Kind: idmdomain.AgentKindAutonomous,
-		Roles: []string{idmusecases.ReservedRoleSystemAdmin}, Now: now,
-	}); !errors.Is(err, idmusecases.ErrReservedRole) {
-		t.Fatalf("err=%v, want ErrReservedRole", err)
-	}
-	agents, err := deps.AgentRepo.ListAll(ctx, tenancydomain.DefaultTenantID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(agents) != 0 {
-		t.Fatalf("拒否されたのに Agent が %d 体残った: %+v", len(agents), agents)
-	}
-	// 拒否が割当て枠を消費していないこと。
-	usage, err := deps.QuotaRepo.GetUsage(ctx, tenancydomain.DefaultTenantID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if usage.Agents != 0 {
-		t.Fatalf("拒否されたのに agents の使用量が %d になった", usage.Agents)
-	}
-	if len(*events) != 0 {
-		t.Fatalf("拒否されたのにイベントが %d 件発行された", len(*events))
-	}
-
-	// 更新側も同じ検査を通ること。通常ロールで登録してから予約ロールへ変えようとする。
-	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
-		ActorUserID: "operator", Name: "batch-agent", Kind: idmdomain.AgentKindAutonomous,
-		Roles: []string{"catalog:read"}, Now: now,
-	})
-	if err != nil {
-		t.Fatalf("前提が壊れている: 通常ロールの登録が %v", err)
-	}
-	reserved := []string{idmusecases.ReservedRoleSystemAdmin}
-	if _, err := agentusecases.UpdateAgent(ctx, deps, agentusecases.UpdateAgentInput{
-		ActorUserID: "operator", ID: agent.ID, Roles: &reserved, Now: now.Add(time.Hour),
-	}); !errors.Is(err, idmusecases.ErrReservedRole) {
-		t.Fatalf("err=%v, want ErrReservedRole", err)
-	}
-	stored, err := deps.AgentRepo.FindByID(ctx, tenancydomain.DefaultTenantID, agent.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !slices.Equal(stored.Roles, []string{"catalog:read"}) {
-		t.Fatalf("拒否されたのに roles=%v が変わった", stored.Roles)
-	}
-	if !stored.UpdatedAt.Equal(agent.UpdatedAt) {
-		t.Fatalf("拒否されたのに updated_at が動いた: %s -> %s", agent.UpdatedAt, stored.UpdatedAt)
 	}
 }

@@ -725,7 +725,6 @@ CREATE TABLE agents (
     owner_user_id UUID NOT NULL,
     status TEXT NOT NULL DEFAULT 'active'
         CHECK (status IN ('active', 'disabled', 'killed')),
-    roles JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,

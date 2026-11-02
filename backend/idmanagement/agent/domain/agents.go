@@ -27,7 +27,6 @@ type Agent struct {
 	Kind        idmdomain.AgentKind   `json:"kind"`
 	OwnerUserID string                `json:"owner_user_id"`
 	Status      idmdomain.AgentStatus `json:"status"`
-	Roles       []string              `json:"roles"`
 	CreatedAt   time.Time             `json:"created_at"`
 	UpdatedAt   time.Time             `json:"updated_at"`
 	DisabledAt  *time.Time            `json:"disabled_at,omitempty"`
@@ -48,7 +47,6 @@ var agentSchema = z.Struct(z.Shape{
 		func(value *idmdomain.AgentStatus, _ z.Ctx) bool { return value.Valid() },
 		z.Message("agent status is not in enum"),
 	).Required(),
-	"Roles":     z.Slice(z.String().Min(1)),
 	"CreatedAt": z.Time().Required(),
 	"UpdatedAt": z.Time().Required(),
 })

@@ -130,7 +130,7 @@ export function AdminAgentsPage({
                 <th className="px-4 py-3">{t.tableHeaderKind}</th>
                 <th className="px-4 py-3">{t.tableHeaderOwner}</th>
                 <th className="px-4 py-3">{t.tableHeaderStatus}</th>
-                <th className="px-4 py-3 text-right">{t.tableHeaderRolesCredentials}</th>
+                <th className="px-4 py-3 text-right">{t.tableHeaderCredentials}</th>
               </tr>
             </thead>
             <tbody>
@@ -156,7 +156,7 @@ export function AdminAgentsPage({
                     <StatusBadge status={agent.status} />
                   </td>
                   <td className="px-4 py-3 text-right text-xs text-slate-600">
-                    {agent.roles.length} / {agent.client_ids.length}
+                    {agent.client_ids.length}
                   </td>
                 </tr>
               ))}

@@ -2,7 +2,6 @@ package db_postgres
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"slices"
 	"time"
@@ -56,12 +55,6 @@ func agentFromRow(row *Agent) (*agentdomain.Agent, error) {
 	if row.KilledAt.Valid {
 		killedAt := row.KilledAt.Time
 		a.KilledAt = &killedAt
-	}
-	if err := json.Unmarshal(row.Roles, &a.Roles); err != nil {
-		return nil, err
-	}
-	if a.Roles == nil {
-		a.Roles = []string{}
 	}
 	return a, a.Validate()
 }
@@ -204,14 +197,6 @@ func (r *AgentRepository) Update(
 }
 
 func writeAgent(ctx context.Context, db DBTX, agent *agentdomain.Agent) error {
-	roles := agent.Roles
-	if roles == nil {
-		roles = []string{}
-	}
-	rolesJSON, err := json.Marshal(roles)
-	if err != nil {
-		return err
-	}
 	return New(db).SaveAgent(ctx, SaveAgentParams{
 		ID:          agent.ID,
 		TenantID:    agent.TenantID,
@@ -221,7 +206,6 @@ func writeAgent(ctx context.Context, db DBTX, agent *agentdomain.Agent) error {
 		Kind:        string(agent.Kind),
 		OwnerUserID: agent.OwnerUserID,
 		Status:      string(agent.Status),
-		Roles:       rolesJSON,
 		CreatedAt:   agent.CreatedAt,
 		UpdatedAt:   agent.UpdatedAt,
 		DisabledAt:  timestamptzOrNil(agent.DisabledAt),

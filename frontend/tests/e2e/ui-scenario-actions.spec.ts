@@ -731,7 +731,6 @@ test('admin application lifecycle and agent credential binding work from the bro
     await setInputValue(view, '#agent-name', agentName)
     await setInputValue(view, '#agent-description', 'E2E credential binding')
     await setSelectValue(view, '#agent-kind', 'supervised')
-    await setInputValue(view, '#agent-roles', 'e2e:read, e2e:write')
     await view.click('form button[type="submit"]')
     await waitForText(view, agentName)
 

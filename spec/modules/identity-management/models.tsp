@@ -88,7 +88,7 @@ enum AgentKind {
 }
 
 
-@doc("ロールの書き込みまたは業務ロールの委任を受け付けられない。空のロール名、対象に新しく割り当てられない system_admin、自動所属への admin または system_admin の設定、現在のロールと式に一致しない委任が該当する。system_admin を追加できるのは制御面テナントの User とローカルの手動 Group だけであり、Agent には追加できない。既存の値は明示的な roles 更新で除ける。拒否した書き込みは同じリクエストのほかのフィールドも保存しない。RFC 9457 の Problem Details で type は urn:idmagic:error:invalid_role である。")
+@doc("ロールの書き込みまたは業務ロールの委任を受け付けられない。空のロール名、対象に新しく割り当てられない system_admin、自動所属への admin または system_admin の設定、現在のロールと式に一致しない委任が該当する。system_admin を追加できるのは制御面テナントの User とローカルの手動 Group だけである。既存の値は明示的な roles 更新で除ける。拒否した書き込みは同じリクエストのほかのフィールドも保存しない。RFC 9457 の Problem Details で type は urn:idmagic:error:invalid_role である。")
 model InvalidRoleError is ProblemDetails;
 
 
@@ -925,7 +925,6 @@ model Agent {
   @doc("Agent に責任を負う User。その User をオフボーディングすると、`status` を変えずに新たな発行が止まる。")
   owner_user_id: string;
   status: AgentStatus = AgentStatus.Active;
-  roles: string[] = #[];
   created_at: utcDateTime;
   updated_at: utcDateTime;
   @doc("元に戻せる一時停止が有効になった時刻。`status` が `disabled` でなければ省く。")
@@ -954,11 +953,10 @@ model AgentRegisterRequest {
   kind: AgentKind;
   @doc("省くと呼び出し元の id が所有者になる。")
   owner_user_id?: string;
-  roles?: string[];
 }
 
 
-@doc("管理者が Agent の名前、説明、種類、`owner_user_id`、またはロールを更新する JSON のリクエスト。省いたフィールドは現在の値を保つ。`owner_user_id` の変更は所有権の移転である。")
+@doc("管理者が Agent の名前、説明、種類、または `owner_user_id` を更新する JSON のリクエスト。省いたフィールドは現在の値を保つ。`owner_user_id` の変更は所有権の移転である。")
 model AgentUpdateRequest {
   @minLength(1)
   @maxLength(100)
@@ -969,7 +967,6 @@ model AgentUpdateRequest {
   kind?: AgentKind;
   @doc("変更すると所有権を移転する（AgentOwnerChanged）。")
   owner_user_id?: string;
-  roles?: string[];
 }
 
 
@@ -989,7 +986,6 @@ model AgentSummaryResponse {
   kind: AgentKind;
   owner_user_id: string;
   status: AgentStatus;
-  roles: string[];
   @doc("結び付いた OAuth2Client の id。")
   client_ids: string[];
   created_at: utcDateTime;
@@ -1490,7 +1486,7 @@ model AgentRegistered {
 }
 
 
-@doc("管理者が Agent の名前、説明、種類、またはロールを更新した。")
+@doc("管理者が Agent の名前、説明、または種類を更新した。")
 model AgentUpdated {
   occurredAt: utcDateTime;
   @doc("Agent が属するテナント。")

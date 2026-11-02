@@ -25,7 +25,6 @@ func TestAgentRepositoryRoundTripAndBindings(t *testing.T) {
 		Kind:        idmdomain.AgentKindAutonomous,
 		OwnerUserID: owner.ID,
 		Status:      idmdomain.AgentStatusActive,
-		Roles:       []string{},
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -88,7 +87,7 @@ func TestAgentRepositoryListPage(t *testing.T) {
 	for _, name := range []string{"Charlie", "Alpha", "Bravo", "Delta", "Echo"} {
 		a := &agentdomain.Agent{
 			ID: newUUID(t), TenantID: tenant.ID, Name: name, Kind: idmdomain.AgentKindAutonomous,
-			OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, Roles: []string{},
+			OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive,
 			CreatedAt: now, UpdatedAt: now,
 		}
 		if err := repo.Save(ctx, a); err != nil {

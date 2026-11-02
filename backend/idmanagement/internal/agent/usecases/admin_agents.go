@@ -14,7 +14,6 @@ package usecases
 import (
 	"context"
 	"errors"
-	"slices"
 	"strings"
 	"time"
 
@@ -124,7 +123,6 @@ type RegisterAgentInput struct {
 	Description *string
 	Kind        idmdomain.AgentKind
 	OwnerUserID string
-	Roles       []string
 	Now         time.Time
 }
 
@@ -153,13 +151,6 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	if err := ensureAgentOwner(ctx, deps, tenantID, owner); err != nil {
 		return nil, err
 	}
-	roles, err := idmusecases.NormalizeRoles(in.Roles)
-	if err != nil {
-		return nil, err
-	}
-	if err := idmusecases.ValidateRoleAssignment(idmusecases.RoleTargetAgent, tenantID, nil, roles); err != nil {
-		return nil, err
-	}
 	now := idmusecases.NormalizedNow(in.Now)
 	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceAgents, now); err != nil {
 		return nil, err
@@ -171,7 +162,7 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	agent := &agentdomain.Agent{
 		ID: id, TenantID: tenantID, Name: name, Description: idmusecases.NormalizeDescription(in.Description),
 		Kind: in.Kind, OwnerUserID: owner, Status: idmdomain.AgentStatusActive,
-		Roles: roles, CreatedAt: now, UpdatedAt: now,
+		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := agent.Validate(); err != nil {
 		return nil, err
@@ -192,7 +183,6 @@ type UpdateAgentInput struct {
 	Description *string
 	Kind        *idmdomain.AgentKind
 	OwnerUserID *string
-	Roles       *[]string
 	Now         time.Time
 }
 
@@ -235,12 +225,6 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 			}
 		}
 	}
-	var roles []string
-	if in.Roles != nil {
-		if roles, err = idmusecases.NormalizeRoles(*in.Roles); err != nil {
-			return nil, err
-		}
-	}
 	now := idmusecases.NormalizedNow(in.Now)
 	var changed []string
 	previousOwner := agent.OwnerUserID
@@ -270,17 +254,6 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 			latest.OwnerUserID = owner
 			changed = append(changed, "owner_sub")
 			ownerChanged = true
-		}
-		if in.Roles != nil {
-			if err := idmusecases.ValidateRoleAssignment(
-				idmusecases.RoleTargetAgent, latest.TenantID, latest.Roles, roles,
-			); err != nil {
-				return false, err
-			}
-			if !slices.Equal(roles, latest.Roles) {
-				latest.Roles = roles
-				changed = append(changed, "roles")
-			}
 		}
 		if len(changed) == 0 {
 			return false, nil

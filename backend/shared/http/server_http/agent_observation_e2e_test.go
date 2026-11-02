@@ -118,7 +118,7 @@ func (f *observationFixture) seedAgent(t *testing.T, id string) {
 	now := time.Now().UTC()
 	if err := f.s.Agents.Save(context.Background(), &agentdomain.Agent{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, Name: id, Kind: idmdomain.AgentKindAutonomous,
-		OwnerUserID: stack.UserID, Status: idmdomain.AgentStatusActive, Roles: []string{"reader"}, CreatedAt: now, UpdatedAt: now,
+		OwnerUserID: stack.UserID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -144,12 +144,12 @@ func (f *observationFixture) agentSnapshot(t *testing.T) string {
 		if err != nil {
 			t.Fatal(err)
 		}
-		snapshot += fmt.Sprintf("%s|%s|%s|%s|%v|%d\n", agent.ID, agent.Name, agent.OwnerUserID, agent.Status, agent.Roles, len(bindings))
+		snapshot += fmt.Sprintf("%s|%s|%s|%s|%d\n", agent.ID, agent.Name, agent.OwnerUserID, agent.Status, len(bindings))
 	}
 	return snapshot
 }
 
-//spec:covers REQ-IDMANAGEMENT-101: 取り込み、確認、除外、再開が Agent、所有者、ロール、束縛を変えず、Agent を作らない
+//spec:covers REQ-IDMANAGEMENT-101: 取り込み、確認、除外、再開が Agent、所有者、束縛を変えず、Agent を作らない
 //spec:covers REQ-IDMANAGEMENT-099: 確認、別の決定の拒否、同じ確認の無作用、Agent の削除による解除
 //spec:covers REQ-IDMANAGEMENT-100: 除外と再開
 func TestAgentObservationImportAndConfirmGrantNothing(t *testing.T) {

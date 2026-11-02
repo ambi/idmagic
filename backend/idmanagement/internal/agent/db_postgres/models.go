@@ -18,7 +18,6 @@ type Agent struct {
 	Kind        string
 	OwnerUserID string
 	Status      string
-	Roles       []byte
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DisabledAt  pgtype.Timestamptz

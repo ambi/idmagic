@@ -16,8 +16,8 @@ func idmContractAgent(t *testing.T, body map[string]any, name string) string {
 	if !ok || id == "" || body["tenant_id"] != tenancydomain.DefaultTenantID || body["name"] != name || body["kind"] != string(idmdomain.AgentKindAutonomous) || body["owner_user_id"] != idmRefusalAdmin {
 		t.Fatalf("agent=%v", body)
 	}
-	if !reflect.DeepEqual(body["roles"], []any{"support"}) {
-		t.Fatalf("agent roles=%v", body["roles"])
+	if _, present := body["roles"]; present {
+		t.Fatalf("agent has roles: %v", body["roles"])
 	}
 	if _, ok := body["client_ids"].([]any); !ok {
 		t.Fatalf("agent client_ids=%v", body["client_ids"])
@@ -36,6 +36,7 @@ func idmContractAgent(t *testing.T, body map[string]any, name string) string {
 //verify:operation DisableAgent: Agent と資格情報の管理操作の HTTP 応答、保存状態および停止
 //verify:operation EnableAgent: Agent と資格情報の管理操作の HTTP 応答、保存状態および停止
 //verify:operation KillAgent: Agent と資格情報の管理操作の HTTP 応答、保存状態および停止
+//spec:covers REQ-IDMANAGEMENT-073, REQ-IDMANAGEMENT-075: 登録、更新、一覧の応答にロールを含まず、roles だけの更新は状態とイベントを変えない。
 func TestAgentManagementHTTPContracts(t *testing.T) {
 	f := newIdmRefusalServer(t)
 	session := f.seedSession(t, "agent-contract", tenancydomain.DefaultTenantID, idmRefusalAdmin)
@@ -56,12 +57,38 @@ func TestAgentManagementHTTPContracts(t *testing.T) {
 	if read := getAgent(); !reflect.DeepEqual(read, created) {
 		t.Fatalf("agent was not saved: created=%v read=%v", created, read)
 	}
-	updated := idmContractJSON(t, send(http.MethodPatch, path, map[string]any{"name": "Renamed Agent"}), http.StatusOK)
+	beforeEvents := len(*f.events)
+	ignored := idmContractJSON(t, send(http.MethodPatch, path, map[string]any{"roles": []string{"system_admin"}}), http.StatusOK)
+	if read := getAgent(); !reflect.DeepEqual(ignored, created) || !reflect.DeepEqual(read, created) || len(*f.events) != beforeEvents {
+		t.Fatalf("roles-only update changed the agent or emitted events: response=%v read=%v events=%v", ignored, read, *f.events)
+	}
+	updated := idmContractJSON(t, send(http.MethodPatch, path, map[string]any{"name": "Renamed Agent", "roles": []string{"support"}}), http.StatusOK)
 	if got := idmContractAgent(t, updated, "Renamed Agent"); got != id || updated["created_at"] != created["created_at"] {
 		t.Fatalf("updated agent=%v", updated)
 	}
 	if read := getAgent(); !reflect.DeepEqual(read, updated) {
 		t.Fatalf("updated agent was not saved: updated=%v read=%v", updated, read)
+	}
+	if len(*f.events) != beforeEvents+1 {
+		t.Fatalf("update events=%v, want one AgentUpdated", *f.events)
+	}
+	updateEvent, ok := (*f.events)[beforeEvents].(*idmdomain.AgentUpdated)
+	if !ok || !reflect.DeepEqual(updateEvent.ChangedFields, []string{"name"}) {
+		t.Fatalf("update event=%+v, want changed_fields [name]", (*f.events)[beforeEvents])
+	}
+	listed := idmContractJSON(t, send(http.MethodGet, "/api/admin/v1/agents", nil), http.StatusOK)
+	var found bool
+	for _, raw := range listed["agents"].([]any) {
+		item := raw.(map[string]any)
+		if _, present := item["roles"]; present {
+			t.Fatalf("agent summary has roles: %v", item)
+		}
+		if item["id"] == id {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("created agent is absent from the list")
 	}
 	idmContractEmpty(t, send(http.MethodPost, path+"/credentials", map[string]any{"client_id": idmRefusalClient}))
 	if clients := getAgent()["client_ids"]; !reflect.DeepEqual(clients, []any{idmRefusalClient}) {
@@ -84,7 +111,7 @@ func TestAgentManagementHTTPContracts(t *testing.T) {
 	idmContractEmpty(t, send(http.MethodDelete, path, nil))
 	idmContractProblem(t, send(http.MethodGet, path, nil), http.StatusNotFound, "agent_not_found")
 	second := idmContractJSON(t, send(http.MethodPost, "/api/admin/v1/agents", map[string]any{
-		"name": "Stopped Agent", "kind": "autonomous", "roles": []string{"support"},
+		"name": "Stopped Agent", "kind": "autonomous",
 	}), http.StatusCreated)
 	path = "/api/admin/v1/agents/" + idmContractAgent(t, second, "Stopped Agent")
 	idmContractEmpty(t, send(http.MethodPost, path+"/kill", nil))

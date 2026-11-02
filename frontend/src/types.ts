@@ -826,7 +826,6 @@ export type AdminAgent = {
   kind: 'autonomous' | 'supervised'
   owner_user_id: string
   status: 'active' | 'disabled' | 'killed'
-  roles: string[]
   client_ids: string[]
   created_at: string
   updated_at?: string

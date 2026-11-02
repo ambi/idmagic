@@ -19,7 +19,6 @@ import (
 	"slices"
 	"testing"
 
-	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -42,16 +41,6 @@ func (f *idmRefusalFixture) groupsIn(t *testing.T, tenantID string) []string {
 		names = append(names, group.Name)
 	}
 	return names
-}
-
-// agentIn は指定したテナントの Agent を読み直す。
-func (f *idmRefusalFixture) agentIn(t *testing.T, tenantID, id string) *agentdomain.Agent {
-	t.Helper()
-	agent, err := f.agents.FindByID(context.Background(), tenantID, id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return agent
 }
 
 // decodeJSONBody は応答本文を target へ読み出す。
@@ -235,91 +224,6 @@ func TestReservedRoleRefusedOutsideTheControlPlaneCreatesNoGroup(t *testing.T) {
 	})
 	if accepted.Code != http.StatusCreated {
 		t.Fatalf("前提が壊れている: 通常ロールの作成が status=%d body=%s", accepted.Code, accepted.Body.String())
-	}
-}
-
-// Agent への付与は、制御面テナントであっても拒否される。
-//
-// 制御面テナントの Agent を先に置くのは、テナントの規則からは導けない唯一の行だからである。
-// User と Group を許可するテナントで Agent だけが拒否されることを、規則表の代わりに固定する。
-//
-//spec:covers EX-IDMANAGEMENT-032-05: 制御面テナントの Agent への `system_admin` の付与が `invalid_role` で拒否され、`roles` も `updated_at` も変わらず "AgentUpdated" も発行されないこと。制御面以外のテナントの Agent も同じ扱いになること。
-func TestReservedRoleRefusedForAgentsInEveryTenant(t *testing.T) {
-	fixture := newIdmRefusalServer(t)
-	controlPlane := fixture.seedSession(
-		t, "sess-agent-cp", tenancydomain.DefaultTenantID, idmRefusalAdmin,
-	)
-	foreign := fixture.seedSession(
-		t, "sess-agent-foreign", idmRefusalOtherTenant, idmRefusalForeignAdmin,
-	)
-
-	// 制御面以外のテナントには Agent が居ないので、通常ロールで 1 体登録してから更新を試す。
-	registered := fixture.send(t, idmRefusalRequest{
-		method: http.MethodPost, tenantID: idmRefusalOtherTenant, path: "/api/admin/v1/agents",
-		sessionID: foreign, csrf: idmRefusalCSRF,
-		body: map[string]any{"name": "foreign-agent", "kind": "autonomous", "roles": []string{"catalog:read"}},
-	})
-	if registered.Code != http.StatusCreated {
-		t.Fatalf("前提が壊れている: 通常ロールの Agent 登録が status=%d body=%s", registered.Code, registered.Body.String())
-	}
-	var foreignAgent struct {
-		ID string `json:"id"`
-	}
-	decodeJSONBody(t, registered, &foreignAgent)
-
-	for _, target := range []struct {
-		name, tenantID, session, agentID string
-	}{
-		{"制御面テナント", tenancydomain.DefaultTenantID, controlPlane, idmRefusalAgent},
-		{"制御面以外のテナント", idmRefusalOtherTenant, foreign, foreignAgent.ID},
-	} {
-		t.Run(target.name, func(t *testing.T) {
-			before := *fixture.agentIn(t, target.tenantID, target.agentID)
-			*fixture.events = nil
-
-			refused := fixture.send(t, idmRefusalRequest{
-				method: http.MethodPatch, tenantID: target.tenantID,
-				path:      "/api/admin/v1/agents/" + target.agentID,
-				sessionID: target.session, csrf: idmRefusalCSRF,
-				body: map[string]any{"roles": []string{reservedRole}},
-			})
-			if refused.Code != http.StatusUnprocessableEntity {
-				t.Fatalf("status=%d body=%s, want 422", refused.Code, refused.Body.String())
-			}
-			if code := idmProblemCode(t, refused); code != "invalid_role" {
-				t.Fatalf("error code=%q, want invalid_role", code)
-			}
-			// 拒否が Agent を変えていないこと。
-			after := fixture.agentIn(t, target.tenantID, target.agentID)
-			if slices.Contains(after.Roles, reservedRole) {
-				t.Fatalf("拒否されたのに roles=%v へ %q が入った", after.Roles, reservedRole)
-			}
-			if !after.UpdatedAt.Equal(before.UpdatedAt) {
-				t.Fatalf("拒否されたのに updated_at が動いた: %s -> %s", before.UpdatedAt, after.UpdatedAt)
-			}
-			if emitted[*idmdomain.AgentUpdated](*fixture.events) {
-				t.Fatal("拒否されたのに AgentUpdated が発行された")
-			}
-		})
-	}
-
-	// 登録の側も同じ検査を通ること。更新だけを直した実装と区別する。
-	refusedRegistration := fixture.send(t, idmRefusalRequest{
-		method: http.MethodPost, path: "/api/admin/v1/agents",
-		sessionID: controlPlane, csrf: idmRefusalCSRF,
-		body: map[string]any{"name": "privileged-agent", "kind": "autonomous", "roles": []string{reservedRole}},
-	})
-	if refusedRegistration.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("登録が status=%d body=%s, want 422", refusedRegistration.Code, refusedRegistration.Body.String())
-	}
-	agents, err := fixture.agents.ListAll(context.Background(), tenancydomain.DefaultTenantID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, agent := range agents {
-		if agent.Name == "privileged-agent" {
-			t.Fatal("拒否されたのに Agent が登録された")
-		}
 	}
 }
 

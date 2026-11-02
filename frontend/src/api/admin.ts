@@ -1611,7 +1611,6 @@ export type RegisterAdminAgentInput = {
   description?: string
   kind?: AdminAgent['kind']
   owner_user_id?: string
-  roles?: string[]
 }
 
 export type UpdateAdminAgentInput = {
@@ -1619,7 +1618,6 @@ export type UpdateAdminAgentInput = {
   description?: string
   kind?: AdminAgent['kind']
   owner_user_id?: string
-  roles?: string[]
 }
 
 export async function registerAdminAgent(

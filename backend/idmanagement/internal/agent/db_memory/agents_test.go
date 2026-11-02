@@ -20,7 +20,6 @@ func TestAgentRepository(t *testing.T) {
 			Name:        "Agent A",
 			OwnerUserID: "user-1",
 			Status:      idmdomain.AgentStatusActive,
-			Roles:       []string{"role1", "role2"},
 			CreatedAt:   time.Now(),
 		}
 
@@ -38,9 +37,6 @@ func TestAgentRepository(t *testing.T) {
 		}
 		if found.Name != "Agent A" {
 			t.Errorf("expected Name to be 'Agent A', got %q", found.Name)
-		}
-		if len(found.Roles) != 2 || found.Roles[0] != "role1" || found.Roles[1] != "role2" {
-			t.Errorf("unexpected roles: %v", found.Roles)
 		}
 
 		// 存在しない ID

@@ -47,7 +47,7 @@ func TestServerWiresScimUserStopsThroughIdManagement(t *testing.T) {
 	now := time.Now()
 	if err := agents.Save(ctx, &agentdomain.Agent{
 		ID: "deploy-bot", TenantID: tenant, Name: "deploy-bot", Kind: idmdomain.AgentKindAutonomous,
-		OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: now, UpdatedAt: now,
+		OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestSCIMUserLifecycleAdvancesTheRevocationEpochOfOwnedAgents(t *testing.T) 
 	now := time.Now()
 	if err := agents.Save(ctx, &agentdomain.Agent{
 		ID: "deploy-bot", TenantID: tenant, Name: "deploy-bot", Kind: idmdomain.AgentKindAutonomous,
-		OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: now, UpdatedAt: now,
+		OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}

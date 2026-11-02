@@ -55,7 +55,7 @@ func newScimOwnerFixture(t *testing.T) *scimOwnerFixture {
 	now := time.Now()
 	if err := f.agents.Save(ctx, &agentdomain.Agent{
 		ID: "deploy-bot", TenantID: scimTenant, Name: "deploy-bot", Kind: idmdomain.AgentKindAutonomous,
-		OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, Roles: []string{}, CreatedAt: now, UpdatedAt: now,
+		OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}

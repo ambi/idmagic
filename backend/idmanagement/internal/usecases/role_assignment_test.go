@@ -9,28 +9,20 @@ import (
 
 const otherTenant = "acme"
 
-// 予約ロールの割当て規則を、対象種別と所属テナントの組で固定する。
+// 予約ロールの割当て規則を、対象の所属テナントで固定する。
 //
-// 表の行は規則そのものであり、代表 1 件では足りない。テナントを見ない実装、
-// 対象種別を見ない実装、どちらも 1 行だけを見るテストは通してしまう。
-//
-//spec:covers REQ-IDMANAGEMENT-032: 対象種別と所属テナントの組で `system_admin` の新規割当てを許可または拒否すること。Agent はどのテナントでも拒否されること。
-func TestValidateRoleAssignmentDecidesByTargetKindAndTenant(t *testing.T) {
+//spec:covers REQ-IDMANAGEMENT-032: 所属テナントで `system_admin` の新規割当てを許可または拒否すること。
+func TestValidateRoleAssignmentDecidesByTenant(t *testing.T) {
 	for _, tt := range []struct {
 		name     string
-		target   RoleAssignmentTarget
 		tenantID string
 		refused  bool
 	}{
-		{"制御面テナントの User", RoleTargetUser, tenancydomain.DefaultTenantID, false},
-		{"制御面テナントの Group", RoleTargetGroup, tenancydomain.DefaultTenantID, false},
-		{"制御面テナントの Agent", RoleTargetAgent, tenancydomain.DefaultTenantID, true},
-		{"その他のテナントの User", RoleTargetUser, otherTenant, true},
-		{"その他のテナントの Group", RoleTargetGroup, otherTenant, true},
-		{"その他のテナントの Agent", RoleTargetAgent, otherTenant, true},
+		{"制御面テナント", tenancydomain.DefaultTenantID, false},
+		{"その他のテナント", otherTenant, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateRoleAssignment(tt.target, tt.tenantID, nil, []string{ReservedRoleSystemAdmin})
+			err := ValidateRoleAssignment(tt.tenantID, nil, []string{ReservedRoleSystemAdmin})
 			if tt.refused && !errors.Is(err, ErrReservedRole) {
 				t.Fatalf("err=%v, want ErrReservedRole", err)
 			}
@@ -41,17 +33,15 @@ func TestValidateRoleAssignmentDecidesByTargetKindAndTenant(t *testing.T) {
 	}
 }
 
-// 予約ロール以外の名前は、どの対象でもどのテナントでも通る。
+// 予約ロール以外の名前は、どのテナントでも通る。
 //
 // 予約する文字列を `system_admin` だけに限る決定を固定する。ロール語彙全体を
 // 閉じた列挙にした実装は、ここで落ちる。
 func TestValidateRoleAssignmentLeavesTenantDefinedRolesAlone(t *testing.T) {
-	for _, target := range []RoleAssignmentTarget{RoleTargetUser, RoleTargetGroup, RoleTargetAgent} {
-		for _, tenantID := range []string{tenancydomain.DefaultTenantID, otherTenant} {
-			roles := []string{"admin", "catalog:read", "system_admin_of_nothing", "systemadmin"}
-			if err := ValidateRoleAssignment(target, tenantID, nil, roles); err != nil {
-				t.Fatalf("target=%s tenant=%s err=%v, want nil", target, tenantID, err)
-			}
+	for _, tenantID := range []string{tenancydomain.DefaultTenantID, otherTenant} {
+		roles := []string{"admin", "catalog:read", "system_admin_of_nothing", "systemadmin"}
+		if err := ValidateRoleAssignment(tenantID, nil, roles); err != nil {
+			t.Fatalf("tenant=%s err=%v, want nil", tenantID, err)
 		}
 	}
 }
@@ -77,7 +67,7 @@ func TestValidateRoleAssignmentJudgesWhatTheWriteAdds(t *testing.T) {
 		{"何も持たない対象への新規付与", []string{"support"}, []string{ReservedRoleSystemAdmin, "support"}, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateRoleAssignment(RoleTargetUser, otherTenant, tt.current, tt.next)
+			err := ValidateRoleAssignment(otherTenant, tt.current, tt.next)
 			if tt.refused && !errors.Is(err, ErrReservedRole) {
 				t.Fatalf("err=%v, want ErrReservedRole", err)
 			}
@@ -85,22 +75,5 @@ func TestValidateRoleAssignmentJudgesWhatTheWriteAdds(t *testing.T) {
 				t.Fatalf("err=%v, want nil", err)
 			}
 		})
-	}
-}
-
-// Agent は既存値を再送しても拒否する対象ではなく、差分の規則に従う。
-//
-// Agent をテナントに関わらず拒否する規則と、差分で判定する規則が独立していることを
-// 固定する。Agent だけ絶対集合で見る実装は、既存データを持つ環境の Agent を
-// 一切更新できなくする。
-func TestValidateRoleAssignmentLetsAnAgentKeepAStoredReservedRole(t *testing.T) {
-	stored := []string{ReservedRoleSystemAdmin}
-	if err := ValidateRoleAssignment(RoleTargetAgent, tenancydomain.DefaultTenantID, stored, stored); err != nil {
-		t.Fatalf("err=%v, want nil", err)
-	}
-	if err := ValidateRoleAssignment(
-		RoleTargetAgent, tenancydomain.DefaultTenantID, nil, stored,
-	); !errors.Is(err, ErrReservedRole) {
-		t.Fatalf("err=%v, want ErrReservedRole", err)
 	}
 }

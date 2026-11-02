@@ -34,7 +34,6 @@ func NewAgentRepository() *AgentRepository {
 
 func cloneAgent(agent *agentdomain.Agent) *agentdomain.Agent {
 	cloned := *agent
-	cloned.Roles = slices.Clone(agent.Roles)
 	return &cloned
 }
 

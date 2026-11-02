@@ -381,9 +381,7 @@ func groupImportCandidate(
 			return nil, "roles", "invalid_roles"
 		}
 		// candidate.Roles はまだ既存 Group の写しなので、そのまま現在値として渡せる。
-		if err := idmusecases.ValidateRoleAssignment(
-			idmusecases.RoleTargetGroup, candidate.TenantID, candidate.Roles, normalized,
-		); err != nil {
+		if err := idmusecases.ValidateRoleAssignment(candidate.TenantID, candidate.Roles, normalized); err != nil {
 			return nil, "roles", "invalid_roles"
 		}
 		candidate.Roles = normalized

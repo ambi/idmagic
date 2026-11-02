@@ -210,7 +210,7 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	if err != nil {
 		return nil, err
 	}
-	if err := idmusecases.ValidateRoleAssignment(idmusecases.RoleTargetGroup, tenantID, nil, roles); err != nil {
+	if err := idmusecases.ValidateRoleAssignment(tenantID, nil, roles); err != nil {
 		return nil, err
 	}
 	roleTarget := groupdomain.Group{Roles: roles, MembershipType: in.MembershipType, UpstreamManaged: in.UpstreamManaged}
@@ -319,9 +319,7 @@ func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) 
 		if err != nil {
 			return nil, err
 		}
-		if err := idmusecases.ValidateRoleAssignment(
-			idmusecases.RoleTargetGroup, group.TenantID, group.Roles, roles,
-		); err != nil {
+		if err := idmusecases.ValidateRoleAssignment(group.TenantID, group.Roles, roles); err != nil {
 			return nil, err
 		}
 		if !slices.Equal(roles, group.Roles) {

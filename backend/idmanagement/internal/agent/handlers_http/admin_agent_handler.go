@@ -10,7 +10,6 @@ import (
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	agentusecases "github.com/ambi/idmagic/backend/idmanagement/internal/agent/usecases"
-	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -21,7 +20,6 @@ type agentRegisterRequest struct {
 	Description *string              `json:"description"`
 	Kind        *idmdomain.AgentKind `json:"kind"`
 	OwnerUserID *string              `json:"owner_user_id"`
-	Roles       []string             `json:"roles"`
 }
 
 type agentUpdateRequest struct {
@@ -29,7 +27,6 @@ type agentUpdateRequest struct {
 	Description *string              `json:"description"`
 	Kind        *idmdomain.AgentKind `json:"kind"`
 	OwnerUserID *string              `json:"owner_user_id"`
-	Roles       *[]string            `json:"roles"`
 }
 
 type agentCredentialBindRequest struct {
@@ -44,7 +41,6 @@ type agentSummaryResponse struct {
 	Kind        idmdomain.AgentKind   `json:"kind"`
 	OwnerUserID string                `json:"owner_user_id"`
 	Status      idmdomain.AgentStatus `json:"status"`
-	Roles       []string              `json:"roles"`
 	ClientIDs   []string              `json:"client_ids"`
 	CreatedAt   time.Time             `json:"created_at"`
 	UpdatedAt   time.Time             `json:"updated_at"`
@@ -146,7 +142,7 @@ func HandleRegisterAgent(d Deps, c *echo.Context) error {
 	}
 	agent, err := agentusecases.RegisterAgent(c.Request().Context(), adminAgentDeps(d), agentusecases.RegisterAgentInput{
 		ActorUserID: actor.ID, Name: input.Name, Description: input.Description,
-		Kind: kind, OwnerUserID: ownerUserID, Roles: input.Roles, Now: time.Now().UTC(),
+		Kind: kind, OwnerUserID: ownerUserID, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return writeAdminAgentError(c, err)
@@ -170,7 +166,7 @@ func HandleUpdateAgent(d Deps, c *echo.Context) error {
 	if _, err := agentusecases.UpdateAgent(c.Request().Context(), adminAgentDeps(d), agentusecases.UpdateAgentInput{
 		ActorUserID: actor.ID, ID: agentID,
 		Name: input.Name, Description: input.Description, Kind: input.Kind,
-		OwnerUserID: input.OwnerUserID, Roles: input.Roles, Now: time.Now().UTC(),
+		OwnerUserID: input.OwnerUserID, Now: time.Now().UTC(),
 	}); err != nil {
 		return writeAdminAgentError(c, err)
 	}
@@ -274,7 +270,7 @@ func toAgentSummaryResponse(agent *agentdomain.Agent, clientIDs []string) agentS
 	return agentSummaryResponse{
 		ID: agent.ID, TenantID: agent.TenantID, Name: agent.Name, Description: agent.Description,
 		Kind: agent.Kind, OwnerUserID: agent.OwnerUserID, Status: agent.Status,
-		Roles: slices.Clone(agent.Roles), ClientIDs: slices.Clone(clientIDs),
+		ClientIDs: slices.Clone(clientIDs),
 		CreatedAt: agent.CreatedAt, UpdatedAt: agent.UpdatedAt,
 		DisabledAt: agent.DisabledAt, KilledAt: agent.KilledAt,
 	}
@@ -309,13 +305,6 @@ func writeAdminAgentError(c *echo.Context, err error) error {
 			c, http.StatusUnprocessableEntity, "agent_client_auth_method_not_allowed",
 			"An agent can only be bound to a client that authenticates with private_key_jwt or tls_client_auth.",
 		)
-	case errors.Is(err, idmusecases.ErrReservedRole):
-		return support.WriteProblem(
-			c, http.StatusUnprocessableEntity, "invalid_role",
-			"The role system_admin is reserved for control plane users.",
-		)
-	case errors.Is(err, idmusecases.ErrInvalidRole):
-		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_role", "The role is invalid.")
 	default:
 		return err
 	}

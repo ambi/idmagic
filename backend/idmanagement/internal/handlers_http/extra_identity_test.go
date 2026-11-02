@@ -136,7 +136,7 @@ func TestAdminAgentLifecycle(t *testing.T) {
 	desc := "Agent 1 Description"
 	kind := "autonomous"
 	create1 := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/agents", csrf, cookie, map[string]any{
-		"name": "Agent 1", "description": &desc, "kind": &kind, "roles": []string{"support"},
+		"name": "Agent 1", "description": &desc, "kind": &kind,
 	})
 	if create1.Code != http.StatusCreated {
 		t.Fatalf("register agent 1 status=%d body=%s", create1.Code, create1.Body.String())
@@ -209,7 +209,7 @@ func TestAdminAgentLifecycle(t *testing.T) {
 
 	// --- 2. Agent 2 (Create, Kill) ---
 	create2 := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/agents", csrf, cookie, map[string]any{
-		"name": "Agent 2", "description": &desc, "kind": &kind, "roles": []string{"support"},
+		"name": "Agent 2", "description": &desc, "kind": &kind,
 	})
 	if create2.Code != http.StatusCreated {
 		t.Fatalf("register agent 2 status=%d body=%s", create2.Code, create2.Body.String())
@@ -685,13 +685,6 @@ func TestIdentityAPIErrors(t *testing.T) {
 	})
 	if createAgtDup.Code != http.StatusConflict {
 		t.Fatalf("expected 409 for duplicate agent name, got %d", createAgtDup.Code)
-	}
-
-	updateAgtBadRole := adminJSONRequest(t, e, http.MethodPatch, "/api/admin/v1/agents/"+seedAgent.ID, csrf, cookie, map[string]any{
-		"roles": []string{" "},
-	})
-	if updateAgtBadRole.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("expected 422 for invalid agent role, got %d", updateAgtBadRole.Code)
 	}
 
 	// --- 4. Email Change Errors ---

@@ -1,23 +1,13 @@
 package usecases
 
 // 予約ロールの割当て規則。字句の正規化 (NormalizeRoles) とは別の関心事として置く。
-// 正規化は Agent を含む全対象で共有しており、対象種別も所属テナントも知らないため、
-// 製品上の割当て規則をそこへ混ぜると Agent の規則が User の規則に飲まれる。
+// 正規化は所属テナントを知らず、CSV の取り込みでも同じ字句の処理を共有する。
 
 import (
 	"errors"
 	"slices"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-)
-
-// RoleAssignmentTarget は予約ロールの割当て可否を決める対象の種類。
-type RoleAssignmentTarget string
-
-const (
-	RoleTargetUser  RoleAssignmentTarget = "user"
-	RoleTargetGroup RoleAssignmentTarget = "group"
-	RoleTargetAgent RoleAssignmentTarget = "agent"
 )
 
 // ReservedRoleSystemAdmin は制御面 User のための予約ロール名。
@@ -36,17 +26,12 @@ var ErrReservedRole = errors.New("role is reserved for control plane users")
 // next の絶対集合ではなく、この書き込みが新しく加える予約ロールだけを見る。絶対集合で
 // 判定すると、`system_admin` をテナント固有の文字列として使ってきた環境で、無編集の
 // エクスポートを再適用すると全行 unchanged になるという CSV の往復不変条件が壊れる。
-func ValidateRoleAssignment(
-	target RoleAssignmentTarget, tenantID string, current, next []string,
-) error {
+func ValidateRoleAssignment(tenantID string, current, next []string) error {
 	if !slices.Contains(next, ReservedRoleSystemAdmin) {
 		return nil
 	}
 	if slices.Contains(current, ReservedRoleSystemAdmin) {
 		return nil
-	}
-	if target == RoleTargetAgent {
-		return ErrReservedRole
 	}
 	if tenantID != tenancydomain.DefaultTenantID {
 		return ErrReservedRole

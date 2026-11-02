@@ -15,7 +15,6 @@ const agent = (id: string): AdminAgent => ({
   kind: 'autonomous',
   owner_user_id: 'user-1',
   status: 'active',
-  roles: [],
   client_ids: [],
   created_at: '2026-01-01T00:00:00Z',
 })

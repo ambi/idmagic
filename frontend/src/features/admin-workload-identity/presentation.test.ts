@@ -189,7 +189,6 @@ const agent: AdminAgent = {
   kind: 'autonomous',
   owner_user_id: 'user-1',
   status: 'active',
-  roles: [],
   client_ids: ['client-1'],
   created_at: '2026-08-16T00:00:00Z',
 }

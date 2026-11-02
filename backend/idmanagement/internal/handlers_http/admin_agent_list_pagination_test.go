@@ -64,7 +64,7 @@ func seedAgent(t *testing.T, repo *agentmemory.AgentRepository, id, name string,
 	if err := repo.Save(context.Background(), &agentdomain.Agent{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, Name: name,
 		Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "admin", Status: idmdomain.AgentStatusActive,
-		Roles: []string{}, CreatedAt: now, UpdatedAt: now,
+		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatalf("seed agent: %v", err)
 	}

@@ -4,7 +4,7 @@ export const agentObservationsDictionary = defineDictionary(
   {
     sectionTitle: '外部で観測されたエージェント',
     sectionDescription:
-      '外部の発見器が報告した未確認の情報です。確認や除外をしても、エージェント、クレデンシャル、ロールは変わりません。',
+      '外部の発見器が報告した未確認の情報です。確認や除外をしても、エージェントとクレデンシャルは変わりません。',
     filterAriaLabel: '決定で絞り込む',
     decisionPending: '未決定',
     decisionConfirmed: '確認済み',
@@ -35,7 +35,7 @@ export const agentObservationsDictionary = defineDictionary(
   {
     sectionTitle: 'Agents observed externally',
     sectionDescription:
-      'Unverified reports from external discovery tools. Confirming or excluding one does not change any agent, credential, or role.',
+      'Unverified reports from external discovery tools. Confirming or excluding one does not change any agent or credential.',
     filterAriaLabel: 'Filter by decision',
     decisionPending: 'Pending',
     decisionConfirmed: 'Confirmed',
