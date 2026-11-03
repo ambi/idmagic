@@ -63,7 +63,7 @@ spec_impact: { kind: none, reason: "デモのプロセス、画面と開発文�
 ## 計画
 
 今回は起票だけを行う。
-[wi-27270](wi-27270-fix-agent-demo-operation-scopes.md) の操作の追加を先に終え、同じ画面の衝突を避ける。
+[wi-27270](../done/wi-27270-fix-agent-demo-operation-scopes.md) の操作の追加を先に終え、同じ画面の衝突を避ける。
 設定済みの開始点と入力の出所の表示を先に実装し、手順数の固定は製品の各改善の完了ごとに更新する。
 
 ## タスク

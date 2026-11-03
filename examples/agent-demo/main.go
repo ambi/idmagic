@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"mime"
 	"net"
 	"net/http"
@@ -39,7 +40,8 @@ import (
 const (
 	gatewayResource = "https://docs-mcp.agent-demo.example/"
 	protocolVersion = "2026-07-28"
-	demoScope       = "tools:read"
+	readScope       = "tools:read"
+	writeScope      = "tools:write"
 	publicDocument  = "handbook"
 	secretDocument  = "salary-2026"
 	maxResponse     = 1 << 20
@@ -62,15 +64,22 @@ type documentInput struct {
 	DocumentID string `json:"document_id"`
 }
 
+type writeInput struct {
+	DocumentID string `json:"document_id"`
+	Title      string `json:"title"`
+	Body       string `json:"body"`
+}
+
 type documentOutput struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
 }
 
 // documents は保護される側の MCP サーバーである。認可を知らず、呼ばれれば実行する。
+// 本文はプロセスのメモリだけに置き、初期の本文は共有の定数から複製する。
 type documents struct {
 	mu       sync.Mutex
-	deleted  map[string]bool
+	bodies   map[string]documentOutput
 	executed int
 }
 
@@ -79,14 +88,31 @@ var documentBodies = map[string]documentOutput{
 	secretDocument: {Title: "2026 年度 給与テーブル", Body: "役員 A: 2,400 万円 / 部長 B: 1,350 万円"},
 }
 
+func newDocuments() *documents {
+	return &documents{bodies: maps.Clone(documentBodies)}
+}
+
 func (d *documents) read(_ context.Context, _ *mcp.CallToolRequest, input documentInput) (*mcp.CallToolResult, documentOutput, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.executed++
-	document, ok := documentBodies[input.DocumentID]
-	if !ok || d.deleted[input.DocumentID] {
+	document, ok := d.bodies[input.DocumentID]
+	if !ok {
 		return nil, documentOutput{}, fmt.Errorf("document %q not found", input.DocumentID)
 	}
+	return nil, document, nil
+}
+
+// write は文書を作成または上書きする。削除後の書き込みは作り直しになる。
+func (d *documents) write(_ context.Context, _ *mcp.CallToolRequest, input writeInput) (*mcp.CallToolResult, documentOutput, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.executed++
+	if strings.TrimSpace(input.DocumentID) == "" || strings.TrimSpace(input.Title) == "" {
+		return nil, documentOutput{}, errors.New("document_id and title are required")
+	}
+	document := documentOutput{Title: input.Title, Body: input.Body}
+	d.bodies[input.DocumentID] = document
 	return nil, document, nil
 }
 
@@ -94,7 +120,7 @@ func (d *documents) delete(_ context.Context, _ *mcp.CallToolRequest, input docu
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.executed++
-	d.deleted[input.DocumentID] = true
+	delete(d.bodies, input.DocumentID)
 	return nil, documentOutput{Title: input.DocumentID, Body: "削除しました。"}, nil
 }
 
@@ -107,18 +133,20 @@ func (d *documents) count() int {
 func (d *documents) restore() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.deleted = map[string]bool{}
+	d.bodies = maps.Clone(documentBodies)
 }
 
 func (d *documents) handler() http.Handler {
 	server := mcp.NewServer(&mcp.Implementation{Name: "documents", Version: "1"}, nil)
 	mcp.AddTool(server, &mcp.Tool{Name: "read_document", Description: "文書を読む"}, d.read)
+	mcp.AddTool(server, &mcp.Tool{Name: "write_document", Description: "文書を作成または更新する"}, d.write)
 	mcp.AddTool(server, &mcp.Tool{Name: "delete_document", Description: "文書を削除する"}, d.delete)
 	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{Stateless: true})
 }
 
 type demo struct {
 	realm       string
+	resource    string
 	key         *rsa.PrivateKey
 	docs        *documents
 	upstreamURL string
@@ -130,6 +158,7 @@ type demo struct {
 
 	mu        sync.Mutex
 	clientID  string
+	catalog   bool
 	gateway   http.Handler
 	token     string
 	authReqID string
@@ -199,17 +228,26 @@ func (d *demo) authenticated(ctx context.Context, clientID, endpoint string, for
 	return response.StatusCode, result, nil
 }
 
-func (d *demo) issueToken(ctx context.Context) (string, step) {
+// clientCredentials は通常の発行と承認の前の発行で共有する要求を作る。
+// カタログの接続ではスコープを省略し、IdMagic が現在の操作割当と認証上限から決める。
+// 文書別の接続は従来どおり閲覧のスコープを明示する。
+func (d *demo) clientCredentials() (string, url.Values) {
 	d.mu.Lock()
-	clientID := d.clientID
-	d.mu.Unlock()
+	defer d.mu.Unlock()
+	form := url.Values{"grant_type": {"client_credentials"}, "resource": {d.resource}}
+	if !d.catalog {
+		form.Set("scope", readScope)
+	}
+	return d.clientID, form
+}
+
+func (d *demo) issueToken(ctx context.Context) (string, step) {
+	clientID, form := d.clientCredentials()
 	base := step{
 		Title: "秘密鍵で署名して、文書サーバー宛のトークンを取得",
 		Specs: []string{"OAuth 2.0 Client Credentials (RFC 6749)", "private_key_jwt (RFC 7523)", "Resource Indicators (RFC 8707)"},
 	}
-	status, result, err := d.authenticated(ctx, clientID, "token", url.Values{
-		"grant_type": {"client_credentials"}, "scope": {demoScope}, "resource": {gatewayResource},
-	})
+	status, result, err := d.authenticated(ctx, clientID, "token", form)
 	if err != nil {
 		base.Outcome, base.Detail = "denied", err.Error()
 		return "", base
@@ -222,15 +260,18 @@ func (d *demo) issueToken(ctx context.Context) (string, step) {
 	}
 	base.Outcome = "allowed"
 	base.Detail = fmt.Sprintf("有効期間 %v 秒のトークンを受け取りました。共有の API キーはどこにもありません。", result["expires_in"])
+	if scope, _ := result["scope"].(string); scope != "" {
+		base.Evidence = "発行されたスコープ: " + scope
+	}
 	return token, base
 }
 
 // callTool は Streamable HTTP の tools/call を一つ送り、上流で実行されたかを観測する。
-func (d *demo) callTool(ctx context.Context, target, credentialHeader, credential, tool, documentID string) (int, string, bool, error) {
+func (d *demo) callTool(ctx context.Context, target, credentialHeader, credential, tool string, arguments map[string]string) (int, string, bool, error) {
 	body, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "tools/call",
 		"params": map[string]any{
-			"name": tool, "arguments": map[string]string{"document_id": documentID},
+			"name": tool, "arguments": arguments,
 			"_meta": map[string]any{
 				"io.modelcontextprotocol/protocolVersion":    protocolVersion,
 				"io.modelcontextprotocol/clientCapabilities": map[string]any{},
@@ -276,6 +317,10 @@ func toolText(raw []byte) string {
 	var message struct {
 		Result struct {
 			StructuredContent documentOutput `json:"structuredContent"`
+			IsError           bool           `json:"isError"`
+			Content           []struct {
+				Text string `json:"text"`
+			} `json:"content"`
 		} `json:"result"`
 		Error struct {
 			Message string `json:"message"`
@@ -287,11 +332,15 @@ func toolText(raw []byte) string {
 	if message.Error.Message != "" {
 		return message.Error.Message
 	}
+	// ツールのエラーは構造化の結果を持たず、本文だけで理由を返す。
+	if message.Result.IsError && len(message.Result.Content) > 0 {
+		return message.Result.Content[0].Text
+	}
 	return strings.TrimSpace(message.Result.StructuredContent.Title + " " + message.Result.StructuredContent.Body)
 }
 
-func (d *demo) toolStep(ctx context.Context, title, target, header, credential, tool, documentID string, specs []string) step {
-	status, text, executed, err := d.callTool(ctx, target, header, credential, tool, documentID)
+func (d *demo) toolStep(ctx context.Context, title, target, header, credential, tool string, arguments map[string]string, specs []string) step {
+	status, text, executed, err := d.callTool(ctx, target, header, credential, tool, arguments)
 	result := step{Title: title, Specs: specs, Executed: executed, Detail: text, Evidence: fmt.Sprintf("HTTP %d / 文書サーバーでの実行: %s", status, yesNo(executed))}
 	switch {
 	case err != nil:
@@ -328,28 +377,49 @@ func (d *demo) currentToken(ctx context.Context) (string, []step) {
 	return token, []step{issued}
 }
 
+type governedRequest struct {
+	title     string
+	tool      string
+	arguments map[string]string
+}
+
+// governedRequests は統制後に試す依頼である。更新と削除は同じスコープでも別の操作として判定される。
+var governedRequests = map[string]governedRequest{
+	"read-public": {"「就業規則を読んで」", "read_document", map[string]string{"document_id": publicDocument}},
+	"read-secret": {"「給与テーブルを読んで」", "read_document", map[string]string{"document_id": secretDocument}},
+	"write": {"「就業規則の勤務時間を更新して」", "write_document", map[string]string{
+		"document_id": publicDocument, "title": "就業規則 2026 年版", "body": "勤務時間は 10:00 から 18:30 です。",
+	}},
+	"delete": {"「就業規則を削除して」", "delete_document", map[string]string{"document_id": publicDocument}},
+}
+
 var gatewaySpecs = []string{"Model Context Protocol 2026-07-28", "OAuth 2.0 Protected Resource Metadata (RFC 9728)", "関係ベースのアクセス制御 (ReBAC)"}
 
 func (d *demo) run(ctx context.Context, scenario string) ([]step, error) {
 	switch scenario {
 	case "unmanaged":
 		return d.runUnmanaged(ctx), nil
-	case "read-public", "read-secret", "delete":
+	case "read-public", "read-secret", "write", "delete":
 		if !d.connected() {
-			return nil, errors.New("先に手順 7 で接続してください。")
+			return nil, errors.New("先に「接続」の手順で接続してください。")
 		}
 		token, steps := d.currentToken(ctx)
 		if token == "" {
 			return steps, nil
 		}
-		title, tool, documentID := "「就業規則を読んで」", "read_document", publicDocument
-		switch scenario {
-		case "read-secret":
-			title, documentID = "「給与テーブルを読んで」", secretDocument
-		case "delete":
-			title, tool = "「就業規則を削除して」", "delete_document"
+		request := governedRequests[scenario]
+		return append(steps, d.toolStep(ctx, request.title, d.gatewayURL, "Authorization", "Bearer "+token, request.tool, request.arguments, gatewaySpecs)), nil
+	case "reissue":
+		if !d.connected() {
+			return nil, errors.New("先に「接続」の手順で接続してください。")
 		}
-		return append(steps, d.toolStep(ctx, title, d.gatewayURL, "Authorization", "Bearer "+token, tool, documentID, gatewaySpecs)), nil
+		token, issued := d.issueToken(ctx)
+		if token != "" {
+			d.mu.Lock()
+			d.token = token
+			d.mu.Unlock()
+		}
+		return []step{issued}, nil
 	case "after-stop":
 		return d.runAfterStop(ctx)
 	}
@@ -361,23 +431,23 @@ func (d *demo) runUnmanaged(ctx context.Context) []step {
 	const sharedKey = "shared-api-key-everyone-uses"
 	specs := []string{"共有の API キー"}
 	return []step{
-		d.toolStep(ctx, "「就業規則を読んで」", d.upstreamURL, "X-Api-Key", sharedKey, "read_document", publicDocument, specs),
-		d.toolStep(ctx, "「給与テーブルを読んで」", d.upstreamURL, "X-Api-Key", sharedKey, "read_document", secretDocument, specs),
-		d.toolStep(ctx, "「就業規則を削除して」", d.upstreamURL, "X-Api-Key", sharedKey, "delete_document", publicDocument, specs),
+		d.toolStep(ctx, "「就業規則を読んで」", d.upstreamURL, "X-Api-Key", sharedKey, "read_document", governedRequests["read-public"].arguments, specs),
+		d.toolStep(ctx, "「給与テーブルを読んで」", d.upstreamURL, "X-Api-Key", sharedKey, "read_document", governedRequests["read-secret"].arguments, specs),
+		d.toolStep(ctx, "「就業規則を削除して」", d.upstreamURL, "X-Api-Key", sharedKey, "delete_document", governedRequests["delete"].arguments, specs),
 	}
 }
 
 // runAfterStop は、停止の前に得たトークンと新しい発行の両方を試す。
 func (d *demo) runAfterStop(ctx context.Context) ([]step, error) {
 	if !d.connected() {
-		return nil, errors.New("先に手順 7 で接続してください。")
+		return nil, errors.New("先に「接続」の手順で接続してください。")
 	}
 	d.mu.Lock()
 	previous := d.token
 	d.mu.Unlock()
 	var steps []step
 	if previous != "" {
-		used := d.toolStep(ctx, "手元のトークンで「就業規則を読んで」", d.gatewayURL, "Authorization", "Bearer "+previous, "read_document", publicDocument, gatewaySpecs)
+		used := d.toolStep(ctx, "手元のトークンで「就業規則を読んで」", d.gatewayURL, "Authorization", "Bearer "+previous, "read_document", governedRequests["read-public"].arguments, gatewaySpecs)
 		steps = append(steps, used)
 	}
 	token, issued := d.issueToken(ctx)
@@ -388,7 +458,7 @@ func (d *demo) runAfterStop(ctx context.Context) ([]step, error) {
 	d.mu.Lock()
 	d.token = token
 	d.mu.Unlock()
-	return append(steps, d.toolStep(ctx, "新しいトークンで「就業規則を読んで」", d.gatewayURL, "Authorization", "Bearer "+token, "read_document", publicDocument, gatewaySpecs)), nil
+	return append(steps, d.toolStep(ctx, "新しいトークンで「就業規則を読んで」", d.gatewayURL, "Authorization", "Bearer "+token, "read_document", governedRequests["read-public"].arguments, gatewaySpecs)), nil
 }
 
 func (d *demo) connected() bool {
@@ -399,16 +469,12 @@ func (d *demo) connected() bool {
 
 func (d *demo) startApproval(ctx context.Context) (map[string]any, error) {
 	if !d.connected() {
-		return nil, errors.New("先に手順 7 で接続してください。")
+		return nil, errors.New("先に「接続」の手順で接続してください。")
 	}
-	d.mu.Lock()
-	clientID := d.clientID
-	d.mu.Unlock()
+	clientID, form := d.clientCredentials()
 	specs := []string{"OpenID Connect CIBA"}
 	refused := step{Title: "承認なしでトークンを要求", Specs: []string{"監督下の Agent の発行制限"}}
-	status, result, err := d.authenticated(ctx, clientID, "token", url.Values{
-		"grant_type": {"client_credentials"}, "scope": {demoScope}, "resource": {gatewayResource},
-	})
+	status, result, err := d.authenticated(ctx, clientID, "token", form)
 	if err != nil {
 		return nil, err
 	}
@@ -501,7 +567,7 @@ idmagic:
   client_id: %q
   client_secret_file: %s
 mapping:
-%s`, gatewayResource, d.upstreamURL, d.proxyURL, d.caFile, input.GatewayClientID, secretFile, mapping)
+%s`, d.resource, d.upstreamURL, d.proxyURL, d.caFile, input.GatewayClientID, secretFile, mapping)
 	if err := os.WriteFile(configFile, []byte(config), 0o600); err != nil {
 		return nil, err
 	}
@@ -510,7 +576,7 @@ mapping:
 		return nil, fmt.Errorf("ゲートウェイの設定を読めません: %w", err)
 	}
 	d.mu.Lock()
-	d.clientID, d.gateway, d.token = input.AgentClientID, loaded.Handler(), ""
+	d.clientID, d.catalog, d.gateway, d.token = input.AgentClientID, input.Catalog, loaded.Handler(), ""
 	d.mu.Unlock()
 	token, issued := d.issueToken(ctx)
 	if token == "" {
@@ -536,7 +602,8 @@ func (d *demo) routes() http.Handler {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"public_key": publicKey, "resource": gatewayResource, "scope": demoScope,
+			"public_key": publicKey, "resource": d.resource, "scope": readScope + " " + writeScope,
+			"read_scope": readScope, "write_scope": writeScope,
 			"console": origin + "/realms/default", "connected": d.connected(),
 			"public_document": publicDocument, "secret_document": secretDocument,
 		})
@@ -610,8 +677,8 @@ func (d *demo) gatewayHandler() http.Handler {
 
 func newDemo(realm, workDir string, key *rsa.PrivateKey, upstreamURL, gatewayURL, proxyURL, caFile string) *demo {
 	return &demo{
-		realm: strings.TrimRight(realm, "/"), key: key, workDir: workDir,
-		docs: &documents{deleted: map[string]bool{}}, upstreamURL: upstreamURL, gatewayURL: gatewayURL,
+		realm: strings.TrimRight(realm, "/"), resource: gatewayResource, key: key, workDir: workDir,
+		docs: newDocuments(), upstreamURL: upstreamURL, gatewayURL: gatewayURL,
 		proxyURL: proxyURL, caFile: caFile, http: &http.Client{Timeout: 15 * time.Second},
 	}
 }
@@ -626,13 +693,15 @@ func serve(listener net.Listener, handler http.Handler) {
 func main() {
 	realm := flag.String("realm", "http://localhost:5173/realms/default", "IdMagic のテナントの URL")
 	listen := flag.String("listen", "127.0.0.1:5180", "デモの画面の待ち受け")
+	// 同じテナントで別々の例を並べて登録できるように、接続先の URI を変えられる。
+	resource := flag.String("resource", gatewayResource, "ゲートウェイが名乗る接続先の URI")
 	flag.Parse()
-	if err := start(*realm, *listen); err != nil {
+	if err := start(*realm, *listen, *resource); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func start(realm, listen string) error {
+func start(realm, listen, resource string) error {
 	target, err := url.Parse(realm)
 	if err != nil || target.Host == "" {
 		return fmt.Errorf("realm の URL が不正です: %q", realm)
@@ -675,6 +744,7 @@ func start(realm, listen string) error {
 		return err
 	}
 	d := newDemo(realm, workDir, key, "http://"+upstreamListener.Addr().String()+"/", "http://"+gatewayListener.Addr().String()+"/", tlsFront.URL, caFile)
+	d.resource = resource
 	go serve(upstreamListener, d.docs.handler())
 	go serve(gatewayListener, d.gatewayHandler())
 	log.Printf("デモの画面: http://%s/", consoleListener.Addr())

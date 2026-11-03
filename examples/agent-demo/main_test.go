@@ -6,6 +6,8 @@ import (
 	"crypto/rsa"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -75,5 +77,84 @@ func TestActionsRejectNonJSONSubmissions(t *testing.T) {
 	}
 	if d.docs.count() != 0 {
 		t.Fatal("a form submission reached the MCP server")
+	}
+}
+
+// 文書の作成・更新は実在の MCP ツールとして本文を変え、空の識別子とタイトルでは何も変えない。
+func TestWriteDocumentCreatesUpdatesAndRecreatesBodies(t *testing.T) {
+	d := newTestDemo(t)
+	ctx := context.Background()
+	call := func(tool string, arguments map[string]string) (int, string, bool) {
+		t.Helper()
+		status, text, executed, err := d.callTool(ctx, d.upstreamURL, "X-Api-Key", "key", tool, arguments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return status, text, executed
+	}
+	updated := map[string]string{"document_id": publicDocument, "title": "就業規則 2026 年版", "body": "勤務時間は 10:00 から 18:30 です。"}
+	if _, text, executed := call("write_document", updated); !executed || !strings.Contains(text, "10:00") {
+		t.Fatalf("write text=%q executed=%v", text, executed)
+	}
+	if _, text, _ := call("read_document", map[string]string{"document_id": publicDocument}); !strings.Contains(text, "10:00") {
+		t.Fatalf("read after write=%q, want the updated body", text)
+	}
+	for _, invalid := range []map[string]string{
+		{"document_id": "", "title": "題", "body": "本文"},
+		{"document_id": publicDocument, "title": " ", "body": "書き換え"},
+	} {
+		call("write_document", invalid)
+		if _, text, _ := call("read_document", map[string]string{"document_id": publicDocument}); !strings.Contains(text, "10:00") {
+			t.Fatalf("invalid write %v changed the body: %q", invalid, text)
+		}
+	}
+	call("delete_document", map[string]string{"document_id": publicDocument})
+	if _, text, _ := call("read_document", map[string]string{"document_id": publicDocument}); !strings.Contains(text, "not found") {
+		t.Fatalf("read after delete=%q", text)
+	}
+	if _, text, _ := call("write_document", map[string]string{"document_id": publicDocument, "title": "就業規則", "body": ""}); !strings.Contains(text, "就業規則") {
+		t.Fatalf("recreate with an empty body=%q", text)
+	}
+	d.docs.restore()
+	if _, text, _ := call("read_document", map[string]string{"document_id": publicDocument}); !strings.Contains(text, "9:30") {
+		t.Fatalf("restore did not return the initial body: %q", text)
+	}
+}
+
+// カタログの接続では発行スコープを省略し、文書別の接続では閲覧のスコープを明示する。承認の開始も同じ要求を使う。
+func TestTokenRequestsOmitScopeOnlyForCatalogConnections(t *testing.T) {
+	for _, tc := range []struct {
+		catalog bool
+		want    []string
+	}{{catalog: true, want: nil}, {catalog: false, want: []string{"tools:read"}}} {
+		var forms []url.Values
+		idmagic := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Error(err)
+			}
+			forms = append(forms, r.PostForm)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"unauthorized_client"}`))
+		}))
+		d := newTestDemo(t)
+		d.realm = idmagic.URL
+		d.clientID, d.gateway, d.catalog = "agent-client", http.NotFoundHandler(), tc.catalog
+		d.issueToken(context.Background())
+		if _, err := d.startApproval(context.Background()); err == nil {
+			t.Fatal("approval started without the IdMagic endpoint")
+		}
+		idmagic.Close()
+		if len(forms) < 2 {
+			t.Fatalf("catalog=%v requests=%d, want issuance and approval", tc.catalog, len(forms))
+		}
+		for _, form := range forms[:2] {
+			if form.Get("grant_type") != "client_credentials" || form.Get("resource") != gatewayResource {
+				t.Fatalf("catalog=%v form=%v", tc.catalog, form)
+			}
+			if got := form["scope"]; !slices.Equal(got, tc.want) {
+				t.Fatalf("catalog=%v scope=%v, want %v", tc.catalog, got, tc.want)
+			}
+		}
 	}
 }

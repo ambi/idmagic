@@ -27,6 +27,8 @@ type DemoState = {
   public_key: string
   resource: string
   scope: string
+  read_scope: string
+  write_scope: string
   public_document: string
   secret_document: string
 }
@@ -135,7 +137,7 @@ test('administrator governs a real agent from the console', async () => {
     await view.navigate(`${uiOrigin}/realms/default/admin/mcp-resource-servers/new`)
     await setInputValue(view, '#resource', state.resource)
     await setInputValue(view, '#name', '社内文書 MCP')
-    await setInputValue(view, '#scopes', state.scope)
+    await setInputValue(view, '#scopes', state.read_scope)
     await setInputValue(view, '#client-id', gatewayClientID)
     await view.evaluate(
       `[...document.querySelectorAll('summary')].find(node=>node.textContent==='Add a legacy evaluation rule')?.click()`,

@@ -145,7 +145,7 @@ MCP サーバーと Gateway をセットで使う通常の構成では、別画�
 
 ## 関連項目
 
-- [デモのスコープ固定と更新ツールの修正](wi-27270-fix-agent-demo-operation-scopes.md)は、デモの振る舞いを扱う。
+- [デモのスコープ固定と更新ツールの修正](../done/wi-27270-fix-agent-demo-operation-scopes.md)は、デモの振る舞いを扱う。
 - [Agent の一括作成](wi-85817-register-agent-credentials-and-connections-in-one-flow.md)、[モデルを作らない対象ごとの権限](wi-24427-restrict-tools-to-targets-without-authoring-a-model.md)、[設定済みのデモ](wi-68754-start-the-agent-demo-preconfigured-and-explain-every-input.md)と合わせて、通常の準備を「接続先の追加」「Agent の追加」「接続」の三つにする。
 - [一覧の権限による絞り込み](wi-24789-filter-mcp-tool-lists-by-authorization.md)は実行時の Agent 向けの一覧を扱い、この項目の管理用の発見とは区別する。
 - [実 MCP クライアントとの再現手順](wi-36722-publish-an-end-to-end-mcp-enforcement-walkthrough.md)と[Gateway の運用手順](wi-56570-document-operating-the-mcp-gateway.md)へ、自動化後の流れを反映する。

@@ -82,7 +82,9 @@ a{color:var(--accent)}
     <div class="actions">
       <button data-run="read-public" data-out="governed-out">就業規則を読む</button>
       <button data-run="read-secret" data-out="governed-out">給与テーブルを読む</button>
+      <button data-run="write" data-out="governed-out">就業規則を更新する</button>
       <button data-run="delete" data-out="governed-out">就業規則を削除する</button>
+      <button data-run="reissue" data-out="governed-out" class="ghost">トークンを取り直す</button>
     </div>
     <div id="governed-out"></div>
   </div>
@@ -220,7 +222,7 @@ async function init() {
   $('setup-example').value = catalog ? 'operations' : 'documents'
   $('setup-example').onchange = () => { location.search = `?example=${$('setup-example').value}` }
   $('example-help').textContent = catalog
-    ? '閲覧ツールを許可し、削除を拒否します。文書ごとの制限は追加していないため、閲覧ツールは両方の文書を読めます。機密文書の拒否を確かめる場合は「文書ごとの権限」を選びます。'
+    ? '閲覧、作成・更新、削除の三つのツールを登録し、まず閲覧だけを許可します。更新と削除は同じスコープでも別々に許可します。文書ごとの制限は追加していないため、閲覧ツールは両方の文書を読めます。機密文書の拒否を確かめる場合は「文書ごとの権限」を選びます。'
     : '文書ごとに閲覧を許可します。対象のモデルと関係の準備を初期設定に含めます。'
   $('tuples-link').href = `${state.console}/admin/authorization/access/new`
   $('approvals-link').href = `${state.console}/account/approvals`
@@ -243,7 +245,7 @@ async function init() {
       title: 'MCP サーバー', path: '/admin/mcp-resource-servers/new',
       why: '保護する MCP サーバーを登録します。許可スコープはこのサーバーの権限の名前です。「許可を判定する操作」は、文書を読む要求を「文書の閲覧者（viewer）なら許可」と判定するための設定です。',
       todo: '「従来の評価規則を追加」を開いて同名のボタンを押し、対象の種類と必要な関係を入れます。必要なスコープのチェックはそのままにします。',
-      fields: [['リソース URI', state.resource], ['表示名', '社内文書 MCP'], ['許可スコープ', state.scope], ['評価用のクライアント ID', value('gateway-client')], ['対象の種類（リソース型）', 'document'], ['必要な関係', 'viewer']],
+      fields: [['リソース URI', state.resource], ['表示名', '社内文書 MCP'], ['許可スコープ', state.read_scope], ['評価用のクライアント ID', value('gateway-client')], ['対象の種類（リソース型）', 'document'], ['必要な関係', 'viewer']],
     },
     {
       title: 'エージェント', path: '/admin/agents/new',
@@ -268,11 +270,14 @@ async function init() {
   ]
   const steps = catalog ? [
     detailedSteps[1],
-    { ...detailedSteps[2], why: '接続先と、利用を認めるツールを登録します。通常の操作割当ではモデルの発行は不要です。',
-      todo: '「ツールを登録」を押し、MCP ツール名に read_document、操作の表示名に「文書の閲覧」を入れます。対象ごとの権限のチェックは付けず、必要なスコープを選択したまま登録します。',
-      fields: [['リソース URI', state.resource], ['表示名', '社内文書 MCP'], ['許可スコープ', state.scope], ['評価用のクライアント ID', value('gateway-client')], ['MCP ツール名', 'read_document'], ['操作の表示名', '文書の閲覧']] },
+    { ...detailedSteps[2], why: '接続先と、利用を認めるツールを登録します。閲覧には tools:read、作成・更新と削除には同じ tools:write が要ります。スコープはトークンの上限であり、どの操作を使えるかは次の割当で一つずつ決めます。通常の操作割当ではモデルの発行は不要です。',
+      todo: '「ツールを登録」を三回押し、各行に下の MCP ツール名と操作の表示名を入れます。各行の必要なスコープは、表の一つだけにチェックを残します。対象ごとの権限のチェックは付けません。',
+      fields: [['リソース URI', state.resource], ['表示名', '社内文書 MCP'], ['許可スコープ', state.scope], ['評価用のクライアント ID', value('gateway-client')],
+        ['1 行目：MCP ツール名', 'read_document'], ['1 行目：操作の表示名', '文書の閲覧'], ['1 行目：必要なスコープ', state.read_scope],
+        ['2 行目：MCP ツール名', 'write_document'], ['2 行目：操作の表示名', '文書の作成・更新'], ['2 行目：必要なスコープ', state.write_scope],
+        ['3 行目：MCP ツール名', 'delete_document'], ['3 行目：操作の表示名', '文書の削除'], ['3 行目：必要なスコープ', state.write_scope]] },
     detailedSteps[3], detailedSteps[4],
-    { title: '利用する接続先', path: '/admin/agents', why: '接続先の操作をこのエージェントに割り当てます。対象 ID や関係の入力はありません。', todo: '作成したエージェントの詳細で「利用する接続先」を開き、「接続先と操作を編集」へ進みます。「社内文書 MCP」と「文書の閲覧」を選んで保存します。', fields: [['接続先', '社内文書 MCP'], ['許可する操作', '文書の閲覧']] },
+    { title: '利用する接続先', path: '/admin/agents', why: '接続先の操作をこのエージェントに割り当てます。対象 ID や関係の入力はありません。まず閲覧だけを許可し、更新と削除は第 3 節で一つずつ追加します。', todo: '作成したエージェントの詳細で「利用する接続先」を開き、「接続先と操作を編集」へ進みます。「社内文書 MCP」と「文書の閲覧」だけを選んで保存します。', fields: [['接続先', '社内文書 MCP'], ['許可する操作', '文書の閲覧']] },
   ] : detailedSteps
   const cards = []
   const renders = []
@@ -360,7 +365,7 @@ async function init() {
   const renderGrant = () => {
     $('tuples-link').href = catalog ? `${state.console}/admin/agents/${encodeURIComponent($('agent-id').value)}/resources` : `${state.console}/admin/authorization/access/new?agent=${encodeURIComponent($('agent-id').value)}`
     if (catalog) {
-      $('grant-help').textContent = '「利用する接続先」で文書の閲覧を取り消して再実行します。就業規則も給与テーブルも拒否に変わります。再び割り当てれば、同じトークンでも利用できます。'
+      $('grant-help').textContent = '「利用する接続先」で「文書の作成・更新」を追加し、「トークンを取り直す」を押してから更新します。tools:write は新しい割当で初めて要るスコープなので、取り直しが一度要ります。更新は実行されますが、同じスコープの削除は割り当てていないので拒否されます。続けて「文書の削除」を追加すると、取り直さずに削除できます。割当を取り消せば、手元のトークンでも次の依頼から拒否されます。'
       $('grant-fields').replaceChildren()
       return
     }
