@@ -5,7 +5,7 @@
 利用者の環境で既存の MCP サーバーの手前に置く実行単位 `idmagic-mcp-gateway` として、MCP の要求を解釈し、IdMagic の評価が許可した要求だけを上流へ転送する。
 役割は Policy Enforcement Point であり、判断は IdMagic が行う。
 IdMagic のサーバーとは別に配布され、別々に版が進む。
-このモジュールとサーバーの間の契約は、TypeSpec の `POST /resource-access/evaluate` だけである。
+このモジュールとサーバーの間の契約は、TypeSpec の `POST /resource-access/evaluate` と `POST /resource-access/tools` だけである。
 
 | 扱わないもの | 担当 |
 | --- | --- |
@@ -18,6 +18,7 @@ IdMagic のサーバーとは別に配布され、別々に版が進む。
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
 | 要求の執行 | MCP クライアントの `POST`、または Envoy の `ext_authz` の呼び出し | 利用者の環境のプロセス | [要求の執行](features/runtime.md#要求の執行) |
+| ツールの報告 | カタログを参照する構成の起動 | 利用者の環境のプロセスが上流の `tools/list` を集め、IdMagic へ送る | [接続先の操作カタログの参照](features/runtime.md#接続先の操作カタログの参照) |
 
 ## 設計の要点
 

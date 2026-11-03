@@ -45,6 +45,8 @@ type Deps struct {
 
 	AuthzDetailTypeRepo   oauthports.AuthorizationDetailTypeRepository
 	McpResourceServerRepo oauthports.McpResourceServerRepository
+	// McpToolReportRepo は接続先から報告されたツールの候補である (REQ-OAUTH2-086)。
+	McpToolReportRepo oauthports.McpToolReportRepository
 	// AgentGuardrailPolicies は Agent の発行の上限である (REQ-OAUTH2-073)。
 	AgentGuardrailPolicies oauthports.AgentGuardrailPolicyRepository
 	// CrossAppAccessPolicies から IDJAGReplayStore までは ID-JAG の発行と償還の依存である。
@@ -174,6 +176,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/revoke", d.handleRevoke)
 	g.POST("/introspect", d.handleIntrospect)
 	g.POST("/resource-access/evaluate", d.handleEvaluateResourceAccess)
+	g.POST("/resource-access/tools", d.handleReportResourceTools)
 	g.GET("/userinfo", d.handleUserInfo)
 	g.POST("/userinfo", d.handleUserInfo)
 	g.POST("/register", d.handleRegisterClient)
@@ -207,6 +210,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.DELETE("/api/admin/v1/consents/:sub/:client_id", d.handleRevokeAdminConsent)
 	g.GET("/api/admin/v1/mcp-resource-servers", d.handleListAdminMcpResourceServers)
 	g.GET("/api/admin/v1/mcp-resource-servers/:id", d.handleGetAdminMcpResourceServer)
+	g.GET("/api/admin/v1/mcp-resource-servers/:id/reported-tools", d.handleGetAdminMcpReportedTools)
 	g.POST("/api/admin/v1/mcp-resource-servers", d.handleCreateAdminMcpResourceServer)
 	g.PATCH("/api/admin/v1/mcp-resource-servers/:id", d.handleUpdateAdminMcpResourceServer)
 	g.DELETE("/api/admin/v1/mcp-resource-servers/:id", d.handleDeleteAdminMcpResourceServer)

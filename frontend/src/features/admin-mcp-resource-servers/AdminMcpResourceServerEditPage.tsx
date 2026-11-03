@@ -13,6 +13,7 @@ import {
   McpResourceServerFormFields,
   parseAccessRules,
   parseScopes,
+  ReportedToolsPanel,
   toForm,
 } from './AdminMcpResourceServersShared'
 
@@ -72,6 +73,12 @@ export function AdminMcpResourceServerEditPage({
       <Card className="w-full admin-form p-4">
         <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
           <McpResourceServerFormFields form={form} onChange={setForm} locked={true} t={t} />
+          <ReportedToolsPanel
+            resourceServerID={resourceServer.id}
+            form={form}
+            onChange={setForm}
+            t={t}
+          />
           <div className="flex gap-2.5 md:col-span-2">
             <Button type="submit" disabled={saving}>
               {t.update}

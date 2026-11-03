@@ -38,6 +38,7 @@ type mcpGatewayFixture struct {
 	*resourceAccessFixture
 	idmagic  *httptest.Server
 	gateway  *httptest.Server
+	loaded   *mcpgateway.Server
 	audit    *bytes.Buffer
 	effects  atomic.Int32
 	deleted  atomic.Int32
@@ -110,6 +111,7 @@ mapping:
 	if err != nil {
 		t.Fatal(err)
 	}
+	f.loaded = gateway
 	f.gateway = httptest.NewServer(gateway.Handler())
 	t.Cleanup(f.gateway.Close)
 	return f

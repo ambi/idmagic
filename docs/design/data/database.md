@@ -168,6 +168,8 @@ erDiagram
     }
     mcp_resource_servers {
     }
+    mcp_tool_reports {
+    }
     cross_app_access_issue_policies {
     }
     cross_app_access_redeem_policies {
@@ -197,6 +199,7 @@ erDiagram
     users ||--o{ agents : 所有する
     tenants ||--o{ authorization_detail_types : 認可詳細型を持つ
     tenants ||--o{ mcp_resource_servers : リソースサーバーを持つ
+    mcp_resource_servers ||--o| mcp_tool_reports : 最新の報告を持つ
     tenants ||--o{ agent_guardrail_policies : ガードレールを持つ
     agents ||--o| agent_guardrail_policies : ガードレールを持つ
     tenants ||--o{ cross_app_access_issue_policies : ID-JAG の発行を許可する
@@ -229,6 +232,7 @@ erDiagram
 | `agents` | エージェントの Aggregate。所有者と状態を格納する | IdManagement | `LOGGED` | 非キーカラム |
 | `authorization_detail_types` | テナントが受け付ける `authorization_details` の型の定義 | OAuth2 | `LOGGED` | 複合主キーの一部 |
 | `mcp_resource_servers` | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ、評価用のクライアントと規則 | OAuth2 | `LOGGED` | 非キーカラム |
+| `mcp_tool_reports` | 接続先の Gateway が報告した最新のツールの一覧。公開の候補にだけ使い、登録の更新時刻と独立して置き換える | OAuth2 | `LOGGED` | 非キーカラム |
 | `agent_guardrail_policies` | Agent の発行の上限とテナントのデフォルト、内容から導いたバージョン | OAuth2 | `LOGGED` | 複合主キーの一部 |
 | `cross_app_access_issue_policies` | ID-JAG の発行の許可 | OAuth2 | `LOGGED` | 非キーカラム |
 | `cross_app_access_redeem_policies` | ID-JAG の受け入れの許可 | OAuth2 | `LOGGED` | 非キーカラム |

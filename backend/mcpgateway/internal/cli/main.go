@@ -13,15 +13,30 @@ import (
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/evaluation_http"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/exchange_http"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/proxy_http"
+	"github.com/ambi/idmagic/backend/mcpgateway/internal/report_http"
 )
 
-const shutdownTimeout = 10 * time.Second
+const (
+	shutdownTimeout = 10 * time.Second
+	// reportTimeout は上流の一ページの取得の上限である。報告は起動を待たせない。
+	reportTimeout = 10 * time.Second
+)
 
 // Gateway は組み立てたハンドラーである。
 type Gateway struct {
 	Config  Config
 	Handler http.Handler
 	Metrics http.Handler
+	// Reporter はカタログを参照する proxy の構成にだけある (REQ-MCPGATEWAY-011)。
+	Reporter *report_http.Reporter
+}
+
+// ReportTools は上流の一覧を IdMagic へ報告する。報告しない構成では何もしない。
+func (g *Gateway) ReportTools(ctx context.Context) (report_http.Result, error) {
+	if g.Reporter == nil {
+		return report_http.Result{}, nil
+	}
+	return g.Reporter.Report(ctx)
 }
 
 // Load は設定から組み立てる。HTTP クライアントはプロキシの環境変数を読まず、評価のリダイレクトを追わない。
@@ -60,7 +75,19 @@ func Load(path string, audit io.Writer) (*Gateway, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Gateway{Config: config, Handler: handler, Metrics: metrics.Handler()}, nil
+	gateway := &Gateway{Config: config, Handler: handler, Metrics: metrics.Handler()}
+	if config.Mapping.Catalog && !config.EnvoyExtAuthz {
+		gateway.Reporter = &report_http.Reporter{
+			Upstream: config.Upstream.String(), ReportURL: config.RealmURL + "/resource-access/tools",
+			ClientID: config.ClientID, ClientSecret: config.ClientSecret,
+			UpstreamClient: &http.Client{
+				Transport: upstreamTransport, Timeout: reportTimeout,
+				CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+			},
+			IdMagicClient: backchannel,
+		}
+	}
+	return gateway, nil
 }
 
 // Main は引数の設定で待ち受け、ctx の終了で止まる。
@@ -90,6 +117,9 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		mux.Handle("GET /metrics", gateway.Metrics)
 		servers = append(servers, &http.Server{Addr: gateway.Config.MetricsListen, Handler: mux, ReadHeaderTimeout: 10 * time.Second})
 	}
+	if gateway.Reporter != nil {
+		go reportTools(ctx, gateway, stderr)
+	}
 	failures := make(chan error, len(servers))
 	for _, server := range servers {
 		go func() { failures <- server.ListenAndServe() }()
@@ -109,4 +139,15 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		_ = server.Shutdown(shutdown)
 	}
 	return code
+}
+
+// reportTools は起動後に一度だけ報告する。失敗しても執行は続け、理由だけを残す。
+// 報告の内容とシークレットはログへ出さない。
+func reportTools(ctx context.Context, gateway *Gateway, stderr io.Writer) {
+	result, err := gateway.ReportTools(ctx)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "tool report failed: %v\n", err)
+		return
+	}
+	_, _ = fmt.Fprintf(stderr, "reported %d tools (complete=%t)\n", result.Tools, result.Complete)
 }

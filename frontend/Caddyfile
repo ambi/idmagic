@@ -28,6 +28,7 @@
  /revoke \
  /introspect \
  /resource-access/evaluate \
+ /resource-access/tools \
  /userinfo \
  /register \
  /par \

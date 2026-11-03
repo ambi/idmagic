@@ -88,6 +88,34 @@ func (d Deps) handleGetAdminMcpResourceServer(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, toMcpResourceServerResponse(m))
 }
 
+// handleGetAdminMcpReportedTools は最新の報告を公開中のツールと別に返す (REQ-OAUTH2-087)。
+func (d Deps) handleGetAdminMcpReportedTools(c *echo.Context) error {
+	if _, err := d.RequireAdmin(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	ctx, tenantID := c.Request().Context(), support.RequestTenantID(c)
+	m, err := d.McpResourceServerRepo.FindByID(ctx, tenantID, c.Param("id"))
+	if err != nil {
+		return err
+	}
+	if m == nil {
+		return support.WriteProblem(c, http.StatusNotFound, "resource_server_not_found", "The MCP resource server does not exist.")
+	}
+	response := map[string]any{"tools": []oauthdomain.ReportedTool{}, "complete": false}
+	report, err := d.McpToolReportRepo.Find(ctx, tenantID, m.ID)
+	if err != nil {
+		return err
+	}
+	if report != nil {
+		response["tools"], response["complete"], response["reported_at"] = report.Tools, report.Complete, report.ReportedAt
+	}
+	return support.NoStoreJSON(c, http.StatusOK, response)
+}
+
+// defaultMcpScope は、スコープを省いた登録に補う唯一のスコープである。Gateway が執行する構成では
+// スコープは IdMagic の中だけの認証上限なので、管理者に名前を考えさせない (REQ-OAUTH2-064)。
+const defaultMcpScope = "mcp"
+
 func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
@@ -119,9 +147,13 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 	if state == "" {
 		state = oauthdomain.McpResourceServerActive
 	}
+	scopes := req.Scopes
+	if len(scopes) == 0 {
+		scopes = []string{defaultMcpScope}
+	}
 	m := &oauthdomain.McpResourceServer{
 		TenantID: tenantID, ID: id, Resource: req.Resource,
-		Name: req.Name, Scopes: req.Scopes, AccessRules: req.AccessRules, State: state,
+		Name: req.Name, Scopes: scopes, AccessRules: req.AccessRules, State: state,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if req.ClientID != nil {
@@ -219,8 +251,16 @@ func (d Deps) handleDeleteAdminMcpResourceServer(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := d.McpResourceServerRepo.Delete(c.Request().Context(), support.RequestTenantID(c), c.Param("id")); err != nil {
+	ctx, tenantID := c.Request().Context(), support.RequestTenantID(c)
+	if err := d.McpResourceServerRepo.Delete(ctx, tenantID, c.Param("id")); err != nil {
 		return err
+	}
+	// PostgreSQL は外部キーで消すが、メモリの保存先にも同じ結果を保証する。
+	// 報告の保存先を配線しない構成には消す報告もない。
+	if d.McpToolReportRepo != nil {
+		if err := d.McpToolReportRepo.Delete(ctx, tenantID, c.Param("id")); err != nil {
+			return err
+		}
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)

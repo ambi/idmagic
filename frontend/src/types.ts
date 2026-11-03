@@ -634,6 +634,20 @@ export type McpResourceServer = {
   updated_at: string
 }
 
+// ReportedTool は Gateway が上流の tools/list から報告したツールである。公開の候補にだけ使う。
+export type ReportedTool = {
+  name: string
+  title?: string
+  description?: string
+  arguments?: string[]
+}
+
+export type ReportedTools = {
+  tools: ReportedTool[]
+  complete: boolean
+  reported_at?: string
+}
+
 // WorkloadTrustBundle はテナントが登録する外部アテステーション発行者の信頼設定。
 // inline JWKS の本体は API が返さないため、設定済みかどうかだけを has_inline_jwks で受け取る。
 export type WorkloadTrustBundle = {

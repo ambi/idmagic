@@ -1,8 +1,15 @@
-import { tenantURL } from '../../api'
+import { useEffect, useState } from 'react'
+import { getMcpReportedTools, listAdminApplications, tenantURL } from '../../api'
 import { Button } from '../../components/ui/button'
 import { Label } from '../../components/ui/label'
 import { Input } from '../../components/ui/input'
-import type { McpResourceServer, ResourceAccessRule } from '../../types'
+import type {
+  AdminApplication,
+  McpResourceServer,
+  ReportedTool,
+  ReportedTools,
+  ResourceAccessRule,
+} from '../../types'
 import { MCP_OPERATION_TYPE } from '../../lib/mcpAccess'
 import type { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
 
@@ -17,13 +24,37 @@ export type FormState = {
   state: McpResourceServer['state']
 }
 
+// NEW_EVALUATOR は、保存と同時に評価用のクライアントを作成することを表す選択肢の値である。
+export const NEW_EVALUATOR = '__new__'
+
+// DEFAULT_SCOPE は、Gateway が執行する構成で IdMagic の中だけに使うスコープである。
+// サーバーも省略時に同じ値を補う (REQ-OAUTH2-064)。
+export const DEFAULT_SCOPE = 'mcp'
+
 export const emptyForm: FormState = {
   resource: '',
   name: '',
-  scopes: '',
-  clientId: '',
+  scopes: DEFAULT_SCOPE,
+  clientId: NEW_EVALUATOR,
   accessRules: '',
   state: 'Active',
+}
+
+// publishReportedTool は報告されたツールを、名前と表示名を入れた公開の行として足す。
+// 必要なスコープは登録のスコープをすべて選ぶ。既に公開中なら何もしない。
+export function publishReportedTool(form: FormState, tool: ReportedTool): FormState {
+  const rules = parseAccessRules(form.accessRules) ?? []
+  if (rules.some((rule) => rule.tool?.name === tool.name)) return form
+  const next: ResourceAccessRule[] = [
+    ...rules,
+    {
+      resource_type: MCP_OPERATION_TYPE,
+      relation: 'invoke',
+      scopes: parseScopes(form.scopes),
+      tool: { name: tool.name, display_name: tool.title?.trim() || tool.name },
+    },
+  ]
+  return { ...form, accessRules: JSON.stringify(next, null, 2) }
 }
 
 export function toForm(resourceServer: McpResourceServer): FormState {
@@ -184,7 +215,8 @@ function AccessRuleRows({
               </div>
             </>
           ) : null}
-          <fieldset className="flex flex-col gap-1">
+          {/* スコープが一つなら選ぶものがないので、行ごとの選択を出さない。 */}
+          <fieldset className="flex flex-col gap-1" hidden={scopes.length === 1}>
             <legend className="text-sm font-medium">{t.ruleScopes}</legend>
             {scopes.length === 0 ? (
               <span className="text-xs text-slate-500">{t.ruleScopesEmpty}</span>
@@ -276,6 +308,9 @@ export function McpResourceServerFormFields({
           onChange={(event) => onChange({ ...form, resource: event.target.value })}
           required
         />
+        <p className="text-xs leading-5 text-slate-500">
+          <InputOrigin label={t.originYou} /> {t.resourceHelp}
+        </p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="name" required>
@@ -287,29 +322,29 @@ export function McpResourceServerFormFields({
           onChange={(event) => onChange({ ...form, name: event.target.value })}
           required
         />
+        <p className="text-xs leading-5 text-slate-500">
+          <InputOrigin label={t.originYou} />
+        </p>
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="scopes" required>
-          {t.scopesLabel}
-        </Label>
-        <Input
-          id="scopes"
-          value={form.scopes}
-          placeholder={t.scopesPlaceholder}
-          onChange={(event) => onChange({ ...form, scopes: event.target.value })}
-          required
-        />
-        <p className="text-xs leading-5 text-slate-500">{t.scopesHelp}</p>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="client-id">{t.clientIdLabel}</Label>
-        <Input
-          id="client-id"
-          value={form.clientId}
-          onChange={(event) => onChange({ ...form, clientId: event.target.value })}
-        />
-        <p className="text-xs leading-5 text-slate-500">{t.clientIdHelp}</p>
-      </div>
+      <EvaluatorClientField form={form} onChange={onChange} allowCreate={!locked} t={t} />
+      <details className="text-sm md:col-span-2" open={form.scopes.trim() !== DEFAULT_SCOPE}>
+        <summary className="cursor-pointer text-slate-600">{t.scopesAdvanced}</summary>
+        <div className="mt-2 flex flex-col gap-1.5">
+          <Label htmlFor="scopes" required>
+            {t.scopesLabel}
+          </Label>
+          <Input
+            id="scopes"
+            value={form.scopes}
+            placeholder={t.scopesPlaceholder}
+            onChange={(event) => onChange({ ...form, scopes: event.target.value })}
+            required
+          />
+          <p className="text-xs leading-5 text-slate-500">
+            <InputOrigin label={t.originDefault} /> {t.scopesHelp}
+          </p>
+        </div>
+      </details>
       <div className="flex flex-col gap-2 md:col-span-2">
         <p className="text-sm font-medium">{t.operationsHeading}</p>
         <p className="text-xs leading-5 text-slate-500">{t.accessRulesHelp}</p>
@@ -344,5 +379,163 @@ export function McpResourceServerFormFields({
         </select>
       </div>
     </>
+  )
+}
+
+// InputOrigin は入力の値がどこから来るかを示す小さな印である。
+function InputOrigin({ label }: { label: string }) {
+  return (
+    <span className="mr-1 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700">
+      {label}
+    </span>
+  )
+}
+
+// EvaluatorClientField は評価用のクライアントを、新規作成、既存のサービスの名前、なしから選ばせる。
+// client_id を手で写させない (REQ-OAUTH2-088)。
+function EvaluatorClientField({
+  form,
+  onChange,
+  allowCreate,
+  t,
+}: {
+  form: FormState
+  onChange: (next: FormState) => void
+  allowCreate: boolean
+  t: Dictionary
+}) {
+  const [services, setServices] = useState<AdminApplication[]>([])
+  useEffect(() => {
+    let active = true
+    listAdminApplications()
+      .then((applications) => {
+        if (active) setServices(applications.filter((app) => app.kind === 'service'))
+      })
+      // 一覧を読めなくても、新規作成と現在の値は選べる。
+      .catch(() => undefined)
+    return () => {
+      active = false
+    }
+  }, [])
+  const listed = services.filter((app) => app.protocol?.client_id)
+  const unlisted =
+    form.clientId !== '' &&
+    form.clientId !== NEW_EVALUATOR &&
+    !listed.some((app) => app.protocol?.client_id === form.clientId)
+  return (
+    <div className="flex flex-col gap-1.5 md:col-span-2">
+      <Label htmlFor="evaluator-client">{t.evaluatorLabel}</Label>
+      <select
+        id="evaluator-client"
+        value={form.clientId}
+        onChange={(event) => onChange({ ...form, clientId: event.target.value })}
+        className="max-w-md rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+      >
+        {allowCreate ? <option value={NEW_EVALUATOR}>{t.evaluatorNew}</option> : null}
+        {listed.map((app) => (
+          <option key={app.id} value={app.protocol!.client_id}>
+            {app.name}
+          </option>
+        ))}
+        {unlisted ? (
+          <option value={form.clientId}>
+            {t.evaluatorUnlisted.replace('{clientId}', form.clientId)}
+          </option>
+        ) : null}
+        <option value="">{t.evaluatorNone}</option>
+      </select>
+      <p className="text-xs leading-5 text-slate-500">
+        <InputOrigin label={allowCreate ? t.originDefault : t.originYou} /> {t.evaluatorHelp}
+      </p>
+    </div>
+  )
+}
+
+// ReportedToolsPanel は Gateway が報告したツールを、公開中のツールと区別して示す (REQ-OAUTH2-087)。
+// 「公開する」は編集中のフォームへ行を足すだけで、保存するまで何も公開しない。
+export function ReportedToolsPanel({
+  resourceServerID,
+  form,
+  onChange,
+  t,
+}: {
+  resourceServerID: string
+  form: FormState
+  onChange: (next: FormState) => void
+  t: Dictionary
+}) {
+  const [report, setReport] = useState<ReportedTools | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    let active = true
+    getMcpReportedTools(resourceServerID)
+      .then((value) => {
+        if (active) setReport(value)
+      })
+      .catch(() => {
+        if (active) setFailed(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [resourceServerID])
+  const published = new Set(
+    (parseAccessRules(form.accessRules) ?? []).flatMap((rule) =>
+      rule.tool ? [rule.tool.name] : [],
+    ),
+  )
+  const reportedNames = new Set(report?.tools.map((tool) => tool.name) ?? [])
+  const missing = report?.complete ? [...published].filter((name) => !reportedNames.has(name)) : []
+  return (
+    <section className="flex flex-col gap-2 md:col-span-2" aria-labelledby="reported-tools-heading">
+      <p id="reported-tools-heading" className="text-sm font-medium">
+        {t.reportedHeading}
+      </p>
+      {failed ? <p className="text-sm text-red-700">{t.reportedLoadFailed}</p> : null}
+      {report && !report.reported_at ? (
+        <p className="text-xs leading-5 text-slate-500">{t.reportedNone}</p>
+      ) : null}
+      {report?.reported_at ? (
+        <p className="text-xs leading-5 text-slate-500">
+          {t.reportedAt.replace('{time}', new Date(report.reported_at).toLocaleString())}
+          {report.complete ? '' : ` ${t.reportedIncomplete}`}
+        </p>
+      ) : null}
+      {report && report.tools.length > 0 ? (
+        <ul className="flex flex-col gap-2">
+          {report.tools.map((tool) => (
+            <li
+              key={tool.name}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2"
+            >
+              <span className="flex flex-col">
+                <span className="text-sm font-medium">{tool.title || tool.name}</span>
+                <code className="text-xs text-slate-600">{tool.name}</code>
+                {tool.description ? (
+                  <span className="text-xs text-slate-600">{tool.description}</span>
+                ) : null}
+              </span>
+              {published.has(tool.name) ? (
+                <span className="text-xs text-slate-600">{t.reportedPublished}</span>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-label={`${t.reportedPublish} ${tool.name}`}
+                  onClick={() => onChange(publishReportedTool(form, tool))}
+                >
+                  {t.reportedPublish}
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {missing.length > 0 ? (
+        <p className="text-sm text-amber-800">
+          {t.reportedMissing.replace('{names}', missing.join(', '))}
+        </p>
+      ) : null}
+    </section>
   )
 }

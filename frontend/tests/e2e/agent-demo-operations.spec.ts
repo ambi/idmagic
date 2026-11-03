@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { spawn, spawnSync } from 'bun'
 import {
   clickButtonByText,
+  clickElementByAriaLabel,
   clickEnabledButtonByText,
   clickLinkByText,
   navigateAndLogin,
@@ -22,7 +23,7 @@ const demoOrigin = 'http://127.0.0.1:5186'
 // 文書別の例と同じテナントへ登録するため、接続先の URI を分ける。
 const resource = 'https://docs-mcp-operations.agent-demo.example/'
 
-type DemoState = { public_key: string; read_scope: string; write_scope: string }
+type DemoState = { public_key: string }
 type Step = { title: string; outcome: string; executed: boolean; evidence?: string }
 
 async function post(path: string, body: unknown): Promise<{ steps: Step[] }> {
@@ -38,26 +39,6 @@ async function post(path: string, body: unknown): Promise<{ steps: Step[] }> {
 
 async function last(scenario: string): Promise<Step | undefined> {
   return (await post('/api/run', { scenario })).steps.at(-1)
-}
-
-function fieldValue(view: Bun.WebView, label: string): Promise<string> {
-  return view.evaluate(`(() => {
-    const node = [...document.querySelectorAll('label')].find((item) => item.textContent?.trim() === ${JSON.stringify(label)})
-    const box = node?.parentElement
-    return box?.querySelector('code')?.textContent?.trim() ?? box?.querySelector('input')?.value ?? ''
-  })()`) as Promise<string>
-}
-
-// 行の必要なスコープを一つだけ残す。新しい行は登録済みのスコープをすべて選んだ状態で始まる。
-async function keepOnlyScope(view: Bun.WebView, row: number, scope: string) {
-  await view.evaluate(`(() => {
-    // 入力欄の親が項目、その親が一つのツールの行である。
-    const box = document.querySelector('#tool-name-${row}').parentElement.parentElement
-    for (const label of box.querySelectorAll('fieldset label')) {
-      const input = label.querySelector('input[type=checkbox]')
-      if (input.checked !== (label.textContent.trim() === ${JSON.stringify(scope)})) input.click()
-    }
-  })()`)
 }
 
 async function toggleOperation(view: Bun.WebView, agentPath: string, operation: string) {
@@ -82,7 +63,7 @@ async function toggleOperation(view: Bun.WebView, agentPath: string, operation: 
   await waitForText(view, 'Connection and operation assignments saved.')
 }
 
-//spec:covers REQ-OAUTH2-084, REQ-OAUTH2-083, REQ-MCPGATEWAY-010: デモで閲覧、更新、削除を個別に割り当て、同じスコープの未割当の削除を拒否する。
+//spec:covers REQ-OAUTH2-088, REQ-OAUTH2-087, REQ-MCPGATEWAY-011, REQ-OAUTH2-084, REQ-OAUTH2-083, REQ-MCPGATEWAY-010: 一つの画面で接続先と評価用クライアントを登録し、ゲートウェイが報告したツールを名前の入力なしに公開して、閲覧、更新、削除を個別に割り当てる。同じスコープでも未割当の削除は拒否する。
 test('administrator enables writing and deletion independently in the agent demo', async () => {
   // go run は子プロセスを残すので、kill が本体へ届くように先にビルドして直接起動する。
   const binary = join(tmpdir(), `idmagic-agent-demo-operations-${process.pid}`)
@@ -105,42 +86,51 @@ test('administrator enables writing and deletion independently in the agent demo
     await waitForUp(`${demoOrigin}/api/state`)
     const state = (await (await fetch(`${demoOrigin}/api/state`)).json()) as DemoState
 
-    // Gateway の評価用サービスを登録する。
+    // 接続先を登録する。評価用のクライアントは同じ送信で作られ、client_id もスコープも入力しない。
     await navigateAndLogin(
       view,
-      '/realms/default/admin/applications/new',
-      'admin-application-create',
+      '/realms/default/admin/mcp-resource-servers/new',
+      'admin-mcp-resource-server-create',
     )
-    await setInputValue(view, '#app-name', `文書ゲートウェイ-${Date.now()}`)
-    await view.evaluate(
-      `[...document.querySelectorAll('button')].find((node) => node.textContent?.includes('Service (M2M)'))?.click()`,
-    )
-    await clickButtonByText(view, 'Create')
-    await waitForText(view, 'Client secret')
-    const gatewayClientID = await fieldValue(view, 'Client ID')
-    const gatewaySecret = await fieldValue(view, 'Client secret')
-
-    // 三つのツールを登録する。閲覧は tools:read、更新と削除は同じ tools:write に対応させる。
-    await view.navigate(`${uiOrigin}/realms/default/admin/mcp-resource-servers/new`)
     await setInputValue(view, '#resource', resource)
     await setInputValue(view, '#name', '社内文書 MCP')
-    await setInputValue(view, '#scopes', `${state.read_scope} ${state.write_scope}`)
-    await setInputValue(view, '#client-id', gatewayClientID)
-    const tools = [
-      ['read_document', '文書の閲覧', state.read_scope],
-      ['write_document', '文書の作成・更新', state.write_scope],
-      ['delete_document', '文書の削除', state.write_scope],
-    ] as const
-    for (const [index, [tool, label, scope]] of tools.entries()) {
-      await clickButtonByText(view, 'Register tool')
-      await setInputValue(view, `#tool-name-${index}`, tool)
-      await setInputValue(view, `#tool-label-${index}`, label)
-      await keepOnlyScope(view, index, scope)
-    }
+    expect(await view.evaluate(`document.querySelector('#evaluator-client').value`)).toBe('__new__')
     await view.evaluate(`document.querySelector('form button[type="submit"]').click()`)
+    await waitForText(view, 'Registered')
+    const gatewayClientID = String(
+      await view.evaluate(`document.querySelector('#result-client-id').textContent`),
+    )
+    const gatewaySecret = String(
+      await view.evaluate(`document.querySelector('#result-client-secret').textContent`),
+    )
+    expect(
+      await view.evaluate(`document.querySelector('#result-gateway-config').textContent`),
+    ).toContain('catalog: true')
+
+    // デモのゲートウェイを起動すると、実在のゲートウェイが上流の三つのツールを報告する。
+    const started = await post('/api/gateway', {
+      catalog: true,
+      gateway_client_id: gatewayClientID,
+      gateway_client_secret: gatewaySecret,
+    })
+    expect(started.steps.at(-1)).toMatchObject({ outcome: 'allowed' })
+
+    // 報告されたツールを名前の入力なしで公開する。表示名は MCP の title から入る。
+    await clickLinkByText(view, 'Publish reported tools')
+    await waitForPage(view, 'admin-mcp-resource-server-edit')
+    await waitForText(view, '文書の削除')
+    for (const tool of ['read_document', 'write_document', 'delete_document']) {
+      await clickElementByAriaLabel(view, `Publish ${tool}`)
+    }
+    expect(
+      await view.evaluate(
+        `[...document.querySelectorAll('[id^="tool-label-"]')].map((node) => node.value)`,
+      ),
+    ).toEqual(['文書の閲覧', '文書の作成・更新', '文書の削除'])
+    await clickButtonByText(view, 'Update')
     await waitForPage(view, 'admin-mcp-resource-servers')
 
-    // Agent と認証用クライアントを作る。認証上限は登録済みの二つのスコープになる。
+    // Agent と認証用クライアントを作る。認証上限は登録済みのスコープになる。
     const name = `社内文書アシスタント-${Date.now()}`
     await view.navigate(`${uiOrigin}/realms/default/admin/agents/new`)
     await setInputValue(view, '#agent-name', name)
@@ -156,30 +146,22 @@ test('administrator enables writing and deletion independently in the agent demo
     )
     expect(agentClientID).not.toBe('')
 
-    // 閲覧だけを割り当てて接続する。スコープを省略した発行は閲覧に絞られる。
+    // 閲覧だけを割り当てて接続する。スコープを省略した発行は IdMagic が決める。
     await toggleOperation(view, agentPath, '文書の閲覧')
-    const connected = await post('/api/connect', {
-      catalog: true,
-      agent_client_id: agentClientID,
-      gateway_client_id: gatewayClientID,
-      gateway_client_secret: gatewaySecret,
-    })
-    expect(connected.steps[0]).toMatchObject({ outcome: 'allowed' })
-    expect(connected.steps[0]?.evidence).toBe(`発行されたスコープ: ${state.read_scope}`)
+    const connected = await post('/api/connect', { catalog: true, agent_client_id: agentClientID })
+    expect(connected.steps.at(-1)).toMatchObject({ outcome: 'allowed' })
+    expect(connected.steps.at(-1)?.evidence).toBe('発行されたスコープ: mcp')
     expect(await last('read-public')).toMatchObject({ outcome: 'allowed', executed: true })
     expect(await last('read-secret')).toMatchObject({ outcome: 'allowed', executed: true })
     expect(await last('write')).toMatchObject({ outcome: 'denied', executed: false })
     expect(await last('delete')).toMatchObject({ outcome: 'denied', executed: false })
 
-    // 更新を追加し、新しいスコープのためにトークンを取り直す。同じスコープの削除は拒否のまま。
+    // 更新を追加すると取り直さずに更新できる。同じスコープでも未割当の削除は拒否のまま。
     await toggleOperation(view, agentPath, '文書の作成・更新')
-    const reissued = await last('reissue')
-    expect(reissued).toMatchObject({ outcome: 'allowed' })
-    expect(reissued?.evidence).toContain(state.write_scope)
     expect(await last('write')).toMatchObject({ outcome: 'allowed', executed: true })
     expect(await last('delete')).toMatchObject({ outcome: 'denied', executed: false })
 
-    // 削除の追加は同じスコープ内なので、取り直さずに次の依頼から効く。
+    // 削除の追加も次の依頼から効く。
     await toggleOperation(view, agentPath, '文書の削除')
     expect(await last('delete')).toMatchObject({ outcome: 'allowed', executed: true })
 

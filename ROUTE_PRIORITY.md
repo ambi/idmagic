@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：215
+経路の数：216
 
 | 経路 | メソッド |
 | --- | --- |
@@ -211,6 +211,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/lifecycle-workflows/{workflow_id}/runs` | GET |
 | `/api/admin/v1/mcp-resource-servers` | GET, POST |
 | `/api/admin/v1/mcp-resource-servers/{id}` | DELETE, GET, PATCH |
+| `/api/admin/v1/mcp-resource-servers/{id}/reported-tools` | GET |
 | `/api/admin/v1/policy/roles` | GET |
 | `/api/admin/v1/provisioning/connections` | GET |
 | `/api/admin/v1/saml/idp-profiles` | GET, POST |
@@ -292,7 +293,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `interactive_auth`
 
-経路の数：53
+経路の数：54
 
 | 経路 | メソッド |
 | --- | --- |
@@ -333,6 +334,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/jwks` | GET |
 | `/par` | POST |
 | `/resource-access/evaluate` | POST |
+| `/resource-access/tools` | POST |
 | `/revoke` | POST |
 | `/saml/idp/{profile_id}/metadata` | GET |
 | `/saml/idp/{profile_id}/signing-certificate.pem` | GET |

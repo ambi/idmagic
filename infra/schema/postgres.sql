@@ -782,6 +782,17 @@ CREATE TABLE mcp_resource_servers (
     CONSTRAINT mcp_resource_servers_name_length CHECK (char_length(name) BETWEEN 1 AND 200)
 );
 
+-- 接続先から報告された最新のツールの一覧 (REQ-OAUTH2-086)。公開の候補にだけ使い、登録の更新時刻と独立して置き換える。
+CREATE TABLE mcp_tool_reports (
+    tenant_id UUID NOT NULL,
+    resource_server_id UUID PRIMARY KEY,
+    tools JSONB NOT NULL,
+    complete BOOLEAN NOT NULL,
+    reported_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT mcp_tool_reports_resource_server_id_fkey
+        FOREIGN KEY (resource_server_id) REFERENCES mcp_resource_servers(id) ON DELETE CASCADE
+);
+
 -- Agent のガードレール (REQ-OAUTH2-077)。scope_key は Agent の id で、テナントのデフォルトは空文字列である。
 CREATE TABLE agent_guardrail_policies (
     tenant_id UUID NOT NULL,

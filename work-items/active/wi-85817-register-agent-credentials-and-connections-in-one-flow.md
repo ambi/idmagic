@@ -40,7 +40,7 @@ IdMagic がこれより多い画面遷移と転記を要求する理由はない
 
 ## 対象外
 
-- MCP 接続先と Gateway の登録の自動化。[MCP 接続準備の自動化](wi-95247-discover-mcp-tools-and-automate-connection-setup.md)で扱う。
+- MCP 接続先と Gateway の登録の自動化。[MCP 接続準備の自動化](../done/wi-95247-discover-mcp-tools-and-automate-connection-setup.md)で扱う。
 - 対象ごとの権限の付与。[対象ごとの権限の準備](wi-24427-restrict-tools-to-targets-without-authoring-a-model.md)で扱う。
 - 鍵の生成をブラウザーや IdMagic で行うこと。秘密鍵は Agent の配置先に留める。
 - 期限付きのアクセス申請と承認条件の変更。
@@ -72,7 +72,7 @@ IdMagic がこれより多い画面遷移と転記を要求する理由はない
 
 `jwks_uri` を持つクライアントは管理 API で既に扱える。
 取得先の検証、期限、取得量、リダイレクトの扱いは既存の規則に従い、新しい外向き取得の経路を作らない。
-既存の規則がなければ、[MCP 接続準備の自動化](wi-95247-discover-mcp-tools-and-automate-connection-setup.md)の外向き取得の決定と合わせる。
+既存の規則がなければ、[MCP 接続準備の自動化](../done/wi-95247-discover-mcp-tools-and-automate-connection-setup.md)の外向き取得の決定と合わせる。
 
 ## 計画
 

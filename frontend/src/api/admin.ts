@@ -39,6 +39,7 @@ import type {
   CrossAppAccessIssuePolicy,
   CrossAppAccessRedeemPolicy,
   McpResourceServer,
+  ReportedTools,
   ResourceAccessRule,
   TenantUserAttributeSchema,
   GroupAttributeDef,
@@ -587,6 +588,12 @@ export async function createMcpResourceServer(
 
 export async function getMcpResourceServer(resourceServerID: string): Promise<McpResourceServer> {
   return request(`/api/admin/v1/mcp-resource-servers/${encodeURIComponent(resourceServerID)}`)
+}
+
+export async function getMcpReportedTools(resourceServerID: string): Promise<ReportedTools> {
+  return request(
+    `/api/admin/v1/mcp-resource-servers/${encodeURIComponent(resourceServerID)}/reported-tools`,
+  )
 }
 
 export async function updateMcpResourceServer(

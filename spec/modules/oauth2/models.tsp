@@ -377,7 +377,8 @@ model McpResourceServerRequest {
   @minLength(1)
   @maxLength(200)
   name: string;
-  scopes: string[];
+  @doc("作成で省くか空にすると `mcp` だけを登録する。更新で省くと変えない。")
+  scopes?: string[];
   @doc("更新で省くと変えない。")
   client_id?: string;
   @doc("更新で省くと変えない。")
@@ -2447,6 +2448,39 @@ model AgentGuardrailPolicyChanged {
   agentId?: string;
   actorUserId: string;
   policy?: AgentGuardrailPolicy;
+}
+
+
+
+@doc("リソースサーバーが報告するツールの一覧。公開の候補にだけ使い、評価と発行は読まない。")
+model ResourceToolReportRequest {
+  @doc("`ReportedTool` の JSON の配列。100件まで。")
+  tools: string;
+  @doc("上流の一覧をすべて取得できたなら `true`。")
+  complete: "true" | "false";
+}
+
+
+@doc("リソースサーバーが報告したツール。MCP の `tools/list` の申告であり、権限や承認の要否の根拠にしない。")
+model ReportedTool {
+  @minLength(1)
+  @maxLength(128)
+  name: string;
+  @maxLength(256)
+  title?: string;
+  @maxLength(2048)
+  description?: string;
+  @doc("`inputSchema.properties` のキー。")
+  @maxItems(32)
+  arguments?: string[];
+}
+
+
+@doc("接続先の最新のツールの報告。報告がなければ `tools` は空で、`reported_at` を含めない。")
+model ReportedToolsResponse {
+  tools: ReportedTool[];
+  complete: boolean;
+  reported_at?: utcDateTime;
 }
 
 }

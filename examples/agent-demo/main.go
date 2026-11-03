@@ -41,7 +41,6 @@ const (
 	gatewayResource = "https://docs-mcp.agent-demo.example/"
 	protocolVersion = "2026-07-28"
 	readScope       = "tools:read"
-	writeScope      = "tools:write"
 	publicDocument  = "handbook"
 	secretDocument  = "salary-2026"
 	maxResponse     = 1 << 20
@@ -138,9 +137,9 @@ func (d *documents) restore() {
 
 func (d *documents) handler() http.Handler {
 	server := mcp.NewServer(&mcp.Implementation{Name: "documents", Version: "1"}, nil)
-	mcp.AddTool(server, &mcp.Tool{Name: "read_document", Description: "文書を読む"}, d.read)
-	mcp.AddTool(server, &mcp.Tool{Name: "write_document", Description: "文書を作成または更新する"}, d.write)
-	mcp.AddTool(server, &mcp.Tool{Name: "delete_document", Description: "文書を削除する"}, d.delete)
+	mcp.AddTool(server, &mcp.Tool{Name: "read_document", Title: "文書の閲覧", Description: "文書を読む"}, d.read)
+	mcp.AddTool(server, &mcp.Tool{Name: "write_document", Title: "文書の作成・更新", Description: "文書を作成または更新する"}, d.write)
+	mcp.AddTool(server, &mcp.Tool{Name: "delete_document", Title: "文書の削除", Description: "文書を削除する"}, d.delete)
 	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{Stateless: true})
 }
 
@@ -409,17 +408,6 @@ func (d *demo) run(ctx context.Context, scenario string) ([]step, error) {
 		}
 		request := governedRequests[scenario]
 		return append(steps, d.toolStep(ctx, request.title, d.gatewayURL, "Authorization", "Bearer "+token, request.tool, request.arguments, gatewaySpecs)), nil
-	case "reissue":
-		if !d.connected() {
-			return nil, errors.New("先に「接続」の手順で接続してください。")
-		}
-		token, issued := d.issueToken(ctx)
-		if token != "" {
-			d.mu.Lock()
-			d.token = token
-			d.mu.Unlock()
-		}
-		return []step{issued}, nil
 	case "after-stop":
 		return d.runAfterStop(ctx)
 	}
@@ -542,12 +530,13 @@ type connectInput struct {
 	GatewaySecret   string `json:"gateway_client_secret"`
 }
 
-func (d *demo) connect(ctx context.Context, input connectInput) ([]step, error) {
-	input.AgentClientID = strings.TrimSpace(input.AgentClientID)
+// startGateway は配布する形式の設定でゲートウェイを起動する。カタログを参照する構成では、
+// 実在のゲートウェイが上流の一覧を IdMagic へ報告する (REQ-MCPGATEWAY-011)。
+func (d *demo) startGateway(ctx context.Context, input connectInput) ([]step, error) {
 	input.GatewayClientID = strings.TrimSpace(input.GatewayClientID)
 	input.GatewaySecret = strings.TrimSpace(input.GatewaySecret)
-	if input.AgentClientID == "" || input.GatewayClientID == "" || input.GatewaySecret == "" {
-		return nil, errors.New("三つの値をすべて入力してください。")
+	if input.GatewayClientID == "" || input.GatewaySecret == "" {
+		return nil, errors.New("評価用のクライアント ID とシークレットを入力してください。")
 	}
 	secretFile := filepath.Join(d.workDir, "gateway-secret")
 	if err := os.WriteFile(secretFile, []byte(input.GatewaySecret+"\n"), 0o600); err != nil {
@@ -576,16 +565,52 @@ mapping:
 		return nil, fmt.Errorf("ゲートウェイの設定を読めません: %w", err)
 	}
 	d.mu.Lock()
-	d.clientID, d.catalog, d.gateway, d.token = input.AgentClientID, input.Catalog, loaded.Handler(), ""
+	d.catalog, d.gateway, d.token = input.Catalog, loaded.Handler(), ""
+	d.mu.Unlock()
+	started := step{
+		Title: "ゲートウェイを起動", Outcome: "allowed", Specs: []string{"Model Context Protocol 2026-07-28"},
+		Detail: "評価用のクライアントで IdMagic に問い合わせるゲートウェイが、文書サーバーの手前で待ち受けています。",
+	}
+	if !input.Catalog {
+		return []step{started}, nil
+	}
+	reported := step{Title: "上流のツールの一覧を IdMagic へ報告", Specs: []string{"MCP tools/list"}}
+	result, err := loaded.ReportTools(ctx)
+	if err != nil {
+		reported.Outcome, reported.Detail = "denied", err.Error()
+	} else {
+		reported.Outcome = "allowed"
+		reported.Detail = fmt.Sprintf("%d 件のツールを報告しました。IdMagic の接続先の編集で、公開するツールを選びます。報告しただけでは実行されません。", result.Tools)
+	}
+	return []step{started, reported}, nil
+}
+
+// connect は Agent の鍵でトークンを取得する。ゲートウェイの値があれば先に起動し直す。
+func (d *demo) connect(ctx context.Context, input connectInput) ([]step, error) {
+	input.AgentClientID = strings.TrimSpace(input.AgentClientID)
+	if input.AgentClientID == "" {
+		return nil, errors.New("エージェントのクライアント ID を入力してください。")
+	}
+	var steps []step
+	if strings.TrimSpace(input.GatewayClientID) != "" || !d.connected() {
+		started, err := d.startGateway(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+		steps = started
+	}
+	d.mu.Lock()
+	d.clientID, d.token = input.AgentClientID, ""
 	d.mu.Unlock()
 	token, issued := d.issueToken(ctx)
+	steps = append(steps, issued)
 	if token == "" {
-		return []step{issued}, nil
+		return steps, nil
 	}
 	d.mu.Lock()
 	d.token = token
 	d.mu.Unlock()
-	return []step{issued}, nil
+	return steps, nil
 }
 
 func (d *demo) routes() http.Handler {
@@ -602,12 +627,19 @@ func (d *demo) routes() http.Handler {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"public_key": publicKey, "resource": d.resource, "scope": readScope + " " + writeScope,
-			"read_scope": readScope, "write_scope": writeScope,
+			"public_key": publicKey, "resource": d.resource, "read_scope": readScope,
 			"console": origin + "/realms/default", "connected": d.connected(),
 			"public_document": publicDocument, "secret_document": secretDocument,
 		})
 	})
+	mux.HandleFunc("POST /api/gateway", d.jsonAction(func(ctx context.Context, body []byte) (any, error) {
+		var input connectInput
+		if err := json.Unmarshal(body, &input); err != nil {
+			return nil, err
+		}
+		steps, err := d.startGateway(ctx, input)
+		return map[string]any{"steps": steps}, err
+	}))
 	mux.HandleFunc("POST /api/connect", d.jsonAction(func(ctx context.Context, body []byte) (any, error) {
 		var input connectInput
 		if err := json.Unmarshal(body, &input); err != nil {

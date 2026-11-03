@@ -39,6 +39,7 @@ type Querier interface {
 	DeleteExpiredOauth2TokenExchangeGrantsBatch(ctx context.Context, arg DeleteExpiredOauth2TokenExchangeGrantsBatchParams) (int64, error)
 	DeleteExpiredPARRequestsBatch(ctx context.Context, arg DeleteExpiredPARRequestsBatchParams) (int64, error)
 	DeleteMcpResourceServer(ctx context.Context, arg DeleteMcpResourceServerParams) error
+	DeleteMcpToolReport(ctx context.Context, arg DeleteMcpToolReportParams) error
 	DeleteRefreshTokensForClient(ctx context.Context, clientID string) error
 	DeleteRefreshTokensForSub(ctx context.Context, userID string) error
 	// 単発 exchange の CAS。state='approved' の行だけを exchanged にして 1 行返す。
@@ -68,6 +69,7 @@ type Querier interface {
 	GetMcpResourceServer(ctx context.Context, arg GetMcpResourceServerParams) (*McpResourceServer, error)
 	GetMcpResourceServerByClientID(ctx context.Context, arg GetMcpResourceServerByClientIDParams) (*McpResourceServer, error)
 	GetMcpResourceServerByResource(ctx context.Context, arg GetMcpResourceServerByResourceParams) (*McpResourceServer, error)
+	GetMcpToolReport(ctx context.Context, arg GetMcpToolReportParams) (*McpToolReport, error)
 	GetRefreshTokenByHash(ctx context.Context, hash string) (*GetRefreshTokenByHashRow, error)
 	GetRefreshTokenRotationState(ctx context.Context, id string) (*GetRefreshTokenRotationStateRow, error)
 	InsertAgentGuardrailPolicy(ctx context.Context, arg InsertAgentGuardrailPolicyParams) (int64, error)
@@ -148,6 +150,7 @@ type Querier interface {
 	UpsertClientSession(ctx context.Context, arg UpsertClientSessionParams) error
 	UpsertConsent(ctx context.Context, arg UpsertConsentParams) error
 	UpsertMcpResourceServer(ctx context.Context, arg UpsertMcpResourceServerParams) error
+	UpsertMcpToolReport(ctx context.Context, arg UpsertMcpToolReportParams) error
 }
 
 var _ Querier = (*Queries)(nil)

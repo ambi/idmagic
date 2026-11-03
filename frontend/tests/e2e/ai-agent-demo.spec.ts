@@ -17,7 +17,6 @@ import {
   waitForPage,
   waitForText,
   waitForUp,
-  waitForUrl,
 } from './fixtures'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
@@ -111,7 +110,8 @@ test('administrator governs a real agent from the console', async () => {
 
     // 手順 2：ゲートウェイのサービスを登録する。スコープは空のまま。
     await view.navigate(`${uiOrigin}/realms/default/admin/applications/new`)
-    await setInputValue(view, '#app-name', `文書ゲートウェイ-${Date.now()}`)
+    const gatewayName = `文書ゲートウェイ-${Date.now()}`
+    await setInputValue(view, '#app-name', gatewayName)
     await view.evaluate(
       `[...document.querySelectorAll('button')].find((node) => node.textContent?.includes('Service (M2M)'))?.click()`,
     )
@@ -138,7 +138,9 @@ test('administrator governs a real agent from the console', async () => {
     await setInputValue(view, '#resource', state.resource)
     await setInputValue(view, '#name', '社内文書 MCP')
     await setInputValue(view, '#scopes', state.read_scope)
-    await setInputValue(view, '#client-id', gatewayClientID)
+    // 評価用のクライアントは手順 2 のサービスを名前で選ぶ。一覧の読み込みを待ってから選ぶ。
+    await waitForText(view, gatewayName)
+    await setSelectValue(view, '#evaluator-client', gatewayClientID)
     await view.evaluate(
       `[...document.querySelectorAll('summary')].find(node=>node.textContent==='Add a legacy evaluation rule')?.click()`,
     )
@@ -146,7 +148,7 @@ test('administrator governs a real agent from the console', async () => {
     await setInputValue(view, '#rule-type-0', 'document')
     await setInputValue(view, '#rule-relation-0', 'viewer')
     await view.evaluate(`document.querySelector('form button[type="submit"]').click()`)
-    await waitForUrl(view, /\/admin\/mcp-resource-servers$/)
+    await waitForText(view, 'Registered')
 
     // 手順 4：エージェントを登録する。
     const name = `社内文書アシスタント-${Date.now()}`
@@ -201,7 +203,7 @@ test('administrator governs a real agent from the console', async () => {
     await moveDemoStep(view, '次へ', '手順 3　MCP サーバー')
     expect(
       await view.evaluate(`document.querySelector('#setup .card:not([hidden])').innerText`),
-    ).toContain(gatewayClientID)
+    ).toContain('文書ゲートウェイ）を名前で選ぶ')
     await moveDemoStep(view, '次へ', '手順 4　エージェント')
     await setInputValue(view, '#agent-id', agentID)
     await moveDemoStep(view, '次へ', '手順 5　クレデンシャル')

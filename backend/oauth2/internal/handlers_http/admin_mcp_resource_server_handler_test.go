@@ -31,6 +31,9 @@ func newAdminMcpResourceServerHandler() *echo.Echo {
 	return newAdminMcpResourceServerHandlerWith(oauth2.NewMemoryModule().ClientRepo)
 }
 
+// reports はテストが報告を置いて読み直すための共有の保存先である。
+var reports = oauth2memory.NewMcpToolReportRepository()
+
 func newAdminMcpResourceServerHandlerWith(clients oauthports.OAuth2ClientRepository, supplied ...oauthports.McpResourceServerRepository) *echo.Echo {
 	users := idmanagement.NewMemoryModule().UserRepo
 	var servers oauthports.McpResourceServerRepository = oauth2memory.NewMcpResourceServerRepository()
@@ -49,7 +52,7 @@ func newAdminMcpResourceServerHandlerWith(clients oauthports.OAuth2ClientReposit
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer: "http://idp.test",
-		Emit:   func(spec.DomainEvent) {}, UserRepo: users, OAuth2: oauth2.Module{McpResourceServerRepo: servers, ClientRepo: clients},
+		Emit:   func(spec.DomainEvent) {}, UserRepo: users, OAuth2: oauth2.Module{McpResourceServerRepo: servers, McpToolReportRepo: reports, ClientRepo: clients},
 		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
 	return e
@@ -260,5 +263,85 @@ func TestAdminMcpResourceServerAccessRules(t *testing.T) {
 	other["access_rules"] = []map[string]any{{"resource_type": "document", "relation": "viewer", "scopes": []string{"not-allowed"}}}
 	if rec := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, other); rec.Code != http.StatusBadRequest {
 		t.Fatalf("範囲外のスコープ: status=%d", rec.Code)
+	}
+}
+
+func getReportedTools(t *testing.T, e *echo.Echo, id string) (int, map[string]any) {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/mcp-resource-servers/"+id+"/reported-tools", http.NoBody)
+	request.Header.Set("X-Demo-Sub", "admin")
+	recorder := httptest.NewRecorder()
+	e.ServeHTTP(recorder, request)
+	body := map[string]any{}
+	_ = json.Unmarshal(recorder.Body.Bytes(), &body)
+	return recorder.Code, body
+}
+
+//spec:covers REQ-OAUTH2-087: 報告は登録とは別に返り、未報告は空、登録の削除で報告も消え、存在しない登録は 404 になる。
+//verify:operation GetAdminMcpResourceServerReportedTools: 200 JSON の tools、complete、reported_at と、存在しない登録の 404 を観測する。
+func TestAdminReadsReportedToolsSeparatelyFromPublishedTools(t *testing.T) {
+	e := newAdminMcpResourceServerHandler()
+	csrf, cookie := adminCSRF(t, e)
+	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
+	var createdBody map[string]any
+	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
+		t.Fatal(err)
+	}
+	id := createdBody["id"].(string)
+
+	status, body := getReportedTools(t, e, id)
+	if status != http.StatusOK || len(body["tools"].([]any)) != 0 || body["reported_at"] != nil {
+		t.Fatalf("before a report: status=%d body=%v", status, body)
+	}
+	reportedAt := time.Date(2026, 11, 3, 9, 0, 0, 0, time.UTC)
+	if err := reports.Save(context.Background(), &oauthdomain.McpToolReport{
+		TenantID: tenancydomain.DefaultTenantID, ResourceServerID: id, Complete: true, ReportedAt: reportedAt,
+		Tools: []oauthdomain.ReportedTool{{Name: "read_document", Title: "閲覧", Arguments: []string{"document_id"}}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	status, body = getReportedTools(t, e, id)
+	tools := body["tools"].([]any)
+	if status != http.StatusOK || len(tools) != 1 || tools[0].(map[string]any)["name"] != "read_document" || body["complete"] != true || body["reported_at"] != reportedAt.Format(time.RFC3339) {
+		t.Fatalf("after a report: status=%d body=%v", status, body)
+	}
+	if published := createdBody["access_rules"].([]any); len(published) != 0 {
+		t.Fatalf("the report published rules: %v", published)
+	}
+
+	if deleted := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/mcp-resource-servers/"+id, csrf, cookie, nil); deleted.Code != http.StatusNoContent {
+		t.Fatalf("delete status=%d", deleted.Code)
+	}
+	if report, err := reports.Find(context.Background(), tenancydomain.DefaultTenantID, id); err != nil || report != nil {
+		t.Fatalf("report survived the registration: %+v %v", report, err)
+	}
+	if status, _ := getReportedTools(t, e, id); status != http.StatusNotFound {
+		t.Fatalf("missing registration status=%d", status)
+	}
+}
+
+//spec:covers REQ-OAUTH2-064: スコープを省いた登録は mcp だけを持ち、明示したスコープはそのまま保つ。
+func TestAdminCreatesMcpResourceServerWithTheDefaultScope(t *testing.T) {
+	e := newAdminMcpResourceServerHandler()
+	csrf, cookie := adminCSRF(t, e)
+	for _, tc := range []struct {
+		name   string
+		scopes any
+		want   []any
+	}{{"omitted", nil, []any{"mcp"}}, {"empty", []string{}, []any{"mcp"}}, {"explicit", []string{"tools:read"}, []any{"tools:read"}}} {
+		payload := validMcpResourceServerPayload()
+		payload["resource"] = "https://default-scope-" + tc.name + ".example/mcp"
+		delete(payload, "scopes")
+		if tc.scopes != nil {
+			payload["scopes"] = tc.scopes
+		}
+		created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, payload)
+		var body map[string]any
+		if err := json.Unmarshal(created.Body.Bytes(), &body); err != nil || created.Code != http.StatusCreated {
+			t.Fatalf("%s: status=%d body=%s", tc.name, created.Code, created.Body.String())
+		}
+		if got := body["scopes"].([]any); len(got) != len(tc.want) || got[0] != tc.want[0] {
+			t.Fatalf("%s: scopes=%v, want %v", tc.name, got, tc.want)
+		}
 	}
 }

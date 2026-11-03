@@ -526,6 +526,20 @@ op EvaluateResourceAccess(
   @body body: IdMagic.Contract.ResourceAccessEvaluationRequest
 ): EvaluateResourceAccessSuccess_200 | EvaluateResourceAccessError400 | EvaluateResourceAccessError401 | EvaluateResourceAccessError403 | EvaluateResourceAccessError429 | EvaluateResourceAccessError503;
 
+model ReportResourceToolsSuccess_204 {
+  @statusCode statusCode: 204;
+  @header cacheControl: "no-store";
+}
+
+@doc("登録したリソースサーバーが、上流の MCP サーバーのツールの一覧を報告する。最新の報告で前回の報告を置き換え、公開中のツール、操作の識別子、割当を変えない。")
+@TypeSpec.OpenAPI.operationId("ReportResourceTools")
+@route("/resource-access/tools")
+@post
+op ReportResourceTools(
+  @header contentType: "application/x-www-form-urlencoded",
+  @body body: IdMagic.Contract.ResourceToolReportRequest
+): ReportResourceToolsSuccess_204 | EvaluateResourceAccessError400 | EvaluateResourceAccessError401 | EvaluateResourceAccessError403 | EvaluateResourceAccessError429 | EvaluateResourceAccessError503;
+
 model RevokeSuccess_200 {
   @statusCode statusCode: 200;
 }
@@ -1323,6 +1337,20 @@ model GetAdminMcpResourceServerError404 {
 op GetAdminMcpResourceServer(
   @path id: string
 ): GetAdminMcpResourceServerSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminMcpResourceServerError403 | GetAdminMcpResourceServerError404;
+
+model GetAdminMcpResourceServerReportedToolsSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.ReportedToolsResponse;
+}
+
+@doc("管理者が、接続先から報告された最新のツールの一覧を読む。公開中のツールとは別の記録であり、読むだけでは何も公開しない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:read"])
+@TypeSpec.OpenAPI.operationId("GetAdminMcpResourceServerReportedTools")
+@route("/api/admin/v1/mcp-resource-servers/{id}/reported-tools")
+@get
+op GetAdminMcpResourceServerReportedTools(
+  @path id: string
+): GetAdminMcpResourceServerReportedToolsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminMcpResourceServerError403 | GetAdminMcpResourceServerError404;
 
 model CreateAdminMcpResourceServerSuccess_201 {
   @statusCode statusCode: 201;

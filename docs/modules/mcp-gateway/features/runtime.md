@@ -37,6 +37,7 @@
 | `downstream.dpop_key_file` | 下流のトークンを束縛する P-256 の秘密鍵の PEM。`downstream.resource` を指定すると必須 | なし |
 | `mapping.methods` | `tools/call` 以外で転送する方法から操作への対応 | なし |
 | `mapping.tools` | ツール名から操作への対応 | なし |
+| `mapping.catalog` | 明示した対応にない要求を、接続先の操作カタログで評価する。`proxy` では起動後に上流のツールの一覧を報告する | `false` |
 
 操作は `resource_type`、`relation` と、`resource_id` か `resource_id_argument` のちょうど一方を持つ。
 `resource_id_argument` は `tools/call` の `arguments` の直下のキーを名指し、その文字列の値を `resource_id` にする。
@@ -203,6 +204,15 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - カタログを参照する構成では、明示した対応にない `server/discover`、`initialize`、`notifications/initialized`、`ping`、`tools/list` を受けたとき、McpGateway は、`idmagic_mcp_method/access` として評価し、許可された要求だけを転送する。
 - 明示した対応がある要求を受けたとき、McpGateway は、従来の対応を優先する。
 - `mapping.catalog` が省略か偽の構成では、McpGateway は、従来どおり未登録のツールを転送しない。
+
+#### REQ-MCPGATEWAY-011 カタログを参照する構成は、起動後に上流のツール一覧を IdMagic へ報告する
+
+- `proxy` の構成で `mapping.catalog` が有効なとき、McpGateway は、起動後に上流へ `tools/list` を送り、`nextCursor` をたどって集めたツールを `/resource-access/tools` へ報告する。
+- 報告するとき、McpGateway は、ツールの `name`、`title`、`description`、`inputSchema.properties` のキーだけを送り、`title` を256文字、`description` を2048文字、キーを32件までに切り詰める。
+- ツールが100件を超えるか、10ページを超えるか、二ページ目以降の取得が失敗した場合、McpGateway は、取得できたツールを `complete=false` で報告する。
+- 最初のページを取得できないか、報告が失敗した場合、McpGateway は、ログに理由を残して報告をやめ、要求の執行を続ける。
+- `envoy_ext_authz` の構成と、`mapping.catalog` が無効な構成では、McpGateway は、ツールを報告しない。
+- ログを書くとき、McpGateway は、クライアントシークレットとツールの説明を含めない。
 
 ## セキュリティ上の考慮
 

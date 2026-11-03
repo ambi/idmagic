@@ -25,6 +25,8 @@ test('administrator assigns registered operations from resource connections', as
     await setInputValue(view, '#resource', `https://catalog-${suffix}.example/mcp`)
     await setInputValue(view, '#name', connection)
     await setInputValue(view, '#scopes', 'documents:read')
+    // Gateway を使わない接続先として登録し、登録後に一覧へ戻る。
+    await setSelectValue(view, '#evaluator-client', '')
     await clickButtonByText(view, 'Register tool')
     await setInputValue(view, '#tool-name-0', 'read_document')
     await setInputValue(view, '#tool-label-0', 'Read documents')
