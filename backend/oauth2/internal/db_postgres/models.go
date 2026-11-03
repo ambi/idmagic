@@ -57,14 +57,6 @@ type McpResourceServer struct {
 	UpdatedAt   time.Time
 }
 
-type McpToolReport struct {
-	TenantID         string
-	ResourceServerID string
-	Tools            []byte
-	Complete         bool
-	ReportedAt       time.Time
-}
-
 type Oauth2Client struct {
 	TenantID                           string
 	ClientID                           string

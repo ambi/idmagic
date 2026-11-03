@@ -108,8 +108,33 @@ func (d Deps) handleGetAdminMcpReportedTools(c *echo.Context) error {
 	}
 	if report != nil {
 		response["tools"], response["complete"], response["reported_at"] = report.Tools, report.Complete, report.ReportedAt
+		if changes := report.Changes(); changes != nil {
+			response["changes"] = toReportedToolChangesResponse(changes)
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, response)
+}
+
+// reportedToolChangesResponse は TypeSpec の ReportedToolChanges の形である。
+type reportedToolChangesResponse struct {
+	ChangedAt time.Time                          `json:"changed_at"`
+	Added     []string                           `json:"added"`
+	Removed   []string                           `json:"removed"`
+	Modified  []reportedToolModificationResponse `json:"modified"`
+}
+
+type reportedToolModificationResponse struct {
+	Name     string                   `json:"name"`
+	Fields   []string                 `json:"fields"`
+	Previous oauthdomain.ReportedTool `json:"previous"`
+}
+
+func toReportedToolChangesResponse(changes *oauthdomain.ReportedToolChanges) reportedToolChangesResponse {
+	modified := make([]reportedToolModificationResponse, len(changes.Modified))
+	for index, tool := range changes.Modified {
+		modified[index] = reportedToolModificationResponse{Name: tool.Name, Fields: tool.Fields, Previous: tool.Previous}
+	}
+	return reportedToolChangesResponse{ChangedAt: changes.ChangedAt, Added: changes.Added, Removed: changes.Removed, Modified: modified}
 }
 
 // defaultMcpScope は、スコープを省いた登録に補う唯一のスコープである。Gateway が執行する構成では

@@ -2476,11 +2476,34 @@ model ReportedTool {
 }
 
 
-@doc("接続先の最新のツールの報告。報告がなければ `tools` は空で、`reported_at` を含めない。")
+@doc("内容の変わった直前の報告から定義が変わったツール。")
+model ReportedToolModification {
+  name: string;
+  @doc("値が異なる項目。")
+  fields: ("title" | "description" | "arguments")[];
+  @doc("直前の報告での定義。")
+  previous: ReportedTool;
+}
+
+
+@doc("内容の変わった直前の報告から最新の報告への差分。表示だけに使い、公開設定を変えない。")
+model ReportedToolChanges {
+  @doc("最新の内容を初めて受信した時刻。")
+  changed_at: utcDateTime;
+  @doc("直前の報告にないツールの名前。直前の報告が完全なときだけ示す。")
+  added: string[];
+  @doc("最新の報告にないツールの名前。最新の報告が完全なときだけ示す。")
+  removed: string[];
+  modified: ReportedToolModification[];
+}
+
+
+@doc("接続先の最新のツールの報告。報告がなければ `tools` は空で、`reported_at` を含めない。内容の変わった直前の報告がなければ `changes` を含めない。")
 model ReportedToolsResponse {
   tools: ReportedTool[];
   complete: boolean;
   reported_at?: utcDateTime;
+  changes?: ReportedToolChanges;
 }
 
 }

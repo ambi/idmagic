@@ -32,10 +32,16 @@ type ToolReport struct {
 }
 
 // ReportTools は上流のツールの一覧を IdMagic へ報告する。カタログを参照する proxy の構成でなければ何もしない。
-// Main は起動後に一度呼ぶ。組み込む側は待ち受けの準備ができた後に呼ぶ。
+// 組み込む側は待ち受けの準備ができた後に呼ぶ。
 func (s *Server) ReportTools(ctx context.Context) (ToolReport, error) {
 	result, err := s.gateway.ReportTools(ctx)
 	return ToolReport{Tools: result.Tools, Complete: result.Complete}, err
+}
+
+// ListenForToolChanges は ctx が終わるまで上流の変更通知を待ち、起動時と通知のたびに一覧を報告する。
+// Main は起動後にこれを呼ぶ。カタログを参照する proxy の構成でなければすぐに戻る。進み方は log へ書く。
+func (s *Server) ListenForToolChanges(ctx context.Context, log io.Writer) {
+	s.gateway.ListenForToolChanges(ctx, log)
 }
 
 // Main は引数の設定で待ち受け、終了コードを返す。

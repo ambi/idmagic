@@ -642,10 +642,23 @@ export type ReportedTool = {
   arguments?: string[]
 }
 
+// ReportedToolChanges は内容の変わった直前の報告からの差分である。表示だけに使う。
+export type ReportedToolChanges = {
+  changed_at: string
+  added: string[]
+  removed: string[]
+  modified: {
+    name: string
+    fields: ('title' | 'description' | 'arguments')[]
+    previous: ReportedTool
+  }[]
+}
+
 export type ReportedTools = {
   tools: ReportedTool[]
   complete: boolean
   reported_at?: string
+  changes?: ReportedToolChanges
 }
 
 // WorkloadTrustBundle はテナントが登録する外部アテステーション発行者の信頼設定。

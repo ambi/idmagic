@@ -24,6 +24,10 @@ type McpToolReport struct {
 	Tools            []ReportedTool
 	Complete         bool
 	ReportedAt       time.Time
+	// Previous と ChangedAt は、内容の変わった直前の一覧と、最新の内容を初めて受信した時刻である。
+	// 保存先が保存済みの報告との比較で決め、保存の入力では読まない (REQ-OAUTH2-086)。
+	Previous  *ReportedToolList
+	ChangedAt time.Time
 }
 
 // 報告の上限は REQ-OAUTH2-086 が定め、登録の規則数とツール名の上限に揃える。

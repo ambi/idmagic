@@ -75,7 +75,7 @@ API キーや上流独自の OAuth を求める上流を専用ホストやホス
 | ホスト型を加え、閉じたネットワークへは導入側の中継で届ける | 両方の利点を得られる | 中継の配置が別に要り、構成が増える |
 
 ホスト型を採る場合は、[境界を選ぶ判断手順](../../docs/design/application/design-guidelines.md#境界を選ぶ判断手順)で、実行単位、組み立て地点、所有するテーブルを比べてから実装する。
-外向きの取得は [wi-58793](wi-58793-fill-mcp-connection-candidates-from-metadata-and-change-notices.md) の Gateway のない直接取得と同じ防御を共有する。
+外向きの取得は [wi-38469](wi-38469-fetch-public-mcp-server-metadata-and-tools.md) の Gateway のない直接取得と同じ防御を共有する。
 
 ## 計画
 

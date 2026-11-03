@@ -43,6 +43,8 @@ type mcpGatewayFixture struct {
 	effects  atomic.Int32
 	deleted  atomic.Int32
 	upstream atomic.Value
+	// mcp は上流の MCP サーバーで、テストがツールを足して変更通知を起こす。
+	mcp *mcp.Server
 }
 
 type readDocumentInput struct {
@@ -71,6 +73,7 @@ func newMcpGatewayFixture(t *testing.T, catalog ...bool) *mcpGatewayFixture {
 		f.deleted.Add(1)
 		return nil, readDocumentOutput{}, nil
 	})
+	f.mcp = server
 	sdk := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{Stateless: true})
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.upstream.Store(r.Header.Clone())

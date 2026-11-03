@@ -118,7 +118,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		servers = append(servers, &http.Server{Addr: gateway.Config.MetricsListen, Handler: mux, ReadHeaderTimeout: 10 * time.Second})
 	}
 	if gateway.Reporter != nil {
-		go reportTools(ctx, gateway, stderr)
+		go gateway.ListenForToolChanges(ctx, stderr)
 	}
 	failures := make(chan error, len(servers))
 	for _, server := range servers {
@@ -141,13 +141,19 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	return code
 }
 
-// reportTools は起動後に一度だけ報告する。失敗しても執行は続け、理由だけを残す。
-// 報告の内容とシークレットはログへ出さない。
-func reportTools(ctx context.Context, gateway *Gateway, stderr io.Writer) {
-	result, err := gateway.ReportTools(ctx)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "tool report failed: %v\n", err)
+// ListenForToolChanges は起動後に一覧を報告し、上流の変更通知のたびに報告し直す (REQ-MCPGATEWAY-012)。
+// 失敗しても執行は続け、理由だけを stderr に残す。報告の内容とシークレットはログへ出さない。
+// 待ち受けの応答は開いたままなので、上流のクライアントは全体の期限を持たず、受信確認の期限だけで切る。
+func (g *Gateway) ListenForToolChanges(ctx context.Context, stderr io.Writer) {
+	if g.Reporter == nil {
 		return
 	}
-	_, _ = fmt.Fprintf(stderr, "reported %d tools (complete=%t)\n", result.Tools, result.Complete)
+	report_http.Listener{
+		Reporter: *g.Reporter,
+		Client: &http.Client{
+			Transport:     g.Reporter.UpstreamClient.Transport,
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+		},
+		Log: stderr,
+	}.Run(ctx)
 }

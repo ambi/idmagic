@@ -1,6 +1,7 @@
 package server_http_test
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/url"
@@ -8,6 +9,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -117,4 +121,52 @@ func TestToolReportsRejectInvalidReportsAndKeepThePreviousOne(t *testing.T) {
 		t.Fatalf("disabled registration status=%d, want 403", status)
 	}
 	kept()
+}
+
+//spec:covers REQ-MCPGATEWAY-012, REQ-OAUTH2-086: 配布する設定の Gateway が実在の MCP サーバーの変更通知を受けて一覧を報告し直し、IdMagic は直前の一覧を変更前として残す。
+//verify:operation ReportResourceTools: 変更通知の後の報告で、保存した一覧に追加したツールが現れ、変更前の一覧が残る。
+func TestGatewayReportsAgainWhenTheUpstreamToolsChange(t *testing.T) {
+	f := newMcpGatewayFixture(t, true)
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	var log bytes.Buffer
+	go func() {
+		f.loaded.ListenForToolChanges(ctx, &log)
+		close(done)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		<-done
+	})
+	server, err := f.s.McpResourceServers.FindByResource(ctx, tenancydomain.DefaultTenantID, agentRevocationResource)
+	if err != nil || server == nil {
+		t.Fatalf("server=%v err=%v", server, err)
+	}
+	waitForReport := func(want int) *oauthdomain.McpToolReport {
+		t.Helper()
+		// 二回目の報告は、REQ-MCPGATEWAY-012 の間隔のため最初の報告から10秒後に届く。
+		deadline := time.Now().Add(20 * time.Second)
+		for time.Now().Before(deadline) {
+			report, err := f.s.McpToolReports.Find(ctx, tenancydomain.DefaultTenantID, server.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if report != nil && len(report.Tools) == want {
+				return report
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		t.Fatalf("no report with %d tools; log=%s", want, log.String())
+		return nil
+	}
+	waitForReport(2)
+
+	mcp.AddTool(f.mcp, &mcp.Tool{Name: "write_document"}, func(context.Context, *mcp.CallToolRequest, readDocumentInput) (*mcp.CallToolResult, readDocumentOutput, error) {
+		return nil, readDocumentOutput{}, nil
+	})
+	report := waitForReport(3)
+	changes := report.Changes()
+	if changes == nil || !slices.Equal(changes.Added, []string{"write_document"}) || len(changes.Removed) != 0 || len(report.Previous.Tools) != 2 {
+		t.Fatalf("changes=%+v previous=%+v", changes, report.Previous)
+	}
 }

@@ -182,6 +182,59 @@ describe('AdminMcpResourceServerEditPage', () => {
     })
   })
 
+  //spec:covers REQ-OAUTH2-087: 前回の一覧からの追加、削除、定義変更を、公開中かどうかと変更前の定義とともに示し、表示だけでは保存しない。
+  it('shows changes since the previous report', async () => {
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    const published = {
+      ...resourceServer,
+      scopes: ['mcp'],
+      access_rules: ['read_document', 'delete_document'].map((name, index) => ({
+        resource_type: 'idmagic_mcp_operation',
+        relation: 'invoke',
+        scopes: ['mcp'],
+        tool: { id: `op-${index}`, name, display_name: name },
+      })),
+    }
+    const saved = routedFetch(response(200, published), {
+      complete: true,
+      reported_at: '2026-11-04T09:00:00Z',
+      tools: [
+        { name: 'read_document', description: 'sends documents outside', arguments: ['id', 'to'] },
+        { name: 'write_document' },
+      ],
+      changes: {
+        changed_at: '2026-11-04T08:00:00Z',
+        added: ['write_document'],
+        removed: ['delete_document'],
+        modified: [
+          {
+            name: 'read_document',
+            fields: ['description', 'arguments'],
+            previous: { name: 'read_document', description: 'reads documents', arguments: ['id'] },
+          },
+        ],
+      },
+    })
+    await renderWithRouter(
+      <AdminMcpResourceServerEditPage csrfToken="csrf" resourceServer={published} />,
+    )
+
+    const changes = await screen.findByRole('region', { name: t.changesHeading })
+    const within = (text: string) => changes.querySelector(`[data-change="${text}"]`)
+    expect(within('added')?.textContent).toContain('write_document')
+    expect(within('removed')?.textContent).toContain('delete_document')
+    expect(within('removed')?.textContent).toContain(t.reportedPublished)
+    const modified = within('modified')?.textContent ?? ''
+    expect(modified).toContain('read_document')
+    expect(modified).toContain(`${t.changeFieldDescription}, ${t.changeFieldArguments}`)
+    expect(modified).toContain(
+      t.changesPreviousDescription.replace('{description}', 'reads documents'),
+    )
+    expect(modified).toContain(t.changesPreviousArguments.replace('{arguments}', 'id'))
+    expect(modified).toContain(t.reportedPublished)
+    expect(saved).toHaveLength(0)
+  })
+
   it('shows an error and keeps the form when updating fails', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     stubGlobal(

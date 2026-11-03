@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -317,6 +318,48 @@ func TestAdminReadsReportedToolsSeparatelyFromPublishedTools(t *testing.T) {
 	}
 	if status, _ := getReportedTools(t, e, id); status != http.StatusNotFound {
 		t.Fatalf("missing registration status=%d", status)
+	}
+}
+
+//spec:covers REQ-OAUTH2-087: 内容の変わった報告の後は changes に変更の時刻、追加、削除、定義変更と直前の定義を返し、直前の一覧がなければ changes を含めない。
+//verify:operation GetAdminMcpResourceServerReportedTools: 200 JSON の changes の changed_at、added、removed、modified を観測する。
+func TestAdminReadsReportChangesSinceThePreviousList(t *testing.T) {
+	e := newAdminMcpResourceServerHandler()
+	csrf, cookie := adminCSRF(t, e)
+	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
+	var createdBody map[string]any
+	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
+		t.Fatal(err)
+	}
+	id := createdBody["id"].(string)
+	save := func(at time.Time, tools ...oauthdomain.ReportedTool) {
+		t.Helper()
+		if err := reports.Save(context.Background(), &oauthdomain.McpToolReport{
+			TenantID: tenancydomain.DefaultTenantID, ResourceServerID: id, Complete: true, ReportedAt: at, Tools: tools,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first := time.Date(2026, 11, 3, 9, 0, 0, 0, time.UTC)
+	save(first, oauthdomain.ReportedTool{Name: "read_document", Description: "文書を読む", Arguments: []string{"document_id"}}, oauthdomain.ReportedTool{Name: "delete_document"})
+	if _, body := getReportedTools(t, e, id); body["changes"] != nil {
+		t.Fatalf("the first report has changes: %v", body["changes"])
+	}
+
+	changed := first.Add(time.Hour)
+	save(changed, oauthdomain.ReportedTool{Name: "read_document", Description: "文書を社外へ送る", Arguments: []string{"document_id"}}, oauthdomain.ReportedTool{Name: "write_document"})
+	status, body := getReportedTools(t, e, id)
+	want := map[string]any{
+		"changed_at": changed.Format(time.RFC3339),
+		"added":      []any{"write_document"},
+		"removed":    []any{"delete_document"},
+		"modified": []any{map[string]any{
+			"name": "read_document", "fields": []any{"description"},
+			"previous": map[string]any{"name": "read_document", "description": "文書を読む", "arguments": []any{"document_id"}},
+		}},
+	}
+	if status != http.StatusOK || !reflect.DeepEqual(body["changes"], want) {
+		t.Fatalf("status=%d changes=%#v, want %#v", status, body["changes"], want)
 	}
 }
 

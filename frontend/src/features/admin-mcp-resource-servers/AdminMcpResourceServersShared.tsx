@@ -7,6 +7,7 @@ import type {
   AdminApplication,
   McpResourceServer,
   ReportedTool,
+  ReportedToolChanges,
   ReportedTools,
   ResourceAccessRule,
 } from '../../types'
@@ -540,6 +541,98 @@ export function ReportedToolsPanel({
         <p className="text-sm text-amber-800">
           {t.reportedMissing.replace('{names}', missing.join(', '))}
         </p>
+      ) : null}
+      {report?.changes ? (
+        <ReportedToolChangesList changes={report.changes} published={published} t={t} />
+      ) : null}
+    </section>
+  )
+}
+
+// ReportedToolChangesList は直前の報告からの差分を示す (REQ-OAUTH2-087)。操作を持たず、公開設定を変えない。
+// 公開中のツールの説明や引数の変化に気付けるよう、公開中かどうかと変更前の定義を並べる。
+function ReportedToolChangesList({
+  changes,
+  published,
+  t,
+}: {
+  changes: ReportedToolChanges
+  published: Set<string>
+  t: Dictionary
+}) {
+  const fieldLabel = {
+    title: t.changeFieldTitle,
+    description: t.changeFieldDescription,
+    arguments: t.changeFieldArguments,
+  }
+  const mark = (name: string) =>
+    published.has(name) ? (
+      <span className="text-xs text-slate-600"> ({t.reportedPublished})</span>
+    ) : null
+  const groups = [
+    { key: 'added', label: t.changesAdded, names: changes.added },
+    { key: 'removed', label: t.changesRemoved, names: changes.removed },
+  ]
+  return (
+    <section
+      className="flex flex-col gap-2 rounded-md border border-amber-300 p-2"
+      aria-labelledby="reported-changes-heading"
+    >
+      <p id="reported-changes-heading" className="text-sm font-medium">
+        {t.changesHeading}
+      </p>
+      <p className="text-xs leading-5 text-slate-500">
+        {t.changesAt.replace('{time}', new Date(changes.changed_at).toLocaleString())}
+      </p>
+      {groups.map((group) =>
+        group.names.length > 0 ? (
+          <div key={group.key} data-change={group.key} className="text-sm">
+            <span className="font-medium">
+              {group.label}
+              {t.changesLabelSeparator}
+            </span>
+            {group.names.map((name, index) => (
+              <span key={name}>
+                {index > 0 ? ', ' : ''}
+                <code>{name}</code>
+                {mark(name)}
+              </span>
+            ))}
+          </div>
+        ) : null,
+      )}
+      {changes.modified.length > 0 ? (
+        <div data-change="modified" className="flex flex-col gap-1 text-sm">
+          <span className="font-medium">{t.changesModified}</span>
+          <ul className="flex flex-col gap-1">
+            {changes.modified.map((tool) => (
+              <li key={tool.name} className="flex flex-col">
+                <span>
+                  <code>{tool.name}</code>
+                  {mark(tool.name)}
+                  {t.changesLabelSeparator}
+                  {tool.fields.map((field) => fieldLabel[field]).join(', ')}
+                </span>
+                {tool.fields.includes('description') ? (
+                  <span className="text-xs text-slate-600">
+                    {t.changesPreviousDescription.replace(
+                      '{description}',
+                      tool.previous.description ?? '',
+                    )}
+                  </span>
+                ) : null}
+                {tool.fields.includes('arguments') ? (
+                  <span className="text-xs text-slate-600">
+                    {t.changesPreviousArguments.replace(
+                      '{arguments}',
+                      (tool.previous.arguments ?? []).join(', '),
+                    )}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </section>
   )

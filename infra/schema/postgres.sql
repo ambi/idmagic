@@ -789,6 +789,15 @@ CREATE TABLE mcp_tool_reports (
     tools JSONB NOT NULL,
     complete BOOLEAN NOT NULL,
     reported_at TIMESTAMPTZ NOT NULL,
+    -- 内容の比較に使う指紋。空は列の追加前の行で、比べずに置き換える。
+    fingerprint TEXT NOT NULL DEFAULT '',
+    -- 内容の変わった直前の一覧と、最新の内容を初めて受信した時刻。三つは揃って NULL か非 NULL になる。
+    previous_tools JSONB,
+    previous_complete BOOLEAN,
+    changed_at TIMESTAMPTZ,
+    CONSTRAINT mcp_tool_reports_previous_together CHECK (
+        (previous_tools IS NULL) = (previous_complete IS NULL) AND (previous_tools IS NULL) = (changed_at IS NULL)
+    ),
     CONSTRAINT mcp_tool_reports_resource_server_id_fkey
         FOREIGN KEY (resource_server_id) REFERENCES mcp_resource_servers(id) ON DELETE CASCADE
 );

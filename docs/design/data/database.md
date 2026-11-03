@@ -232,7 +232,7 @@ erDiagram
 | `agents` | エージェントの Aggregate。所有者と状態を格納する | IdManagement | `LOGGED` | 非キーカラム |
 | `authorization_detail_types` | テナントが受け付ける `authorization_details` の型の定義 | OAuth2 | `LOGGED` | 複合主キーの一部 |
 | `mcp_resource_servers` | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ、評価用のクライアントと規則 | OAuth2 | `LOGGED` | 非キーカラム |
-| `mcp_tool_reports` | 接続先の Gateway が報告した最新のツールの一覧。公開の候補にだけ使い、登録の更新時刻と独立して置き換える | OAuth2 | `LOGGED` | 非キーカラム |
+| `mcp_tool_reports` | 接続先の Gateway が報告した最新のツールの一覧と、内容の変わった直前の一覧。公開の候補と差分の表示にだけ使い、登録の更新時刻と独立して置き換える | OAuth2 | `LOGGED` | 非キーカラム |
 | `agent_guardrail_policies` | Agent の発行の上限とテナントのデフォルト、内容から導いたバージョン | OAuth2 | `LOGGED` | 複合主キーの一部 |
 | `cross_app_access_issue_policies` | ID-JAG の発行の許可 | OAuth2 | `LOGGED` | 非キーカラム |
 | `cross_app_access_redeem_policies` | ID-JAG の受け入れの許可 | OAuth2 | `LOGGED` | 非キーカラム |
