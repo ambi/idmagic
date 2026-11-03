@@ -1417,7 +1417,13 @@ model UpdateAdminMcpResourceServerError404 {
 op UpdateAdminMcpResourceServer(
   @path id: string,
   @body body: IdMagic.Contract.McpResourceServerRequest
-): UpdateAdminMcpResourceServerSuccess_200 | UpdateAdminMcpResourceServerError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminMcpResourceServerError403 | UpdateAdminMcpResourceServerError404;
+): UpdateAdminMcpResourceServerSuccess_200 | UpdateAdminMcpResourceServerError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminMcpResourceServerError403 | UpdateAdminMcpResourceServerError404 | UpdateAdminMcpResourceServerError409;
+
+model UpdateAdminMcpResourceServerError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.McpResourceServerConflictError;
+}
 
 model DeleteAdminMcpResourceServerSuccess_204 {
   @statusCode statusCode: 204;

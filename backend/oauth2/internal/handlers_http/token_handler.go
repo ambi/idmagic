@@ -199,7 +199,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		}
 		// RFC 8707 resource indicator (wi-262) — 指定時は登録済み Active な
 		// McpResourceServer に audience を限定する。未指定時は従来どおり client_id。
-		mcpResourceServer, err := tokenusecases.ResolveResourceIndicator(ctx, d.McpResourceServerRepo, support.RequestTenantID(c), c.Request().PostForm["resource"], scopes)
+		mcpResourceServer, err := tokenusecases.ResolveResourceIndicator(ctx, d.McpResourceServerRepo, support.RequestTenantID(c), c.Request().PostForm["resource"], nil)
 		if err != nil {
 			return writeOAuthError(c, err)
 		}
@@ -227,6 +227,21 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		var agentID string
 		if agent != nil {
 			agentID = agent.ID
+		}
+		if agent != nil && mcpResourceServer != nil && mcpResourceServer.HasOnlyToolRules() {
+			allowed, err := tokenusecases.AssignedToolScopes(ctx, d.RelationChecker, mcpResourceServer, agent.ID, strings.Fields(client.Scope))
+			if err != nil {
+				return writeOAuthError(c, tokenusecases.NewOAuthError("temporarily_unavailable", "operation assignments are unavailable"))
+			}
+			if c.Request().PostFormValue("scope") == "" {
+				scopes = slices.DeleteFunc(scopes, func(value string) bool { return !slices.Contains(allowed, value) })
+			}
+			if len(scopes) == 0 || slices.ContainsFunc(scopes, func(value string) bool { return !slices.Contains(allowed, value) }) {
+				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_scope", "The requested scope is not assigned to this agent."))
+			}
+		}
+		if mcpResourceServer != nil && slices.ContainsFunc(scopes, func(value string) bool { return !slices.Contains(mcpResourceServer.Scopes, value) }) {
+			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_scope", "request exceeds allowed scope of the resource"))
 		}
 		token, jti, err := d.TokenIssuer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 			Client: client, Sub: client.ClientID, Scopes: scopes,

@@ -69,6 +69,9 @@ a{color:var(--accent)}
   <h3>進め方</h3>
   <p>このページと IdMagic の管理画面を、別のタブで行き来します。各手順で「この画面を開く」を押し、表の<strong>入力欄</strong>に<strong>値</strong>をコピーして保存し、このページへ戻って「次へ」を押します。シェルもコードの変更も不要です。ログインは <code>alice</code> / <code>demo-password-1234</code> です。</p>
 </div>
+<label for="setup-example">確かめる制御の範囲</label>
+<select id="setup-example"><option value="operations">接続先と操作の利用（通常の管理）</option><option value="documents">文書ごとの権限（詳細な管理）</option></select>
+<p id="example-help" class="note"></p>
 <div class="progress" id="progress"></div>
 <div id="setup"></div>
 
@@ -86,7 +89,7 @@ a{color:var(--accent)}
   <div class="panel">
     <h3>権限をその場で変える</h3>
     <p class="note">トークンを取り直さなくても、判定は要求ごとに行われます。</p>
-    <p>給与テーブルへのアクセス権を追加して、左の「給与テーブルを読む」をもう一度押します。付与を取り消せば、また拒否に戻ります。エージェントは名前で選べます。</p>
+    <p id="grant-help">給与テーブルへのアクセス権を追加して、左の「給与テーブルを読む」をもう一度押します。付与を取り消せば、また拒否に戻ります。エージェントは名前で選べます。</p>
     <p><a id="tuples-link" target="_blank" rel="noreferrer">アクセス権を追加する画面を開く</a></p>
     <div id="grant-fields"></div>
   </div>
@@ -130,7 +133,8 @@ a{color:var(--accent)}
 <tbody>
 <tr><td><a href="https://help.okta.com/OIE/en-us/content/topics/ai-agents/ai-agent-mcp-server.htm" target="_blank" rel="noreferrer">Okta Agent Gateway 風</a></td><td>MCP を登録し、認可情報とツールを発見して公開するツールを選ぶ</td><td>接続と公開ツールを管理する</td><td>文書単位の判定と操作ごとの承認を満たす追加構成を実証する。Auth0 AI と FGA は別構成として数える</td></tr>
 <tr><td><a href="https://docs.pingidentity.com/pingone/ai_agents/p1_managing_ai_agents.html" target="_blank" rel="noreferrer">Ping Identity for AI 風</a></td><td>Agent と接続先、委任、PingGateway の MCP 保護を設定する</td><td>接続先のスコープと Agent の割当を管理する</td><td>文書単位の判定と CIBA の操作承認を MCP へ接続して実証する。定期同意と操作承認を区別する</td></tr>
-<tr><td>今回の IdMagic</td><td>モデルと MCP 評価規則を定義する</td><td>接続先、権限、文書、Agent を選んで直接付与する</td><td>文書 ID の入力と開発者の設定は残る。実効許可の一覧ではなく、同じ型と権限の接続先にも作用する</td></tr>
+<tr><td>今回の IdMagic：通常の管理</td><td>接続先と公開するツールを登録する</td><td>Agent の「利用する接続先」で接続先と操作を選ぶ。モデルと対象 ID の入力は不要</td><td>ツール単位の制御であり、文書ごとの制御を代替しない。認証上限と実行時の対象権限も適用する</td></tr>
+<tr><td>IdMagic：文書別の詳細設定</td><td>文書のモデルと対象への対応を定義する</td><td>指定した文書へアクセス権を付与する</td><td>対象カタログのない文書 ID は入力が残る。通常の接続許可と同じ費用として比べない</td></tr>
 </tbody></table></div>
 <p class="note">初期構築と日常管理を分け、同じ文書の閲覧、拒否、取消、承認、停止、原因特定を比べます。必要な制御を省いて簡単にした案は採用せず、同条件で IdMagic が複雑ならモデルと画面を見直します。</p>
 </main>
@@ -212,10 +216,16 @@ function inputField(id, label, type = 'text') {
 }
 async function init() {
   const state = await (await fetch('/api/state')).json()
+  const catalog = new URLSearchParams(location.search).get('example') !== 'documents'
+  $('setup-example').value = catalog ? 'operations' : 'documents'
+  $('setup-example').onchange = () => { location.search = `?example=${$('setup-example').value}` }
+  $('example-help').textContent = catalog
+    ? '閲覧ツールを許可し、削除を拒否します。文書ごとの制限は追加していないため、閲覧ツールは両方の文書を読めます。機密文書の拒否を確かめる場合は「文書ごとの権限」を選びます。'
+    : '文書ごとに閲覧を許可します。対象のモデルと関係の準備を初期設定に含めます。'
   $('tuples-link').href = `${state.console}/admin/authorization/access/new`
   $('approvals-link').href = `${state.console}/account/approvals`
   const value = (id) => () => $(id)?.value || '（前の手順で控えた値）'
-  const steps = [
+  const detailedSteps = [
     {
       title: '認可モデル', path: '/admin/authorization/model/edit',
       why: '「どんな種類のものに、誰がどんな関係を持てるか」を定義します。ここでは、エージェントが文書の閲覧者になれるようにします。',
@@ -232,7 +242,7 @@ async function init() {
     {
       title: 'MCP サーバー', path: '/admin/mcp-resource-servers/new',
       why: '保護する MCP サーバーを登録します。許可スコープはこのサーバーの権限の名前です。「許可を判定する操作」は、文書を読む要求を「文書の閲覧者（viewer）なら許可」と判定するための設定です。',
-      todo: '開発者向けの「評価規則を追加」を押して、対象の種類と必要な関係を入れます。これは MCP ツールを追加する操作ではありません。必要なスコープのチェックはそのままにします。',
+      todo: '「従来の評価規則を追加」を開いて同名のボタンを押し、対象の種類と必要な関係を入れます。必要なスコープのチェックはそのままにします。',
       fields: [['リソース URI', state.resource], ['表示名', '社内文書 MCP'], ['許可スコープ', state.scope], ['評価用のクライアント ID', value('gateway-client')], ['対象の種類（リソース型）', 'document'], ['必要な関係', 'viewer']],
     },
     {
@@ -245,7 +255,7 @@ async function init() {
     {
       title: 'クレデンシャル', path: '/admin/agents',
       why: 'エージェントが本物であることを、秘密鍵の署名で証明できるようにします。IdMagic へ渡すのは公開鍵だけで、共有のシークレットはありません。',
-      todo: '手順 4 の詳細で「クレデンシャルを管理」を開き、「新しく作成する」を選びます。公開鍵を貼り、tools:read を選んで「作成して紐付ける」を押します。作成結果に残る client_id を下へ控えます。「既存を使う」は入力不要です。',
+      todo: '作成したエージェントの詳細で「クレデンシャルを管理」を開き、「新しく作成する」を選びます。公開鍵を貼り「作成して紐付ける」を押します。登録済みのスコープは認証上限の既定値です。作成結果の client_id を下へ控えます。「既存を使う」は入力不要です。',
       fields: [['公開鍵', state.public_key]],
       keep: [['agent-client', '一覧に出たクライアント ID']],
     },
@@ -256,6 +266,14 @@ async function init() {
       fields: [['接続先', '社内文書 MCP'], ['権限', 'viewer (document)'], ['対象 ID', state.public_document], ['エージェント', '手順 4 で付けた名前']],
     },
   ]
+  const steps = catalog ? [
+    detailedSteps[1],
+    { ...detailedSteps[2], why: '接続先と、利用を認めるツールを登録します。通常の操作割当ではモデルの発行は不要です。',
+      todo: '「ツールを登録」を押し、MCP ツール名に read_document、操作の表示名に「文書の閲覧」を入れます。対象ごとの権限のチェックは付けず、必要なスコープを選択したまま登録します。',
+      fields: [['リソース URI', state.resource], ['表示名', '社内文書 MCP'], ['許可スコープ', state.scope], ['評価用のクライアント ID', value('gateway-client')], ['MCP ツール名', 'read_document'], ['操作の表示名', '文書の閲覧']] },
+    detailedSteps[3], detailedSteps[4],
+    { title: '利用する接続先', path: '/admin/agents', why: '接続先の操作をこのエージェントに割り当てます。対象 ID や関係の入力はありません。', todo: '作成したエージェントの詳細で「利用する接続先」を開き、「接続先と操作を編集」へ進みます。「社内文書 MCP」と「文書の閲覧」を選んで保存します。', fields: [['接続先', '社内文書 MCP'], ['許可する操作', '文書の閲覧']] },
+  ] : detailedSteps
   const cards = []
   const renders = []
   const show = (index) => {
@@ -340,7 +358,12 @@ async function init() {
   $('setup').append(connect)
   show(0)
   const renderGrant = () => {
-    $('tuples-link').href = `${state.console}/admin/authorization/access/new?agent=${encodeURIComponent($('agent-id').value)}`
+    $('tuples-link').href = catalog ? `${state.console}/admin/agents/${encodeURIComponent($('agent-id').value)}/resources` : `${state.console}/admin/authorization/access/new?agent=${encodeURIComponent($('agent-id').value)}`
+    if (catalog) {
+      $('grant-help').textContent = '「利用する接続先」で文書の閲覧を取り消して再実行します。就業規則も給与テーブルも拒否に変わります。再び割り当てれば、同じトークンでも利用できます。'
+      $('grant-fields').replaceChildren()
+      return
+    }
     $('grant-fields').replaceChildren(...[
       ['接続先', '社内文書 MCP'], ['権限', 'viewer (document)'], ['対象 ID', state.secret_document], ['エージェント', '手順 4 で付けた名前'],
     ].map(([label, item]) => field(label, item)))
@@ -350,7 +373,7 @@ async function init() {
   button.onclick = async () => {
     button.disabled = true
     try {
-      const result = await post('/api/connect', { agent_client_id: $('agent-client').value, gateway_client_id: $('gateway-client').value, gateway_client_secret: $('gateway-secret').value })
+      const result = await post('/api/connect', { catalog, agent_client_id: $('agent-client').value, gateway_client_id: $('gateway-client').value, gateway_client_secret: $('gateway-secret').value })
       renderSteps(out, result.steps)
     } catch (error) { renderError(out, error) } finally { button.disabled = false }
   }

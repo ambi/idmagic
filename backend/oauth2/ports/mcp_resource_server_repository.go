@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
@@ -16,5 +17,6 @@ type McpResourceServerRepository interface {
 	// FindByClientID は評価を求めたクライアントに束縛した登録を解決する。
 	FindByClientID(ctx context.Context, tenantID, clientID string) (*domain.McpResourceServer, error)
 	Save(ctx context.Context, m *domain.McpResourceServer) error
+	SaveIfUnchanged(ctx context.Context, m *domain.McpResourceServer, expectedUpdatedAt time.Time) (bool, error)
 	Delete(ctx context.Context, tenantID, resourceServerID string) error
 }

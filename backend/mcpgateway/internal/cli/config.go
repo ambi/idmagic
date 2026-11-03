@@ -55,6 +55,7 @@ type fileConfig struct {
 	AllowedOrigins []string `yaml:"allowed_origins"`
 	MaxBodyBytes   *int64   `yaml:"max_body_bytes"`
 	Mapping        struct {
+		Catalog bool                     `yaml:"catalog"`
 		Methods map[string]fileOperation `yaml:"methods"`
 		Tools   map[string]fileOperation `yaml:"tools"`
 	} `yaml:"mapping"`
@@ -234,7 +235,7 @@ func tlsConfig(caFile string) (*tls.Config, error) {
 }
 
 func mapping(file fileConfig) (domain.Mapping, error) {
-	result := domain.Mapping{Methods: map[string]domain.OperationRule{}, Tools: map[string]domain.OperationRule{}}
+	result := domain.Mapping{Catalog: file.Mapping.Catalog, Methods: map[string]domain.OperationRule{}, Tools: map[string]domain.OperationRule{}}
 	for method, operation := range file.Mapping.Methods {
 		if method == domain.MethodToolsCall {
 			return domain.Mapping{}, errors.New("mapping.methods must not name tools/call; declare mapping.tools")

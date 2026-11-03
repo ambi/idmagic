@@ -10,7 +10,7 @@ import { useDictionary } from '../../lib/i18n'
 import type { AdminAgent } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { kindLabel, StatusBadge } from './AdminAgentsShared'
-import { shellDictionary } from '../../components/shell.i18n'
+import { agentResourcesDictionary } from './agentResources.i18n'
 
 // 資格情報のバインドと解除は専用の管理画面に置き、
 // この一覧右ペイン/詳細画面カードは読み取り専用 (policy #1, wi-314 T012)。
@@ -35,7 +35,7 @@ export function AgentDetailCard({
   const [localError, setLocalError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const t = useDictionary(adminAgentsDictionary)
-  const access = useDictionary(shellDictionary)
+  const access = useDictionary(agentResourcesDictionary)
 
   if (!agent) {
     return (
@@ -160,14 +160,10 @@ export function AgentDetailCard({
             variant="outline"
             nativeButton={false}
             render={
-              <a
-                href={tenantURL(
-                  `/admin/authorization/access?agent=${encodeURIComponent(agent.id)}`,
-                )}
-              />
+              <a href={tenantURL(`/admin/agents/${encodeURIComponent(agent.id)}/resources`)} />
             }
           >
-            {access.authorization}
+            {access.title}
           </Button>
           <Button
             variant="outline"

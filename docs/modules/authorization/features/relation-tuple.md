@@ -29,7 +29,8 @@
 - 既に存在する組の追加を受けたとき、AccessControl は、その組を重複させずに成功を返す。
 - 管理者が関係タプルを書き込むか一覧したとき、AccessControl は、要求の本文の識別子によらず、呼び出し元のテナントで解決した `tenant_id` のタプルだけを読み書きする。
 - 登録した認可モデルが宣言していない型か関係、`direct` の規則が許していない主体の形かワイルドカード、追加と削除の両方に現れる組を含む差分を受けた場合、AccessControl は、422 と `relation_tuple_invalid` で拒否し、1 件も適用しない。
-- テナントに認可モデルを登録していない間、関係タプルの書き込みを要求されたとき、AccessControl は、404 と `authorization_model_not_found` で拒否する。
+- テナントに認可モデルを登録していない間、組み込み型以外の関係タプルの書き込みを要求されたとき、AccessControl は、404 と `authorization_model_not_found` で拒否する。
+- 組み込み型 `idmagic_mcp_operation` の差分だけを書き込まれたとき、AccessControl は、`invoke` と個別の `user` または `agent` への直接付与を検証し、テナントのモデル発行を要求せずに適用する。
 - **例**：EX-AUTHORIZATION-002-01、EX-AUTHORIZATION-002-02、EX-AUTHORIZATION-002-03、EX-AUTHORIZATION-002-04、EX-AUTHORIZATION-002-05
 
 ### 管理者によるオブジェクトの削除
@@ -56,6 +57,17 @@
 - 一覧が取得上限に達した場合、AccessControl は、ほかの付与が存在し得ることを示す。
 - 対象の外部カタログを取得していない場合、AccessControl は、対象 ID の取得元と入力の必要性を説明し、表示中の既存付与の対象を候補として示す。
 - 追加または取消が失敗した場合、AccessControl は、失敗を表示し、未保存の入力を保持する。
+
+### 管理コンソールでの接続先と操作の割当
+
+#### REQ-AUTHORIZATION-017 管理コンソールは接続先と操作の選択から利用割当を管理する
+
+- 管理者が Agent の利用する接続先を編集するとき、AccessControl は、有効な接続先と登録したツールの表示名を選択肢に示し、モデル、型、関係、タプル、対象 ID の入力を要求しない。
+- 管理者が保存を確定したとき、AccessControl は、選択した Agent の操作割当の追加と削除を REQ-AUTHORIZATION-002 の一つの差分として反映する。
+- 管理者が利用割当を表示するとき、AccessControl は、対象制限と承認の有無、トークンの上限が別に適用されることを示す。
+- 管理者が未保存の差分を編集している間、AccessControl は、追加と取消の対象を表示する。
+- 保存が失敗した場合、AccessControl は、入力を保持し、失敗を表示する。
+- 一覧の上限に達した場合、AccessControl は、打ち切りを表示し、不完全な一覧から取消の差分を保存しない。
 
 ## セキュリティ上の考慮
 

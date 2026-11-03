@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
@@ -36,6 +37,23 @@ func cloneMcpResourceServer(m *domain.McpResourceServer) *domain.McpResourceServ
 	cloned := *m
 	cloned.Scopes = slices.Clone(m.Scopes)
 	cloned.AccessRules = slices.Clone(m.AccessRules)
+	for i := range cloned.AccessRules {
+		rule := &cloned.AccessRules[i]
+		rule.Scopes = slices.Clone(rule.Scopes)
+		rule.TokenExchangeResources = slices.Clone(rule.TokenExchangeResources)
+		rule.Limits = slices.Clone(rule.Limits)
+		for j := range rule.Limits {
+			rule.Limits[j].By = slices.Clone(rule.Limits[j].By)
+		}
+		if rule.Tool != nil {
+			tool := *rule.Tool
+			rule.Tool = &tool
+		}
+		if rule.Condition != nil {
+			condition := *rule.Condition
+			rule.Condition = &condition
+		}
+	}
 	return &cloned
 }
 
@@ -91,6 +109,20 @@ func (r *McpResourceServerRepository) Save(_ context.Context, m *domain.McpResou
 	r.byID[sharedmem.ScopedKey(m.TenantID, m.ID, kernel.DefaultTenantID)] = cloned
 	r.byRes[sharedmem.ScopedKey(m.TenantID, m.Resource, kernel.DefaultTenantID)] = cloned
 	return nil
+}
+
+func (r *McpResourceServerRepository) SaveIfUnchanged(_ context.Context, m *domain.McpResourceServer, expectedUpdatedAt time.Time) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := sharedmem.ScopedKey(m.TenantID, m.ID, kernel.DefaultTenantID)
+	current := r.byID[key]
+	if current == nil || !current.UpdatedAt.Equal(expectedUpdatedAt) {
+		return false, nil
+	}
+	cloned := cloneMcpResourceServer(m)
+	r.byID[key] = cloned
+	r.byRes[sharedmem.ScopedKey(m.TenantID, m.Resource, kernel.DefaultTenantID)] = cloned
+	return true, nil
 }
 
 func (r *McpResourceServerRepository) Delete(_ context.Context, tenantID, resourceServerID string) error {

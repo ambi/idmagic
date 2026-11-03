@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -126,4 +127,23 @@ func (r *McpResourceServerRepository) Delete(ctx context.Context, tenantID, reso
 	return New(r.Pool).DeleteMcpResourceServer(ctx, DeleteMcpResourceServerParams{
 		TenantID: tenantID, ID: resourceServerID,
 	})
+}
+
+func (r *McpResourceServerRepository) SaveIfUnchanged(ctx context.Context, m *domain.McpResourceServer, expectedUpdatedAt time.Time) (bool, error) {
+	scopes, err := json.Marshal(m.Scopes)
+	if err != nil {
+		return false, err
+	}
+	rules := m.AccessRules
+	if rules == nil {
+		rules = []domain.ResourceAccessRule{}
+	}
+	accessRules, err := json.Marshal(rules)
+	if err != nil {
+		return false, err
+	}
+	rows, err := New(r.Pool).UpdateMcpResourceServerIfUnchanged(ctx, UpdateMcpResourceServerIfUnchangedParams{
+		TenantID: m.TenantID, ID: m.ID, Name: m.Name, Scopes: scopes, ClientID: pgtype.Text{String: m.ClientID, Valid: m.ClientID != ""}, AccessRules: accessRules, State: string(m.State), UpdatedAt: m.UpdatedAt, ExpectedUpdatedAt: expectedUpdatedAt,
+	})
+	return rows == 1, err
 }

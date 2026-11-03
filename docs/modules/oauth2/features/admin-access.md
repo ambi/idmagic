@@ -67,12 +67,23 @@
 #### REQ-OAUTH2-064 管理者はリソースサーバーへ評価用のクライアントと規則を設定できる
 
 - 管理者がテナントの機密クライアントの `client_id` と `access_rules` を指定して作成か更新をしたとき、OAuth2 は、それらを保存し、応答に含める。
+- 管理者が `tool` を持つ規則を保存したとき、OAuth2 は、接続先内で一意な128文字以内のツール名、256文字以内の表示名、必要スコープ、対象抽出の整合を検証する。
+- `tool` の名前か表示名が空であるか、ツール名が `:` か `#` を含むか、同じツール名が重複するか、組み込み操作に対象引数があるか、対象別の型と関係を持つツールに対象引数がない場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
+- 従来の規則とツールを持つ規則が同じ対象型と関係へ対応する場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、操作割当を迂回する対応を保存しない。
 - 更新の本文に `client_id` か `access_rules` がないとき、OAuth2 は、その項目を変えない。
 - `client_id` が、テナントにないクライアント、機密でないクライアント、同じテナントの別の登録に束縛済みのクライアントである場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
-- 規則の `resource_type` か `relation` が `^[a-z][a-z0-9_]*$` の形でないか 65 文字以上であるか、`resource_type` と `relation` の組が重複するか、`scopes` が空か登録の `scopes` の部分集合でないか、`requires_approved_operation` を持つ規則に `authorization_detail_type` がないか、規則が 100 件を超える場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
+- 規則の `resource_type` か `relation` が `^[a-z][a-z0-9_]*$` の形でないか 65 文字以上であるか、ツールを持たない規則で `resource_type` と `relation` の組が重複するか、`scopes` が空か登録の `scopes` の部分集合でないか、`requires_approved_operation` を持つ規則に `authorization_detail_type` がないか、規則が 100 件を超える場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
 - 規則の `condition` に `deny_when` と `require_approval_when` のどちらもないか、式が 1 KiB を超えるか、コンパイルできないか、真偽値を返さないか、内包が入れ子であるか、`require_approval_when` に `approval_detail_type` がないか、`approval_detail_type` だけがあるか、`require_approval_when` と `requires_approved_operation` を併せ持つ場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
 - 規則の `condition` を返すとき、OAuth2 は、内容から導いた `version` を含め、本文の `version` を読まない。
 - 規則の `limits` が 9 件以上であるか、`by` が `agent`、`user`、`resource` 以外か重複を含むか、`max_requests` が 1 から 1000000000 の外であるか、`window_seconds` が 1 から 2592000 の外であるか、`by` の集合と `window_seconds` の組が重複する場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
+
+#### REQ-OAUTH2-085 ツールの削除と再登録で古い割当を再有効化しない
+
+- 管理者がツールを新しく登録したとき、OAuth2 は、新しい操作の識別子を発行し、接続先に束縛した不透明な `assignment_resource_id` を返す。
+- 公開中のツールを同名のまま更新したとき、OAuth2 は、操作の識別子を保持する。
+- 管理者がツールを削除した後に同名で再登録したとき、OAuth2 は、新しい操作の識別子を発行し、削除前の割当を新しい操作の許可根拠にしない。
+- 操作の識別子か割当参照を本文に指定されたとき、OAuth2 は、その値を使わず、サーバーが所有する操作の識別を使う。
+- 登録を読んだ後に別の要求が登録を変更か削除した場合、OAuth2 は、409 と `resource_server_conflict` で古い更新を拒否し、操作、割当の識別、メタデータを上書きしない。
 
 ## セキュリティ上の考慮
 

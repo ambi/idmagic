@@ -222,6 +222,18 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 	in := evaluation_http.Request{
 		CorrelationID: record.correlationID, Token: token, Operation: evaluation.Operation, HTU: h.options.Resource.String(),
 	}
+	if evaluation.Operation.ResourceType == "idmagic_mcp_operation" {
+		parameters, err := json.Marshal(message.Arguments)
+		if err != nil {
+			record.outcome = outcomeDenied
+			writeError(w, http.StatusForbidden, message.ID, codeForbidden, "forbidden", nil)
+			return
+		}
+		if message.Arguments == nil {
+			parameters = []byte("{}")
+		}
+		in.OperationParameters = string(parameters)
+	}
 	if len(proof) == 1 {
 		in.DPoPProof = proof[0]
 	}

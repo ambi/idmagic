@@ -141,6 +141,7 @@ type Querier interface {
 	UpdateAgentGuardrailPolicy(ctx context.Context, arg UpdateAgentGuardrailPolicyParams) (int64, error)
 	UpdateAuthorizationRequestPayload(ctx context.Context, arg UpdateAuthorizationRequestPayloadParams) error
 	UpdateClientSecretCredential(ctx context.Context, arg UpdateClientSecretCredentialParams) error
+	UpdateMcpResourceServerIfUnchanged(ctx context.Context, arg UpdateMcpResourceServerIfUnchangedParams) (int64, error)
 	UpsertAgentDelegation(ctx context.Context, arg UpsertAgentDelegationParams) error
 	UpsertAuthorizationDetailType(ctx context.Context, arg UpsertAuthorizationDetailTypeParams) error
 	UpsertClient(ctx context.Context, arg UpsertClientParams) error

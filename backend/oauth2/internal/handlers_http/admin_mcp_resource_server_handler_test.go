@@ -31,9 +31,12 @@ func newAdminMcpResourceServerHandler() *echo.Echo {
 	return newAdminMcpResourceServerHandlerWith(oauth2.NewMemoryModule().ClientRepo)
 }
 
-func newAdminMcpResourceServerHandlerWith(clients oauthports.OAuth2ClientRepository) *echo.Echo {
+func newAdminMcpResourceServerHandlerWith(clients oauthports.OAuth2ClientRepository, supplied ...oauthports.McpResourceServerRepository) *echo.Echo {
 	users := idmanagement.NewMemoryModule().UserRepo
-	servers := oauth2memory.NewMcpResourceServerRepository()
+	var servers oauthports.McpResourceServerRepository = oauth2memory.NewMcpResourceServerRepository()
+	if len(supplied) > 0 {
+		servers = supplied[0]
+	}
 	now := time.Now().UTC()
 	_ = users.Save(context.Background(), &userdomain.User{
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",

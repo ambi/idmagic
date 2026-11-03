@@ -195,6 +195,15 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - **操作**：`read_document` を `d1`、`d2` の順に Envoy へ送る。
 - **結果**：`d1` は資格情報のない要求として上流へ一回届き、`d2` はゲートウェイの 403 と `-32000` になり上流へ届かない。
 
+### 接続先の操作カタログの参照
+
+#### REQ-MCPGATEWAY-010 カタログ参照は登録と割当の判定を通った操作だけを転送する
+
+- `mapping.catalog` が有効な構成では、明示した対応にないツールを呼ばれたとき、McpGateway は、`idmagic_mcp_operation/invoke` とツール名、実際の引数を評価へ送り、許可された要求だけを転送する。
+- カタログを参照する構成では、明示した対応にない `server/discover`、`initialize`、`notifications/initialized`、`ping`、`tools/list` を受けたとき、McpGateway は、`idmagic_mcp_method/access` として評価し、許可された要求だけを転送する。
+- 明示した対応がある要求を受けたとき、McpGateway は、従来の対応を優先する。
+- `mapping.catalog` が省略か偽の構成では、McpGateway は、従来どおり未登録のツールを転送しない。
+
 ## セキュリティ上の考慮
 
 上流へゲートウェイ以外から到達できると、すべての執行を迂回できる。

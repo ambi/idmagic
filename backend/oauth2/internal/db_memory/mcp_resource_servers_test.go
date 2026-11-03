@@ -6,7 +6,40 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/internal/testing_contract"
 )
+
+//spec:covers REQ-OAUTH2-085: メモリの条件付き保存は古い操作を復活させない。
+func TestMcpCatalogCAS(t *testing.T) {
+	testing_contract.RunMcpCatalogCAS(t, NewMcpResourceServerRepository(), "tenant-1", "catalog-cas", time.Now().UTC().Truncate(time.Microsecond))
+}
+
+//spec:covers REQ-OAUTH2-064: 保存または読み取りで得たカタログの編集は、保存前の正本を変えない。
+func TestToolCatalogEditsRequireSave(t *testing.T) {
+	ctx := context.Background()
+	repo := NewMcpResourceServerRepository()
+	server := &domain.McpResourceServer{TenantID: "tenant-1", ID: "catalog", Resource: "https://catalog.example/", AccessRules: []domain.ResourceAccessRule{{Scopes: []string{"read"}, Tool: &domain.ResourceAccessTool{ID: "operation-" + "read_document", Name: "read_document", DisplayName: "閲覧"}}}}
+	if err := repo.Save(ctx, server); err != nil {
+		t.Fatal(err)
+	}
+	server.AccessRules[0].Tool.Name = "delete_document"
+	server.AccessRules[0].Scopes[0] = "write"
+	loaded, err := repo.FindByID(ctx, "tenant-1", "catalog")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.AccessRules[0].Tool.Name != "read_document" || loaded.AccessRules[0].Scopes[0] != "read" {
+		t.Fatal("input changed saved catalog")
+	}
+	loaded.AccessRules[0].Tool.Name = "delete_document"
+	again, err := repo.FindByResource(ctx, "tenant-1", "https://catalog.example/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.AccessRules[0].Tool.Name != "read_document" {
+		t.Fatal("read changed saved catalog")
+	}
+}
 
 func TestMcpResourceServerRepository(t *testing.T) {
 	ctx := context.Background()

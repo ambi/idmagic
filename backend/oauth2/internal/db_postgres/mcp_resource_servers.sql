@@ -32,3 +32,9 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- name: DeleteMcpResourceServer :exec
 DELETE FROM mcp_resource_servers WHERE tenant_id = $1 AND id = $2;
+
+-- name: UpdateMcpResourceServerIfUnchanged :execrows
+UPDATE mcp_resource_servers SET
+  name = sqlc.arg(name), scopes = sqlc.arg(scopes), client_id = sqlc.arg(client_id),
+  access_rules = sqlc.arg(access_rules), state = sqlc.arg(state), updated_at = sqlc.arg(updated_at)
+WHERE tenant_id = sqlc.arg(tenant_id) AND id = sqlc.arg(id) AND updated_at = sqlc.arg(expected_updated_at);

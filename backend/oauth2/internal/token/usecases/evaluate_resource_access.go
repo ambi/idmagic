@@ -164,7 +164,9 @@ func newEvaluationAudit(tokenID string, subject policyports.PrincipalRef, actors
 func evaluateForServer(
 	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, in ResourceAccessRequest, now time.Time,
 ) (ResourceAccessDecision, evaluationAudit, error) {
-	rule, registered := server.RuleFor(in.ResourceType, in.Relation)
+	operation := resolveResourceOperation(server, in)
+	rule, registered := operation.Rule, operation.Registered
+	in = operation.Request
 	if registered && rule.RequiresApprovedOperation && in.OperationKey == "" {
 		return ResourceAccessDecision{}, evaluationAudit{}, ErrOperationKeyRequired
 	}
@@ -206,11 +208,7 @@ func evaluateForServer(
 	if !resolved {
 		return denyResourceAccess(domain.ReasonPrincipalUnresolved), audit, nil
 	}
-	relation, err := deps.Relations.CheckRelation(ctx, policyports.RelationCheck{
-		TenantID: in.TenantID, ResourceType: in.ResourceType, ResourceID: in.ResourceID, Relation: in.Relation,
-		Subject: subject, Actors: actors,
-		GrantedScopes: strings.Fields(token.Scope), RequiredScopes: rule.Scopes,
-	})
+	relation, err := operationPermission(ctx, deps, server, operation, subject, actors, strings.Fields(token.Scope))
 	if err != nil {
 		return ResourceAccessDecision{}, audit, err
 	}

@@ -137,10 +137,13 @@ test('administrator governs a real agent from the console', async () => {
     await setInputValue(view, '#name', '社内文書 MCP')
     await setInputValue(view, '#scopes', state.scope)
     await setInputValue(view, '#client-id', gatewayClientID)
-    await clickButtonByText(view, 'Add evaluation rule')
+    await view.evaluate(
+      `[...document.querySelectorAll('summary')].find(node=>node.textContent==='Add a legacy evaluation rule')?.click()`,
+    )
+    await clickButtonByText(view, 'Add a legacy evaluation rule')
     await setInputValue(view, '#rule-type-0', 'document')
     await setInputValue(view, '#rule-relation-0', 'viewer')
-    await clickButtonByText(view, 'Register')
+    await view.evaluate(`document.querySelector('form button[type="submit"]').click()`)
     await waitForUrl(view, /\/admin\/mcp-resource-servers$/)
 
     // 手順 4：エージェントを登録する。
@@ -152,13 +155,9 @@ test('administrator governs a real agent from the console', async () => {
     const detailURL = view.url
     const agentID = decodeURIComponent(new URL(detailURL).pathname.split('/').pop() ?? '')
 
-    // 手順 5：PEM の公開鍵を貼り、登録済みのスコープを選んでクレデンシャルを作る。
+    // 手順 5：PEM の公開鍵を貼り、登録済みの認証上限を使ってクレデンシャルを作る。
     await view.navigate(`${detailURL}/credentials`)
     await setInputValue(view, '#agent-public-key', state.public_key)
-    await waitForText(view, state.scope)
-    await view.evaluate(
-      `[...document.querySelectorAll('label')].find((node) => node.textContent?.includes(${JSON.stringify(state.scope)}))?.querySelector('input')?.click()`,
-    )
     await clickEnabledButtonByText(view, 'Create and bind')
     await waitForText(view, 'The credential has been added.')
     const agentClientID = String(
@@ -169,7 +168,9 @@ test('administrator governs a real agent from the console', async () => {
     // 手順 6：対象と Agent の選択で付与する。ID は入力しない。
     await view.navigate(detailURL)
     await waitForPage(view, 'admin-agent-detail')
-    await clickLinkByText(view, 'Agent access')
+    await clickLinkByText(view, 'Resource connections')
+    await waitForPage(view, 'admin-agent-resources')
+    await clickLinkByText(view, 'Resource assignments and diagnostics')
     await waitForPage(view, 'admin-agent-access')
     await clickLinkByText(view, 'Add access')
     await waitForPage(view, 'admin-agent-access-create')
@@ -188,7 +189,7 @@ test('administrator governs a real agent from the console', async () => {
     await waitForText(view, state.public_document)
 
     // 手順 7：デモの画面から接続し、画面の結果を確かめる。
-    await view.navigate(`${demoOrigin}/`)
+    await view.navigate(`${demoOrigin}/?example=documents`)
     await waitForText(view, '手順 1')
     await clickButtonByText(view, '統制なしで 3 つの依頼を実行')
     await waitForText(view, '給与テーブル', 15_000)

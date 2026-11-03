@@ -7,6 +7,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // TupleWriteOutcome は適用件数と適用後の整合トークン。
@@ -26,13 +27,29 @@ func WriteRelationTuples(
 	write ports.TupleWrite,
 	now time.Time,
 ) (TupleWriteOutcome, error) {
-	model, err := loadModel(ctx, d, tenantID, 0)
+	// 組み込み型だけの差分は利用者のモデルを不要にする。混在する通常型は従来どおり公開モデルで検証する。
+	onlyOperations := len(write.Writes)+len(write.Deletes)+len(write.DeleteObjects) > 0
+	for _, tuple := range append(append([]domain.RelationTuple{}, write.Writes...), write.Deletes...) {
+		onlyOperations = onlyOperations && tuple.Resource.Type == spec.ResourceTypeMcpOperation
+	}
+	for _, object := range write.DeleteObjects {
+		onlyOperations = onlyOperations && object.Type == spec.ResourceTypeMcpOperation
+	}
+	modelType := ""
+	if onlyOperations {
+		modelType = spec.ResourceTypeMcpOperation
+	}
+	model, err := modelForResource(ctx, d, tenantID, modelType)
 	if err != nil {
 		return TupleWriteOutcome{}, err
 	}
 	seen := map[string]struct{}{}
 	for _, t := range write.Writes {
-		if err := model.ValidateTuple(t); err != nil {
+		tupleModel := model
+		if t.Resource.Type == spec.ResourceTypeMcpOperation {
+			tupleModel = domain.McpOperationModel(tenantID)
+		}
+		if err := tupleModel.ValidateTuple(t); err != nil {
 			return TupleWriteOutcome{}, err
 		}
 		seen[t.Key()] = struct{}{}

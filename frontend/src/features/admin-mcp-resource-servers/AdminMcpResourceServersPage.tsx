@@ -106,12 +106,16 @@ export function AdminMcpResourceServersPage({
                     render={
                       <a
                         href={tenantURL(
-                          `/admin/authorization/access?server=${encodeURIComponent(item.id)}`,
+                          (item.access_rules ?? []).some((rule) => rule.tool)
+                            ? `/admin/mcp-resource-servers/${encodeURIComponent(item.id)}/access`
+                            : `/admin/authorization/access?server=${encodeURIComponent(item.id)}`,
                         )}
                       />
                     }
                   >
-                    {access.authorization}
+                    {(item.access_rules ?? []).some((rule) => rule.tool)
+                      ? dict.assignments
+                      : access.authorization}
                   </Button>
                   <Button
                     variant="outline"

@@ -24,6 +24,11 @@ func PutAuthorizationModel(
 	resourceTypes []domain.ResourceTypeDefinition,
 	now time.Time,
 ) (PublishedModel, error) {
+	for _, resourceType := range resourceTypes {
+		if resourceType.Name == spec.ResourceTypeMcpOperation {
+			return PublishedModel{}, fmt.Errorf("%w: reserved resource type", domain.ErrModelInvalid)
+		}
+	}
 	id, err := spec.NewUUIDv4()
 	if err != nil {
 		return PublishedModel{}, err
@@ -76,4 +81,11 @@ func loadModel(ctx context.Context, d Deps, tenantID string, version int) (*doma
 		return nil, fmt.Errorf("%w for tenant", domain.ErrModelNotFound)
 	}
 	return model, nil
+}
+
+func modelForResource(ctx context.Context, d Deps, tenantID, resourceType string) (*domain.AuthorizationModel, error) {
+	if resourceType == spec.ResourceTypeMcpOperation {
+		return domain.McpOperationModel(tenantID), nil
+	}
+	return loadModel(ctx, d, tenantID, 0)
 }

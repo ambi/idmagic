@@ -21,6 +21,7 @@ import { AgentActionConfirmation } from './AgentActionConfirmation'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { parsePublicKey } from './publicKey'
 import { credentialFlowDictionary } from './credentialFlow.i18n'
+import { agentResourcesDictionary } from './agentResources.i18n'
 
 // CIBA の承認の依頼に要るスコープ。
 const APPROVAL_SCOPES = ['openid', 'profile']
@@ -38,12 +39,19 @@ export function AdminAgentCredentialsPage({
 }) {
   const t = useDictionary(adminAgentsDictionary)
   const flow = useDictionary(credentialFlowDictionary)
+  const resources = useDictionary(agentResourcesDictionary)
   const [method, setMethod] = useState<'create' | 'existing'>('create')
   const [createdClient, setCreatedClient] = useState<{ id: string; bound: boolean } | null>(null)
   const [clientIDs, setClientIDs] = useState(agent.client_ids)
   const [clientID, setClientID] = useState('')
   const [publicKey, setPublicKey] = useState('')
-  const [selectedScopes, setSelectedScopes] = useState<string[]>([])
+  const [selectedScopes, setSelectedScopes] = useState<string[]>([
+    ...new Set(
+      resourceServers
+        .filter((server) => server.state === 'Active')
+        .flatMap((server) => server.scopes),
+    ),
+  ])
   const [allowApproval, setAllowApproval] = useState(true)
   const [otherScopes, setOtherScopes] = useState('')
   const [removing, setRemoving] = useState<string | null>(null)
@@ -245,59 +253,63 @@ export function AdminAgentCredentialsPage({
                 className="rounded-md border border-slate-300 bg-white p-2 font-mono text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
               />
             </div>
-            <fieldset className="grid gap-2">
-              <legend className="text-sm font-medium">{t.keyScopeLabel}</legend>
-              <p className="text-xs leading-5 text-slate-500">{t.keyScopeHelp}</p>
-              {resourceServers.flatMap((server) =>
-                server.scopes.map((name) => (
-                  <label key={`${server.id}:${name}`} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={selectedScopes.includes(name)}
-                      disabled={busy || killed}
-                      onChange={(event) =>
-                        setSelectedScopes((current) =>
-                          event.target.checked
-                            ? [...current, name]
-                            : current.filter((item) => item !== name),
-                        )
-                      }
-                    />
-                    <code className="text-xs">{name}</code>
-                    <span className="text-slate-500">{server.name}</span>
-                  </label>
-                )),
-              )}
-              {resourceServers.length === 0 ? (
-                <p className="text-sm text-slate-600">
-                  {t.keyScopeNoServers}{' '}
-                  <a className="underline" href={tenantURL('/admin/mcp-resource-servers/new')}>
-                    {t.keyScopeRegisterServer}
-                  </a>
-                </p>
-              ) : null}
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  id="agent-allow-approval"
-                  type="checkbox"
-                  checked={allowApproval}
-                  disabled={busy || killed}
-                  onChange={(event) => setAllowApproval(event.target.checked)}
-                />
-                {t.keyScopeAllowApproval}
-              </label>
-              <details className="text-sm">
-                <summary className="cursor-pointer text-slate-600">{t.keyScopeOther}</summary>
-                <Input
-                  id="agent-key-scope"
-                  aria-label={t.keyScopeOther}
-                  className="mt-2"
-                  value={otherScopes}
-                  onChange={(event) => setOtherScopes(event.target.value)}
-                  disabled={busy || killed}
-                />
-              </details>
-            </fieldset>
+            <p className="text-sm text-slate-600">{resources.ceiling}</p>
+            <details>
+              <summary className="cursor-pointer text-sm">{resources.ceilingAdvanced}</summary>
+              <fieldset className="mt-3 grid gap-2">
+                <legend className="text-sm font-medium">{t.keyScopeLabel}</legend>
+                <p className="text-xs leading-5 text-slate-500">{t.keyScopeHelp}</p>
+                {resourceServers.flatMap((server) =>
+                  server.scopes.map((name) => (
+                    <label key={`${server.id}:${name}`} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedScopes.includes(name)}
+                        disabled={busy || killed}
+                        onChange={(event) =>
+                          setSelectedScopes((current) =>
+                            event.target.checked
+                              ? [...current, name]
+                              : current.filter((item) => item !== name),
+                          )
+                        }
+                      />
+                      <code className="text-xs">{name}</code>
+                      <span className="text-slate-500">{server.name}</span>
+                    </label>
+                  )),
+                )}
+                {resourceServers.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    {t.keyScopeNoServers}{' '}
+                    <a className="underline" href={tenantURL('/admin/mcp-resource-servers/new')}>
+                      {t.keyScopeRegisterServer}
+                    </a>
+                  </p>
+                ) : null}
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    id="agent-allow-approval"
+                    type="checkbox"
+                    checked={allowApproval}
+                    disabled={busy || killed}
+                    onChange={(event) => setAllowApproval(event.target.checked)}
+                  />
+                  {t.keyScopeAllowApproval}
+                </label>
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-slate-600">{t.keyScopeOther}</summary>
+                  <Input
+                    id="agent-key-scope"
+                    aria-label={t.keyScopeOther}
+                    className="mt-2"
+                    value={otherScopes}
+                    onChange={(event) => setOtherScopes(event.target.value)}
+                    disabled={busy || killed}
+                  />
+                </details>
+              </fieldset>
+            </details>
             <div className="flex justify-end">
               <Button
                 type="submit"

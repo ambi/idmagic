@@ -59,7 +59,7 @@ func checkAccess(ctx context.Context, d Deps, input CheckAccessInput, now time.T
 	if d.Authorizer == nil {
 		return CheckAccessResult{}, ErrAuthorizerUnavailable
 	}
-	model, err := loadModel(ctx, d, input.TenantID, 0)
+	model, err := modelForResource(ctx, d, input.TenantID, input.Resource.Type)
 	if err != nil {
 		return CheckAccessResult{}, err
 	}
@@ -171,7 +171,7 @@ func ListAccessibleResources(ctx context.Context, d Deps, input ListAccessibleRe
 		if err != nil {
 			return ListedResources{}, err
 		}
-		model, err := loadModel(ctx, d, input.TenantID, 0)
+		model, err := modelForResource(ctx, d, input.TenantID, input.ResourceType)
 		if err != nil {
 			return ListedResources{}, err
 		}

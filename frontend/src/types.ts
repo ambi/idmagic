@@ -604,6 +604,13 @@ export type ResourceAccessLimit = {
 }
 
 export type ResourceAccessRule = {
+  tool?: {
+    name: string
+    display_name: string
+    resource_id_argument?: string
+    id?: string
+    assignment_resource_id?: string
+  }
   resource_type: string
   relation: string
   scopes: string[]

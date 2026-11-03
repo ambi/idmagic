@@ -18,9 +18,10 @@ const maxResponseBytes = 1 << 20
 
 // Request は一回の評価の入力である。
 type Request struct {
-	CorrelationID string
-	Token         string
-	Operation     domain.Operation
+	CorrelationID       string
+	Token               string
+	Operation           domain.Operation
+	OperationParameters string
 	// DPoPProof があれば htm と htu を添える。
 	DPoPProof string
 	HTU       string
@@ -63,6 +64,9 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 	}
 	if in.TokenExchangeResource != "" {
 		form.Set("token_exchange_resource", in.TokenExchangeResource)
+	}
+	if in.OperationParameters != "" {
+		form.Set("operation_parameters", in.OperationParameters)
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.EvaluateURL, strings.NewReader(form.Encode()))
 	if err != nil {

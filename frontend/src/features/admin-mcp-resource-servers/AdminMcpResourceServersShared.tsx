@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/button'
 import { Label } from '../../components/ui/label'
 import { Input } from '../../components/ui/input'
 import type { McpResourceServer, ResourceAccessRule } from '../../types'
+import { MCP_OPERATION_TYPE } from '../../lib/mcpAccess'
 import type { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
 
 type Dictionary = (typeof adminMcpResourceServersDictionary)['en']
@@ -100,24 +101,89 @@ function AccessRuleRows({
         // 行は内容で識別できず、並べ替えもない。
         // biome-ignore lint/suspicious/noArrayIndexKey: 位置だけが行を識別する。
         <div key={index} className="flex flex-wrap items-end gap-3 rounded-md border p-3">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`rule-type-${index}`}>{t.ruleResourceType}</Label>
-            <Input
-              id={`rule-type-${index}`}
-              value={rule.resource_type}
-              placeholder="document"
-              onChange={(event) => update(index, { resource_type: event.target.value })}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`rule-relation-${index}`}>{t.ruleRelation}</Label>
-            <Input
-              id={`rule-relation-${index}`}
-              value={rule.relation}
-              placeholder="viewer"
-              onChange={(event) => update(index, { relation: event.target.value })}
-            />
-          </div>
+          {rule.tool ? (
+            <>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={`tool-name-${index}`}>{t.toolName}</Label>
+                <Input
+                  id={`tool-name-${index}`}
+                  value={rule.tool.name}
+                  onChange={(event) =>
+                    update(index, { tool: { ...rule.tool!, name: event.target.value } })
+                  }
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={`tool-label-${index}`}>{t.toolDisplayName}</Label>
+                <Input
+                  id={`tool-label-${index}`}
+                  value={rule.tool.display_name}
+                  onChange={(event) =>
+                    update(index, { tool: { ...rule.tool!, display_name: event.target.value } })
+                  }
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={rule.resource_type !== MCP_OPERATION_TYPE}
+                  onChange={(event) =>
+                    update(
+                      index,
+                      event.target.checked
+                        ? {
+                            resource_type: 'document',
+                            relation: 'viewer',
+                            tool: { ...rule.tool!, resource_id_argument: 'document_id' },
+                          }
+                        : {
+                            resource_type: MCP_OPERATION_TYPE,
+                            relation: 'invoke',
+                            tool: { name: rule.tool!.name, display_name: rule.tool!.display_name },
+                          },
+                    )
+                  }
+                />
+                {t.toolTarget}
+              </label>
+              {rule.resource_type !== MCP_OPERATION_TYPE ? (
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor={`tool-argument-${index}`}>{t.toolArgument}</Label>
+                  <Input
+                    id={`tool-argument-${index}`}
+                    value={rule.tool.resource_id_argument ?? ''}
+                    onChange={(event) =>
+                      update(index, {
+                        tool: { ...rule.tool!, resource_id_argument: event.target.value },
+                      })
+                    }
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          {!rule.tool || rule.resource_type !== MCP_OPERATION_TYPE ? (
+            <>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={`rule-type-${index}`}>{t.ruleResourceType}</Label>
+                <Input
+                  id={`rule-type-${index}`}
+                  value={rule.resource_type}
+                  placeholder="document"
+                  onChange={(event) => update(index, { resource_type: event.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={`rule-relation-${index}`}>{t.ruleRelation}</Label>
+                <Input
+                  id={`rule-relation-${index}`}
+                  value={rule.relation}
+                  placeholder="viewer"
+                  onChange={(event) => update(index, { relation: event.target.value })}
+                />
+              </div>
+            </>
+          ) : null}
           <fieldset className="flex flex-col gap-1">
             <legend className="text-sm font-medium">{t.ruleScopes}</legend>
             {scopes.length === 0 ? (
@@ -153,10 +219,30 @@ function AccessRuleRows({
         <Button
           type="button"
           variant="outline"
-          onClick={() => save([...rules, { resource_type: '', relation: '', scopes }])}
+          onClick={() =>
+            save([
+              ...rules,
+              {
+                resource_type: MCP_OPERATION_TYPE,
+                relation: 'invoke',
+                scopes,
+                tool: { name: '', display_name: '' },
+              },
+            ])
+          }
         >
           {t.ruleAdd}
         </Button>
+        <details className="mt-3">
+          <summary className="cursor-pointer text-sm">{t.legacyRuleAdd}</summary>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => save([...rules, { resource_type: '', relation: '', scopes }])}
+          >
+            {t.legacyRuleAdd}
+          </Button>
+        </details>
       </div>
     </div>
   )

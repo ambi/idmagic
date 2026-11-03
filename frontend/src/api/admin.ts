@@ -585,6 +585,10 @@ export async function createMcpResourceServer(
   return request('/api/admin/v1/mcp-resource-servers', adminRequest(csrfToken, 'POST', input))
 }
 
+export async function getMcpResourceServer(resourceServerID: string): Promise<McpResourceServer> {
+  return request(`/api/admin/v1/mcp-resource-servers/${encodeURIComponent(resourceServerID)}`)
+}
+
 export async function updateMcpResourceServer(
   csrfToken: string,
   resourceServerID: string,

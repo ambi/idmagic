@@ -151,6 +151,43 @@ func (q *Queries) ListMcpResourceServersByTenant(ctx context.Context, tenantID s
 	return items, nil
 }
 
+const updateMcpResourceServerIfUnchanged = `-- name: UpdateMcpResourceServerIfUnchanged :execrows
+UPDATE mcp_resource_servers SET
+  name = $1, scopes = $2, client_id = $3,
+  access_rules = $4, state = $5, updated_at = $6
+WHERE tenant_id = $7 AND id = $8 AND updated_at = $9
+`
+
+type UpdateMcpResourceServerIfUnchangedParams struct {
+	Name              string
+	Scopes            []byte
+	ClientID          pgtype.Text
+	AccessRules       []byte
+	State             string
+	UpdatedAt         time.Time
+	TenantID          string
+	ID                string
+	ExpectedUpdatedAt time.Time
+}
+
+func (q *Queries) UpdateMcpResourceServerIfUnchanged(ctx context.Context, arg UpdateMcpResourceServerIfUnchangedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateMcpResourceServerIfUnchanged,
+		arg.Name,
+		arg.Scopes,
+		arg.ClientID,
+		arg.AccessRules,
+		arg.State,
+		arg.UpdatedAt,
+		arg.TenantID,
+		arg.ID,
+		arg.ExpectedUpdatedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const upsertMcpResourceServer = `-- name: UpsertMcpResourceServer :exec
 INSERT INTO mcp_resource_servers (tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)

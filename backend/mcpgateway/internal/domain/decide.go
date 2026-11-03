@@ -21,6 +21,7 @@ type OperationRule struct {
 
 // Mapping はツールと方法から操作への対応である。
 type Mapping struct {
+	Catalog bool
 	Methods map[string]OperationRule
 	Tools   map[string]OperationRule
 }
@@ -61,6 +62,9 @@ func Decide(message Message, mapping Mapping) Evaluation {
 	if message.Method != MethodToolsCall {
 		rule, ok := mapping.Methods[message.Method]
 		if !ok {
+			if mapping.Catalog && (message.Method == "server/discover" || message.Method == "initialize" || message.Method == "notifications/initialized" || message.Method == "ping" || message.Method == "tools/list") {
+				return Evaluation{Kind: EvaluateAndForward, Operation: Operation{ResourceType: "idmagic_mcp_method", Relation: "access", ResourceID: message.Method}}
+			}
 			return Evaluation{Kind: MethodNotFound, Reason: "method_not_mapped"}
 		}
 		return Evaluation{Kind: EvaluateAndForward, Operation: rule.operation(rule.ResourceID)}
@@ -69,6 +73,9 @@ func Decide(message Message, mapping Mapping) Evaluation {
 	if !ok {
 		if len([]rune(message.ToolName)) > maxEvaluatedToolName {
 			return Evaluation{Kind: DenyWithoutEvaluation, ToolLabel: UnmappedTool, Reason: "tool_name_too_long"}
+		}
+		if mapping.Catalog {
+			return Evaluation{Kind: EvaluateAndForward, ToolLabel: UnmappedTool, Operation: Operation{ResourceType: "idmagic_mcp_operation", Relation: "invoke", ResourceID: message.ToolName}}
 		}
 		return Evaluation{
 			Kind:      EvaluateForAuditOnly,

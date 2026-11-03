@@ -52,7 +52,7 @@ type readDocumentOutput struct {
 	Title string `json:"title"`
 }
 
-func newMcpGatewayFixture(t *testing.T) *mcpGatewayFixture {
+func newMcpGatewayFixture(t *testing.T, catalog ...bool) *mcpGatewayFixture {
 	t.Helper()
 	f := &mcpGatewayFixture{resourceAccessFixture: newResourceAccessFixture(t, "A1"), audit: &bytes.Buffer{}}
 	f.grantD1(t)
@@ -85,6 +85,15 @@ func newMcpGatewayFixture(t *testing.T) *mcpGatewayFixture {
 		}
 		return path
 	}
+	mapping := `  methods:
+    server/discover: { resource_type: document, relation: viewer, resource_id: d1 }
+    tools/list: { resource_type: document, relation: viewer, resource_id: d1 }
+  tools:
+    read_document: { resource_type: document, relation: viewer, resource_id_argument: document_id }
+`
+	if len(catalog) > 0 && catalog[0] {
+		mapping = "  catalog: true\n"
+	}
 	config := write("config.yaml", fmt.Appendf(nil, `listen: 127.0.0.1:0
 resource: %s
 upstream: %s/
@@ -94,14 +103,9 @@ idmagic:
   client_id: %s
   client_secret_file: %s
 mapping:
-  methods:
-    server/discover: { resource_type: document, relation: viewer, resource_id: d1 }
-    tools/list: { resource_type: document, relation: viewer, resource_id: d1 }
-  tools:
-    read_document: { resource_type: document, relation: viewer, resource_id_argument: document_id }
-`, agentRevocationResource, upstream.URL, f.idmagic.URL,
+%s`, agentRevocationResource, upstream.URL, f.idmagic.URL,
 		write("ca.pem", pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: f.idmagic.Certificate().Raw})),
-		evalResourceServerClient, write("secret", []byte(evalResourceServerSecret+"\n"))))
+		evalResourceServerClient, write("secret", []byte(evalResourceServerSecret+"\n")), mapping))
 	gateway, err := mcpgateway.Load(config, f.audit)
 	if err != nil {
 		t.Fatal(err)

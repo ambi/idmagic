@@ -53,6 +53,9 @@ func (r *fakeMcpResourceServerRepo) Save(context.Context, *domain.McpResourceSer
 	return nil
 }
 func (r *fakeMcpResourceServerRepo) Delete(context.Context, string, string) error { return nil }
+func (r *fakeMcpResourceServerRepo) SaveIfUnchanged(context.Context, *domain.McpResourceServer, time.Time) (bool, error) {
+	return false, nil
+}
 
 var _ ports.McpResourceServerRepository = (*fakeMcpResourceServerRepo)(nil)
 

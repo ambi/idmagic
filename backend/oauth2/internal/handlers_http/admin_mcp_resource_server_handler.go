@@ -32,6 +32,15 @@ func toMcpResourceServerResponse(m *oauthdomain.McpResourceServer) map[string]an
 	if rules == nil {
 		rules = []oauthdomain.ResourceAccessRule{}
 	}
+	// 保存表現のキー規約を画面へ持ち出さず、割当先を不透明な参照として返す。
+	rules = slices.Clone(rules)
+	for i := range rules {
+		if rules[i].Tool != nil {
+			tool := *rules[i].Tool
+			tool.AssignmentResourceID = m.OperationResourceID(rules[i])
+			rules[i].Tool = &tool
+		}
+	}
 	response := map[string]any{
 		"tenant_id":    m.TenantID,
 		"id":           m.ID,
@@ -118,7 +127,10 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 	if req.ClientID != nil {
 		m.ClientID = *req.ClientID
 	}
-	if err := d.saveValidatedMcpResourceServer(c, m); err != nil {
+	if err := prepareMcpToolIDs(m.AccessRules, nil); err != nil {
+		return err
+	}
+	if err := d.saveValidatedMcpResourceServer(c, m, nil); err != nil {
 		return err
 	}
 	return support.NoStoreJSON(c, http.StatusCreated, toMcpResourceServerResponse(m))
@@ -144,6 +156,7 @@ func (d Deps) handleUpdateAdminMcpResourceServer(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	// resource (canonical URI) は不変 — 発行済みトークンの aud 意味が変わるため更新不可。
+	expectedUpdatedAt := existing.UpdatedAt
 	if req.Name != "" {
 		existing.Name = req.Name
 	}
@@ -154,16 +167,49 @@ func (d Deps) handleUpdateAdminMcpResourceServer(c *echo.Context) error {
 		existing.ClientID = *req.ClientID
 	}
 	if req.AccessRules != nil {
+		if err := prepareMcpToolIDs(req.AccessRules, existing.AccessRules); err != nil {
+			return err
+		}
 		existing.AccessRules = req.AccessRules
 	}
 	if req.State != "" {
 		existing.State = req.State
 	}
-	existing.UpdatedAt = time.Now().UTC()
-	if err := d.saveValidatedMcpResourceServer(c, existing); err != nil {
+	existing.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
+	if !existing.UpdatedAt.After(expectedUpdatedAt) {
+		existing.UpdatedAt = expectedUpdatedAt.Add(time.Microsecond)
+	}
+	if err := d.saveValidatedMcpResourceServer(c, existing, &expectedUpdatedAt); err != nil {
 		return err
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toMcpResourceServerResponse(existing))
+}
+
+// 同名の公開中ツールは識別を保つ。削除・改名後の再登録には必ず新しい識別を発行し、
+// 古い割当を再有効化しない。本文の ID と割当参照は信頼しない。
+func prepareMcpToolIDs(rules, previous []oauthdomain.ResourceAccessRule) error {
+	ids := map[string]string{}
+	for _, rule := range previous {
+		if rule.Tool != nil {
+			ids[rule.Tool.Name] = rule.Tool.ID
+		}
+	}
+	for i := range rules {
+		if rules[i].Tool == nil {
+			continue
+		}
+		rules[i].Tool.AssignmentResourceID = ""
+		id := ids[rules[i].Tool.Name]
+		if id == "" {
+			var err error
+			id, err = spec.NewUUIDv4()
+			if err != nil {
+				return err
+			}
+		}
+		rules[i].Tool.ID = id
+	}
+	return nil
 }
 
 func (d Deps) handleDeleteAdminMcpResourceServer(c *echo.Context) error {
@@ -180,7 +226,7 @@ func (d Deps) handleDeleteAdminMcpResourceServer(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (d Deps) saveValidatedMcpResourceServer(c *echo.Context, m *oauthdomain.McpResourceServer) error {
+func (d Deps) saveValidatedMcpResourceServer(c *echo.Context, m *oauthdomain.McpResourceServer, expectedUpdatedAt *time.Time) error {
 	if err := m.Validate(); err != nil {
 		_ = support.WriteProblem(c, http.StatusBadRequest, "invalid_resource_server", err.Error())
 		return support.ErrResponseWritten
@@ -191,8 +237,16 @@ func (d Deps) saveValidatedMcpResourceServer(c *echo.Context, m *oauthdomain.Mcp
 		_ = support.WriteProblem(c, http.StatusBadRequest, "invalid_resource_server", problem)
 		return support.ErrResponseWritten
 	}
-	if err := d.McpResourceServerRepo.Save(c.Request().Context(), m); err != nil {
+	if expectedUpdatedAt == nil {
+		return d.McpResourceServerRepo.Save(c.Request().Context(), m)
+	}
+	saved, err := d.McpResourceServerRepo.SaveIfUnchanged(c.Request().Context(), m, *expectedUpdatedAt)
+	if err != nil {
 		return err
+	}
+	if !saved {
+		_ = support.WriteProblem(c, http.StatusConflict, "resource_server_conflict", "The resource server changed. Reload and retry.")
+		return support.ErrResponseWritten
 	}
 	return nil
 }

@@ -1230,8 +1230,28 @@ model ResourceAccessLimit {
 }
 
 
+@doc("接続先で公開する MCP ツールと表示名。対象別の規則では対象 ID を読む引数を宣言する。")
+model ResourceAccessTool {
+  @doc("サーバーが発行する操作の識別子。入力された値は使わず、削除後の再登録には新しい値を発行する。")
+  id?: string;
+  @doc("応答に含む不透明な割当先の参照。入力された値は使わない。")
+  assignment_resource_id?: string;
+  @pattern("^[^:#]+$")
+  @minLength(1)
+  @maxLength(128)
+  name: string;
+  @minLength(1)
+  @maxLength(256)
+  display_name: string;
+  @minLength(1)
+  @maxLength(128)
+  resource_id_argument?: string;
+}
+
 @doc("リソースサーバーが評価を求められる操作の規則。登録にない操作は不許可になる。")
 model ResourceAccessRule {
+  @doc("MCP ツールとの対応。指定した操作は接続先ごとの利用割当を必須にし、対象の型と関係があれば併せて判定する。")
+  tool?: ResourceAccessTool;
   @pattern("^[a-z][a-z0-9_]*$")
   @maxLength(64)
   resource_type: string;
@@ -2333,6 +2353,9 @@ model ConsentNotFoundError is ProblemDetails;
 
 @doc("同じ `resource` が、このテナントの MCP のリソースサーバーとしてすでに登録されている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:resource_exists` である。")
 model McpResourceServerExistsError is ProblemDetails;
+
+@doc("読み取り後に接続先が変更され、古い更新を保存できない。")
+model McpResourceServerConflictError is ProblemDetails;
 
 
 @doc("ガードレールの超過の扱い。`deny` は拒否し、`require_approval` は Agent の所有者の承認へ降格する。")

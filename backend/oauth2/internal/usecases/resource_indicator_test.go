@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
@@ -42,6 +43,9 @@ func (r *fakeMcpResourceServerRepo) Save(context.Context, *domain.McpResourceSer
 }
 
 func (r *fakeMcpResourceServerRepo) Delete(context.Context, string, string) error { return nil }
+func (r *fakeMcpResourceServerRepo) SaveIfUnchanged(context.Context, *domain.McpResourceServer, time.Time) (bool, error) {
+	return false, nil
+}
 
 var _ ports.McpResourceServerRepository = (*fakeMcpResourceServerRepo)(nil)
 

@@ -42,10 +42,11 @@ const (
 const maxTokenExchangeResources = 8
 
 type ResourceAccessRule struct {
-	ResourceType            string   `json:"resource_type"`
-	Relation                string   `json:"relation"`
-	Scopes                  []string `json:"scopes"`
-	AuthorizationDetailType string   `json:"authorization_detail_type,omitempty"`
+	Tool                    *ResourceAccessTool `json:"tool,omitempty"`
+	ResourceType            string              `json:"resource_type"`
+	Relation                string              `json:"relation"`
+	Scopes                  []string            `json:"scopes"`
+	AuthorizationDetailType string              `json:"authorization_detail_type,omitempty"`
 	// RequiresApprovedOperation は、人が承認した一回の操作だけを許可する (REQ-OAUTH2-065)。
 	RequiresApprovedOperation bool `json:"requires_approved_operation,omitempty"`
 	// Condition は、ほかの制約を満たす操作の結果を分ける。
@@ -79,7 +80,7 @@ func (r ResourceAccessRule) PermitsDetails(details []spec.AuthorizationDetail, r
 // RuleFor は型と関係の組に一致する規則を返す。
 func (m McpResourceServer) RuleFor(resourceType, relation string) (ResourceAccessRule, bool) {
 	for _, rule := range m.AccessRules {
-		if rule.ResourceType == resourceType && rule.Relation == relation {
+		if rule.Tool == nil && rule.ResourceType == resourceType && rule.Relation == relation {
 			return rule, true
 		}
 	}
@@ -90,12 +91,28 @@ func (m McpResourceServer) validateAccessRules() error {
 	if len(m.AccessRules) > MaxResourceAccessRules {
 		return fmt.Errorf("access_rules must not exceed %d", MaxResourceAccessRules)
 	}
-	seen := make(map[[2]string]struct{}, len(m.AccessRules))
+	seen := make(map[[3]string]struct{}, len(m.AccessRules))
+	toolTargets := make(map[[2]string]bool)
 	for _, rule := range m.AccessRules {
 		if !validResourceAccessName(rule.ResourceType) || !validResourceAccessName(rule.Relation) {
 			return errors.New("access_rules resource_type and relation must match ^[a-z][a-z0-9_]*$ within 64 characters")
 		}
-		key := [2]string{rule.ResourceType, rule.Relation}
+		key := [3]string{"legacy", rule.ResourceType, rule.Relation}
+		switch {
+		case rule.Tool != nil:
+			if err := rule.validateTool(); err != nil {
+				return err
+			}
+			key = [3]string{"tool", rule.Tool.Name, ""}
+			if _, overlap := seen[[3]string{"legacy", rule.ResourceType, rule.Relation}]; overlap {
+				return errors.New("legacy and tool rules must not share a resource type and relation")
+			}
+			toolTargets[[2]string{rule.ResourceType, rule.Relation}] = true
+		case rule.ResourceType == spec.ResourceTypeMcpOperation:
+			return errors.New("built-in operations require a tool")
+		case toolTargets[[2]string{rule.ResourceType, rule.Relation}]:
+			return errors.New("legacy and tool rules must not share a resource type and relation")
+		}
 		if _, duplicate := seen[key]; duplicate {
 			return errors.New("access_rules must not repeat a resource_type and relation pair")
 		}

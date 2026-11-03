@@ -470,6 +470,7 @@ func (d *demo) pollApproval(ctx context.Context) (map[string]any, error) {
 }
 
 type connectInput struct {
+	Catalog         bool   `json:"catalog"`
 	AgentClientID   string `json:"agent_client_id"`
 	GatewayClientID string `json:"gateway_client_id"`
 	GatewaySecret   string `json:"gateway_client_secret"`
@@ -487,6 +488,10 @@ func (d *demo) connect(ctx context.Context, input connectInput) ([]step, error) 
 		return nil, err
 	}
 	configFile := filepath.Join(d.workDir, "gateway.yaml")
+	mapping := "  tools:\n    read_document: { resource_type: document, relation: viewer, resource_id_argument: document_id }\n"
+	if input.Catalog {
+		mapping = "  catalog: true\n"
+	}
 	config := fmt.Sprintf(`listen: 127.0.0.1:0
 resource: %s
 upstream: %s
@@ -496,9 +501,7 @@ idmagic:
   client_id: %q
   client_secret_file: %s
 mapping:
-  tools:
-    read_document: { resource_type: document, relation: viewer, resource_id_argument: document_id }
-`, gatewayResource, d.upstreamURL, d.proxyURL, d.caFile, input.GatewayClientID, secretFile)
+%s`, gatewayResource, d.upstreamURL, d.proxyURL, d.caFile, input.GatewayClientID, secretFile, mapping)
 	if err := os.WriteFile(configFile, []byte(config), 0o600); err != nil {
 		return nil, err
 	}

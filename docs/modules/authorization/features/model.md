@@ -30,6 +30,7 @@
 - 管理者が認可モデルを登録したとき、AccessControl は、テナントの中で単調に増える新しいバージョンを作り、以前のバージョンを書き換えず、整合トークンを返し、`AuthorizationModelPublished` を発行する。
 - 管理者が認可モデルを取得したとき、AccessControl は、最新のバージョンを返す。
 - 宣言していない型か関係を参照する定義、循環する書き換えの規則、`^[a-z][a-z0-9_]*$` の形でないか 65 文字以上の型名か関係名を指定された場合、AccessControl は、422 と `authorization_model_invalid` で拒否し、バージョンを作らない。
+- 組み込み型 `idmagic_mcp_operation` を含むモデルを登録された場合、AccessControl は、422 と `authorization_model_invalid` で拒否し、組み込みの操作割当の定義を変えない。
 - テナントに認可モデルを登録していない間、管理者が認可モデルを取得したとき、AccessControl は、404 と `authorization_model_not_found` で拒否する。
 - **例**：EX-AUTHORIZATION-001-01、EX-AUTHORIZATION-001-02、EX-AUTHORIZATION-001-03、EX-AUTHORIZATION-001-04
 
