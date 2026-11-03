@@ -86,8 +86,8 @@ a{color:var(--accent)}
   <div class="panel">
     <h3>権限をその場で変える</h3>
     <p class="note">トークンを取り直さなくても、判定は要求ごとに行われます。</p>
-    <p>給与テーブルも読めるようにするには、関係タプルを 1 件追加して、左の「給与テーブルを読む」をもう一度押します。削除すれば、また拒否に戻ります。</p>
-    <p><a id="tuples-link" target="_blank" rel="noreferrer">関係タプルを追加する画面を開く</a></p>
+    <p>給与テーブルへのアクセス権を追加して、左の「給与テーブルを読む」をもう一度押します。付与を取り消せば、また拒否に戻ります。エージェントは名前で選べます。</p>
+    <p><a id="tuples-link" target="_blank" rel="noreferrer">アクセス権を追加する画面を開く</a></p>
     <div id="grant-fields"></div>
   </div>
 </div>
@@ -102,7 +102,7 @@ a{color:var(--accent)}
   </div>
   <div class="panel">
     <h3>重要な操作は人が承認する</h3>
-    <p>再度有効にして、種別を「監督下」へ変えてから依頼します。エージェントは自分だけではトークンを得られず、所有者の承認を待ちます。</p>
+    <p>このデモでは、再度有効にして種別を「監督下」へ変え、承認なしのトークン発行を止めてから依頼します。自律のエージェントも製品の機能として承認を依頼できます。ここでは承認後のトークン発行までを示し、削除一回への承認拘束は実演しません。</p>
     <div class="actions"><button id="approval">承認を依頼</button></div>
     <p><a id="approvals-link" target="_blank" rel="noreferrer">alice の承認画面を開く</a></p>
     <div id="approval-out"></div>
@@ -122,6 +122,17 @@ a{color:var(--accent)}
 </tbody>
 </table></div>
 <p class="note">設定の履歴は IdMagic の「監査イベント」、棚卸しは「エージェント」→「棚卸し」で確認できます。</p>
+
+<h2>6. Okta 風と Ping 風で同じ要求をどう設定するか</h2>
+<p>ここは公式資料に基づく設定方式の概念比較です。このページの実行先は IdMagic だけで、Okta や Ping へは接続していません。操作数と所要時間の優位は未計測です。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>方式</th><th>開発者の初期設定</th><th>日常の権限管理</th><th>比較に残る確認</th></tr></thead>
+<tbody>
+<tr><td><a href="https://help.okta.com/OIE/en-us/content/topics/ai-agents/ai-agent-mcp-server.htm" target="_blank" rel="noreferrer">Okta Agent Gateway 風</a></td><td>MCP を登録し、認可情報とツールを発見して公開するツールを選ぶ</td><td>接続と公開ツールを管理する</td><td>文書単位の判定と操作ごとの承認を満たす追加構成を実証する。Auth0 AI と FGA は別構成として数える</td></tr>
+<tr><td><a href="https://docs.pingidentity.com/pingone/ai_agents/p1_managing_ai_agents.html" target="_blank" rel="noreferrer">Ping Identity for AI 風</a></td><td>Agent と接続先、委任、PingGateway の MCP 保護を設定する</td><td>接続先のスコープと Agent の割当を管理する</td><td>文書単位の判定と CIBA の操作承認を MCP へ接続して実証する。定期同意と操作承認を区別する</td></tr>
+<tr><td>今回の IdMagic</td><td>モデルと MCP 評価規則を定義する</td><td>接続先、権限、文書、Agent を選んで直接付与する</td><td>文書 ID の入力と開発者の設定は残る。実効許可の一覧ではなく、同じ型と権限の接続先にも作用する</td></tr>
+</tbody></table></div>
+<p class="note">初期構築と日常管理を分け、同じ文書の閲覧、拒否、取消、承認、停止、原因特定を比べます。必要な制御を省いて簡単にした案は採用せず、同条件で IdMagic が複雑ならモデルと画面を見直します。</p>
 </main>
 <script>
 const $ = (id) => document.getElementById(id)
@@ -201,7 +212,7 @@ function inputField(id, label, type = 'text') {
 }
 async function init() {
   const state = await (await fetch('/api/state')).json()
-  $('tuples-link').href = `${state.console}/admin/authorization/relation-tuples/new`
+  $('tuples-link').href = `${state.console}/admin/authorization/access/new`
   $('approvals-link').href = `${state.console}/account/approvals`
   const value = (id) => () => $(id)?.value || '（前の手順で控えた値）'
   const steps = [
@@ -221,7 +232,7 @@ async function init() {
     {
       title: 'MCP サーバー', path: '/admin/mcp-resource-servers/new',
       why: '保護する MCP サーバーを登録します。許可スコープはこのサーバーの権限の名前です。「許可を判定する操作」は、文書を読む要求を「文書の閲覧者（viewer）なら許可」と判定するための設定です。',
-      todo: '「操作を追加」を押して、対象の種類と必要な関係を入れます。必要なスコープのチェックはそのままにします。',
+      todo: '開発者向けの「評価規則を追加」を押して、対象の種類と必要な関係を入れます。これは MCP ツールを追加する操作ではありません。必要なスコープのチェックはそのままにします。',
       fields: [['リソース URI', state.resource], ['表示名', '社内文書 MCP'], ['許可スコープ', state.scope], ['評価用のクライアント ID', value('gateway-client')], ['対象の種類（リソース型）', 'document'], ['必要な関係', 'viewer']],
     },
     {
@@ -234,15 +245,15 @@ async function init() {
     {
       title: 'クレデンシャル', path: '/admin/agents',
       why: 'エージェントが本物であることを、秘密鍵の署名で証明できるようにします。IdMagic へ渡すのは公開鍵だけで、共有のシークレットはありません。',
-      todo: '手順 4 のエージェントの詳細で「クレデンシャルを管理」を開きます。公開鍵を貼り、スコープの tools:read にチェックを付け、「作成して紐付ける」を押します。一覧に出る ID を下へ控えます。',
+      todo: '手順 4 の詳細で「クレデンシャルを管理」を開き、「新しく作成する」を選びます。公開鍵を貼り、tools:read を選んで「作成して紐付ける」を押します。作成結果に残る client_id を下へ控えます。「既存を使う」は入力不要です。',
       fields: [['公開鍵', state.public_key]],
       keep: [['agent-client', '一覧に出たクライアント ID']],
     },
     {
-      title: '閲覧の許可', path: '/admin/authorization/relation-tuples/new',
+      title: '閲覧の許可', path: '/admin/authorization/access/new',
       why: '「このエージェントは就業規則の閲覧者である」という事実を一件登録します。給与テーブルは登録しないので読めません。',
-      todo: '次の値を入れて「関係タプルを追加」を押します。主体の形を選ぶと主体 ID の欄が出ます。',
-      fields: [['リソース型', 'document'], ['リソース ID', state.public_document], ['関係', 'viewer'], ['主体の形', 'agent'], ['主体 ID', value('agent-id')]],
+      todo: '接続先と権限を選び、対象 ID を入れ、作成したエージェントを名前で選んで「アクセス権を付与」を押します。主体の構文と Agent ID の転記は不要です。',
+      fields: [['接続先', '社内文書 MCP'], ['権限', 'viewer (document)'], ['対象 ID', state.public_document], ['エージェント', '手順 4 で付けた名前']],
     },
   ]
   const cards = []
@@ -328,9 +339,12 @@ async function init() {
   cards.push(connect)
   $('setup').append(connect)
   show(0)
-  const renderGrant = () => $('grant-fields').replaceChildren(...[
-    ['リソース型', 'document'], ['リソース ID', state.secret_document], ['関係', 'viewer'], ['主体の形', 'agent'], ['主体 ID', value('agent-id')()],
-  ].map(([label, item]) => field(label, item)))
+  const renderGrant = () => {
+    $('tuples-link').href = `${state.console}/admin/authorization/access/new?agent=${encodeURIComponent($('agent-id').value)}`
+    $('grant-fields').replaceChildren(...[
+      ['接続先', '社内文書 MCP'], ['権限', 'viewer (document)'], ['対象 ID', state.secret_document], ['エージェント', '手順 4 で付けた名前'],
+    ].map(([label, item]) => field(label, item)))
+  }
   renderGrant()
   $('agent-id').addEventListener('input', renderGrant)
   button.onclick = async () => {

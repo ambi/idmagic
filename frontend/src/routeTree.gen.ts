@@ -73,6 +73,7 @@ import { Route as AdminApiTokensNewRouteImport } from './routes/admin/api-tokens
 import { Route as AdminApplicationsApplicationIdRouteImport } from './routes/admin/applications_/$applicationId'
 import { Route as AdminApplicationsNewRouteImport } from './routes/admin/applications_/new'
 import { Route as AdminAuthorizationDetailTypesNewRouteImport } from './routes/admin/authorization-detail-types_/new'
+import { Route as AdminAuthorizationAccessRouteImport } from './routes/admin/authorization/access'
 import { Route as AdminAuthorizationCheckRouteImport } from './routes/admin/authorization/check'
 import { Route as AdminAuthorizationModelRouteImport } from './routes/admin/authorization/model'
 import { Route as AdminAuthorizationRelationTuplesRouteImport } from './routes/admin/authorization/relation-tuples'
@@ -107,6 +108,7 @@ import { Route as AdminApplicationsApplicationIdIndexRouteImport } from './route
 import { Route as AdminApplicationsApplicationIdEditRouteImport } from './routes/admin/applications_/$applicationId.edit'
 import { Route as AdminApplicationsApplicationIdProvisioningRouteImport } from './routes/admin/applications_/$applicationId.provisioning'
 import { Route as AdminAuthorizationDetailTypesTypeEditRouteImport } from './routes/admin/authorization-detail-types_/$type.edit'
+import { Route as AdminAuthorizationAccessNewRouteImport } from './routes/admin/authorization/access_/new'
 import { Route as AdminAuthorizationModelEditRouteImport } from './routes/admin/authorization/model_/edit'
 import { Route as AdminAuthorizationModelNewRouteImport } from './routes/admin/authorization/model_/new'
 import { Route as AdminAuthorizationRelationTuplesNewRouteImport } from './routes/admin/authorization/relation-tuples_/new'
@@ -455,6 +457,12 @@ const AdminAuthorizationDetailTypesNewRoute =
     path: '/authorization-detail-types/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminAuthorizationAccessRoute =
+  AdminAuthorizationAccessRouteImport.update({
+    id: '/authorization/access',
+    path: '/authorization/access',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminAuthorizationCheckRoute = AdminAuthorizationCheckRouteImport.update({
   id: '/authorization/check',
   path: '/authorization/check',
@@ -641,6 +649,12 @@ const AdminAuthorizationDetailTypesTypeEditRoute =
   AdminAuthorizationDetailTypesTypeEditRouteImport.update({
     id: '/authorization-detail-types_/$type/edit',
     path: '/authorization-detail-types/$type/edit',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminAuthorizationAccessNewRoute =
+  AdminAuthorizationAccessNewRouteImport.update({
+    id: '/authorization/access_/new',
+    path: '/authorization/access/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
 const AdminAuthorizationModelEditRoute =
@@ -841,6 +855,7 @@ export interface FileRoutesByFullPath {
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/applications/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types/new': typeof AdminAuthorizationDetailTypesNewRoute
+  '/admin/authorization/access': typeof AdminAuthorizationAccessRoute
   '/admin/authorization/check': typeof AdminAuthorizationCheckRoute
   '/admin/authorization/model': typeof AdminAuthorizationModelRoute
   '/admin/authorization/relation-tuples': typeof AdminAuthorizationRelationTuplesRoute
@@ -874,6 +889,7 @@ export interface FileRoutesByFullPath {
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/authorization-detail-types/$type/edit': typeof AdminAuthorizationDetailTypesTypeEditRoute
+  '/admin/authorization/access/new': typeof AdminAuthorizationAccessNewRoute
   '/admin/authorization/model/edit': typeof AdminAuthorizationModelEditRoute
   '/admin/authorization/model/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples/new': typeof AdminAuthorizationRelationTuplesNewRoute
@@ -959,6 +975,7 @@ export interface FileRoutesByTo {
   '/admin/api-tokens/new': typeof AdminApiTokensNewRoute
   '/admin/applications/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types/new': typeof AdminAuthorizationDetailTypesNewRoute
+  '/admin/authorization/access': typeof AdminAuthorizationAccessRoute
   '/admin/authorization/check': typeof AdminAuthorizationCheckRoute
   '/admin/authorization/model': typeof AdminAuthorizationModelRoute
   '/admin/authorization/relation-tuples': typeof AdminAuthorizationRelationTuplesRoute
@@ -987,6 +1004,7 @@ export interface FileRoutesByTo {
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/authorization-detail-types/$type/edit': typeof AdminAuthorizationDetailTypesTypeEditRoute
+  '/admin/authorization/access/new': typeof AdminAuthorizationAccessNewRoute
   '/admin/authorization/model/edit': typeof AdminAuthorizationModelEditRoute
   '/admin/authorization/model/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples/new': typeof AdminAuthorizationRelationTuplesNewRoute
@@ -1077,6 +1095,7 @@ export interface FileRoutesById {
   '/admin/applications_/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/applications_/new': typeof AdminApplicationsNewRoute
   '/admin/authorization-detail-types_/new': typeof AdminAuthorizationDetailTypesNewRoute
+  '/admin/authorization/access': typeof AdminAuthorizationAccessRoute
   '/admin/authorization/check': typeof AdminAuthorizationCheckRoute
   '/admin/authorization/model': typeof AdminAuthorizationModelRoute
   '/admin/authorization/relation-tuples': typeof AdminAuthorizationRelationTuplesRoute
@@ -1110,6 +1129,7 @@ export interface FileRoutesById {
   '/admin/applications_/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications_/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/authorization-detail-types_/$type/edit': typeof AdminAuthorizationDetailTypesTypeEditRoute
+  '/admin/authorization/access_/new': typeof AdminAuthorizationAccessNewRoute
   '/admin/authorization/model_/edit': typeof AdminAuthorizationModelEditRoute
   '/admin/authorization/model_/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples_/new': typeof AdminAuthorizationRelationTuplesNewRoute
@@ -1202,6 +1222,7 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId'
     | '/admin/applications/new'
     | '/admin/authorization-detail-types/new'
+    | '/admin/authorization/access'
     | '/admin/authorization/check'
     | '/admin/authorization/model'
     | '/admin/authorization/relation-tuples'
@@ -1235,6 +1256,7 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId/edit'
     | '/admin/applications/$applicationId/provisioning'
     | '/admin/authorization-detail-types/$type/edit'
+    | '/admin/authorization/access/new'
     | '/admin/authorization/model/edit'
     | '/admin/authorization/model/new'
     | '/admin/authorization/relation-tuples/new'
@@ -1320,6 +1342,7 @@ export interface FileRouteTypes {
     | '/admin/api-tokens/new'
     | '/admin/applications/new'
     | '/admin/authorization-detail-types/new'
+    | '/admin/authorization/access'
     | '/admin/authorization/check'
     | '/admin/authorization/model'
     | '/admin/authorization/relation-tuples'
@@ -1348,6 +1371,7 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId/edit'
     | '/admin/applications/$applicationId/provisioning'
     | '/admin/authorization-detail-types/$type/edit'
+    | '/admin/authorization/access/new'
     | '/admin/authorization/model/edit'
     | '/admin/authorization/model/new'
     | '/admin/authorization/relation-tuples/new'
@@ -1437,6 +1461,7 @@ export interface FileRouteTypes {
     | '/admin/applications_/$applicationId'
     | '/admin/applications_/new'
     | '/admin/authorization-detail-types_/new'
+    | '/admin/authorization/access'
     | '/admin/authorization/check'
     | '/admin/authorization/model'
     | '/admin/authorization/relation-tuples'
@@ -1470,6 +1495,7 @@ export interface FileRouteTypes {
     | '/admin/applications_/$applicationId/edit'
     | '/admin/applications_/$applicationId/provisioning'
     | '/admin/authorization-detail-types_/$type/edit'
+    | '/admin/authorization/access_/new'
     | '/admin/authorization/model_/edit'
     | '/admin/authorization/model_/new'
     | '/admin/authorization/relation-tuples_/new'
@@ -1963,6 +1989,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthorizationDetailTypesNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/authorization/access': {
+      id: '/admin/authorization/access'
+      path: '/authorization/access'
+      fullPath: '/admin/authorization/access'
+      preLoaderRoute: typeof AdminAuthorizationAccessRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/authorization/check': {
       id: '/admin/authorization/check'
       path: '/authorization/check'
@@ -2199,6 +2232,13 @@ declare module '@tanstack/react-router' {
       path: '/authorization-detail-types/$type/edit'
       fullPath: '/admin/authorization-detail-types/$type/edit'
       preLoaderRoute: typeof AdminAuthorizationDetailTypesTypeEditRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/authorization/access_/new': {
+      id: '/admin/authorization/access_/new'
+      path: '/authorization/access/new'
+      fullPath: '/admin/authorization/access/new'
+      preLoaderRoute: typeof AdminAuthorizationAccessNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/authorization/model_/edit': {
@@ -2558,6 +2598,7 @@ interface AdminRouteRouteChildren {
   AdminApplicationsApplicationIdRoute: typeof AdminApplicationsApplicationIdRouteWithChildren
   AdminApplicationsNewRoute: typeof AdminApplicationsNewRoute
   AdminAuthorizationDetailTypesNewRoute: typeof AdminAuthorizationDetailTypesNewRoute
+  AdminAuthorizationAccessRoute: typeof AdminAuthorizationAccessRoute
   AdminAuthorizationCheckRoute: typeof AdminAuthorizationCheckRoute
   AdminAuthorizationModelRoute: typeof AdminAuthorizationModelRoute
   AdminAuthorizationRelationTuplesRoute: typeof AdminAuthorizationRelationTuplesRoute
@@ -2586,6 +2627,7 @@ interface AdminRouteRouteChildren {
   AdminWorkloadIdentityTrustBundleIdRoute: typeof AdminWorkloadIdentityTrustBundleIdRouteWithChildren
   AdminWorkloadIdentityNewRoute: typeof AdminWorkloadIdentityNewRoute
   AdminAuthorizationDetailTypesTypeEditRoute: typeof AdminAuthorizationDetailTypesTypeEditRoute
+  AdminAuthorizationAccessNewRoute: typeof AdminAuthorizationAccessNewRoute
   AdminAuthorizationModelEditRoute: typeof AdminAuthorizationModelEditRoute
   AdminAuthorizationModelNewRoute: typeof AdminAuthorizationModelNewRoute
   AdminAuthorizationRelationTuplesNewRoute: typeof AdminAuthorizationRelationTuplesNewRoute
@@ -2629,6 +2671,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
     AdminApplicationsApplicationIdRouteWithChildren,
   AdminApplicationsNewRoute: AdminApplicationsNewRoute,
   AdminAuthorizationDetailTypesNewRoute: AdminAuthorizationDetailTypesNewRoute,
+  AdminAuthorizationAccessRoute: AdminAuthorizationAccessRoute,
   AdminAuthorizationCheckRoute: AdminAuthorizationCheckRoute,
   AdminAuthorizationModelRoute: AdminAuthorizationModelRoute,
   AdminAuthorizationRelationTuplesRoute: AdminAuthorizationRelationTuplesRoute,
@@ -2660,6 +2703,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminWorkloadIdentityNewRoute: AdminWorkloadIdentityNewRoute,
   AdminAuthorizationDetailTypesTypeEditRoute:
     AdminAuthorizationDetailTypesTypeEditRoute,
+  AdminAuthorizationAccessNewRoute: AdminAuthorizationAccessNewRoute,
   AdminAuthorizationModelEditRoute: AdminAuthorizationModelEditRoute,
   AdminAuthorizationModelNewRoute: AdminAuthorizationModelNewRoute,
   AdminAuthorizationRelationTuplesNewRoute:

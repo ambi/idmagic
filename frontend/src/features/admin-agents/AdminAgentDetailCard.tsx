@@ -2,6 +2,7 @@ import { IconRobot, IconTrash } from '@tabler/icons-react'
 import { useState } from 'react'
 import { AuthenticationAPIError, deleteAdminAgent, tenantURL } from '../../api'
 import { AdminPaneActions } from '../../components/AdminPaneActions'
+import { CopyableValue } from '../../components/CopyableValue'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -9,6 +10,7 @@ import { useDictionary } from '../../lib/i18n'
 import type { AdminAgent } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { kindLabel, StatusBadge } from './AdminAgentsShared'
+import { shellDictionary } from '../../components/shell.i18n'
 
 // 資格情報のバインドと解除は専用の管理画面に置き、
 // この一覧右ペイン/詳細画面カードは読み取り専用 (policy #1, wi-314 T012)。
@@ -33,6 +35,7 @@ export function AgentDetailCard({
   const [localError, setLocalError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const t = useDictionary(adminAgentsDictionary)
+  const access = useDictionary(shellDictionary)
 
   if (!agent) {
     return (
@@ -68,7 +71,7 @@ export function AgentDetailCard({
               <h2 className="truncate text-lg font-semibold text-slate-950">{agent.name}</h2>
               <StatusBadge status={agent.status} />
             </div>
-            <p className="mt-0.5 truncate font-mono text-sm text-slate-500">{agent.id}</p>
+            <CopyableValue value={agent.id} copyLabel={t.copyID} />
           </div>
         </div>
 
@@ -152,7 +155,20 @@ export function AgentDetailCard({
       </dl>
 
       <section className="border-t border-slate-100 p-5">
-        <div className="mb-4 flex justify-end">
+        <div className="mb-4 flex flex-wrap justify-end gap-2">
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={
+              <a
+                href={tenantURL(
+                  `/admin/authorization/access?agent=${encodeURIComponent(agent.id)}`,
+                )}
+              />
+            }
+          >
+            {access.authorization}
+          </Button>
           <Button
             variant="outline"
             nativeButton={false}

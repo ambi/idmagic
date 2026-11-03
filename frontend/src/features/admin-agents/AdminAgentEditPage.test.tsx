@@ -117,7 +117,7 @@ describe('AdminAgentCredentialsPage', () => {
 
     submitKey(JSON.stringify(publicJWK))
 
-    expect(await screen.findByText('new-client')).toBeInTheDocument()
+    expect(await screen.findByText('new-client', { selector: 'li code' })).toBeInTheDocument()
     const call = fetchMock.mock.calls.find(([url]) => url.endsWith('/clients'))
     const body = JSON.parse(String(call?.[1]?.body))
     expect(body.token_endpoint_auth_method).toBe('private_key_jwt')
@@ -145,7 +145,7 @@ describe('AdminAgentCredentialsPage', () => {
     fireEvent.submit(form)
     fireEvent.submit(form)
 
-    expect(await screen.findByText('new-client')).toBeInTheDocument()
+    expect(await screen.findByText('new-client', { selector: 'li code' })).toBeInTheDocument()
     expect(fetchMock.mock.calls.filter(([url]) => url.endsWith('/clients'))).toHaveLength(1)
   })
 
@@ -224,6 +224,7 @@ describe('AdminAgentCredentialsPage', () => {
       ),
     )
     await renderWithRouter(<AdminAgentCredentialsPage csrfToken="csrf" agent={agent} />)
+    fireEvent.click(screen.getByLabelText('Use an existing client'))
 
     fireEvent.change(screen.getByLabelText(t.bindClientIdAria), {
       target: { value: 'secret-client' },
@@ -240,6 +241,7 @@ describe('AdminAgentCredentialsPage', () => {
       mock(() => Promise.resolve(response(409, { message: 'This client_id is already in use.' }))),
     )
     await renderWithRouter(<AdminAgentCredentialsPage csrfToken="csrf" agent={agent} />)
+    fireEvent.click(screen.getByLabelText('Use an existing client'))
 
     fireEvent.change(screen.getByLabelText(t.bindClientIdAria), {
       target: { value: 'client-x' },

@@ -18,12 +18,12 @@ export const adminMcpResourceServersDictionary = defineDictionary(
     scopesPlaceholder: 'mcp.read, mcp.write',
     scopesHelp:
       'このサーバー宛のトークンで要求できる権限の上限です。名前は自分で決めて、空白かカンマで区切って入力します。例：読み取りだけのサーバーなら tools:read。ここに入れた名前を、エージェントのクレデンシャルで選びます。',
-    operationsHeading: '許可を判定する操作',
+    operationsHeading: '開発者向け設定：アクセスの評価規則',
     ruleResourceType: '対象の種類（リソース型）',
     ruleRelation: '必要な関係',
     ruleScopes: '必要なスコープ',
     ruleScopesEmpty: '先に許可スコープを入力します。',
-    ruleAdd: '操作を追加',
+    ruleAdd: '評価規則を追加',
     ruleRemove: '削除',
     accessRulesAdvanced: '条件や上限を JSON で編集する',
     accessRulesUnreadable: 'JSON を読み取れません。下の JSON を直してください。',
@@ -34,7 +34,7 @@ export const adminMcpResourceServersDictionary = defineDictionary(
     accessRulesPlaceholder:
       '[{"resource_type": "document", "relation": "viewer", "scopes": ["mcp.read"]}]',
     accessRulesHelp:
-      'エージェントの要求を通してよいかを、どの基準で判定するかを登録します。一行が「この種類のものに、この関係を持っていれば許可する」を表します。例：文書を読む要求なら、種類は document、関係は viewer です。どの文書を読めるかは、細粒度認可の関係タプルで決まります。ここにない操作はすべて拒否されます。',
+      'MCP ツールの追加ではありません。ゲートウェイが使う対象型、関係、スコープの対応を定義します。モデルを公開した開発者が設定し、日常の付与は「エージェントのアクセス権」で行います。例：文書の閲覧は document と viewer に対応します。規則にない操作は拒否されます。',
     accessRulesInvalidError: '操作の規則は JSON の配列で入力してください。',
     stateLabel: '状態',
     update: '更新',
@@ -63,12 +63,12 @@ export const adminMcpResourceServersDictionary = defineDictionary(
     scopesPlaceholder: 'mcp.read, mcp.write',
     scopesHelp:
       'The most a token for this server may request. Choose your own names, separated by spaces or commas. For example, tools:read for a read-only server. You select these names on the credential of an agent.',
-    operationsHeading: 'Operations to authorize',
+    operationsHeading: 'Developer settings: access evaluation rules',
     ruleResourceType: 'Kind of target (resource type)',
     ruleRelation: 'Required relation',
     ruleScopes: 'Required scopes',
     ruleScopesEmpty: 'Enter the allowed scopes first.',
-    ruleAdd: 'Add operation',
+    ruleAdd: 'Add evaluation rule',
     ruleRemove: 'Remove',
     accessRulesAdvanced: 'Edit conditions and limits as JSON',
     accessRulesUnreadable: 'The JSON could not be read. Fix it below.',
@@ -79,7 +79,7 @@ export const adminMcpResourceServersDictionary = defineDictionary(
     accessRulesPlaceholder:
       '[{"resource_type": "document", "relation": "viewer", "scopes": ["mcp.read"]}]',
     accessRulesHelp:
-      'Define how requests from agents are authorized. Each row means "allow when the caller has this relation to this kind of target". For example, reading documents uses document and viewer. Which documents can be read is decided by relation tuples in fine-grained authorization. Operations not listed here are always denied.',
+      'This does not add MCP tools. Define the resource type, relation, and scope mapping used by the gateway. The developer who publishes the model configures these rules. Manage day-to-day assignments in Agent access. For example, document reading maps to document and viewer. Unlisted operations are denied.',
     accessRulesInvalidError: 'Enter the operation rules as a JSON array.',
     stateLabel: 'State',
     update: 'Update',

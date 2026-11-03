@@ -1,6 +1,11 @@
 import { IconPlus, IconServer2, IconTrash } from '@tabler/icons-react'
 import { useState } from 'react'
-import { AuthenticationAPIError, deleteMcpResourceServer, listMcpResourceServers } from '../../api'
+import {
+  AuthenticationAPIError,
+  deleteMcpResourceServer,
+  listMcpResourceServers,
+  tenantURL,
+} from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
@@ -12,6 +17,7 @@ import { useDictionary } from '../../lib/i18n'
 import type { McpResourceServer } from '../../types'
 import { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
 import { editURL, newURL } from './AdminMcpResourceServersShared'
+import { shellDictionary } from '../../components/shell.i18n'
 
 // AdminMcpResourceServersPage は MCP リソースサーバーの参照専用一覧。作成/編集は専用ルート
 // (new / $resourceServerId/edit) に一本化されている (policy #2, wi-314 T014)。
@@ -29,6 +35,7 @@ export function AdminMcpResourceServersPage({
   const [notice, setNotice] = useState('')
   const dict = useDictionary(adminMcpResourceServersDictionary)
   const common = useDictionary(commonDictionary)
+  const access = useDictionary(shellDictionary)
   const [target, setTarget] = useState<McpResourceServer | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -38,7 +45,7 @@ export function AdminMcpResourceServersPage({
     try {
       await deleteMcpResourceServer(csrfToken, resourceServer.id)
       setItems((previous) => previous.filter((item) => item.id !== resourceServer.id))
-      setNotice(dict.deletedNotice.replace('{resource}', resourceServer.resource))
+      setNotice(dict.deletedNotice.replace('{resource}', resourceServer.name))
       setTarget(null)
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : dict.deleteFailedError)
@@ -93,6 +100,19 @@ export function AdminMcpResourceServersPage({
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
+                  <Button
+                    variant="outline"
+                    nativeButton={false}
+                    render={
+                      <a
+                        href={tenantURL(
+                          `/admin/authorization/access?server=${encodeURIComponent(item.id)}`,
+                        )}
+                      />
+                    }
+                  >
+                    {access.authorization}
+                  </Button>
                   <Button
                     variant="outline"
                     nativeButton={false}

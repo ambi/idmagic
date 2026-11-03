@@ -144,7 +144,7 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
       key: 'authorization',
       label: t.authorization,
       icon: IconSitemap,
-      href: tenantURL('/admin/authorization/model'),
+      href: tenantURL('/admin/authorization/access'),
       active: active === 'authorization',
     },
     {

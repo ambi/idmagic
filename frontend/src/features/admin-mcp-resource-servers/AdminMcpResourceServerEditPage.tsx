@@ -59,7 +59,7 @@ export function AdminMcpResourceServerEditPage({
     <AdminShell
       active="mcp-resource-servers"
       actorUsername={actorUsername}
-      title={t.editResource.replace('{resource}', resourceServer.resource)}
+      title={t.editResource.replace('{resource}', resourceServer.name)}
       description={t.pageDescription}
       actions={
         <Button variant="outline" nativeButton={false} render={<a href={listURL()} />}>

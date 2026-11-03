@@ -736,6 +736,9 @@ test('admin application lifecycle and agent credential binding work from the bro
 
     await clickLinkByText(view, 'Manage credentials')
     await waitForPage(view, 'admin-agent-credentials')
+    await view.evaluate(
+      `[...document.querySelectorAll('label')].find(node => node.textContent.includes('Use an existing client'))?.querySelector('input')?.click()`,
+    )
     await setInputValue(view, '#agent-credential-client', clientID)
     await clickButtonByText(view, 'Bind')
     await waitForText(view, clientID)

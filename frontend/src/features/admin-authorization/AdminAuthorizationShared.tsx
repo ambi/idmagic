@@ -1,7 +1,7 @@
 import { Dialog } from '@base-ui/react/dialog'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
-import { AuthenticationAPIError } from '../../api'
+import { AuthenticationAPIError, tenantURL } from '../../api'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -9,6 +9,7 @@ import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import { adminAuthorizationDictionary } from './AdminAuthorizationPage.i18n'
+import { agentAccessDictionary } from './agentAccess.i18n'
 
 type Dictionary = (typeof adminAuthorizationDictionary)['en']
 
@@ -29,6 +30,7 @@ export function AuthorizationSectionNav({
   consistency?: string
 }) {
   const t = useDictionary(adminAuthorizationDictionary)
+  const access = useDictionary(agentAccessDictionary)
   const linkClass = (section: typeof active) =>
     cn(
       'rounded-md px-3 py-1.5 text-sm font-medium',
@@ -36,6 +38,12 @@ export function AuthorizationSectionNav({
     )
   return (
     <nav aria-label={t.sectionNavLabel} className="flex flex-wrap gap-1">
+      <a
+        href={tenantURL('/admin/authorization/access')}
+        className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-700"
+      >
+        {access.title}
+      </a>
       <Link
         to="/admin/authorization/model"
         aria-current={active === 'model' ? 'page' : undefined}

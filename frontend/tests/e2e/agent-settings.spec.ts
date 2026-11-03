@@ -91,7 +91,7 @@ test('administrator edits agent settings in separate workflows', async () => {
     await waitForText(view, 'Each addition and removal takes effect immediately.')
     expect(
       await view.evaluate(
-        `!!document.querySelector('#agent-credential-client') && ![...document.querySelectorAll('button')].some(node => node.textContent === 'Save' || node.textContent === 'Cancel')`,
+        `!!document.querySelector('#agent-public-key') && !document.querySelector('#agent-credential-client') && ![...document.querySelectorAll('button')].some(node => node.textContent === 'Save' || node.textContent === 'Cancel')`,
       ),
     ).toBe(true)
   } finally {

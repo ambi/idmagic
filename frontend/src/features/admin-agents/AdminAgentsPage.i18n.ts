@@ -46,6 +46,7 @@ export const adminAgentsDictionary = defineDictionary(
     edit: '編集',
     editBasicInfo: '基本情報を編集',
     manageCredentials: 'クレデンシャルを管理',
+    copyID: 'ID をコピー',
     credentialsImmediate: '追加と解除は、それぞれの操作で即時に反映されます。',
     credentialsReloadFailed:
       '操作は完了しましたが、クレデンシャルの一覧を再取得できませんでした。画面を再読み込みして確認してください。',
@@ -149,6 +150,7 @@ export const adminAgentsDictionary = defineDictionary(
     edit: 'Edit',
     editBasicInfo: 'Edit basic information',
     manageCredentials: 'Manage credentials',
+    copyID: 'Copy ID',
     credentialsImmediate: 'Each addition and removal takes effect immediately.',
     credentialsReloadFailed:
       'The operation completed, but the credential list could not be refreshed. Reload the page to check the current credentials.',

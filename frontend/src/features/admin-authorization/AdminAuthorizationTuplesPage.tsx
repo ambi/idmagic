@@ -131,6 +131,7 @@ export function AdminAuthorizationTuplesPage({
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Toast message={notice} onDismiss={() => setNotice('')} />
       <Card className="p-4">
+        <h2 className="mb-3 font-semibold">{t.search}</h2>
         <form className="grid items-end gap-3 md:grid-cols-3" onSubmit={submitFilters}>
           {filterField('resource_type', t.resourceType)}
           {filterField('resource_id', t.resourceId)}
@@ -144,6 +145,9 @@ export function AdminAuthorizationTuplesPage({
           </div>
         </form>
       </Card>
+      <h2 className="font-semibold">
+        {t.sectionTuples} ({tuples.length})
+      </h2>
       {tuples.length >= RELATION_TUPLE_LIST_LIMIT ? (
         <Alert variant="destructive">{t.tuplesLimitReached}</Alert>
       ) : null}

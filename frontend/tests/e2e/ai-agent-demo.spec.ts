@@ -76,7 +76,7 @@ async function moveDemoStep(view: Bun.WebView, direction: string, heading: strin
   ).toEqual([heading])
 }
 
-//spec:covers REQ-IDMANAGEMENT-103: 管理 API を使わず画面の設定だけで Agent を統制し、実在のゲートウェイ越しの許可、拒否、停止を観測する。
+//spec:covers REQ-IDMANAGEMENT-103, REQ-IDMANAGEMENT-104, REQ-AUTHORIZATION-014: 画面で資格情報と直接付与を設定し、実在のゲートウェイ越しの許可、拒否、停止を観測する。
 test('administrator governs a real agent from the console', async () => {
   // go run は子プロセスを残すので、kill が本体へ届くように先にビルドして直接起動する。
   const binary = join(tmpdir(), `idmagic-agent-demo-${process.pid}`)
@@ -137,7 +137,7 @@ test('administrator governs a real agent from the console', async () => {
     await setInputValue(view, '#name', '社内文書 MCP')
     await setInputValue(view, '#scopes', state.scope)
     await setInputValue(view, '#client-id', gatewayClientID)
-    await clickButtonByText(view, 'Add operation')
+    await clickButtonByText(view, 'Add evaluation rule')
     await setInputValue(view, '#rule-type-0', 'document')
     await setInputValue(view, '#rule-relation-0', 'viewer')
     await clickButtonByText(view, 'Register')
@@ -162,20 +162,30 @@ test('administrator governs a real agent from the console', async () => {
     await clickEnabledButtonByText(view, 'Create and bind')
     await waitForText(view, 'The credential has been added.')
     const agentClientID = String(
-      await view.evaluate(`document.querySelector('li span.font-mono')?.textContent ?? ''`),
+      await view.evaluate(`document.querySelector('li code')?.textContent ?? ''`),
     )
     expect(agentClientID).not.toBe('')
 
-    // 手順 6：閲覧の関係を登録する。
-    await view.navigate(`${uiOrigin}/realms/default/admin/authorization/relation-tuples/new`)
-    await waitForPage(view, 'admin-authorization-tuple-create')
-    await setSelectValue(view, '#tuple-resource-type', 'document')
-    await setInputValue(view, '#tuple-resource-id', state.public_document)
-    await setSelectValue(view, '#tuple-relation', 'viewer')
-    await setSelectValue(view, '#tuple-subject-form', 'agent')
-    await setInputValue(view, '#tuple-subject-id', agentID)
-    await clickEnabledButtonByText(view, 'Add relation tuple')
-    await waitForText(view, 'Added the relation tuple.')
+    // 手順 6：対象と Agent の選択で付与する。ID は入力しない。
+    await view.navigate(detailURL)
+    await waitForPage(view, 'admin-agent-detail')
+    await clickLinkByText(view, 'Agent access')
+    await waitForPage(view, 'admin-agent-access')
+    await clickLinkByText(view, 'Add access')
+    await waitForPage(view, 'admin-agent-access-create')
+    const serverID = String(
+      await view.evaluate(
+        `Array.from(document.querySelector('#access-connection').options).find(option => option.text === '社内文書 MCP')?.value`,
+      ),
+    )
+    await setSelectValue(view, '#access-connection', serverID)
+    await setSelectValue(view, '#access-permission', 'document:viewer')
+    await setInputValue(view, '#access-resource', state.public_document)
+    expect(await view.evaluate(`document.querySelector('#access-agent').value`)).toBe(agentID)
+    await clickEnabledButtonByText(view, 'Grant access')
+    await waitForPage(view, 'admin-agent-access')
+    await waitForText(view, 'Access assignment added.')
+    await waitForText(view, state.public_document)
 
     // 手順 7：デモの画面から接続し、画面の結果を確かめる。
     await view.navigate(`${demoOrigin}/`)
@@ -196,7 +206,7 @@ test('administrator governs a real agent from the console', async () => {
     await moveDemoStep(view, '次へ', '手順 6　閲覧の許可')
     expect(
       await view.evaluate(`document.querySelector('#setup .card:not([hidden])').innerText`),
-    ).toContain(agentID)
+    ).toContain('エージェントを名前で選んで')
     await moveDemoStep(view, '前へ', '手順 5　クレデンシャル')
     expect(await view.evaluate(`document.querySelector('#agent-client').value`)).toBe(agentClientID)
     await clickButtonByText(view, '7. 接続')
@@ -213,19 +223,30 @@ test('administrator governs a real agent from the console', async () => {
 
     // デモの画面が示す値で関係を足すと、トークンを取り直さずに給与テーブルを読める。
     await waitForText(view, state.secret_document)
-    await waitForText(view, agentID)
-    await view.navigate(`${uiOrigin}/realms/default/admin/authorization/relation-tuples/new`)
-    await waitForPage(view, 'admin-authorization-tuple-create')
-    await setSelectValue(view, '#tuple-resource-type', 'document')
-    await setInputValue(view, '#tuple-resource-id', state.secret_document)
-    await setSelectValue(view, '#tuple-relation', 'viewer')
-    await setSelectValue(view, '#tuple-subject-form', 'agent')
-    await setInputValue(view, '#tuple-subject-id', agentID)
-    await clickEnabledButtonByText(view, 'Add relation tuple')
-    await waitForText(view, 'Added the relation tuple.')
+    await view.navigate(
+      `${uiOrigin}/realms/default/admin/authorization/access/new?agent=${encodeURIComponent(agentID)}`,
+    )
+    await waitForPage(view, 'admin-agent-access-create')
+    await setSelectValue(view, '#access-connection', serverID)
+    await setSelectValue(view, '#access-permission', 'document:viewer')
+    await setInputValue(view, '#access-resource', state.secret_document)
+    await clickEnabledButtonByText(view, 'Grant access')
+    await waitForPage(view, 'admin-agent-access')
+    await waitForText(view, state.secret_document)
     const granted = await run('read-secret')
     expect(granted).toHaveLength(1)
     expect(granted[0]).toMatchObject({ outcome: 'allowed', executed: true })
+
+    // 取消は給与テーブルだけに効き、就業規則の付与は残る。
+    await view.evaluate(`(() => {
+      const row = [...document.querySelectorAll('tbody tr')].find(node => node.textContent.includes(${JSON.stringify(state.secret_document)}))
+      row.querySelector('button').click()
+    })()`)
+    await waitForText(view, 'Revoke access')
+    await view.evaluate(`document.querySelector('[role="dialog"] button:last-child').click()`)
+    await waitForText(view, 'Direct assignment revoked.')
+    expect((await run('read-secret')).at(-1)).toMatchObject({ outcome: 'denied', executed: false })
+    expect((await run('read-public')).at(-1)).toMatchObject({ outcome: 'allowed', executed: true })
 
     // 停止は発行済みのトークンと新しい発行の両方に効く。
     await view.navigate(detailURL)
