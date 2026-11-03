@@ -135,11 +135,16 @@ func (d *documents) restore() {
 	d.bodies = maps.Clone(documentBodies)
 }
 
+// demoTools は文書サーバーが公開するツールの名前と表示名である。設定済みの開始点も同じ値で公開する。
+var demoTools = []struct{ name, title string }{
+	{"read_document", "文書の閲覧"}, {"write_document", "文書の作成・更新"}, {"delete_document", "文書の削除"},
+}
+
 func (d *documents) handler() http.Handler {
 	server := mcp.NewServer(&mcp.Implementation{Name: "documents", Version: "1"}, nil)
-	mcp.AddTool(server, &mcp.Tool{Name: "read_document", Title: "文書の閲覧", Description: "文書を読む"}, d.read)
-	mcp.AddTool(server, &mcp.Tool{Name: "write_document", Title: "文書の作成・更新", Description: "文書を作成または更新する"}, d.write)
-	mcp.AddTool(server, &mcp.Tool{Name: "delete_document", Title: "文書の削除", Description: "文書を削除する"}, d.delete)
+	mcp.AddTool(server, &mcp.Tool{Name: demoTools[0].name, Title: demoTools[0].title, Description: "文書を読む"}, d.read)
+	mcp.AddTool(server, &mcp.Tool{Name: demoTools[1].name, Title: demoTools[1].title, Description: "文書を作成または更新する"}, d.write)
+	mcp.AddTool(server, &mcp.Tool{Name: demoTools[2].name, Title: demoTools[2].title, Description: "文書を削除する"}, d.delete)
 	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{Stateless: true})
 }
 
@@ -155,9 +160,11 @@ type demo struct {
 	workDir     string
 	http        *http.Client
 
-	mu        sync.Mutex
-	clientID  string
-	catalog   bool
+	mu       sync.Mutex
+	clientID string
+	catalog  bool
+	// prepared は設定済みの開始点を一度だけ作るための印である。
+	prepared  bool
 	gateway   http.Handler
 	token     string
 	authReqID string
@@ -632,6 +639,17 @@ func (d *demo) routes() http.Handler {
 			"public_document": publicDocument, "secret_document": secretDocument,
 		})
 	})
+	mux.HandleFunc("POST /api/preconfigure", d.jsonAction(func(ctx context.Context, body []byte) (any, error) {
+		var input struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		}
+		if err := json.Unmarshal(body, &input); err != nil {
+			return nil, err
+		}
+		items, steps, err := d.preconfigure(ctx, input.Username, input.Password)
+		return map[string]any{"items": items, "steps": steps}, err
+	}))
 	mux.HandleFunc("POST /api/gateway", d.jsonAction(func(ctx context.Context, body []byte) (any, error) {
 		var input connectInput
 		if err := json.Unmarshal(body, &input); err != nil {

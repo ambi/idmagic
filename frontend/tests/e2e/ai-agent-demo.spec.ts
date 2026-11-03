@@ -63,20 +63,6 @@ function fieldValue(view: Bun.WebView, label: string): Promise<string> {
   })()`) as Promise<string>
 }
 
-async function moveDemoStep(view: Bun.WebView, direction: string, heading: string) {
-  await view.evaluate(`(() => {
-    const card = document.querySelector('#setup .card:not([hidden])')
-    const button = [...card.querySelectorAll('.nav button')].find((node) => node.textContent === ${JSON.stringify(direction)})
-    if (!button || button.disabled) throw new Error('The step navigation is unavailable')
-    button.click()
-  })()`)
-  expect(
-    await view.evaluate(
-      `Array.from(document.querySelectorAll('#setup .card:not([hidden]) h3'), (node) => node.textContent)`,
-    ),
-  ).toEqual([heading])
-}
-
 //spec:covers REQ-IDMANAGEMENT-103, REQ-IDMANAGEMENT-104, REQ-AUTHORIZATION-014: 画面で資格情報と直接付与を設定し、実在のゲートウェイ越しの許可、拒否、停止を観測する。
 test('administrator governs a real agent from the console', async () => {
   // go run は子プロセスを残すので、kill が本体へ届くように先にビルドして直接起動する。
@@ -196,32 +182,21 @@ test('administrator governs a real agent from the console', async () => {
     await waitForText(view, 'Access assignment added.')
     await waitForText(view, state.public_document)
 
-    // 手順 7：デモの画面から接続し、画面の結果を確かめる。
-    await view.navigate(`${demoOrigin}/?example=documents`)
-    await waitForText(view, '手順 1')
-    await clickButtonByText(view, '統制なしで 3 つの依頼を実行')
-    await waitForText(view, '給与テーブル', 15_000)
-    await moveDemoStep(view, '次へ', '手順 2　ゲートウェイ')
-    await setInputValue(view, '#gateway-client', gatewayClientID)
-    await setInputValue(view, '#gateway-secret', gatewaySecret)
-    await moveDemoStep(view, '次へ', '手順 3　MCP サーバー')
-    expect(
-      await view.evaluate(`document.querySelector('#setup .card:not([hidden])').innerText`),
-    ).toContain('文書ゲートウェイ）を名前で選ぶ')
-    await moveDemoStep(view, '次へ', '手順 4　エージェント')
-    await setInputValue(view, '#agent-id', agentID)
-    await moveDemoStep(view, '次へ', '手順 5　クレデンシャル')
-    await setInputValue(view, '#agent-client', agentClientID)
-    await moveDemoStep(view, '次へ', '手順 6　閲覧の許可')
-    expect(
-      await view.evaluate(`document.querySelector('#setup .card:not([hidden])').innerText`),
-    ).toContain('エージェントを名前で選んで')
-    await moveDemoStep(view, '前へ', '手順 5　クレデンシャル')
-    expect(await view.evaluate(`document.querySelector('#agent-client').value`)).toBe(agentClientID)
-    await clickButtonByText(view, '7. 接続')
-    expect(await view.evaluate(`document.querySelector('#connect').checkVisibility()`)).toBe(true)
-    await clickButtonByText(view, '接続して確かめる')
-    await waitForText(view, '共有の API キーはどこにもありません')
+    // 従来の文書別の経路で接続する。デモの画面は通常の管理の流れだけを案内するので、接続は API で行う。
+    const connectResponse = await fetch(`${demoOrigin}/api/connect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        catalog: false,
+        agent_client_id: agentClientID,
+        gateway_client_id: gatewayClientID,
+        gateway_client_secret: gatewaySecret,
+      }),
+    })
+    const connected = (await connectResponse.json()) as { steps: Step[] }
+    expect(connected.steps.at(-1)).toMatchObject({ outcome: 'allowed' })
+    await view.navigate(`${demoOrigin}/`)
+    await waitForText(view, '設定済みで始める')
     await clickButtonByText(view, '給与テーブルを読む')
     await waitForText(view, 'ゲートウェイが止めました')
 
@@ -230,8 +205,7 @@ test('administrator governs a real agent from the console', async () => {
     expect((await run('read-secret')).at(-1)).toMatchObject({ outcome: 'denied', executed: false })
     expect((await run('delete')).at(-1)).toMatchObject({ outcome: 'denied', executed: false })
 
-    // デモの画面が示す値で関係を足すと、トークンを取り直さずに給与テーブルを読める。
-    await waitForText(view, state.secret_document)
+    // 給与テーブルへの直接の関係を足すと、トークンを取り直さずに読める。
     await view.navigate(
       `${uiOrigin}/realms/default/admin/authorization/access/new?agent=${encodeURIComponent(agentID)}`,
     )

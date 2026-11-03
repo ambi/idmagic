@@ -47,6 +47,7 @@ a{color:var(--accent)}
 .why{margin:4px 0 10px}
 .open{display:inline-block;margin-bottom:6px;color:var(--accent);font-weight:600}
 .keep{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+.origin{display:inline-block;margin-top:2px;padding:0 6px;border-radius:9px;font-size:11px;background:var(--bg);border:1px solid var(--line)}.origin.you,.origin.chosen{border-color:var(--info);font-weight:600}
 .nav{display:flex;justify-content:space-between;margin-top:14px}
 @media (max-width:700px){.compare{grid-template-columns:1fr}.field{grid-template-columns:1fr}}
 </style>
@@ -65,13 +66,25 @@ a{color:var(--accent)}
 </div>
 
 <h2>2. 設定：管理画面だけで統制する</h2>
-<div class="panel howto">
-  <h3>進め方</h3>
-  <p>このページと IdMagic の管理画面を、別のタブで行き来します。各手順で「この画面を開く」を押し、表の<strong>入力欄</strong>に<strong>値</strong>をコピーして保存し、このページへ戻って「次へ」を押します。シェルもコードの変更も不要です。ログインは <code>alice</code> / <code>demo-password-1234</code> です。</p>
+<p>統制の効果だけを見るなら「設定済みで始める」、設定の手間を確かめるなら「自分で設定する」を選びます。どちらも同じ管理 API と管理画面の操作で、同じ設定を作ります。</p>
+<div class="compare">
+  <div class="panel">
+    <h3>設定済みで始める</h3>
+    <p>管理者として一度ログインすると、デモが管理画面と同じ管理 API で、接続先、評価用のクライアント、公開するツール、エージェント、認証、閲覧の割当を作り、ゲートウェイを起動して接続します。作ったものは管理画面で確かめられ、監査イベントにはログインした管理者の操作として残ります。パスワードは保存しません。</p>
+    <label for="admin-username">管理者のユーザー名</label>
+    <input id="admin-username" value="alice" autocomplete="username">
+    <label for="admin-password">パスワード（デモでは <code>demo-password-1234</code>）</label>
+    <input id="admin-password" type="password" autocomplete="current-password">
+    <div class="actions"><button id="preconfigure">ログインして設定する</button></div>
+    <div id="prepared-error"></div>
+    <div id="prepared-out"></div>
+  </div>
+  <div class="panel howto">
+    <h3>自分で設定する</h3>
+    <p>このページと IdMagic の管理画面を、別のタブで行き来します。各手順で「この画面を開く」を押し、表の<strong>値</strong>を入れて保存し、このページへ戻って「次へ」を押します。値の印は、<strong>あなたが決める</strong>値、<strong>デモが渡す</strong>値、<strong>前の手順の結果</strong>を表します。ログインは <code>alice</code> / <code>demo-password-1234</code> です。</p>
+    <p id="setup-counts" class="note"></p>
+  </div>
 </div>
-<label for="setup-example">確かめる制御の範囲</label>
-<select id="setup-example"><option value="operations">接続先と操作の利用（通常の管理）</option><option value="documents">文書ごとの権限（詳細な管理）</option></select>
-<p id="example-help" class="note"></p>
 <div class="progress" id="progress"></div>
 <div id="setup"></div>
 
@@ -91,8 +104,7 @@ a{color:var(--accent)}
     <h3>権限をその場で変える</h3>
     <p class="note">トークンを取り直さなくても、判定は要求ごとに行われます。</p>
     <p id="grant-help">給与テーブルへのアクセス権を追加して、左の「給与テーブルを読む」をもう一度押します。付与を取り消せば、また拒否に戻ります。エージェントは名前で選べます。</p>
-    <p><a id="tuples-link" target="_blank" rel="noreferrer">アクセス権を追加する画面を開く</a></p>
-    <div id="grant-fields"></div>
+    <p><a id="tuples-link" target="_blank" rel="noreferrer">エージェントの一覧を開く</a></p>
   </div>
 </div>
 
@@ -184,11 +196,19 @@ document.addEventListener('click', async (event) => {
     renderSteps(out, (await post('/api/run', { scenario: button.dataset.run })).steps)
   } catch (error) { renderError(out, error) } finally { button.disabled = false }
 })
-function field(label, value) {
+// ORIGIN は値の出所の印である。利用者が決める値と、写すだけの値を区別する。
+const ORIGIN = { you: 'あなたが決める', demo: 'デモが渡す', prev: '前の手順の結果', generated: 'IdMagic が作成', reported: 'ゲートウェイが報告', fixed: 'デモの値', chosen: 'あなたが選んだ' }
+function field(label, value, origin) {
   const row = document.createElement('div')
   row.className = 'field'
   const name = document.createElement('span')
   name.textContent = label
+  if (origin) {
+    const tag = document.createElement('span')
+    tag.className = `origin ${origin}`
+    tag.textContent = ORIGIN[origin]
+    name.append(document.createElement('br'), tag)
+  }
   const text = document.createElement('div')
   text.className = 'value'
   text.textContent = value
@@ -217,72 +237,38 @@ function inputField(id, label, type = 'text') {
 }
 async function init() {
   const state = await (await fetch('/api/state')).json()
-  const catalog = new URLSearchParams(location.search).get('example') !== 'documents'
-  $('setup-example').value = catalog ? 'operations' : 'documents'
-  $('setup-example').onchange = () => { location.search = `?example=${$('setup-example').value}` }
-  $('example-help').textContent = catalog
-    ? 'ゲートウェイが報告した閲覧、作成・更新、削除の三つのツールを公開し、まず閲覧だけを許可します。更新と削除は一つずつ許可します。文書ごとの制限は追加していないため、閲覧ツールは両方の文書を読めます。機密文書の拒否を確かめる場合は「文書ごとの権限」を選びます。'
-    : '文書ごとに閲覧を許可します。対象のモデルと関係の準備を初期設定に含めます。'
-  $('tuples-link').href = `${state.console}/admin/authorization/access/new`
+  $('tuples-link').href = `${state.console}/admin/agents`
   $('approvals-link').href = `${state.console}/account/approvals`
-  const detailedSteps = [
-    {
-      title: '認可モデル', path: '/admin/authorization/model/edit',
-      why: '「どんな種類のものに、誰がどんな関係を持てるか」を定義します。ここでは、エージェントが文書の閲覧者になれるようにします。',
-      todo: '「テンプレート：文書の閲覧」を押し、「発行内容を確認」、「発行」の順に押します。入力はありません。',
-      fields: [],
-    },
-    {
-      title: 'ゲートウェイ', path: '/admin/applications/new',
-      why: 'MCP サーバーの手前で要求を止めるゲートウェイの ID です。ゲートウェイはこの ID で IdMagic に「この要求を通してよいか」を問い合わせます。',
-      todo: '種類に「サービス (M2M)」を選びます。スコープは空のままで構いません。作成後に一度だけ出る値を下へ控えます。',
-      fields: [['名前', '文書ゲートウェイ']],
-      keep: [['gateway-client', 'クライアント ID'], ['gateway-secret', 'クライアントシークレット', 'password']],
-    },
-    {
-      title: 'MCP サーバー', path: '/admin/mcp-resource-servers/new',
-      why: '保護する MCP サーバーを登録します。許可スコープはこのサーバーの権限の名前です。「許可を判定する操作」は、文書を読む要求を「文書の閲覧者（viewer）なら許可」と判定するための設定です。',
-      todo: '「従来の評価規則を追加」を開いて同名のボタンを押し、対象の種類と必要な関係を入れます。必要なスコープのチェックはそのままにします。',
-      fields: [['リソース URI', state.resource], ['表示名', '社内文書 MCP'], ['評価用のクライアント', '手順 2 のサービス（文書ゲートウェイ）を名前で選ぶ'], ['サーバーが検査するスコープ（詳細設定）', state.read_scope], ['対象の種類（リソース型）', 'document'], ['必要な関係', 'viewer']],
-    },
-    {
-      title: 'エージェント', path: '/admin/agents/new',
-      why: 'エージェントの ID です。登録した管理者が所有者（責任者）になります。種別は「自律」のままにします。',
-      todo: '「認証」は「後で設定する」を選んで登録します。認証は次の手順で資格情報の画面から作ります。登録後の詳細画面で、名前の下に出る ID を下へ控えます。',
-      fields: [['エージェント名', '社内文書アシスタント']],
-      keep: [['agent-id', 'エージェントの ID']],
-    },
-    {
-      title: 'クレデンシャル', path: '/admin/agents',
-      why: 'エージェントが本物であることを、秘密鍵の署名で証明できるようにします。IdMagic へ渡すのは公開鍵だけで、共有のシークレットはありません。',
-      todo: '作成したエージェントの詳細で「クレデンシャルを管理」を開き、「新しく作成する」を選びます。公開鍵を貼り「作成して紐付ける」を押します。登録済みのスコープは認証上限のデフォルト値です。作成結果の client_id を下へ控えます。「既存を使う」は入力不要です。',
-      fields: [['公開鍵', state.public_key]],
-      keep: [['agent-client', '一覧に出たクライアント ID']],
-    },
-    {
-      title: '閲覧の許可', path: '/admin/authorization/access/new',
-      why: '「このエージェントは就業規則の閲覧者である」という事実を一件登録します。給与テーブルは登録しないので読めません。',
-      todo: '接続先と権限を選び、対象 ID を入れ、作成したエージェントを名前で選んで「アクセス権を付与」を押します。主体の構文と Agent ID の転記は不要です。',
-      fields: [['接続先', '社内文書 MCP'], ['権限', 'viewer (document)'], ['対象 ID', state.public_document], ['エージェント', '手順 4 で付けた名前']],
-    },
-  ]
-  const steps = catalog ? [
+  // fields は [入力欄, 値, 出所]。keep はデモへ写す値である。
+  const steps = [
     { title: '接続先', path: '/admin/mcp-resource-servers/new',
       why: '保護する MCP サーバーの接続先と、ゲートウェイが IdMagic へ問い合わせるための資格情報を一度に登録します。スコープとツール名の入力はありません。',
-      todo: '表示名とリソース URI を入れ、評価用のクライアントは「新しく作成する」のまま「登録」を押します。結果に出るクライアント ID とシークレットを下へ控え、「ゲートウェイを起動」を押します。',
-      fields: [['リソース URI', state.resource], ['表示名', '社内文書 MCP']],
+      todo: '表示名とリソース URI を入れ、評価用のクライアントは「新しく作成する」のまま「登録」を押します。結果に出るクライアント ID とシークレットを下へ写し、「ゲートウェイを起動」を押します。',
+      fields: [['リソース URI', state.resource, 'demo'], ['表示名', '社内文書 MCP', 'you']],
       keep: [['gateway-client', '評価用のクライアント ID'], ['gateway-secret', 'クライアントシークレット', 'password']],
-      action: { label: 'ゲートウェイを起動', run: () => post('/api/gateway', { catalog, gateway_client_id: $('gateway-client').value, gateway_client_secret: $('gateway-secret').value }) } },
+      action: { label: 'ゲートウェイを起動', run: () => post('/api/gateway', { catalog: true, gateway_client_id: $('gateway-client').value, gateway_client_secret: $('gateway-secret').value }) } },
     { title: '公開するツール', path: '/admin/mcp-resource-servers',
-      why: 'ゲートウェイが報告したツールのうち、Agent に使わせてよいものを選びます。報告しただけのツールは実行されません。どの Agent が使えるかは、後の割当で一つずつ決めます。',
-      todo: '「社内文書 MCP」の「編集」を開き、「Gateway から報告されたツール」の三つの「公開する」を押して「更新」を押します。',
-      fields: [['公開するツール', 'read_document、write_document、delete_document']] },
+      why: 'ゲートウェイが報告したツールのうち、Agent に使わせてよいものを選びます。報告しただけのツールは実行されません。どの Agent が使えるかは、次の手順で一つずつ決めます。',
+      todo: '「社内文書 MCP」の「編集」を開き、「Gateway から報告されたツール」の三つの「公開する」を押して「更新」を押します。名前と表示名は報告から入ります。',
+      fields: [['公開するツール', 'read_document、write_document、delete_document', 'prev']] },
     { title: 'エージェント', path: '/admin/agents/new',
       why: 'エージェントの登録、秘密鍵の署名による認証、使わせる操作を一度に設定します。IdMagic へ渡すのは公開鍵だけです。登録した管理者が責任者になります。まず閲覧だけを許可し、更新と削除は第 3 節で一つずつ追加します。',
-      todo: '名前と公開鍵を入れ、「利用する接続先と操作」で「文書の閲覧」だけを選んで「登録」を押します。結果に出るクライアント ID を下へ控えます。エージェントの ID は控えません。',
-      fields: [['エージェント名', '社内文書アシスタント'], ['公開鍵', state.public_key], ['許可する操作', '社内文書 MCP の「文書の閲覧」']],
+      todo: '名前と公開鍵を入れ、「利用する接続先と操作」で「文書の閲覧」だけを選んで「登録」を押します。結果に出るクライアント ID を下へ写します。エージェントの ID は写しません。',
+      fields: [['エージェント名', '社内文書アシスタント', 'you'], ['公開鍵', state.public_key, 'demo'], ['許可する操作', '社内文書 MCP の「文書の閲覧」', 'you']],
       keep: [['agent-client', 'クライアント ID']] },
-  ] : detailedSteps
+  ]
+  const optional = { title: '文書ごとに絞る（追加）', path: '/admin/mcp-resource-servers',
+    why: '閲覧を許した文書だけに絞ります。モデル、型、関係の入力はなく、操作ごとに「指定した対象だけ」を選びます。絞った直後は範囲を選ぶまでどの文書も読めません。',
+    todo: '「社内文書 MCP」の編集で「文書の閲覧」の「対象ごとの権限も確認する」を有効にして更新します。次にエージェントの「利用する接続先」で「文書の閲覧」の「指定した対象だけ」を選び、対象 ID に下の値を入れて保存します。',
+    fields: [['対象 ID を読む引数', 'document_id', 'demo'], ['対象 ID', state.public_document, 'demo']] }
+  // 必須の手順の数、利用者が決める値、デモへ写す値を数えて示す。追加の手順は数えない。
+  const decided = steps.flatMap((step) => step.fields).filter(([, , origin]) => origin === 'you').length
+  const copied = steps.flatMap((step) => step.keep ?? []).length
+  $('setup-counts').textContent = `必須の手順 ${steps.length + 1}（接続を含む）／あなたが決める値 ${decided}／デモへ写す値 ${copied}`
+  $('setup-counts').dataset.steps = String(steps.length + 1)
+  $('setup-counts').dataset.decided = String(decided)
+  $('setup-counts').dataset.copied = String(copied)
+  const all = [...steps, null, optional]
   const cards = []
   const renders = []
   const show = (index) => {
@@ -315,7 +301,7 @@ async function init() {
     tab.onclick = () => show(index)
     $('progress').append(tab)
   }
-  steps.forEach((step, index) => {
+  const stepCard = (step, index) => {
     addTab(index, step.title)
     const card = document.createElement('section')
     card.className = 'card'
@@ -333,7 +319,7 @@ async function init() {
     const todo = document.createElement('p')
     todo.textContent = step.todo
     const rows = document.createElement('div')
-    renders[index] = () => rows.replaceChildren(...step.fields.map(([label, item]) => field(label, typeof item === 'function' ? item() : item)))
+    renders[index] = () => rows.replaceChildren(...step.fields.map(([label, item, origin]) => field(label, item, origin)))
     card.append(title, why, link, todo, rows)
     if (step.keep) {
       const keep = document.createElement('div')
@@ -354,50 +340,76 @@ async function init() {
       actions.append(button)
       card.append(actions, out)
     }
-    card.append(navigation(index, false))
+    card.append(navigation(index, index === all.length - 1))
+    return card
+  }
+  const connectCard = (index) => {
+    addTab(index, '接続')
+    const connect = document.createElement('section')
+    connect.className = 'card'
+    const title = document.createElement('h3')
+    title.textContent = `手順 ${index + 1}　接続`
+    const text = document.createElement('p')
+    text.className = 'why'
+    text.textContent = '写したクライアント ID でエージェントを接続します。実運用では配置時に設定ファイルへ書く値です。'
+    const button = document.createElement('button')
+    button.id = 'connect'
+    button.textContent = '接続して確かめる'
+    const actions = document.createElement('div')
+    actions.className = 'actions'
+    actions.append(button)
+    const out = document.createElement('div')
+    out.id = 'connect-out'
+    button.onclick = async () => {
+      button.disabled = true
+      try {
+        const result = await post('/api/connect', { catalog: true, agent_client_id: $('agent-client').value, gateway_client_id: $('gateway-client').value, gateway_client_secret: $('gateway-secret').value })
+        renderSteps(out, result.steps)
+      } catch (error) { renderError(out, error) } finally { button.disabled = false }
+    }
+    connect.append(title, text, actions, out, navigation(index, false))
+    return connect
+  }
+  all.forEach((step, index) => {
+    const card = step ? stepCard(step, index) : connectCard(index)
     cards.push(card)
     $('setup').append(card)
   })
-  const connectIndex = steps.length
-  addTab(connectIndex, '接続')
-  const connect = document.createElement('section')
-  connect.className = 'card'
-  const title = document.createElement('h3')
-  title.textContent = `手順 ${connectIndex + 1}　接続`
-  const text = document.createElement('p')
-  text.className = 'why'
-  text.textContent = '控えた値をエージェントとゲートウェイへ渡します。実運用で配置時に設定ファイルへ書く値です。'
-  const button = document.createElement('button')
-  button.id = 'connect'
-  button.textContent = '接続して確かめる'
-  const actions = document.createElement('div')
-  actions.className = 'actions'
-  actions.append(button)
-  const out = document.createElement('div')
-  out.id = 'connect-out'
-  connect.append(title, text, actions, out, navigation(connectIndex, true))
-  cards.push(connect)
-  $('setup').append(connect)
   show(0)
-  const renderGrant = () => {
-    $('tuples-link').href = catalog ? `${state.console}/admin/agents` : `${state.console}/admin/authorization/access/new?agent=${encodeURIComponent($('agent-id')?.value ?? '')}`
-    if (catalog) {
-      $('grant-help').textContent = '「利用する接続先」で「文書の作成・更新」を追加して、「就業規則を更新する」を押します。トークンを取り直さなくても更新は実行されますが、割り当てていない削除は拒否されます。続けて「文書の削除」を追加すると削除できます。割当を取り消せば、手元のトークンでも次の依頼から拒否されます。'
-      $('grant-fields').replaceChildren()
-      return
-    }
-    $('grant-fields').replaceChildren(...[
-      ['接続先', '社内文書 MCP'], ['権限', 'viewer (document)'], ['対象 ID', state.secret_document], ['エージェント', '手順 4 で付けた名前'],
-    ].map(([label, item]) => field(label, item)))
-  }
-  renderGrant()
-  $('agent-id')?.addEventListener('input', renderGrant)
-  button.onclick = async () => {
+  $('grant-help').textContent = '「エージェント」の詳細で「利用する接続先」を開き、「文書の作成・更新」を追加して「就業規則を更新する」を押します。トークンを取り直さなくても更新は実行されますが、割り当てていない削除は拒否されます。続けて「文書の削除」を追加すると削除できます。給与テーブルを止めるには「文書ごとに絞る」を行います。割当を取り消せば、手元のトークンでも次の依頼から拒否されます。'
+  $('preconfigure').onclick = async () => {
+    const button = $('preconfigure')
+    const target = $('prepared-out')
     button.disabled = true
     try {
-      const result = await post('/api/connect', { catalog, agent_client_id: $('agent-client').value, gateway_client_id: $('gateway-client').value, gateway_client_secret: $('gateway-secret').value })
-      renderSteps(out, result.steps)
-    } catch (error) { renderError(out, error) } finally { button.disabled = false }
+      const result = await post('/api/preconfigure', { username: $('admin-username').value, password: $('admin-password').value })
+      $('admin-password').value = ''
+      const list = document.createElement('div')
+      list.id = 'prepared-items'
+      list.append(...result.items.map((item) => {
+        const row = field(item.item, item.value, item.origin)
+        const why = document.createElement('p')
+        why.className = 'note'
+        why.textContent = item.why
+        if (item.path) {
+          const link = document.createElement('a')
+          link.href = state.console + item.path
+          link.target = '_blank'
+          link.rel = 'noreferrer'
+          link.textContent = ' 管理画面で開く'
+          why.append(link)
+        }
+        const box = document.createElement('div')
+        box.append(row, why)
+        return box
+      }))
+      const note = document.createElement('p')
+      note.className = 'note'
+      note.textContent = `同じ設定を自分で行う場合は、${$('setup-counts').textContent}です。`
+      target.replaceChildren(list, note)
+      renderSteps(target, result.steps, true)
+      $('prepared-error').replaceChildren()
+    } catch (error) { renderError($('prepared-error'), error) } finally { button.disabled = false }
   }
   $('approval').onclick = async () => {
     const target = $('approval-out')
