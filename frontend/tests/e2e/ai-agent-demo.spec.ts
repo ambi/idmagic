@@ -11,6 +11,7 @@ import {
   clickMenuItemByText,
   navigateAndLogin,
   openWebView,
+  publishDocumentViewerModel,
   setInputValue,
   setSelectValue,
   uiOrigin,
@@ -20,6 +21,8 @@ import {
 } from './fixtures'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
+// 全 spec が同じテナントを共有し、デモの事前設定も同じ表示名で登録するので、表示名で選ぶ接続先を実行ごとに一意にする。
+const connectionName = `社内文書 MCP ${Date.now()}`
 const demoOrigin = 'http://127.0.0.1:5185'
 
 type DemoState = {
@@ -68,7 +71,9 @@ test('administrator governs a real agent from the console', async () => {
   // go run は子プロセスを残すので、kill が本体へ届くように先にビルドして直接起動する。
   const binary = join(tmpdir(), `idmagic-agent-demo-${process.pid}`)
   const built = spawnSync(['go', 'build', '-o', binary, './examples/agent-demo'], { cwd: root })
-  expect(built.stderr.toString()).toBe('')
+  if (built.exitCode !== 0) {
+    throw new Error(`go build failed: ${built.stderr.toString()}`)
+  }
   const demo = spawn(
     [binary, '-realm', `${uiOrigin}/realms/default`, '-listen', '127.0.0.1:5185'],
     { cwd: root, stdout: 'ignore', stderr: 'ignore' },
@@ -82,17 +87,13 @@ test('administrator governs a real agent from the console', async () => {
     const unmanaged = await run('unmanaged')
     expect(unmanaged.map((item) => item.executed)).toEqual([true, true, true])
 
-    // 手順 1：テンプレートから認可モデルを発行する。JSON は使わない。
+    // 手順 1：文書の閲覧を含む認可モデルを発行する。
     await navigateAndLogin(
       view,
       '/realms/default/admin/authorization/model/edit',
       'admin-authorization-model-edit',
     )
-    await clickButtonByText(view, 'Template: document viewers')
-    await clickEnabledButtonByText(view, 'Review publication')
-    await waitForText(view, 'Differences from the latest version')
-    await clickEnabledButtonByText(view, 'Publish')
-    await waitForPage(view, 'admin-authorization-model')
+    await publishDocumentViewerModel(view)
 
     // 手順 2：ゲートウェイのサービスを登録する。スコープは空のまま。
     await view.navigate(`${uiOrigin}/realms/default/admin/applications/new`)
@@ -122,7 +123,7 @@ test('administrator governs a real agent from the console', async () => {
     // 手順 3：保護する MCP サーバーを行の入力で登録する。
     await view.navigate(`${uiOrigin}/realms/default/admin/mcp-resource-servers/new`)
     await setInputValue(view, '#resource', state.resource)
-    await setInputValue(view, '#name', '社内文書 MCP')
+    await setInputValue(view, '#name', connectionName)
     await setInputValue(view, '#scopes', state.read_scope)
     // 評価用のクライアントは手順 2 のサービスを名前で選ぶ。一覧の読み込みを待ってから選ぶ。
     await waitForText(view, gatewayName)
@@ -170,7 +171,7 @@ test('administrator governs a real agent from the console', async () => {
     await waitForPage(view, 'admin-agent-access-create')
     const serverID = String(
       await view.evaluate(
-        `Array.from(document.querySelector('#access-connection').options).find(option => option.text === '社内文書 MCP')?.value`,
+        `Array.from(document.querySelector('#access-connection').options).find(option => option.text === ${JSON.stringify(connectionName)})?.value`,
       ),
     )
     await setSelectValue(view, '#access-connection', serverID)

@@ -21,6 +21,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 const demoOrigin = 'http://127.0.0.1:5186'
 // 文書別の例と同じテナントへ登録するため、接続先の URI を分ける。
 const resource = 'https://docs-mcp-operations.agent-demo.example/'
+// 全 spec が同じテナントを共有し、デモの事前設定も同じ表示名で登録するので、表示名で選ぶ接続先を実行ごとに一意にする。
+const connectionName = `社内文書 MCP ${Date.now()}`
 
 type DemoState = { public_key: string }
 type Step = { title: string; outcome: string; executed: boolean; evidence?: string }
@@ -49,7 +51,7 @@ async function toggleOperation(view: Bun.WebView, agentPath: string, operation: 
   await waitForPage(view, 'admin-agent-resources-edit')
   const serverID = String(
     await view.evaluate(
-      `[...document.querySelector('#resource-connection').options].find(option=>option.textContent==='社内文書 MCP')?.value`,
+      `[...document.querySelector('#resource-connection').options].find(option=>option.textContent===${JSON.stringify(connectionName)})?.value`,
     ),
   )
   await setSelectValue(view, '#resource-connection', serverID)
@@ -67,7 +69,9 @@ test('administrator enables writing and deletion independently in the agent demo
   // go run は子プロセスを残すので、kill が本体へ届くように先にビルドして直接起動する。
   const binary = join(tmpdir(), `idmagic-agent-demo-operations-${process.pid}`)
   const built = spawnSync(['go', 'build', '-o', binary, './examples/agent-demo'], { cwd: root })
-  expect(built.stderr.toString()).toBe('')
+  if (built.exitCode !== 0) {
+    throw new Error(`go build failed: ${built.stderr.toString()}`)
+  }
   const demo = spawn(
     [
       binary,
@@ -92,7 +96,7 @@ test('administrator enables writing and deletion independently in the agent demo
       'admin-mcp-resource-server-create',
     )
     await setInputValue(view, '#resource', resource)
-    await setInputValue(view, '#name', '社内文書 MCP')
+    await setInputValue(view, '#name', connectionName)
     expect(await view.evaluate(`document.querySelector('#evaluator-client').value`)).toBe('__new__')
     await view.evaluate(`document.querySelector('form button[type="submit"]').click()`)
     await waitForText(view, 'Registered')

@@ -92,6 +92,49 @@ describe('AdminAuthorizationModelEditPage', () => {
     expect(posts).toEqual([{ resource_types: narrowed }])
   })
 
+  // 発行済みのモデルがある実行環境では E2E がこの経路を通れないので、ここで確かめる。
+  it('publishes the document viewer template when no model exists yet', async () => {
+    const posts: unknown[] = []
+    globalThis.fetch = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        posts.push(JSON.parse(String(init.body)))
+        return json(201, { authorization_model: model, consistency: 'c2' })
+      }
+      return json(
+        404,
+        { type: 'urn:idmagic:error:authorization_model_not_found', status: 404 },
+        'application/problem+json',
+      )
+    }) as unknown as typeof fetch
+    const onPublished = mock(() => {})
+    await renderWithRouter(
+      <AdminAuthorizationModelEditPage csrfToken="csrf" model={null} onPublished={onPublished} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: t.modelTemplateButton }))
+    expect(screen.queryByRole('button', { name: t.modelTemplateButton })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: t.review }))
+    await screen.findByText(/document/)
+    fireEvent.click(screen.getByRole('button', { name: t.publish }))
+    await waitFor(() => expect(onPublished).toHaveBeenCalled())
+    expect(posts).toEqual([
+      {
+        resource_types: [
+          { name: 'user', relations: [] },
+          { name: 'agent', relations: [] },
+          {
+            name: 'document',
+            relations: [
+              {
+                name: 'viewer',
+                rewrites: [{ kind: 'direct', direct_subject_types: ['user', 'agent'] }],
+              },
+            ],
+          },
+        ],
+      },
+    ])
+  })
+
   it('compares with the latest version read when reviewing', async () => {
     stubAPI({
       ...model,

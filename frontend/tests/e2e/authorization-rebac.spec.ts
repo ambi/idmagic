@@ -5,6 +5,7 @@ import {
   clickLinkByText,
   navigateAndLogin,
   openWebView,
+  publishDocumentViewerModel,
   setInputValue,
   setSelectValue,
   uiOrigin,
@@ -14,16 +15,6 @@ import {
 
 // 型は TypeSpec から生成しておらず、単体テストのダブルは同じ誤りを共有するので、画面から実 API
 // までをこの 1 本で通す。判定の境界は Go のテストが持つ。
-const model = [
-  { name: 'user', relations: [] },
-  { name: 'agent', relations: [] },
-  {
-    name: 'document',
-    relations: [
-      { name: 'viewer', rewrites: [{ kind: 'direct', direct_subject_types: ['user', 'agent'] }] },
-    ],
-  },
-]
 
 async function fillCheck(view: Bun.WebView, resourceId: string): Promise<void> {
   await setInputValue(view, '#check-subject-type', 'user')
@@ -44,12 +35,7 @@ test('administrator publishes a model and explains an access decision', async ()
       '/admin/authorization/model/edit',
       'admin-authorization-model-edit',
     )
-    await clickButtonByText(view, 'JSON')
-    await setInputValue(view, '#authorization-model-json', JSON.stringify(model))
-    await clickEnabledButtonByText(view, 'Review publication')
-    await waitForText(view, 'Differences from the latest version')
-    await clickEnabledButtonByText(view, 'Publish')
-    await waitForPage(view, 'admin-authorization-model')
+    await publishDocumentViewerModel(view)
     await waitForText(view, 'Published the authorization model.')
 
     await clickLinkByText(view, 'Relation tuples')

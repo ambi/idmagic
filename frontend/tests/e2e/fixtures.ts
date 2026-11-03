@@ -861,6 +861,27 @@ export async function setCheckboxValue(
   }
 }
 
+// 描画を待たずに querySelector(...).click() すると、要素がまだないときに null の click として
+// 失敗し、どの要素だったかを名乗らない。出現を待って押し、見つからなければセレクターを示す。
+export async function clickSelector(
+  view: Bun.WebView,
+  selector: string,
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const clicked = await view.evaluate(`(() => {
+      const target = document.querySelector(${JSON.stringify(selector)})
+      if (!(target instanceof HTMLElement)) return false
+      target.click()
+      return true
+    })()`)
+    if (clicked === true) return
+    await Bun.sleep(POLL_INTERVAL_MS)
+  }
+  throw new Error(`element not found: ${selector}, last url=${view.url}`)
+}
+
 export async function clickElementByAriaLabel(view: Bun.WebView, label: string): Promise<void> {
   const clicked = await view.evaluate(`(() => {
     const target = document.querySelector(${JSON.stringify(`[aria-label="${label}"]`)})
@@ -952,4 +973,28 @@ export async function navigateAndLogin(
   await view.navigate(`${uiOrigin}${path}`)
   await loginFromCurrentPage(view, username)
   await waitForPage(view, expectedPage, 30_000)
+}
+
+// 認可モデルはテナントに一つで、全 spec が同じテナントを共有する。どの spec が先に発行して
+// いても差分が出るよう、実行ごとに異なる目印の型を足して文書の閲覧を含むモデルを発行する。
+// 未発行のときだけ表示されるテンプレートのボタンは、実行順に依存しない DOM テストで確かめる。
+export async function publishDocumentViewerModel(view: Bun.WebView): Promise<void> {
+  await waitForPage(view, 'admin-authorization-model-edit')
+  const resourceTypes = [
+    { name: 'user', relations: [] },
+    { name: 'agent', relations: [] },
+    {
+      name: 'document',
+      relations: [
+        { name: 'viewer', rewrites: [{ kind: 'direct', direct_subject_types: ['user', 'agent'] }] },
+      ],
+    },
+    { name: `e2e_run_${Date.now()}`, relations: [] },
+  ]
+  await clickButtonByText(view, 'JSON')
+  await setInputValue(view, '#authorization-model-json', JSON.stringify(resourceTypes))
+  await clickEnabledButtonByText(view, 'Review publication')
+  await waitForText(view, 'Differences from the latest version')
+  await clickEnabledButtonByText(view, 'Publish')
+  await waitForPage(view, 'admin-authorization-model')
 }

@@ -39,7 +39,9 @@ test('administrator starts the agent demo preconfigured and narrows it to one do
   // go run は子プロセスを残すので、kill が本体へ届くように先にビルドして直接起動する。
   const binary = join(tmpdir(), `idmagic-agent-demo-preconfigured-${process.pid}`)
   const built = spawnSync(['go', 'build', '-o', binary, './examples/agent-demo'], { cwd: root })
-  expect(built.stderr.toString()).toBe('')
+  if (built.exitCode !== 0) {
+    throw new Error(`go build failed: ${built.stderr.toString()}`)
+  }
   const demo = spawn(
     [
       binary,

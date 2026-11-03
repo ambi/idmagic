@@ -13,6 +13,7 @@ import {
   clickElementByAriaLabel,
   clickLinkByText,
   clickMenuItemByText,
+  clickSelector,
   clickSummaryByText,
   demo,
   POLL_INTERVAL_MS,
@@ -271,7 +272,10 @@ test('admin MCP resource server lifecycle works from the browser', async () => {
     await waitForUrl(view, /\/admin\/mcp-resource-servers$/)
     await waitForText(view, resource)
 
-    await clickLinkByText(view, 'Edit')
+    // 他の spec も同じテナントへ接続先を登録するので、操作と確認は自分の行に限る。
+    // 行を名指せるのは削除ボタンの aria-label だけで、その二つ上の要素が名前と状態を持つ。
+    const deleteButton = `document.querySelector(${JSON.stringify(`[aria-label="Delete: ${resource}"]`)})`
+    await view.evaluate(`${deleteButton}.parentElement.querySelector('a[href$="/edit"]').click()`)
     await waitForUrl(view, /\/admin\/mcp-resource-servers\/[^/]+\/edit$/)
     await setInputValue(view, '#name', 'MCP E2E updated')
     await setInputValue(view, '#scopes', 'mcp.read')
@@ -280,13 +284,16 @@ test('admin MCP resource server lifecycle works from the browser', async () => {
     // 'Disabled' is also literal <option> text in the still-current edit form, so wait
     // for the post-save redirect back to the list before asserting the committed state.
     await waitForUrl(view, /\/admin\/mcp-resource-servers$/)
-    await waitForText(view, 'Disabled')
+    await waitForText(view, 'MCP E2E updated')
+    expect(
+      await view.evaluate(`${deleteButton}.parentElement.parentElement.textContent`),
+    ).toContain('Disabled')
 
     await clickElementByAriaLabel(view, `Delete: ${resource}`)
     await view.click('[role="dialog"] button:last-child')
     // 削除の通知は URI ではなく表示名で示す。
     await waitForText(view, 'MCP E2E updated has been deleted.')
-    await waitForText(view, 'No MCP resource servers have been registered yet.')
+    expect(await view.evaluate(`${deleteButton} === null`)).toBe(true)
   } finally {
     view.close()
   }
@@ -735,9 +742,7 @@ test('admin application lifecycle and agent credential binding work from the bro
     await waitForUrl(view, /\/admin\/agents\/new$/)
     await setInputValue(view, '#agent-name', agentName)
     // 認証用クライアントはこのテストでは作らない。
-    await view.evaluate(
-      `document.querySelector('input[name="auth-method"][value="later"]').click()`,
-    )
+    await clickSelector(view, 'input[name="auth-method"][value="later"]')
     await setInputValue(view, '#agent-description', 'E2E credential binding')
     await setSelectValue(view, '#agent-kind', 'supervised')
     await view.click('form button[type="submit"]')
@@ -753,7 +758,7 @@ test('admin application lifecycle and agent credential binding work from the bro
     await waitForText(view, clientID)
 
     await clickButtonByText(view, 'Unbind')
-    await view.evaluate(`document.querySelector('[role="dialog"] button:last-child').click()`)
+    await clickSelector(view, '[role="dialog"] button:last-child')
     await waitForText(view, 'No credentials are bound.')
 
     await view.navigate(appDetailURL)
