@@ -20,7 +20,7 @@ spec_impact: { kind: none, reason: "デモのプロセス、画面と開発文�
 そのため、統制の効果を見せたい場面でも設定作業が主役になり、Okta や Ping より複雑に見える。
 
 設定の簡単さを示すことと、統制の効果を示すことは別の目的である。
-前者は製品の改善（[wi-95247](../done/wi-95247-discover-mcp-tools-and-automate-connection-setup.md)、[wi-85817](wi-85817-register-agent-credentials-and-connections-in-one-flow.md)、[wi-24427](wi-24427-restrict-tools-to-targets-without-authoring-a-model.md)）で減らし、デモは両方を分けて見せる。
+前者は製品の改善（[wi-95247](../done/wi-95247-discover-mcp-tools-and-automate-connection-setup.md)、[wi-85817](../done/wi-85817-register-agent-credentials-and-connections-in-one-flow.md)、[wi-24427](wi-24427-restrict-tools-to-targets-without-authoring-a-model.md)）で減らし、デモは両方を分けて見せる。
 
 ## 対象範囲
 
@@ -55,7 +55,7 @@ spec_impact: { kind: none, reason: "デモのプロセス、画面と開発文�
 
 ### 入力の出所と設定量
 
-出所の語は [wi-85817](wi-85817-register-agent-credentials-and-connections-in-one-flow.md) と同じ四つに揃える。
+出所の語は [wi-85817](../done/wi-85817-register-agent-credentials-and-connections-in-one-flow.md) と同じ四つに揃える。
 手順数、手入力、転記は E2E が操作した入力欄から数え、手作業の数え直しに頼らない。
 比較表では、初期構築と日常の付与を分け、IdMagic 側の事前準備を省かない。
 製品の改善が入るたびに数を更新し、改善前より増えた場合は E2E を失敗させる。

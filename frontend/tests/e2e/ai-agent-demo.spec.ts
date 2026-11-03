@@ -154,6 +154,10 @@ test('administrator governs a real agent from the console', async () => {
     const name = `社内文書アシスタント-${Date.now()}`
     await view.navigate(`${uiOrigin}/realms/default/admin/agents/new`)
     await setInputValue(view, '#agent-name', name)
+    // 認証用クライアントは手順 5 で資格情報の画面から作る。
+    await view.evaluate(
+      `document.querySelector('input[name="auth-method"][value="later"]').click()`,
+    )
     await clickButtonByText(view, 'Register')
     await waitForPage(view, 'admin-agent-detail')
     const detailURL = view.url

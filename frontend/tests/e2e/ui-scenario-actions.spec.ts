@@ -264,7 +264,11 @@ test('admin MCP resource server lifecycle works from the browser', async () => {
     await setInputValue(view, '#resource', resource)
     await setInputValue(view, '#name', 'MCP E2E')
     await setInputValue(view, '#scopes', 'mcp.read, mcp.write')
-    await clickButtonByText(view, 'Register')
+    // Gateway を使わない接続先として登録し、登録後に一覧へ戻る。
+    await setSelectValue(view, '#evaluator-client', '')
+    // 「Register tool」も「Register」を含むので、送信のボタンを直接押す。
+    await view.evaluate(`document.querySelector('form button[type="submit"]').click()`)
+    await waitForUrl(view, /\/admin\/mcp-resource-servers$/)
     await waitForText(view, resource)
 
     await clickLinkByText(view, 'Edit')
@@ -280,7 +284,8 @@ test('admin MCP resource server lifecycle works from the browser', async () => {
 
     await clickElementByAriaLabel(view, `Delete: ${resource}`)
     await view.click('[role="dialog"] button:last-child')
-    await waitForText(view, `${resource} has been deleted.`)
+    // 削除の通知は URI ではなく表示名で示す。
+    await waitForText(view, 'MCP E2E updated has been deleted.')
     await waitForText(view, 'No MCP resource servers have been registered yet.')
   } finally {
     view.close()
@@ -729,10 +734,14 @@ test('admin application lifecycle and agent credential binding work from the bro
     await clickLinkByText(view, 'Add agent')
     await waitForUrl(view, /\/admin\/agents\/new$/)
     await setInputValue(view, '#agent-name', agentName)
+    // 認証用クライアントはこのテストでは作らない。
+    await view.evaluate(
+      `document.querySelector('input[name="auth-method"][value="later"]').click()`,
+    )
     await setInputValue(view, '#agent-description', 'E2E credential binding')
     await setSelectValue(view, '#agent-kind', 'supervised')
     await view.click('form button[type="submit"]')
-    await waitForText(view, agentName)
+    await waitForPage(view, 'admin-agent-detail')
 
     await clickLinkByText(view, 'Manage credentials')
     await waitForPage(view, 'admin-agent-credentials')

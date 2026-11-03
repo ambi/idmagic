@@ -18,6 +18,10 @@ test('administrator edits agent settings in separate workflows', async () => {
     await navigateAndLogin(view, '/realms/default/admin/agents/new', 'admin-agent-create')
     expect(await view.evaluate(`document.querySelector('#agent-roles') === null`)).toBe(true)
     await setInputValue(view, '#agent-name', name)
+    // 認証用クライアントはこのテストでは作らない。
+    await view.evaluate(
+      `document.querySelector('input[name="auth-method"][value="later"]').click()`,
+    )
     await clickButtonByText(view, 'Register')
     await waitForPage(view, 'admin-agent-detail')
     expect(

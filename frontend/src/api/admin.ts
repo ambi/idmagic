@@ -1676,8 +1676,13 @@ export async function deleteAdminAgent(csrfToken: string, id: string): Promise<v
 
 export async function createAdminAgentKeyClient(
   csrfToken: string,
-  input: { name: string; scope: string; jwks: { keys: Record<string, unknown>[] } },
+  input: { name: string; scope: string } & (
+    | { jwks: { keys: Record<string, unknown>[] } }
+    | { jwks_uri: string }
+  ),
 ): Promise<string> {
+  // JWKS の URL を使えば、鍵の更新に管理画面の操作が要らない (REQ-IDMANAGEMENT-105)。
+  const keys = 'jwks' in input ? { jwks: input.jwks } : { jwks_uri: input.jwks_uri }
   const result = await request<{ client: { client_id: string } }>(
     '/api/admin/v1/clients',
     adminRequest(csrfToken, 'POST', {
@@ -1687,7 +1692,7 @@ export async function createAdminAgentKeyClient(
       grant_types: ['client_credentials', 'urn:openid:params:grant-type:ciba'],
       token_endpoint_auth_method: 'private_key_jwt',
       scope: input.scope,
-      jwks: input.jwks,
+      ...keys,
       fapi_profile: 'none',
     }),
   )

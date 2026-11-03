@@ -248,7 +248,7 @@ async function init() {
     {
       title: 'エージェント', path: '/admin/agents/new',
       why: 'エージェントの ID です。登録した管理者が所有者（責任者）になります。種別は「自律」のままにします。',
-      todo: '登録後の詳細画面で、名前の下に出る ID を下へ控えます。',
+      todo: '「認証」は「後で設定する」を選んで登録します。認証は次の手順で資格情報の画面から作ります。登録後の詳細画面で、名前の下に出る ID を下へ控えます。',
       fields: [['エージェント名', '社内文書アシスタント']],
       keep: [['agent-id', 'エージェントの ID']],
     },
@@ -277,8 +277,11 @@ async function init() {
       why: 'ゲートウェイが報告したツールのうち、Agent に使わせてよいものを選びます。報告しただけのツールは実行されません。どの Agent が使えるかは、後の割当で一つずつ決めます。',
       todo: '「社内文書 MCP」の「編集」を開き、「Gateway から報告されたツール」の三つの「公開する」を押して「更新」を押します。',
       fields: [['公開するツール', 'read_document、write_document、delete_document']] },
-    detailedSteps[3], detailedSteps[4],
-    { title: '利用する接続先', path: '/admin/agents', why: '接続先の操作をこのエージェントに割り当てます。対象 ID や関係の入力はありません。まず閲覧だけを許可し、更新と削除は第 3 節で一つずつ追加します。', todo: '作成したエージェントの詳細で「利用する接続先」を開き、「接続先と操作を編集」へ進みます。「社内文書 MCP」と「文書の閲覧」だけを選んで保存します。', fields: [['接続先', '社内文書 MCP'], ['許可する操作', '文書の閲覧']] },
+    { title: 'エージェント', path: '/admin/agents/new',
+      why: 'エージェントの登録、秘密鍵の署名による認証、使わせる操作を一度に設定します。IdMagic へ渡すのは公開鍵だけです。登録した管理者が責任者になります。まず閲覧だけを許可し、更新と削除は第 3 節で一つずつ追加します。',
+      todo: '名前と公開鍵を入れ、「利用する接続先と操作」で「文書の閲覧」だけを選んで「登録」を押します。結果に出るクライアント ID を下へ控えます。エージェントの ID は控えません。',
+      fields: [['エージェント名', '社内文書アシスタント'], ['公開鍵', state.public_key], ['許可する操作', '社内文書 MCP の「文書の閲覧」']],
+      keep: [['agent-client', 'クライアント ID']] },
   ] : detailedSteps
   const cards = []
   const renders = []
@@ -377,7 +380,7 @@ async function init() {
   $('setup').append(connect)
   show(0)
   const renderGrant = () => {
-    $('tuples-link').href = catalog ? `${state.console}/admin/agents/${encodeURIComponent($('agent-id').value)}/resources` : `${state.console}/admin/authorization/access/new?agent=${encodeURIComponent($('agent-id').value)}`
+    $('tuples-link').href = catalog ? `${state.console}/admin/agents` : `${state.console}/admin/authorization/access/new?agent=${encodeURIComponent($('agent-id')?.value ?? '')}`
     if (catalog) {
       $('grant-help').textContent = '「利用する接続先」で「文書の作成・更新」を追加して、「就業規則を更新する」を押します。トークンを取り直さなくても更新は実行されますが、割り当てていない削除は拒否されます。続けて「文書の削除」を追加すると削除できます。割当を取り消せば、手元のトークンでも次の依頼から拒否されます。'
       $('grant-fields').replaceChildren()
@@ -388,7 +391,7 @@ async function init() {
     ].map(([label, item]) => field(label, item)))
   }
   renderGrant()
-  $('agent-id').addEventListener('input', renderGrant)
+  $('agent-id')?.addEventListener('input', renderGrant)
   button.onclick = async () => {
     button.disabled = true
     try {

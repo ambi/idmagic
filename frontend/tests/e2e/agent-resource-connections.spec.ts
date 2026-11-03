@@ -37,6 +37,10 @@ test('administrator assigns registered operations from resource connections', as
     await waitForPage(view, 'admin-agent-create')
     const agentName = `Catalog assistant-${suffix}`
     await setInputValue(view, '#agent-name', agentName)
+    // 認証用クライアントはこのテストでは作らない。
+    await view.evaluate(
+      `document.querySelector('input[name="auth-method"][value="later"]').click()`,
+    )
     await clickButtonByText(view, 'Register')
     await waitForPage(view, 'admin-agent-detail')
     const detailPath = String(await view.evaluate('window.location.pathname'))

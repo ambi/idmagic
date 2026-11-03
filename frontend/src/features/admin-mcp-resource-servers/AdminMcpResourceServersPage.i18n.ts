@@ -17,7 +17,7 @@ export const adminMcpResourceServersDictionary = defineDictionary(
     scopesLabel: 'サーバーが検査するスコープ',
     scopesPlaceholder: 'mcp.read, mcp.write',
     scopesHelp:
-      'デフォルト値。変更できます。Gateway で守る構成では、スコープは IdMagic の中だけで使う上限であり、変更は不要です。MCP サーバー自身がトークンを検査する構成だけ、サーバーが定めたスコープ名を空白かカンマで区切って入力します。',
+      'Gateway で守る構成では、スコープは IdMagic の中だけで使う上限であり、変更は不要です。MCP サーバー自身がトークンを検査する構成だけ、サーバーが定めたスコープ名を空白かカンマで区切って入力します。',
     scopesAdvanced: 'MCP サーバー自身がトークンを検査する構成',
     operationsHeading: '公開するツールと必要な権限',
     toolName: 'MCP ツール名',
@@ -107,7 +107,7 @@ export const adminMcpResourceServersDictionary = defineDictionary(
     scopesLabel: 'Scopes checked by the server',
     scopesPlaceholder: 'mcp.read, mcp.write',
     scopesHelp:
-      'Default value; you can change it. When a gateway protects the server, scopes are a ceiling used only inside IdMagic and need no change. Only when the MCP server checks tokens itself, enter the scope names it defines, separated by spaces or commas.',
+      'When a gateway protects the server, scopes are a ceiling used only inside IdMagic and need no change. Only when the MCP server checks tokens itself, enter the scope names it defines, separated by spaces or commas.',
     scopesAdvanced: 'The MCP server checks tokens itself',
     operationsHeading: 'Published tools and required permissions',
     toolName: 'MCP tool name',

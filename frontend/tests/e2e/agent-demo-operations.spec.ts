@@ -6,7 +6,6 @@ import { spawn, spawnSync } from 'bun'
 import {
   clickButtonByText,
   clickElementByAriaLabel,
-  clickEnabledButtonByText,
   clickLinkByText,
   navigateAndLogin,
   openWebView,
@@ -63,7 +62,7 @@ async function toggleOperation(view: Bun.WebView, agentPath: string, operation: 
   await waitForText(view, 'Connection and operation assignments saved.')
 }
 
-//spec:covers REQ-OAUTH2-088, REQ-OAUTH2-087, REQ-MCPGATEWAY-011, REQ-OAUTH2-084, REQ-OAUTH2-083, REQ-MCPGATEWAY-010: 一つの画面で接続先と評価用クライアントを登録し、ゲートウェイが報告したツールを名前の入力なしに公開して、閲覧、更新、削除を個別に割り当てる。同じスコープでも未割当の削除は拒否する。
+//spec:covers REQ-IDMANAGEMENT-105, REQ-OAUTH2-088, REQ-OAUTH2-087, REQ-MCPGATEWAY-011, REQ-OAUTH2-084, REQ-OAUTH2-083, REQ-MCPGATEWAY-010: 一つの画面で接続先と評価用クライアントを登録し、ゲートウェイが報告したツールを名前の入力なしに公開して、閲覧、更新、削除を個別に割り当てる。同じスコープでも未割当の削除は拒否する。
 test('administrator enables writing and deletion independently in the agent demo', async () => {
   // go run は子プロセスを残すので、kill が本体へ届くように先にビルドして直接起動する。
   const binary = join(tmpdir(), `idmagic-agent-demo-operations-${process.pid}`)
@@ -130,24 +129,32 @@ test('administrator enables writing and deletion independently in the agent demo
     await clickButtonByText(view, 'Update')
     await waitForPage(view, 'admin-mcp-resource-servers')
 
-    // Agent と認証用クライアントを作る。認証上限は登録済みのスコープになる。
+    // 一つの登録画面で Agent、公開鍵の認証、閲覧の割当を作る。Agent ID は控えない。
     const name = `社内文書アシスタント-${Date.now()}`
     await view.navigate(`${uiOrigin}/realms/default/admin/agents/new`)
+    await waitForPage(view, 'admin-agent-create')
     await setInputValue(view, '#agent-name', name)
+    await setInputValue(view, '#agent-create-public-key', state.public_key)
+    await view.evaluate(
+      `[...document.querySelectorAll('label')].find(node=>node.textContent.trim()==='文書の閲覧')?.querySelector('input[type=checkbox]')?.click()`,
+    )
+    await waitForText(view, 'Allow 文書の閲覧.')
     await clickButtonByText(view, 'Register')
-    await waitForPage(view, 'admin-agent-detail')
-    const agentPath = new URL(view.url).pathname
-    await view.navigate(`${uiOrigin}${agentPath}/credentials`)
-    await setInputValue(view, '#agent-public-key', state.public_key)
-    await clickEnabledButtonByText(view, 'Create and bind')
-    await waitForText(view, 'The credential has been added.')
+    await waitForText(view, 'Registered')
     const agentClientID = String(
-      await view.evaluate(`document.querySelector('li code')?.textContent ?? ''`),
+      await view.evaluate(
+        `document.querySelector('#result-agent-client-id code')?.textContent ?? ''`,
+      ),
     )
     expect(agentClientID).not.toBe('')
+    expect(
+      await view.evaluate(`document.querySelector('#result-agent-config').textContent`),
+    ).toContain(resource)
+    await clickLinkByText(view, 'Open agent details')
+    await waitForPage(view, 'admin-agent-detail')
+    const agentPath = new URL(view.url).pathname
 
-    // 閲覧だけを割り当てて接続する。スコープを省略した発行は IdMagic が決める。
-    await toggleOperation(view, agentPath, '文書の閲覧')
+    // 閲覧だけを割り当てた状態で接続する。スコープを省略した発行は IdMagic が決める。
     const connected = await post('/api/connect', { catalog: true, agent_client_id: agentClientID })
     expect(connected.steps.at(-1)).toMatchObject({ outcome: 'allowed' })
     expect(connected.steps.at(-1)?.evidence).toBe('発行されたスコープ: mcp')
