@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"slices"
+	"strings"
 
 	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -17,6 +18,8 @@ type resourceOperation struct {
 	Request     ResourceAccessRequest
 	Registered  bool
 	Preparation bool
+	// Target は、組み込みの型で対象ごとの権限を持つツールの引数から解決した対象 ID である。
+	Target string
 }
 
 func resolveResourceOperation(server *domain.McpResourceServer, in ResourceAccessRequest) resourceOperation {
@@ -32,9 +35,8 @@ func resolveResourceOperation(server *domain.McpResourceServer, in ResourceAcces
 	if !ok {
 		return resourceOperation{Request: in}
 	}
-	if rule.ResourceType == spec.ResourceTypeMcpOperation {
-		in.ResourceID = server.OperationResourceID(rule)
-	} else {
+	target := ""
+	if rule.Tool.ResourceIDArgument != "" {
 		args, err := approvaldomain.DecodeStrictJSONObject(in.OperationParameters)
 		if err != nil {
 			return resourceOperation{Request: in}
@@ -43,10 +45,34 @@ func resolveResourceOperation(server *domain.McpResourceServer, in ResourceAcces
 		if !ok || id == "" {
 			return resourceOperation{Request: in}
 		}
-		in.ResourceID = id
+		target = id
+	}
+	if rule.ResourceType == spec.ResourceTypeMcpOperation {
+		in.ResourceID = server.OperationResourceID(rule)
+	} else {
+		in.ResourceID = target
+		target = ""
 	}
 	in.ResourceType, in.Relation = rule.ResourceType, rule.Relation
-	return resourceOperation{Rule: rule, Request: in, Registered: rule.Tool.ID != ""}
+	return resourceOperation{Rule: rule, Request: in, Registered: rule.Tool.ID != "", Target: target}
+}
+
+// checkTargetRange は組み込みの型で対象ごとの権限を持つツールに、全対象か指定した対象の範囲を要求する。
+// 範囲のない操作割当は、どの対象も許可しない (REQ-OAUTH2-083)。
+func checkTargetRange(ctx context.Context, checker policyports.RelationChecker, server *domain.McpResourceServer, operation resourceOperation, subject policyports.PrincipalRef, actors []policyports.PrincipalRef, scopes []string) (policyports.RelationDecision, error) {
+	rule := operation.Rule
+	operationID := server.OperationResourceID(rule)
+	check := policyports.RelationCheck{TenantID: server.TenantID, ResourceType: spec.ResourceTypeMcpOperation, ResourceID: operationID, Relation: spec.RelationMcpInvokeAnyTarget, Subject: subject, Actors: actors, GrantedScopes: scopes, RequiredScopes: rule.Scopes}
+	decision, err := checker.CheckRelation(ctx, check)
+	if err != nil || decision.Permitted {
+		return decision, err
+	}
+	// 関係の ID に使えない対象は、範囲として保存できないので許可しない。
+	if strings.ContainsAny(operation.Target, ":#") {
+		return decision, nil
+	}
+	check.ResourceID, check.Relation = spec.McpTargetResourceID(operationID, operation.Target), spec.RelationMcpInvoke
+	return checker.CheckRelation(ctx, check)
 }
 
 func operationPermission(ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, operation resourceOperation, subject policyports.PrincipalRef, actors []policyports.PrincipalRef, scopes []string) (policyports.RelationDecision, error) {
@@ -69,8 +95,14 @@ func operationPermission(ctx context.Context, deps ResourceAccessDeps, server *d
 	}
 	if rule.Tool != nil {
 		decision, err := checkToolAssignment(ctx, deps.Relations, server, rule, subject, actors, scopes)
-		if err != nil || !decision.Permitted || rule.ResourceType == spec.ResourceTypeMcpOperation {
+		if err != nil || !decision.Permitted {
 			return decision, err
+		}
+		if rule.ResourceType == spec.ResourceTypeMcpOperation {
+			if rule.Tool.ResourceIDArgument == "" {
+				return decision, nil
+			}
+			return checkTargetRange(ctx, deps.Relations, server, operation, subject, actors, scopes)
 		}
 	}
 	return deps.Relations.CheckRelation(ctx, check)

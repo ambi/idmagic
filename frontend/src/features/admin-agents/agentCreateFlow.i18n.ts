@@ -19,6 +19,8 @@ export const agentCreateFlowDictionary = defineDictionary(
     connectionsHelp:
       'この Agent に使わせる操作を選びます。選ばなくても登録でき、後で「利用する接続先」から変えられます。',
     connectionsEmpty: '公開中のツールがある接続先はまだありません。',
+    targetScopedNote:
+      '対象は登録後に「利用する接続先」で選びます。選ぶまで、どの対象も許可しません。',
     summary: '「{name}」を登録し、{auth}。{operations}',
     summaryAuthKey: '公開鍵で認証できるようにします',
     summaryAuthJwksUri: 'JWKS の URL の鍵で認証できるようにします',
@@ -59,6 +61,8 @@ export const agentCreateFlowDictionary = defineDictionary(
     connectionsHelp:
       'Choose the operations this agent may use. You can register without any and change them later in Resource connections.',
     connectionsEmpty: 'No connection publishes tools yet.',
+    targetScopedNote:
+      'Choose its targets in Resource connections after registering. No target is allowed until then.',
     summary: 'Register "{name}", {auth}. {operations}',
     summaryAuthKey: 'and let it authenticate with a public key',
     summaryAuthJwksUri: 'and let it authenticate with keys from a JWKS URL',

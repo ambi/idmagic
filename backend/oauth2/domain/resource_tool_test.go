@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-//spec:covers REQ-OAUTH2-064: ツール名は接続先内で一意にし、対象抽出の欠落や組み込み操作の不正な関係を拒否する。
+//spec:covers REQ-OAUTH2-064: ツール名は接続先内で一意にし、対象抽出の欠落や組み込み操作の不正な関係を拒否する。組み込みの型の対象引数は受け付ける。
 func TestToolCatalogValidation(t *testing.T) {
 	rule := func() ResourceAccessRule {
 		return ResourceAccessRule{ResourceType: "idmagic_mcp_operation", Relation: "invoke", Scopes: []string{"read"}, Tool: &ResourceAccessTool{ID: "operation-" + "read", Name: "read", DisplayName: "閲覧"}}
@@ -23,7 +23,9 @@ func TestToolCatalogValidation(t *testing.T) {
 		}},
 		{name: "引数欠落", change: func(r *ResourceAccessRule) { r.ResourceType = "document" }},
 		{name: "関係不正", change: func(r *ResourceAccessRule) { r.Relation = "owner" }},
-		{name: "余分な引数", change: func(r *ResourceAccessRule) { r.Tool.ResourceIDArgument = "id" }},
+		// 組み込みの型の対象引数は、対象ごとの範囲を割当で選ぶ操作を表す (REQ-OAUTH2-083)。
+		{name: "組み込みの対象別", valid: true, change: func(r *ResourceAccessRule) { r.Tool.ResourceIDArgument = "id" }},
+		{name: "長すぎる対象引数", change: func(r *ResourceAccessRule) { r.Tool.ResourceIDArgument = strings.Repeat("a", 129) }},
 		{name: "長すぎるツール名", change: func(r *ResourceAccessRule) { r.Tool.Name = strings.Repeat("a", 129) }},
 		{name: "区切り文字", change: func(r *ResourceAccessRule) { r.Tool.Name = "documents:read" }},
 	}

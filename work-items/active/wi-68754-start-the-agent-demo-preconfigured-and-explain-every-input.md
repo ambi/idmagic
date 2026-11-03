@@ -20,7 +20,7 @@ spec_impact: { kind: none, reason: "デモのプロセス、画面と開発文�
 そのため、統制の効果を見せたい場面でも設定作業が主役になり、Okta や Ping より複雑に見える。
 
 設定の簡単さを示すことと、統制の効果を示すことは別の目的である。
-前者は製品の改善（[wi-95247](../done/wi-95247-discover-mcp-tools-and-automate-connection-setup.md)、[wi-85817](../done/wi-85817-register-agent-credentials-and-connections-in-one-flow.md)、[wi-24427](wi-24427-restrict-tools-to-targets-without-authoring-a-model.md)）で減らし、デモは両方を分けて見せる。
+前者は製品の改善（[wi-95247](../done/wi-95247-discover-mcp-tools-and-automate-connection-setup.md)、[wi-85817](../done/wi-85817-register-agent-credentials-and-connections-in-one-flow.md)、[wi-24427](../done/wi-24427-restrict-tools-to-targets-without-authoring-a-model.md)）で減らし、デモは両方を分けて見せる。
 
 ## 対象範囲
 

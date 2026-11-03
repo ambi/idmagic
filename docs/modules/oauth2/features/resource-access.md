@@ -40,6 +40,7 @@
 
 - `idmagic_mcp_operation/invoke` とツール名の評価を受けたとき、OAuth2 は、認証した接続先の `tool.name` が一致する規則だけを選び、その接続先 ID と操作の識別子に束縛した現在の操作割当を判定する。
 - 対象別の型と関係を持つツールを評価したとき、OAuth2 は、`operation_parameters` の宣言した引数から文字列の対象 ID を解決し、操作割当と従来の対象別関係の双方を要求する。
+- 組み込みの型 `idmagic_mcp_operation` で `resource_id_argument` を持つツールを評価したとき、OAuth2 は、引数から対象 ID を解決し、操作割当に加えて、同じ操作の `invoke_any_target` か、`<登録 ID>/<操作の識別子>/<対象 ID>` の `invoke` のどちらかを要求する。
 - 宣言した対象を解決できない場合、OAuth2 は、`decision=false` と `operation_not_registered` を返し、操作を許可しない。
 - 登録したツールを評価したとき、OAuth2 は、REQ-OAUTH2-062 のトークン、宛先、送信者制約、主体、スコープ、条件、承認、上限の検査を適用する。
 - ツールに対応した規則を従来の型と関係で直接評価された場合、OAuth2 は、`operation_not_registered` で拒否し、操作割当の検査を省略しない。

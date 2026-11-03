@@ -97,6 +97,14 @@ export function newURL(): string {
   return tenantURL('/admin/mcp-resource-servers/new')
 }
 
+// targetScoped は、対象 ID を読む引数を持つツールの行かを返す。従来の型と関係の行も対象別である。
+function targetScoped(rule: ResourceAccessRule): boolean {
+  return (
+    rule.resource_type !== MCP_OPERATION_TYPE ||
+    (rule.tool !== undefined && 'resource_id_argument' in rule.tool)
+  )
+}
+
 // AccessRuleRows は規則の基本の項目を行で編集する。JSON を正とし、行にない項目（条件や上限など）は保つ。
 function AccessRuleRows({
   form,
@@ -157,16 +165,13 @@ function AccessRuleRows({
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
-                  checked={rule.resource_type !== MCP_OPERATION_TYPE}
+                  checked={targetScoped(rule)}
                   onChange={(event) =>
                     update(
                       index,
                       event.target.checked
-                        ? {
-                            resource_type: 'document',
-                            relation: 'viewer',
-                            tool: { ...rule.tool!, resource_id_argument: 'document_id' },
-                          }
+                        ? // 組み込みの型のまま対象引数を持たせ、範囲は割当で選ぶ (REQ-OAUTH2-083)。
+                          { tool: { ...rule.tool!, resource_id_argument: 'document_id' } }
                         : {
                             resource_type: MCP_OPERATION_TYPE,
                             relation: 'invoke',
@@ -177,7 +182,7 @@ function AccessRuleRows({
                 />
                 {t.toolTarget}
               </label>
-              {rule.resource_type !== MCP_OPERATION_TYPE ? (
+              {targetScoped(rule) ? (
                 <div className="flex flex-col gap-1">
                   <Label htmlFor={`tool-argument-${index}`}>{t.toolArgument}</Label>
                   <Input

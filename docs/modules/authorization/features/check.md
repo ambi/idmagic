@@ -44,7 +44,7 @@
 
 #### REQ-AUTHORIZATION-016 組み込みの操作割当も共通の制約をすべて満たす必要がある
 
-- `idmagic_mcp_operation` の `invoke` を評価されたとき、AccessControl は、組み込みの直接付与の定義で現在の割当を読み、テナントのモデル発行を要求せず、主体と行為者、スコープ、テナントを既存の Authorizer で合成する。
+- `idmagic_mcp_operation` の `invoke` か `invoke_any_target` を評価されたとき、AccessControl は、組み込みの直接付与の定義で現在の割当を読み、テナントのモデル発行を要求せず、主体と行為者、スコープ、テナントを既存の Authorizer で合成する。
 - 主体か行為者が割当を持たないか無効であるか、必要スコープが不足している場合、AccessControl は、不許可を返す。
 - 組み込みの操作割当の保存先か認可器へ到達できない場合、AccessControl は、評価不能として拒否し、許可へ退避しない。
 - 管理者が組み込みの操作割当を取り消したとき、AccessControl は、次の判定からその割当を許可根拠にしない。

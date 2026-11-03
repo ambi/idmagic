@@ -23,6 +23,7 @@ import { agentCreateFlowDictionary } from './agentCreateFlow.i18n'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { OwnerSelect } from './AdminAgentsShared'
 import { parsePublicKey } from './publicKey'
+import { isTargetScoped } from './targetRange'
 
 // CIBA の承認の依頼に要るスコープ。資格情報の画面のデフォルトと揃える。
 const APPROVAL_SCOPES = ['openid', 'profile']
@@ -32,7 +33,14 @@ type AuthMethod = 'key' | 'jwks_uri' | 'later'
 // Progress は完了した段階の結果である。再試行は未完了の段階だけを呼ぶ (REQ-IDMANAGEMENT-105)。
 type Progress = { agentID?: string; clientID?: string; bound?: boolean; assigned?: boolean }
 
-type Operation = { server: McpResourceServer; toolName: string; label: string; key: string }
+type Operation = {
+  server: McpResourceServer
+  toolName: string
+  label: string
+  key: string
+  // targetScoped な操作は、範囲を選ぶまでどの対象も許可しない (REQ-AUTHORIZATION-017)。
+  targetScoped: boolean
+}
 
 function publishedOperations(servers: McpResourceServer[]): Operation[] {
   return servers
@@ -46,6 +54,7 @@ function publishedOperations(servers: McpResourceServer[]): Operation[] {
                 toolName: rule.tool.name,
                 label: rule.tool.display_name,
                 key: `${server.id}/${rule.tool.name}`,
+                targetScoped: isTargetScoped(rule),
               },
             ]
           : [],
@@ -454,7 +463,14 @@ export function AdminAgentCreatePage({
                                     })
                                   }
                                 />
-                                <span>{operation.label}</span>
+                                <span>
+                                  {operation.label}
+                                  {operation.targetScoped ? (
+                                    <span className="block text-xs text-amber-800">
+                                      {flow.targetScopedNote}
+                                    </span>
+                                  ) : null}
+                                </span>
                               </label>
                             ))}
                         </div>

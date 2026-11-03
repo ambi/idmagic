@@ -201,4 +201,26 @@ describe('AdminMcpResourceServerCreatePage', () => {
         .scopes,
     ).toEqual(['mcp'])
   })
+
+  //spec:covers REQ-OAUTH2-064, REQ-OAUTH2-083: 対象ごとの権限は組み込みの型のまま対象引数を持たせ、型と関係の入力を求めない。
+  it('keeps target-scoped tools on the built-in type without asking for a type or relation', async () => {
+    await renderWithRouter(<AdminMcpResourceServerCreatePage csrfToken="csrf" />)
+
+    fireEvent.click(screen.getByRole('button', { name: t.ruleAdd }))
+    fireEvent.click(screen.getByLabelText(t.toolTarget))
+    expect(screen.getByLabelText(t.toolArgument)).toHaveValue('document_id')
+    expect(document.querySelector('#rule-type-0')).toBeNull()
+    expect(document.querySelector('#rule-relation-0')).toBeNull()
+    const [rule] = JSON.parse(
+      (screen.getByLabelText(t.accessRulesLabel) as HTMLTextAreaElement).value,
+    )
+    expect(rule).toMatchObject({
+      resource_type: 'idmagic_mcp_operation',
+      relation: 'invoke',
+      tool: { resource_id_argument: 'document_id' },
+    })
+
+    fireEvent.click(screen.getByLabelText(t.toolTarget))
+    expect(screen.queryByLabelText(t.toolArgument)).toBeNull()
+  })
 })

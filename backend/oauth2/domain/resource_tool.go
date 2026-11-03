@@ -24,8 +24,9 @@ func (r ResourceAccessRule) validateTool() error {
 		return errors.New("invalid tool name, display name or target argument")
 	}
 	if r.ResourceType == spec.ResourceTypeMcpOperation {
-		if r.Relation != spec.RelationMcpInvoke || tool.ResourceIDArgument != "" {
-			return errors.New("built-in tool operations must use invoke without a target argument")
+		// 対象引数があれば、割当の範囲で対象を限る (REQ-OAUTH2-083)。
+		if r.Relation != spec.RelationMcpInvoke {
+			return errors.New("built-in tool operations must use invoke")
 		}
 	} else if tool.ResourceIDArgument == "" {
 		return errors.New("resource-specific tools require a target argument")

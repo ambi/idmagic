@@ -8,6 +8,14 @@ import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
 import { MCP_OPERATION_TYPE, operationResourceID, operationTuple } from '../../lib/mcpAccess'
 import type { AdminAgent, McpResourceServer, RelationTuple } from '../../types'
+import {
+  invalidTargets,
+  isTargetScoped,
+  rangeTuples,
+  savedRange,
+  type TargetRange,
+  tupleKey,
+} from './targetRange'
 import { agentResourcesDictionary } from './agentResources.i18n'
 import { returnToAgent } from './agentNavigation'
 
@@ -71,6 +79,26 @@ export function AdminAgentResourcesPage({
       assigned.has(operationResourceID(server!, rule.tool!.name)) &&
       !selected.has(operationResourceID(server!, rule.tool!.name)),
   )
+  const [ranges, setRanges] = useState<Record<string, TargetRange>>({})
+  const rangeOf = (id: string) => ranges[id] ?? savedRange(saved, id, agent.id)
+  // 範囲の差分は、選んだ操作の望む範囲と保存済みの範囲の差である。外した操作は範囲も消す。
+  const rangeWrites: RelationTuple[] = []
+  const rangeDeletes: RelationTuple[] = []
+  for (const rule of rules.filter(isTargetScoped)) {
+    const id = operationResourceID(server!, rule.tool!.name)
+    const desired = selected.has(id) ? rangeTuples(id, agent.id, rangeOf(id)) : []
+    const current = rangeTuples(id, agent.id, savedRange(saved, id, agent.id))
+    const desiredKeys = new Set(desired.map(tupleKey))
+    const currentKeys = new Set(current.map(tupleKey))
+    rangeWrites.push(...desired.filter((tuple) => !currentKeys.has(tupleKey(tuple))))
+    rangeDeletes.push(...current.filter((tuple) => !desiredKeys.has(tupleKey(tuple))))
+  }
+  const invalid = rules
+    .filter(isTargetScoped)
+    .map((rule) => operationResourceID(server!, rule.tool!.name))
+    .filter((id) => selected.has(id) && rangeOf(id).mode === 'specific')
+    .flatMap((id) => invalidTargets(rangeOf(id).targets))
+  const changed = added.length + removed.length + rangeWrites.length + rangeDeletes.length > 0
   const granted = servers.flatMap((item) =>
     (item.access_rules ?? [])
       .filter((rule) => rule.tool && assigned.has(operationResourceID(item, rule.tool.name)))
@@ -78,17 +106,28 @@ export function AdminAgentResourcesPage({
   )
   async function save(event: FormEvent) {
     event.preventDefault()
-    if (!server || truncated || running.current || (!added.length && !removed.length)) return
+    if (!server || truncated || running.current || !changed) return
     if (server.state !== 'Active' && added.length) return
+    if (invalid.length > 0) {
+      setError(t.invalidTargets.replace('{targets}', invalid.join(', ')))
+      return
+    }
     running.current = true
     setBusy(true)
     setError('')
     try {
-      const writes = added.map((rule) => operationTuple(server, rule.tool!.name, agent.id))
-      const deletes = removed.map((rule) => operationTuple(server, rule.tool!.name, agent.id))
+      const writes = [
+        ...added.map((rule) => operationTuple(server, rule.tool!.name, agent.id)),
+        ...rangeWrites,
+      ]
+      const deletes = [
+        ...removed.map((rule) => operationTuple(server, rule.tool!.name, agent.id)),
+        ...rangeDeletes,
+      ]
       await writeRelationTuples(csrfToken, { writes, deletes })
-      const deleted = new Set(deletes.map((tuple) => tuple.resource_id))
-      setSaved([...saved.filter((tuple) => !deleted.has(tuple.resource_id)), ...writes])
+      const deleted = new Set(deletes.map(tupleKey))
+      setSaved([...saved.filter((tuple) => !deleted.has(tupleKey(tuple))), ...writes])
+      setRanges({})
       if (onSaved) onSaved()
       else returnToAgent(agent.id, t.saved)
     } catch {
@@ -145,7 +184,7 @@ export function AdminAgentResourcesPage({
                       </td>
                       <td className="p-2">{rule.tool!.display_name}</td>
                       <td className="p-2">
-                        {rule.resource_type === MCP_OPERATION_TYPE
+                        {rule.resource_type === MCP_OPERATION_TYPE && !isTargetScoped(rule)
                           ? t.targetService
                           : t.targetRequired}
                       </td>
@@ -193,40 +232,91 @@ export function AdminAgentResourcesPage({
                 {rules.map((rule) => {
                   const id = operationResourceID(server!, rule.tool!.name)
                   return (
-                    <label key={id} className="flex items-start gap-3 rounded-md border p-3">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(id)}
-                        disabled={
-                          busy ||
-                          truncated ||
-                          agent.status === 'killed' ||
-                          (server?.state !== 'Active' && !assigned.has(id))
-                        }
-                        onChange={(event) =>
-                          setSelected((current) => {
-                            const next = new Set(current)
-                            if (event.target.checked) next.add(id)
-                            else next.delete(id)
-                            return next
-                          })
-                        }
-                      />
-                      <span>
-                        <span className="font-medium">{rule.tool!.display_name}</span>
-                        <span className="block text-xs text-slate-600">
-                          {rule.resource_type === MCP_OPERATION_TYPE
-                            ? t.targetService
-                            : t.targetRequired}{' '}
-                          /{' '}
-                          {rule.requires_approved_operation
-                            ? t.approvalRequired
-                            : rule.condition?.require_approval_when
-                              ? t.approvalConditional
-                              : t.approvalNone}
+                    <div key={id} className="space-y-2 rounded-md border p-3">
+                      <label className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(id)}
+                          disabled={
+                            busy ||
+                            truncated ||
+                            agent.status === 'killed' ||
+                            (server?.state !== 'Active' && !assigned.has(id))
+                          }
+                          onChange={(event) =>
+                            setSelected((current) => {
+                              const next = new Set(current)
+                              if (event.target.checked) next.add(id)
+                              else next.delete(id)
+                              return next
+                            })
+                          }
+                        />
+                        <span>
+                          <span className="font-medium">{rule.tool!.display_name}</span>
+                          <span className="block text-xs text-slate-600">
+                            {rule.resource_type === MCP_OPERATION_TYPE && !isTargetScoped(rule)
+                              ? t.targetService
+                              : t.targetRequired}{' '}
+                            /{' '}
+                            {rule.requires_approved_operation
+                              ? t.approvalRequired
+                              : rule.condition?.require_approval_when
+                                ? t.approvalConditional
+                                : t.approvalNone}
+                          </span>
                         </span>
-                      </span>
-                    </label>
+                      </label>
+                      {isTargetScoped(rule) && selected.has(id) ? (
+                        <fieldset className="ml-7 space-y-2 text-sm">
+                          <legend className="font-medium">{t.targetRange}</legend>
+                          {rangeOf(id).mode === 'none' ? (
+                            <p className="text-xs text-amber-800">{t.targetRangeNone}</p>
+                          ) : null}
+                          {(
+                            [
+                              ['specific', t.targetRangeSpecific],
+                              ['any', t.targetRangeAny],
+                            ] as const
+                          ).map(([mode, label]) => (
+                            <label key={mode} className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name={`range-${id}`}
+                                checked={rangeOf(id).mode === mode}
+                                disabled={busy}
+                                onChange={() =>
+                                  setRanges((current) => ({
+                                    ...current,
+                                    [id]: { ...rangeOf(id), mode },
+                                  }))
+                                }
+                              />
+                              {label}
+                            </label>
+                          ))}
+                          {rangeOf(id).mode === 'specific' ? (
+                            <div className="space-y-1">
+                              <Label htmlFor={`targets-${id}`}>{t.targetIDs}</Label>
+                              <textarea
+                                id={`targets-${id}`}
+                                rows={3}
+                                value={rangeOf(id).targets}
+                                disabled={busy}
+                                onChange={(event) =>
+                                  setRanges((current) => ({
+                                    ...current,
+                                    [id]: { mode: 'specific', targets: event.target.value },
+                                  }))
+                                }
+                                className="w-full rounded-md border p-2 font-mono text-xs"
+                              />
+                              <p className="text-xs text-slate-600">{t.targetIDsHelp}</p>
+                            </div>
+                          ) : null}
+                        </fieldset>
+                      ) : null}
+                    </div>
                   )
                 })}
               </fieldset>
@@ -250,12 +340,7 @@ export function AdminAgentResourcesPage({
               </Button>
               <Button
                 type="submit"
-                disabled={
-                  busy ||
-                  truncated ||
-                  (!added.length && !removed.length) ||
-                  agent.status === 'killed'
-                }
+                disabled={busy || truncated || !changed || agent.status === 'killed'}
               >
                 {t.save}
               </Button>

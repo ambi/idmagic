@@ -141,8 +141,14 @@ func (f *mcpGatewayFixture) connect(t *testing.T, token string) *mcp.ClientSessi
 // post は一つの tools/call を SDK を通さずに送る。
 func (f *mcpGatewayFixture) post(t *testing.T, tool string, change func(*http.Request)) (*http.Response, string) {
 	t.Helper()
-	body := fmt.Sprintf(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":%q,"arguments":{"document_id":"d1"},`+
-		`"_meta":{"io.modelcontextprotocol/protocolVersion":%q,"io.modelcontextprotocol/clientCapabilities":{}}}}`, tool, mcpProtocolVersion)
+	return f.postDocument(t, tool, "d1", change)
+}
+
+// postDocument は文書 ID を引数に渡してツールを呼ぶ。
+func (f *mcpGatewayFixture) postDocument(t *testing.T, tool, documentID string, change func(*http.Request)) (*http.Response, string) {
+	t.Helper()
+	body := fmt.Sprintf(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":%q,"arguments":{"document_id":%q},`+
+		`"_meta":{"io.modelcontextprotocol/protocolVersion":%q,"io.modelcontextprotocol/clientCapabilities":{}}}}`, tool, documentID, mcpProtocolVersion)
 	return f.send(t, http.MethodPost, body, func(request *http.Request) {
 		request.Header.Set("Mcp-Protocol-Version", mcpProtocolVersion)
 		request.Header.Set("Mcp-Method", "tools/call")

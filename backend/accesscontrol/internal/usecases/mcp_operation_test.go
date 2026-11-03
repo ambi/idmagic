@@ -54,3 +54,32 @@ func TestMcpOperationModelCannotBeOverridden(t *testing.T) {
 		t.Fatal("reserved type was published")
 	}
 }
+
+//spec:covers REQ-AUTHORIZATION-017: 対象の範囲は利用者のモデルなしに組み込みの型へ書け、全対象と指定した対象を区別して判定する。
+func TestMcpOperationTargetRangeWithoutPublishedModel(t *testing.T) {
+	h := newBareHarness()
+	h.deps.Principals = principalsByID{"agent:reader": true}
+	subject := domain.SubjectRef{Type: "agent", ID: "reader"}
+	anyTarget := domain.RelationTuple{Resource: domain.ObjectRef{Type: "idmagic_mcp_operation", ID: "server-a/op-read"}, Relation: "invoke_any_target", Subject: subject}
+	oneTarget := domain.RelationTuple{Resource: domain.ObjectRef{Type: "idmagic_mcp_operation", ID: "server-a/op-read/handbook"}, Relation: "invoke", Subject: subject}
+	if _, err := usecases.WriteRelationTuples(context.Background(), h.deps, tenantID, ports.TupleWrite{Writes: []domain.RelationTuple{anyTarget, oneTarget}}, now); err != nil {
+		t.Fatal(err)
+	}
+	decide := func(resourceID, relation string) bool {
+		t.Helper()
+		got, err := (usecases.RelationChecker{Deps: h.deps}).CheckRelation(context.Background(), policyports.RelationCheck{TenantID: tenantID, ResourceType: "idmagic_mcp_operation", ResourceID: resourceID, Relation: relation, Subject: policyports.PrincipalRef{Type: "agent", ID: "reader"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got.Permitted
+	}
+	if !decide("server-a/op-read", "invoke_any_target") || !decide("server-a/op-read/handbook", "invoke") {
+		t.Fatal("written ranges were not permitted")
+	}
+	if decide("server-a/op-read/salary", "invoke") || decide("server-a/op-read", "invoke") {
+		t.Fatal("a range permitted an unassigned target or the operation itself")
+	}
+	if _, err := usecases.WriteRelationTuples(context.Background(), h.deps, tenantID, ports.TupleWrite{Writes: []domain.RelationTuple{{Resource: anyTarget.Resource, Relation: "owner", Subject: subject}}}, now); err == nil {
+		t.Fatal("an undeclared relation on the reserved type was accepted")
+	}
+}

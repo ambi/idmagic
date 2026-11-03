@@ -30,7 +30,7 @@
 - 管理者が関係タプルを書き込むか一覧したとき、AccessControl は、要求の本文の識別子によらず、呼び出し元のテナントで解決した `tenant_id` のタプルだけを読み書きする。
 - 登録した認可モデルが宣言していない型か関係、`direct` の規則が許していない主体の形かワイルドカード、追加と削除の両方に現れる組を含む差分を受けた場合、AccessControl は、422 と `relation_tuple_invalid` で拒否し、1 件も適用しない。
 - テナントに認可モデルを登録していない間、組み込み型以外の関係タプルの書き込みを要求されたとき、AccessControl は、404 と `authorization_model_not_found` で拒否する。
-- 組み込み型 `idmagic_mcp_operation` の差分だけを書き込まれたとき、AccessControl は、`invoke` と個別の `user` または `agent` への直接付与を検証し、テナントのモデル発行を要求せずに適用する。
+- 組み込み型 `idmagic_mcp_operation` の差分だけを書き込まれたとき、AccessControl は、`invoke` か `invoke_any_target` と、個別の `user` または `agent` への直接付与を検証し、テナントのモデル発行を要求せずに適用する。
 - **例**：EX-AUTHORIZATION-002-01、EX-AUTHORIZATION-002-02、EX-AUTHORIZATION-002-03、EX-AUTHORIZATION-002-04、EX-AUTHORIZATION-002-05
 
 ### 管理者によるオブジェクトの削除
@@ -68,6 +68,11 @@
 - 管理者が未保存の差分を編集している間、AccessControl は、追加と取消の対象を表示する。
 - 保存が失敗した場合、AccessControl は、入力を保持し、失敗を表示する。
 - 一覧の上限に達した場合、AccessControl は、打ち切りを表示し、不完全な一覧から取消の差分を保存しない。
+- 対象ごとの権限を持つ操作を選んだとき、AccessControl は、「すべての対象」と「指定した対象だけ」のどちらかを明示して選ばせ、どちらも選ばないうちは対象を許可しない。
+- 管理者が「すべての対象」を保存したとき、AccessControl は、操作の割当 `<登録 ID>/<操作の識別子>#invoke` と、同じ操作の `invoke_any_target` を組み込みの型 `idmagic_mcp_operation` へ書き、利用者のモデルを要求しない。
+- 管理者が「指定した対象だけ」を保存したとき、AccessControl は、操作の割当と、対象ごとの `<登録 ID>/<操作の識別子>/<対象 ID>#invoke` を組み込みの型へ書き、利用者のモデルを要求しない。
+- 対象 ID が `:` か `#` を含む場合、AccessControl は、その対象を保存せず、理由を表示する。
+- **判断**：対象の範囲を割当と同じ組み込みの型で表す。利用者のモデルへ型と関係を足すと、開発者のモデルの発行と競合し、日常の画面に型と関係の名前が戻るためである。
 
 ## セキュリティ上の考慮
 
