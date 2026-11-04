@@ -44,7 +44,7 @@
 `go test`、`go vet`、`gofmt`、`golangci-lint`、`bun test` のような下位ツールは、1 パッケージだけの確認であっても直接呼ばない。その用途には `mise run test-go-package -- <package>`、`test-go-one`、`format-go`、`lint-go` を使う。
 
 `mise run test-ui-e2e`、`test-ui-e2e-file`、`verify-full` と Chrome／Bun.WebView の起動確認は、localhost の待受けとブラウザーの起動を必要とするため、初回からサンドボックスの外で実行する。
-`mise run verify`、`check-schema`、Go の HTTP 統合テストと DB を使うテストも localhost の待受けを使うため、同じ実行方法に従う。
+`mise run verify`、`check-schema`、`test-mcp-client-walkthrough`、Go の HTTP 統合テストと DB を使うテストも localhost の待受けを使うため、同じ実行方法に従う。
 権限昇格が必要な実行環境では、最初の呼び出しから実行ツールの権限昇格を指定する。
 DB を起動できなければ、DB を使うテストはデフォルトで失敗する。
 検証を省く必要があるときだけ `PGTEST_ALLOW_SKIP=1` で Skip を許し、その実行は未検証として扱う（[検証結果の区分](docs/development/testing.md#検証結果の区分)）。

@@ -56,6 +56,10 @@ Envoy の設定例の迂回につながる誤りは、通常テストの `TestEn
 CodeQL の新たな警告と Envoy の更新や設定例の変更による破損は、取り込みの後、次の定期実行で分かる。
 設定例か `backend/mcpgateway/` を変えるときは、手元で `mise run test-envoy-mcp-gateway` を実行する。
 
+公式の MCP TypeScript SDK のクライアントで [MCP の執行の手順](../../examples/mcp-client-walkthrough/README.md)を再現する試験（`mise run test-mcp-client-walkthrough`）も、同じ定期実行で動く。
+IdMagic とゲートウェイの実行ファイルを毎回ビルドし、外部の SDK を使うので、時間に比べて日常の変更で結果が変わりにくいためである。
+クライアント認証、保護リソースのメタデータ、`backend/mcpgateway/` を変えるときは、手元でも実行する。
+
 定期実行が失敗すると、GitHub は cron を最後に変更した利用者へ通知する。
 data race は実行のたびに現れるとは限らないので、次の順で原因を探す。
 

@@ -208,3 +208,5 @@ Gateway の配置の手間は Okta より多く、デモはゲートウェイを
 | 「まだ自律の区分です」 | 承認を見せる前に、種別を「監督下」へ変える |
 
 ゲートウェイの運用は [MCP Gateway の実行環境](../modules/mcp-gateway/features/runtime.md)と [Envoy の構成例](../../examples/envoy-mcp-gateway/README.md)を参照する。
+デモのエージェントは JSON-RPC を自分で組み立てる。
+公式の MCP SDK のクライアントで同じ統制を確かめる手順は、[実在の MCP クライアントで確かめる MCP の執行](../../examples/mcp-client-walkthrough/README.md)にある。

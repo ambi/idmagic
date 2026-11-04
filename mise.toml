@@ -475,6 +475,19 @@ export VERIFICATION_RUN_ID
 bun run tools/verification/src/main.ts --report .verification/test-envoy-mcp-gateway.json -- ./backend/mcpgateway -run '^TestEnvoy'
 '''
 
+[tasks.test-mcp-client-walkthrough]
+description = "Reproduce the MCP enforcement walkthrough with the official MCP TypeScript SDK client, idmagic-mcp-gateway, and IdMagic"
+run = '''
+#!/usr/bin/env sh
+set -eu
+bin=$(mktemp -d "${TMPDIR:-/tmp}/idmagic-walkthrough-bin.XXXXXX")
+trap 'rm -rf "$bin"' EXIT
+go build -o "$bin/" ./backend/cmd/idmagic ./backend/cmd/idmagic-mcp-gateway
+cd examples/mcp-client-walkthrough
+bun install --frozen-lockfile
+IDMAGIC_BIN="$bin/idmagic" MCP_GATEWAY_BIN="$bin/idmagic-mcp-gateway" bun run walkthrough.ts
+'''
+
 [tasks.setup-kerberos]
 description = "Guide an operator through Kerberos trust and browser setup"
 run = "bash scripts/setup-kerberos.sh"

@@ -65,6 +65,7 @@ major update では公式 migration guide と release notes を読み、コン�
 
 所有単位の変更直後に、その層を担当する最小の `mise` タスクを実行する。
 Go は `verify-go`、frontend は `verify-ui`、組み込み tools は test、typecheck、lint の各タスク、インフラは Compose、Kubernetes、monitoring の検査を使う。
+`examples/mcp-client-walkthrough` の MCP SDK は、実在のクライアントとの互換を確かめた版として固定しているので、更新したら `test-mcp-client-walkthrough` で確かめ直し、手順書の確認した版の表を合わせる。
 ランタイムや framework の更新がブラウザー経路へ届く場合は E2E も実行する。
 
 最後に次を満たす。

@@ -34,6 +34,20 @@ jobs:
       - name: Test the MCP gateway behind a real Envoy
         run: mise run test-envoy-mcp-gateway
 
+  mcp-client:
+    name: Reproduce the MCP walkthrough with the official TypeScript SDK client
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          version: 2026.10.21
+      - name: Reproduce the MCP walkthrough
+        run: mise run test-mcp-client-walkthrough
+
   sast:
     name: CodeQL
     runs-on: ubuntu-latest
