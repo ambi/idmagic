@@ -25,7 +25,7 @@ Microsoft Entra ID のプロビジョニングは、利用者の無効化を `{"
 - User と Group の PATCH で、`path` のない `add` と `replace` の `value` のオブジェクトを、属性ごとの操作へ展開する。展開した各属性には、`path` を指定したときと同じ許可の一覧、読み取り専用の検査、値の型の検査を適用する。
 - `value` がオブジェクトでなければ `invalidValue` で拒否する。`path` のない `remove` は RFC 7644 §3.5.2.2 どおり `noTarget` で拒否する。
 - Enterprise 拡張の URN をキーにした入れ子の `value` を扱う。
-- `standards.md` に受け入れの行を加え、`path` を省いた要求を SCIM の入口へ送る試験を加える。
+- `standards.md` に受け入れの標準要件を加え、`path` を省いた要求を SCIM の入口へ送る試験を加える。
 
 ## 対象外
 
@@ -33,7 +33,7 @@ Microsoft Entra ID のプロビジョニングは、利用者の無効化を `{"
 
 ## タスク
 
-- [ ] T001 [Spec] 受け入れの行と REQ-SOURCING-004 の例を加える。
+- [ ] T001 [Spec] 受け入れの標準要件と REQ-SOURCING-004 の例を加える。
 - [ ] T002 [Acceptance] `path` を省いた User の無効化と Group の名前の変更で RED を確かめる。
 - [ ] T003 [Domain] 展開を実装し、GREEN にする。
 - [ ] T004 [Verify] 変更を検証する。

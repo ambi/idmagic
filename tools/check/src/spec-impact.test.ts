@@ -260,7 +260,7 @@ describe('verifySpecImpact の work item', () => {
 
   it.each([
     ['シナリオ', { changedScenarios: ['REQ-DEMO-001'] }, 'REQ-DEMO-001'],
-    ['標準の行', { addedStandards: [`${STANDARDS}#RFC-DEMO-ONE`] }, 'RFC-DEMO-ONE'],
+    ['標準要件', { addedStandards: [`${STANDARDS}#RFC-DEMO-ONE`] }, 'RFC-DEMO-ONE'],
     ['宣言の変更', { changedDeclarations: [`${TYPESPEC}:Task`] }, `${TYPESPEC}:Task`],
     ['宣言の削除', { removedDeclarations: [`${TYPESPEC}:Task`] }, `${TYPESPEC}:Task`],
     ['状態遷移', { changedTransitions: ['docs/modules/demo#Lifecycle'] }, 'Lifecycle'],

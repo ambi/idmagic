@@ -108,8 +108,8 @@ function deprecatedDeclarations(path: string, source: string): Set<string> {
 }
 
 /**
- * 標準仕様の行は、それを所有する文書と ID で同定する。標準と製品の関係を説明する節の表は
- * 規範の行ではないので読まない。
+ * 標準要件は、それを所有する文書と ID で同定する。標準と製品の関係を説明する節の表は
+ * 標準要件ではないので読まない。
  */
 function standardRows(path: string, source: string): Map<string, string> {
   const rows = new Map<string, string>()

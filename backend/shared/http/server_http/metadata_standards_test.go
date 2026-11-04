@@ -1,7 +1,7 @@
 package server_http_test
 
 // docs/modules/oauth2/standards.md のうち、クライアントとリソースサーバーが製品の
-// 設定を読む経路に立つ 7 行を観測する。
+// 設定を読む経路に立つ 7 件の標準要件を観測する。
 //
 // 入口は Register が組み立てたスタックの `/.well-known/openid-configuration`、
 // `/.well-known/oauth-authorization-server`、`/.well-known/oauth-protected-resource`、
@@ -10,7 +10,7 @@ package server_http_test
 // 配られていなければ、適合クライアントは製品の設定を 1 度も読めないからである。
 //
 // **配信された宣言を読むだけでは足りない。** メタデータは宣言と実装がずれても取得
-// できてしまうので、7 行とも「宣言した内容」と「宣言どおりに動くこと」を対で読む。
+// できてしまうので、7 件とも「宣言した内容」と「宣言どおりに動くこと」を対で読む。
 // 広告されたエンドポイントは実在するか、広告された鍵は発行済みトークンの署名を
 // 検証できるか、広告された bearer 提示方法は実際に通るか、広告された
 // `resource_metadata` URL は実際に文書を返すか、である。
@@ -167,7 +167,7 @@ func newMetadataFixture(t *testing.T) *mdFixture {
 		StartupComplete: startupComplete,
 		ShuttingDown:    &atomic.Bool{},
 		// メタデータ文書のエンドポイントは TypeSpec 由来の実行時契約から導出される。
-		// 契約を渡さないスタックは文書そのものを組み立てられないので、本項目の 7 行が
+		// 契約を渡さないスタックは文書そのものを組み立てられないので、本項目の 7 件の標準要件が
 		// 1 つも観測できない。
 		Contract: spec.CurrentRuntimeContract(),
 		OAuth2: oauth2.Module{
@@ -537,7 +537,7 @@ var apiTokenScopeSample = []string{
 	string(apitokendomain.ScopeScimGroupsWrite),
 }
 
-// 行は 1 つの動詞に見えるが、実際は 3 つのことを言っている。JWK Set の形で配ること、
+// この標準要件は 1 つの動詞に見えるが、実際は 3 つのことを言っている。JWK Set の形で配ること、
 // 配るのが「検証鍵」であること、配ってよいのが「公開可能な」ものだけであることである。
 // 3 つとも別々に崩せるので、3 つとも読む。
 //
@@ -547,7 +547,7 @@ var apiTokenScopeSample = []string{
 //
 // 観測の順が「発行してから取得する」なのは、テナントの署名鍵が最初に必要になった
 // 時点で作られるためである。1 度も発行していない realm の JWK Set は空で、これは
-// メモリと PostgreSQL のどちらの鍵ストアでも同じである。行が言っているのは製品が
+// メモリと PostgreSQL のどちらの鍵ストアでも同じである。標準要件が言っているのは製品が
 // 実際に使う検証鍵を配ることなので、検証鍵が存在する状態で読む。
 //
 //spec:covers RFC7517-JWKS (required): 公開可能な検証鍵を JWK Set として配布する。
@@ -743,7 +743,7 @@ func TestOpenIDProviderConfigurationPublishesTheIssuerEndpointsAndCapabilities(t
 
 // 指定して Protected Resource Metadata を取得できるようにする。
 //
-// この行が固定しているのは配信の場所と指定の方法である。中身が正しくても、
+// この標準要件が固定しているのは配信の場所と指定の方法である。中身が正しくても、
 // 場所とパラメーター名が違えば適合クライアントは辿り着けない。
 //
 // パラメーター名を実際に読んでいることは、別名で同じ値を送った要求が当のリソースの
@@ -825,7 +825,7 @@ func TestProtectedResourceMetadataIsDerivedFromEachRegisteredResourceServer(t *t
 // 対する Protected Resource Metadata と `account`、`management`、SCIM の各スコープ、
 // 対応する `bearer_methods_supported` を公開する。
 //
-// 行は 3 つのことを言っている。未指定のときの対象が realm の IdMagic API であること、
+// この標準要件は 3 つのことを言っている。未指定のときの対象が realm の IdMagic API であること、
 // 3 系統のスコープを載せること、対応する提示方法を載せることである。
 //
 // スコープは 3 系統からそれぞれ標本を取って読む。`AllScopes()` をそのまま期待値に
@@ -869,12 +869,12 @@ func TestProtectedResourceMetadataWithoutAResourceDescribesTheRealmApi(t *testin
 // `403 insufficient_scope` レスポンスでは、当該 realm の Protected Resource Metadata URL を
 // `resource_metadata` 認証パラメーターで提示する。
 //
-// 行は 2 つの応答を名指ししているので、2 つとも読む。片方だけを観測すると、拒否の分岐が
+// この標準要件は 2 つの応答を名指ししているので、2 つとも読む。片方だけを観測すると、拒否の分岐が
 // 2 本あるうち 1 本にしか付けていない実装を見逃す。
 //
 // 提示された URL は、それ自体が Protected Resource Metadata を返すところまで読む。
 // この認証パラメーターの目的は、トークンを持たないクライアントに次の一手を教えることに
-// あるので、辿れない URL では行の言うことが果たされない。
+// あるので、辿れない URL では標準要件の言うことが果たされない。
 //
 //spec:covers RFC9728-CHALLENGE (required): ベアラー保護リソースの `401 invalid_token` と
 //spec:covers EX-OAUTH2-044-01, EX-OAUTH2-044-02: 401 と 403 の WWW-Authenticate は、error と必要なスコープ、および辿れる resource_metadata URL を引用符付きの auth-param として運ぶ。

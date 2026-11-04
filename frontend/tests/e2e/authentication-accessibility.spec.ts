@@ -1,9 +1,9 @@
 // docs/requirements/standards.md の WCAG22-KEYBOARD と WCAG22-FOCUS を、実ブラウザーの認証画面で観測する。
 //
-// この 2 行は算出後の状態でしか区別できない。前者は実キーの走査と活性化がフォーカスをどう
+// この 2 件の標準要件は算出後の状態でしか区別できない。前者は実キーの走査と活性化がフォーカスをどう
 // 動かすかであり、後者は Tailwind を算出したあとのスタイルとヒットテストである。Happy DOM の
-// 単体テストで書けるのは「クラス名が付いている」までなので、この 2 行は E2E が持つ。
-// 残る 2 行 (WCAG22-LABELS-ERRORS / WCAG22-STATUS) は
+// 単体テストで書けるのは「クラス名が付いている」までなので、この 2 件は E2E が持つ。
+// 残る 2 件 (WCAG22-LABELS-ERRORS / WCAG22-STATUS) は
 // frontend/src/features/auth-flow/AuthFlowAccessibility.test.tsx が持つ。
 //
 // キーの送り方には条件がある。`press("Tab")` と `press("Enter")` は WebKit の編集コマンドへ
@@ -185,8 +185,8 @@ test('every focus stop on an authentication screen is visible and unobscured', a
     expect(login.filter((stop) => stop.focusable && stop.indicator.length === 0)).toEqual([])
     expect(login.filter((stop) => stop.focusable && stop.obscured)).toEqual([])
 
-    // 同意画面はサインインの後ろにあり、要素の種類も違う。1 画面だけでは行を満たしたと
-    // 言えないので、続きの画面でも同じことを測る。ここは行が言う対象ではないので、
+    // 同意画面はサインインの後ろにあり、要素の種類も違う。1 画面だけでは標準要件を満たしたと
+    // 言えないので、続きの画面でも同じことを測る。ここは標準要件が言う対象ではないので、
     // サインイン自体はポインターで進めてよい。
     await view.click('input[name="username"]')
     await view.type(demo.username)

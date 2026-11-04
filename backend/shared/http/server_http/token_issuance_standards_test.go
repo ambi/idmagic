@@ -1,12 +1,12 @@
 package server_http_test
 
-// docs/modules/oauth2/standards.md のうち、トークンの発行と交換の入口に立つ 15 行を
-// 観測する。
+// docs/modules/oauth2/standards.md のうち、トークンの発行と交換の入口に立つ 15 件の
+// 標準要件を観測する。
 //
-// 入口は Register が組み立てたスタックの `/token` である。この 15 行が言っているのは
+// 入口は Register が組み立てたスタックの `/token` である。この 15 件の標準要件が言っているのは
 // 「何を出すか」なので、出たトークンの payload を復号して直接読む。応答が 200 である
 // ことや、そのトークンで保護リソースへ到達できることでは足りない。
-// [[wi-500-back-api-tokens-standards-rows-with-tests]] が測ったとおり、行が列挙して
+// [[wi-500-back-api-tokens-standards-rows-with-tests]] が測ったとおり、標準要件が列挙して
 // いる claim のうち認証が読まないものは、到達できるという観測では固定できない。
 
 import (
@@ -589,7 +589,7 @@ func assertVerifiableWithPublishedKey(t *testing.T, base, token string) {
 // `resource` で指定された McpResourceServer に audience を厳格に限定し、未登録・無効・
 // 複数指定は fail-closed で拒否する。`resource` が未指定なら client_id を audience とする。
 //
-// 行は「全経路へ一様に適用する」と言っているので、認可コードの交換と
+// 標準要件は「全経路へ一様に適用する」と言っているので、認可コードの交換と
 // client_credentials の 2 経路で同じ観測を繰り返す。1 経路だけを見るテストは、
 // 別の経路で検査が抜けている実装を通してしまう。
 //

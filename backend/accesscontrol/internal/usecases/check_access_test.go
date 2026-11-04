@@ -341,7 +341,7 @@ func TestCheckAccessFailsClosed(t *testing.T) {
 	})
 
 	//spec:covers AUTHZEN-FGA-FAIL-CLOSED: 事実が欠けたまま評価器へ届いた resource:access は、規則表の
-	// 側でも許可にならない。行が挙げる 4 つの状況のうち「事実が欠けている」を、事実を供給する
+	// 側でも許可にならない。標準要件が挙げる 4 つの状況のうち「事実が欠けている」を、事実を供給する
 	// 経路ではなく受け取る規則の側から固定する。
 	//spec:covers EX-AUTHORIZATION-005-05: 関係の事実を組み立てないまま評価器へ届いた判定が、規則 relationship_facts_present により許可にならない。
 	t.Run("the rule table denies a request that carries no relationship facts", func(t *testing.T) {

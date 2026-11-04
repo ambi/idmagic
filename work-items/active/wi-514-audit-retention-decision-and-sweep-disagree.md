@@ -27,14 +27,14 @@ Audit の旧 `decisions.md` は「監査レコードは GDPR 第 30 条 (処理�
 
 **どちらが正しいかは決まっていない。** 7 年保持が正しいなら sweep の既定と `DeleteOlderThan` の位置づけを見直すことになり、種類別の短い保持が正しいなら `decisions.md` の決定を書き換えることになる。どちらであれ規範の変更なので、判断を含めて 1 つの work item が持つ。
 
-[[wi-502-back-cross-cutting-standards-rows-with-tests]] が `GDPR-PROCESSING-RECORDS` にテストを対応付ける過程で見つけた。同行の `Statement` は「セキュリティおよび認可イベントの監査記録を定義済みの期間保持する。保持期間は Audit Context が定める」であり、**「定義済みの期間」があること自体は成り立っている**（同項目の `TestRetentionKeepsSecurityAndAuthorizationRecordsWithinTheDefinedPeriod` が期間の内側と外側の対で観測している）。食い違っているのは、その期間が Audit Context の決定と一致していない点である。
+[[wi-502-back-cross-cutting-standards-rows-with-tests]] が `GDPR-PROCESSING-RECORDS` にテストを対応付ける過程で見つけた。この標準要件の `Statement` は「セキュリティおよび認可イベントの監査記録を定義済みの期間保持する。保持期間は Audit Context が定める」であり、**「定義済みの期間」があること自体は成り立っている**（同項目の `TestRetentionKeepsSecurityAndAuthorizationRecordsWithinTheDefinedPeriod` が期間の内側と外側の対で観測している）。食い違っているのは、その期間が Audit Context の決定と一致していない点である。
 
 ## Scope
 
 - 7 年保持と種類別の短い保持のどちらが製品の意図かを決め、根拠を残す。
 - 決めた側に合わせて、`docs/modules/audit/decisions.md` か `RetentionPolicy` と `DeleteOlderThan` の位置づけのどちらかを変える。
 - `backend/audit/ports/audit_event_repository.go` の、存在しない `SCL objectives.AuditLogRetention` を指す注記を落とす。
-- 行の担い手の位置も合わせて見直す。行は「保持期間は Audit Context が定める」と言うのに、期間を計算する `RetentionPolicy` は `backend/authentication/internal/usecases` にある。
+- 標準要件の担い手の位置も合わせて見直す。標準要件は「保持期間は Audit Context が定める」と言うのに、期間を計算する `RetentionPolicy` は `backend/authentication/internal/usecases` にある。
 
 ## Out of Scope
 

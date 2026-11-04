@@ -1,7 +1,7 @@
 package server_http_test
 
 // docs/modules/oauth2/standards.md のうち、ブラウザーのリダイレクトを使わずに承認を
-// 取る 2 つのグラントが持つ 8 行を観測する。
+// 取る 2 つのグラントが持つ 8 件の標準要件を観測する。
 //
 // 入口は Register が組み立てたスタックへの HTTP である。デバイス認可も CIBA も、
 // 「機械が要求を起こし、人が別の画面で決め、機械が繰り返し取りに来る」という 3 者に
@@ -12,7 +12,7 @@ package server_http_test
 // 現在時刻の比較でしかないので、有効期間の幅を保ったままレコード全体を過去へずらす。
 // 経過と同じ状態になり、製品が作らないレコードを作ることにもならない。
 //
-// 拒否の行では、拒否したことと、拒否が防いだ効果を対で読む。承認要求が保存されて
+// 拒否の標準要件では、拒否したことと、拒否が防いだ効果を対で読む。承認要求が保存されて
 // いないこと、トークンが出ていないことのいずれかである。保存してから拒否する実装は
 // 後続の経路へ材料を残すので、応答だけでは足りない。
 
@@ -120,7 +120,7 @@ type nigFixture struct {
 // newNonInteractiveGrantFixture は本番と同じ Register でデバイス認可、CIBA、トークン、
 // 認可、Discovery、動的クライアント登録を 1 つのスタックへ載せる。routes_e2e_test.go の
 // newServer を使わないのは、あちらが CIBA グラントも authorization_details の type
-// 登録簿も配線しておらず、本項目の 8 行がその配線ごと観測できないためである。
+// 登録簿も配線しておらず、本項目の 8 件の標準要件がその配線ごと観測できないためである。
 func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 	t.Helper()
 	now := time.Now().UTC()
@@ -156,7 +156,7 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 	})
 
-	// binding_message の行は「クライアント、要求スコープ、authorization_details と
+	// binding_message の標準要件は「クライアント、要求スコープ、authorization_details と
 	// 併せて示す」ことを言っている。構造化された詳細を持てる型が登録されていないと、
 	// 4 つを併せて示していることを区別する事例が作れない。
 	detailTypes := oauth2.NewMemoryModule().AuthzDetailTypeRepo
@@ -511,7 +511,7 @@ func assertOAuthError(t *testing.T, what string, status int, body map[string]any
 
 // device_code、user_code、verification_uri を発行し、ResourceOwner の判断を受け付ける。
 //
-// optional の行なので、まず提供していることを確かめる。提供していなければ行の Adoption が
+// optional の標準要件なので、まず提供していることを確かめる。提供していなければ標準要件の Adoption が
 // 誤っていることになるので、その場合は規範の変更として切り出す。
 //
 // Statement が 2 つのことを言っているので観測も 2 つ置く。1 つ目は 3 つの値の発行、
@@ -615,7 +615,7 @@ func TestDeviceCodePollingSemantics(t *testing.T) {
 // 解決し、auth_req_id、expires_in、interval を返す。解決できなければ unknown_user_id で
 // 拒否する。
 //
-// optional の行なので、まず提供していることを確かめる。Statement が言っている条件は
+// optional の標準要件なので、まず提供していることを確かめる。Statement が言っている条件は
 // 4 つあるので、条件ごとに 1 か所だけを崩した事例を置く。崩していない事例が通ることを
 // 対照に置くので、拒否の理由が崩した 1 か所であることが読める。
 //
@@ -748,7 +748,7 @@ func TestCibaPollModeSemanticsAndSingleUseExchange(t *testing.T) {
 // binding_message を承認画面に表示し、クライアント、要求スコープ、authorization_details と
 // 併せて承認内容を示す。
 //
-// optional の行なので、まず提供していることを確かめる。承認画面が読む一覧に 4 つが
+// optional の標準要件なので、まず提供していることを確かめる。承認画面が読む一覧に 4 つが
 // 揃っていることを読む。binding_message だけを返す実装は、人が「誰に何を許すのか」を
 // 決められないまま短い文字列だけを見ることになるので、4 つを併せて読む。
 // 画面が実際にその 4 つを描くことは frontend/src/features/account/AccountApprovalsPage.test.tsx
@@ -791,7 +791,7 @@ func TestApprovalListCarriesBindingMessageWithTheRequestItBinds(t *testing.T) {
 // ping および push のトークン配信モードは提供せず、user_code パラメーターによる
 // 認証デバイス側の本人確認補助も受け付けない。
 //
-// この 2 行の Statement は製品の制約ではなく標準側の機能を書いている。想定した観測は
+// この 2 件の標準要件の Statement は製品の制約ではなく標準側の機能を書いている。想定した観測は
 // 「その機能を要求するリクエストが通らないこと」だったが、実測はそうならない。
 // RFC 6749 §3.1 が未知のリクエストパラメーターを無視することを求めているためで、
 // 拒否しないこと自体は宣言した採用の未達ではない。
@@ -875,7 +875,7 @@ func TestPingPushDeliveryAndUserCodeAreNotOffered(t *testing.T) {
 
 // 署名済み JWT によるバックチャネル認証リクエストは受け付けない。
 //
-// この行は前の 2 行と違って拒否が起きるので、拒否の型で読む。署名済み JWT だけを
+// この標準要件は前の 2 件と違って拒否が起きるので、拒否の型で読む。署名済み JWT だけを
 // 送る要求は通らず、承認要求も起票されない。加えて、平文パラメーターと矛盾する
 // request を送ったとき平文側が効くことを読む。JWT を読んだうえで採用しない実装と、
 // そもそも読んでいない実装は、これでしか区別できない。

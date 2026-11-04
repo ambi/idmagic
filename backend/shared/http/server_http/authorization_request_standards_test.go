@@ -1,12 +1,12 @@
 package server_http_test
 
-// docs/modules/oauth2/standards.md のうち、認可リクエストの入口に立つ 15 行を観測する。
+// docs/modules/oauth2/standards.md のうち、認可リクエストの入口に立つ 15 件の標準要件を観測する。
 //
 // 入口は Register が組み立てたスタックへの HTTP である。認可リクエストの検証は
 // ハンドラー、use case、domain の 3 層に分かれて立っており、どれか 1 つの単体テストでは
 // 「関数は正しいが配線が落ちている」実装を素通りさせる。
 //
-// 拒否の行では、拒否したことと、拒否が防いだ効果を対で読む。認可リクエストが保存
+// 拒否の標準要件では、拒否したことと、拒否が防いだ効果を対で読む。認可リクエストが保存
 // されていないこと、認可コードが出ていないこと、トークンが出ていないことのいずれかで
 // ある。保存してから拒否する実装は後続の経路へ材料を残すので、応答だけでは足りない。
 
@@ -81,7 +81,7 @@ type arFixture struct {
 // newAuthorizationRequestFixture は本番と同じ Register で認可・トークン・PAR・登録の
 // 各エンドポイントを 1 つのスタックへ載せる。routes_e2e_test.go の newServer を使わない
 // のは、あちらが authorization_details の type 登録簿と resource 登録簿を配線して
-// おらず、RFC 9396 と token-exchange の行がその配線ごと観測できないためである。
+// おらず、RFC 9396 と token-exchange の標準要件がその配線ごと観測できないためである。
 func newAuthorizationRequestFixture(t *testing.T) *arFixture {
 	t.Helper()
 	now := time.Now().UTC()
@@ -196,7 +196,7 @@ func arChallenge() string {
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
-// arQuery は 15 行すべてを満たす認可リクエストを返す。個々のテストはここから
+// arQuery は 15 件の標準要件すべてを満たす認可リクエストを返す。個々のテストはここから
 // 1 か所だけを崩す。崩していない事例が通ることを対照に置くので、拒否の理由が
 // 崩した 1 か所であることが読める。
 func arQuery(overrides map[string]string) url.Values {
@@ -418,7 +418,7 @@ func TestAuthorizationCodeGrantSpansBothEndpointsAndRejectsDuplicatedParameters(
 
 // Implicit Grant も、OpenID Connect の Implicit / Hybrid Flow も提供しない。
 //
-// この 2 行の Statement は製品の制約ではなく標準側の機能を書いているので、観測は
+// この 2 件の標準要件の Statement は製品の制約ではなく標準側の機能を書いているので、観測は
 // 「その機能を要求するリクエストが通らないこと」と「通らなかった結果として資格情報が
 // 1 つも出ていないこと」の対になる。フラグメントに直接トークンを載せる流儀なので、
 // 応答が資格情報を運んでいないことを本文とリダイレクト先の両方で読む。
@@ -522,8 +522,8 @@ func TestOnlyS256CodeChallengeMethodIsAccepted(t *testing.T) {
 // クライアント認証済みの PAR を保存して短命な request_uri を返し、その request_uri は
 // 一度だけ使える。
 //
-// optional の行なので、まず提供していることを確かめる。提供していなければ行の
-// Adoption が誤っていることになるので、その場合は規範の変更として切り出す。
+// optional の標準要件なので、まず提供していることを確かめる。提供していなければ
+// 標準要件の Adoption が誤っていることになるので、その場合は規範の変更として切り出す。
 //
 //spec:covers RFC9126-PAR (optional) / RFC9126-SINGLE-USE:
 func TestPushedAuthorizationRequestIsAuthenticatedShortLivedAndSingleUse(t *testing.T) {

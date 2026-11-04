@@ -375,12 +375,12 @@ func TestWsFedPassiveSignIn_IssuesOnlyToTheRegisteredRealmAndAllowedReply(t *tes
 	})
 }
 
-// excluded の行なので、観測は行の Statement を満たすことではなく満たさないことになる。無音を求める入力が
+// excluded の標準要件なので、観測は標準要件の Statement を満たすことではなく満たさないことになる。無音を求める入力が
 // 正式な入口へ届いたとき、(1) 無音でトークンが出ないこと、(2) 利用者に何も見せない失敗応答にも化けず、
 // 対話的なログインへ誘導するか明示的に拒否することの 2 つを観測する。この 2 つを分けないと、「無音の
 // 発行はしないが無音で静かに失敗する」実装を通してしまう。
 //
-// 本項目はこの行で excluded の観測の型を決め、WSTRUST13-WINDOWS-TRANSPORT へ広げた。
+// 本項目はこの標準要件で excluded の観測の型を決め、WSTRUST13-WINDOWS-TRANSPORT へ広げた。
 //
 //spec:covers WSFED-SILENT-SIGN-IN: 無音サインイン (prompt=none 相当) を提供しないことを固定する。
 func TestWsFedSilentSignIn_NotProvided(t *testing.T) {
@@ -654,7 +654,7 @@ func TestWsTrustUsernameTokenPassword_AuthenticatesTheSuppliedCredential(t *test
 
 // エンドポイントとして、Action を Issue として検証することを固定する。
 //
-// 1 行が 3 つの検証を束ねているので、3 つを 1 つの入力で崩すと手前の検証で落ちて後段が確かめられない。
+// 1 件の標準要件が 3 つの検証を束ねているので、3 つを 1 つの入力で崩すと手前の検証で落ちて後段が確かめられない。
 // 崩すのは 1 度に 1 つだけで、崩していない要素が有効であることは、同じ組み立てから作った正しい要求が
 // 通ることで先に確認する。MessageID はリプレイ防止のための検証なので、観測は「値が読めること」では
 // なく「同じ MessageID の 2 度目が通らないこと」である。
@@ -718,7 +718,7 @@ func TestWsTrustAddressing_ValidatesMessageIDToAndAction(t *testing.T) {
 	})
 }
 
-// excluded の観測の型は WSFED-SILENT-SIGN-IN で決めたものに従う。ただしこの行は入口そのものを持たないので、
+// excluded の観測の型は WSFED-SILENT-SIGN-IN で決めたものに従う。ただしこの標準要件は入口そのものを持たないので、
 // 「届いた要求の拒否」ではなく「要求の宛先が存在しないこと」で観測する。広告まで見るのは、入口が無くても
 // metadata がその binding を広告していれば、RP は提供されていると読んで能動的プロファイルを組み立てて
 // しまうからである。

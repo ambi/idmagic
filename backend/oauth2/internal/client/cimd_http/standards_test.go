@@ -1,14 +1,14 @@
 package cimd_http
 
 // docs/modules/oauth2/standards.md の `OAuth Client ID Metadata Document`
-// (draft-ietf-oauth-client-id-metadata-document-02) が宣言する行を、
+// (draft-ietf-oauth-client-id-metadata-document-02) が宣言する標準要件を、
 // 製品の解決経路そのもので観測する。
 //
-// 観測の入口は 2 つある。文書の形と取得を言う 6 行は
+// 観測の入口は 2 つある。文書の形と取得を言う 6 件の標準要件は
 // ClientRepositoryWithCIMD.FindByID から観測する。ここが、登録簿を外した
 // client_id が文書へ問い合わせに行く唯一の経路であり、cmd/internal/bootstrap
 // の memory.go と postgres.go がこのデコレータを登録簿へ被せている。
-// 認可リクエストの redirect_uri を言う 1 行だけは、解決したクライアントを
+// 認可リクエストの redirect_uri を言う 1 件だけは、解決したクライアントを
 // 使う側の判断なので Authorize から観測する。
 //
 // 本番と差し替えているのは TLS の信頼点だけである。文書を配るのは
@@ -106,7 +106,7 @@ func (h *metadataHost) resolution() (*ClientRepositoryWithCIMD, *[]spec.DomainEv
 	}, emitted
 }
 
-// validDocument は 7 行すべてを満たす文書である。個々のテストはここから
+// validDocument は 7 件の標準要件すべてを満たす文書である。個々のテストはここから
 // 1 か所だけを崩す。崩していない事例が通ることを毎回対照に置くので、
 // 拒否の理由が崩した 1 か所であることが読める。
 func validDocument(clientIDURL string) string {
@@ -473,7 +473,7 @@ func TestMalformedClientIDMetadataDocumentIsRefusedFailClosed(t *testing.T) {
 // private_key_jwt クライアント認証を、インラインの jwks または jwks_uri 経由で
 // 提供してよい、という選択肢は採らない。
 //
-// この行の Statement は製品の制約ではなく標準側の機能を書いているので、観測は
+// この標準要件の Statement は製品の制約ではなく標準側の機能を書いているので、観測は
 // [[wi-500-back-api-tokens-standards-rows-with-tests]] の RFC6750-API-TOKEN-QUERY と
 // 同じ向きになる。すなわち「その機能を使う要求が通らないこと」と、「通らなかった
 // 結果として何が存在しないか」を対で読む。ここでは次の 2 つを読む。
@@ -536,7 +536,7 @@ func TestClientIDMetadataDocumentDoesNotOfferPrivateKeyJwtAuthentication(t *test
 // 従って」の部分は採っていない。Fetcher は解決に成功した文書を一律 5 分保持し、
 // 応答の Cache-Control を読まない。partial はこの 2 面を対で読む。
 //
-// 採らなかった側を no-store で観測するのは、この行が partial である理由を
+// 採らなかった側を no-store で観測するのは、この標準要件が partial である理由を
 // 記録に残すためである。ここが required へ変わるなら、まずこのテストが落ちる。
 //
 //spec:covers CIMD02-CACHE (partial):
@@ -575,7 +575,7 @@ func TestResolvedClientIDMetadataDocumentIsCachedRegardlessOfHTTPCacheHeaders(t 
 // 認可リクエストの redirect_uri が、取得した文書の redirect_uris 一覧に
 // 含まれることを検証する。
 //
-// この行だけは解決したクライアントを使う側の判断なので、Authorize から観測する。
+// この標準要件だけは解決したクライアントを使う側の判断なので、Authorize から観測する。
 // 拒否は「拒否した」だけでは足りない。認可リクエストが保存されていないことを
 // 併せて読む。保存してから拒否する実装は、後続の経路へ材料を残す。
 //

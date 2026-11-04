@@ -1,6 +1,6 @@
 package server_http
 
-// docs/modules/api-tokens/standards.md が宣言する行を、製品の正式な入口から観測する。
+// docs/modules/api-tokens/standards.md が宣言する標準要件を、製品の正式な入口から観測する。
 //
 // API アクセストークンの検証はミドルウェアの位置にあるので、入口は保護されたエンドポイントで
 // なければならない。トークン検証関数だけを呼ぶテストは、関数が正しくても配線されていない
@@ -388,7 +388,7 @@ func TestApiTokenIsAcceptedOnlyFromTheAuthorizationHeaderScheme(t *testing.T) {
 	}
 }
 
-// 提供していないことの観測なので、`excluded` の行は満たすことではなく満たさないことを読む。
+// 提供していないことの観測なので、`excluded` の標準要件は満たすことではなく満たさないことを読む。
 //
 // 受理されない一点だけでは、そのトークンが最初から無効だった実装と区別できない。そこで
 // 同じ 1 本のトークンがヘッダーでは通ることを先に確かめ、クエリでは通らないことと対にする。
@@ -723,7 +723,7 @@ func apiTokenDPoPProof(t *testing.T, key *rsa.PrivateKey, jwk map[string]any, in
 
 // `iat`、`jti` のリプレイ、およびサムプリントの一致が検証される。
 //
-// 行が挙げる要素ごとに、1 要素だけを崩した証明を作る。崩していない要素が有効であることは、
+// 標準要件が挙げる要素ごとに、1 要素だけを崩した証明を作る。崩していない要素が有効であることは、
 // 無傷の証明が通ることで先に確かめる。まとめて壊した証明では、どの検証が働いたのか分からない。
 //
 //spec:covers RFC9449-API-TOKEN-DPOP: `dpop_jkt` に束縛したトークンでは、DPoP 証明の署名、`htm`、`htu`、
@@ -956,7 +956,7 @@ func TestApiTokenIntrospectionDoesNotDependOnTheHint(t *testing.T) {
 // `active` が false であることに加えて、応答が他の鍵を 1 つも持たないことを読む。
 // 5 通りの入力が同じ 1 つの本文になることが、存在を漏らさないということである。
 //
-// 行は失効の経路を限定していないので、失効の入力を 2 通り置く。`/revoke` を通した失効は
+// 標準要件は失効の経路を限定していないので、失効の入力を 2 通り置く。`/revoke` を通した失効は
 // 失効リストに載り、管理コンソールを通した失効はライフサイクル記録にしか載らない。
 // 後者を落とすのは overlay の introspector だけなので、`/revoke` の側だけを観測すると、
 // overlay を持たない配線と製品を区別できない。

@@ -1,11 +1,11 @@
 package handlers_http_test
 
-// docs/modules/authorization/standards.md が宣言する 5 行を、製品の正式な入口である
+// docs/modules/authorization/standards.md が宣言する 5 件の標準要件を、製品の正式な入口である
 // POST /api/admin/v1/authorization/check と
 // POST /api/admin/v1/authorization/list-accessible-resources から観測する。
 //
 // 「判定 context に載せる」は応答からは読めない。Authorizer は差し替え可能なポートで、
-// AUTHZEN=remote では AuthZRequest がそのまま AuthZEN の PDP へ渡るので、この 2 行が
+// AUTHZEN=remote では AuthZRequest がそのまま AuthZEN の PDP へ渡るので、この 2 件の標準要件が
 // 固定しているのは判定器へ渡る AuthZRequest そのものの形である。したがって観測は、
 // 製品の組み立てへ差した記録用 Authorizer が受け取った AuthZRequest を読む形にする。
 
@@ -480,7 +480,7 @@ func TestAuthorizationDecisionCarriesEveryDelegationStageSeparately(t *testing.T
 // ---- AUTHZEN-FGA-FAIL-CLOSED ----
 
 // ストアへ到達できない、のいずれでも許可へ退避しないこと。答えの出る入力で拒否が返ることは
-// この行の観測にならないので、4 つとも「答えが出ない入力」で作る。
+// この標準要件の観測にならないので、4 つとも「答えが出ない入力」で作る。
 //
 //spec:covers AUTHZEN-FGA-FAIL-CLOSED: 評価器が判定を返せない、事実が欠けている、深さ上限に達した、
 func TestAuthorizationFailsClosedWhenTheDecisionCannotBeAnswered(t *testing.T) {

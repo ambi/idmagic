@@ -35,7 +35,7 @@ RFC 8707 §2.2 も、リフレッシュの要求の `resource` で対象を狭�
 
 ## タスク
 
-- [ ] T001 [Spec] REQ-OAUTH2-006 に `scope` と `resource` の例を加え、`standards.md` に受け入れの行を加える。
+- [ ] T001 [Spec] REQ-OAUTH2-006 に `scope` と `resource` の例を加え、`standards.md` に受け入れの標準要件を加える。
 - [ ] T002 [Acceptance] 狭めた要求と超えた要求を `/token` へ送り、RED を確かめる。
 - [ ] T003 [App] `RefreshInput` に範囲と対象を足し、GREEN にする。
 - [ ] T004 [Verify] 変更を検証する。

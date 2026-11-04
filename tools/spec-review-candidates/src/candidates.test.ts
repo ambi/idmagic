@@ -28,7 +28,7 @@ describe('specCitingTests', () => {
       '//spec:covers EX-DEMO-999-01: 宣言されていない ID',
       'func TestUndeclared(t *testing.T) {}',
       '',
-      '// 標準の行を引く。',
+      '// 標準要件を引く。',
       '//spec:covers RFC-DEMO-ONE: 署名の検証',
       'func FuzzVerify(f *testing.F) {}',
     ].join('\n')

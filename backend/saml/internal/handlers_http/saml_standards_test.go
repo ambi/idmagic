@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// docs/modules/saml/standards.md が宣言する行を、製品の正式な入口から観測する。
+// docs/modules/saml/standards.md が宣言する標準要件を、製品の正式な入口から観測する。
 //
 // 入口は `httpadapter.Register` が組み立てた `/saml/*` である。ハーネスの配線は
 // `backend/cmd/idmagic/server.go`（`Saml: deps.Saml`、`FederationSigner:
@@ -36,7 +36,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// authnRequestOptions は AuthnRequest の任意属性。行ごとに 1 つだけ変えた要求を作るために使う。
+// authnRequestOptions は AuthnRequest の任意属性。標準要件ごとに 1 つだけ変えた要求を作るために使う。
 type authnRequestOptions struct {
 	acsURL          string
 	acsIndex        string
@@ -277,7 +277,7 @@ func responseXMLString(t *testing.T, document *etree.Document) string {
 	return out
 }
 
-// `excluded` の行なので、観測は満たさないことである。ECP は PAOS バインディングを使うので、
+// `excluded` の標準要件なので、観測は満たさないことである。ECP は PAOS バインディングを使うので、
 // 入口の有無は 2 つの形で読める。メタデータが PAOS / SOAP の SingleSignOnService を広告して
 // いないことと、PAOS を名乗る要求が ECP の応答（SOAP エンベロープ）を返さないことである。
 // 対照として、広告している 2 つのバインディングでは SSO が成立することを併せて読む。
@@ -329,7 +329,7 @@ func TestSamlDoesNotOfferTheECPProfile(t *testing.T) {
 // SAML2Core — 暗号化 Assertion
 // =====================================================================
 
-// `excluded` の行なので、観測は満たさないことである。発行された Response が平文の
+// `excluded` の標準要件なので、観測は満たさないことである。発行された Response が平文の
 // `<Assertion>` を持ち `<EncryptedAssertion>` を持たないこと、メタデータが暗号化鍵
 // (`KeyDescriptor use="encryption"`) を広告していないこと、そして SP 登録に暗号化を
 // 要求する入口が無いことを併せて読む。
@@ -392,7 +392,7 @@ func TestSamlDoesNotOfferEncryptedAssertions(t *testing.T) {
 
 // HTTP-POST 以外の ProtocolBinding は拒否され、SAMLResponse は HTTP-POST で返る。
 //
-// 行は 3 つのことを言っているので観測も 3 つ要る。片方のバインディングだけを観測すると、
+// この標準要件は 3 つのことを言っているので観測も 3 つ要る。片方のバインディングだけを観測すると、
 // もう片方を提供していない実装と区別できない。
 //
 //spec:covers SAML2Bindings-RedirectPost: AuthnRequest は HTTP-Redirect と HTTP-POST の両方で受理され、
@@ -559,7 +559,7 @@ func TestSamlMetadataPublishesTheIDPSSODescriptorContract(t *testing.T) {
 
 // 要求できる。
 //
-// `optional` の行なので、提供しているならその振る舞いを観測する。**要求できることの観測は、
+// `optional` の標準要件なので、提供しているならその振る舞いを観測する。**要求できることの観測は、
 // 有効にした SP と有効にしていない SP が同じ要求に別の答えを返すことである。** 片方だけを
 // 見ると、常に検証する実装とも、決して検証しない実装とも区別が付かない。
 // 併せて、証明書を伴わない有効化は登録そのものが拒否されることを読む。検証する鍵を持たない

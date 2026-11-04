@@ -88,7 +88,7 @@ const STANDARDS_HEADER = '| ID | Adoption | Strength | Statement |'
 
 /**
  * 標準どうしと製品の関係を説明する、`standards.md` の任意の最初の節。標準ではないので
- * 規範の行を持たず、規範の行は該当する標準の節に置く。
+ * 標準要件を持たず、標準要件は該当する標準の節に置く。
  */
 export const STANDARDS_OVERVIEW_HEADING = '## 標準と製品の関係'
 

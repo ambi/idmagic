@@ -2,7 +2,7 @@ package handlers_http_test
 
 // docs/requirements/standards.md の GDPR-CONSENT-WITHDRAWAL を観測する。
 //
-// 行は 2 つのことを言っている。ResourceOwner が自分で撤回できること、そして撤回した同意が
+// この標準要件は 2 つのことを言っている。ResourceOwner が自分で撤回できること、そして撤回した同意が
 // その後の新規発行に使われないことである。前者だけを見るテストは、撤回を記録したうえで
 // 認可を出し続ける実装を通してしまう。後者だけを見るテストは、管理者が撤回した場合と
 // 区別できない。どちらも本人の入口から撤回し、同じ /authorize を撤回の前後で 1 回ずつ

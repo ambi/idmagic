@@ -21,7 +21,7 @@ Shared Signals Framework 1.0 §3.1 は、SET の主体を最上位の `sub_id` �
 したがって、イベント内の `subject` を省き `sub_id` だけを持つ SET は標準に適合する。
 
 `extractCaepEventAndSubject` は、イベント内の `subject` だけを読み、ない SET を主体を解決できないものとして拒否する。
-SSF の宣言は送信側の `SSF10-SUB-ID` だけで、受信側の行はない。
+SSF の宣言は送信側の `SSF10-SUB-ID` だけで、受信側の標準要件はない。
 [[wi-77372-inventory-standards-acceptance-rules]] の棚卸しで見つけた。
 
 ## 対象範囲
@@ -29,7 +29,7 @@ SSF の宣言は送信側の `SSF10-SUB-ID` だけで、受信側の行はない
 - 最上位の `sub_id` を主体として読み、`format` の解釈と `trusted_issuer` の照合は現在の規則（`RFC9493-SUBID-FORMAT`、`RFC9493-SUBID-ISS-SUB`）を適用する。
 - 最上位の `sub_id` とイベント内の `subject` の両方がある場合の扱いを決める。食い違えば拒否する案を基本にする。
 - IdMagic の送信側が書く独自の `subject` の形を、引き続き受け入れる。
-- `standards.md` に受信側の SSF の行を加え、`sub_id` だけの SET を受信の入口へ送る試験を加える。
+- `standards.md` に受信側の SSF の標準要件を加え、`sub_id` だけの SET を受信の入口へ送る試験を加える。
 
 ## 対象外
 
@@ -38,7 +38,7 @@ SSF の宣言は送信側の `SSF10-SUB-ID` だけで、受信側の行はない
 
 ## タスク
 
-- [ ] T001 [Spec] 受信側の行と REQ-SHAREDSIGNALS-010 の例を加える。
+- [ ] T001 [Spec] 受信側の標準要件と REQ-SHAREDSIGNALS-010 の例を加える。
 - [ ] T002 [Acceptance] `sub_id` だけの SET で RED を確かめる。
 - [ ] T003 [App] 主体の解決を直し、GREEN にする。
 - [ ] T004 [Verify] 変更を検証する。

@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // docs/modules/sourcing/standards.md が宣言する採用規範のうち、SCIM の
-// サービス提供者としての入口 (/scim/v2/...) から観測できる行を固定する。
+// サービス提供者としての入口 (/scim/v2/...) から観測できる標準要件を固定する。
 
 import (
 	"bytes"
@@ -506,7 +506,7 @@ func TestScimEnterpriseExtension_AdoptsOnlyTheDeclaredSubset(t *testing.T) {
 }
 
 // createScimUserForTest は削除の意味論を観測する前段で User を 1 件作り、その
-// SCIM id を返す。作成そのものは別の行が固定しているので、ここでは失敗を
+// SCIM id を返す。作成そのものは別の標準要件が固定しているので、ここでは失敗を
 // setup の失敗として扱う。
 func createScimUserForTest(t *testing.T, e *echo.Echo, tokenStr string, body map[string]any) string {
 	t.Helper()

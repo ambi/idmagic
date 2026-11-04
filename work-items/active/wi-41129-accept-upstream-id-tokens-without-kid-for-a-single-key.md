@@ -24,7 +24,7 @@ OpenID Connect Core §10.1 は、参照する JWK Set に鍵が複数あると�
 
 - `kid` がなく、JWK Set の署名用の鍵がちょうど一つのときは、その鍵で検証する。
 - `kid` がなく鍵が複数あるときは、現在どおり拒否する。
-- `standards.md` に受け入れの行を加え、`kid` を省いた ID Token を返す上流で外部 OIDC のログインを通す試験を加える。
+- `standards.md` に受け入れの標準要件を加え、`kid` を省いた ID Token を返す上流で外部 OIDC のログインを通す試験を加える。
 
 ## 対象外
 
@@ -32,7 +32,7 @@ OpenID Connect Core §10.1 は、参照する JWK Set に鍵が複数あると�
 
 ## タスク
 
-- [ ] T001 [Spec] 受け入れの行と REQ-AUTHENTICATION-001 の例を加える。
+- [ ] T001 [Spec] 受け入れの標準要件と REQ-AUTHENTICATION-001 の例を加える。
 - [ ] T002 [Acceptance] `kid` のない ID Token で RED を確かめる。
 - [ ] T003 [App] 鍵の選択を直し、GREEN にする。
 - [ ] T004 [Verify] 変更を検証する。

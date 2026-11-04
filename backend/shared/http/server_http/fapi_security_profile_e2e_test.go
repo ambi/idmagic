@@ -148,7 +148,7 @@ func newFapiProfileFixture(t *testing.T) *fpFixture {
 			PARStore:     oauth2.NewMemoryModule().PARStore,
 			RefreshStore: oauth2.NewMemoryModule().RefreshStore,
 			// DPoP の検証はこのストアが無いと丸ごと飛ばされる。送信者制約を
-			// 観測する行が 1 つも読めなくなるので、必ず渡す。
+			// 観測する標準要件が 1 つも読めなくなるので、必ず渡す。
 			DpopReplayStore:            oauth2.NewMemoryModule().DpopReplayStore,
 			ClientAssertionReplayStore: oauth2.NewMemoryModule().ClientAssertionReplayStore,
 			AccessTokenDenylist:        oauth2.NewMemoryModule().AccessTokenDenylist,
@@ -322,7 +322,7 @@ func (f *fpFixture) register(t *testing.T, metadata map[string]any) (int, string
 }
 
 // fpAccessTokenClaims は `/token` の応答からアクセストークンのクレームを取り出す。
-// 署名の検証はここでは行わない。この行が読むのは `cnf` の有無だけである。
+// 署名の検証はここでは行わない。この標準要件の観測が読むのは `cnf` の有無だけである。
 func fpAccessTokenClaims(t *testing.T, body string) map[string]any {
 	t.Helper()
 	var parsed struct {
@@ -473,9 +473,9 @@ func TestFapi2ClientCannotObtainAnUnconstrainedAccessToken(t *testing.T) {
 	}
 }
 
-// ことを、3 つの制約をまとめて対照側から読む。個々の行のテストも対照を 1 つずつ
+// ことを、3 つの制約をまとめて対照側から読む。個々の標準要件のテストも対照を 1 つずつ
 // 持つが、ここでは「選んでいないクライアントには 1 つも掛からない」ことを 1 か所で
-// 読む。制約が既定化した変更は、行ごとのテストより先にここが落ちる。
+// 読む。制約が既定化した変更は、標準要件ごとのテストより先にここが落ちる。
 //
 //spec:covers FAPI2-PROFILE-SELECTION: 追加制約がプロファイルを選んだクライアントだけに掛かる
 func TestNonFapi2ClientKeepsWorkingWithoutTheProfileConstraints(t *testing.T) {
