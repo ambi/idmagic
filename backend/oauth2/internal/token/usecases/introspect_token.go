@@ -230,53 +230,77 @@ func (i RevocationCheckingIntrospector) IntrospectAccessToken(ctx context.Contex
 	return r, nil
 }
 
+// IntrospectToken はアクセストークンとリフレッシュトークンの両方を探す。ヒントは探す
+// 順序だけを決め、ヒントの種類で見つからなければ残りの種類も探す (RFC7662-HINT-MISS)。
+// `access_token` 以外のヒント (省略、`refresh_token`、未知の値) はリフレッシュトークンから
+// 探す (RFC7662-HINT-UNKNOWN)。
 func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInput, now time.Time) (*IntrospectionResponse, error) {
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	// refresh_token として先に試す（hint=refresh_token か空）
-	if in.TokenTypeHint == "" || in.TokenTypeHint == "refresh_token" {
-		hash := domain.HashRefreshToken(in.Token)
-		rec, err := deps.RefreshStore.FindByHash(ctx, hash)
-		if err != nil {
-			return nil, err
+	if in.TokenTypeHint == "access_token" {
+		resp, err := introspectAccessToken(ctx, deps, in.Token)
+		if err != nil || resp.Active {
+			return resp, err
 		}
-		if rec != nil {
-			if rec.TenantID != tenantports.TenantID(ctx) {
-				return &IntrospectionResponse{Active: false}, nil
-			}
-			active := !rec.Revoked && !rec.Rotated && now.Before(rec.AbsoluteExpiresAt)
-			if !active {
-				return &IntrospectionResponse{Active: false}, nil
-			}
-			resp := &IntrospectionResponse{
-				Active:   true,
-				Scope:    strings.Join(rec.Scopes, " "),
-				ClientID: rec.ClientID,
-				Sub:      rec.UserID,
-				Iat:      rec.IssuedAt.Unix(),
-				Exp:      rec.ExpiresAt.Unix(),
-				JTI:      rec.ID,
-				// リフレッシュトークンは act を持たないので direct か autonomous になる。
-				// 同じ導出関数を通し、トークン種別ごとに規則が分かれないようにする。
-				DelegationMode: domain.DeriveDelegationMode(domain.DelegationSubject{
-					Sub: rec.UserID, ClientID: rec.ClientID,
-				}),
-			}
-			if rec.SenderConstraint != nil {
-				resp.CNF = map[string]string{}
-				if rec.SenderConstraint.JKT != "" {
-					resp.CNF["jkt"] = rec.SenderConstraint.JKT
-				}
-				if rec.SenderConstraint.X5TS256 != "" {
-					resp.CNF["x5t#S256"] = rec.SenderConstraint.X5TS256
-				}
-			}
-			return resp, nil
+		refresh, found, err := introspectRefreshToken(ctx, deps, in.Token, now)
+		if err != nil || found {
+			return refresh, err
+		}
+		return resp, nil
+	}
+	resp, found, err := introspectRefreshToken(ctx, deps, in.Token, now)
+	if err != nil || found {
+		return resp, err
+	}
+	return introspectAccessToken(ctx, deps, in.Token)
+}
+
+// introspectRefreshToken は、ストアにレコードがあれば found=true とその応答を返す。
+// レコードがあれば無効でも found=true にし、アクセストークンとしては探させない。
+func introspectRefreshToken(ctx context.Context, deps IntrospectDeps, token string, now time.Time) (*IntrospectionResponse, bool, error) {
+	rec, err := deps.RefreshStore.FindByHash(ctx, domain.HashRefreshToken(token))
+	if err != nil {
+		return nil, false, err
+	}
+	if rec == nil {
+		return nil, false, nil
+	}
+	if rec.TenantID != tenantports.TenantID(ctx) {
+		return &IntrospectionResponse{Active: false}, true, nil
+	}
+	active := !rec.Revoked && !rec.Rotated && now.Before(rec.AbsoluteExpiresAt)
+	if !active {
+		return &IntrospectionResponse{Active: false}, true, nil
+	}
+	resp := &IntrospectionResponse{
+		Active:   true,
+		Scope:    strings.Join(rec.Scopes, " "),
+		ClientID: rec.ClientID,
+		Sub:      rec.UserID,
+		Iat:      rec.IssuedAt.Unix(),
+		Exp:      rec.ExpiresAt.Unix(),
+		JTI:      rec.ID,
+		// リフレッシュトークンは act を持たないので direct か autonomous になる。
+		// 同じ導出関数を通し、トークン種別ごとに規則が分かれないようにする。
+		DelegationMode: domain.DeriveDelegationMode(domain.DelegationSubject{
+			Sub: rec.UserID, ClientID: rec.ClientID,
+		}),
+	}
+	if rec.SenderConstraint != nil {
+		resp.CNF = map[string]string{}
+		if rec.SenderConstraint.JKT != "" {
+			resp.CNF["jkt"] = rec.SenderConstraint.JKT
+		}
+		if rec.SenderConstraint.X5TS256 != "" {
+			resp.CNF["x5t#S256"] = rec.SenderConstraint.X5TS256
 		}
 	}
-	// access_token として検証
-	r, err := deps.Introspector.IntrospectAccessToken(ctx, in.Token)
+	return resp, true, nil
+}
+
+func introspectAccessToken(ctx context.Context, deps IntrospectDeps, token string) (*IntrospectionResponse, error) {
+	r, err := deps.Introspector.IntrospectAccessToken(ctx, token)
 	if err != nil {
 		return nil, err
 	}

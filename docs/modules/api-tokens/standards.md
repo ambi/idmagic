@@ -27,6 +27,7 @@ RFC 7662 — https://www.rfc-editor.org/rfc/rfc7662.html
 |---|---|---|---|
 | RFC7662-API-TOKEN-INTROSPECT | required | MUST | 認証済みリソースサーバーに `active`、`scope`、`sub`、`aud`、`iat`、`exp`、`jti` と任意の `cnf` を返す。 |
 | RFC7662-API-TOKEN-INACTIVE | required | MUST | 未知、失効済み、期限切れ、またはレルム不一致のトークンには `active=false` だけを返す。 |
+| RFC7662-API-TOKEN-HINT | required | MUST | `refresh_token` のヒント、未知の値のヒント、ヒントの省略のいずれで API アクセストークンを送った要求にも、`access_token` のヒントと同じ応答を返す。 |
 
 ## JSON Web Token Profile for OAuth 2.0 Access Tokens
 

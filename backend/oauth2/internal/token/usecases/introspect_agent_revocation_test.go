@@ -10,6 +10,7 @@ import (
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
@@ -62,7 +63,10 @@ func TestIntrospectToken_UsesIssuanceTimeAgents(t *testing.T) {
 	seed("subject", idmdomain.AgentStatusActive)
 
 	introspector := &fakeIntrospector{}
-	deps := IntrospectDeps{Introspector: introspector, AgentRepo: agents, RevocationEpochRepo: epochs}
+	deps := IntrospectDeps{
+		Introspector: introspector, RefreshStore: memory.NewRefreshTokenStore(),
+		AgentRepo: agents, RevocationEpochRepo: epochs,
+	}
 	cases := []struct {
 		name   string
 		token  ports.IntrospectionResult
@@ -112,7 +116,8 @@ func TestIntrospectToken_IssuanceAgentLookupFailureIsNotActive(t *testing.T) {
 		Iat: time.Now().Unix(), Exp: time.Now().Add(time.Hour).Unix(),
 	}}
 	resp, err := IntrospectToken(tenantContext(), IntrospectDeps{
-		Introspector: introspector, AgentRepo: failingAgentRepository{AgentRepository: idmanagement.NewMemoryModule().AgentRepo},
+		Introspector: introspector, RefreshStore: memory.NewRefreshTokenStore(),
+		AgentRepo:           failingAgentRepository{AgentRepository: idmanagement.NewMemoryModule().AgentRepo},
 		RevocationEpochRepo: sharedsignals.NewAgentRevocationEpochRepository(),
 	}, IntrospectInput{Token: "t", TokenTypeHint: "access_token"}, time.Now())
 	if err == nil && resp.Active {

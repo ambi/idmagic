@@ -9,6 +9,7 @@ import (
 
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
@@ -50,7 +51,8 @@ func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
 
 	introspector := &fakeIntrospector{}
 	deps := IntrospectDeps{
-		Introspector: introspector, AgentRepo: agentRepo, RevocationEpochRepo: epochRepo,
+		Introspector: introspector, RefreshStore: memory.NewRefreshTokenStore(),
+		AgentRepo: agentRepo, RevocationEpochRepo: epochRepo,
 	}
 
 	t.Run("IssuedBeforeEpochIsInactive", func(t *testing.T) {

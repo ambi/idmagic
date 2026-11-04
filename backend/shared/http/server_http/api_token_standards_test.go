@@ -320,9 +320,17 @@ func (s *apiTokenStack) postForm(t *testing.T, path string, form url.Values, bas
 
 func (s *apiTokenStack) introspect(t *testing.T, realm, token string) map[string]any {
 	t.Helper()
-	recorder := s.postForm(t, "/realms/"+realm+"/introspect", url.Values{
-		"token": {token}, "token_type_hint": {"access_token"},
-	}, true)
+	return s.introspectWithHint(t, realm, token, "access_token")
+}
+
+// introspectWithHint は hint が空なら token_type_hint を送らない。
+func (s *apiTokenStack) introspectWithHint(t *testing.T, realm, token, hint string) map[string]any {
+	t.Helper()
+	form := url.Values{"token": {token}}
+	if hint != "" {
+		form.Set("token_type_hint", hint)
+	}
+	recorder := s.postForm(t, "/realms/"+realm+"/introspect", form, true)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("introspect status = %d, body = %s", recorder.Code, recorder.Body.String())
 	}
@@ -915,6 +923,31 @@ func TestApiTokenIntrospectionReturnsTheIssuedTokenClaims(t *testing.T) {
 	cnf, ok := body["cnf"].(map[string]any)
 	if !ok || cnf["jkt"] != jkt {
 		t.Errorf("cnf = %v, want jkt %q", body["cnf"], jkt)
+	}
+}
+
+// 管理発行トークンはアクセストークンなので、ヒントは探す順序を変えるだけで応答を変えない。
+// `refresh_token` のヒントではリフレッシュトークンのストアを先に引き、見つからないときに
+// アクセストークンの検証へ進む経路を通る。基準の応答と主体、`jti`、期限を突き合わせる。
+//
+//spec:covers RFC7662-API-TOKEN-HINT: `refresh_token`、未知の値、省略のいずれのヒントでも、`access_token` のヒントと同じ応答を返す。
+func TestApiTokenIntrospectionDoesNotDependOnTheHint(t *testing.T) {
+	stack := newApiTokenStack(t)
+	literal, _ := stack.issue(t, tenancydomain.DefaultRealm, "", apitokendomain.ScopeUsersRead)
+
+	want := stack.introspectWithHint(t, tenancydomain.DefaultRealm, literal, "access_token")
+	if want["active"] != true {
+		t.Fatalf("前提が壊れている: access_token のヒントで active=%v (body=%v)", want["active"], want)
+	}
+	for _, hint := range []string{"refresh_token", "id_token", ""} {
+		t.Run("hint="+hint, func(t *testing.T) {
+			got := stack.introspectWithHint(t, tenancydomain.DefaultRealm, literal, hint)
+			for _, claim := range []string{"active", "sub", "scope", "jti", "iat", "exp"} {
+				if got[claim] != want[claim] {
+					t.Errorf("%s = %v, want %v (body=%v)", claim, got[claim], want[claim], got)
+				}
+			}
+		})
 	}
 }
 

@@ -180,6 +180,49 @@ func TestIntrospectToken(t *testing.T) {
 	})
 }
 
+// ヒントは探す順序だけを決める。アクセストークンの検証器が無効と答えた値でも、
+// リフレッシュトークンのストアにあればその応答を返す。未知のヒントはヒントなしと同じく
+// リフレッシュトークンから探す。
+//
+//spec:covers RFC7662-HINT-MISS: `access_token` のヒントで無効と判定した値も、リフレッシュトークンとして探す。
+//spec:covers RFC7662-HINT-UNKNOWN: 未知の値のヒントでも、リフレッシュトークンを探す。
+func TestIntrospectTokenSearchesTheRefreshStoreWhateverTheHint(t *testing.T) {
+	ctx := tenantContext()
+	now := time.Now().UTC()
+	refreshStore := memory.NewRefreshTokenStore()
+	const tokenVal = "refresh-under-another-hint"
+	_ = refreshStore.Save(ctx, &domain.RefreshTokenRecord{
+		ID: "rt-hint", TenantID: tenancydomain.DefaultTenantID, ClientID: "client-1", UserID: "user-1",
+		Scopes: []string{"openid"}, IssuedAt: now.Add(-time.Minute), ExpiresAt: now.Add(time.Hour),
+		AbsoluteExpiresAt: now.Add(24 * time.Hour), Hash: domain.HashRefreshToken(tokenVal),
+	})
+	deps := IntrospectDeps{
+		Introspector:        &fakeIntrospector{result: &ports.IntrospectionResult{Active: false}},
+		RefreshStore:        refreshStore,
+		AccessTokenDenylist: memory.NewAccessTokenDenylist(),
+	}
+
+	for _, hint := range []string{"access_token", "id_token"} {
+		t.Run("hint="+hint, func(t *testing.T) {
+			resp, err := IntrospectToken(ctx, deps, IntrospectInput{Token: tokenVal, TokenTypeHint: hint}, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !resp.Active || resp.JTI != "rt-hint" || resp.Sub != "user-1" {
+				t.Fatalf("resp = %+v, want the active refresh token rt-hint", resp)
+			}
+		})
+	}
+
+	t.Run("unknown value under an access_token hint stays inactive", func(t *testing.T) {
+		resp, err := IntrospectToken(ctx, deps, IntrospectInput{Token: "neither", TokenTypeHint: "access_token"}, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertOnlyInactive(t, resp)
+	})
+}
+
 // 参照して定める提示形式であり、トークンの区分名ではない。
 //
 // 読むのは 3 つである。アクセストークンは送信者制約から導いた提示形式を名乗ること、

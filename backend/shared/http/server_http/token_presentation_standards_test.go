@@ -719,6 +719,79 @@ func TestIntrospectionAnswersAuthenticatedResourceServers(t *testing.T) {
 	}
 }
 
+// ヒントはトークンの実体を決めない。実体と食い違うヒントを付けた要求の応答を、
+// ヒントが正しい要求の応答と突き合わせる。`active` だけでなく主体と `jti` を
+// 比べるのは、別のトークンの内容を返す実装を通さないためである。
+//
+//spec:covers RFC7662-HINT-MISS (required): `access_token` のヒントを付けたリフレッシュトークンと、
+func TestIntrospectionSearchesEveryTokenTypeWhenTheHintMisses(t *testing.T) {
+	fixture := newTokenPresentationFixture(t)
+	issued := fixture.userToken(t, "openid profile offline_access")
+
+	for _, tc := range []struct {
+		name, token, rightHint, wrongHint string
+	}{
+		{
+			name: "refresh token under an access_token hint", token: issued.RefreshToken,
+			rightHint: "refresh_token", wrongHint: "access_token",
+		},
+		{
+			name: "access token under a refresh_token hint", token: issued.AccessToken,
+			rightHint: "access_token", wrongHint: "refresh_token",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, want := fixture.introspect(t, tc.token, tc.rightHint)
+			if want["active"] != true {
+				t.Fatalf("前提が壊れている: 正しいヒントで active=%v (body=%v)", want["active"], want)
+			}
+			status, got := fixture.introspect(t, tc.token, tc.wrongHint)
+			if status != http.StatusOK {
+				t.Fatalf("/introspect status=%d body=%v", status, got)
+			}
+			assertSameIntrospection(t, got, want)
+		})
+	}
+}
+
+// 未知の値のヒントは種類を特定しないので、ヒントのない要求と同じ探索になる。
+// 両方の種類のトークンで読むのは、未知の値をどちらか一方の種類として扱う実装を
+// 見分けるためである。
+//
+//spec:covers RFC7662-HINT-UNKNOWN (required): 未知の値のヒントを付けた要求を拒否せず、
+func TestIntrospectionTreatsAnUnknownHintAsNoHint(t *testing.T) {
+	fixture := newTokenPresentationFixture(t)
+	issued := fixture.userToken(t, "openid profile offline_access")
+
+	for _, tc := range []struct{ name, token string }{
+		{name: "refresh token", token: issued.RefreshToken},
+		{name: "access token", token: issued.AccessToken},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, want := fixture.introspect(t, tc.token, "")
+			if want["active"] != true {
+				t.Fatalf("前提が壊れている: ヒントなしで active=%v (body=%v)", want["active"], want)
+			}
+			status, got := fixture.introspect(t, tc.token, "id_token")
+			if status != http.StatusOK {
+				t.Fatalf("/introspect status=%d body=%v", status, got)
+			}
+			assertSameIntrospection(t, got, want)
+		})
+	}
+}
+
+// assertSameIntrospection は、同じトークンを違うヒントで内省した 2 つの応答が
+// 同じトークンを指すことを読む。`exp` と `iat` は同じ 1 本なので一致する。
+func assertSameIntrospection(t *testing.T, got, want map[string]any) {
+	t.Helper()
+	for _, claim := range []string{"active", "sub", "client_id", "scope", "jti", "exp", "iat", "token_type"} {
+		if got[claim] != want[claim] {
+			t.Errorf("%s=%v, want %v (got=%v want=%v)", claim, got[claim], want[claim], got, want)
+		}
+	}
+}
+
 // `active` が false であることに加えて、応答が他の鍵を 1 つも持たないことを読む。
 // 4 通りの入力が同じ 1 つの本文になることが、存在を漏らさないということである。
 // 未知のトークンと失効済みのトークンを見分けられる応答は、その差だけで

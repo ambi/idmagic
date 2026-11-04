@@ -114,6 +114,8 @@ RFC 7662 — https://www.rfc-editor.org/rfc/rfc7662.html
 |---|---|---|---|
 | RFC7662-INTROSPECT | required | MUST | 認証済みのリソースサーバーへ `active` ステータスと許可されたメタデータを返す。 |
 | RFC7662-INACTIVE | required | MUST | 無効なトークンには `active=false` だけを返す。 |
+| RFC7662-HINT-MISS | required | MUST | `token_type_hint` が示す種類にトークンが見つからなければ、ほかの種類も探し、見つかったトークンの `active` とメタデータを返す。`access_token` のヒントを付けたリフレッシュトークンも、`refresh_token` のヒントを付けたアクセストークンも、ヒントが正しい要求と同じ応答になる。 |
+| RFC7662-HINT-UNKNOWN | required | MUST | 未知の値の `token_type_hint` を付けた要求を拒否せず、ヒントを省いた要求と同じくすべての種類を探す。 |
 
 ## Proof-of-Possession Key Semantics for JSON Web Tokens
 
