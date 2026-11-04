@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path'
 import { afterAll, describe, expect, it } from 'bun:test'
 import { TOOLS_DIR, createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { verificationInput } from '../../verification/src/input.ts'
+import { moveWorkItem } from '../../work-item/src/move.ts'
 
 const cleanup: string[] = []
 afterAll(async () => {
@@ -538,15 +539,16 @@ The feature could remain disconnected.
 The demo route now produces its final effect.
 `
     const path = join(root, 'work-items', 'active', 'wi-445-complete-primary-use-case.md')
+    // 拒否の分岐は CLI と同じ moveWorkItem をプロセス内で呼ぶ。CLI は引数を渡すだけなので、
+    // bun の起動は最後の成功と検査の 2 回に絞る。起動を重ねると、層を並行に動かす
+    // verify-changed の中で既定の 5 秒を超えていた。
     await writeFile(path, workItem('test-go'))
-    const unreachable = await completeWorkItem(root, 'wi-445')
-    expect(unreachable.code).not.toBe(0)
-    expect(unreachable.output).toContain('task is not required by verify or CI: test-go')
+    await expect(moveWorkItem(root, 'wi-445')).rejects.toThrow(
+      'task is not required by verify or CI: test-go',
+    )
 
     await writeFile(path, workItem('test-go-race'))
-    const unexecuted = await completeWorkItem(root, 'wi-445')
-    expect(unexecuted.code).not.toBe(0)
-    expect(unexecuted.output).toContain('has no current passed execution')
+    await expect(moveWorkItem(root, 'wi-445')).rejects.toThrow('has no current passed execution')
     await writeFile(join(root, '.gitignore'), '.verification/\n')
     await mkdir(join(root, '.verification'))
     const input = await verificationInput(createWorkspaceSnapshot(root))
@@ -567,7 +569,7 @@ The demo route now produces its final effect.
         ],
       }),
     )
-    expect((await completeWorkItem(root, 'wi-445')).code).not.toBe(0)
+    await expect(moveWorkItem(root, 'wi-445')).rejects.toThrow('has no current passed execution')
     const reportPath = join(root, '.verification', 'test-go.json')
     const report = await Bun.file(reportPath).json()
     await writeFile(reportPath, JSON.stringify({ ...report, input }))
