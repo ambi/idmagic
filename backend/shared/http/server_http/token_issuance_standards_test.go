@@ -908,40 +908,17 @@ func tamperedSubject(t *testing.T, token string) string {
 //spec:covers RFC7523-CLIENT-ASSERTION (optional):
 func TestClientAssertionVerifiesEveryDeclaredElement(t *testing.T) {
 	fixture := newTokenIssuanceFixture(t)
-	// audience は httptest の URL ではなく、製品が発行者として名乗る値である。
-	audience := tiIssuer + "/realms/default/token"
 
 	assert := func(t *testing.T, mutate func(map[string]any)) (int, string) {
 		t.Helper()
-		now := time.Now()
-		claims := map[string]any{
-			"iss": tiAssertionClient, "sub": tiAssertionClient,
-			"aud": audience, "jti": "jti-" + t.Name(),
-			"iat": now.Unix(), "exp": now.Add(time.Minute).Unix(),
-		}
+		claims := fixture.assertionClaims(t)
 		mutate(claims)
 		signWith := fixture.assertionKey
 		if replacement, ok := claims["__wrong_key"].(*rsa.PrivateKey); ok {
 			signWith = replacement
 			delete(claims, "__wrong_key")
 		}
-		header, err := json.Marshal(map[string]any{"alg": "PS256", "kid": "assertion-key"})
-		if err != nil {
-			t.Fatal(err)
-		}
-		payload, err := json.Marshal(claims)
-		if err != nil {
-			t.Fatal(err)
-		}
-		signingInput := base64.RawURLEncoding.EncodeToString(header) + "." +
-			base64.RawURLEncoding.EncodeToString(payload)
-		digest := sha256.Sum256([]byte(signingInput))
-		signature, err := rsa.SignPSS(rand.Reader, signWith, stdcrypto.SHA256, digest[:],
-			&rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
-		if err != nil {
-			t.Fatal(err)
-		}
-		assertion := signingInput + "." + base64.RawURLEncoding.EncodeToString(signature)
+		assertion := signAssertion(t, signWith, claims)
 		return fixture.postToken(t, url.Values{
 			"grant_type": {"client_credentials"}, "scope": {"read"},
 			"client_id":             {tiAssertionClient},
@@ -984,4 +961,85 @@ func TestClientAssertionVerifiesEveryDeclaredElement(t *testing.T) {
 			assertNoTokenInBody(t, name, body)
 		})
 	}
+}
+
+// RFC 7521 §4.2 は `client_id` を OPTIONAL とし、クライアントをアサーションの subject で
+// 識別する。公式の MCP TypeScript SDK のように `client_id` を送らないクライアントがある。
+// 送られた `client_id` はアサーションのクライアントと同じでなければならない。
+//
+//spec:covers RFC7521-CLIENT-ID-OPTIONAL (optional):
+//spec:covers REQ-OAUTH2-028: client_id を省いた要求はアサーションの sub の登録で検証され、異なる client_id は拒否される
+func TestClientAssertionIdentifiesTheClientWithoutClientID(t *testing.T) {
+	fixture := newTokenIssuanceFixture(t)
+	post := func(t *testing.T, form url.Values, mutate func(map[string]any)) (int, string) {
+		t.Helper()
+		claims := fixture.assertionClaims(t)
+		mutate(claims)
+		form.Set("grant_type", "client_credentials")
+		form.Set("scope", "read")
+		form.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+		form.Set("client_assertion", signAssertion(t, fixture.assertionKey, claims))
+		return fixture.postToken(t, form, func(*http.Request) {})
+	}
+	unchanged := func(map[string]any) {}
+
+	t.Run("client_id を省くと sub のクライアントとして発行する", func(t *testing.T) {
+		status, body := post(t, url.Values{}, unchanged)
+		if status != http.StatusOK || !strings.Contains(body, `"access_token"`) {
+			t.Fatalf("status=%d body=%s, want 200 with an access token", status, body)
+		}
+	})
+	rejected := map[string]struct {
+		form   url.Values
+		mutate func(map[string]any)
+	}{
+		"アサーションと異なる client_id": {url.Values{"client_id": {tiClientID}}, unchanged},
+		// sub が指す登録が private_key_jwt でなければ、その鍵を探さずに拒否する。
+		"client_id がなく sub がシークレット認証のクライアント": {url.Values{}, func(c map[string]any) {
+			c["iss"], c["sub"] = tiClientID, tiClientID
+		}},
+		"client_id がなく sub もない": {url.Values{}, func(c map[string]any) { delete(c, "sub") }},
+	}
+	for name, tc := range rejected {
+		t.Run(name+"は拒否する", func(t *testing.T) {
+			status, body := post(t, tc.form, tc.mutate)
+			if status != http.StatusUnauthorized || !strings.Contains(body, `"invalid_client"`) {
+				t.Fatalf("status=%d body=%s, want 401 invalid_client", status, body)
+			}
+			assertNoTokenInBody(t, name, body)
+		})
+	}
+}
+
+// assertionClaims は、アサーションのクライアントの正しいクレームを返す。
+// audience は httptest の URL ではなく、製品が発行者として名乗る値である。
+func (f *tiFixture) assertionClaims(t *testing.T) map[string]any {
+	t.Helper()
+	now := time.Now()
+	return map[string]any{
+		"iss": tiAssertionClient, "sub": tiAssertionClient,
+		"aud": tiIssuer + "/realms/default/token", "jti": "jti-" + t.Name(),
+		"iat": now.Unix(), "exp": now.Add(time.Minute).Unix(),
+	}
+}
+
+func signAssertion(t *testing.T, key *rsa.PrivateKey, claims map[string]any) string {
+	t.Helper()
+	header, err := json.Marshal(map[string]any{"alg": "PS256", "kid": "assertion-key"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signingInput := base64.RawURLEncoding.EncodeToString(header) + "." +
+		base64.RawURLEncoding.EncodeToString(payload)
+	digest := sha256.Sum256([]byte(signingInput))
+	signature, err := rsa.SignPSS(rand.Reader, key, stdcrypto.SHA256, digest[:],
+		&rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return signingInput + "." + base64.RawURLEncoding.EncodeToString(signature)
 }

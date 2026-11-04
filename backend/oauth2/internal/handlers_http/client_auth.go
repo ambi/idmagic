@@ -57,6 +57,15 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 			return authedClient{}, usecases.NewOAuthError("invalid_request", "client_assertion is required")
 		}
 		clientID := c.Request().PostFormValue("client_id")
+		if clientID == "" {
+			// RFC 7521 §4.2 は client_id を OPTIONAL とする。未検証の sub は登録を探す先にだけ使い、
+			// 下の検証が iss == sub == clientID と登録の鍵での署名を確かめる。
+			subject, err := tokensJOSE.UnverifiedClientAssertionSubject(a)
+			if err != nil {
+				return authedClient{}, invalidClientError()
+			}
+			clientID = subject
+		}
 		tenantID := support.RequestTenantID(c)
 		client, err := d.ClientRepo.FindByID(c.Request().Context(), tenantID, clientID)
 		if err != nil || client == nil || client.TokenEndpointAuthMethod != oauthdomain.AuthMethodPrivateKeyJwt {

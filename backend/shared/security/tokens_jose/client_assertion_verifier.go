@@ -24,6 +24,31 @@ type ClientAssertionResult struct {
 	ClientID string
 }
 
+// UnverifiedClientAssertionSubject は、client_id のない要求でクライアントの登録を探すために sub だけを読む。
+// RFC 7521 §4.2 はクライアントをアサーションの subject で識別する。
+// 戻り値を信頼の根拠にせず、探した登録の鍵で VerifyClientAssertion を通す。
+func UnverifiedClientAssertionSubject(assertion string) (string, error) {
+	parts := strings.Split(assertion, ".")
+	if len(parts) != 3 {
+		return "", errors.New("client_assertion: malformed JWT")
+	}
+	pb, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", errors.New("client_assertion: malformed JWT")
+	}
+	var payload struct {
+		Subject any `json:"sub"`
+	}
+	if err := json.Unmarshal(pb, &payload); err != nil {
+		return "", errors.New("client_assertion: malformed JWT")
+	}
+	sub, ok := payload.Subject.(string)
+	if !ok || sub == "" {
+		return "", errors.New("client_assertion: sub required")
+	}
+	return sub, nil
+}
+
 // VerifyClientAssertion は client_assertion JWT を検証する。
 //   - クライアントの jwks_uri から取得した JWKS (本実装は事前注入された keysFn) で署名検証
 //   - aud がトークンエンドポイント URL に一致

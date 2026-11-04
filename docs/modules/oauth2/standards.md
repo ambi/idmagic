@@ -54,6 +54,14 @@ RFC 7519 — https://www.rfc-editor.org/rfc/rfc7519.html
 |---|---|---|---|
 | RFC7519-REGISTERED-CLAIMS | required | MUST | JWT の発行者、subject、audience、有効期限、発行時刻、一意識別子を用途に応じて検証または発行する。 |
 
+## Assertion Framework for OAuth 2.0 Client Authentication and Authorization Grants
+
+RFC 7521 — https://www.rfc-editor.org/rfc/rfc7521.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| RFC7521-CLIENT-ID-OPTIONAL | optional | MUST | クライアントアサーションによる認証では、`client_id` を省いた要求を受け入れ、アサーションの `sub` でクライアントを識別する。`client_id` を送った要求では、その値がアサーションのクライアントと異なれば `invalid_client` で拒否する。 |
+
 ## JSON Web Token Profile for OAuth 2.0 Client Authentication and Authorization Grants
 
 RFC 7523 — https://www.rfc-editor.org/rfc/rfc7523.html

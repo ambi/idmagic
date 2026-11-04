@@ -74,6 +74,9 @@
 
 - `private_key_jwt` のクライアントの `client_assertion` を検証するとき、OAuth2 は、アルゴリズムの許可リスト、発行者、subject、audience、上限付きの有効期間、リプレイの防止を、Discovery の広告と同じ規則で確かめる。
 - 署名を登録した鍵で検証できないか、いずれかの規則を満たさない `client_assertion` を受けた場合、OAuth2 は、401 と `invalid_client` で拒否する。
+- `client_id` を持たない `client_assertion` の要求を受けたとき、OAuth2 は、アサーションの `sub` の登録を、`client_id` を持つ要求と同じ規則で確かめる。
+- `client_id` を持つ要求で、その値がアサーションの `iss` か `sub` と異なる場合、OAuth2 は、401 と `invalid_client` で拒否する。
+- **判断**：RFC 7521 §4.2 は `client_id` を OPTIONAL とし、クライアントをアサーションの subject で識別する。`client_id` を送らないクライアントがあるので、省いた要求を拒否しない。
 - **例**：EX-OAUTH2-028-01
 
 ### 管理者によるクライアントの管理
