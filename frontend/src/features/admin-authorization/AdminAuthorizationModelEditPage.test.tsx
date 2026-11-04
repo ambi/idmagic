@@ -235,7 +235,8 @@ describe('AdminAuthorizationModelEditPage', () => {
     openJson()
     setJson([{ name: 'added', relations: [] }, ...types])
     fireEvent.click(screen.getByRole('button', { name: t.review }))
-    await screen.findByText(t.diffTitle)
+    // 英語の文言では確認へ進むボタンと差分の見出しが同じなので、文字列ではなく見出しを待つ。
+    await screen.findByRole('heading', { name: t.diffTitle })
     fireEvent.click(screen.getByRole('button', { name: t.publish }))
     await screen.findByText(/computed_userset cycle/)
     expect((screen.getByLabelText(t.jsonLabel) as HTMLTextAreaElement).value).toContain('added')
