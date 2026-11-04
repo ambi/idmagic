@@ -146,6 +146,9 @@ RefreshToken のライフサイクル。Rotate で子トークンに引き継が
 - REQ-OAUTH2-079 の交換の許可を伴う交換で、`subject_token` が `act` を持たず、そのクライアントがサブジェクトと異なるとき、OAuth2 は、`act` の入れ子の内側に `subject_token` のクライアントを置き、深さの判定に数える。
 - REQ-OAUTH2-079 の交換の許可を伴う交換で発行するとき、OAuth2 は、有効期間を 60 秒と `subject_token` の残りの短いほうにする。
 - 未対応の `subject_token_type` か `actor_token_type`、決められない現在の行為者を受けた場合、OAuth2 は、400 と `invalid_request` で拒否する。
+- アクセストークンを求める Token Exchange が `resource` を含まない場合、OAuth2 は、400 と `invalid_request` で拒否し、`TokenExchangeRejected` を発行する。
+- アクセストークンを求める Token Exchange が `audience` を含む場合、OAuth2 は、`resource` の有無にかかわらず 400 と `invalid_target` で拒否し、`TokenExchangeRejected` を発行する。
+- **判断**：交換の結果を単一の対象へ狭めるため、対象は登録済みのリソースを名指す `resource` だけで受ける。`audience` を論理名として解決すると、`resource` との併用と複数の値の規則が必要になり、対象を広げる経路になる。読まずに捨てると、クライアントは指定と異なる対象のトークンを受け取る。
 - 無効か失効した `subject_token` か `actor_token`、`may_act` に含まれない行為者、ポリシーが拒否した交換を受けた場合、OAuth2 は、400 と `invalid_grant` で拒否し、`TokenExchangeRejected` を発行する。
 - `subject_token` か `actor_token` を、イントロスペクションと同じ失効の判定（REQ-OAUTH2-011、REQ-OAUTH2-012）で確かめたとき、OAuth2 は、`active=false` になるトークンを失効したトークンとして扱う。
 - **例**：EX-OAUTH2-048-01、EX-OAUTH2-048-02、EX-OAUTH2-048-03、EX-OAUTH2-048-04

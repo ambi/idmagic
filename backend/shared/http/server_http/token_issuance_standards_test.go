@@ -882,6 +882,46 @@ func TestTokenExchangeDelegatesByDefaultAndBoundsTheActorChain(t *testing.T) {
 	})
 }
 
+// アクセストークンへの交換は、RFC 8693 §2.1 が任意とする対象の指定のうち `resource`
+// だけを受け付ける。`audience` を読まずに捨てる実装は、クライアントが指定したものと
+// 異なる対象のトークンを返すので、`resource` と同じ値の `audience` を併せた要求でも
+// 拒否されることを読む。
+//
+//spec:covers RFC8693-TARGET:
+func TestTokenExchangeAcceptsOnlyResourceAsTheTarget(t *testing.T) {
+	fixture := newTokenIssuanceFixture(t)
+	code := fixture.authorizationCode(t, nil)
+	subject := fixture.mustToken(t, fixture.codeExchangeForm(code, nil))
+
+	for _, tc := range []struct {
+		name      string
+		target    url.Values
+		wantError string
+	}{
+		{"audience だけ", url.Values{"audience": {tiResource}}, "invalid_target"},
+		{"resource と同じ値の audience", url.Values{"resource": {tiResource}, "audience": {tiResource}}, "invalid_target"},
+		{"resource と異なる audience", url.Values{"resource": {tiResource}, "audience": {tiOtherResource}}, "invalid_target"},
+		{"対象の指定なし", url.Values{}, "invalid_request"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			form := url.Values{
+				"grant_type":         {"urn:ietf:params:oauth:grant-type:token-exchange"},
+				"subject_token":      {subject.AccessToken},
+				"subject_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
+				"scope":              {"profile"},
+			}
+			maps.Copy(form, tc.target)
+			status, body := fixture.postToken(t, form)
+			if status != http.StatusBadRequest {
+				t.Fatalf("status=%d, want 400 body=%s", status, body)
+			}
+			assertOAuthErrorCode(t, tc.name, body, tc.wantError)
+			assertNoTokenInBody(t, tc.name, body)
+		})
+	}
+	fixture.events.assertEmitted(t, "TokenExchangeRejected")
+}
+
 // tamperedSubject は claim だけを差し替えた、署名の合わないトークンを作る。
 // 壊れた文字列では、そもそも JWT として読めずに落ちるので、「自身が発行した
 // ものに限る」という判断を区別できない。

@@ -15,7 +15,7 @@
 //     一致しなければ拒否。
 //   - RESOURCE INDICATORS (RFC 8707): resource を必須・1 個のみとし、登録済み
 //     Active な McpResourceServer に限定する。未登録・Disabled は invalid_target で
-//     fail-closed 拒否する。発行トークン aud = [resource]。
+//     fail-closed 拒否する。発行トークン aud = [resource]。audience は invalid_target で拒否する。
 //   - SENDER CONSTRAINT: 束縛した subject_token は同じ方式の同じ鍵の証明があるときだけ
 //     交換し、同じ cnf を引き継ぐ。別の鍵への再束縛と制約の除去は invalid_grant。
 //     例外は評価が発行した一回限りの許可 (REQ-OAUTH2-079) を伴う要求で、示した鍵へ束縛する。
@@ -56,12 +56,15 @@ const (
 )
 
 type ExchangeTokenInput struct {
-	ClientID             string
-	SubjectToken         string
-	SubjectTokenType     string
-	ActorToken           string
-	ActorTokenType       string
-	Resource             []string // form の resource (複数指定され得るため slice で受ける)
+	ClientID         string
+	SubjectToken     string
+	SubjectTokenType string
+	ActorToken       string
+	ActorTokenType   string
+	Resource         []string // form の resource (複数指定され得るため slice で受ける)
+	// Audience は form の audience である。対象は resource だけで受けるので、値があれば
+	// 拒否する (RFC8693-TARGET)。
+	Audience             []string
 	Scope                string
 	RequestedTokenType   string
 	ProofJKT             string
@@ -119,6 +122,10 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		return nil, err
 	}
 
+	// --- 対象 (RFC8693-TARGET): audience は解決せず、読まずに捨てもしない ---
+	if len(nonEmpty(in.Audience)) > 0 {
+		return reject("", NewOAuthError("invalid_target", "audience is not supported; specify the target with resource"))
+	}
 	// --- resource (RFC 8707): 必須・1 個のみ・登録済み Active な McpResourceServer に限定 ---
 	if len(nonEmpty(in.Resource)) == 0 {
 		return reject("", NewOAuthError("invalid_request", "resource parameter is required"))

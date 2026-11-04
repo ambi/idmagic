@@ -1072,7 +1072,7 @@ model TokenRequest {
   device_code?: string;
   @doc("CIBA のグラント（`urn:openid:params:grant-type:ciba`）の `auth_req_id`。承認が確定するまでは `authorization_pending` または `slow_down` を返し、確定した後はちょうど一度だけトークンと交換する。")
   auth_req_id?: string;
-  @doc("draft-ietf-oauth-identity-assertion-authz-grant-05：`requested_token_type` が `urn:ietf:params:oauth:token-type:id-jag` のトークン交換で、ID-JAG の宛先にするリソースの認可サーバーの発行者識別子。1 個だけ指定する。")
+  @doc("draft-ietf-oauth-identity-assertion-authz-grant-05：`requested_token_type` が `urn:ietf:params:oauth:token-type:id-jag` のトークン交換で、ID-JAG の宛先にするリソースの認可サーバーの発行者識別子。1 個だけ指定する。アクセストークンを求めるトークン交換では受け付けず、`invalid_target` で拒否する。")
   audience?: string;
   @doc("JWT の認可グラント（`urn:ietf:params:oauth:grant-type:jwt-bearer` と `urn:ietf:params:oauth:grant-type:jwt-dpop`）で提示する ID-JAG。")
   assertion?: string;
@@ -1093,7 +1093,7 @@ model TokenRequest {
   requested_token_type?: string;
   @doc("RFC 9396：トークン交換で絞り込みを求める、構造化された詳細の JSON の文字列。任意である。")
   authorization_details?: string;
-  @doc("RFC 8707：authorization_code の引き換え、client_credentials、device_code、トークン交換のためのリソースインジケーター。ID-JAG の発行を除き、パラメーターを複数回指定すると `invalid_target` になる。refresh_token のグラントは明示的に指定せず、最初の発行で結び付けたリソースをローテーションを通じて自動で引き継ぐ。")
+  @doc("RFC 8707：authorization_code の引き換え、client_credentials、device_code、トークン交換のためのリソースインジケーター。アクセストークンを求めるトークン交換では必須である。ID-JAG の発行を除き、パラメーターを複数回指定すると `invalid_target` になる。refresh_token のグラントは明示的に指定せず、最初の発行で結び付けたリソースをローテーションを通じて自動で引き継ぐ。")
   resource?: ResourceIndicator;
 }
 

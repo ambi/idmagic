@@ -349,6 +349,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			ActorToken:           c.Request().PostFormValue("actor_token"),
 			ActorTokenType:       c.Request().PostFormValue("actor_token_type"),
 			Resource:             c.Request().PostForm["resource"],
+			Audience:             c.Request().PostForm["audience"],
 			Scope:                c.Request().PostFormValue("scope"),
 			RequestedTokenType:   c.Request().PostFormValue("requested_token_type"),
 			ProofJKT:             dpopJKT,
