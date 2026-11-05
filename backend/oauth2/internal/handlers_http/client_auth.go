@@ -29,9 +29,18 @@ type authedClient struct {
 	MTLSThumbprintS256 string
 }
 
+// basicCredentials は Authorization ヘッダーが Basic 方式なら、方式名の後の資格情報を返す。
+// RFC 9110 §11.1 に従い、方式名は大文字と小文字を区別せずに照合する。
+func basicCredentials(header string) (string, bool) {
+	const prefix = "basic "
+	if len(header) < len(prefix) || !strings.EqualFold(header[:len(prefix)], prefix) {
+		return "", false
+	}
+	return header[len(prefix):], true
+}
+
 func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
-	basicAuth := c.Request().Header.Get("Authorization")
-	hasBasic := strings.HasPrefix(basicAuth, "Basic ")
+	basicAuth, hasBasic := basicCredentials(c.Request().Header.Get("Authorization"))
 	hasSecret := c.Request().PostFormValue("client_secret") != ""
 	hasAssertion := c.Request().PostFormValue("client_assertion") != "" ||
 		c.Request().PostFormValue("client_assertion_type") != ""
@@ -117,7 +126,7 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 	method := oauthdomain.AuthMethodNone
 	switch {
 	case hasBasic:
-		raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(basicAuth, "Basic "))
+		raw, err := base64.StdEncoding.DecodeString(basicAuth)
 		if err != nil {
 			return authedClient{}, usecases.NewOAuthError("invalid_client", "failed to decode Basic auth")
 		}

@@ -160,6 +160,21 @@ func TestClientAuthenticationMethods(t *testing.T) {
 			t.Fatal("mixed authentication methods were accepted")
 		}
 	})
+
+	// 混在の判定も方式名を大文字と小文字を区別せずに照合する。区別すると、小文字の
+	// basic は数えられず、client_secret_post だけの要求として通ってしまう。
+	t.Run("mixed methods with a lowercase scheme are rejected", func(t *testing.T) {
+		e := clientAuthServer(domain.AuthMethodClientSecretPost)
+		form := url.Values{"client_id": {"client"}, "client_secret": {"secret"}}
+		req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Authorization", "basic "+base64.StdEncoding.EncodeToString([]byte("client:secret")))
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "invalid_request") {
+			t.Fatalf("status=%d body=%s, want 400 invalid_request", rec.Code, rec.Body.String())
+		}
+	})
 }
 
 func TestClientAuthenticationFailuresAreUniform(t *testing.T) {

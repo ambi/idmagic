@@ -13,6 +13,14 @@ RFC 6749 — https://www.rfc-editor.org/rfc/rfc6749.html
 | RFC6749-IMPLICIT | excluded | MAY | Implicit Grant を提供する。 |
 | RFC6749-PASSWORD-GRANT | excluded | MAY | Resource Owner Password Credentials Grant を提供する。 |
 
+## HTTP Semantics
+
+RFC 9110 — https://www.rfc-editor.org/rfc/rfc9110.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| RFC9110-AUTH-SCHEME-CASE-INSENSITIVE | required | MUST | クライアント認証の `Authorization` ヘッダーで、`basic` や `BASIC` のように大文字と小文字だけが異なる方式名を `Basic` として受け入れ、`client_secret_basic` で認証する。複数の認証方式の混在の判定にも同じ照合を使う。 |
+
 ## The OAuth 2.0 Authorization Framework Bearer Token Usage
 
 RFC 6750 — https://www.rfc-editor.org/rfc/rfc6750.html
