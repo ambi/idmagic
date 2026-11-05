@@ -129,11 +129,12 @@ mise run -c \
 '''
 
 [tasks.verify-full]
-description = "Run the standard verification suite and the browser end-to-end tests"
+description = "Run standard verification, OpenLDAP tests, and browser end-to-end tests"
 # ブラウザー統合だけが要求するスタック起動 (Go のビルド、API、Vite 開発サーバー、初期データ)
 # を、静的検査と単体テストのたびに毎回組み合わせる理由はない。通常のゲートからは外し、
 # ここと CI の独立した job が後退検出を持つ。
-run = "mise run -c verify ::: test-ui-e2e"
+# OpenLDAP の実物を使う結合試験と E2E も、Docker を必要とする専用タスクで実行する。
+run = "mise run -c verify ::: test-go-openldap ::: test-ui-e2e"
 
 # 変更が届き得る層だけを検証する。Go は変更したパッケージとそのテストの逆依存に絞り、
 # どの層も持たないパスや、Go のテストが読み得るパッケージ外のパスでは全体へ戻す。
@@ -359,9 +360,25 @@ description = "Format Go code"
 run = "golangci-lint fmt"
 
 [tasks.test-go]
-description = "Run Go tests"
+description = "Run Go tests without Docker-dependent OpenLDAP integration or E2E tests"
 depends = ["compile-spec"]
 run = "bun run tools/verification/src/main.ts --full --report .verification/test-go.json -- ./..."
+
+[tasks.test-go-openldap]
+description = "Lint and run OpenLDAP adapter integration and connector E2E tests (requires Docker)"
+run = "mise run -c lint-go-openldap ::: test-go-openldap-integration ::: test-go-openldap-e2e"
+
+[tasks.lint-go-openldap]
+description = "Lint Directory Connector including OpenLDAP-tagged tests"
+run = "golangci-lint run --build-tags=openldap ./backend/directoryconnector/..."
+
+[tasks.test-go-openldap-integration]
+description = "Run LDAP adapter integration tests against real OpenLDAP (requires Docker)"
+run = "bun run tools/verification/src/main.ts --report .verification/test-go-openldap-integration.json -- -count=1 -tags=openldap ./backend/directoryconnector/internal/ldap_goldap ./backend/directoryconnector/internal/testing_openldap"
+
+[tasks.test-go-openldap-e2e]
+description = "Run Directory Connector E2E against real OpenLDAP (requires Docker)"
+run = "bun run tools/verification/src/main.ts --report .verification/test-go-openldap-e2e.json -- -count=1 -tags=openldap ./backend/directoryconnector -run '^TestDirectoryConnectorSyncsOpenLDAPUsers$'"
 
 [tasks.test-go-package]
 description = "Run Go tests for one package; pass --race to add the race detector"

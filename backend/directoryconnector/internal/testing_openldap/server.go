@@ -47,8 +47,8 @@ type Server struct {
 // Start は OpenLDAP のコンテナを起動し、people の OU を作って返す。コンテナはテストの終わりに消す。
 func Start(t *testing.T) *Server {
 	t.Helper()
-	if err := exec.CommandContext(t.Context(), "docker", "info").Run(); err != nil {
-		t.Skipf("docker is not available, skipping the OpenLDAP integration test: %v", err)
+	if output, err := exec.CommandContext(t.Context(), "docker", "info").CombinedOutput(); err != nil {
+		t.Fatalf("OpenLDAP 試験には稼働中の Docker が必要: %v\n%s", err, output)
 	}
 	// イメージに同梱の証明書は期限が切れているので、テストごとに CA とサーバーの証明書を作って入れる。
 	ca, certificate, key := issueCertificates(t)

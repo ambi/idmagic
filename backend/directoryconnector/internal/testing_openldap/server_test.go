@@ -1,3 +1,5 @@
+//go:build openldap
+
 package testing_openldap
 
 import (

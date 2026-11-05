@@ -1,3 +1,5 @@
+//go:build openldap
+
 package directoryconnector_test
 
 import (

@@ -364,6 +364,8 @@ Go の lint は一つの振る舞いが GREEN になってから実行し、RED 
 `verify` はブラウザ用のスタックを起動しない。
 `test-ui-e2e` は `mise run verify-full` と独立した CI ジョブで実行する。
 このテストには Go のビルド、API サーバー、開発サーバー、スイート内のほかの検査では使わないシードデータが必要になる。
+OpenLDAP を使う結合試験と Connector の E2E も、Docker を必要とするため `verify` から分離する。
+`mise run test-go-openldap`、`verify-full` と CI から明示的に実行する。
 
 `mise run time-verify` はスイートの構成要素を一つずつ実行し、それぞれの所要時間を表示する。
 ゲートが遅くなった、または速くなったという主張は、この結果で判断する。

@@ -45,6 +45,10 @@ Go テストが作ったビルド結果を利用し、仕様ジョブでバッ�
 手元の `check` は引き続き両方の検査を含む。
 
 push と Pull Request の Go 全体テストは `mise run test-go` による通常構成とし、race 検出器を使わない。
+同じ Go 検証で、OpenLDAP の結合試験と Connector の E2E をそれぞれ専用タスクで実行する。
+タグ付きコードの静的検査も Go の lint に加える。
+Docker を使う経路を通常試験から分離し、選択した専用試験では Docker の不在を失敗として扱う。
+実行区分と前提環境は[OpenLDAP 試験の実行区分](testing.md#openldap-試験の実行区分)に従う。
 data race の自動検査は、main の全体を `mise run test-go-race` で検査する定期実行だけが担う。
 実行は毎日一回（UTC 18:17）と手動の起動（`workflow_dispatch`）で、実行履歴や経過日数による切り替えは行わない。
 構成は Go 全体テストと同じく DB を必須にし、検証の証拠を失敗時も artifact として残す。
@@ -78,6 +82,7 @@ Go の検証では DB を必須にし、起動失敗やスキップを成功に�
 判定と代替証拠の形式は[テスト方針](testing.md#検証結果の区分)が定める。
 実行結果の要約を job summary に表示し、失敗した場合も `.verification/` の構造化結果と生の Go イベントを artifact に保存する。
 CI の通常テストの報告には `.verification/test-go.json` を明示し、別の race 実行の結果を参照しない。
+OpenLDAP の結合試験と E2E はそれぞれ `.verification/test-go-openldap-integration.json` と `.verification/test-go-openldap-e2e.json` を報告する。
 テスト実行まで到達しなかった場合は結果の欠落として表示され、以前の実行を成功の証拠に使わない。
 
 ## CI で検証しないもの
@@ -98,5 +103,6 @@ CI は同じ計画と群ごとの結果を job summary に表示する。
 失敗したステップが呼ぶ `mise run <task>` を同じ固定したツールのバージョンで実行する。集約ゲート (`check`、`verify-spec`、`verify`) は最初の失敗で打ち切らず、落ちたゲートを全部並べて終わるので、ログが挙げた分をまとめて手元で再現できる。検査を恒常的に無効化せず、不安定な検査は所有者と期限を持つ work item で修復または削除する。
 
 ブラウザー E2E (`test-ui-e2e`) は手元の `verify` には入っていない。Go のビルド、API サーバー、開発サーバー、初期データの投入という起動をこのテストだけが要求し、静的検査と単体テストのたびに毎回払う費用ではないからである。手元では `mise run verify-full` で、CI では独立した job で実行する。
+OpenLDAP の専用試験も `verify` には含めず、`verify-full` と CI の Go 検証で実行する。
 
 Pull Request の要件は [コントリビューション](../../CONTRIBUTING.md)で、変更中に検査を広げる順序は [検証の進め方](specification-first-workflow.md#検証の進め方)で定める。

@@ -19,6 +19,28 @@
 実行するタスクは `mise tasks` から選ぶ。
 E2E を追加するときは、単体、アダプター統合、受け入れのいずれでも同じ失敗を検出できない理由をテストまたは work item に残す。
 
+## OpenLDAP 試験の実行区分
+
+OpenLDAP の実物を使う試験は、`openldap` ビルドタグと専用のタスクで選択する。
+通常の Go 試験と `verify` はこのタグを指定せず、OpenLDAP のコンテナを起動しない。
+通常の試験群には単体試験に加え、メモリアダプター、HTTP、組み込み PostgreSQL の結合試験も含まれる。
+Docker が不要であることと、単体試験だけを実行することは区別する。
+
+| タスク | 対象と水準 | 外部環境 |
+| --- | --- | --- |
+| `test-go`、`test-go-package`、`test-go-one`、`test-go-changed`、`test-go-race` | 通常の Go 試験。平文 LDAP の構成拒否も含む | OpenLDAP 用の Docker は不要。HTTP と DB を使う試験の実行条件は従来どおり |
+| `test-go-openldap-integration` | LDAP アダプターの TLS、bind、ページングと試験用接続の結合試験 | Docker CLI と稼働中の Docker エンジン |
+| `test-go-openldap-e2e` | Connector の正式な `Main`、LDAP、IdMagic の HTTP ルーターを通す登録と同期 | Docker CLI と稼働中の Docker エンジン |
+| `test-go-openldap` | 上の結合試験と E2E、およびタグ付きコードの静的検査 | Docker CLI と稼働中の Docker エンジン |
+
+OpenLDAP を選んだ試験は、Docker に接続できなければ診断情報を伴って失敗する。
+環境不備による暗黙のスキップは許さない。
+専用タスクは `-count=1` で毎回実行し、Docker やコンテナの状態を Go の結果キャッシュに持ち越さない。
+選択しなかった試験の結果は通常実行の成功件数へ含めず、専用の実行結果を参照する。
+CI と `verify-full` は通常の試験に加えて専用タスクも実行する。
+LDAP アダプター、Connector の入口、OpenLDAP の試験支援を変更するときは、手元でも `test-go-openldap` を実行する。
+Envoy と Samba のように既に専用タスクを持つ試験の選択は、それぞれの手順に従う。
+
 ## 検証結果の区分
 
 検査が終了コード 0 を返しても、対象のすべてが検証済みになるとは限らない。

@@ -89,6 +89,8 @@ jobs:
           version: 2026.10.21
       - name: Go lint
         run: mise run lint-go
+      - name: OpenLDAP test lint
+        run: mise run lint-go-openldap
 
   go-test:
     name: Test Go
@@ -112,6 +114,10 @@ jobs:
         run: mise run setup-tools
       - name: Test Go
         run: mise run test-go
+      - name: OpenLDAP adapter integration tests
+        run: mise run test-go-openldap-integration
+      - name: Directory Connector E2E
+        run: mise run test-go-openldap-e2e
       - name: Verify generated Go references
         run: |
           mise run check-config-reference
@@ -120,6 +126,12 @@ jobs:
       - name: Publish verification results
         if: ${{ !cancelled() }}
         run: mise run report-verification -- .verification/test-go.json
+      - name: Publish OpenLDAP integration results
+        if: ${{ !cancelled() }}
+        run: mise run report-verification -- .verification/test-go-openldap-integration.json
+      - name: Publish Directory Connector E2E results
+        if: ${{ !cancelled() }}
+        run: mise run report-verification -- .verification/test-go-openldap-e2e.json
       - name: Upload verification evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7

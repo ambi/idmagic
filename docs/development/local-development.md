@@ -53,6 +53,20 @@ mise run build-ui
 mise run verify
 ```
 
+通常の Go 検証では Docker を使う OpenLDAP 試験を実行しない。
+OpenLDAP の結合試験と Connector の E2E を検証するときは、Docker CLI と接続先の Docker エンジンを用意し、エンジンを起動してから次を実行する。
+Docker のエンジンと CLI はホスト環境で管理し、リポジトリの `setup` ではインストールしない。
+
+```bash
+mise run test-go-openldap
+```
+
+このタスクは隔離した OpenLDAP コンテナを起動し、試験終了時に削除する。
+Docker に接続できない場合はスキップせず失敗する。
+イメージの初回取得にはネットワーク接続が必要である。
+実行する試験の水準と個別タスクは[OpenLDAP 試験の実行区分](testing.md#openldap-試験の実行区分)に従う。
+`mise run verify-full` は通常検証、OpenLDAP の専用試験、ブラウザー E2E をまとめて実行する。
+
 Go のバージョン情報は `VERSION`、`GIT_COMMIT`、`BUILD_DATE` から埋め込む。`VERSION` を指定しなければ開発用の `0.0.0-dev` になる。リリース用の値と成果物の扱いは [リリース](release.md) が定める。
 
 依存の準備、局所検証、並列タスクの引数、失敗の収集は[検証の進め方](specification-first-workflow.md#検証の進め方)に従う。
