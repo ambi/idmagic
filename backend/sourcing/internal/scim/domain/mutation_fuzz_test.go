@@ -58,6 +58,8 @@ func FuzzParseUserPatchOps(f *testing.F) {
 	f.Add(`{"Operations":[{"op":"replace","path":"id","value":"x"}]}`)
 	f.Add(`{"Operations":[]}`)
 	f.Add(`{"Operations":[{"op":"remove","path":"emails"}]}`)
+	f.Add(`{"Operations":[{"op":"Replace","value":{"active":false,"id":"x"}}]}`)
+	f.Add(`{"Operations":[{"op":"add","value":{"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User":{"department":"d"}}}]}`)
 
 	f.Fuzz(func(t *testing.T, raw string) {
 		body, ok := scimBody(raw)
@@ -90,6 +92,7 @@ func FuzzParseGroupPatchOps(f *testing.F) {
 	f.Add(`{"Operations":[{"op":"replace","path":"displayName","value":"g"}]}`)
 	f.Add(`{"Operations":[{"op":"add","path":"members","value":[{"value":"u1"}]}]}`)
 	f.Add(`{"Operations":[{"op":"delete","path":"members"}]}`)
+	f.Add(`{"Operations":[{"op":"replace","value":{"displayName":"g","members":[{"value":"u1"}]}}]}`)
 	f.Add(`{"Operations":[]}`)
 
 	f.Fuzz(func(t *testing.T, raw string) {

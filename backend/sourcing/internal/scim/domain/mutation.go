@@ -1,7 +1,9 @@
 package domain
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -310,12 +312,17 @@ func ParseUserPatchOps(body map[string]any) ([]UserPatchOp, error) {
 			return nil, newMutationError("invalidValue", "unsupported PATCH op %q", opMap["op"])
 		}
 
-		path, _ := opMap["path"].(string)
-		parsed, err := parseUserPatchOp(op, path, opMap["value"])
+		targets, err := patchTargets(op, opMap)
 		if err != nil {
 			return nil, err
 		}
-		ops = append(ops, parsed)
+		for _, target := range targets {
+			parsed, err := parseUserPatchOp(op, target.path, target.value)
+			if err != nil {
+				return nil, err
+			}
+			ops = append(ops, parsed)
+		}
 	}
 	return ops, nil
 }
@@ -477,14 +484,96 @@ func ParseGroupPatchOps(body map[string]any) ([]GroupPatchOp, error) {
 			return nil, newMutationError("invalidValue", "unsupported PATCH op %q", opMap["op"])
 		}
 
-		path, _ := opMap["path"].(string)
-		parsed, err := parseGroupPatchOp(op, path, opMap["value"])
+		targets, err := patchTargets(op, opMap)
 		if err != nil {
 			return nil, err
 		}
-		ops = append(ops, parsed)
+		for _, target := range targets {
+			parsed, err := parseGroupPatchOp(op, target.path, target.value)
+			if err != nil {
+				return nil, err
+			}
+			ops = append(ops, parsed)
+		}
 	}
 	return ops, nil
+}
+
+// patchTarget is one path and the value one PATCH operation applies to it.
+type patchTarget struct {
+	path  string
+	value any
+}
+
+// patchTargets returns the paths one operation applies to. An operation
+// without a path applies each member of its value object as if the member
+// name were the path (RFC 7644 §3.5.2.1, §3.5.2.3); the members of the
+// Enterprise extension object become URN-qualified paths. A remove needs a
+// path (RFC 7644 §3.5.2.2). Only an absent or null path counts as omitted.
+func patchTargets(op string, opMap map[string]any) ([]patchTarget, error) {
+	if rawPath := opMap["path"]; rawPath != nil {
+		path, _ := rawPath.(string)
+		return []patchTarget{{path: path, value: opMap["value"]}}, nil
+	}
+	if op == "remove" {
+		return nil, newMutationError("noTarget", "remove requires a path")
+	}
+	value, isObject := opMap["value"].(map[string]any)
+	if !isObject {
+		return nil, newMutationError("invalidValue", "value of an operation without a path must be an object")
+	}
+
+	targets := make([]patchTarget, 0, len(value))
+	for name, member := range value {
+		if !strings.EqualFold(name, EnterpriseUserSchemaURN) {
+			targets = append(targets, patchTarget{path: name, value: member})
+			continue
+		}
+		ext, isObject := member.(map[string]any)
+		if !isObject {
+			return nil, newMutationError("invalidValue", "%s must be an object", name)
+		}
+		for subName, subValue := range ext {
+			targets = append(targets, patchTarget{path: name + ":" + subName, value: subValue})
+		}
+	}
+	if len(targets) == 0 {
+		return nil, newMutationError("invalidValue", "value of an operation without a path must name at least one attribute")
+	}
+	sortPathlessTargets(targets, value)
+	return targets, nil
+}
+
+// sortPathlessTargets fixes the order the members of one value object apply
+// in, since a decoded JSON object does not keep the wire order. displayName
+// and name.formatted write the same canonical name, so displayName goes
+// first when the value assigns a non-null formatted and last otherwise,
+// which matches the precedence POST and PUT use (projectCanonicalName).
+func sortPathlessTargets(targets []patchTarget, value map[string]any) {
+	formattedAssigned, namesCompete := false, false
+	for name, member := range value {
+		switch strings.ToLower(name) {
+		case "name":
+			namesCompete = true
+			nameObject, _ := member.(map[string]any)
+			formattedAssigned = formattedAssigned || nameObject["formatted"] != nil
+		case "name.formatted":
+			namesCompete = true
+			formattedAssigned = formattedAssigned || member != nil
+		}
+	}
+	rank := func(path string) int {
+		if !namesCompete || !strings.EqualFold(path, "displayName") {
+			return 1
+		}
+		if formattedAssigned {
+			return 0
+		}
+		return 2
+	}
+	slices.SortFunc(targets, func(a, b patchTarget) int {
+		return cmp.Or(cmp.Compare(rank(a.path), rank(b.path)), cmp.Compare(strings.ToLower(a.path), strings.ToLower(b.path)))
+	})
 }
 
 // parseGroupPatchOp validates one operation on one path against the Group

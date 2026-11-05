@@ -3,8 +3,11 @@ package handlers_http_test
 import (
 	"net/http"
 	"reflect"
+	"slices"
 	"testing"
 )
+
+const enterpriseUserURN = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
 
 // scimPatchTarget は PATCH の効果を読む資源を 1 つ作り、その SCIM 上のパスを返す。
 type scimPatchTarget struct {
@@ -145,4 +148,108 @@ func createScimGroupForTest(t *testing.T, h scimHarness, tokenStr string, body m
 		t.Fatalf("setup: create group: expected a server-assigned id, got %v", created)
 	}
 	return id
+}
+
+// pathlessPatchOp は path を持たない一つの操作の PATCH 本文を作る。Entra ID の無効化と同じく op の先頭を大文字で送る。
+func pathlessPatchOp(op string, value any) map[string]any {
+	return map[string]any{
+		"schemas":    []string{"urn:ietf:params:scim:api:messages:2.0:PatchOp"},
+		"Operations": []map[string]any{{"op": op, "value": value}},
+	}
+}
+
+// path のない操作を送った後に資源を読み直し、value に挙げた属性だけが変わったことを読む。
+//
+//spec:covers RFC7644-PATCH-PATH-OPTIONAL: path を省いた add と replace を受け入れ、value の各メンバーを、その名前を path にした操作として適用する。
+//spec:covers REQ-SOURCING-004: path を省いた操作の value の各メンバーを、path 付きの操作と同じ許可の一覧で適用し、ほかの属性を変えない。
+func TestScimPatchWithoutPath_AppliesEachValueMemberAsItsPath(t *testing.T) {
+	targets := scimPatchTargets()
+	cases := []struct {
+		name    string
+		target  int
+		op      string
+		value   map[string]any
+		changed []string
+	}{
+		{name: "User deactivation", target: 0, op: "Replace", value: map[string]any{"active": false}, changed: []string{"active"}},
+		{name: "User userName and active", target: 0, op: "replace", value: map[string]any{"userName": "renamed@example.com", "active": false}, changed: []string{"userName", "active"}},
+		{name: "User add of enterprise attributes", target: 0, op: "Add", value: map[string]any{
+			enterpriseUserURN: map[string]any{"department": "Engineering", "employeeNumber": "701984"},
+		}, changed: []string{enterpriseUserURN, "schemas"}},
+		{name: "Group rename", target: 1, op: "Replace", value: map[string]any{"displayName": "Renamed"}, changed: []string{"displayName"}},
+	}
+	for _, tc := range cases {
+		target := targets[tc.target]
+		t.Run(tc.name, func(t *testing.T) {
+			h := newScimHarness()
+			tokenStr := issueAllScimToken(t, h.apiTokens)
+			resourcePath := target.create(t, h, tokenStr)
+			_, before := doScimGet(t, h.echo, tokenStr, resourcePath)
+
+			rec, body := doScimJSON(t, h.echo, http.MethodPatch, tokenStr, resourcePath, pathlessPatchOp(tc.op, tc.value))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("expected 200, got %d body=%v", rec.Code, body)
+			}
+			_, after := doScimGet(t, h.echo, tokenStr, resourcePath)
+			for attr, want := range tc.value {
+				if !reflect.DeepEqual(after[attr], want) {
+					t.Errorf("%s = %v, want %v", attr, after[attr], want)
+				}
+			}
+			for attr, value := range before {
+				if attr == "meta" || slices.Contains(tc.changed, attr) {
+					continue
+				}
+				if !reflect.DeepEqual(after[attr], value) {
+					t.Errorf("%s changed from %v to %v by a pathless %s", attr, value, after[attr], tc.op)
+				}
+			}
+		})
+	}
+}
+
+// 拒否の応答と、拒否の後に読み直した資源が拒否の前と同じであることを対で読む。
+//
+//spec:covers RFC7644-PATCH-PATH-OPTIONAL: path を省いた remove を noTarget で、空でないオブジェクトでない value を invalidValue で拒否する。
+//spec:covers REQ-SOURCING-004: path を省いた操作の value の未対応の属性を invalidPath、読み取り専用の属性を mutability で拒否し、リソースを変えない。
+func TestScimPatchWithoutPath_RefusesAndLeavesTheResourceUnchanged(t *testing.T) {
+	cases := []struct {
+		name         string
+		op           string
+		value        map[string]any
+		wantScimType string
+	}{
+		{name: "remove", op: "remove", value: map[string]any{"User": map[string]any{"active": false}, "Group": map[string]any{"displayName": "x"}}, wantScimType: "noTarget"},
+		{name: "string value", op: "replace", value: map[string]any{"User": "x", "Group": "x"}, wantScimType: "invalidValue"},
+		{name: "empty object", op: "replace", value: map[string]any{"User": map[string]any{}, "Group": map[string]any{}}, wantScimType: "invalidValue"},
+		{name: "null value", op: "add", value: map[string]any{"User": nil, "Group": nil}, wantScimType: "invalidValue"},
+		{name: "attribute outside the allowlist", op: "replace", value: map[string]any{"User": map[string]any{"nickName": "x"}, "Group": map[string]any{"description": "x"}}, wantScimType: "invalidPath"},
+		{name: "readOnly id beside a supported attribute", op: "replace", value: map[string]any{
+			"User":  map[string]any{"active": false, "id": "taken-over"},
+			"Group": map[string]any{"displayName": "Renamed", "id": "taken-over"},
+		}, wantScimType: "mutability"},
+		{name: "type-incompatible value", op: "replace", value: map[string]any{"User": map[string]any{"active": "false"}, "Group": map[string]any{"members": "x"}}, wantScimType: "invalidValue"},
+		{name: "enterprise extension that is not an object", op: "add", value: map[string]any{"User": map[string]any{enterpriseUserURN: "Engineering"}}, wantScimType: "invalidValue"},
+		{name: "enterprise extension on a Group", op: "add", value: map[string]any{"Group": map[string]any{enterpriseUserURN: map[string]any{"department": "Engineering"}}}, wantScimType: "invalidPath"},
+	}
+	for _, target := range scimPatchTargets() {
+		for _, tc := range cases {
+			value, applies := tc.value[target.name]
+			if !applies {
+				continue
+			}
+			t.Run(target.name+" "+tc.name, func(t *testing.T) {
+				h := newScimHarness()
+				tokenStr := issueAllScimToken(t, h.apiTokens)
+				resourcePath := target.create(t, h, tokenStr)
+				_, before := doScimGet(t, h.echo, tokenStr, resourcePath)
+
+				rec, body := doScimJSON(t, h.echo, http.MethodPatch, tokenStr, resourcePath, pathlessPatchOp(tc.op, value))
+				if rec.Code != http.StatusBadRequest || body["scimType"] != tc.wantScimType {
+					t.Fatalf("expected 400 %s, got %d body=%v", tc.wantScimType, rec.Code, body)
+				}
+				assertScimResourceUnchanged(t, h, tokenStr, resourcePath, before)
+			})
+		}
+	}
 }

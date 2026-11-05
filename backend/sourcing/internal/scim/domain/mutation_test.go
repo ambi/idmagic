@@ -2,6 +2,7 @@ package domain_test
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
@@ -581,4 +582,101 @@ func assertMutationError(t *testing.T, err error, wantScimType string) {
 
 func isMutationError(err error, target **domain.MutationError) bool {
 	return errors.As(err, target)
+}
+
+// path を省いた操作は、value の各メンバーを path 付きの操作と同じ一件の検査へ通し、決定的な順に並べる。
+//
+//spec:covers RFC7644-PATCH-PATH-OPTIONAL: path を省いた add と replace の value の各メンバーと、Enterprise 拡張の URN の下の各メンバーを、path 付きの操作へ展開する。
+//spec:covers REQ-SOURCING-004: path を省いた value の displayName と name は、作成と置換と同じく null でない name.formatted を優先する。
+func TestParseUserPatchOpsWithoutPathExpandsTheValue(t *testing.T) {
+	pathless := func(value any) map[string]any {
+		return map[string]any{"Operations": []any{map[string]any{"op": "Replace", "value": value}}}
+	}
+	for _, test := range []struct {
+		name  string
+		value map[string]any
+		want  []domain.UserPatchOp
+	}{
+		{"single attribute", map[string]any{"active": false}, []domain.UserPatchOp{
+			{Op: "replace", Attr: domain.UserAttrActive, Value: false},
+		}},
+		{"members in name order", map[string]any{"userName": "u", "active": true, "name.givenName": "G"}, []domain.UserPatchOp{
+			{Op: "replace", Attr: domain.UserAttrActive, Value: true},
+			{Op: "replace", Attr: domain.UserAttrGivenName, Value: "G"},
+			{Op: "replace", Attr: domain.UserAttrUserName, Value: "u"},
+		}},
+		{"enterprise extension members", map[string]any{
+			domain.EnterpriseUserSchemaURN: map[string]any{"manager": map[string]any{"value": "m"}, "department": "D"},
+		}, []domain.UserPatchOp{
+			{Op: "replace", Attr: domain.UserAttrDepartment, Value: "D"},
+			{Op: "replace", Attr: domain.UserAttrManager, Value: "m"},
+		}},
+		{"formatted wins over displayName", map[string]any{
+			"name": map[string]any{"formatted": "Formatted"}, "displayName": "Display",
+		}, []domain.UserPatchOp{
+			{Op: "replace", Attr: domain.UserAttrFormatted, Value: "Display"},
+			{Op: "replace", Attr: domain.UserAttrName, Value: map[string]any{"formatted": "Formatted"}},
+		}},
+		{"explicit empty formatted wins", map[string]any{
+			"name.formatted": "", "displayName": "Display",
+		}, []domain.UserPatchOp{
+			{Op: "replace", Attr: domain.UserAttrFormatted, Value: "Display"},
+			{Op: "replace", Attr: domain.UserAttrFormatted, Value: ""},
+		}},
+		{"displayName wins over an unassigned formatted", map[string]any{
+			"name": map[string]any{"givenName": "G", "formatted": nil}, "displayName": "Display",
+		}, []domain.UserPatchOp{
+			{Op: "replace", Attr: domain.UserAttrName, Value: map[string]any{"givenName": "G", "formatted": nil}},
+			{Op: "replace", Attr: domain.UserAttrFormatted, Value: "Display"},
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ops, err := domain.ParseUserPatchOps(pathless(test.value))
+			if err != nil || !reflect.DeepEqual(ops, test.want) {
+				t.Fatalf("ops=%+v error=%v, want %+v", ops, err, test.want)
+			}
+		})
+	}
+}
+
+//spec:covers RFC7644-PATCH-PATH-OPTIONAL: path を省いた remove を noTarget で、空でないオブジェクトでない value を invalidValue で拒否する。
+func TestParsePatchOpsWithoutPathRefusals(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		op           map[string]any
+		wantScimType string
+	}{
+		{"remove", map[string]any{"op": "remove"}, "noTarget"},
+		{"remove with a value", map[string]any{"op": "remove", "value": map[string]any{"displayName": "x"}}, "noTarget"},
+		{"missing value", map[string]any{"op": "add"}, "invalidValue"},
+		{"array value", map[string]any{"op": "add", "value": []any{map[string]any{"displayName": "x"}}}, "invalidValue"},
+		{"empty object", map[string]any{"op": "replace", "value": map[string]any{}}, "invalidValue"},
+		{"readOnly member", map[string]any{"op": "replace", "value": map[string]any{"displayName": "x", "meta": map[string]any{}}}, "mutability"},
+		{"null path is omitted", map[string]any{"op": "remove", "path": nil}, "noTarget"},
+		{"empty path is not omitted", map[string]any{"op": "replace", "path": "", "value": map[string]any{"displayName": "x"}}, "invalidPath"},
+	} {
+		body := map[string]any{"Operations": []any{test.op}}
+		_, userErr := domain.ParseUserPatchOps(body)
+		_, groupErr := domain.ParseGroupPatchOps(body)
+		for kind, err := range map[string]error{"User": userErr, "Group": groupErr} {
+			var mutation *domain.MutationError
+			if !errors.As(err, &mutation) || mutation.ScimType != test.wantScimType {
+				t.Errorf("%s %s: error=%v, want %s", kind, test.name, err, test.wantScimType)
+			}
+		}
+	}
+}
+
+func TestParseGroupPatchOpsWithoutPathExpandsTheValue(t *testing.T) {
+	members := []any{map[string]any{"value": "u1"}}
+	ops, err := domain.ParseGroupPatchOps(map[string]any{"Operations": []any{
+		map[string]any{"op": "add", "value": map[string]any{"members": members, "displayName": "G"}},
+	}})
+	want := []domain.GroupPatchOp{
+		{Op: "add", Attr: domain.GroupAttrDisplayName, Value: "G"},
+		{Op: "add", Attr: domain.GroupAttrMembers, Value: members},
+	}
+	if err != nil || !reflect.DeepEqual(ops, want) {
+		t.Fatalf("ops=%+v error=%v, want %+v", ops, err, want)
+	}
 }

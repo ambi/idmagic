@@ -135,6 +135,12 @@ PATCH の `path` は、`employeeNumber` などの単純な名前と、Enterprise
 - User の `displayName` または `name.formatted` への `remove` を送られたとき、Sourcing は、正規の名前を空にする。
 - User の `name` オブジェクトの `formatted` が文字列でも null でもない場合、Sourcing は、`invalidValue` で拒否し、User を変更しない。
 - 二つの名前を一つの PATCH 操作列で更新するとき、Sourcing は、操作列の順に同じ正規の名前を更新する。
+- `path` を省いた `add` か `replace` を受けたとき、Sourcing は、`value` のオブジェクトの各メンバーを、その名前を `path` にした操作として、`path` 付きの操作と同じ許可の一覧、読み取り専用の検査、値の検査で適用する。
+- `path` を省いた操作の `value` が Enterprise 拡張の URN をキーにしたオブジェクトを含むとき、Sourcing は、その各メンバーを URN で修飾した `path` の操作として適用する。
+- `path` を省いた操作の `value` が `displayName` と、null でない `name.formatted` を含むとき、Sourcing は、作成と置換と同じく `name.formatted` を正規の名前に保存する。
+- `path` を省いた操作の `value` が `displayName` と、`formatted` が null か欠けた `name` を含むとき、Sourcing は、作成と置換と同じく `displayName` を正規の名前に保存する。
+- `path` を省いた `add` か `replace` の `value` が空でないオブジェクトでない場合、Sourcing は、400 と scimType `invalidValue` の SCIM のエラーで拒否し、リソースを変えない。
+- `path` を省いた `remove` を受けた場合、Sourcing は、400 と scimType `noTarget` の SCIM のエラーで拒否し、リソースを変えない。
 - 対応する属性の一覧にないか、存在しない属性を指す `path` を受けた場合、Sourcing は、400 と scimType `invalidPath` の SCIM のエラーで拒否し、リソースを変えない。
 - 読み取り専用の `id`、`meta`、`schemas` を指す `path` を受けた場合、Sourcing は、400 と scimType `mutability` の SCIM のエラーで拒否し、リソースを変えない。
 - `op` が `add`、`replace`、`remove` のどれでもないか、RFC 7644 の PATCH の要件を満たさない本文を受けた場合、Sourcing は、400 と scimType `invalidValue` の SCIM のエラーで拒否し、リソースを変えない。
