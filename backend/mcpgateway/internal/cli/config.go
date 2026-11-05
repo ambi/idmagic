@@ -28,10 +28,11 @@ const (
 )
 
 type fileOperation struct {
-	ResourceType       string `yaml:"resource_type"`
-	Relation           string `yaml:"relation"`
-	ResourceID         string `yaml:"resource_id"`
-	ResourceIDArgument string `yaml:"resource_id_argument"`
+	ResourceType       string   `yaml:"resource_type"`
+	Relation           string   `yaml:"relation"`
+	ResourceID         string   `yaml:"resource_id"`
+	ResourceIDArgument string   `yaml:"resource_id_argument"`
+	AttributeArguments []string `yaml:"attribute_arguments"`
 }
 
 // fileConfig は設定ファイルの形である。未知のキーは読み取りで拒否する (REQ-MCPGATEWAY-001)。
@@ -243,6 +244,10 @@ func mapping(file fileConfig) (domain.Mapping, error) {
 		if operation.ResourceIDArgument != "" {
 			return domain.Mapping{}, fmt.Errorf("mapping.methods.%s must use resource_id", method)
 		}
+		// 方法の要求は引数を持たない。
+		if operation.AttributeArguments != nil {
+			return domain.Mapping{}, fmt.Errorf("mapping.methods.%s must not declare attribute_arguments", method)
+		}
 		rule, err := operationRule("mapping.methods."+method, operation)
 		if err != nil {
 			return domain.Mapping{}, err
@@ -266,8 +271,14 @@ func operationRule(name string, operation fileOperation) (domain.OperationRule, 
 	if (operation.ResourceID == "") == (operation.ResourceIDArgument == "") {
 		return domain.OperationRule{}, fmt.Errorf("%s requires exactly one of resource_id and resource_id_argument", name)
 	}
+	for i, key := range operation.AttributeArguments {
+		if key == "" || slices.Contains(operation.AttributeArguments[:i], key) {
+			return domain.OperationRule{}, fmt.Errorf("%s.attribute_arguments must name distinct non-empty keys", name)
+		}
+	}
 	return domain.OperationRule{
 		ResourceType: operation.ResourceType, Relation: operation.Relation,
 		ResourceID: operation.ResourceID, ResourceIDArgument: operation.ResourceIDArgument,
+		AttributeArguments: operation.AttributeArguments,
 	}, nil
 }

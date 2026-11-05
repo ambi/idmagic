@@ -221,6 +221,7 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 	started := time.Now()
 	in := evaluation_http.Request{
 		CorrelationID: record.correlationID, Token: token, Operation: evaluation.Operation, HTU: h.options.Resource.String(),
+		Attributes: evaluation.Attributes,
 	}
 	if evaluation.Operation.ResourceType == "idmagic_mcp_operation" {
 		parameters, err := json.Marshal(message.Arguments)

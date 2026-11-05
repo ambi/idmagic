@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -50,6 +51,18 @@ func TestLoadConfigAcceptsTheDocumentedForm(t *testing.T) {
 	}
 	if config.Mapping.Tools["read"].ResourceIDArgument != "id" || config.Mapping.Methods["tools/list"].ResourceID != "main" {
 		t.Fatalf("mapping = %+v", config.Mapping)
+	}
+}
+
+//spec:covers REQ-MCPGATEWAY-003: ツールの対応が名指した引数の一覧を評価の選択へ渡すこと
+func TestLoadConfigReadsAttributeArguments(t *testing.T) {
+	content := strings.ReplaceAll(validConfig, "resource_id_argument: id }", "resource_id_argument: id, attribute_arguments: [amount, currency] }")
+	config, err := LoadConfig(writeConfig(t, content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := config.Mapping.Tools["read"].AttributeArguments; !slices.Equal(got, []string{"amount", "currency"}) {
+		t.Fatalf("attribute_arguments = %v", got)
 	}
 }
 
@@ -112,6 +125,9 @@ func TestLoadConfigRejectsMistakes(t *testing.T) {
 		"no relation":                 replace("relation: viewer, ", ""),
 		"tools/call method":           replace("tools/list:", "tools/call:"),
 		"method argument":             replace("resource_id: main", "resource_id_argument: id"),
+		"method attributes":           replace("resource_id: main", "resource_id: main, attribute_arguments: [amount]"),
+		"empty attribute key":         replace("resource_id_argument: id", `resource_id_argument: id, attribute_arguments: [""]`),
+		"duplicate attribute key":     replace("resource_id_argument: id", "resource_id_argument: id, attribute_arguments: [amount, amount]"),
 		"bad timeout":                 replace("  client_id: rs\n", "  client_id: rs\n  timeout: soon\n"),
 		"unknown mode":                "mode: sidecar\n" + validConfig,
 		"envoy with upstream":         "mode: envoy_ext_authz\n" + validConfig,

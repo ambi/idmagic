@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -156,4 +157,59 @@ func TestDecideSelectsTheOperation(t *testing.T) {
 
 func idArgument(raw string) map[string]json.RawMessage {
 	return map[string]json.RawMessage{"id": json.RawMessage(raw)}
+}
+
+//spec:covers REQ-MCPGATEWAY-003: 名指したキーだけを値を変えずに attributes にすること、宣言のない操作は送らないこと、16 KiB の境界
+func TestDecideSelectsDeclaredAttributes(t *testing.T) {
+	mapping := Mapping{Tools: map[string]OperationRule{
+		"pay":   {ResourceType: "account", Relation: "payer", ResourceID: "a1", AttributeArguments: []string{"amount", "currency"}},
+		"plain": {ResourceType: "account", Relation: "payer", ResourceID: "a1"},
+	}}
+	call := func(tool string, arguments map[string]json.RawMessage) Message {
+		return Message{Method: MethodToolsCall, ToolName: tool, Arguments: arguments}
+	}
+	cases := []struct {
+		name       string
+		in         Message
+		kind       EvaluationKind
+		attributes string
+	}{
+		{"declared keys only", call("pay", map[string]json.RawMessage{
+			"amount": json.RawMessage(`1e2`), "currency": json.RawMessage(`"USD"`), "secret": json.RawMessage(`"s"`),
+		}), EvaluateAndForward, `{"amount":1e2,"currency":"USD"}`},
+		{"structured value is kept", call("pay", map[string]json.RawMessage{"amount": json.RawMessage(`{"value": 5}`)}), EvaluateAndForward, `{"amount":{"value":5}}`},
+		{"missing keys are omitted", call("pay", map[string]json.RawMessage{"other": json.RawMessage(`1`)}), EvaluateAndForward, `{}`},
+		{"no arguments", call("pay", nil), EvaluateAndForward, `{}`},
+		{"undeclared tool sends none", call("plain", map[string]json.RawMessage{"amount": json.RawMessage(`1`)}), EvaluateAndForward, ""},
+		{"16 KiB is evaluated", call("pay", map[string]json.RawMessage{"amount": sizedString(maxAttributesBytes - len(`{"amount":}`))}), EvaluateAndForward, ""},
+		{"over 16 KiB is not", call("pay", map[string]json.RawMessage{"amount": sizedString(maxAttributesBytes - len(`{"amount":}`) + 1)}), DenyWithoutEvaluation, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := Decide(tc.in, mapping)
+			if got.Kind != tc.kind {
+				t.Fatalf("got %+v", got)
+			}
+			if tc.kind == DenyWithoutEvaluation {
+				if got.Reason != "attributes_too_large" || got.Attributes != "" {
+					t.Fatalf("got %+v", got)
+				}
+				return
+			}
+			if strings.HasPrefix(tc.name, "16 KiB") {
+				if len(got.Attributes) != maxAttributesBytes {
+					t.Fatalf("len=%d", len(got.Attributes))
+				}
+				return
+			}
+			if got.Attributes != tc.attributes {
+				t.Fatalf("attributes=%s", got.Attributes)
+			}
+		})
+	}
+}
+
+// sizedString は直列化すると n バイトになる JSON の文字列である。
+func sizedString(n int) json.RawMessage {
+	return json.RawMessage(`"` + strings.Repeat("x", n-2) + `"`)
 }

@@ -19,7 +19,7 @@ import (
 )
 
 // putCondition は規則の条件を管理 API で差し替え、応答の状態と条件を返す。
-func (f *approvedOperationFixture) putCondition(t *testing.T, condition map[string]any) (int, map[string]any) {
+func (f *resourceAccessFixture) putCondition(t *testing.T, condition map[string]any) (int, map[string]any) {
 	t.Helper()
 	server, err := f.s.McpResourceServers.FindByResource(context.Background(), tenancydomain.DefaultTenantID, agentRevocationResource)
 	if err != nil || server == nil {

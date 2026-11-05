@@ -168,7 +168,8 @@
 条件の `version` は、`deny_when`、`require_approval_when`、`approval_detail_type` の内容から導く。
 同じ内容は同じ版になるので、監査イベントの版を管理の記録と突き合わせられる。
 
-MCP ゲートウェイは `attributes` を送らないので、ゲートウェイの配下の操作では、`attributes` のキーを読む式は評価不能になる。
+MCP ゲートウェイは、ツールの対応の `attribute_arguments` で名指した引数だけを `attributes` として送る。
+名指していない操作では、`attributes` のキーを読む式は評価不能になる。
 ツール名は `operation.resource_id` で判定できる。
 
 ### 実行回数の上限

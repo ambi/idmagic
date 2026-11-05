@@ -22,6 +22,8 @@ type Request struct {
 	Token               string
 	Operation           domain.Operation
 	OperationParameters string
+	// Attributes は規則の条件が読む JSON オブジェクトで、空なら送らない。
+	Attributes string
 	// DPoPProof があれば htm と htu を添える。
 	DPoPProof string
 	HTU       string
@@ -67,6 +69,9 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 	}
 	if in.OperationParameters != "" {
 		form.Set("operation_parameters", in.OperationParameters)
+	}
+	if in.Attributes != "" {
+		form.Set("attributes", in.Attributes)
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.EvaluateURL, strings.NewReader(form.Encode()))
 	if err != nil {

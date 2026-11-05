@@ -41,6 +41,7 @@
 
 操作は `resource_type`、`relation` と、`resource_id` か `resource_id_argument` のちょうど一方を持つ。
 `resource_id_argument` は `tools/call` の `arguments` の直下のキーを名指し、その文字列の値を `resource_id` にする。
+`mapping.tools` の操作は、任意で `attribute_arguments` に `arguments` の直下のキーの一覧を持ち、名指した引数を評価の `attributes` として渡す。
 
 ```yaml
 mapping:
@@ -49,6 +50,7 @@ mapping:
     tools/list: { resource_type: mcp_server, relation: list_tools, resource_id: main }
   tools:
     read_document: { resource_type: document, relation: viewer, resource_id_argument: document_id }
+    send_payment: { resource_type: account, relation: payer, resource_id_argument: account_id, attribute_arguments: [amount, currency] }
 ```
 
 ### 公開 URL と登録の関係
@@ -73,6 +75,7 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - `mode` が `proxy` と `envoy_ext_authz` のどちらでもないか、`mode` が `envoy_ext_authz` で `upstream` を持つ場合、McpGateway は、起動しない。
 - `downstream.resource` が `https://` の URL でないか、`downstream.dpop_key_file` を P-256 の秘密鍵として読めないか、`mode` が `envoy_ext_authz` で `downstream` を持つ場合、McpGateway は、起動しない。
 - 操作が `resource_id` と `resource_id_argument` の両方を持つか、どちらも持たないか、`mapping.methods` が `tools/call` を名指す場合、McpGateway は、起動しない。
+- `mapping.methods` の操作が `attribute_arguments` を持つか、`attribute_arguments` が空の文字列か重複したキーを含む場合、McpGateway は、起動しない。
 - ログと指標を書くとき、McpGateway は、提示されたトークン、DPoP の証明、クライアントシークレット、`resource_id_argument` で名指したもの以外のツールの引数を含めない。
 - **判断**：`resource` にも `https://` を求める。トークンの宛先と DPoP の `htu` になる値であり、TLS を前段で終端しても利用者から見える URL は `https://` である。
 
@@ -107,12 +110,18 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - 評価が 429 と `Retry-After` を返した場合、McpGateway は、同じ `Retry-After` を 503 に付ける。
 - 不許可と評価不能で応答するとき、McpGateway は、評価の理由を MCP クライアントへ返さない。
 - `resource_id_argument` の値がないか文字列でない場合、McpGateway は、403 と JSON-RPC の `-32000` を返し、評価を呼ばず、上流へ送らない。
+- `attribute_arguments` を持つツールの `tools/call` を評価するとき、McpGateway は、名指したキーのうち `arguments` にあるものだけを値を変えずに持つ JSON オブジェクトを `attributes` に載せ、どれもなければ空のオブジェクトを載せる。
+- `attribute_arguments` を持たない操作を評価するとき、McpGateway は、`attributes` を送らない。
+- `attributes` が 16 KiB を超える場合、McpGateway は、403 と JSON-RPC の `-32000` を返し、評価を呼ばず、上流へ送らない。
 - 宣言のない `tools/call` を受けたとき、McpGateway は、[宣言のないツールの操作](#宣言のないツールの操作)を評価し、結果が許可でも 403 と JSON-RPC の `-32000` を返し、上流へ送らない。
 - ツール名が 129 文字以上の宣言のない `tools/call` を受けたとき、McpGateway は、403 と JSON-RPC の `-32000` を返し、評価を呼ばず、上流へ送らない。
 - **判断**：カンマを複数の値として扱う。トークンと DPoP の証明はカンマを含まず、Envoy は重複したヘッダーを連結して渡すので、値だけでは一つか複数かを区別できない。
 - **判断**：`tools/list` と `server/discover` も評価する。未認証の呼び出しへ 401 を返すことが MCP の認可の入口であり、公開の例外を設けると設定の誤りが素通しになる。
 - **判断**：拒否の理由を返さない。別の資源宛てのトークンの有効性や権限の構成を呼び出し元へ知らせない。
-- **例**：EX-MCPGATEWAY-003-01、EX-MCPGATEWAY-003-02
+- **判断**：渡す引数を名指す。全引数を渡すとシークレットを含む引数が評価へ流れ、上流がツールに引数を足しただけで評価の入力が広がる。
+- **判断**：名指したキーの不足をゲートウェイで拒否しない。属性を読む条件は IdMagic で評価不能となり拒否されるので、判定を一か所に保つ。
+- **判断**：上限を超える `attributes` を評価せずに拒否する。IdMagic は 400 で拒否するので、評価不能の 503 として成功しない再試行を促さない。
+- **例**：EX-MCPGATEWAY-003-01、EX-MCPGATEWAY-003-02、EX-MCPGATEWAY-003-03
 
 #### REQ-MCPGATEWAY-004 転送は提示された資格情報を上流へ渡さず、応答を逐次返す
 
@@ -190,6 +199,12 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - **操作**：`read_document` を呼ぶ。
 - **結果**：503 になり、上流のツールは実行されない。
 
+#### EX-MCPGATEWAY-003-03 名指した引数で条件が金額の閾値を判定する
+
+- **前提**：規則の条件が `attributes.amount > 100` で拒否し、ツールの対応が `attribute_arguments: [amount]` を持つ。
+- **操作**：同じツールを `amount` が 80 と 150 で呼ぶ。
+- **結果**：80 は上流のツールを一回実行し、150 は 403 になり実行しない。
+
 #### EX-MCPGATEWAY-007-01 Envoy の背後でも不許可の呼び出しは上流へ届かない
 
 - **前提**：設定例の Envoy が `envoy_ext_authz` のゲートウェイを判定に使い、`d1` だけを許可する。
@@ -242,6 +257,11 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 `allowed_headers` から `origin` を除くと `Origin` の検査だけが効かなくなり、ゲートウェイから検出できない。
 配置後は[迂回の検査](../../../../examples/envoy-mcp-gateway/README.md#迂回の検査)を行う。
 判定の入口へ直接届いても上流へは転送されないが、評価の流量の予算を消費するので、Envoy からだけ到達できるように置く。
+
+`attribute_arguments` で渡す属性は MCP クライアントが送った引数であり、業務の事実ではない。
+ゲートウェイは評価した本文を変えずに転送し、キーの重複を拒否するので、上流は評価と同じ値を受け取る。
+条件が実行される引数を判定できるのは、上流がその値で実行する場合に限られる。
+シークレットを持つ引数は名指さない。
 
 `Mcp-Param-*` のヘッダーと本文の一致は、ツールのスキーマを持つ上流が検査する。
 ゲートウェイの判断は本文だけを読むので、ヘッダーの値は判断に影響しない。

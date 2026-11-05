@@ -63,3 +63,21 @@ func TestEvaluatePermitsOnlyOnAnExplicitDecision(t *testing.T) {
 		})
 	}
 }
+
+//spec:covers REQ-MCPGATEWAY-003: 選んだ attributes だけを評価の form に載せ、選んでいない評価には載せないこと
+func TestEvaluateSendsAttributesOnlyWhenSelected(t *testing.T) {
+	for _, attributes := range []string{`{"amount":80}`, ""} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_ = r.ParseForm()
+			if got, sent := r.PostForm["attributes"]; (attributes == "") == sent || (sent && got[0] != attributes) {
+				t.Errorf("attributes = %v (want %q)", got, attributes)
+			}
+			_, _ = w.Write([]byte(`{"decision":true}`))
+		}))
+		client := Client{EvaluateURL: server.URL, ClientID: "rs", ClientSecret: "secret", HTTPClient: server.Client()}
+		if _, err := client.Evaluate(t.Context(), Request{Token: "t", Attributes: attributes}); err != nil {
+			t.Fatal(err)
+		}
+		server.Close()
+	}
+}

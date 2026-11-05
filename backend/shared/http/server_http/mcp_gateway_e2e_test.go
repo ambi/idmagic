@@ -42,6 +42,7 @@ type mcpGatewayFixture struct {
 	audit    *bytes.Buffer
 	effects  atomic.Int32
 	deleted  atomic.Int32
+	paid     atomic.Int32
 	upstream atomic.Value
 	// mcp は上流の MCP サーバーで、テストがツールを足して変更通知を起こす。
 	mcp *mcp.Server
@@ -53,6 +54,12 @@ type readDocumentInput struct {
 
 type readDocumentOutput struct {
 	Title string `json:"title"`
+}
+
+type sendPaymentInput struct {
+	DocumentID string  `json:"document_id"`
+	Amount     float64 `json:"amount"`
+	Memo       string  `json:"memo"`
 }
 
 func newMcpGatewayFixture(t *testing.T, catalog ...bool) *mcpGatewayFixture {
@@ -94,6 +101,7 @@ func newMcpGatewayFixture(t *testing.T, catalog ...bool) *mcpGatewayFixture {
     tools/list: { resource_type: document, relation: viewer, resource_id: d1 }
   tools:
     read_document: { resource_type: document, relation: viewer, resource_id_argument: document_id }
+    send_payment: { resource_type: document, relation: viewer, resource_id_argument: document_id, attribute_arguments: [amount] }
 `
 	if len(catalog) > 0 && catalog[0] {
 		mapping = "  catalog: true\n"
@@ -150,8 +158,14 @@ func (f *mcpGatewayFixture) post(t *testing.T, tool string, change func(*http.Re
 // postDocument は文書 ID を引数に渡してツールを呼ぶ。
 func (f *mcpGatewayFixture) postDocument(t *testing.T, tool, documentID string, change func(*http.Request)) (*http.Response, string) {
 	t.Helper()
-	body := fmt.Sprintf(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":%q,"arguments":{"document_id":%q},`+
-		`"_meta":{"io.modelcontextprotocol/protocolVersion":%q,"io.modelcontextprotocol/clientCapabilities":{}}}}`, tool, documentID, mcpProtocolVersion)
+	return f.postArguments(t, tool, fmt.Sprintf(`{"document_id":%q}`, documentID), change)
+}
+
+// postArguments は JSON のオブジェクトの引数でツールを呼ぶ。
+func (f *mcpGatewayFixture) postArguments(t *testing.T, tool, arguments string, change func(*http.Request)) (*http.Response, string) {
+	t.Helper()
+	body := fmt.Sprintf(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":%q,"arguments":%s,`+
+		`"_meta":{"io.modelcontextprotocol/protocolVersion":%q,"io.modelcontextprotocol/clientCapabilities":{}}}}`, tool, arguments, mcpProtocolVersion)
 	return f.send(t, http.MethodPost, body, func(request *http.Request) {
 		request.Header.Set("Mcp-Protocol-Version", mcpProtocolVersion)
 		request.Header.Set("Mcp-Method", "tools/call")
@@ -370,5 +384,44 @@ func TestMcpGatewayRejectsWhatItCannotAuthorize(t *testing.T) {
 	}
 	if got := len(f.s.Events.All()); got != before {
 		t.Fatalf("バッチで評価された: %d -> %d", before, got)
+	}
+}
+
+// 規則の条件は名指したツールの引数を読み、閾値を超える呼び出しは無改修のサーバーで実行されない。
+//
+//spec:covers REQ-MCPGATEWAY-003, EX-MCPGATEWAY-003-03: 名指した引数だけが attributes として条件へ届き、名指していない引数は評価とログへ渡らないこと
+func TestMcpGatewayPassesDeclaredArgumentsToConditions(t *testing.T) {
+	f := newMcpGatewayFixture(t)
+	// ツールの一覧の件数を読むテストと共有する上流なので、このテストでだけ足す。
+	mcp.AddTool(f.mcp, &mcp.Tool{Name: "send_payment"}, func(context.Context, *mcp.CallToolRequest, sendPaymentInput) (*mcp.CallToolResult, readDocumentOutput, error) {
+		f.paid.Add(1)
+		return nil, readDocumentOutput{}, nil
+	})
+	// memo が届けば閾値以下でも拒否するので、名指していない引数が評価へ渡らないことも実行回数で読める。
+	if status, _ := f.putCondition(t, map[string]any{"deny_when": "attributes.amount > 100 || has(attributes.memo)"}); status != http.StatusOK {
+		t.Fatalf("条件を保存できない: status=%d", status)
+	}
+	token := f.resourceToken(t, agentClientID("A1"), agentRevocationResource, nil)
+	const memo = "memo-not-for-evaluation"
+	// SDK のクライアントは接続時に server/discover を評価し、属性のないその評価は条件で評価不能になるので、tools/call を直接送る。
+	pay := func(amount int) (*http.Response, string) {
+		return f.postArguments(t, "send_payment", fmt.Sprintf(`{"document_id":"d1","amount":%d,"memo":%q}`, amount, memo), gatewayBearer(token))
+	}
+
+	if response, body := pay(80); response.StatusCode != http.StatusOK || strings.Contains(body, `"isError":true`) || f.paid.Load() != 1 {
+		t.Fatalf("閾値以下: status=%d body=%s paid=%d", response.StatusCode, body, f.paid.Load())
+	}
+	if event := f.lastEvaluated(t); event.ConditionOutcome != "allow" {
+		t.Fatalf("条件が評価されていない: %+v", event)
+	}
+
+	if response, body := pay(150); response.StatusCode != http.StatusForbidden || f.paid.Load() != 1 {
+		t.Fatalf("閾値超過: status=%d body=%s paid=%d", response.StatusCode, body, f.paid.Load())
+	}
+	if event := f.lastEvaluated(t); event.ConditionOutcome != "deny" {
+		t.Fatalf("条件の拒否でない: %+v", event)
+	}
+	if strings.Contains(f.audit.String(), memo) {
+		t.Fatal("ログに引数がある")
 	}
 }
