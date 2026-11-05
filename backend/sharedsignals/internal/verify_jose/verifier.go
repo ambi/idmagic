@@ -29,8 +29,10 @@ func (v *Verifier) Verify(ctx context.Context, config *ssdomain.SsfReceiverConfi
 	if err != nil {
 		return nil, translateError(err)
 	}
+	subID, hasSubID := claims.Payload["sub_id"]
 	return &ssports.VerifiedSecurityEvent{
 		JTI: claims.JTI, Issuer: claims.Issuer, Audience: claims.Audience, IssuedAt: claims.IssuedAt, Events: eventsClaim(claims.Payload),
+		SubID: subID, HasSubID: hasSubID,
 	}, nil
 }
 

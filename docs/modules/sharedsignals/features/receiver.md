@@ -12,7 +12,10 @@
 
 ## モデル
 
-受理した SET の `events` クレームから、失効を反映する対象のテナントの中のプリンシパルを決める。
+受理した SET の最上位の `sub_id` から、失効を反映する対象のテナントの中のプリンシパルを決める。
+最上位の `sub_id` が欠ける場合は、従来の送信側との互換性のために `events` クレーム内の `subject` から解決する。
+両方がある場合はそれぞれを解決し、同じ種類、テナント、プリンシパルを指すときだけ受理する。
+Agent の識別子とその束縛先クライアントの識別子は、同じ Agent に解決できれば一致とする。
 
 | 主体の形式 | 解釈 |
 | --- | --- |
@@ -21,6 +24,7 @@
 | RFC 9493 の `format=opaque` | `id` |
 
 形式は `format` のメンバーの有無で判別し、両方の形式を同時に満たす表現は受け付けない。
+最上位の `sub_id` は RFC 9493 の形式だけを受け付け、独自形式はイベント内の `subject` だけで受け付ける。
 RFC 9493 の形式は自身のテナントを名乗らないので、テナントは受信側のストリームが属するテナントで決まる。
 識別子は Agent の識別子として解決し、一致しなければ Agent に束縛した `OAuth2Client` の識別子として、それでも一致しなければ User の識別子として解決する。
 どちらでも解決できない場合は拒否する。
@@ -38,6 +42,10 @@ RFC 9493 の形式は自身のテナントを名乗らないので、テナン�
 #### REQ-SHAREDSIGNALS-010 RFC 9493 の Subject Identifier で送られた SET も主体を解決する
 
 - 受信側のストリームが SET を受理したとき、SharedSignals は、主体の Agent か User の失効エポックを進め、受理の記録を残し、202 を返し、`SecurityEventReceived` を発行する。
+- 最上位の `sub_id` を持つ SET を受けたとき、SharedSignals は、イベント内の `subject` がなくても `sub_id` の Subject Identifier から主体を解決する。
+- 最上位の `sub_id` が欠ける SET を受けたとき、SharedSignals は、イベント内の `subject` から、RFC 9493 の形式または IdMagic 独自の形式で主体を解決する。
+- 最上位の `sub_id` とイベント内の `subject` の両方を受けたとき、SharedSignals は、それぞれの形式と発行者を検査し、解決後の種類、テナント、プリンシパルが一致することを確かめて受理する。
+- 最上位の `sub_id` または存在するイベント内の `subject` が `null`、オブジェクト以外、不正な形式であるか、両方の解決結果が一致しない場合、SharedSignals は、400 と `security_event_rejected` で拒否し、`verification_result=rejected_subject_unresolved` の `SecurityEventRejected` を発行し、失効を反映しない。
 - `iss` が受信側のストリームの `trusted_issuer` と一致する間、`format=iss_sub` の主体を受けたとき、SharedSignals は、`sub` をストリームのテナントの識別子として解決する。
 - `format=opaque` の主体を受けたとき、SharedSignals は、`id` をストリームのテナントの識別子として解決する。
 - 主体の識別子を解決するとき、SharedSignals は、まず Agent の識別子として、次に Agent に束縛した `OAuth2Client` の識別子として探し、失効を Agent の識別子で記録する。
@@ -45,7 +53,7 @@ RFC 9493 の形式は自身のテナントを名乗らないので、テナン�
 - `iss_sub` と `opaque` 以外の `format`、`trusted_issuer` と一致しない `iss`、どの Agent にも束縛先のクライアントにもテナントの User にも一致しない識別子、ほかのテナントを名乗る主体を受けた場合、SharedSignals は、400 と `security_event_rejected` で拒否し、`verification_result=rejected_subject_unresolved` の `SecurityEventRejected` を発行し、失効を反映しない。
 - 64 KiB を超える SET を受けた場合、SharedSignals は、413 と `security_event_token_too_large` で拒否する。
 - SET の受信を拒否するとき、SharedSignals は、RFC 8935 の `err` と `description` を持つ本文を返す。
-- **例**：EX-SHAREDSIGNALS-010-01、EX-SHAREDSIGNALS-010-02、EX-SHAREDSIGNALS-010-03、EX-SHAREDSIGNALS-010-04、EX-SHAREDSIGNALS-010-05、EX-SHAREDSIGNALS-010-06
+- **例**：EX-SHAREDSIGNALS-010-01、EX-SHAREDSIGNALS-010-02、EX-SHAREDSIGNALS-010-03、EX-SHAREDSIGNALS-010-04、EX-SHAREDSIGNALS-010-05、EX-SHAREDSIGNALS-010-06、EX-SHAREDSIGNALS-010-07、EX-SHAREDSIGNALS-010-08
 
 #### REQ-SHAREDSIGNALS-003 署名が不正な SET は反映せずに拒否する
 

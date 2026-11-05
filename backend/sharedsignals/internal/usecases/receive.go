@@ -79,18 +79,24 @@ func ReceiveSecurityEvent(ctx context.Context, deps ReceiveDeps, streamID, token
 	}
 
 	// requires: security_event_subject_resolves_to_tenant_local_principal(...)
-	eventType, subject, ok := extractCaepEventAndSubject(verified.Events, config, tenantID)
-	if !ok || subject.TenantID != tenantID {
+	eventType, candidates, ok := extractCaepEventAndSubjects(verified, config, tenantID)
+	if !ok {
 		return rejectEvent(ctx, deps, tenantID, streamID, verified.JTI, now, ssdomain.SecurityEventVerificationRejectedSubjectUnresolved)
 	}
-	// 解決できた Agent か User の識別子で記録する。RFC 9493 形式は束縛先クライアントの
-	// 識別子を名乗ることがあり、その場合の principal_id は Agent のものに正規化する。
-	subject, resolved, err := resolvePrincipal(ctx, deps, tenantID, subject)
-	if err != nil {
-		return err
-	}
-	if !resolved {
-		return rejectEvent(ctx, deps, tenantID, streamID, verified.JTI, now, ssdomain.SecurityEventVerificationRejectedSubjectUnresolved)
+	var subject ssdomain.SsfSubject
+	for i, candidate := range candidates {
+		if candidate.TenantID != tenantID {
+			return rejectEvent(ctx, deps, tenantID, streamID, verified.JTI, now, ssdomain.SecurityEventVerificationRejectedSubjectUnresolved)
+		}
+		resolvedSubject, resolved, err := resolvePrincipal(ctx, deps, tenantID, candidate)
+		if err != nil {
+			return err
+		}
+		// Agent と束縛先クライアントの別名は同じ主体なので、解決後に照合する。
+		if !resolved || (i > 0 && resolvedSubject != subject) {
+			return rejectEvent(ctx, deps, tenantID, streamID, verified.JTI, now, ssdomain.SecurityEventVerificationRejectedSubjectUnresolved)
+		}
+		subject = resolvedSubject
 	}
 	// セッションの終了は記録の前に行う。失敗した SET を再送で反映し直せるようにするためで、
 	// 終了は繰り返しても同じ結果になる。
@@ -159,36 +165,51 @@ func rejectEvent(ctx context.Context, deps ReceiveDeps, tenantID, streamID, setJ
 	return ErrSecurityEventRejected
 }
 
-// extractCaepEventAndSubject reads the sole `events` claim entry: one CAEP
-// event-type URI mapped to a claims object carrying a `subject`. Two shapes
-// are accepted, told apart by the presence of a `format` member
-// (RFC9493-SUBID-FORMAT):
-//
-//   - idmagic's own transmitter (BuildAndSignSecurityEventToken) writes
-//     subject_type/tenant_id/principal_id and names its own tenant.
-//   - an external transmitter writes an RFC 9493 Subject Identifier, which
-//     carries no tenant of its own; the receiving stream's tenant supplies it.
-func extractCaepEventAndSubject(events map[string]any, config *ssdomain.SsfReceiverConfig, tenantID string) (ssdomain.CaepEventType, ssdomain.SsfSubject, bool) {
-	for uri, raw := range events {
+// extractCaepEventAndSubjects は SSF 1.0 §3.1 の sub_id と、互換性のための subject を読む。
+// 両方があれば各候補を返し、呼び出し側が解決後に一致を確かめる。
+func extractCaepEventAndSubjects(verified *ssports.VerifiedSecurityEvent, config *ssdomain.SsfReceiverConfig, tenantID string) (ssdomain.CaepEventType, []ssdomain.SsfSubject, bool) {
+	var subjects []ssdomain.SsfSubject
+	if verified.HasSubID {
+		claims, _ := verified.SubID.(map[string]any)
+		format, _ := claims["format"].(string)
+		subject, ok := subjectFromIdentifier(format, claims, config, tenantID)
+		if !ok {
+			return "", nil, false
+		}
+		subjects = append(subjects, subject)
+	}
+	for uri, raw := range verified.Events {
 		eventType := caepEventTypeFromURI(uri)
 		claims, ok := raw.(map[string]any)
 		if !ok {
-			return "", ssdomain.SsfSubject{}, false
+			return "", nil, false
 		}
-		subjectClaims, ok := claims["subject"].(map[string]any)
-		if !ok {
-			return "", ssdomain.SsfSubject{}, false
+		if rawSubject, exists := claims["subject"]; exists {
+			subject, ok := subjectFromClaims(rawSubject, config, tenantID)
+			if !ok {
+				return "", nil, false
+			}
+			subjects = append(subjects, subject)
 		}
-		if format, isSubjectIdentifier := subjectClaims["format"].(string); isSubjectIdentifier {
-			subject, resolved := subjectFromIdentifier(format, subjectClaims, config, tenantID)
-			return eventType, subject, resolved
-		}
-		subjectType, _ := subjectClaims["subject_type"].(string)
-		subjectTenantID, _ := subjectClaims["tenant_id"].(string)
-		principalID, _ := subjectClaims["principal_id"].(string)
-		return eventType, ssdomain.SsfSubject{SubjectType: subjectType, TenantID: subjectTenantID, PrincipalID: principalID}, true
+		return eventType, subjects, len(subjects) > 0
 	}
-	return "", ssdomain.SsfSubject{}, false
+	return "", nil, false
+}
+
+func subjectFromClaims(raw any, config *ssdomain.SsfReceiverConfig, tenantID string) (ssdomain.SsfSubject, bool) {
+	claims, ok := raw.(map[string]any)
+	if !ok {
+		return ssdomain.SsfSubject{}, false
+	}
+	if rawFormat, exists := claims["format"]; exists {
+		format, _ := rawFormat.(string)
+		return subjectFromIdentifier(format, claims, config, tenantID)
+	}
+	subjectType, _ := claims["subject_type"].(string)
+	subjectTenantID, _ := claims["tenant_id"].(string)
+	principalID, _ := claims["principal_id"].(string)
+	subject := ssdomain.SsfSubject{SubjectType: subjectType, TenantID: subjectTenantID, PrincipalID: principalID}
+	return subject, subject.Validate() == nil
 }
 
 // subjectFromIdentifier maps an RFC 9493 Subject Identifier onto a subject of
@@ -205,6 +226,12 @@ func extractCaepEventAndSubject(events map[string]any, config *ssdomain.SsfRecei
 // carries no issuer of its own and takes the stream's, which is the same
 // namespace by construction.
 func subjectFromIdentifier(format string, claims map[string]any, config *ssdomain.SsfReceiverConfig, tenantID string) (ssdomain.SsfSubject, bool) {
+	// RFC 9493 と独自形式の混在は、別の解釈による検査の迂回を防ぐため拒否する。
+	for _, field := range []string{"subject_type", "tenant_id", "principal_id"} {
+		if _, exists := claims[field]; exists {
+			return ssdomain.SsfSubject{}, false
+		}
+	}
 	var identifier string
 	switch format {
 	case "iss_sub":

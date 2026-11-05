@@ -160,6 +160,7 @@ type exampleStack struct {
 	receiverConfigs    *countingReceiverConfigs
 	deliveries         *ssmemory.SecurityEventDeliveryRepository
 	epochs             *ssmemory.AgentRevocationEpochRepository
+	received           *recordingReceivedEventRepository
 	quotas             tenantports.QuotaRepository
 	keyStore           signingkeys.KeyStore
 	csrf               string
@@ -234,6 +235,7 @@ func newExampleStack(t *testing.T) *exampleStack {
 		receiverConfigs:    &countingReceiverConfigs{SsfReceiverConfigRepository: ssmemory.NewSsfReceiverConfigRepository()},
 		deliveries:         ssmemory.NewSecurityEventDeliveryRepository(),
 		epochs:             ssmemory.NewAgentRevocationEpochRepository(),
+		received:           &recordingReceivedEventRepository{delegate: ssmemory.NewReceivedSecurityEventRepository()},
 		quotas:             quotas, keyStore: keyStore,
 	}
 	httpadapter.Register(s.e, httpadapter.Deps{
@@ -251,7 +253,7 @@ func newExampleStack(t *testing.T) *exampleStack {
 		SharedSignals: sharedsignals.Module{
 			RevocationEpochRepo: s.epochs, StreamRepo: s.streams,
 			TransmitterConfigRepo: s.transmitterConfigs, ReceiverConfigRepo: s.receiverConfigs,
-			DeliveryRepo: s.deliveries, ReceivedEventRepo: ssmemory.NewReceivedSecurityEventRepository(),
+			DeliveryRepo: s.deliveries, ReceivedEventRepo: s.received,
 		},
 	})
 	s.csrf, s.cookie = sharedSignalsAdminCSRF(t, s.e)

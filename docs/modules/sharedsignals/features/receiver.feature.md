@@ -57,3 +57,15 @@
   | EX-SHAREDSIGNALS-010-04 | `iss` が "S1" の `trusted_issuer` と一致しない | `SecurityEventRejectedError` で拒否され、"SecurityEventRejected" が `verification_result=rejected_subject_unresolved` で発行される |
   | EX-SHAREDSIGNALS-010-05 | `format=email` など IdMagic が解釈しない形式である | `SecurityEventRejectedError` で拒否される |
   | EX-SHAREDSIGNALS-010-06 | `sub` がどの Agent にも束縛先クライアントにも一致しない | `SecurityEventRejectedError` で拒否される |
+
+### Example: EX-SHAREDSIGNALS-010-07 イベント内の subject を省略する
+
+- When 最上位に `sub_id={"format":"opaque","id":"A1"}` を持ち、イベント内の `subject` を省略した SET を "S1" へ POST する
+- Then 202 が返り、"A1" の AgentRevocationEpoch が前進する
+- And "A1" を主体とする受理の記録が残り、"SecurityEventReceived" が発行される
+
+### Example: EX-SHAREDSIGNALS-010-08 二つの表現が同じ Agent の別名を指す
+
+- When 最上位の `sub_id` が `format=opaque`、`id="A1"` を、イベント内の `subject` が `format=iss_sub`、`iss="https://issuer.example"`、`sub="C1"` を持つ SET を "S1" へ POST する
+- Then 両方が "A1" へ解決され、"A1" の AgentRevocationEpoch が前進する
+- And "A1" を主体とする受理の記録が残る

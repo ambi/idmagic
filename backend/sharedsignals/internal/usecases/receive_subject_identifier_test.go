@@ -172,3 +172,91 @@ func TestReceiveSecurityEvent_Rfc9493SubjectIdentifiers(t *testing.T) {
 		assertAccepted(t, d)
 	})
 }
+
+//spec:covers REQ-SHAREDSIGNALS-010: 両方の表現を検査して解決後に照合し、不正な主体を補わず、拒否時はどの Agent も失効させない。
+//spec:covers RFC9493-SUBID-FORMAT, RFC9493-SUBID-ISS-SUB: 取り出し口によらず形式と trusted_issuer を検査する。
+func TestReceiveSecurityEventTopLevelSubject(t *testing.T) {
+	const agentID, otherAgentID, clientID = "agent_1", "agent_2", "client_1"
+	opaque := map[string]any{"format": "opaque", "id": agentID}
+	native := map[string]any{"subject_type": "Agent", "tenant_id": receiveTestTenantID, "principal_id": agentID}
+	cases := []struct {
+		name       string
+		subID      any
+		subject    any
+		hasSubject bool
+		accepted   bool
+	}{
+		{name: "最上位のみ", subID: opaque, accepted: true},
+		{name: "同一識別子", subID: opaque, subject: opaque, accepted: true},
+		{name: "束縛先クライアントの別名", subID: opaque, subject: map[string]any{"format": "iss_sub", "iss": "https://transmitter.example", "sub": clientID}, accepted: true},
+		{name: "最上位が束縛先クライアント", subID: map[string]any{"format": "opaque", "id": clientID}, subject: native, accepted: true},
+		{name: "独自形式との共存", subID: opaque, subject: native, accepted: true},
+		{name: "異なる Agent", subID: map[string]any{"format": "opaque", "id": otherAgentID}, subject: opaque},
+		{name: "最上位の発行者不一致", subID: map[string]any{"format": "iss_sub", "iss": "https://other.example", "sub": agentID}, subject: opaque},
+		{name: "従来形式の発行者不一致", subID: opaque, subject: map[string]any{"format": "iss_sub", "iss": "https://other.example", "sub": agentID}},
+		{name: "最上位が null", subID: nil, subject: opaque},
+		{name: "最上位が文字列", subID: agentID, subject: opaque},
+		{name: "最上位が独自形式", subID: native, subject: opaque},
+		{name: "最上位の format 欠落", subID: map[string]any{"id": agentID}, subject: opaque},
+		{name: "最上位の format 型不正", subID: map[string]any{"format": 1, "id": agentID}, subject: opaque},
+		{name: "最上位の未対応形式", subID: map[string]any{"format": "complex", "id": agentID}, subject: opaque},
+		{name: "最上位の識別子が空", subID: map[string]any{"format": "opaque", "id": ""}, subject: opaque},
+		{name: "最上位の識別子が不明", subID: map[string]any{"format": "opaque", "id": "unknown"}, subject: opaque},
+		{name: "従来形式の型不正", subID: opaque, subject: agentID},
+		{name: "従来形式が null", subID: opaque, hasSubject: true},
+		{name: "従来形式の種類が欠落", subID: opaque, subject: map[string]any{"tenant_id": receiveTestTenantID, "principal_id": agentID}},
+		{name: "従来形式の種類が不明", subID: opaque, subject: map[string]any{"subject_type": "unknown", "tenant_id": receiveTestTenantID, "principal_id": agentID}},
+		{name: "従来形式の format 型不正", subID: opaque, subject: map[string]any{"format": 1, "subject_type": "Agent", "tenant_id": receiveTestTenantID, "principal_id": agentID}},
+		{name: "従来形式が別テナント", subID: opaque, subject: map[string]any{"subject_type": "Agent", "tenant_id": "other-tenant", "principal_id": agentID}},
+		{name: "従来形式が別の種類", subID: opaque, subject: map[string]any{"subject_type": "User", "tenant_id": receiveTestTenantID, "principal_id": agentID}},
+		{name: "最上位が混在形式", subID: map[string]any{"format": "opaque", "id": agentID, "principal_id": agentID}, subject: opaque},
+		{name: "従来形式が混在形式", subID: opaque, subject: map[string]any{"format": "opaque", "id": agentID, "subject_type": "Agent"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			eventClaims := map[string]any{}
+			if tc.subject != nil || tc.hasSubject {
+				eventClaims["subject"] = tc.subject
+			}
+			verified := &ssports.VerifiedSecurityEvent{
+				JTI: "sub-id-set", SubID: tc.subID, HasSubID: true,
+				Events: map[string]any{caepSessionRevokedURI: eventClaims},
+			}
+			d := newReceiveTestDeps(t, &fakeVerifier{result: verified})
+			seedReceiveStream(t, d, ssdomain.SsfStreamStatusEnabled)
+			seedReceiveAgent(t, d, agentID)
+			seedReceiveAgent(t, d, otherAgentID)
+			now := time.Now().UTC()
+			if _, err := d.agentRepo.AddBinding(context.Background(), &agentmodel.AgentCredentialBinding{AgentID: agentID, ClientID: clientID, CreatedAt: now}); err != nil {
+				t.Fatal(err)
+			}
+			err := ssusecases.ReceiveSecurityEvent(receiveTestCtx(), d.deps, receiveTestStreamID, "token", now)
+			if other, findErr := d.epochRepo.FindByAgent(context.Background(), receiveTestTenantID, otherAgentID); findErr != nil || other != nil {
+				t.Fatalf("対象外の失効エポック=%+v err=%v", other, findErr)
+			}
+			epoch, findErr := d.epochRepo.FindByAgent(context.Background(), receiveTestTenantID, agentID)
+			if findErr != nil {
+				t.Fatal(findErr)
+			}
+			var received, rejected int
+			for _, event := range *d.events {
+				switch e := event.(type) {
+				case *ssdomain.SecurityEventReceived:
+					received++
+				case *ssdomain.SecurityEventRejected:
+					rejected++
+					if e.VerificationResult != ssdomain.SecurityEventVerificationRejectedSubjectUnresolved {
+						t.Fatalf("拒否結果=%s", e.VerificationResult)
+					}
+				}
+			}
+			if tc.accepted {
+				if err != nil || epoch == nil || !epoch.Epoch.Equal(now) || received != 1 || rejected != 0 {
+					t.Fatalf("err=%v epoch=%+v received=%d rejected=%d", err, epoch, received, rejected)
+				}
+			} else if !errors.Is(err, ssusecases.ErrSecurityEventRejected) || epoch != nil || received != 0 || rejected != 1 {
+				t.Fatalf("err=%v epoch=%+v received=%d rejected=%d", err, epoch, received, rejected)
+			}
+		})
+	}
+}

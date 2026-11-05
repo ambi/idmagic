@@ -20,15 +20,17 @@ var (
 	ErrSecurityEventAudienceMismatch = errors.New("security event token: audience mismatch")
 )
 
-// VerifiedSecurityEvent is an inbound Security Event Token's verified
-// standard claims plus its raw `events` claim (CAEP-event-specific; the
-// caller, not this port, interprets its shape).
+// VerifiedSecurityEvent は署名を検証した SET のクレームを渡す。
+// 主体とイベントの形は受信処理が解釈する。
 type VerifiedSecurityEvent struct {
 	JTI      string
 	Issuer   string
 	Audience []string
 	IssuedAt time.Time
 	Events   map[string]any
+	// HasSubID は欠落と明示した null を区別し、不正な値へのフォールバックを防ぐ。
+	SubID    any
+	HasSubID bool
 }
 
 // SecurityEventTokenVerifier verifies an inbound SET against a stream's

@@ -43,6 +43,14 @@ func TestReceiveSecurityEventRevokesUser(t *testing.T) {
 		accepted bool
 	}{
 		{name: "opaque", event: opaqueEvent("j1", localUser), accepted: true},
+		{name: "最上位の opaque", event: &ssports.VerifiedSecurityEvent{
+			JTI: "j1", HasSubID: true, SubID: map[string]any{"format": "opaque", "id": localUser},
+			Events: map[string]any{caepSessionRevokedURI: map[string]any{}},
+		}, accepted: true},
+		{name: "最上位の別テナントの User", event: &ssports.VerifiedSecurityEvent{
+			JTI: "j1", HasSubID: true, SubID: map[string]any{"format": "opaque", "id": foreignUser},
+			Events: map[string]any{caepSessionRevokedURI: map[string]any{}},
+		}},
 		{name: "自身の形式", event: nativeUserEvent("j1", tenantID, localUser), accepted: true},
 		{name: "別テナントの User", event: opaqueEvent("j1", foreignUser)},
 		{name: "未知の主体", event: opaqueEvent("j1", "nobody")},

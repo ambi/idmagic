@@ -25,4 +25,5 @@ OpenID Shared Signals Framework 1.0 — https://openid.net/specs/openid-sharedsi
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | SSF10-SUB-ID | partial | MUST | 送信する SET は最上位に `sub_id` を持つ。形式は `opaque` を使う。Discovery と Stream Management API は提供せず、ストリームは管理者が登録する。 |
+| SSF10-RECEIVE-SUB-ID | partial | MUST | 最上位の `sub_id` が `iss_sub` または `opaque` の SET は、イベント内の `subject` を省略しても主体を解決して受理する。形式と発行者の検査は RFC9493-SUBID-FORMAT と RFC9493-SUBID-ISS-SUB に従う。`complex` などの未対応の形式は拒否する。 |
 | SSF10-STATUS-NO-TRANSMIT | required | MUST | `disabled` のストリームへイベントを送らない。自動無効化の Stream Updated Event は送らず、`SsfStreamAutoDisabled` で観測する。 |
