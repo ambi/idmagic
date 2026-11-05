@@ -89,6 +89,7 @@ func CompleteLogin(ctx context.Context, deps CompleteLoginDeps, in CompleteLogin
 		UserID:                 in.Sub,
 		Scopes:                 strings.Fields(req.Scope),
 		RedirectURI:            req.RedirectURI,
+		RedirectURIOmitted:     req.RedirectURIOmitted,
 		CodeChallenge:          req.CodeChallenge,
 		CodeChallengeMethod:    req.CodeChallengeMethod,
 		Nonce:                  req.Nonce,

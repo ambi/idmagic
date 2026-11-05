@@ -130,10 +130,13 @@ PAR で発行した `request_uri` のライフサイクル。`/authorize` から
 
 - クライアントが `response_type=code`、登録済みの `redirect_uri`、`S256` の `code_challenge`、クライアントに登録したスコープで `/authorize` を要求したとき、OAuth2 は、10 分の有効期間の `Received` の認可リクエストを保存し、ログインか同意へ進ませる。
 - `scope` のない認可の要求を受けたとき、OAuth2 は、`openid` を要求したものとして扱う。
+- 登録した `redirect_uri` が一件のクライアントが `openid` を含まない要求で `redirect_uri` を省いたとき、OAuth2 は、登録値を `redirect_uri` として認可リクエストを保存する。
 - 認証済みの利用者が Application の割り当てと実効のサインインポリシーを満たし、要求したスコープを同意が覆うとき、OAuth2 は、60 秒以下の有効期間の認可コードを発行し、`state` と発行者の識別子とともに `redirect_uri` へ返し、`AuthorizationCodeIssued` を発行する。
 - クライアントが期限内の認可コードを、同じクライアント、同じ `redirect_uri`、一致する `code_verifier` で交換したとき、OAuth2 は、コードを `Redeemed` にし、アクセストークンと、`openid` のスコープには ID トークンを返し、`refresh_token` のグラントを許可したクライアントの `offline_access` のスコープにはリフレッシュトークンを返し、`AuthorizationCodeRedeemed`、`AccessTokenIssued` を発行する。
+- `redirect_uri` を省いた認可リクエストのコードを、クライアントが `redirect_uri` を省いて交換したとき、OAuth2 は、登録値と同じ `redirect_uri` で交換したものとして扱う。
 - `prompt=none` でセッションがない場合、OAuth2 は、画面もログインへのリダイレクトも出さずに、`state` と発行者の識別子を含む `login_required` を登録済みの `redirect_uri` へ返す。
 - 未登録の `redirect_uri` か `client_id` のない要求を受けた場合、OAuth2 は、リダイレクトせずに `invalid_request` のエラーの画面を返す。
+- `openid` を含む要求か、登録した `redirect_uri` が一件でないクライアントの要求で `redirect_uri` を省いた場合、OAuth2 は、リダイレクトせずに `invalid_request` のエラーの画面を返し、認可リクエストを保存しない。
 - 単一値の認可のパラメーターが重複するか、`prompt` に重複か未対応のトークンがあるか、`none` がほかの `prompt` のトークンと併用され、登録済みの `redirect_uri` を安全に確定できる場合、OAuth2 は、認可コードを発行せずに、`state` と発行者の識別子を含む `invalid_request` を `redirect_uri` へ返す。
 - 単一値の認可のパラメーターが重複するか、`prompt` に重複か未対応のトークンがあるか、`none` がほかの `prompt` のトークンと併用され、登録済みの `redirect_uri` を安全に確定できない場合、OAuth2 は、認可コードを発行せずに、リダイレクトしないで `invalid_request` のエラーの画面を返す。
 - `code_challenge` がないか `code_challenge_method` が `S256` でない要求を受けた場合、OAuth2 は、`invalid_request` で拒否する。
@@ -142,10 +145,11 @@ PAR で発行した `request_uri` のライフサイクル。`/authorize` から
 - 認可コードのグラントを登録していないクライアントの要求を受けた場合、OAuth2 は、`unauthorized_client` で拒否する。
 - クライアントに登録していないスコープの要求を受けた場合、OAuth2 は、`invalid_scope` で拒否する。
 - 一致しない `code_verifier`、異なるクライアントか `redirect_uri`、未知の認可コードの交換を受けた場合、OAuth2 は、400 と `invalid_grant` で拒否し、トークンを発行しない。
+- 認可リクエストで示した `redirect_uri` を省いた交換を受けた場合、OAuth2 は、400 と `invalid_request` で拒否し、トークンを発行せず、コードを `Issued` のまま残す。
 - 引き換え済みの認可コードの交換を受けた場合、OAuth2 は、400 と `invalid_grant` で拒否し、そのコードから発行したファミリーのトークンをすべて失効させ、`RefreshTokenReuseDetected` と `TokenRevoked` を発行する。
 - 発行から 60 秒を超えた認可コードの交換を受けた場合、OAuth2 は、コードを `Expired` にし、400 と `invalid_grant` で拒否する。
 - 交換の時点で利用者が `Active` でない場合、OAuth2 は、400 と `invalid_grant` で拒否する。
-- **例**：EX-OAUTH2-005-01、EX-OAUTH2-005-02、EX-OAUTH2-005-03、EX-OAUTH2-005-04、EX-OAUTH2-005-05、EX-OAUTH2-005-06、EX-OAUTH2-005-07、EX-OAUTH2-005-08
+- **例**：EX-OAUTH2-005-01、EX-OAUTH2-005-02、EX-OAUTH2-005-03、EX-OAUTH2-005-04、EX-OAUTH2-005-05、EX-OAUTH2-005-06、EX-OAUTH2-005-07、EX-OAUTH2-005-08、EX-OAUTH2-005-09
 
 #### REQ-OAUTH2-022 認可リクエストの nonce は ID トークンに伝播する
 

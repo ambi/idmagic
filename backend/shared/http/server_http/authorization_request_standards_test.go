@@ -880,6 +880,127 @@ func TestRedirectURIMustMatchARegisteredValueExactly(t *testing.T) {
 	}
 }
 
+// 登録した redirect_uri が一件のクライアントは、openid を含まない認可要求で
+// redirect_uri を省ける。省いた要求の認可コードは登録値へ届き、redirect_uri を
+// 省いたトークン要求でアクセストークンになる。
+//
+// 省略を受け入れるのは、配送先が一つに決まり、OpenID Connect の認証要求でない場合に
+// 限る。拒否の事例では、認可リクエストを保存しないこととリダイレクトしないことを読む。
+// 配送先を確定できない要求を保存すると、後続の経路が空の宛先で動くためである。
+//
+// 省いた要求のコードでも、送られた redirect_uri は登録値と照合する。照合を省略の
+// 有無だけで飛ばす実装は、異なる値の交換でトークンを出す。
+//
+//spec:covers RFC6749-REDIRECT-URI-OPTIONAL / EX-OAUTH2-005-09 / RFC6749-TOKEN-REDIRECT-URI:
+func TestAuthorizationRequestMayOmitTheRedirectURIOfASingleRegistration(t *testing.T) {
+	fixture := newAuthorizationRequestFixture(t)
+
+	redirect := fixture.completeFlow(t, arQuery(map[string]string{"redirect_uri": "", "scope": "profile"}))
+	if delivered := redirect.Scheme + "://" + redirect.Host + redirect.Path; delivered != arRedirectURI {
+		t.Fatalf("省いた要求の応答が登録値へ届かなかった: %s", redirect)
+	}
+	code := redirect.Query().Get("code")
+	if code == "" {
+		t.Fatalf("認可コードが返らなかった: %s", redirect)
+	}
+	status, body := fixture.postToken(t, url.Values{
+		"grant_type": {"authorization_code"}, "code": {code}, "code_verifier": {arVerifier},
+		"redirect_uri": {"https://app.example/other"},
+	})
+	if status != http.StatusBadRequest || !strings.Contains(body, `"invalid_grant"`) {
+		t.Fatalf("登録値と異なる redirect_uri: 400 invalid_grant を期待した status=%d body=%s", status, body)
+	}
+	assertNoCredentialIssued(t, "登録値と異なる redirect_uri", body)
+	status, body = fixture.postToken(t, url.Values{
+		"grant_type": {"authorization_code"}, "code": {code}, "code_verifier": {arVerifier},
+	})
+	if status != http.StatusOK || !strings.Contains(body, `"access_token"`) {
+		t.Fatalf("redirect_uri を省いた交換: status=%d body=%s", status, body)
+	}
+	if strings.Contains(body, `"id_token"`) {
+		t.Fatalf("openid を要求していないのに id_token が返った: %s", body)
+	}
+
+	const multiClientID = "authorization-request-multi-redirect-client"
+	secretHash := domain.HashClientSecret(arClientSecret)
+	if err := fixture.clients.Save(context.Background(), &domain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID,
+		ClientID: multiClientID, ClientSecretHash: &secretHash,
+		ClientType:               spec.ClientConfidential,
+		RedirectURIs:             []string{arRedirectURI, "https://app.example/other"},
+		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
+		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
+		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		Scope:                    arScope,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
+		FapiProfile:              domain.FapiNone,
+		CreatedAt:                time.Now().UTC(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	emptyValue := arQuery(map[string]string{"scope": "openid profile"})
+	emptyValue.Set("redirect_uri", "")
+	for name, query := range map[string]url.Values{
+		"openid を含む要求":                   arQuery(map[string]string{"redirect_uri": ""}),
+		"scope がなく openid として扱う要求":       arQuery(map[string]string{"redirect_uri": "", "scope": ""}),
+		"値のない redirect_uri の openid の要求": emptyValue,
+		"登録が複数のクライアント": arQuery(map[string]string{
+			"redirect_uri": "", "scope": "profile", "client_id": multiClientID,
+		}),
+	} {
+		t.Run(name, func(t *testing.T) {
+			response, body := fixture.assertAuthorizationRefused(t, query, name)
+			if response.StatusCode != http.StatusBadRequest || !strings.Contains(body, `"invalid_request"`) {
+				t.Fatalf("%s: 400 invalid_request を期待した status=%d body=%s", name, response.StatusCode, body)
+			}
+			if location := response.Header.Get("Location"); location != "" {
+				t.Fatalf("%s: 配送先を確定できない要求でリダイレクトした Location=%q", name, location)
+			}
+		})
+	}
+}
+
+// 認可リクエストで redirect_uri を示したコードの交換は、同じ値の再送を必須にする。
+// OpenID Connect の認証要求でも、openid を含まない OAuth の要求でも同じである。
+//
+// 省いた交換と異なる値の交換を先に置き、どちらの拒否もコードを消費しないことを、
+// 最後に同じ値で交換が成功することで読む。再送の検査を外した実装は省いた交換で
+// トークンを出し、拒否でコードを消費する実装は最後の交換で失敗する。
+//
+//spec:covers RFC6749-TOKEN-REDIRECT-URI / OIDC-CORE-TOKEN-REDIRECT-URI:
+func TestTokenRequestRepeatsTheRedirectURIOfTheAuthorizationRequest(t *testing.T) {
+	for _, scope := range []string{"openid profile", "profile"} {
+		t.Run(scope, func(t *testing.T) {
+			fixture := newAuthorizationRequestFixture(t)
+			redirect := fixture.completeFlow(t, arQuery(map[string]string{"scope": scope}))
+			code := redirect.Query().Get("code")
+			if code == "" {
+				t.Fatalf("認可コードが返らなかった: %s", redirect)
+			}
+			exchange := url.Values{"grant_type": {"authorization_code"}, "code": {code}, "code_verifier": {arVerifier}}
+
+			status, body := fixture.postToken(t, exchange)
+			if status != http.StatusBadRequest || !strings.Contains(body, `"invalid_request"`) {
+				t.Fatalf("redirect_uri を省いた交換: 400 invalid_request を期待した status=%d body=%s", status, body)
+			}
+			assertNoCredentialIssued(t, "redirect_uri を省いた交換", body)
+
+			exchange.Set("redirect_uri", "https://app.example/other")
+			status, body = fixture.postToken(t, exchange)
+			if status != http.StatusBadRequest || !strings.Contains(body, `"invalid_grant"`) {
+				t.Fatalf("認可時と異なる redirect_uri: 400 invalid_grant を期待した status=%d body=%s", status, body)
+			}
+			assertNoCredentialIssued(t, "認可時と異なる redirect_uri", body)
+
+			exchange.Set("redirect_uri", arRedirectURI)
+			status, body = fixture.postToken(t, exchange)
+			if status != http.StatusOK || !strings.Contains(body, `"access_token"`) {
+				t.Fatalf("同じ redirect_uri の交換: status=%d body=%s", status, body)
+			}
+		})
+	}
+}
+
 // Authorization Code Grant を利用するクライアントには redirect_uri の登録を要求する。
 //
 // 登録の入口で拒否することと、拒否が防いだ効果 (redirect_uri を持たないクライアントが

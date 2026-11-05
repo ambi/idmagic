@@ -63,10 +63,6 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	if in.CodeVerifier == "" {
 		return nil, NewOAuthError("invalid_request", "code_verifier is required")
 	}
-	if in.RedirectURI == "" {
-		return nil, NewOAuthError("invalid_request", "redirect_uri is required")
-	}
-
 	rec, err := deps.CodeStore.Find(ctx, in.Code)
 	if err != nil {
 		return nil, err
@@ -94,7 +90,13 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	if rec.ClientID != in.ClientID {
 		return nil, NewOAuthError("invalid_grant", "The authorization code is not bound to the client.")
 	}
-	if rec.RedirectURI != in.RedirectURI {
+	// RFC 6749 4.1.3: 認可リクエストで示した redirect_uri は再送を必須にする。省いた
+	// 認可リクエストのコードだけ省いた交換を受け入れ、送られた値は配送先と照合する。
+	if in.RedirectURI == "" {
+		if !rec.RedirectURIOmitted {
+			return nil, NewOAuthError("invalid_request", "redirect_uri is required because the authorization request included it")
+		}
+	} else if rec.RedirectURI != in.RedirectURI {
 		return nil, NewOAuthError("invalid_grant", "The redirect_uri does not match.")
 	}
 	if !domain.VerifyPKCES256(in.CodeVerifier, rec.CodeChallenge) {

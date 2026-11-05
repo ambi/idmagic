@@ -7,6 +7,8 @@ RFC 6749 — https://www.rfc-editor.org/rfc/rfc6749.html
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | RFC6749-AUTHORIZATION-CODE | required | MUST | Authorization Code Grant を認可エンドポイントとトークンエンドポイントで提供し、単一値であるべきセキュリティパラメーターが認可リクエスト内で重複していれば `invalid_request` として拒否する。 |
+| RFC6749-REDIRECT-URI-OPTIONAL | required | MUST | 登録した `redirect_uri` が一件のクライアントが、`openid` を含まない認可要求で `redirect_uri` を省いたら、登録値を配送先として受け入れる。`openid` を含む要求と、登録が一件でないクライアントの要求で省いたら、リダイレクトせずに `invalid_request` で拒否する。値のない `redirect_uri=` は省いたものとして扱う。 |
+| RFC6749-TOKEN-REDIRECT-URI | required | MUST | 認可要求で `redirect_uri` を示したコードの交換では、`redirect_uri` を省いた要求を `invalid_request`、異なる値を `invalid_grant` で拒否する。認可要求で省いたコードは、`redirect_uri` を省いた交換を受け入れ、送られた値は登録値と一致を検査する。拒否した交換はコードを消費しない。 |
 | RFC6749-CLIENT-CREDENTIALS | optional | MAY | Client Credentials Grant は `confidential` クライアントに限って許可する。 |
 | RFC6749-IMPLICIT | excluded | MAY | Implicit Grant を提供する。 |
 | RFC6749-PASSWORD-GRANT | excluded | MAY | Resource Owner Password Credentials Grant を提供する。 |
@@ -271,6 +273,7 @@ Final — https://openid.net/specs/openid-connect-core-1_0-18.html
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | OIDC-CORE-CODE-FLOW | required | MUST | `code` レスポンスタイプによる OpenID Connect Authentication を提供し、`prompt` を空白区切りの重複しないトークン集合として検証する。`login` と `consent` をそれぞれ適用し、`none` はほかのトークンと併用せず UI を表示しない。 |
+| OIDC-CORE-TOKEN-REDIRECT-URI | required | MUST | §3.1.3.2 に従い、トークン要求の `redirect_uri` が認証要求の値と同一であることを検査する。`redirect_uri` を省いた交換を `invalid_request`、異なる値を `invalid_grant` で拒否する。 |
 | OIDC-CORE-ID-TOKEN | required | MUST | ID トークンに `iss`、`sub`、`aud`、`exp`、`iat` と認証コンテキストを含める。 |
 | OIDC-CORE-USERINFO | required | SHOULD | `openid` スコープのアクセストークンに対して、`sub` を含む UserInfo を返す。 |
 | OIDC-CORE-HYBRID-IMPLICIT | excluded | MAY | Implicit Flow および Hybrid Flow を提供する。 |

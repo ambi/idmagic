@@ -70,3 +70,57 @@ func FuzzRedirectURIAllowed(f *testing.F) {
 		}
 	})
 }
+
+// ResolveRedirectURI は、要求が配送先を示さないときに登録値で埋めてよいかを決める。
+// 埋めてよいのは、登録が一件で、OpenID Connect の認証要求でない場合だけである。
+// 登録が複数なら、どれを選んでも利用者の意図しない宛先になり得る。
+//
+//spec:covers RFC6749-REDIRECT-URI-OPTIONAL: 省いた redirect_uri を一件だけの登録値で埋め、openid か登録が一件でないときは拒否する
+func TestResolveRedirectURI(t *testing.T) {
+	const registered = "https://client.example/cb"
+	single := []string{registered}
+	multiple := []string{registered, "https://client.example/other"}
+
+	accepted := []struct {
+		name       string
+		registered []string
+		presented  string
+		openID     bool
+		want       string
+	}{
+		{"省いた OAuth の要求は一件の登録値へ届く", single, "", false, registered},
+		{"示した値は登録値と一致すればそのまま使う", multiple, "https://client.example/other", true, "https://client.example/other"},
+		{"openid の要求も値を示せば受け入れる", single, registered, true, registered},
+	}
+	for _, tc := range accepted {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ResolveRedirectURI(tc.registered, tc.presented, tc.openID)
+			if err != nil || got != tc.want {
+				t.Fatalf("ResolveRedirectURI = (%q, %v), want (%q, nil)", got, err, tc.want)
+			}
+		})
+	}
+
+	refused := []struct {
+		name       string
+		registered []string
+		presented  string
+		openID     bool
+	}{
+		{"openid の要求は省けない", single, "", true},
+		{"登録が複数なら省けない", multiple, "", false},
+		{"登録がなければ省けない", nil, "", false},
+		{"未登録の値は拒否する", single, "https://client.example/cb/", false},
+	}
+	for _, tc := range refused {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ResolveRedirectURI(tc.registered, tc.presented, tc.openID)
+			if err == nil {
+				t.Fatalf("ResolveRedirectURI = %q, want an error", got)
+			}
+			if got != "" {
+				t.Fatalf("拒否したのに配送先 %q を返した", got)
+			}
+		})
+	}
+}

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	authorizationdomain "github.com/ambi/idmagic/backend/oauth2/internal/authorization/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -63,9 +64,6 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 	if in.ClientID == "" {
 		return nil, NewOAuthError("invalid_request", "client_id is required")
 	}
-	if in.RedirectURI == "" {
-		return nil, NewOAuthError("invalid_request", "redirect_uri is required")
-	}
 	if in.ResponseType != "code" {
 		return nil, NewOAuthError("unsupported_response_type", "only code is supported")
 	}
@@ -84,13 +82,15 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 	if client == nil {
 		return nil, NewOAuthError("invalid_client", "unknown client_id")
 	}
-	if !domain.RedirectURIAllowed(client.RedirectURIs, in.RedirectURI) {
-		return nil, NewOAuthError("invalid_request", "redirect_uri is not a registered URI")
+	requestedScopes := strings.Fields(defaultScope(in.Scope))
+	redirectURI, err := authorizationdomain.ResolveRedirectURI(
+		client.RedirectURIs, in.RedirectURI, slices.Contains(requestedScopes, "openid"))
+	if err != nil {
+		return nil, NewOAuthError("invalid_request", err.Error())
 	}
 	if !slices.Contains(client.GrantTypes, spec.GrantAuthorizationCode) {
 		return nil, NewOAuthError("unauthorized_client", "authorization_code grant is not declared")
 	}
-	requestedScopes := strings.Fields(defaultScope(in.Scope))
 	allowedScopes := strings.Fields(client.Scope)
 	for _, scope := range requestedScopes {
 		if !slices.Contains(allowedScopes, scope) {
@@ -137,7 +137,8 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 		ID:                   id,
 		State:                spec.AuthFlowReceived,
 		ClientID:             in.ClientID,
-		RedirectURI:          in.RedirectURI,
+		RedirectURI:          redirectURI,
+		RedirectURIOmitted:   in.RedirectURI == "",
 		ResponseType:         spec.ResponseTypeCode,
 		Scope:                strings.Join(requestedScopes, " "),
 		StateParam:           optional(in.StateParam),

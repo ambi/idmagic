@@ -76,6 +76,13 @@
 - Then 認可コードの交換はエラー "InvalidGrantError"
 - And 認可コードの状態は Expired になる
 
+### Example: EX-OAUTH2-005-09 登録が一件のクライアントが `openid` を含まない要求で `redirect_uri` を省く
+
+- When "web-app" として scope "プロファイル" で `redirect_uri` を省いた認可リクエストを送る
+- When クライアントが発行された認可コードを `redirect_uri` を省いて正しい PKCE verifier で交換する
+- Then 認可コードは登録済みの redirect_uri "https://app.example.com/callback" へ返される
+- And レスポンスに `access_token` が含まれ、`id_token` は含まれない
+
 ## Rule: REQ-OAUTH2-009 PAR で送信した認可リクエストを request_uri 経由で実行する
 
 ### Example: EX-OAUTH2-009-01 通常経路

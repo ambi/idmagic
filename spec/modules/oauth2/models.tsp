@@ -487,6 +487,8 @@ model AuthorizationRequest {
   state: AuthorizationCodeState;
   client_id: string;
   redirect_uri: url;
+  @doc("要求が `redirect_uri` を省き、登録が一件の登録値で `redirect_uri` を埋めたときだけ `true`。RFC 6749 の 4.1.3 節に従い、トークン要求で `redirect_uri` を省けるかを決める。")
+  redirect_uri_omitted?: boolean;
   response_type: ResponseType;
   scope: string;
   state_param?: string;
@@ -523,6 +525,8 @@ model AuthorizationCodeRecord {
   user_id: string;
   scopes: string[];
   redirect_uri: url;
+  @doc("認可リクエストから引き継ぐ。`true` のときだけ、`redirect_uri` を省いた交換を受け入れる。")
+  redirect_uri_omitted?: boolean;
   code_challenge: string;
   code_challenge_method: CodeChallengeMethod;
   nonce?: string;
@@ -1382,7 +1386,8 @@ model AccountApprovalDecisionRequest {
 model AuthorizeParameters {
   response_type: ResponseType;
   client_id: string;
-  redirect_uri: string;
+  @doc("登録した redirect URI と完全に一致する値。登録が一件のクライアントは、`scope` に `openid` を含まない要求で省ける。省くと登録値へ応答を返す。`openid` を含む要求と、登録が一件でないクライアントの要求では必須である。")
+  redirect_uri?: string;
   scope?: string;
   state?: string;
   nonce?: string;

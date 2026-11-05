@@ -27,8 +27,9 @@ type authorizeRequest struct {
 }
 
 var authorizeRequestSchema = z.Struct(z.Shape{
-	"clientID":            z.String().Required(),
-	"redirectURI":         z.String().URL().Required(),
+	"clientID": z.String().Required(),
+	// 省けるかは登録件数と openid の有無で決まるので、use case が判断する。
+	"redirectURI":         z.String().URL(),
 	"responseType":        z.String().Required(),
 	"scope":               z.String(),
 	"stateParam":          z.String(),
