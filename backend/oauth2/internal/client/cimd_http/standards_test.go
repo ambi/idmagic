@@ -631,6 +631,66 @@ func TestAuthorizationRequestRedirectURIMustBeListedInTheFetchedDocument(t *test
 	}
 }
 
+// 文書の redirect_uris の照合は、登録したクライアントと同じ規則に従う。ネイティブアプリの
+// 文書は待ち受けるポートを書けないので、ループバックの IP の値はポートだけの違いを受け入れる。
+// localhost とパスの違いは拒否したままである。
+//
+//spec:covers CIMD02-REDIRECT-VALIDATE: 文書のループバックの値に対し、ポートだけ異なる要求を受け入れて示した値で保存し、localhost、別のループバックの IP、パスの違いを保存せずに拒否する
+func TestCIMDLoopbackRedirectURIMayUseAnyPort(t *testing.T) {
+	const loopbackRedirect = "http://127.0.0.1/callback"
+	host := newMetadataHost(t, func(clientIDURL string) string {
+		return `{
+			"client_id": "` + clientIDURL + `",
+			"client_name": "` + documentClientName + `",
+			"redirect_uris": ["` + loopbackRedirect + `", "http://localhost/callback"]
+		}`
+	})
+	repository, _ := host.resolution()
+	store := &countingRequestStore{AuthorizationRequestStore: authorizationmemory.NewAuthorizationRequestStore()}
+	deps := authorizationusecases.AuthorizeDeps{ClientRepo: repository, RequestStore: store}
+
+	request := func(redirectURI string) authorizationusecases.AuthorizeRequestInput {
+		return authorizationusecases.AuthorizeRequestInput{
+			ClientID: host.clientIDURL(), RedirectURI: redirectURI,
+			ResponseType: "code", Scope: "openid",
+			CodeChallenge: "challenge", CodeChallengeMethod: "S256",
+		}
+	}
+
+	const presented = "http://127.0.0.1:53123/callback"
+	out, err := authorizationusecases.Authorize(testing_tenant.Default(t.Context()), deps, request(presented))
+	if err != nil {
+		t.Fatalf("ポートだけ異なるループバックの redirect_uri が拒否された: %v", err)
+	}
+	stored, err := store.Find(testing_tenant.Default(t.Context()), out.Request.ID)
+	if err != nil || stored == nil {
+		t.Fatalf("認可リクエストが保存されていない: %#v err=%v", stored, err)
+	}
+	if stored.RedirectURI != presented {
+		t.Errorf("保存された RedirectURI = %q, want %q", stored.RedirectURI, presented)
+	}
+
+	for name, redirectURI := range map[string]string{
+		"localhost のポート違い": "http://localhost:53123/callback",
+		"別のループバックの IP":     "http://127.0.0.2:53123/callback",
+		"パスが異なる":           "http://127.0.0.1:53123/other",
+	} {
+		t.Run(name, func(t *testing.T) {
+			out, err := authorizationusecases.Authorize(testing_tenant.Default(t.Context()), deps, request(redirectURI))
+			if err == nil {
+				t.Fatalf("文書の redirect_uris と一致しない %q が受理された: %#v", redirectURI, out)
+			}
+			var oauthErr *authorizationusecases.OAuthError
+			if !errors.As(err, &oauthErr) || oauthErr.Code != "invalid_request" {
+				t.Fatalf("拒否は invalid_request であるべき: %v", err)
+			}
+			if got := store.saves.Load(); got != 1 {
+				t.Fatalf("保存された認可リクエストが %d 件。拒否したリクエストは保存してはならない", got)
+			}
+		})
+	}
+}
+
 // countingRequestStore は保存の回数を数える。拒否したリクエストが保存されて
 // いないことを、保存そのものの回数で読む。
 type countingRequestStore struct {

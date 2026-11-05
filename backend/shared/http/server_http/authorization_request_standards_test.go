@@ -344,12 +344,19 @@ func (f *arFixture) completeFlow(t *testing.T, query url.Values) *url.URL {
 // postToken は /token へフォームを 1 通送り、状態と本文を返す。
 func (f *arFixture) postToken(t *testing.T, form url.Values) (int, string) {
 	t.Helper()
+	return f.postTokenAs(t, arClientID, form)
+}
+
+// postTokenAs は、clientID のクライアントとして /token へフォームを送る。
+// 秘密は fixture のクライアントと共通の arClientSecret である。
+func (f *arFixture) postTokenAs(t *testing.T, clientID string, form url.Values) (int, string) {
+	t.Helper()
 	request, err := http.NewRequest(http.MethodPost, f.base+"/token", strings.NewReader(form.Encode()))
 	if err != nil {
 		t.Fatal(err)
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.SetBasicAuth(arClientID, arClientSecret)
+	request.SetBasicAuth(clientID, arClientSecret)
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		t.Fatalf("POST /token: %v", err)
@@ -872,6 +879,114 @@ func TestRedirectURIMustMatchARegisteredValueExactly(t *testing.T) {
 			response, body := fixture.assertAuthorizationRefused(t,
 				arQuery(map[string]string{"redirect_uri": redirectURI}), name)
 			// 拒否が防いだもの: 未検証の宛先へは、エラーとしてもリダイレクトしない。
+			if location := response.Header.Get("Location"); location != "" {
+				t.Fatalf("%s: 未検証の URI へリダイレクトした Location=%q", name, location)
+			}
+			assertNoCredentialIssued(t, name, body)
+		})
+	}
+}
+
+// saveRedirectClient は、redirectURIs を登録した confidential クライアントを保存する。
+// 秘密、グラント、スコープは fixture のクライアントと同じにし、redirect_uris だけを変える。
+func (f *arFixture) saveRedirectClient(t *testing.T, clientID string, redirectURIs ...string) {
+	t.Helper()
+	secretHash := domain.HashClientSecret(arClientSecret)
+	if err := f.clients.Save(context.Background(), &domain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID,
+		ClientID: clientID, ClientSecretHash: &secretHash,
+		ClientType:               spec.ClientConfidential,
+		RedirectURIs:             redirectURIs,
+		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
+		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
+		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		Scope:                    arScope,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
+		FapiProfile:              domain.FapiNone,
+		CreatedAt:                time.Now().UTC(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// ループバックの IP を登録したクライアントは、認可要求で任意のポートを示せる。
+// ネイティブアプリと CLI は OS から得た一時的なポートで待ち受けるため、登録時に
+// ポートを決められない。
+//
+// 受け入れたことは 303 だけでは足りない。認可コードが示したポートの宛先へ届き、
+// 同じ値の redirect_uri でトークンへ交換できて初めて、示した値を配送先として
+// 扱ったと言える。登録値で配送先を置き換える実装は、ここで別のポートへ届く。
+//
+//spec:covers RFC8252-LOOPBACK-PORT: ポートなしとポート付きの登録値に対し、IPv4 と IPv6 で別のポートを示した要求のコードがそのポートへ届き、トークンへ交換できる
+func TestLoopbackRedirectURIMayUseAnyPort(t *testing.T) {
+	fixture := newAuthorizationRequestFixture(t)
+	const clientID = "authorization-request-loopback-client"
+	fixture.saveRedirectClient(t, clientID, "http://127.0.0.1/callback", "http://[::1]:8080/callback")
+
+	for name, redirectURI := range map[string]string{
+		"ポートなしの登録へポートを示す":   "http://127.0.0.1:53123/callback",
+		"ポート付きの登録へ別のポートを示す": "http://[::1]:49152/callback",
+		"ポート付きの登録へポートを省く":   "http://[::1]/callback",
+	} {
+		t.Run(name, func(t *testing.T) {
+			redirect := fixture.completeFlow(t, arQuery(map[string]string{
+				"client_id": clientID, "redirect_uri": redirectURI, "scope": "profile",
+			}))
+			if delivered := redirect.Scheme + "://" + redirect.Host + redirect.Path; delivered != redirectURI {
+				t.Fatalf("示した宛先 %s ではなく %s へ届いた", redirectURI, redirect)
+			}
+			code := redirect.Query().Get("code")
+			if code == "" {
+				t.Fatalf("認可コードが返らなかった: %s", redirect)
+			}
+			status, body := fixture.postTokenAs(t, clientID, url.Values{
+				"grant_type": {"authorization_code"}, "code": {code}, "code_verifier": {arVerifier},
+				"redirect_uri": {redirectURI},
+			})
+			if status != http.StatusOK || !strings.Contains(body, `"access_token"`) {
+				t.Fatalf("示した redirect_uri での交換: status=%d body=%s", status, body)
+			}
+		})
+	}
+}
+
+// ポートの例外は、ループバックの IP の登録値のポートだけに効く。スキーム、ホスト、
+// パス、クエリ、userinfo の違いは拒否したままであり、localhost とループバック以外の
+// 登録値にはポートの違いも許さない。拒否した要求はリダイレクトせず、保存もしない。
+//
+//spec:covers RFC9700-REDIRECT-MATCH, RFC8252-LOCALHOST-PORT: ループバックの登録値に対するポート以外の違い、不正なポート、localhost とループバック以外の登録値でのポートの違いを、リダイレクトせずに拒否する
+func TestLoopbackRedirectURIExceptionCoversOnlyThePort(t *testing.T) {
+	fixture := newAuthorizationRequestFixture(t)
+	const clientID = "authorization-request-loopback-confined-client"
+	fixture.saveRedirectClient(t, clientID,
+		"http://127.0.0.1/callback", "http://localhost/callback", "https://app.example:8443/cb")
+
+	if redirect := fixture.completeFlow(t, arQuery(map[string]string{
+		"client_id": clientID, "redirect_uri": "http://127.0.0.1:53123/callback", "scope": "profile",
+	})); redirect.Query().Get("code") == "" {
+		t.Fatal("前提が壊れている: ポートだけ異なるループバックの値で認可コードが出ない")
+	}
+
+	for name, redirectURI := range map[string]string{
+		"別のループバックの IP":       "http://127.0.0.2:53123/callback",
+		"IPv6 へ取り替える":        "http://[::1]:53123/callback",
+		"https へ取り替える":       "https://127.0.0.1:53123/callback",
+		"パスが異なる":             "http://127.0.0.1:53123/other",
+		"末尾スラッシュ":            "http://127.0.0.1:53123/callback/",
+		"クエリを足した":            "http://127.0.0.1:53123/callback?next=/",
+		"フラグメントを足した":         "http://127.0.0.1:53123/callback#x",
+		"userinfo で別ホストへ":    "http://127.0.0.1:80@attacker.example/callback",
+		"ホストの後ろに名前を続ける":      "http://127.0.0.1.attacker.example/callback",
+		"ポートが 0":             "http://127.0.0.1:0/callback",
+		"ポートが範囲外":            "http://127.0.0.1:65536/callback",
+		"ポートが空":              "http://127.0.0.1:/callback",
+		"localhost のポート違い":   "http://localhost:53123/callback",
+		"ループバック以外の登録値のポート違い": "https://app.example:9443/cb",
+	} {
+		t.Run(name, func(t *testing.T) {
+			response, body := fixture.assertAuthorizationRefused(t, arQuery(map[string]string{
+				"client_id": clientID, "redirect_uri": redirectURI, "scope": "profile",
+			}), name)
 			if location := response.Header.Get("Location"); location != "" {
 				t.Fatalf("%s: 未検証の URI へリダイレクトした Location=%q", name, location)
 			}

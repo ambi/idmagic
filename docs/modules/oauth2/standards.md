@@ -91,7 +91,7 @@ draft-ietf-oauth-client-id-metadata-document-02 — https://www.ietf.org/archive
 | CIMD02-FETCH | required | SHOULD | URL 形式の `client_id` を検出したら、その URL から Client ID Metadata Document を取得する。 |
 | CIMD02-NO-REDIRECT | required | MUST | 文書は 200 の応答だけを受け付け、ほかの状態コードを誤りとして扱い、HTTP リダイレクトを自動で追従しない。 |
 | CIMD02-CLIENT-ID-MATCH | required | MUST | 取得した文書内の `client_id` フィールドが取得元 URL と単純な文字列比較で一致することを検証する。 |
-| CIMD02-REDIRECT-VALIDATE | required | MUST | 認可リクエストの `redirect_uri` が文書の `redirect_uris` 一覧に含まれることを検証する。 |
+| CIMD02-REDIRECT-VALIDATE | required | MUST | 認可リクエストの `redirect_uri` が文書の `redirect_uris` 一覧に含まれることを検証する。照合は登録した `redirect_uri` と同じ規則に従い、ループバックの IP の値はポートだけの違いを受け入れる（`RFC8252-LOOPBACK-PORT`）。 |
 | CIMD02-STRUCTURE | required | MUST | 文書が正しい JSON であり、`client_id`、`client_name`、空でない `redirect_uris` を含むことを検証する。不正な場合は fail-closed で拒否する。 |
 | CIMD02-CREDENTIAL-MATERIAL | required | MUST | 文書は共有シークレットに基づく認証方式、`client_secret`、`client_secret_expires_at`、秘密鍵を含めてはならない。IdMagic は、これらを含む文書（値が `null` のプロパティ、秘密鍵の成分を持つ `jwks` の鍵、鍵の配列として読めない `jwks` を含む）を解決せずに拒否し、公開鍵だけの `jwks` は拒否しない。 |
 | CIMD02-CACHE | partial | SHOULD | HTTP キャッシュヘッダーに従って文書をキャッシュする。IdMagic はヘッダーを読まず、解決した文書を一律 5 分保持する。 |
@@ -134,6 +134,15 @@ RFC 8176 — https://www.rfc-editor.org/rfc/rfc8176.html
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | RFC8176-AMR | required | MAY | 実際に成立した認証方法を `amr` 値として記録する。 |
+
+## OAuth 2.0 for Native Apps
+
+RFC 8252 — https://www.rfc-editor.org/rfc/rfc8252.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| RFC8252-LOOPBACK-PORT | required | MUST | 登録した `redirect_uri` が `http` スキームで、ホストがループバックの IP の字句 `127.0.0.1` か `[::1]` なら、ポートだけ、またはポートの有無だけが異なる認可要求の `redirect_uri` を受け入れ、示された値へ応答を届ける。示すポートは 1 から 65535 の十進数に限る。スキーム、ホスト、パス、クエリは字句のまま完全一致を求め、ほかの `redirect_uri` には例外を適用しない。 |
+| RFC8252-LOCALHOST-PORT | excluded | MAY | ホストが `localhost` の `redirect_uri` で、登録値とポートだけが異なる値を受け入れる。IdMagic は `localhost` の値を完全一致だけで照合する。 |
 
 ## OAuth 2.0 Authorization Server Metadata
 
@@ -250,7 +259,7 @@ RFC 9700 / BCP 240 — https://www.rfc-editor.org/rfc/rfc9700.html
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| RFC9700-REDIRECT-MATCH | required | MUST | `redirect_uri` は登録値と完全に一致させ、未検証の URI へリダイレクトしない。 |
+| RFC9700-REDIRECT-MATCH | required | MUST | `redirect_uri` は登録値と完全に一致させ、未検証の URI へリダイレクトしない。完全一致の例外は、ループバックの IP の値のポートだけである（`RFC8252-LOOPBACK-PORT`）。 |
 | RFC9700-AUTHORIZATION-CODE | required | MUST | リダイレクトを使うフローは Authorization Code Grant と PKCE で保護する。 |
 | RFC9700-SENDER-CONSTRAINT | optional | SHOULD | 高いセキュリティを必要とするクライアントでは、アクセストークンに DPoP または mTLS による送信者制約を付ける。 |
 | RFC9700-REFRESH-REPLAY | required | MUST | リフレッシュトークンをローテーションし、再利用を検知したら関連トークンを失効させる。 |
