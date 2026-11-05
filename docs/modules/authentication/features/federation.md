@@ -58,6 +58,9 @@ JIT は接続ごとに個別に有効にし、メールのドメインの許可�
 - 利用者が `Active` の接続を指定して外部 IdP のログインを始めたとき、Authentication は、`state`、`nonce`、PKCE を一度だけ使えるログインの試行として保存し、保存済みの設定の上流のエンドポイントへ 303 でリダイレクトする。
 - 利用者がログインの一覧を要求したとき、Authentication は、`Active` の接続だけの識別子、表示名、プロトコルを返す。
 - 上流のコールバックを受けたとき、Authentication は、認可コード、ID Token の署名、issuer、audience、時刻、nonce、または SAML の応答を、保存済みの設定で検証する。
+- 上流の RS256 の ID Token が `kid` を省略し、JWK Set の署名に使える RSA 鍵（`use` が省略または `sig`）がちょうど一つのとき、Authentication は、その鍵で検証する。
+- 上流の ID Token が `kid` を省略し、署名用の鍵の候補がないか複数のとき、Authentication は、コールバックを拒否する。
+- 上流の ID Token に `kid` があるとき、Authentication は、一致する署名用の鍵を要求する。
 - 検証済みの外部 subject に既存の関連付けがあるとき、Authentication は、同じテナント、プロバイダー、外部 subject の関連付けから同じローカルの User を解決する。
 - 未連携の外部 subject で、接続の JIT が有効でメールのドメインが許可リストに合うとき、Authentication は、クレームの対応付けに従ってローカルの User と `FederatedIdentity` を作り、`FederatedIdentityLinked` を発行する。
 - ローカルの User を解決したとき、Authentication は、`amr` に `federated` を持つログインセッションを作ってセッションの Cookie を発行し、`FederatedAuthenticated` を発行し、元の認可のトランザクションへ 303 で戻す。
@@ -66,7 +69,7 @@ JIT は接続ごとに個別に有効にし、メールのドメインの許可�
 - `state` か応答のないコールバックを受けた場合、Authentication は、400 と `invalid_request` で拒否する。
 - `state`、`nonce`、issuer、audience、署名、時刻のどれかが一致しないか、同じ `state` かトークンの応答が再利用された場合、Authentication は、401 と `federation_failed` で拒否し、ログインセッションも関連付けも作らず、`FederatedLoginRejected` を発行する。
 - 解決した User が `Active` でない場合、Authentication は、401 と `federation_failed` で拒否し、ログインセッションを作らない。
-- **例**：EX-AUTHENTICATION-001-01、EX-AUTHENTICATION-001-02、EX-AUTHENTICATION-001-03
+- **例**：EX-AUTHENTICATION-001-01、EX-AUTHENTICATION-001-02、EX-AUTHENTICATION-001-03、EX-AUTHENTICATION-001-04
 
 #### REQ-AUTHENTICATION-002 検証済みメールアドレスによる自動リンクは明示ポリシーと一意な一致を要求する
 

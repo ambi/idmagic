@@ -7,6 +7,7 @@
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | OIDC-CORE-CODE-FLOW | required | MUST | 外部 OIDC 認証は authorization code flow を使い、ID Token の署名、issuer、audience、有効時間、nonce を検証する。 |
+| OIDC-CORE-ID-TOKEN-KID-OPTIONAL | required | MUST | 上流の RS256 の ID Token が `kid` を省略した場合、署名に使える RSA 鍵（`use` が省略または `sig`）が JWK Set にちょうど一つあれば、その鍵で検証する。候補がないか複数なら拒否する。`kid` がある場合は一致する鍵を要求する。 |
 | OIDC-CORE-CSRF | required | SHOULD | callback は login attempt に束縛された単発 state を照合し、不一致または再利用を拒否する。 |
 
 ## OpenID Connect Discovery 1.0

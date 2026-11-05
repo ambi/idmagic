@@ -86,7 +86,7 @@ func fuzzIDTokenFixture(tb testing.TB) (
 	domain.IdentityProviderConnection,
 	domain.FederatedLoginAttempt,
 	*rsa.PrivateKey,
-	map[string]*rsa.PublicKey,
+	[]rsaSigningKey,
 	time.Time,
 ) {
 	tb.Helper()
@@ -103,7 +103,7 @@ func fuzzIDTokenFixture(tb testing.TB) (
 		State: "state", TenantID: "tenant", ProviderID: "provider",
 		Protocol: domain.ProtocolOIDC, Nonce: "nonce-1",
 	}
-	keySet := map[string]*rsa.PublicKey{"upstream-key": &key.PublicKey}
+	keySet := []rsaSigningKey{{kid: "upstream-key", publicKey: &key.PublicKey}}
 	return connection, attempt, key, keySet, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 }
 

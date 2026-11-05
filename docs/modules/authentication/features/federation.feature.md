@@ -73,6 +73,14 @@
 - Then コールバックを拒否し、LoginSession も関連付けも作成しない
 - And FederatedLoginRejected を発行する
 
+### Example: EX-AUTHENTICATION-001-04 署名用の鍵が一つの上流が `kid` を省略する
+
+- Given 上流の JWK Set に RS256 の署名用 RSA 鍵が一つと `use: enc` の RSA 鍵がある
+- And 外部 subject は既存のローカル User に関連付いている
+- When EndUser がログインを開始し、上流が `kid` を省略した正当な ID Token を返す
+- Then 署名用の鍵で署名とクレームを検証する
+- And 同じローカル User に AMR が `federated` の LoginSession を発行する
+
 ## Rule: REQ-AUTHENTICATION-003 外部アイデンティティの明示的なリンクと解除はステップアップ認証を要求する
 
 ### Example: EX-AUTHENTICATION-003-01 通常経路

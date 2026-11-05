@@ -272,14 +272,20 @@ type jwk struct {
 	KTY string `json:"kty"`
 	Kid string `json:"kid"`
 	Alg string `json:"alg"`
+	Use string `json:"use"`
 	N   string `json:"n"`
 	E   string `json:"e"`
 }
 
-func (d jwksDocument) rsaKeys() (map[string]*rsa.PublicKey, error) {
-	out := map[string]*rsa.PublicKey{}
+type rsaSigningKey struct {
+	kid       string
+	publicKey *rsa.PublicKey
+}
+
+func (d jwksDocument) rsaKeys() ([]rsaSigningKey, error) {
+	var out []rsaSigningKey
 	for _, key := range d.Keys {
-		if key.KTY != "RSA" || key.Alg != "RS256" || key.Kid == "" {
+		if key.KTY != "RSA" || key.Alg != "RS256" || (key.Use != "" && key.Use != "sig") {
 			continue
 		}
 		n, err := base64.RawURLEncoding.DecodeString(key.N)
@@ -294,7 +300,9 @@ func (d jwksDocument) rsaKeys() (map[string]*rsa.PublicKey, error) {
 		if exponent.Sign() <= 0 || !exponent.IsInt64() {
 			return nil, errors.New("invalid RSA exponent")
 		}
-		out[key.Kid] = &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: int(exponent.Int64())}
+		out = append(out, rsaSigningKey{
+			kid: key.Kid, publicKey: &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: int(exponent.Int64())},
+		})
 	}
 	if len(out) == 0 {
 		return nil, errors.New("JWKS has no supported signing key")
@@ -352,14 +360,15 @@ func unsafeIP(ip net.IP) bool {
 
 // verifyUpstreamIDToken は上流 IdP の ID Token を検証して claims を返す。
 //
-// 署名アルゴリズムは RS256 に限り、kid が JWKS の鍵と一致し、issuer・audience・有効期限・
-// nonce がすべて接続とログイン試行に一致することを要求する。ここを緩めると、上流を名乗る
+// 署名アルゴリズムは RS256 に限り、kid が JWKS の鍵と一致するか、kid の省略時には署名用の
+// 鍵が一つだけであることを要求する。issuer、audience、有効期限、nonce も接続と試行に
+// 一致することを要求する。ここを緩めると、上流を名乗る
 // 任意の相手が任意のローカルユーザーとして認証を通せる (REQ-AUTHENTICATION-001)。
 //
 // HTTP からは切り離してあり、鍵集合と時刻を引数で受け取る。
 func verifyUpstreamIDToken(
 	idToken string,
-	keySet map[string]*rsa.PublicKey,
+	keySet []rsaSigningKey,
 	connection domain.IdentityProviderConnection,
 	attempt domain.FederatedLoginAttempt,
 	now time.Time,
@@ -369,12 +378,23 @@ func verifyUpstreamIDToken(
 		if token.Method.Alg() != jwt.SigningMethodRS256.Alg() {
 			return nil, errors.New("unsupported ID token signing algorithm")
 		}
-		kid, _ := token.Header["kid"].(string)
-		key := keySet[kid]
-		if key == nil {
-			return nil, errors.New("ID token key not found")
+		if _, present := token.Header["kid"]; !present {
+			// Core §10.1 の省略を認めるが、複数鍵を順に試して曖昧な選択を隠さない。
+			if len(keySet) == 1 {
+				return keySet[0].publicKey, nil
+			}
+			return nil, errors.New("ID token signing key is ambiguous or missing")
 		}
-		return key, nil
+		kid, ok := token.Header["kid"].(string)
+		if !ok || kid == "" {
+			return nil, errors.New("invalid ID token key identifier")
+		}
+		for _, key := range keySet {
+			if key.kid == kid {
+				return key.publicKey, nil
+			}
+		}
+		return nil, errors.New("ID token key not found")
 	}, jwt.WithIssuer(connection.Issuer), jwt.WithAudience(connection.ClientID),
 		jwt.WithExpirationRequired(), jwt.WithTimeFunc(func() time.Time { return normalizedNow(now) }),
 		jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}))
