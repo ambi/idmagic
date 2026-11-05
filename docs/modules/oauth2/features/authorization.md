@@ -149,7 +149,7 @@ PAR で発行した `request_uri` のライフサイクル。`/authorize` から
 - 引き換え済みの認可コードの交換を受けた場合、OAuth2 は、400 と `invalid_grant` で拒否し、そのコードから発行したファミリーのトークンをすべて失効させ、`RefreshTokenReuseDetected` と `TokenRevoked` を発行する。
 - 発行から 60 秒を超えた認可コードの交換を受けた場合、OAuth2 は、コードを `Expired` にし、400 と `invalid_grant` で拒否する。
 - 交換の時点で利用者が `Active` でない場合、OAuth2 は、400 と `invalid_grant` で拒否する。
-- **例**：EX-OAUTH2-005-01、EX-OAUTH2-005-02、EX-OAUTH2-005-03、EX-OAUTH2-005-04、EX-OAUTH2-005-05、EX-OAUTH2-005-06、EX-OAUTH2-005-07、EX-OAUTH2-005-08、EX-OAUTH2-005-09
+- **例**：EX-OAUTH2-005-01、EX-OAUTH2-005-02、EX-OAUTH2-005-03、EX-OAUTH2-005-05、EX-OAUTH2-005-06、EX-OAUTH2-005-07、EX-OAUTH2-005-08、EX-OAUTH2-005-09
 
 #### REQ-OAUTH2-022 認可リクエストの nonce は ID トークンに伝播する
 
@@ -167,11 +167,11 @@ PAR で発行した `request_uri` のライフサイクル。`/authorize` から
 #### REQ-OAUTH2-009 PAR で送信した認可リクエストを request_uri 経由で実行する
 
 - 認証したクライアントが認可のパラメーターを PAR のエンドポイントへ送ったとき、OAuth2 は、パラメーターを保存し、201 と一度だけ使える `request_uri` と 600 以下の `expires_in` を返し、`PARStored` を発行する。
-- クライアントが期限内の `request_uri` と任意の `client_id` だけで `/authorize` を要求したとき、OAuth2 は、PAR の記録を `Used` にし、保存したパラメーターで認可を進める。
+- クライアントが期限内の `request_uri` と任意の `client_id` で `/authorize` を要求したとき、OAuth2 は、PAR の記録を `Used` にし、クエリに重ねたほかの認可のパラメーターを使わずに、保存したパラメーターで認可を進める。
 - 使用済みか期限切れか別のテナントの `request_uri` を受けた場合、OAuth2 は、`invalid_request_uri` で拒否する。
-- `request_uri` と、併用を許可しないフロントチャネルの認可のパラメーターが混在するか、`client_id` が PAR と一致しない要求を受けた場合、OAuth2 は、認可コードを発行せずに `invalid_request` で拒否する。
+- `client_id` が PAR と一致しない要求を受けた場合、OAuth2 は、認可コードを発行せずに `invalid_request` で拒否する。
 - PAR を必須とする FAPI のクライアントが PAR なしで `/authorize` を要求した場合、OAuth2 は、`invalid_request` で拒否する。
-- **例**：EX-OAUTH2-009-01、EX-OAUTH2-009-02
+- **例**：EX-OAUTH2-009-01、EX-OAUTH2-009-02、EX-OAUTH2-009-03
 
 ### クライアントと利用者による構造化された権限の要求
 

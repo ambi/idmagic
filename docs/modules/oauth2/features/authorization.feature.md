@@ -30,7 +30,6 @@
   | example_id | condition | result |
   | --- | --- | --- |
   | EX-OAUTH2-005-02 | 認可リクエストの redirect_uri が未登録である | リダイレクトは行われず IdP がエラーページを表示する |
-  | EX-OAUTH2-005-04 | `request_uri` と、併用を許可しないフロントチャネル認可パラメーターが混在する | 認可コードは発行されない |
 
 ### Example: EX-OAUTH2-005-03 単一値の認可パラメーターが重複する、`prompt` に重複または未対応のトークンがある、または `none` がほかの `prompt` トークンと併用される
 
@@ -102,6 +101,14 @@
 - But PAR 必須の FAPI クライアントが PAR なしで直接送信する
 - Then PAR 必須の FAPI クライアント "fapi-app" として scope "openid" で直接認可リクエストを送る
 - And エラー "InvalidRequestError"
+
+### Example: EX-OAUTH2-009-03 クエリに重ねた認可パラメーターは結果に影響しない
+
+- Given クライアント "web-app" が存在する
+- When "web-app" として scope "openid" と redirect_uri "https://app.example.com/callback" で認可リクエストを事前送信する
+- And クライアントが返された request_uri に、scope "openid profile email" と redirect_uri "https://app.example.com/other" を重ねて認可リクエストを送る
+- Then 認可コードは redirect_uri "https://app.example.com/callback" へ返る
+- And 認可コードを交換したアクセストークンの scope は "openid" である
 
 ## Rule: REQ-OAUTH2-015 認可コードの並行交換はちょうど一方だけ成功する
 

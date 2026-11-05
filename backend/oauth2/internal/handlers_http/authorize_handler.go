@@ -24,11 +24,8 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 	}
 	parUsed := false
 	if requestURI := q.Get("request_uri"); requestURI != "" {
-		for key := range q {
-			if key != "request_uri" && key != "client_id" {
-				return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request", "request_uri and authorization parameters cannot be mixed"))
-			}
-		}
+		// RFC 9101 §6.3: request_uri と client_id 以外にクエリへ重ねた値は拒否せず使わない。
+		// 下で PAR に保存した値だけから q を作り直す。
 		consumed, err := d.PARStore.Consume(c.Request().Context(), requestURI)
 		if err != nil {
 			return writeOAuthError(c, err)

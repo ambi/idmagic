@@ -226,6 +226,14 @@ RFC 9068 — https://www.rfc-editor.org/rfc/rfc9068.html
 | RFC9068-ASYMMETRIC-SIGNATURE | required | MUST | アクセストークンを非対称アルゴリズムで署名し、公開鍵で検証可能にする。 |
 | RFC9068-DEFAULT-AUDIENCE | required | MUST | `resource` を含まないトークン要求では、`scope` からデフォルトの資源を推定して `aud` に入れる。`account:` で始まるスコープを含めばレルムの IdMagic API（レルムの発行者識別子）を、含まなければ `client_id` を `audience` とする。account リソースサーバーは、この `audience` を含まない account スコープのトークンを拒否する。 |
 
+## The OAuth 2.0 Authorization Framework: JWT-Secured Authorization Request (JAR)
+
+RFC 9101 — https://www.rfc-editor.org/rfc/rfc9101.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| RFC9101-QUERY-PARAMETERS-IGNORED | optional | MUST | PAR の `request_uri` を使う認可要求では、クエリに重ねた `request_uri` と `client_id` 以外の認可のパラメーターを使わず、拒否もせず、PAR で保存した値で認可を進める。 |
+
 ## OAuth 2.0 Pushed Authorization Requests
 
 RFC 9126 — https://www.rfc-editor.org/rfc/rfc9126.html

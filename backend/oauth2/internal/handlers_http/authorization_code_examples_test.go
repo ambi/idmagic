@@ -126,18 +126,6 @@ func TestAuthorizationRefusesDuplicatedParametersAndBrokenPrompt(t *testing.T) {
 	s.Events.AssertNotEmitted(t, "AuthorizationCodeIssued")
 }
 
-//spec:covers EX-OAUTH2-005-04: request_uri と、併用を許可しないフロントチャネルの認可パラメーターが混在するリクエストは認可コードを発行しない。
-func TestAuthorizationRefusesRequestURIMixedWithFrontChannelParameters(t *testing.T) {
-	s := stack.New(t, stack.WithBrowserFlow())
-	browser := s.Browser(t, tenancydomain.DefaultRealm)
-
-	query := stack.AuthorizationQuery(codeVerifier, nil)
-	query.Set("request_uri", "urn:ietf:params:oauth:request_uri:not-pushed")
-	response := browser.Authorize(t, query)
-	assertNoAuthorizationCode(t, response, "request_uri とフロントチャネルの併用")
-	s.Events.AssertNotEmitted(t, "AuthorizationCodeIssued")
-}
-
 //spec:covers EX-OAUTH2-005-05: prompt=none は UI へリダイレクトせず、セッションが無ければ login_required、同意が無ければ consent_required を state と発行者識別子付きで登録済み redirect_uri へ返す。
 func TestPromptNoneAnswersAtTheRedirectURIWithoutShowingUI(t *testing.T) {
 	s := stack.New(t, stack.WithBrowserFlow())
@@ -310,5 +298,60 @@ func TestPushedAuthorizationRequestIsConsumedOnceAndIssuesACode(t *testing.T) {
 	}
 	if !record.Used {
 		t.Fatalf("消費した PAR レコードが Used になっていない: %+v", record)
+	}
+}
+
+// 重ねる値は、PAR と異なり、しかもクライアントに登録した範囲に収まる scope と、
+// 登録していない redirect_uri である。scope は登録済みなので、重ねた値を使う実装は
+// 拒否されずに広いスコープのトークンを出し、ここで初めて区別できる。redirect_uri は
+// 未登録なので、使う実装は認可コードを返さない。client_id が PAR と一致しない要求は
+// 重ねた値を捨てても拒否する。
+//
+//spec:covers RFC9101-QUERY-PARAMETERS-IGNORED, EX-OAUTH2-009-03: 重ねた scope と redirect_uri を拒否せず、PAR の redirect_uri へ認可コードを返し、アクセストークンの scope は PAR の値に従う。
+func TestPushedAuthorizationRequestIgnoresParametersDuplicatedInTheQuery(t *testing.T) {
+	s := stack.New(t, stack.WithBrowserFlow())
+	push := func(browser *stack.Browser) string {
+		t.Helper()
+		status, pushed := browser.PushAuthorizationRequest(t,
+			stack.AuthorizationQuery(codeVerifier, map[string]string{"scope": "openid"}))
+		if status != http.StatusCreated {
+			t.Fatalf("/par status=%d body=%v", status, pushed)
+		}
+		requestURI, _ := pushed["request_uri"].(string)
+		if requestURI == "" {
+			t.Fatalf("/par の応答が request_uri を運んでいない: %v", pushed)
+		}
+		return requestURI
+	}
+	duplicated := func(requestURI, clientID string) url.Values {
+		return url.Values{
+			"request_uri":   {requestURI},
+			"client_id":     {clientID},
+			"response_type": {"code"},
+			"scope":         {"openid profile email"},
+			"redirect_uri":  {"https://app.example.com/other"},
+		}
+	}
+
+	// 一致の検査は重ねた値を捨てても残る。重ねた値の拒否と一緒に外すと、別の
+	// クライアントの request_uri を使えてしまう。
+	mismatched := s.Browser(t, tenancydomain.DefaultRealm)
+	response := mismatched.Authorize(t, duplicated(push(mismatched), "another-client"))
+	assertNoAuthorizationCode(t, response, "PAR と異なる client_id")
+	s.Events.AssertNotEmitted(t, "AuthorizationCodeIssued")
+
+	browser := s.Browser(t, tenancydomain.DefaultRealm)
+	code, redirect := browser.AuthorizationCode(t, duplicated(push(browser), stack.BrowserClientID))
+	if got := redirect.Scheme + "://" + redirect.Host + redirect.Path; got != stack.BrowserRedirectURI {
+		t.Fatalf("認可コードの返り先=%q、PAR の redirect_uri %q を期待した", got, stack.BrowserRedirectURI)
+	}
+
+	status, body := browser.ExchangeCode(t, code, codeVerifier)
+	if status != http.StatusOK {
+		t.Fatalf("認可コードの交換 status=%d body=%v", status, body)
+	}
+	accessToken, _ := body["access_token"].(string)
+	if scope, _ := jwtClaims(t, accessToken)["scope"].(string); scope != "openid" {
+		t.Fatalf("アクセストークンの scope=%q、PAR の scope \"openid\" を期待した", scope)
 	}
 }
