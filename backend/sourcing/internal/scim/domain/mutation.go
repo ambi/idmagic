@@ -311,64 +311,71 @@ func ParseUserPatchOps(body map[string]any) ([]UserPatchOp, error) {
 		}
 
 		path, _ := opMap["path"].(string)
-		lowerPath := strings.ToLower(path)
-		if readOnlyResourceAttrs[lowerPath] {
-			return nil, newMutationError("mutability", "attribute %q is readOnly", path)
+		parsed, err := parseUserPatchOp(op, path, opMap["value"])
+		if err != nil {
+			return nil, err
 		}
-		attr, ok := userPatchAttrs[lowerPath]
-		if !ok {
-			return nil, newMutationError("invalidPath", "attribute %q is not a supported PATCH path", path)
-		}
-
-		value := opMap["value"]
-		if attr == UserAttrFormatted && op != "remove" {
-			parsed, err := parseNameValue(value, path)
-			if err != nil {
-				return nil, err
-			}
-			value = parsed
-		}
-		if attr == UserAttrName && op != "remove" {
-			name, isObject := value.(map[string]any)
-			if !isObject {
-				return nil, newMutationError("invalidValue", "name value must be an object")
-			}
-			if _, err := parseNameValue(name["formatted"], "name.formatted"); err != nil {
-				return nil, err
-			}
-		}
-		if attr == UserAttrActive && op != "remove" {
-			if _, isBool := value.(bool); !isBool {
-				return nil, newMutationError("invalidValue", "active value must be a boolean")
-			}
-		}
-		if attr == UserAttrEmails && op != "remove" {
-			emails, isArray := value.([]any)
-			if !isArray || len(emails) == 0 {
-				return nil, newMutationError("invalidValue", "emails value must be a non-empty array")
-			}
-			projected, err := ProjectCanonicalEmail(emails)
-			if err != nil {
-				return nil, err
-			}
-			value = projected
-		}
-		if (attr == UserAttrEmployeeNumber || attr == UserAttrDepartment) && op != "remove" {
-			if _, isString := value.(string); !isString {
-				return nil, newMutationError("invalidValue", "%s value must be a string", attr)
-			}
-		}
-		if attr == UserAttrManager && op != "remove" {
-			projected, err := parseManagerScimID(value)
-			if err != nil {
-				return nil, err
-			}
-			value = projected
-		}
-
-		ops = append(ops, UserPatchOp{Op: op, Attr: attr, Value: value})
+		ops = append(ops, parsed)
 	}
 	return ops, nil
+}
+
+// parseUserPatchOp validates one operation on one path against the User
+// attribute allowlist and projects its value.
+func parseUserPatchOp(op, path string, value any) (UserPatchOp, error) {
+	lowerPath := strings.ToLower(path)
+	if readOnlyResourceAttrs[lowerPath] {
+		return UserPatchOp{}, newMutationError("mutability", "attribute %q is readOnly", path)
+	}
+	attr, ok := userPatchAttrs[lowerPath]
+	if !ok {
+		return UserPatchOp{}, newMutationError("invalidPath", "attribute %q is not a supported PATCH path", path)
+	}
+	if op == "remove" {
+		return UserPatchOp{Op: op, Attr: attr, Value: value}, nil
+	}
+
+	switch attr {
+	case UserAttrFormatted:
+		parsed, err := parseNameValue(value, path)
+		if err != nil {
+			return UserPatchOp{}, err
+		}
+		value = parsed
+	case UserAttrName:
+		name, isObject := value.(map[string]any)
+		if !isObject {
+			return UserPatchOp{}, newMutationError("invalidValue", "name value must be an object")
+		}
+		if _, err := parseNameValue(name["formatted"], "name.formatted"); err != nil {
+			return UserPatchOp{}, err
+		}
+	case UserAttrActive:
+		if _, isBool := value.(bool); !isBool {
+			return UserPatchOp{}, newMutationError("invalidValue", "active value must be a boolean")
+		}
+	case UserAttrEmails:
+		emails, isArray := value.([]any)
+		if !isArray || len(emails) == 0 {
+			return UserPatchOp{}, newMutationError("invalidValue", "emails value must be a non-empty array")
+		}
+		projected, err := ProjectCanonicalEmail(emails)
+		if err != nil {
+			return UserPatchOp{}, err
+		}
+		value = projected
+	case UserAttrEmployeeNumber, UserAttrDepartment:
+		if _, isString := value.(string); !isString {
+			return UserPatchOp{}, newMutationError("invalidValue", "%s value must be a string", attr)
+		}
+	case UserAttrManager:
+		projected, err := parseManagerScimID(value)
+		if err != nil {
+			return UserPatchOp{}, err
+		}
+		value = projected
+	}
+	return UserPatchOp{Op: op, Attr: attr, Value: value}, nil
 }
 
 // GroupWrite is a fully-resolved Group attribute set after applying
@@ -471,21 +478,30 @@ func ParseGroupPatchOps(body map[string]any) ([]GroupPatchOp, error) {
 		}
 
 		path, _ := opMap["path"].(string)
-		lowerPath := strings.ToLower(path)
-		if readOnlyResourceAttrs[lowerPath] {
-			return nil, newMutationError("mutability", "attribute %q is readOnly", path)
+		parsed, err := parseGroupPatchOp(op, path, opMap["value"])
+		if err != nil {
+			return nil, err
 		}
-		attr, ok := groupPatchAttrs[lowerPath]
-		if !ok {
-			return nil, newMutationError("invalidPath", "attribute %q is not a supported PATCH path", path)
-		}
-		if attr == GroupAttrMembers {
-			if _, err := ParseGroupMemberScimIDs(opMap["value"]); err != nil {
-				return nil, err
-			}
-		}
-
-		ops = append(ops, GroupPatchOp{Op: op, Attr: attr, Value: opMap["value"]})
+		ops = append(ops, parsed)
 	}
 	return ops, nil
+}
+
+// parseGroupPatchOp validates one operation on one path against the Group
+// attribute allowlist.
+func parseGroupPatchOp(op, path string, value any) (GroupPatchOp, error) {
+	lowerPath := strings.ToLower(path)
+	if readOnlyResourceAttrs[lowerPath] {
+		return GroupPatchOp{}, newMutationError("mutability", "attribute %q is readOnly", path)
+	}
+	attr, ok := groupPatchAttrs[lowerPath]
+	if !ok {
+		return GroupPatchOp{}, newMutationError("invalidPath", "attribute %q is not a supported PATCH path", path)
+	}
+	if attr == GroupAttrMembers {
+		if _, err := ParseGroupMemberScimIDs(value); err != nil {
+			return GroupPatchOp{}, err
+		}
+	}
+	return GroupPatchOp{Op: op, Attr: attr, Value: value}, nil
 }
