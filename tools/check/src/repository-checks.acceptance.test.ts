@@ -551,7 +551,11 @@ The demo route now produces its final effect.
     await expect(moveWorkItem(root, 'wi-445')).rejects.toThrow('has no current passed execution')
     await writeFile(join(root, '.gitignore'), '.verification/\n')
     await mkdir(join(root, '.verification'))
-    const input = await verificationInput(createWorkspaceSnapshot(root))
+    const input = await verificationInput(
+      createWorkspaceSnapshot(root),
+      undefined,
+      'test-execution',
+    )
     await writeFile(
       join(root, '.verification', 'test-go.json'),
       JSON.stringify({
@@ -573,6 +577,11 @@ The demo route now produces its final effect.
     const reportPath = join(root, '.verification', 'test-go.json')
     const report = await Bun.file(reportPath).json()
     await writeFile(reportPath, JSON.stringify({ ...report, input }))
+    // テストの後に作業項目だけを書き足しても、実行記録は現在の入力のままである。
+    await writeFile(
+      path,
+      `${workItem('test-go-race')}\nThe evidence was recorded after the test run.\n`,
+    )
     expect((await completeWorkItem(root, 'wi-445')).code).toBe(0)
     expect((await checkWorkItems(root)).code).toBe(0)
   })

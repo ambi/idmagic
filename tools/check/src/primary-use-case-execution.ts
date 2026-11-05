@@ -12,6 +12,7 @@ export function passedPrimaryUseCase(
 ): boolean {
   return (
     report.input?.fingerprint === fingerprint &&
+    report.input.inputSet === 'test-execution' &&
     Array.isArray(report.failures) &&
     report.failures.length === 0 &&
     Array.isArray(report.references) &&
@@ -39,7 +40,7 @@ export function passedPrimaryUseCase(
 
 /** 既存の生成済みの報告を再利用し、ここからテストを起動しない。 */
 export async function primaryUseCaseExecution(snapshot: WorkspaceSnapshot) {
-  const { fingerprint } = await verificationInput(snapshot)
+  const { fingerprint } = await verificationInput(snapshot, undefined, 'test-execution')
   const reports: VerificationReport[] = []
   if (snapshot.exists('.verification')) {
     const results = await Promise.allSettled(

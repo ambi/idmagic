@@ -11,7 +11,7 @@ const reference = {
   state: 'passed' as const,
 }
 const report: VerificationReport = {
-  input: { revision: 'revision', fingerprint: 'current' },
+  input: { revision: 'revision', fingerprint: 'current', inputSet: 'test-execution' },
   tests: [{ package: 'demo', name: 'TestDemo', state: 'passed' }],
   references: [reference],
   databases: [],
@@ -27,6 +27,9 @@ describe('主要ユースケースの実行との照合', () => {
     expect(passed(report)).toBe(true)
     for (const value of [
       { ...report, input: { ...report.input, fingerprint: 'stale' } },
+      // 範囲の異なる記録、範囲を記録しない従来の記録は、同じ値でも照合に使わない。
+      { ...report, input: { ...report.input, inputSet: 'workspace' as const } },
+      { ...report, input: { revision: 'revision', fingerprint: 'current' } },
       { ...report, failures: ['gate failed'] },
       { ...report, tests: [] },
       { ...report, references: [{ ...reference, path: 'another_test.go' }] },

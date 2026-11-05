@@ -44,7 +44,7 @@ const requireDB =
 // 入力が変わらないパッケージは Go の結果キャッシュから返り、報告の cachedPackages に残る。
 // 実行し直すには clean-test-cache を使い、CI は GOFLAGS=-count=1 で再利用を止める。
 const command = ['go', 'test', '-json', ...args.slice(separator + 1)]
-const input = await verificationInput(snapshot, full ? baseRevision : undefined)
+const input = await verificationInput(snapshot, full ? baseRevision : undefined, 'test-execution')
 const files = await repositoryGoFiles(snapshot, true)
 const modulePath = (await snapshot.read('go.mod'))
   .split('\n')
@@ -142,7 +142,7 @@ for (const check of checks) {
 }
 // 代替証拠はこの実行の facts だけから選び、以前の結果ファイルを読まない。
 failures.push(...evaluateVerification(operations, changed, facts, databases, requireDB))
-const after = await verificationInput(snapshot, full ? baseRevision : undefined)
+const after = await verificationInput(snapshot, full ? baseRevision : undefined, 'test-execution')
 if (after.fingerprint !== input.fingerprint)
   failures.push('verification inputs changed during execution; rerun on a stable tree')
 const result = {

@@ -1,11 +1,11 @@
 import { appendFile } from 'node:fs/promises'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
-import { verificationInput } from './input.ts'
+import { type InputSet, verificationInput } from './input.ts'
 import type { DBVerification, ReferenceResult, TestExecution } from './evidence.ts'
 import type { CheckResult } from '../../check/src/runner.ts'
 
 export type VerificationReport = {
-  input: { revision: string; fingerprint: string }
+  input: { revision: string; fingerprint: string; inputSet?: InputSet }
   tests: TestExecution[]
   references: ReferenceResult[]
   databases: DBVerification[]
@@ -28,7 +28,8 @@ export function renderVerificationReport(
   report: VerificationReport,
   currentFingerprint: string,
 ): string {
-  const current = report.input.fingerprint === currentFingerprint
+  const current =
+    report.input.inputSet === 'test-execution' && report.input.fingerprint === currentFingerprint
   const states = ['passed', 'failed', 'skipped', 'not-run'] as const
   const rows = states.map(
     (state) =>
@@ -60,7 +61,7 @@ if (import.meta.main) {
   const snapshot = createWorkspaceSnapshot(process.cwd())
   const path = process.argv[2] ?? '.verification/test-go.json'
   const report = (await Bun.file(snapshot.path(path)).json()) as VerificationReport
-  const current = await verificationInput(snapshot)
+  const current = await verificationInput(snapshot, undefined, 'test-execution')
   const text = renderVerificationReport(report, current.fingerprint)
   console.log(text)
   if (process.env.GITHUB_STEP_SUMMARY)

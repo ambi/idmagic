@@ -113,15 +113,16 @@ mise run report-contract-evidence -- --changed --base-revision main --target bac
 
 ### 結果の参照
 
-結果は Git リビジョン、追跡ファイルと未追跡ファイルの fingerprint、基準リビジョン、コマンド、DB モードとともに `.verification/` へ保存する。
+結果は Git リビジョン、入力の fingerprint、基準リビジョン、コマンド、DB モードとともに `.verification/` へ保存する。
 生の Go イベントも JSON Lines で保存する。
 実行中に入力が変われば検証を失敗にし、過去の結果を現在の入力で実行した結果とは扱わない。
 `mise run report-verification` は全体の Go テスト（`test-go`）の結果を表示し、現在の入力と異なる結果を `stale` と明示する。
 別のタスクの結果は `mise run report-verification -- .verification/test-go-package.json` のように指定する。
 
-`stale` の判定には全追跡ファイルを含むため、完了記録の移動やコミットだけでもこの表示になる。
-検証時の作業ツリーがクリーンで、その revision からの追跡差分と未追跡ファイルが `work-items/` に限られる場合は、[最終検査の選択](specification-first-workflow.md#最終検査の選択)に従って Go の検査を再実行しないと判断できる。
-この場合も `stale` 表示は保ち、現在の入力で再実行した結果へ読み替えない。
+テストの実行の fingerprint は、`work-items/` を除く追跡ファイルと未追跡ファイルの内容から求め、revision を含めない（入力の範囲 `test-execution`）。
+作業項目はどのテストも読まないので、要約の記入、完了記録の移動、作業項目だけのコミットは結果を `stale` にしない。
+完了時の `primary_use_cases` の照合も同じ範囲で現在の入力を求め、範囲を記録していない結果を受け入れない。
+静的検査の結果は作業項目を読む検査を含むので、revision と全ファイルを入力にする（入力の範囲 `workspace`）。
 
 変更耐性は別に収集するため、通常の実行結果では `not-collected` と表示する。
 その証拠は[ミューテーションテスト](#ミューテーションテスト)に従って作業項目へ残す。

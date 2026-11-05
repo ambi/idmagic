@@ -48,3 +48,22 @@ test('キャッシュから再生したパッケージを、今回実行した�
     'Result cache: every package executed in this run',
   )
 })
+
+test('同じ値でも、テストの実行の範囲で記録した結果だけを current と表示する', () => {
+  const report = {
+    input: { revision: 'head', fingerprint: 'tree', inputSet: 'test-execution' as const },
+    tests: [],
+    references: [],
+    databases: [],
+    checks: [],
+    failures: [],
+    changeResistance: { state: 'not-collected' },
+  }
+  expect(renderVerificationReport(report, 'tree')).toContain('Input identity: **current**')
+  expect(
+    renderVerificationReport(
+      { ...report, input: { revision: 'head', fingerprint: 'tree' } },
+      'tree',
+    ),
+  ).toContain('stale; unverified for the current tree')
+})

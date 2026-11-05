@@ -206,6 +206,8 @@ func TestStore(t *testing.T) {
       )
       expect(result.input.revision).toMatch(/^[a-f0-9]{40}$/)
       expect(result.input.fingerprint).toMatch(/^[a-f0-9]{64}$/)
+      // 完了時の照合と同じ範囲で記録しないと、作業項目の書き換えで記録が古くなる。
+      expect(result.input.inputSet).toBe('test-execution')
       expect(result.changeResistance.state).toBe('not-collected')
     }
   } finally {
