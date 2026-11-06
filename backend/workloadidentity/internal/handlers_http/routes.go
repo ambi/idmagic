@@ -66,8 +66,9 @@ type trustBundleResponse struct {
 	ID                        string     `json:"id"`
 	TenantID                  string     `json:"tenant_id"`
 	Name                      string     `json:"name"`
+	Profile                   string     `json:"profile"`
 	TrustDomain               string     `json:"trust_domain"`
-	Issuer                    string     `json:"issuer"`
+	Issuer                    string     `json:"issuer,omitempty"`
 	JWKSURI                   *string    `json:"jwks_uri,omitempty"`
 	HasInlineJWKS             bool       `json:"has_inline_jwks"`
 	AcceptedAudiences         []string   `json:"accepted_audiences"`
@@ -84,8 +85,8 @@ func toTrustBundleResponse(b *domain.WorkloadTrustBundle) trustBundleResponse {
 		audiences = []string{}
 	}
 	return trustBundleResponse{
-		ID: b.ID, TenantID: b.TenantID, Name: b.Name, TrustDomain: b.TrustDomain, Issuer: b.Issuer,
-		JWKSURI: b.JWKSURI, HasInlineJWKS: b.JWKS != nil, AcceptedAudiences: audiences,
+		ID: b.ID, TenantID: b.TenantID, Name: b.Name, Profile: string(b.Profile), TrustDomain: b.TrustDomain,
+		Issuer: b.Issuer, JWKSURI: b.JWKSURI, HasInlineJWKS: b.JWKS != nil, AcceptedAudiences: audiences,
 		MaxSubjectTokenTTLSeconds: b.MaxSubjectTokenTTLSeconds, Status: string(b.Status),
 		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt, JWKSCachedAt: b.JWKSCachedAt,
 	}
@@ -93,6 +94,7 @@ func toTrustBundleResponse(b *domain.WorkloadTrustBundle) trustBundleResponse {
 
 type registerTrustBundleRequest struct {
 	Name                      string         `json:"name"`
+	Profile                   string         `json:"profile"`
 	TrustDomain               string         `json:"trust_domain"`
 	Issuer                    string         `json:"issuer"`
 	JWKSURI                   *string        `json:"jwks_uri"`
@@ -147,7 +149,8 @@ func (d Deps) handleRegisterTrustBundle(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	bundle, err := usecases.RegisterWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), usecases.RegisterWorkloadTrustBundleInput{
-		Name: req.Name, TrustDomain: req.TrustDomain, Issuer: req.Issuer, JWKSURI: req.JWKSURI,
+		Name: req.Name, Profile: domain.WorkloadTrustBundleProfile(req.Profile), TrustDomain: req.TrustDomain,
+		Issuer: req.Issuer, JWKSURI: req.JWKSURI,
 		JWKS: req.JWKS, AcceptedAudiences: req.AcceptedAudiences, MaxSubjectTokenTTLSeconds: req.MaxSubjectTokenTTLSeconds,
 	}, time.Now().UTC())
 	if err != nil {
@@ -337,6 +340,12 @@ func writeAdminWorkloadIdentityError(c *echo.Context, err error) error {
 		return support.WriteProblem(c, http.StatusConflict, "workload_trust_bundle_name_conflict", "The trust bundle name is already in use.")
 	case errors.Is(err, usecases.ErrTrustBundleIssuerConflict):
 		return support.WriteProblem(c, http.StatusConflict, "workload_trust_bundle_issuer_conflict", "The issuer is already registered.")
+	case errors.Is(err, usecases.ErrTrustBundleTrustDomainConflict):
+		return support.WriteProblem(c, http.StatusConflict, "workload_trust_bundle_trust_domain_conflict", "The trust domain is already registered for a spiffe trust bundle.")
+	case errors.Is(err, usecases.ErrTrustBundleInvalidTrustDomain):
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_invalid_trust_domain", "trust_domain is not a valid SPIFFE trust domain.")
+	case errors.Is(err, usecases.ErrTrustBundleInvalidProfile):
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "profile must be oidc or spiffe.")
 	case errors.Is(err, usecases.ErrTrustBundleMissingJWKS):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_jwks_required", "jwks_uri or jwks is required.")
 	case errors.Is(err, usecases.ErrTrustBundleNameRequired):

@@ -26,8 +26,41 @@ func (q *Queries) DeleteWorkloadTrustBundle(ctx context.Context, arg DeleteWorkl
 	return err
 }
 
+const findSPIFFEWorkloadTrustBundleByTrustDomain = `-- name: FindSPIFFEWorkloadTrustBundleByTrustDomain :one
+SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
+max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
+FROM workload_trust_bundles WHERE tenant_id=$1 AND profile='spiffe' AND trust_domain=$2
+`
+
+type FindSPIFFEWorkloadTrustBundleByTrustDomainParams struct {
+	TenantID    string
+	TrustDomain string
+}
+
+func (q *Queries) FindSPIFFEWorkloadTrustBundleByTrustDomain(ctx context.Context, arg FindSPIFFEWorkloadTrustBundleByTrustDomainParams) (*WorkloadTrustBundle, error) {
+	row := q.db.QueryRow(ctx, findSPIFFEWorkloadTrustBundleByTrustDomain, arg.TenantID, arg.TrustDomain)
+	var i WorkloadTrustBundle
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Name,
+		&i.Profile,
+		&i.TrustDomain,
+		&i.Issuer,
+		&i.JwksUri,
+		&i.Jwks,
+		&i.AcceptedAudiences,
+		&i.MaxSubjectTokenTtlSeconds,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.JwksCachedAt,
+	)
+	return &i, err
+}
+
 const findWorkloadTrustBundleByID = `-- name: FindWorkloadTrustBundleByID :one
-SELECT id,tenant_id,name,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
+SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
 max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
 FROM workload_trust_bundles WHERE tenant_id=$1 AND id=$2
 `
@@ -44,6 +77,7 @@ func (q *Queries) FindWorkloadTrustBundleByID(ctx context.Context, arg FindWorkl
 		&i.ID,
 		&i.TenantID,
 		&i.Name,
+		&i.Profile,
 		&i.TrustDomain,
 		&i.Issuer,
 		&i.JwksUri,
@@ -59,14 +93,14 @@ func (q *Queries) FindWorkloadTrustBundleByID(ctx context.Context, arg FindWorkl
 }
 
 const findWorkloadTrustBundleByIssuer = `-- name: FindWorkloadTrustBundleByIssuer :one
-SELECT id,tenant_id,name,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
+SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
 max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
 FROM workload_trust_bundles WHERE tenant_id=$1 AND issuer=$2
 `
 
 type FindWorkloadTrustBundleByIssuerParams struct {
 	TenantID string
-	Issuer   string
+	Issuer   pgtype.Text
 }
 
 func (q *Queries) FindWorkloadTrustBundleByIssuer(ctx context.Context, arg FindWorkloadTrustBundleByIssuerParams) (*WorkloadTrustBundle, error) {
@@ -76,6 +110,7 @@ func (q *Queries) FindWorkloadTrustBundleByIssuer(ctx context.Context, arg FindW
 		&i.ID,
 		&i.TenantID,
 		&i.Name,
+		&i.Profile,
 		&i.TrustDomain,
 		&i.Issuer,
 		&i.JwksUri,
@@ -91,7 +126,7 @@ func (q *Queries) FindWorkloadTrustBundleByIssuer(ctx context.Context, arg FindW
 }
 
 const listWorkloadTrustBundlesByTenant = `-- name: ListWorkloadTrustBundlesByTenant :many
-SELECT id,tenant_id,name,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
+SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
 max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
 FROM workload_trust_bundles WHERE tenant_id=$1 ORDER BY name
 `
@@ -109,6 +144,7 @@ func (q *Queries) ListWorkloadTrustBundlesByTenant(ctx context.Context, tenantID
 			&i.ID,
 			&i.TenantID,
 			&i.Name,
+			&i.Profile,
 			&i.TrustDomain,
 			&i.Issuer,
 			&i.JwksUri,
@@ -146,9 +182,9 @@ func (q *Queries) RecordWorkloadTrustBundleJWKSFetched(ctx context.Context, arg 
 }
 
 const saveWorkloadTrustBundle = `-- name: SaveWorkloadTrustBundle :exec
-INSERT INTO workload_trust_bundles (id,tenant_id,name,trust_domain,issuer,jwks_uri,jwks,
+INSERT INTO workload_trust_bundles (id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,
  accepted_audiences,max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,jwks_uri=EXCLUDED.jwks_uri,jwks=EXCLUDED.jwks,
  accepted_audiences=EXCLUDED.accepted_audiences,
  max_subject_token_ttl_seconds=EXCLUDED.max_subject_token_ttl_seconds,status=EXCLUDED.status,
@@ -159,8 +195,9 @@ type SaveWorkloadTrustBundleParams struct {
 	ID                        string
 	TenantID                  string
 	Name                      string
+	Profile                   string
 	TrustDomain               string
-	Issuer                    string
+	Issuer                    pgtype.Text
 	JwksUri                   pgtype.Text
 	Jwks                      []byte
 	AcceptedAudiences         []byte
@@ -176,6 +213,7 @@ func (q *Queries) SaveWorkloadTrustBundle(ctx context.Context, arg SaveWorkloadT
 		arg.ID,
 		arg.TenantID,
 		arg.Name,
+		arg.Profile,
 		arg.TrustDomain,
 		arg.Issuer,
 		arg.JwksUri,

@@ -16,6 +16,13 @@ model WorkloadTrustBundleNameConflictError is ProblemDetails;
 @doc("求めた WorkloadTrustBundle の `issuer` は、テナントですでに登録されている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:workload_trust_bundle_issuer_conflict` である。")
 model WorkloadTrustBundleIssuerConflictError is ProblemDetails;
 
+@doc("求めた `spiffe` の WorkloadTrustBundle の `trust_domain` は、テナントのほかの `spiffe` の信頼設定ですでに使われている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:workload_trust_bundle_trust_domain_conflict` である。")
+model WorkloadTrustBundleTrustDomainConflictError is ProblemDetails;
+
+
+@doc("`spiffe` の WorkloadTrustBundle の `trust_domain` が、SPIFFE のトラストドメインの構文を満たさない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:workload_trust_bundle_invalid_trust_domain` である。")
+model WorkloadTrustBundleInvalidTrustDomainError is ProblemDetails;
+
 @doc("IdManagement モジュールが公開する Agent の主体を、公開契約として写したもの。バインディングの検証に必要な属性だけを含む。")
 model AgentRef {
   id: string;
@@ -25,7 +32,7 @@ model AgentRef {
 }
 
 
-@doc("外部のアテステーションのトークンの検証がフェイルクローズで失敗した。未登録の発行者、不正な署名、期限切れのトークン、オーディエンスの不一致、上限を超える TTL、パターンの不一致、曖昧な一致、または有効でない結び付き先の Agent のいずれかである。これはドメイン条件であり、HTTP ではトークン交換の InvalidGrantError としてクライアントに届く。")
+@doc("外部のアテステーションのトークンの検証がフェイルクローズで失敗した。未登録の発行者、不正な署名、期限切れのトークン、オーディエンスの不一致、上限を超える TTL、SPIFFE ID の構文の違反、トラストドメインの不一致、パターンの不一致、曖昧な一致、または有効でない結び付き先の Agent のいずれかである。これはドメイン条件であり、HTTP ではトークン交換の InvalidGrantError としてクライアントに届く。")
 model WorkloadAttestationRejectedError {
 
 }
@@ -59,6 +66,13 @@ model AgentWorkloadBindingAgentNotFoundError is ProblemDetails;
 model AgentWorkloadBindingPatternRequiredError is ProblemDetails;
 
 
+@doc("WorkloadTrustBundle が掛ける検証の種別。`oidc` は OIDC 互換の JWT として検証する。`spiffe` は SPIFFE の JWT-SVID の規則（`sub` の SPIFFE ID、トラストドメインの一致、`kid` の必須、`typ`、`alg`）を足し、`iss` を任意にする。登録の後は変えられない。")
+enum WorkloadTrustBundleProfile {
+  oidc: "oidc",
+  spiffe: "spiffe",
+}
+
+
 @doc("WorkloadTrustBundleLifecycle の状態。")
 enum WorkloadTrustBundleStatus {
   enabled: "enabled",
@@ -73,7 +87,7 @@ enum AgentWorkloadBindingStatus {
 }
 
 
-@doc("外部のアテステーションの発行者に対する、テナントに属する信頼の設定。`issuer` はテナントの中で一意で、`jwks_uri` とインラインの `jwks` の少なくとも一方が必要である。")
+@doc("外部のアテステーションの発行者に対する、テナントに属する信頼の設定。`issuer` はテナントの中で一意で、`profile` が `oidc` なら必須である。`profile` が `spiffe` なら `trust_domain` が `spiffe` の信頼設定の間で一意である。`jwks_uri` とインラインの `jwks` の少なくとも一方が必要である。")
 model WorkloadTrustBundle {
   @doc("生成した識別子（UUID v4）。変わらない。")
   @minLength(1)
@@ -85,12 +99,14 @@ model WorkloadTrustBundle {
   @minLength(1)
   @maxLength(100)
   name: string;
-  @doc("SPIFFE のトラストドメイン、または運用者が発行者のまとまりに付けるラベル。")
+  @doc("検証の種別。登録の後は変わらない。")
+  profile: WorkloadTrustBundleProfile = WorkloadTrustBundleProfile.oidc;
+  @doc("`spiffe` では SPIFFE のトラストドメイン、`oidc` では運用者が発行者のまとまりに付けるラベル。")
   @minLength(1)
   @maxLength(255)
   trust_domain: string;
-  @doc("外部のアテステーションのトークンの `iss` のクレームが一致しなければならない発行者の URL。テナントの中で一意である。")
-  issuer: url;
+  @doc("外部のアテステーションのトークンの `iss` のクレームが一致しなければならない発行者の URL。テナントの中で一意である。`oidc` では必須、`spiffe` では任意で、省くと `iss` を確かめない。")
+  issuer?: url;
   @doc("JWKS の取得元。https でなければならない。")
   jwks_uri?: url;
   @doc("`jwks_uri` の代わりに使うインラインの JWKS。")
@@ -135,10 +151,13 @@ model WorkloadTrustBundleRegisterRequest {
   @minLength(1)
   @maxLength(100)
   name: string;
+  @doc("検証の種別。省くと `oidc` になる。")
+  profile?: WorkloadTrustBundleProfile;
   @minLength(1)
   @maxLength(255)
   trust_domain: string;
-  issuer: url;
+  @doc("`oidc` では必須、`spiffe` では任意である。")
+  issuer?: url;
   jwks_uri?: url;
   jwks?: JWKS;
   accepted_audiences: string[];
@@ -146,7 +165,7 @@ model WorkloadTrustBundleRegisterRequest {
 }
 
 
-@doc("管理者が、WorkloadTrustBundle の `name`、`jwks_uri`、`jwks`、`accepted_audiences`、`max_subject_token_ttl_seconds` を更新するために送る JSON のリクエスト。省いたフィールドは現在の値を保つ。`issuer` と `trust_domain` は変えられず、変えるには登録し直す。")
+@doc("管理者が、WorkloadTrustBundle の `name`、`jwks_uri`、`jwks`、`accepted_audiences`、`max_subject_token_ttl_seconds` を更新するために送る JSON のリクエスト。省いたフィールドは現在の値を保つ。`profile`、`issuer`、`trust_domain` は変えられず、変えるには登録し直す。")
 model WorkloadTrustBundleUpdateRequest {
   @minLength(1)
   @maxLength(100)
@@ -163,8 +182,10 @@ model WorkloadTrustBundleResponse {
   id: string;
   tenant_id: string;
   name: string;
+  profile: WorkloadTrustBundleProfile;
   trust_domain: string;
-  issuer: url;
+  @doc("`oidc` では常に返す。`spiffe` では登録した場合だけ返す。")
+  issuer?: url;
   jwks_uri?: url;
   @doc("インラインの `jwks` を設定しているかどうか。`jwks` そのものは返さない。")
   has_inline_jwks: boolean;
@@ -339,7 +360,7 @@ model WorkloadTokenExchanged {
 model WorkloadAttestationRejected {
   occurredAt: utcDateTime;
   tenantId: string;
-  @doc("unregistered_issuer、trust_bundle_disabled、jwks_unavailable、invalid_signature、expired、audience_mismatch、ttl_exceeded、no_binding_match、ambiguous_match、agent_not_active、agent_unbound のいずれか。")
+  @doc("unregistered_issuer、trust_bundle_disabled、jwks_unavailable、invalid_signature、expired、audience_mismatch、ttl_exceeded、invalid_spiffe_id、trust_domain_mismatch、no_binding_match、ambiguous_match、agent_not_active、agent_unbound のいずれか。")
   reason: string;
   @doc("発行者が登録済みだったときだけ設定する。")
   trustBundleId?: string;

@@ -34,3 +34,21 @@ func (s AgentWorkloadBindingStatus) Valid() bool {
 	}
 	return false
 }
+
+// WorkloadTrustBundleProfile は WorkloadTrustBundle が掛ける検証の種別。OIDC は
+// OIDC 互換の JWT として検証し、SPIFFE は SPIFFE の JWT-SVID の規則を足す
+// (REQ-WORKLOADIDENTITY-011)。登録の後は変えない。
+type WorkloadTrustBundleProfile string
+
+const (
+	WorkloadTrustBundleProfileOIDC   WorkloadTrustBundleProfile = "oidc"
+	WorkloadTrustBundleProfileSPIFFE WorkloadTrustBundleProfile = "spiffe"
+)
+
+func (p WorkloadTrustBundleProfile) Valid() bool {
+	switch p {
+	case WorkloadTrustBundleProfileOIDC, WorkloadTrustBundleProfileSPIFFE:
+		return true
+	}
+	return false
+}

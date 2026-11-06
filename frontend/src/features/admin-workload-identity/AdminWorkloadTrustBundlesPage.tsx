@@ -9,7 +9,7 @@ import type { AdminAuditEvent, WorkloadTrustBundle } from '../../types'
 import { adminWorkloadIdentityDictionary } from './AdminWorkloadIdentityPage.i18n'
 import { detailURL, EnabledStatusBadge, newURL } from './AdminWorkloadIdentityShared'
 import { AttestationRejectionsCard } from './AttestationRejectionsCard'
-import { attestationRejections, formatDateTime } from './presentation'
+import { attestationRejections, formatDateTime, issuerLabel, profileLabel } from './presentation'
 
 // AdminWorkloadTrustBundlesPage は信頼バンドルの参照専用一覧。登録は専用ルート (new)、
 // 状態変更と削除は詳細画面に置く。一覧から直接消せると、カスケードで消えるバインディングを
@@ -55,6 +55,7 @@ export function AdminWorkloadTrustBundlesPage({
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3">{t.tableHeaderName}</th>
+              <th className="px-4 py-3">{t.tableHeaderProfile}</th>
               <th className="px-4 py-3">{t.tableHeaderTrustDomain}</th>
               <th className="px-4 py-3">{t.tableHeaderIssuer}</th>
               <th className="px-4 py-3">{t.tableHeaderStatus}</th>
@@ -66,9 +67,10 @@ export function AdminWorkloadTrustBundlesPage({
             {trustBundles.map((bundle) => (
               <tr key={bundle.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3 font-semibold text-slate-900">{bundle.name}</td>
+                <td className="px-4 py-3 text-slate-600">{profileLabel(bundle, t)}</td>
                 <td className="px-4 py-3 text-slate-600">{bundle.trust_domain}</td>
                 <td className="break-all px-4 py-3 font-mono text-xs text-slate-600">
-                  {bundle.issuer}
+                  {issuerLabel(bundle, t)}
                 </td>
                 <td className="px-4 py-3">
                   <EnabledStatusBadge status={bundle.status} t={t} />

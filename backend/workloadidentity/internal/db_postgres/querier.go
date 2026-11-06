@@ -12,6 +12,7 @@ type Querier interface {
 	DeleteAgentWorkloadBinding(ctx context.Context, arg DeleteAgentWorkloadBindingParams) error
 	DeleteWorkloadTrustBundle(ctx context.Context, arg DeleteWorkloadTrustBundleParams) error
 	FindAgentWorkloadBindingByID(ctx context.Context, arg FindAgentWorkloadBindingByIDParams) (*AgentWorkloadBinding, error)
+	FindSPIFFEWorkloadTrustBundleByTrustDomain(ctx context.Context, arg FindSPIFFEWorkloadTrustBundleByTrustDomainParams) (*WorkloadTrustBundle, error)
 	FindWorkloadTrustBundleByID(ctx context.Context, arg FindWorkloadTrustBundleByIDParams) (*WorkloadTrustBundle, error)
 	FindWorkloadTrustBundleByIssuer(ctx context.Context, arg FindWorkloadTrustBundleByIssuerParams) (*WorkloadTrustBundle, error)
 	ListAgentWorkloadBindingsByTrustBundle(ctx context.Context, arg ListAgentWorkloadBindingsByTrustBundleParams) ([]*AgentWorkloadBinding, error)

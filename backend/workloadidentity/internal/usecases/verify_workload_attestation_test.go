@@ -132,7 +132,7 @@ func (f *fixture) registerBundle(t *testing.T, tenantID string, mutate func(*wor
 		t.Fatal(err)
 	}
 	b := &workloaddomain.WorkloadTrustBundle{
-		ID: id, TenantID: tenantID, Name: "prod-cluster", TrustDomain: "example.org",
+		ID: id, TenantID: tenantID, Name: "prod-cluster", Profile: workloaddomain.WorkloadTrustBundleProfileOIDC, TrustDomain: "example.org",
 		Issuer: testIssuer, AcceptedAudiences: []string{testAudience},
 		MaxSubjectTokenTTLSeconds: 3600, Status: workloaddomain.WorkloadTrustBundleStatusEnabled,
 		CreatedAt: f.now,

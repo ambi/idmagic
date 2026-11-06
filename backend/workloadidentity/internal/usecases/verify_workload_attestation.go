@@ -56,12 +56,7 @@ func VerifyWorkloadAttestation(
 		return nil, errWorkloadAttestationRejected(reason)
 	}
 
-	iss, err := peekIssuer(in.SubjectToken)
-	if err != nil || iss == "" {
-		return reject("unregistered_issuer", "")
-	}
-
-	bundle, err := deps.TrustBundleRepo.FindByIssuer(ctx, tenantID, iss)
+	bundle, err := findTrustBundle(ctx, deps.TrustBundleRepo, tenantID, in.SubjectToken)
 	if err != nil {
 		return nil, err
 	}
@@ -73,13 +68,21 @@ func VerifyWorkloadAttestation(
 	}
 
 	claims, err := deps.SVIDVerifier.Verify(
-		ctx, bundle.ID, in.SubjectToken, bundle.Issuer, bundle.AcceptedAudiences,
-		time.Duration(bundle.MaxSubjectTokenTTLSeconds)*time.Second,
+		ctx, bundle, in.SubjectToken,
 		func(ctx context.Context) ([]map[string]any, error) { return deps.FetchJWKS(ctx, bundle) },
 		now,
 	)
 	if err != nil {
 		return reject(workloadSVIDRejectReason(err), bundle.ID)
+	}
+	if bundle.IsSPIFFE() {
+		id, err := domain.ParseSpiffeID(claims.Subject)
+		if err != nil {
+			return reject("invalid_spiffe_id", bundle.ID)
+		}
+		if id.TrustDomain() != bundle.TrustDomain {
+			return reject("trust_domain_mismatch", bundle.ID)
+		}
 	}
 
 	bindings, err := deps.BindingRepo.ListByTrustBundle(ctx, tenantID, bundle.ID)
@@ -126,27 +129,66 @@ func VerifyWorkloadAttestation(
 	}, nil
 }
 
-// peekIssuer は署名検証前に iss claim だけを読む。iss を手がかりに登録済み
-// WorkloadTrustBundle (と対応する JWKS) を解決するための issuer discovery で、
-// 標準的な JWT 実装がしばしば行う「まず iss/kid を見て検証鍵を選ぶ」手順と同じ。
-// 署名検証自体はこの後 VerifyWorkloadSVID が行うため、ここで claim を信用した
-// 判断は一切行わない。
-func peekIssuer(token string) (string, error) {
+// findTrustBundle は署名の検証の前に読んだ iss と sub で、テナントの信頼設定を選ぶ
+// (docs/modules/workloadidentity/features/attestation-exchange.md の実現方式)。
+// iss に一致する信頼設定を先に探し、なければ sub を SPIFFE ID として読み、その
+// トラストドメインの spiffe の信頼設定を探す。読んだ値は信頼設定と JWKS の選択にだけ
+// 使い、主体の特定とトラストドメインの一致の判定は署名の検証の後に行う。トークンとして
+// 読めなければ nil を返し、呼び出し側が unregistered_issuer で拒否する。
+func findTrustBundle(
+	ctx context.Context, repo ports.WorkloadTrustBundleRepository, tenantID, token string,
+) (*domain.WorkloadTrustBundle, error) {
+	keys := trustBundleLookupKeys(token)
+	var bundle *domain.WorkloadTrustBundle
+	var err error
+	if keys.issuer != "" {
+		bundle, err = repo.FindByIssuer(ctx, tenantID, keys.issuer)
+	}
+	if err == nil && bundle == nil && keys.trustDomain != "" {
+		bundle, err = repo.FindSPIFFEByTrustDomain(ctx, tenantID, keys.trustDomain)
+	}
+	return bundle, err
+}
+
+type lookupKeys struct {
+	issuer      string
+	trustDomain string
+}
+
+// trustBundleLookupKeys は署名を検証せずに読んだ iss と、SPIFFE ID として読めた sub の
+// トラストドメインを返す。読めない値は空にする。
+func trustBundleLookupKeys(token string) lookupKeys {
+	unverified, ok := peekClaims(token)
+	if !ok {
+		return lookupKeys{}
+	}
+	keys := lookupKeys{issuer: unverified.Issuer}
+	if id, err := domain.ParseSpiffeID(unverified.Subject); err == nil {
+		keys.trustDomain = id.TrustDomain()
+	}
+	return keys
+}
+
+type unverifiedClaims struct {
+	Issuer  string `json:"iss"`
+	Subject string `json:"sub"`
+}
+
+// peekClaims は署名を検証せずに iss と sub だけを読む。
+func peekClaims(token string) (unverifiedClaims, bool) {
+	var claims unverifiedClaims
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
-		return "", errors.New("workload attestation: malformed token")
+		return claims, false
 	}
 	pb, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return "", err
+		return claims, false
 	}
-	var payload struct {
-		Issuer string `json:"iss"`
+	if err := json.Unmarshal(pb, &claims); err != nil {
+		return claims, false
 	}
-	if err := json.Unmarshal(pb, &payload); err != nil {
-		return "", err
-	}
-	return payload.Issuer, nil
+	return claims, true
 }
 
 func workloadSVIDRejectReason(err error) string {

@@ -20,6 +20,7 @@ const bundle: WorkloadTrustBundle = {
   id: 'bundle-1',
   tenant_id: 'tenant-a',
   name: 'prod-cluster',
+  profile: 'oidc',
   trust_domain: 'example.org',
   issuer: 'https://issuer.example',
   jwks_uri: 'https://issuer.example/keys',
@@ -56,10 +57,48 @@ describe('AdminWorkloadTrustBundleCreatePage', () => {
     const [, init] = fetchMock.mock.calls[0]
     expect(JSON.parse(String(init.body))).toEqual({
       name: 'prod-cluster',
+      profile: 'oidc',
       trust_domain: 'example.org',
       issuer: 'https://issuer.example',
       jwks_uri: 'https://issuer.example/keys',
       accepted_audiences: ['idmagic', 'https://idmagic.example'],
+      max_subject_token_ttl_seconds: 3600,
+    })
+  })
+
+  it('registers a SPIFFE bundle without an issuer, which the profile makes optional', async () => {
+    const fetchMock = mock((_url: string, _init: RequestInit) =>
+      Promise.resolve(response(201, { ...bundle, profile: 'spiffe', issuer: undefined })),
+    )
+    stubGlobal('fetch', fetchMock)
+    stubGlobal('location', { assign: mock(), pathname: '/', search: '' })
+    await renderWithRouter(<AdminWorkloadTrustBundleCreatePage csrfToken="csrf" />)
+
+    expect(screen.getByLabelText(t.issuerLabel)).toBeRequired()
+    fireEvent.click(screen.getByRole('combobox', { name: t.profileLabel }))
+    const option = await screen.findByRole('option', { name: t.profileSpiffe })
+    fireEvent.pointerDown(option)
+    fireEvent.click(option)
+    expect(await screen.findByText(t.issuerSpiffeHelp)).toBeInTheDocument()
+    expect(screen.getByLabelText(t.issuerLabel)).not.toBeRequired()
+    expect(screen.getByLabelText(t.trustDomainLabel).getAttribute('pattern')).toBe(
+      String.raw`[a-z0-9._\-]+`,
+    )
+
+    fill(t.nameLabel, 'spire')
+    fill(t.trustDomainLabel, 'example.org')
+    fill(t.jwksUriLabel, 'https://spire.example/bundle')
+    fill(t.acceptedAudiencesLabel, 'idmagic')
+    fireEvent.submit(screen.getByRole('button', { name: t.register }).closest('form')!)
+
+    await screen.findByRole('button', { name: t.register })
+    const [, init] = fetchMock.mock.calls[0]
+    expect(JSON.parse(String(init.body))).toEqual({
+      name: 'spire',
+      profile: 'spiffe',
+      trust_domain: 'example.org',
+      jwks_uri: 'https://spire.example/bundle',
+      accepted_audiences: ['idmagic'],
       max_subject_token_ttl_seconds: 3600,
     })
   })
@@ -83,11 +122,12 @@ describe('AdminWorkloadTrustBundleCreatePage', () => {
 describe('AdminWorkloadTrustBundleEditPage', () => {
   afterEach(() => restoreGlobals())
 
-  it('locks the issuer and trust domain, which the update API cannot change', async () => {
+  it('locks the profile, issuer and trust domain, which the update API cannot change', async () => {
     await renderWithRouter(
       <AdminWorkloadTrustBundleEditPage csrfToken="csrf" trustBundle={bundle} />,
     )
 
+    expect(screen.getByRole('combobox', { name: t.profileLabel })).toBeDisabled()
     expect(screen.getByLabelText(t.issuerLabel)).toBeDisabled()
     expect(screen.getByLabelText(t.trustDomainLabel)).toBeDisabled()
     expect(screen.getByLabelText(t.nameLabel)).not.toBeDisabled()

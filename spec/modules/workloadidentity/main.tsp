@@ -111,6 +111,7 @@ model RegisterWorkloadTrustBundleError403 {
 union RegisterWorkloadTrustBundleError409Body {
   IdMagic.Contract.WorkloadTrustBundleNameConflictError,
   IdMagic.Contract.WorkloadTrustBundleIssuerConflictError,
+  IdMagic.Contract.WorkloadTrustBundleTrustDomainConflictError,
 }
 
 model RegisterWorkloadTrustBundleError409 {
@@ -125,6 +126,7 @@ union RegisterWorkloadTrustBundleError422Body {
   IdMagic.Contract.WorkloadTrustBundleIssuerRequiredError,
   IdMagic.Contract.WorkloadTrustBundleAudiencesRequiredError,
   IdMagic.Contract.WorkloadTrustBundleInvalidTtlError,
+  IdMagic.Contract.WorkloadTrustBundleInvalidTrustDomainError,
 }
 
 model RegisterWorkloadTrustBundleError422 {
@@ -133,7 +135,7 @@ model RegisterWorkloadTrustBundleError422 {
   @body body: RegisterWorkloadTrustBundleError422Body;
 }
 
-@doc("管理者が、自身のテナントに WorkloadTrustBundle を登録する。`name` と `issuer` はどちらもテナントの中で一意でなければならない。")
+@doc("管理者が、自身のテナントに WorkloadTrustBundle を登録する。`name` と `issuer` はどちらもテナントの中で一意でなければならない。`spiffe` の信頼設定では、`trust_domain` が `spiffe` の信頼設定の間で一意でなければならない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("RegisterWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles")

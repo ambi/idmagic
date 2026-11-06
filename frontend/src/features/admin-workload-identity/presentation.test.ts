@@ -7,10 +7,12 @@ import {
   bindingConfirmation,
   displayNameForID,
   formatDateTime,
+  issuerLabel,
   jwksSource,
   multipleCredentialBindings,
   parseAudiences,
   parseInlineJwks,
+  profileLabel,
   rejectionReasonLabel,
   rejectionsForTrustBundle,
 } from './presentation'
@@ -19,6 +21,7 @@ const bundle: WorkloadTrustBundle = {
   id: 'bundle-1',
   tenant_id: 'tenant-a',
   name: 'prod-cluster',
+  profile: 'oidc',
   trust_domain: 'example.org',
   issuer: 'https://issuer.example',
   jwks_uri: 'https://issuer.example/keys',
@@ -40,7 +43,7 @@ function auditEvent(payload: Record<string, unknown>, id = 'event-1'): AdminAudi
 }
 
 describe('rejectionReasonLabel', () => {
-  // 仕様 (WorkloadAttestationRejected.reason) が列挙する 11 個をすべて辞書へ写せていること。
+  // 仕様 (WorkloadAttestationRejected.reason) が列挙する 13 個をすべて辞書へ写せていること。
   const reasons: [string, keyof (typeof dict)['en']][] = [
     ['unregistered_issuer', 'reasonUnregisteredIssuer'],
     ['trust_bundle_disabled', 'reasonTrustBundleDisabled'],
@@ -53,6 +56,8 @@ describe('rejectionReasonLabel', () => {
     ['ambiguous_match', 'reasonAmbiguousMatch'],
     ['agent_not_active', 'reasonAgentNotActive'],
     ['agent_unbound', 'reasonAgentUnbound'],
+    ['invalid_spiffe_id', 'reasonInvalidSpiffeId'],
+    ['trust_domain_mismatch', 'reasonTrustDomainMismatch'],
   ]
 
   it.each(reasons)('translates %s in both locales', (reason, key) => {
@@ -120,6 +125,20 @@ describe('jwksSource', () => {
   it('reports that no key source is configured at all', () => {
     expect(jwksSource({ ...bundle, jwks_uri: undefined, has_inline_jwks: false }, dict.en)).toBe(
       dict.en.jwksSourceNone,
+    )
+  })
+})
+
+describe('profileLabel and issuerLabel', () => {
+  it('names the verification profile', () => {
+    expect(profileLabel(bundle, dict.en)).toBe(dict.en.profileOidc)
+    expect(profileLabel({ ...bundle, profile: 'spiffe' }, dict.ja)).toBe(dict.ja.profileSpiffe)
+  })
+
+  it('says that iss is not checked when a SPIFFE bundle has no issuer', () => {
+    expect(issuerLabel(bundle, dict.en)).toBe('https://issuer.example')
+    expect(issuerLabel({ ...bundle, profile: 'spiffe', issuer: undefined }, dict.ja)).toBe(
+      dict.ja.issuerNotChecked,
     )
   })
 })

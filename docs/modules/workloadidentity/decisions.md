@@ -63,3 +63,42 @@ X.509-SVID による mTLS など、JWT 以外のアテステーションが要�
 | 要件 | 機能仕様 |
 | --- | --- |
 | REQ-WORKLOADIDENTITY-005 | [アテステーションの交換](features/attestation-exchange.md) |
+
+## SPIFFE の規則は信頼設定の種別で選び、トークンの内容で選ばない
+
+### 背景
+
+[JWT-SVID 仕様](https://github.com/spiffe/spiffe/blob/main/standards/JWT-SVID.md)は、`sub` が SPIFFE ID であることを求め、`iss` を定めない。
+参照実装の go-spiffe は、`sub` のトラストドメインで検証に使うバンドルを選び、`kid` のないトークンを拒否し、`iss` を確かめない。
+`kid` は仕様の JOSE ヘッダーの節では任意だが、バンドルの各鍵には `kid` が必須であり、`kid` で鍵を一つに決められる。
+一方、Kubernetes の投影 ServiceAccount トークンなど OIDC 互換の JWT の `sub` は SPIFFE ID ではない。
+SPIRE は `jwt_issuer` を設定しない限り `iss` を入れないため、`iss` だけで信頼設定を探すと、デフォルトの SPIRE の JWT-SVID を検証できない。
+
+### 決定
+
+信頼設定に検証の種別（`oidc` または `spiffe`）を持たせ、`spiffe` の信頼設定にだけ SPIFFE の規則を掛ける。
+種別は登録時に決め、更新では変えない。
+`spiffe` の信頼設定の発行者は任意とし、信頼設定は `iss` で探し、なければ `sub` のトラストドメインで探す。
+トラストドメインは、テナントの `spiffe` の信頼設定の間で一意にする。
+
+### 検討した代替案
+
+| 案 | 利点 | 欠点 | 採らない理由 |
+| --- | --- | --- | --- |
+| `sub` が `spiffe://` で始まるときだけ SPIFFE の規則を掛ける | 信頼設定に項目を足さずに済む | トークンの内容で検証の厳しさが変わる | `sub` の形を選べる発行者が、規則を外せる |
+| `iss` を必須のままにし、SPIRE に `jwt_issuer` の設定を求める（Entra ID と PingFederate の形） | 信頼設定の探し方と一意性の制約を変えずに済む | デフォルトの SPIRE で使えず、SPIRE の OIDC Discovery Provider を外部から到達できる発行者として置く運用が増える | SPIFFE の信頼の単位はトラストドメインであり、`iss` はその代わりにならない。この形の使い方は `oidc` の信頼設定で引き続き使えるため、`spiffe` を足しても失われない |
+
+### 結果と再検討の条件
+
+デフォルトの SPIRE が発行した JWT-SVID を、発行者を登録せずに検証できる。
+別のトラストドメインの主体を持つトークンは、`iss` と鍵が一致しても拒否する。
+その代わり、管理者は信頼設定の登録時に種別を選び、種別を変えるには登録し直す。
+署名の前に読む `sub` を信頼設定の選択に使うため、選択と主体の特定を混同しない実装の規則（[実現方式](features/attestation-exchange.md#実現方式)）を保つ必要がある。
+X.509-SVID を受け付ける場合に、種別とトラストドメインの扱いを見直す。
+
+### 関連する要件
+
+| 要件 | 機能仕様 |
+| --- | --- |
+| REQ-WORKLOADIDENTITY-008 | [信頼設定と関連付けの管理](features/trust-configuration.md) |
+| REQ-WORKLOADIDENTITY-011 | [アテステーションの交換](features/attestation-exchange.md) |

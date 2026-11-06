@@ -14,7 +14,10 @@ import (
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
-var errDuplicateTrustBundleIssuer = errors.New("workload trust bundle issuer already registered in this tenant")
+var (
+	errDuplicateTrustBundleIssuer      = errors.New("workload trust bundle issuer already registered in this tenant")
+	errDuplicateTrustBundleTrustDomain = errors.New("spiffe workload trust bundle trust domain already registered in this tenant")
+)
 
 type WorkloadTrustBundleRepository struct {
 	mu      sync.RWMutex
@@ -58,7 +61,18 @@ func (r *WorkloadTrustBundleRepository) FindByIssuer(_ context.Context, tenantID
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, b := range r.bundles {
-		if b.TenantID == tenantID && b.Issuer == issuer {
+		if b.TenantID == tenantID && issuer != "" && b.Issuer == issuer {
+			return cloneTrustBundle(b), nil
+		}
+	}
+	return nil, nil
+}
+
+func (r *WorkloadTrustBundleRepository) FindSPIFFEByTrustDomain(_ context.Context, tenantID, trustDomain string) (*workloaddomain.WorkloadTrustBundle, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, b := range r.bundles {
+		if b.TenantID == tenantID && b.IsSPIFFE() && b.TrustDomain == trustDomain {
 			return cloneTrustBundle(b), nil
 		}
 	}
@@ -69,8 +83,14 @@ func (r *WorkloadTrustBundleRepository) Save(_ context.Context, b *workloaddomai
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, stored := range r.bundles {
-		if stored.TenantID == b.TenantID && stored.Issuer == b.Issuer && stored.ID != b.ID {
+		if stored.TenantID != b.TenantID || stored.ID == b.ID {
+			continue
+		}
+		if b.Issuer != "" && stored.Issuer == b.Issuer {
 			return errDuplicateTrustBundleIssuer
+		}
+		if b.IsSPIFFE() && stored.IsSPIFFE() && stored.TrustDomain == b.TrustDomain {
+			return errDuplicateTrustBundleTrustDomain
 		}
 	}
 	r.bundles[sharedmem.ScopedKey(b.TenantID, b.ID, kernel.DefaultTenantID)] = cloneTrustBundle(b)

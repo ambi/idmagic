@@ -8,6 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/testing_contract"
 )
 
+//spec:covers REQ-WORKLOADIDENTITY-008
 func TestPersistenceContract(t *testing.T) {
 	testing_contract.Run(t, func(t *testing.T) testing_contract.Fixture {
 		t.Helper()
@@ -16,7 +17,9 @@ func TestPersistenceContract(t *testing.T) {
 		tenantB := seedTenant(t, db)
 		return testing_contract.Fixture{
 			TrustBundles: &WorkloadTrustBundleRepository{Pool: db}, TenantA: tenantA.ID, TenantB: tenantB.ID,
-			BundleID: pgfixtures.NewUUID(t), OtherID: pgfixtures.NewUUID(t), Now: testClock(),
+			BundleID: pgfixtures.NewUUID(t), OtherID: pgfixtures.NewUUID(t),
+			SPIFFEIDs: [3]string{pgfixtures.NewUUID(t), pgfixtures.NewUUID(t), pgfixtures.NewUUID(t)},
+			Now:       testClock(),
 		}
 	})
 }

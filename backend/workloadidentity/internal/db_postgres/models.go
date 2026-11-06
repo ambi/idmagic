@@ -26,8 +26,9 @@ type WorkloadTrustBundle struct {
 	ID                        string
 	TenantID                  string
 	Name                      string
+	Profile                   string
 	TrustDomain               string
-	Issuer                    string
+	Issuer                    pgtype.Text
 	JwksUri                   pgtype.Text
 	Jwks                      []byte
 	AcceptedAudiences         []byte

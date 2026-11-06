@@ -75,7 +75,7 @@ func newTrustBundle(t *testing.T, tenantID string) *workloaddomain.WorkloadTrust
 	now := testClock()
 	uri := "https://issuer." + uniqueID("example") + ".test/jwks.json"
 	return &workloaddomain.WorkloadTrustBundle{
-		ID: newUUID(t), TenantID: tenantID, Name: uniqueID("bundle"), TrustDomain: "example.org",
+		ID: newUUID(t), TenantID: tenantID, Name: uniqueID("bundle"), Profile: workloaddomain.WorkloadTrustBundleProfileOIDC, TrustDomain: "example.org",
 		Issuer: "https://issuer." + uniqueID("example") + ".test", JWKSURI: &uri,
 		AcceptedAudiences: []string{"https://idmagic.example/token"}, MaxSubjectTokenTTLSeconds: 3600,
 		Status: workloaddomain.WorkloadTrustBundleStatusEnabled, CreatedAt: now,

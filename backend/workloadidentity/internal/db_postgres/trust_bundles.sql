@@ -1,22 +1,27 @@
 -- name: ListWorkloadTrustBundlesByTenant :many
-SELECT id,tenant_id,name,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
+SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
 max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
 FROM workload_trust_bundles WHERE tenant_id=$1 ORDER BY name;
 
 -- name: FindWorkloadTrustBundleByID :one
-SELECT id,tenant_id,name,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
+SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
 max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
 FROM workload_trust_bundles WHERE tenant_id=$1 AND id=$2;
 
 -- name: FindWorkloadTrustBundleByIssuer :one
-SELECT id,tenant_id,name,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
+SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
 max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
 FROM workload_trust_bundles WHERE tenant_id=$1 AND issuer=$2;
 
+-- name: FindSPIFFEWorkloadTrustBundleByTrustDomain :one
+SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
+max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
+FROM workload_trust_bundles WHERE tenant_id=$1 AND profile='spiffe' AND trust_domain=$2;
+
 -- name: SaveWorkloadTrustBundle :exec
-INSERT INTO workload_trust_bundles (id,tenant_id,name,trust_domain,issuer,jwks_uri,jwks,
+INSERT INTO workload_trust_bundles (id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,
  accepted_audiences,max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,jwks_uri=EXCLUDED.jwks_uri,jwks=EXCLUDED.jwks,
  accepted_audiences=EXCLUDED.accepted_audiences,
  max_subject_token_ttl_seconds=EXCLUDED.max_subject_token_ttl_seconds,status=EXCLUDED.status,

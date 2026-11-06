@@ -13,12 +13,13 @@ import (
 // usecases layer never imports the shared JOSE/crypto adapter directly.
 type WorkloadSVIDVerifier interface {
 	// Verify resolves signing keys via fetchJWKS (cached with last-known-good
-	// fallback, keyed by bundleID), then checks signature/iss/aud/exp/TTL.
+	// fallback, keyed by the bundle ID), then checks the JOSE header, signature,
+	// iss, aud, exp and TTL by the bundle's profile, issuer, audiences and max TTL.
+	// The SPIFFE ID of sub is left to the caller, which owns the value type.
 	Verify(
 		ctx context.Context,
-		bundleID, subjectToken, issuer string,
-		acceptedAudiences []string,
-		maxTTL time.Duration,
+		bundle *workloaddomain.WorkloadTrustBundle,
+		subjectToken string,
 		fetchJWKS func(ctx context.Context) ([]map[string]any, error),
 		now time.Time,
 	) (*workloaddomain.WorkloadSVIDClaims, error)

@@ -1079,8 +1079,11 @@ CREATE TABLE workload_trust_bundles (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
     name TEXT NOT NULL,
+    -- wi-77559: 検証の種別。既存の行は oidc とみなす。spiffe では発行者を省ける。
+    profile TEXT NOT NULL DEFAULT 'oidc'
+        CHECK (profile IN ('oidc', 'spiffe')),
     trust_domain TEXT NOT NULL,
-    issuer TEXT NOT NULL,
+    issuer TEXT,
     jwks_uri TEXT,
     jwks JSONB,
     accepted_audiences JSONB NOT NULL,
@@ -1096,8 +1099,13 @@ CREATE TABLE workload_trust_bundles (
     CONSTRAINT workload_trust_bundles_tenant_issuer_key UNIQUE (tenant_id, issuer),
     CONSTRAINT workload_trust_bundles_name_length CHECK (char_length(name) BETWEEN 1 AND 100),
     CONSTRAINT workload_trust_bundles_trust_domain_length
-        CHECK (char_length(trust_domain) BETWEEN 1 AND 255)
+        CHECK (char_length(trust_domain) BETWEEN 1 AND 255),
+    CONSTRAINT workload_trust_bundles_oidc_issuer_required
+        CHECK (profile <> 'oidc' OR issuer IS NOT NULL)
 );
+
+CREATE UNIQUE INDEX workload_trust_bundles_tenant_spiffe_trust_domain_key
+    ON workload_trust_bundles (tenant_id, trust_domain) WHERE profile = 'spiffe';
 
 CREATE TABLE agent_workload_bindings (
     id UUID PRIMARY KEY,

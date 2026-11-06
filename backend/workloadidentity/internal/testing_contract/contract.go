@@ -17,7 +17,9 @@ type Fixture struct {
 	TenantB      string
 	BundleID     string
 	OtherID      string
-	Now          time.Time
+	// SPIFFEIDs は spiffe の検査に使う、BundleID と OtherID 以外の三つの識別子。
+	SPIFFEIDs [3]string
+	Now       time.Time
 }
 
 type NewFixture func(t *testing.T) Fixture
@@ -27,7 +29,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	f := newFixture(t)
 	ctx := context.Background()
 	bundle := &domain.WorkloadTrustBundle{
-		ID: f.BundleID, TenantID: f.TenantA, Name: "Production", TrustDomain: "example.test",
+		ID: f.BundleID, TenantID: f.TenantA, Name: "Production", Profile: domain.WorkloadTrustBundleProfileOIDC, TrustDomain: "example.test",
 		Issuer: "https://issuer.example.test", JWKS: map[string]any{"keys": []any{}},
 		AcceptedAudiences: []string{"idmagic"}, MaxSubjectTokenTTLSeconds: 300,
 		Status: domain.WorkloadTrustBundleStatusEnabled, CreatedAt: f.Now,
@@ -92,5 +94,64 @@ func Run(t *testing.T, newFixture NewFixture) {
 	}
 	if deleted, err := f.TrustBundles.FindByID(ctx, f.TenantA, f.BundleID); err != nil || deleted != nil {
 		t.Fatalf("FindByID after Delete = (%+v, %v)", deleted, err)
+	}
+	runSPIFFE(t, f)
+}
+
+// runSPIFFE は spiffe の信頼設定の保存と探索を確かめる。発行者のない行を保存して読み戻せ、
+// トラストドメインで探せ、同じテナントの spiffe の間だけトラストドメインが一意である。
+func runSPIFFE(t *testing.T, f Fixture) {
+	t.Helper()
+	ctx := context.Background()
+	oidc := &domain.WorkloadTrustBundle{
+		ID: f.SPIFFEIDs[0], TenantID: f.TenantA, Name: "OIDC with the same label",
+		Profile: domain.WorkloadTrustBundleProfileOIDC, TrustDomain: "spiffe.example.test",
+		Issuer: "https://oidc.example.test", JWKS: map[string]any{"keys": []any{}},
+		AcceptedAudiences: []string{"idmagic"}, MaxSubjectTokenTTLSeconds: 300,
+		Status: domain.WorkloadTrustBundleStatusEnabled, CreatedAt: f.Now,
+	}
+	if err := f.TrustBundles.Save(ctx, oidc); err != nil {
+		t.Fatalf("Save oidc: %v", err)
+	}
+	if found, err := f.TrustBundles.FindSPIFFEByTrustDomain(ctx, f.TenantA, "spiffe.example.test"); err != nil || found != nil {
+		t.Fatalf("oidc bundle found by trust domain = (%+v, %v)", found, err)
+	}
+	spiffe := &domain.WorkloadTrustBundle{
+		ID: f.SPIFFEIDs[1], TenantID: f.TenantA, Name: "SPIRE",
+		Profile: domain.WorkloadTrustBundleProfileSPIFFE, TrustDomain: "spiffe.example.test",
+		JWKS: map[string]any{"keys": []any{}}, AcceptedAudiences: []string{"idmagic"},
+		MaxSubjectTokenTTLSeconds: 300, Status: domain.WorkloadTrustBundleStatusEnabled, CreatedAt: f.Now,
+	}
+	if err := f.TrustBundles.Save(ctx, spiffe); err != nil {
+		t.Fatalf("Save spiffe without issuer: %v", err)
+	}
+	found, err := f.TrustBundles.FindSPIFFEByTrustDomain(ctx, f.TenantA, "spiffe.example.test")
+	if err != nil || found == nil || found.ID != f.SPIFFEIDs[1] || found.Profile != domain.WorkloadTrustBundleProfileSPIFFE || found.Issuer != "" {
+		t.Fatalf("FindSPIFFEByTrustDomain = (%+v, %v)", found, err)
+	}
+	if byEmptyIssuer, err := f.TrustBundles.FindByIssuer(ctx, f.TenantA, ""); err != nil || byEmptyIssuer != nil {
+		t.Fatalf("FindByIssuer(\"\") = (%+v, %v)", byEmptyIssuer, err)
+	}
+	if leaked, err := f.TrustBundles.FindSPIFFEByTrustDomain(ctx, f.TenantB, "spiffe.example.test"); err != nil || leaked != nil {
+		t.Fatalf("other tenant FindSPIFFEByTrustDomain = (%+v, %v)", leaked, err)
+	}
+	duplicate := *spiffe
+	duplicate.ID, duplicate.Name = f.SPIFFEIDs[2], "SPIRE again"
+	if err := f.TrustBundles.Save(ctx, &duplicate); err == nil {
+		t.Fatal("duplicate spiffe trust domain within one tenant was accepted")
+	}
+	otherTenant := duplicate
+	otherTenant.TenantID = f.TenantB
+	if err := f.TrustBundles.Save(ctx, &otherTenant); err != nil {
+		t.Fatalf("same spiffe trust domain in another tenant: %v", err)
+	}
+	// 発行者のない spiffe の行が二つあっても、空の発行者を衝突として数えない。
+	second := *spiffe
+	second.ID, second.Name, second.TrustDomain = f.SPIFFEIDs[2], "SPIRE B", "b.example.test"
+	if err := f.TrustBundles.Delete(ctx, f.TenantB, f.SPIFFEIDs[2]); err != nil {
+		t.Fatalf("Delete other tenant: %v", err)
+	}
+	if err := f.TrustBundles.Save(ctx, &second); err != nil {
+		t.Fatalf("second spiffe bundle without issuer: %v", err)
 	}
 }

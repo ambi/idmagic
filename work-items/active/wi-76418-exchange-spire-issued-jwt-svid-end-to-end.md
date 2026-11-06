@@ -16,7 +16,7 @@ spec_impact: { kind: none, reason: "REQ-WORKLOADIDENTITY-001 から 007 の規�
 
 アテステーションの交換のテストは、テスト内で作った鍵と JWT を使う。
 `spiffe://` 形式の値は出てくるが、SPIRE が発行した JWT-SVID と、SPIRE の Bundle Endpoint が返すバンドルでの確認はない。
-[wi-77559](wi-77559-verify-jwt-svid-against-spiffe-rules.md) と [wi-88550](wi-88550-read-spiffe-bundle-endpoint-format.md) が足す規則は、実物の形（`iss` の有無、`kid`、鍵の `use`、`spiffe_refresh_hint`）に依存するため、テスト用に作った値だけでは解釈の誤りを検出できない。
+[wi-77559](../done/wi-77559-verify-jwt-svid-against-spiffe-rules.md) と [wi-88550](wi-88550-read-spiffe-bundle-endpoint-format.md) が足す規則は、実物の形（`iss` の有無、`kid`、鍵の `use`、`spiffe_refresh_hint`）に依存するため、テスト用に作った値だけでは解釈の誤りを検出できない。
 
 ## 対象範囲
 

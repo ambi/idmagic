@@ -47,8 +47,9 @@ func timestamptzOrNilPtr(t *time.Time) pgtype.Timestamptz {
 
 func trustBundleFromRow(row *WorkloadTrustBundle) (*workloaddomain.WorkloadTrustBundle, error) {
 	b := &workloaddomain.WorkloadTrustBundle{
-		ID: row.ID, TenantID: row.TenantID, Name: row.Name, TrustDomain: row.TrustDomain,
-		Issuer: row.Issuer, JWKSURI: textPtrOrNil(row.JwksUri),
+		ID: row.ID, TenantID: row.TenantID, Name: row.Name,
+		Profile:     workloaddomain.WorkloadTrustBundleProfile(row.Profile),
+		TrustDomain: row.TrustDomain, Issuer: row.Issuer.String, JWKSURI: textPtrOrNil(row.JwksUri),
 		MaxSubjectTokenTTLSeconds: int(row.MaxSubjectTokenTtlSeconds),
 		Status:                    workloaddomain.WorkloadTrustBundleStatus(row.Status),
 		CreatedAt:                 row.CreatedAt, UpdatedAt: &row.UpdatedAt,
@@ -95,7 +96,18 @@ func (r *WorkloadTrustBundleRepository) FindByID(ctx context.Context, tenantID, 
 }
 
 func (r *WorkloadTrustBundleRepository) FindByIssuer(ctx context.Context, tenantID, issuer string) (*workloaddomain.WorkloadTrustBundle, error) {
-	row, err := New(r.Pool).FindWorkloadTrustBundleByIssuer(ctx, FindWorkloadTrustBundleByIssuerParams{TenantID: tenantID, Issuer: issuer})
+	row, err := New(r.Pool).FindWorkloadTrustBundleByIssuer(ctx, FindWorkloadTrustBundleByIssuerParams{TenantID: tenantID, Issuer: pgtype.Text{String: issuer, Valid: issuer != ""}})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return trustBundleFromRow(row)
+}
+
+func (r *WorkloadTrustBundleRepository) FindSPIFFEByTrustDomain(ctx context.Context, tenantID, trustDomain string) (*workloaddomain.WorkloadTrustBundle, error) {
+	row, err := New(r.Pool).FindSPIFFEWorkloadTrustBundleByTrustDomain(ctx, FindSPIFFEWorkloadTrustBundleByTrustDomainParams{TenantID: tenantID, TrustDomain: trustDomain})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -126,7 +138,8 @@ func (r *WorkloadTrustBundleRepository) Save(ctx context.Context, b *workloaddom
 		updatedAt = *b.UpdatedAt
 	}
 	return New(r.Pool).SaveWorkloadTrustBundle(ctx, SaveWorkloadTrustBundleParams{
-		ID: b.ID, TenantID: b.TenantID, Name: b.Name, TrustDomain: b.TrustDomain, Issuer: b.Issuer,
+		ID: b.ID, TenantID: b.TenantID, Name: b.Name, Profile: string(b.Profile), TrustDomain: b.TrustDomain,
+		Issuer:  pgtype.Text{String: b.Issuer, Valid: b.Issuer != ""},
 		JwksUri: textOrNilPtr(b.JWKSURI), Jwks: jwksJSON, AcceptedAudiences: audiencesJSON,
 		MaxSubjectTokenTtlSeconds: int32(b.MaxSubjectTokenTTLSeconds), //nolint:gosec // G115: TTL seconds is admin-configured and validated positive, well under int32 max
 		Status:                    string(b.Status),

@@ -51,7 +51,7 @@ func workloadContractJSON(t *testing.T, response *httptest.ResponseRecorder, sta
 func assertWorkloadBundle(t *testing.T, body map[string]any, name, status string) string {
 	t.Helper()
 	want := map[string]any{
-		"tenant_id": tenancydomain.DefaultTenantID, "name": name, "status": status,
+		"tenant_id": tenancydomain.DefaultTenantID, "name": name, "status": status, "profile": "oidc",
 		"trust_domain": "issuer.example", "issuer": "https://issuer.example",
 		"has_inline_jwks": true, "accepted_audiences": []any{"idmagic"},
 		"max_subject_token_ttl_seconds": float64(3600),
@@ -82,6 +82,7 @@ func assertWorkloadNoContent(t *testing.T, response *httptest.ResponseRecorder) 
 	}
 }
 
+//
 //verify:operation RegisterWorkloadTrustBundle: JSON 要求を受けた 201 本文の設定と既定 TTL、enabled を照合する。
 //verify:operation GetWorkloadTrustBundle: 登録後の GET の 200 本文が保存した設定と状態を返すことを照合する。
 //verify:operation UpdateWorkloadTrustBundle: PATCH の 200 本文は名前だけを変え、発行者とトラストドメインを維持する。
@@ -89,6 +90,7 @@ func assertWorkloadNoContent(t *testing.T, response *httptest.ResponseRecorder) 
 //verify:operation EnableWorkloadTrustBundle: 再有効化は空の 204 を返し、GET の本文が enabled に戻る。
 //verify:operation DeleteWorkloadTrustBundle: 削除は空の 204 を返し、一覧から設定が消える。
 //verify:operation RefreshWorkloadTrustBundleJWKS: 再取得の 200 本文の reachable、鍵数とキャッシュ時刻を照合し、GET でも保存時刻を確認する。
+//spec:covers REQ-WORKLOADIDENTITY-008
 func TestWorkloadTrustBundleHTTPContracts(t *testing.T) {
 	send := workloadContractRequests(t)
 	created := workloadContractJSON(t, send("admin", http.MethodPost, workloadBundlesPath, workloadBundleInput), http.StatusCreated)
@@ -114,10 +116,11 @@ func TestWorkloadTrustBundleHTTPContracts(t *testing.T) {
 	if got["jwks_cached_at"] != refresh["jwks_cached_at"] {
 		t.Fatalf("GET cache timestamp=%v, want %v", got["jwks_cached_at"], refresh["jwks_cached_at"])
 	}
+	assertSPIFFEWorkloadBundleContracts(t, send)
 	assertWorkloadNoContent(t, send("admin", http.MethodDelete, path, ""))
 	listing := workloadContractJSON(t, send("admin", http.MethodGet, workloadBundlesPath, ""), http.StatusOK)
-	if !reflect.DeepEqual(listing["trust_bundles"], []any{}) {
-		t.Fatalf("deleted bundle remains: %v", listing)
+	if bundles, _ := listing["trust_bundles"].([]any); len(bundles) != 1 {
+		t.Fatalf("deleted bundle remains or spiffe bundle is missing: %v", listing)
 	}
 }
 
@@ -223,5 +226,34 @@ func TestWorkloadIdentityMissingResourceContracts(t *testing.T) {
 	listing := workloadContractJSON(t, send("admin", http.MethodGet, workloadBundlesPath, ""), http.StatusOK)
 	if !reflect.DeepEqual(listing["trust_bundles"], []any{}) {
 		t.Fatalf("refused requests created a bundle: %v", listing)
+	}
+}
+
+// assertSPIFFEWorkloadBundleContracts は spiffe の信頼設定を発行者なしで登録でき、
+// トラストドメインの構文と一意性、未知の種別が登録の時点で拒否されることを確かめる。
+func assertSPIFFEWorkloadBundleContracts(t *testing.T, send func(sub, method, path, body string) *httptest.ResponseRecorder) {
+	t.Helper()
+	const spiffeInput = `{"name":"spire","profile":"spiffe","trust_domain":"example.org","accepted_audiences":["idmagic"],"jwks":{"keys":[{"kid":"k","kty":"RSA","n":"AQAB","e":"AQAB"}]}}`
+	created := workloadContractJSON(t, send("admin", http.MethodPost, workloadBundlesPath, spiffeInput), http.StatusCreated)
+	if created["profile"] != "spiffe" || created["trust_domain"] != "example.org" {
+		t.Fatalf("spiffe bundle = %v", created)
+	}
+	if _, present := created["issuer"]; present {
+		t.Fatalf("spiffe bundle without issuer returns issuer: %v", created)
+	}
+	for _, c := range []struct {
+		body   string
+		status int
+		code   string
+	}{
+		{strings.Replace(spiffeInput, `"spire"`, `"spire-2"`, 1), http.StatusConflict, "workload_trust_bundle_trust_domain_conflict"},
+		{strings.Replace(spiffeInput, `"example.org"`, `"Example.org"`, 1), http.StatusUnprocessableEntity, "workload_trust_bundle_invalid_trust_domain"},
+		{strings.Replace(spiffeInput, `"spiffe"`, `"x509"`, 1), http.StatusBadRequest, "invalid_request"},
+		{strings.Replace(spiffeInput, `"spiffe"`, `"oidc"`, 1), http.StatusUnprocessableEntity, "workload_trust_bundle_issuer_required"},
+	} {
+		body := workloadContractJSON(t, send("admin", http.MethodPost, workloadBundlesPath, c.body), c.status)
+		if body["type"] != "urn:idmagic:error:"+c.code {
+			t.Errorf("POST %s: type=%v, want %s", c.body, body["type"], c.code)
+		}
 	}
 }

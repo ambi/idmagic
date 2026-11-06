@@ -5,6 +5,7 @@
 自律エージェントの実行環境に対するワークロードアイデンティティフェデレーションを担う。
 テナントが登録した外部のアテステーションの発行者の信頼設定（`WorkloadTrustBundle`）と、外部の主体を既存の `Agent` に対応付ける `AgentWorkloadBinding` を扱う。
 主なアテステーションの形式は、Kubernetes の投影 ServiceAccount トークン、クラウドのインスタンスアイデンティティトークン、SPIFFE JWT-SVID などの OIDC 互換の JWT である。
+SPIFFE JWT-SVID は、種別が `spiffe` の信頼設定で、SPIFFE の規則を足して検証する。
 
 IdMagic は SPIRE のサーバーやエージェントを同梱、運用せず、外部のアテステーションを検証する RP として動作する。
 検証したアテステーションは OAuth2 の Token Exchange のグラント（RFC 8693）の subject として扱い、長期のシークレットを配布する専用の資格情報の経路は設けない。

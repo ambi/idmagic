@@ -48,7 +48,9 @@ func GetWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps,
 }
 
 type RegisterWorkloadTrustBundleInput struct {
-	Name                      string
+	Name string
+	// Profile は空なら oidc にする。
+	Profile                   domain.WorkloadTrustBundleProfile
 	TrustDomain               string
 	Issuer                    string
 	JWKSURI                   *string
@@ -63,9 +65,20 @@ func RegisterWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentity
 	if name == "" {
 		return nil, ErrTrustBundleNameRequired
 	}
+	profile := in.Profile
+	if profile == "" {
+		profile = domain.WorkloadTrustBundleProfileOIDC
+	}
+	if !profile.Valid() {
+		return nil, ErrTrustBundleInvalidProfile
+	}
+	trustDomain := strings.TrimSpace(in.TrustDomain)
 	issuer := strings.TrimSpace(in.Issuer)
-	if issuer == "" {
+	if issuer == "" && profile != domain.WorkloadTrustBundleProfileSPIFFE {
 		return nil, ErrTrustBundleIssuerRequired
+	}
+	if profile == domain.WorkloadTrustBundleProfileSPIFFE && !domain.ValidTrustDomain(trustDomain) {
+		return nil, ErrTrustBundleInvalidTrustDomain
 	}
 	if in.JWKSURI == nil && in.JWKS == nil {
 		return nil, ErrTrustBundleMissingJWKS
@@ -76,6 +89,15 @@ func RegisterWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentity
 	if err := ensureTrustBundleNameAndIssuerAvailable(ctx, deps, tenantID, name, issuer, ""); err != nil {
 		return nil, err
 	}
+	if profile == domain.WorkloadTrustBundleProfileSPIFFE {
+		existing, err := deps.TrustBundleRepo.FindSPIFFEByTrustDomain(ctx, tenantID, trustDomain)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil {
+			return nil, ErrTrustBundleTrustDomainConflict
+		}
+	}
 	ttl := 3600
 	if in.MaxSubjectTokenTTLSeconds != nil && *in.MaxSubjectTokenTTLSeconds > 0 {
 		ttl = *in.MaxSubjectTokenTTLSeconds
@@ -85,7 +107,7 @@ func RegisterWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentity
 		return nil, err
 	}
 	bundle := &domain.WorkloadTrustBundle{
-		ID: id, TenantID: tenantID, Name: name, TrustDomain: strings.TrimSpace(in.TrustDomain),
+		ID: id, TenantID: tenantID, Name: name, Profile: profile, TrustDomain: trustDomain,
 		Issuer: issuer, JWKSURI: in.JWKSURI, JWKS: in.JWKS, AcceptedAudiences: in.AcceptedAudiences,
 		MaxSubjectTokenTTLSeconds: ttl, Status: domain.WorkloadTrustBundleStatusEnabled, CreatedAt: now,
 	}
@@ -108,7 +130,7 @@ type UpdateWorkloadTrustBundleInput struct {
 }
 
 // UpdateWorkloadTrustBundle は name / jwks_uri / jwks / accepted_audiences /
-// max_subject_token_ttl_seconds を更新する。issuer / trust_domain は不変。
+// max_subject_token_ttl_seconds を更新する。profile / issuer / trust_domain は不変。
 func UpdateWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, in UpdateWorkloadTrustBundleInput, now time.Time) (*domain.WorkloadTrustBundle, error) {
 	tenantID := tenantports.TenantID(ctx)
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantID, id)
@@ -280,7 +302,7 @@ func ensureTrustBundleNameAndIssuerAvailable(ctx context.Context, deps AdminWork
 		if strings.EqualFold(b.Name, name) {
 			return ErrTrustBundleNameConflict
 		}
-		if b.Issuer == issuer {
+		if issuer != "" && b.Issuer == issuer {
 			return ErrTrustBundleIssuerConflict
 		}
 	}

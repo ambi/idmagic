@@ -13,6 +13,9 @@
 ## モデル
 
 信頼設定は、JWKS の取得元（`jwks_uri`）かインラインの `jwks` のどちらかを持つ。
+信頼設定は、検証の種別として `oidc` か `spiffe` を持つ。
+`oidc` の信頼設定は発行者を必ず持ち、トラストドメインは運用者のラベルである。
+`spiffe` の信頼設定はトラストドメインを SPIFFE のトラストドメインとして持ち、発行者は任意である。
 JWKS の再取得は到達確認を行い、成功時に取得時刻を記録する。
 
 ## 状態遷移
@@ -77,10 +80,11 @@ JWKS の再取得は到達確認を行い、成功時に取得時刻を記録す
 
 #### REQ-WORKLOADIDENTITY-008 管理者は信頼設定を登録・無効化・再有効化できる
 
-- 管理者が信頼設定を登録したとき、WorkloadIdentity は、名前と発行者を前後の空白を除いて保存し、`enabled` の信頼設定を作り、201 と信頼設定を返し、`WorkloadTrustBundleConfigured` を発行する。
+- 管理者が信頼設定を登録したとき、WorkloadIdentity は、名前、トラストドメイン、発行者を前後の空白を除いて保存し、種別を保存し、`enabled` の信頼設定を作り、201 と信頼設定を返し、`WorkloadTrustBundleConfigured` を発行する。
+- 管理者が種別を指定せずに信頼設定を登録したとき、WorkloadIdentity は、種別を `oidc` にする。
 - 管理者が最大 TTL を指定せずに信頼設定を登録したとき、WorkloadIdentity は、最大 TTL を 3,600 秒にする。
 - 管理者が信頼設定の名前、`jwks_uri`、`jwks`、受理する audience、最大 TTL を更新したとき、WorkloadIdentity は、指定した項目だけを保存し、200 と信頼設定を返し、`WorkloadTrustBundleUpdated` を発行する。
-- 管理者が信頼設定を更新したとき、WorkloadIdentity は、発行者とトラストドメインを変えない。
+- 管理者が信頼設定を更新したとき、WorkloadIdentity は、種別、発行者、トラストドメインを変えない。
 - 管理者がどの項目も指定せずに信頼設定を更新したとき、WorkloadIdentity は、200 と信頼設定を返し、イベントを発行しない。
 - 管理者が信頼設定を無効化または再有効化したとき、WorkloadIdentity は、状態を `disabled` または `enabled` にし、204 を返し、`WorkloadTrustBundleDisabled` または `WorkloadTrustBundleEnabled` を発行する。
 - 信頼設定がすでにその状態の間、管理者が無効化または再有効化を要求したとき、WorkloadIdentity は、204 を返し、イベントを発行しない。
@@ -89,12 +93,14 @@ JWKS の再取得は到達確認を行い、成功時に取得時刻を記録す
 - JWKS に到達できた間、管理者が JWKS の再取得を要求したとき、WorkloadIdentity は、再取得の時刻を `jwks_cached_at` に記録する。
 - JWKS に到達できない場合、WorkloadIdentity は、再取得をエラーにせず、`reachable` を `false` として返す。
 - 名前のない登録または更新を要求された場合、WorkloadIdentity は、422 と `workload_trust_bundle_name_required` で拒否する。
-- 発行者のない登録を要求された場合、WorkloadIdentity は、422 と `workload_trust_bundle_issuer_required` で拒否する。
+- `oidc` の信頼設定では、発行者のない登録を要求された場合、WorkloadIdentity は、422 と `workload_trust_bundle_issuer_required` で拒否する。
+- `spiffe` の信頼設定では、トラストドメインが SPIFFE のトラストドメインの構文を満たさない登録を要求された場合、WorkloadIdentity は、422 と `workload_trust_bundle_invalid_trust_domain` で拒否する。
 - `jwks_uri` と `jwks` のどちらもない登録を要求された場合、WorkloadIdentity は、422 と `workload_trust_bundle_jwks_required` で拒否する。
 - 受理する audience が空の登録または更新を要求された場合、WorkloadIdentity は、422 と `workload_trust_bundle_audiences_required` で拒否する。
 - 0 以下の最大 TTL の更新を要求された場合、WorkloadIdentity は、422 と `workload_trust_bundle_invalid_ttl` で拒否する。
 - 同じテナントのほかの信頼設定と同じ名前を指定された場合、WorkloadIdentity は、409 と `workload_trust_bundle_name_conflict` で拒否する。
 - 同じテナントのほかの信頼設定と同じ発行者を指定された場合、WorkloadIdentity は、409 と `workload_trust_bundle_issuer_conflict` で拒否する。
+- `spiffe` の信頼設定では、同じテナントのほかの `spiffe` の信頼設定と同じトラストドメインを指定された場合、WorkloadIdentity は、409 と `workload_trust_bundle_trust_domain_conflict` で拒否する。
 - 存在しないか別のテナントの信頼設定を指定された場合、WorkloadIdentity は、404 と `workload_trust_bundle_not_found` で拒否する。
 - 登録と更新を拒否した場合、WorkloadIdentity は、信頼設定を変えず、イベントを発行しない。
 - **例**：EX-WORKLOADIDENTITY-008-01、EX-WORKLOADIDENTITY-008-02、EX-WORKLOADIDENTITY-008-03

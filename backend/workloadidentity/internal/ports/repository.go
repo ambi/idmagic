@@ -17,6 +17,10 @@ type WorkloadTrustBundleRepository interface {
 	// テナント内で一意)。無ければ nil を返す。VerifyWorkloadAttestation の起点となる
 	// issuer 解決に使う (未登録 issuer は fail-closed で拒否する)。
 	FindByIssuer(ctx context.Context, tenantID, issuer string) (*workloaddomain.WorkloadTrustBundle, error)
+	// FindSPIFFEByTrustDomain はテナント内で trustDomain を持つ spiffe の
+	// WorkloadTrustBundle を返す (spiffe の信頼設定の間でトラストドメインは一意)。
+	// oidc の信頼設定は、同じラベルを持っていても返さない。無ければ nil を返す。
+	FindSPIFFEByTrustDomain(ctx context.Context, tenantID, trustDomain string) (*workloaddomain.WorkloadTrustBundle, error)
 	Save(ctx context.Context, bundle *workloaddomain.WorkloadTrustBundle) error
 	// RecordJWKSFetched は取得時刻だけを記録し、取得中の設定変更を保持する。
 	// 存在しない行は作らない。

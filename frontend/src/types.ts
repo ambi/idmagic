@@ -661,14 +661,19 @@ export type ReportedTools = {
   changes?: ReportedToolChanges
 }
 
+// WorkloadTrustBundleProfile は信頼設定が掛ける検証の種別。登録の後は変わらない。
+export type WorkloadTrustBundleProfile = 'oidc' | 'spiffe'
+
 // WorkloadTrustBundle はテナントが登録する外部アテステーション発行者の信頼設定。
 // inline JWKS の本体は API が返さないため、設定済みかどうかだけを has_inline_jwks で受け取る。
 export type WorkloadTrustBundle = {
   id: string
   tenant_id: string
   name: string
+  profile: WorkloadTrustBundleProfile
   trust_domain: string
-  issuer: string
+  // spiffe の信頼設定は発行者を省ける。
+  issuer?: string
   jwks_uri?: string
   has_inline_jwks: boolean
   accepted_audiences: string[]

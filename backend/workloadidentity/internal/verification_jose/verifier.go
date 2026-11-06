@@ -23,17 +23,25 @@ func NewVerifier() *Verifier {
 
 func (v *Verifier) Verify(
 	ctx context.Context,
-	bundleID, subjectToken, issuer string,
-	acceptedAudiences []string,
-	maxTTL time.Duration,
+	bundle *workloaddomain.WorkloadTrustBundle,
+	subjectToken string,
 	fetchJWKS func(ctx context.Context) ([]map[string]any, error),
 	now time.Time,
 ) (*workloaddomain.WorkloadSVIDClaims, error) {
-	keys, _, err := v.cache.Get(ctx, bundleID, fetchJWKS, now)
+	keys, _, err := v.cache.Get(ctx, bundle.ID, fetchJWKS, now)
 	if err != nil {
 		return nil, workloaddomain.ErrSVIDKeysUnavailable
 	}
-	claims, err := tokens_jose.VerifyWorkloadSVID(subjectToken, keys, issuer, acceptedAudiences, maxTTL, now)
+	profile := tokens_jose.WorkloadSVIDProfileOIDC
+	if bundle.IsSPIFFE() {
+		profile = tokens_jose.WorkloadSVIDProfileSPIFFE
+	}
+	claims, err := tokens_jose.VerifyWorkloadSVID(subjectToken, keys, tokens_jose.WorkloadSVIDExpectation{
+		Profile:           profile,
+		Issuer:            bundle.Issuer,
+		AcceptedAudiences: bundle.AcceptedAudiences,
+		MaxTTL:            time.Duration(bundle.MaxSubjectTokenTTLSeconds) * time.Second,
+	}, now)
 	if err != nil {
 		return nil, translateError(err)
 	}

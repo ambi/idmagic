@@ -34,8 +34,9 @@ export function AdminWorkloadTrustBundleCreatePage({
     try {
       await registerWorkloadTrustBundle(csrfToken, {
         name: form.name,
+        profile: form.profile,
         trust_domain: form.trustDomain,
-        issuer: form.issuer,
+        ...(form.issuer ? { issuer: form.issuer } : {}),
         ...(form.jwksUri ? { jwks_uri: form.jwksUri } : {}),
         ...(jwks.value ? { jwks: jwks.value } : {}),
         accepted_audiences: parseAudiences(form.acceptedAudiences),

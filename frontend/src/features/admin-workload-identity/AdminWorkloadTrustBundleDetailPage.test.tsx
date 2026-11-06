@@ -19,6 +19,7 @@ const bundle: WorkloadTrustBundle = {
   id: 'bundle-1',
   tenant_id: 'tenant-a',
   name: 'prod-cluster',
+  profile: 'oidc',
   trust_domain: 'example.org',
   issuer: 'https://issuer.example',
   jwks_uri: 'https://issuer.example/keys',

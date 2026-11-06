@@ -13,6 +13,7 @@ func validTrustBundle() workloaddomain.WorkloadTrustBundle {
 		ID:                        "bundle_1",
 		TenantID:                  "tenant-a",
 		Name:                      "prod-cluster",
+		Profile:                   workloaddomain.WorkloadTrustBundleProfileOIDC,
 		TrustDomain:               "example.org",
 		Issuer:                    "https://issuer.example",
 		JWKSURI:                   new("https://issuer.example/.well-known/jwks.json"),
@@ -42,6 +43,21 @@ func TestTrustBundleValidateHappyAndFailure(t *testing.T) {
 		{"empty accepted_audiences", func(b *workloaddomain.WorkloadTrustBundle) { b.AcceptedAudiences = nil }, true},
 		{"zero ttl", func(b *workloaddomain.WorkloadTrustBundle) { b.MaxSubjectTokenTTLSeconds = 0 }, true},
 		{"bad status", func(b *workloaddomain.WorkloadTrustBundle) { b.Status = workloaddomain.WorkloadTrustBundleStatus("x") }, true},
+		{"missing profile", func(b *workloaddomain.WorkloadTrustBundle) { b.Profile = "" }, true},
+		{"unknown profile", func(b *workloaddomain.WorkloadTrustBundle) { b.Profile = "x509" }, true},
+		{"oidc trust domain is a free label", func(b *workloaddomain.WorkloadTrustBundle) { b.TrustDomain = "Prod Cluster" }, false},
+		{"spiffe without issuer", func(b *workloaddomain.WorkloadTrustBundle) {
+			b.Profile = workloaddomain.WorkloadTrustBundleProfileSPIFFE
+			b.Issuer = ""
+		}, false},
+		{"spiffe issuer not https", func(b *workloaddomain.WorkloadTrustBundle) {
+			b.Profile = workloaddomain.WorkloadTrustBundleProfileSPIFFE
+			b.Issuer = "http://issuer.example"
+		}, true},
+		{"spiffe invalid trust domain", func(b *workloaddomain.WorkloadTrustBundle) {
+			b.Profile = workloaddomain.WorkloadTrustBundleProfileSPIFFE
+			b.TrustDomain = "Example.org"
+		}, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

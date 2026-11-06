@@ -1,7 +1,7 @@
 import { defineDictionary } from '../../lib/i18n'
 
 // reason* の鍵は spec/modules/workloadidentity/models.tsp の WorkloadAttestationRejected.reason が
-// 列挙する 11 個の理由コードと 1 対 1 で対応する。仕様が理由を増やしたらここも増やす。
+// 列挙する 13 個の理由コードと 1 対 1 で対応する。仕様が理由を増やしたらここも増やす。
 export const adminWorkloadIdentityDictionary = defineDictionary(
   {
     pageTitle: 'ワークロード ID',
@@ -13,6 +13,7 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     reloadAriaLabel: '再読み込み',
 
     tableHeaderName: '名前',
+    tableHeaderProfile: '種別',
     tableHeaderTrustDomain: 'トラストドメイン',
     tableHeaderIssuer: '発行者',
     tableHeaderStatus: '状態',
@@ -36,12 +37,22 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     nameHelp: 'テナント内で一意な管理用の表示名です。',
     trustDomainLabel: 'トラストドメイン',
     trustDomainPlaceholder: 'example.org',
-    trustDomainHelp:
-      'SPIFFE のトラストドメイン、または運用者が定める発行者グループのラベルです。登録後は変更できません。',
+    trustDomainHelp: '運用者が定める発行者グループのラベルです。登録後は変更できません。',
+    trustDomainSpiffeHelp:
+      'SPIFFE のトラストドメインです。小文字の英字、数字、「.」「-」「_」だけを使えます。テナントの SPIFFE の信頼バンドルの間で一意で、登録後は変更できません。',
     issuerLabel: '発行者',
     issuerPlaceholder: 'https://issuer.example',
     issuerHelp:
       'アテステーショントークンの iss クレームと完全に一致する必要があります。登録後は変更できません。',
+    issuerSpiffeHelp:
+      '省略すると iss クレームを確かめず、主体の SPIFFE ID のトラストドメインで信頼バンドルを探します。SPIRE で jwt_issuer を設定した場合だけ入力します。登録後は変更できません。',
+    profileLabel: '検証の種別',
+    profileOidc: 'OIDC 互換の JWT',
+    profileSpiffe: 'SPIFFE JWT-SVID',
+    profileOidcHelp:
+      'Kubernetes の ServiceAccount トークンなど、発行者の iss で識別する JWT を検証します。登録後は変更できません。',
+    profileSpiffeHelp:
+      '主体が SPIFFE ID であること、そのトラストドメインが一致すること、kid と typ を SPIFFE の規則で検証します。登録後は変更できません。',
     jwksUriLabel: 'JWKS の取得元',
     jwksUriPlaceholder: 'https://issuer.example/keys',
     jwksUriHelp: 'https のみを受け付けます。インライン JWKS を使う場合は空のままにします。',
@@ -61,8 +72,10 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     jwksCachedAtLabel: 'JWKS 最終取得',
     createdAtLabel: '作成',
     updatedAtLabel: '更新',
+    profileDetailLabel: '検証の種別',
     trustDomainDetailLabel: 'トラストドメイン',
     issuerDetailLabel: '発行者',
+    issuerNotChecked: '未登録（iss を確かめない）',
     acceptedAudiencesDetailLabel: '受理する Audience',
     maxTtlDetailLabel: '最大有効期間',
     seconds: '秒',
@@ -102,6 +115,8 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     reasonAmbiguousMatch: '複数のバインディングに一致',
     reasonAgentNotActive: '対応先エージェントが有効でない',
     reasonAgentUnbound: '対応先エージェントにクレデンシャルが無い',
+    reasonInvalidSpiffeId: '主体が SPIFFE ID でない',
+    reasonTrustDomainMismatch: 'トラストドメインが一致しない',
 
     deleteBundleTitle: '信頼バンドルを削除',
     deleteBundleMessage:
@@ -144,6 +159,7 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     reloadAriaLabel: 'Reload',
 
     tableHeaderName: 'Name',
+    tableHeaderProfile: 'Profile',
     tableHeaderTrustDomain: 'Trust domain',
     tableHeaderIssuer: 'Issuer',
     tableHeaderStatus: 'Status',
@@ -168,11 +184,22 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     trustDomainLabel: 'Trust domain',
     trustDomainPlaceholder: 'example.org',
     trustDomainHelp:
-      'A SPIFFE trust domain, or a label your operators use for a group of issuers. It cannot be changed after registration.',
+      'A label your operators use for a group of issuers. It cannot be changed after registration.',
+    trustDomainSpiffeHelp:
+      'The SPIFFE trust domain. Use only lowercase letters, digits, ".", "-", and "_". It must be unique among the SPIFFE trust bundles of the tenant and cannot be changed after registration.',
     issuerLabel: 'Issuer',
     issuerPlaceholder: 'https://issuer.example',
     issuerHelp:
       'Must match the iss claim of the attestation token exactly. It cannot be changed after registration.',
+    issuerSpiffeHelp:
+      'When omitted, the iss claim is not checked and the trust bundle is found by the trust domain of the SPIFFE ID in the subject. Enter it only if SPIRE sets jwt_issuer. It cannot be changed after registration.',
+    profileLabel: 'Verification profile',
+    profileOidc: 'OIDC-compatible JWT',
+    profileSpiffe: 'SPIFFE JWT-SVID',
+    profileOidcHelp:
+      'Verifies JWTs identified by their issuer, such as Kubernetes service account tokens. It cannot be changed after registration.',
+    profileSpiffeHelp:
+      'Also checks that the subject is a SPIFFE ID in this trust domain, and checks kid and typ by the SPIFFE rules. It cannot be changed after registration.',
     jwksUriLabel: 'JWKS URI',
     jwksUriPlaceholder: 'https://issuer.example/keys',
     jwksUriHelp: 'Only https is accepted. Leave it empty to use an inline JWKS instead.',
@@ -192,8 +219,10 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     jwksCachedAtLabel: 'JWKS fetched',
     createdAtLabel: 'Created',
     updatedAtLabel: 'Updated',
+    profileDetailLabel: 'Verification profile',
     trustDomainDetailLabel: 'Trust domain',
     issuerDetailLabel: 'Issuer',
+    issuerNotChecked: 'Not registered (iss is not checked)',
     acceptedAudiencesDetailLabel: 'Accepted audiences',
     maxTtlDetailLabel: 'Maximum lifetime',
     seconds: 'seconds',
@@ -234,6 +263,8 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     reasonAmbiguousMatch: 'Several bindings matched',
     reasonAgentNotActive: 'Bound agent is not active',
     reasonAgentUnbound: 'Bound agent has no credential',
+    reasonInvalidSpiffeId: 'Subject is not a SPIFFE ID',
+    reasonTrustDomainMismatch: 'Trust domain does not match',
 
     deleteBundleTitle: 'Delete trust bundle',
     deleteBundleMessage:

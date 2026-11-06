@@ -85,6 +85,7 @@ import type {
   IngestionRunDetail,
   IngestionRunSummary,
   WorkloadTrustBundle,
+  WorkloadTrustBundleProfile,
   WorkloadTrustBundleRefreshResult,
   AgentWorkloadBinding,
   TokenVaultConnector,
@@ -622,15 +623,16 @@ export async function deleteMcpResourceServer(
 // 状態変更と削除だけは binding_id をトップレベルに取る (仕様のルート定義どおり)。
 export type WorkloadTrustBundleRegisterInput = {
   name: string
+  profile: WorkloadTrustBundleProfile
   trust_domain: string
-  issuer: string
+  issuer?: string
   jwks_uri?: string
   jwks?: Record<string, unknown>
   accepted_audiences: string[]
   max_subject_token_ttl_seconds?: number
 }
 
-// issuer と trust_domain は不変のため更新入力に持たせない (登録し直しでのみ変えられる)。
+// profile、issuer、trust_domain は不変のため更新入力に持たせない (登録し直しでのみ変えられる)。
 export type WorkloadTrustBundleUpdateInput = {
   name?: string
   jwks_uri?: string

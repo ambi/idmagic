@@ -37,7 +37,7 @@ affected_spec:
 
 ## 対象外
 
-- SPIFFE の検証の種別のフォームへの追加。[wi-77559](wi-77559-verify-jwt-svid-against-spiffe-rules.md) が扱う。
+- SPIFFE の検証の種別のフォームへの追加。[wi-77559](../done/wi-77559-verify-jwt-svid-against-spiffe-rules.md) が扱う。
 - 実際のトークンを貼り付けて検証の全段を試す機能。トークンを管理画面へ貼らせることの是非を別に判断する。
 
 ## 設計

@@ -6,7 +6,7 @@
 
 | 項目 | 内容 |
 | --- | --- |
-| 責務 | 登録した信頼設定による署名、`iss`、`aud`、`exp`、TTL の上限の検証、関連付けによる `Agent` の一意な特定、`Agent` の状態の確認 |
+| 責務 | 登録した信頼設定による署名、`iss`、`aud`、`exp`、TTL の上限の検証、`spiffe` の信頼設定での SPIFFE の規則の検証、関連付けによる `Agent` の一意な特定、`Agent` の状態の確認 |
 | 行為者 | System（`OAuth2` の Token Exchange から呼ばれる検証のユースケース） |
 | 扱わないもの | アクセストークンの発行は `OAuth2` が扱う。信頼設定と関連付けの登録は[信頼設定と関連付けの管理](trust-configuration.md)が扱う |
 
@@ -16,13 +16,15 @@
 
 | 拒否の理由 | 条件 |
 | --- | --- |
-| `unregistered_issuer` | トークンの `iss` に一致する信頼設定がテナントにない。署名の検証で発行者が一致しない |
+| `unregistered_issuer` | トークンの `iss` に一致する信頼設定も、`sub` のトラストドメインに一致する `spiffe` の信頼設定もテナントにない。署名の検証で発行者が一致しない |
 | `trust_bundle_disabled` | 一致した信頼設定が `disabled` である |
-| `invalid_signature` | 登録した JWKS で署名を検証できない |
+| `invalid_signature` | 登録した JWKS で署名を検証できない。`spiffe` の信頼設定で、JOSE ヘッダーが SPIFFE の規則を満たさない |
 | `jwks_unavailable` | JWKS を取得できず、使える鍵もない |
 | `audience_mismatch` | `aud` が受理する audience に含まれない |
 | `expired` | `exp` を過ぎている |
 | `ttl_exceeded` | `exp` と `iat` の差が信頼設定の最大 TTL を超える |
+| `invalid_spiffe_id` | `spiffe` の信頼設定で、`sub` が SPIFFE ID の構文を満たさない |
+| `trust_domain_mismatch` | `spiffe` の信頼設定で、`sub` のトラストドメインが信頼設定のトラストドメインと一致しない |
 | `no_binding_match` | 主体がどの有効な関連付けのパターンにも一致しない |
 | `ambiguous_match` | 主体が複数の有効な関連付けに一致する |
 | `agent_not_active` | 対応先の `Agent` が存在しないか `Active` でない |
@@ -36,7 +38,7 @@
 
 #### REQ-WORKLOADIDENTITY-001 登録済みの信頼設定を使ってワークロードトークンを Agent 資格情報に交換できる
 
-- ワークロードが JWT のアテステーションを `subject_token` として Token Exchange を要求したとき、WorkloadIdentity は、`iss` に一致するテナントの `enabled` の信頼設定を探し、登録した JWKS で署名を、受理する audience で `aud` を、`exp` と最大 TTL で有効期間を検証する。
+- ワークロードが JWT のアテステーションを `subject_token` として Token Exchange を要求したとき、WorkloadIdentity は、`iss` の発行者か `sub` の SPIFFE ID のトラストドメインでテナントの信頼設定を探し（順序は[アーキテクチャ](#アーキテクチャ)）、登録した JWKS で署名を、受理する audience で `aud` を、`exp` と最大 TTL で有効期間を検証する。
 - 検証を通った主体がちょうど一つの `enabled` の関連付けのパターンに一致し、対応先の Agent が `Active` で `OAuth2Client` に束縛されている間、交換を要求されたとき、WorkloadIdentity は、その Agent の束縛先の `client_id` の資格情報として短い有効期間のアクセストークンを発行させ、信頼設定、関連付け、Agent、audience を載せた `WorkloadTokenExchanged` を発行する。
 - 関連付けのパターンを照合するとき、WorkloadIdentity は、パスのワイルドカード（`*` と `?`）を一つの階層の中だけで一致させる。
 - 交換のどの段で拒否する場合、WorkloadIdentity は、OAuth2 の 400 と `invalid_grant` で拒否し、拒否の理由と信頼設定を載せた `WorkloadAttestationRejected` を発行し、トークンを発行しない。
@@ -55,7 +57,7 @@
 
 #### REQ-WORKLOADIDENTITY-002 未登録の発行者を拒否する
 
-- JWT として読めないか `iss` のないトークン、テナントのどの信頼設定にも一致しない `iss` のトークン、署名の検証で発行者が一致しないトークンを受けた場合、WorkloadIdentity は、理由 `unregistered_issuer` で交換を拒否する。
+- JWT として読めないトークン、`iss` に一致する信頼設定も `sub` のトラストドメインに一致する `spiffe` の信頼設定もテナントにないトークン、署名の検証で発行者が一致しないトークンを受けた場合、WorkloadIdentity は、理由 `unregistered_issuer` で交換を拒否する。
 - **例**：EX-WORKLOADIDENTITY-002-01
 
 #### REQ-WORKLOADIDENTITY-003 署名が不正なアテステーションを拒否する
@@ -72,6 +74,16 @@
 
 - 主体が二つ以上の `enabled` の関連付けのパターンに一致する場合、WorkloadIdentity は、優先順位で選ばずに、理由 `ambiguous_match` で交換を拒否する。
 - **例**：EX-WORKLOADIDENTITY-005-01
+
+#### REQ-WORKLOADIDENTITY-011 `spiffe` の信頼設定による JWT-SVID の検証は、SPIFFE の規則を満たさないトークンを拒否する
+
+- `spiffe` の信頼設定では、WorkloadIdentity は、`alg` が RS256、RS384、RS512、ES256、ES384、ES512、PS256、PS384、PS512 のいずれかの署名を検証する。
+- `spiffe` の信頼設定では、発行者を登録していない間、WorkloadIdentity は、`iss` を検証しない。
+- `oidc` の信頼設定では、WorkloadIdentity は、`sub` を SPIFFE ID として検証しない。
+- `spiffe` の信頼設定では、JOSE ヘッダーに `kid` がないか、`typ` が `JWT` と `JOSE` 以外の値である場合、WorkloadIdentity は、理由 `invalid_signature` で交換を拒否する。
+- `spiffe` の信頼設定では、`sub` が SPIFFE ID の構文を満たさない場合、WorkloadIdentity は、理由 `invalid_spiffe_id` で交換を拒否する。
+- `spiffe` の信頼設定では、`sub` の SPIFFE ID のトラストドメインが信頼設定のトラストドメインと一致しない場合、WorkloadIdentity は、理由 `trust_domain_mismatch` で交換を拒否する。
+- **判断**：[SPIFFE の規則は信頼設定の種別で選び、トークンの内容で選ばない](../decisions.md#spiffe-の規則は信頼設定の種別で選びトークンの内容で選ばない)。SPIFFE ID の構文は[データ](../data.md#spiffe-id)が定める。
 
 #### REQ-WORKLOADIDENTITY-007 他テナントの信頼設定は利用できない
 
@@ -91,8 +103,10 @@
 
 ### アーキテクチャ
 
-検証は、署名を確かめる前にトークンの `iss` だけを読み、それを手がかりにテナントの信頼設定を探す。
+検証は、署名を確かめる前にトークンの `iss` と `sub` だけを読み、それを手がかりにテナントの信頼設定を探す。
+`iss` に一致する信頼設定を先に探し、なければ `sub` を SPIFFE ID として読み、そのトラストドメインの `spiffe` の信頼設定を探す。
 この段で読んだ値は、信頼設定と JWKS を選ぶことにだけ使い、署名の検証の後でなければ、主体の特定に使わない。
+`sub` で選んだ信頼設定でも、署名の検証の後に `sub` のトラストドメインの一致を確かめる。
 
 対応先の `Agent` が複数の `OAuth2Client` に束縛されている場合は、最初の束縛の `client_id` を交換の結果に使う。
 

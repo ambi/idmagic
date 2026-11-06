@@ -21,6 +21,8 @@ const REASON_KEYS: Record<string, keyof Dictionary> = {
   ambiguous_match: 'reasonAmbiguousMatch',
   agent_not_active: 'reasonAgentNotActive',
   agent_unbound: 'reasonAgentUnbound',
+  invalid_spiffe_id: 'reasonInvalidSpiffeId',
+  trust_domain_mismatch: 'reasonTrustDomainMismatch',
 }
 
 export function rejectionReasonLabel(reason: string, t: Dictionary): string {
@@ -147,4 +149,13 @@ export function parseInlineJwks(input: string): InlineJwksResult {
   } catch {
     return { ok: false }
   }
+}
+
+export function profileLabel(bundle: WorkloadTrustBundle, t: Dictionary): string {
+  return bundle.profile === 'spiffe' ? t.profileSpiffe : t.profileOidc
+}
+
+// issuerLabel は発行者を省いた spiffe の信頼バンドルで、iss を確かめないことを示す。
+export function issuerLabel(bundle: WorkloadTrustBundle, t: Dictionary): string {
+  return bundle.issuer ?? t.issuerNotChecked
 }

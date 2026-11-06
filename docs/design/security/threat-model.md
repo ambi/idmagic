@@ -193,6 +193,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-063 | Spoofing | 未登録の発行者によるアテステーションが受理される | WorkloadIdentity | REQ-WORKLOADIDENTITY-002、REQ-WORKLOADIDENTITY-008 | `covered` |
 | THREAT-064 | Spoofing | 署名が不正、または期限切れのアテステーションが受理される | WorkloadIdentity | REQ-WORKLOADIDENTITY-003、REQ-WORKLOADIDENTITY-004 | `covered` |
 | THREAT-065 | Elevation of privilege | 主体が複数の関連付けに一致し、意図しない Agent として扱われる | WorkloadIdentity | REQ-WORKLOADIDENTITY-005、REQ-WORKLOADIDENTITY-006 | `covered` |
+| THREAT-099 | Spoofing | 登録した鍵で署名できる SPIFFE の発行者が、別のトラストドメインの SPIFFE ID を主体として名乗り、そのトラストドメインの主体として対応付けられる | WorkloadIdentity | REQ-WORKLOADIDENTITY-011 | `covered` |
 | THREAT-066 | Tampering | 取り込みが読み取り専用属性や未対応の操作で内部状態を壊す | Sourcing | REQ-SOURCING-004、RFC7644-PATCH | `covered` |
 | THREAT-067 | Elevation of privilege | 上流が書き込んだ属性が動的な所属を通じて未承認の実効ロールへ波及する | Sourcing, IdManagement | REQ-IDMANAGEMENT-091、REQ-IDMANAGEMENT-092、REQ-IDMANAGEMENT-093: 自動所属からの管理ロールを禁止し、業務ロールは現在の設定への明示委任に限る | `covered` |
 | THREAT-083 | Elevation of privilege | 上流が同期したグループ所属が、動的な規則を経ずに未承認の実効ロールを直接動かす | Sourcing, IdManagement | REQ-SOURCING-005、REQ-IDMANAGEMENT-092、REQ-IDMANAGEMENT-093: 上流管理の印を保持し、同じ委任の検査を所属の参照へ適用する | `covered` |

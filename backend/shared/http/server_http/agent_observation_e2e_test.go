@@ -374,7 +374,8 @@ func TestAgentObservationCandidatesUseRegisteredEvidenceOnly(t *testing.T) {
 	}
 	const issuer = "https://cluster.example"
 	if err := f.s.WorkloadIdentity.TrustBundleRepo.Save(ctx, &workloaddomain.WorkloadTrustBundle{
-		ID: "bundle", TenantID: tenancydomain.DefaultTenantID, Name: "bundle", TrustDomain: "cluster.example", Issuer: issuer,
+		ID: "bundle", TenantID: tenancydomain.DefaultTenantID, Name: "bundle", Profile: workloaddomain.WorkloadTrustBundleProfileOIDC,
+		TrustDomain: "cluster.example", Issuer: issuer,
 		Status: workloaddomain.WorkloadTrustBundleStatusEnabled, CreatedAt: now,
 	}); err != nil {
 		t.Fatal(err)

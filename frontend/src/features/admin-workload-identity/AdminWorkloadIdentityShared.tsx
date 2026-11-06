@@ -3,7 +3,8 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import type { WorkloadTrustBundle } from '../../types'
+import { Select } from '../../components/ui/select'
+import type { WorkloadTrustBundle, WorkloadTrustBundleProfile } from '../../types'
 import type { Dictionary } from './presentation'
 
 export function listURL(): string {
@@ -24,6 +25,7 @@ export function editURL(trustBundleID: string): string {
 
 export type BundleFormState = {
   name: string
+  profile: WorkloadTrustBundleProfile
   trustDomain: string
   issuer: string
   jwksUri: string
@@ -34,6 +36,7 @@ export type BundleFormState = {
 
 export const emptyBundleForm: BundleFormState = {
   name: '',
+  profile: 'oidc',
   trustDomain: '',
   issuer: '',
   jwksUri: '',
@@ -47,8 +50,9 @@ export const emptyBundleForm: BundleFormState = {
 export function toBundleForm(bundle: WorkloadTrustBundle): BundleFormState {
   return {
     name: bundle.name,
+    profile: bundle.profile,
     trustDomain: bundle.trust_domain,
-    issuer: bundle.issuer,
+    issuer: bundle.issuer ?? '',
     jwksUri: bundle.jwks_uri ?? '',
     jwks: '',
     acceptedAudiences: bundle.accepted_audiences.join(' '),
@@ -78,8 +82,9 @@ export function EnabledStatusBadge({
   )
 }
 
-// TrustBundleFormFields は登録/編集で共有するフォーム本体。issuer と trust_domain は
+// TrustBundleFormFields は登録/編集で共有するフォーム本体。profile、issuer、trust_domain は
 // 更新リクエストが受け付けないため、編集時は locked にして入力できないことを示す。
+// spiffe では発行者を省けるため、必須の表示を外す。
 export function TrustBundleFormFields({
   form,
   onChange,
@@ -91,8 +96,30 @@ export function TrustBundleFormFields({
   locked: boolean
   t: Dictionary
 }) {
+  const issuerRequired = form.profile === 'oidc'
   return (
     <>
+      <div className="flex flex-col gap-1.5 md:col-span-2">
+        <Label htmlFor="profile" required>
+          {t.profileLabel}
+        </Label>
+        <Select
+          id="profile"
+          value={form.profile}
+          disabled={locked}
+          aria-label={t.profileLabel}
+          options={[
+            { value: 'oidc', label: t.profileOidc },
+            { value: 'spiffe', label: t.profileSpiffe },
+          ]}
+          onValueChange={(value) =>
+            onChange({ ...form, profile: value as WorkloadTrustBundleProfile })
+          }
+        />
+        <p className="text-xs leading-5 text-slate-500">
+          {form.profile === 'spiffe' ? t.profileSpiffeHelp : t.profileOidcHelp}
+        </p>
+      </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="name" required>
           {t.nameLabel}
@@ -114,13 +141,17 @@ export function TrustBundleFormFields({
           value={form.trustDomain}
           disabled={locked}
           placeholder={t.trustDomainPlaceholder}
+          // SPIFFE のトラストドメインは小文字の英字、数字、`.`、`-`、`_` だけからなる。
+          pattern={form.profile === 'spiffe' ? '[a-z0-9._\\-]+' : undefined}
           onChange={(event) => onChange({ ...form, trustDomain: event.target.value })}
           required
         />
-        <p className="text-xs leading-5 text-slate-500">{t.trustDomainHelp}</p>
+        <p className="text-xs leading-5 text-slate-500">
+          {form.profile === 'spiffe' ? t.trustDomainSpiffeHelp : t.trustDomainHelp}
+        </p>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="issuer" required>
+        <Label htmlFor="issuer" required={issuerRequired} optional={!issuerRequired}>
           {t.issuerLabel}
         </Label>
         <Input
@@ -130,9 +161,11 @@ export function TrustBundleFormFields({
           disabled={locked}
           placeholder={t.issuerPlaceholder}
           onChange={(event) => onChange({ ...form, issuer: event.target.value })}
-          required
+          required={issuerRequired}
         />
-        <p className="text-xs leading-5 text-slate-500">{t.issuerHelp}</p>
+        <p className="text-xs leading-5 text-slate-500">
+          {issuerRequired ? t.issuerHelp : t.issuerSpiffeHelp}
+        </p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="jwks_uri">{t.jwksUriLabel}</Label>

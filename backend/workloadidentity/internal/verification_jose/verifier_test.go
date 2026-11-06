@@ -58,7 +58,7 @@ func TestVerifier_Verify(t *testing.T) {
 
 	t.Run("accepts a valid SVID", func(t *testing.T) {
 		token := signSVID(t, key, kid, issuer, "spiffe://example.org/ns/prod/sa/worker-1", audience, now, now.Add(10*time.Minute))
-		claims, err := v.Verify(context.Background(), "bundle-1", token, issuer, []string{audience}, time.Hour, fetch, now)
+		claims, err := v.Verify(context.Background(), oidcBundle("bundle-1", issuer, audience), token, fetch, now)
 		if err != nil {
 			t.Fatalf("Verify: %v", err)
 		}
@@ -73,7 +73,7 @@ func TestVerifier_Verify(t *testing.T) {
 			t.Fatal(err)
 		}
 		token := signSVID(t, attacker, kid, issuer, "spiffe://example.org/ns/prod/sa/worker-1", audience, now, now.Add(10*time.Minute))
-		_, err = v.Verify(context.Background(), "bundle-1", token, issuer, []string{audience}, time.Hour, fetch, now)
+		_, err = v.Verify(context.Background(), oidcBundle("bundle-1", issuer, audience), token, fetch, now)
 		if !errors.Is(err, workloaddomain.ErrSVIDInvalidSignature) {
 			t.Fatalf("err = %v, want ErrSVIDInvalidSignature", err)
 		}
@@ -82,9 +82,16 @@ func TestVerifier_Verify(t *testing.T) {
 	t.Run("translates a fetch failure to ErrSVIDKeysUnavailable", func(t *testing.T) {
 		failing := func(context.Context) ([]map[string]any, error) { return nil, errors.New("network down") }
 		token := signSVID(t, key, kid, issuer, "spiffe://example.org/ns/prod/sa/worker-1", audience, now, now.Add(10*time.Minute))
-		_, err := v.Verify(context.Background(), "bundle-2", token, issuer, []string{audience}, time.Hour, failing, now)
+		_, err := v.Verify(context.Background(), oidcBundle("bundle-2", issuer, audience), token, failing, now)
 		if !errors.Is(err, workloaddomain.ErrSVIDKeysUnavailable) {
 			t.Fatalf("err = %v, want ErrSVIDKeysUnavailable", err)
 		}
 	})
+}
+
+func oidcBundle(id, issuer, audience string) *workloaddomain.WorkloadTrustBundle {
+	return &workloaddomain.WorkloadTrustBundle{
+		ID: id, Profile: workloaddomain.WorkloadTrustBundleProfileOIDC, Issuer: issuer,
+		AcceptedAudiences: []string{audience}, MaxSubjectTokenTTLSeconds: 3600,
+	}
 }

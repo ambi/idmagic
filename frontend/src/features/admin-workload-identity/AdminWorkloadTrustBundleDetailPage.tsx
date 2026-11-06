@@ -36,8 +36,10 @@ import {
   bundleConfirmation,
   formatDateTime,
   displayNameForID,
+  issuerLabel,
   jwksSource,
   multipleCredentialBindings,
+  profileLabel,
   rejectionsForTrustBundle,
   type Confirmation,
 } from './presentation'
@@ -257,10 +259,12 @@ export function AdminWorkloadTrustBundleDetailPage({
           <EnabledStatusBadge status={bundle.status} t={t} />
         </div>
         <dl className="mt-4 grid grid-cols-[minmax(0,14rem)_minmax(0,1fr)] gap-y-2 text-sm">
+          <dt className="text-slate-500">{t.profileDetailLabel}</dt>
+          <dd className="text-slate-800">{profileLabel(bundle, t)}</dd>
           <dt className="text-slate-500">{t.trustDomainDetailLabel}</dt>
           <dd className="text-slate-800">{bundle.trust_domain}</dd>
           <dt className="text-slate-500">{t.issuerDetailLabel}</dt>
-          <dd className="break-all font-mono text-xs text-slate-800">{bundle.issuer}</dd>
+          <dd className="break-all font-mono text-xs text-slate-800">{issuerLabel(bundle, t)}</dd>
           <dt className="text-slate-500">{t.jwksSourceLabel}</dt>
           <dd className="break-all font-mono text-xs text-slate-800">{jwksSource(bundle, t)}</dd>
           <dt className="text-slate-500">{t.jwksCachedAtLabel}</dt>

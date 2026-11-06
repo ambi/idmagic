@@ -39,7 +39,7 @@ SPIFFE のトラストバンドル（SPIFFE Bundle Endpoint が返す JWKS）に
 ## 設計
 
 鍵の選別は、取得した JWKS を検証に渡す前の純粋な絞り込みとして `tokens_jose` に置く。
-種別は [wi-77559](wi-77559-verify-jwt-svid-against-spiffe-rules.md) が信頼設定に足すものを使う。
+種別は [wi-77559](../done/wi-77559-verify-jwt-svid-against-spiffe-rules.md) が信頼設定に足すものを使う。
 
 `https_spiffe` は、エンドポイントの SPIFFE ID と、最初のバンドル（ブートストラップ）を管理者に登録させる必要があり、信頼設定の項目が増える。
 着手時に、利用者の要求があるかで含めるかを決める。
