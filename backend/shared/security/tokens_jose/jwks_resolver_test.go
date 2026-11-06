@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -304,4 +306,114 @@ func TestNewJWKResolver(t *testing.T) {
 	if r == nil || r.cache == nil || r.client == nil {
 		t.Fatal("NewJWKResolver returned an incomplete resolver")
 	}
+}
+
+// 取得元が返す文書と時計だけを差し替え、何回目の取得でどの鍵を返したかを観測する。
+//
+//spec:covers REQ-WORKLOADIDENTITY-012: jwks_uri の SPIFFE バンドルを spiffe_refresh_hint を 30 秒から 5 分に収めた期間だけ再利用し、期間を過ぎたら取得し直す。
+func TestJWKResolverResolveSPIFFEBundle(t *testing.T) {
+	uri := "https://192.0.2.1/bundle"
+	bundle := func(hint int, kid string) string {
+		return `{"spiffe_sequence":1,"spiffe_refresh_hint":` + strconv.Itoa(hint) +
+			`,"keys":[{"kid":"x509","use":"x509-svid"},{"kid":"` + kid + `","use":"jwt-svid"}]}`
+	}
+	cases := []struct {
+		name  string
+		hint  int
+		reuse time.Duration
+	}{
+		{"短いヒントは 30 秒に引き上げる", 10, 30 * time.Second},
+		{"範囲内のヒントはその秒数", 120, 120 * time.Second},
+		{"長いヒントは 5 分に縮める", 2419200, 5 * time.Minute},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			r := newStubResolver(func(*http.Request) (*http.Response, error) {
+				calls++
+				return jsonResponse(http.StatusOK, bundle(tc.hint, "jwt-"+strconv.Itoa(calls))), nil
+			})
+			now := time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC)
+			r.now = func() time.Time { return now }
+			resolve := func() []string {
+				t.Helper()
+				keys, err := r.ResolveSPIFFEBundle(context.Background(), &uri, nil)
+				if err != nil {
+					t.Fatalf("ResolveSPIFFEBundle: %v", err)
+				}
+				return keyIDs(keys)
+			}
+
+			if got := resolve(); !slices.Equal(got, []string{"jwt-1"}) {
+				t.Fatalf("first fetch keys = %v, want [jwt-1]", got)
+			}
+			now = now.Add(tc.reuse - time.Second)
+			if got := resolve(); !slices.Equal(got, []string{"jwt-1"}) || calls != 1 {
+				t.Fatalf("keys just before %s = %v after %d fetch(es), want reused [jwt-1]", tc.reuse, got, calls)
+			}
+			now = now.Add(2 * time.Second)
+			if got := resolve(); !slices.Equal(got, []string{"jwt-2"}) || calls != 2 {
+				t.Fatalf("keys just after %s = %v after %d fetch(es), want refetched [jwt-2]", tc.reuse, got, calls)
+			}
+		})
+	}
+
+	t.Run("同じ URI の通常の JWKS の取得結果を使わない", func(t *testing.T) {
+		r := newStubResolver(func(*http.Request) (*http.Response, error) {
+			return jsonResponse(http.StatusOK, bundle(300, "jwt")), nil
+		})
+		if keys, err := r.ResolveJWKSSource(context.Background(), &uri, nil); err != nil || len(keys) != 2 {
+			t.Fatalf("ResolveJWKSSource keys = %v, err = %v; want both keys", keyIDs(keys), err)
+		}
+		keys, err := r.ResolveSPIFFEBundle(context.Background(), &uri, nil)
+		if err != nil || !slices.Equal(keyIDs(keys), []string{"jwt"}) {
+			t.Fatalf("ResolveSPIFFEBundle keys = %v, err = %v; want [jwt]", keyIDs(keys), err)
+		}
+	})
+
+	t.Run("インラインの SPIFFE バンドルは取得元を呼ばない", func(t *testing.T) {
+		r := newStubResolver(func(*http.Request) (*http.Response, error) {
+			t.Fatal("unexpected network call")
+			return nil, errors.New("unreachable")
+		})
+		inline := map[string]any{"keys": []any{
+			map[string]any{"kid": "x509", "use": "x509-svid"}, map[string]any{"kid": "jwt", "use": "jwt-svid"},
+		}}
+		keys, err := r.ResolveSPIFFEBundle(context.Background(), &uri, inline)
+		if err != nil || !slices.Equal(keyIDs(keys), []string{"jwt"}) {
+			t.Fatalf("keys = %v, err = %v; want [jwt]", keyIDs(keys), err)
+		}
+	})
+
+	t.Run("使える鍵のないバンドルは到達できた空の鍵の集合になる", func(t *testing.T) {
+		r := newStubResolver(func(*http.Request) (*http.Response, error) {
+			return jsonResponse(http.StatusOK, `{"keys":[{"kid":"x509","use":"x509-svid"}]}`), nil
+		})
+		keys, err := r.ResolveSPIFFEBundle(context.Background(), &uri, nil)
+		if err != nil || keys == nil || len(keys) != 0 {
+			t.Fatalf("keys = %v, err = %v; want an empty set without error", keys, err)
+		}
+	})
+
+	t.Run("keys の配列のない応答は取得の失敗にし、再利用しない", func(t *testing.T) {
+		calls := 0
+		r := newStubResolver(func(*http.Request) (*http.Response, error) {
+			calls++
+			return jsonResponse(http.StatusOK, `{"spiffe_sequence":1}`), nil
+		})
+		for range 2 {
+			if keys, err := r.ResolveSPIFFEBundle(context.Background(), &uri, nil); err == nil {
+				t.Fatalf("keys = %v, want an error", keyIDs(keys))
+			}
+		}
+		if calls != 2 {
+			t.Fatalf("fetches = %d, want 2 (a failed fetch is not reused)", calls)
+		}
+	})
+
+	t.Run("どちらの取得元もなければエラーにする", func(t *testing.T) {
+		if _, err := newStubResolver(nil).ResolveSPIFFEBundle(context.Background(), nil, nil); err == nil {
+			t.Fatal("expected error")
+		}
+	})
 }

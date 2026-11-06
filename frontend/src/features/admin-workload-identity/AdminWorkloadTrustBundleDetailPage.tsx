@@ -118,7 +118,10 @@ export function AdminWorkloadTrustBundleDetailPage({
         return
       }
       setBundle((previous) => ({ ...previous, jwks_cached_at: result.jwks_cached_at }))
-      setNotice(t.jwksRefreshedNotice.replace('{count}', String(result.key_count ?? 0)))
+      // spiffe の信頼設定の鍵の数は、バンドルのうち JWT-SVID の検証に使う鍵だけを数える。
+      const refreshedNotice =
+        bundle.profile === 'spiffe' ? t.spiffeBundleRefreshedNotice : t.jwksRefreshedNotice
+      setNotice(refreshedNotice.replace('{count}', String(result.key_count ?? 0)))
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
     } finally {

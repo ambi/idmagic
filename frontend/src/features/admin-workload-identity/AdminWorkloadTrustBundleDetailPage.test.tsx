@@ -187,6 +187,24 @@ describe('AdminWorkloadTrustBundleDetailPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('reports the refreshed keys of a SPIFFE bundle as the keys that verify JWT-SVIDs', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() =>
+        Promise.resolve(
+          response(200, { reachable: true, key_count: 1, jwks_cached_at: '2026-08-16T04:00:00Z' }),
+        ),
+      ),
+    )
+    await renderDetail({ trustBundle: { ...bundle, profile: 'spiffe', issuer: undefined } })
+
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(t.refreshJwks) }))
+
+    expect(
+      await screen.findByText(t.spiffeBundleRefreshedNotice.replace('{count}', '1')),
+    ).toBeInTheDocument()
+  })
+
   it('refuses to offer binding creation when the tenant has no agents to bind to', async () => {
     await renderDetail({ agents: [], bindings: [] })
 

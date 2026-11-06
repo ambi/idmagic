@@ -27,6 +27,14 @@
 - When `iss` に "https://issuer.example" を指定しているが、登録済み JWKS では署名を検証できない JWT を `subject_token` として Token Exchange を呼ぶ
 - Then VerifyWorkloadAttestation が `reason=invalid_signature` の WorkloadAttestationRejectedError で拒否する
 
+### Example: EX-WORKLOADIDENTITY-003-02 SPIFFE バンドルの `x509-svid` の鍵は JWT-SVID の検証に使わない
+
+- Given テナント "tenant-a" にトラストドメイン "example.org" の `spiffe` の WorkloadTrustBundle が `Enabled` で登録済みである
+- And その JWKS は、`kid` が "k1" で `use` が `x509-svid` の鍵 A と、`kid` が "k1" で `use` が `jwt-svid` の鍵 B を持つ SPIFFE バンドルである
+- When 鍵 A で署名し、JOSE ヘッダーの `kid` を "k1" にした JWT-SVID を `subject_token` として Token Exchange を呼ぶ
+- Then VerifyWorkloadAttestation が `reason=invalid_signature` の WorkloadAttestationRejectedError で拒否する
+- And 鍵 B で署名した同じ形の JWT-SVID は交換に成功する
+
 ## Rule: REQ-WORKLOADIDENTITY-004 期限切れのアテステーションを拒否する
 
 ### Example: EX-WORKLOADIDENTITY-004-01 通常経路

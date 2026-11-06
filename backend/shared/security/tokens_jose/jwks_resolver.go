@@ -27,6 +27,8 @@ type JWKResolver struct {
 	cache    map[string]cachedJWKS
 	resolver *net.Resolver
 	client   *http.Client
+	// now は再利用の期限の時計。nil なら time.Now を使う。
+	now func() time.Time
 }
 
 func NewJWKResolver() *JWKResolver {
@@ -115,7 +117,22 @@ func InlineJWKs(jwks map[string]any) ([]map[string]any, error) {
 	return keys, nil
 }
 
+const jwksReuse = 5 * time.Minute
+
 func (r *JWKResolver) fetch(ctx context.Context, raw string) ([]map[string]any, error) {
+	return r.fetchDocument(ctx, raw, "", func(document map[string]any) ([]map[string]any, time.Duration, error) {
+		keys, err := InlineJWKs(document)
+		return keys, jwksReuse, err
+	})
+}
+
+// fetchDocument は raw の文書を取得し、read が選んだ鍵を、read が返す期間だけ
+// cacheKeyPrefix+raw の名前で再利用する。read のエラーは取得の失敗として返す。
+func (r *JWKResolver) fetchDocument(
+	ctx context.Context,
+	raw, cacheKeyPrefix string,
+	read func(document map[string]any) ([]map[string]any, time.Duration, error),
+) ([]map[string]any, error) {
 	if err := ValidateJWKSURI(raw); err != nil {
 		return nil, err
 	}
@@ -123,10 +140,11 @@ func (r *JWKResolver) fetch(ctx context.Context, raw string) ([]map[string]any, 
 	if _, err := r.safeIPs(ctx, parsed.Hostname()); err != nil {
 		return nil, err
 	}
+	cacheKey := cacheKeyPrefix + raw
 	r.mu.Lock()
-	cached, ok := r.cache[raw]
+	cached, ok := r.cache[cacheKey]
 	r.mu.Unlock()
-	if ok && time.Now().Before(cached.expiresAt) {
+	if ok && r.clock().Before(cached.expiresAt) {
 		return cached.keys, nil
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, raw, http.NoBody)
@@ -154,14 +172,21 @@ func (r *JWKResolver) fetch(ctx context.Context, raw string) ([]map[string]any, 
 	if err := json.Unmarshal(data, &document); err != nil {
 		return nil, fmt.Errorf("decode jwks_uri: %w", err)
 	}
-	keys, err := InlineJWKs(document)
+	keys, reuseFor, err := read(document)
 	if err != nil {
 		return nil, err
 	}
 	r.mu.Lock()
-	r.cache[raw] = cachedJWKS{keys: keys, expiresAt: time.Now().Add(5 * time.Minute)}
+	r.cache[cacheKey] = cachedJWKS{keys: keys, expiresAt: r.clock().Add(reuseFor)}
 	r.mu.Unlock()
 	return keys, nil
+}
+
+func (r *JWKResolver) clock() time.Time {
+	if r.now != nil {
+		return r.now()
+	}
+	return time.Now()
 }
 
 // safeIPs delegates to safehttp.SafeIPs; kept as a method (rather than

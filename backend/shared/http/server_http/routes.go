@@ -291,8 +291,13 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	// fetchWorkloadJWKS resolves a WorkloadTrustBundle's signing keys (inline
 	// jwks or jwks_uri) via the shared, SSRF-safe JWKResolver (基盤の
 	// 再利用). Shared by the admin JWKS-refresh action and
-	// VerifyWorkloadAttestation's verification path.
+	// VerifyWorkloadAttestation's verification path, so the refreshed key count
+	// is the set the verifier uses. A spiffe bundle is read as a SPIFFE bundle,
+	// keeping only its jwt-svid keys (REQ-WORKLOADIDENTITY-003).
 	fetchWorkloadJWKS := func(ctx context.Context, bundle *workloadidentitydomain.WorkloadTrustBundle) ([]map[string]any, error) {
+		if bundle.IsSPIFFE() {
+			return d.JWKResolver.ResolveSPIFFEBundle(ctx, bundle.JWKSURI, bundle.JWKS)
+		}
 		return d.JWKResolver.ResolveJWKSSource(ctx, bundle.JWKSURI, bundle.JWKS)
 	}
 	workloadVerifier := d.OAuth2.WorkloadVerifier

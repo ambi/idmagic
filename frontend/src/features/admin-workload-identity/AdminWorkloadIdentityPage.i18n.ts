@@ -145,6 +145,8 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     bindingDisabledNotice: 'バインディングを無効化しました。',
     bindingEnabledNotice: 'バインディングを再有効化しました。',
     jwksRefreshedNotice: 'JWKS を取得しました。鍵は {count} 個です。',
+    spiffeBundleRefreshedNotice:
+      'バンドルを取得しました。JWT-SVID の検証に使う鍵は {count} 個です。',
     jwksUnreachableError: 'JWKS を取得できませんでした。取得元の設定を確認してください。',
     saveFailedError: '保存に失敗しました。',
     genericActionError: '操作に失敗しました。',
@@ -293,6 +295,7 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     bindingDisabledNotice: 'The binding has been disabled.',
     bindingEnabledNotice: 'The binding has been enabled.',
     jwksRefreshedNotice: 'Fetched the JWKS. It has {count} key(s).',
+    spiffeBundleRefreshedNotice: 'Fetched the bundle. It has {count} key(s) that verify JWT-SVIDs.',
     jwksUnreachableError: 'Could not fetch the JWKS. Check the JWKS URI configuration.',
     saveFailedError: 'Failed to save.',
     genericActionError: 'The operation failed.',

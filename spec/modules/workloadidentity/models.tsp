@@ -107,9 +107,9 @@ model WorkloadTrustBundle {
   trust_domain: string;
   @doc("外部のアテステーションのトークンの `iss` のクレームが一致しなければならない発行者の URL。テナントの中で一意である。`oidc` では必須、`spiffe` では任意で、省くと `iss` を確かめない。")
   issuer?: url;
-  @doc("JWKS の取得元。https でなければならない。")
+  @doc("JWKS の取得元。https でなければならず、Web PKI で検証する。`spiffe` では SPIFFE Bundle Endpoint の `https_web` の方式の URL を指定でき、`https_spiffe` の方式には対応しない。")
   jwks_uri?: url;
-  @doc("`jwks_uri` の代わりに使うインラインの JWKS。")
+  @doc("`jwks_uri` の代わりに使うインラインの JWKS。`spiffe` では SPIFFE バンドルを指定でき、`use` が `jwt-svid` の鍵だけを署名の検証に使う。")
   jwks?: JWKS;
   @doc("受け付けるオーディエンス。外部のアテステーションのトークンの `aud` のクレームは、少なくとも一つと一致しなければならない。")
   accepted_audiences: string[];
@@ -207,6 +207,7 @@ model WorkloadTrustBundleListResponse {
 @doc("RefreshWorkloadTrustBundleJWKS のレスポンスで、JWKS を実際に取得できたかどうかを示す。テナントが設定の誤りを問題になる前に見つけられるようにするための試験の操作である。")
 model WorkloadTrustBundleRefreshResponse {
   reachable: boolean;
+  @doc("署名の検証に使う鍵の数。`spiffe` の信頼設定で SPIFFE バンドルを読んだ場合は、`use` が `jwt-svid` の鍵の数である。")
   key_count?: int64;
   jwks_cached_at?: utcDateTime;
 }

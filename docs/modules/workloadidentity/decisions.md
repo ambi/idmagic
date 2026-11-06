@@ -102,3 +102,56 @@ X.509-SVID を受け付ける場合に、種別とトラストドメインの扱
 | --- | --- |
 | REQ-WORKLOADIDENTITY-008 | [信頼設定と関連付けの管理](features/trust-configuration.md) |
 | REQ-WORKLOADIDENTITY-011 | [アテステーションの交換](features/attestation-exchange.md) |
+
+## SPIFFE バンドルの鍵は取得した文書の形式で選び、Bundle Endpoint は `https_web` だけに対応する
+
+### 背景
+
+[SPIFFE Trust Domain and Bundle](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md) のバンドルは JWKS であり、鍵ごとに `use` が `x509-svid`、`jwt-svid`、`wit-svid` のいずれかである。
+`use` がないか未知の値の鍵は無視しなければならない（4.2.2 節）。
+`spiffe_refresh_hint` は秒単位の推奨の再取得の間隔で、ないときは 5 分程度を使う（4.1.2、6.1 節）。
+[SPIFFE Federation](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Federation.md) は、Bundle Endpoint のクライアントに `https_web` と `https_spiffe` の両方への対応を求める（5.2 節）。
+
+一方、Entra ID は SPIRE の OIDC Discovery Provider の JWKS で JWT-SVID を検証し、鍵に `use: sig` を求める（SPIRE の `set_key_use`）。
+この JWKS は SPIFFE バンドルではなく、`jwt-svid` の鍵を含まない。
+
+他製品の扱いは次のとおりである。
+
+| 製品 | 鍵の選別 | 再取得の間隔 | Bundle Endpoint の認証方式 |
+| --- | --- | --- | --- |
+| Keycloak（SPIFFE IdP） | `jwt-svid` と `use` のない鍵を使い、なければ `sig` の鍵に戻る | ヒントをキャッシュの寿命にし、`kid` の不一致で取得し直す | `https_web` だけ |
+| Vault Enterprise（SPIFFE auth） | SPIFFE バンドルとして読む | ヒントを表示する | `https_web` と `https_spiffe` |
+| Entra ID、Google Cloud IAM、Okta、PingFederate | SPIFFE バンドルを読まず、汎用の OIDC の JWKS を使う | 汎用の OIDC | — |
+
+### 決定
+
+`spiffe` の信頼設定では、取得した JWKS に `use` が `x509-svid`、`jwt-svid`、`wit-svid` のいずれかの鍵があれば SPIFFE バンドルとして読み、`jwt-svid` の鍵だけを使う。
+なければ通常の JWKS として読み、`use` が `sig` か省略の鍵だけを使う。
+`jwks_uri` の取得結果は 5 分を上限に再利用し、SPIFFE バンドルの `spiffe_refresh_hint` が短ければ、30 秒を下限としてその秒数まで縮める。
+Bundle Endpoint は Web PKI で検証する `https_web` だけに対応する。
+
+### 検討した代替案
+
+| 案 | 利点 | 欠点 | 採らない理由 |
+| --- | --- | --- | --- |
+| `jwt-svid` の鍵だけを使う | SPIFFE の仕様どおりで、規則が一つで済む | OIDC Discovery Provider の JWKS を登録した `spiffe` の信頼設定は鍵を一つも得られない | Entra ID と同じ構成の SPIRE を、トラストドメインの検証付きで使えなくなる |
+| Keycloak と同じく、`use` のない鍵も SPIFFE バンドルから使う | Keycloak と同じ結果になる | 仕様が無視を求める鍵で署名を検証する | 取得元の誤りで混ざった鍵を受け付ける |
+| `spiffe_refresh_hint` をそのまま再利用の期間にする（Keycloak の形） | 取得元の意図どおりに取得の回数を減らせる | 28 日のようなヒントでは、鍵の入れ替えに遅れる | `kid` の不一致で取得し直す仕組みを持たない |
+| `https_spiffe` にも対応する（Vault Enterprise の形） | 仕様の MUST を満たす | 信頼設定にエンドポイントの SPIFFE ID と最初のバンドルを足し、X.509-SVID の検証器を要する | 利用者の要求がなく、Keycloak も対応しない |
+
+### 結果と再検討の条件
+
+SPIFFE バンドルの `x509-svid` の鍵で署名したトークンを受け付けない。
+OIDC Discovery Provider の JWKS も、`spiffe` の信頼設定でそのまま使える。
+SPIFFE バンドルに `use` のない鍵を混ぜた取得元では、その鍵を使えない。
+取得元の文書の形式で読み方を選ぶが、取得元は管理者が登録したものであり、ワークロードが提示するトークンでは選べない。
+`https_spiffe` の Bundle Endpoint だけを公開する利用者の要求が生じたら、対応を見直す。
+`kid` の不一致で取得し直す仕組みを足すなら、ヒントを 5 分より長く使うことを見直す。
+
+### 関連する要件
+
+| 要件 | 機能仕様 |
+| --- | --- |
+| REQ-WORKLOADIDENTITY-003 | [アテステーションの交換](features/attestation-exchange.md) |
+| REQ-WORKLOADIDENTITY-012 | [アテステーションの交換](features/attestation-exchange.md) |
+| REQ-WORKLOADIDENTITY-008 | [信頼設定と関連付けの管理](features/trust-configuration.md) |

@@ -383,6 +383,57 @@ func TestRegisteredWorkloadTrustControlsTokenExchange(t *testing.T) {
 	}
 }
 
+// SPIFFE バンドルの `x509-svid` の鍵と `jwt-svid` の鍵に同じ `kid` を付け、どちらの鍵で
+// 署名したかだけが異なる二つの JWT-SVID を交換する。組み立ての地点が信頼設定の種別で
+// バンドルの読み方を選ばなければ、先に並ぶ `x509-svid` の鍵で検証してしまう。
+//
+//spec:covers REQ-WORKLOADIDENTITY-003, EX-WORKLOADIDENTITY-003-02, REQ-WORKLOADIDENTITY-008: 公開登録した spiffe の信頼設定で、x509-svid の鍵の署名を拒否し、jwt-svid の鍵の署名だけを交換し、再取得が jwt-svid の鍵の数を返す。
+func TestSPIFFEBundleVerifiesWithJWTSVIDKeysOnly(t *testing.T) {
+	f := newPublicSetupPath(t, stack.WithAccessControl())
+	owner := f.user(t, "spiffe-bundle-owner")
+	clientID, key := f.keyClient(t, "read", "urn:ietf:params:oauth:grant-type:token-exchange")
+	agentID := f.agent(t, owner, clientID, "autonomous")
+	evaluator, _ := f.keyClient(t, "read", "client_credentials")
+	f.resource(t, evaluator)
+	x509Key, x509JWK, _ := tpDPoPKey(t)
+	x509JWK["kid"], x509JWK["use"] = "setup-key", "x509-svid"
+	jwtKey, jwtJWK, _ := tpDPoPKey(t)
+	jwtJWK["kid"], jwtJWK["use"] = "setup-key", "jwt-svid"
+	bundle := f.request(t, http.MethodPost, "/api/admin/v1/workload-identity/trust-bundles", map[string]any{
+		"name": "SPIFFE bundle", "profile": "spiffe", "trust_domain": "example.org",
+		"accepted_audiences": []string{"idmagic-workload"},
+		"jwks":               map[string]any{"spiffe_sequence": 1, "spiffe_refresh_hint": 300, "keys": []any{x509JWK, jwtJWK}},
+	}, f.admin, http.StatusCreated)
+	bundleID := setupString(t, bundle, "id")
+	f.request(t, http.MethodPost, "/api/admin/v1/workload-identity/trust-bundles/"+bundleID+"/bindings",
+		map[string]any{"subject_pattern": "spiffe://example.org/ns/prod/sa/*", "agent_id": agentID}, f.admin, http.StatusCreated)
+
+	refreshed := f.request(t, http.MethodPost, "/api/admin/v1/workload-identity/trust-bundles/"+bundleID+"/refresh", nil, f.admin, http.StatusOK)
+	if refreshed["reachable"] != true || refreshed["key_count"] != float64(1) {
+		t.Fatalf("refresh=%v, want reachable with the one jwt-svid key", refreshed)
+	}
+
+	now := time.Now().UTC()
+	exchange := func(signer *rsa.PrivateKey, want int) map[string]any {
+		svid := setupJWT(t, signer, map[string]any{
+			"sub": "spiffe://example.org/ns/prod/sa/worker", "aud": "idmagic-workload",
+			"iat": now.Unix(), "exp": now.Add(time.Minute).Unix(),
+		})
+		return f.signedForm(t, key, clientID, "/token", url.Values{
+			"grant_type":         {"urn:ietf:params:oauth:grant-type:token-exchange"},
+			"subject_token_type": {"urn:ietf:params:oauth:token-type:jwt"}, "subject_token": {svid},
+			"scope": {"read"}, "resource": {setupResource},
+		}, want)
+	}
+	if denied := exchange(x509Key, http.StatusBadRequest); denied["error"] != "invalid_grant" || denied["access_token"] != nil {
+		t.Fatalf("JWT-SVID signed with the x509-svid key=%v, want invalid_grant", denied)
+	}
+	issued := exchange(jwtKey, http.StatusOK)
+	if claims := unverifiedClaims(t, setupString(t, issued, "access_token")); claims["sub"] != clientID {
+		t.Fatalf("workload token subject=%v, want registered client %s", claims["sub"], clientID)
+	}
+}
+
 //spec:covers REQ-SOURCING-002, REQ-SOURCING-005, REQ-PLATFORM-001: 公開発行した SCIM 資格情報で User と所属グループを取り込み、名前の変更と所有者の無効化を管理 API と Agent のアクセスへ反映する。
 func TestSCIMPublicCredentialsAndOwnerLifecycle(t *testing.T) {
 	f := newPublicSetupPath(t, stack.WithSCIM())

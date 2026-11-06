@@ -30,6 +30,9 @@
 | `agent_not_active` | 対応先の `Agent` が存在しないか `Active` でない |
 | `agent_unbound` | 対応先の `Agent` が `OAuth2Client` に束縛されていない |
 
+`spiffe` の信頼設定では、取得した JWKS に `use` が `x509-svid`、`jwt-svid`、`wit-svid` のいずれかの鍵があれば、その JWKS を SPIFFE バンドル（[SPIFFE Trust Domain and Bundle](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md)）として読む。
+`use` の値は大文字と小文字を区別する。
+
 - **判断**：複数の一致を拒否する理由は、[複数の関連付けに一致した主体は優先順位で選ばず拒否する](../decisions.md#複数の関連付けに一致した主体は優先順位で選ばず拒否する)。
 
 ## 操作
@@ -63,7 +66,15 @@
 #### REQ-WORKLOADIDENTITY-003 署名が不正なアテステーションを拒否する
 
 - 登録した JWKS で署名を検証できない場合、WorkloadIdentity は、理由 `invalid_signature` で交換を拒否する。
-- **例**：EX-WORKLOADIDENTITY-003-01
+- `spiffe` の信頼設定では、WorkloadIdentity は、JWKS の鍵のうち次の表の鍵だけで署名を検証する。
+
+| JWKS の形式 | 署名の検証に使う鍵 |
+| --- | --- |
+| SPIFFE バンドル | `use` が `jwt-svid` の鍵 |
+| SPIFFE バンドルでない JWKS | `use` が `sig` の鍵と、`use` のない鍵 |
+
+- **判断**：[SPIFFE バンドルの鍵は取得した文書の形式で選び、Bundle Endpoint は `https_web` だけに対応する](../decisions.md#spiffe-バンドルの鍵は取得した文書の形式で選びbundle-endpoint-は-https_web-だけに対応する)。
+- **例**：EX-WORKLOADIDENTITY-003-01、EX-WORKLOADIDENTITY-003-02
 
 #### REQ-WORKLOADIDENTITY-004 期限切れのアテステーションを拒否する
 
@@ -84,6 +95,20 @@
 - `spiffe` の信頼設定では、`sub` が SPIFFE ID の構文を満たさない場合、WorkloadIdentity は、理由 `invalid_spiffe_id` で交換を拒否する。
 - `spiffe` の信頼設定では、`sub` の SPIFFE ID のトラストドメインが信頼設定のトラストドメインと一致しない場合、WorkloadIdentity は、理由 `trust_domain_mismatch` で交換を拒否する。
 - **判断**：[SPIFFE の規則は信頼設定の種別で選び、トークンの内容で選ばない](../decisions.md#spiffe-の規則は信頼設定の種別で選びトークンの内容で選ばない)。SPIFFE ID の構文は[データ](../data.md#spiffe-id)が定める。
+
+#### REQ-WORKLOADIDENTITY-012 `jwks_uri` から取得した鍵の再利用は、取得から 5 分以内である
+
+- 署名の検証または JWKS の再取得に `jwks_uri` の鍵を使うとき、WorkloadIdentity は、取得から 5 分を超えた鍵を再利用せず、`jwks_uri` から取得し直す。
+- `spiffe` の信頼設定では、`jwks_uri` から SPIFFE バンドルを取得したとき、WorkloadIdentity は、`spiffe_refresh_hint` に応じた次の表の期間を超えて鍵を再利用しない。
+
+| `spiffe_refresh_hint` | 再利用の期間 |
+| --- | --- |
+| 1 以上 30 未満の整数 | 30 秒 |
+| 30 以上 300 以下の整数 | その秒数 |
+| 300 を超える整数、1 以上の整数でない値、またはなし | 5 分 |
+
+- WorkloadIdentity は、`jwks_uri` を Web PKI で検証した HTTPS で取得し、SPIFFE Bundle Endpoint の `https_spiffe` の方式で取得しない。
+- **判断**：[SPIFFE バンドルの鍵は取得した文書の形式で選び、Bundle Endpoint は `https_web` だけに対応する](../decisions.md#spiffe-バンドルの鍵は取得した文書の形式で選びbundle-endpoint-は-https_web-だけに対応する)。
 
 #### REQ-WORKLOADIDENTITY-007 他テナントの信頼設定は利用できない
 
@@ -113,6 +138,7 @@
 ### 信頼性
 
 JWKS は、検証のたびに信頼設定の `jwks_uri` またはインラインの `jwks` から解決する。
+`jwks_uri` の取得結果は、REQ-WORKLOADIDENTITY-012 の期間だけ、各プロセスのメモリで URI ごとに再利用する。
 取得に失敗した場合は、信頼設定ごとに最後に取得できた鍵の集合を、取得から 24 時間以内に限って使う。
 24 時間を超えて取得に失敗し続けると、`jwks_unavailable` で交換を拒否する。
 取得元の障害が続く場合は、取得元を直すか、管理者が信頼設定をインラインの `jwks` に切り替える。
