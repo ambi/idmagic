@@ -43,7 +43,7 @@ func StartWebAuthnRegistration(
 	if err != nil {
 		return nil, err
 	}
-	creation, session, err := deps.RP.BeginRegistration(
+	creation, session, err := deps.RP.rp.BeginRegistration(
 		waUser,
 		gowebauthn.WithExclusions(gowebauthn.Credentials(waUser.credentials).CredentialDescriptors()),
 		gowebauthn.WithConveyancePreference(protocol.PreferNoAttestation),
@@ -55,7 +55,7 @@ func StartWebAuthnRegistration(
 	if err != nil {
 		return nil, err
 	}
-	if err := deps.SessionStore.Save(ctx, webAuthnRegistrationKeyPrefix+sub, *session, time.Now().Add(webAuthnChallengeTTL)); err != nil {
+	if err := saveCeremonySession(ctx, deps.SessionStore, webAuthnRegistrationKeyPrefix+sub, session); err != nil {
 		return nil, err
 	}
 	return creation, nil
@@ -79,12 +79,9 @@ func FinishWebAuthnRegistration(
 	if err != nil {
 		return err
 	}
-	session, err := deps.SessionStore.Take(ctx, webAuthnRegistrationKeyPrefix+sub)
+	session, err := takeCeremonySession(ctx, deps.SessionStore, webAuthnRegistrationKeyPrefix+sub)
 	if err != nil {
 		return err
-	}
-	if session == nil {
-		return ErrWebAuthnChallengeMissing
 	}
 	stored, err := deps.CredentialRepo.ListBySub(ctx, sub)
 	if err != nil {
@@ -98,7 +95,7 @@ func FinishWebAuthnRegistration(
 	if err != nil {
 		return errors.Join(ErrWebAuthnVerification, err)
 	}
-	credential, err := deps.RP.CreateCredential(waUser, *session, parsed)
+	credential, err := deps.RP.rp.CreateCredential(waUser, *session, parsed)
 	if err != nil {
 		return errors.Join(ErrWebAuthnVerification, err)
 	}

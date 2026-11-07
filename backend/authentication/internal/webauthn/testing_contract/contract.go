@@ -2,13 +2,13 @@
 package testing_contract
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
 
 type Fixture struct {
@@ -24,26 +24,40 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx, other := f.Context(context.Background()), f.Other(context.Background())
-	data := gowebauthn.SessionData{Challenge: "challenge", UserID: []byte("user-1")}
-	if err := f.Store.Save(ctx, "key-1", data, f.Now.Add(time.Minute)); err != nil {
+	session := ports.WebAuthnSession{Payload: json.RawMessage(`{"challenge":"challenge","user_id":"dXNlci0x"}`)}
+	if err := f.Store.Save(ctx, "key-1", session, f.Now.Add(time.Minute)); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	if got, err := f.Store.Take(ctx, "key-1"); err != nil || got == nil || got.Challenge != data.Challenge || !bytes.Equal(got.UserID, data.UserID) {
+	if got, err := f.Store.Take(ctx, "key-1"); err != nil || got == nil || !sameJSON(t, got.Payload, session.Payload) {
 		t.Fatalf("first Take = (%+v, %v)", got, err)
 	}
 	if got, err := f.Store.Take(ctx, "key-1"); err != nil || got != nil {
 		t.Fatalf("second Take = (%+v, %v), want once-only", got, err)
 	}
-	if err := f.Store.Save(ctx, "key-expired", data, f.Now.Add(-time.Minute)); err != nil {
+	if err := f.Store.Save(ctx, "key-expired", session, f.Now.Add(-time.Minute)); err != nil {
 		t.Fatalf("Save expired: %v", err)
 	}
 	if got, err := f.Store.Take(ctx, "key-expired"); err != nil || got != nil {
 		t.Fatalf("expired Take = (%+v, %v)", got, err)
 	}
-	if err := f.Store.Save(ctx, "key-isolated", data, f.Now.Add(time.Minute)); err != nil {
+	if err := f.Store.Save(ctx, "key-isolated", session, f.Now.Add(time.Minute)); err != nil {
 		t.Fatalf("Save isolated: %v", err)
 	}
 	if got, err := f.Store.Take(other, "key-isolated"); err != nil || got != nil {
 		t.Fatalf("cross-tenant Take = (%+v, %v)", got, err)
 	}
+}
+
+// sameJSON は JSON の値として等しいかを比べる。PostgreSQL の JSONB はキーの順と空白を
+// 保たないので、バイト列では比べない。
+func sameJSON(t *testing.T, got, want []byte) bool {
+	t.Helper()
+	var gotValue, wantValue any
+	if err := json.Unmarshal(got, &gotValue); err != nil {
+		t.Fatalf("stored payload is not JSON: %v (%s)", err, got)
+	}
+	if err := json.Unmarshal(want, &wantValue); err != nil {
+		t.Fatal(err)
+	}
+	return reflect.DeepEqual(gotValue, wantValue)
 }

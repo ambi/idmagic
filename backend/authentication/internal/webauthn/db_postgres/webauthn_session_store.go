@@ -2,36 +2,32 @@ package db_postgres
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/jackc/pgx/v5"
 )
 
 // WebAuthnSessionStore は WebAuthn ceremony の challenge を PostgreSQL に短命保持する。
 // Take は GetDel 相当の一度きり消費 (DELETE ... WHERE expires_at > now
-// RETURNING) で replay を防ぐ。tenant は ctx から解決する。SessionData は JSONB で持つ。
+// RETURNING) で replay を防ぐ。tenant は ctx から解決する。セッションの JSON は解釈せずに
+// JSONB の列へそのまま持つ。
 type WebAuthnSessionStore struct{ Pool sharedpg.DB }
 
-func (s *WebAuthnSessionStore) Save(ctx context.Context, key string, data gowebauthn.SessionData, expiresAt time.Time) error {
-	payload, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
+func (s *WebAuthnSessionStore) Save(ctx context.Context, key string, session ports.WebAuthnSession, expiresAt time.Time) error {
 	return New(s.Pool).SaveWebauthnSession(ctx, SaveWebauthnSessionParams{
 		TenantID:   tenantports.TenantID(ctx),
 		SessionKey: key,
-		Data:       payload,
+		Data:       session.Payload,
 		ExpiresAt:  expiresAt,
 	})
 }
 
-func (s *WebAuthnSessionStore) Take(ctx context.Context, key string) (*gowebauthn.SessionData, error) {
+func (s *WebAuthnSessionStore) Take(ctx context.Context, key string) (*ports.WebAuthnSession, error) {
 	payload, err := New(s.Pool).TakeWebauthnSession(ctx, TakeWebauthnSessionParams{
 		TenantID:   tenantports.TenantID(ctx),
 		SessionKey: key,
@@ -43,11 +39,7 @@ func (s *WebAuthnSessionStore) Take(ctx context.Context, key string) (*gowebauth
 	if err != nil {
 		return nil, err
 	}
-	var data gowebauthn.SessionData
-	if err := json.Unmarshal(payload, &data); err != nil {
-		return nil, err
-	}
-	return &data, nil
+	return &ports.WebAuthnSession{Payload: payload}, nil
 }
 
 func (s *WebAuthnSessionStore) DeleteExpiredBatch(ctx context.Context, cutoff time.Time, limit int) (int, error) {

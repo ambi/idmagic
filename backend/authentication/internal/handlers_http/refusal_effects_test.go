@@ -54,6 +54,7 @@ import (
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -73,7 +74,6 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v5"
 )
 
@@ -105,7 +105,7 @@ type countingWebAuthnSessionStore struct {
 }
 
 func (s *countingWebAuthnSessionStore) Save(
-	ctx context.Context, key string, data gowebauthn.SessionData, expiresAt time.Time,
+	ctx context.Context, key string, data webauthnports.WebAuthnSession, expiresAt time.Time,
 ) error {
 	s.saved++
 	s.keys = append(s.keys, key)
@@ -212,7 +212,7 @@ func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *aut
 	}
 	signer := oauth2signing.NewJWTSigner(authRefusalIssuer, keyStore)
 
-	relyingParty, err := webauthnusecases.NewWebAuthn(webauthnusecases.WebAuthnConfig{
+	relyingParty, err := webauthnusecases.NewRelyingParty(webauthnusecases.WebAuthnConfig{
 		RPID: "idp.test", RPDisplayName: "idmagic", RPOrigins: []string{authRefusalIssuer},
 	})
 	if err != nil {

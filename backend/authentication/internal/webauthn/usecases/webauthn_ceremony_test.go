@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/fxamacker/cbor/v2"
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
 	"github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -188,9 +187,9 @@ func hashOf(value []byte) []byte {
 	return sum[:]
 }
 
-func testRP(t *testing.T) *gowebauthn.WebAuthn {
+func testRP(t *testing.T) *usecases.RelyingParty {
 	t.Helper()
-	rp, err := usecases.NewWebAuthn(usecases.WebAuthnConfig{
+	rp, err := usecases.NewRelyingParty(usecases.WebAuthnConfig{
 		RPID: testRPID, RPDisplayName: "idmagic", RPOrigins: []string{testOrigin},
 	})
 	if err != nil {

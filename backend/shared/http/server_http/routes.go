@@ -56,7 +56,6 @@ import (
 	workloadidentitydomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 	"github.com/ambi/idmagic/backend/wsfederation"
 
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v5"
 )
 
@@ -96,7 +95,6 @@ type Deps struct {
 	SentinelPasswordHash    string
 	SessionManager          *authentication.SessionManager
 	AuthnResolver           authdomain.AuthenticationContextResolver
-	WebAuthnRP              *gowebauthn.WebAuthn
 	WebAuthnCredentialRepo  webauthnports.WebAuthnCredentialRepository
 	RecoveryCodeRepo        recoveryports.RecoveryCodeRepository
 	TrustedDeviceRepo       trusteddeviceports.TrustedDeviceRepository
@@ -125,8 +123,6 @@ type Deps struct {
 	WorkloadIdentity                workloadidentity.Module
 	SharedSignals                   sharedsignals.Module
 	AccessControl                   accesscontrol.Module
-
-	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
 }
 
 func Register(e *echo.Echo, d Deps) {
@@ -201,9 +197,6 @@ func mergeLegacyAuthenticationDeps(module authentication.Module, d Deps) authent
 	}
 	if module.AuthnResolver == nil {
 		module.AuthnResolver = d.AuthnResolver
-	}
-	if module.WebAuthnRP == nil {
-		module.WebAuthnRP = d.WebAuthnRP
 	}
 	if module.WebAuthnCredentialRepo == nil {
 		module.WebAuthnCredentialRepo = d.WebAuthnCredentialRepo

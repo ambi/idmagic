@@ -2,15 +2,15 @@ package db_postgres_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	webauthnpg "github.com/ambi/idmagic/backend/authentication/internal/webauthn/db_postgres"
+	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
 
 // TestWebAuthnSessionStore は WebAuthn challenge の短命保持 を検証する。
@@ -23,7 +23,7 @@ func TestWebAuthnSessionStore(t *testing.T) {
 	otherCtx := tenantports.WithTenant(context.Background(), other, "", "")
 	store := &webauthnpg.WebAuthnSessionStore{Pool: db}
 	now := pgtest.Now()
-	data := gowebauthn.SessionData{Challenge: "abc", UserID: []byte("user-1")}
+	data := ports.WebAuthnSession{Payload: json.RawMessage(`{"challenge":"abc","user_id":"dXNlci0x"}`)}
 
 	if err := store.Save(ctx, "key-1", data, now.Add(time.Minute)); err != nil {
 		t.Fatalf("save: %v", err)
@@ -32,8 +32,9 @@ func TestWebAuthnSessionStore(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("take: %v %+v (want data)", err, got)
 	}
-	if got.Challenge != "abc" || string(got.UserID) != "user-1" {
-		t.Fatalf("round-trip mismatch: %+v", got)
+	var stored map[string]string
+	if err := json.Unmarshal(got.Payload, &stored); err != nil || stored["challenge"] != "abc" || stored["user_id"] != "dXNlci0x" {
+		t.Fatalf("round-trip mismatch: %s (%v)", got.Payload, err)
 	}
 	if got2, err := store.Take(ctx, "key-1"); err != nil || got2 != nil {
 		t.Fatalf("second take=%+v err=%v (want nil, once-only)", got2, err)

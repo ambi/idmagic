@@ -19,8 +19,6 @@ import (
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-
-	"github.com/go-webauthn/webauthn/webauthn"
 )
 
 // Module は authentication context が所有する永続化 port と実行時依存の束。
@@ -41,7 +39,7 @@ type Module struct {
 	SessionStore             sessionports.SessionStore
 	WebAuthnCredentialRepo   webauthnports.WebAuthnCredentialRepository
 	WebAuthnSessionStore     webauthnports.WebAuthnSessionStore
-	WebAuthnRP               *webauthn.WebAuthn
+	WebAuthnRP               *WebAuthnRelyingParty
 	RecoveryCodeRepo         recoveryports.RecoveryCodeRepository
 	TrustedDeviceRepo        trusteddeviceports.TrustedDeviceRepository
 	// NotificationPreferenceRepo / KnownSignInDeviceRepo はアカウントのセキュリティ

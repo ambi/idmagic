@@ -20,6 +20,7 @@ import (
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
+	webauthnusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
@@ -34,7 +35,6 @@ import (
 	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v5"
 )
 
@@ -62,7 +62,7 @@ type Deps struct {
 
 	// WebAuthn / Passkey と backup recovery code の self-service 管理 (wi-26)。
 	// WebAuthnRP が nil の場合 WebAuthn 登録は無効。
-	WebAuthnRP             *gowebauthn.WebAuthn
+	WebAuthnRP             *webauthnusecases.RelyingParty
 	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
 	WebAuthnSessionStore   webauthnports.WebAuthnSessionStore
 	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository

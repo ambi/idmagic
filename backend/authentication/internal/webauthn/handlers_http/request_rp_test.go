@@ -17,7 +17,7 @@ import (
 //
 //spec:covers EX-TENANCY-007-01, EX-TENANCY-011-01: subdomain 形式では正規 issuer の host から WebAuthn RP を導出し、path 形式とは分離する。
 func TestResolveRPForRequest(t *testing.T) {
-	fallback, err := webauthnusecases.NewWebAuthn(webauthnusecases.WebAuthnConfig{
+	fallback, err := webauthnusecases.NewRelyingParty(webauthnusecases.WebAuthnConfig{
 		RPID: "idp.example", RPDisplayName: "idmagic", RPOrigins: []string{"https://idp.example"},
 	})
 	if err != nil {

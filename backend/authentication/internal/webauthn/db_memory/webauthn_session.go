@@ -1,12 +1,13 @@
 package db_memory
 
 import (
+	"bytes"
 	"context"
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
 
 // =====================================================================
@@ -15,7 +16,7 @@ import (
 // =====================================================================
 
 type webAuthnSessionEntry struct {
-	data      gowebauthn.SessionData
+	payload   []byte
 	expiresAt time.Time
 }
 
@@ -28,22 +29,23 @@ func NewWebAuthnSessionStore() *WebAuthnSessionStore {
 	return &WebAuthnSessionStore{sessions: map[string]webAuthnSessionEntry{}}
 }
 
+// Save は PostgreSQL の実装と同じく内容を写して持ち、呼び出し元が後で書き換えても保存した値は変わらない。
 func (s *WebAuthnSessionStore) Save(
 	ctx context.Context,
 	key string,
-	data gowebauthn.SessionData,
+	session ports.WebAuthnSession,
 	expiresAt time.Time,
 ) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.sessions[sessionKey(ctx, key)] = webAuthnSessionEntry{data: data, expiresAt: expiresAt}
+	s.sessions[sessionKey(ctx, key)] = webAuthnSessionEntry{payload: bytes.Clone(session.Payload), expiresAt: expiresAt}
 	return nil
 }
 
 func (s *WebAuthnSessionStore) Take(
 	ctx context.Context,
 	key string,
-) (*gowebauthn.SessionData, error) {
+) (*ports.WebAuthnSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	entry, ok := s.sessions[sessionKey(ctx, key)]
@@ -54,8 +56,7 @@ func (s *WebAuthnSessionStore) Take(
 	if !time.Now().Before(entry.expiresAt) {
 		return nil, nil
 	}
-	data := entry.data
-	return &data, nil
+	return &ports.WebAuthnSession{Payload: entry.payload}, nil
 }
 
 func sessionKey(ctx context.Context, key string) string {

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v5"
 
@@ -148,9 +147,13 @@ func (m Module) RegisterFieldMigrators(register func(name string, migrator Field
 	}
 }
 
+// WebAuthnRelyingParty は構築済みの WebAuthn の Relying Party である。組み立て地点は
+// NewWebAuthn で作って Module.WebAuthnRP へ渡すだけで、WebAuthn ライブラリの型には触れない。
+type WebAuthnRelyingParty = webauthnusecases.RelyingParty
+
 // NewWebAuthn は WebAuthn の Relying Party を設定から作る。
-func NewWebAuthn(rpID, rpDisplayName string, rpOrigins []string) (*gowebauthn.WebAuthn, error) {
-	return webauthnusecases.NewWebAuthn(webauthnusecases.WebAuthnConfig{
+func NewWebAuthn(rpID, rpDisplayName string, rpOrigins []string) (*WebAuthnRelyingParty, error) {
+	return webauthnusecases.NewRelyingParty(webauthnusecases.WebAuthnConfig{
 		RPID: rpID, RPDisplayName: rpDisplayName, RPOrigins: rpOrigins,
 	})
 }

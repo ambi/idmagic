@@ -27,8 +27,6 @@ import (
 	"github.com/ambi/idmagic/backend/tokenvault"
 	"github.com/ambi/idmagic/backend/workloadidentity"
 	"github.com/ambi/idmagic/backend/wsfederation"
-
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
 
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
@@ -123,9 +121,8 @@ func Assemble(ctx context.Context, cfg SharedConfig) (*Dependencies, error) {
 
 // loadWebAuthnRP は cfg.WebAuthnRP* から RP を構築する。RP_ID 未設定なら WebAuthn は
 // 無効 (nil) として扱う。RP_ID 設定時に origin が無い組み合わせは LoadSharedConfig が
-// 既に fail-fast させているため、ここでは gowebauthn.New 自体が返す構築時エラーだけを
-// 扱えばよい。
-func loadWebAuthnRP(cfg SharedConfig) (*gowebauthn.WebAuthn, error) {
+// 既に fail-fast させているため、ここでは RP の構築自体が返すエラーだけを扱えばよい。
+func loadWebAuthnRP(cfg SharedConfig) (*authentication.WebAuthnRelyingParty, error) {
 	if cfg.WebAuthnRPID == "" {
 		return nil, nil //nolint:nilnil // RP_ID 未設定は WebAuthn 無効を表す正当な状態 (エラーではない)。
 	}

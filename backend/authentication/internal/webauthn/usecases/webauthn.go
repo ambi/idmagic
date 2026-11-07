@@ -5,7 +5,9 @@ package usecases
 // MfaFactor と別集合 (identity=credential_id) で、1 ユーザーが複数持てる。
 
 import (
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -45,27 +47,68 @@ type WebAuthnConfig struct {
 	RPOrigins     []string
 }
 
-// NewWebAuthn は config から go-webauthn の RP を構築する。RP ID / origin が無ければ
+// RelyingParty は構築済みの WebAuthn の RP である。go-webauthn の型をこのパッケージの外へ
+// 出さないために包み、セレモニーの操作はこのパッケージのユースケースだけが行う。
+type RelyingParty struct {
+	rp *gowebauthn.WebAuthn
+}
+
+// NewRelyingParty は config から RP を構築する。RP ID / origin が無ければ
 // ErrWebAuthnNotConfigured を返し、呼び出し側は WebAuthn を無効として扱う。
-func NewWebAuthn(cfg WebAuthnConfig) (*gowebauthn.WebAuthn, error) {
+func NewRelyingParty(cfg WebAuthnConfig) (*RelyingParty, error) {
 	if cfg.RPID == "" || len(cfg.RPOrigins) == 0 {
 		return nil, ErrWebAuthnNotConfigured
 	}
-	return gowebauthn.New(&gowebauthn.Config{
+	rp, err := gowebauthn.New(&gowebauthn.Config{
 		RPID:          cfg.RPID,
 		RPDisplayName: cfg.RPDisplayName,
 		RPOrigins:     cfg.RPOrigins,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return &RelyingParty{rp: rp}, nil
 }
 
 // WebAuthnDeps は WebAuthn use case の依存。RP が nil の場合 WebAuthn は未設定として扱う。
 type WebAuthnDeps struct {
-	RP             *gowebauthn.WebAuthn
+	RP             *RelyingParty
 	UserRepo       userports.UserRepository
 	CredentialRepo webauthnports.WebAuthnCredentialRepository
 	MfaFactorRepo  totpports.MfaFactorRepository
 	SessionStore   webauthnports.WebAuthnSessionStore
 	Emit           func(spec.DomainEvent)
+}
+
+// saveCeremonySession は go-webauthn の SessionData を JSON にして保存する。この JSON の形は
+// デプロイの前後で読み書きされるため、go-webauthn の JSON タグのまま変えない。
+func saveCeremonySession(
+	ctx context.Context, store webauthnports.WebAuthnSessionStore, key string, data *gowebauthn.SessionData,
+) error {
+	payload, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	return store.Save(ctx, key, webauthnports.WebAuthnSession{Payload: payload}, time.Now().Add(webAuthnChallengeTTL))
+}
+
+// takeCeremonySession は保存したセッションを一度だけ取り出して SessionData に戻す。
+// 無い、期限切れ、消費済みなら ErrWebAuthnChallengeMissing を返す。
+func takeCeremonySession(
+	ctx context.Context, store webauthnports.WebAuthnSessionStore, key string,
+) (*gowebauthn.SessionData, error) {
+	session, err := store.Take(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	if session == nil {
+		return nil, ErrWebAuthnChallengeMissing
+	}
+	var data gowebauthn.SessionData
+	if err := json.Unmarshal(session.Payload, &data); err != nil {
+		return nil, err
+	}
+	return &data, nil
 }
 
 // webauthnUser は userdomain.User + 登録済み credential を go-webauthn の User interface に適合させる。

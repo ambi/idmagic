@@ -15,15 +15,13 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
-	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
-
 	"github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func newWebAuthnDeps(t *testing.T, rp *gowebauthn.WebAuthn) (usecases.WebAuthnDeps, userports.UserRepository, *[]spec.DomainEvent) {
+func newWebAuthnDeps(t *testing.T, rp *usecases.RelyingParty) (usecases.WebAuthnDeps, userports.UserRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
@@ -148,7 +146,7 @@ func TestRemoveUnknownWebAuthnCredential(t *testing.T) {
 
 func TestStartWebAuthnRegistrationIssuesChallenge(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
-	rp, err := usecases.NewWebAuthn(usecases.WebAuthnConfig{
+	rp, err := usecases.NewRelyingParty(usecases.WebAuthnConfig{
 		RPID: "localhost", RPDisplayName: "idmagic", RPOrigins: []string{"http://localhost"},
 	})
 	if err != nil {
@@ -173,7 +171,7 @@ func TestStartWebAuthnRegistrationIssuesChallenge(t *testing.T) {
 
 func TestBeginWebAuthnAssertionRequiresCredential(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
-	rp, err := usecases.NewWebAuthn(usecases.WebAuthnConfig{
+	rp, err := usecases.NewRelyingParty(usecases.WebAuthnConfig{
 		RPID: "localhost", RPOrigins: []string{"http://localhost"},
 	})
 	if err != nil {

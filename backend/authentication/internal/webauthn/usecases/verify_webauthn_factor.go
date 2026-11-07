@@ -46,14 +46,14 @@ func BeginWebAuthnAssertion(
 	if err != nil {
 		return nil, err
 	}
-	assertion, session, err := deps.RP.BeginLogin(
+	assertion, session, err := deps.RP.rp.BeginLogin(
 		waUser,
 		gowebauthn.WithUserVerification(protocol.VerificationPreferred),
 	)
 	if err != nil {
 		return nil, err
 	}
-	if err := deps.SessionStore.Save(ctx, webAuthnLoginKeyPrefix+challengeKey, *session, time.Now().Add(webAuthnChallengeTTL)); err != nil {
+	if err := saveCeremonySession(ctx, deps.SessionStore, webAuthnLoginKeyPrefix+challengeKey, session); err != nil {
 		return nil, err
 	}
 	return assertion, nil
@@ -77,12 +77,9 @@ func FinishWebAuthnAssertion(
 	if err != nil {
 		return nil, err
 	}
-	session, err := deps.SessionStore.Take(ctx, webAuthnLoginKeyPrefix+challengeKey)
+	session, err := takeCeremonySession(ctx, deps.SessionStore, webAuthnLoginKeyPrefix+challengeKey)
 	if err != nil {
 		return nil, err
-	}
-	if session == nil {
-		return nil, ErrWebAuthnChallengeMissing
 	}
 	stored, err := deps.CredentialRepo.ListBySub(ctx, sub)
 	if err != nil {
@@ -99,7 +96,7 @@ func FinishWebAuthnAssertion(
 	if err != nil {
 		return nil, errors.Join(ErrWebAuthnVerification, err)
 	}
-	credential, err := deps.RP.ValidateLogin(waUser, *session, parsed)
+	credential, err := deps.RP.rp.ValidateLogin(waUser, *session, parsed)
 	if err != nil {
 		return nil, errors.Join(ErrWebAuthnVerification, err)
 	}
