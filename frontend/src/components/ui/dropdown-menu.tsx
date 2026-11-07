@@ -1,7 +1,7 @@
 import type * as React from 'react'
 import { Menu as MenuPrimitive } from '@base-ui/react/menu'
 
-import { cn } from '@/lib/utils'
+import { cn, type StringClassNameProps } from '@/lib/utils'
 import { IconChevronRight, IconCheck } from '@tabler/icons-react'
 
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
@@ -23,7 +23,7 @@ function DropdownMenuContent({
   sideOffset = 4,
   className,
   ...props
-}: MenuPrimitive.Popup.Props &
+}: StringClassNameProps<MenuPrimitive.Popup.Props> &
   Pick<MenuPrimitive.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>) {
   return (
     <MenuPrimitive.Portal>
@@ -37,7 +37,7 @@ function DropdownMenuContent({
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"
           className={cn(
-            'z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-md bg-popover p-1 text-popover-foreground shadow-sm ring-1 ring-foreground/10 duration-100 outline-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:overflow-hidden data-closed:fade-out-0 data-closed:zoom-out-95',
+            'z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 overflow-x-hidden overflow-y-auto rounded-md bg-popover p-1 text-popover-foreground shadow-sm ring-1 ring-foreground/10 outline-none',
             className,
           )}
           {...props}
@@ -79,7 +79,7 @@ function DropdownMenuItem({
   inset,
   variant = 'default',
   ...props
-}: MenuPrimitive.Item.Props & {
+}: StringClassNameProps<MenuPrimitive.Item.Props> & {
   inset?: boolean
   variant?: 'default' | 'destructive'
 }) {
@@ -106,7 +106,7 @@ function DropdownMenuSubTrigger({
   inset,
   children,
   ...props
-}: MenuPrimitive.SubmenuTrigger.Props & {
+}: StringClassNameProps<MenuPrimitive.SubmenuTrigger.Props> & {
   inset?: boolean
 }) {
   return (
@@ -137,7 +137,7 @@ function DropdownMenuSubContent({
     <DropdownMenuContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        'w-auto min-w-[96px] rounded-md bg-popover p-1 text-popover-foreground shadow-sm ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+        'w-auto min-w-[96px] rounded-md bg-popover p-1 text-popover-foreground shadow-sm ring-1 ring-foreground/10',
         className,
       )}
       align={align}
@@ -155,7 +155,7 @@ function DropdownMenuCheckboxItem({
   checked,
   inset,
   ...props
-}: MenuPrimitive.CheckboxItem.Props & {
+}: StringClassNameProps<MenuPrimitive.CheckboxItem.Props> & {
   inset?: boolean
 }) {
   return (
@@ -191,7 +191,7 @@ function DropdownMenuRadioItem({
   children,
   inset,
   ...props
-}: MenuPrimitive.RadioItem.Props & {
+}: StringClassNameProps<MenuPrimitive.RadioItem.Props> & {
   inset?: boolean
 }) {
   return (
@@ -217,7 +217,10 @@ function DropdownMenuRadioItem({
   )
 }
 
-function DropdownMenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
+function DropdownMenuSeparator({
+  className,
+  ...props
+}: StringClassNameProps<MenuPrimitive.Separator.Props>) {
   return (
     <MenuPrimitive.Separator
       data-slot="dropdown-menu-separator"

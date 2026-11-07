@@ -49,6 +49,18 @@ test('navigation fits a short desktop and opens another area with keyboard or po
         })()`,
       ),
     ).toBe(true)
+    // 閉じる動きを持たない popup は、閉じた後に DOM へ残らない。
+    expect(
+      await view.evaluate(
+        `(async () => {
+          for (let frame = 0; frame < 60; frame++) {
+            if (document.querySelector('[role="menu"]') === null) return true
+            await new Promise(requestAnimationFrame)
+          }
+          return false
+        })()`,
+      ),
+    ).toBe(true)
     await view.evaluate('window.__navigationMarker = "kept"')
     await view.evaluate(`(() => {
       const trigger = document.querySelector(${JSON.stringify(trigger)})

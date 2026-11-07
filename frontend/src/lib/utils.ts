@@ -1,13 +1,16 @@
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { type ClassNameValue, twMerge } from 'tailwind-merge'
 import type { DomainLabelsDictionary } from './i18n/domainLabels.i18n'
 import type { UserAttributeDef } from '../types'
 import type { Locale } from './i18n'
 import { builtinAttributesDictionary } from './i18n/builtinAttributes.i18n'
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+export function cn(...inputs: ClassNameValue[]) {
+  return twMerge(...inputs)
 }
+
+// Base UI の className は状態から文字列を返す関数も受け取るが、cn() は関数を空文字として捨てる。
+// cn() で既定のクラスと合成する部品は、この型で className を文字列に限る。
+export type StringClassNameProps<P> = Omit<P, 'className'> & { className?: string }
 
 export function attributeDisplayName(
   def: Pick<UserAttributeDef, 'key' | 'label'>,
