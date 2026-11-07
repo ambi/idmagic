@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -45,6 +46,13 @@ type harness struct {
 	received  *atomic.Value
 	audit     *bytes.Buffer
 	metrics   *Metrics
+	// 監査記録は応答を返したあとの defer で書かれるので、読む前に処理中の要求の終わりを待つ。
+	inflight sync.WaitGroup
+}
+
+func (h *harness) auditLog() string {
+	h.inflight.Wait()
+	return h.audit.String()
 }
 
 func newHarness(t *testing.T, upstream http.HandlerFunc, change func(*Options)) *harness {
@@ -78,7 +86,11 @@ func newHarness(t *testing.T, upstream http.HandlerFunc, change func(*Options)) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.gateway = httptest.NewServer(handler)
+	h.gateway = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.inflight.Add(1)
+		defer h.inflight.Done()
+		handler.ServeHTTP(w, r)
+	}))
 	t.Cleanup(h.gateway.Close)
 	return h
 }
@@ -215,10 +227,10 @@ func TestNothingReachesTheUpstreamWithoutAPermit(t *testing.T) {
 			if strings.Contains(strings.ToLower(body2string(body)), "reason") || strings.Contains(body2string(body), "relation_denied") {
 				t.Fatalf("reason leaked: %v", body)
 			}
-			if !strings.Contains(h.audit.String(), `"outcome":"`+tc.outcome+`"`) {
-				t.Fatalf("audit = %s", h.audit)
+			if !strings.Contains(h.auditLog(), `"outcome":"`+tc.outcome+`"`) {
+				t.Fatalf("audit = %s", h.auditLog())
 			}
-			if strings.Contains(h.audit.String(), "secret-token") {
+			if strings.Contains(h.auditLog(), "secret-token") {
 				t.Fatal("token logged")
 			}
 		})
@@ -256,8 +268,8 @@ func TestRateLimitedEvaluationKeepsRetryAfter(t *testing.T) {
 	if response.StatusCode != http.StatusServiceUnavailable || response.Header.Get("Retry-After") != "7" || h.calls.Load() != 0 {
 		t.Fatalf("status=%d retry=%q upstream=%d", response.StatusCode, response.Header.Get("Retry-After"), h.calls.Load())
 	}
-	if !strings.Contains(h.audit.String(), `"evaluation_request_id":"eval-2"`) {
-		t.Fatalf("audit = %s", h.audit)
+	if !strings.Contains(h.auditLog(), `"evaluation_request_id":"eval-2"`) {
+		t.Fatalf("audit = %s", h.auditLog())
 	}
 }
 
@@ -367,8 +379,8 @@ func TestUpstreamFailureIsReported(t *testing.T) {
 	if response.StatusCode != http.StatusBadGateway || errorCode(body) != -32003 || attempts.Load() != 1 {
 		t.Fatalf("status=%d body=%v attempts=%d", response.StatusCode, body, attempts.Load())
 	}
-	if !strings.Contains(h.audit.String(), `"outcome":"upstream_failed"`) {
-		t.Fatalf("audit = %s", h.audit)
+	if !strings.Contains(h.auditLog(), `"outcome":"upstream_failed"`) {
+		t.Fatalf("audit = %s", h.auditLog())
 	}
 }
 
@@ -428,8 +440,8 @@ func TestAuditBoundsCallerControlledValues(t *testing.T) {
 	if response, _ := do(t, request); response.StatusCode != http.StatusNotFound {
 		t.Fatalf("status=%d", response.StatusCode)
 	}
-	if strings.Contains(h.audit.String(), strings.Repeat("m", 129)) || !strings.Contains(h.audit.String(), strings.Repeat("m", 128)) {
-		t.Fatalf("audit = %s", h.audit)
+	if strings.Contains(h.auditLog(), strings.Repeat("m", 129)) || !strings.Contains(h.auditLog(), strings.Repeat("m", 128)) {
+		t.Fatalf("audit = %s", h.auditLog())
 	}
 }
 
@@ -464,8 +476,8 @@ func TestEnvoyExtAuthzAnswersWithoutForwarding(t *testing.T) {
 	if h.calls.Load() != 0 {
 		t.Fatal("the gateway forwarded the request itself")
 	}
-	if !strings.Contains(h.audit.String(), `"outcome":"permitted"`) {
-		t.Fatalf("audit = %s", h.audit)
+	if !strings.Contains(h.auditLog(), `"outcome":"permitted"`) {
+		t.Fatalf("audit = %s", h.auditLog())
 	}
 	if got := testutil.ToFloat64(h.metrics.requests.WithLabelValues("tools/call", "read", "permitted")); got != 1 {
 		t.Fatalf("permitted requests = %v", got)
@@ -597,8 +609,8 @@ func TestDownstreamCredentialReplacesThePresentedToken(t *testing.T) {
 		t.Fatalf("evaluation = %+v", h.evaluator.last)
 	}
 	for _, secret := range []string{"downstream-token", "downstream-proof", "grant-value"} {
-		if strings.Contains(h.audit.String(), secret) {
-			t.Fatalf("%s in audit: %s", secret, h.audit)
+		if strings.Contains(h.auditLog(), secret) {
+			t.Fatalf("%s in audit: %s", secret, h.auditLog())
 		}
 	}
 
@@ -608,8 +620,8 @@ func TestDownstreamCredentialReplacesThePresentedToken(t *testing.T) {
 		if response.StatusCode != http.StatusServiceUnavailable || errorCode(body) != codeUnavailable || h.calls.Load() != 0 {
 			t.Fatalf("status=%d body=%v upstream=%d", response.StatusCode, body, h.calls.Load())
 		}
-		if !strings.Contains(h.audit.String(), "token_exchange_failed") {
-			t.Fatalf("audit = %s", h.audit)
+		if !strings.Contains(h.auditLog(), "token_exchange_failed") {
+			t.Fatalf("audit = %s", h.auditLog())
 		}
 	})
 	t.Run("exchange failure", func(t *testing.T) {
