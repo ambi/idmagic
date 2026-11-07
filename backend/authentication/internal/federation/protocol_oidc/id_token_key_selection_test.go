@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
 //spec:covers REQ-AUTHENTICATION-001, OIDC-CORE-ID-TOKEN-KID-OPTIONAL: 署名用 RSA 鍵の個数と kid の一致を判定し、省略を受け入れても署名とクレームの検証を維持する。
@@ -36,7 +36,7 @@ func TestVerifyUpstreamIDTokenSelectsOnlyAnUnambiguousSigningKey(t *testing.T) {
 		name   string
 		kid    any
 		keys   []jwk
-		mutate func(jwt.MapClaims)
+		mutate func(map[string]any)
 		accept bool
 	}{
 		{name: "single signing key", keys: []jwk{signing}, accept: true},
@@ -60,29 +60,29 @@ func TestVerifyUpstreamIDTokenSelectsOnlyAnUnambiguousSigningKey(t *testing.T) {
 		{name: "empty identifier", kid: "", keys: []jwk{signing}},
 		{name: "empty identifier among multiple", kid: "", keys: []jwk{unnamed, second}},
 		{name: "wrong signature", keys: []jwk{second}},
-		{name: "wrong issuer", keys: []jwk{signing}, mutate: func(c jwt.MapClaims) { c["iss"] = "https://attacker.example" }},
-		{name: "wrong audience", keys: []jwk{signing}, mutate: func(c jwt.MapClaims) { c["aud"] = "other-client" }},
-		{name: "wrong nonce", keys: []jwk{signing}, mutate: func(c jwt.MapClaims) { c["nonce"] = "other-nonce" }},
-		{name: "expired", keys: []jwk{signing}, mutate: func(c jwt.MapClaims) { c["exp"] = now.Add(-time.Minute).Unix() }},
+		{name: "wrong issuer", keys: []jwk{signing}, mutate: func(c map[string]any) { c["iss"] = "https://attacker.example" }},
+		{name: "wrong audience", keys: []jwk{signing}, mutate: func(c map[string]any) { c["aud"] = "other-client" }},
+		{name: "wrong nonce", keys: []jwk{signing}, mutate: func(c map[string]any) { c["nonce"] = "other-nonce" }},
+		{name: "expired", keys: []jwk{signing}, mutate: func(c map[string]any) { c["exp"] = now.Add(-time.Minute).Unix() }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			claims := jwt.MapClaims{
+			claims := map[string]any{
 				"iss": connection.Issuer, "aud": connection.ClientID, "sub": "upstream-user",
 				"nonce": attempt.Nonce, "exp": now.Add(time.Minute).Unix(),
 			}
 			if tc.mutate != nil {
 				tc.mutate(claims)
 			}
-			token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+			header := map[string]any{"typ": "JWT"}
 			if tc.kid != nil {
-				token.Header["kid"] = tc.kid
+				header["kid"] = tc.kid
 			}
-			signed, err := token.SignedString(key)
+			signed, err := tokens_jose.SignJWT(key, "RS256", header, claims)
 			if err != nil {
 				t.Fatal(err)
 			}
 			keySet, err := (jwksDocument{Keys: tc.keys}).rsaKeys()
-			var got jwt.MapClaims
+			var got map[string]any
 			if err == nil {
 				got, err = verifyUpstreamIDToken(signed, keySet, connection, attempt, now)
 			}

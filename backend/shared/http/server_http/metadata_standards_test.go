@@ -21,10 +21,12 @@ package server_http_test
 
 import (
 	"context"
+	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"math/big"
 	"net/http"
@@ -37,7 +39,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v5"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
@@ -48,6 +49,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
@@ -425,15 +427,16 @@ func jwtHeader(t *testing.T, token string) map[string]any {
 // 鍵素材をテスト側で保持せず配信された文書から組み立てるのが、この関数の要点である。
 // 署名器を直接呼んで検証すると、「配った鍵で検証できる」ではなく「同じ処理を 2 度
 // 走らせた」ことしか読めない。
-func verifyWithPublishedKeys(t *testing.T, jwks map[string]any, token string) jwt.MapClaims {
+func verifyWithPublishedKeys(t *testing.T, jwks map[string]any, token string) map[string]any {
 	t.Helper()
 	keys, ok := jwks["keys"].([]any)
 	if !ok {
 		t.Fatalf("JWK Set に keys 配列が無い: %#v", jwks)
 	}
-	claims := jwt.MapClaims{}
-	parsed, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (any, error) {
-		kid, _ := token.Header["kid"].(string)
+	// 署名方式はトークンが名乗るものに従い、鍵の出所だけを配信された文書に限る。
+	alg, _ := jwtHeader(t, token)["alg"].(string)
+	claims, err := tokens_jose.VerifyJWT(token, alg, func(header map[string]any) (crypto.PublicKey, error) {
+		kid, _ := header["kid"].(string)
 		for _, entry := range keys {
 			jwk, ok := entry.(map[string]any)
 			if !ok {
@@ -444,13 +447,10 @@ func verifyWithPublishedKeys(t *testing.T, jwks map[string]any, token string) jw
 			}
 			return rsaPublicKeyFromJWK(t, jwk), nil
 		}
-		return nil, jwt.ErrTokenUnverifiable
-	}, jwt.WithoutClaimsValidation())
+		return nil, errors.New("配信された JWK Set に kid の鍵が無い")
+	}, tokens_jose.JWTExpectation{Now: time.Now()})
 	if err != nil {
 		t.Fatalf("配信された鍵でトークンの署名を検証できなかった: %v", err)
-	}
-	if !parsed.Valid {
-		t.Fatal("配信された鍵で検証したトークンが有効にならなかった")
 	}
 	return claims
 }
@@ -590,9 +590,8 @@ func TestJWKSPublishesOnlyPublicVerificationKeys(t *testing.T) {
 		t.Fatal("ID トークンが kid を名乗っていないので、配信された鍵と対応付けられない")
 	}
 	claims := verifyWithPublishedKeys(t, jwks, tokens.IDToken)
-	subject, err := claims.GetSubject()
-	if err != nil || subject != mdUserID {
-		t.Fatalf("検証できたのが当の利用者のトークンではない: sub=%q err=%v", subject, err)
+	if subject, _ := claims["sub"].(string); subject != mdUserID {
+		t.Fatalf("検証できたのが当の利用者のトークンではない: sub=%v", claims["sub"])
 	}
 }
 
@@ -657,9 +656,9 @@ func TestAuthorizationServerMetadataPublishesTheIssuerEndpointsAndCapabilities(t
 	// 発行できること、そのトークンが広告された発行者を名乗ることを対で読む。
 	tokens := fixture.tokens(t)
 	claims := verifyWithPublishedKeys(t, fixture.document(t, "/jwks", nil), tokens.IDToken)
-	issuer, err := claims.GetIssuer()
-	if err != nil {
-		t.Fatalf("発行されたトークンから iss を読めない: %v", err)
+	issuer, ok := claims["iss"].(string)
+	if !ok {
+		t.Fatalf("発行されたトークンから iss を読めない: %v", claims["iss"])
 	}
 	if issuer != mdRealmIssuer {
 		t.Errorf("発行されたトークンの iss = %q だが、文書は issuer = %q と広告している", issuer, mdRealmIssuer)

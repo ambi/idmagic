@@ -7,6 +7,8 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -20,11 +22,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
-
 	"github.com/ambi/idmagic/backend/mcpgateway"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -212,16 +213,24 @@ func issuerFront(t *testing.T, next http.Handler, key *ecdsa.PrivateKey) http.Ha
 	t.Helper()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if proof := r.Header.Get("DPoP"); proof != "" {
-			claims := jwt.MapClaims{}
-			parsed, _, err := jwt.NewParser().ParseUnverified(proof, claims)
-			if err != nil {
-				t.Errorf("gateway proof: %v", err)
+			segments := strings.Split(proof, ".")
+			if len(segments) != 3 {
+				t.Errorf("gateway proof has %d segments", len(segments))
 				return
 			}
+			var header, claims map[string]any
+			for i, out := range []*map[string]any{&header, &claims} {
+				raw, err := base64.RawURLEncoding.DecodeString(segments[i])
+				if err == nil {
+					err = json.Unmarshal(raw, out)
+				}
+				if err != nil {
+					t.Errorf("gateway proof: %v", err)
+					return
+				}
+			}
 			claims["htu"] = stack.Issuer + r.URL.Path
-			token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
-			token.Header = parsed.Header
-			signed, err := token.SignedString(key)
+			signed, err := tokens_jose.SignJWT(key, "ES256", header, claims)
 			if err != nil {
 				t.Errorf("sign: %v", err)
 				return

@@ -15,10 +15,9 @@ import (
 	"time"
 	"uuid"
 
-	"github.com/golang-jwt/jwt/v5"
-
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
 // tokenLifetime は JWT の exp までの長さである。サーバーは 5 分より先の exp を拒否する。
@@ -103,13 +102,11 @@ func NewClient(realmURL string, client *http.Client, key *ecdsa.PrivateKey, enro
 
 func (c *Client) assertion() (string, error) {
 	now := c.now()
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.RegisteredClaims{
-		Issuer: c.enrollment.ConnectorID, Subject: c.enrollment.ConnectorID,
-		Audience: jwt.ClaimStrings{c.enrollment.Audience}, ID: uuid.NewV4().String(),
-		IssuedAt: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(now.Add(tokenLifetime)),
+	return tokens_jose.SignJWT(c.key, "ES256", map[string]any{"typ": "JWT", "kid": c.enrollment.KeyID}, map[string]any{
+		"iss": c.enrollment.ConnectorID, "sub": c.enrollment.ConnectorID,
+		"aud": []string{c.enrollment.Audience}, "jti": uuid.NewV4().String(),
+		"iat": now.Unix(), "exp": now.Add(tokenLifetime).Unix(),
 	})
-	token.Header["kid"] = c.enrollment.KeyID
-	return token.SignedString(c.key)
 }
 
 func (c *Client) signedCall(ctx context.Context, path string, body, into any) error {

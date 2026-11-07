@@ -2,6 +2,7 @@ package api_http_test
 
 import (
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -15,11 +16,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
-
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/api_http"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
 type request struct {
@@ -79,20 +79,25 @@ func TestClientSignsAFreshJWTForEveryRequest(t *testing.T) {
 			t.Fatalf("request[%d] path=%s content-type=%q, want %s with json", i, r.path, r.contentType, wantPaths[i])
 		}
 		raw := strings.TrimPrefix(r.authorization, "Bearer ")
-		claims := jwt.RegisteredClaims{}
-		token, err := jwt.ParseWithClaims(raw, &claims, func(*jwt.Token) (any, error) { return &key.PublicKey, nil },
-			jwt.WithValidMethods([]string{"ES256"}), jwt.WithAudience(enrollment.Audience), jwt.WithIssuer("c1"), jwt.WithSubject("c1"),
-			jwt.WithTimeFunc(func() time.Time { return now }))
+		var header map[string]any
+		claims, err := tokens_jose.VerifyJWT(raw, "ES256", func(h map[string]any) (crypto.PublicKey, error) {
+			header = h
+			return &key.PublicKey, nil
+		}, tokens_jose.JWTExpectation{Issuer: "c1", Audience: enrollment.Audience, Now: now})
 		if err != nil {
 			t.Fatalf("request %d jwt: %v", i, err)
 		}
-		if token.Header["kid"] != "k1" || !claims.ExpiresAt.Equal(now.Add(2*time.Minute)) {
-			t.Fatalf("request %d kid=%v exp=%v", i, token.Header["kid"], claims.ExpiresAt)
+		if claims["sub"] != "c1" {
+			t.Fatalf("request %d sub=%v", i, claims["sub"])
 		}
-		if ids[claims.ID] || claims.ID == "" {
-			t.Fatalf("request %d reused jti %q", i, claims.ID)
+		if header["kid"] != "k1" || claims["exp"] != float64(now.Add(2*time.Minute).Unix()) {
+			t.Fatalf("request %d kid=%v exp=%v", i, header["kid"], claims["exp"])
 		}
-		ids[claims.ID] = true
+		jti, _ := claims["jti"].(string)
+		if ids[jti] || jti == "" {
+			t.Fatalf("request %d reused jti %q", i, jti)
+		}
+		ids[jti] = true
 	}
 	if body := (*seen)[0].body; body["mode"] != "full" {
 		t.Fatalf("start body = %v", body)

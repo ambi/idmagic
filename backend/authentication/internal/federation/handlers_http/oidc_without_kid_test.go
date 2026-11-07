@@ -2,8 +2,10 @@ package handlers_http_test
 
 import (
 	"context"
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"io"
@@ -31,7 +33,6 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v5"
 )
 
@@ -82,14 +83,10 @@ func TestOIDCCallbackWithoutKIDIssuesFederatedSession(t *testing.T) {
 				t.Fatalf("token request method=%s form=%v", r.Method, r.Form)
 			}
 			// Core §10.1 が許す kid の省略を、製品のトークン生成補助を使わず再現する。
-			token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+			signed := signRS256WithoutKID(t, key, map[string]any{
 				"iss": "https://idp.example", "aud": "client", "sub": "external-user", "email": "alice@example.com",
 				"nonce": authorization.Get("nonce"), "exp": now.Add(time.Minute).Unix(),
 			})
-			signed, err := token.SignedString(key)
-			if err != nil {
-				t.Fatal(err)
-			}
 			body = map[string]any{"id_token": signed, "token_type": "Bearer"}
 		case "https://idp.example/jwks":
 			body = map[string]any{"keys": []any{
@@ -149,4 +146,24 @@ func TestOIDCCallbackWithoutKIDIssuesFederatedSession(t *testing.T) {
 	if !slices.Equal(requests, []string{"POST https://idp.example/token", "GET https://idp.example/jwks"}) {
 		t.Fatalf("upstream requests=%v", requests)
 	}
+}
+
+// signRS256WithoutKID は kid のない保護ヘッダーで RS256 の JWS を作る。製品の署名補助を通さない。
+func signRS256WithoutKID(t *testing.T, key *rsa.PrivateKey, claims map[string]any) string {
+	t.Helper()
+	header, err := json.Marshal(map[string]any{"alg": "RS256", "typ": "JWT"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signingInput := base64.RawURLEncoding.EncodeToString(header) + "." + base64.RawURLEncoding.EncodeToString(payload)
+	digest := sha256.Sum256([]byte(signingInput))
+	signature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA256, digest[:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	return signingInput + "." + base64.RawURLEncoding.EncodeToString(signature)
 }

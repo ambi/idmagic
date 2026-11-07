@@ -15,9 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
-
 	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -59,13 +58,11 @@ func TestExchangeValidatesSignedIDTokenAndNormalizesClaims(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+	signed, err := tokens_jose.SignJWT(key, "RS256", map[string]any{"typ": "JWT", "kid": "key-1"}, map[string]any{
 		"iss": "https://idp.example", "aud": "client", "sub": "subject",
 		"email": "user@example.com", "email_verified": true, "name": "User",
 		"nonce": "nonce", "iat": now.Unix(), "exp": now.Add(5 * time.Minute).Unix(),
 	})
-	token.Header["kid"] = "key-1"
-	signed, err := token.SignedString(key)
 	if err != nil {
 		t.Fatal(err)
 	}

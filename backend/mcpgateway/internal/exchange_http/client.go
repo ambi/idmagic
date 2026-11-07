@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
 const (
@@ -84,23 +84,24 @@ func (c Client) Exchange(ctx context.Context, subjectToken, grant, correlationID
 }
 
 func (c Client) proof(htu, accessToken string) (string, error) {
-	claims := jwt.MapClaims{"jti": rand.Text(), "htm": http.MethodPost, "htu": htu, "iat": time.Now().Unix()}
+	claims := map[string]any{"jti": rand.Text(), "htm": http.MethodPost, "htu": htu, "iat": time.Now().Unix()}
 	if accessToken != "" {
 		sum := sha256.Sum256([]byte(accessToken))
 		claims["ath"] = base64.RawURLEncoding.EncodeToString(sum[:])
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
-	token.Header["typ"] = "dpop+jwt"
 	public, err := c.Key.PublicKey.ECDH()
 	if err != nil {
 		return "", err
 	}
 	// 非圧縮点は 0x04 の後に同じ長さの x と y が続く。
 	point := public.Bytes()[1:]
-	token.Header["jwk"] = map[string]string{
-		"kty": "EC", "crv": "P-256",
-		"x": base64.RawURLEncoding.EncodeToString(point[:len(point)/2]),
-		"y": base64.RawURLEncoding.EncodeToString(point[len(point)/2:]),
+	header := map[string]any{
+		"typ": "dpop+jwt",
+		"jwk": map[string]string{
+			"kty": "EC", "crv": "P-256",
+			"x": base64.RawURLEncoding.EncodeToString(point[:len(point)/2]),
+			"y": base64.RawURLEncoding.EncodeToString(point[len(point)/2:]),
+		},
 	}
-	return token.SignedString(c.Key)
+	return tokens_jose.SignJWT(c.Key, "ES256", header, claims)
 }

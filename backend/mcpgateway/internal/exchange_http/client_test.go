@@ -1,6 +1,7 @@
 package exchange_http
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -10,17 +11,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
 const resource = "https://downstream.example/mcp"
 
-func proofClaims(t *testing.T, proof string, key *ecdsa.PrivateKey) jwt.MapClaims {
+func proofClaims(t *testing.T, proof string, key *ecdsa.PrivateKey) map[string]any {
 	t.Helper()
-	claims := jwt.MapClaims{}
-	if _, err := jwt.ParseWithClaims(proof, claims, func(*jwt.Token) (any, error) { return &key.PublicKey, nil },
-		jwt.WithValidMethods([]string{"ES256"})); err != nil {
+	claims, err := tokens_jose.VerifyJWT(proof, "ES256", func(map[string]any) (crypto.PublicKey, error) { return &key.PublicKey, nil },
+		tokens_jose.JWTExpectation{Now: time.Now()})
+	if err != nil {
 		t.Fatalf("proof: %v", err)
 	}
 	return claims

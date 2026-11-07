@@ -4,9 +4,6 @@ package tokens_jose
 // 発行者の信頼の解決と jti の記憶は呼び出し側が行う。
 
 import (
-	"crypto"
-	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -54,29 +51,7 @@ type IDJAGClaims struct {
 
 // SignRS256 は RSASSA-PKCS1-v1_5 で JWT に署名する。ID-JAG の専用鍵だけが使う。
 func SignRS256(privateKey any, kid string, extraHeader map[string]string, claims map[string]any) (string, error) {
-	signer, ok := privateKey.(crypto.Signer)
-	if !ok {
-		return "", errors.New("active key has no signer")
-	}
-	header := map[string]any{"alg": "RS256", "kid": kid}
-	for k, v := range extraHeader {
-		header[k] = v
-	}
-	hb, err := json.Marshal(header)
-	if err != nil {
-		return "", err
-	}
-	pb, err := json.Marshal(claims)
-	if err != nil {
-		return "", err
-	}
-	signingInput := base64.RawURLEncoding.EncodeToString(hb) + "." + base64.RawURLEncoding.EncodeToString(pb)
-	digest := sha256.Sum256([]byte(signingInput))
-	sig, err := signer.Sign(rand.Reader, digest[:], crypto.SHA256)
-	if err != nil {
-		return "", err
-	}
-	return signingInput + "." + base64.RawURLEncoding.EncodeToString(sig), nil
+	return SignJWT(privateKey, "RS256", keyedHeader(kid, extraHeader), claims)
 }
 
 // UnverifiedIDJAGIssuer は信頼する発行者を探すために iss だけを読む。戻り値を信頼の根拠にしない。

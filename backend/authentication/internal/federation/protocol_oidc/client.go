@@ -3,6 +3,7 @@ package protocol_oidc
 
 import (
 	"context"
+	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
@@ -18,10 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
-
 	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/internal/federation/ports"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
 const maxResponseBytes = 1 << 20
@@ -372,20 +372,16 @@ func verifyUpstreamIDToken(
 	connection domain.IdentityProviderConnection,
 	attempt domain.FederatedLoginAttempt,
 	now time.Time,
-) (jwt.MapClaims, error) {
-	claims := jwt.MapClaims{}
-	parsed, err := jwt.ParseWithClaims(idToken, claims, func(token *jwt.Token) (any, error) {
-		if token.Method.Alg() != jwt.SigningMethodRS256.Alg() {
-			return nil, errors.New("unsupported ID token signing algorithm")
-		}
-		if _, present := token.Header["kid"]; !present {
+) (map[string]any, error) {
+	claims, err := tokens_jose.VerifyJWT(idToken, "RS256", func(header map[string]any) (crypto.PublicKey, error) {
+		if _, present := header["kid"]; !present {
 			// Core §10.1 の省略を認めるが、複数鍵を順に試して曖昧な選択を隠さない。
 			if len(keySet) == 1 {
 				return keySet[0].publicKey, nil
 			}
 			return nil, errors.New("ID token signing key is ambiguous or missing")
 		}
-		kid, ok := token.Header["kid"].(string)
+		kid, ok := header["kid"].(string)
 		if !ok || kid == "" {
 			return nil, errors.New("invalid ID token key identifier")
 		}
@@ -395,10 +391,11 @@ func verifyUpstreamIDToken(
 			}
 		}
 		return nil, errors.New("ID token key not found")
-	}, jwt.WithIssuer(connection.Issuer), jwt.WithAudience(connection.ClientID),
-		jwt.WithExpirationRequired(), jwt.WithTimeFunc(func() time.Time { return normalizedNow(now) }),
-		jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}))
-	if err != nil || !parsed.Valid {
+	}, tokens_jose.JWTExpectation{
+		Issuer: connection.Issuer, Audience: connection.ClientID,
+		RequireExpiration: true, Now: normalizedNow(now),
+	})
+	if err != nil {
 		return nil, fmt.Errorf("validate ID token: %w", err)
 	}
 	if nonce, _ := claims["nonce"].(string); nonce == "" || nonce != attempt.Nonce {

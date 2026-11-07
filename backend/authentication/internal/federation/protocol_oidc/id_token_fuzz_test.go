@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
-
 	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
 // FuzzVerifyUpstreamIDToken は、こちらの JWKS で署名されていない ID Token が受理されないことを
@@ -56,7 +55,7 @@ func FuzzVerifyUpstreamIDToken(f *testing.F) {
 func TestVerifyUpstreamIDTokenAcceptsAValidToken(t *testing.T) {
 	connection, attempt, key, keySet, now := fuzzIDTokenFixture(t)
 
-	base := jwt.MapClaims{
+	base := map[string]any{
 		"iss": connection.Issuer, "aud": connection.ClientID, "sub": "upstream-user",
 		"nonce": attempt.Nonce, "exp": now.Add(time.Minute).Unix(), "iat": now.Unix(),
 	}
@@ -64,15 +63,15 @@ func TestVerifyUpstreamIDTokenAcceptsAValidToken(t *testing.T) {
 		t.Fatalf("a correctly signed ID token was rejected: %v", err)
 	}
 
-	for name, mutate := range map[string]func(jwt.MapClaims){
-		"wrong issuer":   func(c jwt.MapClaims) { c["iss"] = "https://attacker.example" },
-		"wrong audience": func(c jwt.MapClaims) { c["aud"] = "another-client" },
-		"missing nonce":  func(c jwt.MapClaims) { delete(c, "nonce") },
-		"wrong nonce":    func(c jwt.MapClaims) { c["nonce"] = "other" },
-		"expired":        func(c jwt.MapClaims) { c["exp"] = now.Add(-time.Minute).Unix() },
+	for name, mutate := range map[string]func(map[string]any){
+		"wrong issuer":   func(c map[string]any) { c["iss"] = "https://attacker.example" },
+		"wrong audience": func(c map[string]any) { c["aud"] = "another-client" },
+		"missing nonce":  func(c map[string]any) { delete(c, "nonce") },
+		"wrong nonce":    func(c map[string]any) { c["nonce"] = "other" },
+		"expired":        func(c map[string]any) { c["exp"] = now.Add(-time.Minute).Unix() },
 	} {
 		t.Run(name, func(t *testing.T) {
-			claims := jwt.MapClaims{}
+			claims := map[string]any{}
 			maps.Copy(claims, base)
 			mutate(claims)
 			if _, err := verifyUpstreamIDToken(signIDToken(t, key, claims), keySet, connection, attempt, now); err == nil {
@@ -107,11 +106,9 @@ func fuzzIDTokenFixture(tb testing.TB) (
 	return connection, attempt, key, keySet, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 }
 
-func signIDToken(tb testing.TB, key *rsa.PrivateKey, claims jwt.MapClaims) string {
+func signIDToken(tb testing.TB, key *rsa.PrivateKey, claims map[string]any) string {
 	tb.Helper()
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	token.Header["kid"] = "upstream-key"
-	signed, err := token.SignedString(key)
+	signed, err := tokens_jose.SignJWT(key, "RS256", map[string]any{"typ": "JWT", "kid": "upstream-key"}, claims)
 	if err != nil {
 		tb.Fatalf("sign ID token: %v", err)
 	}
