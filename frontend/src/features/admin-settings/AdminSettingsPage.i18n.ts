@@ -2,7 +2,6 @@ import { defineDictionary } from '../../lib/i18n'
 
 export const adminSettingsDictionary = defineDictionary(
   {
-    displayNameRequiredError: '表示名を入力してください。',
     tabGeneralLabel: '一般',
     tabGeneralDescription: 'テナント表示名などの基本情報を管理します。',
     tabPasswordPolicyLabel: 'パスワードポリシー',
@@ -64,7 +63,6 @@ export const adminSettingsDictionary = defineDictionary(
     maxDelegationDepthFieldLabel: '委譲深さの上限',
     maxDelegationDepthHint:
       '空欄ではシステム既定を継承します。1 以上 {max} 以下の値だけを設定できます。',
-    maxDelegationDepthRangeError: '委譲深さは 1 以上、システム上限以下で入力してください。',
     delegationPolicyTighteningWarning:
       'テナント設定では認可境界を厳しくすることだけができ、システム上限を引き上げることはできません。',
     delegationPolicyUpdatedNotice: '委譲ポリシーを更新しました。',
@@ -82,7 +80,6 @@ export const adminSettingsDictionary = defineDictionary(
     trustedDeviceCeilingLabel: 'システム上限',
     trustedDeviceFieldLabel: '有効期間 (日)',
     trustedDeviceHint: '0 または空欄で無効にします。1 以上 {max} 以下の日数を設定できます。',
-    trustedDeviceRangeError: '有効期間は 0 以上 {max} 日以下の整数で入力してください。',
     trustedDeviceUpdatedNotice: '信頼済みデバイスの設定を更新しました。',
     trustedDeviceUpdateFailedError: '信頼済みデバイスの設定を更新できませんでした。',
     trustedDeviceDaySuffix: ' 日',
@@ -169,7 +166,6 @@ export const adminSettingsDictionary = defineDictionary(
     apiEndpointsDescription:
       '管理API、SCIM 2.0、本人用アカウントAPIのアクセストークンと組み合わせるベースURLです。',
     apiTokensFetchFailedError: 'API アクセストークンを取得できませんでした。',
-    tokenDescriptionRequiredError: 'トークンの説明を入力してください。',
     apiTokenIssuedNotice: 'API アクセストークンを発行しました。',
     tokenIssueFailedError: 'トークンを発行できませんでした。',
     tokenRevokedNotice: 'トークンを失効させました。',
@@ -269,7 +265,6 @@ export const adminSettingsDictionary = defineDictionary(
     accountPasswordScopeDescription: '発行者本人のパスワードを変更します。',
   },
   {
-    displayNameRequiredError: 'Enter a display name.',
     tabGeneralLabel: 'General',
     tabGeneralDescription: 'Manage basic information such as the tenant display name.',
     tabPasswordPolicyLabel: 'Password policy',
@@ -333,8 +328,6 @@ export const adminSettingsDictionary = defineDictionary(
     maxDelegationDepthFieldLabel: 'Maximum delegation depth',
     maxDelegationDepthHint:
       'Leave blank to inherit the system default. Enter a value from 1 through {max}.',
-    maxDelegationDepthRangeError:
-      'Delegation depth must be at least 1 and no greater than the system ceiling.',
     delegationPolicyTighteningWarning:
       'Tenant settings can only tighten this authorization boundary; they cannot raise the system ceiling.',
     delegationPolicyUpdatedNotice: 'Updated the delegation policy.',
@@ -352,7 +345,6 @@ export const adminSettingsDictionary = defineDictionary(
     trustedDeviceCeilingLabel: 'System ceiling',
     trustedDeviceFieldLabel: 'Lifetime (days)',
     trustedDeviceHint: 'Use 0 or leave it blank to disable. Accepts 1 to {max} days.',
-    trustedDeviceRangeError: 'Enter a whole number of days between 0 and {max}.',
     trustedDeviceUpdatedNotice: 'Updated the trusted device setting.',
     trustedDeviceUpdateFailedError: 'Could not update the trusted device setting.',
     trustedDeviceDaySuffix: ' days',
@@ -439,7 +431,6 @@ export const adminSettingsDictionary = defineDictionary(
     apiEndpointsDescription:
       'Base URLs used with access tokens for the management API, SCIM 2.0, and self-service account API.',
     apiTokensFetchFailedError: 'Could not fetch API access tokens.',
-    tokenDescriptionRequiredError: 'Enter a token description.',
     apiTokenIssuedNotice: 'Issued the API access token.',
     tokenIssueFailedError: 'Could not issue the token.',
     tokenRevokedNotice: 'Revoked the token.',

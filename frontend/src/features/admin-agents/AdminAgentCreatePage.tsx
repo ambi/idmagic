@@ -1,5 +1,5 @@
 import { IconArrowLeft } from '@tabler/icons-react'
-import { type FormEvent, useRef, useState } from 'react'
+import { type FormEvent, useMemo, useRef, useState } from 'react'
 import {
   AuthenticationAPIError,
   bindAdminAgentCredential,
@@ -9,12 +9,22 @@ import {
   writeRelationTuples,
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { CharacterCount } from '../../components/CharacterCount'
 import { CopyableValue } from '../../components/CopyableValue'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import {
+  formSchema,
+  optionalText,
+  requiredText,
+  requiredUrl,
+  useFormValidation,
+  when,
+} from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import { LENGTH } from '../../lib/lengthLimits'
 import { operationTuple } from '../../lib/mcpAccess'
@@ -100,6 +110,19 @@ export function AdminAgentCreatePage({
   const running = useRef(false)
   const [error, setError] = useState('')
 
+  const schema = useMemo(
+    () =>
+      formSchema({
+        name: requiredText(LENGTH.name),
+        description: optionalText(LENGTH.description),
+        publicKey: when(method === 'key', requiredText()),
+        // 配置先の JWKS URI は、サーバーが tokens_jose.ValidateJWKSURI で検証する。
+        jwksURI: when(method === 'jwks_uri', requiredUrl({ https: true })),
+      }),
+    [method],
+  )
+  const form = useFormValidation(schema, { name, description, publicKey, jwksURI })
+
   const chosen = operations.filter((operation) => selected.has(operation.key))
   const summary = flow.summary
     .replace('{name}', name.trim() || '—')
@@ -122,13 +145,11 @@ export function AdminAgentCreatePage({
     )
 
   // keySource は入力から認証用クライアントの鍵を作る。入力が受け付けられなければ理由を返す。
+  // 鍵の解析は Web Crypto を使う非同期の処理なので、欄の規則ではなく送信時に行う。
   async function keySource(): Promise<
     { jwks: { keys: Record<string, unknown>[] } } | { jwks_uri: string } | string
   > {
-    if (method === 'jwks_uri') {
-      const uri = jwksURI.trim()
-      return uri.startsWith('https://') ? { jwks_uri: uri } : flow.jwksUriInvalid
-    }
+    if (form.data?.jwksURI !== undefined) return { jwks_uri: form.data.jwksURI }
     const jwks = await parsePublicKey(publicKey)
     if (jwks === 'private') return t.publicKeyHasPrivateMembers
     if (jwks === 'unsupported') return t.publicKeyUnsupported
@@ -138,7 +159,12 @@ export function AdminAgentCreatePage({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!name.trim() || running.current) return
+    const data = form.data
+    if (!data) {
+      form.revealAll()
+      return
+    }
+    if (running.current) return
     running.current = true
     setBusy(true)
     setError('')
@@ -151,8 +177,8 @@ export function AdminAgentCreatePage({
       }
       if (!next.agentID) {
         const created = await registerAdminAgent(csrfToken, {
-          name: name.trim(),
-          description: description.trim() || undefined,
+          name: data.name,
+          description: data.description,
           kind,
           owner_user_id: owner || undefined,
         })
@@ -167,7 +193,7 @@ export function AdminAgentCreatePage({
             .flatMap((server) => server.scopes),
         ])
         next.clientID = await createAdminAgentKeyClient(csrfToken, {
-          name: name.trim(),
+          name: data.name,
           scope: [...scopes].join(' '),
           ...key,
         })
@@ -316,12 +342,13 @@ export function AdminAgentCreatePage({
                     id="agent-name"
                     name="name"
                     required
-                    maxLength={LENGTH.name}
                     placeholder="invoice-bot"
                     value={name}
                     disabled={Boolean(progress.agentID)}
                     onChange={(event) => setName(event.target.value)}
+                    {...form.fieldProps('name')}
                   />
+                  <FieldError form={form} name="name" />
                   <p className="text-xs text-slate-500">
                     <OriginTag label={flow.originYou} /> {t.agentNameHelp}
                   </p>
@@ -333,12 +360,14 @@ export function AdminAgentCreatePage({
                   <Input
                     id="agent-description"
                     name="description"
-                    maxLength={LENGTH.description}
                     placeholder={t.agentDescriptionPlaceholder}
                     value={description}
                     disabled={Boolean(progress.agentID)}
                     onChange={(event) => setDescription(event.target.value)}
+                    {...form.fieldProps('description')}
                   />
+                  <CharacterCount value={description} max={LENGTH.description} />
+                  <FieldError form={form} name="description" />
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="agent-kind">{t.kindLabel}</Label>
@@ -399,7 +428,9 @@ export function AdminAgentCreatePage({
                   </div>
                   {method === 'key' ? (
                     <div className="grid gap-1.5">
-                      <Label htmlFor="agent-create-public-key">{flow.publicKeyLabel}</Label>
+                      <Label htmlFor="agent-create-public-key" required>
+                        {flow.publicKeyLabel}
+                      </Label>
                       <textarea
                         id="agent-create-public-key"
                         rows={5}
@@ -407,7 +438,9 @@ export function AdminAgentCreatePage({
                         disabled={Boolean(progress.clientID)}
                         onChange={(event) => setPublicKey(event.target.value)}
                         className="rounded-md border border-slate-300 bg-white p-2 font-mono text-xs"
+                        {...form.fieldProps('publicKey')}
                       />
+                      <FieldError form={form} name="publicKey" />
                       <p className="text-xs text-slate-500">
                         <OriginTag label={flow.originYou} />
                       </p>
@@ -415,14 +448,18 @@ export function AdminAgentCreatePage({
                   ) : null}
                   {method === 'jwks_uri' ? (
                     <div className="grid gap-1.5">
-                      <Label htmlFor="agent-create-jwks-uri">{flow.jwksUriLabel}</Label>
+                      <Label htmlFor="agent-create-jwks-uri" required>
+                        {flow.jwksUriLabel}
+                      </Label>
                       <Input
                         id="agent-create-jwks-uri"
                         type="url"
                         value={jwksURI}
                         disabled={Boolean(progress.clientID)}
                         onChange={(event) => setJwksURI(event.target.value)}
+                        {...form.fieldProps('jwksURI')}
                       />
+                      <FieldError form={form} name="jwksURI" />
                       <p className="text-xs text-slate-500">
                         <OriginTag label={flow.originYou} /> {flow.jwksUriHelp}
                       </p>
@@ -490,7 +527,7 @@ export function AdminAgentCreatePage({
                 >
                   {t.cancel}
                 </a>
-                <Button type="submit" disabled={busy}>
+                <Button type="submit" disabled={busy || !form.data}>
                   {t.register}
                 </Button>
               </div>

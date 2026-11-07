@@ -194,6 +194,28 @@ describe('AdminAgentCreatePage', () => {
   })
 
   //spec:covers REQ-IDMANAGEMENT-105: 束縛だけが失敗したら、再試行で Agent とクライアントを作り直さず束縛から続ける。
+  //spec:covers WCAG22-LABELS-ERRORS: サーバーが拒む JWKS URL を欄のエラー文で示し、送信を止めること
+  it('rejects a JWKS URL that is not https or has a fragment', async () => {
+    const fetchMock = mock(() => Promise.resolve(response(201, {})))
+    stubGlobal('fetch', fetchMock)
+    await renderWithRouter(<AdminAgentCreatePage csrfToken="csrf" resourceServers={[server]} />)
+
+    fireEvent.change(screen.getByLabelText(t.agentNameLabel), { target: { value: 'docs-bot' } })
+    fireEvent.click(screen.getByLabelText(flow.authJwksUri))
+    const jwks = screen.getByLabelText(flow.jwksUriLabel)
+    for (const value of ['http://keys.example/jwks.json', 'https://keys.example/jwks.json#k']) {
+      fireEvent.change(jwks, { target: { value } })
+      expect(jwks.getAttribute('aria-invalid')).toBe('true')
+      expect(jwks).toHaveAccessibleDescription(
+        'Enter a URL that starts with https:// and has no user name or # fragment.',
+      )
+    }
+    const submit = screen.getByRole('button', { name: t.register })
+    expect(submit).toBeDisabled()
+    fireEvent.submit(submit.closest('form') as HTMLFormElement)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('retries only the unfinished steps after a partial failure', async () => {
     const calls = routedFetch(1)
     await renderWithRouter(<AdminAgentCreatePage csrfToken="csrf" resourceServers={[server]} />)

@@ -29,7 +29,6 @@ export const adminSignInPolicyDictionary = defineDictionary(
     gracePeriodHelp:
       '強制開始後に、管理者発行の単発登録承認を利用できる期間です。自由登録は許可されません。',
     allowAdminBypassLabel: '管理者が発行した単発の MFA 登録承認を許可する',
-    mfaEnrollmentInvalidError: 'MFA 強制開始日時と 1 以上の登録承認期間を入力してください。',
     reauthSecondsFieldLabel: '再認証を求めるまでの時間（秒）',
     reauthSecondsPlaceholder: '例: 3600',
     reauthSecondsHelp: 'この秒数を超えた認証は再認証（再ログイン）を求めます。空欄なら無期限です。',
@@ -40,7 +39,6 @@ export const adminSignInPolicyDictionary = defineDictionary(
     save: '保存',
     cancel: 'キャンセル',
     defaultPolicyUpdateFailedError: 'デフォルトサインインポリシーを更新できませんでした。',
-    reauthMaxAgeInvalidError: '再認証を求めるまでの時間には 1 以上の秒数を入力してください。',
     applicationPolicyHeading: 'アプリケーション別ポリシー',
     applicationPolicyDescription:
       'アプリ独自のポリシーはデフォルトを上書きします。「最終的に適用されるポリシー」で実効値を確認でき、個別設定はアプリ編集画面から変更できます。',
@@ -80,8 +78,6 @@ export const adminSignInPolicyDictionary = defineDictionary(
     gracePeriodHelp:
       'After enforcement starts, this is the period when a one-time administrator approval may be used. Open enrollment is never allowed.',
     allowAdminBypassLabel: 'Allow one-time MFA enrollment approvals issued by administrators',
-    mfaEnrollmentInvalidError:
-      'Enter an MFA enforcement start and an approval window of at least one second.',
     reauthSecondsFieldLabel: 'Time before re-authentication is required (seconds)',
     reauthSecondsPlaceholder: 'e.g., 3600',
     reauthSecondsHelp:
@@ -93,8 +89,6 @@ export const adminSignInPolicyDictionary = defineDictionary(
     save: 'Save',
     cancel: 'Cancel',
     defaultPolicyUpdateFailedError: 'Could not update the default sign-in policy.',
-    reauthMaxAgeInvalidError:
-      'Enter a number of seconds of 1 or more for the re-authentication time.',
     applicationPolicyHeading: 'Per-application policy',
     applicationPolicyDescription:
       'An app\'s own policy overrides the default. Check the effective value under "Effective policy," and change individual settings from the app edit screen.',

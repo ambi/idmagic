@@ -145,10 +145,13 @@ describe('NotificationTemplatesTab', () => {
     renderTab()
 
     fireEvent.click((await screen.findAllByRole('button', { name: t.edit }))[0])
-    fireEvent.change(await screen.findByLabelText(t.bodyHtmlLabel), { target: { value: '  ' } })
-    fireEvent.click(screen.getByRole('button', { name: t.save }))
-
-    expect(await screen.findByText(t.requiredFieldsError)).toBeInTheDocument()
+    const html = await screen.findByLabelText(t.bodyHtmlLabel)
+    fireEvent.change(html, { target: { value: '  ' } })
+    expect(html.getAttribute('aria-invalid')).toBe('true')
+    expect(html).toHaveAccessibleDescription('Enter a value for this field.')
+    const save = screen.getByRole('button', { name: t.save })
+    expect(save).toBeDisabled()
+    fireEvent.click(save)
     // 検証で止まるので保存要求は飛ばない。
     expect(fetch).toHaveBeenCalledTimes(2)
   })

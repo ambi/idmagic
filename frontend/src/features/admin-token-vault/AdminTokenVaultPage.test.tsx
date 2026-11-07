@@ -74,4 +74,21 @@ describe('AdminTokenVaultPage', () => {
     expect(screen.getByText(t.rulesInvalid)).toBeInTheDocument()
     expect(fetcher).not.toHaveBeenCalled()
   })
+
+  //spec:covers WCAG22-LABELS-ERRORS: サーバーが拒む端点を欄のエラー文で示し、登録ボタンを無効にすること
+  it('asks for https endpoints without a user name or a fragment', async () => {
+    await renderWithRouter(<AdminTokenVaultCreatePage csrfToken="csrf" onCreated={() => {}} />)
+
+    const endpoint = screen.getByLabelText(t.authorizationEndpoint)
+    for (const value of ['http://idp.example/authorize', 'https://user@idp.example/authorize']) {
+      fireEvent.change(endpoint, { target: { value } })
+      expect(endpoint.getAttribute('aria-invalid')).toBe('true')
+      expect(endpoint).toHaveAccessibleDescription(
+        'Enter a URL that starts with https:// and has no user name or # fragment.',
+      )
+    }
+    expect(screen.getByRole('button', { name: t.add })).toBeDisabled()
+    fireEvent.change(endpoint, { target: { value: 'https://idp.example/authorize' } })
+    expect(endpoint.getAttribute('aria-invalid')).toBeNull()
+  })
 })

@@ -31,6 +31,8 @@ export const adminEntraFederationDictionary = defineDictionary(
       'Microsoft 365 のドメインフェデレーションに、検証済みドメインとその IssuerUri を追加します。構成済みのドメインを指定すると IssuerUri を置き換えます。',
     federationList: 'フェデレーション一覧',
     verifiedDomainLabel: '検証済み domain',
+    domainNotUrlError:
+      'contoso.com のように、https:// を付けずにドメイン名だけを入力してください。',
     sourceAnchorAttributeLabel: 'sourceAnchor 属性',
     issuerUriLabel: 'IssuerUri',
     issuerUriPlaceholder: '空なら自動生成',
@@ -79,6 +81,7 @@ export const adminEntraFederationDictionary = defineDictionary(
       'Adds a verified domain and its IssuerUri to the Microsoft 365 domain federation. A configured domain has its IssuerUri replaced.',
     federationList: 'Federation list',
     verifiedDomainLabel: 'Verified domain',
+    domainNotUrlError: 'Enter only the domain name without https://, such as contoso.com.',
     sourceAnchorAttributeLabel: 'sourceAnchor attribute',
     issuerUriLabel: 'IssuerUri',
     issuerUriPlaceholder: 'Auto-generated if blank',

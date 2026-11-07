@@ -57,6 +57,47 @@ describe('AdminApplicationEditPage', () => {
     expect(window.location.assign).not.toHaveBeenCalled()
   })
 
+  //spec:covers WCAG22-LABELS-ERRORS: プロトコルの欄が不正なら欄のエラー文で示し、基本情報も含めて何も保存しないこと
+  it('saves nothing, not even the name, while a protocol field is invalid', async () => {
+    const fetchMock = mock((_url: string, _init?: RequestInit) =>
+      Promise.resolve(response(200, { assignments: [], categories: [], groups: [], users: [] })),
+    )
+    stubGlobal('fetch', fetchMock)
+    const oidcDetail: AdminApplicationDetail = {
+      application: app,
+      oidc: {
+        client_id: 'client-1',
+        client_type: 'confidential',
+        redirect_uris: ['https://app.example/callback'],
+        grant_types: ['authorization_code'],
+        response_types: ['code'],
+        token_endpoint_auth_method: 'client_secret_basic',
+        scope: 'openid',
+        require_pushed_authorization_requests: false,
+        dpop_bound_access_tokens: false,
+        fapi_profile: 'none',
+        client_secret_rotatable: false,
+        secret_credentials: [],
+        sub_source_attribute: '',
+        rules: [],
+      },
+    }
+    await renderWithRouter(<AdminApplicationEditPage csrfToken="csrf" detail={oidcDetail} />)
+
+    fireEvent.change(screen.getByLabelText(t.nameFieldLabel), { target: { value: 'Renamed App' } })
+    const redirects = screen.getByLabelText(new RegExp(t.redirectUriFieldLabel))
+    fireEvent.change(redirects, { target: { value: 'app.example/callback' } })
+
+    expect(redirects).toHaveAccessibleDescription(
+      '"app.example/callback" is not a URL. Include a scheme and a host, such as https://app.example.com.',
+    )
+    const save = screen.getByRole('button', { name: t.save })
+    expect(save).toBeDisabled()
+    fireEvent.submit(save.closest('form') as HTMLFormElement)
+    const writes = fetchMock.mock.calls.filter(([, init]) => init?.method && init.method !== 'GET')
+    expect(writes).toEqual([])
+  })
+
   it('shows the chosen icon file name instead of the native file input text', async () => {
     await renderWithRouter(<AdminApplicationEditPage csrfToken="csrf" detail={detail} />)
 

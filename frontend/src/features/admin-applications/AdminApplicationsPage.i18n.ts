@@ -153,10 +153,6 @@ export const adminApplicationsDictionary = defineDictionary(
     assignmentsHeading: '割り当て (ユーザー / グループ)',
     iconTooLargeError: 'アイコン画像は 256 KiB 以下にしてください。',
     iconInvalidTypeError: 'アイコン画像は PNG / JPEG / WebP / GIF を選択してください。',
-    signingCertRequiredError:
-      'AuthnRequest / LogoutRequest 署名検証用の X.509 証明書 PEM を指定してください。',
-    acsUrlRequiredError: 'ACS URL を 1 つ以上指定してください。',
-    reauthPositiveIntegerError: '再認証を求めるまでの時間は正の整数（秒）で指定してください。',
     applicationUpdateFailedError: 'アプリケーションを更新できませんでした。',
     editTitle: '{name} を編集',
     backToDetail: '詳細に戻る',
@@ -508,11 +504,6 @@ export const adminApplicationsDictionary = defineDictionary(
     assignmentsHeading: 'Assignments (users / groups)',
     iconTooLargeError: 'The icon image must be 256 KiB or smaller.',
     iconInvalidTypeError: 'Select a PNG, JPEG, WebP, or GIF icon image.',
-    signingCertRequiredError:
-      'Specify the X.509 certificate PEM used to verify AuthnRequest / LogoutRequest signatures.',
-    acsUrlRequiredError: 'Specify at least one ACS URL.',
-    reauthPositiveIntegerError:
-      'Specify the time before re-authentication as a positive integer (seconds).',
     applicationUpdateFailedError: 'Could not update the application.',
     editTitle: 'Edit {name}',
     backToDetail: 'Back to details',

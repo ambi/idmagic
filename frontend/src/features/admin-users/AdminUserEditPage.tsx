@@ -10,14 +10,25 @@ import {
   updateAdminUser,
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
+import { formSchema, requiredText, text, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import { LENGTH } from '../../lib/lengthLimits'
+
+const editUserSchema = formSchema({
+  preferred_username: requiredText(LENGTH.name),
+  name: text(LENGTH.displayName),
+  // 更新の契約は given_name と family_name に 200 を許す（作成の契約にはこの二つがない）。
+  given_name: text(LENGTH.displayName),
+  family_name: text(LENGTH.displayName),
+  email: text(LENGTH.email),
+})
 import { cn } from '../../lib/utils'
 import type { AdminUser, TenantUserAttributeSchema } from '../../types'
 import {
@@ -140,19 +151,31 @@ export function AdminUserEditPage({
   const [attrDraft, setAttrDraft] = useState<Record<string, string>>(initialAttrDraft)
   const [confirming, setConfirming] = useState(false)
 
-  const emailChanged = email !== initialEmail
+  const form = useFormValidation(editUserSchema, {
+    preferred_username: username,
+    name,
+    given_name: givenName,
+    family_name: familyName,
+    email,
+  })
+  const profile = form.data ?? {
+    preferred_username: username.trim(),
+    name: name.trim(),
+    given_name: givenName.trim(),
+    family_name: familyName.trim(),
+    email: email.trim(),
+  }
+  const emailChanged = profile.email !== initialEmail
   const effectiveEmailVerified = emailChanged && !emailVerifiedTouched ? false : emailVerified
-  const trimmedUsername = username.trim()
-  const usernameInvalid = trimmedUsername === ''
   const attributesChanged = attributeDefs.some(
     (def) => (attrDraft[def.key] ?? '') !== (initialAttrDraft[def.key] ?? ''),
   )
   const profileChanged =
-    trimmedUsername !== initialUsername ||
-    name !== initialName ||
-    givenName !== initialGivenName ||
-    familyName !== initialFamilyName ||
-    email !== initialEmail ||
+    profile.preferred_username !== initialUsername ||
+    profile.name !== initialName ||
+    profile.given_name !== initialGivenName ||
+    profile.family_name !== initialFamilyName ||
+    emailChanged ||
     effectiveEmailVerified !== initialEmailVerified ||
     attributesChanged
   const nextRoles = parseRoles(roles)
@@ -163,17 +186,24 @@ export function AdminUserEditPage({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (usernameInvalid || !changed) return
+    const data = form.data
+    if (!data) {
+      form.revealAll()
+      return
+    }
+    if (!changed) return
     if (rolesChanged && !confirming) {
       setConfirming(true)
       return
     }
     const input: UpdateAdminUserInput = {}
-    if (trimmedUsername !== initialUsername) input.preferred_username = trimmedUsername
-    if (name !== initialName) input.name = name
-    if (givenName !== initialGivenName) input.given_name = givenName
-    if (familyName !== initialFamilyName) input.family_name = familyName
-    if (email !== initialEmail) input.email = email
+    if (data.preferred_username !== initialUsername) {
+      input.preferred_username = data.preferred_username
+    }
+    if (data.name !== initialName) input.name = data.name
+    if (data.given_name !== initialGivenName) input.given_name = data.given_name
+    if (data.family_name !== initialFamilyName) input.family_name = data.family_name
+    if (data.email !== initialEmail) input.email = data.email
     if (effectiveEmailVerified !== initialEmailVerified) {
       input.email_verified = effectiveEmailVerified
     }
@@ -271,11 +301,11 @@ export function AdminUserEditPage({
                           onChange={(event) => setUsername(event.target.value)}
                           autoFocus={!user.scim_source}
                           required
-                          maxLength={LENGTH.name}
-                          aria-invalid={usernameInvalid}
                           readOnly={!!user.scim_source}
                           className={user.scim_source ? 'bg-slate-50' : undefined}
+                          {...form.fieldProps('preferred_username')}
                         />
+                        <FieldError form={form} name="preferred_username" />
                         <p className="text-xs leading-5 text-slate-500">{t.usernameHelp}</p>
                       </div>
                       <div className="grid gap-2">
@@ -284,10 +314,11 @@ export function AdminUserEditPage({
                           id="user-editor-name"
                           value={name}
                           onChange={(event) => setName(event.target.value)}
-                          maxLength={LENGTH.displayName}
                           readOnly={!!user.scim_source}
                           className={user.scim_source ? 'bg-slate-50' : undefined}
+                          {...form.fieldProps('name')}
                         />
+                        <FieldError form={form} name="name" />
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="user-editor-given-name">{t.givenName} (given_name)</Label>
@@ -295,10 +326,11 @@ export function AdminUserEditPage({
                           id="user-editor-given-name"
                           value={givenName}
                           onChange={(event) => setGivenName(event.target.value)}
-                          maxLength={LENGTH.name}
                           readOnly={!!user.scim_source}
                           className={user.scim_source ? 'bg-slate-50' : undefined}
+                          {...form.fieldProps('given_name')}
                         />
+                        <FieldError form={form} name="given_name" />
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="user-editor-family-name">
@@ -308,10 +340,11 @@ export function AdminUserEditPage({
                           id="user-editor-family-name"
                           value={familyName}
                           onChange={(event) => setFamilyName(event.target.value)}
-                          maxLength={LENGTH.name}
                           readOnly={!!user.scim_source}
                           className={user.scim_source ? 'bg-slate-50' : undefined}
+                          {...form.fieldProps('family_name')}
                         />
+                        <FieldError form={form} name="family_name" />
                       </div>
                       <div className="grid gap-2 sm:col-span-2">
                         <Label htmlFor="user-editor-email">{t.emailFieldLabel}</Label>
@@ -323,10 +356,11 @@ export function AdminUserEditPage({
                             setEmail(event.target.value)
                             setEmailVerifiedTouched(false)
                           }}
-                          maxLength={LENGTH.email}
                           readOnly={!!user.scim_source}
                           className={user.scim_source ? 'bg-slate-50' : undefined}
+                          {...form.fieldProps('email')}
                         />
+                        <FieldError form={form} name="email" />
                         {emailChanged && (
                           <p className="text-xs leading-5 text-amber-700">
                             {t.emailChangedVerificationNotice}
@@ -410,7 +444,7 @@ export function AdminUserEditPage({
                 {t.cancel}
               </Button>
             )}
-            <Button type="submit" disabled={busy || usernameInvalid || !changed}>
+            <Button type="submit" disabled={busy || !form.data || !changed}>
               {confirming ? t.confirmChanges : rolesChanged ? t.confirmChangesHeading : t.save}
             </Button>
           </div>

@@ -1,12 +1,14 @@
 import { IconPencil } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import { AuthenticationAPIError, updateAdminSettings } from '../../api'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
+import { formSchema, integerInRange, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import type { AdminSettings } from '../../types'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
@@ -29,23 +31,20 @@ export function DelegationPolicyTab({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminSettingsDictionary)
+  const schema = useMemo(() => formSchema({ depth: integerInRange(0, ceiling) }), [ceiling])
+  const validation = useFormValidation(schema, { depth })
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
     setNotice('')
 
-    const trimmed = depth.trim()
-    const requested = trimmed === '' ? 0 : Number(trimmed)
-    if (
-      !Number.isInteger(requested) ||
-      requested < 0 ||
-      requested > ceiling ||
-      (requested !== 0 && requested < 1)
-    ) {
-      setError(t.maxDelegationDepthRangeError)
+    if (!validation.data) {
+      validation.revealAll()
       return
     }
+    // 空と 0 は上書きを外し、システムの上限を継承する。
+    const requested = validation.data.depth ?? 0
     if (requested === (savedDepth ?? 0)) {
       setNotice(t.noChangesNotice)
       return
@@ -121,13 +120,15 @@ export function DelegationPolicyTab({
                 value={depth}
                 placeholder={ceiling.toString()}
                 onChange={(event) => setDepth(event.target.value)}
+                {...validation.fieldProps('depth')}
               />
+              <FieldError form={validation} name="depth" />
               <p className="text-xs text-slate-500">
                 {t.maxDelegationDepthHint.replace('{max}', ceiling.toString())}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || !validation.data}>
                 {saving ? t.saving : t.save}
               </Button>
               <Button

@@ -13,6 +13,7 @@ import {
   listURL,
   newAttribute,
   normalizeAttribute,
+  useAttributeValidation,
 } from './AdminTenantAttributesShared'
 
 // AdminTenantAttributeCreatePage はユーザー属性追加の専用画面 (wi-314 T015)。
@@ -31,7 +32,7 @@ export function AdminTenantAttributeCreatePage({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const t = useDictionary(adminTenantAttributesDictionary)
-  const keyInvalid = draft.key.trim() === ''
+  const validation = useAttributeValidation(draft, t)
 
   function patch(change: Partial<UserAttributeDef>) {
     setDraft((current) => ({ ...current, ...change }))
@@ -39,7 +40,10 @@ export function AdminTenantAttributeCreatePage({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (keyInvalid) return
+    if (!validation.data) {
+      validation.revealAll()
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -70,12 +74,12 @@ export function AdminTenantAttributeCreatePage({
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Card className="w-full admin-form p-6">
         <form onSubmit={handleSubmit}>
-          <AttributeFormFields draft={draft} onChange={patch} t={t} />
+          <AttributeFormFields draft={draft} validation={validation} onChange={patch} t={t} />
           <div className="mt-5 flex justify-end gap-2">
             <Button variant="outline" nativeButton={false} render={<a href={listURL()} />}>
               {t.cancel}
             </Button>
-            <Button type="submit" disabled={saving || keyInvalid}>
+            <Button type="submit" disabled={saving || !validation.data}>
               {saving ? t.saving : t.save}
             </Button>
           </div>

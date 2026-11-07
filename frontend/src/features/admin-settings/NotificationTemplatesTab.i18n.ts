@@ -26,7 +26,6 @@ export const notificationTemplatesTabDictionary = defineDictionary(
     placeholdersHeading: '使える差し込み変数',
     placeholdersHelp:
       'ここに無い変数を含めると保存できません。差し込む値は HTML 側で自動的にエスケープされます。',
-    requiredFieldsError: '件名・テキスト本文・HTML 本文はすべて入力してください。',
     save: '保存',
     saving: '保存中…',
     savedNotice: 'テンプレートを保存しました。',
@@ -82,7 +81,6 @@ export const notificationTemplatesTabDictionary = defineDictionary(
     placeholdersHeading: 'Available placeholders',
     placeholdersHelp:
       'A template using anything outside this list cannot be saved. Substituted values are escaped automatically in the HTML body.',
-    requiredFieldsError: 'Enter a subject, a text body, and an HTML body.',
     save: 'Save',
     saving: 'Saving…',
     savedNotice: 'Saved the template.',

@@ -8,8 +8,13 @@ import { Card } from '../../components/ui/card'
 import { useDictionary } from '../../lib/i18n'
 import type { WorkloadTrustBundle } from '../../types'
 import { adminWorkloadIdentityDictionary } from './AdminWorkloadIdentityPage.i18n'
-import { detailURL, toBundleForm, TrustBundleFormFields } from './AdminWorkloadIdentityShared'
-import { parseAudiences, parseInlineJwks } from './presentation'
+import {
+  detailURL,
+  toBundleForm,
+  TrustBundleFormFields,
+  useTrustBundleValidation,
+} from './AdminWorkloadIdentityShared'
+import { parseInlineJwks } from './presentation'
 
 // issuer と trust_domain は更新リクエストが受け付けないため入力欄を無効化する (locked)。
 // 変更するには登録し直すしかない、という仕様上の非対称をフォームで示す。
@@ -26,27 +31,30 @@ export function AdminWorkloadTrustBundleEditPage({
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const t = useDictionary(adminWorkloadIdentityDictionary)
+  const validation = useTrustBundleValidation(form, t, false)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError('')
-    const jwks = parseInlineJwks(form.jwks)
-    if (!jwks.ok) {
-      setError(t.jwksInvalidError)
+    const data = validation.data
+    if (!data) {
+      validation.revealAll()
       return
     }
+    const jwks = parseInlineJwks(data.jwks)
+    const jwksUri = data.jwksUri ?? ''
     setSaving(true)
     try {
       await updateWorkloadTrustBundle(csrfToken, trustBundle.id, {
-        name: form.name,
+        name: data.name,
         // jwks_uri は非 nil なら空文字でも上書きされるため、変更が無ければ送らない。常に送ると
         // インライン JWKS だけのバンドルで名前を直しただけの更新が取得元設定を空にしてしまう。
         // 逆に、意図して空にした場合は空文字を送る必要がある (それが唯一の消し方である)。
-        ...(form.jwksUri === (trustBundle.jwks_uri ?? '') ? {} : { jwks_uri: form.jwksUri }),
+        ...(jwksUri === (trustBundle.jwks_uri ?? '') ? {} : { jwks_uri: jwksUri }),
         // インライン JWKS は空欄が「差し替えない」であって「消す」ではないので送らない。
-        ...(jwks.value ? { jwks: jwks.value } : {}),
-        accepted_audiences: parseAudiences(form.acceptedAudiences),
-        max_subject_token_ttl_seconds: Number(form.maxTtlSeconds),
+        ...(jwks.ok && jwks.value ? { jwks: jwks.value } : {}),
+        accepted_audiences: data.acceptedAudiences,
+        max_subject_token_ttl_seconds: data.maxTtlSeconds,
       })
       window.location.assign(detailURL(trustBundle.id))
     } catch (cause) {
@@ -75,9 +83,15 @@ export function AdminWorkloadTrustBundleEditPage({
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Card className="w-full admin-form p-4">
         <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-          <TrustBundleFormFields form={form} onChange={setForm} locked={true} t={t} />
+          <TrustBundleFormFields
+            form={form}
+            validation={validation}
+            onChange={setForm}
+            locked={true}
+            t={t}
+          />
           <div className="flex gap-2.5 md:col-span-2">
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !validation.data}>
               {t.update}
             </Button>
             <Button

@@ -3,7 +3,7 @@ import { defineDictionary } from '../../lib/i18n'
 export const adminAuthorizationDetailTypesDictionary = defineDictionary(
   {
     delete: '削除',
-    schemaInvalidError: 'スキーマ JSON が不正です。',
+    schemaInvalidError: 'スキーマは JSON のオブジェクト（{ で始まる値）で入力してください。',
     updatedNotice: '{type} を更新しました。',
     registeredNotice: '{type} を登録しました。',
     saveFailedError: '保存に失敗しました。',
@@ -34,7 +34,7 @@ export const adminAuthorizationDetailTypesDictionary = defineDictionary(
   },
   {
     delete: 'Delete',
-    schemaInvalidError: 'The schema JSON is invalid.',
+    schemaInvalidError: 'Enter the schema as a JSON object (a value that starts with {).',
     updatedNotice: '{type} has been updated.',
     registeredNotice: '{type} has been registered.',
     saveFailedError: 'Failed to save.',

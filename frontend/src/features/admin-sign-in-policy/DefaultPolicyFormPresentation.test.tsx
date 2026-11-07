@@ -120,9 +120,8 @@ describe('DefaultPolicyFormPresentation', () => {
     }
 
     expect(handleSubmit).not.toHaveBeenCalled()
-    expect(
-      screen.getByText('Enter a number of seconds of 1 or more for the re-authentication time.'),
-    ).toBeInTheDocument()
+    expect(reauthInput.getAttribute('aria-invalid')).toBe('true')
+    expect(reauthInput).toHaveAccessibleDescription('Enter a whole number of 1 or more.')
   })
 
   it('calls onCancel when cancel button is clicked', () => {
@@ -179,5 +178,30 @@ describe('DefaultPolicyFormPresentation', () => {
 
     const cancelButton = screen.getByRole('button', { name: t.cancel })
     expect(cancelButton).toBeDisabled()
+  })
+
+  //spec:covers WCAG22-LABELS-ERRORS: CIDR でない行を値で名指すエラー文と aria-invalid で示し、保存ボタンを無効にして送信しないこと
+  it('names an entry that is not a CIDR and keeps the policy unsaved', () => {
+    const handleSubmit = mock()
+    renderEn(
+      <DefaultPolicyFormPresentation
+        rule={mockRule}
+        onCancel={mock()}
+        onSubmit={handleSubmit}
+        saving={false}
+      />,
+    )
+
+    const cidrs = screen.getByLabelText(t.allowedNetworksCidrFieldLabel)
+    fireEvent.change(cidrs, { target: { value: '10.0.0.0/8\n10.0.0.300/8' } })
+
+    expect(cidrs.getAttribute('aria-invalid')).toBe('true')
+    expect(cidrs).toHaveAccessibleDescription(
+      '"10.0.0.300/8" is not a CIDR. Enter an address and a prefix length, such as 192.0.2.0/24.',
+    )
+    const save = screen.getByRole('button', { name: t.save })
+    expect(save).toBeDisabled()
+    fireEvent.submit(save.closest('form') as HTMLFormElement)
+    expect(handleSubmit).not.toHaveBeenCalled()
   })
 })

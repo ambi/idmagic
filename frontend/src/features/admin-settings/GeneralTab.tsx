@@ -1,17 +1,21 @@
 import { IconPencil } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, updateAdminSettings } from '../../api'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
+import { formSchema, requiredText, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import { LENGTH } from '../../lib/lengthLimits'
 import type { AdminSettings } from '../../types'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
-import { displayNameError, ReadSetting } from './AdminSettingsShared'
+import { ReadSetting } from './AdminSettingsShared'
+
+const generalSchema = formSchema({ displayName: requiredText(LENGTH.displayName) })
 
 export function GeneralTab({
   csrfToken,
@@ -30,6 +34,7 @@ export function GeneralTab({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminSettingsDictionary)
+  const validation = useFormValidation(generalSchema, { displayName })
 
   const localeOptions = [
     { value: '', label: t.defaultLocaleSystemOption },
@@ -46,16 +51,15 @@ export function GeneralTab({
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!validation.data) {
+      validation.revealAll()
+      return
+    }
+    const trimmed = validation.data.displayName
     setSaving(true)
     setError('')
     setNotice('')
     try {
-      const trimmed = displayName.trim()
-      const validationError = displayNameError(displayName, t)
-      if (validationError) {
-        setError(validationError)
-        return
-      }
       const displayNameChanged = trimmed !== settings.display_name
       const localeChanged = defaultLocale !== (settings.default_locale ?? '')
       if (!displayNameChanged && !localeChanged) {
@@ -130,8 +134,9 @@ export function GeneralTab({
                 id="display-name"
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
-                maxLength={LENGTH.displayName}
+                {...validation.fieldProps('displayName')}
               />
+              <FieldError form={validation} name="displayName" />
               <p className="text-xs text-slate-500">{t.displayNameHelp}</p>
             </div>
             <div className="grid gap-1.5">
@@ -151,7 +156,7 @@ export function GeneralTab({
               <p className="text-xs text-slate-500">{t.defaultLocaleHelp}</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || !validation.data}>
                 {saving ? t.saving : t.save}
               </Button>
               <Button

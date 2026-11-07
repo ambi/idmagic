@@ -1,5 +1,5 @@
 import { IconArrowLeft } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import {
   AuthenticationAPIError,
   createIdentityProviderConnection,
@@ -9,11 +9,13 @@ import {
   type IdentityProviderConnection,
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import { TrustSourceFields } from './AdminIdentityProviderFormFields'
 import {
@@ -21,6 +23,7 @@ import {
   Field,
   type FormState,
   formFrom,
+  identityProviderSchema,
   inputFrom,
 } from './AdminIdentityProviderFormShared'
 import { identityProvidersDictionary } from './AdminIdentityProvidersPage.i18n'
@@ -76,12 +79,31 @@ function ConnectionFormShell({
   const [previewError, setPreviewError] = useState('')
   const t = useDictionary(identityProvidersDictionary)
 
+  const schema = useMemo(() => identityProviderSchema(form.protocol), [form.protocol])
+  const validation = useFormValidation(schema, {
+    displayName: form.displayName,
+    issuer: form.issuer,
+    clientId: form.clientId,
+    authorizationEndpoint: form.authorizationEndpoint,
+    tokenEndpoint: form.tokenEndpoint,
+    jwksUri: form.jwksUri,
+    samlEntityId: form.samlEntityId,
+    samlSsoUrl: form.samlSsoUrl,
+    samlCertificates: form.samlCertificates,
+    subjectClaim: form.subjectClaim,
+    usernameClaim: form.usernameClaim,
+  })
+
   function field<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }))
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!validation.data) {
+      validation.revealAll()
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -136,11 +158,12 @@ function ConnectionFormShell({
 
       <Card className="p-5">
         <form className="grid gap-4 md:grid-cols-2" onSubmit={submit}>
-          <Field label={t.displayName}>
+          <Field label={t.displayName} error={<FieldError form={validation} name="displayName" />}>
             <Input
               required
               value={form.displayName}
               onChange={(event) => field('displayName', event.target.value)}
+              {...validation.fieldProps('displayName')}
             />
           </Field>
           <Field label={t.protocol}>
@@ -153,12 +176,13 @@ function ConnectionFormShell({
               <option value="saml">SAML</option>
             </select>
           </Field>
-          <Field label={t.issuer}>
+          <Field label={t.issuer} error={<FieldError form={validation} name="issuer" />}>
             <Input
               required
               type="url"
               value={form.issuer}
               onChange={(event) => field('issuer', event.target.value)}
+              {...validation.fieldProps('issuer')}
             />
           </Field>
 
@@ -180,6 +204,7 @@ function ConnectionFormShell({
 
           <TrustSourceFields
             form={form}
+            validation={validation}
             field={field}
             editing={editing}
             connection={connection}
@@ -213,7 +238,7 @@ function ConnectionFormShell({
             {t.jitProvisioning}
           </label>
           <div className="flex gap-2 md:col-span-2">
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy || !validation.data}>
               {editing ? t.update : t.create}
             </Button>
           </div>

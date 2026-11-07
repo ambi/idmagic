@@ -1,5 +1,5 @@
 import { IconWorldShare } from '@tabler/icons-react'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { createSamlIDPProfile } from '../../api'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -17,7 +17,15 @@ import {
 } from './AdminApplicationsShared'
 import type { AdminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 
+/** 検証する欄に渡す属性と、その欄のエラー文。検証はフォーム全体を持つ編集画面が行う。 */
+export type SamlValidatedFields = Record<
+  'acs' | 'slo' | 'signingCert',
+  { props: FieldProps; error: ReactNode }
+>
+type FieldProps = { 'aria-invalid'?: true; 'aria-describedby'?: string; onBlur: () => void }
+
 type Props = {
+  fields: SamlValidatedFields
   csrfToken: string
   applicationName: string
   entityID: string
@@ -108,7 +116,9 @@ export function AdminApplicationSamlFormSection(props: Props) {
         <p className="text-xs text-slate-500">{t.idpProfileHelp}</p>
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="edit-saml-acs">{t.acsUrlFieldLabel}</Label>
+        <Label htmlFor="edit-saml-acs" required>
+          {t.acsUrlFieldLabel}
+        </Label>
         <textarea
           id="edit-saml-acs"
           value={props.acs}
@@ -116,7 +126,9 @@ export function AdminApplicationSamlFormSection(props: Props) {
           rows={2}
           className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
           placeholder="https://app.example.com/saml/acs"
+          {...props.fields.acs.props}
         />
+        {props.fields.acs.error}
         <p className="text-xs text-slate-500">{t.acsUrlHelp}</p>
       </div>
       <div className="grid gap-1.5">
@@ -129,7 +141,9 @@ export function AdminApplicationSamlFormSection(props: Props) {
           onChange={(event) => props.onSLOChange(event.target.value)}
           className="font-mono text-xs"
           placeholder="https://app.example.com/saml/slo"
+          {...props.fields.slo.props}
         />
+        {props.fields.slo.error}
       </div>
       <div className="grid gap-1.5">
         <Label>{t.nameIdFormatFieldLabel}</Label>
@@ -180,7 +194,9 @@ export function AdminApplicationSamlFormSection(props: Props) {
         />
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="edit-saml-request-signing-cert">{t.requestSigningCertFieldLabel}</Label>
+        <Label htmlFor="edit-saml-request-signing-cert" required={props.wantSignedRequests}>
+          {t.requestSigningCertFieldLabel}
+        </Label>
         <textarea
           id="edit-saml-request-signing-cert"
           value={props.signingCertificate}
@@ -189,7 +205,9 @@ export function AdminApplicationSamlFormSection(props: Props) {
           spellCheck={false}
           className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
           placeholder="-----BEGIN CERTIFICATE-----"
+          {...props.fields.signingCert.props}
         />
+        {props.fields.signingCert.error}
         <p className="text-xs text-slate-500">{t.requestSigningCertHelp}</p>
       </div>
       <div className="grid gap-1.5">

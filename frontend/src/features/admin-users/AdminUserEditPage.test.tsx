@@ -114,6 +114,36 @@ describe('AdminUserEditPage', () => {
     expect(window.location.assign).not.toHaveBeenCalled()
   })
 
+  //spec:covers WCAG22-LABELS-ERRORS: 空白だけのユーザー名を欄のエラー文と aria-invalid で示し、保存ボタンを無効にすること
+  it('marks a username of only spaces invalid with a field error', async () => {
+    stubGlobal(
+      'fetch',
+      routeFetch(() => response(200, user)),
+    )
+    await renderWithRouter(<AdminUserEditPage csrfToken="csrf" user={user} schema={emptySchema} />)
+
+    const username = screen.getByLabelText(t.username)
+    fireEvent.change(username, { target: { value: '  ' } })
+
+    expect(username.getAttribute('aria-invalid')).toBe('true')
+    expect(username).toHaveAccessibleDescription('Enter a value for this field.')
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled()
+  })
+
+  it('sends a cleared display name and trims a changed one', async () => {
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    const fetchMock = routeFetch(() => response(200, user))
+    stubGlobal('fetch', fetchMock)
+    await renderWithRouter(<AdminUserEditPage csrfToken="csrf" user={user} schema={emptySchema} />)
+
+    fireEvent.change(screen.getByLabelText(t.displayName), { target: { value: '  Jiro  ' } })
+    fireEvent.click(screen.getByRole('button', { name: t.save }))
+
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalled())
+    const patch = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH')
+    expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ name: 'Jiro' })
+  })
+
   it('requires a confirmation step before submitting a role change', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     stubGlobal(

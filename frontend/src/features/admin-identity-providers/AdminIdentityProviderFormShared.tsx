@@ -1,7 +1,19 @@
 import type { ReactNode } from 'react'
 import type { IdentityProviderConnection, IdentityProviderConnectionInput } from '../../api'
+import { FieldError } from '../../components/FieldError'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import {
+  containsPemBlock,
+  type FormValidation,
+  formSchema,
+  requiredList,
+  requiredText,
+  requiredUrl,
+  rule,
+  when,
+} from '../../lib/form'
+import { LENGTH } from '../../lib/lengthLimits'
 
 export type FormState = {
   displayName: string
@@ -62,12 +74,7 @@ export function inputFrom(form: FormState): IdentityProviderConnectionInput {
     saml_entity_id: form.protocol === 'saml' ? form.samlEntityId.trim() : undefined,
     saml_sso_url: form.protocol === 'saml' ? form.samlSsoUrl.trim() : undefined,
     saml_signing_certificates:
-      form.protocol === 'saml'
-        ? form.samlCertificates
-            .split(/\n\s*\n/)
-            .map((value) => value.trim())
-            .filter(Boolean)
-        : undefined,
+      form.protocol === 'saml' ? splitCertificates(form.samlCertificates) : undefined,
     claim_mapping: {
       subject: form.subjectClaim.trim(),
       username: form.usernameClaim.trim(),
@@ -108,21 +115,63 @@ export function formFrom(connection: IdentityProviderConnection): FormState {
   }
 }
 
+/** 証明書の欄は、空行で区切った PEM の証明書の並びである。 */
+export function splitCertificates(value: string): string[] {
+  return value
+    .split(/\n\s*\n/)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+}
+
+// 規則は federation/domain の IdentityProviderConnection.Validate に従う。issuer とエンドポイントは
+// userinfo とフラグメントのない https の URL、subject と username の claim は必須である。
+// 証明書は保存時には解析されないが、PEM でなければ応答の署名を検証できないので、ここで確かめる。
+export function identityProviderSchema(protocol: FormState['protocol']) {
+  const oidc = protocol === 'oidc'
+  return formSchema({
+    displayName: requiredText(),
+    issuer: requiredUrl({ https: true }),
+    clientId: when(oidc, requiredText()),
+    authorizationEndpoint: when(oidc, requiredUrl({ https: true })),
+    tokenEndpoint: when(oidc, requiredUrl({ https: true })),
+    jwksUri: when(oidc, requiredUrl({ https: true })),
+    samlEntityId: when(!oidc, requiredText(LENGTH.uri)),
+    samlSsoUrl: when(!oidc, requiredUrl({ https: true })),
+    samlCertificates: when(
+      !oidc,
+      rule(requiredList(splitCertificates), (entries) =>
+        entries.every(containsPemBlock) ? undefined : { kind: 'invalidPem' },
+      ),
+    ),
+    subjectClaim: requiredText(),
+    usernameClaim: requiredText(),
+  })
+}
+
+export type IdentityProviderValidation = FormValidation<ReturnType<typeof identityProviderSchema>>
+export type ValidatedField = Parameters<IdentityProviderValidation['fieldProps']>[0]
+
 export function Field({
   label,
   help,
+  error,
   children,
 }: {
   label: string
   help?: string
+  /** 欄の問題を示す `FieldError`。ラベルの名前に含めないよう、label 要素の外に置く。 */
+  error?: ReactNode
   children: ReactNode
 }) {
   return (
-    <Label className="grid gap-1.5">
-      <span>{label}</span>
-      {children}
-      {help ? <span className="text-xs font-normal text-slate-500">{help}</span> : null}
-    </Label>
+    <div className="grid gap-1.5">
+      <Label className="grid gap-1.5">
+        <span>{label}</span>
+        {children}
+        {help ? <span className="text-xs font-normal text-slate-500">{help}</span> : null}
+      </Label>
+      {error}
+    </div>
   )
 }
 
@@ -130,14 +179,24 @@ export function URLField({
   label,
   value,
   onChange,
+  validation,
+  name,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
+  validation: IdentityProviderValidation
+  name: ValidatedField
 }) {
   return (
-    <Field label={label}>
-      <Input required type="url" value={value} onChange={(event) => onChange(event.target.value)} />
+    <Field label={label} error={<FieldError form={validation} name={name} />}>
+      <Input
+        required
+        type="url"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        {...validation.fieldProps(name)}
+      />
     </Field>
   )
 }

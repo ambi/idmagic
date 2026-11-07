@@ -1,16 +1,24 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import {
   AuthenticationAPIError,
   deleteAgentGuardrailPolicy,
   getAgentGuardrailPolicy,
   putAgentGuardrailPolicy,
 } from '../../api'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
+import {
+  formSchema,
+  integerInRange,
+  optionalDateTime,
+  optionalList,
+  useFormValidation,
+} from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import type {
   AgentGuardrailAction,
@@ -59,6 +67,20 @@ function lines(value: string): string[] | undefined {
     .map((item) => item.trim())
     .filter(Boolean)
   return items.length > 0 ? items : undefined
+}
+
+// 範囲と件数は TypeSpec の AgentGuardrailLimits と AgentGuardrailIssuanceRate に従う。
+function guardrailSchema(rateGiven: boolean) {
+  const split = (value: string) => lines(value) ?? []
+  return formSchema({
+    resources: optionalList(split, 100),
+    detailTypes: optionalList(split, 100),
+    maxIssuances: integerInRange(1, 1_000_000, { required: rateGiven }),
+    windowSeconds: integerInRange(1, 86400, { required: rateGiven }),
+    expiresAt: optionalDateTime(),
+    ttl: integerInRange(1, 86400),
+    depth: integerInRange(0, 16),
+  })
 }
 
 function optionalNumber(value: string): number | undefined {
@@ -194,8 +216,25 @@ export function AgentGuardrailPanel({
     return t.failed
   }
 
+  // 発行の上限は回数と期間の組で一つの制限なので、片方だけを入れたら他方も求める。
+  const rateGiven = form.maxIssuances.trim() !== '' || form.windowSeconds.trim() !== ''
+  const schema = useMemo(() => guardrailSchema(rateGiven), [rateGiven])
+  const checks = useFormValidation(schema, {
+    resources: form.resources,
+    detailTypes: form.detailTypes,
+    maxIssuances: form.maxIssuances,
+    windowSeconds: form.windowSeconds,
+    expiresAt: form.expiresAt,
+    ttl: form.ttl,
+    depth: form.depth,
+  })
+
   const save = async (event: FormEvent) => {
     event.preventDefault()
+    if (!checks.data) {
+      checks.revealAll()
+      return
+    }
     if (!csrfToken || busy || !policies) return
     setBusy(true)
     setError('')
@@ -248,7 +287,9 @@ export function AgentGuardrailPanel({
         id={`guardrail-${key}`}
         value={form[key]}
         onChange={(event) => set(key, event.target.value)}
+        {...checks.fieldProps(key)}
       />
+      <FieldError form={checks} name={key} />
     </div>
   )
 
@@ -296,7 +337,9 @@ export function AgentGuardrailPanel({
                     className="w-full rounded border border-slate-300 p-2 text-sm"
                     value={form.resources}
                     onChange={(event) => set('resources', event.target.value)}
+                    {...checks.fieldProps('resources')}
                   />
+                  <FieldError form={checks} name="resources" />
                   <ActionSelect
                     id="guardrail-resources-action"
                     value={form.resourcesAction}
@@ -310,7 +353,9 @@ export function AgentGuardrailPanel({
                     className="w-full rounded border border-slate-300 p-2 text-sm"
                     value={form.detailTypes}
                     onChange={(event) => set('detailTypes', event.target.value)}
+                    {...checks.fieldProps('detailTypes')}
                   />
+                  <FieldError form={checks} name="detailTypes" />
                   <ActionSelect
                     id="guardrail-detail-types-action"
                     value={form.detailTypesAction}
@@ -365,7 +410,7 @@ export function AgentGuardrailPanel({
                       {t.remove}
                     </Button>
                   ) : null}
-                  <Button type="submit" disabled={busy}>
+                  <Button type="submit" disabled={busy || !checks.data}>
                     {t.save}
                   </Button>
                 </div>

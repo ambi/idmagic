@@ -58,6 +58,38 @@ describe('AgentGuardrailPanel', () => {
     await screen.findByText(t.conflict)
   })
 
+  //spec:covers WCAG22-LABELS-ERRORS: 契約の範囲を外れる値、片方だけの発行の上限、日時でない値を欄のエラー文で示し、保存しないこと
+  it('keeps limits the contract rejects from being saved', async () => {
+    spyOn(api, 'getAgentGuardrailPolicy').mockResolvedValue({})
+    const put = spyOn(api, 'putAgentGuardrailPolicy')
+    await renderWithRouter(<AgentGuardrailPanel agentID="bot" csrfToken="csrf" />)
+    const save = await screen.findByRole('button', { name: t.save })
+
+    const depth = screen.getByLabelText(t.depthLabel)
+    fireEvent.change(depth, { target: { value: '17' } })
+    expect(depth).toHaveAccessibleDescription('Enter a whole number from 0 to 16.')
+    fireEvent.change(depth, { target: { value: '16' } })
+    expect(depth.getAttribute('aria-invalid')).toBeNull()
+
+    fireEvent.change(screen.getByLabelText(t.maxIssuancesLabel), { target: { value: '5' } })
+    const window = screen.getByLabelText(t.windowSecondsLabel)
+    fireEvent.blur(window)
+    expect(window).toHaveAccessibleDescription('Enter a value for this field.')
+
+    fireEvent.change(window, { target: { value: '60' } })
+    const expires = screen.getByLabelText(t.expiresAtLabel)
+    fireEvent.change(expires, { target: { value: '2026-02-30T00:00:00Z' } })
+    expect(expires).toHaveAccessibleDescription(
+      'Enter an RFC 3339 date and time, such as 2026-12-31T23:59:59Z.',
+    )
+    expect(save).toBeDisabled()
+    fireEvent.submit(save.closest('form') as HTMLFormElement)
+    expect(put).not.toHaveBeenCalled()
+
+    fireEvent.change(expires, { target: { value: '2026-12-31T23:59:59+09:00' } })
+    expect(save).toBeEnabled()
+  })
+
   it('shows policies without a form when read-only', async () => {
     spyOn(api, 'getAgentGuardrailPolicy').mockResolvedValue({ tenant_default: policy })
     await renderWithRouter(<AgentGuardrailPanel agentID="bot" />)

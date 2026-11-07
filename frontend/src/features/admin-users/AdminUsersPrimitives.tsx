@@ -1,5 +1,5 @@
 import type { IconUser, IconUsers } from '@tabler/icons-react'
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
@@ -155,18 +155,21 @@ type FieldProps = {
   required?: boolean
   minLength?: number
   description?: string
+  /** 欄の問題を示す `FieldError`。入力欄には `form.fieldProps` を渡す。 */
+  error?: ReactNode
 } & Omit<
   ComponentProps<typeof Input>,
   'id' | 'name' | 'type' | 'placeholder' | 'required' | 'minLength'
 >
 
-export function Field({ id, label, type = 'text', description, ...props }: FieldProps) {
+export function Field({ id, label, type = 'text', description, error, ...props }: FieldProps) {
   return (
     <div className="grid gap-2">
       <Label htmlFor={id} required={props.required}>
         {label}
       </Label>
       <Input id={id} name={id} type={type} {...props} />
+      {error}
       {description && <p className="text-xs leading-5 text-slate-500">{description}</p>}
     </div>
   )

@@ -1,8 +1,19 @@
 import { useEffect, useState } from 'react'
 import { getMcpReportedTools, listAdminApplications, tenantURL } from '../../api'
+import { FieldError } from '../../components/FieldError'
 import { Button } from '../../components/ui/button'
 import { Label } from '../../components/ui/label'
 import { Input } from '../../components/ui/input'
+import {
+  type FormValidation,
+  formSchema,
+  requiredList,
+  requiredText,
+  requiredUrl,
+  rule,
+  text,
+} from '../../lib/form'
+import { LENGTH } from '../../lib/lengthLimits'
 import type {
   AdminApplication,
   McpResourceServer,
@@ -85,6 +96,23 @@ export function parseAccessRules(text: string): ResourceAccessRule[] | null {
     return null
   }
 }
+
+// 規則は oauth2/domain の mcpResourceServerSchema に従う。resource は RFC 8707 のリソース指示子
+// （フラグメントのない絶対 URI）、名前は表示名の上限、スコープは 1 件以上である。
+export function resourceServerSchema(t: Dictionary) {
+  return formSchema({
+    resource: requiredUrl({ noFragment: true }),
+    name: requiredText(LENGTH.displayName),
+    scopes: requiredList(parseScopes),
+    accessRules: rule(text(), (value) =>
+      parseAccessRules(value) === null
+        ? { kind: 'message', text: t.accessRulesInvalidError }
+        : undefined,
+    ),
+  })
+}
+
+export type ResourceServerValidation = FormValidation<ReturnType<typeof resourceServerSchema>>
 
 export function listURL(): string {
   return tenantURL('/admin/mcp-resource-servers')
@@ -290,11 +318,13 @@ function AccessRuleRows({
 // resource (URI) は編集時のみ変更不可にする (locked)。
 export function McpResourceServerFormFields({
   form,
+  validation,
   onChange,
   locked,
   t,
 }: {
   form: FormState
+  validation: ResourceServerValidation
   onChange: (next: FormState) => void
   locked: boolean
   t: Dictionary
@@ -313,7 +343,9 @@ export function McpResourceServerFormFields({
           placeholder={t.resourcePlaceholder}
           onChange={(event) => onChange({ ...form, resource: event.target.value })}
           required
+          {...validation.fieldProps('resource')}
         />
+        <FieldError form={validation} name="resource" />
         <p className="text-xs leading-5 text-slate-500">
           <InputOrigin label={t.originYou} /> {t.resourceHelp}
         </p>
@@ -327,7 +359,9 @@ export function McpResourceServerFormFields({
           value={form.name}
           onChange={(event) => onChange({ ...form, name: event.target.value })}
           required
+          {...validation.fieldProps('name')}
         />
+        <FieldError form={validation} name="name" />
         <p className="text-xs leading-5 text-slate-500">
           <InputOrigin label={t.originYou} />
         </p>
@@ -345,7 +379,9 @@ export function McpResourceServerFormFields({
             placeholder={t.scopesPlaceholder}
             onChange={(event) => onChange({ ...form, scopes: event.target.value })}
             required
+            {...validation.fieldProps('scopes')}
           />
+          <FieldError form={validation} name="scopes" />
           <p className="text-xs leading-5 text-slate-500">
             <InputOrigin label={t.originDefault} /> {t.scopesHelp}
           </p>
@@ -366,7 +402,9 @@ export function McpResourceServerFormFields({
               placeholder={t.accessRulesPlaceholder}
               onChange={(event) => onChange({ ...form, accessRules: event.target.value })}
               className="rounded-md border border-slate-300 bg-white p-2 font-mono text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+              {...validation.fieldProps('accessRules')}
             />
+            <FieldError form={validation} name="accessRules" />
           </div>
         </details>
       </div>

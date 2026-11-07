@@ -1,8 +1,9 @@
 import { IconPencil, IconPlus, IconTrash, IconX } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AuthenticationAPIError, updateTenantGroupAttributeSchema } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
+import { FieldError } from '../../components/FieldError'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { getTenantGroupAttributeSchema } from '../../api/admin'
 import { tenantURL } from '../../api/core'
@@ -12,8 +13,11 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { formSchema, optionalText, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import type { AttributeType, GroupAttributeDef, TenantGroupAttributeSchema } from '../../types'
+import { attributeKey } from './AdminTenantAttributesShared'
 import { adminTenantGroupAttributesDictionary } from './AdminTenantGroupAttributesPage.i18n'
 
 const ATTRIBUTE_TYPES: AttributeType[] = ['string', 'number', 'boolean', 'date', 'string_array']
@@ -210,8 +214,17 @@ export function AttributeEditorDialog({
   onSubmit: (draft: GroupAttributeDef) => void
 }) {
   const [draft, setDraft] = useState<GroupAttributeDef>(initial)
-  const keyInvalid = draft.key.trim() === ''
   const t = useDictionary(adminTenantGroupAttributesDictionary)
+  // 規則は groupAttributeDefSchema に従う。キーは User と同じ snake_case、ラベルは名前の上限である。
+  const schema = useMemo(
+    () =>
+      formSchema({
+        key: attributeKey(t.attributeKeyInvalidError),
+        label: optionalText(LENGTH.name),
+      }),
+    [t],
+  )
+  const validation = useFormValidation(schema, { key: draft.key, label: draft.label ?? '' })
 
   function patch(change: Partial<GroupAttributeDef>) {
     setDraft((current) => ({ ...current, ...change }))
@@ -231,7 +244,8 @@ export function AttributeEditorDialog({
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            if (!keyInvalid) onSubmit(draft)
+            if (validation.data) onSubmit(draft)
+            else validation.revealAll()
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
@@ -244,19 +258,24 @@ export function AttributeEditorDialog({
                   value={draft.label ?? ''}
                   placeholder={t.displayNamePlaceholder}
                   onChange={(event) => patch({ label: event.target.value })}
+                  {...validation.fieldProps('label')}
                 />
+                <FieldError form={validation} name="label" />
                 <p className="text-xs text-slate-500">{t.displayNameHelp}</p>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="group-attr-key">{t.keyFieldLabel}</Label>
+                <Label htmlFor="group-attr-key" required>
+                  {t.keyFieldLabel}
+                </Label>
                 <Input
                   id="group-attr-key"
                   value={draft.key}
                   placeholder="cost_center"
                   className="font-mono"
-                  aria-invalid={keyInvalid}
                   onChange={(event) => patch({ key: event.target.value })}
+                  {...validation.fieldProps('key')}
                 />
+                <FieldError form={validation} name="key" />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="group-attr-type">{t.tableHeaderType}</Label>
@@ -294,7 +313,7 @@ export function AttributeEditorDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               {t.cancel}
             </Button>
-            <Button type="submit" disabled={saving || keyInvalid}>
+            <Button type="submit" disabled={saving || !validation.data}>
               {saving ? t.saving : isNew ? t.add : t.save}
             </Button>
           </div>

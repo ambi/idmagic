@@ -1,12 +1,14 @@
 import { IconPencil } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import { AuthenticationAPIError, updateAdminSettings } from '../../api'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
+import { formSchema, integerInRange, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import type { AdminSettings } from '../../types'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
@@ -53,19 +55,20 @@ export function TrustedDeviceTab({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const schema = useMemo(() => formSchema({ days: integerInRange(0, ceilingDays) }), [ceilingDays])
+  const validation = useFormValidation(schema, { days })
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
     setNotice('')
 
-    const trimmed = days.trim()
-    const requestedDays = trimmed === '' ? 0 : Number(trimmed)
-    if (!Number.isInteger(requestedDays) || requestedDays < 0 || requestedDays > ceilingDays) {
-      setError(t.trustedDeviceRangeError.replace('{max}', String(ceilingDays)))
+    if (!validation.data) {
+      validation.revealAll()
       return
     }
-    const requested = requestedDays * SECONDS_PER_DAY
+    // 空と 0 は信頼済みの端末を使わない。
+    const requested = (validation.data.days ?? 0) * SECONDS_PER_DAY
     if (requested === savedSeconds) {
       setNotice(t.noChangesNotice)
       return
@@ -144,13 +147,15 @@ export function TrustedDeviceTab({
                 value={days}
                 placeholder="0"
                 onChange={(event) => setDays(event.target.value)}
+                {...validation.fieldProps('days')}
               />
+              <FieldError form={validation} name="days" />
               <p className="text-xs text-slate-500">
                 {t.trustedDeviceHint.replace('{max}', String(ceilingDays))}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || !validation.data}>
                 {saving ? t.saving : t.save}
               </Button>
               <Button

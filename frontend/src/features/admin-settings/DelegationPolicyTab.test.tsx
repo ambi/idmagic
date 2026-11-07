@@ -79,7 +79,10 @@ describe('DelegationPolicyTab', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: t.save }))
 
-    expect(screen.getByText(t.maxDelegationDepthRangeError)).toBeInTheDocument()
+    expect(screen.getByLabelText(t.maxDelegationDepthFieldLabel)).toHaveAccessibleDescription(
+      'Enter a whole number from 0 to 3.',
+    )
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled()
     expect(fetch).not.toHaveBeenCalled()
   })
 })

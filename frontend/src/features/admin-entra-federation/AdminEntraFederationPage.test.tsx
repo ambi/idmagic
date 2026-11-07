@@ -329,3 +329,27 @@ describe('UPN がフェデレーションしない取り込み元の User', () =
     })
   }
 })
+
+describe('Entra の構成の入力', () => {
+  afterEach(() => restoreGlobals())
+
+  //spec:covers WCAG22-LABELS-ERRORS: サーバーが拒む domain と reply URL を欄のエラー文で示し、保存しないこと
+  it('rejects a domain written as a URL and a reply URL without a host', async () => {
+    const fetchMock = mock(() => Promise.resolve(new Response('{}')))
+    stubGlobal('fetch', fetchMock)
+    await renderWithRouter(<AdminEntraFederationAddPage csrfToken="csrf" />)
+
+    const domain = screen.getByLabelText(t.verifiedDomainLabel)
+    fireEvent.change(domain, { target: { value: 'https://contoso.com' } })
+    expect(domain).toHaveAccessibleDescription(t.domainNotUrlError)
+    fireEvent.change(domain, { target: { value: 'contoso.com' } })
+
+    const reply = screen.getByLabelText(t.replyUrlLabel)
+    fireEvent.change(reply, { target: { value: 'login.srf' } })
+    expect(reply.getAttribute('aria-invalid')).toBe('true')
+    const save = screen.getByRole('button', { name: t.save })
+    expect(save).toBeDisabled()
+    fireEvent.submit(save.closest('form') as HTMLFormElement)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})

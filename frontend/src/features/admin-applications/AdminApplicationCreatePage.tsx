@@ -1,13 +1,25 @@
 import { IconArrowLeft, IconCheck } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import { createAdminApplication } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
+import {
+  formSchema,
+  optionalUrl,
+  pemText,
+  requiredText,
+  requiredUrl,
+  scopeText,
+  urlList,
+  useFormValidation,
+  when,
+} from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import { LENGTH } from '../../lib/lengthLimits'
 import {
@@ -65,32 +77,56 @@ export function AdminApplicationCreatePage({
   const [createdID, setCreatedID] = useState('')
   const t = useDictionary(adminApplicationsDictionary)
 
-  const nameInvalid = name.trim() === ''
+  const schema = useMemo(() => {
+    const oidc = type === 'oidc'
+    const saml = type === 'saml'
+    return formSchema({
+      name: requiredText(),
+      launch_url: type === 'weblink' ? requiredUrl() : optionalUrl(),
+      redirect_uris: when(oidc, urlList(parseList, { required: true })),
+      scope: when(oidc || type === 'service', scopeText()),
+      jwks_uri: when(oidc && authMethod === 'private_key_jwt', requiredUrl({ https: true })),
+      tls_client_auth_subject_dn: when(
+        oidc && authMethod === 'tls_client_auth',
+        requiredText(LENGTH.uri),
+      ),
+      wtrealm: when(type === 'wsfed', requiredText(LENGTH.uri)),
+      reply_urls: when(type === 'wsfed', urlList(parseList, { required: true })),
+      entity_id: when(saml, requiredText(LENGTH.uri)),
+      acs_urls: when(saml, urlList(parseList, { required: true })),
+      slo_url: when(saml, optionalUrl({}, LENGTH.uri)),
+      authn_request_signing_certificate_pem: when(saml, pemText(samlWantSignedRequests)),
+    })
+  }, [type, authMethod, samlWantSignedRequests])
+  const form = useFormValidation(schema, {
+    name,
+    launch_url: launchURL,
+    redirect_uris: redirectURIs,
+    scope,
+    jwks_uri: jwksURI,
+    tls_client_auth_subject_dn: tlsSubjectDN,
+    wtrealm,
+    reply_urls: replyURLs,
+    entity_id: samlEntityID,
+    acs_urls: samlACSURLs,
+    slo_url: samlSLOURL,
+    authn_request_signing_certificate_pem: samlSigningCert,
+  })
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (nameInvalid) return
-    setSaving(true)
-    setError('')
-    if (type === 'saml' && samlWantSignedRequests && samlSigningCert.trim() === '') {
-      setError(t.signingCertRequiredError)
-      setSaving(false)
+    if (!form.data) {
+      form.revealAll()
       return
     }
+    setSaving(true)
+    setError('')
     try {
       const result = await createAdminApplication(csrfToken, {
-        name: name.trim(),
+        ...form.data,
         type,
-        launch_url: launchURL.trim() || undefined,
-        redirect_uris: type === 'oidc' ? parseList(redirectURIs) : undefined,
-        scope: type === 'service' || type === 'oidc' ? scope.trim() || undefined : undefined,
         client_type: type === 'oidc' ? clientType : undefined,
         token_endpoint_auth_method: type === 'oidc' ? authMethod : undefined,
-        jwks_uri: type === 'oidc' && authMethod === 'private_key_jwt' ? jwksURI.trim() : undefined,
-        tls_client_auth_subject_dn:
-          type === 'oidc' && authMethod === 'tls_client_auth' ? tlsSubjectDN.trim() : undefined,
-        wtrealm: type === 'wsfed' ? wtrealm.trim() : undefined,
-        reply_urls: type === 'wsfed' ? parseList(replyURLs) : undefined,
         name_id_format:
           type === 'wsfed' ? nameIDFormat : type === 'saml' ? samlNameIDFormat : undefined,
         name_id_source:
@@ -99,13 +135,8 @@ export function AdminApplicationCreatePage({
             : type === 'saml'
               ? samlNameIDSource.trim()
               : undefined,
-        entity_id: type === 'saml' ? samlEntityID.trim() : undefined,
-        acs_urls: type === 'saml' ? parseList(samlACSURLs) : undefined,
-        slo_url: type === 'saml' ? samlSLOURL.trim() || undefined : undefined,
         sign_response: type === 'saml' ? samlSignResponse : undefined,
         want_authn_requests_signed: type === 'saml' ? samlWantSignedRequests : undefined,
-        authn_request_signing_certificate_pem:
-          type === 'saml' ? samlSigningCert.trim() || undefined : undefined,
       })
       const id = result.application.id
       if (result.client_secret && result.client_id) {
@@ -201,7 +232,9 @@ export function AdminApplicationCreatePage({
                     onChange={(e) => setName(e.target.value)}
                     required
                     placeholder="Payroll"
+                    {...form.fieldProps('name')}
                   />
+                  <FieldError form={form} name="name" />
                 </div>
                 {type !== 'service' ? (
                   <div className="grid gap-1.5">
@@ -214,7 +247,9 @@ export function AdminApplicationCreatePage({
                       onChange={(e) => setLaunchURL(e.target.value)}
                       placeholder="https://app.example.com"
                       required={type === 'weblink'}
+                      {...form.fieldProps('launch_url')}
                     />
+                    <FieldError form={form} name="launch_url" />
                     {type !== 'weblink' ? (
                       <p className="text-xs text-slate-500">{t.launchUrlHelp}</p>
                     ) : null}
@@ -235,7 +270,9 @@ export function AdminApplicationCreatePage({
                       onChange={(e) => setScope(e.target.value)}
                       className="font-mono text-xs"
                       placeholder="catalog:read invoice:read"
+                      {...form.fieldProps('scope')}
                     />
+                    <FieldError form={form} name="scope" />
                     <p className="text-xs text-slate-500">{t.serviceScopeHelp}</p>
                   </div>
                 </section>
@@ -256,7 +293,9 @@ export function AdminApplicationCreatePage({
                       required
                       className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                       placeholder="https://app.example.com/callback"
+                      {...form.fieldProps('redirect_uris')}
                     />
+                    <FieldError form={form} name="redirect_uris" />
                     <p className="text-xs text-slate-500">{t.oidcRedirectHelp}</p>
                   </div>
                   <div className="grid gap-1.5">
@@ -269,7 +308,9 @@ export function AdminApplicationCreatePage({
                       onChange={(e) => setScope(e.target.value)}
                       className="font-mono text-xs"
                       placeholder="openid profile email"
+                      {...form.fieldProps('scope')}
                     />
+                    <FieldError form={form} name="scope" />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-1.5">
@@ -311,7 +352,9 @@ export function AdminApplicationCreatePage({
                         className="font-mono text-xs"
                         placeholder="https://app.example.com/jwks.json"
                         required
+                        {...form.fieldProps('jwks_uri')}
                       />
+                      <FieldError form={form} name="jwks_uri" />
                     </div>
                   ) : null}
                   {authMethod === 'tls_client_auth' ? (
@@ -326,7 +369,9 @@ export function AdminApplicationCreatePage({
                         className="font-mono text-xs"
                         placeholder="CN=app,OU=clients,O=example"
                         required
+                        {...form.fieldProps('tls_client_auth_subject_dn')}
                       />
+                      <FieldError form={form} name="tls_client_auth_subject_dn" />
                     </div>
                   ) : null}
                   <p className="text-xs text-slate-500">{t.authMethodFixedNotice}</p>
@@ -345,10 +390,11 @@ export function AdminApplicationCreatePage({
                       value={wtrealm}
                       onChange={(e) => setWtrealm(e.target.value)}
                       required
-                      maxLength={LENGTH.uri}
                       className="font-mono text-xs"
                       placeholder="urn:app:example"
+                      {...form.fieldProps('wtrealm')}
                     />
+                    <FieldError form={form} name="wtrealm" />
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="app-replies" required>
@@ -362,7 +408,9 @@ export function AdminApplicationCreatePage({
                       required
                       className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                       placeholder="https://app.example.com/wsfed"
+                      {...form.fieldProps('reply_urls')}
                     />
+                    <FieldError form={form} name="reply_urls" />
                   </div>
                   <div className="grid gap-1.5">
                     <Label>{t.nameIdFormatFieldLabel}</Label>
@@ -396,10 +444,11 @@ export function AdminApplicationCreatePage({
                       value={samlEntityID}
                       onChange={(e) => setSamlEntityID(e.target.value)}
                       required
-                      maxLength={LENGTH.uri}
                       className="font-mono text-xs"
                       placeholder="https://app.example.com/saml/metadata"
+                      {...form.fieldProps('entity_id')}
                     />
+                    <FieldError form={form} name="entity_id" />
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="app-saml-acs" required>
@@ -413,7 +462,9 @@ export function AdminApplicationCreatePage({
                       required
                       className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                       placeholder="https://app.example.com/saml/acs"
+                      {...form.fieldProps('acs_urls')}
                     />
+                    <FieldError form={form} name="acs_urls" />
                     <p className="text-xs text-slate-500">{t.redirectUriHelp}</p>
                   </div>
                   <div className="grid gap-1.5">
@@ -426,7 +477,9 @@ export function AdminApplicationCreatePage({
                       onChange={(e) => setSamlSLOURL(e.target.value)}
                       className="font-mono text-xs"
                       placeholder="https://app.example.com/saml/slo"
+                      {...form.fieldProps('slo_url')}
                     />
+                    <FieldError form={form} name="slo_url" />
                   </div>
                   <div className="grid gap-1.5">
                     <Label>{t.nameIdFormatFieldLabel}</Label>
@@ -464,7 +517,10 @@ export function AdminApplicationCreatePage({
                     {t.wantSignedRequestsLabel}
                   </label>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="app-saml-request-signing-cert">
+                    <Label
+                      htmlFor="app-saml-request-signing-cert"
+                      required={samlWantSignedRequests}
+                    >
                       {t.requestSigningCertFieldLabel}
                     </Label>
                     <textarea
@@ -475,7 +531,9 @@ export function AdminApplicationCreatePage({
                       spellCheck={false}
                       className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                       placeholder="-----BEGIN CERTIFICATE-----"
+                      {...form.fieldProps('authn_request_signing_certificate_pem')}
                     />
+                    <FieldError form={form} name="authn_request_signing_certificate_pem" />
                   </div>
                 </section>
               ) : null}
@@ -484,7 +542,7 @@ export function AdminApplicationCreatePage({
               <Button variant="outline" nativeButton={false} render={<a href={listPath} />}>
                 {t.cancel}
               </Button>
-              <Button type="submit" disabled={saving || nameInvalid}>
+              <Button type="submit" disabled={saving || !form.data}>
                 {saving ? t.creating : t.create}
               </Button>
             </div>

@@ -1,5 +1,5 @@
 import { IconArrowLeft } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import {
   AuthenticationAPIError,
   createAdminApplication,
@@ -10,6 +10,7 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import type { McpResourceServer } from '../../types'
 import { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
@@ -20,7 +21,7 @@ import {
   McpResourceServerFormFields,
   NEW_EVALUATOR,
   parseAccessRules,
-  parseScopes,
+  resourceServerSchema,
 } from './AdminMcpResourceServersShared'
 
 type CreatedClient = { clientId: string; secret: string }
@@ -65,6 +66,13 @@ export function AdminMcpResourceServerCreatePage({
   const [createdClient, setCreatedClient] = useState<CreatedClient | null>(null)
   const [registered, setRegistered] = useState<McpResourceServer | null>(null)
   const t = useDictionary(adminMcpResourceServersDictionary)
+  const schema = useMemo(() => resourceServerSchema(t), [t])
+  const validation = useFormValidation(schema, {
+    resource: form.resource,
+    name: form.name,
+    scopes: form.scopes,
+    accessRules: form.accessRules,
+  })
 
   const creatingClient = form.clientId === NEW_EVALUATOR
   const summary = (
@@ -76,11 +84,12 @@ export function AdminMcpResourceServerCreatePage({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError('')
-    const accessRules = parseAccessRules(form.accessRules)
-    if (accessRules === null) {
-      setError(t.accessRulesInvalidError)
+    const data = validation.data
+    if (!data) {
+      validation.revealAll()
       return
     }
+    const accessRules = parseAccessRules(data.accessRules) ?? []
     setSaving(true)
     let client = createdClient
     try {
@@ -95,9 +104,9 @@ export function AdminMcpResourceServerCreatePage({
       }
       const clientId = creatingClient ? client?.clientId : form.clientId
       const server = await createMcpResourceServer(csrfToken, {
-        resource: form.resource,
-        name: form.name,
-        scopes: parseScopes(form.scopes),
+        resource: data.resource,
+        name: data.name,
+        scopes: data.scopes,
         ...(clientId ? { client_id: clientId } : {}),
         ...(accessRules.length > 0 ? { access_rules: accessRules } : {}),
         state: form.state,
@@ -174,12 +183,18 @@ export function AdminMcpResourceServerCreatePage({
             </p>
           ) : null}
           <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-            <McpResourceServerFormFields form={form} onChange={setForm} locked={false} t={t} />
+            <McpResourceServerFormFields
+              form={form}
+              validation={validation}
+              onChange={setForm}
+              locked={false}
+              t={t}
+            />
             <p className="text-sm md:col-span-2" aria-live="polite">
               {summary}
             </p>
             <div className="flex gap-2.5 md:col-span-2">
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || !validation.data}>
                 {t.register}
               </Button>
               <Button variant="outline" nativeButton={false} render={<a href={listURL()} />}>

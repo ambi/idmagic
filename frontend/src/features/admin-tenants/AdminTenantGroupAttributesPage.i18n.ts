@@ -29,6 +29,8 @@ export const adminTenantGroupAttributesDictionary = defineDictionary(
     displayNamePlaceholder: '例: コストセンター',
     displayNameHelp: '管理者に見せる日本語名。未設定なら属性キーを表示します。',
     keyFieldLabel: '属性キー',
+    attributeKeyInvalidError:
+      '英小文字で始め、英小文字、数字、_ だけを使った 63 文字以内のキーを入力してください。',
     requiredToggle: '必須',
     cancel: 'キャンセル',
     saving: '保存中…',
@@ -63,6 +65,8 @@ export const adminTenantGroupAttributesDictionary = defineDictionary(
     displayNamePlaceholder: 'e.g., Cost center',
     displayNameHelp: 'The name shown to admins. If unset, the key is shown instead.',
     keyFieldLabel: 'key',
+    attributeKeyInvalidError:
+      'Enter a key of up to 63 characters that starts with a lowercase letter and uses only lowercase letters, digits, and _.',
     requiredToggle: 'Required',
     cancel: 'Cancel',
     saving: 'Saving…',

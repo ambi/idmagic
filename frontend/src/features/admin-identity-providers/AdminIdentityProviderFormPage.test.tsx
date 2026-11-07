@@ -34,6 +34,44 @@ const candidates = {
 const response = (body: unknown) => ({ ok: true, status: 200, json: async () => body })
 afterEach(restoreGlobals)
 
+//spec:covers WCAG22-LABELS-ERRORS: サーバーが拒む issuer と、PEM でない証明書を欄のエラー文で示し、保存しないこと
+it('https でない issuer と PEM でない証明書を欄で示し、保存しない', async () => {
+  const fetchMock = mock(() => Promise.resolve(response({})))
+  stubGlobal('fetch', fetchMock)
+  await renderWithRouter(
+    <AdminIdentityProviderEditPage
+      csrfToken="csrf"
+      connection={{
+        ...connection,
+        protocol: 'saml',
+        saml_entity_id: 'https://idp.example/saml',
+        saml_sso_url: 'https://idp.example/sso',
+        saml_signing_certificates: [],
+      }}
+    />,
+  )
+
+  const issuer = screen.getByLabelText(t.issuer)
+  fireEvent.change(issuer, { target: { value: 'http://preview.example' } })
+  expect(issuer).toHaveAccessibleDescription(
+    'Enter a URL that starts with https:// and has no user name or # fragment.',
+  )
+  fireEvent.change(issuer, { target: { value: 'https://preview.example' } })
+
+  const certificates = screen.getByLabelText(t.samlCertificates)
+  fireEvent.change(certificates, { target: { value: 'not a certificate' } })
+  expect(certificates).toHaveAccessibleDescription(
+    'Paste a PEM certificate that starts with -----BEGIN CERTIFICATE-----.',
+  )
+  const update = screen.getByRole('button', { name: t.update })
+  expect(update).toBeDisabled()
+  fireEvent.submit(update.closest('form')!)
+  const writes = fetchMock.mock.calls.filter(
+    (call) => (call as unknown as [string, RequestInit?])[1]?.method === 'PUT',
+  )
+  expect(writes).toEqual([])
+})
+
 //spec:covers REQ-AUTHENTICATION-041: 候補の取得、フォームへの適用と保存は別の操作とする。
 it('取得した候補は適用と保存を明示するまで接続を書き換えない', async () => {
   const fetchMock = mock((url: string, init?: RequestInit) => {

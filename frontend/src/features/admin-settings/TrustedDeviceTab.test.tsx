@@ -116,7 +116,9 @@ describe('TrustedDeviceTab', () => {
     fireEvent.change(screen.getByLabelText(t.trustedDeviceFieldLabel), { target: { value: '91' } })
     fireEvent.click(screen.getByRole('button', { name: t.save }))
 
-    expect(screen.getByText(t.trustedDeviceRangeError.replace('{max}', '90'))).toBeInTheDocument()
+    expect(screen.getByLabelText(t.trustedDeviceFieldLabel)).toHaveAccessibleDescription(
+      'Enter a whole number from 0 to 90.',
+    )
     expect(fetch).not.toHaveBeenCalled()
   })
 
@@ -131,7 +133,9 @@ describe('TrustedDeviceTab', () => {
       fireEvent.click(screen.getByRole('button', { name: t.save }))
     }
 
-    expect(screen.getByText(t.trustedDeviceRangeError.replace('{max}', '90'))).toBeInTheDocument()
+    expect(screen.getByLabelText(t.trustedDeviceFieldLabel)).toHaveAccessibleDescription(
+      'Enter a whole number from 0 to 90.',
+    )
     expect(fetch).not.toHaveBeenCalled()
   })
 })

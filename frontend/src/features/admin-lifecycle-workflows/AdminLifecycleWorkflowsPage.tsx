@@ -10,11 +10,13 @@ import {
 } from '../../api/admin'
 import { tenantURL } from '../../api/core'
 import { AdminShell } from '../../components/AdminShell'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { formSchema, requiredText, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import type {
   AdminLifecycleWorkflow,
@@ -23,6 +25,8 @@ import type {
   WorkflowTrigger,
 } from '../../types'
 import { adminLifecycleWorkflowsDictionary } from './AdminLifecycleWorkflowsPage.i18n'
+
+const dryRunSchema = formSchema({ target: requiredText() })
 
 type WorkflowsDictionary = (typeof adminLifecycleWorkflowsDictionary)['ja']
 
@@ -68,6 +72,7 @@ export function AdminLifecycleWorkflowsPage({
   const [dryRunDialogOpen, setDryRunDialogOpen] = useState(false)
   const [dryRunTarget, setDryRunTarget] = useState('')
   const [dryRunning, setDryRunning] = useState(false)
+  const dryRunValidation = useFormValidation(dryRunSchema, { target: dryRunTarget })
   const [deleteTarget, setDeleteTarget] = useState<AdminLifecycleWorkflow | null>(null)
   const [deleting, setDeleting] = useState(false)
   async function toggle(workflow: AdminLifecycleWorkflow) {
@@ -97,8 +102,11 @@ export function AdminLifecycleWorkflowsPage({
   }
   async function dryRunWorkflow() {
     if (!selected) return
-    const target = dryRunTarget.trim()
-    if (!target) return
+    const target = dryRunValidation.data?.target
+    if (target === undefined) {
+      dryRunValidation.revealAll()
+      return
+    }
     setDryRunning(true)
     try {
       const result = await dryRunLifecycleWorkflow(csrfToken, selected.id, target)
@@ -337,12 +345,16 @@ export function AdminLifecycleWorkflowsPage({
             </h2>
             <p className="mt-2 text-sm text-slate-600">{t.dryRunTargetHelp}</p>
             <div className="mt-4 grid gap-1.5">
-              <Label htmlFor="dry-run-target-user">{t.dryRunTargetLabel}</Label>
+              <Label htmlFor="dry-run-target-user" required>
+                {t.dryRunTargetLabel}
+              </Label>
               <Input
                 id="dry-run-target-user"
                 value={dryRunTarget}
                 onChange={(event) => setDryRunTarget(event.target.value)}
+                {...dryRunValidation.fieldProps('target')}
               />
+              <FieldError form={dryRunValidation} name="target" />
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <Button
@@ -353,7 +365,7 @@ export function AdminLifecycleWorkflowsPage({
                 {t.cancel}
               </Button>
               <Button
-                disabled={dryRunning || dryRunTarget.trim() === ''}
+                disabled={dryRunning || !dryRunValidation.data}
                 onClick={() => void dryRunWorkflow()}
               >
                 {dryRunning ? t.dryRunning : t.dryRunConfirmAction}

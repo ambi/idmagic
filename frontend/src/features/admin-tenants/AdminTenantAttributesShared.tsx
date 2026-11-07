@@ -1,6 +1,17 @@
+import { useMemo } from 'react'
 import { tenantURL } from '../../api'
+import { FieldError } from '../../components/FieldError'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import {
+  type FormValidation,
+  formSchema,
+  optionalText,
+  requiredText,
+  rule,
+  useFormValidation,
+} from '../../lib/form'
+import { LENGTH } from '../../lib/lengthLimits'
 import type { AttributeType, AttrVisibility, UserAttributeDef } from '../../types'
 import type { AdminTenantAttributesDictionary } from './AdminTenantAttributesPage.i18n'
 
@@ -57,6 +68,41 @@ export function normalizeAttribute(draft: UserAttributeDef): UserAttributeDef {
   }
 }
 
+// User と Group のカスタム属性のキーは、サーバーの attrKeyPattern と groupAttrKeyPattern と同じく、
+// 英小文字で始まる 63 文字以内の snake_case である。
+const ATTRIBUTE_KEY = /^[a-z][a-z0-9_]{0,62}$/
+
+export function attributeKey(message: string) {
+  return rule(requiredText(), (value) =>
+    ATTRIBUTE_KEY.test(value) ? undefined : { kind: 'message', text: message },
+  )
+}
+
+// 上限は userAttributeDefSchema に従う。ラベルと claim 名は名前、scope は語彙的な識別子の区分である。
+function attributeSchema(t: AdminTenantAttributesDictionary) {
+  return formSchema({
+    key: attributeKey(t.attributeKeyInvalidError),
+    label: optionalText(LENGTH.name),
+    claim_name: optionalText(LENGTH.name),
+    oidc_scope: optionalText(LENGTH.handle),
+  })
+}
+
+export type AttributeValidation = FormValidation<ReturnType<typeof attributeSchema>>
+
+export function useAttributeValidation(
+  draft: UserAttributeDef,
+  t: AdminTenantAttributesDictionary,
+): AttributeValidation {
+  const schema = useMemo(() => attributeSchema(t), [t])
+  return useFormValidation(schema, {
+    key: draft.key,
+    label: draft.label ?? '',
+    claim_name: draft.claim_name ?? '',
+    oidc_scope: draft.oidc_scope ?? '',
+  })
+}
+
 export function listURL(): string {
   return tenantURL('/admin/tenant/attributes')
 }
@@ -93,14 +139,15 @@ export function Toggle({
 // AttributeFormFields は作成/編集で共有するフォーム本体。
 export function AttributeFormFields({
   draft,
+  validation,
   onChange,
   t,
 }: {
   draft: UserAttributeDef
+  validation: AttributeValidation
   onChange: (change: Partial<UserAttributeDef>) => void
   t: AdminTenantAttributesDictionary
 }) {
-  const keyInvalid = draft.key.trim() === ''
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -111,19 +158,24 @@ export function AttributeFormFields({
             value={draft.label ?? ''}
             placeholder={t.displayNamePlaceholder}
             onChange={(event) => onChange({ label: event.target.value })}
+            {...validation.fieldProps('label')}
           />
+          <FieldError form={validation} name="label" />
           <p className="text-xs text-slate-500">{t.displayNameHelp}</p>
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="attr-key">{t.keyFieldLabel}</Label>
+          <Label htmlFor="attr-key" required>
+            {t.keyFieldLabel}
+          </Label>
           <Input
             id="attr-key"
             value={draft.key}
             placeholder="region"
             className="font-mono"
-            aria-invalid={keyInvalid}
             onChange={(event) => onChange({ key: event.target.value })}
+            {...validation.fieldProps('key')}
           />
+          <FieldError form={validation} name="key" />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="attr-type">{t.tableHeaderType}</Label>
@@ -163,7 +215,9 @@ export function AttributeFormFields({
             placeholder={t.claimNamePlaceholder}
             className="font-mono"
             onChange={(event) => onChange({ claim_name: event.target.value })}
+            {...validation.fieldProps('claim_name')}
           />
+          <FieldError form={validation} name="claim_name" />
         </div>
         <div className="grid gap-1.5 sm:col-span-2">
           <Label htmlFor="attr-scope">{t.oidcScopeFieldLabel}</Label>
@@ -173,7 +227,9 @@ export function AttributeFormFields({
             placeholder={t.oidcScopePlaceholder}
             className="font-mono"
             onChange={(event) => onChange({ oidc_scope: event.target.value })}
+            {...validation.fieldProps('oidc_scope')}
           />
+          <FieldError form={validation} name="oidc_scope" />
         </div>
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-100 pt-5">

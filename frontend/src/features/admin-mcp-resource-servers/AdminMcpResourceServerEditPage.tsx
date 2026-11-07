@@ -1,10 +1,11 @@
 import { IconArrowLeft } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import { AuthenticationAPIError, updateMcpResourceServer } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import type { McpResourceServer } from '../../types'
 import { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
@@ -12,8 +13,8 @@ import {
   listURL,
   McpResourceServerFormFields,
   parseAccessRules,
-  parseScopes,
   ReportedToolsPanel,
+  resourceServerSchema,
   toForm,
 } from './AdminMcpResourceServersShared'
 
@@ -31,20 +32,28 @@ export function AdminMcpResourceServerEditPage({
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const t = useDictionary(adminMcpResourceServersDictionary)
+  const schema = useMemo(() => resourceServerSchema(t), [t])
+  const validation = useFormValidation(schema, {
+    resource: form.resource,
+    name: form.name,
+    scopes: form.scopes,
+    accessRules: form.accessRules,
+  })
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError('')
-    const accessRules = parseAccessRules(form.accessRules)
-    if (accessRules === null) {
-      setError(t.accessRulesInvalidError)
+    const data = validation.data
+    if (!data) {
+      validation.revealAll()
       return
     }
+    const accessRules = parseAccessRules(data.accessRules) ?? []
     setSaving(true)
     try {
       await updateMcpResourceServer(csrfToken, resourceServer.id, {
-        name: form.name,
-        scopes: parseScopes(form.scopes),
+        name: data.name,
+        scopes: data.scopes,
         client_id: form.clientId,
         access_rules: accessRules,
         state: form.state,
@@ -72,7 +81,13 @@ export function AdminMcpResourceServerEditPage({
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Card className="w-full admin-form p-4">
         <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-          <McpResourceServerFormFields form={form} onChange={setForm} locked={true} t={t} />
+          <McpResourceServerFormFields
+            form={form}
+            validation={validation}
+            onChange={setForm}
+            locked={true}
+            t={t}
+          />
           <ReportedToolsPanel
             resourceServerID={resourceServer.id}
             form={form}
@@ -80,7 +95,7 @@ export function AdminMcpResourceServerEditPage({
             t={t}
           />
           <div className="flex gap-2.5 md:col-span-2">
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !validation.data}>
               {t.update}
             </Button>
             <Button variant="outline" nativeButton={false} render={<a href={listURL()} />}>

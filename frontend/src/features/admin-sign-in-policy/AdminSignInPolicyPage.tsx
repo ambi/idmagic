@@ -1,15 +1,24 @@
 import { IconPencil } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import { AuthenticationAPIError, tenantURL, updateTenantDefaultSignInPolicy } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select, type SelectOption } from '../../components/ui/select'
+import {
+  cidrList,
+  formSchema,
+  optionalPositiveInteger,
+  positiveInteger,
+  requiredText,
+  useFormValidation,
+  when,
+} from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
-import { validateReauthMaxAge, parseNetworkCIDRs } from '../../lib/validation'
 import type {
   AdminApplication,
   AppSignInPolicyView,
@@ -177,7 +186,7 @@ export function DefaultPolicyFormPresentation({
   onCancel,
   onSubmit,
   saving,
-  error: externalError,
+  error,
 }: {
   rule?: SignInRule
   onCancel: () => void
@@ -203,30 +212,32 @@ export function DefaultPolicyFormPresentation({
   const [allowAdminBypass, setAllowAdminBypass] = useState(
     rule?.mfa_enrollment?.allow_admin_bypass ?? true,
   )
-  const [validationError, setValidationError] = useState('')
   const t = useDictionary(adminSignInPolicyDictionary)
-
-  const error = validationError || externalError
+  const schema = useMemo(
+    () =>
+      formSchema({
+        reauthMaxAge: optionalPositiveInteger(),
+        networkCIDRs: cidrList(),
+        enforcementStart: when(strength === 'Mfa', requiredText()),
+        gracePeriod: when(strength === 'Mfa', positiveInteger()),
+      }),
+    [strength],
+  )
+  const form = useFormValidation(schema, {
+    reauthMaxAge,
+    networkCIDRs,
+    enforcementStart,
+    gracePeriod,
+  })
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setValidationError('')
-
-    const validationResult = validateReauthMaxAge(reauthMaxAge)
-    if (!validationResult.isValid) {
-      setValidationError(t.reauthMaxAgeInvalidError)
+    if (!form.data) {
+      form.revealAll()
       return
     }
-
-    const cidrs = parseNetworkCIDRs(networkCIDRs)
-    const graceSeconds = Number(gracePeriod)
-    if (
-      strength === 'Mfa' &&
-      (!enforcementStart || !Number.isInteger(graceSeconds) || graceSeconds <= 0)
-    ) {
-      setValidationError(t.mfaEnrollmentInvalidError)
-      return
-    }
+    const { reauthMaxAge: reauthSeconds, networkCIDRs: cidrs } = form.data
+    const { enforcementStart: start, gracePeriod: graceSeconds } = form.data
 
     // デフォルトは常に適用される baseline なので、認証強度が最低でも 1 ルールとして保存する。
     const rules: SignInRule[] = [
@@ -236,13 +247,13 @@ export function DefaultPolicyFormPresentation({
         enabled: true,
         required_authn: { strength },
         condition: {
-          reauth_max_age_seconds: validationResult.parsed,
+          reauth_max_age_seconds: reauthSeconds,
           network_allow_cidrs: cidrs.length > 0 ? cidrs : undefined,
         },
         mfa_enrollment:
-          strength === 'Mfa'
+          start !== undefined && graceSeconds !== undefined
             ? {
-                enforcement_start_at: new Date(enforcementStart).toISOString(),
+                enforcement_start_at: new Date(start).toISOString(),
                 grace_period_seconds: graceSeconds,
                 allow_admin_bypass: allowAdminBypass,
               }
@@ -279,7 +290,9 @@ export function DefaultPolicyFormPresentation({
               value={enforcementStart}
               onChange={(event) => setEnforcementStart(event.target.value)}
               className="sm:w-72"
+              {...form.fieldProps('enforcementStart')}
             />
+            <FieldError form={form} name="enforcementStart" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="mfa-grace-period" required>
@@ -293,7 +306,9 @@ export function DefaultPolicyFormPresentation({
               value={gracePeriod}
               onChange={(event) => setGracePeriod(event.target.value)}
               className="sm:w-72"
+              {...form.fieldProps('gracePeriod')}
             />
+            <FieldError form={form} name="gracePeriod" />
             <p className="text-xs text-slate-500">{t.gracePeriodHelp}</p>
           </div>
           <label className="flex items-start gap-2 text-sm text-slate-700">
@@ -316,7 +331,9 @@ export function DefaultPolicyFormPresentation({
           onChange={(e) => setReauthMaxAge(e.target.value)}
           placeholder={t.reauthSecondsPlaceholder}
           className="sm:w-72"
+          {...form.fieldProps('reauthMaxAge')}
         />
+        <FieldError form={form} name="reauthMaxAge" />
         <p className="text-xs text-slate-500">{t.reauthSecondsHelp}</p>
       </div>
       <div className="grid gap-1.5">
@@ -329,11 +346,13 @@ export function DefaultPolicyFormPresentation({
           spellCheck={false}
           className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
           placeholder={'10.0.0.0/8\n192.168.1.0/24'}
+          {...form.fieldProps('networkCIDRs')}
         />
+        <FieldError form={form} name="networkCIDRs" />
         <p className="text-xs text-slate-500">{t.allowedNetworksHelp}</p>
       </div>
       <div className="flex items-center gap-2 border-t border-slate-200 pt-5">
-        <Button type="submit" disabled={saving}>
+        <Button type="submit" disabled={saving || !form.data}>
           {saving ? t.saving : t.save}
         </Button>
         <Button type="button" variant="ghost" disabled={saving} onClick={onCancel}>

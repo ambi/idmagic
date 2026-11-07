@@ -93,6 +93,32 @@ describe('AdminMcpResourceServerCreatePage', () => {
     state: 'Active',
   })
 
+  //spec:covers WCAG22-LABELS-ERRORS: サーバーが拒む resource と JSON でないアクセス規則を欄のエラー文で示し、登録しないこと
+  it('rejects a resource with a fragment and access rules that are not JSON', async () => {
+    const fetchMock = mock(() => Promise.resolve(response(200, [])))
+    stubGlobal('fetch', fetchMock)
+    await renderWithRouter(<AdminMcpResourceServerCreatePage csrfToken="csrf" />)
+    fill()
+
+    const resource = screen.getByLabelText(t.resourceLabel)
+    fireEvent.change(resource, { target: { value: 'https://mcp.example.com/#tools' } })
+    expect(resource).toHaveAccessibleDescription(
+      'Enter a URL without a # fragment, such as https://mcp.example.com/.',
+    )
+    fireEvent.change(resource, { target: { value: 'https://mcp.example.com/' } })
+
+    const rules = screen.getByLabelText(t.accessRulesLabel)
+    fireEvent.change(rules, { target: { value: '[{' } })
+    expect(rules).toHaveAccessibleDescription(t.accessRulesInvalidError)
+    const register = screen.getByRole('button', { name: t.register })
+    expect(register).toBeDisabled()
+    fireEvent.submit(register.closest('form') as HTMLFormElement)
+    const writes = fetchMock.mock.calls.filter(
+      (call) => (call as unknown as [string, RequestInit?])[1]?.method === 'POST',
+    )
+    expect(writes).toEqual([])
+  })
+
   it('splits comma and whitespace separated scopes when registering', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     const calls = routedFetch([created])

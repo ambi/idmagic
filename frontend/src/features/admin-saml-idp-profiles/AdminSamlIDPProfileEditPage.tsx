@@ -1,16 +1,19 @@
 import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, tenantURL, updateSamlIDPProfile } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
+import { useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import type { AdminSamlIDPProfile } from '../../types'
 import type { SamlIDPProfileMode } from '../../types'
 import { adminSamlIDPProfilesDictionary } from './AdminSamlIDPProfilesPage.i18n'
+import { profileFormSchema } from './SamlIDPProfileFields'
 
 export function AdminSamlIDPProfileEditPage({
   csrfToken,
@@ -29,16 +32,22 @@ export function AdminSamlIDPProfileEditPage({
   const detailPath = tenantURL(
     `/admin/settings/saml-idp-profiles/${encodeURIComponent(entry.profile.profile_id)}`,
   )
+  const validation = useFormValidation(profileFormSchema, { name })
   const changed = name.trim() !== entry.profile.name || mode !== entry.profile.mode
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!name.trim() || !changed) return
+    const data = validation.data
+    if (!data) {
+      validation.revealAll()
+      return
+    }
+    if (!changed) return
     setBusy(true)
     setError('')
     try {
       await updateSamlIDPProfile(csrfToken, entry.profile.profile_id, {
-        name: name.trim(),
+        name: data.name,
         mode,
       })
       window.location.assign(detailPath)
@@ -68,7 +77,9 @@ export function AdminSamlIDPProfileEditPage({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 required
+                {...validation.fieldProps('name')}
               />
+              <FieldError form={validation} name="name" />
             </div>
             <div className="grid gap-1.5">
               <Label>{t.sharingMode}</Label>
@@ -86,7 +97,7 @@ export function AdminSamlIDPProfileEditPage({
             <Button variant="outline" nativeButton={false} render={<a href={detailPath} />}>
               {t.cancel}
             </Button>
-            <Button type="submit" disabled={busy || !name.trim() || !changed}>
+            <Button type="submit" disabled={busy || !validation.data || !changed}>
               {busy ? t.saving : t.save}
             </Button>
           </div>

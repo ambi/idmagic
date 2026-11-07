@@ -6,7 +6,7 @@ import {
   IconTrash,
   IconWorldShare,
 } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import {
   AuthenticationAPIError,
   configureEntraFederation,
@@ -17,6 +17,15 @@ import {
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
+import { FieldError } from '../../components/FieldError'
+import {
+  formSchema,
+  optionalText,
+  optionalUrl,
+  requiredText,
+  rule,
+  useFormValidation,
+} from '../../lib/form'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
@@ -217,6 +226,19 @@ export function EntraFederationList({
   )
 }
 
+// 規則は admin_entra_handler.go の configureEntraRequest.validate に従う。domain は URL ではない
+// DNS 名、source anchor の属性は必須、reply URL はスキームとホストを持つ絶対 URL である。
+function entraSchema(domainNotUrl: string) {
+  return formSchema({
+    domain: rule(requiredText(), (value) =>
+      value.includes('://') ? { kind: 'message', text: domainNotUrl } : undefined,
+    ),
+    issuer: optionalText(),
+    sourceAnchor: requiredText(),
+    replyURL: optionalUrl(),
+  })
+}
+
 // AdminEntraFederationAddPage は詳細→編集ポリシー (wi-126 §8) に沿って一覧から分離した
 // ドメイン federation の追加専用画面 (/admin/federation/entra/new)。保存すると M365 domain
 // federation 用の PowerShell 手順を一度だけ表示し、一覧へ戻る導線を出す。
@@ -236,6 +258,8 @@ export function AdminEntraFederationAddPage({
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminEntraFederationDictionary)
   const { locale } = useLocale()
+  const schema = useMemo(() => entraSchema(t.domainNotUrlError), [t.domainNotUrlError])
+  const validation = useFormValidation(schema, { domain, issuer, sourceAnchor, replyURL })
 
   async function copyCommand(command: string) {
     setError('')
@@ -252,13 +276,18 @@ export function AdminEntraFederationAddPage({
     setError('')
     setNotice('')
     setResult(null)
+    const data = validation.data
+    if (!data) {
+      validation.revealAll()
+      return
+    }
     try {
-      const requestedDomain = domain.trim()
+      const requestedDomain = data.domain
       const configured = await configureEntraFederation(csrfToken, {
         domain: requestedDomain,
-        issuer_uri: issuer.trim() || undefined,
-        source_anchor_attribute: sourceAnchor.trim(),
-        reply_url: replyURL.trim() || undefined,
+        issuer_uri: data.issuer,
+        source_anchor_attribute: data.sourceAnchor,
+        reply_url: data.replyURL,
       })
       setResult(configured)
       setNotice(t.federationSavedNotice.replace('{domain}', requestedDomain.toLowerCase()))
@@ -329,7 +358,9 @@ export function AdminEntraFederationAddPage({
               placeholder="contoso.com"
               onChange={(e) => setDomain(e.target.value)}
               required
+              {...validation.fieldProps('domain')}
             />
+            <FieldError form={validation} name="domain" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="entra_source_anchor" required>
@@ -340,7 +371,9 @@ export function AdminEntraFederationAddPage({
               value={sourceAnchor}
               onChange={(e) => setSourceAnchor(e.target.value)}
               required
+              {...validation.fieldProps('sourceAnchor')}
             />
+            <FieldError form={validation} name="sourceAnchor" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="entra_issuer">{t.issuerUriLabel}</Label>
@@ -357,10 +390,14 @@ export function AdminEntraFederationAddPage({
               id="entra_reply"
               value={replyURL}
               onChange={(e) => setReplyURL(e.target.value)}
+              {...validation.fieldProps('replyURL')}
             />
+            <FieldError form={validation} name="replyURL" />
           </div>
           <div className="flex items-end">
-            <Button type="submit">{t.save}</Button>
+            <Button type="submit" disabled={!validation.data}>
+              {t.save}
+            </Button>
           </div>
         </form>
         {result ? (

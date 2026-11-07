@@ -2,14 +2,19 @@ import { IconCircleCheck, IconCircleDashed, IconMail } from '@tabler/icons-react
 import { type FormEvent, type ReactNode, useState } from 'react'
 import { AuthenticationAPIError, requestEmailChange } from '../../api'
 import { AccountShell } from '../../components/AccountShell'
+import { FieldError } from '../../components/FieldError'
 import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { formSchema, requiredText, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import { accountEmailsDictionary } from './AccountEmailsPage.i18n'
+
+// 形式の確認はブラウザーの type="email" と、確認のリンクが届くかどうかに任せる。
+const emailChangeSchema = formSchema({ newEmail: requiredText() })
 
 export function AccountEmailsPage({
   csrfToken,
@@ -101,6 +106,7 @@ export function AccountEmailsPresentation({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
   const t = useDictionary(accountEmailsDictionary)
+  const validation = useFormValidation(emailChangeSchema, { newEmail })
   return (
     <AccountShell
       active="emails"
@@ -158,11 +164,13 @@ export function AccountEmailsPresentation({
                 autoComplete="email"
                 placeholder="you@example.com"
                 onChange={(event) => onNewEmailChange(event.target.value)}
+                {...validation.fieldProps('newEmail')}
               />
+              <FieldError form={validation} name="newEmail" />
               <p className="text-xs text-slate-500">{t.help}</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="submit" disabled={submitting || newEmail.trim().length === 0}>
+              <Button type="submit" disabled={submitting || !validation.data}>
                 {submitting ? t.sending : t.send}
               </Button>
               <Button type="button" variant="ghost" disabled={submitting} onClick={onCancelEdit}>

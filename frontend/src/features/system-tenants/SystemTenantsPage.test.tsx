@@ -82,4 +82,35 @@ describe('TenantDetailCard', () => {
     expect(JSON.parse(String(init.body))).toEqual({ users: 321 })
     expect(new Headers(init.headers).get('X-CSRF-Token')).toBe('csrf')
   })
+
+  //spec:covers WCAG22-LABELS-ERRORS: 整数でないクォータを欄のエラー文で示し、テナントもクォータも保存しないこと
+  it('saves neither the tenant nor the quota while a quota is not a whole number', () => {
+    const fetchMock = mock()
+    stubGlobal('fetch', fetchMock)
+    renderEn(<TenantDetailCard tenant={tenant} csrfToken="csrf" busy={false} onSaved={mock()} />)
+
+    const users = screen.getByLabelText(t.quotaUsers)
+    fireEvent.change(users, { target: { value: '1.5' } })
+    expect(users).toHaveAccessibleDescription('Enter a whole number of 0 or more.')
+    fireEvent.submit(users.closest('form')!)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('SystemTenantsPage tenant creation', () => {
+  afterEach(() => restoreGlobals())
+
+  //spec:covers WCAG22-LABELS-ERRORS: 契約の文法に合わない realm を欄のエラー文で示し、作成しないこと
+  it.each(['acme-', '-acme', 'Acme', `a${'b'.repeat(63)}`])(
+    'rejects the realm %s',
+    async (value) => {
+      await renderWithRouter(<SystemTenantsPage csrfToken="csrf" tenants={[]} />)
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(t.newTenant) }))
+
+      const realm = screen.getByLabelText(new RegExp(t.realmLabel))
+      fireEvent.change(realm, { target: { value } })
+      expect(realm).toHaveAccessibleDescription(t.realmInvalidError)
+      expect(screen.getByRole('button', { name: t.create })).toBeDisabled()
+    },
+  )
 })

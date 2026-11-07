@@ -2,13 +2,21 @@ import { IconArrowLeft } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, tenantURL, updateAdminAgent } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { CharacterCount } from '../../components/CharacterCount'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { formSchema, requiredText, text, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import { LENGTH } from '../../lib/lengthLimits'
+
+const editAgentSchema = formSchema({
+  name: requiredText(LENGTH.name),
+  description: text(LENGTH.description),
+})
 import type { AdminAgent, AdminUser } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { OwnerSelect } from './AdminAgentsShared'
@@ -35,25 +43,30 @@ export function AdminAgentEditPage({
   const [error, setError] = useState('')
   const t = useDictionary(adminAgentsDictionary)
 
-  const trimmedName = name.trim()
-  const nameInvalid = trimmedName === ''
+  const form = useFormValidation(editAgentSchema, { name, description })
+  const data = form.data
+  const nameChanged = data !== undefined && data.name !== agent.name
+  const descriptionChanged = data !== undefined && data.description !== (agent.description ?? '')
   const changed =
-    trimmedName !== agent.name ||
-    description.trim() !== (agent.description ?? '') ||
+    nameChanged ||
+    descriptionChanged ||
     kind !== agent.kind ||
     ownerSub.trim() !== agent.owner_user_id
   const killed = agent.status === 'killed'
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (saving || nameInvalid || !changed) return
+    if (!data) {
+      form.revealAll()
+      return
+    }
+    if (saving || !changed) return
     setSaving(true)
     setError('')
     try {
       await updateAdminAgent(csrfToken, agent.id, {
-        name: trimmedName !== agent.name ? trimmedName : undefined,
-        description:
-          description.trim() !== (agent.description ?? '') ? description.trim() : undefined,
+        name: nameChanged ? data.name : undefined,
+        description: descriptionChanged ? data.description : undefined,
         kind: kind !== agent.kind ? kind : undefined,
         owner_user_id: ownerSub.trim() !== agent.owner_user_id ? ownerSub.trim() : undefined,
       })
@@ -94,10 +107,10 @@ export function AdminAgentEditPage({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  maxLength={LENGTH.name}
-                  aria-invalid={nameInvalid}
                   disabled={killed}
+                  {...form.fieldProps('name')}
                 />
+                <FieldError form={form} name="name" />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="agent-editor-description">{t.descriptionLabel}</Label>
@@ -105,9 +118,11 @@ export function AdminAgentEditPage({
                   id="agent-editor-description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  maxLength={LENGTH.description}
                   disabled={killed}
+                  {...form.fieldProps('description')}
                 />
+                <CharacterCount value={description} max={LENGTH.description} />
+                <FieldError form={form} name="description" />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="agent-editor-kind">{t.kindLabel}</Label>
@@ -139,7 +154,7 @@ export function AdminAgentEditPage({
             <Button variant="outline" nativeButton={false} render={<a href={detailPath} />}>
               {t.cancel}
             </Button>
-            <Button type="submit" disabled={saving || nameInvalid || !changed || killed}>
+            <Button type="submit" disabled={saving || !data || !changed || killed}>
               {saving ? t.saving : t.save}
             </Button>
           </div>

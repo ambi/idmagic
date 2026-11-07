@@ -31,7 +31,6 @@ export const agentCreateFlowDictionary = defineDictionary(
     stageClient: '認証用クライアントは作成済みです（{clientId}）。',
     stageBound: '認証用クライアントは紐付け済みです。',
     stageRetry: '再試行すると、未完了の段階だけを続けます。作り直しはしません。',
-    jwksUriInvalid: 'https の URL を入力してください。',
     resultHeading: '登録しました',
     resultIntro:
       'Agent の配置先へ次の値を渡します。トークンの要求ではスコープを省略できます。IdMagic が割り当てた操作から決めます。',
@@ -73,7 +72,6 @@ export const agentCreateFlowDictionary = defineDictionary(
     stageClient: 'The authentication client was created ({clientId}).',
     stageBound: 'The authentication client is bound.',
     stageRetry: 'Retrying continues only the unfinished steps. Nothing is created again.',
-    jwksUriInvalid: 'Enter an https URL.',
     resultHeading: 'Registered',
     resultIntro:
       'Give these values to where the agent runs. Token requests can omit the scope; IdMagic decides it from the assigned operations.',

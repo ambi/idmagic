@@ -9,12 +9,15 @@ import {
   sendTestNotification,
   updateNotificationTemplate,
 } from '../../api'
+import { CharacterCount } from '../../components/CharacterCount'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
+import { formSchema, optionalText, requiredText, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
 import { LENGTH } from '../../lib/lengthLimits'
@@ -57,6 +60,15 @@ function localeLabel(locale: string, t: NotificationTemplatesTabDictionary) {
   if (locale === 'en') return t.localeEn
   return locale
 }
+
+// 件名、テキスト、HTML は 3 点の組で上書きするので、どれも空にできない。前後の空白も本文の一部なので、
+// 規則は判定だけに使い、送る値は入力のままにする。上限は通知テンプレートの契約に従う。
+const templateSchema = formSchema({
+  subject: requiredText(LENGTH.displayName),
+  bodyText: requiredText(LENGTH.plainBody),
+  bodyHtml: requiredText(LENGTH.richBody),
+  fromDisplayName: optionalText(LENGTH.chromeLabel),
+})
 
 type EditorState = {
   subject: string
@@ -129,11 +141,7 @@ export function NotificationTemplatesTab({ csrfToken }: { csrfToken: string }) {
     if (!detail || !draft) return
     setError('')
     setNotice('')
-    // 件名 / テキスト / HTML は 3 点セット。片方だけの上書きは作れない。
-    if (!draft.subject.trim() || !draft.bodyText.trim() || !draft.bodyHtml.trim()) {
-      setError(t.requiredFieldsError)
-      return
-    }
+    // 空欄と上限の超過は Editor が保存ボタンで止める。
     setBusy(true)
     try {
       const saved = await updateNotificationTemplate(
@@ -349,6 +357,11 @@ function Editor({
   onSendTest: () => void
 }) {
   const textareaClass = 'w-full rounded-md border border-slate-300 bg-white p-3 font-mono text-sm'
+  const validation = useFormValidation(templateSchema, draft)
+  const save = () => {
+    if (validation.data) onSave()
+    else validation.revealAll()
+  }
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -376,35 +389,46 @@ function Editor({
       </section>
 
       <div className="grid gap-1.5">
-        <Label htmlFor="notification-subject">{t.subjectLabel}</Label>
+        <Label htmlFor="notification-subject" required>
+          {t.subjectLabel}
+        </Label>
         <Input
           id="notification-subject"
           value={draft.subject}
-          maxLength={LENGTH.displayName}
           onChange={(event) => onChange({ ...draft, subject: event.target.value })}
+          {...validation.fieldProps('subject')}
         />
+        <FieldError form={validation} name="subject" />
       </div>
 
       <div className="grid gap-1.5">
-        <Label htmlFor="notification-body-text">{t.bodyTextLabel}</Label>
+        <Label htmlFor="notification-body-text" required>
+          {t.bodyTextLabel}
+        </Label>
         <textarea
           id="notification-body-text"
           value={draft.bodyText}
-          maxLength={LENGTH.plainBody}
           onChange={(event) => onChange({ ...draft, bodyText: event.target.value })}
           className={`${textareaClass} min-h-40`}
+          {...validation.fieldProps('bodyText')}
         />
+        <CharacterCount value={draft.bodyText} max={LENGTH.plainBody} />
+        <FieldError form={validation} name="bodyText" />
       </div>
 
       <div className="grid gap-1.5">
-        <Label htmlFor="notification-body-html">{t.bodyHtmlLabel}</Label>
+        <Label htmlFor="notification-body-html" required>
+          {t.bodyHtmlLabel}
+        </Label>
         <textarea
           id="notification-body-html"
           value={draft.bodyHtml}
-          maxLength={LENGTH.richBody}
           onChange={(event) => onChange({ ...draft, bodyHtml: event.target.value })}
           className={`${textareaClass} min-h-40`}
+          {...validation.fieldProps('bodyHtml')}
         />
+        <CharacterCount value={draft.bodyHtml} max={LENGTH.richBody} />
+        <FieldError form={validation} name="bodyHtml" />
         <p className="text-xs text-slate-500">{t.bodyHtmlHelp}</p>
       </div>
 
@@ -413,14 +437,15 @@ function Editor({
         <Input
           id="notification-from-display-name"
           value={draft.fromDisplayName}
-          maxLength={LENGTH.chromeLabel}
           onChange={(event) => onChange({ ...draft, fromDisplayName: event.target.value })}
+          {...validation.fieldProps('fromDisplayName')}
         />
+        <FieldError form={validation} name="fromDisplayName" />
         <p className="text-xs text-slate-500">{t.fromDisplayNameHelp}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" disabled={busy} onClick={onSave}>
+        <Button type="button" disabled={busy || !validation.data} onClick={save}>
           {busy ? t.saving : t.save}
         </Button>
         <Button type="button" variant="outline" disabled={busy} onClick={onPreview}>

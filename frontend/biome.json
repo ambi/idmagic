@@ -22,10 +22,24 @@
       "style": {
         "noNonNullAssertion": "off",
         "useNodejsImportProtocol": "off",
-        "useTemplate": "off"
+        "useTemplate": "off",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "zod": "Import validation rules from src/lib/form.ts, which configures Zod before the first parse."
+            }
+          }
+        }
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["src/lib/form.ts"],
+      "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "single",

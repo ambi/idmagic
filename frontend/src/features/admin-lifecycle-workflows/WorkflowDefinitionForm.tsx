@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { LifecycleWorkflowInput } from '../../api/admin'
+import { CharacterCount } from '../../components/CharacterCount'
+import { FieldError } from '../../components/FieldError'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -15,6 +17,7 @@ import {
   type WorkflowActionKind,
   type WorkflowTrigger,
 } from '../../types'
+import { formSchema, optionalText, requiredText, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import { LENGTH } from '../../lib/lengthLimits'
 import { domainLabelsDictionary } from '../../lib/i18n/domainLabels.i18n'
@@ -121,6 +124,12 @@ function compactAction(action: ActionDraft): WorkflowAction | null {
       return { kind: action.kind, template_key: action.template_key?.trim() }
   }
 }
+
+// 名前と説明は欄ごとに示す。トリガーと操作の組み合わせの検査は validateWorkflowDraft の一覧が示す。
+const workflowFieldsSchema = formSchema({
+  name: requiredText(LENGTH.name),
+  description: optionalText(LENGTH.description),
+})
 
 export function validateWorkflowDraft(draft: FormDraft, t: WorkflowFormDictionary): string[] {
   const errors: string[] = []
@@ -229,6 +238,10 @@ export function WorkflowDefinitionForm({
     setDraft(workflowDraft(workflow))
   }, [workflow])
   const errors = validateWorkflowDraft(draft, t)
+  const fields = useFormValidation(workflowFieldsSchema, {
+    name: draft.name,
+    description: draft.description,
+  })
   const triggerOptions: SelectOption[] = TRIGGER_KINDS.map((kind) => ({
     value: kind,
     label: t[`trigger_${kind}` as const],
@@ -285,7 +298,8 @@ export function WorkflowDefinitionForm({
   }
 
   async function submit() {
-    if (errors.length) return
+    if (!fields.data) fields.revealAll()
+    if (errors.length || !fields.data) return
     await onSubmit(workflowInput(draft))
   }
 
@@ -295,24 +309,29 @@ export function WorkflowDefinitionForm({
     <Card className="mb-6 space-y-6 p-5">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="workflow-name">{t.nameLabel}</Label>
+          <Label htmlFor="workflow-name" required>
+            {t.nameLabel}
+          </Label>
           <Input
             id="workflow-name"
             value={draft.name}
-            maxLength={LENGTH.name}
             onChange={(event) => setDraft({ ...draft, name: event.target.value })}
             placeholder={t.namePlaceholder}
+            {...fields.fieldProps('name')}
           />
+          <FieldError form={fields} name="name" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="workflow-description">{t.descriptionLabel}</Label>
           <Input
             id="workflow-description"
             value={draft.description}
-            maxLength={LENGTH.description}
             onChange={(event) => setDraft({ ...draft, description: event.target.value })}
             placeholder={t.descriptionPlaceholder}
+            {...fields.fieldProps('description')}
           />
+          <CharacterCount value={draft.description} max={LENGTH.description} />
+          <FieldError form={fields} name="description" />
         </div>
       </div>
 
@@ -552,7 +571,7 @@ export function WorkflowDefinitionForm({
             {t.cancel}
           </Button>
         ) : null}
-        <Button type="button" disabled={busy || errors.length > 0} onClick={submit}>
+        <Button type="button" disabled={busy || errors.length > 0 || !fields.data} onClick={submit}>
           {workflow ? t.save : t.createDraft}
         </Button>
       </div>

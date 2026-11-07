@@ -1,10 +1,14 @@
 import { IconCopy } from '@tabler/icons-react'
 import { Button } from '../../components/ui/button'
 import { Label } from '../../components/ui/label'
+import { formSchema, requiredText } from '../../lib/form'
 import type { AdminSamlIDPProfile } from '../../types'
 import type { adminSamlIDPProfilesDictionary } from './AdminSamlIDPProfilesPage.i18n'
 
 type Dictionary = (typeof adminSamlIDPProfilesDictionary)['en']
+
+// 作成と編集で同じ規則を使う。SamlIDPProfile.Validate は名前が空でないことだけを求める。
+export const profileFormSchema = formSchema({ name: requiredText() })
 
 function CopyableField({
   label,

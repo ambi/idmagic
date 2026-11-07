@@ -15,6 +15,8 @@ export const systemTenantsDictionary = defineDictionary(
     newTenant: '新規テナント',
     realmLabel: 'Realm',
     realmHelp: 'URL-safe slug (a-z 0-9 -)。',
+    realmInvalidError:
+      '英小文字か数字で始めて終わり、英小文字、数字、- だけを使った 63 文字以内で入力してください。',
     displayNameLabel: '表示名',
     endpointStyleLabel: 'Endpoint style',
     endpointStyleHelp: '変更すると issuer、RP 設定、既存 passkey、進行中の session に影響します。',
@@ -68,6 +70,8 @@ export const systemTenantsDictionary = defineDictionary(
     newTenant: 'New tenant',
     realmLabel: 'Realm',
     realmHelp: 'URL-safe slug (a-z 0-9 -).',
+    realmInvalidError:
+      'Enter up to 63 lowercase letters, digits, and -, starting and ending with a letter or digit.',
     displayNameLabel: 'Display name',
     endpointStyleLabel: 'Endpoint style',
     endpointStyleHelp:

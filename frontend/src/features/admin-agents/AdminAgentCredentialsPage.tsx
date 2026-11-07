@@ -9,14 +9,21 @@ import {
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { CopyableValue } from '../../components/CopyableValue'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
+import { formSchema, requiredText, scopeText, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import type { AdminAgent, McpResourceServer } from '../../types'
+
+const bindCredentialSchema = formSchema({ clientID: requiredText() })
+
+// 鍵の解析は Web Crypto を使う非同期の処理なので、欄の規則ではなく送信時に行う。
+const keyCredentialSchema = formSchema({ publicKey: requiredText(), otherScopes: scopeText() })
 import { AgentActionConfirmation } from './AgentActionConfirmation'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { parsePublicKey } from './publicKey'
@@ -54,6 +61,7 @@ export function AdminAgentCredentialsPage({
   ])
   const [allowApproval, setAllowApproval] = useState(true)
   const [otherScopes, setOtherScopes] = useState('')
+  const bindForm = useFormValidation(bindCredentialSchema, { clientID })
   const [removing, setRemoving] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const running = useRef(false)
@@ -93,9 +101,13 @@ export function AdminAgentCredentialsPage({
 
   function bind(event: FormEvent) {
     event.preventDefault()
-    if (!clientID.trim() || busy || killed) return
+    const id = bindForm.data?.clientID
+    if (id === undefined) {
+      bindForm.revealAll()
+      return
+    }
+    if (busy || killed) return
     void run(async () => {
-      const id = clientID.trim()
       await bindAdminAgentCredential(csrfToken, agent.id, id)
       setClientIDs((current) => [...new Set([...current, id])])
       setCreatedClient((current) => (current?.id === id ? { ...current, bound: true } : current))
@@ -103,16 +115,21 @@ export function AdminAgentCredentialsPage({
     }, t.credentialBound)
   }
 
+  const keyForm = useFormValidation(keyCredentialSchema, { publicKey, otherScopes })
   const requestedScopes = [
     ...new Set([
       ...(allowApproval ? APPROVAL_SCOPES : []),
       ...selectedScopes,
-      ...otherScopes.split(/\s+/).filter(Boolean),
+      ...(keyForm.data?.otherScopes?.split(' ') ?? []),
     ]),
   ]
 
   async function createFromKey(event: FormEvent) {
     event.preventDefault()
+    if (!keyForm.data) {
+      keyForm.revealAll()
+      return
+    }
     if (busy || killed) return
     void run(async () => {
       const jwks = await parsePublicKey(publicKey)
@@ -224,9 +241,11 @@ export function AdminAgentCredentialsPage({
               value={clientID}
               onChange={(event) => setClientID(event.target.value)}
               disabled={busy || killed}
+              {...bindForm.fieldProps('clientID')}
             />
+            <FieldError form={bindForm} name="clientID" />
             <div className="flex justify-end">
-              <Button type="submit" disabled={busy || killed || !clientID.trim()}>
+              <Button type="submit" disabled={busy || killed || !bindForm.data}>
                 {t.bind}
               </Button>
             </div>
@@ -252,7 +271,9 @@ export function AdminAgentCredentialsPage({
                 onChange={(event) => setPublicKey(event.target.value)}
                 disabled={busy || killed}
                 className="rounded-md border border-slate-300 bg-white p-2 font-mono text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+                {...keyForm.fieldProps('publicKey')}
               />
+              <FieldError form={keyForm} name="publicKey" />
             </div>
             <p className="text-sm text-slate-600">{resources.ceiling}</p>
             <details>
@@ -307,14 +328,16 @@ export function AdminAgentCredentialsPage({
                     value={otherScopes}
                     onChange={(event) => setOtherScopes(event.target.value)}
                     disabled={busy || killed}
+                    {...keyForm.fieldProps('otherScopes')}
                   />
+                  <FieldError form={keyForm} name="otherScopes" />
                 </details>
               </fieldset>
             </details>
             <div className="flex justify-end">
               <Button
                 type="submit"
-                disabled={busy || killed || !publicKey.trim() || requestedScopes.length === 0}
+                disabled={busy || killed || !keyForm.data || requestedScopes.length === 0}
               >
                 {t.createKeyCredential}
               </Button>

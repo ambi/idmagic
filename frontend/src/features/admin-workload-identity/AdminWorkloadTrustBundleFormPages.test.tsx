@@ -81,8 +81,10 @@ describe('AdminWorkloadTrustBundleCreatePage', () => {
     fireEvent.click(option)
     expect(await screen.findByText(t.issuerSpiffeHelp)).toBeInTheDocument()
     expect(screen.getByLabelText(t.issuerLabel)).not.toBeRequired()
-    expect(screen.getByLabelText(t.trustDomainLabel).getAttribute('pattern')).toBe(
-      String.raw`[a-z0-9._\-]+`,
+    // SPIFFE のトラストドメインは小文字の英字、数字、`.`、`-`、`_` だけからなる。
+    fill(t.trustDomainLabel, 'Example.org')
+    expect(screen.getByLabelText(t.trustDomainLabel)).toHaveAccessibleDescription(
+      t.trustDomainInvalidError,
     )
 
     fill(t.nameLabel, 'spire')
@@ -116,6 +118,31 @@ describe('AdminWorkloadTrustBundleCreatePage', () => {
 
     expect(await screen.findByText(t.jwksInvalidError)).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  //spec:covers WCAG22-LABELS-ERRORS: サーバーが拒む issuer と、JWKS の取得元がない登録を欄のエラー文で示し、送信しないこと
+  it('asks for an https issuer and a JWKS source before registering', async () => {
+    const fetchMock = mock(() => Promise.resolve(response(201, bundle)))
+    stubGlobal('fetch', fetchMock)
+    await renderWithRouter(<AdminWorkloadTrustBundleCreatePage csrfToken="csrf" />)
+
+    fill(t.nameLabel, 'prod-cluster')
+    fill(t.trustDomainLabel, 'prod.example')
+    fill(t.issuerLabel, 'http://issuer.example')
+    fill(t.acceptedAudiencesLabel, 'idmagic')
+    expect(screen.getByLabelText(t.issuerLabel)).toHaveAccessibleDescription(t.issuerHttpsError)
+    fill(t.issuerLabel, 'https://issuer.example')
+
+    const jwks = screen.getByLabelText(t.jwksLabel)
+    fireEvent.blur(jwks)
+    expect(jwks).toHaveAccessibleDescription(t.jwksSourceRequiredError)
+    const register = screen.getByRole('button', { name: t.register })
+    expect(register).toBeDisabled()
+    fireEvent.submit(register.closest('form')!)
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    fill(t.jwksUriLabel, 'https://issuer.example/jwks.json')
+    expect(register).toBeEnabled()
   })
 })
 

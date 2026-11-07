@@ -38,6 +38,8 @@ export const adminTenantAttributesDictionary = defineDictionary(
     displayNamePlaceholder: '例: 部署',
     displayNameHelp: '利用者・管理者に見せる日本語名。未設定なら属性キーを表示します。',
     keyFieldLabel: '属性キー',
+    attributeKeyInvalidError:
+      '英小文字で始め、英小文字、数字、_ だけを使った 63 文字以内のキーを入力してください。',
     claimNameFieldLabel: 'クレーム名 (任意)',
     claimNamePlaceholder: 'クレームとして開示する場合のみ',
     oidcScopeFieldLabel: 'OIDC スコープ (任意)',
@@ -91,6 +93,8 @@ export const adminTenantAttributesDictionary = defineDictionary(
     displayNamePlaceholder: 'e.g., Department',
     displayNameHelp: 'The name shown to users and admins. If unset, the key is shown instead.',
     keyFieldLabel: 'key',
+    attributeKeyInvalidError:
+      'Enter a key of up to 63 characters that starts with a lowercase letter and uses only lowercase letters, digits, and _.',
     claimNameFieldLabel: 'Claim name (optional)',
     claimNamePlaceholder: 'Only if exposed as a claim',
     oidcScopeFieldLabel: 'OIDC scope (optional)',

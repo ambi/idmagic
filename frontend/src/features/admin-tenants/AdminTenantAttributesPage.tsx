@@ -17,6 +17,7 @@ import {
   AttributeFormFields,
   newURL,
   normalizeAttribute,
+  useAttributeValidation,
   visibilityLabel,
 } from './AdminTenantAttributesShared'
 
@@ -202,8 +203,8 @@ function AttributeEditorDialog({
   onSubmit: (draft: UserAttributeDef) => void
 }) {
   const [draft, setDraft] = useState<UserAttributeDef>(initial)
-  const keyInvalid = draft.key.trim() === ''
   const t = useDictionary(adminTenantAttributesDictionary)
+  const validation = useAttributeValidation(draft, t)
 
   function patch(change: Partial<UserAttributeDef>) {
     setDraft((current) => ({ ...current, ...change }))
@@ -223,18 +224,19 @@ function AttributeEditorDialog({
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            if (!keyInvalid) onSubmit(draft)
+            if (validation.data) onSubmit(draft)
+            else validation.revealAll()
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="min-h-0 flex-1 overflow-y-auto p-6">
-            <AttributeFormFields draft={draft} onChange={patch} t={t} />
+            <AttributeFormFields draft={draft} validation={validation} onChange={patch} t={t} />
           </div>
           <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
             <Button type="button" variant="outline" onClick={onClose}>
               {t.cancel}
             </Button>
-            <Button type="submit" disabled={saving || keyInvalid}>
+            <Button type="submit" disabled={saving || !validation.data}>
               {saving ? t.saving : t.save}
             </Button>
           </div>

@@ -7,13 +7,17 @@ import {
   setDynamicGroupRuleEnabled,
   updateDynamicGroupRule,
 } from '../../api'
+import { CharacterCount } from '../../components/CharacterCount'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
+import { formSchema, requiredText, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import type {
   AdminUser,
   DynamicGroupPreview,
@@ -21,6 +25,8 @@ import type {
   UserAttributeDef,
 } from '../../types'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
+
+const dynamicRuleSchema = formSchema({ expression: requiredText(LENGTH.expression) })
 import {
   type BuilderCondition,
   builderAttributeOptions,
@@ -97,6 +103,8 @@ export function DynamicRuleEditor({
 
   const expression =
     mode === 'builder' ? buildDynamicRuleExpression(conditions) : advancedExpression
+  // 組み立てた式も手で書いた式も、DynamicGroupRuleRequest の上限に従う。文法はサーバーが検査する。
+  const validation = useFormValidation(dynamicRuleSchema, { expression })
 
   function attributeLabel(key: string): string {
     const builtinKey = BUILTIN_ATTRIBUTE_LABEL_KEYS[key]
@@ -261,14 +269,17 @@ export function DynamicRuleEditor({
               aria-label={t.dynamicRuleExpression}
               className="min-h-28 w-full rounded-md border border-slate-300 bg-white p-3 font-mono text-sm"
               placeholder={'user.department == "Engineering"'}
+              {...validation.fieldProps('expression')}
             />
+            <CharacterCount value={advancedExpression} max={LENGTH.expression} />
           </div>
         )}
+        <FieldError form={validation} name="expression" />
 
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
-            disabled={ruleBusy || !expression.trim()}
+            disabled={ruleBusy || !validation.data}
             onClick={() =>
               void withRule(async () => {
                 const saved = await updateDynamicGroupRule(csrfToken, groupId, expression)
@@ -282,7 +293,7 @@ export function DynamicRuleEditor({
           <Button
             type="button"
             variant="outline"
-            disabled={ruleBusy || !expression.trim() || previewUserIDs.length === 0}
+            disabled={ruleBusy || !validation.data || previewUserIDs.length === 0}
             onClick={() =>
               void withRule(async () => {
                 const result = await previewDynamicGroupRule(

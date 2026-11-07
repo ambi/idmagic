@@ -1,5 +1,5 @@
 import { IconBan, IconCheck, IconPlus, IconRefresh } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import {
   AuthenticationAPIError,
   createAdminTenant,
@@ -8,6 +8,7 @@ import {
   updateAdminTenant,
   updateAdminTenantQuota,
 } from '../../api'
+import { FieldError } from '../../components/FieldError'
 import { SystemShell } from '../../components/SystemShell'
 import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
@@ -15,7 +16,16 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import {
+  formSchema,
+  optionalNonNegativeInteger,
+  requiredText,
+  rule,
+  useForm,
+  useFormValidation,
+} from '../../lib/form'
 import { useDictionary, useLocale } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import type { AdminTenant } from '../../types'
 import { systemTenantsDictionary } from './SystemTenantsPage.i18n'
 import { formatDate, StatusBadge } from './SystemTenantsShared'
@@ -61,16 +71,9 @@ export function SystemTenantsPage({
     }
   }
 
-  async function handleCreate(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = e.currentTarget
-    const data = new FormData(form)
+  async function handleCreate(input: { realm: string; display_name: string }) {
     await run(async () => {
-      const created = await createAdminTenant(csrfToken, {
-        realm: String(data.get('realm') ?? ''),
-        display_name: String(data.get('display_name') ?? ''),
-      })
-      form.reset()
+      const created = await createAdminTenant(csrfToken, input)
       setShowCreate(false)
       await refresh(created.id)
     }, t.tenantCreatedNotice)
@@ -135,40 +138,71 @@ export function SystemTenantsPage({
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4">
           <Card className="w-full max-w-md p-6">
             <h2 className="text-base font-semibold text-slate-900">{t.newTenant}</h2>
-            <form onSubmit={handleCreate} className="mt-4 grid gap-4">
-              <div className="grid gap-1.5">
-                <Label htmlFor="tenant-realm">{t.realmLabel}</Label>
-                <Input
-                  id="tenant-realm"
-                  name="realm"
-                  required
-                  pattern="^[a-z0-9][a-z0-9-]{0,62}$"
-                  placeholder="acme"
-                />
-                <p className="text-xs text-slate-500">{t.realmHelp}</p>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="tenant-display">{t.displayNameLabel}</Label>
-                <Input id="tenant-display" name="display_name" required placeholder="Acme Inc." />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCreate(false)}
-                  disabled={busy}
-                >
-                  {t.cancel}
-                </Button>
-                <Button type="submit" disabled={busy}>
-                  {t.create}
-                </Button>
-              </div>
-            </form>
+            <CreateTenantForm
+              busy={busy}
+              onCancel={() => setShowCreate(false)}
+              onCreate={handleCreate}
+            />
           </Card>
         </div>
       ) : null}
     </SystemShell>
+  )
+}
+
+function CreateTenantForm({
+  busy,
+  onCancel,
+  onCreate,
+}: {
+  busy: boolean
+  onCancel: () => void
+  onCreate: (input: { realm: string; display_name: string }) => Promise<void>
+}) {
+  const t = useDictionary(systemTenantsDictionary)
+  const schema = useMemo(() => createTenantSchema(t.realmInvalidError), [t.realmInvalidError])
+  const form = useForm(schema, { realm: '', displayName: '' })
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!form.data) {
+      form.revealAll()
+      return
+    }
+    void onCreate({ realm: form.data.realm, display_name: form.data.displayName })
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-4 grid gap-4">
+      <div className="grid gap-1.5">
+        <Label htmlFor="tenant-realm" required>
+          {t.realmLabel}
+        </Label>
+        <Input id="tenant-realm" required placeholder="acme" {...form.input('realm')} />
+        <FieldError form={form} name="realm" />
+        <p className="text-xs text-slate-500">{t.realmHelp}</p>
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="tenant-display" required>
+          {t.displayNameLabel}
+        </Label>
+        <Input
+          id="tenant-display"
+          required
+          placeholder="Acme Inc."
+          {...form.input('displayName')}
+        />
+        <FieldError form={form} name="displayName" />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
+          {t.cancel}
+        </Button>
+        <Button type="submit" disabled={busy || !form.data}>
+          {t.create}
+        </Button>
+      </div>
+    </form>
   )
 }
 
@@ -322,6 +356,71 @@ export function TenantDetailCard({
   )
 }
 
+const QUOTA_KEYS = [
+  'users',
+  'groups',
+  'agents',
+  'applications',
+  'oauth2_clients',
+  'active_sessions',
+  'consents',
+  'active_jobs',
+  'ssf_streams',
+  'audit_events_retained',
+  'export_artifacts_bytes',
+] as const
+
+type QuotaKey = (typeof QUOTA_KEYS)[number]
+
+// 入力欄の id の接頭辞は、欄を一覧のデータから描く前と同じ値を保つ。E2E が id で欄を探すためである。
+const QUOTA_FIELDS: Record<
+  QuotaKey,
+  { label: keyof (typeof systemTenantsDictionary)['en']; idPrefix: string }
+> = {
+  users: { label: 'quotaUsers', idPrefix: 'qu' },
+  groups: { label: 'quotaGroups', idPrefix: 'qg' },
+  agents: { label: 'quotaAgents', idPrefix: 'qa' },
+  applications: { label: 'quotaApplications', idPrefix: 'qap' },
+  oauth2_clients: { label: 'quotaOAuth2Clients', idPrefix: 'qc' },
+  active_sessions: { label: 'quotaActiveSessions', idPrefix: 'qs' },
+  consents: { label: 'quotaConsents', idPrefix: 'qco' },
+  active_jobs: { label: 'quotaActiveJobs', idPrefix: 'qj' },
+  ssf_streams: { label: 'quotaSsfStreams', idPrefix: 'qss' },
+  audit_events_retained: { label: 'quotaAuditEventsRetained', idPrefix: 'qau' },
+  export_artifacts_bytes: { label: 'quotaExportArtifactsBytes', idPrefix: 'qar' },
+}
+
+function quotaForm(tenant: AdminTenant): Record<QuotaKey, string> {
+  return Object.fromEntries(
+    QUOTA_KEYS.map((key) => [key, tenant.quota?.[key]?.toString() ?? '']),
+  ) as Record<QuotaKey, string>
+}
+
+// 表示名は Tenant の上限に、クォータは TenantQuotaUpdateRequest の @minValue(0) に従う。
+// パスワードポリシーの下限と上限は全体の既定値で決まり、この画面は値を持たないのでサーバーが判定する。
+const tenantEditorSchema = formSchema({
+  displayName: requiredText(LENGTH.displayName),
+  minLength: optionalNonNegativeInteger(),
+  maxLength: optionalNonNegativeInteger(),
+  historyDepth: optionalNonNegativeInteger(),
+  ...(Object.fromEntries(QUOTA_KEYS.map((key) => [key, optionalNonNegativeInteger()])) as Record<
+    QuotaKey,
+    ReturnType<typeof optionalNonNegativeInteger>
+  >),
+})
+
+// realm は Tenant の @pattern と同じく、英小文字か数字で始まり終わる 63 文字以内の DNS ラベルである。
+const REALM = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
+
+function createTenantSchema(realmInvalid: string) {
+  return formSchema({
+    realm: rule(requiredText(), (value) =>
+      REALM.test(value) ? undefined : { kind: 'message', text: realmInvalid },
+    ),
+    displayName: requiredText(LENGTH.displayName),
+  })
+}
+
 function TenantEditor({
   tenant,
   csrfToken,
@@ -343,51 +442,43 @@ function TenantEditor({
   const [historyDepth, setHistoryDepth] = useState(
     tenant.password_policy_override?.history_depth?.toString() ?? '',
   )
-  const [qUsers, setQUsers] = useState(tenant.quota?.users?.toString() ?? '')
-  const [qGroups, setQGroups] = useState(tenant.quota?.groups?.toString() ?? '')
-  const [qAgents, setQAgents] = useState(tenant.quota?.agents?.toString() ?? '')
-  const [qApps, setQApps] = useState(tenant.quota?.applications?.toString() ?? '')
-  const [qClients, setQClients] = useState(tenant.quota?.oauth2_clients?.toString() ?? '')
-  const [qSessions, setQSessions] = useState(tenant.quota?.active_sessions?.toString() ?? '')
-  const [qConsents, setQConsents] = useState(tenant.quota?.consents?.toString() ?? '')
-  const [qJobs, setQJobs] = useState(tenant.quota?.active_jobs?.toString() ?? '')
-  const [qSsfStreams, setQSsfStreams] = useState(tenant.quota?.ssf_streams?.toString() ?? '')
-  const [qAudits, setQAudits] = useState(tenant.quota?.audit_events_retained?.toString() ?? '')
-  const [qArtifacts, setQArtifacts] = useState(
-    tenant.quota?.export_artifacts_bytes?.toString() ?? '',
-  )
+  const [quota, setQuota] = useState(() => quotaForm(tenant))
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
   const t = useDictionary(systemTenantsDictionary)
+  // テナントの更新とクォータの更新は別の要求なので、片方だけが保存されないよう送る前にすべて検査する。
+  const validation = useFormValidation(tenantEditorSchema, {
+    displayName,
+    minLength,
+    maxLength,
+    historyDepth,
+    ...quota,
+  })
 
   async function handleSave(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    const data = validation.data
+    if (!data) {
+      validation.revealAll()
+      return
+    }
     setSaving(true)
     setEditError('')
     try {
       const policy: AdminTenant['password_policy_override'] = {}
-      if (minLength.trim()) policy.min_length = Number.parseInt(minLength, 10)
-      if (maxLength.trim()) policy.max_length = Number.parseInt(maxLength, 10)
-      if (historyDepth.trim()) policy.history_depth = Number.parseInt(historyDepth, 10)
+      if (data.minLength !== undefined) policy.min_length = data.minLength
+      if (data.maxLength !== undefined) policy.max_length = data.maxLength
+      if (data.historyDepth !== undefined) policy.history_depth = data.historyDepth
       const hasPolicy = Object.keys(policy).length > 0
       await updateAdminTenant(csrfToken, tenant.realm, {
-        display_name: displayName !== tenant.display_name ? displayName : undefined,
+        display_name: data.displayName !== tenant.display_name ? data.displayName : undefined,
         password_policy_override: hasPolicy ? policy : undefined,
       })
-      const num = (v: string) => (v.trim() ? Number.parseInt(v, 10) : undefined)
-      await updateAdminTenantQuota(csrfToken, tenant.realm, {
-        users: num(qUsers),
-        groups: num(qGroups),
-        agents: num(qAgents),
-        applications: num(qApps),
-        oauth2_clients: num(qClients),
-        active_sessions: num(qSessions),
-        consents: num(qConsents),
-        active_jobs: num(qJobs),
-        ssf_streams: num(qSsfStreams),
-        audit_events_retained: num(qAudits),
-        export_artifacts_bytes: num(qArtifacts),
-      })
+      await updateAdminTenantQuota(
+        csrfToken,
+        tenant.realm,
+        Object.fromEntries(QUOTA_KEYS.map((key) => [key, data[key]])),
+      )
 
       onSaved(tenant.id)
     } catch (cause) {
@@ -411,7 +502,9 @@ function TenantEditor({
           id={`name-${tenant.id}`}
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
+          {...validation.fieldProps('displayName')}
         />
+        <FieldError form={validation} name="displayName" />
       </div>
       <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
         {t.passwordPolicyOverrideHeading}
@@ -426,7 +519,9 @@ function TenantEditor({
             min={1}
             value={minLength}
             onChange={(e) => setMinLength(e.target.value)}
+            {...validation.fieldProps('minLength')}
           />
+          <FieldError form={validation} name="minLength" />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor={`max-${tenant.id}`}>{t.maxLabel}</Label>
@@ -436,7 +531,9 @@ function TenantEditor({
             min={1}
             value={maxLength}
             onChange={(e) => setMaxLength(e.target.value)}
+            {...validation.fieldProps('maxLength')}
           />
+          <FieldError form={validation} name="maxLength" />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor={`hist-${tenant.id}`}>{t.historyLabel}</Label>
@@ -446,7 +543,9 @@ function TenantEditor({
             min={0}
             value={historyDepth}
             onChange={(e) => setHistoryDepth(e.target.value)}
+            {...validation.fieldProps('historyDepth')}
           />
+          <FieldError form={validation} name="historyDepth" />
         </div>
       </div>
       <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -454,118 +553,28 @@ function TenantEditor({
       </p>
       <p className="text-xs text-slate-500">{t.quotaHelp}</p>
       <div className="grid grid-cols-4 gap-2">
-        <div className="grid gap-1.5">
-          <Label htmlFor={`qu-${tenant.id}`}>{t.quotaUsers}</Label>
-          <Input
-            id={`qu-${tenant.id}`}
-            type="number"
-            min={1}
-            value={qUsers}
-            onChange={(e) => setQUsers(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`qg-${tenant.id}`}>{t.quotaGroups}</Label>
-          <Input
-            id={`qg-${tenant.id}`}
-            type="number"
-            min={1}
-            value={qGroups}
-            onChange={(e) => setQGroups(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`qa-${tenant.id}`}>{t.quotaAgents}</Label>
-          <Input
-            id={`qa-${tenant.id}`}
-            type="number"
-            min={1}
-            value={qAgents}
-            onChange={(e) => setQAgents(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`qap-${tenant.id}`}>{t.quotaApplications}</Label>
-          <Input
-            id={`qap-${tenant.id}`}
-            type="number"
-            min={1}
-            value={qApps}
-            onChange={(e) => setQApps(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`qc-${tenant.id}`}>{t.quotaOAuth2Clients}</Label>
-          <Input
-            id={`qc-${tenant.id}`}
-            type="number"
-            min={1}
-            value={qClients}
-            onChange={(e) => setQClients(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`qs-${tenant.id}`}>{t.quotaActiveSessions}</Label>
-          <Input
-            id={`qs-${tenant.id}`}
-            type="number"
-            min={1}
-            value={qSessions}
-            onChange={(e) => setQSessions(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`qco-${tenant.id}`}>{t.quotaConsents}</Label>
-          <Input
-            id={`qco-${tenant.id}`}
-            type="number"
-            min={1}
-            value={qConsents}
-            onChange={(e) => setQConsents(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`qj-${tenant.id}`}>{t.quotaActiveJobs}</Label>
-          <Input
-            id={`qj-${tenant.id}`}
-            type="number"
-            min={1}
-            value={qJobs}
-            onChange={(e) => setQJobs(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`qss-${tenant.id}`}>{t.quotaSsfStreams}</Label>
-          <Input
-            id={`qss-${tenant.id}`}
-            type="number"
-            min={1}
-            value={qSsfStreams}
-            onChange={(e) => setQSsfStreams(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`qau-${tenant.id}`}>{t.quotaAuditEventsRetained}</Label>
-          <Input
-            id={`qau-${tenant.id}`}
-            type="number"
-            min={1}
-            value={qAudits}
-            onChange={(e) => setQAudits(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor={`qar-${tenant.id}`}>{t.quotaExportArtifactsBytes}</Label>
-          <Input
-            id={`qar-${tenant.id}`}
-            type="number"
-            min={1}
-            value={qArtifacts}
-            onChange={(e) => setQArtifacts(e.target.value)}
-          />
-        </div>
+        {QUOTA_KEYS.map((key) => (
+          <div key={key} className="grid gap-1.5">
+            <Label htmlFor={`${QUOTA_FIELDS[key].idPrefix}-${tenant.id}`}>
+              {t[QUOTA_FIELDS[key].label]}
+            </Label>
+            <Input
+              id={`${QUOTA_FIELDS[key].idPrefix}-${tenant.id}`}
+              type="number"
+              min={0}
+              value={quota[key]}
+              onChange={(e) => setQuota((current) => ({ ...current, [key]: e.target.value }))}
+              {...validation.fieldProps(key)}
+            />
+            <FieldError form={validation} name={key} />
+          </div>
+        ))}
       </div>
-      <Button type="submit" disabled={busy || saving} className="mt-2 justify-self-start">
+      <Button
+        type="submit"
+        disabled={busy || saving || !validation.data}
+        className="mt-2 justify-self-start"
+      >
         {saving ? t.saving : t.save}
       </Button>
     </form>

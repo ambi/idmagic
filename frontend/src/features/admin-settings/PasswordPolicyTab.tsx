@@ -1,16 +1,18 @@
 import { IconPencil } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, type ReactNode, useMemo, useState } from 'react'
 import { AuthenticationAPIError, updateAdminSettings } from '../../api'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
+import { formSchema, integerInRange, rule, useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import type { AdminSettings } from '../../types'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
-import { passwordPolicyOverride, ReadSetting } from './AdminSettingsShared'
+import { ReadSetting } from './AdminSettingsShared'
 
 // The server rejects anything outside this range (REQ-TENANCY-019); the input
 // bounds only spare the administrator a round trip.
@@ -44,13 +46,40 @@ export function PasswordPolicyTab({
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminSettingsDictionary)
 
+  // 上書きは全体の値より厳しい方向にだけ動かせる（manage_tenants.go の validatePasswordPolicyOverride）。
+  // 有効期限は 0（無効）か、システムの範囲の日数である。
+  const schema = useMemo(
+    () =>
+      formSchema({
+        minLength: integerInRange(defaults.min_length, defaults.max_length),
+        maxLength: integerInRange(defaults.min_length, defaults.max_length),
+        historyDepth: integerInRange(defaults.history_depth, 50),
+        maxAgeDays: rule(integerInRange(0, MAX_AGE_DAYS_MAX), (value) =>
+          value === undefined || value === 0 || value >= MAX_AGE_DAYS_MIN
+            ? undefined
+            : { kind: 'integerRange', min: MAX_AGE_DAYS_MIN, max: MAX_AGE_DAYS_MAX },
+        ),
+      }),
+    [defaults.min_length, defaults.max_length, defaults.history_depth],
+  )
+  const validation = useFormValidation(schema, { minLength, maxLength, historyDepth, maxAgeDays })
+
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const data = validation.data
+    if (!data) {
+      validation.revealAll()
+      return
+    }
     setSaving(true)
     setError('')
     setNotice('')
     try {
-      const policy = passwordPolicyOverride(minLength, maxLength, historyDepth, maxAgeDays)
+      const policy: NonNullable<AdminSettings['password_policy_override']> = {}
+      if (data.minLength !== undefined) policy.min_length = data.minLength
+      if (data.maxLength !== undefined) policy.max_length = data.maxLength
+      if (data.historyDepth !== undefined) policy.history_depth = data.historyDepth
+      if (data.maxAgeDays !== undefined) policy.max_age_days = data.maxAgeDays
       const next = await updateAdminSettings(csrfToken, {
         password_policy_override: policy,
       })
@@ -151,6 +180,8 @@ export function PasswordPolicyTab({
                 max={defaults.max_length}
                 placeholder={defaults.min_length.toString()}
                 hint={t.atLeastHint.replace('{n}', defaults.min_length.toString())}
+                fieldProps={validation.fieldProps('minLength')}
+                error={<FieldError form={validation} name="minLength" />}
               />
               <PolicyField
                 id="max-length"
@@ -161,6 +192,8 @@ export function PasswordPolicyTab({
                 max={defaults.max_length}
                 placeholder={defaults.max_length.toString()}
                 hint={t.atMostHint.replace('{n}', defaults.max_length.toString())}
+                fieldProps={validation.fieldProps('maxLength')}
+                error={<FieldError form={validation} name="maxLength" />}
               />
               <PolicyField
                 id="history-depth"
@@ -171,6 +204,8 @@ export function PasswordPolicyTab({
                 max={50}
                 placeholder={defaults.history_depth.toString()}
                 hint={t.atLeastHint.replace('{n}', defaults.history_depth.toString())}
+                fieldProps={validation.fieldProps('historyDepth')}
+                error={<FieldError form={validation} name="historyDepth" />}
               />
               <PolicyField
                 id="max-age-days"
@@ -183,11 +218,13 @@ export function PasswordPolicyTab({
                 hint={t.maxAgeHint
                   .replace('{min}', MAX_AGE_DAYS_MIN.toString())
                   .replace('{max}', MAX_AGE_DAYS_MAX.toString())}
+                fieldProps={validation.fieldProps('maxAgeDays')}
+                error={<FieldError form={validation} name="maxAgeDays" />}
               />
             </div>
             <p className="text-xs text-slate-500">{t.maxAgeDescription}</p>
             <div className="flex items-center gap-2">
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || !validation.data}>
                 {saving ? t.saving : t.save}
               </Button>
               <Button
@@ -223,6 +260,8 @@ function PolicyField({
   max,
   placeholder,
   hint,
+  fieldProps,
+  error,
 }: {
   id: string
   label: string
@@ -232,6 +271,8 @@ function PolicyField({
   max: number
   placeholder: string
   hint: string
+  fieldProps: { 'aria-invalid'?: true; 'aria-describedby'?: string; onBlur: () => void }
+  error: ReactNode
 }) {
   return (
     <div className="grid gap-1.5">
@@ -244,7 +285,9 @@ function PolicyField({
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
+        {...fieldProps}
       />
+      {error}
       <p className="text-xs text-slate-500">{hint}</p>
     </div>
   )

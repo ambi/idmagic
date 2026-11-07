@@ -11,7 +11,9 @@ import { adminAuthorizationDetailTypesDictionary } from './AdminAuthorizationDet
 import {
   AuthorizationDetailTypeFormFields,
   listURL,
+  parseSchemaObject,
   toForm,
+  useDetailTypeValidation,
 } from './AdminAuthorizationDetailTypesShared'
 
 // AdminAuthorizationDetailTypeEditPage は認可詳細タイプ編集の専用画面 (wi-314 T014)。
@@ -28,25 +30,24 @@ export function AdminAuthorizationDetailTypeEditPage({
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const t = useDictionary(adminAuthorizationDetailTypesDictionary)
+  const validation = useDetailTypeValidation(form, t)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError('')
-    let schema: AuthorizationDetailType['schema']
-    try {
-      schema = JSON.parse(form.schemaJSON)
-    } catch {
-      setError(t.schemaInvalidError)
+    const data = validation.data
+    if (!data) {
+      validation.revealAll()
       return
     }
     setSaving(true)
     try {
       await updateAuthorizationDetailType(csrfToken, detailType.type, {
-        type: form.type,
+        type: data.type,
         description: form.description,
-        display_template: form.displayTemplate,
+        display_template: data.displayTemplate,
         state: form.state,
-        schema,
+        schema: parseSchemaObject(data.schemaJSON)!,
       })
       window.location.assign(listURL())
     } catch (cause) {
@@ -71,9 +72,15 @@ export function AdminAuthorizationDetailTypeEditPage({
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Card className="w-full admin-form p-4">
         <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-          <AuthorizationDetailTypeFormFields form={form} onChange={setForm} locked={true} t={t} />
+          <AuthorizationDetailTypeFormFields
+            form={form}
+            validation={validation}
+            onChange={setForm}
+            locked={true}
+            t={t}
+          />
           <div className="flex gap-2.5 md:col-span-2">
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !validation.data}>
               {t.update}
             </Button>
             <Button variant="outline" nativeButton={false} render={<a href={listURL()} />}>

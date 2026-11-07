@@ -61,10 +61,16 @@ describe('AdminAuthorizationDetailTypeCreatePage', () => {
     fireEvent.change(screen.getByLabelText(t.displayTemplateLabel), {
       target: { value: 'Up to {instructedAmount}' },
     })
-    fireEvent.change(screen.getByLabelText(t.schemaLabel), { target: { value: 'not json' } })
-    fireEvent.click(screen.getByRole('button', { name: t.register }))
-
-    expect(await screen.findByText(t.schemaInvalidError)).toBeInTheDocument()
+    const schema = screen.getByLabelText(t.schemaLabel)
+    // JSON として読めても、オブジェクトでない値はスキーマにならない。
+    for (const value of ['not json', '[]']) {
+      fireEvent.change(schema, { target: { value } })
+      expect(schema.getAttribute('aria-invalid')).toBe('true')
+      expect(schema).toHaveAccessibleDescription(t.schemaInvalidError)
+    }
+    const register = screen.getByRole('button', { name: t.register })
+    expect(register).toBeDisabled()
+    fireEvent.submit(register.closest('form') as HTMLFormElement)
     expect(window.location.assign).not.toHaveBeenCalled()
   })
 

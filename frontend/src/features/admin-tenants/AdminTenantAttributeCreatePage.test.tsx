@@ -51,4 +51,20 @@ describe('AdminTenantAttributeCreatePage', () => {
     expect(await screen.findByText('Could not save the schema.')).toBeInTheDocument()
     expect(window.location.assign).not.toHaveBeenCalled()
   })
+
+  //spec:covers WCAG22-LABELS-ERRORS: サーバーが拒む属性キーを欄のエラー文で示し、保存ボタンを無効にすること
+  it.each(['Region', '1region', 'region-code', `r${'a'.repeat(63)}`])(
+    'rejects the attribute key %s',
+    async (value) => {
+      await renderWithRouter(
+        <AdminTenantAttributeCreatePage csrfToken="csrf" existingAttributes={[]} />,
+      )
+      const key = screen.getByLabelText(t.keyFieldLabel)
+      fireEvent.change(key, { target: { value } })
+
+      expect(key.getAttribute('aria-invalid')).toBe('true')
+      expect(key).toHaveAccessibleDescription(t.attributeKeyInvalidError)
+      expect(screen.getByRole('button', { name: t.save })).toBeDisabled()
+    },
+  )
 })

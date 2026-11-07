@@ -1,5 +1,5 @@
 import { IconArrowLeft, IconKey, IconTrash, IconUpload, IconWorldShare } from '@tabler/icons-react'
-import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import {
   deleteApplicationIcon,
   updateAdminApplication,
@@ -10,6 +10,7 @@ import {
   uploadApplicationIcon,
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -21,7 +22,21 @@ import {
   safeApplicationIconURL,
   validateApplicationIconFile,
 } from '../../lib/applicationIcon'
+import {
+  cidrList,
+  formSchema,
+  optionalPositiveInteger,
+  optionalUrl,
+  pemText,
+  requiredText,
+  requiredUrl,
+  scopeText,
+  urlList,
+  useFormValidation,
+  when,
+} from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import { AssignmentManager } from './AdminApplicationAssignments'
 import { CategoryManager } from './AdminApplicationCategories'
 import { AdminApplicationSamlFormSection } from './AdminApplicationSamlFormSection'
@@ -140,7 +155,39 @@ export function AdminApplicationEditPage({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const t = useDictionary(adminApplicationsDictionary)
-  const nameInvalid = name.trim() === ''
+  // 種類ごとの欄を送信の前にすべて検査する。どれかが不正なまま途中の API まで進むと、
+  // 先に送った基本情報だけが保存された状態で失敗するためである。
+  const schema = useMemo(
+    () =>
+      formSchema({
+        name: requiredText(),
+        launch_url: app.kind === 'weblink' ? requiredUrl() : optionalUrl(),
+        redirects: when(
+          Boolean(detail.oidc) && app.kind !== 'service',
+          urlList(parseList, { required: true }),
+        ),
+        scope: when(Boolean(detail.oidc), scopeText()),
+        replies: when(Boolean(detail.wsfed), urlList(parseList, { required: true })),
+        acs: when(Boolean(detail.saml), urlList(parseList, { required: true })),
+        slo: when(Boolean(detail.saml), optionalUrl({}, LENGTH.uri)),
+        signingCert: when(Boolean(detail.saml), pemText(samlWantSignedRequests)),
+        reauth: when(signInEnabled, optionalPositiveInteger()),
+        cidrs: when(signInEnabled, cidrList()),
+      }),
+    [app.kind, detail.oidc, detail.wsfed, detail.saml, samlWantSignedRequests, signInEnabled],
+  )
+  const form = useFormValidation(schema, {
+    name,
+    launch_url: launchURL,
+    redirects,
+    scope,
+    replies,
+    acs: samlACS,
+    slo: samlSLO,
+    signingCert: samlSigningCert,
+    reauth: signInReauthMaxAge,
+    cidrs: signInNetworkCIDRs,
+  })
   async function selectIconFile(file: File | null) {
     const token = ++iconSelectionToken.current
     if (!file) {
@@ -175,14 +222,19 @@ export function AdminApplicationEditPage({
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (nameInvalid) return
+    const data = form.data
+    if (!data) {
+      form.revealAll()
+      return
+    }
     setSaving(true)
     setError('')
     try {
       const metaPatch: Record<string, unknown> = {}
-      if (name.trim() !== app.name) metaPatch.name = name.trim()
-      if (app.kind !== 'service' && launchURL.trim() !== (app.launch_url ?? '')) {
-        metaPatch.launch_url = launchURL.trim()
+      if (data.name !== app.name) metaPatch.name = data.name
+      const nextLaunchURL = data.launch_url ?? ''
+      if (app.kind !== 'service' && nextLaunchURL !== (app.launch_url ?? '')) {
+        metaPatch.launch_url = nextLaunchURL
       }
       if (status !== app.status) metaPatch.status = status
       if (Object.keys(metaPatch).length > 0) {
@@ -200,12 +252,13 @@ export function AdminApplicationEditPage({
         await uploadApplicationIcon(csrfToken, app.id, iconFile)
       }
       if (detail.oidc) {
-        const nextRedirects = parseList(redirects)
+        const nextRedirects = data.redirects ?? []
+        const nextScope = data.scope ?? ''
         const nextGrants = parseList(grantTypes)
         const nextResponses = parseList(responseTypes)
         const redirectsChanged =
           app.kind !== 'service' && nextRedirects.join(',') !== detail.oidc.redirect_uris.join(',')
-        const scopeChanged = scope.trim() !== detail.oidc.scope
+        const scopeChanged = nextScope !== detail.oidc.scope
         const grantsChanged = nextGrants.join(',') !== detail.oidc.grant_types.join(',')
         const responsesChanged = nextResponses.join(',') !== detail.oidc.response_types.join(',')
         const parChanged = requirePAR !== detail.oidc.require_pushed_authorization_requests
@@ -225,7 +278,7 @@ export function AdminApplicationEditPage({
         ) {
           await updateApplicationOidcConfig(csrfToken, app.id, {
             redirect_uris: redirectsChanged ? nextRedirects : undefined,
-            scope: scopeChanged ? scope.trim() : undefined,
+            scope: scopeChanged ? nextScope : undefined,
             grant_types: grantsChanged ? nextGrants : undefined,
             response_types: responsesChanged ? nextResponses : undefined,
             require_pushed_authorization_requests: parChanged ? requirePAR : undefined,
@@ -236,7 +289,7 @@ export function AdminApplicationEditPage({
         }
       }
       if (detail.wsfed) {
-        const nextReplies = parseList(replies)
+        const nextReplies = data.replies ?? []
         const changed =
           nextReplies.join(',') !== detail.wsfed.reply_urls.join(',') ||
           audience.trim() !== detail.wsfed.audience ||
@@ -256,59 +309,39 @@ export function AdminApplicationEditPage({
         }
       }
       if (detail.saml) {
-        const nextACS = parseList(samlACS)
-        if (samlWantSignedRequests && samlSigningCert.trim() === '') {
-          setError(t.signingCertRequiredError)
-          setSaving(false)
-          return
-        }
+        const nextACS = data.acs ?? []
+        const nextSLO = data.slo ?? ''
+        const nextSigningCert = data.signingCert ?? ''
         const changed =
           nextACS.join(',') !== detail.saml.acs_urls.join(',') ||
           samlIDPProfileID.current !== detail.saml.idp_profile_id ||
-          samlSLO.trim() !== detail.saml.slo_url ||
+          nextSLO !== detail.saml.slo_url ||
           samlAudience.trim() !== detail.saml.audience ||
           samlNameIDFormat !== detail.saml.name_id_format ||
           samlNameIDSource.trim() !== detail.saml.name_id_source ||
           samlSignAssertion !== detail.saml.sign_assertion ||
           samlSignResponse !== detail.saml.sign_response ||
           samlWantSignedRequests !== (detail.saml.want_authn_requests_signed ?? false) ||
-          samlSigningCert.trim() !== (detail.saml.authn_request_signing_certificate_pem ?? '') ||
+          nextSigningCert !== (detail.saml.authn_request_signing_certificate_pem ?? '') ||
           JSON.stringify(samlRules) !== JSON.stringify(detail.saml.rules ?? [])
         if (changed) {
-          if (nextACS.length === 0) {
-            setError(t.acsUrlRequiredError)
-            setSaving(false)
-            return
-          }
           await updateApplicationSamlConfig(csrfToken, app.id, {
             idp_profile_id: samlIDPProfileID.current,
             acs_urls: nextACS,
-            slo_url: samlSLO.trim(),
+            slo_url: nextSLO,
             audience: samlAudience.trim(),
             name_id_format: samlNameIDFormat,
             name_id_source: samlNameIDSource.trim(),
             sign_assertion: samlSignAssertion,
             sign_response: samlSignResponse,
             want_authn_requests_signed: samlWantSignedRequests,
-            authn_request_signing_certificate_pem: samlSigningCert.trim(),
+            authn_request_signing_certificate_pem: nextSigningCert,
             rules: samlRules,
           })
         }
       }
-      const reauthText = signInReauthMaxAge.trim()
-      const reauthMaxAge = reauthText === '' ? undefined : Number.parseInt(reauthText, 10)
-      if (
-        reauthText !== '' &&
-        (reauthMaxAge === undefined || !Number.isFinite(reauthMaxAge) || reauthMaxAge <= 0)
-      ) {
-        setError(t.reauthPositiveIntegerError)
-        setSaving(false)
-        return
-      }
-      const networkCIDRs = signInNetworkCIDRs
-        .split('\n')
-        .map((entry) => entry.trim())
-        .filter((entry) => entry !== '')
+      const reauthMaxAge = data.reauth
+      const networkCIDRs = data.cidrs ?? []
       const nextSignInRules: SignInRule[] = signInEnabled
         ? [
             {
@@ -370,8 +403,9 @@ export function AdminApplicationEditPage({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  aria-invalid={nameInvalid}
+                  {...form.fieldProps('name')}
                 />
+                <FieldError form={form} name="name" />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-icon-file">{t.iconImageFieldLabel}</Label>
@@ -441,7 +475,9 @@ export function AdminApplicationEditPage({
                     value={launchURL}
                     onChange={(e) => setLaunchURL(e.target.value)}
                     placeholder="https://app.example.com/launch"
+                    {...form.fieldProps('launch_url')}
                   />
+                  <FieldError form={form} name="launch_url" />
                 </div>
               ) : null}
               <div className="grid gap-1.5">
@@ -465,7 +501,9 @@ export function AdminApplicationEditPage({
                 <CopyableField label={t.clientIdFieldLabel} value={detail.oidc.client_id} />
                 {app.kind !== 'service' ? (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="edit-redirects">{t.redirectUriFieldLabel}</Label>
+                    <Label htmlFor="edit-redirects" required>
+                      {t.redirectUriFieldLabel}
+                    </Label>
                     <textarea
                       id="edit-redirects"
                       value={redirects}
@@ -473,7 +511,9 @@ export function AdminApplicationEditPage({
                       rows={3}
                       className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                       placeholder="https://app.example.com/callback"
+                      {...form.fieldProps('redirects')}
                     />
+                    <FieldError form={form} name="redirects" />
                     <p className="text-xs text-slate-500">{t.redirectUriHelp}</p>
                   </div>
                 ) : null}
@@ -485,7 +525,9 @@ export function AdminApplicationEditPage({
                     onChange={(e) => setScope(e.target.value)}
                     className="font-mono text-xs"
                     placeholder="openid profile email"
+                    {...form.fieldProps('scope')}
                   />
+                  <FieldError form={form} name="scope" />
                 </div>
                 {app.kind !== 'service' ? (
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -566,7 +608,9 @@ export function AdminApplicationEditPage({
                 </div>
                 <CopyableField label={t.wtrealmFieldLabel} value={detail.wsfed.wtrealm} />
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-replies">{t.replyUrlFieldLabel}</Label>
+                  <Label htmlFor="edit-replies" required>
+                    {t.replyUrlFieldLabel}
+                  </Label>
                   <textarea
                     id="edit-replies"
                     value={replies}
@@ -574,7 +618,9 @@ export function AdminApplicationEditPage({
                     rows={2}
                     className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                     placeholder="https://app.example.com/wsfed"
+                    {...form.fieldProps('replies')}
                   />
+                  <FieldError form={form} name="replies" />
                 </div>
                 <div className="grid gap-1.5">
                   <Label>{t.nameIdFormatFieldLabel}</Label>
@@ -626,6 +672,20 @@ export function AdminApplicationEditPage({
             ) : null}
             {detail.saml ? (
               <AdminApplicationSamlFormSection
+                fields={{
+                  acs: {
+                    props: form.fieldProps('acs'),
+                    error: <FieldError form={form} name="acs" />,
+                  },
+                  slo: {
+                    props: form.fieldProps('slo'),
+                    error: <FieldError form={form} name="slo" />,
+                  },
+                  signingCert: {
+                    props: form.fieldProps('signingCert'),
+                    error: <FieldError form={form} name="signingCert" />,
+                  },
+                }}
                 csrfToken={csrfToken}
                 applicationName={app.name}
                 entityID={detail.saml.entity_id}
@@ -696,7 +756,9 @@ export function AdminApplicationEditPage({
                         value={signInReauthMaxAge}
                         onChange={(e) => setSignInReauthMaxAge(e.target.value)}
                         placeholder={t.reauthSecondsPlaceholder}
+                        {...form.fieldProps('reauth')}
                       />
+                      <FieldError form={form} name="reauth" />
                       <p className="text-xs text-slate-500">{t.reauthSecondsHelp}</p>
                     </div>
                     <div className="grid gap-1.5">
@@ -709,7 +771,9 @@ export function AdminApplicationEditPage({
                         spellCheck={false}
                         className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
                         placeholder={'10.0.0.0/8\n192.168.1.0/24'}
+                        {...form.fieldProps('cidrs')}
                       />
+                      <FieldError form={form} name="cidrs" />
                       <p className="text-xs text-slate-500">{t.allowedNetworksHelp}</p>
                     </div>
                   </div>
@@ -775,7 +839,7 @@ export function AdminApplicationEditPage({
               >
                 {t.cancel}
               </Button>
-              <Button type="submit" disabled={saving || nameInvalid}>
+              <Button type="submit" disabled={saving || !form.data}>
                 {saving ? t.saving : t.save}
               </Button>
             </div>

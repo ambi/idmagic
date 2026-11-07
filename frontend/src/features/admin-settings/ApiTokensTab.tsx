@@ -1,19 +1,39 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { createApiToken, listApiTokens, revokeApiToken } from '../../api'
 import { request, adminRequest, tenantURL } from '../../api/core'
 import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
 import { useStepUpGuard } from '../../components/StepUpDialog'
 import { ResourceListToolbar } from '../../components/ResourceListToolbar'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
+import {
+  formSchema,
+  integerInRange,
+  positiveInteger,
+  requiredText,
+  useFormValidation,
+} from '../../lib/form'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminIntegrationEndpointCatalog, ApiToken, ApiTokenScope } from '../../types'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { ApiTokenScopePicker } from './ApiTokenScopePicker'
+
+// 個人用のトークンは 1 から 365 日（IssuePersonal）、管理者のトークンは 1 日以上（Issue）である。
+const PERSONAL_MAX_EXPIRY_DAYS = 365
+
+function tokenSchema(personal: boolean) {
+  return formSchema({
+    description: requiredText(),
+    expiryDays: personal
+      ? integerInRange(1, PERSONAL_MAX_EXPIRY_DAYS, { required: true })
+      : positiveInteger(),
+  })
+}
 
 export function ApiTokensTab({
   csrfToken,
@@ -40,6 +60,8 @@ export function ApiTokensTab({
   const [busy, setBusy] = useState(false)
   const [pendingRevoke, setPendingRevoke] = useState<ApiToken | null>(null)
   const t = useDictionary(adminSettingsDictionary)
+  const schema = useMemo(() => tokenSchema(personal), [personal])
+  const validation = useFormValidation(schema, { description: tokenDesc, expiryDays: tokenExpiry })
   const { locale } = useLocale()
   const { guard, dialog } = useStepUpGuard(csrfToken)
   const basePath = personal ? '/account/api-tokens' : '/admin/api-tokens'
@@ -72,16 +94,17 @@ export function ApiTokensTab({
     setError('')
     setNotice('')
     setGeneratedToken('')
-    if (!tokenDesc.trim()) {
-      setError(t.tokenDescriptionRequiredError)
+    const data = validation.data
+    if (!data) {
+      validation.revealAll()
       return
     }
     try {
       setBusy(true)
       const input = {
-        description: tokenDesc.trim(),
+        description: data.description,
         scopes: selectedScopes,
-        expiry_days: Number.parseInt(tokenExpiry, 10),
+        expiry_days: data.expiryDays ?? 0,
       }
       const res = personal
         ? await guard(() =>
@@ -376,7 +399,9 @@ export function ApiTokensTab({
                     placeholder={t.tokenDescriptionPlaceholder}
                     value={tokenDesc}
                     onChange={(e) => setTokenDesc(e.target.value)}
+                    {...validation.fieldProps('description')}
                   />
+                  <FieldError form={validation} name="description" />
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="token-expiry" required>
@@ -387,10 +412,12 @@ export function ApiTokensTab({
                     type="number"
                     required
                     min={1}
-                    max={365}
+                    max={personal ? PERSONAL_MAX_EXPIRY_DAYS : undefined}
                     value={tokenExpiry}
                     onChange={(e) => setTokenExpiry(e.target.value)}
+                    {...validation.fieldProps('expiryDays')}
                   />
+                  <FieldError form={validation} name="expiryDays" />
                 </div>
               </div>
               <ApiTokenScopePicker
@@ -402,7 +429,7 @@ export function ApiTokensTab({
               <div className="mt-4 flex items-center gap-2">
                 <Button
                   type="submit"
-                  disabled={busy || !tokenDesc.trim() || selectedScopes.length === 0}
+                  disabled={busy || !validation.data || selectedScopes.length === 0}
                 >
                   {t.issueToken}
                 </Button>

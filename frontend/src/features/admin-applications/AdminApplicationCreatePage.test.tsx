@@ -74,4 +74,36 @@ describe('AdminApplicationCreatePage', () => {
     expect(await screen.findByText('Could not create the application.')).toBeInTheDocument()
     expect(window.location.assign).not.toHaveBeenCalled()
   })
+
+  //spec:covers WCAG22-LABELS-ERRORS: 空白だけの名前の欄に aria-invalid とエラー文を付け、作成ボタンを無効にすること
+  it('marks a blank name invalid with a field error', async () => {
+    await renderWithRouter(<AdminApplicationCreatePage csrfToken="csrf" />)
+
+    const name = screen.getByLabelText(t.nameFieldLabel)
+    fireEvent.change(name, { target: { value: '  ' } })
+
+    expect(name.getAttribute('aria-invalid')).toBe('true')
+    expect(name).toHaveAccessibleDescription('Enter a value for this field.')
+    expect(screen.getByRole('button', { name: t.create })).toBeDisabled()
+  })
+
+  //spec:covers WCAG22-LABELS-ERRORS: URL でないリダイレクト URI を値で名指すエラー文で示し、作成ボタンを無効にすること
+  it('names a redirect URI that is not an absolute URL', async () => {
+    await renderWithRouter(<AdminApplicationCreatePage csrfToken="csrf" />)
+
+    fireEvent.change(screen.getByLabelText(t.nameFieldLabel), { target: { value: 'New App' } })
+    const redirects = screen.getByLabelText(t.redirectUriFieldLabel)
+    fireEvent.change(redirects, {
+      target: { value: 'https://app.example.com/callback\napp.example.com/other' },
+    })
+
+    expect(redirects.getAttribute('aria-invalid')).toBe('true')
+    expect(redirects).toHaveAccessibleDescription(
+      '"app.example.com/other" is not a URL. Include a scheme and a host, such as https://app.example.com.',
+    )
+    expect(screen.getByRole('button', { name: t.create })).toBeDisabled()
+
+    fireEvent.change(redirects, { target: { value: 'https://app.example.com/callback' } })
+    expect(screen.getByRole('button', { name: t.create })).toBeEnabled()
+  })
 })

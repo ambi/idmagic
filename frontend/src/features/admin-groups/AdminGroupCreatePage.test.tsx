@@ -73,4 +73,26 @@ describe('AdminGroupCreatePage', () => {
     expect(await screen.findByText('This group name is already in use.')).toBeInTheDocument()
     expect(window.location.assign).not.toHaveBeenCalled()
   })
+
+  //spec:covers WCAG22-LABELS-ERRORS: 空白だけの名前と、上限を超える説明を欄のエラー文と aria-invalid で示し、作成ボタンを無効にすること
+  it('marks a blank name and a description over 500 code points invalid', async () => {
+    await renderWithRouter(
+      <AdminGroupCreatePage csrfToken="csrf" groupAttributeSchema={groupAttributeSchema} />,
+    )
+
+    const name = screen.getByLabelText(new RegExp(t.groupNameLabel))
+    fireEvent.change(name, { target: { value: '   ' } })
+    expect(name.getAttribute('aria-invalid')).toBe('true')
+    expect(name).toHaveAccessibleDescription('Enter a value for this field.')
+
+    fireEvent.change(name, { target: { value: 'engineering' } })
+    const description = screen.getByLabelText(new RegExp(t.descriptionOptionalLabel))
+    fireEvent.change(description, { target: { value: '漢'.repeat(501) } })
+    expect(description.getAttribute('aria-invalid')).toBe('true')
+    expect(description).toHaveAccessibleDescription('Enter 500 characters or fewer.')
+    expect(screen.getByRole('button', { name: t.create })).toBeDisabled()
+
+    fireEvent.change(description, { target: { value: '漢'.repeat(500) } })
+    expect(screen.getByRole('button', { name: t.create })).toBeEnabled()
+  })
 })

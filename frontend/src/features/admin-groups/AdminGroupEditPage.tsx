@@ -2,11 +2,14 @@ import { IconArrowLeft, IconAlertTriangle } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, tenantURL, updateAdminGroup } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { CharacterCount } from '../../components/CharacterCount'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import { LENGTH } from '../../lib/lengthLimits'
 import type { AdminGroup, TenantGroupAttributeSchema, TenantUserAttributeSchema } from '../../types'
@@ -17,7 +20,7 @@ import {
 } from './AdminGroupAttributeEditor'
 import { GroupMembersSection } from './AdminGroupDetailCard'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
-import { parseRoles } from './AdminGroupsShared'
+import { editGroupSchema } from './AdminGroupsShared'
 import { DynamicRuleEditor } from './DynamicRuleEditor'
 import { GroupRoleDelegationPanel } from './GroupRoleDelegationPanel'
 
@@ -47,32 +50,34 @@ export function AdminGroupEditPage({
   const [currentRule, setCurrentRule] = useState(group.dynamic_rule)
   const t = useDictionary(adminGroupsDictionary)
 
-  const trimmedName = name.trim()
-  const nextRoles = parseRoles(roles)
-  const nameInvalid = trimmedName === ''
+  const form = useFormValidation(editGroupSchema, { name, description, email, roles })
+  const data = form.data
   const nextAttributes = groupAttributeMapFromDraft(attributeDraft, groupAttributeSchema.attributes)
   const attributesChanged =
     JSON.stringify(nextAttributes) !== JSON.stringify(group.attributes ?? {})
+  const nameChanged = data !== undefined && data.name !== group.name
+  const descriptionChanged = data !== undefined && data.description !== (group.description ?? '')
+  const emailChanged = data !== undefined && data.email !== (group.email ?? '')
+  const rolesChanged = data !== undefined && data.roles.join(',') !== group.roles.join(',')
   const changed =
-    trimmedName !== group.name ||
-    description.trim() !== (group.description ?? '') ||
-    email.trim() !== (group.email ?? '') ||
-    nextRoles.join(',') !== group.roles.join(',') ||
-    attributesChanged
+    nameChanged || descriptionChanged || emailChanged || rolesChanged || attributesChanged
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (nameInvalid || !changed) return
+    if (!data) {
+      form.revealAll()
+      return
+    }
+    if (!changed) return
     setSaving(true)
     setError('')
     try {
       await updateAdminGroup(csrfToken, group.id, {
-        name: trimmedName !== group.name ? trimmedName : undefined,
-        description:
-          description.trim() !== (group.description ?? '') ? description.trim() : undefined,
-        email: email.trim() !== (group.email ?? '') ? email.trim() : undefined,
+        name: nameChanged ? data.name : undefined,
+        description: descriptionChanged ? data.description : undefined,
+        email: emailChanged ? data.email : undefined,
         attributes: attributesChanged ? nextAttributes : undefined,
-        roles: nextRoles.join(',') !== group.roles.join(',') ? nextRoles : undefined,
+        roles: rolesChanged ? data.roles : undefined,
       })
       window.location.assign(detailPath)
     } catch (cause) {
@@ -132,11 +137,11 @@ export function AdminGroupEditPage({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    maxLength={LENGTH.name}
-                    aria-invalid={nameInvalid}
                     readOnly={!!group.scim_source}
                     className={group.scim_source ? 'bg-slate-50' : undefined}
+                    {...form.fieldProps('name')}
                   />
+                  <FieldError form={form} name="name" />
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="group-editor-description">{t.descriptionLabel}</Label>
@@ -144,10 +149,12 @@ export function AdminGroupEditPage({
                     id="group-editor-description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    maxLength={LENGTH.description}
                     readOnly={!!group.scim_source}
                     className={group.scim_source ? 'bg-slate-50' : undefined}
+                    {...form.fieldProps('description')}
                   />
+                  <CharacterCount value={description} max={LENGTH.description} />
+                  <FieldError form={form} name="description" />
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="group-editor-email">{t.emailLabel}</Label>
@@ -156,8 +163,9 @@ export function AdminGroupEditPage({
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    maxLength={LENGTH.email}
+                    {...form.fieldProps('email')}
                   />
+                  <FieldError form={form} name="email" />
                   <p className="text-xs text-slate-500">{t.emailHelp}</p>
                 </div>
               </section>
@@ -192,7 +200,7 @@ export function AdminGroupEditPage({
               >
                 {t.cancel}
               </a>
-              <Button type="submit" disabled={saving || nameInvalid || !changed}>
+              <Button type="submit" disabled={saving || !data || !changed}>
                 {saving ? t.saving : t.save}
               </Button>
             </div>

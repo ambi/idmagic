@@ -1,6 +1,15 @@
+import { useMemo } from 'react'
 import { tenantURL } from '../../api'
+import { FieldError } from '../../components/FieldError'
 import { Label } from '../../components/ui/label'
 import { Input } from '../../components/ui/input'
+import {
+  type FormValidation,
+  formSchema,
+  requiredText,
+  rule,
+  useFormValidation,
+} from '../../lib/form'
 import type { AuthorizationDetailType } from '../../types'
 import type { adminAuthorizationDetailTypesDictionary } from './AdminAuthorizationDetailTypesPage.i18n'
 
@@ -53,13 +62,52 @@ export function newURL(): string {
 
 // AuthorizationDetailTypeFormFields は作成/編集ページで共有するフォーム本体。
 // type (ID) は編集時のみ変更不可にする (locked)。
+// 規則は oauth2 の authorizationDetailTypeSchema に従う。type と表示のテンプレートは必須で、
+// スキーマは JSON のオブジェクトである。スキーマの中の規則はサーバーが検査する。
+function detailTypeSchema(t: Dictionary) {
+  return formSchema({
+    type: requiredText(),
+    displayTemplate: requiredText(),
+    schemaJSON: rule(requiredText(), (value) =>
+      parseSchemaObject(value) === undefined
+        ? { kind: 'message', text: t.schemaInvalidError }
+        : undefined,
+    ),
+  })
+}
+
+/** スキーマの入力を JSON のオブジェクトとして読む。読めないか、オブジェクトでなければ `undefined`。 */
+export function parseSchemaObject(value: string): AuthorizationDetailType['schema'] | undefined {
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as AuthorizationDetailType['schema'])
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export type DetailTypeValidation = FormValidation<ReturnType<typeof detailTypeSchema>>
+
+export function useDetailTypeValidation(form: FormState, t: Dictionary): DetailTypeValidation {
+  const schema = useMemo(() => detailTypeSchema(t), [t])
+  return useFormValidation(schema, {
+    type: form.type,
+    displayTemplate: form.displayTemplate,
+    schemaJSON: form.schemaJSON,
+  })
+}
+
 export function AuthorizationDetailTypeFormFields({
   form,
+  validation,
   onChange,
   locked,
   t,
 }: {
   form: FormState
+  validation: DetailTypeValidation
   onChange: (next: FormState) => void
   locked: boolean
   t: Dictionary
@@ -77,7 +125,9 @@ export function AuthorizationDetailTypeFormFields({
           placeholder="payment_initiation"
           onChange={(e) => onChange({ ...form, type: e.target.value })}
           required
+          {...validation.fieldProps('type')}
         />
+        <FieldError form={validation} name="type" />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="description">{t.descriptionLabel}</Label>
@@ -97,10 +147,14 @@ export function AuthorizationDetailTypeFormFields({
           placeholder={t.displayTemplatePlaceholder}
           onChange={(e) => onChange({ ...form, displayTemplate: e.target.value })}
           required
+          {...validation.fieldProps('displayTemplate')}
         />
+        <FieldError form={validation} name="displayTemplate" />
       </div>
       <div className="flex flex-col gap-1.5 md:col-span-2">
-        <Label htmlFor="schema">{t.schemaLabel}</Label>
+        <Label htmlFor="schema" required>
+          {t.schemaLabel}
+        </Label>
         <textarea
           id="schema"
           value={form.schemaJSON}
@@ -108,7 +162,9 @@ export function AuthorizationDetailTypeFormFields({
           rows={10}
           spellCheck={false}
           className="rounded-md border border-slate-300 bg-white p-2.5 font-mono text-xs leading-5 text-slate-900 focus:border-blue-500 focus:outline-none"
+          {...validation.fieldProps('schemaJSON')}
         />
+        <FieldError form={validation} name="schemaJSON" />
         <p className="text-xs leading-5 text-slate-500">{t.schemaHelp}</p>
       </div>
       <div className="flex flex-col gap-1.5">

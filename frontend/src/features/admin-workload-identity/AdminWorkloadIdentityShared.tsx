@@ -1,11 +1,26 @@
 import { tenantURL } from '../../api'
+import { FieldError } from '../../components/FieldError'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
+import {
+  type FormValidation,
+  formSchema,
+  optionalText,
+  optionalUrl,
+  positiveInteger,
+  requiredList,
+  requiredText,
+  rule,
+  text,
+  useFormValidation,
+  when,
+} from '../../lib/form'
+import { LENGTH } from '../../lib/lengthLimits'
 import type { WorkloadTrustBundle, WorkloadTrustBundleProfile } from '../../types'
-import type { Dictionary } from './presentation'
+import { type Dictionary, parseAudiences, parseInlineJwks } from './presentation'
 
 export function listURL(): string {
   return tenantURL('/admin/workload-identity')
@@ -60,6 +75,66 @@ export function toBundleForm(bundle: WorkloadTrustBundle): BundleFormState {
   }
 }
 
+// 規則は workloadidentity/domain の WorkloadTrustBundle.Validate に従う。jwks_uri は登録時には
+// 検査されないが、取得の時点で tokens_jose.ValidateJWKSURI に拒まれるので、同じ規則を先に掛ける。
+function trustBundleSchema(form: BundleFormState, t: Dictionary, creating: boolean) {
+  const spiffe = form.profile === 'spiffe'
+  return formSchema({
+    name: requiredText(LENGTH.name),
+    // trust domain と issuer は更新の要求が受け付けず、編集画面では入力できないので検査しない。
+    trustDomain: when(
+      creating,
+      rule(requiredText(DNS_NAME_LENGTH), (value) =>
+        spiffe && !/^[a-z0-9._-]+$/.test(value)
+          ? { kind: 'message', text: t.trustDomainInvalidError }
+          : undefined,
+      ),
+    ),
+    issuer: when(
+      creating,
+      rule(optionalText(), (value) => {
+        if (value === undefined) return spiffe ? undefined : { kind: 'required' }
+        return value.startsWith('https://')
+          ? undefined
+          : { kind: 'message', text: t.issuerHttpsError }
+      }),
+    ),
+    jwksUri: optionalUrl({ https: true }),
+    // 編集では空欄が「差し替えない」なので、取得元の有無は作成のときだけ確かめる。
+    jwks: rule(text(), (value) => {
+      if (!parseInlineJwks(value).ok) return { kind: 'message', text: t.jwksInvalidError }
+      return creating && value === '' && form.jwksUri.trim() === ''
+        ? { kind: 'message', text: t.jwksSourceRequiredError }
+        : undefined
+    }),
+    acceptedAudiences: requiredList(parseAudiences),
+    maxTtlSeconds: positiveInteger(),
+  })
+}
+
+// LengthDNSName は DNS 名全体の上限で、trust domain がこれに従う (backend/shared/spec/length.go)。
+const DNS_NAME_LENGTH = 255
+
+export type TrustBundleValidation = FormValidation<ReturnType<typeof trustBundleSchema>>
+
+/** 信頼バンドルのフォームを検査する。`creating` は新規作成の画面かどうかである。 */
+export function useTrustBundleValidation(
+  form: BundleFormState,
+  t: Dictionary,
+  creating: boolean,
+): TrustBundleValidation {
+  const schema = trustBundleSchema(form, t, creating)
+  return useFormValidation(schema, {
+    name: form.name,
+    trustDomain: form.trustDomain,
+    issuer: form.issuer,
+    jwksUri: form.jwksUri,
+    jwks: form.jwks,
+    acceptedAudiences: form.acceptedAudiences,
+    maxTtlSeconds: form.maxTtlSeconds,
+  })
+}
+
 // EnabledStatusBadge は enabled/disabled の二状態を出す。信頼バンドルとバインディングは
 // 同じライフサイクルの形をしているので、片方に名前を寄せず状態そのものを名前にする。
 export function EnabledStatusBadge({
@@ -87,11 +162,13 @@ export function EnabledStatusBadge({
 // spiffe では発行者を省けるため、必須の表示を外す。
 export function TrustBundleFormFields({
   form,
+  validation,
   onChange,
   locked,
   t,
 }: {
   form: BundleFormState
+  validation: TrustBundleValidation
   onChange: (next: BundleFormState) => void
   locked: boolean
   t: Dictionary
@@ -129,7 +206,9 @@ export function TrustBundleFormFields({
           value={form.name}
           onChange={(event) => onChange({ ...form, name: event.target.value })}
           required
+          {...validation.fieldProps('name')}
         />
+        <FieldError form={validation} name="name" />
         <p className="text-xs leading-5 text-slate-500">{t.nameHelp}</p>
       </div>
       <div className="flex flex-col gap-1.5">
@@ -141,11 +220,11 @@ export function TrustBundleFormFields({
           value={form.trustDomain}
           disabled={locked}
           placeholder={t.trustDomainPlaceholder}
-          // SPIFFE のトラストドメインは小文字の英字、数字、`.`、`-`、`_` だけからなる。
-          pattern={form.profile === 'spiffe' ? '[a-z0-9._\\-]+' : undefined}
           onChange={(event) => onChange({ ...form, trustDomain: event.target.value })}
           required
+          {...validation.fieldProps('trustDomain')}
         />
+        <FieldError form={validation} name="trustDomain" />
         <p className="text-xs leading-5 text-slate-500">
           {form.profile === 'spiffe' ? t.trustDomainSpiffeHelp : t.trustDomainHelp}
         </p>
@@ -162,7 +241,9 @@ export function TrustBundleFormFields({
           placeholder={t.issuerPlaceholder}
           onChange={(event) => onChange({ ...form, issuer: event.target.value })}
           required={issuerRequired}
+          {...validation.fieldProps('issuer')}
         />
+        <FieldError form={validation} name="issuer" />
         <p className="text-xs leading-5 text-slate-500">
           {issuerRequired ? t.issuerHelp : t.issuerSpiffeHelp}
         </p>
@@ -175,7 +256,9 @@ export function TrustBundleFormFields({
           value={form.jwksUri}
           placeholder={t.jwksUriPlaceholder}
           onChange={(event) => onChange({ ...form, jwksUri: event.target.value })}
+          {...validation.fieldProps('jwksUri')}
         />
+        <FieldError form={validation} name="jwksUri" />
         <p className="text-xs leading-5 text-slate-500">{t.jwksUriHelp}</p>
       </div>
       <div className="flex flex-col gap-1.5 md:col-span-2">
@@ -187,7 +270,9 @@ export function TrustBundleFormFields({
           placeholder={t.jwksPlaceholder}
           onChange={(event) => onChange({ ...form, jwks: event.target.value })}
           className="rounded-md border border-slate-300 bg-white p-2 font-mono text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+          {...validation.fieldProps('jwks')}
         />
+        <FieldError form={validation} name="jwks" />
         <p className="text-xs leading-5 text-slate-500">{t.jwksHelp}</p>
       </div>
       <div className="flex flex-col gap-1.5">
@@ -200,7 +285,9 @@ export function TrustBundleFormFields({
           placeholder={t.acceptedAudiencesPlaceholder}
           onChange={(event) => onChange({ ...form, acceptedAudiences: event.target.value })}
           required
+          {...validation.fieldProps('acceptedAudiences')}
         />
+        <FieldError form={validation} name="acceptedAudiences" />
         <p className="text-xs leading-5 text-slate-500">{t.acceptedAudiencesHelp}</p>
       </div>
       <div className="flex flex-col gap-1.5">
@@ -214,7 +301,9 @@ export function TrustBundleFormFields({
           value={form.maxTtlSeconds}
           onChange={(event) => onChange({ ...form, maxTtlSeconds: event.target.value })}
           required
+          {...validation.fieldProps('maxTtlSeconds')}
         />
+        <FieldError form={validation} name="maxTtlSeconds" />
         <p className="text-xs leading-5 text-slate-500">{t.maxTtlHelp}</p>
       </div>
     </>

@@ -1,15 +1,18 @@
 import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, createSamlIDPProfile, tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
+import { useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import type { SamlIDPProfileMode } from '../../types'
 import { adminSamlIDPProfilesDictionary } from './AdminSamlIDPProfilesPage.i18n'
+import { profileFormSchema } from './SamlIDPProfileFields'
 
 export function AdminSamlIDPProfileCreatePage({
   csrfToken,
@@ -24,11 +27,15 @@ export function AdminSamlIDPProfileCreatePage({
   const [error, setError] = useState('')
   const t = useDictionary(adminSamlIDPProfilesDictionary)
   const listPath = tenantURL('/admin/settings/saml-idp-profiles')
+  const validation = useFormValidation(profileFormSchema, { name })
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) return
+    if (!validation.data) {
+      validation.revealAll()
+      return
+    }
+    const trimmed = validation.data.name
     setBusy(true)
     setError('')
     try {
@@ -60,7 +67,9 @@ export function AdminSamlIDPProfileCreatePage({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 required
+                {...validation.fieldProps('name')}
               />
+              <FieldError form={validation} name="name" />
             </div>
             <div className="grid gap-1.5">
               <Label>{t.sharingMode}</Label>
@@ -78,7 +87,7 @@ export function AdminSamlIDPProfileCreatePage({
             <Button variant="outline" nativeButton={false} render={<a href={listPath} />}>
               {t.cancel}
             </Button>
-            <Button type="submit" disabled={busy || !name.trim()}>
+            <Button type="submit" disabled={busy || !validation.data}>
               {busy ? t.saving : t.create}
             </Button>
           </div>

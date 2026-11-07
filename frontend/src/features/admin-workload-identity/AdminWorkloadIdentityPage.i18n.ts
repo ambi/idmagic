@@ -60,6 +60,10 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     jwksPlaceholder: '{"keys": []}',
     jwksHelp: 'JWKS の取得元を使わない場合に、JSON をそのまま貼り付けます。',
     jwksInvalidError: 'インライン JWKS が JSON として読み取れません。',
+    jwksSourceRequiredError: 'JWKS の URL かインライン JWKS のどちらかを入力してください。',
+    trustDomainInvalidError:
+      'SPIFFE のトラストドメインには、小文字の英字、数字、.、-、_ だけを使ってください。',
+    issuerHttpsError: '発行者は https:// で始まる URL で入力してください。',
     acceptedAudiencesLabel: '受理する Audience',
     acceptedAudiencesPlaceholder: 'idmagic, https://idmagic.example',
     acceptedAudiencesHelp: '空白またはカンマで区切って入力します。1 つ以上必要です。',
@@ -209,6 +213,10 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     jwksPlaceholder: '{"keys": []}',
     jwksHelp: 'Paste the JSON directly when you are not using a JWKS URI.',
     jwksInvalidError: 'The inline JWKS is not readable as JSON.',
+    jwksSourceRequiredError: 'Enter a JWKS URL or an inline JWKS.',
+    trustDomainInvalidError:
+      'Use only lowercase letters, digits, ., -, and _ in a SPIFFE trust domain.',
+    issuerHttpsError: 'Enter an issuer URL that starts with https://.',
     acceptedAudiencesLabel: 'Accepted audiences',
     acceptedAudiencesPlaceholder: 'idmagic, https://idmagic.example',
     acceptedAudiencesHelp: 'Separate values with spaces or commas. At least one is required.',
