@@ -28,6 +28,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -50,7 +51,6 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 )
 
@@ -212,8 +212,8 @@ func seedRefreshToken(
 	t.Helper()
 	now := time.Now().UTC()
 	record := &tokendomain.RefreshTokenRecord{
-		ID: uuid.NewString(), TenantID: tenantID, Hash: domain.HashRefreshToken(token),
-		FamilyID: uuid.NewString(), ClientID: refusalClientID, UserID: refusalUserFor(tenantID),
+		ID: uuid.NewV4().String(), TenantID: tenantID, Hash: domain.HashRefreshToken(token),
+		FamilyID: uuid.NewV4().String(), ClientID: refusalClientID, UserID: refusalUserFor(tenantID),
 		Scopes:   []string{"openid", "offline_access"},
 		IssuedAt: now, ExpiresAt: now.Add(time.Hour), AbsoluteExpiresAt: absoluteExpiresAt,
 	}

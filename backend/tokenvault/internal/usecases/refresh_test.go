@@ -7,8 +7,7 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/db_memory"
@@ -71,7 +70,7 @@ func newFixture(t *testing.T, access, refresh string, expiresIn time.Duration) *
 	store := db_memory.NewStore()
 	f := &fixture{upstream: &fakeUpstream{}, now: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)}
 	f.connector = &domain.Connector{
-		ID: uuid.NewString(), TenantID: testTenant, Name: "c", Status: domain.ConnectorActive,
+		ID: uuid.NewV4().String(), TenantID: testTenant, Name: "c", Status: domain.ConnectorActive,
 		TokenEndpoint: "https://idp.example.com/t", Version: 1,
 		Rules: []domain.ExecutionRule{{ID: "r", Method: "POST", Origin: "https://api.example.com", PathPrefix: "/"}},
 	}
@@ -91,7 +90,7 @@ func newFixture(t *testing.T, access, refresh string, expiresIn time.Duration) *
 	}
 	expires := f.now.Add(expiresIn)
 	if err := f.deps.Connections.SaveLinked(ctx, &domain.Connection{
-		ID: uuid.NewString(), TenantID: testTenant, ConnectorID: f.connector.ID, UserID: testUser, Status: domain.ConnectionActive,
+		ID: uuid.NewV4().String(), TenantID: testTenant, ConnectorID: f.connector.ID, UserID: testUser, Status: domain.ConnectionActive,
 		AccessToken: access, RefreshToken: refresh, ExpiresAt: &expires, UpdatedAt: f.now,
 	}); err != nil {
 		t.Fatal(err)

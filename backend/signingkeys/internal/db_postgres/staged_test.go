@@ -3,8 +3,7 @@ package db_postgres
 import (
 	"context"
 	"testing"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
@@ -52,7 +51,7 @@ func TestKeyScopesContract(t *testing.T) {
 func newContractTenant(t *testing.T, db postgres.DB) context.Context {
 	t.Helper()
 	now := pgtest.Now()
-	id := uuid.NewString()
+	id := uuid.NewV4().String()
 	tenant := &tenancydomain.Tenant{ID: id, Realm: "contract-" + id, DisplayName: "Contract", Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now}
 	if err := tenancy.NewPostgresModule(db).TenantRepo.Save(context.Background(), tenant); err != nil {
 		t.Fatal(err)

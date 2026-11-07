@@ -17,8 +17,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/authentication"
@@ -196,7 +196,7 @@ func (c *connector) sign(t *testing.T) string {
 		return base64.RawURLEncoding.EncodeToString(raw)
 	}
 	input := encode(map[string]any{"alg": "ES256", "typ": "JWT", "kid": c.keyID}) + "." + encode(map[string]any{
-		"iss": c.id, "sub": c.id, "aud": c.audience, "exp": time.Now().Add(5 * time.Minute).Unix(), "jti": uuid.NewString(),
+		"iss": c.id, "sub": c.id, "aud": c.audience, "exp": time.Now().Add(5 * time.Minute).Unix(), "jti": uuid.NewV4().String(),
 	})
 	digest := sha256.Sum256([]byte(input))
 	r, s, err := ecdsa.Sign(rand.Reader, c.private, digest[:])
@@ -678,7 +678,7 @@ func TestAdministratorsReadIngestionRunsAndFailures(t *testing.T) {
 	}
 
 	expectStatus(t, h.do(request{method: http.MethodGet, path: base, admin: "other-admin", realm: "other"}), http.StatusNotFound, "directory_connector_not_found")
-	expectStatus(t, h.do(request{method: http.MethodGet, path: base + "/" + uuid.NewString(), admin: "admin"}), http.StatusNotFound, "ingestion_run_not_found")
+	expectStatus(t, h.do(request{method: http.MethodGet, path: base + "/" + uuid.NewV4().String(), admin: "admin"}), http.StatusNotFound, "ingestion_run_not_found")
 	expectStatus(t, h.do(request{method: http.MethodGet, path: base, admin: "member"}), http.StatusForbidden, "access_denied")
 }
 

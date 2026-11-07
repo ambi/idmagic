@@ -6,7 +6,6 @@ import (
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -53,8 +52,8 @@ type UserRevocationEpochRepository struct{ Pool sharedpg.DB }
 // FindByUser は UUID でない userID を未失効として扱う。トークンの sub から届く値で、
 // users の行を指せないものは失効の記録も持たないからである。存在の判定は呼び出し側が User で行う。
 func (r *UserRevocationEpochRepository) FindByUser(ctx context.Context, tenantID, userID string) (*ssdomain.UserRevocationEpoch, error) {
-	if uuid.Validate(userID) != nil {
-		return nil, nil //nolint:nilerr // 上のコメントのとおり
+	if !sharedpg.IsUUIDText(userID) {
+		return nil, nil
 	}
 	row, err := New(r.Pool).FindUserRevocationEpoch(ctx, FindUserRevocationEpochParams{TenantID: tenantID, UserID: userID})
 	if errors.Is(err, pgx.ErrNoRows) {

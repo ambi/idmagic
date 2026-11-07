@@ -5,8 +5,7 @@ import (
 	"errors"
 	"maps"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -79,7 +78,7 @@ func (i *Ingestion) StartRun(ctx context.Context, tenantID, connectorID, mode st
 			return domain.IngestionRun{}, err
 		}
 		run := domain.IngestionRun{
-			TenantID: tenantID, ID: uuid.NewString(), ConnectorID: connectorID,
+			TenantID: tenantID, ID: uuid.NewV4().String(), ConnectorID: connectorID,
 			Mode: parsed, Status: domain.RunRunning, StartedAt: i.now().UTC(),
 		}
 		if err := i.deps.Runs.Start(ctx, run); err != nil {

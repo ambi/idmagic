@@ -77,7 +77,7 @@ func (r *CorrelationRepository) CorrelatedUserIDs(ctx context.Context, tenantID 
 	ids := make([]string, 0, len(userIDs))
 	for _, id := range userIDs {
 		// 列は uuid なので、形式の外の ID は対応を持たないものとして問い合わせない。
-		if isUUID(id) {
+		if sharedpg.IsUUIDText(id) {
 			ids = append(ids, id)
 		}
 	}
@@ -130,7 +130,7 @@ func (r *IngestionRunRepository) Start(ctx context.Context, run domain.Ingestion
 }
 
 func (r *IngestionRunRepository) Find(ctx context.Context, tenantID, connectorID, runID string) (*domain.IngestionRun, error) {
-	if !isUUID(runID) {
+	if !sharedpg.IsUUIDText(runID) {
 		return nil, nil
 	}
 	row, err := New(r.Pool).FindDirectoryIngestionRun(ctx, FindDirectoryIngestionRunParams{TenantID: tenantID, ConnectorID: connectorID, ID: runID})

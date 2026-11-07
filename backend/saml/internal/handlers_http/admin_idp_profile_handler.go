@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"uuid"
 
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 )
 
@@ -116,7 +116,7 @@ func (d Deps) handleCreateIDPProfile(c *echo.Context) error {
 	}
 	now := time.Now().UTC()
 	profile := &samldomain.SamlIdentityProviderProfile{
-		TenantID: support.RequestTenantID(c), ProfileID: uuid.NewString(),
+		TenantID: support.RequestTenantID(c), ProfileID: uuid.NewV4().String(),
 		Name: strings.TrimSpace(req.Name), Mode: req.Mode, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := d.IDPProfileRepo.SaveIDPProfile(c.Request().Context(), profile); err != nil {

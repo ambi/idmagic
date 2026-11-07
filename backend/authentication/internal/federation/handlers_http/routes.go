@@ -7,6 +7,7 @@ import (
 	"path"
 	"strings"
 	"time"
+	"uuid"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
 	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
@@ -16,7 +17,6 @@ import (
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 )
 
@@ -264,7 +264,7 @@ func (d Deps) createAdmin(c *echo.Context) error {
 	input.apply(&connection)
 	now := time.Now().UTC()
 	if connection.ID == "" {
-		connection.ID = uuid.NewString()
+		connection.ID = uuid.NewV4().String()
 	}
 	connection.TenantID, connection.Status = support.RequestTenantID(c), federationdomain.ConnectionDisabled
 	connection.CreatedAt, connection.UpdatedAt = now, now

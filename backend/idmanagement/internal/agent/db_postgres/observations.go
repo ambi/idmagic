@@ -6,19 +6,17 @@ import (
 	"errors"
 	"slices"
 	"time"
+	"uuid"
 
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const pgForeignKeyViolation = "23503"
-
-func isUUID(value string) bool { return uuid.Validate(value) == nil }
 
 // AgentObservationRepository は外部の観測を PostgreSQL に永続化する。confirmed_agent_id は
 // agents への ON DELETE SET NULL の外部キーなので、Agent の削除と同じ確定で確認が解除される。
@@ -118,7 +116,7 @@ func (r *AgentObservationRepository) Import(ctx context.Context, tenantID string
 }
 
 func (r *AgentObservationRepository) FindByID(ctx context.Context, tenantID, id string) (*agentdomain.AgentObservation, error) {
-	if !isUUID(id) {
+	if !sharedpg.IsUUIDText(id) {
 		return nil, nil
 	}
 	row, err := New(r.Pool).FindAgentObservationByID(ctx, FindAgentObservationByIDParams{TenantID: tenantID, ID: id})
@@ -197,7 +195,7 @@ func (r *AgentObservationRepository) Exclude(ctx context.Context, tenantID, id, 
 }
 
 func (r *AgentObservationRepository) Reopen(ctx context.Context, tenantID, id string) (*agentdomain.AgentObservation, error) {
-	if !isUUID(id) {
+	if !sharedpg.IsUUIDText(id) {
 		return nil, nil
 	}
 	tx, err := r.Pool.Begin(ctx)

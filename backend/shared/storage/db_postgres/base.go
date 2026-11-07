@@ -8,10 +8,10 @@ import (
 	"errors"
 	"sync"
 	"time"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/shared/resilience"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -24,6 +24,15 @@ func UUIDString(value pgtype.UUID) string {
 		return ""
 	}
 	return uuid.UUID(value.Bytes).String()
+}
+
+// IsUUIDText は、外部から届いた文字列を uuid 列の照会へ渡してよいかを判定する。UUID でない
+// 値をそのまま渡すと PostgreSQL が 22P02 で失敗するので、リポジトリは偽のとき存在しない行
+// として扱う。標準 uuid.Parse が受け付ける urn:uuid: 接頭辞は PostgreSQL が受け付けないため、
+// この判定を通っても照会は失敗する。
+func IsUUIDText(value string) bool {
+	_, err := uuid.Parse(value)
+	return err == nil
 }
 
 // DBConfig は PostgreSQL 接続プールとレジリエンスの設定を集約する。

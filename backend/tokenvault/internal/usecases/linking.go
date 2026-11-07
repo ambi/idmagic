@@ -10,8 +10,7 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
@@ -76,7 +75,7 @@ func StartLink(ctx context.Context, deps Deps, in StartLinkInput) (string, error
 		return "", err
 	}
 	if err := deps.Attempts.Save(ctx, &domain.ConnectionAttempt{
-		ID: uuid.NewString(), TenantID: in.TenantID, ConnectorID: in.ConnectorID, UserID: in.UserID,
+		ID: uuid.NewV4().String(), TenantID: in.TenantID, ConnectorID: in.ConnectorID, UserID: in.UserID,
 		StateHash: hashState(state), CodeVerifier: verifier, RequestedScopes: scopes,
 		ExpiresAt: deps.now().Add(domain.AttemptTTL),
 	}); err != nil {
@@ -161,7 +160,7 @@ func linkedConnection(attempt *domain.ConnectionAttempt, response ports.TokenRes
 		scopes = attempt.RequestedScopes
 	}
 	return &domain.Connection{
-		ID: uuid.NewString(), TenantID: attempt.TenantID, ConnectorID: attempt.ConnectorID, UserID: attempt.UserID,
+		ID: uuid.NewV4().String(), TenantID: attempt.TenantID, ConnectorID: attempt.ConnectorID, UserID: attempt.UserID,
 		Status: domain.ConnectionActive, GrantedScopes: scopes, AccessToken: response.AccessToken,
 		RefreshToken: response.RefreshToken, ExpiresAt: expiry(response, now), CreatedAt: now, UpdatedAt: now,
 	}

@@ -8,7 +8,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -39,7 +38,7 @@ type SecretCipher interface {
 // パスやトークンの主体はそのままここへ届くので、存在しない行として扱う。
 func validIDs(ids ...string) bool {
 	for _, id := range ids {
-		if uuid.Validate(id) != nil {
+		if !sharedpg.IsUUIDText(id) {
 			return false
 		}
 	}

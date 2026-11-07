@@ -142,7 +142,7 @@ func (r *AgentRepository) Count(ctx context.Context, tenantID string) (int64, er
 
 func (r *AgentRepository) FindByID(ctx context.Context, tenantID, id string) (*agentdomain.Agent, error) {
 	// 確認の要求は本文の値を渡すので、UUID でない値は存在しない Agent と同じに扱う。
-	if !isUUID(id) {
+	if !sharedpg.IsUUIDText(id) {
 		return nil, nil
 	}
 	row, err := New(r.Pool).FindAgentByID(ctx, FindAgentByIDParams{TenantID: tenantID, ID: id})
@@ -253,7 +253,7 @@ func (r *AgentRepository) RemoveBinding(ctx context.Context, tenantID, agentID, 
 
 func (r *AgentRepository) FindByClientID(ctx context.Context, tenantID, clientID string) (*agentdomain.Agent, error) {
 	// 外部の登録 ID を照合に使うので、UUID でない値は束縛のないものと同じに扱う。
-	if !isUUID(clientID) {
+	if !sharedpg.IsUUIDText(clientID) {
 		return nil, nil
 	}
 	row, err := New(r.Pool).FindAgentByClientID(ctx, FindAgentByClientIDParams{TenantID: tenantID, ClientID: clientID})

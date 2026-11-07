@@ -6,8 +6,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
@@ -77,7 +76,7 @@ func TestAgentDelegationRowsStayOutOfClientConsents(t *testing.T) {
 	module := idmanagement.NewPostgresModule(db)
 	user := pgfixtures.SeedUser(t, module.UserRepo, tenant.ID)
 	client := pgfixtures.SeedClient(t, &clientpostgres.OAuth2ClientRepository{Pool: db}, tenant.ID)
-	agentID := uuid.NewString()
+	agentID := uuid.NewV4().String()
 	if err := module.AgentRepo.Save(ctx, &agentdomain.Agent{
 		ID: agentID, TenantID: tenant.ID, Name: "bot", Kind: idmdomain.AgentKindAutonomous,
 		OwnerUserID: user.ID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now,

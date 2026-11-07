@@ -6,8 +6,7 @@ import (
 	"slices"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
 	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
@@ -39,7 +38,7 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 
 	t.Run("correlations", func(t *testing.T) {
 		seen, missed, foreignUser := f.NewUser(t, f.TenantID), f.NewUser(t, f.TenantID), f.NewUser(t, f.OtherTenantID)
-		first, second := uuid.NewString(), uuid.NewString()
+		first, second := uuid.NewV4().String(), uuid.NewV4().String()
 		for _, c := range []directoryports.UserCorrelation{
 			{TenantID: f.TenantID, ConnectorID: connector, ExternalID: "b-seen", UserID: seen, LastSeenRunID: first},
 			{TenantID: f.TenantID, ConnectorID: connector, ExternalID: "a-missed", UserID: missed, LastSeenRunID: first},
@@ -82,7 +81,7 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 				Status: domain.RunRunning, StartedAt: base.Add(at),
 			}
 		}
-		older, newer, other := run(uuid.NewString(), connector, 0), run(uuid.NewString(), connector, time.Minute), run(uuid.NewString(), sibling, 0)
+		older, newer, other := run(uuid.NewV4().String(), connector, 0), run(uuid.NewV4().String(), connector, time.Minute), run(uuid.NewV4().String(), sibling, 0)
 		for _, r := range []domain.IngestionRun{older, other, newer} {
 			if err := f.Runs.Start(ctx, r); err != nil {
 				t.Fatalf("Start: %v", err)
@@ -162,13 +161,13 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 	})
 
 	t.Run("protection and connector lock", func(t *testing.T) {
-		id := uuid.NewString()
+		id := uuid.NewV4().String()
 		run := domain.IngestionRun{TenantID: f.TenantID, ConnectorID: connector, ID: id, Mode: domain.ModeFull, Status: domain.RunRunning, StartedAt: base}
 		if err := f.Runs.Start(ctx, run); err != nil {
 			t.Fatal(err)
 		}
 		run.Status = domain.RunAwaitingApproval
-		run.Protection = &domain.IngestionProtection{Thresholds: domain.DisableThresholds{Count: 1, Percent: 20}, ActiveCount: 10, HeldAt: base, Candidates: []domain.DisableCandidate{{UserID: uuid.NewString(), ExternalID: "saved"}}}
+		run.Protection = &domain.IngestionProtection{Thresholds: domain.DisableThresholds{Count: 1, Percent: 20}, ActiveCount: 10, HeldAt: base, Candidates: []domain.DisableCandidate{{UserID: uuid.NewV4().String(), ExternalID: "saved"}}}
 		if err := f.Runs.SaveProgress(ctx, run); err != nil {
 			t.Fatal(err)
 		}
@@ -186,7 +185,7 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 			t.Fatal(err)
 		}
 		newer := run
-		newer.ID = uuid.NewString()
+		newer.ID = uuid.NewV4().String()
 		newer.Status = domain.RunRunning
 		newer.Protection = nil
 		if err := f.Runs.Start(ctx, newer); !errors.Is(err, ports.ErrRunBusy) {

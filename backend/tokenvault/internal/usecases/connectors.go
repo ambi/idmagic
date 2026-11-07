@@ -2,8 +2,7 @@ package usecases
 
 import (
 	"context"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
 )
@@ -11,7 +10,7 @@ import (
 // CreateConnector はコネクタを作る (REQ-TOKENVAULT-001)。
 func CreateConnector(ctx context.Context, deps Deps, connector domain.Connector) (*domain.Connector, error) {
 	now := deps.now()
-	connector.ID = uuid.NewString()
+	connector.ID = uuid.NewV4().String()
 	connector.Status = domain.ConnectorActive
 	if connector.TokenEndpointAuthMethod == "" {
 		connector.TokenEndpointAuthMethod = domain.AuthMethodClientSecretBasic

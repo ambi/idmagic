@@ -1,16 +1,9 @@
 package spec
 
-import (
-	"fmt"
-
-	"github.com/google/uuid"
-)
+import "uuid"
 
 // 担保するルールは docs/design/application/api-guidelines.md の「識別子」。
+// uuid.New は将来ほかの版を選び得るので、版 4 を明示する。
 func NewUUIDv4() (string, error) {
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return "", fmt.Errorf("uuid: %w", err)
-	}
-	return id.String(), nil
+	return uuid.NewV4().String(), nil
 }

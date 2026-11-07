@@ -24,6 +24,7 @@ linters:
     # 品質・バグ予防
     - canonicalheader
     - contextcheck
+    - depguard
     - durationcheck
     - errchkjson
     - exptostd
@@ -58,6 +59,12 @@ linters:
         - rangeValCopy       # 同上
         - unnamedResult      # 多値戻り (string, string, error) は慣習的に許容
         - commentedOutCode   # セクション見出しコメントを誤検知
+    depguard:
+      rules:
+        standard-replacements:
+          deny:
+            - pkg: github.com/google/uuid
+              desc: "標準の uuid パッケージを使う (wi-17165)"
     gosec:
       excludes:
         - G104  # errcheck と重複

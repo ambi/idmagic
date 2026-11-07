@@ -3,8 +3,7 @@ package db_memory
 import (
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/tokenvault/internal/testing_contract"
 )
@@ -15,7 +14,7 @@ func TestPersistenceContract(t *testing.T) {
 		store := NewStore()
 		return testing_contract.Fixture{
 			Connectors: store.Connectors(), Connections: store.Connections(), Attempts: store.Attempts(),
-			TenantA: "tenant-a", TenantB: "tenant-b", UserA: "user-a", NewID: uuid.NewString,
+			TenantA: "tenant-a", TenantB: "tenant-b", UserA: "user-a", NewID: func() string { return uuid.NewV4().String() },
 			Now: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
 		}
 	})

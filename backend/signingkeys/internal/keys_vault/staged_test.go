@@ -10,8 +10,7 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -109,7 +108,7 @@ func TestVaultKeyScopesContract(t *testing.T) {
 			db := pgtest.Require(t)
 			// パッケージ内のテストが共有するデータベースで、ほかのテストの状態を見ない新しいテナントを使う。
 			now := pgtest.Now()
-			id := uuid.NewString()
+			id := uuid.NewV4().String()
 			tenant := &tenancydomain.Tenant{ID: id, Realm: "contract-" + id, DisplayName: "Contract", Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now}
 			if err := tenancy.NewPostgresModule(db).TenantRepo.Save(context.Background(), tenant); err != nil {
 				t.Fatal(err)

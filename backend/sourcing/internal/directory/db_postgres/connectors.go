@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -59,7 +58,7 @@ func (r *ConnectorRepository) Update(ctx context.Context, c domain.Connector) er
 
 func (r *ConnectorRepository) Find(ctx context.Context, tenantID, id string) (*domain.Connector, error) {
 	// 列は uuid なので、形式の外の ID は問い合わせずに不在として扱う。
-	if !isUUID(id) {
+	if !sharedpg.IsUUIDText(id) {
 		return nil, nil
 	}
 	return found(New(r.Pool).FindDirectoryConnector(ctx, FindDirectoryConnectorParams{TenantID: tenantID, ID: id}))
@@ -153,5 +152,3 @@ func pointer(at pgtype.Timestamptz) *time.Time {
 	utc := at.Time.UTC()
 	return &utc
 }
-
-func isUUID(id string) bool { return uuid.Validate(id) == nil }

@@ -20,8 +20,7 @@ import (
 	"io"
 	"maps"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // Purpose は用途の閉じた集合である。値はデータベースに保存され、検証時に
@@ -145,7 +144,7 @@ func Issue(in IssueInput) (Issued, error) {
 	if _, err := io.ReadFull(in.Random, material); err != nil {
 		return Issued{}, fmt.Errorf("action token material: %w", err)
 	}
-	id, err := uuid.NewRandomFromReader(in.Random)
+	id, err := uuidV4FromReader(in.Random)
 	if err != nil {
 		return Issued{}, fmt.Errorf("action token id: %w", err)
 	}
@@ -164,6 +163,18 @@ func Issue(in IssueInput) (Issued, error) {
 			Digest:    Fingerprint(raw),
 		},
 	}, nil
+}
+
+// uuidV4FromReader は注入された乱数から版 4 の UUID を組み立てる。標準 uuid.NewV4 は乱数源を
+// 選べないので、Issue の発行結果を IssueInput.Random だけで決めるためにここで組み立てる。
+func uuidV4FromReader(random io.Reader) (uuid.UUID, error) {
+	var id uuid.UUID
+	if _, err := io.ReadFull(random, id[:]); err != nil {
+		return uuid.UUID{}, err
+	}
+	id[6] = id[6]&0x0f | 0x40 // 版 4 (RFC 9562 §5.4)
+	id[8] = id[8]&0x3f | 0x80 // 変種 10 (RFC 9562 §4.1)
+	return id, nil
 }
 
 // Verify は提示されたトークンを保存されたエンベロープと照合する。用途、ダイジェスト、

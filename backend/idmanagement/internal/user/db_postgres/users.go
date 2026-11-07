@@ -11,7 +11,6 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -73,8 +72,8 @@ func textOrNil(s *string) pgtype.Text {
 
 // FindBySub は UUID でない sub を、存在しない User として扱う。トークンや SET から届く値である。
 func (r *UserRepository) FindBySub(ctx context.Context, sub string) (*userdomain.User, error) {
-	if uuid.Validate(sub) != nil {
-		return nil, nil //nolint:nilerr // 上のコメントのとおり
+	if !sharedpg.IsUUIDText(sub) {
+		return nil, nil
 	}
 	row, err := New(r.Pool).FindUserBySub(ctx, sub)
 	if errors.Is(err, pgx.ErrNoRows) {

@@ -13,9 +13,9 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"uuid"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
@@ -105,7 +105,7 @@ func (c *Client) assertion() (string, error) {
 	now := c.now()
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.RegisteredClaims{
 		Issuer: c.enrollment.ConnectorID, Subject: c.enrollment.ConnectorID,
-		Audience: jwt.ClaimStrings{c.enrollment.Audience}, ID: uuid.NewString(),
+		Audience: jwt.ClaimStrings{c.enrollment.Audience}, ID: uuid.NewV4().String(),
 		IssuedAt: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(now.Add(tokenLifetime)),
 	})
 	token.Header["kid"] = c.enrollment.KeyID

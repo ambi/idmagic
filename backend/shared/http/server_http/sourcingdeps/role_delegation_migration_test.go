@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"testing"
 	"time"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
@@ -14,7 +15,6 @@ import (
 	"github.com/ambi/idmagic/backend/sourcing"
 	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	"github.com/google/uuid"
 )
 
 //spec:covers REQ-IDMANAGEMENT-092, REQ-SOURCING-005: 既存 SCIM 対応表のある Group だけを上流管理へ移し、所属を保って未承認ロールを除く。再実行しても同じ結果になる。
@@ -28,7 +28,7 @@ func TestSCIMGroupRoleDelegationBackfill(t *testing.T) {
 	now := time.Now().UTC()
 	var groups []*groupdomain.Group
 	for _, name := range []string{"local", "legacy-scim"} {
-		g := &groupdomain.Group{ID: uuid.NewString(), TenantID: tenant.ID, Name: name, Roles: []string{"admin", "catalog:read"}, CreatedAt: now, UpdatedAt: now}
+		g := &groupdomain.Group{ID: uuid.NewV4().String(), TenantID: tenant.ID, Name: name, Roles: []string{"admin", "catalog:read"}, CreatedAt: now, UpdatedAt: now}
 		if err := identity.GroupRepo.Save(ctx, g); err != nil {
 			t.Fatal(err)
 		}

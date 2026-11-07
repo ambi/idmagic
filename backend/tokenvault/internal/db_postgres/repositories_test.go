@@ -5,8 +5,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -51,7 +50,7 @@ func TestPersistenceContract(t *testing.T) {
 			Connectors:  &db_postgres.ConnectorRepository{Pool: pool, Cipher: cipher},
 			Connections: &db_postgres.ConnectionRepository{Pool: pool, Cipher: cipher},
 			Attempts:    &db_postgres.AttemptStore{Pool: pool, Cipher: cipher},
-			TenantA:     a.ID, TenantB: b.ID, UserA: seedUser(t, pool, a.ID), NewID: uuid.NewString, Now: pgtest.Now(),
+			TenantA:     a.ID, TenantB: b.ID, UserA: seedUser(t, pool, a.ID), NewID: func() string { return uuid.NewV4().String() }, Now: pgtest.Now(),
 		}
 	})
 }
@@ -72,7 +71,7 @@ func newConnectionFixture(t *testing.T) connectionFixture {
 	cipher := newCipher(t, tenant.ID)
 	now := pgtest.Now()
 	connector := &domain.Connector{
-		ID: uuid.NewString(), TenantID: tenant.ID, Name: "c", Status: domain.ConnectorActive,
+		ID: uuid.NewV4().String(), TenantID: tenant.ID, Name: "c", Status: domain.ConnectorActive,
 		AuthorizationEndpoint: "https://idp.example.com/a", TokenEndpoint: "https://idp.example.com/t",
 		ClientID: "c", ClientSecret: "client-secret", TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
 		Version: 1, CreatedAt: now, UpdatedAt: now,
@@ -88,7 +87,7 @@ func (f connectionFixture) link(t *testing.T, access, refresh string) *domain.Co
 	ctx := context.Background()
 	userID := seedUser(t, f.pool, f.tenantID)
 	if err := f.connections.SaveLinked(ctx, &domain.Connection{
-		ID: uuid.NewString(), TenantID: f.tenantID, ConnectorID: f.connectorID, UserID: userID,
+		ID: uuid.NewV4().String(), TenantID: f.tenantID, ConnectorID: f.connectorID, UserID: userID,
 		Status: domain.ConnectionActive, GrantedScopes: []string{}, AccessToken: access, RefreshToken: refresh, UpdatedAt: f.now,
 	}); err != nil {
 		t.Fatal(err)

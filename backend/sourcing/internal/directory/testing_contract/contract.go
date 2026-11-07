@@ -10,8 +10,7 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
 	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
@@ -33,15 +32,15 @@ func Run(t *testing.T, newFixture NewFixture) {
 	ctx := context.Background()
 	base := time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC)
 
-	later, err := domain.NewConnector(f.TenantID, uuid.NewString(), "後の Connector", hash("later"), base.Add(time.Minute))
+	later, err := domain.NewConnector(f.TenantID, uuid.NewV4().String(), "後の Connector", hash("later"), base.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := domain.NewConnector(f.TenantID, uuid.NewString(), "先の Connector", hash("first"), base)
+	first, err := domain.NewConnector(f.TenantID, uuid.NewV4().String(), "先の Connector", hash("first"), base)
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := domain.NewConnector(f.OtherTenantID, uuid.NewString(), "別のテナント", hash("other"), base)
+	other, err := domain.NewConnector(f.OtherTenantID, uuid.NewV4().String(), "別のテナント", hash("other"), base)
 	if err != nil {
 		t.Fatal(err)
 	}

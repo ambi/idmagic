@@ -41,6 +41,11 @@ func TestIssueIsDeterministicInItsInputs(t *testing.T) {
 	if first.RawToken != second.RawToken || first.Envelope.ID != second.Envelope.ID {
 		t.Fatalf("same inputs produced different tokens: %#v vs %#v", first, second)
 	}
+	// ID は素材の後の 16 バイトに版 4 と変種のビットを立てた正規形である。google/uuid の
+	// NewRandomFromReader から移したときに、同じ乱数から同じ ID になることもこの値で固定する。
+	if want := "2b2b2b2b-2b2b-4b2b-ab2b-2b2b2b2b2b2b"; first.Envelope.ID != want {
+		t.Errorf("id = %q, want %q", first.Envelope.ID, want)
+	}
 	if first.Envelope.Digest != actiontoken.Fingerprint(first.RawToken) {
 		t.Errorf("digest = %q, want the fingerprint of the raw token", first.Envelope.Digest)
 	}

@@ -18,8 +18,7 @@ import (
 	"math"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 var ErrInvalidCursor = errors.New("support_http: invalid cursor")

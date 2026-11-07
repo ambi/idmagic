@@ -5,8 +5,7 @@ import (
 	"encoding/hex"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
@@ -37,7 +36,7 @@ func TestIngestionPersistenceContract(t *testing.T) {
 		TenantID: tenant.ID, OtherTenantID: other.ID,
 		NewConnector: func(t *testing.T, tenantID string) string {
 			t.Helper()
-			id := uuid.NewString()
+			id := uuid.NewV4().String()
 			digest := sha256.Sum256([]byte(id))
 			connector, err := domain.NewConnector(tenantID, id, "AD", hex.EncodeToString(digest[:]), time.Now())
 			if err != nil {

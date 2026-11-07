@@ -17,8 +17,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/authentication"
@@ -233,7 +233,7 @@ func (s *server) sign(key connectorKey, enrollment enrollmentJSON, claims map[st
 	s.t.Helper()
 	payload := map[string]any{
 		"iss": enrollment.ConnectorID, "sub": enrollment.ConnectorID, "aud": enrollment.Audience,
-		"exp": s.now.Add(5 * time.Minute).Unix(), "jti": uuid.NewString(),
+		"exp": s.now.Add(5 * time.Minute).Unix(), "jti": uuid.NewV4().String(),
 	}
 	maps.Copy(payload, claims)
 	encode := func(value any) string {
@@ -449,7 +449,7 @@ func TestDirectoryConnector_AdminOperations(t *testing.T) {
 	if len(list.Connectors) != 2 || list.Connectors[0].ID != first.Connector.ID || list.Connectors[1].ID != second.Connector.ID {
 		t.Fatalf("list order = %+v", list.Connectors)
 	}
-	for _, id := range []string{uuid.NewString(), "not-a-uuid"} {
+	for _, id := range []string{uuid.NewV4().String(), "not-a-uuid"} {
 		expect("get unknown", admin(http.MethodGet, "/api/admin/v1/directory-connectors/"+id, nil), http.StatusNotFound, "directory_connector_not_found")
 		expect("reissue unknown", admin(http.MethodPost, "/api/admin/v1/directory-connectors/"+id+"/enrollment-tokens", nil), http.StatusNotFound, "directory_connector_not_found")
 		expect("disable unknown", admin(http.MethodPost, "/api/admin/v1/directory-connectors/"+id+"/disable", nil), http.StatusNotFound, "directory_connector_not_found")

@@ -13,9 +13,9 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+	"uuid"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	"github.com/google/uuid"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/http/testing_stack"
@@ -109,7 +109,7 @@ func (c *directoryConnectorClient) sign() http.Header {
 	}
 	input := encode(map[string]any{"alg": "ES256", "typ": "JWT"}) + "." + encode(map[string]any{
 		"iss": c.id, "sub": c.id, "aud": c.audience,
-		"exp": time.Now().Add(time.Minute).Unix(), "jti": uuid.NewString(),
+		"exp": time.Now().Add(time.Minute).Unix(), "jti": uuid.NewV4().String(),
 	})
 	digest := sha256.Sum256([]byte(input))
 	r, sig, err := ecdsa.Sign(rand.Reader, c.private, digest[:])

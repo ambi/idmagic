@@ -11,8 +11,7 @@ import (
 	"errors"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -67,7 +66,7 @@ func (s *Service) Create(ctx context.Context, tenantID, displayName string) (Gra
 		return Grant{}, err
 	}
 	now := s.now().UTC()
-	connector, err := domain.NewConnector(tenantID, uuid.NewString(), displayName, hash, now)
+	connector, err := domain.NewConnector(tenantID, uuid.NewV4().String(), displayName, hash, now)
 	if err != nil {
 		return Grant{}, err
 	}
