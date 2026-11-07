@@ -580,17 +580,27 @@ export async function waitForLocationHref(
   throw new Error(`timeout waiting for location.href matching ${pattern}`)
 }
 
+// 無効なボタンへの click() は何も起こさずに戻り、失敗は次の待機の時間切れとして別の場所に出る。
+// 押せない状態で呼ばれたらその場で失敗させる。有効になるのを待つ操作には clickEnabledButtonByText を使う。
+function buttonClickError(result: unknown, label: string): Error | undefined {
+  if (result === 'clicked') return undefined
+  if (result === 'disabled') {
+    return new Error(`button is disabled: ${label}; wait with clickEnabledButtonByText`)
+  }
+  return new Error(`button not found: ${label}`)
+}
+
 export async function clickButtonByText(view: Bun.WebView, text: string): Promise<void> {
-  const clicked = await view.evaluate(`(() => {
+  const result = await view.evaluate(`(() => {
     const target = [...document.querySelectorAll('button')]
       .find((b) => (b.textContent ?? '').includes(${JSON.stringify(text)}))
-    if (!target) return false
+    if (!target) return 'missing'
+    if (target.disabled) return 'disabled'
     target.click()
-    return true
+    return 'clicked'
   })()`)
-  if (clicked !== true) {
-    throw new Error(`button not found: ${text}`)
-  }
+  const error = buttonClickError(result, text)
+  if (error) throw error
 }
 
 export async function clickEnabledButtonByText(
@@ -619,17 +629,17 @@ export async function clickEnabledButtonByText(
 // i18n 対象の利用者向け操作は、サポート済み locale のいずれで描画されても同じ振る舞いを
 // 検証する。文言の一致そのものではなく、操作可能なボタンがあることを確認する。
 export async function clickButtonByAnyText(view: Bun.WebView, texts: string[]): Promise<void> {
-  const clicked = await view.evaluate(`(() => {
+  const result = await view.evaluate(`(() => {
     const texts = ${JSON.stringify(texts)}
     const target = [...document.querySelectorAll('button')]
       .find((button) => texts.some((text) => (button.textContent ?? '').includes(text)))
-    if (!target) return false
+    if (!target) return 'missing'
+    if (target.disabled) return 'disabled'
     target.click()
-    return true
+    return 'clicked'
   })()`)
-  if (clicked !== true) {
-    throw new Error(`button not found: ${texts.join(' / ')}`)
-  }
+  const error = buttonClickError(result, texts.join(' / '))
+  if (error) throw error
 }
 
 export async function clickLinkByText(view: Bun.WebView, text: string): Promise<void> {

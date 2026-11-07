@@ -227,7 +227,8 @@ test('admin API access token lifecycle works with selected SCIM scopes', async (
 
     await clickLinkByText(view, 'Issue my token')
     await waitForPage(view, 'admin-api-token-create')
-    await setInputValue(view, '#token-desc', `SCIM E2E ${Date.now()}`)
+    const tokenDescription = `SCIM E2E ${Date.now()}`
+    await setInputValue(view, '#token-desc', tokenDescription)
     await clickSummaryByText(view, 'SCIM 2.0 API')
     await view.click('input[value="scim:users:read"]')
     await view.click('input[value="scim:users:write"]')
@@ -241,10 +242,20 @@ test('admin API access token lifecycle works with selected SCIM scopes', async (
     ).toMatch(/^[^.]+\.[^.]+\.[^.]+$/)
     await clickLinkByText(view, 'Back to token list')
     await waitForPage(view, 'admin-api-tokens')
-    await waitForText(view, 'scim:users:read')
+    await waitForText(view, tokenDescription)
 
-    await clickButtonByText(view, 'Revoke')
-    await view.click('[role="dialog"] button:last-child')
+    // 失効済みのトークンの行にも無効な「Revoked」ボタンが並ぶので、このテストで発行した行の
+    // ボタンを押す。一覧の並びは、同じテナントに残る他のトークンに左右される。
+    const revoked = await view.evaluate(`(() => {
+      const row = [...document.querySelectorAll('tr')]
+        .find((node) => (node.textContent ?? '').includes(${JSON.stringify(tokenDescription)}))
+      const button = row?.querySelector('button')
+      if (!(button instanceof HTMLButtonElement) || button.disabled) return false
+      button.click()
+      return true
+    })()`)
+    expect(revoked).toBe(true)
+    await clickSelector(view, '[role="dialog"] button:last-child')
     await waitForText(view, 'Revoked the token.')
   } finally {
     view.close()
