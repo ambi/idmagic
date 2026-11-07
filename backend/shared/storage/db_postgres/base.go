@@ -6,6 +6,7 @@ package db_postgres
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 	"uuid"
@@ -28,12 +29,17 @@ func UUIDString(value pgtype.UUID) string {
 
 // IsUUIDText は、外部から届いた文字列を uuid 列の照会へ渡してよいかを判定する。UUID でない
 // 値をそのまま渡すと PostgreSQL が 22P02 で失敗するので、リポジトリは偽のとき存在しない行
-// として扱う。標準 uuid.Parse が受け付ける urn:uuid: 接頭辞は PostgreSQL が受け付けないため、
-// この判定を通っても照会は失敗する。
+// として扱う。標準 uuid.Parse は urn:uuid: 接頭辞も受け付けるが、PostgreSQL は受け付けない
+// ので、接頭辞の大文字小文字を問わず偽にする。
 func IsUUIDText(value string) bool {
+	if len(value) >= len(urnUUIDPrefix) && strings.EqualFold(value[:len(urnUUIDPrefix)], urnUUIDPrefix) {
+		return false
+	}
 	_, err := uuid.Parse(value)
 	return err == nil
 }
+
+const urnUUIDPrefix = "urn:uuid:"
 
 // DBConfig は PostgreSQL 接続プールとレジリエンスの設定を集約する。
 type DBConfig struct {

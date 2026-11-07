@@ -291,3 +291,24 @@ func (*contextCheckingRows) Values() ([]any, error) { return []any{42}, nil }
 func (*contextCheckingRows) RawValues() [][]byte    { return nil }
 func (*contextCheckingRows) Conn() *pgx.Conn        { return nil }
 func (*contextCheckingRows) TypeMap() *pgtype.Map   { return nil }
+
+// 判定は PostgreSQL の uuid 型が受け付ける表記だけを通す。urn 形式は標準 uuid.Parse が
+// 受け付けても PostgreSQL が 22P02 で拒否するので、接頭辞の大文字小文字を問わず偽にする。
+func TestIsUUIDTextAcceptsOnlyFormsPostgreSQLAccepts(t *testing.T) {
+	const id = "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+	for value, want := range map[string]bool{
+		id:                                     true,
+		"F81D4FAE-7DEC-11D0-A765-00A0C91E6BF6": true,
+		"{" + id + "}":                         true,
+		"f81d4fae7dec11d0a76500a0c91e6bf6":     true,
+		"urn:uuid:" + id:                       false,
+		"URN:UUID:" + id:                       false,
+		"Urn:Uuid:" + id:                       false,
+		"user-alice":                           false,
+		"":                                     false,
+	} {
+		if got := IsUUIDText(value); got != want {
+			t.Errorf("IsUUIDText(%q) = %v, want %v", value, got, want)
+		}
+	}
+}

@@ -10,6 +10,7 @@ import (
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
 
+//spec:covers REQ-IDMANAGEMENT-099: urn 形式の Agent の ID を存在しない Agent として返すこと
 func TestPersistenceContract(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)

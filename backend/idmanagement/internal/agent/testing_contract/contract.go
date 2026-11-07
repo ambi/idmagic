@@ -29,6 +29,13 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if err != nil || got == nil || got.Name != f.Agent.Name {
 		t.Fatalf("FindByID = (%+v, %v)", got, err)
 	}
+	// 確認の要求は本文の Agent の ID をそのまま渡す。urn 形式は PostgreSQL の uuid 型が
+	// 受け付けないので、照会の失敗ではなく存在しない Agent として返す。
+	for _, prefix := range []string{"urn:uuid:", "URN:UUID:"} {
+		if got, err := f.Repository.FindByID(ctx, f.TenantID, prefix+f.Agent.ID); err != nil || got != nil {
+			t.Fatalf("FindByID(%s<id>) = (%+v, %v), want a missing agent", prefix, got, err)
+		}
+	}
 	byClient, err := f.Repository.FindByClientID(ctx, f.TenantID, "00000000-0000-0000-0000-0000000000ff")
 	if err != nil || byClient != nil {
 		t.Fatalf("FindByClientID missing = (%+v, %v)", byClient, err)
