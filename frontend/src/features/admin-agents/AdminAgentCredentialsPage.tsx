@@ -61,7 +61,8 @@ export function AdminAgentCredentialsPage({
   const [notice, setNotice] = useState('')
   const killed = agent.status === 'killed'
 
-  async function run(action: () => Promise<void | false>, message: string) {
+  // 操作が false を返したときだけ、完了の通知と再読み込みを省く。
+  async function run(action: () => Promise<unknown>, message: string) {
     if (running.current) return
     running.current = true
     setBusy(true)

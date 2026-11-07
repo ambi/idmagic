@@ -43,6 +43,10 @@ description = "デモスクリプトが自分で起動したローカルサー�
 paths = ['''^demo\.sh$''']
 
 [[allowlists]]
+description = "MCP クライアントの手順書を再現するスクリプトが、自分で起動したローカルの IdMagic へログインするときのデモ利用者のパスワード。dev.sh が作るデモ利用者と同じ公開の値であり、リポジトリの外に対して何の権限も持たない。"
+paths = ['''^examples/mcp-client-walkthrough/walkthrough\.ts$''']
+
+[[allowlists]]
 description = "「パスワード」という語を含むだけの文字列。UI の文言辞書、テストの固定値、TypeSpec のフィールド名、ロックファイル、文書の例示であり、値そのものが資格情報ではない。"
 paths = [
   '''\.i18n\.ts$''',
