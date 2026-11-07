@@ -11,9 +11,12 @@ import { afterAll, beforeAll } from 'bun:test'
 import { detectWebViewSupport, startE2EEnvironment, stopE2EEnvironment } from './fixtures'
 
 beforeAll(async () => {
-  // WebView の能力判定はスタックの起動と並べる。健全なホストでは 0.3 秒未満で終わるので、
-  // 起動時間の影に隠れて実行時間を変えない。
-  await Promise.all([startE2EEnvironment(), detectWebViewSupport()])
+  // WebView の能力判定はスタックの起動より先に終える。並べると、スタックの起動が Go のビルドを
+  // spawnSync で待つ間はイベントループが止まり、判定の期限だけが進む。ビルドが 5 秒を超えた回は
+  // Chrome が応答済みでも「応答なし」と判定され、黙って別のバックエンドで走っていた。
+  // 判定は健全なホストで 0.5 秒未満なので、直列にしても実行時間はほとんど変わらない。
+  await detectWebViewSupport()
+  await startE2EEnvironment()
 }, 180_000)
 
 afterAll(async () => {

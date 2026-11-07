@@ -103,12 +103,16 @@ type LaunchCandidate = {
   readonly backend?: Bun.WebView.Backend
 }
 
-// LAUNCH_CANDIDATES は試す順そのものである。既定を先に置くので、Chrome の sandbox が働く
-// ホストでは sandbox が有効なまま実行される。--no-sandbox が効くのは、AppArmor が非特権の
-// user namespace を拒む Linux (Ubuntu 23.10 以降の既定、GitHub Actions の ubuntu-latest を
-// 含む) やコンテナーのように、それ以外では Chrome が起動できないホストに限られる。argv は
-// 既定のフラグの後ろへ足され、重複したスイッチは後勝ちなので、--headless は残る。
+// LAUNCH_CANDIDATES は試す順そのものである。sandbox を保った Chrome を最初に置く。
+// macOS の既定の webkit バックエンドは、遷移に追い越された evaluate が返らず view が止まる
+// (oven-sh/bun#43412)。この欠陥で実行あたり 0〜2 件が落ち、CI の Chrome とも挙動が揃わない。
+// Chrome がないホストでだけ既定のバックエンドへ戻る。Linux では既定も Chrome である。
+// --no-sandbox が効くのは、AppArmor が非特権の user namespace を拒む Linux (Ubuntu 23.10 以降の
+// 既定、GitHub Actions の ubuntu-latest を含む) やコンテナーのように、それ以外では Chrome が
+// 起動できないホストに限られる。argv は既定のフラグの後ろへ足され、重複したスイッチは後勝ち
+// なので、--headless は残る。
 const LAUNCH_CANDIDATES: readonly LaunchCandidate[] = [
+  { name: 'the chrome backend', backend: 'chrome' },
   { name: 'the default backend' },
   {
     name: 'the chrome backend with --no-sandbox',
@@ -116,15 +120,40 @@ const LAUNCH_CANDIDATES: readonly LaunchCandidate[] = [
   },
 ]
 
-// closeAll は Chrome の pipe を同期的に閉じるが、子プロセスの終了は少し遅れて完了する。
-// 直後に作ると閉じた pipe を再利用するため、子プロセスが確実に終了するまで、次の view の
-// 生成だけを待たせる。GitHub Actions では 100 ms 待機だと終了前の Chrome が蓄積して OOM kill
-// されるため、余裕を 1 秒にする。
+// テストの間で Chrome のプロセスは残し、Cookie と全オリジンの保存領域 (localStorage、
+// IndexedDB、Service Worker など) だけを CDP で消す。消去は 20 ms 前後で終わる。
+// 以前はテストごとにプロセスを閉じて起動し直し、終了を 1 秒待っていたので、50 回の view で
+// 実行全体が 40 秒ほど延びていた。
+//
+// CDP が失敗するか応答しなければ、プロセスごと閉じる従来の方法へ戻る。closeAll は Chrome の
+// pipe を同期的に閉じるが、子プロセスの終了は少し遅れて完了する。直後に作ると閉じた pipe を
+// 再利用するため、次の view の生成を待たせる。GitHub Actions では 100 ms 待機だと終了前の
+// Chrome が蓄積して OOM kill されたので、余裕を 1 秒にする。
+const CHROME_STATE_RESET_BUDGET_MS = 2_000
 const CHROME_PROCESS_SETTLE_MS = 1_000
-const chromeProcessLease = createWebViewProcessLease(
-  () => Bun.WebView.closeAll(),
-  () => Bun.sleep(CHROME_PROCESS_SETTLE_MS),
-)
+
+async function clearChromeState(view: Bun.WebView): Promise<void> {
+  await view.cdp('Storage.clearCookies')
+  await view.cdp('Storage.clearDataForOrigin', { origin: '*', storageTypes: 'all' })
+}
+
+async function resetChrome(lastView: Bun.WebView): Promise<void> {
+  const cleared = await Promise.race([
+    clearChromeState(lastView).then(
+      () => true,
+      () => false,
+    ),
+    Bun.sleep(CHROME_STATE_RESET_BUDGET_MS).then(() => false),
+  ])
+  if (cleared) {
+    lastView.close()
+    return
+  }
+  Bun.WebView.closeAll()
+  await Bun.sleep(CHROME_PROCESS_SETTLE_MS)
+}
+
+const chromeProcessLease = createWebViewProcessLease<Bun.WebView>(resetChrome)
 
 // 採用した起動方法。detectWebViewSupport が一度だけ決める。undefined は未判定、null は
 // どの候補でも描画できなかったことを表す。
@@ -206,6 +235,13 @@ export async function detectWebViewSupport(): Promise<boolean> {
     const failure = await probeLaunch(candidate)
     if (failure === undefined) {
       launch = candidate
+      // 先の候補を飛ばしたことは黙らない。黙ると、別のバックエンドで走った結果を
+      // 意図したバックエンドの結果として読むことになる。
+      if (launchFailures.length > 0) {
+        console.error(
+          `\nBun.WebView fell back to ${candidate.name}:\n${launchFailures.map((one) => `  - ${one}`).join('\n')}\n`,
+        )
+      }
       return true
     }
     launchFailures.push(failure)
@@ -237,7 +273,11 @@ function describeConsoleArg(arg: unknown): string {
 }
 
 function diagnosticContext(pageLog: readonly string[]): string {
-  const lines = [`server logs: ${apiLogPath}, ${uiLogPath}`]
+  // 返らない呼び出しの原因はバックエンドで違うので、採った起動方法を必ず添える。
+  const lines = [
+    `webview: ${launch?.name ?? 'undetected'}`,
+    `server logs: ${apiLogPath}, ${uiLogPath}`,
+  ]
   if (pageLog.length === 0) {
     lines.push('page console: nothing was logged')
   } else {

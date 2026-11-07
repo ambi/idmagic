@@ -2,9 +2,11 @@ type Closable = {
   close(): void
 }
 
-export function createWebViewProcessLease(
-  resetProcess: () => void,
-  settleProcess: () => Promise<void> = async () => {},
+// Chrome バックエンドは 1 つのプロセスで Cookie と保存領域を共有する。開いている view が
+// なくなった時点で reset に最後の view を渡し、次のテストへ状態を持ち越させない。
+// reset はその view を閉じる責任も持つ。次の view は reset が終わるまで待つ。
+export function createWebViewProcessLease<T extends Closable>(
+  reset: (lastView: T) => Promise<void>,
 ) {
   let activeViews = 0
   let processReady = Promise.resolve()
@@ -14,7 +16,7 @@ export function createWebViewProcessLease(
       await processReady
     },
 
-    hold<T extends Closable>(view: T): T {
+    hold(view: T): T {
       activeViews += 1
       let released = false
 
@@ -28,8 +30,7 @@ export function createWebViewProcessLease(
             released = true
             activeViews -= 1
             if (activeViews === 0) {
-              resetProcess()
-              processReady = settleProcess()
+              processReady = reset(target)
               return
             }
             value.call(target)

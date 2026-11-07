@@ -23,11 +23,15 @@ Ubuntu 23.10 以降（GitHub Actions の `ubuntu-latest` を含む）は `kernel
 そこで `setup.ts` が実行の先頭で `detectWebViewSupport` を 1 回だけ呼び、`fixtures.ts` の `LAUNCH_CANDIDATES` を順に試して、空白ページを描いて評価を 1 つ返せた起動方法を採る。
 どれも返らなければ `openWebView` がその場で失敗し、候補ごとに Bun が返したエラーを並べて、macOS と Linux それぞれで確かめるべきものを述べる。
 
-候補は既定の起動方法が先である。
-Chrome の sandbox が働くホストでは sandbox が有効なまま実行され、`--no-sandbox` が効くのはそれ以外では起動できないホストに限られる。
+候補は sandbox を保った Chrome が先であり、macOS でも Chrome があれば Chrome で走る。
+macOS の既定の webkit バックエンドには、下の[既知の不安定さ](#既知の不安定さ)があり、CI の Chrome とも挙動が揃わないためである。
+Chrome がないホストでだけ既定の起動方法へ戻る。
+`--no-sandbox` が効くのは、それ以外では起動できないホストに限られる。
+先の候補を飛ばしたときは、飛ばした候補と理由を標準エラーへ出し、期限切れの本文にも採った起動方法を載せる。
 
 判定は実行全体で 1 回であり、結果はモジュール変数に残る。
-スタックの起動と並列に走らせるので、健全なホストでは実時間に現れない（実測で判定 0.3 秒未満）。
+判定はスタックの起動より先に終える（実測で 0.5 秒未満）。
+並べると、Go のビルドを `spawnSync` で待つ間にイベントループが止まり、Chrome が応答済みでも判定の期限だけが切れて、黙って別のバックエンドで走る。
 どの候補でも描画できない環境では、全体が 10 秒ほどで原因を述べて終わる。
 
 WebView を開くときは `new Bun.WebView` を直接呼ばず `openWebView` を使う。
@@ -35,8 +39,10 @@ WebView を開くときは `new Bun.WebView` を直接呼ばず `openWebView` �
 `openWebView` は非同期なので必ず `await` する。
 
 Chrome バックエンドは 1 Bun プロセスにつき Chrome を 1 つだけ起動し、同時に生きる WebView は Cookie を含む一時 data store を共有する。
-そこで `openWebView` は最後の WebView が閉じたときに Chrome プロセスを破棄し、次の WebView を作る前に子プロセスの終了を待つ。
-これにより、テストごとの新しい WebView は前のテストのログイン状態を引き継がない。
+そこで `openWebView` は最後の WebView が閉じるとき、CDP で Cookie と全オリジンの保存領域（`localStorage` など）を消してから閉じ、次の WebView はその消去を待つ。
+これにより、テストごとの新しい WebView は前のテストのログイン状態も言語の選択も引き継がない。
+消去は 20 ms 前後で終わり、Chrome のプロセスはテストの間で使い続ける。
+CDP が失敗するか 2 秒以内に応答しなければ、Chrome プロセスを破棄し、子プロセスの終了を 1 秒待つ従来の方法へ戻る。
 独立した 2 ブラウザーセッションを扱うテストは、1 つ目の WebView を閉じてから 2 つ目を開き、サーバー上に残った 2 セッションを観測する。
 
 `fetch` だけで完結する spec はこの制約を受けない。
@@ -47,7 +53,8 @@ Chrome バックエンドは 1 Bun プロセスにつき Chrome を 1 つだけ�
 
 ## 既知の不安定さ
 
-**webkit バックエンド（macOS の既定）では、実行あたり 0〜2 件が upstream の欠陥で落ちる。**
+**webkit バックエンド（Chrome のない macOS で採る）では、実行あたり 0〜2 件が upstream の欠陥で落ちる。**
+Chrome を入れれば、この欠陥を避けられる。
 飛んでいる `evaluate` の最中に文書が入れ替わると、WebKit が完了ハンドラーを呼ばずに捨て、「1 view に 1 つ」の枠も解放しない。
 ページ自身が遷移を始める（ログイン後の `location.replace` から `/authorize`、302、`/callback` の連鎖）ので、呼び出し側では避けられない。
 [oven-sh/bun#43412](https://github.com/oven-sh/bun/issues/43412) が追っており、chrome バックエンドでは拒否されて view が生き残る。

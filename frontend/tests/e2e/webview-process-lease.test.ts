@@ -2,48 +2,49 @@ import { expect, test } from 'bun:test'
 
 import { createWebViewProcessLease } from './webview-process-lease'
 
-test('the last view delegates its close to the shared browser process reset', () => {
-  let resets = 0
+type FakeView = { name: string; close(): void }
+
+test('the last view is handed to the reset instead of being closed directly', () => {
+  const resets: string[] = []
   let firstCloses = 0
   let secondCloses = 0
-  const lease = createWebViewProcessLease(() => {
-    resets += 1
+  const lease = createWebViewProcessLease<FakeView>(async (view) => {
+    resets.push(view.name)
   })
   const first = lease.hold({
+    name: 'first',
     close: () => {
       firstCloses += 1
     },
   })
   const second = lease.hold({
+    name: 'second',
     close: () => {
       secondCloses += 1
     },
   })
 
   first.close()
-  expect(resets).toBe(0)
+  expect(resets).toEqual([])
 
   second.close()
-  expect(resets).toBe(1)
-
   second.close()
   expect({ firstCloses, secondCloses, resets }).toEqual({
     firstCloses: 1,
     secondCloses: 0,
-    resets: 1,
+    resets: ['second'],
   })
 })
 
-test('the next view waits until the shared browser process has settled', async () => {
-  let finishSettling: (() => void) | undefined
-  const lease = createWebViewProcessLease(
-    () => {},
+test('the next view waits until the reset has finished', async () => {
+  let finishReset: (() => void) | undefined
+  const lease = createWebViewProcessLease<FakeView>(
     () =>
       new Promise<void>((resolve) => {
-        finishSettling = resolve
+        finishReset = resolve
       }),
   )
-  const view = lease.hold({ close: () => {} })
+  const view = lease.hold({ name: 'only', close: () => {} })
   view.close()
 
   let ready = false
@@ -53,7 +54,7 @@ test('the next view waits until the shared browser process has settled', async (
   await Bun.sleep(0)
   expect(ready).toBe(false)
 
-  finishSettling?.()
+  finishReset?.()
   await waiting
   expect(ready).toBe(true)
 })
