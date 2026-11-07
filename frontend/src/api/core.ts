@@ -67,8 +67,29 @@ export async function responseAPIError(
   response: Response,
   fallback?: string,
 ): Promise<AuthenticationAPIError> {
-  const body = (await response.json().catch(() => ({}))) as APIError
-  return authenticationAPIError(body, fallback)
+  return authenticationAPIError(await readErrorBody(response), fallback)
+}
+
+// 失敗応答の本文は表示する文を探すためだけに読むので、読めなければ代わりの文へ落とす。
+async function readErrorBody(response: Response): Promise<APIError> {
+  return (await response.json().catch(() => ({}))) as APIError
+}
+
+// 本文の欠落は状態コードと Content-Length で判定する。読めない本文は空の結果ではなく
+// 失敗として返し、画面が空の一覧や詳細を正常に受け取ったものとして描画しないようにする。
+async function readSuccessBody(response: Response): Promise<unknown> {
+  if (
+    response.status === 204 ||
+    response.status === 205 ||
+    response.headers?.get('Content-Length') === '0'
+  ) {
+    return undefined
+  }
+  try {
+    return await response.json()
+  } catch {
+    throw authenticationAPIError({})
+  }
 }
 
 // bearerTokenProvider は OIDC RP モジュール (api/oidc) が登録する access token 取得関数。
@@ -93,16 +114,15 @@ async function doFetch<T>(
     ...init,
     ...(headers ? { headers } : {}),
   })
-  const body = (await response.json().catch(() => ({}))) as T & APIError
   if (!response.ok) {
-    const message = apiErrorMessage(body)
-    const code = apiErrorCode(body)
+    const body = await readErrorBody(response)
     if (response.status === 401) {
-      throw new UnauthenticatedError(message, code)
+      throw new UnauthenticatedError(apiErrorMessage(body), apiErrorCode(body))
     }
     throw authenticationAPIError(body)
   }
-  return { body, response }
+  // 応答の形は検証しない。本文のない成功は undefined になり、結果を使わない操作だけが受け取る。
+  return { body: (await readSuccessBody(response)) as T, response }
 }
 
 export async function request<T>(url: string, init?: RequestInit): Promise<T> {

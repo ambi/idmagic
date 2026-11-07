@@ -191,6 +191,31 @@ describe('AdminAuditEventsPage', () => {
     expect(screen.getByText(t.selectEventPrompt)).toBeInTheDocument()
   })
 
+  // 壊れた本文を空のオブジェクトに置き換える実装では、絞り込みは「該当なし」と表示し、
+  // 取得に失敗したことを隠す。該当なしの表示が出ないことと直前の一覧が残ることを両方見る。
+  //
+  //spec:covers REQ-SYSTEM-031: JSON として読めない本文の成功応答を、取得の失敗として表示し、空の結果として描画しない。
+  it('shows a failure instead of an empty result when a successful response body is not JSON', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() =>
+        Promise.resolve({
+          ...response(200),
+          json: mock().mockRejectedValue(new SyntaxError('Unexpected token < in JSON')),
+        }),
+      ),
+    )
+    await renderWithRouter(
+      <AdminAuditEventsPage actorUsername="admin" events={[event]} nextCursor={null} />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t.filterAction }))
+
+    expect(await screen.findByText(tCommon.networkError)).toBeInTheDocument()
+    expect(screen.queryByText(t.noMatchingEventsNotice)).not.toBeInTheDocument()
+    expect(screen.getAllByText(friendlyEventName(event.type, 'en')).length).toBeGreaterThan(0)
+  })
+
   it('shows an error when querying audit events fails', async () => {
     stubGlobal(
       'fetch',

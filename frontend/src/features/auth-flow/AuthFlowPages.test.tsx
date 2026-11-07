@@ -33,6 +33,10 @@ const response = (status: number, body: unknown = {}) => ({
   json: mock().mockResolvedValue(body),
 })
 
+// 画面のブランディングの取得は 204 ではなく JSON の本文で答える。本文のない成功は undefined になる。
+const brandingOr204 = (url: string) =>
+  url.endsWith('/api/branding') ? response(200, {}) : response(204)
+
 const assertionCredential = () => ({
   id: 'credential',
   rawId: new Uint8Array([1, 2, 3]).buffer,
@@ -138,7 +142,10 @@ describe('auth-flow pages', () => {
   })
 
   it('shows only the generic reset-request confirmation after a successful submit', async () => {
-    stubGlobal('fetch', mock().mockResolvedValue(response(204)))
+    stubGlobal(
+      'fetch',
+      mock((url: string) => Promise.resolve(brandingOr204(url))),
+    )
     render(<ForgotPasswordPage csrfToken="csrf" />)
     fireEvent.change(screen.getByLabelText(recoveryT.emailAddress), {
       target: { value: 'alice@example.com' },
@@ -239,7 +246,10 @@ describe('auth-flow pages', () => {
   })
 
   it('confirms an email change and retains an actionable error on failure', async () => {
-    stubGlobal('fetch', mock().mockResolvedValue(response(204)))
+    stubGlobal(
+      'fetch',
+      mock((url: string) => Promise.resolve(brandingOr204(url))),
+    )
     const { unmount } = render(<EmailVerifyPage csrfToken="csrf" token="verification-token" />)
     fireEvent.click(screen.getByRole('button', { name: emailT.confirmEmail }))
     expect(await screen.findByText(emailT.confirmed)).toBeInTheDocument()

@@ -192,6 +192,61 @@ describe('core api utils', () => {
       )
     })
 
+    // 本文の欠落と壊れた本文を、状態コードの成否とは別に判定することを見る。
+    // 204 だけを見る実装は Content-Length: 0 の削除を失敗にし、
+    // 解析失敗を握りつぶす実装は壊れた本文を空のオブジェクトとして返す。
+    //
+    //spec:covers REQ-SYSTEM-031: 204 と本文の長さが 0 の成功応答は本文のない成功とし、JSON として読めない本文の成功応答は失敗にすること。
+    it('treats a no-content success as success and an unreadable success body as a failure', async () => {
+      const unreadable = () => Promise.reject(new SyntaxError('Unexpected end of JSON input'))
+      stubGlobal(
+        'fetch',
+        mock()
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 204,
+            headers: new Headers(),
+            json: unreadable,
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: new Headers({ 'Content-Length': '0' }),
+            json: unreadable,
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: new Headers({ 'Content-Type': 'text/html' }),
+            json: unreadable,
+          }),
+      )
+
+      expect(await request('/no-content')).toBeUndefined()
+      expect(await request('/empty-body')).toBeUndefined()
+      await expect(request('/html-body')).rejects.toMatchObject({
+        name: 'AuthenticationAPIError',
+        message: commonDictionary[getCurrentLocale()].networkError,
+      })
+    })
+
+    it('keeps the fallback message for an error response whose body is not JSON', async () => {
+      stubGlobal(
+        'fetch',
+        mock().mockResolvedValue({
+          ok: false,
+          status: 502,
+          headers: new Headers({ 'Content-Type': 'text/html' }),
+          json: () => Promise.reject(new SyntaxError('Unexpected token <')),
+        }),
+      )
+
+      await expect(request('/bad-gateway')).rejects.toMatchObject({
+        name: 'AuthenticationAPIError',
+        message: commonDictionary[getCurrentLocale()].networkError,
+      })
+    })
+
     it('should throw UnauthenticatedError on 401', async () => {
       const mockFetch = mock().mockResolvedValue({
         ok: false,

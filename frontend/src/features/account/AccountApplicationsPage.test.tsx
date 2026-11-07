@@ -18,6 +18,10 @@ const response = (status: number, body: unknown = {}) => ({
   json: mock().mockResolvedValue(body),
 })
 
+// 画面のブランディングの取得は 204 ではなく JSON の本文で答える。本文のない成功は undefined になる。
+const brandingOr204 = (url: string) =>
+  url.endsWith('/api/branding') ? response(200, {}) : response(204)
+
 describe('formatAccountConsentDate', () => {
   it('formats a valid ISO date string', () => {
     expect(formatAccountConsentDate('2026-01-15T10:30:00Z')).toContain('2026')
@@ -91,7 +95,10 @@ describe('AccountApplicationsPage', () => {
   afterEach(() => restoreGlobals())
 
   it('revokes access and removes the application with a notice', async () => {
-    stubGlobal('fetch', mock().mockResolvedValue(response(204)))
+    stubGlobal(
+      'fetch',
+      mock((url: string) => Promise.resolve(brandingOr204(url))),
+    )
     await renderWithRouter(
       <AccountApplicationsPage
         csrfToken="csrf"

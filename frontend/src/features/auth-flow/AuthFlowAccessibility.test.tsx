@@ -31,6 +31,10 @@ const response = (status: number, body: unknown = {}) => ({
   json: mock().mockResolvedValue(body),
 })
 
+// 画面のブランディングの取得は 204 ではなく JSON の本文で答える。本文のない成功は undefined になる。
+const brandingOr204 = (url: string) =>
+  url.endsWith('/api/branding') ? response(200, {}) : response(204)
+
 // どの画面も AuthShell がブランディングを、画面によっては自分の初期取得を行う。1 つの本文で
 // すべてを賄えるので、既定の取得はまとめて成功させる。
 const readyBody = {
@@ -249,7 +253,10 @@ describe('authentication screen accessibility', () => {
   //spec:covers WCAG22-STATUS: 成功の通知も同じ扱いを受ける。失敗だけをライブリージョンに入れる実装は、
   // 「認証結果や送信エラーを」と 2 つ挙げているこの行の片方しか満たさない。
   it('announces a successful submission through a live region without moving focus', async () => {
-    stubGlobal('fetch', mock().mockResolvedValue(response(204)))
+    stubGlobal(
+      'fetch',
+      mock((url: string) => Promise.resolve(brandingOr204(url))),
+    )
     render(<ForgotPasswordPage csrfToken="csrf" />)
     const email = screen.getByLabelText(recoveryT.emailAddress)
     fireEvent.change(email, { target: { value: 'alice@example.com' } })
