@@ -757,7 +757,8 @@ test('admin application lifecycle and agent credential binding work from the bro
     await clickButtonByText(view, 'Bind')
     await waitForText(view, clientID)
 
-    await clickButtonByText(view, 'Unbind')
+    // 束縛の直後は一覧に ID が出ても、再読み込みが終わるまで解除ボタンは無効のままである。
+    await clickEnabledButtonByText(view, 'Unbind')
     await clickSelector(view, '[role="dialog"] button:last-child')
     await waitForText(view, 'No credentials are bound.')
 
