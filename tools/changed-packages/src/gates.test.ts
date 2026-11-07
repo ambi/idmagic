@@ -55,6 +55,7 @@ describe('gatesFor', () => {
   it('lints and tests only the selected packages without the race detector', () => {
     expect(gatesFor(planChange(['backend/jobs/run.go'], PACKAGES), PACKAGES)).toEqual([
       { layer: 'check', command: ['mise', 'run', 'check'] },
+      { layer: 'check', command: ['mise', 'run', 'lint-repo'] },
       { layer: 'go', command: ['golangci-lint', 'run', './backend/jobs'] },
       {
         layer: 'go',

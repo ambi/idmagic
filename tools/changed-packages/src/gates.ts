@@ -13,7 +13,12 @@ export type Gate = { layer: keyof Plan; command: string[] }
  */
 export function gatesFor(plan: Plan, packages: readonly GoPackage[]): Gate[] {
   const gates: Gate[] = []
-  if (plan.check.selected) gates.push({ layer: 'check', command: ['mise', 'run', 'check'] })
+  if (plan.check.selected) {
+    gates.push({ layer: 'check', command: ['mise', 'run', 'check'] })
+    // 秘密情報とワークフローの走査は木全体を 1 秒弱で読む。どの層も持たない `examples/` のような
+    // パスの変更も、ここでしか検査されない。
+    gates.push({ layer: 'check', command: ['mise', 'run', 'lint-repo'] })
+  }
   if (plan.audit.selected)
     gates.push({ layer: 'audit', command: ['mise', 'run', 'audit-dependencies'] })
   if (plan.go.selected && plan.go.all) {
