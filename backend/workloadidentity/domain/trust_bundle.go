@@ -4,8 +4,6 @@ import (
 	"strings"
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -30,30 +28,24 @@ type WorkloadTrustBundle struct {
 	JWKSCachedAt              *time.Time
 }
 
-var workloadTrustBundleSchema = z.Struct(z.Shape{
-	"ID":                        spec.Chars(1, spec.LengthHandle).Required(),
-	"TenantID":                  z.String().Min(1).Required(),
-	"Name":                      spec.Chars(1, spec.LengthName).Required(),
-	"TrustDomain":               spec.Chars(1, spec.LengthDNSName).Required(),
-	"AcceptedAudiences":         z.Slice(z.String().Min(1)).Min(1).Required(),
-	"MaxSubjectTokenTTLSeconds": z.Int().GT(0).Required(),
-	"Profile": z.StringLike[WorkloadTrustBundleProfile]().TestFunc(
-		func(value *WorkloadTrustBundleProfile, _ z.Ctx) bool { return value.Valid() },
-		z.Message("workload trust bundle profile is not in enum"),
-	).Required(),
-	"Status": z.StringLike[WorkloadTrustBundleStatus]().TestFunc(
-		func(value *WorkloadTrustBundleStatus, _ z.Ctx) bool { return value.Valid() },
-		z.Message("workload trust bundle status is not in enum"),
-	).Required(),
-	"CreatedAt": z.Time().Required(),
-})
-
 // Validate は構造的妥当性 (docs/modules/workloadidentity/ WorkloadTrustBundle
 // constraints) を検証する: issuer は https (spiffe では省略可)、spiffe の
 // trust_domain は SPIFFE のトラストドメインの構文、jwks_uri / jwks の少なくとも一方が
 // 必須、accepted_audiences は非空、max_subject_token_ttl_seconds は正。
 func (b WorkloadTrustBundle) Validate() error {
-	if err := spec.Validate(workloadTrustBundleSchema, &b); err != nil {
+	if err := spec.All(
+		spec.Required("ID", b.ID, spec.Chars(1, spec.LengthHandle)),
+		spec.Required("TenantID", b.TenantID),
+		spec.Required("Name", b.Name, spec.Chars(1, spec.LengthName)),
+		spec.Required("TrustDomain", b.TrustDomain, spec.Chars(1, spec.LengthDNSName)),
+		spec.NonEmpty("AcceptedAudiences", b.AcceptedAudiences),
+		spec.Required("MaxSubjectTokenTTLSeconds", b.MaxSubjectTokenTTLSeconds, spec.GreaterThan(0)),
+		spec.Required("Profile", b.Profile,
+			spec.Must(WorkloadTrustBundleProfile.Valid, "workload trust bundle profile is not in enum")),
+		spec.Required("Status", b.Status,
+			spec.Must(WorkloadTrustBundleStatus.Valid, "workload trust bundle status is not in enum")),
+		spec.Required("CreatedAt", b.CreatedAt),
+	); err != nil {
 		return err
 	}
 	if b.IsSPIFFE() && !ValidTrustDomain(b.TrustDomain) {

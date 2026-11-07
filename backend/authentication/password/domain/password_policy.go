@@ -5,8 +5,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	z "github.com/Oudwins/zog"
-
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -50,23 +48,6 @@ func PolicyForTenant(tenant *tenancydomain.Tenant) PasswordPolicySnapshot {
 	return ResolvePasswordPolicy(tenant, DefaultPasswordPolicySnapshot())
 }
 
-func passwordSchemaFor(snap PasswordPolicySnapshot) *z.StringSchema[string] {
-	return z.String().
-		Required(z.Message(string(ViolationTooShort))).
-		TestFunc(
-			func(value *string, _ z.Ctx) bool {
-				return utf8.RuneCountInString(*value) >= snap.MinLength
-			},
-			z.Message(string(ViolationTooShort)),
-		).
-		TestFunc(
-			func(value *string, _ z.Ctx) bool {
-				return utf8.RuneCountInString(*value) <= snap.MaxLength
-			},
-			z.Message(string(ViolationTooLong)),
-		)
-}
-
 // ValidatePassword evaluates against the global defaults, for paths that do not
 // need the tenant policy (such as the weak re-check on the login path).
 //
@@ -82,13 +63,13 @@ func ValidatePassword(plain string) PasswordPolicyResult {
 // reset-password.
 func ValidatePasswordWith(plain string, snap PasswordPolicySnapshot) PasswordPolicyResult {
 	var violations []PasswordPolicyViolation
-	for _, issue := range passwordSchemaFor(snap).Validate(&plain) {
-		switch PasswordPolicyViolation(issue.Message) {
-		case ViolationTooShort:
-			violations = append(violations, ViolationTooShort)
-		case ViolationTooLong:
-			violations = append(violations, ViolationTooLong)
-		}
+	length := utf8.RuneCountInString(plain)
+	// 空のパスワードは短すぎるとだけ報告し、上限とは比べない。
+	if plain == "" || length < snap.MinLength {
+		violations = append(violations, ViolationTooShort)
+	}
+	if plain != "" && length > snap.MaxLength {
+		violations = append(violations, ViolationTooLong)
 	}
 	return PasswordPolicyResult{OK: len(violations) == 0, Violations: violations}
 }

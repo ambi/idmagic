@@ -13,8 +13,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/security/entropy"
 	"github.com/ambi/idmagic/backend/shared/spec"
-
-	z "github.com/Oudwins/zog"
 )
 
 // TrustedDeviceMaxAgeCeilingSeconds は信頼済みデバイスの絶対有効期間に許す上限 (90 日)。
@@ -98,20 +96,17 @@ func (d *TrustedDevice) Rotate(now time.Time, random entropy.Source) (string, er
 	return verifier, nil
 }
 
-var trustedDeviceSchema = z.Struct(z.Shape{
-	"ID":           z.String().UUID().Required(),
-	"TenantID":     z.String().Required(),
-	"UserID":       z.String().Required(),
-	"Selector":     z.String().Required(),
-	"VerifierHash": z.String().Required(),
-	"ExpiresAt":    z.Time().Required(),
-}).TestFunc(func(value any, _ z.Ctx) bool {
-	device, ok := value.(*TrustedDevice)
-	return ok && (device.RevokedAt == nil) == (device.RevokeReason == nil)
-}, z.Message("revoked_at and revoke_reason must be set together"))
-
 func (d TrustedDevice) Validate() error {
-	return spec.Validate(trustedDeviceSchema, &d)
+	return spec.All(
+		spec.Required("ID", d.ID, spec.UUID()),
+		spec.Required("TenantID", d.TenantID),
+		spec.Required("UserID", d.UserID),
+		spec.Required("Selector", d.Selector),
+		spec.Required("VerifierHash", d.VerifierHash),
+		spec.Required("ExpiresAt", d.ExpiresAt),
+		spec.Condition((d.RevokedAt == nil) == (d.RevokeReason == nil),
+			"revoked_at and revoke_reason must be set together"),
+	)
 }
 
 // NewTrustedDevice は新しい信頼済みデバイスと、cookie に載せる平文の資格情報を作る。

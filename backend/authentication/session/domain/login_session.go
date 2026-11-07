@@ -7,8 +7,6 @@ import (
 
 	authndomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-
-	z "github.com/Oudwins/zog"
 )
 
 // LoginPendingPurpose は AuthenticationContext.PendingPurpose と型を共有するため、
@@ -79,25 +77,22 @@ func (s *LoginSession) Touch(now time.Time) bool {
 	return true
 }
 
-var loginSessionSchema = z.Struct(z.Shape{
-	"ID":        z.String().UUID().Required(),
-	"UserID":    z.String().Required(),
-	"AMR":       z.Slice(z.String()).Min(1).Required(),
-	"ACR":       z.String().Required(),
-	"ExpiresAt": z.Time().Required(),
-}).TestFunc(func(value any, _ z.Ctx) bool {
-	sess, ok := value.(*LoginSession)
-	return ok && (sess.RevokedAt == nil) == (sess.RevokeReason == nil)
-}, z.Message("revoked_at and revoke_reason must be set together"))
-
 func (s LoginSession) Validate() error {
-	// 語彙の検査だけスキーマの外に置く。zog の Message は固定文字列なので、語彙の外の値を
-	// 名指す error を組み立てられない。拒否が何を拒否したのか言えることは、認証要素を
-	// 足す側にとって「amr が不正」より役に立つ (RFC8176-AMR-VOCABULARY)。
+	// 語彙の外の値は他の違反より先に、値を名指して拒否する。拒否が何を拒否したのか
+	// 言えることは、認証要素を足す側にとって「amr が不正」より役に立つ
+	// (RFC8176-AMR-VOCABULARY)。
 	if unknown := authndomain.UnknownAMRValues(s.AMR); len(unknown) > 0 {
 		return fmt.Errorf("amr holds values outside the declared vocabulary: %s", strings.Join(unknown, ", "))
 	}
-	return spec.Validate(loginSessionSchema, &s)
+	return spec.All(
+		spec.Required("ID", s.ID, spec.UUID()),
+		spec.Required("UserID", s.UserID),
+		spec.NonEmpty("AMR", s.AMR),
+		spec.Required("ACR", s.ACR),
+		spec.Required("ExpiresAt", s.ExpiresAt),
+		spec.Condition((s.RevokedAt == nil) == (s.RevokeReason == nil),
+			"revoked_at and revoke_reason must be set together"),
+	)
 }
 
 type LoginRequest struct {
@@ -107,12 +102,10 @@ type LoginRequest struct {
 	Csrf      string `json:"csrf"`
 }
 
-var loginRequestSchema = z.Struct(z.Shape{
-	"RequestID": z.String().UUID().Required(),
-	"Username":  z.String().Required(),
-	"Password":  z.String().Required(),
-})
-
 func (r LoginRequest) Validate() error {
-	return spec.Validate(loginRequestSchema, &r)
+	return spec.All(
+		spec.Required("RequestID", r.RequestID, spec.UUID()),
+		spec.Required("Username", r.Username),
+		spec.Required("Password", r.Password),
+	)
 }

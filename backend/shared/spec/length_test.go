@@ -5,8 +5,6 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
-
-	z "github.com/Oudwins/zog"
 )
 
 type lengthSubject struct {
@@ -15,19 +13,15 @@ type lengthSubject struct {
 	PreferredUsername string
 }
 
-func lengthSchema() *z.StructSchema {
-	return z.Struct(z.Shape{
-		"Name":              Chars(1, LengthName).Required(),
-		"Description":       CharsAtMost(LengthDescription),
-		"PreferredUsername": CharsAtMost(LengthName),
-	})
-}
-
 func validateLength(subject lengthSubject) error {
-	return Validate(lengthSchema(), &subject)
+	return All(
+		Required("Name", subject.Name, Chars(1, LengthName)),
+		Optional("Description", subject.Description, CharsAtMost(LengthDescription)),
+		Optional("PreferredUsername", subject.PreferredUsername, CharsAtMost(LengthName)),
+	)
 }
 
-// zog の Max は UTF-8 バイト数を数えるため、この 3 例はいずれも byte 単位では
+// len は UTF-8 バイト数を数えるため、この 3 例はいずれも byte 単位では
 // 上限を超える。コードポイントで数えている限り通らなければならない。
 //
 //spec:covers REQ-SYSTEM-028: 1、3、4 バイトの文字を上限の数だけ並べた値を、コードポイントで数えて受け付ける。
@@ -112,9 +106,7 @@ func TestLengthViolationIsTyped(t *testing.T) {
 // 長さ以外の検証失敗まで 422 になると、保存済みデータの破損がサーバの不具合では
 // なく利用者入力の誤りに見えてしまう。型を分けたままにする。
 func TestNonLengthViolationIsNotTyped(t *testing.T) {
-	schema := z.Struct(z.Shape{"Name": z.String().OneOf([]string{"allowed"}).Required()})
-	subject := struct{ Name string }{Name: "other"}
-	err := Validate(schema, &subject)
+	err := All(Required("Name", "other", OneOf("allowed")))
 	var lengthErr *LengthError
 	if err == nil || errors.As(err, &lengthErr) {
 		t.Fatalf("expected a plain error, got %T %v", err, err)

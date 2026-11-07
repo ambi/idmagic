@@ -25,7 +25,7 @@ func TestCompleteLogin(t *testing.T) {
 	}
 
 	now := time.Now().UTC()
-	reqID := "11111111-2222-3333-4444-555555555555"
+	reqID := "11111111-2222-4333-8444-555555555555"
 
 	t.Run("Succeeds", func(t *testing.T) {
 		req := &domain.AuthorizationRequest{

@@ -3,8 +3,6 @@ package domain
 import (
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -20,21 +18,18 @@ type AgentRevocationEpoch struct {
 	SourceEventID *string
 }
 
-var agentRevocationEpochSchema = z.Struct(z.Shape{
-	"AgentID":  z.String().Min(1).Required(),
-	"TenantID": z.String().Min(1).Required(),
-	"Epoch":    z.Time().Required(),
-	"Reason": z.StringLike[RevocationReason]().TestFunc(
-		func(value *RevocationReason, _ z.Ctx) bool { return value.Valid() },
-		z.Message("revocation reason is not in enum"),
-	).Required(),
-	"AdvancedAt": z.Time().Required(),
-})
-
 // Validate は構造的妥当性 (docs/modules/sharedsignals/ AgentRevocationEpoch) を検証する。
 func (e AgentRevocationEpoch) Validate() error {
-	return spec.Validate(agentRevocationEpochSchema, &e)
+	return spec.All(
+		spec.Required("AgentID", e.AgentID),
+		spec.Required("TenantID", e.TenantID),
+		spec.Required("Epoch", e.Epoch),
+		spec.Required("Reason", e.Reason, revocationReasonInEnum),
+		spec.Required("AdvancedAt", e.AdvancedAt),
+	)
 }
+
+var revocationReasonInEnum = spec.Must(RevocationReason.Valid, "revocation reason is not in enum")
 
 // Supersedes は、指定した issued_at (access token の iat) が本 epoch より前かどうかを
 // 判定する。true なら当該 token は revoked とみなす (fail-closed、境界は issuedAt ==
@@ -55,20 +50,15 @@ type UserRevocationEpoch struct {
 	SourceEventID *string
 }
 
-var userRevocationEpochSchema = z.Struct(z.Shape{
-	"UserID":   z.String().Min(1).Required(),
-	"TenantID": z.String().Min(1).Required(),
-	"Epoch":    z.Time().Required(),
-	"Reason": z.StringLike[RevocationReason]().TestFunc(
-		func(value *RevocationReason, _ z.Ctx) bool { return value.Valid() },
-		z.Message("revocation reason is not in enum"),
-	).Required(),
-	"AdvancedAt": z.Time().Required(),
-})
-
 // Validate は構造的妥当性を検証する。
 func (e UserRevocationEpoch) Validate() error {
-	return spec.Validate(userRevocationEpochSchema, &e)
+	return spec.All(
+		spec.Required("UserID", e.UserID),
+		spec.Required("TenantID", e.TenantID),
+		spec.Required("Epoch", e.Epoch),
+		spec.Required("Reason", e.Reason, revocationReasonInEnum),
+		spec.Required("AdvancedAt", e.AdvancedAt),
+	)
 }
 
 // Supersedes は、issuedAt が本 epoch より前かどうかを判定する。境界は AgentRevocationEpoch と同じである。

@@ -4,8 +4,6 @@ import (
 	"slices"
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -26,25 +24,17 @@ type SsfStream struct {
 	FirstFailureAt      *time.Time
 }
 
-var ssfStreamSchema = z.Struct(z.Shape{
-	"ID":       z.String().Min(1).Required(),
-	"TenantID": z.String().Min(1).Required(),
-	"Direction": z.StringLike[SsfStreamDirection]().TestFunc(
-		func(value *SsfStreamDirection, _ z.Ctx) bool { return value.Valid() },
-		z.Message("ssf stream direction is not in enum"),
-	).Required(),
-	"Status": z.StringLike[SsfStreamStatus]().TestFunc(
-		func(value *SsfStreamStatus, _ z.Ctx) bool { return value.Valid() },
-		z.Message("ssf stream status is not in enum"),
-	).Required(),
-	"CreatedAt": z.Time().Required(),
-})
-
 // Validate は構造的妥当性 (docs/modules/sharedsignals/ SsfStream) を検証する:
 // event_types と audit_event_types の少なくとも一方は非空で、event_types の各要素は
 // CaepEventType として有効でなければならない。
 func (s SsfStream) Validate() error {
-	if err := spec.Validate(ssfStreamSchema, &s); err != nil {
+	if err := spec.All(
+		spec.Required("ID", s.ID),
+		spec.Required("TenantID", s.TenantID),
+		spec.Required("Direction", s.Direction, spec.Must(SsfStreamDirection.Valid, "ssf stream direction is not in enum")),
+		spec.Required("Status", s.Status, spec.Must(SsfStreamStatus.Valid, "ssf stream status is not in enum")),
+		spec.Required("CreatedAt", s.CreatedAt),
+	); err != nil {
 		return err
 	}
 	if len(s.EventTypes) == 0 && len(s.AuditEventTypes) == 0 {

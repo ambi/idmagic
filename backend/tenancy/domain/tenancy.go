@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -92,7 +90,21 @@ type Tenant struct {
 }
 
 func (t Tenant) Validate() error {
-	return spec.Validate(tenantSchema, &t)
+	return spec.All(
+		spec.Required("ID", t.ID),
+		spec.Required("Realm", t.Realm, spec.Chars(1, spec.LengthDNSLabel), spec.Must(func(realm string) bool {
+			return tenantIDPattern.MatchString(realm) && realm != "admin"
+		}, "tenant realm must be a URL-safe slug and must not be admin")),
+		spec.Required("DisplayName", t.DisplayName, spec.Chars(1, spec.LengthDisplayName)),
+		spec.Required("Status", t.Status, spec.Must(TenantStatus.Valid, "tenant status is not in enum")),
+		spec.OptionalPtr("DefaultLocale", t.DefaultLocale,
+			spec.Must(localeTagPattern.MatchString, "tenant default locale must be a two-letter language tag")),
+		// ゼロ値は Path として読むので許す (EffectiveEndpointStyle)。
+		spec.Optional("EndpointStyle", t.EndpointStyle,
+			spec.Must(TenantEndpointStyle.Valid, "tenant endpoint style is not in enum")),
+		spec.Required("CreatedAt", t.CreatedAt),
+		spec.Required("UpdatedAt", t.UpdatedAt),
+	)
 }
 
 // PasswordPolicyOverride holds a tenant's overrides of the product PasswordPolicy.
@@ -345,32 +357,6 @@ func (t Tenant) EffectiveEndpointStyle() TenantEndpointStyle {
 // localeTagPattern は DefaultLocale の形 (2 文字の言語タグ)。
 var localeTagPattern = regexp.MustCompile(`^[a-z]{2}$`)
 
-var tenantSchema = z.Struct(z.Shape{
-	"ID": z.String().Min(1).Required(),
-	"Realm": spec.Chars(1, spec.LengthDNSLabel).TestFunc(
-		func(value *string, _ z.Ctx) bool {
-			return value != nil && tenantIDPattern.MatchString(*value) && *value != "admin"
-		},
-		z.Message("tenant realm must be a URL-safe slug and must not be admin"),
-	).Required(),
-	"DisplayName": spec.Chars(1, spec.LengthDisplayName).Required(),
-	"Status": z.StringLike[TenantStatus]().TestFunc(
-		func(value *TenantStatus, _ z.Ctx) bool { return value.Valid() },
-		z.Message("tenant status is not in enum"),
-	).Required(),
-	"DefaultLocale": z.Ptr(z.String().TestFunc(
-		func(value *string, _ z.Ctx) bool { return value != nil && localeTagPattern.MatchString(*value) },
-		z.Message("tenant default locale must be a two-letter language tag"),
-	)),
-	// ゼロ値は Path として読むので許す (EffectiveEndpointStyle)。
-	"EndpointStyle": z.StringLike[TenantEndpointStyle]().TestFunc(
-		func(value *TenantEndpointStyle, _ z.Ctx) bool { return *value == "" || value.Valid() },
-		z.Message("tenant endpoint style is not in enum"),
-	),
-	"CreatedAt": z.Time().Required(),
-	"UpdatedAt": z.Time().Required(),
-})
-
 // TenantBrandingAssetKind は TenantBranding が持つ画像アセットの種別 (wi-89)。
 // SCL `TenantBrandingAssetKind` の双子定義。
 type TenantBrandingAssetKind string
@@ -413,7 +399,19 @@ type TenantBranding struct {
 }
 
 func (b TenantBranding) Validate() error {
-	if err := spec.Validate(tenantBrandingSchema, &b); err != nil {
+	if err := spec.All(
+		spec.Required("TenantID", b.TenantID),
+		spec.Optional("ProductName", b.ProductName, spec.CharsAtMost(spec.LengthChromeLabel)),
+		spec.Optional("PrimaryColor", b.PrimaryColor,
+			spec.Must(validTenantBrandingColor, "primary_color must be #rrggbb")),
+		spec.Optional("AccentColor", b.AccentColor,
+			spec.Must(validTenantBrandingColor, "accent_color must be #rrggbb")),
+		spec.Nested("FooterLink1", b.FooterLink1.lengthIssues()),
+		spec.Nested("FooterLink2", b.FooterLink2.lengthIssues()),
+		spec.Optional("FooterText", b.FooterText, spec.CharsAtMost(spec.LengthChromeText)),
+		spec.Required("CreatedAt", b.CreatedAt),
+		spec.Required("UpdatedAt", b.UpdatedAt),
+	); err != nil {
 		return err
 	}
 	if !validTenantFooterLink(b.FooterLink1) || !validTenantFooterLink(b.FooterLink2) {
@@ -447,32 +445,14 @@ func validTenantBrandingLink(value string) bool {
 	return value == "" || tenantBrandingHTTPSPattern.MatchString(value)
 }
 
-var tenantBrandingSchema = z.Struct(z.Shape{
-	"TenantID":         z.String().Min(1).Required(),
-	"ProductName":      spec.CharsAtMost(spec.LengthChromeLabel),
-	"LogoObjectKey":    z.String(),
-	"LogoURL":          z.String(),
-	"FaviconObjectKey": z.String(),
-	"FaviconURL":       z.String(),
-	"PrimaryColor": z.String().TestFunc(
-		func(value *string, _ z.Ctx) bool { return value != nil && validTenantBrandingColor(*value) },
-		z.Message("primary_color must be #rrggbb"),
-	),
-	"AccentColor": z.String().TestFunc(
-		func(value *string, _ z.Ctx) bool { return value != nil && validTenantBrandingColor(*value) },
-		z.Message("accent_color must be #rrggbb"),
-	),
-	"FooterLink1": tenantFooterLinkSchema,
-	"FooterLink2": tenantFooterLinkSchema,
-	"FooterText":  spec.CharsAtMost(spec.LengthChromeText),
-	"CreatedAt":   z.Time().Required(),
-	"UpdatedAt":   z.Time().Required(),
-})
-
-var tenantFooterLinkSchema = z.Struct(z.Shape{
-	"Label": spec.CharsAtMost(spec.LengthChromeLabel),
-	"URL":   spec.CharsAtMost(spec.LengthURI),
-})
+// lengthIssues はリンクの各欄の上限だけを課す。ラベルと URL の組の検査は
+// validTenantFooterLink が担う。
+func (l TenantFooterLink) lengthIssues() spec.Issues {
+	return append(
+		spec.Optional("Label", l.Label, spec.CharsAtMost(spec.LengthChromeLabel)),
+		spec.Optional("URL", l.URL, spec.CharsAtMost(spec.LengthURI))...,
+	)
+}
 
 func validTenantFooterLink(link TenantFooterLink) bool {
 	if !link.IsSet() {

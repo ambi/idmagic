@@ -1,33 +1,6 @@
 package spec
 
-import (
-	"testing"
-	"time"
-)
-
-func TestZogErrorWrapsIssues(t *testing.T) {
-	if err := ZogError(nil); err != nil {
-		t.Fatalf("ZogError(nil) = %v, want nil", err)
-	}
-	// authorizationRequestSchema.Validate rejects a struct missing every
-	// required field, giving zogError-shaped issues to exercise the wrapper
-	// with real content.
-	issues := authorizationRequestSchema.Validate(&struct {
-		ID                  string
-		State               AuthorizationCodeFlowState
-		ClientID            string
-		RedirectURI         string
-		ResponseType        ResponseType
-		CodeChallenge       string
-		CodeChallengeMethod CodeChallengeMethod
-		MaxAge              *int
-		CreatedAt           time.Time
-		ExpiresAt           time.Time
-	}{})
-	if wrapped := ZogError(issues); wrapped == nil {
-		t.Fatal("expected ZogError to wrap validation issues into a non-nil error")
-	}
-}
+import "testing"
 
 func TestEnumValidMethods(t *testing.T) {
 	t.Run("ClientType", func(t *testing.T) {

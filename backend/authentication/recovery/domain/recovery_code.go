@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-
-	z "github.com/Oudwins/zog"
 )
 
 // RecoveryCode は TOTP / WebAuthn 喪失時の backup recovery code 1 件 (wi-26)。
@@ -17,12 +15,10 @@ type RecoveryCode struct {
 	ConsumedAt  *time.Time `json:"consumed_at,omitempty"`
 }
 
-var recoveryCodeSchema = z.Struct(z.Shape{
-	"UserID":      z.String().Required(),
-	"CodeHash":    z.String().Required(),
-	"GeneratedAt": z.Time().Required(),
-})
-
 func (c RecoveryCode) Validate() error {
-	return spec.Validate(recoveryCodeSchema, &c)
+	return spec.All(
+		spec.Required("UserID", c.UserID),
+		spec.Required("CodeHash", c.CodeHash),
+		spec.Required("GeneratedAt", c.GeneratedAt),
+	)
 }

@@ -4,42 +4,28 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-
-	z "github.com/Oudwins/zog"
 )
 
 type authorizeRequest struct {
-	ClientID            string `zog:"client_id"`
-	RedirectURI         string `zog:"redirect_uri"`
-	ResponseType        string `zog:"response_type"`
-	Scope               string `zog:"scope"`
-	StateParam          string `zog:"state"`
-	Nonce               string `zog:"nonce"`
-	CodeChallenge       string `zog:"code_challenge"`
-	CodeChallengeMethod string `zog:"code_challenge_method"`
-	Prompt              string `zog:"prompt"`
-	MaxAge              *int   `zog:"max_age"`
-	AcrValues           string `zog:"acr_values"`
+	ClientID            string
+	RedirectURI         string
+	ResponseType        string
+	Scope               string
+	StateParam          string
+	Nonce               string
+	CodeChallenge       string
+	CodeChallengeMethod string
+	Prompt              string
+	MaxAge              *int
+	AcrValues           string
 }
-
-var authorizeRequestSchema = z.Struct(z.Shape{
-	"clientID": z.String().Required(),
-	// 省けるかは登録件数と openid の有無で決まるので、use case が判断する。
-	"redirectURI":         z.String().URL(),
-	"responseType":        z.String().Required(),
-	"scope":               z.String(),
-	"stateParam":          z.String(),
-	"nonce":               z.String(),
-	"codeChallenge":       z.String().Required(),
-	"codeChallengeMethod": z.String().Required(),
-	"prompt":              z.String(),
-	"maxAge":              z.Ptr(z.Int().GTE(0)),
-	"AcrValues":           z.String(),
-})
 
 var singleValueAuthorizationParameters = map[string]struct{}{
 	"client_id": {}, "redirect_uri": {}, "response_type": {}, "scope": {}, "state": {}, "nonce": {},
@@ -56,17 +42,48 @@ func validateAuthorizationParameterCardinality(values url.Values) error {
 	return nil
 }
 
+// parseAuthorizeRequest は要求に現れた parameter だけを読む。必須の判定は parameter の
+// 有無で行い、空の値は現れたものとして扱う。
 func parseAuthorizeRequest(values url.Values) (authorizeRequest, error) {
 	if err := validateAuthorizationParameterCardinality(values); err != nil {
 		return authorizeRequest{}, err
 	}
-	data := make(map[string]string, len(values))
-	for key := range values {
-		data[key] = values.Get(key)
+	var issues validationIssues
+	required := func(key string) string {
+		if !values.Has(key) {
+			issues.add(key, "is required")
+		}
+		return values.Get(key)
 	}
-	var request authorizeRequest
-	err := zogError(authorizeRequestSchema.Parse(data, &request))
-	return request, err
+	request := authorizeRequest{
+		ClientID:            required("client_id"),
+		RedirectURI:         values.Get("redirect_uri"),
+		ResponseType:        required("response_type"),
+		Scope:               values.Get("scope"),
+		StateParam:          values.Get("state"),
+		Nonce:               values.Get("nonce"),
+		CodeChallenge:       required("code_challenge"),
+		CodeChallengeMethod: required("code_challenge_method"),
+		Prompt:              values.Get("prompt"),
+		AcrValues:           values.Get("acr_values"),
+	}
+	// 省けるかは登録件数と openid の有無で決まるので、use case が判断する。
+	if values.Has("redirect_uri") && !spec.IsURL(request.RedirectURI) {
+		issues.add("redirect_uri", "must be a valid URL")
+	}
+	if values.Has("max_age") {
+		maxAge, err := strconv.Atoi(values.Get("max_age"))
+		switch {
+		case err != nil:
+			issues.add("max_age", "number is invalid")
+		case maxAge < 0:
+			request.MaxAge = &maxAge
+			issues.add("max_age", "number must be greater than or equal to 0")
+		default:
+			request.MaxAge = &maxAge
+		}
+	}
+	return request, issues.err()
 }
 
 type registerClientRequest struct {
@@ -89,74 +106,99 @@ type registerClientRequest struct {
 	FrontChannelLogoutSessionRequired bool           `json:"frontchannel_logout_session_required"`
 }
 
-var registerClientRequestSchema = z.Struct(z.Shape{
-	"ClientName":   spec.CharsAtMost(spec.LengthDisplayName),
-	"ClientType":   z.String().OneOf([]string{"public", "confidential"}),
-	"RedirectURIs": z.Slice(z.String().URL()).Min(1),
-	"GrantTypes": z.Slice(z.String().TestFunc(func(value *string, _ z.Ctx) bool {
-		return spec.GrantType(*value).Valid()
-	}, z.Message("grant_type is not in enum"))),
-	"ResponseTypes": z.Slice(z.String().OneOf([]string{"code"})),
-	"TokenEndpointAuthMethod": z.String().OneOf([]string{
+var (
+	registrableClientTypes = []string{"public", "confidential"}
+	registrableAuthMethods = []string{
 		"client_secret_basic",
 		"client_secret_post",
 		"private_key_jwt",
 		"tls_client_auth",
 		"none",
-	}),
-	"JwksURI":                z.Ptr(jwksURI()),
-	"TlsClientAuthSubjectDN": z.Ptr(z.String().Min(1)),
-	"FapiProfile":            z.String().OneOf([]string{"none", "fapi_2_security_profile"}),
-	"BackChannelLogoutURI":   z.Ptr(z.String().URL()),
-	"FrontChannelLogoutURI":  z.Ptr(z.String().URL()),
-}).TestFunc(func(value any, _ z.Ctx) bool {
-	request, ok := value.(*registerClientRequest)
-	return ok && (request.TokenEndpointAuthMethod != "tls_client_auth" ||
-		request.TlsClientAuthSubjectDN != nil && *request.TlsClientAuthSubjectDN != "")
-}, z.Message("tls_client_auth requires tls_client_auth_subject_dn"))
+	}
+	registrableFapiProfiles = []string{"none", "fapi_2_security_profile"}
+)
 
+// validateRegisterClientRequest は空の値を未指定として扱い、指定された値だけを検査する。
+// 違反は Go のフィールド名で報告する。
 func validateRegisterClientRequest(request *registerClientRequest) error {
-	return zogError(registerClientRequestSchema.Validate(request))
+	var issues validationIssues
+	if utf8.RuneCountInString(request.ClientName) > spec.LengthDisplayName {
+		issues.add("ClientName", fmt.Sprintf("must be at most %d characters", spec.LengthDisplayName))
+	}
+	issues.oneOf("ClientType", request.ClientType, registrableClientTypes)
+	for i, uri := range request.RedirectURIs {
+		if uri != "" && !spec.IsURL(uri) {
+			issues.add(fmt.Sprintf("RedirectURIs[%d]", i), "must be a valid URL")
+		}
+	}
+	for i, grant := range request.GrantTypes {
+		if grant != "" && !spec.GrantType(grant).Valid() {
+			issues.add(fmt.Sprintf("GrantTypes[%d]", i), "grant_type is not in enum")
+		}
+	}
+	for i, responseType := range request.ResponseTypes {
+		issues.oneOf(fmt.Sprintf("ResponseTypes[%d]", i), responseType, []string{"code"})
+	}
+	issues.oneOf("TokenEndpointAuthMethod", request.TokenEndpointAuthMethod, registrableAuthMethods)
+	if uri := deref(request.JwksURI); uri != "" {
+		if !spec.IsURL(uri) {
+			issues.add("JwksURI", "must be a valid URL")
+		}
+		if !isHTTPSWithoutUserinfoOrFragment(uri) {
+			issues.add("JwksURI", "jwks_uri must be https and must not contain userinfo or fragment")
+		}
+	}
+	issues.oneOf("FapiProfile", request.FapiProfile, registrableFapiProfiles)
+	for field, uri := range map[string]*string{
+		"BackChannelLogoutURI":  request.BackChannelLogoutURI,
+		"FrontChannelLogoutURI": request.FrontChannelLogoutURI,
+	} {
+		if value := deref(uri); value != "" && !spec.IsURL(value) {
+			issues.add(field, "must be a valid URL")
+		}
+	}
+	if request.TokenEndpointAuthMethod == "tls_client_auth" && deref(request.TlsClientAuthSubjectDN) == "" {
+		issues.add("", "tls_client_auth requires tls_client_auth_subject_dn")
+	}
+	return issues.err()
 }
 
-func jwksURI() *z.StringSchema[string] {
-	return z.String().URL().TestFunc(
-		func(value *string, _ z.Ctx) bool {
-			parsed, err := url.Parse(*value)
-			if err != nil {
-				return false
-			}
-			return parsed.Scheme == "https" && parsed.User == nil && parsed.Fragment == ""
-		},
-		z.Message("jwks_uri must be https and must not contain userinfo or fragment"),
-	)
+func isHTTPSWithoutUserinfoOrFragment(value string) bool {
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return false
+	}
+	return parsed.Scheme == "https" && parsed.User == nil && parsed.Fragment == ""
 }
 
-func zogError(issues z.ZogIssueList) error {
-	if len(issues) == 0 {
+func deref(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+// validationIssues は「フィールド: 文言」を集め、辞書順に「; 」で結んだ error にする。
+// フィールド名は呼び出し側が渡した綴りのまま使う。
+type validationIssues []string
+
+func (v *validationIssues) add(field, message string) {
+	if field != "" {
+		message = fmt.Sprintf("%s: %s", field, message)
+	}
+	*v = append(*v, message)
+}
+
+func (v *validationIssues) oneOf(field, value string, options []string) {
+	if value != "" && !slices.Contains(options, value) {
+		v.add(field, fmt.Sprintf("string must be one of %v", options))
+	}
+}
+
+func (v validationIssues) err() error {
+	if len(v) == 0 {
 		return nil
 	}
-
-	messages := make([]string, 0, len(issues))
-	for _, issue := range issues {
-		if issue == nil {
-			continue
-		}
-		message := issue.Message
-		if message == "" && issue.Err != nil {
-			message = issue.Err.Error()
-		}
-		if message == "" {
-			message = issue.Code
-		}
-		if path := issue.PathString(); path != "" {
-			message = fmt.Sprintf("%s: %s", path, message)
-		}
-		messages = append(messages, message)
-	}
-	if len(messages) == 0 {
-		return errors.New("validation failed")
-	}
-	sort.Strings(messages)
-	return errors.New(strings.Join(messages, "; "))
+	sort.Strings(v)
+	return errors.New(strings.Join(v, "; "))
 }

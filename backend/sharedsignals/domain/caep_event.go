@@ -3,8 +3,6 @@ package domain
 import (
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -22,14 +20,12 @@ const (
 	SsfSubjectTypeUser  = "User"
 )
 
-var ssfSubjectSchema = z.Struct(z.Shape{
-	"SubjectType": z.String().OneOf([]string{SsfSubjectTypeAgent, SsfSubjectTypeUser}).Required(),
-	"TenantID":    z.String().Min(1).Required(),
-	"PrincipalID": z.String().Min(1).Required(),
-})
-
 func (s SsfSubject) Validate() error {
-	return spec.Validate(ssfSubjectSchema, &s)
+	return spec.All(
+		spec.Required("SubjectType", s.SubjectType, spec.OneOf(SsfSubjectTypeAgent, SsfSubjectTypeUser)),
+		spec.Required("TenantID", s.TenantID),
+		spec.Required("PrincipalID", s.PrincipalID),
+	)
 }
 
 // InitiatingEntity は CaepEvent.InitiatingEntity の取りうる値。
@@ -58,20 +54,13 @@ type CaepEvent struct {
 	InitiatingEntity InitiatingEntity
 }
 
-var caepEventSchema = z.Struct(z.Shape{
-	"EventType": z.StringLike[CaepEventType]().TestFunc(
-		func(value *CaepEventType, _ z.Ctx) bool { return value.Valid() },
-		z.Message("caep event type is not in enum"),
-	).Required(),
-	"EventTimestamp": z.Time().Required(),
-	"InitiatingEntity": z.StringLike[InitiatingEntity]().TestFunc(
-		func(value *InitiatingEntity, _ z.Ctx) bool { return value.Valid() },
-		z.Message("initiating entity is not in enum"),
-	).Required(),
-})
-
 func (e CaepEvent) Validate() error {
-	if err := spec.Validate(caepEventSchema, &e); err != nil {
+	if err := spec.All(
+		spec.Required("EventType", e.EventType, spec.Must(CaepEventType.Valid, "caep event type is not in enum")),
+		spec.Required("EventTimestamp", e.EventTimestamp),
+		spec.Required("InitiatingEntity", e.InitiatingEntity,
+			spec.Must(InitiatingEntity.Valid, "initiating entity is not in enum")),
+	); err != nil {
 		return err
 	}
 	return e.Subject.Validate()

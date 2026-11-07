@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-
-	z "github.com/Oudwins/zog"
 )
 
 // WebAuthnCredential は登録済みの WebAuthn / Passkey credential 1 件 (wi-26)。
@@ -25,15 +23,14 @@ type WebAuthnCredential struct {
 	LastUsedAt     *time.Time `json:"last_used_at,omitempty"`
 }
 
-var webAuthnCredentialSchema = z.Struct(z.Shape{
-	// CredentialID は主キーそのもの。WebAuthn は credential ID を 1023 バイト
-	// 以下と定めるので base64url で 1364 文字になり、上限は余白を残した数である。
-	"CredentialID": spec.KeyString(spec.LengthWebAuthnCredentialID, spec.BytesWebAuthnCredentialID).Required(),
-	"UserID":       z.String().Required(),
-	"PublicKey":    z.String().Required(),
-	"CreatedAt":    z.Time().Required(),
-})
-
 func (c WebAuthnCredential) Validate() error {
-	return spec.Validate(webAuthnCredentialSchema, &c)
+	return spec.All(
+		// CredentialID は主キーそのもの。WebAuthn は credential ID を 1023 バイト
+		// 以下と定めるので base64url で 1364 文字になり、上限は余白を残した数である。
+		spec.Required("CredentialID", c.CredentialID,
+			spec.KeyString(spec.LengthWebAuthnCredentialID, spec.BytesWebAuthnCredentialID)),
+		spec.Required("UserID", c.UserID),
+		spec.Required("PublicKey", c.PublicKey),
+		spec.Required("CreatedAt", c.CreatedAt),
+	)
 }

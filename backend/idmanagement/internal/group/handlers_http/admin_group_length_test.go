@@ -10,7 +10,7 @@ import (
 const groupNameLimit = 100
 
 // 上限はコードポイント数なので、1 文字 3 バイトの日本語でも仕様どおり 100 文字
-// 入る。zog の Max はバイト数を数えるため、以前はここが 34 文字で 500 になった。
+// 入る。バイト数で数えると 34 文字目で拒否してしまう。
 func TestAdminGroupAPIAcceptsMultibyteNameUpToTheLimit(t *testing.T) {
 	for _, tc := range []struct {
 		label string

@@ -1,9 +1,8 @@
 package domain
 
 // IdManagement モジュールの User / 属性モデル。
-// 組み込み属性カタログと claim 射影は attributes.go が持つ。field validation の
-// zog schema は本パッケージが所有し、`shared/spec` の Validate/ZogError 汎用ラッパーのみ
-// 再利用する。
+// 組み込み属性カタログと claim 射影は attributes.go が持つ。フィールドの検証規則は
+// 本パッケージが所有し、`shared/spec` の汎用の規則だけを再利用する。
 
 import (
 	"fmt"
@@ -12,9 +11,6 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -43,21 +39,17 @@ type User struct {
 	UpdatedAt         time.Time                 `json:"updated_at"`
 }
 
-var userSchema = z.Struct(z.Shape{
-	"ID":                z.String().Required(),
-	"PreferredUsername": spec.Chars(1, spec.LengthName).Required(),
-	"PasswordHash":      z.String(),
-	"Name":              z.Ptr(spec.CharsAtMost(spec.LengthDisplayName)),
-	"GivenName":         z.Ptr(spec.CharsAtMost(spec.LengthName)),
-	"FamilyName":        z.Ptr(spec.CharsAtMost(spec.LengthName)),
-	"Email":             z.Ptr(spec.CharsAtMost(spec.LengthEmail).Email()),
-	"Roles":             z.Slice(z.String().Min(1)),
-	"CreatedAt":         z.Time().Required(),
-	"UpdatedAt":         z.Time().Required(),
-})
-
 func (u User) Validate() error {
-	if err := spec.Validate(userSchema, &u); err != nil {
+	if err := spec.All(
+		spec.Required("ID", u.ID),
+		spec.Required("PreferredUsername", u.PreferredUsername, spec.Chars(1, spec.LengthName)),
+		spec.OptionalPtr("Name", u.Name, spec.CharsAtMost(spec.LengthDisplayName)),
+		spec.OptionalPtr("GivenName", u.GivenName, spec.CharsAtMost(spec.LengthName)),
+		spec.OptionalPtr("FamilyName", u.FamilyName, spec.CharsAtMost(spec.LengthName)),
+		spec.OptionalPtr("Email", u.Email, spec.CharsAtMost(spec.LengthEmail), spec.Email()),
+		spec.Required("CreatedAt", u.CreatedAt),
+		spec.Required("UpdatedAt", u.UpdatedAt),
+	); err != nil {
 		return err
 	}
 	if err := u.Lifecycle.Validate(); err != nil {
@@ -267,28 +259,6 @@ type UserAttributeDef struct {
 	PII        bool                     `json:"pii"` // 省略時は PII 扱い (hash 化) が安全側 default
 }
 
-var userAttributeDefSchema = z.Struct(z.Shape{
-	"Key": z.String().TestFunc(
-		func(value *string, _ z.Ctx) bool {
-			return value != nil && attrKeyPattern.MatchString(*value)
-		},
-		z.Message("attribute key must be snake_case starting with a letter"),
-	).Required(),
-	"Type": z.StringLike[idmdomain.AttributeType]().TestFunc(
-		func(value *idmdomain.AttributeType, _ z.Ctx) bool { return value.Valid() },
-		z.Message("attribute type is not in enum"),
-	).Required(),
-	"Label":     spec.CharsAtMost(spec.LengthName),
-	"ClaimName": z.Ptr(spec.Chars(1, spec.LengthName)),
-	// scope 名は語彙的な識別子なので Handle の区分に寄せる。従来の 60 から
-	// 広がる方向なので、これまで通っていた定義は通り続ける。
-	"OIDCScope": z.Ptr(spec.Chars(1, spec.LengthHandle)),
-	"Visibility": z.StringLike[idmdomain.AttrVisibility]().TestFunc(
-		func(value *idmdomain.AttrVisibility, _ z.Ctx) bool { return value.Valid() },
-		z.Message("attribute visibility is not in enum"),
-	).Required(),
-})
-
 func (d UserAttributeDef) Validate() error {
 	if d.WriteAuthority != "" && d.WriteAuthority != AttributeAuthorityUpstream && d.WriteAuthority != AttributeAuthorityLocal {
 		return fmt.Errorf("attribute %q: invalid write authority %q", d.Key, d.WriteAuthority)
@@ -296,7 +266,17 @@ func (d UserAttributeDef) Validate() error {
 	if d.WriteAuthority == AttributeAuthorityLocal && coreUserAttribute(d.Key) {
 		return fmt.Errorf("attribute %q: core attributes cannot be local-only", d.Key)
 	}
-	if err := spec.Validate(userAttributeDefSchema, &d); err != nil {
+	if err := spec.All(
+		spec.Required("Key", d.Key,
+			spec.Must(attrKeyPattern.MatchString, "attribute key must be snake_case starting with a letter")),
+		spec.Required("Type", d.Type, spec.Must(idmdomain.AttributeType.Valid, "attribute type is not in enum")),
+		spec.Optional("Label", d.Label, spec.CharsAtMost(spec.LengthName)),
+		spec.OptionalPtr("ClaimName", d.ClaimName, spec.Chars(1, spec.LengthName)),
+		// scope 名は語彙的な識別子なので Handle の区分に寄せる。
+		spec.OptionalPtr("OIDCScope", d.OIDCScope, spec.Chars(1, spec.LengthHandle)),
+		spec.Required("Visibility", d.Visibility,
+			spec.Must(idmdomain.AttrVisibility.Valid, "attribute visibility is not in enum")),
+	); err != nil {
 		return err
 	}
 	if d.Unique && (d.Type != idmdomain.AttributeTypeString || d.MultiValued) {

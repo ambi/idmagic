@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -75,22 +73,19 @@ func (s GroupMembershipSource) Effective() GroupMembershipSource {
 	return s
 }
 
-var groupSchema = z.Struct(z.Shape{
-	"ID":          spec.Chars(1, spec.LengthHandle).Required(),
-	"TenantID":    z.String().Min(1).Required(),
-	"Name":        spec.Chars(1, spec.LengthName).Required(),
-	"Description": z.Ptr(spec.CharsAtMost(spec.LengthDescription)),
-	"Email":       z.Ptr(spec.CharsAtMost(spec.LengthEmail).Email()),
-	"Roles":       z.Slice(z.String().Min(1)),
-	"CreatedAt":   z.Time().Required(),
-	"UpdatedAt":   z.Time().Required(),
-})
-
 func (g Group) Validate() error {
 	if !g.MembershipType.Valid() {
 		return fmt.Errorf("invalid group membership type %q", g.MembershipType)
 	}
-	if err := spec.Validate(groupSchema, &g); err != nil {
+	if err := spec.All(
+		spec.Required("ID", g.ID, spec.Chars(1, spec.LengthHandle)),
+		spec.Required("TenantID", g.TenantID),
+		spec.Required("Name", g.Name, spec.Chars(1, spec.LengthName)),
+		spec.OptionalPtr("Description", g.Description, spec.CharsAtMost(spec.LengthDescription)),
+		spec.OptionalPtr("Email", g.Email, spec.CharsAtMost(spec.LengthEmail), spec.Email()),
+		spec.Required("CreatedAt", g.CreatedAt),
+		spec.Required("UpdatedAt", g.UpdatedAt),
+	); err != nil {
 		return err
 	}
 	for key, v := range g.Attributes {
@@ -110,12 +105,6 @@ type GroupMember struct {
 	CreatedAt   time.Time             `json:"created_at"`
 }
 
-var groupMemberSchema = z.Struct(z.Shape{
-	"GroupID":   z.String().Min(1).Required(),
-	"UserID":    z.String().Min(1).Required(),
-	"CreatedAt": z.Time().Required(),
-})
-
 func (m GroupMember) Validate() error {
 	if m.Source == "" {
 		m.Source = MembershipSourceManual
@@ -126,7 +115,11 @@ func (m GroupMember) Validate() error {
 	if m.Source == MembershipSourceDynamicRule && m.RuleVersion == nil {
 		return fmt.Errorf("dynamic membership requires rule version")
 	}
-	return spec.Validate(groupMemberSchema, &m)
+	return spec.All(
+		spec.Required("GroupID", m.GroupID),
+		spec.Required("UserID", m.UserID),
+		spec.Required("CreatedAt", m.CreatedAt),
+	)
 }
 
 type DynamicGroupRule struct {
@@ -161,21 +154,14 @@ type GroupAttributeDef struct {
 	Required    bool                    `json:"required"`
 }
 
-var groupAttributeDefSchema = z.Struct(z.Shape{
-	"Key": z.String().TestFunc(
-		func(value *string, _ z.Ctx) bool {
-			return value != nil && groupAttrKeyPattern.MatchString(*value)
-		},
-		z.Message("attribute key must be snake_case starting with a letter"),
-	).Required(),
-	"Type": z.StringLike[idmdomain.AttributeType]().TestFunc(
-		func(value *idmdomain.AttributeType, _ z.Ctx) bool { return value.Valid() },
-		z.Message("attribute type is not in enum"),
-	).Required(),
-	"Label": spec.CharsAtMost(spec.LengthName),
-})
-
-func (d GroupAttributeDef) Validate() error { return spec.Validate(groupAttributeDefSchema, &d) }
+func (d GroupAttributeDef) Validate() error {
+	return spec.All(
+		spec.Required("Key", d.Key,
+			spec.Must(groupAttrKeyPattern.MatchString, "attribute key must be snake_case starting with a letter")),
+		spec.Required("Type", d.Type, spec.Must(idmdomain.AttributeType.Valid, "attribute type is not in enum")),
+		spec.Optional("Label", d.Label, spec.CharsAtMost(spec.LengthName)),
+	)
+}
 
 // TenantGroupAttributeSchema は tenant 単位の Group custom 属性定義集合。User と異なり
 // builtin catalog が無いため、本集合がそのまま実効定義になる。tenant aggregate には

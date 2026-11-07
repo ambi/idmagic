@@ -3,8 +3,6 @@ package domain
 import (
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -22,24 +20,17 @@ type ReceivedSecurityEvent struct {
 	ReflectedAt        *time.Time
 }
 
-var receivedSecurityEventSchema = z.Struct(z.Shape{
-	"ID":       z.String().Min(1).Required(),
-	"TenantID": z.String().Min(1).Required(),
-	"StreamID": z.String().Min(1).Required(),
-	"SetJTI":   z.String().Min(1).Required(),
-	"EventType": z.StringLike[CaepEventType]().TestFunc(
-		func(value *CaepEventType, _ z.Ctx) bool { return value.Valid() },
-		z.Message("caep event type is not in enum"),
-	).Required(),
-	"VerificationResult": z.StringLike[SecurityEventVerificationResult]().TestFunc(
-		func(value *SecurityEventVerificationResult, _ z.Ctx) bool { return value.Valid() },
-		z.Message("security event verification result is not in enum"),
-	).Required(),
-	"ReceivedAt": z.Time().Required(),
-})
-
 func (e ReceivedSecurityEvent) Validate() error {
-	if err := spec.Validate(receivedSecurityEventSchema, &e); err != nil {
+	if err := spec.All(
+		spec.Required("ID", e.ID),
+		spec.Required("TenantID", e.TenantID),
+		spec.Required("StreamID", e.StreamID),
+		spec.Required("SetJTI", e.SetJTI),
+		spec.Required("EventType", e.EventType, spec.Must(CaepEventType.Valid, "caep event type is not in enum")),
+		spec.Required("VerificationResult", e.VerificationResult,
+			spec.Must(SecurityEventVerificationResult.Valid, "security event verification result is not in enum")),
+		spec.Required("ReceivedAt", e.ReceivedAt),
+	); err != nil {
 		return err
 	}
 	if e.VerificationResult == SecurityEventVerificationAccepted {

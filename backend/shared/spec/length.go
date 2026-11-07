@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"unicode"
 	"unicode/utf8"
-
-	z "github.com/Oudwins/zog"
 )
 
 // 文字列長の上限の既定区分。単位は Unicode コードポイントで、TypeSpec の
@@ -34,8 +32,8 @@ const (
 
 // 外部の標準または固定の表示面から上限が決まる値。既定の区分の外に置く。
 const (
-	// LengthEmail は RFC 5321 が定めるメールアドレスの上限 (254 オクテット)。
-	// 書式を ASCII に限っているのでコードポイント数と一致する。
+	// LengthEmail は RFC 5321 が定めるメールアドレスの上限 254 を採る。国際化された
+	// アドレスを受け付けるので、ほかの上限と同じくコードポイント数で数える。
 	LengthEmail = 254
 	// LengthDNSLabel は DNS ラベル 1 つ分の上限。realm がこれに従う。
 	LengthDNSLabel = 63
@@ -100,49 +98,6 @@ const BtreeIndexRowLimitBytes = 2704
 // 索引タプル自身が使う領域と、将来列を足すための余白になる。
 const KeyByteBudget = 2400
 
-// 長さ違反だけを他の検証失敗と区別するための issue code。HTTP 層はこの区別を
-// 使って 422 を返す。
-const (
-	issueCodeMaxChars = "max_chars"
-	issueCodeMinChars = "min_chars"
-	issueCodeMaxBytes = "max_bytes"
-)
-
-// Chars は下限と上限をコードポイント数で課す文字列スキーマを返す。zog の Min / Max は
-// len(string)、すなわち UTF-8 バイト数を数えるため文字列フィールドには使えない。
-// 上限 100 のつもりで Max(100) と書くと、日本語では 33 文字で拒否される。
-// minimum が 0 のときは下限を課さない。
-func Chars(minimum, maximum int) *z.StringSchema[string] {
-	schema := z.String()
-	if minimum > 0 {
-		schema = schema.TestFunc(
-			func(value *string, _ z.Ctx) bool { return utf8.RuneCountInString(*value) >= minimum },
-			z.IssueCode(issueCodeMinChars),
-			z.Message(fmt.Sprintf("must be at least %d characters", minimum)),
-		)
-	}
-	return schema.TestFunc(
-		func(value *string, _ z.Ctx) bool { return utf8.RuneCountInString(*value) <= maximum },
-		z.IssueCode(issueCodeMaxChars),
-		z.Message(fmt.Sprintf("must be at most %d characters", maximum)),
-	)
-}
-
-// CharsAtMost は上限だけを課す文字列スキーマを返す。空文字列を「未設定」として
-// 扱う省略可能なフィールドで使う。
-func CharsAtMost(maximum int) *z.StringSchema[string] { return Chars(0, maximum) }
-
-// KeyString は索引の鍵の成分になる文字列のスキーマを返す。契約の上限 (コードポイント)
-// と資源の上限 (バイト) を重ねて課す。コードポイントの上限だけでは、標準が許す
-// 長さのまま UTF-8 で btree の索引行上限を超える値を通してしまう。
-func KeyString(maxChars, maxBytes int) *z.StringSchema[string] {
-	return Chars(0, maxChars).TestFunc(
-		func(value *string, _ z.Ctx) bool { return len(*value) <= maxBytes },
-		z.IssueCode(issueCodeMaxBytes),
-		z.Message(fmt.Sprintf("must be at most %d bytes", maxBytes)),
-	)
-}
-
 // LengthError は文字列フィールドが長さの制約に違反したことを表す。解析はできた
 // 内容が業務規則に違反する場合なので、HTTP 層はこれを 422 に写像する。長さ以外の
 // 検証失敗は素の error のままにして、保存済みデータの破損がサーバの不具合として
@@ -155,7 +110,7 @@ func (e *LengthError) Error() string { return e.message }
 // import の向きを spec → http に作らないためのもので、値そのものに意味はない。
 func (e *LengthError) IsFieldLengthViolation() bool { return true }
 
-// CheckMaxChars は zog スキーマを経由しない検査から同じ上限を課す。field には
+// CheckMaxChars は Rule を経由しない検査から同じ上限を課す。field には
 // 公開契約の wire 名を渡す。上限内なら nil を返す。
 func CheckMaxChars(field, value string, maximum int) error {
 	actual := utf8.RuneCountInString(value)
@@ -167,7 +122,7 @@ func CheckMaxChars(field, value string, maximum int) error {
 	}
 }
 
-// CheckMaxBytes は資源の上限を zog スキーマを経由しない検査から課す。field には
+// CheckMaxBytes は資源の上限を Rule を経由しない検査から課す。field には
 // 公開契約の wire 名を渡す。上限内なら nil を返す。
 func CheckMaxBytes(field, value string, maximum int) error {
 	actual := len(value)
@@ -197,7 +152,7 @@ func TruncateChars(value string, maximum int) string {
 	return string(runes[:maximum])
 }
 
-// snakeCase は zog が返す Go の構造体フィールド名を、公開契約が使う wire 名へ
+// snakeCase は Go の構造体フィールド名を、公開契約が使う wire 名へ
 // 近づける。PreferredUsername → preferred_username、OIDCScope → oidc_scope。
 func snakeCase(name string) string {
 	runes := []rune(name)

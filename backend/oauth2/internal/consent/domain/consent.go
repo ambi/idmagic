@@ -10,8 +10,6 @@ import (
 	"slices"
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -59,22 +57,17 @@ func (c Consent) PermitsDelegation(scopes []string, now time.Time) bool {
 	return true
 }
 
-var consentSchema = z.Struct(z.Shape{
-	"UserID": z.String().Required(),
-	"Scopes": z.Slice(z.String()).Min(1).Required(),
-	"State": z.StringLike[ConsentState]().TestFunc(
-		func(value *ConsentState, _ z.Ctx) bool { return value.Valid() },
-		z.Message("state is not in enum"),
-	).Required(),
-	"GrantedAt": z.Time().Required(),
-	"ExpiresAt": z.Time().Required(),
-})
-
 func (c Consent) Validate() error {
 	if (c.ClientID == "") == (c.AgentID == "") {
 		return errors.New("consent must have exactly one of client_id and agent_id")
 	}
-	return spec.Validate(consentSchema, &c)
+	return spec.All(
+		spec.Required("UserID", c.UserID),
+		spec.NonEmpty("Scopes", c.Scopes),
+		spec.Required("State", c.State, spec.Must(ConsentState.Valid, "state is not in enum")),
+		spec.Required("GrantedAt", c.GrantedAt),
+		spec.Required("ExpiresAt", c.ExpiresAt),
+	)
 }
 
 // ===============================================================

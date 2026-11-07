@@ -3,8 +3,6 @@ package domain
 import (
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -19,16 +17,14 @@ type SecurityEventToken struct {
 	Compact  string
 }
 
-var securityEventTokenSchema = z.Struct(z.Shape{
-	"JTI":      z.String().Min(1).Required(),
-	"Issuer":   z.String().Min(1).Required(),
-	"Audience": z.String().Min(1).Required(),
-	"IssuedAt": z.Time().Required(),
-	"Compact":  z.String().Min(1).Required(),
-})
-
 func (t SecurityEventToken) Validate() error {
-	if err := spec.Validate(securityEventTokenSchema, &t); err != nil {
+	if err := spec.All(
+		spec.Required("JTI", t.JTI),
+		spec.Required("Issuer", t.Issuer),
+		spec.Required("Audience", t.Audience),
+		spec.Required("IssuedAt", t.IssuedAt),
+		spec.Required("Compact", t.Compact),
+	); err != nil {
 		return err
 	}
 	return t.Event.Validate()

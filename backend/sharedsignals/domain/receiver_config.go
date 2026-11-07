@@ -3,8 +3,6 @@ package domain
 import (
 	"strings"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -19,17 +17,15 @@ type SsfReceiverConfig struct {
 	AcceptedAudiences []string
 }
 
-var ssfReceiverConfigSchema = z.Struct(z.Shape{
-	"StreamID":          z.String().Min(1).Required(),
-	"TrustedIssuer":     z.String().Min(1).Required(),
-	"AcceptedAudiences": z.Slice(z.String().Min(1)).Min(1).Required(),
-})
-
 // Validate は構造的妥当性 (docs/modules/sharedsignals/ SsfReceiverConfig
 // constraints) を検証する: trusted_issuer は https、jwks_uri / jwks の少なくとも
 // 一方が必須、accepted_audiences は非空。
 func (c SsfReceiverConfig) Validate() error {
-	if err := spec.Validate(ssfReceiverConfigSchema, &c); err != nil {
+	if err := spec.All(
+		spec.Required("StreamID", c.StreamID),
+		spec.Required("TrustedIssuer", c.TrustedIssuer),
+		spec.NonEmpty("AcceptedAudiences", c.AcceptedAudiences),
+	); err != nil {
 		return err
 	}
 	if !strings.HasPrefix(c.TrustedIssuer, "https://") {

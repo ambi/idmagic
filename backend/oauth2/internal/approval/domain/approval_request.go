@@ -56,7 +56,21 @@ type ApprovalRequest struct {
 	Use *ApprovalUse `json:"use,omitempty"`
 }
 
-func (a ApprovalRequest) Validate() error { return spec.ValidateApprovalRequest(&a) }
+func (a ApprovalRequest) Validate() error {
+	return spec.All(
+		spec.Required("ID", a.ID, spec.UUID()),
+		spec.Required("ClientID", a.ClientID),
+		spec.Required("UserID", a.UserID),
+		spec.Required("AuthReqIDHash", a.AuthReqIDHash),
+		// CIBA の binding_message。start 時の検査 (approval/usecases) も同じ
+		// コードポイント数で数える。
+		spec.OptionalPtr("BindingMessage", a.BindingMessage, spec.CharsAtMost(spec.LengthHandle)),
+		spec.Required("State", a.State, spec.Must(spec.ApprovalRequestState.Valid, "state is not in enum")),
+		spec.Required("IntervalSeconds", a.IntervalSeconds, spec.GreaterThan(0)),
+		spec.Required("RequestedAt", a.RequestedAt),
+		spec.Required("ExpiresAt", a.ExpiresAt),
+	)
+}
 
 // NewApprovalRequestID returns the stable identifier exposed to the account portal.
 func NewApprovalRequestID() (string, error) { return spec.NewUUIDv4() }

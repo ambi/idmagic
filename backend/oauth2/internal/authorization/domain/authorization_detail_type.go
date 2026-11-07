@@ -8,8 +8,6 @@ package domain
 import (
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -75,27 +73,24 @@ type AuthorizationDetailType struct {
 	UpdatedAt       time.Time                    `json:"updated_at"`
 }
 
-var authorizationDetailTypeSchema = z.Struct(z.Shape{
-	"TenantID":        z.String().Min(1).Required(),
-	"Type":            z.String().Min(1).Required(),
-	"DisplayTemplate": z.String().Min(1).Required(),
-	"State": z.StringLike[AuthorizationDetailTypeState]().TestFunc(
-		func(value *AuthorizationDetailTypeState, _ z.Ctx) bool { return value.Valid() },
-		z.Message("authorization detail type state is not in enum"),
-	).Required(),
-	"Schema": z.Struct(z.Shape{
-		"Rules": z.Slice(z.Struct(z.Shape{
-			"Name": z.String().Min(1).Required(),
-			"Semantics": z.StringLike[AuthorizationDetailFieldSemantics]().TestFunc(
-				func(value *AuthorizationDetailFieldSemantics, _ z.Ctx) bool { return value.Valid() },
-				z.Message("authorization detail field semantics is not in enum"),
-			).Required(),
-		})).Min(1).Required(),
-	}),
-	"CreatedAt": z.Time().Required(),
-	"UpdatedAt": z.Time().Required(),
-})
-
 func (t AuthorizationDetailType) Validate() error {
-	return spec.Validate(authorizationDetailTypeSchema, &t)
+	return spec.All(
+		spec.Required("TenantID", t.TenantID),
+		spec.Required("Type", t.Type),
+		spec.Required("DisplayTemplate", t.DisplayTemplate),
+		spec.Required("State", t.State,
+			spec.Must(AuthorizationDetailTypeState.Valid, "authorization detail type state is not in enum")),
+		spec.Nested("Schema", append(
+			spec.NonEmpty("Rules", t.Schema.Rules),
+			spec.EachWith("Rules", t.Schema.Rules, func(rule AuthorizationDetailFieldRule) spec.Issues {
+				return append(
+					spec.Required("Name", rule.Name),
+					spec.Required("Semantics", rule.Semantics, spec.Must(AuthorizationDetailFieldSemantics.Valid,
+						"authorization detail field semantics is not in enum"))...,
+				)
+			})...,
+		)),
+		spec.Required("CreatedAt", t.CreatedAt),
+		spec.Required("UpdatedAt", t.UpdatedAt),
+	)
 }

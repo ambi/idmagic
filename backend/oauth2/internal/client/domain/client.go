@@ -10,12 +10,9 @@ import (
 	"slices"
 	"time"
 
-	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-
-	z "github.com/Oudwins/zog"
-
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 )
 
 type TokenEndpointAuthMethod string
@@ -133,96 +130,52 @@ func ValidateLogoutURI(raw string) bool {
 	return err == nil && parsed.Scheme == "https" && parsed.Host != "" && parsed.User == nil && parsed.Fragment == ""
 }
 
-var oauth2ClientSchema = z.Struct(z.Shape{
-	"ClientID": spec.Chars(1, spec.LengthClientID).Required(),
-	"ClientName": z.Ptr(
-		spec.Chars(1, spec.LengthDisplayName),
-	),
-	// 証明書の Subject DN は外部が値を決める。索引の鍵ではないので資源の上限は
-	// 要らないが、保存量を無制限にしてよい理由にもならない。
-	"TlsClientAuthSubjectDN": z.Ptr(spec.CharsAtMost(spec.LengthSubjectDN)),
-	"ClientType": z.StringLike[spec.ClientType]().TestFunc(
-		func(value *spec.ClientType, _ z.Ctx) bool { return value.Valid() },
-		z.Message("client_type is not in enum"),
-	).Required(),
-	"RedirectURIs": z.Slice(
-		z.String().URL(),
-	),
-	"BackChannelLogoutURI": z.Ptr(z.String().URL().TestFunc(func(value *string, _ z.Ctx) bool {
-		return ValidateLogoutURI(*value)
-	}, z.Message("backchannel_logout_uri must be https and must not contain userinfo or fragment"))),
-	"FrontChannelLogoutURI": z.Ptr(z.String().URL().TestFunc(func(value *string, _ z.Ctx) bool {
-		return ValidateLogoutURI(*value)
-	}, z.Message("frontchannel_logout_uri must be https and must not contain userinfo or fragment"))),
-	"GrantTypes": z.Slice(
-		z.StringLike[spec.GrantType]().TestFunc(
-			func(value *spec.GrantType, _ z.Ctx) bool { return value.Valid() },
-			z.Message("grant_type is not in enum"),
-		),
-	).Min(1).Required(),
-	"ResponseTypes": z.Slice(
-		z.StringLike[spec.ResponseType]().TestFunc(
-			func(value *spec.ResponseType, _ z.Ctx) bool { return value.Valid() },
-			z.Message("response_type is not in enum"),
-		),
-	),
-	"TokenEndpointAuthMethod": z.StringLike[TokenEndpointAuthMethod]().TestFunc(
-		func(value *TokenEndpointAuthMethod, _ z.Ctx) bool { return value.Valid() },
-		z.Message("token_endpoint_auth_method is not in enum"),
-	).Required(),
-	"IDTokenSignedResponseAlg": z.StringLike[signingdomain.SignatureAlgorithm]().TestFunc(
-		func(value *signingdomain.SignatureAlgorithm, _ z.Ctx) bool { return value.Valid() },
-		z.Message("id_token_signed_response_alg is not in enum"),
-	).Required(),
-	"FapiProfile": z.StringLike[FapiProfile]().TestFunc(
-		func(value *FapiProfile, _ z.Ctx) bool { return value.Valid() },
-		z.Message("fapi_profile is not in enum"),
-	).Required(),
-	"CreatedAt": z.Time().Required(),
-	"UpdatedAt": z.Time().Required(),
-}).TestFunc(func(value any, _ z.Ctx) bool {
-	client, ok := value.(*OAuth2Client)
-	if !ok {
-		return false
-	}
-	switch client.TokenEndpointAuthMethod {
-	case AuthMethodPrivateKeyJwt:
-		return hasJWKs(client.JWKS) || client.JwksURI != nil && *client.JwksURI != ""
-	case AuthMethodTlsClientAuth:
-		return client.TlsClientAuthSubjectDN != nil && *client.TlsClientAuthSubjectDN != ""
-	default:
-		return true
-	}
-}, z.Message("client authentication method requires matching credentials")).
-	TestFunc(func(value any, _ z.Ctx) bool {
-		client, ok := value.(*OAuth2Client)
-		if !ok {
-			return false
-		}
+func (c OAuth2Client) Validate() error {
+	return spec.All(
+		spec.Required("ClientID", c.ClientID, spec.Chars(1, spec.LengthClientID)),
+		spec.OptionalPtr("ClientName", c.ClientName, spec.Chars(1, spec.LengthDisplayName)),
+		// 証明書の Subject DN は外部が値を決める。索引の鍵ではないので資源の上限は
+		// 要らないが、保存量を無制限にしてよい理由にもならない。
+		spec.OptionalPtr("TlsClientAuthSubjectDN", c.TlsClientAuthSubjectDN, spec.CharsAtMost(spec.LengthSubjectDN)),
+		spec.Required("ClientType", c.ClientType, spec.Must(spec.ClientType.Valid, "client_type is not in enum")),
+		spec.Each("RedirectURIs", c.RedirectURIs, spec.URL()),
+		spec.OptionalPtr("BackChannelLogoutURI", c.BackChannelLogoutURI, spec.URL(), spec.Must(ValidateLogoutURI,
+			"backchannel_logout_uri must be https and must not contain userinfo or fragment")),
+		spec.OptionalPtr("FrontChannelLogoutURI", c.FrontChannelLogoutURI, spec.URL(), spec.Must(ValidateLogoutURI,
+			"frontchannel_logout_uri must be https and must not contain userinfo or fragment")),
+		spec.NonEmpty("GrantTypes", c.GrantTypes),
+		spec.Each("GrantTypes", c.GrantTypes, spec.Must(spec.GrantType.Valid, "grant_type is not in enum")),
+		spec.Each("ResponseTypes", c.ResponseTypes, spec.Must(spec.ResponseType.Valid, "response_type is not in enum")),
+		spec.Required("TokenEndpointAuthMethod", c.TokenEndpointAuthMethod,
+			spec.Must(TokenEndpointAuthMethod.Valid, "token_endpoint_auth_method is not in enum")),
+		spec.Required("IDTokenSignedResponseAlg", c.IDTokenSignedResponseAlg,
+			spec.Must(signingdomain.SignatureAlgorithm.Valid, "id_token_signed_response_alg is not in enum")),
+		spec.Required("FapiProfile", c.FapiProfile, spec.Must(FapiProfile.Valid, "fapi_profile is not in enum")),
+		spec.Required("CreatedAt", c.CreatedAt),
+		spec.Required("UpdatedAt", c.UpdatedAt),
+		spec.Condition(c.hasCredentialsForAuthMethod(), "client authentication method requires matching credentials"),
 		// redirect 系グラント (authorization_code) は redirect_uri を必須とする
 		// (RFC 6749 §3.1.2)。client_credentials のみの M2M クライアントは redirect を持たない。
-		if clientUsesRedirect(client) {
-			return len(client.RedirectURIs) > 0
-		}
-		return true
-	}, z.Message("redirect_uris is required for redirect-based grants")).
-	TestFunc(func(value any, _ z.Ctx) bool {
-		client, ok := value.(*OAuth2Client)
-		if !ok {
-			return false
-		}
+		spec.Condition(!clientUsesRedirect(&c) || len(c.RedirectURIs) > 0,
+			"redirect_uris is required for redirect-based grants"),
 		// クライアント認証方式は保存されたクライアント自身の属性なので、要求ごとに
 		// 評価せず不変項として閉じる。保存できたクライアントは必ず適合している形に
 		// なり、/register と admin の作成・更新が 1 か所でそろう
 		// (FAPI2-CLIENT-AUTH)。
-		if !client.UsesFapi2SecurityProfile() {
-			return true
-		}
-		return slices.Contains(fapi2ClientAuthMethods, client.TokenEndpointAuthMethod)
-	}, z.Message("fapi_2_security_profile requires private_key_jwt or tls_client_auth"))
+		spec.Condition(!c.UsesFapi2SecurityProfile() || slices.Contains(fapi2ClientAuthMethods, c.TokenEndpointAuthMethod),
+			"fapi_2_security_profile requires private_key_jwt or tls_client_auth"),
+	)
+}
 
-func (c OAuth2Client) Validate() error {
-	return spec.Validate(oauth2ClientSchema, &c)
+func (c OAuth2Client) hasCredentialsForAuthMethod() bool {
+	switch c.TokenEndpointAuthMethod {
+	case AuthMethodPrivateKeyJwt:
+		return hasJWKs(c.JWKS) || c.JwksURI != nil && *c.JwksURI != ""
+	case AuthMethodTlsClientAuth:
+		return c.TlsClientAuthSubjectDN != nil && *c.TlsClientAuthSubjectDN != ""
+	default:
+		return true
+	}
 }
 
 func hasJWKs(jwks map[string]any) bool {

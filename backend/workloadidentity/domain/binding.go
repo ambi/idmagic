@@ -4,8 +4,6 @@ import (
 	"path"
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -25,24 +23,20 @@ type AgentWorkloadBinding struct {
 	DisabledAt     *time.Time
 }
 
-var agentWorkloadBindingSchema = z.Struct(z.Shape{
-	"ID":             spec.Chars(1, spec.LengthHandle).Required(),
-	"TenantID":       z.String().Min(1).Required(),
-	"TrustBundleID":  z.String().Min(1).Required(),
-	"SubjectPattern": spec.Chars(1, spec.LengthDescription).Required(),
-	"AgentID":        z.String().Min(1).Required(),
-	"Status": z.StringLike[AgentWorkloadBindingStatus]().TestFunc(
-		func(value *AgentWorkloadBindingStatus, _ z.Ctx) bool { return value.Valid() },
-		z.Message("agent workload binding status is not in enum"),
-	).Required(),
-	"CreatedAt": z.Time().Required(),
-})
-
 // Validate は構造的妥当性 (docs/modules/workloadidentity/ AgentWorkloadBinding
 // constraints) を検証する。subject_pattern は path.Match が受理する glob 構文でなければ
 // ならない (不正な pattern は登録時点で拒否し、交換時の判定漏れを防ぐ)。
 func (b AgentWorkloadBinding) Validate() error {
-	if err := spec.Validate(agentWorkloadBindingSchema, &b); err != nil {
+	if err := spec.All(
+		spec.Required("ID", b.ID, spec.Chars(1, spec.LengthHandle)),
+		spec.Required("TenantID", b.TenantID),
+		spec.Required("TrustBundleID", b.TrustBundleID),
+		spec.Required("SubjectPattern", b.SubjectPattern, spec.Chars(1, spec.LengthDescription)),
+		spec.Required("AgentID", b.AgentID),
+		spec.Required("Status", b.Status,
+			spec.Must(AgentWorkloadBindingStatus.Valid, "agent workload binding status is not in enum")),
+		spec.Required("CreatedAt", b.CreatedAt),
+	); err != nil {
 		return err
 	}
 	if _, err := path.Match(b.SubjectPattern, ""); err != nil {

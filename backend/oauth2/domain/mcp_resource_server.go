@@ -8,8 +8,6 @@ import (
 	"net/url"
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -53,24 +51,17 @@ func isAbsoluteURIWithoutFragment(value string) bool {
 	return parsed.IsAbs() && parsed.Fragment == ""
 }
 
-var mcpResourceServerSchema = z.Struct(z.Shape{
-	"ID": z.String().Min(1).Required(),
-	"Resource": z.String().URL().TestFunc(
-		func(value *string, _ z.Ctx) bool { return value != nil && isAbsoluteURIWithoutFragment(*value) },
-		z.Message("resource must be an absolute URI without a fragment (RFC 8707 §2)"),
-	).Required(),
-	"Name":   spec.Chars(1, spec.LengthDisplayName).Required(),
-	"Scopes": z.Slice(z.String().Min(1)).Min(1).Required(),
-	"State": z.StringLike[McpResourceServerState]().TestFunc(
-		func(value *McpResourceServerState, _ z.Ctx) bool { return value.Valid() },
-		z.Message("mcp resource server state is not in enum"),
-	).Required(),
-	"CreatedAt": z.Time().Required(),
-	"UpdatedAt": z.Time().Required(),
-})
-
 func (m McpResourceServer) Validate() error {
-	if err := spec.Validate(mcpResourceServerSchema, &m); err != nil {
+	if err := spec.All(
+		spec.Required("ID", m.ID),
+		spec.Required("Resource", m.Resource, spec.URL(), spec.Must(isAbsoluteURIWithoutFragment,
+			"resource must be an absolute URI without a fragment (RFC 8707 §2)")),
+		spec.Required("Name", m.Name, spec.Chars(1, spec.LengthDisplayName)),
+		spec.NonEmpty("Scopes", m.Scopes),
+		spec.Required("State", m.State, spec.Must(McpResourceServerState.Valid, "mcp resource server state is not in enum")),
+		spec.Required("CreatedAt", m.CreatedAt),
+		spec.Required("UpdatedAt", m.UpdatedAt),
+	); err != nil {
 		return err
 	}
 	return m.validateAccessRules()

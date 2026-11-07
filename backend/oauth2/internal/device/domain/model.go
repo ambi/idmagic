@@ -23,4 +23,14 @@ type DeviceAuthorization struct {
 	ExpiresAt       time.Time                `json:"expires_at"`
 }
 
-func (d DeviceAuthorization) Validate() error { return spec.ValidateDeviceAuthorization(&d) }
+func (d DeviceAuthorization) Validate() error {
+	return spec.All(
+		spec.Required("DeviceCodeHash", d.DeviceCodeHash),
+		spec.Required("UserCode", d.UserCode),
+		spec.Required("ClientID", d.ClientID),
+		spec.Required("State", d.State, spec.Must(spec.DeviceCodeFlowState.Valid, "state is not in enum")),
+		spec.Required("IntervalSeconds", d.IntervalSeconds, spec.GreaterThan(0)),
+		spec.Required("IssuedAt", d.IssuedAt),
+		spec.Required("ExpiresAt", d.ExpiresAt),
+	)
+}

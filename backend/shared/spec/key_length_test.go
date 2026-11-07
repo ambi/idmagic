@@ -4,16 +4,11 @@ import (
 	"errors"
 	"strings"
 	"testing"
-
-	z "github.com/Oudwins/zog"
 )
 
-type keySubject struct{ EntityID string }
-
-// KeyString を実際の適用点と同じ形 (struct schema 経由) で通す。
+// KeyString を実際の適用点と同じ形 (All 経由) で通す。
 func parseEntityID(value string) error {
-	subject := keySubject{EntityID: value}
-	return Validate(z.Struct(z.Shape{"EntityID": KeyString(LengthSamlEntityID, BytesSamlEntityID)}), &subject)
+	return All(Optional("EntityID", value, KeyString(LengthSamlEntityID, BytesSamlEntityID)))
 }
 
 // indexKey は 1 つの btree の鍵と、その成分が使ってよいバイト数。

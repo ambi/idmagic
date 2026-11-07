@@ -23,7 +23,7 @@ func RunRefresh(t *testing.T, newFixture NewRefreshFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx := context.Background()
-	record := &domain.RefreshTokenRecord{ID: "00000000-0000-0000-0000-000000000011", TenantID: f.TenantID, Hash: "refresh-hash-contract", FamilyID: "00000000-0000-0000-0000-000000000012", ClientID: f.ClientID, UserID: f.UserID, Scopes: []string{"openid"}, IssuedAt: f.Now, ExpiresAt: f.Now.Add(24 * time.Hour), AbsoluteExpiresAt: f.Now.Add(48 * time.Hour)}
+	record := &domain.RefreshTokenRecord{ID: "00000000-0000-4000-8000-000000000011", TenantID: f.TenantID, Hash: "refresh-hash-contract", FamilyID: "00000000-0000-4000-8000-000000000012", ClientID: f.ClientID, UserID: f.UserID, Scopes: []string{"openid"}, IssuedAt: f.Now, ExpiresAt: f.Now.Add(24 * time.Hour), AbsoluteExpiresAt: f.Now.Add(48 * time.Hour)}
 	if err := f.Store.Save(ctx, record); err != nil {
 		t.Fatalf("Save: %v", err)
 	}

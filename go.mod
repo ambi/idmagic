@@ -4,7 +4,6 @@ go 1.27.3
 
 require (
 	cel.dev/cel-go v0.33.1
-	github.com/Oudwins/zog v0.23.0
 	github.com/beevik/etree v1.8.1
 	github.com/fergusstrange/embedded-postgres/v2 v2.0.1
 	github.com/fxamacker/cbor/v2 v2.10.0

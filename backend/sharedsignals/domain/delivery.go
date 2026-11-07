@@ -3,8 +3,6 @@ package domain
 import (
 	"time"
 
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -26,21 +24,17 @@ type SecurityEventDelivery struct {
 	AuditEvent *AuditSetEvent
 }
 
-var securityEventDeliverySchema = z.Struct(z.Shape{
-	"ID":       z.String().Min(1).Required(),
-	"TenantID": z.String().Min(1).Required(),
-	"StreamID": z.String().Min(1).Required(),
-	"SetJTI":   z.String().Min(1).Required(),
-	"Status": z.StringLike[SecurityEventDeliveryStatus]().TestFunc(
-		func(value *SecurityEventDeliveryStatus, _ z.Ctx) bool { return value.Valid() },
-		z.Message("security event delivery status is not in enum"),
-	).Required(),
-	"AttemptCount": z.Int().GTE(0),
-	"CreatedAt":    z.Time().Required(),
-})
-
 func (d SecurityEventDelivery) Validate() error {
-	if err := spec.Validate(securityEventDeliverySchema, &d); err != nil {
+	if err := spec.All(
+		spec.Required("ID", d.ID),
+		spec.Required("TenantID", d.TenantID),
+		spec.Required("StreamID", d.StreamID),
+		spec.Required("SetJTI", d.SetJTI),
+		spec.Required("Status", d.Status,
+			spec.Must(SecurityEventDeliveryStatus.Valid, "security event delivery status is not in enum")),
+		spec.Optional("AttemptCount", d.AttemptCount, spec.AtLeast(0)),
+		spec.Required("CreatedAt", d.CreatedAt),
+	); err != nil {
 		return err
 	}
 	return d.Set.Validate()

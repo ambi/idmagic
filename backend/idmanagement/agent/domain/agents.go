@@ -4,9 +4,6 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-
-	z "github.com/Oudwins/zog"
-
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -33,26 +30,18 @@ type Agent struct {
 	KilledAt    *time.Time            `json:"killed_at,omitempty"`
 }
 
-var agentSchema = z.Struct(z.Shape{
-	"ID":          spec.Chars(1, spec.LengthHandle).Required(),
-	"TenantID":    z.String().Min(1).Required(),
-	"Name":        spec.Chars(1, spec.LengthName).Required(),
-	"Description": z.Ptr(spec.CharsAtMost(spec.LengthDescription)),
-	"Kind": z.StringLike[idmdomain.AgentKind]().TestFunc(
-		func(value *idmdomain.AgentKind, _ z.Ctx) bool { return value.Valid() },
-		z.Message("agent kind is not in enum"),
-	).Required(),
-	"OwnerUserID": z.String().Min(1).Required(),
-	"Status": z.StringLike[idmdomain.AgentStatus]().TestFunc(
-		func(value *idmdomain.AgentStatus, _ z.Ctx) bool { return value.Valid() },
-		z.Message("agent status is not in enum"),
-	).Required(),
-	"CreatedAt": z.Time().Required(),
-	"UpdatedAt": z.Time().Required(),
-})
-
 func (a Agent) Validate() error {
-	return spec.Validate(agentSchema, &a)
+	return spec.All(
+		spec.Required("ID", a.ID, spec.Chars(1, spec.LengthHandle)),
+		spec.Required("TenantID", a.TenantID),
+		spec.Required("Name", a.Name, spec.Chars(1, spec.LengthName)),
+		spec.OptionalPtr("Description", a.Description, spec.CharsAtMost(spec.LengthDescription)),
+		spec.Required("Kind", a.Kind, spec.Must(idmdomain.AgentKind.Valid, "agent kind is not in enum")),
+		spec.Required("OwnerUserID", a.OwnerUserID),
+		spec.Required("Status", a.Status, spec.Must(idmdomain.AgentStatus.Valid, "agent status is not in enum")),
+		spec.Required("CreatedAt", a.CreatedAt),
+		spec.Required("UpdatedAt", a.UpdatedAt),
+	)
 }
 
 // IsActive は Agent が新規トークン発行可能な状態かを返す。Status が Active
@@ -69,14 +58,12 @@ type AgentCredentialBinding struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-var agentCredentialBindingSchema = z.Struct(z.Shape{
-	"AgentID":   z.String().Min(1).Required(),
-	"ClientID":  z.String().Min(1).Required(),
-	"CreatedAt": z.Time().Required(),
-})
-
 func (b AgentCredentialBinding) Validate() error {
-	return spec.Validate(agentCredentialBindingSchema, &b)
+	return spec.All(
+		spec.Required("AgentID", b.AgentID),
+		spec.Required("ClientID", b.ClientID),
+		spec.Required("CreatedAt", b.CreatedAt),
+	)
 }
 
 // NewAgentID は不変の Agent 識別子 (UUID v4) を生成する。

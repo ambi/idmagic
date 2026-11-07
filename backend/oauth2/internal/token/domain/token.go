@@ -56,7 +56,18 @@ type RefreshTokenRecord struct {
 	Resource *string `json:"resource,omitempty"`
 }
 
-func (r RefreshTokenRecord) Validate() error { return spec.ValidateRefreshTokenRecord(&r) }
+func (r RefreshTokenRecord) Validate() error {
+	return spec.All(
+		spec.Required("ID", r.ID, spec.UUID()),
+		spec.Required("Hash", r.Hash),
+		spec.Required("FamilyID", r.FamilyID, spec.UUID()),
+		spec.Required("ClientID", r.ClientID),
+		spec.Required("UserID", r.UserID),
+		spec.Required("IssuedAt", r.IssuedAt),
+		spec.Required("ExpiresAt", r.ExpiresAt),
+		spec.Required("AbsoluteExpiresAt", r.AbsoluteExpiresAt),
+	)
+}
 
 // AccessTokenClaims は発行済み access token の claims を表す。
 type AccessTokenClaims struct {

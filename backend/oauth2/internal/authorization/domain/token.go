@@ -44,7 +44,22 @@ type AuthorizationRequest struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
-func (a AuthorizationRequest) Validate() error { return spec.ValidateAuthorizationRequest(&a) }
+func (a AuthorizationRequest) Validate() error {
+	return spec.All(
+		spec.Required("ID", a.ID, spec.UUID()),
+		spec.Required("State", a.State, spec.Must(spec.AuthorizationCodeFlowState.Valid, "state is not in enum")),
+		spec.Required("ClientID", a.ClientID),
+		spec.Required("RedirectURI", a.RedirectURI, spec.URL()),
+		spec.Required("ResponseType", a.ResponseType,
+			spec.OneOf(spec.ResponseTypeCode).WithMessage("response_type must be code")),
+		spec.Required("CodeChallenge", a.CodeChallenge),
+		spec.Required("CodeChallengeMethod", a.CodeChallengeMethod,
+			spec.OneOf(spec.CodeChallengeMethodS256).WithMessage("code_challenge_method must be S256")),
+		spec.OptionalPtr("MaxAge", a.MaxAge, spec.AtLeast(0)),
+		spec.Required("CreatedAt", a.CreatedAt),
+		spec.Required("ExpiresAt", a.ExpiresAt),
+	)
+}
 
 // AuthorizationCodeRecord は単回使用の認可コードを表す。
 type AuthorizationCodeRecord struct {
@@ -76,7 +91,21 @@ type AuthorizationCodeRecord struct {
 	IssuedFamilyID *string                           `json:"issued_family_id,omitempty"`
 }
 
-func (a AuthorizationCodeRecord) Validate() error { return spec.ValidateAuthorizationCodeRecord(&a) }
+func (a AuthorizationCodeRecord) Validate() error {
+	return spec.All(
+		spec.Required("Code", a.Code),
+		spec.Required("AuthorizationRequestID", a.AuthorizationRequestID, spec.UUID()),
+		spec.Required("ClientID", a.ClientID),
+		spec.Required("UserID", a.UserID),
+		spec.Required("RedirectURI", a.RedirectURI, spec.URL()),
+		spec.Required("CodeChallenge", a.CodeChallenge),
+		spec.Required("CodeChallengeMethod", a.CodeChallengeMethod,
+			spec.OneOf(spec.CodeChallengeMethodS256).WithMessage("code_challenge_method must be S256")),
+		spec.Required("State", a.State, spec.Must(spec.AuthorizationCodeRecordState.Valid, "state is not in enum")),
+		spec.Required("IssuedAt", a.IssuedAt),
+		spec.Required("ExpiresAt", a.ExpiresAt),
+	)
+}
 
 // PARRecord は Pushed Authorization Request の消費状態を表す。
 type PARRecord struct {
@@ -89,4 +118,11 @@ type PARRecord struct {
 	Used       bool              `json:"used"`
 }
 
-func (p PARRecord) Validate() error { return spec.ValidatePARRecord(&p) }
+func (p PARRecord) Validate() error {
+	return spec.All(
+		spec.Required("RequestURI", p.RequestURI),
+		spec.Required("ClientID", p.ClientID),
+		spec.Required("IssuedAt", p.IssuedAt),
+		spec.Required("ExpiresAt", p.ExpiresAt),
+	)
+}

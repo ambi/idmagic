@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-
-	z "github.com/Oudwins/zog"
 )
 
 type MfaFactor struct {
@@ -17,19 +15,12 @@ type MfaFactor struct {
 	LastUsedAt *time.Time         `json:"last_used_at,omitempty"`
 }
 
-var mfaFactorSchema = z.Struct(z.Shape{
-	"UserID": z.String().Required(),
-	"Type": z.StringLike[spec.MfaFactorType]().TestFunc(
-		func(value *spec.MfaFactorType, _ z.Ctx) bool { return value.Valid() },
-		z.Message("mfa factor type is not in enum"),
-	).Required(),
-	"CreatedAt": z.Time().Required(),
-}).TestFunc(func(value any, _ z.Ctx) bool {
-	factor, ok := value.(*MfaFactor)
-	return ok && (factor.Type != spec.MfaFactorTOTP ||
-		factor.Secret != nil && *factor.Secret != "")
-}, z.Message("totp factor requires secret"))
-
 func (m MfaFactor) Validate() error {
-	return spec.Validate(mfaFactorSchema, &m)
+	return spec.All(
+		spec.Required("UserID", m.UserID),
+		spec.Required("Type", m.Type, spec.Must(spec.MfaFactorType.Valid, "mfa factor type is not in enum")),
+		spec.Required("CreatedAt", m.CreatedAt),
+		spec.Condition(m.Type != spec.MfaFactorTOTP || m.Secret != nil && *m.Secret != "",
+			"totp factor requires secret"),
+	)
 }
