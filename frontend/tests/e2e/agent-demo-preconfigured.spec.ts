@@ -142,7 +142,7 @@ test('administrator starts the agent demo preconfigured and narrows it to one do
 
     await view.navigate(agentResourcesURL)
     await waitForPage(view, 'admin-agent-resources')
-    await clickLinkByText(view, 'Edit connections and operations')
+    await clickLinkByText(view, 'Edit MCP resource servers and operations')
     await waitForPage(view, 'admin-agent-resources-edit')
     await setSelectValue(view, '#resource-connection', serverID)
     await view.evaluate(

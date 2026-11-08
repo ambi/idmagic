@@ -34,7 +34,7 @@ func TestAgentGuardrailPolicyRepositoryContract(t *testing.T) {
 	})
 }
 
-//spec:covers REQ-OAUTH2-086: メモリの保存先が報告の置き換え、テナントの分離、削除の共有契約を満たすこと
-func TestMcpToolReportRepositoryContract(t *testing.T) {
-	testing_contract.RunMcpToolReports(t, NewMcpToolReportRepository(), "tenant-a", "tenant-b", "server-a", time.Now().UTC().Truncate(time.Microsecond))
+//spec:covers REQ-OAUTH2-086: メモリの保存先がカタログの置き換え、テナントの分離、削除の共有契約を満たすこと
+func TestMcpToolCatalogRepositoryContract(t *testing.T) {
+	testing_contract.RunMcpToolCatalogs(t, NewMcpToolCatalogRepository(), "tenant-a", "tenant-b", "server-a", time.Now().UTC().Truncate(time.Microsecond))
 }

@@ -782,23 +782,23 @@ CREATE TABLE mcp_resource_servers (
     CONSTRAINT mcp_resource_servers_name_length CHECK (char_length(name) BETWEEN 1 AND 200)
 );
 
--- 接続先から報告された最新のツールの一覧 (REQ-OAUTH2-086)。公開の候補にだけ使い、登録の更新時刻と独立して置き換える。
-CREATE TABLE mcp_tool_reports (
+-- MCP リソースサーバーから受け取った最新のツールカタログ (REQ-OAUTH2-086)。公開の候補にだけ使い、登録の更新時刻と独立して置き換える。
+CREATE TABLE mcp_tool_catalogs (
     tenant_id UUID NOT NULL,
     resource_server_id UUID PRIMARY KEY,
     tools JSONB NOT NULL,
     complete BOOLEAN NOT NULL,
-    reported_at TIMESTAMPTZ NOT NULL,
+    received_at TIMESTAMPTZ NOT NULL,
     -- 内容の比較に使う指紋。空は列の追加前の行で、比べずに置き換える。
     fingerprint TEXT NOT NULL DEFAULT '',
     -- 内容の変わった直前の一覧と、最新の内容を初めて受信した時刻。三つは揃って NULL か非 NULL になる。
     previous_tools JSONB,
     previous_complete BOOLEAN,
     changed_at TIMESTAMPTZ,
-    CONSTRAINT mcp_tool_reports_previous_together CHECK (
+    CONSTRAINT mcp_tool_catalogs_previous_together CHECK (
         (previous_tools IS NULL) = (previous_complete IS NULL) AND (previous_tools IS NULL) = (changed_at IS NULL)
     ),
-    CONSTRAINT mcp_tool_reports_resource_server_id_fkey
+    CONSTRAINT mcp_tool_catalogs_resource_server_id_fkey
         FOREIGN KEY (resource_server_id) REFERENCES mcp_resource_servers(id) ON DELETE CASCADE
 );
 
@@ -1040,7 +1040,7 @@ CREATE TABLE agent_credential_bindings (
 CREATE INDEX agent_credential_bindings_client_idx
     ON agent_credential_bindings (client_id);
 
--- 外部の発見器が報告した未確認の観測 (wi-39443)。Agent の第二の正本ではなく、認可とトークンの発行は
+-- 外部の発見器がカタログした未確認の観測 (wi-39443)。Agent の第二の正本ではなく、認可とトークンの発行は
 -- この表を読まない。確認は confirmed_agent_id の有無で表し、Agent の削除と同じ確定で解除する。
 CREATE TABLE agent_observations (
     id UUID PRIMARY KEY,

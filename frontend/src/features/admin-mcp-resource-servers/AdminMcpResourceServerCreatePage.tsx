@@ -6,6 +6,7 @@ import {
   createMcpResourceServer,
   tenantURL,
 } from '../../api'
+import { CopyableValue } from '../../components/CopyableValue'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
@@ -26,32 +27,28 @@ import {
 
 type CreatedClient = { clientId: string; secret: string }
 
-// evaluatorName は新しく作る評価用のクライアントの名前である。接続先の名前から導き、入力を求めない。
+// evaluatorName は新しく作る評価用のクライアントの名前である。MCP リソースサーバーの名前から導き、入力を求めない。
 function evaluatorName(name: string): string {
   return `${name.trim()} Gateway`
 }
 
 // gatewayConfig は配置先へ渡す設定の例を組み立てる。シークレットの値はファイルへ置かせ、設定に書かない。
-function gatewayConfig(
-  server: McpResourceServer,
-  clientId: string,
-  t: { resultUpstreamComment: string; resultSecretComment: string },
-): string {
+function gatewayConfig(server: McpResourceServer, clientId: string): string {
   const realm = new URL(tenantURL(''), window.location.origin).toString().replace(/\/$/, '')
   return [
     'listen: 127.0.0.1:8080',
     `resource: ${server.resource}`,
-    `upstream: http://127.0.0.1:3000/mcp  # ${t.resultUpstreamComment}`,
+    'upstream: http://127.0.0.1:3000/mcp',
     'idmagic:',
     `  realm_url: ${realm}`,
     `  client_id: ${JSON.stringify(clientId)}`,
-    `  client_secret_file: /etc/idmagic-mcp-gateway/client-secret  # ${t.resultSecretComment}`,
+    '  client_secret_file: /etc/idmagic-mcp-gateway/client-secret',
     'mapping:',
     '  catalog: true',
   ].join('\n')
 }
 
-// AdminMcpResourceServerCreatePage は接続先の登録の専用画面。評価用のクライアントの作成と束縛を
+// AdminMcpResourceServerCreatePage はMCP リソースサーバーの登録の専用画面。評価用のクライアントの作成と紐付けを
 // 同じ送信で行い、作成済みのクライアントは再試行で作り直さない (REQ-OAUTH2-088)。
 export function AdminMcpResourceServerCreatePage({
   csrfToken,
@@ -131,43 +128,62 @@ export function AdminMcpResourceServerCreatePage({
       actorUsername={actorUsername}
       title={t.registerResourceServer}
       description={t.pageDescription}
-      actions={
-        <Button variant="outline" nativeButton={false} render={<a href={listURL()} />}>
-          <IconArrowLeft size={16} aria-hidden="true" />
-          {t.backToList}
-        </Button>
-      }
     >
+      <div className="mb-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          nativeButton={false}
+          render={<a href={listURL()} />}
+          aria-label={t.backToList}
+        >
+          <IconArrowLeft size={18} aria-hidden="true" />
+        </Button>
+      </div>
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       {registered ? (
-        <Card className="w-full p-4" aria-live="polite">
+        <Card className="w-full p-6" aria-live="polite">
           <h2 className="text-base font-semibold">{t.resultHeading}</h2>
           <p className="mt-1 text-sm text-slate-600">{t.resultIntro}</p>
           <dl className="mt-3 grid gap-2 text-sm">
             <dt className="font-medium">{t.resultClientID}</dt>
             <dd>
-              <code id="result-client-id">{resultClientId}</code>
+              <CopyableValue
+                id="result-client-id"
+                value={resultClientId}
+                copyLabel={t.copy.replace('{label}', t.resultClientID)}
+              />
             </dd>
             {createdClient ? (
               <>
                 <dt className="font-medium">{t.resultSecret}</dt>
                 <dd>
-                  <code id="result-client-secret">{createdClient.secret}</code>
+                  <p className="mb-2 text-xs text-slate-500">{t.resultSecretHelp}</p>
+                  <CopyableValue
+                    id="result-client-secret"
+                    value={createdClient.secret}
+                    copyLabel={t.copy.replace('{label}', t.resultSecret)}
+                  />
                 </dd>
               </>
             ) : null}
             <dt className="font-medium">{t.resultConfig}</dt>
             <dd>
-              <pre
+              <p className="mb-2 text-xs leading-5 text-slate-500">{t.resultConfigHelp}</p>
+              <CopyableValue
                 id="result-gateway-config"
-                className="overflow-x-auto rounded-md bg-slate-50 p-3 text-xs"
-              >
-                {gatewayConfig(registered, resultClientId, t)}
-              </pre>
+                value={gatewayConfig(registered, resultClientId)}
+                copyLabel={t.copy.replace('{label}', t.resultConfig)}
+                multiline
+              />
             </dd>
           </dl>
+          <p className="mt-3 text-sm text-slate-600">{t.resultNext}</p>
           <div className="mt-3 flex gap-2.5">
-            <Button nativeButton={false} render={<a href={editURL(registered.id)} />}>
+            <Button
+              nativeButton={false}
+              render={<a href={`${editURL(registered.id)}#tool-catalog-heading`} />}
+            >
               {t.resultEdit}
             </Button>
             <Button variant="outline" nativeButton={false} render={<a href={listURL()} />}>

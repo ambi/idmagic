@@ -13,7 +13,7 @@ import {
   listURL,
   McpResourceServerFormFields,
   parseAccessRules,
-  ReportedToolsPanel,
+  ToolCatalogPanel,
   resourceServerSchema,
   toForm,
 } from './AdminMcpResourceServersShared'
@@ -88,7 +88,7 @@ export function AdminMcpResourceServerEditPage({
             locked={true}
             t={t}
           />
-          <ReportedToolsPanel
+          <ToolCatalogPanel
             resourceServerID={resourceServer.id}
             form={form}
             onChange={setForm}

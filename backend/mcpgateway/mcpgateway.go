@@ -25,20 +25,20 @@ func Load(path string, audit io.Writer) (*Server, error) {
 // Handler は MCP クライアントを受ける HTTP ハンドラーを返す。
 func (s *Server) Handler() http.Handler { return s.gateway.Handler }
 
-// ToolReport は報告したツールの件数と、上流の一覧をすべて取得できたかである。
-type ToolReport struct {
+// ToolCatalog はカタログとして送ったツールの件数と、上流の一覧をすべて取得できたかである。
+type ToolCatalog struct {
 	Tools    int
 	Complete bool
 }
 
-// ReportTools は上流のツールの一覧を IdMagic へ報告する。カタログを参照する proxy の構成でなければ何もしない。
+// SendToolCatalog は上流のツールのカタログを IdMagic へ送る。カタログを参照する proxy の構成でなければ何もしない。
 // 組み込む側は待ち受けの準備ができた後に呼ぶ。
-func (s *Server) ReportTools(ctx context.Context) (ToolReport, error) {
-	result, err := s.gateway.ReportTools(ctx)
-	return ToolReport{Tools: result.Tools, Complete: result.Complete}, err
+func (s *Server) SendToolCatalog(ctx context.Context) (ToolCatalog, error) {
+	result, err := s.gateway.SendToolCatalog(ctx)
+	return ToolCatalog{Tools: result.Tools, Complete: result.Complete}, err
 }
 
-// ListenForToolChanges は ctx が終わるまで上流の変更通知を待ち、起動時と通知のたびに一覧を報告する。
+// ListenForToolChanges は ctx が終わるまで上流の変更通知を待ち、起動時と通知のたびにカタログを送る。
 // Main は起動後にこれを呼ぶ。カタログを参照する proxy の構成でなければすぐに戻る。進み方は log へ書く。
 func (s *Server) ListenForToolChanges(ctx context.Context, log io.Writer) {
 	s.gateway.ListenForToolChanges(ctx, log)

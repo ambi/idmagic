@@ -582,7 +582,7 @@ mapping:
 		return []step{started}, nil
 	}
 	reported := step{Title: "上流のツールの一覧を IdMagic へ報告", Specs: []string{"MCP tools/list"}}
-	result, err := loaded.ReportTools(ctx)
+	result, err := loaded.SendToolCatalog(ctx)
 	if err != nil {
 		reported.Outcome, reported.Detail = "denied", err.Error()
 	} else {

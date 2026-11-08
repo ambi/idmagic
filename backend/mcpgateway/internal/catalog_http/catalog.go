@@ -1,6 +1,6 @@
-// Package report_http は、上流の MCP サーバーの tools/list を集め、公開契約 POST /resource-access/tools へ報告する。
+// Package catalog_http は、上流の MCP サーバーの tools/list を集め、公開契約 POST /resource-access/tools へカタログを送る。
 // ワイヤの型は TypeSpec に合わせてここで持ち、サーバーの内部の型を共有しない。
-package report_http
+package catalog_http
 
 import (
 	"bytes"
@@ -20,16 +20,16 @@ import (
 
 // 上限は REQ-MCPGATEWAY-011 と、IdMagic が受け入れる REQ-OAUTH2-086 の上限に揃える。
 const (
-	maxTools            = 100
-	maxPages            = 10
-	maxTitle            = 256
-	maxDescription      = 2048
-	maxArguments        = 32
-	maxPageBytes        = 4 << 20
-	maxReportErrorBytes = 1 << 16
+	maxTools                 = 100
+	maxPages                 = 10
+	maxTitle                 = 256
+	maxDescription           = 2048
+	maxArguments             = 32
+	maxPageBytes             = 4 << 20
+	maxSendCatalogErrorBytes = 1 << 16
 )
 
-// Tool は報告する一つのツールである。
+// Tool はカタログに含める一つのツールである。
 type Tool struct {
 	Name        string   `json:"name"`
 	Title       string   `json:"title,omitempty"`
@@ -37,16 +37,16 @@ type Tool struct {
 	Arguments   []string `json:"arguments,omitempty"`
 }
 
-// Result は報告した件数と、上流の一覧をすべて取得できたかである。
+// Result はカタログとして送った件数と、上流の一覧をすべて取得できたかである。
 type Result struct {
 	Tools    int
 	Complete bool
 }
 
-// Reporter は上流から一覧を集め、評価用のクライアントの資格情報で報告する。
-type Reporter struct {
+// Publisher は上流から一覧を集め、評価用のクライアントの資格情報でカタログを送る。
+type Publisher struct {
 	Upstream     string
-	ReportURL    string
+	CatalogURL   string
 	ClientID     string
 	ClientSecret string
 	// UpstreamClient は上流へ、IdMagicClient は IdMagic へ送る。資格情報は IdMagic へだけ送る。
@@ -54,8 +54,8 @@ type Reporter struct {
 	IdMagicClient  *http.Client
 }
 
-// Report は一覧を集めて報告する。最初のページを取得できなければ報告しない。
-func (r Reporter) Report(ctx context.Context) (Result, error) {
+// SendCatalog は一覧を集めてカタログを送る。最初のページを取得できなければカタログを送らない。
+func (r Publisher) SendCatalog(ctx context.Context) (Result, error) {
 	tools, complete, err := r.collect(ctx)
 	if err != nil {
 		return Result{}, err
@@ -67,7 +67,7 @@ func (r Reporter) Report(ctx context.Context) (Result, error) {
 }
 
 // collect は nextCursor をたどる。二ページ目以降の失敗と上限の超過は、取得できた分を不完全として返す。
-func (r Reporter) collect(ctx context.Context) ([]Tool, bool, error) {
+func (r Publisher) collect(ctx context.Context) ([]Tool, bool, error) {
 	var tools []Tool
 	cursor := ""
 	for page := range maxPages {
@@ -101,7 +101,7 @@ type listedTool struct {
 	} `json:"inputSchema"`
 }
 
-func (r Reporter) fetchPage(ctx context.Context, cursor string) ([]Tool, string, error) {
+func (r Publisher) fetchPage(ctx context.Context, cursor string) ([]Tool, string, error) {
 	params := map[string]any{"_meta": map[string]any{
 		"io.modelcontextprotocol/protocolVersion":    domain.ProtocolVersion,
 		"io.modelcontextprotocol/clientCapabilities": map[string]any{},
@@ -181,7 +181,7 @@ func truncate(value string, limit int) string {
 	return string([]rune(value)[:limit])
 }
 
-func (r Reporter) send(ctx context.Context, tools []Tool, complete bool) error {
+func (r Publisher) send(ctx context.Context, tools []Tool, complete bool) error {
 	if tools == nil {
 		tools = []Tool{}
 	}
@@ -190,7 +190,7 @@ func (r Reporter) send(ctx context.Context, tools []Tool, complete bool) error {
 		return err
 	}
 	form := url.Values{"tools": {string(encoded)}, "complete": {fmt.Sprint(complete)}}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, r.ReportURL, strings.NewReader(form.Encode()))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, r.CatalogURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
 	}
@@ -202,8 +202,8 @@ func (r Reporter) send(ctx context.Context, tools []Tool, complete bool) error {
 	}
 	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusNoContent {
-		detail, _ := io.ReadAll(io.LimitReader(response.Body, maxReportErrorBytes))
-		return fmt.Errorf("the tool report was refused: HTTP %d %s", response.StatusCode, strings.TrimSpace(string(detail)))
+		detail, _ := io.ReadAll(io.LimitReader(response.Body, maxSendCatalogErrorBytes))
+		return fmt.Errorf("the tool catalog was refused: HTTP %d %s", response.StatusCode, strings.TrimSpace(string(detail)))
 	}
 	return nil
 }

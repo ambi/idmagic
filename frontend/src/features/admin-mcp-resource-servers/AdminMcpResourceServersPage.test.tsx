@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'bun:test'
 import type { McpResourceServer } from '../../types'
 import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
@@ -69,5 +69,68 @@ describe('AdminMcpResourceServersPage', () => {
     expect(
       screen.getByRole('button', { name: adminMcpResourceServersDictionary.en.edit }),
     ).toHaveAttribute('href', '/admin/mcp-resource-servers/resource-server-1/edit')
+  })
+})
+
+const servers: McpResourceServer[] = [
+  {
+    tenant_id: 'default',
+    created_at: '',
+    updated_at: '',
+    id: 'one',
+    name: 'Documents',
+    resource: 'https://docs.example/mcp',
+    state: 'Active',
+    scopes: ['docs'],
+    client_id: 'docs-client',
+    access_rules: [
+      {
+        scopes: ['docs'],
+        resource_type: 'idmagic_mcp_operation',
+        relation: 'invoke',
+        tool: { name: 'read', display_name: 'Read' },
+      },
+    ],
+  },
+  {
+    tenant_id: 'default',
+    created_at: '',
+    updated_at: '',
+    id: 'two',
+    name: 'Archive',
+    resource: 'https://archive.example/mcp',
+    state: 'Disabled',
+    scopes: ['archive'],
+    client_id: 'archive-client',
+  },
+]
+
+describe('AdminMcpResourceServersPage', () => {
+  it('selects a server in the table and shows its evaluation client and actions', async () => {
+    await renderWithRouterBase(
+      <AdminMcpResourceServersPage csrfToken="csrf" resourceServers={servers} />,
+    )
+    const table = screen.getByRole('table')
+    const row = within(table).getByRole('row', { name: /Documents/ })
+    expect(row).toHaveTextContent('Active')
+    expect(row).toHaveTextContent('1')
+    expect(screen.getByText('docs-client')).toBeInTheDocument()
+    fireEvent.click(within(table).getByRole('button', { name: 'Show details for Archive' }))
+    expect(screen.getByText('archive-client')).toBeInTheDocument()
+    expect(screen.queryByText('docs-client')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '/admin/mcp-resource-servers/two/edit',
+    )
+    fireEvent.click(screen.getByRole('button', { name: '日本語' }))
+    expect(within(table).getByText('有効')).toBeInTheDocument()
+    expect(within(table).getByText('無効')).toBeInTheDocument()
+  })
+
+  it('explains how to add the first server', async () => {
+    await renderWithRouterBase(
+      <AdminMcpResourceServersPage csrfToken="csrf" resourceServers={[]} />,
+    )
+    expect(screen.getByText('Register one using Add resource server.')).toBeInTheDocument()
   })
 })

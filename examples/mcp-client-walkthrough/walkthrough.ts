@@ -256,16 +256,16 @@ async function main() {
   ].join("\n"), { mode: 0o600 });
   const gateway = spawnLogged("gateway", [gatewayBin, "--config", configFile], {});
 
-  // 5. ゲートウェイが報告したツールを公開する。
-  const reported = await waitFor("ゲートウェイのツールの報告", async () => {
+  // 5. Gateway が送ったカタログのツールを公開する。
+  const catalog = await waitFor("Gateway のツールカタログ", async () => {
     if (gateway.child.exitCode !== null) throw new Error(`ゲートウェイが終了しました（${gateway.logFile}.err）`);
-    const body = await admin<{ tools?: { name: string; title?: string }[] }>("GET", `/api/admin/v1/mcp-resource-servers/${server.id}/reported-tools`).catch(() => undefined);
+    const body = await admin<{ tools?: { name: string; title?: string }[] }>("GET", `/api/admin/v1/mcp-resource-servers/${server.id}/tool-catalog`).catch(() => undefined);
     return body?.tools && body.tools.length >= 4 ? body.tools : undefined;
   });
-  check("ツールの報告", "上流の 4 つのツールが IdMagic へ報告される", reported.map((t) => t.name).sort().join(", "), reported.length === 4);
+  check("ツールカタログの送信", "上流の 4 つのツールが IdMagic へカタログとして送られる", catalog.map((t) => t.name).sort().join(", "), catalog.length === 4);
   const rule = (name: string, extra: Record<string, unknown> = {}) => ({
     resource_type: "idmagic_mcp_operation", relation: "invoke", scopes: ["mcp"],
-    tool: { name, display_name: reported.find((t) => t.name === name)?.title ?? name }, ...extra,
+    tool: { name, display_name: catalog.find((t) => t.name === name)?.title ?? name }, ...extra,
   });
   const published = await admin<{ access_rules: { tool: { name: string; assignment_resource_id: string } }[] }>("PATCH", `/api/admin/v1/mcp-resource-servers/${server.id}`, {
     name: "文書 MCP",

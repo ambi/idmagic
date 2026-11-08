@@ -148,7 +148,7 @@ export function AdminAgentCredentialsPage({
         scope: requestedScopes.join(' '),
         jwks,
       })
-      // 束縛だけが失敗しても、作成済みのクライアントで再試行できるように残す。
+      // 紐付けだけが失敗しても、作成済みのクライアントで再試行できるように残す。
       setClientID(created)
       setCreatedClient({ id: created, bound: false })
       try {

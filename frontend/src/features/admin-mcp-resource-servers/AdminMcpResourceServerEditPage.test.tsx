@@ -36,7 +36,7 @@ describe('AdminMcpResourceServerEditPage', () => {
       mock((url: string) =>
         Promise.resolve(
           url.includes('/api/admin/v1/mcp-resource-servers/resource-server-1') &&
-            !url.includes('reported')
+            !url.includes('tool-catalog')
             ? response(200, { ...resourceServer, name: 'Renamed MCP' })
             : response(200, { tools: [], complete: false, applications: [] }),
         ),
@@ -62,16 +62,16 @@ describe('AdminMcpResourceServerEditPage', () => {
     )
   })
 
-  // routedFetch は一覧と報告の読み込みに応答し、保存の要求を記録する。
+  // routedFetch は一覧とカタログの読み込みに応答し、保存の要求を記録する。
   function routedFetch(
     save: ReturnType<typeof response>,
-    reported: unknown = { tools: [], complete: false },
+    catalog: unknown = { tools: [], complete: false },
   ) {
     const saved: unknown[] = []
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.includes('/reported-tools')) return Promise.resolve(response(200, reported))
+        if (url.includes('/tool-catalog')) return Promise.resolve(response(200, catalog))
         if (url.includes('/api/admin/v1/applications')) {
           return Promise.resolve(
             response(200, {
@@ -126,8 +126,8 @@ describe('AdminMcpResourceServerEditPage', () => {
     )
   })
 
-  //spec:covers REQ-OAUTH2-087: 報告されたツールは選ぶまで公開されず、選ぶと名前と表示名を入れた行になる。完全な報告にない公開中のツールは削除せずに示す。
-  it('publishes a reported tool only when chosen and flags published tools missing from a complete report', async () => {
+  //spec:covers REQ-OAUTH2-087: カタログのツールは選ぶまで公開されず、選ぶと名前と表示名を入れた行になる。完全なカタログにない公開中のツールは削除せずに示す。
+  it('publishes a catalog tool only when chosen and flags published tools missing from a complete catalog', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     const published = {
       ...resourceServer,
@@ -143,7 +143,7 @@ describe('AdminMcpResourceServerEditPage', () => {
     }
     const saved = routedFetch(response(200, published), {
       complete: true,
-      reported_at: '2026-11-03T09:00:00Z',
+      received_at: '2026-11-03T09:00:00Z',
       tools: [
         {
           name: 'read_document',
@@ -161,11 +161,11 @@ describe('AdminMcpResourceServerEditPage', () => {
     expect(await screen.findByText('Read documents')).toBeInTheDocument()
     expect(screen.getByText('<b>reads</b>')).toBeInTheDocument()
     expect(
-      screen.getByText(t.reportedMissing.replace('{names}', 'archive_document')),
+      screen.getByText(t.catalogMissing.replace('{names}', 'archive_document')),
     ).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: `${t.reportedPublish} read_document` }))
+    fireEvent.click(screen.getByRole('button', { name: `${t.catalogPublish} read_document` }))
     expect(
-      screen.getByRole('button', { name: `${t.reportedPublish} delete_document` }),
+      screen.getByRole('button', { name: `${t.catalogPublish} delete_document` }),
     ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: t.update }))
 
@@ -183,7 +183,7 @@ describe('AdminMcpResourceServerEditPage', () => {
   })
 
   //spec:covers REQ-OAUTH2-087: 前回の一覧からの追加、削除、定義変更を、公開中かどうかと変更前の定義とともに示し、表示だけでは保存しない。
-  it('shows changes since the previous report', async () => {
+  it('shows changes since the previous catalog', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     const published = {
       ...resourceServer,
@@ -197,7 +197,7 @@ describe('AdminMcpResourceServerEditPage', () => {
     }
     const saved = routedFetch(response(200, published), {
       complete: true,
-      reported_at: '2026-11-04T09:00:00Z',
+      received_at: '2026-11-04T09:00:00Z',
       tools: [
         { name: 'read_document', description: 'sends documents outside', arguments: ['id', 'to'] },
         { name: 'write_document' },
@@ -223,7 +223,7 @@ describe('AdminMcpResourceServerEditPage', () => {
     const within = (text: string) => changes.querySelector(`[data-change="${text}"]`)
     expect(within('added')?.textContent).toContain('write_document')
     expect(within('removed')?.textContent).toContain('delete_document')
-    expect(within('removed')?.textContent).toContain(t.reportedPublished)
+    expect(within('removed')?.textContent).toContain(t.catalogPublished)
     const modified = within('modified')?.textContent ?? ''
     expect(modified).toContain('read_document')
     expect(modified).toContain(`${t.changeFieldDescription}, ${t.changeFieldArguments}`)
@@ -231,7 +231,7 @@ describe('AdminMcpResourceServerEditPage', () => {
       t.changesPreviousDescription.replace('{description}', 'reads documents'),
     )
     expect(modified).toContain(t.changesPreviousArguments.replace('{arguments}', 'id'))
-    expect(modified).toContain(t.reportedPublished)
+    expect(modified).toContain(t.catalogPublished)
     expect(saved).toHaveLength(0)
   })
 

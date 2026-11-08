@@ -13,11 +13,11 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// 報告は最大 100 件で、各項目の上限の合計に余裕を持たせた大きさで本文を打ち切る。
-const maxToolReportBytes = 512 << 10
+// カタログは最大 100 件で、各項目の上限の合計に余裕を持たせた大きさで本文を打ち切る。
+const maxToolCatalogBytes = 512 << 10
 
-func (d Deps) handleReportResourceTools(c *echo.Context) error {
-	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, maxToolReportBytes)
+func (d Deps) handlePutResourceToolCatalog(c *echo.Context) error {
+	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, maxToolCatalogBytes)
 	if err := c.Request().ParseForm(); err != nil {
 		return support.NoStoreJSON(c, http.StatusBadRequest, support.OAuthErrorBody("invalid_request", "form parse"))
 	}
@@ -25,9 +25,9 @@ func (d Deps) handleReportResourceTools(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
-	if d.RateLimiter == nil || d.McpToolReportRepo == nil {
+	if d.RateLimiter == nil || d.McpToolCatalogRepo == nil {
 		return support.NoStoreJSON(c, http.StatusServiceUnavailable,
-			support.OAuthErrorBody("temporarily_unavailable", "tool reports are not configured"))
+			support.OAuthErrorBody("temporarily_unavailable", "tool catalogs are not configured"))
 	}
 	tenantID := support.RequestTenantID(c)
 	key := fmt.Sprintf("%q:%q", tenantID, client.ID)
@@ -37,13 +37,13 @@ func (d Deps) handleReportResourceTools(c *echo.Context) error {
 		return nil
 	}
 	form := c.Request().PostFormValue
-	err = tokenusecases.ReportResourceTools(c.Request().Context(), tokenusecases.ToolReportDeps{
-		Servers: d.McpResourceServerRepo, Reports: d.McpToolReportRepo,
-	}, tokenusecases.ToolReportRequest{
+	err = tokenusecases.PutResourceToolCatalog(c.Request().Context(), tokenusecases.ToolCatalogDeps{
+		Servers: d.McpResourceServerRepo, Catalogs: d.McpToolCatalogRepo,
+	}, tokenusecases.ToolCatalogRequest{
 		TenantID: tenantID, ClientID: client.ID, Tools: form("tools"), Complete: form("complete"),
 	}, time.Now().UTC())
 	switch {
-	case errors.Is(err, tokenusecases.ErrInvalidToolReport):
+	case errors.Is(err, tokenusecases.ErrInvalidToolCatalog):
 		return support.NoStoreJSON(c, http.StatusBadRequest,
 			support.OAuthErrorBody("invalid_request", "tools or complete is not acceptable"))
 	case errors.Is(err, tokenusecases.ErrResourceServerNotRegistered):

@@ -172,6 +172,28 @@ describe('AdminMcpResourceServerCreatePage', () => {
     expect(config).toContain('client_id: "new-client"')
     expect(config).toContain('catalog: true')
     expect(config).not.toContain('new-secret')
+    const writeText = mock().mockResolvedValue(undefined)
+    const originalClipboard = navigator.clipboard
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    try {
+      for (const [label, value] of [
+        ['Copy Evaluation client ID', 'new-client'],
+        ['Copy Client secret', 'new-secret'],
+        ['Copy Gateway configuration file (YAML)', config],
+      ]) {
+        fireEvent.click(screen.getByRole('button', { name: label }))
+        await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(value))
+      }
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: originalClipboard,
+      })
+    }
+    expect(screen.getByRole('button', { name: 'Publish tools' })).toHaveAttribute(
+      'href',
+      '/admin/mcp-resource-servers/resource-server-1/edit#tool-catalog-heading',
+    )
   })
 
   //spec:covers REQ-OAUTH2-088: 既存のサービスは名前で選び、client_id を入力しない。

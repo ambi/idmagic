@@ -45,9 +45,9 @@ async function last(scenario: string): Promise<Step | undefined> {
 async function toggleOperation(view: Bun.WebView, agentPath: string, operation: string) {
   await view.navigate(`${uiOrigin}${agentPath}`)
   await waitForPage(view, 'admin-agent-detail')
-  await clickLinkByText(view, 'Resource connections')
+  await view.evaluate(`document.querySelector('main a[href$="/resources"]').click()`)
   await waitForPage(view, 'admin-agent-resources')
-  await clickLinkByText(view, 'Edit connections and operations')
+  await clickLinkByText(view, 'Edit MCP resource servers and operations')
   await waitForPage(view, 'admin-agent-resources-edit')
   const serverID = String(
     await view.evaluate(
@@ -61,10 +61,10 @@ async function toggleOperation(view: Bun.WebView, agentPath: string, operation: 
   await waitForText(view, `${operation}`)
   await clickButtonByText(view, 'Save')
   await waitForPage(view, 'admin-agent-detail')
-  await waitForText(view, 'Connection and operation assignments saved.')
+  await waitForText(view, 'MCP resource server and operation assignments saved.')
 }
 
-//spec:covers REQ-IDMANAGEMENT-105, REQ-OAUTH2-088, REQ-OAUTH2-087, REQ-MCPGATEWAY-011, REQ-OAUTH2-084, REQ-OAUTH2-083, REQ-MCPGATEWAY-010: 一つの画面で接続先と評価用クライアントを登録し、ゲートウェイが報告したツールを名前の入力なしに公開して、閲覧、更新、削除を個別に割り当てる。同じスコープでも未割当の削除は拒否する。
+//spec:covers REQ-IDMANAGEMENT-105, REQ-OAUTH2-088, REQ-OAUTH2-087, REQ-MCPGATEWAY-011, REQ-OAUTH2-084, REQ-OAUTH2-083, REQ-MCPGATEWAY-010: 一つの画面で接続先と評価用クライアントを登録し、Gateway が送ったカタログのツールを名前の入力なしに公開して、閲覧、更新、削除を個別に割り当てる。同じスコープでも未割当の削除は拒否する。
 test('administrator enables writing and deletion independently in the agent demo', async () => {
   // go run は子プロセスを残すので、kill が本体へ届くように先にビルドして直接起動する。
   const binary = join(tmpdir(), `idmagic-agent-demo-operations-${process.pid}`)
@@ -118,8 +118,8 @@ test('administrator enables writing and deletion independently in the agent demo
     })
     expect(started.steps.at(-1)).toMatchObject({ outcome: 'allowed' })
 
-    // 報告されたツールを名前の入力なしで公開する。表示名は MCP の title から入る。
-    await clickLinkByText(view, 'Publish reported tools')
+    // MCP サーバーのツールを名前の入力なしで公開する。表示名は MCP の title から入る。
+    await clickLinkByText(view, 'Publish tools')
     await waitForPage(view, 'admin-mcp-resource-server-edit')
     await waitForText(view, '文書の削除')
     for (const tool of ['read_document', 'write_document', 'delete_document']) {

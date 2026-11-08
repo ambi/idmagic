@@ -44,9 +44,9 @@ test('administrator assigns registered operations from resource connections', as
     await clickButtonByText(view, 'Register')
     await waitForPage(view, 'admin-agent-detail')
     const detailPath = String(await view.evaluate('window.location.pathname'))
-    await clickLinkByText(view, 'Resource connections')
+    await view.evaluate(`document.querySelector('main a[href$="/resources"]').click()`)
     await waitForPage(view, 'admin-agent-resources')
-    await clickLinkByText(view, 'Edit connections and operations')
+    await clickLinkByText(view, 'Edit MCP resource servers and operations')
     await waitForPage(view, 'admin-agent-resources-edit')
     const serverID = String(
       await view.evaluate(
@@ -59,8 +59,8 @@ test('administrator assigns registered operations from resource connections', as
     )
     await clickButtonByText(view, 'Save')
     await waitForPage(view, 'admin-agent-detail')
-    await waitForText(view, 'Connection and operation assignments saved.')
-    await clickLinkByText(view, 'Resource connections')
+    await waitForText(view, 'MCP resource server and operation assignments saved.')
+    await view.evaluate(`document.querySelector('main a[href$="/resources"]').click()`)
     await waitForPage(view, 'admin-agent-resources')
     await waitForText(view, connection)
     await waitForText(view, 'Read documents')
@@ -81,7 +81,7 @@ test('administrator assigns registered operations from resource connections', as
     await clickButtonByText(view, 'Save')
     await waitForPage(view, 'admin-agent-detail')
     expect(String(await view.evaluate('window.location.pathname'))).toBe(detailPath)
-    await clickLinkByText(view, 'Resource connections')
+    await view.evaluate(`document.querySelector('main a[href$="/resources"]').click()`)
     await waitForPage(view, 'admin-agent-resources')
     await waitForText(view, 'No operations have been assigned yet.')
   } finally {

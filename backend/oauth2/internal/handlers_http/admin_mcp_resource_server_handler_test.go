@@ -32,8 +32,8 @@ func newAdminMcpResourceServerHandler() *echo.Echo {
 	return newAdminMcpResourceServerHandlerWith(oauth2.NewMemoryModule().ClientRepo)
 }
 
-// reports はテストが報告を置いて読み直すための共有の保存先である。
-var reports = oauth2memory.NewMcpToolReportRepository()
+// reports はテストがカタログを置いて読み直すための共有の保存先である。
+var catalogs = oauth2memory.NewMcpToolCatalogRepository()
 
 func newAdminMcpResourceServerHandlerWith(clients oauthports.OAuth2ClientRepository, supplied ...oauthports.McpResourceServerRepository) *echo.Echo {
 	users := idmanagement.NewMemoryModule().UserRepo
@@ -53,7 +53,7 @@ func newAdminMcpResourceServerHandlerWith(clients oauthports.OAuth2ClientReposit
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer: "http://idp.test",
-		Emit:   func(spec.DomainEvent) {}, UserRepo: users, OAuth2: oauth2.Module{McpResourceServerRepo: servers, McpToolReportRepo: reports, ClientRepo: clients},
+		Emit:   func(spec.DomainEvent) {}, UserRepo: users, OAuth2: oauth2.Module{McpResourceServerRepo: servers, McpToolCatalogRepo: catalogs, ClientRepo: clients},
 		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
 	return e
@@ -267,9 +267,9 @@ func TestAdminMcpResourceServerAccessRules(t *testing.T) {
 	}
 }
 
-func getReportedTools(t *testing.T, e *echo.Echo, id string) (int, map[string]any) {
+func getCatalogTools(t *testing.T, e *echo.Echo, id string) (int, map[string]any) {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/mcp-resource-servers/"+id+"/reported-tools", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/mcp-resource-servers/"+id+"/tool-catalog", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "admin")
 	recorder := httptest.NewRecorder()
 	e.ServeHTTP(recorder, request)
@@ -278,9 +278,9 @@ func getReportedTools(t *testing.T, e *echo.Echo, id string) (int, map[string]an
 	return recorder.Code, body
 }
 
-//spec:covers REQ-OAUTH2-087: 報告は登録とは別に返り、未報告は空、登録の削除で報告も消え、存在しない登録は 404 になる。
-//verify:operation GetAdminMcpResourceServerReportedTools: 200 JSON の tools、complete、reported_at と、存在しない登録の 404 を観測する。
-func TestAdminReadsReportedToolsSeparatelyFromPublishedTools(t *testing.T) {
+//spec:covers REQ-OAUTH2-087: カタログは登録とは別に返り、未受信は空、登録の削除でカタログも消え、存在しない登録は 404 になる。
+//verify:operation GetAdminMcpResourceServerToolCatalog: 200 JSON の tools、complete、received_at と、存在しない登録の 404 を観測する。
+func TestAdminReadsToolCatalogWithoutPublishingIt(t *testing.T) {
 	e := newAdminMcpResourceServerHandler()
 	csrf, cookie := adminCSRF(t, e)
 	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
@@ -290,39 +290,39 @@ func TestAdminReadsReportedToolsSeparatelyFromPublishedTools(t *testing.T) {
 	}
 	id := createdBody["id"].(string)
 
-	status, body := getReportedTools(t, e, id)
-	if status != http.StatusOK || len(body["tools"].([]any)) != 0 || body["reported_at"] != nil {
-		t.Fatalf("before a report: status=%d body=%v", status, body)
+	status, body := getCatalogTools(t, e, id)
+	if status != http.StatusOK || len(body["tools"].([]any)) != 0 || body["received_at"] != nil {
+		t.Fatalf("before a catalog: status=%d body=%v", status, body)
 	}
-	reportedAt := time.Date(2026, 11, 3, 9, 0, 0, 0, time.UTC)
-	if err := reports.Save(context.Background(), &oauthdomain.McpToolReport{
-		TenantID: tenancydomain.DefaultTenantID, ResourceServerID: id, Complete: true, ReportedAt: reportedAt,
-		Tools: []oauthdomain.ReportedTool{{Name: "read_document", Title: "閲覧", Arguments: []string{"document_id"}}},
+	receivedAt := time.Date(2026, 11, 3, 9, 0, 0, 0, time.UTC)
+	if err := catalogs.Save(context.Background(), &oauthdomain.McpToolCatalog{
+		TenantID: tenancydomain.DefaultTenantID, ResourceServerID: id, Complete: true, ReceivedAt: receivedAt,
+		Tools: []oauthdomain.CatalogTool{{Name: "read_document", Title: "閲覧", Arguments: []string{"document_id"}}},
 	}); err != nil {
 		t.Fatal(err)
 	}
-	status, body = getReportedTools(t, e, id)
+	status, body = getCatalogTools(t, e, id)
 	tools := body["tools"].([]any)
-	if status != http.StatusOK || len(tools) != 1 || tools[0].(map[string]any)["name"] != "read_document" || body["complete"] != true || body["reported_at"] != reportedAt.Format(time.RFC3339) {
-		t.Fatalf("after a report: status=%d body=%v", status, body)
+	if status != http.StatusOK || len(tools) != 1 || tools[0].(map[string]any)["name"] != "read_document" || body["complete"] != true || body["received_at"] != receivedAt.Format(time.RFC3339) {
+		t.Fatalf("after a catalog: status=%d body=%v", status, body)
 	}
 	if published := createdBody["access_rules"].([]any); len(published) != 0 {
-		t.Fatalf("the report published rules: %v", published)
+		t.Fatalf("the catalog published rules: %v", published)
 	}
 
 	if deleted := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/mcp-resource-servers/"+id, csrf, cookie, nil); deleted.Code != http.StatusNoContent {
 		t.Fatalf("delete status=%d", deleted.Code)
 	}
-	if report, err := reports.Find(context.Background(), tenancydomain.DefaultTenantID, id); err != nil || report != nil {
-		t.Fatalf("report survived the registration: %+v %v", report, err)
+	if catalog, err := catalogs.Find(context.Background(), tenancydomain.DefaultTenantID, id); err != nil || catalog != nil {
+		t.Fatalf("catalog survived the registration: %+v %v", catalog, err)
 	}
-	if status, _ := getReportedTools(t, e, id); status != http.StatusNotFound {
+	if status, _ := getCatalogTools(t, e, id); status != http.StatusNotFound {
 		t.Fatalf("missing registration status=%d", status)
 	}
 }
 
-//spec:covers REQ-OAUTH2-087: 内容の変わった報告の後は changes に変更の時刻、追加、削除、定義変更と直前の定義を返し、直前の一覧がなければ changes を含めない。
-//verify:operation GetAdminMcpResourceServerReportedTools: 200 JSON の changes の changed_at、added、removed、modified を観測する。
+//spec:covers REQ-OAUTH2-087: 内容の変わったカタログの後は changes に変更の時刻、追加、削除、定義変更と直前の定義を返し、直前の一覧がなければ changes を含めない。
+//verify:operation GetAdminMcpResourceServerToolCatalog: 200 JSON の changes の changed_at、added、removed、modified を観測する。
 func TestAdminReadsReportChangesSinceThePreviousList(t *testing.T) {
 	e := newAdminMcpResourceServerHandler()
 	csrf, cookie := adminCSRF(t, e)
@@ -332,23 +332,23 @@ func TestAdminReadsReportChangesSinceThePreviousList(t *testing.T) {
 		t.Fatal(err)
 	}
 	id := createdBody["id"].(string)
-	save := func(at time.Time, tools ...oauthdomain.ReportedTool) {
+	save := func(at time.Time, tools ...oauthdomain.CatalogTool) {
 		t.Helper()
-		if err := reports.Save(context.Background(), &oauthdomain.McpToolReport{
-			TenantID: tenancydomain.DefaultTenantID, ResourceServerID: id, Complete: true, ReportedAt: at, Tools: tools,
+		if err := catalogs.Save(context.Background(), &oauthdomain.McpToolCatalog{
+			TenantID: tenancydomain.DefaultTenantID, ResourceServerID: id, Complete: true, ReceivedAt: at, Tools: tools,
 		}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	first := time.Date(2026, 11, 3, 9, 0, 0, 0, time.UTC)
-	save(first, oauthdomain.ReportedTool{Name: "read_document", Description: "文書を読む", Arguments: []string{"document_id"}}, oauthdomain.ReportedTool{Name: "delete_document"})
-	if _, body := getReportedTools(t, e, id); body["changes"] != nil {
+	save(first, oauthdomain.CatalogTool{Name: "read_document", Description: "文書を読む", Arguments: []string{"document_id"}}, oauthdomain.CatalogTool{Name: "delete_document"})
+	if _, body := getCatalogTools(t, e, id); body["changes"] != nil {
 		t.Fatalf("the first report has changes: %v", body["changes"])
 	}
 
 	changed := first.Add(time.Hour)
-	save(changed, oauthdomain.ReportedTool{Name: "read_document", Description: "文書を社外へ送る", Arguments: []string{"document_id"}}, oauthdomain.ReportedTool{Name: "write_document"})
-	status, body := getReportedTools(t, e, id)
+	save(changed, oauthdomain.CatalogTool{Name: "read_document", Description: "文書を社外へ送る", Arguments: []string{"document_id"}}, oauthdomain.CatalogTool{Name: "write_document"})
+	status, body := getCatalogTools(t, e, id)
 	want := map[string]any{
 		"changed_at": changed.Format(time.RFC3339),
 		"added":      []any{"write_document"},

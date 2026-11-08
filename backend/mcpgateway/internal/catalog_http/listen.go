@@ -1,4 +1,4 @@
-package report_http
+package catalog_http
 
 import (
 	"bufio"
@@ -18,18 +18,18 @@ import (
 
 // 間隔と上限は REQ-MCPGATEWAY-012 が定める。
 const (
-	reportInterval     = 10 * time.Second
-	defaultAckTimeout  = 10 * time.Second
-	initialBackoff     = time.Second
-	maxBackoff         = 5 * time.Minute
-	maxListenLineBytes = 1 << 20
+	sendCatalogInterval = 10 * time.Second
+	defaultAckTimeout   = 10 * time.Second
+	initialBackoff      = time.Second
+	maxBackoff          = 5 * time.Minute
+	maxListenLineBytes  = 1 << 20
 	// listenRequestID は subscriptions/listen の要求の id で、通知の subscriptionId と照合する。
 	listenRequestID = 1
 )
 
-// Listener は上流の subscriptions/listen で変更通知を待ち、通知のたびに一覧を報告し直す。
+// Listener は上流の subscriptions/listen で変更通知を待ち、通知のたびにカタログを再送する。
 type Listener struct {
-	Reporter Reporter
+	Publisher Publisher
 	// Client は上流へ待ち受けを送る。応答は開いたままなので、全体の期限を持たないクライアントにする。
 	Client *http.Client
 	// Log には件数、状態、理由だけを書き、ツールの説明とシークレットを書かない。
@@ -38,13 +38,13 @@ type Listener struct {
 	AckTimeout      time.Duration
 	Now             func() time.Time
 	WaitToReconnect func(context.Context, time.Duration) error
-	WaitToReport    func(context.Context, time.Duration) error
+	WaitToSend      func(context.Context, time.Duration) error
 }
 
-// Run は ctx が終わるか、上流が変更通知に対応しないと分かるまで、待ち受けと報告を続ける。
-// 戻る前に、受けた契機の報告を済ませる。
+// Run は ctx が終わるか、上流が変更通知に対応しないと分かるまで、待ち受けとカタログの送信を続ける。
+// 戻る前に、受けた契機による送信を済ませる。
 func (l Listener) Run(ctx context.Context) {
-	scheduler := newReportScheduler(l.now, l.waitToReport(), func(ctx context.Context) { l.report(ctx) })
+	scheduler := newCatalogScheduler(l.now, l.waitToSend(), func(ctx context.Context) { l.sendCatalog(ctx) })
 	var done sync.WaitGroup
 	done.Go(func() { scheduler.run(ctx) })
 	defer done.Wait()
@@ -56,7 +56,7 @@ func (l Listener) Run(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		// 起動時の報告は、待ち受けに対応しない上流でも行う (REQ-MCPGATEWAY-011)。
+		// 起動時の送信は、待ち受けに対応しない上流でも行う (REQ-MCPGATEWAY-011)。
 		if attempt == 0 && !outcome.acknowledged {
 			scheduler.trigger()
 		}
@@ -79,13 +79,13 @@ func nextBackoff(current time.Duration) time.Duration {
 	return min(current*2, maxBackoff)
 }
 
-func (l Listener) report(ctx context.Context) {
-	result, err := l.Reporter.Report(ctx)
+func (l Listener) sendCatalog(ctx context.Context) {
+	result, err := l.Publisher.SendCatalog(ctx)
 	if err != nil {
-		l.logf("tool report failed: %v", err)
+		l.logf("tool catalog failed: %v", err)
 		return
 	}
-	l.logf("reported %d tools (complete=%t)", result.Tools, result.Complete)
+	l.logf("sent %d tools (complete=%t)", result.Tools, result.Complete)
 }
 
 // listenOutcome は一回の待ち受けの終わり方である。stop は開き直しても変わらない失敗を表す。
@@ -174,7 +174,7 @@ func (l Listener) listenRequest(ctx context.Context) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, l.Reporter.Upstream, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, l.Publisher.Upstream, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -322,9 +322,9 @@ func (l Listener) waitToReconnect() func(context.Context, time.Duration) error {
 	return sleep
 }
 
-func (l Listener) waitToReport() func(context.Context, time.Duration) error {
-	if l.WaitToReport != nil {
-		return l.WaitToReport
+func (l Listener) waitToSend() func(context.Context, time.Duration) error {
+	if l.WaitToSend != nil {
+		return l.WaitToSend
 	}
 	return sleep
 }
@@ -340,33 +340,33 @@ func sleep(ctx context.Context, d time.Duration) error {
 	}
 }
 
-// reportScheduler は報告の契機をまとめ、報告の開始の間隔を reportInterval 以上空ける。
-// 契機は一件だけ保留し、待つ間の契機は次の一回の報告にまとめる。
-type reportScheduler struct {
-	pending chan struct{}
-	closing chan struct{}
-	once    *sync.Once
-	now     func() time.Time
-	wait    func(context.Context, time.Duration) error
-	report  func(context.Context)
+// catalogScheduler は送信の契機をまとめ、送信の開始の間隔を sendCatalogInterval 以上空ける。
+// 契機は一件だけ保留し、待つ間の契機は次の一回の送信にまとめる。
+type catalogScheduler struct {
+	pending     chan struct{}
+	closing     chan struct{}
+	once        *sync.Once
+	now         func() time.Time
+	wait        func(context.Context, time.Duration) error
+	sendCatalog func(context.Context)
 }
 
-func newReportScheduler(now func() time.Time, wait func(context.Context, time.Duration) error, report func(context.Context)) reportScheduler {
-	return reportScheduler{pending: make(chan struct{}, 1), closing: make(chan struct{}), once: &sync.Once{}, now: now, wait: wait, report: report}
+func newCatalogScheduler(now func() time.Time, wait func(context.Context, time.Duration) error, sendCatalog func(context.Context)) catalogScheduler {
+	return catalogScheduler{pending: make(chan struct{}, 1), closing: make(chan struct{}), once: &sync.Once{}, now: now, wait: wait, sendCatalog: sendCatalog}
 }
 
 // trigger は待たずに戻る。保留中の契機があれば何もしない。
-func (s reportScheduler) trigger() {
+func (s catalogScheduler) trigger() {
 	select {
 	case s.pending <- struct{}{}:
 	default:
 	}
 }
 
-// close は保留中の契機を報告してから run を終えさせる。
-func (s reportScheduler) close() { s.once.Do(func() { close(s.closing) }) }
+// close は保留中の契機による送信を済ませてから run を終えさせる。
+func (s catalogScheduler) close() { s.once.Do(func() { close(s.closing) }) }
 
-func (s reportScheduler) run(ctx context.Context) {
+func (s catalogScheduler) run(ctx context.Context) {
 	var last time.Time
 	for {
 		select {
@@ -381,18 +381,18 @@ func (s reportScheduler) run(ctx context.Context) {
 			}
 		}
 		if !last.IsZero() {
-			if remaining := reportInterval - s.now().Sub(last); remaining > 0 {
+			if remaining := sendCatalogInterval - s.now().Sub(last); remaining > 0 {
 				if err := s.wait(ctx, remaining); err != nil {
 					return
 				}
 			}
 		}
-		// 待つ間の契機は、これから始める報告が反映する。
+		// 待つ間の契機は、これから始める送信が反映する。
 		select {
 		case <-s.pending:
 		default:
 		}
 		last = s.now()
-		s.report(ctx)
+		s.sendCatalog(ctx)
 	}
 }

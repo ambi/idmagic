@@ -6,7 +6,17 @@ import { copyableValueDictionary } from './CopyableValue.i18n'
 
 // CopyableValue は変更できない値 (client_id / secret 等) を入力欄ではなくテキストとして
 // 表示し、コピーボタンだけを添える。フォームに見せないことで「編集不可」を明示する。
-export function CopyableValue({ value, copyLabel }: { value: string; copyLabel: string }) {
+export function CopyableValue({
+  value,
+  copyLabel,
+  multiline = false,
+  id,
+}: {
+  value: string
+  copyLabel: string
+  multiline?: boolean
+  id?: string
+}) {
   const t = useDictionary(copyableValueDictionary)
   const [result, setResult] = useState<{
     value: string
@@ -36,9 +46,21 @@ export function CopyableValue({ value, copyLabel }: { value: string; copyLabel: 
   }
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-      <code className="min-w-0 flex-1 break-all rounded-md bg-slate-50 px-3 py-2 font-mono text-xs text-slate-800">
-        {value}
-      </code>
+      {multiline ? (
+        <pre
+          id={id}
+          className="min-w-0 flex-1 overflow-x-auto rounded-md bg-slate-50 p-3 font-mono text-xs text-slate-800"
+        >
+          {value}
+        </pre>
+      ) : (
+        <code
+          id={id}
+          className="min-w-0 flex-1 break-all rounded-md bg-slate-50 px-3 py-2 font-mono text-xs text-slate-800"
+        >
+          {value}
+        </code>
+      )}
       <Button
         type="button"
         variant="outline"

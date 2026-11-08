@@ -1,4 +1,4 @@
-package report_http
+package catalog_http
 
 import (
 	"context"
@@ -21,11 +21,11 @@ type received struct {
 	password string
 }
 
-// newServers は、ページごとの応答を返す上流と、報告を受ける IdMagic の代役を立てる。
-func newServers(t *testing.T, pages func(cursor string) (int, string)) (Reporter, *received, *atomic.Int32) {
+// newServers は、ページごとの応答を返す上流と、カタログを受ける IdMagic の代役を立てる。
+func newServers(t *testing.T, pages func(cursor string) (int, string)) (Publisher, *received, *atomic.Int32) {
 	t.Helper()
 	got := &received{}
-	reports := &atomic.Int32{}
+	catalogs := &atomic.Int32{}
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
 			Params struct {
@@ -41,7 +41,7 @@ func newServers(t *testing.T, pages func(cursor string) (int, string)) (Reporter
 	}))
 	t.Cleanup(upstream.Close)
 	idmagic := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reports.Add(1)
+		catalogs.Add(1)
 		if err := r.ParseForm(); err != nil {
 			t.Error(err)
 		}
@@ -53,10 +53,10 @@ func newServers(t *testing.T, pages func(cursor string) (int, string)) (Reporter
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	t.Cleanup(idmagic.Close)
-	return Reporter{
-		Upstream: upstream.URL, ReportURL: idmagic.URL, ClientID: "gateway", ClientSecret: "secret",
+	return Publisher{
+		Upstream: upstream.URL, CatalogURL: idmagic.URL, ClientID: "gateway", ClientSecret: "secret",
 		UpstreamClient: upstream.Client(), IdMagicClient: idmagic.Client(),
-	}, got, reports
+	}, got, catalogs
 }
 
 func page(t *testing.T, tools []map[string]any, next string) string {
@@ -73,9 +73,9 @@ func page(t *testing.T, tools []map[string]any, next string) string {
 }
 
 //spec:covers REQ-MCPGATEWAY-011: nextCursor をたどって集め、送る項目は名前、表示名、説明、引数のキーだけで、上限で切り詰める。
-func TestReportFollowsCursorsAndSendsOnlyTheDeclaredFields(t *testing.T) {
+func TestSendCatalogFollowsCursorsAndSendsOnlyTheDeclaredFields(t *testing.T) {
 	long := strings.Repeat("説", 3000)
-	reporter, got, _ := newServers(t, func(cursor string) (int, string) {
+	publisher, got, _ := newServers(t, func(cursor string) (int, string) {
 		if cursor == "" {
 			return http.StatusOK, page(t, []map[string]any{{
 				"name": "read_document", "title": strings.Repeat("題", 300), "description": long,
@@ -86,7 +86,7 @@ func TestReportFollowsCursorsAndSendsOnlyTheDeclaredFields(t *testing.T) {
 		// SSE の data 行でも読める。
 		return http.StatusOK, "event: message\ndata: " + page(t, []map[string]any{{"name": "delete_document"}}, "") + "\n\n"
 	})
-	result, err := reporter.Report(context.Background())
+	result, err := publisher.SendCatalog(context.Background())
 	if err != nil || result.Tools != 2 || !result.Complete {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
@@ -99,8 +99,8 @@ func TestReportFollowsCursorsAndSendsOnlyTheDeclaredFields(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-MCPGATEWAY-011: 二ページ目以降の失敗、件数とページの上限では、集めた分を不完全として報告する。
-func TestReportMarksPartialListsIncomplete(t *testing.T) {
+//spec:covers REQ-MCPGATEWAY-011: 二ページ目以降の失敗、件数とページの上限では、集めた分を不完全としてカタログを送る。
+func TestSendCatalogMarksPartialListsIncomplete(t *testing.T) {
 	cases := map[string]struct {
 		pages     func(cursor string) (int, string)
 		wantTools int
@@ -124,8 +124,8 @@ func TestReportMarksPartialListsIncomplete(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			reporter, got, _ := newServers(t, tc.pages)
-			result, err := reporter.Report(context.Background())
+			publisher, got, _ := newServers(t, tc.pages)
+			result, err := publisher.SendCatalog(context.Background())
 			if err != nil || result.Complete || result.Tools != tc.wantTools || got.complete != "false" || len(got.tools) != tc.wantTools {
 				t.Fatalf("result=%+v err=%v received=%s/%d", result, err, got.complete, len(got.tools))
 			}
@@ -133,20 +133,20 @@ func TestReportMarksPartialListsIncomplete(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-MCPGATEWAY-011: 最初のページを取得できなければ報告しない。
-func TestReportSendsNothingWhenTheFirstPageFails(t *testing.T) {
+//spec:covers REQ-MCPGATEWAY-011: 最初のページを取得できなければカタログを送らない。
+func TestSendCatalogSendsNothingWhenTheFirstPageFails(t *testing.T) {
 	for name, pages := range map[string]func(string) (int, string){
 		"HTTP error":     func(string) (int, string) { return http.StatusUnauthorized, "" },
 		"JSON-RPC error": func(string) (int, string) { return http.StatusOK, `{"jsonrpc":"2.0","id":1,"error":{"code":-32601}}` },
 		"not JSON":       func(string) (int, string) { return http.StatusOK, "<html>" },
 	} {
 		t.Run(name, func(t *testing.T) {
-			reporter, _, reports := newServers(t, pages)
-			if _, err := reporter.Report(context.Background()); err == nil {
-				t.Fatal("reported a failed listing")
+			publisher, _, catalogs := newServers(t, pages)
+			if _, err := publisher.SendCatalog(context.Background()); err == nil {
+				t.Fatal("sent a failed listing")
 			}
-			if reports.Load() != 0 {
-				t.Fatalf("reports=%d, want none", reports.Load())
+			if catalogs.Load() != 0 {
+				t.Fatalf("catalogs=%d, want none", catalogs.Load())
 			}
 		})
 	}

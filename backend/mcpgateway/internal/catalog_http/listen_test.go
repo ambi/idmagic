@@ -1,4 +1,4 @@
-package report_http
+package catalog_http
 
 import (
 	"context"
@@ -14,12 +14,12 @@ import (
 )
 
 // listenServers は、tools/list に現在の一覧を返し、subscriptions/listen を回ごとの関数に任せる上流と、
-// 報告されたツール名を順に受ける IdMagic の代役を立てる。
+// カタログのツール名を順に受ける IdMagic の代役を立てる。
 type listenServers struct {
 	mu       sync.Mutex
 	tools    []string
 	attempts int
-	reports  chan []string
+	catalogs chan []string
 }
 
 func (s *listenServers) setTools(names ...string) {
@@ -28,9 +28,9 @@ func (s *listenServers) setTools(names ...string) {
 	s.tools = names
 }
 
-func newListenServers(t *testing.T, listen func(attempt int, w http.ResponseWriter, r *http.Request), tools ...string) (*listenServers, Reporter) {
+func newListenServers(t *testing.T, listen func(attempt int, w http.ResponseWriter, r *http.Request), tools ...string) (*listenServers, Publisher) {
 	t.Helper()
-	servers := &listenServers{tools: tools, reports: make(chan []string, 16)}
+	servers := &listenServers{tools: tools, catalogs: make(chan []string, 16)}
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Header.Get("Mcp-Method") {
 		case "tools/list":
@@ -64,20 +64,20 @@ func newListenServers(t *testing.T, listen func(attempt int, w http.ResponseWrit
 		if err := r.ParseForm(); err != nil {
 			t.Error(err)
 		}
-		var reported []Tool
-		if err := json.Unmarshal([]byte(r.PostForm.Get("tools")), &reported); err != nil {
+		var sent []Tool
+		if err := json.Unmarshal([]byte(r.PostForm.Get("tools")), &sent); err != nil {
 			t.Error(err)
 		}
 		names := []string{}
-		for _, tool := range reported {
+		for _, tool := range sent {
 			names = append(names, tool.Name)
 		}
-		servers.reports <- names
+		servers.catalogs <- names
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	t.Cleanup(idmagic.Close)
-	return servers, Reporter{
-		Upstream: upstream.URL, ReportURL: idmagic.URL, ClientID: "gateway", ClientSecret: "secret",
+	return servers, Publisher{
+		Upstream: upstream.URL, CatalogURL: idmagic.URL, ClientID: "gateway", ClientSecret: "secret",
 		UpstreamClient: upstream.Client(), IdMagicClient: idmagic.Client(),
 	}
 }
@@ -128,13 +128,13 @@ func (w *recordedWaits) all() []time.Duration {
 	return slices.Clone(w.durations)
 }
 
-func nextReport(t *testing.T, reports <-chan []string) []string {
+func nextSendCatalog(t *testing.T, catalogs <-chan []string) []string {
 	t.Helper()
 	select {
-	case names := <-reports:
+	case names := <-catalogs:
 		return names
 	case <-time.After(5 * time.Second):
-		t.Fatal("no report")
+		t.Fatal("no sendCatalog")
 		return nil
 	}
 }
@@ -153,10 +153,10 @@ func runUntilReturn(t *testing.T, listener Listener) {
 	}
 }
 
-//spec:covers REQ-MCPGATEWAY-012: 受信確認の後に一覧を報告し、自分の購読の tools/list_changed を受けると変更後の一覧を間隔を空けて報告し直す。
-func TestListenReportsAgainWhenToolsChange(t *testing.T) {
+//spec:covers REQ-MCPGATEWAY-012: 受信確認の後に一覧をカタログし、自分の購読の tools/list_changed を受けると変更後の一覧を間隔を空けてカタログし直す。
+func TestListenCatalogsAgainWhenToolsChange(t *testing.T) {
 	notify := make(chan struct{})
-	servers, reporter := newListenServers(t, func(_ int, w http.ResponseWriter, r *http.Request) {
+	servers, publisher := newListenServers(t, func(_ int, w http.ResponseWriter, r *http.Request) {
 		openStream(w)
 		writeEvent(w, acknowledgment(map[string]any{"toolsListChanged": true}))
 		<-notify
@@ -167,28 +167,28 @@ func TestListenReportsAgainWhenToolsChange(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
-		Listener{Reporter: reporter, Client: &http.Client{}, WaitToReport: paced.wait, WaitToReconnect: (&recordedWaits{}).wait}.Run(ctx)
+		Listener{Publisher: publisher, Client: &http.Client{}, WaitToSend: paced.wait, WaitToReconnect: (&recordedWaits{}).wait}.Run(ctx)
 		close(done)
 	}()
 
-	if names := nextReport(t, servers.reports); !slices.Equal(names, []string{"read_document"}) {
-		t.Fatalf("first report=%v", names)
+	if names := nextSendCatalog(t, servers.catalogs); !slices.Equal(names, []string{"read_document"}) {
+		t.Fatalf("first sendCatalog=%v", names)
 	}
 	servers.setTools("read_document", "write_document")
 	close(notify)
-	if names := nextReport(t, servers.reports); !slices.Equal(names, []string{"read_document", "write_document"}) {
-		t.Fatalf("report after the notification=%v", names)
+	if names := nextSendCatalog(t, servers.catalogs); !slices.Equal(names, []string{"read_document", "write_document"}) {
+		t.Fatalf("sendCatalog after the notification=%v", names)
 	}
 	cancel()
 	<-done
 	waits := paced.all()
-	if len(waits) != 1 || waits[0] <= 0 || waits[0] > reportInterval {
-		t.Fatalf("waits before the second report=%v, want one wait within %s", waits, reportInterval)
+	if len(waits) != 1 || waits[0] <= 0 || waits[0] > sendCatalogInterval {
+		t.Fatalf("waits before the second sendCatalog=%v, want one wait within %s", waits, sendCatalogInterval)
 	}
 }
 
-//spec:covers REQ-MCPGATEWAY-011, REQ-MCPGATEWAY-012: 変更通知に対応しない上流では、起動時に一度だけ報告して待ち受けをやめ、開き直さない。
-func TestListenReportsOnceAndStopsWhenTheUpstreamCannotNotify(t *testing.T) {
+//spec:covers REQ-MCPGATEWAY-011, REQ-MCPGATEWAY-012: 変更通知に対応しない上流では、起動時に一度だけカタログして待ち受けをやめ、開き直さない。
+func TestListenCatalogsOnceAndStopsWhenTheUpstreamCannotNotify(t *testing.T) {
 	for name, listen := range map[string]func(int, http.ResponseWriter, *http.Request){
 		"acknowledgment without tools": func(_ int, w http.ResponseWriter, r *http.Request) {
 			openStream(w)
@@ -204,25 +204,25 @@ func TestListenReportsOnceAndStopsWhenTheUpstreamCannotNotify(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			servers, reporter := newListenServers(t, listen, "read_document")
+			servers, publisher := newListenServers(t, listen, "read_document")
 			reconnects := &recordedWaits{}
-			runUntilReturn(t, Listener{Reporter: reporter, Client: &http.Client{}, WaitToReconnect: reconnects.wait, WaitToReport: (&recordedWaits{}).wait})
-			if names := nextReport(t, servers.reports); !slices.Equal(names, []string{"read_document"}) {
-				t.Fatalf("startup report=%v", names)
+			runUntilReturn(t, Listener{Publisher: publisher, Client: &http.Client{}, WaitToReconnect: reconnects.wait, WaitToSend: (&recordedWaits{}).wait})
+			if names := nextSendCatalog(t, servers.catalogs); !slices.Equal(names, []string{"read_document"}) {
+				t.Fatalf("startup sendCatalog=%v", names)
 			}
 			servers.mu.Lock()
 			attempts := servers.attempts
 			servers.mu.Unlock()
-			if len(servers.reports) != 0 || len(reconnects.all()) != 0 || attempts != 1 {
-				t.Fatalf("extra reports=%d reconnect waits=%v attempts=%d", len(servers.reports), reconnects.all(), attempts)
+			if len(servers.catalogs) != 0 || len(reconnects.all()) != 0 || attempts != 1 {
+				t.Fatalf("extra catalogs=%d reconnect waits=%v attempts=%d", len(servers.catalogs), reconnects.all(), attempts)
 			}
 		})
 	}
 }
 
-//spec:covers REQ-MCPGATEWAY-012: 5xx、受信確認の期限切れ、購読の終了、切断では1秒から倍にして開き直し、受信確認を得たら1秒に戻し、受信確認ごとに報告する。
+//spec:covers REQ-MCPGATEWAY-012: 5xx、受信確認の期限切れ、購読の終了、切断では1秒から倍にして開き直し、受信確認を得たら1秒に戻し、受信確認ごとにカタログを送る。
 func TestListenReconnectsWithBackoff(t *testing.T) {
-	servers, reporter := newListenServers(t, func(attempt int, w http.ResponseWriter, r *http.Request) {
+	servers, publisher := newListenServers(t, func(attempt int, w http.ResponseWriter, r *http.Request) {
 		switch attempt {
 		case 1:
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -242,16 +242,16 @@ func TestListenReconnectsWithBackoff(t *testing.T) {
 	}, "read_document")
 	reconnects := &recordedWaits{}
 	runUntilReturn(t, Listener{
-		Reporter: reporter, Client: &http.Client{}, AckTimeout: 50 * time.Millisecond,
-		WaitToReconnect: reconnects.wait, WaitToReport: (&recordedWaits{}).wait,
+		Publisher: publisher, Client: &http.Client{}, AckTimeout: 50 * time.Millisecond,
+		WaitToReconnect: reconnects.wait, WaitToSend: (&recordedWaits{}).wait,
 	})
 	want := []time.Duration{time.Second, 2 * time.Second, time.Second, time.Second}
 	if got := reconnects.all(); !slices.Equal(got, want) {
 		t.Fatalf("reconnect waits=%v, want %v", got, want)
 	}
-	// 起動時の報告と、開き直した後の受信確認による報告がある。近い契機は一回にまとまり得る。
-	if count := len(servers.reports); count < 2 {
-		t.Fatalf("reports=%d, want the startup report and one after reconnecting", count)
+	// 起動時のカタログと、開き直した後の受信確認によるカタログがある。近い契機は一回にまとまり得る。
+	if count := len(servers.catalogs); count < 2 {
+		t.Fatalf("catalogs=%d, want the startup sendCatalog and one after reconnecting", count)
 	}
 }
 
@@ -269,8 +269,8 @@ func TestNextBackoffDoublesUpToFiveMinutes(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-MCPGATEWAY-012: 前回の報告の開始から10秒以内の契機は10秒が経つまで待ち、待つ間の契機を一回の報告にまとめる。10秒を過ぎた契機は待たない。
-func TestReportSchedulerSpacesAndCoalescesReports(t *testing.T) {
+//spec:covers REQ-MCPGATEWAY-012: 前回のカタログの開始から10秒以内の契機は10秒が経つまで待ち、待つ間の契機を一回のカタログにまとめる。10秒を過ぎた契機は待たない。
+func TestCatalogSchedulerSpacesAndCoalescesCatalogs(t *testing.T) {
 	var mu sync.Mutex
 	now := time.Date(2026, 11, 4, 9, 0, 0, 0, time.UTC)
 	clock := func() time.Time {
@@ -279,12 +279,12 @@ func TestReportSchedulerSpacesAndCoalescesReports(t *testing.T) {
 		return now
 	}
 	entered, release := make(chan time.Duration, 1), make(chan struct{})
-	reported := make(chan struct{}, 8)
-	scheduler := newReportScheduler(clock, func(ctx context.Context, d time.Duration) error {
+	sent := make(chan struct{}, 8)
+	scheduler := newCatalogScheduler(clock, func(ctx context.Context, d time.Duration) error {
 		entered <- d
 		<-release
 		return ctx.Err()
-	}, func(context.Context) { reported <- struct{}{} })
+	}, func(context.Context) { sent <- struct{}{} })
 	done := make(chan struct{})
 	go func() {
 		scheduler.run(t.Context())
@@ -293,33 +293,33 @@ func TestReportSchedulerSpacesAndCoalescesReports(t *testing.T) {
 	waitFor := func(what string) {
 		t.Helper()
 		select {
-		case <-reported:
+		case <-sent:
 		case <-time.After(5 * time.Second):
 			t.Fatalf("no %s", what)
 		}
 	}
 
 	scheduler.trigger()
-	waitFor("first report")
+	waitFor("first sendCatalog")
 	scheduler.trigger()
-	if d := <-entered; d != reportInterval {
-		t.Fatalf("wait=%s, want %s", d, reportInterval)
+	if d := <-entered; d != sendCatalogInterval {
+		t.Fatalf("wait=%s, want %s", d, sendCatalogInterval)
 	}
 	scheduler.trigger()
 	scheduler.trigger()
 	scheduler.trigger()
 	release <- struct{}{}
-	waitFor("coalesced report")
+	waitFor("coalesced sendCatalog")
 
 	mu.Lock()
-	now = now.Add(reportInterval + time.Second)
+	now = now.Add(sendCatalogInterval + time.Second)
 	mu.Unlock()
 	scheduler.trigger()
-	waitFor("report after the interval")
+	waitFor("sendCatalog after the interval")
 	scheduler.close()
 	<-done
-	if len(reported) != 0 || len(entered) != 0 {
-		t.Fatalf("extra reports=%d extra waits=%d", len(reported), len(entered))
+	if len(sent) != 0 || len(entered) != 0 {
+		t.Fatalf("extra catalogs=%d extra waits=%d", len(sent), len(entered))
 	}
 }
 

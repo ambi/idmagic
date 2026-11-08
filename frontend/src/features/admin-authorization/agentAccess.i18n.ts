@@ -5,20 +5,20 @@ export const agentAccessDictionary = defineDictionary(
     title: 'エージェントのアクセス権',
     add: 'アクセス権を追加',
     description: '対象とエージェントを選んで、直接付与するアクセス権を管理します。',
-    connection: '接続先',
+    connection: 'MCP リソースサーバー',
     permission: '権限',
     resource: '対象 ID',
     agent: 'エージェント',
     choose: '選択してください',
     resourceHelp:
-      '接続先が文書などに付けた ID を入力します。外部の対象一覧は取得していません。候補は既存の付与から表示します。',
+      'MCP リソースサーバーが文書などに付けた ID を入力します。外部の対象一覧は取得していません。候補は既存の付与から表示します。',
     scopeHelp: 'この権限の評価規則に登録されたスコープ',
     shared:
-      'この付与は同じ対象型と権限を使うほかの接続先にも適用されます。接続先だけに限定した付与ではありません。',
+      'この付与は同じ対象型と権限を使うほかの MCP リソースサーバーにも適用されます。MCP リソースサーバーだけに限定した付与ではありません。',
     limits:
       'ここに表示するのは直接の付与です。実行にはクライアントのスコープ、承認、利用者やエージェントの状態などの条件も適用されます。',
     noPermission:
-      'この接続先にはエージェントへ直接付与できる権限がありません。開発者向け設定でモデルと評価規則を確認してください。',
+      'この MCP リソースサーバーにはエージェントへ直接付与できる権限がありません。開発者向け設定でモデルと評価規則を確認してください。',
     developer: '開発者向け設定',
     model: 'モデルを定義',
     tuples: '関係データを管理',
@@ -49,20 +49,20 @@ export const agentAccessDictionary = defineDictionary(
     title: 'Agent access',
     add: 'Add access',
     description: 'Choose a resource and an agent to manage direct access assignments.',
-    connection: 'Connection',
+    connection: 'MCP resource server',
     permission: 'Permission',
     resource: 'Resource ID',
     agent: 'Agent',
     choose: 'Choose an option',
     resourceHelp:
-      'Enter the ID assigned to the document or other resource by the connection. External resources are not discovered. Suggestions come from existing assignments.',
+      'Enter the ID assigned to the document or other resource by the MCP resource server. External resources are not discovered. Suggestions come from existing assignments.',
     scopeHelp: 'Scopes registered in evaluation rules for this permission',
     shared:
-      'This assignment also applies to other connections using the same resource type and permission. It is not isolated to this connection.',
+      'This assignment also applies to other MCP resource servers using the same resource type and permission. It is not isolated to this MCP resource server.',
     limits:
       'These are direct assignments. Execution also depends on client scopes, approvals, user and agent status, and other conditions.',
     noPermission:
-      'This connection has no permissions that can be granted directly to agents. Review the model and evaluation rules in developer settings.',
+      'This MCP resource server has no permissions that can be granted directly to agents. Review the model and evaluation rules in developer settings.',
     developer: 'Developer settings',
     model: 'Define the model',
     tuples: 'Manage relation data',

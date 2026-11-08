@@ -88,8 +88,8 @@ func (d Deps) handleGetAdminMcpResourceServer(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, toMcpResourceServerResponse(m))
 }
 
-// handleGetAdminMcpReportedTools は最新の報告を公開中のツールと別に返す (REQ-OAUTH2-087)。
-func (d Deps) handleGetAdminMcpReportedTools(c *echo.Context) error {
+// handleGetAdminMcpToolCatalog は最新のカタログを公開中のツールと別に返す (REQ-OAUTH2-087)。
+func (d Deps) handleGetAdminMcpToolCatalog(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
@@ -101,40 +101,40 @@ func (d Deps) handleGetAdminMcpReportedTools(c *echo.Context) error {
 	if m == nil {
 		return support.WriteProblem(c, http.StatusNotFound, "resource_server_not_found", "The MCP resource server does not exist.")
 	}
-	response := map[string]any{"tools": []oauthdomain.ReportedTool{}, "complete": false}
-	report, err := d.McpToolReportRepo.Find(ctx, tenantID, m.ID)
+	response := map[string]any{"tools": []oauthdomain.CatalogTool{}, "complete": false}
+	catalog, err := d.McpToolCatalogRepo.Find(ctx, tenantID, m.ID)
 	if err != nil {
 		return err
 	}
-	if report != nil {
-		response["tools"], response["complete"], response["reported_at"] = report.Tools, report.Complete, report.ReportedAt
-		if changes := report.Changes(); changes != nil {
-			response["changes"] = toReportedToolChangesResponse(changes)
+	if catalog != nil {
+		response["tools"], response["complete"], response["received_at"] = catalog.Tools, catalog.Complete, catalog.ReceivedAt
+		if changes := catalog.Changes(); changes != nil {
+			response["changes"] = toToolCatalogChangesResponse(changes)
 		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, response)
 }
 
-// reportedToolChangesResponse は TypeSpec の ReportedToolChanges の形である。
-type reportedToolChangesResponse struct {
-	ChangedAt time.Time                          `json:"changed_at"`
-	Added     []string                           `json:"added"`
-	Removed   []string                           `json:"removed"`
-	Modified  []reportedToolModificationResponse `json:"modified"`
+// toolCatalogChangesResponse は TypeSpec の ToolCatalogChanges の形である。
+type toolCatalogChangesResponse struct {
+	ChangedAt time.Time                         `json:"changed_at"`
+	Added     []string                          `json:"added"`
+	Removed   []string                          `json:"removed"`
+	Modified  []catalogToolModificationResponse `json:"modified"`
 }
 
-type reportedToolModificationResponse struct {
-	Name     string                   `json:"name"`
-	Fields   []string                 `json:"fields"`
-	Previous oauthdomain.ReportedTool `json:"previous"`
+type catalogToolModificationResponse struct {
+	Name     string                  `json:"name"`
+	Fields   []string                `json:"fields"`
+	Previous oauthdomain.CatalogTool `json:"previous"`
 }
 
-func toReportedToolChangesResponse(changes *oauthdomain.ReportedToolChanges) reportedToolChangesResponse {
-	modified := make([]reportedToolModificationResponse, len(changes.Modified))
+func toToolCatalogChangesResponse(changes *oauthdomain.ToolCatalogChanges) toolCatalogChangesResponse {
+	modified := make([]catalogToolModificationResponse, len(changes.Modified))
 	for index, tool := range changes.Modified {
-		modified[index] = reportedToolModificationResponse{Name: tool.Name, Fields: tool.Fields, Previous: tool.Previous}
+		modified[index] = catalogToolModificationResponse{Name: tool.Name, Fields: tool.Fields, Previous: tool.Previous}
 	}
-	return reportedToolChangesResponse{ChangedAt: changes.ChangedAt, Added: changes.Added, Removed: changes.Removed, Modified: modified}
+	return toolCatalogChangesResponse{ChangedAt: changes.ChangedAt, Added: changes.Added, Removed: changes.Removed, Modified: modified}
 }
 
 // defaultMcpScope は、スコープを省いた登録に補う唯一のスコープである。Gateway が執行する構成では
@@ -281,9 +281,9 @@ func (d Deps) handleDeleteAdminMcpResourceServer(c *echo.Context) error {
 		return err
 	}
 	// PostgreSQL は外部キーで消すが、メモリの保存先にも同じ結果を保証する。
-	// 報告の保存先を配線しない構成には消す報告もない。
-	if d.McpToolReportRepo != nil {
-		if err := d.McpToolReportRepo.Delete(ctx, tenantID, c.Param("id")); err != nil {
+	// カタログの保存先を配線しない構成には消すカタログもない。
+	if d.McpToolCatalogRepo != nil {
+		if err := d.McpToolCatalogRepo.Delete(ctx, tenantID, c.Param("id")); err != nil {
 			return err
 		}
 	}

@@ -634,31 +634,31 @@ export type McpResourceServer = {
   updated_at: string
 }
 
-// ReportedTool は Gateway が上流の tools/list から報告したツールである。公開の候補にだけ使う。
-export type ReportedTool = {
+// CatalogTool は Gateway が上流の tools/list からカタログとして送ったツールである。公開の候補にだけ使う。
+export type CatalogTool = {
   name: string
   title?: string
   description?: string
   arguments?: string[]
 }
 
-// ReportedToolChanges は内容の変わった直前の報告からの差分である。表示だけに使う。
-export type ReportedToolChanges = {
+// ToolCatalogChanges は内容の変わった直前のカタログからの差分である。表示だけに使う。
+export type ToolCatalogChanges = {
   changed_at: string
   added: string[]
   removed: string[]
   modified: {
     name: string
     fields: ('title' | 'description' | 'arguments')[]
-    previous: ReportedTool
+    previous: CatalogTool
   }[]
 }
 
-export type ReportedTools = {
-  tools: ReportedTool[]
+export type ToolCatalog = {
+  tools: CatalogTool[]
   complete: boolean
-  reported_at?: string
-  changes?: ReportedToolChanges
+  received_at?: string
+  changes?: ToolCatalogChanges
 }
 
 // WorkloadTrustBundleProfile は信頼設定が掛ける検証の種別。登録の後は変わらない。

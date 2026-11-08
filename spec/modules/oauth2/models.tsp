@@ -2457,17 +2457,17 @@ model AgentGuardrailPolicyChanged {
 
 
 
-@doc("リソースサーバーが報告するツールの一覧。公開の候補にだけ使い、評価と発行は読まない。")
-model ResourceToolReportRequest {
-  @doc("`ReportedTool` の JSON の配列。100件まで。")
+@doc("リソースサーバーが送信するツールのカタログ。公開の候補にだけ使い、評価と発行は読まない。")
+model ResourceToolCatalogRequest {
+  @doc("`CatalogTool` の JSON の配列。100件まで。")
   tools: string;
   @doc("上流の一覧をすべて取得できたなら `true`。")
   complete: "true" | "false";
 }
 
 
-@doc("リソースサーバーが報告したツール。MCP の `tools/list` の申告であり、権限や承認の要否の根拠にしない。")
-model ReportedTool {
+@doc("リソースサーバーのカタログに含まれるツール。MCP の `tools/list` の申告であり、権限や承認の要否の根拠にしない。")
+model CatalogTool {
   @minLength(1)
   @maxLength(128)
   name: string;
@@ -2481,34 +2481,34 @@ model ReportedTool {
 }
 
 
-@doc("内容の変わった直前の報告から定義が変わったツール。")
-model ReportedToolModification {
+@doc("内容の変わった直前のカタログから定義が変わったツール。")
+model CatalogToolModification {
   name: string;
   @doc("値が異なる項目。")
   fields: ("title" | "description" | "arguments")[];
-  @doc("直前の報告での定義。")
-  previous: ReportedTool;
+  @doc("直前のカタログでの定義。")
+  previous: CatalogTool;
 }
 
 
-@doc("内容の変わった直前の報告から最新の報告への差分。表示だけに使い、公開設定を変えない。")
-model ReportedToolChanges {
+@doc("内容の変わった直前のカタログから最新のカタログへの差分。表示だけに使い、公開設定を変えない。")
+model ToolCatalogChanges {
   @doc("最新の内容を初めて受信した時刻。")
   changed_at: utcDateTime;
-  @doc("直前の報告にないツールの名前。直前の報告が完全なときだけ示す。")
+  @doc("直前のカタログにないツールの名前。直前のカタログが完全なときだけ示す。")
   added: string[];
-  @doc("最新の報告にないツールの名前。最新の報告が完全なときだけ示す。")
+  @doc("最新のカタログにないツールの名前。最新のカタログが完全なときだけ示す。")
   removed: string[];
-  modified: ReportedToolModification[];
+  modified: CatalogToolModification[];
 }
 
 
-@doc("接続先の最新のツールの報告。報告がなければ `tools` は空で、`reported_at` を含めない。内容の変わった直前の報告がなければ `changes` を含めない。")
-model ReportedToolsResponse {
-  tools: ReportedTool[];
+@doc("MCP リソースサーバーの最新のツールカタログ。カタログがなければ `tools` は空で、`received_at` を含めない。内容の変わった直前のカタログがなければ `changes` を含めない。")
+model ToolCatalog {
+  tools: CatalogTool[];
   complete: boolean;
-  reported_at?: utcDateTime;
-  changes?: ReportedToolChanges;
+  received_at?: utcDateTime;
+  changes?: ToolCatalogChanges;
 }
 
 }

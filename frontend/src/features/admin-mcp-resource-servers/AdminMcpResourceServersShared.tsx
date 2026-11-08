@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getMcpReportedTools, listAdminApplications, tenantURL } from '../../api'
+import { getMcpToolCatalog, listAdminApplications, tenantURL } from '../../api'
 import { FieldError } from '../../components/FieldError'
 import { Button } from '../../components/ui/button'
 import { Label } from '../../components/ui/label'
@@ -17,13 +17,14 @@ import { LENGTH } from '../../lib/lengthLimits'
 import type {
   AdminApplication,
   McpResourceServer,
-  ReportedTool,
-  ReportedToolChanges,
-  ReportedTools,
+  CatalogTool,
+  ToolCatalogChanges,
+  ToolCatalog,
   ResourceAccessRule,
 } from '../../types'
 import { MCP_OPERATION_TYPE } from '../../lib/mcpAccess'
-import type { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
+import { useDictionary } from '../../lib/i18n'
+import { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
 
 type Dictionary = (typeof adminMcpResourceServersDictionary)['en']
 
@@ -52,9 +53,9 @@ export const emptyForm: FormState = {
   state: 'Active',
 }
 
-// publishReportedTool は報告されたツールを、名前と表示名を入れた公開の行として足す。
+// publishCatalogTool はカタログのツールを、名前と表示名を入れた公開の行として足す。
 // 必要なスコープは登録のスコープをすべて選ぶ。既に公開中なら何もしない。
-export function publishReportedTool(form: FormState, tool: ReportedTool): FormState {
+export function publishCatalogTool(form: FormState, tool: CatalogTool): FormState {
   const rules = parseAccessRules(form.accessRules) ?? []
   if (rules.some((rule) => rule.tool?.name === tool.name)) return form
   const next: ResourceAccessRule[] = [
@@ -134,6 +135,21 @@ function targetScoped(rule: ResourceAccessRule): boolean {
   )
 }
 
+export function McpResourceServerStatus({ state }: { state: McpResourceServer['state'] }) {
+  const t = useDictionary(adminMcpResourceServersDictionary)
+  return (
+    <span
+      className={
+        state === 'Active'
+          ? 'rounded-full bg-emerald-50 px-2 py-0.5 text-[0.68rem] font-bold text-emerald-700'
+          : 'rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] font-bold text-slate-500'
+      }
+    >
+      {state === 'Active' ? t.statusActive : t.statusDisabled}
+    </span>
+  )
+}
+
 // AccessRuleRows は規則の基本の項目を行で編集する。JSON を正とし、行にない項目（条件や上限など）は保つ。
 function AccessRuleRows({
   form,
@@ -194,6 +210,7 @@ function AccessRuleRows({
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
+                  aria-describedby={`tool-target-help-${index}`}
                   checked={targetScoped(rule)}
                   onChange={(event) =>
                     update(
@@ -211,6 +228,12 @@ function AccessRuleRows({
                 />
                 {t.toolTarget}
               </label>
+              <p
+                id={`tool-target-help-${index}`}
+                className="w-full text-xs leading-5 text-slate-500"
+              >
+                {t.toolTargetHelp}
+              </p>
               {targetScoped(rule) ? (
                 <div className="flex flex-col gap-1">
                   <Label htmlFor={`tool-argument-${index}`}>{t.toolArgument}</Label>
@@ -346,9 +369,7 @@ export function McpResourceServerFormFields({
           {...validation.fieldProps('resource')}
         />
         <FieldError form={validation} name="resource" />
-        <p className="text-xs leading-5 text-slate-500">
-          <InputOrigin label={t.originYou} /> {t.resourceHelp}
-        </p>
+        <p className="text-xs leading-5 text-slate-500">{t.resourceHelp}</p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="name" required>
@@ -362,9 +383,6 @@ export function McpResourceServerFormFields({
           {...validation.fieldProps('name')}
         />
         <FieldError form={validation} name="name" />
-        <p className="text-xs leading-5 text-slate-500">
-          <InputOrigin label={t.originYou} />
-        </p>
       </div>
       <EvaluatorClientField form={form} onChange={onChange} allowCreate={!locked} t={t} />
       <details className="text-sm md:col-span-2" open={form.scopes.trim() !== DEFAULT_SCOPE}>
@@ -382,9 +400,7 @@ export function McpResourceServerFormFields({
             {...validation.fieldProps('scopes')}
           />
           <FieldError form={validation} name="scopes" />
-          <p className="text-xs leading-5 text-slate-500">
-            <InputOrigin label={t.originDefault} /> {t.scopesHelp}
-          </p>
+          <p className="text-xs leading-5 text-slate-500">{t.scopesHelp}</p>
         </div>
       </details>
       <div className="flex flex-col gap-2 md:col-span-2">
@@ -418,20 +434,11 @@ export function McpResourceServerFormFields({
           }
           className="w-40 rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
         >
-          <option value="Active">Active</option>
-          <option value="Disabled">Disabled</option>
+          <option value="Active">{t.statusActive}</option>
+          <option value="Disabled">{t.statusDisabled}</option>
         </select>
       </div>
     </>
-  )
-}
-
-// InputOrigin は入力の値がどこから来るかを示す小さな印である。
-function InputOrigin({ label }: { label: string }) {
-  return (
-    <span className="mr-1 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700">
-      {label}
-    </span>
   )
 }
 
@@ -488,16 +495,14 @@ function EvaluatorClientField({
         ) : null}
         <option value="">{t.evaluatorNone}</option>
       </select>
-      <p className="text-xs leading-5 text-slate-500">
-        <InputOrigin label={allowCreate ? t.originDefault : t.originYou} /> {t.evaluatorHelp}
-      </p>
+      <p className="text-xs leading-5 text-slate-500">{t.evaluatorHelp}</p>
     </div>
   )
 }
 
-// ReportedToolsPanel は Gateway が報告したツールを、公開中のツールと区別して示す (REQ-OAUTH2-087)。
+// ToolCatalogPanel は Gateway がカタログのツールを、公開中のツールと区別して示す (REQ-OAUTH2-087)。
 // 「公開する」は編集中のフォームへ行を足すだけで、保存するまで何も公開しない。
-export function ReportedToolsPanel({
+export function ToolCatalogPanel({
   resourceServerID,
   form,
   onChange,
@@ -508,13 +513,13 @@ export function ReportedToolsPanel({
   onChange: (next: FormState) => void
   t: Dictionary
 }) {
-  const [report, setReport] = useState<ReportedTools | null>(null)
+  const [catalog, setCatalog] = useState<ToolCatalog | null>(null)
   const [failed, setFailed] = useState(false)
   useEffect(() => {
     let active = true
-    getMcpReportedTools(resourceServerID)
+    getMcpToolCatalog(resourceServerID)
       .then((value) => {
-        if (active) setReport(value)
+        if (active) setCatalog(value)
       })
       .catch(() => {
         if (active) setFailed(true)
@@ -528,26 +533,26 @@ export function ReportedToolsPanel({
       rule.tool ? [rule.tool.name] : [],
     ),
   )
-  const reportedNames = new Set(report?.tools.map((tool) => tool.name) ?? [])
-  const missing = report?.complete ? [...published].filter((name) => !reportedNames.has(name)) : []
+  const catalogNames = new Set(catalog?.tools.map((tool) => tool.name) ?? [])
+  const missing = catalog?.complete ? [...published].filter((name) => !catalogNames.has(name)) : []
   return (
-    <section className="flex flex-col gap-2 md:col-span-2" aria-labelledby="reported-tools-heading">
-      <p id="reported-tools-heading" className="text-sm font-medium">
-        {t.reportedHeading}
+    <section className="flex flex-col gap-2 md:col-span-2" aria-labelledby="tool-catalog-heading">
+      <p id="tool-catalog-heading" className="text-sm font-medium">
+        {t.catalogHeading}
       </p>
-      {failed ? <p className="text-sm text-red-700">{t.reportedLoadFailed}</p> : null}
-      {report && !report.reported_at ? (
-        <p className="text-xs leading-5 text-slate-500">{t.reportedNone}</p>
+      {failed ? <p className="text-sm text-red-700">{t.catalogLoadFailed}</p> : null}
+      {catalog && !catalog.received_at ? (
+        <p className="text-xs leading-5 text-slate-500">{t.catalogNone}</p>
       ) : null}
-      {report?.reported_at ? (
+      {catalog?.received_at ? (
         <p className="text-xs leading-5 text-slate-500">
-          {t.reportedAt.replace('{time}', new Date(report.reported_at).toLocaleString())}
-          {report.complete ? '' : ` ${t.reportedIncomplete}`}
+          {t.catalogAt.replace('{time}', new Date(catalog.received_at).toLocaleString())}
+          {catalog.complete ? '' : ` ${t.catalogIncomplete}`}
         </p>
       ) : null}
-      {report && report.tools.length > 0 ? (
+      {catalog && catalog.tools.length > 0 ? (
         <ul className="flex flex-col gap-2">
-          {report.tools.map((tool) => (
+          {catalog.tools.map((tool) => (
             <li
               key={tool.name}
               className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2"
@@ -560,15 +565,15 @@ export function ReportedToolsPanel({
                 ) : null}
               </span>
               {published.has(tool.name) ? (
-                <span className="text-xs text-slate-600">{t.reportedPublished}</span>
+                <span className="text-xs text-slate-600">{t.catalogPublished}</span>
               ) : (
                 <Button
                   type="button"
                   variant="outline"
-                  aria-label={`${t.reportedPublish} ${tool.name}`}
-                  onClick={() => onChange(publishReportedTool(form, tool))}
+                  aria-label={`${t.catalogPublish} ${tool.name}`}
+                  onClick={() => onChange(publishCatalogTool(form, tool))}
                 >
-                  {t.reportedPublish}
+                  {t.catalogPublish}
                 </Button>
               )}
             </li>
@@ -577,24 +582,24 @@ export function ReportedToolsPanel({
       ) : null}
       {missing.length > 0 ? (
         <p className="text-sm text-amber-800">
-          {t.reportedMissing.replace('{names}', missing.join(', '))}
+          {t.catalogMissing.replace('{names}', missing.join(', '))}
         </p>
       ) : null}
-      {report?.changes ? (
-        <ReportedToolChangesList changes={report.changes} published={published} t={t} />
+      {catalog?.changes ? (
+        <ToolCatalogChangesList changes={catalog.changes} published={published} t={t} />
       ) : null}
     </section>
   )
 }
 
-// ReportedToolChangesList は直前の報告からの差分を示す (REQ-OAUTH2-087)。操作を持たず、公開設定を変えない。
+// ToolCatalogChangesList は直前のカタログからの差分を示す (REQ-OAUTH2-087)。操作を持たず、公開設定を変えない。
 // 公開中のツールの説明や引数の変化に気付けるよう、公開中かどうかと変更前の定義を並べる。
-function ReportedToolChangesList({
+function ToolCatalogChangesList({
   changes,
   published,
   t,
 }: {
-  changes: ReportedToolChanges
+  changes: ToolCatalogChanges
   published: Set<string>
   t: Dictionary
 }) {
@@ -605,7 +610,7 @@ function ReportedToolChangesList({
   }
   const mark = (name: string) =>
     published.has(name) ? (
-      <span className="text-xs text-slate-600"> ({t.reportedPublished})</span>
+      <span className="text-xs text-slate-600"> ({t.catalogPublished})</span>
     ) : null
   const groups = [
     { key: 'added', label: t.changesAdded, names: changes.added },
@@ -614,9 +619,9 @@ function ReportedToolChangesList({
   return (
     <section
       className="flex flex-col gap-2 rounded-md border border-amber-300 p-2"
-      aria-labelledby="reported-changes-heading"
+      aria-labelledby="catalog-changes-heading"
     >
-      <p id="reported-changes-heading" className="text-sm font-medium">
+      <p id="catalog-changes-heading" className="text-sm font-medium">
         {t.changesHeading}
       </p>
       <p className="text-xs leading-5 text-slate-500">

@@ -48,7 +48,7 @@ type Module struct {
 	ConsentRepo            oauthports.ConsentRepository
 	AuthzDetailTypeRepo    oauthports.AuthorizationDetailTypeRepository
 	McpResourceServerRepo  oauthports.McpResourceServerRepository
-	McpToolReportRepo      oauthports.McpToolReportRepository
+	McpToolCatalogRepo     oauthports.McpToolCatalogRepository
 	AgentGuardrailPolicies oauthports.AgentGuardrailPolicyRepository
 	CrossAppAccessPolicies oauthports.CrossAppAccessPolicyRepository
 	IDJAGReplayStore       oauthports.ClientAssertionReplayStore

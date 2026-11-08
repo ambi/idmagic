@@ -203,7 +203,7 @@ type Stack struct {
 	Consents               oauthports.ConsentRepository
 	AuthzDetailTypes       oauthports.AuthorizationDetailTypeRepository
 	McpResourceServers     oauthports.McpResourceServerRepository
-	McpToolReports         oauthports.McpToolReportRepository
+	McpToolCatalogs        oauthports.McpToolCatalogRepository
 	CrossAppAccessPolicies oauthports.CrossAppAccessPolicyRepository
 	Federation             authentication.Module
 	ApprovalRequests       oauthports.ApprovalRequestStore
@@ -261,7 +261,7 @@ func WithOAuth2Clients() Option {
 		b.stack.Clients = oauth2.NewMemoryModule().ClientRepo
 		b.stack.AuthzDetailTypes = oauth2.NewMemoryModule().AuthzDetailTypeRepo
 		b.stack.McpResourceServers = oauth2.NewMemoryModule().McpResourceServerRepo
-		b.stack.McpToolReports = oauth2.NewMemoryModule().McpToolReportRepo
+		b.stack.McpToolCatalogs = oauth2.NewMemoryModule().McpToolCatalogRepo
 		secretHash := oauthdomain.HashClientSecret(ResourceServerSecret)
 		for _, tenantID := range []string{tenancydomain.DefaultTenantID, OtherRealm} {
 			_ = b.stack.Clients.Save(context.Background(), &oauthdomain.OAuth2Client{
@@ -275,7 +275,7 @@ func WithOAuth2Clients() Option {
 		b.deps.OAuth2.ClientRepo = b.stack.Clients
 		b.deps.OAuth2.AuthzDetailTypeRepo = b.stack.AuthzDetailTypes
 		b.deps.OAuth2.McpResourceServerRepo = b.stack.McpResourceServers
-		b.deps.OAuth2.McpToolReportRepo = b.stack.McpToolReports
+		b.deps.OAuth2.McpToolCatalogRepo = b.stack.McpToolCatalogs
 		b.deps.OAuth2.AgentGuardrailPolicies = oauth2.NewMemoryModule().AgentGuardrailPolicies
 		b.stack.ApprovalRequests = oauth2.NewMemoryModule().ApprovalRequestStore
 		b.deps.OAuth2.ApprovalRequestStore = b.stack.ApprovalRequests

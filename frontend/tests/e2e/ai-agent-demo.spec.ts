@@ -163,7 +163,7 @@ test('administrator governs a real agent from the console', async () => {
     // 手順 6：対象と Agent の選択で付与する。ID は入力しない。
     await view.navigate(detailURL)
     await waitForPage(view, 'admin-agent-detail')
-    await clickLinkByText(view, 'Resource connections')
+    await view.evaluate(`document.querySelector('main a[href$="/resources"]').click()`)
     await waitForPage(view, 'admin-agent-resources')
     await clickLinkByText(view, 'Resource assignments and diagnostics')
     await waitForPage(view, 'admin-agent-access')

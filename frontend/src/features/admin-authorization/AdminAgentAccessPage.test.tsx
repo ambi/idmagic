@@ -61,7 +61,7 @@ it('grants only the selected resource and agent', async () => {
   await renderWithRouter(
     <AdminAgentAccessPage {...props} selectedAgent="origin-agent" onGranted={onGranted} />,
   )
-  fireEvent.change(screen.getByLabelText('Connection'), { target: { value: 's1' } })
+  fireEvent.change(screen.getByLabelText('MCP resource server'), { target: { value: 's1' } })
   const permission = screen.getByLabelText('Permission') as HTMLSelectElement
   expect([...permission.options].map((option) => option.value)).toEqual(['', 'document:viewer'])
   fireEvent.change(permission, { target: { value: 'document:viewer' } })
@@ -115,7 +115,7 @@ it('preserves the selected assignment after a failed grant', async () => {
   ) as unknown as typeof fetch
   const onGranted = mock(() => {})
   await renderWithRouter(<AdminAgentAccessPage {...props} onGranted={onGranted} />)
-  fireEvent.change(screen.getByLabelText('Connection'), { target: { value: 's1' } })
+  fireEvent.change(screen.getByLabelText('MCP resource server'), { target: { value: 's1' } })
   fireEvent.change(screen.getByLabelText('Permission'), { target: { value: 'document:viewer' } })
   fireEvent.change(screen.getByLabelText('Resource ID'), { target: { value: 'handbook' } })
   fireEvent.change(screen.getByLabelText('Agent'), { target: { value: 'a1' } })
@@ -143,9 +143,9 @@ it('excludes disabled principals and wildcard-only permissions', async () => {
       ]}
     />,
   )
-  fireEvent.change(screen.getByLabelText('Connection'), { target: { value: 's1' } })
+  fireEvent.change(screen.getByLabelText('MCP resource server'), { target: { value: 's1' } })
   expect(
-    [...(screen.getByLabelText('Connection') as HTMLSelectElement).options].map(
+    [...(screen.getByLabelText('MCP resource server') as HTMLSelectElement).options].map(
       (option) => option.value,
     ),
   ).toEqual(['', 's1'])

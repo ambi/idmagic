@@ -72,15 +72,7 @@ function publishedOperations(servers: McpResourceServer[]): Operation[] {
     )
 }
 
-function OriginTag({ label }: { label: string }) {
-  return (
-    <span className="mr-1 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700">
-      {label}
-    </span>
-  )
-}
-
-// AdminAgentCreatePage は Agent の登録、認証の準備、利用する接続先の割当を一つの送信で行う。
+// AdminAgentCreatePage はエージェントの登録、認証の準備、利用する MCP リソースサーバーの割当を一つの送信で行う。
 export function AdminAgentCreatePage({
   csrfToken,
   actorUsername,
@@ -214,7 +206,7 @@ export function AdminAgentCreatePage({
         next.assigned = true
         setProgress({ ...next })
       }
-      // 配置先へ渡す値がなければ、従来どおり Agent の詳細へ進む。
+      // 配置先へ渡す値がなければ、従来どおりエージェントの詳細へ進む。
       if (!next.clientID) {
         window.location.assign(tenantURL(`/admin/agents/${encodeURIComponent(next.agentID)}`))
         return
@@ -349,9 +341,7 @@ export function AdminAgentCreatePage({
                     {...form.fieldProps('name')}
                   />
                   <FieldError form={form} name="name" />
-                  <p className="text-xs text-slate-500">
-                    <OriginTag label={flow.originYou} /> {t.agentNameHelp}
-                  </p>
+                  <p className="text-xs text-slate-500">{t.agentNameHelp}</p>
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="agent-description" optional>
@@ -381,9 +371,6 @@ export function AdminAgentCreatePage({
                     <option value="autonomous">{t.kindAutonomousOption}</option>
                     <option value="supervised">{t.kindSupervisedOption}</option>
                   </select>
-                  <p className="text-xs text-slate-500">
-                    <OriginTag label={flow.originDefault} />
-                  </p>
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="agent-owner" optional>
@@ -397,9 +384,7 @@ export function AdminAgentCreatePage({
                     value={owner}
                     onChange={setOwner}
                   />
-                  <p className="text-xs text-slate-500">
-                    <OriginTag label={flow.originDefault} /> {t.ownerHelp}
-                  </p>
+                  <p className="text-xs text-slate-500">{t.ownerHelp}</p>
                 </div>
 
                 <fieldset className="grid gap-2 md:col-span-2">
@@ -441,9 +426,6 @@ export function AdminAgentCreatePage({
                         {...form.fieldProps('publicKey')}
                       />
                       <FieldError form={form} name="publicKey" />
-                      <p className="text-xs text-slate-500">
-                        <OriginTag label={flow.originYou} />
-                      </p>
                     </div>
                   ) : null}
                   {method === 'jwks_uri' ? (
@@ -460,18 +442,14 @@ export function AdminAgentCreatePage({
                         {...form.fieldProps('jwksURI')}
                       />
                       <FieldError form={form} name="jwksURI" />
-                      <p className="text-xs text-slate-500">
-                        <OriginTag label={flow.originYou} /> {flow.jwksUriHelp}
-                      </p>
+                      <p className="text-xs text-slate-500">{flow.jwksUriHelp}</p>
                     </div>
                   ) : null}
                 </fieldset>
 
                 <fieldset className="grid gap-2 md:col-span-2">
                   <legend className="mb-1 font-semibold">{flow.connectionsHeading}</legend>
-                  <p className="text-xs text-slate-500">
-                    <OriginTag label={flow.originYou} /> {flow.connectionsHelp}
-                  </p>
+                  <p className="text-xs text-slate-500">{flow.connectionsHelp}</p>
                   {operations.length === 0 ? (
                     <p className="text-sm text-slate-600">{flow.connectionsEmpty}</p>
                   ) : (

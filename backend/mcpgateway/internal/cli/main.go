@@ -10,16 +10,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ambi/idmagic/backend/mcpgateway/internal/catalog_http"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/evaluation_http"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/exchange_http"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/proxy_http"
-	"github.com/ambi/idmagic/backend/mcpgateway/internal/report_http"
 )
 
 const (
 	shutdownTimeout = 10 * time.Second
-	// reportTimeout は上流の一ページの取得の上限である。報告は起動を待たせない。
-	reportTimeout = 10 * time.Second
+	// catalogTimeout は上流の一ページの取得の上限である。カタログは起動を待たせない。
+	catalogTimeout = 10 * time.Second
 )
 
 // Gateway は組み立てたハンドラーである。
@@ -27,16 +27,16 @@ type Gateway struct {
 	Config  Config
 	Handler http.Handler
 	Metrics http.Handler
-	// Reporter はカタログを参照する proxy の構成にだけある (REQ-MCPGATEWAY-011)。
-	Reporter *report_http.Reporter
+	// Publisher はカタログを参照する proxy の構成にだけある (REQ-MCPGATEWAY-011)。
+	Publisher *catalog_http.Publisher
 }
 
-// ReportTools は上流の一覧を IdMagic へ報告する。報告しない構成では何もしない。
-func (g *Gateway) ReportTools(ctx context.Context) (report_http.Result, error) {
-	if g.Reporter == nil {
-		return report_http.Result{}, nil
+// SendToolCatalog は上流の一覧をカタログとして IdMagic へ送る。カタログを送らない構成では何もしない。
+func (g *Gateway) SendToolCatalog(ctx context.Context) (catalog_http.Result, error) {
+	if g.Publisher == nil {
+		return catalog_http.Result{}, nil
 	}
-	return g.Reporter.Report(ctx)
+	return g.Publisher.SendCatalog(ctx)
 }
 
 // Load は設定から組み立てる。HTTP クライアントはプロキシの環境変数を読まず、評価のリダイレクトを追わない。
@@ -77,11 +77,11 @@ func Load(path string, audit io.Writer) (*Gateway, error) {
 	}
 	gateway := &Gateway{Config: config, Handler: handler, Metrics: metrics.Handler()}
 	if config.Mapping.Catalog && !config.EnvoyExtAuthz {
-		gateway.Reporter = &report_http.Reporter{
-			Upstream: config.Upstream.String(), ReportURL: config.RealmURL + "/resource-access/tools",
+		gateway.Publisher = &catalog_http.Publisher{
+			Upstream: config.Upstream.String(), CatalogURL: config.RealmURL + "/resource-access/tools",
 			ClientID: config.ClientID, ClientSecret: config.ClientSecret,
 			UpstreamClient: &http.Client{
-				Transport: upstreamTransport, Timeout: reportTimeout,
+				Transport: upstreamTransport, Timeout: catalogTimeout,
 				CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 			},
 			IdMagicClient: backchannel,
@@ -117,7 +117,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		mux.Handle("GET /metrics", gateway.Metrics)
 		servers = append(servers, &http.Server{Addr: gateway.Config.MetricsListen, Handler: mux, ReadHeaderTimeout: 10 * time.Second})
 	}
-	if gateway.Reporter != nil {
+	if gateway.Publisher != nil {
 		go gateway.ListenForToolChanges(ctx, stderr)
 	}
 	failures := make(chan error, len(servers))
@@ -141,17 +141,17 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	return code
 }
 
-// ListenForToolChanges は起動後に一覧を報告し、上流の変更通知のたびに報告し直す (REQ-MCPGATEWAY-012)。
-// 失敗しても執行は続け、理由だけを stderr に残す。報告の内容とシークレットはログへ出さない。
+// ListenForToolChanges は起動後に一覧をカタログし、上流の変更通知のたびにカタログし直す (REQ-MCPGATEWAY-012)。
+// 失敗しても執行は続け、理由だけを stderr に残す。カタログの内容とシークレットはログへ出さない。
 // 待ち受けの応答は開いたままなので、上流のクライアントは全体の期限を持たず、受信確認の期限だけで切る。
 func (g *Gateway) ListenForToolChanges(ctx context.Context, stderr io.Writer) {
-	if g.Reporter == nil {
+	if g.Publisher == nil {
 		return
 	}
-	report_http.Listener{
-		Reporter: *g.Reporter,
+	catalog_http.Listener{
+		Publisher: *g.Publisher,
 		Client: &http.Client{
-			Transport:     g.Reporter.UpstreamClient.Transport,
+			Transport:     g.Publisher.UpstreamClient.Transport,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		},
 		Log: stderr,

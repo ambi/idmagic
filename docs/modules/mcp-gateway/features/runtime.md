@@ -37,7 +37,7 @@
 | `downstream.dpop_key_file` | 下流のトークンを束縛する P-256 の秘密鍵の PEM。`downstream.resource` を指定すると必須 | なし |
 | `mapping.methods` | `tools/call` 以外で転送する方法から操作への対応 | なし |
 | `mapping.tools` | ツール名から操作への対応 | なし |
-| `mapping.catalog` | 明示した対応にない要求を、接続先の操作カタログで評価する。`proxy` では起動後と上流の変更通知のたびに、上流のツールの一覧を報告する | `false` |
+| `mapping.catalog` | 明示した対応にない要求を、接続先の操作カタログで評価する。`proxy` では起動後と上流の変更通知のたびに、上流のツールのカタログを送る | `false` |
 
 操作は `resource_type`、`relation` と、`resource_id` か `resource_id_argument` のちょうど一方を持つ。
 `resource_id_argument` は `tools/call` の `arguments` の直下のキーを名指し、その文字列の値を `resource_id` にする。
@@ -205,26 +205,26 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - 明示した対応がある要求を受けたとき、McpGateway は、従来の対応を優先する。
 - `mapping.catalog` が省略か偽の構成では、McpGateway は、従来どおり未登録のツールを転送しない。
 
-#### REQ-MCPGATEWAY-011 カタログを参照する構成は、起動後に上流のツール一覧を IdMagic へ報告する
+#### REQ-MCPGATEWAY-011 カタログを参照する構成は、起動後に上流のツールカタログを IdMagic へ送る
 
-- `proxy` の構成で `mapping.catalog` が有効なとき、McpGateway は、起動後に上流へ `tools/list` を送り、`nextCursor` をたどって集めたツールを `/resource-access/tools` へ報告する。
-- 報告するとき、McpGateway は、ツールの `name`、`title`、`description`、`inputSchema.properties` のキーだけを送り、`title` を256文字、`description` を2048文字、キーを32件までに切り詰める。
-- ツールが100件を超えるか、10ページを超えるか、二ページ目以降の取得が失敗した場合、McpGateway は、取得できたツールを `complete=false` で報告する。
-- 最初のページを取得できないか、報告が失敗した場合、McpGateway は、ログに理由を残してその回の報告をやめ、要求の執行を続ける。
-- `envoy_ext_authz` の構成と、`mapping.catalog` が無効な構成では、McpGateway は、ツールを報告しない。
+- `proxy` の構成で `mapping.catalog` が有効なとき、McpGateway は、起動後に上流へ `tools/list` を送り、`nextCursor` をたどって集めたツールをカタログとして `/resource-access/tools` へ送る。
+- 送信するとき、McpGateway は、ツールの `name`、`title`、`description`、`inputSchema.properties` のキーだけを送り、`title` を256文字、`description` を2048文字、キーを32件までに切り詰める。
+- ツールが100件を超えるか、10ページを超えるか、二ページ目以降の取得が失敗した場合、McpGateway は、取得できたツールを `complete=false` で送信する。
+- 最初のページを取得できないか、カタログの送信が失敗した場合、McpGateway は、ログに理由を残してその回のカタログの送信をやめ、要求の執行を続ける。
+- `envoy_ext_authz` の構成と、`mapping.catalog` が無効な構成では、McpGateway は、カタログを送らない。
 - ログを書くとき、McpGateway は、クライアントシークレットとツールの説明を含めない。
 
-#### REQ-MCPGATEWAY-012 カタログを参照する構成は、上流の変更通知を受けてツール一覧を報告し直す
+#### REQ-MCPGATEWAY-012 カタログを参照する構成は、上流の変更通知を受けてツールカタログを再送する
 
-- REQ-MCPGATEWAY-011 で報告する構成では、McpGateway は、起動後に上流へ `notifications.toolsListChanged` を真にした `subscriptions/listen` を送り、応答のストリームを開いたままにする。
-- 受信確認に `toolsListChanged` があったとき、McpGateway は、REQ-MCPGATEWAY-011 の手順で一覧を報告する。
-- 開いたストリームで要求の `id` を持つ `notifications/tools/list_changed` を受けたとき、McpGateway は、一覧を報告し直す。
-- 前回の報告の開始から10秒以内に報告の契機があった場合、McpGateway は、10秒が経ってから一回だけ報告する。
-- 最初の待ち受けで受信確認を得られなかった場合、McpGateway は、受信確認を待たずに一覧を報告する。
+- REQ-MCPGATEWAY-011 で送信する構成では、McpGateway は、起動後に上流へ `notifications.toolsListChanged` を真にした `subscriptions/listen` を送り、応答のストリームを開いたままにする。
+- 受信確認に `toolsListChanged` があったとき、McpGateway は、REQ-MCPGATEWAY-011 の手順でカタログを送る。
+- 開いたストリームで要求の `id` を持つ `notifications/tools/list_changed` を受けたとき、McpGateway は、カタログを再送する。
+- 前回の送信の開始から10秒以内に送信の契機があった場合、McpGateway は、10秒が経ってから一回だけ送信する。
+- 最初の待ち受けで受信確認を得られなかった場合、McpGateway は、受信確認を待たずにカタログを送る。
 - 受信確認に `toolsListChanged` がないか、上流が JSON-RPC のエラーか、408 と 429 以外の4xxを返した場合、McpGateway は、ログに理由を残して待ち受けをやめる。
 - ストリームが閉じたか、接続、5xx、408、429 で失敗したか、10秒以内に受信確認がない場合、McpGateway は、1秒から倍にして5分を上限とする間隔をおいて待ち受けを開き直し、受信確認を得たら間隔を1秒に戻す。
-- **判断**：受信確認の後に報告する。報告と待ち受けの間の変更と、切断中の変更を取りこぼさないためである。
-- **判断**：通知を再取得の契機にだけ使う。通知は一覧を持たず、報告の内容は常に `tools/list` の結果から作るためである。
+- **判断**：受信確認の後に送信する。カタログの送信と待ち受けの間の変更と、切断中の変更を取りこぼさないためである。
+- **判断**：通知を再取得の契機にだけ使う。通知は一覧を持たず、カタログの内容は常に `tools/list` の結果から作るためである。
 
 ## セキュリティ上の考慮
 

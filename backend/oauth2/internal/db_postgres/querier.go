@@ -39,7 +39,7 @@ type Querier interface {
 	DeleteExpiredOauth2TokenExchangeGrantsBatch(ctx context.Context, arg DeleteExpiredOauth2TokenExchangeGrantsBatchParams) (int64, error)
 	DeleteExpiredPARRequestsBatch(ctx context.Context, arg DeleteExpiredPARRequestsBatchParams) (int64, error)
 	DeleteMcpResourceServer(ctx context.Context, arg DeleteMcpResourceServerParams) error
-	DeleteMcpToolReport(ctx context.Context, arg DeleteMcpToolReportParams) error
+	DeleteMcpToolCatalog(ctx context.Context, arg DeleteMcpToolCatalogParams) error
 	DeleteRefreshTokensForClient(ctx context.Context, clientID string) error
 	DeleteRefreshTokensForSub(ctx context.Context, userID string) error
 	// 単発 exchange の CAS。state='approved' の行だけを exchanged にして 1 行返す。
@@ -69,7 +69,7 @@ type Querier interface {
 	GetMcpResourceServer(ctx context.Context, arg GetMcpResourceServerParams) (*McpResourceServer, error)
 	GetMcpResourceServerByClientID(ctx context.Context, arg GetMcpResourceServerByClientIDParams) (*McpResourceServer, error)
 	GetMcpResourceServerByResource(ctx context.Context, arg GetMcpResourceServerByResourceParams) (*McpResourceServer, error)
-	GetMcpToolReport(ctx context.Context, arg GetMcpToolReportParams) (*GetMcpToolReportRow, error)
+	GetMcpToolCatalog(ctx context.Context, arg GetMcpToolCatalogParams) (*GetMcpToolCatalogRow, error)
 	GetRefreshTokenByHash(ctx context.Context, hash string) (*GetRefreshTokenByHashRow, error)
 	GetRefreshTokenRotationState(ctx context.Context, id string) (*GetRefreshTokenRotationStateRow, error)
 	InsertAgentGuardrailPolicy(ctx context.Context, arg InsertAgentGuardrailPolicyParams) (int64, error)
@@ -151,9 +151,9 @@ type Querier interface {
 	UpsertConsent(ctx context.Context, arg UpsertConsentParams) error
 	UpsertMcpResourceServer(ctx context.Context, arg UpsertMcpResourceServerParams) error
 	// 指紋が保存済みの行と異なるときだけ、保存済みの一覧を変更前へ移す (REQ-OAUTH2-086)。
-	// 比べる値は更新前の行の値なので、並行する報告も一つの文の中で比べて置き換える。
+	// 比べる値は更新前の行の値なので、並行するカタログも一つの文の中で比べて置き換える。
 	// 指紋が空の行は列の追加前に保存したもので、内容を比べられないため変更前を作らない。
-	UpsertMcpToolReport(ctx context.Context, arg UpsertMcpToolReportParams) error
+	UpsertMcpToolCatalog(ctx context.Context, arg UpsertMcpToolCatalogParams) error
 }
 
 var _ Querier = (*Queries)(nil)
