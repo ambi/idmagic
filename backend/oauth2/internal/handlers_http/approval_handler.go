@@ -25,7 +25,7 @@ func (d Deps) handleBackchannelAuthenticate(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
-	clientIP := extractClientIP(c.Request(), d.TrustedForwardedHops)
+	clientIP := c.RealIP()
 	if blocked, rateErr := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "backchannel_authentication", authed.ID+"|"+clientIP); rateErr != nil {
 		return rateErr
 	} else if blocked {

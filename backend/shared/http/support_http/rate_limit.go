@@ -1,35 +1,11 @@
 package support_http
 
 import (
-	"net/http"
-	"strings"
 	"time"
 
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/labstack/echo/v5"
 )
-
-// ExtractClientIP reads the client IP from X-Forwarded-For, trusting only the configured number
-// of hops (TrustedForwardedHops) so an attacker cannot spoof around IP-keyed defenses (login
-// throttle, endpoint rate limiter) by forging extra hops in front of the trusted proxy chain.
-// Returns "" when trustedHops <= 0 (untrusted-by-default) or the header doesn't have enough hops.
-func ExtractClientIP(request *http.Request, trustedHops int) string {
-	if request == nil || trustedHops <= 0 {
-		return ""
-	}
-	parts := strings.Split(request.Header.Get("X-Forwarded-For"), ",")
-	ips := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if ip := strings.TrimSpace(part); ip != "" {
-			ips = append(ips, ip)
-		}
-	}
-	index := len(ips) - 1 - trustedHops
-	if index < 0 || index >= len(ips) {
-		return ""
-	}
-	return ips[index]
-}
 
 // storeUnavailableRetryAfterSeconds is the Retry-After a fail-closed refusal offers when the
 // counter cannot be read. No window state is known in that case, so the value is a fixed short

@@ -148,7 +148,7 @@ type resourceLoadFixture struct {
 func TestResourceAccessConfiguredBudgetReachesHTTP(t *testing.T) {
 	for _, storage := range []string{"memory", "postgres"} {
 		t.Run(storage, func(t *testing.T) {
-			f := newResourceLoadFixture(t, storage, map[string]string{"RATE_LIMIT_RESOURCE_ACCESS_MAX_REQUESTS": "2", "RATE_LIMIT_RESOURCE_ACCESS_WINDOW_SECONDS": "60", "TRUSTED_FORWARDED_HOPS": "1"})
+			f := newResourceLoadFixture(t, storage, map[string]string{"RATE_LIMIT_RESOURCE_ACCESS_MAX_REQUESTS": "2", "RATE_LIMIT_RESOURCE_ACCESS_WINDOW_SECONDS": "60", "TRUSTED_PROXY_CIDRS": "192.0.2.1/32, 10.0.0.1/32"})
 			token, _, err := f.signer.SignAccessToken(f.ctx, oauthports.AccessTokenInput{
 				Client: &oauthdomain.OAuth2Client{ClientID: f.agentClient}, Sub: f.agentClient, AgentID: f.agentID,
 				Scopes: []string{"tools:read"}, Audiences: []string{f.resource},
@@ -389,8 +389,8 @@ func registerResourceLoadRoutes(tb testing.TB, e *echo.Echo, deps *Dependencies,
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer: shared.Issuer, TenantRepo: deps.Tenancy.TenantRepo,
 		Contract: spec.CurrentRuntimeContract(), RateLimiter: deps.RateLimit.NewRateLimiter(api.RateLimits), Emit: emit, Metrics: observations,
-		TrustedForwardedHops: api.TrustedForwardedHops,
-		Tenancy:              deps.Tenancy, IdManagement: deps.IdManagement, Authentication: deps.Authentication, OAuth2: deps.OAuth2,
+		TrustedProxies: api.TrustedProxies,
+		Tenancy:        deps.Tenancy, IdManagement: deps.IdManagement, Authentication: deps.Authentication, OAuth2: deps.OAuth2,
 		ApiTokens: deps.ApiTokens, SigningKeys: deps.SigningKeys, AccessControl: deps.AccessControl, SharedSignals: deps.SharedSignals,
 	})
 	return signer

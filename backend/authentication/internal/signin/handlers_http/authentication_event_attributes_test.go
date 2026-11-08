@@ -3,12 +3,14 @@ package handlers_http
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"testing"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -22,6 +24,7 @@ func TestEmitAuthenticationFailureRecordsPlaintextAttributes(t *testing.T) {
 	d.Emit = func(e spec.DomainEvent) { emitted = e }
 
 	e := echo.New()
+	e.IPExtractor = support.ClientIPExtractor([]netip.Prefix{netip.MustParsePrefix("192.0.2.1/32"), netip.MustParsePrefix("10.0.0.1/32")})
 	e.POST("/x", func(c *echo.Context) error {
 		req := c.Request().WithContext(tenantports.WithTenant(
 			c.Request().Context(), &tenancydomain.Tenant{ID: "acme"}, "", "",
@@ -35,7 +38,6 @@ func TestEmitAuthenticationFailureRecordsPlaintextAttributes(t *testing.T) {
 	req.Header.Set("X-Forwarded-For", "198.51.100.44, 10.0.0.1")
 	req.Header.Set("User-Agent", "test-agent")
 	rec := httptest.NewRecorder()
-	d.TrustedForwardedHops = 1
 	e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d", rec.Code)

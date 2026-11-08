@@ -201,7 +201,7 @@ func Run() error {
 		Issuer:                    issuer,
 		Contract:                  runtimeContract,
 		TenantBaseDomain:          api.TenantBaseDomain,
-		TrustedForwardedHops:      api.TrustedForwardedHops,
+		TrustedProxies:            api.TrustedProxies,
 		RateLimiter:               deps.RateLimit.RateLimiter,
 		OperationTimeout:          0, // 必要なら設定
 		DetachedCompletionTimeout: 0,

@@ -46,22 +46,22 @@ func TestConfigLoaderAggregatesEveryError(t *testing.T) {
 
 func TestConfigLoaderStopsFallingBackSilentlyOnParseFailure(t *testing.T) {
 	t.Parallel()
-	l := NewConfigLoader(stubEnv(map[string]string{"TRUSTED_FORWARDED_HOPS": "one"}))
-	got := l.NonNegativeInt("TRUSTED_FORWARDED_HOPS", 0)
+	l := NewConfigLoader(stubEnv(map[string]string{"DRAIN_GRACE_PERIOD_SECONDS": "one"}))
+	got := l.NonNegativeInt("DRAIN_GRACE_PERIOD_SECONDS", 0)
 	if got != 0 {
 		t.Errorf("got %d, want the fallback value returned alongside a recorded error", got)
 	}
-	if err := l.Err(); err == nil || !strings.Contains(err.Error(), "TRUSTED_FORWARDED_HOPS") {
-		t.Fatalf("err=%v, want a TRUSTED_FORWARDED_HOPS parse error instead of a silent fallback", err)
+	if err := l.Err(); err == nil || !strings.Contains(err.Error(), "DRAIN_GRACE_PERIOD_SECONDS") {
+		t.Fatalf("err=%v, want a DRAIN_GRACE_PERIOD_SECONDS parse error instead of a silent fallback", err)
 	}
 }
 
 func TestConfigLoaderRejectsNegativeWhereNonNegativeRequired(t *testing.T) {
 	t.Parallel()
-	l := NewConfigLoader(stubEnv(map[string]string{"TRUSTED_FORWARDED_HOPS": "-1"}))
-	l.NonNegativeInt("TRUSTED_FORWARDED_HOPS", 0)
+	l := NewConfigLoader(stubEnv(map[string]string{"DRAIN_GRACE_PERIOD_SECONDS": "-1"}))
+	l.NonNegativeInt("DRAIN_GRACE_PERIOD_SECONDS", 0)
 	if err := l.Err(); err == nil {
-		t.Fatal("expected an error for a negative TRUSTED_FORWARDED_HOPS")
+		t.Fatal("expected an error for a negative DRAIN_GRACE_PERIOD_SECONDS")
 	}
 }
 

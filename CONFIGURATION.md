@@ -74,7 +74,7 @@ HTTP の待ち受け、堅牢化、セキュリティヘッダー、エンドポ
 | `LOG_LEVEL` | enum: `debug`, `info`, `warn`, `warning`, `error` | `info` | いいえ | 標準出力へ書く最低の重大度。 |
 | `REQUEST_ID_TRUST_INBOUND` | boolean: `true`, `false` | `false` | いいえ | 受け取った X-Request-ID を生成せずに再利用する。このヘッダーを所有して無害化するプロキシの背後でだけ有効にする。 |
 | `TENANT_BASE_DOMAIN` | string | — | いいえ | `{realm}.<domain>` のサブドメイン形式のエンドポイントを有効にする親ホスト名。例：`id.example.com`。未設定ではすべてのテナントをパスで振り分ける。 |
-| `TRUSTED_FORWARDED_HOPS` | integer (>= 0) | `0` | いいえ | このプロセスの前段にある、信頼する X-Forwarded-For のホップ数。ログインの抑制とエンドポイントのレート制限で、実際のクライアント IP を解決するのに使う。`0` はこのヘッダーをまったく信頼しない。 |
+| `TRUSTED_PROXY_CIDRS` | list (CIDR) | — | いいえ | 送信元の解決で信頼する代理の CIDR をカンマ区切りで指定する。デフォルトは空で、転送ヘッダーを読まず接続相手を使う。設定した場合は接続相手から X-Forwarded-For を右から左へたどり、信頼しない最初のアドレスを使う。代理の背後で設定しないと、全利用者が代理の IP 単位の抑制を共有する。偽装を避けるため、実際の代理だけを含む狭い範囲を指定する。 |
 | `DRAIN_GRACE_PERIOD_SECONDS` | integer (>= 0) | `5` | いいえ | SIGTERM を受けてから待ち受けを閉じるまで処理を続ける秒数（idmagic）、または実行中のジョブを終えさせる秒数（idmagic-worker）。 |
 | `PAGINATION_CURSOR_SECRET` | secret | — | いいえ | キーセット方式のページングのカーソルに署名する HMAC のシークレット。複数のレプリカで動かすデプロイメントでは明示的に設定する。設定しないと各レプリカが起動時に自身の値を生成し、他のレプリカが発行したカーソルを拒否する。 |
 | `NEGOTIATE_CONFIG_FILE` | string | — | いいえ | Kerberos の信頼と利用者の明示的な対応付けを含む JSON ファイル。未設定なら Windows のサインインは無効。keytab と TLS 終端証明書をファイル参照で指定する。 |

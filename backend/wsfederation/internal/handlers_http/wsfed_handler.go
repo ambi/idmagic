@@ -77,7 +77,7 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 		TenantID: support.RequestTenantID(c),
 		Request:  req,
 		Authn:    authn,
-		ClientIP: d.ClientIP(c.Request()),
+		ClientIP: c.RealIP(),
 	})
 	if err != nil {
 		return err

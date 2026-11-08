@@ -31,7 +31,7 @@ func (d Deps) negotiateEnabled(c *echo.Context) bool {
 
 func (d Deps) handleNegotiateAvailability(c *echo.Context) error {
 	enabled := d.NegotiateService != nil && d.negotiateEnabled(c)
-	automatic := enabled && d.AutomaticNegotiate && d.NegotiateService.Automatic(support.RequestTenantID(c), d.ClientIP(c.Request()))
+	automatic := enabled && d.AutomaticNegotiate && d.NegotiateService.Automatic(support.RequestTenantID(c), c.RealIP())
 	return support.NoStoreJSON(c, http.StatusOK, struct {
 		Enabled   bool `json:"enabled"`
 		Automatic bool `json:"automatic"`
@@ -63,7 +63,7 @@ func (d Deps) handleNegotiate(c *echo.Context) error {
 // NegotiatePassive は WS-Fed の検証済みの要求から呼ぶ。required は RP が WIA を明示したことを表す。
 func (d Deps) NegotiatePassive(c *echo.Context, returnTo string, required bool) (bool, error) {
 	if d.NegotiateService == nil || !d.negotiateEnabled(c) || !required &&
-		(!d.AutomaticNegotiate || !d.NegotiateService.Automatic(support.RequestTenantID(c), d.ClientIP(c.Request()))) {
+		(!d.AutomaticNegotiate || !d.NegotiateService.Automatic(support.RequestTenantID(c), c.RealIP())) {
 		return false, nil
 	}
 	redirect, handled, err := d.negotiate(c, returnTo)
@@ -82,7 +82,7 @@ func (d Deps) negotiate(c *echo.Context, returnTo string) (string, bool, error) 
 		return "", false, nil
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
-	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "login", d.ClientIP(c.Request())); blocked || err != nil {
+	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "login", c.RealIP()); blocked || err != nil {
 		return "", true, err
 	}
 	tenantID, now := support.RequestTenantID(c), time.Now().UTC()
@@ -124,7 +124,7 @@ func (d Deps) negotiate(c *echo.Context, returnTo string) (string, bool, error) 
 		d.emitNegotiate(&negotiateusecases.Rejected{At: now, TenantID: tenantID, Reason: "encoding"})
 		return "", true, c.String(http.StatusUnauthorized, "Negotiate authentication rejected")
 	}
-	user, reply, err := d.NegotiateService.Authenticate(c.Request().Context(), tenantID, token, d.ClientIP(c.Request()), now, d.emitNegotiate)
+	user, reply, err := d.NegotiateService.Authenticate(c.Request().Context(), tenantID, token, c.RealIP(), now, d.emitNegotiate)
 	if errors.Is(err, negotiateusecases.ErrRejected) {
 		return "", true, c.String(http.StatusUnauthorized, "Negotiate authentication rejected")
 	}

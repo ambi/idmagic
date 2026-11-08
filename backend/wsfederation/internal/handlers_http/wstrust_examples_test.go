@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -368,7 +369,7 @@ func postWsTrustSOAPFrom(e *echo.Echo, body, clientIP string) *httptest.Response
 // withLoginThrottle は、ログインの API と同じ試行の制限を、IP 単位の閾値を小さくして組み立てる。
 func withLoginThrottle(ipMaxFailures int) func(*httpadapter.Deps) {
 	return func(deps *httpadapter.Deps) {
-		deps.TrustedForwardedHops = 1
+		deps.TrustedProxies = []netip.Prefix{netip.MustParsePrefix("192.0.2.1/32"), netip.MustParsePrefix("10.0.0.1/32")}
 		deps.Authentication.LoginAttemptThrottle = authentication.NewMemoryModule(nil).NewLoginAttemptThrottle(sessionports.LoginThrottleConfigs{
 			Account: sessionports.LoginThrottleConfig{MaxFailures: 100, WindowSeconds: 900, LockoutSeconds: 900},
 			IP:      sessionports.LoginThrottleConfig{MaxFailures: ipMaxFailures, WindowSeconds: 900, LockoutSeconds: 900},

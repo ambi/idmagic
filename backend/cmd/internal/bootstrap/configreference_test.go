@@ -70,9 +70,9 @@ func TestRenderConfigReferenceRecordsTypeDefaultAndRequirement(t *testing.T) {
 		t.Fatalf("RenderConfigReference: %v", err)
 	}
 	for key, want := range map[string]string{
-		"PERSISTENCE":            "enum: `memory`, `postgres`",
-		"TRUSTED_FORWARDED_HOPS": "integer (>= 0)",
-		"JOB_POLL_INTERVAL":      "duration (> 0)",
+		"PERSISTENCE":         "enum: `memory`, `postgres`",
+		"TRUSTED_PROXY_CIDRS": "list (CIDR)",
+		"JOB_POLL_INTERVAL":   "duration (> 0)",
 	} {
 		row := referenceRow(t, rendered, key)
 		if !strings.Contains(row, want) {

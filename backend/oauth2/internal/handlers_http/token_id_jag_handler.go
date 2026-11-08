@@ -20,7 +20,7 @@ func (d Deps) applicationAccess(c *echo.Context) tokenusecases.ApplicationAccess
 	if d.ApplicationGate == nil {
 		return nil
 	}
-	clientIP := d.ClientIP(c.Request())
+	clientIP := c.RealIP()
 	tenantID := support.RequestTenantID(c)
 	return func(ctx context.Context, clientID string, assertion *oauthports.IDTokenAssertion) (bool, error) {
 		decision, err := d.EvaluateApplicationAccess(ctx, tenantID, appdomain.ApplicationProtocolOIDC, clientID, assertion.Subject,

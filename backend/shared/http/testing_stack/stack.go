@@ -32,6 +32,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"slices"
 	"strings"
@@ -420,9 +421,17 @@ func WithLoginThrottle(accountFailures, ipFailures int) Option {
 					MaxFailures: ipFailures, WindowSeconds: 900, LockoutSeconds: 900,
 				},
 			})
-		// IP 単位の計数は送信元 IP が解決できて初めて効く。信頼するホップ数が 0 の
-		// ままだと `X-Forwarded-For` は読まれず、IP の閾値は一度も評価されない。
-		b.deps.TrustedForwardedHops = 1
+		WithTrustedProxies("127.0.0.1/32", TrustedProxyIP+"/32")(b)
+	}
+}
+
+// WithTrustedProxies は送信元の解決で信頼する代理を指定する。
+func WithTrustedProxies(cidrs ...string) Option {
+	return func(b *builder) {
+		b.deps.TrustedProxies = make([]netip.Prefix, len(cidrs))
+		for i, cidr := range cidrs {
+			b.deps.TrustedProxies[i] = netip.MustParsePrefix(cidr)
+		}
 	}
 }
 
@@ -457,7 +466,7 @@ func (l *blockingRateLimiter) Allow(
 func WithEndpointRateLimitReached(policy, key string) Option {
 	return func(b *builder) {
 		b.deps.RateLimiter = &blockingRateLimiter{policy: policy, key: key}
-		b.deps.TrustedForwardedHops = 1
+		WithTrustedProxies("127.0.0.1/32", TrustedProxyIP+"/32")(b)
 	}
 }
 
@@ -958,9 +967,7 @@ func (b *Browser) SignIn(t *testing.T, username, password string) map[string]any
 		map[string]string{"username": username, "password": password})
 }
 
-// TrustedProxyIP は、信頼するホップ 1 つぶんの代理としてテストが名乗るアドレスである。
-// 製品は `X-Forwarded-For` の末尾から数えて信頼するホップ数だけ内側を送信元とみなすので、
-// 送信元 IP を 1 つ名乗るには連なりが 2 つ必要になる。
+// TrustedProxyIP はテスト基盤の転送ヘッダーに付ける、信頼する代理のアドレスである。
 const TrustedProxyIP = "10.0.0.1"
 
 // SignInAttempt は SignIn と同じ要求を送り、拒否された応答もそのまま返す。
@@ -976,6 +983,15 @@ func (b *Browser) SignInAttempt(
 	if clientIP != "" {
 		forwardedFor = clientIP + ", " + TrustedProxyIP
 	}
+	return b.postJSONAttempt(t, "/api/auth/login", csrf, forwardedFor,
+		map[string]string{"username": username, "password": password})
+}
+
+// SignInAttemptForwardedFor は転送ヘッダーの連なりをそのまま送る。
+func (b *Browser) SignInAttemptForwardedFor(t *testing.T, username, password, forwardedFor string) (int, map[string]any) {
+	t.Helper()
+	transaction := b.Transaction(t)
+	csrf, _ := transaction["csrf_token"].(string)
 	return b.postJSONAttempt(t, "/api/auth/login", csrf, forwardedFor,
 		map[string]string{"username": username, "password": password})
 }

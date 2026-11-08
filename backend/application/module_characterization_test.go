@@ -140,7 +140,7 @@ func newGateFixture(t *testing.T) *gateFixture {
 
 func (f *gateFixture) evaluate(t *testing.T) (string, error) {
 	t.Helper()
-	decision, err := f.module.Gate(f.groups, 0, f.policies, f.defaults).EvaluateApplicationAccess(
+	decision, err := f.module.Gate(f.groups, f.policies, f.defaults).EvaluateApplicationAccess(
 		context.Background(), tenancydomain.DefaultTenantID, appdomain.ApplicationProtocolOIDC, "c1", "alice",
 		&authdomain.AuthenticationContext{UserID: "alice", AMR: []string{"pwd"}}, "",
 	)

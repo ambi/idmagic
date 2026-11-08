@@ -51,7 +51,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
-	clientIP := extractClientIP(c.Request(), d.TrustedForwardedHops)
+	clientIP := c.RealIP()
 	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "token", clientStub.ID+"|"+clientIP); err != nil {
 		return err
 	} else if blocked {

@@ -7,7 +7,6 @@ package deps_http
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
@@ -85,9 +84,6 @@ type Deps struct {
 	LoginAttemptThrottle sessionports.LoginAttemptThrottle
 	SentinelPasswordHash string
 	TenantSaltStore      auditports.TenantSaltStore
-	// ClientIP は、サインインポリシーのネットワークの条件を評価するクライアントの IP を返す。
-	// Application のアクセスの判定と同じ解決を使うため、組み立て地点が結ぶ。
-	ClientIP func(*http.Request) string
 	// Authorizations は、対話のログインが認証を終えたあとに続ける認可要求を引く。
 	Authorizations         signinports.PendingAuthorizations
 	NegotiateService       *negotiateusecases.Service

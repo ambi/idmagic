@@ -8,20 +8,6 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func TestExtractClientIPUsesOnlyTrustedForwardedHops(t *testing.T) {
-	req := httptest.NewRequest(http.MethodPost, "/login", http.NoBody)
-	req.Header.Set("X-Forwarded-For", "203.0.113.10, 198.51.100.20")
-	if got := extractClientIP(req, 0); got != "" {
-		t.Fatalf("trustedHops=0 returned %q", got)
-	}
-	if got := extractClientIP(req, 1); got != "203.0.113.10" {
-		t.Fatalf("trustedHops=1 returned %q", got)
-	}
-	if got := extractClientIP(req, 2); got != "" {
-		t.Fatalf("trustedHops=2 returned %q", got)
-	}
-}
-
 func TestWriteLoginThrottledReturnsRetryAfter(t *testing.T) {
 	e := echo.New()
 	e.POST("/login", func(c *echo.Context) error {

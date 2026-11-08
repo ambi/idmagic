@@ -202,10 +202,9 @@ func TestLoginMetricsRecordInvalidCredentialsFailure(t *testing.T) {
 	if len(spy.loginOutcomes) != 1 || spy.loginOutcomes[0] != (loginOutcomeCall{"failure", "invalid_credentials", "password"}) {
 		t.Fatalf("loginOutcomes = %+v, want exactly one invalid_credentials failure", spy.loginOutcomes)
 	}
-	// TrustedForwardedHops defaults to 0, so extractClientIP is "" and only the
-	// account policy is evaluated (the IP policy check is skipped entirely).
-	if len(spy.throttleCalls) != 1 || spy.throttleCalls[0] != (throttleCall{"account", "allowed"}) {
-		t.Fatalf("throttleCalls = %+v, want exactly one account/allowed evaluation", spy.throttleCalls)
+	// デフォルトでも接続相手の IP を解決し、両方の制限を評価する。
+	if len(spy.throttleCalls) != 2 || spy.throttleCalls[0] != (throttleCall{"account", "allowed"}) || spy.throttleCalls[1] != (throttleCall{"ip", "allowed"}) {
+		t.Fatalf("throttleCalls = %+v, want account/allowed and ip/allowed evaluations", spy.throttleCalls)
 	}
 }
 

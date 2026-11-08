@@ -65,8 +65,8 @@ func TestRunRefusesInvalidStartupConfigurationBeforeAnySideEffect(t *testing.T) 
 	t.Setenv("EMAIL_SENDER", "smtp")
 	t.Setenv("SMTP_HOST", "")
 	t.Setenv("SMTP_FROM", "")
-	// 範囲外の値 (016-03): 負のホップ数。
-	t.Setenv("TRUSTED_FORWARDED_HOPS", "-1")
+	// 不正な値 (016-03): IPv4 のプレフィックス長の上限を超える CIDR。
+	t.Setenv("TRUSTED_PROXY_CIDRS", "192.0.2.0/33")
 
 	err := Run()
 	if err == nil {
@@ -76,7 +76,7 @@ func TestRunRefusesInvalidStartupConfigurationBeforeAnySideEffect(t *testing.T) 
 	if !strings.Contains(err.Error(), "load startup configuration") {
 		t.Fatalf("Run() error = %v, want the startup configuration to be refused before assembly", err)
 	}
-	for _, key := range []string{"DATABASE_URL", "SMTP_HOST", "SMTP_FROM", "TRUSTED_FORWARDED_HOPS"} {
+	for _, key := range []string{"DATABASE_URL", "SMTP_HOST", "SMTP_FROM", "TRUSTED_PROXY_CIDRS"} {
 		if !strings.Contains(err.Error(), key) {
 			t.Errorf("Run() error = %v, want it to name %s", err, key)
 		}

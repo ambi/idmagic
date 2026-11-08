@@ -51,7 +51,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, authorizationusecases.NewOAuthError("invalid_request", err.Error()))
 	}
-	clientIP := extractClientIP(c.Request(), d.TrustedForwardedHops)
+	clientIP := c.RealIP()
 	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "authorize", clientIP+"|"+request.ClientID); err != nil {
 		return err
 	} else if blocked {

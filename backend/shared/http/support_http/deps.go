@@ -3,6 +3,7 @@ package support_http
 
 import (
 	"context"
+	"net/netip"
 	"sync/atomic"
 	"time"
 
@@ -18,8 +19,8 @@ type Deps struct {
 	// 空なら host ベースのテナント解決そのものが無効になり、path prefix 経路だけが
 	// 残る。ワイルドカード DNS / 証明書を用意できない配備を一級市民として保つための
 	// 既定であり、この値が空の間はどのテナントも subdomain style を選べない。
-	TenantBaseDomain     string
-	TrustedForwardedHops int
+	TenantBaseDomain string
+	TrustedProxies   []netip.Prefix
 	// RateLimiter is the shared endpoint rate limiter, distinct from the
 	// per-account/per-IP login throttle. nil-safe: callers must check before use, matching
 	// LoginAttemptThrottle's optional-by-construction convention in tests that don't wire it.

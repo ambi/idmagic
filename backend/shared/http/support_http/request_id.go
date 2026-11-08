@@ -29,9 +29,9 @@ const maxRequestIDLen = 128
 // the operator asserts a trusted edge proxy owns and sanitizes the header
 // (REQUEST_ID_TRUST_INBOUND), and a well-formed inbound value is reused so proxy
 // and application logs share one id. A reused value is still sanitized as
-// defense in depth. Note: trusting inbound is distinct from trusting
-// X-Forwarded-For — a proxy may sanitize one and pass the other through — so
-// this is a dedicated flag rather than TRUSTED_FORWARDED_HOPS.
+// defense in depth.
+// 代理が要求 ID と転送ヘッダーの片方だけを検査する構成もあるので、要求 ID の信頼は
+// 送信元を解決する TRUSTED_PROXY_CIDRS と分けて指定する。
 func RequestIDMiddleware(trustInbound bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {

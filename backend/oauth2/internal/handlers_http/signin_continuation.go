@@ -62,7 +62,7 @@ func (p *pendingAuthorization) Requirement(
 	}
 	decision, err := p.d.EvaluateApplicationAccess(
 		c.Request().Context(), support.RequestTenantID(c), appdomain.ApplicationProtocolOIDC, p.req.ClientID,
-		authn.UserID, authn, p.d.ClientIP(c.Request()),
+		authn.UserID, authn, c.RealIP(),
 	)
 	if err != nil {
 		return signinports.SignInRequirement{}, err
@@ -136,9 +136,4 @@ func (d Deps) applicationMfaEnrollmentPolicy(c *echo.Context, applicationID stri
 		}
 	}
 	return policydomain.MfaEnrollmentPolicyFromRules(policydomain.EffectiveSignInRules(defaultPolicy, appPolicy)), nil
-}
-
-// extractClientIP は共有の support.ExtractClientIP へ委ねる。プロキシの信頼の規則を一か所に保つ。
-func extractClientIP(request *http.Request, trustedHops int) string {
-	return support.ExtractClientIP(request, trustedHops)
 }

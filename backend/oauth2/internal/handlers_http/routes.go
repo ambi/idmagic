@@ -9,7 +9,6 @@ package handlers_http
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
@@ -133,7 +132,6 @@ type ApplicationGate interface {
 		authn policydomain.SignInAuthentication,
 		clientIP string,
 	) (appdomain.ApplicationAccessDecision, error)
-	ClientIP(r *http.Request) string
 }
 
 // SignInSteps は、認可エンドポイントが既存のセッションに追加の認証を求める操作である。

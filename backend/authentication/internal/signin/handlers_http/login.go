@@ -64,7 +64,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
 	}
 
-	clientIP := extractClientIP(c.Request(), d.TrustedForwardedHops)
+	clientIP := c.RealIP()
 	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "login", clientIP); err != nil {
 		return err
 	} else if blocked {
@@ -209,7 +209,7 @@ func (d Deps) enforceDefaultSignInPolicy(
 	evaluation := policydomain.EvaluateSignInPolicy(
 		&policydomain.AppSignInPolicy{TenantID: policy.TenantID, Rules: policy.Rules},
 		authn,
-		d.ClientIP(c.Request()),
+		c.RealIP(),
 		time.Now().UTC(),
 	)
 	switch evaluation.Decision {
@@ -273,7 +273,7 @@ func (d Deps) emitAuthenticationSuccess(
 	d.Emit(&authdomain.UserAuthenticated{
 		At: at, TenantID: user.TenantID, UserID: user.ID,
 		AMR: authn.AMR, SessionID: authn.SessionID, ClientID: clientID, ACR: authn.ACR,
-		IP: extractClientIP(c.Request(), d.TrustedForwardedHops), UserAgent: c.Request().UserAgent(),
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
 	})
 }
 

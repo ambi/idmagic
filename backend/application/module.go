@@ -68,13 +68,12 @@ type Module struct {
 // Gate は Application 割当を fail-closed で判定する published capability を組み立てる
 // (Application の公開契約 ApplicationAssignmentRef)。oauth2 / saml /
 // wsfederation の federation 開始経路がこれを消費する。
-func (m Module) Gate(groupRepo groupports.GroupRepository, trustedForwardedHops int, policyRepo policyports.SignInPolicyRepository, defaultRepo policyports.DefaultSignInPolicyRepository) *appusecases.AccessGate {
+func (m Module) Gate(groupRepo groupports.GroupRepository, policyRepo policyports.SignInPolicyRepository, defaultRepo policyports.DefaultSignInPolicyRepository) *appusecases.AccessGate {
 	gate := &appusecases.AccessGate{
 		ApplicationRepo:             m.Repo,
 		ApplicationAssignmentRepo:   m.AssignmentRepo,
 		ApplicationSignInPolicyRepo: policyRepo,
 		DefaultSignInPolicyRepo:     defaultRepo,
-		GateTrustedForwardedHops:    trustedForwardedHops,
 	}
 	if groupRepo != nil {
 		gate.GroupMemberships = idManagementGroupMemberships{groups: groupRepo}

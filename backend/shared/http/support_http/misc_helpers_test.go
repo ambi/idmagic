@@ -113,35 +113,6 @@ func TestLoggingMiddleware(t *testing.T) {
 	})
 }
 
-func TestExtractClientIP(t *testing.T) {
-	t.Run("nil request or non-positive trusted hops returns empty", func(t *testing.T) {
-		if got := ExtractClientIP(nil, 1); got != "" {
-			t.Fatalf("got=%q", got)
-		}
-		req := httptest.NewRequest(http.MethodGet, "/x", http.NoBody)
-		req.Header.Set("X-Forwarded-For", "1.1.1.1")
-		if got := ExtractClientIP(req, 0); got != "" {
-			t.Fatalf("got=%q", got)
-		}
-	})
-
-	t.Run("picks the client IP the configured number of hops back", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/x", http.NoBody)
-		req.Header.Set("X-Forwarded-For", "203.0.113.5, 10.0.0.2, 10.0.0.1")
-		if got := ExtractClientIP(req, 2); got != "203.0.113.5" {
-			t.Fatalf("got=%q", got)
-		}
-	})
-
-	t.Run("returns empty when there are not enough hops", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/x", http.NoBody)
-		req.Header.Set("X-Forwarded-For", "10.0.0.2, 10.0.0.1")
-		if got := ExtractClientIP(req, 5); got != "" {
-			t.Fatalf("got=%q", got)
-		}
-	})
-}
-
 func TestIsAdminAPIPath(t *testing.T) {
 	if !IsAdminAPIPath("/api/admin/v1/users") {
 		t.Fatal("expected admin API path to match")

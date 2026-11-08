@@ -126,6 +126,7 @@ type Deps struct {
 }
 
 func Register(e *echo.Echo, d Deps) {
+	e.IPExtractor = support.ClientIPExtractor(d.TrustedProxies)
 	// エラーレスポンスの既定形式 (Problem Details) と型付きエラーの写像は経路の
 	// 組み立てに属する。ここで入れないと、ハンドラのテストが本番と別のエラー経路を
 	// 通ってしまい、500 に落ちる分類漏れがテストからは見えない。ログとメトリクスを
@@ -271,7 +272,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	apiTokenService := d.ApiTokens.Service()
 	authenticator := newAuthenticator(d, apiTokenService)
 
-	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops, d.SignInPolicy.ApplicationRepo, d.SignInPolicy.DefaultRepo)
+	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.SignInPolicy.ApplicationRepo, d.SignInPolicy.DefaultRepo)
 	clientDisplayNames := d.Application.ClientDisplayNames(applicationdeps.NewClientNames(d.OAuth2.ClientRepo))
 	jobEnqueuer := d.Jobs.Enqueuer
 
@@ -316,7 +317,6 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		EmailSender:             d.Notification.EmailSender,
 		Notifier:                d.Notification.Notifier,
 		TenantSaltStore:         d.Audit.TenantSaltStore,
-		ClientIP:                appGate.ClientIP,
 		DefaultSignInPolicyRepo: d.SignInPolicy.DefaultRepo,
 	}
 	oauthRoutes := oauth2.RouteDeps{

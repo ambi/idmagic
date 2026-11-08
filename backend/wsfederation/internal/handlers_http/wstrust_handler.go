@@ -48,7 +48,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "unknown relying party"})
 		return c.String(http.StatusBadRequest, "unknown relying party")
 	}
-	clientIP := d.ClientIP(c.Request())
+	clientIP := c.RealIP()
 	authenticated, err := d.Passwords.AuthenticatePassword(c.Request().Context(), signinports.PasswordAttempt{
 		Username: rst.Username, Password: rst.Password, ClientIP: clientIP, UserAgent: c.Request().UserAgent(),
 	})

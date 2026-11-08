@@ -2,7 +2,6 @@ package handlers_http
 
 import (
 	"context"
-	"net/http"
 
 	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 
@@ -22,7 +21,6 @@ type ApplicationGate interface {
 		authn policydomain.SignInAuthentication,
 		clientIP string,
 	) (appdomain.ApplicationAccessDecision, error)
-	ClientIP(r *http.Request) string
 }
 
 // signInService は Deps の依存から SSO usecase を組み立てる。

@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"net/netip"
+
 	httpsupport "github.com/ambi/idmagic/backend/shared/http/support_http"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 )
@@ -17,7 +19,7 @@ type APIConfig struct {
 	LogLevel              string
 	RequestIDTrustInbound bool
 	TenantBaseDomain      string
-	TrustedForwardedHops  int
+	TrustedProxies        []netip.Prefix
 	DrainGracePeriod      int // seconds
 
 	PaginationCursorSecret Secret
@@ -40,10 +42,7 @@ func LoadAPIConfig(l *ConfigLoader) APIConfig {
 	cfg.LogLevel = l.Enum("LOG_LEVEL", "info", "debug", "info", "warn", "warning", "error")
 	cfg.RequestIDTrustInbound = l.Bool("REQUEST_ID_TRUST_INBOUND", false)
 	cfg.TenantBaseDomain = l.String("TENANT_BASE_DOMAIN", "")
-	// TRUSTED_FORWARDED_HOPS: a typo here used to silently keep the default
-	// (0, trust nothing) instead of failing startup — the motivating example
-	// for wi-103's fail-fast requirement.
-	cfg.TrustedForwardedHops = l.NonNegativeInt("TRUSTED_FORWARDED_HOPS", 0)
+	cfg.TrustedProxies = loadTrustedProxies(l)
 	cfg.DrainGracePeriod = l.NonNegativeInt("DRAIN_GRACE_PERIOD_SECONDS", 5)
 	cfg.PaginationCursorSecret = l.Secret("PAGINATION_CURSOR_SECRET")
 	cfg.NegotiateConfigFile = l.String("NEGOTIATE_CONFIG_FILE", "")
@@ -88,6 +87,22 @@ func LoadAPIConfig(l *ConfigLoader) APIConfig {
 	cfg.SecurityHeaders = LoadSecurityHeaders(l)
 
 	return cfg
+}
+
+func loadTrustedProxies(l *ConfigLoader) []netip.Prefix {
+	const key = "TRUSTED_PROXY_CIDRS"
+	values := l.StringList(key, nil)
+	l.constrain(key, "CIDR")
+	proxies := make([]netip.Prefix, 0, len(values))
+	for _, value := range values {
+		prefix, err := netip.ParsePrefix(value)
+		if err != nil {
+			l.fail(key, "must contain only CIDR prefixes")
+			continue
+		}
+		proxies = append(proxies, prefix)
+	}
+	return proxies
 }
 
 // loadAdmissionBudget reads the per-priority-class concurrency limits the

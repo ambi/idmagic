@@ -2,7 +2,6 @@ package authentication
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -224,7 +223,6 @@ type RouteDeps struct {
 	EmailSender             sharednotification.EmailSender
 	Notifier                sharednotification.Notifier
 	TenantSaltStore         auditports.TenantSaltStore
-	ClientIP                func(*http.Request) string
 	DefaultSignInPolicyRepo policyports.DefaultSignInPolicyRepository
 }
 
@@ -272,8 +270,8 @@ func (m Module) RegisterFederationRoutes(
 }
 
 func (m Module) httpDeps(d RouteDeps) authhttp.Deps {
-	if m.negotiateService != nil && (m.SessionManager == nil || d.Emit == nil || d.ClientIP == nil) {
-		panic("authentication: Negotiate requires sessions, event emission and client IP resolution")
+	if m.negotiateService != nil && (m.SessionManager == nil || d.Emit == nil) {
+		panic("authentication: Negotiate requires sessions and event emission")
 	}
 	return authhttp.Deps{
 		NegotiateService:        m.negotiateService,
@@ -302,7 +300,6 @@ func (m Module) httpDeps(d RouteDeps) authhttp.Deps {
 		LoginAttemptThrottle:    m.LoginAttemptThrottle,
 		SentinelPasswordHash:    m.SentinelPasswordHash,
 		TenantSaltStore:         d.TenantSaltStore,
-		ClientIP:                d.ClientIP,
 
 		NotificationPreferenceRepo: m.NotificationPreferenceRepo,
 		DefaultSignInPolicyRepo:    d.DefaultSignInPolicyRepo,

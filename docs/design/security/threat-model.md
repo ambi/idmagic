@@ -99,6 +99,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-010 | Tampering | 受信ヘッダーの制御文字がログとレスポンスヘッダーへ注入される | System | design/observability/README.md: 相関 | `covered` |
 | THREAT-011 | Information disclosure | 平文への降格により、Cookie とトークンが経路上で読まれる | System | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `accepted` |
 | THREAT-012 | Spoofing | 同一オリジンでない構成でデプロイされ、Cookie のスコープと `Origin` 検証の前提が崩れる | System | architecture/runtime.md: 実行単位 | `planned` |
+| THREAT-100 | Spoofing | クライアントが転送ヘッダーを偽装し、IP 単位の抑制と CIDR 条件を回避する | System | REQ-SYSTEM-032 | `covered` |
 
 ## テナント境界
 

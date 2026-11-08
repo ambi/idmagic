@@ -2,8 +2,6 @@ package usecases_test
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -167,22 +165,5 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 	}
 	if !decision.Allowed {
 		t.Fatalf("override application decision=%+v, want allowed", decision)
-	}
-}
-
-func TestApplicationGateClientIP(t *testing.T) {
-	g := &appusecases.AccessGate{GateTrustedForwardedHops: 1}
-	req := httptest.NewRequest(http.MethodGet, "/x", http.NoBody)
-	req.Header.Set("X-Forwarded-For", "203.0.113.5, 10.0.0.1")
-	if got := g.ClientIP(req); got != "203.0.113.5" {
-		t.Fatalf("got=%q", got)
-	}
-
-	zero := &appusecases.AccessGate{}
-	if got := zero.ClientIP(req); got != "" {
-		t.Fatalf("got=%q, want empty with GateTrustedForwardedHops=0", got)
-	}
-	if got := g.ClientIP(nil); got != "" {
-		t.Fatalf("got=%q, want empty for a nil request", got)
 	}
 }

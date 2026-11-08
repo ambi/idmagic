@@ -22,7 +22,7 @@ func (d Deps) handlePAR(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
-	clientIP := extractClientIP(c.Request(), d.TrustedForwardedHops)
+	clientIP := c.RealIP()
 	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "par", clientIP+"|"+clientStub.ID); err != nil {
 		return err
 	} else if blocked {

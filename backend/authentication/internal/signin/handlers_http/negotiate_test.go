@@ -90,7 +90,7 @@ func newNegotiateFixture(t *testing.T, options ...func(*authentication.RouteDeps
 	}
 	deps := authentication.RouteDeps{
 		Issuer: "https://sso.example.com", Emit: func(event spec.DomainEvent) { f.events = append(f.events, event.EventType()) },
-		UserRepo: users, ClientIP: func(*http.Request) string { return "203.0.113.10" },
+		UserRepo: users,
 	}
 	for _, configure := range options {
 		configure(&deps)
@@ -373,6 +373,7 @@ func TestNegotiateWithoutTicketFallsBackWithoutLoop(t *testing.T) {
 func TestGetNegotiateAvailabilityHTTPContract(t *testing.T) {
 	f := newNegotiateFixture(t)
 	r := httptest.NewRequest(http.MethodGet, "/api/auth/negotiate", http.NoBody).WithContext(f.ctx)
+	r.RemoteAddr = "203.0.113.10:1234"
 	w := httptest.NewRecorder()
 	f.e.ServeHTTP(w, r)
 	if w.Code != 200 || strings.TrimSpace(w.Body.String()) != `{"enabled":true,"automatic":true}` {

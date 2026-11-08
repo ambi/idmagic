@@ -8,8 +8,6 @@ package usecases
 
 import (
 	"context"
-	"net/http"
-	"strings"
 	"time"
 
 	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
@@ -26,27 +24,6 @@ type AccessGate struct {
 	GroupMemberships            ports.GroupMemberships
 	ApplicationSignInPolicyRepo policyports.SignInPolicyRepository
 	DefaultSignInPolicyRepo     policyports.DefaultSignInPolicyRepository
-	GateTrustedForwardedHops    int
-}
-
-// ClientIP は信頼済み転送ホップ数を考慮して X-Forwarded-For からクライアント IP を解決する。
-// TRUSTED_FORWARDED_HOPS が 0 (直結/未設定) の場合は空を返し、CIDR 条件は fail-closed になる。
-func (g *AccessGate) ClientIP(r *http.Request) string {
-	if r == nil || g.GateTrustedForwardedHops <= 0 {
-		return ""
-	}
-	parts := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
-	ips := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if ip := strings.TrimSpace(part); ip != "" {
-			ips = append(ips, ip)
-		}
-	}
-	index := len(ips) - 1 - g.GateTrustedForwardedHops
-	if index < 0 || index >= len(ips) {
-		return ""
-	}
-	return ips[index]
 }
 
 // EvaluateApplicationAccess は binding 経由のフェデレーション開始を許可してよいかを判定する。

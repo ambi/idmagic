@@ -104,7 +104,7 @@ func (d Deps) issueCodeURL(
 	// resource owner が IdP 利用者自身であり、アプリ割当でログインをゲートしない。
 	if !d.clientIsFirstParty(ctx, req.ClientID) {
 		decision, err := d.EvaluateApplicationAccess(
-			ctx, tenantID, appdomain.ApplicationProtocolOIDC, req.ClientID, authn.UserID, authn, d.ClientIP(c.Request()),
+			ctx, tenantID, appdomain.ApplicationProtocolOIDC, req.ClientID, authn.UserID, authn, c.RealIP(),
 		)
 		if err != nil {
 			return "", err

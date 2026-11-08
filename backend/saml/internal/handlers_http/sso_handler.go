@@ -107,7 +107,7 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 		RawQuery:            c.Request().URL.RawQuery,
 		ExpectedDestination: expectedDestination,
 		Authn:               authn,
-		ClientIP:            d.ClientIP(c.Request()),
+		ClientIP:            c.RealIP(),
 	})
 	if err != nil {
 		return err

@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"net/netip"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -15,8 +17,8 @@ func TestLoadAPIConfigDefaults(t *testing.T) {
 	if cfg.Addr != ":8080" {
 		t.Errorf("Addr = %q", cfg.Addr)
 	}
-	if cfg.TrustedForwardedHops != 0 {
-		t.Errorf("TrustedForwardedHops = %d, want 0", cfg.TrustedForwardedHops)
+	if len(cfg.TrustedProxies) != 0 {
+		t.Errorf("TrustedProxies = %v, want empty", cfg.TrustedProxies)
 	}
 	if cfg.RateLimits["login"].MaxRequests != 20 {
 		t.Errorf("login MaxRequests = %d, want 20", cfg.RateLimits["login"].MaxRequests)
@@ -48,25 +50,26 @@ func TestResourceAccessRateLimitConfiguration(t *testing.T) {
 	}
 }
 
-// TestLoadAPIConfigRejectsMalformedTrustedForwardedHops guards the exact
-// scenario named in wi-103's motivation: a typo'd TRUSTED_FORWARDED_HOPS
-// used to silently keep the default (0, trust nothing) instead of failing
-// startup.
-func TestLoadAPIConfigRejectsMalformedTrustedForwardedHops(t *testing.T) {
+//spec:covers REQ-SYSTEM-016: 不正な代理の CIDR を含む設定を、設定キーを名指して拒否する。
+func TestLoadAPIConfigRejectsMalformedTrustedProxyCIDRs(t *testing.T) {
 	t.Parallel()
-	l := NewConfigLoader(stubEnv(map[string]string{"TRUSTED_FORWARDED_HOPS": "2x"}))
-	LoadAPIConfig(l)
-	if err := l.Err(); err == nil || !strings.Contains(err.Error(), "TRUSTED_FORWARDED_HOPS") {
-		t.Fatalf("err=%v, want a TRUSTED_FORWARDED_HOPS parse error", err)
+	for _, value := range []string{"invalid", "192.0.2.1", "192.0.2.1/33", "2001:db8::/129", "10.0.0.0/8, invalid", "invalid, 10.0.0.0/8"} {
+		l := NewConfigLoader(stubEnv(map[string]string{"TRUSTED_PROXY_CIDRS": value}))
+		LoadAPIConfig(l)
+		if err := l.Err(); err == nil || !strings.Contains(err.Error(), "TRUSTED_PROXY_CIDRS") {
+			t.Fatalf("%q: err=%v, want a TRUSTED_PROXY_CIDRS parse error", value, err)
+		}
 	}
 }
 
-func TestLoadAPIConfigRejectsNegativeTrustedForwardedHops(t *testing.T) {
+//spec:covers REQ-SYSTEM-032: 明示した IPv4 と IPv6 の代理の範囲を設定から読み取る。
+func TestLoadAPIConfigTrustedProxyCIDRs(t *testing.T) {
 	t.Parallel()
-	l := NewConfigLoader(stubEnv(map[string]string{"TRUSTED_FORWARDED_HOPS": "-1"}))
-	LoadAPIConfig(l)
-	if err := l.Err(); err == nil || !strings.Contains(err.Error(), "TRUSTED_FORWARDED_HOPS") {
-		t.Fatalf("err=%v, want a TRUSTED_FORWARDED_HOPS range error", err)
+	l := NewConfigLoader(stubEnv(map[string]string{"TRUSTED_PROXY_CIDRS": " 192.0.2.0/24, 2001:db8::/32 "}))
+	cfg := LoadAPIConfig(l)
+	want := []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24"), netip.MustParsePrefix("2001:db8::/32")}
+	if err := l.Err(); err != nil || !slices.Equal(cfg.TrustedProxies, want) {
+		t.Fatalf("TrustedProxies=%v, want %v; err=%v", cfg.TrustedProxies, want, err)
 	}
 }
 
