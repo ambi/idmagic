@@ -1,5 +1,5 @@
-import { IconArrowLeft, IconPlus, IconRefresh } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { IconArrowLeft, IconRefresh } from '@tabler/icons-react'
+import { useEffect, useState } from 'react'
 import {
   AuthenticationAPIError,
   createAgentWorkloadBinding,
@@ -16,9 +16,6 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { Input } from '../../components/ui/input'
-import { Label } from '../../components/ui/label'
-import { Select } from '../../components/ui/select'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import type {
@@ -30,6 +27,9 @@ import type {
 import { adminWorkloadIdentityDictionary } from './AdminWorkloadIdentityPage.i18n'
 import { ConfirmDialog, editURL, listURL, EnabledStatusBadge } from './AdminWorkloadIdentityShared'
 import { AttestationRejectionsCard } from './AttestationRejectionsCard'
+import { BindingForm } from './BindingForm'
+import { takeBundleNotice } from './navigation'
+import { detailURL } from './AdminWorkloadIdentityShared'
 import {
   attestationRejections,
   bindingConfirmation,
@@ -76,12 +76,14 @@ export function AdminWorkloadTrustBundleDetailPage({
 }) {
   const [bundle, setBundle] = useState(initialTrustBundle)
   const [bindings, setBindings] = useState(initialBindings)
-  const [subjectPattern, setSubjectPattern] = useState('')
-  const [agentID, setAgentID] = useState(agents[0]?.id ?? '')
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  useEffect(() => {
+    const message = takeBundleNotice(initialTrustBundle.id)
+    if (message) setNotice(message)
+  }, [initialTrustBundle.id])
   const t = useDictionary(adminWorkloadIdentityDictionary)
   const { locale } = useLocale()
 
@@ -127,18 +129,6 @@ export function AdminWorkloadTrustBundleDetailPage({
     } finally {
       setBusy(false)
     }
-  }
-
-  async function handleAddBinding(event: FormEvent) {
-    event.preventDefault()
-    await run(async () => {
-      await createAgentWorkloadBinding(csrfToken, bundle.id, {
-        subject_pattern: subjectPattern,
-        agent_id: agentID,
-      })
-      setSubjectPattern('')
-      await reloadBindings()
-    }, t.bindingCreatedNotice)
   }
 
   async function confirmPending() {
@@ -322,6 +312,19 @@ export function AdminWorkloadTrustBundleDetailPage({
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      nativeButton={false}
+                      render={
+                        <a
+                          href={`${detailURL(bundle.id)}/bindings/${encodeURIComponent(binding.id)}/edit`}
+                        />
+                      }
+                      aria-label={`${t.edit}: ${binding.subject_pattern}`}
+                    >
+                      {t.edit}
+                    </Button>
                     {binding.status === 'enabled' ? (
                       <Button
                         variant="outline"
@@ -366,41 +369,25 @@ export function AdminWorkloadTrustBundleDetailPage({
         {bindings.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-slate-500">{t.bindingsEmptyNotice}</p>
         ) : null}
-        <form
-          className="flex flex-wrap items-end gap-3 border-t border-slate-100 bg-slate-50 p-4"
-          onSubmit={handleAddBinding}
-        >
-          <div className="flex min-w-[22rem] flex-1 flex-col gap-1.5">
-            <Label htmlFor="subject_pattern" required>
-              {t.subjectPatternLabel}
-            </Label>
-            <Input
-              id="subject_pattern"
-              value={subjectPattern}
-              placeholder={t.subjectPatternPlaceholder}
-              onChange={(event) => setSubjectPattern(event.target.value)}
-              required
-            />
-          </div>
-          <div className="flex w-64 flex-col gap-1.5">
-            <Label htmlFor="agent_id">{t.agentLabel}</Label>
-            <Select
-              id="agent_id"
-              value={agentID}
-              onValueChange={setAgentID}
-              options={agents.map((agent) => ({ value: agent.id, label: agent.name }))}
-              aria-label={t.agentLabel}
-              disabled={agents.length === 0}
-            />
-          </div>
-          <Button type="submit" disabled={busy || agents.length === 0}>
-            <IconPlus size={16} aria-hidden="true" />
-            {t.addBinding}
-          </Button>
-          {agents.length === 0 ? (
-            <p className="w-full text-xs text-slate-500">{t.noAgentsNotice}</p>
-          ) : null}
-        </form>
+        <BindingForm
+          csrfToken={csrfToken}
+          trustBundleID={bundle.id}
+          agents={agents}
+          busy={busy}
+          saveLabel={t.addBinding}
+          onSave={async (input) => {
+            setBusy(true)
+            setError('')
+            setNotice('')
+            try {
+              await createAgentWorkloadBinding(csrfToken, bundle.id, input)
+              await reloadBindings()
+              setNotice(t.bindingCreatedNotice)
+            } finally {
+              setBusy(false)
+            }
+          }}
+        />
       </Card>
 
       <AttestationRejectionsCard

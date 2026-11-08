@@ -2,6 +2,17 @@ package domain
 
 import "time"
 
+type AgentWorkloadBindingUpdated struct {
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	TrustBundleID string    `json:"trustBundleId"`
+	BindingID     string    `json:"bindingId"`
+	AgentID       string    `json:"agentId"`
+}
+
+func (e *AgentWorkloadBindingUpdated) EventType() string     { return "AgentWorkloadBindingUpdated" }
+func (e *AgentWorkloadBindingUpdated) OccurredAt() time.Time { return e.At }
+
 type WorkloadTrustBundleConfigured struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`

@@ -11,7 +11,6 @@ import (
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/workloadidentity/domain"
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
@@ -28,8 +27,8 @@ type Deps struct {
 	// FetchJWKS performs the live JWKS lookup for RefreshWorkloadTrustBundleJWKS
 	// and is also the source for WorkloadVerifier's own cache (composition root
 	// wires the same adapter to both).
-	FetchJWKS func(ctx context.Context, bundle *domain.WorkloadTrustBundle) ([]map[string]any, error)
-	Emit      func(spec.DomainEvent)
+	FetchJWKS      func(ctx context.Context, bundle *domain.WorkloadTrustBundle) ([]map[string]any, error)
+	discoverIssuer func(context.Context, string) (string, error)
 }
 
 func (d Deps) adminDeps() usecases.AdminWorkloadIdentityDeps {
@@ -44,7 +43,11 @@ func (d Deps) adminBindingDeps() usecases.AdminAgentWorkloadBindingDeps {
 }
 
 // RegisterRoutes はテナント解決済みグループに WorkloadIdentity 管理 API を登録する。
-func RegisterRoutes(g *echo.Group, d Deps) {
+func RegisterRoutes(g *echo.Group, d Deps, discoverIssuer func(context.Context, string) (string, error)) {
+	d.discoverIssuer = discoverIssuer
+	g.POST("/api/admin/v1/workload-identity/issuer-metadata", d.handleDiscoverIssuerMetadata)
+	g.POST("/api/admin/v1/workload-identity/trust-bundles/:trust_bundle_id/bindings/preview", d.handlePreviewBindings)
+	g.PATCH("/api/admin/v1/workload-identity/bindings/:binding_id", d.handleUpdateBinding)
 	g.GET("/api/admin/v1/workload-identity/trust-bundles", d.handleListTrustBundles)
 	g.POST("/api/admin/v1/workload-identity/trust-bundles", d.handleRegisterTrustBundle)
 	g.GET("/api/admin/v1/workload-identity/trust-bundles/:trust_bundle_id", d.handleGetTrustBundle)
@@ -334,6 +337,8 @@ func (d Deps) changeBindingStatus(c *echo.Context, action func(id string, now ti
 
 func writeAdminWorkloadIdentityError(c *echo.Context, err error) error {
 	switch {
+	case errors.Is(err, usecases.ErrBindingInvalidInput):
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The binding pattern or preview input is invalid.")
 	case errors.Is(err, usecases.ErrTrustBundleNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "workload_trust_bundle_not_found", "The workload trust bundle does not exist.")
 	case errors.Is(err, usecases.ErrTrustBundleNameConflict):

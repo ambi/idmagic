@@ -10,6 +10,7 @@ import (
 	"time"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -18,9 +19,9 @@ const workloadBundlesPath = "/realms/default/api/admin/v1/workload-identity/trus
 // インライン JWKS により、正式な配線を使いながら外部ネットワークに依存しない。
 const workloadBundleInput = `{"name":"cluster","trust_domain":"issuer.example","issuer":"https://issuer.example","accepted_audiences":["idmagic"],"jwks":{"keys":[{"kid":"workload-key","kty":"RSA","n":"AQAB","e":"AQAB"}]}}`
 
-func workloadContractRequests(t *testing.T) func(sub, method, path, body string) *httptest.ResponseRecorder {
+func workloadContractRequests(t *testing.T, sinks ...func(spec.DomainEvent)) func(sub, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	e := newWorkloadIdentityHandler(t)
+	e := newWorkloadIdentityHandler(t, sinks...)
 	csrf, cookie := workloadAdminCSRF(t, e)
 	return func(sub, method, path, body string) *httptest.ResponseRecorder {
 		t.Helper()

@@ -20,6 +20,7 @@ type Querier interface {
 	RecordWorkloadTrustBundleJWKSFetched(ctx context.Context, arg RecordWorkloadTrustBundleJWKSFetchedParams) error
 	SaveAgentWorkloadBinding(ctx context.Context, arg SaveAgentWorkloadBindingParams) error
 	SaveWorkloadTrustBundle(ctx context.Context, arg SaveWorkloadTrustBundleParams) error
+	UpdateAgentWorkloadBindingMapping(ctx context.Context, arg UpdateAgentWorkloadBindingMappingParams) (*AgentWorkloadBinding, error)
 }
 
 var _ Querier = (*Queries)(nil)

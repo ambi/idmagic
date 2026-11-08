@@ -60,8 +60,7 @@ func MatchAgent(bindings []AgentWorkloadBinding, subject string) (*AgentWorkload
 		if !b.IsEnabled() {
 			continue
 		}
-		ok, err := path.Match(b.SubjectPattern, subject)
-		if err != nil || !ok {
+		if !MatchesSubject(b.SubjectPattern, subject) {
 			continue
 		}
 		matches = append(matches, b)
@@ -88,9 +87,20 @@ func MatchingAgentIDs(bindings []*AgentWorkloadBinding, subject string) []string
 		if !b.IsEnabled() {
 			continue
 		}
-		if ok, err := path.Match(b.SubjectPattern, subject); err == nil && ok {
+		if MatchesSubject(b.SubjectPattern, subject) {
 			agentIDs = append(agentIDs, b.AgentID)
 		}
 	}
 	return agentIDs
+}
+
+// MatchesSubject は交換と管理画面の試行で共有する、階層をまたがない glob の照合である。
+func MatchesSubject(pattern, subject string) bool {
+	matched, err := path.Match(pattern, subject)
+	return err == nil && matched
+}
+
+func ValidSubjectPattern(pattern string) bool {
+	_, err := path.Match(pattern, "")
+	return err == nil
 }

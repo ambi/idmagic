@@ -11,6 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/db_memory"
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/db_postgres"
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/handlers_http"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/issuer_metadata"
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/verification_jose"
 
@@ -36,7 +37,7 @@ func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
 	handlers_http.RegisterRoutes(g, handlers_http.Deps{
 		Deps: d.Deps, Authenticator: d.Authenticator, AgentRepo: d.AgentRepo,
 		TrustBundleRepo: m.TrustBundleRepo, BindingRepo: m.BindingRepo, FetchJWKS: d.FetchJWKS,
-	})
+	}, issuer_metadata.NewClient().Discover)
 }
 
 // TokenVerifier は管理 API と同じ JWKS 供給元を使う、OAuth2 向けの検証器を組み立てる。

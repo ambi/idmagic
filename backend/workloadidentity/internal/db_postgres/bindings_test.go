@@ -8,6 +8,7 @@ import (
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
+//spec:covers REQ-WORKLOADIDENTITY-013: 更新したパターンと Agent を同じ ID で読み戻す。
 func TestAgentWorkloadBindingRepository_SaveFindDelete(t *testing.T) {
 	db := pgtest.Require(t)
 	bundleRepo := &WorkloadTrustBundleRepository{Pool: db}
@@ -44,6 +45,16 @@ func TestAgentWorkloadBindingRepository_SaveFindDelete(t *testing.T) {
 		t.Fatalf("ListByTrustBundle = %+v, want only %q", list, binding.ID)
 	}
 
+	replacementAgent := seedAgent(t, db, tenant.ID)
+	binding.SubjectPattern = "spiffe://example.org/updated-*"
+	binding.AgentID = replacementAgent.ID
+	if _, err := bindingRepo.UpdateMapping(t.Context(), tenant.ID, binding.ID, new(binding.SubjectPattern), new(binding.AgentID), testClock()); err != nil {
+		t.Fatal(err)
+	}
+	updated, err := bindingRepo.FindByID(t.Context(), tenant.ID, binding.ID)
+	if err != nil || updated.SubjectPattern != binding.SubjectPattern || updated.AgentID != replacementAgent.ID {
+		t.Fatalf("updated=(%+v,%v), want pattern %s and agent %s", updated, err, binding.SubjectPattern, replacementAgent.ID)
+	}
 	if err := bindingRepo.Delete(context.Background(), tenant.ID, binding.ID); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}

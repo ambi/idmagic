@@ -222,6 +222,54 @@ model AgentWorkloadBindingCreateRequest {
   agent_id: string;
 }
 
+@doc("関連付けのパターンと Agent の部分更新。省いた項目は保つ。")
+model AgentWorkloadBindingUpdateRequest {
+  @minLength(1)
+  @maxLength(500)
+  subject_pattern?: string;
+  @minLength(1)
+  agent_id?: string;
+}
+
+@doc("保存せずに主体の一致と入力中のパターンの重なり候補を試す。")
+model AgentWorkloadBindingPreviewRequest {
+  subject?: string;
+  @minLength(1)
+  @maxLength(500)
+  subject_pattern?: string;
+  exclude_binding_id?: string;
+}
+
+@doc("有効な関連付けの一致と近似による重なり候補。候補が空でも重なりがない保証はしない。")
+model AgentWorkloadBindingPreviewResponse {
+  matches: AgentWorkloadBindingResponse[];
+  possible_overlaps: AgentWorkloadBindingResponse[];
+  candidate_matches?: boolean;
+}
+
+@doc("発行者の URL から Discovery 文書を読み込む入力。")
+model WorkloadIssuerMetadataRequest {
+  issuer: url;
+}
+
+@doc("検証済みの入力候補。信頼設定は保存しない。")
+model WorkloadIssuerMetadataResponse {
+  issuer: url;
+  jwks_uri: url;
+}
+
+@doc("発行者情報の取得先、応答または issuer の検証に失敗した。type は urn:idmagic:error:workload_issuer_metadata_invalid である。")
+model WorkloadIssuerMetadataInvalidError is ProblemDetails;
+
+@doc("管理者が関連付けのパターンまたは Agent を更新した。")
+model AgentWorkloadBindingUpdated {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  trustBundleId: string;
+  bindingId: string;
+  agentId: string;
+}
+
 
 @doc("AgentWorkloadBinding の表現。管理 API の一覧と詳細のエンドポイントは同じ表現を返す。")
 model AgentWorkloadBindingResponse {

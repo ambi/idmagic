@@ -8,6 +8,56 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.WorkloadIdentity {
 
 namespace Operations {
+model UpdateAgentWorkloadBindingSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.AgentWorkloadBindingResponse;
+}
+
+@doc("管理者が関連付けのパターンと Agent を更新する。ID と状態は保つ。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
+@TypeSpec.OpenAPI.operationId("UpdateAgentWorkloadBinding")
+@route("/api/admin/v1/workload-identity/bindings/{binding_id}")
+@patch
+op UpdateAgentWorkloadBinding(
+  @path binding_id: string,
+  @body body: IdMagic.Contract.AgentWorkloadBindingUpdateRequest
+): UpdateAgentWorkloadBindingSuccess_200 | CreateAgentWorkloadBindingError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAgentWorkloadBindingError403 | CreateAgentWorkloadBindingError409 | CreateAgentWorkloadBindingError422 | AgentWorkloadBindingNotFoundResponse;
+
+model PreviewAgentWorkloadBindingsSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.AgentWorkloadBindingPreviewResponse;
+}
+
+@doc("主体の例の一致と、入力中のパターンの重なり候補を、保存せずに返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:read"])
+@TypeSpec.OpenAPI.operationId("PreviewAgentWorkloadBindings")
+@route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/bindings/preview")
+@post
+op PreviewAgentWorkloadBindings(
+  @path trust_bundle_id: string,
+  @body body: IdMagic.Contract.AgentWorkloadBindingPreviewRequest
+): PreviewAgentWorkloadBindingsSuccess_200 | CreateAgentWorkloadBindingError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAgentWorkloadBindingError403 | WorkloadTrustBundleNotFoundResponse;
+
+model DiscoverWorkloadIssuerMetadataSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.WorkloadIssuerMetadataResponse;
+}
+
+model DiscoverWorkloadIssuerMetadataError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.InvalidRequestError | IdMagic.Contract.WorkloadIssuerMetadataInvalidError;
+}
+
+@doc("発行者の Discovery 文書を読み、issuer と JWKS URI を検証して入力候補を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
+@TypeSpec.OpenAPI.operationId("DiscoverWorkloadIssuerMetadata")
+@route("/api/admin/v1/workload-identity/issuer-metadata")
+@post
+op DiscoverWorkloadIssuerMetadata(
+  @body body: IdMagic.Contract.WorkloadIssuerMetadataRequest
+): DiscoverWorkloadIssuerMetadataSuccess_200 | DiscoverWorkloadIssuerMetadataError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAgentWorkloadBindingError403;
+
 model WorkloadTrustBundleNotFoundResponse {
   @statusCode statusCode: 404;
   @header contentType: "application/problem+json";

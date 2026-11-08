@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
@@ -35,5 +36,9 @@ type AgentWorkloadBindingRepository interface {
 	ListByTrustBundle(ctx context.Context, tenantID, trustBundleID string) ([]*workloaddomain.AgentWorkloadBinding, error)
 	FindByID(ctx context.Context, tenantID, id string) (*workloaddomain.AgentWorkloadBinding, error)
 	Save(ctx context.Context, binding *workloaddomain.AgentWorkloadBinding) error
+	// UpdateMapping は対応付けだけを書き、並行した状態変更を保つ。削除済みの行は作らない。
+	UpdateMapping(ctx context.Context, tenantID, id string, pattern, agentID *string, at time.Time) (*workloaddomain.AgentWorkloadBinding, error)
 	Delete(ctx context.Context, tenantID, id string) error
 }
+
+var ErrBindingPatternConflict = errors.New("subject_pattern already registered for this trust bundle")

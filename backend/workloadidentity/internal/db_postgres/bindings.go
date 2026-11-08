@@ -7,7 +7,9 @@ import (
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // AgentWorkloadBindingRepository は AgentWorkloadBinding を PostgreSQL に
@@ -59,13 +61,33 @@ func (r *AgentWorkloadBindingRepository) Save(ctx context.Context, b *workloaddo
 	if b.UpdatedAt != nil {
 		updatedAt = *b.UpdatedAt
 	}
-	return New(r.Pool).SaveAgentWorkloadBinding(ctx, SaveAgentWorkloadBindingParams{
+	err := New(r.Pool).SaveAgentWorkloadBinding(ctx, SaveAgentWorkloadBindingParams{
 		ID: b.ID, TenantID: b.TenantID, TrustBundleID: b.TrustBundleID, SubjectPattern: b.SubjectPattern,
 		AgentID: b.AgentID, Status: string(b.Status), CreatedAt: b.CreatedAt, UpdatedAt: updatedAt,
 		DisabledAt: timestamptzOrNilPtr(b.DisabledAt),
 	})
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return ports.ErrBindingPatternConflict
+	}
+	return err
 }
 
 func (r *AgentWorkloadBindingRepository) Delete(ctx context.Context, tenantID, id string) error {
 	return New(r.Pool).DeleteAgentWorkloadBinding(ctx, DeleteAgentWorkloadBindingParams{TenantID: tenantID, ID: id})
+}
+
+func (r *AgentWorkloadBindingRepository) UpdateMapping(ctx context.Context, tenantID, id string, pattern, agentID *string, at time.Time) (*workloaddomain.AgentWorkloadBinding, error) {
+	row, err := New(r.Pool).UpdateAgentWorkloadBindingMapping(ctx, UpdateAgentWorkloadBindingMappingParams{TenantID: tenantID, ID: id, SubjectPattern: textOrNilPtr(pattern), AgentID: textOrNilPtr(agentID), UpdatedAt: at})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return nil, ports.ErrBindingPatternConflict
+	}
+	if err != nil {
+		return nil, err
+	}
+	return bindingFromRow(row)
 }

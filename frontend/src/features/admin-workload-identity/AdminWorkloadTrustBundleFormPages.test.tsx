@@ -9,6 +9,33 @@ import { AdminWorkloadTrustBundleEditPage } from './AdminWorkloadTrustBundleEdit
 
 const t = adminWorkloadIdentityDictionary.en
 
+//spec:covers REQ-WORKLOADIDENTITY-016: 発行者情報は候補を表示してから明示的に適用し、他の入力を保つ。
+it('applies issuer metadata only after reviewing the JWKS URI', async () => {
+  stubGlobal(
+    'fetch',
+    mock(() =>
+      Promise.resolve(
+        response(200, {
+          issuer: 'https://issuer.example',
+          jwks_uri: 'https://issuer.example/keys',
+        }),
+      ),
+    ),
+  )
+  await renderWithRouter(<AdminWorkloadTrustBundleCreatePage csrfToken="csrf" />)
+  fireEvent.change(screen.getByLabelText(t.nameLabel), { target: { value: 'Keep my name' } })
+  fireEvent.change(screen.getByLabelText(t.issuerLabel), {
+    target: { value: 'https://issuer.example' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: t.fetchIssuerMetadata }))
+  const apply = await screen.findByRole('button', { name: t.applyIssuerMetadata })
+  expect(screen.getByLabelText(t.jwksUriLabel)).toHaveValue('')
+  fireEvent.click(apply)
+  expect(screen.getByLabelText(t.jwksUriLabel)).toHaveValue('https://issuer.example/keys')
+  expect(screen.getByLabelText(t.nameLabel)).toHaveValue('Keep my name')
+  restoreGlobals()
+})
+
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,

@@ -16,6 +16,9 @@ IdMagic は SPIRE のサーバーやエージェントを同梱、運用せず�
 | Token Exchange のグラントとアクセストークンの発行 | `OAuth2` |
 | JWT の署名の検証と JWKS の取得の部品 | 技術的な共有アダプター `backend/shared/security/tokens_jose` |
 
+信頼設定の入力支援では、外部発行者の Discovery 文書を読み、検証した JWKS URI を候補として返す。
+候補の取得は信頼設定の登録と分け、接続先の保護は JWKS の取得と共通にする。
+
 ## 主な流れ
 
 | 流れ | 契機 | 実行する場所 | 詳細 |
@@ -35,7 +38,7 @@ IdMagic は SPIRE のサーバーやエージェントを同梱、運用せず�
 
 | 機能 | 内容 |
 | --- | --- |
-| [信頼設定と関連付けの管理](features/trust-configuration.md) | 信頼設定と関連付けの登録、更新、無効化と再有効化、削除、JWKS の再取得 |
+| [信頼設定と関連付けの管理](features/trust-configuration.md) | 信頼設定と関連付けの登録、更新、無効化と再有効化、削除、JWKS の再取得、発行者情報の読み込み、パターンの試行 |
 | [アテステーションの交換](features/attestation-exchange.md) | 外部のアテステーションの検証と、対応先の `Agent` の一意な特定 |
 
 ## 文書

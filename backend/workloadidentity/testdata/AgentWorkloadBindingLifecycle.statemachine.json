@@ -18,6 +18,8 @@
     }
   ],
   "transitions": [
+    { "from": "enabled", "event": "AgentWorkloadBindingUpdated", "guard": "項目を指定", "to": "enabled", "effects": "パターンまたは Agent を更新" },
+    { "from": "disabled", "event": "AgentWorkloadBindingUpdated", "guard": "項目を指定", "to": "disabled", "effects": "パターンまたは Agent を更新" },
     {
       "from": "enabled",
       "event": "AgentWorkloadBindingDisabled",
@@ -48,6 +50,7 @@
     }
   ],
   "operations": [
+    "更新",
     "無効化",
     "再有効化",
     "削除",
@@ -55,6 +58,7 @@
   ],
   "matrix": {
     "enabled": {
+      "更新": [{ "kind": "transition", "to": "enabled", "condition": "項目を指定" }, { "kind": "noop", "condition": "項目を省略" }],
       "無効化": [
         {
           "kind": "transition",
@@ -85,6 +89,7 @@
       ]
     },
     "disabled": {
+      "更新": [{ "kind": "transition", "to": "disabled", "condition": "項目を指定" }, { "kind": "noop", "condition": "項目を省略" }],
       "無効化": [
         {
           "kind": "noop"
@@ -115,6 +120,7 @@
       ]
     },
     "deleted": {
+      "更新": [{ "kind": "refusal", "response": "404 agent_workload_binding_not_found" }],
       "無効化": [
         {
           "kind": "refusal",

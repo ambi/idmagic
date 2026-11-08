@@ -1,6 +1,10 @@
 package usecases
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
+)
 
 var (
 	ErrTrustBundleNotFound            = errors.New("workload trust bundle not found")
@@ -17,6 +21,6 @@ var (
 	ErrBindingNotFound                = errors.New("agent workload binding not found")
 	ErrBindingTrustBundleNotFound     = errors.New("workload trust bundle not found")
 	ErrBindingAgentNotFound           = errors.New("agent not found in this tenant")
-	ErrBindingSubjectPatternExists    = errors.New("subject_pattern already registered for this trust bundle")
+	ErrBindingSubjectPatternExists    = ports.ErrBindingPatternConflict
 	ErrBindingSubjectPatternEmpty     = errors.New("subject_pattern is required")
 )

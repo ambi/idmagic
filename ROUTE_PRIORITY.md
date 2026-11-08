@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：216
+経路の数：218
 
 | 経路 | メソッド |
 | --- | --- |
@@ -262,12 +262,14 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/users/{sub}/sessions/revoke-all` | POST |
 | `/api/admin/v1/users/{sub}/sessions/{id}/revoke` | POST |
 | `/api/admin/v1/users/{sub}/signin-activity` | GET |
-| `/api/admin/v1/workload-identity/bindings/{binding_id}` | DELETE |
+| `/api/admin/v1/workload-identity/bindings/{binding_id}` | DELETE, PATCH |
 | `/api/admin/v1/workload-identity/bindings/{binding_id}/disable` | POST |
 | `/api/admin/v1/workload-identity/bindings/{binding_id}/enable` | POST |
+| `/api/admin/v1/workload-identity/issuer-metadata` | POST |
 | `/api/admin/v1/workload-identity/trust-bundles` | GET, POST |
 | `/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}` | DELETE, GET, PATCH |
 | `/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/bindings` | GET, POST |
+| `/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/bindings/preview` | POST |
 | `/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/disable` | POST |
 | `/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/enable` | POST |
 | `/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/refresh` | POST |

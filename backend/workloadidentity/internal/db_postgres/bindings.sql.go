@@ -127,3 +127,42 @@ func (q *Queries) SaveAgentWorkloadBinding(ctx context.Context, arg SaveAgentWor
 	)
 	return err
 }
+
+const updateAgentWorkloadBindingMapping = `-- name: UpdateAgentWorkloadBindingMapping :one
+UPDATE agent_workload_bindings
+SET subject_pattern=COALESCE($1::text,subject_pattern),
+ agent_id=COALESCE($2::text::uuid,agent_id),updated_at=$3
+WHERE tenant_id=$4 AND id=$5
+RETURNING id,tenant_id,trust_bundle_id,subject_pattern,agent_id,status,created_at,updated_at,disabled_at
+`
+
+type UpdateAgentWorkloadBindingMappingParams struct {
+	SubjectPattern pgtype.Text
+	AgentID        pgtype.Text
+	UpdatedAt      time.Time
+	TenantID       string
+	ID             string
+}
+
+func (q *Queries) UpdateAgentWorkloadBindingMapping(ctx context.Context, arg UpdateAgentWorkloadBindingMappingParams) (*AgentWorkloadBinding, error) {
+	row := q.db.QueryRow(ctx, updateAgentWorkloadBindingMapping,
+		arg.SubjectPattern,
+		arg.AgentID,
+		arg.UpdatedAt,
+		arg.TenantID,
+		arg.ID,
+	)
+	var i AgentWorkloadBinding
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.TrustBundleID,
+		&i.SubjectPattern,
+		&i.AgentID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DisabledAt,
+	)
+	return &i, err
+}

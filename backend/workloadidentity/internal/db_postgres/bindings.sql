@@ -13,5 +13,12 @@ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,updated_at=EXCLUDED.updated_at,
  disabled_at=EXCLUDED.disabled_at;
 
+-- name: UpdateAgentWorkloadBindingMapping :one
+UPDATE agent_workload_bindings
+SET subject_pattern=COALESCE(sqlc.narg(subject_pattern)::text,subject_pattern),
+ agent_id=COALESCE(sqlc.narg(agent_id)::text::uuid,agent_id),updated_at=sqlc.arg(updated_at)
+WHERE tenant_id=sqlc.arg(tenant_id) AND id=sqlc.arg(id)
+RETURNING id,tenant_id,trust_bundle_id,subject_pattern,agent_id,status,created_at,updated_at,disabled_at;
+
 -- name: DeleteAgentWorkloadBinding :exec
 DELETE FROM agent_workload_bindings WHERE tenant_id=$1 AND id=$2;

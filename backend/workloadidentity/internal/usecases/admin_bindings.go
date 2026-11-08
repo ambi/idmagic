@@ -6,10 +6,12 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
@@ -155,4 +157,126 @@ func DeleteAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBind
 	}
 	emit(deps.Emit, &domain.AgentWorkloadBindingDeleted{At: now, TenantID: tenantID, BindingID: id})
 	return nil
+}
+
+var ErrBindingInvalidInput = errors.New("agent workload binding: invalid input")
+
+type UpdateAgentWorkloadBindingInput struct {
+	SubjectPattern *string
+	AgentID        *string
+}
+
+func UpdateAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBindingDeps, id string, in UpdateAgentWorkloadBindingInput, now time.Time) (*domain.AgentWorkloadBinding, error) {
+	tenantID := tenantports.TenantID(ctx)
+	binding, err := deps.BindingRepo.FindByID(ctx, tenantID, id)
+	if err != nil {
+		return nil, err
+	}
+	if binding == nil {
+		return nil, ErrBindingNotFound
+	}
+	if in.SubjectPattern == nil && in.AgentID == nil {
+		return binding, nil
+	}
+	updated := *binding
+	if in.SubjectPattern != nil {
+		updated.SubjectPattern = strings.TrimSpace(*in.SubjectPattern)
+	}
+	if in.AgentID != nil {
+		updated.AgentID = strings.TrimSpace(*in.AgentID)
+	}
+	if updated.SubjectPattern == "" {
+		return nil, ErrBindingSubjectPatternEmpty
+	}
+	if !domain.ValidSubjectPattern(updated.SubjectPattern) {
+		return nil, ErrBindingInvalidInput
+	}
+	if updated.AgentID == "" || deps.AgentRepo == nil {
+		return nil, ErrBindingAgentNotFound
+	}
+	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, updated.AgentID)
+	if err != nil {
+		return nil, err
+	}
+	if agent == nil {
+		return nil, ErrBindingAgentNotFound
+	}
+	existing, err := deps.BindingRepo.ListByTrustBundle(ctx, tenantID, binding.TrustBundleID)
+	if err != nil {
+		return nil, err
+	}
+	for _, other := range existing {
+		if other.ID != id && other.SubjectPattern == updated.SubjectPattern {
+			return nil, ErrBindingSubjectPatternExists
+		}
+	}
+	updated.UpdatedAt = &now
+	if err := updated.Validate(); err != nil {
+		return nil, err
+	}
+	var pattern, agentID *string
+	if in.SubjectPattern != nil {
+		pattern = &updated.SubjectPattern
+	}
+	if in.AgentID != nil {
+		agentID = &updated.AgentID
+	}
+	saved, err := deps.BindingRepo.UpdateMapping(ctx, tenantID, id, pattern, agentID, now)
+	if err != nil {
+		return nil, err
+	}
+	if saved == nil {
+		return nil, ErrBindingNotFound
+	}
+	emit(deps.Emit, &domain.AgentWorkloadBindingUpdated{At: now, TenantID: tenantID, TrustBundleID: binding.TrustBundleID, BindingID: id, AgentID: saved.AgentID})
+	return saved, nil
+}
+
+type PreviewAgentWorkloadBindingsInput struct {
+	Subject          *string
+	SubjectPattern   *string
+	ExcludeBindingID string
+}
+
+type PreviewAgentWorkloadBindingsResult struct {
+	Matches          []*domain.AgentWorkloadBinding
+	PossibleOverlaps []*domain.AgentWorkloadBinding
+	CandidateMatches *bool
+}
+
+func PreviewAgentWorkloadBindings(ctx context.Context, deps AdminAgentWorkloadBindingDeps, trustBundleID string, in PreviewAgentWorkloadBindingsInput) (*PreviewAgentWorkloadBindingsResult, error) {
+	bindings, err := ListAgentWorkloadBindings(ctx, deps, trustBundleID)
+	if err != nil {
+		return nil, err
+	}
+	if in.Subject == nil && in.SubjectPattern == nil {
+		return nil, ErrBindingInvalidInput
+	}
+	var pattern string
+	if in.SubjectPattern != nil {
+		pattern = strings.TrimSpace(*in.SubjectPattern)
+		if pattern == "" || !domain.ValidSubjectPattern(pattern) {
+			return nil, ErrBindingInvalidInput
+		}
+		if err := spec.All(spec.Required("subject_pattern", pattern, spec.Chars(1, spec.LengthDescription))); err != nil {
+			return nil, err
+		}
+	}
+	result := &PreviewAgentWorkloadBindingsResult{Matches: []*domain.AgentWorkloadBinding{}, PossibleOverlaps: []*domain.AgentWorkloadBinding{}}
+	if in.Subject != nil && in.SubjectPattern != nil {
+		matched := domain.MatchesSubject(pattern, *in.Subject)
+		result.CandidateMatches = &matched
+	}
+	for _, binding := range bindings {
+		if !binding.IsEnabled() {
+			continue
+		}
+		if in.Subject != nil && domain.MatchesSubject(binding.SubjectPattern, *in.Subject) {
+			result.Matches = append(result.Matches, binding)
+		}
+		if in.SubjectPattern != nil && binding.ID != in.ExcludeBindingID && (domain.MatchesSubject(pattern, binding.SubjectPattern) || domain.MatchesSubject(binding.SubjectPattern, pattern)) {
+			result.PossibleOverlaps = append(result.PossibleOverlaps, binding)
+		}
+	}
+	return result, nil
 }

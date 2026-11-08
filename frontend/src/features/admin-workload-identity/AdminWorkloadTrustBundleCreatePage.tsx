@@ -14,6 +14,7 @@ import {
   useTrustBundleValidation,
 } from './AdminWorkloadIdentityShared'
 import { parseInlineJwks } from './presentation'
+import { IssuerMetadataAssistance } from './IssuerMetadataAssistance'
 
 export function AdminWorkloadTrustBundleCreatePage({
   csrfToken,
@@ -78,6 +79,12 @@ export function AdminWorkloadTrustBundleCreatePage({
             onChange={setForm}
             locked={false}
             t={t}
+          />
+          <IssuerMetadataAssistance
+            csrfToken={csrfToken}
+            issuer={form.issuer}
+            disabled={saving}
+            onApply={(jwksUri) => setForm((previous) => ({ ...previous, jwksUri }))}
           />
           <div className="flex gap-2.5 md:col-span-2">
             <Button type="submit" disabled={saving || !validation.data}>

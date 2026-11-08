@@ -21,6 +21,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/workloadidentity"
 	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/internal/db_memory"
@@ -28,7 +29,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func newWorkloadIdentityHandler(t *testing.T) *echo.Echo {
+func newWorkloadIdentityHandler(t *testing.T, sinks ...func(spec.DomainEvent)) *echo.Echo {
 	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	now := time.Now().UTC()
@@ -50,8 +51,13 @@ func newWorkloadIdentityHandler(t *testing.T) *echo.Echo {
 		t.Fatal(err)
 	}
 	e := echo.New()
+	var sink func(spec.DomainEvent)
+	if len(sinks) > 0 {
+		sink = sinks[0]
+	}
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:        "http://idp.test",
+		Emit:          sink,
 		AuthnResolver: authentication.DemoHeaderResolver{},
 		IdManagement:  idmanagement.Module{UserRepo: userRepo, AgentRepo: agents},
 		WorkloadIdentity: workloadidentity.Module{

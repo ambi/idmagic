@@ -646,6 +646,41 @@ export type AgentWorkloadBindingCreateInput = {
   agent_id: string
 }
 
+export type AgentWorkloadBindingPreview = {
+  matches: AgentWorkloadBinding[]
+  possible_overlaps: AgentWorkloadBinding[]
+  candidate_matches?: boolean
+}
+
+export async function discoverWorkloadIssuerMetadata(
+  csrfToken: string,
+  issuer: string,
+): Promise<{ issuer: string; jwks_uri: string }> {
+  return request(
+    '/api/admin/v1/workload-identity/issuer-metadata',
+    adminRequest(csrfToken, 'POST', { issuer }),
+  )
+}
+
+export async function previewAgentWorkloadBindings(
+  csrfToken: string,
+  trustBundleID: string,
+  input: { subject?: string; subject_pattern?: string; exclude_binding_id?: string },
+): Promise<AgentWorkloadBindingPreview> {
+  return request(
+    trustBundlePath(trustBundleID, '/bindings/preview'),
+    adminRequest(csrfToken, 'POST', input),
+  )
+}
+
+export async function updateAgentWorkloadBinding(
+  csrfToken: string,
+  bindingID: string,
+  input: Partial<AgentWorkloadBindingCreateInput>,
+): Promise<AgentWorkloadBinding> {
+  return request(bindingPath(bindingID), adminRequest(csrfToken, 'PATCH', input))
+}
+
 const WORKLOAD_TRUST_BUNDLES = '/api/admin/v1/workload-identity/trust-bundles'
 const WORKLOAD_BINDINGS = '/api/admin/v1/workload-identity/bindings'
 

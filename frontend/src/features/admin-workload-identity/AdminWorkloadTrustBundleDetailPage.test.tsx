@@ -69,6 +69,37 @@ function renderDetail(
 describe('AdminWorkloadTrustBundleDetailPage', () => {
   afterEach(() => restoreGlobals())
 
+  //spec:covers REQ-WORKLOADIDENTITY-014, REQ-WORKLOADIDENTITY-016: 試行結果と近似の警告を表示し、未束縛の Agent を区別する。
+  it('previews the subject and warns before saving an overlapping pattern', async () => {
+    const fetchMock = mock((_url: string, _init: RequestInit) =>
+      Promise.resolve(
+        response(200, {
+          matches: [binding],
+          possible_overlaps: [binding],
+          candidate_matches: true,
+        }),
+      ),
+    )
+    stubGlobal('fetch', fetchMock)
+    await renderDetail({})
+    fireEvent.change(screen.getByLabelText(t.subjectPatternLabel), {
+      target: { value: 'spiffe://example.org/ns/prod/sa/worker' },
+    })
+    fireEvent.change(screen.getByLabelText(t.sampleSubject), {
+      target: { value: 'spiffe://example.org/ns/prod/sa/worker' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t.previewPattern }))
+    expect(await screen.findByText(t.previewOne)).toBeInTheDocument()
+    expect(screen.getByText(t.overlapWarning)).toBeInTheDocument()
+    expect(screen.getByText(t.candidateMatches)).toBeInTheDocument()
+    expect(screen.getByText(t.unboundAgentHelp)).toBeInTheDocument()
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('/bindings/preview')
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1].body))).toEqual({
+      subject: 'spiffe://example.org/ns/prod/sa/worker',
+      subject_pattern: 'spiffe://example.org/ns/prod/sa/worker',
+    })
+  })
+
   it('reads the subject pattern against the agent it maps to, by name', async () => {
     await renderDetail({})
 
@@ -215,9 +246,11 @@ describe('AdminWorkloadTrustBundleDetailPage', () => {
   it('creates a binding for the chosen pattern and agent', async () => {
     const fetchMock = mock((url: string, _init: RequestInit) =>
       Promise.resolve(
-        url.includes('/bindings') && !url.endsWith('/bindings')
-          ? response(200, { bindings: [binding] })
-          : response(201, binding),
+        url.endsWith('/preview')
+          ? response(200, { matches: [], possible_overlaps: [] })
+          : _init.method === 'GET'
+            ? response(200, { bindings: [binding] })
+            : response(201, binding),
       ),
     )
     stubGlobal('fetch', fetchMock)
@@ -229,7 +262,7 @@ describe('AdminWorkloadTrustBundleDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: new RegExp(t.addBinding) }))
 
     expect(await screen.findByText(t.bindingCreatedNotice)).toBeInTheDocument()
-    const [url, init] = fetchMock.mock.calls[0]
+    const [url, init] = fetchMock.mock.calls[1]
     expect(url).toContain('/api/admin/v1/workload-identity/trust-bundles/bundle-1/bindings')
     expect(JSON.parse(String(init.body))).toEqual({
       subject_pattern: 'system:serviceaccount:prod:*',
