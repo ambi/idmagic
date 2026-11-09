@@ -3,6 +3,8 @@ package usecases
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"strings"
 	"time"
 
@@ -21,6 +23,8 @@ import (
 type RefreshInput struct {
 	ClientID     string
 	RefreshToken string
+	Scope        string
+	Resource     []string
 	ProofJKT     string
 	ProofX5TS256 string
 }
@@ -34,9 +38,10 @@ type RefreshResult struct {
 }
 
 type RefreshDeps struct {
-	ClientRepo   ports.OAuth2ClientRepository
-	UserRepo     userports.UserRepository
-	RefreshStore ports.RefreshTokenStore
+	ClientRepo            ports.OAuth2ClientRepository
+	UserRepo              userports.UserRepository
+	RefreshStore          ports.RefreshTokenStore
+	McpResourceServerRepo ports.McpResourceServerRepository
 	// UserEpochs は User の失効エポックより前の発行を拒む (REQ-SHAREDSIGNALS-012)。nil なら判定しない。
 	UserEpochs  ssports.UserRevocationEpochRepository
 	TokenIssuer ports.TokenIssuer
@@ -114,13 +119,29 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		return nil, NewOAuthError("invalid_grant", "Refresh was rejected: "+strings.Join(d.Reasons, ", "))
 	}
 
+	scopes := record.Scopes
+	if requested := strings.Fields(in.Scope); len(requested) > 0 {
+		for _, scope := range requested {
+			if !slices.Contains(record.Scopes, scope) {
+				return nil, NewOAuthError("invalid_scope", "The requested scope exceeds the original grant.")
+			}
+		}
+		scopes = requested
+	}
+	if err := validateRefreshResource(ctx, deps.McpResourceServerRepo, tenantID, in.Resource, record.Resource, scopes); err != nil {
+		if oe, ok := errors.AsType[*OAuthError](err); ok && oe.Code == "invalid_target" {
+			emit(deps.Emit, &domain.ResourceAudienceRejected{At: now, TenantID: tenantID, ClientID: client.ClientID, Reason: "invalid_target"})
+		}
+		return nil, err
+	}
+	var audiences []string
+	if record.Resource != nil {
+		audiences = []string{*record.Resource}
+	}
+
 	// ローテーションの確定後に拒否すると、再試行が再利用と判定されファミリーごと失効する (REQ-OAUTH2-075)。
 	if guard, ok := deps.TokenIssuer.(ports.IssuanceGuard); ok {
-		var audiences []string
-		if record.Resource != nil {
-			audiences = []string{*record.Resource}
-		}
-		if err := guard.Precheck(ctx, ports.AccessTokenInput{Client: client, Sub: record.UserID, Scopes: record.Scopes, Audiences: audiences}); err != nil {
+		if err := guard.Precheck(ctx, ports.AccessTokenInput{Client: client, Sub: record.UserID, Scopes: scopes, Audiences: audiences}); err != nil {
 			return nil, err
 		}
 	}
@@ -139,17 +160,11 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	}
 	emit(deps.Emit, &domain.RefreshTokenRotated{At: now, TenantID: tenantID, OldTokenID: record.ID, NewTokenID: newTok.Record.ID, FamilyID: record.FamilyID})
 
-	// resource indicator (wi-262): 初回発行時に束縛された resource を
-	// rotation を跨いで保持する。RotateRefreshToken が parent.Resource を
-	// 新レコードへ引き継ぎ済みなので、ここでは newTok.Record.Resource を使う。
-	var audiences []string
-	if newTok.Record.Resource != nil {
-		audiences = []string{*newTok.Record.Resource}
-	}
+	// RFC 6749 §6: アクセストークンだけを絞り、次のリフレッシュトークンには元の付与を残す。
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
 		Client:           client,
 		Sub:              record.UserID,
-		Scopes:           record.Scopes,
+		Scopes:           scopes,
 		SenderConstraint: record.SenderConstraint,
 		AuthTime:         now.Unix(),
 		Audiences:        audiences,
@@ -157,9 +172,9 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	if err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: record.UserID, Scopes: record.Scopes, SenderConstraint: senderConstraintTag(record.SenderConstraint)})
+	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: record.UserID, Scopes: scopes, SenderConstraint: senderConstraintTag(record.SenderConstraint)})
 	if newTok.Record.Resource != nil {
-		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: *newTok.Record.Resource, Scopes: record.Scopes})
+		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: *newTok.Record.Resource, Scopes: scopes})
 	}
 
 	tokenType := domain.PresentationTokenType(record.SenderConstraint)
@@ -168,8 +183,22 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 		RefreshToken: newTok.Token,
 		TokenType:    tokenType,
 		ExpiresIn:    deps.TokenIssuer.AccessTokenTTLSeconds(),
-		Scope:        strings.Join(record.Scopes, " "),
+		Scope:        strings.Join(scopes, " "),
 	}, nil
+}
+
+func validateRefreshResource(ctx context.Context, repo ports.McpResourceServerRepository, tenantID string, requested []string, bound *string, scopes []string) error {
+	if len(requested) > 1 {
+		return NewOAuthError("invalid_target", "only one resource can be specified (1 token = 1 resource)")
+	}
+	if len(requested) == 0 || requested[0] == "" {
+		return nil
+	}
+	if bound == nil || requested[0] != *bound {
+		return NewOAuthError("invalid_target", "The requested resource does not match the original grant.")
+	}
+	_, err := ResolveResourceIndicator(ctx, repo, tenantID, requested, scopes)
+	return err
 }
 
 func evaluateRefreshPolicy(

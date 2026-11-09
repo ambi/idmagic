@@ -10,6 +10,7 @@ RFC 6749 — https://www.rfc-editor.org/rfc/rfc6749.html
 | RFC6749-REDIRECT-URI-OPTIONAL | required | MUST | 登録した `redirect_uri` が一件のクライアントが、`openid` を含まない認可要求で `redirect_uri` を省いたら、登録値を配送先として受け入れる。`openid` を含む要求と、登録が一件でないクライアントの要求で省いたら、リダイレクトせずに `invalid_request` で拒否する。値のない `redirect_uri=` は省いたものとして扱う。 |
 | RFC6749-TOKEN-REDIRECT-URI | required | MUST | 認可要求で `redirect_uri` を示したコードの交換では、`redirect_uri` を省いた要求を `invalid_request`、異なる値を `invalid_grant` で拒否する。認可要求で省いたコードは、`redirect_uri` を省いた交換を受け入れ、送られた値は登録値と一致を検査する。拒否した交換はコードを消費しない。 |
 | RFC6749-CLIENT-CREDENTIALS | optional | MAY | Client Credentials Grant は `confidential` クライアントに限って許可する。 |
+| RFC6749-REFRESH-SCOPE | required | MUST | §6 のリフレッシュ要求で `scope` を省けば元の付与のスコープを使い、指定すればその部分集合だけをアクセストークンへ載せ、超えた要求を `invalid_scope` で拒否する。新しく発行するリフレッシュトークンのスコープは親と同じに保つ。 |
 | RFC6749-IMPLICIT | excluded | MAY | Implicit Grant を提供する。 |
 | RFC6749-PASSWORD-GRANT | excluded | MAY | Resource Owner Password Credentials Grant を提供する。 |
 
@@ -185,7 +186,7 @@ RFC 8707 — https://www.rfc-editor.org/rfc/rfc8707.html
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | RFC8707-AUDIENCE | required | SHOULD | 発行するアクセストークンに空でない `audience` を設定し、意図しないリソースサーバーでの利用を防ぐ。 |
-| RFC8707-MCP-RESOURCE-BINDING | required | MUST | `resource` パラメーターで指定された `McpResourceServer` にアクセストークンの `audience` を厳格に限定し、未登録、無効、複数指定の `resource` は fail-closed で拒否する。認可、Pushed Authorization Requests、トークン発行（認可コードの交換、リフレッシュトークンのローテーション、`client_credentials`、`device_code`、トークン交換）の全経路へ一様に適用する。トークン交換を除き、`resource` が未指定のときの `audience` は `RFC9068-DEFAULT-AUDIENCE` が定める。トークン交換の未指定の `resource` は `RFC8693-TARGET` が定める。 |
+| RFC8707-MCP-RESOURCE-BINDING | required | MUST | `resource` パラメーターで指定された `McpResourceServer` にアクセストークンの `audience` を厳格に限定し、未登録、無効、複数指定の `resource` は fail-closed で拒否する。認可、Pushed Authorization Requests、トークン発行（認可コードの交換、リフレッシュトークンのローテーション、`client_credentials`、`device_code`、トークン交換）の全経路へ一様に適用する。リフレッシュの明示指定は元の付与に束縛された対象と一致しなければ `invalid_target` で拒否し、省略時と新しいリフレッシュトークンには元の束縛を保持する。トークン交換とリフレッシュを除き、`resource` が未指定のときの `audience` は `RFC9068-DEFAULT-AUDIENCE` が定める。トークン交換の未指定の `resource` は `RFC8693-TARGET` が定める。 |
 
 ## OAuth 2.0 Token Exchange
 

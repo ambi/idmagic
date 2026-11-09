@@ -1084,6 +1084,7 @@ model TokenRequest {
   client_secret?: string;
   client_assertion?: string;
   client_assertion_type?: string;
+  @doc("リフレッシュのグラントでは元の付与の部分集合だけを要求でき、省略時は元の範囲を使う。アクセストークンを絞っても、新しいリフレッシュトークンのスコープは親と同じに保つ。")
   scope?: string;
   @doc("RFC 8693 のトークン交換のグラントの `subject_token`。自身が発行したアクセストークン（`urn:ietf:params:oauth:token-type:access_token`）か、登録した WorkloadTrustBundle の発行者が発行した外部のアテステーションの JWT（`urn:ietf:params:oauth:token-type:jwt`）か、ID-JAG を要求するときの自身が発行した ID Token（`urn:ietf:params:oauth:token-type:id_token`）である。")
   subject_token?: string;
@@ -1097,7 +1098,7 @@ model TokenRequest {
   requested_token_type?: string;
   @doc("RFC 9396：トークン交換で絞り込みを求める、構造化された詳細の JSON の文字列。任意である。")
   authorization_details?: string;
-  @doc("RFC 8707：authorization_code の引き換え、client_credentials、device_code、トークン交換のためのリソースインジケーター。アクセストークンを求めるトークン交換では必須である。ID-JAG の発行を除き、パラメーターを複数回指定すると `invalid_target` になる。refresh_token のグラントは明示的に指定せず、最初の発行で結び付けたリソースをローテーションを通じて自動で引き継ぐ。")
+  @doc("RFC 8707：authorization_code の引き換え、refresh_token、client_credentials、device_code、トークン交換のためのリソースインジケーター。アクセストークンを求めるトークン交換では必須である。ID-JAG の発行を除き、パラメーターを複数回指定すると `invalid_target` になる。refresh_token のグラントでは、元の付与に束縛された登録済みの有効な対象だけを再指定でき、省略時と新しいリフレッシュトークンには元の束縛を保持する。")
   resource?: ResourceIndicator;
 }
 

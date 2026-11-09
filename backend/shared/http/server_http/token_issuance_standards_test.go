@@ -67,12 +67,13 @@ const (
 )
 
 type tiFixture struct {
-	base          string
-	assertionKey  *rsa.PrivateKey
-	tenants       tenantports.TenantRepository
-	refreshTokens oauthports.RefreshTokenStore
-	codes         oauthports.AuthorizationCodeStore
-	events        *eventRecorder
+	base            string
+	assertionKey    *rsa.PrivateKey
+	tenants         tenantports.TenantRepository
+	refreshTokens   oauthports.RefreshTokenStore
+	resourceServers oauthports.McpResourceServerRepository
+	codes           oauthports.AuthorizationCodeStore
+	events          *eventRecorder
 }
 
 // newTokenIssuanceFixture は本番と同じ Register で `/authorize` と `/token` を 1 つの
@@ -206,7 +207,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 	t.Cleanup(server.Close)
 	return &tiFixture{
 		base: server.URL + "/realms/default", assertionKey: assertionKey,
-		tenants: tenants, refreshTokens: refreshTokens, codes: codes, events: events,
+		tenants: tenants, refreshTokens: refreshTokens, resourceServers: resourceServers, codes: codes, events: events,
 	}
 }
 
@@ -377,9 +378,9 @@ func assertOAuthErrorCode(t *testing.T, what, body, want string) {
 }
 
 // refreshRecord は平文のリフレッシュトークンに対応する保存層の記録を返す。
-func (f *tiFixture) refreshRecord(t *testing.T, token string) *domain.RefreshTokenRecord {
+func (f *tiFixture) refreshRecord(ctx context.Context, t *testing.T, token string) *domain.RefreshTokenRecord {
 	t.Helper()
-	record, err := f.refreshTokens.FindByHash(context.Background(), domain.HashRefreshToken(token))
+	record, err := f.refreshTokens.FindByHash(ctx, domain.HashRefreshToken(token))
 	if err != nil || record == nil {
 		t.Fatalf("リフレッシュトークンの記録が見つからない: record=%v err=%v", record, err)
 	}
@@ -703,7 +704,7 @@ func TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily(t *testing.T) {
 	}
 	// 応答が別の値になっただけでは、古い記録を残したまま新しい記録を足した実装と
 	// 区別できない。旧記録が Rotated へ遷移したことを保存層から読む。
-	if record := fixture.refreshRecord(t, first.RefreshToken); !record.Rotated {
+	if record := fixture.refreshRecord(t.Context(), t, first.RefreshToken); !record.Rotated {
 		t.Fatalf("旧リフレッシュトークンの記録が Rotated になっていない: %+v", record)
 	}
 	fixture.events.assertEmitted(t,
@@ -716,7 +717,7 @@ func TestRefreshTokenRotatesAndReuseRevokesTheWholeFamily(t *testing.T) {
 	}
 	assertNoTokenInBody(t, "使用済みの再利用", body)
 	assertOAuthErrorCode(t, "使用済みの再利用", body, "invalid_grant")
-	if record := fixture.refreshRecord(t, first.RefreshToken); !record.Revoked {
+	if record := fixture.refreshRecord(t.Context(), t, first.RefreshToken); !record.Revoked {
 		t.Fatalf("再使用された記録が Revoked になっていない: %+v", record)
 	}
 	fixture.events.assertEmitted(t, "RefreshTokenReuseDetected", "TokenRevoked")
@@ -765,7 +766,7 @@ func TestAuthorizationCodeReplayAtTheRealEntryPointRevokesAndNotifies(t *testing
 	assertNoTokenInBody(t, "認可コードの再提示", body)
 	assertOAuthErrorCode(t, "認可コードの再提示", body, "invalid_grant")
 
-	if record := fixture.refreshRecord(t, first.RefreshToken); !record.Revoked {
+	if record := fixture.refreshRecord(t.Context(), t, first.RefreshToken); !record.Revoked {
 		t.Fatalf("発行ファミリーの refresh token が失効していない: %+v", record)
 	}
 	fixture.events.assertEmitted(t, "RefreshTokenReuseDetected", "TokenRevoked")

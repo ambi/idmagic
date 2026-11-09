@@ -56,6 +56,26 @@
 - And "RefreshTokenReuseDetected" が発行される
 - And "TokenRevoked" が発行される
 
+### Example: EX-OAUTH2-006-03 アクセストークンを絞っても次の交換では元の範囲を使える
+
+- Given スコープ "openid profile offline_access" とリソース "https://api.example/orders" に束縛された有効なリフレッシュトークンが存在する
+- When scope "profile" と resource "https://api.example/orders" を指定して交換する
+- Then アクセストークンと応答の scope は "profile"
+- And アクセストークンの aud は "https://api.example/orders" だけを含む
+- When 新しいリフレッシュトークンを scope と resource を省いて交換する
+- Then アクセストークンと応答の scope は "openid profile offline_access"
+- And アクセストークンの aud は "https://api.example/orders" だけを含む
+
+### Example: EX-OAUTH2-006-04 別の有効なリソースでも元の付与になければ交換できない
+
+- Given リソース "https://api.example/orders" に束縛された有効なリフレッシュトークンが存在する
+- And リソース "https://api.example/invoices" も登録済みで有効である
+- When resource "https://api.example/invoices" を指定して交換する
+- Then 400 と "invalid_target" が返る
+- And 元のリフレッシュトークンは未使用のままである
+- When 同じリフレッシュトークンを resource を省いて交換する
+- Then アクセストークンの aud は "https://api.example/orders" だけを含む
+
 ## Rule: REQ-OAUTH2-010 DPoP 証明付き要求はセンダー制約付きトークンを発行する
 
 ### Example: EX-OAUTH2-010-01 通常経路

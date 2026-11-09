@@ -172,8 +172,10 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo,
 			RefreshStore: d.RefreshStore, UserEpochs: d.UserRevocationEpochRepo, TokenIssuer: d.TokenIssuer,
 			Authorizer: d.Authorizer, Emit: d.Emit,
+			McpResourceServerRepo: d.McpResourceServerRepo,
 		}, tokenusecases.RefreshInput{
 			ClientID: clientStub.ID, RefreshToken: rt,
+			Scope: c.Request().PostFormValue("scope"), Resource: c.Request().PostForm["resource"],
 			ProofJKT: dpopJKT, ProofX5TS256: clientStub.MTLSThumbprintS256,
 		}, now)
 		if err != nil {
