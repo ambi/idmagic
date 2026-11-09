@@ -339,7 +339,7 @@ func TestRegisteredAgentRequiresUserDelegation(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-WORKLOADIDENTITY-001, REQ-WORKLOADIDENTITY-006: 信頼設定と関連付けを公開登録して実署名のアテステーションを交換し、未登録の信頼と停止した Agent では発行しない。
+//spec:covers REQ-WORKLOADIDENTITY-001, REQ-WORKLOADIDENTITY-006, REQ-OAUTH2-046: 信頼設定と関連付けを公開登録して実署名のアテステーションを交換し、未登録の信頼と停止した Agent では発行しない。停止したクライアント自身は共通入口で拒否する。
 func TestRegisteredWorkloadTrustControlsTokenExchange(t *testing.T) {
 	f := newPublicSetupPath(t, stack.WithAccessControl())
 	owner := f.user(t, "public-workload-owner")
@@ -377,9 +377,19 @@ func TestRegisteredWorkloadTrustControlsTokenExchange(t *testing.T) {
 		t.Fatalf("workload token subject=%v, want registered client %s", claims["sub"], clientID)
 	}
 	f.request(t, http.MethodPost, "/api/admin/v1/agents/"+agentID+"/kill", nil, f.admin, http.StatusNoContent)
-	denied = exchange(http.StatusBadRequest)
-	if denied["error"] != "invalid_grant" || denied["access_token"] != nil {
+	denied = exchange(http.StatusUnauthorized)
+	if denied["error"] != "invalid_client" || denied["access_token"] != nil {
 		t.Fatalf("killed workload agent=%v", denied)
+	}
+	// 未束縛のクライアントなら共通入口を通り、アテステーションの対応先の停止で拒否する。
+	unboundClient, unboundKey := f.keyClient(t, "read", "urn:ietf:params:oauth:grant-type:token-exchange")
+	denied = f.signedForm(t, unboundKey, unboundClient, "/token", url.Values{
+		"grant_type":         {"urn:ietf:params:oauth:grant-type:token-exchange"},
+		"subject_token_type": {"urn:ietf:params:oauth:token-type:jwt"}, "subject_token": {attestation},
+		"scope": {"read"}, "resource": {setupResource},
+	}, http.StatusBadRequest)
+	if denied["error"] != "invalid_grant" || denied["access_token"] != nil {
+		t.Fatalf("killed workload subject agent=%v", denied)
 	}
 }
 

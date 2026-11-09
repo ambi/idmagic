@@ -18,7 +18,6 @@ var (
 	RejectAgentIssuanceWithoutApproval  = sharedusecases.RejectAgentIssuanceWithoutApproval
 	RejectAgentClientWithoutKeyProof    = sharedusecases.RejectAgentClientWithoutKeyProof
 	// 要求したクライアントの Agent を発行するトークンへ記録する (REQ-OAUTH2-012)。
-	RequestingAgentID        = sharedusecases.RequestingAgentID
 	IssuerForRequestingAgent = sharedusecases.IssuerForRequestingAgent
 	IssuerWithAgentGuardrail = sharedusecases.IssuerWithAgentGuardrail
 )

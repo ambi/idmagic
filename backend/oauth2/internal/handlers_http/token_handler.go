@@ -72,22 +72,27 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_client", "unknown client_id"))
 	}
 	// Agent のクライアントの認証方式は、送信者制約と同じ理由でグラントの分岐より前に
-	// 1 度だけ判定する。Agent を解決しないグラント (認可コードなど) も Agent の資格情報で
-	// 認証していることは変わらない (AIMS00-AGENT-CLIENT-AUTH)。
+	// 1 度だけ判定する。どのグラントも Agent の資格情報で認証していることは
+	// 変わらない (AIMS00-AGENT-CLIENT-AUTH)。
 	if err := tokenusecases.RejectAgentClientWithoutKeyProof(c.Request().Context(), tokenusecases.AgentIssuanceDeps{
 		AgentRepo: d.AgentRepo, Emit: d.Emit,
 	}, client, grantType, time.Now().UTC()); err != nil {
 		return writeOAuthError(c, err)
 	}
-	// 要求したクライアントの Agent も同じ理由でグラントの分岐より前に 1 度だけ引き、どの
-	// グラントで発行したトークンにも発行時の Agent として載せる (REQ-OAUTH2-012)。以降の
-	// d.TokenIssuer はこの要求に限った発行器である。
-	requestingAgentID, err := tokenusecases.RequestingAgentID(c.Request().Context(), tokenusecases.AgentIssuanceDeps{
-		AgentRepo: d.AgentRepo,
+	// 状態と所有者の確認は分岐前に置き、コードやリフレッシュトークンを消費する前に
+	// すべてのグラントで発行を止める (REQ-OAUTH2-046)。承認区分は各グラントで判断する。
+	agent, err := tokenusecases.ResolveIssuableAgent(c.Request().Context(), tokenusecases.AgentIssuanceDeps{
+		AgentRepo: d.AgentRepo, UserRepo: d.UserRepo,
 	}, client.ClientID)
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
+	var requestingAgentID string
+	if agent != nil {
+		requestingAgentID = agent.ID
+	}
+	// どのグラントにも同じ発行時の Agent を載せる (REQ-OAUTH2-012)。以降の
+	// d.TokenIssuer はこの要求に限った発行器である。
 	d.TokenIssuer = tokenusecases.IssuerWithAgentGuardrail(tokenusecases.IssuerForRequestingAgent(d.TokenIssuer, requestingAgentID), tokenusecases.AgentGuardrailDeps{
 		Policies: d.AgentGuardrailPolicies, Limiter: d.RateLimiter, AgentRepo: d.AgentRepo, UserRepo: d.UserRepo, Emit: d.Emit,
 		ClientID: client.ClientID, GrantType: grantType, RequestID: logging.RequestIDFromContext(c.Request().Context()),
@@ -213,20 +218,10 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		} else if clientStub.MTLSThumbprintS256 != "" {
 			sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: clientStub.MTLSThumbprintS256}
 		}
-		// client に Agent が束縛されている場合、Agent 自身が Active でない
-		// (Disabled / Killed) か、所有者がオフボードされていれば新規トークンを
-		// 発行しない (fail-closed)。束縛があれば agent_id を token に載せる。
 		// client_credentials は人間の承認を記録しないため、Autonomous と確認できた
 		// Agent だけが通る (REQ-OAUTH2-050)。
-		agent, err := tokenusecases.ResolveIssuableAgentWithoutApproval(ctx, tokenusecases.AgentIssuanceDeps{
-			AgentRepo: d.AgentRepo, UserRepo: d.UserRepo, Emit: d.Emit,
-		}, client.ClientID, grantType, now)
-		if err != nil {
+		if err := tokenusecases.RejectAgentIssuanceWithoutApproval(ctx, d.Emit, agent, client.ClientID, grantType, now); err != nil {
 			return writeOAuthError(c, err)
-		}
-		var agentID string
-		if agent != nil {
-			agentID = agent.ID
 		}
 		if agent != nil && mcpResourceServer != nil && mcpResourceServer.HasOnlyToolRules() {
 			allowed, err := tokenusecases.AssignedToolScopes(ctx, d.RelationChecker, mcpResourceServer, agent.ID, strings.Fields(client.Scope))
@@ -245,7 +240,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		}
 		token, jti, err := d.TokenIssuer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 			Client: client, Sub: client.ClientID, Scopes: scopes,
-			SenderConstraint: sc, AuthTime: now.Unix(), AgentID: agentID,
+			SenderConstraint: sc, AuthTime: now.Unix(), AgentID: requestingAgentID,
 			Audiences: audiences,
 		})
 		if err != nil {
@@ -256,7 +251,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			if sc != nil {
 				tag = string(sc.Type)
 			}
-			d.Emit(&domain.AccessTokenIssued{At: now, TenantID: support.RequestTenantID(c), JTI: jti, ClientID: client.ClientID, UserID: client.ClientID, Scopes: scopes, SenderConstraint: tag, AgentID: agentID})
+			d.Emit(&domain.AccessTokenIssued{At: now, TenantID: support.RequestTenantID(c), JTI: jti, ClientID: client.ClientID, UserID: client.ClientID, Scopes: scopes, SenderConstraint: tag, AgentID: requestingAgentID})
 			if mcpResourceServer != nil {
 				d.Emit(&domain.ResourceScopedTokenIssued{At: now, TenantID: support.RequestTenantID(c), ClientID: client.ClientID, Resource: mcpResourceServer.Resource, Scopes: scopes})
 			}

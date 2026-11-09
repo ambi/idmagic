@@ -114,19 +114,6 @@ func (i requestingAgentIssuer) SignAccessToken(ctx context.Context, in ports.Acc
 	return i.TokenIssuer.SignAccessToken(ctx, in)
 }
 
-// RequestingAgentID は clientID に束縛された Agent の識別子を返す。束縛がない client と、
-// AgentRepo を組み立てない配線では空文字列を返す。
-func RequestingAgentID(ctx context.Context, deps AgentIssuanceDeps, clientID string) (string, error) {
-	if deps.AgentRepo == nil {
-		return "", nil
-	}
-	agent, err := deps.AgentRepo.FindByClientID(ctx, tenantports.TenantID(ctx), clientID)
-	if err != nil || agent == nil {
-		return "", err
-	}
-	return agent.ID, nil
-}
-
 // AgentOwnerIsActive は agent の所有者がオフボードされていないかを返す。所有者を
 // 解決できない場合 (ハード削除、別テナント) は false で、fail-closed に倒す。
 // userRepo が nil の配線では判定を行わず true を返す。

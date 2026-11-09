@@ -90,12 +90,13 @@ RefreshToken のライフサイクル。Rotate で子トークンに引き継が
 - `iat` が 60 秒以上古いか、同じ `jti` を再使用した DPoP 証明を受けた場合、OAuth2 は、400 と `invalid_dpop_proof` で拒否する。
 - **例**：EX-OAUTH2-010-01、EX-OAUTH2-010-02、EX-OAUTH2-010-03
 
-#### REQ-OAUTH2-046 所有者がオフボードされた Agent は client_credentials で新しいトークンを取得できない
+#### REQ-OAUTH2-046 停止した Agent または所有者のクライアントは、どのグラントでも新しいトークンを取得できない
 
-- `Active` な Agent に束縛したクライアントが `client_credentials` でトークンを要求したとき、OAuth2 は、発行のたびに Agent の所有者の User を解決し、`Active` の所有者の Agent にだけトークンを発行する。
+- Agent に束縛したクライアントがトークンを要求したとき、OAuth2 は、グラントの種類によらず発行のたびに Agent の状態と所有者の User を確認し、Agent と所有者がともに `Active` の Agent にだけトークンを発行する。
+- `Disabled` または `Killed` の Agent のクライアントの要求を受けた場合、OAuth2 は、401 と `invalid_client` で拒否し、トークンを発行せず、Agent の `status` を書き換えない。
 - 所有者が `Active` でないか解決できない Agent のクライアントの要求を受けた場合、OAuth2 は、401 と `invalid_client` で拒否し、トークンを発行せず、Agent の `status` を書き換えない。
 - 束縛した Agent のないクライアントの要求を受けたとき、OAuth2 は、所有者を解決せずに要求を処理する。
-- **例**：EX-OAUTH2-046-01、EX-OAUTH2-046-02、EX-OAUTH2-046-03、EX-OAUTH2-046-04
+- **例**：EX-OAUTH2-046-01、EX-OAUTH2-046-02、EX-OAUTH2-046-03、EX-OAUTH2-046-04、EX-OAUTH2-046-05、EX-OAUTH2-046-06、EX-OAUTH2-046-07
 
 #### REQ-OAUTH2-055 Agent に束縛したクライアントのトークン要求は、鍵の所有を証明する認証方式のときだけ受け付ける
 

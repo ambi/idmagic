@@ -303,7 +303,7 @@
   | EX-OAUTH2-045-03 | Proof の `ath` が "AT2" の base64url(SHA-256) である | エラー "InvalidTokenError" |
   | EX-OAUTH2-045-04 | トークンエンドポイントへ `ath` を含まない "K1" 署名の DPoP Proof を提示する | リクエストは受理され、アクセストークンが発行される |
 
-## Rule: REQ-OAUTH2-046 所有者がオフボードされた Agent は client_credentials で新しいトークンを取得できない
+## Rule: REQ-OAUTH2-046 停止した Agent または所有者のクライアントは、どのグラントでも新しいトークンを取得できない
 
 ### Background:
 
@@ -334,6 +334,29 @@
 - When "agent-app" として client_credentials でトークンを要求する
 - But "agent-app" にどの Agent も束縛されていない
 - Then 所有者の解決を行わず、リクエストは受理される
+
+### Example: EX-OAUTH2-046-05 無効化前に発行したリフレッシュトークンでも発行を再開できない
+
+- Given "owner1" が再び有効化され、"agent-app" がリフレッシュトークン "RT1" を取得した
+- And 管理者が "A1" を無効化した
+- When "agent-app" が "RT1" でトークンを要求する
+- Then 401 と "invalid_client" で拒否され、トークンは発行されない
+- And "RT1" はローテーションも失効もせず、"A1" は `Disabled` のままである
+
+### Example: EX-OAUTH2-046-06 強制停止前の認可コードでも交換できない
+
+- Given "owner1" が再び有効化され、"agent-app" に有効な認可コード "C1" が発行されている
+- And 管理者が "A1" を強制停止した
+- When "agent-app" が "C1" をトークンへ交換する
+- Then 401 と "invalid_client" で拒否され、トークンは発行されない
+- And "C1" は未使用のままであり、"A1" は `Killed` のままである
+
+### Example: EX-OAUTH2-046-07 所有者の停止前に承認したデバイスコードでも交換できない
+
+- Given "agent-app" に有効な承認済みのデバイスコード "D1" がある
+- When "agent-app" が "D1" をトークンへ交換する
+- Then 401 と "invalid_client" で拒否され、トークンは発行されない
+- And "D1" は承認済みのままであり、"A1" は `Active` のままである
 
 ## Rule: REQ-OAUTH2-055 Agent に束縛したクライアントのトークン要求は、鍵の所有を証明する認証方式のときだけ受け付ける
 
