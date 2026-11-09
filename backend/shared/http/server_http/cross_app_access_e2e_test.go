@@ -46,9 +46,9 @@ type xaaFixture struct {
 	audience *stack.Browser
 }
 
-func newXAAFixture(t *testing.T) *xaaFixture {
+func newXAAFixture(t *testing.T, extra ...stack.Option) *xaaFixture {
 	t.Helper()
-	s := stack.New(t, stack.WithCrossAppAccess())
+	s := stack.New(t, append([]stack.Option{stack.WithCrossAppAccess()}, extra...)...)
 	ctx := context.Background()
 	now := time.Now().UTC()
 	otherTenant := s.TenantID(t, stack.OtherRealm)

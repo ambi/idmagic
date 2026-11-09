@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/application"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -28,7 +30,7 @@ func newApprovedDeviceFixture(t *testing.T, mcpResourceServerRepo *oauth2memory.
 	if err != nil {
 		t.Fatalf("RequestDeviceAuthorization: %v", err)
 	}
-	if err := ApproveUserCode(testing_tenant.Default(context.Background()), f.verifyDeps, out.UserCode, "user", now); err != nil {
+	if _, err := ApproveUserCode(testing_tenant.Default(context.Background()), f.verifyDeps, application.NewMemoryModule().Gate(nil, nil, nil), ApproveUserCodeInput{UserCode: out.UserCode, Authn: &authdomain.AuthenticationContext{UserID: "user"}}, now); err != nil {
 		t.Fatalf("ApproveUserCode: %v", err)
 	}
 	return f, out.DeviceCode

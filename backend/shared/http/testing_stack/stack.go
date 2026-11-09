@@ -62,6 +62,7 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/authentication"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -208,6 +209,8 @@ type Stack struct {
 	CrossAppAccessPolicies oauthports.CrossAppAccessPolicyRepository
 	Federation             authentication.Module
 	ApprovalRequests       oauthports.ApprovalRequestStore
+	DeviceCodes            oauthports.DeviceCodeStore
+	MfaFactors             totpports.MfaFactorRepository
 	Codes                  oauthports.AuthorizationCodeStore
 	PAR                    oauthports.PARStore
 	Refresh                oauthports.RefreshTokenStore
@@ -297,6 +300,8 @@ func WithAuthorizationCodeFlow() Option {
 		}
 		b.stack.Codes = oauth2.NewMemoryModule().CodeStore
 		authn := authentication.NewMemoryModule(b.stack.Users)
+		b.stack.MfaFactors = authn.MfaFactorRepo
+		b.deps.Authentication.MfaFactorRepo = authn.MfaFactorRepo
 		b.deps.Authentication.PasswordHistoryRepo = authn.PasswordHistoryRepo
 		b.stack.SessionStore = authn.SessionStore
 		b.stack.Sessions = authn.NewSessionManager()
@@ -307,6 +312,20 @@ func WithAuthorizationCodeFlow() Option {
 		b.deps.SessionManager = b.stack.Sessions
 		b.deps.AuthnResolver = b.stack.Sessions
 		b.deps.PasswordHasher = testingpasswords.NewHasher()
+	}
+}
+
+// WithDeviceAuthorization はコードの発行、ブラウザーの承認、トークンへの交換を配線する。
+func WithDeviceAuthorization() Option {
+	return func(b *builder) {
+		if b.stack.Sessions == nil {
+			WithAuthorizationCodeFlow()(b)
+		}
+		if b.stack.Refresh == nil {
+			WithTokenIssuance()(b)
+		}
+		b.stack.DeviceCodes = oauth2.NewMemoryModule().DeviceCodeStore
+		b.deps.OAuth2.DeviceCodeStore = b.stack.DeviceCodes
 	}
 }
 

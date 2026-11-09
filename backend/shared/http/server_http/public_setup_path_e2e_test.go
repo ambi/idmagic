@@ -40,6 +40,7 @@ func newPublicSetupPath(t *testing.T, extra ...stack.Option) *publicSetupPath {
 			"login":                      {MaxRequests: 100_000, WindowSeconds: 60},
 			"token":                      {MaxRequests: 100_000, WindowSeconds: 60},
 			"backchannel_authentication": {MaxRequests: 100_000, WindowSeconds: 60},
+			"device_authorization":       {MaxRequests: 100_000, WindowSeconds: 60},
 		})),
 	}, extra...)
 	s := stack.New(t, options...)

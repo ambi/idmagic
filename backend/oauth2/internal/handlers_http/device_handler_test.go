@@ -47,7 +47,7 @@ func tenantContext(id string) context.Context {
 	}, "https://idp.example/realms/"+id, "/realms/"+id)
 }
 
-func newDeviceServer(t *testing.T) deviceFixture {
+func newDeviceServer(t *testing.T, options ...func(*httpadapter.Deps)) deviceFixture {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	// テスト用クライアントをシード
@@ -98,6 +98,9 @@ func newDeviceServer(t *testing.T) deviceFixture {
 		Status: tenancydomain.TenantStatusActive,
 	})
 
+	for _, option := range options {
+		option(&deps)
+	}
 	httpadapter.Register(e, deps)
 
 	return deviceFixture{

@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/application"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -89,7 +91,7 @@ func newApprovedDeviceCodeServer(t *testing.T, mcpResourceServerRepo *oauth2memo
 	if err != nil {
 		t.Fatalf("RequestDeviceAuthorization: %v", err)
 	}
-	if err := usecases.ApproveUserCode(testing_tenant.Default(t.Context()), usecases.VerifyUserCodeDeps{DeviceCodeStore: deviceStore}, authOut.UserCode, "user-1", time.Now().UTC()); err != nil {
+	if _, err := usecases.ApproveUserCode(testing_tenant.Default(t.Context()), usecases.VerifyUserCodeDeps{DeviceCodeStore: deviceStore}, application.NewMemoryModule().Gate(nil, nil, nil), usecases.ApproveUserCodeInput{UserCode: authOut.UserCode, Authn: &authdomain.AuthenticationContext{UserID: "user-1"}}, time.Now().UTC()); err != nil {
 		t.Fatalf("ApproveUserCode: %v", err)
 	}
 	return e, authOut.DeviceCode

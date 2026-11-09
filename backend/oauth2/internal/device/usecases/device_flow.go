@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	deviceports "github.com/ambi/idmagic/backend/oauth2/internal/device/ports"
 	"github.com/ambi/idmagic/backend/shared/security/entropy"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -115,45 +118,71 @@ type VerifyUserCodeDeps struct {
 	Emit            func(spec.DomainEvent)
 }
 
-func ApproveUserCode(ctx context.Context, deps VerifyUserCodeDeps, userCode, sub string, now time.Time) error {
+type ApproveUserCodeInput struct {
+	UserCode string
+	Authn    *authdomain.AuthenticationContext
+	ClientIP string
+}
+
+func ApproveUserCode(ctx context.Context, deps VerifyUserCodeDeps, gate deviceports.ApplicationGate, in ApproveUserCodeInput, now time.Time) (appdomain.ApplicationAccessDecision, error) {
+	refused := appdomain.ApplicationAccessDecision{}
+	if gate == nil || in.Authn == nil || in.Authn.UserID == "" {
+		return refused, NewOAuthError("access_denied", "application access evaluation requires an authenticated user and a gate")
+	}
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	normalized := domain.NormalizeUserCode(userCode)
-	rec, err := deps.DeviceCodeStore.FindByUserCode(ctx, normalized)
+	rec, err := deps.DeviceCodeStore.FindByUserCode(ctx, domain.NormalizeUserCode(in.UserCode))
 	if err != nil {
-		return err
+		return refused, err
 	}
-	if rec == nil {
-		return NewOAuthError("invalid_request", "unknown user_code")
-	}
-	if rec.TenantID != tenantports.TenantID(ctx) {
-		return NewOAuthError("invalid_request", "unknown user_code")
+	if rec == nil || rec.TenantID != tenantports.TenantID(ctx) {
+		return refused, NewOAuthError("invalid_request", "unknown user_code")
 	}
 	if domain.IsDeviceExpired(rec, now) {
-		return NewOAuthError("expired_token", "user_code expired")
+		return refused, NewOAuthError("expired_token", "user_code expired")
 	}
-	// 既存状態によらず Issued → UserCodeEntered → Approved に進める (簡略化)。
-	if rec.State == spec.DeviceFlowIssued {
-		next, err := spec.TransitionDeviceCodeFlow(rec.State, spec.DeviceEventEnterUserCode)
+	// 遷移と関門の両方が成立するまで、保存したコードと本人を結び付けない。
+	state := rec.State
+	if state == spec.DeviceFlowIssued {
+		state, err = spec.TransitionDeviceCodeFlow(state, spec.DeviceEventEnterUserCode)
 		if err != nil {
-			return err
+			return refused, err
 		}
-		rec.State = next
 	}
-	approved, err := spec.TransitionDeviceCodeFlow(rec.State, spec.DeviceEventApprove)
+	approved, err := spec.TransitionDeviceCodeFlow(state, spec.DeviceEventApprove)
 	if err != nil {
-		return NewOAuthError("invalid_request", err.Error())
+		return refused, NewOAuthError("invalid_request", err.Error())
+	}
+	decision, err := gate.EvaluateApplicationAccess(ctx, rec.TenantID, appdomain.ApplicationProtocolOIDC,
+		rec.ClientID, in.Authn.UserID, in.Authn, in.ClientIP)
+	if err != nil {
+		return refused, err
+	}
+	if !decision.Allowed || decision.StepUpRequired {
+		if deps.Emit != nil && decision.ApplicationID != "" {
+			if decision.StepUpRequired {
+				deps.Emit(&appdomain.AppStepUpRequired{
+					At: now, TenantID: rec.TenantID, ApplicationID: decision.ApplicationID,
+					Protocol: string(appdomain.ApplicationProtocolOIDC), Subject: in.Authn.UserID,
+				})
+			}
+			deps.Emit(&appdomain.AppAccessDeniedByPolicy{
+				At: now, TenantID: rec.TenantID, ApplicationID: decision.ApplicationID,
+				Protocol: string(appdomain.ApplicationProtocolOIDC), Subject: in.Authn.UserID, Reason: decision.Reason,
+			})
+		}
+		return decision, nil
 	}
 	rec.State = approved
 	authTime := now.Unix()
-	rec.UserID = &sub
-	rec.AuthTime = &authTime
+	sub := in.Authn.UserID
+	rec.UserID, rec.AuthTime = &sub, &authTime
 	if err := deps.DeviceCodeStore.Update(ctx, rec); err != nil {
-		return err
+		return refused, err
 	}
 	emit(deps.Emit, &domain.DeviceAuthorizationApproved{At: now, TenantID: rec.TenantID, ClientID: rec.ClientID, UserID: sub})
-	return nil
+	return decision, nil
 }
 
 func DenyUserCode(ctx context.Context, deps VerifyUserCodeDeps, userCode, sub string, now time.Time) error {

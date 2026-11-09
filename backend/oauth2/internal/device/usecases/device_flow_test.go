@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/application"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -89,9 +91,7 @@ func TestDeviceFlowPollingAndReplay(t *testing.T) {
 	if _, err := ExchangeDeviceCode(testing_tenant.Default(context.Background()), f.deps, input, t0.Add(time.Second)); oauthErrorCode(err) != "slow_down" {
 		t.Fatalf("fast poll: %v", err)
 	}
-	if err := ApproveUserCode(
-		testing_tenant.Default(context.Background()), f.verifyDeps, auth.UserCode, "user", t0.Add(2*time.Second),
-	); err != nil {
+	if _, err := ApproveUserCode(testing_tenant.Default(context.Background()), f.verifyDeps, application.NewMemoryModule().Gate(nil, nil, nil), ApproveUserCodeInput{UserCode: auth.UserCode, Authn: &authdomain.AuthenticationContext{UserID: "user"}}, t0.Add(2*time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	out, err := ExchangeDeviceCode(testing_tenant.Default(context.Background()), f.deps, input, t0.Add(11*time.Second))
@@ -179,7 +179,7 @@ func approveDeviceCode(t *testing.T, f deviceFixture, scope string, at time.Time
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ApproveUserCode(testing_tenant.Default(context.Background()), f.verifyDeps, auth.UserCode, "user", at); err != nil {
+	if _, err := ApproveUserCode(testing_tenant.Default(context.Background()), f.verifyDeps, application.NewMemoryModule().Gate(nil, nil, nil), ApproveUserCodeInput{UserCode: auth.UserCode, Authn: &authdomain.AuthenticationContext{UserID: "user"}}, at); err != nil {
 		t.Fatal(err)
 	}
 	return auth.DeviceCode

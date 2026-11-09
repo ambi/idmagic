@@ -42,7 +42,7 @@ type browserFlowResponse struct {
 	RedirectTo string `json:"redirect_to,omitempty"`
 }
 
-// validReturnTo は、直接のログインの後に戻す先が同じテナントの管理コンソールか WS-Federation の
+// validReturnTo は、直接のログインの後に戻す先が同じテナントの管理コンソール、デバイス承認か WS-Federation の
 // 相対パスであるかを返す。
 func validReturnTo(c *echo.Context, returnTo string) bool {
 	if strings.Contains(returnTo, "\\") {
@@ -53,7 +53,7 @@ func validReturnTo(c *echo.Context, returnTo string) bool {
 		return false
 	}
 	adminRoot, wsfedRoot := support.TenantRoute(c, "/admin"), support.TenantRoute(c, "/wsfed")
-	return parsed.Path == adminRoot || strings.HasPrefix(parsed.Path, adminRoot+"/") || parsed.Path == wsfedRoot
+	return parsed.Path == adminRoot || strings.HasPrefix(parsed.Path, adminRoot+"/") || parsed.Path == wsfedRoot || parsed.Path == support.TenantRoute(c, "/device")
 }
 
 func (d Deps) setSessionCookie(c *echo.Context, sessionID string) {

@@ -57,6 +57,10 @@ RFC 8628 デバイス認可グラントのライフサイクル。device_code �
 - `device_code` のグラントを許可したクライアントがデバイス認可を要求したとき、OAuth2 は、`Issued` の記録を作り、200 と `device_code`、`user_code`、`verification_uri`、`verification_uri_complete`、`expires_in`、5 秒の `interval` を返し、`DeviceAuthorizationRequested` を発行する。
 - `scope` のないデバイス認可を受けたとき、OAuth2 は、`openid` を要求したものとして扱う。
 - 認証済みの利用者が有効な `user_code` を承認したとき、OAuth2 は、記録を `Approved` にして利用者と認証の時刻を結び付け、200 を返し、`DeviceAuthorizationApproved` を発行する。
+- 利用者が `user_code` を承認するとき、OAuth2 は、そのコードのクライアントについて [REQ-APPLICATION-011](../../application/features/assignment.md#req-application-011-割り当てのない主体はプロトコル経由でアプリケーションへフェデレーションできない) と [REQ-APPLICATION-009](../../application/features/sign-in-policy.md#req-application-009-管理者はアプリケーション別サインインポリシーを設定できる) の関門を評価する。
+- 関門が承認を拒否した場合、OAuth2 は、403 と `access_denied` を返し、記録を変えず、`DeviceAuthorizationApproved` を発行しない。
+- サインインポリシーが追加認証を求め、利用者が使える第二要素を持つ場合、OAuth2 は、コードを承認せずに第二要素の画面へ送り、認証後に同じテナントの元のユーザーコードの承認画面へ戻し、再度の承認で関門を評価する。
+- サインインポリシーが追加認証を求め、利用者が使える第二要素を持たない場合、OAuth2 は、403 と `access_denied` で拒否し、記録を変えず、`DeviceAuthorizationApproved` を発行しない。
 - 認証済みの利用者が有効な `user_code` を拒否したとき、OAuth2 は、記録を `Denied` にし、200 を返し、`DeviceAuthorizationDenied` を発行する。
 - クライアントが `Approved` の `device_code` を交換したとき、OAuth2 は、記録を `Exchanged` にし、アクセストークンと ID トークンを返し、`refresh_token` のグラントを許可したクライアントの `offline_access` のスコープにはリフレッシュトークンを返し、`AccessTokenIssued` を発行する。
 - 承認の前の `device_code` の交換を受けたとき、OAuth2 は、400 と `authorization_pending` を返し、ポーリングの時刻を記録する。

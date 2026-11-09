@@ -3,6 +3,7 @@ package handlers_http
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -87,14 +88,34 @@ func (d Deps) handleDeviceAPI(c *echo.Context) error {
 		}
 		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: "/status?state=denied"})
 	}
-	if err := deviceusecases.ApproveUserCode(
+	decision, err := deviceusecases.ApproveUserCode(
 		c.Request().Context(),
 		deviceusecases.VerifyUserCodeDeps{DeviceCodeStore: d.DeviceCodeStore, Emit: d.Emit},
-		input.UserCode,
-		authn.UserID,
+		d.ApplicationGate,
+		deviceusecases.ApproveUserCodeInput{UserCode: input.UserCode, Authn: authn, ClientIP: c.RealIP()},
 		time.Now().UTC(),
-	); err != nil {
+	)
+	if err != nil {
 		return writeOAuthError(c, err)
+	}
+	if decision.StepUpRequired {
+		if len(d.SignIn.SecondFactorMethods(c, authn.UserID)) > 0 {
+			pending, err := d.SignIn.RequireSecondFactor(c.Request().Context(), c, authn.SessionID)
+			if err != nil {
+				return err
+			}
+			if pending == nil {
+				return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
+			}
+			returnTo := support.TenantRoute(c, "/device") + "?user_code=" + url.QueryEscape(input.UserCode)
+			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
+				Next: d.SignIn.PendingPath(c, pending) + "?return_to=" + url.QueryEscape(returnTo),
+			})
+		}
+		return support.WriteProblem(c, http.StatusForbidden, "access_denied", "The application's sign-in policy requirements were not met.")
+	}
+	if !decision.Allowed {
+		return support.WriteProblem(c, http.StatusForbidden, "access_denied", "The user is not allowed to access this application.")
 	}
 	return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: "/status?state=approved"})
 }

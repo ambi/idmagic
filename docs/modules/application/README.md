@@ -25,7 +25,7 @@ Application は、プロトコル設定を中身に依存しないキーで参�
 
 | 流れ | 契機 | 実行する場所 | 詳細 |
 | --- | --- | --- | --- |
-| フェデレーションの関門 | OIDC の認可、SAML の SSO、WS-Fed のサインイン | 各プロトコルの処理が、発行の前にこのモジュールの評価を同期的に呼ぶ | [サインインポリシーの設計](features/sign-in-policy.md#実現方式) |
+| フェデレーションの関門 | OIDC の認可、デバイス認可の承認、ID-JAG の発行、SAML の SSO、WS-Fed のサインイン、WS-Trust の発行 | 各プロトコルの処理が、発行の前にこのモジュールの評価を同期的に呼ぶ | [サインインポリシーの設計](features/sign-in-policy.md#実現方式) |
 | あるべき状態の割り当て | `IdGovernance` のワークフローの手順 | `worker` が同期的に呼ぶ | [割り当て](features/assignment.md) |
 | 管理 API とアカウント API | 解決済みのテナントの要求 | ApplicationCatalog が、このモジュールの公開ユースケースを同期的に呼ぶ | 各機能仕様 |
 
