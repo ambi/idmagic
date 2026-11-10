@@ -278,8 +278,8 @@ func TestApprovedOperationIsNotInheritedByOtherTokens(t *testing.T) {
 	f := newApprovedOperationFixture(t)
 	plain := f.resourceToken(t, f.clientID, agentRevocationResource, nil)
 	_, body := f.evaluate(t, evalResourceServerClient, evalResourceServerSecret, approvedForm(plain, "k1", approvedParameters))
-	// client_credentials のトークンは明細を持たないので、明細の検査で先に止まる。
-	requireReason(t, body, oauthdomain.ReasonAuthorizationDetailMismatch)
+	// client_credentials のトークンは明細を持たないので、関係の判定の後に承認の不足として止まる。
+	requireReason(t, body, oauthdomain.ReasonApprovalRequired)
 
 	token := f.approvedToken(t)
 	now := time.Now().UTC()

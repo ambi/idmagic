@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -593,4 +594,128 @@ func TestEvaluateResolvesAnAgentBehindAGateway(t *testing.T) {
 	if decision := evaluate(); decision.Permitted {
 		t.Fatalf("nested: %+v", decision)
 	}
+}
+
+// 承認がないか使えないことだけで拒否したとき、Agent が次に要求する明細を、要求と登録の写しとして返す。
+// 期待値は draft-ietf-oauth-rar-metadata-remediation-00 の RAR の明細の形から独立に書く。
+//
+//spec:covers REQ-OAUTH2-065: 承認の不足、期限切れ、引数の不一致にだけ明細を返し、使用済みとほかの不許可には返さないこと
+func TestEvaluateResourceAccess_REQ_OAUTH2_065_Remediation(t *testing.T) {
+	now := time.Now().UTC()
+	allow := policyports.RelationDecision{Permitted: true}
+	plainToken := evalAgentToken
+	paymentFor := func(fields map[string]any) spec.AuthorizationDetail {
+		return spec.AuthorizationDetail{
+			Type: "payment", Locations: []string{"https://mcp.example/"}, Actions: []string{"viewer"}, Identifier: "d1", Fields: fields,
+		}
+	}
+	expiredStore := func(t *testing.T) *approvalmemory.ApprovalRequestStore {
+		t.Helper()
+		store := approvalmemory.NewApprovalRequestStore()
+		if err := store.Save(evalTenantContext(), &approvaldomain.ApprovalRequest{
+			ID: "approval-1", ClientID: "agent-client", UserID: "agent-client", AuthReqIDHash: "hash",
+			State: spec.ApprovalConsumed, AuthorizationDetails: []spec.AuthorizationDetail{approvedDetail()},
+			RequestedAt: now.Add(-time.Hour), ExpiresAt: now.Add(-time.Minute),
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return store
+	}
+	conditionRule := evalRule
+	conditionRule.AuthorizationDetailType = "docs"
+	conditionRule.Condition = &domain.ResourceAccessCondition{RequireApprovalWhen: `attributes.amount >= 100`, ApprovalDetailType: "payment"}
+	docsToken := evalAgentToken()
+	docsToken.AuthorizationDetails = []spec.AuthorizationDetail{{Type: "docs", Locations: []string{evalResource}, Actions: []string{"viewer"}}}
+	conditionRequest := approvedRequest("k", `{"amount":100}`)
+	conditionRequest.Attributes = `{"amount":100}`
+
+	cases := []struct {
+		name     string
+		rule     domain.ResourceAccessRule
+		token    *ports.IntrospectionResult
+		relation policyports.RelationDecision
+		store    func(*testing.T) *approvalmemory.ApprovalRequestStore
+		in       ResourceAccessRequest
+		reason   string
+		want     []spec.AuthorizationDetail
+	}{
+		{
+			name: "明細のない通常のトークン", rule: approvedRule(), token: plainToken(), relation: allow,
+			in: approvedRequest("k", `{"amount":100}`), reason: domain.ReasonApprovalRequired,
+			want: []spec.AuthorizationDetail{paymentFor(map[string]any{"amount": float64(100)})},
+		},
+		{
+			name: "引数のない操作", rule: approvedRule(), token: plainToken(), relation: allow,
+			in: approvedRequest("k", ""), reason: domain.ReasonApprovalRequired,
+			want: []spec.AuthorizationDetail{paymentFor(nil)},
+		},
+		{
+			name: "承認と異なる引数", rule: approvedRule(), token: approvedToken(), relation: allow,
+			in: approvedRequest("k", `{"amount":1}`), reason: domain.ReasonApprovedOperationMismatch,
+			want: []spec.AuthorizationDetail{paymentFor(map[string]any{"amount": float64(1)})},
+		},
+		{
+			name: "期限切れの承認", rule: approvedRule(), token: approvedToken(), relation: allow, store: expiredStore,
+			in: approvedRequest("k", `{"amount":100}`), reason: domain.ReasonApprovalExpired,
+			want: []spec.AuthorizationDetail{paymentFor(map[string]any{"amount": float64(100)})},
+		},
+		{
+			name: "条件が承認を求めた操作は規則の明細も求める", rule: conditionRule, token: docsToken, relation: allow,
+			in: conditionRequest, reason: domain.ReasonApprovalRequired,
+			want: []spec.AuthorizationDetail{
+				{Type: "docs", Locations: []string{"https://mcp.example/"}, Actions: []string{"viewer"}, Identifier: "d1"},
+				paymentFor(map[string]any{"amount": float64(100)}),
+			},
+		},
+		{
+			name: "関係の不許可", rule: approvedRule(), token: plainToken(),
+			relation: policyports.RelationDecision{Reasons: []string{"no_relation"}},
+			in:       approvedRequest("k", `{"amount":100}`), reason: "no_relation",
+		},
+		{
+			name: "オブジェクトでない引数", rule: approvedRule(), token: approvedToken(), relation: allow,
+			in: approvedRequest("k", `[]`), reason: domain.ReasonApprovedOperationMismatch,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := approvedStore(t, now)
+			if tc.store != nil {
+				store = tc.store(t)
+			}
+			decision, err := EvaluateResourceAccess(evalTenantContext(), ResourceAccessDeps{
+				Servers: evalServer(t, tc.rule), Tokens: evalTokens{result: tc.token},
+				Relations: &evalRelations{decision: tc.relation}, Approvals: store,
+			}, tc.in, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if decision.Permitted || !slices.Equal(decision.Reasons, []string{tc.reason}) {
+				t.Fatalf("decision=%+v, want %s", decision, tc.reason)
+			}
+			got, _ := json.Marshal(decision.Remediation)
+			want, _ := json.Marshal(tc.want)
+			if !bytes.Equal(got, want) {
+				t.Fatalf("remediation=%s, want %s", got, want)
+			}
+		})
+	}
+
+	t.Run("使用済みの承認", func(t *testing.T) {
+		store := approvedStore(t, now)
+		deps := ResourceAccessDeps{
+			Servers: evalServer(t, approvedRule()), Tokens: evalTokens{result: approvedToken()},
+			Relations: &evalRelations{decision: allow}, Approvals: store,
+		}
+		if first, err := EvaluateResourceAccess(evalTenantContext(), deps, approvedRequest("first", `{"amount":100}`), now); err != nil || !first.Permitted {
+			t.Fatalf("first=%+v %v", first, err)
+		}
+		decision, err := EvaluateResourceAccess(evalTenantContext(), deps, approvedRequest("second", `{"amount":100}`), now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Equal(decision.Reasons, []string{domain.ReasonApprovalAlreadyUsed}) || decision.Remediation != nil {
+			t.Fatalf("decision=%+v", decision)
+		}
+	})
 }

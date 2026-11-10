@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -733,4 +735,64 @@ func TestDownstreamCredentialReplacesThePresentedToken(t *testing.T) {
 			t.Fatalf("status=%d evaluation=%+v", response.StatusCode, h.evaluator.last)
 		}
 	})
+}
+
+// 承認に求める明細は、チャレンジと error.data の両方で返し、上流へは送らない。符号化した値が
+// 8 KiB を超えるとヘッダーから除く。境界の直前、その値、直後を、符号化の長さから逆算して作る。
+//
+//spec:covers REQ-MCPGATEWAY-003: 明細を 403 のチャレンジと error.data で返し、8 KiB を超える明細はヘッダーから除くこと
+//spec:covers RARREM-ERROR-CODE, RARREM-REMEDIATION, RARREM-STATUS: insufficient_authorization と base64url の authorization_remediation
+func TestRemediationIsReturnedAsAChallenge(t *testing.T) {
+	// {"authorization_details":[{"type":"<pad>"}]} の符号化した長さが encodedLength になる pad を作る。
+	remediationOfEncodedLength := func(encodedLength int) json.RawMessage {
+		prefix, suffix := `{"authorization_details":[{"type":"`, `"}]}`
+		rawLength := encodedLength * 3 / 4
+		raw := prefix + strings.Repeat("a", rawLength-len(prefix)-len(suffix)) + suffix
+		if got := len(base64.RawURLEncoding.EncodeToString([]byte(raw))); got != encodedLength {
+			t.Fatalf("encoded length = %d, want %d", got, encodedLength)
+		}
+		return json.RawMessage(raw)
+	}
+	cases := []struct {
+		name          string
+		encodedLength int
+		inHeader      bool
+	}{
+		{name: "below the limit", encodedLength: 8188, inHeader: true},
+		{name: "at the limit", encodedLength: 8192, inHeader: true},
+		{name: "above the limit", encodedLength: 8196, inHeader: false},
+	}
+	for _, mode := range []bool{false, true} {
+		for _, tc := range cases {
+			t.Run(fmt.Sprintf("envoy=%t/%s", mode, tc.name), func(t *testing.T) {
+				h := newHarness(t, accepted, func(options *Options) { options.EnvoyExtAuthz = mode })
+				remediation := remediationOfEncodedLength(tc.encodedLength)
+				h.evaluator.result = evaluation_http.Result{Available: true, Reasons: []string{"approval_required"}, Remediation: remediation}
+				request := toolRequest(t, h.gateway.URL, "read")
+				if mode {
+					request.Header.Set(envoyPartialBodyHeader, "false")
+				}
+				response, body := do(t, request)
+				if response.StatusCode != http.StatusForbidden || errorCode(body) != codeForbidden || h.calls.Load() != 0 {
+					t.Fatalf("status=%d body=%v calls=%d", response.StatusCode, body, h.calls.Load())
+				}
+				challenge := response.Header.Get("WWW-Authenticate")
+				if !strings.HasPrefix(challenge, `Bearer error="insufficient_authorization"`) || !strings.Contains(challenge, `resource_metadata="`) {
+					t.Fatalf("challenge=%q", challenge)
+				}
+				encoded := base64.RawURLEncoding.EncodeToString(remediation)
+				if got := strings.Contains(challenge, `authorization_remediation="`+encoded+`"`); got != tc.inHeader {
+					t.Fatalf("remediation in header = %t, want %t", got, tc.inHeader)
+				}
+				data, _ := body["error"].(map[string]any)["data"].(map[string]any)
+				got, _ := json.Marshal(data["authorization_remediation"])
+				if string(got) != string(remediation) {
+					t.Fatalf("error.data remediation = %s", got)
+				}
+				if strings.Contains(h.auditLog(), "authorization_remediation") {
+					t.Fatalf("remediation logged: %s", h.auditLog())
+				}
+			})
+		}
+	}
 }

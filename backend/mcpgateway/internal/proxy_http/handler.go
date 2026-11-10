@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -288,6 +289,10 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 			return
 		}
 		record.outcome = outcomeDenied
+		if result.Remediation != nil {
+			h.remediate(w, message.ID, result.Remediation)
+			return
+		}
 		writeError(w, http.StatusForbidden, message.ID, codeForbidden, "forbidden", nil)
 		return
 	}
@@ -395,6 +400,21 @@ func (h *Handler) challenge(w http.ResponseWriter, id json.RawMessage, parameter
 	writeError(w, http.StatusUnauthorized, id, codeUnauthenticated, "unauthenticated", nil)
 }
 
+// maxRemediationHeaderBytes は符号化した authorization_remediation をヘッダーに載せる上限である。
+// fields は最大 64 KiB で、HTTP のヘッダーの一般的な上限を超え得る。
+const maxRemediationHeaderBytes = 8 << 10
+
+// remediate は draft-ietf-oauth-rar-metadata-remediation-00 のチャレンジで、承認に求める明細を返す。
+// 草案の 401 ではなく 403 にする。MCP では 401 が認可のやり直しを意味するためである (REQ-MCPGATEWAY-003)。
+func (h *Handler) remediate(w http.ResponseWriter, id, remediation json.RawMessage) {
+	value := `Bearer error="insufficient_authorization"`
+	if encoded := base64.RawURLEncoding.EncodeToString(remediation); len(encoded) <= maxRemediationHeaderBytes {
+		value += fmt.Sprintf(", authorization_remediation=%q", encoded)
+	}
+	w.Header().Set("WWW-Authenticate", value+fmt.Sprintf(", resource_metadata=%q", h.metadataURL))
+	writeError(w, http.StatusForbidden, id, codeForbidden, "approval is required", &errorData{AuthorizationRemediation: remediation})
+}
+
 func (h *Handler) finish(ctx context.Context, record *requestRecord) {
 	h.options.Metrics.Request(record.methodLabel, record.toolLabel, record.outcome)
 	attributes := []slog.Attr{
@@ -439,7 +459,9 @@ func presentedToken(headers http.Header) (string, bool) {
 }
 
 type errorData struct {
-	Supported []string `json:"supported"`
+	Supported []string `json:"supported,omitempty"`
+	// AuthorizationRemediation は承認に求める明細で、HTTP のヘッダーを読めない MCP クライアントにも渡す。
+	AuthorizationRemediation json.RawMessage `json:"authorization_remediation,omitempty"`
 }
 
 type errorBody struct {

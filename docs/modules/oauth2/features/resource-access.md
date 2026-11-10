@@ -18,7 +18,7 @@
 2. 要求した `resource_type` と `relation` の組が、登録の `access_rules` にある。
 3. 提示されたトークンが有効で、失効しておらず、要求先のテナントのものであり、`aud` が登録の `resource` を含む。
 4. 送信者制約付きのトークンなら、提示の証明が一致する。
-5. 規則が `authorization_detail_type` を指定するなら、トークンの `authorization_details` に一致するものがある。
+5. 規則が `authorization_detail_type` を指定するなら、トークンの `authorization_details` に一致するものがある。規則が `requires_approved_operation` を持つなら、この一致は 8 で判定する。
 6. トークンから導いた主体と行為者について、AccessControl が規則の `scopes` を含めて許可する。
 7. 規則が `condition` を持つなら、[条件の評価](#条件の評価)が拒否せず、評価でき、承認を求めるなら 8 へ進む。
 8. 規則が `requires_approved_operation` を持つか、条件が承認を求めるなら、[承認した操作の評価](#承認した操作の評価)が許可する。
@@ -72,7 +72,7 @@
 - 要求の本文が `subject`、`actor`、`tenant_id` を含むとき、OAuth2 は、その値を判定に使わない。
 - 提示されたトークンが無効、失効、期限切れ、別のテナントのものであるか、`aud` が登録の `resource` を含まない場合、OAuth2 は、200 と `decision=false`、理由 `token_rejected` だけを返し、関係の判定を要求しない。
 - 組が `access_rules` にない場合、OAuth2 は、200 と `decision=false`、理由 `operation_not_registered` を返す。
-- 規則の `authorization_detail_type` と同じ `type` で、`locations` が登録の `resource` を含み、`actions` が `relation` を含み、`identifier` が空か `resource_id` と等しい詳細がトークンにない場合、OAuth2 は、200 と `decision=false`、理由 `authorization_detail_mismatch` を返す。
+- `requires_approved_operation` を持たない規則の `authorization_detail_type` と同じ `type` で、`locations` が登録の `resource` を含み、`actions` が `relation` を含み、`identifier` が空か `resource_id` と等しい詳細がトークンにない場合、OAuth2 は、200 と `decision=false`、理由 `authorization_detail_mismatch` を返す。
 - 主体か行為者をトークンから導けない場合、OAuth2 は、200 と `decision=false`、理由 `principal_unresolved` を返す。
 - AccessControl が許可しない場合、OAuth2 は、200 と `decision=false`、その理由を返す。
 - 不許可を返すとき、OAuth2 は、トークンのクレームを返さない。
@@ -220,7 +220,7 @@ IdMagic は業務の実行結果を持たず、認可の使用記録だけで処
 - `operation_parameters` と `fields` を比べるとき、OAuth2 は、キーの順序と空白を無視し、文字列を正規化せず、どちらもないものを等しいものとして扱う。
 - 明細が一致しないか、引数が等しくない場合、OAuth2 は、200 と `decision=false`、理由 `approved_operation_mismatch` を返し、使用権を記録しない。
 - `operation_parameters` が JSON のオブジェクトでないか、キーが重複するか、絶対値が 2 の 53 乗以上の数か有効桁が 15 桁を超える数を含む場合、OAuth2 は、200 と `decision=false`、理由 `approved_operation_mismatch` を返す。
-- 規則の明細を満たすトークンが、CIBA の承認から発行されたものでないか、トークン交換で派生したものである場合、OAuth2 は、200 と `decision=false`、理由 `approval_required` を返す。
+- 規則が `requires_approved_operation` を持つ操作で、トークンが規則の明細を持たないか、CIBA の承認から発行されたものでないか、トークン交換で派生したものである場合、OAuth2 は、REQ-OAUTH2-062 の関係の判定の後に、200 と `decision=false`、理由 `approval_required` を返す。
 - 条件が承認を求めた操作で、トークンが CIBA の承認から発行されたものでないか、`approval_detail_type` の一致する明細を持たない場合、OAuth2 は、200 と `decision=false`、理由 `approval_required` を返す。
 - 条件が承認を求めなかった操作を許可するとき、OAuth2 は、トークンが持つ承認の使用権を記録しない。
 - 承認リクエストの `expires_at` を過ぎたか、承認リクエストが残っていないか、トークンの主体とクライアントが承認リクエストと異なる場合、OAuth2 は、200 と `decision=false`、理由 `approval_expired` を返す。
@@ -232,6 +232,13 @@ IdMagic は業務の実行結果を持たず、認可の使用記録だけで処
 - `requires_approved_operation` を持つ規則で `operation_key` がないか、`operation_key` が 256 文字を超えるか制御文字を含むか、`operation_parameters` が 64 KiB を超える場合、OAuth2 は、400 と `invalid_request` で拒否する。
 - 条件が承認を求め、トークンが一致する明細の承認を持つ操作で `operation_key` がない場合、OAuth2 は、400 と `invalid_request` で拒否する。
 - 使用権の記録を読み書きできない場合、OAuth2 は、503 と `temporarily_unavailable` を返し、許可しない。
+- 理由 `approval_required`、`approval_expired`、`approved_operation_mismatch` で不許可を返すとき、OAuth2 は、`authorization_remediation` の `authorization_details` に、`type` が承認の明細の種類、`locations` が登録の `resource` だけ、`actions` が `relation` だけ、`identifier` が `resource_id`、`fields` が `operation_parameters` の明細を返す。
+- 条件が承認を求め、規則が `authorization_detail_type` を持つ操作でその応答を返すとき、OAuth2 は、規則の種類の明細を `fields` なしで加える。
+- `operation_parameters` がない操作でその応答を返すとき、OAuth2 は、明細に `fields` を含めない。
+- `operation_parameters` が JSON のオブジェクトとして読めないか、理由が `approval_already_used` である場合、OAuth2 は、`authorization_remediation` を返さない。
+- **判断**：使用済みの承認には明細を示さない。結果を確かめずに新しい承認で再実行させないためである。
+- **判断**：明細は要求と登録の写しに限る。トークンのクレームと承認リクエストの内容を返さず、REQ-OAUTH2-062 の不許可の応答の制約と両立させる。
+- **判断**：明細のないトークンを、関係の判定の後に `approval_required` とする。Agent が承認の不足と権限の不足を区別でき、権限のない呼び出し元には承認の要否を知らせない。
 - **判断**：短い予約と確定を採らない。予約の期限が切れた後の再試行は、結果の不明な一回目と二重に実行され得る。同じ鍵の再送だけを許し、呼び出し側が同じ実行の重複を排除するか、MCP ゲートウェイのようにその許可を再送へ使わない。
 - **判断**：条件の承認の明細の種類を規則の `authorization_detail_type` と分ける。後者は常にトークンへ求めるので、流用すると閾値以下の自動許可が成り立たない。
 - **判断**：使用の期限をトークンの期限で延ばさない。人が判断した有効期間を超えて操作を実行させないためである。

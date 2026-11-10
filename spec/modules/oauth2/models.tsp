@@ -1204,6 +1204,15 @@ model ResourceAccessEvaluationResponse {
   approved_operation?: ApprovedOperationUse;
   @doc("`token_exchange_resource` への一回限りの交換の許可。60 秒で失効する。")
   token_exchange_grant?: string;
+  @doc("承認がないか使えないことで不許可にしたときだけ返す、承認に求める明細。")
+  authorization_remediation?: AuthorizationRemediation;
+}
+
+
+@doc("draft-ietf-oauth-rar-metadata-remediation-00 の `authorization_remediation` を符号化する前の JSON。要求と登録の写しであり、トークンのクレームを含まない。承認したトークンは一回限りなので `authorization_reference` を持たない。")
+model AuthorizationRemediation {
+  @doc("RAR の要求にそのまま載せる明細。")
+  authorization_details: AuthorizationDetail[];
 }
 
 

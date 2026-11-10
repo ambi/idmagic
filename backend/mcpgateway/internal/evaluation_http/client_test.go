@@ -12,7 +12,7 @@ import (
 
 // 判断があると読めるのは decision を持つ 200 だけである。
 //
-//spec:covers REQ-MCPGATEWAY-003, REQ-MCPGATEWAY-013: 200 以外と解釈できない承認の応答を判断なしにし、429 の Retry-After を返すこと
+//spec:covers REQ-MCPGATEWAY-003, REQ-MCPGATEWAY-013: 200 以外と解釈できない承認の応答と明細を判断なしにし、429 の Retry-After を返すこと
 func TestEvaluatePermitsOnlyOnAnExplicitDecision(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -33,6 +33,10 @@ func TestEvaluatePermitsOnlyOnAnExplicitDecision(t *testing.T) {
 		{name: "approval without replay flag", status: 200, body: `{"decision":true,"approved_operation":{"approval_request_id":"a1","operation_digest":"` + strings.Repeat("a", 64) + `"}}`},
 		{name: "approval without id", status: 200, body: `{"decision":true,"approved_operation":{"operation_digest":"` + strings.Repeat("a", 64) + `","replayed":false}}`},
 		{name: "approval with invalid digest", status: 200, body: `{"decision":true,"approved_operation":{"approval_request_id":"a1","operation_digest":"bad","replayed":false}}`},
+		{name: "remediation", status: 200, body: `{"decision":false,"authorization_remediation":{"authorization_details":[{"type":"payment"}]}}`, available: true},
+		{name: "remediation without details", status: 200, body: `{"decision":false,"authorization_remediation":{}}`},
+		{name: "remediation with non-array details", status: 200, body: `{"decision":false,"authorization_remediation":{"authorization_details":{"type":"payment"}}}`},
+		{name: "remediation that is not an object", status: 200, body: `{"decision":false,"authorization_remediation":"x"}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

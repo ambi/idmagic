@@ -3,23 +3,29 @@ package server_http_test
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/ambi/idmagic/backend/mcpgateway"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type approvalGatewayAudit struct {
@@ -133,6 +139,12 @@ func (f *mcpApprovalFixture) gateway(t *testing.T) *httptest.Server {
 
 func (f *mcpApprovalFixture) call(t *testing.T, gateway *httptest.Server, token, tool, parameters string, id int) (int, string) {
 	t.Helper()
+	status, _, body := f.callWithHeader(t, gateway, token, tool, parameters, id)
+	return status, body
+}
+
+func (f *mcpApprovalFixture) callWithHeader(t *testing.T, gateway *httptest.Server, token, tool, parameters string, id int) (int, http.Header, string) {
+	t.Helper()
 	body := fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"tools/call","params":{"name":%q,"arguments":%s,"_meta":{"io.modelcontextprotocol/protocolVersion":%q,"io.modelcontextprotocol/clientCapabilities":{}}}}`, id, tool, parameters, mcpProtocolVersion)
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, gateway.URL+"/", strings.NewReader(body))
 	if err != nil {
@@ -153,7 +165,7 @@ func (f *mcpApprovalFixture) call(t *testing.T, gateway *httptest.Server, token,
 	if err != nil {
 		t.Fatal(err)
 	}
-	return response.StatusCode, string(raw)
+	return response.StatusCode, response.Header, string(raw)
 }
 
 func requireApprovalGatewayError(t *testing.T, status int, body string, wantStatus, wantCode int) {
@@ -310,5 +322,115 @@ func TestMcpGatewayClaimsApprovalOnlyWhenTheConditionRequiresIt(t *testing.T) {
 	requireApprovalGatewayError(t, status, body, http.StatusForbidden, -32004)
 	if f.effects.Load() != 3 {
 		t.Fatalf("effects=%d", f.effects.Load())
+	}
+}
+
+// remediationChallenge は 403 の応答から、チャレンジのヘッダーと JSON-RPC の error.data の明細を読む。
+// ヘッダーの形は draft-ietf-oauth-rar-metadata-remediation-00 の §4 の例に従って独立に解析する。
+func remediationChallenge(t *testing.T, header http.Header, body string) (headerJSON, dataJSON string) {
+	t.Helper()
+	challenge := header.Get("WWW-Authenticate")
+	if !strings.HasPrefix(challenge, "Bearer ") || !strings.Contains(challenge, `error="insufficient_authorization"`) ||
+		!strings.Contains(challenge, `resource_metadata="`) {
+		t.Fatalf("challenge=%q", challenge)
+	}
+	_, after, found := strings.Cut(challenge, "authorization_remediation=")
+	if !found {
+		t.Fatalf("challenge without authorization_remediation: %q", challenge)
+	}
+	encoded, _, _ := strings.Cut(strings.Trim(after, `"`), `"`)
+	encoded, _, _ = strings.Cut(encoded, ",")
+	decoded, err := base64.RawURLEncoding.DecodeString(strings.Trim(encoded, `" `))
+	if err != nil {
+		t.Fatalf("authorization_remediation is not base64url: %q: %v", encoded, err)
+	}
+	var envelope struct {
+		Error struct {
+			Code int `json:"code"`
+			Data struct {
+				AuthorizationRemediation json.RawMessage `json:"authorization_remediation"`
+			} `json:"data"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(body), &envelope); err != nil || envelope.Error.Code != -32000 {
+		t.Fatalf("body=%s: %v", body, err)
+	}
+	return string(decoded), string(envelope.Error.Data.AuthorizationRemediation)
+}
+
+// 承認のない Agent が、ゲートウェイの示す明細をそのまま CIBA で要求し、本人の承認で得たトークンで
+// 同じ呼び出しを一回だけ実行できる。期待する明細は登録と要求から独立に書く。
+//
+//spec:covers REQ-OAUTH2-065, REQ-MCPGATEWAY-003: 承認の不足に明細を示し、その明細の承認で一回だけ実行すること
+//spec:covers RARREM-ERROR-CODE, RARREM-REMEDIATION, RARREM-STATUS, RARREM-REFERENCE: 403 の insufficient_authorization と、authorization_reference のない明細
+func TestMcpGatewayGuidesAnAgentFromRemediationToOneApprovedCall(t *testing.T) {
+	f := newMcpApprovalFixture(t)
+	gateway := f.gateway(t)
+	ordinaryToken := f.resourceToken(t, f.clientID, agentRevocationResource, nil)
+
+	status, header, body := f.callWithHeader(t, gateway, ordinaryToken, "execute", `{"currency":"JPY","amount":100}`, 1)
+	if status != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s", status, body)
+	}
+	headerJSON, dataJSON := remediationChallenge(t, header, body)
+	want := `{"authorization_details":[{"type":"payment","locations":["` + agentRevocationResource + `"],"actions":["viewer"],"identifier":"d1","fields":{"amount":100,"currency":"JPY"}}]}`
+	for name, got := range map[string]string{"header": headerJSON, "data": dataJSON} {
+		var gotValue, wantValue any
+		if err := json.Unmarshal([]byte(got), &gotValue); err != nil {
+			t.Fatalf("%s: %s: %v", name, got, err)
+		}
+		_ = json.Unmarshal([]byte(want), &wantValue)
+		if fmt.Sprint(gotValue) != fmt.Sprint(wantValue) {
+			t.Fatalf("%s remediation=%s, want %s", name, got, want)
+		}
+		if strings.Contains(got, "authorization_reference") {
+			t.Fatalf("%s carries a reference for a single-use approval: %s", name, got)
+		}
+	}
+	if f.effects.Load() != 0 {
+		t.Fatalf("executed without approval: %d", f.effects.Load())
+	}
+
+	// Agent は示された明細を書き換えずに CIBA で要求する。
+	var remediation struct {
+		AuthorizationDetails json.RawMessage `json:"authorization_details"`
+	}
+	if err := json.Unmarshal([]byte(headerJSON), &remediation); err != nil {
+		t.Fatal(err)
+	}
+	user, err := f.s.Users.FindBySub(context.Background(), stack.UserID)
+	if err != nil || user == nil {
+		t.Fatalf("user: %v %v", user, err)
+	}
+	status, started := f.post(t, "bc-authorize", f.clientID, url.Values{
+		"login_hint": {user.PreferredUsername}, "scope": {"openid tools:read"},
+		"authorization_details": {string(remediation.AuthorizationDetails)},
+	})
+	authReqID, _ := started["auth_req_id"].(string)
+	if status != http.StatusOK || authReqID == "" {
+		t.Fatalf("bc-authorize status=%d body=%v", status, started)
+	}
+	ctx := f.tenantContext()
+	rec, err := f.s.ApprovalRequests.FindByAuthReqIDHash(ctx, oauthdomain.HashAuthReqID(authReqID))
+	if err != nil || rec == nil {
+		t.Fatalf("approval: %v %v", rec, err)
+	}
+	if decided, err := f.s.ApprovalRequests.Decide(ctx, rec.ID, stack.UserID, spec.ApprovalEventApprove, time.Now().UTC()); err != nil || decided == nil {
+		t.Fatalf("decide: %v %v", decided, err)
+	}
+	approvedToken := f.exchange(t, authReqID)
+
+	status, body = f.call(t, gateway, approvedToken, "execute", `{"currency":"JPY","amount":100}`, 2)
+	if status != http.StatusOK || !strings.Contains(body, "executed") || f.effects.Load() != 1 {
+		t.Fatalf("approved call: status=%d body=%s effects=%d", status, body, f.effects.Load())
+	}
+	status, body = f.call(t, gateway, approvedToken, "execute", `{"currency":"JPY","amount":100}`, 3)
+	requireApprovalGatewayError(t, status, body, http.StatusForbidden, -32004)
+	if f.effects.Load() != 1 {
+		t.Fatalf("effects=%d", f.effects.Load())
+	}
+	f.inflight.Wait()
+	if strings.Contains(f.audit.String(), "authorization_remediation") || strings.Contains(f.audit.String(), `"currency"`) {
+		t.Fatalf("remediation logged: %s", f.audit.String())
 	}
 }

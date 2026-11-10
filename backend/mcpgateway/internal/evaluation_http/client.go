@@ -3,6 +3,7 @@
 package evaluation_http
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -43,6 +44,8 @@ type Result struct {
 	ApprovedOperation *ApprovedOperationUse
 	// TokenExchangeGrant は下流宛の交換の根拠で、ログへ出さない。
 	TokenExchangeGrant string
+	// Remediation は承認に求める明細の JSON のオブジェクトで、MCP クライアントへ返し、ログへ出さない。
+	Remediation json.RawMessage
 }
 
 // ApprovedOperationUse は転送前に取得した承認の使用権で、業務の成功を表さない。
@@ -114,6 +117,7 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 			OperationDigest   string `json:"operation_digest"`
 			Replayed          *bool  `json:"replayed"`
 		} `json:"approved_operation"`
+		AuthorizationRemediation json.RawMessage `json:"authorization_remediation"`
 	}
 	if err := json.NewDecoder(io.LimitReader(response.Body, maxResponseBytes)).Decode(&body); err != nil {
 		return result, fmt.Errorf("evaluation response: %w", err)
@@ -131,7 +135,30 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 			Replayed: *approval.Replayed,
 		}
 	}
+	if len(body.AuthorizationRemediation) > 0 {
+		remediation, err := compactRemediation(body.AuthorizationRemediation)
+		if err != nil {
+			return result, err
+		}
+		result.Remediation = remediation
+	}
 	result.Available, result.Permitted, result.Reasons = true, *body.Decision, body.Reasons
 	result.TokenExchangeGrant = body.TokenExchangeGrant
 	return result, nil
+}
+
+// compactRemediation は authorization_details に配列を持つ JSON のオブジェクトだけを受け、
+// MCP クライアントへ渡す前に空白を除く。形の誤った値は解釈できない応答として扱う。
+func compactRemediation(raw json.RawMessage) (json.RawMessage, error) {
+	var shape struct {
+		AuthorizationDetails []json.RawMessage `json:"authorization_details"`
+	}
+	if err := json.Unmarshal(raw, &shape); err != nil || shape.AuthorizationDetails == nil {
+		return nil, fmt.Errorf("evaluation response has an invalid authorization_remediation")
+	}
+	var compacted bytes.Buffer
+	if err := json.Compact(&compacted, raw); err != nil {
+		return nil, fmt.Errorf("evaluation response has an invalid authorization_remediation")
+	}
+	return compacted.Bytes(), nil
 }

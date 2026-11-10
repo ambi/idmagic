@@ -92,6 +92,9 @@ type ResourceAccessDecision struct {
 	ApprovedOperation    *ApprovedOperationUse
 	// TokenExchangeGrant は宛先への一回限りの交換の許可で、ログと監査へ出さない。
 	TokenExchangeGrant string
+	// Remediation は承認がないか使えないことで拒否したときだけ持つ、承認に求める明細である。
+	// 要求と登録の写しであり、トークンのクレームを含まない (REQ-OAUTH2-065)。
+	Remediation []spec.AuthorizationDetail
 }
 
 // EvaluateResourceAccess は登録、規則、トークン、提示の証明、関係の判定の論理積で許可する。
@@ -202,7 +205,10 @@ func evaluateForServer(
 	if !registered {
 		return denyResourceAccess(domain.ReasonOperationNotRegistered), audit, nil
 	}
-	if !rule.PermitsDetails(token.AuthorizationDetails, server.Resource, in.ResourceID) {
+	// 承認を求める規則では、明細のないトークンを関係の判定の後に承認の不足として断る。
+	// 権限のない呼び出し元に承認の要否を知らせず、権限のある Agent には承認の要求へ導く。
+	detailsPresent := rule.PermitsDetails(token.AuthorizationDetails, server.Resource, in.ResourceID)
+	if !detailsPresent && !rule.RequiresApprovedOperation {
 		return denyResourceAccess(domain.ReasonAuthorizationDetailMismatch), audit, nil
 	}
 	if !resolved {
@@ -235,7 +241,7 @@ func evaluateForServer(
 			approvalDetailType = rule.Condition.ApprovalDetailType
 			detail := domain.ResourceAccessRule{AuthorizationDetailType: approvalDetailType, Relation: in.Relation}
 			if token.ApprovalRequestID == "" || !detail.PermitsDetails(token.AuthorizationDetails, server.Resource, in.ResourceID) {
-				return denyResourceAccess(domain.ReasonApprovalRequired), audit, nil
+				return denyApproval(server, rule, approvalDetailType, in, domain.ReasonApprovalRequired), audit, nil
 			}
 			// 規則だけでは鍵が要るか決まらないので、承認の経路へ進むときに確かめる。
 			if in.OperationKey == "" {
@@ -249,12 +255,16 @@ func evaluateForServer(
 	}
 	var approval *matchedApproval
 	if approvalDetailType != "" {
+		// 条件の拒否と交換の不許可を優先し、その後で明細のないトークンを承認の不足とする。
+		if !detailsPresent {
+			return denyApproval(server, rule, approvalDetailType, in, domain.ReasonApprovalRequired), audit, nil
+		}
 		matched, reason, err := matchApprovedOperation(ctx, deps, server, approvalDetailType, token, in, now)
 		if err != nil {
 			return ResourceAccessDecision{}, audit, err
 		}
 		if reason != "" {
-			return denyResourceAccess(reason), audit, nil
+			return denyApproval(server, rule, approvalDetailType, in, reason), audit, nil
 		}
 		approval = matched
 	}
@@ -275,7 +285,7 @@ func evaluateForServer(
 			return ResourceAccessDecision{}, audit, err
 		}
 		if reason != "" {
-			return denyResourceAccess(reason), audit, nil
+			return denyApproval(server, rule, approvalDetailType, in, reason), audit, nil
 		}
 		approved = use
 	}
@@ -455,6 +465,51 @@ func conditionInput(token *ports.IntrospectionResult, in ResourceAccessRequest, 
 
 func denyResourceAccess(reason string) ResourceAccessDecision {
 	return ResourceAccessDecision{Reasons: []string{reason}}
+}
+
+// denyApproval は承認の経路の不許可で、承認がないか使えないときだけ承認に求める明細を添える。
+// 使用済みの承認には添えない。結果を確かめずに新しい承認で再実行させないためである (REQ-OAUTH2-065)。
+func denyApproval(
+	server *domain.McpResourceServer, rule domain.ResourceAccessRule, approvalDetailType string, in ResourceAccessRequest, reason string,
+) ResourceAccessDecision {
+	decision := denyResourceAccess(reason)
+	switch reason {
+	case domain.ReasonApprovalRequired, domain.ReasonApprovalExpired, domain.ReasonApprovedOperationMismatch:
+		decision.Remediation = approvalRemediation(server, rule, approvalDetailType, in)
+	}
+	return decision
+}
+
+// approvalRemediation は要求と登録の写しから、承認に求める明細を組み立てる。照合と同じ規則で
+// 読めない引数には明細を示さず、nil を返す。
+func approvalRemediation(
+	server *domain.McpResourceServer, rule domain.ResourceAccessRule, approvalDetailType string, in ResourceAccessRequest,
+) []spec.AuthorizationDetail {
+	var fields map[string]any
+	if strings.TrimSpace(in.OperationParameters) != "" {
+		decoded, err := approvaldomain.DecodeStrictJSONObject(in.OperationParameters)
+		if err != nil {
+			return nil
+		}
+		// 照合 (CanonicalizeOperationParameters) と同じく、数の範囲と有効桁を確かめる。
+		if _, err := approvaldomain.DigestOperationFields(decoded); err != nil {
+			return nil
+		}
+		fields = decoded
+	}
+	detail := func(detailType string) spec.AuthorizationDetail {
+		return spec.AuthorizationDetail{
+			Type: detailType, Locations: []string{server.Resource}, Actions: []string{in.Relation}, Identifier: in.ResourceID,
+		}
+	}
+	var details []spec.AuthorizationDetail
+	// 条件が承認を求めた操作では、承認したトークンも規則の明細を満たす必要がある。
+	if rule.AuthorizationDetailType != "" && rule.AuthorizationDetailType != approvalDetailType {
+		details = append(details, detail(rule.AuthorizationDetailType))
+	}
+	approval := detail(approvalDetailType)
+	approval.Fields = fields
+	return append(details, approval)
 }
 
 // senderProofHolds は送信者制約に応じた提示の証明を確かめる。制約のないトークンでは、送られた

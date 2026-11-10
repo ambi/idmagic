@@ -105,10 +105,13 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - `Authorization` が一つでないか、`Bearer` か `DPoP` のトークンを持たないか、トークンがカンマを含む場合、McpGateway は、401、`resource_metadata` を持つ `WWW-Authenticate`、JSON-RPC の `-32001` を返し、評価を呼ばず、上流へ送らない。
 - `DPoP` のヘッダーが複数あるか、値がカンマを含む場合、McpGateway は、401、`error="invalid_token"` を持つ `WWW-Authenticate`、JSON-RPC の `-32001` を返し、評価を呼ばず、上流へ送らない。
 - 理由が `token_rejected` か `sender_proof_invalid` の不許可を受けたとき、McpGateway は、401、`error="invalid_token"` を持つ `WWW-Authenticate`、JSON-RPC の `-32001` を返し、上流へ送らない。
+- `authorization_remediation` を伴う不許可を受けたとき、McpGateway は、403、`error="insufficient_authorization"` と base64url で符号化した `authorization_remediation` と `resource_metadata` を持つ `WWW-Authenticate`、JSON-RPC の `-32000` と、同じ明細の JSON の `error.data.authorization_remediation` を返し、上流へ送らない。
+- 符号化した `authorization_remediation` が 8 KiB を超える場合、McpGateway は、`WWW-Authenticate` から `authorization_remediation` を除き、`error.data` だけで明細を返す。
+- `authorization_remediation` が、`authorization_details` に配列を持つ JSON のオブジェクトでない場合、McpGateway は、解釈できない評価の応答として扱う。
 - それ以外の不許可を受けたとき、McpGateway は、403 と JSON-RPC の `-32000` を返し、上流へ送らない。
 - 評価の通信が失敗するか、200 以外の応答か、解釈できない応答を受けた場合、McpGateway は、503 と JSON-RPC の `-32002` を返し、上流へ送らない。
 - 評価が 429 と `Retry-After` を返した場合、McpGateway は、同じ `Retry-After` を 503 に付ける。
-- 不許可と評価不能で応答するとき、McpGateway は、承認の使用済みを表す REQ-MCPGATEWAY-013 の応答を除き、評価の理由を MCP クライアントへ返さない。
+- 不許可と評価不能で応答するとき、McpGateway は、承認の使用済みを表す REQ-MCPGATEWAY-013 の応答と、承認に求める明細を除き、評価の理由を MCP クライアントへ返さない。
 - `resource_id_argument` の値がないか文字列でない場合、McpGateway は、403 と JSON-RPC の `-32000` を返し、評価を呼ばず、上流へ送らない。
 - `attribute_arguments` を持つツールの `tools/call` を評価するとき、McpGateway は、名指したキーのうち `arguments` にあるものだけを値を変えずに持つ JSON オブジェクトを `attributes` に載せ、どれもなければ空のオブジェクトを載せる。
 - `attribute_arguments` を持たない操作を評価するとき、McpGateway は、`attributes` を送らない。
@@ -117,7 +120,9 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - ツール名が 129 文字以上の宣言のない `tools/call` を受けたとき、McpGateway は、403 と JSON-RPC の `-32000` を返し、評価を呼ばず、上流へ送らない。
 - **判断**：カンマを複数の値として扱う。トークンと DPoP の証明はカンマを含まず、Envoy は重複したヘッダーを連結して渡すので、値だけでは一つか複数かを区別できない。
 - **判断**：`tools/list` と `server/discover` も評価する。未認証の呼び出しへ 401 を返すことが MCP の認可の入口であり、公開の例外を設けると設定の誤りが素通しになる。
-- **判断**：通常の拒否の理由を返さない。別の資源宛てのトークンの有効性や権限の構成を呼び出し元へ知らせない。承認の使用済みは、結果を確認せずに再実行することを防ぐため区別する。
+- **判断**：通常の拒否の理由を返さない。別の資源宛てのトークンの有効性や権限の構成を呼び出し元へ知らせない。承認の使用済みは、結果を確認せずに再実行することを防ぐため区別する。承認に求める明細は、IdMagic が関係の判定を許可した後にだけ返すので、権限のない呼び出し元には届かない。
+- **判断**：明細の不足を 401 ではなく 403 で返す。採用する草案は 401 を使うが、MCP は無効なトークンに 401、実行時の権限の不足に 403 を求め、MCP の SDK は 401 で認可をやり直す。
+- **判断**：明細を `error.data` にも載せる。MCP の SDK が HTTP のヘッダーを呼び出し元へ渡さない場合も Agent が読め、ヘッダーの大きさの上限を超える `fields` も伝えられる。
 - **判断**：条件に渡す引数を名指す。承認の照合用の `operation_parameters` は全引数を持つが、`attributes` の入力は上流が引数を足しても自動で広がらない。
 - **判断**：名指したキーの不足をゲートウェイで拒否しない。属性を読む条件は IdMagic で評価不能となり拒否されるので、判定を一か所に保つ。
 - **判断**：上限を超える `attributes` を評価せずに拒否する。IdMagic は 400 で拒否するので、評価不能の 503 として成功しない再試行を促さない。

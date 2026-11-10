@@ -27,6 +27,14 @@ type resourceAccessResponse struct {
 	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
 	ApprovedOperation    *approvedOperationResponse `json:"approved_operation,omitempty"`
 	TokenExchangeGrant   string                     `json:"token_exchange_grant,omitempty"`
+	// AuthorizationRemediation は承認に求める明細で、承認がないか使えない不許可だけが持つ。
+	AuthorizationRemediation *authorizationRemediationResponse `json:"authorization_remediation,omitempty"`
+}
+
+// authorizationRemediationResponse は draft-ietf-oauth-rar-metadata-remediation-00 の
+// authorization_remediation を符号化する前の形である。一回限りの承認なので authorization_reference を持たない。
+type authorizationRemediationResponse struct {
+	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details"`
 }
 
 type approvedOperationResponse struct {
@@ -122,6 +130,9 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 		response.ApprovedOperation = &approvedOperationResponse{
 			ApprovalRequestID: use.ApprovalRequestID, OperationDigest: use.OperationDigest, Replayed: use.Replayed,
 		}
+	}
+	if len(decision.Remediation) > 0 {
+		response.AuthorizationRemediation = &authorizationRemediationResponse{AuthorizationDetails: decision.Remediation}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, response)
 }
