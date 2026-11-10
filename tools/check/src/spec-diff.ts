@@ -114,8 +114,15 @@ function deprecatedDeclarations(path: string, source: string): Set<string> {
 function standardRows(path: string, source: string): Map<string, string> {
   const rows = new Map<string, string>()
   let cells: string[] | undefined
+  // 見出し行の `ID` も ID の形に合うので、本体の行だけを読む。既存の文書では見出しが前後で
+  // 同じなので差分に現れないが、新しい文書では追加の要件に見えてしまう。
+  let inBody = false
   for (const token of markdown.parse(withoutStandardsOverview(source), {})) {
-    if (token.type === 'tr_open') {
+    if (token.type === 'tbody_open') {
+      inBody = true
+    } else if (token.type === 'tbody_close') {
+      inBody = false
+    } else if (token.type === 'tr_open' && inBody) {
       cells = []
     } else if (token.type === 'inline' && cells) {
       cells.push(token.content.trim().replaceAll(/\s+/g, ' '))

@@ -489,6 +489,26 @@ describe('diffSpecifications', () => {
     )
   })
 
+  it('does not read the header row of a new standards document as a requirement', () => {
+    const head: Snapshot = new Map([
+      [
+        'docs/modules/demo/standards.md',
+        [
+          '# Standards',
+          '',
+          '## Demo Protocol',
+          '',
+          '| ID | Adoption | Strength | Statement |',
+          '| --- | --- | --- | --- |',
+          '| RFC-DEMO-ONE | required | MUST | The first behavior. |',
+        ].join('\n'),
+      ],
+    ])
+
+    const diff = diffSpecifications(new Map(), head)
+    expect(diff.addedStandards).toEqual(['docs/modules/demo/standards.md#RFC-DEMO-ONE'])
+  })
+
   it('does not read the overview of standards and the product as standards rows', () => {
     const standards = (overview: string): Snapshot =>
       new Map([
