@@ -4,8 +4,8 @@ authors: [tn]
 risk: high
 reversibility: irreversible
 created_at: 2026-11-07
-priority: p3
-depends_on: [wi-77559-verify-jwt-svid-against-spiffe-rules]
+priority: p2
+depends_on: [wi-77559-verify-jwt-svid-against-spiffe-rules, wi-25266-authenticate-agent-clients-with-jwt-svid]
 change_kind: feature
 affected_spec:
   - { path: docs/modules/workloadidentity/features/attestation-exchange.md, requirement: REQ-WORKLOADIDENTITY-001 }
@@ -27,10 +27,12 @@ X.509-SVID は TLS の鍵の所持を証明するので、JWT-SVID より再生�
 
 ## 対象範囲
 
-- 信頼設定に、X.509 のトラストバンドル（ルート証明書の集合）を登録できるようにする。
-- トークンエンドポイントで、クライアント証明書の X.509-SVID を検証する。URI SAN の SPIFFE ID がちょうど一つで、トラストドメインが信頼設定と一致することを求める。
-- 検証した SPIFFE ID を関連付けのパターンと照合し、対応先の Agent を決める。
-- 発行するアクセストークンを証明書のサムプリントに束縛するか（`cnf.x5t#S256`）を決める。
+- [draft-ietf-oauth-spiffe-client-auth-03](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-spiffe-client-auth-03) の 3.3 節に従い、クライアントの認証方式 `spiffe_x509` を足す。
+- 信頼設定に、X.509 のトラストバンドル（ルート証明書の集合）を登録できるようにする。SPIFFE バンドルの `use` が `x509-svid` の鍵（`x5c`）も読む。
+- トークンエンドポイントで、クライアント証明書を X.509-SVID として検証する。URI SAN の SPIFFE ID がちょうど一つであることを求め、パスの検証には、その SPIFFE ID のトラストドメインの信頼設定のトラストアンカーだけを使う。ほかのトラストドメインとシステムのトラストストアは使わない。
+- 検証した SPIFFE ID を、wi-25266 と同じ方法（関連付けで Agent を決め、`client_id` を束縛先と照合する）でクライアントに対応付ける。
+- 発行するアクセストークンを、証明書のサムプリントに束縛する（`cnf.x5t#S256`、RFC8705-CERT-BOUND）。
+- Authorization Server Metadata に `spiffe_x509` を載せる。
 
 ## 対象外
 
@@ -39,15 +41,16 @@ X.509-SVID は TLS の鍵の所持を証明するので、JWT-SVID より再生�
 
 ## 設計
 
-着手前に決める問いが多いため、ここでは問いを並べる。
+提示の経路は、ドラフトの 3.3 節が定める mTLS によるクライアント認証（`spiffe_x509`）に決める。
+Token Exchange の `subject_token` に証明書を載せる独自の `subject_token_type` は、標準の外になるため採らない。
+既存の `tls_client_auth` の Subject DN の照合に URI SAN の照合（RFC 8705 の `tls_client_auth_san_uri`）を足す案も、SPIFFE のトラストドメインごとのトラストアンカーの制約を表せないため採らない。
+
+着手前に決める問いは次のとおりである。
 
 | 問い | 候補 |
 | --- | --- |
-| 提示の経路 | (a) RFC 8705 の `tls_client_auth` 相当でトークンエンドポイントへ直接 mTLS する。(b) Token Exchange の `subject_token` に証明書を載せる独自の `subject_token_type` を使う |
-| TLS の終端 | IdMagic が TLS を終端するか、前段のロードバランサーが終端して証明書をヘッダーで渡すか。後者ではヘッダーの信頼の境界を定める必要がある |
+| TLS の終端 | IdMagic が TLS を終端するか、前段のロードバランサーが終端して証明書をヘッダー（現在の `X-Client-Certificate`）で渡すか。後者ではヘッダーの信頼の境界を定める必要がある |
 | 失効 | X.509-SVID は短命なので失効の確認をしない、という SPIFFE の前提を採るか |
-
-(b) は標準の外になるため、(a) を推す。
 TLS の終端は配備の構成に依存するため、[配備の設計](../../docs/design/README.md)と合わせて決める。
 この作業はモジュール間の依存（`OAuth2` のクライアント認証から `WorkloadIdentity` への依存）を足すため、着手時に[境界を選ぶ判断手順](../../docs/design/application/design-guidelines.md#境界を選ぶ判断手順)の記録をここに書く。
 
@@ -59,7 +62,7 @@ TLS の終端は配備の構成に依存するため、[配備の設計](../../d
 
 ## タスク
 
-- [ ] T001 [Design] 提示の経路、TLS の終端、失効の扱いを決め、境界の判断を記録する。
+- [ ] T001 [Design] TLS の終端と失効の扱いを決め、境界の判断を記録する。
 - [ ] T002 [Spec] 仕様、TypeSpec、OAuth2 の標準の表を更新する。
 - [ ] T003 [Acceptance] X.509-SVID でアクセストークンを得る経路を RED にする。
 - [ ] T004 [App] 証明書の検証と Agent の特定を実装する。
