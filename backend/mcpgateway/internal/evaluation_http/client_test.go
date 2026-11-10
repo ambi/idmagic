@@ -1,8 +1,10 @@
 package evaluation_http
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
@@ -10,7 +12,7 @@ import (
 
 // 判断があると読めるのは decision を持つ 200 だけである。
 //
-//spec:covers REQ-MCPGATEWAY-003: 200 以外と解釈できない応答を判断なしにし、429 の Retry-After を返すこと
+//spec:covers REQ-MCPGATEWAY-003, REQ-MCPGATEWAY-013: 200 以外と解釈できない承認の応答を判断なしにし、429 の Retry-After を返すこと
 func TestEvaluatePermitsOnlyOnAnExplicitDecision(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -28,6 +30,9 @@ func TestEvaluatePermitsOnlyOnAnExplicitDecision(t *testing.T) {
 		{name: "unbound", status: 403, body: `{"decision":true}`},
 		{name: "redirect", status: 302, body: `{"decision":true}`},
 		{name: "rate limited", status: 429, body: `{"decision":true}`, retry: "9"},
+		{name: "approval without replay flag", status: 200, body: `{"decision":true,"approved_operation":{"approval_request_id":"a1","operation_digest":"` + strings.Repeat("a", 64) + `"}}`},
+		{name: "approval without id", status: 200, body: `{"decision":true,"approved_operation":{"operation_digest":"` + strings.Repeat("a", 64) + `","replayed":false}}`},
+		{name: "approval with invalid digest", status: 200, body: `{"decision":true,"approved_operation":{"approval_request_id":"a1","operation_digest":"bad","replayed":false}}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -79,5 +84,27 @@ func TestEvaluateSendsAttributesOnlyWhenSelected(t *testing.T) {
 			t.Fatal(err)
 		}
 		server.Close()
+	}
+}
+
+//spec:covers REQ-MCPGATEWAY-013: 実行の鍵と引数を form で送り、承認の相関と明示した再送状態を読むこと
+func TestEvaluateSendsTheOperationAndReadsApprovalUse(t *testing.T) {
+	const parameters = `{"amount":100,"currency":"JPY"}`
+	for _, replayed := range []bool{false, true} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.PostFormValue("operation_key") != "attempt-1" || r.PostFormValue("operation_parameters") != parameters {
+				t.Errorf("form=%v", r.PostForm)
+			}
+			_, _ = fmt.Fprintf(w, `{"decision":true,"approved_operation":{"approval_request_id":"approval-1","operation_digest":%q,"replayed":%t}}`, strings.Repeat("a", 64), replayed)
+		}))
+		client := Client{EvaluateURL: server.URL, HTTPClient: server.Client()}
+		result, err := client.Evaluate(t.Context(), Request{OperationKey: "attempt-1", OperationParameters: parameters})
+		server.Close()
+		if err != nil || !result.Available || !result.Permitted || result.ApprovedOperation == nil {
+			t.Fatalf("result=%+v err=%v", result, err)
+		}
+		if use := result.ApprovedOperation; use.ApprovalRequestID != "approval-1" || use.OperationDigest != strings.Repeat("a", 64) || use.Replayed != replayed {
+			t.Fatalf("approval=%+v", use)
+		}
 	}
 }

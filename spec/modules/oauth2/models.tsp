@@ -1168,7 +1168,7 @@ model ResourceAccessEvaluationRequest {
   htu?: string;
   @doc("リソースサーバーが終端した mTLS の接続のクライアント証明書の SHA-256 拇印。mTLS に束縛したトークンで必須である。")
   client_certificate_thumbprint?: string;
-  @doc("業務作用を一回に保つ、資源が決めた鍵。規則が `requires_approved_operation` を持つ操作で必須である。")
+  @doc("承認の使用を一つの実行へ結び付ける、執行点が決めた鍵。規則が `requires_approved_operation` を持つ操作で必須である。同じ鍵の再送を許す執行点は実行の重複を排除する。MCP ゲートウェイは要求ごとに新しい鍵を使い、転送を最大一回に制限する。")
   @maxLength(256)
   operation_key?: string;
   @doc("実行しようとする引数の JSON オブジェクトを表す文字列。承認した明細の `fields` と比べる。")
@@ -1180,12 +1180,12 @@ model ResourceAccessEvaluationRequest {
 }
 
 
-@doc("評価が許可した、人が承認した操作の相関。資源は実行の結果とともに記録する。")
+@doc("評価が許可した、人が承認した操作の相関。実行の再送を許す資源は自身の結果とともに記録し、MCP ゲートウェイは転送の監査へ記録する。業務の成功を表すものではない。")
 model ApprovedOperationUse {
   approval_request_id: string;
   @doc("正規化した引数の SHA-256 の 16 進表現。")
   operation_digest: string;
-  @doc("同じ `operation_key` の再送である。資源は作用を繰り返さない。")
+  @doc("同じ `operation_key` の再送である。実行側は重複を排除するか、MCP ゲートウェイのように転送を拒否する。")
   replayed: boolean;
 }
 

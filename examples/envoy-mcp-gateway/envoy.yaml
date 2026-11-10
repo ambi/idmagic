@@ -50,6 +50,12 @@ static_resources:
                         # 長く開く SSE を切らないよう、経路の時間制限を外す。
                         - match: { path: /mcp }
                           route: { cluster: mcp_server, timeout: 0s }
+                          # 一回の認可を上流の再試行や hedging へ使い回さない。
+                          request_headers_to_remove:
+                            - x-envoy-retry-on
+                            - x-envoy-retry-grpc-on
+                            - x-envoy-max-retries
+                            - x-envoy-hedge-on-per-try-timeout
                           # 判定の X-Request-ID へ上流の値が連結されないようにする。
                           response_headers_to_remove: [x-request-id]
                 http_filters:

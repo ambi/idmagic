@@ -8,7 +8,7 @@
 | --- | --- |
 | 責務 | 2026-07-28 版の MCP の要求の解釈、評価する操作の選択、[リソースアクセスの評価](../../oauth2/features/resource-access.md)の呼び出し、許可した要求の転送、監査ログと指標 |
 | 行為者 | ゲートウェイを配置する運用者、MCP クライアント、McpGateway |
-| 扱わないもの | 判断と主体の導出は OAuth2 と AccessControl が扱う。`tools/list` の絞り込み、Envoy の `ext_proc` と Envoy の構成での下流向けのトークンの差し替え、`requires_approved_operation` の操作、mTLS に束縛したトークン |
+| 扱わないもの | 判断と主体の導出は OAuth2 と AccessControl が扱う。`tools/list` の絞り込み、Envoy の `ext_proc` と Envoy の構成での下流向けのトークンの差し替え、業務処理の成功と結果の回収、mTLS に束縛したトークン |
 
 ゲートウェイは単体のバイナリで、状態を持たない。
 対象は [MCP の 2026-07-28 版](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)の Streamable HTTP に固定する。
@@ -101,14 +101,14 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 #### REQ-MCPGATEWAY-003 評価が許可した要求だけを上流へ送る
 
 - 宣言したツールの `tools/call` と宣言した方法を受けたとき、McpGateway は、一つの要求につき一回だけ評価を呼び、結果を再利用しない。
-- `decision=true` の応答を受けたとき、McpGateway は、受け取った本文をそのまま上流へ一回だけ転送する。
+- `decision=true` の応答を受けたとき、McpGateway は、[承認した操作の転送](#req-mcpgateway-013-承認した操作の転送は最大一回であり結果不明でも再送しない)の条件を満たせば、受け取った本文をそのまま上流へ一回だけ転送する。
 - `Authorization` が一つでないか、`Bearer` か `DPoP` のトークンを持たないか、トークンがカンマを含む場合、McpGateway は、401、`resource_metadata` を持つ `WWW-Authenticate`、JSON-RPC の `-32001` を返し、評価を呼ばず、上流へ送らない。
 - `DPoP` のヘッダーが複数あるか、値がカンマを含む場合、McpGateway は、401、`error="invalid_token"` を持つ `WWW-Authenticate`、JSON-RPC の `-32001` を返し、評価を呼ばず、上流へ送らない。
 - 理由が `token_rejected` か `sender_proof_invalid` の不許可を受けたとき、McpGateway は、401、`error="invalid_token"` を持つ `WWW-Authenticate`、JSON-RPC の `-32001` を返し、上流へ送らない。
 - それ以外の不許可を受けたとき、McpGateway は、403 と JSON-RPC の `-32000` を返し、上流へ送らない。
 - 評価の通信が失敗するか、200 以外の応答か、解釈できない応答を受けた場合、McpGateway は、503 と JSON-RPC の `-32002` を返し、上流へ送らない。
 - 評価が 429 と `Retry-After` を返した場合、McpGateway は、同じ `Retry-After` を 503 に付ける。
-- 不許可と評価不能で応答するとき、McpGateway は、評価の理由を MCP クライアントへ返さない。
+- 不許可と評価不能で応答するとき、McpGateway は、承認の使用済みを表す REQ-MCPGATEWAY-013 の応答を除き、評価の理由を MCP クライアントへ返さない。
 - `resource_id_argument` の値がないか文字列でない場合、McpGateway は、403 と JSON-RPC の `-32000` を返し、評価を呼ばず、上流へ送らない。
 - `attribute_arguments` を持つツールの `tools/call` を評価するとき、McpGateway は、名指したキーのうち `arguments` にあるものだけを値を変えずに持つ JSON オブジェクトを `attributes` に載せ、どれもなければ空のオブジェクトを載せる。
 - `attribute_arguments` を持たない操作を評価するとき、McpGateway は、`attributes` を送らない。
@@ -117,11 +117,26 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - ツール名が 129 文字以上の宣言のない `tools/call` を受けたとき、McpGateway は、403 と JSON-RPC の `-32000` を返し、評価を呼ばず、上流へ送らない。
 - **判断**：カンマを複数の値として扱う。トークンと DPoP の証明はカンマを含まず、Envoy は重複したヘッダーを連結して渡すので、値だけでは一つか複数かを区別できない。
 - **判断**：`tools/list` と `server/discover` も評価する。未認証の呼び出しへ 401 を返すことが MCP の認可の入口であり、公開の例外を設けると設定の誤りが素通しになる。
-- **判断**：拒否の理由を返さない。別の資源宛てのトークンの有効性や権限の構成を呼び出し元へ知らせない。
-- **判断**：渡す引数を名指す。全引数を渡すとシークレットを含む引数が評価へ流れ、上流がツールに引数を足しただけで評価の入力が広がる。
+- **判断**：通常の拒否の理由を返さない。別の資源宛てのトークンの有効性や権限の構成を呼び出し元へ知らせない。承認の使用済みは、結果を確認せずに再実行することを防ぐため区別する。
+- **判断**：条件に渡す引数を名指す。承認の照合用の `operation_parameters` は全引数を持つが、`attributes` の入力は上流が引数を足しても自動で広がらない。
 - **判断**：名指したキーの不足をゲートウェイで拒否しない。属性を読む条件は IdMagic で評価不能となり拒否されるので、判定を一か所に保つ。
 - **判断**：上限を超える `attributes` を評価せずに拒否する。IdMagic は 400 で拒否するので、評価不能の 503 として成功しない再試行を促さない。
 - **例**：EX-MCPGATEWAY-003-01、EX-MCPGATEWAY-003-02、EX-MCPGATEWAY-003-03
+
+#### REQ-MCPGATEWAY-013 承認した操作の転送は最大一回であり、結果不明でも再送しない
+
+- 転送する `tools/call` を評価するとき、McpGateway は、要求ごとに暗号学的乱数で新しい `operation_key` を生成し、`arguments` 全体の JSON オブジェクトを `operation_parameters` に載せ、引数がなければ `{}` を載せる。
+- `operation_parameters` が 64 KiB を超える場合、McpGateway は、403 と JSON-RPC の `-32000` を返し、評価も転送もしない。
+- 承認した操作を許可されたとき、McpGateway は、IdMagic が承認の使用を不可分に記録した `approved_operation` の `replayed=false` の応答だけを転送に使う。
+- `approved_operation` が相関の識別子、64 桁の SHA-256 の 16 進ダイジェスト、真偽値の `replayed` を持たない場合、McpGateway は、503 と JSON-RPC の `-32002` を返し、転送しない。
+- 評価の理由が `approval_already_used` であるか、許可の `approved_operation.replayed` が真の場合、McpGateway は、403 と JSON-RPC の `-32004` を返し、上流へ送らない。
+- 同じ承認による要求を再送されたか、複数のゲートウェイへ並行に送られた場合、McpGateway は、要求ごとの新しい鍵と IdMagic の共有する使用記録により、上流への転送を合計で最大一回にする。
+- 承認の使用を記録した後に評価の応答や上流の応答を得られない場合、McpGateway は、使用を取り消さず、要求を自動で再試行しない。
+- `mode` が `proxy` で、承認した操作の上流への転送が応答を返す前に通信で失敗した場合、McpGateway は、結果不明を表す 502 と JSON-RPC の `-32005` を返し、結果の確認前に新たな承認で再実行しないよう本文に示す。
+- `mode` が `proxy` で、承認した操作の応答を返し始めた後に通信が失敗した場合、McpGateway は、接続を切り、結果不明を監査へ記録する。
+- **判断**：MCP サーバーへ専用の冪等性の実装を要求しない。承認の消費後に未実行のまま止まる可能性と実行結果が不明になる可能性を受け入れ、成功を一回に保つ保証とは区別する。
+- **判断**：本文や JSON-RPC の `id` を鍵にしない。同じ内容の新しい承認を実行でき、再送された要求には使用済みの承認を再発行しない。
+- **判断**：使用記録は IdMagic の承認ストアに置く。ゲートウェイの再起動で使用を忘れず、複数台で同じ記録を共有する。本番の複数プロセスには PostgreSQL を使う。
 
 #### REQ-MCPGATEWAY-004 転送は提示された資格情報を上流へ渡さず、応答を逐次返す
 
@@ -142,7 +157,9 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 
 - 要求を処理したとき、McpGateway は、標準出力へ JSON の 1 行で、種類 `mcp_gateway_request`、相関 ID、方法、ツール名、資源の型、関係、資源の識別子、結果、判断の理由、評価の応答の `X-Request-ID` を書く。
 - 要求を受けたとき、McpGateway は、MCP クライアントの `X-Request-ID` を使わずに相関 ID を作り、評価と上流への要求と応答の `X-Request-ID` に載せる。
-- 結果は、`forwarded`、`permitted`、`denied`、`unauthenticated`、`invalid`、`unavailable`、`upstream_failed` のどれかにする。
+- 承認した操作の許可を得たとき、McpGateway は、監査ログに `approval_request_id` と `operation_digest` を載せ、引数と `operation_key` を載せない。
+- 結果は、`forwarded`、`permitted`、`denied`、`unauthenticated`、`invalid`、`unavailable`、`upstream_failed`、`approval_outcome_unknown` のどれかにする。
+- 承認した操作の上流との通信が失敗したとき、McpGateway は、結果を `approval_outcome_unknown` にする。
 - ツール別の呼び出しを数えるとき、McpGateway は、`mcp_gateway_requests_total` のラベル `method`、`tool`、`outcome` を使い、`tool` を宣言したツール名か `unmapped` か空に限る。
 - 評価の時間を測るとき、McpGateway は、`mcp_gateway_evaluation_duration_seconds` を使う。
 - **判断**：主体と Agent をゲートウェイに持たせない。評価に使った主体は IdMagic の `ResourceAccessEvaluated` が記録し、評価の応答の `X-Request-ID` で突き合わせる。評価まで届かない要求と評価できなかった要求には、信頼できる主体がなく、主体を残さない。
@@ -157,6 +174,7 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - `mode` が `envoy_ext_authz` で `x-envoy-auth-partial-body` を持つメタデータの位置への要求を受けた場合、McpGateway は、404 を返す。
 - `x-envoy-auth-partial-body` を持たないメタデータの位置への `GET` を受けたとき、McpGateway は、REQ-MCPGATEWAY-005 の応答を返す。
 - [設定例](../../../../examples/envoy-mcp-gateway/README.md)の Envoy は、ゲートウェイの許可の応答を受けたとき、受け取った本文を変えずに、`Authorization`、`DPoP`、`Cookie` を除いて上流へ一回だけ転送し、`text/event-stream` の各イベントをためずに返す。
+- 設定例の Envoy は、上流の経路と virtual host に再試行と hedging を設定せず、`x-envoy-retry-on`、`x-envoy-retry-grpc-on`、`x-envoy-max-retries`、`x-envoy-hedge-on-per-try-timeout` を上流の要求から除く。
 - 設定例の Envoy は、ゲートウェイの 4xx の拒否の応答を受けたとき、その状態コード、本文、`WWW-Authenticate`、`Allow`、`Retry-After`、`X-Request-ID`、`Content-Type`、`Cache-Control` を MCP クライアントへ返し、上流へ送らない。
 - 設定例の Envoy は、ゲートウェイへ接続できないか、応答が遅れるか、ゲートウェイが 5xx を返す場合、503 と JSON-RPC の `-32002` を返し、ゲートウェイの `Retry-After` を含めず、上流へ送らない。
 - 設定例の Envoy は、本文が `max_request_bytes` を超える場合、413 を返し、ゲートウェイと上流を呼ばない。
@@ -261,7 +279,13 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 `attribute_arguments` で渡す属性は MCP クライアントが送った引数であり、業務の事実ではない。
 ゲートウェイは評価した本文を変えずに転送し、キーの重複を拒否するので、上流は評価と同じ値を受け取る。
 条件が実行される引数を判定できるのは、上流がその値で実行する場合に限られる。
-シークレットを持つ引数は名指さない。
+承認の照合と対象の解決のため、`operation_parameters` は転送するツールの引数全体を IdMagic へ TLS で送る。
+引数は承認時の `fields` と同じくシークレットを含めず、ゲートウェイの監査へも出さない。
+`attribute_arguments` の指定は条件への入力を限定するもので、引数の一部を IdMagic への送信から除く設定ではない。
+
+承認の消費後にゲートウェイや通信が止まっても、同じ承認を未使用に戻さない。
+実行結果の確認前に新たな承認を出すと、実行済みの処理をもう一度許可し得る。
+この保証は上流への転送を最大一回にするもので、MCP サーバーの内部の再試行や処理の原子性を保証しない。
 
 `Mcp-Param-*` のヘッダーと本文の一致は、ツールのスキーマを持つ上流が検査する。
 ゲートウェイの判断は本文だけを読むので、ヘッダーの値は判断に影響しない。

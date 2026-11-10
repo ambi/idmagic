@@ -77,10 +77,13 @@ type exampleRoute struct {
 		Path string `yaml:"path"`
 	} `yaml:"match"`
 	Route struct {
-		Cluster string `yaml:"cluster"`
+		Cluster     string         `yaml:"cluster"`
+		RetryPolicy map[string]any `yaml:"retry_policy"`
+		HedgePolicy map[string]any `yaml:"hedge_policy"`
 	} `yaml:"route"`
 	TypedPerFilterConfig    map[string]exampleExtAuthz `yaml:"typed_per_filter_config"`
 	ResponseHeadersToRemove []string                   `yaml:"response_headers_to_remove"`
+	RequestHeadersToRemove  []string                   `yaml:"request_headers_to_remove"`
 }
 
 type exampleConfig struct {
@@ -97,7 +100,9 @@ type exampleConfig struct {
 						} `yaml:"local_reply_config"`
 						RouteConfig struct {
 							VirtualHosts []struct {
-								Routes []exampleRoute `yaml:"routes"`
+								Routes      []exampleRoute `yaml:"routes"`
+								RetryPolicy map[string]any `yaml:"retry_policy"`
+								HedgePolicy map[string]any `yaml:"hedge_policy"`
 							} `yaml:"virtual_hosts"`
 						} `yaml:"route_config"`
 						HTTPFilters []struct {
@@ -181,11 +186,22 @@ func TestEnvoyExampleDoesNotAllowABypass(t *testing.T) {
 
 	upstream := 0
 	for _, host := range manager.RouteConfig.VirtualHosts {
+		if len(host.RetryPolicy) != 0 || len(host.HedgePolicy) != 0 {
+			t.Error("virtual host retries can reuse one approval")
+		}
 		for _, route := range host.Routes {
 			disabled := route.TypedPerFilterConfig[extAuthzFilter].Disabled
 			switch route.Route.Cluster {
 			case "mcp_server":
 				upstream++
+				if len(route.Route.RetryPolicy) != 0 || len(route.Route.HedgePolicy) != 0 {
+					t.Error("upstream retries can reuse one approval")
+				}
+				for _, header := range []string{"x-envoy-retry-on", "x-envoy-retry-grpc-on", "x-envoy-max-retries", "x-envoy-hedge-on-per-try-timeout"} {
+					if !slices.Contains(route.RequestHeadersToRemove, header) {
+						t.Errorf("upstream route keeps caller retry instruction %s", header)
+					}
+				}
 				if disabled {
 					t.Errorf("route %s reaches the upstream without ext_authz", route.Match.Path)
 				}

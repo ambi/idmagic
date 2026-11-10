@@ -206,6 +206,28 @@ func (f *envoyFixture) upstreamCalls() []upstreamCall {
 	return append([]upstreamCall(nil), f.upstream...)
 }
 
+//spec:covers REQ-MCPGATEWAY-007, REQ-MCPGATEWAY-013: 一回の許可を、呼び出し元のヘッダーで上流の再試行へ使い回せないこと
+func TestEnvoyDoesNotRetryAfterOnePermit(t *testing.T) {
+	f := newEnvoyFixture(t)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusServiceUnavailable) })
+	f.upstreamHandler.Store(&handler)
+	response := toolCall(t, f.url+"/mcp", "read_document", "d1", func(request *http.Request) {
+		request.Header.Set("Authorization", "Bearer "+envoyGoodToken)
+		request.Header.Set("X-Envoy-Retry-On", "5xx")
+		request.Header.Set("X-Envoy-Max-Retries", "3")
+		request.Header.Set("X-Envoy-Hedge-On-Per-Try-Timeout", "true")
+	})
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusServiceUnavailable || len(f.upstreamCalls()) != 1 || f.evaluations.Load() != 1 {
+		t.Fatalf("status=%d calls=%d evaluations=%d", response.StatusCode, len(f.upstreamCalls()), f.evaluations.Load())
+	}
+	for _, name := range []string{"X-Envoy-Retry-On", "X-Envoy-Max-Retries", "X-Envoy-Hedge-On-Per-Try-Timeout"} {
+		if value := f.upstreamCalls()[0].headers.Get(name); value != "" {
+			t.Errorf("%s reached upstream: %s", name, value)
+		}
+	}
+}
+
 func toolCallBody(tool, documentID string) string {
 	return fmt.Sprintf(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":%q,"arguments":{"document_id":%q},`+
 		`"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}}`, tool, documentID)

@@ -217,6 +217,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-096 | Spoofing | 偽の発見結果を取り込ませ、未登録の主体を管理済みの Agent として扱わせるか権限を得る | IdManagement | REQ-IDMANAGEMENT-095、REQ-IDMANAGEMENT-098、REQ-IDMANAGEMENT-101 | `covered` |
 | THREAT-097 | Denial of service | 取り込みの件数と未来の時刻で台帳を埋めるか、以後の観測を止める | IdManagement | REQ-IDMANAGEMENT-096、REQ-IDMANAGEMENT-097、REQ-IDMANAGEMENT-102 | `covered` |
 | THREAT-098 | Elevation of privilege | 持ち出した送信者制約付きのトークンをゲートウェイへ持ち込み、別の鍵へ束縛し直す | OAuth2, McpGateway | REQ-OAUTH2-056、REQ-OAUTH2-079 | `covered` |
+| THREAT-102 | Tampering | 人が承認した操作を再送、並行要求、ゲートウェイの再起動や上流の自動再試行で二度実行する | OAuth2, McpGateway | REQ-OAUTH2-065、REQ-MCPGATEWAY-013、REQ-MCPGATEWAY-007 | `covered` |
 
 ## 永続化と非同期実行
 

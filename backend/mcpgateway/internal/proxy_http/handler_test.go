@@ -176,6 +176,99 @@ func TestForwardDropsCredentialsAndKeepsTheBody(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-MCPGATEWAY-013: 同じ本文の要求でも鍵が異なり、条件用 attributes と承認用の全引数を分けること
+func TestToolCallsUseNewKeysAndBindAllArguments(t *testing.T) {
+	h := newHarness(t, accepted, func(options *Options) {
+		rule := options.Mapping.Tools["read"]
+		rule.AttributeArguments = []string{"amount"}
+		options.Mapping.Tools["read"] = rule
+	})
+	keys := map[string]bool{}
+	for range 2 {
+		request := toolRequest(t, h.gateway.URL, "read")
+		request.Body = io.NopCloser(strings.NewReader(strings.Replace(toolBody("read"), `"name":"read"`, `"name":"read","arguments":{"amount":100,"currency":"JPY"}`, 1)))
+		request.ContentLength = -1
+		response, body := do(t, request)
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("status=%d body=%v", response.StatusCode, body)
+		}
+		in := h.evaluator.last
+		if len(in.OperationKey) != 32 || keys[in.OperationKey] || in.OperationKey == response.Header.Get("X-Request-ID") {
+			t.Fatalf("operation key reused or logged as correlation: %q", in.OperationKey)
+		}
+		keys[in.OperationKey] = true
+		if in.Attributes != `{"amount":100}` || in.OperationParameters != `{"amount":100,"currency":"JPY"}` {
+			t.Fatalf("attributes=%s parameters=%s", in.Attributes, in.OperationParameters)
+		}
+	}
+}
+
+//spec:covers REQ-MCPGATEWAY-013: 明示された同じ鍵の再送許可も上流への転送には使わないこと
+func TestReplayedApprovalIsNeverForwarded(t *testing.T) {
+	for _, mode := range []bool{false, true} {
+		h := newHarness(t, accepted, func(options *Options) { options.EnvoyExtAuthz = mode })
+		h.evaluator.result.ApprovedOperation = &evaluation_http.ApprovedOperationUse{
+			ApprovalRequestID: "a1", OperationDigest: strings.Repeat("a", 64), Replayed: true,
+		}
+		request := toolRequest(t, h.gateway.URL, "read")
+		if mode {
+			request.Header.Set(envoyPartialBodyHeader, "false")
+		}
+		response, body := do(t, request)
+		if response.StatusCode != http.StatusForbidden || errorCode(body) != codeApprovalUsed || h.calls.Load() != 0 {
+			t.Fatalf("envoy=%t status=%d body=%v calls=%d", mode, response.StatusCode, body, h.calls.Load())
+		}
+	}
+}
+
+//spec:covers REQ-MCPGATEWAY-013, REQ-MCPGATEWAY-006: 応答開始後の上流の切断でも再試行せず、結果不明を監査すること
+func TestApprovedResponseInterruptedAfterHeadersIsUnknown(t *testing.T) {
+	h := newHarness(t, func(w http.ResponseWriter, _ *http.Request) {
+		connection, buffer, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			t.Errorf("hijack: %v", err)
+			return
+		}
+		defer func() { _ = connection.Close() }()
+		_, _ = buffer.WriteString("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n{\"jsonrpc\":")
+		_ = buffer.Flush()
+	}, nil)
+	h.evaluator.result.ApprovedOperation = &evaluation_http.ApprovedOperationUse{
+		ApprovalRequestID: "a1", OperationDigest: strings.Repeat("a", 64),
+	}
+	response, err := http.DefaultClient.Do(toolRequest(t, h.gateway.URL, "read"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	_, err = io.ReadAll(response.Body)
+	if response.StatusCode != http.StatusOK || err == nil || h.calls.Load() != 1 {
+		t.Fatalf("status=%d read error=%v calls=%d", response.StatusCode, err, h.calls.Load())
+	}
+	if !strings.Contains(h.auditLog(), `"outcome":"approval_outcome_unknown"`) {
+		t.Fatalf("audit=%s", h.auditLog())
+	}
+}
+
+//spec:covers REQ-MCPGATEWAY-013: 引数の 64 KiB の境界を両側で検査し、超過時は評価と転送をしないこと
+func TestOperationParametersSizeBoundary(t *testing.T) {
+	for _, size := range []int{64 << 10, (64 << 10) + 1} {
+		h := newHarness(t, accepted, func(options *Options) { options.MaxBodyBytes = 128 << 10 })
+		parameters := `{"value":"` + strings.Repeat("x", size-len(`{"value":""}`)) + `"}`
+		request := toolRequest(t, h.gateway.URL, "read")
+		request.Body = io.NopCloser(strings.NewReader(strings.Replace(toolBody("read"), `"name":"read"`, `"name":"read","arguments":`+parameters, 1)))
+		request.ContentLength = -1
+		response, body := do(t, request)
+		if size == 64<<10 {
+			if response.StatusCode != http.StatusOK || h.evaluator.calls.Load() != 1 || h.calls.Load() != 1 {
+				t.Fatalf("at boundary: status=%d body=%v", response.StatusCode, body)
+			}
+		} else if response.StatusCode != http.StatusForbidden || h.evaluator.calls.Load() != 0 || h.calls.Load() != 0 {
+			t.Fatalf("over boundary: status=%d body=%v evaluations=%d calls=%d", response.StatusCode, body, h.evaluator.calls.Load(), h.calls.Load())
+		}
+	}
+}
+
 // 評価の前にも評価の失敗でも、上流を呼ばず、理由を返さない。
 //
 //spec:covers REQ-MCPGATEWAY-002, REQ-MCPGATEWAY-003, REQ-MCPGATEWAY-005: 要求の形、不許可、評価不能の応答と、上流と評価の呼び出し回数

@@ -4,6 +4,7 @@ package evaluation_http
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ type Request struct {
 	CorrelationID       string
 	Token               string
 	Operation           domain.Operation
+	OperationKey        string
 	OperationParameters string
 	// Attributes は規則の条件が読む JSON オブジェクトで、空なら送らない。
 	Attributes string
@@ -33,13 +35,21 @@ type Request struct {
 
 // Result は評価の結果である。Available が偽なら判断はなく、許可として扱わない。
 type Result struct {
-	Available  bool
-	Permitted  bool
-	Reasons    []string
-	RequestID  string
-	RetryAfter string
+	Available         bool
+	Permitted         bool
+	Reasons           []string
+	RequestID         string
+	RetryAfter        string
+	ApprovedOperation *ApprovedOperationUse
 	// TokenExchangeGrant は下流宛の交換の根拠で、ログへ出さない。
 	TokenExchangeGrant string
+}
+
+// ApprovedOperationUse は転送前に取得した承認の使用権で、業務の成功を表さない。
+type ApprovedOperationUse struct {
+	ApprovalRequestID string
+	OperationDigest   string
+	Replayed          bool
 }
 
 // Client は機密クライアントの資格情報で評価を呼ぶ。
@@ -70,6 +80,9 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 	if in.OperationParameters != "" {
 		form.Set("operation_parameters", in.OperationParameters)
 	}
+	if in.OperationKey != "" {
+		form.Set("operation_key", in.OperationKey)
+	}
 	if in.Attributes != "" {
 		form.Set("attributes", in.Attributes)
 	}
@@ -96,12 +109,27 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 		Decision           *bool    `json:"decision"`
 		Reasons            []string `json:"reasons"`
 		TokenExchangeGrant string   `json:"token_exchange_grant"`
+		ApprovedOperation  *struct {
+			ApprovalRequestID string `json:"approval_request_id"`
+			OperationDigest   string `json:"operation_digest"`
+			Replayed          *bool  `json:"replayed"`
+		} `json:"approved_operation"`
 	}
 	if err := json.NewDecoder(io.LimitReader(response.Body, maxResponseBytes)).Decode(&body); err != nil {
 		return result, fmt.Errorf("evaluation response: %w", err)
 	}
 	if body.Decision == nil {
 		return result, fmt.Errorf("evaluation response has no decision")
+	}
+	if approval := body.ApprovedOperation; approval != nil {
+		digest, err := hex.DecodeString(approval.OperationDigest)
+		if approval.ApprovalRequestID == "" || err != nil || len(digest) != 32 || approval.Replayed == nil {
+			return result, fmt.Errorf("evaluation response has an invalid approved_operation")
+		}
+		result.ApprovedOperation = &ApprovedOperationUse{
+			ApprovalRequestID: approval.ApprovalRequestID, OperationDigest: approval.OperationDigest,
+			Replayed: *approval.Replayed,
+		}
 	}
 	result.Available, result.Permitted, result.Reasons = true, *body.Decision, body.Reasons
 	result.TokenExchangeGrant = body.TokenExchangeGrant

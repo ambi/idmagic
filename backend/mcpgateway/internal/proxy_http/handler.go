@@ -27,10 +27,12 @@ import (
 
 // 実装が定義できる範囲 (-32000 から -32019) から割り当てるコードである。
 const (
-	codeForbidden       = -32000
-	codeUnauthenticated = -32001
-	codeUnavailable     = -32002
-	codeUpstreamFailed  = -32003
+	codeForbidden              = -32000
+	codeUnauthenticated        = -32001
+	codeUnavailable            = -32002
+	codeUpstreamFailed         = -32003
+	codeApprovalUsed           = -32004
+	codeApprovalOutcomeUnknown = -32005
 )
 
 const (
@@ -41,6 +43,7 @@ const (
 	outcomeInvalid         = "invalid"
 	outcomeUnavailable     = "unavailable"
 	outcomeUpstreamFailed  = "upstream_failed"
+	outcomeApprovalUnknown = "approval_outcome_unknown"
 )
 
 const (
@@ -130,6 +133,9 @@ type requestRecord struct {
 	outcome, evaluationRequestID                        string
 	reasons                                             []string
 	downstream                                          exchange_http.Credential
+	approval                                            *evaluation_http.ApprovedOperationUse
+	rpcID                                               json.RawMessage
+	proxyFailed                                         bool
 }
 
 type recordKey struct{}
@@ -197,6 +203,7 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		return
 	}
 	record.method = message.Method
+	record.rpcID = message.ID
 	record.tool = truncateRunes(message.ToolName, maxLoggedValue)
 	evaluation := domain.Decide(message, h.options.Mapping)
 	record.toolLabel = evaluation.ToolLabel
@@ -223,7 +230,7 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		CorrelationID: record.correlationID, Token: token, Operation: evaluation.Operation, HTU: h.options.Resource.String(),
 		Attributes: evaluation.Attributes,
 	}
-	if evaluation.Operation.ResourceType == "idmagic_mcp_operation" {
+	if message.Method == domain.MethodToolsCall && evaluation.Kind == domain.EvaluateAndForward {
 		parameters, err := json.Marshal(message.Arguments)
 		if err != nil {
 			record.outcome = outcomeDenied
@@ -233,6 +240,13 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		if message.Arguments == nil {
 			parameters = []byte("{}")
 		}
+		if len(parameters) > 64<<10 {
+			record.outcome, record.reasons = outcomeDenied, []string{"operation_parameters_too_large"}
+			writeError(w, http.StatusForbidden, message.ID, codeForbidden, "forbidden", nil)
+			return
+		}
+		// 要求ごとに別の鍵を使う。同じ承認の再送も並行要求も、最初の使用と同じ組にはしない。
+		in.OperationKey = newCorrelationID()
 		in.OperationParameters = string(parameters)
 	}
 	if len(proof) == 1 {
@@ -259,6 +273,14 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		return
 	}
 	record.reasons = result.Reasons
+	if result.Permitted {
+		record.approval = result.ApprovedOperation
+	}
+	if slices.Contains(result.Reasons, "approval_already_used") || (result.ApprovedOperation != nil && result.ApprovedOperation.Replayed) {
+		record.outcome, record.reasons = outcomeDenied, []string{"approval_already_used"}
+		writeError(w, http.StatusForbidden, message.ID, codeApprovalUsed, "approval was already attempted; check the operation outcome", nil)
+		return
+	}
 	if !result.Permitted {
 		if slices.Contains(result.Reasons, "token_rejected") || slices.Contains(result.Reasons, "sender_proof_invalid") {
 			record.outcome = outcomeUnauthenticated
@@ -288,9 +310,16 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		}
 	}
 	record.outcome = outcomeForwarded
+	if record.approval != nil {
+		// 応答の途中で ReverseProxy が接続を切って中断した場合も、結果不明として監査へ残す。
+		record.outcome = outcomeApprovalUnknown
+	}
 	r.Body = io.NopCloser(bytes.NewReader(body))
 	r.ContentLength = int64(len(body))
 	h.proxy.ServeHTTP(w, r)
+	if !record.proxyFailed {
+		record.outcome = outcomeForwarded
+	}
 }
 
 // obtainDownstream は下流の資格情報を得る。得られなければ転送しない。
@@ -344,9 +373,15 @@ func restoreCorrelationID(response *http.Response) error {
 
 func (h *Handler) upstreamFailed(w http.ResponseWriter, r *http.Request, err error) {
 	if record, ok := r.Context().Value(recordKey{}).(*requestRecord); ok {
+		record.proxyFailed = true
 		record.outcome = outcomeUpstreamFailed
 		h.options.Audit.LogAttrs(r.Context(), slog.LevelWarn, "upstream failed",
 			slog.String("correlation_id", record.correlationID), slog.String("error", err.Error()))
+		if record.approval != nil {
+			record.outcome = outcomeApprovalUnknown
+			writeError(w, http.StatusBadGateway, record.rpcID, codeApprovalOutcomeUnknown, "approved operation outcome is unknown; check the outcome before requesting a new approval", nil)
+			return
+		}
 	}
 	writeError(w, http.StatusBadGateway, nil, codeUpstreamFailed, "the MCP server is unavailable", nil)
 }
@@ -362,7 +397,7 @@ func (h *Handler) challenge(w http.ResponseWriter, id json.RawMessage, parameter
 
 func (h *Handler) finish(ctx context.Context, record *requestRecord) {
 	h.options.Metrics.Request(record.methodLabel, record.toolLabel, record.outcome)
-	h.options.Audit.LogAttrs(ctx, slog.LevelInfo, "mcp gateway request",
+	attributes := []slog.Attr{
 		slog.String("kind", "mcp_gateway_request"),
 		slog.String("correlation_id", record.correlationID),
 		slog.String("method", truncateRunes(record.method, maxLoggedValue)),
@@ -373,7 +408,11 @@ func (h *Handler) finish(ctx context.Context, record *requestRecord) {
 		slog.String("outcome", record.outcome),
 		slog.Any("reasons", record.reasons),
 		slog.String("evaluation_request_id", record.evaluationRequestID),
-	)
+	}
+	if approval := record.approval; approval != nil {
+		attributes = append(attributes, slog.String("approval_request_id", approval.ApprovalRequestID), slog.String("operation_digest", approval.OperationDigest))
+	}
+	h.options.Audit.LogAttrs(ctx, slog.LevelInfo, "mcp gateway request", attributes...)
 }
 
 // acceptableContent は JSON の平文だけを受ける。圧縮された本文は解釈と転送の間で読み替えの余地を作る。
