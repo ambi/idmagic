@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   findBoundaryViolations,
+  goImportPaths,
   parseLogicalArchitecture,
   reconcileBoundaryDebt,
   type BoundaryDebtEntry,
@@ -306,55 +307,28 @@ describe('findBoundaryViolations dependency rules', () => {
       'backend/orphan: production package belongs to no module, composition point, or shared library',
     ])
   })
+})
 
-  it('rejects effects in domain packages while allowing time types', () => {
-    const result = analyze([
-      {
-        path: 'backend/customer/domain/model.go',
-        source: [
+describe('goImportPaths', () => {
+  it('reads single, grouped, aliased, blank, and dot imports in declaration order', () => {
+    expect(
+      goImportPaths(
+        [
           'package domain',
+          'import "errors"',
           'import (',
-          '  "crypto/rand"',
-          '  "database/sql"',
-          '  "math/rand/v2"',
-          '  "net/http"',
-          '  "os"',
-          '  "time"',
+          '\tstore "example.com/a/store"',
+          '\t_ "example.com/a/driver"',
+          '\t. "example.com/a/dsl"',
           ')',
-          'var _ time.Time',
-          'var _ = time.Now()',
           '',
         ].join('\n'),
-      },
-    ])
-
-    expect(result.violations.map((violation) => violation.id)).toEqual([
-      'domain-effect:backend/customer/domain/model.go:crypto/rand',
-      'domain-effect:backend/customer/domain/model.go:database/sql',
-      'domain-effect:backend/customer/domain/model.go:math/rand',
-      'domain-effect:backend/customer/domain/model.go:net',
-      'domain-effect:backend/customer/domain/model.go:os',
-      'domain-effect:backend/customer/domain/model.go:time.Now',
-    ])
+      ),
+    ).toEqual(['errors', 'example.com/a/store', 'example.com/a/driver', 'example.com/a/dsl'])
   })
 
-  it('allows domain packages to parse URLs, mail addresses, and IP addresses', () => {
-    const result = analyze([
-      {
-        path: 'backend/customer/domain/model.go',
-        source: [
-          'package domain',
-          'import (',
-          '  "net/mail"',
-          '  "net/netip"',
-          '  "net/url"',
-          ')',
-          '',
-        ].join('\n'),
-      },
-    ])
-
-    expect(result.violations).toEqual([])
+  it('ignores string literals outside import declarations', () => {
+    expect(goImportPaths('package domain\nconst Store = "example.com/a/store"\n')).toEqual([])
   })
 })
 

@@ -26,6 +26,7 @@ linters:
     - contextcheck
     - depguard
     - durationcheck
+    - forbidigo
     - errchkjson
     - exptostd
     - fatcontext
@@ -65,6 +66,36 @@ linters:
           deny:
             - pkg: github.com/google/uuid
               desc: "標準の uuid パッケージを使う (wi-17165)"
+        # domain は決定論的な計算だけを持ち、作用は usecases から引数か ports で受け取る
+        # (docs/design/application/backend.md#モジュール間の依存規則)。net の構文解析は作用を持たない。
+        domain-effects:
+          list-mode: lax
+          files:
+            - "**/backend/**/domain/**"
+            - "!$test"
+          allow:
+            - net/mail$
+            - net/netip$
+            - net/url$
+          deny:
+            - pkg: crypto/rand$
+              desc: "domain は乱数を entropy.Source として受け取る"
+            - pkg: database/sql$
+              desc: "domain はデータベースを直接使わない"
+            - pkg: math/rand
+              desc: "domain は乱数を entropy.Source として受け取る"
+            - pkg: net
+              desc: "domain はネットワークを直接使わない"
+            - pkg: os
+              desc: "domain は OS を直接使わない"
+    forbidigo:
+      # 別名と dot import、関数値としての参照も型情報で判定する。
+      analyze-types: true
+      forbid:
+        - pattern: ^time\.Now$
+          msg: "domain は現在時刻を引数か ports で受け取る"
+        - pattern: ^os\.(Getenv|LookupEnv|Environ)$
+          msg: "起動設定は backend/cmd/internal/bootstrap の ConfigLoader を通して読む"
     gosec:
       excludes:
         - G104  # errcheck と重複
@@ -112,12 +143,28 @@ linters:
           - forcetypeassert
           - noctx
           - bodyclose
+          - forbidigo
       # server_http.Deps keeps these direct fields only as explicit test
       # compatibility inputs while module migrations wi-177..179 complete.
       - path: _test\.go
         text: "\\.(AttrSchemaRepo|UserRepo|MfaFactorRepo|TokenIssuer|KeyStore) is deprecated:"
         linters:
           - staticcheck
+      # time.Now の禁止は domain だけに適用する。診断は別名の綴りで出るので、理由の文で選ぶ。
+      - path-except: ^backend/(?:[^/]+/)*domain/
+        text: "domain は現在時刻"
+        linters:
+          - forbidigo
+      # 起動設定の読み取りは bootstrap、実行時の locator を解決する *_env アダプター、
+      # 本番から到達しないテスト支援だけに許す。入口は読み取り関数を ConfigLoader へ渡す。
+      - path: ^backend/cmd/internal/bootstrap/|/[a-z0-9]+_env/|/testing(?:_[a-z0-9_]+)?/
+        text: "起動設定は"
+        linters:
+          - forbidigo
+      - source: bootstrap\.NewConfigLoader\(os\.Getenv\)
+        text: "起動設定は"
+        linters:
+          - forbidigo
       # backend/cmd/ の main.go は log.Fatal を許容
       - path: backend/cmd/
         linters:

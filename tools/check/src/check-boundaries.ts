@@ -1,7 +1,8 @@
-import { dirname, extname } from 'node:path'
+import { extname } from 'node:path'
 import type { WorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import {
   findBoundaryViolations,
+  goImportPaths,
   groupBoundaryViolations,
   ownerOf,
   parseBoundaryDebt,
@@ -14,8 +15,6 @@ import {
 } from './boundary-fitness.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
 import { describedTables, tableOwners } from './schema-tables.ts'
-import { productionCodeExclusions } from './production-code.ts'
-import { repositoryGoFiles } from './repository-inputs.ts'
 import {
   extractTableWrites,
   parseSqlFiles,
@@ -60,7 +59,7 @@ export async function checkBoundaries(
   snapshot: WorkspaceSnapshot,
   options: CheckOptions = DEFAULT_OPTIONS,
 ): Promise<CheckOutcome> {
-  const lines = await layerAndConfigurationFindings(snapshot)
+  const lines = await layerFindings(snapshot)
   // `backend/` を持たない作業ツリーには、モジュールの宣言と台帳を求めない。
   if (!snapshot.exists('backend')) {
     return { ok: lines.length === 0, lines: lines.length > 0 ? lines : ['ok  module boundaries'] }
@@ -207,16 +206,14 @@ async function productionGoFiles(snapshot: WorkspaceSnapshot): Promise<string[]>
   )
 }
 
-/** 層の外向き依存、起動設定の読み取り場所、フロントエンドからの import を判定する。 */
-async function layerAndConfigurationFindings(snapshot: WorkspaceSnapshot): Promise<string[]> {
+/**
+ * 層の外向き依存とフロントエンドからの import を判定する。
+ * `domain` の作用と起動設定の読み取り場所は golangci-lint の depguard と forbidigo が判定する。
+ */
+async function layerFindings(snapshot: WorkspaceSnapshot): Promise<string[]> {
   const goModule = (await snapshot.read('go.mod')).match(/^module\s+(\S+)$/m)?.[1]
   if (!goModule) throw new Error('go.mod must declare a module path')
   const backendImportPrefix = `${goModule}/backend/`
-  const goFiles = snapshot.exists('backend') ? await repositoryGoFiles(snapshot) : []
-  const { testSupportPackages } = productionCodeExclusions(
-    goModule,
-    new Map(goFiles.map(({ path, source }) => [path, source])),
-  )
   const lines: string[] = []
   for (const rel of await snapshot.files('', EXCLUDED_DIRECTORIES)) {
     if (rel === 'architecture.yaml' || rel.endsWith('/architecture.yaml')) {
@@ -227,28 +224,9 @@ async function layerAndConfigurationFindings(snapshot: WorkspaceSnapshot): Promi
     }
     const extension = extname(rel)
     if (extension === '.go' && rel.startsWith('backend/') && !rel.endsWith('_test.go')) {
-      const source = await snapshot.read(rel)
-      // 起動設定は `backend/cmd/internal/bootstrap` だけが環境から読み、検証する。
-      // `*_env` adapter は起動設定ではなく、実行時 locator を解決するので対象外とする。
-      const ownsEnvAccess =
-        rel.startsWith('backend/cmd/internal/bootstrap/') || /\/[a-z0-9]+_env\//.test(rel)
-      // 本番から到達しないテスト支援の設定は、製品の起動設定に含めない。
-      if (!ownsEnvAccess && !testSupportPackages.has(dirname(rel))) {
-        const envReads = [...source.matchAll(/os\.(?:Getenv|LookupEnv|Environ)\b/g)].filter(
-          (match) =>
-            !source
-              .slice(Math.max(0, (match.index ?? 0) - 30), match.index)
-              .includes('bootstrap.NewConfigLoader('),
-        )
-        if (envReads.length > 0) {
-          lines.push(
-            `${rel}: startup configuration must be read through bootstrap's ConfigLoader, not os.Getenv`,
-          )
-        }
-      }
-      const imports = [...source.matchAll(/"([^"\n]+)"/g)]
-        .map((match) => match[1] ?? '')
-        .filter((imported) => imported.startsWith(backendImportPrefix))
+      const imports = goImportPaths(await snapshot.read(rel)).filter((imported) =>
+        imported.startsWith(backendImportPrefix),
+      )
       const isDomain = rel.split('/').includes('domain')
       const isUseCase = rel.split('/').includes('usecases')
       for (const imported of imports) {

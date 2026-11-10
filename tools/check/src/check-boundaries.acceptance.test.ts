@@ -64,20 +64,6 @@ describe('checkBoundaries module rules', () => {
     expect(diagram).not.toContain('shared')
   })
 
-  it('テスト専用の環境読み取りを許し、本番から到達した場合は拒否する', async () => {
-    const support = {
-      'backend/shared/testing_fixture/harness.go':
-        'package fixture\nimport "os"\nfunc AllowSkip() bool { return os.Getenv("PGTEST_ALLOW_SKIP") == "1" }\n',
-    }
-    expect((await outcomeFor(support)).ok).toBe(true)
-    const lines = await failureFor({
-      ...support,
-      'backend/cmd/server/main.go':
-        'package main\nimport _ "example.com/product/backend/shared/testing_fixture"\nfunc main() {}\n',
-    })
-    expect(lines).toContain('harness.go: startup configuration must be read through bootstrap')
-  })
-
   const implementationTable = `${BOUNDARY_FIXTURE['docs/modules/README.md']!.replace(
     'Go パッケージ',
     '実装パス',
@@ -127,13 +113,24 @@ describe('checkBoundaries module rules', () => {
     ).toContain('private-import:Customer->Supplier')
   })
 
-  it('rejects an effectful call in a domain package', async () => {
+  it('domain から同じモジュールのアダプターへの import を拒否する', async () => {
     expect(
       await failureFor({
         'backend/customer/domain/model.go':
-          'package domain\nimport "time"\nfunc CreatedAt() time.Time { return time.Now() }\n',
+          'package domain\nimport (\n\tstore "example.com/product/backend/customer/db_postgres"\n)\nvar _ = store.Open\n',
       }),
-    ).toContain('domain-effect:customer')
+    ).toContain(
+      'backend/customer/domain/model.go: forbidden outward dependency example.com/product/backend/customer/db_postgres',
+    )
+  })
+
+  it('import 宣言の外にある文字列のパスを層の依存に数えない', async () => {
+    expect(
+      await outcomeFor({
+        'backend/customer/domain/model.go':
+          'package domain\nconst Store = "example.com/product/backend/customer/db_postgres"\n',
+      }),
+    ).toEqual({ ok: true, lines: ['ok  module boundaries'] })
   })
 
   it('rejects a module query that updates a table another module owns', async () => {

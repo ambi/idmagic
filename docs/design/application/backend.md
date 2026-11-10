@@ -111,7 +111,6 @@ A から B への依存を個別に許可する一覧は持たない。
 | モジュール単位の import 依存は循環しない | `module-cycle` | 異なる内部パッケージを経由するモジュール間の相互参照 |
 | 共有ライブラリはモジュールに依存しない | `shared-dependency` | 共有ライブラリを経由して、モジュールが別のモジュールへ到達する依存 |
 | モジュールと共有ライブラリは組み立て地点に依存しない | `composition-import` | 結線用の例外を業務処理への迂回路として使う変更 |
-| `domain` は時刻、乱数、OS、ネットワーク、データベースを直接使わない | `domain-effect` | 計算の結果をテストで固定できない状態 |
 | モジュールの sqlc クエリは、ほかのモジュールが所有するテーブルへ書き込まない | `table-write` | 二つのモジュールが同じテーブルの不変条件を別々に保ち、片方の変更がもう片方の保証を破る状態 |
 
 公開パッケージを経由した非循環の依存は、ドメインモデルの独立性を示さない。[モデルの扱い](design-guidelines.md#モジュール間でのモデルの扱い)は別に判断し、依存規則の免除には使わない。
@@ -124,7 +123,12 @@ A から B への依存を個別に許可する一覧は持たない。
 `domain` は決定論的な計算と状態遷移だけを持つ。時刻の型を保持するための `time` は利用できるが、現在時刻を得る `time.Now`、乱数を得る `crypto/rand` と `math/rand`、OS、ネットワーク、データベースへの直接アクセスは行わない。必要な値と作用は `usecases` から引数または `ports` として注入する。
 URL、メールアドレス、IP アドレスの構文解析（`net/url`、`net/mail`、`net/netip`）は入力だけで結果が決まり、名前解決も接続も行わないので、ネットワークへのアクセスに当たらず `domain` で使える。
 乱数は、共有ライブラリ `backend/shared/security/entropy` の `Source` として受け取る。本番では `usecases` が `crypto/rand` を包む `entropy.Crypto()` を渡し、テストは固定のバイト列から作る `entropy.Fixed` を渡す。
-`domain` と `usecases` の外向き依存の禁止、起動設定の読み取り場所、フロントエンドからバックエンドへの import の禁止も同じ検査が判定する。
+`domain` の作用の禁止は、計算の結果をテストで固定できない状態を防ぐ。
+`mise run lint-go` の depguard（`domain-effects` の規則）が作用を持つパッケージの import を、forbidigo が `time.Now` の参照を、`domain` の本番ファイルについて拒否する。
+起動設定を `bootstrap` の外で読むこと（`os.Getenv`、`os.LookupEnv`、`os.Environ` の参照）も forbidigo が拒否する。
+例外は `bootstrap`、実行時の locator を解決する `*_env` アダプター、`testing` と `testing_*` の区画のテスト支援、入口が読み取り関数を `bootstrap.NewConfigLoader` へ渡す箇所だけであり、`.golangci.yml` の除外規則に置く。
+`domain` と `usecases` の外向き依存の禁止とフロントエンドからバックエンドへの import の禁止は、モジュール間の依存規則と同じ境界検査が判定する。
+禁止先がパスの途中に任意のモジュール名を挟み、depguard の接頭辞の一致では表せないためである。
 
 `table-write` の対象と限界は[データベース設計](../data/database.md#所有と書き込みの境界)が定める。
 

@@ -31,7 +31,6 @@ export type BoundaryViolationKind =
   | 'module-cycle'
   | 'shared-dependency'
   | 'composition-import'
-  | 'domain-effect'
   | 'table-write'
 
 export type BoundaryViolation = {
@@ -90,11 +89,6 @@ const EARLIER_RESPONSIBILITY_HEADER =
 /** 過去のリビジョンを使う負債比較でも責務表を読み取る。 */
 export function isResponsibilityHeader(line: string): boolean {
   return [RESPONSIBILITY_HEADER, EARLIER_RESPONSIBILITY_HEADER].includes(line.trim())
-}
-
-type ImportSpec = {
-  path: string
-  localName: string
 }
 
 type PackageOwner =
@@ -227,12 +221,10 @@ export function findBoundaryViolations(input: {
 
   for (const source of input.sources) {
     const sourcePackage = packageForFile(source.path)
-    const imports = goImports(source.source)
-    violations.push(...domainEffectViolations(source, imports))
     const sourceOwner = ownerOf(sourcePackage, architecture)
     if (!sourceOwner) continue
-    for (const imported of imports) {
-      const targetPackage = repositoryImport(input.modulePath, imported.path)
+    for (const imported of goImportPaths(source.source)) {
+      const targetPackage = repositoryImport(input.modulePath, imported)
       if (!targetPackage) continue
       const targetOwner = ownerOf(targetPackage, architecture)
       if (!targetOwner) continue
@@ -541,16 +533,16 @@ function ownerName(owner: PackageOwner): string {
   return owner.kind === 'composition' ? COMPOSITION_NAME : SHARED_LIBRARY_NAME
 }
 
-function importSpec(line: string): ImportSpec | undefined {
-  const match = line.trim().match(/^(?:([A-Za-z_][A-Za-z0-9_]*|[._])\s+)?"([^"\n]+)"/)
-  const path = match?.[2]
-  if (!path) return undefined
-  const localName = match?.[1] ?? path.split('/').at(-1) ?? ''
-  return { path, localName }
+function importPath(line: string): string | undefined {
+  return line.trim().match(/^(?:(?:[A-Za-z_][A-Za-z0-9_]*|[._])\s+)?"([^"\n]+)"/)?.[1]
 }
 
-function goImports(source: string): ImportSpec[] {
-  const imports: ImportSpec[] = []
+/**
+ * gofumpt で整形した Go ソースの import 宣言から、import パスを宣言の順に返す。
+ * 宣言の外の文字列リテラルは数えない。
+ */
+export function goImportPaths(source: string): string[] {
+  const imports: string[] = []
   let inImportBlock = false
   for (const line of source.split('\n')) {
     const trimmed = line.trim()
@@ -559,7 +551,7 @@ function goImports(source: string): ImportSpec[] {
         inImportBlock = false
         continue
       }
-      const parsed = importSpec(trimmed)
+      const parsed = importPath(trimmed)
       if (parsed) imports.push(parsed)
       continue
     }
@@ -569,7 +561,7 @@ function goImports(source: string): ImportSpec[] {
     }
     const single = trimmed.match(/^import\s+(.+)$/)?.[1]
     if (!single) continue
-    const parsed = importSpec(single)
+    const parsed = importPath(single)
     if (parsed) imports.push(parsed)
   }
   return imports
@@ -582,48 +574,6 @@ function packageForFile(path: string): string {
 function repositoryImport(modulePath: string, imported: string): string | undefined {
   const prefix = `${modulePath}/`
   return imported.startsWith(prefix) ? imported.slice(prefix.length) : undefined
-}
-
-/** 値の構文だけを扱い、名前解決も接続も行わない `net` 配下のパッケージ。 */
-const NET_SYNTAX_PACKAGES = new Set(['net/mail', 'net/netip', 'net/url'])
-
-function domainEffectViolations(
-  source: GoSource,
-  imports: readonly ImportSpec[],
-): BoundaryViolation[] {
-  if (!normalizeRepositoryPath(source.path).split('/').includes('domain')) return []
-  const sourceDirectory = normalizeRepositoryPath(source.path).split('/')[1] ?? 'unknown'
-  const effects = new Set<string>()
-  for (const imported of imports) {
-    if (imported.path === 'crypto/rand') effects.add('crypto/rand')
-    if (imported.path === 'database/sql') effects.add('database/sql')
-    if (imported.path === 'math/rand' || imported.path.startsWith('math/rand/')) {
-      effects.add('math/rand')
-    }
-    if (
-      (imported.path === 'net' || imported.path.startsWith('net/')) &&
-      !NET_SYNTAX_PACKAGES.has(imported.path)
-    ) {
-      effects.add('net')
-    }
-    if (imported.path === 'os' || imported.path.startsWith('os/')) effects.add('os')
-    if (imported.path === 'time') {
-      const escapedName = imported.localName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      const call =
-        imported.localName === '.' ? /\bNow\s*\(/ : new RegExp(`\\b${escapedName}\\.Now\\s*\\(`)
-      if (call.test(source.source)) effects.add('time.Now')
-    }
-  }
-  return [...effects].sort().map(
-    (effect): BoundaryViolation => ({
-      id: `domain-effect:${source.path}:${effect}`,
-      debtId: `domain-effect:${sourceDirectory}`,
-      kind: 'domain-effect',
-      sourceModule: sourceDirectory,
-      path: source.path,
-      message: `${source.path}: domain packages must receive ${effect} effects through an input or port`,
-    }),
-  )
 }
 
 function cycleViolations(edges: readonly ModuleDependency[]): BoundaryViolation[] {
