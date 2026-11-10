@@ -48,3 +48,4 @@ IdMagic のサーバーとは別に配布され、別々に版が進む。
 | 文書 | 内容 |
 | --- | --- |
 | [McpGateway の標準仕様](standards.md) | MCP クライアントへの応答で採用する外部標準仕様 |
+| [McpGateway の重要な設計判断](decisions.md) | 運用場所と設定の配信の判断 |

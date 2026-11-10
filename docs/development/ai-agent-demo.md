@@ -179,10 +179,11 @@ PingOne Identity for AI と PingGateway は、Agent、接続先スコープ、�
 | --- | --- | --- | --- |
 | Okta Agent Gateway | Agent の登録と認証方式の構成、MCP の登録（URL、認可サーバー、接続用資格情報、発見）、Gateway の追加（Agent、MCP、公開するツール）、Agent のリソース接続の 4 つ | Agent 名、MCP の URL、接続用資格情報、公開するツール、接続の許可範囲 | Okta がホストし、配置の作業はない |
 | PingOne Identity for AI と PingGateway | Agent の登録、接続先の Resource とスコープの作成、PingGateway の設置と MCP 保護の構成（resource、audience、scope、クライアント、トークン検証）、Agent へのスコープの割当の 4 つ | Agent 名、Resource とスコープの名前、Gateway の構成値 | 利用者が設置して運用する |
-| IdMagic（通常の管理） | 接続先の登録と Gateway の起動、MCP サーバーのツールの公開、Agent の登録（認証と割当を含む）、接続の 4 つ | 接続先の表示名、Agent 名、許可する操作の 3 つ | 利用者が設置する。運用場所の選択肢は wi-66764 で扱う |
+| IdMagic（通常の管理） | 接続先の登録と Gateway の起動、MCP サーバーのツールの公開、Agent の登録（認証と割当を含む）、接続の 4 つ | 接続先の表示名、Agent 名、許可する操作の 3 つ | 利用者が MCP サーバーの近くか専用ホストに設置する。IdMagic がホストする構成は wi-61303 で加える |
 
 IdMagic の必須の作業の数は同じだが、スコープ名とツール名の入力はなく、操作ごとの割当と文書ごとの範囲を同じ画面で扱う。
 Gateway の配置の手間は Okta より多く、デモはゲートウェイをデモのプロセスで起動するのでこの差が見えない。
+運用場所の選び方と迂回を防ぐ条件は、[McpGateway の設計判断](../modules/mcp-gateway/decisions.md#運用場所を段階的に増やす)にある。
 
 | 比較する段階 | 揃える条件 | 採否 |
 | --- | --- | --- |
