@@ -12,7 +12,8 @@
 
 ## モデル
 
-`token_endpoint_auth_method` は、`private_key_jwt`、`tls_client_auth`、`none`、`client_secret_post`、`client_secret_basic` の 5 種類に対応する。
+`token_endpoint_auth_method` は、`private_key_jwt`、`tls_client_auth`、`spiffe_jwt`、`none`、`client_secret_post`、`client_secret_basic` の 6 種類に対応する。
+`spiffe_jwt` は Agent に束縛したクライアントだけが認証に使える（REQ-OAUTH2-089）。
 `client_secret_jwt` は意図的に除く。
 
 - **判断**：`client_secret_jwt` を除く理由は、[クライアントの認証から client_secret_jwt を除く](../decisions.md#クライアントの認証から-client_secret_jwt-を除く)。
@@ -78,6 +79,18 @@
 - `client_id` を持つ要求で、その値がアサーションの `iss` か `sub` と異なる場合、OAuth2 は、401 と `invalid_client` で拒否する。
 - **判断**：RFC 7521 §4.2 は `client_id` を OPTIONAL とし、クライアントをアサーションの subject で識別する。`client_id` を送らないクライアントがあるので、省いた要求を拒否しない。
 - **例**：EX-OAUTH2-028-01
+
+#### REQ-OAUTH2-089 `spiffe_jwt` のクライアントは、関連付けで対応する Agent の JWT-SVID で認証する
+
+- `client_assertion_type` が `urn:ietf:params:oauth:client-assertion-type:jwt-spiffe` の要求を受けたとき、OAuth2 は、`client_id` のクライアントを探す。
+- `client_assertion_type` が `jwt-spiffe` で `client_id` のない要求を受けたとき、OAuth2 は、JWT-SVID の `sub` の SPIFFE ID と等しい `client_id` のクライアントを探す。
+- 探したクライアントの認証方式が `spiffe_jwt` の間、OAuth2 は、JWT-SVID の検証と対応付けを WorkloadIdentity に求める（REQ-WORKLOADIDENTITY-017）。
+- WorkloadIdentity が検証を通し、JWT-SVID が `jti` を持たないか、`jti` を初めて使うとき、OAuth2 は、そのクライアントを認証し、信頼設定、関連付け、Agent、クライアント、SPIFFE ID を載せた `WorkloadClientAuthenticated` を発行する。
+- トークン、PAR、イントロスペクション、失効、デバイス認可のエンドポイントで `spiffe_jwt` のクライアントが認証するとき、OAuth2 は、同じ規則でクライアントを認証する。
+- クライアントが見つからないか、その認証方式が `spiffe_jwt` でない場合、OAuth2 は、401 と `invalid_client` で拒否する。
+- WorkloadIdentity が検証を拒否した場合、OAuth2 は、401 と `invalid_client` で拒否する。
+- 有効期限内に同じ `jti` を再び受けた場合、OAuth2 は、401 と `invalid_client` で拒否し、理由 `replayed` と用途 `client_authentication` の `WorkloadAttestationRejected` を発行する。
+- **判断**：対応付けは [SPIFFECA03-CLIENT-ID](../standards.md#oauth-spiffe-client-authentication) のとおり Agent の関連付けだけで登録する。IdMagic の `client_id` は SPIFFE ID ではないため、`client_id` を省いた要求は通常は拒否になる。
 
 ### 管理者によるクライアントの管理
 
@@ -155,6 +168,6 @@ RFC 7591 の Dynamic Client Registration に加え、パスを持つ `https` URL
 
 #### クライアント認証
 
-`token_endpoint_auth_method` は `private_key_jwt`、`tls_client_auth`、`none`、`client_secret_post`、`client_secret_basic` の 5 種類に対応する。FAPI 級の非対称認証から従来の共有シークレット方式までを覆い、新しいクライアントを最も強い選択肢へ誘導しながら、既存環境の移行を継続できるようにする。`client_secret_jwt`（HMAC）は意図的に実装しない。`private_key_jwt` を利用できる場合、対称鍵による代替は能力を増やさずリスクだけを増やすためである。クライアント認証の失敗では `client_id` の登録有無を明かさず、常に `401 invalid_client` を返す。未登録の `client_id` にも同程度の検証コストを課し、タイミングオラクルを避ける。
+`token_endpoint_auth_method` は `private_key_jwt`、`tls_client_auth`、`spiffe_jwt`、`none`、`client_secret_post`、`client_secret_basic` の 6 種類に対応する。FAPI 級の非対称認証から従来の共有シークレット方式までを覆い、新しいクライアントを最も強い選択肢へ誘導しながら、既存環境の移行を継続できるようにする。`client_secret_jwt`（HMAC）は意図的に実装しない。`private_key_jwt` を利用できる場合、対称鍵による代替は能力を増やさずリスクだけを増やすためである。クライアント認証の失敗では `client_id` の登録有無を明かさず、常に `401 invalid_client` を返す。未登録の `client_id` にも同程度の検証コストを課し、タイミングオラクルを避ける。
 
 `handlers_http` の `private_key_jwt` 検証は固定した規則の集合に従い、Discovery Metadata での広告とサーバーの実際の検査を一致させる。署名アルゴリズムは `PS256` と `ES256` だけを許可し（`none` と HMAC は不可）、`iss == sub == client_id`、このサーバーの発行者またはエンドポイント URL に一致する `audience`、クライアントが登録したインラインの `jwks` または `jwks_uri` から解決した署名鍵、上限付きのアサーション有効期間、`jti` の一度限りの利用を検査する。`jti` は DPoP と TTL および監査上の意味が異なるため、DPoP のリプレイストアとは別のストアに置く。同じリクエストで `client_assertion` と Basic 認証またはシークレット認証を組み合わせた場合は、RFC 6749 §2.3 に従い `invalid_request` として拒否する。

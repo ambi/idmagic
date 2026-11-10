@@ -7,12 +7,13 @@
 | 項目 | 内容 |
 | --- | --- |
 | 責務 | 登録した信頼設定による署名、`iss`、`aud`、`exp`、TTL の上限の検証、`spiffe` の信頼設定での SPIFFE の規則の検証、関連付けによる `Agent` の一意な特定、`Agent` の状態の確認 |
-| 行為者 | System（`OAuth2` の Token Exchange から呼ばれる検証のユースケース） |
-| 扱わないもの | アクセストークンの発行は `OAuth2` が扱う。信頼設定と関連付けの登録は[信頼設定と関連付けの管理](trust-configuration.md)が扱う |
+| 行為者 | System（`OAuth2` の Token Exchange とクライアント認証から呼ばれる検証のユースケース） |
+| 扱わないもの | アクセストークンの発行とクライアントの認証方式の確認は `OAuth2` が扱う。信頼設定と関連付けの登録は[信頼設定と関連付けの管理](trust-configuration.md)が扱う |
 
 ## モデル
 
-検証は、いずれかの段で失敗すればフェイルクローズで拒否し、拒否の理由とともに `WorkloadAttestationRejected` を発行する。
+検証は、いずれかの段で失敗すればフェイルクローズで拒否し、拒否の理由と用途とともに `WorkloadAttestationRejected` を発行する。
+用途は、Token Exchange の `subject_token` の検証なら `token_exchange`、クライアントアサーションの検証なら `client_authentication` である。
 
 | 拒否の理由 | 条件 |
 | --- | --- |
@@ -29,6 +30,8 @@
 | `ambiguous_match` | 主体が複数の有効な関連付けに一致する |
 | `agent_not_active` | 対応先の `Agent` が存在しないか `Active` でない |
 | `agent_unbound` | 対応先の `Agent` が `OAuth2Client` に束縛されていない |
+| `client_not_bound` | クライアント認証で、要求のクライアントが対応先の `Agent` に束縛されていない |
+| `replayed` | クライアント認証で、同じ `jti` の JWT-SVID を再び受けた（`OAuth2` が発行する） |
 
 `spiffe` の信頼設定では、取得した JWKS に `use` が `x509-svid`、`jwt-svid`、`wit-svid` のいずれかの鍵があれば、その JWKS を SPIFFE バンドル（[SPIFFE Trust Domain and Bundle](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md)）として読む。
 `use` の値は大文字と小文字を区別する。
@@ -114,6 +117,19 @@
 
 - 交換を要求されたとき、WorkloadIdentity は、要求を受けたテナントの信頼設定と関連付けだけを探し、ほかのテナントの同じ発行者の信頼設定を参照しない。
 - **例**：EX-WORKLOADIDENTITY-007-01
+
+### クライアントアサーションの検証
+
+#### REQ-WORKLOADIDENTITY-017 JWT-SVID のクライアントアサーションは、トラストドメインの信頼設定と発行者だけの `aud` で検証し、束縛したクライアントだけを認める
+
+- OAuth2 が `spiffe_jwt` のクライアントの JWT-SVID の検証を求めたとき、WorkloadIdentity は、`sub` の SPIFFE ID のトラストドメインに一致する `spiffe` の信頼設定だけを探し、REQ-WORKLOADIDENTITY-003 と REQ-WORKLOADIDENTITY-011 の規則で署名と JOSE ヘッダーを、`exp` と最大 TTL で有効期間を検証する。
+- 検証を通った SPIFFE ID がちょうど一つの `enabled` の関連付けに一致し、対応先の Agent が `Active` で、要求のクライアントがその Agent に束縛されているとき、WorkloadIdentity は、Agent、信頼設定、関連付け、SPIFFE ID を OAuth2 へ返し、OAuth2 が `jti` の再生を確かめた後に、それらとクライアントを載せた `WorkloadClientAuthenticated` を発行させる。
+- `aud` がテナントの発行者識別子だけを値に持たない場合、WorkloadIdentity は、信頼設定の受理する audience によらず、理由 `audience_mismatch` で拒否する。
+- `sub` が SPIFFE ID の構文を満たさない場合、WorkloadIdentity は、理由 `invalid_spiffe_id` で拒否する。
+- `sub` のトラストドメインの `spiffe` の信頼設定がテナントにない場合、WorkloadIdentity は、`iss` に一致する信頼設定があっても、理由 `unregistered_issuer` で拒否する。
+- 要求のクライアントが対応先の Agent に束縛されていない場合、WorkloadIdentity は、理由 `client_not_bound` で拒否する。
+- クライアントアサーションの検証のどの段で拒否する場合、WorkloadIdentity は、[モデル](#モデル)の表の拒否の理由、信頼設定、用途 `client_authentication` を載せた `WorkloadAttestationRejected` を発行する。
+- **判断**：[SPIFFECA03-JWT-SVID](../../oauth2/standards.md#oauth-spiffe-client-authentication) に従い、トークンの `iss` で鍵の源を選ばない。信頼設定の受理する audience は Token Exchange の `subject_token` のためのものであり、クライアントアサーションの `aud` はドラフトが発行者に限る。
 
 ## セキュリティ上の考慮
 

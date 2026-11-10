@@ -9,7 +9,7 @@ export const credentialFlowDictionary = defineDictionary(
     idHelp:
       'ここに表示する ID は認証用クライアントの client_id です。エージェント ID や秘密鍵ではありません。',
     existingHelp:
-      '同じテナントに登録済みの、公開鍵またはクライアント証明書で認証するクライアントの client_id を指定します。',
+      '同じテナントに登録済みの、公開鍵、クライアント証明書、SPIFFE の JWT-SVID のいずれかで認証するクライアントの client_id を指定します。',
     result: '作成した認証用クライアント',
     bound: 'エージェントに追加済みです。下の一覧でも確認できます。',
     pending:
@@ -24,7 +24,7 @@ export const credentialFlowDictionary = defineDictionary(
     idHelp:
       'The ID shown here is the authentication client_id. It is not the agent ID or a private key.',
     existingHelp:
-      'Enter the client_id of a client registered in this tenant that authenticates with a public key or a client certificate.',
+      'Enter the client_id of a client registered in this tenant that authenticates with a public key, a client certificate, or a SPIFFE JWT-SVID.',
     result: 'Created authentication client',
     bound: 'Added to this agent. It is also shown in the list below.',
     pending:

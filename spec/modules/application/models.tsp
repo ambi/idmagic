@@ -37,12 +37,13 @@ enum GrantType {
 }
 
 
-@doc("OAuth2 モジュールが所有するトークンエンドポイントのクライアント認証の方式を、公開契約として写したもの。送受信の値は、OpenID Connect Discovery 1.0 の 3 節と RFC 8705 の 2 節の `token_endpoint_auth_method` の値である。")
+@doc("OAuth2 モジュールが所有するトークンエンドポイントのクライアント認証の方式を、公開契約として写したもの。送受信の値は、OpenID Connect Discovery 1.0 の 3 節、RFC 8705 の 2 節、draft-ietf-oauth-spiffe-client-auth-03 の 3.2 節の `token_endpoint_auth_method` の値である。`spiffe_jwt` は Agent に束縛したクライアントだけが認証に使える。")
 enum TokenEndpointAuthMethod {
   ClientSecretBasic: "client_secret_basic",
   ClientSecretPost: "client_secret_post",
   PrivateKeyJwt: "private_key_jwt",
   TlsClientAuth: "tls_client_auth",
+  SpiffeJwt: "spiffe_jwt",
   None: "none",
 }
 

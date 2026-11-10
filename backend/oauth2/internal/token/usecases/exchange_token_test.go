@@ -377,6 +377,10 @@ func (f fakeWorkloadVerifier) VerifyWorkloadToken(context.Context, string, strin
 	return f.grant, f.err
 }
 
+func (f fakeWorkloadVerifier) VerifyClientAssertion(context.Context, string, string, string, string, time.Time) (*workloaddomain.WorkloadClientAuthentication, error) {
+	return nil, errors.New("the token exchange does not authenticate clients with JWT-SVIDs")
+}
+
 // TestExchangeTokenWorkloadFederation — wi-54: subject_token_type=JWT URN の
 // workload attestation を、束縛先 Agent の client の資格情報として交換する。
 func TestExchangeTokenWorkloadFederation(t *testing.T) {

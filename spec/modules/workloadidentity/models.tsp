@@ -409,10 +409,24 @@ model WorkloadTokenExchanged {
 model WorkloadAttestationRejected {
   occurredAt: utcDateTime;
   tenantId: string;
-  @doc("unregistered_issuer、trust_bundle_disabled、jwks_unavailable、invalid_signature、expired、audience_mismatch、ttl_exceeded、invalid_spiffe_id、trust_domain_mismatch、no_binding_match、ambiguous_match、agent_not_active、agent_unbound のいずれか。")
+  @doc("unregistered_issuer、trust_bundle_disabled、jwks_unavailable、invalid_signature、expired、audience_mismatch、ttl_exceeded、invalid_spiffe_id、trust_domain_mismatch、no_binding_match、ambiguous_match、agent_not_active、agent_unbound、client_not_bound、replayed のいずれか。")
   reason: string;
   @doc("発行者が登録済みだったときだけ設定する。")
   trustBundleId?: string;
+  @doc("token_exchange（Token Exchange の `subject_token`）か client_authentication（`spiffe_jwt` のクライアントアサーション）。")
+  usage: string;
+}
+
+
+@doc("`spiffe_jwt` のクライアントが JWT-SVID で認証した。OAuth2 が、WorkloadIdentity の検証と `jti` の再生の確認の後に発行する。")
+model WorkloadClientAuthenticated {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  trustBundleId: string;
+  bindingId: string;
+  agentId: string;
+  clientId: string;
+  spiffeId: string;
 }
 
 }

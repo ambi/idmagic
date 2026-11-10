@@ -22,13 +22,17 @@ const (
 	AuthMethodClientSecretPost  TokenEndpointAuthMethod = "client_secret_post"
 	AuthMethodPrivateKeyJwt     TokenEndpointAuthMethod = "private_key_jwt"
 	AuthMethodTlsClientAuth     TokenEndpointAuthMethod = "tls_client_auth"
-	AuthMethodNone              TokenEndpointAuthMethod = "none"
+	// AuthMethodSpiffeJwt は JWT-SVID をクライアントアサーションとして送る方式である
+	// (draft-ietf-oauth-spiffe-client-auth-03 の 3.2 節)。資格情報はクライアントに持たず、
+	// WorkloadIdentity の信頼設定と関連付けで検証する。
+	AuthMethodSpiffeJwt TokenEndpointAuthMethod = "spiffe_jwt"
+	AuthMethodNone      TokenEndpointAuthMethod = "none"
 )
 
 func (m TokenEndpointAuthMethod) Valid() bool {
 	switch m {
 	case AuthMethodClientSecretBasic, AuthMethodClientSecretPost,
-		AuthMethodPrivateKeyJwt, AuthMethodTlsClientAuth, AuthMethodNone:
+		AuthMethodPrivateKeyJwt, AuthMethodTlsClientAuth, AuthMethodSpiffeJwt, AuthMethodNone:
 		return true
 	}
 	return false
@@ -117,12 +121,19 @@ var fapi2ClientAuthMethods = []TokenEndpointAuthMethod{
 	AuthMethodPrivateKeyJwt, AuthMethodTlsClientAuth,
 }
 
-// ProvesKeyPossession はクライアントが要求ごとに秘密鍵の所有を証明して認証するかを返す。
+// agentClientAuthMethods は Agent に束縛したクライアントに許す認証方式である
+// (AIMS00-AGENT-CLIENT-AUTH)。共有シークレットを使う 2 方式と `none` は入らない。
+// `spiffe_jwt` は鍵の所有を要求ごとには証明しないが、短命の JWT-SVID で認証し、長期の
+// シークレットを配らないので許す。FAPI 2.0 の許可集合 (FAPI2-CLIENT-AUTH) は `spiffe_jwt`
+// を含まないため、二つの集合は分けて持つ。
+var agentClientAuthMethods = []TokenEndpointAuthMethod{
+	AuthMethodPrivateKeyJwt, AuthMethodTlsClientAuth, AuthMethodSpiffeJwt,
+}
+
+// AgentClientAuthMethodAllowed はクライアントの認証方式を Agent のクライアントに許すかを返す。
 // Agent に束縛できるのはこの方式のクライアントだけである (AIMS00-AGENT-CLIENT-AUTH)。
-// 許可集合は FAPI 2.0 と同じで、どちらも共有シークレットと `none` を締め出すために
-// 置いた集合なので一つの定義を共有する。
-func (c OAuth2Client) ProvesKeyPossession() bool {
-	return slices.Contains(fapi2ClientAuthMethods, c.TokenEndpointAuthMethod)
+func (c OAuth2Client) AgentClientAuthMethodAllowed() bool {
+	return slices.Contains(agentClientAuthMethods, c.TokenEndpointAuthMethod)
 }
 
 func ValidateLogoutURI(raw string) bool {

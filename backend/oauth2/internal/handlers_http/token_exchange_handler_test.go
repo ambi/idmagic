@@ -101,6 +101,10 @@ func (v *recordingWorkloadVerifier) VerifyWorkloadToken(_ context.Context, tenan
 	return &workloaddomain.WorkloadIdentityGrant{AgentID: "checkout-bot", ClientID: exchClientID, TrustBundleID: "prod-cluster", BindingID: "checkout-binding"}, nil
 }
 
+func (v *recordingWorkloadVerifier) VerifyClientAssertion(context.Context, string, string, string, string, time.Time) (*workloaddomain.WorkloadClientAuthentication, error) {
+	return nil, fmt.Errorf("the token exchange test does not authenticate clients with JWT-SVIDs")
+}
+
 // EX-WORKLOADIDENTITY-001-01 の 2 つ目の Then: Token Exchange の HTTP 入口は、検証が返した
 // WorkloadIdentityGrant を関連付け先 Agent の資格情報へ変換し、有効期間の短いアクセストークンを
 // 発行する。固定しているのは、発行されたトークンの `sub` が Agent の `client_id` であること、

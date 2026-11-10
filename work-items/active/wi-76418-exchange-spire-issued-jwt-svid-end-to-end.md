@@ -7,7 +7,7 @@ created_at: 2026-11-07
 priority: p2
 depends_on: [wi-77559-verify-jwt-svid-against-spiffe-rules, wi-88550-read-spiffe-bundle-endpoint-format]
 change_kind: maintenance
-spec_impact: { kind: none, reason: "REQ-WORKLOADIDENTITY-001 から 007 の規範を変えず、実際の SPIRE が発行した JWT-SVID でその規範が成り立つことを確かめるテストだけを足す。" }
+spec_impact: { kind: none, reason: "REQ-WORKLOADIDENTITY-001 から 007 と REQ-OAUTH2-089 の規範を変えず、実際の SPIRE が発行した JWT-SVID でその規範が成り立つことを確かめるテストだけを足す。" }
 ---
 
 # 実際の SPIRE が発行した JWT-SVID で、Token Exchange までを確かめる
@@ -23,6 +23,7 @@ spec_impact: { kind: none, reason: "REQ-WORKLOADIDENTITY-001 から 007 の規�
 - SPIRE のサーバーとエージェントをコンテナで起動し、JWT-SVID を発行させるテストを足す。
 - そのバンドルを信頼設定に登録し、Token Exchange で IdMagic のアクセストークンを得られることを確かめる。
 - 別のトラストドメインの SPIRE が発行した JWT-SVID が拒否されることを確かめる。
+- `aud` を発行者識別子にした SPIRE の JWT-SVID をクライアントアサーション（`spiffe_jwt`、REQ-OAUTH2-089）として送り、`client_credentials` のトークンを得られることを確かめる。wi-25266 が実装した経路で、SPIRE が `jti` を付けない JWT-SVID を繰り返し使えることも含む。
 - Docker が要るテストとして、既存の Docker に依存するテスト（`15b65565` の OpenLDAP の分離）と同じ実行区分に置き、`mise` タスクから実行できるようにする。
 
 ## 対象外

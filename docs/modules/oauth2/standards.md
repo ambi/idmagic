@@ -379,4 +379,18 @@ draft-ietf-wimse-aims-00 — https://www.ietf.org/archive/id/draft-ietf-wimse-ai
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| AIMS00-AGENT-CLIENT-AUTH | required | MUST | Agent に束縛したクライアントのトークン要求は、`private_key_jwt` か `tls_client_auth` で認証したときだけ受け付け、共有シークレットの方式と `none` のクライアントはグラントの種類によらず拒否する。そのようなクライアントを Agent に束縛する操作も拒否する。 |
+| AIMS00-AGENT-CLIENT-AUTH | required | MUST | Agent に束縛したクライアントのトークン要求は、`private_key_jwt`、`tls_client_auth`、`spiffe_jwt` のいずれかで認証したときだけ受け付け、共有シークレットの方式と `none` のクライアントはグラントの種類によらず拒否する。そのようなクライアントを Agent に束縛する操作も拒否する。 |
+
+## OAuth SPIFFE Client Authentication
+
+draft-ietf-oauth-spiffe-client-auth-03 — https://www.ietf.org/archive/id/draft-ietf-oauth-spiffe-client-auth-03.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| SPIFFECA03-JWT-SVID | partial | MUST | `client_assertion_type` が `urn:ietf:params:oauth:client-assertion-type:jwt-spiffe` の要求は、`sub` の SPIFFE ID のトラストドメインに登録した `spiffe` の信頼設定の `jwt-svid` 鍵で署名を検証し、`aud` がテナントの発行者識別子だけを値に持ち、`exp` を過ぎておらず、`exp` と `iat` の差が信頼設定の最大 TTL 以下で、JOSE ヘッダーが SPIFFE の規則を満たすときだけ受け付ける。`iss` では信頼設定を選ばない。満たさない要求は 401 と `invalid_client` で拒否する。最大 TTL を確かめられないため、`iat` のない JWT-SVID も拒否する。 |
+| SPIFFECA03-CLIENT-ID | partial | MUST | `client_id` を送った要求は、そのクライアントの認証方式が `spiffe_jwt` で、SPIFFE ID が関連付けで対応する Agent にそのクライアントが束縛されているときだけ受け付ける。`client_id` を省いた要求は、SPIFFE ID と等しい `client_id` のクライアントを同じ条件で認証する。どちらも満たさなければ 401 と `invalid_client` で拒否する。対応付けは Agent への関連付けだけで登録し、クライアントメタデータの `spiffe_id` は持たない。 |
+| SPIFFECA03-JTI | optional | MAY | `jti` を持つ JWT-SVID は、同じ `jti` の 2 回目以降の利用を 401 と `invalid_client` で拒否する。`jti` のない JWT-SVID は、再生を確かめずに受け付ける。 |
+| SPIFFECA03-METADATA | required | MUST | Authorization Server Metadata の `token_endpoint_auth_methods_supported`、`introspection_endpoint_auth_methods_supported`、`revocation_endpoint_auth_methods_supported` に `spiffe_jwt` を載せる。 |
+| SPIFFECA03-X509-SVID | excluded | MAY | X.509-SVID による認証（`spiffe_x509`）は提供せず、メタデータに載せない。 |
+| SPIFFECA03-WIT-SVID | excluded | MAY | WIT-SVID による認証（`spiffe_wit`）は提供せず、メタデータに載せない。 |
+| SPIFFECA03-CIMD | excluded | MAY | Client ID Metadata Document の `spiffe_id` と `spiffe_bundle_endpoint` を読まない。URL 形式の `client_id` を持つ `jwt-spiffe` の要求は、401 と `invalid_client` で拒否する。 |

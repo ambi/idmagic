@@ -67,6 +67,7 @@ const (
 	AuthMethodClientSecretPost    = clientdomain.AuthMethodClientSecretPost
 	AuthMethodPrivateKeyJwt       = clientdomain.AuthMethodPrivateKeyJwt
 	AuthMethodTlsClientAuth       = clientdomain.AuthMethodTlsClientAuth
+	AuthMethodSpiffeJwt           = clientdomain.AuthMethodSpiffeJwt
 	AuthMethodNone                = clientdomain.AuthMethodNone
 	ClientSecretCredentialActive  = clientdomain.ClientSecretCredentialActive
 	ClientSecretCredentialExpired = clientdomain.ClientSecretCredentialExpired

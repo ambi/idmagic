@@ -141,6 +141,8 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     reasonAgentUnbound: '対応先エージェントにクレデンシャルが無い',
     reasonInvalidSpiffeId: '主体が SPIFFE ID でない',
     reasonTrustDomainMismatch: 'トラストドメインが一致しない',
+    reasonClientNotBound: '要求のクライアントが対応先エージェントに紐付いていない',
+    reasonReplayed: '同じ jti の JWT-SVID を再び受けた',
 
     deleteBundleTitle: '信頼バンドルを削除',
     deleteBundleMessage:
@@ -316,6 +318,8 @@ export const adminWorkloadIdentityDictionary = defineDictionary(
     reasonAgentUnbound: 'Bound agent has no credential',
     reasonInvalidSpiffeId: 'Subject is not a SPIFFE ID',
     reasonTrustDomainMismatch: 'Trust domain does not match',
+    reasonClientNotBound: 'Requesting client is not bound to the agent',
+    reasonReplayed: 'JWT-SVID with the same jti was reused',
 
     deleteBundleTitle: 'Delete trust bundle',
     deleteBundleMessage:

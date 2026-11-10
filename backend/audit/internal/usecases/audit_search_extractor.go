@@ -47,6 +47,7 @@ var successAuthEventTypes = map[string]bool{
 var agentActorEventTypes = map[string]bool{
 	"TokenExchanged":                    true,
 	"WorkloadTokenExchanged":            true,
+	"WorkloadClientAuthenticated":       true,
 	"AgentApprovalRequired":             true,
 	"AgentClientAuthenticationRejected": true,
 	"BackchannelAuthRequested":          true,

@@ -67,12 +67,13 @@ func (c *RuntimeContract) BuildDiscoveryDocument(issuer string) (map[string]any,
 	doc["code_challenge_methods_supported"] = []string{string(CodeChallengeMethodS256)}
 	doc["dpop_signing_alg_values_supported"] = []string{"PS256", "ES256"}
 	doc["token_endpoint_auth_methods_supported"] = []string{
-		"client_secret_basic", "client_secret_post", "private_key_jwt", "tls_client_auth",
+		"client_secret_basic", "client_secret_post", "private_key_jwt", "tls_client_auth", "spiffe_jwt",
 	}
 	doc["scopes_supported"] = slices.Clone(discoveryScopes)
 	doc["subject_types_supported"] = []string{"public"}
-	doc["introspection_endpoint_auth_methods_supported"] = []string{"client_secret_basic", "private_key_jwt", "tls_client_auth"}
-	doc["revocation_endpoint_auth_methods_supported"] = []string{"client_secret_basic", "private_key_jwt", "tls_client_auth", "none"}
+	// draft-ietf-oauth-spiffe-client-auth-03 の 4 節: spiffe_jwt はイントロスペクションと失効でも広告する。
+	doc["introspection_endpoint_auth_methods_supported"] = []string{"client_secret_basic", "private_key_jwt", "tls_client_auth", "spiffe_jwt"}
+	doc["revocation_endpoint_auth_methods_supported"] = []string{"client_secret_basic", "private_key_jwt", "tls_client_auth", "spiffe_jwt", "none"}
 	doc["require_pushed_authorization_requests"] = false
 	doc["require_pkce"] = true
 	doc["tls_client_certificate_bound_access_tokens"] = true

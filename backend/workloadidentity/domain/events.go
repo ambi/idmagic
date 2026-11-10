@@ -124,14 +124,41 @@ type WorkloadTokenExchanged struct {
 func (e *WorkloadTokenExchanged) EventType() string     { return "WorkloadTokenExchanged" }
 func (e *WorkloadTokenExchanged) OccurredAt() time.Time { return e.At }
 
+// AttestationUsage は外部 attestation token を何の検証に使ったかである。
+type AttestationUsage string
+
+const (
+	// AttestationUsageTokenExchange は Token Exchange の subject_token の検証である。
+	AttestationUsageTokenExchange AttestationUsage = "token_exchange"
+	// AttestationUsageClientAuthentication は spiffe_jwt のクライアントアサーションの検証である。
+	AttestationUsageClientAuthentication AttestationUsage = "client_authentication"
+)
+
 // WorkloadAttestationRejected は外部 attestation token の検証が fail-closed で拒否
 // されたことを表す。TrustBundleID は issuer が登録済みだった場合のみ設定する。
 type WorkloadAttestationRejected struct {
-	At            time.Time `json:"-"`
-	TenantID      string    `json:"tenantId"`
-	Reason        string    `json:"reason"`
-	TrustBundleID string    `json:"trustBundleId,omitempty"`
+	At            time.Time        `json:"-"`
+	TenantID      string           `json:"tenantId"`
+	Reason        string           `json:"reason"`
+	TrustBundleID string           `json:"trustBundleId,omitempty"`
+	Usage         AttestationUsage `json:"usage"`
 }
 
 func (e *WorkloadAttestationRejected) EventType() string     { return "WorkloadAttestationRejected" }
 func (e *WorkloadAttestationRejected) OccurredAt() time.Time { return e.At }
+
+// WorkloadClientAuthenticated は spiffe_jwt のクライアントが JWT-SVID で認証したことを表す。
+// OAuth2 が WorkloadIdentity の検証と jti の再生の確認の後に emit する
+// (WorkloadTokenExchanged と同じく、検証の成功だけでは emit しない)。
+type WorkloadClientAuthenticated struct {
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	TrustBundleID string    `json:"trustBundleId"`
+	BindingID     string    `json:"bindingId"`
+	AgentID       string    `json:"agentId"`
+	ClientID      string    `json:"clientId"`
+	SpiffeID      string    `json:"spiffeId"`
+}
+
+func (e *WorkloadClientAuthenticated) EventType() string     { return "WorkloadClientAuthenticated" }
+func (e *WorkloadClientAuthenticated) OccurredAt() time.Time { return e.At }

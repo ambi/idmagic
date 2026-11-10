@@ -46,7 +46,7 @@ func (v *Verifier) Verify(
 		return nil, translateError(err)
 	}
 	return &workloaddomain.WorkloadSVIDClaims{
-		Issuer: claims.Issuer, Subject: claims.Subject,
+		Issuer: claims.Issuer, Subject: claims.Subject, Audience: claims.Audience, JTI: claims.JTI,
 		ExpiresAt: claims.ExpiresAt, IssuedAt: claims.IssuedAt,
 	}, nil
 }

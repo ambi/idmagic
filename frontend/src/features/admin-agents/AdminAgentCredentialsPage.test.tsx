@@ -60,3 +60,36 @@ it('retries binding without creating another client', async () => {
   expect(created).toBe(1)
   expect(bound).toBe(2)
 })
+
+//spec:covers REQ-OAUTH2-089: SPIFFE の JWT-SVID を選ぶと、鍵を持たない spiffe_jwt のクライアントを作成してエージェントに紐付け、信頼設定への案内を示す。
+it('creates and binds a spiffe_jwt client without a key', async () => {
+  const requests: { url: string; body: unknown }[] = []
+  globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
+    requests.push({ url, body: init?.body ? JSON.parse(String(init.body)) : undefined })
+    if (url.endsWith('/clients')) {
+      return Response.json({ client: { client_id: 'spiffe-client' } }, { status: 201 })
+    }
+    if (url.includes('/credentials')) {
+      return new Response(null, { status: 204 })
+    }
+    return Response.json({ ...agent, client_ids: ['spiffe-client'] })
+  }) as unknown as typeof fetch
+  await renderWithRouter(<AdminAgentCredentialsPage agent={agent} csrfToken="csrf" />)
+  fireEvent.click(screen.getByLabelText(t.credentialKindSpiffe))
+  expect(screen.queryByLabelText(t.publicKeyLabel) === null).toBe(true)
+  expect(screen.getByRole('link', { name: t.spiffeTrustLink })).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: t.createKeyCredential }))
+  await waitFor(() =>
+    expect(
+      screen.getByText('Added to this agent. It is also shown in the list below.'),
+    ).toBeInTheDocument(),
+  )
+  const created = requests.find((request) => request.url.endsWith('/clients'))?.body as Record<
+    string,
+    unknown
+  >
+  expect(created.token_endpoint_auth_method).toBe('spiffe_jwt')
+  expect('jwks' in created || 'jwks_uri' in created).toBe(false)
+  expect(requests.some((request) => request.url.endsWith('/agents/a1/credentials'))).toBe(true)
+})

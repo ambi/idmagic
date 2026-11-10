@@ -62,7 +62,7 @@ func ResolveIssuableAgent(ctx context.Context, deps AgentIssuanceDeps, clientID 
 }
 
 // RejectAgentClientWithoutKeyProof は、client が Agent に束縛されていて、その認証方式が
-// 鍵の所有を証明しない (共有シークレットか none) 場合に invalid_client を返す
+// Agent のクライアントに許す方式でない (共有シークレットか none) 場合に invalid_client を返す
 // (REQ-OAUTH2-055)。束縛が無い client では何もしない。
 //
 // 束縛の作成時にも同じ条件で拒否しているが、束縛の後でクライアントの認証方式を
@@ -75,7 +75,7 @@ func ResolveIssuableAgent(ctx context.Context, deps AgentIssuanceDeps, clientID 
 func RejectAgentClientWithoutKeyProof(
 	ctx context.Context, deps AgentIssuanceDeps, client *domain.OAuth2Client, grantType string, now time.Time,
 ) error {
-	if deps.AgentRepo == nil || client.ProvesKeyPossession() {
+	if deps.AgentRepo == nil || client.AgentClientAuthMethodAllowed() {
 		return nil
 	}
 	tenantID := tenantports.TenantID(ctx)
@@ -87,7 +87,7 @@ func RejectAgentClientWithoutKeyProof(
 		At: now, TenantID: tenantID, AgentID: agent.ID, ClientID: client.ClientID,
 		TokenEndpointAuthMethod: string(client.TokenEndpointAuthMethod), GrantType: grantType,
 	})
-	return NewOAuthError("invalid_client", "agent clients must authenticate with private_key_jwt or tls_client_auth")
+	return NewOAuthError("invalid_client", "agent clients must authenticate with private_key_jwt, tls_client_auth, or spiffe_jwt")
 }
 
 // IssuerForRequestingAgent は、トークンを要求したクライアントに束縛された Agent を、発行する

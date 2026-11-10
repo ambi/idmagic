@@ -9,11 +9,12 @@ SPIFFE JWT-SVID は、種別が `spiffe` の信頼設定で、SPIFFE の規則�
 
 IdMagic は SPIRE のサーバーやエージェントを同梱、運用せず、外部のアテステーションを検証する RP として動作する。
 検証したアテステーションは OAuth2 の Token Exchange のグラント（RFC 8693）の subject として扱い、長期のシークレットを配布する専用の資格情報の経路は設けない。
+`spiffe_jwt` のクライアント認証では、クライアントアサーションの JWT-SVID を検証し、要求のクライアントが関連付けの `Agent` に束縛されていることを確かめる。
 
 | 扱わないもの | 担当 |
 | --- | --- |
 | `Agent` とその `OAuth2Client` への束縛 | `IdManagement` |
-| Token Exchange のグラントとアクセストークンの発行 | `OAuth2` |
+| Token Exchange のグラントとアクセストークンの発行、クライアントの認証方式と `jti` の再生の確認 | `OAuth2` |
 | JWT の署名の検証と JWKS の取得の部品 | 技術的な共有アダプター `backend/shared/security/tokens_jose` |
 
 信頼設定の入力支援では、外部発行者の Discovery 文書を読み、検証した JWKS URI を候補として返す。
@@ -25,6 +26,7 @@ IdMagic は SPIRE のサーバーやエージェントを同梱、運用せず�
 | --- | --- | --- | --- |
 | 管理 API | 解決済みのテナントの `/api/admin/v1/workload-identity/...` への要求 | `api` が、ハンドラーからユースケースを同期的に呼ぶ | [信頼設定と関連付けの管理](features/trust-configuration.md) |
 | アテステーションの交換 | `OAuth2` のトークンエンドポイントへの Token Exchange の要求 | `api` の `OAuth2` のユースケースが、このモジュールの検証を同期的に呼ぶ | [アテステーションの交換の設計](features/attestation-exchange.md#実現方式) |
+| クライアントアサーションの検証 | `OAuth2` のクライアント認証の入口への `jwt-spiffe` の要求 | `api` の `OAuth2` のクライアント認証が、このモジュールの検証を同期的に呼ぶ | [クライアントアサーションの検証](features/attestation-exchange.md#クライアントアサーションの検証) |
 
 ## 設計の要点
 

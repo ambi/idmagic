@@ -63,9 +63,11 @@ var spiffeWorkloadAlgs = []string{
 
 // WorkloadSVIDClaims は検証を通過した外部 attestation token の claim。
 type WorkloadSVIDClaims struct {
-	Issuer    string
-	Subject   string
-	Audience  []string
+	Issuer   string
+	Subject  string
+	Audience []string
+	// JTI は文字列の `jti` クレームで、なければ空である。JWT-SVID は `jti` を必須としない。
+	JTI       string
 	IssuedAt  time.Time
 	ExpiresAt time.Time
 }
@@ -149,10 +151,12 @@ func VerifyWorkloadSVID(
 		return nil, ErrWorkloadSVIDTTLExceeded
 	}
 
+	jti, _ := payload["jti"].(string)
 	return &WorkloadSVIDClaims{
 		Issuer:    iss,
 		Subject:   sub,
 		Audience:  audienceStrings(payload["aud"]),
+		JTI:       jti,
 		IssuedAt:  iat,
 		ExpiresAt: exp,
 	}, nil

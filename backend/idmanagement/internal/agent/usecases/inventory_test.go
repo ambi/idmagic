@@ -31,7 +31,7 @@ type stubClients struct {
 	err    error
 }
 
-func (s stubClients) LookupBindableClient(context.Context, string, string) (exists, provesKeyPossession bool, err error) {
+func (s stubClients) LookupBindableClient(context.Context, string, string) (exists, agentAuthMethodAllowed bool, err error) {
 	return s.exists, s.exists, s.err
 }
 

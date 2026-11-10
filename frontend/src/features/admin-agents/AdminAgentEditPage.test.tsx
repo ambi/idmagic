@@ -218,7 +218,7 @@ describe('AdminAgentCredentialsPage', () => {
           response(422, {
             type: 'urn:idmagic:error:agent_client_auth_method_not_allowed',
             detail:
-              'An agent can only be bound to a client that authenticates with private_key_jwt or tls_client_auth.',
+              'An agent can only be bound to a client that authenticates with private_key_jwt, tls_client_auth, or spiffe_jwt.',
           }),
         ),
       ),

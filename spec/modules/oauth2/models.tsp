@@ -736,8 +736,8 @@ model DiscoveryDocument {
   response_modes_supported?: ResponseMode[];
   grant_types_supported: GrantType[];
   token_endpoint_auth_methods_supported: TokenEndpointAuthMethod[];
-  introspection_endpoint_auth_methods_supported: TokenEndpointAuthMethod[] = #[TokenEndpointAuthMethod.ClientSecretBasic, TokenEndpointAuthMethod.PrivateKeyJwt, TokenEndpointAuthMethod.TlsClientAuth];
-  revocation_endpoint_auth_methods_supported: TokenEndpointAuthMethod[] = #[TokenEndpointAuthMethod.ClientSecretBasic, TokenEndpointAuthMethod.PrivateKeyJwt, TokenEndpointAuthMethod.TlsClientAuth, TokenEndpointAuthMethod.None];
+  introspection_endpoint_auth_methods_supported: TokenEndpointAuthMethod[] = #[TokenEndpointAuthMethod.ClientSecretBasic, TokenEndpointAuthMethod.PrivateKeyJwt, TokenEndpointAuthMethod.TlsClientAuth, TokenEndpointAuthMethod.SpiffeJwt];
+  revocation_endpoint_auth_methods_supported: TokenEndpointAuthMethod[] = #[TokenEndpointAuthMethod.ClientSecretBasic, TokenEndpointAuthMethod.PrivateKeyJwt, TokenEndpointAuthMethod.TlsClientAuth, TokenEndpointAuthMethod.SpiffeJwt, TokenEndpointAuthMethod.None];
   id_token_signing_alg_values_supported: SignatureAlgorithm[];
   code_challenge_methods_supported: CodeChallengeMethod[];
   require_pushed_authorization_requests: boolean;

@@ -18,3 +18,11 @@ type WorkloadTokenVerifierAdapter struct {
 func (a WorkloadTokenVerifierAdapter) VerifyWorkloadToken(ctx context.Context, tenantID, subjectToken string, now time.Time) (*domain.WorkloadIdentityGrant, error) {
 	return VerifyWorkloadAttestation(ctx, a.Deps, tenantID, VerifyWorkloadAttestationInput{SubjectToken: subjectToken}, now)
 }
+
+func (a WorkloadTokenVerifierAdapter) VerifyClientAssertion(
+	ctx context.Context, tenantID, clientID, assertion, expectedAudience string, now time.Time,
+) (*domain.WorkloadClientAuthentication, error) {
+	return VerifyWorkloadClientAssertion(ctx, a.Deps, tenantID, VerifyWorkloadClientAssertionInput{
+		ClientID: clientID, Assertion: assertion, ExpectedAudience: expectedAudience,
+	}, now)
+}

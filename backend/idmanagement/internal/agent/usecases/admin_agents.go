@@ -39,7 +39,7 @@ var (
 	ErrAgentClientNotFound = errors.New("client not found")
 	ErrAgentClientBound    = errors.New("client is already bound to another agent")
 	// ErrAgentClientAuthMethodNotAllowed は束縛先のクライアントが共有シークレットか none で
-	// 認証する。Agent の資格情報は鍵の所有を証明する方式に限る (REQ-IDMANAGEMENT-074)。
+	// 認証する。Agent の資格情報は共有シークレットに依らない方式に限る (REQ-IDMANAGEMENT-074)。
 	ErrAgentClientAuthMethodNotAllowed = errors.New("client authentication method cannot be bound to an agent")
 )
 
@@ -423,7 +423,7 @@ func BindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agent
 		return ErrAgentClientNotFound
 	}
 	if deps.ClientRepo != nil {
-		exists, provesKeyPossession, err := deps.ClientRepo.LookupBindableClient(ctx, tenantID, clientID)
+		exists, agentAuthMethodAllowed, err := deps.ClientRepo.LookupBindableClient(ctx, tenantID, clientID)
 		if err != nil {
 			return err
 		}
@@ -432,7 +432,7 @@ func BindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, agent
 		}
 		// 束縛の後で認証方式を変えられるので、強制は OAuth2 のトークン要求ごとの判定
 		// (REQ-OAUTH2-055) が担う。ここでは誤った構成を作った時点で理由を返す。
-		if !provesKeyPossession {
+		if !agentAuthMethodAllowed {
 			return ErrAgentClientAuthMethodNotAllowed
 		}
 	}

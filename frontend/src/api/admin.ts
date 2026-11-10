@@ -1720,16 +1720,38 @@ export async function createAdminAgentKeyClient(
 ): Promise<string> {
   // JWKS の URL を使えば、鍵の更新に管理画面の操作が要らない (REQ-IDMANAGEMENT-105)。
   const keys = 'jwks' in input ? { jwks: input.jwks } : { jwks_uri: input.jwks_uri }
+  return createAdminAgentClient(csrfToken, input.name, input.scope, {
+    token_endpoint_auth_method: 'private_key_jwt',
+    ...keys,
+  })
+}
+
+// SPIFFE の JWT-SVID で認証するクライアントは鍵を持たない。ワークロードとの対応付けは
+// Workload Identity の関連付けで登録する (REQ-OAUTH2-089)。
+export async function createAdminAgentSpiffeClient(
+  csrfToken: string,
+  input: { name: string; scope: string },
+): Promise<string> {
+  return createAdminAgentClient(csrfToken, input.name, input.scope, {
+    token_endpoint_auth_method: 'spiffe_jwt',
+  })
+}
+
+async function createAdminAgentClient(
+  csrfToken: string,
+  name: string,
+  scope: string,
+  authentication: Record<string, unknown>,
+): Promise<string> {
   const result = await request<{ client: { client_id: string } }>(
     '/api/admin/v1/clients',
     adminRequest(csrfToken, 'POST', {
-      client_name: input.name,
+      client_name: name,
       client_type: 'confidential',
       redirect_uris: [],
       grant_types: ['client_credentials', 'urn:openid:params:grant-type:ciba'],
-      token_endpoint_auth_method: 'private_key_jwt',
-      scope: input.scope,
-      ...keys,
+      scope,
+      ...authentication,
       fapi_profile: 'none',
     }),
   )

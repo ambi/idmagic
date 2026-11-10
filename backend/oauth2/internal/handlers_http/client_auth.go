@@ -55,7 +55,10 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 		return authedClient{}, usecases.NewOAuthError("invalid_request", "Multiple client authentication methods are mixed.")
 	}
 
-	// 1. client_assertion (private_key_jwt)
+	// 1. client_assertion (private_key_jwt / spiffe_jwt)
+	if hasAssertion && c.Request().PostFormValue("client_assertion_type") == spiffeAssertionType {
+		return d.authenticateSpiffeClient(c)
+	}
 	if hasAssertion {
 		const assertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 		if c.Request().PostFormValue("client_assertion_type") != assertionType {

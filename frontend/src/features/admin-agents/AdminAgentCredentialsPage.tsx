@@ -3,6 +3,7 @@ import {
   AuthenticationAPIError,
   bindAdminAgentCredential,
   createAdminAgentKeyClient,
+  createAdminAgentSpiffeClient,
   getAdminAgent,
   tenantURL,
   unbindAdminAgentCredential,
@@ -24,6 +25,9 @@ const bindCredentialSchema = formSchema({ clientID: requiredText() })
 
 // 鍵の解析は Web Crypto を使う非同期の処理なので、欄の規則ではなく送信時に行う。
 const keyCredentialSchema = formSchema({ publicKey: requiredText(), otherScopes: scopeText() })
+
+// SPIFFE の JWT-SVID で認証するクライアントは鍵を持たないので、スコープだけを入力する。
+const spiffeCredentialSchema = formSchema({ otherScopes: scopeText() })
 import { AgentActionConfirmation } from './AgentActionConfirmation'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { parsePublicKey } from './publicKey'
@@ -48,6 +52,7 @@ export function AdminAgentCredentialsPage({
   const flow = useDictionary(credentialFlowDictionary)
   const resources = useDictionary(agentResourcesDictionary)
   const [method, setMethod] = useState<'create' | 'existing'>('create')
+  const [credentialKind, setCredentialKind] = useState<'key' | 'spiffe'>('key')
   const [createdClient, setCreatedClient] = useState<{ id: string; bound: boolean } | null>(null)
   const [clientIDs, setClientIDs] = useState(agent.client_ids)
   const [clientID, setClientID] = useState('')
@@ -116,38 +121,48 @@ export function AdminAgentCredentialsPage({
   }
 
   const keyForm = useFormValidation(keyCredentialSchema, { publicKey, otherScopes })
+  const spiffeForm = useFormValidation(spiffeCredentialSchema, { otherScopes })
+  const createForm = credentialKind === 'key' ? keyForm : spiffeForm
   const requestedScopes = [
     ...new Set([
       ...(allowApproval ? APPROVAL_SCOPES : []),
       ...selectedScopes,
-      ...(keyForm.data?.otherScopes?.split(' ') ?? []),
+      ...(createForm.data?.otherScopes?.split(' ') ?? []),
     ]),
   ]
 
-  async function createFromKey(event: FormEvent) {
+  async function createAndBind(event: FormEvent) {
     event.preventDefault()
-    if (!keyForm.data) {
-      keyForm.revealAll()
+    if (!createForm.data) {
+      createForm.revealAll()
       return
     }
     if (busy || killed) return
     void run(async () => {
-      const jwks = await parsePublicKey(publicKey)
-      if (jwks === 'private' || jwks === 'unsupported' || jwks === null) {
-        setError(
-          jwks === 'private'
-            ? t.publicKeyHasPrivateMembers
-            : jwks === 'unsupported'
-              ? t.publicKeyUnsupported
-              : t.publicKeyInvalid,
-        )
-        return false
+      let created: string
+      if (credentialKind === 'spiffe') {
+        created = await createAdminAgentSpiffeClient(csrfToken, {
+          name: agent.name,
+          scope: requestedScopes.join(' '),
+        })
+      } else {
+        const jwks = await parsePublicKey(publicKey)
+        if (jwks === 'private' || jwks === 'unsupported' || jwks === null) {
+          setError(
+            jwks === 'private'
+              ? t.publicKeyHasPrivateMembers
+              : jwks === 'unsupported'
+                ? t.publicKeyUnsupported
+                : t.publicKeyInvalid,
+          )
+          return false
+        }
+        created = await createAdminAgentKeyClient(csrfToken, {
+          name: agent.name,
+          scope: requestedScopes.join(' '),
+          jwks,
+        })
       }
-      const created = await createAdminAgentKeyClient(csrfToken, {
-        name: agent.name,
-        scope: requestedScopes.join(' '),
-        jwks,
-      })
       // 紐付けだけが失敗しても、作成済みのクライアントで再試行できるように残す。
       setClientID(created)
       setCreatedClient({ id: created, bound: false })
@@ -254,27 +269,65 @@ export function AdminAgentCredentialsPage({
       </Card>
       {method === 'create' ? (
         <Card className="mt-6 max-w-2xl space-y-4 p-6">
-          <div>
-            <h2 className="text-base font-semibold">{t.createKeyCredentialHeading}</h2>
-            <p className="mt-1 text-sm text-slate-600">{t.createKeyCredentialDescription}</p>
-          </div>
-          <form onSubmit={createFromKey} className="space-y-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="agent-public-key" required>
-                {t.publicKeyLabel}
-              </Label>
-              <textarea
-                id="agent-public-key"
-                required
-                rows={6}
-                value={publicKey}
-                onChange={(event) => setPublicKey(event.target.value)}
-                disabled={busy || killed}
-                className="rounded-md border border-slate-300 bg-white p-2 font-mono text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
-                {...keyForm.fieldProps('publicKey')}
-              />
-              <FieldError form={keyForm} name="publicKey" />
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">{t.credentialKindLabel}</legend>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="credential-kind"
+                  checked={credentialKind === 'key'}
+                  disabled={busy}
+                  onChange={() => setCredentialKind('key')}
+                />
+                {t.credentialKindKey}
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="credential-kind"
+                  checked={credentialKind === 'spiffe'}
+                  disabled={busy}
+                  onChange={() => setCredentialKind('spiffe')}
+                />
+                {t.credentialKindSpiffe}
+              </label>
             </div>
+          </fieldset>
+          {credentialKind === 'key' ? (
+            <div>
+              <h2 className="text-base font-semibold">{t.createKeyCredentialHeading}</h2>
+              <p className="mt-1 text-sm text-slate-600">{t.createKeyCredentialDescription}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <h2 className="text-base font-semibold">{t.createSpiffeCredentialHeading}</h2>
+              <p className="text-sm text-slate-600">{t.createSpiffeCredentialDescription}</p>
+              <p className="text-sm text-slate-600">{t.spiffeCredentialRequirements}</p>
+              <a className="text-sm underline" href={tenantURL('/admin/workload-identity')}>
+                {t.spiffeTrustLink}
+              </a>
+            </div>
+          )}
+          <form onSubmit={createAndBind} className="space-y-3">
+            {credentialKind === 'key' ? (
+              <div className="grid gap-1.5">
+                <Label htmlFor="agent-public-key" required>
+                  {t.publicKeyLabel}
+                </Label>
+                <textarea
+                  id="agent-public-key"
+                  required
+                  rows={6}
+                  value={publicKey}
+                  onChange={(event) => setPublicKey(event.target.value)}
+                  disabled={busy || killed}
+                  className="rounded-md border border-slate-300 bg-white p-2 font-mono text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+                  {...keyForm.fieldProps('publicKey')}
+                />
+                <FieldError form={keyForm} name="publicKey" />
+              </div>
+            ) : null}
             <p className="text-sm text-slate-600">{resources.ceiling}</p>
             <details>
               <summary className="cursor-pointer text-sm">{resources.ceilingAdvanced}</summary>
@@ -328,16 +381,16 @@ export function AdminAgentCredentialsPage({
                     value={otherScopes}
                     onChange={(event) => setOtherScopes(event.target.value)}
                     disabled={busy || killed}
-                    {...keyForm.fieldProps('otherScopes')}
+                    {...createForm.fieldProps('otherScopes')}
                   />
-                  <FieldError form={keyForm} name="otherScopes" />
+                  <FieldError form={createForm} name="otherScopes" />
                 </details>
               </fieldset>
             </details>
             <div className="flex justify-end">
               <Button
                 type="submit"
-                disabled={busy || killed || !keyForm.data || requestedScopes.length === 0}
+                disabled={busy || killed || !createForm.data || requestedScopes.length === 0}
               >
                 {t.createKeyCredential}
               </Button>

@@ -23,6 +23,8 @@ const REASON_KEYS: Record<string, keyof Dictionary> = {
   agent_unbound: 'reasonAgentUnbound',
   invalid_spiffe_id: 'reasonInvalidSpiffeId',
   trust_domain_mismatch: 'reasonTrustDomainMismatch',
+  client_not_bound: 'reasonClientNotBound',
+  replayed: 'reasonReplayed',
 }
 
 export function rejectionReasonLabel(reason: string, t: Dictionary): string {

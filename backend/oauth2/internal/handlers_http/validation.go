@@ -113,6 +113,7 @@ var (
 		"client_secret_post",
 		"private_key_jwt",
 		"tls_client_auth",
+		"spiffe_jwt",
 		"none",
 	}
 	registrableFapiProfiles = []string{"none", "fapi_2_security_profile"}

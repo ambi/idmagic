@@ -9,8 +9,11 @@ import (
 // (backend/workloadidentity/verification_jose アダプタが tokens_jose の検証結果を
 // この形へ変換する。usecases 層は tokens_jose を直接知らない)。
 type WorkloadSVIDClaims struct {
-	Issuer    string
-	Subject   string
+	Issuer   string
+	Subject  string
+	Audience []string
+	// JTI は `jti` クレームで、なければ空である。
+	JTI       string
 	ExpiresAt time.Time
 	IssuedAt  time.Time
 }

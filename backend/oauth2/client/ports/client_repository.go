@@ -14,8 +14,8 @@ var ErrClientSecretCredentialLimitExceeded = errors.New("active client secret cr
 type OAuth2ClientRepository interface {
 	FindByID(ctx context.Context, tenantID, clientID string) (*domain.OAuth2Client, error)
 	// LookupBindableClient は、Agent の束縛先に保存型を渡さず、既存の照会と同じ条件で
-	// 存在と、Agent に束縛できる認証方式か (OAuth2Client.ProvesKeyPossession) を調べる。
-	LookupBindableClient(ctx context.Context, tenantID, clientID string) (exists, provesKeyPossession bool, err error)
+	// 存在と、Agent に束縛できる認証方式か (OAuth2Client.AgentClientAuthMethodAllowed) を調べる。
+	LookupBindableClient(ctx context.Context, tenantID, clientID string) (exists, agentAuthMethodAllowed bool, err error)
 	Save(ctx context.Context, c *domain.OAuth2Client) error
 	Delete(ctx context.Context, tenantID, clientID string) error
 	FindAll(ctx context.Context, tenantID string) ([]*domain.OAuth2Client, error)

@@ -55,6 +55,15 @@ export const adminAgentsDictionary = defineDictionary(
     createKeyCredentialDescription:
       'クレデンシャルは、エージェントが「自分は本物だ」と IdMagic に証明する手段です。公開鍵を貼り付けると、その鍵で認証するクライアントを作成してこのエージェントに紐付けます。秘密鍵はエージェント側に置いたままにします。',
     publicKeyLabel: '公開鍵（PEM、JWK、JWKS）',
+    credentialKindLabel: 'エージェントが認証に使うもの',
+    credentialKindKey: '公開鍵',
+    credentialKindSpiffe: 'SPIFFE の JWT-SVID',
+    createSpiffeCredentialHeading: 'SPIFFE の JWT-SVID で認証するクレデンシャルを作成',
+    createSpiffeCredentialDescription:
+      'SPIRE などが発行する JWT-SVID だけで認証するクライアントを作成し、このエージェントに紐付けます。鍵もシークレットも登録しません。どのワークロードがこのエージェントかは、ワークロード ID の信頼設定と関連付けで決まります。',
+    spiffeCredentialRequirements:
+      'トークン要求には、作成した client_id と、aud をテナントの発行者識別子だけにした JWT-SVID を送ります。JWT-SVID は持ち主の証明を伴わないため、信頼設定の最大 TTL を短く保ち、DPoP の併用を推奨します。',
+    spiffeTrustLink: 'ワークロード ID の信頼設定と関連付けを開く',
     keyScopeLabel: 'エージェントに許す範囲（スコープ）',
     keyScopeHelp:
       'MCP リソースサーバーに登録したスコープから選びます。文書ごとの可否は、ここではなく細粒度認可で決まります。',
@@ -94,7 +103,7 @@ export const adminAgentsDictionary = defineDictionary(
     bindClientIdAria: '紐付けする client_id',
     bind: '紐付け',
     agentClientAuthMethodNotAllowedError:
-      'このクライアントは紐付けできません。エージェントには、private_key_jwt か tls_client_auth で認証するクライアントだけを紐付けできます。',
+      'このクライアントは紐付けできません。エージェントには、private_key_jwt、tls_client_auth、spiffe_jwt のいずれかで認証するクライアントだけを紐付けできます。',
     editAgentHeading: 'エージェントを編集',
     basicInfoHeading: '基本情報',
     ownerSubLabel: '所有者',
@@ -159,6 +168,15 @@ export const adminAgentsDictionary = defineDictionary(
     createKeyCredentialDescription:
       'A credential is how the agent proves its identity to IdMagic. Paste the public key to create a client that authenticates with it and bind it to this agent. The private key stays with the agent.',
     publicKeyLabel: 'Public key (PEM, JWK, or JWKS)',
+    credentialKindLabel: 'What the agent authenticates with',
+    credentialKindKey: 'Public key',
+    credentialKindSpiffe: 'SPIFFE JWT-SVID',
+    createSpiffeCredentialHeading: 'Create a credential that authenticates with a SPIFFE JWT-SVID',
+    createSpiffeCredentialDescription:
+      'Create a client that authenticates only with a JWT-SVID issued by SPIRE or a similar system, and bind it to this agent. No key or secret is registered. Which workload is this agent is decided by the Workload Identity trust configuration and its associations.',
+    spiffeCredentialRequirements:
+      'Token requests send the created client_id and a JWT-SVID whose aud is only the tenant issuer identifier. A JWT-SVID does not prove possession of a key, so keep the maximum TTL of the trust configuration short and use DPoP as well.',
+    spiffeTrustLink: 'Open Workload Identity trust configurations',
     keyScopeLabel: 'What the agent may request (scopes)',
     keyScopeHelp:
       'Choose from the scopes registered on MCP resource servers. Access to each document is decided by fine-grained authorization, not here.',
@@ -197,7 +215,7 @@ export const adminAgentsDictionary = defineDictionary(
     bindClientIdAria: 'client_id to bind',
     bind: 'Bind',
     agentClientAuthMethodNotAllowedError:
-      'This client cannot be bound. Agents can only be bound to clients that authenticate with private_key_jwt or tls_client_auth.',
+      'This client cannot be bound. Agents can only be bound to clients that authenticate with private_key_jwt, tls_client_auth, or spiffe_jwt.',
     editAgentHeading: 'Edit agent',
     basicInfoHeading: 'Basic information',
     ownerSubLabel: 'Owner',

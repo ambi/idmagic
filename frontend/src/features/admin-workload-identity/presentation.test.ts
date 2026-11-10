@@ -43,7 +43,7 @@ function auditEvent(payload: Record<string, unknown>, id = 'event-1'): AdminAudi
 }
 
 describe('rejectionReasonLabel', () => {
-  // 仕様 (WorkloadAttestationRejected.reason) が列挙する 13 個をすべて辞書へ写せていること。
+  // 仕様 (WorkloadAttestationRejected.reason) が列挙する 15 個をすべて辞書へ写せていること。
   const reasons: [string, keyof (typeof dict)['en']][] = [
     ['unregistered_issuer', 'reasonUnregisteredIssuer'],
     ['trust_bundle_disabled', 'reasonTrustBundleDisabled'],
@@ -58,6 +58,8 @@ describe('rejectionReasonLabel', () => {
     ['agent_unbound', 'reasonAgentUnbound'],
     ['invalid_spiffe_id', 'reasonInvalidSpiffeId'],
     ['trust_domain_mismatch', 'reasonTrustDomainMismatch'],
+    ['client_not_bound', 'reasonClientNotBound'],
+    ['replayed', 'reasonReplayed'],
   ]
 
   it.each(reasons)('translates %s in both locales', (reason, key) => {

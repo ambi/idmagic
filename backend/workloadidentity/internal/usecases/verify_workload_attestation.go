@@ -48,11 +48,7 @@ func VerifyWorkloadAttestation(
 	now time.Time,
 ) (*domain.WorkloadIdentityGrant, error) {
 	reject := func(reason, trustBundleID string) (*domain.WorkloadIdentityGrant, error) {
-		if deps.Emit != nil {
-			deps.Emit(&domain.WorkloadAttestationRejected{
-				At: now, TenantID: tenantID, Reason: reason, TrustBundleID: trustBundleID,
-			})
-		}
+		emitRejected(deps, tenantID, reason, trustBundleID, domain.AttestationUsageTokenExchange, now)
 		return nil, errWorkloadAttestationRejected(reason)
 	}
 
@@ -85,35 +81,15 @@ func VerifyWorkloadAttestation(
 		}
 	}
 
-	bindings, err := deps.BindingRepo.ListByTrustBundle(ctx, tenantID, bundle.ID)
+	agentID, bindingID, reason, err := resolveBoundAgent(ctx, deps, tenantID, bundle.ID, claims.Subject)
 	if err != nil {
 		return nil, err
 	}
-	bindingValues := make([]domain.AgentWorkloadBinding, 0, len(bindings))
-	for _, b := range bindings {
-		bindingValues = append(bindingValues, *b)
-	}
-	matched, err := domain.MatchAgent(bindingValues, claims.Subject)
-	if err != nil {
-		switch {
-		case errors.Is(err, domain.ErrNoBindingMatch):
-			return reject("no_binding_match", bundle.ID)
-		case errors.Is(err, domain.ErrAmbiguousBindingMatch):
-			return reject("ambiguous_match", bundle.ID)
-		default:
-			return nil, err
-		}
+	if reason != "" {
+		return reject(reason, bundle.ID)
 	}
 
-	agent, err := deps.AgentRepo.FindByID(ctx, tenantID, matched.AgentID)
-	if err != nil {
-		return nil, err
-	}
-	if agent == nil || !agent.IsActive() {
-		return reject("agent_not_active", bundle.ID)
-	}
-
-	agentBindings, err := deps.AgentRepo.ListBindings(ctx, tenantID, agent.ID)
+	agentBindings, err := deps.AgentRepo.ListBindings(ctx, tenantID, agentID)
 	if err != nil {
 		return nil, err
 	}
@@ -122,10 +98,10 @@ func VerifyWorkloadAttestation(
 	}
 
 	return &domain.WorkloadIdentityGrant{
-		AgentID:       agent.ID,
+		AgentID:       agentID,
 		ClientID:      agentBindings[0].ClientID,
 		TrustBundleID: bundle.ID,
-		BindingID:     matched.ID,
+		BindingID:     bindingID,
 	}, nil
 }
 

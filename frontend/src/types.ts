@@ -253,6 +253,7 @@ export type AdminOAuth2Client = {
     | 'client_secret_post'
     | 'private_key_jwt'
     | 'tls_client_auth'
+    | 'spiffe_jwt'
     | 'none'
   scope: string
   jwks_uri?: string

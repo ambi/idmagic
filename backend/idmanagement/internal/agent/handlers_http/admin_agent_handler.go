@@ -303,7 +303,7 @@ func writeAdminAgentError(c *echo.Context, err error) error {
 	case errors.Is(err, agentusecases.ErrAgentClientAuthMethodNotAllowed):
 		return support.WriteProblem(
 			c, http.StatusUnprocessableEntity, "agent_client_auth_method_not_allowed",
-			"An agent can only be bound to a client that authenticates with private_key_jwt or tls_client_auth.",
+			"An agent can only be bound to a client that authenticates with private_key_jwt, tls_client_auth, or spiffe_jwt.",
 		)
 	default:
 		return err

@@ -38,7 +38,7 @@ func (r *OAuth2ClientRepository) LookupBindableClient(ctx context.Context, tenan
 	if err != nil || client == nil {
 		return false, false, err
 	}
-	return true, client.ProvesKeyPossession(), nil
+	return true, client.AgentClientAuthMethodAllowed(), nil
 }
 
 func (r *OAuth2ClientRepository) Save(_ context.Context, c *domain.OAuth2Client) error {
