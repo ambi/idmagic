@@ -2751,6 +2751,22 @@ export async function getEntraFederationDomain(
   return request(entraDomainPath(domain))
 }
 
+export type RemoveEntraFederationDomainResponse = {
+  domain: string
+  remaining_domains: string[]
+  relying_party_deleted: boolean
+  confirmed_by: 'realm_discovery' | 'observation'
+}
+
+// removeEntraFederationDomain は一つのドメインを解除する。サーバーが Microsoft のレルム探索で、Entra が
+// もうそのドメインを IdMagic へ送らないことを確かめてから外す。
+export async function removeEntraFederationDomain(
+  csrfToken: string,
+  domain: string,
+): Promise<RemoveEntraFederationDomainResponse> {
+  return request(entraDomainPath(domain), adminRequest(csrfToken, 'DELETE'))
+}
+
 // recordEntraFederationObservation は、読み戻しの手順が書き出した観測文書をそのまま送る。
 export async function recordEntraFederationObservation(
   csrfToken: string,

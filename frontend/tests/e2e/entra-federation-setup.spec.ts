@@ -3,6 +3,7 @@ import {
   clickButtonByText,
   navigateAndLogin,
   openWebView,
+  removeEntraFederationInPage,
   setInputValue,
   uiOrigin,
   waitForPage,
@@ -75,7 +76,7 @@ test('administrator saves a domain and revisits its unverified guidance', async 
         await view.evaluate(`(async () => {
           const api = await import('/src/api.ts')
           const account = await api.request('/api/auth/account')
-          await api.deleteWsFedRelyingParty(account.csrf_token, 'urn:federation:MicrosoftOnline')
+          ${removeEntraFederationInPage}
           await api.updateTenantUserAttributeSchema(account.csrf_token, ${originalAttributes})
         })()`)
       }

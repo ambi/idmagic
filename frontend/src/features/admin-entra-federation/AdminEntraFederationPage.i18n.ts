@@ -5,8 +5,6 @@ export const adminEntraFederationDictionary = defineDictionary(
     federationMetadataLabel: 'Federation metadata',
     wsTrustMexLabel: 'WS-Trust MEX',
     wsTrustUsernamemixedLabel: 'WS-Trust usernamemixed',
-    federationDeletedNotice: '{domain} のフェデレーションを削除しました。',
-    deleteFailedError: '削除に失敗しました。',
     pageTitle: 'Entra ドメインフェデレーション',
     pageDescription:
       '検証済みドメインを Microsoft Entra から本 IdP へフェデレーションします。UPN / ImmutableID / persistent NameID の claim preset を持つ Entra の relying party を一つ作り、ドメインごとに IssuerUri を持ちます。',
@@ -15,7 +13,6 @@ export const adminEntraFederationDictionary = defineDictionary(
       'まだ構成したドメインがありません。「ドメインフェデレーションを追加」から作成してください。',
     sourceAnchorPrefix: 'sourceAnchor: ',
     issuerUriPrefix: 'IssuerUri: ',
-    deleteAriaLabel: '{wtrealm} を削除',
     federationSavedNotice: '{domain} のドメインフェデレーションを保存しました。',
     federationSaveFailedError: 'Entra federation の保存に失敗しました。',
     sourceAnchorNotUniqueError: 'sourceAnchor 属性を一意の属性に設定してください。',
@@ -128,13 +125,35 @@ export const adminEntraFederationDictionary = defineDictionary(
     postCheckAppSso:
       'アプリの SSO: 参加した端末から Microsoft 365 のアプリへ追加のサインインなしで入れる。',
     postChecksNotice: 'これらは端末と Entra の状態であり、この画面は自動では確かめません。',
+    removalHeading: 'ドメインのフェデレーションの解除',
+    removalNotice:
+      '解除しても Entra の設定は変わりません。先に Entra 側でこのドメインを次のどちらかの方法で切り戻してから解除してください。解除するとき、IdMagic は Microsoft に問い合わせ、Entra がまだこのドメインを IdMagic へ送っていれば解除しません。',
+    removalRemainingDomains: '解除した後も {domains} のサインインは続きます。',
+    removalLastDomain:
+      'このドメインは最後のドメインです。解除すると Entra の relying party も削除します。署名鍵は残ります。',
+    removalTargetManaged: 'Managed（Microsoft Entra の認証）に切り替える',
+    removalTargetPreviousIdp: '変更前に保存した以前の IdP の構成に戻す',
+    removalManagedNotice:
+      'Managed にする前に、パスワードハッシュ同期かパススルー認証を準備し、クラウドでサインインできる管理者を確保してください。変換には最大 60 分かかります。',
+    removalPreviousIdpNotice:
+      '「2. 変更前の構成を保存」が書き出したファイルにある以前の IdP の値で、「1. 接続」の後に Update-MgDomainFederationConfiguration を実行してください。IdMagic を適用した後に保存したファイルは IdMagic の値を持つので使えません。',
+    procedureReleaseToManaged: 'Managed に切り替えるコマンド',
+    removalMigrationGuide: 'Microsoft の移行の手順（federation から cloud authentication へ）',
+    removeDomain: 'ドメインを解除',
+    removalConfirmTitle: '{domain} のフェデレーションを解除',
+    removalConfirmDescription:
+      'IdMagic は Microsoft に問い合わせ、Entra がもうこのドメインを IdMagic へ送っていないことを確かめてから解除します。',
+    removalRemovedNotice: '{domain} のフェデレーションを解除しました。',
+    removalStillActiveError:
+      'Microsoft によると、Entra はまだこのドメインの利用者を IdMagic へ送っています。Entra 側を切り戻してから解除してください。Managed への変換は反映に最大 60 分かかるので、切り戻した直後なら時間をおいて再実行してください。',
+    removalUnconfirmedError:
+      'Microsoft に問い合わせて切り戻しを確かめられませんでした。時間をおいて再実行するか、「Entra への反映の確認」で切り戻した後の読み戻しを取り込むと、その結果で解除できます。',
+    removalFailedError: '解除に失敗しました。',
   },
   {
     federationMetadataLabel: 'Federation metadata',
     wsTrustMexLabel: 'WS-Trust MEX',
     wsTrustUsernamemixedLabel: 'WS-Trust usernamemixed',
-    federationDeletedNotice: 'Deleted the federation for {domain}.',
-    deleteFailedError: 'Failed to delete.',
     pageTitle: 'Entra domain federation',
     pageDescription:
       'Federate verified domains from Microsoft Entra to this IdP. Creates one Entra relying party with a UPN / ImmutableID / persistent NameID claim preset that holds an IssuerUri per domain.',
@@ -142,7 +161,6 @@ export const adminEntraFederationDictionary = defineDictionary(
     noFederationsNotice: 'No domains are configured yet. Create one from "Add domain federation."',
     sourceAnchorPrefix: 'sourceAnchor: ',
     issuerUriPrefix: 'IssuerUri: ',
-    deleteAriaLabel: 'Delete {wtrealm}',
     federationSavedNotice: 'Saved the domain federation for {domain}.',
     federationSaveFailedError: 'Failed to save the Entra federation.',
     sourceAnchorNotUniqueError: 'Configure the sourceAnchor attribute as unique.',
@@ -252,6 +270,30 @@ export const adminEntraFederationDictionary = defineDictionary(
     postCheckAppSso: 'App SSO: Microsoft 365 apps open on a joined device without another sign-in.',
     postChecksNotice:
       'These are device and Entra states. This page does not check them automatically.',
+    removalHeading: 'Remove the federation of this domain',
+    removalNotice:
+      'Removing does not change Entra. Roll the domain back in Entra with one of the methods below first. When you remove the domain, IdMagic asks Microsoft and does not remove it while Entra still sends the domain to IdMagic.',
+    removalRemainingDomains: 'Sign-in keeps working for {domains} after the removal.',
+    removalLastDomain:
+      'This is the last domain. Removing it also deletes the Entra relying party. The signing key is kept.',
+    removalTargetManaged: 'Switch to Managed (Microsoft Entra authentication)',
+    removalTargetPreviousIdp: 'Restore the previous IdP configuration saved before the change',
+    removalManagedNotice:
+      'Before switching to Managed, prepare password hash sync or pass-through authentication and keep an administrator who can sign in to the cloud. The conversion can take up to 60 minutes.',
+    removalPreviousIdpNotice:
+      'After "1. Connect", run Update-MgDomainFederationConfiguration with the previous IdP values in the file written by "2. Save the current configuration". A file saved after IdMagic was applied holds the IdMagic values and cannot be used.',
+    procedureReleaseToManaged: 'Command to switch to Managed',
+    removalMigrationGuide: 'Microsoft migration guide (from federation to cloud authentication)',
+    removeDomain: 'Remove domain',
+    removalConfirmTitle: 'Remove the federation of {domain}',
+    removalConfirmDescription:
+      'IdMagic asks Microsoft and removes the domain only after confirming that Entra no longer sends it to IdMagic.',
+    removalRemovedNotice: 'Removed the federation of {domain}.',
+    removalStillActiveError:
+      'According to Microsoft, Entra still sends the users of this domain to IdMagic. Roll the domain back in Entra before removing it. The conversion to Managed can take up to 60 minutes, so retry later if you have just rolled it back.',
+    removalUnconfirmedError:
+      'The rollback could not be confirmed with Microsoft. Retry later, or import a read-back taken after the rollback in "Verification in Entra" to remove the domain on its basis.',
+    removalFailedError: 'Failed to remove the domain.',
   },
 )
 

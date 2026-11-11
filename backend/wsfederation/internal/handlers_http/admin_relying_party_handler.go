@@ -120,6 +120,11 @@ func (d Deps) handleDeleteRelyingParty(c *echo.Context) error {
 	if rp != nil && rp.ApplicationID != "" {
 		return support.WriteProblem(c, http.StatusConflict, "application_owned_protocol", "Delete the Application to remove its associated relying party.")
 	}
+	// Entra の RP はすべてのドメインの信頼を持つ。消すと Entra 側の設定を残したまま全ドメインのサインインが
+	// 止まるので、切り戻しを確かめるドメインごとの解除だけが外す。
+	if rp != nil && rp.EntraProfile != nil {
+		return support.WriteProblem(c, http.StatusConflict, "entra_relying_party", "Remove the Entra federation one domain at a time after rolling it back in Entra.")
+	}
 	if err := d.WsFedRPRepo.Delete(c.Request().Context(), support.RequestTenantID(c), wtrealm); err != nil {
 		return err
 	}

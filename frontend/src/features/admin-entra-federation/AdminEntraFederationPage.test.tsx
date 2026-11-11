@@ -62,7 +62,6 @@ describe('locale', () => {
   it('renders the entra federation page in English by default', async () => {
     await renderWithRouter(
       <AdminEntraFederationPage
-        csrfToken="csrf"
         actorUsername="admin"
         relyingParties={[]}
         domains={[]}
@@ -76,7 +75,6 @@ describe('locale', () => {
   it('renders the entra federation page in Japanese when explicitly selected', async () => {
     await renderWithRouter(
       <AdminEntraFederationPage
-        csrfToken="csrf"
         actorUsername="admin"
         relyingParties={[]}
         domains={[]}
@@ -92,7 +90,6 @@ describe('locale', () => {
   it('uses catalog URLs for Entra federation endpoints', async () => {
     await renderWithRouter(
       <AdminEntraFederationPage
-        csrfToken="csrf"
         actorUsername="admin"
         relyingParties={[]}
         domains={[]}
@@ -110,13 +107,11 @@ describe('locale', () => {
 })
 
 describe('EntraFederationList', () => {
-  it('renders an empty state and delegates a deletion action', () => {
-    const { rerender } = renderEn(
-      <EntraFederationList items={[]} summaries={[]} onDelete={mock()} />,
-    )
+  //spec:covers REQ-WSFEDERATION-001: 一覧が Entra の RP 全体を削除する操作を置かないこと。
+  it('renders an empty state and offers no deletion of the whole relying party', () => {
+    const { rerender } = renderEn(<EntraFederationList items={[]} summaries={[]} />)
     expect(screen.getByText(t.noFederationsNotice)).toBeInTheDocument()
 
-    const onDelete = mock()
     rerender(
       <LocaleProvider initialLocale="en">
         <EntraFederationList
@@ -147,7 +142,6 @@ describe('EntraFederationList', () => {
               verification: { status: 'matched' },
             },
           ]}
-          onDelete={onDelete}
         />
       </LocaleProvider>,
     )
@@ -157,10 +151,8 @@ describe('EntraFederationList', () => {
     expect(
       screen.getByText(`${t.issuerUriPrefix}http://fabrikam.com/adfs/services/trust/`),
     ).toBeInTheDocument()
-    fireEvent.click(
-      screen.getByRole('button', { name: t.deleteAriaLabel.replace('{wtrealm}', 'urn:contoso') }),
-    )
-    expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ wtrealm: 'urn:contoso' }))
+    // 解除は切り戻しを確かめるドメインの詳細だけが行う。
+    expect(screen.queryByRole('button')).toBeNull()
   })
 })
 
@@ -260,7 +252,6 @@ describe('ドメインの一覧の確認の状態', () => {
         summaries={[
           { domain: 'fabrikam.com', issuer_uri: 'urn:fabrikam', verification: { status: 'stale' } },
         ]}
-        onDelete={mock()}
       />,
     )
     const contoso = screen.getByRole('link', {

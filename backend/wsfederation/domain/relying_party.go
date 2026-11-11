@@ -112,3 +112,16 @@ type EntraFederationConfigured struct {
 
 func (e *EntraFederationConfigured) EventType() string     { return "EntraFederationConfigured" }
 func (e *EntraFederationConfigured) OccurredAt() time.Time { return e.At }
+
+// EntraFederationDomainRemoved は、切り戻しを確かめたドメインを Entra の定型設定から外したことを表す。
+type EntraFederationDomainRemoved struct {
+	At                  time.Time            `json:"-"`
+	TenantID            string               `json:"tenantId"`
+	Domain              string               `json:"domain"`
+	IssuerURI           string               `json:"issuerUri"`
+	ConfirmedBy         EntraReleaseEvidence `json:"confirmedBy"`
+	RelyingPartyDeleted bool                 `json:"relyingPartyDeleted"`
+}
+
+func (e *EntraFederationDomainRemoved) EventType() string     { return "EntraFederationDomainRemoved" }
+func (e *EntraFederationDomainRemoved) OccurredAt() time.Time { return e.At }

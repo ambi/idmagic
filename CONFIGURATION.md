@@ -78,6 +78,8 @@ HTTP の待ち受け、堅牢化、セキュリティヘッダー、エンドポ
 | `DRAIN_GRACE_PERIOD_SECONDS` | integer (>= 0) | `5` | いいえ | SIGTERM を受けてから待ち受けを閉じるまで処理を続ける秒数（idmagic）、または実行中のジョブを終えさせる秒数（idmagic-worker）。 |
 | `PAGINATION_CURSOR_SECRET` | secret | — | いいえ | キーセット方式のページングのカーソルに署名する HMAC のシークレット。複数のレプリカで動かすデプロイメントでは明示的に設定する。設定しないと各レプリカが起動時に自身の値を生成し、他のレプリカが発行したカーソルを拒否する。 |
 | `NEGOTIATE_CONFIG_FILE` | string | — | いいえ | Kerberos の信頼と利用者の明示的な対応付けを含む JSON ファイル。未設定なら Windows のサインインは無効。keytab と TLS 終端証明書をファイル参照で指定する。 |
+| `ENTRA_REALM_DISCOVERY` | enum: `microsoft`, `disabled` | `microsoft` | いいえ | Entra のドメインの解除の前に、Microsoft のレルム探索で Entra がまだそのドメインを IdMagic へ送るかを確かめる。`disabled` では探索を呼ばず、管理者が取り込んだ読み戻しの観測だけで判定する。API のサーバーから ENTRA_REALM_DISCOVERY_URL への外向きの HTTPS の通信が要る。 |
+| `ENTRA_REALM_DISCOVERY_URL` | string | `https://login.microsoftonline.com/getuserrealm.srf` | いいえ | レルム探索のエンドポイント。Microsoft の公式な API の文書にないエンドポイントであり、ソブリンクラウドや試験のスタブで差し替える。https に限り、loopback の http だけを許す。 |
 | `RATE_LIMIT_RESOURCE_ACCESS_MAX_REQUESTS` | integer (> 0) | `100` | いいえ | `/resource-access/evaluate` の固定窓の上限。テナントと認証したクライアント ID ごとに数える。 |
 | `RATE_LIMIT_RESOURCE_ACCESS_WINDOW_SECONDS` | integer (> 0) | `1` | いいえ | `/resource-access/evaluate` の固定窓の長さ（秒）。 |
 | `RATE_LIMIT_TOKEN_MAX_REQUESTS` | integer (> 0) | `60` | いいえ | `/token` の固定ウィンドウの上限。client_id と IP ごとに数える。 |

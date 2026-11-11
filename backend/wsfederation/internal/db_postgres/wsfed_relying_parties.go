@@ -9,7 +9,10 @@ import (
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/ambi/idmagic/backend/wsfederation/domain"
+	"github.com/ambi/idmagic/backend/wsfederation/ports"
 )
+
+var _ ports.WsFedRelyingPartyRepository = (*WsFedRelyingPartyRepository)(nil)
 
 // WsFedRelyingPartyRepository は WS-Federation RP trust の PostgreSQL 実装。
 // クエリは sqlc 生成で管理する (wi-174)。
@@ -65,6 +68,47 @@ func (r *WsFedRelyingPartyRepository) ListAll(ctx context.Context, tenantID stri
 }
 
 func (r *WsFedRelyingPartyRepository) Save(ctx context.Context, rp *domain.WsFedRelyingParty) error {
+	return writeRelyingParty(ctx, r.Pool, rp)
+}
+
+// Update はトランザクションの中で行を FOR UPDATE で固定して読み直し、change の結果を当てる。
+// 行がなければ固定するものがないので、change に nil を渡し、作成は Save に任せる。
+func (r *WsFedRelyingPartyRepository) Update(ctx context.Context, tenantID, wtrealm string, change ports.RelyingPartyChange) error {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var current *domain.WsFedRelyingParty
+	row, err := New(tx).GetWsFedRelyingPartyForUpdate(ctx, GetWsFedRelyingPartyForUpdateParams{TenantID: tenantID, Wtrealm: wtrealm})
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+	case err != nil:
+		return err
+	default:
+		if current, err = relyingPartyFromRow(row); err != nil {
+			return err
+		}
+	}
+	outcome, err := change(current)
+	if err != nil {
+		return err
+	}
+	switch {
+	case outcome == ports.RelyingPartySaved && current != nil:
+		err = writeRelyingParty(ctx, tx, current)
+	case outcome == ports.RelyingPartyDeleted:
+		err = New(tx).DeleteWsFedRelyingParty(ctx, DeleteWsFedRelyingPartyParams{TenantID: tenantID, Wtrealm: wtrealm})
+	default:
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func writeRelyingParty(ctx context.Context, db DBTX, rp *domain.WsFedRelyingParty) error {
 	replyURLs, err := json.Marshal(rp.ReplyURLs)
 	if err != nil {
 		return err
@@ -80,7 +124,7 @@ func (r *WsFedRelyingPartyRepository) Save(ctx context.Context, rp *domain.WsFed
 			return err
 		}
 	}
-	return New(r.Pool).UpsertWsFedRelyingParty(ctx, UpsertWsFedRelyingPartyParams{
+	return New(db).UpsertWsFedRelyingParty(ctx, UpsertWsFedRelyingPartyParams{
 		TenantID: rp.TenantID, Wtrealm: rp.Wtrealm, DisplayName: rp.DisplayName, ReplyUrls: replyURLs,
 		Audience: rp.Audience, TokenType: string(rp.TokenType), ClaimPolicy: claimPolicy, EntraProfile: entraProfile,
 		CreatedAt: rp.CreatedAt, UpdatedAt: rp.UpdatedAt,

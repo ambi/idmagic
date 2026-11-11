@@ -3,21 +3,18 @@ import {
   IconDownload,
   IconPlus,
   IconServerBolt,
-  IconTrash,
   IconWorldShare,
 } from '@tabler/icons-react'
 import { type FormEvent, useMemo, useState } from 'react'
 import {
   AuthenticationAPIError,
   configureEntraFederation,
-  deleteWsFedRelyingParty,
   type EntraFederationDomainSummary,
   listEntraFederationDomains,
   listWsFedRelyingParties,
   tenantURL,
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
-import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
 import { FieldError } from '../../components/FieldError'
 import {
   formSchema,
@@ -27,7 +24,6 @@ import {
   rule,
   useFormValidation,
 } from '../../lib/form'
-import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
@@ -52,6 +48,7 @@ import {
   ENTRA_LIST_PATH,
   entraDomainURL,
   returnToEntraDomain,
+  takeEntraListNotice,
 } from './entraNavigation'
 
 // Entra domain federation は検証済みドメイン単位の操作。個別アプリの設定ではなく、テナント配下の
@@ -86,13 +83,11 @@ function endpointLinks(
 }
 
 export function AdminEntraFederationPage({
-  csrfToken,
   actorUsername,
   relyingParties,
   domains,
   integrationEndpoints,
 }: {
-  csrfToken: string
   actorUsername?: string
   relyingParties: WsFedRelyingParty[]
   domains: EntraFederationDomainSummary[]
@@ -100,28 +95,9 @@ export function AdminEntraFederationPage({
 }) {
   const [items, setItems] = useState(relyingParties.filter((rp) => rp.entra_profile))
   const [summaries, setSummaries] = useState(domains)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
-  const [pending, setPending] = useState<WsFedRelyingParty | null>(null)
-  const [busy, setBusy] = useState(false)
-  const common = useDictionary(commonDictionary)
+  // 解除はドメインの詳細で切り戻しを確かめてから行う。一覧は RP 全体を消す操作を持たない。
+  const [notice, setNotice] = useState(takeEntraListNotice)
   const t = useDictionary(adminEntraFederationDictionary)
-
-  async function handleDelete(rp: WsFedRelyingParty) {
-    setError('')
-    setBusy(true)
-    try {
-      await deleteWsFedRelyingParty(csrfToken, rp.wtrealm)
-      setItems((prev) => prev.filter((item) => item.wtrealm !== rp.wtrealm))
-      setSummaries([])
-      setNotice(t.federationDeletedNotice.replace('{domain}', federatedDomainNames(rp)))
-      setPending(null)
-    } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : t.deleteFailedError)
-    } finally {
-      setBusy(false)
-    }
-  }
 
   return (
     <AdminShell
@@ -147,7 +123,6 @@ export function AdminEntraFederationPage({
         </Button>
       }
     >
-      {error ? <Alert variant="destructive">{error}</Alert> : null}
       <Toast message={notice} onDismiss={() => setNotice('')} />
 
       <div className="grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3">
@@ -168,41 +143,17 @@ export function AdminEntraFederationPage({
         )}
       </div>
 
-      <EntraFederationList
-        items={items}
-        summaries={summaries}
-        onDelete={(item) => setPending(item)}
-      />
-      {pending ? (
-        <ConfirmActionDialog
-          title={t.deleteAriaLabel.replace('{wtrealm}', pending.wtrealm)}
-          target={federatedDomainNames(pending)}
-          description={common.deleteResourceDescription}
-          confirmLabel={t.deleteAriaLabel.replace('{wtrealm}', pending.wtrealm)}
-          busy={busy}
-          error={error}
-          onClose={() => setPending(null)}
-          onConfirm={() => void handleDelete(pending)}
-        />
-      ) : null}
+      <EntraFederationList items={items} summaries={summaries} />
     </AdminShell>
   )
-}
-
-// federatedDomainNames は、Entra の RP がフェデレーションしているドメインを並べる。
-function federatedDomainNames(relyingParty: WsFedRelyingParty): string {
-  const domains = relyingParty.entra_profile?.domains.map((d) => d.domain) ?? []
-  return domains.length > 0 ? domains.join(', ') : relyingParty.wtrealm
 }
 
 export function EntraFederationList({
   items,
   summaries,
-  onDelete,
 }: {
   items: WsFedRelyingParty[]
   summaries: EntraFederationDomainSummary[]
-  onDelete: (relyingParty: WsFedRelyingParty) => void
 }) {
   const t = useDictionary(adminEntraFederationDictionary)
   if (items.length === 0) {
@@ -213,7 +164,7 @@ export function EntraFederationList({
   return (
     <div className="flex flex-col gap-3">
       {items.map((relyingParty) => (
-        <Card key={relyingParty.wtrealm} className="flex items-start justify-between gap-3 p-4">
+        <Card key={relyingParty.wtrealm} className="flex items-start gap-3 p-4">
           <div className="flex min-w-0 items-start gap-2">
             <IconWorldShare
               size={16}
@@ -250,14 +201,6 @@ export function EntraFederationList({
               </p>
             </div>
           </div>
-          <Button
-            type="button"
-            variant="destructive"
-            aria-label={t.deleteAriaLabel.replace('{wtrealm}', relyingParty.wtrealm)}
-            onClick={() => onDelete(relyingParty)}
-          >
-            <IconTrash size={16} aria-hidden="true" />
-          </Button>
         </Card>
       ))}
     </div>

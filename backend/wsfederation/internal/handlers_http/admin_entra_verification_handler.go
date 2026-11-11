@@ -22,9 +22,20 @@ const maxEntraObservationBytes = 64 << 10
 
 // entraVerification は、Deps の依存から Entra の反映の確認のユースケースを組み立てる。
 func (d Deps) entraVerification() wsfedusecases.EntraFederationVerification {
-	return wsfedusecases.EntraFederationVerification{
-		RPRepo: d.WsFedRPRepo, Observations: d.EntraObservations, Certificates: signerCertificates{d},
+	var realms wsfedports.EntraRealmDiscovery = disabledRealmDiscovery{}
+	if d.EntraRealms != nil {
+		realms = d.EntraRealms
 	}
+	return wsfedusecases.EntraFederationVerification{
+		RPRepo: d.WsFedRPRepo, Observations: d.EntraObservations, Certificates: signerCertificates{d}, Realms: realms,
+	}
+}
+
+// disabledRealmDiscovery は、探索を配線していない構成で、解除を観測記録だけで判定させる。
+type disabledRealmDiscovery struct{}
+
+func (disabledRealmDiscovery) Discover(context.Context, string) (feddomain.EntraDomainRealm, error) {
+	return feddomain.EntraDomainRealm{}, wsfedports.ErrEntraRealmDiscoveryDisabled
 }
 
 // signerCertificates は、XML 署名の提供元を Entra に登録すべき証明書として読む。
@@ -150,6 +161,30 @@ func (d Deps) handleRecordEntraFederationObservation(c *echo.Context) error {
 		return err
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"verification": verification})
+}
+
+func (d Deps) handleRemoveEntraFederationDomain(c *echo.Context) error {
+	if _, err := d.RequireAdmin(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	result, err := d.entraVerification().Remove(c.Request().Context(), support.RequestTenantID(c), c.Param("domain_name"), time.Now().UTC())
+	switch {
+	case errors.Is(err, wsfedusecases.ErrEntraDomainNotConfigured):
+		return writeEntraDomainNotFound(c)
+	case errors.Is(err, feddomain.ErrEntraFederationStillActive):
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "entra_federation_still_active",
+			"Microsoft still sends this domain to IdMagic. Roll the domain back in Entra and retry; the conversion to Managed can take up to 60 minutes.")
+	case errors.Is(err, feddomain.ErrEntraRollbackUnconfirmed):
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "entra_rollback_unconfirmed",
+			"The rollback in Entra could not be confirmed with Microsoft. Import a read-back observation to remove the domain on its basis.")
+	case err != nil:
+		return err
+	}
+	d.emit(result.Event)
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{
+		"domain": result.Domain.Domain, "remaining_domains": result.RemainingDomains,
+		"relying_party_deleted": result.RelyingPartyDeleted, "confirmed_by": result.ConfirmedBy,
+	})
 }
 
 func writeEntraDomainNotFound(c *echo.Context) error {

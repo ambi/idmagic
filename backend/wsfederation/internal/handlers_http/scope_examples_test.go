@@ -93,8 +93,10 @@ func storedWtrealms(t *testing.T, s *stack.Stack) []string {
 	return out
 }
 
-func assertWsFedInsufficientScope(t *testing.T, recorder *httptest.ResponseRecorder, required string) {
+// assertWsFedInsufficientScope は、変更の操作が wsfed:write を求める 403 で拒否されたことを確かめる。
+func assertWsFedInsufficientScope(t *testing.T, recorder *httptest.ResponseRecorder) {
 	t.Helper()
+	const required = "wsfed:write"
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s, want 403", recorder.Code, recorder.Body.String())
 	}
@@ -170,9 +172,9 @@ func TestWsFedReadScopeCannotChangeTrustSettings(t *testing.T) {
 	write, _ := s.IssueApiToken(t, tenancydomain.DefaultRealm, apitokendomain.ScopeWsFedWrite)
 	before := storedWtrealms(t, s)
 
-	assertWsFedInsufficientScope(t, wsfedAdminRequest(s, http.MethodPost, wsfedScopeRPPath, read, wsfedScopeRPBody()), "wsfed:write")
-	assertWsFedInsufficientScope(t, wsfedAdminRequest(s, http.MethodPost, wsfedScopeEntraPath, read, wsfedScopeEntraBody()), "wsfed:write")
-	assertWsFedInsufficientScope(t, wsfedAdminRequest(s, http.MethodDelete, wsfedScopeRPPath+"?wtrealm="+stack.WsFedRealm, read, ""), "wsfed:write")
+	assertWsFedInsufficientScope(t, wsfedAdminRequest(s, http.MethodPost, wsfedScopeRPPath, read, wsfedScopeRPBody()))
+	assertWsFedInsufficientScope(t, wsfedAdminRequest(s, http.MethodPost, wsfedScopeEntraPath, read, wsfedScopeEntraBody()))
+	assertWsFedInsufficientScope(t, wsfedAdminRequest(s, http.MethodDelete, wsfedScopeRPPath+"?wtrealm="+stack.WsFedRealm, read, ""))
 	if after := storedWtrealms(t, s); !slices.Equal(after, before) {
 		t.Fatalf("拒否されたのに保存先が変わった: before=%v after=%v", before, after)
 	}

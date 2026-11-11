@@ -10,7 +10,10 @@ import (
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
 	"github.com/ambi/idmagic/backend/wsfederation/domain"
+	"github.com/ambi/idmagic/backend/wsfederation/ports"
 )
+
+var _ ports.WsFedRelyingPartyRepository = (*WsFedRelyingPartyRepository)(nil)
 
 type WsFedRelyingPartyRepository struct {
 	mu    sync.RWMutex
@@ -31,6 +34,7 @@ func cloneRelyingParty(rp *domain.WsFedRelyingParty) *domain.WsFedRelyingParty {
 	cloned.ClaimPolicy.Rules = slices.Clone(rp.ClaimPolicy.Rules)
 	if rp.EntraProfile != nil {
 		profile := *rp.EntraProfile
+		profile.Domains = slices.Clone(rp.EntraProfile.Domains)
 		cloned.EntraProfile = &profile
 	}
 	return &cloned
@@ -71,5 +75,29 @@ func (r *WsFedRelyingPartyRepository) Delete(_ context.Context, tenantID, wtreal
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.parts, sharedmem.ScopedKey(tenantID, wtrealm, kernel.DefaultTenantID))
+	return nil
+}
+
+// Update は排他ロックの間に最新の RP を読み、change の結果を当てる。
+func (r *WsFedRelyingPartyRepository) Update(_ context.Context, tenantID, wtrealm string, change ports.RelyingPartyChange) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := sharedmem.ScopedKey(tenantID, wtrealm, kernel.DefaultTenantID)
+	var current *domain.WsFedRelyingParty
+	if stored := r.parts[key]; stored != nil {
+		current = cloneRelyingParty(stored)
+	}
+	outcome, err := change(current)
+	if err != nil {
+		return err
+	}
+	switch outcome {
+	case ports.RelyingPartySaved:
+		if current != nil {
+			r.parts[key] = cloneRelyingParty(current)
+		}
+	case ports.RelyingPartyDeleted:
+		delete(r.parts, key)
+	}
 	return nil
 }

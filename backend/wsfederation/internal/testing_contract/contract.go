@@ -3,6 +3,9 @@ package testing_contract
 
 import (
 	"context"
+	"errors"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -55,5 +58,72 @@ func Run(t *testing.T, newFixture NewFixture) {
 	}
 	if got, err := f.Repository.FindByWtrealm(ctx, f.TenantA, rp.Wtrealm); err != nil || got != nil {
 		t.Fatalf("Find after Delete = (%+v, %v)", got, err)
+	}
+	runUpdate(t, f, second)
+}
+
+// runUpdate は、Update が最新の RP を読み直して結果を当て、失敗では変えず、同時の更新を失わないことを確かめる。
+func runUpdate(t *testing.T, f Fixture, stored domain.WsFedRelyingParty) {
+	t.Helper()
+	ctx := context.Background()
+	if err := f.Repository.Update(ctx, f.TenantA, "missing", func(rp *domain.WsFedRelyingParty) (ports.RelyingPartyOutcome, error) {
+		if rp != nil {
+			t.Fatalf("Update of a missing RP passed %+v", rp)
+		}
+		return ports.RelyingPartyUnchanged, nil
+	}); err != nil {
+		t.Fatalf("Update missing: %v", err)
+	}
+	if err := f.Repository.Update(ctx, f.TenantB, stored.Wtrealm, func(rp *domain.WsFedRelyingParty) (ports.RelyingPartyOutcome, error) {
+		if rp != nil {
+			t.Fatalf("Update in another tenant read %+v", rp)
+		}
+		return ports.RelyingPartyUnchanged, nil
+	}); err != nil {
+		t.Fatalf("Update other tenant: %v", err)
+	}
+
+	refused := errors.New("refused")
+	if err := f.Repository.Update(ctx, f.TenantA, stored.Wtrealm, func(rp *domain.WsFedRelyingParty) (ports.RelyingPartyOutcome, error) {
+		rp.DisplayName = "must not be saved"
+		return ports.RelyingPartySaved, refused
+	}); !errors.Is(err, refused) {
+		t.Fatalf("Update with an error = %v, want the change's error", err)
+	}
+	if got, err := f.Repository.FindByWtrealm(ctx, f.TenantA, stored.Wtrealm); err != nil || got == nil || got.DisplayName != stored.DisplayName {
+		t.Fatalf("Find after a refused Update = (%+v, %v), want unchanged", got, err)
+	}
+
+	// 同時の更新は、それぞれが直前の更新の結果を読み直すので、一つも失われない。
+	const writers = 8
+	var wg sync.WaitGroup
+	errs := make(chan error, writers)
+	for range writers {
+		wg.Go(func() {
+			errs <- f.Repository.Update(ctx, f.TenantA, stored.Wtrealm, func(rp *domain.WsFedRelyingParty) (ports.RelyingPartyOutcome, error) {
+				rp.ReplyURLs = append(rp.ReplyURLs, "https://rp.example/callback/"+strconv.Itoa(len(rp.ReplyURLs)))
+				return ports.RelyingPartySaved, nil
+			})
+		})
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent Update: %v", err)
+		}
+	}
+	got, err := f.Repository.FindByWtrealm(ctx, f.TenantA, stored.Wtrealm)
+	if err != nil || got == nil || len(got.ReplyURLs) != len(stored.ReplyURLs)+writers {
+		t.Fatalf("Find after concurrent Updates = (%+v, %v), want %d reply URLs", got, err, len(stored.ReplyURLs)+writers)
+	}
+
+	if err := f.Repository.Update(ctx, f.TenantA, stored.Wtrealm, func(*domain.WsFedRelyingParty) (ports.RelyingPartyOutcome, error) {
+		return ports.RelyingPartyDeleted, nil
+	}); err != nil {
+		t.Fatalf("Update delete: %v", err)
+	}
+	if got, err := f.Repository.FindByWtrealm(ctx, f.TenantA, stored.Wtrealm); err != nil || got != nil {
+		t.Fatalf("Find after an Update delete = (%+v, %v)", got, err)
 	}
 }

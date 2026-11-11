@@ -4,6 +4,7 @@ import {
   navigateAndLogin,
   waitForPage,
   clickButtonByText,
+  removeEntraFederationInPage,
   setInputValue,
   waitForText,
 } from './fixtures'
@@ -93,7 +94,7 @@ test('Entra configuration displays Graph commands with the real signing certific
         await view.evaluate(`(async () => {
           const api = await import('/src/api.ts')
           const account = await api.request('/api/auth/account')
-          await api.deleteWsFedRelyingParty(account.csrf_token, 'urn:federation:MicrosoftOnline')
+          ${removeEntraFederationInPage}
           const keys = await api.request('/api/admin/v1/keys?usage=XmlFederationSigning')
           for (const key of keys.keys.filter(key => key.prepared)) {
             await api.request('/api/admin/v1/keys/' + encodeURIComponent(key.kid) + '/disable?usage=XmlFederationSigning', {

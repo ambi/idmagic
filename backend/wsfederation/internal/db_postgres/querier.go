@@ -13,6 +13,7 @@ type Querier interface {
 	DeleteWsFedRelyingParty(ctx context.Context, arg DeleteWsFedRelyingPartyParams) error
 	GetEntraFederationObservation(ctx context.Context, arg GetEntraFederationObservationParams) (*WsfedEntraFederationObservation, error)
 	GetWsFedRelyingParty(ctx context.Context, arg GetWsFedRelyingPartyParams) (*WsfedRelyingParty, error)
+	GetWsFedRelyingPartyForUpdate(ctx context.Context, arg GetWsFedRelyingPartyForUpdateParams) (*WsfedRelyingParty, error)
 	LinkApplication(ctx context.Context, arg LinkApplicationParams) error
 	ListEntraFederationObservations(ctx context.Context, tenantID string) ([]*WsfedEntraFederationObservation, error)
 	ListWsFedRelyingPartiesByTenant(ctx context.Context, tenantID string) ([]*WsfedRelyingParty, error)

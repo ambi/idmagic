@@ -120,6 +120,7 @@ func Run() error {
 	deps.OAuth2.IDTokenAssertionVerifier = tokenSigner
 	deps.OAuth2.IDJAGSigner = tokenSigner
 	deps.OAuth2.Authorizer = authorizer
+	deps.WsFederation.RealmDiscovery = api.EntraRealmDiscovery
 	deps.Authentication.PasswordHasher = hasher
 	deps.Authentication.BreachedPasswordChecker = breachedChecker
 	deps.Authentication.LoginAttemptThrottle = loginThrottle

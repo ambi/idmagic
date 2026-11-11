@@ -356,6 +356,31 @@ op RecordEntraFederationObservation(
   @body body: IdMagic.Contract.EntraFederationObservation
 ): RecordEntraFederationObservationSuccess_200 | RecordEntraFederationObservationError400 | IdMagic.Contract.AuthenticationRequiredResponse | EntraFederationAdminError403 | EntraFederationDomainError404 | RecordEntraFederationObservationError409;
 
+model RemoveEntraFederationDomainSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.RemoveEntraFederationDomainResponse;
+}
+
+union RemoveEntraFederationDomainError422Body {
+  IdMagic.Contract.EntraFederationStillActiveError,
+  IdMagic.Contract.EntraRollbackUnconfirmedError,
+}
+
+model RemoveEntraFederationDomainError422 {
+  @statusCode statusCode: 422;
+  @header contentType: "application/problem+json";
+  @body body: RemoveEntraFederationDomainError422Body;
+}
+
+@doc("Entra のドメインフェデレーションから一つのドメインを解除する。構成済みのドメインなら、Microsoft のレルム探索にドメインの送り先を問い合わせる。探索が `Federated` で受動のエンドポイントへ送ると答えたら EntraFederationStillActiveError で拒否する。`Managed` か IdMagic を指さない `Federated` なら解除する。探索が失敗するか、無効か、ほかの値を答えたら、取り込み済みの観測記録が `stale` でなく切り戻しを示すときだけ解除し、そうでなければ EntraRollbackUnconfirmedError で拒否する。解除は、行を固定して読み直した RP からそのドメインの組だけを外して保存し、ほかのドメインの組、sourceAnchor の属性、エンドポイント、署名鍵は変えない。最後のドメインなら RP を削除する。解除したドメインの観測記録を消し、EntraFederationDomainRemoved を発行する。構成していないドメインは探索を呼ばずに 404 で拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
+@TypeSpec.OpenAPI.operationId("RemoveEntraFederationDomain")
+@route("/api/admin/v1/wsfed/entra-federation/domains/{domain_name}")
+@delete
+op RemoveEntraFederationDomain(
+  @path domain_name: string
+): RemoveEntraFederationDomainSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | EntraFederationAdminError403 | EntraFederationDomainError404 | RemoveEntraFederationDomainError422;
+
 model RegisterWsFedRelyingPartySuccess_201 {
   @statusCode statusCode: 201;
   @body body: IdMagic.Contract.WsFedRelyingPartyRequest;
@@ -458,6 +483,7 @@ model DeleteWsFedRelyingPartyError403 {
 
 union DeleteWsFedRelyingPartyError409Body {
   IdMagic.Contract.ApplicationOwnedProtocolError,
+  IdMagic.Contract.EntraRelyingPartyError,
 }
 
 model DeleteWsFedRelyingPartyError409 {
@@ -466,7 +492,7 @@ model DeleteWsFedRelyingPartyError409 {
   @body body: DeleteWsFedRelyingPartyError409Body;
 }
 
-@doc("管理者が、自身のテナントの、カタログの外にある WS-Federation の Relying Party の信頼を `wtrealm` で削除する。`application_id` が null でない RP は ApplicationOwnedProtocolError（HTTP 409）で拒否する。")
+@doc("管理者が、自身のテナントの、カタログの外にある WS-Federation の Relying Party の信頼を `wtrealm` で削除する。`application_id` が null でない RP は ApplicationOwnedProtocolError（HTTP 409）で拒否する。Entra のドメインフェデレーションの定型設定を持つ RP は、すべてのドメインのサインインを止めるので EntraRelyingPartyError（HTTP 409）で拒否し、RemoveEntraFederationDomain でドメインごとに解除させる。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
 @TypeSpec.OpenAPI.operationId("DeleteWsFedRelyingParty")
 @route("/api/admin/v1/wsfed/relying-parties")

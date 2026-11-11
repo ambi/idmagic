@@ -66,8 +66,35 @@ IdMagic は Entra へ書き込まず、Graph の資格情報も保存しない�
 IdMagic は Microsoft Entra hybrid join の即時の登録（`windowstransport`）を提供しない。
 実テナントでの受入試験の記録は WI-79 が扱う。
 
+## ドメインの解除
+
+一つのドメインをフェデレーションから外すときに使う。
+ほかのドメインのサインインは続く。
+IdMagic 側だけを先に外すと、Entra はそのドメインの利用者を IdMagic へ送り続け、IdMagic は発行を拒否するので、そのドメインの全員がサインインできなくなる。
+そのため、Entra 側を先に切り戻してから IdMagic 側を外す。
+解除のとき、IdMagic は Microsoft のレルム探索に問い合わせ、Entra がまだそのドメインを IdMagic へ送っていれば解除しない。
+汎用の RP の削除は Entra の RP を受け付けない。
+
+1. Entra を切り戻す。次のどちらかを行う。
+   - Managed に戻す：パスワードハッシュ同期かパススルー認証を先に準備し、クラウドでサインインできる管理者を確保する（[Microsoft の移行の手順](https://learn.microsoft.com/en-us/entra/identity/hybrid/connect/migrate-from-federation-to-cloud-authentication)）。ドメインの詳細の「Managed に切り替えるコマンド」を実行する。変換には最大 60 分かかる。
+   - 以前の IdP に戻す：IdMagic を適用する前に「変更前の構成を保存」で書き出したファイルがあるときだけ選べる。IdMagic を適用した後に保存したファイルは IdMagic の値を持つので使えない。「1. 接続」の後、保存したファイルの `IssuerUri`、`PassiveSignInUri`、`ActiveSignInUri`、`MetadataExchangeUri`、`SignOutUri`、`SigningCertificate`、`PreferredAuthenticationProtocol`、`FederatedIdpMfaBehavior` の値で `Update-MgDomainFederationConfiguration -DomainId <ドメイン> -InternalDomainFederationId <現在の構成の Id>` を実行する。
+2. 詳細の「ドメインのフェデレーションの解除」で「ドメインを解除」を押し、確認の画面で残るドメインを確かめて確定する。
+3. 切り戻し先でサインインできることと、残るドメインでサインインできることを、それぞれ確かめる。
+
+| 解除の結果 | 次の作業 |
+| --- | --- |
+| 一覧へ移り、解除したことが通知される | 手順 3 へ進む |
+| Entra はまだこのドメインの利用者を IdMagic へ送っている | 手順 1 が反映されていない。Managed への変換の直後なら、時間をおいて手順 2 を再実行する。続く場合は手順 1 をやり直す |
+| Microsoft に問い合わせて切り戻しを確かめられなかった | 探索の通信が失敗したか、Microsoft が想定しない答えを返した。時間をおいて再実行する。続く場合は、確認だけの接続で「5. 読み戻して保存」を実行してファイルを詳細で取り込み、手順 2 を再実行する。取り込んだ観測が切り戻しを示していれば、その観測で解除する |
+
+最後のドメインを解除すると、Entra の RP も削除する。
+XML 署名鍵は残り、後で構成するドメインも同じ鍵を使う。
+
+API のサーバーが `login.microsoftonline.com` へ通信できない構成では、`ENTRA_REALM_DISCOVERY=disabled` にし、解除のたびに手順 1 の後の読み戻しを取り込む。
+
 ## 失敗したとき
 
 - 適用の後にサインインが失敗する：詳細で読み戻しを取り込み、不一致の項目を確かめる。一致しているのに失敗する場合は、発行した ImmutableID と Entra の `onPremisesImmutableId` を突き合わせる（[信頼性](../modules/ws-federation/features/relying-party.md#信頼性)）。
-- 適用を戻す：手順 2 で保存した JSON の値で `Update-MgDomainFederationConfiguration` を実行する。保存した構成が空だった場合（もともと管理されたドメイン）の解除は、ドメイン単位の解除の手順が扱う。
+- 適用を戻す：手順 2 で保存した JSON の値で `Update-MgDomainFederationConfiguration` を実行する。保存した構成が空だった場合（もともと管理されたドメイン）は、[ドメインの解除](#ドメインの解除)の Managed への切り戻しに従う。
+- 解除の後に Entra が IdMagic へ戻された：IdMagic は解除したドメインの利用者へ発行しないので、サインインは失敗する。ドメインを構成し直すか、Entra を切り戻し直す。
 - 取り込みが「保存済みの確認より前に取得した結果」で拒否される：古いファイルを取り込んでいる。手順 5 をやり直す。

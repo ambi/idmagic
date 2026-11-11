@@ -306,7 +306,46 @@ model SourceAnchorValueError {
   sample_usernames: string[];
 }
 
-@doc("登録しようとした RP の `wtrealm` は、Entra のドメインフェデレーションの定型設定を持つ RP のものである。定型設定と固定のクレームは、Entra の構成の操作だけが変える。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:entra_relying_party` である。")
+@doc("登録または削除しようとした RP の `wtrealm` は、Entra のドメインフェデレーションの定型設定を持つ RP のものである。定型設定と固定のクレームは Entra の構成の操作だけが変え、ドメインはドメインごとの解除だけが外す。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:entra_relying_party` である。")
 model EntraRelyingPartyError is ProblemDetails;
+
+@doc("Entra のドメインの解除を許した根拠。`realm_discovery` は解除の時点の Microsoft のレルム探索が `Managed` か IdMagic を指さない `Federated` と答えたこと、`observation` は探索で確かめられず、取り込み済みの観測記録が切り戻しを示したことを表す。")
+enum EntraReleaseEvidence {
+  realm_discovery,
+  observation,
+}
+
+@doc("Entra のドメインを解除した結果。")
+model RemoveEntraFederationDomainResponse {
+  @doc("解除したドメイン。")
+  domain: string;
+  @doc("解除の後に残る構成済みのドメイン。ドメインの順に並べる。")
+  remaining_domains: string[];
+  @doc("最後のドメインを解除して Entra の RP を削除したなら true である。署名鍵は破棄しない。")
+  relying_party_deleted: boolean;
+  @doc("解除を許した根拠。")
+  confirmed_by: EntraReleaseEvidence;
+}
+
+@doc("Microsoft のレルム探索が、このドメインの利用者をまだ IdMagic の受動のエンドポイントへ送ると答えた。Entra 側を Managed か以前の IdP へ戻してから解除する。Managed への変換は反映に最大 60 分かかる。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:entra_federation_still_active` である。")
+model EntraFederationStillActiveError is ProblemDetails;
+
+@doc("Microsoft のレルム探索で切り戻しを確かめられず（失敗、無効化、`Managed` と `Federated` 以外の答え）、取り込み済みの観測記録も切り戻しを示さない。読み戻しを取り込めば、その結果で解除できる。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:entra_rollback_unconfirmed` である。")
+model EntraRollbackUnconfirmedError is ProblemDetails;
+
+@doc("Microsoft Entra のドメインフェデレーションから一つのドメインを解除した。最後のドメインなら Entra の RP も削除した。")
+model EntraFederationDomainRemoved {
+  occurredAt: utcDateTime;
+  @doc("解除したテナント。")
+  tenantId: string;
+  @doc("解除したドメイン。")
+  domain: string;
+  @doc("解除したドメインの IssuerUri。")
+  issuerUri: string;
+  @doc("解除を許した根拠。")
+  confirmedBy: EntraReleaseEvidence;
+  @doc("最後のドメインを解除して Entra の RP を削除したなら true である。")
+  relyingPartyDeleted: boolean;
+}
 
 }

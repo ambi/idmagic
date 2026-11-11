@@ -18,6 +18,9 @@ type Module struct {
 	RPRepo wsfedports.WsFedRelyingPartyRepository
 	// ObservationRepo は、管理者が取り込んだ Entra の登録値の観測記録を保存する。
 	ObservationRepo wsfedports.EntraFederationObservationRepository
+	// RealmDiscovery は、ドメインの解除の前に Microsoft のレルム探索で Entra の送り先を確かめる。
+	// API の組み立て地点が設定から結ぶ。nil なら探索を無効として扱い、観測記録だけで判定する。
+	RealmDiscovery wsfedports.EntraRealmDiscovery
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
@@ -28,7 +31,7 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 ) {
 	wsfedhttp.RegisterRoutes(g, wsfedhttp.Deps{
 		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate, Sessions: sessions,
-		SecondFactors: secondFactors, WsFedRPRepo: m.RPRepo, EntraObservations: m.ObservationRepo,
+		SecondFactors: secondFactors, WsFedRPRepo: m.RPRepo, EntraObservations: m.ObservationRepo, EntraRealms: m.RealmDiscovery,
 		UserRepo: userRepo, FederationSigner: federationSigner, MessageIDReplayStore: messageIDReplayStore,
 		Passwords: passwords, AttrSchemaRepo: attrSchemaRepo, SourceOwnership: sourceOwnership,
 	})

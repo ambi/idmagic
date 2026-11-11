@@ -309,6 +309,7 @@ var generatedOperations = map[string]Operation{
 	"RegisterWorkloadTrustBundle": {Method: "POST", Path: "/api/admin/v1/workload-identity/trust-bundles", Deprecated: false, ApiTokenScopes: []string{"workload-identity:write"}},
 	"RegisterWsFedRelyingParty": {Method: "POST", Path: "/api/admin/v1/wsfed/relying-parties", Deprecated: false, ApiTokenScopes: []string{"wsfed:write"}},
 	"ReissueDirectoryConnectorEnrollment": {Method: "POST", Path: "/api/admin/v1/directory-connectors/{connector_id}/enrollment-tokens", Deprecated: false, ApiTokenScopes: []string{"interactive_session"}},
+	"RemoveEntraFederationDomain": {Method: "DELETE", Path: "/api/admin/v1/wsfed/entra-federation/domains/{domain_name}", Deprecated: false, ApiTokenScopes: []string{"wsfed:write"}},
 	"RemoveGroupMember": {Method: "DELETE", Path: "/api/admin/v1/groups/{group_id}/members/{user_id}", Deprecated: false, ApiTokenScopes: []string{"groups:write"}},
 	"RemoveTotpFactor": {Method: "POST", Path: "/api/account/v1/mfa/totp/remove", Deprecated: false, ApiTokenScopes: nil},
 	"RemoveWebAuthnCredential": {Method: "POST", Path: "/api/account/v1/mfa/webauthn/remove", Deprecated: false, ApiTokenScopes: nil},

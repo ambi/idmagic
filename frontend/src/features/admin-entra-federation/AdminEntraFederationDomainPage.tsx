@@ -1,13 +1,15 @@
-import { IconArrowLeft, IconCopy, IconPencil } from '@tabler/icons-react'
+import { IconArrowLeft, IconCopy, IconPencil, IconUnlink } from '@tabler/icons-react'
 import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react'
 import {
   AuthenticationAPIError,
   type EntraFederationDomainDetail,
   type EntraPowerShellProcedure,
   recordEntraFederationObservation,
+  removeEntraFederationDomain,
   tenantURL,
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
 import { FieldError } from '../../components/FieldError'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
@@ -24,7 +26,12 @@ import {
   type AdminEntraFederationDictionary,
 } from './AdminEntraFederationPage.i18n'
 import { EntraVerificationStatusBadge } from './EntraVerificationStatusBadge'
-import { ENTRA_LIST_PATH, entraDomainEditURL, takeEntraDomainNotice } from './entraNavigation'
+import {
+  ENTRA_LIST_PATH,
+  entraDomainEditURL,
+  returnToEntraList,
+  takeEntraDomainNotice,
+} from './entraNavigation'
 
 const observationSchema = formSchema({ observation: requiredJson() })
 
@@ -240,6 +247,8 @@ export function AdminEntraFederationDomainPage({
         />
       </Section>
 
+      <RemovalSection csrfToken={csrfToken} detail={detail} onCopy={copy} />
+
       <Section title={t.postChecksHeading}>
         <p className="text-xs text-slate-600">{t.postChecksNotice}</p>
         <ul className="list-disc pl-5 text-xs leading-5 text-slate-700">
@@ -259,6 +268,129 @@ export function AdminEntraFederationDomainPage({
       </Section>
     </AdminShell>
   )
+}
+
+// MIGRATION_GUIDE_URL は、Microsoft の federation から cloud authentication への移行の手順である。
+// Managed への切り替えの権限と cmdlet は、この手順の「Convert domains from federated to managed」に合わせる。
+const MIGRATION_GUIDE_URL =
+  'https://learn.microsoft.com/en-us/entra/identity/hybrid/connect/migrate-from-federation-to-cloud-authentication'
+
+// managedCommand は、Managed へ切り替える固定のコマンドである。保存値を PowerShell の単一引用符の
+// 文字列として符号化し、構成時の検証に依存せず一つの引数として渡す。
+function managedCommand(domain: string): string {
+  const quotedDomain = domain.replaceAll("'", "''")
+  return [
+    `Connect-MgGraph -Scopes 'Domain.ReadWrite.All','Directory.AccessAsUser.All' -NoWelcome`,
+    `Update-MgDomain -DomainId '${quotedDomain}' -AuthenticationType 'Managed'`,
+  ].join('\n')
+}
+
+// RemovalSection は、Entra 側の切り戻しとローカルの解除を案内する。解除の可否はサーバーが Microsoft の
+// レルム探索で確かめるので、画面は解除を要求し、拒否されたら理由を示して詳細に留まる。
+function RemovalSection({
+  csrfToken,
+  detail,
+  onCopy,
+}: {
+  csrfToken: string
+  detail: EntraFederationDomainDetail
+  onCopy: (value: string) => Promise<void>
+}) {
+  const t = useDictionary(adminEntraFederationDictionary)
+  const { locale } = useLocale()
+  const domain = detail.domain.domain
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const remaining = detail.profile.domains
+    .map((federated) => federated.domain)
+    .filter((name) => name !== domain)
+    .sort()
+  const impact =
+    remaining.length > 0
+      ? t.removalRemainingDomains.replace('{domains}', remaining.join(', '))
+      : t.removalLastDomain
+
+  async function handleRemove() {
+    setBusy(true)
+    setError('')
+    try {
+      await removeEntraFederationDomain(csrfToken, domain)
+      returnToEntraList(t.removalRemovedNotice.replace('{domain}', domain))
+    } catch (cause) {
+      // 拒否されたら詳細に留まる。ドメインは構成されたままなので、切り戻しの後に再実行できる。
+      setBusy(false)
+      setConfirming(false)
+      setError(removalErrorMessage(t, locale, cause))
+    }
+  }
+
+  return (
+    <Section title={t.removalHeading} testId="entra-removal">
+      <p className="text-xs text-slate-600">{t.removalNotice}</p>
+      <p className="text-xs font-semibold text-slate-800">{impact}</p>
+      <h3 className="text-xs font-semibold text-slate-800">{t.removalTargetManaged}</h3>
+      <p className="text-xs text-slate-600">{t.removalManagedNotice}</p>
+      <Script
+        title={t.procedureReleaseToManaged}
+        value={managedCommand(domain)}
+        copyLabel={`${t.copy}: ${t.procedureReleaseToManaged}`}
+        onCopy={onCopy}
+      />
+      <h3 className="text-xs font-semibold text-slate-800">{t.removalTargetPreviousIdp}</h3>
+      <p className="text-xs text-slate-600">{t.removalPreviousIdpNotice}</p>
+      <a
+        className="text-xs font-semibold text-blue-700 hover:underline"
+        href={MIGRATION_GUIDE_URL}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {t.removalMigrationGuide}
+      </a>
+      {error ? <Alert variant="destructive">{error}</Alert> : null}
+      <div>
+        <Button
+          type="button"
+          variant="destructive"
+          disabled={busy}
+          onClick={() => {
+            setError('')
+            setConfirming(true)
+          }}
+        >
+          <IconUnlink size={16} aria-hidden="true" />
+          {t.removeDomain}
+        </Button>
+      </div>
+      {confirming ? (
+        <ConfirmActionDialog
+          title={t.removalConfirmTitle.replace('{domain}', domain)}
+          target={impact}
+          description={t.removalConfirmDescription}
+          confirmLabel={t.removeDomain}
+          busy={busy}
+          onClose={() => setConfirming(false)}
+          onConfirm={() => void handleRemove()}
+        />
+      ) : null}
+    </Section>
+  )
+}
+
+function removalErrorMessage(
+  t: AdminEntraFederationDictionary,
+  locale: Locale,
+  cause: unknown,
+): string {
+  if (!(cause instanceof AuthenticationAPIError)) return t.removalFailedError
+  switch (cause.code) {
+    case 'entra_federation_still_active':
+      return t.removalStillActiveError
+    case 'entra_rollback_unconfirmed':
+      return t.removalUnconfirmedError
+    default:
+      return localizedErrorMessage(locale, cause.code, cause.message)
+  }
 }
 
 function observationErrorMessage(

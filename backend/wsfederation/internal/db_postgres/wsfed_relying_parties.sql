@@ -2,6 +2,10 @@
 SELECT tenant_id, wtrealm, application_id, application_protocol_type, display_name, reply_urls, audience, token_type, claim_policy, entra_profile, created_at, updated_at
 FROM wsfed_relying_parties WHERE tenant_id = $1 AND wtrealm = $2;
 
+-- name: GetWsFedRelyingPartyForUpdate :one
+SELECT tenant_id, wtrealm, application_id, application_protocol_type, display_name, reply_urls, audience, token_type, claim_policy, entra_profile, created_at, updated_at
+FROM wsfed_relying_parties WHERE tenant_id = $1 AND wtrealm = $2 FOR UPDATE;
+
 -- name: ListWsFedRelyingPartiesByTenant :many
 SELECT tenant_id, wtrealm, application_id, application_protocol_type, display_name, reply_urls, audience, token_type, claim_policy, entra_profile, created_at, updated_at
 FROM wsfed_relying_parties WHERE tenant_id = $1 ORDER BY wtrealm;

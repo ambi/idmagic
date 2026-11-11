@@ -5,6 +5,8 @@ import (
 
 	httpsupport "github.com/ambi/idmagic/backend/shared/http/support_http"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
+	"github.com/ambi/idmagic/backend/wsfederation"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
 // APIConfig is the startup configuration read only by the idmagic (API)
@@ -24,6 +26,10 @@ type APIConfig struct {
 
 	PaginationCursorSecret Secret
 	NegotiateConfigFile    string
+
+	// EntraRealmDiscovery は、Entra のドメインの解除の前に Microsoft のレルム探索を呼ぶかを選ぶ。
+	// 無効なら nil で、解除は取り込んだ観測記録だけで判定する。
+	EntraRealmDiscovery wsfedports.EntraRealmDiscovery
 
 	RateLimits rlports.RateLimitConfigs
 
@@ -46,6 +52,7 @@ func LoadAPIConfig(l *ConfigLoader) APIConfig {
 	cfg.DrainGracePeriod = l.NonNegativeInt("DRAIN_GRACE_PERIOD_SECONDS", 5)
 	cfg.PaginationCursorSecret = l.Secret("PAGINATION_CURSOR_SECRET")
 	cfg.NegotiateConfigFile = l.String("NEGOTIATE_CONFIG_FILE", "")
+	cfg.EntraRealmDiscovery = loadEntraRealmDiscovery(l)
 
 	cfg.RateLimits = rlports.RateLimitConfigs{
 		"resource_access": {
@@ -103,6 +110,23 @@ func loadTrustedProxies(l *ConfigLoader) []netip.Prefix {
 		proxies = append(proxies, prefix)
 	}
 	return proxies
+}
+
+// loadEntraRealmDiscovery は、Entra のドメインの解除の前に問い合わせる Microsoft のレルム探索を組み立てる。
+// 通信はしない。URL は https に限り、試験のために loopback の http だけを許す。
+func loadEntraRealmDiscovery(l *ConfigLoader) wsfedports.EntraRealmDiscovery {
+	mode := l.Enum("ENTRA_REALM_DISCOVERY", "microsoft", "microsoft", "disabled")
+	const urlKey = "ENTRA_REALM_DISCOVERY_URL"
+	rawURL := l.String(urlKey, wsfederation.DefaultEntraRealmDiscoveryURL)
+	if mode != "microsoft" {
+		return nil
+	}
+	discovery, err := wsfederation.NewEntraRealmDiscovery(rawURL)
+	if err != nil {
+		l.fail(urlKey, "must be an https URL (http only for loopback) without userinfo, query, or fragment")
+		return nil
+	}
+	return discovery
 }
 
 // loadAdmissionBudget reads the per-priority-class concurrency limits the

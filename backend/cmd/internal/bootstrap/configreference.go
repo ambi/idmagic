@@ -106,6 +106,8 @@ var configFieldDescriptions = map[string]string{
 	"DRAIN_GRACE_PERIOD_SECONDS": "SIGTERM を受けてから待ち受けを閉じるまで処理を続ける秒数（idmagic）、または実行中のジョブを終えさせる秒数（idmagic-worker）。",
 	"PAGINATION_CURSOR_SECRET":   "キーセット方式のページングのカーソルに署名する HMAC のシークレット。複数のレプリカで動かすデプロイメントでは明示的に設定する。設定しないと各レプリカが起動時に自身の値を生成し、他のレプリカが発行したカーソルを拒否する。",
 	"NEGOTIATE_CONFIG_FILE":      "Kerberos の信頼と利用者の明示的な対応付けを含む JSON ファイル。未設定なら Windows のサインインは無効。keytab と TLS 終端証明書をファイル参照で指定する。",
+	"ENTRA_REALM_DISCOVERY":      "Entra のドメインの解除の前に、Microsoft のレルム探索で Entra がまだそのドメインを IdMagic へ送るかを確かめる。`disabled` では探索を呼ばず、管理者が取り込んだ読み戻しの観測だけで判定する。API のサーバーから ENTRA_REALM_DISCOVERY_URL への外向きの HTTPS の通信が要る。",
+	"ENTRA_REALM_DISCOVERY_URL":  "レルム探索のエンドポイント。Microsoft の公式な API の文書にないエンドポイントであり、ソブリンクラウドや試験のスタブで差し替える。https に限り、loopback の http だけを許す。",
 
 	"ADMISSION_CONTROL_ENABLED":                         "プロセスが飽和したとき、リクエストの優先度クラスに応じて負荷を落とす。無効にすると、対話的な認証を管理系のトラフィックより優先させる唯一の仕組みがなくなる。誤って設定した閾値を、変更をデプロイせずに運用者が止められるようにするための設定である。",
 	"ADMISSION_MAX_CONCURRENT_REQUESTS":                 "対話的な認証まで拒否し始める前に、このプロセスが同時に実行してよいリクエストの数（ロードシェディングのステージ 5）。一つのリクエストが同時に保持する PostgreSQL の接続は一つまでなので、この値はプールの待ち行列の長さも抑える。",

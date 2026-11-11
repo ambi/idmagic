@@ -27,6 +27,8 @@ type EntraFederationVerification struct {
 	RPRepo       wsfedports.WsFedRelyingPartyRepository
 	Observations wsfedports.EntraFederationObservationRepository
 	Certificates EntraSigningCertificates
+	// Realms は、解除の前に Entra の送り先を Microsoft のレルム探索で確かめる。
+	Realms wsfedports.EntraRealmDiscovery
 }
 
 // EntraDomainView は、一つのドメインの保存した設定、期待値、確認の状態である。

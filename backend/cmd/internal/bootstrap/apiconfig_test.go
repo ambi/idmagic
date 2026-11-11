@@ -162,3 +162,27 @@ func TestLoadAPIConfigRejectsNonPositiveAdmissionLimit(t *testing.T) {
 		t.Fatalf("err=%v, want an ADMISSION_MAX_CONCURRENT_REQUESTS range error", err)
 	}
 }
+
+//spec:covers REQ-WSFEDERATION-001: レルム探索の既定が有効で、disabled で無効になり、https でも loopback の http でもない URL を設定キーを名指して起動時に拒否すること。
+func TestLoadAPIConfigEntraRealmDiscovery(t *testing.T) {
+	t.Parallel()
+	defaults := NewConfigLoader(stubEnv(nil))
+	if cfg := LoadAPIConfig(defaults); defaults.Err() != nil || cfg.EntraRealmDiscovery == nil {
+		t.Fatalf("default discovery = %v, err=%v", cfg.EntraRealmDiscovery, defaults.Err())
+	}
+	disabled := NewConfigLoader(stubEnv(map[string]string{"ENTRA_REALM_DISCOVERY": "disabled"}))
+	if cfg := LoadAPIConfig(disabled); disabled.Err() != nil || cfg.EntraRealmDiscovery != nil {
+		t.Fatalf("disabled discovery = %v, err=%v", cfg.EntraRealmDiscovery, disabled.Err())
+	}
+	stub := NewConfigLoader(stubEnv(map[string]string{"ENTRA_REALM_DISCOVERY_URL": "http://127.0.0.1:4010/getuserrealm.srf"}))
+	if cfg := LoadAPIConfig(stub); stub.Err() != nil || cfg.EntraRealmDiscovery == nil {
+		t.Fatalf("loopback stub discovery = %v, err=%v", cfg.EntraRealmDiscovery, stub.Err())
+	}
+	for _, value := range []string{"http://login.microsoftonline.com/getuserrealm.srf", "https://login.microsoftonline.com/getuserrealm.srf?json=0"} {
+		l := NewConfigLoader(stubEnv(map[string]string{"ENTRA_REALM_DISCOVERY_URL": value}))
+		LoadAPIConfig(l)
+		if err := l.Err(); err == nil || !strings.Contains(err.Error(), "ENTRA_REALM_DISCOVERY_URL") {
+			t.Fatalf("%q: err=%v, want an ENTRA_REALM_DISCOVERY_URL error", value, err)
+		}
+	}
+}

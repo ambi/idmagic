@@ -193,3 +193,132 @@ describe('観測文書の取り込み', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 })
+
+describe('ドメインの解除', () => {
+  const originalLocation = window.location
+  afterEach(() => restoreGlobals())
+  const t = adminEntraFederationDictionary.en
+  const twoDomains = {
+    domains: [
+      { domain: 'contoso.com', issuer_uri: 'urn:contoso' },
+      { domain: 'fabrikam.com', issuer_uri: 'urn:fabrikam' },
+    ],
+    source_anchor_attribute: 'on_premises_immutable_id',
+    immutable_id_attribute: 'entra_immutable_id',
+  }
+
+  //spec:covers REQ-WSFEDERATION-001: 解除の項目が残るドメイン、Managed への切り替えのコマンド、以前の構成の復元の説明、移行の手順への入口を示し、観測の取り込みなしに解除を要求できること。最後のドメインでは RP の削除を示すこと。
+  it('shows the remaining domains and both ways to roll back', async () => {
+    const fetch = mock(() => Promise.resolve(new Response('{}')))
+    stubGlobal('fetch', fetch)
+    await renderWithRouter(
+      <AdminEntraFederationDomainPage csrfToken="csrf" detail={detail({ profile: twoDomains })} />,
+    )
+    const section = within(screen.getByTestId('entra-removal'))
+    expect(
+      section.getByText(t.removalRemainingDomains.replace('{domains}', 'fabrikam.com')),
+    ).toBeInTheDocument()
+    expect(
+      section.getByText(/Update-MgDomain -DomainId 'contoso.com' -AuthenticationType 'Managed'/),
+    ).toBeInTheDocument()
+    expect(section.getByText(t.removalPreviousIdpNotice)).toBeInTheDocument()
+    expect(section.getByText(t.removalMigrationGuide).closest('a')).toHaveAttribute(
+      'href',
+      'https://learn.microsoft.com/en-us/entra/identity/hybrid/connect/migrate-from-federation-to-cloud-authentication',
+    )
+    expect(section.getByRole('button', { name: t.removeDomain })).toBeEnabled()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('marks the last domain as deleting the relying party', async () => {
+    await renderWithRouter(<AdminEntraFederationDomainPage csrfToken="csrf" detail={detail()} />)
+    expect(
+      within(screen.getByTestId('entra-removal')).getByText(t.removalLastDomain),
+    ).toBeInTheDocument()
+  })
+
+  it('quotes a stored domain as one PowerShell argument', async () => {
+    await renderWithRouter(
+      <AdminEntraFederationDomainPage
+        csrfToken="csrf"
+        detail={detail({
+          domain: { domain: "contoso'; Write-Host 'x", issuer_uri: 'urn:contoso' },
+        })}
+      />,
+    )
+    expect(
+      within(screen.getByTestId('entra-removal')).getByText(
+        "Update-MgDomain -DomainId 'contoso''; Write-Host ''x' -AuthenticationType 'Managed'",
+        { exact: false },
+      ),
+    ).toBeInTheDocument()
+  })
+
+  //spec:covers REQ-WSFEDERATION-001: 確認の画面で対象と残るドメインを示した後に DELETE で解除を要求し、成功したら一覧へ移ること。
+  it('confirms the target and the remaining domains, then deletes and moves to the list', async () => {
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    const fetch = mock(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            domain: 'contoso.com',
+            remaining_domains: ['fabrikam.com'],
+            relying_party_deleted: false,
+            confirmed_by: 'realm_discovery',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+    )
+    stubGlobal('fetch', fetch)
+    await renderWithRouter(
+      <AdminEntraFederationDomainPage csrfToken="csrf" detail={detail({ profile: twoDomains })} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: t.removeDomain }))
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent(t.removalConfirmTitle.replace('{domain}', 'contoso.com'))
+    expect(dialog).toHaveTextContent(t.removalRemainingDomains.replace('{domains}', 'fabrikam.com'))
+    fireEvent.click(within(dialog).getByRole('button', { name: t.removeDomain }))
+    await waitFor(() =>
+      expect(window.location.assign).toHaveBeenCalledWith('/admin/federation/entra'),
+    )
+    expect(String(fetch.mock.calls[0][0])).toMatch(
+      /\/api\/admin\/v1\/wsfed\/entra-federation\/domains\/contoso\.com$/,
+    )
+    expect(fetch.mock.calls[0][1]?.method).toBe('DELETE')
+  })
+
+  //spec:covers REQ-WSFEDERATION-001: 拒否された解除で詳細に留まり、まだ IdMagic へ送っていることと確かめられなかったことを、それぞれ辞書の文言で示すこと。
+  for (const [code, message] of [
+    ['entra_federation_still_active', t.removalStillActiveError],
+    ['entra_rollback_unconfirmed', t.removalUnconfirmedError],
+  ] as const) {
+    it(`stays on the detail when the removal is refused with ${code}`, async () => {
+      stubGlobal('location', { ...originalLocation, assign: mock() })
+      stubGlobal(
+        'fetch',
+        mock(
+          async () =>
+            new Response(
+              JSON.stringify({ type: `urn:idmagic:error:${code}`, status: 422, detail: 'refused' }),
+              { status: 422, headers: { 'Content-Type': 'application/problem+json' } },
+            ),
+        ),
+      )
+      await renderWithRouter(
+        <AdminEntraFederationDomainPage
+          csrfToken="csrf"
+          detail={detail({ profile: twoDomains })}
+        />,
+      )
+      fireEvent.click(screen.getByRole('button', { name: t.removeDomain }))
+      const dialog = await screen.findByRole('dialog')
+      fireEvent.click(within(dialog).getByRole('button', { name: t.removeDomain }))
+      await waitFor(() =>
+        expect(within(screen.getByTestId('entra-removal')).getByRole('alert')).toHaveTextContent(
+          message,
+        ),
+      )
+      expect(window.location.assign).not.toHaveBeenCalled()
+    })
+  }
+})

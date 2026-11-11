@@ -176,6 +176,12 @@ type entraKeys struct {
 
 func newEntraVerificationServer(t *testing.T) (entraServer, entraKeys) {
 	t.Helper()
+	return newEntraVerificationServerWith(t, nil, entraAlice)
+}
+
+// newEntraVerificationServerWith は、XML 署名鍵を持つ鍵ストアの署名器で、users を保存したサーバーを返す。
+func newEntraVerificationServerWith(t *testing.T, configure func(*httpadapter.Deps), users ...entraUser) (entraServer, entraKeys) {
+	t.Helper()
 	store, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
@@ -189,7 +195,10 @@ func newEntraVerificationServer(t *testing.T) (entraServer, entraKeys) {
 	module := signingkeys.Module{KeyStore: store}
 	s := newEntraServerConfigured(t, protectedSourceAnchor(), func(d *httpadapter.Deps) {
 		d.FederationSigner = module.FederationSigner()
-	}, entraAlice)
+		if configure != nil {
+			configure(d)
+		}
+	}, users...)
 	return s, entraKeys{store: store, xmlCtx: xmlCtx, current: active.CertificateDER}
 }
 

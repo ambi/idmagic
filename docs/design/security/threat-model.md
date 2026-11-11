@@ -239,7 +239,8 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-081 | Tampering | 一部のプロセスだけが検証されない設定値で起動する | System | REQ-SYSTEM-016、docs/design/application/backend.md: モジュールの内部構造 | `covered` |
 | THREAT-082 | Tampering | 取り込んだ依存物と配布する成果物の来歴を確かめられず、差し替えを識別できない | 全モジュール | docs/design/application/backend.md: Stack | `planned` |
 | THREAT-103 | Tampering | 古い観測、別のドメインの観測、構成や署名鍵を変える前の照合を、現在の Entra への反映の証拠として示し、未適用の構成で利用者を切り替える | WsFederation | REQ-WSFEDERATION-001 | `covered` |
-| THREAT-104 | Spoofing | 管理者が手で書いた観測文書で、Entra に適用していない構成を一致と示す | WsFederation | REQ-WSFEDERATION-001: 手動で取り込んだ観測であることの表示 | `accepted` |
+| THREAT-104 | Spoofing | 管理者が手で書いた観測文書で、Entra に適用していない構成を一致と示すか、Entra を戻していないドメインの解除を通す | WsFederation | REQ-WSFEDERATION-001: 手動で取り込んだ観測であることの表示、レルム探索を優先する解除の判定 | `accepted` |
+| THREAT-105 | Tampering | Microsoft の非公式のレルム探索の応答が変わるか誤り、Entra がまだ IdMagic へ送るドメインの解除を許す | WsFederation | REQ-WSFEDERATION-001: `Managed` と IdMagic を指さない `Federated` だけを根拠にし、そのほかは観測記録へ戻る判定。運用者の設定だけが決める探索の URL | `covered` |
 
 ## 受容した残留リスク
 
@@ -263,8 +264,10 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 **THREAT-104（手で書いた観測文書）**：観測文書の取り込みは、文書が Graph から得たものであることを確かめない。
 IdMagic に Graph の資格情報を持たせず、Entra へ書き込まない方式を選んだ帰結である。
 照合を Entra の状態の保証として表示せず、手動で取り込んだ時点の事実として、取得時刻、確認時刻、観測したテナントとともに示す。
-取り込みは `wsfed:write` を持つ管理者に限り、信頼設定も変えない。
-再検討の条件は、照合の結果を自動の判断（署名鍵の切り替えの許可など）の入力にするとき、または Graph を IdMagic から読む方式を採るときである。
+取り込みは `wsfed:write` を持つ管理者に限り、取り込み自体は信頼設定を変えない。
+ドメインの解除は、レルム探索で確かめられないときだけ観測記録を根拠にし、探索が IdMagic を指すと答えれば観測記録を問わずに拒否する。
+観測を偽って通せるのは、同じ権限で解除を要求できる管理者自身なので、権限の昇格にはならず、自分のテナントの利用者の締め出しに留まる。
+再検討の条件は、照合の結果をほかの自動の判断（署名鍵の切り替えの許可など）の入力にするとき、または Graph を IdMagic から読む方式を採るときである。
 
 ## 見直す条件
 

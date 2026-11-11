@@ -54,6 +54,36 @@ func (q *Queries) GetWsFedRelyingParty(ctx context.Context, arg GetWsFedRelyingP
 	return &i, err
 }
 
+const getWsFedRelyingPartyForUpdate = `-- name: GetWsFedRelyingPartyForUpdate :one
+SELECT tenant_id, wtrealm, application_id, application_protocol_type, display_name, reply_urls, audience, token_type, claim_policy, entra_profile, created_at, updated_at
+FROM wsfed_relying_parties WHERE tenant_id = $1 AND wtrealm = $2 FOR UPDATE
+`
+
+type GetWsFedRelyingPartyForUpdateParams struct {
+	TenantID string
+	Wtrealm  string
+}
+
+func (q *Queries) GetWsFedRelyingPartyForUpdate(ctx context.Context, arg GetWsFedRelyingPartyForUpdateParams) (*WsfedRelyingParty, error) {
+	row := q.db.QueryRow(ctx, getWsFedRelyingPartyForUpdate, arg.TenantID, arg.Wtrealm)
+	var i WsfedRelyingParty
+	err := row.Scan(
+		&i.TenantID,
+		&i.Wtrealm,
+		&i.ApplicationID,
+		&i.ApplicationProtocolType,
+		&i.DisplayName,
+		&i.ReplyUrls,
+		&i.Audience,
+		&i.TokenType,
+		&i.ClaimPolicy,
+		&i.EntraProfile,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const listWsFedRelyingPartiesByTenant = `-- name: ListWsFedRelyingPartiesByTenant :many
 SELECT tenant_id, wtrealm, application_id, application_protocol_type, display_name, reply_urls, audience, token_type, claim_policy, entra_profile, created_at, updated_at
 FROM wsfed_relying_parties WHERE tenant_id = $1 ORDER BY wtrealm

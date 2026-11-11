@@ -26,8 +26,10 @@ type Deps struct {
 	Sessions
 	SecondFactors SecondFactorSteps
 
-	WsFedRPRepo          wsfederationports.WsFedRelyingPartyRepository
-	EntraObservations    wsfederationports.EntraFederationObservationRepository
+	WsFedRPRepo       wsfederationports.WsFedRelyingPartyRepository
+	EntraObservations wsfederationports.EntraFederationObservationRepository
+	// EntraRealms は、ドメインの解除の前に Entra の送り先を確かめる。nil なら探索を無効として扱う。
+	EntraRealms          wsfederationports.EntraRealmDiscovery
 	UserRepo             userports.UserRepository
 	FederationSigner     samltoken.SignerProvider
 	MessageIDReplayStore wsfederationports.MessageIDReplayStore
@@ -78,4 +80,5 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/wsfed/entra-federation/domains", d.handleListEntraFederationDomains)
 	g.GET("/api/admin/v1/wsfed/entra-federation/domains/:domain_name", d.handleGetEntraFederationDomain)
 	g.POST("/api/admin/v1/wsfed/entra-federation/domains/:domain_name/observations", d.handleRecordEntraFederationObservation)
+	g.DELETE("/api/admin/v1/wsfed/entra-federation/domains/:domain_name", d.handleRemoveEntraFederationDomain)
 }

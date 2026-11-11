@@ -62,6 +62,37 @@ let goServer: Subprocess | undefined
 let viteServer: Subprocess | undefined
 let goBinary: string | undefined
 let callback: ReturnType<typeof Bun.serve> | undefined
+// entraRealmStub は、API サーバーが Entra のドメインの解除の前に問い合わせる Microsoft のレルム探索の代わりである。
+// E2E から外部のサービスを呼ばないため、ENTRA_REALM_DISCOVERY_URL をここへ向ける。答えのないドメインには
+// Unknown を返すので、解除は取り込んだ観測で判定される。
+let entraRealmStub: ReturnType<typeof Bun.serve> | undefined
+const entraRealmAnswers = new Map<string, { NameSpaceType: string; AuthURL?: string }>()
+
+// answerEntraRealm は、レルム探索のスタブがドメインについて答える送り先を決める。null なら Unknown に戻す。
+export function answerEntraRealm(
+  domain: string,
+  realm: { NameSpaceType: string; AuthURL?: string } | null,
+): void {
+  if (realm) entraRealmAnswers.set(domain.toLowerCase(), realm)
+  else entraRealmAnswers.delete(domain.toLowerCase())
+}
+
+function startEntraRealmStub(): string {
+  entraRealmStub ??= Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch(request) {
+      const login = new URL(request.url).searchParams.get('login') ?? ''
+      const domain = login.slice(login.lastIndexOf('@') + 1).toLowerCase()
+      return Response.json({
+        Login: login,
+        DomainName: domain,
+        ...(entraRealmAnswers.get(domain) ?? { NameSpaceType: 'Unknown' }),
+      })
+    },
+  })
+  return `http://127.0.0.1:${entraRealmStub.port}/getuserrealm.srf`
+}
 let mailSink: Server | undefined
 let mailSinkPort = 0
 const sentEmails: CapturedEmail[] = []
@@ -347,6 +378,7 @@ export async function startE2EEnvironment(): Promise<void> {
   }
 
   await startMailSink()
+  const entraRealmDiscoveryURL = startEntraRealmStub()
   apiLogFd = openSync(apiLogPath, 'a')
   uiLogFd = openSync(uiLogPath, 'a')
   goBinary = join(tmpdir(), `idmagic-e2e-${process.pid}`)
@@ -386,6 +418,7 @@ export async function startE2EEnvironment(): Promise<void> {
       SEED_FIRST_PARTY_REDIRECT_URIS: `${uiOrigin}/realms/default/callback`,
       DEMO_USER_PASSWORD: 'demo-password-1234',
       DEMO_CLIENT_SECRET: 'demo-client-secret',
+      ENTRA_REALM_DISCOVERY_URL: entraRealmDiscoveryURL,
     },
     stdout: apiLogFd,
     stderr: apiLogFd,
@@ -422,6 +455,9 @@ export async function stopE2EEnvironment(): Promise<void> {
   }
   callback?.stop(true)
   mailSink?.close()
+  entraRealmStub?.stop(true)
+  entraRealmStub = undefined
+  entraRealmAnswers.clear()
   // ログのファイルは消さない。失敗した実行の記録は、実行が終わった後に読むものである。
   for (const fd of [apiLogFd, uiLogFd]) if (fd !== undefined) closeSync(fd)
   apiLogFd = undefined
@@ -1048,3 +1084,20 @@ export async function publishDocumentViewerModel(view: Bun.WebView): Promise<voi
   await clickEnabledButtonByText(view, 'Publish')
   await waitForPage(view, 'admin-authorization-model')
 }
+
+// removeEntraFederationInPage は、ページの中で評価する後始末の文である。`api` と `account` を宣言した
+// 非同期の関数の中に埋め込む。Entra の RP は汎用の削除を受け付けないので、構成したドメインごとに
+// Managed への切り戻しの観測を取り込んでから解除する。レルム探索のスタブは答えのないドメインに Unknown を
+// 返すので、解除はこの観測で判定される。スタブへ答えを与えた spec は、後始末の前に answerEntraRealm で戻す。
+export const removeEntraFederationInPage = `
+  for (const configured of await api.listEntraFederationDomains()) {
+    const retrievedAt = new Date().toISOString()
+    await api.recordEntraFederationObservation(account.csrf_token, configured.domain, {
+      format: 'idmagic.entra-federation-observation.v1',
+      entra_tenant_id: configured.entra_tenant_id ?? '00000000-0000-0000-0000-000000000000',
+      domain: configured.domain, authentication_type: 'Managed', retrieved_at: retrievedAt,
+      federation_configurations: [],
+    })
+    await api.removeEntraFederationDomain(account.csrf_token, configured.domain)
+  }
+`
