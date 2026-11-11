@@ -43,6 +43,7 @@ import {
   type AdminEntraFederationDictionary,
 } from './AdminEntraFederationPage.i18n'
 import { EntraVerificationStatusBadge } from './EntraVerificationStatusBadge'
+import { EntraImmutableIdGuide } from './EntraImmutableIdGuide'
 import {
   ENTRA_ADD_PATH,
   ENTRA_LIST_PATH,
@@ -260,6 +261,7 @@ function EntraFederationForm({
   const [domain, setDomain] = useState(initial.domain)
   const [issuer, setIssuer] = useState(initial.issuer)
   const [sourceAnchor, setSourceAnchor] = useState(initial.sourceAnchor)
+  const [editingSourceAnchor, setEditingSourceAnchor] = useState(false)
   const [replyURL, setReplyURL] = useState(initial.replyURL)
   const [entraTenantID, setEntraTenantID] = useState(initial.entraTenantID)
   const [error, setError] = useState('')
@@ -302,7 +304,7 @@ function EntraFederationForm({
       )
     } catch (cause) {
       setSaving(false)
-      setError(configureErrorMessage(t, locale, cause))
+      setError(configureErrorMessage(t, locale, cause, data.sourceAnchor))
     }
   }
 
@@ -325,19 +327,6 @@ function EntraFederationForm({
               {...validation.fieldProps('domain')}
             />
             <FieldError form={validation} name="domain" />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="entra_source_anchor" required>
-              {t.sourceAnchorAttributeLabel}
-            </Label>
-            <Input
-              id="entra_source_anchor"
-              value={sourceAnchor}
-              onChange={(e) => setSourceAnchor(e.target.value)}
-              required
-              {...validation.fieldProps('sourceAnchor')}
-            />
-            <FieldError form={validation} name="sourceAnchor" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="entra_tenant_id">{t.entraTenantIdLabel}</Label>
@@ -371,6 +360,40 @@ function EntraFederationForm({
             />
             <FieldError form={validation} name="replyURL" />
           </div>
+          <div className="grid gap-3 sm:col-span-2">
+            <EntraImmutableIdGuide />
+            <dl className="text-sm">
+              <dt>{t.immutableIdStorageLabel}</dt>
+              <dd className="break-all font-mono">{sourceAnchor}</dd>
+            </dl>
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                aria-expanded={editingSourceAnchor}
+                aria-controls="entra_source_anchor_settings"
+                onClick={() => setEditingSourceAnchor((open) => !open)}
+              >
+                {t.sourceAnchorAdvancedSettings}
+              </Button>
+            </div>
+            {editingSourceAnchor ? (
+              <div id="entra_source_anchor_settings" className="grid gap-1.5">
+                <Label htmlFor="entra_source_anchor" required>
+                  {t.sourceAnchorAttributeLabel}
+                </Label>
+                <p className="text-xs text-slate-500">{t.sourceAnchorAdvancedHint}</p>
+                <Input
+                  id="entra_source_anchor"
+                  value={sourceAnchor}
+                  onChange={(e) => setSourceAnchor(e.target.value)}
+                  required
+                  {...validation.fieldProps('sourceAnchor')}
+                />
+                <FieldError form={validation} name="sourceAnchor" />
+              </div>
+            ) : null}
+          </div>
           <div className="flex gap-2 sm:col-span-2">
             <Button type="submit" disabled={!validation.data || saving}>
               {t.save}
@@ -389,6 +412,7 @@ function configureErrorMessage(
   t: AdminEntraFederationDictionary,
   locale: Locale,
   cause: unknown,
+  sourceAnchor: string,
 ): string {
   if (!(cause instanceof AuthenticationAPIError)) return t.federationSaveFailedError
   switch (cause.code) {
@@ -411,7 +435,7 @@ function configureErrorMessage(
         cause.code === 'source_anchor_missing'
           ? t.sourceAnchorMissingError
           : t.sourceAnchorInvalidError
-      return `${message.replace('{count}', count.toLocaleString(locale))} ${t.sourceAnchorSampleUsers.replace('{users}', users.join(', '))}`
+      return `${message.replace('{count}', count.toLocaleString(locale))} ${t.sourceAnchorSampleUsers.replace('{users}', users.join(', '))} ${t.sourceAnchorRepairHint.replace('{attribute}', sourceAnchor)}`
     }
     default:
       return localizedErrorMessage(locale, cause.code, cause.message)
@@ -423,9 +447,11 @@ function configureErrorMessage(
 export function AdminEntraFederationAddPage({
   csrfToken,
   actorUsername,
+  sourceAnchorAttribute,
 }: {
   csrfToken: string
   actorUsername?: string
+  sourceAnchorAttribute?: string
 }) {
   const t = useDictionary(adminEntraFederationDictionary)
   return (
@@ -447,7 +473,10 @@ export function AdminEntraFederationAddPage({
     >
       <EntraFederationForm
         csrfToken={csrfToken}
-        initial={ADD_INITIAL}
+        initial={{
+          ...ADD_INITIAL,
+          sourceAnchor: sourceAnchorAttribute ?? ADD_INITIAL.sourceAnchor,
+        }}
         lockDomain={false}
         cancelHref={tenantURL(ENTRA_LIST_PATH)}
       />

@@ -33,6 +33,7 @@ test('administrator saves a domain and revisits its unverified guidance', async 
       return JSON.stringify(schema.attributes)
     })()`)) as string
     await setInputValue(view, '#entra_domain', domain)
+    await clickButtonByText(view, 'ImmutableID の詳細設定')
     await setInputValue(view, '#entra_source_anchor', 'entra_setup_anchor')
     await setInputValue(view, '#entra_tenant_id', tenantID)
     await clickButtonByText(view, '保存')

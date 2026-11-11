@@ -88,7 +88,8 @@ Linux では systemd のユニットとして、Windows ではタスク スケ�
 ## Entra のドメインフェデレーションと併用する
 
 Entra Connect が同じ AD を Entra へ同期し、IdMagic が Entra のドメインフェデレーションのサインインを担う構成では、取り込んだ User の UPN と sourceAnchor を Entra の利用者に合わせる。
-AD の方言のデフォルトはこの構成に合わせてあり、Entra Connect の sourceAnchor が `objectGUID` なら設定を足す必要はない。
+Entra Connect の実際の選択を[確認してから](entra-domain-federation.md#immutableid-を同期側と合わせる)、Connector の対応付けを合わせる。
+Entra Connect の sourceAnchor が `objectGUID` なら設定を足す必要はない。
 
 | Entra の値 | IdMagic の User | AD の方言のデフォルト |
 | --- | --- | --- |
@@ -104,10 +105,19 @@ ldap:
     on_premises_immutable_id: mS-DS-ConsistencyGuid
 ```
 
+`objectGUID` の構成も明示する場合は、同じキーの値を `objectGUID` にする。
+どちらも AD の生バイトを Connector が Base64 にするので、表示用の GUID 文字列や Base64 済みの文字列を AD に代入しない。
+対応付けの変更後は `check` で対象人数を確認し、Connector を再起動して、次の完全な再同期（`sync.full_interval`）の完了を待つ。
+急ぐ場合は Connector を止め、`state_dir` 内の `cursor.json` だけを削除して起動する。
+`enrollment.json` と `connector-key.pem` は残す。
+完全な再同期は検索範囲に現れないユーザーを無効にするので、先に範囲を確認する。
+その後、[Graph の実値との比較](entra-domain-federation.md#immutableid-を同期側と合わせる)まで行う。
+
 `userPrincipalName` のない AD のアカウントは取り込まれず、`check` の出力に送らないエントリとして現れる。
 Entra を使わず `sAMAccountName` で取り込む場合は、`attributes:` に `preferred_username: sAMAccountName` を足す。
 
-取り込んだ後、管理画面の Entra ドメインフェデレーションの追加で、sourceAnchor 属性を初期値の `on_premises_immutable_id` のまま保存する。
+取り込んだ後、管理画面の Entra ドメインフェデレーションの追加で、通常の保存先 `on_premises_immutable_id` を使って保存する。
+内部の属性名を入力する必要はない。
 保存の結果に、UPN がフェデレーションしたドメインに属さない取り込んだユーザーの数が出た場合は、AD の UPN サフィックスか `attributes:` の上書きを確かめる。
 そのユーザーは Entra にサインインできない。
 

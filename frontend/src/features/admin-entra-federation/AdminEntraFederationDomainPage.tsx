@@ -26,6 +26,7 @@ import {
   type AdminEntraFederationDictionary,
 } from './AdminEntraFederationPage.i18n'
 import { EntraVerificationStatusBadge } from './EntraVerificationStatusBadge'
+import { EntraImmutableIdGuide } from './EntraImmutableIdGuide'
 import {
   ENTRA_LIST_PATH,
   entraDomainEditURL,
@@ -168,12 +169,10 @@ export function AdminEntraFederationDomainPage({
             label={t.entraTenantIdLabel}
             value={detail.domain.entra_tenant_id ?? t.notSpecified}
           />
-          <Item
-            label={t.sourceAnchorAttributeLabel}
-            value={detail.profile.source_anchor_attribute}
-          />
+          <Item label={t.immutableIdStorageLabel} value={detail.profile.source_anchor_attribute} />
           <Item label={t.replyUrlLabel} value={detail.reply_url} />
         </dl>
+        <EntraImmutableIdGuide />
       </Section>
 
       <Section title={t.expectedSettingsHeading}>

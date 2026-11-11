@@ -126,6 +126,11 @@ Graph の権限の不足、手順の未実行、取得の失敗は観測文書�
 - 管理者が Entra のドメインの詳細を表示したとき、WsFederation は、未確認、一致、不一致、再確認が必要を区別し、取得時刻、確認時刻、観測したテナントと、手動で取り込んだ観測であることを表示する。
 - 管理者が Entra のドメインの詳細を表示したとき、WsFederation は、導入の前提（AD への認証の委譲、UPN と ImmutableID、Entra Connect のコンピューターの同期、SCP、SYSTEM の通信）と、構成の後の確認（sync join の同期待ち、端末の参加、PRT、アプリの SSO）を別の項目として表示する。
 - 管理者が画面で Entra のドメインフェデレーションの構成を保存したとき、WsFederation は、そのドメインの詳細の画面へ移る。
+- 定型設定がない間、管理者が画面で Entra の構成を追加したとき、WsFederation は、`on_premises_immutable_id` を使い、内部の属性名の入力なしに保存できるようにする。
+- 定型設定がある間、管理者が画面で Entra の構成を追加または編集したとき、WsFederation は、保存済みの属性を初期値に使い、属性名の入力なしにその値を保って保存できるようにする。
+- 管理者が Entra の構成を追加または編集したとき、WsFederation は、ImmutableID の保存先を読み取り専用で示し、明示的な詳細設定でだけ属性名を変更できるようにする。
+- 管理者が Entra の構成または詳細を表示したとき、WsFederation は、Entra Connect の属性の選択確認、Connector の対応付け、再同期、Graph の実値との比較を案内し、GUID の生バイトの Base64 と表示文字列や二重 Base64 を区別する。
+- 画面の保存が `source_anchor_missing` または `source_anchor_invalid` で拒否されたとき、WsFederation は、件数と対象のユーザー名に加えて、保存先の属性と Connector の対応付けと再同期を確認する案内を表示する。
 - 管理者が画面で取り込んだ観測文書が拒否されたとき、WsFederation は、入力した観測文書を残して失敗を表示する。
 - 管理者が Entra のドメインの詳細を表示したとき、WsFederation は、解除の項目に、解除で残るドメイン、Managed への切り替えの `Connect-MgGraph` と `Update-MgDomain` のコマンド、Microsoft の移行の手順への入口、変更前の構成の保存から以前の IdP の構成を戻す説明を表示する。
 - **判断**：切り戻しのスクリプトを生成しないのは、Managed への切り替えが一つのコマンドで足り、以前の構成の復元は管理者が保存した構成と Entra の状態に依存し、IdMagic が実行を確かめられないからである。

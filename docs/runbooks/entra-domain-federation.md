@@ -21,10 +21,52 @@ IdMagic は Entra へ書き込まず、Graph の資格情報も保存しない�
 
 ### IdMagic に保存する
 
-管理画面の Entra 連携から「ドメインフェデレーションを追加」を開き、ドメイン、sourceAnchor の属性、Entra のテナント ID を入力して保存する。
+先に[ImmutableID を同期側と合わせる](#immutableid-を同期側と合わせる)を実施する。
+管理画面の Entra 連携から「ドメインフェデレーションを追加」を開き、ドメインと Entra のテナント ID を入力して保存する。
+通常は組み込みの保存先 `on_premises_immutable_id` を使うため、属性名の入力は要らない。
+既存の別属性を使う構成は、その保存先が読み取り専用で表示され、編集や別ドメインの追加でも保持される。
+変更するときだけ「ImmutableID の詳細設定」を開く。
+この欄に入れるのは IdMagic の属性名であり、AD の属性名でもユーザーごとの識別子の値でもない。
 保存するとドメインの詳細へ移る。
 詳細の状態は「未確認」であり、この時点では Entra は何も変わっていない。
 取り込み元の User のうち UPN がどのドメインにも属さない人数が表示されたら、取り込みの対応付けを先に確かめる。
+
+### ImmutableID を同期側と合わせる
+
+AD の同期元の属性、IdMagic の保存先の属性、Entra のユーザーごとの実値を順に確認する。
+IdMagic は Entra Connect の構成を検出せず、Graph から利用者の値を自動取得しない。
+
+1. Entra Connect の担当者が「現在の構成を表示」（View current configuration）を開き、Review Your Solution の SOURCE ANCHOR と USER PRINCIPAL NAME を確認して導入記録と照合する。独自の同期規則がある場合は Synchronization Rules Editor でユーザーの sourceAnchor への対応付けも確認する。値を変更する操作は実行しない。確認できなければ担当者に確認してから進む。
+2. Connector の `ldap.attributes.on_premises_immutable_id` を同じ AD 属性に合わせる。`objectGUID` ならデフォルトのままでよく、`mS-DS-ConsistencyGuid` なら明示的に上書きする。設定例と再同期は [Connector の手順](directory-connector.md#entra-のドメインフェデレーションと併用する)に従う。
+3. 完全な再同期の完了後、IdMagic の対象ユーザーの詳細で保存先の実値を確認する。既存の別属性を使う場合は、詳細に表示された保存先を確認する。
+4. 同じユーザーについて、次の Graph の読み取りで取得した値と大文字と小文字を含めて一致することを確認する。UPN も同じユーザーを指すことを確認する。
+
+新しい Connect でも以前の sourceAnchor を引き継ぐことがある。
+確認画面の手順は [Microsoft のサインイン障害の調査手順](https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/troubleshoot-ad-fs-sso-issue#check-immutableid-and-upn-in-issuance-claim-rule)にもある。
+また、Connect が objectGUID を ConsistencyGuid に書き込む場合があるので、二つの属性が同じ値でも選択の根拠にはしない。
+同期側とフェデレーション側の値を一致させる条件と Connect の選択規則は [Microsoft の設計概念](https://learn.microsoft.com/en-us/entra/identity/hybrid/connect/plan-connect-design-concepts#impact-on-ad-fs-or-third-party-federation-configuration)で確認できる。
+
+Graph PowerShell の例は次のとおりである。
+`$tenantId` と `$upn` を対象に置き換え、`User.Read.All` の読み取りに同意できる管理者が実行する。
+ドメイン設定の読み戻しとは別の権限であり、IdMagic に Graph の資格情報を渡す必要はない。
+
+```powershell
+$tenantId = '00000000-0000-0000-0000-000000000000'
+$upn = 'alice@contoso.com'
+Connect-MgGraph -TenantId $tenantId -Scopes 'User.Read.All'
+Get-MgUser -UserId $upn -Property UserPrincipalName,OnPremisesImmutableId |
+  Select-Object UserPrincipalName,OnPremisesImmutableId
+Disconnect-MgGraph
+```
+
+通常の `Get-MgUser` は一部のプロパティだけを返すため、`-Property` を指定する（[Get-MgUser の資料](https://learn.microsoft.com/en-us/powershell/module/microsoft.graph.users/get-mguser?view=graph-powershell-1.0)）。
+GUID の生バイトを一度だけ Base64 にした文字列を比較し、GUID の表示文字列、その文字列の Base64、Base64 の二重変換を使わない。
+Connector は AD のバイト列を Base64 にし、WsFederation は保存した値をそのまま発行する。
+比較に使ったユーザーの値をドメイン設定の観測文書に混ぜず、公開の試験結果や監査ログへ貼り付けない。
+
+欠損または不正値で保存が拒否されたら、表示された件数とユーザー名を起点に、IdMagic の保存先、Connector の対応付け、AD の元の値を確認する。
+取り込んだユーザーの値を管理画面から手で補うと、次の同期で戻されるため、取り込み元を直して完全な再同期を行う。
+値が入っていても Entra と同じであることは保存時には検証されないので、Graph との比較まで行う。
 
 ### Graph PowerShell で適用する
 

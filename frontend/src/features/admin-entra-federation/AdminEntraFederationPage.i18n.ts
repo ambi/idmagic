@@ -30,7 +30,27 @@ export const adminEntraFederationDictionary = defineDictionary(
     verifiedDomainLabel: '検証済み domain',
     domainNotUrlError:
       'contoso.com のように、https:// を付けずにドメイン名だけを入力してください。',
-    sourceAnchorAttributeLabel: 'sourceAnchor 属性',
+    sourceAnchorAttributeLabel: 'IdMagic の保存先の属性名',
+    sourceAnchorAdvancedSettings: 'ImmutableID の詳細設定',
+    sourceAnchorAdvancedHint:
+      '既存の別属性を使う構成だけで変更してください。AD の属性名やユーザーごとの識別子の値を入力する欄ではありません。一意で、本人が編集できない属性が必要です。',
+    immutableIdStorageLabel: 'IdMagic の ImmutableID の保存先',
+    immutableIdHeading: 'Entra のユーザー識別子（ImmutableID）',
+    immutableIdHint:
+      'Entra Connect が同期した値と同じ値が必要です。通常は組み込みの「オンプレミスの不変 ID」（on_premises_immutable_id）を使います。',
+    immutableIdConnectStep:
+      'Entra Connect の担当者が「現在の構成を表示」（View current configuration）の SOURCE ANCHOR を確認し、objectGUID と mS-DS-ConsistencyGuid のどちらかを確かめてください。新しい導入でも以前の設定を引き継ぐため、分からない場合は推測せず、担当者に確認してください。',
+    immutableIdMappingStep:
+      'Connector の ldap.attributes.on_premises_immutable_id を同じ AD 属性に合わせてください。objectGUID は既定値です。mS-DS-ConsistencyGuid は明示的に指定してください。',
+    immutableIdResyncStep:
+      'Connector の設定を確認して再起動し、完全な再同期の完了を待ってください。IdMagic のユーザー詳細で、保存先の属性の実値を確認してください。',
+    immutableIdCompareStep:
+      'Microsoft Graph PowerShell に User.Read.All で対象テナントへ接続し、Get-MgUser -UserId <対象の UPN> -Property userPrincipalName,onPremisesImmutableId で取得した OnPremisesImmutableId と、同じユーザーの保存値を大文字と小文字を含めて比較してください。',
+    immutableIdEncodingHint:
+      'GUID は生バイトの Base64 を使います。GUID の表示文字列や、その文字列の Base64、Base64 の二重変換とは異なります。二つの AD 属性が同じ値の場合もあるため、属性名だけで一致と判断しないでください。',
+    immutableIdConnectReference: 'Entra Connect の sourceAnchor の確認資料',
+    sourceAnchorRepairHint:
+      '対象ユーザーの IdMagic の保存先「{attribute}」を確認してください。取り込んだユーザーは Connector の ldap.attributes の対応付けと AD の元の値を確認し、完全な再同期の後に Entra の実値と比較してください。',
     issuerUriLabel: 'IssuerUri',
     issuerUriPlaceholder: '空なら自動生成',
     replyUrlLabel: 'wreply URL',
@@ -177,7 +197,27 @@ export const adminEntraFederationDictionary = defineDictionary(
     federationList: 'Federation list',
     verifiedDomainLabel: 'Verified domain',
     domainNotUrlError: 'Enter only the domain name without https://, such as contoso.com.',
-    sourceAnchorAttributeLabel: 'sourceAnchor attribute',
+    sourceAnchorAttributeLabel: 'IdMagic storage attribute name',
+    sourceAnchorAdvancedSettings: 'Advanced ImmutableID settings',
+    sourceAnchorAdvancedHint:
+      'Change this only for an existing configuration that uses another storage attribute. This field takes neither an AD attribute name nor an individual user identifier. The attribute must be unique and not editable by users.',
+    immutableIdStorageLabel: 'IdMagic ImmutableID storage attribute',
+    immutableIdHeading: 'Entra user identifier (ImmutableID)',
+    immutableIdHint:
+      'The value must match the value synced by Entra Connect. Normally, use the built-in On-premises immutable ID (on_premises_immutable_id).',
+    immutableIdConnectStep:
+      'Ask the Entra Connect administrator to open View current configuration and check SOURCE ANCHOR for objectGUID or mS-DS-ConsistencyGuid. A new installation can inherit an earlier configuration. If unknown, confirm with the administrator before choosing.',
+    immutableIdMappingStep:
+      'Map Connector ldap.attributes.on_premises_immutable_id to the same AD attribute. objectGUID is the default; specify mS-DS-ConsistencyGuid explicitly when used.',
+    immutableIdResyncStep:
+      'Check the Connector configuration, restart it, and wait for a full sync to finish. Check the stored value in the IdMagic user detail.',
+    immutableIdCompareStep:
+      'Connect Microsoft Graph PowerShell to the target tenant with User.Read.All. Run Get-MgUser -UserId <user UPN> -Property userPrincipalName,onPremisesImmutableId and compare OnPremisesImmutableId with the same user’s stored value, including case.',
+    immutableIdEncodingHint:
+      'Use Base64 of the raw GUID bytes, not the displayed GUID string, Base64 of that string, or a second Base64 encoding. The two AD attributes can hold the same value, so attribute names alone do not prove a match.',
+    immutableIdConnectReference: 'Entra Connect sourceAnchor reference',
+    sourceAnchorRepairHint:
+      'Check the affected users’ IdMagic storage attribute “{attribute}”. For imported users, check the Connector ldap.attributes mapping and original AD values, run a full sync, and compare with the actual Entra values.',
     issuerUriLabel: 'IssuerUri',
     issuerUriPlaceholder: 'Auto-generated if blank',
     replyUrlLabel: 'wreply URL',

@@ -6,6 +6,7 @@ import { renderWithRouter } from '../../test/renderWithRouter'
 import type { AdminIntegrationEndpointCatalog } from '../../types'
 import {
   AdminEntraFederationAddPage,
+  AdminEntraFederationEditPage,
   AdminEntraFederationPage,
   EntraFederationList,
 } from './AdminEntraFederationPage'
@@ -219,6 +220,9 @@ describe('Entra の構成の拒否', () => {
           expect(alert).toHaveTextContent('7')
           expect(alert).toHaveTextContent('ann@contoso.com')
           expect(alert).toHaveTextContent('bob@contoso.com')
+          expect(alert).toHaveTextContent(
+            dictionary.sourceAnchorRepairHint.replace('{attribute}', 'on_premises_immutable_id'),
+          )
         } else {
           expect(alert).not.toHaveTextContent('ann@contoso.com')
         }
@@ -312,6 +316,62 @@ describe('保存の後の遷移', () => {
 
 describe('Entra の構成の入力', () => {
   afterEach(() => restoreGlobals())
+
+  //spec:covers REQ-WSFEDERATION-001: 通常操作では内部属性の入力を求めず、既存の独自属性を読み取り専用で示して保存すること。
+  it('既存の独自属性は詳細設定を開かずに保持して保存する', async () => {
+    const fetch = mock(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    )
+    stubGlobal('fetch', fetch)
+    stubGlobal('location', { ...window.location, assign: mock() })
+    await renderWithRouter(
+      <AdminEntraFederationEditPage
+        csrfToken="csrf"
+        domain={{ domain: 'contoso.com', issuer_uri: 'urn:contoso' }}
+        sourceAnchorAttribute="legacy_anchor"
+        replyURL="https://login.microsoftonline.com/login.srf"
+      />,
+    )
+    expect(screen.queryByLabelText(t.sourceAnchorAttributeLabel) === null).toBe(true)
+    expect(screen.getByText('legacy_anchor')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(t.issuerUriLabel), {
+      target: { value: 'urn:contoso:updated' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t.save }))
+    await waitFor(() => expect(fetch).toHaveBeenCalled())
+    const body = JSON.parse(String(fetch.mock.calls[0][1]?.body))
+    expect(body.source_anchor_attribute).toBe('legacy_anchor')
+    expect(body.issuer_uri).toBe('urn:contoso:updated')
+  })
+
+  //spec:covers REQ-WSFEDERATION-001: 詳細設定を明示して変更した保存先は、閉じても保持し、一意性と本人の編集禁止の説明を表示すること。
+  it('詳細設定で変更した属性を閉じても保持する', async () => {
+    const fetch = mock(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response('{}', { status: 201, headers: { 'Content-Type': 'application/json' } }),
+    )
+    stubGlobal('fetch', fetch)
+    stubGlobal('location', { ...window.location, assign: mock() })
+    await renderWithRouter(<AdminEntraFederationAddPage csrfToken="csrf" />)
+    expect(screen.queryByLabelText(t.sourceAnchorAttributeLabel) === null).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: t.sourceAnchorAdvancedSettings }))
+    expect(screen.getByText(t.sourceAnchorAdvancedHint)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(t.sourceAnchorAttributeLabel), {
+      target: { value: 'custom_anchor' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t.sourceAnchorAdvancedSettings }))
+    expect(screen.queryByLabelText(t.sourceAnchorAttributeLabel) === null).toBe(true)
+    expect(screen.getByText('custom_anchor')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(t.verifiedDomainLabel), {
+      target: { value: 'contoso.com' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t.save }))
+    await waitFor(() => expect(fetch).toHaveBeenCalled())
+    expect(JSON.parse(String(fetch.mock.calls[0][1]?.body)).source_anchor_attribute).toBe(
+      'custom_anchor',
+    )
+  })
 
   //spec:covers WCAG22-LABELS-ERRORS: サーバーが拒む domain と reply URL を欄のエラー文で示し、保存しないこと
   it('rejects a domain written as a URL and a reply URL without a host', async () => {
