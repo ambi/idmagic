@@ -1,5 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getAdminIntegrationEndpoints, listWsFedRelyingParties } from '../../../api/admin'
+import {
+  getAdminIntegrationEndpoints,
+  listEntraFederationDomains,
+  listWsFedRelyingParties,
+} from '../../../api/admin'
 import { AdminEntraFederationPage } from '../../../features/admin-entra-federation/AdminEntraFederationPage'
 import { requirePortalAccount } from '../../-guards'
 import { PageMarker } from '../../-page'
@@ -7,14 +11,16 @@ import { PageMarker } from '../../-page'
 export const Route = createFileRoute('/admin/federation/entra')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const [relyingParties, integrationEndpoints] = await Promise.all([
+    const [relyingParties, domains, integrationEndpoints] = await Promise.all([
       listWsFedRelyingParties(),
+      listEntraFederationDomains(),
       getAdminIntegrationEndpoints(),
     ])
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
       relyingParties,
+      domains,
       integrationEndpoints,
     }
   },

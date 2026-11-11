@@ -16,6 +16,8 @@ import (
 
 type Module struct {
 	RPRepo wsfedports.WsFedRelyingPartyRepository
+	// ObservationRepo は、管理者が取り込んだ Entra の登録値の観測記録を保存する。
+	ObservationRepo wsfedports.EntraFederationObservationRepository
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
@@ -26,7 +28,7 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 ) {
 	wsfedhttp.RegisterRoutes(g, wsfedhttp.Deps{
 		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate, Sessions: sessions,
-		SecondFactors: secondFactors, WsFedRPRepo: m.RPRepo,
+		SecondFactors: secondFactors, WsFedRPRepo: m.RPRepo, EntraObservations: m.ObservationRepo,
 		UserRepo: userRepo, FederationSigner: federationSigner, MessageIDReplayStore: messageIDReplayStore,
 		Passwords: passwords, AttrSchemaRepo: attrSchemaRepo, SourceOwnership: sourceOwnership,
 	})

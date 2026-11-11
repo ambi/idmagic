@@ -10,6 +10,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type WsfedEntraFederationObservation struct {
+	TenantID                         string
+	Domain                           string
+	Observation                      []byte
+	ExpectedFingerprint              string
+	SigningCertificateThumbprint     string
+	NextSigningCertificateThumbprint string
+	Matched                          bool
+	Differences                      []byte
+	RetrievedAt                      time.Time
+	CheckedAt                        time.Time
+}
+
 type WsfedRelyingParty struct {
 	TenantID                string
 	Wtrealm                 string

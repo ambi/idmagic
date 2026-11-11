@@ -127,7 +127,7 @@ func newServerWithSigner(t *testing.T, authn *authdomain.AuthenticationContext, 
 		Issuer:   "https://idp.example",
 		Contract: spec.CurrentRuntimeContract(),
 
-		Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) }, WsFederation: wsfederation.Module{RPRepo: rpRepo},
+		Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) }, WsFederation: wsfederation.Module{RPRepo: rpRepo, ObservationRepo: wsfederation.NewMemoryModule().ObservationRepo},
 		UserRepo:             userRepo,
 		PasswordHasher:       hasher,
 		SentinelPasswordHash: sentinel,
@@ -840,7 +840,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:   "https://idp.example",
-		Contract: spec.CurrentRuntimeContract(), WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
+		Contract: spec.CurrentRuntimeContract(), WsFederation: wsfederation.NewMemoryModule(),
 		UserRepo:         userRepo,
 		AttrSchemaRepo:   identity.AttrSchemaRepo,
 		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},

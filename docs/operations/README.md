@@ -10,6 +10,7 @@
 | [保守](maintenance.md) | 定期作業、更新、キャパシティ確認、廃止と引渡し |
 | [運用手順](../runbooks/) | 人が手で実行する運用作業と障害対応の手順。作業一つにつき一つ置く |
 | [Kerberos の導入](../runbooks/kerberos-setup.md) | AD の信頼、ブラウザー設定、導入確認と鍵の更新 |
+| [Entra のドメインフェデレーションの導入](../runbooks/entra-domain-federation.md) | Graph PowerShell による適用、読み戻した登録値の照合、端末と SSO の確認 |
 
 ## 関連する一次情報
 

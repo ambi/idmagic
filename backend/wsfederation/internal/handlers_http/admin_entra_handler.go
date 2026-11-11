@@ -1,7 +1,6 @@
 package handlers_http
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -25,6 +24,7 @@ type configureEntraRequest struct {
 	IssuerURI             string `json:"issuer_uri"`
 	SourceAnchorAttribute string `json:"source_anchor_attribute"`
 	ReplyURL              string `json:"reply_url"`
+	EntraTenantID         string `json:"entra_tenant_id"`
 }
 
 func (r configureEntraRequest) validate() error {
@@ -42,6 +42,9 @@ func (r configureEntraRequest) validate() error {
 		if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 			return errBadRequest("reply_url must be an absolute URL")
 		}
+	}
+	if _, err := feddomain.NormalizeEntraTenantID(r.EntraTenantID); err != nil {
+		return errBadRequest("entra_tenant_id must be a GUID")
 	}
 	return nil
 }
@@ -70,6 +73,7 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	if issuerURI == "" {
 		issuerURI = "urn:idmagic:entra:" + domain
 	}
+	entraTenantID, _ := feddomain.NormalizeEntraTenantID(req.EntraTenantID)
 	replyURL := strings.TrimSpace(req.ReplyURL)
 	if replyURL == "" {
 		replyURL = defaultEntraReplyURL
@@ -80,11 +84,12 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
+	domainPair := feddomain.EntraDomainFederation{Domain: domain, IssuerURI: issuerURI, EntraTenantID: entraTenantID}
 	var configured feddomain.EntraFederationProfile
 	if existing != nil && existing.EntraProfile != nil {
 		configured = *existing.EntraProfile
 	}
-	profile, added, err := configured.WithDomain(feddomain.EntraDomainFederation{Domain: domain, IssuerURI: issuerURI}, sourceAttr)
+	profile, added, err := configured.WithDomain(domainPair, sourceAttr)
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
@@ -128,22 +133,17 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	if signer == nil || signer.Certificate() == nil {
 		return fmt.Errorf("federation signing certificate unavailable")
 	}
-	settings := map[string]string{
-		"IssuerUri":                       issuerURI,
-		"PassiveSignInUri":                passive,
-		"ActiveSignInUri":                 active,
-		"MetadataExchangeUri":             mex,
-		"SignOutUri":                      passive + "?wa=wsignout1.0",
-		"SigningCertificate":              base64.StdEncoding.EncodeToString(signer.Certificate().Raw),
-		"PreferredAuthenticationProtocol": "wsFed",
-		"FederatedIdpMfaBehavior":         "acceptIfMfaDoneByFederatedIdp",
-	}
 	preparedCertificate, err := d.FederationSigner.PreparedCertificate(ctx)
 	if err != nil {
 		return err
 	}
-	if preparedCertificate != nil {
-		settings["NextSigningCertificate"] = base64.StdEncoding.EncodeToString(preparedCertificate.Raw)
+	settings := feddomain.ExpectedEntraSettings(profile, domainPair, signer.Certificate(), preparedCertificate).GraphParameters()
+	// 新しく加えたドメインに、RP を削除する前の観測を一致として示さない。RP の保存より先に消すので、
+	// 保存に失敗しても未確認へ倒れる。
+	if added {
+		if err := d.EntraObservations.Delete(ctx, tenantID, domain); err != nil {
+			return err
+		}
 	}
 	if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
 		return err

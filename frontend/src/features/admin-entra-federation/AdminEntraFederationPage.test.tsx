@@ -65,6 +65,7 @@ describe('locale', () => {
         csrfToken="csrf"
         actorUsername="admin"
         relyingParties={[]}
+        domains={[]}
         integrationEndpoints={integrationEndpoints}
       />,
     )
@@ -78,6 +79,7 @@ describe('locale', () => {
         csrfToken="csrf"
         actorUsername="admin"
         relyingParties={[]}
+        domains={[]}
         integrationEndpoints={integrationEndpoints}
       />,
       { locale: 'ja' },
@@ -93,6 +95,7 @@ describe('locale', () => {
         csrfToken="csrf"
         actorUsername="admin"
         relyingParties={[]}
+        domains={[]}
         integrationEndpoints={integrationEndpoints}
       />,
     )
@@ -108,7 +111,9 @@ describe('locale', () => {
 
 describe('EntraFederationList', () => {
   it('renders an empty state and delegates a deletion action', () => {
-    const { rerender } = renderEn(<EntraFederationList items={[]} onDelete={mock()} />)
+    const { rerender } = renderEn(
+      <EntraFederationList items={[]} summaries={[]} onDelete={mock()} />,
+    )
     expect(screen.getByText(t.noFederationsNotice)).toBeInTheDocument()
 
     const onDelete = mock()
@@ -133,6 +138,13 @@ describe('EntraFederationList', () => {
                 source_anchor_attribute: 'object_guid',
                 immutable_id_attribute: 'object_guid',
               },
+            },
+          ]}
+          summaries={[
+            {
+              domain: 'contoso.com',
+              issuer_uri: 'urn:idmagic:entra:contoso.com',
+              verification: { status: 'matched' },
             },
           ]}
           onDelete={onDelete}
@@ -223,111 +235,88 @@ describe('Entra の構成の拒否', () => {
   }
 })
 
-describe('Graph の構成結果', () => {
-  afterEach(() => restoreGlobals())
-
-  //spec:covers REQ-WSFEDERATION-001: 作成と更新のコマンドをそれぞれコピーし、制限のコードを選択した言語で表示すること。
-  for (const locale of ['ja', 'en'] as const) {
-    it('Graph のコマンドをコピーし制限を翻訳する', async () => {
-      const commands = {
-        create:
-          "New-MgDomainFederationConfiguration -DomainId 'contoso.com' -SigningCertificate 'MIICcreate'",
-        update:
-          "Update-MgDomainFederationConfiguration -DomainId 'contoso.com' -SigningCertificate 'MIICupdate'",
-      }
-      const copy = mock(async (_value: string) => {})
-      stubGlobal('navigator', { clipboard: { writeText: copy } })
-      stubGlobal(
-        'fetch',
-        mock(
-          async () =>
-            new Response(
-              JSON.stringify({
-                powershell: {
-                  SigningCertificate: 'MIICcreate',
-                  PreferredAuthenticationProtocol: 'wsFed',
-                },
-                commands,
-                known_limitations: [{ code: 'hybrid_join_not_supported' }],
-              }),
-              { status: 201, headers: { 'Content-Type': 'application/json' } },
-            ),
-        ),
-      )
-      await renderWithRouter(<AdminEntraFederationAddPage csrfToken="csrf" />, { locale })
-      const dictionary = adminEntraFederationDictionary[locale]
-      fireEvent.change(screen.getByLabelText(dictionary.verifiedDomainLabel), {
-        target: { value: 'contoso.com' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: dictionary.save }))
-      await waitFor(() => expect(screen.getByText(commands.create)).toBeInTheDocument())
-      expect(screen.getByText(commands.update)).toBeInTheDocument()
-      expect(screen.getByText(dictionary.hybridJoinNotProvidedNotice)).toBeInTheDocument()
-      expect(screen.queryByText('hybrid_join_not_supported')).not.toBeInTheDocument()
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: locale === 'ja' ? '作成コマンドをコピー' : 'Copy create command',
-        }),
-      )
-      await waitFor(() => expect(copy).toHaveBeenLastCalledWith(commands.create))
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: locale === 'ja' ? '更新コマンドをコピー' : 'Copy update command',
-        }),
-      )
-      await waitFor(() => expect(copy).toHaveBeenLastCalledWith(commands.update))
+describe('ドメインの一覧の確認の状態', () => {
+  //spec:covers REQ-WSFEDERATION-001: 一覧がドメインごとの確認の状態を示し、照合のないドメインを反映済みとして示さないこと。
+  it('shows each domain with its verification status and links to its detail', () => {
+    renderEn(
+      <EntraFederationList
+        items={[
+          {
+            tenant_id: 'tenant-a',
+            wtrealm: 'urn:federation:MicrosoftOnline',
+            reply_urls: [],
+            claim_policy: { name_id: { format: 'persistent', source_attribute: 'sub' } },
+            created_at: '2026-01-01T00:00:00Z',
+            entra_profile: {
+              domains: [
+                { domain: 'contoso.com', issuer_uri: 'urn:contoso' },
+                { domain: 'fabrikam.com', issuer_uri: 'urn:fabrikam' },
+              ],
+              source_anchor_attribute: 'object_guid',
+              immutable_id_attribute: 'entra_immutable_id',
+            },
+          },
+        ]}
+        summaries={[
+          { domain: 'fabrikam.com', issuer_uri: 'urn:fabrikam', verification: { status: 'stale' } },
+        ]}
+        onDelete={mock()}
+      />,
+    )
+    const contoso = screen.getByRole('link', {
+      name: t.viewDomainDetail.replace('{domain}', 'contoso.com'),
     })
-  }
+    expect(contoso).toHaveAttribute('href', '/admin/federation/entra/contoso.com')
+    expect(contoso.closest('li')).toHaveTextContent(t.statusUnverified)
+    expect(
+      screen
+        .getByRole('link', { name: t.viewDomainDetail.replace('{domain}', 'fabrikam.com') })
+        .closest('li'),
+    ).toHaveTextContent(t.statusStale)
+  })
 })
 
-describe('UPN がフェデレーションしない取り込み元の User', () => {
+describe('保存の後の遷移', () => {
+  const originalLocation = window.location
   afterEach(() => restoreGlobals())
 
-  //spec:covers REQ-WSFEDERATION-001: 組み込みの on_premises_immutable_id を sourceAnchor の初期値として送り、構成の結果の unfederated_source_users の件数とユーザー名を選択した言語で表示すること。
-  for (const locale of ['ja', 'en'] as const) {
-    it(`${locale}: 件数とユーザー名を表示する`, async () => {
-      const fetch = mock(
-        async (_input: RequestInfo | URL, _init?: RequestInit) =>
-          new Response(
-            JSON.stringify({
-              powershell: {},
-              commands: { create: 'New-Mg', update: 'Update-Mg' },
-              known_limitations: [],
-              unfederated_source_users: {
-                user_count: 1234,
-                sample_usernames: ['frank', 'grace@corp.local'],
-              },
-            }),
-            { status: 201, headers: { 'Content-Type': 'application/json' } },
-          ),
-      )
-      stubGlobal('fetch', fetch)
-      await renderWithRouter(<AdminEntraFederationAddPage csrfToken="csrf" />, { locale })
-      const dictionary = adminEntraFederationDictionary[locale]
-      fireEvent.change(screen.getByLabelText(dictionary.verifiedDomainLabel), {
-        target: { value: 'contoso.com' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: dictionary.save }))
-      const count = (1234).toLocaleString(locale)
-      await waitFor(() =>
-        expect(
-          screen.getByText(dictionary.unfederatedSourceUsersNotice.replace('{count}', count), {
-            exact: false,
-          }),
-        ).toBeInTheDocument(),
-      )
-      expect(
-        screen.getByText(
-          dictionary.sourceAnchorSampleUsers.replace('{users}', 'frank, grace@corp.local'),
-          {
-            exact: false,
-          },
-        ),
-      ).toBeInTheDocument()
-      const body = JSON.parse(String(fetch.mock.calls[0][1]?.body))
-      expect(body.source_anchor_attribute).toBe('on_premises_immutable_id')
+  //spec:covers REQ-WSFEDERATION-001: 保存に成功したらテナント ID と組み込みの sourceAnchor を送り、ドメインの詳細へ移ること。
+  it('sends the tenant ID and moves to the domain detail after saving', async () => {
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    const fetch = mock(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response('{}', { status: 201, headers: { 'Content-Type': 'application/json' } }),
+    )
+    stubGlobal('fetch', fetch)
+    await renderWithRouter(<AdminEntraFederationAddPage csrfToken="csrf" />)
+    fireEvent.change(screen.getByLabelText(t.verifiedDomainLabel), {
+      target: { value: 'Contoso.com' },
     })
-  }
+    fireEvent.change(screen.getByLabelText(t.entraTenantIdLabel), {
+      target: { value: '0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t.save }))
+    await waitFor(() =>
+      expect(window.location.assign).toHaveBeenCalledWith('/admin/federation/entra/contoso.com'),
+    )
+    const body = JSON.parse(String(fetch.mock.calls[0][1]?.body))
+    expect(body.source_anchor_attribute).toBe('on_premises_immutable_id')
+    expect(body.entra_tenant_id).toBe('0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0')
+  })
+
+  it('rejects a tenant ID that is not a GUID without saving', async () => {
+    const fetch = mock(() => Promise.resolve(new Response('{}')))
+    stubGlobal('fetch', fetch)
+    await renderWithRouter(<AdminEntraFederationAddPage csrfToken="csrf" />)
+    fireEvent.change(screen.getByLabelText(t.verifiedDomainLabel), {
+      target: { value: 'contoso.com' },
+    })
+    const tenant = screen.getByLabelText(t.entraTenantIdLabel)
+    fireEvent.change(tenant, { target: { value: 'contoso' } })
+    expect(tenant).toHaveAccessibleDescription(t.entraTenantIdInvalidError)
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled()
+    expect(fetch).not.toHaveBeenCalled()
+  })
 })
 
 describe('Entra の構成の入力', () => {

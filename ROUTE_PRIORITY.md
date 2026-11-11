@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：218
+経路の数：221
 
 | 経路 | メソッド |
 | --- | --- |
@@ -274,6 +274,9 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/enable` | POST |
 | `/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/refresh` | POST |
 | `/api/admin/v1/wsfed/entra-federation` | POST |
+| `/api/admin/v1/wsfed/entra-federation/domains` | GET |
+| `/api/admin/v1/wsfed/entra-federation/domains/{domain_name}` | GET |
+| `/api/admin/v1/wsfed/entra-federation/domains/{domain_name}/observations` | POST |
 | `/api/admin/v1/wsfed/relying-parties` | DELETE, GET, POST |
 | `/api/token-vault/v1/callback/{connector_id}` | GET |
 | `/api/token-vault/v1/connectors/{connector_id}/execute` | POST |

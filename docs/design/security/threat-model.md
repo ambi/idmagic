@@ -238,6 +238,8 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-080 | Information disclosure | 指標の公開先からテナントの活動が推測される | System | design/observability/monitoring.md: 監視する層 | `covered` |
 | THREAT-081 | Tampering | 一部のプロセスだけが検証されない設定値で起動する | System | REQ-SYSTEM-016、docs/design/application/backend.md: モジュールの内部構造 | `covered` |
 | THREAT-082 | Tampering | 取り込んだ依存物と配布する成果物の来歴を確かめられず、差し替えを識別できない | 全モジュール | docs/design/application/backend.md: Stack | `planned` |
+| THREAT-103 | Tampering | 古い観測、別のドメインの観測、構成や署名鍵を変える前の照合を、現在の Entra への反映の証拠として示し、未適用の構成で利用者を切り替える | WsFederation | REQ-WSFEDERATION-001 | `covered` |
+| THREAT-104 | Spoofing | 管理者が手で書いた観測文書で、Entra に適用していない構成を一致と示す | WsFederation | REQ-WSFEDERATION-001: 手動で取り込んだ観測であることの表示 | `accepted` |
 
 ## 受容した残留リスク
 
@@ -257,6 +259,12 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 業務用途の自動付与を残すため、この影響を明示承認した範囲で受け入れる。
 再検討の条件は、連携元ごとに委任の範囲を限定する必要が生じたときである。
 詳細は [IdManagement の設計判断](../../modules/identity-management/decisions.md#自動所属の業務ロールを明示的に委任する) が定める。
+
+**THREAT-104（手で書いた観測文書）**：観測文書の取り込みは、文書が Graph から得たものであることを確かめない。
+IdMagic に Graph の資格情報を持たせず、Entra へ書き込まない方式を選んだ帰結である。
+照合を Entra の状態の保証として表示せず、手動で取り込んだ時点の事実として、取得時刻、確認時刻、観測したテナントとともに示す。
+取り込みは `wsfed:write` を持つ管理者に限り、信頼設定も変えない。
+再検討の条件は、照合の結果を自動の判断（署名鍵の切り替えの許可など）の入力にするとき、または Graph を IdMagic から読む方式を採るときである。
 
 ## 見直す条件
 

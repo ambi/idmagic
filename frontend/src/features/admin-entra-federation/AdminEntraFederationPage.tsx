@@ -10,8 +10,9 @@ import { type FormEvent, useMemo, useState } from 'react'
 import {
   AuthenticationAPIError,
   configureEntraFederation,
-  type ConfigureEntraFederationResponse,
   deleteWsFedRelyingParty,
+  type EntraFederationDomainSummary,
+  listEntraFederationDomains,
   listWsFedRelyingParties,
   tenantURL,
 } from '../../api'
@@ -35,18 +36,29 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { localizedErrorMessage } from '../../lib/i18n/errorMessage'
-import type { AdminIntegrationEndpointCatalog, WsFedRelyingParty } from '../../types'
+import type { Locale } from '../../lib/i18n/locale'
+import type {
+  AdminIntegrationEndpointCatalog,
+  EntraDomainFederation,
+  WsFedRelyingParty,
+} from '../../types'
 import {
   adminEntraFederationDictionary,
   type AdminEntraFederationDictionary,
 } from './AdminEntraFederationPage.i18n'
+import { EntraVerificationStatusBadge } from './EntraVerificationStatusBadge'
+import {
+  ENTRA_ADD_PATH,
+  ENTRA_LIST_PATH,
+  entraDomainURL,
+  returnToEntraDomain,
+} from './entraNavigation'
 
 // Entra domain federation は検証済みドメイン単位の操作。個別アプリの設定ではなく、テナント配下の
 // ドメインをまとめて外部 IdP へ向ける設定なので、Application 編集とは別のテナント設定画面で扱う。
 //
-// 詳細→編集ポリシー (wi-126 §8): 最初に出るこの画面は「現在 federation 済みのドメイン一覧」
-// (= 現在の設定) を見せるだけにし、追加 (configure) は専用画面 /admin/federation/entra/new に
-// 分離する。一覧画面がそのまま追加フォームを兼ねている状態を無くす。
+// 一覧はドメインごとの反映の確認の状態を示し、詳細（読み取り専用）、追加、編集を別の画面に分ける。
+// 保存しただけのドメインを反映済みとして見せないため、状態は管理者が取り込んだ照合の結果だけから示す。
 function endpointLinks(
   t: AdminEntraFederationDictionary,
   endpoints: AdminIntegrationEndpointCatalog['ws_federation'],
@@ -73,21 +85,21 @@ function endpointLinks(
   ]
 }
 
-const ADD_PATH = '/admin/federation/entra/new'
-const LIST_PATH = '/admin/federation/entra'
-
 export function AdminEntraFederationPage({
   csrfToken,
   actorUsername,
   relyingParties,
+  domains,
   integrationEndpoints,
 }: {
   csrfToken: string
   actorUsername?: string
   relyingParties: WsFedRelyingParty[]
+  domains: EntraFederationDomainSummary[]
   integrationEndpoints: AdminIntegrationEndpointCatalog
 }) {
   const [items, setItems] = useState(relyingParties.filter((rp) => rp.entra_profile))
+  const [summaries, setSummaries] = useState(domains)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [pending, setPending] = useState<WsFedRelyingParty | null>(null)
@@ -101,6 +113,7 @@ export function AdminEntraFederationPage({
     try {
       await deleteWsFedRelyingParty(csrfToken, rp.wtrealm)
       setItems((prev) => prev.filter((item) => item.wtrealm !== rp.wtrealm))
+      setSummaries([])
       setNotice(t.federationDeletedNotice.replace('{domain}', federatedDomainNames(rp)))
       setPending(null)
     } catch (cause) {
@@ -118,11 +131,17 @@ export function AdminEntraFederationPage({
       description={t.pageDescription}
       list={{
         displayed: items.length,
-        onRefresh: async () =>
-          setItems((await listWsFedRelyingParties()).filter((rp) => rp.entra_profile)),
+        onRefresh: async () => {
+          const [rps, refreshed] = await Promise.all([
+            listWsFedRelyingParties(),
+            listEntraFederationDomains(),
+          ])
+          setItems(rps.filter((rp) => rp.entra_profile))
+          setSummaries(refreshed)
+        },
       }}
       actions={
-        <Button nativeButton={false} render={<a href={tenantURL(ADD_PATH)} />}>
+        <Button nativeButton={false} render={<a href={tenantURL(ENTRA_ADD_PATH)} />}>
           <IconPlus size={16} aria-hidden="true" />
           {t.addDomainFederation}
         </Button>
@@ -149,7 +168,11 @@ export function AdminEntraFederationPage({
         )}
       </div>
 
-      <EntraFederationList items={items} onDelete={(item) => setPending(item)} />
+      <EntraFederationList
+        items={items}
+        summaries={summaries}
+        onDelete={(item) => setPending(item)}
+      />
       {pending ? (
         <ConfirmActionDialog
           title={t.deleteAriaLabel.replace('{wtrealm}', pending.wtrealm)}
@@ -174,15 +197,19 @@ function federatedDomainNames(relyingParty: WsFedRelyingParty): string {
 
 export function EntraFederationList({
   items,
+  summaries,
   onDelete,
 }: {
   items: WsFedRelyingParty[]
+  summaries: EntraFederationDomainSummary[]
   onDelete: (relyingParty: WsFedRelyingParty) => void
 }) {
   const t = useDictionary(adminEntraFederationDictionary)
   if (items.length === 0) {
     return <Card className="p-8 text-center text-sm text-slate-500">{t.noFederationsNotice}</Card>
   }
+  const statusOf = (domain: string) =>
+    summaries.find((summary) => summary.domain === domain)?.verification.status ?? 'unverified'
   return (
     <div className="flex flex-col gap-3">
       {items.map((relyingParty) => (
@@ -195,11 +222,22 @@ export function EntraFederationList({
             />
             <div className="min-w-0 text-xs leading-5 text-slate-600">
               <p className="truncate font-mono">{relyingParty.wtrealm}</p>
-              <ul className="my-1">
+              <ul className="my-1 grid gap-1.5">
                 {relyingParty.entra_profile?.domains.map((federated) => (
-                  <li key={federated.domain} className="min-w-0">
-                    <span className="font-semibold text-slate-900">{federated.domain}</span>
-                    <span className="block truncate font-mono">
+                  <li
+                    key={federated.domain}
+                    className="flex min-w-0 flex-wrap items-center gap-x-2"
+                    data-domain={federated.domain}
+                  >
+                    <a
+                      className="font-semibold text-blue-700 hover:underline"
+                      href={entraDomainURL(federated.domain)}
+                      aria-label={t.viewDomainDetail.replace('{domain}', federated.domain)}
+                    >
+                      {federated.domain}
+                    </a>
+                    <EntraVerificationStatusBadge status={statusOf(federated.domain)} />
+                    <span className="block w-full truncate font-mono">
                       {t.issuerUriPrefix}
                       {federated.issuer_uri}
                     </span>
@@ -226,9 +264,12 @@ export function EntraFederationList({
   )
 }
 
+const ENTRA_TENANT_ID =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+
 // 規則は admin_entra_handler.go の configureEntraRequest.validate に従う。domain は URL ではない
-// DNS 名、source anchor の属性は必須、reply URL はスキームとホストを持つ絶対 URL である。
-function entraSchema(domainNotUrl: string) {
+// DNS 名、source anchor の属性は必須、reply URL はスキームとホストを持つ絶対 URL、Entra のテナント ID は GUID である。
+function entraSchema(domainNotUrl: string, tenantIdInvalid: string) {
   return formSchema({
     domain: rule(requiredText(), (value) =>
       value.includes('://') ? { kind: 'message', text: domainNotUrl } : undefined,
@@ -236,118 +277,97 @@ function entraSchema(domainNotUrl: string) {
     issuer: optionalText(),
     sourceAnchor: requiredText(),
     replyURL: optionalUrl(),
+    entraTenantID: rule(optionalText(), (value) =>
+      value !== undefined && !ENTRA_TENANT_ID.test(value)
+        ? { kind: 'message', text: tenantIdInvalid }
+        : undefined,
+    ),
   })
 }
 
-// AdminEntraFederationAddPage は詳細→編集ポリシー (wi-126 §8) に沿って一覧から分離した
-// ドメイン federation の追加専用画面 (/admin/federation/entra/new)。保存すると M365 domain
-// federation 用の PowerShell 手順を一度だけ表示し、一覧へ戻る導線を出す。
-export function AdminEntraFederationAddPage({
+type EntraFormInitial = {
+  domain: string
+  issuer: string
+  sourceAnchor: string
+  replyURL: string
+  entraTenantID: string
+}
+
+const ADD_INITIAL: EntraFormInitial = {
+  domain: '',
+  issuer: '',
+  sourceAnchor: 'on_premises_immutable_id',
+  replyURL: 'https://login.microsoftonline.com/login.srf',
+  entraTenantID: '',
+}
+
+// EntraFederationForm は追加と編集の共通のフォームである。保存に成功したらドメインの詳細へ移り、
+// 失敗したら入力を残して近くに Alert を出す。
+function EntraFederationForm({
   csrfToken,
-  actorUsername,
+  initial,
+  lockDomain,
+  cancelHref,
 }: {
   csrfToken: string
-  actorUsername?: string
+  initial: EntraFormInitial
+  lockDomain: boolean
+  cancelHref: string
 }) {
-  const [domain, setDomain] = useState('')
-  const [issuer, setIssuer] = useState('')
-  const [sourceAnchor, setSourceAnchor] = useState('on_premises_immutable_id')
-  const [replyURL, setReplyURL] = useState('https://login.microsoftonline.com/login.srf')
-  const [result, setResult] = useState<ConfigureEntraFederationResponse | null>(null)
+  const [domain, setDomain] = useState(initial.domain)
+  const [issuer, setIssuer] = useState(initial.issuer)
+  const [sourceAnchor, setSourceAnchor] = useState(initial.sourceAnchor)
+  const [replyURL, setReplyURL] = useState(initial.replyURL)
+  const [entraTenantID, setEntraTenantID] = useState(initial.entraTenantID)
   const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
+  const [saving, setSaving] = useState(false)
   const t = useDictionary(adminEntraFederationDictionary)
   const { locale } = useLocale()
-  const schema = useMemo(() => entraSchema(t.domainNotUrlError), [t.domainNotUrlError])
-  const validation = useFormValidation(schema, { domain, issuer, sourceAnchor, replyURL })
-
-  async function copyCommand(command: string) {
-    setError('')
-    try {
-      await navigator.clipboard.writeText(command)
-      setNotice(t.commandCopiedNotice)
-    } catch {
-      setError(t.commandCopyFailedError)
-    }
-  }
+  const schema = useMemo(
+    () => entraSchema(t.domainNotUrlError, t.entraTenantIdInvalidError),
+    [t.domainNotUrlError, t.entraTenantIdInvalidError],
+  )
+  const validation = useFormValidation(schema, {
+    domain,
+    issuer,
+    sourceAnchor,
+    replyURL,
+    entraTenantID,
+  })
 
   async function handleConfigure(event: FormEvent) {
     event.preventDefault()
     setError('')
-    setNotice('')
-    setResult(null)
     const data = validation.data
     if (!data) {
       validation.revealAll()
       return
     }
+    setSaving(true)
     try {
-      const requestedDomain = data.domain
-      const configured = await configureEntraFederation(csrfToken, {
+      const requestedDomain = data.domain.toLowerCase()
+      await configureEntraFederation(csrfToken, {
         domain: requestedDomain,
         issuer_uri: data.issuer,
         source_anchor_attribute: data.sourceAnchor,
         reply_url: data.replyURL,
+        entra_tenant_id: data.entraTenantID,
       })
-      setResult(configured)
-      setNotice(t.federationSavedNotice.replace('{domain}', requestedDomain.toLowerCase()))
+      returnToEntraDomain(
+        requestedDomain,
+        t.federationSavedNotice.replace('{domain}', requestedDomain),
+      )
     } catch (cause) {
-      if (!(cause instanceof AuthenticationAPIError)) {
-        setError(t.federationSaveFailedError)
-        return
-      }
-      switch (cause.code) {
-        case 'source_anchor_not_unique':
-          setError(t.sourceAnchorNotUniqueError)
-          break
-        case 'source_anchor_editable':
-          setError(t.sourceAnchorEditableError)
-          break
-        case 'source_anchor_missing':
-        case 'source_anchor_invalid': {
-          const count = cause.body?.user_count
-          const users = cause.body?.sample_usernames
-          if (
-            typeof count !== 'number' ||
-            !Array.isArray(users) ||
-            !users.every((name) => typeof name === 'string')
-          ) {
-            setError(t.federationSaveFailedError)
-            break
-          }
-          const message =
-            cause.code === 'source_anchor_missing'
-              ? t.sourceAnchorMissingError
-              : t.sourceAnchorInvalidError
-          setError(
-            `${message.replace('{count}', count.toLocaleString(locale))} ${t.sourceAnchorSampleUsers.replace('{users}', users.join(', '))}`,
-          )
-          break
-        }
-        default:
-          setError(localizedErrorMessage(locale, cause.code, cause.message))
-      }
+      setSaving(false)
+      setError(configureErrorMessage(t, locale, cause))
     }
   }
 
   return (
-    <AdminShell
-      active="entra-federation"
-      actorUsername={actorUsername}
-      title={t.addPageTitle}
-      description={t.addPageDescription}
-      actions={
-        <Button variant="outline" nativeButton={false} render={<a href={tenantURL(LIST_PATH)} />}>
-          <IconArrowLeft size={16} aria-hidden="true" />
-          {t.federationList}
-        </Button>
-      }
-    >
+    <>
       {error ? <Alert variant="destructive">{error}</Alert> : null}
-      <Toast message={notice} onDismiss={() => setNotice('')} />
-
       <Card className="grid gap-4 p-4">
-        <form className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]" onSubmit={handleConfigure}>
+        <form className="grid gap-3 sm:grid-cols-2" onSubmit={handleConfigure}>
           <div className="grid gap-1.5">
             <Label htmlFor="entra_domain" required>
               {t.verifiedDomainLabel}
@@ -357,6 +377,7 @@ export function AdminEntraFederationAddPage({
               value={domain}
               placeholder="contoso.com"
               onChange={(e) => setDomain(e.target.value)}
+              readOnly={lockDomain}
               required
               {...validation.fieldProps('domain')}
             />
@@ -376,6 +397,18 @@ export function AdminEntraFederationAddPage({
             <FieldError form={validation} name="sourceAnchor" />
           </div>
           <div className="grid gap-1.5">
+            <Label htmlFor="entra_tenant_id">{t.entraTenantIdLabel}</Label>
+            <Input
+              id="entra_tenant_id"
+              value={entraTenantID}
+              placeholder="00000000-0000-0000-0000-000000000000"
+              onChange={(e) => setEntraTenantID(e.target.value)}
+              {...validation.fieldProps('entraTenantID')}
+            />
+            <p className="text-xs text-slate-500">{t.entraTenantIdHint}</p>
+            <FieldError form={validation} name="entraTenantID" />
+          </div>
+          <div className="grid gap-1.5">
             <Label htmlFor="entra_issuer">{t.issuerUriLabel}</Label>
             <Input
               id="entra_issuer"
@@ -384,71 +417,145 @@ export function AdminEntraFederationAddPage({
               onChange={(e) => setIssuer(e.target.value)}
             />
           </div>
-          <div className="grid gap-1.5">
+          <div className="grid gap-1.5 sm:col-span-2">
             <Label htmlFor="entra_reply">{t.replyUrlLabel}</Label>
             <Input
               id="entra_reply"
+              type="url"
               value={replyURL}
               onChange={(e) => setReplyURL(e.target.value)}
               {...validation.fieldProps('replyURL')}
             />
             <FieldError form={validation} name="replyURL" />
           </div>
-          <div className="flex items-end">
-            <Button type="submit" disabled={!validation.data}>
+          <div className="flex gap-2 sm:col-span-2">
+            <Button type="submit" disabled={!validation.data || saving}>
               {t.save}
+            </Button>
+            <Button variant="outline" nativeButton={false} render={<a href={cancelHref} />}>
+              {t.cancel}
             </Button>
           </div>
         </form>
-        {result ? (
-          <div className="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-xs">
-            <div className="grid gap-1 font-mono text-slate-700 sm:grid-cols-2">
-              {Object.entries(result.powershell).map(([key, value]) => (
-                <div key={key} className="min-w-0">
-                  <span className="block font-sans font-semibold text-slate-600">{key}</span>
-                  <span className="block truncate">{value}</span>
-                </div>
-              ))}
-            </div>
-            <p>{t.graphCommandsNotice}</p>
-            {(['create', 'update'] as const).map((kind) => (
-              <div key={kind} className="grid min-w-0 gap-2">
-                <h2 className="font-semibold">
-                  {kind === 'create' ? t.createCommandLabel : t.updateCommandLabel}
-                </h2>
-                <pre className="max-h-64 overflow-auto rounded-md bg-white p-3">
-                  <code>{result.commands[kind]}</code>
-                </pre>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void copyCommand(result.commands[kind])}
-                >
-                  {kind === 'create' ? t.copyCreateCommand : t.copyUpdateCommand}
-                </Button>
-              </div>
-            ))}
-            {result.known_limitations.map((limitation) => (
-              <Alert variant="destructive" key={limitation.code}>
-                {t.hybridJoinNotProvidedNotice}
-              </Alert>
-            ))}
-            {result.unfederated_source_users ? (
-              <Alert variant="destructive">{`${t.unfederatedSourceUsersNotice.replace('{count}', result.unfederated_source_users.user_count.toLocaleString(locale))} ${t.sourceAnchorSampleUsers.replace('{users}', result.unfederated_source_users.sample_usernames.join(', '))}`}</Alert>
-            ) : null}
-            <div>
-              <Button
-                variant="outline"
-                nativeButton={false}
-                render={<a href={tenantURL(LIST_PATH)} />}
-              >
-                <IconArrowLeft size={16} aria-hidden="true" />
-                {t.backToFederationList}
-              </Button>
-            </div>
-          </div>
-        ) : null}
       </Card>
+    </>
+  )
+}
+
+function configureErrorMessage(
+  t: AdminEntraFederationDictionary,
+  locale: Locale,
+  cause: unknown,
+): string {
+  if (!(cause instanceof AuthenticationAPIError)) return t.federationSaveFailedError
+  switch (cause.code) {
+    case 'source_anchor_not_unique':
+      return t.sourceAnchorNotUniqueError
+    case 'source_anchor_editable':
+      return t.sourceAnchorEditableError
+    case 'source_anchor_missing':
+    case 'source_anchor_invalid': {
+      const count = cause.body?.user_count
+      const users = cause.body?.sample_usernames
+      if (
+        typeof count !== 'number' ||
+        !Array.isArray(users) ||
+        !users.every((name) => typeof name === 'string')
+      ) {
+        return t.federationSaveFailedError
+      }
+      const message =
+        cause.code === 'source_anchor_missing'
+          ? t.sourceAnchorMissingError
+          : t.sourceAnchorInvalidError
+      return `${message.replace('{count}', count.toLocaleString(locale))} ${t.sourceAnchorSampleUsers.replace('{users}', users.join(', '))}`
+    }
+    default:
+      return localizedErrorMessage(locale, cause.code, cause.message)
+  }
+}
+
+// AdminEntraFederationAddPage はドメインの追加の画面 (/admin/federation/entra/new)。保存すると
+// 追加したドメインの詳細へ移り、そこで Graph PowerShell の手順と反映の確認を案内する。
+export function AdminEntraFederationAddPage({
+  csrfToken,
+  actorUsername,
+}: {
+  csrfToken: string
+  actorUsername?: string
+}) {
+  const t = useDictionary(adminEntraFederationDictionary)
+  return (
+    <AdminShell
+      active="entra-federation"
+      actorUsername={actorUsername}
+      title={t.addPageTitle}
+      description={t.addPageDescription}
+      actions={
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<a href={tenantURL(ENTRA_LIST_PATH)} />}
+        >
+          <IconArrowLeft size={16} aria-hidden="true" />
+          {t.federationList}
+        </Button>
+      }
+    >
+      <EntraFederationForm
+        csrfToken={csrfToken}
+        initial={ADD_INITIAL}
+        lockDomain={false}
+        cancelHref={tenantURL(ENTRA_LIST_PATH)}
+      />
+    </AdminShell>
+  )
+}
+
+// AdminEntraFederationEditPage は構成済みのドメインの編集の画面。保存した値で始め、ドメインは変えない。
+export function AdminEntraFederationEditPage({
+  csrfToken,
+  actorUsername,
+  domain,
+  sourceAnchorAttribute,
+  replyURL,
+}: {
+  csrfToken: string
+  actorUsername?: string
+  domain: EntraDomainFederation
+  sourceAnchorAttribute: string
+  replyURL: string
+}) {
+  const t = useDictionary(adminEntraFederationDictionary)
+  return (
+    <AdminShell
+      active="entra-federation"
+      actorUsername={actorUsername}
+      title={t.editPageTitle.replace('{domain}', domain.domain)}
+      description={t.editPageDescription}
+      actions={
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<a href={entraDomainURL(domain.domain)} />}
+        >
+          <IconArrowLeft size={16} aria-hidden="true" />
+          {t.viewDomainDetail.replace('{domain}', domain.domain)}
+        </Button>
+      }
+    >
+      <EntraFederationForm
+        csrfToken={csrfToken}
+        initial={{
+          domain: domain.domain,
+          issuer: domain.issuer_uri,
+          sourceAnchor: sourceAnchorAttribute,
+          replyURL,
+          entraTenantID: domain.entra_tenant_id ?? '',
+        }}
+        lockDomain
+        cancelHref={entraDomainURL(domain.domain)}
+      />
     </AdminShell>
   )
 }

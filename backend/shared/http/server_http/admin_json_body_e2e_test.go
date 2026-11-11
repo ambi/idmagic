@@ -69,7 +69,8 @@ func newAdminJSONBodyFixture(t *testing.T) *adminJSONBodyFixture {
 	})
 
 	samlSPs := saml.NewSamlServiceProviderRepository()
-	wsfedRPs := wsfederation.NewMemoryModule().RPRepo
+	wsfedModule := wsfederation.NewMemoryModule()
+	wsfedRPs := wsfedModule.RPRepo
 	quotas := tenancy.NewMemoryModule().QuotaRepo
 	seededUsers := adminJSONBodySeededUsers
 	if err := quotas.SetQuota(context.Background(), adminJSONBodyTargetTenant, &tenancydomain.TenantQuota{Users: &seededUsers}); err != nil {
@@ -85,7 +86,7 @@ func newAdminJSONBodyFixture(t *testing.T) *adminJSONBodyFixture {
 		UserRepo:      users,
 		AuthnResolver: &fixedAuthnResolver{sub: "ops"},
 		Saml:          saml.Module{SPRepo: samlSPs, ProfileRepo: samlSPs},
-		WsFederation:  wsfederation.Module{RPRepo: wsfedRPs},
+		WsFederation:  wsfedModule,
 	})
 	return &adminJSONBodyFixture{e: e, samlSPs: samlSPs, wsfedRPs: wsfedRPs, quotas: quotas}
 }

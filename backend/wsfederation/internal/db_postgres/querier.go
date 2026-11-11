@@ -9,10 +9,15 @@ import (
 )
 
 type Querier interface {
+	DeleteEntraFederationObservation(ctx context.Context, arg DeleteEntraFederationObservationParams) error
 	DeleteWsFedRelyingParty(ctx context.Context, arg DeleteWsFedRelyingPartyParams) error
+	GetEntraFederationObservation(ctx context.Context, arg GetEntraFederationObservationParams) (*WsfedEntraFederationObservation, error)
 	GetWsFedRelyingParty(ctx context.Context, arg GetWsFedRelyingPartyParams) (*WsfedRelyingParty, error)
 	LinkApplication(ctx context.Context, arg LinkApplicationParams) error
+	ListEntraFederationObservations(ctx context.Context, tenantID string) ([]*WsfedEntraFederationObservation, error)
 	ListWsFedRelyingPartiesByTenant(ctx context.Context, tenantID string) ([]*WsfedRelyingParty, error)
+	// 保存済みの記録より前に取得した観測では更新しない。影響行数 0 が古い観測を表す。
+	SaveEntraFederationObservation(ctx context.Context, arg SaveEntraFederationObservationParams) (int64, error)
 	UpsertWsFedRelyingParty(ctx context.Context, arg UpsertWsFedRelyingPartyParams) error
 }
 

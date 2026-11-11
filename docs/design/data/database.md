@@ -286,6 +286,8 @@ erDiagram
     }
     wsfed_relying_parties {
     }
+    wsfed_entra_federation_observations {
+    }
     application_orderings {
     }
     application_categories {
@@ -315,6 +317,7 @@ erDiagram
     saml_identity_provider_profiles ||--o{ saml_service_providers : SPへ供給する
     applications ||--o| saml_service_providers : SAML設定を持つ
     applications ||--o| wsfed_relying_parties : WS-Federation設定を持つ
+    tenants ||--o{ wsfed_entra_federation_observations : Entraの観測を持つ
     users ||--|| application_orderings : 表示順を持つ
     tenants ||--o{ application_categories : 分類を持つ
     tenants ||--o{ api_tokens : APIトークンを持つ
@@ -338,6 +341,7 @@ erDiagram
 | `saml_identity_provider_profiles` | SAML IdP として名乗る設定の組。SP ごとに選ぶ | Saml | `LOGGED` | 複合主キーの一部 |
 | `saml_service_providers` | SAML SP の登録内容 | Saml | `LOGGED` | 複合主キーの一部 |
 | `wsfed_relying_parties` | WS-Federation の Relying Party の登録内容 | WsFederation | `LOGGED` | 複合主キーの一部 |
+| `wsfed_entra_federation_observations` | 管理者が取り込んだ Entra のドメインフェデレーションの登録値と、期待値と比べた結果。ドメインごとに最新の一件 | WsFederation | `LOGGED` | 複合主キーの一部 |
 | `application_orderings` | 利用者ごとの、ポータルでのアプリケーションの並び順 | Application | `LOGGED` | なし |
 | `application_categories` | ポータルでアプリケーションをまとめる分類 | Application | `LOGGED` | 複合主キーの一部 |
 | `api_tokens` | 管理 API 用に利用者へ発行した長期トークンの記録と失効の状態 | ApiTokens | `LOGGED` | 非キーカラム |

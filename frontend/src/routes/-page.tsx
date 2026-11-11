@@ -97,6 +97,8 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-sign-in-policy': `サインインポリシー | ${ADMIN}`,
   'admin-entra-federation': `Entra ID 連携 | ${ADMIN}`,
   'admin-entra-federation-add': `ドメインフェデレーションを追加 | ${ADMIN}`,
+  'admin-entra-federation-domain': `Entra ドメインの詳細 | ${ADMIN}`,
+  'admin-entra-federation-edit': `ドメインフェデレーションを編集 | ${ADMIN}`,
   'admin-identity-providers': `外部 ID プロバイダー | ${ADMIN}`,
   'admin-identity-provider-detail': `外部 ID プロバイダー詳細 | ${ADMIN}`,
   'admin-identity-provider-create': `外部 ID プロバイダーを追加 | ${ADMIN}`,

@@ -113,6 +113,7 @@ import { Route as AdminAuthorizationAccessNewRouteImport } from './routes/admin/
 import { Route as AdminAuthorizationModelEditRouteImport } from './routes/admin/authorization/model_/edit'
 import { Route as AdminAuthorizationModelNewRouteImport } from './routes/admin/authorization/model_/new'
 import { Route as AdminAuthorizationRelationTuplesNewRouteImport } from './routes/admin/authorization/relation-tuples_/new'
+import { Route as AdminFederationEntraDomainRouteImport } from './routes/admin/federation/entra_/$domain'
 import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
 import { Route as AdminGroupsGroupIdIndexRouteImport } from './routes/admin/groups_/$groupId.index'
 import { Route as AdminGroupsGroupIdEditRouteImport } from './routes/admin/groups_/$groupId.edit'
@@ -131,6 +132,7 @@ import { Route as AdminWorkloadIdentityTrustBundleIdIndexRouteImport } from './r
 import { Route as AdminWorkloadIdentityTrustBundleIdEditRouteImport } from './routes/admin/workload-identity_/$trustBundleId.edit'
 import { Route as AdminAgentsAgentIdGuardrailEditRouteImport } from './routes/admin/agents_/$agentId.guardrail.edit'
 import { Route as AdminAgentsAgentIdResourcesEditRouteImport } from './routes/admin/agents_/$agentId.resources_.edit'
+import { Route as AdminFederationEntraDomainEditRouteImport } from './routes/admin/federation/entra_/$domain_.edit'
 import { Route as AdminGroupsGroupIdMembersExportsRouteImport } from './routes/admin/groups_/$groupId.members.exports'
 import { Route as AdminGroupsGroupIdMembersImportRouteImport } from './routes/admin/groups_/$groupId.members.import'
 import { Route as AdminSettingsSamlIdpProfilesProfileIdIndexRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId.index'
@@ -685,6 +687,12 @@ const AdminAuthorizationRelationTuplesNewRoute =
     path: '/authorization/relation-tuples/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminFederationEntraDomainRoute =
+  AdminFederationEntraDomainRouteImport.update({
+    id: '/federation/entra_/$domain',
+    path: '/federation/entra/$domain',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminFederationEntraNewRoute = AdminFederationEntraNewRouteImport.update({
   id: '/federation/entra_/new',
   path: '/federation/entra/new',
@@ -787,6 +795,12 @@ const AdminAgentsAgentIdResourcesEditRoute =
     id: '/resources_/edit',
     path: '/resources/edit',
     getParentRoute: () => AdminAgentsAgentIdRoute,
+  } as any)
+const AdminFederationEntraDomainEditRoute =
+  AdminFederationEntraDomainEditRouteImport.update({
+    id: '/federation/entra_/$domain_/edit',
+    path: '/federation/entra/$domain/edit',
+    getParentRoute: () => AdminRouteRoute,
   } as any)
 const AdminGroupsGroupIdMembersExportsRoute =
   AdminGroupsGroupIdMembersExportsRouteImport.update({
@@ -922,6 +936,7 @@ export interface FileRoutesByFullPath {
   '/admin/authorization/model/edit': typeof AdminAuthorizationModelEditRoute
   '/admin/authorization/model/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples/new': typeof AdminAuthorizationRelationTuplesNewRoute
+  '/admin/federation/entra/$domain': typeof AdminFederationEntraDomainRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/identity-providers/$id/edit': typeof AdminIdentityProvidersIdEditRoute
@@ -942,6 +957,7 @@ export interface FileRoutesByFullPath {
   '/admin/workload-identity/$trustBundleId/': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
   '/admin/agents/$agentId/guardrail/edit': typeof AdminAgentsAgentIdGuardrailEditRoute
   '/admin/agents/$agentId/resources/edit': typeof AdminAgentsAgentIdResourcesEditRoute
+  '/admin/federation/entra/$domain/edit': typeof AdminFederationEntraDomainEditRoute
   '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
   '/admin/groups/$groupId/members/import': typeof AdminGroupsGroupIdMembersImportRoute
   '/admin/settings/saml-idp-profiles/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
@@ -1041,6 +1057,7 @@ export interface FileRoutesByTo {
   '/admin/authorization/model/edit': typeof AdminAuthorizationModelEditRoute
   '/admin/authorization/model/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples/new': typeof AdminAuthorizationRelationTuplesNewRoute
+  '/admin/federation/entra/$domain': typeof AdminFederationEntraDomainRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/identity-providers/$id/edit': typeof AdminIdentityProvidersIdEditRoute
@@ -1060,6 +1077,7 @@ export interface FileRoutesByTo {
   '/admin/workload-identity/$trustBundleId': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
   '/admin/agents/$agentId/guardrail/edit': typeof AdminAgentsAgentIdGuardrailEditRoute
   '/admin/agents/$agentId/resources/edit': typeof AdminAgentsAgentIdResourcesEditRoute
+  '/admin/federation/entra/$domain/edit': typeof AdminFederationEntraDomainEditRoute
   '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
   '/admin/groups/$groupId/members/import': typeof AdminGroupsGroupIdMembersImportRoute
   '/admin/settings/saml-idp-profiles/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
@@ -1170,6 +1188,7 @@ export interface FileRoutesById {
   '/admin/authorization/model_/edit': typeof AdminAuthorizationModelEditRoute
   '/admin/authorization/model_/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples_/new': typeof AdminAuthorizationRelationTuplesNewRoute
+  '/admin/federation/entra_/$domain': typeof AdminFederationEntraDomainRoute
   '/admin/federation/entra_/new': typeof AdminFederationEntraNewRoute
   '/admin/groups_/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/identity-providers_/$id/edit': typeof AdminIdentityProvidersIdEditRoute
@@ -1190,6 +1209,7 @@ export interface FileRoutesById {
   '/admin/workload-identity_/$trustBundleId/': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
   '/admin/agents_/$agentId/guardrail/edit': typeof AdminAgentsAgentIdGuardrailEditRoute
   '/admin/agents_/$agentId/resources_/edit': typeof AdminAgentsAgentIdResourcesEditRoute
+  '/admin/federation/entra_/$domain_/edit': typeof AdminFederationEntraDomainEditRoute
   '/admin/groups_/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
   '/admin/groups_/$groupId/members/import': typeof AdminGroupsGroupIdMembersImportRoute
   '/admin/settings_/saml-idp-profiles_/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
@@ -1301,6 +1321,7 @@ export interface FileRouteTypes {
     | '/admin/authorization/model/edit'
     | '/admin/authorization/model/new'
     | '/admin/authorization/relation-tuples/new'
+    | '/admin/federation/entra/$domain'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
     | '/admin/identity-providers/$id/edit'
@@ -1321,6 +1342,7 @@ export interface FileRouteTypes {
     | '/admin/workload-identity/$trustBundleId/'
     | '/admin/agents/$agentId/guardrail/edit'
     | '/admin/agents/$agentId/resources/edit'
+    | '/admin/federation/entra/$domain/edit'
     | '/admin/groups/$groupId/members/exports'
     | '/admin/groups/$groupId/members/import'
     | '/admin/settings/saml-idp-profiles/$profileId/edit'
@@ -1420,6 +1442,7 @@ export interface FileRouteTypes {
     | '/admin/authorization/model/edit'
     | '/admin/authorization/model/new'
     | '/admin/authorization/relation-tuples/new'
+    | '/admin/federation/entra/$domain'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
     | '/admin/identity-providers/$id/edit'
@@ -1439,6 +1462,7 @@ export interface FileRouteTypes {
     | '/admin/workload-identity/$trustBundleId'
     | '/admin/agents/$agentId/guardrail/edit'
     | '/admin/agents/$agentId/resources/edit'
+    | '/admin/federation/entra/$domain/edit'
     | '/admin/groups/$groupId/members/exports'
     | '/admin/groups/$groupId/members/import'
     | '/admin/settings/saml-idp-profiles/$profileId/edit'
@@ -1548,6 +1572,7 @@ export interface FileRouteTypes {
     | '/admin/authorization/model_/edit'
     | '/admin/authorization/model_/new'
     | '/admin/authorization/relation-tuples_/new'
+    | '/admin/federation/entra_/$domain'
     | '/admin/federation/entra_/new'
     | '/admin/groups_/$groupId/edit'
     | '/admin/identity-providers_/$id/edit'
@@ -1568,6 +1593,7 @@ export interface FileRouteTypes {
     | '/admin/workload-identity_/$trustBundleId/'
     | '/admin/agents_/$agentId/guardrail/edit'
     | '/admin/agents_/$agentId/resources_/edit'
+    | '/admin/federation/entra_/$domain_/edit'
     | '/admin/groups_/$groupId/members/exports'
     | '/admin/groups_/$groupId/members/import'
     | '/admin/settings_/saml-idp-profiles_/$profileId/edit'
@@ -2321,6 +2347,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthorizationRelationTuplesNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/federation/entra_/$domain': {
+      id: '/admin/federation/entra_/$domain'
+      path: '/federation/entra/$domain'
+      fullPath: '/admin/federation/entra/$domain'
+      preLoaderRoute: typeof AdminFederationEntraDomainRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/federation/entra_/new': {
       id: '/admin/federation/entra_/new'
       path: '/federation/entra/new'
@@ -2446,6 +2479,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/agents/$agentId/resources/edit'
       preLoaderRoute: typeof AdminAgentsAgentIdResourcesEditRouteImport
       parentRoute: typeof AdminAgentsAgentIdRoute
+    }
+    '/admin/federation/entra_/$domain_/edit': {
+      id: '/admin/federation/entra_/$domain_/edit'
+      path: '/federation/entra/$domain/edit'
+      fullPath: '/admin/federation/entra/$domain/edit'
+      preLoaderRoute: typeof AdminFederationEntraDomainEditRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/groups_/$groupId/members/exports': {
       id: '/admin/groups_/$groupId/members/exports'
@@ -2718,6 +2758,7 @@ interface AdminRouteRouteChildren {
   AdminAuthorizationModelEditRoute: typeof AdminAuthorizationModelEditRoute
   AdminAuthorizationModelNewRoute: typeof AdminAuthorizationModelNewRoute
   AdminAuthorizationRelationTuplesNewRoute: typeof AdminAuthorizationRelationTuplesNewRoute
+  AdminFederationEntraDomainRoute: typeof AdminFederationEntraDomainRoute
   AdminFederationEntraNewRoute: typeof AdminFederationEntraNewRoute
   AdminLifecycleWorkflowsWorkflowIdEditRoute: typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
   AdminMcpResourceServersResourceServerIdAccessRoute: typeof AdminMcpResourceServersResourceServerIdAccessRoute
@@ -2726,6 +2767,7 @@ interface AdminRouteRouteChildren {
   AdminSettingsSamlIdpProfilesNewRoute: typeof AdminSettingsSamlIdpProfilesNewRoute
   AdminTenantAttributesNewRoute: typeof AdminTenantAttributesNewRoute
   AdminTenantGroup_attributesNewRoute: typeof AdminTenantGroup_attributesNewRoute
+  AdminFederationEntraDomainEditRoute: typeof AdminFederationEntraDomainEditRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -2796,6 +2838,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAuthorizationModelNewRoute: AdminAuthorizationModelNewRoute,
   AdminAuthorizationRelationTuplesNewRoute:
     AdminAuthorizationRelationTuplesNewRoute,
+  AdminFederationEntraDomainRoute: AdminFederationEntraDomainRoute,
   AdminFederationEntraNewRoute: AdminFederationEntraNewRoute,
   AdminLifecycleWorkflowsWorkflowIdEditRoute:
     AdminLifecycleWorkflowsWorkflowIdEditRoute,
@@ -2808,6 +2851,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSettingsSamlIdpProfilesNewRoute: AdminSettingsSamlIdpProfilesNewRoute,
   AdminTenantAttributesNewRoute: AdminTenantAttributesNewRoute,
   AdminTenantGroup_attributesNewRoute: AdminTenantGroup_attributesNewRoute,
+  AdminFederationEntraDomainEditRoute: AdminFederationEntraDomainEditRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

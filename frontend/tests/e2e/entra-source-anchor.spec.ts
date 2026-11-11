@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import {
   openWebView,
   navigateAndLogin,
+  waitForPage,
   clickButtonByText,
   setInputValue,
   waitForText,
@@ -25,7 +26,7 @@ test('Entra configuration displays a localized sourceAnchor refusal', async () =
   }
 }, 60_000)
 
-//spec:covers REQ-WSFEDERATION-001: 正式な追加画面が構成 API と署名器につながり、Graph の作成と更新のコマンドと制限の日本語を表示すること。
+//spec:covers REQ-WSFEDERATION-001: 正式な追加画面が構成 API と署名器につながり、保存後のドメインの詳細が Graph の作成と更新のコマンドと制限の日本語を表示すること。
 test('Entra configuration displays Graph commands with the real signing certificate', async () => {
   const view = await openWebView({ width: 1280, height: 1200 })
   let originalAttributes: string | undefined
@@ -51,10 +52,13 @@ test('Entra configuration displays Graph commands with the real signing certific
     await setInputValue(view, '#entra_domain', 'entra-graph.example.test')
     await setInputValue(view, '#entra_source_anchor', 'entra_graph_anchor')
     await clickButtonByText(view, '保存')
+    await waitForPage(view, 'admin-entra-federation-domain')
     await waitForText(view, 'New-MgDomainFederationConfiguration')
-    const commands = (await view.evaluate(
-      `Array.from(document.querySelectorAll('pre code'), node => node.textContent)`,
-    )) as string[]
+    const commands = (
+      (await view.evaluate(
+        `Array.from(document.querySelectorAll('pre code'), node => node.textContent)`,
+      )) as string[]
+    ).filter((command) => /^(New|Update)-MgDomainFederationConfiguration/.test(command))
     expect(commands).toHaveLength(2)
     expect(commands[0]).toContain(
       "New-MgDomainFederationConfiguration -DomainId 'entra-graph.example.test'",
@@ -70,8 +74,11 @@ test('Entra configuration displays Graph commands with the real signing certific
       expect(command).toMatch(/-SigningCertificate '[A-Za-z0-9+/=]{500,}'/)
       expect(command).toMatch(/-NextSigningCertificate '[A-Za-z0-9+/=]{500,}'/)
     }
-    await waitForText(view, '作成コマンドをコピー')
-    await waitForText(view, '更新コマンドをコピー')
+    for (const label of ['作成コマンドをコピー', '更新コマンドをコピー']) {
+      expect(
+        await view.evaluate(`Boolean(document.querySelector('button[aria-label="${label}"]'))`),
+      ).toBe(true)
+    }
     await waitForText(view, 'Microsoft Entra hybrid join の即時の登録は提供しません。')
     await waitForText(
       view,

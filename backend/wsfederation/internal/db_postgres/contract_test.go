@@ -23,3 +23,17 @@ func TestPersistenceContract(t *testing.T) {
 		}
 	})
 }
+
+//spec:covers REQ-WSFEDERATION-001: 観測記録がテナントとドメインごとに一件で、条件付きの更新が古い取得時刻で上書きせず、別テナントから読めないこと。
+func TestEntraObservationPersistenceContract(t *testing.T) {
+	testing_contract.RunEntraObservations(t, func(t *testing.T) testing_contract.ObservationFixture {
+		t.Helper()
+		db := pgtest.Require(t)
+		tenantA := pgfixtures.SeedTenant(t, db)
+		tenantB := pgfixtures.SeedTenant(t, db)
+		return testing_contract.ObservationFixture{
+			Repository: &EntraFederationObservationRepository{Pool: db}, TenantA: tenantA.ID, TenantB: tenantB.ID,
+			Now: pgtest.Now(),
+		}
+	})
+}

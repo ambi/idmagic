@@ -25,6 +25,8 @@ type EntraFederationProfile struct {
 type EntraDomainFederation struct {
 	Domain    string `json:"domain"`
 	IssuerURI string `json:"issuer_uri"`
+	// EntraTenantID は、ドメインを持つ Entra のテナントの GUID の小文字である。空なら照合でテナントを比べない。
+	EntraTenantID string `json:"entra_tenant_id,omitempty"`
 }
 
 const (

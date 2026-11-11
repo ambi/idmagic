@@ -726,6 +726,27 @@ export type WsFedClaimMappingPolicy = {
 export type EntraDomainFederation = {
   domain: string
   issuer_uri: string
+  entra_tenant_id?: string
+}
+
+export type EntraVerificationStatus = 'unverified' | 'matched' | 'mismatched' | 'stale'
+
+export type EntraSettingDifference = {
+  field: string
+  expected: string
+  observed: string
+}
+
+// EntraFederationVerification は、管理者が取り込んだ Graph の登録値と期待値の照合である。
+// 継続監視ではなく、取り込んだ時点の事実を表す。
+export type EntraFederationVerification = {
+  status: EntraVerificationStatus
+  retrieved_at?: string
+  checked_at?: string
+  observed_entra_tenant_id?: string
+  signing_certificate_thumbprint?: string
+  next_signing_certificate_thumbprint?: string
+  differences?: EntraSettingDifference[]
 }
 
 export type EntraFederationProfile = {

@@ -61,7 +61,93 @@ model EntraDomainFederation {
   @doc("このドメインに Entra で設定した IssuerUri。ドメインの間で重ならない。")
   @minLength(1)
   issuer_uri: string;
+  @doc("このドメインを持つ Entra のテナントの ID。GUID を小文字で保存する。持つときは、Graph への接続をこのテナントに限り、観測値のテナントと比べる。持たないときは観測したテナントを記録するだけで比べない。")
+  @pattern("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+  entra_tenant_id?: string;
 }
+
+@doc("Graph PowerShell の読み戻しの手順が書き出す、一つのドメインの Entra の登録値の観測文書。管理者が手で取り込む。未知の項目は受け付けない。")
+model EntraFederationObservation {
+  @doc("文書の形式。")
+  format: "idmagic.entra-federation-observation.v1";
+  @doc("観測した接続先の Entra のテナント ID（`Get-MgContext` の `TenantId`）。")
+  @minLength(1)
+  entra_tenant_id: string;
+  @doc("観測したドメイン。取り込み先のドメインと大文字と小文字を区別せずに一致しなければならない。")
+  @minLength(1)
+  domain: string;
+  @doc("ドメインの認証方式（`Get-MgDomain` の `AuthenticationType`）。フェデレーションしたドメインは `Federated` である。")
+  @minLength(1)
+  authentication_type: string;
+  @doc("Graph から取得した時刻。取り込みの時刻より 5 分を超えて後の値は受け付けない。")
+  retrieved_at: utcDateTime;
+  @doc("ドメインのフェデレーションの構成（`Get-MgDomainFederationConfiguration`）。構成がなければ空である。")
+  @maxItems(4)
+  federation_configurations: EntraObservedFederationConfiguration[];
+}
+
+@doc("Graph から取得した一つのフェデレーションの構成の値。Graph が値を持たない項目は空文字列である。")
+model EntraObservedFederationConfiguration {
+  issuer_uri: string;
+  passive_sign_in_uri: string;
+  active_sign_in_uri: string;
+  metadata_exchange_uri: string;
+  sign_out_uri: string;
+  @doc("署名証明書の公開部分の base64。空白は比べるときに除く。")
+  signing_certificate: string;
+  @doc("次の署名証明書の公開部分の base64。なければ空である。")
+  next_signing_certificate: string;
+  preferred_authentication_protocol: string;
+  federated_idp_mfa_behavior: string;
+}
+
+@doc("Entra への反映の確認の状態。`unverified` は観測記録がない、`matched` と `mismatched` は現在の期待値と比べた結果、`stale` は観測の後に構成か署名鍵が変わり比べていないことを表す。")
+enum EntraVerificationStatus {
+  unverified,
+  matched,
+  mismatched,
+  stale,
+}
+
+@doc("期待値と観測値の異なる一つの項目。証明書は拇印ではなく比べた値の要約を返す。")
+model EntraSettingDifference {
+  @doc("比べた項目。`entra_tenant_id`、`authentication_type`、`federation_configurations`、`issuer_uri`、`passive_sign_in_uri`、`active_sign_in_uri`、`metadata_exchange_uri`、`sign_out_uri`、`preferred_authentication_protocol`、`federated_idp_mfa_behavior`、`signing_certificate`、`next_signing_certificate` のどれかである。")
+  field: string;
+  @doc("期待値。証明書は SHA-256 の拇印、構成の件数は数字の文字列である。")
+  expected: string;
+  @doc("観測値。証明書は読めれば SHA-256 の拇印、読めなければ `unreadable`、空なら空文字列である。")
+  observed: string;
+}
+
+@doc("一つのドメインの Entra への反映の確認。観測記録は手動で取り込んだ時点の事実であり、継続的な監視の結果ではない。")
+model EntraFederationVerification {
+  status: EntraVerificationStatus;
+  @doc("観測記録の Graph から取得した時刻。記録がなければ省く。")
+  retrieved_at?: utcDateTime;
+  @doc("観測記録を取り込んで比べた時刻。記録がなければ省く。")
+  checked_at?: utcDateTime;
+  @doc("観測した Entra のテナント ID。記録がなければ省く。")
+  observed_entra_tenant_id?: string;
+  @doc("比べた有効な署名証明書の SHA-256 の拇印。記録がなければ省く。")
+  signing_certificate_thumbprint?: string;
+  @doc("比べた次の署名証明書の SHA-256 の拇印。記録がないか、次の証明書がなければ省く。")
+  next_signing_certificate_thumbprint?: string;
+  @doc("`matched` と `mismatched` のときの差分。`matched` では空である。`unverified` と `stale` では省く。")
+  differences?: EntraSettingDifference[];
+}
+
+@doc("署名証明書の要約。")
+model EntraCertificateSummary {
+  @doc("DER の SHA-256 の 16 進の小文字。")
+  sha256_thumbprint: string;
+  not_after: utcDateTime;
+}
+
+@doc("取り込もうとした観測文書の取得時刻が、保存済みの観測記録の取得時刻より前である。新しい観測を古い観測で上書きしない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:observation_outdated` である。")
+model EntraObservationOutdatedError is ProblemDetails;
+
+@doc("指定したドメインを、このテナントの Entra のドメインフェデレーションで構成していない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:not_found` である。")
+model EntraFederationDomainNotFoundError is ProblemDetails;
 
 
 @doc("WS-Trust と WS-Federation のメタデータで示す STS のエンドポイント。受け付ける認証方式とバインディングを記述する。")

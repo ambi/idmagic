@@ -27,6 +27,7 @@ type Deps struct {
 	SecondFactors SecondFactorSteps
 
 	WsFedRPRepo          wsfederationports.WsFedRelyingPartyRepository
+	EntraObservations    wsfederationports.EntraFederationObservationRepository
 	UserRepo             userports.UserRepository
 	FederationSigner     samltoken.SignerProvider
 	MessageIDReplayStore wsfederationports.MessageIDReplayStore
@@ -74,4 +75,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/v1/wsfed/relying-parties", d.handleUpsertRelyingParty)
 	g.DELETE("/api/admin/v1/wsfed/relying-parties", d.handleDeleteRelyingParty)
 	g.POST("/api/admin/v1/wsfed/entra-federation", d.handleConfigureEntraFederation)
+	g.GET("/api/admin/v1/wsfed/entra-federation/domains", d.handleListEntraFederationDomains)
+	g.GET("/api/admin/v1/wsfed/entra-federation/domains/:domain_name", d.handleGetEntraFederationDomain)
+	g.POST("/api/admin/v1/wsfed/entra-federation/domains/:domain_name/observations", d.handleRecordEntraFederationObservation)
 }

@@ -51,7 +51,9 @@ import type {
   NotificationTemplatePreview,
   NotificationTemplateTestResult,
   UserAttributeDef,
+  EntraDomainFederation,
   EntraFederationProfile,
+  EntraFederationVerification,
   DataExportJob,
   UserImportJob,
   UserImportJobSummary,
@@ -808,6 +810,7 @@ export type ConfigureEntraFederationInput = {
   issuer_uri?: string
   source_anchor_attribute: string
   reply_url?: string
+  entra_tenant_id?: string
 }
 
 export type ConfigureEntraFederationResponse = {
@@ -2697,5 +2700,65 @@ export async function deleteAgentGuardrailPolicy(
   await request(
     `/api/admin/v1/agents/${encodeURIComponent(agentID)}/guardrail-policy`,
     adminRequest(csrfToken, 'DELETE'),
+  )
+}
+
+export type EntraFederationDomainSummary = EntraDomainFederation & {
+  verification: EntraFederationVerification
+}
+
+export async function listEntraFederationDomains(): Promise<EntraFederationDomainSummary[]> {
+  return (
+    (
+      await request<{ domains: EntraFederationDomainSummary[] | null }>(
+        '/api/admin/v1/wsfed/entra-federation/domains',
+      )
+    ).domains ?? []
+  )
+}
+
+export type EntraCertificateSummary = { sha256_thumbprint: string; not_after: string }
+
+export type EntraPowerShellProcedure = {
+  connect: string
+  connect_read_only: string
+  backup: string
+  compare: string
+  apply: string
+  read_back: string
+}
+
+export type EntraFederationDomainDetail = {
+  domain: EntraDomainFederation
+  profile: EntraFederationProfile
+  reply_url: string
+  powershell: Record<string, string>
+  commands: { create: string; update: string }
+  procedure: EntraPowerShellProcedure
+  certificates: { signing: EntraCertificateSummary; next?: EntraCertificateSummary }
+  verification: EntraFederationVerification
+  known_limitations: { code: 'hybrid_join_not_supported' }[]
+  unfederated_source_users?: { user_count: number; sample_usernames: string[] }
+}
+
+function entraDomainPath(domain: string, suffix = ''): string {
+  return `/api/admin/v1/wsfed/entra-federation/domains/${encodeURIComponent(domain)}${suffix}`
+}
+
+export async function getEntraFederationDomain(
+  domain: string,
+): Promise<EntraFederationDomainDetail> {
+  return request(entraDomainPath(domain))
+}
+
+// recordEntraFederationObservation は、読み戻しの手順が書き出した観測文書をそのまま送る。
+export async function recordEntraFederationObservation(
+  csrfToken: string,
+  domain: string,
+  observation: unknown,
+): Promise<{ verification: EntraFederationVerification }> {
+  return request(
+    entraDomainPath(domain, '/observations'),
+    adminRequest(csrfToken, 'POST', observation),
   )
 }

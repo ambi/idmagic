@@ -1280,6 +1280,22 @@ CREATE TABLE wsfed_relying_parties (
 CREATE INDEX wsfed_relying_parties_application_id_idx
     ON wsfed_relying_parties (application_id) WHERE application_id IS NOT NULL;
 
+CREATE TABLE wsfed_entra_federation_observations (
+    tenant_id UUID NOT NULL,
+    domain TEXT NOT NULL,
+    observation JSONB NOT NULL,
+    expected_fingerprint TEXT NOT NULL,
+    signing_certificate_thumbprint TEXT NOT NULL,
+    next_signing_certificate_thumbprint TEXT NOT NULL DEFAULT '',
+    matched BOOLEAN NOT NULL,
+    differences JSONB NOT NULL DEFAULT '[]'::jsonb,
+    retrieved_at TIMESTAMPTZ NOT NULL,
+    checked_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (tenant_id, domain),
+    CONSTRAINT wsfed_entra_federation_observations_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+);
+
 CREATE TABLE application_orderings (
     user_id UUID PRIMARY KEY,
     application_ids TEXT[] NOT NULL DEFAULT '{}',

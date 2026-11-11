@@ -144,6 +144,8 @@ model ConfigureEntraFederationHttpRequest {
   source_anchor_attribute: string;
   @doc("Entra が `wreply` として使う URL。空のままにすると、Microsoft Online のデフォルトの URL を使う。")
   reply_url?: string;
+  @doc("このドメインを持つ Entra のテナントの ID（GUID）。省くと、ドメインの組はテナント ID を持たない。")
+  entra_tenant_id?: string;
 }
 
 model ConfigureEntraFederationHttpResponse {
@@ -223,6 +225,136 @@ model ConfigureEntraFederationError422 {
 op ConfigureEntraFederation(
   @body body: ConfigureEntraFederationHttpRequest
 ): ConfigureEntraFederationSuccess_201 | ConfigureEntraFederationSuccess_200 | ConfigureEntraFederationError400 | IdMagic.Contract.AuthenticationRequiredResponse | ConfigureEntraFederationError403 | ConfigureEntraFederationError422;
+
+union EntraFederationAdminError403Body {
+  IdMagic.Contract.InsufficientScopeError,
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model EntraFederationAdminError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: EntraFederationAdminError403Body;
+}
+
+model EntraFederationDomainError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.EntraFederationDomainNotFoundError;
+}
+
+model EntraFederationDomainSummary {
+  ...IdMagic.Contract.EntraDomainFederation;
+  verification: IdMagic.Contract.EntraFederationVerification;
+}
+
+model ListEntraFederationDomainsHttpResponse {
+  @doc("構成済みのドメイン。ドメインの順に並べる。Entra の構成がなければ空である。")
+  domains: EntraFederationDomainSummary[];
+}
+
+model ListEntraFederationDomainsSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: ListEntraFederationDomainsHttpResponse;
+}
+
+@doc("Entra のドメインフェデレーションで構成したドメインを、確認の状態とともに一覧する。RP と観測記録を変えない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:read"])
+@TypeSpec.OpenAPI.operationId("ListEntraFederationDomains")
+@route("/api/admin/v1/wsfed/entra-federation/domains")
+@get
+op ListEntraFederationDomains(
+
+): ListEntraFederationDomainsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | EntraFederationAdminError403;
+
+model EntraFederationDomainHttpResponse {
+  domain: IdMagic.Contract.EntraDomainFederation;
+  profile: IdMagic.Contract.EntraFederationProfile;
+  @doc("Entra が `wreply` として使う URL。")
+  reply_url: string;
+  @doc("構成の応答と同じ、Microsoft Graph PowerShell のパラメーター名をキーとする期待値。")
+  powershell: Record<string>;
+  @doc("構成の応答と同じ、値を埋めた作成と更新のコマンド。")
+  commands: {
+    create: string;
+    update: string;
+  };
+  @doc("Graph PowerShell の手順。`connect` は `Domain.Read.All` と `Domain-InternalFederation.ReadWrite.All` で、`connect_read_only` は `Domain.Read.All` と `Domain-InternalFederation.Read.All` で接続し、ドメインの組が Entra のテナント ID を持てばそのテナントに限る。`backup` はフェデレーションの構成だけを書き出し、`compare` は期待値との差分を表示し、`apply` は既存の構成があれば更新し、なければ作成し、`read_back` は観測文書を書き出す。")
+  procedure: {
+    connect: string;
+    connect_read_only: string;
+    backup: string;
+    compare: string;
+    apply: string;
+    read_back: string;
+  };
+  certificates: {
+    signing: IdMagic.Contract.EntraCertificateSummary;
+    next?: IdMagic.Contract.EntraCertificateSummary;
+  };
+  verification: IdMagic.Contract.EntraFederationVerification;
+  @doc("この定型設定が提供しない機能のコード。")
+  known_limitations: {
+    code: "hybrid_join_not_supported";
+  }[];
+  @doc("構成の応答と同じく、取り込み元の管理下の User のうち、UPN がどの構成済みのドメインにも属さない削除されていない User。該当する User がいなければ省く。")
+  unfederated_source_users?: {
+    @minValue(1)
+    user_count: int32;
+    @minItems(1)
+    @maxItems(5)
+    sample_usernames: string[];
+  };
+}
+
+model GetEntraFederationDomainSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: EntraFederationDomainHttpResponse;
+}
+
+@doc("Entra のドメインフェデレーションで構成した一つのドメインの、保存した設定、Graph の期待値、証明書、コマンド、PowerShell の手順、確認の状態を返す。RP と観測記録を変えないので、何度でも再取得できる。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:read"])
+@TypeSpec.OpenAPI.operationId("GetEntraFederationDomain")
+@route("/api/admin/v1/wsfed/entra-federation/domains/{domain_name}")
+@get
+op GetEntraFederationDomain(
+  @path domain_name: string
+): GetEntraFederationDomainSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | EntraFederationAdminError403 | EntraFederationDomainError404;
+
+model RecordEntraFederationObservationHttpResponse {
+  verification: IdMagic.Contract.EntraFederationVerification;
+}
+
+model RecordEntraFederationObservationSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: RecordEntraFederationObservationHttpResponse;
+}
+
+union RecordEntraFederationObservationError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model RecordEntraFederationObservationError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: RecordEntraFederationObservationError400Body;
+}
+
+model RecordEntraFederationObservationError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.EntraObservationOutdatedError;
+}
+
+@doc("Graph PowerShell の読み戻しの手順が書き出した観測文書を取り込み、現在の期待値と比べ、テナントとドメインごとに最新の一件の観測記録として保存する。RP を変えない。本文は 64 KiB までで、未知の項目、形式の違い、必須の項目の欠落、異なるドメイン、5 件以上の構成、確認時刻より 5 分を超えて後の取得時刻を拒否する。保存済みの記録より前の取得時刻は 409 で拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
+@TypeSpec.OpenAPI.operationId("RecordEntraFederationObservation")
+@route("/api/admin/v1/wsfed/entra-federation/domains/{domain_name}/observations")
+@post
+op RecordEntraFederationObservation(
+  @path domain_name: string,
+  @body body: IdMagic.Contract.EntraFederationObservation
+): RecordEntraFederationObservationSuccess_200 | RecordEntraFederationObservationError400 | IdMagic.Contract.AuthenticationRequiredResponse | EntraFederationAdminError403 | EntraFederationDomainError404 | RecordEntraFederationObservationError409;
 
 model RegisterWsFedRelyingPartySuccess_201 {
   @statusCode statusCode: 201;
