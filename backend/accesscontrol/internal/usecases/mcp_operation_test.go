@@ -49,7 +49,7 @@ func TestMcpOperationWithoutPublishedModel(t *testing.T) {
 //spec:covers REQ-AUTHORIZATION-001: 利用者のモデルから組み込み定義を上書きできない
 func TestMcpOperationModelCannotBeOverridden(t *testing.T) {
 	h := newBareHarness()
-	_, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, []domain.ResourceTypeDefinition{{Name: "idmagic_mcp_operation"}}, now)
+	_, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, 0, []domain.ResourceTypeDefinition{{Name: "idmagic_mcp_operation"}}, now)
 	if err == nil {
 		t.Fatal("reserved type was published")
 	}

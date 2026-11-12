@@ -162,6 +162,10 @@ model AuthorizationModelInvalidError is ProblemDetails;
 model AuthorizationModelNotFoundError is ProblemDetails;
 
 
+@doc("認可モデルの登録の `expected_version` が、テナントの最新のリビジョンと一致しない。登録を確定する前に別の登録が先に確定したことを表し、新しいリビジョンは作らない。呼び出し元は最新のリビジョンを読み直して再試行する。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:authorization_model_version_conflict` である。")
+model AuthorizationModelVersionConflictError is ProblemDetails;
+
+
 @doc("RelationTuple が登録済みの認可モデルに合わない。未知の種類またはリレーション、許されていないサブジェクトの種類、許されていないワイルドカード、または `writes` と `deletes` の両方にある同じ三つ組のいずれかである。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:relation_tuple_invalid` である。")
 model RelationTupleInvalidError is ProblemDetails;
 

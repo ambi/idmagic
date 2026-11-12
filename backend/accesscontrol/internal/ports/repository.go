@@ -49,10 +49,13 @@ type RelationTupleRepository interface {
 
 // AuthorizationModelRepository は追記のみの認可モデルのバージョンを保持する。
 type AuthorizationModelRepository interface {
-	// Publish は次のバージョンを採番して保存し、テナントの書き込みバージョンを進める。
+	// Publish は、最新のバージョンが expectedVersion（未登録なら 0）のときだけ、
+	// expectedVersion+1 を採番して保存し、テナントの書き込みバージョンを進める。
+	// 一致しなければ、同時の登録に先を越された場合も含めて domain.ErrModelVersionConflict
+	// を返し、何も保存しない。比較と採番は一つのトランザクションの中で行う。
 	// 呼び出し側は ID / TenantID / ResourceTypes / CreatedAt を埋め、Version は
 	// この実装が決める。
-	Publish(ctx context.Context, model *domain.AuthorizationModel) (*domain.AuthorizationModel, int64, error)
+	Publish(ctx context.Context, model *domain.AuthorizationModel, expectedVersion int) (*domain.AuthorizationModel, int64, error)
 	// Latest は最新バージョンを返す。1 バージョンも無ければ nil を返す。
 	Latest(ctx context.Context, tenantID string) (*domain.AuthorizationModel, error)
 	// FindByVersion は指定したバージョンを返す。無ければ nil を返す。

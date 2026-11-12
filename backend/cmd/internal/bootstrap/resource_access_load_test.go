@@ -347,7 +347,16 @@ func newResourceLoadFixture(tb testing.TB, storage string, settings map[string]s
 			tb.Fatalf("前提の投入 %s: %d %s", path, recorder.Code, recorder.Body.String())
 		}
 	}
-	admin("/api/admin/v1/authorization/model", map[string]any{"resource_types": []any{
+	// 同じ PostgreSQL の default テナントを複数のフィクスチャが使うので、最新のバージョンを基にして発行する。
+	latest, err := deps.AccessControl.ModelRepo.Latest(ctx, tenant.ID)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	expectedVersion := 0
+	if latest != nil {
+		expectedVersion = latest.Version
+	}
+	admin("/api/admin/v1/authorization/model", map[string]any{"expected_version": expectedVersion, "resource_types": []any{
 		map[string]any{"name": "user"},
 		map[string]any{"name": "agent"},
 		map[string]any{"name": "document", "relations": []any{map[string]any{"name": "viewer", "rewrites": []any{map[string]any{

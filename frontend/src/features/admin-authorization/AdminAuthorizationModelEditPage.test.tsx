@@ -89,7 +89,58 @@ describe('AdminAuthorizationModelEditPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: t.publish }))
     await waitFor(() => expect(onPublished).toHaveBeenCalled())
-    expect(posts).toEqual([{ resource_types: narrowed }])
+    expect(posts).toEqual([{ expected_version: 3, resource_types: narrowed }])
+  })
+
+  //spec:covers REQ-AUTHORIZATION-011: 差分を比べたバージョンを送り、競合で拒否されたら入力を残して編集へ戻り、確認し直して発行できる。
+  it('returns to editing with the input kept when another publication won', async () => {
+    const newer: AuthorizationModel = {
+      ...model,
+      version: 4,
+      resource_types: [...types, { name: 'added_by_someone_else', relations: [] }],
+    }
+    let latest = model
+    const posts: unknown[] = []
+    globalThis.fetch = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method !== 'POST')
+        return json(200, { authorization_model: latest, consistency: 'c1' })
+      posts.push(JSON.parse(String(init.body)))
+      if (posts.length === 1) {
+        // 確認の後、確定の前に別の管理者がバージョン 4 を発行した。
+        latest = newer
+        return json(
+          409,
+          { type: 'urn:idmagic:error:authorization_model_version_conflict', status: 409 },
+          'application/problem+json',
+        )
+      }
+      return json(201, { authorization_model: { ...newer, version: 5 }, consistency: 'c2' })
+    }) as unknown as typeof fetch
+    const onPublished = mock(() => {})
+    await renderPage(onPublished)
+    openJson()
+    const edited: ResourceTypeDefinition[] = [...types, { name: 'folder', relations: [] }]
+    setJson(edited)
+
+    fireEvent.click(screen.getByRole('button', { name: t.review }))
+    await screen.findByRole('heading', { name: t.diffTitle })
+    fireEvent.click(screen.getByRole('button', { name: t.publish }))
+
+    await screen.findByText(t.modelVersionConflict)
+    expect(screen.queryByRole('heading', { name: t.diffTitle })).toBeNull()
+    expect(JSON.parse((screen.getByLabelText(t.jsonLabel) as HTMLTextAreaElement).value)).toEqual(
+      edited,
+    )
+    expect(onPublished).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: t.review }))
+    await screen.findByText(/added_by_someone_else/)
+    fireEvent.click(screen.getByRole('button', { name: t.publish }))
+    await waitFor(() => expect(onPublished).toHaveBeenCalled())
+    expect(posts).toEqual([
+      { expected_version: 3, resource_types: edited },
+      { expected_version: 4, resource_types: edited },
+    ])
   })
 
   // 発行済みのモデルがある実行環境では E2E がこの経路を通れないので、ここで確かめる。
@@ -120,6 +171,7 @@ describe('AdminAuthorizationModelEditPage', () => {
     await waitFor(() => expect(onPublished).toHaveBeenCalled())
     expect(posts).toEqual([
       {
+        expected_version: 0,
         resource_types: [
           { name: 'user', relations: [] },
           { name: 'agent', relations: [] },

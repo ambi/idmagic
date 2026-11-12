@@ -19,6 +19,7 @@ func TestRelationTupleRepositoryContract(t *testing.T) {
 	testing_contract.RunRelationTupleRepositoryContract(t, newFixture)
 }
 
+//spec:covers REQ-AUTHORIZATION-018: 最新でないバージョンを基にした登録を拒否し、同じバージョンを基にした同時の登録は一つだけを受理する。
 func TestAuthorizationModelRepositoryContract(t *testing.T) {
 	testing_contract.RunAuthorizationModelRepositoryContract(t, newFixture)
 }

@@ -2,8 +2,8 @@ package db_postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -56,69 +56,76 @@ func TestRelationTupleRepositoryContract(t *testing.T) {
 	testing_contract.RunRelationTupleRepositoryContract(t, newFixture)
 }
 
+// 比較と採番の原子性はトランザクションと一意制約に依存するので、PostgreSQL で契約を実行する。
+//
+//spec:covers REQ-AUTHORIZATION-018: 最新でないバージョンを基にした登録を拒否し、同じバージョンを基にした同時の登録は一つだけを受理する。
 func TestAuthorizationModelRepositoryContract(t *testing.T) {
 	testing_contract.RunAuthorizationModelRepositoryContract(t, newFixture)
 }
 
-// 同じバージョンを 2 つ作らない。採番を読み書き 2 回に分ければここで衝突する。
+// 同じバージョンを基にした登録が同時に比較を通った場合、後から挿入する側は一意制約の違反で失敗する。
+// 契約の並行テストでは挿入が重ならないことが多く、この経路を確実には通らないので、先の挿入を
+// コミットせずに保ち、後の Publish がその行のロックを待つのを確かめてからコミットする。
 //
-//spec:covers REQ-AUTHORIZATION-001: バージョンの採番は INSERT の中で行うので、同時に published しても
-func TestConcurrentPublishNeverReusesAVersion(t *testing.T) {
+//spec:covers REQ-AUTHORIZATION-018: 同時の登録に先を越された登録を競合として拒否し、バージョンを作らない。
+func TestPublishThatLosesTheInsertRaceIsAVersionConflict(t *testing.T) {
 	f := newFixture(t, "tenant-a")
 	tenantA := f.Tenant("tenant-a")
-	minimal := []domain.ResourceTypeDefinition{
-		{Name: "user"},
-		{Name: "document", Relations: []domain.RelationDefinition{
-			{Name: "viewer", Rewrites: []domain.RelationRewrite{
-				{Kind: domain.RewriteDirect, DirectSubjectTypes: []string{"user"}},
-			}},
-		}},
+	pool := pgtest.Require(t)
+	ctx := context.Background()
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	firstID, err := spec.NewUUIDv4()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := New(pool).WithTx(tx).InsertAuthorizationModel(ctx, InsertAuthorizationModelParams{
+		ID: firstID, TenantID: tenantA, ExpectedVersion: 0, Definition: []byte(`[]`), CreatedAt: time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("hold the first insert: %v", err)
 	}
 
-	const concurrency = 8
-	var wg sync.WaitGroup
-	versions := make([]int, concurrency)
-	errs := make([]error, concurrency)
-	for i := range concurrency {
-		wg.Go(func() {
-			id, err := spec.NewUUIDv4()
-			if err != nil {
-				errs[i] = err
-				return
-			}
-			stored, _, err := f.Models.Publish(context.Background(), &domain.AuthorizationModel{
-				ID: id, TenantID: tenantA, ResourceTypes: minimal,
-			})
-			if err != nil {
-				errs[i] = err
-				return
-			}
-			versions[i] = stored.Version
-		})
+	secondID, err := spec.NewUUIDv4()
+	if err != nil {
+		t.Fatal(err)
 	}
-	wg.Wait()
+	result := make(chan error, 1)
+	go func() {
+		_, _, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
+			ID: secondID, TenantID: tenantA, ResourceTypes: []domain.ResourceTypeDefinition{{Name: "user"}},
+		}, 0)
+		result <- err
+	}()
 
-	seen := map[int]bool{}
-	published := 0
-	for i, err := range errs {
-		if err != nil {
-			// 一意制約による衝突は「バージョンを採り損ねた」だけで、重複したバージョンは残らない。
-			continue
+	// 後の挿入が一意索引の行ロックを待つまで待つ。待つ前にコミットすると、比較で行を返さない経路を通る。
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		var waiting int
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity
+			WHERE wait_event_type = 'Lock' AND query LIKE '%INSERT INTO authorization_models%'`).Scan(&waiting); err != nil {
+			t.Fatalf("observe lock waits: %v", err)
 		}
-		if seen[versions[i]] {
-			t.Fatalf("version %d was assigned twice", versions[i])
+		if waiting > 0 {
+			break
 		}
-		seen[versions[i]] = true
-		published++
+		if time.Now().After(deadline) {
+			t.Fatal("the second publish never waited for the first insert")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
-	if published == 0 {
-		t.Fatal("no concurrent publish succeeded")
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit the first insert: %v", err)
 	}
-	latest, err := f.Models.Latest(context.Background(), tenantA)
-	if err != nil || latest == nil {
-		t.Fatalf("Latest = (%v, %v)", latest, err)
+
+	if err := <-result; !errors.Is(err, domain.ErrModelVersionConflict) {
+		t.Fatalf("Publish that lost the race = %v, want ErrModelVersionConflict", err)
 	}
-	if latest.Version != published {
-		t.Fatalf("Latest version = %d, want %d (one version per successful publish)", latest.Version, published)
+	latest, err := f.Models.Latest(ctx, tenantA)
+	if err != nil || latest == nil || latest.ID != firstID || latest.Version != 1 {
+		t.Fatalf("Latest = (%+v, %v), want the first insert as version 1", latest, err)
 	}
 }

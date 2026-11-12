@@ -98,7 +98,15 @@ func newHarness(t *testing.T) *harness {
 // publish は指定テナントへ参照モデルを published し、そのバージョンを返す。
 func (h *harness) publish(t *testing.T, tenant string) usecases.PublishedModel {
 	t.Helper()
-	published, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenant, referenceTypes(), now)
+	latest, err := h.deps.Models.Latest(context.Background(), tenant)
+	if err != nil {
+		t.Fatalf("Latest(%s): %v", tenant, err)
+	}
+	expected := 0
+	if latest != nil {
+		expected = latest.Version
+	}
+	published, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenant, expected, referenceTypes(), now)
 	if err != nil {
 		t.Fatalf("PutAuthorizationModel(%s): %v", tenant, err)
 	}
@@ -668,7 +676,7 @@ func TestDeletingAnObjectStopsTheRelationsItCarried(t *testing.T) {
 //spec:covers EX-AUTHORIZATION-001-02: 宣言されていない関係を参照するモデルが ErrModelInvalid で拒否され、published 済みのバージョンが 1 つも増えない。
 func TestPutAuthorizationModelRejectsAnInconsistentModel(t *testing.T) {
 	h := newHarness(t)
-	_, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, []domain.ResourceTypeDefinition{
+	_, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, 1, []domain.ResourceTypeDefinition{
 		{Name: "document", Relations: []domain.RelationDefinition{
 			{Name: "viewer", Rewrites: []domain.RelationRewrite{
 				{Kind: domain.RewriteComputedUserset, ComputedRelation: "editor"},
@@ -701,7 +709,7 @@ func TestPutAuthorizationModelAddsAVersionWithoutRewritingTheOldOne(t *testing.T
 	// 2 つ目のバージョンは 1 つ目と形が違う。以前のバージョンを読み直したときに、上書きされたのか
 	// 残っているのかを中身で見分けられるようにする。
 	extended := append(referenceTypes(), domain.ResourceTypeDefinition{Name: "folder"})
-	second, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, extended, now)
+	second, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, first.Model.Version, extended, now)
 	if err != nil {
 		t.Fatalf("PutAuthorizationModel: %v", err)
 	}
@@ -773,7 +781,7 @@ func TestPutAuthorizationModelLeavesNoVersionBehindWhenItRefuses(t *testing.T) {
 	for name, types := range cases {
 		t.Run(name, func(t *testing.T) {
 			h := newHarness(t)
-			if _, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, types, now); !errors.Is(err, domain.ErrModelInvalid) {
+			if _, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, 1, types, now); !errors.Is(err, domain.ErrModelInvalid) {
 				t.Fatalf("err = %v, want %v", err, domain.ErrModelInvalid)
 			}
 			// 拒否が防いだ効果。採番してから検証する実装は、バージョンを 2 へ進めてここで落ちる。

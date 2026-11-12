@@ -131,25 +131,28 @@ func (q *Queries) GetLatestAuthorizationModel(ctx context.Context, tenantID stri
 
 const insertAuthorizationModel = `-- name: InsertAuthorizationModel :one
 INSERT INTO authorization_models (id,tenant_id,version,definition,created_at)
-VALUES (
- $1,$2,
- (SELECT COALESCE(MAX(version),0)+1 FROM authorization_models WHERE tenant_id=$2),
- $3,$4
-)
+SELECT $1, $2, $3::int + 1,
+       $4, $5
+WHERE (SELECT COALESCE(MAX(version),0) FROM authorization_models WHERE tenant_id=$2)
+      = $3::int
 RETURNING id,tenant_id,version,definition,created_at
 `
 
 type InsertAuthorizationModelParams struct {
-	ID         string
-	TenantID   string
-	Definition []byte
-	CreatedAt  time.Time
+	ID              string
+	TenantID        string
+	ExpectedVersion int32
+	Definition      []byte
+	CreatedAt       time.Time
 }
 
+// 最新が expected_version のときだけ次のバージョンを挿入する。条件に合わなければ行を返さない。
+// 同時に同じ条件を通った挿入は (tenant_id, version) の一意制約で一つだけが残る。
 func (q *Queries) InsertAuthorizationModel(ctx context.Context, arg InsertAuthorizationModelParams) (*AuthorizationModel, error) {
 	row := q.db.QueryRow(ctx, insertAuthorizationModel,
 		arg.ID,
 		arg.TenantID,
+		arg.ExpectedVersion,
 		arg.Definition,
 		arg.CreatedAt,
 	)

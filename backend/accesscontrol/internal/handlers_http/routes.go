@@ -189,7 +189,9 @@ func (d Deps) handleGetAuthorizationModel(c *echo.Context) error {
 }
 
 type putAuthorizationModelRequest struct {
-	ResourceTypes []resourceTypeWire `json:"resource_types"`
+	// ExpectedVersion は必須なので、欠落と 0 を区別できるようにポインタで受ける。
+	ExpectedVersion *int32             `json:"expected_version"`
+	ResourceTypes   []resourceTypeWire `json:"resource_types"`
 }
 
 func (d Deps) handlePutAuthorizationModel(c *echo.Context) error {
@@ -203,8 +205,12 @@ func (d Deps) handlePutAuthorizationModel(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
+	if req.ExpectedVersion == nil || *req.ExpectedVersion < 0 {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request",
+			"expected_version must be the latest version the model was based on, or 0 when none exists.")
+	}
 	published, err := usecases.PutAuthorizationModel(c.Request().Context(), d.usecaseDeps(),
-		support.RequestTenantID(c), toResourceTypes(req.ResourceTypes), time.Now().UTC())
+		support.RequestTenantID(c), int(*req.ExpectedVersion), toResourceTypes(req.ResourceTypes), time.Now().UTC())
 	if err != nil {
 		return writeAuthorizationError(c, err)
 	}
@@ -393,6 +399,9 @@ func writeAuthorizationError(c *echo.Context, err error) error {
 	case errors.Is(err, domain.ErrModelNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "authorization_model_not_found",
 			"No authorization model has been published for this tenant.")
+	case errors.Is(err, domain.ErrModelVersionConflict):
+		return support.WriteProblem(c, http.StatusConflict, "authorization_model_version_conflict",
+			"Another authorization model version was published first. Reload the latest version and review again.")
 	case errors.Is(err, domain.ErrModelInvalid):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "authorization_model_invalid", err.Error())
 	case errors.Is(err, domain.ErrTupleInvalid):

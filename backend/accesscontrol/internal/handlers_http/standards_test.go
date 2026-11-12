@@ -184,7 +184,8 @@ func delegationModelRequest() map[string]any {
 	directOn := func(types ...string) map[string]any {
 		return map[string]any{"kind": "direct", "direct_subject_types": types}
 	}
-	return map[string]any{"resource_types": []map[string]any{
+	// 各フィクスチャは未登録のテナントへ一度だけ登録するので、基にしたバージョンは 0 である。
+	return map[string]any{"expected_version": 0, "resource_types": []map[string]any{
 		{"name": "user"},
 		{"name": "agent"},
 		{"name": "group", "relations": []map[string]any{

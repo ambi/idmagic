@@ -165,12 +165,15 @@ func cloneModel(m *domain.AuthorizationModel) *domain.AuthorizationModel {
 	return &cloned
 }
 
-func (r *AuthorizationModelRepository) Publish(_ context.Context, model *domain.AuthorizationModel) (*domain.AuthorizationModel, int64, error) {
+func (r *AuthorizationModelRepository) Publish(_ context.Context, model *domain.AuthorizationModel, expectedVersion int) (*domain.AuthorizationModel, int64, error) {
 	s := r.store
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if latest := len(s.models[model.TenantID]); latest != expectedVersion {
+		return nil, 0, domain.ErrModelVersionConflict
+	}
 	stored := cloneModel(model)
-	stored.Version = len(s.models[model.TenantID]) + 1
+	stored.Version = expectedVersion + 1
 	s.models[model.TenantID] = append(s.models[model.TenantID], stored)
 	return cloneModel(stored), s.bumpVersion(model.TenantID), nil
 }

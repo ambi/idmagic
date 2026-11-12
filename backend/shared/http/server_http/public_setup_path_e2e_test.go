@@ -209,7 +209,7 @@ func (f *publicSetupPath) resource(t *testing.T, evaluator string) {
 		"name": "Public documents", "resource": setupResource, "scopes": []string{"read"}, "client_id": evaluator,
 		"access_rules": []map[string]any{{"resource_type": "document", "relation": "viewer", "scopes": []string{"read"}}},
 	}, f.admin, http.StatusCreated)
-	f.request(t, http.MethodPost, "/api/admin/v1/authorization/model", map[string]any{"resource_types": []map[string]any{
+	f.request(t, http.MethodPost, "/api/admin/v1/authorization/model", map[string]any{"expected_version": 0, "resource_types": []map[string]any{
 		{"name": "user"},
 		{"name": "agent"},
 		{"name": "document", "relations": []map[string]any{{"name": "viewer", "rewrites": []map[string]any{

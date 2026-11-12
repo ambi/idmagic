@@ -143,7 +143,8 @@ func referenceModelRequest() map[string]any {
 	directOn := func(types ...string) map[string]any {
 		return map[string]any{"kind": "direct", "direct_subject_types": types}
 	}
-	return map[string]any{"resource_types": []map[string]any{
+	// 各テストは未登録のテナントへ初めて登録するので、基にしたバージョンは 0 である。
+	return map[string]any{"expected_version": 0, "resource_types": []map[string]any{
 		{"name": "user"},
 		{"name": "agent"},
 		{"name": "document", "relations": []map[string]any{
@@ -377,6 +378,7 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 	t.Run("an inconsistent model is rejected with 422", func(t *testing.T) {
 		e, _, _ := newServer(t, actor("admin", []string{"admin"}))
 		rec := post(t, e, realmPrefix+"/api/admin/v1/authorization/model", map[string]any{
+			"expected_version": 0,
 			"resource_types": []map[string]any{
 				{"name": "document", "relations": []map[string]any{
 					{"name": "viewer", "rewrites": []map[string]any{
@@ -480,5 +482,79 @@ func assertAuthorizationProblem(t *testing.T, response *httptest.ResponseRecorde
 	decode(t, response, &problem)
 	if response.Code != status || response.Header().Get("Content-Type") != support.ProblemContentType || problem.Status != status || problem.Type != "urn:idmagic:error:"+code {
 		t.Fatalf("status=%d Content-Type=%q problem=%+v, want %d %s", response.Code, response.Header().Get("Content-Type"), problem, status, code)
+	}
+}
+
+func modelRequestFrom(expectedVersion int) map[string]any {
+	request := referenceModelRequest()
+	request["expected_version"] = expectedVersion
+	return request
+}
+
+func publishedModelEvents(events []spec.DomainEvent) int {
+	count := 0
+	for _, event := range events {
+		if event.EventType() == "AuthorizationModelPublished" {
+			count++
+		}
+	}
+	return count
+}
+
+func latestModelVersion(t *testing.T, e *echo.Echo) int {
+	t.Helper()
+	rec := get(t, e, realmPrefix+"/api/admin/v1/authorization/model")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GetAuthorizationModel status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		AuthorizationModel struct {
+			Version int `json:"version"`
+		} `json:"authorization_model"`
+	}
+	decode(t, rec, &body)
+	return body.AuthorizationModel.Version
+}
+
+// 最新に合わせた再送は次のバージョンを作り、欠落と負の値は 400 で拒否する。
+//
+//spec:covers REQ-AUTHORIZATION-018: 最新でない expected_version の登録を 409 で拒否し、バージョンもイベントも残さず、
+//verify:operation PutAuthorizationModel: expected_version の不一致に対する 409 と、欠落、負の値に対する 400 の本文を照合する。
+func TestPutAuthorizationModelRejectsStaleExpectedVersion(t *testing.T) {
+	e, events, _ := newServer(t, actor("admin", []string{"admin"}))
+	path := realmPrefix + "/api/admin/v1/authorization/model"
+
+	// 未登録のテナントでは 0 だけが最新に一致する。
+	assertAuthorizationProblem(t, post(t, e, path, modelRequestFrom(1)), http.StatusConflict, "authorization_model_version_conflict")
+	if rec := post(t, e, path, modelRequestFrom(0)); rec.Code != http.StatusCreated {
+		t.Fatalf("first publish status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	publishedBefore := publishedModelEvents(*events)
+
+	// 同じバージョン 0 を基にした二人目の登録は、先の登録を上書きしない。
+	assertAuthorizationProblem(t, post(t, e, path, modelRequestFrom(0)), http.StatusConflict, "authorization_model_version_conflict")
+	// 最新より先のバージョンも一致しない。
+	assertAuthorizationProblem(t, post(t, e, path, modelRequestFrom(2)), http.StatusConflict, "authorization_model_version_conflict")
+	if got := latestModelVersion(t, e); got != 1 {
+		t.Fatalf("latest version after rejected publishes = %d, want 1", got)
+	}
+	if got := publishedModelEvents(*events); got != publishedBefore {
+		t.Fatalf("AuthorizationModelPublished count after rejected publishes = %d, want %d", got, publishedBefore)
+	}
+
+	missing := referenceModelRequest()
+	delete(missing, "expected_version")
+	assertAuthorizationProblem(t, post(t, e, path, missing), http.StatusBadRequest, "invalid_request")
+	assertAuthorizationProblem(t, post(t, e, path, modelRequestFrom(-1)), http.StatusBadRequest, "invalid_request")
+	if got := latestModelVersion(t, e); got != 1 {
+		t.Fatalf("latest version after malformed publishes = %d, want 1", got)
+	}
+
+	rec := post(t, e, path, modelRequestFrom(1))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("publish from the latest version status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if got := latestModelVersion(t, e); got != 2 {
+		t.Fatalf("latest version after publishing from 1 = %d, want 2", got)
 	}
 }

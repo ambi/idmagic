@@ -19,6 +19,7 @@ export function authorizationErrorMessage(cause: unknown, t: Dictionary): string
   if (!(cause instanceof AuthenticationAPIError)) return t.genericError
   if (cause.code === 'consistency_not_satisfied') return t.consistencyNotSatisfied
   if (cause.code === 'authorization_model_not_found') return t.modelNotFound
+  if (cause.code === 'authorization_model_version_conflict') return t.modelVersionConflict
   return cause.message
 }
 

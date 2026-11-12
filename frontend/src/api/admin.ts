@@ -2619,13 +2619,19 @@ export async function findAuthorizationModel(
   }
 }
 
+// publishAuthorizationModel は expectedVersion（未登録なら 0）が最新のときだけ発行する。
+// 一致しなければ authorization_model_version_conflict で拒否される。
 export async function publishAuthorizationModel(
   csrfToken: string,
   resourceTypes: ResourceTypeDefinition[],
+  expectedVersion: number,
 ): Promise<PublishedAuthorizationModel> {
   return request(
     authorizationModelPath,
-    adminRequest(csrfToken, 'POST', { resource_types: resourceTypes }),
+    adminRequest(csrfToken, 'POST', {
+      expected_version: expectedVersion,
+      resource_types: resourceTypes,
+    }),
   )
 }
 

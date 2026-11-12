@@ -31,6 +31,8 @@ export const adminAuthorizationDictionary = defineDictionary(
     createTitle: '認可モデルを作成',
     modelAlreadyExists:
       '別の管理者が認可モデルを作成しました。一覧へ戻って最新のモデルを確認してください。',
+    modelVersionConflict:
+      '確認の後に別の管理者が新しいバージョンを発行したため、発行しませんでした。入力は残っています。発行内容をもう一度確認してください。',
     modeLabel: '編集の形式',
     modeForm: 'フォーム',
     modeJson: 'JSON',
@@ -203,6 +205,8 @@ export const adminAuthorizationDictionary = defineDictionary(
     createTitle: 'Create authorization model',
     modelAlreadyExists:
       'Another administrator created an authorization model. Return to the model page to review it.',
+    modelVersionConflict:
+      'Another administrator published a newer version after your review, so nothing was published. Your changes are kept. Review the publication again.',
     modeLabel: 'Editing format',
     modeForm: 'Form',
     modeJson: 'JSON',

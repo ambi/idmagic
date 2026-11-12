@@ -49,6 +49,9 @@ op GetAuthorizationModel(
 ): GetAuthorizationModelSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAuthorizationModelError403 | GetAuthorizationModelError404;
 
 model PutAuthorizationModelHttpRequest {
+  @doc("登録の基にしたリビジョン。テナントの最新のリビジョンと一致しなければ AuthorizationModelVersionConflictError で拒否する。まだ登録していないテナントでは 0 を指定する。")
+  @minValue(0)
+  expected_version: int32;
   resource_types: IdMagic.Contract.ResourceTypeDefinition[];
 }
 
@@ -85,6 +88,16 @@ model PutAuthorizationModelError403 {
   @body body: PutAuthorizationModelError403Body;
 }
 
+union PutAuthorizationModelError409Body {
+  IdMagic.Contract.AuthorizationModelVersionConflictError,
+}
+
+model PutAuthorizationModelError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: PutAuthorizationModelError409Body;
+}
+
 union PutAuthorizationModelError422Body {
   IdMagic.Contract.AuthorizationModelInvalidError,
 }
@@ -95,14 +108,14 @@ model PutAuthorizationModelError422 {
   @body body: PutAuthorizationModelError422Body;
 }
 
-@doc("テナントの認可モデルを新しいリビジョンとして公開する。既存のリビジョンには追記するだけで、書き換えない。未知のリレーションへの参照と、書き換え規則の循環は 422 で拒否する。")
+@doc("テナントの認可モデルを新しいリビジョンとして公開する。既存のリビジョンには追記するだけで、書き換えない。`expected_version` が最新のリビジョンと一致しなければ 409 で拒否するので、同じリビジョンから編集した登録が先の登録を上書きしない。未知のリレーションへの参照と、書き換え規則の循環は 422 で拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("PutAuthorizationModel")
 @route("/api/admin/v1/authorization/model")
 @post
 op PutAuthorizationModel(
   @body body: PutAuthorizationModelHttpRequest
-): PutAuthorizationModelSuccess_201 | PutAuthorizationModelError400 | IdMagic.Contract.AuthenticationRequiredResponse | PutAuthorizationModelError403 | PutAuthorizationModelError422;
+): PutAuthorizationModelSuccess_201 | PutAuthorizationModelError400 | IdMagic.Contract.AuthenticationRequiredResponse | PutAuthorizationModelError403 | PutAuthorizationModelError409 | PutAuthorizationModelError422;
 
 model ListRelationTuplesHttpResponse {
   tuples: IdMagic.Contract.RelationTuple[];

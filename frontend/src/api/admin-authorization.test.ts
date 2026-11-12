@@ -49,10 +49,11 @@ describe('authorization admin API', () => {
 
   it('publishes the resource types under their contract name', async () => {
     const fetcher = stubFetch(201, { authorization_model: {}, consistency: 'c' })
-    await publishAuthorizationModel('csrf', [{ name: 'user', relations: [] }])
+    await publishAuthorizationModel('csrf', [{ name: 'user', relations: [] }], 2)
     const { init } = lastCall(fetcher)
     expect(init?.method).toBe('POST')
     expect(JSON.parse(String(init?.body))).toEqual({
+      expected_version: 2,
       resource_types: [{ name: 'user', relations: [] }],
     })
   })

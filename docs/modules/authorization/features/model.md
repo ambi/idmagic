@@ -34,11 +34,21 @@
 - テナントに認可モデルを登録していない間、管理者が認可モデルを取得したとき、AccessControl は、404 と `authorization_model_not_found` で拒否する。
 - **例**：EX-AUTHORIZATION-001-01、EX-AUTHORIZATION-001-02、EX-AUTHORIZATION-001-03、EX-AUTHORIZATION-001-04
 
+#### REQ-AUTHORIZATION-018 基にしたバージョンが最新でない認可モデルの登録は拒否される
+
+- 管理者が `expected_version` を最新のバージョン（未登録なら 0）にして認可モデルを登録したとき、AccessControl は、`expected_version` の次のバージョンを作る。
+- `expected_version` が最新のバージョンと異なる場合、AccessControl は、409 と `authorization_model_version_conflict` で拒否し、バージョンを作らず、`AuthorizationModelPublished` を発行しない。
+- 同じ `expected_version` の登録が同時に要求された場合、AccessControl は、一つだけを受理し、ほかを 409 と `authorization_model_version_conflict` で拒否する。
+- `expected_version` がないか、0 以上の整数でない場合、AccessControl は、400 と `invalid_request` で拒否し、バージョンを作らない。
+- **判断**：二人の管理者が同じバージョンから編集すると、後から登録した管理者が先の変更を知らずに消し、判定の結果が意図せず変わる。登録はモデル全体を置き換えるので、基にしたバージョンを必須にして上書きを防ぐ。
+
 #### REQ-AUTHORIZATION-011 管理コンソールは認可モデルの発行を確定する前に差分を示す
 
 - 管理者が管理コンソールで発行の内容を確認するとき、AccessControl は、その時点の最新のバージョンと比べて追加と削除される型、関係、書き換えの規則を示す。
 - 確認した差分に削除が含まれる場合、AccessControl は、既存の関係タプルが判定に数えられなくなることがあると警告する。
 - 管理者が管理コンソールで発行を確定するまでの間、AccessControl は、新しいバージョンを作らない。
+- 管理者が管理コンソールで発行を確定したとき、AccessControl は、差分を比べたバージョンを `expected_version` として送る。
+- 確定した発行が `authorization_model_version_conflict` で拒否された場合、AccessControl は、入力を残したまま編集へ戻し、最新を読み直して確認し直すよう示す。
 
 #### REQ-AUTHORIZATION-010 認可モデルとタプルの更新も判定の呼び出しも管理者に限られる
 

@@ -66,7 +66,7 @@ func newResourceAccessFixtureWithLimiter(t *testing.T, limiter rlports.RateLimit
 	f := &resourceAccessFixture{agentRevocationFixture: newAgentRevocationFixtureWith(t,
 		[]stack.Option{stack.WithAuthorizationCodeFlow(), stack.WithAccessControl(), stack.WithRateLimiter(limiter)}, agentIDs...)}
 	f.cookie = f.s.AdminSessionCookie(t, "default")
-	f.adminSession(t, "/api/admin/v1/authorization/model", map[string]any{"resource_types": []map[string]any{
+	f.adminSession(t, "/api/admin/v1/authorization/model", map[string]any{"expected_version": 0, "resource_types": []map[string]any{
 		{"name": "user"},
 		{"name": "agent"},
 		{"name": "document", "relations": []map[string]any{{

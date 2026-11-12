@@ -17,10 +17,13 @@ type PublishedModel struct {
 
 // PutAuthorizationModel は検証を通ったモデルを新しいバージョンとして published する。
 // 検証に落ちたバージョンは保存しないので、実行時に初めて壊れるモデルは残らない。
+// 最新のバージョンが expectedVersion（未登録なら 0）でなければ domain.ErrModelVersionConflict
+// を返し、先に確定した別の登録を上書きしない。
 func PutAuthorizationModel(
 	ctx context.Context,
 	d Deps,
 	tenantID string,
+	expectedVersion int,
 	resourceTypes []domain.ResourceTypeDefinition,
 	now time.Time,
 ) (PublishedModel, error) {
@@ -39,7 +42,7 @@ func PutAuthorizationModel(
 	if err := candidate.Validate(); err != nil {
 		return PublishedModel{}, err
 	}
-	stored, version, err := d.Models.Publish(ctx, candidate)
+	stored, version, err := d.Models.Publish(ctx, candidate, expectedVersion)
 	if err != nil {
 		return PublishedModel{}, err
 	}

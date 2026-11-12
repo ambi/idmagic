@@ -1,6 +1,7 @@
 import { IconArrowLeft } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
+import { AuthenticationAPIError } from '../../api'
 import { findAuthorizationModel, publishAuthorizationModel } from '../../api/admin'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
@@ -132,6 +133,8 @@ export function AdminAuthorizationModelEditPage({
   const [review, setReview] = useState<{
     resourceTypes: ResourceTypeDefinition[]
     entries: ModelDiffEntry[]
+    // 差分を比べたバージョン。未登録なら 0。発行はこのバージョンが最新のときだけ受理される。
+    baseVersion: number
   } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -173,6 +176,7 @@ export function AdminAuthorizationModelEditPage({
       setReview({
         resourceTypes,
         entries: diffModels(latest?.authorization_model.resource_types ?? [], resourceTypes),
+        baseVersion: latest?.authorization_model.version ?? 0,
       })
     })
   }
@@ -180,7 +184,18 @@ export function AdminAuthorizationModelEditPage({
   function publish() {
     if (!review) return
     void run(async () => {
-      await publishAuthorizationModel(csrfToken, review.resourceTypes)
+      try {
+        await publishAuthorizationModel(csrfToken, review.resourceTypes, review.baseVersion)
+      } catch (cause) {
+        // 確認した差分は古いバージョンとの比較なので、そのまま確定させず編集へ戻す。入力は残る。
+        if (
+          cause instanceof AuthenticationAPIError &&
+          cause.code === 'authorization_model_version_conflict'
+        ) {
+          setReview(null)
+        }
+        throw cause
+      }
       await onPublished()
     })
   }

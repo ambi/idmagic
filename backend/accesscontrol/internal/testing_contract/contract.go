@@ -6,7 +6,9 @@ package testing_contract
 
 import (
 	"context"
+	"errors"
 	"slices"
+	"sync"
 	"testing"
 
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
@@ -241,7 +243,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		}
 		first, version, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
 			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
-		})
+		}, 0)
 		if err != nil {
 			t.Fatalf("Publish returned error: %v", err)
 		}
@@ -250,7 +252,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		}
 		second, _, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
 			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
-		})
+		}, 1)
 		if err != nil {
 			t.Fatalf("Publish returned error: %v", err)
 		}
@@ -281,7 +283,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		tenantA := f.Tenant("tenant-a")
 		_, published, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
 			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
-		})
+		}, 0)
 		if err != nil {
 			t.Fatalf("Publish returned error: %v", err)
 		}
@@ -306,12 +308,12 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		tenantA, tenantB := f.Tenant("tenant-a"), f.Tenant("tenant-b")
 		if _, _, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
 			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
-		}); err != nil {
+		}, 0); err != nil {
 			t.Fatalf("Publish returned error: %v", err)
 		}
 		other, _, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
 			ID: newModelID(t), TenantID: tenantB, ResourceTypes: minimalTypes,
-		})
+		}, 0)
 		if err != nil {
 			t.Fatalf("Publish returned error: %v", err)
 		}
@@ -320,6 +322,75 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		}
 		if latest, err := f.Models.Latest(ctx, tenantB); err != nil || latest.ID != other.ID {
 			t.Fatalf("tenant-b Latest = (%v, %v), want its own model", latest, err)
+		}
+	})
+
+	// REQ-AUTHORIZATION-018: 最新でないバージョンを基にした登録は、古い側にも新しい側にも外れても拒否する。
+	// 新しい側を拒否しないと、次の採番が飛んで別の登録の基にしたバージョンと一致してしまう。
+	t.Run("a publish from a version other than the latest is rejected", func(t *testing.T) {
+		f := newFixture(t, "tenant-a")
+		ctx := context.Background()
+		tenantA := f.Tenant("tenant-a")
+		publish := func(expected int) error {
+			_, _, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
+				ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
+			}, expected)
+			return err
+		}
+		if err := publish(1); !errors.Is(err, domain.ErrModelVersionConflict) {
+			t.Fatalf("Publish from 1 on an empty tenant = %v, want ErrModelVersionConflict", err)
+		}
+		if err := publish(0); err != nil {
+			t.Fatalf("Publish from 0 = %v", err)
+		}
+		for _, stale := range []int{0, 2} {
+			if err := publish(stale); !errors.Is(err, domain.ErrModelVersionConflict) {
+				t.Fatalf("Publish from %d with latest 1 = %v, want ErrModelVersionConflict", stale, err)
+			}
+		}
+		latest, err := f.Models.Latest(ctx, tenantA)
+		if err != nil || latest == nil || latest.Version != 1 {
+			t.Fatalf("Latest after rejected publishes = (%v, %v), want version 1", latest, err)
+		}
+		if missing, err := f.Models.FindByVersion(ctx, tenantA, 2); err != nil || missing != nil {
+			t.Fatalf("FindByVersion(2) = (%v, %v), want no version from a rejected publish", missing, err)
+		}
+	})
+
+	// REQ-AUTHORIZATION-018: 比較と採番が別々の手順だと、同時の登録がどちらも比較を通る。
+	t.Run("concurrent publishes from one version accept exactly one", func(t *testing.T) {
+		f := newFixture(t, "tenant-a")
+		tenantA := f.Tenant("tenant-a")
+		const concurrency = 8
+		var wg sync.WaitGroup
+		errs := make([]error, concurrency)
+		for i := range concurrency {
+			// ID はテストのゴルーチンで作る。失敗時の t.Fatalf を別のゴルーチンから呼ばないため。
+			id := newModelID(t)
+			wg.Go(func() {
+				_, _, errs[i] = f.Models.Publish(context.Background(), &domain.AuthorizationModel{
+					ID: id, TenantID: tenantA, ResourceTypes: minimalTypes,
+				}, 0)
+			})
+		}
+		wg.Wait()
+
+		accepted := 0
+		for _, err := range errs {
+			switch {
+			case err == nil:
+				accepted++
+			case errors.Is(err, domain.ErrModelVersionConflict):
+			default:
+				t.Fatalf("concurrent Publish returned %v, want nil or ErrModelVersionConflict", err)
+			}
+		}
+		if accepted != 1 {
+			t.Fatalf("accepted publishes = %d, want exactly 1", accepted)
+		}
+		latest, err := f.Models.Latest(context.Background(), tenantA)
+		if err != nil || latest == nil || latest.Version != 1 {
+			t.Fatalf("Latest = (%v, %v), want version 1", latest, err)
 		}
 	})
 }

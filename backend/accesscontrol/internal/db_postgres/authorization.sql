@@ -50,12 +50,13 @@ ON CONFLICT (tenant_id) DO UPDATE
 RETURNING version;
 
 -- name: InsertAuthorizationModel :one
+-- 最新が expected_version のときだけ次のバージョンを挿入する。条件に合わなければ行を返さない。
+-- 同時に同じ条件を通った挿入は (tenant_id, version) の一意制約で一つだけが残る。
 INSERT INTO authorization_models (id,tenant_id,version,definition,created_at)
-VALUES (
- $1,$2,
- (SELECT COALESCE(MAX(version),0)+1 FROM authorization_models WHERE tenant_id=$2),
- $3,$4
-)
+SELECT sqlc.arg(id), sqlc.arg(tenant_id), sqlc.arg(expected_version)::int + 1,
+       sqlc.arg(definition), sqlc.arg(created_at)
+WHERE (SELECT COALESCE(MAX(version),0) FROM authorization_models WHERE tenant_id=sqlc.arg(tenant_id))
+      = sqlc.arg(expected_version)::int
 RETURNING id,tenant_id,version,definition,created_at;
 
 -- name: GetLatestAuthorizationModel :one

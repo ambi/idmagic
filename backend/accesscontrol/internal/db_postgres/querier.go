@@ -15,6 +15,8 @@ type Querier interface {
 	GetAuthorizationModelByVersion(ctx context.Context, arg GetAuthorizationModelByVersionParams) (*AuthorizationModel, error)
 	GetAuthorizationWriteVersion(ctx context.Context, tenantID string) (int64, error)
 	GetLatestAuthorizationModel(ctx context.Context, tenantID string) (*AuthorizationModel, error)
+	// 最新が expected_version のときだけ次のバージョンを挿入する。条件に合わなければ行を返さない。
+	// 同時に同じ条件を通った挿入は (tenant_id, version) の一意制約で一つだけが残る。
 	InsertAuthorizationModel(ctx context.Context, arg InsertAuthorizationModelParams) (*AuthorizationModel, error)
 	InsertRelationTuple(ctx context.Context, arg InsertRelationTupleParams) (int64, error)
 	ListRelationTupleResourceIDs(ctx context.Context, arg ListRelationTupleResourceIDsParams) ([]string, error)

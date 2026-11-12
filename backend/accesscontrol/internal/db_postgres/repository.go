@@ -13,7 +13,15 @@ import (
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+// isVersionTaken は、同時の登録が同じバージョンを先に挿入したことによる一意制約の違反かを判定する。
+func isVersionTaken(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505" &&
+		pgErr.ConstraintName == "authorization_models_tenant_version_key"
+}
 
 // defaultListLimit は limit 未指定の一覧に適用する上限。無制限の走査を作らない。
 const defaultListLimit = 1000
@@ -145,7 +153,11 @@ func (r *RelationTupleRepository) Version(ctx context.Context, tenantID string) 
 // バージョンの採番は INSERT の中で行い、同時登録が同じバージョンを採らないようにする。
 type AuthorizationModelRepository struct{ Pool sharedpg.DB }
 
-func (r *AuthorizationModelRepository) Publish(ctx context.Context, model *domain.AuthorizationModel) (*domain.AuthorizationModel, int64, error) {
+func (r *AuthorizationModelRepository) Publish(ctx context.Context, model *domain.AuthorizationModel, expectedVersion int) (*domain.AuthorizationModel, int64, error) {
+	// 列は INTEGER なので、範囲外の基にしたバージョンは最新と一致しない。
+	if expectedVersion < 0 || expectedVersion >= math.MaxInt32 {
+		return nil, 0, domain.ErrModelVersionConflict
+	}
 	definition, err := json.Marshal(model.ResourceTypes)
 	if err != nil {
 		return nil, 0, err
@@ -162,8 +174,12 @@ func (r *AuthorizationModelRepository) Publish(ctx context.Context, model *domai
 	queries := New(r.Pool).WithTx(tx)
 
 	row, err := queries.InsertAuthorizationModel(ctx, InsertAuthorizationModelParams{
-		ID: model.ID, TenantID: model.TenantID, Definition: definition, CreatedAt: createdAt,
+		ID: model.ID, TenantID: model.TenantID, ExpectedVersion: int32(expectedVersion),
+		Definition: definition, CreatedAt: createdAt,
 	})
+	if errors.Is(err, pgx.ErrNoRows) || isVersionTaken(err) {
+		return nil, 0, domain.ErrModelVersionConflict
+	}
 	if err != nil {
 		return nil, 0, err
 	}
