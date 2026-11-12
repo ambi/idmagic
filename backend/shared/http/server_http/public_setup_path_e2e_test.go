@@ -394,6 +394,51 @@ func TestRegisteredWorkloadTrustControlsTokenExchange(t *testing.T) {
 	}
 }
 
+// 同じアテステーションを、Agent に束縛したクライアントと、Token Exchange を許可されただけの
+// 束縛のないクライアントがそれぞれ提示する。JWT-SVID は Bearer なので、要求のクライアントを
+// 束縛と照合しなければ、手に入れた JWT-SVID でどのクライアントも Agent の資格情報を得る。
+//
+//spec:covers REQ-WORKLOADIDENTITY-001, RFC8693-SUBJECT-TOKEN: 束縛先のクライアントの交換は sub と client_id がそのクライアントのトークンを得て、束縛のないクライアントの交換は 400 と invalid_grant でトークンを得ない。
+func TestWorkloadTokenExchangeRequiresTheBoundClient(t *testing.T) {
+	f := newPublicSetupPath(t, stack.WithAccessControl())
+	owner := f.user(t, "bound-workload-owner")
+	clientID, key := f.keyClient(t, "read", "urn:ietf:params:oauth:grant-type:token-exchange")
+	agentID := f.agent(t, owner, clientID, "autonomous")
+	otherClient, otherKey := f.keyClient(t, "read", "urn:ietf:params:oauth:grant-type:token-exchange")
+	evaluator, _ := f.keyClient(t, "read", "client_credentials")
+	f.resource(t, evaluator)
+	externalKey, externalJWK, _ := tpDPoPKey(t)
+	externalJWK["kid"] = "setup-key"
+	bundle := f.request(t, http.MethodPost, "/api/admin/v1/workload-identity/trust-bundles", map[string]any{
+		"name": "Bound workload trust", "trust_domain": "cluster", "issuer": "https://workloads.example",
+		"accepted_audiences": []string{"idmagic-workload"}, "jwks": map[string]any{"keys": []any{externalJWK}},
+	}, f.admin, http.StatusCreated)
+	f.request(t, http.MethodPost, "/api/admin/v1/workload-identity/trust-bundles/"+setupString(t, bundle, "id")+"/bindings",
+		map[string]any{"subject_pattern": "spiffe://cluster/*", "agent_id": agentID}, f.admin, http.StatusCreated)
+	now := time.Now().UTC()
+	attestation := setupJWT(t, externalKey, map[string]any{
+		"iss": "https://workloads.example", "sub": "spiffe://cluster/bound-bot",
+		"aud": "idmagic-workload", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(),
+	})
+	exchange := func(signer *rsa.PrivateKey, requester string, want int) map[string]any {
+		return f.signedForm(t, signer, requester, "/token", url.Values{
+			"grant_type":         {"urn:ietf:params:oauth:grant-type:token-exchange"},
+			"subject_token_type": {"urn:ietf:params:oauth:token-type:jwt"}, "subject_token": {attestation},
+			"scope": {"read"}, "resource": {setupResource},
+		}, want)
+	}
+
+	denied := exchange(otherKey, otherClient, http.StatusBadRequest)
+	if denied["error"] != "invalid_grant" || denied["access_token"] != nil {
+		t.Fatalf("exchange by a client not bound to the agent=%v, want invalid_grant without a token", denied)
+	}
+	issued := exchange(key, clientID, http.StatusOK)
+	claims := unverifiedClaims(t, setupString(t, issued, "access_token"))
+	if claims["sub"] != clientID || claims["client_id"] != clientID {
+		t.Fatalf("workload token sub=%v client_id=%v, want the bound client %s", claims["sub"], claims["client_id"], clientID)
+	}
+}
+
 // SPIFFE バンドルの `x509-svid` の鍵と `jwt-svid` の鍵に同じ `kid` を付け、どちらの鍵で
 // 署名したかだけが異なる二つの JWT-SVID を交換する。組み立ての地点が信頼設定の種別で
 // バンドルの読み方を選ばなければ、先に並ぶ `x509-svid` の鍵で検証してしまう。

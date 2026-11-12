@@ -14,7 +14,10 @@ import (
 // OAuth2's Go dependency on WorkloadIdentity stays limited to the published
 // domain type it returns.
 type WorkloadTokenVerifier interface {
-	VerifyWorkloadToken(ctx context.Context, tenantID, subjectToken string, now time.Time) (*workloaddomain.WorkloadIdentityGrant, error)
+	// VerifyWorkloadToken は Token Exchange の subject_token のアテステーションを検証し、
+	// clientID (トークンエンドポイントで認証したクライアント) が対応先の Agent に束縛されて
+	// いることを確かめる (REQ-WORKLOADIDENTITY-001)。結果の ClientID は clientID である。
+	VerifyWorkloadToken(ctx context.Context, tenantID, clientID, subjectToken string, now time.Time) (*workloaddomain.WorkloadIdentityGrant, error)
 	// VerifyClientAssertion は spiffe_jwt のクライアントアサーションの JWT-SVID を検証し、
 	// clientID が SPIFFE ID の関連付けの Agent に束縛されていることを確かめる
 	// (REQ-WORKLOADIDENTITY-017)。expectedAudience はテナントの発行者識別子である。

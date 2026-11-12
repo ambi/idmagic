@@ -30,7 +30,7 @@
 | `ambiguous_match` | 主体が複数の有効な関連付けに一致する |
 | `agent_not_active` | 対応先の `Agent` が存在しないか `Active` でない |
 | `agent_unbound` | 対応先の `Agent` が `OAuth2Client` に束縛されていない |
-| `client_not_bound` | クライアント認証で、要求のクライアントが対応先の `Agent` に束縛されていない |
+| `client_not_bound` | 要求のクライアントが対応先の `Agent` に束縛されていない |
 | `replayed` | クライアント認証で、同じ `jti` の JWT-SVID を再び受けた（`OAuth2` が発行する） |
 
 `spiffe` の信頼設定では、取得した JWKS に `use` が `x509-svid`、`jwt-svid`、`wit-svid` のいずれかの鍵があれば、その JWKS を SPIFFE バンドル（[SPIFFE Trust Domain and Bundle](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md)）として読む。
@@ -45,7 +45,7 @@
 #### REQ-WORKLOADIDENTITY-001 登録済みの信頼設定を使ってワークロードトークンを Agent 資格情報に交換できる
 
 - ワークロードが JWT のアテステーションを `subject_token` として Token Exchange を要求したとき、WorkloadIdentity は、`iss` の発行者か `sub` の SPIFFE ID のトラストドメインでテナントの信頼設定を探し（順序は[アーキテクチャ](#アーキテクチャ)）、登録した JWKS で署名を、受理する audience で `aud` を、`exp` と最大 TTL で有効期間を検証する。
-- 検証を通った主体がちょうど一つの `enabled` の関連付けのパターンに一致し、対応先の Agent が `Active` で `OAuth2Client` に束縛されている間、交換を要求されたとき、WorkloadIdentity は、その Agent の束縛先の `client_id` の資格情報として短い有効期間のアクセストークンを発行させ、信頼設定、関連付け、Agent、audience を載せた `WorkloadTokenExchanged` を発行する。
+- 検証を通った主体がちょうど一つの `enabled` の関連付けのパターンに一致し、対応先の Agent が `Active` で、トークンエンドポイントで認証した要求のクライアントがその Agent に束縛されている間、交換を要求されたとき、WorkloadIdentity は、要求のクライアントの資格情報として短い有効期間のアクセストークンを発行させ、信頼設定、関連付け、Agent、audience を載せた `WorkloadTokenExchanged` を発行する。
 - 関連付けのパターンを照合するとき、WorkloadIdentity は、パスのワイルドカード（`*` と `?`）を一つの階層の中だけで一致させる。
 - 交換のどの段で拒否する場合、WorkloadIdentity は、OAuth2 の 400 と `invalid_grant` で拒否し、拒否の理由と信頼設定を載せた `WorkloadAttestationRejected` を発行し、トークンを発行しない。
 - JWKS を取得できず、使える鍵もない場合、WorkloadIdentity は、理由 `jwks_unavailable` で拒否する。
@@ -54,7 +54,9 @@
 - 一致した信頼設定が `disabled` の場合、WorkloadIdentity は、理由 `trust_bundle_disabled` で拒否する。
 - 主体がどの `enabled` の関連付けのパターンにも一致しない場合、WorkloadIdentity は、理由 `no_binding_match` で拒否する。
 - 対応先の Agent が `OAuth2Client` に束縛されていない場合、WorkloadIdentity は、理由 `agent_unbound` で拒否する。
-- **例**：EX-WORKLOADIDENTITY-001-01
+- 要求のクライアントが対応先の Agent に束縛されていない場合、WorkloadIdentity は、理由 `client_not_bound` で拒否する。
+- **判断**：JWT-SVID は Bearer なので、提示しただけで Agent の資格情報を得られると、漏えいした JWT-SVID を Token Exchange を許可されたどのクライアントでも使える。束縛先のクライアントの認証を求めて、発行するトークンの `sub` と `client_id` を同じ主体にする。要求のクライアントを仲介者として `act` に記録する形は、需要を確かめてから検討する。
+- **例**：EX-WORKLOADIDENTITY-001-01、EX-WORKLOADIDENTITY-001-02
 
 #### REQ-WORKLOADIDENTITY-006 対応先 Agent が Killed になった後は交換を拒否する
 
@@ -149,7 +151,8 @@
 この段で読んだ値は、信頼設定と JWKS を選ぶことにだけ使い、署名の検証の後でなければ、主体の特定に使わない。
 `sub` で選んだ信頼設定でも、署名の検証の後に `sub` のトラストドメインの一致を確かめる。
 
-対応先の `Agent` が複数の `OAuth2Client` に束縛されている場合は、最初の束縛の `client_id` を交換の結果に使う。
+対応先の `Agent` が複数の `OAuth2Client` に束縛されている場合は、そのうち要求のクライアントを交換の結果に使う。
+要求のクライアントは、トークンエンドポイントの認証で登録から解決した `client_id` であり、束縛の `client_id` と完全一致で比べる。
 
 ### 信頼性
 

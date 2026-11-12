@@ -134,7 +134,7 @@ func TestWorkloadTrustBundleDisableEnableLifecycle(t *testing.T) {
 	exchange := func() error {
 		_, err := usecases.VerifyWorkloadAttestation(
 			context.Background(), f.deps, testTenant,
-			usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now,
+			usecases.VerifyWorkloadAttestationInput{ClientID: "agent_1-client", SubjectToken: token}, f.now,
 		)
 		return err
 	}

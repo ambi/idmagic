@@ -167,13 +167,14 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		}
 	case tokenTypeJWTURN:
 		// 外部 workload attestation (JWT-SVID 等) — WorkloadIdentity の
-		// VerifyWorkloadAttestation を経由し、束縛先 Agent の client へ写す。
+		// VerifyWorkloadAttestation を経由し、要求のクライアントが対応先 Agent に
+		// 束縛されていることを確かめて、そのクライアントへ写す。
 		// 専用の資格情報経路は新設せず、以降のロジックは introspection
 		// 結果と同じ形へ正規化して再利用する。
 		if deps.WorkloadVerifier == nil {
 			return reject("", NewOAuthError("invalid_request", "unsupported subject_token_type"))
 		}
-		grant, werr := deps.WorkloadVerifier.VerifyWorkloadToken(ctx, tenantID, in.SubjectToken, now)
+		grant, werr := deps.WorkloadVerifier.VerifyWorkloadToken(ctx, tenantID, in.ClientID, in.SubjectToken, now)
 		if werr != nil {
 			return reject("", NewOAuthError("invalid_grant", "The subject_token is invalid or expired."))
 		}

@@ -7,9 +7,18 @@
 - Given テナント "tenant-a" に発行者 "https://issuer.example" の WorkloadTrustBundle "prod-cluster" が `Enabled` で登録済みである
 - And "prod-cluster" 配下に、主体パターン "spiffe://example.org/ns/prod/sa/*" を Agent "checkout-bot" に対応付ける `Enabled` の AgentWorkloadBinding が存在する
 - And Agent "checkout-bot" は `Active` で、AgentCredentialBinding を介して OAuth2Client に関連付けられている
-- When `sub` が "spiffe://example.org/ns/prod/sa/worker-1" である有効な JWT-SVID を `subject_token` として Token Exchange を呼ぶ
-- Then VerifyWorkloadAttestation が Agent "checkout-bot" の関連付け先 `client_id` を `sub` とする WorkloadIdentityGrant を返す
-- Then WorkloadTokenExchanged が発行され、関連付け先 Agent の資格情報として有効期間の短い IdMagic アクセストークンが発行される
+- And クライアント "checkout-client" は Agent "checkout-bot" に束縛されている
+- When クライアント "checkout-client" として認証し、`sub` が "spiffe://example.org/ns/prod/sa/worker-1" である有効な JWT-SVID を `subject_token` として Token Exchange を呼ぶ
+- Then VerifyWorkloadAttestation が Agent "checkout-bot" と `client_id` "checkout-client" を持つ WorkloadIdentityGrant を返す
+- Then WorkloadTokenExchanged が発行され、`sub` と `client_id` が "checkout-client" の有効期間の短い IdMagic アクセストークンが発行される
+
+### Example: EX-WORKLOADIDENTITY-001-02 束縛先でないクライアントの交換を拒否する
+
+- Given EX-WORKLOADIDENTITY-001-01 と同じ信頼設定、関連付け、Agent "checkout-bot" がある
+- And クライアント "other-client" は Token Exchange を許可されているが、Agent "checkout-bot" に束縛されていない
+- When クライアント "other-client" として認証し、同じ JWT-SVID を `subject_token` として Token Exchange を呼ぶ
+- Then VerifyWorkloadAttestation が `reason=client_not_bound` の WorkloadAttestationRejectedError で拒否し、同じ理由と用途 `token_exchange` の WorkloadAttestationRejected を発行する
+- And トークンエンドポイントは 400 と `invalid_grant` を返し、アクセストークンを発行しない
 
 ## Rule: REQ-WORKLOADIDENTITY-002 未登録の発行者を拒否する
 

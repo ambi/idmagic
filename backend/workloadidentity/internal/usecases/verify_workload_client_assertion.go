@@ -25,10 +25,10 @@ type VerifyWorkloadClientAssertionInput struct {
 // (REQ-WORKLOADIDENTITY-017)。失敗経路は必ず用途 client_authentication の
 // WorkloadAttestationRejected を emit してから reason 付きのエラーを返す。
 //
-// Token Exchange の検証 (VerifyWorkloadAttestation) との違いは三つある。信頼設定は sub の
+// Token Exchange の検証 (VerifyWorkloadAttestation) との違いは二つある。信頼設定は sub の
 // トラストドメインの spiffe の信頼設定だけから選び、iss では選ばない。aud は信頼設定の受理する
-// audience ではなく発行者識別子だけを求める。結果の client_id は束縛の先頭ではなく要求の
-// クライアントであり、束縛されていなければ拒否する。
+// audience ではなく発行者識別子だけを求める。要求のクライアントが束縛されていることを求める
+// 点は同じである。
 func VerifyWorkloadClientAssertion(
 	ctx context.Context,
 	deps VerifyWorkloadAttestationDeps,

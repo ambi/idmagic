@@ -15,8 +15,12 @@ type WorkloadTokenVerifierAdapter struct {
 	Deps VerifyWorkloadAttestationDeps
 }
 
-func (a WorkloadTokenVerifierAdapter) VerifyWorkloadToken(ctx context.Context, tenantID, subjectToken string, now time.Time) (*domain.WorkloadIdentityGrant, error) {
-	return VerifyWorkloadAttestation(ctx, a.Deps, tenantID, VerifyWorkloadAttestationInput{SubjectToken: subjectToken}, now)
+func (a WorkloadTokenVerifierAdapter) VerifyWorkloadToken(
+	ctx context.Context, tenantID, clientID, subjectToken string, now time.Time,
+) (*domain.WorkloadIdentityGrant, error) {
+	return VerifyWorkloadAttestation(ctx, a.Deps, tenantID, VerifyWorkloadAttestationInput{
+		ClientID: clientID, SubjectToken: subjectToken,
+	}, now)
 }
 
 func (a WorkloadTokenVerifierAdapter) VerifyClientAssertion(

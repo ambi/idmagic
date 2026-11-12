@@ -93,10 +93,12 @@ type recordingWorkloadVerifier struct {
 	called bool
 }
 
-func (v *recordingWorkloadVerifier) VerifyWorkloadToken(_ context.Context, tenantID, subjectToken string, _ time.Time) (*workloaddomain.WorkloadIdentityGrant, error) {
+func (v *recordingWorkloadVerifier) VerifyWorkloadToken(_ context.Context, tenantID, clientID, subjectToken string, _ time.Time) (*workloaddomain.WorkloadIdentityGrant, error) {
 	v.called = true
-	if tenantID != tenancydomain.DefaultTenantID || subjectToken != "external-jwt-svid" {
-		return nil, fmt.Errorf("unexpected workload verification input: tenant=%q token=%q", tenantID, subjectToken)
+	// 束縛の照合は WorkloadIdentity が行うので、入口はトークンエンドポイントで認証した
+	// クライアントを渡さなければならない。
+	if tenantID != tenancydomain.DefaultTenantID || clientID != exchClientID || subjectToken != "external-jwt-svid" {
+		return nil, fmt.Errorf("unexpected workload verification input: tenant=%q client=%q token=%q", tenantID, clientID, subjectToken)
 	}
 	return &workloaddomain.WorkloadIdentityGrant{AgentID: "checkout-bot", ClientID: exchClientID, TrustBundleID: "prod-cluster", BindingID: "checkout-binding"}, nil
 }

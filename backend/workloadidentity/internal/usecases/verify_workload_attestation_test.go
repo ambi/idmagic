@@ -201,7 +201,7 @@ func TestVerifyWorkloadAttestation_Success(t *testing.T) {
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
 	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{
-		SubjectToken: token,
+		ClientID: "agent_1-client", SubjectToken: token,
 	}, f.now)
 	if err != nil {
 		t.Fatalf("VerifyWorkloadAttestation: %v", err)
@@ -211,6 +211,45 @@ func TestVerifyWorkloadAttestation_Success(t *testing.T) {
 	}
 	if len(f.rejects) != 0 {
 		t.Fatalf("unexpected rejects: %+v", f.rejects)
+	}
+}
+
+// JWT-SVID は Bearer なので、提示しただけで Agent の資格情報になれば、漏えいした JWT-SVID を
+// Token Exchange を許可されたどのクライアントでも使える。検証は要求のクライアントが対応先の
+// Agent に束縛されていることを求め、結果の client_id を要求のクライアントにする。
+//
+// Agent を二つのクライアントに束縛し、二つめで交換する。最初の束縛を選ぶ実装は client_id を
+// 取り違え、照合のない実装は束縛のないクライアントにも grant を返す。
+//
+//spec:covers REQ-WORKLOADIDENTITY-001, EX-WORKLOADIDENTITY-001-02: 束縛のない要求のクライアントを用途 token_exchange の client_not_bound で拒否し、束縛したクライアントには束縛の順序によらずそのクライアントの grant を返す。
+func TestVerifyWorkloadAttestation_RequiresTheRequestingClientToBeBound(t *testing.T) {
+	f := newFixture(t)
+	bundle := f.registerBundle(t, testTenant, nil)
+	f.registerAgent(t, "agent_1", true)
+	if _, err := f.deps.AgentRepo.AddBinding(context.Background(), &agentdomain.AgentCredentialBinding{
+		AgentID: "agent_1", ClientID: "agent_1-second-client", CreatedAt: f.now.Add(time.Second),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/*", "agent_1")
+	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
+
+	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{
+		ClientID: "agent_1-second-client", SubjectToken: token,
+	}, f.now)
+	if err != nil {
+		t.Fatalf("VerifyWorkloadAttestation: %v", err)
+	}
+	if grant.AgentID != "agent_1" || grant.ClientID != "agent_1-second-client" || grant.BindingID == "" {
+		t.Fatalf("grant = %+v, want agent_1 with the requesting client", grant)
+	}
+
+	grant, err = usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{
+		ClientID: "other-client", SubjectToken: token,
+	}, f.now)
+	assertRefusedWithoutGrant(t, f, grant, err, "client_not_bound")
+	if f.rejects[0].Usage != workloaddomain.AttestationUsageTokenExchange || f.rejects[0].TrustBundleID != bundle.ID {
+		t.Fatalf("reject = %+v, want usage token_exchange on %s", f.rejects[0], bundle.ID)
 	}
 }
 

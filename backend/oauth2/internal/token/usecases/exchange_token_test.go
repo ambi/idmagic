@@ -373,7 +373,7 @@ type fakeWorkloadVerifier struct {
 	err   error
 }
 
-func (f fakeWorkloadVerifier) VerifyWorkloadToken(context.Context, string, string, time.Time) (*workloaddomain.WorkloadIdentityGrant, error) {
+func (f fakeWorkloadVerifier) VerifyWorkloadToken(context.Context, string, string, string, time.Time) (*workloaddomain.WorkloadIdentityGrant, error) {
 	return f.grant, f.err
 }
 

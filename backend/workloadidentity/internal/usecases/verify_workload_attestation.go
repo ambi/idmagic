@@ -33,6 +33,9 @@ type VerifyWorkloadAttestationDeps struct {
 }
 
 type VerifyWorkloadAttestationInput struct {
+	// ClientID はトークンエンドポイントで認証した要求のクライアントである。OAuth2 が認証で
+	// 登録から解決した値を渡すので、束縛の client_id と完全一致で比べる。
+	ClientID string
 	// SubjectToken is the raw external attestation token (JWT-SVID etc.).
 	SubjectToken string
 }
@@ -96,10 +99,19 @@ func VerifyWorkloadAttestation(
 	if len(agentBindings) == 0 {
 		return reject("agent_unbound", bundle.ID)
 	}
+	// JWT-SVID は Bearer なので、提示しただけで Agent の資格情報にしない。要求のクライアントが
+	// 束縛先であることを求め、発行するトークンの sub と client_id を同じ主体にする。
+	bound := false
+	for _, b := range agentBindings {
+		bound = bound || b.ClientID == in.ClientID
+	}
+	if !bound {
+		return reject("client_not_bound", bundle.ID)
+	}
 
 	return &domain.WorkloadIdentityGrant{
 		AgentID:       agentID,
-		ClientID:      agentBindings[0].ClientID,
+		ClientID:      in.ClientID,
 		TrustBundleID: bundle.ID,
 		BindingID:     bindingID,
 	}, nil
