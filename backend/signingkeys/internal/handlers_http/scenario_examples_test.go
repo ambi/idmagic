@@ -8,6 +8,9 @@ package handlers_http_test
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -402,6 +405,58 @@ func TestAdminCanReadAndCancelPreparedXMLProfileKey(t *testing.T) {
 	}
 	if r := get(adminKeysPath + query); r.Code != 200 || strings.Contains(r.Body.String(), prepared.Next.Kid) {
 		t.Fatal("cancelled candidate is still listed")
+	}
+}
+
+//spec:covers REQ-SIGNINGKEYS-001: 管理者の一覧は、XML 鍵の証明書のフィンガープリントと、切り替えで退いた鍵の公開の期限を返すこと。
+func TestAdminKeyListShowsXmlFingerprintAndOverlapExpiry(t *testing.T) {
+	s := newExampleStack(t)
+	admin := signedInAdmin(t, s)
+	xmlKid := activeKid(t, s, realm, signingdomain.KeyUsageXMLFederationSigning)
+	prepared := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning","action":"prepare"}`))
+	decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning","action":"activate","trust_updated":true,"kid":"`+prepared.Next.Kid+`"}`))
+	old, err := s.KeyStore.FindByKID(signingports.WithKeyUsage(s.RealmContext(t, realm), signingdomain.KeyUsageXMLFederationSigning), xmlKid)
+	if err != nil || old == nil || old.ExpiresAt == nil {
+		t.Fatalf("old key: %v %+v", err, old)
+	}
+
+	type listed struct {
+		Kid         string     `json:"kid"`
+		Active      bool       `json:"active"`
+		Certificate string     `json:"signing_certificate"`
+		Fingerprint string     `json:"certificate_fingerprint_sha256"`
+		ExpiresAt   *time.Time `json:"expires_at"`
+	}
+	list := func(query string) []listed {
+		r := newRequest(t, http.MethodGet, adminKeysPath+query, "")
+		r.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: admin.sessionID})
+		out := httptest.NewRecorder()
+		s.Echo.ServeHTTP(out, r)
+		var body struct{ Keys []listed }
+		if out.Code != 200 || json.Unmarshal(out.Body.Bytes(), &body) != nil {
+			t.Fatalf("list %s: %d %s", query, out.Code, out.Body.String())
+		}
+		return body.Keys
+	}
+	seen := map[string]listed{}
+	for _, key := range list("?usage=XmlFederationSigning") {
+		der, err := base64.StdEncoding.DecodeString(key.Certificate)
+		sum := sha256.Sum256(der)
+		if err != nil || len(der) == 0 || key.Fingerprint != hex.EncodeToString(sum[:]) {
+			t.Fatalf("key %s fingerprint %q does not digest its certificate", key.Kid, key.Fingerprint)
+		}
+		seen[key.Kid] = key
+	}
+	if current := seen[prepared.Next.Kid]; !current.Active || current.ExpiresAt != nil {
+		t.Fatalf("active key = %+v, want no expiry", current)
+	}
+	if previous := seen[xmlKid]; previous.Active || previous.ExpiresAt == nil || !previous.ExpiresAt.Equal(*old.ExpiresAt) {
+		t.Fatalf("previous key = %+v, want expiry %v", previous, old.ExpiresAt)
+	}
+	for _, key := range list("") {
+		if key.Fingerprint != "" {
+			t.Fatalf("JWT key %s has a certificate fingerprint", key.Kid)
+		}
 	}
 }
 

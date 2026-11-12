@@ -139,6 +139,7 @@ Graph の権限の不足、手順の未実行、取得の失敗は観測文書�
 - 画面での解除が `entra_federation_still_active` で拒否されたとき、WsFederation は、ドメインの詳細に留まり、Entra がまだ IdMagic へ利用者を送っていることと、Managed への変換の反映に最大 60 分かかることを表示する。
 - 画面での解除が `entra_rollback_unconfirmed` で拒否されたとき、WsFederation は、ドメインの詳細に留まり、Microsoft に確かめられなかったことと、読み戻しを取り込めばその結果で解除できることを表示する。
 - 管理者が Entra のドメインを一覧で表示したとき、WsFederation は、Entra の RP 全体を削除する操作を置かない。
+- 管理者が Entra のドメインの一覧か詳細を表示したとき、WsFederation は、共有 XML 鍵の画面への入口を置く。
 - **判断**：UPN がフェデレーションしない取り込み元の User を拒否の理由にしないのは、フェデレーションしないドメインの User が AD に正当に存在するからである。取り込み元の User に限るのは、管理者が手で作った User より、取り込みの対応付けの誤り（`userPrincipalName` の UPN サフィックスや `ldap.attributes` の上書き）で UPN を欠く方が起きやすく、サインインの時点まで気付かないからである。
 - 指定したドメインを構成していない間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、201 を返す。
 - 指定したドメインを構成している間、管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、200 を返す。

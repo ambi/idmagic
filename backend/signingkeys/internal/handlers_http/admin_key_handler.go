@@ -8,7 +8,9 @@ package handlers_http
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,6 +34,8 @@ type AdminKeyResponse struct {
 	ScopeID            string         `json:"scope_id"`
 	Prepared           bool           `json:"prepared"`
 	SigningCertificate string         `json:"signing_certificate,omitempty"`
+	Fingerprint        string         `json:"certificate_fingerprint_sha256,omitempty"`
+	ExpiresAt          *time.Time     `json:"expires_at,omitempty"`
 	Kid                string         `json:"kid"`
 	Alg                string         `json:"alg"`
 	Active             bool           `json:"active"`
@@ -318,10 +322,23 @@ func selectKeyQuery(c *echo.Context) error {
 	return nil
 }
 
+// toAdminKeyResponse は公開のメタデータだけを写す。フィンガープリントは、管理者が信頼先へ登録した
+// 証明書と照合できるように、証明書の DER の SHA-256 とする。
 func toAdminKeyResponse(k *signingdomain.SigningKey) AdminKeyResponse {
+	fingerprint := ""
+	if len(k.CertificateDER) > 0 {
+		sum := sha256.Sum256(k.CertificateDER)
+		fingerprint = hex.EncodeToString(sum[:])
+	}
+	var expiresAt *time.Time
+	if !k.Active && !k.Prepared {
+		expiresAt = k.ExpiresAt
+	}
 	return AdminKeyResponse{
 		Usage: string(k.Usage), ScopeID: k.ScopeID, Prepared: k.Prepared,
 		SigningCertificate: base64.StdEncoding.EncodeToString(k.CertificateDER),
+		Fingerprint:        fingerprint,
+		ExpiresAt:          expiresAt,
 		Kid:                k.Kid,
 		Alg:                string(k.Alg),
 		Active:             k.Active,

@@ -88,6 +88,7 @@ import { Route as AdminGroupsImportRouteImport } from './routes/admin/groups_/im
 import { Route as AdminGroupsNewRouteImport } from './routes/admin/groups_/new'
 import { Route as AdminIdentityProvidersIdRouteImport } from './routes/admin/identity-providers_/$id'
 import { Route as AdminIdentityProvidersNewRouteImport } from './routes/admin/identity-providers_/new'
+import { Route as AdminKeysXmlFederationRouteImport } from './routes/admin/keys_/xml-federation'
 import { Route as AdminLifecycleWorkflowsNewRouteImport } from './routes/admin/lifecycle-workflows_/new'
 import { Route as AdminMcpResourceServersNewRouteImport } from './routes/admin/mcp-resource-servers_/new'
 import { Route as AdminRolesNameRouteImport } from './routes/admin/roles_/$name'
@@ -547,6 +548,11 @@ const AdminIdentityProvidersNewRoute =
     path: '/identity-providers/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminKeysXmlFederationRoute = AdminKeysXmlFederationRouteImport.update({
+  id: '/keys_/xml-federation',
+  path: '/keys/xml-federation',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminLifecycleWorkflowsNewRoute =
   AdminLifecycleWorkflowsNewRouteImport.update({
     id: '/lifecycle-workflows_/new',
@@ -919,6 +925,7 @@ export interface FileRoutesByFullPath {
   '/admin/groups/new': typeof AdminGroupsNewRoute
   '/admin/identity-providers/$id': typeof AdminIdentityProvidersIdRouteWithChildren
   '/admin/identity-providers/new': typeof AdminIdentityProvidersNewRoute
+  '/admin/keys/xml-federation': typeof AdminKeysXmlFederationRoute
   '/admin/lifecycle-workflows/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/mcp-resource-servers/new': typeof AdminMcpResourceServersNewRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
@@ -1044,6 +1051,7 @@ export interface FileRoutesByTo {
   '/admin/groups/import': typeof AdminGroupsImportRoute
   '/admin/groups/new': typeof AdminGroupsNewRoute
   '/admin/identity-providers/new': typeof AdminIdentityProvidersNewRoute
+  '/admin/keys/xml-federation': typeof AdminKeysXmlFederationRoute
   '/admin/lifecycle-workflows/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/mcp-resource-servers/new': typeof AdminMcpResourceServersNewRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
@@ -1173,6 +1181,7 @@ export interface FileRoutesById {
   '/admin/groups_/new': typeof AdminGroupsNewRoute
   '/admin/identity-providers_/$id': typeof AdminIdentityProvidersIdRouteWithChildren
   '/admin/identity-providers_/new': typeof AdminIdentityProvidersNewRoute
+  '/admin/keys_/xml-federation': typeof AdminKeysXmlFederationRoute
   '/admin/lifecycle-workflows_/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/mcp-resource-servers_/new': typeof AdminMcpResourceServersNewRoute
   '/admin/roles_/$name': typeof AdminRolesNameRoute
@@ -1307,6 +1316,7 @@ export interface FileRouteTypes {
     | '/admin/groups/new'
     | '/admin/identity-providers/$id'
     | '/admin/identity-providers/new'
+    | '/admin/keys/xml-federation'
     | '/admin/lifecycle-workflows/new'
     | '/admin/mcp-resource-servers/new'
     | '/admin/roles/$name'
@@ -1432,6 +1442,7 @@ export interface FileRouteTypes {
     | '/admin/groups/import'
     | '/admin/groups/new'
     | '/admin/identity-providers/new'
+    | '/admin/keys/xml-federation'
     | '/admin/lifecycle-workflows/new'
     | '/admin/mcp-resource-servers/new'
     | '/admin/roles/$name'
@@ -1560,6 +1571,7 @@ export interface FileRouteTypes {
     | '/admin/groups_/new'
     | '/admin/identity-providers_/$id'
     | '/admin/identity-providers_/new'
+    | '/admin/keys_/xml-federation'
     | '/admin/lifecycle-workflows_/new'
     | '/admin/mcp-resource-servers_/new'
     | '/admin/roles_/$name'
@@ -2185,6 +2197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIdentityProvidersNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/keys_/xml-federation': {
+      id: '/admin/keys_/xml-federation'
+      path: '/keys/xml-federation'
+      fullPath: '/admin/keys/xml-federation'
+      preLoaderRoute: typeof AdminKeysXmlFederationRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/lifecycle-workflows_/new': {
       id: '/admin/lifecycle-workflows_/new'
       path: '/lifecycle-workflows/new'
@@ -2760,6 +2779,7 @@ interface AdminRouteRouteChildren {
   AdminGroupsNewRoute: typeof AdminGroupsNewRoute
   AdminIdentityProvidersIdRoute: typeof AdminIdentityProvidersIdRouteWithChildren
   AdminIdentityProvidersNewRoute: typeof AdminIdentityProvidersNewRoute
+  AdminKeysXmlFederationRoute: typeof AdminKeysXmlFederationRoute
   AdminLifecycleWorkflowsNewRoute: typeof AdminLifecycleWorkflowsNewRoute
   AdminMcpResourceServersNewRoute: typeof AdminMcpResourceServersNewRoute
   AdminRolesNameRoute: typeof AdminRolesNameRoute
@@ -2838,6 +2858,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminGroupsNewRoute: AdminGroupsNewRoute,
   AdminIdentityProvidersIdRoute: AdminIdentityProvidersIdRouteWithChildren,
   AdminIdentityProvidersNewRoute: AdminIdentityProvidersNewRoute,
+  AdminKeysXmlFederationRoute: AdminKeysXmlFederationRoute,
   AdminLifecycleWorkflowsNewRoute: AdminLifecycleWorkflowsNewRoute,
   AdminMcpResourceServersNewRoute: AdminMcpResourceServersNewRoute,
   AdminRolesNameRoute: AdminRolesNameRoute,

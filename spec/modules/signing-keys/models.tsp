@@ -86,6 +86,10 @@ model AdminKeyResponse {
   prepared: boolean;
   @doc("XML 署名証明書の公開部分の base64。JWT 用の鍵では省略する。")
   signing_certificate?: string;
+  @doc("XML 署名証明書の DER の SHA-256 の 16 進の小文字。管理者が信頼先に登録した証明書と照合する。JWT 用の鍵では省略する。")
+  certificate_fingerprint_sha256?: string;
+  @doc("ローテーションで Verifying へ退いた鍵を公開から外す時刻。Active と Prepared の鍵では省略する。")
+  expires_at?: utcDateTime;
   @doc("JWK の鍵 ID。JWKS が公開するものと同じである。")
   kid: string;
   @doc("署名アルゴリズム。現在は PS256 だけである。")

@@ -1,6 +1,7 @@
 import {
   IconArrowLeft,
   IconDownload,
+  IconKey,
   IconPlus,
   IconServerBolt,
   IconWorldShare,
@@ -51,6 +52,7 @@ import {
   returnToEntraDomain,
   takeEntraListNotice,
 } from './entraNavigation'
+import { xmlFederationKeyURL } from '../admin-keys/xmlFederationNavigation'
 
 // Entra domain federation は検証済みドメイン単位の操作。個別アプリの設定ではなく、テナント配下の
 // ドメインをまとめて外部 IdP へ向ける設定なので、Application 編集とは別のテナント設定画面で扱う。
@@ -118,10 +120,20 @@ export function AdminEntraFederationPage({
         },
       }}
       actions={
-        <Button nativeButton={false} render={<a href={tenantURL(ENTRA_ADD_PATH)} />}>
-          <IconPlus size={16} aria-hidden="true" />
-          {t.addDomainFederation}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<a href={xmlFederationKeyURL()} />}
+          >
+            <IconKey size={16} aria-hidden="true" />
+            {t.rolloverSigningKey}
+          </Button>
+          <Button nativeButton={false} render={<a href={tenantURL(ENTRA_ADD_PATH)} />}>
+            <IconPlus size={16} aria-hidden="true" />
+            {t.addDomainFederation}
+          </Button>
+        </div>
       }
     >
       <Toast message={notice} onDismiss={() => setNotice('')} />

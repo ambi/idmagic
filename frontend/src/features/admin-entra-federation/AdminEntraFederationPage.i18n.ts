@@ -9,6 +9,7 @@ export const adminEntraFederationDictionary = defineDictionary(
     pageDescription:
       '検証済みドメインを Microsoft Entra から本 IdP へフェデレーションします。UPN / ImmutableID / persistent NameID の claim preset を持つ Entra の relying party を一つ作り、ドメインごとに IssuerUri を持ちます。',
     addDomainFederation: 'ドメインフェデレーションを追加',
+    rolloverSigningKey: '署名鍵を更新',
     noFederationsNotice:
       'まだ構成したドメインがありません。「ドメインフェデレーションを追加」から作成してください。',
     sourceAnchorPrefix: 'sourceAnchor: ',
@@ -178,6 +179,7 @@ export const adminEntraFederationDictionary = defineDictionary(
     pageDescription:
       'Federate verified domains from Microsoft Entra to this IdP. Creates one Entra relying party with a UPN / ImmutableID / persistent NameID claim preset that holds an IssuerUri per domain.',
     addDomainFederation: 'Add domain federation',
+    rolloverSigningKey: 'Update the signing key',
     noFederationsNotice: 'No domains are configured yet. Create one from "Add domain federation."',
     sourceAnchorPrefix: 'sourceAnchor: ',
     issuerUriPrefix: 'IssuerUri: ',

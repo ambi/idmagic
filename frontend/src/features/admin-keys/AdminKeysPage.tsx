@@ -1,4 +1,4 @@
-import { IconKey, IconRotateClockwise, IconTrash } from '@tabler/icons-react'
+import { IconCertificate, IconKey, IconRotateClockwise, IconTrash } from '@tabler/icons-react'
 import { useState } from 'react'
 import {
   AuthenticationAPIError,
@@ -14,6 +14,7 @@ import { Card } from '../../components/ui/card'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminKey } from '../../types'
 import { adminKeysDictionary } from './AdminKeysPage.i18n'
+import { xmlFederationKeyURL } from './xmlFederationNavigation'
 
 export function AdminKeysPage({
   csrfToken,
@@ -100,12 +101,22 @@ export function AdminKeysPage({
         onRefresh: () => refresh(selected?.kid),
       }}
       actions={
-        canManage ? (
-          <Button onClick={() => setConfirm(true)} disabled={busy}>
-            <IconRotateClockwise size={16} aria-hidden="true" />
-            {t.rotate}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<a href={xmlFederationKeyURL()} />}
+          >
+            <IconCertificate size={16} aria-hidden="true" />
+            {t.xmlFederationKey}
           </Button>
-        ) : null
+          {canManage ? (
+            <Button onClick={() => setConfirm(true)} disabled={busy}>
+              <IconRotateClockwise size={16} aria-hidden="true" />
+              {t.rotate}
+            </Button>
+          ) : null}
+        </div>
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}

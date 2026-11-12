@@ -1,4 +1,4 @@
-import { IconArrowLeft, IconCopy, IconPencil, IconUnlink } from '@tabler/icons-react'
+import { IconArrowLeft, IconCopy, IconKey, IconPencil, IconUnlink } from '@tabler/icons-react'
 import { type ChangeEvent, type FormEvent, type ReactNode, useState } from 'react'
 import {
   AuthenticationAPIError,
@@ -27,6 +27,7 @@ import {
 } from './AdminEntraFederationPage.i18n'
 import { EntraVerificationStatusBadge } from './EntraVerificationStatusBadge'
 import { EntraImmutableIdGuide } from './EntraImmutableIdGuide'
+import { xmlFederationKeyURL } from '../admin-keys/xmlFederationNavigation'
 import {
   ENTRA_LIST_PATH,
   entraDomainEditURL,
@@ -124,6 +125,14 @@ export function AdminEntraFederationDomainPage({
           >
             <IconArrowLeft size={16} aria-hidden="true" />
             {t.federationList}
+          </Button>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<a href={xmlFederationKeyURL()} />}
+          >
+            <IconKey size={16} aria-hidden="true" />
+            {t.rolloverSigningKey}
           </Button>
           <Button nativeButton={false} render={<a href={entraDomainEditURL(domain)} />}>
             <IconPencil size={16} aria-hidden="true" />

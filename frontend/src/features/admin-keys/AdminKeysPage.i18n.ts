@@ -11,6 +11,7 @@ export const adminKeysDictionary = defineDictionary(
     reloadAriaLabel: '一覧を再読み込み',
     listRefreshedNotice: '一覧を更新しました。',
     rotate: 'ローテート',
+    xmlFederationKey: '共有 XML 署名鍵の更新',
     rotateConfirmTitle: '署名鍵をローテートします',
     rotateConfirmMessage:
       '新しい active 鍵が生成され、旧 active 鍵は JWKS に verifying として残ります。 JWKS キャッシュが更新されるまで一時的な検証遅延が起きる可能性があります。',
@@ -46,6 +47,7 @@ export const adminKeysDictionary = defineDictionary(
     reloadAriaLabel: 'Reload the list',
     listRefreshedNotice: 'The list has been refreshed.',
     rotate: 'Rotate',
+    xmlFederationKey: 'Update the shared XML signing key',
     rotateConfirmTitle: 'Rotate the signing key',
     rotateConfirmMessage:
       'A new active key will be generated, and the previous active key will remain in the JWKS as verifying. A brief verification delay may occur until the JWKS cache updates.',

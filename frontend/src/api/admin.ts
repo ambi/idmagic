@@ -10,6 +10,7 @@ import type {
   AdminApplication,
   AdminApplicationDetail,
   AdminAuditEvent,
+  SamlServiceProviderSummary,
   ApplicationCategory,
   AdminAgentDelegation,
   AdminConsent,
@@ -1098,6 +1099,57 @@ export async function disableTenantKey(csrfToken: string, kid: string): Promise<
   return request<AdminKey>(
     `/api/admin/v1/keys/${encodeURIComponent(kid)}/disable`,
     adminRequest(csrfToken, 'POST'),
+  )
+}
+
+// 共有 XML 鍵は、WS-* とデフォルトの SAML IdP プロファイルが使う XmlFederationSigning の default スコープである。
+const XML_FEDERATION_KEY_QUERY = '?usage=XmlFederationSigning&scope_id=default'
+
+export async function listXmlFederationKeys(): Promise<AdminKey[]> {
+  return (await request<AdminKeyListResponse>(`/api/admin/v1/keys${XML_FEDERATION_KEY_QUERY}`)).keys
+}
+
+// prepareXmlFederationKey は次の鍵を公開するだけで、署名に使う鍵を変えない。準備済みがあれば同じ鍵を返す。
+export async function prepareXmlFederationKey(csrfToken: string): Promise<AdminRotateKeyResponse> {
+  return request<AdminRotateKeyResponse>(
+    '/api/admin/v1/keys/rotate',
+    adminRequest(csrfToken, 'POST', { usage: 'XmlFederationSigning', action: 'prepare' }),
+  )
+}
+
+// activateXmlFederationKey は、管理者が全信頼先の更新を確認した準備済みの kid だけを有効にする。
+export async function activateXmlFederationKey(
+  csrfToken: string,
+  kid: string,
+): Promise<AdminRotateKeyResponse> {
+  return request<AdminRotateKeyResponse>(
+    '/api/admin/v1/keys/rotate',
+    adminRequest(csrfToken, 'POST', {
+      usage: 'XmlFederationSigning',
+      action: 'activate',
+      kid,
+      trust_updated: true,
+    }),
+  )
+}
+
+export async function cancelPreparedXmlFederationKey(
+  csrfToken: string,
+  kid: string,
+): Promise<AdminKey> {
+  return request<AdminKey>(
+    `/api/admin/v1/keys/${encodeURIComponent(kid)}/disable${XML_FEDERATION_KEY_QUERY}`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function listSamlServiceProviders(): Promise<SamlServiceProviderSummary[]> {
+  return (
+    (
+      await request<{ service_providers: SamlServiceProviderSummary[] | null }>(
+        '/api/admin/v1/saml/service-providers',
+      )
+    ).service_providers ?? []
   )
 }
 

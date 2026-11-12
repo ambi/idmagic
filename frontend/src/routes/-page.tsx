@@ -90,6 +90,7 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-directory-connector-detail': `Directory Connector 詳細 | ${ADMIN}`,
   'admin-directory-delegated-authentication': `委譲認証 | ${ADMIN}`,
   'admin-keys': `署名鍵 | ${ADMIN}`,
+  'admin-xml-federation-key': `共有 XML 署名鍵の更新 | ${ADMIN}`,
   'admin-settings': `設定 | ${ADMIN}`,
   'admin-saml-idp-profiles': `SAML IdPプロファイル | ${ADMIN}`,
   'admin-saml-idp-profile-detail': `SAML IdPプロファイル詳細 | ${ADMIN}`,

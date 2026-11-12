@@ -801,6 +801,22 @@ export type AdminKey = {
   active: boolean
   created_at: string
   public_jwk: Record<string, unknown>
+  usage?: string
+  scope_id?: string
+  prepared?: boolean
+  // XML 署名証明書の公開部分の base64。JWT 用の鍵では省く。
+  signing_certificate?: string
+  certificate_fingerprint_sha256?: string
+  // Verifying の鍵を公開から外す時刻。
+  expires_at?: string
+}
+
+// SamlServiceProviderSummary は、署名鍵の影響範囲の表示に使う SP の識別だけを持つ。
+export type SamlServiceProviderSummary = {
+  entity_id: string
+  idp_profile_id: string
+  display_name?: string
+  application_id?: string
 }
 
 export type TenantKeyHealth = {
