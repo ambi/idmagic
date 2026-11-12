@@ -224,9 +224,6 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	if err := validateGroupAttributesInput(ctx, deps, tenantID, in.Attributes); err != nil {
 		return nil, err
 	}
-	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceGroups, idmusecases.NormalizedNow(in.Now)); err != nil {
-		return nil, err
-	}
 	id, err := groupdomain.NewGroupID()
 	if err != nil {
 		return nil, err
@@ -240,9 +237,15 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	if err := group.Validate(); err != nil {
 		return nil, err
 	}
+	reservation, err := idmusecases.ReserveQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceGroups, now)
+	if err != nil {
+		return nil, err
+	}
+	defer reservation.Release(ctx)
 	if err := deps.GroupRepo.Save(ctx, group); err != nil {
 		return nil, err
 	}
+	reservation.Keep()
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupCreated{At: now, TenantID: group.TenantID, ActorUserID: in.ActorUserID, GroupID: group.ID}); err != nil {
 		return nil, err
 	}

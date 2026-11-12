@@ -37,16 +37,6 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	if deps.QuotaRepo != nil {
-		tenantID := tenantports.TenantID(ctx)
-		err := deps.QuotaRepo.CheckAndIncrement(ctx, tenantID, tenancydomain.ResourceOAuth2Clients, 1)
-		if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
-			emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
 	if in.ClientType == "" {
 		in.ClientType = spec.ClientConfidential
 	}
@@ -145,9 +135,20 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	if err := c.Validate(); err != nil {
 		return nil, NewOAuthError("invalid_client_metadata", err.Error())
 	}
+	// 上限はメタデータの検証を通った登録にだけ使う。動的登録の不正なメタデータを繰り返しても
+	// 使用量が残らないようにし、保存に失敗した登録の分も戻す（REQ-TENANCY-050）。
+	reservation, err := tenantports.ReserveQuota(ctx, deps.QuotaRepo, c.TenantID, tenancydomain.ResourceOAuth2Clients, 1)
+	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
+		emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: c.TenantID, Resource: qErr.Resource, HardLimit: true})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer reservation.Release(ctx)
 	if err := deps.ClientRepo.Save(ctx, c); err != nil {
 		return nil, err
 	}
+	reservation.Keep()
 	if secretHash != nil {
 		credentialID, err := spec.NewUUIDv4()
 		if err != nil {

@@ -48,9 +48,6 @@ func createUser(ctx context.Context, deps AdminUserDeps, in newUser, now time.Ti
 			}
 		}
 	}
-	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, user.TenantID, tenancydomain.ResourceUsers, now); err != nil {
-		return nil, err
-	}
 	id, err := spec.NewUUIDv4()
 	if err != nil {
 		return nil, err
@@ -65,9 +62,15 @@ func createUser(ctx context.Context, deps AdminUserDeps, in newUser, now time.Ti
 	if err := user.Validate(); err != nil {
 		return nil, err
 	}
+	reservation, err := idmusecases.ReserveQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, user.TenantID, tenancydomain.ResourceUsers, now)
+	if err != nil {
+		return nil, err
+	}
+	defer reservation.Release(ctx)
 	if err := captureUserMutation(ctx, deps, nil, &user, nil, now); err != nil {
 		return nil, err
 	}
+	reservation.Keep()
 	if err := syncDynamicGroups(ctx, deps, &user, now); err != nil {
 		return nil, err
 	}

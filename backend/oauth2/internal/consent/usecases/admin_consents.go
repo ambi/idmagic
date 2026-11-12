@@ -21,10 +21,9 @@ var ErrConsentNotFound = consentports.ErrConsentNotFound
 type ConsentDeps struct {
 	ConsentRepo consentports.ConsentRepository
 	Emit        func(spec.DomainEvent)
-	// QuotaRepo frees the tenant's consents Hard Quota slot on revoke
-	// (wi-160). The increment side lives in the /consent HTTP
-	// handler (authorize_consent.go), which is where new consents are
-	// created; nil skips enforcement.
+	// QuotaRepo enforces the tenant's consents Hard Quota (wi-160): GrantConsent
+	// and GrantAgentDelegation reserve a slot, and revocation frees it; nil skips
+	// enforcement.
 	QuotaRepo tenantports.QuotaRepository
 }
 

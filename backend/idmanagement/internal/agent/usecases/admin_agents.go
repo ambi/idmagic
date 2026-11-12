@@ -152,9 +152,6 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 		return nil, err
 	}
 	now := idmusecases.NormalizedNow(in.Now)
-	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceAgents, now); err != nil {
-		return nil, err
-	}
 	id, err := agentdomain.NewAgentID()
 	if err != nil {
 		return nil, err
@@ -167,9 +164,15 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	if err := agent.Validate(); err != nil {
 		return nil, err
 	}
+	reservation, err := idmusecases.ReserveQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceAgents, now)
+	if err != nil {
+		return nil, err
+	}
+	defer reservation.Release(ctx)
 	if err := deps.AgentRepo.Save(ctx, agent); err != nil {
 		return nil, err
 	}
+	reservation.Keep()
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.AgentRegistered{At: now, TenantID: agent.TenantID, ActorUserID: in.ActorUserID, AgentID: agent.ID}); err != nil {
 		return nil, err
 	}

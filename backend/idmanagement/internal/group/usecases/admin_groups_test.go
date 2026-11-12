@@ -14,6 +14,8 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/internal/group/db_memory"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/internal/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
@@ -395,5 +397,55 @@ func TestCreateGroupKeepsTheReservedRoleInsideTheControlPlane(t *testing.T) {
 	}
 	if got := eventTypes(*events); !slices.Equal(got, []string{"GroupCreated", "GroupMemberAdded"}) {
 		t.Fatalf("events=%v", got)
+	}
+}
+
+// failFirstGroupSave は一度目の保存だけを失敗させる。名前の確認の後に別の作成が同じ名前を
+// 保存した競合のように、上限の確認を通った後の保存の失敗を再現する。
+type failFirstGroupSave struct {
+	groupports.GroupRepository
+	failed bool
+}
+
+var errGroupSaveConflict = errors.New("group name already taken")
+
+func (r *failFirstGroupSave) Save(ctx context.Context, group *groupdomain.Group) error {
+	if !r.failed {
+		r.failed = true
+		return errGroupSaveConflict
+	}
+	return r.GroupRepository.Save(ctx, group)
+}
+
+//spec:covers REQ-TENANCY-050: 保存に失敗した Group の作成は groups の使用量を残さず、同じ上限で次の作成が成功する。
+func TestCreateGroupReleasesQuotaWhenSaveFails(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	deps := newGroupDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
+	deps.GroupRepo = &failFirstGroupSave{GroupRepository: deps.GroupRepo}
+	now := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC)
+
+	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "engineering", Now: now,
+	}); !errors.Is(err, errGroupSaveConflict) {
+		t.Fatalf("CreateGroup with a failing save = %v, want %v", err, errGroupSaveConflict)
+	}
+	usage, err := deps.QuotaRepo.GetUsage(ctx, tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage.Groups != 0 {
+		t.Fatalf("groups usage after a failed save = %d, want 0", usage.Groups)
+	}
+	if _, err := groupusecases.CreateGroup(ctx, deps, groupusecases.CreateGroupInput{
+		ActorUserID: "operator", Name: "engineering", Now: now,
+	}); err != nil {
+		t.Fatalf("CreateGroup within the limit after the failed save: %v", err)
+	}
+	usage, err = deps.QuotaRepo.GetUsage(ctx, tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage.Groups != 1 {
+		t.Fatalf("groups usage after a successful create = %d, want 1", usage.Groups)
 	}
 }

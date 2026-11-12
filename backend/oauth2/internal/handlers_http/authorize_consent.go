@@ -1,31 +1,19 @@
 package handlers_http
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 	"time"
 
-	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	consentusecases "github.com/ambi/idmagic/backend/oauth2/internal/consent/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
 )
 
 type consentAPIRequest struct {
 	Action string `json:"action"`
-}
-
-// shouldConsumeConsentQuota reports whether granting a consent for (sub,
-// clientID) should consume a tenant's consents Hard Quota slot. ConsentRepo.
-// Save is an upsert keyed by (tenant, sub, client): only a brand-new or
-// previously-Revoked consent should consume a slot, so re-consenting to an
-// already-Granted record (e.g. a scope change) doesn't double-count
-// (wi-160).
-func shouldConsumeConsentQuota(existing *oauthdomain.Consent) bool {
-	return existing == nil || existing.State == oauthdomain.ConsentRevoked
 }
 
 func (d Deps) handleConsentAPI(c *echo.Context) error {
@@ -52,40 +40,12 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{RedirectTo: authorizationErrorURL(req, support.RequestIssuer(c, d.Issuer), "access_denied", "")})
 	}
 
-	scopes := strings.Fields(req.Scope)
 	if d.ConsentRepo != nil {
-		now := time.Now().UTC()
-		tenantID := support.RequestTenantID(c)
-		if d.QuotaRepo != nil {
-			existing, err := d.ConsentRepo.Find(ctx, tenantID, authn.UserID, req.ClientID)
-			if err != nil {
-				return err
-			}
-			if shouldConsumeConsentQuota(existing) {
-				if err := d.QuotaRepo.CheckAndIncrement(ctx, tenantID, tenancydomain.ResourceConsents, 1); err != nil {
-					if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok && d.Emit != nil {
-						d.Emit(&tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
-					}
-					return err
-				}
-			}
-		}
-		if err := d.ConsentRepo.Save(ctx, tenantID, &oauthdomain.Consent{
+		if _, err := consentusecases.GrantConsent(ctx, d.ConsentDeps(), support.RequestTenantID(c), consentusecases.ConsentGrant{
 			UserID: authn.UserID, ClientID: req.ClientID,
-			Scopes: scopes, State: oauthdomain.ConsentGranted,
-			GrantedAt: now, ExpiresAt: now.Add(365 * 24 * time.Hour),
-			AuthorizationDetails: req.AuthorizationDetails,
-		}); err != nil {
+			Scopes: strings.Fields(req.Scope), AuthorizationDetails: req.AuthorizationDetails,
+		}, time.Now().UTC()); err != nil {
 			return err
-		}
-		if d.Emit != nil {
-			d.Emit(&oauthdomain.ConsentGrantedEvent{At: now, TenantID: tenantID, UserID: authn.UserID, ClientID: req.ClientID, Scopes: scopes})
-			if len(req.AuthorizationDetails) > 0 {
-				d.Emit(&oauthdomain.AuthorizationDetailsConsented{
-					At: now, TenantID: tenantID, UserID: authn.UserID, ClientID: req.ClientID,
-					DetailTypes: oauthdomain.DetailTypes(req.AuthorizationDetails),
-				})
-			}
 		}
 	}
 	redirectTo, err := d.issueCodeURL(ctx, c, req, authn, time.Unix(authn.AuthTime, 0))

@@ -85,6 +85,12 @@
 - **判断**：データエクスポートの開始が `active_jobs` を超える場合の応答は、[データエクスポート](../../identity-management/features/data-export.md)が 429 と `active_job_quota_exceeded` として定める。
 - **例**：EX-TENANCY-013-01
 
+#### REQ-TENANCY-050 作成に失敗したリソースは Hard Quota の使用量を占めない
+
+- `users`、`groups`、`agents`、`applications`、`oauth2_clients`、`consents`、`ssf_streams` の作成が、上限の確認を通った後に検証、一意性の衝突または保存の失敗で失敗した場合、Tenancy は、その作成のために足した加算分を使用量から戻す。
+- 作成したリソースを保存した後に後続の処理が失敗した場合、Tenancy は、加算分を使用量に残す。
+- **判断**：作れなかったリソースが使用量を占めると、外部から繰り返し送れる不正な要求（動的クライアント登録の不正なメタデータなど）だけで上限が埋まり、正当な作成まで拒否される。加算は上限の判定の近道として保存と同じトランザクションにせず、失敗した経路で戻す。戻す前にプロセスが止まったときのずれは、`users` だけを [REQ-TENANCY-049](#req-tenancy-049-user-の使用量の再集計は使用量を占める-user-の件数で使用量を置き換える) の再集計が回収する。
+
 ### Soft Quota の使用量の計数
 
 #### REQ-TENANCY-047 Soft Quota の超過は使用量の加算を拒否しない

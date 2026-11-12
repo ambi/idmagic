@@ -68,13 +68,16 @@ func GrantAgentDelegation(ctx context.Context, deps AgentDelegationDeps, in Agen
 		return nil, err
 	}
 	// 同意の付与と同じく、期限切れの行は枠を持ったままなので足さない。
-	if deps.QuotaRepo != nil && (existing == nil || existing.State == domain.ConsentRevoked) {
-		if err := deps.QuotaRepo.CheckAndIncrement(ctx, tenantID, tenancydomain.ResourceConsents, 1); err != nil {
-			if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
-				emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
-			}
+	var reservation *tenantports.QuotaReservation
+	if consumesConsentQuota(existing) {
+		reservation, err = tenantports.ReserveQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceConsents, 1)
+		if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
+			emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
+		}
+		if err != nil {
 			return nil, err
 		}
+		defer reservation.Release(ctx)
 	}
 	grant := &domain.Consent{
 		UserID: in.Sub, AgentID: in.AgentID, Scopes: scopes,
@@ -83,6 +86,7 @@ func GrantAgentDelegation(ctx context.Context, deps AgentDelegationDeps, in Agen
 	if err := deps.ConsentRepo.SaveAgentDelegation(ctx, tenantID, grant); err != nil {
 		return nil, err
 	}
+	reservation.Keep()
 	emit(deps.Emit, &domain.AgentDelegationGranted{
 		At: now, TenantID: tenantID, UserID: in.Sub, AgentID: in.AgentID, Scopes: scopes, ExpiresAt: expiresAt,
 	})

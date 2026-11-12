@@ -74,22 +74,20 @@ func AdminEmit(sink func(spec.DomainEvent) error, event spec.DomainEvent) error 
 	return sink(event)
 }
 
-// CheckQuotaAndAudit enforces resource's tenant Hard Quota (wi-160)
-// via quotaRepo.CheckAndIncrement, shared by the user/group/agent usecase
-// packages that all emit through the same error-returning sink signature. A
-// rejection also emits QuotaExceeded through sink (SCL objective QuotaAudit);
-// the emit is best-effort (logged, not propagated) so an audit-sink hiccup
-// never masks the fail-closed rejection itself. nil quotaRepo skips
-// enforcement (wiring gaps in tests/tools not yet updated); production
-// bootstrap always sets it.
-func CheckQuotaAndAudit(
+// ReserveQuotaAndAudit reserves one unit of resource's tenant Hard Quota (wi-160),
+// shared by the user/group/agent usecase packages that all emit through the same
+// error-returning sink signature. The caller defers Release right away and calls
+// Keep once the resource is saved, so a creation that fails before saving gives
+// the unit back (REQ-TENANCY-050). A rejection also emits QuotaExceeded through
+// sink (SCL objective QuotaAudit); the emit is best-effort (logged, not
+// propagated) so an audit-sink hiccup never masks the fail-closed rejection
+// itself. nil quotaRepo skips enforcement (wiring gaps in tests/tools not yet
+// updated); production bootstrap always sets it.
+func ReserveQuotaAndAudit(
 	ctx context.Context, quotaRepo tenantports.QuotaRepository, sink func(spec.DomainEvent) error,
 	tenantID, resource string, now time.Time,
-) error {
-	if quotaRepo == nil {
-		return nil
-	}
-	err := quotaRepo.CheckAndIncrement(ctx, tenantID, resource, 1)
+) (*tenantports.QuotaReservation, error) {
+	reservation, err := tenantports.ReserveQuota(ctx, quotaRepo, tenantID, resource, 1)
 	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 		if emitErr := AdminEmit(sink, &tenancydomain.QuotaExceeded{
 			At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true,
@@ -97,5 +95,5 @@ func CheckQuotaAndAudit(
 			logging.Error(ctx, "quota: failed to emit QuotaExceeded audit event", "error", emitErr, "resource", qErr.Resource)
 		}
 	}
-	return err
+	return reservation, err
 }

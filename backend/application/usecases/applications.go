@@ -40,18 +40,16 @@ type ApplicationDeps struct {
 	DeleteProtocol func(context.Context, *domain.Application) (int, error)
 }
 
-// checkApplicationQuota enforces the tenant's applications Hard Quota
-// before a new Application is persisted. A rejection also emits
-// QuotaExceeded so quota pressure is auditable (SCL objective QuotaAudit).
-func checkApplicationQuota(ctx context.Context, deps ApplicationDeps, tenantID string, now time.Time) error {
-	if deps.QuotaRepo == nil {
-		return nil
-	}
-	err := deps.QuotaRepo.CheckAndIncrement(ctx, tenantID, tenancydomain.ResourceApplications, 1)
+// reserveApplicationQuota reserves one unit of the tenant's applications Hard
+// Quota before a new Application is persisted. The caller releases it unless the
+// Application is saved (REQ-TENANCY-050). A rejection also emits QuotaExceeded so
+// quota pressure is auditable (SCL objective QuotaAudit).
+func reserveApplicationQuota(ctx context.Context, deps ApplicationDeps, tenantID string, now time.Time) (*tenantports.QuotaReservation, error) {
+	reservation, err := tenantports.ReserveQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceApplications, 1)
 	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 		emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true})
 	}
-	return err
+	return reservation, err
 }
 
 type CreateApplicationInput struct {
@@ -66,9 +64,6 @@ type CreateApplicationInput struct {
 func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateApplicationInput) (*domain.Application, error) {
 	tenantID := tenantports.TenantID(ctx)
 	now := adminNow(in.Now)
-	if err := checkApplicationQuota(ctx, deps, tenantID, now); err != nil {
-		return nil, err
-	}
 	id, err := spec.NewUUIDv4()
 	if err != nil {
 		return nil, err
@@ -87,9 +82,15 @@ func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateAppli
 	if err := domain.ValidateApplication(app); err != nil {
 		return nil, err
 	}
+	reservation, err := reserveApplicationQuota(ctx, deps, tenantID, now)
+	if err != nil {
+		return nil, err
+	}
+	defer reservation.Release(ctx)
 	if err := deps.Repo.Create(ctx, app); err != nil {
 		return nil, err
 	}
+	reservation.Keep()
 	emit(deps.Emit, &domain.ApplicationCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: id})
 	return app, nil
 }

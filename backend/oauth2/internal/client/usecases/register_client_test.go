@@ -79,3 +79,50 @@ func TestRegisterPrivateKeyJWTRequiresInlineJWKS(t *testing.T) {
 		t.Fatal("expected missing jwks rejection")
 	}
 }
+
+// 動的登録は外部のクライアントが繰り返し送れるので、不正なメタデータの登録が使用量を占めると、
+// 上限の数だけ失敗させるだけで正当な登録まで拒否される。
+//
+//spec:covers REQ-TENANCY-050: 検証で失敗した登録は oauth2_clients の使用量を残さず、上限いっぱいの正当な登録が成功する。
+func TestRegisterClientRejectedMetadataDoesNotConsumeQuota(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
+	limit := 1
+	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{OAuth2Clients: &limit}); err != nil {
+		t.Fatalf("SetQuota: %v", err)
+	}
+	deps := RegisterClientDeps{ClientRepo: oauth2memory.NewClientRepository(), QuotaRepo: quotaRepo}
+	rejected := []RegisterClientInput{
+		// authorization_code の登録に redirect_uris がない。
+		{ClientType: spec.ClientConfidential, TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic},
+		// private_key_jwt に鍵がない。
+		{
+			ClientType: spec.ClientConfidential, RedirectURIs: []string{"https://client.example/cb"},
+			TokenEndpointAuthMethod: domain.AuthMethodPrivateKeyJwt,
+		},
+		// redirect_uri が URL でないので Validate が拒否する。
+		{
+			ClientType: spec.ClientConfidential, RedirectURIs: []string{"not a url"},
+			TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+		},
+	}
+	for i, in := range rejected {
+		var oauthErr *OAuthError
+		if _, err := RegisterClient(ctx, deps, in, time.Now()); !errors.As(err, &oauthErr) {
+			t.Fatalf("rejected[%d]: RegisterClient = %v, want an OAuthError", i, err)
+		}
+	}
+	usage, err := quotaRepo.GetUsage(ctx, tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage.OAuth2Clients != 0 {
+		t.Fatalf("oauth2_clients usage after rejected registrations = %d, want 0", usage.OAuth2Clients)
+	}
+	if _, err := RegisterClient(ctx, deps, RegisterClientInput{
+		ClientType: spec.ClientConfidential, RedirectURIs: []string{"https://client.example/cb"},
+		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+	}, time.Now()); err != nil {
+		t.Fatalf("valid registration within the limit: %v", err)
+	}
+}
