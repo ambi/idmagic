@@ -614,6 +614,76 @@ op ReportDirectoryConnectorHeartbeat(
   @header authorization: string
 ): ReportDirectoryConnectorHeartbeatSuccess_204 | DirectoryConnectorInvalidTokenError401;
 
+model DelegationUnavailableError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.DelegationUnavailableError;
+}
+model DirectoryEncryptionRegistrationSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.DirectoryEncryptionRegistration;
+}
+model DirectoryPasswordChallengeSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.DirectoryPasswordChallenge;
+}
+model DirectoryPasswordResponseSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.DirectoryPasswordResponse;
+}
+model DirectoryDelegationRateLimited429 {
+  @statusCode statusCode: 429;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.ProblemDetails;
+}
+
+@doc("署名 JWT で現在の登録へ暗号化用公開鍵を束縛する。署名用の鍵との共用を拒否する。")
+@TypeSpec.OpenAPI.operationId("RegisterDirectoryEncryptionCapability")
+@route("/directory-connector/v1/encryption-capability")
+@put
+op RegisterDirectoryEncryptionCapability(
+  @header authorization: string,
+  @body body: IdMagic.Contract.DirectoryEncryptionCapability
+): DirectoryEncryptionRegistrationSuccess_200 | EnrollDirectoryConnectorError400 | DirectoryConnectorInvalidTokenError401 | DelegationUnavailableError409;
+
+@doc("認証済みの Connector の未配信の要求を一件取得する。最大 20 秒待ち、空なら 204。JWT は呼び出しごとに新しくする。")
+@TypeSpec.OpenAPI.operationId("PollDirectoryPasswordChallenge")
+@route("/directory-connector/v1/password-challenges")
+@post
+op PollDirectoryPasswordChallenge(
+  @header authorization: string
+): DirectoryPasswordChallengeSuccess_200 | ReportDirectoryConnectorHeartbeatSuccess_204 | DirectoryConnectorInvalidTokenError401 | DelegationUnavailableError409;
+
+@doc("配信済みの期限内の要求へ最初の結果を確定する。同じ結果の再送は成功し、相反する結果を拒否する。")
+@TypeSpec.OpenAPI.operationId("CompleteDirectoryPasswordChallenge")
+@route("/directory-connector/v1/password-challenges/{challenge_id}/result")
+@post
+op CompleteDirectoryPasswordChallenge(
+  @path challenge_id: string,
+  @header authorization: string,
+  @body body: IdMagic.Contract.DirectoryPasswordResponse
+): ReportDirectoryConnectorHeartbeatSuccess_204 | EnrollDirectoryConnectorError400 | DirectoryConnectorInvalidTokenError401 | DelegationUnavailableError409;
+
+@doc("委譲の有効性を設定する。暗号化能力がないかローカルパスワードが残る場合は有効化を拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("ConfigureDirectoryDelegation")
+@route("/api/admin/v1/directory-connectors/{connector_id}/delegated-authentication")
+@put
+op ConfigureDirectoryDelegation(
+  @path connector_id: string,
+  @body body: IdMagic.Contract.ConfigureDirectoryDelegationRequest
+): DirectoryConnectorSuccess_200 | EnrollDirectoryConnectorError400 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminWriteError403 | DirectoryConnectorNotFoundError404 | DelegationUnavailableError409;
+
+@doc("この Connector の User のパスワード照合を管理者が試す。試行を制限し、詳細な結果だけを返す。セッションとトークンを発行しない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
+@TypeSpec.OpenAPI.operationId("TestDirectoryDelegation")
+@route("/api/admin/v1/directory-connectors/{connector_id}/delegated-authentication/test")
+@post
+op TestDirectoryDelegation(
+  @path connector_id: string,
+  @body body: IdMagic.Contract.TestDirectoryDelegationRequest
+): DirectoryPasswordResponseSuccess_200 | EnrollDirectoryConnectorError400 | IdMagic.Contract.AuthenticationRequiredResponse | DirectoryConnectorAdminWriteError403 | DirectoryConnectorNotFoundError404 | DelegationUnavailableError409 | DirectoryDelegationRateLimited429;
+
 model IngestionRunSuccess_201 {
   @statusCode statusCode: 201;
   @body body: IdMagic.Contract.IngestionRun;

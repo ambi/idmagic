@@ -83,6 +83,7 @@ import type {
   ProvisioningTestConnectionResult,
   ClientSecretCredentialMetadata,
   DirectoryConnector,
+  DirectoryPasswordResult,
   DirectoryConnectorEnrollmentGrant,
   IngestionRunDetail,
   IngestionRunSummary,
@@ -2657,6 +2658,29 @@ export function disableDirectoryConnector(
   connectorID: string,
 ): Promise<DirectoryConnector> {
   return request(`${directoryConnectorPath(connectorID)}/disable`, adminRequest(csrfToken, 'POST'))
+}
+
+export function configureDirectoryDelegation(
+  csrfToken: string,
+  connectorID: string,
+  enabled: boolean,
+): Promise<DirectoryConnector> {
+  return request(
+    `${directoryConnectorPath(connectorID)}/delegated-authentication`,
+    adminRequest(csrfToken, 'PUT', { enabled }),
+  )
+}
+
+export function testDirectoryDelegation(
+  csrfToken: string,
+  connectorID: string,
+  userID: string,
+  password: string,
+): Promise<{ result: DirectoryPasswordResult }> {
+  return request(
+    `${directoryConnectorPath(connectorID)}/delegated-authentication/test`,
+    adminRequest(csrfToken, 'POST', { user_id: userID, password }),
+  )
 }
 
 export async function listDirectoryIngestionRuns(

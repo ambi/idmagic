@@ -2,8 +2,9 @@
 INSERT INTO directory_connectors (
     id, tenant_id, display_name, status, enrollment_token_hash, enrollment_expires_at,
     public_key, key_id, created_at, enrolled_at, last_seen_at, disabled_at, revision,
-    accidental_deletion_count_threshold, accidental_deletion_percent_threshold
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);
+    accidental_deletion_count_threshold, accidental_deletion_percent_threshold,
+    encryption_public_key, encryption_key_id, delegated_authentication
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18);
 
 -- name: UpdateDirectoryConnector :execrows
 -- 最終接続時刻は TouchDirectoryConnectorLastSeen だけが書くので、ここでは触れない。
@@ -14,6 +15,9 @@ UPDATE directory_connectors SET
     enrollment_expires_at = sqlc.narg(enrollment_expires_at),
     public_key = sqlc.narg(public_key),
     key_id = sqlc.narg(key_id),
+    encryption_public_key = sqlc.narg(encryption_public_key),
+    encryption_key_id = sqlc.narg(encryption_key_id),
+    delegated_authentication = sqlc.arg(delegated_authentication),
     enrolled_at = sqlc.narg(enrolled_at),
     disabled_at = sqlc.narg(disabled_at),
     revision = sqlc.arg(revision),

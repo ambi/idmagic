@@ -18,6 +18,9 @@ func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
+	if err := deps.Sourcing.PurgeExpiredPasswordChallenges(ctx, now); err != nil {
+		return err
+	}
 	res, ran, err := deps.Authentication.RunRetentionSweep(ctx, deps.Audit.AuditEventRepo, now)
 	if err != nil {
 		return err

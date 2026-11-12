@@ -43,6 +43,7 @@ RSTR は SOAP 1.2 で署名した SAML Assertion を返す。
 - SAML 1.1 と SAML 2.0 以外のトークンの型を指定された場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - Assertion の有効期間（5 分）の間に同じ `MessageID` の RST を再び受けた場合、WsFederation は、400 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - UsernameToken のパスワードを照合するとき、WsFederation は、ログインの API と同じアカウント単位と IP 単位の試行の制限、失敗の数え方と集約、`AuthenticationFailed` と `LoginThrottled` の発行（[サインイン](../../authentication/features/sign-in.md)の REQ-AUTHENTICATION-007 と REQ-AUTHENTICATION-009）を使う。
+- 委譲認証を有効にした取り込み元の User の UsernameToken を照合するとき、WsFederation は、Authentication の REQ-AUTHENTICATION-044 を使い、AD の照合の拒否、期限切れ、変更要求と通信障害を 401 で拒否し、トークンを発行しない。
 - UsernameToken のユーザー名が未知か、パスワードが誤っているか、パスワードがパスワードのポリシーを満たさないか、User が `Active` でないか、アカウントか発信元の IP のログインの試行の制限に達している場合、WsFederation は、401 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - 認証した User のパスワードが期限切れか、User が必須操作 `update_password` を持つ場合、WsFederation は、403 で拒否し、`WsTrustTokenRejected` を発行し、トークンを発行しない。
 - 認証した User に RP のトークンを発行するとき、WsFederation は、パッシブサインインと同じアプリケーションの関門（[割り当て](../../application/features/assignment.md)の REQ-APPLICATION-011 と[サインインポリシー](../../application/features/sign-in-policy.md)）で、パスワードだけで認証した事実と要求の発信元の IP を使って判定する。

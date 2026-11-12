@@ -26,6 +26,7 @@ var ErrInvalidResetToken = errors.New("reset token is invalid or expired")
 
 type ResetPasswordWithTokenDeps struct {
 	UserRepo                userports.UserRepository
+	PasswordDelegation      passwordports.PasswordDelegation
 	TokenStore              passwordports.PasswordResetTokenStore
 	PasswordHasher          passwordports.PasswordHasher
 	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
@@ -52,6 +53,40 @@ func ResetPasswordWithToken(
 	deps ResetPasswordWithTokenDeps,
 	in ResetPasswordWithTokenInput,
 ) (*userdomain.User, error) {
+	if deps.PasswordDelegation == nil {
+		return resetPasswordWithToken(ctx, deps, in)
+	}
+	stored, err := deps.TokenStore.Find(ctx, actiontoken.Fingerprint(in.Token))
+	if err != nil {
+		return nil, err
+	}
+	if stored == nil {
+		return nil, ErrInvalidResetToken
+	}
+	now := in.Now.UTC()
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	if _, err := actiontoken.Verify(actiontoken.VerifyInput{RawToken: in.Token, ExpectedPurpose: actiontoken.PurposePasswordReset, Stored: *stored, Now: now}); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidResetToken, err)
+	}
+	user, err := deps.UserRepo.FindBySub(ctx, stored.Subject)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil || user.TenantID != tenantports.TenantID(ctx) {
+		return nil, ErrInvalidResetToken
+	}
+	var result *userdomain.User
+	err = deps.PasswordDelegation.WithLocalPasswordWrite(ctx, stored.Subject, func() error {
+		var err error
+		result, err = resetPasswordWithToken(ctx, deps, in)
+		return err
+	})
+	return result, err
+}
+
+func resetPasswordWithToken(ctx context.Context, deps ResetPasswordWithTokenDeps, in ResetPasswordWithTokenInput) (*userdomain.User, error) {
 	now := in.Now.UTC()
 	if now.IsZero() {
 		now = time.Now().UTC()

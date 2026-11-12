@@ -113,6 +113,7 @@ import { Route as AdminAuthorizationAccessNewRouteImport } from './routes/admin/
 import { Route as AdminAuthorizationModelEditRouteImport } from './routes/admin/authorization/model_/edit'
 import { Route as AdminAuthorizationModelNewRouteImport } from './routes/admin/authorization/model_/new'
 import { Route as AdminAuthorizationRelationTuplesNewRouteImport } from './routes/admin/authorization/relation-tuples_/new'
+import { Route as AdminDirectoryConnectorsConnectorIdDelegatedAuthenticationRouteImport } from './routes/admin/directory-connectors_/$connectorId_.delegated-authentication'
 import { Route as AdminFederationEntraDomainRouteImport } from './routes/admin/federation/entra_/$domain'
 import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
 import { Route as AdminGroupsGroupIdIndexRouteImport } from './routes/admin/groups_/$groupId.index'
@@ -687,6 +688,12 @@ const AdminAuthorizationRelationTuplesNewRoute =
     path: '/authorization/relation-tuples/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminDirectoryConnectorsConnectorIdDelegatedAuthenticationRoute =
+  AdminDirectoryConnectorsConnectorIdDelegatedAuthenticationRouteImport.update({
+    id: '/directory-connectors_/$connectorId_/delegated-authentication',
+    path: '/directory-connectors/$connectorId/delegated-authentication',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminFederationEntraDomainRoute =
   AdminFederationEntraDomainRouteImport.update({
     id: '/federation/entra_/$domain',
@@ -936,6 +943,7 @@ export interface FileRoutesByFullPath {
   '/admin/authorization/model/edit': typeof AdminAuthorizationModelEditRoute
   '/admin/authorization/model/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples/new': typeof AdminAuthorizationRelationTuplesNewRoute
+  '/admin/directory-connectors/$connectorId/delegated-authentication': typeof AdminDirectoryConnectorsConnectorIdDelegatedAuthenticationRoute
   '/admin/federation/entra/$domain': typeof AdminFederationEntraDomainRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
@@ -1057,6 +1065,7 @@ export interface FileRoutesByTo {
   '/admin/authorization/model/edit': typeof AdminAuthorizationModelEditRoute
   '/admin/authorization/model/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples/new': typeof AdminAuthorizationRelationTuplesNewRoute
+  '/admin/directory-connectors/$connectorId/delegated-authentication': typeof AdminDirectoryConnectorsConnectorIdDelegatedAuthenticationRoute
   '/admin/federation/entra/$domain': typeof AdminFederationEntraDomainRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
@@ -1188,6 +1197,7 @@ export interface FileRoutesById {
   '/admin/authorization/model_/edit': typeof AdminAuthorizationModelEditRoute
   '/admin/authorization/model_/new': typeof AdminAuthorizationModelNewRoute
   '/admin/authorization/relation-tuples_/new': typeof AdminAuthorizationRelationTuplesNewRoute
+  '/admin/directory-connectors_/$connectorId_/delegated-authentication': typeof AdminDirectoryConnectorsConnectorIdDelegatedAuthenticationRoute
   '/admin/federation/entra_/$domain': typeof AdminFederationEntraDomainRoute
   '/admin/federation/entra_/new': typeof AdminFederationEntraNewRoute
   '/admin/groups_/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
@@ -1321,6 +1331,7 @@ export interface FileRouteTypes {
     | '/admin/authorization/model/edit'
     | '/admin/authorization/model/new'
     | '/admin/authorization/relation-tuples/new'
+    | '/admin/directory-connectors/$connectorId/delegated-authentication'
     | '/admin/federation/entra/$domain'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
@@ -1442,6 +1453,7 @@ export interface FileRouteTypes {
     | '/admin/authorization/model/edit'
     | '/admin/authorization/model/new'
     | '/admin/authorization/relation-tuples/new'
+    | '/admin/directory-connectors/$connectorId/delegated-authentication'
     | '/admin/federation/entra/$domain'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
@@ -1572,6 +1584,7 @@ export interface FileRouteTypes {
     | '/admin/authorization/model_/edit'
     | '/admin/authorization/model_/new'
     | '/admin/authorization/relation-tuples_/new'
+    | '/admin/directory-connectors_/$connectorId_/delegated-authentication'
     | '/admin/federation/entra_/$domain'
     | '/admin/federation/entra_/new'
     | '/admin/groups_/$groupId/edit'
@@ -2347,6 +2360,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthorizationRelationTuplesNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/directory-connectors_/$connectorId_/delegated-authentication': {
+      id: '/admin/directory-connectors_/$connectorId_/delegated-authentication'
+      path: '/directory-connectors/$connectorId/delegated-authentication'
+      fullPath: '/admin/directory-connectors/$connectorId/delegated-authentication'
+      preLoaderRoute: typeof AdminDirectoryConnectorsConnectorIdDelegatedAuthenticationRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/federation/entra_/$domain': {
       id: '/admin/federation/entra_/$domain'
       path: '/federation/entra/$domain'
@@ -2758,6 +2778,7 @@ interface AdminRouteRouteChildren {
   AdminAuthorizationModelEditRoute: typeof AdminAuthorizationModelEditRoute
   AdminAuthorizationModelNewRoute: typeof AdminAuthorizationModelNewRoute
   AdminAuthorizationRelationTuplesNewRoute: typeof AdminAuthorizationRelationTuplesNewRoute
+  AdminDirectoryConnectorsConnectorIdDelegatedAuthenticationRoute: typeof AdminDirectoryConnectorsConnectorIdDelegatedAuthenticationRoute
   AdminFederationEntraDomainRoute: typeof AdminFederationEntraDomainRoute
   AdminFederationEntraNewRoute: typeof AdminFederationEntraNewRoute
   AdminLifecycleWorkflowsWorkflowIdEditRoute: typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
@@ -2838,6 +2859,8 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAuthorizationModelNewRoute: AdminAuthorizationModelNewRoute,
   AdminAuthorizationRelationTuplesNewRoute:
     AdminAuthorizationRelationTuplesNewRoute,
+  AdminDirectoryConnectorsConnectorIdDelegatedAuthenticationRoute:
+    AdminDirectoryConnectorsConnectorIdDelegatedAuthenticationRoute,
   AdminFederationEntraDomainRoute: AdminFederationEntraDomainRoute,
   AdminFederationEntraNewRoute: AdminFederationEntraNewRoute,
   AdminLifecycleWorkflowsWorkflowIdEditRoute:

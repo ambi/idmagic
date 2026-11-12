@@ -1410,6 +1410,9 @@ CREATE TABLE directory_connectors (
     enrollment_expires_at TIMESTAMPTZ,
     public_key JSONB,
     key_id TEXT,
+    encryption_public_key JSONB,
+    encryption_key_id TEXT,
+    delegated_authentication BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL,
     enrolled_at TIMESTAMPTZ,
     last_seen_at TIMESTAMPTZ,
@@ -1457,6 +1460,20 @@ CREATE TABLE directory_user_correlations (
     CONSTRAINT directory_user_correlations_user_id_fkey
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- 認証用の短命な配送状態。平文とパスワードのハッシュを持たず、配信時に暗号文を消す。
+CREATE TABLE directory_password_challenges (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    connector_id UUID NOT NULL REFERENCES directory_connectors(id) ON DELETE CASCADE,
+    connector_revision BIGINT NOT NULL,
+    key_id TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    encrypted_request TEXT NOT NULL,
+    delivered BOOLEAN NOT NULL DEFAULT FALSE,
+    result TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX directory_password_challenges_queue_idx ON directory_password_challenges (tenant_id, connector_id, expires_at);
 
 CREATE TABLE directory_ingestion_runs (
     id UUID PRIMARY KEY,

@@ -19,6 +19,9 @@ type DirectoryConnector struct {
 	EnrollmentExpiresAt                pgtype.Timestamptz
 	PublicKey                          []byte
 	KeyID                              pgtype.Text
+	EncryptionPublicKey                []byte
+	EncryptionKeyID                    pgtype.Text
+	DelegatedAuthentication            bool
 	CreatedAt                          time.Time
 	EnrolledAt                         pgtype.Timestamptz
 	LastSeenAt                         pgtype.Timestamptz
@@ -55,6 +58,18 @@ type DirectoryIngestionRun struct {
 	Failed      int32
 	Disabled    int32
 	Protection  []byte
+}
+
+type DirectoryPasswordChallenge struct {
+	ID                string
+	TenantID          string
+	ConnectorID       string
+	ConnectorRevision int64
+	KeyID             string
+	ExpiresAt         time.Time
+	EncryptedRequest  string
+	Delivered         bool
+	Result            string
 }
 
 type DirectoryUserCorrelation struct {

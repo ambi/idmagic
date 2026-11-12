@@ -309,6 +309,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	// 対話のログインは Authentication が処理し、認証を終えたら OAuth2 の認可要求を続ける。
 	// OAuth2 は既存のセッションに追加の認証を求めるときに Authentication の Steps を使う。
 	authRoutes := authentication.RouteDeps{
+		PasswordDelegation:      sourcingdeps.PasswordDelegation(d.Sourcing, d.IdManagement.UserRepo),
 		Deps:                    d.Deps,
 		Authenticator:           authenticator,
 		AuditEventRepo:          d.Audit.AuditEventRepo,
@@ -546,6 +547,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 			return revocationReactor.React(context.Background(), event)
 		}, "directory_connector")
 	}
+	d.Sourcing.PasswordDiagnosticGate = sourcingdeps.PasswordDiagnosticGate(d.Authentication.LoginAttemptThrottle)
 	d.Sourcing.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService,
 		d.OAuth2.ClientAssertionReplayStore)
 

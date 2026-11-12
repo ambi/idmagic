@@ -102,5 +102,6 @@ func (r *ConnectorRepository) TouchLastSeen(_ context.Context, tenantID, id stri
 
 func clone(connector domain.Connector) domain.Connector {
 	connector.PublicKey = maps.Clone(connector.PublicKey)
+	connector.EncryptionPublicKey = maps.Clone(connector.EncryptionPublicKey)
 	return connector
 }

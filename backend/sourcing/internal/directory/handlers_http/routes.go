@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
 	"github.com/labstack/echo/v5"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -17,8 +19,11 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	Service   *usecases.Service
-	Ingestion *usecases.Ingestion
+	Service        *usecases.Service
+	Ingestion      *usecases.Ingestion
+	Delegation     *usecases.Delegation
+	DiagnosticGate directoryports.PasswordDiagnosticGate
+	Users          userports.UserRepository
 }
 
 func RegisterRoutes(g *echo.Group, d Deps) {
@@ -34,6 +39,11 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/v1/directory-connectors/:connector_id/ingestion-runs/:run_id/discard", h.discardRun)
 	g.POST("/directory-connector/v1/enrollment", h.enrollConnector)
 	g.POST("/directory-connector/v1/heartbeat", h.reportHeartbeat)
+	g.PUT("/directory-connector/v1/encryption-capability", h.registerEncryption)
+	g.POST("/directory-connector/v1/password-challenges", h.pollPasswordChallenge)
+	g.POST("/directory-connector/v1/password-challenges/:challenge_id/result", h.completePasswordChallenge)
+	g.PUT("/api/admin/v1/directory-connectors/:connector_id/delegated-authentication", h.configureDelegation)
+	g.POST("/api/admin/v1/directory-connectors/:connector_id/delegated-authentication/test", h.testDelegation)
 	g.GET("/api/admin/v1/directory-connectors/:connector_id/ingestion-runs", h.listIngestionRuns)
 	g.GET("/api/admin/v1/directory-connectors/:connector_id/ingestion-runs/:run_id", h.getIngestionRun)
 	g.POST("/directory-connector/v1/ingestion-runs", h.startIngestionRun)
@@ -45,15 +55,17 @@ type handler struct{ deps Deps }
 
 type connectorResponse struct {
 	domain.DisableThresholds
-	ID                  string     `json:"id"`
-	DisplayName         string     `json:"display_name"`
-	Status              string     `json:"status"`
-	CreatedAt           time.Time  `json:"created_at"`
-	EnrollmentExpiresAt *time.Time `json:"enrollment_expires_at,omitempty"`
-	EnrolledAt          *time.Time `json:"enrolled_at,omitempty"`
-	KeyID               string     `json:"key_id,omitempty"`
-	LastSeenAt          *time.Time `json:"last_seen_at,omitempty"`
-	DisabledAt          *time.Time `json:"disabled_at,omitempty"`
+	ID                      string     `json:"id"`
+	DisplayName             string     `json:"display_name"`
+	Status                  string     `json:"status"`
+	CreatedAt               time.Time  `json:"created_at"`
+	EnrollmentExpiresAt     *time.Time `json:"enrollment_expires_at,omitempty"`
+	EnrolledAt              *time.Time `json:"enrolled_at,omitempty"`
+	KeyID                   string     `json:"key_id,omitempty"`
+	LastSeenAt              *time.Time `json:"last_seen_at,omitempty"`
+	DisabledAt              *time.Time `json:"disabled_at,omitempty"`
+	DelegatedAuthentication bool       `json:"delegated_authentication_enabled"`
+	EncryptionKeyID         string     `json:"encryption_key_id,omitempty"`
 }
 
 // connectorJSON は登録トークンのハッシュと公開鍵を含めずに Connector を写す。
@@ -63,10 +75,12 @@ func connectorJSON(c domain.Connector) connectorResponse {
 		DisableThresholds: c.Thresholds,
 		ID:                c.ID, DisplayName: c.DisplayName, Status: string(c.Status), CreatedAt: c.CreatedAt,
 		EnrolledAt: c.EnrolledAt, LastSeenAt: c.LastSeenAt, DisabledAt: c.DisabledAt,
+		DelegatedAuthentication: c.DelegatedAuthentication,
 	}
 	switch c.Status {
 	case domain.StatusActive:
 		response.KeyID = c.KeyID
+		response.EncryptionKeyID = c.EncryptionKeyID
 	case domain.StatusAwaitingEnrollment:
 		expires := c.EnrollmentExpiresAt
 		response.EnrollmentExpiresAt = &expires

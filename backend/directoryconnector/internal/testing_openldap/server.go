@@ -44,6 +44,9 @@ type Server struct {
 	id string
 }
 
+// Stop は認証中の DC への到達不能を実物の接続で再現するため、試験用ディレクトリを停止する。
+func (s *Server) Stop(t *testing.T) { t.Helper(); docker(t, "stop", "--time", "1", s.id) }
+
 // Start は OpenLDAP のコンテナを起動し、people の OU を作って返す。コンテナはテストの終わりに消す。
 func Start(t *testing.T) *Server {
 	t.Helper()

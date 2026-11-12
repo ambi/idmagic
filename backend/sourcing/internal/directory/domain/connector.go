@@ -32,20 +32,23 @@ var (
 // Connector は、閉域のディレクトリから取り込む Directory Connector の IdMagic 側の登録。
 // Revision は保存のたびに一つ進み、Repository が同時の更新を検出するのに使う。
 type Connector struct {
-	TenantID            string
-	ID                  string
-	DisplayName         string
-	Status              ConnectorStatus
-	EnrollmentTokenHash string
-	EnrollmentExpiresAt time.Time
-	PublicKey           map[string]any
-	KeyID               string
-	CreatedAt           time.Time
-	EnrolledAt          *time.Time
-	LastSeenAt          *time.Time
-	DisabledAt          *time.Time
-	Revision            int64
-	Thresholds          DisableThresholds
+	TenantID                string
+	ID                      string
+	DisplayName             string
+	Status                  ConnectorStatus
+	EnrollmentTokenHash     string
+	EnrollmentExpiresAt     time.Time
+	PublicKey               map[string]any
+	KeyID                   string
+	CreatedAt               time.Time
+	EnrolledAt              *time.Time
+	LastSeenAt              *time.Time
+	DisabledAt              *time.Time
+	Revision                int64
+	Thresholds              DisableThresholds
+	DelegatedAuthentication bool
+	EncryptionPublicKey     map[string]any
+	EncryptionKeyID         string
 }
 
 // NewConnector は、登録トークンのハッシュを持つ登録待ちの Connector を作る。
@@ -87,6 +90,8 @@ func (c Connector) ReissueEnrollment(tokenHash string, now time.Time) (Connector
 	}
 	c.Status = StatusAwaitingEnrollment
 	c.PublicKey = nil
+	c.EncryptionPublicKey = nil
+	c.EncryptionKeyID = ""
 	c.KeyID = ""
 	c.EnrolledAt = nil
 	c.EnrollmentTokenHash = tokenHash

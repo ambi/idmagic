@@ -1615,9 +1615,22 @@ export type DirectoryConnector = {
   key_id?: string
   last_seen_at?: string
   disabled_at?: string
+  delegated_authentication_enabled?: boolean
+  encryption_key_id?: string
   accidental_deletion_count_threshold: number
   accidental_deletion_percent_threshold: number
 }
+
+export type DirectoryPasswordResult =
+  | 'accepted'
+  | 'invalid_credentials'
+  | 'account_locked'
+  | 'account_disabled'
+  | 'account_expired'
+  | 'password_expired'
+  | 'password_change_required'
+  | 'connector_unavailable'
+  | 'directory_unavailable'
 
 export type DirectoryConnectorEnrollmentGrant = {
   connector: DirectoryConnector

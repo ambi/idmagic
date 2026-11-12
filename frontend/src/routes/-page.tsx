@@ -88,6 +88,7 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-directory-connectors': `ディレクトリ同期 | ${ADMIN}`,
   'admin-directory-connector-create': `Directory Connector を作成 | ${ADMIN}`,
   'admin-directory-connector-detail': `Directory Connector 詳細 | ${ADMIN}`,
+  'admin-directory-delegated-authentication': `委譲認証 | ${ADMIN}`,
   'admin-keys': `署名鍵 | ${ADMIN}`,
   'admin-settings': `設定 | ${ADMIN}`,
   'admin-saml-idp-profiles': `SAML IdPプロファイル | ${ADMIN}`,
@@ -137,6 +138,7 @@ const PAGE_TITLES_JA: Record<string, string> = {
 
 const PAGE_TITLES_EN: Record<string, string> = {
   ...Object.fromEntries(Object.keys(PAGE_TITLES_JA).map((kind) => [kind, `${kind} | ${BRAND}`])),
+  'admin-directory-delegated-authentication': `Delegated authentication | ${BRAND} Admin Console`,
   'admin-saml-idp-profiles': `SAML IdP profiles | ${BRAND} Admin Console`,
   'admin-agent-guardrail-edit': `Edit guardrails | ${BRAND} Admin Console`,
   'admin-agent-credentials': `Manage credentials | ${BRAND} Admin Console`,

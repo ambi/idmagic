@@ -46,6 +46,7 @@ type Deps struct {
 	UserRepo            userports.UserRepository
 	SessionManager      *sessionusecases.SessionManager
 	PasswordHasher      passwordports.PasswordHasher
+	PasswordDelegation  passwordports.PasswordDelegation
 	PasswordHistoryRepo passwordports.PasswordHistoryRepository
 	// SessionTokens はセッションの失効に合わせて、その sid に結び付いた OAuth のトークンを
 	// 失効させる。RegisterRoutes が必須の引数として受け取る。
@@ -95,6 +96,7 @@ type Deps struct {
 func (d Deps) PasswordAuthentication() authusecases.PasswordAuthentication {
 	return authusecases.PasswordAuthentication{
 		UserRepo: d.UserRepo, PasswordHasher: d.PasswordHasher, SentinelPasswordHash: d.SentinelPasswordHash,
+		PasswordDelegation:   d.PasswordDelegation,
 		LoginAttemptThrottle: d.LoginAttemptThrottle, AuthEventBucketStore: d.AuthEventBucketStore,
 		TenantSaltStore: d.TenantSaltStore, Emit: d.Emit, Metrics: d.Metrics,
 	}

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
+
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -77,7 +79,8 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		c.Request().Context(),
 		authusecases.ResetPasswordWithTokenDeps{
 			UserRepo: d.UserRepo, TokenStore: d.PasswordResetTokenStore,
-			PasswordHasher: d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
+			PasswordDelegation: d.PasswordDelegation,
+			PasswordHasher:     d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
 			BreachedPasswordChecker: d.BreachedPasswordChecker,
 			Emit:                    d.Emit, Policy: snap,
 		},
@@ -86,6 +89,8 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		},
 	)
 	switch {
+	case errors.Is(err, passwordports.ErrPasswordDelegated):
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Change the password in the source directory.")
 	case err == nil:
 		// リセットもパスワード変更と同じく、記憶済みの端末をすべて失効させる (wi-91)。
 		if err := d.RevokeTrustedDevices(

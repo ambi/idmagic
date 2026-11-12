@@ -37,11 +37,13 @@ type Module struct {
 	// IdManagement の操作である。actor を directory_connector にして組み立て地点が設定する。
 	DirectoryWrites        directorywrites.IdentityWrites
 	DirectoryUserLifecycle directorywrites.UserLifecycle
+	PasswordDiagnosticGate directorywrites.PasswordDiagnosticGate
 	connectors             directoryports.ConnectorRepository
 	correlations           directoryports.CorrelationRepository
 	// memoryCorrelations は、トランザクションを持たないメモリ構成で対応を保存する先である。
 	memoryCorrelations directorywrites.CorrelationWriter
 	runs               directoryports.IngestionRunRepository
+	passwordChallenges directoryports.PasswordChallengeStore
 }
 
 // Register は SCIM と Directory Connector の経路を登録する。replay は Connector の JWT の
@@ -65,8 +67,11 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 	}
 	directoryhttp.RegisterRoutes(g, directoryhttp.Deps{
 		Deps: deps, Authenticator: authenticator,
-		Service:   directoryusecases.New(m.connectors, prefixedReplay{replay}, emit),
-		Ingestion: ingestion,
+		Service:        directoryusecases.New(m.connectors, prefixedReplay{replay}, emit),
+		Ingestion:      ingestion,
+		Delegation:     m.PasswordDelegation(userRepo),
+		DiagnosticGate: m.PasswordDiagnosticGate,
+		Users:          userRepo,
 	})
 }
 

@@ -121,7 +121,18 @@ func run(ctx context.Context, config Config, httpClient *http.Client, once bool,
 		Now: time.Now, Sleep: sleep, Log: log,
 	}
 	if !once {
+		encryptionKey, err := store.LoadEncryptionKey(enrollment.KeyID)
+		if err != nil {
+			log.Error("cannot load encryption key")
+			return 1
+		}
+		receiver := usecases.PasswordReceiver{API: api_http.NewClient(config.RealmURL, httpClient, key, enrollment, time.Now), Directory: directory, Key: encryptionKey, ConnectorID: enrollment.ConnectorID, Scope: config.Scope, Now: time.Now, Sleep: sleep}
+		receiveCtx, cancel := context.WithCancel(ctx)
+		done := make(chan struct{})
+		go func() { defer close(done); receiver.Run(receiveCtx) }()
 		syncer.Run(ctx, config.Interval)
+		cancel()
+		<-done
 		return 0
 	}
 	if _, err := syncer.SyncOnce(ctx); err != nil {

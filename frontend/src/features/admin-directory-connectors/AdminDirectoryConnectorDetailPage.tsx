@@ -14,6 +14,7 @@ import type { DirectoryConnector, IngestionRunSummary } from '../../types'
 import { adminDirectoryConnectorsDictionary } from './AdminDirectoryConnectorsPage.i18n'
 import { EnrollmentTokenNotice } from './EnrollmentTokenNotice'
 import { IngestionRunsCard } from './IngestionRunsCard'
+import { delegatedAuthenticationDictionary } from './DelegatedAuthenticationPage.i18n'
 import { canManage, connectorStatusLabel, enrollmentExpired, listURL } from './presentation'
 
 export function AdminDirectoryConnectorDetailPage({
@@ -33,6 +34,7 @@ export function AdminDirectoryConnectorDetailPage({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const t = useDictionary(adminDirectoryConnectorsDictionary)
+  const delegation = useDictionary(delegatedAuthenticationDictionary)
   const { formatDateTime } = useFormatters()
 
   async function reissue() {
@@ -158,6 +160,19 @@ export function AdminDirectoryConnectorDetailPage({
       </Card>
 
       <IngestionRunsCard connectorID={connector.id} runs={runs} t={t} />
+      <Card className="p-4">
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={
+            <a
+              href={`/admin/directory-connectors/${encodeURIComponent(connector.id)}/delegated-authentication`}
+            />
+          }
+        >
+          {delegation.title}
+        </Button>
+      </Card>
     </AdminShell>
   )
 }

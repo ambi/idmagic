@@ -24,12 +24,17 @@ func (r *ConnectorRepository) Create(ctx context.Context, c domain.Connector) er
 	if err != nil {
 		return err
 	}
+	encryptionKey, err := encodeKey(c.EncryptionPublicKey)
+	if err != nil {
+		return err
+	}
 	return New(r.Pool).CreateDirectoryConnector(ctx, CreateDirectoryConnectorParams{
 		ID: c.ID, TenantID: c.TenantID, DisplayName: c.DisplayName, Status: string(c.Status),
 		EnrollmentTokenHash: text(c.EnrollmentTokenHash), EnrollmentExpiresAt: instant(c.EnrollmentExpiresAt),
 		PublicKey: publicKey, KeyID: text(c.KeyID), CreatedAt: c.CreatedAt,
 		EnrolledAt: optional(c.EnrolledAt), LastSeenAt: optional(c.LastSeenAt), DisabledAt: optional(c.DisabledAt),
-		Revision:                         c.Revision,
+		Revision:            c.Revision,
+		EncryptionPublicKey: encryptionKey, EncryptionKeyID: text(c.EncryptionKeyID), DelegatedAuthentication: c.DelegatedAuthentication,
 		AccidentalDeletionCountThreshold: int32(c.Thresholds.Count), AccidentalDeletionPercentThreshold: int32(c.Thresholds.Percent), //nolint:gosec // 検証済みの INTEGER の範囲。
 	})
 }
@@ -39,12 +44,17 @@ func (r *ConnectorRepository) Update(ctx context.Context, c domain.Connector) er
 	if err != nil {
 		return err
 	}
+	encryptionKey, err := encodeKey(c.EncryptionPublicKey)
+	if err != nil {
+		return err
+	}
 	updated, err := New(r.Pool).UpdateDirectoryConnector(ctx, UpdateDirectoryConnectorParams{
 		DisplayName: c.DisplayName, Status: string(c.Status),
 		EnrollmentTokenHash: text(c.EnrollmentTokenHash), EnrollmentExpiresAt: instant(c.EnrollmentExpiresAt),
 		PublicKey: publicKey, KeyID: text(c.KeyID),
 		EnrolledAt: optional(c.EnrolledAt), DisabledAt: optional(c.DisabledAt),
 		Revision: c.Revision, TenantID: c.TenantID, ID: c.ID,
+		EncryptionPublicKey: encryptionKey, EncryptionKeyID: text(c.EncryptionKeyID), DelegatedAuthentication: c.DelegatedAuthentication,
 		AccidentalDeletionCountThreshold: int32(c.Thresholds.Count), AccidentalDeletionPercentThreshold: int32(c.Thresholds.Percent), //nolint:gosec // 検証済みの INTEGER の範囲。
 	})
 	if err != nil {
@@ -111,6 +121,7 @@ func toDomain(row *DirectoryConnector) (domain.Connector, error) {
 		TenantID: row.TenantID, ID: row.ID, DisplayName: row.DisplayName, Status: domain.ConnectorStatus(row.Status),
 		EnrollmentTokenHash: row.EnrollmentTokenHash.String, KeyID: row.KeyID.String,
 		CreatedAt: row.CreatedAt.UTC(), Revision: row.Revision,
+		EncryptionKeyID: row.EncryptionKeyID.String, DelegatedAuthentication: row.DelegatedAuthentication,
 		Thresholds: domain.DisableThresholds{Count: int(row.AccidentalDeletionCountThreshold), Percent: int(row.AccidentalDeletionPercentThreshold)},
 		EnrolledAt: pointer(row.EnrolledAt), LastSeenAt: pointer(row.LastSeenAt), DisabledAt: pointer(row.DisabledAt),
 	}
@@ -119,6 +130,11 @@ func toDomain(row *DirectoryConnector) (domain.Connector, error) {
 	}
 	if row.PublicKey != nil {
 		if err := json.Unmarshal(row.PublicKey, &connector.PublicKey); err != nil {
+			return domain.Connector{}, err
+		}
+	}
+	if row.EncryptionPublicKey != nil {
+		if err := json.Unmarshal(row.EncryptionPublicKey, &connector.EncryptionPublicKey); err != nil {
 			return domain.Connector{}, err
 		}
 	}

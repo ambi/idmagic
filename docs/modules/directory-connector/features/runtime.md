@@ -44,6 +44,7 @@ Connector は、起動の引数で与えた YAML の設定ファイルと、そ�
 | ファイル | 内容 |
 | --- | --- |
 | `connector-key.pem` | Connector の P-256 の秘密鍵。PKCS#8 の PEM |
+| `encryption-key.json` | 署名鍵の ID に束縛した別の P-256 の暗号化秘密鍵。再登録で置き換える |
 | `enrollment.json` | 登録の応答の Connector の ID、鍵の ID、JWT の `aud` |
 | `cursor.json` | 差分の位置 |
 
@@ -152,6 +153,30 @@ Connector は、起動の引数で与えた YAML の設定ファイルと、そ�
 - 運用者が設定の確認のコマンドを実行したとき、DirectoryConnector は、IdMagic へ接続せず、登録を求めず、差分の位置を変えない。
 - 設定の確認で LDAP への接続、bind、検索のどれかが失敗した場合、DirectoryConnector は、失敗を標準エラーへ出し、0 以外で終了する。
 - **判断**：IdMagic へ送る前に、検索の範囲とフィルターの誤りで多数の User が完全な再同期に現れない事態を、運用者が件数で確かめられるようにする。
+
+### 委譲認証の受信
+
+#### REQ-DIRECTORYCONNECTOR-007 常駐する Connector は同期と独立して暗号化された認証要求を受信する
+
+- 運用者が常駐の `run` を起動したとき、DirectoryConnector は、署名用とは別の P-256 の暗号化鍵を状態のディレクトリへ所有者限定の権限で作成または読み出し、署名 JWT で暗号化能力を登録し、同期と独立して HTTPS の長いポーリングを続ける。
+- 署名用の鍵の再登録後に常駐を起動したとき、DirectoryConnector は、その登録に対応する別の暗号化鍵を使い、以前の世代の要求を処理しない。
+- 空の応答を受けたとき、DirectoryConnector は、次の取得を要求し、接続が失敗したときは 1 秒待ってから新しい JWT で取得し直す。
+- 要求を受け取ったとき、DirectoryConnector は、JWE `ECDH-ES` と `A256GCM` だけで復号し、操作、要求 ID、tenant、Connector、鍵と期限の束縛を検証してから LDAP へ接続する。
+- 要求を受け取ったとき、DirectoryConnector は、LDAP の照合と結果の送信を受信から最大 5 秒に制限し、サーバーの発行からの期限も超えて結果を使わせない。
+- 未対応の暗号化能力の API を返す旧サーバーへ接続した場合、DirectoryConnector は、委譲の受信だけを停止し、既存の同期を継続する。
+- 運用者が `run -once` を実行した場合、DirectoryConnector は、一回の同期だけを行い、認証要求の待機を開始しない。
+- 期限に達するか停止の合図を受けたとき、DirectoryConnector は、LDAP の接続と待機をキャンセルし、パスワードをログと状態ファイルへ書かない。
+
+### 利用者のパスワードの照合
+
+#### REQ-DIRECTORYCONNECTOR-008 委譲の照合は同期の不変 ID で解決した一件の User とだけ bind する
+
+- 委譲の要求を検証したとき、DirectoryConnector は、設定した検索範囲とフィルターの中で AD の `objectGUID` または OpenLDAP の `entryUUID` から一件のエントリを解決し、検証済み TLS の別の接続でその DN と提示されたパスワードによる simple bind を実行する。
+- パスワードが空、検索結果が 0 件または複数件、外部 ID の形式が不正または要求の期限切れの場合、DirectoryConnector は、利用者の bind を行わずに拒否する。
+- LDAP がリファーラルを返した場合、DirectoryConnector は、接続先を追ってパスワードを転送せずに拒否する。
+- bind が成功したとき、DirectoryConnector は、`accepted` を返し、LDAP の拒否のときは資格情報または AD のアカウントの状態の分類を、接続、TLS とサービスアカウントの失敗では `directory_unavailable` を返す。
+- 結果を送信するとき、DirectoryConnector は、新しい署名 JWT を使い、パスワード、DN と LDAP の診断原文を結果へ含めない。
+- 結果の送信が通信で失敗した場合、DirectoryConnector は、同じ要求 ID と結果を期限まで再送できるが、LDAP の照合を再実行しない。
 
 ## セキュリティ上の考慮
 

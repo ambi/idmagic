@@ -6,18 +6,26 @@ package db_postgres
 
 import (
 	"context"
+	"time"
 )
 
 type Querier interface {
 	AddDirectoryIngestionRunCounts(ctx context.Context, arg AddDirectoryIngestionRunCountsParams) error
+	ClaimDirectoryPasswordChallenge(ctx context.Context, arg ClaimDirectoryPasswordChallengeParams) (*ClaimDirectoryPasswordChallengeRow, error)
 	CompleteDirectoryIngestionRun(ctx context.Context, arg CompleteDirectoryIngestionRunParams) (int64, error)
+	CompleteDirectoryPasswordChallenge(ctx context.Context, arg CompleteDirectoryPasswordChallengeParams) (int64, error)
+	CountDirectoryPasswordChallenges(ctx context.Context, arg CountDirectoryPasswordChallengesParams) (int64, error)
 	CreateDirectoryConnector(ctx context.Context, arg CreateDirectoryConnectorParams) error
 	CreateDirectoryIngestionRun(ctx context.Context, arg CreateDirectoryIngestionRunParams) error
+	DeleteDirectoryPasswordChallenge(ctx context.Context, arg DeleteDirectoryPasswordChallengeParams) error
+	EnqueueDirectoryPasswordChallenge(ctx context.Context, arg EnqueueDirectoryPasswordChallengeParams) error
 	FindDirectoryConnector(ctx context.Context, arg FindDirectoryConnectorParams) (*DirectoryConnector, error)
 	FindDirectoryConnectorByEnrollmentTokenHash(ctx context.Context, arg FindDirectoryConnectorByEnrollmentTokenHashParams) (*DirectoryConnector, error)
 	FindDirectoryIngestionBatch(ctx context.Context, arg FindDirectoryIngestionBatchParams) (*DirectoryIngestionBatch, error)
 	FindDirectoryIngestionRun(ctx context.Context, arg FindDirectoryIngestionRunParams) (*DirectoryIngestionRun, error)
+	FindDirectoryPasswordChallenge(ctx context.Context, arg FindDirectoryPasswordChallengeParams) (*DirectoryPasswordChallenge, error)
 	FindDirectoryUserCorrelation(ctx context.Context, arg FindDirectoryUserCorrelationParams) (*DirectoryUserCorrelation, error)
+	FindDirectoryUserCorrelationByUser(ctx context.Context, arg FindDirectoryUserCorrelationByUserParams) (*DirectoryUserCorrelation, error)
 	HasApplyingDirectoryIngestionRun(ctx context.Context, arg HasApplyingDirectoryIngestionRunParams) (bool, error)
 	InsertDirectoryIngestionBatch(ctx context.Context, arg InsertDirectoryIngestionBatchParams) (int64, error)
 	ListDirectoryConnectors(ctx context.Context, tenantID string) ([]*DirectoryConnector, error)
@@ -26,10 +34,12 @@ type Querier interface {
 	ListDirectoryIngestionRuns(ctx context.Context, arg ListDirectoryIngestionRunsParams) ([]*DirectoryIngestionRun, error)
 	ListDirectoryUserCorrelations(ctx context.Context, arg ListDirectoryUserCorrelationsParams) ([]*DirectoryUserCorrelation, error)
 	ListDirectoryUserCorrelationsNotSeenIn(ctx context.Context, arg ListDirectoryUserCorrelationsNotSeenInParams) ([]*DirectoryUserCorrelation, error)
+	LockDirectoryPasswordQueue(ctx context.Context, queueKey string) error
 	MarkDirectoryUserCorrelationSeen(ctx context.Context, arg MarkDirectoryUserCorrelationSeenParams) error
 	SaveDirectoryIngestionProgress(ctx context.Context, arg SaveDirectoryIngestionProgressParams) error
 	SaveDirectoryUserCorrelation(ctx context.Context, arg SaveDirectoryUserCorrelationParams) error
 	SupersedeRunningDirectoryIngestionRuns(ctx context.Context, arg SupersedeRunningDirectoryIngestionRunsParams) error
+	SweepDirectoryPasswordChallenges(ctx context.Context, expiresAt time.Time) error
 	TouchDirectoryConnectorLastSeen(ctx context.Context, arg TouchDirectoryConnectorLastSeenParams) error
 	TryLockDirectoryIngestion(ctx context.Context, lockKey string) (bool, error)
 	// 最終接続時刻は TouchDirectoryConnectorLastSeen だけが書くので、ここでは触れない。

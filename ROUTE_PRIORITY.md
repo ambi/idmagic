@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：221
+経路の数：226
 
 | 経路 | メソッド |
 | --- | --- |
@@ -171,6 +171,8 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/default-sign-in-policy` | GET, PUT |
 | `/api/admin/v1/directory-connectors` | GET, POST |
 | `/api/admin/v1/directory-connectors/{connector_id}` | GET |
+| `/api/admin/v1/directory-connectors/{connector_id}/delegated-authentication` | PUT |
+| `/api/admin/v1/directory-connectors/{connector_id}/delegated-authentication/test` | POST |
 | `/api/admin/v1/directory-connectors/{connector_id}/deletion-thresholds` | PUT |
 | `/api/admin/v1/directory-connectors/{connector_id}/disable` | POST |
 | `/api/admin/v1/directory-connectors/{connector_id}/enrollment-tokens` | POST |
@@ -281,11 +283,14 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/token-vault/v1/callback/{connector_id}` | GET |
 | `/api/token-vault/v1/connectors/{connector_id}/execute` | POST |
 | `/application-icons/{application_id}/{id}` | GET |
+| `/directory-connector/v1/encryption-capability` | PUT |
 | `/directory-connector/v1/enrollment` | POST |
 | `/directory-connector/v1/heartbeat` | POST |
 | `/directory-connector/v1/ingestion-runs` | POST |
 | `/directory-connector/v1/ingestion-runs/{run_id}/complete` | POST |
 | `/directory-connector/v1/ingestion-runs/{run_id}/user-batches` | POST |
+| `/directory-connector/v1/password-challenges` | POST |
+| `/directory-connector/v1/password-challenges/{challenge_id}/result` | POST |
 | `/register` | POST |
 | `/scim/v2/Groups` | GET, POST |
 | `/scim/v2/Groups/{id}` | DELETE, GET, PATCH, PUT |

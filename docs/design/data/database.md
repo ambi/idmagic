@@ -366,6 +366,8 @@ erDiagram
     }
     directory_user_correlations {
     }
+    directory_password_challenges {
+    }
     directory_ingestion_runs {
     }
     directory_ingestion_batches {
@@ -414,6 +416,8 @@ erDiagram
     groups ||--o| scim_group_refs : SCIMグループに対応する
     tenants ||--o{ directory_connectors : ディレクトリの取り込み元を持つ
     directory_connectors ||--o{ directory_user_correlations : 外部の不変IDを対応付ける
+    directory_connectors ||--o{ directory_password_challenges : パスワードの照合を配送する
+    tenants ||--o{ directory_password_challenges : 照合の要求を持つ
     users ||--o| directory_user_correlations : ディレクトリの利用者に対応する
     directory_connectors ||--o{ directory_ingestion_runs : 取り込みを実行する
     directory_ingestion_runs ||--o{ directory_ingestion_batches : バッチを記録する
@@ -449,6 +453,7 @@ erDiagram
 | `scim_user_refs` | SCIM クライアントが指定した外部 ID と利用者の対応 | Sourcing | `LOGGED` | 複合主キーの一部 |
 | `scim_group_refs` | SCIM クライアントが指定した外部 ID とグループの対応 | Sourcing | `LOGGED` | 複合主キーの一部 |
 | `directory_connectors` | 閉域のディレクトリから取り込む Directory Connector の登録と状態 | Sourcing | `LOGGED` | 非キーカラム |
+| `directory_password_challenges` | 委譲認証の期限付き要求と単回の配信状態。暗号文は配信時に消し、結果は期限まで保持する | Sourcing | `LOGGED` | 非キーカラム |
 | `directory_user_correlations` | Connector と外部の不変 ID の組から利用者への対応と、最後に現れた取り込みの実行 | Sourcing | `LOGGED` | 複合主キーの一部 |
 | `directory_ingestion_runs` | Directory Connector の取り込みの実行の状態と結果ごとの件数 | Sourcing | `LOGGED` | 非キーカラム |
 | `directory_ingestion_batches` | 取り込みの実行に記録したバッチの項目のダイジェストと項目ごとの結果 | Sourcing | `LOGGED` | 非キーカラム |

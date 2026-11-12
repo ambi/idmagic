@@ -378,7 +378,7 @@ run = "bun run tools/verification/src/main.ts --report .verification/test-go-ope
 
 [tasks.test-go-openldap-e2e]
 description = "Run Directory Connector E2E against real OpenLDAP (requires Docker)"
-run = "bun run tools/verification/src/main.ts --report .verification/test-go-openldap-e2e.json -- -count=1 -tags=openldap ./backend/directoryconnector -run '^TestDirectoryConnectorSyncsOpenLDAPUsers$'"
+run = "bun run tools/verification/src/main.ts --report .verification/test-go-openldap-e2e.json -- -count=1 -tags=openldap ./backend/directoryconnector -run '^TestDirectory(ConnectorSyncsOpenLDAPUsers|DelegationAuthenticatesThroughTheProductionRouter)$'"
 
 [tasks.test-go-package]
 description = "Run Go tests for one package; pass --race to add the race detector"

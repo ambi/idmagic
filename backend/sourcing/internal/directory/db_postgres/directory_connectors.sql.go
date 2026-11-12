@@ -16,8 +16,9 @@ const createDirectoryConnector = `-- name: CreateDirectoryConnector :exec
 INSERT INTO directory_connectors (
     id, tenant_id, display_name, status, enrollment_token_hash, enrollment_expires_at,
     public_key, key_id, created_at, enrolled_at, last_seen_at, disabled_at, revision,
-    accidental_deletion_count_threshold, accidental_deletion_percent_threshold
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    accidental_deletion_count_threshold, accidental_deletion_percent_threshold,
+    encryption_public_key, encryption_key_id, delegated_authentication
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 `
 
 type CreateDirectoryConnectorParams struct {
@@ -36,6 +37,9 @@ type CreateDirectoryConnectorParams struct {
 	Revision                           int64
 	AccidentalDeletionCountThreshold   int32
 	AccidentalDeletionPercentThreshold int32
+	EncryptionPublicKey                []byte
+	EncryptionKeyID                    pgtype.Text
+	DelegatedAuthentication            bool
 }
 
 func (q *Queries) CreateDirectoryConnector(ctx context.Context, arg CreateDirectoryConnectorParams) error {
@@ -55,12 +59,15 @@ func (q *Queries) CreateDirectoryConnector(ctx context.Context, arg CreateDirect
 		arg.Revision,
 		arg.AccidentalDeletionCountThreshold,
 		arg.AccidentalDeletionPercentThreshold,
+		arg.EncryptionPublicKey,
+		arg.EncryptionKeyID,
+		arg.DelegatedAuthentication,
 	)
 	return err
 }
 
 const findDirectoryConnector = `-- name: FindDirectoryConnector :one
-SELECT id, tenant_id, display_name, status, enrollment_token_hash, enrollment_expires_at, public_key, key_id, created_at, enrolled_at, last_seen_at, disabled_at, revision, accidental_deletion_count_threshold, accidental_deletion_percent_threshold FROM directory_connectors WHERE tenant_id = $1 AND id = $2
+SELECT id, tenant_id, display_name, status, enrollment_token_hash, enrollment_expires_at, public_key, key_id, encryption_public_key, encryption_key_id, delegated_authentication, created_at, enrolled_at, last_seen_at, disabled_at, revision, accidental_deletion_count_threshold, accidental_deletion_percent_threshold FROM directory_connectors WHERE tenant_id = $1 AND id = $2
 `
 
 type FindDirectoryConnectorParams struct {
@@ -80,6 +87,9 @@ func (q *Queries) FindDirectoryConnector(ctx context.Context, arg FindDirectoryC
 		&i.EnrollmentExpiresAt,
 		&i.PublicKey,
 		&i.KeyID,
+		&i.EncryptionPublicKey,
+		&i.EncryptionKeyID,
+		&i.DelegatedAuthentication,
 		&i.CreatedAt,
 		&i.EnrolledAt,
 		&i.LastSeenAt,
@@ -92,7 +102,7 @@ func (q *Queries) FindDirectoryConnector(ctx context.Context, arg FindDirectoryC
 }
 
 const findDirectoryConnectorByEnrollmentTokenHash = `-- name: FindDirectoryConnectorByEnrollmentTokenHash :one
-SELECT id, tenant_id, display_name, status, enrollment_token_hash, enrollment_expires_at, public_key, key_id, created_at, enrolled_at, last_seen_at, disabled_at, revision, accidental_deletion_count_threshold, accidental_deletion_percent_threshold FROM directory_connectors WHERE tenant_id = $1 AND enrollment_token_hash = $2
+SELECT id, tenant_id, display_name, status, enrollment_token_hash, enrollment_expires_at, public_key, key_id, encryption_public_key, encryption_key_id, delegated_authentication, created_at, enrolled_at, last_seen_at, disabled_at, revision, accidental_deletion_count_threshold, accidental_deletion_percent_threshold FROM directory_connectors WHERE tenant_id = $1 AND enrollment_token_hash = $2
 `
 
 type FindDirectoryConnectorByEnrollmentTokenHashParams struct {
@@ -112,6 +122,9 @@ func (q *Queries) FindDirectoryConnectorByEnrollmentTokenHash(ctx context.Contex
 		&i.EnrollmentExpiresAt,
 		&i.PublicKey,
 		&i.KeyID,
+		&i.EncryptionPublicKey,
+		&i.EncryptionKeyID,
+		&i.DelegatedAuthentication,
 		&i.CreatedAt,
 		&i.EnrolledAt,
 		&i.LastSeenAt,
@@ -124,7 +137,7 @@ func (q *Queries) FindDirectoryConnectorByEnrollmentTokenHash(ctx context.Contex
 }
 
 const listDirectoryConnectors = `-- name: ListDirectoryConnectors :many
-SELECT id, tenant_id, display_name, status, enrollment_token_hash, enrollment_expires_at, public_key, key_id, created_at, enrolled_at, last_seen_at, disabled_at, revision, accidental_deletion_count_threshold, accidental_deletion_percent_threshold FROM directory_connectors WHERE tenant_id = $1 ORDER BY created_at, id
+SELECT id, tenant_id, display_name, status, enrollment_token_hash, enrollment_expires_at, public_key, key_id, encryption_public_key, encryption_key_id, delegated_authentication, created_at, enrolled_at, last_seen_at, disabled_at, revision, accidental_deletion_count_threshold, accidental_deletion_percent_threshold FROM directory_connectors WHERE tenant_id = $1 ORDER BY created_at, id
 `
 
 func (q *Queries) ListDirectoryConnectors(ctx context.Context, tenantID string) ([]*DirectoryConnector, error) {
@@ -145,6 +158,9 @@ func (q *Queries) ListDirectoryConnectors(ctx context.Context, tenantID string) 
 			&i.EnrollmentExpiresAt,
 			&i.PublicKey,
 			&i.KeyID,
+			&i.EncryptionPublicKey,
+			&i.EncryptionKeyID,
+			&i.DelegatedAuthentication,
 			&i.CreatedAt,
 			&i.EnrolledAt,
 			&i.LastSeenAt,
@@ -187,12 +203,15 @@ UPDATE directory_connectors SET
     enrollment_expires_at = $4,
     public_key = $5,
     key_id = $6,
-    enrolled_at = $7,
-    disabled_at = $8,
-    revision = $9,
-    accidental_deletion_count_threshold = $10,
-    accidental_deletion_percent_threshold = $11
-WHERE tenant_id = $12 AND id = $13 AND revision = $9 - 1
+    encryption_public_key = $7,
+    encryption_key_id = $8,
+    delegated_authentication = $9,
+    enrolled_at = $10,
+    disabled_at = $11,
+    revision = $12,
+    accidental_deletion_count_threshold = $13,
+    accidental_deletion_percent_threshold = $14
+WHERE tenant_id = $15 AND id = $16 AND revision = $12 - 1
 `
 
 type UpdateDirectoryConnectorParams struct {
@@ -202,6 +221,9 @@ type UpdateDirectoryConnectorParams struct {
 	EnrollmentExpiresAt                pgtype.Timestamptz
 	PublicKey                          []byte
 	KeyID                              pgtype.Text
+	EncryptionPublicKey                []byte
+	EncryptionKeyID                    pgtype.Text
+	DelegatedAuthentication            bool
 	EnrolledAt                         pgtype.Timestamptz
 	DisabledAt                         pgtype.Timestamptz
 	Revision                           int64
@@ -220,6 +242,9 @@ func (q *Queries) UpdateDirectoryConnector(ctx context.Context, arg UpdateDirect
 		arg.EnrollmentExpiresAt,
 		arg.PublicKey,
 		arg.KeyID,
+		arg.EncryptionPublicKey,
+		arg.EncryptionKeyID,
+		arg.DelegatedAuthentication,
 		arg.EnrolledAt,
 		arg.DisabledAt,
 		arg.Revision,

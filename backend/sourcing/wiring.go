@@ -24,15 +24,17 @@ func NewMemoryModule() Module {
 	return Module{
 		ScimRepo: db_memory.NewScimRepository(), connectors: directorymemory.NewConnectorRepository(),
 		correlations: correlations, memoryCorrelations: correlations, runs: directorymemory.NewIngestionRunRepository(),
+		passwordChallenges: directorymemory.NewPasswordChallengeStore(),
 	}
 }
 
 func NewPostgresModule(pool postgres.DB) Module {
 	return Module{
 		ScimRepo: &db_postgres.ScimRepository{Pool: pool}, begin: pool.Begin,
-		connectors:   &directorypostgres.ConnectorRepository{Pool: pool},
-		correlations: &directorypostgres.CorrelationRepository{Pool: pool},
-		runs:         &directorypostgres.IngestionRunRepository{Pool: pool},
+		connectors:         &directorypostgres.ConnectorRepository{Pool: pool},
+		correlations:       &directorypostgres.CorrelationRepository{Pool: pool},
+		runs:               &directorypostgres.IngestionRunRepository{Pool: pool},
+		passwordChallenges: &directorypostgres.PasswordChallengeStore{Pool: pool},
 	}
 }
 

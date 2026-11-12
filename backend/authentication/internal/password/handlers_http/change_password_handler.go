@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
+
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 
 	"github.com/labstack/echo/v5"
@@ -47,6 +49,7 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	snap := authusecases.ResolveTenantPolicy(ctx)
 	changed, err := authusecases.ChangePassword(ctx, authusecases.ChangePasswordDeps{
 		UserRepo:                d.UserRepo,
+		PasswordDelegation:      d.PasswordDelegation,
 		PasswordHasher:          d.PasswordHasher,
 		PasswordHistoryRepo:     d.PasswordHistoryRepo,
 		BreachedPasswordChecker: d.BreachedPasswordChecker,
@@ -59,6 +62,8 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		Now:             time.Now().UTC(),
 	})
 	switch {
+	case errors.Is(err, passwordports.ErrPasswordDelegated):
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Change the password in the source directory.")
 	case err == nil:
 		// パスワードが変わった以上、それ以前に成立した第二要素の証明も同時に古くなる
 		// ので、記憶済みの端末をすべて失効させる (wi-91)。

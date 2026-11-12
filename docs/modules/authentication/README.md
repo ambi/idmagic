@@ -7,6 +7,8 @@
 ACR と AMR の解釈は Authentication が担い、SignInPolicy の入力となる認証事実へ変換する。
 条件の定義と評価は SignInPolicy に任せる。
 パスワードのデフォルト値は Tenancy の公開する定義を使い、設定の上書きの解決とパスワードの検証は Authentication が担う。
+Directory Connector の取り込み元が委譲を有効にした User では、Sourcing が公開する照合操作を使う。
+配送と LDAP の表現を認証へ持ち込まず、本人の変更と再設定も委譲の切り替えと共通の排他でローカルの資格情報の追加を防ぐ。
 
 User の完全削除を編成する IdManagement には、パスワード履歴、TOTP、信頼済み端末、WebAuthn、復旧コードを既存順に削除する一操作を提供する。
 各保存先で確定し、途中のエラーを呼び出し側へ返すため、一つのトランザクションを意味しない。

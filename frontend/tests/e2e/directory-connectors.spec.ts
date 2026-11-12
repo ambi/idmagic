@@ -15,6 +15,7 @@ const shownToken = (view: Bun.WebView) =>
 const bodyText = (view: Bun.WebView) => view.evaluate(`document.body.innerText`) as Promise<string>
 
 //spec:covers REQ-SOURCING-023: 正式な画面が作成と再発行の登録トークンを一度だけ表示し、再読み込みと URL と保存領域に残さず、無効化で操作を消すこと。
+//spec:covers REQ-SOURCING-028: 詳細から委譲認証の管理へ進み、暗号化能力が未登録であることと実行できない試験を示す。
 test('Directory connector creation shows the enrollment token once', async () => {
   const view = await openWebView({ width: 1280, height: 1200 })
   const displayName = `e2e-connector-${Date.now()}`
@@ -43,6 +44,17 @@ test('Directory connector creation shows the enrollment token once', async () =>
     await waitForText(view, displayName)
     expect(await bodyText(view)).not.toContain(created)
     const detailURL = (await view.evaluate('location.href')) as string
+
+    await clickLinkByText(view, '委譲認証')
+    await waitForPage(view, 'admin-directory-delegated-authentication')
+    await waitForText(view, 'Connector の常駐を起動して暗号化能力を登録してください。')
+    expect(
+      await view.evaluate(
+        `Array.from(document.querySelectorAll('button')).find(b => b.textContent === '照合を試す')?.disabled`,
+      ),
+    ).toBe(true)
+    await clickLinkByText(view, 'Connector の詳細へ戻る')
+    await waitForPage(view, 'admin-directory-connector-detail')
 
     await clickButtonByText(view, '登録トークンを再発行')
     await waitForText(view, 'この登録トークンは再表示できません')

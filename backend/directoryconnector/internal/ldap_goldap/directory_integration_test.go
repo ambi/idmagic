@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-ldap/ldap/v3"
+
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/ldap_goldap"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/testing_openldap"
@@ -47,6 +49,38 @@ func TestDirectoryRejectsAnUntrustedServerCertificate(t *testing.T) {
 		if !strings.Contains(err.Error(), "certificate") {
 			t.Fatalf("%s: error = %v, want a certificate failure", name, err)
 		}
+	}
+}
+
+//spec:covers REQ-DIRECTORYCONNECTOR-008: 同期の不変 ID で対象を解決し、TLS 上の実 bind で正誤を確かめ、空値と不信任を拒否する。
+func TestDelegatedPasswordUsesTheImmutableIdentityAndTrustedTLS(t *testing.T) {
+	server := testing_openldap.Start(t)
+	server.AddPerson(t, "delegated", "Delegated User", "delegated@example.test")
+	server.Do(t, func(conn *ldap.Conn) error {
+		change := ldap.NewModifyRequest("uid=delegated,"+testing_openldap.PeopleDN, nil)
+		change.Replace("userPassword", []string{"directory-password-921"})
+		return conn.Modify(change)
+	})
+	id := server.EntryUUID(t, "delegated")
+	directory, err := ldap_goldap.New(config(server.LDAPSURL, false, server.TLS(t)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scope := domain.Scope{BaseDNs: []string{testing_openldap.PeopleDN}, Filter: "(objectClass=inetOrgPerson)"}
+	if got := directory.VerifyPassword(t.Context(), scope, id, "directory-password-921"); got != "accepted" {
+		t.Fatal(got)
+	}
+	for _, password := range []string{"", "wrong-password"} {
+		if got := directory.VerifyPassword(t.Context(), scope, id, password); got != "invalid_credentials" {
+			t.Fatalf("rejected password: %s", got)
+		}
+	}
+	untrusted, err := ldap_goldap.New(config(server.LDAPSURL, false, &tls.Config{RootCAs: x509.NewCertPool(), ServerName: testing_openldap.ServerName, MinVersion: tls.VersionTLS12}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := untrusted.VerifyPassword(t.Context(), scope, id, "directory-password-921"); got != "directory_unavailable" {
+		t.Fatalf("untrusted TLS: %s", got)
 	}
 }
 

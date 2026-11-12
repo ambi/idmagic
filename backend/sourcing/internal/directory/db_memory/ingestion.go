@@ -36,6 +36,17 @@ func (r *CorrelationRepository) SaveUserCorrelation(_ context.Context, c directo
 	return nil
 }
 
+func (r *CorrelationRepository) FindByUser(_ context.Context, tenantID, userID string) (*directoryports.UserCorrelation, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, c := range r.correlations {
+		if c.TenantID == tenantID && c.UserID == userID {
+			return &c, nil
+		}
+	}
+	return nil, nil
+}
+
 func (r *CorrelationRepository) Find(_ context.Context, tenantID, connectorID, externalID string) (*directoryports.UserCorrelation, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

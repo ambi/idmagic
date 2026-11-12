@@ -42,6 +42,7 @@ import (
 	webauthnmemory "github.com/ambi/idmagic/backend/authentication/internal/webauthn/db_memory"
 	webauthnpostgres "github.com/ambi/idmagic/backend/authentication/internal/webauthn/db_postgres"
 	webauthnusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
@@ -219,6 +220,7 @@ type RouteDeps struct {
 	*support.Authenticator
 	AuditEventRepo          auditports.AuditEventRepository
 	UserRepo                userports.UserRepository
+	PasswordDelegation      passwordports.PasswordDelegation
 	TenantRepo              tenantports.TenantRepository
 	EmailSender             sharednotification.EmailSender
 	Notifier                sharednotification.Notifier
@@ -282,6 +284,7 @@ func (m Module) httpDeps(d RouteDeps) authhttp.Deps {
 		SessionManager:          m.SessionManager,
 		AuditEventRepo:          d.AuditEventRepo,
 		UserRepo:                d.UserRepo,
+		PasswordDelegation:      d.PasswordDelegation,
 		PasswordHasher:          m.PasswordHasher,
 		PasswordHistoryRepo:     m.PasswordHistoryRepo,
 		MfaFactorRepo:           m.MfaFactorRepo,

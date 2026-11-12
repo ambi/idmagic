@@ -3,6 +3,7 @@
 ## 責務と境界
 
 利用者の閉域に置く実行単位 `idmagic-directory-connector` として、Active Directory と OpenLDAP を読み、Sourcing が公開する Connector API へ User の差分を送る。
+常駐中は同期と独立して暗号化したパスワード照合の要求を取得し、不変 ID で対象を解決して TLS 上の LDAP の bind の結果を返す。
 IdMagic のサーバーとは別に配布され、別々に版が進む。
 このモジュールとサーバーの間の契約は、TypeSpec の Connector API（`/directory-connector/v1/...`）だけである。
 

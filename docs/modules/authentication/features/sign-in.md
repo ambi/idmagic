@@ -31,6 +31,7 @@
 
 - `Active` の User が認可のトランザクションの中で正しいユーザー名とパスワードをログインの API に送ったとき、Authentication は、`pwd` の認証方式のログインセッションを作ってセッションの Cookie を発行し、`UserAuthenticated` を発行し、認可を続けて `redirect_uri` へ認可コードを返させる。
 - 正しいパスワードでログインしたとき、Authentication は、アカウントのログインの失敗の回数を消し、IP のログインの失敗の回数を残す。
+- 取り込み元が委譲認証を有効にしている場合、Authentication は、REQ-AUTHENTICATION-044 の照合を使う。
 - ログインに成功した User が必須操作 `update_password` を持つとき、Authentication は、認可を続けずにパスワードの変更の画面へ進ませる。
 - ユーザー名かパスワードを送らないか、JSON として読めない本文を受けた場合、Authentication は、400 と `invalid_request` で拒否する。
 - 認可のトランザクションを解決できない場合、Authentication は、401 と `transaction_unavailable` で拒否する。
@@ -42,6 +43,17 @@
 - 抑制の閾値を超えた後のログインの失敗を記録するとき、Authentication は、失敗を 5 分の窓ごとに集約し、各窓の最初の失敗で件数を載せた `AuthenticationEventAggregated` を発行する。
 - 失敗の回数の共有のストアへ到達できない場合、Authentication は、ログインを抑制なしに通さずに失敗させる。
 - **例**：EX-AUTHENTICATION-007-01、EX-AUTHENTICATION-007-02、EX-AUTHENTICATION-007-03、EX-AUTHENTICATION-007-04
+
+#### REQ-AUTHENTICATION-044 委譲対象のパスワード認証は取り込み元の照合結果だけを使う
+
+- 委譲を有効にした Directory Connector の User がパスワードを提示したとき、Authentication は、アカウントと IP の試行の制限を先に適用し、Sourcing の対応が指す外部の不変 ID について Connector に照合を求める。
+- Connector が受理し、認証の完了時にも User と Connector と設定の世代が有効な場合、Authentication は、ローカルのパスワードポリシーを重ねずにパスワード認証を成立させ、既存の MFA、必須操作とアプリケーションの関門へ進ませる。
+- パスワードが空か、AD が照合を拒否するか、AD のアカウントがロック、無効または期限切れか、AD がパスワードの変更を求めるか、Connector または AD と通信できない場合、Authentication は、ブラウザーでは 401 と `invalid_credentials` で拒否し、セッションを発行しない。
+- 委譲を有効にした User の照合を行うとき、Authentication は、残っているローカルハッシュへ退避せず、提示されたパスワードのハッシュと履歴を保存しない。
+- 委譲を有効にした User のパスワードの設定、変更または再設定を要求された場合、Authentication は、ローカルの資格情報を変更せずに拒否する。
+- 委譲の有効化とパスワードの保存が競合する場合、Authentication は、Sourcing と共通の排他を通して検査から保存までを実行し、ローカルの資格情報を持つ User に委譲を有効にしない。
+- AD が資格情報を拒否したとき、Authentication は、既存の失敗回数と認証失敗のイベントを記録する。
+- 通信または配送の障害で照合できない場合、Authentication は、AD の資格情報の誤りとして失敗回数を増やさず、利用者への応答で障害の詳細を区別しない。
 
 #### REQ-AUTHENTICATION-009 無効なユーザーは新規ログインも既存セッションも拒否される
 

@@ -34,6 +34,7 @@ type ChangePasswordInput struct {
 
 type ChangePasswordDeps struct {
 	UserRepo                userports.UserRepository
+	PasswordDelegation      passwordports.PasswordDelegation
 	PasswordHasher          passwordports.PasswordHasher
 	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
 	BreachedPasswordChecker passwordports.BreachedPasswordChecker
@@ -43,6 +44,19 @@ type ChangePasswordDeps struct {
 }
 
 func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePasswordInput) (*userdomain.User, error) {
+	if deps.PasswordDelegation == nil {
+		return changePassword(ctx, deps, in)
+	}
+	var result *userdomain.User
+	err := deps.PasswordDelegation.WithLocalPasswordWrite(ctx, in.Sub, func() error {
+		var err error
+		result, err = changePassword(ctx, deps, in)
+		return err
+	})
+	return result, err
+}
+
+func changePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePasswordInput) (*userdomain.User, error) {
 	user, err := deps.UserRepo.FindBySub(ctx, in.Sub)
 	if err != nil {
 		return nil, err

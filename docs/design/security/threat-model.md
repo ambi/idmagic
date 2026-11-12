@@ -61,6 +61,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | 下流の外部受信者 | 配信先が正しいこと。受信側が署名を検証すること |
 | 永続化と非同期実行 | ジョブの `params` と `result` の中身。ハンドラーが 1 回だけ動くこと |
 | 運用者と制御面 | 実行環境を取れる者。起動時設定の値 |
+| IdMagic と Directory Connector | 公開鍵を持つことだけでは要求元を証明しない。設定した IdMagic への TLS 接続と署名 JWT、tenant、Connector、要求 ID、鍵と設定の世代、期限の束縛を検査する |
 
 ## 資産
 
@@ -188,6 +189,19 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-062 | Information disclosure | 平文の鍵を含むバックアップが、保存先の権限から持ち出される | SigningKeys, DataKeys | REQ-SIGNINGKEYS-012、contexts/signing-keys/design/decisions.md、runbooks/backup-restore-dr.md | `planned` |
 
 ## 上流の外部権威
+
+### Directory Connector の委譲認証
+
+| ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
+| --- | --- | --- | --- | --- | --- |
+| THREAT-106 | Information disclosure | 配送用の保存先、ログまたは診断から利用者の AD のパスワードが出る | Sourcing, DirectoryConnector | REQ-SOURCING-026、REQ-SOURCING-028、REQ-DIRECTORYCONNECTOR-007 | `covered` |
+| THREAT-107 | Spoofing | 別の取り込み元、設定変更前または期限後の結果でログインする | Sourcing, Authentication | REQ-SOURCING-026、REQ-SOURCING-027、REQ-AUTHENTICATION-044 | `covered` |
+
+暗号文は Connector の別の秘密鍵でだけ復号でき、配送の確定時にキューから消す。
+期限と削除は、WAL、バックアップとプロセスのメモリからの物理消去を保証しない。
+IdMagic の API プロセスと Connector は平文をメモリで扱う信頼の内側であり、その侵害を JWE で防げるとは扱わない。
+
+### その他の上流の外部権威
 
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|

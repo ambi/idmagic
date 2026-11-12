@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"strconv"
 	"time"
@@ -67,7 +68,19 @@ func ValidateFilter(filter string) error {
 
 // Connect は TLS を確立してから simple bind する。TLS の失敗では bind の要求を送らない。
 func (d *Directory) Connect(ctx context.Context) (ports.DirectorySession, error) {
+	return d.connect(ctx, d.config.BindDN, d.config.BindPassword)
+}
+
+func (d *Directory) connect(ctx context.Context, bindDN, password string) (*session, error) {
 	options := []ldap.DialOpt{}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	dialer := &net.Dialer{Timeout: d.config.Timeout}
+	if deadline, ok := ctx.Deadline(); ok {
+		dialer.Deadline = deadline
+	}
+	options = append(options, ldap.DialWithDialer(dialer))
 	if !d.config.StartTLS {
 		options = append(options, ldap.DialWithTLSConfig(d.config.TLS))
 	}
@@ -86,9 +99,9 @@ func (d *Directory) Connect(ctx context.Context) (ports.DirectorySession, error)
 			return nil, fmt.Errorf("start tls: %w", err)
 		}
 	}
-	if err := conn.Bind(d.config.BindDN, d.config.BindPassword); err != nil {
+	if err := conn.Bind(bindDN, password); err != nil {
 		_ = session.Close()
-		return nil, fmt.Errorf("bind as %s: %w", d.config.BindDN, err)
+		return nil, fmt.Errorf("bind as %s: %w", bindDN, err)
 	}
 	return session, nil
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sourcing/internal/directory/db_memory"
@@ -55,11 +56,15 @@ func (s *replayStore) RecordIfNew(_ context.Context, jti string, _ int, _ time.T
 }
 
 type server struct {
-	t      *testing.T
-	e      *echo.Echo
-	now    time.Time
-	mu     sync.Mutex
-	events []string
+	t              *testing.T
+	e              *echo.Echo
+	now            time.Time
+	mu             sync.Mutex
+	events         []string
+	delegation     *usecases.Delegation
+	users          userports.UserRepository
+	correlations   *db_memory.CorrelationRepository
+	diagnosticGate *diagnosticGate
 }
 
 func newServer(t *testing.T) *server {
@@ -84,6 +89,10 @@ func newServer(t *testing.T) *server {
 		},
 		usecases.WithClock(func() time.Time { return s.now }),
 	)
+	s.users = users
+	s.correlations = db_memory.NewCorrelationRepository()
+	s.delegation = &usecases.Delegation{Service: service, Correlations: s.correlations, Challenges: db_memory.NewPasswordChallengeStore(), Locks: db_memory.NewIngestionRunRepository(), Users: users, Now: time.Now}
+	s.diagnosticGate = &diagnosticGate{}
 	deps := support.Deps{Issuer: issuer}
 	authenticator := &support.Authenticator{
 		Principals: idmanagement.Module{UserRepo: users}.Principals(),
@@ -91,7 +100,7 @@ func newServer(t *testing.T) *server {
 	}
 	s.e = echo.New()
 	s.e.HTTPErrorHandler = support.ErrorHandler(nil, nil)
-	directoryhttp.RegisterRoutes(s.e.Group("", resolveRealm), directoryhttp.Deps{Deps: deps, Authenticator: authenticator, Service: service})
+	directoryhttp.RegisterRoutes(s.e.Group("", resolveRealm), directoryhttp.Deps{Deps: deps, Authenticator: authenticator, Service: service, Delegation: s.delegation, DiagnosticGate: s.diagnosticGate, Users: users})
 	return s
 }
 

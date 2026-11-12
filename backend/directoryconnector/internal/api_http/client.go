@@ -36,6 +36,10 @@ func newEndpoint(realmURL string, client *http.Client) endpoint {
 
 // call は body を JSON で送り、2xx なら応答を into へ読む。2xx 以外は ports.APIError を返す。
 func (e endpoint) call(ctx context.Context, path, bearer string, body, into any) error {
+	return e.callMethod(ctx, http.MethodPost, path, bearer, body, into)
+}
+
+func (e endpoint) callMethod(ctx context.Context, method, path, bearer string, body, into any) error {
 	var payload io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
@@ -44,7 +48,7 @@ func (e endpoint) call(ctx context.Context, path, bearer string, body, into any)
 		}
 		payload = bytes.NewReader(raw)
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, e.base+path, payload)
+	request, err := http.NewRequestWithContext(ctx, method, e.base+path, payload)
 	if err != nil {
 		return err
 	}
@@ -66,10 +70,10 @@ func (e endpoint) call(ctx context.Context, path, bearer string, body, into any)
 		_ = json.NewDecoder(io.LimitReader(response.Body, 64<<10)).Decode(&problem)
 		return &ports.APIError{Status: response.StatusCode, Type: strings.TrimPrefix(problem.Type, problemTypePrefix)}
 	}
-	if into == nil {
+	if into == nil || response.StatusCode == http.StatusNoContent {
 		return nil
 	}
-	if err := json.NewDecoder(response.Body).Decode(into); err != nil {
+	if err := json.NewDecoder(io.LimitReader(response.Body, 64<<10)).Decode(into); err != nil {
 		return fmt.Errorf("decode %s response: %w", path, err)
 	}
 	return nil

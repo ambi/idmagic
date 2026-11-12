@@ -28,6 +28,20 @@ func (r *CorrelationRepository) SaveUserCorrelation(ctx context.Context, c direc
 	})
 }
 
+func (r *CorrelationRepository) FindByUser(ctx context.Context, tenantID, userID string) (*directoryports.UserCorrelation, error) {
+	if !sharedpg.IsUUIDText(userID) {
+		return nil, nil
+	}
+	row, err := New(r.Pool).FindDirectoryUserCorrelationByUser(ctx, FindDirectoryUserCorrelationByUserParams{TenantID: tenantID, UserID: userID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return new(correlationToPort(row)), nil
+}
+
 func (r *CorrelationRepository) Find(ctx context.Context, tenantID, connectorID, externalID string) (*directoryports.UserCorrelation, error) {
 	row, err := New(r.Pool).FindDirectoryUserCorrelation(ctx, FindDirectoryUserCorrelationParams{
 		TenantID: tenantID, ConnectorID: connectorID, ExternalID: externalID,

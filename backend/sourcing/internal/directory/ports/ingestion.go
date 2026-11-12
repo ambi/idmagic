@@ -14,6 +14,7 @@ var ErrRunBusy = errors.New("directory ingestion: connector operation is busy")
 // CorrelationRepository は Connector ごとの User の対応を保存する。対応の作成は User の作成と
 // 同じトランザクションで行うので、組み立て地点の IdentityWrites が担う。
 type CorrelationRepository interface {
+	FindByUser(ctx context.Context, tenantID, userID string) (*directoryports.UserCorrelation, error)
 	List(ctx context.Context, tenantID, connectorID string) ([]directoryports.UserCorrelation, error)
 	// Find は見つからなければ nil を返す。
 	Find(ctx context.Context, tenantID, connectorID, externalID string) (*directoryports.UserCorrelation, error)

@@ -7,6 +7,7 @@ require (
 	github.com/beevik/etree v1.8.1
 	github.com/fergusstrange/embedded-postgres/v2 v2.0.1
 	github.com/fxamacker/cbor/v2 v2.10.0
+	github.com/go-jose/go-jose/v4 v4.1.9
 	github.com/go-ldap/ldap/v3 v3.4.15
 	github.com/go-webauthn/webauthn v0.18.2
 	github.com/goccy/go-yaml v1.19.2

@@ -35,6 +35,7 @@ type LoginThrottleMetrics interface {
 type PasswordAuthentication struct {
 	UserRepo             userports.UserRepository
 	PasswordHasher       passwordports.PasswordHasher
+	PasswordDelegation   passwordports.PasswordDelegation
 	SentinelPasswordHash string
 	// LoginAttemptThrottle が nil なら試行の制限を数えない。
 	LoginAttemptThrottle sessionports.LoginAttemptThrottle
@@ -76,8 +77,18 @@ func (p PasswordAuthentication) AuthenticatePassword(
 	if user != nil {
 		hashToVerify = user.PasswordHash
 	}
+	verification := passwordports.PasswordVerification{}
+	if user != nil && p.PasswordDelegation != nil {
+		verification, err = p.PasswordDelegation.VerifyPassword(ctx, user.ID, in.Password)
+		if err != nil || verification.Unavailable {
+			p.emitAuthenticationFailure(ctx, in, "invalid_credentials")
+			return signinports.PasswordOutcome{Refusal: signinports.PasswordRefusalInvalidCredentials}, nil //nolint:nilerr // 配送障害とユーザーの存在を公開の応答で区別しない。
+		}
+	}
 	ok := false
-	if hashToVerify != "" {
+	if verification.Delegated {
+		ok = verification.Accepted
+	} else if hashToVerify != "" {
 		ok, err = p.PasswordHasher.Verify(in.Password, hashToVerify)
 	}
 	if user == nil || err != nil || !ok {
@@ -92,11 +103,20 @@ func (p PasswordAuthentication) AuthenticatePassword(
 		}
 		return refused, nil
 	}
+	if verification.Delegated {
+		user, err = p.UserRepo.FindBySub(ctx, user.ID)
+		if err != nil {
+			return signinports.PasswordOutcome{}, err
+		}
+		if user == nil {
+			return signinports.PasswordOutcome{Refusal: signinports.PasswordRefusalInvalidCredentials}, nil
+		}
+	}
 	if !user.IsActive() {
 		p.emitAuthenticationFailure(ctx, in, "account_disabled")
 		return signinports.PasswordOutcome{Refusal: signinports.PasswordRefusalAccountDisabled}, nil
 	}
-	if result := passworddomain.ValidatePassword(in.Password); !result.OK {
+	if result := passworddomain.ValidatePassword(in.Password); !verification.Delegated && !result.OK {
 		return signinports.PasswordOutcome{Refusal: signinports.PasswordRefusalPasswordPolicy}, nil
 	}
 	if p.LoginAttemptThrottle != nil {

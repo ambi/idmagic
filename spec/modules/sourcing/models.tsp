@@ -183,6 +183,10 @@ model DirectoryConnector {
   @doc("Connector が最後に認証された呼び出しを行った時刻。")
   last_seen_at?: utcDateTime;
   disabled_at?: utcDateTime;
+  @doc("この取り込み元のパスワード照合を Connector に委譲するか。停止してもローカル照合へ退避しない。")
+  delegated_authentication_enabled: boolean;
+  @doc("現在の登録に束縛された暗号化用公開鍵の ID。能力の登録がない間は返さない。")
+  encryption_key_id?: string;
   @minValue(0)
   @maxValue(2147483647)
   accidental_deletion_count_threshold: int64;
@@ -248,6 +252,72 @@ model DirectoryConnectorDisabledError is ProblemDetails;
 
 @doc("登録トークンまたは Connector の JWT を認証できない。トークンの不一致、期限切れ、使用済み、`jti` の再利用、署名、`aud`、無効化した Connector を区別しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_token` である。")
 model DirectoryConnectorInvalidTokenError is ProblemDetails;
+
+@doc("委譲の設定または要求の状態が操作を許さない。RFC 9457 の Problem Details で type は urn:idmagic:error:delegation_unavailable。")
+model DelegationUnavailableError is ProblemDetails;
+
+@doc("Connector が登録する暗号化用 P-256 公開鍵。署名鍵とは異なり、秘密鍵の成分を含まない。")
+model DirectoryEncryptionCapability {
+  jwk: Record<unknown>;
+}
+
+@doc("暗号化能力の登録結果。")
+model DirectoryEncryptionRegistration {
+  key_id: string;
+}
+
+@doc("管理者が設定する委譲認証の有効性。")
+model ConfigureDirectoryDelegationRequest {
+  enabled: boolean;
+}
+
+@doc("一回だけ配信する暗号化したパスワード照合の要求。")
+model DirectoryPasswordChallenge {
+  id: string;
+  tenant_id: string;
+  connector_id: string;
+  key_id: string;
+  expires_at: utcDateTime;
+  @doc("JWE compact 表記。復号後の束縛と期限も検証する。ログと永続的な診断へ出さない。")
+  encrypted_request: string;
+}
+
+@doc("JWE の復号後に検査するパスワード照合の契約。外側の配送情報と全ての束縛が一致し、期限内であることを検証する。")
+model DirectoryPasswordPayload {
+  id: string;
+  tenant_id: string;
+  connector_id: string;
+  key_id: string;
+  expires_at: utcDateTime;
+  operation: "verify_password";
+  external_id: string;
+  password: string;
+}
+
+@doc("秘密と LDAP の診断原文を含まない照合結果。")
+enum DirectoryPasswordResult {
+  accepted,
+  invalid_credentials,
+  account_locked,
+  account_disabled,
+  account_expired,
+  password_expired,
+  password_change_required,
+  connector_unavailable,
+  directory_unavailable,
+}
+
+@doc("Connector が返す最初の照合結果。同じ結果の再送だけを期限内に受け付ける。")
+model DirectoryPasswordResponse {
+  result: DirectoryPasswordResult;
+}
+
+@doc("管理者の診断用の試験入力。資格情報を記録せず、セッションを発行しない。")
+model TestDirectoryDelegationRequest {
+  user_id: string;
+  @maxLength(4096)
+  password: string;
+}
 
 
 @doc("テナントの管理者が Directory Connector を作成した。登録トークンを含まない。")
