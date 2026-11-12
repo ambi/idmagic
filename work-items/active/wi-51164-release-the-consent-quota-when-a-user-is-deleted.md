@@ -32,6 +32,14 @@ affected_spec:
 未定である。
 `DeleteAllForSub` が消した `Granted` の件数を返すか、削除の前に数えるかを、着手時に比べる。
 
+2026-11-13 に、欠陥が残っていることを `backend/idmanagement/internal/user/usecases/admin_users.go` の `cascadeDeleteForSub` で確かめた。
+前例として、Application の削除（`backend/application/internal/db_postgres/deletion.go`）は、OIDC の連携の削除が消した同意の件数を返し、同じトランザクションで `consents` を減算している。
+件数を返す形はこの前例と揃うので、第一候補にする。
+Agent への代行の付与も同じ同意の行なので（[同意](../../docs/modules/oauth2/features/consent.md)）、件数に含める。
+
+[[wi-28886-keep-hard-quota-usage-when-a-creation-fails]] が `consents` に再集計を採ると、この項目のずれも次の実行で回収される。
+ただし再集計はずれを次の実行まで残すので、削除の経路で減算するこの修正は再集計の採否によらず行う。
+
 ## タスク
 
 - [ ] T001 [App] 利用者の削除で `consents` の使用量を減らす。

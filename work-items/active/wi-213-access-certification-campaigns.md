@@ -35,8 +35,15 @@ no-response 時の既定失効、campaign 結果のレポートを提供する�
     所有者の異動・退職で放置された非人間アイデンティティは、人間の access と同じ理由で
     定期的な再確認を要する。reviewer は Agent の所有者とし、失効の decision は
     `DisableAgent` へ対応付ける (`KillAgent` は一方向終端のため campaign からは行わない)。
-    棚卸しによる検出そのものは [[wi-59-agent-governance-guardrails-audit-inventory]] が持ち、
-    本 WI はそれを定期的な承認の対象として扱う。
+    棚卸しによる検出そのものは [[wi-59-agent-governance-guardrails-audit-inventory]] で完了し、
+    REQ-IDMANAGEMENT-094 の所見 (`owner_missing`、`dormant`、`unbound`) になった。
+    本 WI はそれを定期的な承認の対象として扱い、所見を reviewer の判断材料に示す。
+  - Agent の項目では、Agent そのものの存続に加えて、操作割当 (REQ-AUTHORIZATION-017) と
+    代行の付与を再確認の対象にするかを T002 で決める。一つの Agent の権限の一覧は
+    [[wi-40606-show-effective-agent-access]] が扱うので、その表示の単位を再利用する。
+  - Agent の所有者が不在の項目は reviewer を解決できない。所有者の移管
+    ([[wi-58764-transfer-agent-ownership-before-the-owner-stops]]) の結論に合わせ、
+    管理者へ回すか、既定動作を適用するかを T002 で決める。
   - campaign 開始 / 締切 / 完了、decision 記録、no-response 時の auto-revoke を
     events / scenarios として追加する。
   - `Application` の ApplicationAssignmentRef、`IdentityManagement` の GroupRef を
@@ -61,8 +68,10 @@ no-response 時の既定失効、campaign 結果のレポートを提供する�
 - [[wi-154-entitlement-catalog-and-separation-of-duties]] の entitlement assignment や
   [[wi-152-just-in-time-privileged-role-activation]] の eligibility をレビュー対象にする
   ことは初期スコープ外とし、CertificationItem の対象種別を拡張可能な設計に留める。
-- manager によるreviewer 自動解決 (User.manager のような属性は現状存在しないため、明示的
-  reviewer 指定または [[wi-94-delegated-administration]] の resource owner に限定する)。
+- manager によるreviewer 自動解決。明示的 reviewer 指定または
+  [[wi-94-delegated-administration]] の resource owner に限定する。2026-11-13 時点では、
+  SCIM の Enterprise 拡張の `manager` が `User.Attributes` の `manager_sub` に入るが、
+  SCIM 以外の経路では設定されず、管理者が検証する手段もないので、reviewer の根拠にしない。
 - risk score に基づくレビュー優先順位付けや機械学習によるレコメンド。
 - 外部 ticketing / SIEM 通知連携。
 

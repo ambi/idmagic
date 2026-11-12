@@ -57,6 +57,10 @@ affected_spec:
 
 着手時に、作成と削除の両方のずれを一つの仕組みで回収できる再集計を第一に比べる。
 同意の加算は HTTP ハンドラーにあるので、どの候補でも OAuth2 の同意のユースケースへ移す。
+2026-11-13 時点で、Agent への代行の付与の加算は、すでに同意のユースケース（`backend/oauth2/internal/consent/usecases/agent_delegations.go`）にある。
+
+Application の削除は、削除した件数を保存と同じトランザクションで減算している（`backend/application/internal/db_postgres/deletion.go`）。
+「同じ確定の単位」の候補を比べるとき、この前例を作成の側へ広げられるかを確かめる。
 
 ## タスク
 

@@ -33,6 +33,20 @@ affected_spec:
 着手時に、確認を行う主体を決める。候補は管理コンソール、Gateway、Agent 側である。
 あわせて、閉域の MCP サーバーへ届かない IdMagic が、確認できる範囲も決める。
 
+確認の項目は、IdMagic が手元の状態だけで判定できるものと、MCP サーバーへの到達を要するものに分かれる。
+
+| 項目 | 判定に使えるもの | MCP サーバーへの到達 |
+| --- | --- | --- |
+| 登録 | 登録の状態（`Active`）、評価用のクライアントの紐付け（REQ-OAUTH2-088） | 不要 |
+| 割当 | 操作割当（REQ-OAUTH2-083、REQ-IDMANAGEMENT-105）と、Agent の資格情報の束縛 | 不要 |
+| トークンの上限 | クライアントのスコープ、ガードレール（REQ-OAUTH2-073） | 不要 |
+| 一覧の取得（Gateway 経由） | Gateway が送ったカタログの `received_at`（REQ-OAUTH2-086、REQ-OAUTH2-087）。届いていれば Gateway から上流と IdMagic の双方へ届いている | 不要 |
+| 一覧の取得（直接） | IdMagic からの `tools/list` | 必要。[[wi-38469-fetch-public-mcp-server-metadata-and-tools]] の取得の経路と制限を使い、別の外向きの経路を作らない |
+| 認証 | PRM の `authorization_servers` と、トークンを提示した呼び出しの 401 以外の応答 | 必要 |
+
+到達を要しない項目だけで先に提供できるかを、T001 で判断する。
+到達を要する項目は wi-38469 の完了に依存するので、その場合は `depends_on` へ加える。
+
 ## 計画
 
 今回は起票だけを行う。

@@ -22,16 +22,23 @@ spec_impact: { kind: none, reason: "既存の仕様どおりの配置と運用�
 - 上流を到達できなくする配置と、その確認の手順。
 - 前段の TLS 終端、シークレットの置き方、指標の待ち受けの公開範囲。
 - 監査ログと `ResourceAccessEvaluated` の突き合わせ、評価と上流の障害時の対応。
+- 構成の選択：`proxy` と Envoy の `ext_authz`（REQ-MCPGATEWAY-007、`examples/envoy-mcp-gateway`）、カタログの参照（`mapping.catalog`、REQ-MCPGATEWAY-010 から 012）、下流のトークンへの差し替え（REQ-MCPGATEWAY-008）のそれぞれで、追加で必要な設定と確認。
 
 ## 対象外
 
 - 実在の MCP クライアントとの再現手順（[[wi-36722-publish-an-end-to-end-mcp-enforcement-walkthrough]]）。
 - 成果物を公開するリリース用 CI。リポジトリ全体の課題である。
+- IdMagic がホストする Gateway（[[wi-61303-host-the-mcp-gateway-in-idmagic]]）。この手順書は自前設置だけを扱い、ホスト型が加わったら運用場所の選び方から参照させる。
 
 ## 設計
 
 [Directory Connector の手順書](../../docs/runbooks/directory-connector.md)と同じ構成にし、設定の項目は[仕様](../../docs/modules/mcp-gateway/features/runtime.md)へ参照して複製しない。
-コンテナの作り方が現在の成果物にない場合は、一般的な操作として `mise` のタスクか `infra/docker` への追加を T001 で決める。
+
+起票後の 2026-11-13 時点で、次を確認した。
+
+- 管理コンソールは、MCP リソースサーバーの登録の完了時に、評価用のクライアント、`resource`、realm の URL、`mapping.catalog: true` を含む設定の例を示す（REQ-OAUTH2-088）。手順書の「IdMagic 側の準備」はこの画面から始め、値の転記の手順を重ねて書かない。
+- 実行ファイルは `backend/cmd/idmagic-mcp-gateway` にあり、`mise run test-mcp-client-walkthrough` だけが `go build` で作っている。`infra/docker/Dockerfile` と CI は Gateway の成果物を作らない。
+- コンテナの作り方を足す場合は、一般的な操作として `mise` のタスクか `infra/docker` への追加を T001 で決める。
 
 ## 計画
 
@@ -48,6 +55,7 @@ spec_impact: { kind: none, reason: "既存の仕様どおりの配置と運用�
 
 - `mise run check-links`。
 - 手順どおりの起動で確かめる。
+- 手順と同じ構成を自動で再現する `mise run test-mcp-client-walkthrough` を参考の比較対象にする。localhost で待ち受けるので、サンドボックスの外で実行する。
 
 ## リスク
 

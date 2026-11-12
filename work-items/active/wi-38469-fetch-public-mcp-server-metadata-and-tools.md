@@ -45,6 +45,10 @@ Gateway を使わず、MCP サーバー自身がトークンを検査する構�
 - PRM の `resource` と登録の URL の一致の検査（RFC 9728 §3.3）。
 - 取得を管理者の操作で起こすか、登録時に自動で行うか。
 
+外向きの防御は、[[wi-61303-host-the-mcp-gateway-in-idmagic]] の上流への転送と、TokenVault の REQ-TOKENVAULT-009 から 011 と同じものを使う。
+先に着手した項目が共通の部品を決め、後の項目はそれを再利用する。
+[[wi-85145-check-mcp-connection-without-calling-tools]] の接続確認は、MCP サーバーへの到達をこの項目の経路で行う。
+
 ## 計画
 
 今回は起票だけを行う。

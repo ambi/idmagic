@@ -54,6 +54,8 @@ affected_spec:
 - CAEP の `subject` を標準の形式へ変えるか。既存の受信処理（RFC 9493 の解釈）との整合を確かめる。
 
 信頼境界と新しい主体の種類を加えるので、[脅威モデル](../../docs/design/security/threat-model.md)を見直す。
+`paused` の追加や受信側によるストリームの作成は、管理画面（[[wi-72447-manage-shared-signals-streams-in-the-admin-ui]]）の状態の表示と操作に波及する。
+どちらが先に完了しても、後の項目が状態の一覧と作成者の表示を合わせる。
 公開状態が `published` になった後は、Discovery の内容と API の形を戻せない。
 
 ## 計画

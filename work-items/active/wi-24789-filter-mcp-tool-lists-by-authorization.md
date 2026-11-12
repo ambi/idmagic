@@ -8,6 +8,8 @@ depends_on: [wi-11085-enforce-mcp-tool-calls-for-unmodified-servers]
 change_kind: feature
 affected_spec:
   - { path: docs/modules/oauth2/features/resource-access.md, requirement: REQ-OAUTH2-062 }
+  - { path: docs/modules/oauth2/features/resource-access.md, requirement: REQ-OAUTH2-083 }
+  - { path: docs/modules/mcp-gateway/features/runtime.md, requirement: REQ-MCPGATEWAY-010 }
   - { path: spec/modules/oauth2/main.tsp, symbol: EvaluateResourceAccess }
 ---
 
@@ -30,6 +32,17 @@ Agent に許可されないツールが見えると、Agent は呼べないツ�
 - 条件ポリシーの属性を一覧で評価すること。呼び出しの引数は一覧の時点では存在しない。
 
 ## 設計
+
+起票後に操作割当とカタログの参照が入り、前提が変わった（2026-11-13 に確認）。
+
+- `tools/list` はすでに `idmagic_mcp_method/access` として評価され、現在の割当と必要スコープを満たす登録済みツールが一つ以上ある主体だけが接続を準備できる（REQ-OAUTH2-083）。評価はすでにツールごとの割当とスコープを調べている。
+- カタログを参照する構成の Gateway は、上流のツール名と登録した操作の対応を知っている（REQ-MCPGATEWAY-010）。
+- 一覧の時点で判定できるのは、操作割当と必要スコープまでである。対象別の関係（`resource_id_argument`）と条件は引数を要するので、一覧では判定しない。
+
+このため、絞り込みの候補は「操作割当とスコープだけで一覧を絞る」形が第一になり、ツールごとの ReBAC の評価を並べる形より費用が小さい。
+対象別の関係を持つツールは、どの対象にも実行できない可能性があっても一覧に残すことを、採否の判断で受け入れられるか確かめる。
+[McpGateway の責務](../../docs/modules/mcp-gateway/features/runtime.md)の「扱わないもの」は `tools/list` の絞り込みを挙げているので、採用する場合はその記述も改める。
+[[wi-61303-host-the-mcp-gateway-in-idmagic]] のホスト型の Gateway も同じ絞り込みを使うので、評価の入口は Gateway の実装に依存させない。
 
 判断の材料は、実クライアントの挙動、ツール数と遅延、関係の判定の一括の可否である。
 一括の入口は REQ-OAUTH2-062 と同じく提示トークンから主体を導き、登録した規則の範囲に閉じる。

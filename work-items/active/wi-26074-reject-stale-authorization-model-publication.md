@@ -5,7 +5,7 @@ risk: medium
 reversibility: reversible
 created_at: 2026-10-31
 priority: p1
-depends_on: [wi-371-authorization-rebac-admin-ui]
+depends_on: [wi-371-authorization-rebac-admin-ui, wi-63323-fix-initial-authorization-model-publication-test]
 change_kind: feature
 affected_spec:
   - { path: docs/modules/authorization/features/model.md, requirement: REQ-AUTHORIZATION-001 }
@@ -42,6 +42,9 @@ affected_spec:
 
 比較と採番は同じトランザクションで行う。
 読んでから書く 2 段階にすると、同時発行で検査をすり抜ける。
+
+T004 は `AdminAuthorizationModelEditPage` の確認と公開の流れを変える。
+同じ画面の試験には待機の競合が残っているので（[[wi-63323-fix-initial-authorization-model-publication-test]]）、先にそれを直し、拒否の表示の RED が競合による失敗と混ざらないようにする。
 
 ## 計画
 1. 問いを解決し、要件と TypeSpec を更新する。

@@ -9,6 +9,8 @@ change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-management/features/agent.md, requirement: REQ-IDMANAGEMENT-081 }
   - { path: docs/modules/identity-management/features/agent.md, requirement: REQ-IDMANAGEMENT-094 }
+  - { path: docs/modules/identity-management/features/agent.md, requirement: REQ-IDMANAGEMENT-075 }
+  - { path: docs/modules/identity-management/features/agent.md, requirement: REQ-IDMANAGEMENT-082 }
 ---
 
 # 採否を判断したうえで Agent の責任者を移管できるようにする
@@ -42,6 +44,17 @@ affected_spec:
 
 移管後も、前の所有者の停止で無効になった Agent を自動で再開しない。
 再開は既存の再有効化の操作で行う。
+
+2026-11-13 に現状を確かめた。
+
+- 移管そのものは既存の Agent の更新でできる。所有者を変えると `AgentUpdated` に続けて `AgentOwnerChanged` を発行し（REQ-IDMANAGEMENT-075）、移管先は同じテナントの `Active` の User に限られる。
+- 所有者が止まって無効になった Agent は、別の `Active` の User へ所有者を変えてから再有効化できる（REQ-IDMANAGEMENT-082）。
+- 所有者の停止の予定として検知できるのは、削除の予約（REQ-IDMANAGEMENT-081 の経路）である。日付を契機にしたライフサイクルワークフローは [[wi-225-lifecycle-workflow-date-based-triggers]] が扱い、まだない。
+- 上長の情報は、SCIM の Enterprise 拡張の `manager` から `User.Attributes` の `manager_sub` に入るだけで、ほかの経路では設定されない。
+
+したがって不足は、移管の操作ではなく、停止の前に所有者の Agent を知らせる通知と、移管先を選ぶ導線である。
+この項目の範囲は、通知と導線に絞れるかを T001 で確かめる。
+所有者が不在の Agent の扱いは、[[wi-213-access-certification-campaigns]] の reviewer の解決と同じ結論にする。
 
 ## 計画
 

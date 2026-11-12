@@ -9,6 +9,7 @@ change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-management/features/agent.md, requirement: REQ-IDMANAGEMENT-009 }
   - { path: docs/modules/identity-management/features/agent.md, requirement: REQ-IDMANAGEMENT-075 }
+  - { path: docs/modules/oauth2/features/guardrail.md, requirement: REQ-OAUTH2-073 }
 ---
 
 # 採否を判断したうえでラベルで選んだ Agent 群をまとめて統制する
@@ -40,6 +41,13 @@ IdMagic の統制は Agent ごとであり、同じ種類の Agent が増える�
 
 一括の無効化は Agent ごとの `AgentDisabled` を発行し、失効の経路を変えない。
 途中の失敗は同じ操作の再実行で回収する。
+
+2026-11-13 時点で、Agent の属性は `name`、`description`、`kind`、`owner_sub` だけで、ラベルに当たる項目はない。
+選択条件に使える既存の属性は `kind` と所有者である。
+`kind` か所有者で足りる利用場面がないかを、T001 の比較に含める。
+ガードレールは Agent ごとのポリシーとして評価される（REQ-OAUTH2-073）。
+ラベルで対象を指定する場合はポリシーの適用先の表現が変わるので、ガードレールの要件を `affected_spec` に挙げた。
+停止の伝播は、所有者の停止による無効化（REQ-IDMANAGEMENT-081）と同じく、確定と分けて再実行で回収する形に揃える。
 
 ## 計画
 

@@ -32,6 +32,11 @@ spec_impact: { kind: none, reason: "`EvaluateResourceAccess` の公開契約を�
 Go の参照 PEP と同じ入出力の表を適合試験の共通データにし、言語間の差を検出する。
 依存は各言語の標準的な HTTP に限り、IdMagic の内部型を写さない。
 
+2026-11-13 時点で、`mise.toml` のランタイムは Go と Bun だけである。
+TypeScript の PEP と適合試験は Bun で動かせるが、Python は新しいランタイムの追加になるので、T001 でバージョンとパッケージの管理方法を決める。
+TypeScript の公開の MCP SDK を使う既存の例として `examples/mcp-client-walkthrough` があり、SDK の依存の置き方はそれに揃える。
+入出力の表の出所は `examples/resource-server-pep` の `pep_test.go` である。
+
 ## 計画
 
 1. 適合試験のデータを作る。
