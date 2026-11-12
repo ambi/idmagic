@@ -886,3 +886,83 @@ func TestPurgeExpiredSoftDeletedAnonymizesAfterGrace(t *testing.T) {
 		t.Fatalf("expected UserDeleted(auto_purge), got %+v", events[len(events)-1])
 	}
 }
+
+// 撤回した同意は撤回の時点で使用量から減らしてあるので、完全削除が減らすのは撤回していない行の分だけである。
+//
+//spec:covers REQ-IDMANAGEMENT-050: 完全削除は、消した同意と Agent への代行のうち撤回していないものの件数だけ同意の使用量を減らし、ほかの User の分を残す。
+func TestPurgeUserReleasesConsentQuotaOfUnrevokedGrants(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	tenantID := tenancydomain.DefaultTenantID
+	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
+	consentRepo := oauth2.NewMemoryModule().ConsentRepo
+	authenticationModule := authentication.NewMemoryModule(nil)
+	deps := userusecases.AdminUserDeps{
+		ValidateInitialPassword: authentication.ValidateInitialPassword,
+		UserCredentials:         authenticationModule.UserCredentials(),
+		UserRepo:                usermemory.NewUserRepository(), PasswordHasher: testing_passwords.NewHasher(),
+		PasswordHistoryRepo: authenticationModule.PasswordHistoryRepo,
+		QuotaRepo:           quotaRepo, ConsentRepo: consentRepo,
+	}
+	now := time.Date(2026, 11, 13, 9, 0, 0, 0, time.UTC)
+	user, err := userusecases.CreateUser(ctx, deps, userusecases.CreateUserInput{
+		PreferredUsername: "alice", Password: "initial-password-9182", Now: now,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	revokedAt := now.Add(-time.Hour)
+	grants := []struct {
+		save    func() error
+		holding bool
+	}{
+		{func() error {
+			return consentRepo.Save(ctx, tenantID, &oauthdomain.Consent{
+				UserID: user.ID, ClientID: "client-a", Scopes: []string{"openid"},
+				State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
+			})
+		}, true},
+		{func() error {
+			return consentRepo.Save(ctx, tenantID, &oauthdomain.Consent{
+				UserID: user.ID, ClientID: "client-b", Scopes: []string{"openid"},
+				State: oauthdomain.ConsentRevoked, GrantedAt: now.Add(-2 * time.Hour), ExpiresAt: now.AddDate(1, 0, 0),
+				RevokedAt: &revokedAt,
+			})
+		}, false},
+		{func() error {
+			return consentRepo.SaveAgentDelegation(ctx, tenantID, &oauthdomain.Consent{
+				UserID: user.ID, AgentID: "agent-1", Scopes: []string{"documents:read"},
+				State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
+			})
+		}, true},
+		{func() error {
+			return consentRepo.Save(ctx, tenantID, &oauthdomain.Consent{
+				UserID: "someone-else", ClientID: "client-a", Scopes: []string{"openid"},
+				State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.AddDate(1, 0, 0),
+			})
+		}, true},
+	}
+	// 同意の付与と撤回が使用量に残す状態を、付与のたびの加算で再現する。
+	for i, grant := range grants {
+		if err := grant.save(); err != nil {
+			t.Fatalf("grants[%d]: %v", i, err)
+		}
+		if grant.holding {
+			if err := quotaRepo.CheckAndIncrement(ctx, tenantID, tenancydomain.ResourceConsents, 1); err != nil {
+				t.Fatalf("grants[%d] increment: %v", i, err)
+			}
+		}
+	}
+
+	if err := userusecases.DeleteUser(ctx, deps, userusecases.DeleteUserInput{
+		ActorUserID: "admin", Sub: user.ID, Now: now,
+	}); err != nil {
+		t.Fatalf("DeleteUser: %v", err)
+	}
+	usage, err := quotaRepo.GetUsage(ctx, tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage.Consents != 1 {
+		t.Fatalf("consents usage after purging alice = %d, want 1 (only someone-else's consent)", usage.Consents)
+	}
+}

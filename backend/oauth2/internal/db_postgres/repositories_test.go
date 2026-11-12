@@ -242,8 +242,8 @@ func TestConsentRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("expected revoked: %v %+v", err, got)
 	}
 
-	if err := repo.DeleteAllForSub(ctx, user.ID); err != nil {
-		t.Fatalf("delete all: %v", err)
+	if unrevoked, err := repo.DeleteAllForSub(ctx, user.ID); err != nil || unrevoked != 0 {
+		t.Fatalf("delete all = (%d, %v), want no unrevoked rows", unrevoked, err)
 	}
 	got, err = repo.Find(ctx, tenant.ID, user.ID, client.ClientID)
 	if err != nil || got != nil {

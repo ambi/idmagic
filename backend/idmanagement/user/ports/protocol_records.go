@@ -11,6 +11,12 @@ type UserRecordsPurger interface {
 	DeleteAllForSub(ctx context.Context, sub string) error
 }
 
+// ConsentPurger は、完全削除で本人の同意と Agent への代行をすべて消し、消した行のうち撤回していない
+// 行の件数を返す。その件数だけ consents の使用量を減らす（REQ-IDMANAGEMENT-050）。
+type ConsentPurger interface {
+	DeleteAllForSub(ctx context.Context, sub string) (int, error)
+}
+
 // AccountConsent は本人データのエクスポートに含める同意の表示値である。
 // 同意の保存型と状態遷移は OAuth2 が所有する。
 type AccountConsent struct {

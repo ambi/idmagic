@@ -113,7 +113,7 @@ func TestConsentRepository(t *testing.T) {
 
 	t.Run("DeleteAllForSub", func(t *testing.T) {
 		// user-1 に対する全ての consent を削除
-		err := repo.DeleteAllForSub(ctx, "user-1")
+		_, err := repo.DeleteAllForSub(ctx, "user-1")
 		if err != nil {
 			t.Fatal(err)
 		}

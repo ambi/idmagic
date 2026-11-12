@@ -203,7 +203,7 @@ func (m Module) RegisterJobHandlers(registry jobsports.HandlerRegistrar, d JobHa
 type LifecycleDeps struct {
 	AttrSchemaRepo          userports.TenantUserAttributeSchemaRepository
 	QuotaRepo               tenantports.QuotaRepository
-	ConsentRepo             userports.UserRecordsPurger
+	ConsentRepo             userports.ConsentPurger
 	RefreshStore            userports.UserRecordsPurger
 	DeviceCodeStore         userports.UserRecordsPurger
 	ApprovalRequestStore    userports.UserRecordsPurger

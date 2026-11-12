@@ -208,8 +208,9 @@ func (r *ConsentRepository) Revoke(ctx context.Context, tenantID, sub, clientID 
 	return oauth2pg.New(r.Pool).RevokeConsent(ctx, oauth2pg.RevokeConsentParams{UserID: sub, ClientID: client})
 }
 
-func (r *ConsentRepository) DeleteAllForSub(ctx context.Context, sub string) error {
-	return oauth2pg.New(r.Pool).DeleteConsentsForSub(ctx, sub)
+func (r *ConsentRepository) DeleteAllForSub(ctx context.Context, sub string) (int, error) {
+	unrevoked, err := oauth2pg.New(r.Pool).DeleteConsentsForSub(ctx, sub)
+	return int(unrevoked), err
 }
 
 // FindAgentDelegation は UUID でない agentID を、付与がないものとして扱う。パスから直接

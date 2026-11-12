@@ -20,8 +20,9 @@ type ConsentRepository interface {
 	Save(ctx context.Context, tenantID string, c *consentdomain.Consent) error
 	Revoke(ctx context.Context, tenantID, sub, clientID string) error
 	// DeleteAllForSub は anonymize cascade から呼ばれる。
-	// 対象 sub の Consent を物理削除する。
-	DeleteAllForSub(ctx context.Context, sub string) error
+	// 対象 sub の Consent と Agent への代行を物理削除し、消した行のうち撤回していない行の件数を返す。
+	// 撤回していない行（期限切れを含む）は consents の使用量を占めており、呼び出し側が減算に使う。
+	DeleteAllForSub(ctx context.Context, sub string) (int, error)
 
 	// 以降は Agent への代行の付与の操作である。付与は同意と同じ保管先の別の行で、上の
 	// クライアントの同意の操作には現れない。

@@ -26,7 +26,8 @@ type Querier interface {
 	DeleteClient(ctx context.Context, arg DeleteClientParams) error
 	DeleteClientSessionsForClient(ctx context.Context, clientID string) error
 	DeleteConsentsForClient(ctx context.Context, clientID pgtype.UUID) (int64, error)
-	DeleteConsentsForSub(ctx context.Context, userID string) error
+	// 本人の同意と Agent への代行を消し、消した行のうち撤回していない行の件数を返す。
+	DeleteConsentsForSub(ctx context.Context, userID string) (int32, error)
 	DeleteCrossAppAccessIssuePolicy(ctx context.Context, arg DeleteCrossAppAccessIssuePolicyParams) error
 	DeleteCrossAppAccessRedeemPolicy(ctx context.Context, arg DeleteCrossAppAccessRedeemPolicyParams) error
 	DeleteDeviceCodesForUser(ctx context.Context, arg DeleteDeviceCodesForUserParams) error

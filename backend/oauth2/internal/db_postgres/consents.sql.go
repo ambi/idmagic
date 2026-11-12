@@ -12,13 +12,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const deleteConsentsForSub = `-- name: DeleteConsentsForSub :exec
-DELETE FROM consents WHERE user_id = $1
+const deleteConsentsForSub = `-- name: DeleteConsentsForSub :one
+WITH deleted AS (
+  DELETE FROM consents WHERE user_id = $1 RETURNING revoked_at
+)
+SELECT count(*) FILTER (WHERE revoked_at IS NULL)::int AS unrevoked FROM deleted
 `
 
-func (q *Queries) DeleteConsentsForSub(ctx context.Context, userID string) error {
-	_, err := q.db.Exec(ctx, deleteConsentsForSub, userID)
-	return err
+// 本人の同意と Agent への代行を消し、消した行のうち撤回していない行の件数を返す。
+func (q *Queries) DeleteConsentsForSub(ctx context.Context, userID string) (int32, error) {
+	row := q.db.QueryRow(ctx, deleteConsentsForSub, userID)
+	var unrevoked int32
+	err := row.Scan(&unrevoked)
+	return unrevoked, err
 }
 
 const getAgentDelegation = `-- name: GetAgentDelegation :one

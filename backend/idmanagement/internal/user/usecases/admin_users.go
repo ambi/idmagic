@@ -49,7 +49,7 @@ type AdminUserDeps struct {
 	UserRepo             userports.UserRepository
 	GroupRepo            groupports.GroupRepository
 	AttrSchemaRepo       userports.TenantUserAttributeSchemaRepository
-	ConsentRepo          userports.UserRecordsPurger
+	ConsentRepo          userports.ConsentPurger
 	RefreshStore         userports.UserRecordsPurger
 	DeviceCodeStore      userports.UserRecordsPurger
 	ApprovalRequestStore userports.UserRecordsPurger
@@ -558,7 +558,7 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 func finishPurge(ctx context.Context, deps AdminUserDeps, tombstone *userdomain.User, now time.Time) error {
 	pending := *tombstone.Lifecycle.PendingPurge
 	if pending.Step == userdomain.PurgeStepReleaseUsage {
-		if err := cascadeDeleteForSub(ctx, deps, tombstone.ID); err != nil {
+		if err := cascadeDeleteForSub(ctx, deps, tombstone.TenantID, tombstone.ID); err != nil {
 			return err
 		}
 		if deps.QuotaRepo != nil {
@@ -774,10 +774,18 @@ func anonymizeUser(user *userdomain.User, now time.Time) *userdomain.User {
 	return &tombstone
 }
 
-func cascadeDeleteForSub(ctx context.Context, deps AdminUserDeps, sub string) error {
+func cascadeDeleteForSub(ctx context.Context, deps AdminUserDeps, tenantID, sub string) error {
 	if deps.ConsentRepo != nil {
-		if err := deps.ConsentRepo.DeleteAllForSub(ctx, sub); err != nil {
+		unrevoked, err := deps.ConsentRepo.DeleteAllForSub(ctx, sub)
+		if err != nil {
 			return err
+		}
+		// 撤回していない同意は consents の枠を占めていた。削除の直後に減らし、削除が確定してから
+		// 減算までの窓を短くする。窓で失敗すると、再実行の削除は 0 件を返すので枠は戻らない。
+		if deps.QuotaRepo != nil && unrevoked > 0 {
+			if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceConsents, unrevoked); err != nil {
+				return err
+			}
 		}
 	}
 	if deps.RefreshStore != nil {

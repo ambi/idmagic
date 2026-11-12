@@ -69,7 +69,7 @@ type Deps struct {
 	SCIMGroups           groupports.SCIMGroupLookup
 	AttrSchemaRepo       userports.TenantUserAttributeSchemaRepository
 	GroupAttrSchemaRepo  groupports.TenantGroupAttributeSchemaRepository
-	ConsentRepo          userports.UserRecordsPurger
+	ConsentRepo          userports.ConsentPurger
 	// Consents はデータエクスポートが本人の Granted の同意を読む先である。
 	Consents             func(context.Context, string) ([]userports.AccountConsent, error)
 	RefreshStore         userports.UserRecordsPurger

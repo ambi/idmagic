@@ -137,20 +137,32 @@ func (r *ConsentRepository) Revoke(_ context.Context, tenantID, sub, clientID st
 	return nil
 }
 
-func (r *ConsentRepository) DeleteAllForSub(_ context.Context, sub string) error {
+func (r *ConsentRepository) DeleteAllForSub(_ context.Context, sub string) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	unrevoked := 0
 	for key, consent := range r.consents {
 		if consent.UserID == sub {
+			if holdsConsentQuota(consent) {
+				unrevoked++
+			}
 			delete(r.consents, key)
 		}
 	}
 	for key, grant := range r.delegations {
 		if grant.UserID == sub {
+			if holdsConsentQuota(grant) {
+				unrevoked++
+			}
 			delete(r.delegations, key)
 		}
 	}
-	return nil
+	return unrevoked, nil
+}
+
+// holdsConsentQuota は、行が consents の使用量を占めるか、つまり撤回していないかを返す。
+func holdsConsentQuota(consent *memConsent) bool {
+	return consent.State != domain.ConsentRevoked && consent.RevokedAt == nil
 }
 
 func consentKey(tenantID, sub, clientID string) string {

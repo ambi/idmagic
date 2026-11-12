@@ -54,8 +54,12 @@ ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL DO UPDATE SET
 UPDATE consents SET revoked_at = now(), updated_at = now()
 WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL;
 
--- name: DeleteConsentsForSub :exec
-DELETE FROM consents WHERE user_id = $1;
+-- name: DeleteConsentsForSub :one
+-- 本人の同意と Agent への代行を消し、消した行のうち撤回していない行の件数を返す。
+WITH deleted AS (
+  DELETE FROM consents WHERE user_id = $1 RETURNING revoked_at
+)
+SELECT count(*) FILTER (WHERE revoked_at IS NULL)::int AS unrevoked FROM deleted;
 
 -- name: GetAgentDelegation :one
 SELECT user_id, agent_id, scopes, granted_at, expires_at, revoked_at, last_used_at

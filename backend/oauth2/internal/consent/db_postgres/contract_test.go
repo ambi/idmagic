@@ -14,6 +14,7 @@ import (
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
+//spec:covers REQ-IDMANAGEMENT-050: 本人の同意の削除は撤回した行を数えず、付与済みの行を数える。
 func TestPersistenceContract(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)

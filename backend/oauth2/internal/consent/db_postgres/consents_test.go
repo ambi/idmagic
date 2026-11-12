@@ -142,8 +142,9 @@ func TestAgentDelegationRowsStayOutOfClientConsents(t *testing.T) {
 	if err != nil || len(before) != 0 {
 		t.Fatalf("page before the first row = (%+v, %v)", before, err)
 	}
-	if err := repo.DeleteAllForSub(ctx, user.ID); err != nil {
-		t.Fatalf("delete: %v", err)
+	// 付与済みの同意と再付与した代行は、どちらも consents の使用量を占める行として数える。
+	if unrevoked, err := repo.DeleteAllForSub(ctx, user.ID); err != nil || unrevoked != 2 {
+		t.Fatalf("delete = (%d, %v), want 2 unrevoked rows", unrevoked, err)
 	}
 	found, err = repo.FindAgentDelegation(ctx, tenant.ID, user.ID, agentID)
 	if err != nil || found != nil {

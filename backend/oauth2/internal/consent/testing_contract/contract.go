@@ -39,7 +39,18 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if err != nil || got == nil || got.State != domain.ConsentRevoked || got.RevokedAt == nil {
 		t.Fatalf("Find after revoke = (%+v, %v)", got, err)
 	}
-	if err := f.Repository.DeleteAllForSub(ctx, f.Consent.UserID); err != nil {
-		t.Fatalf("DeleteAllForSub: %v", err)
+	// 撤回した行は撤回の時点で consents の使用量から減らしてあるので、削除の件数に数えない。
+	if unrevoked, err := f.Repository.DeleteAllForSub(ctx, f.Consent.UserID); err != nil || unrevoked != 0 {
+		t.Fatalf("DeleteAllForSub of a revoked consent = (%d, %v), want (0, nil)", unrevoked, err)
+	}
+	if got, err := f.Repository.Find(ctx, f.TenantID, f.Consent.UserID, f.Consent.ClientID); err != nil || got != nil {
+		t.Fatalf("Find after DeleteAllForSub = (%+v, %v), want (nil, nil)", got, err)
+	}
+	// 付与済みの行は使用量を占めているので数える。
+	if err := f.Repository.Save(ctx, f.TenantID, f.Consent); err != nil {
+		t.Fatalf("Save again: %v", err)
+	}
+	if unrevoked, err := f.Repository.DeleteAllForSub(ctx, f.Consent.UserID); err != nil || unrevoked != 1 {
+		t.Fatalf("DeleteAllForSub of a granted consent = (%d, %v), want (1, nil)", unrevoked, err)
 	}
 }
