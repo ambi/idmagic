@@ -103,6 +103,7 @@ import { Route as AdminUsersNewRouteImport } from './routes/admin/users_/new'
 import { Route as AdminWorkloadIdentityTrustBundleIdRouteImport } from './routes/admin/workload-identity_/$trustBundleId'
 import { Route as AdminWorkloadIdentityNewRouteImport } from './routes/admin/workload-identity_/new'
 import { Route as AdminAgentsAgentIdIndexRouteImport } from './routes/admin/agents_/$agentId.index'
+import { Route as AdminAgentsAgentIdAccessRouteImport } from './routes/admin/agents_/$agentId.access'
 import { Route as AdminAgentsAgentIdCredentialsRouteImport } from './routes/admin/agents_/$agentId.credentials'
 import { Route as AdminAgentsAgentIdEditRouteImport } from './routes/admin/agents_/$agentId.edit'
 import { Route as AdminAgentsAgentIdResourcesRouteImport } from './routes/admin/agents_/$agentId.resources'
@@ -629,6 +630,12 @@ const AdminAgentsAgentIdIndexRoute = AdminAgentsAgentIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminAgentsAgentIdRoute,
 } as any)
+const AdminAgentsAgentIdAccessRoute =
+  AdminAgentsAgentIdAccessRouteImport.update({
+    id: '/access',
+    path: '/access',
+    getParentRoute: () => AdminAgentsAgentIdRoute,
+  } as any)
 const AdminAgentsAgentIdCredentialsRoute =
   AdminAgentsAgentIdCredentialsRouteImport.update({
     id: '/credentials',
@@ -940,6 +947,7 @@ export interface FileRoutesByFullPath {
   '/admin/workload-identity/$trustBundleId': typeof AdminWorkloadIdentityTrustBundleIdRouteWithChildren
   '/admin/workload-identity/new': typeof AdminWorkloadIdentityNewRoute
   '/account/profile/': typeof AccountProfileIndexRoute
+  '/admin/agents/$agentId/access': typeof AdminAgentsAgentIdAccessRoute
   '/admin/agents/$agentId/credentials': typeof AdminAgentsAgentIdCredentialsRoute
   '/admin/agents/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
   '/admin/agents/$agentId/resources': typeof AdminAgentsAgentIdResourcesRoute
@@ -1063,6 +1071,7 @@ export interface FileRoutesByTo {
   '/admin/users/import': typeof AdminUsersImportRoute
   '/admin/users/new': typeof AdminUsersNewRoute
   '/admin/workload-identity/new': typeof AdminWorkloadIdentityNewRoute
+  '/admin/agents/$agentId/access': typeof AdminAgentsAgentIdAccessRoute
   '/admin/agents/$agentId/credentials': typeof AdminAgentsAgentIdCredentialsRoute
   '/admin/agents/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
   '/admin/agents/$agentId/resources': typeof AdminAgentsAgentIdResourcesRoute
@@ -1196,6 +1205,7 @@ export interface FileRoutesById {
   '/admin/workload-identity_/$trustBundleId': typeof AdminWorkloadIdentityTrustBundleIdRouteWithChildren
   '/admin/workload-identity_/new': typeof AdminWorkloadIdentityNewRoute
   '/account/profile_/': typeof AccountProfileIndexRoute
+  '/admin/agents_/$agentId/access': typeof AdminAgentsAgentIdAccessRoute
   '/admin/agents_/$agentId/credentials': typeof AdminAgentsAgentIdCredentialsRoute
   '/admin/agents_/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
   '/admin/agents_/$agentId/resources': typeof AdminAgentsAgentIdResourcesRoute
@@ -1331,6 +1341,7 @@ export interface FileRouteTypes {
     | '/admin/workload-identity/$trustBundleId'
     | '/admin/workload-identity/new'
     | '/account/profile/'
+    | '/admin/agents/$agentId/access'
     | '/admin/agents/$agentId/credentials'
     | '/admin/agents/$agentId/edit'
     | '/admin/agents/$agentId/resources'
@@ -1454,6 +1465,7 @@ export interface FileRouteTypes {
     | '/admin/users/import'
     | '/admin/users/new'
     | '/admin/workload-identity/new'
+    | '/admin/agents/$agentId/access'
     | '/admin/agents/$agentId/credentials'
     | '/admin/agents/$agentId/edit'
     | '/admin/agents/$agentId/resources'
@@ -1586,6 +1598,7 @@ export interface FileRouteTypes {
     | '/admin/workload-identity_/$trustBundleId'
     | '/admin/workload-identity_/new'
     | '/account/profile_/'
+    | '/admin/agents_/$agentId/access'
     | '/admin/agents_/$agentId/credentials'
     | '/admin/agents_/$agentId/edit'
     | '/admin/agents_/$agentId/resources'
@@ -2302,6 +2315,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAgentsAgentIdIndexRouteImport
       parentRoute: typeof AdminAgentsAgentIdRoute
     }
+    '/admin/agents_/$agentId/access': {
+      id: '/admin/agents_/$agentId/access'
+      path: '/access'
+      fullPath: '/admin/agents/$agentId/access'
+      preLoaderRoute: typeof AdminAgentsAgentIdAccessRouteImport
+      parentRoute: typeof AdminAgentsAgentIdRoute
+    }
     '/admin/agents_/$agentId/credentials': {
       id: '/admin/agents_/$agentId/credentials'
       path: '/credentials'
@@ -2607,6 +2627,7 @@ const AccountRouteRouteWithChildren = AccountRouteRoute._addFileChildren(
 )
 
 interface AdminAgentsAgentIdRouteChildren {
+  AdminAgentsAgentIdAccessRoute: typeof AdminAgentsAgentIdAccessRoute
   AdminAgentsAgentIdCredentialsRoute: typeof AdminAgentsAgentIdCredentialsRoute
   AdminAgentsAgentIdEditRoute: typeof AdminAgentsAgentIdEditRoute
   AdminAgentsAgentIdResourcesRoute: typeof AdminAgentsAgentIdResourcesRoute
@@ -2616,6 +2637,7 @@ interface AdminAgentsAgentIdRouteChildren {
 }
 
 const AdminAgentsAgentIdRouteChildren: AdminAgentsAgentIdRouteChildren = {
+  AdminAgentsAgentIdAccessRoute: AdminAgentsAgentIdAccessRoute,
   AdminAgentsAgentIdCredentialsRoute: AdminAgentsAgentIdCredentialsRoute,
   AdminAgentsAgentIdEditRoute: AdminAgentsAgentIdEditRoute,
   AdminAgentsAgentIdResourcesRoute: AdminAgentsAgentIdResourcesRoute,

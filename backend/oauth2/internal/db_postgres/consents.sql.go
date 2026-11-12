@@ -548,6 +548,59 @@ func (q *Queries) ListConsentsByTenantPageBefore(ctx context.Context, arg ListCo
 	return items, nil
 }
 
+const listDelegationsForAgent = `-- name: ListDelegationsForAgent :many
+SELECT c.user_id, c.agent_id, c.scopes, c.granted_at, c.expires_at, c.revoked_at, c.last_used_at
+FROM consents c
+JOIN users u ON c.user_id = u.id
+JOIN agents a ON c.agent_id = a.id
+WHERE a.tenant_id = $1 AND u.tenant_id = $1
+  AND c.agent_id = $2
+ORDER BY c.user_id
+`
+
+type ListDelegationsForAgentParams struct {
+	TenantID string
+	AgentID  pgtype.UUID
+}
+
+type ListDelegationsForAgentRow struct {
+	UserID     string
+	AgentID    pgtype.UUID
+	Scopes     []byte
+	GrantedAt  time.Time
+	ExpiresAt  time.Time
+	RevokedAt  pgtype.Timestamptz
+	LastUsedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListDelegationsForAgent(ctx context.Context, arg ListDelegationsForAgentParams) ([]*ListDelegationsForAgentRow, error) {
+	rows, err := q.db.Query(ctx, listDelegationsForAgent, arg.TenantID, arg.AgentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListDelegationsForAgentRow
+	for rows.Next() {
+		var i ListDelegationsForAgentRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.AgentID,
+			&i.Scopes,
+			&i.GrantedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.LastUsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const revokeAgentDelegation = `-- name: RevokeAgentDelegation :exec
 UPDATE consents SET revoked_at = now(), updated_at = now()
 WHERE user_id = $1 AND agent_id = $2 AND revoked_at IS NULL

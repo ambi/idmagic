@@ -1034,6 +1034,33 @@ model AgentInventoryEntry {
   confirmed_observations: AgentConfirmedObservation[];
 }
 
+@doc("Agent の権限を説明する材料。評価の結果を表さない（REQ-IDMANAGEMENT-106）。")
+model AgentAccessSummary {
+  as_of: utcDateTime;
+  last_token_issued_at?: utcDateTime;
+  clients: AgentAccessClient[];
+  delegations: AgentAccessDelegation[];
+}
+
+@doc("束縛先のスコープ。欠落したクライアントは missing を真にして返す。")
+model AgentAccessClient {
+  client_id: string;
+  name?: string;
+  scopes: string[];
+  missing: boolean;
+}
+
+@doc("全状態の代行付与。active は as_of における状態と期限だけから決まり、操作の許可を保証しない。")
+model AgentAccessDelegation {
+  user_id: string;
+  scopes: string[];
+  state: ConsentState;
+  granted_at: utcDateTime;
+  expires_at: utcDateTime;
+  revoked_at?: utcDateTime;
+  active: boolean;
+}
+
 
 @doc("棚卸しの Agent に結ばれた、確認済みの外部の観測。")
 model AgentConfirmedObservation {

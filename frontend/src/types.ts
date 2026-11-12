@@ -1697,6 +1697,21 @@ export type IngestionRunDetail = IngestionRunSummary & {
 
 export type AgentGuardrailAction = 'deny' | 'require_approval'
 
+export type AgentAccessSummary = {
+  as_of: string
+  last_token_issued_at?: string
+  clients: Array<{ client_id: string; name?: string; scopes: string[]; missing: boolean }>
+  delegations: Array<{
+    user_id: string
+    scopes: string[]
+    state: 'granted' | 'revoked'
+    granted_at: string
+    expires_at: string
+    revoked_at?: string
+    active: boolean
+  }>
+}
+
 export type AgentGuardrailLimits = {
   allowed_resources?: string[]
   allowed_authorization_detail_types?: string[]

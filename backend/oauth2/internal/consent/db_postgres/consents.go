@@ -246,6 +246,23 @@ func (r *ConsentRepository) ListAgentDelegations(ctx context.Context, tenantID, 
 	})
 }
 
+func (r *ConsentRepository) ListDelegationsForAgent(ctx context.Context, tenantID, agentID string) ([]*domain.Consent, error) {
+	agent, err := uuidParam(agentID)
+	if err != nil {
+		return []*domain.Consent{}, nil //nolint:nilerr // 存在しない Agent と同じ扱い。
+	}
+	rows, err := oauth2pg.New(r.Pool).ListDelegationsForAgent(ctx, oauth2pg.ListDelegationsForAgentParams{TenantID: tenantID, AgentID: agent})
+	if err != nil {
+		return nil, err
+	}
+	return consentsFromRows(rows, func(row *oauth2pg.ListDelegationsForAgentRow) consentRow {
+		return consentRow{
+			user: row.UserID, agentID: row.AgentID, scopes: row.Scopes,
+			grantedAt: row.GrantedAt, expiresAt: row.ExpiresAt, revokedAt: row.RevokedAt, lastUsedAt: row.LastUsedAt,
+		}
+	})
+}
+
 func (r *ConsentRepository) ListAgentDelegationPage(ctx context.Context, tenantID, afterUserID, afterAgentID string, limit int) ([]*domain.Consent, error) {
 	q := oauth2pg.New(r.Pool)
 	if afterUserID == "" && afterAgentID == "" {

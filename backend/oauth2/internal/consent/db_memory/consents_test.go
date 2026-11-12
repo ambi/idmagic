@@ -8,6 +8,46 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
+//spec:covers REQ-IDMANAGEMENT-106: 対象 Agent とテナントで絞り込み、期限切れと撤回済みも材料として返す。
+func TestListDelegationsForAgentIsTenantScoped(t *testing.T) {
+	repo := NewConsentRepository()
+	now := time.Now().UTC()
+	for _, row := range []struct{ tenant, user, agent string }{
+		{"tenant-1", "active", "agent-1"},
+		{"tenant-1", "expired", "agent-1"},
+		{"tenant-1", "revoked", "agent-1"},
+		{"tenant-1", "other-agent", "agent-2"},
+		{"tenant-2", "foreign-user", "agent-1"},
+	} {
+		expires := now.Add(time.Hour)
+		if row.user == "expired" {
+			expires = now
+		}
+		if err := repo.SaveAgentDelegation(t.Context(), row.tenant, &domain.Consent{UserID: row.user, AgentID: row.agent, Scopes: []string{"read"}, GrantedAt: now.Add(-time.Hour), ExpiresAt: expires}); err != nil {
+			t.Fatal(err)
+		}
+		if row.user == "revoked" {
+			if err := repo.RevokeAgentDelegation(t.Context(), row.tenant, row.user, row.agent); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	rows, err := repo.ListDelegationsForAgent(t.Context(), "tenant-1", "agent-1")
+	if err != nil || len(rows) != 3 {
+		t.Fatalf("rows=%v error=%v", rows, err)
+	}
+	for i, user := range []string{"active", "expired", "revoked"} {
+		if rows[i].UserID != user || rows[i].PermitsDelegation(nil, now) != (user == "active") {
+			t.Fatalf("grant=%+v", rows[i])
+		}
+	}
+	rows[0].Scopes[0] = "changed"
+	fresh, err := repo.ListDelegationsForAgent(t.Context(), "tenant-1", "agent-1")
+	if err != nil || fresh[0].Scopes[0] != "read" {
+		t.Fatalf("stored scopes changed: %v error=%v", fresh, err)
+	}
+}
+
 func TestConsentRepository(t *testing.T) {
 	ctx := context.Background()
 	repo := NewConsentRepository()

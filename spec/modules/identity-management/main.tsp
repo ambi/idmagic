@@ -2645,6 +2645,20 @@ op GetAgent(
   @path agent_id: string
 ): GetAgentSuccess_200 | GetAgentError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAgentError403 | GetAgentError404;
 
+model GetAgentAccessSummarySuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.AgentAccessSummary;
+}
+
+@doc("管理者が Agent の代行付与、束縛先のスコープ、最終発行を読む。操作の許可判定は行わない（REQ-IDMANAGEMENT-106）。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
+@TypeSpec.OpenAPI.operationId("GetAgentAccessSummary")
+@route("/api/admin/v1/agents/{agent_id}/access-summary")
+@get
+op GetAgentAccessSummary(
+  @path agent_id: string
+): GetAgentAccessSummarySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAgentError403 | GetAgentError404;
+
 model RegisterAgentSuccess_201 {
   @statusCode statusCode: 201;
   @body body: IdMagic.Contract.AgentSummaryResponse;

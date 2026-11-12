@@ -67,6 +67,7 @@ func TestConsentRepositoryListPageByTenant(t *testing.T) {
 }
 
 //spec:covers REQ-OAUTH2-058: 付与の行は同意の問い合わせに混ざらず、撤回と再付与で遷移し、再付与は last_used_at を保つ
+//spec:covers REQ-IDMANAGEMENT-106: PostgreSQL でも対象 Agent とテナントの付与だけを返す。
 func TestAgentDelegationRowsStayOutOfClientConsents(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
@@ -118,6 +119,23 @@ func TestAgentDelegationRowsStayOutOfClientConsents(t *testing.T) {
 	}
 	if err := repo.RevokeAgentDelegation(ctx, tenant.ID, user.ID, agentID); err != nil {
 		t.Fatalf("revoke: %v", err)
+	}
+	for _, tenantID := range []string{tenant.ID, pgfixtures.SeedTenant(t, db).ID} {
+		rows, err := repo.ListDelegationsForAgent(ctx, tenantID, agentID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tenantID != tenant.ID {
+			if len(rows) != 0 {
+				t.Fatalf("foreign tenant received grants=%v", rows)
+			}
+		} else if len(rows) != 1 || rows[0].UserID != user.ID || rows[0].State != domain.ConsentRevoked {
+			t.Fatalf("target grants=%v", rows)
+		}
+	}
+	rows, err := repo.ListDelegationsForAgent(ctx, tenant.ID, uuid.NewV4().String())
+	if err != nil || len(rows) != 0 {
+		t.Fatalf("other agent grants=%v error=%v", rows, err)
 	}
 	found, err = repo.FindAgentDelegation(ctx, tenant.ID, user.ID, agentID)
 	if err != nil || found == nil || found.State != domain.ConsentRevoked || found.RevokedAt == nil {

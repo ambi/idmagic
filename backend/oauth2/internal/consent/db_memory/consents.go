@@ -192,6 +192,19 @@ func (r *ConsentRepository) ListAgentDelegations(_ context.Context, tenantID, su
 	return out, nil
 }
 
+func (r *ConsentRepository) ListDelegationsForAgent(_ context.Context, tenantID, agentID string) ([]*domain.Consent, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*domain.Consent, 0)
+	for _, mc := range r.delegations {
+		if mc.TenantID == tenantID && mc.AgentID == agentID {
+			out = append(out, cloneConsent(mc))
+		}
+	}
+	slices.SortFunc(out, func(a, b *domain.Consent) int { return strings.Compare(a.UserID, b.UserID) })
+	return out, nil
+}
+
 func (r *ConsentRepository) tenantDelegations(tenantID string) []*domain.Consent {
 	out := make([]*domain.Consent, 0)
 	for _, mc := range r.delegations {

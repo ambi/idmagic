@@ -271,6 +271,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	}
 	apiTokenService := d.ApiTokens.Service()
 	authenticator := newAuthenticator(d, apiTokenService)
+	registerAgentAccessSummary(g, d, authenticator)
 
 	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.SignInPolicy.ApplicationRepo, d.SignInPolicy.DefaultRepo)
 	clientDisplayNames := d.Application.ClientDisplayNames(applicationdeps.NewClientNames(d.OAuth2.ClientRepo))

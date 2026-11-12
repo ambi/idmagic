@@ -29,6 +29,8 @@ type ConsentRepository interface {
 	FindAgentDelegation(ctx context.Context, tenantID, sub, agentID string) (*consentdomain.Consent, error)
 	// ListAgentDelegations は sub のすべての状態の付与を agent_id の昇順に返す。
 	ListAgentDelegations(ctx context.Context, tenantID, sub string) ([]*consentdomain.Consent, error)
+	// ListDelegationsForAgent は対象 Agent の全状態の付与を、同じテナント内で読む。
+	ListDelegationsForAgent(ctx context.Context, tenantID, agentID string) ([]*consentdomain.Consent, error)
 	// ListAgentDelegationPage は tenantID の付与を (user_id, agent_id) の昇順に、キーセットの
 	// 後から limit 件まで返す。最初のページには "", "" を渡す。
 	ListAgentDelegationPage(ctx context.Context, tenantID, afterUserID, afterAgentID string, limit int) ([]*consentdomain.Consent, error)

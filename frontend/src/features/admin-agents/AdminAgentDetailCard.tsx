@@ -11,6 +11,7 @@ import type { AdminAgent } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { kindLabel, StatusBadge } from './AdminAgentsShared'
 import { agentResourcesDictionary } from './agentResources.i18n'
+import { agentAccessDictionary } from './AdminAgentAccessPage.i18n'
 
 // 資格情報のバインドと解除は専用の管理画面に置き、
 // この一覧右ペイン/詳細画面カードは読み取り専用 (policy #1, wi-314 T012)。
@@ -36,6 +37,7 @@ export function AgentDetailCard({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const t = useDictionary(adminAgentsDictionary)
   const access = useDictionary(agentResourcesDictionary)
+  const accessSummary = useDictionary(agentAccessDictionary)
 
   if (!agent) {
     return (
@@ -156,6 +158,13 @@ export function AgentDetailCard({
 
       <section className="border-t border-slate-100 p-5">
         <div className="mb-4 flex flex-wrap justify-end gap-2">
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<a href={tenantURL(`/admin/agents/${encodeURIComponent(agent.id)}/access`)} />}
+          >
+            {accessSummary.title}
+          </Button>
           <Button
             variant="outline"
             nativeButton={false}

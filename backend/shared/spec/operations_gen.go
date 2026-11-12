@@ -146,6 +146,7 @@ var generatedOperations = map[string]Operation{
 	"GetAdminUser": {Method: "GET", Path: "/api/admin/v1/users/{user_id}", Deprecated: false, ApiTokenScopes: []string{"users:read"}},
 	"GetAdminUserImport": {Method: "GET", Path: "/api/admin/v1/users/imports/{job_id}", Deprecated: false, ApiTokenScopes: []string{"users:write"}},
 	"GetAgent": {Method: "GET", Path: "/api/admin/v1/agents/{agent_id}", Deprecated: false, ApiTokenScopes: []string{"agents:read"}},
+	"GetAgentAccessSummary": {Method: "GET", Path: "/api/admin/v1/agents/{agent_id}/access-summary", Deprecated: false, ApiTokenScopes: []string{"agents:read"}},
 	"GetApplicationIcon": {Method: "GET", Path: "/application-icons/{application_id}/{id}", Deprecated: false, ApiTokenScopes: nil},
 	"GetAppSignInPolicy": {Method: "GET", Path: "/api/admin/v1/applications/{id}/sign-in-policy", Deprecated: false, ApiTokenScopes: []string{"applications:read"}},
 	"GetAuthorizationDetailType": {Method: "GET", Path: "/api/admin/v1/authorization-detail-types/{type}", Deprecated: false, ApiTokenScopes: []string{"authorization-detail-types:read"}},

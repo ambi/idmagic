@@ -109,6 +109,7 @@ type Querier interface {
 	ListConsentsByTenantPageBefore(ctx context.Context, arg ListConsentsByTenantPageBeforeParams) ([]*ListConsentsByTenantPageBeforeRow, error)
 	ListCrossAppAccessIssuePolicies(ctx context.Context, tenantID string) ([]*CrossAppAccessIssuePolicy, error)
 	ListCrossAppAccessRedeemPolicies(ctx context.Context, tenantID string) ([]*CrossAppAccessRedeemPolicy, error)
+	ListDelegationsForAgent(ctx context.Context, arg ListDelegationsForAgentParams) ([]*ListDelegationsForAgentRow, error)
 	ListEffectiveAgentGuardrailPolicies(ctx context.Context, arg ListEffectiveAgentGuardrailPoliciesParams) ([]*ListEffectiveAgentGuardrailPoliciesRow, error)
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
 	ListPendingApprovalRequestsForUser(ctx context.Context, arg ListPendingApprovalRequestsForUserParams) ([]*ListPendingApprovalRequestsForUserRow, error)

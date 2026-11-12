@@ -1,4 +1,5 @@
 import type {
+  AgentAccessSummary,
   AdminAgent,
   AgentGuardrailLimits,
   AgentGuardrailPolicy,
@@ -2761,6 +2762,12 @@ export function getDirectoryIngestionRun(
 
 export async function getAgentGuardrailPolicy(agentID: string): Promise<AgentGuardrailPolicySet> {
   return request(`/api/admin/v1/agents/${encodeURIComponent(agentID)}/guardrail-policy`)
+}
+
+export async function getAgentAccessSummary(agentID: string): Promise<AgentAccessSummary> {
+  return request<AgentAccessSummary>(
+    `/api/admin/v1/agents/${encodeURIComponent(agentID)}/access-summary`,
+  )
 }
 
 export async function putAgentGuardrailPolicy(

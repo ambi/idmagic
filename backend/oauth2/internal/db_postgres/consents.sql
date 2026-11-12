@@ -72,6 +72,15 @@ FROM consents
 WHERE user_id = $1 AND agent_id IS NOT NULL
 ORDER BY agent_id;
 
+-- name: ListDelegationsForAgent :many
+SELECT c.user_id, c.agent_id, c.scopes, c.granted_at, c.expires_at, c.revoked_at, c.last_used_at
+FROM consents c
+JOIN users u ON c.user_id = u.id
+JOIN agents a ON c.agent_id = a.id
+WHERE a.tenant_id = sqlc.arg(tenant_id) AND u.tenant_id = sqlc.arg(tenant_id)
+  AND c.agent_id = sqlc.arg(agent_id)
+ORDER BY c.user_id;
+
 -- name: ListAgentDelegationsByTenantPage :many
 SELECT c.user_id, c.agent_id, c.scopes, c.granted_at, c.expires_at, c.revoked_at, c.last_used_at
 FROM consents c

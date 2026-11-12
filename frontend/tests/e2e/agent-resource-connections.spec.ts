@@ -11,7 +11,7 @@ import {
   waitForText,
 } from './fixtures'
 
-//spec:covers REQ-AUTHORIZATION-017, REQ-OAUTH2-064: モデル画面を使わず、接続先と操作を登録し、Agent 起点の付与と接続先起点の取消を同じ保存へ反映する。
+//spec:covers REQ-AUTHORIZATION-017, REQ-OAUTH2-064, REQ-IDMANAGEMENT-106: モデル画面を使わず、付与と取消を同じ保存へ反映し、Agent 詳細から権限の材料を再取得する。
 test('administrator assigns registered operations from resource connections', async () => {
   const view = await openWebView({ width: 1440, height: 1800 })
   try {
@@ -60,6 +60,19 @@ test('administrator assigns registered operations from resource connections', as
     await clickButtonByText(view, 'Save')
     await waitForPage(view, 'admin-agent-detail')
     await waitForText(view, 'MCP resource server and operation assignments saved.')
+    await clickLinkByText(view, 'Access materials')
+    await waitForPage(view, 'admin-agent-access')
+    await waitForText(view, 'does not guarantee permission to execute')
+    await waitForText(view, 'No delegation grants.')
+    const assignedRow = await view.evaluate(
+      `[...document.querySelectorAll('tbody tr')].find(row=>row.textContent.includes(${JSON.stringify(connection)}))?.textContent`,
+    )
+    expect(String(assignedRow)).toContain('Read documents')
+    expect(String(assignedRow)).toContain('Direct operation assignment present')
+    expect(String(assignedRow)).toContain('documents:read')
+    expect(await view.evaluate(`document.querySelector('form')===null`)).toBe(true)
+    await clickLinkByText(view, 'Agent details')
+    await waitForPage(view, 'admin-agent-detail')
     await view.evaluate(`document.querySelector('main a[href$="/resources"]').click()`)
     await waitForPage(view, 'admin-agent-resources')
     await waitForText(view, connection)
@@ -84,6 +97,22 @@ test('administrator assigns registered operations from resource connections', as
     await view.evaluate(`document.querySelector('main a[href$="/resources"]').click()`)
     await waitForPage(view, 'admin-agent-resources')
     await waitForText(view, 'No operations have been assigned yet.')
+    await view.navigate(`${uiOrigin}${detailPath}/access`)
+    await waitForPage(view, 'admin-agent-access')
+    const removedRow = await view.evaluate(
+      `[...document.querySelectorAll('tbody tr')].find(row=>row.textContent.includes(${JSON.stringify(connection)}))?.textContent`,
+    )
+    expect(String(removedRow)).toContain('No direct operation assignment')
+    await view.navigate(
+      `${uiOrigin}/realms/default/admin/mcp-resource-servers/${encodeURIComponent(serverID)}/edit`,
+    )
+    await waitForPage(view, 'admin-mcp-resource-server-edit')
+    await setInputValue(view, '#tool-label-0', 'Read reviewed documents')
+    await clickButtonByText(view, 'Update')
+    await waitForPage(view, 'admin-mcp-resource-servers')
+    await view.navigate(`${uiOrigin}${detailPath}/access`)
+    await waitForPage(view, 'admin-agent-access')
+    await waitForText(view, 'Read reviewed documents')
   } finally {
     view.close()
   }
