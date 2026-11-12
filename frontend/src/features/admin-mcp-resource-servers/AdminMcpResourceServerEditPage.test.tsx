@@ -235,6 +235,86 @@ describe('AdminMcpResourceServerEditPage', () => {
     expect(saved).toHaveLength(0)
   })
 
+  //spec:covers REQ-OAUTH2-090: 行で承認を求めると明細の種類の不足を示して保存させず、入力欄のない項目を保ち、条件を空にすると除く。
+  it('edits approval and conditions in the rule row and keeps other fields', async () => {
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    const published = {
+      ...resourceServer,
+      scopes: ['mcp'],
+      access_rules: [
+        {
+          resource_type: 'idmagic_mcp_operation',
+          relation: 'invoke',
+          scopes: ['mcp'],
+          tool: { id: 'op-1', name: 'delete_document', display_name: 'Delete' },
+          condition: { deny_when: 'false', version: 'v1' },
+          limits: [{ by: ['agent' as const], max_requests: 10, window_seconds: 60 }],
+        },
+      ],
+    }
+    const saved = routedFetch(response(200, published))
+    await renderWithRouter(
+      <AdminMcpResourceServerEditPage csrfToken="csrf" resourceServer={published} />,
+    )
+
+    expect(screen.getByLabelText(t.ruleLimitMaxRequests)).toHaveValue(10)
+    fireEvent.click(screen.getByLabelText(t.ruleApproval))
+    const detailType = screen.getByLabelText(t.ruleDetailType)
+    expect(detailType).toHaveAttribute('aria-invalid', 'true')
+    expect(detailType.getAttribute('aria-describedby')?.split(' ')).toContain(
+      screen.getByText(t.detailTypeRequired).id,
+    )
+    expect(screen.getByRole('button', { name: t.update })).toBeDisabled()
+
+    fireEvent.change(detailType, { target: { value: 'document_deletion' } })
+    fireEvent.change(screen.getByLabelText(t.ruleDenyWhen), { target: { value: '' } })
+    expect(screen.queryByText(t.detailTypeRequired)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: t.update }))
+
+    await waitFor(() => expect(saved).toHaveLength(1))
+    expect((saved[0] as { access_rules: unknown[] }).access_rules).toEqual([
+      {
+        resource_type: 'idmagic_mcp_operation',
+        relation: 'invoke',
+        scopes: ['mcp'],
+        tool: { id: 'op-1', name: 'delete_document', display_name: 'Delete' },
+        limits: [{ by: ['agent'], max_requests: 10, window_seconds: 60 }],
+        requires_approved_operation: true,
+        authorization_detail_type: 'document_deletion',
+      },
+    ])
+  })
+
+  //spec:covers REQ-OAUTH2-090: 入力欄で表せない型の制約は読み取り専用に示し、行の編集で失わない。
+  it('shows constraints that the fields cannot represent as read-only JSON', async () => {
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    const odd = {
+      ...resourceServer,
+      scopes: ['mcp'],
+      access_rules: [
+        {
+          resource_type: 'idmagic_mcp_operation',
+          relation: 'invoke',
+          scopes: ['mcp'],
+          tool: { name: 'read_document', display_name: 'Read' },
+          limits: [{ by: ['tenant'], max_requests: 1, window_seconds: 60 }],
+        },
+      ],
+    } as unknown as McpResourceServer
+    const saved = routedFetch(response(200, odd))
+    await renderWithRouter(<AdminMcpResourceServerEditPage csrfToken="csrf" resourceServer={odd} />)
+
+    expect(screen.getByText(t.ruleConstraintsUnreadable)).toBeInTheDocument()
+    expect(screen.queryByLabelText(t.ruleApproval)).toBeNull()
+    fireEvent.change(screen.getByLabelText(t.toolDisplayName), { target: { value: 'Read docs' } })
+    fireEvent.click(screen.getByRole('button', { name: t.update }))
+
+    await waitFor(() => expect(saved).toHaveLength(1))
+    expect((saved[0] as { access_rules: { limits: unknown }[] }).access_rules[0]?.limits).toEqual([
+      { by: ['tenant'], max_requests: 1, window_seconds: 60 },
+    ])
+  })
+
   it('shows an error and keeps the form when updating fails', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     stubGlobal(

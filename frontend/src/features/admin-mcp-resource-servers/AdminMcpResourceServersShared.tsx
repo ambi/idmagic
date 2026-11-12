@@ -25,6 +25,8 @@ import type {
 import { MCP_OPERATION_TYPE } from '../../lib/mcpAccess'
 import { useDictionary } from '../../lib/i18n'
 import { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
+import { AccessRuleConstraints } from './AccessRuleConstraints'
+import { accessRuleProblems, constraintsRepresentable, hasProblems } from './accessRuleProblems'
 
 type Dictionary = (typeof adminMcpResourceServersDictionary)['en']
 
@@ -105,11 +107,19 @@ export function resourceServerSchema(t: Dictionary) {
     resource: requiredUrl({ noFragment: true }),
     name: requiredText(LENGTH.displayName),
     scopes: requiredList(parseScopes),
-    accessRules: rule(text(), (value) =>
-      parseAccessRules(value) === null
-        ? { kind: 'message', text: t.accessRulesInvalidError }
-        : undefined,
-    ),
+    accessRules: rule(text(), (value) => {
+      const rules = parseAccessRules(value)
+      if (rules === null) return { kind: 'message', text: t.accessRulesInvalidError }
+      // 行の欄の問題は行に示し、ここでは保存を止めるだけにする (REQ-OAUTH2-090)。
+      const rowProblem = rules.some(
+        (rule) =>
+          typeof rule === 'object' &&
+          rule !== null &&
+          constraintsRepresentable(rule) &&
+          hasProblems(accessRuleProblems(rule)),
+      )
+      return rowProblem ? { kind: 'message', text: t.accessRulesRowsInvalid } : undefined
+    }),
   })
 }
 
@@ -150,14 +160,16 @@ export function McpResourceServerStatus({ state }: { state: McpResourceServer['s
   )
 }
 
-// AccessRuleRows は規則の基本の項目を行で編集する。JSON を正とし、行にない項目（条件や上限など）は保つ。
+// AccessRuleRows は規則を行で編集する。JSON を正とし、行にない項目（操作の識別子など）は保つ。
 function AccessRuleRows({
   form,
   onChange,
+  showProblems,
   t,
 }: {
   form: FormState
   onChange: (next: FormState) => void
+  showProblems: boolean
   t: Dictionary
 }) {
   const rules = parseAccessRules(form.accessRules)
@@ -295,6 +307,13 @@ function AccessRuleRows({
               </label>
             ))}
           </fieldset>
+          <AccessRuleConstraints
+            rule={rule}
+            index={index}
+            showProblems={showProblems}
+            onChange={(change) => update(index, change)}
+            t={t}
+          />
           <Button
             type="button"
             variant="outline"
@@ -406,7 +425,12 @@ export function McpResourceServerFormFields({
       <div className="flex flex-col gap-2 md:col-span-2">
         <p className="text-sm font-medium">{t.operationsHeading}</p>
         <p className="text-xs leading-5 text-slate-500">{t.accessRulesHelp}</p>
-        <AccessRuleRows form={form} onChange={onChange} t={t} />
+        <AccessRuleRows
+          form={form}
+          onChange={onChange}
+          showProblems={validation.problem('accessRules') !== undefined}
+          t={t}
+        />
         <details className="text-sm">
           <summary className="cursor-pointer text-slate-600">{t.accessRulesAdvanced}</summary>
           <div className="mt-2 flex flex-col gap-1.5">
