@@ -113,7 +113,9 @@ describe('AdminAuthorizationModelEditPage', () => {
     fireEvent.click(screen.getByRole('button', { name: t.modelTemplateButton }))
     expect(screen.queryByRole('button', { name: t.modelTemplateButton })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: t.review }))
-    await screen.findByText(/document/)
+    // テンプレートを選んだ時点で編集欄に document が現れるので、確認の表示にだけある見出しを待つ。
+    await screen.findByRole('heading', { name: t.diffTitle })
+    expect(posts).toEqual([])
     fireEvent.click(screen.getByRole('button', { name: t.publish }))
     await waitFor(() => expect(onPublished).toHaveBeenCalled())
     expect(posts).toEqual([
