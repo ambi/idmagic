@@ -8,24 +8,25 @@ change_kind: feature
 priority: p1
 depends_on:
   - wi-52890-step-up-bearer-requests-with-rfc-9470
+  - wi-23765-enforce-requested-mfa-on-reauthorization
 affected_spec:
-  - { path: docs/modules/authentication/features/account-portal.md, requirement: REQ-AUTHENTICATION-039 }
-  - { path: docs/modules/system/features/api-boundary.md, requirement: REQ-SYSTEM-020 }
-  - { path: docs/modules/tenancy/features/resolution.md, requirement: REQ-TENANCY-011 }
-  - { path: docs/modules/tenancy/features/lifecycle.md, requirement: REQ-TENANCY-027 }
-  - { path: docs/modules/jobs/features/admin.md, requirement: REQ-JOBS-015 }
-  - { path: docs/modules/data-keys/features/lifecycle.md, requirement: REQ-DATAKEYS-003 }
-  - { path: docs/modules/data-keys/features/lifecycle.md, requirement: REQ-DATAKEYS-008 }
-  - { path: spec/modules/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.CompleteStepUpAuthentication }
-  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.CreateTenant }
-  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenant }
-  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantQuota }
-  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.SetTenantEndpointStyle }
-  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.DisableTenant }
-  - { path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.EnableTenant }
-  - { path: spec/modules/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.CancelSystemJob }
-  - { path: spec/modules/data-keys/main.tsp, symbol: IdMagic.DataKeys.Operations.RotateTenantDataKey }
-  - { path: spec/modules/data-keys/main.tsp, symbol: IdMagic.DataKeys.Operations.DisableTenantDataKey }
+  - {path: docs/modules/authentication/features/account-portal.md, requirement: REQ-AUTHENTICATION-039}
+  - {path: docs/modules/system/features/api-boundary.md, requirement: REQ-SYSTEM-020}
+  - {path: docs/modules/tenancy/features/resolution.md, requirement: REQ-TENANCY-011}
+  - {path: docs/modules/tenancy/features/lifecycle.md, requirement: REQ-TENANCY-027}
+  - {path: docs/modules/jobs/features/admin.md, requirement: REQ-JOBS-015}
+  - {path: docs/modules/data-keys/features/lifecycle.md, requirement: REQ-DATAKEYS-003}
+  - {path: docs/modules/data-keys/features/lifecycle.md, requirement: REQ-DATAKEYS-008}
+  - {path: spec/modules/authentication/main.tsp, symbol: IdMagic.Authentication.Operations.CompleteStepUpAuthentication}
+  - {path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.CreateTenant}
+  - {path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenant}
+  - {path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.UpdateTenantQuota}
+  - {path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.SetTenantEndpointStyle}
+  - {path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.DisableTenant}
+  - {path: spec/modules/tenancy/main.tsp, symbol: IdMagic.Tenancy.Operations.EnableTenant}
+  - {path: spec/modules/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.CancelSystemJob}
+  - {path: spec/modules/data-keys/main.tsp, symbol: IdMagic.DataKeys.Operations.RotateTenantDataKey}
+  - {path: spec/modules/data-keys/main.tsp, symbol: IdMagic.DataKeys.Operations.DisableTenantDataKey}
 ---
 
 # システムコンソールに特権セッション保証と操作理由を要求する
@@ -111,10 +112,11 @@ RFC 9470 に従い、どちらの不足も `401` と `WWW-Authenticate: Bearer e
 - `privileged_change` の不足には MFA を表す `acr_values` と `max_age="300"` を付ける。
 - 理由の欠落は `400 invalid_request` とする。
 
-### 実装前に解決する問い
+### 解決した問い（2026-11-14 に利用者と決定）
 
-- 再認可で要求する `acr_values`：既存の `urn:idmagic:acr:mfa` は信頼済みデバイス（`tdev`）でも満たされる。そのまま要求すると、再認可が `tdev` で完了し、制御面の判定を再び満たさない往復になる。`tdev` を認めない値を定義するか、制御面のクライアントに信頼済みデバイスを使わせないかを決める。
-- `/authorize` の追加要求が使える第二要素は現在 TOTP だけで、WebAuthn だけを登録した運用者は通常のログインへ回される。再認可で WebAuthn と復旧コードを使えることを確かめる。
+- 再認可で要求する `acr_values`：既存の `urn:idmagic:acr:mfa` のまま要求する。`max_age` を伴う MFA の水準の再認証では信頼済みデバイスで第二要素を省略しないことを、[[wi-23765-enforce-requested-mfa-on-reauthorization]] が製品の規則にする。新しい `acr` の値は定義しない。制御面の判定は `amr` から `tdev` を除く規則を、二重の防御として残す。
+- WebAuthn だけを登録した運用者：同じく [[wi-23765-enforce-requested-mfa-on-reauthorization]] が、追加の認証の条件を登録済みの第二要素のいずれかに広げ、満たせなければ `unmet_authentication_requirements` を返す。システムコンソールはこの応答を MFA の登録の案内に変える。
+- 将来、特権の変更操作をフィッシング耐性のある方式に限る段階は、[[wi-63330-define-built-in-assurance-levels]] の組み込みの水準で足せる。今回は TOTP、WebAuthn 系、復旧コードを認める決定を変えない。
 
 ### 認可の正
 
