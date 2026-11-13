@@ -27,7 +27,7 @@ export function LinkedIdentitiesCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const { guard, dialog } = useStepUpGuard(csrfToken)
+  const { guard, dialog } = useStepUpGuard()
 
   async function handleUnlink(providerID: string) {
     setBusy(true)

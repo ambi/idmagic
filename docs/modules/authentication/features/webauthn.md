@@ -55,13 +55,14 @@ WebAuthn は、パスワードと組み合わせるフィッシング耐性の�
 
 #### REQ-AUTHENTICATION-038 本人は WebAuthn の資格情報を登録し、ステップアップ認証のうえで解除できる
 
+- **上位の要件**：[REQ-AUTHENTICATION-039](account-portal.md#本人によるステップアップ認証)
 - 本人が認証済みのセッションで登録を始めたとき、Authentication は、200 と、アテステーション `none`、ユーザーの検証 `preferred`、常駐の鍵 `discouraged` の `PublicKeyCredentialCreationOptions` を返す。
 - 本人が登録の challenge へのアテステーションの検証に成功したとき、Authentication は、204 を返し、資格情報を保存し、`mfa_enrolled` を計算し直し、本人のすべての信頼済みデバイスを失効させ、`WebAuthnCredentialRegistered` を発行する。
 - 本人がステップアップ認証を経たセッションで自分の資格情報の解除を要求したとき、Authentication は、204 を返し、資格情報を消し、`mfa_enrolled` を計算し直し、本人のすべての信頼済みデバイスを失効させ、`WebAuthnCredentialRemoved` を発行する。
 - 登録の challenge がないか期限を過ぎた確定を受けた場合、Authentication は、400 と `webauthn_challenge_expired` で拒否する。
 - アテステーションを検証できない場合、Authentication は、400 と `invalid_webauthn` で拒否し、資格情報を保存しない。
 - 本人のものでないか存在しない資格情報の解除を受けた場合、Authentication は、404 と `webauthn_not_found` で拒否する。
-- ステップアップ認証を経ていないセッションで解除を受けた場合、Authentication は、403 と `step_up_required` で拒否し、資格情報を残す。
+- ステップアップ認証を満たさない解除を受けた場合、Authentication は、REQ-AUTHENTICATION-039 の応答で拒否し、資格情報を残す。
 - WebAuthn を構成していない場合、Authentication は、503 と `webauthn_unavailable` で拒否する。
 
 ## 実現方式

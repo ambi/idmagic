@@ -81,11 +81,12 @@ JIT は接続ごとに個別に有効にし、メールのドメインの許可�
 
 #### REQ-AUTHENTICATION-003 外部アイデンティティの明示的なリンクと解除はステップアップ認証を要求する
 
+- **上位の要件**：[REQ-AUTHENTICATION-039](account-portal.md#本人によるステップアップ認証)
 - 本人がステップアップ認証を経たセッションで関連付けを始め、未使用の外部 subject で上流の認証を完了したとき、Authentication は、その外部 subject を本人へ関連付け、`FederatedIdentityLinked` を発行し、アカウントのセキュリティの画面へ 303 で戻す。
 - 本人が関連付けを一覧したとき、Authentication は、外部 subject を含めずに本人の関連付けを返す。
 - 本人がステップアップ認証を経たセッションで関連付けの解除を要求したとき、Authentication は、204 を返し、その関連付けを消し、`FederatedIdentityUnlinked` を発行する。
 - 本人が関連付けていないプロバイダーの解除を要求したとき、Authentication は、204 を返し、何も変えない。
-- ステップアップ認証を経ていないセッションで関連付けか解除を受けた場合、Authentication は、403 と `step_up_required` で拒否する。
+- ステップアップ認証を満たさない関連付けか解除を受けた場合、Authentication は、REQ-AUTHENTICATION-039 の応答で拒否し、関連付けを変えない。
 - 別の User に関連付けた外部 subject で関連付けを完了した場合、Authentication は、401 と `federation_failed` で拒否し、関連付けを変えない。
 - 解除するとパスワードも他の外部アイデンティティも残らない場合、Authentication は、403 と `unlink_denied` で拒否し、関連付けを残す。
 - **例**：EX-AUTHENTICATION-003-01、EX-AUTHENTICATION-003-02、EX-AUTHENTICATION-003-03

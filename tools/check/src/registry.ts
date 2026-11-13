@@ -11,6 +11,7 @@ import { checkExecutableExamples } from './check-executable-examples.ts'
 import { checkEventContract } from './check-event-contract.ts'
 import { checkLinks } from './check-links.ts'
 import { checkModuleDependencies } from './check-module-dependencies.ts'
+import { checkPortalApiCalls } from './check-portal-api-calls.ts'
 import { checkRawSql } from './check-raw-sql.ts'
 import { checkSqlConcurrency } from './check-sql-concurrency.ts'
 import { checkSchemaTables } from './check-schema-tables.ts'
@@ -41,6 +42,7 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'boundaries', groups: ['all'], run: checkBoundaries },
   { name: 'module-dependencies', groups: ['all'], run: checkModuleDependencies },
   { name: 'raw-sql', groups: ['all'], run: checkRawSql },
+  { name: 'portal-api-calls', groups: ['all'], run: checkPortalApiCalls },
   { name: 'sql-concurrency', groups: ['all'], run: checkSqlConcurrency },
   { name: 'test-document-reads', groups: ['all'], run: checkTestDocumentReads },
   { name: 'tool-test-inputs', groups: ['all'], run: checkToolTestInputs },

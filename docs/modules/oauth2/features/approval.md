@@ -96,11 +96,12 @@ CIBA の配信のモードは `poll` だけを実装する。
 
 #### REQ-OAUTH2-043 承認リクエストを判断できるのは対象ユーザー本人のステップアップ認証済みセッションだけである
 
+- **上位の要件**：[REQ-AUTHENTICATION-039](../../authentication/features/account-portal.md#本人によるステップアップ認証)
 - 本人が保留中の承認リクエストを一覧したとき、OAuth2 は、200 と、本人宛の期限内の `Pending` の承認リクエストだけを、クライアントの表示名、Agent の名前、要求したスコープ、`authorization_details`、`binding_message` とともに返す。
 - 本人がステップアップ認証を経たセッションで本人宛の期限内の `Pending` の承認リクエストを承認したとき、OAuth2 は、204 を返し、承認リクエストを `Approved` にし、`BackchannelAuthApproved` を発行する。
 - 本人がステップアップ認証を経たセッションで本人宛の期限内の `Pending` の承認リクエストを拒否したとき、OAuth2 は、204 を返し、承認リクエストを `Denied` にし、`BackchannelAuthDenied` を発行する。
 - セッションが未認証か認証の途中の場合、OAuth2 は、401 と `authentication_required` で拒否する。
-- ステップアップ認証の有効期間を過ぎたセッションで判断を受けた場合、OAuth2 は、403 と `step_up_required` で拒否し、承認リクエストを `Pending` のままにする。
+- ステップアップ認証を満たさない判断を受けた場合、OAuth2 は、REQ-AUTHENTICATION-039 の応答で拒否し、承認リクエストを `Pending` のままにする。
 - CSRF トークンが一致しない判断を受けた場合、OAuth2 は、403 と `csrf_failed` で拒否し、承認リクエストを `Pending` のままにする。
 - 他人宛か存在しない承認リクエストの判断を受けた場合、OAuth2 は、403 と `access_denied` で拒否する。
 - 期限を過ぎたか `Pending` でない承認リクエストの判断か、`approve` でも `deny` でもない判断を受けた場合、OAuth2 は、400 と `invalid_request` で拒否し、記録済みの判断を上書きしない。

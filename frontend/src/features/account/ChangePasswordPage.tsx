@@ -50,7 +50,7 @@ export function ChangePasswordPage({
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const { guard, dialog } = useStepUpGuard(csrfToken)
+  const { guard, dialog } = useStepUpGuard()
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

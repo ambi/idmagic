@@ -42,8 +42,9 @@ TOTP は RFC 6238 の標準のパラメーター（SHA1、30 秒のステップ�
 
 #### REQ-AUTHENTICATION-012 ユーザーはステップアップ再認証のうえで TOTP 認証要素を解除する
 
+- **上位の要件**：[REQ-AUTHENTICATION-039](account-portal.md#本人によるステップアップ認証)
 - ステップアップ認証が有効な間、本人が現在の TOTP のコードで要素の解除を要求したとき、Authentication は、要素を消し、`mfa_enrolled` を計算し直し、`MfaFactorRemoved` を発行する。
-- ステップアップ認証なしで解除を要求された場合、Authentication は、403 と `step_up_required` で拒否し、要素を残す。
+- ステップアップ認証を満たさない解除を受けた場合、Authentication は、REQ-AUTHENTICATION-039 の応答で拒否し、要素を残す。
 - **例**：EX-AUTHENTICATION-012-01、EX-AUTHENTICATION-012-02
 
 ## 実現方式

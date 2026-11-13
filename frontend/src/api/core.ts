@@ -40,6 +40,64 @@ export class UnauthenticatedError extends AuthenticationAPIError {
   }
 }
 
+// StepUpChallenge は、ステップアップ認証を求める応答が示す再認可の条件である。
+// RFC 9470 の 401 は WWW-Authenticate に max_age と acr_values を載せる。Cookie の 403 は
+// 条件を載せないので、既定の経過秒数を使う。
+export type StepUpChallenge = { maxAge: number; acrValues?: string }
+
+const DEFAULT_STEP_UP_MAX_AGE_SECONDS = 300
+
+// StepUpRequiredError は、操作が直近の再認証を求めて拒否されたことを表す。トークンの失効を
+// 表す UnauthenticatedError とは別の型にし、ポータルが保持したトークンを捨てないようにする。
+export class StepUpRequiredError extends AuthenticationAPIError {
+  constructor(
+    message: string,
+    code: string,
+    readonly challenge: StepUpChallenge,
+  ) {
+    super(message, code)
+    this.name = 'StepUpRequiredError'
+  }
+}
+
+// parseBearerChallenge は WWW-Authenticate の Bearer の認証パラメーターを読む。
+export function parseBearerChallenge(header: string | null | undefined): Record<string, string> {
+  const params: Record<string, string> = {}
+  if (!header) return params
+  const pattern = /([A-Za-z_]+)="([^"]*)"/g
+  for (const match of header.matchAll(pattern)) params[match[1]] = match[2]
+  return params
+}
+
+function stepUpChallenge(response: Response): StepUpChallenge {
+  const params = parseBearerChallenge(response.headers?.get('WWW-Authenticate'))
+  const maxAge = Number(params.max_age)
+  return {
+    maxAge: Number.isInteger(maxAge) && maxAge >= 0 ? maxAge : DEFAULT_STEP_UP_MAX_AGE_SECONDS,
+    ...(params.acr_values ? { acrValues: params.acr_values } : {}),
+  }
+}
+
+// stepUpRequiredError は、失敗応答がステップアップ認証を求めるものなら、その条件を持つ
+// エラーを返す。RFC 9470 の 401 と、Cookie の経路の 403 step_up_required の両方を扱う。
+function stepUpRequiredError(response: Response, body: APIError): StepUpRequiredError | null {
+  const code = apiErrorCode(body)
+  const challenged =
+    parseBearerChallenge(response.headers?.get('WWW-Authenticate')).error ===
+    'insufficient_user_authentication'
+  if (
+    (response.status === 401 && (challenged || code === 'insufficient_user_authentication')) ||
+    (response.status === 403 && code === 'step_up_required')
+  ) {
+    return new StepUpRequiredError(
+      apiErrorMessage(body),
+      code ?? 'insufficient_user_authentication',
+      stepUpChallenge(response),
+    )
+  }
+  return null
+}
+
 export function apiErrorCode(body: APIError): string | undefined {
   if (body.error) return body.error
   if (!body.type?.startsWith(PROBLEM_TYPE_PREFIX)) return undefined
@@ -67,7 +125,8 @@ export async function responseAPIError(
   response: Response,
   fallback?: string,
 ): Promise<AuthenticationAPIError> {
-  return authenticationAPIError(await readErrorBody(response), fallback)
+  const body = await readErrorBody(response)
+  return stepUpRequiredError(response, body) ?? authenticationAPIError(body, fallback)
 }
 
 // 失敗応答の本文は表示する文を探すためだけに読むので、読めなければ代わりの文へ落とす。
@@ -116,6 +175,10 @@ async function doFetch<T>(
   })
   if (!response.ok) {
     const body = await readErrorBody(response)
+    // 再認証を求める 401 をトークンの失効として扱うと、ポータルが保持したトークンを捨てて
+    // 画面をログインからやり直させる。先に区別する。
+    const stepUp = stepUpRequiredError(response, body)
+    if (stepUp) throw stepUp
     if (response.status === 401) {
       throw new UnauthenticatedError(apiErrorMessage(body), apiErrorCode(body))
     }

@@ -378,27 +378,8 @@ test('account TOTP enrollment and removal step-up work from the browser', async 
 
     await setInputValue(view, '#remove-code', totpCode(secret))
     await clickButtonByText(view, 'Remove authenticator app')
-
-    const deadline = Date.now() + 10_000
-    while (Date.now() < deadline) {
-      if (
-        await view.evaluate(
-          `document.body.textContent?.includes('Re-authenticate to verify your identity') ?? false`,
-        )
-      ) {
-        await setInputValue(view, '#step-up-credential', demo.password)
-        await clickButtonByText(view, 'Re-authenticate and continue')
-      }
-      if (
-        await view.evaluate(
-          `document.body.textContent?.includes('Authenticator app removed.') ?? false`,
-        )
-      ) {
-        return
-      }
-      await Bun.sleep(POLL_INTERVAL_MS)
-    }
-    throw new Error('timeout waiting for TOTP removal')
+    // ログインの直後のトークンは直近の認証を示すので、再認可を求められずに解除が通る。
+    await waitForText(view, 'Authenticator app removed.')
   } finally {
     view.close()
   }
@@ -611,27 +592,6 @@ test('account email change confirms through the local SMTP sink', async () => {
     await clickButtonByText(view, 'Change')
     await setInputValue(view, '#new-email', nextEmail)
     await clickButtonByText(view, 'Send confirmation email')
-
-    const deadline = Date.now() + 10_000
-    while (Date.now() < deadline) {
-      if (
-        await view.evaluate(
-          `document.body.textContent?.includes('Re-authenticate to verify your identity') ?? false`,
-        )
-      ) {
-        await setInputValue(view, '#step-up-credential', demo.password)
-        await clickButtonByText(view, 'Re-authenticate and continue')
-        break
-      }
-      if (
-        await view.evaluate(
-          `document.body.textContent?.includes(${JSON.stringify(nextEmail)}) ?? false`,
-        )
-      ) {
-        break
-      }
-      await Bun.sleep(POLL_INTERVAL_MS)
-    }
 
     await waitForText(view, nextEmail)
     const verifyURL = await waitForEmailURL(nextEmail, '/account/email/verify')

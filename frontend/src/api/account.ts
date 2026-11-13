@@ -12,8 +12,8 @@ import type {
   TokenVaultMyConnection,
   TotpEnrollmentStart,
 } from '../types'
-import { adminRequest, AuthenticationAPIError, request, responseAPIError, tenantURL } from './core'
-import { createPasskey, getPasskeyAssertion } from './webauthn'
+import { adminRequest, request, responseAPIError, StepUpRequiredError, tenantURL } from './core'
+import { createPasskey } from './webauthn'
 
 export type UpdateAccountProfileInput = {
   name?: string
@@ -38,15 +38,10 @@ export async function getAccountSummary(): Promise<AccountSummary> {
 }
 
 export async function requestEmailChange(csrfToken: string, newEmail: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/v1/email/change-request'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-    body: JSON.stringify({ new_email: newEmail }),
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (response.status === 204) return
-  throw await responseAPIError(response)
+  await request(
+    '/api/account/v1/email/change-request',
+    adminRequest(csrfToken, 'POST', { new_email: newEmail }),
+  )
 }
 
 export async function exportAccountData(): Promise<unknown> {
@@ -81,32 +76,17 @@ export async function decideMyApprovalRequest(
   id: string,
   decision: 'approve' | 'deny',
 ): Promise<void> {
-  const response = await fetch(
-    tenantURL(`/api/account/v1/approval-requests/${encodeURIComponent(id)}/decision`),
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-      body: JSON.stringify({ decision }),
-      credentials: 'same-origin',
-      cache: 'no-store',
-    },
+  await request(
+    `/api/account/v1/approval-requests/${encodeURIComponent(id)}/decision`,
+    adminRequest(csrfToken, 'POST', { decision }),
   )
-  if (response.status === 204) return
-  throw await responseAPIError(response)
 }
 
 export async function revokeAccountConsent(csrfToken: string, clientId: string): Promise<void> {
-  const response = await fetch(
-    tenantURL(`/api/account/v1/consents/${encodeURIComponent(clientId)}/revoke`),
-    {
-      method: 'POST',
-      headers: { 'X-CSRF-Token': csrfToken },
-      credentials: 'same-origin',
-      cache: 'no-store',
-    },
+  await request(
+    `/api/account/v1/consents/${encodeURIComponent(clientId)}/revoke`,
+    adminRequest(csrfToken, 'POST'),
   )
-  if (response.status === 204) return
-  throw await responseAPIError(response)
 }
 
 export async function getAccountSecurity(): Promise<AccountSecurity> {
@@ -128,17 +108,10 @@ export async function listLinkedIdentities(): Promise<LinkedIdentity[]> {
 }
 
 export async function unlinkIdentity(csrfToken: string, providerId: string): Promise<void> {
-  const response = await fetch(
-    tenantURL(`/api/account/v1/linked-identities/${encodeURIComponent(providerId)}`),
-    {
-      method: 'DELETE',
-      headers: { 'X-CSRF-Token': csrfToken },
-      credentials: 'same-origin',
-      cache: 'no-store',
-    },
+  await request(
+    `/api/account/v1/linked-identities/${encodeURIComponent(providerId)}`,
+    adminRequest(csrfToken, 'DELETE'),
   )
-  if (response.status === 204) return
-  throw await responseAPIError(response)
 }
 
 export async function getSignInActivity(): Promise<AccountSignInActivity[]> {
@@ -147,7 +120,7 @@ export async function getSignInActivity(): Promise<AccountSignInActivity[]> {
 }
 
 export async function listAccountSessions(): Promise<AccountSession[]> {
-  // 一覧の current と失効操作が同じ Cookie セッションを参照するよう、Bearer を付けない。
+  // session-cookie: 一覧の current と失効操作が同じブラウザーのセッションを参照する。
   const response = await fetch(tenantURL('/api/account/v1/sessions'), {
     credentials: 'same-origin',
     cache: 'no-store',
@@ -156,6 +129,7 @@ export async function listAccountSessions(): Promise<AccountSession[]> {
   return ((await response.json()) as { sessions: AccountSession[] }).sessions
 }
 
+// session-cookie: どれが現在のセッションかを Cookie で決める。
 export async function revokeAccountSession(csrfToken: string, id: string): Promise<void> {
   const response = await fetch(
     tenantURL(`/api/account/v1/sessions/${encodeURIComponent(id)}/revoke`),
@@ -170,6 +144,7 @@ export async function revokeAccountSession(csrfToken: string, id: string): Promi
   throw await responseAPIError(response)
 }
 
+// session-cookie: 現在のセッションを残すため、どれが現在のセッションかを Cookie で決める。
 export async function revokeOtherAccountSessions(csrfToken: string): Promise<void> {
   const response = await fetch(tenantURL('/api/account/v1/sessions/revoke-others'), {
     method: 'POST',
@@ -181,76 +156,14 @@ export async function revokeOtherAccountSessions(csrfToken: string): Promise<voi
   throw await responseAPIError(response)
 }
 
-// step-up 再認証 (wi-43)。高 sensitivity 操作が 403 step_up_required を返したら、
-// start で利用可能な factor を取得し、complete で password / TOTP を提示して再認証する。
-export type StepUpMethod = 'password' | 'totp' | 'webauthn' | 'recovery_code'
-
-export function isStepUpRequired(cause: unknown): boolean {
-  return cause instanceof AuthenticationAPIError && cause.code === 'step_up_required'
-}
-
-// step-up 再認証用の WebAuthn assertion challenge を取得し、パスキーで署名した結果を返す。
-async function stepUpWebAuthnAssertion(csrfToken: string): Promise<unknown> {
-  const response = await fetch(tenantURL('/api/account/v1/step-up/webauthn/challenge'), {
-    method: 'POST',
-    headers: { 'X-CSRF-Token': csrfToken },
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (!response.ok) {
-    throw await responseAPIError(response)
-  }
-  return getPasskeyAssertion((await response.json()) as { publicKey: never })
-}
-
-export async function startStepUp(csrfToken: string): Promise<StepUpMethod[]> {
-  const response = await fetch(tenantURL('/api/account/v1/step-up/start'), {
-    method: 'POST',
-    headers: { 'X-CSRF-Token': csrfToken },
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (response.ok) {
-    return ((await response.json()) as { methods: StepUpMethod[] }).methods
-  }
-  throw await responseAPIError(response)
-}
-
-export async function completeStepUp(
-  csrfToken: string,
-  method: StepUpMethod,
-  credential: string,
-): Promise<void> {
-  let payload: Record<string, unknown>
-  if (method === 'password') {
-    payload = { method, password: credential }
-  } else if (method === 'webauthn') {
-    // パスキーは challenge 応答型のため、credential 文字列ではなく assertion を送る。
-    payload = { method, assertion: await stepUpWebAuthnAssertion(csrfToken) }
-  } else {
-    // totp / recovery_code はコード入力型。
-    payload = { method, code: credential }
-  }
-  const response = await fetch(tenantURL('/api/account/v1/step-up/complete'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-    body: JSON.stringify(payload),
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (response.status === 204) return
-  throw await responseAPIError(response)
+// isStepUpRequired は、操作が直近の再認証を求めて拒否されたかを返す。Bearer の 401
+// insufficient_user_authentication (RFC 9470) と、Cookie の経路の 403 step_up_required の両方を含む。
+export function isStepUpRequired(cause: unknown): cause is StepUpRequiredError {
+  return cause instanceof StepUpRequiredError
 }
 
 export async function startTotpEnrollment(csrfToken: string): Promise<TotpEnrollmentStart> {
-  const response = await fetch(tenantURL('/api/account/v1/mfa/totp/enroll/start'), {
-    method: 'POST',
-    headers: { 'X-CSRF-Token': csrfToken },
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (response.ok) return (await response.json()) as TotpEnrollmentStart
-  throw await responseAPIError(response)
+  return request('/api/account/v1/mfa/totp/enroll/start', adminRequest(csrfToken, 'POST'))
 }
 
 export async function confirmTotpEnrollment(
@@ -258,63 +171,38 @@ export async function confirmTotpEnrollment(
   secret: string,
   code: string,
 ): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/v1/mfa/totp/enroll/confirm'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-    body: JSON.stringify({ secret, code }),
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (response.status === 204) return
-  throw await responseAPIError(response)
+  await request(
+    '/api/account/v1/mfa/totp/enroll/confirm',
+    adminRequest(csrfToken, 'POST', { secret, code }),
+  )
 }
 
 export async function removeTotpFactor(csrfToken: string, code: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/v1/mfa/totp/remove'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-    body: JSON.stringify({ code }),
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (response.status === 204) return
-  throw await responseAPIError(response)
+  await request('/api/account/v1/mfa/totp/remove', adminRequest(csrfToken, 'POST', { code }))
 }
 
 // registerPasskey は登録 challenge を取得し、navigator.credentials.create で作成した
 // パスキーを attestation としてサーバーに登録する (wi-26)。
 export async function registerPasskey(csrfToken: string, label?: string): Promise<void> {
-  const startResponse = await fetch(tenantURL('/api/account/v1/mfa/webauthn/register/start'), {
-    method: 'POST',
-    headers: { 'X-CSRF-Token': csrfToken },
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (!startResponse.ok) {
-    throw await responseAPIError(startResponse)
-  }
-  const attestation = await createPasskey((await startResponse.json()) as { publicKey: never })
-  const finishResponse = await fetch(tenantURL('/api/account/v1/mfa/webauthn/register/finish'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-    body: JSON.stringify({ attestation, label: label?.trim() ? label.trim() : undefined }),
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (finishResponse.status === 204) return
-  throw await responseAPIError(finishResponse)
+  const options = await request<{ publicKey: never }>(
+    '/api/account/v1/mfa/webauthn/register/start',
+    adminRequest(csrfToken, 'POST'),
+  )
+  const attestation = await createPasskey(options)
+  await request(
+    '/api/account/v1/mfa/webauthn/register/finish',
+    adminRequest(csrfToken, 'POST', {
+      attestation,
+      label: label?.trim() ? label.trim() : undefined,
+    }),
+  )
 }
 
 export async function removePasskey(csrfToken: string, credentialId: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/v1/mfa/webauthn/remove'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-    body: JSON.stringify({ credential_id: credentialId }),
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (response.status === 204) return
-  throw await responseAPIError(response)
+  await request(
+    '/api/account/v1/mfa/webauthn/remove',
+    adminRequest(csrfToken, 'POST', { credential_id: credentialId }),
+  )
 }
 
 export type RecoveryCodesResult = {
@@ -323,27 +211,14 @@ export type RecoveryCodesResult = {
 }
 
 export async function generateRecoveryCodes(csrfToken: string): Promise<RecoveryCodesResult> {
-  const response = await fetch(tenantURL('/api/account/v1/mfa/recovery-codes/generate'), {
-    method: 'POST',
-    headers: { 'X-CSRF-Token': csrfToken },
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (response.ok) return (await response.json()) as RecoveryCodesResult
-  throw await responseAPIError(response)
+  return request('/api/account/v1/mfa/recovery-codes/generate', adminRequest(csrfToken, 'POST'))
 }
 
 export async function revokeRecoveryCodes(csrfToken: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/v1/mfa/recovery-codes/revoke'), {
-    method: 'POST',
-    headers: { 'X-CSRF-Token': csrfToken },
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (response.status === 204) return
-  throw await responseAPIError(response)
+  await request('/api/account/v1/mfa/recovery-codes/revoke', adminRequest(csrfToken, 'POST'))
 }
 
+// session-cookie: メールアドレスの確認は、サーバーが対話セッション限定とする操作である。
 export async function confirmEmailChange(csrfToken: string, token: string): Promise<void> {
   const response = await fetch(tenantURL('/api/account/v1/email/verify'), {
     method: 'POST',
@@ -410,28 +285,14 @@ export async function listTrustedDevices(): Promise<AccountTrustedDevices> {
 }
 
 export async function revokeTrustedDevice(csrfToken: string, id: string): Promise<void> {
-  const response = await fetch(
-    tenantURL(`/api/account/v1/trusted-devices/${encodeURIComponent(id)}/revoke`),
-    {
-      method: 'POST',
-      headers: { 'X-CSRF-Token': csrfToken },
-      credentials: 'same-origin',
-      cache: 'no-store',
-    },
+  await request(
+    `/api/account/v1/trusted-devices/${encodeURIComponent(id)}/revoke`,
+    adminRequest(csrfToken, 'POST'),
   )
-  if (response.status === 204) return
-  throw await responseAPIError(response)
 }
 
 export async function revokeAllTrustedDevices(csrfToken: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/v1/trusted-devices/revoke-all'), {
-    method: 'POST',
-    headers: { 'X-CSRF-Token': csrfToken },
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (response.status === 204) return
-  throw await responseAPIError(response)
+  await request('/api/account/v1/trusted-devices/revoke-all', adminRequest(csrfToken, 'POST'))
 }
 
 // セキュリティ通知の種別 (wi-90)。バックエンドのカタログと同じ並びで返るので、
@@ -496,17 +357,10 @@ export async function revokeAccountAgentDelegation(
   csrfToken: string,
   agentId: string,
 ): Promise<void> {
-  const response = await fetch(
-    tenantURL(`/api/account/v1/agent-delegations/${encodeURIComponent(agentId)}/revoke`),
-    {
-      method: 'POST',
-      headers: { 'X-CSRF-Token': csrfToken },
-      credentials: 'same-origin',
-      cache: 'no-store',
-    },
+  await request(
+    `/api/account/v1/agent-delegations/${encodeURIComponent(agentId)}/revoke`,
+    adminRequest(csrfToken, 'POST'),
   )
-  if (response.status === 204) return
-  throw await responseAPIError(response)
 }
 
 export async function listMyTokenVaultConnections(): Promise<TokenVaultMyConnection[]> {

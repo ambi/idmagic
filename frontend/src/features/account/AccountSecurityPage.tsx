@@ -98,7 +98,7 @@ export function AccountSecurityPage({
   const [notifications, setNotifications] = useState<AccountNotificationCategoryPreference[]>(
     initialNotificationPreferences?.categories ?? [],
   )
-  const { guard, dialog } = useStepUpGuard(csrfToken)
+  const { guard, dialog } = useStepUpGuard()
 
   // 通知を止めることは乗っ取りに気づく手立てを外すことでもあるので、更新は step-up
   // 再認証を要する。サーバーは「止める種別」の集合を丸ごと置き換える。

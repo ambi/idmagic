@@ -100,7 +100,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
-		Scope:                    "openid profile offline_access read write",
+		Scope:                    "openid profile offline_access read write idmagic.account",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
@@ -200,8 +200,10 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		TokenIssuer:       signer,
 		TokenIntrospector: signer,
 		PasswordHasher:    hasher,
-		SessionManager:    sessionManager,
-		AuthnResolver:     sessionManager,
+		// アカウント API のステップアップを Bearer で確かめるテストが、パスワードの変更まで進む。
+		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
+		SessionManager:      sessionManager,
+		AuthnResolver:       sessionManager,
 	})
 	server := httptest.NewServer(e)
 	t.Cleanup(server.Close)

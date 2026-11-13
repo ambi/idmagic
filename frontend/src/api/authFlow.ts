@@ -1,5 +1,6 @@
 import type { BrowserFlowResponse } from '../types'
 import {
+  adminRequest,
   apiErrorCode,
   apiErrorMessage,
   AuthenticationAPIError,
@@ -184,22 +185,23 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<void> {
-  const response = await fetch(tenantURL('/api/auth/change-password'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': csrfToken,
-    },
-    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
-  if (response.status === 204) return
-  const body = (await response.json().catch(() => ({}))) as APIError & { violations?: string[] }
-  if (apiErrorCode(body) === 'password_policy') {
-    throw new PasswordPolicyError(apiErrorMessage(body), body.violations ?? [])
+  // ポータルの機微な操作も、ほかの API と同じく Bearer で呼ぶ。
+  try {
+    await request(
+      '/api/auth/change-password',
+      adminRequest(csrfToken, 'POST', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    )
+  } catch (cause) {
+    if (cause instanceof AuthenticationAPIError && cause.code === 'password_policy') {
+      const violations = (cause.body as (APIError & { violations?: string[] }) | undefined)
+        ?.violations
+      throw new PasswordPolicyError(cause.message, violations ?? [])
+    }
+    throw cause
   }
-  throw new AuthenticationAPIError(apiErrorMessage(body), apiErrorCode(body))
 }
 
 export async function requestPasswordReset(csrfToken: string, email: string): Promise<void> {

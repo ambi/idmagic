@@ -33,7 +33,7 @@ export function AccountEmailsPage({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [sentTo, setSentTo] = useState('')
-  const { guard, dialog } = useStepUpGuard(csrfToken)
+  const { guard, dialog } = useStepUpGuard()
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

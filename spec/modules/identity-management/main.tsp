@@ -218,7 +218,7 @@ model InvalidEmailChangeTokenResponse {
 @post
 op RequestEmailChange(
   @body body: IdMagic.Contract.AccountEmailChangeRequest
-): RequestEmailChangeSuccess_204 | RequestEmailChangeError400 | IdMagic.Contract.AuthenticationRequiredResponse | RequestEmailChangeError403 | RequestEmailChangeError422 | EmailChangeConflictResponse;
+): RequestEmailChangeSuccess_204 | RequestEmailChangeError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | RequestEmailChangeError403 | RequestEmailChangeError422 | EmailChangeConflictResponse;
 
 model ConfirmEmailChangeHttpResponse {
   @doc("常に `ok` である。")

@@ -107,15 +107,7 @@ import type {
   RelationTupleWriteResult,
   ResourceTypeDefinition,
 } from '../types'
-import {
-  authenticationAPIError,
-  AuthenticationAPIError,
-  adminRequest,
-  request,
-  requestPage,
-  tenantURL,
-  type APIError,
-} from './core'
+import { AuthenticationAPIError, adminRequest, request, requestPage, tenantURL } from './core'
 
 type AdminUserListResponse = { users: AdminUser[]; total_users: number }
 type AdminConsentListResponse = { consents: AdminConsent[] }
@@ -2080,23 +2072,12 @@ export async function uploadApplicationIcon(
 ): Promise<AdminApplication> {
   const form = new FormData()
   form.set('file', file)
-  const response = await fetch(
-    tenantURL(`/api/admin/v1/applications/${encodeURIComponent(id)}/icon`),
-    {
-      method: 'POST',
-      credentials: 'same-origin',
-      cache: 'no-store',
-      headers: { 'X-CSRF-Token': csrfToken },
-      body: form,
-    },
+  // 本文は multipart なので Content-Type をブラウザーに任せ、Bearer は共通の処理が付ける。
+  const body = await request<{ application?: AdminApplication }>(
+    `/api/admin/v1/applications/${encodeURIComponent(id)}/icon`,
+    { method: 'POST', headers: { 'X-CSRF-Token': csrfToken }, body: form },
   )
-  const body = (await response.json().catch(() => ({}))) as APIError & {
-    application?: AdminApplication
-  }
-  if (!response.ok) {
-    throw authenticationAPIError(body, 'Could not upload the icon.')
-  }
-  if (!body.application) {
+  if (!body?.application) {
     throw new AuthenticationAPIError('Could not upload the icon.')
   }
   return body.application

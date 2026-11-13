@@ -2048,7 +2048,7 @@ model DecideMyApprovalRequestError403 {
 op DecideMyApprovalRequest(
   @path id: string,
   @body body: IdMagic.Contract.AccountApprovalDecisionRequest
-): DecideMyApprovalRequestSuccess_204 | DecideMyApprovalRequestError400 | IdMagic.Contract.AuthenticationRequiredResponse | DecideMyApprovalRequestError403;
+): DecideMyApprovalRequestSuccess_204 | DecideMyApprovalRequestError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | DecideMyApprovalRequestError403;
 
 
 model AgentGuardrailValidationError400 {

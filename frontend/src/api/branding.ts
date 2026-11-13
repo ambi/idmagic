@@ -1,12 +1,5 @@
 import type { Branding, BrandingUpdateInput, TenantBrandingAssetKind } from '../types'
-import {
-  authenticationAPIError,
-  AuthenticationAPIError,
-  adminRequest,
-  request,
-  tenantURL,
-  type APIError,
-} from './core'
+import { AuthenticationAPIError, adminRequest, request } from './core'
 import { commonDictionary } from '../lib/i18n/common.i18n'
 import { getCurrentLocale } from '../lib/i18n/currentLocale'
 
@@ -32,18 +25,12 @@ export async function uploadTenantBrandingAsset(
 ): Promise<Branding> {
   const form = new FormData()
   form.set('file', file)
-  const response = await fetch(tenantURL(`/api/admin/v1/tenant/branding/assets/${kind}`), {
-    method: 'POST',
-    credentials: 'same-origin',
-    cache: 'no-store',
-    headers: { 'X-CSRF-Token': csrfToken },
-    body: form,
-  })
-  const body = (await response.json().catch(() => ({}))) as APIError & { branding?: Branding }
-  if (!response.ok) {
-    throw authenticationAPIError(body)
-  }
-  if (!body.branding) {
+  // 本文は multipart なので Content-Type をブラウザーに任せ、Bearer は共通の処理が付ける。
+  const body = await request<{ branding?: Branding }>(
+    `/api/admin/v1/tenant/branding/assets/${kind}`,
+    { method: 'POST', headers: { 'X-CSRF-Token': csrfToken }, body: form },
+  )
+  if (!body?.branding) {
     throw new AuthenticationAPIError(uiFallback())
   }
   return body.branding

@@ -73,11 +73,12 @@
 
 #### REQ-AUTHENTICATION-033 必須の種別の通知は本人が止められない
 
+- **上位の要件**：[REQ-AUTHENTICATION-039](account-portal.md#本人によるステップアップ認証)
 - 本人が受信の設定を取得したとき、Authentication は、200 とすべての種別を返し、`credential_change`、`mfa_change`、`contact_change`、`impersonation` を必須として示す。
 - 本人がステップアップ認証を経て任意の種別の受信の設定を更新したとき、Authentication は、無効にした種別の集合を保存し、200 と更新した設定を返す。
 - 必須の種別の停止を含む更新を受けた場合、Authentication は、400 と `mandatory_notification_category` で拒否し、どの種別の設定も変えない。
 - JSON として読めない本文か未知の種別を含む更新を受けた場合、Authentication は、400 と `invalid_request` で拒否する。
-- ステップアップ認証を経ていないセッションで更新を受けた場合、Authentication は、403 と `step_up_required` で拒否する。
+- ステップアップ認証を満たさない更新を受けた場合、Authentication は、REQ-AUTHENTICATION-039 の応答で拒否し、受信の設定を変えない。
 - **例**：EX-AUTHENTICATION-033-01、EX-AUTHENTICATION-033-02
 
 ## セキュリティ上の考慮

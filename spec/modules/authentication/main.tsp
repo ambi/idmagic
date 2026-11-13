@@ -415,7 +415,7 @@ model ChangePasswordSuccess_204 {
 @post
 op ChangePassword(
   @body body: IdMagic.Contract.BrowserChangePasswordRequest
-): ChangePasswordSuccess_204 | ChangePasswordError400 | IdMagic.Contract.AuthenticationRequiredResponse | ChangePasswordError403 | ChangePasswordError422;
+): ChangePasswordSuccess_204 | ChangePasswordError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | ChangePasswordError403 | ChangePasswordError422;
 
 model GetAccountSecuritySuccess_200 {
   @statusCode statusCode: 200;
@@ -506,7 +506,7 @@ model UpdateMyNotificationPreferencesError403 {
 @put
 op UpdateMyNotificationPreferences(
   @body body: IdMagic.Contract.UpdateNotificationPreferencesRequest
-): UpdateMyNotificationPreferencesSuccess_200 | UpdateMyNotificationPreferencesError400 | UpdateMyNotificationPreferencesError403;
+): UpdateMyNotificationPreferencesSuccess_200 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | UpdateMyNotificationPreferencesError400 | UpdateMyNotificationPreferencesError403;
 
 model StartTotpEnrollmentSuccess_200 {
   @statusCode statusCode: 200;
@@ -575,7 +575,7 @@ model ConfirmTotpEnrollmentSuccess_204 {
 @post
 op ConfirmTotpEnrollment(
   @body body: IdMagic.Contract.TOTPEnrollmentConfirmRequest
-): ConfirmTotpEnrollmentSuccess_204 | ConfirmTotpEnrollmentError400 | ConfirmTotpEnrollmentError403;
+): ConfirmTotpEnrollmentSuccess_204 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | ConfirmTotpEnrollmentError400 | ConfirmTotpEnrollmentError403;
 
 union RemoveTotpFactorError400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -609,7 +609,7 @@ model RemoveTotpFactorSuccess_204 {
 @post
 op RemoveTotpFactor(
   @body body: IdMagic.Contract.MfaFactorRemoveRequest
-): RemoveTotpFactorSuccess_204 | RemoveTotpFactorError400 | RemoveTotpFactorError403;
+): RemoveTotpFactorSuccess_204 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | RemoveTotpFactorError400 | RemoveTotpFactorError403;
 
 model StartWebAuthnRegistrationSuccess_200 {
   @statusCode statusCode: 200;
@@ -722,7 +722,7 @@ model RemoveWebAuthnCredentialError503 {
 @post
 op RemoveWebAuthnCredential(
   @body body: IdMagic.Contract.WebAuthnCredentialRemoveRequest
-): RemoveWebAuthnCredentialSuccess_204 | RemoveWebAuthnCredentialError400 | RemoveWebAuthnCredentialError403 | RemoveWebAuthnCredentialError503;
+): RemoveWebAuthnCredentialSuccess_204 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | RemoveWebAuthnCredentialError400 | RemoveWebAuthnCredentialError403 | RemoveWebAuthnCredentialError503;
 
 model StartBrowserWebAuthnSuccess_200 {
   @statusCode statusCode: 200;
@@ -905,7 +905,7 @@ model GenerateRecoveryCodesError503 {
 @post
 op GenerateRecoveryCodes(
 
-): GenerateRecoveryCodesSuccess_200 | GenerateRecoveryCodesError400 | GenerateRecoveryCodesError403 | GenerateRecoveryCodesError503;
+): GenerateRecoveryCodesSuccess_200 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | GenerateRecoveryCodesError400 | GenerateRecoveryCodesError403 | GenerateRecoveryCodesError503;
 
 union RevokeRecoveryCodesError400Body {
   IdMagic.Contract.InvalidRequestError,
@@ -949,7 +949,7 @@ model RevokeRecoveryCodesError503 {
 @post
 op RevokeRecoveryCodes(
 
-): RevokeRecoveryCodesSuccess_204 | RevokeRecoveryCodesError400 | RevokeRecoveryCodesError403 | RevokeRecoveryCodesError503;
+): RevokeRecoveryCodesSuccess_204 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | RevokeRecoveryCodesError400 | RevokeRecoveryCodesError403 | RevokeRecoveryCodesError503;
 
 model ListMySignInActivitySuccess_200 {
   @statusCode statusCode: 200;
@@ -1125,7 +1125,7 @@ model RevokeMyOtherSessionsError403 {
 @post
 op RevokeMyOtherSessions(
 
-): RevokeMyOtherSessionsSuccess_204 | RevokeMyOtherSessionsError403;
+): RevokeMyOtherSessionsSuccess_204 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | RevokeMyOtherSessionsError403;
 
 model ListMyTrustedDevicesSuccess_200 {
   @statusCode statusCode: 200;
@@ -1182,7 +1182,7 @@ model RevokeMyTrustedDeviceError403 {
 @post
 op RevokeMyTrustedDevice(
   @path id: string
-): RevokeMyTrustedDeviceSuccess_204 | RevokeMyTrustedDeviceError400 | RevokeMyTrustedDeviceError403;
+): RevokeMyTrustedDeviceSuccess_204 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | RevokeMyTrustedDeviceError400 | RevokeMyTrustedDeviceError403;
 
 model RevokeMyTrustedDevicesSuccess_204 {
   @statusCode statusCode: 204;
@@ -1206,7 +1206,7 @@ model RevokeMyTrustedDevicesError403 {
 @post
 op RevokeMyTrustedDevices(
 
-): RevokeMyTrustedDevicesSuccess_204 | RevokeMyTrustedDevicesError403;
+): RevokeMyTrustedDevicesSuccess_204 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | RevokeMyTrustedDevicesError403;
 
 model ListSessionsSuccess_200 {
   @statusCode statusCode: 200;
@@ -1792,7 +1792,7 @@ model LinkExternalIdentitySuccess_303 {
 @route("/api/account/v1/linked-identities/{provider_id}")
 @post
 op LinkExternalIdentity(
-  @path provider_id: string,): LinkExternalIdentitySuccess_303 | LinkExternalIdentityError400 | LinkExternalIdentityError403;
+  @path provider_id: string,): LinkExternalIdentitySuccess_303 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | LinkExternalIdentityError400 | LinkExternalIdentityError403;
 
 model UnlinkExternalIdentitySuccess_204 {
   @statusCode statusCode: 204;
@@ -1827,7 +1827,7 @@ model UnlinkExternalIdentityError403 {
 @delete
 op UnlinkExternalIdentity(
   @path provider_id: string
-): UnlinkExternalIdentitySuccess_204 | UnlinkExternalIdentityError400 | UnlinkExternalIdentityError403;
+): UnlinkExternalIdentitySuccess_204 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | UnlinkExternalIdentityError400 | UnlinkExternalIdentityError403;
 
 model ListIdentityProviderConnectionsHttpResponse {
   connections: IdMagic.Contract.IdentityProviderConnection[];

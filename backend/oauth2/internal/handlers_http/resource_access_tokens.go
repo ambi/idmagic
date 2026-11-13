@@ -49,6 +49,7 @@ func (r ResourceAccessTokens) IntrospectAccessToken(ctx context.Context, token s
 	verified := &support.AccessToken{
 		Subject: res.Sub, ClientID: res.ClientID, Scope: res.Scope, Audience: res.Aud,
 		IssuedAt: res.Iat, Managed: res.Managed,
+		AuthTime: res.AuthTime, AMR: res.AMR, ACR: res.ACR,
 	}
 	if res.SenderConstraint != nil && res.SenderConstraint.Type == spec.SenderConstraintDPoP {
 		verified.DPoPBound = true

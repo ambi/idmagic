@@ -63,7 +63,7 @@ export function ApiTokensTab({
   const schema = useMemo(() => tokenSchema(personal), [personal])
   const validation = useFormValidation(schema, { description: tokenDesc, expiryDays: tokenExpiry })
   const { locale } = useLocale()
-  const { guard, dialog } = useStepUpGuard(csrfToken)
+  const { guard, dialog } = useStepUpGuard()
   const basePath = personal ? '/account/api-tokens' : '/admin/api-tokens'
   const personalAPI = '/api/account/v1/api-tokens'
   const listTokens = async () =>

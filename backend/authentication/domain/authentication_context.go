@@ -64,7 +64,17 @@ func ContextOf(authn ResolvedAuthentication) *AuthenticationContext {
 	if resolved, ok := authn.(*AuthenticationContext); ok {
 		return resolved
 	}
-	return &AuthenticationContext{UserID: authn.Subject(), AuthTime: authn.AuthenticatedAt()}
+	fromToken := &AuthenticationContext{UserID: authn.Subject(), AuthTime: authn.AuthenticatedAt()}
+	if methods, ok := authn.(authenticationMethods); ok {
+		fromToken.AMR, fromToken.ACR = methods.AuthenticationMethods()
+	}
+	return fromToken
+}
+
+// authenticationMethods は、アクセストークンで認証した結果が、トークンの示す認証の方式を
+// 返すときに満たす。
+type authenticationMethods interface {
+	AuthenticationMethods() (amr []string, acr string)
 }
 
 type LoginPendingPurpose string

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { restoreGlobals, stubGlobal } from '../test/globals'
 import {
-  completeStepUp,
   confirmEmailChange,
   confirmTotpEnrollment,
   generateRecoveryCodes,
@@ -15,10 +14,9 @@ import {
   revokeAccountSession,
   revokeOtherAccountSessions,
   revokeRecoveryCodes,
-  startStepUp,
   startTotpEnrollment,
 } from './account'
-import { AuthenticationAPIError, setBearerTokenProvider } from './core'
+import { setBearerTokenProvider, StepUpRequiredError, UnauthenticatedError } from './core'
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
@@ -100,40 +98,6 @@ describe('account API client', () => {
     )
   })
 
-  it('returns available step-up methods and serializes each credential form', async () => {
-    stubGlobal(
-      'fetch',
-      mock()
-        .mockResolvedValueOnce(response(200, { methods: ['password', 'totp'] }))
-        .mockResolvedValue(response(204)),
-    )
-    await expect(startStepUp('csrf')).resolves.toEqual(['password', 'totp'])
-    await completeStepUp('csrf', 'password', 'secret')
-    await completeStepUp('csrf', 'totp', '123456')
-    await completeStepUp('csrf', 'recovery_code', 'recovery')
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/account/v1/step-up/complete'),
-      expect.objectContaining({ body: JSON.stringify({ method: 'password', password: 'secret' }) }),
-    )
-  })
-
-  it('obtains a WebAuthn assertion before completing step-up', async () => {
-    stubGlobal('navigator', {
-      credentials: { get: mock().mockResolvedValue(passkey('assertion')) },
-    })
-    stubGlobal(
-      'fetch',
-      mock()
-        .mockResolvedValueOnce(response(200, { publicKey: { challenge: 'AA' } }))
-        .mockResolvedValueOnce(response(204)),
-    )
-    await completeStepUp('csrf', 'webauthn', '')
-    expect(fetch).toHaveBeenLastCalledWith(
-      expect.stringContaining('/api/account/v1/step-up/complete'),
-      expect.objectContaining({ body: expect.stringContaining('"method":"webauthn"') }),
-    )
-  })
-
   it('handles enrollment, passkey registration, and recovery-code output', async () => {
     stubGlobal('navigator', {
       credentials: { create: mock().mockResolvedValue(passkey('registration')) },
@@ -162,22 +126,54 @@ describe('account API client', () => {
     )
   })
 
-  it('turns API failures into a typed error and identifies step-up requirements', async () => {
+  //spec:covers REQ-AUTHENTICATION-039: 機微な操作を Bearer で呼び、再認証の要求を RFC 9470 の 401 と Cookie の 403 から読み取り、invalid_token の 401 はトークンの失効として残すこと
+  it('sends sensitive operations with the bearer and recognizes step-up challenges', async () => {
+    setBearerTokenProvider(() => 'portal-token')
+    const challenged = (status: number, body: unknown, header?: string) => ({
+      ...response(status, body),
+      headers: { get: (name: string) => (name === 'WWW-Authenticate' ? (header ?? null) : null) },
+    })
     stubGlobal(
       'fetch',
-      mock().mockResolvedValue(
-        response(403, {
-          type: 'urn:idmagic:error:step_up_required',
-          title: 'Step up required',
-          detail: 'Reauthentication is required.',
-        }),
-      ),
+      mock()
+        .mockResolvedValueOnce(
+          challenged(
+            401,
+            { type: 'urn:idmagic:error:insufficient_user_authentication' },
+            'Bearer error="insufficient_user_authentication", max_age="120", acr_values="urn:idmagic:acr:mfa"',
+          ),
+        )
+        .mockResolvedValueOnce(challenged(403, { type: 'urn:idmagic:error:step_up_required' }))
+        .mockResolvedValueOnce(
+          challenged(
+            401,
+            { type: 'urn:idmagic:error:invalid_token' },
+            'Bearer error="invalid_token"',
+          ),
+        ),
     )
-    await expect(startStepUp('csrf')).rejects.toMatchObject({
-      message: 'Reauthentication is required.',
-      code: 'step_up_required',
+
+    const bearer = await removeTotpFactor('csrf', '123456').catch((cause: unknown) => cause)
+    expect(fetch).toHaveBeenLastCalledWith(
+      expect.stringContaining('/api/account/v1/mfa/totp/remove'),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer portal-token' }),
+      }),
+    )
+    expect(bearer).toBeInstanceOf(StepUpRequiredError)
+    expect(isStepUpRequired(bearer)).toBe(true)
+    expect((bearer as StepUpRequiredError).challenge).toEqual({
+      maxAge: 120,
+      acrValues: 'urn:idmagic:acr:mfa',
     })
-    expect(isStepUpRequired(new AuthenticationAPIError('step up', 'step_up_required'))).toBe(true)
+
+    const cookie = await revokeOtherAccountSessions('csrf').catch((cause: unknown) => cause)
+    expect(isStepUpRequired(cookie)).toBe(true)
+    expect((cookie as StepUpRequiredError).challenge).toEqual({ maxAge: 300 })
+
+    const expired = await removeTotpFactor('csrf', '123456').catch((cause: unknown) => cause)
+    expect(expired).toBeInstanceOf(UnauthenticatedError)
+    expect(isStepUpRequired(expired)).toBe(false)
     expect(isStepUpRequired(new Error('other'))).toBe(false)
   })
 })

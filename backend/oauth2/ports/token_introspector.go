@@ -36,6 +36,11 @@ type IntrospectionResult struct {
 	AgentChain []string
 	// ApprovalRequestID は CIBA の承認から発行したトークンの承認リクエスト (REQ-OAUTH2-065)。
 	ApprovalRequestID string
+	// AuthTime、AMR、ACR はトークンの付与を得た利用者の認証である (RFC 9068 §2.2.1)。
+	// AuthTime が 0 のトークンは認証の時刻を示さない。リソース側のステップアップの判定が読む。
+	AuthTime int64
+	AMR      []string
+	ACR      string
 }
 
 type TokenIntrospector interface {

@@ -121,7 +121,7 @@ export function AccountActivityPage({
   const [busyId, setBusyId] = useState<string | null>(null)
   const [busyOthers, setBusyOthers] = useState(false)
   const [error, setError] = useState('')
-  const { guard, dialog } = useStepUpGuard(csrfToken)
+  const { guard, dialog } = useStepUpGuard()
 
   async function handleRevoke(id: string) {
     setBusyId(id)

@@ -48,12 +48,13 @@
 
 #### REQ-AUTHENTICATION-010 ユーザーは現在のパスワードを確認して新しいパスワードへ変更できる
 
+- **上位の要件**：[REQ-AUTHENTICATION-039](account-portal.md#本人によるステップアップ認証)
 - ステップアップ認証が有効な間、本人が正しい現在のパスワードとポリシーを満たす新しいパスワードを送ったとき、Authentication は、パスワードを変え、`password_changed_at` を更新し、パスワードの履歴に加え、本人の信頼済みデバイスをすべて失効させ、204 を返し、`PasswordChanged` を発行する。
 - パスワードを検証するとき、Authentication は、テナントの上書きを解決したポリシー（長さ 12 文字以上 128 文字以下、4 文字以上のユーザー名、メールアドレス、その local part を大文字と小文字を区別せずに含まない、同梱の辞書にない）を評価し、文字種の構成の規則と定期の変更を求めない。
 - ポリシーに反する新しいパスワードを受けた場合、Authentication は、422 と `password_policy` で、違反した規則とともに拒否し、パスワードを変えない。
 - 直近 5 件（テナントの `history_depth`）の履歴に一致する新しいパスワードを受けた場合、Authentication は、422 と `password_reuse` で拒否し、パスワードを変えない。
 - 現在のパスワードが一致しない場合、Authentication は、403 と `access_denied` で拒否する。
-- ステップアップ認証が有効でない場合、Authentication は、403 と `step_up_required` で拒否する。
+- ステップアップ認証を満たさない変更を受けた場合、Authentication は、REQ-AUTHENTICATION-039 の応答で拒否し、パスワードを変えない。
 - 認証済みのセッションがない場合、Authentication は、401 と `authentication_required` で拒否する。
 - **例**：EX-AUTHENTICATION-010-01、EX-AUTHENTICATION-010-02、EX-AUTHENTICATION-010-03
 

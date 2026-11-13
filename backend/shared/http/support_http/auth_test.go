@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
@@ -186,6 +187,72 @@ func TestAccountScopedTokenMustNameTheRealmApi(t *testing.T) {
 			}
 			if _, ok := errors.AsType[*InvalidTokenError](err); !ok {
 				t.Fatalf("authn=%+v err=%v; want InvalidTokenError", got, err)
+			}
+		})
+	}
+}
+
+//spec:covers REQ-AUTHENTICATION-039: Bearer の認証の結果は、トークンの発行時刻ではなく auth_time を認証の時刻として返し、auth_time のないトークンは 0 を返すことを固定する。
+func TestAccessTokenAuthenticationUsesTheAuthenticationTime(t *testing.T) {
+	authenticatedAt := int64(1_700_000_000)
+	for _, tc := range []struct {
+		name  string
+		token AccessToken
+		want  int64
+	}{
+		{name: "auth_time を持つ", token: AccessToken{IssuedAt: authenticatedAt + 3600, AuthTime: authenticatedAt}, want: authenticatedAt},
+		{name: "auth_time を持たない", token: AccessToken{IssuedAt: authenticatedAt + 3600}, want: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/api/auth/account", http.NoBody)
+			req.Header.Set("Authorization", "Bearer jwt")
+			req = withAuthTestRealm(req)
+			c := e.NewContext(req, httptest.NewRecorder())
+			token := tc.token
+			token.Subject, token.Scope, token.Audience = "user-1", "idmagic.account", []string{authTestRealmAPI}
+			a := Authenticator{AccessTokens: authTestAccessTokens{token: &token}}
+
+			got, err := a.resolveAuthentication(c)
+			if err != nil || got == nil {
+				t.Fatalf("authn=%v err=%v", got, err)
+			}
+			if got.AuthenticatedAt() != tc.want {
+				t.Fatalf("AuthenticatedAt=%d, want %d", got.AuthenticatedAt(), tc.want)
+			}
+		})
+	}
+}
+
+//spec:covers REQ-AUTHENTICATION-039: ステップアップの拒否は、Bearer の要求に RFC 9470 の 401 と max_age を、Cookie の要求に 403 step_up_required を返すことを固定する。
+func TestWriteStepUpRequiredFollowsTheCredential(t *testing.T) {
+	for _, tc := range []struct {
+		name, authorization string
+		wantStatus          int
+		wantChallenge       string
+		wantType            string
+	}{
+		{name: "Bearer", authorization: "Bearer jwt", wantStatus: http.StatusUnauthorized, wantChallenge: `Bearer error="insufficient_user_authentication", max_age="300"`, wantType: "urn:idmagic:error:insufficient_user_authentication"},
+		{name: "DPoP", authorization: "DPoP jwt", wantStatus: http.StatusUnauthorized, wantChallenge: `Bearer error="insufficient_user_authentication", max_age="300"`, wantType: "urn:idmagic:error:insufficient_user_authentication"},
+		{name: "Cookie", wantStatus: http.StatusForbidden, wantType: "urn:idmagic:error:step_up_required"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/auth/change-password", http.NoBody)
+			if tc.authorization != "" {
+				req.Header.Set("Authorization", tc.authorization)
+			}
+			recorder := httptest.NewRecorder()
+			if err := WriteStepUpRequired(echo.New().NewContext(req, recorder)); err != nil {
+				t.Fatal(err)
+			}
+			if recorder.Code != tc.wantStatus {
+				t.Fatalf("status=%d, want %d", recorder.Code, tc.wantStatus)
+			}
+			if got := recorder.Header().Get("WWW-Authenticate"); !strings.HasPrefix(got, tc.wantChallenge) || (tc.wantChallenge == "" && got != "") {
+				t.Fatalf("WWW-Authenticate=%q, want prefix %q", got, tc.wantChallenge)
+			}
+			if !strings.Contains(recorder.Body.String(), tc.wantType) {
+				t.Fatalf("body=%s, want %s", recorder.Body.String(), tc.wantType)
 			}
 		})
 	}

@@ -128,7 +128,7 @@ func (d Deps) handleDecideMyApprovalRequest(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	}
 	if !mfadomain.StepUpSatisfied(authn, time.Now().UTC()) {
-		return support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
+		return support.WriteStepUpRequired(c)
 	}
 	var input accountApprovalDecisionRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {

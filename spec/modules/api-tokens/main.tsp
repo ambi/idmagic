@@ -126,7 +126,7 @@ op ListPersonalApiTokens(): ListApiTokensSuccess_200 | IdMagic.Contract.Authenti
 @TypeSpec.OpenAPI.operationId("IssuePersonalApiToken")
 @route("/api/account/v1/api-tokens")
 @post
-op IssuePersonalApiToken(@body body: IssuePersonalApiTokenHttpRequest): IssueApiTokenSuccess_201 | IssueApiTokenError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssuePersonalApiTokenError403;
+op IssuePersonalApiToken(@body body: IssuePersonalApiTokenHttpRequest): IssueApiTokenSuccess_201 | IssueApiTokenError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | IssuePersonalApiTokenError403;
 
 model IssuePersonalApiTokenHttpRequest {
   description: string;

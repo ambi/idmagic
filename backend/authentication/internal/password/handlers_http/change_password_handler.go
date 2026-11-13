@@ -35,7 +35,7 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	}
 	// パスワード変更は高 sensitivity 操作。step-up 再認証を要求する。
 	if !mfadomain.StepUpSatisfied(authn, time.Now().UTC()) {
-		return support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
+		return support.WriteStepUpRequired(c)
 	}
 	var input changePasswordAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {

@@ -77,13 +77,14 @@
 
 #### REQ-IDMANAGEMENT-053 メールアドレスの変更の起票は、ステップアップ認証の後に新しいアドレスへ確認のリンクを送る
 
+- **上位の要件**：[REQ-AUTHENTICATION-039](../../authentication/features/account-portal.md#本人によるステップアップ認証)
 - 本人がメールアドレスの変更を起票したとき、IdManagement は、新しいアドレスへ確認のリンクを送り、`EmailChangeRequested` を発行し、204 を返し、プライマリメールアドレスを変えない。
 - 本人がメールアドレスの変更を起票したとき、IdManagement は、30 分で期限の切れる `<発行者>/account/email/verify?token=<トークン>` を確認のリンクとして送る。
 - 本人がメールアドレスの変更を起票したとき、IdManagement は、表示名付きの形式から取り出したアドレスを小文字にして、新しいアドレスとして扱う。
 - 本人が未確認の現在のアドレスと同じアドレスで起票したとき、IdManagement は、受け付ける。
 - 確認のメールの送信を試みたとき、IdManagement は、送信の成否によらず、`purpose` を `email_change`、`delivered` を送信の成否とする `EmailSent` を発行する。
 - 確認のメールの送信に失敗した場合、IdManagement は、204 を返す。
-- 有効期限内のステップアップ認証を満たさない起票を受けた場合、IdManagement は、403 と `step_up_required` で拒否する。
+- ステップアップ認証を満たさない起票を受けた場合、IdManagement は、REQ-AUTHENTICATION-039 の応答で拒否し、確認のリンクを送らない。
 - アドレスとして読めない値を指定された場合、IdManagement は、422 と `invalid_email` で拒否する。
 - 確認済みの現在のアドレスと大文字と小文字を区別せずに同じアドレスを指定された場合、IdManagement は、422 と `email_unchanged` で拒否する。
 - 同じテナントのほかの User のアドレスを指定された場合、IdManagement は、409 と `email_taken` で拒否する。

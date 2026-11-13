@@ -72,6 +72,23 @@ model AuthenticationRequiredResponse {
 }
 
 
+union StepUpAuthenticationRequiredResponseBody {
+  AuthenticationRequiredError,
+  InvalidAccessTokenError,
+  InsufficientUserAuthenticationError,
+}
+
+
+@doc("ステップアップ認証を求める操作の 401。共有の AuthenticationRequiredResponse の二つの失敗に加え、アクセストークンが示す認証が古いときに InsufficientUserAuthenticationError を返す（RFC 9470）。")
+model StepUpAuthenticationRequiredResponse {
+  @statusCode statusCode: 401;
+  @header contentType: "application/problem+json";
+  @doc("RFC 6750 と RFC 9470 のチャレンジ。`insufficient_user_authentication` のときは `max_age` を含む。")
+  @header("WWW-Authenticate") wwwAuthenticate?: string;
+  @body body: StepUpAuthenticationRequiredResponseBody;
+}
+
+
 @doc("設定した一つの依存先への到達性。`verbose` を指定したとき readiness プローブが報告する。")
 model DependencyStatus {
   @doc("依存先が応答したときは `healthy`、応答しなかったときは `unavailable`。")

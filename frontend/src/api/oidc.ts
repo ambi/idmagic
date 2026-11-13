@@ -37,6 +37,9 @@ const EXPIRY_SKEW_SECONDS = 30
 // activeBearer は現在のページが提示すべき access token。route loader が API を呼ぶ前に
 // ensureLoggedIn で設定し、request() が同期的に読み出して Authorization に付与する。
 let activeBearer: string | null = null
+// activeAudience は activeBearer を発行したポータル。ステップアップの再認可が同じポータルの
+// クライアントでトークンを取り直すために読む。
+let activeAudience: PortalAudience | null = null
 
 export function currentBearer(): string | null {
   return activeBearer
@@ -116,32 +119,133 @@ async function refresh(audience: PortalAudience, refreshToken: string): Promise<
   })
 }
 
-// beginLogin は PKCE 値を生成して login state を保存し、/authorize へリダイレクトする。
-// 戻らない (リダイレクト) ので呼び出し側は never として扱う。
-async function beginLogin(audience: PortalAudience, returnTo: string): Promise<never> {
-  const verifier = randomToken()
-  const state = randomToken(16)
-  const nonce = randomToken(16)
-  const login: LoginState = { state, verifier, audience, returnTo }
-  sessionStorage.setItem(LOGIN_KEY, JSON.stringify(login))
+async function authorizeURL(
+  audience: PortalAudience,
+  state: string,
+  verifier: string,
+  extra: Record<string, string> = {},
+): Promise<string> {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: PORTALS[audience].clientId,
     redirect_uri: redirectURI(),
     scope: PORTALS[audience].scope,
     state,
-    nonce,
+    nonce: randomToken(16),
     code_challenge: await pkceChallenge(verifier),
     code_challenge_method: 'S256',
+    ...extra,
   })
-  window.location.replace(`${tenantURL('/authorize')}?${params.toString()}`)
+  return `${tenantURL('/authorize')}?${params.toString()}`
+}
+
+// beginLogin は PKCE 値を生成して login state を保存し、/authorize へリダイレクトする。
+// 戻らない (リダイレクト) ので呼び出し側は never として扱う。
+async function beginLogin(
+  audience: PortalAudience,
+  returnTo: string,
+  extra: Record<string, string> = {},
+): Promise<never> {
+  const verifier = randomToken()
+  const state = randomToken(16)
+  const login: LoginState = { state, verifier, audience, returnTo }
+  sessionStorage.setItem(LOGIN_KEY, JSON.stringify(login))
+  window.location.replace(await authorizeURL(audience, state, verifier, extra))
   return new Promise<never>(() => {})
+}
+
+// ステップアップの再認可 (RFC 9470)。操作が直近の再認証を求めたとき、応答が示す max_age と
+// acr_values を付けた /authorize をポップアップで開き、得たトークンへ差し替える。元の画面を
+// 残すので、入力途中の内容を退避せずに元の操作を送り直せる。
+const STEP_UP_STATE_PREFIX = 'stepup.'
+const STEP_UP_MESSAGE_TYPE = 'idmagic:step-up-callback'
+
+// ReauthorizationCancelledError は、利用者が再認可を終えずにポップアップを閉じたことを表す。
+export class ReauthorizationCancelledError extends Error {
+  constructor() {
+    super('reauthorization cancelled')
+    this.name = 'ReauthorizationCancelledError'
+  }
+}
+
+// openReauthorizationWindow は、利用者の操作の中で同期的に空のポップアップを開く。非同期の処理の
+// 後に開くとブラウザーが遮断するので、URL は reauthorize が後から設定する。開けなければ null。
+export function openReauthorizationWindow(): Window | null {
+  return window.open('', 'idmagic-reauthorization', 'popup,width=480,height=720')
+}
+
+// reauthorize は、popup で再認可してトークンを差し替える。popup が null なら画面全体で
+// 再認可し、戻らない。入力途中の内容は引き継がない。
+export async function reauthorize(
+  challenge: { maxAge: number; acrValues?: string },
+  popup: Window | null,
+): Promise<void> {
+  const audience = activeAudience
+  if (!audience) throw new Error('reauthorization requires a portal login')
+  const extra: Record<string, string> = { max_age: String(challenge.maxAge) }
+  if (challenge.acrValues) extra.acr_values = challenge.acrValues
+  if (!popup) {
+    await beginLogin(audience, `${window.location.pathname}${window.location.search}`, extra)
+    return
+  }
+  const verifier = randomToken()
+  const state = `${STEP_UP_STATE_PREFIX}${randomToken(16)}`
+  popup.location.href = await authorizeURL(audience, state, verifier, extra)
+  const code = await new Promise<string>((resolve, reject) => {
+    const closed = window.setInterval(() => {
+      if (!popup.closed) return
+      cleanup()
+      reject(new ReauthorizationCancelledError())
+    }, 500)
+    function onMessage(event: MessageEvent) {
+      const data = event.data as { type?: string; state?: string; code?: string; error?: string }
+      if (event.origin !== window.location.origin || data?.type !== STEP_UP_MESSAGE_TYPE) return
+      if (data.state !== state) return
+      cleanup()
+      if (data.error || !data.code) reject(new Error(data.error ?? 'reauthorization failed'))
+      else resolve(data.code)
+    }
+    function cleanup() {
+      window.clearInterval(closed)
+      window.removeEventListener('message', onMessage)
+    }
+    window.addEventListener('message', onMessage)
+  })
+  const session = await exchange(audience, {
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: redirectURI(),
+    client_id: PORTALS[audience].clientId,
+    code_verifier: verifier,
+  })
+  activeBearer = session.accessToken
+}
+
+// completeReauthorizationInPopup は、再認可のポップアップに戻った /callback で、state と
+// code を同じオリジンの元の画面へ渡して閉じる。再認可のポップアップでなければ false を返す。
+function completeReauthorizationInPopup(params: URLSearchParams): boolean {
+  const state = params.get('state')
+  if (!state?.startsWith(STEP_UP_STATE_PREFIX) || !window.opener || window.opener === window) {
+    return false
+  }
+  ;(window.opener as Window).postMessage(
+    {
+      type: STEP_UP_MESSAGE_TYPE,
+      state,
+      code: params.get('code') ?? undefined,
+      error: params.get('error') ?? undefined,
+    },
+    window.location.origin,
+  )
+  window.close()
+  return true
 }
 
 // ensureLoggedIn は audience の有効な access token を保証する。新鮮なトークンが
 // あれば activeBearer に設定して返り、refresh 可能なら更新し、いずれも無ければ
 // /authorize へリダイレクトする (戻らない)。
 export async function ensureLoggedIn(audience: PortalAudience, returnTo: string): Promise<void> {
+  activeAudience = audience
   const session = readSession(audience)
   if (session && isFresh(session)) {
     activeBearer = session.accessToken
@@ -212,6 +316,7 @@ export async function restartPortalLogin(
 // /token に交換し、returnTo へ戻す。RP ログインの callback でなければ false を返し、
 // 既存のデモ表示 (CallbackPage) にフォールバックさせる。
 export async function completeLoginFromCallback(): Promise<boolean> {
+  if (completeReauthorizationInPopup(new URLSearchParams(window.location.search))) return true
   const raw = sessionStorage.getItem(LOGIN_KEY)
   if (!raw) return false
   sessionStorage.removeItem(LOGIN_KEY)

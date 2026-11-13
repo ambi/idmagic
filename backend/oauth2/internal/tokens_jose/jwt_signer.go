@@ -342,6 +342,19 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*o
 	if v, ok := payload["approval_request_id"].(string); ok {
 		res.ApprovalRequestID = v
 	}
+	if v, ok := payload["auth_time"].(float64); ok {
+		res.AuthTime = int64(v)
+	}
+	if methods, ok := payload["amr"].([]any); ok {
+		for _, method := range methods {
+			if value, ok := method.(string); ok {
+				res.AMR = append(res.AMR, value)
+			}
+		}
+	}
+	if v, ok := payload["acr"].(string); ok {
+		res.ACR = v
+	}
 	if chain, ok := payload["agent_chain"].([]any); ok {
 		for _, v := range chain {
 			if id, ok := v.(string); ok {

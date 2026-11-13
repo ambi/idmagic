@@ -71,6 +71,12 @@ type AccessToken struct {
 	Scope    string
 	Audience []string
 	IssuedAt int64
+	// AuthTime、AMR、ACR は、トークンの付与を得た利用者の認証である。AuthTime が 0 の
+	// トークンは認証の時刻を示さない。発行時刻はリフレッシュでも新しくなるので、
+	// 認証の時刻には AuthTime を使う (RFC 9068 §2.2.1)。
+	AuthTime int64
+	AMR      []string
+	ACR      string
 	// Managed は、管理コンソールが発行した API アクセストークンであることを表す。
 	Managed bool
 	// DPoPBound は、トークンが DPoP の鍵に束縛されていることを表す。DPoPJKT はその鍵の拇印。
@@ -128,14 +134,21 @@ type PrincipalDirectory interface {
 type accessTokenAuthentication struct {
 	subject  string
 	authTime int64
+	amr      []string
+	acr      string
 	// apiTokenID は管理発行の API アクセストークンの記録の ID である。ほかのトークンでは空である。
 	apiTokenID string
 }
 
 func (a accessTokenAuthentication) Subject() string        { return a.subject }
 func (a accessTokenAuthentication) AuthenticatedAt() int64 { return a.authTime }
-func (accessTokenAuthentication) Session() string          { return "" }
-func (accessTokenAuthentication) Pending() bool            { return false }
+
+// AuthenticationMethods は、トークンが示す認証の方式と保証の水準を返す。
+func (a accessTokenAuthentication) AuthenticationMethods() ([]string, string) {
+	return slices.Clone(a.amr), a.acr
+}
+func (accessTokenAuthentication) Session() string { return "" }
+func (accessTokenAuthentication) Pending() bool   { return false }
 
 // SetBearerChallenge writes one RFC 6750 challenge and advertises the RFC 9728
 // metadata endpoint derived from the tenant's canonical issuer and TypeSpec contract.
@@ -148,6 +161,26 @@ func SetBearerChallenge(c *echo.Context, errorCode, requiredScope string) {
 		params = append(params, "resource_metadata="+strconv.Quote(metadataURL))
 	}
 	c.Response().Header().Set("WWW-Authenticate", strings.Join(params, ", "))
+}
+
+// StepUpMaxAgeSeconds は、ステップアップ認証を求める操作が許す、直近の認証からの経過秒数である
+// (REQ-AUTHENTICATION-039)。
+const StepUpMaxAgeSeconds = 300
+
+// WriteStepUpRequired は、ステップアップ認証を満たさない要求を、届いた資格情報に合わせて拒否する
+// (REQ-AUTHENTICATION-039)。Authorization の資格情報を持つ要求には、RFC 9470 の 401 と
+// `insufficient_user_authentication` を返し、クライアントに `max_age` を付けた再認可を求める。
+// ログインセッションの Cookie の要求には、ステップアップ認証の API で再認証させる 403 を返す。
+func WriteStepUpRequired(c *echo.Context) error {
+	if token, _ := authorizationToken(c); token != "" {
+		challenge := `Bearer error="insufficient_user_authentication", max_age="` + strconv.Itoa(StepUpMaxAgeSeconds) + `"`
+		if metadataURL := protectedResourceMetadataURL(c); metadataURL != "" {
+			challenge += ", resource_metadata=" + strconv.Quote(metadataURL)
+		}
+		c.Response().Header().Set("WWW-Authenticate", challenge)
+		return WriteProblem(c, http.StatusUnauthorized, "insufficient_user_authentication", "A more recent authentication is required.")
+	}
+	return WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
 }
 
 func protectedResourceMetadataURL(c *echo.Context) string {
@@ -291,12 +324,16 @@ func (a *Authenticator) authenticateAccessToken(c *echo.Context, raw, scheme str
 	}
 	// access token 経由は session を持たないので Session は空。管理発行 token の
 	// sensitive account scope は token possession 自体を継続的な step-up credential と
-	// みなす。通常 OAuth token は元の auth_time を維持する。
-	authTime := token.IssuedAt
+	// みなす (REQ-AUTHENTICATION-004)。通常の OAuth token はトークンが示す利用者の認証の
+	// 時刻を使い、発行時刻を使わない。発行時刻はリフレッシュでも新しくなるからである
+	// (REQ-AUTHENTICATION-039)。
+	authTime := token.AuthTime
 	if token.Managed {
 		authTime = time.Now().UTC().Unix()
 	}
-	result := accessTokenAuthentication{subject: token.Subject, authTime: authTime}
+	result := accessTokenAuthentication{
+		subject: token.Subject, authTime: authTime, amr: slices.Clone(token.AMR), acr: token.ACR,
+	}
 	if apiToken != nil {
 		result.apiTokenID = apiToken.TokenID
 	}

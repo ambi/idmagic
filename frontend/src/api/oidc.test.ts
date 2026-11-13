@@ -188,4 +188,22 @@ describe('portal OIDC client', () => {
     )
     expect(window.location.assign).toHaveBeenCalledWith(expect.stringContaining('/end_session'))
   })
+  //spec:covers REQ-AUTHENTICATION-039: 再認可のポップアップに戻った /callback が、自分では交換せずに state と code を同じオリジンの元の画面へ渡して閉じること
+  it('hands a step-up callback back to the opener instead of exchanging it', async () => {
+    const opener = { postMessage: mock() }
+    stubGlobal('opener', opener)
+    stubGlobal('close', mock())
+    stubGlobal('location', {
+      ...window.location,
+      origin: 'https://idp.test',
+      search: '?state=stepup.abc&code=code-1',
+    })
+    await expect(completeLoginFromCallback()).resolves.toBe(true)
+    expect(opener.postMessage).toHaveBeenCalledWith(
+      { type: 'idmagic:step-up-callback', state: 'stepup.abc', code: 'code-1', error: undefined },
+      'https://idp.test',
+    )
+    expect(window.close).toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+  })
 })

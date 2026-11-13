@@ -110,7 +110,7 @@ func WriteAuthenticationError(c *echo.Context, err error) (bool, error) {
 	case errors.Is(err, support.ErrAdminAuthenticationRequired):
 		return true, support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	case errors.Is(err, mfausecases.ErrStepUpRequired):
-		return true, support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
+		return true, support.WriteStepUpRequired(c)
 	case errors.Is(err, sessionusecases.ErrSessionNotFound):
 		return true, support.WriteProblem(c, http.StatusNotFound, "session_not_found", "The session does not exist.")
 	default:

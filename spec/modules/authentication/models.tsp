@@ -44,8 +44,12 @@ model EmailSent {
 }
 
 
-@doc("操作には最近の再認証が必要である。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:step_up_required` である。")
+@doc("操作には最近の再認証が必要である。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:step_up_required` である。ログインセッションの Cookie で届いた要求に返す。アクセストークンで届いた要求には InsufficientUserAuthenticationError を返す。")
 model StepUpRequiredError is ProblemDetails;
+
+
+@doc("提示したアクセストークンが示す利用者の認証が、操作の求める新しさを満たさない（RFC 9470）。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:insufficient_user_authentication` であり、`WWW-Authenticate` ヘッダーは `error=\"insufficient_user_authentication\"` と、許す経過秒数の `max_age` を含む。クライアントは `max_age` を付けて再認可し、得たトークンで要求を送り直す。")
+model InsufficientUserAuthenticationError is ProblemDetails;
 
 
 @doc("連携した ID を外すとアカウントに許可されたサインインの方法がなくなるので、外せない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:unlink_denied` である。")

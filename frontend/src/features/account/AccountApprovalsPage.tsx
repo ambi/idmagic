@@ -30,7 +30,7 @@ export function AccountApprovalsPage({
   const [pending, setPending] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const { guard, dialog } = useStepUpGuard(csrfToken)
+  const { guard, dialog } = useStepUpGuard()
 
   async function handleDecision(request: AccountApprovalRequest, decision: 'approve' | 'deny') {
     setPending(request.id)

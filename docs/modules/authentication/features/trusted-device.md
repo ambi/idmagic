@@ -81,13 +81,14 @@
 
 #### REQ-AUTHENTICATION-029 信頼済みデバイスは機微操作の再認証を肩代わりしない
 
+- **上位の要件**：[REQ-AUTHENTICATION-039](account-portal.md#本人によるステップアップ認証)
 - 信頼済みデバイスで第二要素を省略したとき、Authentication は、`step_up_at` を進めない。
-- ステップアップ認証を経ていないセッションでパスワードの変更、認証の要素の解除、他のセッションの一括の失効を受けた場合、Authentication は、403 と `step_up_required` で拒否し、パスワード、認証の要素、セッションを変えない。
+- ステップアップ認証を満たさないパスワードの変更、認証の要素の解除、他のセッションの一括の失効を受けた場合、Authentication は、REQ-AUTHENTICATION-039 の応答で拒否し、パスワード、認証の要素、セッションを変えない。
 - 本人が信頼済みデバイスを一覧したとき、Authentication は、selector と verifier を含めずに最終利用の時刻の降順で返し、現在の端末を current として示す。
 - 本人がステップアップ認証を経て一つの信頼済みデバイスを失効させたとき、Authentication は、204 を返し、そのデバイスを `Revoked` にし、`TrustedDeviceRevoked` を発行する。
 - 本人がステップアップ認証を経て信頼済みデバイスを一括で失効させたとき、Authentication は、204 を返し、本人のすべての `Active` のデバイスを `Revoked` にし、デバイスごとに `TrustedDeviceRevoked` を発行する。
 - 本人が `Revoked` のデバイスの失効を要求したとき、Authentication は、204 を返し、最初の失効の時刻を保持し、イベントを発行しない。
-- ステップアップ認証を経ていないセッションで信頼済みデバイスの失効を受けた場合、Authentication は、403 と `step_up_required` で拒否する。
+- ステップアップ認証を満たさない信頼済みデバイスの失効を受けた場合、Authentication は、REQ-AUTHENTICATION-039 の応答で拒否し、デバイスを `Active` のままにする。
 - 本人のものでないか存在しないデバイスの失効を受けた場合、Authentication は、404 と `trusted_device_not_found` で拒否する。
 - **例**：EX-AUTHENTICATION-029-01、EX-AUTHENTICATION-029-02、EX-AUTHENTICATION-029-03
 
