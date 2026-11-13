@@ -5,6 +5,7 @@ package domain
 // (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。
 
 import (
+	"errors"
 	"net/url"
 	"time"
 
@@ -33,7 +34,8 @@ type McpResourceServer struct {
 	Name     string   `json:"name"`
 	Scopes   []string `json:"scopes"`
 	// ClientID は /resource-access/evaluate を呼べるクライアント。空なら評価できない。
-	ClientID string `json:"client_id,omitempty"`
+	ClientID string                  `json:"client_id,omitempty"`
+	Hosting  *HostedMcpConfiguration `json:"hosting,omitempty"`
 	// AccessRules は評価できる操作。ここにない操作は不許可になる。
 	AccessRules []ResourceAccessRule   `json:"access_rules"`
 	State       McpResourceServerState `json:"state"`
@@ -52,6 +54,14 @@ func isAbsoluteURIWithoutFragment(value string) bool {
 }
 
 func (m McpResourceServer) Validate() error {
+	if m.Hosting != nil {
+		if m.ClientID == "" {
+			return errors.New("client_id is required for a managed gateway")
+		}
+		if err := m.Hosting.Validate(); err != nil {
+			return err
+		}
+	}
 	if err := spec.All(
 		spec.Required("ID", m.ID),
 		spec.Required("Resource", m.Resource, spec.URL(), spec.Must(isAbsoluteURIWithoutFragment,

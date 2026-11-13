@@ -231,7 +231,7 @@ erDiagram
 | `audit_event_search_attributes` | 監査イベントの検索属性の索引。個人識別情報は変換済みの値だけを置く | Audit | `LOGGED` | 非キーカラム |
 | `agents` | エージェントの Aggregate。所有者と状態を格納する | IdManagement | `LOGGED` | 非キーカラム |
 | `authorization_detail_types` | テナントが受け付ける `authorization_details` の型の定義 | OAuth2 | `LOGGED` | 複合主キーの一部 |
-| `mcp_resource_servers` | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ、評価用のクライアントと規則 | OAuth2 | `LOGGED` | 非キーカラム |
+| `mcp_resource_servers` | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ、評価用のクライアントと規則、マネージド型の上流設定 | OAuth2 | `LOGGED` | 非キーカラム |
 | `mcp_tool_catalogs` | MCP リソースサーバーの Gateway が送った最新のツールカタログと、内容の変わった直前の一覧。公開の候補と差分の表示にだけ使い、登録の更新時刻と独立して置き換える | OAuth2 | `LOGGED` | 非キーカラム |
 | `agent_guardrail_policies` | Agent の発行の上限とテナントのデフォルト、内容から導いたバージョン | OAuth2 | `LOGGED` | 複合主キーの一部 |
 | `cross_app_access_issue_policies` | ID-JAG の発行の許可 | OAuth2 | `LOGGED` | 非キーカラム |

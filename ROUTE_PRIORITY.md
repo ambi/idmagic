@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：227
+経路の数：228
 
 | 経路 | メソッド |
 | --- | --- |
@@ -292,6 +292,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/directory-connector/v1/ingestion-runs/{run_id}/user-batches` | POST |
 | `/directory-connector/v1/password-challenges` | POST |
 | `/directory-connector/v1/password-challenges/{challenge_id}/result` | POST |
+| `/mcp/{server_id}` | POST |
 | `/register` | POST |
 | `/scim/v2/Groups` | GET, POST |
 | `/scim/v2/Groups/{id}` | DELETE, GET, PATCH, PUT |
@@ -304,12 +305,14 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `interactive_auth`
 
-経路の数：54
+経路の数：56
 
 | 経路 | メソッド |
 | --- | --- |
 | `/.well-known/oauth-authorization-server` | GET |
 | `/.well-known/oauth-protected-resource` | GET |
+| `/.well-known/oauth-protected-resource/mcp/{server_id}` | GET |
+| `/.well-known/oauth-protected-resource/realms/{tenant_id}/mcp/{server_id}` | GET |
 | `/.well-known/openid-configuration` | GET |
 | `/api/account/v1/step-up/complete` | POST |
 | `/api/account/v1/step-up/start` | POST |

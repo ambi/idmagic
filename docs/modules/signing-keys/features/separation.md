@@ -20,6 +20,13 @@ XML フェデレーションの鍵には、その公開鍵を含む自己署名�
 
 ## 操作
 
+### マネージド型 Gateway の下流の証明
+
+#### REQ-SIGNINGKEYS-014 マネージド型 Gateway の鍵はテナントと登録ごとに分離する
+
+- マネージド型 Gateway が下流への証明を必要としたとき、SigningKeys は、`McpGatewayDPoP` 用途と資源登録 ID の scope の専用鍵を使い、OAuth の署名、ID-JAG、XML の鍵を共用しない。
+- マネージド型 Gateway の鍵を参照したとき、SigningKeys は、既存の鍵の提供元で保持した鍵を使い、公開 JWK だけを管理の応答に渡す。
+
 ### クライアントによる JWKS の取得
 
 #### REQ-SIGNINGKEYS-004 テナントごとの JWKS は互いに分離される

@@ -38,6 +38,11 @@ func mcpResourceServerFromRow(row *McpResourceServer) (*domain.McpResourceServer
 			return nil, err
 		}
 	}
+	if len(row.Hosting) > 0 {
+		if err := json.Unmarshal(row.Hosting, &m.Hosting); err != nil {
+			return nil, err
+		}
+	}
 	return m, m.Validate()
 }
 
@@ -97,6 +102,10 @@ func (r *McpResourceServerRepository) FindByClientID(ctx context.Context, tenant
 }
 
 func (r *McpResourceServerRepository) Save(ctx context.Context, m *domain.McpResourceServer) error {
+	hosting, err := json.Marshal(m.Hosting)
+	if err != nil {
+		return err
+	}
 	scopes, err := json.Marshal(m.Scopes)
 	if err != nil {
 		return err
@@ -117,6 +126,7 @@ func (r *McpResourceServerRepository) Save(ctx context.Context, m *domain.McpRes
 		Scopes:      scopes,
 		ClientID:    pgtype.Text{String: m.ClientID, Valid: m.ClientID != ""},
 		AccessRules: accessRules,
+		Hosting:     hosting,
 		State:       string(m.State),
 		CreatedAt:   m.CreatedAt,
 		UpdatedAt:   m.UpdatedAt,
@@ -130,6 +140,10 @@ func (r *McpResourceServerRepository) Delete(ctx context.Context, tenantID, reso
 }
 
 func (r *McpResourceServerRepository) SaveIfUnchanged(ctx context.Context, m *domain.McpResourceServer, expectedUpdatedAt time.Time) (bool, error) {
+	hosting, err := json.Marshal(m.Hosting)
+	if err != nil {
+		return false, err
+	}
 	scopes, err := json.Marshal(m.Scopes)
 	if err != nil {
 		return false, err
@@ -143,7 +157,7 @@ func (r *McpResourceServerRepository) SaveIfUnchanged(ctx context.Context, m *do
 		return false, err
 	}
 	rows, err := New(r.Pool).UpdateMcpResourceServerIfUnchanged(ctx, UpdateMcpResourceServerIfUnchangedParams{
-		TenantID: m.TenantID, ID: m.ID, Name: m.Name, Scopes: scopes, ClientID: pgtype.Text{String: m.ClientID, Valid: m.ClientID != ""}, AccessRules: accessRules, State: string(m.State), UpdatedAt: m.UpdatedAt, ExpectedUpdatedAt: expectedUpdatedAt,
+		TenantID: m.TenantID, ID: m.ID, Name: m.Name, Scopes: scopes, ClientID: pgtype.Text{String: m.ClientID, Valid: m.ClientID != ""}, AccessRules: accessRules, Hosting: hosting, State: string(m.State), UpdatedAt: m.UpdatedAt, ExpectedUpdatedAt: expectedUpdatedAt,
 	})
 	return rows == 1, err
 }

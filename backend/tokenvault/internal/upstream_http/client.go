@@ -74,6 +74,25 @@ func (c *Client) Send(ctx context.Context, request ports.OutboundRequest) (ports
 	return ports.OutboundResponse{Status: response.StatusCode, ContentType: response.Header.Get("Content-Type"), Body: body}, nil
 }
 
+// OpenMCP は同じ安全な transport を使って応答を開く。要求を再作成するための
+// GetBody を持たせず、Transport にも POST の再送を許さない。
+func (c *Client) OpenMCP(ctx context.Context, request ports.OutboundRequest) (*http.Response, error) {
+	outbound, err := http.NewRequestWithContext(ctx, http.MethodPost, request.URL, bytes.NewReader(request.Body))
+	if err != nil {
+		return nil, ports.ErrUpstreamUnreachable
+	}
+	for _, name := range []string{"Accept", "Content-Type", "Mcp-Protocol-Version", "Mcp-Method", "Mcp-Name", "Mcp-Session-Id"} {
+		if value := request.Headers[http.CanonicalHeaderKey(name)]; value != "" {
+			outbound.Header.Set(name, value)
+		}
+	}
+	outbound.GetBody = nil
+	outbound.Header.Set("Authorization", "Bearer "+request.AccessToken)
+	client := *c.HTTP
+	client.Timeout = 120 * time.Second
+	return client.Do(outbound)
+}
+
 // ExchangeCode は認可コードをトークンへ交換する。
 func (c *Client) ExchangeCode(ctx context.Context, client ports.OAuthClient, code, verifier, redirectURI string) (ports.TokenResponse, error) {
 	return c.token(ctx, client, url.Values{

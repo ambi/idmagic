@@ -59,6 +59,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | 鍵と可逆なシークレット | マスターキー提供元への到達性。暗号文が置かれていた場所 |
 | 上流の外部権威 | 外部 IdP、SCIM の取り込み元、アテステーション発行者が主張する属性と主体 |
 | 下流の外部受信者 | 配信先が正しいこと。受信側が署名を検証すること |
+| マネージド型 MCP Gateway と上流 | 登録 URL の DNS の応答、リダイレクト、応答の量と所要時間。呼び出し元が送った資格情報と本人の識別情報 |
 | 永続化と非同期実行 | ジョブの `params` と `result` の中身。ハンドラーが 1 回だけ動くこと |
 | 運用者と制御面 | 実行環境を取れる者。起動時設定の値 |
 | IdMagic と Directory Connector | 公開鍵を持つことだけでは要求元を証明しない。設定した IdMagic への TLS 接続と署名 JWT、tenant、Connector、要求 ID、鍵と設定の世代、期限の束縛を検査する |
@@ -228,10 +229,14 @@ IdMagic の API プロセスと Connector は平文をメモリで扱う信頼�
 | THREAT-093 | Elevation of privilege | 代理実行で内部のアドレスやリダイレクト先へトークンを送らせる | TokenVault | REQ-TOKENVAULT-009、REQ-TOKENVAULT-010 | `covered` |
 | THREAT-094 | Spoofing | 攻撃者の上流アカウントを被害者の接続へ結ぶ | TokenVault | REQ-TOKENVAULT-004、REQ-TOKENVAULT-005 | `covered` |
 | THREAT-095 | Denial of service | 回転する更新トークンの競合で接続を壊す | TokenVault | REQ-TOKENVAULT-012、REQ-TOKENVAULT-013 | `covered` |
+| THREAT-108 | Elevation of privilege | マネージド型 Gateway で別テナントの登録や別本人の接続を使い、上流を代理実行する | OAuth2, TokenVault | REQ-OAUTH2-092、REQ-TOKENVAULT-016 | `covered` |
+| THREAT-109 | Information disclosure | マネージド型 Gateway の上流 URL、DNS、リダイレクトを使って内部資源や別の宛先へ資格情報を送らせる | OAuth2, TokenVault | REQ-OAUTH2-091、REQ-OAUTH2-092 | `covered` |
+| THREAT-110 | Denial of service | MCP の応答を無制限に開くか過大な本文を送り、API の受付資源を占有する | OAuth2, System | REQ-OAUTH2-092、REQ-SYSTEM-018 | `covered` |
+| THREAT-111 | Denial of service | 同じ API プロセスで動くマネージド型 Gateway のメモリ枯渇やプロセス停止が、認証も同時に停止させる | OAuth2, System | REQ-OAUTH2-092: 転送予算による抑制。プロセスの停止の隔離はない | `accepted` |
 | THREAT-096 | Spoofing | 偽の発見結果を取り込ませ、未登録の主体を管理済みの Agent として扱わせるか権限を得る | IdManagement | REQ-IDMANAGEMENT-095、REQ-IDMANAGEMENT-098、REQ-IDMANAGEMENT-101 | `covered` |
 | THREAT-097 | Denial of service | 取り込みの件数と未来の時刻で台帳を埋めるか、以後の観測を止める | IdManagement | REQ-IDMANAGEMENT-096、REQ-IDMANAGEMENT-097、REQ-IDMANAGEMENT-102 | `covered` |
 | THREAT-098 | Elevation of privilege | 持ち出した送信者制約付きのトークンをゲートウェイへ持ち込み、別の鍵へ束縛し直す | OAuth2, McpGateway | REQ-OAUTH2-056、REQ-OAUTH2-079 | `covered` |
-| THREAT-102 | Tampering | 人が承認した操作を再送、並行要求、ゲートウェイの再起動や上流の自動再試行で二度実行する | OAuth2, McpGateway | REQ-OAUTH2-065、REQ-MCPGATEWAY-013、REQ-MCPGATEWAY-007 | `covered` |
+| THREAT-102 | Tampering | 人が承認した操作を再送、並行要求、ゲートウェイの再起動や上流の自動再試行で二度実行する | OAuth2, McpGateway, TokenVault | REQ-OAUTH2-065、REQ-MCPGATEWAY-013、REQ-MCPGATEWAY-007、REQ-OAUTH2-092、REQ-TOKENVAULT-016 | `covered` |
 
 ## 永続化と非同期実行
 
@@ -257,6 +262,11 @@ IdMagic の API プロセスと Connector は平文をメモリで扱う信頼�
 | THREAT-105 | Tampering | Microsoft の非公式のレルム探索の応答が変わるか誤り、Entra がまだ IdMagic へ送るドメインの解除を許す | WsFederation | REQ-WSFEDERATION-001: `Managed` と IdMagic を指さない `Federated` だけを根拠にし、そのほかは観測記録へ戻る判定。運用者の設定だけが決める探索の URL | `covered` |
 
 ## 受容した残留リスク
+
+**THREAT-111（マネージド型 Gateway と認証の同時停止）**：初期構成は [API のプレーンを分けない](../../modules/system/decisions.md#api-のプレーンを分けない)判断と同じ基準で、API に同居させる。
+転送の上限と受付制御は資源の消費を抑えるが、CPU、メモリとプロセス停止を隔離しない。
+MCP と認証の本番規模の混合負荷によるサービス目標の達成は未実測である。
+認証への影響が上限と受付制御で収まらない場合、Gateway だけの資源増設、独立した再起動、障害隔離の運用要件が生じた場合に分離を見直す。
 
 `accepted` は、制御を設けないことを意図して選んだ行である。それぞれについて、選んだ理由と、その選択を見直すべき条件を書く。**条件が書かれていない受容は、受容ではなく放置である。**
 

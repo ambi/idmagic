@@ -157,6 +157,7 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 
 - `/.well-known/oauth-protected-resource` か、その後に `resource` の経路を続けた位置への `GET` を受けたとき、McpGateway は、評価を呼ばず、`resource` と `authorization_servers` に `idmagic.realm_url` を持つ JSON を 200 で返す。
 - **判断**：改修しないサーバーはゲートウェイの `resource` を知らないので、RFC 9728 の文書はゲートウェイが返す。MCP クライアントはこの文書から認可サーバーを見つける。
+- **上位の要件**：マネージド型のメタデータは [REQ-OAUTH2-092](../../oauth2/features/hosted-mcp.md#req-oauth2-092-マネージド型は毎回の評価と外向きの防御を通った要求だけを転送する) が定める。
 
 #### REQ-MCPGATEWAY-006 要求ごとに監査ログと指標を残し、IdMagic の記録と相関できるようにする
 

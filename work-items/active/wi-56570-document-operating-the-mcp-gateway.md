@@ -28,7 +28,7 @@ spec_impact: { kind: none, reason: "既存の仕様どおりの配置と運用�
 
 - 実在の MCP クライアントとの再現手順（[[wi-36722-publish-an-end-to-end-mcp-enforcement-walkthrough]]）。
 - 成果物を公開するリリース用 CI。リポジトリ全体の課題である。
-- IdMagic がホストする Gateway（[[wi-61303-host-the-mcp-gateway-in-idmagic]]）。この手順書は自前設置だけを扱い、ホスト型が加わったら運用場所の選び方から参照させる。
+- マネージド型 Gateway（[[wi-61303-host-the-mcp-gateway-in-idmagic]]）。この手順書はセルフホスト型だけを扱い、マネージド型が加わったら運用場所の選び方から参照させる。
 
 ## 設計
 

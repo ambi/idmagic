@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
@@ -105,6 +106,11 @@ type UpstreamClient interface {
 	ExchangeCode(ctx context.Context, client OAuthClient, code, verifier, redirectURI string) (TokenResponse, error)
 	Refresh(ctx context.Context, client OAuthClient, refreshToken string) (TokenResponse, error)
 	Revoke(ctx context.Context, client OAuthClient, token, tokenTypeHint string) error
+}
+
+// McpUpstreamClient は本文を保持せずに応答を開く。受け取り側が閉じる。
+type McpUpstreamClient interface {
+	OpenMCP(ctx context.Context, request OutboundRequest) (*http.Response, error)
 }
 
 // CallerCredential は呼び出し元が提示した資格情報である。

@@ -3,6 +3,7 @@ package tokenvault
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -10,12 +11,14 @@ import (
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/db_memory"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/db_postgres"
+	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/handlers_http"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/token_oauth2"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/upstream_http"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/usecases"
 
+	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/labstack/echo/v5"
 )
 
@@ -25,6 +28,40 @@ type Module struct {
 	Connections ports.ConnectionRepository
 	Attempts    ports.AttemptStore
 	Upstream    ports.UpstreamClient
+}
+
+// McpForwarder は OAuth2 が検証した本人の代理転送を Vault の認可へ結ぶ。
+// ストリームを開く依存がない構成は未配線として返し、呼び出し側が 503 で拒否する。
+func (m Module) McpForwarder(emit func(spec.DomainEvent)) oauthports.McpForwarder {
+	upstream, ok := m.Upstream.(ports.McpUpstreamClient)
+	if !ok || m.Connectors == nil || m.Connections == nil || emit == nil {
+		return nil
+	}
+	return mcpForwarder{deps: usecases.Deps{Connectors: m.Connectors, Connections: m.Connections, Upstream: m.Upstream, Emit: emit}, upstream: upstream}
+}
+
+type mcpForwarder struct {
+	deps     usecases.Deps
+	upstream ports.McpUpstreamClient
+}
+
+func (f mcpForwarder) ForwardMCP(ctx context.Context, in oauthports.McpForwardRequest) (*http.Response, error) {
+	if in.Caller == nil || !in.Caller.Active {
+		return nil, oauthports.ErrMcpForwardDenied
+	}
+	caller := domain.CallerToken{Delegated: len(in.Caller.Act) > 0, Subject: in.Caller.Sub, PrincipalType: in.Caller.PrincipalType, AgentID: in.Caller.AgentID, AgentChain: in.Caller.AgentChain, AuthorizationDetails: in.Caller.AuthorizationDetails}
+	headers := make(map[string]string, len(in.Headers))
+	for name := range in.Headers {
+		headers[name] = in.Headers.Get(name)
+	}
+	response, err := usecases.ExecuteMCP(ctx, f.deps, f.upstream, usecases.ExecuteInput{TenantID: in.TenantID, ConnectorID: in.ConnectorID, Method: http.MethodPost, URL: in.URL, Headers: headers, Body: in.Body}, caller)
+	if err == nil {
+		return response, nil
+	}
+	if errors.Is(err, usecases.ErrAccessDenied) || errors.Is(err, usecases.ErrConnectionNotFound) || errors.Is(err, usecases.ErrConnectorNotFound) || errors.Is(err, usecases.ErrReauthorizationRequired) {
+		return nil, oauthports.ErrMcpForwardDenied
+	}
+	return nil, oauthports.ErrMcpForwardUnavailable
 }
 
 // NewMemoryModule はメモリの保存先のモジュールを返す。

@@ -772,6 +772,7 @@ CREATE TABLE mcp_resource_servers (
     scopes JSONB NOT NULL,
     client_id TEXT,
     access_rules JSONB NOT NULL DEFAULT '[]',
+    hosting JSONB,
     state TEXT NOT NULL DEFAULT 'Active'
         CHECK (state IN ('Active', 'Disabled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

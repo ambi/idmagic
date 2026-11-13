@@ -52,6 +52,7 @@ type McpResourceServer struct {
 	Scopes      []byte
 	ClientID    pgtype.Text
 	AccessRules []byte
+	Hosting     []byte
 	State       string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

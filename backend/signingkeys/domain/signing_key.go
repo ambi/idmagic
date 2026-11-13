@@ -39,11 +39,12 @@ const (
 	KeyUsageSigning              KeyUsage = "Signing"
 	KeyUsageXMLFederationSigning KeyUsage = "XmlFederationSigning"
 	// KeyUsageIdJagSigning は ID-JAG の署名に使う。
-	KeyUsageIdJagSigning KeyUsage = "IdJagSigning"
+	KeyUsageIdJagSigning   KeyUsage = "IdJagSigning"
+	KeyUsageMcpGatewayDPoP KeyUsage = "McpGatewayDPoP"
 )
 
 func (u KeyUsage) Valid() bool {
-	return u == KeyUsageSigning || u == KeyUsageXMLFederationSigning || u == KeyUsageIdJagSigning
+	return u == KeyUsageSigning || u == KeyUsageXMLFederationSigning || u == KeyUsageIdJagSigning || u == KeyUsageMcpGatewayDPoP
 }
 
 // AlgorithmFor は用途の鍵が宣言する署名方式を返す。

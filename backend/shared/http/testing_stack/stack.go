@@ -40,6 +40,8 @@ import (
 	"testing"
 	"time"
 
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+
 	"github.com/ambi/idmagic/backend/signinpolicy"
 	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 
@@ -621,6 +623,14 @@ func WithProvisioning() Option {
 }
 
 // WithTokenVault は TokenVault の経路を配線する。外向きの通信は client を通る。
+func WithManagedMcpHTTPClient(client *http.Client) Option {
+	return func(b *builder) { b.deps.OAuth2 = b.deps.OAuth2.WithManagedMcpHTTPClient(client) }
+}
+
+func WithAdmissionBudget(budget support.AdmissionBudget) Option {
+	return func(b *builder) { b.deps.Admission = budget }
+}
+
 func WithTokenVault(client *http.Client) Option {
 	return func(b *builder) {
 		b.deps.TokenVault = tokenvault.NewMemoryModule().WithUpstreamHTTPClient(client)

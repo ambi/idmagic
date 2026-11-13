@@ -27,7 +27,7 @@ func (q *Queries) DeleteMcpResourceServer(ctx context.Context, arg DeleteMcpReso
 }
 
 const getMcpResourceServer = `-- name: GetMcpResourceServer :one
-SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at
 FROM mcp_resource_servers
 WHERE tenant_id = $1 AND id = $2
 `
@@ -48,6 +48,7 @@ func (q *Queries) GetMcpResourceServer(ctx context.Context, arg GetMcpResourceSe
 		&i.Scopes,
 		&i.ClientID,
 		&i.AccessRules,
+		&i.Hosting,
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -56,7 +57,7 @@ func (q *Queries) GetMcpResourceServer(ctx context.Context, arg GetMcpResourceSe
 }
 
 const getMcpResourceServerByClientID = `-- name: GetMcpResourceServerByClientID :one
-SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at
 FROM mcp_resource_servers
 WHERE tenant_id = $1 AND client_id = $2
 `
@@ -77,6 +78,7 @@ func (q *Queries) GetMcpResourceServerByClientID(ctx context.Context, arg GetMcp
 		&i.Scopes,
 		&i.ClientID,
 		&i.AccessRules,
+		&i.Hosting,
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -85,7 +87,7 @@ func (q *Queries) GetMcpResourceServerByClientID(ctx context.Context, arg GetMcp
 }
 
 const getMcpResourceServerByResource = `-- name: GetMcpResourceServerByResource :one
-SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at
 FROM mcp_resource_servers
 WHERE tenant_id = $1 AND resource = $2
 `
@@ -106,6 +108,7 @@ func (q *Queries) GetMcpResourceServerByResource(ctx context.Context, arg GetMcp
 		&i.Scopes,
 		&i.ClientID,
 		&i.AccessRules,
+		&i.Hosting,
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -114,7 +117,7 @@ func (q *Queries) GetMcpResourceServerByResource(ctx context.Context, arg GetMcp
 }
 
 const listMcpResourceServersByTenant = `-- name: ListMcpResourceServersByTenant :many
-SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at
 FROM mcp_resource_servers
 WHERE tenant_id = $1
 ORDER BY resource
@@ -137,6 +140,7 @@ func (q *Queries) ListMcpResourceServersByTenant(ctx context.Context, tenantID s
 			&i.Scopes,
 			&i.ClientID,
 			&i.AccessRules,
+			&i.Hosting,
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -154,8 +158,8 @@ func (q *Queries) ListMcpResourceServersByTenant(ctx context.Context, tenantID s
 const updateMcpResourceServerIfUnchanged = `-- name: UpdateMcpResourceServerIfUnchanged :execrows
 UPDATE mcp_resource_servers SET
   name = $1, scopes = $2, client_id = $3,
-  access_rules = $4, state = $5, updated_at = $6
-WHERE tenant_id = $7 AND id = $8 AND updated_at = $9
+  access_rules = $4, hosting = $5, state = $6, updated_at = $7
+WHERE tenant_id = $8 AND id = $9 AND updated_at = $10
 `
 
 type UpdateMcpResourceServerIfUnchangedParams struct {
@@ -163,6 +167,7 @@ type UpdateMcpResourceServerIfUnchangedParams struct {
 	Scopes            []byte
 	ClientID          pgtype.Text
 	AccessRules       []byte
+	Hosting           []byte
 	State             string
 	UpdatedAt         time.Time
 	TenantID          string
@@ -176,6 +181,7 @@ func (q *Queries) UpdateMcpResourceServerIfUnchanged(ctx context.Context, arg Up
 		arg.Scopes,
 		arg.ClientID,
 		arg.AccessRules,
+		arg.Hosting,
 		arg.State,
 		arg.UpdatedAt,
 		arg.TenantID,
@@ -189,13 +195,14 @@ func (q *Queries) UpdateMcpResourceServerIfUnchanged(ctx context.Context, arg Up
 }
 
 const upsertMcpResourceServer = `-- name: UpsertMcpResourceServer :exec
-INSERT INTO mcp_resource_servers (tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO mcp_resource_servers (tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at, hosting)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   scopes = EXCLUDED.scopes,
   client_id = EXCLUDED.client_id,
   access_rules = EXCLUDED.access_rules,
+  hosting = EXCLUDED.hosting,
   state = EXCLUDED.state,
   updated_at = EXCLUDED.updated_at
 `
@@ -211,6 +218,7 @@ type UpsertMcpResourceServerParams struct {
 	State       string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	Hosting     []byte
 }
 
 func (q *Queries) UpsertMcpResourceServer(ctx context.Context, arg UpsertMcpResourceServerParams) error {
@@ -225,6 +233,7 @@ func (q *Queries) UpsertMcpResourceServer(ctx context.Context, arg UpsertMcpReso
 		arg.State,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.Hosting,
 	)
 	return err
 }

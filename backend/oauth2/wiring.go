@@ -127,6 +127,7 @@ type BuiltinResource = tokenusecases.BuiltinResource
 
 // RouteDeps は OAuth2 の経路が共通基盤とほかのモジュールから受け取る依存である。
 type RouteDeps struct {
+	McpForwarder oauthports.McpForwarder
 	support.Deps
 	*support.Authenticator
 	// RelationChecker は /resource-access/evaluate へ関係の判定を渡す。AccessControl が実装する。
@@ -162,7 +163,27 @@ type RouteDeps struct {
 // RegisterRoutes は OAuth 2.0 と OIDC のプロトコル、認可トランザクションの画面、
 // クライアントと同意の管理 API の経路を登録する。
 func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
+	m = m.WithManagedMcpRuntime()
 	oauth2http.RegisterRoutes(g, m.httpDeps(d))
+}
+
+// WithManagedMcpRuntime は二つのテナントの入口へ登録する前に、プロセス共通の予算を作る。
+func (m Module) WithManagedMcpRuntime() Module {
+	if m.hostedMcp == nil {
+		m.hostedMcp = oauth2http.NewHostedMcpRuntime(nil)
+	}
+	return m
+}
+
+// WithManagedMcpHTTPClient は上流だけの通信を差し替える。テストも同じ実行予算を使う。
+func (m Module) WithManagedMcpHTTPClient(client *http.Client) Module {
+	m.hostedMcp = oauth2http.NewHostedMcpRuntime(client)
+	return m
+}
+
+// RegisterMcpPathMetadata は経路形式の resource の RFC 9728 メタデータを公開する。
+func (m Module) RegisterMcpPathMetadata(g *echo.Group, deps support.Deps) {
+	oauth2http.RegisterHostedMcpPathMetadata(g, oauth2http.Deps{Deps: deps, McpResourceServerRepo: m.McpResourceServerRepo})
 }
 
 // SignInContinuation は、Authentication の対話のログインが認証を終えたあとに、認可要求を
@@ -218,6 +239,8 @@ func (m Module) httpDeps(d RouteDeps) oauth2http.Deps {
 		AuthzDetailTypeRepo:        m.AuthzDetailTypeRepo,
 		McpResourceServerRepo:      m.McpResourceServerRepo,
 		McpToolCatalogRepo:         m.McpToolCatalogRepo,
+		HostedMcp:                  m.hostedMcp,
+		McpForwarder:               d.McpForwarder,
 		AgentGuardrailPolicies:     m.AgentGuardrailPolicies,
 		CrossAppAccessPolicies:     m.CrossAppAccessPolicies,
 		IDJAGTrust:                 d.IDJAGTrust,

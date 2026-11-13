@@ -179,11 +179,14 @@ func (f *publicSetupPath) agent(t *testing.T, owner, clientID, kind string) stri
 	return id
 }
 
-func (f *publicSetupPath) login(t *testing.T, username, clientID, scope string) (string, *http.Cookie) {
+func (f *publicSetupPath) login(t *testing.T, username, clientID, scope string, extra ...map[string]string) (string, *http.Cookie) {
 	t.Helper()
 	browser := f.s.Browser(t, "default")
 	overrides := map[string]string{
 		"client_id": clientID, "redirect_uri": setupRedirect, "scope": scope,
+	}
+	for _, values := range extra {
+		maps.Copy(overrides, values)
 	}
 	response := browser.Authorize(t, stack.AuthorizationQuery(setupVerifier, overrides))
 	raw, err := io.ReadAll(response.Body)

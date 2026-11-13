@@ -19,6 +19,8 @@
 API は複数のモジュールを一つのプロセスに組み立てる。
 Directory Connector は IdMagic の運用者ではなく利用者が配置し、仕様は [Directory Connector の実行環境](../../modules/directory-connector/features/runtime.md)が定める。
 MCP Gateway も利用者が配置し、仕様は [MCP Gateway の実行環境](../../modules/mcp-gateway/features/runtime.md)が定める。
+この独立した実行単位はセルフホスト型である。
+マネージド型 MCP Gateway は API のプロセスで動作し、仕様は [OAuth2 のマネージド型 MCP Gateway](../../modules/oauth2/features/hosted-mcp.md)が定める。
 Worker と Batch は、長時間処理や再試行を HTTP リクエストから分離する。
 
 ## 実行単位が実装する機能

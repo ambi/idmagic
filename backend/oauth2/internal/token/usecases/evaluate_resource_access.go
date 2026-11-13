@@ -84,6 +84,8 @@ type ApprovedOperationUse struct {
 
 // ResourceAccessDecision は評価の結果である。不許可ではトークンのクレームを持たない。
 type ResourceAccessDecision struct {
+	// Caller は内部の代理転送だけが使う検証済みの事実。HTTP 応答へは変換しない。
+	Caller               *ports.IntrospectionResult `json:"-"`
 	Permitted            bool
 	Reasons              []string
 	Scope                string
@@ -295,6 +297,7 @@ func evaluateForServer(
 	}
 	return ResourceAccessDecision{
 		Permitted:          true,
+		Caller:             token,
 		ApprovedOperation:  approved,
 		TokenExchangeGrant: grant,
 		Scope:              token.Scope,

@@ -13,6 +13,8 @@ Agent に上流のトークンを渡す経路は持たない。
 | DEK のライフサイクルと項目の暗号化 | `DataKeys` |
 
 OAuth2 のイントロスペクションの結果を、利用側の `CallerToken` へ変換して読む。トークンの検証と失効の規則は OAuth2 が所有する。
+マネージド型 MCP Gateway からも、OAuth2 が検証済みの本人と Agent を受け取り、同じ接続と規則と更新を確認して上流の応答を開く。
+資格情報は返さず、MCP の要求は上流の 401 を理由に再送しない。
 
 ## 主な流れ
 
@@ -21,6 +23,7 @@ OAuth2 のイントロスペクションの結果を、利用側の `CallerToken
 | コネクタの管理 | 管理 API への要求 | `api` | [コネクタの管理](features/connector.md) |
 | 連携と解除 | アカウントポータルからの要求と上流からのコールバック | `api` | [接続](features/connection.md) |
 | 代理実行と更新 | Agent からの要求 | `api` が同期的に上流を呼ぶ | [代理実行](features/execution.md) |
+| MCP の代理転送 | マネージド型 Gateway が許可した要求 | `api` が本人の接続のトークンを注入して応答を開く。応答の量と期限は Gateway が制限する | [MCP の代理転送](features/execution.md#req-tokenvault-016-マネージド型-mcp-の代理転送でも本人の接続と規則を守る) |
 | 再暗号化 | `data_key_reencryption` のジョブ | `worker` | [接続](features/connection.md#req-tokenvault-003-保管するシークレットはレコードに束縛して暗号化する) |
 
 ## 設計の要点

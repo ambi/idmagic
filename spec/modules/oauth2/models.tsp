@@ -372,6 +372,8 @@ model ProtectedResourceMetadata {
 
 @doc("管理者が McpResourceServer を登録または更新する JSON のリクエスト。`resource` は作成時にだけ設定できる。")
 model McpResourceServerRequest {
+  @doc("省くと自前設置。作成後に運用場所は変えられない。")
+  hosting?: HostedMcpConfiguration;
   @doc("作成時は必須で、更新では変えられない。変えると、発行済みのトークンの `aud` の意味が変わってしまうためである。")
   resource?: string;
   @minLength(1)
@@ -390,6 +392,9 @@ model McpResourceServerRequest {
 
 @doc("McpResourceServer の表現。管理 UI の一覧と詳細の表示は同じ表現を返す。")
 model McpResourceServerResponse {
+  hosting?: HostedMcpConfiguration;
+  @doc("登録専用の下流 DPoP の公開鍵。秘密の要素は含めない。")
+  gateway_dpop_jwk?: Record<unknown>;
   tenant_id: string;
   id: string;
   resource: url;
@@ -406,6 +411,14 @@ model McpResourceServerResponse {
 @doc("管理 API の McpResourceServer の一覧。")
 model McpResourceServerListResponse {
   resource_servers: McpResourceServerResponse[];
+}
+
+@doc("IdMagic がホストする接続先の設定。公開 URL はサーバーが決める。")
+model HostedMcpConfiguration {
+  upstream_url: url;
+  authentication: "token_exchange" | "token_vault";
+  connector_id?: string;
+  allowed_origins?: url[];
 }
 
 

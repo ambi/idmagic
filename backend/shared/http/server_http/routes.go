@@ -139,6 +139,7 @@ func Register(e *echo.Echo, d Deps) {
 	e.Use(support.AdmissionMiddleware(d.Admission, ClassifyRoute, d.Metrics))
 	e.Use(support.DeprecationHeadersMiddleware(d.Contract))
 	d.OAuth2 = mergeLegacyOAuth2Deps(d.OAuth2, d)
+	d.OAuth2 = d.OAuth2.WithManagedMcpRuntime()
 	d.Authentication = mergeLegacyAuthenticationDeps(d.Authentication, d)
 	d.IdManagement = mergeLegacyIdManagementDeps(d.IdManagement, d)
 	d.Notification = mergeLegacyNotificationDeps(d.Notification, d)
@@ -152,6 +153,7 @@ func Register(e *echo.Echo, d Deps) {
 	registerTenantRoutes(e.Group("", hostTenant), d)
 	tenantGroup := e.Group("/realms/:tenant_id", pathTenant)
 	registerTenantRoutes(tenantGroup, d)
+	d.OAuth2.RegisterMcpPathMetadata(e.Group("/.well-known/oauth-protected-resource/realms/:tenant_id", pathTenant), d.Deps)
 
 	// 制御面の経路は管理発行の API アクセストークンを受けない。
 	authenticator := newAuthenticator(d, nil)
@@ -322,6 +324,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		DefaultSignInPolicyRepo: d.SignInPolicy.DefaultRepo,
 	}
 	oauthRoutes := oauth2.RouteDeps{
+		McpForwarder:              d.TokenVault.McpForwarder(d.Emit),
 		WorkloadVerifier:          workloadVerifier,
 		IDJAGTrust:                idJagTrust,
 		Deps:                      d.Deps,

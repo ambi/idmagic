@@ -17,6 +17,74 @@ describe('AdminMcpResourceServerCreatePage', () => {
   const originalLocation = window.location
   afterEach(() => restoreGlobals())
 
+  //spec:covers REQ-OAUTH2-091: マネージド型では上流だけを入力し、公開 URL を示して配置用の秘密を表示しない。
+  it('registers a managed gateway and shows its public URL without deployment credentials', async () => {
+    const calls: { url: string; method: string; body?: Record<string, unknown> }[] = []
+    const publicURL = 'https://idmagic.example/mcp/managed'
+    stubGlobal(
+      'fetch',
+      mock((url: string, init?: RequestInit) => {
+        const method = init?.method ?? 'GET'
+        const body = init?.body ? JSON.parse(String(init.body)) : undefined
+        calls.push({ url, method, body })
+        if (method === 'GET') return Promise.resolve(response(200, { applications: [] }))
+        if (url.endsWith('/applications'))
+          return Promise.resolve(
+            response(201, {
+              application: { id: 'managed-app' },
+              client_id: 'internal-evaluator',
+              client_secret: 'must-stay-hidden',
+            }),
+          )
+        if (method === 'PATCH') return Promise.resolve(response(200))
+        return Promise.resolve(
+          response(201, {
+            id: 'managed',
+            name: 'Managed documents',
+            resource: publicURL,
+            scopes: ['mcp'],
+            client_id: 'internal-evaluator',
+            hosting: body.hosting,
+            gateway_dpop_jwk: { kty: 'RSA', n: 'public', e: 'AQAB' },
+            state: 'Active',
+          }),
+        )
+      }),
+    )
+    await renderWithRouter(<AdminMcpResourceServerCreatePage csrfToken="csrf" />)
+    fireEvent.change(screen.getByLabelText(t.hostingMode), { target: { value: 'managed' } })
+    expect(screen.queryByLabelText(t.resourceLabel)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(t.connectorID)).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(t.upstreamAuthentication), {
+      target: { value: 'token_vault' },
+    })
+    expect(screen.getByLabelText(t.connectorID)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(t.upstreamAuthentication), {
+      target: { value: 'token_exchange' },
+    })
+    fireEvent.change(screen.getByLabelText(t.nameLabel), { target: { value: 'Managed documents' } })
+    fireEvent.change(screen.getByLabelText(t.upstreamURL), {
+      target: { value: 'https://upstream.example/mcp' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t.register }))
+    await waitFor(() => expect(screen.getByText(publicURL)).toBeInTheDocument())
+    expect(screen.queryByText('must-stay-hidden')).not.toBeInTheDocument()
+    expect(screen.queryByText(t.resultConfig)).not.toBeInTheDocument()
+    expect(screen.getByText(t.exchangeBypassHelp)).toBeInTheDocument()
+    const registration = calls.find(
+      (call) => call.url.endsWith('/mcp-resource-servers') && call.method === 'POST',
+    )
+    expect(registration?.body?.resource).toBeUndefined()
+    expect(registration?.body?.hosting).toEqual({
+      upstream_url: 'https://upstream.example/mcp',
+      authentication: 'token_exchange',
+      allowed_origins: [],
+    })
+    expect(calls.find((call) => call.method === 'PATCH')?.body?.grant_types).toContain(
+      'urn:ietf:params:oauth:grant-type:token-exchange',
+    )
+  })
+
   it.each(['[null]', '[{"scopes":{}}]', '[{"resource_type":{}}]'])(
     'keeps invalid rule JSON editable: %s',
     async (value) => {

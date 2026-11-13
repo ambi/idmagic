@@ -33,7 +33,7 @@ export default defineConfig({
     port: devPort,
     strictPort: true,
     proxy: {
-      '^/realms/[^/]+/(api|scim|directory-connector|saml|ssf|session|application-icons|federationmetadata|wsfed|trust|authorize|token|revoke|introspect|resource-access|userinfo|register|par|device_authorization|bc-authorize|end_session|\\.well-known|jwks|tenant-branding-assets)(/|\\?|$)':
+      '^/realms/[^/]+/(api|scim|directory-connector|saml|ssf|session|application-icons|federationmetadata|wsfed|trust|authorize|token|revoke|introspect|resource-access|mcp|userinfo|register|par|device_authorization|bc-authorize|end_session|\\.well-known|jwks|tenant-branding-assets)(/|\\?|$)':
         apiTarget,
       '/api': apiTarget,
       '/scim': apiTarget,
@@ -50,6 +50,7 @@ export default defineConfig({
       '/revoke': apiTarget,
       '/introspect': apiTarget,
       '/resource-access': apiTarget,
+      '/mcp': apiTarget,
       '/userinfo': apiTarget,
       '/register': apiTarget,
       '/par': apiTarget,

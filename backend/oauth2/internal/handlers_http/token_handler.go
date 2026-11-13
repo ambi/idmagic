@@ -2,10 +2,13 @@
 package handlers_http
 
 import (
+	"context"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
+
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	approvalusecases "github.com/ambi/idmagic/backend/oauth2/internal/approval/usecases"
@@ -43,6 +46,41 @@ func (d Deps) handleToken(c *echo.Context) error {
 	return err
 }
 
+// prepareTokenIssuance は公開 token と内部の交換に同じ発行前の条件を適用する。
+// 発行器は値のコピーに載せ、別の要求へ Agent やガードレールを持ち越さない。
+func (d Deps) prepareTokenIssuance(ctx context.Context, client *domain.OAuth2Client, grantType string) (Deps, *agentdomain.Agent, error) {
+	if err := tokenusecases.RejectAgentClientWithoutKeyProof(ctx, tokenusecases.AgentIssuanceDeps{AgentRepo: d.AgentRepo, Emit: d.Emit}, client, grantType, time.Now().UTC()); err != nil {
+		return d, nil, err
+	}
+	agent, err := tokenusecases.ResolveIssuableAgent(ctx, tokenusecases.AgentIssuanceDeps{AgentRepo: d.AgentRepo, UserRepo: d.UserRepo}, client.ClientID)
+	if err != nil {
+		return d, nil, err
+	}
+	var requestingAgentID string
+	if agent != nil {
+		requestingAgentID = agent.ID
+	}
+	d.TokenIssuer = tokenusecases.IssuerWithAgentGuardrail(tokenusecases.IssuerForRequestingAgent(d.TokenIssuer, requestingAgentID), tokenusecases.AgentGuardrailDeps{
+		Policies: d.AgentGuardrailPolicies, Limiter: d.RateLimiter, AgentRepo: d.AgentRepo, UserRepo: d.UserRepo, Emit: d.Emit,
+		ClientID: client.ClientID, GrantType: grantType, RequestID: logging.RequestIDFromContext(ctx),
+		RequestingAgentID: requestingAgentID, Now: time.Now().UTC(),
+	})
+	if !slices.Contains(client.GrantTypes, spec.GrantType(grantType)) {
+		return d, nil, tokenusecases.NewOAuthError("unauthorized_client", "undeclared grant_type")
+	}
+	return d, agent, nil
+}
+
+func (d Deps) tokenExchangeDeps() tokenusecases.ExchangeTokenDeps {
+	return tokenusecases.ExchangeTokenDeps{
+		ClientRepo: d.ClientRepo, Introspector: tokenusecases.RevocationCheckingIntrospector{Deps: d.introspectDeps()},
+		TokenIssuer: d.TokenIssuer, Authorizer: d.Authorizer,
+		AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, McpResourceServerRepo: d.McpResourceServerRepo,
+		AgentRepo: d.AgentRepo, Consents: d.ConsentRepo, WorkloadVerifier: d.WorkloadVerifier, Emit: d.Emit,
+		DelegationPolicy: policytenancy.DelegationPolicyResolver{Tenants: d.TenantRepo}, Grants: d.TokenExchangeGrantStore,
+	}
+}
+
 func (d Deps) dispatchToken(c *echo.Context) error {
 	if err := c.Request().ParseForm(); err != nil {
 		return c.JSON(http.StatusBadRequest, support.OAuthErrorBody("invalid_request", "form parse"))
@@ -71,35 +109,13 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	if client == nil {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_client", "unknown client_id"))
 	}
-	// Agent のクライアントの認証方式は、送信者制約と同じ理由でグラントの分岐より前に
-	// 1 度だけ判定する。どのグラントも Agent の資格情報で認証していることは
-	// 変わらない (AIMS00-AGENT-CLIENT-AUTH)。
-	if err := tokenusecases.RejectAgentClientWithoutKeyProof(c.Request().Context(), tokenusecases.AgentIssuanceDeps{
-		AgentRepo: d.AgentRepo, Emit: d.Emit,
-	}, client, grantType, time.Now().UTC()); err != nil {
-		return writeOAuthError(c, err)
-	}
-	// 状態と所有者の確認は分岐前に置き、コードやリフレッシュトークンを消費する前に
-	// すべてのグラントで発行を止める (REQ-OAUTH2-046)。承認区分は各グラントで判断する。
-	agent, err := tokenusecases.ResolveIssuableAgent(c.Request().Context(), tokenusecases.AgentIssuanceDeps{
-		AgentRepo: d.AgentRepo, UserRepo: d.UserRepo,
-	}, client.ClientID)
+	d, agent, err := d.prepareTokenIssuance(c.Request().Context(), client, grantType)
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
 	var requestingAgentID string
 	if agent != nil {
 		requestingAgentID = agent.ID
-	}
-	// どのグラントにも同じ発行時の Agent を載せる (REQ-OAUTH2-012)。以降の
-	// d.TokenIssuer はこの要求に限った発行器である。
-	d.TokenIssuer = tokenusecases.IssuerWithAgentGuardrail(tokenusecases.IssuerForRequestingAgent(d.TokenIssuer, requestingAgentID), tokenusecases.AgentGuardrailDeps{
-		Policies: d.AgentGuardrailPolicies, Limiter: d.RateLimiter, AgentRepo: d.AgentRepo, UserRepo: d.UserRepo, Emit: d.Emit,
-		ClientID: client.ClientID, GrantType: grantType, RequestID: logging.RequestIDFromContext(c.Request().Context()),
-		RequestingAgentID: requestingAgentID, Now: time.Now().UTC(),
-	})
-	if !slices.Contains(client.GrantTypes, spec.GrantType(grantType)) {
-		return writeOAuthError(c, tokenusecases.NewOAuthError("unauthorized_client", "undeclared grant_type"))
 	}
 	if grantType == "client_credentials" && slices.ContainsFunc(strings.Fields(c.Request().PostFormValue("scope")), spec.IsAccountScope) {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_scope", "account scope requires user subject"))
@@ -330,16 +346,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		if err != nil {
 			return writeOAuthError(c, err)
 		}
-		res, err := tokenusecases.ExchangeToken(ctx, tokenusecases.ExchangeTokenDeps{
-			// 入力のトークンは /introspect と同じ失効判定を通す (RFC8693-SUBJECT-TOKEN)。
-			ClientRepo: d.ClientRepo, Introspector: tokenusecases.RevocationCheckingIntrospector{Deps: d.introspectDeps()},
-			TokenIssuer: d.TokenIssuer, Authorizer: d.Authorizer,
-			AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, McpResourceServerRepo: d.McpResourceServerRepo,
-			AgentRepo: d.AgentRepo, Consents: d.ConsentRepo,
-			WorkloadVerifier: d.WorkloadVerifier, Emit: d.Emit,
-			DelegationPolicy: policytenancy.DelegationPolicyResolver{Tenants: d.TenantRepo},
-			Grants:           d.TokenExchangeGrantStore,
-		}, tokenusecases.ExchangeTokenInput{
+		res, err := tokenusecases.ExchangeToken(ctx, d.tokenExchangeDeps(), tokenusecases.ExchangeTokenInput{
 			ClientID:             clientStub.ID,
 			SubjectToken:         c.Request().PostFormValue("subject_token"),
 			SubjectTokenType:     c.Request().PostFormValue("subject_token_type"),

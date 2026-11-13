@@ -40,6 +40,13 @@ Aggregate は Latin 表記のまま使う。「集約」は日本語で観測値
 | BackendErrorText | バックエンドが HTTP、OAuth / OIDC リダイレクト、SAML、SCIM などの外部レスポンスで返すエラー本文。`message`、`error_description`、`detail`、プレーンテキストの本文を含む。常に英語であり、表示言語によって変化しない。 | API エラーメッセージ |
 | ConfigurationReference | バックエンドプロセスが起動時に読む設定キーの網羅的な一覧。キー名、値の型、デフォルト、必須かどうか、読み取るプロセス、説明を持つ。シークレットに分類したキーの値は持たない。起動時設定の定義から生成する。 | 設定リファレンス |
 
+## MCP Gateway の提供形態
+
+| 用語 | 定義 | 別名 |
+|---|---|---|
+| ManagedMcpGateway | IdMagic の機能として提供され、利用者が Gateway を別途配置せずに使う MCP Gateway。IdMagic 自体を自社設置する場合も含む。 | マネージド型 Gateway |
+| SelfHostedMcpGateway | 利用者が MCP サーバーの近くや専用ホストへ別途配置し、運用する MCP Gateway。 | セルフホスト型 Gateway |
+
 ## 永続化の規約
 
 | 用語 | 定義 | 別名 |

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 	"testing"
@@ -8,6 +9,40 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
+
+//spec:covers REQ-OAUTH2-091: 上流の方式と URL は登録の所有者でも検証する。
+func TestManagedMcpConfigurationRejectsUnsafeTargets(t *testing.T) {
+	for _, tc := range []struct {
+		name, config string
+		valid        bool
+	}{
+		{"exchange", `{"upstream_url":"https://upstream.example/mcp","authentication":"token_exchange"}`, true},
+		{"vault", `{"upstream_url":"https://upstream.example/mcp","authentication":"token_vault","connector_id":"external"}`, true},
+		{"unknown authentication", `{"upstream_url":"https://upstream.example/mcp","authentication":"password"}`, false},
+		{"missing connector", `{"upstream_url":"https://upstream.example/mcp","authentication":"token_vault"}`, false},
+		{"irrelevant connector", `{"upstream_url":"https://upstream.example/mcp","authentication":"token_exchange","connector_id":"external"}`, false},
+		{"http", `{"upstream_url":"http://upstream.example/mcp","authentication":"token_exchange"}`, false},
+		{"userinfo", `{"upstream_url":"https://user:secret@upstream.example/mcp","authentication":"token_exchange"}`, false},
+		{"query", `{"upstream_url":"https://upstream.example/mcp?token=secret","authentication":"token_exchange"}`, false},
+		{"fragment", `{"upstream_url":"https://upstream.example/mcp#x","authentication":"token_exchange"}`, false},
+		{"loopback", `{"upstream_url":"https://127.0.0.1/mcp","authentication":"token_exchange"}`, false},
+		{"private ipv6", `{"upstream_url":"https://[fd00::1]/mcp","authentication":"token_exchange"}`, false},
+		{"dot segment", `{"upstream_url":"https://upstream.example/a/../mcp","authentication":"token_exchange"}`, false},
+		{"encoded path", `{"upstream_url":"https://upstream.example/%2fadmin","authentication":"token_exchange"}`, false},
+		{"origin path", `{"upstream_url":"https://upstream.example/mcp","authentication":"token_exchange","allowed_origins":["https://agent.example/path"]}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := validMcpResourceServer()
+			server.ClientID = "evaluator"
+			if err := json.Unmarshal([]byte(`{"hosting":`+tc.config+`}`), &server); err != nil {
+				t.Fatal(err)
+			}
+			if err := server.Validate(); (err == nil) != tc.valid {
+				t.Fatalf("valid=%v, validation error=%v", tc.valid, err)
+			}
+		})
+	}
+}
 
 func validMcpResourceServer() McpResourceServer {
 	now := time.Now().UTC()

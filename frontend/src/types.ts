@@ -622,6 +622,13 @@ export type ResourceAccessRule = {
   token_exchange_resources?: string[]
 }
 
+export type HostedMcpConfiguration = {
+  upstream_url: string
+  authentication: 'token_exchange' | 'token_vault'
+  connector_id?: string
+  allowed_origins?: string[]
+}
+
 export type McpResourceServer = {
   tenant_id: string
   id: string
@@ -629,6 +636,8 @@ export type McpResourceServer = {
   name: string
   scopes: string[]
   client_id?: string
+  hosting?: HostedMcpConfiguration
+  gateway_dpop_jwk?: Record<string, unknown>
   access_rules?: ResourceAccessRule[]
   state: 'Active' | 'Disabled'
   created_at: string

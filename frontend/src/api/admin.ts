@@ -569,6 +569,7 @@ export type McpResourceServerInput = {
   client_id?: string
   access_rules?: ResourceAccessRule[]
   state?: McpResourceServer['state']
+  hosting?: McpResourceServer['hosting']
 }
 
 export async function listMcpResourceServers(): Promise<McpResourceServer[]> {

@@ -1336,7 +1336,11 @@ model GetAdminMcpResourceServerError404 {
 @get
 op GetAdminMcpResourceServer(
   @path id: string
-): GetAdminMcpResourceServerSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminMcpResourceServerError403 | GetAdminMcpResourceServerError404;
+): GetAdminMcpResourceServerSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminMcpResourceServerError403 | GetAdminMcpResourceServerError404 | {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.ProblemDetails;
+};
 
 model GetAdminMcpResourceServerToolCatalogSuccess_200 {
   @statusCode statusCode: 200;
@@ -1397,7 +1401,11 @@ model CreateAdminMcpResourceServerError409 {
 @post
 op CreateAdminMcpResourceServer(
   @body body: IdMagic.Contract.McpResourceServerRequest
-): CreateAdminMcpResourceServerSuccess_201 | CreateAdminMcpResourceServerError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminMcpResourceServerError403 | CreateAdminMcpResourceServerError409;
+): CreateAdminMcpResourceServerSuccess_201 | CreateAdminMcpResourceServerError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminMcpResourceServerError403 | CreateAdminMcpResourceServerError409 | {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.ProblemDetails;
+};
 
 model UpdateAdminMcpResourceServerSuccess_200 {
   @statusCode statusCode: 200;
@@ -1445,7 +1453,11 @@ model UpdateAdminMcpResourceServerError404 {
 op UpdateAdminMcpResourceServer(
   @path id: string,
   @body body: IdMagic.Contract.McpResourceServerRequest
-): UpdateAdminMcpResourceServerSuccess_200 | UpdateAdminMcpResourceServerError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminMcpResourceServerError403 | UpdateAdminMcpResourceServerError404 | UpdateAdminMcpResourceServerError409;
+): UpdateAdminMcpResourceServerSuccess_200 | UpdateAdminMcpResourceServerError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminMcpResourceServerError403 | UpdateAdminMcpResourceServerError404 | UpdateAdminMcpResourceServerError409 | {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.ProblemDetails;
+};
 
 model UpdateAdminMcpResourceServerError409 {
   @statusCode statusCode: 409;
@@ -2157,6 +2169,41 @@ op PutAdminAgentGuardrailDefault(
 @route("/api/admin/v1/agent-guardrail-default")
 @delete
 op DeleteAdminAgentGuardrailDefault(): AgentGuardrailDeleted_204 | IdMagic.Contract.AuthenticationRequiredResponse | AgentGuardrailWriteError403;
+
+model HostedMcpSuccess {
+  @statusCode statusCode: 200;
+  @header contentType: "application/json" | "text/event-stream";
+  @body body: unknown;
+}
+
+model HostedMcpFailure {
+  @statusCode statusCode: 400 | 401 | 403 | 404 | 405 | 413 | 415 | 429 | 502 | 503;
+  @body body: unknown;
+}
+
+@doc("マネージド型の MCP の要求を評価し、登録した上流へ一回だけ転送する（REQ-OAUTH2-092）。")
+@TypeSpec.OpenAPI.operationId("HostedMcpRequest")
+@route("/mcp/{server_id}")
+@post
+op HostedMcpRequest(@path server_id: string, @body body: unknown): HostedMcpSuccess | HostedMcpFailure;
+
+@doc("マネージド型の公開 URL と認可サーバーのメタデータを返す（REQ-OAUTH2-092）。")
+@TypeSpec.OpenAPI.operationId("HostedMcpMetadata")
+@route("/.well-known/oauth-protected-resource/mcp/{server_id}")
+@get
+op HostedMcpMetadata(@path server_id: string): {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.ProtectedResourceMetadata;
+} | HostedMcpFailure;
+
+@doc("経路形式の resource に対応する、origin 直下の RFC 9728 メタデータ。")
+@TypeSpec.OpenAPI.operationId("HostedMcpPathMetadata")
+@route("/.well-known/oauth-protected-resource/realms/{tenant_id}/mcp/{server_id}")
+@get
+op HostedMcpPathMetadata(@path tenant_id: string, @path server_id: string): {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.ProtectedResourceMetadata;
+} | HostedMcpFailure;
 
 }
 

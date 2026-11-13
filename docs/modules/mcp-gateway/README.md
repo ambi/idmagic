@@ -6,6 +6,8 @@
 役割は Policy Enforcement Point であり、判断は IdMagic が行う。
 IdMagic のサーバーとは別に配布され、別々に版が進む。
 このモジュールとサーバーの間の契約は、TypeSpec の `POST /resource-access/evaluate` と `POST /resource-access/tools` だけである。
+IdMagic 側で提供する[マネージド型 MCP Gateway](../oauth2/features/hosted-mcp.md) は OAuth2 が担当する。
+両者が使う純粋な MCP の構文検査は共有し、評価の呼び出し方と資格情報の準備はそれぞれが担当する。
 
 | 扱わないもの | 担当 |
 | --- | --- |

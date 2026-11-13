@@ -12,6 +12,7 @@ import {
   requiredUrl,
   rule,
   text,
+  when,
 } from '../../lib/form'
 import { LENGTH } from '../../lib/lengthLimits'
 import type {
@@ -31,6 +32,11 @@ import { accessRuleProblems, constraintsRepresentable, hasProblems } from './acc
 type Dictionary = (typeof adminMcpResourceServersDictionary)['en']
 
 export type FormState = {
+  hostingMode: 'managed' | 'self_hosted'
+  upstreamURL: string
+  upstreamAuthentication: 'token_exchange' | 'token_vault'
+  connectorId: string
+  allowedOrigins: string
   resource: string
   name: string
   scopes: string
@@ -47,6 +53,11 @@ export const NEW_EVALUATOR = '__new__'
 export const DEFAULT_SCOPE = 'mcp'
 
 export const emptyForm: FormState = {
+  hostingMode: 'self_hosted',
+  upstreamURL: '',
+  upstreamAuthentication: 'token_exchange',
+  connectorId: '',
+  allowedOrigins: '',
   resource: '',
   name: '',
   scopes: DEFAULT_SCOPE,
@@ -75,6 +86,11 @@ export function publishCatalogTool(form: FormState, tool: CatalogTool): FormStat
 export function toForm(resourceServer: McpResourceServer): FormState {
   const rules = resourceServer.access_rules ?? []
   return {
+    hostingMode: resourceServer.hosting ? 'managed' : 'self_hosted',
+    upstreamURL: resourceServer.hosting?.upstream_url ?? '',
+    upstreamAuthentication: resourceServer.hosting?.authentication ?? 'token_exchange',
+    connectorId: resourceServer.hosting?.connector_id ?? '',
+    allowedOrigins: resourceServer.hosting?.allowed_origins?.join(' ') ?? '',
     resource: resourceServer.resource,
     name: resourceServer.name,
     scopes: resourceServer.scopes.join(' '),
@@ -102,9 +118,11 @@ export function parseAccessRules(text: string): ResourceAccessRule[] | null {
 
 // 規則は oauth2/domain の mcpResourceServerSchema に従う。resource は RFC 8707 のリソース指示子
 // （フラグメントのない絶対 URI）、名前は表示名の上限、スコープは 1 件以上である。
-export function resourceServerSchema(t: Dictionary) {
+export function resourceServerSchema(t: Dictionary, managed = false, vault = false) {
   return formSchema({
-    resource: requiredUrl({ noFragment: true }),
+    resource: when(!managed, requiredUrl({ noFragment: true })),
+    upstreamURL: when(managed, requiredUrl({ https: true, noFragment: true })),
+    connectorId: when(managed && vault, requiredText()),
     name: requiredText(LENGTH.displayName),
     scopes: requiredList(parseScopes),
     accessRules: rule(text(), (value) => {
@@ -124,6 +142,27 @@ export function resourceServerSchema(t: Dictionary) {
 }
 
 export type ResourceServerValidation = FormValidation<ReturnType<typeof resourceServerSchema>>
+
+export function hostingInput(form: FormState): McpResourceServer['hosting'] {
+  if (form.hostingMode !== 'managed') return undefined
+  return {
+    upstream_url: form.upstreamURL.trim(),
+    authentication: form.upstreamAuthentication,
+    ...(form.upstreamAuthentication === 'token_vault'
+      ? { connector_id: form.connectorId.trim() }
+      : {}),
+    allowed_origins: form.allowedOrigins.split(/\s+/).filter(Boolean),
+  }
+}
+
+export function hostedAccessRules(
+  form: FormState,
+  rules: ResourceAccessRule[],
+): ResourceAccessRule[] {
+  if (form.hostingMode !== 'managed' || form.upstreamAuthentication !== 'token_exchange')
+    return rules
+  return rules.map((rule) => ({ ...rule, token_exchange_resources: [form.upstreamURL.trim()] }))
+}
 
 export function listURL(): string {
   return tenantURL('/admin/mcp-resource-servers')
@@ -373,23 +412,105 @@ export function McpResourceServerFormFields({
 }) {
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="resource" required>
-          {t.resourceLabel}
-        </Label>
-        <Input
-          id="resource"
-          type="url"
-          value={form.resource}
+      <div className="flex flex-col gap-1.5 md:col-span-2">
+        <Label htmlFor="hosting-mode">{t.hostingMode}</Label>
+        <select
+          id="hosting-mode"
+          value={form.hostingMode}
           disabled={locked}
-          placeholder={t.resourcePlaceholder}
-          onChange={(event) => onChange({ ...form, resource: event.target.value })}
-          required
-          {...validation.fieldProps('resource')}
-        />
-        <FieldError form={validation} name="resource" />
-        <p className="text-xs leading-5 text-slate-500">{t.resourceHelp}</p>
+          onChange={(event) =>
+            onChange({ ...form, hostingMode: event.target.value as FormState['hostingMode'] })
+          }
+          className="rounded-md border border-slate-300 bg-white p-2 text-sm"
+        >
+          <option value="self_hosted">{t.selfHosted}</option>
+          <option value="managed">{t.managed}</option>
+        </select>
+        <p className="text-xs text-slate-500">
+          {form.hostingMode === 'managed' ? t.managedHelp : t.selfHostedHelp}
+        </p>
       </div>
+      {form.hostingMode === 'managed' ? (
+        <>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="upstream-url" required>
+              {t.upstreamURL}
+            </Label>
+            <Input
+              id="upstream-url"
+              type="url"
+              value={form.upstreamURL}
+              required
+              onChange={(event) => onChange({ ...form, upstreamURL: event.target.value })}
+              {...validation.fieldProps('upstreamURL')}
+            />
+            <FieldError form={validation} name="upstreamURL" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="upstream-authentication">{t.upstreamAuthentication}</Label>
+            <select
+              id="upstream-authentication"
+              value={form.upstreamAuthentication}
+              onChange={(event) =>
+                onChange({
+                  ...form,
+                  upstreamAuthentication: event.target.value as FormState['upstreamAuthentication'],
+                })
+              }
+              className="rounded-md border border-slate-300 bg-white p-2 text-sm"
+            >
+              <option value="token_exchange">{t.exchangeAuthentication}</option>
+              <option value="token_vault">{t.vaultAuthentication}</option>
+            </select>
+            <p className="text-xs text-slate-500">
+              {form.upstreamAuthentication === 'token_exchange' ? t.exchangeHelp : t.vaultHelp}
+            </p>
+          </div>
+          {form.upstreamAuthentication === 'token_vault' ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="connector-id" required>
+                {t.connectorID}
+              </Label>
+              <Input
+                id="connector-id"
+                value={form.connectorId}
+                required
+                onChange={(event) => onChange({ ...form, connectorId: event.target.value })}
+                {...validation.fieldProps('connectorId')}
+              />
+              <FieldError form={validation} name="connectorId" />
+            </div>
+          ) : null}
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="allowed-origins">{t.allowedOrigins}</Label>
+            <Input
+              id="allowed-origins"
+              value={form.allowedOrigins}
+              onChange={(event) => onChange({ ...form, allowedOrigins: event.target.value })}
+            />
+            <p className="text-xs text-slate-500">{t.allowedOriginsHelp}</p>
+          </div>
+        </>
+      ) : null}
+      {form.hostingMode === 'self_hosted' || locked ? (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="resource" required>
+            {t.resourceLabel}
+          </Label>
+          <Input
+            id="resource"
+            type="url"
+            value={form.resource}
+            disabled={locked}
+            placeholder={t.resourcePlaceholder}
+            onChange={(event) => onChange({ ...form, resource: event.target.value })}
+            required
+            {...validation.fieldProps('resource')}
+          />
+          <FieldError form={validation} name="resource" />
+          <p className="text-xs leading-5 text-slate-500">{t.resourceHelp}</p>
+        </div>
+      ) : null}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="name" required>
           {t.nameLabel}

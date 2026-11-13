@@ -2,6 +2,29 @@ import { defineDictionary } from '../../lib/i18n'
 
 export const adminMcpResourceServersDictionary = defineDictionary(
   {
+    hostingMode: 'Gateway の提供形態',
+    managed: 'マネージド型',
+    selfHosted: 'セルフホスト型',
+    managedHelp: 'IdMagic 側で実行します。Gateway の別途配置は不要です。',
+    selfHostedHelp: 'MCP サーバーの近くや専用ホストへ、Gateway を配置して運用します。',
+    upstreamURL: '上流 MCP サーバーの URL',
+    upstreamAuthentication: '上流の認証方式',
+    exchangeAuthentication: 'IdMagic のトークン',
+    vaultAuthentication: '外部 OAuth（TokenVault）',
+    exchangeHelp: '同じテナントに登録済みの HTTPS リソース URI を指定します。',
+    vaultHelp: '利用者本人が TokenVault で連携した接続を使います。',
+    connectorID: 'TokenVault のコネクタ ID',
+    allowedOrigins: '許可するブラウザーのオリジン',
+    allowedOriginsHelp:
+      'https://agent.example の形で空白区切りで指定します。空欄では Origin 付きの要求を拒否します。',
+    managedResultIntro: 'Agent は次の公開 URL へ接続します。Gateway の起動作業は不要です。',
+    publicURL: 'Agent の接続 URL',
+    publicKey: 'Gateway の専用公開鍵（JWK）',
+    exchangeBypassHelp:
+      '上流では、この公開鍵のサムプリント（JKT）に束縛したトークンだけを受け付けてください。',
+    vaultBypassHelp:
+      '上流の資格情報は IdMagic だけが保持し、Agent が上流を直接呼べないようにしてください。',
+    managedResultNext: '公開するツールを登録し、エージェントへ利用を割り当てます。',
     toolTargetHelp:
       '有効にすると、エージェントの「利用する MCP リソースサーバー」で、このツールを使える対象を ID で選びます。実行時は、下の引数の値が選んだ対象に含まれるときだけ許可します。',
     statusActive: '有効',
@@ -156,6 +179,29 @@ export const adminMcpResourceServersDictionary = defineDictionary(
     changesPreviousArguments: '変更前の引数：{arguments}',
   },
   {
+    hostingMode: 'Gateway hosting',
+    managed: 'Managed',
+    selfHosted: 'Self-hosted',
+    managedHelp: 'Runs with IdMagic. No separate gateway deployment is needed.',
+    selfHostedHelp: 'Deploy and operate the gateway near the MCP server or on a dedicated host.',
+    upstreamURL: 'Upstream MCP server URL',
+    upstreamAuthentication: 'Upstream authentication',
+    exchangeAuthentication: 'IdMagic tokens',
+    vaultAuthentication: 'External OAuth (TokenVault)',
+    exchangeHelp: 'Use an HTTPS resource URI already registered in this tenant.',
+    vaultHelp: 'Uses the delegating user’s linked TokenVault connection.',
+    connectorID: 'TokenVault connector ID',
+    allowedOrigins: 'Allowed browser origins',
+    allowedOriginsHelp:
+      'Enter space-separated origins such as https://agent.example. Leave empty to reject requests with an Origin header.',
+    managedResultIntro: 'Connect your agent to this public URL. No gateway startup is needed.',
+    publicURL: 'Agent connection URL',
+    publicKey: 'Dedicated gateway public key (JWK)',
+    exchangeBypassHelp:
+      'Configure the upstream to accept only tokens bound to this public key’s thumbprint (JKT).',
+    vaultBypassHelp:
+      'Keep upstream credentials only in IdMagic so agents cannot call the upstream directly.',
+    managedResultNext: 'Register the published tools and assign them to agents.',
     toolTargetHelp:
       'When enabled, choose the target IDs this tool can use in the agent’s MCP resource servers. At runtime, a request is allowed only when the argument below matches a selected target.',
     statusActive: 'Active',

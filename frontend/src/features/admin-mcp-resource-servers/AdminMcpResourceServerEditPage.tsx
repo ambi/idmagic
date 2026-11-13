@@ -16,6 +16,8 @@ import {
   ToolCatalogPanel,
   resourceServerSchema,
   toForm,
+  hostingInput,
+  hostedAccessRules,
 } from './AdminMcpResourceServersShared'
 
 // AdminMcpResourceServerEditPage は MCP リソースサーバー編集の専用画面 (wi-314 T014)。
@@ -32,12 +34,22 @@ export function AdminMcpResourceServerEditPage({
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const t = useDictionary(adminMcpResourceServersDictionary)
-  const schema = useMemo(() => resourceServerSchema(t), [t])
+  const schema = useMemo(
+    () =>
+      resourceServerSchema(
+        t,
+        form.hostingMode === 'managed',
+        form.upstreamAuthentication === 'token_vault',
+      ),
+    [t, form.hostingMode, form.upstreamAuthentication],
+  )
   const validation = useFormValidation(schema, {
     resource: form.resource,
     name: form.name,
     scopes: form.scopes,
     accessRules: form.accessRules,
+    upstreamURL: form.upstreamURL,
+    connectorId: form.connectorId,
   })
 
   async function handleSubmit(event: FormEvent) {
@@ -48,7 +60,7 @@ export function AdminMcpResourceServerEditPage({
       validation.revealAll()
       return
     }
-    const accessRules = parseAccessRules(data.accessRules) ?? []
+    const accessRules = hostedAccessRules(form, parseAccessRules(data.accessRules) ?? [])
     setSaving(true)
     try {
       await updateMcpResourceServer(csrfToken, resourceServer.id, {
@@ -57,6 +69,7 @@ export function AdminMcpResourceServerEditPage({
         client_id: form.clientId,
         access_rules: accessRules,
         state: form.state,
+        ...(resourceServer.hosting ? { hosting: hostingInput(form) } : {}),
       })
       window.location.assign(listURL())
     } catch (cause) {

@@ -27,6 +27,7 @@ enum KeyProvider {
 
 @doc("鍵の用途。Signing は OAuth 2.0 と OpenID Connect の JWT 署名を、XmlFederationSigning は SAML 2.0、WS-Federation、WS-Trust の XML 署名と、それらとともに公開する X.509 のメタデータを扱う。一つのテナントの中でも、用途ごとに有効な鍵は別である。")
 enum KeyUsage {
+  McpGatewayDPoP: "McpGatewayDPoP",
   Signing: "Signing",
   XmlFederationSigning: "XmlFederationSigning",
   IdJagSigning: "IdJagSigning",

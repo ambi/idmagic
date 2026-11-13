@@ -12,7 +12,7 @@
 | `DeviceAuthorization` | デバイスコードとユーザーコード | `OAuth2Client` を参照する |
 | `RefreshTokenRecord` | リフレッシュトークンとそのファミリー | `OAuth2Client` と User を参照する |
 | `ApprovalRequest` | 人間の承認の判断と CIBA のポーリングの記録 | `OAuth2Client` と User を参照する |
-| `McpResourceServer`、`AuthorizationDetailType` | MCP のリソースサーバーと、`authorization_details` の型 | `Tenant` を `tenant_id` で参照する |
+| `McpResourceServer`、`AuthorizationDetailType` | MCP のリソースサーバーと、`authorization_details` の型。マネージド型の公開 URL と上流設定も資源登録が所有し、資格情報は保持しない | `Tenant` を `tenant_id` で参照する |
 | `AgentGuardrailPolicy` | Agent の発行の上限とテナントのデフォルト | `Tenant` を `tenant_id` で、`Agent` を `agent_id` で参照し、Agent の削除で消える |
 | `CrossAppAccessIssuePolicy`、`CrossAppAccessRedeemPolicy` | ID-JAG の発行と受け入れの許可 | `Tenant` を `tenant_id` で参照する。クライアントは `client_id` で、接続は Authentication の `IdentityProviderConnection` を `provider_id` で参照する |
 

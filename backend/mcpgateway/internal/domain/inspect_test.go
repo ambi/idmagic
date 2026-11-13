@@ -107,7 +107,15 @@ func FuzzInspect(f *testing.F) {
 			t.Fatalf("method %q accepted against header %q", message.Method, method)
 		}
 		if message.Method == MethodToolsCall {
-			if decoded, ok := decodeMirrored(name); !ok || decoded != message.ToolName {
+			expected := name
+			if encoded, found := strings.CutPrefix(name, "=?base64?"); found {
+				decoded, err := base64.StdEncoding.DecodeString(strings.TrimSuffix(encoded, "?="))
+				if err != nil {
+					t.Fatal(err)
+				}
+				expected = string(decoded)
+			}
+			if expected != message.ToolName {
 				t.Fatalf("tool %q accepted against header %q", message.ToolName, name)
 			}
 		}

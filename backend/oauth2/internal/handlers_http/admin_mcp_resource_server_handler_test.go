@@ -3,6 +3,8 @@ package handlers_http_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -30,6 +32,33 @@ import (
 
 func newAdminMcpResourceServerHandler() *echo.Echo {
 	return newAdminMcpResourceServerHandlerWith(oauth2.NewMemoryModule().ClientRepo)
+}
+
+//spec:covers REQ-OAUTH2-091, REQ-SIGNINGKEYS-014: 専用鍵を取得できなければ登録を保存せず、拒否後に成功応答へ進まない。
+func TestManagedMcpRegistrationStopsAfterKeyFailure(t *testing.T) {
+	clients := oauth2.NewMemoryModule().ClientRepo
+	if err := clients.Save(context.Background(), &oauthdomain.OAuth2Client{TenantID: tenancydomain.DefaultTenantID, ClientID: "gateway", ClientType: spec.ClientConfidential, TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic, GrantTypes: []spec.GrantType{spec.GrantClientCredentials}}); err != nil {
+		t.Fatal(err)
+	}
+	servers := oauth2memory.NewMcpResourceServerRepository()
+	e := newAdminMcpResourceServerHandlerWith(clients, servers)
+	csrf, cookie := adminCSRF(t, e)
+	response := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, map[string]any{"name": "Unavailable gateway", "client_id": "gateway", "hosting": map[string]any{"upstream_url": "https://upstream.example/mcp", "authentication": "token_vault", "connector_id": "external"}})
+	if response.Code != 503 {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	decoder := json.NewDecoder(response.Body)
+	var body map[string]any
+	if err := decoder.Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if err := decoder.Decode(&body); !errors.Is(err, io.EOF) {
+		t.Fatalf("more than one response was written: %v", err)
+	}
+	saved, err := servers.ListAll(context.Background(), tenancydomain.DefaultTenantID)
+	if err != nil || len(saved) != 0 {
+		t.Fatalf("key failure persisted a registration: %v %v", saved, err)
+	}
 }
 
 // reports はテストがカタログを置いて読み直すための共有の保存先である。

@@ -19,6 +19,7 @@ import (
 	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
 	clientusecases "github.com/ambi/idmagic/backend/oauth2/internal/client/usecases"
 	consentusecases "github.com/ambi/idmagic/backend/oauth2/internal/consent/usecases"
+	oauth2http "github.com/ambi/idmagic/backend/oauth2/internal/handlers_http"
 	logoutdomain "github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
 	logoutusecases "github.com/ambi/idmagic/backend/oauth2/internal/logout/usecases"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/internal/token/usecases"
@@ -44,6 +45,7 @@ func RegisterJobHandlers(registry jobsports.HandlerRegistrar, deps JobHandlerDep
 // Module は oauth2 context が所有する repository の束。bootstrap は永続化 backend
 // (memory / postgres) に応じてこれらを組み立て、Module へ渡すだけでよい。
 type Module struct {
+	hostedMcp              *oauth2http.HostedMcpRuntime
 	ClientRepo             oauthports.OAuth2ClientRepository
 	ConsentRepo            oauthports.ConsentRepository
 	AuthzDetailTypeRepo    oauthports.AuthorizationDetailTypeRepository

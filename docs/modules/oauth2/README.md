@@ -16,6 +16,8 @@ OAuth 2.0 と OIDC のプロトコル群の全責務を扱う。
 | 汎用認可の要求ポートと管理ロールの表示 | [AccessControl](../authorization/README.md) |
 
 このモジュールが受け持つのは、それらの結果をプロトコルの語彙で組み立てて外部へ返す部分である。
+マネージド型 MCP Gateway は、資源登録が所有する上流設定から、同じ評価とトークン交換を使って要求を転送する。
+外部 OAuth の資格情報を使う転送は TokenVault に依頼し、本人の接続、更新、資格情報の保管をこのモジュールへ持ち込まない。
 ApplicationCatalog からのクライアント管理にも公開操作を提供し、保存、関連付け、クレームとシークレットの更新をこのモジュールが担当する。
 IdManagement からの完全削除では保存先ごとの本人の記録の削除、Agent の束縛では同じテナントのクライアントの存在照会だけを提供する。
 保存先が要求側の小さな契約を直接満たし、本人データへ含める同意の表示値は組み立て地点で変換する。
@@ -27,6 +29,7 @@ IdManagement からの完全削除では保存先ごとの本人の記録の削�
 | 認可 | ブラウザーの `/authorize` | `api` が、セッション、割り当て、ポリシー、同意を確かめて認可コードを発行する | [認可の設計](features/authorization.md#実現方式) |
 | トークン | クライアントの `/token`、`/introspect`、`/revoke`、`/userinfo` | `api` が、クライアントを認証してから同期的に処理する | [トークンの設計](features/token.md#実現方式) |
 | リソースアクセスの評価 | リソースサーバーの `/resource-access/evaluate` | `api` が、クライアントを認証し、トークンを検証して AccessControl の判定と合成する | [リソースアクセスの評価](features/resource-access.md#実現方式) |
+| マネージド型 MCP Gateway | 登録した公開 URL への MCP の要求 | `api` が、毎回の評価と上流の資格情報の準備を行い、応答を逐次返す | [マネージド型 MCP Gateway](features/hosted-mcp.md) |
 | ツールカタログの送信 | リソースサーバーの `/resource-access/tools` | `api` が、クライアントを認証し、紐付けた登録の最新のカタログを置き換える。公開と評価はカタログを読まない | [ツールカタログの送信](features/resource-access.md#リソースサーバーによるツールカタログの送信) |
 | 承認 | クライアントのバックチャネル認可要求と、本人の承認の画面 | `api` が、判断とポーリングをストアで直列化する | [承認リクエストの設計](features/approval.md#実現方式) |
 | バックチャネルのログアウト | セッションの失効 | `worker` が配信のジョブを実行する | [ログアウトの設計](features/logout.md#実現方式) |
@@ -51,6 +54,7 @@ IdManagement からの完全削除では保存先ごとの本人の記録の削�
 | [デバイス認可](features/device.md) | Device Authorization Grant |
 | [トークン](features/token.md) | 発行、ローテーション、イントロスペクション、失効、UserInfo、送信者制約、委譲、ID-JAG の発行と償還 |
 | [リソースアクセスの評価](features/resource-access.md) | 登録したリソースサーバーによる、提示トークンでの操作の評価 |
+| [マネージド型 MCP Gateway](features/hosted-mcp.md) | Gateway の別途配置を不要にする登録、評価、資格情報の注入と逐次転送 |
 | [承認リクエスト](features/approval.md) | Agent の操作に対する人間の承認（CIBA） |
 | [Agent のガードレール](features/guardrail.md) | 管理者が宣言する発行の上限と、超過時の拒否と承認への降格 |
 | [ログアウト](features/logout.md) | RP-Initiated Logout とバックチャネルのログアウト |

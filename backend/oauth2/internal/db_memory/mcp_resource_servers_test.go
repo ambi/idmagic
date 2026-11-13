@@ -14,6 +14,27 @@ func TestMcpCatalogCAS(t *testing.T) {
 	testing_contract.RunMcpCatalogCAS(t, NewMcpResourceServerRepository(), "tenant-1", "catalog-cas", time.Now().UTC().Truncate(time.Microsecond))
 }
 
+//spec:covers REQ-OAUTH2-091: 上流設定と許可 Origin を、保存後の入力や読み取り値の書き換えで変更しない。
+func TestManagedMcpConfigurationEditsRequireSave(t *testing.T) {
+	repo := NewMcpResourceServerRepository()
+	ctx := context.Background()
+	server := &domain.McpResourceServer{TenantID: "tenant", ID: "managed", Resource: "https://idmagic.example/mcp", Hosting: &domain.HostedMcpConfiguration{UpstreamURL: "https://upstream.example/mcp", Authentication: "token_exchange", AllowedOrigins: []string{"https://agent.example"}}}
+	if err := repo.Save(ctx, server); err != nil {
+		t.Fatal(err)
+	}
+	server.Hosting.UpstreamURL = "https://changed.example"
+	server.Hosting.AllowedOrigins[0] = "https://changed.example"
+	loaded, err := repo.FindByID(ctx, "tenant", "managed")
+	if err != nil || loaded.Hosting.UpstreamURL != "https://upstream.example/mcp" || loaded.Hosting.AllowedOrigins[0] != "https://agent.example" {
+		t.Fatalf("input changed configuration: %+v %v", loaded, err)
+	}
+	loaded.Hosting.AllowedOrigins[0] = "https://changed.example"
+	again, err := repo.FindByID(ctx, "tenant", "managed")
+	if err != nil || again.Hosting.AllowedOrigins[0] != "https://agent.example" {
+		t.Fatalf("read changed configuration: %+v %v", again, err)
+	}
+}
+
 //spec:covers REQ-OAUTH2-064: 保存または読み取りで得たカタログの編集は、保存前の正本を変えない。
 func TestToolCatalogEditsRequireSave(t *testing.T) {
 	ctx := context.Background()

@@ -22,9 +22,10 @@ type mcpResourceServerRequest struct {
 	Name     string   `json:"name"`
 	Scopes   []string `json:"scopes"`
 	// ClientID と AccessRules は、更新で省くと変えない (REQ-OAUTH2-064)。
-	ClientID    *string                            `json:"client_id"`
-	AccessRules []oauthdomain.ResourceAccessRule   `json:"access_rules"`
-	State       oauthdomain.McpResourceServerState `json:"state"`
+	ClientID    *string                             `json:"client_id"`
+	AccessRules []oauthdomain.ResourceAccessRule    `json:"access_rules"`
+	State       oauthdomain.McpResourceServerState  `json:"state"`
+	Hosting     *oauthdomain.HostedMcpConfiguration `json:"hosting"`
 }
 
 func toMcpResourceServerResponse(m *oauthdomain.McpResourceServer) map[string]any {
@@ -54,6 +55,9 @@ func toMcpResourceServerResponse(m *oauthdomain.McpResourceServer) map[string]an
 	}
 	if m.ClientID != "" {
 		response["client_id"] = m.ClientID
+	}
+	if m.Hosting != nil {
+		response["hosting"] = m.Hosting
 	}
 	return response
 }
@@ -85,7 +89,11 @@ func (d Deps) handleGetAdminMcpResourceServer(c *echo.Context) error {
 	if m == nil {
 		return support.WriteProblem(c, http.StatusNotFound, "resource_server_not_found", "The MCP resource server does not exist.")
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toMcpResourceServerResponse(m))
+	response, err := d.mcpResourceServerResponse(c.Request().Context(), m)
+	if err != nil {
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "temporarily_unavailable", "The gateway signing key is unavailable.")
+	}
+	return support.NoStoreJSON(c, http.StatusOK, response)
 }
 
 // handleGetAdminMcpToolCatalog は最新のカタログを公開中のツールと別に返す (REQ-OAUTH2-087)。
@@ -152,7 +160,7 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	if strings.TrimSpace(req.Resource) == "" {
+	if req.Hosting == nil && strings.TrimSpace(req.Resource) == "" {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "resource is required.")
 	}
 	tenantID := support.RequestTenantID(c)
@@ -167,6 +175,9 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
+	if req.Hosting != nil {
+		req.Resource = support.TenantURL(c, "/mcp/"+id, d.Issuer)
+	}
 	now := time.Now().UTC()
 	state := req.State
 	if state == "" {
@@ -178,7 +189,7 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 	}
 	m := &oauthdomain.McpResourceServer{
 		TenantID: tenantID, ID: id, Resource: req.Resource,
-		Name: req.Name, Scopes: scopes, AccessRules: req.AccessRules, State: state,
+		Name: req.Name, Scopes: scopes, AccessRules: req.AccessRules, State: state, Hosting: req.Hosting,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if req.ClientID != nil {
@@ -190,7 +201,7 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 	if err := d.saveValidatedMcpResourceServer(c, m, nil); err != nil {
 		return err
 	}
-	return support.NoStoreJSON(c, http.StatusCreated, toMcpResourceServerResponse(m))
+	return d.writeMcpResourceServer(c, http.StatusCreated, m)
 }
 
 func (d Deps) handleUpdateAdminMcpResourceServer(c *echo.Context) error {
@@ -211,6 +222,12 @@ func (d Deps) handleUpdateAdminMcpResourceServer(c *echo.Context) error {
 	var req mcpResourceServerRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	}
+	if req.Hosting != nil && existing.Hosting == nil || (existing.Hosting != nil && req.Resource != "" && req.Resource != existing.Resource) {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_resource_server", "The hosting mode and public URL are immutable.")
+	}
+	if req.Hosting != nil {
+		existing.Hosting = req.Hosting
 	}
 	// resource (canonical URI) は不変 — 発行済みトークンの aud 意味が変わるため更新不可。
 	expectedUpdatedAt := existing.UpdatedAt
@@ -239,7 +256,7 @@ func (d Deps) handleUpdateAdminMcpResourceServer(c *echo.Context) error {
 	if err := d.saveValidatedMcpResourceServer(c, existing, &expectedUpdatedAt); err != nil {
 		return err
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toMcpResourceServerResponse(existing))
+	return d.writeMcpResourceServer(c, http.StatusOK, existing)
 }
 
 // 同名の公開中ツールは識別を保つ。削除・改名後の再登録には必ず新しい識別を発行し、
@@ -302,6 +319,12 @@ func (d Deps) saveValidatedMcpResourceServer(c *echo.Context, m *oauthdomain.Mcp
 		_ = support.WriteProblem(c, http.StatusBadRequest, "invalid_resource_server", problem)
 		return support.ErrResponseWritten
 	}
+	if m.Hosting != nil {
+		if _, err := d.mcpGatewayKey(c.Request().Context(), m.ID); err != nil {
+			_ = support.WriteProblem(c, http.StatusServiceUnavailable, "temporarily_unavailable", "The gateway signing key is unavailable.")
+			return support.ErrResponseWritten
+		}
+	}
 	if expectedUpdatedAt == nil {
 		return d.McpResourceServerRepo.Save(c.Request().Context(), m)
 	}
@@ -336,5 +359,37 @@ func (d Deps) resourceServerClientProblem(ctx context.Context, m *oauthdomain.Mc
 	if bound != nil && bound.ID != m.ID {
 		return "client_id is already bound to another resource server.", nil
 	}
+	if m.Hosting != nil && m.Hosting.Authentication == "token_exchange" {
+		if !slices.Contains(client.GrantTypes, spec.GrantType("urn:ietf:params:oauth:grant-type:token-exchange")) {
+			return "The evaluation client must declare the token exchange grant.", nil
+		}
+		upstream, err := d.McpResourceServerRepo.FindByResource(ctx, m.TenantID, m.Hosting.UpstreamURL)
+		if err != nil {
+			return "", err
+		}
+		if upstream == nil || !upstream.IsActive() || upstream.ID == m.ID {
+			return "upstream_url must name an active resource of this tenant.", nil
+		}
+	}
 	return "", nil
+}
+
+func (d Deps) writeMcpResourceServer(c *echo.Context, status int, m *oauthdomain.McpResourceServer) error {
+	response, err := d.mcpResourceServerResponse(c.Request().Context(), m)
+	if err != nil {
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "temporarily_unavailable", "The gateway signing key is unavailable.")
+	}
+	return support.NoStoreJSON(c, status, response)
+}
+
+func (d Deps) mcpResourceServerResponse(ctx context.Context, m *oauthdomain.McpResourceServer) (map[string]any, error) {
+	response := toMcpResourceServerResponse(m)
+	if m.Hosting != nil {
+		key, err := d.mcpGatewayKey(ctx, m.ID)
+		if err != nil {
+			return nil, err
+		}
+		response["gateway_dpop_jwk"] = key.PublicJWK
+	}
+	return response, nil
 }

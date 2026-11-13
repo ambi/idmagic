@@ -36,6 +36,11 @@ func (r *McpResourceServerRepository) Seed(m *domain.McpResourceServer) {
 func cloneMcpResourceServer(m *domain.McpResourceServer) *domain.McpResourceServer {
 	cloned := *m
 	cloned.Scopes = slices.Clone(m.Scopes)
+	if m.Hosting != nil {
+		hosting := *m.Hosting
+		hosting.AllowedOrigins = slices.Clone(m.Hosting.AllowedOrigins)
+		cloned.Hosting = &hosting
+	}
 	cloned.AccessRules = slices.Clone(m.AccessRules)
 	for i := range cloned.AccessRules {
 		rule := &cloned.AccessRules[i]

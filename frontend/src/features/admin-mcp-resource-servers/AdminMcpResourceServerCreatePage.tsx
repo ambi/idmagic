@@ -5,6 +5,7 @@ import {
   createAdminApplication,
   createMcpResourceServer,
   tenantURL,
+  updateApplicationOidcConfig,
 } from '../../api'
 import { CopyableValue } from '../../components/CopyableValue'
 import { AdminShell } from '../../components/AdminShell'
@@ -23,9 +24,11 @@ import {
   NEW_EVALUATOR,
   parseAccessRules,
   resourceServerSchema,
+  hostingInput,
+  hostedAccessRules,
 } from './AdminMcpResourceServersShared'
 
-type CreatedClient = { clientId: string; secret: string }
+type CreatedClient = { clientId: string; secret: string; applicationId: string }
 
 // evaluatorName は新しく作る評価用のクライアントの名前である。MCP リソースサーバーの名前から導き、入力を求めない。
 function evaluatorName(name: string): string {
@@ -63,12 +66,18 @@ export function AdminMcpResourceServerCreatePage({
   const [createdClient, setCreatedClient] = useState<CreatedClient | null>(null)
   const [registered, setRegistered] = useState<McpResourceServer | null>(null)
   const t = useDictionary(adminMcpResourceServersDictionary)
-  const schema = useMemo(() => resourceServerSchema(t), [t])
+  const managed = form.hostingMode === 'managed'
+  const schema = useMemo(
+    () => resourceServerSchema(t, managed, form.upstreamAuthentication === 'token_vault'),
+    [t, managed, form.upstreamAuthentication],
+  )
   const validation = useFormValidation(schema, {
     resource: form.resource,
     name: form.name,
     scopes: form.scopes,
     accessRules: form.accessRules,
+    upstreamURL: form.upstreamURL,
+    connectorId: form.connectorId,
   })
 
   const creatingClient = form.clientId === NEW_EVALUATOR
@@ -86,7 +95,7 @@ export function AdminMcpResourceServerCreatePage({
       validation.revealAll()
       return
     }
-    const accessRules = parseAccessRules(data.accessRules) ?? []
+    const accessRules = hostedAccessRules(form, parseAccessRules(data.accessRules) ?? [])
     setSaving(true)
     let client = createdClient
     try {
@@ -94,10 +103,21 @@ export function AdminMcpResourceServerCreatePage({
         const result = await createAdminApplication(csrfToken, {
           name: evaluatorName(form.name),
           type: 'service',
+          ...(managed ? { scope: data.scopes.join(' ') } : {}),
         })
         if (!result.client_id || !result.client_secret) throw new Error(t.saveFailedError)
-        client = { clientId: result.client_id, secret: result.client_secret }
+        client = {
+          clientId: result.client_id,
+          secret: result.client_secret,
+          applicationId: result.application.id,
+        }
         setCreatedClient(client)
+      }
+      if (managed && creatingClient && client && form.upstreamAuthentication === 'token_exchange') {
+        await updateApplicationOidcConfig(csrfToken, client.applicationId, {
+          grant_types: ['client_credentials', 'urn:ietf:params:oauth:grant-type:token-exchange'],
+          scope: data.scopes.join(' '),
+        })
       }
       const clientId = creatingClient ? client?.clientId : form.clientId
       const server = await createMcpResourceServer(csrfToken, {
@@ -107,6 +127,7 @@ export function AdminMcpResourceServerCreatePage({
         ...(clientId ? { client_id: clientId } : {}),
         ...(accessRules.length > 0 ? { access_rules: accessRules } : {}),
         state: form.state,
+        ...(managed ? { hosting: hostingInput(form) } : {}),
       })
       if (!clientId) {
         window.location.assign(listURL())
@@ -144,41 +165,77 @@ export function AdminMcpResourceServerCreatePage({
       {registered ? (
         <Card className="w-full p-6" aria-live="polite">
           <h2 className="text-base font-semibold">{t.resultHeading}</h2>
-          <p className="mt-1 text-sm text-slate-600">{t.resultIntro}</p>
-          <dl className="mt-3 grid gap-2 text-sm">
-            <dt className="font-medium">{t.resultClientID}</dt>
-            <dd>
-              <CopyableValue
-                id="result-client-id"
-                value={resultClientId}
-                copyLabel={t.copy.replace('{label}', t.resultClientID)}
-              />
-            </dd>
-            {createdClient ? (
-              <>
-                <dt className="font-medium">{t.resultSecret}</dt>
-                <dd>
-                  <p className="mb-2 text-xs text-slate-500">{t.resultSecretHelp}</p>
-                  <CopyableValue
-                    id="result-client-secret"
-                    value={createdClient.secret}
-                    copyLabel={t.copy.replace('{label}', t.resultSecret)}
-                  />
-                </dd>
-              </>
-            ) : null}
-            <dt className="font-medium">{t.resultConfig}</dt>
-            <dd>
-              <p className="mb-2 text-xs leading-5 text-slate-500">{t.resultConfigHelp}</p>
-              <CopyableValue
-                id="result-gateway-config"
-                value={gatewayConfig(registered, resultClientId)}
-                copyLabel={t.copy.replace('{label}', t.resultConfig)}
-                multiline
-              />
-            </dd>
-          </dl>
-          <p className="mt-3 text-sm text-slate-600">{t.resultNext}</p>
+          <p className="mt-1 text-sm text-slate-600">
+            {registered.hosting ? t.managedResultIntro : t.resultIntro}
+          </p>
+          {registered.hosting ? (
+            <dl className="mt-3 grid gap-2 text-sm">
+              <dt className="font-medium">{t.publicURL}</dt>
+              <dd>
+                <CopyableValue
+                  id="result-public-url"
+                  value={registered.resource}
+                  copyLabel={t.copy.replace('{label}', t.publicURL)}
+                />
+              </dd>
+              {registered.hosting.authentication === 'token_exchange' &&
+              registered.gateway_dpop_jwk ? (
+                <>
+                  <dt className="font-medium">{t.publicKey}</dt>
+                  <dd>
+                    <CopyableValue
+                      id="result-gateway-public-key"
+                      value={JSON.stringify(registered.gateway_dpop_jwk, null, 2)}
+                      copyLabel={t.copy.replace('{label}', t.publicKey)}
+                      multiline
+                    />
+                  </dd>
+                </>
+              ) : null}
+              <dd>
+                {registered.hosting.authentication === 'token_exchange'
+                  ? t.exchangeBypassHelp
+                  : t.vaultBypassHelp}
+              </dd>
+            </dl>
+          ) : (
+            <dl className="mt-3 grid gap-2 text-sm">
+              <dt className="font-medium">{t.resultClientID}</dt>
+              <dd>
+                <CopyableValue
+                  id="result-client-id"
+                  value={resultClientId}
+                  copyLabel={t.copy.replace('{label}', t.resultClientID)}
+                />
+              </dd>
+              {createdClient ? (
+                <>
+                  <dt className="font-medium">{t.resultSecret}</dt>
+                  <dd>
+                    <p className="mb-2 text-xs text-slate-500">{t.resultSecretHelp}</p>
+                    <CopyableValue
+                      id="result-client-secret"
+                      value={createdClient.secret}
+                      copyLabel={t.copy.replace('{label}', t.resultSecret)}
+                    />
+                  </dd>
+                </>
+              ) : null}
+              <dt className="font-medium">{t.resultConfig}</dt>
+              <dd>
+                <p className="mb-2 text-xs leading-5 text-slate-500">{t.resultConfigHelp}</p>
+                <CopyableValue
+                  id="result-gateway-config"
+                  value={gatewayConfig(registered, resultClientId)}
+                  copyLabel={t.copy.replace('{label}', t.resultConfig)}
+                  multiline
+                />
+              </dd>
+            </dl>
+          )}
+          <p className="mt-3 text-sm text-slate-600">
+            {registered.hosting ? t.managedResultNext : t.resultNext}
+          </p>
           <div className="mt-3 flex gap-2.5">
             <Button
               nativeButton={false}
