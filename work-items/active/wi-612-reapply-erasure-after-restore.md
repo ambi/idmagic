@@ -37,7 +37,7 @@ affected_spec:
 ## Out of Scope
 
 - バックアップの頻度、保管先、RPO と RTO。[[wi-588-reliability-and-performance-design]] が扱う。
-- テナントの物理削除。[[wi-494-system-console-tenant-management-and-resource-inspection]] が扱う。
+- テナントの物理削除。[[wi-34219-delete-tenants-from-the-system-console]] が扱う。
 
 ## Risk Notes
 
