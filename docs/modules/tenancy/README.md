@@ -25,6 +25,7 @@
 | 制御面のテナント管理 API | 解決済みのテナントの `/api/admin/v1/tenants/...` への要求 | `api` が、`RequireControlPlaneUser` で `system_admin` と制御面テナントへの所属を確かめてからユースケースを呼ぶ | [テナントのライフサイクル](features/lifecycle.md) |
 | 上限の確認 | ほかのモジュールのリソースの作成 | 作成する側のユースケースが、作成のトランザクションの中で `CheckAndIncrement` を呼ぶ | [リソース上限](features/quota.md) |
 | User の使用量の再集計 | 保持期限バッチ | System が IdManagement の件数を渡し、Tenancy が使用量の行を固定したまま件数で置き換える | [User の使用量の再集計](features/quota.md#req-tenancy-049-user-の使用量の再集計は使用量を占める-user-の件数で使用量を置き換える) |
+| セッションの使用量の再集計 | 保持期限バッチ | System が Authentication の有効なセッションの件数を渡し、Tenancy が使用量の行を固定したまま件数で置き換える | [セッションの使用量の再集計](features/quota.md#req-tenancy-051-セッションの使用量の再集計は有効なセッションの件数で使用量を置き換える) |
 | Soft Quota の照合 | 保持期限バッチ | System が各保存先の使用量を測り、Tenancy が使用量の保存と超過の警告を行う | [Soft Quota の照合](features/quota.md#req-tenancy-048-soft-quota-の照合は実データの使用量を保存し超過を警告する) |
 | デフォルトテナントの作成 | プロセスの起動 | 起動処理が、存在しなければ作成する | [テナントのライフサイクル](features/lifecycle.md) |
 

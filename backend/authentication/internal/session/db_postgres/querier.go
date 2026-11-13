@@ -11,6 +11,8 @@ import (
 )
 
 type Querier interface {
+	// active_sessions の再集計。authentication_sessions_active_tenant_idx を使う。
+	CountActiveAuthenticationSessions(ctx context.Context, arg CountActiveAuthenticationSessionsParams) (int64, error)
 	// anonymize cascade から呼ばれる物理削除 (tombstone ではなく erasure)。
 	DeleteAllAuthenticationSessionsForUser(ctx context.Context, arg DeleteAllAuthenticationSessionsForUserParams) error
 	// housekeeping cleanup。primary key を選んで小 batch で削除する (wi-253 Plan §7)。
@@ -32,8 +34,9 @@ type Querier interface {
 	ListActiveAuthenticationSessionsByUser(ctx context.Context, arg ListActiveAuthenticationSessionsByUserParams) ([]*ListActiveAuthenticationSessionsByUserRow, error)
 	// RecordFailure の read-modify-write を直列化する行ロック取得。
 	LockThrottleCounter(ctx context.Context, arg LockThrottleCounterParams) (*LockThrottleCounterRow, error)
-	// revoked_at / revoke_reason は初回だけ確定する idempotent tombstone。
-	RevokeAuthenticationSession(ctx context.Context, arg RevokeAuthenticationSessionParams) error
+	// revoked_at / revoke_reason は初回だけ確定する idempotent tombstone。更新した行数で、
+	// この呼び出しが失効させたかを返す。並行の失効は行の更新で直列になり、一つだけが 1 を受け取る。
+	RevokeAuthenticationSession(ctx context.Context, arg RevokeAuthenticationSessionParams) (int64, error)
 	// LoginSessionTouchInterval 未満の再 touch は更新しない粗粒度な条件更新。
 	TouchAuthenticationSession(ctx context.Context, arg TouchAuthenticationSessionParams) error
 	UpsertAuthenticationSession(ctx context.Context, arg UpsertAuthenticationSessionParams) error

@@ -48,3 +48,35 @@ func TestRecountUserUsageWarnsOnlyWhenTheUsageDrifted(t *testing.T) {
 		t.Fatalf("usage = %+v, %v; want users 2", usage, err)
 	}
 }
+
+//spec:covers REQ-TENANCY-051: セッションの使用量が件数とずれていたとき、テナント、置き換える前の使用量と件数を警告ログへ残し、User の使用量を変えない。
+func TestRecountActiveSessionUsageWarnsOnDriftAndKeepsUsers(t *testing.T) {
+	var buf bytes.Buffer
+	previousLogger := logging.Default()
+	logging.SetDefault(logging.New(&buf, slog.LevelDebug, "test", ""))
+	t.Cleanup(func() { logging.SetDefault(previousLogger) })
+	ctx := context.Background()
+	repo := memory.NewQuotaRepository()
+	if err := repo.CheckAndIncrement(ctx, "tenant-a", domain.ResourceActiveSessions, 4); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.CheckAndIncrement(ctx, "tenant-a", domain.ResourceUsers, 3); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := RecountActiveSessionUsage(ctx, repo, "tenant-a", func(context.Context) (int, error) { return 1, nil }); err != nil {
+		t.Fatal(err)
+	}
+
+	var entry map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &entry); err != nil {
+		t.Fatalf("log %q: %v", buf.String(), err)
+	}
+	if entry["level"] != "WARN" || entry["message"] != "active session usage recounted" || entry["tenant_id"] != "tenant-a" || entry["previous_usage"] != float64(4) || entry["counted"] != float64(1) {
+		t.Fatalf("warning = %v, want the tenant, the previous usage 4 and the count 1", entry)
+	}
+	usage, err := repo.GetUsage(ctx, "tenant-a")
+	if err != nil || usage.ActiveSessions != 1 || usage.Users != 3 {
+		t.Fatalf("usage = %+v, %v; want active sessions 1 and users 3", usage, err)
+	}
+}

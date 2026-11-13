@@ -479,6 +479,9 @@ CREATE TABLE authentication_sessions (
 CREATE INDEX authentication_sessions_active_user_idx
     ON authentication_sessions (tenant_id, user_id, auth_time DESC, id DESC)
     WHERE revoked_at IS NULL;
+CREATE INDEX authentication_sessions_active_tenant_idx
+    ON authentication_sessions (tenant_id, expires_at)
+    WHERE revoked_at IS NULL;
 CREATE INDEX authentication_sessions_expires_at_idx ON authentication_sessions (expires_at);
 
 CREATE TABLE identity_provider_connections (

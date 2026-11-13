@@ -57,6 +57,29 @@
 - パスの形式のテナントで接頭辞のない Cookie を受けたとき、Authentication は、同じセッションとして読んで失効させる。
 - **例**：EX-AUTHENTICATION-035-01、EX-AUTHENTICATION-035-02、EX-AUTHENTICATION-035-03
 
+### セッションの終了
+
+#### REQ-AUTHENTICATION-045 ログインセッションの終了は経路によらず一度だけ使用量を減らし `SessionEnded` を発行する
+
+- 次の表の失効の経路でセッションを終えるとき、Authentication は、セッションを表の `reason` で失効させる。
+- 未失効のセッションをこの終了が失効させたとき、Authentication は、`SessionEnded` を発行する。
+- 期限内のセッションをこの終了が失効させたとき、Authentication は、テナントの `active_sessions` の使用量を一つ減らす。
+- 失効済みまたは期限切れのセッションを終えるとき、Authentication は、`active_sessions` の使用量を変えない。
+- 失効済みのセッションを再び終えるとき、Authentication は、`SessionEnded` を発行しない。
+- 次の表の削除と期限切れの経路でセッションが終わるとき、Authentication は、`SessionEnded` を発行しない。
+
+| 経路 | 終え方 | `reason` | `SessionEnded` | 使用量 |
+| --- | --- | --- | --- | --- |
+| 本人による失効（REQ-AUTHENTICATION-013） | 失効 | `self_revoke` | 発行する | 減らす |
+| 管理者による失効（REQ-AUTHENTICATION-021） | 失効 | `admin_revoke` | 発行する | 減らす |
+| OIDC のログアウト、SAML のシングルログアウト、WS-Federation のサインアウト（REQ-AUTHENTICATION-035） | 失効 | `logout` | 発行する | 減らす |
+| 認証の解決で主体が存在しないか有効でないと分かったセッション | 失効 | `other` | 発行する | 減らす |
+| 有効期限の到来 | なし | なし | 発行しない | [REQ-TENANCY-051](../../tenancy/features/quota.md#req-tenancy-051-セッションの使用量の再集計は有効なセッションの件数で使用量を置き換える) の再集計が外す |
+| User の完全削除、受信した SET による User のセッションの終了 | 物理削除 | なし | 発行しない | REQ-TENANCY-051 の再集計が外す |
+
+- **判断**：失効の確定は保存先で一度だけ起きるので、同じセッションを並行に終えても、減算とイベントはその一度に合わせる。期限切れのセッションは再集計の件数に入らないので、失効で減らすと使用量が実際より少なくなる。
+- **判断**：完全削除は `UserDeleted` を、受信した SET は受信の記録を残し、User 単位の出来事として記録する。期限切れは時刻の経過で起き、終わらせる操作がないので、イベントを出す契機を持たない。
+
 ## 実現方式
 
 ### データ
@@ -67,7 +90,11 @@ PostgreSQL の `authentication_sessions` を `LoginSession` の唯一の正と�
 
 失効ではレコードを削除せず、`revoked_at` と `revoke_reason` を設定する。
 失効の再実行は安全な no-op となり、物理的な削除は保持期間に従う独立した処理になる。
-索引は、ユーザーごとの有効なセッションを `auth_time DESC` でページングする処理と、`expires_at` による一括の削除に使う。
+索引は、ユーザーごとの有効なセッションを `auth_time DESC` でページングする処理、テナントごとの有効なセッションを数える使用量の再集計、`expires_at` による一括の削除に使う。
+再集計は Tenancy が使用量の行を固定している間に数えるので、`(tenant_id, expires_at)` の部分索引で期限内の行だけを読み、同じテナントのログインを待たせる時間を抑える。
+
+失効は、未失効の行だけを更新し、更新したかを返す。
+本人、管理者、サインアウト、主体の無効化の終了は、すべてこの結果を見る一つの終了の操作を通り、失効させた呼び出しだけが使用量を減らして `SessionEnded` を発行する（REQ-AUTHENTICATION-045）。
 
 更新するのは `last_seen_at` だけで、書き込みの増幅、VACUUM の負荷、ロックの競合を抑えるため、最短でも 5 分の間隔とする。
 90 日の保持期間は、期限切れのレコードを調査用に残す期間であり、セッションの有効期間ではない。

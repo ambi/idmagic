@@ -12,6 +12,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countActiveAuthenticationSessions = `-- name: CountActiveAuthenticationSessions :one
+SELECT count(*) FROM authentication_sessions
+WHERE tenant_id = $1 AND revoked_at IS NULL AND expires_at > $2
+`
+
+type CountActiveAuthenticationSessionsParams struct {
+	TenantID  string
+	ExpiresAt time.Time
+}
+
+// active_sessions の再集計。authentication_sessions_active_tenant_idx を使う。
+func (q *Queries) CountActiveAuthenticationSessions(ctx context.Context, arg CountActiveAuthenticationSessionsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveAuthenticationSessions, arg.TenantID, arg.ExpiresAt)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteAllAuthenticationSessionsForUser = `-- name: DeleteAllAuthenticationSessionsForUser :exec
 DELETE FROM authentication_sessions WHERE tenant_id = $1 AND user_id = $2
 `
@@ -240,12 +258,12 @@ func (q *Queries) ListActiveAuthenticationSessionsByUser(ctx context.Context, ar
 	return items, nil
 }
 
-const revokeAuthenticationSession = `-- name: RevokeAuthenticationSession :exec
+const revokeAuthenticationSession = `-- name: RevokeAuthenticationSession :execrows
 UPDATE authentication_sessions
-SET revoked_at = COALESCE(revoked_at, $4),
-    revoke_reason = COALESCE(revoke_reason, $3),
+SET revoked_at = $4,
+    revoke_reason = $3,
     updated_at = now()
-WHERE id = $1 AND tenant_id = $2
+WHERE id = $1 AND tenant_id = $2 AND revoked_at IS NULL
 `
 
 type RevokeAuthenticationSessionParams struct {
@@ -255,15 +273,19 @@ type RevokeAuthenticationSessionParams struct {
 	RevokedAt    pgtype.Timestamptz
 }
 
-// revoked_at / revoke_reason は初回だけ確定する idempotent tombstone。
-func (q *Queries) RevokeAuthenticationSession(ctx context.Context, arg RevokeAuthenticationSessionParams) error {
-	_, err := q.db.Exec(ctx, revokeAuthenticationSession,
+// revoked_at / revoke_reason は初回だけ確定する idempotent tombstone。更新した行数で、
+// この呼び出しが失効させたかを返す。並行の失効は行の更新で直列になり、一つだけが 1 を受け取る。
+func (q *Queries) RevokeAuthenticationSession(ctx context.Context, arg RevokeAuthenticationSessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeAuthenticationSession,
 		arg.ID,
 		arg.TenantID,
 		arg.RevokeReason,
 		arg.RevokedAt,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const touchAuthenticationSession = `-- name: TouchAuthenticationSession :exec

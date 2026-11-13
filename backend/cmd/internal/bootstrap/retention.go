@@ -1,7 +1,7 @@
 package bootstrap
 
 // 認証 / 監査イベントと CSV の成果物の保持期間 sweep、猶予期間を過ぎた User の完全削除、
-// User の使用量の再集計と Soft Quota の照合を one-shot batch として動かす。周期と再試行は外部 scheduler が所有する。
+// User とセッションの使用量の再集計と Soft Quota の照合を one-shot batch として動かす。周期と再試行は外部 scheduler が所有する。
 
 import (
 	"context"
@@ -58,7 +58,7 @@ func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 		purgeErr = purgeExpiredUsers(ctx, deps, now)
 	}
 	// 完全削除の後に数え、この実行で終えた完全削除の減算を反映した使用量にする。
-	return errors.Join(purgeErr, recountUserUsages(ctx, deps), reconcileSoftQuotas(ctx, deps, now))
+	return errors.Join(purgeErr, recountUserUsages(ctx, deps), recountActiveSessionUsages(ctx, deps, now), reconcileSoftQuotas(ctx, deps, now))
 }
 
 // purgeExpiredUsers は、各テナントで猶予期間を過ぎた削除予約の User を完全削除し、匿名化の後に

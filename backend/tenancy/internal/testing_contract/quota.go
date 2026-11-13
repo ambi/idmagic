@@ -114,8 +114,8 @@ func RunQuota(t *testing.T, newFixture NewQuotaFixture) {
 	runRecountUsage(t, newFixture)
 }
 
-// runRecountUsage は、User の使用量の再集計が数えた件数で使用量を置き換え、数えている間の
-// 加算を失わないことを確かめる (REQ-TENANCY-049)。
+// runRecountUsage は、User とセッションの使用量の再集計が数えた件数で使用量を置き換え、
+// 数えている間の加算を失わないことを確かめる (REQ-TENANCY-049、REQ-TENANCY-051)。
 func runRecountUsage(t *testing.T, newFixture NewQuotaFixture) {
 	t.Helper()
 	ctx := context.Background()
@@ -176,7 +176,24 @@ func runRecountUsage(t *testing.T, newFixture NewQuotaFixture) {
 		}
 	})
 
-	t.Run("recount of a resource other than users fails and changes nothing", func(t *testing.T) {
+	// REQ-TENANCY-051: セッションの使用量は users と別の列として置き換える。
+	t.Run("recount of active sessions replaces only the active sessions usage", func(t *testing.T) {
+		f := newFixture(t)
+		if err := f.Repository.CheckAndIncrement(ctx, f.TenantID, domain.ResourceActiveSessions, 5); err != nil {
+			t.Fatalf("increment active sessions: %v", err)
+		}
+		if err := f.Repository.CheckAndIncrement(ctx, f.TenantID, domain.ResourceUsers, 3); err != nil {
+			t.Fatalf("increment users: %v", err)
+		}
+		previous, err := f.Repository.RecountUsage(ctx, f.TenantID, domain.ResourceActiveSessions, counted(2))
+		if err != nil || previous != 5 {
+			t.Fatalf("RecountUsage = %d, %v; want the previous usage 5", previous, err)
+		}
+		requireUsage(ctx, t, f, func(u *domain.TenantUsage) int { return u.ActiveSessions }, 2)
+		requireUsage(ctx, t, f, users, 3)
+	})
+
+	t.Run("recount of a resource without a recount fails and changes nothing", func(t *testing.T) {
 		f := newFixture(t)
 		if err := f.Repository.CheckAndIncrement(ctx, f.TenantID, domain.ResourceGroups, 2); err != nil {
 			t.Fatalf("increment: %v", err)

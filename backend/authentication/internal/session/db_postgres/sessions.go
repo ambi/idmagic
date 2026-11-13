@@ -76,12 +76,20 @@ func (r *SessionRepository) FindOwned(ctx context.Context, sessionID, userID str
 	return sessionFromOwnedRow(row), nil
 }
 
-func (r *SessionRepository) Revoke(ctx context.Context, sessionID string, reason spec.SessionEndReason, now time.Time) error {
-	return r.queries().RevokeAuthenticationSession(ctx, RevokeAuthenticationSessionParams{
+func (r *SessionRepository) Revoke(ctx context.Context, sessionID string, reason spec.SessionEndReason, now time.Time) (bool, error) {
+	revoked, err := r.queries().RevokeAuthenticationSession(ctx, RevokeAuthenticationSessionParams{
 		ID:           sessionID,
 		TenantID:     tenantports.TenantID(ctx),
 		RevokeReason: pgtype.Text{String: string(reason), Valid: true},
 		RevokedAt:    pgtype.Timestamptz{Time: now, Valid: true},
+	})
+	return revoked > 0, err
+}
+
+// CountActive は、再集計が置き換える使用量の行と同じ tenantID の有効なセッションを数える。
+func (r *SessionRepository) CountActive(ctx context.Context, tenantID string, now time.Time) (int64, error) {
+	return r.queries().CountActiveAuthenticationSessions(ctx, CountActiveAuthenticationSessionsParams{
+		TenantID: tenantID, ExpiresAt: now,
 	})
 }
 

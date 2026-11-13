@@ -162,7 +162,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 		}
 
 		revokeAt := now.Add(2 * time.Hour)
-		if err := repo.Revoke(ctx, sess.ID, spec.SessionEndSelfRevoke, revokeAt); err != nil {
+		if _, err := repo.Revoke(ctx, sess.ID, spec.SessionEndSelfRevoke, revokeAt); err != nil {
 			t.Fatalf("revoke: %v", err)
 		}
 		if got, _ := repo.Find(ctx, sess.ID); got != nil {
@@ -178,7 +178,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 
 		// 再失効は idempotent。最初の revoked_at / reason を保持する。
 		later := revokeAt.Add(time.Minute)
-		if err := repo.Revoke(ctx, sess.ID, spec.SessionEndAdminRevoke, later); err != nil {
+		if _, err := repo.Revoke(ctx, sess.ID, spec.SessionEndAdminRevoke, later); err != nil {
 			t.Fatalf("second revoke: %v", err)
 		}
 		owned, _ = repo.FindOwned(ctx, sess.ID, user.ID)

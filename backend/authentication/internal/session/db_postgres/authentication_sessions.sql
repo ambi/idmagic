@@ -34,13 +34,19 @@ SELECT id, tenant_id, user_id, auth_time, amr, acr, authentication_pending,
 FROM authentication_sessions
 WHERE id = $1 AND tenant_id = $2 AND user_id = $3;
 
--- name: RevokeAuthenticationSession :exec
--- revoked_at / revoke_reason は初回だけ確定する idempotent tombstone。
+-- name: RevokeAuthenticationSession :execrows
+-- revoked_at / revoke_reason は初回だけ確定する idempotent tombstone。更新した行数で、
+-- この呼び出しが失効させたかを返す。並行の失効は行の更新で直列になり、一つだけが 1 を受け取る。
 UPDATE authentication_sessions
-SET revoked_at = COALESCE(revoked_at, $4),
-    revoke_reason = COALESCE(revoke_reason, $3),
+SET revoked_at = $4,
+    revoke_reason = $3,
     updated_at = now()
-WHERE id = $1 AND tenant_id = $2;
+WHERE id = $1 AND tenant_id = $2 AND revoked_at IS NULL;
+
+-- name: CountActiveAuthenticationSessions :one
+-- active_sessions の再集計。authentication_sessions_active_tenant_idx を使う。
+SELECT count(*) FROM authentication_sessions
+WHERE tenant_id = $1 AND revoked_at IS NULL AND expires_at > $2;
 
 -- name: TouchAuthenticationSession :exec
 -- LoginSessionTouchInterval 未満の再 touch は更新しない粗粒度な条件更新。

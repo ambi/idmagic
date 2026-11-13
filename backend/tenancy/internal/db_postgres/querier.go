@@ -44,11 +44,14 @@ type Querier interface {
 	IncrementTenantUsageUsers(ctx context.Context, arg IncrementTenantUsageUsersParams) (int32, error)
 	ListNotificationTemplatesByTenant(ctx context.Context, tenantID string) ([]*NotificationTemplate, error)
 	// 再集計が置き換えるまで、同じテナントの使用量の加算と減算を待たせる。
+	LockTenantUsageActiveSessions(ctx context.Context, tenantID string) (int32, error)
+	// 再集計が置き換えるまで、同じテナントの使用量の加算と減算を待たせる。
 	LockTenantUsageUsers(ctx context.Context, tenantID string) (int32, error)
 	SaveNotificationTemplate(ctx context.Context, arg SaveNotificationTemplateParams) error
 	SaveTenant(ctx context.Context, arg SaveTenantParams) error
 	SaveTenantBranding(ctx context.Context, arg SaveTenantBrandingParams) error
 	SetSoftTenantUsage(ctx context.Context, arg SetSoftTenantUsageParams) error
+	SetTenantUsageActiveSessions(ctx context.Context, arg SetTenantUsageActiveSessionsParams) error
 	SetTenantUsageUsers(ctx context.Context, arg SetTenantUsageUsersParams) error
 	UpsertTenantBrandingAsset(ctx context.Context, arg UpsertTenantBrandingAssetParams) error
 	UpsertTenantQuota(ctx context.Context, arg UpsertTenantQuotaParams) error

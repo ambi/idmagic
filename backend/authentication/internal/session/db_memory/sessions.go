@@ -78,13 +78,28 @@ func (s *SessionStore) FindOwned(ctx context.Context, id, userID string) (*authd
 	return sess, nil
 }
 
-func (s *SessionStore) Revoke(ctx context.Context, id string, reason spec.SessionEndReason, now time.Time) error {
+func (s *SessionStore) Revoke(ctx context.Context, id string, reason spec.SessionEndReason, now time.Time) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if sess, ok := s.sessions[id]; ok && inTenant(ctx, sess) {
-		sess.Revoke(reason, now)
+		return sess.Revoke(reason, now), nil
 	}
-	return nil
+	return false, nil
+}
+
+// CountActive は tenantID の有効なセッションを、確認待ちを含めて数える。
+func (s *SessionStore) CountActive(_ context.Context, tenantID string, now time.Time) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var count int64
+	for _, sess := range s.sessions {
+		sessTenant := sess.TenantID
+		sharedmem.DefaultScope(&sessTenant, kernel.DefaultTenantID)
+		if sessTenant == tenantID && sess.Active(now) {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (s *SessionStore) Touch(ctx context.Context, id string, now time.Time) error {

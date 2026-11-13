@@ -108,7 +108,7 @@ func TestSessionStore(t *testing.T) {
 		_ = store.Save(ctx, sess)
 
 		now := time.Now().UTC()
-		if err := store.Revoke(ctx, "sess-revoke", spec.SessionEndSelfRevoke, now); err != nil {
+		if _, err := store.Revoke(ctx, "sess-revoke", spec.SessionEndSelfRevoke, now); err != nil {
 			t.Fatal(err)
 		}
 		if found, _ := store.Find(ctx, "sess-revoke"); found != nil {
@@ -124,7 +124,7 @@ func TestSessionStore(t *testing.T) {
 
 		// 再失効は idempotent (最初の revoked_at/reason を保持する)。
 		later := now.Add(time.Minute)
-		if err := store.Revoke(ctx, "sess-revoke", spec.SessionEndAdminRevoke, later); err != nil {
+		if _, err := store.Revoke(ctx, "sess-revoke", spec.SessionEndAdminRevoke, later); err != nil {
 			t.Fatal(err)
 		}
 		owned, _ = store.FindOwned(ctx, "sess-revoke", "user-1")
@@ -273,7 +273,7 @@ func TestSessionStoreIsolatesTenants(t *testing.T) {
 		t.Errorf("別テナントの ListBySub が %d 件返した", len(list))
 	}
 
-	if err := store.Revoke(intruder, "sess-owned", spec.SessionEndAdminRevoke, time.Now().UTC()); err != nil {
+	if _, err := store.Revoke(intruder, "sess-owned", spec.SessionEndAdminRevoke, time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.DeleteAllForSub(intruder, "user-1"); err != nil {

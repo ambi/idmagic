@@ -30,6 +30,6 @@ type QuotaRepository interface {
 
 	// RecountUsage は resource の使用量を固定したまま count を呼び、返った件数で使用量を置き換え、
 	// 置き換える前の使用量を返す。固定している間の加算と減算は、置き換えの後に適用される。
-	// count は固定の間に呼ばれるので、QuotaRepository を呼ばない。いまは ResourceUsers だけを受け付ける。
+	// count は固定の間に呼ばれるので、QuotaRepository を呼ばない。ResourceUsers と ResourceActiveSessions だけを受け付ける。
 	RecountUsage(ctx context.Context, tenantID, resource string, count func(context.Context) (int, error)) (previous int, err error)
 }

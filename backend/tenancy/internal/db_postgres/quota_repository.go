@@ -208,7 +208,7 @@ func (r *QuotaRepository) SetSoftUsage(ctx context.Context, tenantID string, mea
 // RecountUsage は自分のトランザクションで使用量の行を固定するので、トランザクションを始められる
 // 接続で構築したリポジトリだけが受け付ける。count は別の接続で数えてよい。
 func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource string, count func(context.Context) (int, error)) (int, error) {
-	if resource != domain.ResourceUsers {
+	if resource != domain.ResourceUsers && resource != domain.ResourceActiveSessions {
 		return 0, fmt.Errorf("usage recount is not supported for %s", resource)
 	}
 	beginner, ok := r.db.(interface {
@@ -226,7 +226,12 @@ func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource s
 	if err := queries.EnsureTenantUsage(ctx, tenantID); err != nil {
 		return 0, err
 	}
-	previous, err := queries.LockTenantUsageUsers(ctx, tenantID)
+	var previous int32
+	if resource == domain.ResourceUsers {
+		previous, err = queries.LockTenantUsageUsers(ctx, tenantID)
+	} else {
+		previous, err = queries.LockTenantUsageActiveSessions(ctx, tenantID)
+	}
 	if err != nil {
 		return 0, err
 	}
@@ -237,7 +242,12 @@ func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource s
 	if counted < 0 || counted > math.MaxInt32 {
 		return 0, fmt.Errorf("usage recount: count %d is outside the usage column", counted)
 	}
-	if err := queries.SetTenantUsageUsers(ctx, SetTenantUsageUsersParams{TenantID: tenantID, Users: int32(counted)}); err != nil {
+	if resource == domain.ResourceUsers {
+		err = queries.SetTenantUsageUsers(ctx, SetTenantUsageUsersParams{TenantID: tenantID, Users: int32(counted)})
+	} else {
+		err = queries.SetTenantUsageActiveSessions(ctx, SetTenantUsageActiveSessionsParams{TenantID: tenantID, ActiveSessions: int32(counted)})
+	}
+	if err != nil {
 		return 0, err
 	}
 	if err := tx.Commit(ctx); err != nil {

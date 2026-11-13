@@ -399,6 +399,18 @@ func (q *Queries) IncrementTenantUsageUsers(ctx context.Context, arg IncrementTe
 	return users, err
 }
 
+const lockTenantUsageActiveSessions = `-- name: LockTenantUsageActiveSessions :one
+SELECT active_sessions FROM tenant_usages WHERE tenant_id = $1 FOR UPDATE
+`
+
+// 再集計が置き換えるまで、同じテナントの使用量の加算と減算を待たせる。
+func (q *Queries) LockTenantUsageActiveSessions(ctx context.Context, tenantID string) (int32, error) {
+	row := q.db.QueryRow(ctx, lockTenantUsageActiveSessions, tenantID)
+	var active_sessions int32
+	err := row.Scan(&active_sessions)
+	return active_sessions, err
+}
+
 const lockTenantUsageUsers = `-- name: LockTenantUsageUsers :one
 SELECT users FROM tenant_usages WHERE tenant_id = $1 FOR UPDATE
 `
@@ -427,6 +439,20 @@ type SetSoftTenantUsageParams struct {
 
 func (q *Queries) SetSoftTenantUsage(ctx context.Context, arg SetSoftTenantUsageParams) error {
 	_, err := q.db.Exec(ctx, setSoftTenantUsage, arg.TenantID, arg.AuditEventsRetained, arg.ExportArtifactsBytes)
+	return err
+}
+
+const setTenantUsageActiveSessions = `-- name: SetTenantUsageActiveSessions :exec
+UPDATE tenant_usages SET active_sessions = $1::int WHERE tenant_id = $2
+`
+
+type SetTenantUsageActiveSessionsParams struct {
+	ActiveSessions int32
+	TenantID       string
+}
+
+func (q *Queries) SetTenantUsageActiveSessions(ctx context.Context, arg SetTenantUsageActiveSessionsParams) error {
+	_, err := q.db.Exec(ctx, setTenantUsageActiveSessions, arg.ActiveSessions, arg.TenantID)
 	return err
 }
 

@@ -39,5 +39,5 @@ func (s SessionAuthentications) EndSession(ctx context.Context, sessionID string
 	if s.Sessions == nil {
 		return nil
 	}
-	return s.Sessions.Store.Revoke(ctx, sessionID, spec.SessionEndOther, time.Now().UTC())
+	return s.Sessions.End(ctx, sessionID, spec.SessionEndOther, time.Now().UTC())
 }

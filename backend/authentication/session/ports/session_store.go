@@ -27,7 +27,13 @@ type SessionStore interface {
 
 	// Revoke idempotently tombstones a session: the first call records
 	// revoked_at / revoke_reason, later calls (with any reason) are a no-op.
-	Revoke(ctx context.Context, sessionID string, reason spec.SessionEndReason, now time.Time) error
+	// revoked は、この呼び出しが未失効のセッションを失効させたときだけ true になる。
+	// 並行の失効のうち一つだけが true を受け取るので、終了の作用を一度に限れる。
+	Revoke(ctx context.Context, sessionID string, reason spec.SessionEndReason, now time.Time) (revoked bool, err error)
+
+	// CountActive は tenantID の有効な (未失効かつ now で期限内の) セッションの件数を返す。
+	// 第二要素や登録を待つセッションも含む。active_sessions の使用量の再集計に使う。
+	CountActive(ctx context.Context, tenantID string, now time.Time) (int64, error)
 
 	// Touch coarsely records that a session was used for an authentication
 	// decision, at domain.LoginSessionTouchInterval granularity.

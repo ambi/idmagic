@@ -34,14 +34,30 @@ type SessionDeps struct {
 	QuotaRepo tenantports.QuotaRepository
 }
 
-// decrementSessionQuota frees one active_sessions quota slot for sess's
-// tenant. Best-effort in the sense that a nil QuotaRepo is a no-op, matching
-// this package's general "quota is opt-in per Deps" convention.
-func decrementSessionQuota(ctx context.Context, quotaRepo tenantports.QuotaRepository, sess *domain.LoginSession) error {
-	if quotaRepo == nil {
-		return nil
+// endSession は、ログインセッションを失効させる経路がすべて通る唯一の終了である
+// (REQ-AUTHENTICATION-045)。保存先の失効がこの呼び出しで失効させたときだけ、期限内なら
+// active_sessions を一つ減らし、SessionEnded を発行する。期限切れのセッションは使用量の
+// 再集計の件数に入らないので減らさない。nil の QuotaRepo は減算を省く。
+func endSession(
+	ctx context.Context,
+	deps SessionDeps,
+	sess *domain.LoginSession,
+	actorUserID string,
+	reason spec.SessionEndReason,
+	allSessions bool,
+	now time.Time,
+) error {
+	revoked, err := deps.Store.Revoke(ctx, sess.ID, reason, now)
+	if err != nil || !revoked {
+		return err
 	}
-	return quotaRepo.Decrement(ctx, sess.TenantID, tenancydomain.ResourceActiveSessions, 1)
+	if deps.QuotaRepo != nil && now.Before(sess.ExpiresAt) {
+		if err := deps.QuotaRepo.Decrement(ctx, sess.TenantID, tenancydomain.ResourceActiveSessions, 1); err != nil {
+			return err
+		}
+	}
+	emitSessionEnded(deps.Emit, sess, actorUserID, reason, allSessions, now)
+	return nil
 }
 
 // SessionView は一覧表示用のセッション射影。secret は持たず、識別子と認証情報のみ。
@@ -99,17 +115,7 @@ func RevokeOwnSession(
 	if sess == nil {
 		return ErrSessionNotFound
 	}
-	alreadyRevoked := sess.RevokedAt != nil
-	if err := deps.Store.Revoke(ctx, sessionID, spec.SessionEndSelfRevoke, now); err != nil {
-		return err
-	}
-	if !alreadyRevoked {
-		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
-			return err
-		}
-		emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, false, now)
-	}
-	return nil
+	return endSession(ctx, deps, sess, sub, spec.SessionEndSelfRevoke, false, now)
 }
 
 // RevokeOtherSessions は keepSessionID を除く本人の全セッションを失効する
@@ -132,13 +138,9 @@ func RevokeOtherSessions(
 		if sess.ID == keepSessionID {
 			continue
 		}
-		if err := deps.Store.Revoke(ctx, sess.ID, spec.SessionEndSelfRevoke, now); err != nil {
+		if err := endSession(ctx, deps, sess, sub, spec.SessionEndSelfRevoke, false, now); err != nil {
 			return nil, err
 		}
-		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
-			return nil, err
-		}
-		emitSessionEnded(deps.Emit, sess, sub, spec.SessionEndSelfRevoke, false, now)
 		revokedIDs = append(revokedIDs, sess.ID)
 	}
 	return revokedIDs, nil
@@ -197,17 +199,7 @@ func AdminRevokeSession(
 	if sess == nil {
 		return ErrSessionNotFound
 	}
-	alreadyRevoked := sess.RevokedAt != nil
-	if err := deps.Store.Revoke(ctx, sessionID, spec.SessionEndAdminRevoke, now); err != nil {
-		return err
-	}
-	if !alreadyRevoked {
-		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
-			return err
-		}
-		emitSessionEnded(deps.Emit, sess, actorUserID, spec.SessionEndAdminRevoke, false, now)
-	}
-	return nil
+	return endSession(ctx, deps, sess, actorUserID, spec.SessionEndAdminRevoke, false, now)
 }
 
 // AdminRevokeUserSessions は admin が対象ユーザーの全セッションを失効する (wi-28)。
@@ -226,13 +218,9 @@ func AdminRevokeUserSessions(
 	}
 	revokedIDs := make([]string, 0, len(sessions))
 	for _, sess := range sessions {
-		if err := deps.Store.Revoke(ctx, sess.ID, spec.SessionEndAdminRevoke, now); err != nil {
+		if err := endSession(ctx, deps, sess, actorUserID, spec.SessionEndAdminRevoke, true, now); err != nil {
 			return nil, err
 		}
-		if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
-			return nil, err
-		}
-		emitSessionEnded(deps.Emit, sess, actorUserID, spec.SessionEndAdminRevoke, true, now)
 		revokedIDs = append(revokedIDs, sess.ID)
 	}
 	return revokedIDs, nil
@@ -250,6 +238,12 @@ func EndSession(
 	sid string,
 	now time.Time,
 ) error {
+	return endActiveSession(ctx, deps, sid, spec.SessionEndLogout, now)
+}
+
+// endActiveSession は、要求のテナントの有効なセッション sid を、その主体自身の終了として
+// reason で終える。有効なセッションがなければ何もしない。
+func endActiveSession(ctx context.Context, deps SessionDeps, sid string, reason spec.SessionEndReason, now time.Time) error {
 	if sid == "" {
 		return nil
 	}
@@ -260,14 +254,7 @@ func EndSession(
 	if sess == nil || sess.TenantID != tenantports.TenantID(ctx) {
 		return nil
 	}
-	if err := deps.Store.Revoke(ctx, sid, spec.SessionEndLogout, now); err != nil {
-		return err
-	}
-	if err := decrementSessionQuota(ctx, deps.QuotaRepo, sess); err != nil {
-		return err
-	}
-	emitSessionEnded(deps.Emit, sess, sess.UserID, spec.SessionEndLogout, false, now)
-	return nil
+	return endSession(ctx, deps, sess, sess.UserID, reason, false, now)
 }
 
 func emitSessionEnded(

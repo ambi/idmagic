@@ -11,3 +11,9 @@ import (
 func (m Module) RecountUserUsage(ctx context.Context, tenantID string, count func(context.Context) (int, error)) error {
 	return usecases.RecountUserUsage(ctx, m.QuotaRepo, tenantID, count)
 }
+
+// RecountActiveSessionUsage は、count が数えた有効なセッションの件数でセッションの使用量を
+// 置き換える。count は使用量を固定している間に呼ばれる。
+func (m Module) RecountActiveSessionUsage(ctx context.Context, tenantID string, count func(context.Context) (int, error)) error {
+	return usecases.RecountActiveSessionUsage(ctx, m.QuotaRepo, tenantID, count)
+}

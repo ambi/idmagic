@@ -57,14 +57,15 @@ func (s LoginSession) Active(now time.Time) bool {
 
 // Revoke はセッションを tombstone として失効させる。最初の失効だけが revoked_at /
 // revoke_reason を確定し、以降の呼び出しは idempotent な no-op になる
-// (self/admin どちらの失効経路からも安全に再送できる)。
-func (s *LoginSession) Revoke(reason spec.SessionEndReason, now time.Time) {
+// (self/admin どちらの失効経路からも安全に再送できる)。この呼び出しが失効させたときだけ true を返す。
+func (s *LoginSession) Revoke(reason spec.SessionEndReason, now time.Time) bool {
 	if s.RevokedAt != nil {
-		return
+		return false
 	}
 	t := now
 	s.RevokedAt = &t
 	s.RevokeReason = &reason
+	return true
 }
 
 // Touch は last_seen_at を LoginSessionTouchInterval の粒度で更新する。実際に更新した

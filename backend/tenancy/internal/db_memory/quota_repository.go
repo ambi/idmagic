@@ -180,7 +180,8 @@ func (r *QuotaRepository) SetSoftUsage(_ context.Context, tenantID string, measu
 }
 
 func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource string, count func(context.Context) (int, error)) (int, error) {
-	if resource != domain.ResourceUsers {
+	field := recountFields[resource]
+	if field == nil {
 		return 0, fmt.Errorf("usage recount is not supported for %s", resource)
 	}
 	r.mu.Lock()
@@ -197,9 +198,15 @@ func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource s
 		usage = &domain.TenantUsage{}
 		r.usages[tenantID] = usage
 	}
-	previous := usage.Users
-	usage.Users = counted
+	previous := *field(usage)
+	*field(usage) = counted
 	return previous, nil
+}
+
+// recountFields は、実データの件数で使用量を置き換えるリソースの列である。
+var recountFields = map[string]func(*domain.TenantUsage) *int{
+	domain.ResourceUsers:          func(u *domain.TenantUsage) *int { return &u.Users },
+	domain.ResourceActiveSessions: func(u *domain.TenantUsage) *int { return &u.ActiveSessions },
 }
 
 func (r *QuotaRepository) GetQuota(ctx context.Context, tenantID string) (*domain.TenantQuota, error) {

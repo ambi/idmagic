@@ -265,12 +265,16 @@ func (m *SessionManager) Resolve(ctx context.Context, headers authdomain.Headers
 	return authenticationContextFromSession(sess), nil
 }
 
+// Revoke は、SAML のシングルログアウトと WS-Federation のサインアウトで、Cookie が指すセッションを
+// logout として終える。
 func (m *SessionManager) Revoke(ctx context.Context, cookieHeader string) error {
-	sid := sessionIDFromCookieHeader(cookieHeader)
-	if sid == "" {
-		return nil
-	}
-	return m.Store.Revoke(ctx, sid, spec.SessionEndLogout, time.Now().UTC())
+	return m.End(ctx, sessionIDFromCookieHeader(cookieHeader), spec.SessionEndLogout, time.Now().UTC())
+}
+
+// End は、要求のテナントの有効なセッション sid を reason で終え、使用量の減算と SessionEnded を
+// 本人や管理者の失効と同じ終了に通す (REQ-AUTHENTICATION-045)。有効なセッションがなければ何もしない。
+func (m *SessionManager) End(ctx context.Context, sid string, reason spec.SessionEndReason, now time.Time) error {
+	return endActiveSession(ctx, SessionDeps{Store: m.Store, Emit: m.Emit, QuotaRepo: m.QuotaRepo}, sid, reason, now)
 }
 
 // SessionIDFromCookie extracts the session id from a Cookie header without
