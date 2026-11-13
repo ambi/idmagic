@@ -262,6 +262,29 @@ test('admin API access token lifecycle works with selected SCIM scopes', async (
   }
 }, 60_000)
 
+// selectMcpResourceServerRow は、URI が一致する行を選び、その行の削除ボタンが詳細の欄に
+// 現れるまで待つ。表示名は前の実行の残りと重なりうるので、行は URI で特定する。
+async function selectMcpResourceServerRow(
+  view: Bun.WebView,
+  resource: string,
+  deleteButton: string,
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const selected = await view.evaluate(`(() => {
+      if (${deleteButton} !== null) return true
+      const cell = [...document.querySelectorAll('tbody td')]
+        .find((td) => td.textContent?.trim() === ${JSON.stringify(resource)})
+      cell?.closest('tr')?.click()
+      return false
+    })()`)
+    if (selected === true) return
+    await Bun.sleep(POLL_INTERVAL_MS)
+  }
+  throw new Error(`timeout selecting the MCP resource server row: ${resource}`)
+}
+
 test('admin MCP resource server lifecycle works from the browser', async () => {
   const view = await openWebView({ width: 1280, height: 1800 })
   try {
@@ -284,8 +307,11 @@ test('admin MCP resource server lifecycle works from the browser', async () => {
     await waitForText(view, resource)
 
     // 他の spec も同じテナントへ接続先を登録するので、操作と確認は自分の行に限る。
-    // 行を名指せるのは削除ボタンの aria-label だけで、その二つ上の要素が名前と状態を持つ。
+    // 一覧は既定で先頭の行を選び、編集と削除は選択中の行の詳細の欄にだけ出る。
+    // 実行順によって先頭は別の接続先になるので、URI が一致する行を選んでから操作する。
+    // 削除ボタンの aria-label が URI を含み、その二つ上の要素が名前と状態を持つ。
     const deleteButton = `document.querySelector(${JSON.stringify(`[aria-label="Delete: ${resource}"]`)})`
+    await selectMcpResourceServerRow(view, resource, deleteButton)
     await view.evaluate(`${deleteButton}.parentElement.querySelector('a[href$="/edit"]').click()`)
     await waitForUrl(view, /\/admin\/mcp-resource-servers\/[^/]+\/edit$/)
     await setInputValue(view, '#name', 'MCP E2E updated')
@@ -296,6 +322,8 @@ test('admin MCP resource server lifecycle works from the browser', async () => {
     // for the post-save redirect back to the list before asserting the committed state.
     await waitForUrl(view, /\/admin\/mcp-resource-servers$/)
     await waitForText(view, 'MCP E2E updated')
+    // 一覧へ戻ると選択も先頭へ戻るので、もう一度自分の行を選ぶ。
+    await selectMcpResourceServerRow(view, resource, deleteButton)
     expect(
       await view.evaluate(`${deleteButton}.parentElement.parentElement.textContent`),
     ).toContain('Disabled')
