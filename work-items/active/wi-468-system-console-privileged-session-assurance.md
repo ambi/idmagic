@@ -7,7 +7,7 @@ created_at: 2026-09-03
 change_kind: feature
 priority: p1
 depends_on:
-  - wi-61037-bind-bearer-step-up-to-the-login-session
+  - wi-52890-step-up-bearer-requests-with-rfc-9470
 affected_spec:
   - { path: docs/modules/authentication/features/account-portal.md, requirement: REQ-AUTHENTICATION-039 }
   - { path: docs/modules/system/features/api-boundary.md, requirement: REQ-SYSTEM-020 }
@@ -45,9 +45,9 @@ affected_spec:
 
 ## Scope
 
-- システムコンソールとシステム API へログインセッション（Bearer の場合は [[wi-61037-bind-bearer-step-up-to-the-login-session]] が結び付けた発行元のセッション）で到達した要求に、MFA を成立させたセッションを要求する（`privileged_read`）。
+- システムコンソールとシステム API へ利用者の認証で到達した要求（ポータルの Bearer のアクセストークン、またはセッションの Cookie）に、MFA で成立した認証を要求する（`privileged_read`）。
 - 制御面のすべての変更操作に、MFA による直近のステップアップを要求する（`privileged_change`）。対象は `CreateTenant`、`UpdateTenant`、`UpdateTenantQuota`、`SetTenantEndpointStyle`、`DisableTenant`、`EnableTenant`、`CancelSystemJob`、`RotateTenantDataKey`、`DisableTenantDataKey` である。
-- ステップアップの記録に時刻だけでなく成立した方式を保持し、パスワードだけの再認証を制御面の MFA ステップアップとして扱わない。
+- 判定に認証の時刻だけでなく方式（`amr`）を使い、パスワードだけの再認証を制御面の MFA ステップアップとして扱わない。
 - 影響の大きい操作（`SetTenantEndpointStyle`、`DisableTenant`、`EnableTenant`、`CancelSystemJob`、`RotateTenantDataKey`、`DisableTenantDataKey`）に、空でない操作理由を要求する。
 - 画面は対象の `tenant_id`、realm、操作、影響、入力した理由を確認画面へ表示する。
 - 監査イベントへ操作者、対象テナント、操作理由、ステップアップの方式を記録する。
@@ -83,17 +83,15 @@ MFA とみなす方式は `otp`、`webauthn`、`hwk`、`swk`、`rc` とする（
 復旧コードを含めるのは、端末を失った唯一の運用者が復旧できなくなるのを避けるためである。
 既存の `IsMfaAMR` は `tdev` を含むので、制御面には `SecondFactorAuthenticated` と同じく `tdev` を除いた集合を使う。
 
-### ステップアップの方式の記録
+### 判定の根拠
 
-既存の `StepUpAt` だけでは成立方式を判別できない。
-セッションに直近ステップアップの方式（`step_up_amr`）を保存し、`CompleteStepUp` の各方式から AMR の値（`pwd`、`otp`、`webauthn`、`rc`）へ写して記録する。
+[[wi-52890-step-up-bearer-requests-with-rfc-9470]] の後、Bearer の要求はアクセストークンの `auth_time`、`amr`、`acr` を認証の結果として持つ。
+[[wi-61037-carry-the-original-authentication-into-refreshed-tokens]] により、リフレッシュ後もこれらは元の認証の値を保つ。
+制御面の判定はこの値を使い、セッションにステップアップの方式を記録する欄は設けない。
+Cookie の経路では、ログインセッションの `auth_time` と `amr` を同じ規則で読む。
 
 `privileged_change` の有効期間は既存の `StepUpRecencySeconds`（5 分）を使う。
-直近の根拠は次のどちらかとする。
-
-- `auth_time` が 5 分以内で、ログインの `amr` が MFA の方式を含む。
-- `step_up_at` が 5 分以内で、`step_up_amr` が MFA の方式を含む。
-
+`auth_time` が 5 分以内で、`amr` が MFA の方式を含めば満たす。
 `auth_time` が新しくても、`amr` が単一要素なら満たさない。
 
 判定は Authentication が持つ純粋な関数にし、共有の HTTP 支援の制御面ゲートから呼ぶ。
@@ -101,15 +99,22 @@ MFA とみなす方式は `otp`、`webauthn`、`hwk`、`swk`、`rc` とする（
 ```go
 type PrivilegedAssurance string // "privileged_read" | "privileged_change"
 
-func EvaluatePrivilegedSession(authn *AuthenticationContext, level PrivilegedAssurance, now time.Time) error
-// ErrPrivilegedMFARequired、ErrStepUpRequired（MFA ステップアップが必要）を返す
+func EvaluatePrivilegedAuthentication(authn *AuthenticationContext, level PrivilegedAssurance, now time.Time) error
+// ErrPrivilegedMFARequired、ErrStepUpRequired（MFA による再認証が必要）を返す
 ```
 
 ### 拒否の応答
 
-- `privileged_read` の不足は `403 mfa_required` とする。画面は MFA の登録またはステップアップへ案内する。
-- `privileged_change` の不足は既存と同じ `403 step_up_required` とし、応答に MFA の方式だけを許すことを示す。`StepUpDialog` はパスワードを選択肢から外す。
+RFC 9470 に従い、どちらの不足も `401` と `WWW-Authenticate: Bearer error="insufficient_user_authentication"` で返す。
+
+- `privileged_read` の不足には MFA を表す `acr_values` を付ける。
+- `privileged_change` の不足には MFA を表す `acr_values` と `max_age="300"` を付ける。
 - 理由の欠落は `400 invalid_request` とする。
+
+### 実装前に解決する問い
+
+- 再認可で要求する `acr_values`：既存の `urn:idmagic:acr:mfa` は信頼済みデバイス（`tdev`）でも満たされる。そのまま要求すると、再認可が `tdev` で完了し、制御面の判定を再び満たさない往復になる。`tdev` を認めない値を定義するか、制御面のクライアントに信頼済みデバイスを使わせないかを決める。
+- `/authorize` の追加要求が使える第二要素は現在 TOTP だけで、WebAuthn だけを登録した運用者は通常のログインへ回される。再認可で WebAuthn と復旧コードを使えることを確かめる。
 
 ### 認可の正
 
@@ -127,7 +132,7 @@ func EvaluatePrivilegedSession(authn *AuthenticationContext, level PrivilegedAss
 - ステップアップの規範は REQ-AUTHENTICATION-039 が持つ。起票時の REQ-AUTHENTICATION-029 は信頼済みデバイスの規範だったので差し替えた。
 - システム経路のジョブ取消しは `CancelSystemJob` になった。
 - 起票後に増えた制御面の変更操作（`CreateTenant`、`UpdateTenant`、`UpdateTenantQuota`、`RotateTenantDataKey`、`DisableTenantDataKey`）を `privileged_change` に含めた。
-- ポータルは Bearer で API を呼ぶため、セッションの記録が届かない。その前提を [[wi-61037-bind-bearer-step-up-to-the-login-session]] に切り出した。
+- ポータルは Bearer で API を呼ぶため、セッションの記録が届かない。利用者と RFC 9470 を目標の方式に決め、前提を [[wi-61037-carry-the-original-authentication-into-refreshed-tokens]] と [[wi-52890-step-up-bearer-requests-with-rfc-9470]] に切り出した。セッションへステップアップの方式を記録する当初の設計はやめた。
 
 ## Plan
 
@@ -143,10 +148,10 @@ func EvaluatePrivilegedSession(authn *AuthenticationContext, level PrivilegedAss
 
 - [ ] T001 [Spec] 特権セッション保証、有効期間、許可する MFA AMR、理由必須操作、3 操作の `interactive_session` を規範化する。
 - [ ] T002 [Acceptance] MFA 未成立または期限切れのセッションが現在は制御面へ到達できることを観測し、RED を確認する。
-- [ ] T003 [Domain] ステップアップの方式をセッションへ保持し、`EvaluatePrivilegedSession` の Unit RED を確認してから実装する。
+- [ ] T003 [Domain] `EvaluatePrivilegedAuthentication` の Unit RED を確認してから実装する。
 - [ ] T004 [App] システム API の読出しへ `privileged_read`、変更へ `privileged_change` を適用する。
 - [ ] T005 [App] 操作理由を要求モデル、ユースケース、監査イベントへ伝搬する。
-- [ ] T006 [UI] MFA 案内、MFA に限るステップアップ、対象と影響の確認、理由入力を日英で実装する。
+- [ ] T006 [UI] MFA を求める再認可、対象と影響の確認、理由入力を日英で実装する。
 - [ ] T007 [Acceptance] 各拒否で対象状態が変わらず、正しい MFA ステップアップでは成功することを確認する。
 - [ ] T008 [Operations] 制御面 User と MFA の復旧手順を検証し、手順が成立しなければ別の作業項目を起票する。
 - [ ] T009 [Verify] 仕様生成物を再生成し、セキュリティ検査を通す。
@@ -163,8 +168,8 @@ func EvaluatePrivilegedSession(authn *AuthenticationContext, level PrivilegedAss
 
 保証判定を画面だけへ置くと直接の API 呼出しが迂回路になるため、サーバー側の拒否を受け入れ証拠にする。
 
-`StepUpAt` だけを確認すると、パスワードだけで更新された時刻も MFA と誤認する。
-認証方式を保存して判定するテストを必須にする。
+認証の時刻だけを確認すると、パスワードだけの再認証も MFA と誤認する。
+`amr` で判定するテストを必須にする。
 
 MFA を失った唯一のシステム運用者を締め出すと復旧不能になる。
 展開前の復旧検証を完了条件とし、成立しない場合は本変更を完了扱いにしない。
