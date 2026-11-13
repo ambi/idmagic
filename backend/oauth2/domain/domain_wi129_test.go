@@ -3,6 +3,7 @@ package domain
 // 主要ユースケース追跡: REQ-OAUTH2-026。
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -363,6 +364,42 @@ func TestRotateRefreshToken(t *testing.T) {
 	// wi-262: rotate 後も親の resource indicator をそのまま引き継ぐ。
 	if rec.Resource == nil || *rec.Resource != resource {
 		t.Errorf("Resource が rotate で引き継がれていない: %v", rec.Resource)
+	}
+}
+
+//spec:covers REQ-OAUTH2-006: ローテーションが親の auth_time、amr、acr を写し、回転の時刻を認証の時刻にしないことを固定する。
+func TestRotateRefreshTokenKeepsTheOriginalAuthentication(t *testing.T) {
+	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	parent, err := GenerateInitialRefreshToken("client-1", "user-1", []string{"openid"}, nil, nil, nil, now, entropy.Crypto())
+	if err != nil {
+		t.Fatalf("親生成に失敗: %v", err)
+	}
+	authTime, acr := now.Add(-time.Hour).Unix(), "urn:idmagic:acr:mfa"
+	parent.Record.AuthTime, parent.Record.AMR, parent.Record.ACR = &authTime, []string{"pwd", "otp"}, &acr
+	rotated, err := RotateRefreshToken(parent.Record, now.Add(time.Hour), entropy.Crypto())
+	if err != nil {
+		t.Fatalf("回転に失敗: %v", err)
+	}
+	rec := rotated.Record
+	if rec.AuthTime == nil || *rec.AuthTime != authTime {
+		t.Errorf("AuthTime = %v, want %d", rec.AuthTime, authTime)
+	}
+	if !slices.Equal(rec.AMR, []string{"pwd", "otp"}) {
+		t.Errorf("AMR = %v", rec.AMR)
+	}
+	if rec.ACR == nil || *rec.ACR != acr {
+		t.Errorf("ACR = %v, want %q", rec.ACR, acr)
+	}
+
+	legacy, err := RotateRefreshToken(&RefreshTokenRecord{
+		ID: parent.Record.ID, FamilyID: parent.Record.FamilyID, ClientID: "client-1", UserID: "user-1",
+		Scopes: []string{"openid"}, IssuedAt: now, ExpiresAt: now.Add(time.Hour), AbsoluteExpiresAt: now.Add(2 * time.Hour),
+	}, now, entropy.Crypto())
+	if err != nil {
+		t.Fatalf("値のない親の回転に失敗: %v", err)
+	}
+	if legacy.Record.AuthTime != nil || legacy.Record.AMR != nil || legacy.Record.ACR != nil {
+		t.Errorf("値のない親から値を補った: %+v", legacy.Record)
 	}
 }
 

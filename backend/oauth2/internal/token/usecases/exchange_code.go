@@ -200,6 +200,8 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 			return nil, err
 		}
 		gen.Record.TenantID = tenantID
+		authTime := rec.AuthTime
+		gen.Record.AuthTime, gen.Record.AMR, gen.Record.ACR = &authTime, slices.Clone(rec.AMR), rec.ACR
 		if err := deps.RefreshStore.Save(ctx, gen.Record); err != nil {
 			return nil, err
 		}

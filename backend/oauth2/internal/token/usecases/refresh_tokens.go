@@ -161,12 +161,23 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	emit(deps.Emit, &domain.RefreshTokenRotated{At: now, TenantID: tenantID, OldTokenID: record.ID, NewTokenID: newTok.Record.ID, FamilyID: record.FamilyID})
 
 	// RFC 6749 §6: アクセストークンだけを絞り、次のリフレッシュトークンには元の付与を残す。
+	// リフレッシュは利用者の認証ではないので、認証の時刻と方式は元の付与のものを載せる
+	// (RFC 9068 §2.2.1)。記録のない付与では載せない。
+	authTime, acr := int64(0), ""
+	if record.AuthTime != nil {
+		authTime = *record.AuthTime
+	}
+	if record.ACR != nil {
+		acr = *record.ACR
+	}
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
 		Client:           client,
 		Sub:              record.UserID,
 		Scopes:           scopes,
 		SenderConstraint: record.SenderConstraint,
-		AuthTime:         now.Unix(),
+		AuthTime:         authTime,
+		AMR:              record.AMR,
+		ACR:              acr,
 		Audiences:        audiences,
 	})
 	if err != nil {

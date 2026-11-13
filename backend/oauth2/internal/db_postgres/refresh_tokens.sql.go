@@ -25,7 +25,7 @@ func (q *Queries) DeleteRefreshTokensForSub(ctx context.Context, userID string) 
 const getRefreshTokenByHash = `-- name: GetRefreshTokenByHash :one
 SELECT id::text, hash, family_id::text, COALESCE(parent_id::text, '') AS parent_id, client_id, user_id,
   scopes, issued_at, expires_at, absolute_expires_at, revoked, rotated, sender_constraint,
-  COALESCE(sid::text, '') AS sid, resource
+  COALESCE(sid::text, '') AS sid, resource, auth_time, amr, acr
 FROM refresh_tokens
 WHERE hash = $1
 `
@@ -46,6 +46,9 @@ type GetRefreshTokenByHashRow struct {
 	SenderConstraint  []byte
 	Sid               interface{}
 	Resource          pgtype.Text
+	AuthTime          pgtype.Int8
+	Amr               []string
+	Acr               pgtype.Text
 }
 
 func (q *Queries) GetRefreshTokenByHash(ctx context.Context, hash string) (*GetRefreshTokenByHashRow, error) {
@@ -67,6 +70,9 @@ func (q *Queries) GetRefreshTokenByHash(ctx context.Context, hash string) (*GetR
 		&i.SenderConstraint,
 		&i.Sid,
 		&i.Resource,
+		&i.AuthTime,
+		&i.Amr,
+		&i.Acr,
 	)
 	return &i, err
 }
@@ -93,9 +99,11 @@ func (q *Queries) GetRefreshTokenRotationState(ctx context.Context, id string) (
 const insertRefreshToken = `-- name: InsertRefreshToken :exec
 INSERT INTO refresh_tokens (
   id, hash, family_id, parent_id, client_id, user_id, scopes, issued_at,
-  expires_at, absolute_expires_at, revoked, rotated, sender_constraint, sid, resource
+  expires_at, absolute_expires_at, revoked, rotated, sender_constraint, sid, resource,
+  auth_time, amr, acr
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, 'null')::jsonb, $14, $15
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, 'null')::jsonb, $14, $15,
+  $16, $17, $18
 )
 `
 
@@ -115,6 +123,9 @@ type InsertRefreshTokenParams struct {
 	Column13          interface{}
 	Sid               pgtype.UUID
 	Resource          pgtype.Text
+	AuthTime          pgtype.Int8
+	Amr               []string
+	Acr               pgtype.Text
 }
 
 func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error {
@@ -134,6 +145,9 @@ func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshToken
 		arg.Column13,
 		arg.Sid,
 		arg.Resource,
+		arg.AuthTime,
+		arg.Amr,
+		arg.Acr,
 	)
 	return err
 }

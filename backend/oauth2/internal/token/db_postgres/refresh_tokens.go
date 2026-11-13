@@ -109,6 +109,13 @@ func refreshFromRow(row *oauth2pg.GetRefreshTokenByHashRow) (*domain.RefreshToke
 	if row.Resource.Valid {
 		rec.Resource = &row.Resource.String
 	}
+	if row.AuthTime.Valid {
+		rec.AuthTime = &row.AuthTime.Int64
+	}
+	rec.AMR = row.Amr
+	if row.Acr.Valid {
+		rec.ACR = &row.Acr.String
+	}
 	if err := json.Unmarshal(row.Scopes, &rec.Scopes); err != nil {
 		return nil, err
 	}
@@ -141,10 +148,19 @@ func refreshInsertParams(rec *domain.RefreshTokenRecord) (oauth2pg.InsertRefresh
 	if rec.Resource != nil {
 		resource = pgtype.Text{String: *rec.Resource, Valid: true}
 	}
+	authTime := pgtype.Int8{}
+	if rec.AuthTime != nil {
+		authTime = pgtype.Int8{Int64: *rec.AuthTime, Valid: true}
+	}
+	acr := pgtype.Text{}
+	if rec.ACR != nil {
+		acr = pgtype.Text{String: *rec.ACR, Valid: true}
+	}
 	return oauth2pg.InsertRefreshTokenParams{
 		ID: rec.ID, Hash: rec.Hash, FamilyID: rec.FamilyID,
 		ParentID: parentID, ClientID: rec.ClientID, UserID: rec.UserID, Scopes: scopes, IssuedAt: rec.IssuedAt,
 		ExpiresAt: rec.ExpiresAt, AbsoluteExpiresAt: rec.AbsoluteExpiresAt, Revoked: rec.Revoked, Rotated: rec.Rotated,
 		Column13: string(constraint), Sid: sid, Resource: resource,
+		AuthTime: authTime, Amr: rec.AMR, Acr: acr,
 	}, nil
 }

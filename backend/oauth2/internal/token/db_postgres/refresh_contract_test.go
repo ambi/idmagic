@@ -16,6 +16,7 @@ import (
 
 func TestMain(m *testing.M) { os.Exit(pgtest.Main(m)) }
 
+//spec:covers REQ-OAUTH2-006: リフレッシュトークンの記録が認証の auth_time、amr、acr を保存して読み戻し、値のない記録は値のないまま読めることを PostgreSQL で固定する。
 func TestRefreshPersistenceContract(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)

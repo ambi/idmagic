@@ -3,6 +3,7 @@ package db_memory
 import (
 	"context"
 	"errors"
+	"slices"
 	"sort"
 	"sync"
 
@@ -118,6 +119,7 @@ func cloneRefreshToken(in *domain.RefreshTokenRecord) *domain.RefreshTokenRecord
 	}
 	out := *in
 	out.Scopes = append([]string(nil), in.Scopes...)
+	out.AMR = slices.Clone(in.AMR)
 	if in.SenderConstraint != nil {
 		senderConstraint := *in.SenderConstraint
 		out.SenderConstraint = &senderConstraint

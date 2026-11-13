@@ -2,12 +2,15 @@ package server_http_test
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"net/http"
 	"net/url"
 	"slices"
 	"testing"
+	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -127,6 +130,60 @@ func TestRefreshRequestResourceCannotWidenTheOriginalGrant(t *testing.T) {
 			assertRefreshClaims(t, out, "openid profile offline_access", wantAud)
 		})
 	}
+}
+
+//spec:covers REQ-OAUTH2-006: 認証から時間が経った後のリフレッシュで、アクセストークンと次の記録が元の auth_time、amr、acr を保ち、値のない記録からは載せないことを観測する。
+func TestRefreshRequestKeepsTheOriginalAuthentication(t *testing.T) {
+	f := newTokenIssuanceFixture(t)
+	ctx := testing_tenant.Default(t.Context())
+	authenticatedAt := time.Now().Add(-time.Hour).Unix()
+	amr := []string{"pwd", "otp"}
+	acr := authdomain.ACRMFA
+
+	code := f.authorizationCode(t, nil)
+	record, err := f.codes.Find(ctx, code)
+	if err != nil || record == nil {
+		t.Fatalf("認可コードの記録が見つからない: record=%v err=%v", record, err)
+	}
+	record.AuthTime, record.AMR, record.ACR = authenticatedAt, amr, &acr
+	if err := f.codes.Save(ctx, record); err != nil {
+		t.Fatal(err)
+	}
+	first := f.mustToken(t, f.codeExchangeForm(code, nil))
+
+	t.Run("ローテーションを重ねても元の認証を保つ", func(t *testing.T) {
+		token := first.RefreshToken
+		for range 2 {
+			out := f.mustToken(t, refreshRequest(token, nil))
+			_, claims := jwtParts(t, out.AccessToken)
+			if got, ok := claims["auth_time"].(float64); !ok || int64(got) != authenticatedAt {
+				t.Fatalf("auth_time=%v, want %d", claims["auth_time"], authenticatedAt)
+			}
+			if got := fmt.Sprint(claims["amr"]); got != fmt.Sprint(amr) {
+				t.Fatalf("amr=%v, want %v", claims["amr"], amr)
+			}
+			if claims["acr"] != acr {
+				t.Fatalf("acr=%v, want %q", claims["acr"], acr)
+			}
+			token = out.RefreshToken
+		}
+	})
+
+	t.Run("値のない記録からは載せない", func(t *testing.T) {
+		token := f.mustToken(t, f.codeExchangeForm(f.authorizationCode(t, nil), nil)).RefreshToken
+		legacy := f.refreshRecord(ctx, t, token)
+		legacy.AuthTime, legacy.AMR, legacy.ACR = nil, nil, nil
+		if err := f.refreshTokens.Save(ctx, legacy); err != nil {
+			t.Fatal(err)
+		}
+		out := f.mustToken(t, refreshRequest(token, nil))
+		_, claims := jwtParts(t, out.AccessToken)
+		for _, claim := range []string{"auth_time", "amr", "acr"} {
+			if value, present := claims[claim]; present {
+				t.Fatalf("%s=%v, want absent", claim, value)
+			}
+		}
+	})
 }
 
 func refreshRequest(token string, extra url.Values) url.Values {

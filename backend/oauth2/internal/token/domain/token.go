@@ -54,6 +54,12 @@ type RefreshTokenRecord struct {
 	// 引き継ぎ、ローテーション後も同じ McpResourceServer へ audience を厳格限定する
 	// (wi-262)。nil は resource 未指定の発行。
 	Resource *string `json:"resource,omitempty"`
+	// AuthTime、AMR、ACR は付与を得た利用者の認証である。Rotate では親の値をそのまま引き継ぎ、
+	// リフレッシュの時刻を認証の時刻にしない (RFC 9068 §2.2.1)。AuthTime が nil の記録は、
+	// 列を追加する前に発行したか、利用者の認証を伴わない発行である。
+	AuthTime *int64   `json:"auth_time,omitempty"`
+	AMR      []string `json:"amr,omitempty"`
+	ACR      *string  `json:"acr,omitempty"`
 }
 
 func (r RefreshTokenRecord) Validate() error {

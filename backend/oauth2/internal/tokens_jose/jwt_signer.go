@@ -100,7 +100,10 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 		"jti":       jti,
 		"iat":       now,
 		"exp":       now + accessTokenTTLSeconds,
-		"auth_time": in.AuthTime,
+	}
+	// 0 は認証の時刻を持たない付与を表す。時刻を補うと認証の新しさを偽るので載せない。
+	if in.AuthTime > 0 {
+		claims["auth_time"] = in.AuthTime
 	}
 	if in.ExpiresAt > 0 {
 		claims["exp"] = in.ExpiresAt

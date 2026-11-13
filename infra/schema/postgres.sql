@@ -1011,6 +1011,9 @@ CREATE TABLE refresh_tokens (
     sender_constraint JSONB,
     sid UUID,
     resource TEXT,
+    auth_time BIGINT,
+    amr TEXT[],
+    acr TEXT,
     CONSTRAINT refresh_tokens_hash_key UNIQUE (hash),
     CONSTRAINT refresh_tokens_parent_id_fkey
         FOREIGN KEY (parent_id) REFERENCES refresh_tokens(id) ON DELETE NO ACTION,

@@ -103,6 +103,9 @@ func RotateRefreshToken(parent *RefreshTokenRecord, now time.Time, random entrop
 		SenderConstraint:  parent.SenderConstraint,
 		Sid:               parent.Sid,
 		Resource:          parent.Resource,
+		AuthTime:          parent.AuthTime,
+		AMR:               slices.Clone(parent.AMR),
+		ACR:               parent.ACR,
 	}
 	if err := rec.Validate(); err != nil {
 		return nil, err

@@ -379,6 +379,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 			return nil, err
 		}
 		refresh.Record.TenantID = tenantID
+		refresh.Record.AuthTime = rec.AuthTime
 		if err := deps.RefreshStore.Save(ctx, refresh.Record); err != nil {
 			return nil, err
 		}
