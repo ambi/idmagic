@@ -44,6 +44,7 @@ Application は削除のために保存型を受け取らず、必要な削除�
 | 設計領域 | 文書 | 内容 |
 | --- | --- | --- |
 | データ設計 | [SignInPolicy のデータ](data.md#集約) | 条件の所有、Application への参照と削除の境界 |
+| セキュリティ設計 | [認証の保証](../../design/security/authorization.md#認証の保証) | サインインポリシー、`acr_values` と `max_age`、ステップアップ認証の分担 |
 
 | 文書 | 内容 |
 | --- | --- |
