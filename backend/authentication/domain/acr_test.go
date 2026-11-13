@@ -60,3 +60,22 @@ func TestACRSatisfiesTreatsMfaAsStrongerThanPassword(t *testing.T) {
 		}
 	}
 }
+
+//spec:covers REQ-OAUTH2-005: acr_values が MFA の水準だけを受け入れるかを、パスワードの水準を含む列挙、未知の値、空の要求と区別して判定することを固定する。
+func TestACRRequestsMFA(t *testing.T) {
+	for _, tc := range []struct {
+		requested string
+		want      bool
+	}{
+		{"urn:idmagic:acr:mfa", true},
+		{"urn:example:unknown urn:idmagic:acr:mfa", true},
+		{"urn:idmagic:acr:pwd", false},
+		{"urn:idmagic:acr:mfa urn:idmagic:acr:pwd", false},
+		{"urn:example:unknown", false},
+		{"", false},
+	} {
+		if got := ACRRequestsMFA(tc.requested); got != tc.want {
+			t.Errorf("ACRRequestsMFA(%q) = %v, want %v", tc.requested, got, tc.want)
+		}
+	}
+}

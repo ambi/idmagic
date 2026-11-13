@@ -69,10 +69,16 @@
 | ステップアップ認証 | Authentication | 機微な操作の要求 | 操作の直前の再認証 | [下の節](#ステップアップ認証) |
 
 記憶済みの端末（`amr` の `tdev`）は、第二要素を省いても `acr` の水準を `urn:idmagic:acr:mfa` に上げる。
-記憶済みの端末を MFA の充足と認めないのは、サインインポリシーで `allow_trusted_device` を `false` にした規則（毎回の MFA）だけである。
+記憶済みの端末を MFA の充足と認めないのは、二つの場合である。
+一つは、サインインポリシーで `allow_trusted_device` を `false` にした規則（毎回の MFA）である。
+もう一つは、認可の要求が `acr_values` で MFA の水準を求め、`max_age` か `prompt=login` で再認証も求めた場合である。再認証は直前に要素を提示したことを求めるので、ポリシーによらず記憶済みの端末を照合しない（[REQ-AUTHENTICATION-027](../../modules/authentication/features/trusted-device.md)）。
 ステップアップ認証は水準を問わず新しさだけを求め、記憶済みの端末で第二要素を省いたことをステップアップ認証の成立として記録しない（[REQ-AUTHENTICATION-029](../../modules/authentication/features/trusted-device.md)）。
-リソースサーバーが RFC 9470 で `acr_values` と `max_age` を求めた再認可では、MFA の水準を求める再認証で記憶済みの端末を充足と認めず、登録済みのどの第二要素でも満たせるようにし、満たせなければトークンを発行しない。
-この規則は未実装である（[リスクと技術的負債](../architecture/risks.md)）。
+
+`acr_values` で求めた MFA の水準は、実効のサインインポリシーによらず、満たすまで認可コードを発行しない（[REQ-OAUTH2-005](../../modules/oauth2/features/authorization.md)）。
+新しさを満たし水準だけが足りないセッションには、登録済みのいずれかの第二要素を求める。
+新しさを満たさないセッションはログインからやり直させる。要素を足しても認証の時刻は古いままだからである。
+第二要素を一つも登録していなければ、`unmet_authentication_requirements` を返す。
+RFC 9470 で MFA を求めるリソースサーバーの再認可が往復しないのは、この規則による。
 
 水準の語彙は `urn:idmagic:acr:pwd` と `urn:idmagic:acr:mfa` の二つで、サインインポリシーの `Password` と `Mfa` に一対一で対応する。
 

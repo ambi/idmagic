@@ -132,7 +132,10 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		if decision.StepUpRequired {
 			// 記憶済みの信頼済みデバイスは第二要素の提示を省略できる (wi-91)。成立すると
 			// authn は tdev 込みへ昇格するので、そのまま通常の完了経路へ落ちる。
-			trusted, err := d.trustedDeviceSatisfiesSecondFactor(c, decision.TrustedDeviceAllowed, authn)
+			// 再認証を伴う MFA の要求では記憶済みの端末を照合しない (REQ-AUTHENTICATION-027)。
+			// 照合すると Cookie を回転させるだけで、充足には数えない。
+			trustedAllowed := decision.TrustedDeviceAllowed && !decision.Requested.ExcludesTrustedDevice()
+			trusted, err := d.trustedDeviceSatisfiesSecondFactor(c, trustedAllowed, authn)
 			if err != nil {
 				return err
 			}
@@ -178,6 +181,9 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		} else if redirected {
 			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: d.pendingAuthPath(c, authn)})
 		}
+	}
+	if handled, err := d.enforceRequestedAssurance(c, authorization, decision.Requested, authn); err != nil || handled {
+		return err
 	}
 	d.emitAuthenticationSuccess(c, authTime, user, authn, authorization.ClientID())
 	// full authentication 完了。last_login_at 記録 + required action gate。

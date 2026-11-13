@@ -36,10 +36,28 @@ type Authorization interface {
 // SignInRequirement は、認可要求の続きが求めるサインインの条件である。
 type SignInRequirement struct {
 	// TenantDefault は、IdMagic 自身の画面への認可として、テナントのデフォルトのポリシーを
-	// ログインが評価することを表す。true のとき残りのフィールドは使わない。
+	// ログインが評価することを表す。true のとき Requested 以外のフィールドは使わない。
 	TenantDefault        bool
 	Allowed              bool
 	StepUpRequired       bool
 	TrustedDeviceAllowed bool
 	ApplicationID        string
+	// Requested は、認可の要求そのものが求める認証の水準である。サインインポリシーとは別に、
+	// TenantDefault のときも評価する (REQ-OAUTH2-005)。
+	Requested RequestedAssurance
+}
+
+// RequestedAssurance は、クライアントが acr_values と再認証の要求で求めた認証の水準である。
+type RequestedAssurance struct {
+	// MFA は、acr_values が MFA の水準だけを受け入れることを表す。
+	MFA bool
+	// Reauthentication は、max_age か prompt=login で再認証を求めたことを表す。このとき
+	// 記憶済みの端末を MFA の充足と認めない (REQ-AUTHENTICATION-027)。
+	Reauthentication bool
+}
+
+// ExcludesTrustedDevice は、再認証を伴う MFA の要求として、記憶済みの端末を照合も充足もしない
+// ことを返す (REQ-AUTHENTICATION-027)。
+func (r RequestedAssurance) ExcludesTrustedDevice() bool {
+	return r.MFA && r.Reauthentication
 }

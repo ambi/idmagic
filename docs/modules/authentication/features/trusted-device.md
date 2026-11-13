@@ -74,6 +74,8 @@
 
 - 実効のサインインポリシーが `Mfa` で `allow_trusted_device=true` の間、`Active` で期限内の信頼済みデバイスの Cookie とともに正しいパスワードを受けたとき、Authentication は、第二要素の画面へ進めずにログインを完了させ、`amr` に `tdev` を加えて `acr` を `urn:idmagic:acr:mfa` にし、verifier を回転させて `last_used_at` を進め、Cookie を再発行する。
 - 実効のサインインの規則が `allow_trusted_device=false` の間、信頼済みデバイスの Cookie とともに正しいパスワードを受けたとき、Authentication は、`tdev` を MFA の充足と認めずに第二要素の画面へ進ませる。
+- 認可の要求が `acr_values` で MFA の水準を求め、`max_age` か `prompt=login` で再認証も求めている間、信頼済みデバイスの Cookie とともに正しいパスワードを受けたとき、Authentication は、サインインポリシーによらず `tdev` を MFA の充足と認めずに第二要素の画面へ進ませる。
+- **判断**：再認証は、直前に要素を提示したことを求める要求である。記憶した端末は要素の提示ではないので、MFA の水準を求める再認証を満たさない。満たしたものとして発行すると、`amr` から記憶した端末を除いて判定するリソースサーバーが拒否し、再認可が往復する。
 - 絶対期限か idle 期限を過ぎた Cookie、回転の前の古い Cookie、別のテナントの realm で発行された Cookie、verifier の一致しない Cookie、`Revoked` のデバイスの Cookie を受けた場合、Authentication は、第二要素を省略せずにログインセッションを `authentication_pending=true` にし、`amr` に `tdev` を加えない。
 - **例**：EX-AUTHENTICATION-027-01、EX-AUTHENTICATION-027-02、EX-AUTHENTICATION-027-03、EX-AUTHENTICATION-027-04、EX-AUTHENTICATION-027-05
 

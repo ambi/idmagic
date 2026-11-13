@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 )
 
 // PromptTokens は OIDC prompt の正規化済み値集合である。
@@ -87,6 +89,32 @@ func NeedsReauthentication(p AuthorizationRequestPolicy, authTime, now time.Time
 		}
 	}
 	return false
+}
+
+// RequestedAssurance は、認可の要求そのものが求める認証の水準である。
+type RequestedAssurance struct {
+	// MFA は、acr_values が MFA の水準だけを受け入れることを表す。
+	MFA bool
+	// Reauthentication は、max_age か prompt=login で再認証を求めたことを表す。
+	Reauthentication bool
+}
+
+// RequestedAssurance は、acr_values、max_age、prompt から、要求が求める水準と再認証を返す。
+// 実効のサインインポリシーとは独立に、クライアントが求めた条件だけを表す (REQ-OAUTH2-005)。
+func (r *AuthorizationRequest) RequestedAssurance() RequestedAssurance {
+	var out RequestedAssurance
+	if r.ACRValues != nil {
+		out.MFA = authdomain.ACRRequestsMFA(*r.ACRValues)
+	}
+	if r.MaxAge != nil {
+		out.Reauthentication = true
+	}
+	if r.Prompt != nil {
+		if prompt, err := ParsePromptTokens(*r.Prompt); err == nil && prompt.Login {
+			out.Reauthentication = true
+		}
+	}
+	return out
 }
 
 func ParsePrompt(req *AuthorizationRequest) AuthorizationRequestPolicy {

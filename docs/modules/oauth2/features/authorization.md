@@ -134,6 +134,9 @@ PAR で発行した `request_uri` のライフサイクル。`/authorize` から
 - 認証済みの利用者が Application の割り当てと実効のサインインポリシーを満たし、要求したスコープを同意が覆うとき、OAuth2 は、60 秒以下の有効期間の認可コードを発行し、`state` と発行者の識別子とともに `redirect_uri` へ返し、`AuthorizationCodeIssued` を発行する。
 - クライアントが期限内の認可コードを、同じクライアント、同じ `redirect_uri`、一致する `code_verifier` で交換したとき、OAuth2 は、コードを `Redeemed` にし、アクセストークンと、`openid` のスコープには ID トークンを返し、`refresh_token` のグラントを許可したクライアントの `offline_access` のスコープにはリフレッシュトークンを返し、`AuthorizationCodeRedeemed`、`AccessTokenIssued` を発行する。
 - `redirect_uri` を省いた認可リクエストのコードを、クライアントが `redirect_uri` を省いて交換したとき、OAuth2 は、登録値と同じ `redirect_uri` で交換したものとして扱う。
+- `acr_values` が MFA の水準だけを受け入れる要求を受けたとき、OAuth2 は、既存のセッションでもログインの後でも、実効のサインインポリシーによらず、認証が MFA の水準を満たすまで認可コードを発行しない。
+- `acr_values` が MFA の水準を求め、既存のセッションが MFA の水準を満たさないとき、OAuth2 は、ログインからやり直させずに、TOTP、WebAuthn、未使用の復旧コードのうち利用者が登録したいずれかの第二要素の画面へ進ませる。
+- `acr_values` が MFA の水準を求め、利用者が第二要素を一つも登録していない場合、OAuth2 は、認可コードを発行せずに、`state` と発行者の識別子を含む `unmet_authentication_requirements` を登録済みの `redirect_uri` へ返す。
 - `prompt=none` でセッションがない場合、OAuth2 は、画面もログインへのリダイレクトも出さずに、`state` と発行者の識別子を含む `login_required` を登録済みの `redirect_uri` へ返す。
 - 未登録の `redirect_uri` か `client_id` のない要求を受けた場合、OAuth2 は、リダイレクトせずに `invalid_request` のエラーの画面を返す。
 - `openid` を含む要求か、登録した `redirect_uri` が一件でないクライアントの要求で `redirect_uri` を省いた場合、OAuth2 は、リダイレクトせずに `invalid_request` のエラーの画面を返し、認可リクエストを保存しない。

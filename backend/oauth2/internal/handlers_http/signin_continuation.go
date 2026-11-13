@@ -57,8 +57,10 @@ func (p *pendingAuthorization) Requirement(
 		return signinports.SignInRequirement{}, errUnknownClient
 	}
 	p.client = client
+	assurance := p.req.RequestedAssurance()
+	requested := signinports.RequestedAssurance{MFA: assurance.MFA, Reauthentication: assurance.Reauthentication}
 	if client.FirstParty {
-		return signinports.SignInRequirement{TenantDefault: true}, nil
+		return signinports.SignInRequirement{TenantDefault: true, Requested: requested}, nil
 	}
 	decision, err := p.d.EvaluateApplicationAccess(
 		c.Request().Context(), support.RequestTenantID(c), appdomain.ApplicationProtocolOIDC, p.req.ClientID,
@@ -70,6 +72,7 @@ func (p *pendingAuthorization) Requirement(
 	return signinports.SignInRequirement{
 		Allowed: decision.Allowed, StepUpRequired: decision.StepUpRequired,
 		TrustedDeviceAllowed: decision.TrustedDeviceAllowed, ApplicationID: decision.ApplicationID,
+		Requested: requested,
 	}, nil
 }
 

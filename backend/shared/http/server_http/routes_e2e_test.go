@@ -45,6 +45,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	recoverydomain "github.com/ambi/idmagic/backend/authentication/recovery/domain"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -162,6 +163,9 @@ type totpServerOptions struct {
 	firstParty bool
 	// webAuthn は WebAuthn の RP を構成し、ログインの第二要素の WebAuthn の API を使えるようにする。
 	webAuthn bool
+	// recoveryCode は、利用者に未使用の復旧コードを一つ持たせる。TOTP 以外の第二要素だけを
+	// 持つ利用者を作るのに使う。
+	recoveryCode bool
 }
 
 func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, enrollment ...bool) *httptest.Server {
@@ -304,6 +308,15 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 	authenticationModule := authentication.Module{
 		MfaEnrollmentBypassRepo: mfaEnrollmentBypassRepo,
 		TrustedDeviceRepo:       authentication.NewMemoryModule(nil).TrustedDeviceRepo,
+	}
+	if opts.recoveryCode {
+		recoveryCodes := authentication.NewMemoryModule(nil).RecoveryCodeRepo
+		if err := recoveryCodes.ReplaceAll(context.Background(), "user_alice", []*recoverydomain.RecoveryCode{{
+			UserID: "user_alice", CodeHash: "recovery-code-hash", GeneratedAt: time.Now().UTC(),
+		}}); err != nil {
+			t.Fatalf("seed recovery code: %v", err)
+		}
+		authenticationModule.RecoveryCodeRepo = recoveryCodes
 	}
 	if opts.webAuthn {
 		rp, err := authentication.NewWebAuthn("localhost", "idmagic", []string{"http://localhost"})

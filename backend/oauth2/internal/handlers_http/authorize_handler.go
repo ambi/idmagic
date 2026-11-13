@@ -98,24 +98,36 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 				return c.Redirect(http.StatusSeeOther, d.SignIn.PendingPath(c, authn))
 			}
 			policy := oauthdomain.ParsePrompt(out.Request)
-			needsStepUp := out.Request.ACRValues != nil &&
+			requested := out.Request.RequestedAssurance()
+			acrUnmet := out.Request.ACRValues != nil &&
 				!authdomain.ACRSatisfies(authn.ACR, *out.Request.ACRValues)
+			// 新しさを満たさないセッションは、要素を足しても認証の時刻が古いままなので、ログインから
+			// やり直させる。要求した水準はログインの後に満たさせる (REQ-OAUTH2-005)。
 			if oauthdomain.NeedsReauthentication(policy, time.Unix(authn.AuthTime, 0), time.Now(), false) ||
-				needsStepUp {
+				acrUnmet && !requested.MFA {
 				if prompt.None {
 					return d.redirectAuthorizationError(c, out.Request, "login_required", "The existing session does not satisfy the authentication requirements.")
 				}
-				if needsStepUp && d.SignIn.CanUseTOTP(c, authn.UserID) {
-					pending, err := d.SignIn.RequireSecondFactor(c.Request().Context(), c, authn.SessionID)
-					if err != nil {
-						return err
-					}
-					if pending == nil {
-						return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "The existing session does not satisfy the authentication requirements."))
-					}
-					return c.Redirect(http.StatusSeeOther, d.SignIn.PendingPath(c, authn))
-				}
 				return c.Redirect(http.StatusSeeOther, support.TenantRoute(c, "/login"))
+			}
+			// 新しさを満たし MFA の水準だけが足りないセッションには、登録済みのいずれかの第二要素を
+			// 求める。再認証の要求では記憶済みの端末を MFA の充足と認めない (REQ-AUTHENTICATION-027)。
+			if requested.MFA && (acrUnmet || requested.Reauthentication && !authn.SecondFactorAuthenticated()) {
+				if prompt.None {
+					return d.redirectAuthorizationError(c, out.Request, "login_required", "The existing session does not satisfy the authentication requirements.")
+				}
+				if len(d.SignIn.SecondFactorMethods(c, authn.UserID)) == 0 {
+					return d.redirectAuthorizationError(c, out.Request, "unmet_authentication_requirements",
+						"The requested authentication level cannot be met because no second factor is enrolled.")
+				}
+				pending, err := d.SignIn.RequireSecondFactor(c.Request().Context(), c, authn.SessionID)
+				if err != nil {
+					return err
+				}
+				if pending == nil {
+					return writeOAuthError(c, authorizationusecases.NewOAuthError("login_required", "The existing session does not satisfy the authentication requirements."))
+				}
+				return c.Redirect(http.StatusSeeOther, d.SignIn.PendingPath(c, authn))
 			}
 			if out.Client.FirstParty {
 				redirected, err := d.SignIn.EnforceTenantDefault(c, authn, !prompt.None)

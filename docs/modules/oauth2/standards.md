@@ -304,6 +304,14 @@ Final — https://openid.net/specs/openid-connect-core-1_0-18.html
 | OIDC-CORE-USERINFO | required | SHOULD | `openid` スコープのアクセストークンに対して、`sub` を含む UserInfo を返す。 |
 | OIDC-CORE-HYBRID-IMPLICIT | excluded | MAY | Implicit Flow および Hybrid Flow を提供する。 |
 
+## OpenID Connect Core Error Code unmet_authentication_requirements
+
+Draft 01 — https://openid.net/specs/openid-connect-unmet-authentication-requirements-1_0.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| OIDC-UNMET-AUTHENTICATION-REQUIREMENTS | required | MAY | 認可の要求が `acr_values` で求めた認証の水準を満たせない場合、認可コードを発行せずに、認可エンドポイントのエラー応答として `unmet_authentication_requirements` を返す。仕様は必須のクレームの `acr` に SHALL を、それ以外の要求に「適切なら MAY」を定めており、`acr_values` で求めた水準にはこの MAY を適用する。 |
+
 ## OpenID Connect Client-Initiated Backchannel Authentication Flow Core 1.0
 
 Final — https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html
