@@ -41,7 +41,7 @@ SPA とゲートウェイはサーバーと同じリリースで提供する。
 | --- | --- |
 | [表示言語](features/localization.md) | 表示言語の解決、フォールバックとエラーの翻訳 |
 | [ホステッド UI とポータル](features/hosted-ui.md) | デモの入口、失効セッションからの復帰、認可トランザクションの表示と OIDC RP |
-| [管理コンソールのリソース操作](features/admin-console.md) | 一覧の件数と更新、専用の作成画面と資格情報の入力 |
+| [管理コンソールのリソース操作](features/admin-console.md) | 一覧の件数と更新、専用の作成画面と資格情報の入力、システムコンソールのテナントの詳細、変更画面、確認 |
 
 画面は `frontend/src/features/`、HTTP の変換は `frontend/src/api/`、辞書とロケールの解決は `frontend/src/lib/`、中継設定は `frontend/Caddyfile` と `frontend/vite.config.ts` にある。
 System から配置を移した要件と例は、既存の `REQ-SYSTEM-*` と `EX-SYSTEM-*` を維持する。

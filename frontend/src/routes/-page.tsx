@@ -122,6 +122,11 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'email-verify': `メールアドレスの確認 | ${ACCOUNT}`,
   // システム管理
   'system-tenants': `テナント | ${SYSTEM}`,
+  'system-tenant-create': `テナントの作成 | ${SYSTEM}`,
+  'system-tenant-detail': `テナントの詳細 | ${SYSTEM}`,
+  'system-tenant-edit': `テナントの変更 | ${SYSTEM}`,
+  'system-tenant-quota': `テナントの上限 | ${SYSTEM}`,
+  'system-tenant-endpoint-style': `正規ロケーションの切替 | ${SYSTEM}`,
   'system-key-health': `署名鍵の健全性 | ${SYSTEM}`,
   'system-data-key-health': `暗号鍵の健全性 | ${SYSTEM}`,
   // ログイン / 認証フロー

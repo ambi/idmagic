@@ -1430,6 +1430,10 @@ export async function listAdminTenants(): Promise<AdminTenant[]> {
   return (await request<AdminTenantListResponse>('/api/admin/v1/tenants')).tenants
 }
 
+export async function getAdminTenant(realm: string): Promise<AdminTenant> {
+  return request<AdminTenant>(`/api/admin/v1/tenants/${encodeURIComponent(realm)}`)
+}
+
 export type CreateAdminTenantInput = {
   realm: string
   display_name: string

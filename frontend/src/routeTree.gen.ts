@@ -61,6 +61,7 @@ import { Route as SystemAuditEventsRouteImport } from './routes/system/audit-eve
 import { Route as SystemDataKeysRouteImport } from './routes/system/data-keys'
 import { Route as SystemJobsRouteImport } from './routes/system/jobs'
 import { Route as SystemKeysRouteImport } from './routes/system/keys'
+import { Route as SystemNewTenantRouteImport } from './routes/system/new-tenant'
 import { Route as SystemTenantsRouteImport } from './routes/system/tenants'
 import { Route as AccountApiTokensNewRouteImport } from './routes/account/api-tokens_/new'
 import { Route as AccountEmailVerifyRouteImport } from './routes/account/email/verify'
@@ -102,6 +103,7 @@ import { Route as AdminUsersImportRouteImport } from './routes/admin/users_/impo
 import { Route as AdminUsersNewRouteImport } from './routes/admin/users_/new'
 import { Route as AdminWorkloadIdentityTrustBundleIdRouteImport } from './routes/admin/workload-identity_/$trustBundleId'
 import { Route as AdminWorkloadIdentityNewRouteImport } from './routes/admin/workload-identity_/new'
+import { Route as SystemTenantsRealmRouteImport } from './routes/system/tenants_/$realm'
 import { Route as AdminAgentsAgentIdIndexRouteImport } from './routes/admin/agents_/$agentId.index'
 import { Route as AdminAgentsAgentIdAccessRouteImport } from './routes/admin/agents_/$agentId.access'
 import { Route as AdminAgentsAgentIdCredentialsRouteImport } from './routes/admin/agents_/$agentId.credentials'
@@ -133,6 +135,10 @@ import { Route as AdminUsersIdIndexRouteImport } from './routes/admin/users_/$id
 import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.edit'
 import { Route as AdminWorkloadIdentityTrustBundleIdIndexRouteImport } from './routes/admin/workload-identity_/$trustBundleId.index'
 import { Route as AdminWorkloadIdentityTrustBundleIdEditRouteImport } from './routes/admin/workload-identity_/$trustBundleId.edit'
+import { Route as SystemTenantsRealmIndexRouteImport } from './routes/system/tenants_/$realm.index'
+import { Route as SystemTenantsRealmEditRouteImport } from './routes/system/tenants_/$realm.edit'
+import { Route as SystemTenantsRealmEndpointStyleRouteImport } from './routes/system/tenants_/$realm.endpoint-style'
+import { Route as SystemTenantsRealmQuotaRouteImport } from './routes/system/tenants_/$realm.quota'
 import { Route as AdminAgentsAgentIdGuardrailEditRouteImport } from './routes/admin/agents_/$agentId.guardrail.edit'
 import { Route as AdminAgentsAgentIdResourcesEditRouteImport } from './routes/admin/agents_/$agentId.resources_.edit'
 import { Route as AdminFederationEntraDomainEditRouteImport } from './routes/admin/federation/entra_/$domain_.edit'
@@ -404,6 +410,11 @@ const SystemKeysRoute = SystemKeysRouteImport.update({
   path: '/keys',
   getParentRoute: () => SystemRouteRoute,
 } as any)
+const SystemNewTenantRoute = SystemNewTenantRouteImport.update({
+  id: '/new-tenant',
+  path: '/new-tenant',
+  getParentRoute: () => SystemRouteRoute,
+} as any)
 const SystemTenantsRoute = SystemTenantsRouteImport.update({
   id: '/tenants',
   path: '/tenants',
@@ -625,6 +636,11 @@ const AdminWorkloadIdentityNewRoute =
     path: '/workload-identity/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const SystemTenantsRealmRoute = SystemTenantsRealmRouteImport.update({
+  id: '/tenants_/$realm',
+  path: '/tenants/$realm',
+  getParentRoute: () => SystemRouteRoute,
+} as any)
 const AdminAgentsAgentIdIndexRoute = AdminAgentsAgentIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -804,6 +820,27 @@ const AdminWorkloadIdentityTrustBundleIdEditRoute =
     path: '/edit',
     getParentRoute: () => AdminWorkloadIdentityTrustBundleIdRoute,
   } as any)
+const SystemTenantsRealmIndexRoute = SystemTenantsRealmIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SystemTenantsRealmRoute,
+} as any)
+const SystemTenantsRealmEditRoute = SystemTenantsRealmEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => SystemTenantsRealmRoute,
+} as any)
+const SystemTenantsRealmEndpointStyleRoute =
+  SystemTenantsRealmEndpointStyleRouteImport.update({
+    id: '/endpoint-style',
+    path: '/endpoint-style',
+    getParentRoute: () => SystemTenantsRealmRoute,
+  } as any)
+const SystemTenantsRealmQuotaRoute = SystemTenantsRealmQuotaRouteImport.update({
+  id: '/quota',
+  path: '/quota',
+  getParentRoute: () => SystemTenantsRealmRoute,
+} as any)
 const AdminAgentsAgentIdGuardrailEditRoute =
   AdminAgentsAgentIdGuardrailEditRouteImport.update({
     id: '/guardrail/edit',
@@ -903,6 +940,7 @@ export interface FileRoutesByFullPath {
   '/system/data-keys': typeof SystemDataKeysRoute
   '/system/jobs': typeof SystemJobsRoute
   '/system/keys': typeof SystemKeysRoute
+  '/system/new-tenant': typeof SystemNewTenantRoute
   '/system/tenants': typeof SystemTenantsRoute
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -946,6 +984,7 @@ export interface FileRoutesByFullPath {
   '/admin/users/new': typeof AdminUsersNewRoute
   '/admin/workload-identity/$trustBundleId': typeof AdminWorkloadIdentityTrustBundleIdRouteWithChildren
   '/admin/workload-identity/new': typeof AdminWorkloadIdentityNewRoute
+  '/system/tenants/$realm': typeof SystemTenantsRealmRouteWithChildren
   '/account/profile/': typeof AccountProfileIndexRoute
   '/admin/agents/$agentId/access': typeof AdminAgentsAgentIdAccessRoute
   '/admin/agents/$agentId/credentials': typeof AdminAgentsAgentIdCredentialsRoute
@@ -972,12 +1011,16 @@ export interface FileRoutesByFullPath {
   '/admin/tenant/group_attributes/new': typeof AdminTenantGroup_attributesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/workload-identity/$trustBundleId/edit': typeof AdminWorkloadIdentityTrustBundleIdEditRoute
+  '/system/tenants/$realm/edit': typeof SystemTenantsRealmEditRoute
+  '/system/tenants/$realm/endpoint-style': typeof SystemTenantsRealmEndpointStyleRoute
+  '/system/tenants/$realm/quota': typeof SystemTenantsRealmQuotaRoute
   '/admin/agents/$agentId/': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/identity-providers/$id/': typeof AdminIdentityProvidersIdIndexRoute
   '/admin/users/$id/': typeof AdminUsersIdIndexRoute
   '/admin/workload-identity/$trustBundleId/': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
+  '/system/tenants/$realm/': typeof SystemTenantsRealmIndexRoute
   '/admin/agents/$agentId/guardrail/edit': typeof AdminAgentsAgentIdGuardrailEditRoute
   '/admin/agents/$agentId/resources/edit': typeof AdminAgentsAgentIdResourcesEditRoute
   '/admin/federation/entra/$domain/edit': typeof AdminFederationEntraDomainEditRoute
@@ -1034,6 +1077,7 @@ export interface FileRoutesByTo {
   '/system/data-keys': typeof SystemDataKeysRoute
   '/system/jobs': typeof SystemJobsRoute
   '/system/keys': typeof SystemKeysRoute
+  '/system/new-tenant': typeof SystemNewTenantRoute
   '/system/tenants': typeof SystemTenantsRoute
   '/account': typeof AccountIndexRoute
   '/admin': typeof AdminIndexRoute
@@ -1095,12 +1139,16 @@ export interface FileRoutesByTo {
   '/admin/tenant/group_attributes/new': typeof AdminTenantGroup_attributesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/workload-identity/$trustBundleId/edit': typeof AdminWorkloadIdentityTrustBundleIdEditRoute
+  '/system/tenants/$realm/edit': typeof SystemTenantsRealmEditRoute
+  '/system/tenants/$realm/endpoint-style': typeof SystemTenantsRealmEndpointStyleRoute
+  '/system/tenants/$realm/quota': typeof SystemTenantsRealmQuotaRoute
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdIndexRoute
   '/admin/identity-providers/$id': typeof AdminIdentityProvidersIdIndexRoute
   '/admin/users/$id': typeof AdminUsersIdIndexRoute
   '/admin/workload-identity/$trustBundleId': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
+  '/system/tenants/$realm': typeof SystemTenantsRealmIndexRoute
   '/admin/agents/$agentId/guardrail/edit': typeof AdminAgentsAgentIdGuardrailEditRoute
   '/admin/agents/$agentId/resources/edit': typeof AdminAgentsAgentIdResourcesEditRoute
   '/admin/federation/entra/$domain/edit': typeof AdminFederationEntraDomainEditRoute
@@ -1161,6 +1209,7 @@ export interface FileRoutesById {
   '/system/data-keys': typeof SystemDataKeysRoute
   '/system/jobs': typeof SystemJobsRoute
   '/system/keys': typeof SystemKeysRoute
+  '/system/new-tenant': typeof SystemNewTenantRoute
   '/system/tenants': typeof SystemTenantsRoute
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -1204,6 +1253,7 @@ export interface FileRoutesById {
   '/admin/users_/new': typeof AdminUsersNewRoute
   '/admin/workload-identity_/$trustBundleId': typeof AdminWorkloadIdentityTrustBundleIdRouteWithChildren
   '/admin/workload-identity_/new': typeof AdminWorkloadIdentityNewRoute
+  '/system/tenants_/$realm': typeof SystemTenantsRealmRouteWithChildren
   '/account/profile_/': typeof AccountProfileIndexRoute
   '/admin/agents_/$agentId/access': typeof AdminAgentsAgentIdAccessRoute
   '/admin/agents_/$agentId/credentials': typeof AdminAgentsAgentIdCredentialsRoute
@@ -1230,12 +1280,16 @@ export interface FileRoutesById {
   '/admin/tenant/group_attributes_/new': typeof AdminTenantGroup_attributesNewRoute
   '/admin/users_/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/workload-identity_/$trustBundleId/edit': typeof AdminWorkloadIdentityTrustBundleIdEditRoute
+  '/system/tenants_/$realm/edit': typeof SystemTenantsRealmEditRoute
+  '/system/tenants_/$realm/endpoint-style': typeof SystemTenantsRealmEndpointStyleRoute
+  '/system/tenants_/$realm/quota': typeof SystemTenantsRealmQuotaRoute
   '/admin/agents_/$agentId/': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups_/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/identity-providers_/$id/': typeof AdminIdentityProvidersIdIndexRoute
   '/admin/users_/$id/': typeof AdminUsersIdIndexRoute
   '/admin/workload-identity_/$trustBundleId/': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
+  '/system/tenants_/$realm/': typeof SystemTenantsRealmIndexRoute
   '/admin/agents_/$agentId/guardrail/edit': typeof AdminAgentsAgentIdGuardrailEditRoute
   '/admin/agents_/$agentId/resources_/edit': typeof AdminAgentsAgentIdResourcesEditRoute
   '/admin/federation/entra_/$domain_/edit': typeof AdminFederationEntraDomainEditRoute
@@ -1297,6 +1351,7 @@ export interface FileRouteTypes {
     | '/system/data-keys'
     | '/system/jobs'
     | '/system/keys'
+    | '/system/new-tenant'
     | '/system/tenants'
     | '/account/'
     | '/admin/'
@@ -1340,6 +1395,7 @@ export interface FileRouteTypes {
     | '/admin/users/new'
     | '/admin/workload-identity/$trustBundleId'
     | '/admin/workload-identity/new'
+    | '/system/tenants/$realm'
     | '/account/profile/'
     | '/admin/agents/$agentId/access'
     | '/admin/agents/$agentId/credentials'
@@ -1366,12 +1422,16 @@ export interface FileRouteTypes {
     | '/admin/tenant/group_attributes/new'
     | '/admin/users/$id/edit'
     | '/admin/workload-identity/$trustBundleId/edit'
+    | '/system/tenants/$realm/edit'
+    | '/system/tenants/$realm/endpoint-style'
+    | '/system/tenants/$realm/quota'
     | '/admin/agents/$agentId/'
     | '/admin/applications/$applicationId/'
     | '/admin/groups/$groupId/'
     | '/admin/identity-providers/$id/'
     | '/admin/users/$id/'
     | '/admin/workload-identity/$trustBundleId/'
+    | '/system/tenants/$realm/'
     | '/admin/agents/$agentId/guardrail/edit'
     | '/admin/agents/$agentId/resources/edit'
     | '/admin/federation/entra/$domain/edit'
@@ -1428,6 +1488,7 @@ export interface FileRouteTypes {
     | '/system/data-keys'
     | '/system/jobs'
     | '/system/keys'
+    | '/system/new-tenant'
     | '/system/tenants'
     | '/account'
     | '/admin'
@@ -1489,12 +1550,16 @@ export interface FileRouteTypes {
     | '/admin/tenant/group_attributes/new'
     | '/admin/users/$id/edit'
     | '/admin/workload-identity/$trustBundleId/edit'
+    | '/system/tenants/$realm/edit'
+    | '/system/tenants/$realm/endpoint-style'
+    | '/system/tenants/$realm/quota'
     | '/admin/agents/$agentId'
     | '/admin/applications/$applicationId'
     | '/admin/groups/$groupId'
     | '/admin/identity-providers/$id'
     | '/admin/users/$id'
     | '/admin/workload-identity/$trustBundleId'
+    | '/system/tenants/$realm'
     | '/admin/agents/$agentId/guardrail/edit'
     | '/admin/agents/$agentId/resources/edit'
     | '/admin/federation/entra/$domain/edit'
@@ -1554,6 +1619,7 @@ export interface FileRouteTypes {
     | '/system/data-keys'
     | '/system/jobs'
     | '/system/keys'
+    | '/system/new-tenant'
     | '/system/tenants'
     | '/account/'
     | '/admin/'
@@ -1597,6 +1663,7 @@ export interface FileRouteTypes {
     | '/admin/users_/new'
     | '/admin/workload-identity_/$trustBundleId'
     | '/admin/workload-identity_/new'
+    | '/system/tenants_/$realm'
     | '/account/profile_/'
     | '/admin/agents_/$agentId/access'
     | '/admin/agents_/$agentId/credentials'
@@ -1623,12 +1690,16 @@ export interface FileRouteTypes {
     | '/admin/tenant/group_attributes_/new'
     | '/admin/users_/$id/edit'
     | '/admin/workload-identity_/$trustBundleId/edit'
+    | '/system/tenants_/$realm/edit'
+    | '/system/tenants_/$realm/endpoint-style'
+    | '/system/tenants_/$realm/quota'
     | '/admin/agents_/$agentId/'
     | '/admin/applications_/$applicationId/'
     | '/admin/groups_/$groupId/'
     | '/admin/identity-providers_/$id/'
     | '/admin/users_/$id/'
     | '/admin/workload-identity_/$trustBundleId/'
+    | '/system/tenants_/$realm/'
     | '/admin/agents_/$agentId/guardrail/edit'
     | '/admin/agents_/$agentId/resources_/edit'
     | '/admin/federation/entra_/$domain_/edit'
@@ -2021,6 +2092,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SystemKeysRouteImport
       parentRoute: typeof SystemRouteRoute
     }
+    '/system/new-tenant': {
+      id: '/system/new-tenant'
+      path: '/new-tenant'
+      fullPath: '/system/new-tenant'
+      preLoaderRoute: typeof SystemNewTenantRouteImport
+      parentRoute: typeof SystemRouteRoute
+    }
     '/system/tenants': {
       id: '/system/tenants'
       path: '/tenants'
@@ -2308,6 +2386,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminWorkloadIdentityNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/system/tenants_/$realm': {
+      id: '/system/tenants_/$realm'
+      path: '/tenants/$realm'
+      fullPath: '/system/tenants/$realm'
+      preLoaderRoute: typeof SystemTenantsRealmRouteImport
+      parentRoute: typeof SystemRouteRoute
+    }
     '/admin/agents_/$agentId/': {
       id: '/admin/agents_/$agentId/'
       path: '/'
@@ -2524,6 +2609,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/workload-identity/$trustBundleId/edit'
       preLoaderRoute: typeof AdminWorkloadIdentityTrustBundleIdEditRouteImport
       parentRoute: typeof AdminWorkloadIdentityTrustBundleIdRoute
+    }
+    '/system/tenants_/$realm/': {
+      id: '/system/tenants_/$realm/'
+      path: '/'
+      fullPath: '/system/tenants/$realm/'
+      preLoaderRoute: typeof SystemTenantsRealmIndexRouteImport
+      parentRoute: typeof SystemTenantsRealmRoute
+    }
+    '/system/tenants_/$realm/edit': {
+      id: '/system/tenants_/$realm/edit'
+      path: '/edit'
+      fullPath: '/system/tenants/$realm/edit'
+      preLoaderRoute: typeof SystemTenantsRealmEditRouteImport
+      parentRoute: typeof SystemTenantsRealmRoute
+    }
+    '/system/tenants_/$realm/endpoint-style': {
+      id: '/system/tenants_/$realm/endpoint-style'
+      path: '/endpoint-style'
+      fullPath: '/system/tenants/$realm/endpoint-style'
+      preLoaderRoute: typeof SystemTenantsRealmEndpointStyleRouteImport
+      parentRoute: typeof SystemTenantsRealmRoute
+    }
+    '/system/tenants_/$realm/quota': {
+      id: '/system/tenants_/$realm/quota'
+      path: '/quota'
+      fullPath: '/system/tenants/$realm/quota'
+      preLoaderRoute: typeof SystemTenantsRealmQuotaRouteImport
+      parentRoute: typeof SystemTenantsRealmRoute
     }
     '/admin/agents_/$agentId/guardrail/edit': {
       id: '/admin/agents_/$agentId/guardrail/edit'
@@ -2924,13 +3037,32 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
   AdminRouteRouteChildren,
 )
 
+interface SystemTenantsRealmRouteChildren {
+  SystemTenantsRealmEditRoute: typeof SystemTenantsRealmEditRoute
+  SystemTenantsRealmEndpointStyleRoute: typeof SystemTenantsRealmEndpointStyleRoute
+  SystemTenantsRealmQuotaRoute: typeof SystemTenantsRealmQuotaRoute
+  SystemTenantsRealmIndexRoute: typeof SystemTenantsRealmIndexRoute
+}
+
+const SystemTenantsRealmRouteChildren: SystemTenantsRealmRouteChildren = {
+  SystemTenantsRealmEditRoute: SystemTenantsRealmEditRoute,
+  SystemTenantsRealmEndpointStyleRoute: SystemTenantsRealmEndpointStyleRoute,
+  SystemTenantsRealmQuotaRoute: SystemTenantsRealmQuotaRoute,
+  SystemTenantsRealmIndexRoute: SystemTenantsRealmIndexRoute,
+}
+
+const SystemTenantsRealmRouteWithChildren =
+  SystemTenantsRealmRoute._addFileChildren(SystemTenantsRealmRouteChildren)
+
 interface SystemRouteRouteChildren {
   SystemAuditEventsRoute: typeof SystemAuditEventsRoute
   SystemDataKeysRoute: typeof SystemDataKeysRoute
   SystemJobsRoute: typeof SystemJobsRoute
   SystemKeysRoute: typeof SystemKeysRoute
+  SystemNewTenantRoute: typeof SystemNewTenantRoute
   SystemTenantsRoute: typeof SystemTenantsRoute
   SystemIndexRoute: typeof SystemIndexRoute
+  SystemTenantsRealmRoute: typeof SystemTenantsRealmRouteWithChildren
 }
 
 const SystemRouteRouteChildren: SystemRouteRouteChildren = {
@@ -2938,8 +3070,10 @@ const SystemRouteRouteChildren: SystemRouteRouteChildren = {
   SystemDataKeysRoute: SystemDataKeysRoute,
   SystemJobsRoute: SystemJobsRoute,
   SystemKeysRoute: SystemKeysRoute,
+  SystemNewTenantRoute: SystemNewTenantRoute,
   SystemTenantsRoute: SystemTenantsRoute,
   SystemIndexRoute: SystemIndexRoute,
+  SystemTenantsRealmRoute: SystemTenantsRealmRouteWithChildren,
 }
 
 const SystemRouteRouteWithChildren = SystemRouteRoute._addFileChildren(
