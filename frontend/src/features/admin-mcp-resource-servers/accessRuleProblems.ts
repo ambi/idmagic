@@ -1,9 +1,10 @@
-import { parseAbsoluteUrl } from '../../lib/form'
+import { codePointLength, parseAbsoluteUrl } from '../../lib/form'
 import type { ResourceAccessLimit, ResourceAccessRule } from '../../types'
 
 // 上限は oauth2/domain の規則の検証と TypeSpec の ResourceAccessRule と同じ値である (REQ-OAUTH2-064)。
 export const MAX_LIMITS = 8
 export const MAX_EXCHANGE_RESOURCES = 8
+export const MAX_CONDITION_EXPRESSION_CHARS = 1024
 const MAX_LIMIT_REQUESTS = 1_000_000_000
 const MAX_LIMIT_WINDOW_SECONDS = 2_592_000
 export const LIMIT_UNITS = ['agent', 'user', 'resource'] as const
@@ -15,6 +16,7 @@ export type AccessRuleProblem =
   | 'approvalDetailTypeRequired'
   | 'approvalDetailTypeUnused'
   | 'conditionEmpty'
+  | 'conditionTooLong'
   | 'exchangeWithApproval'
   | 'exchangeTooMany'
   | 'exchangeHttps'
@@ -79,6 +81,12 @@ export function accessRuleProblems(rule: ResourceAccessRule): AccessRuleProblems
       problems.denyWhen = 'conditionEmpty'
     }
     if (approval && conditionalApproval) problems.requireApprovalWhen = 'approvalConditionConflict'
+    if (codePointLength(condition.deny_when ?? '') > MAX_CONDITION_EXPRESSION_CHARS) {
+      problems.denyWhen = 'conditionTooLong'
+    }
+    if (codePointLength(condition.require_approval_when ?? '') > MAX_CONDITION_EXPRESSION_CHARS) {
+      problems.requireApprovalWhen = 'conditionTooLong'
+    }
     if (conditionalApproval && !present(condition.approval_detail_type)) {
       problems.approvalDetailType = 'approvalDetailTypeRequired'
     } else if (!conditionalApproval && present(condition.approval_detail_type)) {

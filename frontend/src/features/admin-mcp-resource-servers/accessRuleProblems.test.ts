@@ -10,6 +10,30 @@ const base: ResourceAccessRule = {
 }
 
 describe('accessRuleProblems', () => {
+  //spec:covers REQ-OAUTH2-090: 二つの式の上限をコードポイント数で検査し、前後の空白も数える。
+  it('checks condition expression lengths in code points', () => {
+    for (const character of ['x', 'あ', '𠮷']) {
+      for (const length of [1023, 1024, 1025]) {
+        const expression = `attributes.a == '${character.repeat(length - "attributes.a == ''".length)}'`
+        expect(Array.from(expression)).toHaveLength(length)
+        const problems = accessRuleProblems({
+          ...base,
+          condition: {
+            deny_when: expression,
+            require_approval_when: expression,
+            approval_detail_type: 'doc',
+          },
+        })
+        expect(problems.denyWhen).toBe(length > 1024 ? 'conditionTooLong' : undefined)
+        expect(problems.requireApprovalWhen).toBe(length > 1024 ? 'conditionTooLong' : undefined)
+        expect(hasProblems(problems)).toBe(length > 1024)
+      }
+    }
+    expect(
+      accessRuleProblems({ ...base, condition: { deny_when: `true${' '.repeat(1021)}` } }).denyWhen,
+    ).toBe('conditionTooLong')
+  })
+
   //spec:covers REQ-OAUTH2-090: 人の承認を求める行に認可詳細の種類がなければ、その欄に不足を示す。
   it('requires a detail type only while approval is required', () => {
     expect(accessRuleProblems({ ...base, requires_approved_operation: true })).toMatchObject({

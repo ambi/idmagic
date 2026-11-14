@@ -309,6 +309,20 @@ func (d Deps) handleDeleteAdminMcpResourceServer(c *echo.Context) error {
 }
 
 func (d Deps) saveValidatedMcpResourceServer(c *echo.Context, m *oauthdomain.McpResourceServer, expectedUpdatedAt *time.Time) error {
+	// 長さの違反は汎用 API の 422 へ渡し、CEL の構文や組み合わせの 400 と分ける。
+	for _, rule := range m.AccessRules {
+		if rule.Condition == nil {
+			continue
+		}
+		for _, field := range []struct{ name, value string }{
+			{"deny_when", rule.Condition.DenyWhen},
+			{"require_approval_when", rule.Condition.RequireApprovalWhen},
+		} {
+			if err := spec.CheckMaxChars("access_rules.condition."+field.name, field.value, oauthdomain.MaxConditionExpressionChars); err != nil {
+				return err
+			}
+		}
+	}
 	if err := m.Validate(); err != nil {
 		_ = support.WriteProblem(c, http.StatusBadRequest, "invalid_resource_server", err.Error())
 		return support.ErrResponseWritten

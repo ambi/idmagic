@@ -5,6 +5,7 @@ package server_http_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -17,6 +18,95 @@ import (
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
+
+//spec:covers REQ-OAUTH2-064, REQ-SYSTEM-028: 作成と更新は上限内の多バイトの式を保存し、超過を 422 で拒否して保存値を保つ。
+//verify:operation CreateAdminMcpResourceServer: 条件の要求と保存した応答、上限超過の 422 の Problem Details と保存しないこと。
+//verify:operation UpdateAdminMcpResourceServer: 条件の要求と保存した応答、上限超過の 422 の Problem Details と保存しないこと。
+func TestAdminConditionExpressionLength(t *testing.T) {
+	f := newResourceAccessFixture(t)
+	path := "/realms/default/api/admin/v1/mcp-resource-servers"
+	request := func(t *testing.T, method, target string, body any) (int, map[string]any) {
+		t.Helper()
+		raw, err := json.Marshal(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(method, stack.Issuer+target, strings.NewReader(string(raw)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", stack.Issuer)
+		req.Header.Set(support.CSRFHeader, "resource-access-csrf")
+		req.AddCookie(&http.Cookie{Name: support.CSRFCookie, Value: "resource-access-csrf"})
+		req.AddCookie(f.cookie)
+		rec := httptest.NewRecorder()
+		f.s.Echo.ServeHTTP(rec, req)
+		var response map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			t.Fatalf("status=%d body=%s: %v", rec.Code, rec.Body.String(), err)
+		}
+		return rec.Code, response
+	}
+	for index, field := range []string{"deny_when", "require_approval_when"} {
+		t.Run(field, func(t *testing.T) {
+			expression := "attributes.a == '" + strings.Repeat("𠮷", 1024-len("attributes.a == ''")) + "'"
+			condition := map[string]any{field: expression}
+			if field == "require_approval_when" {
+				condition["approval_detail_type"] = "payment"
+			}
+			resource := fmt.Sprintf("https://condition-length-%d.example/", index)
+			body := map[string]any{
+				"resource": resource, "name": "条件の長さ", "scopes": []string{"mcp"},
+				"access_rules": []map[string]any{{
+					"resource_type": "document", "relation": "viewer", "scopes": []string{"mcp"}, "condition": condition,
+				}},
+			}
+			status, created := request(t, http.MethodPost, path, body)
+			if status != http.StatusCreated {
+				t.Fatalf("上限内の作成: status=%d body=%v", status, created)
+			}
+			target := path + "/" + created["id"].(string)
+			requireSaved := func() {
+				t.Helper()
+				status, saved := request(t, http.MethodGet, target, nil)
+				if status != http.StatusOK {
+					t.Fatalf("読み戻し: status=%d body=%v", status, saved)
+				}
+				rules := saved["access_rules"].([]any)
+				actual := rules[0].(map[string]any)["condition"].(map[string]any)
+				if actual[field] != expression {
+					t.Fatalf("保存した条件が異なる: %v", actual)
+				}
+			}
+			requireSaved()
+			// 作成した値とは異なる上限内の式で、更新が実際に保存したことを確かめる。
+			expression = "attributes.a == '" + strings.Repeat("あ", 1024-len("attributes.a == ''")) + "'"
+			condition[field] = expression
+			status, updated := request(t, http.MethodPatch, target, body)
+			if status != http.StatusOK || updated["id"] != created["id"] {
+				t.Fatalf("上限内の更新: status=%d body=%v", status, updated)
+			}
+			requireSaved()
+			condition[field] = expression + " "
+			for _, method := range []string{http.MethodPatch, http.MethodPost} {
+				rejectTarget := target
+				if method == http.MethodPost {
+					rejectTarget = path
+					body["resource"] = resource + "rejected"
+				}
+				status, rejected := request(t, method, rejectTarget, body)
+				detail, _ := rejected["detail"].(string)
+				if status != http.StatusUnprocessableEntity || rejected["type"] != "urn:idmagic:error:field_length_exceeded" ||
+					!strings.Contains(detail, field) || !strings.Contains(detail, "1024") {
+					t.Fatalf("%s の超過: status=%d body=%v", method, status, rejected)
+				}
+				requireSaved()
+			}
+			stored, err := f.s.McpResourceServers.FindByResource(context.Background(), tenancydomain.DefaultTenantID, resource+"rejected")
+			if err != nil || stored != nil {
+				t.Fatalf("拒否した作成が保存された: %v err=%v", stored, err)
+			}
+		})
+	}
+}
 
 // putCondition は規則の条件を管理 API で差し替え、応答の状態と条件を返す。
 func (f *resourceAccessFixture) putCondition(t *testing.T, condition map[string]any) (int, map[string]any) {

@@ -75,7 +75,8 @@
 - **判断**：Gateway が執行する構成では、上流の MCP サーバーはスコープを検査せず、スコープは IdMagic の中だけで働く認証上限である。実行できる操作は操作割当が決めるので、管理者にスコープ名を考えさせない。サーバー自身がトークンを検査する構成では、サーバーが定めたスコープ名を指定する。
 - `client_id` が、テナントにないクライアント、機密でないクライアント、同じテナントの別の登録に束縛済みのクライアントである場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
 - 規則の `resource_type` か `relation` が `^[a-z][a-z0-9_]*$` の形でないか 65 文字以上であるか、ツールを持たない規則で `resource_type` と `relation` の組が重複するか、`scopes` が空か登録の `scopes` の部分集合でないか、`requires_approved_operation` を持つ規則に `authorization_detail_type` がないか、規則が 100 件を超える場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
-- 規則の `condition` に `deny_when` と `require_approval_when` のどちらもないか、式が 1 KiB を超えるか、コンパイルできないか、真偽値を返さないか、内包が入れ子であるか、`require_approval_when` に `approval_detail_type` がないか、`approval_detail_type` だけがあるか、`require_approval_when` と `requires_approved_operation` を併せ持つ場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
+- 規則の `condition` の `deny_when` か `require_approval_when` が Unicode のコードポイント数で 1024 文字を超える場合、OAuth2 は、422 と `field_length_exceeded` で拒否し、`detail` に契約上のフィールド名と上限を示し、保存しない。
+- 規則の `condition` に `deny_when` と `require_approval_when` のどちらもないか、コンパイルできないか、真偽値を返さないか、内包が入れ子であるか、`require_approval_when` に `approval_detail_type` がないか、`approval_detail_type` だけがあるか、`require_approval_when` と `requires_approved_operation` を併せ持つ場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
 - 規則の `condition` を返すとき、OAuth2 は、内容から導いた `version` を含め、本文の `version` を読まない。
 - 規則の `limits` が 9 件以上であるか、`by` が `agent`、`user`、`resource` 以外か重複を含むか、`max_requests` が 1 から 1000000000 の外であるか、`window_seconds` が 1 から 2592000 の外であるか、`by` の集合と `window_seconds` の組が重複する場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、保存しない。
 
@@ -122,6 +123,7 @@
 - 管理者が行で規則を編集したとき、OAuth2 は、入力欄のない規則の項目を変えずに保存する。
 - 管理者が条件の入力欄をすべて空にしたとき、OAuth2 は、その規則の `condition` を除いて保存する。
 - 行で人の承認を求め、認可詳細の種類が空である場合、OAuth2 は、送信前に認可詳細の種類の欄へ不足を示し、保存させない。
+- 行の条件の各式が Unicode のコードポイント数で 1024 文字を超える場合、OAuth2 は、送信前に該当する式の欄へ理由を示し、保存させない。
 - 行の入力が REQ-OAUTH2-064 の組み合わせ（人の承認と承認の条件の併用、承認の条件と明細の種類の対、承認と交換先の併用、上限の範囲と重複、https でない交換先）に反する場合、OAuth2 は、送信前に該当する欄へ理由を示し、保存させない。
 - 規則の承認、上限、交換先、条件のいずれかが入力欄で表せない型である場合、OAuth2 は、その規則の制約を行で読み取り専用に示し、JSON の入力で編集させる。
 - **判断**：条件の式は CEL の文字列のまま入力させ、式のコンパイルは保存時にサーバーが行う。式を部品から組み立てる入力は表せる式を限り、表せない条件を増やすので採らない。

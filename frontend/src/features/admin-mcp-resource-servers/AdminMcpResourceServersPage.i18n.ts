@@ -111,6 +111,7 @@ export const adminMcpResourceServersDictionary = defineDictionary(
       '承認の条件を使うときは、承認に求める明細の種類を入力してください。',
     approvalDetailTypeUnused: '明細の種類は、承認の条件があるときだけ使います。',
     conditionEmpty: '条件を使うときは、拒否か承認の式を入力してください。',
+    conditionTooLong: '式は 1024 文字以内で入力してください。',
     exchangeWithApproval: '人の承認を求める操作には、交換できる宛先を設定できません。',
     exchangeTooMany: '交換できる宛先は 8 件までです。',
     exchangeHttps: 'https:// で始まり、ホストを含む URL を入力してください。',
@@ -289,6 +290,7 @@ export const adminMcpResourceServersDictionary = defineDictionary(
       'Enter the detail type requested for approval when using an approval condition.',
     approvalDetailTypeUnused: 'The detail type is used only with an approval condition.',
     conditionEmpty: 'Enter a deny or approval expression to use a condition.',
+    conditionTooLong: 'Enter an expression of 1024 characters or fewer.',
     exchangeWithApproval:
       'Operations that require human approval cannot have token exchange targets.',
     exchangeTooMany: 'Up to 8 token exchange targets are allowed.',

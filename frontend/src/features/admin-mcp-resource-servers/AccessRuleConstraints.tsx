@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { CharacterCount } from '../../components/CharacterCount'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
@@ -9,6 +10,7 @@ import {
   constraintsRepresentable,
   hasProblems,
   LIMIT_UNITS,
+  MAX_CONDITION_EXPRESSION_CHARS,
   MAX_EXCHANGE_RESOURCES,
   MAX_LIMITS,
 } from './accessRuleProblems'
@@ -172,6 +174,11 @@ export function AccessRuleConstraints({
               {...described(id('deny-when'), problems.denyWhen)}
             />
             <RowError id={id('deny-when')} problem={problems.denyWhen} t={t} />
+            <CharacterCount
+              value={condition?.deny_when ?? ''}
+              max={MAX_CONDITION_EXPRESSION_CHARS}
+              trim={false}
+            />
           </Field>
           <Field>
             <Label htmlFor={id('require-approval-when')}>{t.ruleRequireApprovalWhen}</Label>
@@ -184,6 +191,11 @@ export function AccessRuleConstraints({
                 setCondition({ require_approval_when: orUndefined(event.target.value) })
               }
               {...described(id('require-approval-when'), problems.requireApprovalWhen)}
+            />
+            <CharacterCount
+              value={condition?.require_approval_when ?? ''}
+              max={MAX_CONDITION_EXPRESSION_CHARS}
+              trim={false}
             />
             <RowError
               id={id('require-approval-when')}

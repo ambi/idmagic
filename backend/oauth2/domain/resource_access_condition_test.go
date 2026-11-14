@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 func conditionInput(attributes map[string]any) ConditionInput {
@@ -65,7 +66,6 @@ func TestEvaluateCondition(t *testing.T) {
 
 //spec:covers REQ-OAUTH2-064: 保存できない条件の境界
 func TestResourceAccessConditionValidate(t *testing.T) {
-	longest := "attributes.a == '" + strings.Repeat("x", MaxConditionExpressionBytes-len("attributes.a == ''")) + "'"
 	tests := []struct {
 		name      string
 		condition ResourceAccessCondition
@@ -73,8 +73,6 @@ func TestResourceAccessConditionValidate(t *testing.T) {
 	}{
 		{"拒否だけ", ResourceAccessCondition{DenyWhen: "attributes.a > 1"}, true},
 		{"承認と明細", ResourceAccessCondition{RequireApprovalWhen: "attributes.a > 1", ApprovalDetailType: "payment"}, true},
-		{"上限ちょうどの式", ResourceAccessCondition{DenyWhen: longest}, true},
-		{"上限を超える式", ResourceAccessCondition{DenyWhen: longest + " "}, false},
 		{"式がない", ResourceAccessCondition{}, false},
 		{"明細のない承認", ResourceAccessCondition{RequireApprovalWhen: "true"}, false},
 		{"明細だけ", ResourceAccessCondition{DenyWhen: "true", ApprovalDetailType: "payment"}, false},
@@ -92,6 +90,26 @@ func TestResourceAccessConditionValidate(t *testing.T) {
 				t.Fatalf("err=%v, valid=%v", err, test.valid)
 			}
 		})
+	}
+}
+
+//spec:covers REQ-OAUTH2-064: 条件の両方の式は ASCII、日本語、BMP 外の文字でも 1024 コードポイントまで受け付ける。
+func TestResourceAccessConditionExpressionLength(t *testing.T) {
+	for _, character := range []string{"x", "あ", "𠮷"} {
+		for _, length := range []int{1023, 1024, 1025} {
+			expression := "attributes.a == '" + strings.Repeat(character, length-len("attributes.a == ''")) + "'"
+			if utf8.RuneCountInString(expression) != length {
+				t.Fatal("式が境界の長さになっていない")
+			}
+			for _, condition := range []ResourceAccessCondition{
+				{DenyWhen: expression},
+				{RequireApprovalWhen: expression, ApprovalDetailType: "payment"},
+			} {
+				if err := condition.Validate(); (err == nil) != (length <= 1024) {
+					t.Errorf("文字=%s 長さ=%d 承認条件=%t: err=%v", character, length, condition.RequireApprovalWhen != "", err)
+				}
+			}
+		}
 	}
 }
 

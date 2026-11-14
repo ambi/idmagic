@@ -1234,7 +1234,7 @@ model AuthorizationRemediation {
 }
 
 
-@doc("操作ごとに結果を分ける CEL の条件。式は `token`、`now`、`operation`、`attributes` を読み、真偽値を返す。少なくとも一方の式を持つ。")
+@doc("操作ごとに結果を分ける CEL の条件。各式は Unicode のコードポイント数で 1024 文字以下とし、`token`、`now`、`operation`、`attributes` を読み、真偽値を返す。少なくとも一方の式を持つ。")
 model ResourceAccessCondition {
   @doc("真なら拒否する。`require_approval_when` より優先する。")
   @maxLength(1024)

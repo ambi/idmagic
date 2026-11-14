@@ -11,14 +11,15 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"cel.dev/cel-go/cel"
 	"cel.dev/cel-go/common/types"
 )
 
 const (
-	// MaxConditionExpressionBytes は 1 つの式の上限。
-	MaxConditionExpressionBytes = 1024
+	// MaxConditionExpressionChars は TypeSpec の maxLength と同じコードポイント数の上限。
+	MaxConditionExpressionChars = 1024
 	// conditionCostLimit を超える評価は評価不能になる。評価の遅延の上限を式の作者に委ねない。
 	conditionCostLimit = 10_000
 	// 内包を入れ子にすると、費用が属性の大きさの積になる。
@@ -148,8 +149,8 @@ var conditionEnv = sync.OnceValues(func() (*cel.Env, error) {
 })
 
 func compileCondition(expression string) (cel.Program, error) {
-	if len(expression) > MaxConditionExpressionBytes {
-		return nil, fmt.Errorf("expression must not exceed %d bytes", MaxConditionExpressionBytes)
+	if utf8.RuneCountInString(expression) > MaxConditionExpressionChars {
+		return nil, fmt.Errorf("expression must not exceed %d characters", MaxConditionExpressionChars)
 	}
 	env, err := conditionEnv()
 	if err != nil {

@@ -30,4 +30,14 @@ describe('CharacterCount', () => {
     expect(screen.getByText('2 characters over the limit.')).toBeInTheDocument()
     expect(screen.getByText('12 / 10')).toBeInTheDocument()
   })
+
+  it('counts surrounding whitespace when it is part of an expression', () => {
+    render(
+      <LocaleProvider initialLocale="en">
+        <CharacterCount value={`true${' '.repeat(1021)}`} max={1024} trim={false} />
+      </LocaleProvider>,
+    )
+    expect(screen.getByText('1025 / 1024')).toBeInTheDocument()
+    expect(screen.getByText('1 characters over the limit.')).toBeInTheDocument()
+  })
 })

@@ -13,7 +13,7 @@ import {
 
 const submitDisabled = `document.querySelector('form button[type="submit"]').disabled`
 
-//spec:covers REQ-OAUTH2-090: 行で人の承認を求めると明細の種類の不足を送信前に示し、入力後に保存した値と JSON で入れた上限と条件が再読込後も残る。
+//spec:covers REQ-OAUTH2-090: 条件の文字数と承認の不足を送信前に示し、上限ちょうどの多バイトの式と承認、上限を保存後に読み戻せる。
 test('administrator requires approval for a tool from the rule row', async () => {
   const view = await openWebView({ width: 1440, height: 1800 })
   try {
@@ -45,6 +45,30 @@ test('administrator requires approval for a tool from the rule row', async () =>
     )
     // 値のある制約は開いて示す。
     expect(await view.evaluate(`document.querySelector('#rule-limit-max-0-0').value`)).toBe('7')
+
+    const expression = `operation.name == '${'𠮷'.repeat(1024 - "operation.name == ''".length)}'`
+    for (const selector of ['#rule-deny-when-0', '#rule-require-approval-when-0']) {
+      await setInputValue(view, selector, `${expression} `)
+      await waitForText(view, 'Enter an expression of 1024 characters or fewer.')
+      expect(
+        await view.evaluate(`document.querySelector('${selector}').getAttribute('aria-invalid')`),
+      ).toBe('true')
+      expect(
+        await view.evaluate(`(() => {
+          const input = document.querySelector('${selector}')
+          return input.getAttribute('aria-describedby').split(' ')
+            .map(id => document.getElementById(id)?.textContent)
+        })()`),
+      ).toContain('Enter an expression of 1024 characters or fewer.')
+      expect(await view.evaluate(submitDisabled)).toBe(true)
+      expect(
+        await view.evaluate(`document.querySelector('${selector}').hasAttribute('maxlength')`),
+      ).toBe(false)
+      await waitForText(view, '1025 / 1024')
+      await setInputValue(view, selector, selector.includes('require-approval') ? '' : expression)
+    }
+    expect(await view.evaluate(submitDisabled)).toBe(false)
+    await waitForText(view, '1024 / 1024')
 
     // 制約の見出しから実キーで承認の欄へ進み、チェックを切り替える。
     await view.evaluate(
@@ -87,7 +111,7 @@ test('administrator requires approval for a tool from the rule row', async () =>
     )
     expect(await view.evaluate(`document.querySelector('#rule-limit-max-0-0').value`)).toBe('7')
     expect(await view.evaluate(`document.querySelector('#rule-deny-when-0').value`)).toBe(
-      'operation.name == "never"',
+      expression,
     )
   } finally {
     view.close()

@@ -1402,6 +1402,10 @@ model CreateAdminMcpResourceServerError409 {
 op CreateAdminMcpResourceServer(
   @body body: IdMagic.Contract.McpResourceServerRequest
 ): CreateAdminMcpResourceServerSuccess_201 | CreateAdminMcpResourceServerError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminMcpResourceServerError403 | CreateAdminMcpResourceServerError409 | {
+  @statusCode statusCode: 422;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.ProblemDetails;
+} | {
   @statusCode statusCode: 503;
   @header contentType: "application/problem+json";
   @body body: IdMagic.Contract.ProblemDetails;
@@ -1454,6 +1458,10 @@ op UpdateAdminMcpResourceServer(
   @path id: string,
   @body body: IdMagic.Contract.McpResourceServerRequest
 ): UpdateAdminMcpResourceServerSuccess_200 | UpdateAdminMcpResourceServerError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminMcpResourceServerError403 | UpdateAdminMcpResourceServerError404 | UpdateAdminMcpResourceServerError409 | {
+  @statusCode statusCode: 422;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.ProblemDetails;
+} | {
   @statusCode statusCode: 503;
   @header contentType: "application/problem+json";
   @body body: IdMagic.Contract.ProblemDetails;

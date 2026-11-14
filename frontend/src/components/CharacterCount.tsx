@@ -14,14 +14,17 @@ const NEAR_LIMIT = 0.9
 export function CharacterCount({
   value,
   max,
+  trim = true,
   className,
 }: {
   value: string
   max: number
+  /** 条件の式など、空白を保存する欄は false にする。 */
+  trim?: boolean
   className?: string
 }) {
   const t = useDictionary(fieldErrorDictionary)
-  const count = codePointLength(value.trim())
+  const count = codePointLength(trim ? value.trim() : value)
   const over = count > max
   const announcement = over
     ? t.characterCountOver.replace('{count}', String(count - max))
