@@ -53,8 +53,9 @@ func newEnrollmentServer(t *testing.T, enrolled bool) *echo.Echo {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Issuer:   "http://test",
-		UserRepo: userRepo,
+		Issuer:         "http://test",
+		UserRepo:       userRepo,
+		Authentication: authentication.Module{TrustedDeviceRepo: authentication.NewMemoryModule(nil).TrustedDeviceRepo},
 		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
 			UserID: "user_alice", SessionID: "sess-enroll", AuthTime: now.Unix(), AMR: []string{"pwd"},
 			AuthenticationPending: true,

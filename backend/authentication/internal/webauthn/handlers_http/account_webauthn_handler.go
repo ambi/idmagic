@@ -11,7 +11,6 @@ import (
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -34,6 +33,7 @@ func WebAuthnAccountDeps(d httpdeps.Deps, c *echo.Context) authusecases.WebAuthn
 		CredentialRepo: d.WebAuthnCredentialRepo,
 		MfaFactorRepo:  d.MfaFactorRepo,
 		SessionStore:   d.WebAuthnSessionStore,
+		TrustedDevices: d.TrustedDeviceRevoker(),
 		Emit:           d.Emit,
 	}
 }
@@ -70,12 +70,6 @@ func HandleFinishWebAuthnRegistration(d httpdeps.Deps, c *echo.Context) error {
 	); err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	// 認証要素の集合が変わったので、記憶済みの端末をすべて失効させる (wi-91)。
-	if err := d.RevokeTrustedDevices(
-		c.Request().Context(), support.RequestTenantID(c), sub, spec.TrustedDeviceMfaChange,
-	); err != nil {
-		return err
-	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }
@@ -100,12 +94,6 @@ func HandleRemoveWebAuthnCredential(d httpdeps.Deps, c *echo.Context) error {
 		c.Request().Context(), WebAuthnAccountDeps(d, c), sub, input.CredentialID, time.Now().UTC(),
 	); err != nil {
 		return httpdeps.WriteAccountError(c, err)
-	}
-	// 認証要素の集合が変わったので、記憶済みの端末をすべて失効させる (wi-91)。
-	if err := d.RevokeTrustedDevices(
-		c.Request().Context(), support.RequestTenantID(c), sub, spec.TrustedDeviceMfaChange,
-	); err != nil {
-		return err
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)

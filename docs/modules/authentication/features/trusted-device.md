@@ -22,7 +22,7 @@
 | 有効期間 | テナントの `trusted_device_max_age_seconds` で明示した場合だけ有効になり、デフォルトは 0（無効）である。0 なら同意の導線を出さず、送られた `remember_device` も無視する |
 | 期限 | 絶対期限は `created_at + trusted_device_max_age_seconds` で、上限は 90 日。idle 期限は `last_used_at + min(30 日, max_age)` |
 | 効果 | ログインの時点の第二要素だけを肩代わりし、`amr` に `tdev` を加えて `acr` を `urn:idmagic:acr:mfa` へ上げる。ステップアップ認証の直近性（`step_up_at`）には寄与しない |
-| 失効 | 本人によるパスワードの変更とリセット、認証の要素の登録と解除、管理者による認証器のリセット、アカウントの無効化、本人または管理者による全セッションの失効は、対象のユーザーのすべてのデバイスを失効させる |
+| 失効 | 本人によるパスワードの変更とリセット、認証の要素の登録と解除、管理者による認証器のリセット、アカウントの停止（無効化または削除の予約）、本人または管理者による全セッションの失効は、対象のユーザーのすべてのデバイスを失効させる |
 
 `SignInRule.allow_trusted_device=false` の規則は、`tdev` を MFA の充足として認めない。
 `tdev` は `rc` と同じくこの製品に固有の IANA 未登録の値であり、「要素を提示したのではなく端末が記憶されていた」ことを RP に対しても隠さない。
@@ -98,8 +98,8 @@
 
 #### REQ-AUTHENTICATION-028 資格情報が変わると信頼済みデバイスはすべて失効する
 
-- 本人がパスワードを変更かリセットしたか、認証の要素を登録か解除したか、管理者が認証器をリセットしたか、User を無効化したか、本人か管理者が全セッションを失効させたとき、Authentication は、その User のすべての `Active` の信頼済みデバイスを `Revoked` にし、デバイスごとに `TrustedDeviceRevoked` を発行する。
-- **例**：EX-AUTHENTICATION-028-01、EX-AUTHENTICATION-028-02、EX-AUTHENTICATION-028-03、EX-AUTHENTICATION-028-04、EX-AUTHENTICATION-028-05、EX-AUTHENTICATION-028-06
+- 本人がパスワードを変更かリセットしたか、認証の要素を登録か解除したか、管理者が認証器をリセットしたか、User を無効化したか、User の削除を予約したか、本人か管理者が全セッションを失効させたとき、Authentication は、その User のすべての `Active` の信頼済みデバイスを `Revoked` にし、デバイスごとに `TrustedDeviceRevoked` を発行する。
+- **例**：EX-AUTHENTICATION-028-01、EX-AUTHENTICATION-028-02、EX-AUTHENTICATION-028-03、EX-AUTHENTICATION-028-04、EX-AUTHENTICATION-028-05、EX-AUTHENTICATION-028-06、EX-AUTHENTICATION-028-07
 
 ## セキュリティ上の考慮
 
@@ -124,6 +124,11 @@ cookie は realm ごとの名前とパスを使う既存の部品で発行する
 回転は正規の利用者の側にも観測できる作用を残すので、盗難が静かに続く状態を作らない。
 
 ステップアップの再認証は `StepUpMethod` に列挙した要素だけで成り立ち、`tdev` はその選択肢に入らない。
+
+資格情報を変える操作は、端末の失効を必須の依存として受け取り、HTTP の後処理に委ねない。
+これにより、サインイン中の登録も、アカウントの画面からの登録も同じ失効を伴う。
+User の停止を担う IdManagement も、Authentication の失効操作を呼び、返された端末ごとのイベントを自分の発行先へ渡す。
+端末の失効は終端なので、User を復元しても以前の端末の信頼は戻らない。
 
 ### データ
 

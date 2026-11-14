@@ -215,9 +215,12 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T, options ...resetServ
 		MfaFactorRepo:          mfaFactorRepo,
 		WebAuthnCredentialRepo: webAuthnCredentialRepo,
 		RecoveryCodeRepo:       recoveryCodeRepo,
-		Authentication:         authentication.Module{MfaEnrollmentBypassRepo: mfaEnrollmentBypassRepo},
-		PasswordHistoryRepo:    passwordHistoryRepo,
-		KeyStore:               keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
+		Authentication: authentication.Module{
+			MfaEnrollmentBypassRepo: mfaEnrollmentBypassRepo,
+			TrustedDeviceRepo:       authentication.NewMemoryModule(nil).TrustedDeviceRepo,
+		},
+		PasswordHistoryRepo: passwordHistoryRepo,
+		KeyStore:            keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
 		SignInPolicy: signinpolicy.Module{DefaultRepo: defaultSignInPolicyRepo},
 	})

@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+
 	"github.com/ambi/idmagic/backend/authentication"
 
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/internal/password/db_memory"
@@ -46,6 +49,7 @@ func TestChangePasswordAutoClearsUpdatePasswordAction(t *testing.T) {
 	*events = (*events)[:0]
 
 	updated, err := authusecases.ChangePassword(ctx, authusecases.ChangePasswordDeps{
+		TrustedDevices:      trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		UserRepo:            idm.UserRepo,
 		PasswordHasher:      hasher,
 		PasswordHistoryRepo: history,

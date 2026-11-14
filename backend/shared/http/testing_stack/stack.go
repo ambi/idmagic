@@ -304,6 +304,7 @@ func WithAuthorizationCodeFlow() Option {
 		authn := authentication.NewMemoryModule(b.stack.Users)
 		b.stack.MfaFactors = authn.MfaFactorRepo
 		b.deps.Authentication.MfaFactorRepo = authn.MfaFactorRepo
+		b.deps.Authentication.TrustedDeviceRepo = authn.TrustedDeviceRepo
 		b.deps.Authentication.PasswordHistoryRepo = authn.PasswordHistoryRepo
 		b.stack.SessionStore = authn.SessionStore
 		b.stack.Sessions = authn.NewSessionManager()

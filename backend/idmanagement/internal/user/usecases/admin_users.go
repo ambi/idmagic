@@ -55,7 +55,7 @@ type AdminUserDeps struct {
 	ApprovalRequestStore userports.UserRecordsPurger
 	SessionStore         userports.SessionPurger
 	UserCredentials      userports.UserCredentialPurger
-	// TrustedDevices は無効化で信頼済みデバイスをすべて失効させる。nil なら未配線として何もしない。
+	// TrustedDevices は無効化と削除の予約で信頼済みデバイスをすべて失効させる。nil なら未配線として何もしない。
 	TrustedDevices          userports.UserDeviceRevoker
 	PasswordHasher          userports.PasswordHasher
 	PasswordHistoryRepo     userports.PasswordHistoryWriter
@@ -311,8 +311,8 @@ func SetUserDisabled(
 	now = idmusecases.NormalizedNow(now)
 	if disabled {
 		if updated.Lifecycle.Status == idmdomain.UserStatusDisabled {
-			// 前回の伝播が途中で失敗していても、無効化の再実行で残った Agent を止める。
-			if err := disableOwnedAgents(ctx, deps, updated.TenantID, updated.ID, actorUserID, now); err != nil {
+			// 前回の伝播が途中で失敗していても、無効化の再実行で残った端末と Agent を止める。
+			if err := stopUserEffects(ctx, deps, updated.TenantID, updated.ID, actorUserID, now); err != nil {
 				return nil, err
 			}
 			return &updated, nil
@@ -337,11 +337,6 @@ func SetUserDisabled(
 	trigger := userports.ProvisioningUserEnabled
 	if disabled {
 		trigger = userports.ProvisioningUserDisabled
-		// 無効化したアカウントの記憶済み端末は残さない (wi-91)。ログイン自体は
-		// 無効ユーザーを弾くが、再有効化したときに古い信頼が生き返らないようにする。
-		if err := revokeTrustedDevicesOnDisable(ctx, deps, updated.TenantID, targetUserID, now); err != nil {
-			return nil, err
-		}
 		emitErr = idmusecases.AdminEmit(deps.Emit, &idmdomain.UserDisabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
 	} else {
 		emitErr = idmusecases.AdminEmit(deps.Emit, &idmdomain.UserEnabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
@@ -351,11 +346,24 @@ func SetUserDisabled(
 	}
 	notifyProvisioning(ctx, deps, updated.TenantID, updated.ID, trigger, now)
 	if disabled {
-		if err := disableOwnedAgents(ctx, deps, updated.TenantID, updated.ID, actorUserID, now); err != nil {
+		if err := stopUserEffects(ctx, deps, updated.TenantID, updated.ID, actorUserID, now); err != nil {
 			return nil, err
 		}
 	}
 	return &updated, nil
+}
+
+// stopUserEffects は、User を止める操作（無効化と削除の予約）が状態の確定の後に伴わせる作用である。
+// 記憶済みの端末を失効させ (REQ-AUTHENTICATION-028)、所有する Agent を無効化する (REQ-IDMANAGEMENT-081)。
+// 既に止まった User への再実行も呼ぶので、前回の途中で失敗した作用を再実行で完了できる。
+//
+// 端末を残さないのは、ログイン自体は止まった User を弾くが、再有効化や予約からの復元で
+// 止める前の信頼が生き返らないようにするためである。
+func stopUserEffects(ctx context.Context, deps AdminUserDeps, tenantID, userID, actorUserID string, now time.Time) error {
+	if err := revokeTrustedDevices(ctx, deps, tenantID, userID, now); err != nil {
+		return err
+	}
+	return disableOwnedAgents(ctx, deps, tenantID, userID, actorUserID, now)
 }
 
 // disableOwnedAgents は、止めた User が所有する Active の Agent を無効化する。
@@ -367,9 +375,9 @@ func disableOwnedAgents(ctx context.Context, deps AdminUserDeps, tenantID, userI
 	return agentusecases.DisableAgentsOwnedBy(ctx, agentusecases.AgentOwnerDeps{AgentRepo: deps.AgentRepo, Emit: deps.Emit}, tenantID, userID, actorUserID, now)
 }
 
-// revokeTrustedDevicesOnDisable は無効化に伴い記憶済みの端末をすべて失効させる (wi-91)。
+// revokeTrustedDevices は止めた User の記憶済みの端末をすべて失効させる。
 // 失効したすべての端末のイベントを発行してから、発行の最初のエラーを返す。
-func revokeTrustedDevicesOnDisable(
+func revokeTrustedDevices(
 	ctx context.Context,
 	deps AdminUserDeps,
 	tenantID, targetUserID string,
@@ -623,7 +631,8 @@ type SoftDeleteUserInput struct {
 
 // SoftDeleteUser は user を PendingDeletion に遷移させ UserSoftDeleted を emit する。
 // PII / Consent / RefreshToken / Session は温存し (cascade しない)、猶予期間内は
-// RestoreUser で Active に復元できる。既に PendingDeletion なら冪等に no-op で返す。
+// RestoreUser で Active に復元できる。記憶済みの端末は無効化と同じく失効させ、復元しても戻さない。
+// 既に PendingDeletion なら状態もイベントも変えず、止める作用の残りだけを完了する。
 // actor.Sub == target.Sub かつ admin / system_admin role の場合は ErrSelfDeleteForbidden。
 func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserInput) error {
 	user, err := loadTenantUser(ctx, deps, in.Sub)
@@ -635,8 +644,8 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 	}
 	now := idmusecases.NormalizedNow(in.Now)
 	if user.Lifecycle.EffectiveStatus() == idmdomain.UserStatusPendingDeletion {
-		// 前回の伝播が途中で失敗していても、削除の予約の再実行で残った Agent を止める。
-		return disableOwnedAgents(ctx, deps, user.TenantID, user.ID, in.ActorUserID, now)
+		// 前回の伝播が途中で失敗していても、削除の予約の再実行で残った端末と Agent を止める。
+		return stopUserEffects(ctx, deps, user.TenantID, user.ID, in.ActorUserID, now)
 	}
 	updated := *user
 	updated.Lifecycle.Status = idmdomain.UserStatusPendingDeletion
@@ -657,7 +666,7 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 		return err
 	}
 	notifyProvisioning(ctx, deps, updated.TenantID, updated.ID, userports.ProvisioningUserDeleted, now)
-	return disableOwnedAgents(ctx, deps, updated.TenantID, updated.ID, in.ActorUserID, now)
+	return stopUserEffects(ctx, deps, updated.TenantID, updated.ID, in.ActorUserID, now)
 }
 
 // RestoreUser は PendingDeletion の user を Active に戻し UserRestored を emit する。

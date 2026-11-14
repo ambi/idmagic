@@ -9,8 +9,10 @@ import (
 	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -31,9 +33,11 @@ type ResetPasswordWithTokenDeps struct {
 	PasswordHasher          passwordports.PasswordHasher
 	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
 	BreachedPasswordChecker passwordports.BreachedPasswordChecker
-	Emit                    func(spec.DomainEvent)
-	HistoryDepth            int                    // Deprecated: use Policy 指定。後方互換のためのフォールバック。
-	Policy                  PasswordPolicySnapshot // テナント解決済みのしきい値。ゼロ値は global default。
+	// TrustedDevices は再設定の後に記憶済みの端末をすべて失効させる (REQ-AUTHENTICATION-028)。必須。
+	TrustedDevices trusteddeviceports.UserDeviceRevoker
+	Emit           func(spec.DomainEvent)
+	HistoryDepth   int                    // Deprecated: use Policy 指定。後方互換のためのフォールバック。
+	Policy         PasswordPolicySnapshot // テナント解決済みのしきい値。ゼロ値は global default。
 }
 
 type ResetPasswordWithTokenInput struct {
@@ -53,6 +57,9 @@ func ResetPasswordWithToken(
 	deps ResetPasswordWithTokenDeps,
 	in ResetPasswordWithTokenInput,
 ) (*userdomain.User, error) {
+	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
+		return nil, err
+	}
 	if deps.PasswordDelegation == nil {
 		return resetPasswordWithToken(ctx, deps, in)
 	}
@@ -177,6 +184,13 @@ func resetPasswordWithToken(ctx context.Context, deps ResetPasswordWithTokenDeps
 				Action: string(idmdomain.RequiredActionUpdatePassword),
 			})
 		}
+	}
+	// 再設定も変更と同じく、それ以前に成立した第二要素の証明を古くする。
+	if err := trusteddeviceusecases.RevokeOnCredentialChange(
+		ctx, deps.TrustedDevices, trusteddeviceusecases.EmitWithoutError(deps.Emit),
+		user.TenantID, user.ID, spec.TrustedDevicePasswordChange, now,
+	); err != nil {
+		return nil, err
 	}
 	return &updated, nil
 }

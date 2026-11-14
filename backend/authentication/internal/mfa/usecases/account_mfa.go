@@ -19,9 +19,11 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	totpusecases "github.com/ambi/idmagic/backend/authentication/internal/totp/usecases"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -49,6 +51,9 @@ type AccountMfaDeps struct {
 	// CredentialRepo は TOTP 解除後の mfa_enrolled 再計算で WebAuthn の残存を見るために使う
 	// (wi-26)。nil の場合は WebAuthn を考慮しない (TOTP のみの旧経路との後方互換)。
 	CredentialRepo webauthnports.WebAuthnCredentialRepository
+	// TrustedDevices は登録と解除の後に記憶済みの端末をすべて失効させる (REQ-AUTHENTICATION-028)。
+	// 登録と解除では必須で、登録の開始は使わない。
+	TrustedDevices trusteddeviceports.UserDeviceRevoker
 	Emit           func(spec.DomainEvent)
 	Issuer         string
 }
@@ -102,6 +107,9 @@ type ConfirmTOTPEnrollmentInput struct {
 // ConfirmTOTPEnrollment は secret に対するコードの所持証明を検証し、TOTP factor を
 // 永続化して user.MfaEnrolled を true にする。
 func ConfirmTOTPEnrollment(ctx context.Context, deps AccountMfaDeps, in ConfirmTOTPEnrollmentInput) error {
+	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
+		return err
+	}
 	now := authusecases.NormalizedNow(in.Now)
 	user, err := authusecases.LoadSelfUser(ctx, deps.UserRepo, in.Sub)
 	if err != nil {
@@ -146,7 +154,15 @@ func ConfirmTOTPEnrollment(ctx context.Context, deps AccountMfaDeps, in ConfirmT
 			At: now, TenantID: user.TenantID, UserID: user.ID, FactorType: spec.MfaFactorTOTP,
 		})
 	}
-	return nil
+	return revokeOnFactorChange(ctx, deps, user, now)
+}
+
+// revokeOnFactorChange は認証要素の集合が変わった User の記憶済みの端末をすべて失効させる。
+func revokeOnFactorChange(ctx context.Context, deps AccountMfaDeps, user *userdomain.User, now time.Time) error {
+	return trusteddeviceusecases.RevokeOnCredentialChange(
+		ctx, deps.TrustedDevices, trusteddeviceusecases.EmitWithoutError(deps.Emit),
+		user.TenantID, user.ID, spec.TrustedDeviceMfaChange, now,
+	)
 }
 
 // RemoveTOTPFactorInput は TOTP 解除リクエスト。Code は所持証明としての現在の TOTP。
@@ -159,6 +175,9 @@ type RemoveTOTPFactorInput struct {
 // RemoveTOTPFactor は所持証明 (有効な TOTP コード) を検証してから factor を削除し、
 // user.MfaEnrolled を false に戻す。factor が無ければ ErrMfaNotEnrolled。
 func RemoveTOTPFactor(ctx context.Context, deps AccountMfaDeps, in RemoveTOTPFactorInput) error {
+	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
+		return err
+	}
 	now := authusecases.NormalizedNow(in.Now)
 	user, err := authusecases.LoadSelfUser(ctx, deps.UserRepo, in.Sub)
 	if err != nil {
@@ -186,7 +205,7 @@ func RemoveTOTPFactor(ctx context.Context, deps AccountMfaDeps, in RemoveTOTPFac
 			At: now, TenantID: user.TenantID, UserID: user.ID, FactorType: spec.MfaFactorTOTP,
 		})
 	}
-	return nil
+	return revokeOnFactorChange(ctx, deps, user, now)
 }
 
 // otpauthIssuerLabel は issuer URL から authenticator 表示用の簡潔なラベルを導く。

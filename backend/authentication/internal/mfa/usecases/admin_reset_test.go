@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
@@ -32,6 +35,7 @@ func newAuthenticatorResetDeps(t *testing.T) (usecases.AuthenticatorResetDeps, u
 	})
 	var events []spec.DomainEvent
 	deps := usecases.AuthenticatorResetDeps{
+		TrustedDevices:         trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		UserRepo:               userRepo,
 		MfaFactorRepo:          totpmemory.NewMfaFactorRepository(),
 		WebAuthnCredentialRepo: webauthnmemory.NewWebAuthnCredentialRepository(),

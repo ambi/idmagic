@@ -19,6 +19,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication"
 	authmemory "github.com/ambi/idmagic/backend/authentication/internal/session/db_memory"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
 	demousecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 	authdomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 
@@ -62,7 +63,8 @@ func newAdminSessionsFixture(t *testing.T) adminSessionsFixture {
 		UserRepo:      users,
 		AuthnResolver: demousecases.DemoHeaderResolver{},
 		Authentication: authentication.Module{
-			SessionManager: authusecases.NewSessionManager(sessionStore),
+			TrustedDeviceRepo: trusteddevicememory.NewTrustedDeviceRepository(),
+			SessionManager:    authusecases.NewSessionManager(sessionStore),
 		},
 		OAuth2: oauth2.Module{RefreshStore: refreshStore},
 	})

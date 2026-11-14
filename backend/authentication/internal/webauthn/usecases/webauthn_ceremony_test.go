@@ -20,7 +20,12 @@ import (
 
 	"github.com/fxamacker/cbor/v2"
 
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
 	"github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
+	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
@@ -229,6 +234,45 @@ func beginAssertion(ctx context.Context, t *testing.T, deps usecases.WebAuthnDep
 		t.Fatal(err)
 	}
 	return assertion.Response.Challenge.String()
+}
+
+//spec:covers REQ-AUTHENTICATION-028: WebAuthn の登録成功が本人の全端末だけを mfa_change で失効させ、端末ごとのイベントを発行する。
+func TestWebAuthnRegistrationRevokesTrustedDevices(t *testing.T) {
+	ctx := testing_tenant.Default(context.Background())
+	now := time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC)
+	deps, _, events := newWebAuthnDeps(t, testRP(t))
+	devices := trusteddevicememory.NewTrustedDeviceRepository()
+	deps.TrustedDevices = trusteddeviceusecases.UserDeviceRevoker{Repo: devices}
+	for deviceID, userID := range map[string]string{"alice-1": "user-alice", "alice-2": "user-alice", "bob-1": "user-bob"} {
+		if err := devices.Save(ctx, &trusteddevicedomain.TrustedDevice{
+			ID: deviceID, TenantID: tenancydomain.DefaultTenantID, UserID: userID, Selector: deviceID,
+			VerifierHash: "hash", CreatedAt: now.Add(-time.Hour), LastUsedAt: now.Add(-time.Hour), ExpiresAt: now.Add(time.Hour),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	registerCredential(ctx, t, deps, now)
+	for _, id := range []string{"alice-1", "alice-2"} {
+		device, err := devices.FindByID(ctx, tenancydomain.DefaultTenantID, "user-alice", id)
+		if err != nil || device == nil || device.RevokedAt == nil || !device.RevokedAt.Equal(now) || device.RevokeReason == nil || *device.RevokeReason != spec.TrustedDeviceMfaChange {
+			t.Fatalf("端末 %s が mfa_change で失効していない: device=%+v err=%v", id, device, err)
+		}
+	}
+	if active, err := devices.ListActiveByUser(ctx, tenancydomain.DefaultTenantID, "user-bob", now); err != nil || len(active) != 1 {
+		t.Fatalf("他人の端末が失効した: active=%d err=%v", len(active), err)
+	}
+	revokedIDs := map[string]bool{}
+	for _, event := range *events {
+		if revoked, ok := event.(*trusteddevicedomain.TrustedDeviceRevoked); ok {
+			if revoked.UserID != "user-alice" || revoked.TenantID != tenancydomain.DefaultTenantID || revoked.Reason != spec.TrustedDeviceMfaChange || !revoked.At.Equal(now) || revokedIDs[revoked.DeviceID] {
+				t.Fatalf("失効イベント=%+v", revoked)
+			}
+			revokedIDs[revoked.DeviceID] = true
+		}
+	}
+	if len(revokedIDs) != 2 || !revokedIDs["alice-1"] || !revokedIDs["alice-2"] {
+		t.Fatalf("失効イベントの対象=%v, want alice-1 and alice-2", revokedIDs)
+	}
 }
 
 // COSE の公開鍵と sign count を保存することを固定する。4 つを別々の入力で観測する:

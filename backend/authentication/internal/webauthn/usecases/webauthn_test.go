@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
@@ -31,6 +34,7 @@ func newWebAuthnDeps(t *testing.T, rp *usecases.RelyingParty) (usecases.WebAuthn
 	})
 	var events []spec.DomainEvent
 	deps := usecases.WebAuthnDeps{
+		TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		RP:             rp,
 		UserRepo:       userRepo,
 		CredentialRepo: authnmemory.NewWebAuthnCredentialRepository(),

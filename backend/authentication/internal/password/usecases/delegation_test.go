@@ -5,6 +5,9 @@ import (
 	"errors"
 	"testing"
 
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+
 	passwordusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 )
@@ -24,7 +27,10 @@ func (a *externalPasswordAuthority) WithLocalPasswordWrite(context.Context, stri
 func TestDelegationPreventsPasswordChangeAndResetWithoutConsumingTheToken(t *testing.T) {
 	f := newResetFixture(t)
 	authority := &externalPasswordAuthority{}
-	_, err := passwordusecases.ChangePassword(f.ctx, passwordusecases.ChangePasswordDeps{UserRepo: f.users, PasswordDelegation: authority}, passwordusecases.ChangePasswordInput{Sub: "user-alice", CurrentPassword: "current-password-1", NewPassword: "changed-password-7", Now: f.now})
+	_, err := passwordusecases.ChangePassword(f.ctx, passwordusecases.ChangePasswordDeps{
+		TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
+		UserRepo:       f.users, PasswordDelegation: authority,
+	}, passwordusecases.ChangePasswordInput{Sub: "user-alice", CurrentPassword: "current-password-1", NewPassword: "changed-password-7", Now: f.now})
 	if !errors.Is(err, passwordports.ErrPasswordDelegated) {
 		t.Fatalf("change=%v", err)
 	}

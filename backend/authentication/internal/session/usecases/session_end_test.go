@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	memory "github.com/ambi/idmagic/backend/authentication/internal/session/db_memory"
 	"github.com/ambi/idmagic/backend/authentication/session/domain"
@@ -132,6 +135,7 @@ func TestRevokingAllSessionsSkipsTheOnesAnotherPathEnded(t *testing.T) {
 		t.Fatal(err)
 	}
 	deps := SessionDeps{Store: revokedWhileListing{f.store}, Emit: f.manager.Emit, QuotaRepo: f.quota}
+	deps.TrustedDevices = trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()}
 
 	revoked, err := AdminRevokeUserSessions(f.ctx, deps, "admin-1", "user-1", time.Now().UTC())
 	if err != nil {

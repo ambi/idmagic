@@ -115,8 +115,8 @@ func HandleRevokeAllTrustedDevices(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	if err := d.RevokeTrustedDevices(
-		c.Request().Context(), support.RequestTenantID(c), sub, spec.TrustedDeviceSelfRevoke,
+	if err := trusteddeviceusecases.RevokeAllForUser(
+		c.Request().Context(), d.TrustedDeviceDeps(), support.RequestTenantID(c), sub, spec.TrustedDeviceSelfRevoke, time.Now().UTC(),
 	); err != nil {
 		return err
 	}

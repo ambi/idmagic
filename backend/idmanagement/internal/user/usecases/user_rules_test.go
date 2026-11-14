@@ -477,27 +477,85 @@ func TestSetUserDisabledRefusesAPendingDeletionUser(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-IDMANAGEMENT-010: 無効化がその User の記憶済みの端末を失効させること。
-func TestSetUserDisabledRevokesTrustedDevices(t *testing.T) {
-	f := newUserRulesFixture(t)
-	alice := f.seed("alice", nil)
-	ctx := testing_tenant.Default(context.Background())
-	if err := f.devices.Save(ctx, &trusteddevicedomain.TrustedDevice{
-		ID: "device-1", TenantID: tenancydomain.DefaultTenantID, UserID: alice.ID, Selector: "selector-1",
+// User を止める操作は、無効化でも削除の予約でも、既に止まった User への再実行でも、
+// 記憶済みの端末を理由 account_disabled で失効させ、端末ごとに TrustedDeviceRevoked を発行する。
+// 予約から復元しても、失効した端末は生き返らない。
+//
+//spec:covers REQ-IDMANAGEMENT-010, REQ-AUTHENTICATION-028, EX-AUTHENTICATION-028-05, EX-AUTHENTICATION-028-07: 無効化と削除の予約、およびその再実行がその User の記憶済みの端末を失効させ、予約からの復元の後も端末が失効したままであること。
+func TestStoppingUserRevokesTrustedDevices(t *testing.T) {
+	disable := func(ctx context.Context, f *userRulesFixture, id string) error {
+		_, err := userusecases.SetUserDisabled(ctx, f.deps, "admin", id, true, userRulesNow)
+		return err
+	}
+	scheduleDeletion := func(ctx context.Context, f *userRulesFixture, id string) error {
+		return userusecases.SoftDeleteUser(ctx, f.deps, userusecases.SoftDeleteUserInput{ActorUserID: "admin", Sub: id, Now: userRulesNow})
+	}
+	for _, tc := range []struct {
+		name string
+		// seed は止める前の User の状態。nil は Active。
+		seed func(*userdomain.User)
+		stop func(context.Context, *userRulesFixture, string) error
+	}{
+		{name: "無効化", stop: disable},
+		{name: "削除の予約", stop: scheduleDeletion},
+		{name: "無効化済みの User の無効化の再実行", seed: func(user *userdomain.User) {
+			user.Lifecycle.Status = idmdomain.UserStatusDisabled
+		}, stop: disable},
+		{name: "予約済みの User の削除の予約の再実行", seed: pendingSince(userRulesNow.Add(-time.Hour)), stop: scheduleDeletion},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newUserRulesFixture(t)
+			alice := f.seed("alice", tc.seed)
+			bob := f.seed("bob", nil)
+			ctx := testing_tenant.Default(context.Background())
+			f.seedTrustedDevice(t, alice.ID, "device-alice")
+			f.seedTrustedDevice(t, bob.ID, "device-bob")
+
+			if err := tc.stop(ctx, f, alice.ID); err != nil {
+				t.Fatal(err)
+			}
+			device, err := f.devices.FindByID(ctx, tenancydomain.DefaultTenantID, alice.ID, "device-alice")
+			if err != nil || device == nil {
+				t.Fatalf("FindByID=(%v,%v)", device, err)
+			}
+			if device.RevokedAt == nil || device.RevokeReason == nil || *device.RevokeReason != spec.TrustedDeviceAccountDisabled {
+				t.Fatalf("端末が account_disabled で失効していない: revoked_at=%v reason=%v", device.RevokedAt, device.RevokeReason)
+			}
+			revoked := f.eventsOf("TrustedDeviceRevoked")
+			if len(revoked) != 1 || revoked[0].(*trusteddevicedomain.TrustedDeviceRevoked).DeviceID != "device-alice" {
+				t.Fatalf("TrustedDeviceRevoked=%+v, want device-alice only", revoked)
+			}
+			if active, err := f.devices.ListActiveByUser(ctx, tenancydomain.DefaultTenantID, bob.ID, userRulesNow); err != nil || len(active) != 1 {
+				t.Fatalf("他人の端末が巻き添えになった: active=%d err=%v", len(active), err)
+			}
+		})
+	}
+
+	t.Run("予約からの復元", func(t *testing.T) {
+		f := newUserRulesFixture(t)
+		alice := f.seed("alice", nil)
+		ctx := testing_tenant.Default(context.Background())
+		f.seedTrustedDevice(t, alice.ID, "device-alice")
+		if err := scheduleDeletion(ctx, f, alice.ID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := userusecases.RestoreUser(ctx, f.deps, "admin", alice.ID, userRulesNow); err != nil {
+			t.Fatal(err)
+		}
+		if active, err := f.devices.ListActiveByUser(ctx, tenancydomain.DefaultTenantID, alice.ID, userRulesNow); err != nil || len(active) != 0 {
+			t.Fatalf("復元で予約の前の端末が生き返った: active=%d err=%v", len(active), err)
+		}
+	})
+}
+
+func (f *userRulesFixture) seedTrustedDevice(t *testing.T, userID, deviceID string) {
+	t.Helper()
+	if err := f.devices.Save(testing_tenant.Default(context.Background()), &trusteddevicedomain.TrustedDevice{
+		ID: deviceID, TenantID: tenancydomain.DefaultTenantID, UserID: userID, Selector: "selector-" + deviceID,
 		VerifierHash: "hash", CreatedAt: userRulesNow.Add(-time.Hour), LastUsedAt: userRulesNow.Add(-time.Hour),
 		ExpiresAt: userRulesNow.Add(24 * time.Hour),
 	}); err != nil {
 		t.Fatal(err)
-	}
-	if _, err := userusecases.SetUserDisabled(ctx, f.deps, "admin", alice.ID, true, userRulesNow); err != nil {
-		t.Fatal(err)
-	}
-	active, err := f.devices.ListActiveByUser(ctx, tenancydomain.DefaultTenantID, alice.ID, userRulesNow)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(active) != 0 {
-		t.Fatalf("無効化の後も端末が有効: %+v", active)
 	}
 }
 

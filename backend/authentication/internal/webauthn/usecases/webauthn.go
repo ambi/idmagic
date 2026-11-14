@@ -16,6 +16,7 @@ import (
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -77,6 +78,9 @@ type WebAuthnDeps struct {
 	CredentialRepo webauthnports.WebAuthnCredentialRepository
 	MfaFactorRepo  totpports.MfaFactorRepository
 	SessionStore   webauthnports.WebAuthnSessionStore
+	// TrustedDevices は資格情報の登録と解除の後に記憶済みの端末をすべて失効させる
+	// (REQ-AUTHENTICATION-028)。登録の完了と解除では必須で、ログインとステップアップの儀式は使わない。
+	TrustedDevices trusteddeviceports.UserDeviceRevoker
 	Emit           func(spec.DomainEvent)
 }
 

@@ -12,9 +12,11 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -32,6 +34,8 @@ const reenrollmentBypassTTL = time.Hour
 type AuthenticatorResetDeps struct {
 	MfaEnrollmentDeps
 	RecoveryCodeRepo recoveryports.RecoveryCodeRepository
+	// TrustedDevices はリセットの後に記憶済みの端末をすべて失効させる (REQ-AUTHENTICATION-028)。必須。
+	TrustedDevices trusteddeviceports.UserDeviceRevoker
 }
 
 type AuthenticatorResetResult struct {
@@ -47,6 +51,9 @@ func ResetUserAuthenticators(
 	targets []spec.AuthenticatorResetTarget,
 	now time.Time,
 ) (*AuthenticatorResetResult, error) {
+	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
+		return nil, err
+	}
 	if len(targets) == 0 {
 		return nil, ErrAuthenticatorResetNotAllowed
 	}
@@ -111,5 +118,12 @@ func ResetUserAuthenticators(
 		At: now, TenantID: user.TenantID, ActorUserID: actorID, UserID: userID,
 		Targets: targets, MfaEnrolled: result.MfaEnrolled, ReenrollmentRequired: result.ReenrollmentRequired,
 	})
+	// 管理者が認証器をリセットした以上、それ以前に成立した第二要素の証明も古くなる。
+	if err := trusteddeviceusecases.RevokeOnCredentialChange(
+		ctx, deps.TrustedDevices, trusteddeviceusecases.EmitWithoutError(deps.Emit),
+		user.TenantID, userID, spec.TrustedDeviceAdminRevoke, now,
+	); err != nil {
+		return nil, err
+	}
 	return result, nil
 }

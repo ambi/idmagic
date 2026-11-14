@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
@@ -55,6 +58,7 @@ func newStandardsFixture(t *testing.T, policy PasswordPolicySnapshot) standardsF
 		historyRepo: historyRepo,
 		hasher:      hasher,
 		deps: ChangePasswordDeps{
+			TrustedDevices:      trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 			UserRepo:            userRepo,
 			PasswordHasher:      hasher,
 			PasswordHistoryRepo: historyRepo,

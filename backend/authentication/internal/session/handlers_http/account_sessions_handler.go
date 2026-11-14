@@ -12,7 +12,6 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
 	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -45,7 +44,7 @@ func sessionStore(d httpdeps.Deps) authnports.SessionStore {
 }
 
 func accountSessionDeps(d httpdeps.Deps) authusecases.SessionDeps {
-	deps := authusecases.SessionDeps{Store: sessionStore(d), Emit: d.Emit}
+	deps := authusecases.SessionDeps{Store: sessionStore(d), Emit: d.Emit, TrustedDevices: d.TrustedDeviceRevoker()}
 	if d.SessionManager != nil {
 		deps.QuotaRepo = d.SessionManager.QuotaRepo
 	}
@@ -189,13 +188,6 @@ func HandleAdminRevokeAllSessions(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	// 全セッション失効は「この利用者の既存の認証結果をすべて捨てる」操作なので、
-	// 記憶済みの端末も残さない (wi-91)。
-	if err := d.RevokeTrustedDevices(
-		c.Request().Context(), support.RequestTenantID(c), targetUserID, spec.TrustedDeviceSessionRevoke,
-	); err != nil {
-		return err
-	}
 	for _, revokedID := range revokedIDs {
 		if err := revokeOAuthSessionTokens(d, c, revokedID); err != nil {
 			return err
@@ -219,13 +211,6 @@ func HandleRevokeOtherAccountSessions(d httpdeps.Deps, c *echo.Context) error {
 	)
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
-	}
-	// 全セッション失効は「この利用者の既存の認証結果をすべて捨てる」操作なので、
-	// 記憶済みの端末も残さない (wi-91)。
-	if err := d.RevokeTrustedDevices(
-		c.Request().Context(), support.RequestTenantID(c), sub, spec.TrustedDeviceSessionRevoke,
-	); err != nil {
-		return err
 	}
 	for _, revokedID := range revokedIDs {
 		if err := revokeOAuthSessionTokens(d, c, revokedID); err != nil {

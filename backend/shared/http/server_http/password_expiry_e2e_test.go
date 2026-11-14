@@ -126,6 +126,7 @@ func newPasswordExpiryServer(
 			PARStore: oauth2.NewMemoryModule().PARStore, RefreshStore: oauth2.NewMemoryModule().RefreshStore,
 		},
 		UserRepo:            wiredUsers,
+		Authentication:      authentication.Module{TrustedDeviceRepo: authentication.NewMemoryModule(nil).TrustedDeviceRepo},
 		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 		PasswordHasher:      hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
 	})

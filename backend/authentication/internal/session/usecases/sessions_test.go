@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
@@ -99,7 +102,8 @@ func TestRevokeOtherSessionsKeepsCurrent(t *testing.T) {
 
 	var events []spec.DomainEvent
 	revokedIDs, err := usecases.RevokeOtherSessions(ctx, usecases.SessionDeps{
-		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
+		TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
+		Store:          store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
 	}, "alice", "s2", base)
 	if err != nil {
 		t.Fatal(err)
@@ -237,7 +241,8 @@ func TestAdminRevokeUserSessionsRevokesAllWithNoExclusion(t *testing.T) {
 
 	var events []spec.DomainEvent
 	revokedIDs, err := usecases.AdminRevokeUserSessions(ctx, usecases.SessionDeps{
-		Store: store, Emit: func(event spec.DomainEvent) { events = append(events, event) },
+		TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
+		Store:          store, Emit: func(event spec.DomainEvent) { events = append(events, event) },
 	}, "admin-1", "alice", base)
 	if err != nil {
 		t.Fatal(err)

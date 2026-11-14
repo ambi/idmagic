@@ -77,7 +77,7 @@ type Deps struct {
 	DeviceCodeStore      userports.UserRecordsPurger
 	ApprovalRequestStore userports.UserRecordsPurger
 	UserCredentials      userports.UserCredentialPurger
-	// TrustedDevices は無効化で信頼済みデバイスをすべて失効させる。
+	// TrustedDevices は無効化と削除の予約で信頼済みデバイスをすべて失効させる。
 	TrustedDevices          userports.UserDeviceRevoker
 	ValidateInitialPassword func(context.Context, string) error
 	AccountIdentity         AccountIdentity

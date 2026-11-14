@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -39,6 +42,7 @@ func TestChangePasswordUpdatesHashAndEmitsEvent(t *testing.T) {
 	var events []spec.DomainEvent
 
 	updated, err := ChangePassword(context.Background(), ChangePasswordDeps{
+		TrustedDevices:      trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		UserRepo:            userRepo,
 		PasswordHasher:      hasher,
 		PasswordHistoryRepo: historyRepo,
@@ -110,6 +114,7 @@ func TestChangePasswordRejectsCurrentPasswordMismatch(t *testing.T) {
 	}
 
 	_, err = ChangePassword(context.Background(), ChangePasswordDeps{
+		TrustedDevices:      trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		UserRepo:            userRepo,
 		PasswordHasher:      hasher,
 		PasswordHistoryRepo: historyRepo,
@@ -143,6 +148,7 @@ func TestChangePasswordHonorsTenantOverridePolicy(t *testing.T) {
 
 	strict := PasswordPolicySnapshot{MinLength: 24, MaxLength: 128, HistoryDepth: 5}
 	_, err = ChangePassword(context.Background(), ChangePasswordDeps{
+		TrustedDevices:      trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		UserRepo:            userRepo,
 		PasswordHasher:      hasher,
 		PasswordHistoryRepo: historyRepo,
@@ -184,6 +190,7 @@ func TestChangePasswordRejectsBreachedPassword(t *testing.T) {
 	}
 
 	_, err = ChangePassword(context.Background(), ChangePasswordDeps{
+		TrustedDevices:          trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		UserRepo:                userRepo,
 		PasswordHasher:          hasher,
 		PasswordHistoryRepo:     historyRepo,
@@ -234,6 +241,7 @@ func TestChangePasswordRejectsPasswordReuse(t *testing.T) {
 	}
 
 	_, err = ChangePassword(context.Background(), ChangePasswordDeps{
+		TrustedDevices:      trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		UserRepo:            userRepo,
 		PasswordHasher:      hasher,
 		PasswordHistoryRepo: historyRepo,

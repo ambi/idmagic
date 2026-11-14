@@ -12,6 +12,9 @@ import (
 	"testing"
 	"time"
 
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
@@ -141,7 +144,8 @@ func newResetFixture(t *testing.T) *resetFixture {
 
 func (f *resetFixture) deps(emit func(spec.DomainEvent)) usecases.ResetPasswordWithTokenDeps {
 	return usecases.ResetPasswordWithTokenDeps{
-		UserRepo: f.users, TokenStore: f.tokenStore, PasswordHasher: f.hasher,
+		TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
+		UserRepo:       f.users, TokenStore: f.tokenStore, PasswordHasher: f.hasher,
 		PasswordHistoryRepo: f.history, Emit: emit,
 	}
 }

@@ -486,7 +486,7 @@ model TrustedDevice {
 }
 
 
-@doc("信頼済みデバイスを失効させた理由。`self_revoke` はユーザーが明示的に失効させたこと、`password_change` と `mfa_change` は資格情報の変更にともなう一括の失効、`admin_revoke` は管理者による認証器のリセット、`account_disabled` はアカウントの無効化、`session_revoke` はユーザーまたは管理者がすべてのセッションを失効させたことである。")
+@doc("信頼済みデバイスを失効させた理由。`self_revoke` はユーザーが明示的に失効させたこと、`password_change` と `mfa_change` は資格情報の変更にともなう一括の失効、`admin_revoke` は管理者による認証器のリセット、`account_disabled` はアカウントの停止（無効化または削除の予約）、`session_revoke` はユーザーまたは管理者がすべてのセッションを失効させたことである。")
 enum TrustedDeviceRevokeReason {
   self_revoke: "self_revoke",
   password_change: "password_change",

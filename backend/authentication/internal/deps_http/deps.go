@@ -7,7 +7,6 @@ package deps_http
 
 import (
 	"context"
-	"time"
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -127,15 +126,13 @@ func (d Deps) TrustedDeviceDeps() trusteddeviceusecases.Deps {
 	return trusteddeviceusecases.Deps{Repo: d.TrustedDeviceRepo, Emit: d.Emit}
 }
 
-// RevokeTrustedDevices は対象ユーザーの信頼済みデバイスをすべて失効させる。資格情報が
-// 変わる操作 (パスワード、認証要素、認証器のリセット、全セッション失効) の後処理として
-// 各ハンドラーから呼ぶ。配線が無ければ no-op。
-func (d Deps) RevokeTrustedDevices(
-	ctx context.Context, tenantID, userID string, reason spec.TrustedDeviceRevokeReason,
-) error {
-	return trusteddeviceusecases.RevokeAllForUser(
-		ctx, d.TrustedDeviceDeps(), tenantID, userID, reason, time.Now().UTC(),
-	)
+// TrustedDeviceRevoker は、資格情報を変えるユースケース (REQ-AUTHENTICATION-028 の契機) へ渡す
+// 失効の契約を返す。保存先が未配線なら nil を返し、ユースケースが最初の作用より前に拒否する。
+func (d Deps) TrustedDeviceRevoker() trusteddeviceports.UserDeviceRevoker {
+	if d.TrustedDeviceRepo == nil {
+		return nil
+	}
+	return trusteddeviceusecases.UserDeviceRevoker{Repo: d.TrustedDeviceRepo}
 }
 
 // LegacyEmit adapts the fire-and-forget support.Deps.Emit to the

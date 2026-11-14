@@ -198,6 +198,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 			AccessTokenDenylist:        oauth2.NewMemoryModule().AccessTokenDenylist,
 		},
 		UserRepo:          users,
+		Authentication:    authentication.Module{TrustedDeviceRepo: authentication.NewMemoryModule(nil).TrustedDeviceRepo},
 		KeyStore:          keyStore,
 		TokenIssuer:       signer,
 		TokenIntrospector: signer,

@@ -11,9 +11,11 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 	"github.com/ambi/idmagic/backend/authentication/session/domain"
 	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -32,6 +34,18 @@ type SessionDeps struct {
 	// skips enforcement (wiring gaps in tests/tools); production bootstrap
 	// always sets it.
 	QuotaRepo tenantports.QuotaRepository
+	// TrustedDevices は全セッションの失効の後に記憶済みの端末をすべて失効させる
+	// (REQ-AUTHENTICATION-028)。RevokeOtherSessions と AdminRevokeUserSessions では必須。
+	TrustedDevices trusteddeviceports.UserDeviceRevoker
+}
+
+// revokeDevicesOnSessionRevoke は、全セッションの失効が「この利用者の既存の認証結果をすべて捨てる」
+// 操作であることから、記憶済みの端末も残さない。
+func revokeDevicesOnSessionRevoke(ctx context.Context, deps SessionDeps, userID string, now time.Time) error {
+	return trusteddeviceusecases.RevokeOnCredentialChange(
+		ctx, deps.TrustedDevices, trusteddeviceusecases.EmitWithoutError(deps.Emit),
+		tenantports.TenantID(ctx), userID, spec.TrustedDeviceSessionRevoke, authusecases.NormalizedNow(now),
+	)
 }
 
 // endSession は、ログインセッションを失効させる経路がすべて通る唯一の終了である
@@ -129,6 +143,9 @@ func RevokeOtherSessions(
 	sub, keepSessionID string,
 	now time.Time,
 ) ([]string, error) {
+	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
+		return nil, err
+	}
 	sessions, err := deps.Store.ListBySub(ctx, sub)
 	if err != nil {
 		return nil, err
@@ -142,6 +159,9 @@ func RevokeOtherSessions(
 			return nil, err
 		}
 		revokedIDs = append(revokedIDs, sess.ID)
+	}
+	if err := revokeDevicesOnSessionRevoke(ctx, deps, sub, now); err != nil {
+		return nil, err
 	}
 	return revokedIDs, nil
 }
@@ -212,6 +232,9 @@ func AdminRevokeUserSessions(
 	actorUserID, targetUserID string,
 	now time.Time,
 ) ([]string, error) {
+	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
+		return nil, err
+	}
 	sessions, err := deps.Store.ListBySub(ctx, targetUserID)
 	if err != nil {
 		return nil, err
@@ -222,6 +245,9 @@ func AdminRevokeUserSessions(
 			return nil, err
 		}
 		revokedIDs = append(revokedIDs, sess.ID)
+	}
+	if err := revokeDevicesOnSessionRevoke(ctx, deps, targetUserID, now); err != nil {
+		return nil, err
 	}
 	return revokedIDs, nil
 }

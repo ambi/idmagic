@@ -8,9 +8,11 @@ import (
 	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -38,12 +40,17 @@ type ChangePasswordDeps struct {
 	PasswordHasher          passwordports.PasswordHasher
 	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
 	BreachedPasswordChecker passwordports.BreachedPasswordChecker
-	Emit                    func(spec.DomainEvent) error
-	HistoryDepth            int                    // Deprecated: use Policy 指定。後方互換のためのフォールバック。
-	Policy                  PasswordPolicySnapshot // テナント解決済みのしきい値。ゼロ値は global default。
+	// TrustedDevices は変更の後に記憶済みの端末をすべて失効させる (REQ-AUTHENTICATION-028)。必須。
+	TrustedDevices trusteddeviceports.UserDeviceRevoker
+	Emit           func(spec.DomainEvent) error
+	HistoryDepth   int                    // Deprecated: use Policy 指定。後方互換のためのフォールバック。
+	Policy         PasswordPolicySnapshot // テナント解決済みのしきい値。ゼロ値は global default。
 }
 
 func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePasswordInput) (*userdomain.User, error) {
+	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
+		return nil, err
+	}
 	if deps.PasswordDelegation == nil {
 		return changePassword(ctx, deps, in)
 	}
@@ -144,6 +151,12 @@ func changePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePassw
 				return nil, err
 			}
 		}
+	}
+	// パスワードが変わった以上、それ以前に成立した第二要素の証明も同時に古くなる。
+	if err := trusteddeviceusecases.RevokeOnCredentialChange(
+		ctx, deps.TrustedDevices, deps.Emit, user.TenantID, user.ID, spec.TrustedDevicePasswordChange, now,
+	); err != nil {
+		return nil, err
 	}
 	return updated, nil
 }

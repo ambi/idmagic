@@ -15,9 +15,12 @@ import (
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 const webAuthnRegistrationKeyPrefix = "reg:"
@@ -75,6 +78,9 @@ func FinishWebAuthnRegistration(
 	if deps.RP == nil {
 		return ErrWebAuthnNotConfigured
 	}
+	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
+		return err
+	}
 	now = authusecases.NormalizedNow(now)
 	user, err := authusecases.LoadSelfUser(ctx, deps.UserRepo, sub)
 	if err != nil {
@@ -118,7 +124,15 @@ func FinishWebAuthnRegistration(
 	if deps.Emit != nil {
 		deps.Emit(&authdomain.WebAuthnCredentialRegistered{At: now, TenantID: user.TenantID, UserID: user.ID})
 	}
-	return nil
+	return revokeOnCredentialChange(ctx, deps, user, now)
+}
+
+// revokeOnCredentialChange は認証要素の集合が変わった User の記憶済みの端末をすべて失効させる。
+func revokeOnCredentialChange(ctx context.Context, deps WebAuthnDeps, user *userdomain.User, now time.Time) error {
+	return trusteddeviceusecases.RevokeOnCredentialChange(
+		ctx, deps.TrustedDevices, trusteddeviceusecases.EmitWithoutError(deps.Emit),
+		user.TenantID, user.ID, spec.TrustedDeviceMfaChange, now,
+	)
 }
 
 // RemoveWebAuthnCredential は指定 credential を解除する。存在しない / 別ユーザーの場合は
@@ -130,6 +144,9 @@ func RemoveWebAuthnCredential(
 	credentialID string,
 	now time.Time,
 ) error {
+	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
+		return err
+	}
 	now = authusecases.NormalizedNow(now)
 	user, err := authusecases.LoadSelfUser(ctx, deps.UserRepo, sub)
 	if err != nil {
@@ -151,7 +168,7 @@ func RemoveWebAuthnCredential(
 	if deps.Emit != nil {
 		deps.Emit(&authdomain.WebAuthnCredentialRemoved{At: now, TenantID: user.TenantID, UserID: user.ID})
 	}
-	return nil
+	return revokeOnCredentialChange(ctx, deps, user, now)
 }
 
 // ListWebAuthnCredentials は self-service セキュリティ画面向けに登録済み credential を返す。

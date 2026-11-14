@@ -126,8 +126,10 @@ func (d Deps) handleConfirmMfaEnrollmentAPI(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
 	}
 	now := time.Now().UTC()
+	// 登録の迂回で到達する経路でも、アカウントの登録と同じく記憶済みの端末を失効させる。
 	if err := authusecases.ConfirmTOTPEnrollment(c.Request().Context(), authusecases.AccountMfaDeps{
-		UserRepo: d.UserRepo, MfaFactorRepo: d.MfaFactorRepo, Emit: d.Emit, Issuer: d.Issuer,
+		UserRepo: d.UserRepo, MfaFactorRepo: d.MfaFactorRepo, TrustedDevices: d.TrustedDeviceRevoker(),
+		Emit: d.Emit, Issuer: d.Issuer,
 	}, authusecases.ConfirmTOTPEnrollmentInput{Sub: authn.UserID, Secret: input.Secret, Code: input.Code, Now: now}); err != nil {
 		return writeBrowserEnrollmentError(c, err)
 	}

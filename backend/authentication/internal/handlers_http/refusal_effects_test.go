@@ -1390,15 +1390,99 @@ func (f *authRefusalFixture) activeTrustedDevices(t *testing.T, userID string) i
 //
 // 端末を残すかどうかは応答に現れない。失効を配線し忘れた入口は、応答だけを読むテストを
 // 素通りしたまま、変更前の資格情報で成立した記憶を生かし続ける。入口ごとに保存層を
-// 読み直す。パスワードの変更と認証要素の解除は trusted_device_e2e_test.go が持つので、
-// ここは残り 4 つの入口を見る。
+// 読み直す。表は REQ-AUTHENTICATION-028 の契機を閉じて並べる。WebAuthn の登録は
+// ソフトウェア認証器を持つ webauthn_ceremony_test.go が、正当な登録の完了と端末の失効を観測する。
 //
-//spec:covers REQ-AUTHENTICATION-028, EX-AUTHENTICATION-028-02, EX-AUTHENTICATION-028-04, EX-AUTHENTICATION-028-05, EX-AUTHENTICATION-028-06: メールのリセットリンクによる再設定、管理者による認証器のリセット、管理者による無効化、本人による TOTP 認証要素の登録、本人による他セッションの一括失効のいずれでも、記憶済みの端末がすべて失効することを固定する。
+//spec:covers REQ-AUTHENTICATION-028, EX-AUTHENTICATION-028-02, EX-AUTHENTICATION-028-03, EX-AUTHENTICATION-028-04, EX-AUTHENTICATION-028-05, EX-AUTHENTICATION-028-06: パスワードの変更と再設定、TOTP の登録（アカウントとサインイン中の登録の両方）と解除、WebAuthn の解除、管理者による認証器のリセット、無効化、削除の予約、本人と管理者による全セッションの失効のいずれでも、記憶済みの端末がすべて失効することを固定する。
 func TestCredentialChangingEntryPointsRevokeEveryTrustedDevice(t *testing.T) {
+	const totpSecret = "JBSWY3DPEHPK3PXP"
+	currentCode := func(t *testing.T) string {
+		t.Helper()
+		code, err := totpusecases.GenerateTOTP(totpSecret, time.Now().UTC().Unix())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return code
+	}
 	for _, entry := range []struct {
 		name    string
 		arrange func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest
 	}{
+		{
+			name: "本人がパスワードを変更する",
+			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
+				t.Helper()
+				session := fixture.seedSession(t, "sess-change-password", tenancydomain.DefaultTenantID, authRefusalAlice, withFreshStepUp)
+				return authRefusalRequest{
+					method: http.MethodPost, path: "/api/auth/change-password", sessionID: session, csrf: authRefusalCSRF,
+					body: map[string]any{"current_password": authRefusalPassword, "new_password": "changed-by-owner-password-1234"},
+				}
+			},
+		},
+		{
+			name: "本人が TOTP 認証要素を解除する",
+			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
+				t.Helper()
+				fixture.seedTotpFactor(t, totpSecret)
+				session := fixture.seedSession(t, "sess-remove-totp", tenancydomain.DefaultTenantID, authRefusalAlice, withFreshStepUp)
+				return authRefusalRequest{
+					method: http.MethodPost, path: "/api/account/v1/mfa/totp/remove", sessionID: session, csrf: authRefusalCSRF,
+					body: map[string]any{"code": currentCode(t)},
+				}
+			},
+		},
+		{
+			name: "本人が WebAuthn の資格情報を解除する",
+			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
+				t.Helper()
+				fixture.seedWebAuthnCredential(t)
+				session := fixture.seedSession(t, "sess-remove-webauthn", tenancydomain.DefaultTenantID, authRefusalAlice, withFreshStepUp)
+				return authRefusalRequest{
+					method: http.MethodPost, path: "/api/account/v1/mfa/webauthn/remove", sessionID: session, csrf: authRefusalCSRF,
+					body: map[string]any{"credential_id": base64.RawURLEncoding.EncodeToString([]byte("credential-" + authRefusalAlice))},
+				}
+			},
+		},
+		{
+			// 管理者が発行した登録の迂回で到達する。ハンドラーが失効を呼んでいた頃は、この入口だけが抜けていた。
+			name: "サインイン中に TOTP 認証要素を登録する",
+			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
+				t.Helper()
+				// 第二要素の完了はセッションの id を UUID として扱うので、ほかの入口と違い UUID を使う。
+				session := fixture.seedSession(t, "0e9d2c3a-6b1f-4c7e-9a52-3f8d1b6e4a70", tenancydomain.DefaultTenantID, authRefusalAlice,
+					pendingEnrollment, func(session *sessiondomain.LoginSession) {
+						deadline := time.Now().Add(time.Hour).UTC()
+						session.EnrollmentDeadline = &deadline
+					})
+				return authRefusalRequest{
+					method: http.MethodPost, path: "/api/auth/mfa/enrollment/totp/confirm", sessionID: session, csrf: authRefusalCSRF,
+					body: map[string]any{"secret": totpSecret, "code": currentCode(t), "return_to": "/realms/" + tenancydomain.DefaultRealm + "/admin"},
+				}
+			},
+		},
+		{
+			name: "管理者が削除を予約する",
+			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
+				t.Helper()
+				admin := fixture.seedSession(t, "sess-admin-delete", tenancydomain.DefaultTenantID, authRefusalHomeAdmin)
+				return authRefusalRequest{
+					method: http.MethodDelete, sessionID: admin, csrf: authRefusalCSRF,
+					path: "/api/admin/v1/users/" + authRefusalAlice,
+				}
+			},
+		},
+		{
+			name: "管理者が全セッションを失効させる",
+			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
+				t.Helper()
+				fixture.seedSession(t, "sess-alice", tenancydomain.DefaultTenantID, authRefusalAlice)
+				admin := fixture.seedSession(t, "sess-admin-revoke-all", tenancydomain.DefaultTenantID, authRefusalHomeAdmin)
+				return authRefusalRequest{
+					method: http.MethodPost, sessionID: admin, csrf: authRefusalCSRF,
+					path: "/api/admin/v1/users/" + authRefusalAlice + "/sessions/revoke-all", body: map[string]any{},
+				}
+			},
+		},
 		{
 			name: "メールのリセットリンクでパスワードを再設定する",
 			arrange: func(t *testing.T, fixture *authRefusalFixture) authRefusalRequest {
@@ -1472,11 +1556,14 @@ func TestCredentialChangingEntryPointsRevokeEveryTrustedDevice(t *testing.T) {
 	} {
 		t.Run(entry.name, func(t *testing.T) {
 			fixture := newAuthRefusalServer(t)
-			fixture.seedTrustedDevice(t, authRefusalAlice)
+			deviceIDs := map[string]bool{
+				fixture.seedTrustedDevice(t, authRefusalAlice): false,
+				fixture.seedTrustedDevice(t, authRefusalAlice): false,
+			}
 			// 対照の主体。他人の端末まで巻き添えにする実装を見分ける。
 			fixture.seedTrustedDevice(t, authRefusalBob)
 			request := entry.arrange(t, fixture)
-			if fixture.activeTrustedDevices(t, authRefusalAlice) != 1 {
+			if fixture.activeTrustedDevices(t, authRefusalAlice) != 2 {
 				t.Fatalf("前提が壊れている: 記憶済みの端末=%d", fixture.activeTrustedDevices(t, authRefusalAlice))
 			}
 
@@ -1489,6 +1576,20 @@ func TestCredentialChangingEntryPointsRevokeEveryTrustedDevice(t *testing.T) {
 			}
 			if got := fixture.activeTrustedDevices(t, authRefusalBob); got != 1 {
 				t.Fatalf("他人の端末まで失効した: 残り %d 台", got)
+			}
+			for _, event := range *fixture.events {
+				if revoked, ok := event.(*trusteddevicedomain.TrustedDeviceRevoked); ok {
+					seen, exists := deviceIDs[revoked.DeviceID]
+					if !exists || seen || revoked.UserID != authRefusalAlice || revoked.TenantID != tenancydomain.DefaultTenantID {
+						t.Fatalf("失効イベントの対象が誤っているか重複している: %+v", revoked)
+					}
+					deviceIDs[revoked.DeviceID] = true
+				}
+			}
+			for id, emitted := range deviceIDs {
+				if !emitted {
+					t.Errorf("端末 %s の TrustedDeviceRevoked が発行されていない", id)
+				}
 			}
 		})
 	}

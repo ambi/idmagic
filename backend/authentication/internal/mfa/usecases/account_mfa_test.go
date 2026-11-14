@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -30,7 +33,8 @@ func newMfaDeps(t *testing.T) (usecases.AccountMfaDeps, userports.UserRepository
 	})
 	var events []spec.DomainEvent
 	deps := usecases.AccountMfaDeps{
-		UserRepo: userRepo, MfaFactorRepo: totpmemory.NewMfaFactorRepository(),
+		TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
+		UserRepo:       userRepo, MfaFactorRepo: totpmemory.NewMfaFactorRepository(),
 		Emit:   func(e spec.DomainEvent) { events = append(events, e) },
 		Issuer: "http://idp.test",
 	}

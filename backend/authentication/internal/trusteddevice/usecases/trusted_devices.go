@@ -177,9 +177,8 @@ func RevokeOne(
 	return nil
 }
 
-// RevokeAllForUser は対象ユーザーの信頼済みデバイスをすべて失効させる。資格情報が変わる
-// 操作 (パスワード、認証要素、認証器のリセット、アカウント無効化、全セッション失効) から
-// 呼ぶ。Repo が未配線なら no-op。
+// RevokeAllForUser は対象ユーザーの信頼済みデバイスをすべて失効させる。本人による一括の失効が
+// 呼ぶ。資格情報が変わる操作は RevokeOnCredentialChange を使う。Repo が未配線なら no-op。
 func RevokeAllForUser(
 	ctx context.Context,
 	deps Deps,

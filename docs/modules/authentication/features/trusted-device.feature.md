@@ -120,3 +120,4 @@
   | EX-AUTHENTICATION-028-04 | 管理者がユーザー "alice" の認証器をリセットする |
   | EX-AUTHENTICATION-028-05 | 管理者がユーザー "alice" を無効化する |
   | EX-AUTHENTICATION-028-06 | ユーザー "alice" が他のセッションを一括失効させる |
+  | EX-AUTHENTICATION-028-07 | 管理者がユーザー "alice" の削除を予約し、猶予期間内に復元する |
