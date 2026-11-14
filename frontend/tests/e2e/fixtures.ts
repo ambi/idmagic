@@ -194,9 +194,11 @@ let launch: LaunchCandidate | null | undefined
 const launchFailures: string[] = []
 
 // WEBVIEW_PROBE_TIMEOUT_MS は空白ページを描いて評価を返すまでの猶予。健全なホストでの
-// 実測は 0.3 秒未満なので、1 桁以上の余裕がある。届かない環境では丸ごとこの時間を使うが、
-// 1 実行につき 1 回であり、spec ごとの 60〜90 秒のタイムアウトとは比べものにならない。
-const WEBVIEW_PROBE_TIMEOUT_MS = 5_000
+// 実測は 0.3 秒未満だが、GitHub Actions では Chrome の初回起動が 5 秒を超え、3 候補とも
+// 時間切れになって全 spec が落ちた実行がある。起動の遅さを描画できないことと取り違えない
+// よう、猶予を広く取る。届かない環境では候補ごとにこの時間を使うが、1 実行につき 1 回であり、
+// spec ごとの 60〜90 秒のタイムアウトとは比べものにならない。
+const WEBVIEW_PROBE_TIMEOUT_MS = 20_000
 
 function webViewOptions(
   candidate: LaunchCandidate,
