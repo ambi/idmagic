@@ -96,7 +96,7 @@ async function waitFor<T>(what: string, probe: () => Promise<T | undefined>, tim
   throw new Error(`${what} を待ち切れませんでした: ${lastError ?? "timeout"}`);
 }
 
-type Recorded = { method: string; url: string; status: number; mcpMethod?: string };
+type Recorded = { method: string; url: string; status: number; mcpMethod?: string; wwwAuthenticate?: string };
 
 /** 試験の CA を信頼し、クライアントの HTTP の往復を記録する fetch である。 */
 function recordingFetch(ca: string, log: Recorded[]) {
@@ -109,7 +109,8 @@ function recordingFetch(ca: string, log: Recorded[]) {
         mcpMethod = JSON.parse(init.body).method;
       } catch {}
     }
-    log.push({ method: init?.method ?? "GET", url, status: response.status, mcpMethod });
+    const wwwAuthenticate = response.headers.get("www-authenticate") ?? undefined;
+    log.push({ method: init?.method ?? "GET", url, status: response.status, mcpMethod, wwwAuthenticate });
     return response;
   };
 }
@@ -319,16 +320,22 @@ async function main() {
     const last = [...exchanges].reverse().find((x) => x.url === resource);
     check(step, expected, `${result.split("\n")[0]}; HTTP ${last?.status}; upstream=${reached}; new token requests=${reissued}`,
       (result === "ok") === wantOk && reached === wantOk && (reissue || reissued === 0));
-    return last?.status;
+    return last;
   };
 
   await callAndObserve("許可", "read_document", true, "割り当てた閲覧が上流で実行される");
   const forbidden = await callAndObserve("割当のない操作", "delete_document", false, "割り当てていない削除は 403 で止まり、上流へ届かない");
   // T004：403 に insufficient_scope がないので、SDK は認可をやり直さない。
-  check("403 への応答", "クライアントはトークンを取り直さず、エラーとして返す", `HTTP ${forbidden}`, forbidden === 403);
+  check("403 への応答", "クライアントはトークンを取り直さず、エラーとして返す", `HTTP ${forbidden?.status}`, forbidden?.status === 403);
   await callAndObserve("条件の拒否", "write_document", false, "割り当てていても、条件が真なら 403 で止まり、上流へ届かない");
   const approval = await callAndObserve("承認が必要な操作", "publish_document", false, "人の承認が必要な操作は安全側で止まり、上流へ届かない");
-  check("承認が必要な操作の応答", "承認した操作をゲートウェイが扱えないため 503 になる（wi-83492）", `HTTP ${approval}`, approval === 503);
+  // REQ-MCPGATEWAY-003：承認の不足は、取得すべき明細を示す insufficient_authorization の 403 になる。
+  const challenge = approval?.wwwAuthenticate ?? "";
+  const challengeError = /error="([^"]*)"/.exec(challenge)?.[1];
+  const remediation = challenge.includes("authorization_remediation=");
+  check("承認が必要な操作の応答", "承認の不足を 403 と insufficient_authorization で示す",
+    `HTTP ${approval?.status}; error=${challengeError}; authorization_remediation=${remediation}`,
+    approval?.status === 403 && challengeError === "insufficient_authorization" && remediation);
 
   // 8. 割当を撤回する。同じトークンのまま、次の呼び出しから拒否される。
   await admin("POST", "/api/admin/v1/authorization/relation-tuples", { deletes: [tuple("read_document")] });

@@ -14,7 +14,7 @@
 | 許可 | 割り当てた `read_document` を呼ぶ | MCP サーバーで実行される |
 | 割当のない操作 | 割り当てていない `delete_document` を呼ぶ | 403。MCP サーバーへ届かない |
 | 条件の拒否 | 割り当てたが、条件が拒否する `write_document` を呼ぶ | 403。MCP サーバーへ届かない |
-| 承認が必要な操作 | 人の承認を求める `publish_document` を呼ぶ | 503 で安全側に止まり、MCP サーバーへ届かない |
+| 承認が必要な操作 | 人の承認を求める `publish_document` を呼ぶ | 403。`WWW-Authenticate` の `insufficient_authorization` が取得すべき承認の明細を示し、MCP サーバーへ届かない |
 | 撤回 | 管理者が `read_document` の割当を取り消し、同じクライアントで呼ぶ | トークンを取り直さずに、次の呼び出しから 403 |
 | 停止 | 管理者が Agent を無効にする | 手元のトークンは 401 になり、クライアントの取り直しも IdMagic が拒否する |
 
@@ -132,7 +132,7 @@ bun run agent.ts                                # ツールの一覧
 bun run agent.ts read_document handbook         # 許可
 bun run agent.ts delete_document handbook       # 割当のない操作。403
 bun run agent.ts write_document handbook        # 条件の拒否。403
-bun run agent.ts publish_document handbook      # 承認が必要な操作。503
+bun run agent.ts publish_document handbook      # 承認が必要な操作。403
 ```
 
 ### 6. 撤回と停止
@@ -169,7 +169,7 @@ localhost で待ち受けるので、サンドボックスのある実行環境�
 
 | 範囲 | 理由または担当 |
 | --- | --- |
-| 承認を経た操作の実行 | ゲートウェイが承認した操作を扱えず、安全側で止まる。wi-83492 が扱う |
+| 承認を経た操作の実行 | SDK のクライアントは CIBA で承認付きのトークンを得ない。ゲートウェイでの転送は `backend/shared/http/server_http/mcp_gateway_approval_e2e_test.go` が確かめる |
 | 利用者から Agent への委譲 | SDK のクライアントは Agent 自身の `client_credentials` だけを行う |
 | DPoP で束縛したトークン | この手順は Bearer のトークンだけを使う |
 | Envoy の背後のゲートウェイ | `mise run test-envoy-mcp-gateway` が Go SDK で確かめる |
