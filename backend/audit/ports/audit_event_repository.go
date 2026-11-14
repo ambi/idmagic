@@ -4,9 +4,8 @@ package ports
 // module: ListAdminAuditEvents / GetAdminAuditEvent)。EventSink が
 // fire-and-forget の側に対して、本 port は時系列降順検索とテナント境界フィルタを提供する。
 //
-// 本実装は監査保管 (SCL objectives.AuditLogRetention 7y) ではなく、
-// 直近のオペレーション可視化を目的としたショートウィンドウ用途を想定する。
-// 永続化アダプタは Phase 4 以降でログストリーミングや SIEM 転送に拡張される可能性がある。
+// 記録は種類ごとの保持期間 (REQ-AUDIT-013、デフォルト 365 日) だけ残る。それより長い保管は
+// 監査エクスポートで利用者の環境へ移す。
 
 import (
 	"context"
@@ -80,11 +79,9 @@ type AuditEventRepository interface {
 }
 
 // RetentionCutoff は 保持期間 sweep が「どの type をいつより前に消すか」を
-// 表す。Default はそれ以外 (成功 / 一般監査) の cutoff。ByType は type 別の上書き
-// (失敗詳細 30 日など)。Keep に挙げた type は cutoff 対象外 (impersonation など、
-// global cap 未設定時は無期限保持) とする。OccurredAt < cutoff の行を削除する。
+// 表す。ByType は type 別の境界 (失敗詳細 30 日など)、Default はそれ以外のすべての
+// type の境界である。OccurredAt < cutoff の行を削除する。
 type RetentionCutoff struct {
 	Default time.Time
 	ByType  map[string]time.Time
-	Keep    []string
 }

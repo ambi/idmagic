@@ -63,7 +63,7 @@ var routeClassRules = []routeClassRule{
 	{path: "/metrics", exact: true, class: support.ClassInfrastructure},
 
 	// --- management_bulk (ステージ 3): 集計、エクスポート、取り込み、全同期。
-	// 監査イベントは 1 日 500 万件、7 年保持なので、一覧と検索条件の列挙は走査になる。
+	// 監査イベントは 1 日 500 万件、デフォルトで 365 日保持なので、一覧と検索条件の列挙は走査になる。
 	// id 指定の 1 件取得は走査しないので下の management に残す。
 	{path: "/api/admin/v1/audit-events", exact: true, class: support.ClassManagementBulk},
 	{path: "/api/admin/v1/audit-events/export", class: support.ClassManagementBulk},

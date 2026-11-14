@@ -8,6 +8,7 @@ import (
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
+//spec:covers REQ-AUDIT-013: PostgreSQL の保持期間の削除が、種類別の境界を持つ種類をデフォルトの境界で消さず、境界の外側だけを全テナントから消す。
 func TestPersistenceContract(t *testing.T) {
 	testing_contract.Run(t, func(t *testing.T) testing_contract.Fixture {
 		t.Helper()

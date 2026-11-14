@@ -95,7 +95,7 @@ model AuditEventFilterExpression {
 }
 
 
-@doc("管理者に公開する DomainEvent。ペイロードは構造化された JSON である。メールアドレスや IP のような個人情報のフィールドは、この時点までに EventSink が秘匿している前提である。ストアは追記専用で、イベントを 7 年間保持する（GDPR 第 30 条）。")
+@doc("管理者に公開する DomainEvent。ペイロードは構造化された JSON である。メールアドレスや IP のような個人情報のフィールドは、この時点までに EventSink が秘匿している前提である。ストアは追記専用で、イベントを種類ごとの保持期間（デフォルト 365 日）だけ保持する。")
 model AdminAuditEventResponse {
   @doc("ストアが割り当てたイベントの id（UUIDv4）。")
   id: string;

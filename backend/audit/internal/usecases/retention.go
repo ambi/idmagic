@@ -11,12 +11,11 @@ import (
 	"github.com/ambi/idmagic/backend/audit/ports"
 )
 
-// RetentionPolicy は監査の記録の保持日数である。DaysByType にない種類は DefaultDays を使う。
-// KeepTypes に挙げた種類は期間を持たず、掃引で消さない。
+// RetentionPolicy は監査の記録の保持日数である（REQ-AUDIT-013）。DaysByType にない種類は
+// DefaultDays を使う。どの種類も有限の期間を持ち、なりすましの記録もデフォルトの期間で消える。
 type RetentionPolicy struct {
 	DefaultDays int
 	DaysByType  map[string]int
-	KeepTypes   []string
 }
 
 const (
@@ -51,7 +50,6 @@ func DefaultRetentionPolicy() RetentionPolicy {
 	return RetentionPolicy{
 		DefaultDays: defaultRetentionDays,
 		DaysByType:  days,
-		KeepTypes:   []string{"SessionImpersonationStarted", "SessionImpersonationEnded"},
 	}
 }
 
@@ -65,7 +63,6 @@ func (p RetentionPolicy) Cutoff(now time.Time) ports.RetentionCutoff {
 	return ports.RetentionCutoff{
 		Default: before(p.DefaultDays),
 		ByType:  byType,
-		Keep:    append([]string(nil), p.KeepTypes...),
 	}
 }
 

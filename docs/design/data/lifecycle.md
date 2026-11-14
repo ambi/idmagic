@@ -2,7 +2,7 @@
 
 この文書は、一つのデータがシステムに入ってから消えるまでを、モジュールとテーブルを横断して見たときにだけ現れる設計を扱う。
 個々の保持期間の値と、個々のテーブルの削除規則は扱わない。
-それらは各モジュールの `standards.md` と `decisions.md`、[品質要件](../../requirements/quality.md)が定め、テーブルの意味は[データベース設計](database.md)が説明する。
+それらは各モジュールの機能仕様、`standards.md` と `decisions.md`、[品質要件](../../requirements/quality.md)が定め、テーブルの意味は[データベース設計](database.md)が説明する。
 
 ## データの区分と消え方
 
@@ -13,7 +13,7 @@
 | --- | --- | --- | --- |
 | 業務データ | `users`、`groups`、`applications`、`oauth2_clients` | 管理操作で消える。利用者だけは削除の予約から猶予期間を経て、Batch の保持期限の削除で匿名化する | 匿名化した利用者のレコードと識別子 |
 | 短命な認証状態 | 認可コード、チャレンジ、再送検知、流量制御の回数 | `expires_at` を過ぎた時点で無効になり、掃除でレコードが消える | なし |
-| 監査イベント | `audit_events`、`authentication_event_buckets` | 種別ごとの保持期間を過ぎたものだけが一括で消える | 保持期間内の記録 |
+| 監査イベント | `audit_events`、`authentication_event_buckets` | 種別ごとの保持期間（[監査の記録の保持](../../modules/audit/features/event-retention.md)）を過ぎたものだけが一括で消える | 保持期間内の記録 |
 | 鍵素材 | `signing_keys`、`tenant_data_encryption_keys` | 世代交代で退役し、DEK は鍵素材だけを破棄する | バージョンとライフサイクルの履歴 |
 | 資産 | `tenant_branding_assets`、`application_icons` | 設定の置き換えや親の削除で消える | 親が残る限り、置き換えられていない資産 |
 | SET の配送 | `security_event_deliveries` | 作成から 30 日を過ぎた `delivered` と `dead_letter` が、Batch の保持期限の削除で消える。ストリームの削除でも消える | 保持期間内の配送 |
@@ -100,7 +100,7 @@ DEK については、マスター鍵が残っている限り、戻った `wrapp
 
 このため、保持期間は次の順で変える。
 
-1. 対象モジュールの `standards.md` または `decisions.md` と、[品質要件](../../requirements/quality.md)の値を変える。
+1. 対象モジュールの機能仕様、`standards.md` または `decisions.md` と、[品質要件](../../requirements/quality.md)の値を変える。
 2. [キャパシティ設計](../performance/capacity.md)の見積もりを、新しい値で見直す。
 3. 一括削除の実装を、新しい値へ合わせる。
 4. バックアップの保持期間が、新しい値と消去の期限の両方と矛盾しないことを確かめる。

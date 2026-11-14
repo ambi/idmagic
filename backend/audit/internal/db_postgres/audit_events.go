@@ -365,15 +365,14 @@ func rawStorableAttrNames() []string {
 }
 
 // DeleteOlderThan は 保持期間 sweep。type 別 cutoff を個別 DELETE で消し、
-// それ以外は Default cutoff で消す。Keep / ByType に挙げた type は Default 削除から除外する。
+// それ以外は Default cutoff で消す。ByType に挙げた type は Default 削除から除外する。
 // (tenant_id, occurred_at) index が当たる。idempotent。
 func (r *AuditEventRepository) DeleteOlderThan(ctx context.Context, cutoff ports.RetentionCutoff) (int64, error) {
 	var deleted int64
-	excluded := make([]string, 0, len(cutoff.ByType)+len(cutoff.Keep))
+	excluded := make([]string, 0, len(cutoff.ByType))
 	for t := range cutoff.ByType {
 		excluded = append(excluded, t)
 	}
-	excluded = append(excluded, cutoff.Keep...)
 	for t, before := range cutoff.ByType {
 		if before.IsZero() {
 			continue

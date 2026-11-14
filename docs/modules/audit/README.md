@@ -3,14 +3,13 @@
 ## 責務と境界
 
 複数のモジュールが発行するセキュリティの監査イベントを、横断して読むための Read Model にまとめる。
-監査イベントの検索とエクスポートを行う管理 API、検索属性の定義、個人識別情報の扱いもここで定める。
+監査イベントの検索とエクスポートを行う管理 API、検索属性の定義、個人識別情報の扱い、記録の保持期間もここで定める。
 発行元の保存型を共有せず、[イベントの公開契約](../../design/application/backend.md#イベントの公開契約)から監査の記録と検索属性への変換を Audit が担う。
 username の解決には IdManagement の User から ID と存在の有無だけを受け取り、User の更新規則は持たない。
 
 | 扱わないもの | 担当 |
 | --- | --- |
 | イベントの発行 | 事実を発生させる各モジュール |
-| 監査の記録の保持期間と一括削除 | [データのライフサイクル](../../design/data/lifecycle.md)と、`idmagic-batch` の保持期間の掃引 |
 | ドメインイベントを監査の記録へ写す配信点 | 起動処理（`backend/cmd/internal/bootstrap`） |
 | 監査イベントの外部への継続配送 | [SharedSignals](../sharedsignals/features/transmitter.md)。Audit は記録と同時に確定する作用を組み立て地点から受け取るだけで、配送を知らない |
 
@@ -21,7 +20,7 @@ username の解決には IdManagement の User から ID と存在の有無だ�
 | 記録の追記 | 各モジュールのユースケースの `Emit` | 呼び出したプロセスの配信点が、2 秒の期限で同期的に追記する。失敗はログに残し、操作の結果を変えない | [Audit のリスク](risks.md) |
 | 検索 | `/api/admin/v1/audit-events/...` と `/api/admin/v1/system/audit-events/...` への要求 | `api` が、経路から範囲を決めてから Repository を読む | [監査イベントの検索](features/event-search.md) |
 | エクスポート | 要求者による作成 | API が Jobs へ投入し、Worker が成果物を生成する。API は現在の権限を検査して完成した成果物を配る | [監査エクスポート](features/event-export.md) |
-| 保持期間の一括削除 | `idmagic-batch retention-sweep` | バッチのプロセスが、種類ごとの基準時刻より前の記録を消す | [データのライフサイクル](../../design/data/lifecycle.md) |
+| 保持期間の一括削除 | `idmagic-batch retention-sweep` | バッチのプロセスが、種類ごとの保持期間を過ぎた記録を消す | [監査の記録の保持](features/event-retention.md) |
 
 ## 設計の要点
 
@@ -39,12 +38,13 @@ username の解決には IdManagement の User から ID と存在の有無だ�
 | --- | --- |
 | [監査イベントの検索](features/event-search.md) | テナント管理の経路とシステムの経路での検索、1 件の取得、エクスポート、検索の選択肢 |
 | [監査エクスポート](features/event-export.md) | 非同期の要求、生成、成果物の認可と期限、同期 API の移行 |
+| [監査の記録の保持](features/event-retention.md) | 種類ごとの保持期間と、期間を過ぎた記録の一括削除 |
 
 ## 文書
 
 | 設計領域 | 文書 | 内容 |
 | --- | --- | --- |
-| データ設計 | [Audit のデータ](data.md#集約)、[監査イベントの検索の設計](features/event-search.md#データ)、[データのライフサイクル](../../design/data/lifecycle.md#データの区分と消え方) | Aggregate とその関係。検索属性の副表は監査イベントの検索の設計が、保持期間と削除はデータのライフサイクルが扱う |
+| データ設計 | [Audit のデータ](data.md#集約)、[監査イベントの検索の設計](features/event-search.md#データ)、[データのライフサイクル](../../design/data/lifecycle.md#データの区分と消え方) | Aggregate とその関係。検索属性の副表は監査イベントの検索の設計が、保持期間は監査の記録の保持が、モジュールを横断する消え方はデータのライフサイクルが扱う |
 | セキュリティ設計 | [監査イベントの検索](features/event-search.md#セキュリティ上の考慮) | 経路による範囲の固定とカーソルの扱いは監査イベントの検索のセキュリティ上の考慮の節が扱う |
 | 信頼性設計 | [Audit のリスク](risks.md#audit-のリスク) | 記録の追記の失敗の扱いは配信点の側にあり、Audit のリスクに載せる |
 | 検証設計 | [Audit の検証](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |

@@ -59,6 +59,7 @@ func assertRetention(t *testing.T, got map[string]bool, kept, gone []string) {
 	}
 }
 
+//spec:covers REQ-AUDIT-013: 種類ごとの保持期間の直前の記録が残り、直後の記録が消える。なりすましもデフォルトの期間で消える。
 func TestRetentionSweepAppliesThePeriodOfEachEventType(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
@@ -77,6 +78,9 @@ func TestRetentionSweepAppliesThePeriodOfEachEventType(t *testing.T) {
 		{"sess", (&authdomain.SessionEnded{}).EventType(), 90},
 		{"ok", (&authdomain.UserAuthenticated{}).EventType(), 365},
 		{"consent", (&consentdomain.ConsentRevokedEvent{}).EventType(), 365},
+		// なりすましは短い期間へ入れず、デフォルトの期間で消す。無期限には残さない。
+		{"imp-start", (&authdomain.SessionImpersonationStarted{}).EventType(), 365},
+		{"imp-end", (&authdomain.SessionImpersonationEnded{}).EventType(), 365},
 	}
 	var kept, gone []string
 	for _, p := range periods {
@@ -86,10 +90,6 @@ func TestRetentionSweepAppliesThePeriodOfEachEventType(t *testing.T) {
 		kept = append(kept, inside)
 		gone = append(gone, outside)
 	}
-	// なりすましは短縮の対象外で、現在は期限を持たない。
-	seedAudit(t, m, "imp-400", (&authdomain.SessionImpersonationStarted{}).EventType(), daysAgo(now, 400), nil)
-	kept = append(kept, "imp-400")
-
 	deleted, err := m.PurgeExpiredEvents(ctx, now)
 	if err != nil {
 		t.Fatal(err)
@@ -123,7 +123,7 @@ func TestRetentionSweepKeepsFailureUsernamePlaintext(t *testing.T) {
 //
 // 片側だけを見るテストは行を区別できない。内側だけなら「何も消さない」実装が通り、
 // 外側だけなら「全部消す」実装が通る。種類も 2 つ要る。行が「セキュリティおよび認可」と
-// 2 つ挙げているのに、期間の型が違う (認可は既定の 365 日、失敗は種類別の 30 日) ため、
+// 2 つ挙げているのに、期間の型が違う (認可はデフォルトの 365 日、失敗は種類別の 30 日) ため、
 // 片方の種類だけでは他方の期間が守られていることを言えない。
 //
 //spec:covers GDPR-PROCESSING-RECORDS: セキュリティイベントと認可イベントの監査記録は、定義済みの期間の内側で残り外側で消える。

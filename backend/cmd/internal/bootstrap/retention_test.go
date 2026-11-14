@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -34,6 +35,54 @@ func TestRetentionSweepPurgesExpiredCSVArtifacts(t *testing.T) {
 	}
 	if _, _, err := store.OpenCSVArtifact(ctx, "tenant-a", metadata.Ref); err == nil {
 		t.Fatal("保持期限を過ぎた成果物が残った")
+	}
+}
+
+// 期間の全種類は Audit のテストが確かめる。ここでは、本番と同じメモリの組み立てから掃除のバッチが
+// Audit の掃引へ届き、種類別の期間とデフォルトの期間の両側を区別することを確かめる。
+//
+//spec:covers REQ-AUDIT-013: 保持期間の掃引のバッチが、期間を過ぎた監査の記録を消し、期間の内側の記録を残す。
+func TestRetentionSweepPurgesAuditEventsPastTheirPeriod(t *testing.T) {
+	ctx := context.Background()
+	deps, err := assembleMemory(SharedConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)
+	day := 24 * time.Hour
+	seed := []struct {
+		id   string
+		typ  string
+		age  time.Duration
+		kept bool
+	}{
+		{"failure-inside", "AuthenticationFailed", 29 * day, true},
+		{"failure-outside", "AuthenticationFailed", 31 * day, false},
+		{"impersonation-inside", "SessionImpersonationStarted", 364 * day, true},
+		{"impersonation-outside", "SessionImpersonationStarted", 366 * day, false},
+		{"admin-inside", "UserUpdated", 364 * day, true},
+		{"admin-outside", "UserUpdated", 366 * day, false},
+	}
+	for _, s := range seed {
+		if err := deps.Audit.AuditEventRepo.Append(ctx, &auditports.AuditEventRecord{
+			ID: s.id, TenantID: tenancydomain.DefaultTenantID, Type: s.typ, OccurredAt: now.Add(-s.age),
+			Payload: map[string]any{"tenantId": tenancydomain.DefaultTenantID},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := RunRetentionSweepOnce(ctx, deps, now); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range seed {
+		got, err := deps.Audit.AuditEventRepo.FindByID(ctx, s.id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if kept := got != nil; kept != s.kept {
+			t.Errorf("%s kept=%v, want %v", s.id, kept, s.kept)
+		}
 	}
 }
 

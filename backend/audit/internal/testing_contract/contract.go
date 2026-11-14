@@ -60,6 +60,62 @@ func Run(t *testing.T, newFixture NewFixture) {
 		t.Fatalf("duplicate append changed count = (%d, %v)", count, err)
 	}
 	runLatestByAgent(ctx, t, f)
+	runDeleteOlderThan(ctx, t, f)
+}
+
+type eventPurger interface {
+	DeleteOlderThan(ctx context.Context, cutoff ports.RetentionCutoff) (int64, error)
+}
+
+// runDeleteOlderThan は、保持期間の掃引の削除が、種類別の境界を持つ種類をデフォルトの境界で
+// 消さず、どちらの境界でも外側だけを全テナントから消すことを確かめる（REQ-AUDIT-013）。
+// 種類別の境界をデフォルトより古くし、デフォルトの削除が種類別の種類を除外し損ねる故障を区別する。
+// 種別名は実行ごとに変え、同じ DB を使うほかのテストの記録に触れない。
+func runDeleteOlderThan(ctx context.Context, t *testing.T, f Fixture) {
+	t.Helper()
+	purger, ok := f.Repository.(eventPurger)
+	if !ok {
+		t.Fatalf("%T does not implement DeleteOlderThan", f.Repository)
+	}
+	day := 24 * time.Hour
+	typed, other := "RetentionContractTyped-"+newID(t), "RetentionContractOther-"+newID(t)
+	cases := []struct {
+		tenantID string
+		typ      string
+		age      time.Duration
+		kept     bool
+	}{
+		{f.TenantA, typed, 700 * day, true},
+		{f.TenantA, typed, 1100 * day, false},
+		{f.TenantA, other, 400 * day, true},
+		{f.TenantA, other, 600 * day, false},
+		{f.TenantB, other, 600 * day, false},
+	}
+	ids := make([]string, len(cases))
+	for i, c := range cases {
+		ids[i] = newID(t)
+		if err := f.Repository.Append(ctx, &ports.AuditEventRecord{
+			ID: ids[i], TenantID: c.tenantID, Type: c.typ, OccurredAt: f.Now.Add(-c.age),
+			Payload: map[string]any{"tenantId": c.tenantID}, SearchAttributes: map[string][]string{"event.type": {c.typ}},
+		}); err != nil {
+			t.Fatalf("Append: %v", err)
+		}
+	}
+	if _, err := purger.DeleteOlderThan(ctx, ports.RetentionCutoff{
+		Default: f.Now.Add(-500 * day),
+		ByType:  map[string]time.Time{typed: f.Now.Add(-1000 * day)},
+	}); err != nil {
+		t.Fatalf("DeleteOlderThan: %v", err)
+	}
+	for i, c := range cases {
+		got, err := f.Repository.FindByID(ctx, ids[i])
+		if err != nil {
+			t.Fatalf("FindByID: %v", err)
+		}
+		if kept := got != nil; kept != c.kept {
+			t.Errorf("%s in %s aged %v: kept=%v, want %v", c.typ, c.tenantID, c.age, kept, c.kept)
+		}
+	}
 }
 
 // runLatestByAgent は、Agent ごとの最新の発生時刻が、名指した種別だけから、テナントの中で、

@@ -174,12 +174,8 @@ func (s *AuditEventStore) FindByID(_ context.Context, id string) (*ports.AuditEv
 }
 
 // DeleteOlderThan は 保持期間 sweep。type ごとに cutoff より古い行を物理削除し、
-// 削除件数を返す。Keep に挙げた type は削除しない。idempotent で、複数回呼んでも収束する。
+// 削除件数を返す。idempotent で、複数回呼んでも収束する。
 func (s *AuditEventStore) DeleteOlderThan(_ context.Context, cutoff ports.RetentionCutoff) (int64, error) {
-	keep := make(map[string]bool, len(cutoff.Keep))
-	for _, t := range cutoff.Keep {
-		keep[t] = true
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var deleted int64
@@ -189,7 +185,7 @@ func (s *AuditEventStore) DeleteOlderThan(_ context.Context, cutoff ports.Retent
 		if !ok {
 			before = cutoff.Default
 		}
-		if !keep[rec.Type] && !before.IsZero() && rec.OccurredAt.Before(before) {
+		if !before.IsZero() && rec.OccurredAt.Before(before) {
 			delete(s.byID, rec.ID)
 			deleted++
 			continue
