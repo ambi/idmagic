@@ -4,7 +4,8 @@ authors: [tn]
 risk: low
 reversibility: reversible
 created_at: 2026-10-17
-priority: p3
+priority: p2
+group: spec-conformance
 depends_on: []
 change_kind: bugfix
 affected_spec:

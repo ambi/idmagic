@@ -6,6 +6,7 @@ reversibility: irreversible
 created_at: 2026-11-14
 change_kind: feature
 priority: p3
+group: authentication
 depends_on: [wi-52890-step-up-bearer-requests-with-rfc-9470]
 affected_spec:
   - { path: docs/modules/authentication/features/account-portal.md, requirement: REQ-AUTHENTICATION-039 }

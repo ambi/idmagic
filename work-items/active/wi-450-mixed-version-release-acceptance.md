@@ -6,6 +6,7 @@ risk: high
 reversibility: reversible
 created_at: 2026-08-30
 priority: p3
+group: release
 change_kind: tooling
 spec_impact: { kind: none, reason: "既存仕様を直前安定版と新成果物の混在配備で検証するリリース用テスト基盤であり、製品契約の意味は変えない。検査で見つけた非互換は個別の仕様変更として扱う。" }
 ---

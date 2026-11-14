@@ -25,6 +25,11 @@ import {
   verifyWorkItemDependencies,
   verifyWorkItemIdentifiers,
 } from './work-item-dependencies.ts'
+import {
+  parseWorkItemGroups,
+  verifyWorkItemGroups,
+  WORK_ITEM_GROUP_INDEX,
+} from './work-item-groups.ts'
 import type { ReferenceEnvironment } from './work-item-references.ts'
 import { removedSpecificationElements, verifyWorkItemReferences } from './work-item-references.ts'
 
@@ -248,6 +253,14 @@ export async function checkWorkItems(snapshot: WorkspaceSnapshot): Promise<Check
         .map((record) => ({ path: record.path, revision: String(record.data!.archived_from) })),
     ),
   )
+  // グループは記録と索引の間の現在の関係なので、変わっていない未完了の記録も含めて見る。
+  let groups: string[] | undefined
+  if (snapshot.exists(WORK_ITEM_GROUP_INDEX)) {
+    const index = parseWorkItemGroups(await snapshot.read(WORK_ITEM_GROUP_INDEX))
+    lines.push(...index.findings.map((finding) => `${WORK_ITEM_GROUP_INDEX}: ${finding}`))
+    groups = index.groups
+  }
+  lines.push(...verifyWorkItemGroups(parsed, groups, WORK_ITEM_GROUP_INDEX))
   const identifiers = verifyWorkItemIdentifiers(dependencyRecords)
   lines.push(
     ...[...verifyWorkItemDependencies(dependencyRecords), ...identifiers.findings].map(

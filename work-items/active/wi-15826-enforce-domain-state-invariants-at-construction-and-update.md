@@ -5,6 +5,7 @@ risk: medium
 reversibility: reversible
 created_at: 2026-10-13
 priority: p2
+group: design-conformance
 depends_on:
   - wi-47518-align-shared-document-placement-and-design-records
   - wi-84348-separate-http-response-shapes-from-domain-models

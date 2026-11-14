@@ -4,7 +4,8 @@ authors: [tn]
 risk: medium
 reversibility: reversible
 created_at: 2026-09-18
-priority: p3
+priority: p2
+group: operations
 depends_on: []
 change_kind: feature
 affected_spec:

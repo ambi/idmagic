@@ -4,7 +4,8 @@ authors: [tn]
 risk: medium
 reversibility: reversible
 created_at: 2026-11-06
-priority: p3
+priority: p2
+group: spec-conformance
 depends_on: []
 change_kind: refactor
 spec_impact: { kind: none, reason: "全経路が既に反応器を通しているので、観測できる振る舞いは変わらない。組み立ての形だけを変える。" }

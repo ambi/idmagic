@@ -4,7 +4,8 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-07-03
-priority: p2
+priority: p3
+group: authentication
 change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-management/features/admin-access.md, requirement: REQ-IDMANAGEMENT-014 }
@@ -12,74 +13,44 @@ affected_spec:
   - { path: docs/modules/authentication/features/security-notification.md, requirement: REQ-AUTHENTICATION-031 }
 ---
 
-# 管理者による代理ログイン (impersonation) を監査付きで導入する
+# 管理者による代理ログインを、権限、対象、期限、監査を限って導入する
 
-## Motivation
-サポート業務では「ユーザとして画面を見て操作する」代理ログインが、再現困難な
-不具合や設定問題の調査に有効。代表的な IdP も提供する:
+## 動機
 
-- Keycloak: user impersonation。
-- Okta / Entra: 管理者による代理アクセス。
+サポート業務では、利用者として画面を見て操作する代理ログインが、再現の難しい不具合や設定の問題の調査に役立つ。
+Keycloak の user impersonation、Okta と Entra の管理者による代理のアクセスがこれに当たる。
+一方、代理ログインは権限の昇格、なりすまし、監査の欠落の危険が大きい。
 
-一方 impersonation は権限昇格・なりすまし・監査欠落のリスクが大きい。本 WI は、
-専用権限・対象と時間の境界・厳格な監査 (actor chain、`docs/modules/oauth2/decisions.md` の委譲と actor chain に整合)・
-impersonation 中の可視バナー・機微操作の禁止を備えた形で導入する。
+TypeSpec は `SessionImpersonationStarted` と `SessionImpersonationEnded` を宣言し、本人への `impersonation` の通知も[セキュリティ通知](../../docs/modules/authentication/features/security-notification.md)に定めているが、どちらも発行する経路がない。
+2026-10-25 の棚卸しで、重複する [wi-59470](../done/wi-59470-administrator-impersonation-sessions.md) の範囲をこの項目へ統合した。
 
-2026-10-25 の棚卸しで、重複する [wi-59470](../done/wi-59470-administrator-impersonation-sessions.md) の対象範囲を本項目へ統合した。
-宣言済みの `SessionImpersonationStarted` と `SessionImpersonationEnded`、本人への `impersonation` 通知も本項目で配線する。
-語彙検査の例外を減らすことだけを理由に着手せず、サポート業務での需要と、権限、対象、期限、禁止操作、行為者の監査表現を確定してから実装する。
+語彙の検査の例外を減らすことだけを理由に着手せず、サポート業務での需要を確かめてから着手する。
+新しい機能領域なので、優先度は p3 とする。
 
-## Scope
-- **decision**:
-  - `docs/modules/authentication/decisions.md` へ記録する決定: impersonation の許可条件 (専用権限 / 対象制限 / 時間制限)、監査 (開始・終了・操作を impersonator を含む actor chain で記録、 `docs/modules/oauth2/decisions.md` の委譲と actor chain に整合)、可視バナーによる不可視ななりすまし防止、機微操作 (パスワード / MFA 変更 / 削除) の禁止範囲、テナント設定での有効化を記録する。
-- **specification**:
-  - §3.3 interfaces: StartImpersonation / EndImpersonation を追加する。
-  - authorization と interface access: impersonation は専用権限に固定し fail-closed とする。
-  - 宣言済みの `SessionImpersonationStarted` と `SessionImpersonationEnded` を開始と終了で発行し、session に impersonator を保持する。
-  - 所有要素の constraints/contracts: 全操作が impersonator を含めて監査され、cross-tenant impersonation を禁止することを明示する。
-- **go**:
-  - impersonation usecase を追加し、session に actor + impersonator を持たせ、 機微操作をブロックし、全操作を監査する。
-- **http**:
-  - admin からの開始 / 終了と、impersonation バナー用 context を追加する。
-- **ui**:
-  - AdminUsers 詳細に「代理ログイン」、全画面に impersonation 中バナーを 追加する。
-- **documentation**:
-  - README に impersonation の権限・制約・監査を追記する。
-- **通知と語彙の照合**:
-  - REQ-AUTHENTICATION-031 に従い、開始と終了で対象の User へ `impersonation` の通知を送る。
-  - 二つのイベントを実際の開始と終了から発行した後に、語彙検査の許容リストから外す。
+## 対象範囲
 
-## Out of Scope
-- 恒久的な delegated access ([[wi-94-delegated-administration]] とは別)。
-- cross-tenant impersonation。
-- impersonation 中のパスワード / MFA 変更・アカウント削除。
+- 代理ログインの開始と終了。専用の権限を持つ管理者だけが、同じテナントの User を対象に、期限付きで開始できる。テナントの設定で有効にしたときだけ使える。
+- 代理ログイン中のセッションに代理の管理者を保持し、すべての操作の監査に代理の管理者を行為者の連鎖として記録する。
+- 開始と終了で `SessionImpersonationStarted` と `SessionImpersonationEnded` を発行し、本人へ通知する。
+- 代理ログイン中であることを画面に常に表示する。
+- パスワードと MFA の変更、アカウントの削除など、機微な操作を代理ログイン中は拒否する。
 
-## Plan
-- 宣言済みの `SessionImpersonationStarted` と `SessionImpersonationEnded` を使い、通常の管理者セッションとは別の `ImpersonationSession` を発行する。元の行為者のセッションを保持し、対象の User のセッションへロールをコピーしない。
-- 開始は専用permission、step-up、ticket/reason、短いTTLを必須にし、self、system_admin、同等以上privilege、別tenant、disabled/deleted userを拒否する。対象userのeffective roleをそのまま上限とする。
-- portal OIDC token/sessionに `act`/impersonator claimとsession typeを載せ、全backend authorization/auditがactorとsubjectを分離して受け取る。token exchangeのdelegation/impersonationとは操作目的が異なるため混同しない。
-- frontendは全画面固定banner、対象/actor、残り時間、終了操作を表示し、危険操作（role変更、impersonation開始、secret/key管理等）はimpersonated sessionから禁止する。
-- start/end/expiryと実行操作のaudit は `docs/modules/authentication/decisions.md` の認証イベント PII 方針に従い短縮・PII masking対象外の必須証跡とし、本人へのsecurity notification（wi-90）を接続する。
+## 対象外
 
-## Tasks
-- [ ] T001 [Spec] 既存eventsを核にsession model、Start/End interfaces、permission/prohibited-actions/constraints/contracts/scenariosを追加して再生成する。
-- [ ] T002 [Domain/Persistence] ImpersonationSession、actor/subject/original session、TTL/end reasonとrepositoryを実装する。
-- [ ] T003 [Usecases] step-up/target privilege/reasonを検証するstart、idempotent end/expire、notification/auditを実装する。
-- [ ] T004 [OIDC/Authz] portal session/tokenのactor claim解決と、shared policy contextのactor/subject分離、禁止action gateを実装する。
-- [ ] T005 [Admin UI] user detailの開始dialog、全route固定banner/timeout、元sessionへ戻る終了導線を追加する。
-- [ ] T006 [Verify] self/system-admin/cross-tenant拒否、role変化中session、token refresh、expiry/end replay、危険操作、audit/notificationをE2E検証する。
+- 恒久的な委任管理。wi-94 が扱う。
+- テナントをまたぐ代理ログイン。制御面の運用者が利用者として入ることも含めない。
 
-## Verification
-- `mise run test-go`
-- `mise run lint-go`
-- `mise run build-go`
-- `mise run typecheck-ui`
-- `mise run lint-ui`
-- `mise run build-ui`
-- 手動: 専用権限を持つ admin が代理ログイン → バナーが出て対象ユーザ画面を閲覧 できる。機微操作が禁止され、開始 / 終了 / 操作が監査に impersonator 付きで 残ることを確認する。
-- 手動: 権限が無い admin / cross-tenant では impersonation が拒否されることを確認する。
+## 設計
 
-## Risk Notes
-impersonation は本質的に権限昇格・なりすましであり、監査欠落や機微操作の許可は
-重大インシデントに直結する。専用権限・fail-closed・全操作監査・機微操作禁止・
-cross-tenant 禁止・可視バナーを必須ガードとしてテストで担保する。
+着手時に、行為者の連鎖を監査イベントとトークンにどう表すかを、[OAuth2 の委譲と行為者の連鎖の判断](../../docs/modules/oauth2/decisions.md)と揃えて決める。
+代理ログイン中に発行したトークンを外部のアプリへ渡すかどうかも、このときに決める。
+
+## 検証
+
+- 機微な操作の拒否、期限での終了、監査とイベントと通知の発行を観測する受け入れのテスト。
+- `mise run verify`
+
+## リスク
+
+代理ログイン中の操作が本人の操作として記録されると、監査が意味を失う。
+すべての監査イベントに代理の管理者が載ることを、操作の一覧と照合して確かめる。

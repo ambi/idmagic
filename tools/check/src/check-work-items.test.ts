@@ -181,6 +181,28 @@ describe('checkWorkItems', () => {
     expect(outcome).toEqual({ ok: true, lines: ['ok  2 work-item dependency record(s)'] })
   })
 
+  it('グループの索引がある workspace で、グループのない未完了の記録を落とす', async () => {
+    const root = await unpublishedWorkspace()
+    await mkdir(join(root, 'work-items', 'active'), { recursive: true })
+    await mkdir(join(root, 'docs', 'development'), { recursive: true })
+    await writeFile(
+      join(root, 'docs', 'development', 'work-item-groups.md'),
+      '| グループ | 目的 |\n| --- | --- |\n| `release` | 初回リリースに備える |\n',
+    )
+    await writeFile(join(root, 'work-items', 'active', 'wi-40318-one.md'), minimalRecord('One'))
+    await writeFile(
+      join(root, 'work-items', 'active', 'wi-40319-two.md'),
+      minimalRecord('Two').replace('priority: p2', 'priority: p2\ngroup: release'),
+    )
+
+    const outcome = await checkWorkItems(createWorkspaceSnapshot(root))
+
+    expect(outcome.ok).toBe(false)
+    expect(outcome.lines).toEqual([
+      'work-items/active/wi-40318-one.md: missing group; choose one listed in docs/development/work-item-groups.md',
+    ])
+  })
+
   describe('完了済みの記録を、作業ツリーで変わったときだけ検証する', () => {
     // 縮めた記録が持たない項目を残した記録。変わったときだけ形の検査が報告する。
     const finding = '1:1: archived record keeps only status and archived_from (found affected_spec)'

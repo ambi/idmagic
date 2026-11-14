@@ -4,7 +4,8 @@ authors: [tn]
 risk: low
 reversibility: irreversible
 created_at: 2026-10-04
-priority: p3
+priority: p2
+group: retention-and-audit
 depends_on: []
 change_kind: maintenance
 spec_impact:

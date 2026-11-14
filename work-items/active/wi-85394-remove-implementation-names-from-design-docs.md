@@ -4,7 +4,8 @@ authors: [tn]
 risk: low
 reversibility: reversible
 created_at: 2026-11-07
-priority: p3
+priority: p2
+group: design-conformance
 depends_on: [wi-55197-unify-frontend-form-validation-with-zod]
 change_kind: docs
 spec_impact: { kind: none, reason: "設計文書の記述を実装の名前から役割の言葉へ書き換えるだけで、規範要素、TypeSpec、設計の判断の中身は変えない。" }

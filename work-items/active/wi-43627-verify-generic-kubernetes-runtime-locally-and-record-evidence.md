@@ -5,6 +5,7 @@ risk: medium
 reversibility: reversible
 created_at: 2026-10-13
 priority: p2
+group: operations
 depends_on: [wi-47518-align-shared-document-placement-and-design-records]
 change_kind: tooling
 spec_impact:
@@ -125,7 +126,7 @@ kind ではなく利用者の既存クラスターへ適用する案は、権限
 - 追加した `verify-kubernetes-runtime` タスクで実物の Docker、Kubernetes、PostgreSQL と製品イメージを使った通し実行を行う。
 - frontend の中継先を誤る、batch の完了を待たない、worker の必須観測を落とす故障を、通し実行または実行器の局所テストが検出することを確認する。
 - 起動とクラスタ操作はサンドボックス外で実行し、実行前にネットワーク、Docker、ツールの必要な依存を準備する。
-- `mise run typecheck-tools`、`mise run lint-tools`、`mise run check-command-map`、`mise run check-links` を実行し、実際の差分に応じて `mise run verify-spec` を選ぶ。
+- `mise run typecheck-tools`、`mise run lint-tools`、`mise run check`、`mise run check-links` を実行し、実際の差分に応じて `mise run verify-spec` を選ぶ。
 - 完了記録には通し実行の実際の結果、条件、証拠パス、後片付け、除外と未検証を記す。
 - 実行器と架空の成功 fixture だけでは本項目を完了しない。
 

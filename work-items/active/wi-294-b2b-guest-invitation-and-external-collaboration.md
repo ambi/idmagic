@@ -4,6 +4,7 @@ authors: [tn]
 risk: high
 created_at: 2026-07-25
 priority: p3
+group: identity-management
 depends_on: [wi-30-inbound-federation-and-identity-broker]
 change_kind: feature
 affected_spec:
@@ -54,7 +55,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
     (無効化か削除か。`docs/modules/identity-management/features/user.md` の `UserLifecycle` と整合)、
     ゲストに見せない情報 (テナント内ディレクトリの閲覧制限) を記録する。
 - **specification**:
-  - `IdManagement.models.User` に `user_kind` (Member / Guest) と、ゲスト固有の
+  - TypeSpec の `User`（`spec/modules/identity-management/`）に `user_kind` (Member / Guest) と、ゲスト固有の
     `guest_metadata` (invited_by / invited_at / accepted_at / access_expires_at /
     home_domain) を追加する。
   - `Invitation` model (id / tenant_id / email / user_kind / inviter_id / state /
@@ -67,7 +68,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
     InvitationRevoked / GuestAccessExpired を追加する。
   - `authorization` に「ゲストはテナント内ディレクトリ (User / Group 一覧) を参照できない」
     「ゲストは既定でどのアプリにも割当されない (fail-closed)」を明記する。
-  - `objectives` は追加せず、既存の Authentication / IdManagement 目標に従う。
+  - 品質要件は追加せず、既存の Authentication / IdManagement の目標に従う。
   - `scenarios`: 招待メールから受諾して外部 IdP でサインインできる /
     期限切れ招待が受諾できない / 失効済み招待が受諾できない /
     ゲストが割当されていないアプリにアクセスできない / ゲストがユーザー一覧を参照できない /
@@ -163,7 +164,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
 
 ## Verification
 
-- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run check` / `mise run check-spec` / `mise run check-work-items`
 - `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
 - `mise run verify-ui` / `mise run test-ui-unit`
 - 手動: `mise run dev` で (1) 招待を作成しメールのリンクから受諾できること、

@@ -4,6 +4,7 @@ authors: ["tn"]
 risk: medium
 created_at: 2026-07-16
 priority: p3
+group: lifecycle-workflow
 change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-governance/features/workflow-run.md, requirement: REQ-IDGOVERNANCE-008 }
@@ -11,50 +12,45 @@ affected_spec:
 depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-email-sender-adapter]
 ---
 
-# lifecycle workflow の通知テンプレートをテナントでカスタマイズ可能にする
+# ライフサイクルワークフローの送信ごとに、テナントが別の文面を選べるようにする
 
-## Motivation
-現在の `send_email` action は固定の `template_key` + locale fallback のみを使い
-(`docs/modules/identity-governance/` の `send_email` 操作)、テナントごとの件名・本文・変数のカスタマイズ
-ができない。Okta / Entra ID / midPoint はいずれもテナント (組織) ごとに通知文面を編集できる仕組みを
-持ち、実運用では「退職時の通知文面を自社の言い回しに合わせたい」「入社時の歓迎メールに社内ポータルの
-リンクを含めたい」といった要求が高頻度で発生する。固定テンプレートのままでは実運用に耐えない。
+## 動機
 
-## Scope
-- `docs/modules/tenancy/features/notification-template.md` の通知テンプレートカタログに
-  `NotificationTemplate` (tenant-scoped、locale 別の件名・本文、許可された変数の集合) を追加する。
-- `send_email` action の `template_key` を、テナント定義の `NotificationTemplate` または製品固定
-  template のいずれかを参照できるようにする。
-- 変数展開は許可された placeholder の集合 (例: user 表示名、workflow 名、テナント名) に限定し、
-  任意の user 属性展開や HTML/script 注入を許さない sanitization/validation を設計する。
-- 管理 UI にテンプレート編集・プレビュー画面を追加する。
+起票時は、ワークフローの `send_email` の文面をテナントが変えられなかった。
+その後、[通知テンプレート](../../docs/modules/tenancy/features/notification-template.md)が、テナントによる上書き、プレビュー、試し送り、許可した差し込み変数の検査を持ち、ワークフローの通知も `lifecycle_workflow_notification` という一つのテンプレートとして上書きできるようになった（2026-11-14 に確認）。
 
-## Out of Scope
-- 自由記述の任意 HTML エディタやリッチテキスト全機能 (WYSIWYG)。初期はプレーンテキストまたは
-  限定的な placeholder 付きテンプレートに留める。
-- SMS/push 等、email 以外の通知チャネル。
+残るのは、すべてのワークフローの送信が同じ一つのテンプレートを使うことである。
+`send_email` の操作が持つ `template_key` は、本文に差し込むラベルにすぎず、文面を選ばない。
+入社の歓迎と退職の案内のように、ワークフローごとに違う文面を送りたいテナントは、一つのテンプレートの中で書き分けられない。
 
-## Plan
-- 変数展開はテンプレートエンジンを新規導入せず、許可済み placeholder の文字列置換に限定し、任意
-  コード実行や SSTI (Server-Side Template Injection) のリスクを避ける。
-- 既存の固定 `template_key` はデフォルトテンプレートとして残し、テナントが未設定の場合の fallback に
-  する。
+通知の上書きの中心は実装済みで、残りは文面の選び方の拡張なので、優先度は p3 とする。
 
-## Tasks
-- [ ] T001 [Spec] `NotificationTemplate` モデル、authorization、scenarios を追加する。
-- [ ] T002 [Decision] placeholder 許可リストと sanitization 方針を `docs/modules/identity-governance/decisions.md` に記録する。
-- [ ] T003 [App] テンプレート管理 usecase と `send_email` action の参照解決を実装する。
-- [ ] T004 [UI] テンプレート編集・プレビュー画面を追加する。
-- [ ] T005 [Verify] injection 耐性・fallback・locale 切り替えを検証する。
+## 対象範囲
 
-## Verification
-- `mise run check`
-- `mise run test-go`
+- ワークフローの通知に、テナントが名前を付けた複数の文面を持てるようにし、`send_email` の操作がそのどれかを選べるようにする。選ばない操作は、今の `lifecycle_workflow_notification` を使う。
+- 差し込み変数は、今の通知テンプレートと同じく許可した集合に限り、保存の時点で検査する。
+- 管理コンソールで、ワークフローの通知の文面の一覧、編集、プレビューを扱う。
+
+## 対象外
+
+- 任意の HTML のエディターとリッチテキスト。
+- メール以外の通知の経路（SMS、プッシュ）。
+- ワークフロー以外の通知の文面を複数にすること。通知のテンプレートのキーを固定の列挙とする判断を変えない。
+
+## 設計
+
+通知テンプレートは `template_key` を仕様で定める固定の列挙とし、テナントは追加できないと決めている。
+ワークフローの文面を複数にするとき、この判断を変えずに、`lifecycle_workflow_notification` の中の名前付きの変種として持つか、IdGovernance が文面を持つかを着手時に決める。
+前者は通知の検査と描画を再利用でき、後者はテンプレートのカタログを固定に保てる。
+
+## 検証
+
+- 選んだ文面で送られ、選ばない操作は既存のテンプレートで送られることを観測するテスト。
+- 許可していない差し込み変数を含む文面の保存が拒否されるテスト。
 - `mise run verify-ui`
-- 自動: 許可外の placeholder や HTML/script を含むテンプレート保存が拒否される。
-- 手動: テナント管理者がテンプレートを編集し、実際の workflow 実行メールに反映されることを確認する。
+- `mise run verify`
 
-## Risk Notes
-テンプレートのフリーフォーム編集はメール本文へのインジェクション (HTML injection、ヘッダ
-インジェクション) リスクを伴うため、保存時・送信時の両方で sanitization と placeholder 検証を
-fail-closed に行う。
+## リスク
+
+文面を選ぶ操作が、削除した文面を指したまま残ると、送信の時点で失敗する。
+文面の削除を、参照するワークフローがある間は拒否する。

@@ -4,6 +4,7 @@ authors: [tn]
 risk: medium
 created_at: 2026-10-31
 priority: p2
+group: mcp-gateway
 depends_on: []
 change_kind: tooling
 spec_impact: { kind: none, reason: "`EvaluateResourceAccess` の公開契約を使うクライアントを追加し、契約と評価の振る舞いを変えない。" }

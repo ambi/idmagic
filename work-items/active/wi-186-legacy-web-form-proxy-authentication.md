@@ -5,6 +5,7 @@ authors: ["tn"]
 risk: critical
 created_at: 2026-07-11
 priority: p3
+group: federation-protocols
 change_kind: feature
 affected_spec:
   - { path: docs/modules/application/features/catalog.md, requirement: REQ-APPLICATION-007 }
@@ -30,17 +31,16 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
     `EnvelopeCrypto` ポートをそのまま使う (`docs/design/data/database.md` の Envelope encryption for reversible secrets)。
   - [[wi-151-managed-device-inventory-and-posture-access-conditions]] 完了後に、検証済み
     管理端末向けの認証freshness緩和を利用する。完了前は全端末を未管理として扱う。
+- **boundary**（2026-11-14 に、廃止した Context Map と旧い文書の構成への参照を改めた）:
+  - 代理認証の資格情報、付与、binding を新しいモジュールに置くか、Application か TokenVault に置くかを、[境界を選ぶ判断手順](../../docs/design/application/design-guidelines.md#境界を選ぶ判断手順)で比べてから決める。TokenVault は外部サービスの資格情報の保管と代理の実行を持つので、候補に含める。
+  - 新しいモジュールを置く場合は、[モジュール設計文書の責務表](../../docs/modules/README.md#モジュール)に行を足し、`docs/modules/<module>/` の README と機能仕様、`spec/modules/<module>/` の TypeSpec を置く。権限の境界は[認可の設計](../../docs/design/security/authorization.md)に合流させる。
 - **specification**:
-  - `docs/README.md` の Context Map に `LegacyAccess` を追加する。
-  - `docs/modules/legacy-access/` に `README.md`、`glossary.md`、`states.md`、`decisions.md`、`scenarios.feature.md`、
-    `models.tsp`、`main.tsp` を追加する。権限境界は `docs/design/security/authorization.md` に合流させる。
-  - `docs/modules/application/` に `legacy_form` protocol binding と、代理認証を使う
-    Application のポータル起動情報を追加する。
+  - Application に `legacy_form` のプロトコルのバインディングと、代理認証を使う Application のポータルの起動情報を追加する。
 - **decision**:
   - `docs/modules/application/decisions.md` に、標準フェデレーションを優先する境界、秘密情報の保管/発行境界、
     browser extension の信頼境界、auto-submit の例外運用、共有資格情報の監査を記録する。
 - **go**:
-  - `backend/legacyaccess/` に domain、usecases、ports、HTTP/persistence adapters、module を追加する。
+  - 境界の判断で決めたモジュールに、domain、usecases、ports、HTTP と永続化のアダプターを追加する。
   - 本人用 credential と共有 credential/grant、origin/path/selector 検証、credential 発行、
     監査、application assignment / sign-in policy gate を実装する。
   - 暗号文だけを保存し、平文の credential を DB・ログ・監査イベント・通常 API 応答に残さない。
@@ -53,7 +53,7 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
   - admin application 管理に legacy form binding、共有資格情報、auto-submit 承認状態を追加する。
   - account portal に本人用資格情報の登録/置換/削除と、拡張導入状態を追加する。
 - **architecture / documentation**:
-  - `docs/README.md` と `docs/design/application/backend.md` に LegacyAccess context と依存方向を同期する。
+  - 新しいモジュールを置いた場合は、[モジュールの間の依存](../../docs/modules/README.md#モジュールの間の依存)の表に関係を足す。
   - README に対象範囲、マスターキー提供元 (OpenBao) の設定、拡張配布、対応外ログイン形態、運用上の残余リスクを追加する。
 
 ## Out of Scope
@@ -79,7 +79,7 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
 ## Tasks
 - [ ] T001 [Domain] 完了済みの `DataKeys` / `EnvelopeCrypto` に代理認証資格情報の
       `FieldMigrator` を登録し、DEK ローテーションの再暗号化対象に含める。
-- [ ] T002 [Spec] LegacyAccess と Application binding の規範仕様、scenario、不変条件、権限、UX を追加する。
+- [ ] T002 [Spec] 境界を決め、代理認証と Application のバインディングの要件、受け入れ例、不変条件、権限、UX を追加する。
 - [ ] T003 [Spec] 代理認証の安全境界と運用例外を `docs/modules/application/decisions.md` に記録する。
 - [ ] T004 [Domain] credential、grant、binding、発行判定を実装し、unit test を追加する。
 - [ ] T005 [Adapter] memory/postgres persistence（暗号化は `EnvelopeCrypto` に委ねる）、HTTP API、監査、DI/route を実装する。
@@ -89,7 +89,7 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
 
 ## Verification
 - `mise run check`
-- `mise run check-ids`
+- `mise run check-spec`
 - `mise run verify`
 - 手動: 本人用資格情報を登録し、割当済みの正規originでだけ拡張が入力し、別originでは拒否する。
 - 手動: 本人用が無いときだけ単一の共有grantを使い、複数共有grantが一致する設定は保存できない。

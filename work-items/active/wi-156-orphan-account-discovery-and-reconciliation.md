@@ -5,67 +5,39 @@ authors: ["tn"]
 risk: high
 created_at: 2026-07-10
 priority: p3
+group: admin-governance
 change_kind: feature
 affected_spec:
   - { path: docs/modules/provisioning/features/connection.md, requirement: REQ-PROVISIONING-013 }
   - { path: docs/modules/provisioning/features/task.md, requirement: REQ-PROVISIONING-008 }
 ---
 
-# 外部アプリの orphan account 検出と照合を導入する
+# 下流のアプリのアカウントの一覧を取り込み、IdMagic の User と照合して管理外のアカウントを示す
 
-## Motivation
-Outbound SCIM provisioning を導入しても、外部アプリ側には IdMagic 管理外で作成された
-local account、退職者の残存アカウント、属性不一致アカウントが残り得る。Microsoft Entra
-ID Governance の orphan account discovery のように、外部アプリのアカウント台帳を取り込み、
-IdMagic の User / Group / Application assignment と照合できないと、未管理アカウントを
-発見・是正できない。
+## 動機
 
-本 WI は、外部アプリの account inventory を IdMagic に取り込み、内部 User との match /
-unmatched / ambiguous / disabled mismatch を管理者が確認・解決できる reconciliation
-機能を導入する。
+下流への SCIM のプロビジョニングがあっても、アプリの側には、IdMagic の外で作られたアカウント、退職者の残ったアカウント、属性の食い違ったアカウントが残り得る。
+Microsoft Entra ID Governance の orphan account の発見のように、アプリのアカウントの一覧を取り込み、IdMagic の User と Application の割り当てに照合できないと、管理外のアカウントを見つけて直せない。
 
-## Scope
-- **specification**:
-  - `Application` に ExternalAccountInventory / ExternalAccount / ReconciliationMatch / ReconciliationStatus を追加する。
-  - `IdentityManagement` の UserRef と external account の照合 rule を定義する。
-  - `Scim` / outbound provisioning と連携する inventory import events / scenarios を追加する。
-- **go**:
-  - external account import port、matching engine、reconciliation repository、memory / postgres adapter を実装する。
-  - CSV または SCIM-like JSON inventory からの初期取り込みを提供する。
-- **http**:
-  - inventory import、match preview、reconciliation decision、orphan account 一覧 API を追加する。
-- **ui**:
-  - Application detail に external accounts、orphan accounts、ambiguous matches、解決 action UI を追加する。
-- **documentation**:
-  - README に inventory 形式、match rule、解決 workflow を追記する。
+## 対象範囲
 
-## Out of Scope
-- Outbound SCIM provisioning 本体。これは `wi-45-outbound-scim-provisioning` が扱う。
-- 全 SaaS connector の実装。
-- 外部アプリの危険な自動削除。
-- HR source of truth との同期。
+- プロビジョニングの接続ごとに、下流のアカウントの一覧を取り込む。SCIM の一覧の取得を初めの手段とし、CSV の取り込みも受ける。
+- 取り込んだアカウントを IdMagic の User と照合し、一致、不一致、曖昧、状態の食い違い（IdMagic では無効だがアプリでは有効など）に分ける。
+- 管理者が照合の結果を確認し、対応付け、無視、下流での無効化の依頼を選べる画面と API を加える。
 
-## Plan
-- 初期 inventory 取り込みは CSV / JSON upload または admin API に限定し、connector は port 境界だけ用意する。
-- matching は email / username / immutable external id の優先順位を構造化し、ambiguous match は自動解決しない。
-- orphan account は report と remediation suggestion までに留め、外部削除は outbound provisioning 側の明示 action に委ねる。
-- reconciliation decision は監査イベントに残し、後から match rule を変えて再評価できるよう raw inventory snapshot を保持する。
+## 対象外
 
-## Tasks
-- [ ] T001 [Spec] ExternalAccountInventory、match 状態、events / scenarios を追加する。
-- [ ] T002 [Decision] inventory 形式、matching 優先順位、危険 action の境界を `docs/modules/identity-governance/decisions.md` に記録する。
-- [ ] T003 [App] import / matching / reconciliation store を実装する。
-- [ ] T004 [HTTP] inventory import と reconciliation API を追加する。
-- [ ] T005 [UI] orphan account discovery / reconciliation UI を追加する。
-- [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
+- 下流のアカウントの自動の削除。
+- SCIM 以外のコネクターの実装。
+- 人事システムを正とする同期。
 
-## Verification
-- `mise run check`
-- `mise run check-ids`
-- `mise run test-go`
-- `mise run verify-ui`
-- 手動: 外部 inventory に IdMagic に存在しない account を含めると orphan として表示されることを確認する。
-- 手動: 同一 email の候補が複数ある場合は ambiguous として自動解決されないことを確認する。
+## 検証
 
-## Risk Notes
-外部アカウント照合は誤削除・誤紐付けのリスクが高い。初期実装では自動削除や自動 disable を行わず、match preview と管理者 decision に限定する。ambiguous match は必ず人手確認とし、inventory snapshot と decision を監査可能に残す。
+- 照合の規則ごとに分類が決まることを固定するテスト。
+- 模擬の下流から取り込んだ一覧で、管理外のアカウントが示されることを観測する受け入れのテスト。
+- `mise run verify`
+
+## リスク
+
+照合の規則が緩いと、別人のアカウントを同じ User に対応付ける。
+自動の対応付けは一意に一致した場合に限り、曖昧な場合は管理者の確認を求める。

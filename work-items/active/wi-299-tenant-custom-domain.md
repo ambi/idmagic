@@ -3,7 +3,8 @@ status: pending
 authors: [tn]
 risk: high
 created_at: 2026-07-26
-priority: p2
+priority: p3
+group: tenant-configuration
 depends_on: [wi-285-tenant-endpoint-style-and-host-based-resolution]
 change_kind: feature
 affected_spec:
@@ -130,7 +131,7 @@ cookie、WebAuthn RP ID の仕組みは wi-285 のものをそのまま使う。
 
 ## Verification
 
-- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run check` / `mise run check-spec` / `mise run check-work-items`
 - `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
 - `mise run verify-ui` / `mise run test-ui-unit`
 - 手動: (1) ローカルで `/etc/hosts` にカスタムドメインを割り当て、検証済みにした

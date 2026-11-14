@@ -5,6 +5,7 @@ risk: high
 reversibility: irreversible
 created_at: 2026-11-14
 priority: p2
+group: system-console
 depends_on:
   - wi-494-split-system-console-tenant-screens
   - wi-468-system-console-privileged-session-assurance

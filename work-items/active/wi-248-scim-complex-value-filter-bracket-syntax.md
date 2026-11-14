@@ -3,7 +3,8 @@ status: pending
 authors: [tn]
 risk: medium
 created_at: 2026-07-18
-priority: p2
+priority: p3
+group: scim-provisioning
 depends_on: [wi-246-scim-multivalued-core-attributes-and-nested-group-members]
 change_kind: feature
 affected_spec:

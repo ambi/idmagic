@@ -5,6 +5,7 @@ risk: medium
 reversibility: reversible
 created_at: 2026-10-03
 priority: p2
+group: spec-conformance
 depends_on: [wi-96676-transcribe-implicit-specifications-of-identity-management]
 change_kind: bugfix
 affected_spec:

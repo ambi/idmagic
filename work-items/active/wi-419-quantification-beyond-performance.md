@@ -5,6 +5,7 @@ authors: [tn]
 risk: medium
 created_at: 2026-08-27
 priority: p2
+group: development-process
 change_kind: docs
 affected_spec:
   - { path: docs/requirements/quality.md, requirement: SLO-PRIMARY-ERRORS }
@@ -70,11 +71,11 @@ Impact Estimation の表の形式は、行に代替案、列に品質目標 ID�
 - [ ] T004 [Spec] 目標の段階の要否を判断し、必要なら表へ列を足す。
 - [ ] T005 [Spec] 選定した品質属性を Evidence classes の枠組みで `docs/requirements/quality.md` へ加える。
 - [ ] T006 [Spec] `docs/formats/work-item-format.md` へ Impact Estimation の形式を加え、既存 work item 1 件で試し書きする。
-- [ ] T007 [Verify] `mise run check-slo-references` と `mise run check-spec` を通す。
+- [ ] T007 [Verify] `mise run check-monitoring` と `mise run check-spec` を通す。
 
 ## Verification
 
-- `mise run check-slo-references` が、加えた項目と既存のアラート定義の対応を保ったまま通る。
+- 加えた項目と既存のアラート定義の対応が保たれる。参照の検査は wi-290 が戻す。
 - `docs/requirements/quality.md` の全ての `SLO-*` について、予算を使い切ったときの行動が書かれている。
 - 加えた品質属性の各行が、測定方法と Evidence class を持つ。
 - `mise run check-work-items` が、Impact Estimation を追加した形式で通る。

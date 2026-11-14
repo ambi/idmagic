@@ -5,6 +5,7 @@ authors: ["tn"]
 risk: medium
 created_at: 2026-06-20
 priority: p2
+group: development-process
 change_kind: tooling
 spec_impact: { kind: none, reason: "外部 conformance suite を CI で回す仕組みの追加であり、製品の振る舞いと配線契約を変えない。" }
 ---
@@ -35,7 +36,7 @@ production-ready IdP では、unit test だけでなく外部 conformance suite 
 
 ## Out of Scope
 - OIDC/FAPI 正式認証の申請作業。
-- 全ブラウザ E2E。SPA E2E は `wi-22`。
+- 全ブラウザ E2E。ブラウザー E2E は既存の `mise run test-ui-e2e` が扱う。
 - SAML conformance。SAML WI の後続で扱う。
 
 ## Plan
@@ -60,7 +61,7 @@ production-ready IdP では、unit test だけでなく外部 conformance suite 
 - `mise run build-go`
 - `mise run dev-compose`
   - reason: conformance smoke の対象環境を起動できることを確認する。
-- `conformance smoke command TBD`
+- 選定した適合試験の smoke を実行する `mise` タスク（T002 で追加する）
   - reason: 選定した harness で最小 suite が pass することを確認する。
 
 ## Risk Notes

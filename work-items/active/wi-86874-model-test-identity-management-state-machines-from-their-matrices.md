@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-10-04
 priority: p2
+group: development-process
 depends_on: [wi-89346-detect-unspecified-behavior-mechanically, wi-83002-rewrite-remaining-identity-management-features-in-the-requirement-format, wi-40431-generate-state-matrices-from-testdata]
 change_kind: tooling
 spec_impact:
@@ -28,8 +29,7 @@ User 以外の状態機械は、wi-83002 で状態遷移表を持つが、表と
 
 ## 対象外
 
-- IdManagement 以外の Context の状態機械。
-  各 Context の書き直し（wi-71372、wi-35451）で状態遷移表を加えるときに扱う。
+- IdManagement 以外のモジュールの状態機械。この項目が決めた方法を使って wi-51017 が扱う。
 
 ## 設計
 

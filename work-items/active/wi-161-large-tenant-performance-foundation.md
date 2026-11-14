@@ -4,83 +4,43 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-07-10
-priority: p2
+priority: p3
+group: scale-availability
 change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-management/features/user.md, requirement: REQ-IDMANAGEMENT-005 }
   - { path: docs/modules/audit/features/event-search.md, requirement: REQ-AUDIT-004 }
 ---
 
-# 大規模テナントでも軽快に動く検索・集計・性能保証を整備する
+# 大規模テナントで、管理画面の検索、件数、集計がテナントの全件を読まないようにする
 
-## Motivation
-ページネーションとクォータを入れても、画面が必要とする検索、絞り込み、件数表示、dashboard 集計、関連リソース数、
-監査イベント検索が都度 OLTP テーブル全体を走査すると、大規模テナントでは軽快に動かない。
-特に admin dashboard、role detail の付与人数、application assignment 数、audit event 検索、ユーザー・グループ検索は、
-件数が増えるほど初期表示やフィルタ変更の体感速度へ直結する。
+## 動機
 
-この WI は最大規模を想定した read path の設計、index、read model、計測、性能回帰テストをまとめて整備し、
-「大量データでも最初の画面が速い」状態を保証する。
+一覧のカーソルによるページング（[wi-159](../done/wi-159-admin-resource-cursor-pagination.md)）とテナントのクォータ（[wi-160](../done/wi-160-tenant-resource-quotas.md)）は完了した。
+しかし、画面が必要とする検索、絞り込み、件数、ダッシュボードの集計、ロールの付与人数、割り当ての数、監査イベントの検索が、要求のたびに OLTP のテーブルを走査すると、大きなテナントでは最初の表示が遅くなる。
+[キャパシティ設計](../../docs/design/performance/capacity.md#テナントと活動量の分布)は、10,000 人を超える単一のテナントに、分布とは別の性能検証が要ると書くが、その検証はまだない。
 
-## Scope
-- **specification**:
-  - `System` または各 context の `objectives` に、大規模テナント時の admin / account 主要画面 p95 / p99、DB query budget、最大 page size、dashboard 集計 freshness を追加する。
-  - `scenarios` に大量 users / groups / agents / audit events / applications を持つ tenant での検索・集計・画面表示例を追加する。
-  - `flows` と `scenarios` に一覧や dashboard が全件取得に依存しないこと、件数は近似または非同期集計を許容する境界を明記する。
-- **decision**:
-  - `docs/design/performance/capacity.md` へ記録する決定: read model / counter cache / materialized view / search index の採用方針、freshness、再構築、tenant isolation、PII 取り扱いを決める。
-- **persistence**:
-  - 主要検索条件に合わせた PostgreSQL index、covering index、partial index、text search 方針を追加する。
-  - dashboard / role count / assignment count / quota usage などは必要に応じて read model または counter cache に切り出す。
-  - query plan の期待値を test または documented evidence として残す。
-- **go/usecase**:
-  - UI 集計のために list endpoint を全件走査する箇所を summary endpoint または read model query に置き換える。
-  - 大規模検索で未制限 wildcard や prefix 無し contains が高コストになる場合、検索 grammar と validation を定義する。
-  - slow query / high cardinality filter を観測できる structured log と metrics を追加する。
-- **ui**:
-  - Dashboard、role detail、admin 一覧の summary 表示を capped list ではなく summary API / read model へ切り替える。
-  - 高コスト検索は debounce、明示 submit、最小文字数、loading skeleton、キャンセルを導入する。
-- **tests / performance**:
-  - seed / fixture / benchmark で大規模 tenant データを作れるようにし、代表 query と画面表示の性能を検証する。
-  - CI で重すぎる場合は nightly / opt-in recipe とし、通常 verify では contract と軽量 regression を通す。
+現在は未リリースで、大規模テナントの実データがないので、優先度は p3 とする。
 
-## Out of Scope
-- 一覧 API の cursor pagination 本体。これは [[wi-159-admin-resource-cursor-pagination]] で扱う。
-- テナント resource quota の定義と作成拒否。これは [[wi-160-tenant-resource-quotas]] で扱う。
-- 外部検索エンジンの導入を前提にした全文検索基盤。PostgreSQL で足りないことが確認された場合に別 WI と `docs/design/performance/capacity.md` を切る。
-- CSV / bulk operation のジョブ化。
+## 対象範囲
 
-## Plan
-- まず specification objective で「大規模テナント」を具体化する。例: users 100k、groups 20k、agents 10k、applications 10k、audit events 10M retained など、`docs/design/performance/capacity.md` で検証用 scale profile を決める。
-- 既存 UI の全件取得・list endpoint 集計パターンを棚卸しし、summary が必要な画面とページングで十分な画面を分ける。
-- PostgreSQL を主対象に query plan と index を整える。memory persistence は contract 検証に留め、大規模性能保証の主対象にはしない。
-- Read model は freshness を明示する。認可や quota enforcement に必要な値は強整合、dashboard 表示は短時間 stale を許容する。
-- 性能検証は `mise` task に載せ、通常 verify と長時間 perf smoke を分ける。
+- 大規模テナントのデータ（User、Group、Agent、Application、監査イベント）をローカルで生成する手段を用意する。
+- 管理コンソールとアカウントポータルの主な画面の読み取り経路を、そのデータで測り、テナントの件数に比例して遅くなる経路を特定する。
+- 特定した経路を、インデックス、件数の近似や非同期の集計、読み出しモデルで直す。件数を近似にする画面は、近似であることを画面と契約に示す。
+- 主な画面の読み取りの予算（応答時間とクエリの数）を、キャパシティ設計の担当する節に書く。
 
-## Tasks
-- [ ] T001 [Spec] 大規模テナント scale profile、read model 方針、freshness、検索制約、性能検証方式を記録する。
-- [ ] T002 [Spec] performance objectives、large-tenant scenarios、UX の全件取得禁止・summary freshness を追加する。
-- [ ] T003 [Render] `mise run build-site` で派生物を更新する。
-- [ ] T004 [Audit] 既存 UI / API の全件取得、list endpoint 集計、未制限検索を棚卸しして置換対象を確定する。
-- [ ] T005 [Persistence] 主要 query の index / read model / counter cache / migration を実装する。
-- [ ] T006 [Go] summary endpoint、検索 validation、slow query metrics / structured log を追加する。
-- [ ] T007 [UI] dashboard / detail summary / 高コスト検索 UI を summary API と cancellable loading に移行する。
-- [ ] T008 [Perf] 大規模 seed、query benchmark、画面 smoke、`mise` task を追加する。
-- [ ] T009 [Verify] `mise run check`、`mise run verify-go`、`mise run verify-ui`、perf smoke recipe を通す。
+## 対象外
 
-## Verification
-- `mise run check`
-- `mise run build-site`
-- `mise run verify-go`
-- `mise run verify-ui`
-- `mise run test-ui-e2e`
-- perf smoke 用 `mise` task
-  - reason: 大規模 seed と query / UI 応答時間は通常 verify から分離しても、再現可能な recipe として必要なため。
-- 手動: scale profile の tenant で admin dashboard、users、groups、agents、applications、audit events を開き、初期表示と検索が objective 内に収まることを確認する。
-- 手動: query plan に tenant_id 条件と期待 index が使われ、全 tenant scan や filesort 相当の高コスト plan が出ていないことを確認する。
+- 一覧のカーソルによるページング。完了している。残る一覧は wi-596 が扱う。
+- 外部の検索エンジンの導入。PostgreSQL で足りないと分かってから扱う。
+- データ層のパーティショニングとレプリカ。wi-164 が扱う。
 
-## Risk Notes
-性能対応は個別の index 追加だけでは再発しやすい。UI が件数表示のために list endpoint を全件走査したり、
-検索が未制限 contains になったりすると、ページネーション後も負荷は残る。
-Read model は鮮度と整合性の説明がないと誤った運用判断につながるため、強整合が必要な quota / authorization と、
-多少 stale でもよい dashboard summary を分ける。性能検証データには PII を入れず、tenant isolation を query plan と test で確認する。
+## 検証
+
+- 測定の手順と結果。[キャパシティ設計の仮定値と実測値](../../docs/design/performance/capacity.md#仮定値と実測値)が求める記録を添える。
+- 直した経路の実行計画とクエリの数を固定するテスト。
+
+## リスク
+
+件数を近似や非同期の集計にすると、管理者が見る数が一時的に実際と違う。
+クォータの判定のように正確な数が要る経路には使わない。

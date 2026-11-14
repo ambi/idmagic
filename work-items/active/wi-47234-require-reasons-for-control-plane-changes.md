@@ -6,6 +6,7 @@ reversibility: irreversible
 created_at: 2026-11-14
 change_kind: feature
 priority: p2
+group: system-console
 depends_on: [wi-468-system-console-privileged-session-assurance]
 affected_spec:
   - { path: docs/modules/tenancy/features/resolution.md, requirement: REQ-TENANCY-011 }

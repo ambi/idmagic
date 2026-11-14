@@ -3,7 +3,8 @@ status: pending
 authors: [tn]
 risk: medium
 created_at: 2026-10-31
-priority: p2
+priority: p3
+group: mcp-gateway
 depends_on: [wi-11085-enforce-mcp-tool-calls-for-unmodified-servers]
 change_kind: feature
 affected_spec:

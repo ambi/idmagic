@@ -5,6 +5,7 @@ authors: [tn]
 risk: high
 created_at: 2026-08-27
 priority: p2
+group: development-process
 change_kind: tooling
 spec_impact: { kind: none, reason: "設計時の検証手段の追加であり、製品の振る舞いと外部契約を変えない。仕様の欠陥が見つかった場合は、その是正を別の work item として切り出す。" }
 ---

@@ -5,6 +5,7 @@ authors: [tn]
 risk: medium
 created_at: 2026-08-27
 priority: p2
+group: security-hardening
 change_kind: feature
 affected_spec:
   - { path: docs/modules/system/features/startup-configuration.md, requirement: REQ-SYSTEM-016 }

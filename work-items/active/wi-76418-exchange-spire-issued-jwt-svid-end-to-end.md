@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-11-07
 priority: p2
+group: workload-identity
 depends_on: [wi-77559-verify-jwt-svid-against-spiffe-rules, wi-88550-read-spiffe-bundle-endpoint-format]
 change_kind: maintenance
 spec_impact: { kind: none, reason: "REQ-WORKLOADIDENTITY-001 から 007 と REQ-OAUTH2-089 の規範を変えず、実際の SPIRE が発行した JWT-SVID でその規範が成り立つことを確かめるテストだけを足す。" }

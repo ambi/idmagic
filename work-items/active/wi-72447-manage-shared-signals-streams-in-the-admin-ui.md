@@ -4,7 +4,8 @@ authors: [tn]
 risk: medium
 reversibility: reversible
 created_at: 2026-10-31
-priority: p3
+priority: p2
+group: federation-protocols
 depends_on: [wi-16152-redeliver-dead-lettered-security-events]
 change_kind: feature
 affected_spec:

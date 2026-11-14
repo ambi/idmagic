@@ -5,6 +5,7 @@ risk: medium
 reversibility: reversible
 created_at: 2026-10-06
 priority: p2
+group: api-contract
 depends_on: []
 change_kind: tooling
 spec_impact:
@@ -21,8 +22,8 @@ spec_impact:
 | 検査 | 現在の範囲 | 届いていないところ |
 | --- | --- | --- |
 | `check-unspecified-vocabulary` | TypeSpec が宣言したエラーコードとドメインイベントが、要件に現れるか | 実装が返すのに TypeSpec が宣言していないエラーコード、実装が発行するのに宣言していないイベント |
-| `check-status-drift` | 342 操作のうち 94 操作を全体まで読む | 247 操作は一部だけ、1 操作は到達しない |
-| `check-contract-drift` | 183 操作の本文を比べる | 159 操作は比べていない。内訳はレスポンスがリテラルでない 134、要求の型が見つからない 19、ハンドラーが見つからない 4、ほか 2 |
+| `check-status-drift` | 429 操作のうち 109 操作を確かめる（2026-11-14 の `mise run check`。起票時は 342 操作のうち 94） | 320 操作は確かめていない |
+| `check-contract-drift` | 429 操作のうち 230 操作の本文を比べる（同上。起票時は 183 操作） | 199 操作は比べていない。起票時の内訳は、レスポンスがリテラルでない 134、要求の型が見つからない 19、ハンドラーが見つからない 4、ほか 2 |
 
 wi-12645、wi-30417、wi-17379 の宣言のないエラーコードは、どれも検査ではなく手作業で見つかった。
 

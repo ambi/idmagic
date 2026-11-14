@@ -4,7 +4,8 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-04
-priority: p2
+priority: p3
+group: release
 change_kind: tooling
 spec_impact: { kind: none, reason: "リリース成果物の生成と検証だけを変え、規範シナリオと配線契約には触れない。真正性の方針は docs/design/architecture/deployment.md の散文として記録する。" }
 ---

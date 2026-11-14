@@ -4,6 +4,7 @@ authors: ["tn"]
 risk: high
 created_at: 2026-07-12
 priority: p2
+group: frontend-ui
 change_kind: feature
 affected_spec:
   - { path: docs/modules/tenancy/features/branding.md, requirement: REQ-TENANCY-004 }

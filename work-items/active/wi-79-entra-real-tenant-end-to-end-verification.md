@@ -4,7 +4,8 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-06-28
-priority: p1
+priority: p3
+group: directory-and-entra
 change_kind: tooling
 spec_impact: { kind: none, reason: "実テナントに対する既存実装の検証であり、検出した欠陥は個別の work item として起票する。" }
 ---

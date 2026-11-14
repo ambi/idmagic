@@ -4,6 +4,7 @@ authors: [tn]
 risk: high
 created_at: 2026-08-15
 priority: p2
+group: identity-management
 depends_on: [wi-284-improve-csv-import-export]
 change_kind: feature
 affected_spec:

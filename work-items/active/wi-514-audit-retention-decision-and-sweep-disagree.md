@@ -5,7 +5,8 @@ authors: [tn]
 risk: medium
 reversibility: reversible
 created_at: 2026-09-08
-priority: p2
+priority: p1
+group: spec-conformance
 change_kind: bugfix
 affected_spec:
   - { path: docs/requirements/standards.md, requirement: GDPR-PROCESSING-RECORDS }

@@ -5,6 +5,7 @@ risk: high
 reversibility: irreversible
 created_at: 2026-10-31
 priority: p2
+group: federation-protocols
 depends_on: [wi-286-outbound-event-hooks-and-audit-log-streaming]
 change_kind: feature
 affected_spec:

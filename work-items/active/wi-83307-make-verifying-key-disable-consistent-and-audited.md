@@ -4,7 +4,8 @@ authors: [tn]
 risk: medium
 reversibility: reversible
 created_at: 2026-10-04
-priority: p2
+priority: p1
+group: spec-conformance
 depends_on: [wi-35451-rewrite-remaining-context-specifications-in-the-requirement-format]
 change_kind: bugfix
 affected_spec:

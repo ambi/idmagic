@@ -5,6 +5,7 @@ authors: [tn]
 risk: medium
 created_at: 2026-08-27
 priority: p2
+group: scale-availability
 change_kind: feature
 affected_spec:
   - { path: docs/modules/jobs/features/queue.md, requirement: REQ-JOBS-009 }

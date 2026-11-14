@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-09-26
 priority: p3
+group: development-process
 depends_on: []
 change_kind: docs
 spec_impact:

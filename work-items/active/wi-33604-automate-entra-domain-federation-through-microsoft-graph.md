@@ -5,6 +5,7 @@ risk: high
 reversibility: irreversible
 created_at: 2026-11-12
 priority: p3
+group: directory-and-entra
 depends_on: [wi-95114-remove-entra-federation-one-domain-at-a-time]
 change_kind: feature
 affected_spec:

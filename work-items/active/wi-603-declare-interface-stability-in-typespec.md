@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-09-18
 priority: p3
+group: api-contract
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: tooling
 spec_impact:
@@ -49,7 +50,7 @@ spec_impact:
 ## Verification
 
 - `mise run check-spec`
-- `mise run check-rendered-spec`
+- `mise run check-site`
 - `mise run test-tools`
 
 ## Risk Notes

@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-09-18
 priority: p2
+group: api-contract
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: bugfix
 affected_spec:
@@ -12,6 +13,8 @@ affected_spec:
   - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Audit.Operations.ExportAdminAuditEvents }
   - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Audit.Operations.ListSystemAuditEvents }
   - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Audit.Operations.ExportSystemAuditEvents }
+  - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Audit.Operations.StartAdminAuditExport }
+  - { path: spec/modules/audit/main.tsp, symbol: IdMagic.Audit.Operations.StartSystemAuditExport }
 ---
 
 # 監査イベントの絞り込み条件を個別のクエリパラメーターとして宣言する
@@ -25,6 +28,7 @@ affected_spec:
 ## Scope
 
 - `ListAdminAuditEvents`、`ExportAdminAuditEvents`、`ListSystemAuditEvents`、`ExportSystemAuditEvents` のクエリパラメーターを、サーバーが読み取るものと一致させて個別に宣言する。
+- 起票の後に加わったジョブによるエクスポートの開始（`StartAdminAuditExport`、`StartSystemAuditExport`）も同じ `AuditEventQuery` を一つの `query` として宣言しているので、同じ形に直す。`ExportAdminAuditEvents` と `ExportSystemAuditEvents` は 2026-10-25 から非推奨であり、廃止の日までは宣言を直す対象に残す。
 - API ガイドラインの適用状況を改める。
 
 ## Out of Scope

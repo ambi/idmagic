@@ -4,6 +4,7 @@ authors: [tn]
 risk: high
 created_at: 2026-07-25
 priority: p3
+group: security-hardening
 depends_on: []
 change_kind: feature
 affected_spec:
@@ -152,7 +153,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
 
 ## Verification
 
-- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run check` / `mise run check-spec` / `mise run check-work-items`
 - `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
 - `mise run verify-ui`
 - 手動: `mise run dev` (postgres モード) で (1) 数件の監査イベントを作り検証が成功すること、

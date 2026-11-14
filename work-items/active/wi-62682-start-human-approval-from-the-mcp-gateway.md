@@ -4,6 +4,7 @@ authors: [tn]
 risk: high
 created_at: 2026-11-11
 priority: p2
+group: mcp-gateway
 depends_on: [wi-34766-return-structured-approval-requests-from-evaluation]
 change_kind: feature
 affected_spec:

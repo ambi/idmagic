@@ -4,7 +4,8 @@ authors: ["tn"]
 risk: low
 reversibility: reversible
 created_at: 2026-10-31
-priority: p3
+priority: p2
+group: design-conformance
 depends_on: []
 change_kind: docs
 affected_spec:

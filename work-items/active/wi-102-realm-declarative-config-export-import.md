@@ -1,74 +1,59 @@
 ---
-depends_on: []
+depends_on: [wi-24943-route-seed-writes-through-context-use-cases]
 status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-04
-priority: p2
+priority: p3
+group: tenant-configuration
 change_kind: feature
 affected_spec:
   - { path: docs/modules/tenancy/features/integration-endpoints.md, requirement: REQ-TENANCY-001 }
   - { path: docs/modules/application/features/catalog.md, requirement: REQ-APPLICATION-007 }
 ---
 
-# テナント（Realm）設定の宣言的 export/import を提供し GitOps・環境昇格・DR を可能にする
+# テナントの構成を Seeding のマニフェストへ書き出し、別の環境へ同じ構成を適用できるようにする
 
-## Motivation
-現状テナントとその配下設定（client / application / assignment / claim release /
-federation trust / signing key policy / user attribute schema 等）は管理 API と
-UI からしか構成できず、デモデータは Go の seed コードにハードコードされている。
-本番運用では stg で作った構成を prod へ「同一に」昇格し、構成をコードとして
-レビュー・バージョン管理し、DR 時に再現する手段が要る。手作業の再構成は
-ドリフトと事故の温床になる。
+## 動機
 
-Keycloak は realm を JSON で export/import でき、これが環境昇格・GitOps・
-バックアップの基盤になっている。idmagic も tenant を単位とする宣言的な
-設定ドキュメント（機密を除いた構成）を export し、冪等に import（差分適用）
-できるべきである。これは WI-101 のデータバックアップとは別で、「構成 as code」を
-対象とし、パスワードハッシュや秘密鍵素材などの機密は含めない。
+テナントとその配下の構成（Application、クライアント、割り当て、クレームの開示、連携の信頼、署名鍵のポリシー、属性のスキーマなど）は、管理 API と管理コンソールからしか作れない。
+本番の運用では、ステージングで作った構成を本番へ同じ形で移し、構成をコードとしてレビューし、障害の後に再現する手段が要る。
+Keycloak はレルムを JSON で書き出して取り込め、これが環境の昇格と GitOps の土台になっている。
 
-## Scope
-- **decision**:
-  - `docs/modules/tenancy/decisions.md` へ記録する決定: export/import の対象範囲（構成のみか一部データも含むか）、機密除外方針 （秘密鍵・パスワード・client secret は含めず参照のみ）、import の冪等性と衝突解決 （create / update / fail-on-drift）を定義する。
-- **specification**:
-  - Tenancy context に ExportTenantConfig / ImportTenantConfig の objective を追加する。
-  - export ドキュメントの版・スキーマ・含む集約の範囲を定義する。
-- **go**:
-  - tenant 単位で構成を集約し、安定した宣言的ドキュメント（JSON/YAML）へ直列化する export use case を追加する。列挙順を安定化し diff 可能にする。
-  - 同ドキュメントを冪等に適用する import use case を追加する。既存との差分適用、 dry-run（適用せず差分表示）、参照整合（存在しない鍵/SP を指す割当を fail-closed で拒否）を持つ。
-  - 機密フィールドは export に含めず、import 時は別経路（secret / KeyStore）参照で解決する。
-  - 管理 API に export/import エンドポイントを追加し、既存 admin RBAC 下に置く。
-- **documentation**:
-  - README に環境昇格・GitOps・DR 再現での使い方と、機密が含まれない前提を書く。
+起票時はこの項目が書き出しと冪等な取り込みの両方を担っていた。
+その後 [Seeding](../../docs/modules/seeding/README.md) が、宣言したマニフェストの計画（`dry_run`）、冪等な適用、手動の変更を競合として扱う検出、シークレットの提供元による解決を持った（[seed の計画と適用](../../docs/modules/seeding/features/seed-run.md)）。
+取り込みは Seeding の適用で足りるので、この項目は、既存のテナントの構成を Seeding のマニフェストとして書き出す側だけを扱う。
 
-## Out of Scope
-- user 本体・認証イベント・トークンなど運用データの移送（WI-101 のバックアップが扱う）。
-- 秘密鍵・パスワード・client secret 平文の export。
-- 双方向リアルタイム同期。
+Seeding は今、所有者のユースケースではなく Repository の保存を直接呼ぶ。
+書き出した構成を別の環境へ適用すると、検証と監査を通らない書き込みが本番に入るので、wi-24943 を先に完了させる。
 
-## Plan
-- `docs/modules/tenancy/decisions.md` と `docs/modules/application/decisions.md` の所有境界を保ち、Tenancyが全設定を直接更新せず、context別exporter/importer portをorchestrateする。manifestはtop-level realm identity/versionとcontext sectionから成る。
-- export対象をtenant settings、attribute schema、groups/roles、Applications+protocol bindings/policies、upstream/provisioning metadata等のScope記載集合に固定する。users、consents、sessions、audit/events、secret/private key、generated IDsは除外またはlogical referenceにする。
-- manifest JSON Schema/versionを公開し、stable logical keyでsection間参照を解決する。secretは`${secretRef}`等のopaque referenceだけを許し、export/import response/logに値を出さない。
-- importはparse/schema validate→reference graph/cycle→current snapshotとのredacted semantic diff→plan→explicit applyの二段階にする。context順序はtenant→schema→groups/roles→applications→bindings/policiesで、各commandは既存use case/permission/eventを通す。
-- applyはmanifest digest+operation keyで再実行可能にし、全realm巨大transactionではなくdependency stageごとにcheckpointする。失敗後のresume/compensateと削除policy（default preserve、explicit prune）を明示する。
+新しい機能領域なので、優先度は p3 とする。
 
-## Tasks
-- [ ] T001 [Inventory/`docs/modules/tenancy/decisions.md`] context別export対象/除外/secretRef/logical key、merge/prune、transaction/checkpoint semanticsを決定する。
-- [ ] T002 [specification/Schema] RealmManifest/Plan/Operation/Result、Export/PlanImport/Apply interfaces/events/constraints/contractsを追加しJSON Schemaと派生物を生成する。
-- [ ] T003 [Context Ports] tenancy/identity/application/oauth2/saml/wsfederation等にcanonical export DTOとvalidate/apply command adapterを追加する。
-- [ ] T004 [Planner] version migration、reference graph、redacted semantic diff、dependency order、manifest digest/idempotencyを実装する。
-- [ ] T005 [Executor] stage checkpoint/resume、existing usecase経由apply、explicit prune、failure result/compensationを実装する。
-- [ ] T006 [HTTP/CLI] ストリーミング export、plan upload、review/apply/status と GitOps 向けの非対話コマンドを mise タスク経由で追加する。
-- [ ] T007 [Verify] export→empty realm import→re-export、version upgrade、rename/reference、partial resume、prune、cross-tenant/secret injection、redactionを検証する。
+## 対象範囲
 
-## Verification
-- `mise run test-go-race`
-- `mise run lint-go`
-- 手動: あるテナントを export → 空テナントへ import し、client/application/割当/claim policy が 再現されることを確認する。再 import しても差分ゼロ（冪等）であることを確認する。
-- 手動: export に秘密鍵・パスワードハッシュ・client secret 平文が含まれないことを確認する。
+- テナントの構成を、Seeding のマニフェストの形式で書き出す操作を加える。列挙の順を安定させ、二つの書き出しの差分を読めるようにする。
+- シークレット（秘密鍵、パスワード、クライアントシークレット）は書き出さず、Seeding のシークレットの提供元の参照に置き換える。
+- 書き出す対象の構成の種類と、マニフェストがまだ表せない種類を一覧にし、表せない種類はマニフェストの文法へ足すか、対象外として記録する。
+- 書き出したマニフェストを別のテナントへ `dry_run` と適用で移し、同じ構成になることを往復のテストで固定する。
 
-## Risk Notes
-export に機密が混ざると重大な漏えいになる。まず機密除外を型で強制し、
-import の参照整合を fail-closed にしてから範囲を広げる。冪等性が崩れると
-昇格のたびにドリフトするため、dry-run 差分を先に信頼できる形にする。
+## 対象外
+
+- User、認証イベント、トークンなど運用のデータの移送。バックアップと復元が扱う。
+- シークレットの平文の書き出し。
+- 環境の間の双方向の常時の同期。
+
+## 設計
+
+書き出しの入口を管理 API に置くか、Seeding と同じくプロセスを起動できる運用者の CLI に置くかを着手時に決める。
+Seeding は HTTP の入口を設けない判断を持つので、書き出しも同じ境界に置く案から比べる。
+
+## 検証
+
+- 書き出したマニフェストを空のテナントへ適用し、もう一度書き出すと同じマニフェストになる往復のテスト。
+- 書き出したマニフェストにシークレットの平文が含まれないことを確かめるテスト。
+- `mise run verify`
+
+## リスク
+
+マニフェストの形式は、書き出しを公開すると利用者が保存して使うので、後から変えにくくなる。
+形式のバージョンを持たせ、読み取りの互換性の扱いを Seeding の判断に書く。

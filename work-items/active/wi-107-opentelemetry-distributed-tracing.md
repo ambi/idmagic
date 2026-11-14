@@ -6,6 +6,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-07-04
 priority: p2
+group: operations
 change_kind: feature
 affected_spec:
   - { path: docs/modules/system/features/operations.md, requirement: REQ-SYSTEM-001 }

@@ -5,94 +5,49 @@ authors: ["tn"]
 risk: high
 created_at: 2026-07-10
 priority: p3
+group: scale-availability
 change_kind: operations
 affected_spec:
   - { path: docs/modules/system/features/operations.md, requirement: REQ-SYSTEM-012 }
   - { path: docs/modules/audit/features/event-search.md, requirement: REQ-AUDIT-004 }
 ---
 
-# データ層を 10万テナント・1000万ユーザで飽和しないよう分割・リードレプリカ・接続プールで支える
+# PostgreSQL のパーティショニング、読み取りレプリカ、接続プーラーの採否を決める
 
-## Motivation
-app 層を stateless に水平スケールしても、1000万ユーザ・10万テナント規模では
-最初に飽和するのは共有データ層である。具体的には (1) 全テナントのユーザ・監査イベント・トークンが
-同一テーブルに積み上がり index / autovacuum / plan が肥大化する、(2) レプリカ数を増やすほど
-PostgreSQL への直結コネクションが線形に増え `max_connections` を食い潰す、
-(3) 読み取り負荷（discovery / JWKS / introspection / 一覧）が単一 primary に集中する、という 3 点。
+## 動機
 
-**4 点目は形が変わった。** 起票時は「Valkey が単一ノードだと session / code / throttle のメモリと帯域が上限になる」と書いていたが、
-[[wi-278-consolidate-ephemeral-state-into-postgresql-remove-valkey]] で揮発性の一時状態はすべて PostgreSQL へ移り、Valkey は廃止された。
-別基盤の容量上限という問題は消え、代わりに **同じ PostgreSQL クラスタに高 churn テーブルが 9 つ増えた**という形で戻ってきている。
-認可コード・PAR・device code・WebAuthn チャレンジ・リプレイ JTI は `UNLOGGED`、失効リストとログインスロットルは `LOGGED` で、
-いずれも書き込みと削除の回転が速い。したがって本 work item が扱うべきなのはクラスタ化ではなく、
-**これら高 churn テーブルの dead tuple と autovacuum、そして introspection ごとに走りうる失効リストのホット読み取り**である。
+PostgreSQL は IdMagic の唯一の永続化先であり、アプリケーションを水平にスケールしても、最初に飽和するのはデータ層である。
+[スケーリング・負荷設計](../../docs/design/performance/scaling.md#スケーリング単位)は、PostgreSQL のパーティショニング、読み取りレプリカ、接続プーラーの構成を「決めていない」と書く。
+飽和の形は三つある。
 
-[[wi-108-database-connection-resilience-circuit-breaker]] は障害時の**耐性**、
-[[wi-161-large-tenant-performance-foundation]] は大規模**単一**テナントの read path を扱うが、
-「テナント総数・総行数がフリート規模で増えたときにデータ層をどうスケールさせるか」は未着手である。
-この WI は [[wi-163-fleet-scale-capacity-and-horizontal-scaling-architecture]] が定めた容量目標を、
-データ層のトポロジ（分割 / リードレプリカ / 接続プール / 高 churn テーブルの回転）で実際に満たす。
+- 全テナントの監査イベント、認証イベント、トークンが同じテーブルに積み上がり、インデックス、autovacuum、実行計画が肥大する。
+- アプリケーションのレプリカを増やすほど PostgreSQL への接続が増え、`max_connections` に届く。
+- Discovery、JWKS、イントロスペクション、一覧の読み取りが primary に集中する。
 
-## Scope
-- **specification**:
-  - `docs/design/data/database.md` と `docs/design/performance/capacity.md` へ記録する決定: PostgreSQL の大規模化方針。テナント / 時系列でのパーティショニング境界（特に audit event, token, session, auth-event bucket など append-heavy テーブル）、
-    read/write 分離の可否と一貫性境界、接続プール（アプリ側プール vs 外部 pooler）の選定、`docs/design/data/database.md` の tenant_id retention classes との整合を記録する。
-  - `docs/design/data/database.md` へ、揮発性テーブル群（認可中間状態 / 認可コード / PAR / device code / リプレイ JTI / 失効リスト / WebAuthn チャレンジ / ログインスロットル / SAML リプレイ）の
-    高 churn 対策を記録する。時間パーティション + `DROP PARTITION` による GC、`fillfactor` と HOT update、fail-closed 縮退（[[wi-106-distributed-login-throttle-and-shared-state-ha]] と整合）の維持を明記する。
-  - `docs/design/performance/capacity.md` に、read/write 分離時の**読み取り一貫性境界**（認可・quota・throttle は強整合、discovery / 一覧 / dashboard は短時間 stale 許容）と、
-    パーティション / レプリカ運用でも tenant isolation が崩れないことを書く。
-- **persistence**:
-  - `infra/schema/postgres.sql`（宣言的スキーマ）に append-heavy テーブルのパーティション定義を導入し、既存 index / 制約 / タイムスタンプ列ポリシーと整合させる。
-  - 読み取りをリードレプリカへ振り分けられるよう、repository / 接続取得層に read/write のルーティング境界を用意する（強整合が必要な path は primary 固定）。
-  - 接続プール前提（外部 pooler 経由でも壊れないよう prepared statement / session 依存を点検）を満たす。
-- **go/usecase**:
-  - 接続取得を read-intent / write-intent で区別できる薄い抽象を追加し、既存 usecase を安全側（write=primary）既定で移行する。
-  - stale 読み取りを許容する path だけを明示的に replica-eligible にする。
-- **tests / performance**:
-  - 10万テナント規模の seed（多数小テナント + 少数巨大テナント）で、パーティション pruning が効くこと、`tenant_id` 条件で全テナント scan にならないことを query plan で検証する。
-  - pooler 経由・レプリカ遅延ありの条件で契約テストが通ることを確認する。
+Valkey を廃止した [wi-278](../done/wi-278-consolidate-ephemeral-state-into-postgresql-remove-valkey.md) の後は、認可コード、PAR、デバイスコード、リプレイの JTI などの書き込みと削除の回転が速いテーブルも同じクラスターにある（[データベース設計](../../docs/design/data/database.md)）。
 
-## Out of Scope
-- app 層 stateless 化そのものと容量目標の定義。→ [[wi-163-fleet-scale-capacity-and-horizontal-scaling-architecture]]
-- マルチAZ / 自動フェイルオーバー / DR。→ [[wi-165-high-availability-and-failover-resilience-topology]] と [[wi-101-backup-restore-and-disaster-recovery]]
-- アプリケーション水準のシャーディング（複数 DB クラスタへのテナント分散配置）。まず単一クラスタ内の分割・レプリカで容量目標を満たせるか検証し、届かない場合に別 WI と `docs/design/data/database.md` を切る。
-- 外部検索エンジン導入。
-- memory persistence adapter の大規模化（単一レプリカ / テスト専用のまま）。
+現在は未リリースで実利用の負荷がなく、[キャパシティ設計](../../docs/design/performance/capacity.md)の値もすべて仮定値なので、優先度は p3 とする。
+決めるための測定は wi-282 の負荷試験の基盤を使う。
 
-## Plan
-- パーティショニングは append-heavy かつ tenant / 時系列で自然に切れるテーブル（audit event, auth-event bucket, token, session）を第一候補にし、
-  参照制約とタイムスタンプ列ポリシー、`tenant_id` key policy を壊さない範囲で declarative schema に落とす。
-- read/write 分離は「まず抽象だけ入れて全て primary、その後 stale 許容 path を replica へ」の段階移行にし、
-  一貫性事故（throttle / quota / 認可を stale で読む）を設計で塞ぐ。
-- 接続プールは外部 pooler（例: transaction pooling）でも壊れない実装制約を先に点検し、アプリ挙動を非依存に保つ。
-- 高 churn な揮発性テーブルは、時間パーティション + `DROP PARTITION` を第一候補にする。行単位の `DELETE` による GC は dead tuple と autovacuum の負荷そのものを生むため、規模が上がるほど不利になる。
-  失効リストのホット読み取りは、共有ストアの選択と独立に「per-request lookup を避ける設計（短命トークン / インスタンス内キャッシュ / push 失効）」で解く。
-- **[[wi-282-staging-load-testing-and-capacity-validation]] の実測結果を入力にする。** UNLOGGED / LOGGED の選択と ephemeral sweep の間隔は wi-282 が staging で確定する暫定値なので、
-  本 work item の設計はその結果が出てから確定させる。順序を逆にすると、測っていない値を前提にパーティション設計を決めることになる。
-- 大規模性能検証は [[wi-161-large-tenant-performance-foundation]] の seed / benchmark 基盤を再利用し、通常 verify と perf smoke を分離する。
+## 対象範囲
 
-## Tasks
-- [ ] T001 [Spec] PostgreSQL パーティション / read-write 分離 / 接続プール方針を記録する。
-- [ ] T002 [Spec] 高 churn な揮発性テーブルの時間パーティションと GC 方針、fail-closed 縮退の維持を記録する。
-- [ ] T003 [Spec] 読み取り一貫性境界と tenant isolation guarantee を追記し、`mise run build-site` を通す。
-- [ ] T004 [Persistence] declarative schema に append-heavy テーブルのパーティションを導入する。
-- [ ] T005 [Persistence/Go] read/write ルーティング抽象を追加し、既存 usecase を write=primary 既定で移行する。
-- [ ] T006 [Persistence] pooler 経由での動作制約（prepared statement / session 依存）を点検・修正する。
-- [ ] T007 [Perf] 10万テナント seed でパーティション pruning と replica 経路を検証する `mise` task を追加する。
-- [ ] T008 [Verify] `mise run check`、`mise run verify-go`、`mise run check-ids`、perf smoke を通す。
+- 追記の多いテーブルと回転の速いテーブルについて、テナントか時刻によるパーティショニングを採るか、採るならその境界と古いパーティションの削除の方式を決める。
+- 読み取りレプリカを採るか、採るなら強い整合が要る経路（認可、クォータ、流量制限）と短い遅れを許す経路（Discovery、一覧、集計）の境界を決める。
+- アプリケーション側の接続プールと外部の接続プーラーのどちらを使うかを決め、[キャパシティ設計の接続の予算](../../docs/design/performance/capacity.md#サイジング計算式)と整合させる。
+- 決めたことを、スケーリング・負荷設計とデータベース設計の担当する節に書く。パーティショニングを採る場合は、宣言的スキーマと、テナント境界を崩さないことの試験まで行う。
 
-## Verification
-- `mise run check`
-- `mise run build-site`
-- `mise run verify-go`
-- `mise run check-ids`
-- perf smoke 用 `mise` task
-- 手動: 10万テナント seed で代表 query の plan にパーティション pruning と `tenant_id` 条件・期待 index が使われ、全テナント scan が出ないことを確認する。
-- 手動: リードレプリカ遅延を注入し、強整合 path（throttle / quota / 認可）が primary を読み、stale 許容 path のみ replica を読むことを確認する。
-- 手動: 外部 pooler（transaction pooling）経由で契約テストと基本フローが通ることを確認する。
+## 対象外
 
-## Risk Notes
-パーティション境界と `tenant_id` key policy を誤ると、tenant 混在や pruning 不発という不可逆・高コストな事故になる。
-read/write 分離は「stale を読んではいけない path を replica に流す」のが最大の危険で、既定を write=primary にして明示的にだけ replica-eligible にすることで fail-safe にする。
-接続プール（transaction pooling）は prepared statement / セッション状態の前提を壊すことがあるため、アプリ側の依存を先に洗い出す。
-高 churn テーブルの GC 方式を変えても throttle の fail-closed 縮退を崩さないことを最優先で検証する。
+- アプリケーション水準のシャーディング（複数の DB クラスターへのテナントの分散）。単一クラスターの中の分割とレプリカで足りないと分かってから扱う。
+- マルチ AZ と自動の切り替え。wi-165 が扱う。
+- 外部の検索エンジンの導入。
+
+## 検証
+
+- `mise run check-schema`（パーティショニングを採る場合）
+- 採否の根拠にした測定の手順と結果。[キャパシティ設計の仮定値と実測値](../../docs/design/performance/capacity.md#仮定値と実測値)が求める日付、ソースのバージョン、実行環境、データ分布、負荷構成を添える。
+
+## リスク
+
+パーティショニングはテーブルの主キーと一意制約の形を変えるので、後から戻すにはデータの移行が要る。
+採る場合は、テナント境界の検査とクォータの一意性が分割の後も成り立つことを先に確かめる。

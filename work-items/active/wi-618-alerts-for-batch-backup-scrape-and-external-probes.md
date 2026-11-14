@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-09-18
 priority: p2
+group: operations
 depends_on: [wi-589-observability-design]
 change_kind: operations
 affected_spec:

@@ -4,86 +4,47 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-03
-priority: p2
+priority: p3
+group: identity-management
 change_kind: feature
 affected_spec:
   - { path: docs/modules/authentication/features/sign-in.md, requirement: REQ-AUTHENTICATION-007 }
   - { path: docs/modules/identity-management/features/user.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 
-# セルフサービスのユーザ登録 (self-service sign-up) を導入する
+# テナントが許可したとき、利用者が自分でアカウントを登録できるようにする
 
-## Motivation
-現状ユーザは管理者の CreateAdminUser でしか作成できず、エンドユーザ自身が
-アカウントを新規登録する導線が無い。一方、代表的な IdP はいずれも
-self-service registration を標準機能として持つ:
+## 動機
 
-- Keycloak: realm の "User registration" スイッチと registration ページ。
-- Okta / Entra External ID (旧 Azure AD B2C): self-service sign-up flow。
-- OneLogin: self-registration policy。
+User を作れるのは、管理者、SCIM、CSV、Directory Connector、外部 IdP の初回のログインだけであり、利用者が自分でアカウントを登録する入口がない。
+Keycloak の User registration、Okta と Entra External ID のセルフサービスのサインアップのように、顧客向け（B2C、B2B）の IdP には、テナントが許可した場合に限り利用者が自分で登録し、メールの検証を経て使い始める入口が要る。
 
-顧客向け (B2C / B2B) IdP として使うには、テナントが許可した場合に限り
-エンドユーザが自分でサインアップし、email 検証を経て利用開始できる導線が要る。
-本 WI は password ベースの最小 sign-up (email + password + 表示名) を、
-テナント設定でゲートされた public フローとして追加する。ソーシャル / 外部 IdP
-経由の JIT 登録は [[wi-30-inbound-federation-and-identity-broker]] の範囲とする。
+## 対象範囲
 
-## Scope
-- **decision**:
-  - `docs/modules/authentication/decisions.md` へ記録する決定: self-registration をテナント設定 (allow_self_registration、既定 off) でゲートする。email 検証必須 (`docs/modules/authentication/decisions.md` のワンタイムトークン方針を踏襲)、 tenant 内 email 一意、登録直後は未検証 = login 不可 (fail-closed)、 account enumeration を避ける応答方針を記録する。
-- **specification**:
-  - §3.3 interfaces: RegisterUser (public / unauthenticated / tenant-scoped) と、 browser フロー用の登録トランザクション取得を追加する。
-  - §3.2 models: RegistrationRequest (email / password / 表示名) を追加する。
-  - §3.4 states/events: UserSelfRegistered イベントを追加する。
-  - 所有要素の constraints/contracts: tenant 内 email 一意、未検証ユーザは login 不可を明示する。
-  - authorization と interface access: RegisterUser は public、対象 tenant は解決済み tenant に固定。
-  - tenancy: AdminSettings に allow_self_registration を追加し、 UpdateAdminSettings で切り替え可能にする。
-- **go**:
-  - usecase RegisterUser を追加し、既存 email 検証トークンストア (EmailChangeTokenStore / password reset と同パターン) を再利用して VerifyEmail 相当の検証を経てから login 可能にする。
-  - テナント設定が off の場合は構造的に 404/無効化する (fail-closed)。
-- **http**:
-  - POST /register (public, CSRF + same-origin 必須) と登録トランザクション context を追加する。bot 対策 / rate limit は [[wi-27-endpoint-rate-limit-and-bot-mitigation]] に委譲する。
-- **ui**:
-  - auth-flow に RegisterPage を追加し、LoginPage から導線を張る。送信後は 「確認メールを送信しました」を表示し、検証リンクで利用開始できるようにする。
-- **documentation**:
-  - README に self-registration の有効化手順とテナント設定を追記する。
+- メールアドレス、パスワード、表示名による最小の登録を、認証の要らない公開の入口として加える。対象のテナントは解決したテナントに固定する。
+- テナントの設定で有効にしたときだけ使える。デフォルトは無効とする。
+- 登録した User は、メールを検証するまでログインできない。メールアドレスはテナントの中で一意とし、登録の応答はアカウントの有無で変えない。
+- 登録をドメインイベントとして記録し、テナントの User の Hard Quota に従わせる。
 
-## Out of Scope
-- 外部 IdP / ソーシャル経由の JIT 登録 ([[wi-30-inbound-federation-and-identity-broker]])。
-- rate limit ([[wi-27-endpoint-rate-limit-and-bot-mitigation]])。CAPTCHA / bot mitigation は wi-27 の対象外となったため、現時点でどの WI の対象でもない（必要になれば改めて起票する）。
-- 招待ベースのオンボーディング (invite flow)。→ [[wi-294-b2b-guest-invitation-and-external-collaboration]]。
-- パスワードレスの first-factor。→ [[wi-88-passwordless-email-login]]。
-  両者はメールアドレス検証のためのワンタイムトークン (ハッシュのみ保存・一回消費・期限付き) を
-  同じ形で必要とするので、先に完了したほうがその基盤を置き、後のほうは再実装しない。
-- progressive profiling / 多段の追加属性収集。
+## 対象外
 
-## Plan
-- registration は Identity Management の User 作成能力を再利用するが、未検証 user を先に作らず `PendingRegistration` を Authentication が所有する。tenant policy が disabled の realm では route 自体を発見可能にしても一律拒否する。
-- request は normalized email、tenant、terms/policy version、TTL、one-time token hash を保持する。応答は既存 user/新規 request/重複 request で均一化し、wi-27 の endpoint limiter と既存 login throttle の correlation hash を再利用する。
-- email verify 成功時だけ、Identity Management の create-user command、password policy/HIBP/history、default group/required action を1 transactionで適用する。既存 user と競合した場合は account を上書きせず recovery 導線へ送る。
-- tenant policy は allowed email domain、admin approval requirement、default groups、initial authentication method を持つ。admin approval を有効にした場合は Verified→PendingApproval→Activated の状態を追加する。
-- frontend は realm-aware signup→check-email→verify→password/enrollment→login の導線を既存 auth shell/branding 上に置き、管理 UI は tenant settings で policy を編集する。
+- 外部 IdP とソーシャルログインによる初回の登録。既にある。
+- CAPTCHA とボットの対策。どの作業項目の対象でもないので、必要になったら起票する。
+- 招待による登録。wi-294 が扱う。
+- 段階的に属性を集めること。
 
-## Tasks
-- [ ] T001 [Spec] PendingRegistration lifecycle、tenant RegistrationPolicy、Start/Verify/Approve interfaces、events/constraints/contracts/scenarios を追加して再生成する。
-- [ ] T002 [Domain/Store] registration/token model、normalization、memory / PostgreSQL store、TTL/one-time consume を実装する。
-- [ ] T003 [Usecases] start/resend/verify/approve/expire を EmailSender、limiter、password policy、Identity Management user creationへ接続する。
-- [ ] T004 [HTTP] realm-scoped signup/verify endpoints と uniform response、CSRF/browser transaction、secure cookie を追加する。
-- [ ] T005 [UI] signup/check-email/expired/approval/complete 画面と tenant policy 管理を追加する。
-- [ ] T006 [Verify] existing/disabled/deleted user、domain policy、token replay/expiry、concurrent verify、default group、enumeration/load を検証する。
+## 設計
 
-## Verification
-- `mise run test-go`
-- `mise run lint-go`
-- `mise run build-go`
-- `mise run typecheck-ui`
-- `mise run lint-ui`
-- `mise run build-ui`
-- 手動: テナント設定で登録を有効化 → RegisterPage で email/password 登録 → 確認メールのリンクで検証 → login 成立。設定を無効化すると登録導線が塞がる ことを確認する。
-- 手動: 既存 email で登録しても「存在する」ことが応答から判別できないことを 確認する。
+メールの検証のワンタイムトークンは、パスワードレスのログイン（wi-88）と同じ形を使う。
+先に完了したほうがその仕組みを置き、後のほうは作り直さない。
 
-## Risk Notes
-public な書き込みエンドポイントを増やすため、account enumeration / spam 登録 /
-未検証ユーザの滞留が主なリスク。enumeration は応答統一で、spam は rate limit
-(wi-27) への委譲と検証必須で緩和する。既定 off とし、明示的に有効化した
-テナントだけが露出する設計にする。
+## 検証
+
+- 検証前のログインの拒否、重複したメールアドレスの扱い、無効にしたテナントでの拒否を観測する受け入れのテスト。
+- `mise run verify-ui`
+- `mise run verify`
+
+## リスク
+
+公開の入口は、大量の登録とメールの送信に悪用される。
+入口ごとの流量の制限と、テナントのクォータで上限を設ける。

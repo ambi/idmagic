@@ -5,6 +5,7 @@ risk: medium
 reversibility: reversible
 created_at: 2026-09-18
 priority: p2
+group: operations
 depends_on: []
 change_kind: operations
 affected_spec:

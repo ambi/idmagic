@@ -4,6 +4,7 @@ authors: [tn]
 risk: medium
 created_at: 2026-07-25
 priority: p3
+group: security-hardening
 depends_on: []
 change_kind: feature
 affected_spec:
@@ -152,7 +153,7 @@ IdMagic の暗号選択は現状「強度重視」で、FIPS 140-3 承認アル�
 
 ## Verification
 
-- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run check` / `mise run check-spec` / `mise run check-work-items`
 - `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
 - `mise run build-go` および FIPS ビルド (新設レシピ) の両方が成功する
 - 手動: (1) 非 FIPS モードで既存の Argon2id ユーザーがログインでき、挙動が変わらないこと、

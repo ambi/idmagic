@@ -3,7 +3,8 @@ status: pending
 authors: [tn]
 risk: high
 created_at: 2026-10-31
-priority: p2
+priority: p3
+group: agent-governance
 depends_on: []
 change_kind: feature
 affected_spec:

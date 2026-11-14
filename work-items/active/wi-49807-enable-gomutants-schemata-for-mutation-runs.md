@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-10-06
 priority: p2
+group: development-process
 depends_on: []
 change_kind: tooling
 spec_impact:

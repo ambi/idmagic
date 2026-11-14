@@ -3,7 +3,8 @@ status: pending
 authors: [tn]
 risk: high
 created_at: 2026-07-25
-priority: p2
+priority: p3
+group: identity-management
 depends_on: []
 change_kind: feature
 affected_spec:
@@ -54,7 +55,7 @@ affected_spec:
     (`docs/modules/application/decisions.md` の fail-closed 割当と整合)、
     親削除時の子の扱い (拒否 / 昇格 / カスケード) を記録する。
 - **specification**:
-  - `IdManagement.models.Group` に `parent_id` (optional) と `depth` を追加する。
+  - TypeSpec の `Group`（`spec/modules/identity-management/`）に `parent_id` (optional) と `depth` を追加する。
   - `GroupHierarchyError` (循環 / 深さ超過 / dynamic 親禁止) を追加する。
   - `ListGroups` に階層取得 (ツリー / 子のみ) のパラメータを追加し、
     `ListUserGroups` の応答に「直接所属」と「継承所属」を区別して返す。
@@ -63,7 +64,7 @@ affected_spec:
   - `EffectiveRoles` の published language の定義を「直接ロール ∪ 所属グループとその祖先の
     ロール」に更新する (Authentication / OAuth2 / ClaimMapping が参照する published 値なので
     影響範囲を specification で明示する)。
-  - `objectives` に「深さ N・グループ数 M における effective roles 解決レイテンシ」目標を追加する。
+  - IdManagement の `quality.md` に「深さ N・グループ数 M における effective roles 解決レイテンシ」目標を追加する。
   - `scenarios`: 子グループ所属者が親グループのロールを得る / 循環する親設定が拒否される /
     最大深さ超過が拒否される / 親グループへのアプリ割当が子の所属者に効く /
     親削除が子を持つ間は拒否される / 動的グループを親にできない。
@@ -94,8 +95,7 @@ affected_spec:
 - deny / 排他ルール (「このグループのメンバーは別グループに入れない」)。
   → [[wi-154-entitlement-catalog-and-separation-of-duties]] の SoD が扱う。
 - グループ階層に基づく委任管理のスコープ。→ [[wi-94-delegated-administration]]
-- SCIM の nested group member 表現。→
-  [[wi-246-scim-multivalued-core-attributes-and-nested-group-members]] (本 WI が土台を提供する)
+- SCIM の入れ子の Group の受け入れ。完了した wi-246 は、入れ子の Group を保存せず明示的に拒否すると決めた（[SCIM の取り込み](../../docs/modules/sourcing/features/scim.md)）。階層ができた後で受け入れるかは別に判断する。
 - LDAP/AD からの階層取り込み。→ [[wi-29505-ingest-directory-groups-and-direct-memberships]]
 - 動的グループルールで祖先を参照する式。
 
@@ -157,7 +157,7 @@ affected_spec:
 
 ## Verification
 
-- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run check` / `mise run check-spec` / `mise run check-work-items`
 - `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
 - `mise run verify-ui` / `mise run test-ui-unit`
 - 手動: `mise run dev` で 3 段の階層を作り、(1) 末端グループのユーザーが最上位グループの

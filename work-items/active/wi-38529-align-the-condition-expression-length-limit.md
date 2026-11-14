@@ -3,7 +3,8 @@ status: pending
 authors: [tn]
 risk: low
 created_at: 2026-11-14
-priority: p3
+priority: p1
+group: spec-conformance
 depends_on: []
 change_kind: bugfix
 affected_spec:

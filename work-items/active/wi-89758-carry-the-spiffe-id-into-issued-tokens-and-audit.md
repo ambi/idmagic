@@ -5,6 +5,7 @@ risk: medium
 reversibility: irreversible
 created_at: 2026-11-11
 priority: p2
+group: workload-identity
 depends_on: [wi-25266-authenticate-agent-clients-with-jwt-svid]
 change_kind: feature
 affected_spec:

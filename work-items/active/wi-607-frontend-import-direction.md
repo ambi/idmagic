@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-09-18
 priority: p2
+group: design-conformance
 depends_on: [wi-586-frontend-architecture-and-user-interface-design]
 change_kind: refactor
 spec_impact:

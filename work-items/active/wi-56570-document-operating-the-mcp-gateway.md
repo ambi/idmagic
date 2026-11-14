@@ -4,6 +4,7 @@ authors: [tn]
 risk: low
 created_at: 2026-10-31
 priority: p2
+group: mcp-gateway
 depends_on: [wi-11085-enforce-mcp-tool-calls-for-unmodified-servers]
 change_kind: docs
 spec_impact: { kind: none, reason: "既存の仕様どおりの配置と運用の手順を追加し、規範と API の振る舞いを変えない。" }

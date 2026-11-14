@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-11-14
 priority: p3
+group: development-process
 depends_on: []
 change_kind: tooling
 spec_impact: { kind: none, reason: "ブラウザー E2E の実行基盤を比較評価する作業であり、製品の認証、認可、公開 API と既存テストが検証する要件は変更しない。" }

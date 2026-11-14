@@ -5,6 +5,7 @@ authors: [tn]
 risk: medium
 created_at: 2026-08-22
 priority: p2
+group: development-process
 change_kind: tooling
 spec_impact: { kind: none, reason: "検査の適用範囲の拡大であり、製品の振る舞いも配線契約も変えない。拡大した検査が欠陥を見つけた場合は、その修正を本 work item の中で行うか個別に切り出すかを Design で決める。" }
 ---

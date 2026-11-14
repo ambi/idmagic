@@ -4,7 +4,8 @@ authors: [tn]
 risk: high
 reversibility: irreversible
 created_at: 2026-11-07
-priority: p2
+priority: p3
+group: workload-identity
 depends_on: [wi-77559-verify-jwt-svid-against-spiffe-rules, wi-25266-authenticate-agent-clients-with-jwt-svid]
 change_kind: feature
 affected_spec:

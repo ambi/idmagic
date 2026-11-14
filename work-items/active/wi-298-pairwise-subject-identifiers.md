@@ -4,6 +4,7 @@ authors: [tn]
 risk: medium
 created_at: 2026-07-25
 priority: p3
+group: federation-protocols
 depends_on: []
 change_kind: feature
 affected_spec:
@@ -17,7 +18,7 @@ affected_spec:
 ## Motivation
 
 現在の `sub` は User の canonical な domain 識別子そのものである。specification の
-`IdManagement.models.User.id` の記述は「protocol 境界ではこの id を写像して表現する:
+TypeSpec の `User.id` の記述は「protocol 境界ではこの id を写像して表現する:
 OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」とし、
 「pairwise subject など写像を差し替える場合も id 自体は不変」と将来の余地に言及しているが、
 **実装は存在しない**。discovery の `subject_types_supported` は `[public]` 固定である。
@@ -165,7 +166,7 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
 
 ## Verification
 
-- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run check` / `mise run check-spec` / `mise run check-work-items`
 - `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
 - `mise run verify-ui` / `mise run test-ui-unit`
 - `mise run demo` — 既存の OIDC デモ (public クライアント) の `sub` が変わらないこと

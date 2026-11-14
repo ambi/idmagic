@@ -6,6 +6,7 @@ reversibility: irreversible
 created_at: 2026-09-03
 change_kind: feature
 priority: p2
+group: system-console
 depends_on: [wi-462-control-plane-console-single-entry]
 affected_spec:
   - { path: docs/modules/tenancy/features/lifecycle.md, requirement: REQ-TENANCY-014 }

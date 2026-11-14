@@ -4,7 +4,8 @@ authors: [tn]
 risk: medium
 created_at: 2026-11-14
 change_kind: bugfix
-priority: p2
+priority: p1
+group: spec-conformance
 depends_on: []
 affected_spec:
   - { path: docs/modules/authentication/features/session.md, requirement: REQ-AUTHENTICATION-013 }

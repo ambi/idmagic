@@ -4,7 +4,8 @@ authors: [tn]
 risk: high
 created_at: 2026-11-14
 change_kind: feature
-priority: p3
+priority: p2
+group: system-console
 depends_on: []
 affected_spec:
   - { path: docs/modules/authentication/features/mfa.md, requirement: REQ-AUTHENTICATION-022 }

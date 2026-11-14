@@ -5,6 +5,7 @@ risk: medium
 reversibility: reversible
 created_at: 2026-09-18
 priority: p2
+group: api-contract
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: tooling
 spec_impact:

@@ -115,6 +115,11 @@
         "pattern": "^wi-[0-9]+(?:-[a-z0-9]+)*$"
       }
     },
+    "group": {
+      "description": "未完了の記録が属するグループ。値は docs/development/work-item-groups.md の表が宣言する名前に限る。完了と中止の記録は持たない。",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
     "change_kind": {
       "type": "string",
       "enum": ["feature", "bugfix", "operations", "refactor", "docs", "tooling", "maintenance"]

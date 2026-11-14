@@ -6,6 +6,7 @@ reversibility: irreversible
 created_at: 2026-11-14
 change_kind: feature
 priority: p3
+group: authentication
 depends_on: [wi-23765-enforce-requested-mfa-on-reauthorization]
 affected_spec:
   - { path: docs/modules/application/features/sign-in-policy.md, requirement: REQ-APPLICATION-009 }

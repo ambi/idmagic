@@ -5,86 +5,53 @@ authors: ["tn"]
 risk: high
 created_at: 2026-06-21
 priority: p3
+group: federation-protocols
 change_kind: feature
 affected_spec:
   - { path: docs/modules/oauth2/features/authorization.md, requirement: REQ-OAUTH2-005 }
   - { path: docs/modules/oauth2/features/protocol-endpoints.md, requirement: REQ-OAUTH2-014 }
 ---
 
-# 検証可能クレデンシャル (OID4VCI 発行 / OID4VP 検証) に対応する
+# 検証可能なクレデンシャルを OID4VCI でウォレットへ発行する
 
-## Motivation
-eIDAS 2.0 / EUDI Wallet、ISO mDL (モバイル運転免許証)、Microsoft Entra
-Verified ID など、wallet ベースの検証可能クレデンシャル (Verifiable
-Credentials, VC) が標準化・実運用フェーズに入っている。現代の IdP は従来の
-OIDC token 発行に加え、(1) credential issuer として user に検証可能な
-クレデンシャルを wallet へ発行 (OpenID for Verifiable Credential Issuance,
-OID4VCI)、(2) verifier / relying party として wallet からの提示を検証
-(OpenID for Verifiable Presentations, OID4VP) する役割を担い始めている。
+## 動機
 
-idmagic は現状 OIDC の id_token / access_token 発行に閉じており、wallet
-連携・選択的開示 (selective disclosure)・holder binding を伴う分散型
-クレデンシャルに未対応。本 WI は issuer (OID4VCI) を主・verifier (OID4VP) を
-従として導入し、SD-JWT VC を既定フォーマットに、status list による失効を
-備える。これにより「IdP が発行した属性を、user が自分の wallet に保持し、
-必要な相手へ必要な claim だけ提示する」という分散型 ID の中核に対応する。
+eIDAS 2.0 と EUDI Wallet、ISO mDL、Microsoft Entra Verified ID のように、ウォレットに入れる検証可能なクレデンシャル（Verifiable Credentials）が標準化と実運用の段階に入っている。
+IdP は、従来の ID Token とアクセストークンの発行に加えて、利用者のウォレットへクレデンシャルを発行する役割（OpenID for Verifiable Credential Issuance、OID4VCI）と、ウォレットからの提示を検証する役割（OpenID for Verifiable Presentations、OID4VP）を担い始めている。
+IdMagic は ID Token とアクセストークンの発行だけを持ち、選択的な開示と保有者の束縛を伴うクレデンシャルに対応しない。
 
-## Scope
-- **decision**:
-  - `docs/modules/oauth2/decisions.md`（または新設 Context の `decisions.md`）へ記録する決定: credential フォーマット (SD-JWT VC を既定、mdoc は将来)、issuer metadata、holder binding (cnf)、選択的開示、status list による失効、署名鍵 (既存 KeyStore / per-tenant 鍵の流用) を確定する。
-  - フロー確定: OID4VCI は authorization code flow + pre-authorized code flow、 credential offer の受け渡し (QR / deep link)。OID4VP は presentation request (DCQL / presentation_definition) と vp_token 検証 (direct_post) を採用する。
-- **specification**:
-  - 新規 model: VerifiableCredential / CredentialConfiguration / CredentialOffer / CredentialRequest / CredentialResponse / PresentationRequest / VpVerificationResult / CredentialStatus。
-  - 新規イベント: CredentialOffered / CredentialIssued / CredentialRevoked / PresentationVerified / PresentationRejected。
-  - 新規 interface: GetCredentialIssuerMetadata / CreateCredentialOffer / IssueCredential / GetCredentialStatusList / CreatePresentationRequest / VerifyPresentation。permission `AdminCredentialConfigWrite`。
-- **go**:
-  - OID4VCI issuer: credential offer 生成、token endpoint の pre-authorized_code grant、/credential endpoint で SD-JWT VC を署名発行 (holder binding cnf)。
-  - 失効: Token Status List による失効公開と admin からの失効操作。
-  - OID4VP verifier: presentation request 生成、vp_token / SD-JWT VC の署名・ holder binding・status・有効期限・claims を fail-closed で検証する。
-  - Postgres adapter: credential_configurations / issued_credentials / credential_status テーブルと index。
-- **http**:
-  - /.well-known/openid-credential-issuer、/credential_offer、/credential、 status list endpoint、OID4VP の authorization request (request_uri) と response_uri (direct_post)。
-- **ui**:
-  - end-user: wallet へのクレデンシャル取得 (credential offer の QR / deep link)。
-  - admin: credential configuration の定義・発行履歴・失効。
+起票時は発行と検証を一つの項目にしていたが、発行者と検証者は別の役割で、必要な鍵、状態、相互運用の確認が違う。
+2026-11-14 の整理で、この項目は発行に絞り、検証は発行が動いてから別に起票する。
+新しい機能領域なので、優先度は p3 とする。
 
-## Out of Scope
-- mdoc / ISO 18013-5 (mDL) の完全準拠 (SD-JWT VC を先行、mdoc は将来 WI)。
-- 特定 wallet 実装 (EUDI Reference Wallet 等) との相互運用認証の取得。
-- デバイスバインド鍵 / Secure Enclave 連携。
-- VP ベースで IdP 自身へログインするフロー (まず VerifyPresentation API のみ)。
-- トラストフレームワーク / trust list (発行者の信頼連鎖) の構築。
+## 対象範囲
 
-## Plan
-- VC は既存 OAuth2 token model へ直接詰め込まず、新規 Verifiable Credentials context が credential configuration、offer/issuance、status、presentation verification を所有する。OAuth2 は authorization/token capability、Signing Keys は issuer key を提供する。
-- 初期 format として SD-JWT VC または JWT VC の一方を `docs/modules/oauth2/decisions.md` で確定し、JSON-LD canonicalization/独自暗号実装を避ける。OID4VCI pre-authorized code と authorization code のどちらを初期 scope にするか、wallet 相互運用性から決める。
-- offer、nonce、authorization detail、credential request は tenant/issuer/client/holder key/TTL に束縛し、一回消費する。credential payload・presentation は audit/event log に保存せず、type、issuer、subject correlation hash、result だけを記録する。
-- OID4VP は request object/response mode、nonce/state、client_id scheme、presentation definition、holder proof と credential status を検証して policy decision を返す。検証結果から local session を作るかは明示された Authentication integration scenario に限定する。
-- status/revocation は privacy-preserving な status list と cache semantics を定め、key rotation 中も既発行 credential を検証できるよう signing-key retention と整合させる。
+- SD-JWT VC の形式で、認可コードのフローと事前認可コードのフローによるクレデンシャルの発行を加える。クレデンシャルのオファーは QR とディープリンクで渡す。
+- 発行者のメタデータ（`/.well-known/openid-credential-issuer`）、クレデンシャルのエンドポイント、保有者の束縛（`cnf`）、選択的な開示を持つ。
+- Token Status List による失効の公開と、管理者による失効の操作を持つ。
+- 管理コンソールでクレデンシャルの構成を定義し、発行の履歴を見て失効させる。利用者はアカウントポータルからウォレットへ取得する。
+- 署名には SigningKeys の用途別の署名鍵を使う。
 
-## Tasks
-- [ ] T001 [Spec] 初期 credential format、OID4VCI grant、holder binding、OID4VP client_id scheme/response mode、status mechanism、context ownership を決定する。
-- [ ] T002 [specification/Architecture] VC context の models/states/interfaces/events/constraints/contracts/objectives/scenarios と OAuth2/SigningKeys published language を追加し、ARCHITECTURE map と派生物を同期する。
-- [ ] T003 [Domain] CredentialConfiguration、IssuanceTransaction、CredentialRecord/Status、PresentationRequest/Result を実装し、nonce/code/state の一回性をテストする。
-- [ ] T004 [Crypto Ports] issuer signer、holder proof verifier、credential verifier/status resolver を既存 signing-key port 上に定義し、選定 library の adapter を実装する。
-- [ ] T005 [OID4VCI] issuer metadata、offer、authorization/pre-authorized flow、nonce、credential endpoint と deferred error contract を実装する。
-- [ ] T006 [OID4VP] verifier metadata/request object、presentation definition、direct-post callback、status/policy evaluation を実装する。
-- [ ] T007 [Persistence/HTTP/UI] transaction/status repository、tenant-scoped route、credential configuration 管理と最小 wallet handoff UI を追加する。
-- [ ] T008 [Interop/Verify] 選定した2系統以上の wallet/verifier fixture で issuance/presentation を通し、alg confusion、nonce replay、wrong audience/holder、revoked credential、PII 非記録を検証する。
+## 対象外
 
-## Verification
-- `mise run test-go`
-  - reason: SD-JWT VC の署名・選択的開示・holder binding 検証、pre-authorized code フロー、status list 失効の反映、vp_token 検証の成否境界 (失効後は拒否)。
-- `mise run lint-go`
-- `mise run build-go`
-- `mise run typecheck-ui`
-- `mise run lint-ui`
-- `mise run build-ui`
-- 手動: credential offer を発行 → mock wallet で取得 → OID4VP で提示 → verify が 成功する。admin で失効 → 同じ提示の verify が拒否される流れを確認する。
+- OID4VP による提示の検証。発行が動いてから別に起票する。
+- mdoc（ISO 18013-5）。
+- 特定のウォレットとの相互運用の認定の取得。
+- 端末に束縛した鍵と Secure Enclave との連携。
+- 発行者の信頼の連鎖（trust list）の構築。
 
-## Risk Notes
-VC は暗号 (選択的開示 / holder binding) と新興仕様 (草案の版差) を伴い、誤実装は
-検証バイパス (失効・束縛・署名の見落とし) に直結する。フォーマットは SD-JWT VC に
-絞り、VerifyPresentation は「署名・holder binding・status・有効期限・claims」を
-すべて満たす場合のみ成功とする (fail-closed)。issuer 鍵は既存 KeyStore に集約し、
-鍵管理を二重化しない。
+## 設計
+
+着手時に、発行を OAuth2 に置くか新しいモジュールに置くかを、[境界を選ぶ判断手順](../../docs/design/application/design-guidelines.md#境界を選ぶ判断手順)で決める。
+OID4VCI はトークンエンドポイントに事前認可コードのグラントを足すので、OAuth2 との関係が判断の中心になる。
+クレデンシャルに載せる属性は、ClaimMapping の開示の規則から選ぶ。
+
+## 検証
+
+- 事前認可コードと認可コードの両方で、ウォレット役のテストクライアントがクレデンシャルを取得し、失効の後に状態のリストが失効を示すことを観測する受け入れのテスト。
+- `mise run verify`
+
+## リスク
+
+発行の仕様は改訂が続いており、固定したドラフトのバージョンと最終版の差が相互運用を壊す。
+固定するバージョンを `standards.md` に宣言する。

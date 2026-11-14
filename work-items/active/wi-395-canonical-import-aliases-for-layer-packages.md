@@ -4,7 +4,8 @@ status: pending
 authors: [tn]
 risk: low
 created_at: 2026-08-23
-priority: p3
+priority: p2
+group: design-conformance
 change_kind: tooling
 spec_impact:
   kind: none

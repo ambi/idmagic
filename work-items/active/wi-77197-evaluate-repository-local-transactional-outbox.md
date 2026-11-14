@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-10-11
 priority: p3
+group: retention-and-audit
 depends_on: [wi-46722-reconcile-missing-audit-records]
 change_kind: docs
 spec_impact:

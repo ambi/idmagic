@@ -4,6 +4,7 @@ authors: [tn]
 risk: high
 created_at: 2026-07-18
 priority: p3
+group: scim-provisioning
 depends_on: []
 change_kind: feature
 affected_spec:

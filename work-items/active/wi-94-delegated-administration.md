@@ -4,74 +4,47 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-07-03
-priority: p2
+priority: p3
+group: admin-governance
 change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-management/features/admin-access.md, requirement: REQ-IDMANAGEMENT-014 }
   - { path: docs/modules/identity-management/features/admin-access.md, requirement: REQ-IDMANAGEMENT-025 }
 ---
 
-# 委任管理 (スコープ付き admin ロール) を導入する
+# 対象の範囲を限った管理者ロールで、テナントの一部の管理を任せられるようにする
 
-## Motivation
-現状の管理者権限はほぼ一枚岩で、テナント内の一部だけを任せる副管理者を表現
-できない。大規模テナント / 組織では代表的な IdP が委任管理を提供する:
+## 動機
 
-- Entra ID: Administrative Units + directory roles のスコープ。
-- Okta: admin roles + resource sets。
-- Keycloak: fine-grained admin authorization。
+管理 API は、実効ロールに `admin` を持つ User の要求を受け付ける（[REQ-IDMANAGEMENT-014](../../docs/modules/identity-management/features/admin-access.md)）。
+`admin` はテナント全体に効くので、特定の Group や Application だけを管理する副管理者を表せない。
+Microsoft Entra の管理単位、Okta の admin role と resource set、Keycloak の fine-grained admin authorization のように、大きな組織では委任管理が要る。
 
-本 WI は「対象リソース集合 × 権限」で表す scoped admin role を導入し、
-既存 RBAC ([[wi-15-roles-and-permissions-inspection-page]]) を拡張して、
-例えば特定グループ / アプリだけを管理できる副管理者を表現できるようにする。
+## 対象範囲
 
-## Scope
-- **decision**:
-  - `docs/design/security/authorization.md` へ記録する決定: スコープ次元 (グループ / アプリ / 属性集合) と、既存 roles / authorization policy・interface access との関係、fail-closed な既定 (deny)、エンドユーザ向け ReBAC ([[wi-53-rebac-fine-grained-authorization]]) と被らない「管理操作の認可に 限定」する境界を記録する。
-- **specification**:
-  - §3.2 models: AdminRoleAssignment / ResourceSet を追加する。
-  - §3.3 interfaces: admin 操作 (users / groups / applications 等) の認可に scope を反映する。副管理者割当の CRUD を追加する。
-  - §3.4 states/events: AdminRoleAssigned / AdminRoleRevoked を追加する。
-  - authorization と interface access: scope 外リソースへの管理操作を構造的に拒否する (既定 deny) ことを明示する。
-- **go**:
-  - 認可判定に scope を織り込み、既存 admin usecase のガードを scope 対応に する。scope 評価器を追加する。
-- **http**:
-  - 副管理者の割当 / 取消エンドポイントを追加する。
-- **ui**:
-  - AdminRolesPage / AdminUsers に scoped admin 割当 UI を追加する。
-- **documentation**:
-  - README に委任管理のスコープ次元と割当手順を追記する。
+- 「対象のリソースの集合 × 管理の権限」で表す範囲付きの管理者ロールと、その割り当てを持つ。対象の次元は Group、Application、User の属性の集合から選ぶ。
+- 管理 API の各操作の認可に範囲を反映し、範囲の外のリソースへの管理の操作を拒否する。デフォルトは拒否とする。
+- 割り当ての作成と取り消しをドメインイベントとして記録し、管理コンソールで扱う。
 
-## Out of Scope
-- エンドユーザ向けの ReBAC / FGA ([[wi-53-rebac-fine-grained-authorization]])。
-- 汎用ポリシー言語 (Rego / Cedar 等) の導入。
-- cross-tenant delegation。
+## 対象外
 
-## Plan
-- 既存roles/effective group roleはcoarse global/tenant roleなので維持し、`DelegatedAdminAssignment` を principal、permission set、resource scope、expiryとして追加する。role名を増やすだけでscopeを表現しない。
-- 初期resource scopeはtenant内のgroup subtree/explicit groups、applications set、user attribute条件のうち実装可能な閉集合をADRで確定する。任意式は採らず、scope evaluatorをresource typeごとに型付けする。
-- authorizationは既存admin permission gateで「操作種別」を確認後、full adminなら許可、delegated assignmentなら対象resource scopeを評価する。list/searchも同じscopeでfilterし、detail/mutationだけ制限して存在を漏らす構成にしない。
-- assignment管理はfull admin専用で自己昇格、委任の再委任、system/global resourceを禁止する。expiry/revoke後はsession cacheを更新し、監査にassignment ID/versionとscope decisionを残す。
-- UI navigation/count/exportもscope済みAPIだけを使い、権限外resourceへのリンクや総件数を表示しない。
+- 利用者向けの細粒度認可（関係タプルによる評価）。範囲付きの管理者ロールは管理の操作の認可に限る。
+- 汎用のポリシー言語（Rego、Cedar など）の導入。
+- テナントをまたぐ委任。
+- 管理者ロールの一時的な有効化。wi-152 が扱う。
 
-## Tasks
-- [ ] T001 [Design/Spec] 初期scope種類、policy/access capability集合、list filtering、再委任禁止を決定し、assignment/interfaces/events/constraints/contracts/scenariosを再生成する。
-- [ ] T002 [Domain] typed ResourceScope、Assignment lifecycle/expiry、scope evaluatorとfull-admin/delegated decision合成を実装する。
-- [ ] T003 [Persistence] assignment repository/index、group/application reference integrity、revoke/versionをmemory/PostgreSQLへ追加する。
-- [ ] T004 [Authorization] user/group/application/audit等Scope記載resourceのlist/get/mutation policyとquery filterを順次接続する。
-- [ ] T005 [Management UI] full-admin専用assignment CRUD、principal/policy/scope picker、effective access previewを追加する。
-- [ ] T006 [Verify] list count/ID enumeration、scope移動/削除、expiry/cache、自己昇格/再委任、複数assignment合成、tenant越境を検証する。
+## 設計
 
-## Verification
-- `mise run test-go`
-- `mise run lint-go`
-- `mise run build-go`
-- `mise run typecheck-ui`
-- `mise run lint-ui`
-- `mise run build-ui`
-- 手動: 特定グループのみ管理できる副管理者を割当 → そのグループは操作でき、 scope 外のユーザ / グループ / アプリの管理操作が拒否されることを確認する。
+着手時に、範囲の判定を管理 API の共通の認可で行うか、各操作のユースケースで行うかを決める。
+一覧の操作は、範囲の外のリソースを結果から除く必要があり、単一のリソースの操作と判定の形が違う。
+判定の方針は[認可の設計](../../docs/design/security/authorization.md)に書く。
 
-## Risk Notes
-認可の中核を触るため、既存 admin 操作全体に回帰リスクがある。scope 評価を
-fail-closed (既定 deny) で設計し、scope 外操作の拒否を操作種別ごとにテストする。
-ReBAC (wi-53) と役割が重ならないよう「管理操作限定」に境界を明示する。
+## 検証
+
+- 範囲の外のリソースに対する更新が拒否され、一覧が範囲の内側だけを返すことを観測する受け入れのテスト。
+- `mise run verify`
+
+## リスク
+
+範囲の判定の漏れは、副管理者に範囲の外のリソースを操作させる。
+管理 API の全操作に範囲の判定があることを、操作の一覧と照合する検査で確かめる。

@@ -5,68 +5,40 @@ authors: ["tn"]
 risk: high
 created_at: 2026-07-10
 priority: p3
+group: admin-governance
 change_kind: feature
 affected_spec:
   - { path: docs/modules/application/features/assignment.md, requirement: REQ-APPLICATION-011 }
   - { path: docs/modules/identity-management/features/group.md, requirement: REQ-IDMANAGEMENT-015 }
 ---
 
-# アプリ権限台帳と SoD 競合ルールを導入する
+# Application ごとの権限の台帳と、同時に持てない権限の規則を導入する
 
-## Motivation
-IdMagic は Application assignment と claim mapping を持つが、アプリ内ロールや権限
-entitlement を IdM 側の台帳として管理し、ユーザー・グループに割り当てる機能はない。
-Okta Entitlement Management や Microsoft Entra entitlement management では、アプリ、
-グループ、アプリ内ロールを台帳化し、Separation of Duties (SoD) で競合する権限の同時保有を
-防ぐ。これがないと、SaaS 内部権限の過剰付与や監査説明が難しい。
+## 動機
 
-本 WI は、Application ごとの entitlement catalog、entitlement assignment、SoD conflict
-rule を導入し、将来の access request / access review / outbound provisioning と連携できる
-権限台帳を作る。
+IdMagic は Application の割り当てとクレームの開示を持つが、アプリの中のロールや権限（entitlement）を台帳として管理し、User と Group に割り当てる機能はない。
+Okta Entitlement Management と Microsoft Entra の entitlement management は、アプリの中のロールを台帳にし、職務の分離（Separation of Duties）の規則で競合する権限の同時の保有を防ぐ。
+台帳がないと、SaaS の中の権限の過剰な付与に気付けず、監査で誰が何を持つかを説明できない。
 
-## Scope
-- **specification**:
-  - `Application` に ApplicationEntitlement / EntitlementAssignment / SeparationOfDutiesRule を追加する。
-  - User / Group への entitlement assignment と application assignment の関係を明示する。
-  - SoD conflict 検出、assignment 拒否、例外承認 events / scenarios を追加する。
-  - `IdentityManagement` の UserRef / GroupRef を assignment subject として利用する。
-- **go**:
-  - entitlement catalog repository、assignment usecase、SoD evaluator、memory / postgres adapter を実装する。
-  - claim mapping / provisioning に渡せる entitlement projection を追加する。
-- **http**:
-  - entitlement catalog、assignment、SoD rule、conflict preview API を追加する。
-- **ui**:
-  - Application detail に entitlement 管理、assignment、SoD conflict preview を追加する。
-- **documentation**:
-  - README に entitlement catalog と SoD rule の運用例を追記する。
+## 対象範囲
 
-## Out of Scope
-- ReBAC / FGA 判定エンジン。これは `wi-53-rebac-fine-grained-authorization` が扱う。
-- 外部アプリから entitlement を自動発見する connector。
-- access request / access review workflow 本体。
-- outbound SCIM provisioning 本体。これは `wi-45-outbound-scim-provisioning` が扱う。
+- Application ごとの権限の台帳と、User と Group への権限の割り当てを持つ。Application の割り当てとの関係（権限の割り当てが Application の割り当てを伴うか）を決める。
+- 同時に持てない権限の組を規則として持ち、割り当ての保存の時点で競合を拒否する。例外の承認を記録する。
+- 権限の割り当てを、クレームの開示と下流へのプロビジョニングに渡す読み出しを用意する。
+- 管理コンソールで、台帳、割り当て、規則、競合の事前確認を扱う。
 
-## Plan
-- Entitlement は Application 境界内の管理対象として置き、User / Group に直接または group 経由で割り当てる。
-- SoD rule は「同時保有禁止の entitlement 集合」から始め、複雑な条件式や risk scoring は扱わない。
-- assignment 保存前に conflict preview と fail-closed な保存時検証を行う。
-- 将来の provisioning 連携のため、entitlement projection は protocol-neutral にする。
+## 対象外
 
-## Tasks
-- [ ] T001 [Spec] Entitlement catalog、assignment、SoD rule、events / scenarios を追加する。
-- [ ] T002 [Decision] entitlement と application assignment の関係、SoD 例外方針を `docs/modules/identity-governance/decisions.md` に記録する。
-- [ ] T003 [App] catalog / assignment / SoD evaluator を実装する。
-- [ ] T004 [HTTP] entitlement と SoD 管理 API を追加する。
-- [ ] T005 [UI] Application detail に entitlement 管理 UI を追加する。
-- [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
+- 細粒度認可（関係タプルによる評価）。AccessControl の既存の機能のまま変えない。
+- 外部のアプリから権限を自動で発見するコネクター。
+- アクセスの申請とレビューの流れ。wi-214 と wi-213 が扱い、この台帳を対象に加えるかはそれぞれが決める。
 
-## Verification
-- `mise run check`
-- `mise run check-ids`
-- `mise run test-go`
-- `mise run verify-ui`
-- 手動: 同一ユーザーに競合する entitlement を割り当てようとすると保存前 preview と保存時検証で拒否されることを確認する。
-- 手動: group 経由の entitlement と直接 entitlement の合算で SoD conflict が検出されることを確認する。
+## 検証
 
-## Risk Notes
-entitlement は外部アプリの実権限と対応するため、台帳と実態のずれが監査リスクになる。初期は IdMagic 管理下の明示 catalog に限定し、外部発見や自動削除は扱わない。SoD は保存時にも必ず評価し、UI preview だけに依存しない。
+- 競合する権限の割り当てが拒否され、例外を承認した割り当てだけが保存されることを観測する受け入れのテスト。
+- `mise run verify`
+
+## リスク
+
+保存の時点の検査だけでは、Group の所属の変更で間接的に生まれる競合を見落とす。
+Group 経由の割り当てを含めて評価する時点を、着手時に決める。

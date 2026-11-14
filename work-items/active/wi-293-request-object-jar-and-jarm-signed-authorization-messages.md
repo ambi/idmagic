@@ -3,7 +3,8 @@ status: pending
 authors: [tn]
 risk: medium
 created_at: 2026-07-25
-priority: p2
+priority: p3
+group: federation-protocols
 depends_on: []
 change_kind: feature
 affected_spec:
@@ -162,7 +163,7 @@ FAPI を掲げる以上の整合性の問題でもある。
 
 ## Verification
 
-- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run check` / `mise run check-spec` / `mise run check-work-items`
 - `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
 - `mise run verify-ui`
 - 手動: `mise run dev` で (1) 署名付き request object を使った認可コードフローが完了すること、

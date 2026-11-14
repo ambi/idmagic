@@ -5,6 +5,7 @@ risk: high
 reversibility: reversible
 created_at: 2026-09-16
 priority: p2
+group: operations
 depends_on: [wi-584-ground-deployment-design-in-reference-profiles]
 change_kind: tooling
 spec_impact:

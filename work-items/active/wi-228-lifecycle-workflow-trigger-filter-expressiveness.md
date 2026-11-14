@@ -4,6 +4,7 @@ authors: ["tn"]
 risk: high
 created_at: 2026-07-16
 priority: p2
+group: lifecycle-workflow
 change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-governance/features/workflow-run.md, requirement: REQ-IDGOVERNANCE-003 }

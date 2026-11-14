@@ -5,6 +5,7 @@ risk: medium
 reversibility: reversible
 created_at: 2026-10-24
 priority: p3
+group: development-process
 depends_on: []
 change_kind: maintenance
 spec_impact:

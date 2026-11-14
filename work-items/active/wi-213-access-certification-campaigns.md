@@ -5,107 +5,45 @@ authors: ["tn"]
 risk: high
 created_at: 2026-07-15
 priority: p3
+group: admin-governance
 change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-governance/features/lifecycle-workflow.md, requirement: REQ-IDGOVERNANCE-001 }
   - { path: docs/modules/application/features/assignment.md, requirement: REQ-APPLICATION-011 }
 ---
 
-# 定期アクセスレビュー (access certification) を導入する
+# Group の所属、Application の割り当て、Agent を、レビュアーが定期的に見直すキャンペーンを導入する
 
-## Motivation
-IdMagic は Group membership と Application assignment を持つが、付与された access が
-今も業務上必要かを定期的に再確認し、不要なら失効させる仕組みを持たない。Microsoft Entra
-Access Reviews や Okta Access Certifications は、reviewer (self / resource owner など) が
-対象ユーザーの group membership や application assignment を周期的に承認・却下し、無回答
-時は既定動作 (失効 / 維持) を適用する certification campaign を提供する。これがないと、
-異動・退職後も放置された access や、監査人に「誰が何の access を持ち、それを定期的に
-見直しているか」を説明する証跡を提示できない。
+## 動機
 
-本 WI は、Group membership と Application assignment を対象にした access certification
-campaign (one-time または recurring) を導入し、reviewer による decision の記録、
-no-response 時の既定失効、campaign 結果のレポートを提供する。
+IdMagic は Group の所属と Application の割り当てを持つが、付与したアクセスが今も業務に要るかを定期的に確かめ、要らなければ失効させる仕組みがない。
+Microsoft Entra の Access Reviews と Okta の Access Certifications は、レビュアーが対象の所属や割り当てを周期的に承認または却下し、回答がなければデフォルトの処置（失効か維持）を適用する。
+これがないと、異動や退職の後に残ったアクセスに気付けず、監査で「誰が何を持ち、それを定期的に見直しているか」を示せない。
 
-## Scope
-- **specification**:
-  - `IdentityManagement` に AccessCertificationCampaign / CertificationScope /
-    CertificationItem (対象: GroupMembership、ApplicationAssignment、または Agent) /
-    CertificationDecision (approve/revoke) / CampaignStatus を追加する。
-  - `Agent` を certification 対象に含める。すべての `Agent` は所有者を必須とするため、
-    所有者の異動・退職で放置された非人間アイデンティティは、人間の access と同じ理由で
-    定期的な再確認を要する。reviewer は Agent の所有者とし、失効の decision は
-    `DisableAgent` へ対応付ける (`KillAgent` は一方向終端のため campaign からは行わない)。
-    棚卸しによる検出そのものは [[wi-59-agent-governance-guardrails-audit-inventory]] で完了し、
-    REQ-IDMANAGEMENT-094 の所見 (`owner_missing`、`dormant`、`unbound`) になった。
-    本 WI はそれを定期的な承認の対象として扱い、所見を reviewer の判断材料に示す。
-  - Agent の項目では、Agent そのものの存続に加えて、操作割当 (REQ-AUTHORIZATION-017) と
-    代行の付与を再確認の対象にするかを T002 で決める。一つの Agent の権限の一覧は
-    [[wi-40606-show-effective-agent-access]] が扱うので、その表示の単位を再利用する。
-  - Agent の所有者が不在の項目は reviewer を解決できない。所有者の移管
-    ([[wi-58764-transfer-agent-ownership-before-the-owner-stops]]) の結論に合わせ、
-    管理者へ回すか、既定動作を適用するかを T002 で決める。
-  - campaign 開始 / 締切 / 完了、decision 記録、no-response 時の auto-revoke を
-    events / scenarios として追加する。
-  - `Application` の ApplicationAssignmentRef、`IdentityManagement` の GroupRef を
-    certification 対象として参照する。
-  - reviewer は [[wi-94-delegated-administration]] の scoped admin (resource owner)、
-    または明示的に指定した User とする。
-- **go**:
-  - campaign scheduler (one-time / recurring)、対象抽出、reviewer 解決、decision 記録
-    usecase、締切超過時の auto-revoke executor、memory / postgres リポジトリを実装する。
-  - `wi-42-async-job-runner` を使い、大量対象の抽出と auto-revoke 処理を job として
-    実行する。
-- **http**:
-  - campaign CRUD、対象プレビュー、reviewer 向け決定 API (自分がレビューすべき一覧を
-    含む)、campaign 進捗・結果レポート API を追加する。
-- **ui**:
-  - admin に campaign 作成・進捗ダッシュボードを、reviewer 向けに決定画面 (自分の
-    レビュー待ち一覧、承認 / 失効操作) を追加する。
-- **documentation**:
-  - README に campaign 種別、reviewer 解決規則、no-response 時の既定動作を追記する。
+Agent も見直しの対象にする。
+すべての Agent は所有者を持つので、所有者の異動や退職で放置された Agent は、人のアクセスと同じ理由で見直しが要る。
+放置の検出そのものは、Agent の棚卸しの所見（[REQ-IDMANAGEMENT-094](../../docs/modules/identity-management/features/agent.md)）として既にある。
 
-## Out of Scope
-- [[wi-154-entitlement-catalog-and-separation-of-duties]] の entitlement assignment や
-  [[wi-152-just-in-time-privileged-role-activation]] の eligibility をレビュー対象にする
-  ことは初期スコープ外とし、CertificationItem の対象種別を拡張可能な設計に留める。
-- manager によるreviewer 自動解決。明示的 reviewer 指定または
-  [[wi-94-delegated-administration]] の resource owner に限定する。2026-11-13 時点では、
-  SCIM の Enterprise 拡張の `manager` が `User.Attributes` の `manager_sub` に入るが、
-  SCIM 以外の経路では設定されず、管理者が検証する手段もないので、reviewer の根拠にしない。
-- risk score に基づくレビュー優先順位付けや機械学習によるレコメンド。
-- 外部 ticketing / SIEM 通知連携。
+## 対象範囲
 
-## Plan
-- campaign は「対象範囲 (どの group / application のどの assignment を見直すか) ×
-  reviewer 解決規則 × 締切 × no-response 時の既定動作 (失効/維持)」の組で表現し、
-  汎用ワークフローエンジンは作らない。
-- decision は冪等に記録し、締切超過後の自動失効は [[wi-153-identity-lifecycle-workflows]]
-  の action executor と同様の冪等性・監査要件に従う。
-- 初期は one-time campaign と recurring campaign の両方をサポートするが、recurring
-  間隔は固定周期に限定する。
-- campaign 結果は監査イベントと export 可能なレポートとして残し、
-  [[wi-148-admin-resource-csv-export]] の CSV export 機構を再利用する。
+- 一回だけ、または周期的に実行するキャンペーンを持つ。対象は Group の所属、Application の割り当て、Agent とする。
+- レビュアーは明示的に指定する。Agent のレビュアーは所有者とし、失効の判断は Agent の無効化に対応付ける。
+- レビュアーの承認と却下を記録し、期限までに回答のない項目にデフォルトの処置を適用する。
+- キャンペーンの結果の報告を管理コンソールで示す。
 
-## Tasks
-- [ ] T001 [Spec] Campaign / CertificationItem / Decision model、events、scenarios を追加する。
-- [ ] T002 [Decision] レビュー対象範囲の初期選定、reviewer 解決規則、no-response 既定動作を `docs/modules/identity-governance/decisions.md` に記録する。
-- [ ] T003 [App] scheduler / 対象抽出 / decision usecase / auto-revoke executor を実装する。
-- [ ] T004 [HTTP] campaign 管理 API と reviewer 向け決定 API を追加する。
-- [ ] T005 [UI] campaign 管理画面と reviewer 決定画面を追加する。
-- [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
+## 対象外
 
-## Verification
-- `mise run check`
-- `mise run check-ids`
-- `mise run test-go`
-- `mise run verify-ui`
-- 手動: campaign 作成後、対象の group membership / application assignment が reviewer
-  向け一覧に現れ、承認 / 失効を記録できることを確認する。
-- 手動: 締切を過ぎても decision が記録されなかった対象が、既定動作 (失効) に従って
-  自動的に失効することを確認する。
+- 権限の台帳（wi-154）と管理者ロールの資格（wi-152）を対象にすること。対象の種類を後から足せる形にだけしておく。
+- 上長をレビュアーに自動で解決すること。SCIM の Enterprise 拡張の `manager` は `User.Attributes` の `manager_sub` に入るが、SCIM 以外の経路では設定されず、管理者が確かめる手段もないので、レビュアーの根拠にしない。
+- リスクに基づく見直しの順位付けと、機械学習による推奨。
+- 外部のチケットシステムと SIEM への通知。
 
-## Risk Notes
-certification の自動失効は現役ユーザーの access を誤って失効させるリスクがある。
-auto-revoke は締切超過が明確な対象にのみ fail-closed に適用し、実行前に対象一覧を
-管理者が確認できるプレビューを必須にする。decision と auto-revoke は必ず監査イベントに
-残す。
+## 検証
+
+- 却下した項目と、期限までに回答のない項目が、デフォルトの処置で失効することを観測する受け入れのテスト。
+- `mise run verify`
+
+## リスク
+
+デフォルトの処置を失効にすると、レビュアーの見落としが業務を止める。
+キャンペーンごとにデフォルトの処置を選ばせ、失効を選んだときは期限前にレビュアーへ通知する。

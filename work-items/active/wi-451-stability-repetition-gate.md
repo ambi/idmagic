@@ -5,7 +5,8 @@ authors: [tn]
 risk: medium
 reversibility: reversible
 created_at: 2026-08-30
-priority: p1
+priority: p2
+group: development-process
 change_kind: tooling
 spec_impact: { kind: none, reason: "低頻度の競合や共有状態の汚染を反復実行で検出するテスト基盤であり、製品仕様は変更しない。検出した製品欠陥は個別の work item で修正する。" }
 ---

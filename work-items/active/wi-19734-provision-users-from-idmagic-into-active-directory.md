@@ -4,6 +4,7 @@ authors: [tn]
 risk: high
 created_at: 2026-10-24
 priority: p3
+group: directory-and-entra
 depends_on: [wi-11530-delegate-password-verification-to-active-directory-through-the-connector]
 change_kind: feature
 affected_spec:

@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-09-18
 priority: p2
+group: api-contract
 depends_on: [wi-585-rewrite-api-rules-as-complete-api-guidelines]
 change_kind: feature
 affected_spec:
@@ -63,7 +64,7 @@ Go のハンドラーはこれらのヘッダーを返しているが、TypeSpec
 
 - `mise run check-spec`
 - `mise run check-api-compat`
-- `mise run check-rendered-spec`
+- `mise run check-site`
 
 ## Risk Notes
 

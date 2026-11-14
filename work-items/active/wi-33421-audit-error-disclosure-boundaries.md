@@ -5,6 +5,7 @@ risk: medium
 reversibility: reversible
 created_at: 2026-11-01
 priority: p1
+group: spec-conformance
 depends_on: []
 change_kind: bugfix
 affected_spec:

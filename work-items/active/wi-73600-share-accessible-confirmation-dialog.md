@@ -5,6 +5,7 @@ risk: low
 reversibility: reversible
 created_at: 2026-10-31
 priority: p2
+group: frontend-ui
 depends_on: []
 change_kind: maintenance
 spec_impact:
@@ -16,37 +17,27 @@ spec_impact:
 
 ## 動機
 [ユーザーインターフェース設計](../../docs/design/application/user-interface.md#アクセシビリティ)は、すべての操作をキーボードだけで実行できることを求める。
-`aria-modal` を付けた既存のダイアログは各画面が手で組み立てており、フォーカスの閉じ込めがなく、初期フォーカスと Esc の扱いも画面ごとに異なる。
+`frontend/src/components/ConfirmActionDialog.tsx` は Base UI の Dialog で作った共通の確認ダイアログであり、17 ファイルが使っている。
+一方、次の画面は `aria-modal` を付けたダイアログを手で組み立てており、フォーカスの閉じ込めがなく、初期フォーカスと Esc の扱いも画面ごとに異なる（2026-11-14 に確認）。
 背後の要素へフォーカスが移ると、スクリーンリーダーとキーボードの利用者は確認の途中で文脈を失う。
 
-細粒度認可の画面は `AdminAuthorizationShared.tsx` の `DestructiveConfirmDialog` で Base UI の Dialog を使っており、二つ目の機能が使う時点で `components/` へ移す条件に当たる。
+- `admin-workload-identity/AdminWorkloadIdentityShared.tsx`
+- `admin-groups/AdminGroupImportResult.tsx`、`admin-groups/AdminGroupMemberImportResult.tsx`
+- `admin-users/AdminUserImportResult.tsx`、`admin-users/AdminUserDialogs.tsx`
+- `admin-lifecycle-workflows/AdminLifecycleWorkflowsPage.tsx`
+- `admin-identity-providers/AdminIdentityProvidersShared.tsx`
+
+細粒度認可の画面は、別の確認ダイアログ `DestructiveConfirmDialog`（`admin-authorization/AdminAuthorizationShared.tsx`）を持つ。
+同じ役割の部品が二つあると、片方だけが直る。
 
 ## 対象範囲
-- `DestructiveConfirmDialog` を基に共通の確認ダイアログを `frontend/src/components/` へ置く。
-- 次の画面のダイアログを移す。
-  - `admin-workload-identity/AdminWorkloadIdentityShared.tsx`
-  - `admin-tenants/AdminTenantGroupAttributesPage.tsx`、`admin-tenants/AdminTenantAttributesPage.tsx`
-  - `admin-groups/AdminGroupImportResult.tsx`、`admin-groups/AdminGroupMemberImportResult.tsx`
-  - `admin-users/AdminUserImportResult.tsx`、`admin-users/AdminUserDialogs.tsx`
-  - `admin-lifecycle-workflows/AdminLifecycleWorkflowsPage.tsx`
-  - `admin-identity-providers/AdminIdentityProvidersShared.tsx`
+- 上の画面の確認ダイアログを `ConfirmActionDialog` へ移す。入力欄を持つダイアログのために、`ConfirmActionDialog` が子要素を受けられるようにする。
+- `DestructiveConfirmDialog` を `ConfirmActionDialog` へ統合する。[破壊的な操作](../../docs/design/application/user-interface.md#破壊的な操作)が求める対象、結果、取り消せるかどうかの表示を、統合した部品の必須の入力にする。
+- 初期フォーカス、Tab の閉じ込め、Esc、閉じた後のフォーカスの復帰を、共通部品のテストで確かめる。
 
 ## 対象外
 - `StepUpDialog`。認証の入力を持ち、再認証の遷移の扱いが別なので、確認ダイアログへ統合しない。同じ Dialog の土台へ移すかは着手時に判断し、移さないならフォーカスの閉じ込めの不足を別の記録へ残す。
-- `window.confirm` を使う画面の置き換え。残る箇所は着手時に棚卸しし、別の記録へ分ける。
-
-## 設計
-共通部品の props は、題名、対象の識別名、操作の結果、取り消せるかどうか、確定の文言、実行中、閉じる、確定とする。
-[破壊的な操作](../../docs/design/application/user-interface.md#破壊的な操作)が求める三つの内容を必須の props にする。
-入力欄を持つダイアログのために子要素を受けられるようにし、確認の文言を自由な子要素だけで組み立てる形にはしない。
-
-## 計画
-1. 共通部品を移し、細粒度認可の画面を先に切り替える。
-2. 残りの画面を一つずつ移し、各画面のテストを通す。
-
-## タスク
-- [ ] T001 [UI] 初期フォーカス、Tab の閉じ込め、Esc、閉じた後のフォーカスの復帰を共通部品のテストで確かめる。
-- [ ] T002 [UI] 各画面を移し、確定と取り消しの作用が変わらないことを確かめる。
+- 確認を求める操作の範囲と、確認の文言の変更。
 
 ## 検証
 - `mise run verify-ui`

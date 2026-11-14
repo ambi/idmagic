@@ -4,6 +4,7 @@ authors: [tn]
 risk: medium
 created_at: 2026-11-11
 priority: p3
+group: workload-identity
 depends_on: [wi-25266-authenticate-agent-clients-with-jwt-svid]
 change_kind: feature
 affected_spec:

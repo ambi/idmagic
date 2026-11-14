@@ -6,7 +6,8 @@ reversibility: reversible
 created_at: 2026-09-25
 risk_notes: |
   読み取りを差分に絞ると、基準値の扱いを誤ったときに変更を取りこぼし、下流が乖離したまま残る。特に割り当ての解除は User の更新時刻を変えないので、User だけを基準値の対象にするとスコープ外になった User を無効化できない。
-priority: p2
+priority: p3
+group: scim-provisioning
 depends_on: []
 change_kind: feature
 affected_spec:

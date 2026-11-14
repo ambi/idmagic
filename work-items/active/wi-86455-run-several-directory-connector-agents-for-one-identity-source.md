@@ -4,6 +4,7 @@ authors: [tn]
 risk: high
 created_at: 2026-10-24
 priority: p3
+group: directory-and-entra
 depends_on: [wi-69206-run-a-directory-connector-that-reads-ad-and-ldap]
 change_kind: feature
 affected_spec:

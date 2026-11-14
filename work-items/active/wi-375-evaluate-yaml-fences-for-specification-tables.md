@@ -4,6 +4,7 @@ authors: [tn]
 risk: low
 created_at: 2026-08-15
 priority: p3
+group: development-process
 depends_on: [wi-374-specification-overview-exemplars-and-standards-columns]
 change_kind: tooling
 spec_impact:

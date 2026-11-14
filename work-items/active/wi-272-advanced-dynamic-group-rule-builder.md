@@ -4,6 +4,7 @@ authors: [tn]
 risk: high
 created_at: 2026-07-22
 priority: p3
+group: frontend-ui
 change_kind: feature
 affected_spec:
   - { path: docs/modules/identity-management/features/dynamic-group.md, requirement: REQ-IDMANAGEMENT-020 }
