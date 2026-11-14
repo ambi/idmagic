@@ -1,15 +1,15 @@
 /**
  * 設計文書の用語を、採用した表記へ固定する。
  *
- * 採らない表記は、どれも普通名詞としての読みが先に立つ日本語訳である。読み手が
- * その節を deployment、secret、runtime、capacity、observability、platform の
- * どれとして読むかを文脈から推定することになり、用語から概念へたどれない。
+ * 照合は部分文字列の一致であり、文脈を読まない。そのため規則に置くのは、一致した
+ * 箇所が採らない表記としか読めない語に限る。複合語、旧い区分や文書の名前、表記の
+ * 揺れがこれに当たる。「秘密」「容量」「訓練」のような一般語や、「列型」のように
+ * 別の語（文字列型、配列型）の一部になる語は、正当な用法まで落とすので置かない。
+ * 例外の一覧を積み増さないと保てない規則は、効果が確かでない規則として外す。
  *
- * 素朴な禁止語一覧にすると共起で正当な用法まで落ちるので、規則は残す共起を
- * `allow` として理由付きで持つ。`allow` は対象語を含む literal で、その literal が
- * 覆う位置に現れた occurrence だけを採用済みの用法として通す。免除はここにしか
- * 無く、ファイル単位の免除は持たない。文書単位で外せるようにすると、その文書
- * だけ用語が戻ったことにだれも気付かなくなる。
+ * `allow` は、採用した表記が採らない表記を含む場合（トポロジーとトポロジ）にだけ使う。
+ * literal が覆う位置に現れた occurrence を通す。ファイル単位の免除は持たない。
+ * 文書単位で外せるようにすると、その文書だけ用語が戻ったことにだれも気付かなくなる。
  */
 
 export type TerminologyDocument = {
@@ -37,30 +37,10 @@ export type TerminologyRule = {
 
 export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
   { term: '配備', adopt: '「デプロイ」（行為）または「デプロイメント」（ビュー名）' },
-  {
-    term: '秘密',
-    adopt: '「シークレット」',
-    allow: [
-      { literal: '秘密鍵', reason: 'private key であってシークレットではない' },
-      {
-        literal: '秘密情報',
-        reason: '復号できる形で保持する機微データ。起動時シークレットとは別の概念',
-      },
-    ],
-  },
   { term: '実行時アーキテクチャ', adopt: '「ランタイムアーキテクチャ」' },
   { term: 'API 規則', adopt: '「API ガイドライン」' },
   { term: 'API規則', adopt: '「API ガイドライン」' },
   { term: '設計規則', adopt: '「設計ガイドライン」' },
-  {
-    term: '容量',
-    adopt: '「キャパシティ」',
-    allow: [
-      { literal: '保存容量', reason: 'ストレージの量であり capacity planning ではない' },
-      { literal: '空き容量', reason: 'ストレージの量であり capacity planning ではない' },
-      { literal: '容量超過', reason: 'ストレージの量が上限を超えることであり capacity ではない' },
-    ],
-  },
   { term: '観測可能性', adopt: '「オブザーバビリティ」' },
   { term: '基盤設計', adopt: '「プラットフォーム設計」' },
   {
@@ -78,100 +58,18 @@ export const TERMINOLOGY_RULES: readonly TerminologyRule[] = [
   { term: '機能要求', adopt: '「機能要件」' },
   { term: '品質要求', adopt: '「品質要件」' },
   { term: 'システム要求', adopt: '「システム要件」' },
-  { term: 'このディレクトリには', adopt: '「この文書は」' },
   { term: '話題の索引', adopt: '「設計領域の索引」' },
-  {
-    term: '本書',
-    adopt: '「この文書」',
-    allow: [{ literal: '「本書は」', reason: '採らない書き出しとして引用している' }],
-  },
   { term: '構成算出規則', adopt: '「サイジング計算式」' },
   { term: '縮退順序', adopt: '「ロードシェディング順序」' },
-  {
-    term: '訓練',
-    adopt:
-      '障害を起こして対処を確かめるなら「障害試験」、バックアップから戻して確かめるなら「復元試験」、人への教育なら「研修」。どれを指すかを決めて書く',
-  },
-  { term: 'ドリル', adopt: '障害を起こすなら「障害試験」、バックアップから戻すなら「復元試験」' },
-  {
-    term: '演習',
-    adopt:
-      '障害を起こすなら「障害試験」、バックアップから戻すなら「復元試験」、人への教育なら「研修」',
-  },
   { term: '参照トポロジー', adopt: '「共通トポロジー」' },
   { term: '参照プロファイル', adopt: '「デプロイプロファイル」' },
   { term: '既定', adopt: '「デフォルト」' },
   { term: 'コンピュート', adopt: '「コンピューティング」' },
-  {
-    term: '資材',
-    adopt: '「構成ファイル」。Kubernetes に限るなら「マニフェスト」',
-  },
   // 単独の「行」「列」は CSV、表、ログにも使う一般語なので規則にできない。
   // データベースの意味にしか読めない複合語だけを固定する。
   { term: '非キー列', adopt: '「非キーカラム」' },
-  {
-    term: '列型',
-    adopt: '「カラム型」',
-    allow: [{ literal: '配列型', reason: 'array 型であってカラムの型ではない' }],
-  },
   { term: 'ランブック', adopt: '「運用手順書」' },
-  {
-    term: 'runbook',
-    adopt: '「運用手順書」',
-    allow: [
-      { literal: 'runbooks/', reason: '運用手順書を置くディレクトリのパス' },
-      { literal: 'runbook_url', reason: 'Prometheus のアラートが持つアノテーション名' },
-    ],
-  },
-  { term: 'Runbook', adopt: '「運用手順書」' },
   { term: 'ドメイン設計文書', adopt: '「モジュール設計文書」' },
-  {
-    term: 'コンテキスト',
-    adopt: '設計と仕様の単位は「モジュール」',
-    allow: [
-      { literal: '認証コンテキスト', reason: '認証済み主体の情報であり、設計の単位ではない' },
-      {
-        literal: '境界づけられたコンテキスト',
-        reason: 'ドメイン駆動設計のモデルの適用範囲であり、実装の単位とは区別する',
-      },
-      { literal: '実行コンテキスト', reason: '処理の実行の文脈であり、設計の単位ではない' },
-      {
-        literal: 'リクエストコンテキスト',
-        reason: 'リクエストの情報を運ぶ文脈であり、設計の単位ではない',
-      },
-      { literal: 'セキュリティコンテキスト', reason: '認証規格の情報であり、設計の単位ではない' },
-      { literal: 'プラグインのコンテキスト', reason: 'ビルドプラグインの実行環境である' },
-      { literal: '`LocaleProvider` のコンテキスト', reason: 'React の Context である' },
-      { literal: 'ルーターのコンテキスト', reason: '描画に必要な React の Context である' },
-      { literal: 'アカウントコンテキスト', reason: 'ブラウザー初期化 API の情報である' },
-      { literal: 'パスワードリセットコンテキスト', reason: 'ブラウザー初期化 API の情報である' },
-      { literal: 'コンテキストが返る', reason: 'ブラウザー初期化 API の応答である' },
-      { literal: 'コンテキストの節約', reason: 'エージェントが読み込む情報量を指す' },
-      {
-        literal: 'システムコンテキスト図',
-        reason: 'C4 model の System Context のビューであり、設計の単位ではない',
-      },
-    ],
-  },
-  {
-    term: 'Context',
-    adopt: '設計と実装の単位は「モジュール」。DDD の用語なら「Bounded Context」',
-    allow: [
-      { literal: 'Bounded Context', reason: 'モデルと用語の適用範囲を表す DDD の概念である' },
-      { literal: 'Context Map', reason: 'モデル間の関係を表し、import の許可表とは区別する' },
-      { literal: 'context.Context', reason: 'Go の標準ライブラリの型であり、設計の単位ではない' },
-      { literal: 'System Context', reason: 'C4 model のビュー名であり、設計の単位ではない' },
-      { literal: 'C4Context', reason: 'Mermaid の C4 図のキーワードであり、設計の単位ではない' },
-      { literal: 'W3C Trace Context', reason: 'W3C の規格名であり、設計の単位ではない' },
-      { literal: 'AuthnContextClassRef', reason: 'SAML 2.0 の要素名であり、設計の単位ではない' },
-
-      // 標準要件の文面を変えると、振る舞いを固定する証拠が要る。語の差し替えだけでは
-      // その証拠を作れないので、その標準要件に触れる次の作業が改名する。
-      { literal: 'ApiTokens Context', reason: '標準要件 RFC7644-BEARER-AUTHORIZATION の文面' },
-      { literal: 'OAuth2 Context', reason: '標準要件 GDPR-CONSENT-WITHDRAWAL の文面' },
-      { literal: 'Audit Context', reason: '標準要件 GDPR-PROCESSING-RECORDS の文面' },
-    ],
-  },
 ]
 
 /** 用語を固定する文書のうち、リポジトリ root 直下にあるもの。 */

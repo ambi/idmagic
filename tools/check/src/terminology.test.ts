@@ -36,19 +36,6 @@ describe('用語検査', () => {
     ).toEqual([])
   })
 
-  // 共起で通すのは別概念に限る。private key は起動時シークレットではない。
-  it('残すと決めた共起は通し、同じ行の別概念は通さない', () => {
-    const findings = verifyTerminology([
-      {
-        file: 'docs/design/security/secrets.md',
-        source: '秘密鍵と秘密情報は残すが、秘密は残さない。\n',
-      },
-    ])
-
-    expect(findings.map((finding) => finding.column)).toEqual([14])
-    expect(findings).toHaveLength(1)
-  })
-
   // 「トポロジー」は「トポロジ」を含む。共起の許可が occurrence を覆う位置で
   // 判定されないと、採用した表記そのものが毎回落ちる。
   it('採用語が採らない表記を含む場合でも、採用語を落とさない', () => {
@@ -77,38 +64,30 @@ describe('用語検査', () => {
     expect(findings.map((finding) => finding.term)).toEqual(['参照トポロジー', '参照プロファイル'])
   })
 
-  it('既定、コンピュート、資材を、採用語へ寄せる', () => {
+  it('既定とコンピュートを、採用語へ寄せる', () => {
     const findings = verifyTerminology([
-      { file: 'docs/design/infrastructure/platform.md', source: '既定のコンピュートと資材。\n' },
+      { file: 'docs/design/infrastructure/platform.md', source: '既定のコンピュート。\n' },
     ])
 
-    expect(findings.map((finding) => finding.term)).toEqual(['既定', 'コンピュート', '資材'])
+    expect(findings.map((finding) => finding.term)).toEqual(['既定', 'コンピュート'])
   })
 
-  it('データベースのカラムを列と書いた複合語と、runbook を採用語へ寄せる', () => {
+  it('データベースのカラムを列と書いた複合語と、ランブックを採用語へ寄せる', () => {
     const findings = verifyTerminology([
-      {
-        file: 'docs/design/data/database.md',
-        source: '非キー列の列型は、ランブック、runbook、Runbook に書く。\n',
-      },
+      { file: 'docs/design/data/database.md', source: '非キー列は、ランブックに書く。\n' },
     ])
 
-    expect(findings.map((finding) => finding.term)).toEqual([
-      '非キー列',
-      '列型',
-      'ランブック',
-      'runbook',
-      'Runbook',
-    ])
+    expect(findings.map((finding) => finding.term)).toEqual(['非キー列', 'ランブック'])
   })
 
-  // 配列型は列型を含むが別概念であり、runbooks/ と runbook_url はパスとアノテーション名である。
-  it('配列型、運用手順書のパス、アノテーション名は通す', () => {
+  // 部分一致は文脈を読まない。一般語や別の語の一部になる語を規則に置くと、正当な用法が落ちる。
+  it('一般語と、別の語の一部になる語は指摘しない', () => {
     expect(
       verifyTerminology([
         {
           file: 'docs/design/observability/monitoring.md',
-          source: 'JSON の配列型。[手順](../../runbooks/async-jobs.md) を `runbook_url` に置く。\n',
+          source:
+            '秘密鍵と保存容量、文字列型。[手順](../../runbooks/async-jobs.md) と `BrowserContext`。\n',
         },
       ]),
     ).toEqual([])
@@ -130,7 +109,10 @@ describe('用語検査', () => {
   // してはならない。1 行に両方あるときだけ現れる誤りである。
   it('許可 literal の外にある同じ語を、位置で区別する', () => {
     const findings = verifyTerminology([
-      { file: 'docs/design/data/lifecycle.md', source: '容量は保存容量とは別である。\n' },
+      {
+        file: 'docs/design/architecture/deployment.md',
+        source: 'トポロジはトポロジーとは別である。\n',
+      },
     ])
 
     expect(findings.map((finding) => finding.column)).toEqual([1])
@@ -155,65 +137,15 @@ describe('用語検査', () => {
     }
   })
 
-  it('単独の Context を指摘し、モデルの境界と関係の正式な語は通す', () => {
-    const findings = verifyTerminology([
-      {
-        file: 'docs/modules/jobs/README.md',
-        source:
-          'この Context が提供する。Bounded Context と Context Map と Context 間。公開言語と Published Language。\n',
-      },
-    ])
-
-    expect(findings.map((finding) => finding.term)).toEqual(['Context', 'Context'])
-    expect(
-      verifyTerminology([
-        {
-          file: 'docs/design/application/design-guidelines.md',
-          source:
-            'Bounded Context と Context Map、Shared Kernel、公開言語と Published Language。\n',
-        },
-      ]),
-    ).toEqual([])
+  it('旧い文書区分を拒否する', () => {
     expect(
       verifyTerminology([
         {
           file: 'docs/formats/documentation-guide.md',
-          source: 'Go の `context.Context`、C4 の System Context、W3C Trace Context。\n',
-        },
-      ]),
-    ).toEqual([])
-    expect(
-      verifyTerminology([
-        {
-          file: 'docs/design/architecture/system-boundary.md',
-          source: 'C4 のシステムコンテキスト図を示す。\n\n```mermaid\nC4Context\n```\n',
-        },
-      ]),
-    ).toEqual([])
-  })
-
-  it('旧い文書区分と設計の階層名を拒否し、実行や認証の文脈は通す', () => {
-    expect(
-      verifyTerminology([
-        {
-          file: 'docs/formats/documentation-guide.md',
-          source: 'ドメイン設計文書とコンテキストの仕様。\n',
+          source: 'ドメイン設計文書の仕様。\n',
         },
       ]).map((finding) => finding.term),
-    ).toEqual(['ドメイン設計文書', 'コンテキスト'])
-    expect(
-      verifyTerminology([
-        {
-          file: 'docs/design/application/frontend.md',
-          source: 'モジュール設計。認証コンテキストと実行コンテキスト、リクエストコンテキスト。\n',
-        },
-        {
-          file: 'docs/modules/authentication/features/sign-in.feature.md',
-          source:
-            'アカウントコンテキストとパスワードリセットコンテキスト。CSRF トークンを含むコンテキストが返る。\n',
-        },
-      ]),
-    ).toEqual([])
+    ).toEqual(['ドメイン設計文書'])
   })
 
   it('副詞的な「実行時」ではなくビュー名だけを対象にする', () => {
@@ -263,27 +195,11 @@ describe('用語検査', () => {
     ).toEqual([])
   })
 
-  it('索引の文書の書き出しと、設計の索引の旧い名前を指摘する', () => {
+  it('設計の索引の旧い名前を指摘する', () => {
     const findings = verifyTerminology([
-      {
-        file: 'docs/design/README.md',
-        source: '# 設計\n\nこのディレクトリには、設計を置く。\n\n話題の索引を置く。\n',
-      },
+      { file: 'docs/design/README.md', source: '# 設計\n\n話題の索引を置く。\n' },
     ])
 
-    expect(findings.map((finding) => finding.term)).toEqual(['このディレクトリには', '話題の索引'])
-  })
-
-  it('ドメイン駆動設計の境界づけられたコンテキストは通し、単独のコンテキストは指摘する', () => {
-    const findings = verifyTerminology([
-      {
-        file: 'docs/design/application/design-guidelines.md',
-        source: '境界づけられたコンテキストからは導かない。各コンテキストの設計。\n',
-      },
-    ])
-
-    expect(findings.map((finding) => [finding.term, finding.column])).toEqual([
-      ['コンテキスト', 23],
-    ])
+    expect(findings.map((finding) => finding.term)).toEqual(['話題の索引'])
   })
 })

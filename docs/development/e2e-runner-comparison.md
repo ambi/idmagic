@@ -62,7 +62,7 @@ Bun.WebView にも操作前の自動待機がある。
 出典：[Bun.WebView のセレクターによるクリック](https://bun.com/docs/runtime/webview#clicking-by-selector)。
 
 Playwright は操作前の検査に加えて、条件成立まで再試行する assertion を用意している。
-Playwright Test にはテストごとに分離した `page` と Cookie やストレージ、環境の準備と破棄をまとめる fixture がある。
+Playwright Test にはテストごとの `page` と `BrowserContext`、環境の準備と破棄をまとめる fixture がある。
 このため、ブラウザーの状態分離と assertion の待機処理を共通基盤へ任せられる。
 出典：[操作前の待機と assertion](https://playwright.dev/docs/actionability)、[fixture](https://playwright.dev/docs/test-fixtures)、[状態の分離](https://playwright.dev/docs/browser-contexts)。
 
@@ -70,7 +70,7 @@ Playwright Test にはテストごとに分離した `page` と Cookie やスト
 現在のテスト基盤で同等の情報を残していない場合、再現できない失敗の原因を調べる手段が増える。
 出典：[Trace Viewer](https://playwright.dev/docs/trace-viewer)。
 
-ただし、Playwright がテストごとに分離するのはブラウザーの状態である。
+ただし、`BrowserContext` が分離するのはブラウザーの状態である。
 共有バックエンドのテナント、ユーザー、メール受信先、callback の状態は別に分離する必要がある。
 ブラウザーの分離だけを理由に既存テストを並列化しないという判断は、この区別から導かれる。
 

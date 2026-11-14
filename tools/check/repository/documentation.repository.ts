@@ -51,8 +51,7 @@ it('主要な開発文書に英語見出しを残さない', () => {
 
 /**
  * 「正準文書」と「正準 Markdown」は文書体系を指すときにしか現れないので、語形だけで
- * 判定できる。「正本」は所有者を指す一般名としても現れるため、文書体系そのものを
- * 主題とする文書と、リポジトリの道具立てに限って禁じる。
+ * 判定できる。「正本」は所有者を指す一般名としても現れるため、語形では判定せず規則に置かない。
  */
 const PRIMARY_SOURCE_VOCABULARY_ROOTS = [
   'docs/formats/documentation-guide.md',
@@ -69,33 +68,6 @@ const PRIMARY_SOURCE_VOCABULARY_ROOTS = [
 
 /** 生成物と依存を除いて、人が書いた原稿だけを読む。 */
 const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist', 'generated'])
-
-/**
- * version の表記を確かめる範囲。`docs/modules/` の規範シナリオと `backend/` は、
- * 仕様先行の手順を通す別の作業項目が扱う。
- */
-const VERSION_VOCABULARY_ROOTS = [
-  'AGENTS.md',
-  'CONTRIBUTING.md',
-  'SECURITY.md',
-  'docs/formats/specification-format.md',
-  'docs/formats/work-item-format.md',
-  'docs/design/architecture',
-  'docs/design',
-  'docs/development',
-  'docs/operations',
-  'docs/requirements',
-  'docs/runbooks',
-  'docs/design/verification',
-  'docs/README.md',
-  'docs/modules/glossary.md',
-  'docs/requirements/product-overview.md',
-  'docs/requirements/standards.md',
-  'docs/design/application/backend.md',
-  'infra/schema/README.md',
-  'frontend/src',
-  'tools',
-]
 
 /** 禁じる語を書かずに規則を述べられないので、この規則を宣言するファイル自身は除く。 */
 const RULE_DECLARATION = 'tools/check/repository/documentation.repository.ts'
@@ -121,21 +93,8 @@ function citations(paths: string[], pattern: RegExp): string[] {
   )
 }
 
-it('文書体系を指す語に「正本」と「正準文書」を使わない', () => {
+it('文書体系を指す語に「正準文書」を使わない', () => {
   const paths = PRIMARY_SOURCE_VOCABULARY_ROOTS.flatMap(prose)
 
-  expect(citations(paths, /正本|正準文書|正準 ?Markdown|正準 ?scope/)).toEqual([])
-})
-
-/**
- * 定着したカタカナ語を一般的な日本語へ言い換えると、読み手はそれを技術用語として
- * 認識できない。`docs/formats/documentation-guide.md` が version の表記を定めているので、規則を
- * 述べる同文書だけを除いて語形で確かめる。`docs/modules/` と `backend/` は
- * 別の作業項目が扱う。
- */
-it('version を「版」と書かない', () => {
-  const paths = VERSION_VOCABULARY_ROOTS.flatMap(prose)
-
-  // revision の訳語である「第 N 版」は version の表記ではない。
-  expect(citations(paths, /(?<!\{revision\})版/)).toEqual([])
+  expect(citations(paths, /正準文書|正準 ?Markdown|正準 ?scope/)).toEqual([])
 })
