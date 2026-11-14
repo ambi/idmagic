@@ -1181,19 +1181,19 @@ func (q *Queries) RetryDeadLetterProvisioningTask(ctx context.Context, arg Retry
 	return result.RowsAffected(), nil
 }
 
-const suspendProvisioningTaskForQuarantine = `-- name: SuspendProvisioningTaskForQuarantine :execrows
+const suspendProvisioningTask = `-- name: SuspendProvisioningTask :execrows
 UPDATE provisioning_tasks SET status='pending',updated_at=now()
 WHERE tenant_id=$1 AND id=$2 AND job_id=$3 AND status='in_flight'
 `
 
-type SuspendProvisioningTaskForQuarantineParams struct {
+type SuspendProvisioningTaskParams struct {
 	TenantID string
 	ID       string
 	JobID    pgtype.UUID
 }
 
-func (q *Queries) SuspendProvisioningTaskForQuarantine(ctx context.Context, arg SuspendProvisioningTaskForQuarantineParams) (int64, error) {
-	result, err := q.db.Exec(ctx, suspendProvisioningTaskForQuarantine, arg.TenantID, arg.ID, arg.JobID)
+func (q *Queries) SuspendProvisioningTask(ctx context.Context, arg SuspendProvisioningTaskParams) (int64, error) {
+	result, err := q.db.Exec(ctx, suspendProvisioningTask, arg.TenantID, arg.ID, arg.JobID)
 	if err != nil {
 		return 0, err
 	}

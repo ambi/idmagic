@@ -226,6 +226,11 @@ type ProvisioningConnection struct {
 	UpdatedAt                         time.Time                                `json:"updated_at"`
 }
 
+// CanProvision は、管理者の有効化と下流の健全性の両方が処理を許すかを返す。
+func (c ProvisioningConnection) CanProvision() bool {
+	return c.Status == ConnectionActive && c.Health != HealthQuarantined
+}
+
 func (c ProvisioningConnection) Validate() error {
 	if c.ApplicationID == "" || c.TenantID == "" || c.BaseURL == "" {
 		return errors.New("provisioning: connection application_id, tenant_id and base_url are required")

@@ -17,11 +17,11 @@ type quarantineTaskRepository struct {
 	resyncs      int
 }
 
-func (r *quarantineTaskRepository) SuspendForQuarantine(ctx context.Context, tenantID, taskID, jobID string) (bool, error) {
+func (r *quarantineTaskRepository) Suspend(ctx context.Context, tenantID, taskID, jobID string) (bool, error) {
 	if r.suspendError != nil {
 		return false, r.suspendError
 	}
-	return r.ProvisioningTaskRepository.SuspendForQuarantine(ctx, tenantID, taskID, jobID)
+	return r.ProvisioningTaskRepository.Suspend(ctx, tenantID, taskID, jobID)
 }
 
 func (r *quarantineTaskRepository) SaveFullResync(ctx context.Context, resync *domain.FullResync) error {

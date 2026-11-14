@@ -32,6 +32,8 @@ var ErrConnectionNotFound = errors.New("provisioning: connection not found")
 
 var ErrConnectionQuarantined = errors.New("provisioning: connection is quarantined")
 
+var ErrConnectionDisabled = errors.New("provisioning: connection is disabled")
+
 // ExecuteTask performs one ProvisioningTask's downstream operation and
 // updates RemoteResourceLink/ProvisioningTask on success. On success it
 // returns the ProvisioningTaskLifecycle event of the in_flight → succeeded
@@ -62,8 +64,11 @@ func ExecuteTask(ctx context.Context, deps ExecuteTaskDeps, tenantID, taskID str
 	if conn == nil {
 		return nil, ErrConnectionNotFound
 	}
-	if conn.Health == domain.HealthQuarantined {
-		return nil, ErrConnectionQuarantined
+	if !conn.CanProvision() {
+		if conn.Health == domain.HealthQuarantined {
+			return nil, ErrConnectionQuarantined
+		}
+		return nil, ErrConnectionDisabled
 	}
 	secret, err := deps.ConnectionRepo.CredentialSecret(ctx, tenantID, conn.ApplicationID)
 	if err != nil {

@@ -345,7 +345,7 @@ func (r *ProvisioningTaskRepository) AttachJob(_ context.Context, tenantID, task
 	return true, nil
 }
 
-func (r *ProvisioningTaskRepository) SuspendForQuarantine(_ context.Context, tenantID, taskID, jobID string) (bool, error) {
+func (r *ProvisioningTaskRepository) Suspend(_ context.Context, tenantID, taskID, jobID string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	d := r.tasks[taskKey(tenantID, taskID)]

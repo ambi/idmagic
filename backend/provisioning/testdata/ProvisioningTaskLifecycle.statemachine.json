@@ -71,6 +71,13 @@
       "guard": "—",
       "to": "pending",
       "effects": ""
+    },
+    {
+      "from": "in_flight",
+      "event": "無効化による保留",
+      "guard": "—",
+      "to": "pending",
+      "effects": "前の job_id を保持する"
     }
   ],
   "operations": [
@@ -78,7 +85,8 @@
     "試行の成功",
     "試行の失敗",
     "管理者による再試行",
-    "隔離による保留"
+    "隔離による保留",
+    "無効化による保留"
   ],
   "matrix": {
     "pending": {
@@ -86,7 +94,7 @@
         {
           "kind": "transition",
           "to": "in_flight",
-          "condition": "隔離中は何もしない"
+          "condition": "隔離中または無効なら何もしない"
         }
       ],
       "試行の成功": [
@@ -106,6 +114,11 @@
         }
       ],
       "隔離による保留": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "無効化による保留": [
         {
           "kind": "noop"
         }
@@ -145,6 +158,12 @@
           "kind": "transition",
           "to": "pending"
         }
+      ],
+      "無効化による保留": [
+        {
+          "kind": "transition",
+          "to": "pending"
+        }
       ]
     },
     "succeeded": {
@@ -173,6 +192,11 @@
         {
           "kind": "noop"
         }
+      ],
+      "無効化による保留": [
+        {
+          "kind": "noop"
+        }
       ]
     },
     "dead_letter": {
@@ -198,6 +222,11 @@
         }
       ],
       "隔離による保留": [
+        {
+          "kind": "noop"
+        }
+      ],
+      "無効化による保留": [
         {
           "kind": "noop"
         }

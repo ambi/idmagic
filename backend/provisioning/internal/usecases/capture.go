@@ -75,7 +75,7 @@ func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID strin
 				return err
 			}
 		}
-		if conn.Status != domain.ConnectionActive || conn.Health == domain.HealthQuarantined {
+		if !conn.CanProvision() {
 			continue
 		}
 		if isAssignmentTrigger(trigger) && conn.ApplicationID != applicationID {

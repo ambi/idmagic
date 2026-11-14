@@ -114,3 +114,37 @@ SCIM 以外のプロトコルを加えても、`ProvisioningTargetClient` の実
 | --- | --- |
 | REQ-PROVISIONING-019 | [同期](features/synchronization.md) |
 | REQ-PROVISIONING-007 | [プロビジョニングタスクの実行](features/task.md) |
+
+## 無効化を未完了タスクの一時停止として扱う
+
+### 背景
+
+保守や接続先の都合による無効化には、後で再有効化する使い方がある。
+[Microsoft Entra](https://learn.microsoft.com/en-us/entra/identity/app-provisioning/configure-automatic-user-provisioning-portal) は停止後に続きから再開し、[PingFederate](https://docs.pingidentity.com/pingfederate/13.0/administrators_reference_guide/help_saaschanneltasklet_saasactivationstate.html) もチャネルの無効化をプロビジョニングの一時停止として扱う。
+これらの資料は内部の同一タスクレコードを保持することまでは保証しないが、停止と削除を区別する参考になる。
+
+### 決定
+
+無効化前の未完了タスクは、隔離した接続のタスクと同様に保持する。
+ディスパッチャーは無効な接続を飛ばし、既に投入したジョブも実行開始時に接続を読み直す。
+無効または隔離を観測したタスクは前の job_id を持つ pending へ戻し、有効かつ非隔離へ戻った後に新しいジョブで再開する。
+停止を成功や失敗として数えず、古いジョブを再実行しても送信しない。
+
+### 検討した代替案
+
+| 案 | 利点 | 欠点 | 採らない理由 |
+| --- | --- | --- | --- |
+| 無効化時に取り消し、再開後に同期で作り直す | 古いキューを残さず再計画できる | 差分から再構築できない操作を失うおそれがあり、取消状態と回収の設計が増える | 未反映の作業を失わず、既存の隔離からの再開規則を利用できる保持を選ぶ |
+
+### 結果と再検討の条件
+
+長期停止でタスクが滞留し、再開時に処理が集中する可能性は残る。
+既に送信を開始した外部リクエストの取り消しは保証しない。
+停止期間に応じて作業を破棄する運用が必要になった場合は、保持期限と回収できる操作を定めて見直す。
+
+### 関連する要件
+
+| 要件 | 機能仕様 |
+| --- | --- |
+| REQ-PROVISIONING-017 | [同期](features/synchronization.md) |
+| REQ-PROVISIONING-020 | [プロビジョニングタスクの実行](features/task.md) |

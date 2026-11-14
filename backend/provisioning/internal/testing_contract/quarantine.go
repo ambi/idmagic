@@ -48,14 +48,14 @@ func runQuarantineTasks(t *testing.T, f Fixture) {
 	for _, input := range []struct{ tenant, task, job string }{
 		{f.TenantB, ids[0], jobID}, {f.TenantA, ids[0], otherJobID}, {f.TenantA, ids[1], jobID},
 	} {
-		if changed, err := f.Tasks.SuspendForQuarantine(ctx, input.tenant, input.task, input.job); err != nil || changed {
+		if changed, err := f.Tasks.Suspend(ctx, input.tenant, input.task, input.job); err != nil || changed {
 			t.Fatalf("unmatched suspend=%v error=%v; want no change", changed, err)
 		}
 	}
-	if changed, err := f.Tasks.SuspendForQuarantine(ctx, f.TenantA, ids[0], jobID); err != nil || !changed {
+	if changed, err := f.Tasks.Suspend(ctx, f.TenantA, ids[0], jobID); err != nil || !changed {
 		t.Fatalf("suspend=%v error=%v; want saved pending", changed, err)
 	}
-	if changed, err := f.Tasks.SuspendForQuarantine(ctx, f.TenantA, ids[0], jobID); err != nil || changed {
+	if changed, err := f.Tasks.Suspend(ctx, f.TenantA, ids[0], jobID); err != nil || changed {
 		t.Fatalf("repeated suspend=%v error=%v; want no change", changed, err)
 	}
 	stored, err := f.Tasks.Find(ctx, f.TenantA, ids[0])
@@ -94,7 +94,7 @@ func runQuarantineTasks(t *testing.T, f Fixture) {
 	if changed, err := f.Tasks.AttachJob(ctx, f.TenantA, ids[0], otherJobID, &jobID); err != nil || !changed {
 		t.Fatalf("reattach=%v error=%v", changed, err)
 	}
-	if changed, err := f.Tasks.SuspendForQuarantine(ctx, f.TenantA, ids[0], jobID); err != nil || changed {
+	if changed, err := f.Tasks.Suspend(ctx, f.TenantA, ids[0], jobID); err != nil || changed {
 		t.Fatalf("stale job suspended new dispatch: changed=%v error=%v", changed, err)
 	}
 	stored, err = f.Tasks.Find(ctx, f.TenantA, ids[0])

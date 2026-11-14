@@ -66,7 +66,7 @@ type provisioningTaskParams struct {
 // health, not one User's missing attribute.
 //
 // プロビジョニングタスクを succeeded または dead_letter として保存した後、それが属するフル同期の完了を判定する。
-// 隔離中はタスクを pending に戻してからジョブだけを完了し、成功と失敗の記録を行わない。
+// 隔離中または無効ならタスクを pending に戻してからジョブだけを完了し、成功と失敗の記録を行わない。
 // 保留済みか別のジョブへ関連付けたタスクの古いジョブは、保存も送信も行わず終了する。
 func ProvisioningTaskHandler(deps JobHandlerDeps) jobsports.Handler {
 	now := deps.Now
@@ -86,8 +86,8 @@ func ProvisioningTaskHandler(deps JobHandlerDeps) jobsports.Handler {
 			return nil, nil
 		}
 		event, execErr := ExecuteTask(ctx, deps.ExecuteTaskDeps, job.TenantID, params.TaskID, now())
-		if errors.Is(execErr, ErrConnectionQuarantined) {
-			_, err := deps.TaskRepo.SuspendForQuarantine(ctx, job.TenantID, params.TaskID, job.ID)
+		if errors.Is(execErr, ErrConnectionQuarantined) || errors.Is(execErr, ErrConnectionDisabled) {
+			_, err := deps.TaskRepo.Suspend(ctx, job.TenantID, params.TaskID, job.ID)
 			return nil, err
 		}
 		if execErr == nil {

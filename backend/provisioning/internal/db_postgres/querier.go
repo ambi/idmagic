@@ -46,7 +46,7 @@ type Querier interface {
 	// 結果は遷移した予約の件数（0 または 1）である。
 	MaterializeProvisioningScheduledDeprovision(ctx context.Context, arg MaterializeProvisioningScheduledDeprovisionParams) (int64, error)
 	RetryDeadLetterProvisioningTask(ctx context.Context, arg RetryDeadLetterProvisioningTaskParams) (int64, error)
-	SuspendProvisioningTaskForQuarantine(ctx context.Context, arg SuspendProvisioningTaskForQuarantineParams) (int64, error)
+	SuspendProvisioningTask(ctx context.Context, arg SuspendProvisioningTaskParams) (int64, error)
 	TallyProvisioningFullResync(ctx context.Context, arg TallyProvisioningFullResyncParams) (*TallyProvisioningFullResyncRow, error)
 	UpdateProvisioningConnection(ctx context.Context, arg UpdateProvisioningConnectionParams) error
 	UpdateProvisioningConnectionWithSecret(ctx context.Context, arg UpdateProvisioningConnectionWithSecretParams) error

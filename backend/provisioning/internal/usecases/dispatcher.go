@@ -24,9 +24,9 @@ type DispatcherDeps struct {
 	Emit func(spec.DomainEvent)
 }
 
-// DispatchPendingTasks は隔離されていない接続の pending を上限までジョブへ関連付ける。
+// DispatchPendingTasks は有効かつ隔離されていない接続の pending を上限までジョブへ関連付ける。
 // 関連付けは pending と走査時の job_id の一致を条件にし、成功した worker だけが
-// ProvisioningTaskStarted を発行する。隔離中のタスクはページを進めて読み飛ばす。
+// ProvisioningTaskStarted を発行する。隔離中または無効の接続のタスクはページを進めて読み飛ばす。
 //
 // 関連付けの前に、now の時点で期限に達した ScheduledDeprovision を pending の delete
 // プロビジョニングタスクへ変える。猶予期間つきの削除も、ほかのプロビジョニングタスクと同じ経路で下流へ届く。
@@ -50,7 +50,7 @@ func DispatchPendingTasks(ctx context.Context, deps DispatcherDeps, limit int, n
 			if err != nil {
 				return dispatched, err
 			}
-			if conn == nil || conn.Health == domain.HealthQuarantined {
+			if conn == nil || !conn.CanProvision() {
 				continue
 			}
 			dedupKey := d.IdempotencyKey()

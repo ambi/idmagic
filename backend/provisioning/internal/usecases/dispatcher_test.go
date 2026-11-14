@@ -92,7 +92,7 @@ func TestDispatchPendingTasks_DelayedAttachDoesNotReviveSuspendedJob(t *testing.
 		if changed, err := tasks.AttachJob(ctx, testTenantID, "held", "job-1", nil); err != nil || !changed {
 			t.Fatalf("first attach=%v error=%v", changed, err)
 		}
-		if changed, err := tasks.SuspendForQuarantine(ctx, testTenantID, "held", "job-1"); err != nil || !changed {
+		if changed, err := tasks.Suspend(ctx, testTenantID, "held", "job-1"); err != nil || !changed {
 			t.Fatalf("suspend=%v error=%v", changed, err)
 		}
 	}}

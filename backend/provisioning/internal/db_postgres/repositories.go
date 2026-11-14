@@ -652,8 +652,8 @@ func (r *ProvisioningTaskRepository) UpdateStatus(ctx context.Context, tenantID,
 	})
 }
 
-func (r *ProvisioningTaskRepository) SuspendForQuarantine(ctx context.Context, tenantID, taskID, jobID string) (bool, error) {
-	affected, err := New(r.Pool).SuspendProvisioningTaskForQuarantine(ctx, SuspendProvisioningTaskForQuarantineParams{
+func (r *ProvisioningTaskRepository) Suspend(ctx context.Context, tenantID, taskID, jobID string) (bool, error) {
+	affected, err := New(r.Pool).SuspendProvisioningTask(ctx, SuspendProvisioningTaskParams{
 		TenantID: tenantID, ID: taskID, JobID: pgUUIDVal(jobID),
 	})
 	return affected == 1, err

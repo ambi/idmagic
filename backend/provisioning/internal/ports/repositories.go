@@ -69,14 +69,14 @@ type ProvisioningTaskRepository interface {
 	ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningTask, error)
 	ListPageBeforeByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningTask, error)
 	// ListUnenqueued は pending のタスクを (created_at, id) の昇順で、カーソルより後から返す。
-	// 隔離による保留では前の job_id を持つため、job_id の有無では絞らない。
+	// 隔離または無効化による保留では前の job_id を持つため、job_id の有無では絞らない。
 	ListUnenqueued(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningTask, error)
 	// AttachJob は pending のタスクを新しいジョブへ関連付けて in_flight にする。
 	// 前のジョブを持つ保留も対象とし、pending かつ走査時の previousJobID に一致するときだけ更新する。
 	AttachJob(ctx context.Context, tenantID, taskID, jobID string, previousJobID *string) (attached bool, err error)
-	// SuspendForQuarantine は一致するジョブで実行中のタスクだけを pending に戻す。
+	// Suspend は接続の隔離または無効化により、一致するジョブで実行中のタスクだけを pending に戻す。
 	// 再投入の重複排除に使う前の job_id と last_error は保持する。
-	SuspendForQuarantine(ctx context.Context, tenantID, taskID, jobID string) (bool, error)
+	Suspend(ctx context.Context, tenantID, taskID, jobID string) (bool, error)
 	// UpdateStatus transitions a task's status and records the last error
 	// (nil clears it). Callers are responsible for using a
 	// domain.TransitionProvisioningTaskLifecycle-valid target status.

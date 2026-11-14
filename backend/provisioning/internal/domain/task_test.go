@@ -13,6 +13,14 @@ func TestProvisioningTaskLifecycle_QuarantineReturnsPending(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-PROVISIONING-020: 無効化による保留は実行中のタスクを pending に戻す遷移である。
+func TestProvisioningTaskLifecycle_DisabledReturnsPending(t *testing.T) {
+	status, err := TransitionProvisioningTaskLifecycle(TaskInFlight, EventTaskDisabled)
+	if err != nil || status != TaskPending {
+		t.Fatalf("disabled transition=%s error=%v; want pending", status, err)
+	}
+}
+
 // allTaskStatuses and allTaskEvents enumerate the ProvisioningTaskLifecycle
 // alphabet (docs/modules/provisioning/ states.ProvisioningTaskLifecycle) so the
 // invariant tests below can exhaustively check every (status, event) pair, mirroring
@@ -27,6 +35,8 @@ var (
 		EventUserDeprovisioned,
 		EventGroupPushed,
 		EventUserProvisioningFailed,
+		EventTaskQuarantined,
+		EventTaskDisabled,
 	}
 )
 

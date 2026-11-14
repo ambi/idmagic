@@ -5,6 +5,29 @@ import (
 	"time"
 )
 
+//spec:covers REQ-PROVISIONING-020: 有効かつ非隔離の接続だけが処理を許し、再有効化だけで隔離を解除しない。
+func TestConnectionCanProvisionRequiresActiveAndNotQuarantined(t *testing.T) {
+	for _, tt := range []struct {
+		status ProvisioningConnectionStatus
+		health ProvisioningHealth
+		want   bool
+	}{
+		{ConnectionActive, HealthOK, true},
+		{ConnectionActive, HealthDegraded, true},
+		{ConnectionActive, HealthQuarantined, false},
+		{ConnectionDisabled, HealthOK, false},
+		{ConnectionDisabled, HealthDegraded, false},
+		{ConnectionDisabled, HealthQuarantined, false},
+	} {
+		t.Run(string(tt.status)+"/"+string(tt.health), func(t *testing.T) {
+			conn := ProvisioningConnection{Status: tt.status, Health: tt.health}
+			if got := conn.CanProvision(); got != tt.want {
+				t.Fatalf("CanProvision=%v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestValidateOutboundBaseURL_RequiresHTTPS(t *testing.T) {
 	if err := ValidateOutboundBaseURL("http://downstream.example.com/scim/v2"); err == nil {
 		t.Error("ValidateOutboundBaseURL() should reject non-https base_url")

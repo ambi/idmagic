@@ -77,6 +77,7 @@ const (
 	EventGroupPushed             ProvisioningTaskLifecycleEvent = "GroupPushed"
 	EventUserProvisioningFailed  ProvisioningTaskLifecycleEvent = "UserProvisioningFailed"
 	EventTaskQuarantined         ProvisioningTaskLifecycleEvent = "隔離による保留"
+	EventTaskDisabled            ProvisioningTaskLifecycleEvent = "無効化による保留"
 )
 
 type provisioningTaskTransition struct {
@@ -94,6 +95,7 @@ var provisioningTaskTransitions = []provisioningTaskTransition{
 	{TaskInFlight, EventGroupPushed, TaskSucceeded},
 	{TaskInFlight, EventUserProvisioningFailed, TaskDeadLetter},
 	{TaskInFlight, EventTaskQuarantined, TaskPending},
+	{TaskInFlight, EventTaskDisabled, TaskPending},
 }
 
 // TransitionProvisioningTaskLifecycle applies event to from and returns the

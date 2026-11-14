@@ -132,7 +132,7 @@ UPDATE provisioning_tasks SET job_id=$3,status='in_flight',updated_at=now()
 WHERE tenant_id=$1 AND id=$2 AND status='pending'
   AND job_id IS NOT DISTINCT FROM sqlc.narg(previous_job_id)::uuid;
 
--- name: SuspendProvisioningTaskForQuarantine :execrows
+-- name: SuspendProvisioningTask :execrows
 UPDATE provisioning_tasks SET status='pending',updated_at=now()
 WHERE tenant_id=$1 AND id=$2 AND job_id=$3 AND status='in_flight';
 

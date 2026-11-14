@@ -46,7 +46,7 @@ func ReconcileConnections(ctx context.Context, deps ReconcileDeps, limit int, no
 			continue
 		}
 		for _, conn := range connections {
-			if conn.Status != domain.ConnectionActive || conn.Health == domain.HealthQuarantined {
+			if !conn.CanProvision() {
 				continue
 			}
 			n, err := reconcileConnection(ctx, deps, *conn, limit, now)
