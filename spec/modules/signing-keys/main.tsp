@@ -194,7 +194,7 @@ model DisableTenantKeyError503 {
   @body body: DisableTenantKeyError503Body;
 }
 
-@doc("テナントの管理者が、ローテーション後の重複期間内にある有効でない署名鍵を、kid で一つ即座に退役させる。鍵は JWKS から外れ、その鍵で署名済みのトークンは検証できなくなる。現在の署名鍵はこの方法では退役させられない。")
+@doc("テナントの管理者が、有効でない署名鍵を kid で一つ Archived にし、鍵素材を保持して公開から除き、SigningKeyDisabled を発行する。アーカイブ済みの鍵への再要求は 200 と鍵を返し、状態もイベントも増やさない。現在の署名鍵の無効化は拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:write"])
 @TypeSpec.OpenAPI.operationId("DisableTenantKey")
 @route("/api/admin/v1/keys/{kid}/disable")

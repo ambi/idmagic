@@ -243,7 +243,7 @@ IdMagic の API プロセスと Connector は平文をメモリで扱う信頼�
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-073 | Tampering | 入力が問い合わせの構造として解釈される | 全モジュール | docs/design/data/database.md: ポートとアダプター | `covered` |
-| THREAT-074 | Repudiation | 状態は変わったのに、対応する監査イベントが残らない | Audit | — | `planned` |
+| THREAT-074 | Repudiation | 状態は変わったのに、対応する監査イベントが残らない | Audit, SigningKeys | REQ-SIGNINGKEYS-010（署名鍵の無効化の発行）、REQ-AUDIT-008（追記失敗の検知）。保存と配信の間の停止による欠落は残る | `planned` |
 | THREAT-075 | Tampering | 再試行と再取得によって副作用が重複して起きる | Jobs | REQ-JOBS-003、REQ-JOBS-004、REQ-JOBS-007 | `covered` |
 | THREAT-076 | Denial of service | 有効期限を過ぎた一時データの滞留が保存容量を圧迫する | Jobs, OAuth2, Authentication | design/reliability/availability.md: 共有状態 | `covered` |
 

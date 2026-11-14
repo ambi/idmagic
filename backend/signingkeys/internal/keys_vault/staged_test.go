@@ -124,6 +124,36 @@ type failingStateStore struct {
 	fail bool
 }
 
+//spec:covers REQ-SIGNINGKEYS-010: Vault の鍵とバージョンを残し、メモリと PostgreSQL の状態保存先で無効化の契約を満たす。
+func TestVaultDisableKeyContract(t *testing.T) {
+	t.Run("memory state", func(t *testing.T) {
+		contract.RunDisable(t, func(t *testing.T) contract.Fixture {
+			t.Helper()
+			return contract.Fixture{Store: adaptercrypto.NewVaultKeyStore(newFakeTransit(), "idmagic-signing-"), Context: tenantCtx()}
+		})
+	})
+	t.Run("postgres state", func(t *testing.T) {
+		contract.RunDisable(t, func(t *testing.T) contract.Fixture {
+			t.Helper()
+			db := pgtest.Require(t)
+			now := pgtest.Now()
+			id := uuid.NewV4().String()
+			tenant := &tenancydomain.Tenant{ID: id, Realm: "disable-" + id, DisplayName: "Contract", Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now}
+			if err := tenancy.NewPostgresModule(db).TenantRepo.Save(context.Background(), tenant); err != nil {
+				t.Fatal(err)
+			}
+			other := *tenant
+			other.ID = uuid.NewV4().String()
+			other.Realm = "disable-" + other.ID
+			if err := tenancy.NewPostgresModule(db).TenantRepo.Save(context.Background(), &other); err != nil {
+				t.Fatal(err)
+			}
+			store := adaptercrypto.NewVaultKeyStoreWithState(newFakeTransit(), "idmagic-signing-", signingpostgres.VaultKeyStateStore{Pool: db})
+			return contract.Fixture{Store: store, Context: tenantports.WithTenant(context.Background(), tenant, "", ""), OtherTenantID: other.ID}
+		})
+	})
+}
+
 func (s *failingStateStore) Update(ctx context.Context, update func(*adaptercrypto.KeySetState) error) error {
 	return s.KeyStateStore.Update(ctx, func(state *adaptercrypto.KeySetState) error {
 		if err := update(state); err != nil {

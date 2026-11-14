@@ -17,6 +17,11 @@ func TestKeyScopesContract(t *testing.T) {
 	contract.RunKeyScopes(t, memoryFixture)
 }
 
+//spec:covers REQ-SIGNINGKEYS-010: 無効化しても鍵素材を保持し、公開から外し、有効な鍵と境界を保つ。
+func TestDisableKeyContract(t *testing.T) {
+	contract.RunDisable(t, memoryFixture)
+}
+
 func memoryFixture(t *testing.T) contract.Fixture {
 	t.Helper()
 	store, err := keys_memory.NewInMemoryKeyStore()

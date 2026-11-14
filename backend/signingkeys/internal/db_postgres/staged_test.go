@@ -58,3 +58,17 @@ func newContractTenant(t *testing.T, db postgres.DB) context.Context {
 	}
 	return tenantports.WithTenant(context.Background(), tenant, "", "")
 }
+
+//spec:covers REQ-SIGNINGKEYS-010: PostgreSQL の無効化は鍵素材とアーカイブ時刻を保持し、公開から外す。
+func TestDisableKeyContract(t *testing.T) {
+	contract.RunDisable(t, func(t *testing.T) contract.Fixture {
+		t.Helper()
+		db := pgtest.Require(t)
+		ctx := newContractTenant(t, db)
+		store, err := NewKeyStore(ctx, db)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return contract.Fixture{Store: store, Context: ctx, OtherTenantID: tenantports.TenantID(newContractTenant(t, db))}
+	})
+}

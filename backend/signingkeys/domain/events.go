@@ -32,3 +32,12 @@ type SigningKeyArchived struct {
 
 func (e *SigningKeyArchived) EventType() string     { return "SigningKeyArchived" }
 func (e *SigningKeyArchived) OccurredAt() time.Time { return e.At }
+
+type SigningKeyDisabled struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	Kid      string    `json:"kid"`
+}
+
+func (e *SigningKeyDisabled) EventType() string     { return "SigningKeyDisabled" }
+func (e *SigningKeyDisabled) OccurredAt() time.Time { return e.At }

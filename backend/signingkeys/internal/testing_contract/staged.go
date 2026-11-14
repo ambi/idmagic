@@ -19,8 +19,9 @@ type (
 		signingports.FederationKeyStore
 	}
 	Fixture struct {
-		Store   StagedStore
-		Context context.Context
+		Store         StagedStore
+		Context       context.Context
+		OtherTenantID string
 	}
 )
 
@@ -136,7 +137,7 @@ func Run(t *testing.T, newFixture func(*testing.T) Fixture) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if disabled, err := f.Store.Disable(ctx, second.Next.Kid); err != nil || disabled == nil || disabled.Prepared {
+	if disabled, _, err := f.Store.Disable(ctx, second.Next.Kid); err != nil || disabled == nil || disabled.Prepared {
 		t.Fatalf("disabled candidate is still prepared: %v %+v", err, disabled)
 	}
 	if _, err := f.Store.Activate(ctx, second.Next.Kid, before, time.Hour); !errors.Is(err, signingdomain.ErrKeyNotPrepared) {

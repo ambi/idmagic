@@ -81,7 +81,7 @@ func TestInMemoryKeyStoreDisableOnEmptyTenantIsNoOp(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := tenantCtx("tenant-a")
-	disabled, err := ks.Disable(ctx, "no-such-kid")
+	disabled, _, err := ks.Disable(ctx, "no-such-kid")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

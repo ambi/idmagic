@@ -150,8 +150,9 @@ func (s *VaultKeyStore) changeXML(ctx context.Context, action, kid string, now t
 	return result, err
 }
 
-func (s *VaultKeyStore) disableXML(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
+func (s *VaultKeyStore) disableXML(ctx context.Context, kid string) (*signingdomain.SigningKey, bool, error) {
 	var disabled *signingdomain.SigningKey
+	changed := false
 	err := s.states.Update(ctx, func(state *KeySetState) error {
 		for i := range state.Records {
 			key := &state.Records[i].Key
@@ -161,15 +162,21 @@ func (s *VaultKeyStore) disableXML(ctx context.Context, kid string) (*signingdom
 			if key.Active {
 				return signingdomain.ErrActiveSigningKeyCannotBeDisabled
 			}
-			now := time.Now().UTC()
-			key.Prepared = false
-			key.ArchivedAt = &now
+			if key.ArchivedAt == nil {
+				now := time.Now().UTC()
+				key.Prepared = false
+				key.ArchivedAt = &now
+				changed = true
+			}
 			snapshot := *key
 			disabled = &snapshot
 		}
 		return nil
 	})
-	return disabled, err
+	if err != nil {
+		return nil, false, err
+	}
+	return disabled, changed, nil
 }
 
 func (s *VaultKeyStore) archiveXML(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {

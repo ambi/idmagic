@@ -40,7 +40,9 @@ SAML 専用プロファイルのスコープでは、即時のローテーショ
 
 ### SigningKeyLifecycle
 
-署名鍵は `Active` からローテーションによって `Verifying` へ遷移し、公開の重複期間を過ぎると JWKS から外れて `Retired` になり、アーカイブの実行で `Archived` に移る。管理者が検証用の鍵を無効化すると、その鍵は直ちに `Archived` になる。遷移の表の `SigningKeyRetired` と無効化は遷移の契機の名前であり、ドメインイベントとしては発行しない。
+署名鍵は `Active` からローテーションによって `Verifying` へ遷移し、公開の重複期間を過ぎると JWKS から外れて `Retired` になり、アーカイブの実行で `Archived` に移る。
+管理者が検証用または準備済みの鍵を無効化すると、その鍵は直ちに `Archived` になり、`SigningKeyDisabled` を発行する。
+遷移の表の `SigningKeyRetired` は時刻による判定の名前であり、ドメインイベントとしては発行しない。
 
 <!-- spec:state-machine backend/signingkeys/domain/testdata/SigningKeyLifecycle.statemachine.json -->
 
@@ -56,11 +58,11 @@ SAML 専用プロファイルのスコープでは、即時のローテーショ
 | --- | --- | --- | --- | --- |
 | Active | SigningKeyRotated | — | Verifying |  |
 | Prepared | SigningKeyRotated | 管理者が信頼の更新を確認した | Active |  |
-| Prepared | 管理者による無効化 | — | Archived |  |
+| Prepared | 管理者による無効化 | — | Archived | SigningKeyDisabled を発行し、鍵素材を保持する |
 | Verifying | SigningKeyRetired | `expires_at` を過ぎた | Retired |  |
 | Retired | SigningKeyArchived | — | Archived |  |
-| Verifying | 管理者による無効化 | — | Archived |  |
-| Retired | 管理者による無効化 | — | Archived |  |
+| Verifying | 管理者による無効化 | — | Archived | SigningKeyDisabled を発行し、鍵素材を保持する |
+| Retired | 管理者による無効化 | — | Archived | SigningKeyDisabled を発行し、鍵素材を保持する |
 
 | State | ローテーション | 検証用の鍵の無効化 | 重複期間の経過 | アーカイブの実行 | 確認付きの有効化 |
 | --- | --- | --- | --- | --- | --- |
@@ -116,11 +118,13 @@ SAML 専用プロファイルのスコープでは、即時のローテーショ
 
 ### 管理者による検証用の鍵の無効化
 
-#### REQ-SIGNINGKEYS-010 管理者は回転後の検証用鍵だけを即時無効化できる
+#### REQ-SIGNINGKEYS-010 有効でない署名鍵の無効化は、鍵素材を保持して公開から除き、イベントを残す
 
-- 管理者が `Active` でない鍵を無効化したとき、SigningKeys は、その鍵を直ちに JWKS とフェデレーションメタデータから除き、200 と鍵を返し、`Active` の鍵を変えない。
-- 管理者が `Active` の鍵の無効化を要求した場合、SigningKeys は、400 と `invalid_request` で拒否し、鍵を変えない。
-- 存在しない `kid` の無効化を要求された場合、SigningKeys は、404 と `key_not_found` で拒否する。
+- `Prepared`、`Verifying`、`Retired` の鍵を管理者が無効化したとき、SigningKeys は、その鍵を `Archived` にして鍵素材を保持し、直ちに JWKS とフェデレーションメタデータから除き、200 と鍵を返し、`Active` の鍵を変えない。
+- 鍵の無効化で `Archived` に遷移したとき、SigningKeys は、無効化時刻を `occurredAt`、対象のテナントを `tenantId`、鍵の識別子を `kid` に載せた `SigningKeyDisabled` を一度発行する。
+- `Archived` の鍵を管理者が再び無効化したとき、SigningKeys は、200 と鍵を返し、鍵とアーカイブ時刻を変えず、イベントを発行しない。
+- 管理者が `Active` の鍵の無効化を要求した場合、SigningKeys は、400 と `invalid_request` で拒否し、鍵を変えず、イベントを発行しない。
+- 存在しない `kid` の無効化を要求された場合、SigningKeys は、404 と `key_not_found` で拒否し、鍵を変えず、イベントを発行しない。
 - **例**：EX-SIGNINGKEYS-010-01、EX-SIGNINGKEYS-010-02
 
 ## セキュリティ上の考慮

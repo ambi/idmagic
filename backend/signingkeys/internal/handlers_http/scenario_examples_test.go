@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/authentication"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
@@ -249,10 +250,10 @@ func TestTenantJwksCarryOnlyTheirOwnKids(t *testing.T) {
 	}
 }
 
-//spec:covers EX-SIGNINGKEYS-010-01: ローテーション後に管理者が検証用鍵 K1 を無効化すると、K1 は /jwks から消え、K2 は現在の署名鍵のまま /jwks に残る。
+//spec:covers REQ-SIGNINGKEYS-010, EX-SIGNINGKEYS-010-01: 無効化した鍵を保持して公開から除き、契約の項目名でイベントを一度だけ発行する。
 //verify:operation DisableTenantKey: 無効化の 200 本文は対象の公開鍵メタデータと active=false を返し、JWKS からだけ対象を除く。
 func TestAdministratorDisablesTheVerifyingKey(t *testing.T) {
-	s := newExampleStack(t)
+	s := stack.New(t, stack.WithAuthorizationCodeFlow(), stack.WithApiTokens(), stack.WithAudit())
 	admin, k1, k2 := rotatedTenant(t, s)
 
 	disabled := admin.post(t, adminKeysPath+"/"+k1+"/disable", "")
@@ -272,6 +273,49 @@ func TestAdministratorDisablesTheVerifyingKey(t *testing.T) {
 	}
 	if current := activeKid(t, s, realm, signingdomain.KeyUsageSigning); current != k2 {
 		t.Fatalf("active kid = %q, want %q to stay current", current, k2)
+	}
+	s.Events.AssertEmitted(t, "SigningKeyDisabled")
+	ctx := s.RealmContext(t, realm)
+	stored, err := s.KeyStore.FindByKID(ctx, k1)
+	if err != nil || stored == nil || stored.ArchivedAt == nil {
+		t.Fatalf("disabled key material missing: %v %+v", err, stored)
+	}
+	if repeated := admin.post(t, adminKeysPath+"/"+k1+"/disable", ""); repeated.Code != http.StatusOK {
+		t.Fatalf("repeated disable: %d %s", repeated.Code, repeated.Body.String())
+	}
+	if refused := admin.post(t, adminKeysPath+"/"+k2+"/disable", ""); refused.Code != http.StatusBadRequest || problemType(t, refused) != "urn:idmagic:error:invalid_request" {
+		t.Fatalf("active disable: %d %s", refused.Code, refused.Body.String())
+	}
+	if missing := admin.post(t, adminKeysPath+"/unknown/disable", ""); missing.Code != http.StatusNotFound || problemType(t, missing) != "urn:idmagic:error:key_not_found" {
+		t.Fatalf("missing disable: %d %s", missing.Code, missing.Body.String())
+	}
+	count := 0
+	for _, event := range s.Events.All() {
+		if event.EventType() != "SigningKeyDisabled" {
+			continue
+		}
+		count++
+		wire, err := spec.MarshalDomainEvent(event)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(wire, &payload); err != nil {
+			t.Fatal(err)
+		}
+		if len(payload) != 4 || payload["type"] != "SigningKeyDisabled" || payload["tenantId"] != stored.TenantID || payload["kid"] != k1 || payload["occurredAt"] != stored.ArchivedAt.UTC().Format(time.RFC3339Nano) {
+			t.Fatalf("disabled event wire: %s", wire)
+		}
+	}
+	if count != 1 {
+		t.Fatalf("disabled events = %d, want 1", count)
+	}
+	records, err := s.AuditEvents.List(ctx, auditports.AuditEventQuery{TenantID: stored.TenantID, Type: "SigningKeyDisabled", Limit: 10})
+	if err != nil || len(records) != 1 {
+		t.Fatalf("audit records: %v %+v", err, records)
+	}
+	if records[0].Payload["kid"] != k1 || records[0].Payload["tenantId"] != stored.TenantID || !records[0].OccurredAt.Equal(*stored.ArchivedAt) {
+		t.Fatalf("audit record = %+v", records[0])
 	}
 }
 

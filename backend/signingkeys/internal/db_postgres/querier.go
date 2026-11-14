@@ -7,12 +7,14 @@ package db_postgres
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
 	ActivatePreparedKey(ctx context.Context, arg ActivatePreparedKeyParams) error
 	ArchiveExpiredKeys(ctx context.Context, arg ArchiveExpiredKeysParams) ([]*ArchiveExpiredKeysRow, error)
-	DisableKey(ctx context.Context, arg DisableKeyParams) error
+	DisableKey(ctx context.Context, arg DisableKeyParams) (pgtype.Timestamptz, error)
 	FindKeyByKID(ctx context.Context, arg FindKeyByKIDParams) (*FindKeyByKIDRow, error)
 	GetActiveKey(ctx context.Context, arg GetActiveKeyParams) (*GetActiveKeyRow, error)
 	GetActiveKeyCreatedAtForUpdate(ctx context.Context, arg GetActiveKeyCreatedAtForUpdateParams) (time.Time, error)

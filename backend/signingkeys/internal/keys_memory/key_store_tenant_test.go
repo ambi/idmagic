@@ -155,10 +155,10 @@ func TestInMemoryKeyStoreRotateKeepsTenantScope(t *testing.T) {
 		t.Fatalf("tenant-a should have 2 keys after rotate, got %d", len(keys))
 	}
 	// Disable で漏洩疑いの鍵を JWKS から即時に外す。
-	if _, err := ks.Disable(ctxA, first.Kid); err != nil {
+	if _, _, err := ks.Disable(ctxA, first.Kid); err != nil {
 		t.Fatal(err)
 	}
-	keys, err = ks.GetAllKeys(ctxA)
+	keys, err = ks.ListPublicKeys(ctxA, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestInMemoryKeyStoreRejectsDisablingActiveKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ks.Disable(ctx, active.Kid); !errors.Is(err, signingdomain.ErrActiveSigningKeyCannotBeDisabled) {
+	if _, _, err := ks.Disable(ctx, active.Kid); !errors.Is(err, signingdomain.ErrActiveSigningKeyCannotBeDisabled) {
 		t.Fatalf("Disable(active) error = %v, want ErrActiveSigningKeyCannotBeDisabled", err)
 	}
 }

@@ -71,9 +71,11 @@ func (d Deps) handleListAdminKeys(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	out := make([]AdminKeyResponse, len(keys))
-	for i, k := range keys {
-		out[i] = toAdminKeyResponse(k)
+	out := make([]AdminKeyResponse, 0, len(keys))
+	for _, k := range keys {
+		if k.ArchivedAt == nil {
+			out = append(out, toAdminKeyResponse(k))
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"keys": out})
 }
@@ -175,7 +177,7 @@ func (d Deps) handleDisableTenantKey(c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	key, err := d.KeyStore.Disable(ctx, c.Param("kid"))
+	key, err := usecases.DisableSigningKey(ctx, usecases.DisableSigningKeyDeps{KeyStore: d.KeyStore, Emit: d.Emit}, c.Param("kid"))
 	if err != nil {
 		if errors.Is(err, signingdomain.ErrActiveSigningKeyCannotBeDisabled) {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The active signing key cannot be disabled. Rotate it first.")

@@ -177,7 +177,7 @@ func (s *VaultKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Du
 	return s.loadOrRotate(ctx, tenantID, usage, scopeID, had, now, grace)
 }
 
-func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
+func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, bool, error) {
 	if signingports.KeyUsage(ctx) == signingdomain.KeyUsageXMLFederationSigning {
 		return s.disableXML(ctx, kid)
 	}
@@ -188,22 +188,26 @@ func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*signingdomain
 	defer s.mu.Unlock()
 	tk := s.byTenant[vaultSetID(tenantID, usage, scopeID)]
 	if tk == nil {
-		return nil, nil //nolint:nilnil // 契約: 対象鍵が無ければ (nil, nil)。
+		return nil, false, nil
 	}
-	remaining := tk.keys[:0]
-	var disabled *signingdomain.SigningKey
-	for _, k := range tk.keys {
-		if k.Kid == kid {
-			if tk.active == kid {
-				return nil, signingdomain.ErrActiveSigningKeyCannotBeDisabled
-			}
-			disabled = k
+	for i, k := range tk.keys {
+		if k.Kid != kid {
 			continue
 		}
-		remaining = append(remaining, k)
+		if tk.active == kid {
+			return nil, false, signingdomain.ErrActiveSigningKeyCannotBeDisabled
+		}
+		if k.ArchivedAt != nil {
+			return k, false, nil
+		}
+		at := time.Now().UTC()
+		snapshot := *k
+		snapshot.ArchivedAt = &at
+		tk.keys[i] = &snapshot
+		return &snapshot, true, nil
+
 	}
-	tk.keys = remaining
-	return disabled, nil
+	return nil, false, nil
 }
 
 func (s *VaultKeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {

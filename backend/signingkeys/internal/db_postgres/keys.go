@@ -184,10 +184,14 @@ func (s *KeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([]*signin
 }
 
 func (s *KeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
+	return findByKID(ctx, New(s.Pool), kid)
+}
+
+func findByKID(ctx context.Context, q *Queries, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
-	row, err := New(s.Pool).FindKeyByKID(ctx, FindKeyByKIDParams{
+	row, err := q.FindKeyByKID(ctx, FindKeyByKIDParams{
 		Kid:      kid,
 		TenantID: tenantID,
 		KeyUsage: string(usage),
@@ -245,37 +249,36 @@ func (s *KeyStore) KeyScopes(ctx context.Context) ([]string, error) {
 	return New(s.Pool).ListKeyScopes(ctx, ListKeyScopesParams{TenantID: tenantports.TenantID(ctx), KeyUsage: string(signingports.KeyUsage(ctx))})
 }
 
-func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
+func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, bool, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := New(tx)
 	if err := lockKeySet(ctx, q); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	keys, err := loadKeySet(ctx, q)
+	key, err := findByKID(ctx, q, kid)
+	if err != nil || key == nil {
+		return key, false, err
+	}
+	if key.Active {
+		return nil, false, signingdomain.ErrActiveSigningKeyCannotBeDisabled
+	}
+	if key.ArchivedAt != nil {
+		return key, false, nil
+	}
+	at, err := q.DisableKey(ctx, DisableKeyParams{Kid: kid, TenantID: tenantports.TenantID(ctx)})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	for _, key := range keys {
-		if key.Kid != kid {
-			continue
-		}
-		if key.Active {
-			return nil, signingdomain.ErrActiveSigningKeyCannotBeDisabled
-		}
-		if err := q.DisableKey(ctx, DisableKeyParams{Kid: kid, TenantID: tenantports.TenantID(ctx)}); err != nil {
-			return nil, err
-		}
-		if err := tx.Commit(ctx); err != nil {
-			return nil, err
-		}
-		key.Prepared = false
-		return key, nil
+	if err := tx.Commit(ctx); err != nil {
+		return nil, false, err
 	}
-	return nil, nil
+	key.Prepared = false
+	key.ArchivedAt = timePtr(at)
+	return key, true, nil
 }
 
 func (s *KeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {

@@ -40,7 +40,7 @@
 - When `system_admin` がもう一度バッチを起動する
 - Then 鍵と `SigningKeyPrepared` は増えない
 
-## Rule: REQ-SIGNINGKEYS-010 管理者は回転後の検証用鍵だけを即時無効化できる
+## Rule: REQ-SIGNINGKEYS-010 有効でない署名鍵の無効化は、鍵素材を保持して公開から除き、イベントを残す
 
 ### Example: EX-SIGNINGKEYS-010-01 通常経路
 

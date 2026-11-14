@@ -47,7 +47,7 @@
       "event": "管理者による無効化",
       "guard": "—",
       "to": "Archived",
-      "effects": ""
+      "effects": "SigningKeyDisabled を発行し、鍵素材を保持する"
     },
     {
       "from": "Verifying",
@@ -68,14 +68,14 @@
       "event": "管理者による無効化",
       "guard": "—",
       "to": "Archived",
-      "effects": ""
+      "effects": "SigningKeyDisabled を発行し、鍵素材を保持する"
     },
     {
       "from": "Retired",
       "event": "管理者による無効化",
       "guard": "—",
       "to": "Archived",
-      "effects": ""
+      "effects": "SigningKeyDisabled を発行し、鍵素材を保持する"
     }
   ],
   "operations": [

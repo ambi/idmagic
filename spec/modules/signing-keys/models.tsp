@@ -180,6 +180,13 @@ model SigningKeyArchived {
   disposedAt: utcDateTime;
 }
 
+@doc("管理者が有効でない署名鍵を Archived にして公開から除いた。鍵素材は監査の検証用に保持する。再無効化では発行しない。")
+model SigningKeyDisabled {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  kid: string;
+}
+
 
 @doc("`kid` が指す署名鍵がこのテナントに存在しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:key_not_found` である。")
 model SigningKeyNotFoundError is ProblemDetails;

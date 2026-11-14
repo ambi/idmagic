@@ -56,8 +56,8 @@ type KeyStore interface {
 	KeyScopes(ctx context.Context) ([]string, error)
 	Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error)
 	ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error)
-	// Disable は ctx テナントの鍵 1 件を無効化 (JWKS から除去) する。
-	Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error)
+	// Disable は鍵素材を保持して公開から除く。bool は排他下で Archived へ遷移したかを返す。
+	Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, bool, error)
 	// Provider はこの KeyStore の KeyProvider を返す (ヘルス表示用)。
 	Provider() signingdomain.KeyProvider
 	// Healthy は ctx テナントの provider が到達可能かを返す。false のとき

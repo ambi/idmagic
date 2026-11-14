@@ -109,10 +109,11 @@ func (q *Queries) ArchiveExpiredKeys(ctx context.Context, arg ArchiveExpiredKeys
 	return items, nil
 }
 
-const disableKey = `-- name: DisableKey :exec
+const disableKey = `-- name: DisableKey :one
 UPDATE signing_keys
 SET active=FALSE,prepared=FALSE,archived_at=now(),updated_at=now()
-WHERE kid=$1 AND tenant_id=$2
+WHERE kid=$1 AND tenant_id=$2 AND archived_at IS NULL
+RETURNING archived_at
 `
 
 type DisableKeyParams struct {
@@ -120,9 +121,11 @@ type DisableKeyParams struct {
 	TenantID string
 }
 
-func (q *Queries) DisableKey(ctx context.Context, arg DisableKeyParams) error {
-	_, err := q.db.Exec(ctx, disableKey, arg.Kid, arg.TenantID)
-	return err
+func (q *Queries) DisableKey(ctx context.Context, arg DisableKeyParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, disableKey, arg.Kid, arg.TenantID)
+	var archived_at pgtype.Timestamptz
+	err := row.Scan(&archived_at)
+	return archived_at, err
 }
 
 const findKeyByKID = `-- name: FindKeyByKID :one

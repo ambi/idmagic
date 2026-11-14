@@ -21,10 +21,11 @@ WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3 AND scope_id=$4;
 -- name: ListKeyScopes :many
 SELECT DISTINCT scope_id FROM signing_keys WHERE tenant_id=$1 AND key_usage=$2;
 
--- name: DisableKey :exec
+-- name: DisableKey :one
 UPDATE signing_keys
 SET active=FALSE,prepared=FALSE,archived_at=now(),updated_at=now()
-WHERE kid=$1 AND tenant_id=$2;
+WHERE kid=$1 AND tenant_id=$2 AND archived_at IS NULL
+RETURNING archived_at;
 
 -- name: ArchiveExpiredKeys :many
 UPDATE signing_keys

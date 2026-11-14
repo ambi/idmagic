@@ -118,7 +118,7 @@ func (s *InMemoryKeyStore) Rotate(ctx context.Context, now time.Time, grace time
 	return s.rotateInternal(tenantports.TenantID(ctx), signingports.KeyUsage(ctx), signingports.KeyScope(ctx), now, grace)
 }
 
-func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
+func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, bool, error) {
 	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
@@ -126,24 +126,27 @@ func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*signingdom
 	defer s.mu.Unlock()
 	tk := s.byTenant[keySetID(tenantID, usage, scopeID)]
 	if tk == nil {
-		return nil, nil //nolint:nilnil // repository contract: a missing key is not an adapter failure.
+		return nil, false, nil
 	}
-	remaining := tk.keys[:0]
-	var disabled *signingdomain.SigningKey
-	for _, k := range tk.keys {
-		if k.Kid == kid {
-			if tk.active == kid {
-				return nil, signingdomain.ErrActiveSigningKeyCannotBeDisabled
-			}
-			snapshot := *k
-			snapshot.Prepared = false
-			disabled = &snapshot
+	for i, k := range tk.keys {
+		if k.Kid != kid {
 			continue
 		}
-		remaining = append(remaining, k)
+		if tk.active == kid {
+			return nil, false, signingdomain.ErrActiveSigningKeyCannotBeDisabled
+		}
+		if k.ArchivedAt != nil {
+			return k, false, nil
+		}
+		at := time.Now().UTC()
+		snapshot := *k
+		snapshot.Prepared = false
+		snapshot.ArchivedAt = &at
+		tk.keys[i] = &snapshot
+		return &snapshot, true, nil
+
 	}
-	tk.keys = remaining
-	return disabled, nil
+	return nil, false, nil
 }
 
 func (s *InMemoryKeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {
