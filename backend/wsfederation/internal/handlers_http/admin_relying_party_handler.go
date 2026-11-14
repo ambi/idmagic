@@ -3,6 +3,7 @@
 package handlers_http
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -10,7 +11,7 @@ import (
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -65,44 +66,35 @@ func (d Deps) handleUpsertRelyingParty(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 
-	ctx := c.Request().Context()
-	tenantID := support.RequestTenantID(c)
-	now := time.Now().UTC()
-
-	existing, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, req.Wtrealm)
+	rp, created, err := d.relyingParties().Register(c.Request().Context(), wsfedusecases.RegisterRelyingPartyInput{
+		TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, DisplayName: req.DisplayName,
+		ReplyURLs: req.ReplyURLs, Audience: req.Audience, ClaimPolicy: req.ClaimPolicy, Now: time.Now().UTC(),
+	})
 	if err != nil {
-		return err
+		// 長さの上限の違反はそのまま返し、大域のエラー写像に 422 を作らせる。
+		return writeRelyingPartyError(c, err, "The Entra federation relying party is changed only through the Entra federation configuration.")
 	}
-	// 汎用の登録は Entra の定型設定と固定のクレームを捨てて置き換えるので、Entra の RP には届かせない。
-	if existing != nil && existing.EntraProfile != nil {
-		return support.WriteProblem(c, http.StatusConflict, "entra_relying_party", "The Entra federation relying party is changed only through the Entra federation configuration.")
-	}
-	rp := &feddomain.WsFedRelyingParty{
-		TenantID:    tenantID,
-		Wtrealm:     req.Wtrealm,
-		DisplayName: req.DisplayName,
-		ReplyURLs:   req.ReplyURLs,
-		Audience:    req.Audience,
-		ClaimPolicy: req.ClaimPolicy,
-		CreatedAt:   now,
-	}
-	// 長さの上限は domain が持つ。エラーをそのまま返して大域のエラー写像に
-	// 422 を作らせる。
-	if err := rp.Validate(); err != nil {
-		return err
-	}
-	status := http.StatusCreated
-	if existing != nil {
-		rp.CreatedAt = existing.CreatedAt
-		rp.UpdatedAt = now
-		status = http.StatusOK
-	} else {
-		rp.UpdatedAt = now
-	}
-	if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
-		return err
+	status := http.StatusOK
+	if created {
+		status = http.StatusCreated
 	}
 	return support.NoStoreJSON(c, status, rp)
+}
+
+// relyingParties は、管理 API の登録と削除と Entra の構成が通る RP の管理操作を組み立てる。
+func (d Deps) relyingParties() wsfedusecases.RelyingPartyAdministration {
+	return wsfedusecases.RelyingPartyAdministration{RPRepo: d.WsFedRPRepo}
+}
+
+// writeRelyingPartyError は、汎用の管理 API が変えてはならない RP の拒否を 409 に写し、それ以外を返す。
+func writeRelyingPartyError(c *echo.Context, err error, entraDetail string) error {
+	switch {
+	case errors.Is(err, wsfedusecases.ErrEntraRelyingParty):
+		return support.WriteProblem(c, http.StatusConflict, "entra_relying_party", entraDetail)
+	case errors.Is(err, wsfedusecases.ErrApplicationOwned):
+		return support.WriteProblem(c, http.StatusConflict, "application_owned_protocol", "Change or delete the Application to change its associated relying party.")
+	}
+	return err
 }
 
 func (d Deps) handleDeleteRelyingParty(c *echo.Context) error {
@@ -113,20 +105,10 @@ func (d Deps) handleDeleteRelyingParty(c *echo.Context) error {
 	if wtrealm == "" {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "wtrealm query parameter is required")
 	}
-	rp, err := d.WsFedRPRepo.FindByWtrealm(c.Request().Context(), support.RequestTenantID(c), wtrealm)
-	if err != nil {
-		return err
-	}
-	if rp != nil && rp.ApplicationID != "" {
-		return support.WriteProblem(c, http.StatusConflict, "application_owned_protocol", "Delete the Application to remove its associated relying party.")
-	}
 	// Entra の RP はすべてのドメインの信頼を持つ。消すと Entra 側の設定を残したまま全ドメインのサインインが
 	// 止まるので、切り戻しを確かめるドメインごとの解除だけが外す。
-	if rp != nil && rp.EntraProfile != nil {
-		return support.WriteProblem(c, http.StatusConflict, "entra_relying_party", "Remove the Entra federation one domain at a time after rolling it back in Entra.")
-	}
-	if err := d.WsFedRPRepo.Delete(c.Request().Context(), support.RequestTenantID(c), wtrealm); err != nil {
-		return err
+	if err := d.relyingParties().DeleteStandalone(c.Request().Context(), support.RequestTenantID(c), wtrealm); err != nil {
+		return writeRelyingPartyError(c, err, "Remove the Entra federation one domain at a time after rolling it back in Entra.")
 	}
 	return c.NoContent(http.StatusNoContent)
 }

@@ -412,13 +412,18 @@ model RegisterWsFedRelyingPartyError403 {
   @body body: RegisterWsFedRelyingPartyError403Body;
 }
 
+union RegisterWsFedRelyingPartyError409Body {
+  IdMagic.Contract.EntraRelyingPartyError,
+  IdMagic.Contract.ApplicationOwnedProtocolError,
+}
+
 model RegisterWsFedRelyingPartyError409 {
   @statusCode statusCode: 409;
   @header contentType: "application/problem+json";
-  @body body: IdMagic.Contract.EntraRelyingPartyError;
+  @body body: RegisterWsFedRelyingPartyError409Body;
 }
 
-@doc("管理者が、WS-Federation の Relying Party の信頼を登録または更新する。`wtrealm`、`reply_urls`、`audience`、`token_type`、`claim_policy` を契約として保存し、`reply_urls` は空でない閉じた集合である。この操作は AdminFederationTrustsManage が守る。")
+@doc("管理者が、WS-Federation の Relying Party の信頼を登録または更新する。`wtrealm`、`reply_urls`、`audience`、`token_type`、`claim_policy` を契約として保存し、`reply_urls` は空でない閉じた集合である。同じ `wtrealm` の RP が Entra の定型設定を持てば EntraRelyingPartyError（HTTP 409）で、`application_id` が null でなければ ApplicationOwnedProtocolError（HTTP 409）で拒否する。この操作は AdminFederationTrustsManage が守る。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
 @TypeSpec.OpenAPI.operationId("RegisterWsFedRelyingParty")
 @route("/api/admin/v1/wsfed/relying-parties")

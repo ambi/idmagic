@@ -820,6 +820,12 @@ func wsTrustRST(now time.Time, messageID, appliesTo string) string {
 
 func newAdminServer(t *testing.T) *echo.Echo {
 	t.Helper()
+	return newAdminServerWith(t, wsfederation.NewMemoryModule())
+}
+
+// newAdminServerWith は、テストが RP を直接置いたモジュールで管理 API を組み立てる。
+func newAdminServerWith(t *testing.T, module wsfederation.Module) *echo.Echo {
+	t.Helper()
 	identity := idmanagement.NewMemoryModule()
 	userRepo := identity.UserRepo
 	if err := identity.AttrSchemaRepo.Save(context.Background(), &userdomain.TenantUserAttributeSchema{
@@ -840,7 +846,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:   "https://idp.example",
-		Contract: spec.CurrentRuntimeContract(), WsFederation: wsfederation.NewMemoryModule(),
+		Contract: spec.CurrentRuntimeContract(), WsFederation: module,
 		UserRepo:         userRepo,
 		AttrSchemaRepo:   identity.AttrSchemaRepo,
 		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},

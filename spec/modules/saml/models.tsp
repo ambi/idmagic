@@ -7,7 +7,7 @@ model ClaimMappingPolicy {
 }
 
 
-@doc("SAML のサービスプロバイダーは Application が所有しており、単独では削除できない。代わりに Application を削除する。HTTP 409 で返す。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:application_owned_protocol` である。")
+@doc("プロトコルの設定（SAML のサービスプロバイダー、WS-Federation の Relying Party、OAuth2 のクライアント）は Application が所有しており、単独の管理 API では上書きも削除もできない。代わりに Application を更新または削除する。HTTP 409 で返す。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:application_owned_protocol` である。")
 model ApplicationOwnedProtocolError is ProblemDetails;
 
 

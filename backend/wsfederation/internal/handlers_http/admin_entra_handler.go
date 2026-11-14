@@ -145,7 +145,7 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 			return err
 		}
 	}
-	if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
+	if err := d.relyingParties().SaveEntra(ctx, rp); err != nil {
 		return err
 	}
 	d.emit(&feddomain.EntraFederationConfigured{At: now, TenantID: tenantID, Domain: domain, IssuerURI: issuerURI})

@@ -3,13 +3,15 @@
 package handlers_http
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
-	samldomain "github.com/ambi/idmagic/backend/saml/domain"
+	samlusecases "github.com/ambi/idmagic/backend/saml/internal/usecases"
+	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -40,12 +42,12 @@ func (r serviceProviderRequest) validate() error {
 	case strings.TrimSpace(r.ClaimPolicy.NameID.SourceAttribute) == "":
 		return errBadRequest("claim_policy.name_id.source_attribute is required")
 	}
-	if r.WantAuthnRequestsSigned {
-		if _, err := samldomain.ParseCertificatePEM(r.SigningCertificatePEM); err != nil {
-			return errBadRequest("authn_request_signing_certificate_pem is required when want_authn_requests_signed is true")
-		}
-	}
 	return nil
+}
+
+// serviceProviders は、管理 API の登録と削除が通る SP の管理操作を組み立てる。
+func (d Deps) serviceProviders() samlusecases.ServiceProviderAdministration {
+	return samlusecases.ServiceProviderAdministration{SPRepo: d.SamlSPRepo}
 }
 
 type badRequest struct{ msg string }
@@ -82,62 +84,34 @@ func (d Deps) handleUpsertServiceProvider(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 
-	ctx := c.Request().Context()
-	tenantID := support.RequestTenantID(c)
-	now := time.Now().UTC()
-
-	existing, err := d.SamlSPRepo.FindByEntityID(ctx, tenantID, req.EntityID)
-	if err != nil {
-		return err
-	}
-	signAssertion := true
-	if req.SignAssertion != nil {
-		signAssertion = *req.SignAssertion
-	}
-	idpProfileID := strings.TrimSpace(req.IDPProfileID)
-	if idpProfileID == "" {
-		idpProfileID = samldomain.DefaultIDPProfileID
-		if existing != nil {
-			idpProfileID = existing.EffectiveIDPProfileID()
-		}
-	}
-	sp := &samldomain.SamlServiceProvider{
-		TenantID:                          tenantID,
-		EntityID:                          req.EntityID,
-		DisplayName:                       req.DisplayName,
-		IDPProfileID:                      idpProfileID,
-		ACSURLs:                           req.ACSURLs,
-		SLOURL:                            strings.TrimSpace(req.SLOURL),
-		Audience:                          strings.TrimSpace(req.Audience),
-		ClaimPolicy:                       req.ClaimPolicy,
-		SignAssertion:                     signAssertion,
-		SignResponse:                      req.SignResponse,
+	sp, created, err := d.serviceProviders().Register(c.Request().Context(), samlusecases.RegisterServiceProviderInput{
+		TenantID: support.RequestTenantID(c), EntityID: req.EntityID, DisplayName: req.DisplayName,
+		IDPProfileID: req.IDPProfileID, ACSURLs: req.ACSURLs, SLOURL: req.SLOURL, Audience: req.Audience,
+		ClaimPolicy: req.ClaimPolicy, SignAssertion: req.SignAssertion, SignResponse: req.SignResponse,
 		WantAuthnRequestsSigned:           req.WantAuthnRequestsSigned,
-		AuthnRequestSigningCertificatePEM: strings.TrimSpace(req.SigningCertificatePEM),
-		CreatedAt:                         now,
-	}
-	// 長さの上限は domain が持つ。エラーをそのまま返して大域のエラー写像に
-	// 422 を作らせる。ここで WriteProblem を挟むと 400 になり、
-	// wi-128 が長さ違反へ与えた扱いから外れる。
-	if err := sp.Validate(); err != nil {
-		return err
-	}
-	status := http.StatusCreated
-	if existing != nil {
-		sp.CreatedAt = existing.CreatedAt
-		sp.UpdatedAt = now
-		status = http.StatusOK
-	} else {
-		sp.UpdatedAt = now
-	}
-	// IdP プロファイルの規則違反は、保存を試みて初めて分かる。プロファイルの基数は
-	// SP 側の入力だけでは判定できず、同じプロファイルに束ねられた他の SP を数えて決まる
-	// ためである。契約はこの拒否を 400 InvalidRequestError と宣言していて 500 を宣言して
-	// いないので、写像は SP の登録経路にも要る。
-	if err := d.SamlSPRepo.Save(ctx, sp); err != nil {
+		AuthnRequestSigningCertificatePEM: req.SigningCertificatePEM,
+		Now:                               time.Now().UTC(),
+	})
+	switch {
+	case errors.Is(err, samlusecases.ErrApplicationOwned):
+		return writeApplicationOwned(c)
+	case errors.Is(err, samlports.ErrSigningCertificateRequired):
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "authn_request_signing_certificate_pem is required when want_authn_requests_signed is true")
+	case err != nil:
+		// 長さの上限の違反はそのまま返し、大域のエラー写像に 422 を作らせる（wi-128）。
+		// IdP プロファイルの規則違反は、同じプロファイルに束ねられた他の SP を数えて保存の時点で
+		// 初めて分かる。契約はこの拒否を 400 InvalidRequestError と宣言するので、ここで写す。
 		return d.writeIDPProfileError(c, err)
 	}
+	status := http.StatusOK
+	if created {
+		status = http.StatusCreated
+	}
 	return support.NoStoreJSON(c, status, sp)
+}
+
+func writeApplicationOwned(c *echo.Context) error {
+	return support.WriteProblem(c, http.StatusConflict, "application_owned_protocol", "Change or delete the Application to change its associated service provider.")
 }
 
 func (d Deps) handleDeleteServiceProvider(c *echo.Context) error {
@@ -151,14 +125,11 @@ func (d Deps) handleDeleteServiceProvider(c *echo.Context) error {
 	if entityID == "" {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "entity_id query parameter is required")
 	}
-	sp, err := d.SamlSPRepo.FindByEntityID(c.Request().Context(), support.RequestTenantID(c), entityID)
-	if err != nil {
-		return err
-	}
-	if sp != nil && sp.ApplicationID != "" {
-		return support.WriteProblem(c, http.StatusConflict, "application_owned_protocol", "Delete the Application to remove its associated service provider.")
-	}
-	if err := d.SamlSPRepo.Delete(c.Request().Context(), support.RequestTenantID(c), entityID); err != nil {
+	err := d.serviceProviders().DeleteStandalone(c.Request().Context(), support.RequestTenantID(c), entityID)
+	switch {
+	case errors.Is(err, samlusecases.ErrApplicationOwned):
+		return writeApplicationOwned(c)
+	case err != nil:
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)

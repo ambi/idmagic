@@ -26,6 +26,9 @@
 - `saml:write` を持たないトークンで変更の操作を要求された場合、Saml は、403 と `insufficient_scope` で拒否し、SP を変えない。
 - 別のテナントで発行したトークンを提示された場合、Saml は、401 と `invalid_token` で拒否し、SP を変えない。
 - 不正な SP の登録を要求された場合、Saml は、400 と `invalid_request` で拒否し、SP を変えない。
+- `want_authn_requests_signed` が true で、読める署名の証明書を持たない SP の登録を要求された場合、Saml は、400 と `invalid_request` で拒否し、SP を変えない。
+- Application に属する SP と同じ entityID の SP の登録を要求された場合、Saml は、409 と `application_owned_protocol` で拒否し、SP を変えない。
+- **判断**：Application に属する SP は、カタログのプロトコル設定だけが変える。管理 API の登録は SP を作り直すので、通すと Application との関連付けが消える。
 - 長さの上限を超える項目の SP の登録を要求された場合、Saml は、422 と `field_length_exceeded` で拒否し、SP を変えない。
 - entityID を指定しない削除を要求された場合、Saml は、400 と `invalid_request` で拒否する。
 - Application に属する SP の削除を要求された場合、Saml は、409 と `application_owned_protocol` で拒否し、SP を残す。

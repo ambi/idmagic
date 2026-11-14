@@ -636,14 +636,24 @@ model RegisterSamlServiceProviderError403 {
   @body body: RegisterSamlServiceProviderError403Body;
 }
 
-@doc("SAML のサービスプロバイダーを登録または更新（upsert）する。entityID、許可する ACS の URL、NameID の形式、オーディエンス、署名のポリシー、クレームのポリシーを受け取り、テナントの境界の中に保存する。entityID と閉じた ACS の URL の集合はどちらも必須である。")
+union RegisterSamlServiceProviderError409Body {
+  IdMagic.Contract.ApplicationOwnedProtocolError,
+}
+
+model RegisterSamlServiceProviderError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: RegisterSamlServiceProviderError409Body;
+}
+
+@doc("SAML のサービスプロバイダーを登録または更新（upsert）する。entityID、許可する ACS の URL、NameID の形式、オーディエンス、署名のポリシー、クレームのポリシーを受け取り、テナントの境界の中に保存する。entityID と閉じた ACS の URL の集合はどちらも必須である。同じ entityID の SP の `application_id` が null でなければ、ApplicationOwnedProtocolError（HTTP 409）で拒否する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("RegisterSamlServiceProvider")
 @route("/api/admin/v1/saml/service-providers")
 @post
 op RegisterSamlServiceProvider(
   @body body: IdMagic.Contract.SamlServiceProviderRequest
-): RegisterSamlServiceProviderSuccess_200 | RegisterSamlServiceProviderSuccess_201 | RegisterSamlServiceProviderError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterSamlServiceProviderError403;
+): RegisterSamlServiceProviderSuccess_200 | RegisterSamlServiceProviderSuccess_201 | RegisterSamlServiceProviderError400 | IdMagic.Contract.AuthenticationRequiredResponse | RegisterSamlServiceProviderError403 | RegisterSamlServiceProviderError409;
 
 model ListSamlServiceProvidersHttpResponse {
   service_providers: IdMagic.Contract.SamlServiceProvider[];

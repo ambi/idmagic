@@ -166,6 +166,7 @@ Graph の権限の不足、手順の未実行、取得の失敗は観測文書�
 - 構成した後の定型設定で UPN がフェデレーションするドメインに属する既存の User のどれかが、空か `@` を含む sourceAnchor の値を持つ場合、WsFederation は、Entra の構成を 422 と `source_anchor_invalid` で拒否し、`user_count` と `sample_usernames` を返し、RP を変えない。
 - 管理者が Entra のドメインフェデレーションを構成したとき、WsFederation は、UPN がフェデレーションするドメインに属さない User の sourceAnchor の値を確かめない。
 - Entra の定型設定を持つ RP と同じ `wtrealm` の RP の登録を要求された場合、WsFederation は、409 と `entra_relying_party` で拒否し、RP を変えない。
+- Application に属する RP と同じ `wtrealm` の RP の登録を要求された場合、WsFederation は、409 と `application_owned_protocol` で拒否し、RP を変えない。
 - IssuerUri がほかの構成済みのドメインの IssuerUri と同じか、ほかのドメインを構成している間に構成済みのものと異なる sourceAnchor の属性を指定された場合、WsFederation は、Entra の構成を 400 と `invalid_request` で拒否し、RP を変えない。
 - `admin` のロールを持たない利用者が RP か Entra のドメインフェデレーションの管理 API を要求した場合、WsFederation は、403 と `access_denied` で拒否し、RP を変えない。
 - **例**：EX-WSFEDERATION-001-01、EX-WSFEDERATION-001-02、EX-WSFEDERATION-001-03、EX-WSFEDERATION-001-04

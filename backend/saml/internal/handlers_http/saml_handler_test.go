@@ -31,6 +31,7 @@ import (
 	"github.com/ambi/idmagic/backend/saml"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlmemory "github.com/ambi/idmagic/backend/saml/internal/db_memory"
+	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
@@ -608,6 +609,12 @@ func TestSamlIDPProfilePublishesIsolatedMetadataAndRejectsCrossProfileRequest(t 
 
 func newAdminServer(t *testing.T) *echo.Echo {
 	t.Helper()
+	return newAdminServerWith(t, samlmemory.NewSamlServiceProviderRepository())
+}
+
+// newAdminServerWith は、テストが SP を直接置いた保存先で管理 API を組み立てる。
+func newAdminServerWith(t *testing.T, spRepo samlports.SamlServiceProviderRepository) *echo.Echo {
+	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID:                "admin-1",
@@ -622,7 +629,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:   "https://idp.example",
-		Contract: spec.CurrentRuntimeContract(), Saml: saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
+		Contract: spec.CurrentRuntimeContract(), Saml: saml.Module{SPRepo: spRepo},
 		UserRepo:         userRepo,
 		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
 		FederationSigner: signingkeys.Module{KeyStore: keyStore}.FederationSigner(),
