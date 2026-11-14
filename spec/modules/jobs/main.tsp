@@ -145,6 +145,7 @@ model ListSystemJobsError400 {
 }
 
 union ListSystemJobsError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
@@ -166,7 +167,7 @@ op ListSystemJobs(
   @query lane?: IdMagic.Contract.ExecutionLane,
   @query limit?: int64,
   @query cursor?: string
-): ListSystemJobsSuccess_200 | ListSystemJobsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListSystemJobsError403;
+): ListSystemJobsSuccess_200 | ListSystemJobsError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | ListSystemJobsError403;
 
 model GetSystemJobSuccess_200 {
   @statusCode statusCode: 200;
@@ -174,6 +175,7 @@ model GetSystemJobSuccess_200 {
 }
 
 union GetSystemJobError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
@@ -201,7 +203,7 @@ model GetSystemJobError404 {
 @get
 op GetSystemJob(
   @path job_id: string
-): GetSystemJobSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetSystemJobError403 | GetSystemJobError404;
+): GetSystemJobSuccess_200 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | GetSystemJobError403 | GetSystemJobError404;
 
 model CancelSystemJobSuccess_200 {
   @statusCode statusCode: 200;
@@ -209,6 +211,7 @@ model CancelSystemJobSuccess_200 {
 }
 
 union CancelSystemJobError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.InvalidOriginError,
@@ -248,7 +251,7 @@ model CancelSystemJobError409 {
 @post
 op CancelSystemJob(
   @path job_id: string
-): CancelSystemJobSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | CancelSystemJobError403 | CancelSystemJobError404 | CancelSystemJobError409;
+): CancelSystemJobSuccess_200 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | CancelSystemJobError403 | CancelSystemJobError404 | CancelSystemJobError409;
 }
 
 }

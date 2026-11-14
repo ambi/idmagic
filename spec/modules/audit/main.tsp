@@ -10,6 +10,8 @@ model AuditExportMissing { @statusCode statusCode: 404; @header contentType: "ap
 model AuditExportConflict { @statusCode statusCode: 409; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.AuditExportUnavailableError | IdMagic.Contract.JobNotCancelableError; }
 model AuditExportQuota { @statusCode statusCode: 429; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.ActiveJobQuotaExceededError; }
 model AuditExportMutationForbidden { @statusCode statusCode: 403; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.AccessDeniedError | IdMagic.Contract.InsufficientScopeError | IdMagic.Contract.CsrfFailedError | IdMagic.Contract.InvalidOriginError; }
+model SystemAuditExportForbidden { @statusCode statusCode: 403; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.InsufficientScopeError | IdMagic.Contract.AccessDeniedError | IdMagic.Contract.StepUpRequiredError; }
+model SystemAuditExportMutationForbidden { @statusCode statusCode: 403; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.AccessDeniedError | IdMagic.Contract.InsufficientScopeError | IdMagic.Contract.CsrfFailedError | IdMagic.Contract.InvalidOriginError | IdMagic.Contract.StepUpRequiredError; }
 model AuditExportLegacyBusy { @statusCode statusCode: 429; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.AuditExportBusyError; }
 model AuditExportLegacyLimit { @statusCode statusCode: 422; @header contentType: "application/problem+json"; @body body: IdMagic.Contract.AuditExportLimitExceededError; }
 
@@ -53,35 +55,35 @@ op DownloadAdminAuditExport(@path export_id: string): AuditExportFileOK | AuditE
 @TypeSpec.OpenAPI.operationId("StartSystemAuditExport")
 @route("/api/admin/v1/system/audit-events/exports")
 @post
-op StartSystemAuditExport(@query query: IdMagic.Contract.AuditEventQuery): AuditExportAccepted | ExportAdminAuditEventsError400 | AuditExportQuota | IdMagic.Contract.AuthenticationRequiredResponse | AuditExportMutationForbidden;
+op StartSystemAuditExport(@query query: IdMagic.Contract.AuditEventQuery): AuditExportAccepted | ExportAdminAuditEventsError400 | AuditExportQuota | IdMagic.Contract.StepUpAuthenticationRequiredResponse | SystemAuditExportMutationForbidden;
 
 @doc("現在の要求者と経路の範囲に属する直近 20 件を返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ListSystemAuditExports")
 @route("/api/admin/v1/system/audit-events/exports")
 @get
-op ListSystemAuditExports(): AuditExportsOK | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403;
+op ListSystemAuditExports(): AuditExportsOK | IdMagic.Contract.StepUpAuthenticationRequiredResponse | SystemAuditExportForbidden;
 
 @doc("要求者の監査エクスポートの状態を返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("GetSystemAuditExport")
 @route("/api/admin/v1/system/audit-events/exports/{export_id}")
 @get
-op GetSystemAuditExport(@path export_id: string): AuditExportOK | AuditExportMissing | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403;
+op GetSystemAuditExport(@path export_id: string): AuditExportOK | AuditExportMissing | IdMagic.Contract.StepUpAuthenticationRequiredResponse | SystemAuditExportForbidden;
 
 @doc("要求者の未完了エクスポートを取り消す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("CancelSystemAuditExport")
 @route("/api/admin/v1/system/audit-events/exports/{export_id}/cancel")
 @post
-op CancelSystemAuditExport(@path export_id: string): AuditExportOK | AuditExportMissing | AuditExportConflict | IdMagic.Contract.AuthenticationRequiredResponse | AuditExportMutationForbidden;
+op CancelSystemAuditExport(@path export_id: string): AuditExportOK | AuditExportMissing | AuditExportConflict | IdMagic.Contract.StepUpAuthenticationRequiredResponse | SystemAuditExportMutationForbidden;
 
 @doc("成功かつ期限内の成果物だけを attachment の JSON で返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("DownloadSystemAuditExport")
 @route("/api/admin/v1/system/audit-events/exports/{export_id}/download")
 @get
-op DownloadSystemAuditExport(@path export_id: string): AuditExportFileOK | AuditExportMissing | AuditExportConflict | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403;
+op DownloadSystemAuditExport(@path export_id: string): AuditExportFileOK | AuditExportMissing | AuditExportConflict | IdMagic.Contract.StepUpAuthenticationRequiredResponse | SystemAuditExportForbidden;
 }
 
 
@@ -241,6 +243,7 @@ model ListSystemAuditEventsError400 {
 }
 
 union ListSystemAuditEventsError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
@@ -258,7 +261,7 @@ model ListSystemAuditEventsError403 {
 @get
 op ListSystemAuditEvents(
   @query query: IdMagic.Contract.AuditEventQuery
-): ListSystemAuditEventsSuccess_200 | ListSystemAuditEventsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListSystemAuditEventsError403;
+): ListSystemAuditEventsSuccess_200 | ListSystemAuditEventsError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | ListSystemAuditEventsError403;
 
 model ExportSystemAuditEventsSuccess_200 {
   @statusCode statusCode: 200;
@@ -276,6 +279,7 @@ model ExportSystemAuditEventsError400 {
 }
 
 union ExportSystemAuditEventsError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
@@ -296,7 +300,7 @@ model ExportSystemAuditEventsError403 {
 @get
 op ExportSystemAuditEvents(
   @query query: IdMagic.Contract.AuditEventQuery
-): ExportSystemAuditEventsSuccess_200 | ExportSystemAuditEventsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ExportSystemAuditEventsError403 | AuditExportLegacyBusy | AuditExportLegacyLimit;
+): ExportSystemAuditEventsSuccess_200 | ExportSystemAuditEventsError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | ExportSystemAuditEventsError403 | AuditExportLegacyBusy | AuditExportLegacyLimit;
 
 model GetSystemAuditEventSuccess_200 {
   @statusCode statusCode: 200;
@@ -304,6 +308,7 @@ model GetSystemAuditEventSuccess_200 {
 }
 
 union GetSystemAuditEventError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
@@ -331,7 +336,7 @@ model GetSystemAuditEventError404 {
 @get
 op GetSystemAuditEvent(
   @path id: string
-): GetSystemAuditEventSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetSystemAuditEventError403 | GetSystemAuditEventError404;
+): GetSystemAuditEventSuccess_200 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | GetSystemAuditEventError403 | GetSystemAuditEventError404;
 }
 
 }

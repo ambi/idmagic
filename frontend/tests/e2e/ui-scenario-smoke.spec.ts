@@ -13,6 +13,7 @@ import {
   waitForPage,
   waitForAnyText,
   navigateAndLogin,
+  navigateAndLoginAsSystemAdmin,
 } from './fixtures'
 
 test('login assistance pages render and forgot password has enumeration-safe success copy', async () => {
@@ -81,7 +82,7 @@ test('admin console scenarios are reachable after admin-audience login', async (
 test('system console cross-tenant surfaces are reachable and the admin console has no cross-tenant toggle', async () => {
   const view = await openWebView({ width: 1280, height: 2200 })
   try {
-    await navigateAndLogin(view, '/system/tenants', 'system-tenants', demo.systemAdminUsername)
+    await navigateAndLoginAsSystemAdmin(view, '/system/tenants', 'system-tenants')
 
     const systemPages = [
       [['監査イベント', 'Audit events'], '/system/audit-events', 'system-audit-events'],

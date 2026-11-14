@@ -36,7 +36,7 @@ func newDataKeyAdminServer(t *testing.T, actor *userdomain.User) *echo.Echo {
 	}
 	resolver := &fakeAuthnResolver{}
 	if actor != nil {
-		resolver.ctx = &authdomain.AuthenticationContext{UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"}}
+		resolver.ctx = &authdomain.AuthenticationContext{UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"}}
 	}
 
 	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()

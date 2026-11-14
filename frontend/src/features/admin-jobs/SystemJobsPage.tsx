@@ -1,5 +1,6 @@
 import { type AdminJob, cancelSystemJob, listSystemJobs } from '../../api'
 import { SystemShell } from '../../components/SystemShell'
+import { useStepUpGuard } from '../../components/StepUpDialog'
 import { useDictionary } from '../../lib/i18n'
 import { adminJobsDictionary } from './AdminJobsPage.i18n'
 import { JobsBrowser } from './JobsBrowser'
@@ -25,6 +26,8 @@ export function SystemJobsPage({
   initialError?: string
 }) {
   const t = useDictionary(adminJobsDictionary)
+  // 別テナントのジョブの取消しは直近の MFA の認証を求める (REQ-SYSTEM-033)。
+  const { guard, dialog } = useStepUpGuard()
   return (
     <SystemShell
       active="jobs"
@@ -39,9 +42,10 @@ export function SystemJobsPage({
         t={t}
         tenantColumn
         listJobs={listSystemJobs}
-        cancelJob={(job) => cancelSystemJob(csrfToken, job.id)}
+        cancelJob={(job) => guard(() => cancelSystemJob(csrfToken, job.id))}
         initialError={initialError}
       />
+      {dialog}
     </SystemShell>
   )
 }

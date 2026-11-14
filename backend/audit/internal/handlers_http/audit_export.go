@@ -14,14 +14,16 @@ import (
 
 func (d Deps) exportActor(c *echo.Context, system bool) (*support.Principal, usecases.ExportScope, error) {
 	var actor *support.Principal
-	var err error
 	if system {
-		actor, err = d.RequireControlPlaneUser(c)
+		var err error
+		if actor, err = d.RequireControlPlaneUser(c); err != nil {
+			return nil, usecases.ExportScope{}, d.WriteControlPlaneAccessError(c, err)
+		}
 	} else {
-		actor, err = d.RequireAdministrator(c)
-	}
-	if err != nil {
-		return nil, usecases.ExportScope{}, d.WriteAdminAccessError(c, err)
+		var err error
+		if actor, err = d.RequireAdministrator(c); err != nil {
+			return nil, usecases.ExportScope{}, d.WriteAdminAccessError(c, err)
+		}
 	}
 	if d.Exports.Jobs == nil || d.Exports.Artifacts == nil {
 		return nil, usecases.ExportScope{}, support.WriteProblem(c, 503, "temporarily_unavailable", "Audit export is unavailable.")

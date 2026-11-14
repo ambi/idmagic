@@ -94,6 +94,8 @@ type jobsTestServer struct {
 	otherJob *domain.Job
 	// actorRealm は実行者の所属テナントの realm。経路を組み立てるのに使う。
 	actorRealm string
+	// authn はセッションが解決する認証の文脈。認証の保証を変えるテストが書き換える。
+	authn *authdomain.AuthenticationContext
 }
 
 // newJobsAdminServer は "acme" に 2 件、制御面テナントに 1 件の Job を持つサーバーを作る。
@@ -140,8 +142,9 @@ func newJobsAdminServerServing(t *testing.T, actor *userdomain.User, serve func(
 	resolver := &fakeAuthnResolver{}
 	if actor != nil {
 		resolver.ctx = &authdomain.AuthenticationContext{
-			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"},
 		}
+		srv.authn = resolver.ctx
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -432,6 +435,24 @@ func TestCancelSystemJobRefusesATerminalJob(t *testing.T) {
 	}
 	if !after.UpdatedAt.Equal(before.UpdatedAt) || after.Status != before.Status {
 		t.Errorf("a refused cancel changed the job: before=%+v after=%+v", before, after)
+	}
+}
+
+//spec:covers EX-JOBS-015-05: 直近の MFA のないセッションの Cookie によるシステム経路の取り消しは、step_up_required で拒否し、Job を変えない。
+//verify:operation CancelSystemJob: 直近の MFA のないセッションの取り消し要求は 403 step_up_required の本文を返し、保存済み状態を維持する。
+func TestCancelSystemJobRequiresRecentMfaSession(t *testing.T) {
+	srv := newJobsAdminServer(t, jobsAdminUser("root", tenancydomain.DefaultTenantID, []string{"system_admin"}))
+	srv.authn.AMR = []string{"pwd"}
+	foreign := srv.acmeJob
+
+	rec := srv.cancelPath(t, "/realms/default/api/admin/v1/system/jobs/"+foreign.ID+"/cancel")
+	assertJobProblem(t, rec, http.StatusForbidden, "step_up_required")
+	after, err := srv.repo.Get(t.Context(), foreign.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Status != foreign.Status || !after.UpdatedAt.Equal(foreign.UpdatedAt) {
+		t.Errorf("a refused cancel changed the job: before=%+v after=%+v", foreign, after)
 	}
 }
 

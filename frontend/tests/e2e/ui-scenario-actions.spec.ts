@@ -1,7 +1,5 @@
 // wi-75: 到達性スモークから一段進め、主要なブラウザ操作が API と接続されて
 // ユーザー可視の成功状態へ到達することを検証する。
-import { createHmac } from 'node:crypto'
-
 // 主要ユースケース追跡: REQ-AUTHENTICATION-013。
 import { expect, test } from 'bun:test'
 import {
@@ -18,6 +16,7 @@ import {
   demo,
   POLL_INTERVAL_MS,
   navigateAndLogin,
+  navigateAndLoginAsSystemAdmin,
   selectDropdownOption,
   setCheckboxValue,
   setInputValue,
@@ -30,37 +29,8 @@ import {
   waitForEmailURL,
   waitForInputValue,
   waitForText,
+  totpCode,
 } from './fixtures'
-
-function totpCode(secret: string, now = Date.now()): string {
-  const counter = Math.floor(now / 1000 / 30)
-  const key = decodeBase32(secret.replace(/\s+/g, ''))
-  const message = Buffer.alloc(8)
-  message.writeBigUInt64BE(BigInt(counter))
-  const digest = createHmac('sha1', key).update(message).digest()
-  const offset = digest[digest.length - 1] & 0x0f
-  const binary =
-    ((digest[offset] & 0x7f) << 24) |
-    ((digest[offset + 1] & 0xff) << 16) |
-    ((digest[offset + 2] & 0xff) << 8) |
-    (digest[offset + 3] & 0xff)
-  return String(binary % 1_000_000).padStart(6, '0')
-}
-
-function decodeBase32(value: string): Buffer {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
-  let bits = ''
-  for (const char of value.toUpperCase().replace(/=+$/, '')) {
-    const index = alphabet.indexOf(char)
-    if (index < 0) continue
-    bits += index.toString(2).padStart(5, '0')
-  }
-  const bytes: number[] = []
-  for (let i = 0; i + 8 <= bits.length; i += 8) {
-    bytes.push(Number.parseInt(bits.slice(i, i + 8), 2))
-  }
-  return Buffer.from(bytes)
-}
 
 async function waitForPaginationPage(
   view: Bun.WebView,
@@ -521,12 +491,7 @@ test('admin audit log can be filtered and export can be triggered', async () => 
 test('system audit export can be requested and canceled', async () => {
   const view = await openWebView({ width: 1280, height: 2000 })
   try {
-    await navigateAndLogin(
-      view,
-      '/system/audit-events',
-      'system-audit-events',
-      demo.systemAdminUsername,
-    )
+    await navigateAndLoginAsSystemAdmin(view, '/system/audit-events', 'system-audit-events')
     await clickButtonByText(view, 'Export')
     await waitForText(view, 'Queued')
     expect(

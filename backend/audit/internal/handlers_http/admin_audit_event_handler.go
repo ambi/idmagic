@@ -197,7 +197,7 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 func (d Deps) handleListSystemAuditEvents(c *echo.Context) error {
 	actor, err := d.RequireControlPlaneUser(c)
 	if err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	return d.listAuditEvents(c, actor, systemAuditScope())
 }
@@ -279,7 +279,7 @@ func (d Deps) handleGetAdminAuditEvent(c *echo.Context) error {
 
 func (d Deps) handleGetSystemAuditEvent(c *echo.Context) error {
 	if _, err := d.RequireControlPlaneUser(c); err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	return d.getAuditEvent(c, systemAuditScope())
 }
@@ -317,7 +317,7 @@ func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
 func (d Deps) handleExportSystemAuditEvents(c *echo.Context) error {
 	actor, err := d.RequireControlPlaneUser(c)
 	if err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	return d.exportAuditEvents(c, actor, systemAuditScope())
 }

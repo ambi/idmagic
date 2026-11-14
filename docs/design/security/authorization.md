@@ -67,11 +67,13 @@
 | サインインポリシー | SignInPolicy（外部の契約は Application） | アプリへのサインイン（フェデレーションの開始と IdMagic 自身の画面） | 必要な強さ（`Password` か `Mfa`）、記憶済みの端末で `Mfa` を満たしてよいか、再認証の期限、許可するネットワーク。アプリごとのポリシーはテナントのデフォルトを上書きする | [サインインポリシー](../../modules/application/features/sign-in-policy.md) |
 | 認可の要求の水準と新しさ | OAuth2 | `/authorize` | クライアントが `acr_values`、`max_age`、`prompt=login` で求める水準と新しさ | [認可](../../modules/oauth2/features/authorization.md) |
 | ステップアップ認証 | Authentication | 機微な操作の要求 | 操作の直前の再認証 | [下の節](#ステップアップ認証) |
+| 制御面の特権認証 | 共有の HTTP 支援の制御面のゲート（判定は Authentication） | システムの経路の要求 | 読み出しに MFA で成立した認証を、変更にさらに 5 分以内の認証を求める。管理発行の API アクセストークンには課さない | [REQ-SYSTEM-033](../../modules/system/features/api-boundary.md#制御面主体によるテナント横断の操作) |
 
 記憶済みの端末（`amr` の `tdev`）は、第二要素を省いても `acr` の水準を `urn:idmagic:acr:mfa` に上げる。
-記憶済みの端末を MFA の充足と認めないのは、二つの場合である。
+記憶済みの端末を MFA の充足と認めないのは、三つの場合である。
 一つは、サインインポリシーで `allow_trusted_device` を `false` にした規則（毎回の MFA）である。
 もう一つは、認可の要求が `acr_values` で MFA の水準を求め、`max_age` か `prompt=login` で再認証も求めた場合である。再認証は直前に要素を提示したことを求めるので、ポリシーによらず記憶済みの端末を照合しない（[REQ-AUTHENTICATION-027](../../modules/authentication/features/trusted-device.md)）。
+三つ目は、制御面の特権認証である。判定は `acr` ではなく `amr` を読み、記憶済みの端末を除いた第二要素を求める。再認可が記憶済みの端末で完了しても、制御面のゲートは通らない。
 ステップアップ認証は水準を問わず新しさだけを求め、記憶済みの端末で第二要素を省いたことをステップアップ認証の成立として記録しない（[REQ-AUTHENTICATION-029](../../modules/authentication/features/trusted-device.md)）。
 
 `acr_values` で求めた MFA の水準は、実効のサインインポリシーによらず、満たすまで認可コードを発行しない（[REQ-OAUTH2-005](../../modules/oauth2/features/authorization.md)）。

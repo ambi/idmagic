@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, updateAdminTenantQuota } from '../../api'
 import { FieldError } from '../../components/FieldError'
 import { SystemShell } from '../../components/SystemShell'
+import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -47,6 +48,8 @@ export function SystemTenantQuotaPage({
   const [quota, setQuota] = useState(() => quotaForm(tenant))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // 制御面の変更は直近の MFA の認証を求める (REQ-SYSTEM-033)。
+  const { guard, dialog } = useStepUpGuard()
   const validation = useFormValidation(quotaSchema, quota)
 
   async function handleSave(e: FormEvent<HTMLFormElement>) {
@@ -59,13 +62,19 @@ export function SystemTenantQuotaPage({
     setSaving(true)
     setError('')
     try {
-      await updateAdminTenantQuota(
-        csrfToken,
-        tenant.realm,
-        Object.fromEntries(QUOTA_KEYS.map((key) => [key, data[key]])),
+      await guard(() =>
+        updateAdminTenantQuota(
+          csrfToken,
+          tenant.realm,
+          Object.fromEntries(QUOTA_KEYS.map((key) => [key, data[key]])),
+        ),
       )
       window.location.assign(tenantDetailURL(tenant.realm, 'updated'))
     } catch (cause) {
+      if (cause instanceof StepUpCancelledError) {
+        setSaving(false)
+        return
+      }
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.tenantUpdateFailedError)
       setSaving(false)
     }
@@ -112,6 +121,7 @@ export function SystemTenantQuotaPage({
           </div>
         </form>
       </Card>
+      {dialog}
     </SystemShell>
   )
 }

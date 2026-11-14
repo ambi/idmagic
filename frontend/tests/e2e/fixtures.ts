@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, createHmac } from 'node:crypto'
 import { closeSync, openSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -1059,6 +1059,100 @@ export async function navigateAndLogin(
   await view.navigate(`${uiOrigin}${path}`)
   await loginFromCurrentPage(view, username)
   await waitForPage(view, expectedPage, 30_000)
+}
+
+// totpCode は RFC 6238 の 30 秒刻み、6 桁、SHA-1 のコードを secret から作る。
+export function totpCode(secret: string, now = Date.now()): string {
+  const counter = Math.floor(now / 1000 / 30)
+  const key = decodeBase32(secret.replace(/\s+/g, ''))
+  const message = Buffer.alloc(8)
+  message.writeBigUInt64BE(BigInt(counter))
+  const digest = createHmac('sha1', key).update(message).digest()
+  const offset = digest[digest.length - 1] & 0x0f
+  const binary =
+    ((digest[offset] & 0x7f) << 24) |
+    ((digest[offset + 1] & 0xff) << 16) |
+    ((digest[offset + 2] & 0xff) << 8) |
+    (digest[offset + 3] & 0xff)
+  return String(binary % 1_000_000).padStart(6, '0')
+}
+
+function decodeBase32(value: string): Buffer {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+  let bits = ''
+  for (const char of value.toUpperCase().replace(/=+$/, '')) {
+    const index = alphabet.indexOf(char)
+    if (index < 0) continue
+    bits += index.toString(2).padStart(5, '0')
+  }
+  const bytes: number[] = []
+  for (let i = 0; i + 8 <= bits.length; i += 8) {
+    bytes.push(Number.parseInt(bits.slice(i, i + 8), 2))
+  }
+  return Buffer.from(bytes)
+}
+
+// systemAdminTotpSecret は、システム管理者が最初のシステムコンソールの spec で登録した TOTP の
+// secret である。実行全体でサーバーは一つなので、登録は一度だけ行い、以降の spec はこの値でコードを作る。
+let systemAdminTotpSecret: string | undefined
+
+// navigateAndLoginAsSystemAdmin は、システム管理者として MFA で認証してシステムコンソールの path を開く。
+// 制御面の操作は MFA で成立した認証を求める (REQ-SYSTEM-033)。TOTP がまだなければアカウントの
+// セキュリティで登録し、パスワードの後に求められる TOTP、または MFA を求める再認可に答える。
+export async function navigateAndLoginAsSystemAdmin(
+  view: Bun.WebView,
+  path: string,
+  expectedPage: string,
+): Promise<void> {
+  if (systemAdminTotpSecret === undefined) {
+    await navigateAndLogin(view, '/account/security', 'account-security', demo.systemAdminUsername)
+    await clickButtonByText(view, 'Set up authenticator app')
+    await waitForText(view, 'Setup key')
+    const secret = String(
+      await view.evaluate('document.querySelector("#totp-secret")?.value ?? ""'),
+    )
+    if (secret === '') throw new Error('the TOTP enrollment showed no setup key')
+    await setInputValue(view, '#totp-code', totpCode(secret))
+    await clickButtonByText(view, 'Complete enrollment')
+    await waitForText(view, 'Authenticator app enrolled.')
+    systemAdminTotpSecret = secret
+  }
+  const secret = systemAdminTotpSecret
+  await view.navigate(`${uiOrigin}${path}`)
+  const deadline = Date.now() + 30_000
+  while (Date.now() < deadline) {
+    let page: unknown
+    try {
+      page = await metaPage(view)
+    } catch {
+      // 遷移中は evaluate が破棄済みの文書に当たって失敗しうる。これはリトライする。
+    }
+    if (page === expectedPage) return
+    if (page === 'login') {
+      await loginFromCurrentPage(view, demo.systemAdminUsername)
+      await waitForPageToLeave(view, 'login')
+    } else if (page === 'totp') {
+      await setInputValue(view, '#code', totpCode(secret))
+      await clickEnabledButtonByText(view, 'Verify code')
+      await waitForPageToLeave(view, 'totp')
+    } else {
+      await Bun.sleep(POLL_INTERVAL_MS)
+    }
+  }
+  throw new Error(`timeout waiting for page kind=${expectedPage} as the system administrator`)
+}
+
+async function waitForPageToLeave(view: Bun.WebView, kind: string): Promise<void> {
+  const deadline = Date.now() + 15_000
+  while (Date.now() < deadline) {
+    try {
+      if ((await metaPage(view)) !== kind) return
+    } catch {
+      return
+    }
+    await Bun.sleep(POLL_INTERVAL_MS)
+  }
+  throw new Error(`timeout leaving page kind=${kind}`)
 }
 
 // 認可モデルはテナントに一つで、全 spec が同じテナントを共有する。どの spec が先に発行して

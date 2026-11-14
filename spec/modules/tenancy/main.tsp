@@ -14,6 +14,7 @@ model ListTenantsSuccess_200 {
 }
 
 union ListTenantsError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
@@ -31,7 +32,7 @@ model ListTenantsError403 {
 @get
 op ListTenants(
 
-): ListTenantsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListTenantsError403;
+): ListTenantsSuccess_200 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | ListTenantsError403;
 
 model GetTenantSuccess_200 {
   @statusCode statusCode: 200;
@@ -39,6 +40,7 @@ model GetTenantSuccess_200 {
 }
 
 union GetTenantError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
@@ -66,7 +68,7 @@ model GetTenantError404 {
 @get
 op GetTenant(
   @path tenant_id: string
-): GetTenantSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetTenantError403 | GetTenantError404;
+): GetTenantSuccess_200 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | GetTenantError403 | GetTenantError404;
 
 model CreateTenantSuccess_201 {
   @statusCode statusCode: 201;
@@ -84,6 +86,7 @@ model CreateTenantError400 {
 }
 
 union CreateTenantError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.InvalidOriginError,
@@ -103,7 +106,7 @@ model CreateTenantError403 {
 @post
 op CreateTenant(
   @body body: IdMagic.Contract.TenantCreateRequest
-): CreateTenantSuccess_201 | CreateTenantError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateTenantError403;
+): CreateTenantSuccess_201 | CreateTenantError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | CreateTenantError403;
 
 model UpdateTenantSuccess_200 {
   @statusCode statusCode: 200;
@@ -121,6 +124,7 @@ model UpdateTenantError400 {
 }
 
 union UpdateTenantError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.InvalidOriginError,
@@ -151,7 +155,7 @@ model UpdateTenantError422 {
 op UpdateTenant(
   @path tenant_id: string,
   @body body: IdMagic.Contract.TenantUpdateRequest
-): UpdateTenantSuccess_200 | UpdateTenantError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantError403 | UpdateTenantError422;
+): UpdateTenantSuccess_200 | UpdateTenantError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | UpdateTenantError403 | UpdateTenantError422;
 
 model DisableTenantSuccess_204 {
   @statusCode statusCode: 204;
@@ -168,6 +172,7 @@ model DisableTenantError400 {
 }
 
 union DisableTenantError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.InvalidOriginError,
@@ -181,12 +186,12 @@ model DisableTenantError403 {
 }
 
 @doc("system_admin が default 以外のテナントを無効にする。以降は /authorize、/token、/login などがすべて invalid_request になる。")
-@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("DisableTenant")
 @route("/api/admin/v1/tenants/{tenant_id}/disable")
 @post
 op DisableTenant(
-  @path tenant_id: string,): DisableTenantSuccess_204 | DisableTenantError400 | IdMagic.Contract.AuthenticationRequiredResponse | DisableTenantError403;
+  @path tenant_id: string,): DisableTenantSuccess_204 | DisableTenantError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | DisableTenantError403;
 
 model EnableTenantSuccess_204 {
   @statusCode statusCode: 204;
@@ -203,6 +208,7 @@ model EnableTenantError400 {
 }
 
 union EnableTenantError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.InvalidOriginError,
@@ -216,12 +222,12 @@ model EnableTenantError403 {
 }
 
 @doc("system_admin が、無効にしたテナントを再び有効にする。")
-@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("EnableTenant")
 @route("/api/admin/v1/tenants/{tenant_id}/enable")
 @post
 op EnableTenant(
-  @path tenant_id: string,): EnableTenantSuccess_204 | EnableTenantError400 | IdMagic.Contract.AuthenticationRequiredResponse | EnableTenantError403;
+  @path tenant_id: string,): EnableTenantSuccess_204 | EnableTenantError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | EnableTenantError403;
 
 model SetTenantEndpointStyleHttpRequest {
   endpoint_style: IdMagic.Contract.TenantEndpointStyle;
@@ -242,6 +248,7 @@ model SetTenantEndpointStyleError400 {
 }
 
 union SetTenantEndpointStyleError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.InvalidOriginError,
@@ -255,14 +262,14 @@ model SetTenantEndpointStyleError403 {
 }
 
 @doc("system_admin が、テナントの正規の所在の形を切り替える。テナントの同一性を作り替える破壊的な操作なので、通常の属性の更新（UpdateTenant）とは分けている。発行者が変わるので、発行済みのトークンの `iss` の検証とすべての Relying Party の設定が壊れる。WebAuthn の RP ID が変わるので、既存のパスキーがすべて無効になる。Cookie のスコープが変わるので、進行中のセッションが切れる。`Subdomain` を選べるのは `tenant_base_domain` を設定したデプロイメントだけで、設定していなければリクエストは InvalidRequestError になる。レルムは変わらないので、切り替え後のホスト名は既存のレルムから決まる。")
-@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("SetTenantEndpointStyle")
 @route("/api/admin/v1/tenants/{tenant_id}/endpoint-style")
 @put
 op SetTenantEndpointStyle(
   @path tenant_id: string,
   @body body: SetTenantEndpointStyleHttpRequest
-): SetTenantEndpointStyleSuccess_204 | SetTenantEndpointStyleError400 | IdMagic.Contract.AuthenticationRequiredResponse | SetTenantEndpointStyleError403;
+): SetTenantEndpointStyleSuccess_204 | SetTenantEndpointStyleError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | SetTenantEndpointStyleError403;
 
 model UpdateTenantQuotaSuccess_200 {
   @statusCode statusCode: 200;
@@ -280,6 +287,7 @@ model UpdateTenantQuotaError400 {
 }
 
 union UpdateTenantQuotaError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InvalidOriginError,
   IdMagic.Contract.AccessDeniedError,
@@ -307,7 +315,7 @@ op UpdateTenantQuota(
   @doc("対象テナントの realm。内部 UUID ではない。")
   @path tenant_id: string,
   @body body: IdMagic.Contract.TenantQuotaUpdateRequest
-): UpdateTenantQuotaSuccess_200 | UpdateTenantQuotaError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantQuotaError403 | UpdateTenantQuotaError404;
+): UpdateTenantQuotaSuccess_200 | UpdateTenantQuotaError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | UpdateTenantQuotaError403 | UpdateTenantQuotaError404;
 
 model GetAdminSettingsSuccess_200 {
   @statusCode statusCode: 200;

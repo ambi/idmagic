@@ -25,6 +25,8 @@ export const commonDictionary = defineDictionary(
     stepUpContinue: '本人確認を続ける',
     stepUpWaiting: '本人確認を待っています…',
     stepUpNotCompleted: '本人確認が完了しませんでした。もう一度お試しください。',
+    stepUpMfaEnrollmentRequired:
+      'この操作には多要素認証が必要ですが、認証アプリやパスキーがまだ登録されていません。アカウントの画面で登録してから、もう一度お試しください。',
     password: 'パスワード',
     authenticatorApp: '認証アプリ',
     passkey: 'パスキー',
@@ -89,6 +91,8 @@ export const commonDictionary = defineDictionary(
     stepUpContinue: 'Continue to verify',
     stepUpWaiting: 'Waiting for verification…',
     stepUpNotCompleted: 'Verification was not completed. Try again.',
+    stepUpMfaEnrollmentRequired:
+      'This action requires multi-factor authentication, but no authenticator app or passkey is registered yet. Register one on your account page, then try again.',
     password: 'Password',
     authenticatorApp: 'Authenticator app',
     passkey: 'Passkey',

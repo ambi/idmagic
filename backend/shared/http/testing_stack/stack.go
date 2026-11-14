@@ -829,7 +829,9 @@ func (s *Stack) AdminSessionCookie(t *testing.T, realm string) *http.Cookie {
 			CreatedAt: now, UpdatedAt: now,
 		})
 	}
-	authn, err := s.Sessions.Create(s.RealmContext(t, realm), userID, []string{"pwd"}, time.Now().UTC())
+	// 制御面の操作は MFA で成立した直近の認証を求める (REQ-SYSTEM-033)。管理者を主語にする
+	// 具体例がその条件で止まらないよう、パスワードと TOTP で認証したセッションにする。
+	authn, err := s.Sessions.Create(s.RealmContext(t, realm), userID, []string{"pwd", "otp"}, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("admin session for realm %q: %v", realm, err)
 	}

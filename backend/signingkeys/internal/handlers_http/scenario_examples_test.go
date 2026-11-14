@@ -53,7 +53,7 @@ type sessionClient struct {
 
 func signedInAdmin(t *testing.T, s *stack.Stack) sessionClient {
 	t.Helper()
-	authn, err := s.Sessions.Create(s.RealmContext(t, realm), stack.AdminUserID, []string{"pwd"}, time.Now().UTC())
+	authn, err := s.Sessions.Create(s.RealmContext(t, realm), stack.AdminUserID, []string{"pwd", "otp"}, time.Now().UTC())
 	if err != nil || authn == nil || authn.SessionID == "" {
 		t.Fatalf("create admin session: authn=%+v err=%v", authn, err)
 	}

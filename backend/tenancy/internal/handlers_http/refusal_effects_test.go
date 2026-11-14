@@ -76,7 +76,7 @@ func newRefusalServer(t *testing.T, actors ...*userdomain.User) *refusalServer {
 		_ = userRepo.Save(context.Background(), actor)
 		if index == 0 {
 			resolver.ctx = &authdomain.AuthenticationContext{
-				UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+				UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"},
 			}
 		}
 	}

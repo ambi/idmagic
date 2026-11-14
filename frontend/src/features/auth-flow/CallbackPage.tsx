@@ -15,6 +15,8 @@ export function CallbackPage({
   errorDescription?: string
 }) {
   const succeeded = Boolean(code) && !error
+  // 要求した MFA の水準を満たせないのは、第二要素を登録していない場合である (REQ-OAUTH2-005)。
+  const enrollmentRequired = error === 'unmet_authentication_requirements'
   const t = useDictionary(informationalPagesDictionary)
 
   return (
@@ -42,7 +44,9 @@ export function CallbackPage({
           <p className="page-description">
             {succeeded
               ? t.callbackCompleteText
-              : (errorDescription ?? error ?? t.invalidAuthorizationResponse)}
+              : enrollmentRequired
+                ? t.mfaEnrollmentRequired
+                : (errorDescription ?? error ?? t.invalidAuthorizationResponse)}
           </p>
         </header>
 
@@ -55,6 +59,15 @@ export function CallbackPage({
             >
               <IconLayoutDashboard size={17} aria-hidden="true" />
               {t.openAdmin}
+            </Button>
+          )}
+          {enrollmentRequired && (
+            <Button
+              className="w-full"
+              nativeButton={false}
+              render={<a href={tenantURL('/account/security')} />}
+            >
+              {t.openAccountSecurity}
             </Button>
           )}
           <Button

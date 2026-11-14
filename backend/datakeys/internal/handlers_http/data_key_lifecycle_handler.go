@@ -23,9 +23,9 @@ func (d Deps) handleRotateTenantDataKey(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.RequireControlPlaneUser(c)
+	actor, err := d.RequireControlPlaneChange(c)
 	if err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	ctx := c.Request().Context()
 	tenant, err := d.TenantRepo.FindByID(ctx, c.Param("target_tenant_id"))
@@ -48,9 +48,9 @@ func (d Deps) handleDisableTenantDataKey(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.RequireControlPlaneUser(c)
+	actor, err := d.RequireControlPlaneChange(c)
 	if err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	version, err := strconv.Atoi(c.Param("version"))
 	if err != nil {

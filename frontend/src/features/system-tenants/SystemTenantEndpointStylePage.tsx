@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, setAdminTenantEndpointStyle } from '../../api'
 import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
 import { SystemShell } from '../../components/SystemShell'
+import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -30,6 +31,8 @@ export function SystemTenantEndpointStylePage({
   const [confirming, setConfirming] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // 制御面の変更は直近の MFA の認証を求める (REQ-SYSTEM-033)。
+  const { guard, dialog } = useStepUpGuard()
   const changed = style !== current
 
   function requestConfirmation(event: FormEvent<HTMLFormElement>) {
@@ -41,9 +44,14 @@ export function SystemTenantEndpointStylePage({
     setSaving(true)
     setError('')
     try {
-      await setAdminTenantEndpointStyle(csrfToken, tenant.realm, style)
+      await guard(() => setAdminTenantEndpointStyle(csrfToken, tenant.realm, style))
       window.location.assign(tenantDetailURL(tenant.realm, 'updated'))
     } catch (cause) {
+      if (cause instanceof StepUpCancelledError) {
+        setConfirming(false)
+        setSaving(false)
+        return
+      }
       setConfirming(false)
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.tenantUpdateFailedError)
       setSaving(false)
@@ -99,6 +107,7 @@ export function SystemTenantEndpointStylePage({
           onConfirm={() => void save()}
         />
       ) : null}
+      {dialog}
     </SystemShell>
   )
 }

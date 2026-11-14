@@ -54,7 +54,7 @@ func newKeyAdminServer(t *testing.T, actor *userdomain.User) (*echo.Echo, signin
 	resolver := &fakeAuthnResolver{}
 	if actor != nil {
 		resolver.ctx = &authdomain.AuthenticationContext{
-			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"},
 		}
 	}
 	events := make([]spec.DomainEvent, 0)

@@ -69,6 +69,8 @@ type staticIntrospector struct {
 func (i staticIntrospector) IntrospectAccessToken(context.Context, string) (*oauthports.IntrospectionResult, error) {
 	return &oauthports.IntrospectionResult{
 		Active: true, Sub: i.sub, Scope: i.scope, Iat: time.Now().UTC().Unix(),
+		// 制御面の操作は直近の MFA の認証を求める (REQ-SYSTEM-033)。
+		AuthTime: time.Now().UTC().Unix(), AMR: []string{"pwd", "otp"},
 	}, nil
 }
 
@@ -114,8 +116,9 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 	authn := &support.Authenticator{
 		Principals: idmanagement.Module{UserRepo: userRepo}.Principals(),
 		Sessions: authentication.Module{AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
-			UserID: actor.ID, AuthTime: now.Unix(), AMR: []string{"pwd"},
+			UserID: actor.ID, AuthTime: now.Unix(), AMR: []string{"pwd", "otp"},
 		}}}.SessionAuthentications(),
+		Privileged:   authentication.Module{}.PrivilegedAuthentications(),
 		AccessTokens: oauth2.Module{TokenIntrospector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}}.ResourceAccessTokens(nil, nil, nil, nil),
 	}
 	e := echo.New()

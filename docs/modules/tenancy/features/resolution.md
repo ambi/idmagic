@@ -85,12 +85,14 @@
 
 #### REQ-TENANCY-011 System管理者はテナントの正規ロケーションを切り替えられる
 
+- **上位の要件**：[REQ-SYSTEM-033](../../system/features/api-boundary.md#制御面主体によるテナント横断の操作)
 - System 管理者がテナントの `endpoint_style` を切り替えたとき、Tenancy は、テナントの `endpoint_style` を指定した値にし、204 を返す。
 - System 管理者がテナントの `endpoint_style` を切り替えたとき、Tenancy は、以後の要求を新しい正規ロケーションからだけ受け付け、発行者と WebAuthn の RP ID を新しい正規ロケーションから導出する。
 - System 管理者がテナントの `endpoint_style` を切り替えたとき、Tenancy は、操作者、テナント、切り替える前と後の `endpoint_style` を載せた `TenantEndpointStyleChanged` を発行する。
 - `endpoint_style` に `path` と `subdomain` のどちらでもない値を指定された場合、Tenancy は、400 と `invalid_request` で拒否し、`TenantEndpointStyleChanged` を発行しない。
 - `tenant_base_domain` を設定していないデプロイでは、`subdomain` を指定された場合、Tenancy は、400 と `invalid_request` で拒否し、`endpoint_style` を変えず、`TenantEndpointStyleChanged` を発行しない。
 - 存在しない realm を指定された場合、Tenancy は、404 と `tenant_not_found` で拒否し、`TenantEndpointStyleChanged` を発行しない。
+- 管理発行の API アクセストークンで切替を要求された場合、Tenancy は、トークンを受け付けずに 401 と `invalid_token` で拒否し、`endpoint_style` を変えず、`TenantEndpointStyleChanged` を発行しない。
 - **判断**：切り替える前と同じ値を指定した要求にもイベントを発行する。イベントは操作者の操作を監査に残すためのものであり、前と後の値を比べれば、状態が動いた切替と再送を区別できる。
 - **判断**：切替を `TenantUpdated` に含めず別のイベントにするのは、切替が発行済みトークンの `iss` の検証と既存のパスキーを無効にし、通常の属性の更新と影響の範囲も復旧の手順も異なるためである。型を分ければ、監査ログからこの操作だけを取り出せる。
 - **例**：EX-TENANCY-011-01、EX-TENANCY-011-02

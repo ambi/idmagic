@@ -214,6 +214,7 @@ model ListTenantKeyHealthSuccess_200 {
 }
 
 union ListTenantKeyHealthError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
@@ -231,7 +232,7 @@ model ListTenantKeyHealthError403 {
 @get
 op ListTenantKeyHealth(
 
-): ListTenantKeyHealthSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListTenantKeyHealthError403;
+): ListTenantKeyHealthSuccess_200 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | ListTenantKeyHealthError403;
 }
 
 }

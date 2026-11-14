@@ -39,6 +39,7 @@ import (
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -73,6 +74,7 @@ type tiFixture struct {
 	refreshTokens   oauthports.RefreshTokenStore
 	resourceServers oauthports.McpResourceServerRepository
 	codes           oauthports.AuthorizationCodeStore
+	users           userports.UserRepository
 	events          *eventRecorder
 }
 
@@ -100,7 +102,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
-		Scope:                    "openid profile offline_access read write idmagic.account",
+		Scope:                    "openid profile offline_access read write idmagic.account idmagic.admin",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
@@ -209,7 +211,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 	t.Cleanup(server.Close)
 	return &tiFixture{
 		base: server.URL + "/realms/default", assertionKey: assertionKey,
-		tenants: tenants, refreshTokens: refreshTokens, resourceServers: resourceServers, codes: codes, events: events,
+		tenants: tenants, refreshTokens: refreshTokens, resourceServers: resourceServers, codes: codes, events: events, users: users,
 	}
 }
 

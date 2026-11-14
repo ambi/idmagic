@@ -25,7 +25,7 @@ type TenantDataKeyHealthResponse struct {
 
 func (d Deps) handleListTenantDataKeyHealth(c *echo.Context) error {
 	if _, err := d.RequireControlPlaneUser(c); err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	if d.Repository == nil || d.Crypto == nil || d.TenantRepo == nil {
 		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"tenants": []TenantDataKeyHealthResponse{}})

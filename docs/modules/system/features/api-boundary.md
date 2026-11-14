@@ -50,6 +50,24 @@
 - 制御面主体の資格を持たない操作者がシステムコンソールを開いた場合、System は、テナント管理コンソールへ送り返し、システムの経路も拒否する。
 - **例**：EX-SYSTEM-020-01、EX-SYSTEM-020-02、EX-SYSTEM-020-03
 
+#### REQ-SYSTEM-033 制御面の操作は MFA で成立した認証を求め、変更は直近 5 分の MFA の認証を求める
+
+- System は、次の表のとおり制御面の操作を読み出しと変更に分ける。
+
+| 区分 | 操作 |
+| --- | --- |
+| 読み出し | `ListTenants`、`GetTenant`、`ListTenantKeyHealth`、`ListTenantDataKeyHealth`、`ListSystemJobs`、`GetSystemJob`、`ListSystemAuditEvents`、`GetSystemAuditEvent`、`ExportSystemAuditEvents`、システムの監査エクスポートの開始、一覧、取得、取消し、ダウンロード |
+| 変更 | `CreateTenant`、`UpdateTenant`、`UpdateTenantQuota`、`SetTenantEndpointStyle`、`DisableTenant`、`EnableTenant`、`CancelSystemJob`、`RotateTenantDataKey`、`DisableTenantDataKey` |
+
+- 制御面主体が、`amr` に `otp`、`webauthn`、`hwk`、`swk`、`rc` のいずれかを含む認証でシステムの経路の読み出しを要求したとき、System は、要求に応じる。
+- 制御面主体が、`amr` にそれらの方式を含み `auth_time` が 5 分の内にある認証で制御面の変更の操作を要求したとき、System は、要求に応じる。
+- `amr` にそれらの方式を含まないアクセストークンでシステムの経路を要求された場合、System は、401 と `insufficient_user_authentication` で拒否し、`WWW-Authenticate` に `acr_values="urn:idmagic:acr:mfa"` を示し、対象を変えない。
+- `auth_time` が 5 分を過ぎたか `auth_time` を持たないアクセストークンで制御面の変更の操作を要求された場合、System は、401 と `insufficient_user_authentication` で拒否し、`WWW-Authenticate` に `acr_values="urn:idmagic:acr:mfa"` と `max_age="300"` を示し、対象を変えない。
+- ログインセッションの Cookie で同じ条件を満たさない要求を受けた場合、System は、403 と `step_up_required` で拒否し、対象を変えない。
+- 管理発行の API アクセストークンでシステムの経路を要求されたとき、System は、この条件を課さず、操作の `x-api-token-scopes` の宣言に従う。
+- System は、記憶済みの端末（`tdev`）、パスワード（`pwd`）、上流の IdP（`federated`）、Kerberos（`wia`）を MFA の方式として数えず、セッションの `step_up_at` を判定に使わない。
+- **判断**：全テナントの監査と鍵状態を読める経路は、長時間残ったセッションやトークンを取得した者に対して守る必要があるので、読み出しにも MFA を求める。テナントを停止し正規ロケーションを変える変更は、取得から時間が経った資格情報で行えないよう、直近の認証も求める。`step_up_at` は方式を記録しないので、パスワードだけの再認証と区別できない。復旧コードを MFA に数えるのは、端末を失った唯一の運用者が締め出されないためである。
+
 ### 運用者によるゲートウェイの許可リストの照合
 
 #### REQ-SYSTEM-021 フロントエンドゲートウェイの経路許可リストは組み立て済みの経路表と照合され乖離を検出できる

@@ -2,6 +2,7 @@ import { type FormEvent, useMemo, useState } from 'react'
 import { AuthenticationAPIError, createAdminTenant } from '../../api'
 import { FieldError } from '../../components/FieldError'
 import { SystemShell } from '../../components/SystemShell'
+import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -37,22 +38,31 @@ export function SystemTenantCreatePage({
   const form = useForm(schema, { realm: '', displayName: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // 制御面の変更は直近の MFA の認証を求める (REQ-SYSTEM-033)。
+  const { guard, dialog } = useStepUpGuard()
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!form.data) {
+    const data = form.data
+    if (!data) {
       form.revealAll()
       return
     }
     setSaving(true)
     setError('')
     try {
-      const created = await createAdminTenant(csrfToken, {
-        realm: form.data.realm,
-        display_name: form.data.displayName,
-      })
+      const created = await guard(() =>
+        createAdminTenant(csrfToken, {
+          realm: data.realm,
+          display_name: data.displayName,
+        }),
+      )
       window.location.assign(tenantDetailURL(created.realm, 'created'))
     } catch (cause) {
+      if (cause instanceof StepUpCancelledError) {
+        setSaving(false)
+        return
+      }
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.tenantCreateFailedError)
       setSaving(false)
     }
@@ -102,6 +112,7 @@ export function SystemTenantCreatePage({
           </div>
         </form>
       </Card>
+      {dialog}
     </SystemShell>
   )
 }

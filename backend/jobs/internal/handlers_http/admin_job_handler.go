@@ -77,7 +77,7 @@ func (d Deps) handleListJobs(c *echo.Context) error {
 
 func (d Deps) handleListSystemJobs(c *echo.Context) error {
 	if _, err := d.RequireControlPlaneUser(c); err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	return d.listJobs(c, jobusecases.TenantScope{AllTenants: true})
 }
@@ -115,7 +115,7 @@ func (d Deps) handleGetJob(c *echo.Context) error {
 
 func (d Deps) handleGetSystemJob(c *echo.Context) error {
 	if _, err := d.RequireControlPlaneUser(c); err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	return d.getJob(c, jobusecases.TenantScope{AllTenants: true})
 }
@@ -152,8 +152,8 @@ func (d Deps) handleCancelSystemJob(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.RequireControlPlaneUser(c); err != nil {
-		return d.WriteAdminAccessError(c, err)
+	if _, err := d.RequireControlPlaneChange(c); err != nil {
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	return d.cancelJob(c, jobusecases.TenantScope{AllTenants: true})
 }

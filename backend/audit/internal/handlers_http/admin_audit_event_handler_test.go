@@ -105,7 +105,7 @@ func newAuditAdminServer(t *testing.T, actor *userdomain.User, events []*auditpo
 	resolver := &fakeAuthnResolver{}
 	if actor != nil {
 		resolver.ctx = &authdomain.AuthenticationContext{
-			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"},
 		}
 	}
 	e := echo.New()
@@ -185,7 +185,7 @@ func TestAdminAuditEventsResolvesUsernameToUserID(t *testing.T) {
 		Issuer: "http://test", TenantRepo: newSingleTenantRepo(),
 		UserRepo:      userRepo,
 		Audit:         audit.Module{AuditEventRepo: auditStore},
-		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: admin.ID, AuthTime: now.Unix(), AMR: []string{"pwd"}}},
+		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: admin.ID, AuthTime: now.Unix(), AMR: []string{"pwd", "otp"}}},
 	})
 
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events?username=alice")
@@ -215,7 +215,7 @@ func TestAdminAuditEventsUnknownUsernameReturnsEmptyNotError(t *testing.T) {
 		Issuer: "http://test", TenantRepo: newSingleTenantRepo(),
 		UserRepo:      userRepo,
 		Audit:         audit.Module{AuditEventRepo: auditStore},
-		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: admin.ID, AuthTime: now.Unix(), AMR: []string{"pwd"}}},
+		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: admin.ID, AuthTime: now.Unix(), AMR: []string{"pwd", "otp"}}},
 	})
 
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit-events?username=no-such-user")

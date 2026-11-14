@@ -18,6 +18,7 @@ model ListTenantDataKeyHealthSuccess_200 {
 }
 
 union ListTenantDataKeyHealthError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.AccessDeniedError,
 }
@@ -35,7 +36,7 @@ model ListTenantDataKeyHealthError403 {
 @get
 op ListTenantDataKeyHealth(
 
-): ListTenantDataKeyHealthSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListTenantDataKeyHealthError403;
+): ListTenantDataKeyHealthSuccess_200 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | ListTenantDataKeyHealthError403;
 
 model RotateTenantDataKeyHttpResponse {
   tenant_id: string;
@@ -57,6 +58,7 @@ model DataKeyLifecycleError400 {
 }
 
 union DataKeyLifecycleError403Body {
+  IdMagic.Contract.StepUpRequiredError,
   IdMagic.Contract.CsrfFailedError,
   IdMagic.Contract.InsufficientScopeError,
   IdMagic.Contract.InvalidOriginError,
@@ -82,7 +84,7 @@ model RotateTenantDataKeyError404 {
 @post
 op RotateTenantDataKey(
   @path tenant_id: string,
-): RotateTenantDataKeySuccess_200 | DataKeyLifecycleError400 | IdMagic.Contract.AuthenticationRequiredResponse | DataKeyLifecycleError403 | RotateTenantDataKeyError404;
+): RotateTenantDataKeySuccess_200 | DataKeyLifecycleError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | DataKeyLifecycleError403 | RotateTenantDataKeyError404;
 
 model DisableTenantDataKeySuccess_204 {
   @statusCode statusCode: 204;
@@ -107,7 +109,7 @@ model DisableTenantDataKeyError404 {
 op DisableTenantDataKey(
   @path tenant_id: string,
   @path version: int64,
-): DisableTenantDataKeySuccess_204 | DataKeyLifecycleError400 | IdMagic.Contract.AuthenticationRequiredResponse | DataKeyLifecycleError403 | DisableTenantDataKeyError404;
+): DisableTenantDataKeySuccess_204 | DataKeyLifecycleError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | DataKeyLifecycleError403 | DisableTenantDataKeyError404;
 }
 
 }

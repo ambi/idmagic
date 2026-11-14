@@ -85,7 +85,7 @@ type stubIntegrationAuthnResolver struct {
 }
 
 func (s stubIntegrationAuthnResolver) Resolve(context.Context, authdomain.Headers) (*authdomain.AuthenticationContext, error) {
-	return &authdomain.AuthenticationContext{UserID: s.userID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"}}, nil
+	return &authdomain.AuthenticationContext{UserID: s.userID, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"}}, nil
 }
 
 //spec:covers EX-TENANCY-001-01: path 形式の正規 issuer から各プロトコルの公開 URL と署名証明書情報を導出し、秘密を返さない。

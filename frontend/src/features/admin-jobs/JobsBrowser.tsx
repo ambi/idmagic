@@ -2,6 +2,7 @@ import { IconRefresh, IconSearch, IconX } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
 import { ResourceListToolbar } from '../../components/ResourceListToolbar'
 import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
+import { StepUpCancelledError } from '../../components/StepUpDialog'
 import {
   type AdminJob,
   type AdminJobLane,
@@ -148,6 +149,8 @@ export function JobsBrowser({
       setNotice(t.cancelSucceededNotice)
       setCancelTarget(null)
     } catch (cause) {
+      // 利用者が再認証を取り消した場合は、失敗として表示しない。
+      if (cause instanceof StepUpCancelledError) return
       // 409 は「すでに終わっていた」ことの通知であり、失敗ではなく事実として伝える。
       if (cause instanceof AuthenticationAPIError && cause.code === 'job_not_cancelable') {
         setError(t.cancelNotAllowedError)

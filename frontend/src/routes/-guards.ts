@@ -1,9 +1,10 @@
 import { redirect } from '@tanstack/react-router'
-import { request, tenantBasePath, UnauthenticatedError } from '../api/core'
+import { request, StepUpRequiredError, tenantBasePath, UnauthenticatedError } from '../api/core'
 import {
   ensureLoggedIn,
   markPortalAuthenticated,
   type PortalAudience,
+  reauthorize,
   recoverPortalSession,
 } from '../api/oidc'
 
@@ -61,5 +62,21 @@ export async function requireSystemAccount(
   if (!isControlPlaneAccount(account)) {
     throw redirect({ to: '/admin' })
   }
+  await ensureControlPlaneAssurance(pathname, search)
   return account
+}
+
+// ensureControlPlaneAssurance は、システムの経路の読み出しが求める MFA の認証を満たしているかを、
+// 入場の時点で一度だけ確かめる (REQ-SYSTEM-033)。満たさなければ、利用者の操作がないので
+// ポップアップを開けず、応答の条件を付けて画面全体で再認可する（戻らない）。ほかの失敗は
+// 各画面の読み込みに任せる。認可の正はサーバー側のゲートにあり、ここは早い案内だけを行う。
+export async function ensureControlPlaneAssurance(pathname: string, search: string): Promise<void> {
+  try {
+    await request('/api/admin/v1/tenants/default')
+  } catch (error) {
+    if (error instanceof StepUpRequiredError) {
+      await reauthorize(error.challenge, null, `${tenantBasePath()}${pathname}${search}`)
+      return new Promise<void>(() => {})
+    }
+  }
 }

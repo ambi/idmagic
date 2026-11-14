@@ -45,6 +45,32 @@ type Authenticator struct {
 	AccessTokens AccessTokenVerifier
 	ApiTokens    ApiTokenAuthenticator
 	Principals   PrincipalDirectory
+	// Privileged は、制御面の操作が求める認証の保証を判定する。nil のときは、利用者の認証で
+	// 届いた制御面の要求をすべて拒否する (REQ-SYSTEM-033)。
+	Privileged PrivilegedAuthentication
+}
+
+// ControlPlaneAssurance は、制御面の操作が求める認証の保証の段階である (REQ-SYSTEM-033)。
+type ControlPlaneAssurance string
+
+const (
+	// ControlPlaneRead は、システムの経路の読み出しが求める段階である。MFA で成立した認証を求める。
+	ControlPlaneRead ControlPlaneAssurance = "privileged_read"
+	// ControlPlaneChange は、制御面の変更の操作が求める段階である。直近の MFA の認証を求める。
+	ControlPlaneChange ControlPlaneAssurance = "privileged_change"
+)
+
+// PrivilegedAuthentication は、認証が制御面の段階の保証を満たすかを判定する。MFA とみなす方式と
+// 有効期間は Authentication が持つので、Authentication が実装し、組み立て地点が結ぶ。
+type PrivilegedAuthentication interface {
+	SatisfiesControlPlane(authn Authentication, level ControlPlaneAssurance, now time.Time) bool
+}
+
+// ControlPlaneAssuranceError は、制御面の操作が求める認証の保証を満たさないことを表す。
+type ControlPlaneAssuranceError struct{ Level ControlPlaneAssurance }
+
+func (e *ControlPlaneAssuranceError) Error() string {
+	return "control plane operation requires " + string(e.Level)
 }
 
 // Authentication は、リクエストを認証した結果である。具体的な値は認証した経路が決め、
@@ -172,8 +198,31 @@ const StepUpMaxAgeSeconds = 300
 // `insufficient_user_authentication` を返し、クライアントに `max_age` を付けた再認可を求める。
 // ログインセッションの Cookie の要求には、ステップアップ認証の API で再認証させる 403 を返す。
 func WriteStepUpRequired(c *echo.Context) error {
+	return WriteStepUpChallenge(c, StepUpChallenge{MaxAgeSeconds: StepUpMaxAgeSeconds})
+}
+
+// controlPlaneACR は、制御面の操作が再認可で求める認証の水準である。
+const controlPlaneACR = "urn:idmagic:acr:mfa"
+
+// StepUpChallenge は、再認証を求める応答が示す条件である。MaxAgeSeconds が 0 のときは新しさを求めず、
+// ACRValues が空のときは水準を求めない。
+type StepUpChallenge struct {
+	ACRValues     string
+	MaxAgeSeconds int
+}
+
+// WriteStepUpChallenge は、再認証を求めて要求を拒否する。Authorization の資格情報を持つ要求には、
+// RFC 9470 の 401 と `insufficient_user_authentication` を、条件の `acr_values` と `max_age` とともに返す。
+// ログインセッションの Cookie の要求には 403 の `step_up_required` を返す。
+func WriteStepUpChallenge(c *echo.Context, required StepUpChallenge) error {
 	if token, _ := authorizationToken(c); token != "" {
-		challenge := `Bearer error="insufficient_user_authentication", max_age="` + strconv.Itoa(StepUpMaxAgeSeconds) + `"`
+		challenge := `Bearer error="insufficient_user_authentication"`
+		if required.ACRValues != "" {
+			challenge += ", acr_values=" + strconv.Quote(required.ACRValues)
+		}
+		if required.MaxAgeSeconds > 0 {
+			challenge += `, max_age="` + strconv.Itoa(required.MaxAgeSeconds) + `"`
+		}
 		if metadataURL := protectedResourceMetadataURL(c); metadataURL != "" {
 			challenge += ", resource_metadata=" + strconv.Quote(metadataURL)
 		}
@@ -473,6 +522,16 @@ func IsControlPlaneActor(actor *Principal, requestTenantID string) bool {
 // 所属先と要求先の両方を制御面テナントに限定し、別テナントに保存された
 // system_admin がロール名だけでテナント境界を越えないようにする。
 func (a *Authenticator) RequireControlPlaneUser(c *echo.Context) (*Principal, error) {
+	return a.requireControlPlane(c, ControlPlaneRead)
+}
+
+// RequireControlPlaneChange は、RequireControlPlaneUser の条件に加えて、制御面の変更の操作が
+// 求める直近の MFA の認証を要求する (REQ-SYSTEM-033)。
+func (a *Authenticator) RequireControlPlaneChange(c *echo.Context) (*Principal, error) {
+	return a.requireControlPlane(c, ControlPlaneChange)
+}
+
+func (a *Authenticator) requireControlPlane(c *echo.Context, level ControlPlaneAssurance) (*Principal, error) {
 	authn, err := a.Authenticate(c)
 	if err != nil {
 		return nil, err
@@ -490,6 +549,13 @@ func (a *Authenticator) RequireControlPlaneUser(c *echo.Context) (*Principal, er
 	actor := a.withEffectiveRoles(c.Request().Context(), principal)
 	if !IsControlPlaneActor(actor, RequestTenantID(c)) {
 		return nil, ErrAdminAccessDenied
+	}
+	// 管理発行の API アクセストークンは、到達の可否を操作のスコープの宣言が決める。
+	if token, ok := authn.(accessTokenAuthentication); ok && token.apiTokenID != "" {
+		return actor, nil
+	}
+	if a.Privileged == nil || !a.Privileged.SatisfiesControlPlane(authn, level, time.Now().UTC()) {
+		return nil, &ControlPlaneAssuranceError{Level: level}
 	}
 	return actor, nil
 }
@@ -510,6 +576,21 @@ func (a *Authenticator) WriteAdminAccessError(c *echo.Context, err error) error 
 		return refused(WriteProblem(c, http.StatusForbidden, "access_denied", "Administrator privileges are required."))
 	}
 	return err
+}
+
+// WriteControlPlaneAccessError は WriteAdminAccessError に加えて、制御面の操作が求める
+// 認証の保証の不足をステップアップの要求へ写す (REQ-SYSTEM-033)。RequireControlPlaneUser と
+// RequireControlPlaneChange の失敗だけをこの関数で書く。共有の WriteAdminAccessError に
+// 含めると、制御面でない操作も step_up_required を書けることになり、契約と食い違う。
+func (a *Authenticator) WriteControlPlaneAccessError(c *echo.Context, err error) error {
+	if assurance, ok := errors.AsType[*ControlPlaneAssuranceError](err); ok {
+		challenge := StepUpChallenge{ACRValues: controlPlaneACR}
+		if assurance.Level == ControlPlaneChange {
+			challenge.MaxAgeSeconds = StepUpMaxAgeSeconds
+		}
+		return refused(WriteStepUpChallenge(c, challenge))
+	}
+	return a.WriteAdminAccessError(c, err)
 }
 
 // refused は応答の書き込み結果を、呼び出し元が止まれる形へ変える。書き込み自体が

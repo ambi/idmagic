@@ -94,8 +94,9 @@ func newAuditTestServer(t *testing.T, opts auditTestOptions) *auditTestServer {
 		Authenticator: &support.Authenticator{
 			Principals: idmanagement.Module{UserRepo: userRepo}.Principals(),
 			Sessions: authentication.Module{AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
-				UserID: actor.ID, AuthTime: now.Unix(), AMR: []string{"pwd"},
+				UserID: actor.ID, AuthTime: now.Unix(), AMR: []string{"pwd", "otp"},
 			}}}.SessionAuthentications(),
+			Privileged:   authentication.Module{}.PrivilegedAuthentications(),
 			AccessTokens: oauth2.Module{TokenIntrospector: staticIntrospector{sub: actor.ID, scope: "idmagic.admin"}}.ResourceAccessTokens(nil, nil, nil, nil),
 		},
 		TenantRepo:            tenantRepo,

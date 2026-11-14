@@ -2,8 +2,7 @@ import { expect, test } from 'bun:test'
 import {
   clickEnabledButtonByText,
   clickLinkByText,
-  demo,
-  navigateAndLogin,
+  navigateAndLoginAsSystemAdmin,
   openWebView,
   setInputValue,
   waitForLocationPath,
@@ -15,7 +14,7 @@ import {
 test('system console saves tenant quotas by realm', async () => {
   const view = await openWebView({ width: 1440, height: 2400 })
   try {
-    await navigateAndLogin(view, '/system/tenants', 'system-tenants', demo.systemAdminUsername)
+    await navigateAndLoginAsSystemAdmin(view, '/system/tenants', 'system-tenants')
     const realm = `quota-${Date.now()}`
     await clickLinkByText(view, 'New tenant')
     await waitForPage(view, 'system-tenant-create')

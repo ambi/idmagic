@@ -90,8 +90,13 @@ function ReauthorizationPrompt({
       .then(onAuthenticated)
       .catch((cause) => {
         setBusy(false)
+        // 第二要素を登録していなければ、要求した MFA の水準を満たせない (REQ-OAUTH2-005)。
         setError(
-          cause instanceof ReauthorizationCancelledError ? t.stepUpNotCompleted : t.stepUpFailure,
+          cause instanceof ReauthorizationCancelledError
+            ? t.stepUpNotCompleted
+            : cause instanceof Error && cause.message === 'unmet_authentication_requirements'
+              ? t.stepUpMfaEnrollmentRequired
+              : t.stepUpFailure,
         )
       })
   }

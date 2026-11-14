@@ -92,3 +92,4 @@
   | EX-JOBS-015-02 | 操作者がシステム経路のジョブ一覧を要求する | 実行者が `system_admin` を持たない、制御面テナントの所属ではない、または制御面テナント以外の経路である | AccessDeniedError で拒否され、応答はどのテナントの Job も含まない |
   | EX-JOBS-015-03 | 操作者がシステム経路で "tenant-b" の Job の取り消しを要求する | 取り消しがブラウザーからの要求であることを証明できない | CsrfFailedError または InvalidOriginError で拒否され、Job の状態は変わらない |
   | EX-JOBS-015-04 | 操作者がシステム経路で "tenant-b" の Job の取り消しを要求する | 指定した Job が既に終端に達している | JobNotCancelableError で拒否され、状態は変わらない |
+  | EX-JOBS-015-05 | 操作者がシステム経路で "tenant-b" の Job の取り消しをセッションの Cookie で要求する | セッションに直近 5 分の MFA の認証がない | StepUpRequiredError で拒否され、Job の状態は変わらない |

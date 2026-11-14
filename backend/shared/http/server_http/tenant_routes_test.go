@@ -29,7 +29,8 @@ func (r *fixedAuthnResolver) Resolve(
 	context.Context,
 	authdomain.Headers,
 ) (*authdomain.AuthenticationContext, error) {
-	return &authdomain.AuthenticationContext{UserID: r.sub, AuthTime: time.Now().Unix()}, nil
+	// 制御面の操作は直近の MFA の認証を求める (REQ-SYSTEM-033)。
+	return &authdomain.AuthenticationContext{UserID: r.sub, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"}}, nil
 }
 
 //spec:covers EX-OAUTH2-033-01, EX-TENANCY-006-01, EX-TENANCY-010-01: realm 接頭辞付きの Discovery Metadata は、issuer と endpoint URL を同じ path 形式の正規ロケーションから組み立てる。

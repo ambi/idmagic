@@ -2,6 +2,7 @@ import { IconBan, IconCheck } from '@tabler/icons-react'
 import { useState } from 'react'
 import { AuthenticationAPIError, setAdminTenantDisabled } from '../../api'
 import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
+import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
 import { Button } from '../../components/ui/button'
 import { useDictionary } from '../../lib/i18n'
 import type { AdminTenant } from '../../types'
@@ -111,31 +112,40 @@ export function TenantStatusDialog({
   const t = useDictionary(systemTenantsDictionary)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // 制御面の変更は直近の MFA の認証を求める (REQ-SYSTEM-033)。
+  const { guard, dialog } = useStepUpGuard()
   const disabling = tenant.status === 'active'
 
   async function confirm() {
     setBusy(true)
     setError('')
     try {
-      await setAdminTenantDisabled(csrfToken, tenant.realm, disabling)
+      await guard(() => setAdminTenantDisabled(csrfToken, tenant.realm, disabling))
       await onChanged(disabling ? t.tenantDisabledNotice : t.tenantReenabledNotice)
     } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : t.tenantActionFailedError)
+      if (!(cause instanceof StepUpCancelledError)) {
+        setError(
+          cause instanceof AuthenticationAPIError ? cause.message : t.tenantActionFailedError,
+        )
+      }
       setBusy(false)
     }
   }
 
   return (
-    <ConfirmActionDialog
-      title={disabling ? t.confirmDisableTitle : t.confirmEnableTitle}
-      target={`${tenant.display_name} (${tenant.realm})`}
-      description={disabling ? t.confirmDisableDescription : t.confirmEnableDescription}
-      confirmLabel={disabling ? t.confirmDisable : t.confirmEnable}
-      busy={busy}
-      error={error}
-      onClose={onClose}
-      onConfirm={() => void confirm()}
-    />
+    <>
+      <ConfirmActionDialog
+        title={disabling ? t.confirmDisableTitle : t.confirmEnableTitle}
+        target={`${tenant.display_name} (${tenant.realm})`}
+        description={disabling ? t.confirmDisableDescription : t.confirmEnableDescription}
+        confirmLabel={disabling ? t.confirmDisable : t.confirmEnable}
+        busy={busy}
+        error={error}
+        onClose={onClose}
+        onConfirm={() => void confirm()}
+      />
+      {dialog}
+    </>
   )
 }
 export function TenantStatusButton({

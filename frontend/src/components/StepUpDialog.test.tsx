@@ -138,6 +138,28 @@ describe('useStepUpGuard', () => {
     expect(String((exchange[1] as RequestInit).body)).not.toContain('forged')
   })
 
+  //spec:covers REQ-OAUTH2-005: 第二要素を持たない利用者の再認可が unmet_authentication_requirements で戻ると、操作を再送せずに MFA の登録を案内すること
+  it('guides MFA enrollment when the requested level cannot be met', async () => {
+    const action = mock().mockRejectedValue(stepUpRequired('urn:idmagic:acr:mfa'))
+    await openPrompt(action)
+    fireEvent.click(screen.getByRole('button', { name: t.stepUpContinue }))
+    await waitFor(() => expect(popup.location.href).toContain('/authorize'))
+    const state = new URL(popup.location.href, origin).searchParams.get('state') ?? ''
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin,
+        data: {
+          type: 'idmagic:step-up-callback',
+          state,
+          error: 'unmet_authentication_requirements',
+        },
+      }),
+    )
+    await screen.findByText(t.stepUpMfaEnrollmentRequired)
+    expect(action).toHaveBeenCalledTimes(1)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('does not retry when the popup closes before reauthorization completes', async () => {
     const action = mock().mockRejectedValue(stepUpRequired())
     await openPrompt(action)

@@ -52,6 +52,8 @@ type rulesOptions struct {
 	sender           sharednotification.EmailSender
 	signer           samltoken.SignerProvider
 	tenantBaseDomain string
+	// amr はセッションの認証の方式。空なら MFA で成立した認証にする。
+	amr []string
 }
 
 type rulesServer struct {
@@ -69,6 +71,10 @@ type rulesServer struct {
 func newRulesServer(t *testing.T, actor *userdomain.User, options rulesOptions) *rulesServer {
 	t.Helper()
 	ctx := context.Background()
+	amr := options.amr
+	if len(amr) == 0 {
+		amr = []string{"pwd", "otp"}
+	}
 	s := &rulesServer{
 		tenants:   memory.NewTenantRepository(),
 		branding:  memory.NewTenantBrandingRepository(),
@@ -110,7 +116,7 @@ func newRulesServer(t *testing.T, actor *userdomain.User, options rulesOptions) 
 		AttrSchemaRepo:   s.schemas,
 		EmailSender:      sender,
 		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
-			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: amr,
 		}},
 		FederationSigner: options.signer,
 		Notification:     sharednotification.Module{EmailSender: sender, Notifier: notifier},
@@ -465,6 +471,20 @@ func TestDisablingAnUnknownRealmIsNotFound(t *testing.T) {
 	s := newRulesServer(t, systemAdmin(), rulesOptions{})
 
 	requireProblem(t, s.send(t, http.MethodPost, tenantsPath+"/ghost/disable", nil), http.StatusNotFound, "tenant_not_found")
+	if len(*s.events) != 0 {
+		t.Fatalf("events = %d, want 0", len(*s.events))
+	}
+}
+
+//spec:covers EX-TENANCY-027-03: パスワードだけのセッションの Cookie による無効化は step_up_required で拒否し、テナントを有効のまま残し、イベントを発行しない。
+//verify:operation DisableTenant: 直近の MFA のないセッションの無効化は 403 step_up_required の本文を返し、テナントを変えない。
+func TestDisablingWithoutRecentMfaSessionRequiresStepUp(t *testing.T) {
+	s := newRulesServer(t, systemAdmin(), rulesOptions{amr: []string{"pwd"}})
+
+	requireProblem(t, s.send(t, http.MethodPost, tenantsPath+"/acme/disable", nil), http.StatusForbidden, "step_up_required")
+	if tenant, err := s.tenants.FindByRealm(context.Background(), "acme"); err != nil || tenant.Status != domain.TenantStatusActive {
+		t.Fatalf("after the refusal: %+v, %v; want acme kept active", tenant, err)
+	}
 	if len(*s.events) != 0 {
 		t.Fatalf("events = %d, want 0", len(*s.events))
 	}

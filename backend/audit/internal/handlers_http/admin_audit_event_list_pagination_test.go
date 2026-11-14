@@ -36,7 +36,7 @@ func newAuditAdminPaginationServer(t *testing.T, events []*auditports.AuditEvent
 		}
 	}
 	resolver := &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
-		UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+		UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"},
 	}}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -282,7 +282,7 @@ func TestAdminAuditEventListFailsClosedWhenCountFails(t *testing.T) {
 		t.Fatalf("append: %v", err)
 	}
 	resolver := &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{
-		UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"},
+		UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"},
 	}}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{

@@ -59,7 +59,7 @@ func (r *countedTenants) FindAll(ctx context.Context) ([]*tenancydomain.Tenant, 
 type fixedResolver struct{ sub string }
 
 func (r fixedResolver) Resolve(context.Context, authdomain.Headers) (*authdomain.AuthenticationContext, error) {
-	return &authdomain.AuthenticationContext{UserID: r.sub, AuthTime: time.Now().Unix(), AMR: []string{"pwd"}}, nil
+	return &authdomain.AuthenticationContext{UserID: r.sub, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"}}, nil
 }
 
 type healthServer struct {

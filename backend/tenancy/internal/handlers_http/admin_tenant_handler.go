@@ -33,7 +33,7 @@ type tenantEndpointStyleRequest struct {
 
 func (d Deps) handleListTenants(c *echo.Context) error {
 	if _, err := d.RequireControlPlaneUser(c); err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	tenants, err := d.TenantRepo.FindAll(c.Request().Context())
 	if err != nil {
@@ -54,7 +54,7 @@ func (d Deps) handleListTenants(c *echo.Context) error {
 
 func (d Deps) handleGetTenant(c *echo.Context) error {
 	if _, err := d.RequireControlPlaneUser(c); err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	tenant, err := d.TenantRepo.FindByRealm(c.Request().Context(), c.Param("target_tenant_id"))
 	if err != nil {
@@ -91,9 +91,9 @@ func (d Deps) handleCreateTenant(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.RequireControlPlaneUser(c)
+	actor, err := d.RequireControlPlaneChange(c)
 	if err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	var input tenantCreateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
@@ -116,9 +116,9 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.RequireControlPlaneUser(c)
+	actor, err := d.RequireControlPlaneChange(c)
 	if err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	var input tenantUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
@@ -158,9 +158,9 @@ func (d Deps) handleSetTenantEndpointStyle(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.RequireControlPlaneUser(c)
+	actor, err := d.RequireControlPlaneChange(c)
 	if err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	var input tenantEndpointStyleRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
@@ -223,9 +223,9 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	actor, err := d.RequireControlPlaneUser(c)
+	actor, err := d.RequireControlPlaneChange(c)
 	if err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	target, err := d.resolveTenantByRealm(c, c.Param("target_tenant_id"))
 	if err != nil {
@@ -305,9 +305,9 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 		return err
 	}
 	ctx := c.Request().Context()
-	actor, err := d.RequireControlPlaneUser(c)
+	actor, err := d.RequireControlPlaneChange(c)
 	if err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	target, err := d.resolveTenantByRealm(c, c.Param("target_tenant_id"))
 	if err != nil {

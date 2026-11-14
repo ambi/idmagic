@@ -90,3 +90,10 @@
 - Given system_admin ロールを持つ "sysadmin" がデフォルトテナントで認証済みである
 - When "sysadmin" が存在しない realm "ghost" を無効化する
 - Then `tenant_not_found` の 404 が返り、イベントは発行されない
+
+### Example: EX-TENANCY-027-03 直近の MFA のないセッションで無効化する
+
+- Given system_admin ロールを持つ "sysadmin" がデフォルトテナントでパスワードだけで認証したセッションを持つ
+- And テナント "acme" は有効である
+- When "sysadmin" がセッションの Cookie でテナント "acme" を無効化する
+- Then StepUpRequiredError で拒否され、"acme" は有効のまま残り、イベントは発行されない

@@ -175,17 +175,24 @@ export function openReauthorizationWindow(): Window | null {
 }
 
 // reauthorize は、popup で再認可してトークンを差し替える。popup が null なら画面全体で
-// 再認可し、戻らない。入力途中の内容は引き継がない。
+// 再認可し、戻らない。入力途中の内容は引き継がない。returnTo は画面全体の再認可から戻る先で、
+// 省くと現在の URL に戻る。ルートの読み込み中は現在の URL が遷移前を指すので、呼び出し側が渡す。
 export async function reauthorize(
-  challenge: { maxAge: number; acrValues?: string },
+  challenge: { maxAge?: number; acrValues?: string },
   popup: Window | null,
+  returnTo?: string,
 ): Promise<void> {
   const audience = activeAudience
   if (!audience) throw new Error('reauthorization requires a portal login')
-  const extra: Record<string, string> = { max_age: String(challenge.maxAge) }
+  const extra: Record<string, string> = {}
+  if (challenge.maxAge !== undefined) extra.max_age = String(challenge.maxAge)
   if (challenge.acrValues) extra.acr_values = challenge.acrValues
   if (!popup) {
-    await beginLogin(audience, `${window.location.pathname}${window.location.search}`, extra)
+    await beginLogin(
+      audience,
+      returnTo ?? `${window.location.pathname}${window.location.search}`,
+      extra,
+    )
     return
   }
   const verifier = randomToken()
@@ -334,6 +341,8 @@ export async function completeLoginFromCallback(): Promise<boolean> {
     return false
   }
   const error = params.get('error')
+  // 要求した MFA の水準を満たせない応答は、登録の案内を出すために CallbackPage へ委ねる。
+  if (error === 'unmet_authentication_requirements') return false
   if (error) {
     throw new Error(params.get('error_description') ?? error)
   }

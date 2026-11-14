@@ -190,7 +190,7 @@ func (d Deps) handleDisableTenantKey(c *echo.Context) error {
 
 func (d Deps) handleListTenantKeyHealth(c *echo.Context) error {
 	if _, err := d.RequireControlPlaneUser(c); err != nil {
-		return d.WriteAdminAccessError(c, err)
+		return d.WriteControlPlaneAccessError(c, err)
 	}
 	if d.KeyStore == nil || d.TenantRepo == nil {
 		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"tenants": []TenantKeyHealthResponse{}})

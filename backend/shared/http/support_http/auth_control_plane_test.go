@@ -48,6 +48,7 @@ func controlPlaneAuthenticator(
 	return &support.Authenticator{
 		Principals: idmanagement.Module{UserRepo: users, GroupRepo: groups}.Principals(),
 		Sessions:   authentication.Module{AuthnResolver: controlPlaneAuthnResolver{ctx: authn}}.SessionAuthentications(),
+		Privileged: authentication.Module{}.PrivilegedAuthentications(),
 	}
 }
 
@@ -127,7 +128,7 @@ func TestRequireControlPlaneUser(t *testing.T) {
 		users := idmanagement.NewMemoryModule().UserRepo
 		actor := controlPlaneTestActor("system_admin")
 		_ = users.Save(context.Background(), actor)
-		a := controlPlaneAuthenticator(users, nil, &authdomain.AuthenticationContext{UserID: actor.ID})
+		a := controlPlaneAuthenticator(users, nil, &authdomain.AuthenticationContext{UserID: actor.ID, AMR: []string{"pwd", "otp"}})
 		got, err := a.RequireControlPlaneUser(newControlPlaneTestContext())
 		if err != nil || got == nil || !slices.Contains(got.Roles, "system_admin") {
 			t.Fatalf("actor = %+v, err = %v", got, err)
@@ -139,7 +140,7 @@ func TestRequireControlPlaneUser(t *testing.T) {
 		actor := controlPlaneTestActor()
 		_ = users.Save(context.Background(), actor)
 		a := controlPlaneAuthenticator(users, groupRepoWithRole(t, actor.ID, actor.TenantID, "system_admin"),
-			&authdomain.AuthenticationContext{UserID: actor.ID})
+			&authdomain.AuthenticationContext{UserID: actor.ID, AMR: []string{"pwd", "otp"}})
 		got, err := a.RequireControlPlaneUser(newControlPlaneTestContext())
 		if err != nil || got == nil || !slices.Contains(got.Roles, "system_admin") {
 			t.Fatalf("actor = %+v, err = %v", got, err)
@@ -150,7 +151,7 @@ func TestRequireControlPlaneUser(t *testing.T) {
 		users := idmanagement.NewMemoryModule().UserRepo
 		actor := controlPlaneTestActor("admin")
 		_ = users.Save(context.Background(), actor)
-		a := controlPlaneAuthenticator(users, nil, &authdomain.AuthenticationContext{UserID: actor.ID})
+		a := controlPlaneAuthenticator(users, nil, &authdomain.AuthenticationContext{UserID: actor.ID, AMR: []string{"pwd", "otp"}})
 		if _, err := a.RequireControlPlaneUser(newControlPlaneTestContext()); !errors.Is(err, support.ErrAdminAccessDenied) {
 			t.Fatalf("err = %v, want ErrAdminAccessDenied", err)
 		}

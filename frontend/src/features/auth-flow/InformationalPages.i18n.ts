@@ -13,6 +13,9 @@ export const informationalPagesDictionary = defineDictionary(
     demoUser: 'デモユーザー:',
     callbackComplete: 'ローカルデモ認証が完了しました',
     callbackFailed: '認証を完了できませんでした',
+    mfaEnrollmentRequired:
+      'この画面には多要素認証が必要ですが、認証アプリやパスキーがまだ登録されていません。アカウントの画面で登録してから、もう一度お試しください。',
+    openAccountSecurity: 'アカウントのセキュリティを開く',
     callbackCompleteText: '認可コードが発行され、ブラウザ認証フローが正常に完了しました。',
     invalidAuthorizationResponse: '認可レスポンスが不正です。',
     openAdmin: '管理コンソールを開く',
@@ -30,6 +33,9 @@ export const informationalPagesDictionary = defineDictionary(
     demoUser: 'Demo user:',
     callbackComplete: 'Local demo authorization is complete',
     callbackFailed: 'Could not complete authentication',
+    mfaEnrollmentRequired:
+      'This page requires multi-factor authentication, but no authenticator app or passkey is registered yet. Register one on your account page, then try again.',
+    openAccountSecurity: 'Open account security',
     callbackCompleteText:
       'An authorization code was issued and the browser authentication flow completed successfully.',
     invalidAuthorizationResponse: 'The authorization response is invalid.',

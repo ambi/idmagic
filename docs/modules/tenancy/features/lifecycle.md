@@ -99,13 +99,16 @@
 
 #### REQ-TENANCY-027 無効化と再開は、すでにその状態にあるテナントにも成功する
 
+- **上位の要件**：[REQ-SYSTEM-033](../../system/features/api-boundary.md#制御面主体によるテナント横断の操作)
 - テナントが `Active` の間、System 管理者がテナントを無効化したとき、Tenancy は、テナントを `Disabled` にし、`disabled_at` を要求の時刻にし、204 を返し、`TenantDisabled` を発行する。
 - System 管理者がテナントを再開したとき、Tenancy は、テナントを `Active` にし、`disabled_at` を消し、204 を返し、`TenantEnabled` を発行する。
 - テナントが `Disabled` の間、System 管理者が無効化を要求したとき、Tenancy は、`disabled_at` を変えず、204 を返し、`TenantDisabled` を発行する。
 - テナントが `Active` の間、System 管理者が再開を要求したとき、Tenancy は、204 を返し、`TenantEnabled` を発行する。
 - 存在しない realm の無効化または再開を要求された場合、Tenancy は、404 と `tenant_not_found` で拒否し、イベントを発行しない。
+- 管理発行の API アクセストークンで無効化または再開を要求された場合、Tenancy は、トークンを受け付けずに 401 と `invalid_token` で拒否し、テナントの状態を変えず、イベントを発行しない。
+- 直近 5 分に MFA で成立した認証のないセッションの Cookie で無効化または再開を要求された場合、Tenancy は、403 と `step_up_required` で拒否し、テナントの状態を変えず、イベントを発行しない。
 - **判断**：状態が変わらない要求にもイベントを発行するのは、イベントが操作者の操作を監査に残すためである。`disabled_at` は無効化が始まった時刻を表すので、再度の無効化では動かさない。
-- **例**：EX-TENANCY-027-01、EX-TENANCY-027-02
+- **例**：EX-TENANCY-027-01、EX-TENANCY-027-02、EX-TENANCY-027-03
 
 ## セキュリティ上の考慮
 

@@ -41,9 +41,10 @@ export class UnauthenticatedError extends AuthenticationAPIError {
 }
 
 // StepUpChallenge は、ステップアップ認証を求める応答が示す再認可の条件である。
-// RFC 9470 の 401 は WWW-Authenticate に max_age と acr_values を載せる。Cookie の 403 は
-// 条件を載せないので、既定の経過秒数を使う。
-export type StepUpChallenge = { maxAge: number; acrValues?: string }
+// RFC 9470 の 401 は WWW-Authenticate に max_age と acr_values を載せる。max_age のない 401 は
+// 新しさを求めない（制御面の読み出しのように水準だけを求める）。Cookie の 403 は条件を載せないので、
+// デフォルトの経過秒数を使う。
+export type StepUpChallenge = { maxAge?: number; acrValues?: string }
 
 const DEFAULT_STEP_UP_MAX_AGE_SECONDS = 300
 
@@ -71,11 +72,11 @@ export function parseBearerChallenge(header: string | null | undefined): Record<
 
 function stepUpChallenge(response: Response): StepUpChallenge {
   const params = parseBearerChallenge(response.headers?.get('WWW-Authenticate'))
-  const maxAge = Number(params.max_age)
-  return {
-    maxAge: Number.isInteger(maxAge) && maxAge >= 0 ? maxAge : DEFAULT_STEP_UP_MAX_AGE_SECONDS,
-    ...(params.acr_values ? { acrValues: params.acr_values } : {}),
-  }
+  const maxAge = params.max_age === undefined ? Number.NaN : Number(params.max_age)
+  const challenge: StepUpChallenge = params.acr_values ? { acrValues: params.acr_values } : {}
+  if (Number.isInteger(maxAge) && maxAge >= 0) challenge.maxAge = maxAge
+  else if (response.status === 403) challenge.maxAge = DEFAULT_STEP_UP_MAX_AGE_SECONDS
+  return challenge
 }
 
 // stepUpRequiredError は、失敗応答がステップアップ認証を求めるものなら、その条件を持つ

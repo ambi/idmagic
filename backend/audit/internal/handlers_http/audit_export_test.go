@@ -85,7 +85,7 @@ func TestAuditExportHTTPAuthorization(t *testing.T) {
 			if err := users.Save(ctx, actor); err != nil {
 				t.Fatal(err)
 			}
-			resolver := &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd"}}}
+			resolver := &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"}}}
 			module := audit.NewMemoryModule(0)
 			for _, id := range []string{"acme", tenantdomain.DefaultTenantID} {
 				if err := module.AuditEventRepo.Append(ctx, auditEvent(id, "UserAuthenticated", "user", time.Now().Add(-time.Minute))); err != nil {

@@ -11,6 +11,8 @@ import (
 func newAuthenticator(d Deps, apiTokens apitokenports.Authenticator) *support.Authenticator {
 	authenticator := &support.Authenticator{
 		Sessions: d.Authentication.SessionAuthentications(),
+		// 制御面の操作の認証の保証 (REQ-SYSTEM-033)。配線を欠くと制御面の要求をすべて拒否する。
+		Privileged: d.Authentication.PrivilegedAuthentications(),
 	}
 	if d.OAuth2.TokenIntrospector != nil {
 		// admin / account portal の Bearer にも /introspect と同じ失効判定を通す (REQ-OAUTH2-047)。

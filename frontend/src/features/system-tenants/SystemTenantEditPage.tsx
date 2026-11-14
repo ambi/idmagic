@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, updateAdminTenant } from '../../api'
 import { FieldError } from '../../components/FieldError'
 import { SystemShell } from '../../components/SystemShell'
+import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -51,6 +52,8 @@ export function SystemTenantEditPage({
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // 制御面の変更は直近の MFA の認証を求める (REQ-SYSTEM-033)。
+  const { guard, dialog } = useStepUpGuard()
   const validation = useFormValidation(tenantSettingsSchema, {
     displayName,
     minLength,
@@ -72,12 +75,18 @@ export function SystemTenantEditPage({
       if (data.minLength !== undefined) policy.min_length = data.minLength
       if (data.maxLength !== undefined) policy.max_length = data.maxLength
       if (data.historyDepth !== undefined) policy.history_depth = data.historyDepth
-      await updateAdminTenant(csrfToken, tenant.realm, {
-        display_name: data.displayName !== tenant.display_name ? data.displayName : undefined,
-        password_policy_override: Object.keys(policy).length > 0 ? policy : undefined,
-      })
+      await guard(() =>
+        updateAdminTenant(csrfToken, tenant.realm, {
+          display_name: data.displayName !== tenant.display_name ? data.displayName : undefined,
+          password_policy_override: Object.keys(policy).length > 0 ? policy : undefined,
+        }),
+      )
       window.location.assign(tenantDetailURL(tenant.realm, 'updated'))
     } catch (cause) {
+      if (cause instanceof StepUpCancelledError) {
+        setSaving(false)
+        return
+      }
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.tenantUpdateFailedError)
       setSaving(false)
     }
@@ -155,6 +164,7 @@ export function SystemTenantEditPage({
           </div>
         </form>
       </Card>
+      {dialog}
     </SystemShell>
   )
 }
