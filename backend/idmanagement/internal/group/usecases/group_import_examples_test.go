@@ -469,7 +469,7 @@ func TestStartGroupImportApplyRefusesEveryUnboundPreview(t *testing.T) {
 
 			//nolint:contextcheck // arrange が返す文脈は、越境を起こすためにわざと別テナントである
 			_, err := StartGroupImportApply(
-				applyCtx, GroupImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "operator", previewID, time.Now().UTC(),
+				applyCtx, GroupImportStartDeps{SchemaReader: groupAttributeSchemaStub{}, Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "operator", previewID, time.Now().UTC(),
 			)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("err = %v, want %v", err, tc.wantErr)
@@ -493,7 +493,7 @@ func startGroupImportPreviewForTest(
 ) *jobsdomain.Job {
 	t.Helper()
 	preview, err := StartGroupImportPreview(
-		groupImportContext(), GroupImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "operator",
+		groupImportContext(), GroupImportStartDeps{SchemaReader: groupAttributeSchemaStub{}, Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "operator",
 		strings.NewReader("name,roles\nsales,catalog:read\n"), time.Now().UTC(),
 	)
 	if err != nil {
@@ -567,7 +567,7 @@ func TestStartGroupImportPreviewRefusesFilesBeyondTheRowAndFieldLimits(t *testin
 			ctx := groupImportContext()
 			artifacts := idmmemory.NewCSVArtifactStore()
 			jobs := jobsmemory.NewJobRepository()
-			job, err := StartGroupImportPreview(ctx, GroupImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs), Policy: tc.policy}, "operator", strings.NewReader(tc.document), time.Now().UTC())
+			job, err := StartGroupImportPreview(ctx, GroupImportStartDeps{SchemaReader: groupAttributeSchemaStub{}, Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs), Policy: tc.policy}, "operator", strings.NewReader(tc.document), time.Now().UTC())
 			if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != tc.want || job != nil {
 				t.Fatalf("job=%v err=%v, want the submission refused with %q", job, err, tc.want)
 			}
@@ -589,7 +589,7 @@ func TestStartGroupImportPreviewRefusesFilesBeyondTheRowAndFieldLimits(t *testin
 func TestGroupImportJobFailsWithoutApplyingAFileBeyondTheLimits(t *testing.T) {
 	f := newGroupImportFixture(t)
 	jobs := jobsmemory.NewJobRepository()
-	startDeps := GroupImportStartDeps{Artifacts: f.artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}
+	startDeps := GroupImportStartDeps{SchemaReader: groupAttributeSchemaStub{}, Artifacts: f.artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}
 	preview, err := StartGroupImportPreview(f.ctx, startDeps, "operator",
 		strings.NewReader("name,roles\nsales,catalog:read\nops,catalog:read\n"), time.Now().UTC())
 	if err != nil {
@@ -646,7 +646,7 @@ func TestStartGroupImportPreviewRefusesFilesBeyondTheByteLimit(t *testing.T) {
 			ctx := groupImportContext()
 			jobs := jobsmemory.NewJobRepository()
 			policy := idmdomain.CSVTransferPolicy{MaxRows: 100, MaxBytes: tc.maxBytes, MaxFieldBytes: 1 << 10}
-			job, err := StartGroupImportPreview(ctx, GroupImportStartDeps{Artifacts: idmmemory.NewCSVArtifactStore(), Jobs: jobs, Enqueuer: testJobEnqueuer(jobs), Policy: policy}, "operator", strings.NewReader(document), time.Now().UTC())
+			job, err := StartGroupImportPreview(ctx, GroupImportStartDeps{SchemaReader: groupAttributeSchemaStub{}, Artifacts: idmmemory.NewCSVArtifactStore(), Jobs: jobs, Enqueuer: testJobEnqueuer(jobs), Policy: policy}, "operator", strings.NewReader(document), time.Now().UTC())
 			if tc.wantErr {
 				csvErr, ok := errors.AsType[*idmdomain.CSVError](err)
 				queued, listErr := jobs.ListByTenantAndKinds(ctx, "acme", []jobsdomain.JobKind{jobsdomain.KindGroupImportPreview}, 10)
@@ -666,8 +666,48 @@ func TestStartGroupImportPreviewRefusesFilesBeyondTheByteLimit(t *testing.T) {
 	}
 }
 
-// 上限に触れないファイルの誤りは、投入では問わずにそのまま保存し、プレビューのジョブが
-// 一件のエラーとして記録して成功する。
+//spec:covers REQ-IDMANAGEMENT-026: 不正な見出しを投入時に拒否し、ジョブも成果物も残さないこと。
+func TestStartGroupImportPreviewRejectsInvalidHeaders(t *testing.T) {
+	for _, column := range []string{"unknown", "name", "password", "password_hash", "custom:unknown"} {
+		t.Run(column, func(t *testing.T) {
+			f := newGroupImportFixture(t)
+			jobs := jobsmemory.NewJobRepository()
+			job, err := StartGroupImportPreview(f.ctx, GroupImportStartDeps{SchemaReader: groupAttributeSchemaStub{}, Artifacts: f.artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "operator", strings.NewReader("name,"+column+"\nsales,value\n"), time.Now().UTC())
+			if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != idmdomain.CSVErrorInvalidHeader || csvErr.Column != column || job != nil {
+				t.Fatalf("job=%v err=%v, want invalid_header for %s", job, err, column)
+			}
+			queued, err := jobs.ListByTenantAndKinds(f.ctx, "acme", []jobsdomain.JobKind{jobsdomain.KindGroupImportPreview}, 10)
+			if err != nil || len(queued) != 0 {
+				t.Fatalf("queued=%d err=%v, want no job", len(queued), err)
+			}
+			if stored, err := f.artifacts.DeleteCSVArtifactsCreatedBefore(f.ctx, time.Now().Add(time.Hour)); err != nil || stored != 0 {
+				t.Fatalf("stored=%d err=%v, want no artifact", stored, err)
+			}
+		})
+	}
+}
+
+//spec:covers REQ-IDMANAGEMENT-026: スキーマの照会が失敗した場合は、未検査の CSV を保存も投入もしないこと。
+func TestStartGroupImportPreviewDoesNotStoreWhenSchemaFails(t *testing.T) {
+	f := newGroupImportFixture(t)
+	jobs := jobsmemory.NewJobRepository()
+	failure := errors.New("schema unavailable")
+	job, err := StartGroupImportPreview(f.ctx, GroupImportStartDeps{
+		SchemaReader: groupAttributeSchemaStub{err: failure}, Artifacts: f.artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs),
+	}, "admin", strings.NewReader("name\nsales\n"), time.Now().UTC())
+	if !errors.Is(err, failure) || job != nil {
+		t.Fatalf("job=%v err=%v, want schema failure", job, err)
+	}
+	queued, err := jobs.ListByTenantAndKinds(f.ctx, "acme", []jobsdomain.JobKind{jobsdomain.KindGroupImportPreview}, 10)
+	if err != nil || len(queued) != 0 {
+		t.Fatalf("queued=%d err=%v, want no job", len(queued), err)
+	}
+	if stored, err := f.artifacts.DeleteCSVArtifactsCreatedBefore(f.ctx, time.Now().Add(time.Hour)); err != nil || stored != 0 {
+		t.Fatalf("stored=%d err=%v, want no artifact", stored, err)
+	}
+}
+
+// 構文の誤りは投入で拒否せず、ジョブが一件のエラーとして記録して成功する。
 func TestCharacterizeGroupImportPreviewOfMalformedFiles(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
@@ -675,11 +715,6 @@ func TestCharacterizeGroupImportPreviewOfMalformedFiles(t *testing.T) {
 		wantError   GroupImportRowError
 		wantCreated int
 	}{
-		{
-			name:      "禁止した見出し",
-			document:  "name,password\nsales,secret\n",
-			wantError: GroupImportRowError{Row: 1, Column: "password", Code: "invalid_header"},
-		},
 		{
 			name:        "途中の行の構文の誤り",
 			document:    "name,roles\nsales,catalog:read\n\"ops\nunterminated",
@@ -690,7 +725,7 @@ func TestCharacterizeGroupImportPreviewOfMalformedFiles(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newGroupImportFixture(t)
 			jobs := jobsmemory.NewJobRepository()
-			job, err := StartGroupImportPreview(f.ctx, GroupImportStartDeps{Artifacts: f.artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "operator", strings.NewReader(tc.document), time.Now().UTC())
+			job, err := StartGroupImportPreview(f.ctx, GroupImportStartDeps{SchemaReader: groupAttributeSchemaStub{}, Artifacts: f.artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "operator", strings.NewReader(tc.document), time.Now().UTC())
 			if err != nil {
 				t.Fatalf("StartGroupImportPreview: %v", err)
 			}

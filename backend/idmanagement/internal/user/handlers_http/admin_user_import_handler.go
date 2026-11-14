@@ -20,7 +20,8 @@ const userImportErrorsQuery = "GetAdminUserImport;errors"
 
 func userImportStartDeps(d Deps) userusecases.UserImportStartDeps {
 	return userusecases.UserImportStartDeps{
-		Artifacts: d.CSVArtifacts, Jobs: d.JobRepo, Enqueuer: d.JobEnqueuer,
+		SchemaReader: userusecases.TenantUserCSVSchemaReader{Repository: d.AttrSchemaRepo},
+		Artifacts:    d.CSVArtifacts, Jobs: d.JobRepo, Enqueuer: d.JobEnqueuer,
 		Policy: idmdomain.DefaultCSVTransferPolicy(),
 	}
 }

@@ -857,8 +857,29 @@ func TestStartGroupMembershipImportPreviewRefusesFilesBeyondTheByteLimit(t *test
 	}
 }
 
-// 上限に触れないファイルの誤りは、投入では問わずにそのまま保存し、プレビューのジョブが
-// 一件のエラーとして記録して成功する。
+//spec:covers REQ-IDMANAGEMENT-029: 必須列の欠落と不正な見出しを投入時に拒否し、ジョブも成果物も残さないこと。
+func TestStartGroupMembershipImportPreviewRejectsInvalidHeaders(t *testing.T) {
+	for _, header := range []string{"user_id", "user_id,membership_state,unknown", "user_id,membership_state,user_id", "user_id,membership_state,password", "user_id,membership_state,password_hash", "user_id,membership_state,custom:unknown"} {
+		t.Run(header, func(t *testing.T) {
+			f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
+			artifacts := idmmemory.NewCSVArtifactStore()
+			jobs := jobsmemory.NewJobRepository()
+			job, err := groupusecases.StartGroupMembershipImportPreview(f.ctx, groupusecases.GroupMembershipImportStartDeps{Artifacts: artifacts, Jobs: jobs, Enqueuer: testJobEnqueuer(jobs)}, "admin", engineeringID, strings.NewReader(header+"\n"), time.Now().UTC())
+			if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); !ok || csvErr.Code != idmdomain.CSVErrorInvalidHeader || csvErr.Row != 1 || job != nil {
+				t.Fatalf("job=%v err=%v, want invalid_header", job, err)
+			}
+			queued, err := jobs.ListByTenantAndKinds(f.ctx, "acme", []jobsdomain.JobKind{jobsdomain.KindGroupMembershipImportPreview}, 10)
+			if err != nil || len(queued) != 0 {
+				t.Fatalf("queued=%d err=%v, want no job", len(queued), err)
+			}
+			if stored, err := artifacts.DeleteCSVArtifactsCreatedBefore(f.ctx, time.Now().Add(time.Hour)); err != nil || stored != 0 {
+				t.Fatalf("stored=%d err=%v, want no artifact", stored, err)
+			}
+		})
+	}
+}
+
+// 構文の誤りは投入で拒否せず、ジョブが一件のエラーとして記録して成功する。
 func TestCharacterizeGroupMembershipImportPreviewOfMalformedFiles(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
@@ -866,11 +887,6 @@ func TestCharacterizeGroupMembershipImportPreviewOfMalformedFiles(t *testing.T) 
 		wantError groupusecases.GroupMembershipImportRowError
 		wantAdded int
 	}{
-		{
-			name:      "禁止した見出し",
-			document:  "user_id,membership_state,password\nuser-bob,present,secret\n",
-			wantError: groupusecases.GroupMembershipImportRowError{Row: 1, Column: "password", Code: "invalid_header"},
-		},
 		{
 			name:      "途中の行の構文の誤り",
 			document:  "user_id,membership_state\nuser-bob,present\n\"user-dave\nunterminated",

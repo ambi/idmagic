@@ -14,6 +14,7 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/internal/ports"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -72,10 +73,11 @@ type GroupImportResult struct {
 }
 
 type GroupImportStartDeps struct {
-	Artifacts idmports.CSVArtifactStore
-	Jobs      jobsports.JobRepository
-	Enqueuer  jobsports.Enqueuer
-	Policy    idmdomain.CSVTransferPolicy
+	SchemaReader groupports.EffectiveGroupAttributeSchemaReader
+	Artifacts    idmports.CSVArtifactStore
+	Jobs         jobsports.JobRepository
+	Enqueuer     jobsports.Enqueuer
+	Policy       idmdomain.CSVTransferPolicy
 }
 
 func (d GroupImportStartDeps) policy() idmdomain.CSVTransferPolicy {
@@ -88,7 +90,7 @@ func (d GroupImportStartDeps) policy() idmdomain.CSVTransferPolicy {
 // StartGroupImportPreview は 1 回の upload を不変ストアへ流し込んでから、
 // メタデータだけのジョブパラメーターを投入する。
 func StartGroupImportPreview(ctx context.Context, deps GroupImportStartDeps, actorUserID string, input io.Reader, now time.Time) (*jobsdomain.Job, error) {
-	if deps.Artifacts == nil || deps.Jobs == nil || deps.Enqueuer == nil || input == nil {
+	if deps.SchemaReader == nil || deps.Artifacts == nil || deps.Jobs == nil || deps.Enqueuer == nil || input == nil {
 		return nil, errors.New("group import preview dependencies are incomplete")
 	}
 	policy := deps.policy()
@@ -96,8 +98,12 @@ func StartGroupImportPreview(ctx context.Context, deps GroupImportStartDeps, act
 		return nil, err
 	}
 	tenantID := tenantports.TenantID(ctx)
+	schema, err := groupCSVSchemaFor(ctx, deps.SchemaReader, tenantID)
+	if err != nil {
+		return nil, err
+	}
 	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
-		return idmdomain.CopyCSVWithinPolicy(output, input, policy)
+		return idmdomain.CopyCSVWithinPolicy(output, input, policy, schema.Accepts)
 	})
 	if err != nil {
 		return nil, err

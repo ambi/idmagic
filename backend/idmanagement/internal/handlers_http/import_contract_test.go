@@ -3,6 +3,7 @@ package handlers_http_test
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -14,6 +15,62 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
+
+//spec:covers REQ-IDMANAGEMENT-004, REQ-IDMANAGEMENT-055, REQ-IDMANAGEMENT-026, REQ-IDMANAGEMENT-029: 管理ルートが実効スキーマで見出しを検査し、400 と invalid_header を返してジョブと成果物を残さず、有効な列は受理すること。
+//verify:operation ImportAdminUsers: 不正な見出しの 400 Problem Details と、有効な見出しの 202 JSON 応答と保存された CSV
+//verify:operation ImportAdminGroups: 不正な見出しの 400 Problem Details と、有効な見出しの 202 JSON 応答と保存された CSV
+//verify:operation ImportAdminGroupMembers: 必須列がない見出しの 400 Problem Details と、有効な見出しの 202 JSON 応答と保存された CSV
+func TestCSVImportRoutesValidateHeadersBeforeSubmission(t *testing.T) {
+	for _, tc := range []struct {
+		name, path, schemaPath, invalid, valid string
+	}{
+		{"user", "/api/admin/v1/users/imports", "user-attribute-schema", "preferred_username,custom:nickname\nalice,value\n", "\ufeffcustom:badge,attr:nickname,preferred_username\n100,Al,alice\n"},
+		{"group", "/api/admin/v1/groups/imports", "group-attribute-schema", "name,password\nsales,secret\n", "\ufeffcustom:badge,name\n100,sales\n"},
+		{"membership", "/api/admin/v1/groups/" + idmRefusalManualGroup + "/members/imports", "", "user_id\nalice\n", "membership_state,user_id\npresent,alice\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newIdmRefusalServer(t)
+			admin := f.seedSession(t, "header-contract", tenancydomain.DefaultTenantID, idmRefusalAdmin)
+			if tc.schemaPath != "" {
+				response := f.send(t, idmRefusalRequest{method: http.MethodPut, path: "/api/admin/v1/tenant/" + tc.schemaPath, sessionID: admin, csrf: idmRefusalCSRF, body: map[string]any{
+					"attributes": []map[string]any{{"key": "badge", "type": "string", "visibility": "private"}},
+				}})
+				idmContractJSON(t, response, http.StatusOK)
+			}
+			response := f.send(t, idmRefusalRequest{method: http.MethodPost, path: tc.path, sessionID: admin, csrf: idmRefusalCSRF, contentType: "text/csv", rawBody: tc.invalid})
+			idmContractProblem(t, response, http.StatusBadRequest, "invalid_header")
+			if len(f.runnableJobs(t)) != 0 {
+				t.Fatal("invalid header created a job")
+			}
+			if stored, err := f.artifacts.DeleteCSVArtifactsCreatedBefore(t.Context(), time.Now().Add(time.Hour)); err != nil || stored != 0 {
+				t.Fatalf("stored=%d err=%v, want no artifact", stored, err)
+			}
+			accepted := idmContractJSON(t, f.send(t, idmRefusalRequest{method: http.MethodPost, path: tc.path, sessionID: admin, csrf: idmRefusalCSRF, contentType: "text/csv", rawBody: tc.valid}), http.StatusAccepted)
+			if accepted["status"] != "queued" || accepted["mode"] != "preview" {
+				t.Fatalf("accepted=%v", accepted)
+			}
+			job, err := f.jobs.Get(t.Context(), accepted["id"].(string))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var params struct {
+				ArtifactRef string `json:"artifact_ref"`
+			}
+			if err := json.Unmarshal(job.Params, &params); err != nil {
+				t.Fatal(err)
+			}
+			reader, _, err := f.artifacts.OpenCSVArtifact(t.Context(), tenancydomain.DefaultTenantID, params.ArtifactRef)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reader.Close()
+			stored, err := io.ReadAll(reader)
+			if err != nil || string(stored) != tc.valid {
+				t.Fatalf("stored=%q err=%v, want %q", stored, err, tc.valid)
+			}
+		})
+	}
+}
 
 //verify:operation ImportAdminGroups: CSV preview と apply の JSON 応答および保存したグループ
 //verify:operation ApplyAdminGroupImport: CSV preview と apply の JSON 応答および保存したグループ

@@ -13,6 +13,7 @@ import (
 	idmports "github.com/ambi/idmagic/backend/idmanagement/internal/ports"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -66,10 +67,11 @@ type UserImportResult struct {
 }
 
 type UserImportStartDeps struct {
-	Artifacts idmports.CSVArtifactStore
-	Jobs      jobsports.JobRepository
-	Enqueuer  jobsports.Enqueuer
-	Policy    idmdomain.CSVTransferPolicy
+	SchemaReader userports.EffectiveUserAttributeSchemaReader
+	Artifacts    idmports.CSVArtifactStore
+	Jobs         jobsports.JobRepository
+	Enqueuer     jobsports.Enqueuer
+	Policy       idmdomain.CSVTransferPolicy
 }
 
 func (d UserImportStartDeps) policy() idmdomain.CSVTransferPolicy {
@@ -82,7 +84,7 @@ func (d UserImportStartDeps) policy() idmdomain.CSVTransferPolicy {
 // StartUserImportPreview streams one upload into immutable storage before
 // enqueueing metadata-only job params.
 func StartUserImportPreview(ctx context.Context, deps UserImportStartDeps, actorUserID string, input io.Reader, now time.Time) (*jobsdomain.Job, error) {
-	if deps.Artifacts == nil || deps.Jobs == nil || deps.Enqueuer == nil || input == nil {
+	if deps.SchemaReader == nil || deps.Artifacts == nil || deps.Jobs == nil || deps.Enqueuer == nil || input == nil {
 		return nil, errors.New("user import preview dependencies are incomplete")
 	}
 	policy := deps.policy()
@@ -90,8 +92,16 @@ func StartUserImportPreview(ctx context.Context, deps UserImportStartDeps, actor
 		return nil, err
 	}
 	tenantID := tenantports.TenantID(ctx)
+	defs, err := deps.SchemaReader.EffectiveUserAttributeDefs(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	schema, err := userdomain.NewUserCSVSchema(defs)
+	if err != nil {
+		return nil, err
+	}
 	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
-		return idmdomain.CopyCSVWithinPolicy(output, input, policy)
+		return idmdomain.CopyCSVWithinPolicy(output, input, policy, schema.Accepts)
 	})
 	if err != nil {
 		return nil, err

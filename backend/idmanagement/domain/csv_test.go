@@ -122,7 +122,7 @@ func TestCopyCSVWithinPolicyWritesTheWholeFileOrRefusesIt(t *testing.T) {
 	policy := CSVTransferPolicy{MaxRows: 2, MaxBytes: 64, MaxFieldBytes: 8}
 	for _, document := range []string{"name\nalice\nbob\n", "name\na\"b\nbob\ncarol\ndave\n"} {
 		var output strings.Builder
-		if err := CopyCSVWithinPolicy(&output, strings.NewReader(document), policy); err != nil || output.String() != document {
+		if err := CopyCSVWithinPolicy(&output, strings.NewReader(document), policy, func(string) bool { return true }); err != nil || output.String() != document {
 			t.Fatalf("copy of %q = (%q, %v), want the whole file", document, output.String(), err)
 		}
 	}
@@ -131,12 +131,12 @@ func TestCopyCSVWithinPolicyWritesTheWholeFileOrRefusesIt(t *testing.T) {
 		"name\nadministrator\n":              CSVErrorFieldTooLarge,
 		"name\n\"" + strings.Repeat("a", 70): CSVErrorCSVTooLarge,
 	} {
-		err := CopyCSVWithinPolicy(io.Discard, strings.NewReader(document), policy)
+		err := CopyCSVWithinPolicy(io.Discard, strings.NewReader(document), policy, func(string) bool { return true })
 		if csvErr, ok := errors.AsType[*CSVError](err); !ok || csvErr.Code != want {
 			t.Fatalf("copy of %q err = %v, want %q", document, err, want)
 		}
 	}
-	if err := CopyCSVWithinPolicy(failingWriter{}, strings.NewReader("name\nalice\n"), policy); !errors.Is(err, errFailingWriter) {
+	if err := CopyCSVWithinPolicy(failingWriter{}, strings.NewReader("name\nalice\n"), policy, func(string) bool { return true }); !errors.Is(err, errFailingWriter) {
 		t.Fatalf("err = %v, want the write error", err)
 	}
 }
@@ -149,11 +149,34 @@ func TestCopyCSVWithinPolicyCountsTheBytesAfterASyntaxError(t *testing.T) {
 	atLimit := head + strings.Repeat("x", policy.MaxBytes-len(head))
 
 	var output strings.Builder
-	if err := CopyCSVWithinPolicy(&output, iotest.OneByteReader(strings.NewReader(atLimit)), policy); err != nil || output.String() != atLimit {
+	if err := CopyCSVWithinPolicy(&output, iotest.OneByteReader(strings.NewReader(atLimit)), policy, func(string) bool { return true }); err != nil || output.String() != atLimit {
 		t.Fatalf("copy of a file at the limit = (%d bytes, %v), want all %d bytes", output.Len(), err, len(atLimit))
 	}
-	err := CopyCSVWithinPolicy(io.Discard, iotest.OneByteReader(strings.NewReader(atLimit+"x")), policy)
+	err := CopyCSVWithinPolicy(io.Discard, iotest.OneByteReader(strings.NewReader(atLimit+"x")), policy, func(string) bool { return true })
 	if csvErr, ok := errors.AsType[*CSVError](err); !ok || csvErr.Code != CSVErrorCSVTooLarge {
 		t.Fatalf("copy of a file one byte over the limit err = %v, want csv_too_large", err)
+	}
+}
+
+//spec:covers REQ-IDMANAGEMENT-034: 複製時も禁止列と重複列を拒否し、指定した必須列の欠落も拒否すること。
+func TestCopyCSVWithinPolicyValidatesHeadersWithTheReaderRules(t *testing.T) {
+	for _, tc := range []struct {
+		header, column string
+	}{
+		{"name,password", "password"},
+		{"name,name", "name"},
+		{"other", "name"},
+	} {
+		t.Run(tc.header, func(t *testing.T) {
+			err := CopyCSVWithinPolicy(io.Discard, strings.NewReader(tc.header+"\n"), DefaultCSVTransferPolicy(), func(string) bool { return true }, "name")
+			if csvErr, ok := errors.AsType[*CSVError](err); !ok || csvErr.Code != CSVErrorInvalidHeader || csvErr.Column != tc.column || csvErr.Row != 1 {
+				t.Fatalf("err=%v, want invalid_header for %s", err, tc.column)
+			}
+		})
+	}
+	var output strings.Builder
+	document := "\ufeffname\nalice\n"
+	if err := CopyCSVWithinPolicy(&output, strings.NewReader(document), DefaultCSVTransferPolicy(), acceptKeys("name"), "name"); err != nil || output.String() != document {
+		t.Fatalf("output=%q err=%v, want unchanged input", output.String(), err)
 	}
 }

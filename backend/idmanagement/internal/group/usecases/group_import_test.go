@@ -68,10 +68,10 @@ func newGroupImportFixture(t *testing.T) *groupImportFixture {
 }
 
 // groupAttributeSchemaStub はテナントが 1 個のカスタム属性を定義している状態を表す。
-type groupAttributeSchemaStub struct{}
+type groupAttributeSchemaStub struct{ err error }
 
-func (groupAttributeSchemaStub) EffectiveGroupAttributeDefs(context.Context, string) ([]groupdomain.GroupAttributeDef, error) {
-	return []groupdomain.GroupAttributeDef{{Key: "cost_center", Type: idmdomain.AttributeTypeString}}, nil
+func (s groupAttributeSchemaStub) EffectiveGroupAttributeDefs(context.Context, string) ([]groupdomain.GroupAttributeDef, error) {
+	return []groupdomain.GroupAttributeDef{{Key: "cost_center", Type: idmdomain.AttributeTypeString}}, s.err
 }
 
 // recordingGroupImportCommitter は確定ポートへ渡った変更集合を記録する。メモリ

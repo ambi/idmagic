@@ -129,20 +129,20 @@ type CSVReader struct {
 }
 
 // NewCSVReader は accepts が受理する機械キーだけをヘッダーとして許す解析器を返す。
-// accepts が種別ごとの唯一の差分であり、それ以外の規則は共有する。
-func NewCSVReader(input io.Reader, accepts func(key string) bool, policy CSVTransferPolicy) (*CSVReader, error) {
+// 種別ごとの語彙と必須列を受け取り、それ以外の規則は共有する。
+func NewCSVReader(input io.Reader, accepts func(key string) bool, policy CSVTransferPolicy, requiredColumns ...string) (*CSVReader, error) {
 	if err := policy.Validate(); err != nil {
 		return nil, err
 	}
 	if accepts == nil {
 		return nil, errors.New("CSV reader requires a column acceptance rule")
 	}
-	return newCSVReader(input, accepts, policy)
+	return newCSVReader(input, accepts, policy, requiredColumns...)
 }
 
 // newCSVReader は accepts が nil のとき見出しの語彙を問わない。その形を使うのは
 // 上限の検査だけであり、上限の規則を NewCSVReader と一つの実装で共有するためにある。
-func newCSVReader(input io.Reader, accepts func(key string) bool, policy CSVTransferPolicy) (*CSVReader, error) {
+func newCSVReader(input io.Reader, accepts func(key string) bool, policy CSVTransferPolicy, requiredColumns ...string) (*CSVReader, error) {
 	limited := &io.LimitedReader{R: input, N: int64(policy.MaxBytes) + 1}
 	counting := &countingReader{r: limited}
 	r := csv.NewReader(counting)
@@ -173,6 +173,11 @@ func newCSVReader(input io.Reader, accepts func(key string) bool, policy CSVTran
 			return nil, &CSVError{Row: 1, Column: key, Code: CSVErrorInvalidHeader}
 		}
 		seen[key] = struct{}{}
+	}
+	for _, key := range requiredColumns {
+		if _, present := seen[key]; !present {
+			return nil, &CSVError{Row: 1, Column: key, Code: CSVErrorInvalidHeader}
+		}
 	}
 	return &CSVReader{csv: r, counting: counting, header: append([]string(nil), header...), policy: policy, nextLine: 2}, nil
 }
@@ -222,17 +227,21 @@ func (r *CSVReader) Next() (CSVRecord, error) {
 // これで全体を確かめる。見出しの語彙と構文の誤りは行の判定が記録するので拒否せず、構文の
 // 誤りに達したら、行の判定と同じくそこで読むのをやめる。
 func CheckCSVLimits(input io.Reader, policy CSVTransferPolicy) error {
+	return checkCSV(input, policy, nil)
+}
+
+func checkCSV(input io.Reader, policy CSVTransferPolicy, accepts func(string) bool, requiredColumns ...string) error {
 	if err := policy.Validate(); err != nil {
 		return err
 	}
-	reader, err := newCSVReader(input, nil, policy)
+	reader, err := newCSVReader(input, accepts, policy, requiredColumns...)
 	for err == nil {
 		_, err = reader.Next()
 	}
 	if errors.Is(err, io.EOF) {
 		return nil
 	}
-	if csvErr, ok := errors.AsType[*CSVError](err); ok && !csvErr.Code.ExceedsTransferPolicy() {
+	if csvErr, ok := errors.AsType[*CSVError](err); ok && !csvErr.Code.ExceedsTransferPolicy() && csvErr.Code != CSVErrorInvalidHeader {
 		return nil
 	}
 	return err
@@ -244,12 +253,15 @@ func (c CSVErrorCode) ExceedsTransferPolicy() bool {
 	return c == CSVErrorCSVTooLarge || c == CSVErrorTooManyRows || c == CSVErrorFieldTooLarge
 }
 
-// CopyCSVWithinPolicy は input を一度だけ読み、CheckCSVLimits に通しながら output へ書く。
-// 上限を超えれば書きかけのまま *CSVError を返すので、呼び出し側は output を捨てる。
-func CopyCSVWithinPolicy(output io.Writer, input io.Reader, policy CSVTransferPolicy) error {
+// CopyCSVWithinPolicy は入力を一度だけ読み、上限と見出しを検査しながら複製する。
+// 拒否時は書きかけのまま返すので、呼び出し側は output を捨てる。
+func CopyCSVWithinPolicy(output io.Writer, input io.Reader, policy CSVTransferPolicy, accepts func(string) bool, requiredColumns ...string) error {
+	if accepts == nil {
+		return errors.New("CSV copy requires a column acceptance rule")
+	}
 	limited := &io.LimitedReader{R: input, N: int64(policy.MaxBytes) + 1}
 	sink := &countingWriter{w: output}
-	checkErr := CheckCSVLimits(io.TeeReader(limited, sink), policy)
+	checkErr := checkCSV(io.TeeReader(limited, sink), policy, accepts, requiredColumns...)
 	// 書き込みの失敗は、検査の側では構文の誤りと区別できないので先に見る。
 	if sink.err != nil {
 		return sink.err

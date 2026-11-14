@@ -105,8 +105,9 @@ func StartGroupMembershipImportPreview(
 		return nil, err
 	}
 	tenantID := tenantports.TenantID(ctx)
+	schema := groupdomain.NewGroupMembershipCSVSchema()
 	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
-		return idmdomain.CopyCSVWithinPolicy(output, input, policy)
+		return idmdomain.CopyCSVWithinPolicy(output, input, policy, schema.Accepts, schema.RequiredColumnKeys()...)
 	})
 	if err != nil {
 		return nil, err

@@ -259,7 +259,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 		IdManagement: idmanagement.Module{
 			UserRepo: users, GroupRepo: groups, AgentRepo: agents,
 			CSVArtifacts: fixture.artifacts, EmailChangeTokenStore: fixture.emailTokens,
-			AttrSchemaRepo: schemas,
+			AttrSchemaRepo: schemas, GroupAttrSchemaRepo: groupmemory.NewTenantGroupAttributeSchemaRepository(),
 		},
 		Authentication: authentication.Module{
 			SessionStore: fixture.sessions, SessionManager: sessionManager, AuthnResolver: sessionManager,

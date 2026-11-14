@@ -78,7 +78,8 @@ func TestPostgresGroupImportHandlerWiresTransactionalReconciliation(t *testing.T
 		Emit:                func(event spec.DomainEvent) error { events = append(events, event); return nil },
 	})
 	start := groupusecases.GroupImportStartDeps{
-		Artifacts: idm.CSVArtifacts, Jobs: repo,
+		SchemaReader: groupusecases.TenantGroupCSVSchemaReader{Repository: idm.GroupAttrSchemaRepo},
+		Artifacts:    idm.CSVArtifacts, Jobs: repo,
 		Enqueuer: jobs.NewEnqueuer(repo, tenancy.NewQuotaRepository(db), func(spec.DomainEvent) {}),
 	}
 	preview, err := groupusecases.StartGroupImportPreview(ctx, start, actorID,

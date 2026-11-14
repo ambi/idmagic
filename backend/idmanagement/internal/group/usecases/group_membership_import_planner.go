@@ -185,12 +185,9 @@ func PlanGroupMembershipImport(
 	}
 	tenantID := tenantports.TenantID(ctx)
 	schema := groupdomain.NewGroupMembershipCSVSchema()
-	reader, err := idmdomain.NewCSVReader(input, schema.Accepts, policy)
+	reader, err := idmdomain.NewCSVReader(input, schema.Accepts, policy, schema.RequiredColumnKeys()...)
 	if err != nil {
 		return summary, err
-	}
-	if missing := schema.MissingRequiredColumn(reader.Header()); missing != "" {
-		return summary, &idmdomain.CSVError{Row: 1, Column: missing, Code: idmdomain.CSVErrorInvalidHeader}
 	}
 	index, err := loadGroupMembershipImportIndex(ctx, deps, tenantID, groupID)
 	if err != nil {

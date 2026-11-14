@@ -88,15 +88,23 @@ func (s GroupMembershipCSVSchema) ColumnKeys() []string {
 // プレビューとして受理すると、管理者は編集が読まれたうえで差分が無かったと
 // 受け取ってしまう。
 func (s GroupMembershipCSVSchema) MissingRequiredColumn(header []string) string {
-	for _, column := range s.ordered {
-		if column.Mode != GroupMembershipCSVIntent {
-			continue
-		}
-		if !slices.Contains(header, column.Key) {
-			return column.Key
+	for _, key := range s.RequiredColumnKeys() {
+		if !slices.Contains(header, key) {
+			return key
 		}
 	}
 	return ""
+}
+
+// RequiredColumnKeys は、投入と計画器が共有する必須列を返す。
+func (s GroupMembershipCSVSchema) RequiredColumnKeys() []string {
+	var keys []string
+	for _, column := range s.ordered {
+		if column.Mode == GroupMembershipCSVIntent {
+			keys = append(keys, column.Key)
+		}
+	}
+	return keys
 }
 
 // GroupMembershipCSVState は行が望む所属状態。追加と解除のどちらでもない値へ
