@@ -29,7 +29,7 @@ func TestMain(m *testing.M) { os.Exit(pgtest.Main(m)) }
 
 type importHandlers map[jobsdomain.JobKind]jobsports.Handler
 
-func (h importHandlers) Register(kind jobsdomain.JobKind, handler jobsports.Handler) {
+func (h importHandlers) Register(kind jobsdomain.JobKind, handler jobsports.Handler, _ ...jobsports.SettlementHandler) {
 	h[kind] = handler
 }
 

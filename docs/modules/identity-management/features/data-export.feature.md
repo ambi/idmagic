@@ -60,7 +60,7 @@
 - When 管理者がエクスポートを取り消す
 - Then ステータスは `canceled` となり、`DataExportCanceled` が発行される
 
-## Rule: REQ-IDMANAGEMENT-086 エクスポートの生成は、成功すると `succeeded` に、失敗すると `failed` にして、それぞれイベントを発行する
+## Rule: REQ-IDMANAGEMENT-086 エクスポートの結果イベントは、成功または最終失敗の状態を確定した後だけ発行する
 
 ### Example: EX-IDMANAGEMENT-086-01 生成の完了
 

@@ -52,7 +52,7 @@
       "event": "JobRetried",
       "guard": "job.attempts < job.max_attempts",
       "to": "queued",
-      "effects": "DataExportFailed"
+      "effects": "JobRetried"
     },
     {
       "from": "running",
@@ -74,20 +74,6 @@
       "guard": "—",
       "to": "canceled",
       "effects": "DataExportCanceled"
-    },
-    {
-      "from": "canceled",
-      "event": "DataExportSucceeded",
-      "guard": "—",
-      "to": "canceled",
-      "effects": "DataExportSucceeded"
-    },
-    {
-      "from": "canceled",
-      "event": "DataExportFailed",
-      "guard": "—",
-      "to": "canceled",
-      "effects": "DataExportFailed"
     },
     {
       "from": "succeeded",
@@ -250,9 +236,7 @@
       ],
       "生成の終了": [
         {
-          "kind": "transition",
-          "to": "canceled",
-          "condition": "取り消す前に始めた生成が終わった"
+          "kind": "noop"
         }
       ],
       "ダウンロード": [

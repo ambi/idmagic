@@ -183,9 +183,8 @@ func StartDataExport(ctx context.Context, deps DataExportDeps, actorUserID, targ
 	if err != nil {
 		return nil, err
 	}
-	// MaxAttempts=1: export generation is deterministic in the resource data,
-	// so a failure won't be fixed by retrying; a single attempt keeps the
-	// lifecycle to exactly one Started + one Succeeded/Failed event.
+	// 同じデータの生成を繰り返しても失敗は解消しないので、通常の開始は一試行にする。
+	// 取り消しと競合した試行は、生成が終わっても結果イベントを発行しない。
 	job, err := deps.Enqueuer.Enqueue(ctx, jobsports.EnqueueInput{
 		TenantID: tenantID, Kind: KindDataExport, Params: params, MaxAttempts: 1,
 	}, now)
@@ -198,12 +197,8 @@ func StartDataExport(ctx context.Context, deps DataExportDeps, actorUserID, targ
 	return exportViewFromJob(job, now), nil
 }
 
-// DataExportHandler is the data_export Job handler. It emits
-// DataExportStarted, generates the CSV (paging the target's repository,
-// applying the column allowlist projection and CSV formula-injection escaping),
-// and on success emits DataExportSucceeded and returns the file in the
-// result. On failure it emits DataExportFailed and returns the error so the
-// Job terminates as failed (MaxAttempts=1).
+// DataExportHandler は開始を発行し、CSV の生成結果または安定したエラーコードを返す。
+// 結果のイベントは Jobs が保存を確定した後に DataExportSettlementHandler が発行する。
 func DataExportHandler(deps DataExportDeps) func(context.Context, *jobsdomain.Job) (json.RawMessage, error) {
 	return func(ctx context.Context, job *jobsdomain.Job) (json.RawMessage, error) {
 		var p DataExportParams
@@ -218,15 +213,42 @@ func DataExportHandler(deps DataExportDeps) func(context.Context, *jobsdomain.Jo
 		if err != nil {
 			code := exportErrorCode(err)
 			logging.Error(ctx, "data export failed", "error", err, "export_id", job.ID, "target", p.Target, "error_code", code)
-			_ = adminEmitExport(deps.Emit, &idmdomain.DataExportFailed{At: deps.now(), TenantID: job.TenantID, ExportID: job.ID, Target: p.Target, ErrorCode: code})
 			return nil, fmt.Errorf("%s", code)
 		}
 		raw, err := json.Marshal(result)
 		if err != nil {
 			return nil, err
 		}
-		_ = adminEmitExport(deps.Emit, &idmdomain.DataExportSucceeded{At: deps.now(), TenantID: job.TenantID, ExportID: job.ID, Target: p.Target, TotalRows: result.TotalRows, ByteSize: result.ByteSize})
 		return raw, nil
+	}
+}
+
+// DataExportSettlementHandler は保存済みのジョブから結果イベントを作る。
+// 再試行の queued は試行の失敗であり、エクスポートの最終失敗としては記録しない。
+func DataExportSettlementHandler(deps DataExportDeps) jobsports.SettlementHandler {
+	return func(ctx context.Context, job *jobsdomain.Job) {
+		if job.Status != jobsdomain.StatusSucceeded && job.Status != jobsdomain.StatusFailed {
+			return
+		}
+		var p DataExportParams
+		if err := json.Unmarshal(job.Params, &p); err != nil {
+			logging.Error(ctx, "エクスポートの確定通知のパラメーターを読めない", "error", err, "export_id", job.ID)
+			return
+		}
+		if job.Status == jobsdomain.StatusFailed {
+			code := "export_failed"
+			if job.Error != nil && *job.Error == "csv_transfer_limit_exceeded" {
+				code = *job.Error
+			}
+			_ = adminEmitExport(deps.Emit, &idmdomain.DataExportFailed{At: job.UpdatedAt, TenantID: job.TenantID, ExportID: job.ID, Target: p.Target, ErrorCode: code})
+			return
+		}
+		var result DataExportResult
+		if err := json.Unmarshal(job.Result, &result); err != nil {
+			logging.Error(ctx, "エクスポートの確定通知の生成結果を読めない", "error", err, "export_id", job.ID)
+			return
+		}
+		_ = adminEmitExport(deps.Emit, &idmdomain.DataExportSucceeded{At: job.UpdatedAt, TenantID: job.TenantID, ExportID: job.ID, Target: p.Target, TotalRows: result.TotalRows, ByteSize: result.ByteSize})
 	}
 }
 

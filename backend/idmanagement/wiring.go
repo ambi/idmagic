@@ -191,7 +191,7 @@ func (m Module) RegisterJobHandlers(registry jobsports.HandlerRegistrar, d JobHa
 	reconcile.Emit = d.Emit
 	registry.Register(jobsdomain.KindDynamicGroupReconcile, groupusecases.DynamicGroupReconcileHandler(reconcile))
 
-	registry.Register(idmusecases.KindDataExport, idmusecases.DataExportHandler(idmusecases.DataExportDeps{
+	exportDeps := idmusecases.DataExportDeps{
 		UserRepo: m.UserRepo, GroupRepo: m.GroupRepo, JobRepo: d.Jobs, CSVArtifacts: m.CSVArtifacts,
 		UserCSVExporter: userusecases.UserCSVExporter{
 			Deps:   userusecases.UserCSVExportDeps{UserRepo: m.UserRepo, SchemaReader: userSchemaReader, Artifacts: m.CSVArtifacts},
@@ -206,7 +206,8 @@ func (m Module) RegisterJobHandlers(registry jobsports.HandlerRegistrar, d JobHa
 			Policy: policy,
 		},
 		Emit: d.Emit,
-	}))
+	}
+	registry.Register(idmusecases.KindDataExport, idmusecases.DataExportHandler(exportDeps), idmusecases.DataExportSettlementHandler(exportDeps))
 }
 
 // LifecycleDeps は、User を止める、削除する操作が、ほかのモジュールから受け取る依存である。

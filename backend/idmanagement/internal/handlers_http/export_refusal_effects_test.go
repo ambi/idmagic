@@ -73,9 +73,11 @@ func (f *idmRefusalFixture) runExportCompletedAt(t *testing.T, exportID string, 
 	if _, err := f.jobs.ClaimBatch(ctx, "w1", jobsdomain.LaneBulk, 10, time.Minute, completedAt); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.jobs.Complete(ctx, exportID, "w1", raw, completedAt); err != nil {
+	settled, err := f.jobs.Complete(ctx, exportID, "w1", raw, completedAt)
+	if err != nil {
 		t.Fatal(err)
 	}
+	idmusecases.DataExportSettlementHandler(deps)(ctx, settled)
 }
 
 // failExport は生成を失敗させたうえで、worker と同じ手順で failed まで進める。
@@ -103,11 +105,13 @@ func (f *idmRefusalFixture) failExport(t *testing.T, exportID string, policy idm
 	if _, err := f.jobs.ClaimBatch(ctx, "w1", jobsdomain.LaneBulk, 10, time.Minute, time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.jobs.Fail(ctx, exportID, "w1", jobsports.FailOutcome{
+	settled, err := f.jobs.Fail(ctx, exportID, "w1", jobsports.FailOutcome{
 		NextStatus: jobsdomain.StatusFailed, Error: "csv_transfer_limit_exceeded",
-	}, time.Now().UTC()); err != nil {
+	}, time.Now().UTC())
+	if err != nil {
 		t.Fatal(err)
 	}
+	idmusecases.DataExportSettlementHandler(deps)(ctx, settled)
 }
 
 // createManualGroup は管理 route を通して手動メンバーシップのグループを建て、id を返す。

@@ -243,8 +243,8 @@ func TestDataExportHandler_User_GeneratesInjectionSafeCSV(t *testing.T) {
 	if strings.Contains(string(csvBytes), "secret-hash") {
 		t.Error("sensitive value leaked into export")
 	}
-	if types := rec.types(); len(types) < 2 || types[0] != "DataExportStarted" || types[len(types)-1] != "DataExportSucceeded" {
-		t.Errorf("events=%v, want DataExportStarted..DataExportSucceeded", types)
+	if types := rec.types(); !slices.Equal(types, []string{"DataExportStarted"}) {
+		t.Errorf("events=%v, want [DataExportStarted]", types)
 	}
 }
 
@@ -524,7 +524,18 @@ func TestDataExportHandler_ReportsEveryTransferLimitAsCSVTransferLimitExceeded(t
 			t.Run(target.target+"/"+limit.name, func(t *testing.T) {
 				deps, rec := transferLimitExportDeps(t, limit.policy, longValue)
 				params := mustMarshal(t, idmusecases.DataExportParams{Target: target.target, Columns: target.columns, Filter: target.filter, ActorUserID: "admin"})
-				job := &jobsdomain.Job{ID: "exp-limit", TenantID: "acme", Kind: idmusecases.KindDataExport, Params: params}
+				repo := jobsmodule.NewJobRepository()
+				now := deps.Now()
+				job, _, err := repo.Enqueue(exportTestCtx(), jobsports.EnqueueInput{
+					TenantID: "acme", Kind: idmusecases.KindDataExport, Lane: jobsdomain.LaneBulk,
+					Params: params, MaxAttempts: 1, Now: now, RunAt: now,
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := repo.ClaimBatch(exportTestCtx(), "limit-worker", jobsdomain.LaneBulk, 1, time.Minute, now); err != nil {
+					t.Fatal(err)
+				}
 
 				raw, err := idmusecases.DataExportHandler(deps)(exportTestCtx(), job)
 
@@ -534,6 +545,13 @@ func TestDataExportHandler_ReportsEveryTransferLimitAsCSVTransferLimitExceeded(t
 				if raw != nil {
 					t.Fatalf("result = %s, want none", raw)
 				}
+				settled, err := repo.Fail(exportTestCtx(), job.ID, "limit-worker", jobsports.FailOutcome{
+					NextStatus: jobsdomain.StatusFailed, Error: err.Error(),
+				}, now)
+				if err != nil {
+					t.Fatal(err)
+				}
+				idmusecases.DataExportSettlementHandler(deps)(exportTestCtx(), settled)
 				failed, ok := rec.events[len(rec.events)-1].(*idmdomain.DataExportFailed)
 				if !ok || failed.ErrorCode != "csv_transfer_limit_exceeded" {
 					t.Fatalf("last event = %#v, want DataExportFailed with csv_transfer_limit_exceeded", rec.events[len(rec.events)-1])

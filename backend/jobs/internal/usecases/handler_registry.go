@@ -1,8 +1,10 @@
 package usecases
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/ambi/idmagic/backend/jobs/domain"
@@ -22,23 +24,32 @@ var _ ports.HandlerRegistrar = (*HandlerRegistry)(nil)
 // consumer WI registers its Handler here.
 type HandlerRegistry struct {
 	mu       sync.RWMutex
-	handlers map[domain.JobKind]ports.Handler
+	handlers map[domain.JobKind]handlerRegistration
+}
+
+type handlerRegistration struct {
+	handler ports.Handler
+	after   []ports.SettlementHandler
 }
 
 func NewHandlerRegistry() *HandlerRegistry {
-	return &HandlerRegistry{handlers: map[domain.JobKind]ports.Handler{}}
+	return &HandlerRegistry{handlers: map[domain.JobKind]handlerRegistration{}}
 }
 
-// Register adds h as the Handler for kind, overwriting any previous
-// registration. It panics if kind is not a valid docs/modules/jobs/
-// JobKind, since that is a programmer error caught at worker startup.
-func (r *HandlerRegistry) Register(kind domain.JobKind, h ports.Handler) {
+// Register は起動時に、種類ごとのハンドラーと確定後の通知をまとめて登録する。
+// 再登録は以前の通知も置き換える。不明な種類と nil の通知は構築時の誤りとして拒否する。
+func (r *HandlerRegistry) Register(kind domain.JobKind, h ports.Handler, after ...ports.SettlementHandler) {
 	if !kind.Valid() {
 		panic(fmt.Sprintf("jobs: cannot register handler for unknown JobKind %q", kind))
 	}
+	for _, notify := range after {
+		if notify == nil {
+			panic("jobs: 確定後の通知処理が未設定")
+		}
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.handlers[kind] = h
+	r.handlers[kind] = handlerRegistration{handler: h, after: slices.Clone(after)}
 }
 
 // Lookup returns the Handler registered for kind, or
@@ -50,5 +61,14 @@ func (r *HandlerRegistry) Lookup(kind domain.JobKind) (ports.Handler, error) {
 	if !ok {
 		return nil, ErrHandlerNotRegistered
 	}
-	return h, nil
+	return h.handler, nil
+}
+
+func (r *HandlerRegistry) notifySettlement(ctx context.Context, job *domain.Job) {
+	r.mu.RLock()
+	after := r.handlers[job.Kind].after
+	r.mu.RUnlock()
+	for _, notify := range after {
+		notify(ctx, job)
+	}
 }

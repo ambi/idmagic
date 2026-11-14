@@ -42,12 +42,10 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 | --- | --- | --- | --- | --- |
 | queued | DataExportStarted | — | running | DataExportStarted |
 | running | DataExportSucceeded | — | succeeded | DataExportSucceeded |
-| running | JobRetried | job.attempts < job.max_attempts | queued | DataExportFailed |
+| running | JobRetried | job.attempts < job.max_attempts | queued | JobRetried |
 | running | DataExportFailed | job.attempts >= job.max_attempts | failed | DataExportFailed |
 | queued | DataExportCanceled | — | canceled | DataExportCanceled |
 | running | DataExportCanceled | — | canceled | DataExportCanceled |
-| canceled | DataExportSucceeded | — | canceled | DataExportSucceeded |
-| canceled | DataExportFailed | — | canceled | DataExportFailed |
 | succeeded | DataExportDownloaded | — | succeeded | DataExportDownloaded |
 | succeeded | DataExportExpired | duration_since(completed_at) >= duration('2592000s') | expired |  |
 
@@ -57,7 +55,7 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 | running | 何もしない | → succeeded（生成が成功した）<br>→ queued（生成が失敗し、試行が上限に達していない）<br>→ failed（生成が失敗し、試行が上限に達した） | 拒否：409 data_export_not_downloadable | → canceled | 何もしない |
 | succeeded | 何もしない | 何もしない | → succeeded | 拒否：409 data_export_not_cancelable | → expired |
 | failed | 何もしない | 何もしない | 拒否：409 data_export_not_downloadable | 拒否：409 data_export_not_cancelable | 何もしない |
-| canceled | 何もしない | → canceled（取り消す前に始めた生成が終わった） | 拒否：409 data_export_not_downloadable | 拒否：409 data_export_not_cancelable | 何もしない |
+| canceled | 何もしない | 何もしない | 拒否：409 data_export_not_downloadable | 拒否：409 data_export_not_cancelable | 何もしない |
 | expired | 何もしない | 何もしない | 拒否：409 data_export_not_downloadable | 拒否：409 data_export_not_cancelable | 何もしない |
 
 <!-- /spec:state-machine -->
@@ -81,14 +79,14 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 
 ### エクスポートの生成
 
-#### REQ-IDMANAGEMENT-086 エクスポートの生成は、成功すると `succeeded` に、失敗すると `failed` にして、それぞれイベントを発行する
+#### REQ-IDMANAGEMENT-086 エクスポートの結果イベントは、成功または最終失敗の状態を確定した後だけ発行する
 
 - `worker` が生成を始めたとき、IdManagement は、`DataExportStarted` を発行する。
-- 生成が完了したとき、IdManagement は、`succeeded` にし、`downloadable` を `true` にし、行数とバイト数を記録して、`DataExportSucceeded` を発行する。
-- 生成が失敗したとき、IdManagement は、`DataExportFailed` を発行する。
-- 生成が失敗し、試行の回数が `Jobs` の上限に達していない場合、IdManagement は、`queued` に戻し、生成をやり直す。
-- 生成が失敗し、試行の回数が `Jobs` の上限に達した場合、IdManagement は、`failed` にし、`downloadable` を `false` にし、`error_code` を記録し、不完全なファイルをダウンロードさせない。
-- 取り消した後に、取り消す前に始めた生成が終わった場合、IdManagement は、`canceled` のまま変えず、生成の結果に応じて `DataExportSucceeded` または `DataExportFailed` を発行する。
+- 生成が成功し、ジョブの `succeeded` を保存したとき、IdManagement は、`downloadable` を `true` にし、行数とバイト数を記録した結果の `DataExportSucceeded` を発行する。
+- 生成が失敗し、試行の回数が `Jobs` の上限に達していない場合、IdManagement は、`queued` に戻し、生成をやり直し、`DataExportSucceeded` と `DataExportFailed` を発行しない。
+- 生成が失敗し、試行の回数が `Jobs` の上限に達して `failed` を保存したとき、IdManagement は、`downloadable` を `false` にし、`error_code` を記録し、`DataExportFailed` を発行し、不完全なファイルをダウンロードさせない。
+- 取り消した後に、取り消す前に始めた生成が終わった場合、IdManagement は、`canceled` のまま変えず、`DataExportSucceeded` と `DataExportFailed` を発行しない。
+- リースの喪失または保存の失敗で生成の結果を確定できなかった場合、IdManagement は、`DataExportSucceeded` と `DataExportFailed` を発行しない。
 - **例**：EX-IDMANAGEMENT-086-01、EX-IDMANAGEMENT-086-02
 
 ### エクスポートの一覧

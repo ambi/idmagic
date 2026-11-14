@@ -13,6 +13,7 @@ import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idmanagement"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
@@ -31,15 +32,12 @@ func TestMain(m *testing.M) {
 	os.Exit(pgtest.Main(m))
 }
 
-// capturedHandlers は登録されたジョブのハンドラーを種類ごとに保持する。
-type capturedHandlers map[domain.JobKind]ports.Handler
-
-func (c capturedHandlers) Register(kind domain.JobKind, h ports.Handler) { c[kind] = h }
-
 // TestDataExportRecordsSucceededAuditEvent は、data export ハンドラーが worker の Emit 配線
 // (deps.NewEmitFunc) 経由で DataExportSucceeded を発行したとき、AuditEventRepo にそのイベントが
 // tenantId 付きで記録されることを実 Postgres 上で確認する。export は PII を外へ出す高リスク操作のため、
 // 成功が監査から見えることを配線レベルで担保する。
+//
+//spec:covers REQ-IDMANAGEMENT-086: 正式なハンドラー登録と Runner で succeeded を保存した後、成功の監査記録を一件残す。
 func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 	db := pgtest.Require(t)
 	ctx := context.Background()
@@ -78,26 +76,43 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 	}
 	logger := logging.New(os.Stderr, logging.ParseLevel("error"), "idmagic-worker-test", "test")
 
-	handlers := capturedHandlers{}
+	runCtx, stop := context.WithTimeout(ctx, 10*time.Second)
+	defer stop()
+	jobRepo := jobs.NewPostgresModule(db).Repo
+	handlers := jobs.NewHandlerRegistry()
+	var exportID string
 	deps.IdManagement.RegisterJobHandlers(handlers, idmanagement.JobHandlerDeps{
 		EnqueuerInTx:   jobs.NewEnqueuerInTx,
+		Jobs:           jobRepo,
 		AttrSchemaRepo: idmModule.AttrSchemaRepo,
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)
+			if succeeded, ok := event.(*idmdomain.DataExportSucceeded); ok && succeeded.ExportID == exportID {
+				stop()
+			}
 			return nil
 		},
 	})
 	const kindDataExport domain.JobKind = "data_export"
-	handler := handlers[kindDataExport]
-	if handler == nil {
-		t.Fatalf("no handler registered for %s", kindDataExport)
-	}
 	params, err := json.Marshal(map[string]any{"target": "user", "columns": []string{"preferred_username"}, "actor_user_id": "admin-actor"})
 	if err != nil {
 		t.Fatalf("marshal params: %v", err)
 	}
-	if _, err := handler(ctx, &domain.Job{ID: "export-" + tenantID, TenantID: tenant.ID, Kind: kindDataExport, Params: params}); err != nil {
-		t.Fatalf("run data export: %v", err)
+	job, _, err := jobRepo.Enqueue(ctx, ports.EnqueueInput{
+		TenantID: tenant.ID, Kind: kindDataExport, Lane: domain.LaneBulk, Params: params,
+		MaxAttempts: 1, Now: now, RunAt: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	exportID = job.ID
+	runner := jobs.NewRunner(jobs.RunnerConfig{
+		WorkerID: "export-audit-worker", Lane: domain.LaneBulk, PollInterval: time.Millisecond,
+	}, jobs.RunnerDeps{Repo: jobRepo, Handlers: handlers})
+	_ = runner.Run(runCtx)
+	stored, err := jobRepo.Get(ctx, job.ID)
+	if err != nil || stored.Status != domain.StatusSucceeded {
+		t.Fatalf("保存結果=(%+v, %v)", stored, err)
 	}
 
 	events, err := auditRepo.List(ctx, auditports.AuditEventQuery{TenantID: tenant.ID, Type: "DataExportSucceeded"})

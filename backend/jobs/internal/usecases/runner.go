@@ -228,6 +228,7 @@ func (rn *Runner) complete(ctx context.Context, job *domain.Job, result json.Raw
 	decrementActiveJobsQuota(ctx, rn.deps.QuotaRepo, updated.TenantID)
 	emit(rn.deps.Emit, &domain.JobSucceeded{At: now, JobID: updated.ID, TenantID: updated.TenantID})
 	rn.jobsMetrics().RecordJobOutcome(rn.cfg.Lane, "succeeded")
+	rn.deps.Handlers.notifySettlement(ctx, updated)
 }
 
 // fail decides retry vs. dead-letter (JobDeadLetterOnMaxAttempts) from the
@@ -278,4 +279,5 @@ func (rn *Runner) fail(ctx context.Context, job *domain.Job, handlerErr error) {
 	} else {
 		rn.jobsMetrics().RecordJobOutcome(rn.cfg.Lane, "failed")
 	}
+	rn.deps.Handlers.notifySettlement(ctx, updated)
 }
