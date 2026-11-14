@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ambi/idmagic/backend/authentication"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
@@ -50,15 +51,22 @@ func BenchmarkResourceAccessLoad(t *testing.B) {
 		t.Run(storage, func(t *testing.B) {
 			f := newResourceLoadFixture(t, storage, map[string]string{"RATE_LIMIT_RESOURCE_ACCESS_MAX_REQUESTS": "1000000", "RATE_LIMIT_RESOURCE_ACCESS_WINDOW_SECONDS": "60"})
 			for _, scenario := range []struct {
-				name    string
-				deep    bool
-				dpop    bool
-				revoked bool
+				name       string
+				deep       bool
+				dpop       bool
+				revoked    bool
+				expression string
+				attributes string
 			}{
 				{name: "direct-bearer"},
 				{name: "depth4-bearer", deep: true},
 				{name: "direct-dpop", dpop: true},
 				{name: "depth4-dpop", deep: true, dpop: true},
+				{name: "condition-ascii", expression: resourceLoadLiteral("x")},
+				{name: "condition-japanese", expression: resourceLoadLiteral("あ")},
+				{name: "condition-supplementary", expression: resourceLoadLiteral("𠮷")},
+				{name: "condition-comprehension", expression: resourceLoadComprehension(), attributes: `{"items":[1,2,3]}`},
+				// 失効エポックを進めるケースは、このフィクスチャを使う最後に置く。
 				{name: "revoked", revoked: true},
 			} {
 				t.Run(scenario.name, func(t *testing.B) {
@@ -93,6 +101,13 @@ func BenchmarkResourceAccessLoad(t *testing.B) {
 						}
 						id = f.evaluator + "-" + id
 						form := url.Values{"token": {token}, "resource_type": {"document"}, "resource_id": {id}, "relation": {"viewer"}}
+						if scenario.expression != "" {
+							attributes := scenario.attributes
+							if attributes == "" {
+								attributes = `{"name":""}`
+							}
+							form.Set("attributes", attributes)
+						}
 						if scenario.dpop {
 							htu := f.resource + id
 							form.Set("htm", http.MethodPost)
@@ -100,6 +115,27 @@ func BenchmarkResourceAccessLoad(t *testing.B) {
 							form.Set("dpop_proof", resourceLoadProof(t, key, jwk, htu, base64.RawURLEncoding.EncodeToString(sum[:]), fmt.Sprintf("%s-%d", token[len(token)-16:], i)))
 						}
 						forms[i] = form.Encode()
+					}
+					if scenario.expression != "" {
+						if utf8.RuneCountInString(scenario.expression) != 1024 {
+							t.Fatal("測定する式が上限ちょうどでない")
+						}
+						// 条件を無視する配線で、速い結果だけを測らないようにする。
+						f.setCondition(t, &oauthdomain.ResourceAccessCondition{DenyWhen: "true"})
+						probe := f.response(forms[0])
+						var denied struct {
+							Decision bool     `json:"decision"`
+							Reasons  []string `json:"reasons"`
+						}
+						if err := json.Unmarshal(probe.Body.Bytes(), &denied); err != nil || probe.Code != http.StatusOK || denied.Decision ||
+							!slices.Contains(denied.Reasons, oauthdomain.ReasonConditionDenied) {
+							t.Fatalf("条件が HTTP の評価へ届いていない: status=%d body=%s err=%v", probe.Code, probe.Body.String(), err)
+						}
+						f.setCondition(t, &oauthdomain.ResourceAccessCondition{
+							DenyWhen: scenario.expression, RequireApprovalWhen: scenario.expression, ApprovalDetailType: "payment",
+						})
+					} else {
+						f.setCondition(t, nil)
 					}
 					for _, form := range forms[:warmup] {
 						f.evaluate(t, form, !scenario.revoked)
@@ -141,6 +177,49 @@ type resourceLoadFixture struct {
 	ctx                                                         context.Context
 	signer                                                      oauthports.TokenIssuer
 	tenantID, agentID, agentClient, evaluator, secret, resource string
+	adminCookie                                                 *http.Cookie
+}
+
+func resourceLoadLiteral(character string) string {
+	return "attributes.name == '" + strings.Repeat(character, 1024-len("attributes.name == ''")) + "'"
+}
+
+func resourceLoadComprehension() string {
+	expression := "attributes.items.exists(x, " + strings.Repeat("x < 0 || ", 100) + "false)"
+	return expression + strings.Repeat(" ", 1024-len(expression))
+}
+
+// 条件の登録も管理 HTTP 契約から行い、読み戻した応答で取りこぼしを検査する。
+func (f *resourceLoadFixture) setCondition(tb testing.TB, condition *oauthdomain.ResourceAccessCondition) {
+	tb.Helper()
+	server, err := f.deps.OAuth2.McpResourceServerRepo.FindByClientID(f.ctx, f.tenantID, f.evaluator)
+	if err != nil || server == nil {
+		tb.Fatalf("条件の登録先: server=%v err=%v", server, err)
+	}
+	body, err := json.Marshal(map[string]any{"access_rules": []oauthdomain.ResourceAccessRule{{
+		ResourceType: "document", Relation: "viewer", Scopes: []string{"tools:read"}, Condition: condition,
+	}}})
+	if err != nil {
+		tb.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPatch, "https://load.example/realms/default/api/admin/v1/mcp-resource-servers/"+server.ID, strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://load.example")
+	req.Header.Set(support.CSRFHeader, "load-csrf")
+	req.AddCookie(&http.Cookie{Name: support.CSRFCookie, Value: "load-csrf"})
+	req.AddCookie(f.adminCookie)
+	recorder := httptest.NewRecorder()
+	f.e.ServeHTTP(recorder, req)
+	var saved struct {
+		AccessRules []oauthdomain.ResourceAccessRule `json:"access_rules"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &saved); err != nil || recorder.Code != http.StatusOK || len(saved.AccessRules) != 1 {
+		tb.Fatalf("条件の保存: status=%d body=%s err=%v", recorder.Code, recorder.Body.String(), err)
+	}
+	actual := saved.AccessRules[0].Condition
+	if (condition == nil) != (actual == nil) || (condition != nil && *condition != *actual) {
+		tb.Fatalf("保存した条件が異なる: got=%v want=%v", actual, condition)
+	}
 }
 
 //spec:covers REQ-OAUTH2-062: 設定から正式な両アダプターを経て HTTP の評価が上限で止まる
@@ -329,6 +408,7 @@ func newResourceLoadFixture(tb testing.TB, storage string, settings map[string]s
 	if err != nil {
 		tb.Fatal(err)
 	}
+	f.adminCookie = &http.Cookie{Name: authentication.SessionCookie, Value: authn.SessionID}
 	admin := func(path string, body any) {
 		tb.Helper()
 		raw, err := json.Marshal(body)

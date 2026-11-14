@@ -10,4 +10,4 @@ TypeSpec の `ResourceAccessCondition` は数え方を明記し、作成と更�
 REQ-OAUTH2-090 に送信前の長さ検証を加え、両方の欄にエラーと文字数を表示する。式の空白は文字数に含める。
 ASCII、日本語、BMP 外の文字の 1023、1024、1025 文字を単体で検査し、管理 API で保存と拒否後の状態、ブラウザーで送信可否と保存後の読み戻しを確かめるテストを加えた。
 1024 という上限値は維持する。
-CEL のコンパイル費用の測定は未実施であり、[wi-31151](../active/wi-31151-measure-resource-condition-compilation-cost.md) で費用と追加対策の要否を確かめる。
+CEL のコンパイル費用の測定は未実施であり、[wi-31151](wi-31151-measure-resource-condition-compilation-cost.md) で費用と追加対策の要否を確かめる。
