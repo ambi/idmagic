@@ -22,7 +22,7 @@ Playwright 1.65 は、Playwright Test のテストランナーを Bun 上で実�
 コマンドは `bunx --bun playwright test` であり、`bunx playwright test` だけでは Node.js を使う。
 Bun が TypeScript を変換するため、Playwright の Babel と変換キャッシュは使わない。
 公式の継続検証は Bun 1.4.3 と Linux で行われている。
-この版番号は最低対応版の宣言とは区別する。
+このバージョン番号は、最低対応バージョンの宣言とは区別する。
 出典：[Playwright 1.65 のリリースノート](https://playwright.dev/docs/release-notes#version-165)。
 
 この構成でも、テストは `@playwright/test` の `test` と `expect` で書き、Playwright Test が実行する。
@@ -62,7 +62,7 @@ Bun.WebView にも操作前の自動待機がある。
 出典：[Bun.WebView のセレクターによるクリック](https://bun.com/docs/runtime/webview#clicking-by-selector)。
 
 Playwright は操作前の検査に加えて、条件成立まで再試行する assertion を用意している。
-Playwright Test にはテストごとの page と BrowserContext、環境の準備と破棄をまとめる fixture がある。
+Playwright Test にはテストごとに分離した `page` と Cookie やストレージ、環境の準備と破棄をまとめる fixture がある。
 このため、ブラウザーの状態分離と assertion の待機処理を共通基盤へ任せられる。
 出典：[操作前の待機と assertion](https://playwright.dev/docs/actionability)、[fixture](https://playwright.dev/docs/test-fixtures)、[状態の分離](https://playwright.dev/docs/browser-contexts)。
 
@@ -70,7 +70,7 @@ Playwright Test にはテストごとの page と BrowserContext、環境の準�
 現在のテスト基盤で同等の情報を残していない場合、再現できない失敗の原因を調べる手段が増える。
 出典：[Trace Viewer](https://playwright.dev/docs/trace-viewer)。
 
-ただし、BrowserContext が分離するのはブラウザーの状態である。
+ただし、Playwright がテストごとに分離するのはブラウザーの状態である。
 共有バックエンドのテナント、ユーザー、メール受信先、callback の状態は別に分離する必要がある。
 ブラウザーの分離だけを理由に既存テストを並列化しないという判断は、この区別から導かれる。
 
@@ -86,7 +86,7 @@ Playwright Test にはテストごとの page と BrowserContext、環境の準�
 | Playwright Test を Node.js で実行 | ブラウザー操作と assertion を保ち、Bun 固有の変更監視と診断の制約を避けられる | Node.js を実行環境へ加え、既存の `Bun.serve` などを別プロセスへ分けるか置き換える必要がある | UI mode の変更監視や診断情報を優先する |
 | Playwright Library を `bun:test` から利用 | 既存ランナーを保ちつつブラウザー操作 API を置き換えられる | page/context の生存期間、fixture、レポートなど、テストランナーが担う仕組みを別途組み立てる | ランナーを変えられない強い制約がある |
 
-Playwright のブラウザーバイナリーは、Playwright の版に対応するものをインストールする。
+Playwright のブラウザーバイナリーは、Playwright のバージョンに対応するものをインストールする。
 必要な OS ライブラリーも残るため、Bun 対応によってブラウザーの導入作業がなくなるわけではない。
 出典：[ブラウザーの導入](https://playwright.dev/docs/browsers)、[CI の準備](https://playwright.dev/docs/ci)。
 
