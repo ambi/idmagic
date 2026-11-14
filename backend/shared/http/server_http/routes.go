@@ -396,7 +396,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		TenantRepo:    d.TenantRepo,
 	})
 
-	d.Jobs.RegisterRoutes(g, d.Deps, authenticator, d.Emit)
+	d.Jobs.RegisterRoutes(g, d.Deps, authenticator)
 
 	d.DataKeys.RegisterRoutes(g, datakeys.RouteDeps{
 		Deps:          d.Deps,
@@ -412,7 +412,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		// bootstrap では設定されない。username -> user_id 解決 (wi-147) には
 		// d.IdManagement.UserRepo を使う。
 		LookupUsername: auditUsernameLookup(d.IdManagement.UserRepo),
-		Jobs:           d.Jobs.Repo, Enqueuer: d.Jobs.Enqueuer, Quotas: d.Tenancy.QuotaRepo,
+		Jobs:           d.Jobs.Repo, Enqueuer: d.Jobs.Enqueuer, Canceler: d.Jobs.Canceler,
 	})
 
 	d.Authentication.RegisterRoutes(g, authRoutes, d.OAuth2.SessionTokenRevoker(), d.OAuth2.SignInContinuation(oauthRoutes))
@@ -445,6 +445,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Notifier:                d.Notification.Notifier,
 		JobRepo:                 d.Jobs.Repo,
 		JobEnqueuer:             jobEnqueuer,
+		JobCanceler:             d.Jobs.Canceler,
 	}
 	if d.Authentication.SessionManager != nil {
 		idmRoutes.SessionStore = d.Authentication.SessionManager.Store

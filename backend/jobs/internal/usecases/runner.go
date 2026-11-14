@@ -77,7 +77,7 @@ func decrementActiveJobsQuota(ctx context.Context, quotaRepo tenantports.QuotaRe
 		return
 	}
 	if err := quotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceActiveJobs, 1); err != nil {
-		logging.Error(ctx, "quota: failed to decrement active_jobs on job completion", "error", err, "tenant_id", tenantID)
+		logging.Error(ctx, "quota: failed to decrement active_jobs on a terminal job", "error", err, "tenant_id", tenantID)
 	}
 }
 

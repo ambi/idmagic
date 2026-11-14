@@ -16,7 +16,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/jobs/ports"
-	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // ErrJobCursorMismatch はページングのカーソルが、それを発行したときと異なるテナントや
@@ -30,10 +29,11 @@ const (
 	maxAdminJobLimit     = 200
 )
 
-// AdminJobDeps は管理系ユースケースの依存。Emit は取り消しの JobCanceled を配る。
+// AdminJobDeps は管理系ユースケースの依存。Canceler は取り消しの遷移と、active_jobs の
+// 減算と JobCanceled の発行を担う。参照だけの操作は Canceler を使わない。
 type AdminJobDeps struct {
-	Repo ports.JobRepository
-	Emit func(spec.DomainEvent)
+	Repo     ports.JobRepository
+	Canceler ports.Canceler
 }
 
 // TenantScope は呼び出し元の認可が確定させたテナントの範囲。呼び出し元 (ハンドラー) が
@@ -154,12 +154,10 @@ func CancelJobForAdmin(ctx context.Context, deps AdminJobDeps, jobID string, sco
 	if _, err := GetJobForAdmin(ctx, deps, jobID, scope); err != nil {
 		return nil, err
 	}
-	canceled, err := deps.Repo.Cancel(ctx, jobID, now)
-	if err != nil {
-		return nil, err
+	if deps.Canceler == nil {
+		return nil, errors.New("jobs: admin cancel requires a canceler")
 	}
-	emit(deps.Emit, &domain.JobCanceled{At: now, JobID: canceled.ID, TenantID: canceled.TenantID})
-	return canceled, nil
+	return deps.Canceler.Cancel(ctx, jobID, now)
 }
 
 // jobCursor はキーセットの位置と、それを発行したときの絞り込みの指紋。

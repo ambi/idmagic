@@ -12,6 +12,8 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/internal/usecases"
 	"github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // seedAdminJobs は tenant-a に 3 件、tenant-b に 1 件の Job を作る。作成時刻を
@@ -217,7 +219,7 @@ func TestCancelJobForAdmin(t *testing.T) {
 	repo, base := seedAdminJobs(t)
 	ctx := context.Background()
 	var emitted []spec.DomainEvent
-	deps := usecases.AdminJobDeps{Repo: repo, Emit: func(e spec.DomainEvent) { emitted = append(emitted, e) }}
+	deps := adminCancelDeps(repo, func(e spec.DomainEvent) { emitted = append(emitted, e) })
 
 	page, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{Scope: usecases.TenantScope{TenantID: "tenant-a"}})
 	if err != nil {
@@ -245,6 +247,92 @@ func TestCancelJobForAdmin(t *testing.T) {
 	}
 }
 
+// adminCancelDeps は取り消しまで行える管理の依存を作る。emit が nil なら発行を捨てる。
+func adminCancelDeps(repo ports.JobRepository, emit func(spec.DomainEvent)) usecases.AdminJobDeps {
+	deps, _ := adminCancelDepsWithQuotas(repo, emit)
+	return deps
+}
+
+func adminCancelDepsWithQuotas(repo ports.JobRepository, emit func(spec.DomainEvent)) (usecases.AdminJobDeps, tenantports.QuotaRepository) {
+	if emit == nil {
+		emit = func(spec.DomainEvent) {}
+	}
+	quotas := tenancy.NewMemoryModule().QuotaRepo
+	return usecases.AdminJobDeps{Repo: repo, Canceler: usecases.NewCanceler(repo, quotas, emit)}, quotas
+}
+
+// 取り消しが減算を飛ばすと、取り消した Job の枠が戻らず、テナントは上限に達した後で
+// 投入できなくなる。拒否した取り消しまで枠を戻すと、実行中の Job の数より使用量が少なくなる。
+//
+//spec:covers REQ-JOBS-013: 取り消しを受理すると active_jobs の使用量を一つ減らし、終端の Job の取り消しは使用量を変えない。
+func TestCancelJobForAdmin_ReleasesTheActiveJobsQuota(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	var emitted []spec.DomainEvent
+	deps, quotas := adminCancelDepsWithQuotas(repo, func(e spec.DomainEvent) { emitted = append(emitted, e) })
+	enqueuer := usecases.NewEnqueuer(repo, quotas, func(spec.DomainEvent) {})
+	ctx := context.Background()
+	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	enqueue := func() *domain.Job {
+		t.Helper()
+		job, err := enqueuer.Enqueue(ctx, ports.EnqueueInput{TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`)}, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return job
+	}
+	target := enqueue()
+	// 拒否が使用量を変えないことを、0 で止まる減算と区別するために、もう一件の枠を残す。
+	enqueue()
+	assertActiveJobs := func(want int) {
+		t.Helper()
+		usage, err := quotas.GetUsage(ctx, "tenant-a")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if usage.ActiveJobs != want {
+			t.Fatalf("active_jobs usage = %d, want %d", usage.ActiveJobs, want)
+		}
+	}
+	assertActiveJobs(2)
+
+	if _, err := usecases.CancelJobForAdmin(ctx, deps, target.ID, usecases.TenantScope{TenantID: "tenant-a"}, now); err != nil {
+		t.Fatal(err)
+	}
+	assertActiveJobs(1)
+	if len(emitted) != 1 {
+		t.Fatalf("emitted %d events, want exactly JobCanceled", len(emitted))
+	}
+
+	if _, err := usecases.CancelJobForAdmin(ctx, deps, target.ID, usecases.TenantScope{TenantID: "tenant-a"}, now); !errors.Is(err, ports.ErrJobAlreadyTerminal) {
+		t.Fatalf("second cancel err = %v, want ErrJobAlreadyTerminal", err)
+	}
+	assertActiveJobs(1)
+	if len(emitted) != 1 {
+		t.Fatalf("a refused cancel emitted %d more events", len(emitted)-1)
+	}
+}
+
+// 取り消しは active_jobs の減算と JobCanceled の発行を省けないよう、三つの依存のどれかが欠けた組み立てを拒否する。
+func TestNewCancelerRejectsAMissingDependency(t *testing.T) {
+	repo := memoryjobs.NewJobRepository()
+	quotas := tenancy.NewMemoryModule().QuotaRepo
+	emit := func(spec.DomainEvent) {}
+	for name, build := range map[string]func(){
+		"保存先がない":   func() { usecases.NewCanceler(nil, quotas, emit) },
+		"クォータがない":  func() { usecases.NewCanceler(repo, nil, emit) },
+		"発行の関数がない": func() { usecases.NewCanceler(repo, quotas, nil) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatal("NewCanceler accepted a missing dependency, want a panic")
+				}
+			}()
+			build()
+		})
+	}
+}
+
 // runLaneDefault は既定レーンの Runner を起動し、止める関数を返す。
 func runLaneDefault(t *testing.T, repo *memoryjobs.JobRepository, handlers *usecases.HandlerRegistry, emit func(spec.DomainEvent), lease time.Duration) func() {
 	t.Helper()
@@ -263,7 +351,7 @@ func TestCancelJobForAdmin_AQueuedJobNeverRuns(t *testing.T) {
 	repo := memoryjobs.NewJobRepository()
 	job := enqueueTestJob(t, repo, domain.DefaultMaxAttempts)
 	var emitted []spec.DomainEvent
-	deps := usecases.AdminJobDeps{Repo: repo, Emit: func(e spec.DomainEvent) { emitted = append(emitted, e) }}
+	deps := adminCancelDeps(repo, func(e spec.DomainEvent) { emitted = append(emitted, e) })
 	if _, err := usecases.CancelJobForAdmin(context.Background(), deps, job.ID, usecases.TenantScope{TenantID: "tenant-a"}, time.Now().UTC()); err != nil {
 		t.Fatalf("CancelJobForAdmin() error = %v", err)
 	}
@@ -338,7 +426,7 @@ func TestCancelJobForAdmin_ARunningJobsHandlerStopsAtItsNextReport(t *testing.T)
 		t.Fatal("handler never started")
 	}
 
-	canceled, err := usecases.CancelJobForAdmin(context.Background(), usecases.AdminJobDeps{Repo: repo}, job.ID, usecases.TenantScope{TenantID: "tenant-a"}, time.Now().UTC())
+	canceled, err := usecases.CancelJobForAdmin(context.Background(), adminCancelDeps(repo, nil), job.ID, usecases.TenantScope{TenantID: "tenant-a"}, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("CancelJobForAdmin() on a running job error = %v", err)
 	}
@@ -372,7 +460,7 @@ func TestCancelJobForAdmin_ARunningJobsHandlerStopsAtItsNextReport(t *testing.T)
 func TestCancelJobForAdmin_HidesOtherTenants(t *testing.T) {
 	repo, base := seedAdminJobs(t)
 	ctx := context.Background()
-	deps := usecases.AdminJobDeps{Repo: repo}
+	deps := adminCancelDeps(repo, nil)
 
 	all, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{Scope: usecases.TenantScope{AllTenants: true}})
 	if err != nil {

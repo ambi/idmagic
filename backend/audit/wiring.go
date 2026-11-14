@@ -15,7 +15,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/salts_memory"
 	"github.com/ambi/idmagic/backend/shared/security/salts_postgres"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/labstack/echo/v5"
@@ -66,7 +65,8 @@ type RouteDeps struct {
 	LookupUsername ports.UsernameLookup
 	Jobs           jobsports.JobRepository
 	Enqueuer       jobsports.Enqueuer
-	Quotas         tenantports.QuotaRepository
+	// Canceler は取り消しの遷移、active_jobs の減算、JobCanceled の発行を Jobs に任せる。
+	Canceler jobsports.Canceler
 }
 
 func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
@@ -81,7 +81,7 @@ func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
 	handlers_http.RegisterRoutes(g, handlers_http.Deps{
 		Deps: d.Deps, Authenticator: d.Authenticator, LookupUsername: d.LookupUsername,
 		AuditEventRepo: m.AuditEventRepo, TenantSaltStore: m.TenantSaltStore,
-		Exports: usecases.ExportDeps{Events: m.AuditEventRepo, Artifacts: m.ExportArtifacts, Jobs: d.Jobs, Enqueuer: d.Enqueuer, Quotas: d.Quotas, Emit: d.Emit, Codec: codec, Metrics: m.metrics}, ExportPolicy: policy,
+		Exports: usecases.ExportDeps{Events: m.AuditEventRepo, Artifacts: m.ExportArtifacts, Jobs: d.Jobs, Enqueuer: d.Enqueuer, Canceler: d.Canceler, Emit: d.Emit, Codec: codec, Metrics: m.metrics}, ExportPolicy: policy,
 	})
 }
 

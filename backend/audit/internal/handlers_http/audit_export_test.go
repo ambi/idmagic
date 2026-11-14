@@ -96,6 +96,7 @@ func TestAuditExportHTTPAuthorization(t *testing.T) {
 			tenants := tenancy.NewMemoryModule()
 			emit := func(spec.DomainEvent) {}
 			jobModule.Enqueuer = jobs.NewEnqueuer(jobModule.Repo, tenants.QuotaRepo, emit)
+			jobModule.Canceler = jobs.NewCanceler(jobModule.Repo, tenants.QuotaRepo, emit)
 			e := echo.New()
 			httpadapter.Register(e, httpadapter.Deps{Issuer: "http://test", TenantRepo: newSingleTenantRepo(), UserRepo: users, AuthnResolver: resolver, Audit: module, Jobs: jobModule, Tenancy: tenants, Emit: emit})
 			path := "/realms/" + realm + base

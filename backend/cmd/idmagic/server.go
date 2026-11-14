@@ -193,9 +193,10 @@ func Run() error {
 	// ClientRepo is wrapped with CIMD resolution in bootstrap; Emit can only
 	// be wired here, after NewEmitFunc exists (same reason as sessionManager.Emit above).
 	deps.OAuth2.BindClientMetadataEmit(emit)
-	// 投入器も JobEnqueued の発行先を必要とするので、NewEmitFunc の後で組み立てる。
+	// 投入器と取り消しも JobEnqueued と JobCanceled の発行先を必要とするので、NewEmitFunc の後で組み立てる。
 	jobsModule := deps.Jobs
 	jobsModule.Enqueuer = jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)
+	jobsModule.Canceler = jobs.NewCanceler(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)
 	httpadapter.Register(e, httpadapter.Deps{
 		MetricsHandler:            appMetrics.Handler(),
 		Admission:                 api.Admission,

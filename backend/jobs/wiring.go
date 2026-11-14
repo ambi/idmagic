@@ -49,6 +49,11 @@ func NewEnqueuerInTx(tx pgx.Tx, quotas tenantports.QuotaRepository, emit func(sp
 	return usecases.NewEnqueuer(&db_postgres.JobRepository{Pool: tx}, quotas, emit)
 }
 
+// NewCanceler は、repo でジョブを取り消し、quotas の active_jobs を一つ減らし、emit で JobCanceled を発行する取り消しの操作を返す。
+func NewCanceler(repo ports.JobRepository, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) ports.Canceler {
+	return usecases.NewCanceler(repo, quotas, emit)
+}
+
 func NewHandlerRegistry() *HandlerRegistry { return usecases.NewHandlerRegistry() }
 
 func NewRunner(cfg RunnerConfig, deps RunnerDeps) *Runner { return usecases.NewRunner(cfg, deps) }
@@ -59,6 +64,7 @@ func NewMetrics(serviceName, serviceVersion string) (*Metrics, error) {
 }
 
 // RegisterRoutes は、テナント管理とシステムのジョブの参照と取り消しの経路を登録する。
-func (m Module) RegisterRoutes(g *echo.Group, deps support.Deps, authenticator *support.Authenticator, emit func(spec.DomainEvent)) {
-	jobshttp.RegisterRoutes(g, jobshttp.Deps{Deps: deps, Authenticator: authenticator, Repo: m.Repo, Emit: emit})
+// 取り消しは m.Canceler を通し、active_jobs の減算と JobCanceled の発行をそこに任せる。
+func (m Module) RegisterRoutes(g *echo.Group, deps support.Deps, authenticator *support.Authenticator) {
+	jobshttp.RegisterRoutes(g, jobshttp.Deps{Deps: deps, Authenticator: authenticator, Repo: m.Repo, Canceler: m.Canceler})
 }

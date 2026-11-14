@@ -70,12 +70,13 @@ func newExportTestHandler(t *testing.T, options ...func(*httpadapter.Deps)) expo
 	for _, option := range options {
 		option(&deps)
 	}
-	// 投入器は、オプションが差し替えたクォータを使うように、オプションの適用後に作る。
+	// 投入器と取り消しは、オプションが差し替えたクォータを使うように、オプションの適用後に作る。
 	quotas := deps.Tenancy.QuotaRepo
 	if quotas == nil {
 		quotas = tenancy.NewMemoryModule().QuotaRepo
 	}
 	deps.Jobs.Enqueuer = jobs.NewEnqueuer(jobRepo, quotas, func(spec.DomainEvent) {})
+	deps.Jobs.Canceler = jobs.NewCanceler(jobRepo, quotas, func(spec.DomainEvent) {})
 	httpadapter.Register(e, deps)
 	return exportTestHandler{echo: e, users: users, groups: groups, jobRepo: jobRepo, artifacts: artifacts}
 }

@@ -42,9 +42,9 @@
 
 #### REQ-JOBS-013 管理者は終端に達していないジョブを取り消せる
 
-- 管理者が `queued` または `running` のジョブを取り消したとき、Jobs は、ジョブを `canceled` にし、200 とジョブを返し、`JobCanceled` を発行し、以後 `running` にしない。
+- 管理者が `queued` または `running` のジョブを取り消したとき、Jobs は、ジョブを `canceled` にし、テナントの `active_jobs` の使用量を一つ減らし、200 とジョブを返し、`JobCanceled` を発行し、以後 `running` にしない。
 - `running` のジョブを取り消した後、ハンドラーが次に報告するとき、Jobs は、リースを失ったハンドラーを中断させる。
-- `succeeded`、`failed`、`canceled` のジョブの取り消しを要求された場合、Jobs は、409 と `job_not_cancelable` で拒否し、状態を変えない。
+- `succeeded`、`failed`、`canceled` のジョブの取り消しを要求された場合、Jobs は、409 と `job_not_cancelable` で拒否し、状態と `active_jobs` の使用量を変えない。
 - テナント管理の経路で別のテナントのジョブの取り消しを要求された場合、Jobs は、要求者が制御面主体であっても 404 と `job_not_found` で拒否し、ジョブを変えない。
 - **例**：EX-JOBS-013-01、EX-JOBS-013-02、EX-JOBS-013-03、EX-JOBS-013-04、EX-JOBS-013-05
 

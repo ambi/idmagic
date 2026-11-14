@@ -11,7 +11,6 @@ package handlers_http
 import (
 	jobports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/labstack/echo/v5"
 )
 
@@ -19,8 +18,8 @@ type Deps struct {
 	support.Deps
 	*support.Authenticator
 	Repo jobports.JobRepository
-	// Emit publishes JobCanceled when a cancellation is accepted.
-	Emit func(spec.DomainEvent)
+	// Canceler cancels a job, releases its active_jobs slot, and publishes JobCanceled.
+	Canceler jobports.Canceler
 }
 
 // RegisterRoutes はテナント管理経路とシステム経路を別のパスへ登録する。どちらを呼んだかが

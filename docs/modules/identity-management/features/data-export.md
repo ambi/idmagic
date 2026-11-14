@@ -126,8 +126,8 @@ CSV の本体はジョブに置かず、テナント単位の不変な成果物�
 
 #### REQ-IDMANAGEMENT-041 エクスポートの取り消しは、終了前のエクスポートを `canceled` にし、終了したエクスポートを拒否する
 
-- 管理者が `queued` または `running` のエクスポートを取り消したとき、IdManagement は、`canceled` にし、`DataExportCanceled` を発行する。
-- `succeeded`、`failed`、`canceled`、`expired` のエクスポートの取り消しを要求された場合、IdManagement は、409 と `data_export_not_cancelable` で拒否し、状態を変えず、`DataExportCanceled` を発行しない。
+- 管理者が `queued` または `running` のエクスポートを取り消したとき、IdManagement は、`canceled` にし、`active_jobs` の使用量を一つ減らし、`JobCanceled` と `DataExportCanceled` を発行する。
+- `succeeded`、`failed`、`canceled`、`expired` のエクスポートの取り消しを要求された場合、IdManagement は、409 と `data_export_not_cancelable` で拒否し、状態と `active_jobs` の使用量を変えず、`JobCanceled` と `DataExportCanceled` を発行しない。
 
 ## セキュリティ上の考慮
 

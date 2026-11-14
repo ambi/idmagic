@@ -304,6 +304,8 @@ type RouteDeps struct {
 	Notifier            sharednotification.Notifier
 	JobRepo             jobsports.JobRepository
 	JobEnqueuer         jobsports.Enqueuer
+	// JobCanceler はデータエクスポートの取り消しで、遷移、active_jobs の減算、JobCanceled の発行を Jobs に任せる。
+	JobCanceler jobsports.Canceler
 }
 
 // RegisterRoutes は User、Group、Agent の管理 API と、本人のプロフィールとデータの経路を登録する。
@@ -360,6 +362,7 @@ func (m Module) httpDeps(d RouteDeps) idmhttp.Deps {
 		Notifier:                  d.Notifier,
 		JobRepo:                   d.JobRepo,
 		JobEnqueuer:               d.JobEnqueuer,
+		JobCanceler:               d.JobCanceler,
 		QuotaRepo:                 d.QuotaRepo,
 	}
 }

@@ -99,6 +99,7 @@ func newAuditAdminServer(t *testing.T, actor *userdomain.User, events []*auditpo
 	tenantModule := tenancy.NewMemoryModule()
 	emit := func(spec.DomainEvent) {}
 	jobModule.Enqueuer = jobs.NewEnqueuer(jobModule.Repo, tenantModule.QuotaRepo, emit)
+	jobModule.Canceler = jobs.NewCanceler(jobModule.Repo, tenantModule.QuotaRepo, emit)
 	for _, ev := range events {
 		_ = auditStore.Append(context.Background(), ev)
 	}

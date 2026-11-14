@@ -20,6 +20,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -28,6 +29,8 @@ type exportFixture struct {
 	deps   ExportDeps
 	now    time.Time
 	events []spec.DomainEvent
+	// quotas は投入器と取り消しが共有するテナントの使用量。
+	quotas tenantports.QuotaRepository
 }
 
 func newExportFixture(tb testing.TB, count int) *exportFixture {
@@ -40,7 +43,8 @@ func newExportFixture(tb testing.TB, count int) *exportFixture {
 	if err := quotas.SetQuota(context.Background(), "a", &tenantdomain.TenantQuota{ActiveJobs: &activeJobs}); err != nil {
 		tb.Fatal(err)
 	}
-	f.deps = ExportDeps{Events: f.module.AuditEventRepo, Artifacts: f.module.ExportArtifacts, Jobs: repo, Enqueuer: jobs.NewEnqueuer(repo, quotas, emit), Quotas: quotas, Codec: f.module.ExportCodec, Emit: emit, Now: func() time.Time { return f.now }}
+	f.quotas = quotas
+	f.deps = ExportDeps{Events: f.module.AuditEventRepo, Artifacts: f.module.ExportArtifacts, Jobs: repo, Enqueuer: jobs.NewEnqueuer(repo, quotas, emit), Canceler: jobs.NewCanceler(repo, quotas, emit), Codec: f.module.ExportCodec, Emit: emit, Now: func() time.Time { return f.now }}
 	for i := range count {
 		if err := f.deps.Events.Append(context.Background(), &ports.AuditEventRecord{ID: fmt.Sprintf("%08d", i), TenantID: "a", Type: "UserAuthenticated", OccurredAt: f.now.Add(-time.Minute), Payload: map[string]any{"userId": "alice"}}); err != nil {
 			tb.Fatal(err)
@@ -234,6 +238,46 @@ func TestAuditExportCancellationAndStorageFailure(t *testing.T) {
 	}
 }
 
+// 取り消しが枠を戻さないと、監査エクスポートを取り消すたびにテナントの投入できるジョブが減る。
+//
+//spec:covers REQ-AUDIT-011: 未完了のジョブの取消しは canceled にして active_jobs の枠を解放し、終端のジョブの取消しは 409 の誤りで状態も枠も変えない。
+func TestAuditExportCancellationReleasesTheActiveJobsQuota(t *testing.T) {
+	f := newExportFixture(t, 1)
+	job := f.start(t, domain.DefaultExportPolicy())
+	// 拒否が枠を変えないことを、0 で止まる減算と区別するために、もう一件の枠を残す。
+	f.start(t, domain.DefaultExportPolicy())
+	scope := ExportScope{TenantID: "a", RequestedBy: "owner"}
+	assertActiveJobs := func(want int) {
+		t.Helper()
+		usage, err := f.quotas.GetUsage(context.Background(), "a")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if usage.ActiveJobs != want {
+			t.Fatalf("active_jobs usage = %d, want %d", usage.ActiveJobs, want)
+		}
+	}
+	assertActiveJobs(2)
+	f.events = nil
+
+	view, err := usecases.CancelExport(context.Background(), f.deps, scope, job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Status != string(jobsdomain.StatusCanceled) {
+		t.Fatalf("status=%q, want canceled", view.Status)
+	}
+	assertActiveJobs(1)
+	if len(f.events) != 1 || f.events[0].EventType() != "JobCanceled" {
+		t.Fatalf("events=%v, want exactly JobCanceled", f.events)
+	}
+
+	if _, err := usecases.CancelExport(context.Background(), f.deps, scope, job.ID); !errors.Is(err, jobsports.ErrJobAlreadyTerminal) {
+		t.Fatalf("second cancel err=%v, want ErrJobAlreadyTerminal", err)
+	}
+	assertActiveJobs(1)
+}
+
 type failingExportJobs struct{ jobsports.JobRepository }
 
 func (failingExportJobs) Get(context.Context, string) (*jobsdomain.Job, error) {
@@ -312,7 +356,8 @@ func TestAuditExportRequestsDoNotWaitForWorker(t *testing.T) {
 	// イベントシンクも共有可変状態を持たせず、API と Worker の並行実行を検査する。
 	deps := f.deps
 	deps.Emit = func(spec.DomainEvent) {}
-	deps.Enqueuer = jobs.NewEnqueuer(deps.Jobs, deps.Quotas, deps.Emit)
+	deps.Enqueuer = jobs.NewEnqueuer(deps.Jobs, f.quotas, deps.Emit)
+	deps.Canceler = jobs.NewCanceler(deps.Jobs, f.quotas, deps.Emit)
 	for range 20 {
 		view, err := StartExport(ctx, deps, ports.ExportParams{Query: ports.AuditEventQuery{TenantID: "a"}, RequestedBy: "owner", Format: "json", Policy: domain.DefaultExportPolicy()})
 		if err != nil {
@@ -341,9 +386,8 @@ func BenchmarkAuditExportRequest(b *testing.B) {
 			for b.Loop() {
 				deps := f.deps
 				deps.Jobs = jobs.NewJobRepository()
-				deps.Quotas = tenancy.NewMemoryModule().QuotaRepo
 				deps.Emit = func(spec.DomainEvent) {}
-				deps.Enqueuer = jobs.NewEnqueuer(deps.Jobs, deps.Quotas, deps.Emit)
+				deps.Enqueuer = jobs.NewEnqueuer(deps.Jobs, tenancy.NewMemoryModule().QuotaRepo, deps.Emit)
 				if _, err := StartExport(context.Background(), deps, ports.ExportParams{Query: ports.AuditEventQuery{TenantID: "a"}, RequestedBy: "owner", Format: "json", Policy: domain.DefaultExportPolicy()}); err != nil {
 					b.Fatal(err)
 				}

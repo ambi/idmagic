@@ -14,10 +14,7 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
-	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const (
@@ -40,7 +37,7 @@ type ExportDeps struct {
 	Artifacts ports.ExportArtifactStore
 	Jobs      jobsports.JobRepository
 	Enqueuer  jobsports.Enqueuer
-	Quotas    tenantports.QuotaRepository
+	Canceler  jobsports.Canceler
 	Codec     *support.CursorCodec
 	Emit      func(spec.DomainEvent)
 	Metrics   ports.ExportMetrics
@@ -304,16 +301,13 @@ func CancelExport(ctx context.Context, d ExportDeps, s ExportScope, id string) (
 	if err != nil {
 		return nil, err
 	}
-	canceled, err := d.Jobs.Cancel(ctx, job.ID, d.now())
+	if d.Canceler == nil {
+		return nil, errors.New("audit: export cancellation requires a job canceler")
+	}
+	canceled, err := d.Canceler.Cancel(ctx, job.ID, d.now())
 	if err != nil {
 		return nil, err
 	}
-	if d.Quotas != nil {
-		if err := d.Quotas.Decrement(ctx, job.TenantID, tenantdomain.ResourceActiveJobs, 1); err != nil {
-			logging.Error(ctx, "quota: failed to decrement active_jobs on audit export cancellation", "error", err, "tenant_id", job.TenantID)
-		}
-	}
-	d.Emit(&jobsdomain.JobCanceled{At: d.now(), JobID: job.ID, TenantID: job.TenantID})
 	return exportView(canceled, p, d.now()), nil
 }
 

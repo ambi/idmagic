@@ -22,7 +22,9 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -96,6 +98,9 @@ type jobsTestServer struct {
 	actorRealm string
 	// authn はセッションが解決する認証の文脈。認証の保証を変えるテストが書き換える。
 	authn *authdomain.AuthenticationContext
+	// quotas は経路の組み立てへ渡すテナントの使用量。種まきの Job は加算しないので、
+	// 使用量を見るテストは自分で加算する。
+	quotas tenantports.QuotaRepository
 }
 
 // newJobsAdminServer は "acme" に 2 件、制御面テナントに 1 件の Job を持つサーバーを作る。
@@ -146,14 +151,18 @@ func newJobsAdminServerServing(t *testing.T, actor *userdomain.User, serve func(
 		}
 		srv.authn = resolver.ctx
 	}
+	srv.quotas = tenancy.NewMemoryModule().QuotaRepo
+	emit := func(e spec.DomainEvent) { srv.emitted = append(srv.emitted, e) }
+	served := serve(repo)
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer: "http://idp.test", TenantRepo: jobsTenantRepo{},
-		Emit:          func(e spec.DomainEvent) { srv.emitted = append(srv.emitted, e) },
+		Emit:          emit,
 		UserRepo:      userRepo,
 		IdManagement:  idmanagement.Module{UserRepo: userRepo},
+		Tenancy:       tenancy.Module{QuotaRepo: srv.quotas},
 		AuthnResolver: resolver,
-		Jobs:          jobs.Module{Repo: serve(repo)},
+		Jobs:          jobs.Module{Repo: served, Canceler: jobs.NewCanceler(served, srv.quotas, emit)},
 	})
 	srv.e = e
 	return srv
@@ -541,6 +550,38 @@ func TestCancelJob(t *testing.T) {
 	}
 	if canceled != 1 {
 		t.Fatalf("emitted %d JobCanceled events, want 1", canceled)
+	}
+}
+
+// 経路の組み立てが減算のない取り消しへ届くと、取り消した Job の枠が戻らず、テナントは
+// 上限に達した後で投入できなくなる。拒否した取り消しは枠を二重に戻さない。
+//
+//spec:covers REQ-JOBS-013: 取り消しを受理すると active_jobs の使用量を一つ減らし、終端の Job の取り消しは使用量を変えない。
+func TestCancelJobReleasesTheActiveJobsQuota(t *testing.T) {
+	srv := newJobsAdminServer(t, jobsAdminUser("admin", "acme", []string{"admin"}))
+	ctx := context.Background()
+	// 種まきの二件の Job が投入の時に加算した分を表す。
+	if err := srv.quotas.CheckAndIncrement(ctx, "acme", tenancydomain.ResourceActiveJobs, 2); err != nil {
+		t.Fatal(err)
+	}
+	if rec := srv.cancel(t, srv.acmeJob.ID); rec.Code != http.StatusOK {
+		t.Fatalf("cancel status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	assertActiveJobs(t, srv.quotas, "acme", 1)
+	if rec := srv.cancel(t, srv.acmeJob.ID); rec.Code != http.StatusConflict {
+		t.Fatalf("second cancel status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	assertActiveJobs(t, srv.quotas, "acme", 1)
+}
+
+func assertActiveJobs(t *testing.T, quotas tenantports.QuotaRepository, tenantID string, want int) {
+	t.Helper()
+	usage, err := quotas.GetUsage(context.Background(), tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage.ActiveJobs != want {
+		t.Fatalf("active_jobs usage = %d, want %d", usage.ActiveJobs, want)
 	}
 }
 

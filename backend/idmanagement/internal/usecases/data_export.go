@@ -109,6 +109,8 @@ type DataExportDeps struct {
 	Emit                       func(spec.DomainEvent) error
 	// Enqueuer はエクスポートのジョブを投入する。
 	Enqueuer jobsports.Enqueuer
+	// JobCanceler はエクスポートのジョブを取り消し、active_jobs を減らし、JobCanceled を発行する。
+	JobCanceler jobsports.Canceler
 	// Now returns the current time; defaults to time.Now().UTC() when nil.
 	Now func() time.Time
 }
@@ -312,15 +314,19 @@ func DownloadDataExport(ctx context.Context, deps DataExportDeps, scope ExportSc
 	return &DataExportFile{Filename: result.Filename, ContentType: "text/csv; charset=utf-8", ByteSize: result.ByteSize, Reader: contentReader}, nil
 }
 
-// CancelDataExport cancels a non-terminal export and emits
+// CancelDataExport cancels a non-terminal export through the Jobs canceler,
+// which releases its active_jobs slot and emits JobCanceled, then emits
 // DataExportCanceled (CancelDataExport).
 func CancelDataExport(ctx context.Context, deps DataExportDeps, scope ExportScope, actorUserID, exportID string) (*DataExportView, error) {
 	job, err := loadScopedExport(ctx, deps, scope, exportID)
 	if err != nil {
 		return nil, err
 	}
+	if deps.JobCanceler == nil {
+		return nil, errors.New("idmanagement: data export cancellation requires a job canceler")
+	}
 	now := deps.now()
-	canceled, err := deps.JobRepo.Cancel(ctx, job.ID, now)
+	canceled, err := deps.JobCanceler.Cancel(ctx, job.ID, now)
 	if err != nil {
 		return nil, err
 	}

@@ -179,7 +179,7 @@ func (d Deps) cancelJob(c *echo.Context, scope jobusecases.TenantScope) error {
 }
 
 func (d Deps) adminDeps() jobusecases.AdminJobDeps {
-	return jobusecases.AdminJobDeps{Repo: d.Repo, Emit: d.Emit}
+	return jobusecases.AdminJobDeps{Repo: d.Repo, Canceler: d.Canceler}
 }
 
 // writeJobNotFound は「他テナントの Job」と「存在しない Job」を同じ応答にする。

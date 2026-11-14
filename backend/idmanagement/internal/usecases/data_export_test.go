@@ -25,6 +25,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -67,6 +68,13 @@ func mustMarshal(t *testing.T, v any) []byte {
 
 func seededExportDeps(t *testing.T) (idmusecases.DataExportDeps, *eventRecorder) {
 	t.Helper()
+	deps, rec, _ := seededExportDepsWithQuotas(t)
+	return deps, rec
+}
+
+// seededExportDepsWithQuotas は、投入器と取り消しが共有するテナントの使用量も返す。
+func seededExportDepsWithQuotas(t *testing.T) (idmusecases.DataExportDeps, *eventRecorder, tenantports.QuotaRepository) {
+	t.Helper()
 	ctx := exportTestCtx()
 	users := usermemory.NewUserRepository()
 	groups := groupmemory.NewGroupRepository()
@@ -106,9 +114,62 @@ func seededExportDeps(t *testing.T) (idmusecases.DataExportDeps, *eventRecorder)
 		UserRepo: users, GroupRepo: groups, JobRepo: jobRepo,
 		UserCSVExporter: exporter, GroupCSVExporter: groupExporter, CSVArtifacts: artifacts,
 		Emit: rec.emit, Now: func() time.Time { return now },
-		Enqueuer: jobsmodule.NewEnqueuer(jobRepo, quotas, func(event spec.DomainEvent) { _ = rec.emit(event) }),
+		Enqueuer:    jobsmodule.NewEnqueuer(jobRepo, quotas, func(event spec.DomainEvent) { _ = rec.emit(event) }),
+		JobCanceler: jobsmodule.NewCanceler(jobRepo, quotas, func(event spec.DomainEvent) { _ = rec.emit(event) }),
 	}
-	return deps, rec
+	return deps, rec, quotas
+}
+
+// 取り消しが保存先の取り消しを直接呼ぶと、Job は終わっても active_jobs の枠が戻らず、
+// エクスポートを取り消すたびにテナントの投入できる数が減っていく。
+//
+//spec:covers REQ-IDMANAGEMENT-041: 取り消しは active_jobs を一つ減らして JobCanceled と DataExportCanceled を発行し、終了したエクスポートの取り消しはどちらも変えない。
+func TestCancelDataExport_ReleasesTheActiveJobsQuota(t *testing.T) {
+	deps, rec, quotas := seededExportDepsWithQuotas(t)
+	ctx := exportTestCtx()
+	userScope := idmusecases.ExportScope{Target: idmdomain.ExportTargetUser}
+	view, err := idmusecases.StartDataExport(ctx, deps, "admin", "user", []string{"preferred_username"}, nil, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertActiveJobs(t, quotas, 1)
+	rec.events = nil
+
+	canceled, err := idmusecases.CancelDataExport(ctx, deps, userScope, "admin", view.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if canceled.Status != idmdomain.ExportStatusCanceled {
+		t.Fatalf("status=%q, want canceled", canceled.Status)
+	}
+	assertActiveJobs(t, quotas, 0)
+	if got := rec.types(); !slices.Equal(got, []string{"JobCanceled", "DataExportCanceled"}) {
+		t.Fatalf("events=%v, want [JobCanceled DataExportCanceled]", got)
+	}
+
+	// 拒否が使用量を変えないことは、0 で止まる減算と区別できるよう、使用量を残して確かめる。
+	if err := quotas.CheckAndIncrement(ctx, "acme", tenancydomain.ResourceActiveJobs, 1); err != nil {
+		t.Fatal(err)
+	}
+	rec.events = nil
+	if _, err := idmusecases.CancelDataExport(ctx, deps, userScope, "admin", view.ID); !errors.Is(err, jobsports.ErrJobAlreadyTerminal) {
+		t.Fatalf("second cancel err=%v, want ErrJobAlreadyTerminal", err)
+	}
+	assertActiveJobs(t, quotas, 1)
+	if got := rec.types(); len(got) != 0 {
+		t.Fatalf("refused cancel emitted %v", got)
+	}
+}
+
+func assertActiveJobs(t *testing.T, quotas tenantports.QuotaRepository, want int) {
+	t.Helper()
+	usage, err := quotas.GetUsage(exportTestCtx(), "acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage.ActiveJobs != want {
+		t.Fatalf("active_jobs usage = %d, want %d", usage.ActiveJobs, want)
+	}
 }
 
 // TestStartDataExport_RejectsInvalidColumns: scenario extension

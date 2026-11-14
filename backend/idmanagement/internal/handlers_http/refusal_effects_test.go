@@ -248,6 +248,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 	}
 
 	sessionManager := authentication.Module{SessionStore: fixture.sessions}.NewSessionManager()
+	jobQuotas := tenancy.NewMemoryModule().QuotaRepo
 	deps := httpadapter.Deps{
 		Issuer: idmRefusalIssuer,
 		// カーソルの署名鍵は組み立ての一部である。テナントと絞り込みは付随データとして
@@ -269,7 +270,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 		},
 		OAuth2:            oauth2.Module{ConsentRepo: fixture.consents, ClientRepo: fixture.clients},
 		Notification:      sharednotification.Module{EmailSender: fixture.emails},
-		Jobs:              jobs.Module{Repo: fixture.jobClock, Enqueuer: jobs.NewEnqueuer(fixture.jobClock, tenancy.NewMemoryModule().QuotaRepo, func(spec.DomainEvent) {})},
+		Jobs:              jobs.Module{Repo: fixture.jobClock, Enqueuer: jobs.NewEnqueuer(fixture.jobClock, jobQuotas, func(spec.DomainEvent) {}), Canceler: jobs.NewCanceler(fixture.jobClock, jobQuotas, func(spec.DomainEvent) {})},
 		ApiTokens:         apitoken.Module{Repo: apiTokenRepo},
 		KeyStore:          keyStore,
 		TokenIssuer:       signer,

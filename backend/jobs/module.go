@@ -20,6 +20,9 @@ type Module struct {
 	// Enqueuer はほかのモジュールへ渡す投入器である。イベントの発行先が決まった後に、組み立て地点が
 	// usecases.NewEnqueuer で作って設定する。
 	Enqueuer ports.Enqueuer
+	// Canceler はほかのモジュールと管理の経路へ渡す取り消しの操作である。Enqueuer と同じく、
+	// 組み立て地点が NewCanceler で作って設定する。
+	Canceler ports.Canceler
 }
 
 // NoopEchoHandler is the wi-42 core-runtime smoke-test handler for

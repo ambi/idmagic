@@ -46,7 +46,7 @@ func exportUsecaseDeps(d Deps) idmusecases.DataExportDeps {
 			},
 			Policy: idmdomain.DefaultCSVTransferPolicy(),
 		},
-		Emit: d.LegacyEmit(), Enqueuer: d.JobEnqueuer,
+		Emit: d.LegacyEmit(), Enqueuer: d.JobEnqueuer, JobCanceler: d.JobCanceler,
 	}
 }
 

@@ -61,6 +61,7 @@ type Deps struct {
 	Reactor              EventReactor
 	JobRepo              jobsports.JobRepository
 	JobEnqueuer          jobsports.Enqueuer
+	JobCanceler          jobsports.Canceler
 	ClientRepo           agentports.ClientLookup
 	AgentActivity        agentports.AgentActivityReader
 	AgentObservationRepo agentports.AgentObservationRepository

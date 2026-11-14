@@ -22,3 +22,10 @@ type Handler func(ctx context.Context, job *domain.Job) (result json.RawMessage,
 type HandlerRegistrar interface {
 	Register(kind domain.JobKind, h Handler)
 }
+
+// Canceler はほかのモジュールと管理の経路がジョブを取り消す契約である。
+// 取り消しの遷移、active_jobs の減算、JobCanceled の発行は Jobs が行う。
+// 終端に達したジョブは ErrJobAlreadyTerminal で拒否し、使用量もイベントも変えない。
+type Canceler interface {
+	Cancel(ctx context.Context, jobID string, now time.Time) (*domain.Job, error)
+}

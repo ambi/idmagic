@@ -131,13 +131,14 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 
 	events := &[]spec.DomainEvent{}
 	emit := func(event spec.DomainEvent) { *events = append(*events, event) }
+	quotas := tenancy.NewMemoryModule().QuotaRepo
 	e := echo.New()
 	Register(e, Deps{
 		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
 		TenantRepo: tenants, UserRepo: users, AuthnResolver: resolver, Emit: emit,
 		SigningKeys: signingkeys.Module{KeyStore: keyStore},
 		DataKeys:    dataKeyModule,
-		Jobs:        jobs.Module{Repo: jobStore, Enqueuer: jobs.NewEnqueuer(jobStore, tenancy.NewMemoryModule().QuotaRepo, emit)},
+		Jobs:        jobs.Module{Repo: jobStore, Enqueuer: jobs.NewEnqueuer(jobStore, quotas, emit), Canceler: jobs.NewCanceler(jobStore, quotas, emit)},
 		Audit:       audit.Module{AuditEventRepo: auditStore},
 	})
 	return &controlPlaneBoundaryServer{
