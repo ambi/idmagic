@@ -195,17 +195,17 @@ func (m Module) DispatchSecurityNotification(ctx context.Context, d SecurityNoti
 	}, event)
 }
 
-// RunRetentionSweep は、監査イベント、認証イベントの集計、期限切れのログインセッション、使われなくなった
+// RunRetentionSweep は、認証イベントの集計、期限切れのログインセッション、使われなくなった
 // 既知の端末を保持期間に従って削除する。期限切れの削除を持つ保存先が一つもなければ ran を false にする。
+// 監査の記録は Audit の掃引が消す。
 func (m Module) RunRetentionSweep(
-	ctx context.Context, auditEvents auditports.AuditEventRepository, now time.Time,
+	ctx context.Context, now time.Time,
 ) (result authusecases.RetentionSweepResult, ran bool, err error) {
-	audit, _ := auditEvents.(authusecases.AuditEventPurger)
 	buckets, _ := m.AuthEventBucketStore.(authusecases.AuthEventBucketPurger)
 	sessions, _ := m.SessionStore.(authusecases.SessionPurger)
 	knownDevices, _ := m.KnownSignInDeviceRepo.(authusecases.KnownDevicePurger)
 	stores := authusecases.RetentionStores{
-		Audit: audit, Buckets: buckets, Sessions: sessions, KnownDevices: knownDevices,
+		Buckets: buckets, Sessions: sessions, KnownDevices: knownDevices,
 	}
 	if stores.Empty() {
 		return result, false, nil

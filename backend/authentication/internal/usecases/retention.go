@@ -1,157 +1,58 @@
 package usecases
 
-// 認証イベント / 監査イベントの保持期間 sweep。種類ごとに根拠ある保持期間を
-// 決め、cutoff より古い行を確実に削除する。partition 化は行わない判断のため、retention が
-// 単一テーブルの肥大と PII 滞留を抑える唯一の機構になる。
-//
-// 種類別の既定: 成功 / 一般監査 365 日・失敗詳細 30 日・bucket 集約 90 日・MFA 90 日・
-// セッション 90 日。impersonation は本人保護のため短縮対象外 (global cap 未設定なら無期限)。
-// global cap (MaxDays) はどの種類もこれを超えて保持しない上限。
+// Authentication が所有する記録の保持期間 sweep。認証イベントの集計 bucket、期限切れの
+// LoginSession、使われなくなった既知の端末を、種類ごとの保持期間に従って削除する。
+// 監査の記録の保持期間は Audit が定め、Audit の掃引が消す。
 
 import (
 	"context"
 	"time"
-
-	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-
-	auditports "github.com/ambi/idmagic/backend/audit/ports"
 )
 
-// RetentionPolicy は種類別の保持日数と global cap。0 以下の日数は「無期限保持」を意味する。
+// RetentionPolicy は Authentication の記録の保持日数。0 以下の日数は「無期限保持」を意味する。
 type RetentionPolicy struct {
-	SuccessDays    int
-	FailDays       int
 	AggregatedDays int
-	MfaDays        int
 	SessionDays    int
 	// KnownDeviceDays は既知のサインイン端末を「既知」と呼び続ける期間 (wi-90)。
-	// 成功イベントと同じ 365 日にそろえる。サインイン履歴から消えた端末を既知のまま
+	// 成功イベントの監査の記録と同じ 365 日にそろえる。サインイン履歴から消えた端末を既知のまま
 	// にすると、本人が確かめる手立てのない判定が残るためである。
 	KnownDeviceDays int
-	// MaxDays は global cap (0 = 上限なし)。各種類はこれを超えて保持しない。
-	MaxDays int
 }
 
 // DefaultRetentionPolicy は 既定値。
 func DefaultRetentionPolicy() RetentionPolicy {
 	return RetentionPolicy{
-		SuccessDays:     365,
-		FailDays:        30,
 		AggregatedDays:  90,
-		MfaDays:         90,
 		SessionDays:     90,
 		KnownDeviceDays: 365,
-		MaxDays:         0,
 	}
 }
 
-// 保持期間の種類分け。impersonation は短縮対象外なので Keep に入れる。
-var (
-	retentionFailTypes = []string{
-		(&authdomain.AuthenticationFailed{}).EventType(),
-	}
-	retentionAggregatedTypes = []string{
-		(&authdomain.AuthenticationEventAggregated{}).EventType(),
-	}
-	retentionMfaTypes = []string{
-		(&authdomain.MfaChallengeIssued{}).EventType(),
-		(&authdomain.MfaChallengeSucceeded{}).EventType(),
-		(&authdomain.MfaChallengeFailed{}).EventType(),
-		(&authdomain.BackupCodeConsumed{}).EventType(),
-		(&authdomain.MfaEnrollmentRequiredEvent{}).EventType(),
-		(&authdomain.MfaEnrollmentCompleted{}).EventType(),
-		(&authdomain.MfaEnrollmentBypassIssued{}).EventType(),
-		(&authdomain.MfaEnrollmentBypassConsumed{}).EventType(),
-		(&authdomain.MfaEnrollmentBypassRevoked{}).EventType(),
-		(&authdomain.MfaEnrollmentBypassExpired{}).EventType(),
-	}
-	retentionSessionTypes = []string{
-		(&authdomain.SessionEnded{}).EventType(),
-	}
-	retentionImpersonationTypes = []string{
-		(&authdomain.SessionImpersonationStarted{}).EventType(),
-		(&authdomain.SessionImpersonationEnded{}).EventType(),
-	}
-)
-
-// capDays は global cap を適用する。days <= 0 (無期限) は cap があればそれに丸める。
-func (p RetentionPolicy) capDays(days int) int {
-	if p.MaxDays > 0 {
-		if days <= 0 || days > p.MaxDays {
-			return p.MaxDays
-		}
-	}
-	return days
-}
-
-// AuditCutoff は now を基準に、監査イベント sweep の type 別 cutoff を組み立てる。
-func (p RetentionPolicy) AuditCutoff(now time.Time) auditports.RetentionCutoff {
-	byType := map[string]time.Time{}
-	assign := func(types []string, days int) {
-		days = p.capDays(days)
-		if days <= 0 {
-			return
-		}
-		before := now.Add(-time.Duration(days) * 24 * time.Hour)
-		for _, t := range types {
-			byType[t] = before
-		}
-	}
-	assign(retentionFailTypes, p.FailDays)
-	assign(retentionAggregatedTypes, p.AggregatedDays)
-	assign(retentionMfaTypes, p.MfaDays)
-	assign(retentionSessionTypes, p.SessionDays)
-
-	cutoff := auditports.RetentionCutoff{ByType: byType}
-	// impersonation は short 化対象外。global cap がある場合のみ cap で消す。
-	if p.MaxDays > 0 {
-		before := now.Add(-time.Duration(p.MaxDays) * 24 * time.Hour)
-		for _, t := range retentionImpersonationTypes {
-			byType[t] = before
-		}
-	} else {
-		cutoff.Keep = append(cutoff.Keep, retentionImpersonationTypes...)
-	}
-	if d := p.capDays(p.SuccessDays); d > 0 {
-		cutoff.Default = now.Add(-time.Duration(d) * 24 * time.Hour)
-	}
-	return cutoff
-}
-
-// BucketCutoff は authentication_event_buckets の削除境界 (集約は AggregatedDays)。
-func (p RetentionPolicy) BucketCutoff(now time.Time) time.Time {
-	days := p.capDays(p.AggregatedDays)
+func cutoffBefore(now time.Time, days int) time.Time {
 	if days <= 0 {
 		return time.Time{}
 	}
 	return now.Add(-time.Duration(days) * 24 * time.Hour)
+}
+
+// BucketCutoff は authentication_event_buckets の削除境界 (集約は AggregatedDays)。
+func (p RetentionPolicy) BucketCutoff(now time.Time) time.Time {
+	return cutoffBefore(now, p.AggregatedDays)
 }
 
 // SessionCutoff は LoginSession (authentication_sessions) housekeeping の削除境界。
 // expires_at がこれより前の行を物理削除できる (SessionDays を転用、wi-253 Plan §7)。
 func (p RetentionPolicy) SessionCutoff(now time.Time) time.Time {
-	days := p.capDays(p.SessionDays)
-	if days <= 0 {
-		return time.Time{}
-	}
-	return now.Add(-time.Duration(days) * 24 * time.Hour)
+	return cutoffBefore(now, p.SessionDays)
 }
 
 // KnownDeviceCutoff は known_sign_in_devices の削除境界 (wi-90)。
 func (p RetentionPolicy) KnownDeviceCutoff(now time.Time) time.Time {
-	days := p.capDays(p.KnownDeviceDays)
-	if days <= 0 {
-		return time.Time{}
-	}
-	return now.Add(-time.Duration(days) * 24 * time.Hour)
+	return cutoffBefore(now, p.KnownDeviceDays)
 }
 
-// AuditEventPurger / AuthEventBucketPurger は sweep が要求する削除境界。store の read 契約
-// (AuditEventRepository / AuthEventBucketStore) とは分離し、sweep を持たない構成でも動く。
-type AuditEventPurger interface {
-	DeleteOlderThan(ctx context.Context, cutoff auditports.RetentionCutoff) (int64, error)
-}
-
+// AuthEventBucketPurger は sweep が要求する削除境界。store の read 契約
+// (AuthEventBucketStore) とは分離し、sweep を持たない構成でも動く。
 type AuthEventBucketPurger interface {
 	DeleteOlderThan(ctx context.Context, before time.Time) (int64, error)
 }
@@ -170,7 +71,6 @@ type KnownDevicePurger interface {
 // RetentionStores は sweep が触る保存先の束。nil の系統はスキップする。位置引数を
 // 増やし続けると、どの store がどれか読めなくなるため名前付きで渡す。
 type RetentionStores struct {
-	Audit        AuditEventPurger
 	Buckets      AuthEventBucketPurger
 	Sessions     SessionPurger
 	KnownDevices KnownDevicePurger
@@ -178,7 +78,7 @@ type RetentionStores struct {
 
 // Empty は掃除する先が 1 つも無いかを返す。
 func (s RetentionStores) Empty() bool {
-	return s.Audit == nil && s.Buckets == nil && s.Sessions == nil && s.KnownDevices == nil
+	return s.Buckets == nil && s.Sessions == nil && s.KnownDevices == nil
 }
 
 // sessionSweepBatchLimit は 1 回の sweep 呼び出しで物理削除する LoginSession の上限。
@@ -188,14 +88,13 @@ const sessionSweepBatchLimit = 1000
 
 // RetentionSweepResult は 1 回の sweep で削除した件数。
 type RetentionSweepResult struct {
-	AuditEvents  int64
 	Buckets      int64
 	Sessions     int
 	KnownDevices int64
 }
 
-// RunRetentionSweep は監査イベント・bucket・期限切れ LoginSession・使われなくなった
-// 既知の端末を保持期間に従って一括削除する。store が nil の系統はスキップする。
+// RunRetentionSweep は bucket・期限切れ LoginSession・使われなくなった既知の端末を
+// 保持期間に従って一括削除する。store が nil の系統はスキップする。
 // idempotent で、1 回で消し切れなくても次回で収束する。
 func RunRetentionSweep(
 	ctx context.Context,
@@ -205,13 +104,6 @@ func RunRetentionSweep(
 ) (RetentionSweepResult, error) {
 	var result RetentionSweepResult
 	now = now.UTC()
-	if stores.Audit != nil {
-		deleted, err := stores.Audit.DeleteOlderThan(ctx, policy.AuditCutoff(now))
-		if err != nil {
-			return result, err
-		}
-		result.AuditEvents = deleted
-	}
 	if stores.Buckets != nil {
 		if before := policy.BucketCutoff(now); !before.IsZero() {
 			deleted, err := stores.Buckets.DeleteOlderThan(ctx, before)

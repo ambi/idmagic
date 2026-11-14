@@ -21,13 +21,18 @@ func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 	if err := deps.Sourcing.PurgeExpiredPasswordChallenges(ctx, now); err != nil {
 		return err
 	}
-	res, ran, err := deps.Authentication.RunRetentionSweep(ctx, deps.Audit.AuditEventRepo, now)
+	deletedAuditEvents, err := deps.Audit.PurgeExpiredEvents(ctx, now)
+	if err != nil {
+		return err
+	}
+	logging.Info(ctx, "audit event retention sweep completed", "deleted_audit_events", deletedAuditEvents)
+	res, ran, err := deps.Authentication.RunRetentionSweep(ctx, now)
 	if err != nil {
 		return err
 	}
 	if ran {
 		logging.Info(ctx, "retention sweep completed",
-			"deleted_audit_events", res.AuditEvents, "deleted_buckets", res.Buckets,
+			"deleted_buckets", res.Buckets,
 			"deleted_sessions", res.Sessions, "deleted_known_devices", res.KnownDevices)
 	}
 	deleted, purged, err := deps.IdManagement.PurgeExpiredCSVArtifacts(ctx, now)

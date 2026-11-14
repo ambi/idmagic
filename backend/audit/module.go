@@ -6,6 +6,7 @@ package audit
 
 import (
 	"github.com/ambi/idmagic/backend/audit/domain"
+	"github.com/ambi/idmagic/backend/audit/internal/usecases"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
@@ -19,4 +20,7 @@ type Module struct {
 	ExportPolicy    domain.ExportPolicy
 	ExportCodec     *support.CursorCodec
 	metrics         *exportMetrics
+	// eventPurger は保持期間の掃引が使う削除である。構築関数が AuditEventRepo と同じ
+	// 保存先を入れる。AuditEventRepo を差し替えても、掃引の対象は変わらない。
+	eventPurger usecases.EventPurger
 }

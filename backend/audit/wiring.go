@@ -28,11 +28,13 @@ func NewAuditEventStore(maxEvents int) *db_memory.AuditEventStore {
 func withExportMetrics(m Module) Module { m.metrics = newExportMetrics(m.ExportArtifacts); return m }
 
 func NewMemoryModule(maxEvents int) Module {
-	return withExportMetrics(Module{AuditEventRepo: NewAuditEventStore(maxEvents), TenantSaltStore: salts_memory.NewInMemoryTenantSaltStore(), ExportArtifacts: db_memory.NewExportArtifactStore(), ExportPolicy: domain.DefaultExportPolicy(), ExportCodec: support.NewCursorCodec([]byte(rand.Text()))})
+	events := NewAuditEventStore(maxEvents)
+	return withExportMetrics(Module{AuditEventRepo: events, eventPurger: events, TenantSaltStore: salts_memory.NewInMemoryTenantSaltStore(), ExportArtifacts: db_memory.NewExportArtifactStore(), ExportPolicy: domain.DefaultExportPolicy(), ExportCodec: support.NewCursorCodec([]byte(rand.Text()))})
 }
 
 func NewPostgresModule(pool postgres.DB) Module {
-	return withExportMetrics(Module{AuditEventRepo: &db_postgres.AuditEventRepository{Pool: pool}, TenantSaltStore: salts_postgres.NewTenantSaltStore(pool), ExportArtifacts: &db_postgres.ExportArtifactStore{Pool: pool}, ExportPolicy: domain.DefaultExportPolicy(), ExportCodec: support.NewCursorCodec([]byte(rand.Text()))})
+	events := &db_postgres.AuditEventRepository{Pool: pool}
+	return withExportMetrics(Module{AuditEventRepo: events, eventPurger: events, TenantSaltStore: salts_postgres.NewTenantSaltStore(pool), ExportArtifacts: &db_postgres.ExportArtifactStore{Pool: pool}, ExportPolicy: domain.DefaultExportPolicy(), ExportCodec: support.NewCursorCodec([]byte(rand.Text()))})
 }
 
 // RecordWriterInTx は同じ Tx へ監査を追記し、検索の対象を明示できる書き込み操作を返す。
