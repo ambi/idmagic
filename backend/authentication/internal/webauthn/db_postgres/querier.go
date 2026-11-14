@@ -13,12 +13,14 @@ type Querier interface {
 	DeleteWebAuthnCredential(ctx context.Context, arg DeleteWebAuthnCredentialParams) error
 	DeleteWebAuthnCredentialsForSub(ctx context.Context, userID string) error
 	GetWebAuthnCredentialByID(ctx context.Context, credentialID string) (*GetWebAuthnCredentialByIDRow, error)
+	// 既存の credential_id は主キーの一意違反で失敗させる。上書きすると、他人の
+	// credential ID を名乗る登録が持ち主の sign_count と label を書き換えるためである。
+	InsertWebAuthnCredential(ctx context.Context, arg InsertWebAuthnCredentialParams) error
 	ListWebAuthnCredentialsBySub(ctx context.Context, userID string) ([]*ListWebAuthnCredentialsBySubRow, error)
 	SaveWebauthnSession(ctx context.Context, arg SaveWebauthnSessionParams) error
 	// GetDel 相当。live な行だけを一度きり取り出す。期限切れ / 未存在は 0 行 (ErrNoRows → nil)。
 	TakeWebauthnSession(ctx context.Context, arg TakeWebauthnSessionParams) ([]byte, error)
 	UpdateWebAuthnCredentialSignCount(ctx context.Context, arg UpdateWebAuthnCredentialSignCountParams) error
-	UpsertWebAuthnCredential(ctx context.Context, arg UpsertWebAuthnCredentialParams) error
 }
 
 var _ Querier = (*Queries)(nil)

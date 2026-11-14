@@ -17,6 +17,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 )
 
 const webAuthnRegistrationKeyPrefix = "reg:"
@@ -103,7 +104,12 @@ func FinishWebAuthnRegistration(
 	if err := specCred.Validate(); err != nil {
 		return err
 	}
-	if err := deps.CredentialRepo.Save(ctx, specCred); err != nil {
+	// 既存の credential ID は、持ち主を問わず登録の失敗にする（WebAuthn Level 3 の
+	// 登録手順）。none attestation は秘密鍵の所持を証明しないため、他人の credential ID を
+	// 名乗る応答も検証を通る。応答は検証の失敗と区別せず、登録済みかを知らせない。
+	if err := deps.CredentialRepo.Save(ctx, specCred); errors.Is(err, webauthnports.ErrWebAuthnCredentialExists) {
+		return errors.Join(ErrWebAuthnVerification, err)
+	} else if err != nil {
 		return err
 	}
 	if err := authusecases.SyncMfaEnrolled(ctx, deps.UserRepo, deps.MfaFactorRepo, deps.CredentialRepo, user, now); err != nil {

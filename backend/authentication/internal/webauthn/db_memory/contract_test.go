@@ -20,3 +20,16 @@ func TestWebAuthnSessionStoreContract(t *testing.T) {
 		}
 	})
 }
+
+func TestWebAuthnCredentialRepositoryContract(t *testing.T) {
+	testing_contract.RunCredentialRepository(t, func(*testing.T) testing_contract.CredentialFixture {
+		tenant := &tenantdomain.Tenant{ID: "tenant-a"}
+		return testing_contract.CredentialFixture{
+			Repo:    NewWebAuthnCredentialRepository(),
+			Context: func(ctx context.Context) context.Context { return tenantports.WithTenant(ctx, tenant, "", "") },
+			Owner:   "user-owner",
+			Other:   "user-other",
+			Now:     time.Now().UTC().Truncate(time.Microsecond),
+		}
+	})
+}

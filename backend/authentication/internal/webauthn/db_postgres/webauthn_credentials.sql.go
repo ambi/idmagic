@@ -75,6 +75,45 @@ func (q *Queries) GetWebAuthnCredentialByID(ctx context.Context, credentialID st
 	return &i, err
 }
 
+const insertWebAuthnCredential = `-- name: InsertWebAuthnCredential :exec
+INSERT INTO webauthn_credentials (credential_id, user_id, public_key, sign_count, transports, aaguid, label,
+    backup_eligible, backup_state, created_at, last_used_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+`
+
+type InsertWebAuthnCredentialParams struct {
+	CredentialID   string
+	UserID         string
+	PublicKey      string
+	SignCount      int64
+	Transports     []string
+	Aaguid         pgtype.Text
+	Label          pgtype.Text
+	BackupEligible bool
+	BackupState    bool
+	CreatedAt      time.Time
+	LastUsedAt     pgtype.Timestamptz
+}
+
+// 既存の credential_id は主キーの一意違反で失敗させる。上書きすると、他人の
+// credential ID を名乗る登録が持ち主の sign_count と label を書き換えるためである。
+func (q *Queries) InsertWebAuthnCredential(ctx context.Context, arg InsertWebAuthnCredentialParams) error {
+	_, err := q.db.Exec(ctx, insertWebAuthnCredential,
+		arg.CredentialID,
+		arg.UserID,
+		arg.PublicKey,
+		arg.SignCount,
+		arg.Transports,
+		arg.Aaguid,
+		arg.Label,
+		arg.BackupEligible,
+		arg.BackupState,
+		arg.CreatedAt,
+		arg.LastUsedAt,
+	)
+	return err
+}
+
 const listWebAuthnCredentialsBySub = `-- name: ListWebAuthnCredentialsBySub :many
 SELECT credential_id, user_id, public_key, sign_count, transports, aaguid, label,
     backup_eligible, backup_state, created_at, last_used_at
@@ -143,47 +182,5 @@ type UpdateWebAuthnCredentialSignCountParams struct {
 
 func (q *Queries) UpdateWebAuthnCredentialSignCount(ctx context.Context, arg UpdateWebAuthnCredentialSignCountParams) error {
 	_, err := q.db.Exec(ctx, updateWebAuthnCredentialSignCount, arg.CredentialID, arg.SignCount, arg.LastUsedAt)
-	return err
-}
-
-const upsertWebAuthnCredential = `-- name: UpsertWebAuthnCredential :exec
-INSERT INTO webauthn_credentials (credential_id, user_id, public_key, sign_count, transports, aaguid, label,
-    backup_eligible, backup_state, created_at, last_used_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-ON CONFLICT (credential_id) DO UPDATE SET
-    sign_count = EXCLUDED.sign_count,
-    label = EXCLUDED.label,
-    last_used_at = EXCLUDED.last_used_at,
-    updated_at = now()
-`
-
-type UpsertWebAuthnCredentialParams struct {
-	CredentialID   string
-	UserID         string
-	PublicKey      string
-	SignCount      int64
-	Transports     []string
-	Aaguid         pgtype.Text
-	Label          pgtype.Text
-	BackupEligible bool
-	BackupState    bool
-	CreatedAt      time.Time
-	LastUsedAt     pgtype.Timestamptz
-}
-
-func (q *Queries) UpsertWebAuthnCredential(ctx context.Context, arg UpsertWebAuthnCredentialParams) error {
-	_, err := q.db.Exec(ctx, upsertWebAuthnCredential,
-		arg.CredentialID,
-		arg.UserID,
-		arg.PublicKey,
-		arg.SignCount,
-		arg.Transports,
-		arg.Aaguid,
-		arg.Label,
-		arg.BackupEligible,
-		arg.BackupState,
-		arg.CreatedAt,
-		arg.LastUsedAt,
-	)
 	return err
 }

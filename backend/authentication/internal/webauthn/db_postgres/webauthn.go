@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
+	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -56,12 +58,16 @@ func (r *WebAuthnCredentialRepository) FindByCredentialID(
 	)
 }
 
+// sqlstateUniqueViolation は PostgreSQL の unique_violation の SQLSTATE である。
+// webauthn_credentials の一意制約は主キーの credential_id だけである。
+const sqlstateUniqueViolation = "23505"
+
 func (r *WebAuthnCredentialRepository) Save(ctx context.Context, c *domain.WebAuthnCredential) error {
 	transports := c.Transports
 	if transports == nil {
 		transports = []string{}
 	}
-	return r.queries().UpsertWebAuthnCredential(ctx, UpsertWebAuthnCredentialParams{
+	err := r.queries().InsertWebAuthnCredential(ctx, InsertWebAuthnCredentialParams{
 		CredentialID:   c.CredentialID,
 		UserID:         c.UserID,
 		PublicKey:      c.PublicKey,
@@ -74,6 +80,11 @@ func (r *WebAuthnCredentialRepository) Save(ctx context.Context, c *domain.WebAu
 		CreatedAt:      c.CreatedAt,
 		LastUsedAt:     timestamptzOrNil(c.LastUsedAt),
 	})
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == sqlstateUniqueViolation {
+		return ports.ErrWebAuthnCredentialExists
+	}
+	return err
 }
 
 func (r *WebAuthnCredentialRepository) UpdateSignCount(

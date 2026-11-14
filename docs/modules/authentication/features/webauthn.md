@@ -61,6 +61,7 @@ WebAuthn は、パスワードと組み合わせるフィッシング耐性の�
 - 本人がステップアップ認証を経たセッションで自分の資格情報の解除を要求したとき、Authentication は、204 を返し、資格情報を消し、`mfa_enrolled` を計算し直し、本人のすべての信頼済みデバイスを失効させ、`WebAuthnCredentialRemoved` を発行する。
 - 登録の challenge がないか期限を過ぎた確定を受けた場合、Authentication は、400 と `webauthn_challenge_expired` で拒否する。
 - アテステーションを検証できない場合、Authentication は、400 と `invalid_webauthn` で拒否し、資格情報を保存しない。
+- 確定した資格情報の credential ID が、本人か他人かを問わず既に登録されている場合、Authentication は、400 と `invalid_webauthn` で拒否し、既存の資格情報を変えず、`WebAuthnCredentialRegistered` を発行しない。
 - 本人のものでないか存在しない資格情報の解除を受けた場合、Authentication は、404 と `webauthn_not_found` で拒否する。
 - ステップアップ認証を満たさない解除を受けた場合、Authentication は、REQ-AUTHENTICATION-039 の応答で拒否し、資格情報を残す。
 - WebAuthn を構成していない場合、Authentication は、503 と `webauthn_unavailable` で拒否する。

@@ -9,10 +9,12 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/fxamacker/cbor/v2"
 
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -53,9 +55,79 @@ func TestWebAuthnRegistrationHTTPContracts(t *testing.T) {
 	}
 }
 
+// 他人の credential ID を名乗る登録を拒否することを固定する。応答だけでなく、持ち主の
+// 記録が上書きされていないこと（user_id、公開鍵、sign_count、label）、登録者に記録が
+// 増えていないこと、登録のイベントが出ていないことを観測する。sign_count を大きくした
+// 上書きは、持ち主の次のアサーションを複製の疑いで拒否させるため、表明に含める。
+//
+//spec:covers REQ-AUTHENTICATION-038: 既に登録された credential ID の確定を 400 と invalid_webauthn で拒否し、既存の資格情報を変えず、イベントを発行しないこと
+func TestWebAuthnRegistrationRefusesAnAlreadyRegisteredCredentialID(t *testing.T) {
+	f := newAuthRefusalServer(t)
+	ctx := testing_tenant.Default(t.Context())
+	alice := f.seedSession(t, "webauthn-owner", tenancydomain.DefaultTenantID, authRefusalAlice)
+	bob := f.seedSession(t, "webauthn-claimant", tenancydomain.DefaultTenantID, authRefusalBob)
+
+	register := func(session string, id []byte, signCount uint32, label string) (*httptest.ResponseRecorder, string, string) {
+		start := authContractJSON(t, f.send(t, authRefusalRequest{method: http.MethodPost, path: "/api/account/v1/mfa/webauthn/register/start", sessionID: session, csrf: authRefusalCSRF}), http.StatusOK)
+		challenge := start["publicKey"].(map[string]any)["challenge"].(string)
+		attestation, credentialID, publicKey := authContractAttestationWithID(t, challenge, id, signCount)
+		return f.send(t, authRefusalRequest{
+			method: http.MethodPost, path: "/api/account/v1/mfa/webauthn/register/finish", sessionID: session, csrf: authRefusalCSRF,
+			body: map[string]any{"attestation": attestation, "label": label},
+		}), credentialID, publicKey
+	}
+
+	id := make([]byte, 32)
+	if _, err := rand.Read(id); err != nil {
+		t.Fatal(err)
+	}
+	rec, credentialID, ownerKey := register(alice, id, 7, "Alice key")
+	authContractEmpty(t, rec)
+	registered := countEvents(*f.events, "WebAuthnCredentialRegistered")
+
+	rec, _, _ = register(bob, id, 1000, "Bob key")
+	authContractProblem(t, rec, http.StatusBadRequest, "invalid_webauthn")
+
+	stored, err := f.credentials.FindByCredentialID(ctx, credentialID)
+	if err != nil || stored == nil {
+		t.Fatalf("owner credential=%v err=%v", stored, err)
+	}
+	if stored.UserID != authRefusalAlice || stored.PublicKey != ownerKey || stored.SignCount != 7 || stored.Label == nil || *stored.Label != "Alice key" {
+		t.Fatalf("owner credential was overwritten: user=%s sign_count=%d label=%v public_key_unchanged=%t", stored.UserID, stored.SignCount, stored.Label, stored.PublicKey == ownerKey)
+	}
+	if claimed, err := f.credentials.ListBySub(ctx, authRefusalBob); err != nil || len(claimed) != 0 {
+		t.Fatalf("claimant credentials=%v err=%v, want none", claimed, err)
+	}
+	if got := countEvents(*f.events, "WebAuthnCredentialRegistered"); got != registered {
+		t.Fatalf("WebAuthnCredentialRegistered count=%d after the refusal, want %d: %v", got, registered, eventTypes(*f.events))
+	}
+}
+
+func countEvents(events []spec.DomainEvent, eventType string) int {
+	count := 0
+	for _, event := range events {
+		if event.EventType() == eventType {
+			count++
+		}
+	}
+	return count
+}
+
 // authContractAttestation は既存のセレモニーテストと同じ ES256 のソフトウェア認証器で、
 // 実際の HTTP で受け取った challenge に対する none attestation を作る。
 func authContractAttestation(t *testing.T, challenge string) (json.RawMessage, string, string) {
+	t.Helper()
+	id := make([]byte, 32)
+	if _, err := rand.Read(id); err != nil {
+		t.Fatal(err)
+	}
+	return authContractAttestationWithID(t, challenge, id, 7)
+}
+
+// authContractAttestationWithID は credential ID と sign count を呼び出し側が決める。
+// none attestation は秘密鍵の所持を証明しないので、他人の credential ID を名乗る応答を
+// 正当な形のまま作れる。
+func authContractAttestationWithID(t *testing.T, challenge string, id []byte, signCount uint32) (json.RawMessage, string, string) {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -73,16 +145,12 @@ func authContractAttestation(t *testing.T, challenge string) (json.RawMessage, s
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := make([]byte, 32)
-	if _, err := rand.Read(id); err != nil {
-		t.Fatal(err)
-	}
 	attested := binary.BigEndian.AppendUint16(make([]byte, 16), uint16(len(id)))
 	attested = append(attested, id...)
 	attested = append(attested, cose...)
 	rpHash := sha256.Sum256([]byte("idp.test"))
 	authData := append(rpHash[:], byte(0x45)) // UP、UV、AT。
-	authData = binary.BigEndian.AppendUint32(authData, 7)
+	authData = binary.BigEndian.AppendUint32(authData, signCount)
 	authData = append(authData, attested...)
 	attestation, err := cbor.Marshal(map[string]any{"fmt": "none", "attStmt": map[string]any{}, "authData": authData})
 	if err != nil {

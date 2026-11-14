@@ -11,15 +11,12 @@ SELECT credential_id, user_id, public_key, sign_count, transports, aaguid, label
 FROM webauthn_credentials
 WHERE credential_id = $1;
 
--- name: UpsertWebAuthnCredential :exec
+-- name: InsertWebAuthnCredential :exec
+-- 既存の credential_id は主キーの一意違反で失敗させる。上書きすると、他人の
+-- credential ID を名乗る登録が持ち主の sign_count と label を書き換えるためである。
 INSERT INTO webauthn_credentials (credential_id, user_id, public_key, sign_count, transports, aaguid, label,
     backup_eligible, backup_state, created_at, last_used_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-ON CONFLICT (credential_id) DO UPDATE SET
-    sign_count = EXCLUDED.sign_count,
-    label = EXCLUDED.label,
-    last_used_at = EXCLUDED.last_used_at,
-    updated_at = now();
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 
 -- name: UpdateWebAuthnCredentialSignCount :exec
 UPDATE webauthn_credentials

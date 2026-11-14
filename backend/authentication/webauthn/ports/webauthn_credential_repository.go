@@ -2,10 +2,15 @@ package ports
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 )
+
+// ErrWebAuthnCredentialExists は、保存しようとした credential ID が、持ち主を問わず既に
+// 保存されている場合に Save が返す。既存の記録は変えない。
+var ErrWebAuthnCredentialExists = errors.New("webauthn credential id already registered")
 
 // WebAuthnCredentialRepository は登録済み WebAuthn / Passkey credential の永続化 (wi-26 /
 // )。1 ユーザーが複数持てるため credential_id で一意識別する。

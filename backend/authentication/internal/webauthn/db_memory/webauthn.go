@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
+	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 )
 
 // =====================================================================
@@ -51,6 +52,9 @@ func (r *WebAuthnCredentialRepository) Save(
 ) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if _, exists := r.credentials[credential.CredentialID]; exists {
+		return ports.ErrWebAuthnCredentialExists
+	}
 	r.credentials[credential.CredentialID] = cloneWebAuthnCredential(credential)
 	return nil
 }
