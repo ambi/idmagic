@@ -58,8 +58,7 @@ type AuthorizeDeps struct {
 }
 
 // Authorize は /authorize のリクエスト検証と保存を行う。
-// 認可コードフローのみ対応、PKCE S256 必須（デモ簡略化、ロードマップ Phase 1 で
-// public/FAPI required・confidential recommended に階段化予定）。
+// PKCE の必須条件はクライアントが所有し、利用するときは S256 だけを受け入れる。
 func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput) (*AuthorizeRequestOutput, error) {
 	if in.ClientID == "" {
 		return nil, NewOAuthError("invalid_request", "client_id is required")
@@ -67,13 +66,6 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 	if in.ResponseType != "code" {
 		return nil, NewOAuthError("unsupported_response_type", "only code is supported")
 	}
-	if in.CodeChallenge == "" {
-		return nil, NewOAuthError("invalid_request", "code_challenge is required")
-	}
-	if in.CodeChallengeMethod != "S256" {
-		return nil, NewOAuthError("invalid_request", "code_challenge_method must be S256")
-	}
-
 	tenantID := tenantports.TenantID(ctx)
 	client, err := deps.ClientRepo.FindByID(ctx, tenantID, in.ClientID)
 	if err != nil {
@@ -81,6 +73,14 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 	}
 	if client == nil {
 		return nil, NewOAuthError("invalid_client", "unknown client_id")
+	}
+	if client.MustUsePKCE() || in.CodeChallenge != "" || in.CodeChallengeMethod != "" {
+		if in.CodeChallenge == "" {
+			return nil, NewOAuthError("invalid_request", "code_challenge is required")
+		}
+		if in.CodeChallengeMethod != "S256" {
+			return nil, NewOAuthError("invalid_request", "code_challenge_method must be S256")
+		}
 	}
 	requestedScopes := strings.Fields(defaultScope(in.Scope))
 	redirectURI, err := authorizationdomain.ResolveRedirectURI(
@@ -144,7 +144,7 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 		StateParam:           optional(in.StateParam),
 		Nonce:                optional(in.Nonce),
 		CodeChallenge:        in.CodeChallenge,
-		CodeChallengeMethod:  spec.CodeChallengeMethodS256,
+		CodeChallengeMethod:  spec.CodeChallengeMethod(in.CodeChallengeMethod),
 		Prompt:               optional(in.Prompt),
 		MaxAge:               in.MaxAge,
 		ACRValues:            optional(in.ACRValues),

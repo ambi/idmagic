@@ -72,6 +72,7 @@ type RegisterClientInput struct {
 	JwksURI                           *string
 	TlsClientAuthSubjectDN            *string
 	RequirePAR                        bool
+	RequirePKCE                       bool
 	DpopBoundAccessTokens             bool
 	FapiProfile                       domain.FapiProfile
 	BackChannelLogoutURI              *string
@@ -100,6 +101,7 @@ type UpdateAdminOAuth2ClientInput struct {
 	ResponseTypes                     *[]spec.ResponseType
 	Scope                             *string
 	RequirePAR                        *bool
+	RequirePKCE                       *bool
 	DpopBoundTokens                   *bool
 	BackChannelLogoutURI              *string
 	BackChannelLogoutSessionRequired  *bool

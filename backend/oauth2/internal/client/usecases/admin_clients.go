@@ -103,6 +103,10 @@ func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in
 		updated.DpopBoundAccessTokens = *in.DpopBoundTokens
 		changed = append(changed, "dpop_bound_access_tokens")
 	}
+	if in.RequirePKCE != nil && client.RequirePKCE != *in.RequirePKCE {
+		updated.RequirePKCE = *in.RequirePKCE
+		changed = append(changed, "require_pkce")
+	}
 	if in.BackChannelLogoutURI != nil && !adminEqualOptionalString(client.BackChannelLogoutURI, in.BackChannelLogoutURI) {
 		updated.BackChannelLogoutURI = in.BackChannelLogoutURI
 		changed = append(changed, "backchannel_logout_uri")

@@ -349,9 +349,8 @@ func fpAccessTokenClaims(t *testing.T, body string) map[string]any {
 	return claims
 }
 
-// 限られることを固定する。S256 PKCE の側は製品が全クライアントへ無条件に課して
-// いるので、ここでは「選択したクライアントでも S256 以外は通らない」ことを対照と
-// して併せて読む。
+// 限られることを固定する。FAPI クライアントでは PKCE が必須なので、S256 以外を
+// 拒否する対照も併せて読む。
 //
 //spec:covers FAPI2-PAR-PKCE: プロファイルを選んだクライアントの認可リクエストが PAR 経由に
 func TestFapi2ClientCannotStartAnAuthorizationRequestWithoutPAR(t *testing.T) {

@@ -903,6 +903,7 @@ CREATE TABLE oauth2_clients (
     tls_client_auth_subject_dn TEXT,
     id_token_signed_response_alg TEXT NOT NULL DEFAULT 'PS256',
     require_pushed_authorization_requests BOOLEAN NOT NULL DEFAULT FALSE,
+    require_pkce BOOLEAN NOT NULL DEFAULT FALSE,
     dpop_bound_access_tokens BOOLEAN NOT NULL DEFAULT FALSE,
     fapi_profile TEXT NOT NULL DEFAULT 'none',
     backchannel_logout_uri TEXT,

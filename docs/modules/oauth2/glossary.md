@@ -31,7 +31,7 @@
 | AuthorizationDetails | 構造化された細粒度の権限要求 (RFC 9396)。type で識別される JSON オブジェクトの配列として、対象・操作・上限・条件を表し、/authorize・/par・/tokenで要求・同意・トークン反映する。本アプリは受理する type をテナント登録スキーマに限定し fail-closed に検証する。 | authorization_details, RAR, Rich Authorization Requests, リッチ認可リクエスト |
 | AccessToken | ResourceServer にアクセスする際に提示するトークン。JWT (PS256 / ES256) として発行、TTL 600秒。 | access_token, アクセストークン |
 | IdToken | OIDC が定める、ResourceOwner の認証結果を表明する JWT。iss/sub/aud/exp/iat/auth_time/nonce/azp を含む。 | id_token, IDトークン |
-| Pkce | Proof Key for Code Exchange（RFC 7636）。`code_challenge` と `code_verifier` で認可コード横取り攻撃を防ぐ。本アプリでは例外なく必須。 | pkce, PKCE |
+| Pkce | Proof Key for Code Exchange（RFC 7636）。`code_challenge` と `code_verifier` で認可コード横取り攻撃を防ぐ。公開クライアントと FAPI 2.0 では必須、そのほかの confidential クライアントでは任意をデフォルトとして個別に必須化できる。 | pkce, PKCE |
 | Dpop | Demonstrating Proof of Possession (RFC 9449)。JWK サムプリント (jkt) でトークンを所有鍵にバインドする。 | dpop, DPoP |
 | Mtls | Mutual-TLS Client Authentication（RFC 8705）。TLS クライアント証明書でクライアントを認証する。 | mtls, mTLS, tls_client_auth |
 | Par | Pushed Authorization Requests (RFC 9126)。/par に認可リクエストを事前 POST し /authorize は request_uri のみで参照する。FAPI 2.0 必須。 | par, PAR |

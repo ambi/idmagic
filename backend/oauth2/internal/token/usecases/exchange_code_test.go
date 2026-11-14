@@ -130,6 +130,52 @@ func exchangeInput(verifier string) ExchangeCodeInput {
 	}
 }
 
+//spec:covers REQ-OAUTH2-005: PKCE を省いて発行した confidential のコードは verifier なしで交換できる。
+func TestExchangeCodeWithoutPKCE(t *testing.T) {
+	f := newExchangeFixture(t, []string{"openid"})
+	f.code.CodeChallenge = ""
+	f.code.CodeChallengeMethod = ""
+	ctx := testing_tenant.Default(t.Context())
+	if err := f.codeStore.Save(ctx, f.code); err != nil {
+		t.Fatal(err)
+	}
+	out, err := ExchangeCodeForToken(ctx, f.deps, exchangeInput(""))
+	if err != nil || out == nil || out.AccessToken == "" || out.IDToken == "" {
+		t.Fatalf("exchange without PKCE=%+v err=%v", out, err)
+	}
+	stored, err := f.codeStore.Find(ctx, f.code.Code)
+	if err != nil || stored.State != spec.AuthCodeRecordRedeemed {
+		t.Fatalf("redeemed code=%+v err=%v", stored, err)
+	}
+}
+
+//spec:covers REQ-OAUTH2-005, RFC7636-VERIFY: 欠落、不一致、ダウングレードではコードと発行状態を変えない。
+func TestExchangeCodePKCERefusalsLeaveCodeUnused(t *testing.T) {
+	for _, tt := range []struct{ name, challenge, method, verifier, wantCode string }{
+		{name: "missing verifier", challenge: "challenge", method: "S256", wantCode: "invalid_request"},
+		{name: "wrong verifier", challenge: "challenge", method: "S256", verifier: "wrong-verifier", wantCode: "invalid_grant"},
+		{name: "verifier without challenge", verifier: "unexpected-verifier", wantCode: "invalid_grant"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newExchangeFixture(t, []string{"openid"})
+			ctx := testing_tenant.Default(t.Context())
+			f.code.CodeChallenge, f.code.CodeChallengeMethod = tt.challenge, spec.CodeChallengeMethod(tt.method)
+			if err := f.codeStore.Save(ctx, f.code); err != nil {
+				t.Fatal(err)
+			}
+			out, err := ExchangeCodeForToken(ctx, f.deps, exchangeInput(tt.verifier))
+			oauth, ok := errors.AsType[*OAuthError](err)
+			if !ok || oauth.Code != tt.wantCode || out != nil {
+				t.Fatalf("exchange=%+v err=%v, want %s", out, err, tt.wantCode)
+			}
+			stored, err := f.codeStore.Find(ctx, f.code.Code)
+			if err != nil || stored.State != spec.AuthCodeRecordIssued || f.issuer.idTokenCalls != 0 || f.issuer.lastAccessTokenInput.Client != nil || len(f.emitted()) != 0 {
+				t.Fatalf("code=%+v err=%v issuer=%+v events=%v", stored, err, f.issuer, f.emitted())
+			}
+		})
+	}
+}
+
 // 拒否され、トークンは 1 本も発行されない。認可コードは消費されないので、正しい verifier
 // なら後から交換できる。
 //

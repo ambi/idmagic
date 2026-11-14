@@ -76,6 +76,7 @@ type Oauth2Client struct {
 	TlsClientAuthSubjectDn             pgtype.Text
 	IDTokenSignedResponseAlg           string
 	RequirePushedAuthorizationRequests bool
+	RequirePkce                        bool
 	DpopBoundAccessTokens              bool
 	FapiProfile                        string
 	BackchannelLogoutUri               pgtype.Text

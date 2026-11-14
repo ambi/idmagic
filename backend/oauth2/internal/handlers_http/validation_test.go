@@ -1,6 +1,7 @@
 package handlers_http
 
 import (
+	"maps"
 	"net/url"
 	"testing"
 )
@@ -19,6 +20,29 @@ func TestParseAuthorizeRequestCoercesMaxAge(t *testing.T) {
 	}
 	if input.MaxAge == nil || *input.MaxAge != 60 {
 		t.Fatalf("max_age = %v, want 60", input.MaxAge)
+	}
+}
+
+//spec:covers REQ-OAUTH2-005: PKCE の省略は許し、明示した空値は有効な PKCE として扱わない。
+func TestParseAuthorizeRequestDistinguishesMissingAndEmptyPKCE(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		pkce      url.Values
+		wantError bool
+	}{
+		{name: "omitted"},
+		{name: "empty challenge", pkce: url.Values{"code_challenge": {""}}, wantError: true},
+		{name: "empty method", pkce: url.Values{"code_challenge_method": {""}}, wantError: true},
+		{name: "both empty", pkce: url.Values{"code_challenge": {""}, "code_challenge_method": {""}}, wantError: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			query := url.Values{"client_id": {"client"}, "response_type": {"code"}}
+			maps.Copy(query, tt.pkce)
+			_, err := parseAuthorizeRequest(query)
+			if (err != nil) != tt.wantError {
+				t.Fatalf("parse err=%v, wantError=%v", err, tt.wantError)
+			}
+		})
 	}
 }
 

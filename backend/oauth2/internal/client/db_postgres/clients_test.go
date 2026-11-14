@@ -78,6 +78,32 @@ func TestOAuth2ClientRepositoryListPage(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-OAUTH2-035: PKCE の明示設定を更新しても、取得と全一覧の読み出しで保持する。
+func TestOAuth2ClientRepositoryPreservesPKCEPolicy(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	repo := &db_postgres.OAuth2ClientRepository{Pool: db}
+	client := pgfixtures.SeedClient(t, repo, tenant.ID)
+	for _, required := range []bool{true, false} {
+		client.RequirePKCE = required
+		if err := repo.Save(t.Context(), client); err != nil {
+			t.Fatal(err)
+		}
+		stored, err := repo.FindByID(t.Context(), tenant.ID, client.ClientID)
+		if err != nil || stored == nil || stored.RequirePKCE != required {
+			t.Fatalf("stored=%+v err=%v, want require_pkce=%v", stored, err, required)
+		}
+		clients, err := repo.FindAll(t.Context(), tenant.ID)
+		if err != nil || len(clients) != 1 || clients[0].RequirePKCE != required {
+			t.Fatalf("listed=%+v err=%v, want require_pkce=%v", clients, err, required)
+		}
+		page, err := repo.ListPage(t.Context(), tenant.ID, "", 10)
+		if err != nil || len(page) != 1 || page[0].RequirePKCE != required {
+			t.Fatalf("page=%+v err=%v, want require_pkce=%v", page, err, required)
+		}
+	}
+}
+
 //spec:covers REQ-OAUTH2-080: 実 DB に参照トークンがあっても、組み込みクライアントの削除は SQL の実行前に業務上の拒否となる。
 func TestFirstPartyDeletionWithRefreshToken(t *testing.T) {
 	db := pgtest.Require(t)

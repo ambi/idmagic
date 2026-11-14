@@ -13,7 +13,8 @@
 ## モデル
 
 `AuthorizationRequest`、`AuthorizationCodeRecord`、`PARRecord` のライフサイクルは、条件分岐ではなく宣言的な遷移表で表す。
-PKCE の要否はクライアントごとのメタデータ（`require_pkce`）で定め、`code_challenge_method` は `S256` だけを許す。
+PKCE は public、クライアント認証が `none`、または FAPI 2.0 のクライアントで必須とし、そのほかの confidential クライアントでは `require_pkce` で定め、デフォルトは任意とする。
+PKCE を使う場合、`code_challenge_method` は `S256` だけを許す。
 認可コードは、PKCE の有無によらず一度だけ使える短命な値（60 秒以下）とする。
 `request_uri` は一度だけ使え、TTL は 600 秒以下とする。
 
@@ -128,11 +129,13 @@ PAR で発行した `request_uri` のライフサイクル。`/authorize` から
 
 #### REQ-OAUTH2-005 認可コードフローでアクセストークンと ID トークンを取得できる
 
-- クライアントが `response_type=code`、登録済みの `redirect_uri`、`S256` の `code_challenge`、クライアントに登録したスコープで `/authorize` を要求したとき、OAuth2 は、10 分の有効期間の `Received` の認可リクエストを保存し、ログインか同意へ進ませる。
+- クライアントが `response_type=code`、登録済みの `redirect_uri`、クライアントに登録したスコープと、クライアントの PKCE の要件を満たして `/authorize` を要求したとき、OAuth2 は、10 分の有効期間の `Received` の認可リクエストを保存し、ログインか同意へ進ませる。
+- public、クライアント認証が `none`、FAPI 2.0、または `require_pkce=true` のクライアントが認可を要求したとき、OAuth2 は、`S256` の `code_challenge` を必須の入力として検証する。
+- そのほかの confidential クライアントが `code_challenge` と `code_challenge_method` を両方省いたとき、OAuth2 は、PKCE なしの認可リクエストとして保存する。
 - `scope` のない認可の要求を受けたとき、OAuth2 は、`openid` を要求したものとして扱う。
 - 登録した `redirect_uri` が一件のクライアントが `openid` を含まない要求で `redirect_uri` を省いたとき、OAuth2 は、登録値を `redirect_uri` として認可リクエストを保存する。
 - 認証済みの利用者が Application の割り当てと実効のサインインポリシーを満たし、要求したスコープを同意が覆うとき、OAuth2 は、60 秒以下の有効期間の認可コードを発行し、`state` と発行者の識別子とともに `redirect_uri` へ返し、`AuthorizationCodeIssued` を発行する。
-- クライアントが期限内の認可コードを、同じクライアント、同じ `redirect_uri`、一致する `code_verifier` で交換したとき、OAuth2 は、コードを `Redeemed` にし、アクセストークンと、`openid` のスコープには ID トークンを返し、`refresh_token` のグラントを許可したクライアントの `offline_access` のスコープにはリフレッシュトークンを返し、`AuthorizationCodeRedeemed`、`AccessTokenIssued` を発行する。
+- クライアントが期限内の認可コードを、同じクライアント、同じ `redirect_uri` と、PKCE を使ったコードでは一致する `code_verifier`、使わなかったコードでは `code_verifier` を省いて交換したとき、OAuth2 は、コードを `Redeemed` にし、アクセストークンと、`openid` のスコープには ID トークンを返し、`refresh_token` のグラントを許可したクライアントの `offline_access` のスコープにはリフレッシュトークンを返し、`AuthorizationCodeRedeemed`、`AccessTokenIssued` を発行する。
 - `redirect_uri` を省いた認可リクエストのコードを、クライアントが `redirect_uri` を省いて交換したとき、OAuth2 は、登録値と同じ `redirect_uri` で交換したものとして扱う。
 - `acr_values` が MFA の水準だけを受け入れる要求を受けたとき、OAuth2 は、既存のセッションでもログインの後でも、実効のサインインポリシーによらず、認証が MFA の水準を満たすまで認可コードを発行しない。
 - `acr_values` が MFA の水準を求め、既存のセッションが MFA の水準を満たさないとき、OAuth2 は、ログインからやり直させずに、TOTP、WebAuthn、未使用の復旧コードのうち利用者が登録したいずれかの第二要素の画面へ進ませる。
@@ -142,7 +145,9 @@ PAR で発行した `request_uri` のライフサイクル。`/authorize` から
 - `openid` を含む要求か、登録した `redirect_uri` が一件でないクライアントの要求で `redirect_uri` を省いた場合、OAuth2 は、リダイレクトせずに `invalid_request` のエラーの画面を返し、認可リクエストを保存しない。
 - 単一値の認可のパラメーターが重複するか、`prompt` に重複か未対応のトークンがあるか、`none` がほかの `prompt` のトークンと併用され、登録済みの `redirect_uri` を安全に確定できる場合、OAuth2 は、認可コードを発行せずに、`state` と発行者の識別子を含む `invalid_request` を `redirect_uri` へ返す。
 - 単一値の認可のパラメーターが重複するか、`prompt` に重複か未対応のトークンがあるか、`none` がほかの `prompt` のトークンと併用され、登録済みの `redirect_uri` を安全に確定できない場合、OAuth2 は、認可コードを発行せずに、リダイレクトしないで `invalid_request` のエラーの画面を返す。
-- `code_challenge` がないか `code_challenge_method` が `S256` でない要求を受けた場合、OAuth2 は、`invalid_request` で拒否する。
+- PKCE が必須なのに `code_challenge` がない要求、または `code_challenge` と `code_challenge_method` の一方でも指定したのに challenge が空か method が `S256` でない要求を受けたとき、OAuth2 は、認可リクエストを保存せずに `invalid_request` で拒否する。
+- PKCE を使ったコードの交換で `code_verifier` がない場合、OAuth2 は、400 と `invalid_request` で拒否し、コードを消費せず、トークンを発行しない。
+- PKCE を使わなかったコードの交換で `code_verifier` が指定された場合、OAuth2 は、400 と `invalid_grant` で拒否し、コードを消費せず、トークンを発行しない。
 - `response_type` が `code` でない要求を受けた場合、OAuth2 は、`unsupported_response_type` で拒否する。
 - 未知の `client_id` を受けた場合、OAuth2 は、`invalid_client` で拒否する。
 - 認可コードのグラントを登録していないクライアントの要求を受けた場合、OAuth2 は、`unauthorized_client` で拒否する。
@@ -212,6 +217,11 @@ PAR で発行した `request_uri` のライフサイクル。`/authorize` から
 
 #### PKCE と Pushed Authorization Requests
 
-PKCE の要否はクライアントごとのメタデータ (`require_pkce`) で定め、パブリッククライアントと FAPI 2.0 クライアントではデフォルトで必須、従来のコンフィデンシャルクライアントでは任意とする。パブリッククライアントと FAPI クライアントに最も強いデフォルトを適用しつつ、RFC 6749 時代のコンフィデンシャルクライアントへ移行を強制しないためである。`code_challenge_method` は `S256` だけを許可し、インターセプターがログから verifier を復元できる `plain` は拒否する。認可コードは PKCE の有無にかかわらず一度だけ使用できる短命な値（60 秒以下）とする。再利用の検出とリプレイ期間の最小化はいずれもこの性質に依存する。
+PKCE は public と FAPI 2.0 のクライアントでは設定によらず必須とし、そのほかの confidential クライアントでは `require_pkce` のデフォルトを false とする。
+PKCE 非対応の confidential クライアントとの互換性を保ち、必要な連携では管理者が必須にできるようにするためである。
+任意のクライアントも PKCE を利用でき、利用した認可コードの交換では verifier の照合を省かない。
+`code_challenge_method` は `S256` だけを許可し、認可要求から verifier を復元できる `plain` は拒否する。
+PKCE を省く confidential OIDC クライアントには、RFC 9700 の 4.5.3.2 節に従った nonce 検証などのコード注入対策が必要である。
+認可コードは PKCE の有無にかかわらず、一度だけ使用できる 60 秒以下の値とする。
 
 Pushed Authorization Requests（`/par`）により、クライアントは認証済みのバックチャネルで認可パラメーターを送り、`request_uri` を介して `/authorize` から参照できる。これにより、`/authorize` における URL の改ざん、オープンリダイレクトの悪用、未認証リクエストの偽造を防ぐ。FAPI 2.0 クライアント（`require_pushed_authorization_requests`）には PAR を必須とし、それ以外のクライアントはどちらの経路も利用できる。`request_uri` は一度だけ使用でき、TTL は 600 秒以下とする。`/authorize` が `request_uri` を解決した後は、攻撃者が正当なプッシュ済みリクエストへパラメーターを追加できないよう、同じリクエストに追加されたクエリパラメーターを無視し、送信済みの値を優先する（RFC 9126 §4）。

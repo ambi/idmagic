@@ -22,6 +22,7 @@ Discovery Metadata は、手作業でもビルドの時でもなく、実行時�
 
 #### REQ-OAUTH2-014 Discovery Metadata は宣言された全エンドポイントを広告する
 
+- クライアントが Discovery Metadata を取得したとき、OAuth2 は、`code_challenge_methods_supported` に `S256` だけを含め、`require_pkce=false` を返して、PKCE が全クライアントに一律必須ではないことを示す。
 - クライアントが `/.well-known/openid-configuration` を取得したとき、OAuth2 は、契約で宣言した `issuer`、`authorization_endpoint`、`token_endpoint`、`userinfo_endpoint`、`jwks_uri`、`introspection_endpoint`、`revocation_endpoint`、`pushed_authorization_request_endpoint`、`device_authorization_endpoint`、`backchannel_authentication_endpoint`、`registration_endpoint` を、実行時に組み立てて返す。
 - **例**：EX-OAUTH2-014-01
 

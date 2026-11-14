@@ -205,7 +205,8 @@ model OAuth2Client {
   tls_client_auth_subject_dn?: string;
   id_token_signed_response_alg: SignatureAlgorithm = SignatureAlgorithm.PS256;
   require_pushed_authorization_requests: boolean = false;
-  require_pkce?: boolean;
+  @doc("PKCE を必須にする明示設定。デフォルトは false。public、認証方式 none、FAPI 2.0 はこの値によらず必須である。")
+  require_pkce: boolean = false;
   dpop_bound_access_tokens: boolean = false;
   fapi_profile: FapiProfile = FapiProfile.None;
   first_party: boolean = false;
@@ -506,8 +507,8 @@ model AuthorizationRequest {
   scope: string;
   state_param?: string;
   nonce?: string;
-  code_challenge: string;
-  code_challenge_method: CodeChallengeMethod;
+  code_challenge?: string;
+  code_challenge_method?: CodeChallengeMethod;
   prompt?: string;
   max_age?: int64;
   par_request_uri?: string;
@@ -540,8 +541,8 @@ model AuthorizationCodeRecord {
   redirect_uri: url;
   @doc("認可リクエストから引き継ぐ。`true` のときだけ、`redirect_uri` を省いた交換を受け入れる。")
   redirect_uri_omitted?: boolean;
-  code_challenge: string;
-  code_challenge_method: CodeChallengeMethod;
+  code_challenge?: string;
+  code_challenge_method?: CodeChallengeMethod;
   nonce?: string;
   auth_time: int64;
   @doc("認可リクエストから引き継いだ認証の方式。ID トークンとアクセストークンに出力する。")
@@ -775,7 +776,7 @@ model DiscoveryDocument {
 }
 
 
-@doc("`/register` への動的クライアント登録のリクエストのボディ（RFC 7591）。結果の OAuth2Client はここから導く。含むのは登録するクライアントが選べるメタデータだけである。サーバーは PS256 で発行しクライアントの希望を受け取らないので `id_token_signed_response_alg` は含まず、`require_pkce` はクライアントの設定ではなくサーバーのポリシーである。どちらかをここで宣言すると、登録にない選択肢を示すことになる。")
+@doc("`/register` への動的クライアント登録のリクエストのボディ（RFC 7591）。結果の OAuth2Client はここから導く。サーバーは PS256 で発行しクライアントの希望を受け取らないので `id_token_signed_response_alg` は含まない。`require_pkce` は PKCE の追加の必須化を指定でき、public と FAPI 2.0 の必須条件を解除しない。")
 model ClientRegistrationRequest {
   redirect_uris: url[];
   client_name?: string;
@@ -788,6 +789,7 @@ model ClientRegistrationRequest {
   jwks?: JWKS;
   tls_client_auth_subject_dn?: string;
   fapi_profile?: FapiProfile;
+  require_pkce?: boolean;
   require_pushed_authorization_requests?: boolean;
   dpop_bound_access_tokens?: boolean;
   backchannel_logout_uri?: url;
@@ -874,6 +876,7 @@ model AdminOAuth2ClientCreateRequest {
   jwks?: JWKS;
   tls_client_auth_subject_dn?: string;
   fapi_profile?: FapiProfile;
+  require_pkce?: boolean;
   require_pushed_authorization_requests?: boolean;
   dpop_bound_access_tokens?: boolean;
   backchannel_logout_uri?: url;
@@ -891,6 +894,7 @@ model AdminOAuth2ClientUpdateRequest {
   grant_types?: GrantType[];
   response_types?: ResponseType[];
   scope?: string;
+  require_pkce?: boolean;
   require_pushed_authorization_requests?: boolean;
   dpop_bound_access_tokens?: boolean;
   backchannel_logout_uri?: url;
@@ -911,6 +915,7 @@ model AdminOAuth2ClientResponse {
   response_types: ResponseType[];
   token_endpoint_auth_method: TokenEndpointAuthMethod;
   scope: string;
+  require_pkce: boolean;
   jwks_uri?: url;
   jwks?: JWKS;
   tls_client_auth_subject_dn?: string;
@@ -1414,8 +1419,10 @@ model AuthorizeParameters {
   scope?: string;
   state?: string;
   nonce?: string;
-  code_challenge: string;
-  code_challenge_method: CodeChallengeMethod;
+  @doc("public、認証方式 none、FAPI 2.0、または require_pkce=true のクライアントでは必須。ほかの confidential クライアントは method とともに省略できる。")
+  code_challenge?: string;
+  @doc("challenge を指定するときは S256 が必須。method だけの指定は拒否する。")
+  code_challenge_method?: CodeChallengeMethod;
   prompt?: string;
   max_age?: int64;
   id_token_hint?: string;

@@ -60,9 +60,6 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	if in.Code == "" {
 		return nil, NewOAuthError("invalid_request", "code is required")
 	}
-	if in.CodeVerifier == "" {
-		return nil, NewOAuthError("invalid_request", "code_verifier is required")
-	}
 	rec, err := deps.CodeStore.Find(ctx, in.Code)
 	if err != nil {
 		return nil, err
@@ -99,7 +96,13 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	} else if rec.RedirectURI != in.RedirectURI {
 		return nil, NewOAuthError("invalid_grant", "The redirect_uri does not match.")
 	}
-	if !domain.VerifyPKCES256(in.CodeVerifier, rec.CodeChallenge) {
+	if rec.CodeChallenge != "" && in.CodeVerifier == "" {
+		return nil, NewOAuthError("invalid_request", "code_verifier is required")
+	}
+	if rec.CodeChallenge == "" && in.CodeVerifier != "" {
+		return nil, NewOAuthError("invalid_grant", "code_verifier was not bound to the authorization code")
+	}
+	if rec.CodeChallenge != "" && !domain.VerifyPKCES256(in.CodeVerifier, rec.CodeChallenge) {
 		return nil, NewOAuthError("invalid_grant", "PKCE verification failed")
 	}
 	// RFC 8707 §2 — /token に resource が再指定された場合、/authorize 時に束縛された

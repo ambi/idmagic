@@ -62,10 +62,15 @@ func parseAuthorizeRequest(values url.Values) (authorizeRequest, error) {
 		Scope:               values.Get("scope"),
 		StateParam:          values.Get("state"),
 		Nonce:               values.Get("nonce"),
-		CodeChallenge:       required("code_challenge"),
-		CodeChallengeMethod: required("code_challenge_method"),
+		CodeChallenge:       values.Get("code_challenge"),
+		CodeChallengeMethod: values.Get("code_challenge_method"),
 		Prompt:              values.Get("prompt"),
 		AcrValues:           values.Get("acr_values"),
+	}
+	for _, key := range []string{"code_challenge", "code_challenge_method"} {
+		if values.Has(key) && values.Get(key) == "" {
+			issues.add(key, "must not be empty")
+		}
 	}
 	// 省けるかは登録件数と openid の有無で決まるので、use case が判断する。
 	if values.Has("redirect_uri") && !spec.IsURL(request.RedirectURI) {
@@ -98,6 +103,7 @@ type registerClientRequest struct {
 	JwksURI                           *string        `json:"jwks_uri"`
 	TlsClientAuthSubjectDN            *string        `json:"tls_client_auth_subject_dn"`
 	RequirePAR                        bool           `json:"require_pushed_authorization_requests"`
+	RequirePKCE                       bool           `json:"require_pkce"`
 	DpopBoundAccessTokens             bool           `json:"dpop_bound_access_tokens"`
 	FapiProfile                       string         `json:"fapi_profile"`
 	BackChannelLogoutURI              *string        `json:"backchannel_logout_uri"`

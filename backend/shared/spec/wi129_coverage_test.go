@@ -205,8 +205,8 @@ func TestGrantMatrix(t *testing.T) {
 	if GrantAllowsClientType(GrantClientCredentials, ClientPublic) {
 		t.Fatal("client_credentials must not allow public clients")
 	}
-	if !GrantRequiresPKCE(GrantAuthorizationCode) {
-		t.Fatal("authorization_code must require PKCE")
+	if GrantRequiresPKCE(GrantAuthorizationCode) {
+		t.Fatal("authorization_code PKCE requirement must depend on the client")
 	}
 	if GrantRequiresPKCE(GrantRefreshToken) {
 		t.Fatal("refresh_token must not require PKCE")

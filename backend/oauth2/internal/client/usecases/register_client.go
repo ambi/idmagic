@@ -119,6 +119,7 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 		TlsClientAuthSubjectDN:             in.TlsClientAuthSubjectDN,
 		IDTokenSignedResponseAlg:           signingdomain.SigAlgPS256,
 		RequirePushedAuthorizationRequests: in.RequirePAR,
+		RequirePKCE:                        in.RequirePKCE,
 		DpopBoundAccessTokens:              in.DpopBoundAccessTokens,
 		FapiProfile:                        fapiProfile,
 		BackChannelLogoutURI:               in.BackChannelLogoutURI,

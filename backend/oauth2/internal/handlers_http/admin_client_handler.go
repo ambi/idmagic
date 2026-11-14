@@ -28,6 +28,7 @@ type adminClientUpdateRequest struct {
 	ResponseTypes                     *[]spec.ResponseType `json:"response_types"`
 	Scope                             *string              `json:"scope"`
 	RequirePAR                        *bool                `json:"require_pushed_authorization_requests"`
+	RequirePKCE                       *bool                `json:"require_pkce"`
 	DpopBoundTokens                   *bool                `json:"dpop_bound_access_tokens"`
 	BackChannelLogoutURI              *string              `json:"backchannel_logout_uri"`
 	BackChannelLogoutSessionRequired  *bool                `json:"backchannel_logout_session_required"`
@@ -50,6 +51,7 @@ type adminClientResponse struct {
 	TlsClientAuthSubjectDN             *string                             `json:"tls_client_auth_subject_dn,omitempty"`
 	IDTokenSignedResponseAlg           signingdomain.SignatureAlgorithm    `json:"id_token_signed_response_alg"`
 	RequirePushedAuthorizationRequests bool                                `json:"require_pushed_authorization_requests"`
+	RequirePKCE                        bool                                `json:"require_pkce"`
 	DpopBoundAccessTokens              bool                                `json:"dpop_bound_access_tokens"`
 	FapiProfile                        oauthdomain.FapiProfile             `json:"fapi_profile"`
 	BackChannelLogoutURI               *string                             `json:"backchannel_logout_uri,omitempty"`
@@ -141,6 +143,7 @@ func (d Deps) handleCreateAdminOAuth2Client(c *echo.Context) error {
 		RedirectURIs: req.RedirectURIs, TokenEndpointAuthMethod: oauthdomain.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod),
 		Scope: req.Scope, JWKS: req.JWKS, JwksURI: req.JwksURI,
 		TlsClientAuthSubjectDN: req.TlsClientAuthSubjectDN, RequirePAR: req.RequirePAR,
+		RequirePKCE:           req.RequirePKCE,
 		DpopBoundAccessTokens: req.DpopBoundAccessTokens, FapiProfile: oauthdomain.FapiProfile(req.FapiProfile),
 		BackChannelLogoutURI: req.BackChannelLogoutURI, BackChannelLogoutSessionRequired: req.BackChannelLogoutSessionRequired,
 		FrontChannelLogoutURI: req.FrontChannelLogoutURI, FrontChannelLogoutSessionRequired: req.FrontChannelLogoutSessionRequired,
@@ -180,6 +183,7 @@ func (d Deps) handleUpdateAdminOAuth2Client(c *echo.Context) error {
 		ActorUserID: actor.ID, ClientID: c.Param("client_id"), ClientName: req.ClientName,
 		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
 		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,
+		RequirePKCE:          req.RequirePKCE,
 		BackChannelLogoutURI: req.BackChannelLogoutURI, BackChannelLogoutSessionRequired: req.BackChannelLogoutSessionRequired,
 		FrontChannelLogoutURI: req.FrontChannelLogoutURI, FrontChannelLogoutSessionRequired: req.FrontChannelLogoutSessionRequired,
 		Now: time.Now().UTC(),
@@ -243,6 +247,7 @@ func toAdminOAuth2ClientResponse(client *oauthdomain.OAuth2Client) adminClientRe
 		JWKS: client.JWKS, JwksURI: client.JwksURI, TlsClientAuthSubjectDN: client.TlsClientAuthSubjectDN,
 		IDTokenSignedResponseAlg:           client.IDTokenSignedResponseAlg,
 		RequirePushedAuthorizationRequests: client.RequirePushedAuthorizationRequests,
+		RequirePKCE:                        client.RequirePKCE,
 		DpopBoundAccessTokens:              client.DpopBoundAccessTokens, FapiProfile: client.FapiProfile,
 		BackChannelLogoutURI:              client.BackChannelLogoutURI,
 		BackChannelLogoutSessionRequired:  client.BackChannelLogoutSessionRequired,

@@ -64,6 +64,7 @@ type OAuth2Client struct {
 	TlsClientAuthSubjectDN             *string                          `json:"tls_client_auth_subject_dn,omitempty"`
 	IDTokenSignedResponseAlg           signingdomain.SignatureAlgorithm `json:"id_token_signed_response_alg"`
 	RequirePushedAuthorizationRequests bool                             `json:"require_pushed_authorization_requests"`
+	RequirePKCE                        bool                             `json:"require_pkce"`
 	DpopBoundAccessTokens              bool                             `json:"dpop_bound_access_tokens"`
 	FapiProfile                        FapiProfile                      `json:"fapi_profile"`
 	BackChannelLogoutURI               *string                          `json:"backchannel_logout_uri,omitempty"`
@@ -98,6 +99,11 @@ func (c OAuth2Client) UsesFapi2SecurityProfile() bool {
 // (FAPI2-PAR-PKCE)。
 func (c OAuth2Client) MustUsePushedAuthorizationRequests() bool {
 	return c.RequirePushedAuthorizationRequests || c.UsesFapi2SecurityProfile()
+}
+
+// MustUsePKCE は、明示設定で公開クライアントと FAPI の必須条件を解除しない。
+func (c OAuth2Client) MustUsePKCE() bool {
+	return c.ClientType == spec.ClientPublic || c.TokenEndpointAuthMethod == AuthMethodNone || c.UsesFapi2SecurityProfile() || c.RequirePKCE
 }
 
 // SenderConstraintSatisfied は 提示された証拠がこのクライアントに要求される送信者

@@ -15,6 +15,7 @@
 `token_endpoint_auth_method` は、`private_key_jwt`、`tls_client_auth`、`spiffe_jwt`、`none`、`client_secret_post`、`client_secret_basic` の 6 種類に対応する。
 `spiffe_jwt` は Agent に束縛したクライアントだけが認証に使える（REQ-OAUTH2-089）。
 `client_secret_jwt` は意図的に除く。
+クライアント認証が `none` のクライアントは、`client_type` の申告によらず、PKCE の必須判定で公開クライアントとして扱う（REQ-OAUTH2-005）。
 
 - **判断**：`client_secret_jwt` を除く理由は、[クライアントの認証から client_secret_jwt を除く](../decisions.md#クライアントの認証から-client_secret_jwt-を除く)。
 - **判断**：HTTPS の URL の形式の `client_id` を解決するため、Dynamic Client Registration に加えて、クライアントの登録情報を永続化せずに使える Client ID Metadata Documents に対応する。
@@ -53,6 +54,9 @@
 #### REQ-OAUTH2-016 動的クライアント登録は `client_id` を採番して返す
 
 - クライアントが正しいメタデータで動的クライアント登録を要求したとき、OAuth2 は、`client_id` を採番し、201 と `client_id`、confidential のクライアントには `client_secret` を返し、`ClientRegistered` を発行する。
+- クライアントが登録時に `require_pkce` を指定したとき、OAuth2 は、その値を保存して返す。
+- クライアントが登録時に `require_pkce` を省いたとき、OAuth2 は、false を保存して返す。
+- public または FAPI 2.0 のクライアントを登録したとき、OAuth2 は、保存した `require_pkce` の値によらず、認可に PKCE を必須とする（REQ-OAUTH2-005）。
 - 読めない本文を受けた場合、OAuth2 は、400 と `invalid_request` で拒否する。
 - `redirect_uris` のない登録か、検証を通らないメタデータか `jwks_uri` を受けた場合、OAuth2 は、400 と `invalid_client_metadata` で拒否し、クライアントを登録しない。
 - **例**：EX-OAUTH2-016-01、EX-OAUTH2-016-02
@@ -96,6 +100,10 @@
 
 #### REQ-OAUTH2-035 管理者は所属テナントのクライアントを作成・更新・削除できる
 
+- 管理者が `require_pkce` を指定してクライアントを作成または更新したとき、OAuth2 は、その値を保存し、作成、取得、一覧、更新のレスポンスに含める。
+- 管理者が `require_pkce` を省いて作成したとき、OAuth2 は、false を保存する。
+- 管理者が `require_pkce` を省いて更新したとき、OAuth2 は、保存値を維持する。
+- public または FAPI 2.0 のクライアントを管理者が更新したとき、OAuth2 は、`require_pkce=false` でも認可の PKCE を必須とする（REQ-OAUTH2-005）。
 - 管理者がクライアントを作成したとき、OAuth2 は、201 と、confidential のクライアントには一度だけ `client_secret` を返し、`AdminOAuth2ClientCreated` を発行する。
 - 管理者がクライアントを一覧か取得したとき、OAuth2 は、200 と所属テナントのクライアントだけを返す。
 - 管理者がクライアントを更新したとき、OAuth2 は、200 と更新したクライアントを返し、`AdminOAuth2ClientUpdated` を発行する。

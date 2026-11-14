@@ -277,7 +277,7 @@ RFC 9700 / BCP 240 — https://www.rfc-editor.org/rfc/rfc9700.html
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | RFC9700-REDIRECT-MATCH | required | MUST | `redirect_uri` は登録値と完全に一致させ、未検証の URI へリダイレクトしない。完全一致の例外は、ループバックの IP の値のポートだけである（`RFC8252-LOOPBACK-PORT`）。 |
-| RFC9700-AUTHORIZATION-CODE | required | MUST | リダイレクトを使うフローは Authorization Code Grant と PKCE で保護する。 |
+| RFC9700-AUTHORIZATION-CODE | required | MUST | リダイレクトを使うフローは Authorization Code Grant を使い、public クライアントでは PKCE を必須とする。confidential クライアントでも PKCE を推奨し、省く OIDC クライアントは 4.5.3.2 節の nonce 検証などのコード注入対策を行う。 |
 | RFC9700-SENDER-CONSTRAINT | optional | SHOULD | 高いセキュリティを必要とするクライアントでは、アクセストークンに DPoP または mTLS による送信者制約を付ける。 |
 | RFC9700-REFRESH-REPLAY | required | MUST | リフレッシュトークンをローテーションし、再利用を検知したら関連トークンを失効させる。 |
 

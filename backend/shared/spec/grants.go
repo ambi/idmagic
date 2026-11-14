@@ -15,7 +15,7 @@ type GrantSpecEntry struct {
 var grantSpec = map[GrantType]GrantSpecEntry{
 	GrantAuthorizationCode: {
 		AllowedClientTypes: []ClientType{ClientPublic, ClientConfidential},
-		RequiresPKCE:       true,
+		RequiresPKCE:       false,
 		ResponseTypes:      []ResponseType{ResponseTypeCode},
 		Issues:             []string{"access_token", "refresh_token", "id_token"},
 	},

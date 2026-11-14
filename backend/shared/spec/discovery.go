@@ -75,7 +75,7 @@ func (c *RuntimeContract) BuildDiscoveryDocument(issuer string) (map[string]any,
 	doc["introspection_endpoint_auth_methods_supported"] = []string{"client_secret_basic", "private_key_jwt", "tls_client_auth", "spiffe_jwt"}
 	doc["revocation_endpoint_auth_methods_supported"] = []string{"client_secret_basic", "private_key_jwt", "tls_client_auth", "spiffe_jwt", "none"}
 	doc["require_pushed_authorization_requests"] = false
-	doc["require_pkce"] = true
+	doc["require_pkce"] = false
 	doc["tls_client_certificate_bound_access_tokens"] = true
 	doc["client_id_metadata_document_supported"] = true
 	doc["authorization_response_iss_parameter_supported"] = true

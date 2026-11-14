@@ -2,10 +2,12 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
@@ -41,6 +43,63 @@ func validAuthorizeInput() AuthorizeRequestInput {
 		ClientID: "client", RedirectURI: "https://client.example/cb",
 		ResponseType: "code", Scope: "openid",
 		CodeChallenge: "challenge", CodeChallengeMethod: "S256",
+	}
+}
+
+//spec:covers REQ-OAUTH2-005, FAPI2-PAR-PKCE: 設定の有無とクライアント種別による必須条件、任意利用時の S256 制約を検証する。
+func TestAuthorizePKCEPolicy(t *testing.T) {
+	for _, tt := range []struct {
+		name              string
+		clientType        spec.ClientType
+		fapi              domain.FapiProfile
+		required          bool
+		unauthenticated   bool
+		challenge, method string
+		wantError         bool
+	}{
+		{name: "confidential omitted", clientType: spec.ClientConfidential},
+		{name: "confidential opt in", clientType: spec.ClientConfidential, required: true, wantError: true},
+		{name: "confidential opt in S256", clientType: spec.ClientConfidential, required: true, challenge: "challenge", method: "S256"},
+		{name: "public cannot opt out", clientType: spec.ClientPublic, wantError: true},
+		{name: "unauthenticated cannot opt out", clientType: spec.ClientConfidential, unauthenticated: true, wantError: true},
+		{name: "public S256", clientType: spec.ClientPublic, challenge: "challenge", method: "S256"},
+		{name: "FAPI cannot opt out", clientType: spec.ClientConfidential, fapi: domain.FapiSecurityProfileV2, wantError: true},
+		{name: "FAPI S256", clientType: spec.ClientConfidential, fapi: domain.FapiSecurityProfileV2, challenge: "challenge", method: "S256"},
+		{name: "optional S256", clientType: spec.ClientConfidential, challenge: "challenge", method: "S256"},
+		{name: "optional plain rejected", clientType: spec.ClientConfidential, challenge: "challenge", method: "plain", wantError: true},
+		{name: "optional missing method", clientType: spec.ClientConfidential, challenge: "challenge", wantError: true},
+		{name: "optional missing challenge", clientType: spec.ClientConfidential, method: "S256", wantError: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := testing_tenant.Default(t.Context())
+			deps := newAuthorizeDeps(false)
+			client, err := deps.ClientRepo.FindByID(ctx, tenantports.TenantID(ctx), "client")
+			if err != nil || client == nil {
+				t.Fatalf("client=%+v err=%v", client, err)
+			}
+			client.ClientType, client.FapiProfile, client.RequirePKCE = tt.clientType, tt.fapi, tt.required
+			if tt.clientType == spec.ClientConfidential && !tt.unauthenticated {
+				client.TokenEndpointAuthMethod = domain.AuthMethodClientSecretBasic
+			}
+			if err := deps.ClientRepo.Save(ctx, client); err != nil {
+				t.Fatal(err)
+			}
+			in := validAuthorizeInput()
+			in.CodeChallenge, in.CodeChallengeMethod, in.ParUsed = tt.challenge, tt.method, true
+			out, err := Authorize(ctx, deps, in)
+			if tt.wantError {
+				if oauth, ok := errors.AsType[*OAuthError](err); !ok || oauth.Code != "invalid_request" || out != nil {
+					t.Fatalf("authorization=%+v err=%v", out, err)
+				}
+				return
+			}
+			if err != nil || out == nil {
+				t.Fatalf("authorization=%+v err=%v", out, err)
+			}
+			if out.Request.CodeChallenge != tt.challenge || string(out.Request.CodeChallengeMethod) != tt.method {
+				t.Fatalf("saved PKCE=%q/%q", out.Request.CodeChallenge, out.Request.CodeChallengeMethod)
+			}
+		})
 	}
 }
 
