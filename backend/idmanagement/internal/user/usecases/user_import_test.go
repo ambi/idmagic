@@ -245,7 +245,7 @@ func TestUserImportJobFailsWithoutApplyingAFileBeyondTheLimits(t *testing.T) {
 		Artifacts: artifacts, Jobs: jobs,
 		Apply: UserImportApplyDeps{
 			Plan: importPlannerDeps(repo, perUserImportOwnershipGuard{}), Committer: committer,
-			PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
+			PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo), Emit: discardImportEvents,
 		},
 		Policy: idmdomain.CSVTransferPolicy{MaxRows: 1, MaxBytes: 1 << 20, MaxFieldBytes: 1 << 10},
 	}, UserImportModeApply)(context.Background(), apply)

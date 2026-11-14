@@ -144,3 +144,4 @@ User と Group が共有するプレビュー、適用、成果物、行のエ�
 | エクスポーター（`UserCSVExporter`） | 選んだ列で User をページ単位に読み、成果物ストアへ書く | `UserRepository`、`CSVArtifactStore` |
 
 `UserImportRowCommitter` は、一行の Aggregate、パスワードの履歴、使用量の変化、監査イベントを一つのトランザクションで確定する。
+`users` の上限で拒否した行の `QuotaExceeded` は、committer が戻った後に `ApplyUserImport` が発行する。

@@ -10,9 +10,11 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/internal/group/usecases"
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 type UserImportApplyDeps struct {
@@ -22,6 +24,8 @@ type UserImportApplyDeps struct {
 	// DynamicGroups は確定した行の User を動的グループの規則で評価する依存。GroupRepo は必須であり、
 	// 未配線を評価の省略として黙って通さない。
 	DynamicGroups groupusecases.DynamicGroupDeps
+	// Emit は Hard Quota で拒否した行の QuotaExceeded の発行先であり、必須である。
+	Emit func(spec.DomainEvent) error
 }
 
 // ApplyUserImport replans the immutable preview payload against current state,
@@ -36,7 +40,7 @@ func ApplyUserImport(
 	emit func(userdomain.UserImportRowPlan) error,
 ) (userdomain.UserImportPlanSummary, error) {
 	var applied userdomain.UserImportPlanSummary
-	if deps.Committer == nil || deps.PasswordHasher == nil || deps.DynamicGroups.GroupRepo == nil {
+	if deps.Committer == nil || deps.PasswordHasher == nil || deps.DynamicGroups.GroupRepo == nil || deps.Emit == nil {
 		return applied, errors.New("user import apply dependencies are incomplete")
 	}
 	now = now.UTC()
@@ -47,6 +51,8 @@ func ApplyUserImport(
 			mutation, err := prepareUserImportMutation(deps, row, actorUserID, now)
 			if err == nil {
 				err = deps.Committer.CommitUserImportRow(ctx, mutation)
+				// 拒否した行は apply_failed のまま、作成一件の拒否として記録する。
+				idmusecases.EmitQuotaRefusal(ctx, deps.Emit, err, tenancydomain.ResourceUsers, now)
 			}
 			if conflict, ok := errors.AsType[*userports.UniqueAttributeConflictError](err); ok {
 				final = rejectedUserImportRow(row.Row, "custom:"+conflict.Key, "attribute_value_conflict")

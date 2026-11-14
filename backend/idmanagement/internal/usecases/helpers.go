@@ -88,12 +88,22 @@ func ReserveQuotaAndAudit(
 	tenantID, resource string, now time.Time,
 ) (*tenantports.QuotaReservation, error) {
 	reservation, err := tenantports.ReserveQuota(ctx, quotaRepo, tenantID, resource, 1)
-	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
-		if emitErr := AdminEmit(sink, &tenancydomain.QuotaExceeded{
-			At: now, TenantID: tenantID, Resource: qErr.Resource, HardLimit: true,
-		}); emitErr != nil {
-			logging.Error(ctx, "quota: failed to emit QuotaExceeded audit event", "error", emitErr, "resource", qErr.Resource)
-		}
-	}
+	EmitQuotaRefusal(ctx, sink, err, resource, now)
 	return reservation, err
+}
+
+// EmitQuotaRefusal は、err が resource の Hard Quota の拒否であれば QuotaExceeded を
+// sink へ発行する（REQ-TENANCY-013）。ほかの資源の拒否は、その資源を確保した
+// 操作が発行するので、ここでは重ねない。発行は best-effort であり、発行先の
+// 失敗はログに残すだけで、拒否そのものを隠さない。
+func EmitQuotaRefusal(ctx context.Context, sink func(spec.DomainEvent) error, err error, resource string, now time.Time) {
+	qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err)
+	if !ok || qErr.Resource != resource {
+		return
+	}
+	if emitErr := AdminEmit(sink, &tenancydomain.QuotaExceeded{
+		At: now, TenantID: qErr.TenantID, Resource: qErr.Resource, HardLimit: true,
+	}); emitErr != nil {
+		logging.Error(ctx, "quota: failed to emit QuotaExceeded audit event", "error", emitErr, "resource", qErr.Resource)
+	}
 }

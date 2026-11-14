@@ -111,6 +111,7 @@ func TestUserCSVEmptyNameCellClearsTheName(t *testing.T) {
 	committer := &importRowCommitter{}
 	_, rows, err := applyUserImportForTest(importPlannerContext(), UserImportApplyDeps{
 		Plan: importPlannerDeps(repo, perUserImportOwnershipGuard{}), Committer: committer, PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
+		Emit: discardImportEvents,
 	}, "id,name\nuser-alice,\n")
 	if err != nil {
 		t.Fatal(err)
@@ -129,6 +130,7 @@ func TestApplyUserImportCreatesAUserThatMustSetAPassword(t *testing.T) {
 	committer := &importRowCommitter{}
 	if _, _, err := applyUserImportForTest(importPlannerContext(), UserImportApplyDeps{
 		Plan: importPlannerDeps(repo, perUserImportOwnershipGuard{}), Committer: committer, PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
+		Emit: discardImportEvents,
 	}, "preferred_username\ndave\n"); err != nil {
 		t.Fatal(err)
 	}

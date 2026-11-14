@@ -15,6 +15,9 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/internal/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 type importTestHasher struct{ err error }
@@ -62,6 +65,7 @@ func TestApplyUserImportCommitsEachRowAtomicallyAndContinuesAfterFailure(t *test
 		Plan:           importPlannerDeps(repo, perUserImportOwnershipGuard{}),
 		Committer:      committer,
 		PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
+		Emit: discardImportEvents,
 	}
 	csv := "id,email,roles,required_actions,attr:department\n" +
 		"user-alice,new-alice@example.com,admin|support,verify_email,Engineering\n" +
@@ -120,6 +124,7 @@ func TestApplyUserImportCreateIncludesCredentialHistoryRequiredActionAndQuotaInO
 		Plan:           importPlannerDeps(repo, perUserImportOwnershipGuard{}),
 		Committer:      committer,
 		PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
+		Emit: discardImportEvents,
 	}
 
 	summary, rows, err := applyUserImportForTest(importPlannerContext(), deps, "preferred_username,email\nalice,alice@example.com\n")
@@ -172,6 +177,7 @@ func TestApplyUserImportEvaluatesDynamicGroups(t *testing.T) {
 		Committer:      committer,
 		PasswordHasher: importTestHasher{},
 		DynamicGroups:  groupusecases.DynamicGroupDeps{GroupRepo: groups, UserRepo: repo},
+		Emit:           discardImportEvents,
 	}
 	csv := "preferred_username,attr:department\n" +
 		"carol,Engineering\n" + // 作成
@@ -207,6 +213,9 @@ func containsRequiredAction(actions []idmdomain.RequiredAction, want idmdomain.R
 	return slices.Contains(actions, want)
 }
 
+// discardImportEvents は、発行するイベントを見ないテストの発行先である。
+func discardImportEvents(spec.DomainEvent) error { return nil }
+
 // importDynamicGroups は動的グループの規則を持たないテナントの評価の依存を返す。
 func importDynamicGroups(repo *usermemory.UserRepository) groupusecases.DynamicGroupDeps {
 	return groupusecases.DynamicGroupDeps{GroupRepo: groupmemory.NewGroupRepository(), UserRepo: repo}
@@ -231,6 +240,7 @@ func TestApplyUserImportRejectsARowWhoseUniqueValueIsTaken(t *testing.T) {
 		Plan:           importPlannerDeps(repo, perUserImportOwnershipGuard{}),
 		Committer:      conflictingRowCommitter{username: "bob"},
 		PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
+		Emit: discardImportEvents,
 	}
 	csv := "id,attr:department\nuser-alice,Engineering\nuser-bob,Engineering\n"
 
@@ -243,5 +253,53 @@ func TestApplyUserImportRejectsARowWhoseUniqueValueIsTaken(t *testing.T) {
 	}
 	if rows[1].Error == nil || rows[1].Error.Code != "attribute_value_conflict" {
 		t.Fatalf("conflicting row=%+v, want attribute_value_conflict", rows[1])
+	}
+}
+
+//spec:covers REQ-TENANCY-013: CSV の適用で users の Hard Quota に拒否された行ごとに、テナントと users を載せた QuotaExceeded を一件ずつ発行し、その行を apply_failed にして使用量を上限のままにすること。
+func TestApplyUserImportEmitsQuotaExceededForEachRowRefusedByTheUsersQuota(t *testing.T) {
+	ctx := importPlannerContext()
+	repo := usermemory.NewUserRepository()
+	quota := tenancy.NewMemoryModule().QuotaRepo
+	limit := 1
+	if err := quota.SetQuota(ctx, "acme", &tenancydomain.TenantQuota{Users: &limit}); err != nil {
+		t.Fatal(err)
+	}
+	var events []spec.DomainEvent
+	deps := UserImportApplyDeps{
+		Plan:           importPlannerDeps(repo, perUserImportOwnershipGuard{}),
+		Committer:      usermemory.UserImportRowCommitter{Users: repo, Quota: quota},
+		PasswordHasher: importTestHasher{}, DynamicGroups: importDynamicGroups(repo),
+		Emit: func(event spec.DomainEvent) error {
+			events = append(events, event)
+			return nil
+		},
+	}
+	csv := "preferred_username\ncarol\ndave\nerin\n"
+
+	summary, rows, err := applyUserImportForTest(ctx, deps, csv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.CreatedRows != 1 || summary.RejectedRows != 2 {
+		t.Fatalf("summary=%+v rows=%+v", summary, rows)
+	}
+	for _, row := range rows[1:] {
+		if row.Error == nil || row.Error.Code != "apply_failed" {
+			t.Fatalf("refused row=%+v, want apply_failed", row)
+		}
+	}
+	if len(events) != 2 {
+		t.Fatalf("events=%+v, want one QuotaExceeded per refused row", events)
+	}
+	for _, event := range events {
+		refused, ok := event.(*tenancydomain.QuotaExceeded)
+		if !ok || refused.TenantID != "acme" || refused.Resource != tenancydomain.ResourceUsers || !refused.HardLimit || refused.At.IsZero() {
+			t.Fatalf("event=%+v, want a users Hard Quota refusal of acme", event)
+		}
+	}
+	usage, err := quota.GetUsage(ctx, "acme")
+	if err != nil || usage.Users != 1 {
+		t.Fatalf("usage=%+v err=%v, want users=1", usage, err)
 	}
 }

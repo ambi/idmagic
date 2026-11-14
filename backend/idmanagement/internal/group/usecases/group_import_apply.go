@@ -14,11 +14,16 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 type GroupImportApplyDeps struct {
 	Plan      GroupImportPlanDeps
 	Committer groupports.GroupImportRowCommitter
+	// Emit は Hard Quota で拒否した行の QuotaExceeded の発行先であり、必須である。
+	Emit func(spec.DomainEvent) error
 }
 
 // ApplyGroupImport は不変なプレビューペイロードを現在状態に対して再計画し、
@@ -33,7 +38,7 @@ func ApplyGroupImport(
 	emit func(groupdomain.GroupImportRowPlan) error,
 ) (GroupImportPlanSummary, error) {
 	var applied GroupImportPlanSummary
-	if deps.Committer == nil {
+	if deps.Committer == nil || deps.Emit == nil {
 		return applied, errors.New("group import apply dependencies are incomplete")
 	}
 	now = now.UTC()
@@ -44,6 +49,9 @@ func ApplyGroupImport(
 			mutation, err := prepareGroupImportMutation(row, actorUserID, now)
 			if err == nil {
 				err = deps.Committer.CommitGroupImportRow(ctx, mutation)
+				// 再評価ジョブの active_jobs の拒否は Jobs の投入器が発行するので、
+				// ここでは行が消費する groups の拒否だけを記録する。
+				idmusecases.EmitQuotaRefusal(ctx, deps.Emit, err, tenancydomain.ResourceGroups, now)
 			}
 			if err != nil {
 				final = groupdomain.RejectedGroupImportRow(row.Row, "", "apply_failed")

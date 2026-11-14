@@ -138,6 +138,7 @@ func TestAdminUserImportPrimaryUseCase_REQ_IDMANAGEMENT_004(t *testing.T) {
 		Apply: userusecases.UserImportApplyDeps{
 			Plan: planDeps, Committer: committer, PasswordHasher: hasher,
 			DynamicGroups: groupusecases.DynamicGroupDeps{GroupRepo: groupmemory.NewGroupRepository(), UserRepo: users},
+			Emit:          func(spec.DomainEvent) error { return nil },
 		},
 	}
 	jobResult := func(id string) userusecases.UserImportResult {

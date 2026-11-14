@@ -61,6 +61,7 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 	result, err := userusecases.ApplyUserImport(tenantports.WithTenant(ctx, tenant, "", ""), userusecases.UserImportApplyDeps{
 		Plan: planDeps, Committer: NewUserImportCommitter(db, tenancypostgres.QuotaRepositoryInTx, audit.RecordWriterInTx, authentication.PasswordHistoryWriterInTx), PasswordHasher: testing_passwords.NewHasher(),
 		DynamicGroups: groupusecases.DynamicGroupDeps{GroupRepo: &grouppostgres.GroupRepository{Pool: db}, UserRepo: userRepo},
+		Emit:          func(spec.DomainEvent) error { return nil },
 	}, strings.NewReader("preferred_username,email,name,roles\nalice,alice@example.com,Alice,admin\n"), idmdomain.DefaultCSVTransferPolicy(), "admin-actor", now, nil)
 	if err != nil {
 		t.Fatalf("run user import apply: %v", err)

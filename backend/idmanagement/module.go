@@ -6,6 +6,7 @@ package idmanagement
 import (
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	groupmemory "github.com/ambi/idmagic/backend/idmanagement/internal/group/db_memory"
 	idmports "github.com/ambi/idmagic/backend/idmanagement/internal/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -28,6 +29,9 @@ type Module struct {
 	UserImportCommitter   userports.UserImportRowCommitter
 	// ハンドラーの構築時に必須の投入器とイベントの発行先を結ぶ。
 	newGroupImportCommitter func(func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer, func(spec.DomainEvent)) groupports.GroupImportRowCommitter
+	// memoryGroups は NewMemoryModule が作った Group の保存先であり、WithMemoryImports が
+	// 使用量とともに Group の行を確定する committer を作るのに使う。
+	memoryGroups *groupmemory.GroupRepository
 	// GroupMembershipImportCommitter は membership CSV の 1 行を確定する境界 port
 	// (wi-351)。Group 本体の import committer とは変更集合が別なので分けている。
 	GroupMembershipImportCommitter groupports.GroupMembershipImportRowCommitter

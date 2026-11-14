@@ -180,6 +180,9 @@ PostgreSQL の行の確定は、Group と動的規則、監査、グループの
 再評価は Jobs の `NewEnqueuerInTx` と、同じ Tx に結んだ Tenancy のクォータを使い、レーン、デフォルト値、重複排除、`active_jobs` の判定を Jobs に任せる。
 IdManagement はハンドラーを組み立てる時点で、投入器の生成関数とイベントの発行先を committer の必須引数として渡す。
 新規の `JobEnqueued` は行が確定した後だけ発行し、クォータ拒否の `QuotaExceeded` は行をロールバックした後に発行する。
+`groups` の上限で拒否した行の `QuotaExceeded` は、committer が戻った後に `ApplyGroupImport` が発行する。
+`active_jobs` の拒否は投入器が発行済みなので、`ApplyGroupImport` は重ねて発行しない。
+メモリーの committer も、作成の行で使用量を加算して上限を検査し、削除の行で解放する。
 同じ版の重複投入は使用量も投入イベントも増やさず、コミットが失敗した投入のイベントは破棄する。
 確定と通知の間の停止による欠落は、既存の非永続なイベントの配信と同じ制約を持つ。
 

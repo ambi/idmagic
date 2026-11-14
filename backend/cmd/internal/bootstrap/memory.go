@@ -58,7 +58,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	auditModule := audit.NewMemoryModule(0).WithCapture(nil, captureAuditRecordInMemory(sharedSignalsModule))
 	idmModule := idmanagement.NewMemoryModule()
 	authnModule := authentication.NewMemoryModule(idmModule.UserRepo)
-	idmModule = idmModule.WithMemoryUserImport(authnModule.PasswordHistoryRepo, tenancyModule.QuotaRepo, auditModule.AuditEventRepo)
+	idmModule = idmModule.WithMemoryImports(authnModule.PasswordHistoryRepo, tenancyModule.QuotaRepo, auditModule.AuditEventRepo)
 	userRepo := idmModule.UserRepo
 	governanceModule := idgovernance.NewMemoryModule(userRepo)
 	applicationModule := application.NewMemoryModule()

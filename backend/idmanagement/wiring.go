@@ -39,8 +39,9 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-// NewMemoryModule は IdManagement が所有する保存先をメモリで作る。User の CSV の取り込みの確定は
-// ほかのモジュールの保存先も使うので、WithMemoryUserImport で設定する。
+// NewMemoryModule は IdManagement が所有する保存先をメモリで作る。User と Group の CSV の取り込みの
+// 確定はほかのモジュールの保存先も使うので、WithMemoryImports で設定する。ここで設定する Group の
+// committer は使用量を扱わない。
 func NewMemoryModule() Module {
 	users, userSchemas := usermemory.NewUserStore()
 	groups := groupmemory.NewGroupRepository()
@@ -53,21 +54,30 @@ func NewMemoryModule() Module {
 		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(users),
 		CSVArtifacts:          idmmemory.NewCSVArtifactStore(),
 		newGroupImportCommitter: func(_ func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer, _ func(spec.DomainEvent)) groupports.GroupImportRowCommitter {
-			return groupmemory.NewGroupImportRowCommitter(groups)
+			return groupmemory.NewGroupImportRowCommitter(groups, nil)
 		},
+		memoryGroups:                   groups,
 		GroupMembershipImportCommitter: groupmemory.NewGroupMembershipImportRowCommitter(groups),
 		AttrSchemaRepo:                 userSchemas,
 		GroupAttrSchemaRepo:            groupmemory.NewTenantGroupAttributeSchemaRepository(),
 	}
 }
 
-// WithMemoryUserImport は、User の CSV の取り込みの 1 行を、パスワードの履歴、使用量、監査の記録と
-// まとめて確定する committer を設定した Module を返す。
-func (m Module) WithMemoryUserImport(
+// WithMemoryImports は、User の CSV の取り込みの 1 行を、パスワードの履歴、使用量、監査の記録と
+// まとめて確定する committer と、Group の CSV の取り込みの 1 行を使用量とまとめて確定する
+// committer を設定した Module を返す。
+func (m Module) WithMemoryImports(
 	passwordHistory userports.PasswordHistoryWriter, quota tenantports.QuotaRepository, audit auditports.AuditEventRepository,
 ) Module {
 	m.UserImportCommitter = usermemory.UserImportRowCommitter{
 		Users: m.UserRepo, PasswordHistory: passwordHistory, Quota: quota, Audit: audit,
+	}
+	groups := m.memoryGroups
+	if groups == nil {
+		panic("idmanagement: WithMemoryImports requires a module built by NewMemoryModule")
+	}
+	m.newGroupImportCommitter = func(_ func(pgx.Tx, tenantports.QuotaRepository, func(spec.DomainEvent)) jobsports.Enqueuer, _ func(spec.DomainEvent)) groupports.GroupImportRowCommitter {
+		return groupmemory.NewGroupImportRowCommitter(groups, quota)
 	}
 	return m
 }
@@ -141,6 +151,7 @@ func (m Module) RegisterJobHandlers(registry jobsports.HandlerRegistrar, d JobHa
 		Artifacts: m.CSVArtifacts, Jobs: d.Jobs, Plan: userPlan,
 		Apply: userusecases.UserImportApplyDeps{
 			Plan: userPlan, Committer: m.UserImportCommitter, PasswordHasher: d.PasswordHasher, DynamicGroups: dynamicGroups,
+			Emit: d.Emit,
 		},
 		Policy: policy,
 	}
@@ -154,7 +165,7 @@ func (m Module) RegisterJobHandlers(registry jobsports.HandlerRegistrar, d JobHa
 	}
 	groupImport := groupusecases.GroupImportJobDeps{
 		Artifacts: m.CSVArtifacts, Jobs: d.Jobs, Plan: groupPlan,
-		Apply:  groupusecases.GroupImportApplyDeps{Plan: groupPlan, Committer: groupCommitter},
+		Apply:  groupusecases.GroupImportApplyDeps{Plan: groupPlan, Committer: groupCommitter, Emit: d.Emit},
 		Policy: policy,
 	}
 	registry.Register(jobsdomain.KindGroupImportPreview, groupusecases.GroupImportJobHandler(groupImport, groupusecases.GroupImportModePreview))

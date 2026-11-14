@@ -21,6 +21,8 @@ import (
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/internal/group/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/internal/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -37,6 +39,7 @@ type groupImportFixture struct {
 	committer *recordingGroupImportCommitter
 	plan      GroupImportPlanDeps
 	apply     GroupImportApplyDeps
+	events    []spec.DomainEvent
 	now       time.Time
 }
 
@@ -49,7 +52,7 @@ func newGroupImportFixture(t *testing.T) *groupImportFixture {
 		artifacts: idmmemory.NewCSVArtifactStore(),
 		now:       time.Date(2026, 8, 29, 9, 0, 0, 0, time.UTC),
 	}
-	f.committer = &recordingGroupImportCommitter{inner: groupmemory.NewGroupImportRowCommitter(f.groupRepo)}
+	f.committer = &recordingGroupImportCommitter{inner: groupmemory.NewGroupImportRowCommitter(f.groupRepo, nil)}
 	// 所有権ガードを省くと計画器は fail-closed に全行を拒否する。既定では
 	// 「どの Group も外部管理でない」ガードを配線し、拒否を見たいテストだけが
 	// 差し替える。
@@ -57,7 +60,10 @@ func newGroupImportFixture(t *testing.T) *groupImportFixture {
 		GroupRepo: f.groupRepo, OwnershipGuard: groupSourceGuardStub{},
 		GroupSchemaReader: groupAttributeSchemaStub{},
 	}
-	f.apply = GroupImportApplyDeps{Plan: f.plan, Committer: f.committer}
+	f.apply = GroupImportApplyDeps{Plan: f.plan, Committer: f.committer, Emit: func(event spec.DomainEvent) error {
+		f.events = append(f.events, event)
+		return nil
+	}}
 	return f
 }
 
@@ -437,5 +443,47 @@ func TestGroupImportTenThousandGroupsRoundTripAsUnchanged(t *testing.T) {
 	}
 	if summary.DeletedRows != 0 || summary.DeletedMemberships != 0 {
 		t.Fatalf("summary = %+v, an unedited round trip must delete nothing", summary)
+	}
+}
+
+//spec:covers REQ-TENANCY-013: CSV の適用で groups の Hard Quota に拒否された行ごとに、テナントと groups を載せた QuotaExceeded を一件ずつ発行し、その行を apply_failed にして Group を作らず、使用量を上限のままにすること。
+func TestApplyGroupImportEmitsQuotaExceededForEachRowRefusedByTheGroupsQuota(t *testing.T) {
+	f := newGroupImportFixture(t)
+	quota := tenancy.NewMemoryModule().QuotaRepo
+	limit := 1
+	if err := quota.SetQuota(f.ctx, "acme", &tenancydomain.TenantQuota{Groups: &limit}); err != nil {
+		t.Fatal(err)
+	}
+	f.apply.Committer = groupmemory.NewGroupImportRowCommitter(f.groupRepo, quota)
+
+	var rows []groupdomain.GroupImportRowPlan
+	summary, err := ApplyGroupImport(f.ctx, f.apply, strings.NewReader("name\nalpha\nbeta\ngamma\n"), idmdomain.DefaultCSVTransferPolicy(),
+		"operator", f.now, func(row groupdomain.GroupImportRowPlan) error { rows = append(rows, row); return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.CreatedRows != 1 || summary.RejectedRows != 2 {
+		t.Fatalf("summary=%+v rows=%+v", summary, rows)
+	}
+	for _, row := range rows[1:] {
+		if row.Error == nil || row.Error.Code != "apply_failed" {
+			t.Fatalf("refused row=%+v, want apply_failed", row)
+		}
+	}
+	if groups := f.groupSnapshot(t); len(groups) != 1 {
+		t.Fatalf("groups=%v, want only the row within the quota", groups)
+	}
+	if len(f.events) != 2 {
+		t.Fatalf("events=%+v, want one QuotaExceeded per refused row", f.events)
+	}
+	for _, event := range f.events {
+		refused, ok := event.(*tenancydomain.QuotaExceeded)
+		if !ok || refused.TenantID != "acme" || refused.Resource != tenancydomain.ResourceGroups || !refused.HardLimit || refused.At.IsZero() {
+			t.Fatalf("event=%+v, want a groups Hard Quota refusal of acme", event)
+		}
+	}
+	usage, err := quota.GetUsage(f.ctx, "acme")
+	if err != nil || usage.Groups != 1 {
+		t.Fatalf("usage=%+v err=%v, want groups=1", usage, err)
 	}
 }

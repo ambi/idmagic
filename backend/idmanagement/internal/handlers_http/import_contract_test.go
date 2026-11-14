@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/spec"
+
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/internal/group/db_memory"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/internal/group/usecases"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -27,7 +29,10 @@ func TestGroupCSVImportHTTPContracts(t *testing.T) {
 	plan := groupusecases.GroupImportPlanDeps{GroupRepo: f.groups}
 	deps := groupusecases.GroupImportJobDeps{
 		Artifacts: f.artifacts, Jobs: f.jobs, Plan: plan,
-		Apply: groupusecases.GroupImportApplyDeps{Plan: plan, Committer: groupmemory.NewGroupImportRowCommitter(f.groups)},
+		Apply: groupusecases.GroupImportApplyDeps{
+			Plan: plan, Committer: groupmemory.NewGroupImportRowCommitter(f.groups, nil),
+			Emit: func(spec.DomainEvent) error { return nil },
+		},
 	}
 	run := func(mode groupusecases.GroupImportMode) {
 		at := time.Now().UTC()

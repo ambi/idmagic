@@ -9,14 +9,19 @@ import (
 	"errors"
 
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type GroupImportRowCommitter struct {
-	repo *GroupRepository
+	repo  *GroupRepository
+	quota tenantports.QuotaRepository
 }
 
-func NewGroupImportRowCommitter(repo *GroupRepository) *GroupImportRowCommitter {
-	return &GroupImportRowCommitter{repo: repo}
+// NewGroupImportRowCommitter は、quota でグループの使用量を加減算する committer を返す。
+// quota が nil なら使用量を扱わない。使用量を見ないテストのための省略である。
+func NewGroupImportRowCommitter(repo *GroupRepository, quota tenantports.QuotaRepository) *GroupImportRowCommitter {
+	return &GroupImportRowCommitter{repo: repo, quota: quota}
 }
 
 func (c *GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, mutation groupports.GroupImportRowMutation) error {
@@ -32,12 +37,31 @@ func (c *GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, muta
 				return err
 			}
 		}
-		return c.repo.Delete(ctx, mutation.Before.TenantID, mutation.Before.ID)
+		if err := c.repo.Delete(ctx, mutation.Before.TenantID, mutation.Before.ID); err != nil {
+			return err
+		}
+		if mutation.ReleasesGroupQuota && c.quota != nil {
+			return c.quota.Decrement(ctx, mutation.Before.TenantID, tenancydomain.ResourceGroups, 1)
+		}
+		return nil
 	}
 	if mutation.After == nil {
 		return errors.New("an upsert mutation must carry the resulting group")
 	}
+	consumesQuota := mutation.ConsumesGroupQuota && c.quota != nil
+	if consumesQuota {
+		if err := c.quota.CheckAndIncrement(ctx, mutation.After.TenantID, tenancydomain.ResourceGroups, 1); err != nil {
+			return err
+		}
+	}
+	// 行が途中で失敗したら、加算した使用量も戻す。
+	release := func() {
+		if consumesQuota {
+			_ = c.quota.Decrement(ctx, mutation.After.TenantID, tenancydomain.ResourceGroups, 1)
+		}
+	}
 	if err := c.repo.Save(ctx, mutation.After); err != nil {
+		release()
 		return err
 	}
 	if mutation.Rule != nil {
@@ -48,6 +72,7 @@ func (c *GroupImportRowCommitter) CommitGroupImportRow(ctx context.Context, muta
 			} else {
 				_ = c.repo.Delete(ctx, mutation.After.TenantID, mutation.After.ID)
 			}
+			release()
 			return err
 		}
 	}
