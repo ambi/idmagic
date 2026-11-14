@@ -70,8 +70,21 @@ func newServerForAuthenticatorReset(t *testing.T) *httptest.Server {
 //
 // 追加で "bob" を置く。bob は TOTP と WebAuthn の両方を持つ利用者で、一部だけを
 // リセットしたときに残る要素があるのはこの形の利用者だけである。
-func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *[]spec.DomainEvent) {
+// resetServerOptions は、制御面の運用者の復旧を確かめるために fixture を変える。
+// ゼロ値は従来どおりの構成である。
+type resetServerOptions struct {
+	// aliceRoles は alice のロールである。制御面の運用者を作るのに使う。
+	aliceRoles []string
+	// noDefaultMFA は、テナントのデフォルトのポリシーを MFA を求めない構成にする。
+	noDefaultMFA bool
+}
+
+func newServerForAuthenticatorResetWithEvents(t *testing.T, options ...resetServerOptions) (*httptest.Server, *[]spec.DomainEvent) {
 	t.Helper()
+	var opts resetServerOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
 	ctx := context.Background()
 	now := time.Now().UTC()
 
@@ -107,7 +120,7 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 	aliceEmail := "alice@example.com"
 	_ = userRepo.Save(context.Background(), &userdomain.User{
 		ID: "user_alice", PreferredUsername: demoUsername, PasswordHash: aliceHash,
-		Email: &aliceEmail, EmailVerified: true, MfaEnrolled: true,
+		Email: &aliceEmail, EmailVerified: true, MfaEnrolled: true, Roles: opts.aliceRoles,
 		CreatedAt: now, UpdatedAt: now,
 	})
 	aliceTOTPSecret := totpTestSecret
@@ -162,17 +175,20 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T) (*httptest.Server, *
 
 	start := now.Add(-time.Minute)
 	grace := 3600
-	if err := defaultSignInPolicyRepo.Save(ctx, &policydomain.TenantDefaultSignInPolicy{
-		TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
-		Rules: []policydomain.SignInRule{{
-			RuleID: "default", Name: "Require MFA", Enabled: true,
-			RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
-			MfaEnrollment: &policydomain.MfaEnrollmentPolicy{
-				EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true,
-			},
-		}},
-	}); err != nil {
-		t.Fatalf("seed sign-in policy: %v", err)
+	// noDefaultMFA のときはデフォルトのポリシーを保存しない。ルールのないデフォルトはすべてを許す。
+	if !opts.noDefaultMFA {
+		if err := defaultSignInPolicyRepo.Save(ctx, &policydomain.TenantDefaultSignInPolicy{
+			TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
+			Rules: []policydomain.SignInRule{{
+				RuleID: "default", Name: "Require MFA", Enabled: true,
+				RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa},
+				MfaEnrollment: &policydomain.MfaEnrollmentPolicy{
+					EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true,
+				},
+			}},
+		}); err != nil {
+			t.Fatalf("seed sign-in policy: %v", err)
+		}
 	}
 
 	keyStore, err := signingkeys.NewInMemoryKeyStore()
