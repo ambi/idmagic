@@ -1119,7 +1119,7 @@ model RevokeMyOtherSessionsError403 {
   @body body: RevokeMyOtherSessionsError403Body;
 }
 
-@doc("認証済みのユーザーが、現在のセッションを除く自身のすべてのセッションを失効させる（セルフサービス）。「ほかのすべての場所からサインアウトする」操作である。各対象は `revoked_at` と `revoke_reason=self_revoke` を設定する墓標で、失効済みのものは冪等に飛ばす。")
+@doc("認証済みのユーザーが、現在のセッションを除く自身のすべてのセッションを失効させる（セルフサービス）。「ほかのすべての場所からサインアウトする」操作である。アクセストークンは現在のセッションを持たないので、アクセストークンで呼ぶと自身のすべてのセッションを失効させる。各対象は `revoked_at` と `revoke_reason=self_revoke` を設定する墓標で、失効済みのものは冪等に飛ばす。")
 @TypeSpec.OpenAPI.operationId("RevokeMyOtherSessions")
 @route("/api/account/v1/sessions/revoke-others")
 @post

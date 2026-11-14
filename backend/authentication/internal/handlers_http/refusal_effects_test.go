@@ -1031,6 +1031,49 @@ func TestAccountApiTokenScopesAllowExactlyTheirOwnOperations(t *testing.T) {
 	})
 }
 
+// アクセストークンには現在のセッションがないので、他のセッションの一括の失効は
+// 本人のすべてのセッションを失効させる。
+//
+// Cookie の経路は現在のセッションを残すので、同じ操作でも資格情報の種類で結果が
+// 分かれる。拒否する実装、空の ID を照合して一部を残す実装、主体を取り違えて他人へ
+// 届く実装を、保存された状態から見分ける。
+//
+//spec:covers REQ-AUTHENTICATION-013, EX-AUTHENTICATION-013-04: account:sessions:write の API アクセストークンで他のセッションの一括の失効を要求すると、本人のすべてのセッションと記憶済みの端末が失効し、他人のものは残ることを固定する。
+func TestRevokeOtherSessionsWithAccessTokenRevokesEverySession(t *testing.T) {
+	fixture := newAuthRefusalServer(t)
+	own := []string{
+		fixture.seedSession(t, "sess-own-1", tenancydomain.DefaultTenantID, authRefusalAlice),
+		fixture.seedSession(t, "sess-own-2", tenancydomain.DefaultTenantID, authRefusalAlice),
+	}
+	other := fixture.seedSession(t, "sess-bob", tenancydomain.DefaultTenantID, authRefusalBob)
+	fixture.seedTrustedDevice(t, authRefusalAlice)
+	fixture.seedTrustedDevice(t, authRefusalBob)
+	token := fixture.issueApiToken(t, tenancydomain.DefaultTenantID, authRefusalAlice,
+		apitokendomain.ScopeAccountSessionsWrite)
+
+	accepted := fixture.send(t, authRefusalRequest{
+		method: http.MethodPost, path: "/api/account/v1/sessions/revoke-others",
+		bearer: token, body: map[string]any{},
+	})
+	if accepted.Code != http.StatusNoContent {
+		t.Fatalf("status=%d body=%s", accepted.Code, accepted.Body.String())
+	}
+	for _, id := range own {
+		if !fixture.sessionRevoked(t, id, authRefusalAlice) {
+			t.Fatalf("本人のセッション %s が残っている", id)
+		}
+	}
+	if got := fixture.activeTrustedDevices(t, authRefusalAlice); got != 0 {
+		t.Fatalf("本人の記憶済みの端末が %d 台残っている", got)
+	}
+	if fixture.sessionRevoked(t, other, authRefusalBob) {
+		t.Fatal("他人のセッションまで失効した")
+	}
+	if got := fixture.activeTrustedDevices(t, authRefusalBob); got != 1 {
+		t.Fatalf("他人の端末まで失効した: 残り %d 台", got)
+	}
+}
+
 // passwordMatches は保存されているパスワードハッシュが平文と一致するかを返す。
 func (f *authRefusalFixture) passwordMatches(t *testing.T, userID, plaintext string) bool {
 	t.Helper()
