@@ -381,3 +381,131 @@ func TestStartDataExport_RejectsColumnsOutsideTheGroupAllowList(t *testing.T) {
 		t.Fatalf("email is an import-compatible column: %v", err)
 	}
 }
+
+// transferLimitExportDeps は、各対象が 2 行を出し、行の一つが longValue を持つ世界を、
+// policy で組み立てたエクスポーターで用意する。
+func transferLimitExportDeps(t *testing.T, policy idmdomain.CSVTransferPolicy, longValue string) (idmusecases.DataExportDeps, *eventRecorder) {
+	t.Helper()
+	ctx := exportTestCtx()
+	now := time.Date(2026, 7, 25, 0, 0, 0, 0, time.UTC)
+	users := usermemory.NewUserRepository()
+	groups := groupmemory.NewGroupRepository()
+	for _, user := range []*userdomain.User{
+		{ID: "u1", TenantID: "acme", PreferredUsername: "alice", Roles: []string{}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now},
+		{ID: "u2", TenantID: "acme", PreferredUsername: longValue, Roles: []string{}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now},
+	} {
+		if err := users.Save(ctx, user); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, group := range []*groupdomain.Group{
+		{ID: "g1", TenantID: "acme", Name: "engineering", Roles: []string{}, MembershipType: groupdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now},
+		{ID: "g2", TenantID: "acme", Name: longValue, Roles: []string{}, MembershipType: groupdomain.GroupMembershipManual, CreatedAt: now, UpdatedAt: now},
+	} {
+		if err := groups.Save(ctx, group); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, userID := range []string{"u1", "u2"} {
+		if _, err := groups.AddMember(ctx, &groupdomain.GroupMember{GroupID: "g1", UserID: userID, Source: groupdomain.MembershipSourceManual, CreatedAt: now}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	artifacts := idmmemory.NewCSVArtifactStore()
+	rec := &eventRecorder{}
+	return idmusecases.DataExportDeps{
+		UserRepo: users, GroupRepo: groups, CSVArtifacts: artifacts,
+		UserCSVExporter: userusecases.UserCSVExporter{
+			Deps:   userusecases.UserCSVExportDeps{UserRepo: users, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: artifacts},
+			Policy: policy,
+		},
+		GroupCSVExporter: groupusecases.GroupCSVExporter{
+			Deps:   groupusecases.GroupCSVExportDeps{GroupRepo: groups, Artifacts: artifacts},
+			Policy: policy,
+		},
+		GroupMembershipCSVExporter: groupusecases.GroupMembershipCSVExporter{
+			Deps:   groupusecases.GroupMembershipCSVExportDeps{GroupRepo: groups, UserRepo: users, Artifacts: artifacts},
+			Policy: policy,
+		},
+		Emit: rec.emit, Now: func() time.Time { return now },
+	}, rec
+}
+
+//spec:covers REQ-IDMANAGEMENT-007, REQ-IDMANAGEMENT-027, REQ-IDMANAGEMENT-030, EX-IDMANAGEMENT-007-03, EX-IDMANAGEMENT-027-03, EX-IDMANAGEMENT-030-03: 行数、成果物の大きさ、項目の大きさのどの上限を超えても、User、Group、メンバーシップのエクスポートのジョブが csv_transfer_limit_exceeded で失敗し、DataExportFailed が同じコードを運び、結果を返さないこと。
+func TestDataExportHandler_ReportsEveryTransferLimitAsCSVTransferLimitExceeded(t *testing.T) {
+	// 見出しの最長のキー（dynamic_rule_expression の 23 バイト）は項目の上限に収め、値だけが超えるようにする。
+	const maxFieldBytes = 32
+	longValue := strings.Repeat("x", maxFieldBytes+1)
+	unlimited := idmdomain.DefaultCSVTransferPolicy()
+	groupSchema, err := groupdomain.NewGroupCSVSchema(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets := []struct {
+		target  string
+		columns []string
+		filter  map[string]string
+	}{
+		{target: "user", columns: []string{"preferred_username"}},
+		{target: "group", columns: groupSchema.ColumnKeys()},
+		{target: "group_membership", columns: groupdomain.NewGroupMembershipCSVSchema().ColumnKeys(), filter: map[string]string{"group_id": "g1"}},
+	}
+	limits := []struct {
+		name   string
+		policy idmdomain.CSVTransferPolicy
+	}{
+		{name: "rows", policy: idmdomain.CSVTransferPolicy{MaxRows: 1, MaxBytes: unlimited.MaxBytes, MaxFieldBytes: unlimited.MaxFieldBytes}},
+		{name: "bytes", policy: idmdomain.CSVTransferPolicy{MaxRows: unlimited.MaxRows, MaxBytes: 16, MaxFieldBytes: unlimited.MaxFieldBytes}},
+		{name: "field", policy: idmdomain.CSVTransferPolicy{MaxRows: unlimited.MaxRows, MaxBytes: unlimited.MaxBytes, MaxFieldBytes: maxFieldBytes}},
+	}
+	for _, target := range targets {
+		for _, limit := range limits {
+			t.Run(target.target+"/"+limit.name, func(t *testing.T) {
+				deps, rec := transferLimitExportDeps(t, limit.policy, longValue)
+				params := mustMarshal(t, idmusecases.DataExportParams{Target: target.target, Columns: target.columns, Filter: target.filter, ActorUserID: "admin"})
+				job := &jobsdomain.Job{ID: "exp-limit", TenantID: "acme", Kind: idmusecases.KindDataExport, Params: params}
+
+				raw, err := idmusecases.DataExportHandler(deps)(exportTestCtx(), job)
+
+				if err == nil || err.Error() != "csv_transfer_limit_exceeded" {
+					t.Fatalf("job error = %v, want csv_transfer_limit_exceeded", err)
+				}
+				if raw != nil {
+					t.Fatalf("result = %s, want none", raw)
+				}
+				failed, ok := rec.events[len(rec.events)-1].(*idmdomain.DataExportFailed)
+				if !ok || failed.ErrorCode != "csv_transfer_limit_exceeded" {
+					t.Fatalf("last event = %#v, want DataExportFailed with csv_transfer_limit_exceeded", rec.events[len(rec.events)-1])
+				}
+			})
+		}
+	}
+}
+
+// 対照：同じ世界を既定のポリシーで生成すると、どの対象も成功する。上の失敗が上限だけによることを確かめる。
+func TestDataExportHandler_TransferLimitWorldSucceedsUnderTheDefaultPolicy(t *testing.T) {
+	longValue := strings.Repeat("x", 33)
+	groupSchema, err := groupdomain.NewGroupCSVSchema(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, params := range []idmusecases.DataExportParams{
+		{Target: "user", Columns: []string{"preferred_username"}, ActorUserID: "admin"},
+		{Target: "group", Columns: groupSchema.ColumnKeys(), ActorUserID: "admin"},
+		{Target: "group_membership", Columns: groupdomain.NewGroupMembershipCSVSchema().ColumnKeys(), Filter: map[string]string{"group_id": "g1"}, ActorUserID: "admin"},
+	} {
+		deps, _ := transferLimitExportDeps(t, idmdomain.DefaultCSVTransferPolicy(), longValue)
+		job := &jobsdomain.Job{ID: "exp-control", TenantID: "acme", Kind: idmusecases.KindDataExport, Params: mustMarshal(t, params)}
+		raw, err := idmusecases.DataExportHandler(deps)(exportTestCtx(), job)
+		if err != nil {
+			t.Fatalf("%s: %v", params.Target, err)
+		}
+		var result idmusecases.DataExportResult
+		if err := json.Unmarshal(raw, &result); err != nil {
+			t.Fatal(err)
+		}
+		if result.TotalRows != 2 {
+			t.Fatalf("%s: rows = %d, want 2", params.Target, result.TotalRows)
+		}
+	}
+}

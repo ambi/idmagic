@@ -481,12 +481,11 @@ func validateExportFilter(kind idmdomain.DataExportTargetKind, filter map[string
 	return nil
 }
 
-// exportErrorCode は転送ポリシーの超過だけを固有のコードにする。上限は 1 個の
+// exportErrorCode は転送ポリシーの超過だけを固有のコードにする。どの上限も 1 個の
 // 成果物に対するものなので、管理者は列を絞るか対象を分けて作り直せる。それ以外の
 // 失敗は理由を外へ出さない。
 func exportErrorCode(err error) string {
-	var csvErr *idmdomain.CSVError
-	if errors.As(err, &csvErr) && csvErr.Code == idmdomain.CSVErrorCSVTooLarge {
+	if csvErr, ok := errors.AsType[*idmdomain.CSVError](err); ok && csvErr.Code.ExceedsTransferPolicy() {
 		return "csv_transfer_limit_exceeded"
 	}
 	return "export_failed"

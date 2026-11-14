@@ -232,13 +232,15 @@ func CheckCSVLimits(input io.Reader, policy CSVTransferPolicy) error {
 	if errors.Is(err, io.EOF) {
 		return nil
 	}
-	if csvErr, ok := errors.AsType[*CSVError](err); ok && !csvErr.Code.exceedsTransferPolicy() {
+	if csvErr, ok := errors.AsType[*CSVError](err); ok && !csvErr.Code.ExceedsTransferPolicy() {
 		return nil
 	}
 	return err
 }
 
-func (c CSVErrorCode) exceedsTransferPolicy() bool {
+// ExceedsTransferPolicy は、コードが CSVTransferPolicy のどれかの上限（行数、成果物の大きさ、
+// 項目の大きさ）の超過を表すかを返す。取り込みとエクスポートが同じ判定を使う。
+func (c CSVErrorCode) ExceedsTransferPolicy() bool {
 	return c == CSVErrorCSVTooLarge || c == CSVErrorTooManyRows || c == CSVErrorFieldTooLarge
 }
 
