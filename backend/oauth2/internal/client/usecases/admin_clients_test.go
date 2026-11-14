@@ -3,51 +3,20 @@ package usecases
 // 主要ユースケース追跡: REQ-OAUTH2-035。
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
-
-// TestDeleteAdminOAuth2Client_decrementsQuotaUsage is a wi-160 T004.5 RED
-// test: deleting a client must free its oauth2_clients quota slot so a
-// subsequent registration at the same limit succeeds.
-func TestDeleteAdminOAuth2Client_decrementsQuotaUsage(t *testing.T) {
-	ctx := tenantContext(tenancydomain.DefaultTenantID)
-	clientRepo := oauth2memory.NewClientRepository()
-	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
-	limit := 1
-	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{OAuth2Clients: &limit}); err != nil {
-		t.Fatalf("SetQuota: %v", err)
-	}
-	deps := AdminOAuth2ClientDeps{ClientRepo: clientRepo, QuotaRepo: quotaRepo}
-	now := time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)
-	regIn := CreateAdminOAuth2ClientInput{
-		ActorUserID: "admin-1", Now: now,
-		Registration: RegisterClientInput{
-			ClientName: "Client A", RedirectURIs: []string{"https://example.com/cb"},
-			GrantTypes: []spec.GrantType{spec.GrantAuthorizationCode}, ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode},
-		},
-	}
-	res, err := CreateAdminOAuth2Client(ctx, deps, regIn)
-	if err != nil {
-		t.Fatalf("create: %v", err)
-	}
-	if err := DeleteAdminOAuth2Client(ctx, deps, "admin-1", res.Client.ClientID, now); err != nil {
-		t.Fatalf("delete: %v", err)
-	}
-	if _, err := CreateAdminOAuth2Client(ctx, deps, regIn); err != nil {
-		t.Fatalf("expected create to succeed after delete freed quota, got %v", err)
-	}
-}
 
 func TestDeleteAdminOAuth2ClientRejectsApplicationOwnedClient(t *testing.T) {
 	ctx := tenantContext("acme")
@@ -58,7 +27,7 @@ func TestDeleteAdminOAuth2ClientRejectsApplicationOwnedClient(t *testing.T) {
 		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
 	})
 
-	err := DeleteAdminOAuth2Client(ctx, AdminOAuth2ClientDeps{ClientRepo: repo}, "admin", "client-1", time.Now())
+	err := DeleteAdminOAuth2Client(ctx, AdminOAuth2ClientDeps{ClientRepo: repo, ClientDeletion: repositoryClientDeletion{repo: repo}}, "admin", "client-1", time.Now())
 	if !errors.Is(err, ErrProtocolOwnedByApplication) {
 		t.Fatalf("DeleteAdminOAuth2Client() error = %v, want ErrProtocolOwnedByApplication", err)
 	}
@@ -73,8 +42,9 @@ func TestAdminOAuth2Client(t *testing.T) {
 	}
 
 	deps := AdminOAuth2ClientDeps{
-		ClientRepo: clientRepo,
-		Emit:       emitFunc,
+		ClientRepo:     clientRepo,
+		ClientDeletion: repositoryClientDeletion{repo: clientRepo},
+		Emit:           emitFunc,
 	}
 
 	now := time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)
@@ -286,4 +256,24 @@ func TestAdminOAuth2Client(t *testing.T) {
 			t.Error("expected non-zero time for ZeroTime input")
 		}
 	})
+}
+
+// repositoryClientDeletion は単独の削除の操作のテストダブルである。拒否の判定と行の削除だけを行い、
+// 専用状態と使用量は扱わない。それらは oauth2 の削除の操作のテストが確かめる。
+type repositoryClientDeletion struct {
+	repo clientports.OAuth2ClientRepository
+}
+
+func (d repositoryClientDeletion) DeleteStandalone(ctx context.Context, tenantID, clientID string) error {
+	client, err := d.repo.FindByID(ctx, tenantID, clientID)
+	if err != nil {
+		return err
+	}
+	if client == nil {
+		return clientports.ErrCatalogClientNotFound
+	}
+	if err := clientports.StandaloneDeletionRefusal(client.FirstParty, client.ApplicationID != ""); err != nil {
+		return err
+	}
+	return d.repo.Delete(ctx, tenantID, clientID)
 }

@@ -21,7 +21,7 @@ import (
 
 var (
 	ErrClientNotFound             = errors.New("client not found")
-	ErrProtocolOwnedByApplication = errors.New("protocol configuration is owned by an application")
+	ErrProtocolOwnedByApplication = clientports.ErrProtocolOwnedByApplication
 )
 
 type AdminOAuth2ClientDeps struct {
@@ -31,6 +31,8 @@ type AdminOAuth2ClientDeps struct {
 	// , bridged into RegisterClient which owns the actual check.
 	QuotaRepo         tenantports.QuotaRepository
 	DeleteClientState func(context.Context, string, string) (int, error)
+	// ClientDeletion は管理 API の単独のクライアントの削除である。nil なら削除は失敗する。
+	ClientDeletion clientports.ClientDeletion
 }
 
 type CreateAdminOAuth2ClientInput = clientports.CreateAdminOAuth2ClientInput
@@ -140,27 +142,17 @@ func DeleteAdminOAuth2Client(
 	actorUserID, clientID string,
 	now time.Time,
 ) error {
-	tenantID := tenantports.TenantID(ctx)
-	client, err := deps.ClientRepo.FindByID(ctx, tenantID, clientID)
-	if err != nil {
-		return err
+	if deps.ClientDeletion == nil {
+		return errors.New("client deletion is not wired")
 	}
-	if client == nil {
+	tenantID := tenantports.TenantID(ctx)
+	// 単独の削除の操作が、専用状態、束縛と使用量を同じ確定で消す。行だけを消す経路へ戻らない。
+	err := deps.ClientDeletion.DeleteStandalone(ctx, tenantID, clientID)
+	if errors.Is(err, clientports.ErrCatalogClientNotFound) {
 		return ErrClientNotFound
 	}
-	if client.FirstParty {
-		return clientports.ErrFirstPartyClientProtected
-	}
-	if client.ApplicationID != "" {
-		return ErrProtocolOwnedByApplication
-	}
-	if err := deps.ClientRepo.Delete(ctx, tenantID, clientID); err != nil {
+	if err != nil {
 		return err
-	}
-	if deps.QuotaRepo != nil {
-		if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceOAuth2Clients, 1); err != nil {
-			return err
-		}
 	}
 	emit(deps.Emit, &domain.AdminOAuth2ClientDeleted{
 		At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ClientID: clientID,

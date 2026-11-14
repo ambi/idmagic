@@ -108,7 +108,10 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		dataKeysModule.Migrators.Register(name, migrator)
 	})
 	// CIMD の解決のイベントの発行先は NewEmitFunc の後で cmd/idmagic/server.go が結ぶ。
-	oauth2Module := oauth2.NewPostgresModule(resilientDB).WithClientMetadataDocuments()
+	oauth2Module := oauth2.NewPostgresModule(resilientDB).WithClientMetadataDocuments().
+		WithPostgresClientDeletion(resilientDB, oauth2.PostgresClientDeletionParticipants{
+			DeleteBindingsInTx: idmanagement.DeleteClientBindingsInTx, QuotaInTx: tenancy.QuotaRepositoryInTx,
+		})
 	oauth2Module.EventSink = sinks_console.NewConsoleSink()
 	applicationModule.ProvisioningNotifier = provisioningModule.AssignmentNotifier(assignmentRepo)
 	idmModule.UserMutationCommitter = governanceModule.UserMutationCommitter

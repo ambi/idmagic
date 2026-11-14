@@ -17,6 +17,28 @@ var ErrCatalogClientNotFound = errors.New("client does not exist")
 
 var ErrFirstPartyClientProtected = errors.New("first-party clients cannot be deleted")
 
+// ErrProtocolOwnedByApplication は、Application が所有するクライアントを単独で変えようとしたことを表す。
+var ErrProtocolOwnedByApplication = errors.New("protocol configuration is owned by an application")
+
+// ClientDeletion は、Application に属さない単独のクライアントを、削除を妨げる専用状態と使用量とともに
+// 一つの確定で消す操作である。確定の中でクライアントを固定し、存在、組み込み、Application の所有を確かめ直す。
+type ClientDeletion interface {
+	// DeleteStandalone は、存在しなければ ErrCatalogClientNotFound、組み込みなら ErrFirstPartyClientProtected、
+	// Application が所有すれば ErrProtocolOwnedByApplication を返し、何も変えない。
+	DeleteStandalone(ctx context.Context, tenantID, clientID string) error
+}
+
+// StandaloneDeletionRefusal は、単独の削除を拒否する理由を返す。拒否しなければ nil を返す。
+func StandaloneDeletionRefusal(firstParty, applicationOwned bool) error {
+	if firstParty {
+		return ErrFirstPartyClientProtected
+	}
+	if applicationOwned {
+		return ErrProtocolOwnedByApplication
+	}
+	return nil
+}
+
 // ClientAdministration は、ほかのモジュールの管理画面が OAuth2 クライアントを作成、更新し、
 // シークレットを管理する操作である。シークレットの上限、クォータ、発行するイベントは OAuth2 が保つ。
 type ClientAdministration interface {

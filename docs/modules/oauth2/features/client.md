@@ -99,7 +99,9 @@
 - 管理者がクライアントを作成したとき、OAuth2 は、201 と、confidential のクライアントには一度だけ `client_secret` を返し、`AdminOAuth2ClientCreated` を発行する。
 - 管理者がクライアントを一覧か取得したとき、OAuth2 は、200 と所属テナントのクライアントだけを返す。
 - 管理者がクライアントを更新したとき、OAuth2 は、200 と更新したクライアントを返し、`AdminOAuth2ClientUpdated` を発行する。
-- 管理者がクライアントを削除したとき、OAuth2 は、204 を返し、`AdminOAuth2ClientDeleted` を発行する。
+- 管理者が単独のクライアントを削除したとき、OAuth2 は、クライアント、専用のリフレッシュトークン、クライアントへの同意、クライアント資格情報、クライアントのセッションの関連付け、Agent の資格情報の束縛を同じトランザクションで削除し、204 を返し、`AdminOAuth2ClientDeleted` を発行する。
+- 管理者が単独のクライアントを削除したとき、OAuth2 は、OAuth2 クライアントと削除した同意の使用量を、その削除と同じトランザクションで減算する。
+- 単独のクライアントの削除または確定に失敗した場合、OAuth2 は、クライアント、その関連状態と使用量を維持し、`AdminOAuth2ClientDeleted` を発行しない。
 - 不正なページの指定か読めない本文を受けた場合、OAuth2 は、400 と `invalid_request` で拒否する。
 - 検証を通らないメタデータを受けた場合、OAuth2 は、400 と `invalid_client_metadata` で拒否する。
 - 存在しないか別のテナントの `client_id` の取得、更新、削除を受けた場合、OAuth2 は、存在しない `client_id` と同じ 404 と `client_not_found` で拒否し、クライアントを変えない。

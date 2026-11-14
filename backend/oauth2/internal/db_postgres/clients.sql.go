@@ -464,6 +464,28 @@ func (q *Queries) LockClientForSecretIssuance(ctx context.Context, clientID stri
 	return client_id, err
 }
 
+const lockClientForStandaloneDeletion = `-- name: LockClientForStandaloneDeletion :one
+SELECT first_party, (application_id IS NOT NULL)::boolean AS application_owned
+FROM oauth2_clients WHERE tenant_id = $1 AND client_id = $2 FOR UPDATE
+`
+
+type LockClientForStandaloneDeletionParams struct {
+	TenantID string
+	ClientID string
+}
+
+type LockClientForStandaloneDeletionRow struct {
+	FirstParty       bool
+	ApplicationOwned bool
+}
+
+func (q *Queries) LockClientForStandaloneDeletion(ctx context.Context, arg LockClientForStandaloneDeletionParams) (*LockClientForStandaloneDeletionRow, error) {
+	row := q.db.QueryRow(ctx, lockClientForStandaloneDeletion, arg.TenantID, arg.ClientID)
+	var i LockClientForStandaloneDeletionRow
+	err := row.Scan(&i.FirstParty, &i.ApplicationOwned)
+	return &i, err
+}
+
 const updateClientSecretCredential = `-- name: UpdateClientSecretCredential :exec
 UPDATE oauth2_client_secrets
 SET expires_at = $2, revoked_at = $3

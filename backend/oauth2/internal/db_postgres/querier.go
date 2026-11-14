@@ -117,6 +117,7 @@ type Querier interface {
 	LockAuthorizationRequest(ctx context.Context, arg LockAuthorizationRequestParams) ([]byte, error)
 	LockClientForApplicationDeletion(ctx context.Context, arg LockClientForApplicationDeletionParams) (bool, error)
 	LockClientForSecretIssuance(ctx context.Context, clientID string) (string, error)
+	LockClientForStandaloneDeletion(ctx context.Context, arg LockClientForStandaloneDeletionParams) (*LockClientForStandaloneDeletionRow, error)
 	// 単発 expire の CAS。state='issued' の行だけを expired にして 1 行返す。
 	// 既に redeemed または expired の行は対象にしない (0 行)。
 	MarkAuthorizationCodeExpired(ctx context.Context, arg MarkAuthorizationCodeExpiredParams) (*MarkAuthorizationCodeExpiredRow, error)

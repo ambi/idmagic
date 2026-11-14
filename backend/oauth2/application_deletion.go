@@ -21,6 +21,13 @@ func PrepareApplicationDeletionInTx(ctx context.Context, tx pgx.Tx, tenantID, cl
 	if firstParty {
 		return 0, clientports.ErrFirstPartyClientProtected
 	}
+	return deleteClientStateInTx(ctx, q, clientID)
+}
+
+// deleteClientStateInTx は、クライアントの削除を外部キーで妨げる OAuth2 の専用状態を消し、
+// 消した同意の件数を返す。Application の削除と単独の削除が同じ参加者を消すために共有する。
+// クライアント資格情報、セッションの関連付け、承認要求はクライアントの削除に連鎖する。
+func deleteClientStateInTx(ctx context.Context, q *db_postgres.Queries, clientID string) (int, error) {
 	if err := q.DeleteRefreshTokensForClient(ctx, clientID); err != nil {
 		return 0, err
 	}
@@ -32,6 +39,8 @@ func PrepareApplicationDeletionInTx(ctx context.Context, tx pgx.Tx, tenantID, cl
 	return int(consents), err
 }
 
+// deleteApplicationClientState は、メモリ実行で deleteClientStateInTx と同じ専用状態を消す。
+// Application の削除と単独の削除が共有する。
 func (m Module) deleteApplicationClientState(ctx context.Context, tenantID, clientID string) (int, error) {
 	if m.ClientSessionStore != nil {
 		cleaner, ok := m.ClientSessionStore.(interface {

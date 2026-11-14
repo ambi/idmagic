@@ -101,6 +101,10 @@ DELETE FROM oauth2_clients WHERE tenant_id = $1 AND client_id = $2;
 -- name: LockClientForApplicationDeletion :one
 SELECT first_party FROM oauth2_clients WHERE tenant_id = $1 AND client_id = $2 FOR UPDATE;
 
+-- name: LockClientForStandaloneDeletion :one
+SELECT first_party, (application_id IS NOT NULL)::boolean AS application_owned
+FROM oauth2_clients WHERE tenant_id = $1 AND client_id = $2 FOR UPDATE;
+
 -- name: DeleteRefreshTokensForClient :exec
 DELETE FROM refresh_tokens WHERE client_id = $1;
 

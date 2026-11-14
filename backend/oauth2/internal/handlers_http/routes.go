@@ -21,6 +21,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	consentusecases "github.com/ambi/idmagic/backend/oauth2/internal/consent/usecases"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/internal/token/usecases"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
@@ -55,6 +56,7 @@ type Deps struct {
 	IDJAGSigner                oauthports.IDJAGSigner
 	IDJAGReplayStore           oauthports.ClientAssertionReplayStore
 	ClientRepo                 oauthports.OAuth2ClientRepository
+	ClientDeletion             clientports.ClientDeletion
 	ConsentRepo                oauthports.ConsentRepository
 	ClientDisplayNameResolver  ClientDisplayNameResolver
 	KeyStore                   signingports.KeyStore

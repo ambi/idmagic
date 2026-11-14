@@ -20,6 +20,7 @@ import (
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -308,6 +309,11 @@ func newAdminOAuth2ClientHandler(
 
 func newAdminOAuth2ClientHandlerUsingRepository(t *testing.T, clients clientports.OAuth2ClientRepository) (*echo.Echo, *[]spec.DomainEvent) {
 	t.Helper()
+	return newAdminOAuth2ClientHandlerUsingModule(t, oauth2.Module{ClientRepo: clients}.WithMemoryClientDeletion(nil, nil), tenancy.Module{})
+}
+
+func newAdminOAuth2ClientHandlerUsingModule(t *testing.T, module oauth2.Module, tenancyModule tenancy.Module) (*echo.Echo, *[]spec.DomainEvent) {
+	t.Helper()
 	users := idmanagement.NewMemoryModule().UserRepo
 	now := time.Now().UTC()
 	_ = users.Save(context.Background(), &userdomain.User{
@@ -325,7 +331,7 @@ func newAdminOAuth2ClientHandlerUsingRepository(t *testing.T, clients clientport
 
 		Emit: func(event spec.DomainEvent) {
 			events = append(events, event)
-		}, OAuth2: oauth2.Module{ClientRepo: clients}, UserRepo: users,
+		}, OAuth2: module, Tenancy: tenancyModule, UserRepo: users,
 		AuthnResolver: authentication.DemoHeaderResolver{},
 	})
 	return e, &events
@@ -390,5 +396,106 @@ func TestFirstPartyClientDeletionIsRefused(t *testing.T) {
 				t.Fatalf("stored=%+v error=%v events=%v", stored, err, *events)
 			}
 		})
+	}
+}
+
+//spec:covers REQ-OAUTH2-035, REQ-TENANCY-036: 管理 API で利用された単独のクライアントを消すと、同意と束縛も消え、使用量が減る。
+//verify:operation DeleteAdminOAuth2Client: 同意を持つ単独のクライアントの削除は 204 となり、同意、束縛、使用量を片付けて一度だけイベントを発行する。
+func TestAdminClientDeletionRemovesConsentsAndReleasesQuota(t *testing.T) {
+	ctx := context.Background()
+	tenantID := tenancydomain.DefaultTenantID
+	now := time.Now().UTC()
+	clients := oauth2memory.NewClientRepository()
+	consents := oauth2memory.NewConsentRepository()
+	tenancyModule := tenancy.NewMemoryModule()
+	quota := tenancyModule.QuotaRepo
+	client := &oauthdomain.OAuth2Client{TenantID: tenantID, ClientID: "used-client"}
+	clients.Seed(client)
+	if err := consents.Save(ctx, tenantID, &oauthdomain.Consent{UserID: "user-1", ClientID: client.ClientID, Scopes: []string{"openid"}, State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
+	for _, resource := range []string{tenancydomain.ResourceOAuth2Clients, tenancydomain.ResourceConsents} {
+		if err := quota.CheckAndIncrement(ctx, tenantID, resource, 1); err != nil {
+			t.Fatal(err)
+		}
+	}
+	before, err := quota.GetUsage(ctx, tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unbound := []string{}
+	module := oauth2.Module{ClientRepo: clients, ConsentRepo: consents}.WithMemoryClientDeletion(
+		func(_ context.Context, tenantID, clientID string) error {
+			unbound = append(unbound, tenantID+"/"+clientID)
+			return nil
+		}, quota,
+	)
+	e, events := newAdminOAuth2ClientHandlerUsingModule(t, module, tenancyModule)
+	csrf, cookie := adminCSRF(t, e)
+
+	response := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/clients/"+client.ClientID, csrf, cookie, nil)
+
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	if stored, err := clients.FindByID(ctx, tenantID, client.ClientID); err != nil || stored != nil {
+		t.Fatalf("client=%+v error=%v", stored, err)
+	}
+	if stored, err := consents.Find(ctx, tenantID, "user-1", client.ClientID); err != nil || stored != nil {
+		t.Fatalf("consent=%+v error=%v", stored, err)
+	}
+	if !reflect.DeepEqual(unbound, []string{tenantID + "/" + client.ClientID}) {
+		t.Fatalf("unbound=%v", unbound)
+	}
+	after, err := quota.GetUsage(ctx, tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.OAuth2Clients != before.OAuth2Clients-1 || after.Consents != before.Consents-1 {
+		t.Fatalf("usage before=%+v after=%+v", before, after)
+	}
+	if len(*events) != 1 {
+		t.Fatalf("events=%+v", *events)
+	}
+	if _, ok := (*events)[0].(*oauthdomain.AdminOAuth2ClientDeleted); !ok {
+		t.Fatalf("event=%T", (*events)[0])
+	}
+}
+
+//spec:covers REQ-OAUTH2-035: Application が所有するクライアントの削除は、同意と使用量を変えずに 409 で拒否する。
+func TestAdminClientDeletionOfApplicationOwnedClientKeepsItsState(t *testing.T) {
+	ctx := context.Background()
+	tenantID := tenancydomain.DefaultTenantID
+	now := time.Now().UTC()
+	clients := oauth2memory.NewClientRepository()
+	consents := oauth2memory.NewConsentRepository()
+	tenancyModule := tenancy.NewMemoryModule()
+	client := &oauthdomain.OAuth2Client{TenantID: tenantID, ClientID: "owned-client", ApplicationID: "app-1"}
+	clients.Seed(client)
+	consent := &oauthdomain.Consent{UserID: "user-1", ClientID: client.ClientID, Scopes: []string{"openid"}, State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour)}
+	if err := consents.Save(ctx, tenantID, consent); err != nil {
+		t.Fatal(err)
+	}
+	if err := tenancyModule.QuotaRepo.CheckAndIncrement(ctx, tenantID, tenancydomain.ResourceOAuth2Clients, 1); err != nil {
+		t.Fatal(err)
+	}
+	before, err := tenancyModule.QuotaRepo.GetUsage(ctx, tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	module := oauth2.Module{ClientRepo: clients, ConsentRepo: consents}.WithMemoryClientDeletion(nil, tenancyModule.QuotaRepo)
+	e, events := newAdminOAuth2ClientHandlerUsingModule(t, module, tenancyModule)
+	csrf, cookie := adminCSRF(t, e)
+
+	response := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/clients/"+client.ClientID, csrf, cookie, nil)
+
+	if response.Code != http.StatusConflict || !strings.Contains(response.Body.String(), "application_owned_protocol") {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	if stored, err := consents.Find(ctx, tenantID, "user-1", client.ClientID); err != nil || stored == nil {
+		t.Fatalf("consent=%+v error=%v", stored, err)
+	}
+	if after, err := tenancyModule.QuotaRepo.GetUsage(ctx, tenantID); err != nil || *after != *before || len(*events) != 0 {
+		t.Fatalf("usage before=%+v after=%+v error=%v events=%v", before, after, err, *events)
 	}
 }

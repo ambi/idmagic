@@ -248,6 +248,7 @@ func (m Module) httpDeps(d RouteDeps) oauth2http.Deps {
 		IDJAGSigner:                m.IDJAGSigner,
 		IDJAGReplayStore:           m.IDJAGReplayStore,
 		ClientRepo:                 m.ClientRepo,
+		ClientDeletion:             m.StandaloneClientDeletion(),
 		ConsentRepo:                m.ConsentRepo,
 		ClientDisplayNameResolver:  d.ClientDisplayNameResolver,
 		KeyStore:                   d.KeyStore,

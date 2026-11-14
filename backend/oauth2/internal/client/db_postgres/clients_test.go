@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
+	"github.com/ambi/idmagic/backend/oauth2"
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	clientusecases "github.com/ambi/idmagic/backend/oauth2/internal/client/usecases"
 	tokenpg "github.com/ambi/idmagic/backend/oauth2/internal/token/db_postgres"
 	tokendomain "github.com/ambi/idmagic/backend/oauth2/internal/token/domain"
+	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -107,8 +109,11 @@ func TestFirstPartyDeletionWithRefreshToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	deletion := oauth2.NewPostgresModule(db).WithPostgresClientDeletion(db, oauth2.PostgresClientDeletionParticipants{
+		DeleteBindingsInTx: idmanagement.DeleteClientBindingsInTx, QuotaInTx: tenancy.QuotaRepositoryInTx,
+	}).StandaloneClientDeletion()
 	ctx := tenantports.WithTenantID(t.Context(), tenant.ID)
-	if err := clientusecases.DeleteAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: repo}, "admin", client.ClientID, now); !errors.Is(err, clientports.ErrFirstPartyClientProtected) {
+	if err := clientusecases.DeleteAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: repo, ClientDeletion: deletion}, "admin", client.ClientID, now); !errors.Is(err, clientports.ErrFirstPartyClientProtected) {
 		t.Fatalf("delete first-party client: %v", err)
 	}
 	stored, err := repo.FindByID(ctx, tenant.ID, client.ClientID)

@@ -208,7 +208,7 @@ func (d Deps) handleDeleteAdminOAuth2Client(c *echo.Context) error {
 }
 
 func (d Deps) adminClientDeps() clientusecases.AdminOAuth2ClientDeps {
-	return clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit, QuotaRepo: d.QuotaRepo}
+	return clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, ClientDeletion: d.ClientDeletion, Emit: d.Emit, QuotaRepo: d.QuotaRepo}
 }
 
 func (d Deps) writeAdminOAuth2ClientError(c *echo.Context, err error) error {

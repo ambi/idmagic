@@ -69,7 +69,8 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	idmModule.ProvisioningNotifier = provisioningModule.UserNotifier(assignmentRepo)
 	idmModule.GroupProvisioningNotifier = provisioningModule.GroupNotifier(assignmentRepo)
 	// CIMD の解決のイベントの発行先は NewEmitFunc の後で cmd/idmagic/server.go が結ぶ。
-	oauth2Module := oauth2.NewMemoryModule().WithClientMetadataDocuments()
+	oauth2Module := oauth2.NewMemoryModule().WithClientMetadataDocuments().
+		WithMemoryClientDeletion(idmModule.DeleteClientBindings, tenancyModule.QuotaRepo)
 	oauth2Module.EventSink = sinks_console.NewConsoleSink()
 	return &Dependencies{
 		Tenancy:          tenancyModule,
