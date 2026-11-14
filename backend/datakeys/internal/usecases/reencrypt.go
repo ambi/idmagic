@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
 	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -66,8 +67,18 @@ func ReencryptTenantField(ctx context.Context, deps ReencryptDeps, tenantID, mig
 	if err != nil {
 		return 0, 0, err
 	}
+	keys, err := deps.Repository.ListAll(ctx, tenantID)
+	if err != nil {
+		return 0, 0, err
+	}
+	excludedVersions := make([]int32, 0)
+	for _, key := range keys {
+		if key.Status == domain.DataKeyStatusDisabled || key.Status == domain.DataKeyStatusDestroyed {
+			excludedVersions = append(excludedVersions, int32(key.Version)) //nolint:gosec // G115: 保存した DEK のバージョンは int32 の範囲にある。
+		}
+	}
 	for range ReencryptMaxBatchesPerRun {
-		n, batchErr := migrator.ReencryptBatch(ctx, tenantID, active.Version, ReencryptBatchSize)
+		n, batchErr := migrator.ReencryptBatch(ctx, tenantID, active.Version, ReencryptBatchSize, excludedVersions)
 		if batchErr != nil {
 			return migrated, 0, batchErr
 		}
@@ -139,7 +150,7 @@ func ReencryptionHandler(deps ReencryptDeps) func(ctx context.Context, job *jobs
 		if err != nil {
 			return nil, err
 		}
-		if remaining > 0 && deps.Jobs != nil {
+		if migrated > 0 && remaining > 0 && deps.Jobs != nil {
 			if enqErr := EnqueueReencryptionJob(ctx, deps.Jobs, p.TenantID, p.Migrator, deps.now()); enqErr != nil {
 				logging.Warn(ctx, "datakeys: failed to re-enqueue continuation reencryption job", "error", enqErr, "tenant_id", p.TenantID, "migrator", p.Migrator)
 			}

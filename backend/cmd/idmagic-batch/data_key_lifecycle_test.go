@@ -16,7 +16,7 @@ import (
 
 type stubFieldMigrator struct{ pending int }
 
-func (stubFieldMigrator) ReencryptBatch(context.Context, string, int, int) (int, error) {
+func (stubFieldMigrator) ReencryptBatch(context.Context, string, int, int, []int32) (int, error) {
 	return 0, nil
 }
 

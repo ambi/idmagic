@@ -57,6 +57,7 @@ FROM identity_provider_connections
 WHERE tenant_id = $1
   AND (secret_reference IS NOT NULL OR secret_ciphertext IS NOT NULL)
   AND (secret_key_version IS NULL OR secret_key_version <> $2)
+  AND (secret_key_version IS NULL OR secret_key_version <> ALL(COALESCE(sqlc.arg(excluded_versions)::int[], '{}'::int[])))
 ORDER BY id
 LIMIT $3;
 

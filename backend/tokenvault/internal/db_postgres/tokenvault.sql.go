@@ -338,17 +338,25 @@ func (q *Queries) ListConnectionsByUser(ctx context.Context, arg ListConnections
 
 const listConnectionsPendingReencryption = `-- name: ListConnectionsPendingReencryption :many
 SELECT id, tenant_id, connector_id, user_id, status, granted_scopes, token_key_version, access_token_ciphertext, refresh_token_ciphertext, expires_at, token_version, refresh_lease_until, last_used_at, created_at, updated_at FROM token_vault_connections
-WHERE tenant_id=$1 AND token_key_version IS NOT NULL AND token_key_version <> $2 ORDER BY id LIMIT $3
+WHERE tenant_id=$1 AND token_key_version IS NOT NULL AND token_key_version <> $2
+  AND token_key_version <> ALL(COALESCE($4::int[], '{}'::int[]))
+ORDER BY id LIMIT $3
 `
 
 type ListConnectionsPendingReencryptionParams struct {
-	TenantID        string
-	TokenKeyVersion pgtype.Int4
-	Limit           int32
+	TenantID         string
+	TokenKeyVersion  pgtype.Int4
+	Limit            int32
+	ExcludedVersions []int32
 }
 
 func (q *Queries) ListConnectionsPendingReencryption(ctx context.Context, arg ListConnectionsPendingReencryptionParams) ([]*TokenVaultConnection, error) {
-	rows, err := q.db.Query(ctx, listConnectionsPendingReencryption, arg.TenantID, arg.TokenKeyVersion, arg.Limit)
+	rows, err := q.db.Query(ctx, listConnectionsPendingReencryption,
+		arg.TenantID,
+		arg.TokenKeyVersion,
+		arg.Limit,
+		arg.ExcludedVersions,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -425,17 +433,26 @@ func (q *Queries) ListConnectors(ctx context.Context, tenantID string) ([]*Token
 }
 
 const listConnectorsPendingReencryption = `-- name: ListConnectorsPendingReencryption :many
-SELECT id, tenant_id, name, status, authorization_endpoint, token_endpoint, revocation_endpoint, client_id, token_endpoint_auth_method, secret_key_version, secret_ciphertext, allowed_scopes, rules, version, created_at, updated_at FROM token_vault_connectors WHERE tenant_id=$1 AND secret_key_version <> $2 ORDER BY id LIMIT $3
+SELECT id, tenant_id, name, status, authorization_endpoint, token_endpoint, revocation_endpoint, client_id, token_endpoint_auth_method, secret_key_version, secret_ciphertext, allowed_scopes, rules, version, created_at, updated_at FROM token_vault_connectors
+WHERE tenant_id=$1 AND secret_key_version <> $2
+  AND secret_key_version <> ALL(COALESCE($4::int[], '{}'::int[]))
+ORDER BY id LIMIT $3
 `
 
 type ListConnectorsPendingReencryptionParams struct {
 	TenantID         string
 	SecretKeyVersion int32
 	Limit            int32
+	ExcludedVersions []int32
 }
 
 func (q *Queries) ListConnectorsPendingReencryption(ctx context.Context, arg ListConnectorsPendingReencryptionParams) ([]*TokenVaultConnector, error) {
-	rows, err := q.db.Query(ctx, listConnectorsPendingReencryption, arg.TenantID, arg.SecretKeyVersion, arg.Limit)
+	rows, err := q.db.Query(ctx, listConnectorsPendingReencryption,
+		arg.TenantID,
+		arg.SecretKeyVersion,
+		arg.Limit,
+		arg.ExcludedVersions,
+	)
 	if err != nil {
 		return nil, err
 	}

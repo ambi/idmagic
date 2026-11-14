@@ -1,7 +1,9 @@
 package db_postgres_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idmanagement"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -18,6 +21,102 @@ import (
 	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/testing_contract"
 )
+
+//spec:covers REQ-DATAKEYS-010: コネクタと接続の両方で無効化した行を残し、退役した鍵の値を active に移しても未移行の参照を数え続ける。
+func TestTokenVaultReencryptionSkipsDisabledKeys(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	ctx, now := context.Background(), pgtest.Now()
+	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
+	if err != nil {
+		t.Fatal(err)
+	}
+	module := datakeys.NewMemoryModule(envelope_crypto.NewTinkEnvelopeCrypto(master))
+	connectors := &db_postgres.ConnectorRepository{Pool: pool, Cipher: module.FieldCipher()}
+	connections := &db_postgres.ConnectionRepository{Pool: pool, Cipher: module.FieldCipher()}
+	var saved []*domain.Connection
+	for i, id := range []string{"00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"} {
+		connector := &domain.Connector{
+			ID: id, TenantID: tenant.ID, Name: id, Status: domain.ConnectorActive,
+			AuthorizationEndpoint: "https://idp.example/a", TokenEndpoint: "https://idp.example/t",
+			ClientID: id, ClientSecret: "client-secret", TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+			Version: 1, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := connectors.Create(ctx, connector); err != nil {
+			t.Fatal(err)
+		}
+		connection := &domain.Connection{
+			ID: id, TenantID: tenant.ID, ConnectorID: id, UserID: seedUser(t, pool, tenant.ID),
+			Status: domain.ConnectionActive, AccessToken: "access", RefreshToken: "refresh", UpdatedAt: now,
+		}
+		if err := connections.SaveLinked(ctx, connection); err != nil {
+			t.Fatal(err)
+		}
+		saved = append(saved, connection)
+		if _, err := module.RotateTenantDataKey(ctx, tenant.ID, now); err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 {
+			if _, err := module.Repository.Disable(ctx, tenant.ID, 1, now); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	queries := db_postgres.New(pool)
+	disabledConnector, err := queries.FindConnector(ctx, db_postgres.FindConnectorParams{TenantID: tenant.ID, ID: saved[0].ConnectorID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	disabledConnection, err := queries.FindConnection(ctx, db_postgres.FindConnectionParams{TenantID: tenant.ID, ConnectorID: saved[0].ConnectorID, UserID: saved[0].UserID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	module.Migrators.Register(db_postgres.ConnectorSecretMigratorName, &db_postgres.ConnectorSecretReencryptor{Repo: connectors})
+	module.Migrators.Register(db_postgres.ConnectionTokenMigratorName, &db_postgres.ConnectionTokenReencryptor{Repo: connections})
+	for _, name := range []string{db_postgres.ConnectorSecretMigratorName, db_postgres.ConnectionTokenMigratorName} {
+		params, err := json.Marshal(map[string]string{"tenant_id": tenant.ID, "migrator": name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := module.ReencryptionHandler(nil)(ctx, &jobsdomain.Job{TenantID: tenant.ID, Params: params})
+		if err != nil {
+			t.Errorf("%s: %v", name, err)
+			continue
+		}
+		var counts struct{ Migrated, Remaining int }
+		if err := json.Unmarshal(result, &counts); err != nil {
+			t.Fatal(err)
+		}
+		if counts.Migrated != 1 || counts.Remaining != 1 {
+			t.Fatalf("%s result=%s, want migrated=1 remaining=1", name, result)
+		}
+	}
+	afterConnector, err := queries.FindConnector(ctx, db_postgres.FindConnectorParams{TenantID: tenant.ID, ID: saved[0].ConnectorID})
+	if err != nil || afterConnector.SecretKeyVersion != 1 || !bytes.Equal(afterConnector.SecretCiphertext, disabledConnector.SecretCiphertext) {
+		t.Fatalf("disabled connector=%+v err=%v", afterConnector, err)
+	}
+	afterConnection, err := queries.FindConnection(ctx, db_postgres.FindConnectionParams{TenantID: tenant.ID, ConnectorID: saved[0].ConnectorID, UserID: saved[0].UserID})
+	if err != nil || afterConnection.TokenKeyVersion.Int32 != 1 || !bytes.Equal(afterConnection.AccessTokenCiphertext, disabledConnection.AccessTokenCiphertext) || !bytes.Equal(afterConnection.RefreshTokenCiphertext, disabledConnection.RefreshTokenCiphertext) {
+		t.Fatalf("disabled connection=%+v err=%v", afterConnection, err)
+	}
+	connector, err := connectors.Find(ctx, tenant.ID, saved[1].ConnectorID)
+	if err != nil || connector == nil || connector.ClientSecret != "client-secret" {
+		t.Fatalf("migrated connector=%+v err=%v", connector, err)
+	}
+	connection, err := connections.Find(ctx, tenant.ID, saved[1].ConnectorID, saved[1].UserID)
+	if err != nil || connection == nil || connection.AccessToken != "access" || connection.RefreshToken != "refresh" {
+		t.Fatalf("migrated connection=%+v err=%v", connection, err)
+	}
+	for _, query := range []string{
+		`SELECT secret_key_version FROM token_vault_connectors WHERE id=$1 AND tenant_id=$2`,
+		`SELECT token_key_version FROM token_vault_connections WHERE id=$1 AND tenant_id=$2`,
+	} {
+		var version int
+		if err := pool.QueryRow(ctx, query, saved[1].ID, tenant.ID).Scan(&version); err != nil || version != 3 {
+			t.Fatalf("migrated key version=%d err=%v, want 3", version, err)
+		}
+	}
+}
 
 func newCipher(t *testing.T, tenantIDs ...string) *datakeys.FieldCipher {
 	t.Helper()
@@ -152,7 +251,7 @@ func TestReencryptionMovesTokensAndKeepsTheirValues(t *testing.T) {
 	if pending, err := migrator.PendingCount(ctx, f.tenantID, int(version)+1); err != nil || pending != 1 {
 		t.Fatalf("pending: %d, %v", pending, err)
 	}
-	if migrated, err := migrator.ReencryptBatch(ctx, f.tenantID, int(version)+1, 10); err != nil || migrated != 1 {
+	if migrated, err := migrator.ReencryptBatch(ctx, f.tenantID, int(version)+1, 10, nil); err != nil || migrated != 1 {
 		t.Fatalf("migrated: %d, %v", migrated, err)
 	}
 	found, err := f.connections.Find(ctx, f.tenantID, f.connectorID, row.UserID)

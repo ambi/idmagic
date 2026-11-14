@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 
 	"github.com/ambi/idmagic/backend/datakeys/internal/db_memory"
+	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
 	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
@@ -26,15 +28,74 @@ type fakeReencryptMigrator struct {
 	batchReturns []int
 	calls        int
 	pending      int
+	excluded     []int32
 }
 
-func (f *fakeReencryptMigrator) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int) (int, error) {
+func (f *fakeReencryptMigrator) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int, excludedVersions []int32) (int, error) {
+	f.excluded = slices.Clone(excludedVersions)
 	idx := f.calls
 	f.calls++
 	if idx < len(f.batchReturns) {
 		return f.batchReturns[idx], nil
 	}
 	return 0, nil
+}
+
+//spec:covers REQ-DATAKEYS-010: 指定したテナントの disabled と destroyed だけを除外し、retiring を移行対象に残す。
+func TestReencryptTenantFieldExcludesOnlyUnavailableVersions(t *testing.T) {
+	repo := newReencryptTestRepo(t)
+	ctx, now := context.Background(), time.Date(2026, 10, 31, 0, 0, 0, 0, time.UTC)
+	for range 3 {
+		if _, _, err := repo.Rotate(ctx, "tenant-a", []byte("wrapped"), "master", now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := repo.Disable(ctx, "tenant-a", 1, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Destroy(ctx, "tenant-a", 2, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Bootstrap(ctx, "tenant-b", []byte("wrapped"), "master", now); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		if _, _, err := repo.Rotate(ctx, "tenant-b", []byte("wrapped"), "master", now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := repo.Disable(ctx, "tenant-b", 3, now); err != nil {
+		t.Fatal(err)
+	}
+	migrators := NewMigratorRegistry()
+	migrator := &fakeReencryptMigrator{pending: 2}
+	migrators.Register("fixture", migrator)
+	if _, _, err := ReencryptTenantField(ctx, ReencryptDeps{Repository: repo, Migrators: migrators}, "tenant-a", "fixture"); err != nil {
+		t.Fatal(err)
+	}
+	slices.Sort(migrator.excluded)
+	if !slices.Equal(migrator.excluded, []int32{1, 2}) {
+		t.Fatalf("excluded=%v, want [1 2]", migrator.excluded)
+	}
+}
+
+type unavailableReencryptionKeyRepository struct{ ports.DataKeyRepository }
+
+func (r unavailableReencryptionKeyRepository) ListAll(context.Context, string) ([]*domain.TenantDataEncryptionKey, error) {
+	return nil, errors.New("key states unavailable")
+}
+
+//spec:covers REQ-DATAKEYS-010: 鍵の状態を取得できない場合は一行も移行せず失敗する。
+func TestReencryptTenantFieldFailsWhenKeyStatesCannotBeRead(t *testing.T) {
+	migrators := NewMigratorRegistry()
+	migrator := &fakeReencryptMigrator{batchReturns: []int{1}}
+	migrators.Register("fixture", migrator)
+	_, _, err := ReencryptTenantField(context.Background(), ReencryptDeps{
+		Repository: unavailableReencryptionKeyRepository{newReencryptTestRepo(t)}, Migrators: migrators,
+	}, "tenant-a", "fixture")
+	if err == nil || migrator.calls != 0 {
+		t.Fatalf("err=%v batches=%d, want error and no batches", err, migrator.calls)
+	}
 }
 
 func (f *fakeReencryptMigrator) PendingCount(ctx context.Context, tenantID string, activeVersion int) (int, error) {
@@ -183,6 +244,7 @@ func TestReencryptionHandler_RefusesParamsNamingAnotherTenant(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-DATAKEYS-010: 移行が進んで未移行が残る場合は続きのジョブを投入する。
 func TestReencryptionHandler_ReenqueuesContinuationWhenRemaining(t *testing.T) {
 	repo := newReencryptTestRepo(t)
 	migrators := NewMigratorRegistry()
@@ -207,6 +269,32 @@ func TestReencryptionHandler_ReenqueuesContinuationWhenRemaining(t *testing.T) {
 	}
 	if jobs[0].DedupKey == nil || *jobs[0].DedupKey != ReencryptionDedupKey("tenant-a", "mfa_totp_secret") {
 		t.Fatalf("continuation job DedupKey = %v, want %q", jobs[0].DedupKey, ReencryptionDedupKey("tenant-a", "mfa_totp_secret"))
+	}
+}
+
+//spec:covers REQ-DATAKEYS-010: 未移行だけが残り、移行がない実行は続きのジョブを投入しない。
+func TestReencryptionHandlerDoesNotReenqueueWithoutProgress(t *testing.T) {
+	repo := newReencryptTestRepo(t)
+	migrators := NewMigratorRegistry()
+	migrators.Register("fixture", &fakeReencryptMigrator{pending: 1})
+	jobRepo := jobsmodule.NewJobRepository()
+	handler := ReencryptionHandler(ReencryptDeps{Repository: repo, Migrators: migrators, Jobs: testEnqueuer(jobRepo)})
+	result, err := handler(context.Background(), &jobsdomain.Job{
+		TenantID: "tenant-a", Params: json.RawMessage(`{"tenant_id":"tenant-a","migrator":"fixture"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var counts ReencryptResult
+	if err := json.Unmarshal(result, &counts); err != nil {
+		t.Fatal(err)
+	}
+	if counts.Migrated != 0 || counts.Remaining != 1 {
+		t.Fatalf("result=%s, want migrated=0 remaining=1", result)
+	}
+	jobs, err := jobRepo.ListByTenantAndKinds(context.Background(), "tenant-a", []jobsdomain.JobKind{jobsdomain.KindDataKeyReencryption}, 10)
+	if err != nil || len(jobs) != 0 {
+		t.Fatalf("continuation jobs=%d err=%v, want 0", len(jobs), err)
 	}
 }
 

@@ -1,15 +1,85 @@
 package db_postgres_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
 	"github.com/ambi/idmagic/backend/authentication/internal/federation/db_postgres"
 	"github.com/ambi/idmagic/backend/datakeys"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
+	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
+
+//spec:covers REQ-DATAKEYS-010: 無効化した接続の暗号文を残し、退役した鍵のシークレットを値を保って移す。
+func TestConnectionSecretReencryptionSkipsDisabledKeys(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	ctx, now := context.Background(), pgtest.Now()
+	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
+	if err != nil {
+		t.Fatal(err)
+	}
+	module := datakeys.NewMemoryModule(envelope_crypto.NewTinkEnvelopeCrypto(master))
+	repo := &db_postgres.ConnectionRepository{Pool: pool, Cipher: module.FieldCipher()}
+	disabled := testConnection(t, tenant.ID, now)
+	disabled.ID, disabled.SecretReference = "a-disabled", "disabled-secret"
+	if err := repo.Save(ctx, disabled); err != nil {
+		t.Fatal(err)
+	}
+	before, err := db_postgres.New(pool).FindIdentityProviderConnection(ctx, db_postgres.FindIdentityProviderConnectionParams{TenantID: tenant.ID, ID: disabled.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := module.RotateTenantDataKey(ctx, tenant.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := module.Repository.Disable(ctx, tenant.ID, 1, now); err != nil {
+		t.Fatal(err)
+	}
+	retiring := testConnection(t, tenant.ID, now)
+	retiring.ID, retiring.SecretReference = "z-retiring", "retiring-secret"
+	if err := repo.Save(ctx, retiring); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := module.RotateTenantDataKey(ctx, tenant.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	migrator := &db_postgres.ConnectionSecretReencryptor{Repo: repo}
+	module.Migrators.Register(db_postgres.IdentityProviderSecretMigratorName, migrator)
+	params, err := json.Marshal(map[string]string{"tenant_id": tenant.ID, "migrator": db_postgres.IdentityProviderSecretMigratorName})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := module.ReencryptionHandler(nil)(ctx, &jobsdomain.Job{TenantID: tenant.ID, Params: params})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var counts struct{ Migrated, Remaining int }
+	if err := json.Unmarshal(result, &counts); err != nil {
+		t.Fatal(err)
+	}
+	if counts.Migrated != 1 || counts.Remaining != 1 {
+		t.Fatalf("result=%s, want migrated=1 remaining=1", result)
+	}
+	after, err := db_postgres.New(pool).FindIdentityProviderConnection(ctx, db_postgres.FindIdentityProviderConnectionParams{TenantID: tenant.ID, ID: disabled.ID})
+	if err != nil || after.SecretKeyVersion.Int32 != 1 || !bytes.Equal(before.SecretCiphertext, after.SecretCiphertext) {
+		t.Fatalf("disabled row=%+v err=%v", after, err)
+	}
+	found, err := repo.Find(ctx, tenant.ID, retiring.ID)
+	if err != nil || found == nil || found.SecretReference != "retiring-secret" {
+		t.Fatalf("retiring row=%+v err=%v", found, err)
+	}
+	row, err := db_postgres.New(pool).FindIdentityProviderConnection(ctx, db_postgres.FindIdentityProviderConnectionParams{TenantID: tenant.ID, ID: retiring.ID})
+	if err != nil || row.SecretKeyVersion.Int32 != 3 {
+		t.Fatalf("migrated row=%+v err=%v, want key version 3", row, err)
+	}
+}
 
 type stubEnvResolver struct {
 	values map[string]string
@@ -60,7 +130,7 @@ func TestConnectionSecretReencryptorMigratesResolvableLegacyReference(t *testing
 		t.Fatalf("pendingBefore=%d, want 1", pendingBefore)
 	}
 
-	migrated, err := migrator.ReencryptBatch(ctx, tenant.ID, version, 10)
+	migrated, err := migrator.ReencryptBatch(ctx, tenant.ID, version, 10, nil)
 	if err != nil {
 		t.Fatalf("ReencryptBatch: %v", err)
 	}
@@ -116,7 +186,7 @@ func TestConnectionSecretReencryptorSkipsUnresolvableLegacyReference(t *testing.
 	}
 	version := activeVersion(t, cipher, tenant.ID)
 
-	migrated, err := migrator.ReencryptBatch(ctx, tenant.ID, version, 10)
+	migrated, err := migrator.ReencryptBatch(ctx, tenant.ID, version, 10, nil)
 	if err != nil {
 		t.Fatalf("ReencryptBatch: %v", err)
 	}
@@ -195,7 +265,7 @@ func TestConnectionSecretReencryptorKeepsSecretChangedDuringBatch(t *testing.T) 
 		Repo:        &db_postgres.ConnectionRepository{Pool: pool, Cipher: racing},
 		EnvResolver: stubEnvResolver{values: map[string]string{"env:OIDC_SECRET": "old-env-secret"}},
 	}
-	migrated, err := migrator.ReencryptBatch(ctx, tenant.ID, activeVersion(t, cipher, tenant.ID), 10)
+	migrated, err := migrator.ReencryptBatch(ctx, tenant.ID, activeVersion(t, cipher, tenant.ID), 10, nil)
 	if err != nil {
 		t.Fatalf("ReencryptBatch: %v", err)
 	}

@@ -266,7 +266,7 @@ func TestFieldCipherFailsClosedWhileKeyStateIsUnreadable(t *testing.T) {
 // migratedFieldMigrator は、再暗号化ジョブがすべての参照を active の版へ移し終えた状態を表す。
 type migratedFieldMigrator struct{}
 
-func (migratedFieldMigrator) ReencryptBatch(context.Context, string, int, int) (int, error) {
+func (migratedFieldMigrator) ReencryptBatch(context.Context, string, int, int, []int32) (int, error) {
 	return 0, nil
 }
 

@@ -91,7 +91,7 @@ func NewPostgresModule(pool sharedpg.DB, cipher SecretCipher) Module {
 
 // FieldMigrator は暗号化した列を有効な鍵の版へ再暗号化する。DataKeys の移行器と同じ操作を持つ。
 type FieldMigrator interface {
-	ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int) (migrated int, err error)
+	ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int, excludedVersions []int32) (migrated int, err error)
 	PendingCount(ctx context.Context, tenantID string, activeVersion int) (int, error)
 }
 

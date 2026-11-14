@@ -38,6 +38,7 @@ JOIN users u ON u.id = m.user_id
 WHERE u.tenant_id = $1
   AND (m.secret IS NOT NULL OR m.secret_ciphertext IS NOT NULL)
   AND (m.secret_key_version IS NULL OR m.secret_key_version <> $2)
+  AND (m.secret_key_version IS NULL OR m.secret_key_version <> ALL(COALESCE($4::int[], '{}'::int[])))
 ORDER BY m.user_id, m.type
 LIMIT $3
 `
@@ -46,6 +47,7 @@ type ListMfaFactorsPendingReencryptionParams struct {
 	TenantID         string
 	SecretKeyVersion pgtype.Int4
 	Limit            int32
+	ExcludedVersions []int32
 }
 
 type ListMfaFactorsPendingReencryptionRow struct {
@@ -61,7 +63,12 @@ type ListMfaFactorsPendingReencryptionRow struct {
 // version. Rows with neither secret nor secret_ciphertext (factor types that
 // carry no reversible secret) are excluded — there is nothing to migrate.
 func (q *Queries) ListMfaFactorsPendingReencryption(ctx context.Context, arg ListMfaFactorsPendingReencryptionParams) ([]*ListMfaFactorsPendingReencryptionRow, error) {
-	rows, err := q.db.Query(ctx, listMfaFactorsPendingReencryption, arg.TenantID, arg.SecretKeyVersion, arg.Limit)
+	rows, err := q.db.Query(ctx, listMfaFactorsPendingReencryption,
+		arg.TenantID,
+		arg.SecretKeyVersion,
+		arg.Limit,
+		arg.ExcludedVersions,
+	)
 	if err != nil {
 		return nil, err
 	}

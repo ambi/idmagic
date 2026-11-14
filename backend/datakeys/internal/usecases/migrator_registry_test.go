@@ -8,7 +8,7 @@ import (
 
 type fakeFieldMigrator struct{}
 
-func (fakeFieldMigrator) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int) (int, error) {
+func (fakeFieldMigrator) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int, excludedVersions []int32) (int, error) {
 	return 0, nil
 }
 

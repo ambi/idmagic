@@ -434,6 +434,7 @@ FROM identity_provider_connections
 WHERE tenant_id = $1
   AND (secret_reference IS NOT NULL OR secret_ciphertext IS NOT NULL)
   AND (secret_key_version IS NULL OR secret_key_version <> $2)
+  AND (secret_key_version IS NULL OR secret_key_version <> ALL(COALESCE($4::int[], '{}'::int[])))
 ORDER BY id
 LIMIT $3
 `
@@ -442,6 +443,7 @@ type ListIdentityProviderConnectionsPendingSecretReencryptionParams struct {
 	TenantID         string
 	SecretKeyVersion pgtype.Int4
 	Limit            int32
+	ExcludedVersions []int32
 }
 
 type ListIdentityProviderConnectionsPendingSecretReencryptionRow struct {
@@ -456,7 +458,12 @@ type ListIdentityProviderConnectionsPendingSecretReencryptionRow struct {
 // activeVersion: never-migrated legacy reference (secret_key_version NULL) or an
 // older DEK version. Rows with no secret configured at all are excluded.
 func (q *Queries) ListIdentityProviderConnectionsPendingSecretReencryption(ctx context.Context, arg ListIdentityProviderConnectionsPendingSecretReencryptionParams) ([]*ListIdentityProviderConnectionsPendingSecretReencryptionRow, error) {
-	rows, err := q.db.Query(ctx, listIdentityProviderConnectionsPendingSecretReencryption, arg.TenantID, arg.SecretKeyVersion, arg.Limit)
+	rows, err := q.db.Query(ctx, listIdentityProviderConnectionsPendingSecretReencryption,
+		arg.TenantID,
+		arg.SecretKeyVersion,
+		arg.Limit,
+		arg.ExcludedVersions,
+	)
 	if err != nil {
 		return nil, err
 	}

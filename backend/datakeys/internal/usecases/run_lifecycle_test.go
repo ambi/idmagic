@@ -18,7 +18,7 @@ type lifecycleMigrator struct {
 	pendingErr error
 }
 
-func (m lifecycleMigrator) ReencryptBatch(context.Context, string, int, int) (int, error) {
+func (m lifecycleMigrator) ReencryptBatch(context.Context, string, int, int, []int32) (int, error) {
 	return 0, nil
 }
 

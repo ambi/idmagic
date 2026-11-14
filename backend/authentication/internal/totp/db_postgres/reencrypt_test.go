@@ -1,14 +1,18 @@
 package db_postgres
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
 	"github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/datakeys"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -17,6 +21,122 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+//spec:covers REQ-DATAKEYS-010: バッチ上限を超える無効化した行を残し、後続の退役した seed だけを移し、除外した行を未移行に数える。
+//spec:covers REQ-DATAKEYS-003: 無効化したバージョンの暗号文を復号しない。
+func TestMfaFactorReencryptionSkipsDisabledKeys(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	stack := newTestDataKeyStack(t, tenant.ID)
+	repo := &MfaFactorRepository{Pool: db, Cipher: stack.cipher}
+	var users []string
+	for range 203 {
+		users = append(users, pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID).ID)
+	}
+	slices.Sort(users)
+	var disabledCiphertexts [][]byte
+	for _, userID := range users[:201] {
+		if err := repo.Save(ctx, &domain.MfaFactor{
+			UserID: userID, Type: spec.MfaFactorTOTP, Secret: new("disabled-seed"), CreatedAt: pgfixtures.TestClock(),
+		}); err != nil {
+			t.Fatal(err)
+		}
+		row, err := New(db).GetMfaFactor(ctx, GetMfaFactorParams{UserID: userID, Type: string(spec.MfaFactorTOTP)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		disabledCiphertexts = append(disabledCiphertexts, row.SecretCiphertext)
+	}
+	stack.rotate(t, tenant.ID)
+	if _, err := stack.module.Repository.Disable(ctx, tenant.ID, 1, pgfixtures.TestClock()); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Save(ctx, &domain.MfaFactor{
+		UserID: users[201], Type: spec.MfaFactorTOTP, Secret: new("retiring-seed"), CreatedAt: pgfixtures.TestClock(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	stack.rotate(t, tenant.ID)
+	if err := repo.Save(ctx, &domain.MfaFactor{
+		UserID: users[202], Type: spec.MfaFactorTOTP, Secret: new("active-seed"), CreatedAt: pgfixtures.TestClock(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	stack.module.Migrators.Register(MfaFactorMigratorName, &MfaFactorReencryptor{Repo: repo})
+	params, err := json.Marshal(map[string]string{"tenant_id": tenant.ID, "migrator": MfaFactorMigratorName})
+	if err != nil {
+		t.Fatal(err)
+	}
+	job := &jobsdomain.Job{TenantID: tenant.ID, Params: params}
+	for _, wantMigrated := range []int{1, 0} {
+		result, err := stack.module.ReencryptionHandler(nil)(ctx, job)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var counts struct{ Migrated, Remaining int }
+		if err := json.Unmarshal(result, &counts); err != nil {
+			t.Fatal(err)
+		}
+		if counts.Migrated != wantMigrated || counts.Remaining != 201 {
+			t.Fatalf("result=%s, want migrated=%d remaining=201", result, wantMigrated)
+		}
+	}
+	for i, userID := range users[:201] {
+		row, err := New(db).GetMfaFactor(ctx, GetMfaFactorParams{UserID: userID, Type: string(spec.MfaFactorTOTP)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if row.SecretKeyVersion.Int32 != 1 || !bytes.Equal(row.SecretCiphertext, disabledCiphertexts[i]) {
+			t.Fatal("無効化した行が変更された")
+		}
+	}
+	for i, want := range []string{"retiring-seed", "active-seed"} {
+		factor, err := repo.Find(ctx, users[201+i], spec.MfaFactorTOTP)
+		if err != nil || factor == nil || factor.Secret == nil || *factor.Secret != want {
+			t.Fatalf("seed=%+v err=%v, want %q", factor, err, want)
+		}
+		row, err := New(db).GetMfaFactor(ctx, GetMfaFactorParams{UserID: users[201+i], Type: string(spec.MfaFactorTOTP)})
+		if err != nil || row.SecretKeyVersion.Int32 != 3 {
+			t.Fatalf("key version=%v err=%v, want 3", row, err)
+		}
+	}
+}
+
+//spec:covers REQ-DATAKEYS-010: 退役した鍵の暗号文が破損している場合は無視せずジョブを失敗させ、その行を未移行に残す。
+func TestMfaFactorReencryptionRejectsCorruptedCiphertext(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
+	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
+	stack := newTestDataKeyStack(t, tenant.ID)
+	repo := &MfaFactorRepository{Pool: db, Cipher: stack.cipher}
+	if err := repo.Save(ctx, &domain.MfaFactor{
+		UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: new("seed"), CreatedAt: pgfixtures.TestClock(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	stack.rotate(t, tenant.ID)
+	if _, err := db.Exec(ctx, `UPDATE mfa_factors SET secret_ciphertext='\x00'::bytea WHERE user_id=$1`, user.ID); err != nil {
+		t.Fatal(err)
+	}
+	migrator := &MfaFactorReencryptor{Repo: repo}
+	stack.module.Migrators.Register(MfaFactorMigratorName, migrator)
+	params, err := json.Marshal(map[string]string{"tenant_id": tenant.ID, "migrator": MfaFactorMigratorName})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stack.module.ReencryptionHandler(nil)(ctx, &jobsdomain.Job{TenantID: tenant.ID, Params: params}); err == nil {
+		t.Fatal("破損した暗号文でジョブが成功した")
+	}
+	row, err := New(db).GetMfaFactor(ctx, GetMfaFactorParams{UserID: user.ID, Type: string(spec.MfaFactorTOTP)})
+	if err != nil || row.SecretKeyVersion.Int32 != 1 || !bytes.Equal(row.SecretCiphertext, []byte{0}) {
+		t.Fatalf("row=%+v err=%v, want unchanged version 1", row, err)
+	}
+	if pending, err := migrator.PendingCount(ctx, tenant.ID, 2); err != nil || pending != 1 {
+		t.Fatalf("pending=%d err=%v, want 1", pending, err)
+	}
+}
 
 // testDataKeyStack bootstraps a real DataKeys stack (memory repository + Tink
 // cleartext master key) and exposes every piece a reencryption test needs to
@@ -75,7 +195,7 @@ func TestMfaFactorReencryptor_MigratesLegacyPlaintext(t *testing.T) {
 	}
 
 	activeVersion := stack.activeVersion(t, tenant.ID)
-	migrated, err := migrator.ReencryptBatch(context.Background(), tenant.ID, activeVersion, 10)
+	migrated, err := migrator.ReencryptBatch(context.Background(), tenant.ID, activeVersion, 10, nil)
 	if err != nil {
 		t.Fatalf("ReencryptBatch failed: %v", err)
 	}
@@ -141,7 +261,7 @@ func TestMfaFactorReencryptor_MigratesStaleVersionAfterRotationAndPreservesValue
 		t.Fatalf("pendingBefore = %d, want 1 (row still on version 1)", pendingBefore)
 	}
 
-	migrated, err := migrator.ReencryptBatch(context.Background(), tenant.ID, activeVersion, 10)
+	migrated, err := migrator.ReencryptBatch(context.Background(), tenant.ID, activeVersion, 10, nil)
 	if err != nil {
 		t.Fatalf("ReencryptBatch failed: %v", err)
 	}
@@ -186,7 +306,7 @@ func TestMfaFactorReencryptor_SkipsRowsWithNoSecretMaterial(t *testing.T) {
 		t.Fatalf("pending = %d, want 0 (no secret material to migrate)", pending)
 	}
 
-	migrated, err := migrator.ReencryptBatch(context.Background(), tenant.ID, activeVersion, 10)
+	migrated, err := migrator.ReencryptBatch(context.Background(), tenant.ID, activeVersion, 10, nil)
 	if err != nil {
 		t.Fatalf("ReencryptBatch failed: %v", err)
 	}
@@ -216,7 +336,7 @@ func TestMfaFactorReencryptor_TenantIsolation(t *testing.T) {
 	}
 
 	migratorA := &MfaFactorReencryptor{Repo: &MfaFactorRepository{Pool: db, Cipher: stackA.cipher}}
-	migrated, err := migratorA.ReencryptBatch(context.Background(), tenantA.ID, stackA.activeVersion(t, tenantA.ID), 10)
+	migrated, err := migratorA.ReencryptBatch(context.Background(), tenantA.ID, stackA.activeVersion(t, tenantA.ID), 10, nil)
 	if err != nil {
 		t.Fatalf("ReencryptBatch failed: %v", err)
 	}
@@ -262,7 +382,7 @@ func TestMfaFactorReencryptor_NoPlaintextSurvivesBackfillAcrossTenants(t *testin
 			}
 		}
 		migrator := &MfaFactorReencryptor{Repo: &MfaFactorRepository{Pool: db, Cipher: stack.cipher}}
-		migrated, err := migrator.ReencryptBatch(context.Background(), tenant.ID, stack.activeVersion(t, tenant.ID), 100)
+		migrated, err := migrator.ReencryptBatch(context.Background(), tenant.ID, stack.activeVersion(t, tenant.ID), 100, nil)
 		if err != nil {
 			t.Fatalf("ReencryptBatch failed: %v", err)
 		}
@@ -319,7 +439,7 @@ func TestMfaFactorReencryptorKeepsSeedEnrolledDuringBatch(t *testing.T) {
 			t.Errorf("re-enroll: %v", err)
 		}
 	}
-	migrated, err := (&MfaFactorReencryptor{Repo: repo}).ReencryptBatch(ctx, tenant.ID, stack.activeVersion(t, tenant.ID), 10)
+	migrated, err := (&MfaFactorReencryptor{Repo: repo}).ReencryptBatch(ctx, tenant.ID, stack.activeVersion(t, tenant.ID), 10, nil)
 	if err != nil {
 		t.Fatalf("ReencryptBatch: %v", err)
 	}

@@ -398,3 +398,36 @@ func TestDestroyTenantDataKeyAllowsWhenMigratorReportsNoPendingRecords(t *testin
 		t.Fatalf("DestroyTenantDataKey failed: %v", err)
 	}
 }
+
+//spec:covers REQ-DATAKEYS-005: 無効化したバージョンの参照が残る間は破棄を拒否し、状態と鍵素材を残してイベントを発行しない。
+func TestDestroyDisabledDataKeyRejectsPendingReferences(t *testing.T) {
+	deps := newTestDeps(t)
+	ctx, now := context.Background(), time.Now().UTC()
+	if _, err := BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RotateTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := DisableTenantDataKey(ctx, deps, "tenant-a", 1, now); err != nil {
+		t.Fatal(err)
+	}
+	before, err := deps.Repository.FindByVersion(ctx, "tenant-a", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deps.Migrators = NewMigratorRegistry()
+	deps.Migrators.Register("fixture", &fakeReencryptMigrator{pending: 1})
+	var emitted []spec.DomainEvent
+	deps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
+	if err := DestroyTenantDataKey(ctx, deps, "tenant-a", 1, now); !errors.Is(err, domain.ErrDataKeyStillReferenced) {
+		t.Fatalf("destroy err=%v, want ErrDataKeyStillReferenced", err)
+	}
+	after, err := deps.Repository.FindByVersion(ctx, "tenant-a", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Status != domain.DataKeyStatusDisabled || !bytes.Equal(after.WrappedDEK, before.WrappedDEK) || len(emitted) != 0 {
+		t.Fatalf("status=%s key preserved=%v events=%d", after.Status, bytes.Equal(after.WrappedDEK, before.WrappedDEK), len(emitted))
+	}
+}

@@ -23,9 +23,10 @@ type ConnectionSecretReencryptor struct {
 	EnvResolver federationports.SecretResolver
 }
 
-func (m *ConnectionSecretReencryptor) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int) (int, error) {
+func (m *ConnectionSecretReencryptor) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int, excludedVersions []int32) (int, error) {
 	rows, err := New(m.Repo.Pool).ListIdentityProviderConnectionsPendingSecretReencryption(ctx, ListIdentityProviderConnectionsPendingSecretReencryptionParams{
 		TenantID:         tenantID,
+		ExcludedVersions: excludedVersions,
 		SecretKeyVersion: pgtype.Int4{Int32: int32(activeVersion), Valid: true}, //nolint:gosec // G115: DEK version is a small monotonic counter, well under int32 max
 		Limit:            int32(batchSize),                                      //nolint:gosec // G115: batch size is caller-controlled and small
 	})

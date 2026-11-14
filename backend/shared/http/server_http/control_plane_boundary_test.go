@@ -432,7 +432,9 @@ func TestTenantAdminApisStayInsideRequestTenant(t *testing.T) {
 // dataKeyMigrator は再暗号化の投入先を観測するための登録である。投入そのものは本番の Enqueuer を通す。
 type dataKeyMigrator struct{}
 
-func (dataKeyMigrator) ReencryptBatch(context.Context, string, int, int) (int, error) { return 0, nil }
+func (dataKeyMigrator) ReencryptBatch(context.Context, string, int, int, []int32) (int, error) {
+	return 0, nil
+}
 
 func (dataKeyMigrator) PendingCount(context.Context, string, int) (int, error) { return 0, nil }
 

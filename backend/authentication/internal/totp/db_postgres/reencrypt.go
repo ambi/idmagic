@@ -26,10 +26,11 @@ type MfaFactorReencryptor struct {
 // It is idempotent: a row already on activeVersion is excluded by the
 // underlying query, so re-running after a partial batch or a crash only
 // touches what is still pending.
-func (m *MfaFactorReencryptor) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int) (int, error) {
+func (m *MfaFactorReencryptor) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int, excludedVersions []int32) (int, error) {
 	ctx = tenantports.WithTenantID(ctx, tenantID)
 	rows, err := m.Repo.queries().ListMfaFactorsPendingReencryption(ctx, ListMfaFactorsPendingReencryptionParams{
 		TenantID:         tenantID,
+		ExcludedVersions: excludedVersions,
 		SecretKeyVersion: pgtype.Int4{Int32: int32(activeVersion), Valid: true}, //nolint:gosec // G115: DEK version is a small monotonic counter
 		Limit:            int32(batchSize),                                      //nolint:gosec // G115: batchSize is caller-controlled and small
 	})

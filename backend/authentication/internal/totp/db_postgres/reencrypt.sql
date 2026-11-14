@@ -9,6 +9,7 @@ JOIN users u ON u.id = m.user_id
 WHERE u.tenant_id = $1
   AND (m.secret IS NOT NULL OR m.secret_ciphertext IS NOT NULL)
   AND (m.secret_key_version IS NULL OR m.secret_key_version <> $2)
+  AND (m.secret_key_version IS NULL OR m.secret_key_version <> ALL(COALESCE(sqlc.arg(excluded_versions)::int[], '{}'::int[])))
 ORDER BY m.user_id, m.type
 LIMIT $3;
 

@@ -81,7 +81,10 @@ WHERE tenant_id=$1 AND connector_id=$2 AND user_id=$3 AND state_hash=$4 AND expi
 RETURNING *;
 
 -- name: ListConnectorsPendingReencryption :many
-SELECT * FROM token_vault_connectors WHERE tenant_id=$1 AND secret_key_version <> $2 ORDER BY id LIMIT $3;
+SELECT * FROM token_vault_connectors
+WHERE tenant_id=$1 AND secret_key_version <> $2
+  AND secret_key_version <> ALL(COALESCE(sqlc.arg(excluded_versions)::int[], '{}'::int[]))
+ORDER BY id LIMIT $3;
 
 -- name: CountConnectorsPendingReencryption :one
 SELECT count(*) FROM token_vault_connectors WHERE tenant_id=$1 AND secret_key_version <> $2;
@@ -92,7 +95,9 @@ WHERE tenant_id=$1 AND id=$2 AND version=$5 AND secret_key_version=$6;
 
 -- name: ListConnectionsPendingReencryption :many
 SELECT * FROM token_vault_connections
-WHERE tenant_id=$1 AND token_key_version IS NOT NULL AND token_key_version <> $2 ORDER BY id LIMIT $3;
+WHERE tenant_id=$1 AND token_key_version IS NOT NULL AND token_key_version <> $2
+  AND token_key_version <> ALL(COALESCE(sqlc.arg(excluded_versions)::int[], '{}'::int[]))
+ORDER BY id LIMIT $3;
 
 -- name: CountConnectionsPendingReencryption :one
 SELECT count(*) FROM token_vault_connections

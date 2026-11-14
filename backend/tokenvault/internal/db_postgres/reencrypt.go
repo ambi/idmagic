@@ -16,9 +16,10 @@ const (
 type ConnectorSecretReencryptor struct{ Repo *ConnectorRepository }
 
 // ReencryptBatch は読んだ版のままの行だけを書き換える。読んだ後に更新された行の新しい値を残す。
-func (m *ConnectorSecretReencryptor) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int) (int, error) {
+func (m *ConnectorSecretReencryptor) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int, excludedVersions []int32) (int, error) {
 	rows, err := New(m.Repo.Pool).ListConnectorsPendingReencryption(ctx, ListConnectorsPendingReencryptionParams{
-		TenantID: tenantID, SecretKeyVersion: int32(activeVersion), Limit: int32(batchSize), //nolint:gosec // G115: small values
+		ExcludedVersions: excludedVersions,
+		TenantID:         tenantID, SecretKeyVersion: int32(activeVersion), Limit: int32(batchSize), //nolint:gosec // G115: small values
 	})
 	if err != nil {
 		return 0, err
@@ -57,10 +58,11 @@ func (m *ConnectorSecretReencryptor) PendingCount(ctx context.Context, tenantID 
 type ConnectionTokenReencryptor struct{ Repo *ConnectionRepository }
 
 // ReencryptBatch はトークンの版が読んだ値のままの行だけを書き換える。
-func (m *ConnectionTokenReencryptor) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int) (int, error) {
+func (m *ConnectionTokenReencryptor) ReencryptBatch(ctx context.Context, tenantID string, activeVersion, batchSize int, excludedVersions []int32) (int, error) {
 	active := pgtype.Int4{Int32: int32(activeVersion), Valid: true} //nolint:gosec // G115: small values
 	rows, err := New(m.Repo.Pool).ListConnectionsPendingReencryption(ctx, ListConnectionsPendingReencryptionParams{
-		TenantID: tenantID, TokenKeyVersion: active, Limit: int32(batchSize), //nolint:gosec // G115: small values
+		ExcludedVersions: excludedVersions,
+		TenantID:         tenantID, TokenKeyVersion: active, Limit: int32(batchSize), //nolint:gosec // G115: small values
 	})
 	if err != nil {
 		return 0, err
