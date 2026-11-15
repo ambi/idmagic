@@ -31,10 +31,11 @@ type reconcileFixture struct {
 func newReconcileFixture(t *testing.T, conn *domain.ProvisioningConnection) *reconcileFixture {
 	t.Helper()
 	f := &reconcileFixture{
-		t: t, connRepo: memory.NewProvisioningConnectionRepository(), taskRepo: memory.NewProvisioningTaskRepository(),
+		t: t, taskRepo: memory.NewProvisioningTaskRepository(),
 		linkRepo: memory.NewRemoteResourceLinkRepository(), userRepo: idmanagement.NewMemoryModule().UserRepo,
 		assignmentRepo: application.NewMemoryModule().AssignmentRepo,
 	}
+	f.connRepo = memory.NewProvisioningConnectionRepository(f.taskRepo, f.linkRepo)
 	f.deps = usecases.ReconcileDeps{
 		ConnectionRepo: f.connRepo, TaskRepo: f.taskRepo, LinkRepo: f.linkRepo, UserRepo: f.userRepo, AssignmentRepo: f.assignmentRepo,
 	}

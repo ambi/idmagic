@@ -13,13 +13,16 @@ import (
 )
 
 type Fixture struct {
-	Connections  ports.ProvisioningConnectionRepository
-	Tasks        ports.ProvisioningTaskRepository
-	TenantA      string
-	TenantB      string
-	Application  string
-	CredentialID string
-	Now          time.Time
+	Connections        ports.ProvisioningConnectionRepository
+	Tasks              ports.ProvisioningTaskRepository
+	Links              ports.RemoteResourceLinkRepository
+	SiblingApplication string
+	OtherApplication   string
+	TenantA            string
+	TenantB            string
+	Application        string
+	CredentialID       string
+	Now                time.Time
 }
 
 type NewFixture func(t *testing.T) Fixture
@@ -82,6 +85,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 		t.Fatalf("ListTenantsWithActiveConnections = (%v, %v)", tenants, err)
 	}
 	runQuarantineTasks(t, f)
+	runConnectionDeletion(t, f, connection)
 	if err := f.Connections.Delete(ctx, f.TenantA, f.Application); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}

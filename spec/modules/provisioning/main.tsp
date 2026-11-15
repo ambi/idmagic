@@ -187,7 +187,7 @@ model DeleteProvisioningConnectionSuccess_204 {
   @statusCode statusCode: 204;
 }
 
-@doc("管理者が、ProvisioningConnection を完全に削除する。記録済みの RemoteResourceLink と ProvisioningTask は履歴として残す。")
+@doc("管理者が、接続と資格情報、タスク、下流リソースとのリンク、削除予約、フル同期とタスクの関連付けを一括削除する。下流のアカウントとグループは残す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("DeleteProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning")

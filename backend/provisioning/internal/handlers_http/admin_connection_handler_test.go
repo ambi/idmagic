@@ -82,8 +82,8 @@ func newProvisioningContractServer(t *testing.T) (provisioningRequest, *provisio
 		ID: "member", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "member", PasswordHash: "unused",
 		CreatedAt: now, UpdatedAt: now,
 	})
-	connections := provisioningmemory.NewProvisioningConnectionRepository()
 	tasks := provisioningmemory.NewProvisioningTaskRepository()
+	connections := provisioningmemory.NewProvisioningConnectionRepository(tasks, provisioningmemory.NewRemoteResourceLinkRepository())
 	e := echo.New()
 	e.HTTPErrorHandler = support.ErrorHandler(nil, nil)
 	provisioninghttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), provisioninghttp.Deps{

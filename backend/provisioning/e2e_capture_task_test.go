@@ -158,9 +158,10 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
-	connRepo := memoryprov.NewProvisioningConnectionRepository()
+
 	taskRepo := memoryprov.NewProvisioningTaskRepository()
 	linkRepo := memoryprov.NewRemoteResourceLinkRepository()
+	connRepo := memoryprov.NewProvisioningConnectionRepository(taskRepo, linkRepo)
 
 	captureDeps := usecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}
 	notifier := usecases.UserMutationNotifier{CaptureDeps: captureDeps}
@@ -380,9 +381,10 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
-	connRepo := memoryprov.NewProvisioningConnectionRepository()
+
 	taskRepo := memoryprov.NewProvisioningTaskRepository()
 	linkRepo := memoryprov.NewRemoteResourceLinkRepository()
+	connRepo := memoryprov.NewProvisioningConnectionRepository(taskRepo, linkRepo)
 	ctx := testing_tenant.Default(context.Background())
 	now := time.Now().UTC()
 	conn := &domain.ProvisioningConnection{

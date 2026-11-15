@@ -20,7 +20,7 @@ type fakeEnqueuer struct {
 
 func dispatcherConnections(t *testing.T) *memory.ProvisioningConnectionRepository {
 	t.Helper()
-	repo := memory.NewProvisioningConnectionRepository()
+	repo := memory.NewProvisioningConnectionRepository(memory.NewProvisioningTaskRepository(), memory.NewRemoteResourceLinkRepository())
 	for _, id := range []string{"app-1", "app-2"} {
 		if err := repo.Register(t.Context(), activeConnection(id, domain.ScopeAllUsers), "secret"); err != nil {
 			t.Fatal(err)

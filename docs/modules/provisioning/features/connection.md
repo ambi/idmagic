@@ -33,7 +33,6 @@
 - 管理者が資格情報と `status` 以外の設定を指定して接続を更新したとき、Provisioning は、保存の後に `ProvisioningConnectionUpdated` を発行する。
 - 管理者が `status` を `disabled` から `active` へ戻したとき、Provisioning は、保存の後に `ProvisioningConnectionUpdated` を発行する。
 - 管理者が `status` を `disabled` にして接続を更新したとき、Provisioning は、保存の後に `ProvisioningConnectionDisabled` を発行する。
-- 管理者が接続を削除したとき、Provisioning は、接続を消して 204 を返し、`ProvisioningConnectionDeleted` を発行する。
 - 管理者がテナントの接続を一覧したとき、Provisioning は、テナントのすべての接続を 200 で返す。
 - HTTPS でないか、内部のアドレスかリンクローカルのアドレスを指す下流の URL を指定された場合、Provisioning は、400 と `invalid_request` で拒否し、接続を作らない。
 - アプリケーションにすでに接続がある場合、Provisioning は、登録を 409 と `provisioning_conflict` で拒否する。
@@ -43,6 +42,16 @@
 
 - 別のテナントか存在しない接続かタスクを指定された場合、Provisioning は、404 と `provisioning_not_found` で拒否する。
 - **例**：EX-PROVISIONING-015-01
+
+### 管理者による接続の削除
+
+#### REQ-PROVISIONING-021 接続の削除は関連状態も一括して破棄し、再登録へ引き継がない
+
+- 管理者が接続を削除したとき、Provisioning は、接続と資格情報、すべての状態のプロビジョニングタスク、下流リソースとのリンク、削除予約、フル同期とタスクの関連付けを一つの確定で削除し、204 を返し、確定後に `ProvisioningConnectionDeleted` を発行する。
+- 接続の削除を保存できない場合、Provisioning は、接続と関連状態を削除前のまま保ち、`ProvisioningConnectionDeleted` を発行しない。
+- 削除した接続を同じ Application に再登録したとき、Provisioning は、削除前のタスク、リンク、削除予約とフル同期を引き継がず、新しいタスクの作成を受け付ける。
+- 接続を削除したとき、Provisioning は、下流に既に作ったアカウントとグループを削除せず、送信を開始した外部リクエストを取り消さない。
+- **判断**：再開のための無効化と破棄のための削除を区別する理由は、[接続の削除で関連状態を破棄する](../decisions.md#接続の削除で関連状態を破棄する)。
 
 ### 管理者による On-Demand Provision
 
@@ -98,6 +107,11 @@
 `StartFullResync` がタスクを作り終える前に先のタスクが終わっても、完了しない。
 
 ### 信頼性
+
+接続と関連状態の削除は、同じ保存先で一つの確定にする。
+PostgreSQL は接続の削除に伴う外部キーの連鎖削除を使う。
+メモリではタスクとリンクの保存先を接続の保存先の構築時に必須とし、接続、タスク、リンクの順にすべてのロックを取得してから削除する。
+Jobs のキューはこの確定へ参加させず、残ったジョブは[削除済みタスクの実行](task.md#req-provisioning-022-削除済みタスクのジョブは送信も記録もせず正常終了する)で終了させる。
 
 ジョブのハンドラーは、タスクを `succeeded` または `dead_letter` として保存した後に、完了を判定する。
 `completed` への更新は `running` のときだけ成り立つ条件付きの更新であり、成り立った呼び出しだけが `FullResyncCompleted` を発行する。

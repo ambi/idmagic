@@ -17,8 +17,8 @@ import (
 )
 
 func newCaptureDeps() (usecases.CaptureDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository, appports.AssignmentRepository) {
-	connRepo := memory.NewProvisioningConnectionRepository()
 	taskRepo := memory.NewProvisioningTaskRepository()
+	connRepo := memory.NewProvisioningConnectionRepository(taskRepo, memory.NewRemoteResourceLinkRepository())
 	assignmentRepo := application.NewMemoryModule().AssignmentRepo
 	return usecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo, AssignmentRepo: assignmentRepo}, connRepo, taskRepo, assignmentRepo
 }

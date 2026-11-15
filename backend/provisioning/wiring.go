@@ -20,7 +20,9 @@ import (
 )
 
 func NewMemoryModule() Module {
-	return Module{ConnectionRepo: db_memory.NewProvisioningConnectionRepository(), RemoteLinkRepo: db_memory.NewRemoteResourceLinkRepository(), TaskRepo: db_memory.NewProvisioningTaskRepository()}
+	tasks := db_memory.NewProvisioningTaskRepository()
+	links := db_memory.NewRemoteResourceLinkRepository()
+	return Module{ConnectionRepo: db_memory.NewProvisioningConnectionRepository(tasks, links), RemoteLinkRepo: links, TaskRepo: tasks}
 }
 
 func NewPostgresModule(pool postgres.DB) Module {

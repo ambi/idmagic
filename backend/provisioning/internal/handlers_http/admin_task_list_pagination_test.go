@@ -56,7 +56,7 @@ func newAdminTaskPaginationHandler(t *testing.T) (*echo.Echo, *provisioningmemor
 		},
 		SignInPolicy: signinpolicy.NewMemoryModule(),
 		Provisioning: provisioning.Module{
-			ConnectionRepo: provisioningmemory.NewProvisioningConnectionRepository(),
+			ConnectionRepo: provisioningmemory.NewProvisioningConnectionRepository(taskRepo, provisioningmemory.NewRemoteResourceLinkRepository()),
 			RemoteLinkRepo: provisioningmemory.NewRemoteResourceLinkRepository(),
 			TaskRepo:       taskRepo,
 		},

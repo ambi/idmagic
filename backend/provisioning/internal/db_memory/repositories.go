@@ -21,12 +21,20 @@ type ProvisioningConnectionRepository struct {
 	mu      sync.RWMutex
 	conns   map[string]*domain.ProvisioningConnection // key: tenantKey(tenant_id, application_id)
 	secrets map[string]string
+	tasks   *ProvisioningTaskRepository
+	links   *RemoteResourceLinkRepository
 }
 
 var _ ports.ProvisioningConnectionRepository = (*ProvisioningConnectionRepository)(nil)
 
-func NewProvisioningConnectionRepository() *ProvisioningConnectionRepository {
-	return &ProvisioningConnectionRepository{conns: map[string]*domain.ProvisioningConnection{}, secrets: map[string]string{}}
+func NewProvisioningConnectionRepository(tasks *ProvisioningTaskRepository, links *RemoteResourceLinkRepository) *ProvisioningConnectionRepository {
+	if tasks == nil || links == nil {
+		panic("provisioning: task and link repositories are required")
+	}
+	return &ProvisioningConnectionRepository{
+		conns: map[string]*domain.ProvisioningConnection{}, secrets: map[string]string{},
+		tasks: tasks, links: links,
+	}
 }
 
 func connKey(tenantID, applicationID string) string {
@@ -111,10 +119,46 @@ func (r *ProvisioningConnectionRepository) CredentialSecret(_ context.Context, t
 	return r.secrets[connKey(tenantID, applicationID)], nil
 }
 
-func (r *ProvisioningConnectionRepository) Delete(_ context.Context, tenantID, applicationID string) error {
+func (r *ProvisioningConnectionRepository) Delete(ctx context.Context, tenantID, applicationID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	// すべての保存先を固定してから更新し、関連状態だけが残る途中の削除を見せない。
+	r.tasks.mu.Lock()
+	defer r.tasks.mu.Unlock()
+	r.links.mu.Lock()
+	defer r.links.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	key := connKey(tenantID, applicationID)
+	if r.conns[key] == nil {
+		return nil
+	}
+	for key, task := range r.tasks.tasks {
+		if task.TenantID == tenantID && task.ConnectionID == applicationID {
+			delete(r.tasks.idempotency, task.IdempotencyKey())
+			delete(r.tasks.fullResyncTasks, key)
+			delete(r.tasks.tasks, key)
+		}
+	}
+	for key, reservation := range r.tasks.reservations {
+		if reservation.TenantID == tenantID && reservation.ConnectionID == applicationID {
+			delete(r.tasks.reservations, key)
+		}
+	}
+	for key, resync := range r.tasks.fullResyncs {
+		if resync.TenantID == tenantID && resync.ConnectionID == applicationID {
+			delete(r.tasks.fullResyncs, key)
+		}
+	}
+	for key, link := range r.links.links {
+		if link.TenantID == tenantID && link.ConnectionID == applicationID {
+			delete(r.links.links, key)
+		}
+	}
 	delete(r.conns, key)
 	delete(r.secrets, key)
 	return nil

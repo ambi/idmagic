@@ -31,6 +31,8 @@ type ProvisioningConnectionRepository interface {
 	Find(ctx context.Context, tenantID, applicationID string) (*domain.ProvisioningConnection, error)
 	// CredentialSecret returns the plaintext/opaque secret for outbound calls.
 	CredentialSecret(ctx context.Context, tenantID, applicationID string) (string, error)
+	// Delete は接続、資格情報、タスク、リンク、削除予約、フル同期と関連付けを一括削除する。
+	// 接続が指定テナントに無ければ無操作とし、保存に失敗した場合はすべての状態を保つ。
 	Delete(ctx context.Context, tenantID, applicationID string) error
 	ListAll(ctx context.Context, tenantID string) ([]*domain.ProvisioningConnection, error)
 	// ListTenantsWithActiveConnections は有効な接続を持つテナントを返す。インクリメンタル同期がテナントを越えて接続を巡る入口である。

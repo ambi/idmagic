@@ -16,8 +16,8 @@ import (
 )
 
 func newAdminDeps() (usecases.AdminDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository) {
-	connRepo := memory.NewProvisioningConnectionRepository()
 	taskRepo := memory.NewProvisioningTaskRepository()
+	connRepo := memory.NewProvisioningConnectionRepository(taskRepo, memory.NewRemoteResourceLinkRepository())
 	return usecases.AdminDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}, connRepo, taskRepo
 }
 

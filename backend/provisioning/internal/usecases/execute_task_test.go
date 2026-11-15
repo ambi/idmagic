@@ -96,9 +96,9 @@ type memberPatch struct {
 var _ ports.ProvisioningTargetClient = (*fakeTargetClient)(nil)
 
 func newExecuteTaskDeps(client ports.ProvisioningTargetClient, attrSource ports.AttributeSource) (usecases.ExecuteTaskDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository, *memory.RemoteResourceLinkRepository) {
-	connRepo := memory.NewProvisioningConnectionRepository()
 	taskRepo := memory.NewProvisioningTaskRepository()
 	linkRepo := memory.NewRemoteResourceLinkRepository()
+	connRepo := memory.NewProvisioningConnectionRepository(taskRepo, linkRepo)
 	return usecases.ExecuteTaskDeps{
 		ConnectionRepo:  connRepo,
 		TaskRepo:        taskRepo,

@@ -39,7 +39,7 @@ func TestAdminConnectionAPIEmitsLifecycleEvents(t *testing.T) {
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin", PasswordHash: "unused",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	connections := provisioningmemory.NewProvisioningConnectionRepository()
+	connections := provisioningmemory.NewProvisioningConnectionRepository(provisioningmemory.NewProvisioningTaskRepository(), provisioningmemory.NewRemoteResourceLinkRepository())
 	var events []spec.DomainEvent
 	e := echo.New()
 	e.HTTPErrorHandler = support.ErrorHandler(nil, nil)

@@ -35,7 +35,7 @@ func testConnection(applicationID, tenantID string) *domain.ProvisioningConnecti
 }
 
 func TestProvisioningConnectionRepository_Register_RejectsDuplicateApplication(t *testing.T) {
-	repo := NewProvisioningConnectionRepository()
+	repo := NewProvisioningConnectionRepository(NewProvisioningTaskRepository(), NewRemoteResourceLinkRepository())
 	ctx := context.Background()
 	conn := testConnection("app-1", "tenant-a")
 	if err := repo.Register(ctx, conn, "secret-1"); err != nil {
@@ -48,7 +48,7 @@ func TestProvisioningConnectionRepository_Register_RejectsDuplicateApplication(t
 }
 
 func TestProvisioningConnectionRepository_Find_DoesNotExposeSecret(t *testing.T) {
-	repo := NewProvisioningConnectionRepository()
+	repo := NewProvisioningConnectionRepository(NewProvisioningTaskRepository(), NewRemoteResourceLinkRepository())
 	ctx := context.Background()
 	conn := testConnection("app-1", "tenant-a")
 	if err := repo.Register(ctx, conn, "top-secret"); err != nil {
@@ -74,7 +74,7 @@ func TestProvisioningConnectionRepository_Find_DoesNotExposeSecret(t *testing.T)
 }
 
 func TestProvisioningConnectionRepository_Find_TenantIsolation(t *testing.T) {
-	repo := NewProvisioningConnectionRepository()
+	repo := NewProvisioningConnectionRepository(NewProvisioningTaskRepository(), NewRemoteResourceLinkRepository())
 	ctx := context.Background()
 	if err := repo.Register(ctx, testConnection("app-1", "tenant-a"), "secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
@@ -89,7 +89,7 @@ func TestProvisioningConnectionRepository_Find_TenantIsolation(t *testing.T) {
 }
 
 func TestProvisioningConnectionRepository_Update_RotatesSecretOnlyWhenProvided(t *testing.T) {
-	repo := NewProvisioningConnectionRepository()
+	repo := NewProvisioningConnectionRepository(NewProvisioningTaskRepository(), NewRemoteResourceLinkRepository())
 	ctx := context.Background()
 	conn := testConnection("app-1", "tenant-a")
 	if err := repo.Register(ctx, conn, "secret-1"); err != nil {
@@ -116,7 +116,7 @@ func TestProvisioningConnectionRepository_Update_RotatesSecretOnlyWhenProvided(t
 }
 
 func TestProvisioningConnectionRepository_Delete_RemovesConnection(t *testing.T) {
-	repo := NewProvisioningConnectionRepository()
+	repo := NewProvisioningConnectionRepository(NewProvisioningTaskRepository(), NewRemoteResourceLinkRepository())
 	ctx := context.Background()
 	if err := repo.Register(ctx, testConnection("app-1", "tenant-a"), "secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
@@ -138,7 +138,7 @@ func TestProvisioningConnectionRepository_Delete_RemovesConnection(t *testing.T)
 }
 
 func TestProvisioningConnectionRepository_ListByTenant_ScopesToTenant(t *testing.T) {
-	repo := NewProvisioningConnectionRepository()
+	repo := NewProvisioningConnectionRepository(NewProvisioningTaskRepository(), NewRemoteResourceLinkRepository())
 	ctx := context.Background()
 	_ = repo.Register(ctx, testConnection("app-1", "tenant-a"), "s1")
 	_ = repo.Register(ctx, testConnection("app-2", "tenant-a"), "s2")

@@ -68,6 +68,7 @@ type provisioningTaskParams struct {
 // プロビジョニングタスクを succeeded または dead_letter として保存した後、それが属するフル同期の完了を判定する。
 // 隔離中または無効ならタスクを pending に戻してからジョブだけを完了し、成功と失敗の記録を行わない。
 // 保留済みか別のジョブへ関連付けたタスクの古いジョブは、保存も送信も行わず終了する。
+// 接続の削除で消えたタスクも正常終了し、Jobs の再試行と接続の失敗数には数えない。
 func ProvisioningTaskHandler(deps JobHandlerDeps) jobsports.Handler {
 	now := deps.Now
 	if now == nil {
@@ -82,10 +83,17 @@ func ProvisioningTaskHandler(deps JobHandlerDeps) jobsports.Handler {
 		if err != nil {
 			return nil, err
 		}
-		if task != nil && task.JobID != nil && (task.Status == domain.TaskPending || *task.JobID != job.ID) {
+		if task == nil {
+			return nil, nil
+		}
+		if task.JobID != nil && (task.Status == domain.TaskPending || *task.JobID != job.ID) {
 			return nil, nil
 		}
 		event, execErr := ExecuteTask(ctx, deps.ExecuteTaskDeps, job.TenantID, params.TaskID, now())
+		if errors.Is(execErr, ErrTaskNotFound) {
+			// 最初の検索と実行側の検索の間に接続の連鎖削除が確定する場合もある。
+			return nil, nil
+		}
 		if errors.Is(execErr, ErrConnectionQuarantined) || errors.Is(execErr, ErrConnectionDisabled) {
 			_, err := deps.TaskRepo.Suspend(ctx, job.TenantID, params.TaskID, job.ID)
 			return nil, err
