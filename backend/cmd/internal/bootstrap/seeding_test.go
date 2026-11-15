@@ -11,10 +11,97 @@ import (
 	"testing"
 	"time"
 
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/seeding/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
+
+//spec:covers REQ-SEEDING-006: 所有者の作成操作が使用量と監査に反映され、再適用では増加しない。
+func TestSeedUsesOwnerCommandsAndAuditsOnlyNewResources(t *testing.T) {
+	t.Setenv("DEMO_CLIENT_SECRET", "demo-client-secret")
+	t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
+	deps, err := assembleMemory(SharedConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply}
+	if _, err := Seed(ctx, deps, request, ""); err != nil {
+		t.Fatal(err)
+	}
+	usage, err := deps.Tenancy.QuotaRepo.GetUsage(ctx, tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage.Users != 2 || usage.Groups != 2 || usage.OAuth2Clients != 3 || usage.Applications != 4 {
+		t.Fatalf("seed usage = %+v, want users=2 groups=2 clients=3 applications=4", usage)
+	}
+	query := auditports.AuditEventQuery{TenantID: tenancydomain.DefaultTenantID, Limit: 100}
+	events, err := deps.Audit.AuditEventRepo.List(ctx, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts := map[string]int{}
+	for _, event := range events {
+		counts[event.Type]++
+	}
+	for eventType, want := range map[string]int{"UserCreated": 2, "GroupCreated": 2, "AdminOAuth2ClientCreated": 3, "ApplicationCreated": 4, "ApplicationAssigned": 4} {
+		if counts[eventType] != want {
+			t.Errorf("%s count = %d, want %d", eventType, counts[eventType], want)
+		}
+	}
+	if _, err := Seed(ctx, deps, request, ""); err != nil {
+		t.Fatal(err)
+	}
+	afterUsage, err := deps.Tenancy.QuotaRepo.GetUsage(ctx, tenancydomain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterEvents, err := deps.Audit.AuditEventRepo.List(ctx, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(usage, afterUsage) || !reflect.DeepEqual(events, afterEvents) {
+		t.Fatal("repeated apply changed quota usage or audit records")
+	}
+}
+
+//spec:covers REQ-SEEDING-009: dry_run がデモの項目の手動変更を conflict とし、apply が既存値を残す。
+func TestSeedPlansDemoDriftWithoutWriting(t *testing.T) {
+	t.Setenv("DEMO_CLIENT_SECRET", "demo-client-secret")
+	t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
+	deps, err := assembleMemory(SharedConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply}
+	if _, err := Seed(ctx, deps, request, ""); err != nil {
+		t.Fatal(err)
+	}
+	client, err := deps.OAuth2.ClientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, seedDemoClientID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.Scope = "manual-drift"
+	if err := deps.OAuth2.ClientRepo.Save(ctx, client); err != nil {
+		t.Fatal(err)
+	}
+	request.Mode = domain.ModeDryRun
+	plan, _ := Seed(ctx, deps, request, "")
+	if plan.Count(domain.OperationConflict) != 1 {
+		t.Fatalf("dry_run plan = %+v, want one conflict", plan)
+	}
+	request.Mode = domain.ModeApply
+	if _, err := Seed(ctx, deps, request, ""); err == nil {
+		t.Fatal("apply accepted manual drift")
+	}
+	kept, err := deps.OAuth2.ClientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, seedDemoClientID)
+	if err != nil || !reflect.DeepEqual(client, kept) {
+		t.Fatalf("manual client changed: %+v, %v", kept, err)
+	}
+}
 
 // 作成操作を含む機密値を持たない plan を返すが、永続状態を変更しない。
 // マニフェストを選ぶ。

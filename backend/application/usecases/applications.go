@@ -68,6 +68,21 @@ func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateAppli
 	if err != nil {
 		return nil, err
 	}
+	return createApplication(ctx, deps, in, tenantID, id, now)
+}
+
+// CreateSeedApplication は固定 ID を共通の検証、使用量管理とイベントへ通す。
+func CreateSeedApplication(ctx context.Context, deps ApplicationDeps, app *domain.Application) error {
+	if app.ID == "" {
+		return errors.New("seed application id is required")
+	}
+	_, err := createApplication(ctx, deps, CreateApplicationInput{
+		ActorUserID: "seed", Name: app.Name, Kind: app.Kind, LaunchURL: app.LaunchURL, Protocol: app.Protocol,
+	}, app.TenantID, app.ID, app.CreatedAt)
+	return err
+}
+
+func createApplication(ctx context.Context, deps ApplicationDeps, in CreateApplicationInput, tenantID, id string, now time.Time) (*domain.Application, error) {
 	app := &domain.Application{
 		TenantID:  tenantID,
 		ID:        id,

@@ -21,6 +21,7 @@ import (
 	"github.com/ambi/idmagic/backend/tokenvault"
 
 	"github.com/ambi/idmagic/backend/saml"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	ratelimitmemory "github.com/ambi/idmagic/backend/shared/ratelimit/db_memory"
@@ -73,6 +74,9 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		WithMemoryClientDeletion(idmModule.DeleteClientBindings, tenancyModule.QuotaRepo)
 	oauth2Module.EventSink = sinks_console.NewConsoleSink()
 	return &Dependencies{
+		SeedRequestLock: func(ctx context.Context, _ seedingdomain.Request, apply func(context.Context) error) error {
+			return apply(ctx)
+		},
 		Tenancy:          tenancyModule,
 		IdManagement:     idmModule,
 		IdGovernance:     governanceModule,

@@ -17,7 +17,8 @@ import (
 
 // newUser は管理者による作成と JIT が createUser へ渡す、経路ごとに決まった部分である。
 type newUser struct {
-	// User は ID と時刻を除いた作成する User。取り込み元だけは初期の Disabled を指定できる。
+	// User の ID は通常の経路では空で、seed だけが決定的な ID を指定する。
+	// 取り込み元と seed は初期の Disabled を指定できる。
 	User        userdomain.User
 	ActorUserID string
 	// PasswordHistoryHash が空なら、パスワードの履歴を作らない。
@@ -48,11 +49,21 @@ func createUser(ctx context.Context, deps AdminUserDeps, in newUser, now time.Ti
 			}
 		}
 	}
-	id, err := spec.NewUUIDv4()
-	if err != nil {
-		return nil, err
+	if user.ID == "" {
+		id, err := spec.NewUUIDv4()
+		if err != nil {
+			return nil, err
+		}
+		user.ID = id
+	} else {
+		existing, err := deps.UserRepo.FindBySub(ctx, user.ID)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil {
+			return nil, ErrUsernameConflict
+		}
 	}
-	user.ID = id
 	status := idmdomain.UserStatusActive
 	if user.Lifecycle.Status == idmdomain.UserStatusDisabled {
 		status = idmdomain.UserStatusDisabled

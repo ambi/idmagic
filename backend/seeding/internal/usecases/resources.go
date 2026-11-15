@@ -14,19 +14,25 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-func NewContributor(deps ResourceDependencies, manifest MaterializedManifest) Contributor {
-	return &seedContributor{deps: deps, manifest: manifest}
+func NewContributor(deps ResourceDependencies, commands ResourceCommands, manifest MaterializedManifest) (Contributor, error) {
+	if commands == nil {
+		return nil, fmt.Errorf("seed resource commands are required")
+	}
+	if deps.ClientRepo == nil || deps.UserRepo == nil || deps.GroupRepo == nil || deps.MfaFactorRepo == nil || deps.PasswordHistoryRepo == nil || deps.AuthzDetailTypeRepo == nil || deps.RPRepo == nil || deps.SPRepo == nil || deps.Applications == nil || deps.AssignmentRepo == nil || deps.Hasher == nil {
+		return nil, fmt.Errorf("seed resource readers and password verifier are required")
+	}
+	return &seedContributor{deps: deps, commands: commands, manifest: manifest}, nil
 }
 
 type seedContributor struct {
 	deps     ResourceDependencies
+	commands ResourceCommands
 	manifest MaterializedManifest
 }
 
 func ensureClient(ctx context.Context, repo interface {
 	FindByID(context.Context, string, string) (*oauthdomain.OAuth2Client, error)
-	Save(context.Context, *oauthdomain.OAuth2Client) error
-}, desired *oauthdomain.OAuth2Client, apply bool,
+}, commands ResourceCommands, desired *oauthdomain.OAuth2Client, apply bool,
 ) (domain.Operation, error) {
 	existing, err := repo.FindByID(ctx, desired.TenantID, desired.ClientID)
 	if err != nil {
@@ -36,7 +42,7 @@ func ensureClient(ctx context.Context, repo interface {
 	if existing == nil {
 		op.Kind = domain.OperationCreate
 		if apply {
-			err = repo.Save(ctx, desired)
+			err = commands.CreateClient(ctx, desired)
 		}
 		return op, err
 	}
@@ -82,7 +88,7 @@ func (c *seedContributor) operations(ctx context.Context, request domain.Request
 	for _, resource := range c.manifest.Manifest.Resources {
 		if resource.Kind == domain.ResourceKindFirstPartyClients {
 			for _, client := range domain.FirstPartyClients(resource.Clients, redirectURIs, now) {
-				if err := appendOperation(ensureClient(ctx, c.deps.ClientRepo, client, apply)); err != nil {
+				if err := appendOperation(ensureClient(ctx, c.deps.ClientRepo, c.commands, client, apply)); err != nil {
 					return operations, err
 				}
 			}
@@ -107,57 +113,19 @@ func (c *seedContributor) operations(ctx context.Context, request domain.Request
 	if demo == nil {
 		return operations, nil
 	}
-	complete, err := c.demoManifestComplete(ctx, *demo.Demo)
-	if err != nil {
-		return operations, err
-	}
-	operation := domain.Operation{LogicalKey: demo.LogicalKey, Kind: domain.OperationNoop, Summary: "demo manifest"}
-	if !complete {
-		operation.Kind = domain.OperationCreate
-	}
-	operations = append(operations, operation)
-	if !apply {
-		return operations, nil
-	}
+	demoOperations := &resourceOperations{apply: apply, items: operations}
 	if err := SeedDemoData(ctx, c.deps.ClientRepo, c.deps.UserRepo, c.deps.MfaFactorRepo, c.deps.PasswordHistoryRepo, c.deps.GroupRepo, c.deps.AuthzDetailTypeRepo, c.deps.Hasher,
-		*demo.Demo, c.manifest.Secret(demo.LogicalKey, "client_secret"), c.manifest.Secret(demo.LogicalKey, "user_password"), c.manifest.Secret(demo.LogicalKey, "totp_secret")); err != nil {
-		return operations, err
+		*demo.Demo, c.manifest.Secret(demo.LogicalKey, "client_secret"), c.manifest.Secret(demo.LogicalKey, "user_password"), c.manifest.Secret(demo.LogicalKey, "totp_secret"), demoOperations, c.commands); err != nil {
+		return demoOperations.items, err
 	}
-	if err := SeedWsFedRelyingParty(ctx, c.deps.RPRepo, *demo.Demo); err != nil {
-		return operations, err
+	if err := SeedWsFedRelyingParty(ctx, c.deps.RPRepo, *demo.Demo, demoOperations, c.commands); err != nil {
+		return demoOperations.items, err
 	}
-	if err := SeedSamlServiceProvider(ctx, c.deps.SPRepo, *demo.Demo); err != nil {
-		return operations, err
+	if err := SeedSamlServiceProvider(ctx, c.deps.SPRepo, *demo.Demo, demoOperations, c.commands); err != nil {
+		return demoOperations.items, err
 	}
-	return operations, SeedDemoApplications(ctx, c.deps.Applications, c.deps.AssignmentRepo, *demo.Demo, now)
-}
-
-// demoManifestComplete は apply 前後で同じ最小完了条件を判定する。各 resource の
-// 詳細な semantic drift は apply 側の ensure が検出し、既存値を上書きしない。
-func (c *seedContributor) demoManifestComplete(ctx context.Context, seed domain.DevelopmentDemoSeed) (bool, error) {
-	demo, err := c.deps.ClientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, seed.ClientID)
-	if err != nil || demo == nil {
-		return false, err
-	}
-	for _, desired := range seed.Users {
-		user, findErr := c.deps.UserRepo.FindBySub(ctx, desired.ID)
-		if findErr != nil || user == nil {
-			return false, findErr
-		}
-	}
-	for _, desired := range seed.Groups {
-		group, findErr := c.deps.GroupRepo.FindByID(ctx, tenancydomain.DefaultTenantID, desired.ID)
-		if findErr != nil || group == nil {
-			return false, findErr
-		}
-	}
-	for _, desired := range seed.Applications {
-		app, findErr := c.deps.Applications.FindByID(ctx, tenancydomain.DefaultTenantID, desired.ID)
-		if findErr != nil || app == nil {
-			return false, findErr
-		}
-	}
-	return true, nil
+	err := SeedDemoApplications(ctx, c.deps.Applications, c.deps.AssignmentRepo, *demo.Demo, now, demoOperations, c.commands)
+	return demoOperations.items, err
 }
 
 func (c *seedContributor) performanceOperations(ctx context.Context, request domain.Request, apply bool, operations []domain.Operation, now time.Time) ([]domain.Operation, error) {
@@ -174,7 +142,7 @@ func (c *seedContributor) performanceOperations(ctx context.Context, request dom
 			if existing == nil {
 				creates++
 				if apply {
-					if err := c.deps.UserRepo.Save(ctx, user); err != nil {
+					if err := c.commands.CreateUser(ctx, user, ""); err != nil {
 						return operations, err
 					}
 				}
@@ -199,6 +167,7 @@ func performanceUser(index int, generatorSeed string, now time.Time) *userdomain
 		ID:                fmt.Sprintf("00000000-0000-4000-9000-%06s%06d", prefix, index+1),
 		TenantID:          tenancydomain.DefaultTenantID,
 		PreferredUsername: fmt.Sprintf("perf-%s-%06d", prefix, index+1),
+		Roles:             []string{},
 		Lifecycle:         userdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled},
 		CreatedAt:         now,
 		UpdatedAt:         now,
@@ -207,6 +176,7 @@ func performanceUser(index int, generatorSeed string, now time.Time) *userdomain
 
 func samePerformanceUser(actual, desired *userdomain.User) bool {
 	left, right := *actual, *desired
+	left.Roles, right.Roles = normalizedSeedRoles(left.Roles), normalizedSeedRoles(right.Roles)
 	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
 	right.CreatedAt, right.UpdatedAt = time.Time{}, time.Time{}
 	return reflect.DeepEqual(left, right)

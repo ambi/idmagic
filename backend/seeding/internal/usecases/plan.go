@@ -14,15 +14,13 @@ var requestLocks = struct {
 	values map[string]*sync.Mutex
 }{values: map[string]*sync.Mutex{}}
 
-// Contributor は各 record context の公開 command surface を、Seed の plan/apply 契約へ
-// 変換する adapter である。Seeding 自身は resource の domain model を import しない。
+// Contributor は所有モジュールの公開操作を、seed の計画と適用へ結ぶ。
 type Contributor interface {
 	Plan(context.Context, domain.Request) (domain.Plan, error)
 	Apply(context.Context, domain.Request) error
 }
 
-// Plan は contributor を接続する前でも安全な request validation を一箇所に保つ。
-// 次タスクで各 record context の published command surface を contributor として注入する。
+// Plan は contributor を接続する前にも要求の検証を実行する。
 func Plan(request domain.Request) (domain.Plan, error) {
 	if err := request.Validate(); err != nil {
 		return domain.Plan{}, err
@@ -38,7 +36,7 @@ func Run(ctx context.Context, request domain.Request, contributor Contributor) (
 	}
 	plan, err := contributor.Plan(ctx, request)
 	if err != nil {
-		return domain.Plan{}, err
+		return plan, err
 	}
 	if plan.Count(domain.OperationConflict) != 0 {
 		return plan, fmt.Errorf("seed plan contains %d conflict(s)", plan.Count(domain.OperationConflict))
@@ -46,9 +44,8 @@ func Run(ctx context.Context, request domain.Request, contributor Contributor) (
 	if request.Mode == domain.ModeDryRun {
 		return plan, nil
 	}
-	// 同じ profile を同じ process 内で二重に適用しない。PostgreSQL 構成では
-	// contributor が process 境界の advisory lock を追加できるよう、ここは
-	// 永続化契約を持たない最小の排他に留める。
+	// メモリ構成も同じ要求を直列化する。PostgreSQL 構成の追加の排他は
+	// 構成入口が再計画と適用後の確認までを包む。
 	lock := lockFor(request)
 	lock.Lock()
 	defer lock.Unlock()

@@ -37,10 +37,15 @@ func (a ServiceProviderAdministration) CreateForApplication(ctx context.Context,
 		AuthnRequestSigningCertificatePEM: strings.TrimSpace(in.AuthnRequestSigningCertificatePEM),
 		CreatedAt:                         in.Now,
 	}
+	return a.CreateSeed(ctx, sp)
+}
+
+// CreateSeed は初期データにも SP の検証、署名と登録の一意性の規則を適用する。
+func (a ServiceProviderAdministration) CreateSeed(ctx context.Context, sp *samldomain.SamlServiceProvider) error {
 	if err := sp.Validate(); err != nil {
 		return err
 	}
-	existing, err := a.SPRepo.FindByEntityID(ctx, in.TenantID, in.EntityID)
+	existing, err := a.SPRepo.FindByEntityID(ctx, sp.TenantID, sp.EntityID)
 	if err != nil {
 		return err
 	}

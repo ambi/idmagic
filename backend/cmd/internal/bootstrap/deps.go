@@ -18,6 +18,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	notification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	ratelimit "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/sharedsignals"
@@ -64,6 +65,8 @@ type Dependencies struct {
 	Issuer string
 	Close  func()
 	DbPing func(context.Context) error
+	// SeedRequestLock は PostgreSQL 構成で適用と再計画の間、専用セッションの排他を保つ。
+	SeedRequestLock func(context.Context, seedingdomain.Request, func(context.Context) error) error
 }
 
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。

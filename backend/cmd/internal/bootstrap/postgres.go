@@ -22,6 +22,7 @@ import (
 	"github.com/ambi/idmagic/backend/tokenvault"
 
 	"github.com/ambi/idmagic/backend/saml"
+	"github.com/ambi/idmagic/backend/seeding"
 
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	ratelimitpostgres "github.com/ambi/idmagic/backend/shared/ratelimit/db_postgres"
@@ -123,6 +124,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	}
 
 	return &Dependencies{
+		SeedRequestLock:  seeding.PostgresRequestLock(pool),
 		Tenancy:          tenancyModule,
 		IdManagement:     idmModule,
 		IdGovernance:     governanceModule,

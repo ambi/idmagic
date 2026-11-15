@@ -133,6 +133,35 @@ func ConfirmTOTPEnrollment(ctx context.Context, deps AccountMfaDeps, in ConfirmT
 	factor := &totpdomain.MfaFactor{
 		UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: &secret, Label: &label, CreatedAt: now,
 	}
+	return enrollTOTP(ctx, deps, user, factor, now)
+}
+
+// SeedTOTP は運用者が渡した初期資格情報を受け付け、登録後の作用を本人の操作と共有する。
+func SeedTOTP(ctx context.Context, deps AccountMfaDeps, factor *totpdomain.MfaFactor) error {
+	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
+		return err
+	}
+	user, err := authusecases.LoadSelfUser(ctx, deps.UserRepo, factor.UserID)
+	if err != nil {
+		return err
+	}
+	if factor.Type != spec.MfaFactorTOTP || factor.Secret == nil || *factor.Secret == "" {
+		return ErrInvalidTOTPSecret
+	}
+	if _, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(*factor.Secret); err != nil {
+		return ErrInvalidTOTPSecret
+	}
+	existing, err := deps.MfaFactorRepo.Find(ctx, factor.UserID, spec.MfaFactorTOTP)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		return ErrMfaAlreadyEnrolled
+	}
+	return enrollTOTP(ctx, deps, user, factor, factor.CreatedAt)
+}
+
+func enrollTOTP(ctx context.Context, deps AccountMfaDeps, user *userdomain.User, factor *totpdomain.MfaFactor, now time.Time) error {
 	if err := factor.Validate(); err != nil {
 		return err
 	}

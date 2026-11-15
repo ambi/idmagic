@@ -5,17 +5,26 @@ import (
 	"context"
 
 	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingpostgres "github.com/ambi/idmagic/backend/seeding/internal/db_postgres"
 	"github.com/ambi/idmagic/backend/seeding/internal/manifests_yaml"
 	"github.com/ambi/idmagic/backend/seeding/internal/usecases"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+func PostgresRequestLock(pool *pgxpool.Pool) func(context.Context, domain.Request, func(context.Context) error) error {
+	return func(ctx context.Context, request domain.Request, apply func(context.Context) error) error {
+		return seedingpostgres.WithRequestLock(ctx, pool, request, apply)
+	}
+}
 
 type (
 	MaterializedManifest = usecases.MaterializedManifest
 	ResourceDependencies = usecases.ResourceDependencies
+	ResourceCommands     = usecases.ResourceCommands
 )
 
-func NewContributor(deps ResourceDependencies, manifest MaterializedManifest) usecases.Contributor {
-	return usecases.NewContributor(deps, manifest)
+func NewContributor(deps ResourceDependencies, commands ResourceCommands, manifest MaterializedManifest) (usecases.Contributor, error) {
+	return usecases.NewContributor(deps, commands, manifest)
 }
 
 func LocateDefaultPath(profile domain.Profile) (string, error) {

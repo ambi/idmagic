@@ -133,23 +133,9 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 		name := in.ClientName
 		c.ClientName = &name
 	}
-	if err := c.Validate(); err != nil {
-		return nil, NewOAuthError("invalid_client_metadata", err.Error())
-	}
-	// 上限はメタデータの検証を通った登録にだけ使う。動的登録の不正なメタデータを繰り返しても
-	// 使用量が残らないようにし、保存に失敗した登録の分も戻す（REQ-TENANCY-050）。
-	reservation, err := tenantports.ReserveQuota(ctx, deps.QuotaRepo, c.TenantID, tenancydomain.ResourceOAuth2Clients, 1)
-	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
-		emit(deps.Emit, &tenancydomain.QuotaExceeded{At: now, TenantID: c.TenantID, Resource: qErr.Resource, HardLimit: true})
-	}
-	if err != nil {
+	if err := storeNewClient(ctx, deps, c); err != nil {
 		return nil, err
 	}
-	defer reservation.Release(ctx)
-	if err := deps.ClientRepo.Save(ctx, c); err != nil {
-		return nil, err
-	}
-	reservation.Keep()
 	if secretHash != nil {
 		credentialID, err := spec.NewUUIDv4()
 		if err != nil {
@@ -163,4 +149,39 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	}
 	emit(deps.Emit, &domain.ClientRegistered{At: now, TenantID: tenantports.TenantID(ctx), ClientID: clientID, ClientType: in.ClientType})
 	return &RegisterClientResult{Client: c, ClientSecret: secret}, nil
+}
+
+// storeNewClient は登録経路に依存しないメタデータ検証と使用量の確保を所有する。
+func storeNewClient(ctx context.Context, deps RegisterClientDeps, c *domain.OAuth2Client) error {
+	if err := c.Validate(); err != nil {
+		return NewOAuthError("invalid_client_metadata", err.Error())
+	}
+	reservation, err := tenantports.ReserveQuota(ctx, deps.QuotaRepo, c.TenantID, tenancydomain.ResourceOAuth2Clients, 1)
+	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
+		emit(deps.Emit, &tenancydomain.QuotaExceeded{At: c.CreatedAt, TenantID: c.TenantID, Resource: qErr.Resource, HardLimit: true})
+	}
+	if err != nil {
+		return err
+	}
+	defer reservation.Release(ctx)
+	if err := deps.ClientRepo.Save(ctx, c); err != nil {
+		return err
+	}
+	reservation.Keep()
+	return nil
+}
+
+func CreateSeedClient(ctx context.Context, deps RegisterClientDeps, c *domain.OAuth2Client) error {
+	existing, err := deps.ClientRepo.FindByID(ctx, c.TenantID, c.ClientID)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		return errors.New("seed client already exists")
+	}
+	if err := storeNewClient(ctx, deps, c); err != nil {
+		return err
+	}
+	emit(deps.Emit, &domain.AdminOAuth2ClientCreated{At: c.CreatedAt, TenantID: c.TenantID, ActorUserID: "seed", ClientID: c.ClientID})
+	return nil
 }

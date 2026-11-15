@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"time"
 
@@ -18,7 +17,7 @@ import (
 )
 
 // seedWsFedRelyingParty は WS-Federation passive のデモ用 relying party を投入する。
-func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRelyingPartyRepository, seed seedingdomain.DevelopmentDemoSeed) error {
+func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRelyingPartyRepository, seed seedingdomain.DevelopmentDemoSeed, operations *resourceOperations, commands ResourceCommands) error {
 	now := time.Now().UTC()
 	rp := &domain.WsFedRelyingParty{
 		TenantID:    tenancydomain.DefaultTenantID,
@@ -41,17 +40,13 @@ func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRely
 	if err != nil {
 		return err
 	}
-	if existing == nil {
-		return repo.Save(ctx, rp)
-	}
-	if !sameWsFedRelyingParty(existing, rp) {
-		return fmt.Errorf("seed drift at wsfed-rp:%s", rp.Wtrealm)
-	}
-	return nil
+	return operations.ensure("wsfed-rp:"+rp.Wtrealm, existing != nil, existing != nil && sameWsFedRelyingParty(existing, rp), func() error {
+		return commands.CreateRelyingParty(ctx, rp)
+	})
 }
 
 // seedSamlServiceProvider は SAML 2.0 Web Browser SSO のデモ用 service provider を投入する。
-func SeedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProviderRepository, seed seedingdomain.DevelopmentDemoSeed) error {
+func SeedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProviderRepository, seed seedingdomain.DevelopmentDemoSeed, operations *resourceOperations, commands ResourceCommands) error {
 	now := time.Now().UTC()
 	sp := &samldomain.SamlServiceProvider{
 		TenantID:     tenancydomain.DefaultTenantID,
@@ -76,23 +71,24 @@ func SeedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProv
 	if err != nil {
 		return err
 	}
-	if existing == nil {
-		return repo.Save(ctx, sp)
-	}
-	if !sameSamlServiceProvider(existing, sp) {
-		return fmt.Errorf("seed drift at saml-sp:%s", sp.EntityID)
-	}
-	return nil
+	return operations.ensure("saml-sp:"+sp.EntityID, existing != nil, existing != nil && sameSamlServiceProvider(existing, sp), func() error {
+		return commands.CreateServiceProvider(ctx, sp)
+	})
 }
 
 func sameWsFedRelyingParty(actual, desired *domain.WsFedRelyingParty) bool {
 	left, right := *actual, *desired
+	// カタログへの所属は Application の保存が管理し、RP の seed の項目には含めない。
+	left.ApplicationID, right.ApplicationID = "", ""
 	left.CreatedAt, right.CreatedAt = time.Time{}, time.Time{}
+	left.UpdatedAt, right.UpdatedAt = time.Time{}, time.Time{}
 	return reflect.DeepEqual(left, right)
 }
 
 func sameSamlServiceProvider(actual, desired *samldomain.SamlServiceProvider) bool {
 	left, right := *actual, *desired
+	left.ApplicationID, right.ApplicationID = "", ""
 	left.CreatedAt, right.CreatedAt = time.Time{}, time.Time{}
+	left.UpdatedAt, right.UpdatedAt = time.Time{}, time.Time{}
 	return reflect.DeepEqual(left, right)
 }

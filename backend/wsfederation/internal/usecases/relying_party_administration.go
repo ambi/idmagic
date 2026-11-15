@@ -35,10 +35,15 @@ func (a RelyingPartyAdministration) CreateForApplication(ctx context.Context, in
 		}},
 		CreatedAt: in.Now,
 	}
+	return a.CreateSeed(ctx, rp)
+}
+
+// CreateSeed は初期データの完全なクレーム方針にも管理操作と同じ検証を適用する。
+func (a RelyingPartyAdministration) CreateSeed(ctx context.Context, rp *feddomain.WsFedRelyingParty) error {
 	if err := rp.Validate(); err != nil {
 		return err
 	}
-	existing, err := a.RPRepo.FindByWtrealm(ctx, in.TenantID, in.Wtrealm)
+	existing, err := a.RPRepo.FindByWtrealm(ctx, rp.TenantID, rp.Wtrealm)
 	if err != nil {
 		return err
 	}

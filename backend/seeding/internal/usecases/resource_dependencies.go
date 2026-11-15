@@ -11,8 +11,8 @@ import (
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
-// ResourceDependencies は seed が使う所有者の保存契約とハッシュ器を受け取る。
-// 通常の更新ユースケースの検証やイベントを通らない制約は、Seeding のリスクで扱う。
+// ResourceDependencies は計画に使う所有者の照会とハッシュの照合を受け取る。
+// 書き込みは ResourceCommands を通す。
 type ResourceDependencies struct {
 	ClientRepo          oauthports.OAuth2ClientRepository
 	UserRepo            userports.UserRepository

@@ -198,6 +198,29 @@ type CreateGroupInput struct {
 }
 
 func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) (*groupdomain.Group, error) {
+	return createGroup(ctx, deps, in, "")
+}
+
+// CreateSeedGroup は HTTP の入力に固定 ID を公開せず、共通の作成操作へ渡す。
+func CreateSeedGroup(ctx context.Context, deps AdminGroupDeps, group *groupdomain.Group) error {
+	if group.ID == "" {
+		return errors.New("seed group id is required")
+	}
+	existing, err := deps.GroupRepo.FindByID(ctx, group.TenantID, group.ID)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		return ErrGroupNameConflict
+	}
+	_, err = createGroup(ctx, deps, CreateGroupInput{
+		ActorUserID: "seed", Name: group.Name, Description: group.Description, Email: group.Email,
+		Attributes: group.Attributes, Roles: group.Roles, MembershipType: group.MembershipType, Now: group.CreatedAt,
+	}, group.ID)
+	return err
+}
+
+func createGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput, id string) (*groupdomain.Group, error) {
 	tenantID := tenantports.TenantID(ctx)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
@@ -224,9 +247,11 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	if err := validateGroupAttributesInput(ctx, deps, tenantID, in.Attributes); err != nil {
 		return nil, err
 	}
-	id, err := groupdomain.NewGroupID()
-	if err != nil {
-		return nil, err
+	if id == "" {
+		id, err = groupdomain.NewGroupID()
+		if err != nil {
+			return nil, err
+		}
 	}
 	now := idmusecases.NormalizedNow(in.Now)
 	group := &groupdomain.Group{
