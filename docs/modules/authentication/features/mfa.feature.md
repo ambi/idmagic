@@ -84,6 +84,7 @@
 
 ### Example: EX-AUTHENTICATION-022-01 通常経路
 
+- Given 実効のサインインポリシーは MFA を求め、登録の強制開始後で管理者の登録の許可を受け付ける期間内である
 - Given ユーザー "alice" は TOTP 認証要素を持ち、復旧コードも生成済みである
 - When 管理者がユーザー "alice" の ResetUserAuthenticators を targets=[Totp, RecoveryCode] で呼ぶ
 - Then "AuthenticatorResetRequested" が発行される
@@ -102,6 +103,18 @@
 - But 他テナントの管理者、または `admin` ロールを持たない操作者が呼び出す
 - Then エラー "AccessDeniedError"
 - And 対象ユーザーの認証器は変更されない
+
+### Example: EX-AUTHENTICATION-022-03 登録の許可を自動発行しても MFA 不要のポリシーではパスワードだけでログインする
+
+- Given 実効のサインインポリシーは MFA を求めない
+- And ユーザー "alice" は TOTP 認証要素を持ち、復旧コードも生成済みである
+- When 管理者が "alice" の認証器を全リセットする
+- Then `mfa_enrolled=false` と `reenrollment_required=true` と単回限りの登録の許可が返る
+- When "alice" が新しいブラウザーで認可処理を始め、正しいパスワードを送りログインする
+- Then 登録待ちにならず、パスワードだけのセッションが成立する
+- And 登録の許可を消費しない
+- When "alice" が同意する
+- Then 元の認可処理が継続し、認可コードが返る
 
 ## Rule: REQ-AUTHENTICATION-023 管理者が一部の認証器のみリセットした場合は残存要素でログインを継続できる
 

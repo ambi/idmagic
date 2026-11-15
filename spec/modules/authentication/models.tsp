@@ -281,7 +281,7 @@ model AuthenticatorResetRequest {
 }
 
 
-@doc("認証器のリセットの結果。`reenrollment_required` は、TOTP と WebAuthn がどちらもなくなり、一回限りの回避を自動で発行したので、次のサインインが登録専用の保留のフローに入ることを示す。回避は `reenrollment_required` が true のときだけ含む。")
+@doc("認証器のリセットの結果。`reenrollment_required` は、TOTP と WebAuthn がどちらもなくなり、一回限りの登録の許可を自動で発行したことを示す。実効のサインインポリシーが MFA を求めるときだけ、登録の条件に従って次のサインインが登録専用の保留のフローに入る。MFA を求めないときは、登録の許可を消費せずパスワードだけでサインインする。登録の許可は `reenrollment_required` が true のときだけ含む。")
 model AuthenticatorResetResponse {
   mfa_enrolled: boolean;
   reenrollment_required: boolean;

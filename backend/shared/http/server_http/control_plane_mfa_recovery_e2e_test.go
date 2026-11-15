@@ -39,8 +39,8 @@ func TestControlPlaneOperatorRecoversMfaBySelfResetWithoutDefaultMfa(t *testing.
 	self := loginDirectAdmin(t, srv, demoUsername, demoPassword, "")
 	resetAllAuthenticators(t, srv, self, "user_alice")
 
-	// MFA を求めないポリシーでは、リセットの後もログインは再登録を求めない。運用者はログインした
-	// ばかりのセッションで、アカウントの画面から新しい TOTP を登録する。
+	// この経路はリセット前に成立したセッションでの復旧を確かめる。
+	// 全リセット後の新しいログインは TestAdminResetUserAuthenticatorsWithoutMfaPolicyAllowsPasswordLogin で扱う。
 	csrf := adminCSRFToken(t, self, srv)
 	enrollment := postJSON[struct {
 		Secret string `json:"secret"`

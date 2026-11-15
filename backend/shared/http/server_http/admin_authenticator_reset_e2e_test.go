@@ -1,8 +1,8 @@
 package server_http_test
 
 // wi-143 / 第 2 層: 管理者による認証器リセットが、削除した factor に応じて
-// (1) 全喪失時は wi-245 の enrollment-required flow へ fail-closed に接続され次回ログインで
-// 再登録を強制すること、(2) 一部喪失では残存要素で通常ログインを継続できること、
+// (1) 全喪失時はポリシーが MFA を求めるときだけ登録の専用の流れへ接続し、
+// 次回ログインで再登録を強制すること、(2) 一部喪失では残存要素で通常ログインを継続できること、
 // (3) admin ロールを持たない操作者には拒否されることを、実際の HTTP ルーティングと
 // メモリアダプタを通して固定する。
 
@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -77,6 +78,8 @@ type resetServerOptions struct {
 	aliceRoles []string
 	// noDefaultMFA は、テナントのデフォルトのポリシーを MFA を求めない構成にする。
 	noDefaultMFA bool
+	// authModule は、認証器と登録の許可の保存結果をテストから読み戻すために指定する。
+	authModule *authentication.Module
 }
 
 func newServerForAuthenticatorResetWithEvents(t *testing.T, options ...resetServerOptions) (*httptest.Server, *[]spec.DomainEvent) {
@@ -90,11 +93,15 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T, options ...resetServ
 
 	clientRepo := oauth2.NewMemoryModule().ClientRepo
 	userRepo := idmanagement.NewMemoryModule().UserRepo
-	mfaFactorRepo := authentication.NewMemoryModule(nil).MfaFactorRepo
-	webAuthnCredentialRepo := authentication.NewMemoryModule(nil).WebAuthnCredentialRepo
-	recoveryCodeRepo := authentication.NewMemoryModule(nil).RecoveryCodeRepo
-	mfaEnrollmentBypassRepo := authentication.NewMemoryModule(nil).MfaEnrollmentBypassRepo
-	passwordHistoryRepo := authentication.NewMemoryModule(nil).PasswordHistoryRepo
+	authModule := authentication.NewMemoryModule(nil)
+	if opts.authModule != nil {
+		authModule = *opts.authModule
+	}
+	mfaFactorRepo := authModule.MfaFactorRepo
+	webAuthnCredentialRepo := authModule.WebAuthnCredentialRepo
+	recoveryCodeRepo := authModule.RecoveryCodeRepo
+	mfaEnrollmentBypassRepo := authModule.MfaEnrollmentBypassRepo
+	passwordHistoryRepo := authModule.PasswordHistoryRepo
 	requestStore := oauth2.NewMemoryModule().RequestStore
 	codeStore := oauth2.NewMemoryModule().CodeStore
 	defaultSignInPolicyRepo := signinpolicy.NewMemoryModule().DefaultRepo
@@ -336,6 +343,77 @@ func TestAdminResetUserAuthenticatorsFullResetForcesReenrollment(t *testing.T) {
 	})
 	if completed["redirect_to"] != returnTo {
 		t.Fatalf("post-enrollment redirect_to=%q, want %q", completed["redirect_to"], returnTo)
+	}
+}
+
+//spec:covers REQ-AUTHENTICATION-022, EX-AUTHENTICATION-022-03: MFA 不要のポリシーでは、全リセット後の新しい直接ログインと認可処理の両方が pwd だけで成立し、登録の許可が有効なまま残り、登録待ちと許可の消費イベントを発生させないことを固定する。
+func TestAdminResetUserAuthenticatorsWithoutMfaPolicyAllowsPasswordLogin(t *testing.T) {
+	for _, direct := range []bool{true, false} {
+		name := "authorization"
+		if direct {
+			name = "direct"
+		}
+		t.Run(name, func(t *testing.T) {
+			memory := authentication.NewMemoryModule(nil)
+			srv, events := newServerForAuthenticatorResetWithEvents(t, resetServerOptions{noDefaultMFA: true, authModule: &memory})
+			defer srv.Close()
+			base := srv.URL + "/realms/default"
+			admin := loginDirectAdmin(t, srv, resetAdminUsername, resetAdminPassword, "")
+			reset := postJSON[map[string]any](t, admin, base+"/api/admin/v1/users/user_alice/authenticator-reset",
+				adminCSRFToken(t, admin, srv), map[string]any{"targets": []string{"totp", "webauthn", "recovery_code"}})
+			if reset["mfa_enrolled"] != false || reset["reenrollment_required"] != true || reset["bypass"] == nil {
+				t.Fatalf("reset=%+v, want no factors and an issued enrollment bypass", reset)
+			}
+			assertEmitted(t, events, "AuthenticatorResetCompleted", "MfaEnrollmentBypassIssued")
+
+			// リセット前のセッションでは次回ログインの判断を検査できないので、別のブラウザーを使う。
+			alice := browserClient(t)
+			returnTo := "/realms/default/admin"
+			transactionURL := base + "/api/auth/transaction"
+			input := map[string]string{"username": demoUsername, "password": demoPassword}
+			if direct {
+				transactionURL += "?return_to=" + url.QueryEscape(returnTo)
+				input["return_to"] = returnTo
+			} else {
+				resp := startAuthorization(t, alice, base, "verifier-for-reset-without-mfa-1234567890", "reset-state")
+				resp.Body.Close()
+			}
+			transaction := getJSON[authTransaction](t, alice, transactionURL)
+			login := postJSON[browserFlow](t, alice, base+"/api/auth/login", transaction.CSRFToken, input)
+			if direct {
+				if login.RedirectTo != returnTo || login.Next != "" {
+					t.Fatalf("login=%+v, want direct return without enrollment", login)
+				}
+			} else {
+				if login.Next != "/realms/default/consent" || login.RedirectTo != "" {
+					t.Fatalf("login=%+v, want consent without enrollment", login)
+				}
+				consent := getJSON[authTransaction](t, alice, transactionURL)
+				completed := postJSON[browserFlow](t, alice, base+"/api/auth/consent", consent.CSRFToken,
+					map[string]string{"action": "allow"})
+				redirect, err := url.Parse(completed.RedirectTo)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if redirect.Query().Get("code") == "" || redirect.Query().Get("state") != "reset-state" {
+					t.Fatalf("redirect=%q, want an authorization code and original state", completed.RedirectTo)
+				}
+			}
+			// アカウント API の成功が、登録待ちではないセッションの成立も観測する。
+			session := currentSessionOf(t, alice, base)
+			if !slices.Equal(session.AMR, []string{"pwd"}) || session.ACR != "urn:idmagic:acr:pwd" {
+				t.Fatalf("session=%+v, want pwd-only authentication", session)
+			}
+			bypass, err := memory.MfaEnrollmentBypassRepo.FindActive(context.Background(), tenancydomain.DefaultTenantID, "user_alice", time.Now().UTC())
+			if err != nil || bypass == nil {
+				t.Fatalf("active bypass=%+v err=%v, want the unconsumed enrollment permission", bypass, err)
+			}
+			for _, event := range *events {
+				if event.EventType() == "MfaEnrollmentRequired" || event.EventType() == "MfaEnrollmentBypassConsumed" {
+					t.Fatalf("MFA-free login emitted %s", event.EventType())
+				}
+			}
+		})
 	}
 }
 

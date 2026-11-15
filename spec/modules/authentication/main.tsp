@@ -1465,7 +1465,7 @@ model ResetUserAuthenticatorsError422 {
   @body body: ResetUserAuthenticatorsError422Body;
 }
 
-@doc("テナントの管理者が、対象のユーザーから、選んだ種類の認証器（TOTP の要素、WebAuthn の資格情報、リカバリーコード）を削除し、`mfa_enrolled` を計算し直す。緊急時の最後の手段である。管理者はユーザーの代わりに新しい要素を登録できず、削除して再登録を求めることだけができる。TOTP と WebAuthn がどちらもなくなったときは、IssueMfaEnrollmentBypass と同じ仕組みで管理者の承認した登録の回避を自動で発行し、既存のものを置き換えるので、次のサインインはフェイルクローズの登録必須のフローへ向かう。一種類だけを削除して `mfa_enrolled` が true のままのときは回避を発行せず、残った要素で通常どおりサインインする。")
+@doc("テナントの管理者が、対象のユーザーから、選んだ種類の認証器（TOTP の要素、WebAuthn の資格情報、リカバリーコード）を削除し、`mfa_enrolled` を計算し直す。緊急時の最後の手段である。管理者はユーザーの代わりに新しい要素を登録できず、削除して再登録を求めることだけができる。TOTP と WebAuthn がどちらもなくなったときは、IssueMfaEnrollmentBypass と同じ仕組みで管理者の承認した登録の許可を自動で発行し、既存のものを置き換える。実効のサインインポリシーが MFA を求めるときだけ、次のサインインはフェイルクローズの登録必須のフローへ向かう。MFA を求めないときは、登録の許可を消費せずパスワードだけでサインインする。一種類だけを削除して `mfa_enrolled` が true のままのときは許可を発行せず、残った要素で通常どおりサインインする。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ResetUserAuthenticators")
 @route("/api/admin/v1/users/{user_id}/authenticator-reset")

@@ -70,10 +70,12 @@
 
 - 管理者が User の認証器のリセットを要求したとき、Authentication は、`AuthenticatorResetRequested` を発行し、指定した種類（`Totp`、`Webauthn`、`RecoveryCode`）の要素を消し、`mfa_enrolled` を計算し直し、`AuthenticatorResetCompleted` を発行する。
 - リセットの結果、TOTP の要素も WebAuthn の資格情報も残らないとき、Authentication は、`reenrollment_required=true` と、自動で発行した一度だけ使える登録の許可を 200 で返し、`MfaEnrollmentBypassIssued` を発行する。
-- 再登録が必要な User が次に正しいパスワードでログインしたとき、Authentication は、同じログインセッションを `pending_purpose=Enrollment` にする。
+- 実効のサインインポリシーが MFA を求める間、再登録が必要な User が次に正しいパスワードでログインしたとき、Authentication は、REQ-AUTHENTICATION-018 の登録の条件に従い、同じログインセッションを `pending_purpose=Enrollment` にする。
+- 実効のサインインポリシーが MFA を求めない間、認証器を全リセットされた User が正しいパスワードでログインしたとき、Authentication は、登録の許可を消費せず、パスワードだけのログインセッションを成立させる。
 - リセットできない要求を受けた場合、Authentication は、422 と `authenticator_reset_not_allowed` で拒否する。
 - 別のテナントの管理者か `admin` のロールを持たない操作者が要求した場合、Authentication は、403 と `access_denied` で拒否し、要素を消さない。
-- **例**：EX-AUTHENTICATION-022-01、EX-AUTHENTICATION-022-02
+- **判断**：認証器のリセットは MFA の要否を変えない。`reenrollment_required=true` は認証器がなくなり登録の許可を発行した状態を表し、ログインで再登録を求める条件は実効のサインインポリシーが決める。
+- **例**：EX-AUTHENTICATION-022-01、EX-AUTHENTICATION-022-02、EX-AUTHENTICATION-022-03
 
 #### REQ-AUTHENTICATION-023 管理者が一部の認証器のみリセットした場合は残存要素でログインを継続できる
 
@@ -85,14 +87,14 @@
 
 `pending_purpose=Enrollment` の保留中のセッションは、登録の専用の API と元の認可トランザクション以外のすべての場所で、未認証として扱う。
 アカウント、管理、アプリケーションのいずれのリソースにも到達できない。
-期限切れ、発行不可、失効済み、消費済みの許可は、より弱い経路へ退避せず失敗する。
+MFA を求めるポリシーでは、期限切れ、発行不可、失効済み、消費済みの許可は、より弱い経路へ退避せず失敗する。
 
 ## 実現方式
 
 ### アーキテクチャ
 
 `MfaEnrollmentBypass` は、短命で単回限りのサーバーの側の許可であり、配布されるシークレットではない。
-パスワードによるログインが成功すると、その許可を不可分に消費し、同じ `LoginSession` を `pending_purpose=Enrollment` へ移す。
+登録の専用の流れへ進むときは、パスワードによるログインの成功に伴い、その許可を不可分に消費し、同じ `LoginSession` を `pending_purpose=Enrollment` へ移す。
 ユーザーが新しい認証の要素の所持を証明して初めて、セッションは第二要素の AMR を得て、MFA 済みとして再開する。
 
 最初に登録できる認証の要素は TOTP である。
