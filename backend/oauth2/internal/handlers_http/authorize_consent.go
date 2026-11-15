@@ -22,7 +22,7 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 	}
 	req, err := d.transactionRequest(c)
 	if err != nil {
-		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", err.Error())
+		return writeTransactionError(c, err)
 	}
 	if req.State != spec.AuthFlowConsentPending {
 		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", "The authorization transaction is not awaiting consent.")

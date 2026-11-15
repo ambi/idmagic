@@ -116,14 +116,9 @@ func (d Deps) handleConfirmMfaEnrollmentAPI(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	authorization, transactionErr := d.Authorizations.Find(c)
-	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
-	if directAdminLogin {
-		if !validReturnTo(c, input.ReturnTo) {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
-		}
-	} else if transactionErr != nil {
-		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
+	authorization, directAdminLogin, err := d.authorizationOrDirectLogin(c, input.ReturnTo)
+	if err != nil {
+		return err
 	}
 	now := time.Now().UTC()
 	// 登録の迂回で到達する経路でも、アカウントの登録と同じく記憶済みの端末を失効させる。

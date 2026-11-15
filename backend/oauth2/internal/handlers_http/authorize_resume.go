@@ -14,7 +14,7 @@ import (
 func (d Deps) handleFederatedResume(c *echo.Context) error {
 	req, err := d.transactionRequest(c)
 	if err != nil {
-		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", err.Error())
+		return writeTransactionError(c, err)
 	}
 	authn, err := d.ResolveAuthentication(c)
 	if err != nil || authn == nil || authn.AuthenticationPending {

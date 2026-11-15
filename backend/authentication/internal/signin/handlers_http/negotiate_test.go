@@ -37,7 +37,7 @@ func (negotiateTokenRevoker) RevokeTokensBySid(context.Context, string) error { 
 type negotiateAuthorizations struct{}
 
 func (negotiateAuthorizations) Find(*echo.Context) (signinports.Authorization, error) {
-	return nil, errors.New("no authorization transaction")
+	return nil, &signinports.AuthorizationUnavailableError{Reason: "no authorization transaction"}
 }
 
 type negotiateLimited struct{ err error }

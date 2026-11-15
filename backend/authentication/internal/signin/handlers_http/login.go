@@ -54,16 +54,10 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 	if strings.TrimSpace(input.Username) == "" || input.Password == "" {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A username and password are required.")
 	}
-	authorization, transactionErr := d.Authorizations.Find(c)
-	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
-	if directAdminLogin {
-		if !validReturnTo(c, input.ReturnTo) {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
-		}
-	} else if transactionErr != nil {
-		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
+	authorization, directAdminLogin, err := d.authorizationOrDirectLogin(c, input.ReturnTo)
+	if err != nil {
+		return err
 	}
-
 	clientIP := c.RealIP()
 	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "login", clientIP); err != nil {
 		return err

@@ -10,6 +10,7 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -18,6 +19,9 @@ import (
 func (d Deps) handleTransaction(c *echo.Context) error {
 	req, err := d.transactionRequest(c)
 	if err != nil {
+		if _, unavailable := errors.AsType[*signinports.AuthorizationUnavailableError](err); !unavailable {
+			return err
+		}
 		if returnTo := c.QueryParam("return_to"); returnTo != "" {
 			if !d.SignIn.ValidReturnTo(c, returnTo) {
 				return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
@@ -32,7 +36,7 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 			}
 			return support.NoStoreJSON(c, http.StatusOK, transactionResponse{Kind: "login", CSRFToken: csrf})
 		}
-		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", err.Error())
+		return writeTransactionError(c, err)
 	}
 	csrf, err := d.EnsureCSRFCookie(c)
 	if err != nil {
@@ -73,22 +77,29 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 func (d Deps) transactionRequest(c *echo.Context) (*domain.AuthorizationRequest, error) {
 	cookie, err := c.Cookie(support.TenantCookieName(c, authorizationTransactionCookie))
 	if err != nil || cookie.Value == "" {
-		return nil, errors.New("no authorization transaction is available")
+		return nil, &signinports.AuthorizationUnavailableError{Reason: "no authorization transaction is available"}
 	}
 	req, err := d.RequestStore.Find(c.Request().Context(), cookie.Value)
 	if err != nil {
 		return nil, err
 	}
 	if req == nil || req.TenantID != support.RequestTenantID(c) || time.Now().After(req.ExpiresAt) {
-		return nil, errors.New("the authorization transaction is invalid or has expired")
+		return nil, &signinports.AuthorizationUnavailableError{Reason: "the authorization transaction is invalid or has expired"}
 	}
 	switch req.State {
 	case spec.AuthFlowReceived, spec.AuthFlowAuthenticationPending, spec.AuthFlowAuthenticated,
 		spec.AuthFlowConsentPending, spec.AuthFlowConsented:
 	default:
-		return nil, errors.New("the authorization transaction has already been processed")
+		return nil, &signinports.AuthorizationUnavailableError{Reason: "the authorization transaction has already been processed"}
 	}
 	return req, nil
+}
+
+func writeTransactionError(c *echo.Context, err error) error {
+	if unavailable, ok := errors.AsType[*signinports.AuthorizationUnavailableError](err); ok {
+		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", unavailable.Error())
+	}
+	return err
 }
 
 // pendingStepTransaction は、第二要素か MFA の登録を待つセッションの transaction 応答を組み立てる。

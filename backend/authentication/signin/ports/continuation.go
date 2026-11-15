@@ -11,10 +11,16 @@ import (
 // PendingAuthorizations は、対話のログインが認証を終えたあとに続ける認可要求を引く。
 // OAuth2 が実装し、組み立て地点が結ぶ。
 type PendingAuthorizations interface {
-	// Find はリクエストが指す認可要求を返す。認可要求がないか無効なら、その理由を表す
-	// エラーを返し、ログインは return_to の経路を試す。
+	// Find はリクエストが指す認可要求を返す。不在か無効なら AuthorizationUnavailableError
+	// を返し、ログインは return_to の経路を試せる。それ以外の障害では認証を続けない。
 	Find(c *echo.Context) (Authorization, error)
 }
+
+// AuthorizationUnavailableError は、認可要求の検証が識別した利用不能を表す。
+// Reason は公開できる拒否の理由であり、依存先の障害を包む用途には使わない。
+type AuthorizationUnavailableError struct{ Reason string }
+
+func (e *AuthorizationUnavailableError) Error() string { return e.Reason }
 
 // Authorization は、ログインの途中にある一つの認可要求である。
 type Authorization interface {

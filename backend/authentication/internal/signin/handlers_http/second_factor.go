@@ -195,14 +195,9 @@ func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	authorization, transactionErr := d.Authorizations.Find(c)
-	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
-	if directAdminLogin {
-		if !validReturnTo(c, input.ReturnTo) {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
-		}
-	} else if transactionErr != nil {
-		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
+	authorization, directAdminLogin, err := d.authorizationOrDirectLogin(c, input.ReturnTo)
+	if err != nil {
+		return err
 	}
 	if _, err := webauthnusecases.FinishWebAuthnAssertion(
 		c.Request().Context(), d.webAuthnLoginDeps(c), authn.SessionID, authn.UserID, []byte(input.Assertion), time.Now().UTC(),
@@ -233,14 +228,9 @@ func (d Deps) handleRecoveryCodeAPI(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	authorization, transactionErr := d.Authorizations.Find(c)
-	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
-	if directAdminLogin {
-		if !validReturnTo(c, input.ReturnTo) {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
-		}
-	} else if transactionErr != nil {
-		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
+	authorization, directAdminLogin, err := d.authorizationOrDirectLogin(c, input.ReturnTo)
+	if err != nil {
+		return err
 	}
 	if _, err := recoveryusecases.ConsumeRecoveryCode(
 		c.Request().Context(), d.recoveryCodesDeps(), authn.UserID, input.Code, time.Now().UTC(),
@@ -275,14 +265,9 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	authorization, transactionErr := d.Authorizations.Find(c)
-	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
-	if directAdminLogin {
-		if !validReturnTo(c, input.ReturnTo) {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
-		}
-	} else if transactionErr != nil {
-		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
+	authorization, directAdminLogin, err := d.authorizationOrDirectLogin(c, input.ReturnTo)
+	if err != nil {
+		return err
 	}
 	result, err := totpusecases.VerifyTOTPFactor(
 		c.Request().Context(),

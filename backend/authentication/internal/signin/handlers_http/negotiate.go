@@ -13,6 +13,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	negotiatedomain "github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
 	negotiateusecases "github.com/ambi/idmagic/backend/authentication/internal/negotiate/usecases"
+	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/labstack/echo/v5"
@@ -50,6 +51,9 @@ func (d Deps) handleNegotiate(c *echo.Context) error {
 	}
 	if input.ReturnTo == "" {
 		if _, err := d.Authorizations.Find(c); err != nil {
+			if _, unavailable := errors.AsType[*signinports.AuthorizationUnavailableError](err); !unavailable {
+				return err
+			}
 			return c.String(http.StatusUnauthorized, "Authorization transaction unavailable")
 		}
 	}

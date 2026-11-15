@@ -34,7 +34,10 @@
 - 取り込み元が委譲認証を有効にしている場合、Authentication は、REQ-AUTHENTICATION-044 の照合を使う。
 - ログインに成功した User が必須操作 `update_password` を持つとき、Authentication は、認可を続けずにパスワードの変更の画面へ進ませる。
 - ユーザー名かパスワードを送らないか、JSON として読めない本文を受けた場合、Authentication は、400 と `invalid_request` で拒否する。
-- 認可のトランザクションを解決できない場合、Authentication は、401 と `transaction_unavailable` で拒否する。
+- 認可のトランザクションが存在しないか、別テナントに属するか、期限切れか処理済みで、`return_to` が指定されていない場合、Authentication は、401 と `transaction_unavailable` で拒否する。
+- 認可のトランザクションが存在しないか利用できず、同じテナントの許可した画面を指す `return_to` がある場合、Authentication は、その画面への直接ログインとして認証を続ける。
+- 認可のトランザクションが存在しないか利用できず、許可した画面以外の `return_to` が指定された場合、Authentication は、400 と `invalid_request` で拒否する。
+- 認可のトランザクションの読み取りで内部障害が起きた場合、Authentication は、`return_to` の有無によらず REQ-SYSTEM-023 に従って拒否し、セッションの発行と認証の完了、認証器と復旧コードの変更、認可要求の更新、認可コードとイベントの発行を行わない。
 - SameSite の Cookie と要求の CSRF トークンが一致しない場合、Authentication は、403 と `csrf_failed` で拒否し、セッションを作らない。
 - 存在しないユーザー名か誤ったパスワードを受けた場合、Authentication は、401 と `invalid_credentials` で拒否し、ログインの失敗を数え、`AuthenticationFailed` を発行する。
 - 正しいパスワードが現在のパスワードのポリシーを満たさない場合、Authentication は、401 と `password_policy` で拒否し、セッションを作らない。

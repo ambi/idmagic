@@ -6,6 +6,8 @@
 このモジュールが扱うのは、プリンシパルが本人であることをどう確かめ、確かめた結果をどうセッションとして保つかである。
 ACR と AMR の解釈は Authentication が担い、SignInPolicy の入力となる認証事実へ変換する。
 条件の定義と評価は SignInPolicy に任せる。
+認証後の認可継続は、このモジュールが所有する `PendingAuthorizations` の契約で要求する。
+既知の不在や無効な認可要求は `AuthorizationUnavailableError` として区別し、それ以外の障害では直接ログインへ切り替えず認証を止める。
 パスワードのデフォルト値は Tenancy の公開する定義を使い、設定の上書きの解決とパスワードの検証は Authentication が担う。
 Directory Connector の取り込み元が委譲を有効にした User では、Sourcing が公開する照合操作を使う。
 配送と LDAP の表現を認証へ持ち込まず、本人の変更と再設定も委譲の切り替えと共通の排他でローカルの資格情報の追加を防ぐ。
