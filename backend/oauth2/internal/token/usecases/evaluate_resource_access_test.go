@@ -485,6 +485,64 @@ func TestEvaluateResourceAccessCondition(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-OAUTH2-062: 条件と要求値の変更後に、監査のバージョン、結果、属性ダイジェストが現在の評価に一致し、削除後は条件の監査情報を出さない。
+func TestEvaluateResourceAccessConditionAuditFollowsChanges(t *testing.T) {
+	servers := evalServer(t, evalRule)
+	server, err := servers.FindByClientID(context.Background(), evalTenant, evalClient)
+	if err != nil || server == nil {
+		t.Fatalf("登録: server=%v err=%v", server, err)
+	}
+	var previousVersion, previousDigest string
+	for _, step := range []struct {
+		name, expression, attributes, outcome string
+		permitted                             bool
+	}{
+		{"許可", "attributes.amount > 100", `{"amount":50}`, "allow", true},
+		{"同じ式で拒否", "attributes.amount > 100", `{"amount":150}`, "deny", false},
+		{"式を差し替えて許可", "attributes.amount < 100", `{"amount":150}`, "allow", true},
+		{"属性が欠落", "attributes.amount < 100", `{}`, "indeterminate", false},
+		{"条件を削除", "", `{}`, "", true},
+	} {
+		t.Run(step.name, func(t *testing.T) {
+			server.AccessRules[0].Condition = nil
+			if step.expression != "" {
+				server.AccessRules[0].Condition = &domain.ResourceAccessCondition{DenyWhen: step.expression}
+			}
+			if err := servers.Save(context.Background(), server); err != nil {
+				t.Fatal(err)
+			}
+			var event *domain.ResourceAccessEvaluated
+			in := evalRequest()
+			in.Attributes = step.attributes
+			decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
+				Servers: servers, Tokens: evalTokens{result: evalAgentToken()},
+				Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}},
+				Emit:      func(recorded spec.DomainEvent) { event, _ = recorded.(*domain.ResourceAccessEvaluated) },
+			}, in, time.Unix(0, 0).UTC())
+			if err != nil || event == nil || decision.Permitted != step.permitted || event.ConditionOutcome != step.outcome {
+				t.Fatalf("評価: decision=%+v event=%+v err=%v", decision, event, err)
+			}
+			if step.expression == "" {
+				if event.ConditionVersion != "" || event.DeclaredAttributesDigest != "" {
+					t.Fatalf("削除後の監査: %+v", event)
+				}
+				return
+			}
+			wantVersion := server.AccessRules[0].Condition.Version()
+			if event.ConditionVersion != wantVersion || len(event.DeclaredAttributesDigest) != 64 {
+				t.Fatalf("監査: %+v", event)
+			}
+			if step.name == "同じ式で拒否" && (event.ConditionVersion != previousVersion || event.DeclaredAttributesDigest == previousDigest) {
+				t.Fatalf("属性の変更が監査に反映されない: %+v", event)
+			}
+			if step.name == "式を差し替えて許可" && (event.ConditionVersion == previousVersion || event.DeclaredAttributesDigest != previousDigest) {
+				t.Fatalf("式の変更が監査に反映されない: %+v", event)
+			}
+			previousVersion, previousDigest = event.ConditionVersion, event.DeclaredAttributesDigest
+		})
+	}
+}
+
 //spec:covers REQ-OAUTH2-062: 条件のない規則は申告を読まず、読めない申告でも結果を変えないこと
 func TestEvaluateResourceAccessIgnoresAttributesWithoutCondition(t *testing.T) {
 	in := evalRequest()

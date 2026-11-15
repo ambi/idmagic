@@ -222,6 +222,52 @@ func (f *resourceLoadFixture) setCondition(tb testing.TB, condition *oauthdomain
 	}
 }
 
+//spec:covers REQ-OAUTH2-062, REQ-OAUTH2-064: 両保存構成で管理 API の条件変更・削除が次の評価へ反映され、現在の入力から拒否と評価不能の理由を返す。
+//verify:operation EvaluateResourceAccess: 条件の差し替え・削除後の許可、拒否と理由
+func TestResourceAccessConditionChangesReachHTTP(t *testing.T) {
+	for _, storage := range []string{"memory", "postgres"} {
+		t.Run(storage, func(t *testing.T) {
+			f := newResourceLoadFixture(t, storage, nil)
+			token, _, err := f.signer.SignAccessToken(f.ctx, oauthports.AccessTokenInput{
+				Client: &oauthdomain.OAuth2Client{ClientID: f.agentClient}, Sub: f.agentClient, AgentID: f.agentID,
+				Scopes: []string{"tools:read"}, Audiences: []string{f.resource},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			form := url.Values{"token": {token}, "resource_type": {"document"}, "resource_id": {f.evaluator + "-d0"}, "relation": {"viewer"}}
+			for _, step := range []struct {
+				name       string
+				condition  *oauthdomain.ResourceAccessCondition
+				attributes string
+				reason     string
+			}{
+				{"許可条件", &oauthdomain.ResourceAccessCondition{DenyWhen: "attributes.amount > 100"}, `{"amount":50}`, ""},
+				{"拒否条件へ差し替え", &oauthdomain.ResourceAccessCondition{DenyWhen: "attributes.amount < 100"}, `{"amount":50}`, "condition_denied"},
+				{"同じ式で入力を変更", &oauthdomain.ResourceAccessCondition{DenyWhen: "attributes.amount < 100"}, `{"amount":150}`, ""},
+				{"属性が欠落", &oauthdomain.ResourceAccessCondition{DenyWhen: "attributes.amount < 100"}, `{}`, "condition_indeterminate"},
+				{"条件を削除", nil, `{`, ""},
+			} {
+				t.Run(step.name, func(t *testing.T) {
+					f.setCondition(t, step.condition)
+					form.Set("attributes", step.attributes)
+					response := f.response(form.Encode())
+					var body struct {
+						Decision bool     `json:"decision"`
+						Reasons  []string `json:"reasons"`
+					}
+					if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil || response.Code != http.StatusOK || body.Decision != (step.reason == "") {
+						t.Fatalf("評価: status=%d body=%s err=%v", response.Code, response.Body.String(), err)
+					}
+					if step.reason != "" && !slices.Equal(body.Reasons, []string{step.reason}) {
+						t.Fatalf("拒否の理由: got=%v want=%s", body.Reasons, step.reason)
+					}
+				})
+			}
+		})
+	}
+}
+
 //spec:covers REQ-OAUTH2-062: 設定から正式な両アダプターを経て HTTP の評価が上限で止まる
 //verify:operation EvaluateResourceAccess: 許可の本文と、設定した固定窓の 429 の本文と再試行指示
 func TestResourceAccessConfiguredBudgetReachesHTTP(t *testing.T) {

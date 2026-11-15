@@ -9,12 +9,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
 
 	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common"
+	celast "cel.dev/cel-go/common/ast"
 	"cel.dev/cel-go/common/types"
+	"cel.dev/cel-go/parser"
+	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 const (
@@ -24,6 +29,8 @@ const (
 	conditionCostLimit = 10_000
 	// 内包を入れ子にすると、費用が属性の大きさの積になる。
 	conditionComprehensionNesting = 1
+	// 従来の CEL パーサーのデフォルト値。解析方式ごとの深さの数え方の差を境界で吸収する。
+	conditionParserRecursionLimit = 250
 )
 
 // ConditionOutcome は条件の判定の結果である。
@@ -135,6 +142,7 @@ func evaluateConditionExpression(expression string, vars map[string]any) (bool, 
 var conditionEnv = sync.OnceValues(func() (*cel.Env, error) {
 	dynamicMap := cel.MapType(cel.StringType, cel.DynType)
 	return cel.NewEnv(
+		cel.ParserRecursionLimit(conditionParserRecursionLimit),
 		cel.Variable("token", dynamicMap),
 		cel.Variable("operation", dynamicMap),
 		cel.Variable("attributes", dynamicMap),
@@ -148,6 +156,10 @@ var conditionEnv = sync.OnceValues(func() (*cel.Env, error) {
 	)
 })
 
+var conditionParser = sync.OnceValues(func() (*parser.Parser, error) {
+	return parser.NewParser(parser.EnablePrattParser(true), parser.Macros(parser.AllMacros...), parser.MaxRecursionDepth(conditionParserRecursionLimit))
+})
+
 func compileCondition(expression string) (cel.Program, error) {
 	if utf8.RuneCountInString(expression) > MaxConditionExpressionChars {
 		return nil, fmt.Errorf("expression must not exceed %d characters", MaxConditionExpressionChars)
@@ -156,7 +168,11 @@ func compileCondition(expression string) (cel.Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	ast, issues := env.Compile(expression)
+	parsed, err := parseCondition(expression)
+	if err != nil {
+		return nil, err
+	}
+	ast, issues := env.Check(parsed)
 	if issues != nil && issues.Err() != nil {
 		return nil, issues.Err()
 	}
@@ -164,4 +180,50 @@ func compileCondition(expression string) (cel.Program, error) {
 		return nil, errors.New("expression must return bool")
 	}
 	return env.Program(ast, cel.EvalOptions(cel.OptOptimize), cel.CostLimit(conditionCostLimit))
+}
+
+// CEL v0.33.1 の Env は Pratt の選択を公開しないため、パーサーの公開 API から
+// 共通の型検査へ接続する。式、マクロ展開とソース位置を変換し、要求ごとの AST を返す。
+func parseCondition(expression string) (*cel.Ast, error) {
+	// 深い構文の受理範囲は従来のパーサーに委ねる。文字列やコメント内も数える
+	// 保守的な判定とし、ここではトークンや再帰の構造を独自に解析しない。
+	structuralChars := 0
+	for _, r := range expression {
+		if strings.ContainsRune("([{.+-*/%<>=!?:", r) {
+			structuralChars++
+		}
+		if structuralChars >= conditionParserRecursionLimit-1 {
+			return parseLegacyCondition(expression)
+		}
+	}
+	p, err := conditionParser()
+	if err != nil {
+		return nil, err
+	}
+	source := common.NewTextSource(expression)
+	parsed, issues := p.Parse(source)
+	if len(issues.GetErrors()) != 0 {
+		return parseLegacyCondition(expression)
+	}
+	expr, err := celast.ExprToProto(parsed.Expr())
+	if err != nil {
+		return nil, err
+	}
+	info, err := celast.SourceInfoToProto(parsed.SourceInfo())
+	if err != nil {
+		return nil, err
+	}
+	return cel.ParsedExprToAstWithSource(&exprpb.ParsedExpr{Expr: expr, SourceInfo: info}, source), nil
+}
+
+func parseLegacyCondition(expression string) (*cel.Ast, error) {
+	env, err := conditionEnv()
+	if err != nil {
+		return nil, err
+	}
+	parsed, issues := env.Parse(expression)
+	if issues != nil && issues.Err() != nil {
+		return nil, issues.Err()
+	}
+	return parsed, nil
 }
