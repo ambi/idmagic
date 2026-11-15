@@ -12,6 +12,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	authorizationusecases "github.com/ambi/idmagic/backend/oauth2/internal/authorization/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
@@ -32,9 +33,33 @@ func (d Deps) completeAfterAuthn(
 	if authn.AuthenticationPending {
 		return authorizationNext{Path: d.SignIn.PendingPath(c, authn)}, nil
 	}
+	ctx, cancel := d.OperationContext(c.Request().Context())
+	defer cancel()
+	if req.State != spec.AuthFlowConsentPending && req.State != spec.AuthFlowConsented {
+		if err := d.RequestStore.AttachAuthentication(
+			ctx, req.ID, authn.UserID, authn.AuthTime, authn.AMR, authn.ACR, authn.SessionID,
+		); err != nil {
+			return authorizationNext{}, err
+		}
+	}
+	if req.State == spec.AuthFlowReceived {
+		if err := d.RequestStore.UpdateState(ctx, req.ID, spec.AuthFlowAuthenticationPending); err != nil {
+			return authorizationNext{}, err
+		}
+		req.State = spec.AuthFlowAuthenticationPending
+	}
+	if req.State == spec.AuthFlowAuthenticationPending {
+		if err := d.RequestStore.UpdateState(ctx, req.ID, spec.AuthFlowAuthenticated); err != nil {
+			return authorizationNext{}, err
+		}
+		req.State = spec.AuthFlowAuthenticated
+	}
+	if req.State == spec.AuthFlowConsentPending {
+		return authorizationNext{Path: support.TenantRoute(c, "/consent")}, nil
+	}
 	// first-party クライアント (IdP 自身の管理コンソール / アカウントポータル) は
 	// resource owner が IdP 利用者自身であるため consent をスキップする。
-	if d.ConsentRepo != nil && !client.FirstParty {
+	if req.State != spec.AuthFlowConsented && d.ConsentRepo != nil && !client.FirstParty {
 		consent, _ := d.ConsentRepo.Find(
 			c.Request().Context(), support.RequestTenantID(c), authn.UserID, client.ClientID,
 		)
@@ -62,19 +87,13 @@ func (d Deps) completeAfterAuthn(
 			if prompt.None {
 				return authorizationNext{RedirectTo: authorizationErrorURL(req, tenantports.Issuer(c.Request().Context(), d.Issuer), "consent_required", "Existing consent is required.")}, nil
 			}
-			ctx, cancel := d.OperationContext(c.Request().Context())
-			defer cancel()
-			if err := d.RequestStore.AttachAuthentication(
-				ctx, req.ID, authn.UserID, authn.AuthTime, authn.AMR, authn.ACR, authn.SessionID,
-			); err != nil {
+			if err := d.RequestStore.UpdateState(ctx, req.ID, spec.AuthFlowConsentPending); err != nil {
 				return authorizationNext{}, err
 			}
-			req.UserID, req.AuthTime = &authn.UserID, &authn.AuthTime
+			req.State = spec.AuthFlowConsentPending
 			return authorizationNext{Path: support.TenantRoute(c, "/consent")}, nil
 		}
 	}
-	ctx, cancel := d.OperationContext(c.Request().Context())
-	defer cancel()
 	redirectTo, err := d.issueCodeURL(ctx, c, req, authn, time.Unix(authn.AuthTime, 0))
 	return authorizationNext{RedirectTo: redirectTo}, err
 }

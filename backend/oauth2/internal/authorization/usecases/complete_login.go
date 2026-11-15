@@ -54,20 +54,16 @@ func CompleteLogin(ctx context.Context, deps CompleteLoginDeps, in CompleteLogin
 		_ = deps.RequestStore.UpdateState(ctx, req.ID, spec.AuthFlowExpired)
 		return nil, NewOAuthError("invalid_request", "authorization request expired")
 	}
-	if req.State != spec.AuthFlowReceived {
+	if req.State != spec.AuthFlowAuthenticated && req.State != spec.AuthFlowConsented {
 		return nil, NewOAuthError(
 			"invalid_request",
 			"The authorization request has already been processed. Restart authorization from the client.",
 		)
 	}
+	if req.State == spec.AuthFlowConsented && (req.UserID == nil || *req.UserID != in.Sub) {
+		return nil, NewOAuthError("invalid_request", "The authentication session does not match the consented authorization request.")
+	}
 
-	// received → authentication_pending → authenticated → code_issued の最短経路
-	if err := deps.RequestStore.UpdateState(ctx, req.ID, spec.AuthFlowAuthenticationPending); err != nil {
-		return nil, err
-	}
-	if err := deps.RequestStore.UpdateState(ctx, req.ID, spec.AuthFlowAuthenticated); err != nil {
-		return nil, err
-	}
 	authTime := in.AuthTime.UTC().Unix()
 	if err := deps.RequestStore.AttachAuthentication(ctx, req.ID, in.Sub, authTime, in.AMR, in.ACR, in.Sid); err != nil {
 		return nil, err

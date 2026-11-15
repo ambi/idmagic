@@ -14,6 +14,51 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
+//spec:covers REQ-OAUTH2-005: 認証済みと同意済みから発行でき、認証前、同意待ち、処理済みの要求では状態とコードを変更しない。
+func TestCompleteLoginRequiresCompletedAuthenticationAndConsent(t *testing.T) {
+	for _, state := range []spec.AuthorizationCodeFlowState{
+		spec.AuthFlowReceived, spec.AuthFlowAuthenticationPending, spec.AuthFlowAuthenticated,
+		spec.AuthFlowConsentPending, spec.AuthFlowConsented, spec.AuthFlowCodeIssued,
+		spec.AuthFlowExchanged, spec.AuthFlowRejected, spec.AuthFlowExpired,
+	} {
+		t.Run(string(state), func(t *testing.T) {
+			ctx := tenantContext()
+			requests := memory.NewAuthorizationRequestStore()
+			codes := memory.NewAuthorizationCodeStore()
+			now := time.Now().UTC()
+			req := &domain.AuthorizationRequest{
+				ID: "11111111-2222-4333-8444-555555555555", TenantID: tenancydomain.DefaultTenantID,
+				ClientID: "client-1", Scope: "openid", RedirectURI: "https://example.com/cb",
+				State: state, ExpiresAt: now.Add(10 * time.Minute),
+			}
+			if state == spec.AuthFlowConsented {
+				sub := "user-1"
+				req.UserID = &sub
+			}
+			if err := requests.Save(ctx, req); err != nil {
+				t.Fatal(err)
+			}
+			out, err := CompleteLogin(ctx, CompleteLoginDeps{RequestStore: requests, CodeStore: codes}, CompleteLoginInput{
+				RequestID: req.ID, Sub: "user-1", AuthTime: now, AMR: []string{"pwd"}, ACR: "urn:pwd",
+			})
+			if state == spec.AuthFlowAuthenticated || state == spec.AuthFlowConsented {
+				if err != nil {
+					t.Fatal(err)
+				}
+				stored, findErr := codes.Find(ctx, out.Code.Code)
+				if findErr != nil || stored == nil || req.State != spec.AuthFlowCodeIssued {
+					t.Fatalf("発行結果=%v state=%s err=%v", stored, req.State, findErr)
+				}
+				return
+			}
+			assertOAuthError(t, err, "invalid_request")
+			if out != nil || req.State != state || req.UserID != nil {
+				t.Fatalf("拒否後に変更: out=%+v req=%+v", out, req)
+			}
+		})
+	}
+}
+
 func TestCompleteLogin(t *testing.T) {
 	ctx := tenantContext()
 	requestStore := memory.NewAuthorizationRequestStore()
@@ -34,7 +79,7 @@ func TestCompleteLogin(t *testing.T) {
 			ClientID:            "client-1",
 			Scope:               "openid profile",
 			RedirectURI:         "https://example.com/cb",
-			State:               spec.AuthFlowReceived,
+			State:               spec.AuthFlowAuthenticated,
 			ExpiresAt:           now.Add(10 * time.Minute),
 			CodeChallenge:       "challenge-value",
 			CodeChallengeMethod: "S256",

@@ -24,8 +24,11 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 	if err != nil {
 		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", err.Error())
 	}
+	if req.State != spec.AuthFlowConsentPending {
+		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", "The authorization transaction is not awaiting consent.")
+	}
 	authn, _ := d.ResolveAuthentication(c)
-	if authn == nil || req.UserID == nil || authn.UserID != *req.UserID {
+	if authn == nil || authn.AuthenticationPending || req.UserID == nil || authn.UserID != *req.UserID {
 		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not match.")
 	}
 	var input consentAPIRequest
@@ -35,7 +38,9 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	if input.Action != "allow" {
-		_ = d.RequestStore.UpdateState(ctx, req.ID, spec.AuthFlowRejected)
+		if err := d.RequestStore.UpdateState(ctx, req.ID, spec.AuthFlowRejected); err != nil {
+			return err
+		}
 		d.clearTransactionCookie(c)
 		return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{RedirectTo: authorizationErrorURL(req, support.RequestIssuer(c, d.Issuer), "access_denied", "")})
 	}
@@ -47,6 +52,9 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 		}, time.Now().UTC()); err != nil {
 			return err
 		}
+	}
+	if err := d.RequestStore.UpdateState(ctx, req.ID, spec.AuthFlowConsented); err != nil {
+		return err
 	}
 	redirectTo, err := d.issueCodeURL(ctx, c, req, authn, time.Unix(authn.AuthTime, 0))
 	if err != nil {

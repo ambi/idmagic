@@ -85,18 +85,10 @@ func (p *pendingAuthorization) DeniedRedirect(c *echo.Context, code, description
 }
 
 func (p *pendingAuthorization) ContinueAfterPassword(c *echo.Context, authn *authdomain.AuthenticationContext) error {
-	p.req.UserID, p.req.AuthTime, p.req.AMR, p.req.ACR = &authn.UserID, &authn.AuthTime, authn.AMR, &authn.ACR
 	return p.continueAuthorization(c, p.client, authn)
 }
 
 func (p *pendingAuthorization) ContinueAfterSecondFactor(c *echo.Context, completed *authdomain.AuthenticationContext) error {
-	if err := p.d.RequestStore.AttachAuthentication(
-		c.Request().Context(), p.req.ID, completed.UserID, completed.AuthTime, completed.AMR, completed.ACR, completed.SessionID,
-	); err != nil {
-		return writeOAuthError(c, err)
-	}
-	p.req.UserID, p.req.AuthTime, p.req.AMR, p.req.ACR = &completed.UserID, &completed.AuthTime, completed.AMR, &completed.ACR
-	p.req.Sid = &completed.SessionID
 	client, err := p.d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), p.req.ClientID)
 	if err != nil || client == nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")

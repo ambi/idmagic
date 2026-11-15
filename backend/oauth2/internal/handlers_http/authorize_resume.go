@@ -42,7 +42,6 @@ func (d Deps) handleFederatedResume(c *echo.Context) error {
 		}
 	}
 
-	req.UserID, req.AuthTime, req.AMR, req.ACR = &authn.UserID, &authn.AuthTime, authn.AMR, &authn.ACR
 	authTime := time.Unix(authn.AuthTime, 0).UTC()
 	gateNext, err := d.SignIn.CompleteSignIn(c, user, authn, req.ClientID, authTime)
 	if err != nil {

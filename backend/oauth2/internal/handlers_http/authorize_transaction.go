@@ -79,8 +79,14 @@ func (d Deps) transactionRequest(c *echo.Context) (*domain.AuthorizationRequest,
 	if err != nil {
 		return nil, err
 	}
-	if req == nil || req.TenantID != support.RequestTenantID(c) || time.Now().After(req.ExpiresAt) || req.State != spec.AuthFlowReceived {
+	if req == nil || req.TenantID != support.RequestTenantID(c) || time.Now().After(req.ExpiresAt) {
 		return nil, errors.New("the authorization transaction is invalid or has expired")
+	}
+	switch req.State {
+	case spec.AuthFlowReceived, spec.AuthFlowAuthenticationPending, spec.AuthFlowAuthenticated,
+		spec.AuthFlowConsentPending, spec.AuthFlowConsented:
+	default:
+		return nil, errors.New("the authorization transaction has already been processed")
 	}
 	return req, nil
 }
