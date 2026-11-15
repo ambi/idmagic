@@ -268,8 +268,11 @@ func (d Deps) createAdmin(c *echo.Context) error {
 	}
 	connection.TenantID, connection.Status = support.RequestTenantID(c), federationdomain.ConnectionDisabled
 	connection.CreatedAt, connection.UpdatedAt = now, now
-	if err := d.Broker.Connections.Save(c.Request().Context(), &connection); err != nil {
+	if err := connection.Validate(); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	if err := d.Broker.Connections.Save(c.Request().Context(), &connection); err != nil {
+		return err
 	}
 	return support.NoStoreJSON(c, http.StatusCreated, withSecretPresence(&connection))
 }
@@ -294,8 +297,11 @@ func (d Deps) updateAdmin(c *echo.Context) error {
 	}
 	connection.Status = federationusecases.ResolveUpdatedStatus(*existing, connection)
 	connection.UpdatedAt = time.Now().UTC()
-	if err := d.Broker.Connections.Save(c.Request().Context(), &connection); err != nil {
+	if err := connection.Validate(); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	if err := d.Broker.Connections.Save(c.Request().Context(), &connection); err != nil {
+		return err
 	}
 	return support.NoStoreJSON(c, http.StatusOK, withSecretPresence(&connection))
 }

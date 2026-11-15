@@ -70,7 +70,7 @@ func newProvisioningAdminServer(t *testing.T) provisioningRequest {
 	return request
 }
 
-func newProvisioningContractServer(t *testing.T) (provisioningRequest, *provisioningmemory.ProvisioningConnectionRepository, *provisioningmemory.ProvisioningTaskRepository) {
+func newProvisioningContractServer(t *testing.T, configure ...func(*provisioninghttp.Deps, *echo.Echo)) (provisioningRequest, *provisioningmemory.ProvisioningConnectionRepository, *provisioningmemory.ProvisioningTaskRepository) {
 	t.Helper()
 	now := time.Now().UTC()
 	users := idmanagement.NewMemoryModule().UserRepo
@@ -86,7 +86,7 @@ func newProvisioningContractServer(t *testing.T) (provisioningRequest, *provisio
 	connections := provisioningmemory.NewProvisioningConnectionRepository(tasks, provisioningmemory.NewRemoteResourceLinkRepository())
 	e := echo.New()
 	e.HTTPErrorHandler = support.ErrorHandler(nil, nil)
-	provisioninghttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), provisioninghttp.Deps{
+	deps := provisioninghttp.Deps{
 		Issuer: "http://idp.test",
 		Authenticator: &support.Authenticator{
 			Principals: idmanagement.Module{UserRepo: users}.Principals(),
@@ -98,7 +98,11 @@ func newProvisioningContractServer(t *testing.T) (provisioningRequest, *provisio
 		NewTargetClient: func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error) {
 			return discoveryTarget{}, nil
 		},
-	})
+	}
+	for _, apply := range configure {
+		apply(&deps, e)
+	}
+	provisioninghttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), deps)
 
 	csrf := "csrf-token"
 	request := func(sub, method, path string, body any) *httptest.ResponseRecorder {

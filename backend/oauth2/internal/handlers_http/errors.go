@@ -2,26 +2,30 @@ package handlers_http
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 
 	"github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/logging"
 
 	"github.com/labstack/echo/v5"
 )
 
 func writeOAuthError(c *echo.Context, err error) error {
 	var oe *usecases.OAuthError
-	if !errors.As(err, &oe) {
+	if !errors.As(err, &oe) || oe.Code == "server_error" {
+		request := c.Request()
+		logging.Error(request.Context(), "OAuth request failed",
+			"error", err.Error(), "stack", fmt.Sprintf("%+v", err),
+			"method", request.Method, "path", request.URL.Path,
+		)
 		return c.JSON(http.StatusInternalServerError, support.OAuthErrorBody("server_error", "The authorization server encountered an unexpected condition."))
 	}
 	status := http.StatusBadRequest
-	switch oe.Code {
-	case "invalid_client":
+	if oe.Code == "invalid_client" {
 		status = http.StatusUnauthorized
-	case "server_error":
-		status = http.StatusInternalServerError
 	}
 	return c.JSON(status, support.OAuthErrorBody(oe.Code, oe.Description))
 }

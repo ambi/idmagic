@@ -7,6 +7,7 @@
 package handlers_http
 
 import (
+	"errors"
 	"net/http"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
@@ -60,12 +61,17 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 }
 
 func (d Deps) writeError(c *echo.Context, err error) error {
+	var invalid *usecases.InvalidInputError
 	switch {
 	case isNotFound(err):
 		return support.WriteProblem(c, http.StatusNotFound, "provisioning_not_found", err.Error())
 	case isConflict(err):
 		return support.WriteProblem(c, http.StatusConflict, "provisioning_conflict", err.Error())
+	case errors.As(err, &invalid):
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", invalid.Error())
+	case errors.Is(err, domain.ErrConnectionNotQuarantined):
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", domain.ErrConnectionNotQuarantined.Error())
 	default:
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return err
 	}
 }

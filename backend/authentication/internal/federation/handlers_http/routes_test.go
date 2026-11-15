@@ -103,7 +103,7 @@ func TestStartFederatedLoginRedirectsOnlyThroughSavedProvider(t *testing.T) {
 // newAdminServer wires the same routes as newServer plus a working admin auth stack
 // (DemoHeaderResolver keyed by X-Demo-Sub, and a matching CSRF cookie/header pair) so admin
 // CRUD/lifecycle/test handlers can be exercised end-to-end. oidcClient may be nil.
-func newAdminServer(t *testing.T, oidcClient *oidcprotocol.Client) (*echo.Echo, federationmemory.Repositories) {
+func newAdminServer(t *testing.T, oidcClient *oidcprotocol.Client, configure ...func(*federationhttp.Deps, *echo.Echo)) (*echo.Echo, federationmemory.Repositories) {
 	t.Helper()
 	repos := federationmemory.NewRepositories()
 	users := idmanagement.NewMemoryModule().UserRepo
@@ -115,7 +115,7 @@ func newAdminServer(t *testing.T, oidcClient *oidcprotocol.Client) (*echo.Echo, 
 		t.Fatal(err)
 	}
 	e := echo.New()
-	federationhttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), federationhttp.Deps{
+	deps := federationhttp.Deps{
 		Broker: federationusecases.BrokerDeps{
 			Connections: repos.Connections, Identities: repos.Identities, Attempts: repos.Attempts,
 			Drivers: map[federationdomain.Protocol]federationusecases.ProtocolDriver{
@@ -130,7 +130,11 @@ func newAdminServer(t *testing.T, oidcClient *oidcprotocol.Client) (*echo.Echo, 
 			},
 		},
 		OIDC: oidcClient,
-	})
+	}
+	for _, apply := range configure {
+		apply(&deps, e)
+	}
+	federationhttp.RegisterRoutes(e.Group("", testing_tenant.ResolveDefault), deps)
 	return e, repos
 }
 

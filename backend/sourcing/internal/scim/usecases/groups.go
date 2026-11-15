@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"time"
 
@@ -376,7 +375,7 @@ func (u *Usecases) DeleteGroup(ctx context.Context, tenantID, scimID string) err
 		return err
 	}
 	if ref == nil {
-		return errors.New("group not found")
+		return ErrNotFound
 	}
 
 	if err := u.Writes.DeleteGroup(ctx, tenantID, ref.GroupID, time.Now()); err != nil {

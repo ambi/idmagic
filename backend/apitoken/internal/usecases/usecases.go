@@ -20,7 +20,7 @@ const BuiltinClientID = domain.BuiltinClientID
 
 var (
 	ErrInvalidRequest = errors.New("invalid API token request")
-	ErrAccessDenied   = errors.New("API token access denied")
+	ErrAccessDenied   = domain.ErrInvalidToken
 )
 
 type Service struct {

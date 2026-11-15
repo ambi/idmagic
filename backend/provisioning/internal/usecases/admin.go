@@ -11,6 +11,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -29,6 +30,11 @@ type AdminDeps struct {
 	// Emit は接続の保存に成功した管理操作のイベントを発行する。nil なら発行しない。
 	Emit func(spec.DomainEvent)
 }
+
+// InvalidInputError は、作用を持たない入力検証で識別した拒否だけを表す。
+type InvalidInputError struct{ cause error }
+
+func (e *InvalidInputError) Error() string { return e.cause.Error() }
 
 func (d AdminDeps) captureDeps() CaptureDeps {
 	return CaptureDeps{ConnectionRepo: d.ConnectionRepo, TaskRepo: d.TaskRepo, AssignmentRepo: d.AssignmentRepo}
@@ -61,10 +67,10 @@ type RegisterConnectionInput struct {
 // (docs/modules/provisioning/ interfaces.RegisterProvisioningConnection).
 func RegisterConnection(ctx context.Context, deps AdminDeps, in RegisterConnectionInput) (*domain.ProvisioningConnection, error) {
 	if err := domain.ValidateOutboundBaseURL(in.BaseURL); err != nil {
-		return nil, err
+		return nil, &InvalidInputError{cause: err}
 	}
 	if err := validateCredential(in.Credential); err != nil {
-		return nil, err
+		return nil, &InvalidInputError{cause: err}
 	}
 	credentialID, err := spec.NewUUIDv4()
 	if err != nil {
@@ -90,7 +96,7 @@ func RegisterConnection(ctx context.Context, deps AdminDeps, in RegisterConnecti
 		UpdatedAt:                         now,
 	}
 	if err := conn.Validate(); err != nil {
-		return nil, err
+		return nil, &InvalidInputError{cause: err}
 	}
 	if err := deps.ConnectionRepo.Register(ctx, conn, in.Credential.Secret()); err != nil {
 		return nil, err
@@ -133,7 +139,7 @@ func UpdateConnection(ctx context.Context, deps AdminDeps, in UpdateConnectionIn
 	wasDisabled := conn.Status == domain.ConnectionDisabled
 	if in.BaseURL != nil {
 		if err := domain.ValidateOutboundBaseURL(*in.BaseURL); err != nil {
-			return nil, err
+			return nil, &InvalidInputError{cause: err}
 		}
 		conn.BaseURL = *in.BaseURL
 	}
@@ -172,12 +178,12 @@ func UpdateConnection(ctx context.Context, deps AdminDeps, in UpdateConnectionIn
 	}
 	conn.UpdatedAt = in.Now.UTC()
 	if err := conn.Validate(); err != nil {
-		return nil, err
+		return nil, &InvalidInputError{cause: err}
 	}
 	var secret *string
 	if in.Credential != nil {
 		if err := validateCredential(*in.Credential); err != nil {
-			return nil, err
+			return nil, &InvalidInputError{cause: err}
 		}
 		credentialID, err := spec.NewUUIDv4()
 		if err != nil {
@@ -276,7 +282,9 @@ func TestConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID
 	}
 	caps, discoverErr := client.Discover(ctx)
 	if discoverErr != nil {
-		return TestConnectionResult{Reachable: false, Error: discoverErr.Error()}, nil //nolint:nilerr // downstream unreachable is a business result (Reachable=false), not a usecase-level error
+		logging.Error(ctx, "provisioning discovery failed", "error", discoverErr.Error(), "application_id", applicationID)
+		// 下流へ到達できないことは接続テストの結果として返す。
+		return TestConnectionResult{Reachable: false, Error: "The provisioning target could not be reached."}, nil
 	}
 	caps.DiscoveredAt = now.UTC()
 	conn.Capabilities = &caps

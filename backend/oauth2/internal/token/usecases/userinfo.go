@@ -4,6 +4,7 @@ package usecases
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -132,7 +133,7 @@ func UserInfo(
 	if in.ClaimPolicy != nil {
 		result, err := claimdomain.IssueClaimsWithFloor(*in.ClaimPolicy, claimdomain.ResolveUserAttributes(*u), defs)
 		if err != nil {
-			return nil, NewOAuthError("server_error", err.Error())
+			return nil, fmt.Errorf("issue UserInfo claims: %w", err)
 		}
 		if result.NameIDValue != "" {
 			res.Sub = result.NameIDValue

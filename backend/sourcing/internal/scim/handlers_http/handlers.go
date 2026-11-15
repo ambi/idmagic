@@ -11,6 +11,7 @@ import (
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 )
@@ -28,7 +29,7 @@ func NewHandler(d Deps) *Handler {
 func (h *Handler) authenticate(c *echo.Context, allowedScopes ...apitokendomain.Scope) (string, error) {
 	authHeader := c.Request().Header.Get("Authorization")
 	if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
-		return "", errors.New("missing or invalid authorization header")
+		return "", apitokendomain.ErrInvalidToken
 	}
 	tokenStr := authHeader[7:]
 
@@ -46,7 +47,7 @@ func (h *Handler) authenticate(c *echo.Context, allowedScopes ...apitokendomain.
 
 	reqTenantID := support.RequestTenantID(c)
 	if reqTenantID != principal.TenantID {
-		return "", errors.New("tenant mismatch")
+		return "", apitokendomain.ErrInvalidToken
 	}
 
 	return reqTenantID, nil
@@ -57,8 +58,20 @@ func (h *Handler) writeScimAuthError(c *echo.Context, err error) error {
 		support.SetBearerChallenge(c, "insufficient_scope", scopeErr.Required)
 		return h.writeScimError(c, http.StatusForbidden, err.Error(), "")
 	}
+	if !errors.Is(err, apitokendomain.ErrInvalidToken) {
+		return h.writeInternalError(c, err)
+	}
 	support.SetBearerChallenge(c, "invalid_token", "")
-	return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
+	return h.writeScimError(c, http.StatusUnauthorized, apitokendomain.ErrInvalidToken.Error(), "")
+}
+
+func (h *Handler) writeInternalError(c *echo.Context, err error) error {
+	request := c.Request()
+	logging.Error(request.Context(), "SCIM request failed",
+		"error", err.Error(), "stack", fmt.Sprintf("%+v", err),
+		"method", request.Method, "path", request.URL.Path,
+	)
+	return h.writeScimError(c, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), "")
 }
 
 func (h *Handler) writeScimError(c *echo.Context, status int, detail, scimType string) error {
@@ -87,7 +100,7 @@ func (h *Handler) writeMutationError(c *echo.Context, notFoundDetail string, err
 	if mutErr, ok := errors.AsType[*domain.MutationError](err); ok {
 		return h.writeScimError(c, http.StatusBadRequest, err.Error(), mutErr.ScimType)
 	}
-	return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+	return h.writeInternalError(c, err)
 }
 
 func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
@@ -203,7 +216,7 @@ func (h *Handler) handleGetUser(c *echo.Context) error {
 		if errors.Is(err, usecases.ErrNotFound) {
 			return h.writeScimError(c, http.StatusNotFound, "user not found", "")
 		}
-		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+		return h.writeInternalError(c, err)
 	}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
@@ -260,7 +273,7 @@ func (h *Handler) handleDeleteUser(c *echo.Context) error {
 
 	id := c.Param("id")
 	if err := h.deps.Usecases.DeleteUser(c.Request().Context(), tenantID, id); err != nil {
-		return h.writeScimError(c, http.StatusNotFound, err.Error(), "")
+		return h.writeMutationError(c, "SCIM resource not found", err)
 	}
 
 	return c.NoContent(http.StatusNoContent)
@@ -323,7 +336,7 @@ func (h *Handler) writeListError(c *echo.Context, err error) error {
 	if _, ok := errors.AsType[*domain.PaginationError](err); ok {
 		return h.writeScimError(c, http.StatusBadRequest, err.Error(), "invalidValue")
 	}
-	return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+	return h.writeInternalError(c, err)
 }
 
 func (h *Handler) writeListResponse(c *echo.Context, result usecases.ListResult) error {
@@ -375,7 +388,7 @@ func (h *Handler) handleGetGroup(c *echo.Context) error {
 		if errors.Is(err, usecases.ErrNotFound) {
 			return h.writeScimError(c, http.StatusNotFound, "group not found", "")
 		}
-		return h.writeScimError(c, http.StatusInternalServerError, err.Error(), "")
+		return h.writeInternalError(c, err)
 	}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
@@ -451,7 +464,7 @@ func (h *Handler) handleDeleteGroup(c *echo.Context) error {
 
 	id := c.Param("id")
 	if err := h.deps.Usecases.DeleteGroup(c.Request().Context(), tenantID, id); err != nil {
-		return h.writeScimError(c, http.StatusNotFound, err.Error(), "")
+		return h.writeMutationError(c, "SCIM resource not found", err)
 	}
 
 	return c.NoContent(http.StatusNoContent)
