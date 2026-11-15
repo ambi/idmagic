@@ -43,10 +43,17 @@ describe('AccountDataPresentation', () => {
 })
 
 describe('AccountDataPage', () => {
-  afterEach(() => restoreGlobals())
+  afterEach(() => {
+    restoreGlobals()
+    mock.restore()
+  })
 
   it('downloads the export and clears the downloading state', async () => {
-    stubGlobal('fetch', mock().mockResolvedValue(response(200, { profile: {} })))
+    const exportedData = Promise.withResolvers<unknown>()
+    stubGlobal(
+      'fetch',
+      mock().mockResolvedValue({ ...response(200), json: () => exportedData.promise }),
+    )
     const createObjectURL = mock().mockReturnValue('blob:mock')
     const revokeObjectURL = mock()
     URL.createObjectURL = createObjectURL
@@ -55,12 +62,15 @@ describe('AccountDataPage', () => {
 
     await renderWithRouter(<AccountDataPage username="taro" isAdmin={false} />)
     fireEvent.click(screen.getByRole('button', { name: /データをダウンロード/ }))
+    expect(screen.getByRole('button', { name: /生成中/ })).toBeDisabled()
+    exportedData.resolve({ profile: {} })
 
-    await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /データをダウンロード/ })).toBeEnabled(),
+    )
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
     expect(anchorClick).toHaveBeenCalledTimes(1)
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock')
-    expect(screen.getByRole('button', { name: /データをダウンロード/ })).toBeEnabled()
-    anchorClick.mockRestore()
   })
 
   it('shows an error message when the export fails', async () => {
@@ -72,6 +82,8 @@ describe('AccountDataPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /データをダウンロード/ }))
 
     expect(await screen.findByText('一時的に利用できません')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /データをダウンロード/ })).toBeEnabled()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /データをダウンロード/ })).toBeEnabled(),
+    )
   })
 })
