@@ -66,6 +66,11 @@
 - 登録のない HTTPS の URL の形式の `client_id` を受けたとき、OAuth2 は、環境のプロキシを使わずに、DNS で検査した公開 IP へ直接接続して Client ID Metadata Document を取得し、検証に成功した文書をクライアントとして使い、`ClientIdMetadataDocumentResolved` を発行する。
 - メタデータのホストがプライベート、ループバック、リンクローカル、CGNAT（100.64.0.0/10）の IP に解決された場合、OAuth2 は、その IP へ接続せず、未知の `client_id` として拒否し、`ClientIdMetadataDocumentRejected` を発行する。
 - 文書を取得できないか検証できない場合、OAuth2 は、未知の `client_id` として拒否し、`ClientIdMetadataDocumentRejected` を発行する。
+- 認証方式が省略または `none` の CIMD を解決したとき、OAuth2 は、公開クライアントとして扱い、文書の鍵を認証資格情報へ取り込まない。
+- `private_key_jwt` の CIMD を解決したとき、OAuth2 は、公開鍵だけの空でない `jwks` と HTTPS の `jwks_uri` のどちらか一方を持つ文書だけを confidential クライアントとして使い、PKCE を必須とし、クライアントを永続登録しない。
+- `private_key_jwt` の CIMD がインラインの鍵を持つとき、OAuth2 は、P-256 の EC または 2048 ビット以上の RSA の公開署名鍵だけを受け入れる。
+- `private_key_jwt` の CIMD が両方の鍵情報、鍵不足、不正な URI、共有シークレット、秘密鍵を含むか、`authorization_code` と `refresh_token` 以外のグラントを指定する場合、OAuth2 は、文書を解決せず拒否し、公開クライアントへ降格しない。
+- CIMD が `grant_types` を省いたとき、OAuth2 は、`authorization_code` だけを許す。
 - **例**：EX-OAUTH2-017-01、EX-OAUTH2-017-02
 
 ### クライアントによるトークンエンドポイントでの認証
@@ -78,6 +83,7 @@
 #### REQ-OAUTH2-028 改ざんされた client_assertion は invalid_client で拒否される
 
 - `private_key_jwt` のクライアントの `client_assertion` を検証するとき、OAuth2 は、アルゴリズムの許可リスト、発行者、subject、audience、上限付きの有効期間、リプレイの防止を、Discovery の広告と同じ規則で確かめる。
+- `private_key_jwt` のクライアントを認証するとき、OAuth2 は、PS256、ES256、PS384 の assertion を受け入れ、登録または CIMD から解決した鍵だけで検証し、JWT 自身が指定する取得先や埋め込み鍵を信頼元にしない。
 - 署名を登録した鍵で検証できないか、いずれかの規則を満たさない `client_assertion` を受けた場合、OAuth2 は、401 と `invalid_client` で拒否する。
 - `client_id` を持たない `client_assertion` の要求を受けたとき、OAuth2 は、アサーションの `sub` の登録を、`client_id` を持つ要求と同じ規則で確かめる。
 - `client_id` を持つ要求で、その値がアサーションの `iss` か `sub` と異なる場合、OAuth2 は、401 と `invalid_client` で拒否する。
@@ -172,7 +178,29 @@
 
 RFC 7591 の Dynamic Client Registration に加え、パスを持つ `https` URL 形式の `client_id` は `OAuth2Client` Repository ではなく、クライアントがホストする Client ID Metadata Document からその場で解決する。解決結果は永続化しない。Repository に `client_id` がない場合は文書を取得して 5 分間キャッシュし、他の処理経路と同じ `OAuth2Client` の形へ変換する。これにより、`redirect_uri` の照合、同意画面の描画、PKCE、スコープの処理に CIMD 固有の分岐は不要になる。統合点は、クライアントの Repository を包み、ID による取得だけを上書きする Decorator である。Repository で見つかれば取得前に終了し、保存、削除、一覧、資格情報の一覧は変更せず委譲する。組み立て地点で一度だけ接続するため、認可要求、PAR、クライアント認証の各処理は CIMD を意識しない。
 
-取得には、`tokens_jose.JWKResolver` が `jwks_uri` に使うものと同じ SSRF 対策済みダイヤラー `shared/security/safehttp` を使う。HTTPS のみ、DNS 解決後にパブリック IP だけを許可、検証済み IP への直接接続、環境プロキシの不使用、タイムアウト・レスポンスボディサイズの上限を強制する。CIMD の取得はリダイレクトを追従せず、3xx を 200 以外の応答として拒否する（CIMD02-NO-REDIRECT）。リダイレクトの方針は取得器の側で設定し、`jwks_uri` など共通パッケージのほかの用途は変えない。プロキシは検査済みの接続経路の外で最終送信先を解決して接続し、トランスポート層の SSRF 境界を迂回するため、直接接続が必要である。共通パッケージでは 2 つの取得処理を別々に実装せず、1 つの堅牢化した実装の背後に置く。MVP が受け入れるのは、`token_endpoint_auth_method` を省略するか `none` と宣言する文書だけであり、それ以外はフェイルクローズに拒否する。文書の `client_id` フィールドは取得元 URL と完全に一致しなければならない。共有シークレットや秘密鍵を公開している文書は、信頼モデルが壊れている印として解決しない（CIMD02-CREDENTIAL-MATERIAL）。解決したクライアントの `scope` は文書の自己宣言値（デフォルトは `openid`）とし、新しい管理者管理カタログではなく RFC 7591 DCR と同じ自己宣言型の信頼モデルを使う。CIMD で解決したクライアントは `Application` に関連付けない。自己登録した DCR クライアントと同じであり、`ApplicationGate` は Application レコードがない場合をフェイルクローズに拒否せず、許可として扱う。
+取得には、`tokens_jose.JWKResolver` が `jwks_uri` に使うものと同じ SSRF 対策済みダイヤラー `shared/security/safehttp` を使う。HTTPS のみ、DNS 解決後にパブリック IP だけを許可、検証済み IP への直接接続、環境プロキシの不使用、タイムアウト・レスポンスボディサイズの上限を強制する。CIMD の取得はリダイレクトを追従せず、3xx を 200 以外の応答として拒否する（CIMD02-NO-REDIRECT）。リダイレクトの方針は取得器の側で設定し、`jwks_uri` など共通パッケージのほかの用途は変えない。プロキシは検査済みの接続経路の外で最終送信先を解決して接続し、トランスポート層の SSRF 境界を迂回するため、直接接続が必要である。共通パッケージでは 2 つの取得処理を別々に実装せず、1 つの堅牢化した実装の背後に置く。認証方式省略または `none` は公開クライアントとし、文書の鍵情報は認証に使わない。`private_key_jwt` は公開鍵だけの `jwks` または HTTPS の `jwks_uri` のいずれか一方を持つ文書から confidential クライアントへ変換する。インライン鍵は P-256 または 2048 ビット以上の RSA の公開鍵を検証する。認可コードと refresh だけを許し、`require_pkce=true` を保持するので、分類が confidential に変わっても PKCE が不要にならない。文書の `client_id` フィールドは取得元 URL と完全に一致しなければならない。共有シークレットや秘密鍵を公開している文書は、信頼モデルが壊れている印として解決しない（CIMD02-CREDENTIAL-MATERIAL）。解決したクライアントの `scope` は文書の自己宣言値（デフォルトは `openid`）とし、新しい管理者管理カタログではなく RFC 7591 DCR と同じ自己宣言型の信頼モデルを使う。CIMD で解決したクライアントは `Application` に関連付けない。自己登録した DCR クライアントと同じであり、`ApplicationGate` は Application レコードがない場合をフェイルクローズに拒否せず、許可として扱う。
+
+#### 登録を使わない秘密鍵クライアントの接続例
+
+クライアントが `https://app.example/client.json` を公開する場合の文書は次の形になる。
+共有シークレットは公開せず、`jwks_uri` には公開鍵だけの JWK Set を配信する。
+
+```json
+{
+  "client_id": "https://app.example/client.json",
+  "client_name": "連携アプリケーション",
+  "redirect_uris": ["https://app.example/callback"],
+  "token_endpoint_auth_method": "private_key_jwt",
+  "jwks_uri": "https://app.example/keys",
+  "grant_types": ["authorization_code", "refresh_token"],
+  "scope": "openid profile offline_access"
+}
+```
+
+この URL を `client_id` とし、S256 の PKCE を付けて本人にログインと同意を求める。
+コード交換、refresh、失効では、このクライアントの鍵で署名した毎回異なる `jti` の assertion を提示する。
+refresh token の発行条件は REQ-OAUTH2-021 に従い、文書だけで本人の付与や Agent の束縛を作らない。
+これは汎用 CIMD の接続例であり、企業の発見や付与の意味まで含む Poppy の適合例ではない。
 
 ### セキュリティ
 
@@ -180,4 +208,4 @@ RFC 7591 の Dynamic Client Registration に加え、パスを持つ `https` URL
 
 `token_endpoint_auth_method` は `private_key_jwt`、`tls_client_auth`、`spiffe_jwt`、`none`、`client_secret_post`、`client_secret_basic` の 6 種類に対応する。FAPI 級の非対称認証から従来の共有シークレット方式までを覆い、新しいクライアントを最も強い選択肢へ誘導しながら、既存環境の移行を継続できるようにする。`client_secret_jwt`（HMAC）は意図的に実装しない。`private_key_jwt` を利用できる場合、対称鍵による代替は能力を増やさずリスクだけを増やすためである。クライアント認証の失敗では `client_id` の登録有無を明かさず、常に `401 invalid_client` を返す。未登録の `client_id` にも同程度の検証コストを課し、タイミングオラクルを避ける。
 
-`handlers_http` の `private_key_jwt` 検証は固定した規則の集合に従い、Discovery Metadata での広告とサーバーの実際の検査を一致させる。署名アルゴリズムは `PS256` と `ES256` だけを許可し（`none` と HMAC は不可）、`iss == sub == client_id`、このサーバーの発行者またはエンドポイント URL に一致する `audience`、クライアントが登録したインラインの `jwks` または `jwks_uri` から解決した署名鍵、上限付きのアサーション有効期間、`jti` の一度限りの利用を検査する。`jti` は DPoP と TTL および監査上の意味が異なるため、DPoP のリプレイストアとは別のストアに置く。同じリクエストで `client_assertion` と Basic 認証またはシークレット認証を組み合わせた場合は、RFC 6749 §2.3 に従い `invalid_request` として拒否する。
+`handlers_http` の `private_key_jwt` 検証は固定した規則の集合に従い、Discovery Metadata での広告とサーバーの実際の検査を一致させる。署名アルゴリズムは `PS256`、`ES256`、`PS384` を許可し（`none` と HMAC は不可）、`iss == sub == client_id`、このサーバーの発行者またはエンドポイント URL に一致する `audience`、クライアントが登録したインラインの `jwks` または `jwks_uri` から解決した署名鍵、上限付きのアサーション有効期間、`jti` の一度限りの利用を検査する。`jti` は DPoP と TTL および監査上の意味が異なるため、DPoP のリプレイストアとは別のストアに置く。同じリクエストで `client_assertion` と Basic 認証またはシークレット認証を組み合わせた場合は、RFC 6749 §2.3 に従い `invalid_request` として拒否する。

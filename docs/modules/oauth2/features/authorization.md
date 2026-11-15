@@ -131,6 +131,7 @@ PAR で発行した `request_uri` のライフサイクル。`/authorize` から
 
 - クライアントが `response_type=code`、登録済みの `redirect_uri`、クライアントに登録したスコープと、クライアントの PKCE の要件を満たして `/authorize` を要求したとき、OAuth2 は、10 分の有効期間の `Received` の認可リクエストを保存し、ログインか同意へ進ませる。
 - public、クライアント認証が `none`、FAPI 2.0、または `require_pkce=true` のクライアントが認可を要求したとき、OAuth2 は、`S256` の `code_challenge` を必須の入力として検証する。
+- CIMD から解決した confidential クライアントが認可を要求したとき、OAuth2 は、文書の `require_pkce` の申告によらず S256 の PKCE を必須の入力として検証する。
 - そのほかの confidential クライアントが `code_challenge` と `code_challenge_method` を両方省いたとき、OAuth2 は、PKCE なしの認可リクエストとして保存する。
 - `scope` のない認可の要求を受けたとき、OAuth2 は、`openid` を要求したものとして扱う。
 - 登録した `redirect_uri` が一件のクライアントが `openid` を含まない要求で `redirect_uri` を省いたとき、OAuth2 は、登録値を `redirect_uri` として認可リクエストを保存する。

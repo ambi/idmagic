@@ -258,6 +258,15 @@ type builder struct {
 	stack *Stack
 }
 
+// WithOAuth2ClientRepository は、外部 CIMD を含む実物の解決器を正式な HTTP 入口へ接続する。
+// 保存と取得を別の偽物へ分けず、同じ Repository で準備と観測を行う。
+func WithOAuth2ClientRepository(repository oauthports.OAuth2ClientRepository) Option {
+	return func(b *builder) {
+		b.stack.Clients = repository
+		b.deps.OAuth2.ClientRepo = repository
+	}
+}
+
 // WithOAuth2Clients は OAuth2 クライアントと、その管理 API が読み書きする保存先を配線する。
 // 認可詳細タイプと MCP リソースサーバーも同じ管理 API 群に属するので一緒に配る。
 // REQ-OAUTH2-003 の粒度スコープは resource ごとに別のスコープを割り当てるため、

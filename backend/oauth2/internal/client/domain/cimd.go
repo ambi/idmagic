@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -55,11 +56,12 @@ type clientIDMetadataDocument struct {
 	ResponseTypes           []string `json:"response_types"`
 	TokenEndpointAuthMethod string   `json:"token_endpoint_auth_method"`
 	Scope                   string   `json:"scope"`
-	// 以下は 4.1 節が文書に禁じる素材の検査だけに読み、クライアントへは取り込まない。
-	// json.RawMessage にするのは、値が null でもプロパティの存在を読むためである。
+	// 秘密素材の拒否と鍵源の排他を、値が null でもプロパティの存在から判断する。
+	// 鍵情報は private_key_jwt を宣言した文書だけから取り込む。
 	ClientSecret          json.RawMessage `json:"client_secret"`
 	ClientSecretExpiresAt json.RawMessage `json:"client_secret_expires_at"`
 	JWKS                  json.RawMessage `json:"jwks"`
+	JWKSURI               json.RawMessage `json:"jwks_uri"`
 }
 
 // privateJWKMembers は、JWK が秘密鍵か対称鍵を運んでいることを示すメンバーである
@@ -93,14 +95,8 @@ func (doc clientIDMetadataDocument) rejectCredentialMaterial() error {
 	return nil
 }
 
-// ParseClientIDMetadataDocument parses and validates a fetched CIMD document
-// against the URL it was fetched from (which is also the resulting client's
-// client_id), returning a synthesized OAuth2Client that is never persisted.
-// It performs no I/O; the caller is responsible for the SSRF-safe fetch.
-//
-// MVP only accepts documents that omit token_endpoint_auth_method or declare
-// it as "none"; anything else is rejected fail-closed (rejected
-// private_key_jwt-via-CIMD for this iteration).
+// ParseClientIDMetadataDocument は取得 URL に一致する文書を、永続化しないクライアントへ変換する。
+// 鍵の構文と URL をここで検証し、SSRF 対策済みの取得と署名検証は呼び出し側へ残す。
 func ParseClientIDMetadataDocument(raw []byte, requestURL string, now time.Time) (*OAuth2Client, error) {
 	var doc clientIDMetadataDocument
 	if err := json.Unmarshal(raw, &doc); err != nil {
@@ -115,7 +111,7 @@ func ParseClientIDMetadataDocument(raw []byte, requestURL string, now time.Time)
 	if len(doc.RedirectURIs) == 0 {
 		return nil, errors.New("client id metadata document: redirect_uris is required")
 	}
-	if doc.TokenEndpointAuthMethod != "" && doc.TokenEndpointAuthMethod != string(AuthMethodNone) {
+	if doc.TokenEndpointAuthMethod != "" && doc.TokenEndpointAuthMethod != string(AuthMethodNone) && doc.TokenEndpointAuthMethod != string(AuthMethodPrivateKeyJwt) {
 		return nil, fmt.Errorf("client id metadata document: unsupported token_endpoint_auth_method %q", doc.TokenEndpointAuthMethod)
 	}
 	if err := doc.rejectCredentialMaterial(); err != nil {
@@ -157,10 +153,58 @@ func ParseClientIDMetadataDocument(raw []byte, requestURL string, now time.Time)
 		CreatedAt:                now,
 		UpdatedAt:                now,
 	}
+	if doc.TokenEndpointAuthMethod == string(AuthMethodPrivateKeyJwt) {
+		for _, grant := range grantTypes {
+			if grant != spec.GrantAuthorizationCode && grant != spec.GrantRefreshToken {
+				return nil, errors.New("client id metadata document: private_key_jwt only supports authorization_code and refresh_token")
+			}
+		}
+		jwks, uri, err := doc.privateKeyJWTSource()
+		if err != nil {
+			return nil, err
+		}
+		client.ClientType = spec.ClientConfidential
+		client.TokenEndpointAuthMethod = AuthMethodPrivateKeyJwt
+		client.RequirePKCE = true
+		client.JWKS = jwks
+		client.JwksURI = uri
+	}
 	if err := client.Validate(); err != nil {
 		return nil, fmt.Errorf("client id metadata document: %w", err)
 	}
 	return client, nil
+}
+
+func (doc clientIDMetadataDocument) privateKeyJWTSource() (map[string]any, *string, error) {
+	// null を含む二重指定も拒否し、片方の失敗から別の鍵源へ切り替えない。
+	if (doc.JWKS == nil) == (doc.JWKSURI == nil) {
+		return nil, nil, errors.New("client id metadata document: private_key_jwt requires exactly one of jwks and jwks_uri")
+	}
+	if doc.JWKSURI != nil {
+		var uri string
+		if err := json.Unmarshal(doc.JWKSURI, &uri); err != nil {
+			return nil, nil, errors.New("client id metadata document: jwks_uri must be a URL string")
+		}
+		if err := tokensjose.ValidateJWKSURI(uri); err != nil {
+			// URI の構文エラーには userinfo の秘密が含まれ得る。拒否理由は監査へ出る。
+			return nil, nil, errors.New("client id metadata document: jwks_uri must be an https URL without userinfo or fragment")
+		}
+		return nil, &uri, nil
+	}
+	var jwks map[string]any
+	if err := json.Unmarshal(doc.JWKS, &jwks); err != nil {
+		return nil, nil, errors.New("client id metadata document: invalid jwks")
+	}
+	keys, err := tokensjose.InlineJWKs(jwks)
+	if err != nil {
+		return nil, nil, fmt.Errorf("client id metadata document: %w", err)
+	}
+	for _, key := range keys {
+		if _, err := tokensjose.ValidatePublicSigningJWK(key); err != nil {
+			return nil, nil, errors.New("client id metadata document: jwks must contain valid public signing keys")
+		}
+	}
+	return jwks, nil, nil
 }
 
 // ===============================================================

@@ -63,7 +63,7 @@ func (c *RuntimeContract) BuildDiscoveryDocument(issuer string) (map[string]any,
 	doc["backchannel_token_delivery_modes_supported"] = []string{"poll"}
 	doc["backchannel_user_code_parameter_supported"] = false
 	doc["id_token_signing_alg_values_supported"] = []string{"PS256", "ES256"}
-	doc["token_endpoint_auth_signing_alg_values_supported"] = []string{"PS256", "ES256"}
+	doc["token_endpoint_auth_signing_alg_values_supported"] = []string{"PS256", "ES256", "PS384"}
 	doc["code_challenge_methods_supported"] = []string{string(CodeChallengeMethodS256)}
 	doc["dpop_signing_alg_values_supported"] = []string{"PS256", "ES256"}
 	doc["token_endpoint_auth_methods_supported"] = []string{

@@ -79,7 +79,7 @@ func VerifyClientAssertion(
 		return nil, err
 	}
 	alg, _ := header["alg"].(string)
-	if alg != "PS256" && alg != "ES256" {
+	if alg != "PS256" && alg != "ES256" && alg != "PS384" {
 		return nil, fmt.Errorf("client_assertion: alg %q not allowed", alg)
 	}
 	kid, _ := header["kid"].(string)

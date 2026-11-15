@@ -22,12 +22,14 @@ Discovery Metadata は、手作業でもビルドの時でもなく、実行時�
 
 #### REQ-OAUTH2-014 Discovery Metadata は宣言された全エンドポイントを広告する
 
+- クライアントが Discovery Metadata を取得したとき、OAuth2 は、`token_endpoint_auth_signing_alg_values_supported` に PS256、ES256、PS384 を含め、ID トークンと DPoP の署名方式には PS384 を含めない。
 - クライアントが Discovery Metadata を取得したとき、OAuth2 は、`code_challenge_methods_supported` に `S256` だけを含め、`require_pkce=false` を返して、PKCE が全クライアントに一律必須ではないことを示す。
 - クライアントが `/.well-known/openid-configuration` を取得したとき、OAuth2 は、契約で宣言した `issuer`、`authorization_endpoint`、`token_endpoint`、`userinfo_endpoint`、`jwks_uri`、`introspection_endpoint`、`revocation_endpoint`、`pushed_authorization_request_endpoint`、`device_authorization_endpoint`、`backchannel_authentication_endpoint`、`registration_endpoint` を、実行時に組み立てて返す。
 - **例**：EX-OAUTH2-014-01
 
 #### REQ-OAUTH2-030 RFC 8414 メタデータ文書は OIDC Discovery と同等の内容を返す
 
+- クライアントが Authorization Server Metadata を取得したとき、OAuth2 は、client assertion の受理方式を OIDC Discovery と同じ `token_endpoint_auth_signing_alg_values_supported` で広告する。
 - クライアントが `/.well-known/oauth-authorization-server` を取得したとき、OAuth2 は、OIDC Discovery と同じ内容の `issuer`、`authorization_endpoint`、`token_endpoint`、`jwks_uri`、`grant_types_supported` を含む文書を返す。
 - **例**：EX-OAUTH2-030-01
 

@@ -470,28 +470,14 @@ func TestMalformedClientIDMetadataDocumentIsRefusedFailClosed(t *testing.T) {
 	}
 }
 
-// private_key_jwt クライアント認証を、インラインの jwks または jwks_uri 経由で
-// 提供してよい、という選択肢は採らない。
-//
-// この標準要件の Statement は製品の制約ではなく標準側の機能を書いているので、観測は
-// [[wi-500-back-api-tokens-standards-rows-with-tests]] の RFC6750-API-TOKEN-QUERY と
-// 同じ向きになる。すなわち「その機能を使う要求が通らないこと」と、「通らなかった
-// 結果として何が存在しないか」を対で読む。ここでは次の 2 つを読む。
-//
-//   - private_key_jwt を宣言した文書は、フェイルクローズで丸ごと拒否される。
-//     認証方式だけ none へ落として残りを取り込む、という緩め方をしていない。
-//   - 認証方式を宣言せず鍵材料だけ載せた文書は解決されるが、その鍵材料は
-//     クライアントへ 1 つも入らない。文書に書いてあっても private_key_jwt の
-//     資格情報にはならない。
-//
-//spec:covers CIMD02-PRIVATE-KEY-JWT (excluded):
-func TestClientIDMetadataDocumentDoesNotOfferPrivateKeyJwtAuthentication(t *testing.T) {
+//spec:covers CIMD02-PRIVATE-KEY-JWT: 不正な鍵を拒否し、認証方式の省略で秘密鍵認証を推測しない。
+func TestClientIDMetadataDocumentPrivateKeyJWTRequiresValidKeys(t *testing.T) {
 	const inlineJWKS = `"jwks": {"keys": [{"kty": "RSA", "kid": "k1", "n": "AQAB", "e": "AQAB"}]}`
 
 	for name, extra := range map[string]string{
-		"インラインの jwks 付き": `"token_endpoint_auth_method": "private_key_jwt", ` + inlineJWKS,
-		"jwks_uri 付き":    `"token_endpoint_auth_method": "private_key_jwt", "jwks_uri": "https://app.example/jwks.json"`,
-		"鍵材料を伴わない宣言だけ":   `"token_endpoint_auth_method": "private_key_jwt"`,
+		"弱い RSA の jwks":   `"token_endpoint_auth_method": "private_key_jwt", ` + inlineJWKS,
+		"HTTP の jwks_uri": `"token_endpoint_auth_method": "private_key_jwt", "jwks_uri": "http://app.example/jwks.json"`,
+		"鍵材料を伴わない宣言だけ":    `"token_endpoint_auth_method": "private_key_jwt"`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			resolved, emitted := resolveDocument(t, func(clientIDURL string) string {
@@ -504,6 +490,15 @@ func TestClientIDMetadataDocumentDoesNotOfferPrivateKeyJwtAuthentication(t *test
 			})
 			requireRefused(t, resolved, emitted)
 		})
+	}
+
+	resolvedWithURI, _ := resolveDocument(t, func(clientIDURL string) string {
+		return `{"client_id":"` + clientIDURL + `","client_name":"URI のクライアント",
+			"redirect_uris":["https://app.example/cb"],"token_endpoint_auth_method":"private_key_jwt",
+			"jwks_uri":"https://app.example/jwks.json"}`
+	})
+	if resolvedWithURI == nil || resolvedWithURI.JwksURI == nil || !resolvedWithURI.RequirePKCE {
+		t.Fatalf("公開鍵の URL と PKCE を持つクライアントを解決できない: %+v", resolvedWithURI)
 	}
 
 	// 拒否が防いだもの: 鍵材料は、文書に載っていてもクライアントへ入らない。

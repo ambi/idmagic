@@ -8,6 +8,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
@@ -273,6 +274,13 @@ func verifyJWTSignature(parts []string, alg string, pub crypto.PublicKey) error 
 	signingInput := parts[0] + "." + parts[1]
 	digest := sha256.Sum256([]byte(signingInput))
 	switch alg {
+	case "PS384":
+		rsaPub, ok := pub.(*rsa.PublicKey)
+		if !ok {
+			return errors.New("PS384 requires RSA public key")
+		}
+		digest384 := sha512.Sum384([]byte(signingInput))
+		return rsa.VerifyPSS(rsaPub, crypto.SHA384, digest384[:], sig, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
 	case "PS256":
 		rsaPub, ok := pub.(*rsa.PublicKey)
 		if !ok {

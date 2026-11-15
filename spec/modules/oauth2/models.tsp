@@ -750,6 +750,8 @@ model DiscoveryDocument {
   response_modes_supported?: ResponseMode[];
   grant_types_supported: GrantType[];
   token_endpoint_auth_methods_supported: TokenEndpointAuthMethod[];
+  @doc("client assertion の受理方式。発行する ID トークンと DPoP の方式から独立して広告する。")
+  token_endpoint_auth_signing_alg_values_supported: string[] = #["PS256", "ES256", "PS384"];
   introspection_endpoint_auth_methods_supported: TokenEndpointAuthMethod[] = #[TokenEndpointAuthMethod.ClientSecretBasic, TokenEndpointAuthMethod.PrivateKeyJwt, TokenEndpointAuthMethod.TlsClientAuth, TokenEndpointAuthMethod.SpiffeJwt];
   revocation_endpoint_auth_methods_supported: TokenEndpointAuthMethod[] = #[TokenEndpointAuthMethod.ClientSecretBasic, TokenEndpointAuthMethod.PrivateKeyJwt, TokenEndpointAuthMethod.TlsClientAuth, TokenEndpointAuthMethod.SpiffeJwt, TokenEndpointAuthMethod.None];
   id_token_signing_alg_values_supported: SignatureAlgorithm[];
@@ -799,7 +801,7 @@ model ClientRegistrationRequest {
 }
 
 
-@doc("クライアントが自らホストする HTTPS の URL から取得する Client ID Metadata Document。client_id はその取得の URL で、文書の中の client_id と完全に一致しなければならない。`token_endpoint_auth_method` がないか、`none` 以外の文書は拒否する。")
+@doc("クライアントが自らホストする HTTPS の URL から取得する Client ID Metadata Document。client_id は取得 URL と完全一致する。認証方式は省略または none と private_key_jwt を受け入れ、後者は公開鍵情報と PKCE を必須にし、authorization_code と refresh_token だけを許す。")
 model ClientIDMetadataDocument {
   @doc("取得元の URL と完全に一致しなければならない。")
   client_id: url;
@@ -809,8 +811,12 @@ model ClientIDMetadataDocument {
   redirect_uris: url[];
   grant_types?: GrantType[];
   response_types?: ResponseType[];
-  @doc("ないときは `none` と読む。それ以外の値を宣言した文書は拒否する。")
+  @doc("ないときは none と読む。none と private_key_jwt 以外は拒否する。")
   token_endpoint_auth_method?: TokenEndpointAuthMethod;
+  @doc("private_key_jwt の公開 JWK Set。空の鍵集合と秘密鍵を拒否し、jwks_uri との同時指定も拒否する。")
+  jwks?: JWKS;
+  @doc("private_key_jwt の公開鍵の HTTPS URL。jwks とどちらか一方だけを指定する。取得は SSRF 対策済みの経路を使う。")
+  jwks_uri?: url;
   @doc("ないときは `openid` だけを許す。")
   scope?: string;
 }

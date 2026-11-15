@@ -19,6 +19,7 @@ func FuzzParseClientIDMetadataDocument(f *testing.F) {
 	f.Add([]byte(`{"client_id":"https://client.example/id","client_name":"c","redirect_uris":[]}`))
 	f.Add([]byte(`{"client_id":"https://client.example/id","client_name":"c","redirect_uris":["x"],"token_endpoint_auth_method":"private_key_jwt"}`))
 	f.Add([]byte(`{`))
+	f.Add([]byte(`{"client_id":"https://client.example/id","client_name":"c","redirect_uris":["https://client.example/cb"],"token_endpoint_auth_method":"private_key_jwt","jwks_uri":"https://client.example/keys"}`))
 	f.Add([]byte(``))
 
 	f.Fuzz(func(t *testing.T, raw []byte) {
@@ -39,7 +40,16 @@ func FuzzParseClientIDMetadataDocument(f *testing.F) {
 		if len(client.RedirectURIs) == 0 {
 			t.Fatalf("accepted a document without redirect_uris: %q", raw)
 		}
-		if client.TokenEndpointAuthMethod != AuthMethodNone {
+		if client.TokenEndpointAuthMethod == AuthMethodPrivateKeyJwt {
+			if !client.RequirePKCE || (client.JWKS == nil) == (client.JwksURI == nil) {
+				t.Fatalf("秘密鍵クライアントの PKCE または鍵源が不正: %+v", client)
+			}
+			for _, grant := range client.GrantTypes {
+				if grant != "authorization_code" && grant != "refresh_token" {
+					t.Fatalf("未対応のグラントを許可した: %q", grant)
+				}
+			}
+		} else if client.TokenEndpointAuthMethod != AuthMethodNone {
 			t.Fatalf("accepted a document declaring auth method %q", client.TokenEndpointAuthMethod)
 		}
 	})

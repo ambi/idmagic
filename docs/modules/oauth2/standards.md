@@ -55,7 +55,7 @@ RFC 7518 — https://www.rfc-editor.org/rfc/rfc7518.html
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| RFC7518-SIGNATURE-ALGORITHMS | required | MUST | JWT の署名には PS256 または ES256 を使い、アクセストークンと ID トークンには対称鍵署名を使わない。 |
+| RFC7518-SIGNATURE-ALGORITHMS | required | MUST | アクセストークンと ID トークンの署名は PS256 または ES256 とし、対称鍵署名を使わない。client assertion の検証は PS256、ES256、PS384 を受け入れる。DPoP の方式は変えない。 |
 
 ## JSON Web Token
 
@@ -105,7 +105,7 @@ draft-ietf-oauth-client-id-metadata-document-02 — https://www.ietf.org/archive
 | CIMD02-CREDENTIAL-MATERIAL | required | MUST | 文書は共有シークレットに基づく認証方式、`client_secret`、`client_secret_expires_at`、秘密鍵を含めてはならない。IdMagic は、これらを含む文書（値が `null` のプロパティ、秘密鍵の成分を持つ `jwks` の鍵、鍵の配列として読めない `jwks` を含む）を解決せずに拒否し、公開鍵だけの `jwks` は拒否しない。 |
 | CIMD02-CACHE | partial | SHOULD | HTTP キャッシュヘッダーに従って文書をキャッシュする。IdMagic はヘッダーを読まず、解決した文書を一律 5 分保持する。 |
 | CIMD02-NO-ERROR-CACHE | required | MUST | 誤りの応答と、不正な文書をキャッシュしない。 |
-| CIMD02-PRIVATE-KEY-JWT | excluded | MAY | `private_key_jwt` クライアント認証をインラインの `jwks` または `jwks_uri` 経由で提供してよい。 |
+| CIMD02-PRIVATE-KEY-JWT | optional | MAY | `private_key_jwt` クライアント認証を、公開鍵だけの空でないインライン `jwks` または HTTPS の `jwks_uri` のいずれか一方で提供する。対象グラントは `authorization_code` と `refresh_token` に限り、PKCE を必須にする。 |
 
 ## Proof Key for Code Exchange by OAuth Public Clients
 

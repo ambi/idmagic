@@ -15,7 +15,7 @@ var privateJWKMembers = []string{"d", "p", "q", "dp", "dq", "qi", "oth", "k"}
 
 // ValidatePublicSigningJWK は、利用者が登録する署名の検証用の公開鍵として JWK を受け入れて
 // よいかを確かめ、RFC 7638 のサムプリントを返す。受け入れるのは、ES256 に使う P-256 の
-// EC 鍵と、PS256 に使う 2048 ビット以上の RSA 鍵だけで、秘密鍵の成分を含む JWK は拒否する。
+// EC 鍵と、RSA-PSS に使う 2048 ビット以上の RSA 鍵だけで、秘密鍵の成分を含む JWK は拒否する。
 func ValidatePublicSigningJWK(jwk map[string]any) (string, error) {
 	for _, member := range privateJWKMembers {
 		if _, ok := jwk[member]; ok {
