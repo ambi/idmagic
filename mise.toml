@@ -1,20 +1,20 @@
 min_version = "2026.10.0"
 
 [tools]
-go = "1.27.3"
+go = "1.27.4"
 bun = "1.4.4"
 "aqua:golangci/golangci-lint" = "2.15.0"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
 "aqua:kubernetes-sigs/kustomize" = "5.8.3"
-"aqua:sqldef/sqldef/psqldef" = "3.11.28"
+"aqua:sqldef/sqldef/psqldef" = "3.11.30"
 "aqua:jqlang/jq" = "1.8.2"
 "aqua:koalaman/shellcheck" = "0.11.0"
-"aqua:zizmorcore/zizmor" = "1.31.1"
-"aqua:betterleaks/betterleaks" = "1.9.0"
-"aqua:google/osv-scanner" = "2.7.0"
+"aqua:zizmorcore/zizmor" = "1.32.0"
+"aqua:betterleaks/betterleaks" = "1.10.1"
+"aqua:google/osv-scanner" = "2.7.1"
 # 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでもバージョンを固定するのは、
 # 生成される変異の集合がバージョンで変わり、work item に残した一覧が再現できなくなるためである。
-"go:github.com/gomutants/gomutants" = "0.7.2"
+"go:github.com/gomutants/gomutants" = "0.7.3"
 
 [tasks.setup]
 description = "Install repository dependencies"
@@ -271,6 +271,29 @@ description = "Update embedded tooling dependency declarations to the latest rel
 dir = "tools"
 run = "bun update --latest"
 
+[tasks.show-package-metadata]
+description = "Show registry metadata for a package"
+dir = "tools"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+bun info "$@" --json | jq '{name, version, "dist-tags": .["dist-tags"], deprecated, engines, peerDependencies}'
+'''
+
+[tasks.list-outdated-example-dependencies]
+description = "List MCP walkthrough dependencies that have a newer release"
+dir = "examples/mcp-client-walkthrough"
+run = "bun outdated"
+
+[tasks.update-example-dependencies]
+description = "Update MCP walkthrough dependencies to the latest releases"
+dir = "examples/mcp-client-walkthrough"
+run = "bun update --latest"
+
+[tasks.inspect-container-image]
+description = "Inspect the registry manifest and digest of a container image"
+run = 'docker buildx imagetools inspect "$@"'
+
 [tasks.lint-repo]
 description = "Lint shell scripts, audit workflows, and scan for secrets"
 # 3 つとも合わせて 500ms 程度なので分けない。分けた数だけ `mise tasks` が読みにくくなる。
@@ -295,7 +318,7 @@ run_shellcheck() { git ls-files -z '*.sh' | xargs -0 shellcheck -e SC2030,SC2031
 
 check shellcheck run_shellcheck
 check zizmor zizmor --no-progress .github/workflows
-check betterleaks betterleaks dir . --redact --no-banner
+check betterleaks betterleaks dir . --config .betterleaks.toml --redact --no-banner
 
 if [ -n "$failed" ]; then
   echo "failed:$failed" >&2
@@ -319,6 +342,7 @@ exec osv-scanner scan source \
   --lockfile=go.mod \
   --lockfile=frontend/bun.lock \
   --lockfile=tools/bun.lock \
+  --lockfile=examples/mcp-client-walkthrough/bun.lock \
   "$@"
 '''
 
@@ -330,7 +354,7 @@ run = "bun run check/src/runner.ts vulnerability-suppressions"
 [tasks.audit-secrets-history]
 description = "Scan the whole Git history for secrets"
 # 履歴の走査だけは lint-repo に混ぜない。毎回のゲートに入れるには重く、監査として明示的に呼ぶものである。
-run = "betterleaks git . --redact --no-banner"
+run = "betterleaks git . --config .betterleaks.toml --redact --no-banner"
 
 [tasks.verify-go]
 description = "Verify Go with lint and tests"
@@ -339,7 +363,7 @@ depends = ["lint-go", "test-go"]
 [tasks.lint-go]
 # context: targets=backend
 description = "Run Go lint"
-run = "golangci-lint run ./..."
+run = "golangci-lint run --allow-serial-runners ./..."
 
 [tasks.lint-go-fix]
 description = "Run Go lint and apply the fixes it can make"
@@ -370,7 +394,7 @@ run = "mise run -c lint-go-openldap ::: test-go-openldap-integration ::: test-go
 
 [tasks.lint-go-openldap]
 description = "Lint Directory Connector including OpenLDAP-tagged tests"
-run = "golangci-lint run --build-tags=openldap ./backend/directoryconnector/..."
+run = "golangci-lint run --allow-serial-runners --build-tags=openldap ./backend/directoryconnector/..."
 
 [tasks.test-go-openldap-integration]
 description = "Run LDAP adapter integration tests against real OpenLDAP (requires Docker)"
@@ -638,7 +662,7 @@ esac
 # 5 種類に固定する。gomutants の全 operator は survivor の仕分け量を測ってから別に判断する。
 operators="ARITHMETIC_BASE,CONDITIONALS_BOUNDARY,CONDITIONALS_NEGATION,INCREMENT_DECREMENT,INVERT_NEGATIVES"
 report="${4:-${TMPDIR:-/tmp}/idmagic-mutation-report.json}"
-# gomutants 0.7.2 の cache key は、対象 package が import する package の変更を完全には追跡しない。
+# 固定した gomutants の cache key は、対象 package が import する package の変更を完全には追跡しない。
 # 既定では無効にし、同一変更を反復するときだけ第 3 引数へ cache file を明示する。
 case "${6:-local}" in
   local) mutation_flags="" ;;
@@ -1238,9 +1262,9 @@ kubectl rollout undo "deployment/${1:-idmagic-api}"
 [tasks.check-monitoring]
 description = "Validate Prometheus, Alloy, Grafana, and Kubernetes monitoring assets"
 run = [
-  "docker run --rm --entrypoint promtool -v \"$PWD:/workspace:ro\" prom/prometheus:v3.15.1 check rules /workspace/infra/docker/prometheus-rules.yml",
-  "docker run --rm -v \"$PWD:/workspace:ro\" grafana/alloy:v1.21.2 validate /workspace/infra/docker/alloy-config.alloy",
-  "docker run --rm -e HOSTNAME=validation-node -v \"$PWD:/workspace:ro\" grafana/alloy:v1.21.2 validate /workspace/infra/k8s/monitoring/loki/alloy-config.alloy",
+  "docker run --rm --entrypoint promtool -v \"$PWD:/workspace:ro\" prom/prometheus:v3.16.0 check rules /workspace/infra/docker/prometheus-rules.yml",
+  "docker run --rm -v \"$PWD:/workspace:ro\" grafana/alloy:v1.22.0 validate /workspace/infra/docker/alloy-config.alloy",
+  "docker run --rm -e HOSTNAME=validation-node -v \"$PWD:/workspace:ro\" grafana/alloy:v1.22.0 validate /workspace/infra/k8s/monitoring/loki/alloy-config.alloy",
   "jq empty infra/docker/grafana-dashboard.json",
   "kustomize build infra/k8s/monitoring > /dev/null",
   "kustomize build infra/k8s/monitoring/operator > /dev/null",
@@ -1262,12 +1286,12 @@ run = '''
 set -eu
 base_url=${1:-http://host.docker.internal:8080/realms/default}
 browser_origin=${2:-http://localhost:8080}
-docker run --rm -e IDMAGIC_BASE_URL="$base_url" -e IDMAGIC_BROWSER_ORIGIN="$browser_origin" -v "$PWD/load/k6:/scripts:ro" grafana/k6:2.3.0 run /scripts/oauth-smoke.js
+docker run --rm -e IDMAGIC_BASE_URL="$base_url" -e IDMAGIC_BROWSER_ORIGIN="$browser_origin" -v "$PWD/load/k6:/scripts:ro" grafana/k6:2.4.0 run /scripts/oauth-smoke.js
 '''
 
 [tasks.check-k6]
 description = "Parse and inspect the k6 module"
-run = "docker run --rm -v \"$PWD/load/k6:/scripts:ro\" grafana/k6:2.3.0 inspect /scripts/oauth-smoke.js"
+run = "docker run --rm -v \"$PWD/load/k6:/scripts:ro\" grafana/k6:2.4.0 inspect /scripts/oauth-smoke.js"
 
 [tasks.demo]
 description = "Run the OAuth2/OIDC demo"

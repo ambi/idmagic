@@ -12,7 +12,8 @@ brew install sqldef/sqldef/psqldef
 
 Linux では、sqldef のリリースページからビルド済みの `psqldef` バイナリをダウンロードするか、配備ジョブで sqldef の Docker イメージを使う。
 CI/CD ジョブでは無指定の最新バージョンを使わず、バージョンを固定する。
-開発用 Compose の `schema` サービスは `sqldef/psqldef:3.11.28` に固定しているため、CI または Compose の結果を正確に再現するときはローカルでも同じバージョンを使う。
+`psqldef` のバージョンは [`mise.toml`](../../mise.toml) と[開発用 Compose](../docker/docker-compose.dev.yaml)で固定する。
+CI の結果は `mise install` で導入したツールで再現し、Compose の結果を再現するときは `schema` サービスのイメージと同じバージョンを使う。
 
 インストールしたコマンドを確認する:
 

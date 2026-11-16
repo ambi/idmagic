@@ -33,6 +33,9 @@ IdMagic を動かすコンピューティング、ストレージ、コンテナ
 ステートフルな基盤は、どのプロファイルでも PostgreSQL 一つである。
 業務データ、BLOB、認証セッション、認可コード、ジョブのような短命状態を同じデータベースへ置き、二つ目のステートフル基盤は設けない。
 
+開発用 Compose と Google Cloud の作成例は PostgreSQL のメジャー版を揃え、同じ版で SQL の互換性を確認する。
+Cloud SQL の作成例は既存のカスタムマシン構成を使うため、Enterprise エディションを明示し、メジャー版からエディションが自動選択されることを避ける。
+
 汎用 Kubernetes のマニフェストには、現在 PostgreSQL とスキーマ適用を定義していない。
 これでは、このプロファイルだけでは IdMagic が動かない。
 PostgreSQL は CloudNativePG で実行し、スキーマ適用と初期データ投入は Job として実行して（仮）、プロファイル単体で動く状態を目標にする。
@@ -103,7 +106,7 @@ Google Cloud ではプロジェクトが IAM、課金、API の有効化の単�
 
 | 項目 | 内容 |
 | --- | --- |
-| バックエンドのベースイメージ | `gcr.io/distroless/static-debian13:nonroot`。CGO を使わない静的リンクの実行ファイルを置くため、シェルとパッケージ管理を含まないイメージで足りる |
+| バックエンドのベースイメージ | distroless の静的リンク用イメージ。使用するタグは [Dockerfile](../../../infra/docker/Dockerfile) で定める。CGO を使わない静的リンクの実行ファイルを置くため、シェルとパッケージ管理を含まないイメージで足りる |
 | バックエンドのイメージに入る実行ファイル | `idmagic`、`idmagic-worker`、`idmagic-batch` の三つ。`idmagic-seed` は入っていない |
 | フロントエンドのイメージ | Caddy のイメージに、ビルドした静的アセットを入れる |
 | レジストリ | Kubernetes のマニフェストは `ghcr.io` を参照する。Google Cloud では Artifact Registry を使う（仮） |

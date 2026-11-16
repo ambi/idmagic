@@ -34,7 +34,7 @@ YAML
 # ---------------------------------------------------------------------------
 gcloud sql instances create "$DB_INSTANCE" \
   --project "$PROJECT" --region "$REGION" \
-  --database-version=POSTGRES_17 \
+  --database-version=POSTGRES_18 --edition=ENTERPRISE \
   --tier=db-custom-2-8192 \
   --availability-type=REGIONAL \
   --storage-size=100 --storage-type=SSD --storage-auto-increase
@@ -52,9 +52,8 @@ printf 'postgres://%s:REPLACE_ME@/%s?host=/cloudsql/%s:%s:%s' \
 # ---------------------------------------------------------------------------
 # 4) スキーマ適用（psqldef / デプロイ工程・起動時禁止 --enable-drop 禁止）
 #    CI から DATABASE_URL を PG* にマップして実行するのが基本。ここは手動例。
-#    docker run --rm -v "$PWD/infra/schema:/schema:ro" \
-#      -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD sqldef/psqldef:3.11 \
-#      "$DB_NAME" --apply --file /schema/postgres.sql
+#    コンテナを使う場合は開発用 Compose の schema と同じイメージを選ぶ。
+#    適用手順は infra/schema/README.md を参照する。
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------

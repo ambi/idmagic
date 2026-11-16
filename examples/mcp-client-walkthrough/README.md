@@ -156,14 +156,13 @@ localhost で待ち受けるので、サンドボックスのある実行環境�
 
 ## 確認した範囲
 
-確認した版は次のとおりである。
-版は [`package.json`](package.json) と [`bun.lock`](bun.lock) で固定し、依存の更新のときにこの試験で確かめ直す。
+使用するバージョンは次の設定で固定し、依存の更新のときにこの試験で確かめ直す。
+確認する MCP のプロトコル版は 2026-07-28 である。
 
-| 対象 | 版 |
+| 対象 | バージョンの定義 |
 | --- | --- |
-| `@modelcontextprotocol/client` | 2.3.1（2026-07-28 版に固定） |
-| `@modelcontextprotocol/server` | 2.3.1 |
-| Bun | 1.4.4 |
+| MCP SDK とその依存ライブラリ | [`package.json`](package.json) と [`bun.lock`](bun.lock) |
+| Bun | [`mise.toml`](../../mise.toml) |
 
 次は確かめていない。
 

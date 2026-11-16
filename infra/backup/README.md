@@ -4,11 +4,12 @@
 
 ## 必要なもの
 
-- `pg_dump` / `pg_restore` / `psql`（`infra/docker/docker-compose.dev.yaml` のサーバーバージョンに合わせた PostgreSQL 17 クライアントツール）。
+- `pg_dump` / `pg_restore` / `psql`（[開発用 Compose](../docker/docker-compose.dev.yaml)のサーバーと同じメジャーバージョンの PostgreSQL クライアントツール）。
 - `psqldef`（インストール手順は `infra/schema/README.md` を参照）。
 - Go ツールチェーン（`restore-postgres.sh` が `go run` 経由で呼び出す `idmagic-batch restore-consistency-check` 用）。
 
-PostgreSQL クライアントは開発用の `mise` 管理には含めない。バックアップまたは復元を実行する運用環境に PostgreSQL 17 クライアントを用意する。
+PostgreSQL クライアントは開発用の `mise` 管理には含めない。
+バックアップまたは復元を実行する運用環境に、対象サーバーと同じメジャーバージョンのクライアントを用意する。
 
 ## 接続変数
 

@@ -70,7 +70,7 @@ IdMagic は ID プロバイダーなので、次の境界が破れることを�
 依存が変わらない間にも脆弱性は新たに公開されるため、CI は引き続き毎回検査します。
 
 ```bash
-mise run audit-dependencies      # go.mod / frontend/bun.lock / tools/bun.lock の既知脆弱性と Go の到達性
+mise run audit-dependencies      # 依存の既知脆弱性と Go の到達性。監査対象は mise.toml で定義する
 ```
 
 `audit-dependencies` は OSV-Scanner で依存の既知脆弱性と Go の呼び出し経路を調べます。

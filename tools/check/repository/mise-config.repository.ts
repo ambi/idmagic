@@ -71,7 +71,12 @@ describe('mise dependency audit boundary', () => {
     )
 
   it('names every lockfile the repository owns, and only those', () => {
-    expect(flagValues('lockfile').sort()).toEqual(['frontend/bun.lock', 'go.mod', 'tools/bun.lock'])
+    expect(flagValues('lockfile').sort()).toEqual([
+      'examples/mcp-client-walkthrough/bun.lock',
+      'frontend/bun.lock',
+      'go.mod',
+      'tools/bun.lock',
+    ])
   })
 
   it('applies the suppression configuration the checker validates', () => {
@@ -202,7 +207,7 @@ describe('mise mutation testing boundary', () => {
 
   /** ツールの保守が止まったときに動くバージョンが残らないと、証拠の作り方ごと失われる。 */
   it('pins the mutation tool to an exact version', () => {
-    expect(config.tools?.['go:github.com/gomutants/gomutants']).toBe('0.7.2')
+    expect(config.tools?.['go:github.com/gomutants/gomutants']).toMatch(/^\d+\.\d+\.\d+$/)
   })
 
   /**
