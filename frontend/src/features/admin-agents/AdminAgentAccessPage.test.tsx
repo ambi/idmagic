@@ -93,6 +93,9 @@ it('shows access materials without claiming an execution decision', async () => 
           subject_id: agent.id,
         },
       ]}
+      catalogs={{
+        s: { tools: [], complete: true, received_at: '2026-11-13T00:00:00Z' },
+      }}
     />,
   )
   for (const value of [
@@ -127,6 +130,7 @@ it('warns when assignments may be incomplete and explains empty materials', asyn
         subject_type: 'agent',
         subject_id: 'other-agent',
       }))}
+      catalogs={{}}
     />,
   )
   expect(screen.getByRole('alert').textContent).toContain('may be incomplete')
@@ -134,4 +138,82 @@ it('warns when assignments may be incomplete and explains empty materials', asyn
   expect(screen.getByText('No delegation grants.')).toBeTruthy()
   expect(screen.getByText('No connection rules are registered.')).toBeTruthy()
   expect(screen.getAllByText('Not configured')).toHaveLength(2)
+})
+
+const toolRule = (name: string, assignmentID: string, scopes: string[]) => ({
+  resource_type: 'idmagic_mcp_operation',
+  relation: 'invoke',
+  scopes,
+  tool: { name, display_name: name, assignment_resource_id: assignmentID },
+})
+
+//spec:covers REQ-OAUTH2-094: 接続先ごとに登録、割当、トークンの上限、一覧の取得の状態と不足の案内を示す。
+it('TestMcpConnectionCheck shows per-server states and missing-configuration guidance', async () => {
+  await renderWithRouter(
+    <AdminAgentAccessPage
+      agent={agent}
+      summary={{
+        as_of: '2026-11-13T00:00:00Z',
+        clients: [{ client_id: 'bound-client', scopes: ['read'], missing: false }],
+        delegations: [],
+      }}
+      guardrails={{
+        agent: {
+          version: 'v',
+          updated_at: '',
+          allowed_resources: ['https://ok.example'],
+        },
+      }}
+      resourceServers={[
+        {
+          id: 'srv-ok',
+          tenant_id: 't',
+          name: 'Ready connection',
+          resource: 'https://ok.example',
+          scopes: ['read'],
+          client_id: 'eval-client',
+          state: 'Active',
+          created_at: '',
+          updated_at: '',
+          access_rules: [toolRule('read', 'op-ok', ['read'])],
+        },
+        {
+          id: 'srv-gap',
+          tenant_id: 't',
+          name: 'Incomplete connection',
+          resource: 'https://gap.example',
+          scopes: ['admin'],
+          state: 'Disabled',
+          created_at: '',
+          updated_at: '',
+          access_rules: [toolRule('admin', 'op-gap', ['admin'])],
+        },
+      ]}
+      tuples={[
+        {
+          resource_type: 'idmagic_mcp_operation',
+          resource_id: 'op-ok',
+          relation: 'invoke',
+          subject_type: 'agent',
+          subject_id: agent.id,
+        },
+      ]}
+      catalogs={{
+        'srv-ok': { tools: [], complete: true, received_at: '2026-11-13T00:00:00Z' },
+        'srv-gap': { tools: [], complete: false },
+      }}
+    />,
+  )
+  expect(screen.getAllByText('No issues')).toHaveLength(4)
+  expect(screen.getAllByText('Missing settings')).toHaveLength(4)
+  for (const guidance of [
+    'The registration is disabled.',
+    'No evaluation client is bound.',
+    'No operations of this connection are assigned.',
+    'A guardrail denies issuance for this connection.',
+    'No catalog has arrived from the Gateway.',
+  ]) {
+    expect(screen.getByText(new RegExp(guidance))).toBeTruthy()
+  }
+  expect(screen.getByText(/does not connect to MCP servers or run business tools/)).toBeTruthy()
 })

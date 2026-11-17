@@ -12,8 +12,15 @@ import type {
   AgentGuardrailPolicySet,
   McpResourceServer,
   RelationTuple,
+  ToolCatalog,
 } from '../../types'
 import { agentAccessDictionary } from './AdminAgentAccessPage.i18n'
+import {
+  CONNECTION_CHECK_ITEMS,
+  checkMcpConnections,
+  type ConnectionCheckGap,
+  type ConnectionCheckItem,
+} from './mcpConnectionCheck'
 import { isTargetScoped, savedRange } from './targetRange'
 
 export function AdminAgentAccessPage({
@@ -23,6 +30,7 @@ export function AdminAgentAccessPage({
   guardrails,
   resourceServers,
   tuples,
+  catalogs,
 }: {
   actorUsername?: string
   agent: AdminAgent
@@ -30,6 +38,7 @@ export function AdminAgentAccessPage({
   guardrails: AgentGuardrailPolicySet
   resourceServers: McpResourceServer[]
   tuples: RelationTuple[]
+  catalogs: Record<string, ToolCatalog | 'failed'>
 }) {
   const t = useDictionary(agentAccessDictionary)
   const { locale } = useLocale()
@@ -46,6 +55,14 @@ export function AdminAgentAccessPage({
   const rules = resourceServers.flatMap((server) =>
     (server.access_rules ?? []).map((rule) => ({ server, rule })),
   )
+  const checks = checkMcpConnections({
+    agent,
+    summary,
+    guardrails,
+    resourceServers,
+    tuples,
+    catalogs,
+  })
   return (
     <AdminShell
       active="agents"
@@ -256,6 +273,7 @@ export function AdminAgentAccessPage({
             </table>
           )}
         </Card>
+        <McpConnectionCheckCard agent={agent} checks={checks} resourceServers={resourceServers} />
         <Card className="space-y-4 p-6">
           <h2 className="text-lg font-semibold">{t.guardrails}</h2>
           <GuardrailPolicy title={t.agentPolicy} policy={guardrails.agent} />
@@ -263,6 +281,122 @@ export function AdminAgentAccessPage({
         </Card>
       </div>
     </AdminShell>
+  )
+}
+
+// McpConnectionCheckCard は接続先ごとの確認項目と不足の案内を示す (REQ-OAUTH2-094)。
+// 判定は mcpConnectionCheck が保存値から行い、ここは結果の表示だけを担う。
+function McpConnectionCheckCard({
+  agent,
+  checks,
+  resourceServers,
+}: {
+  agent: AdminAgent
+  checks: ReturnType<typeof checkMcpConnections>
+  resourceServers: McpResourceServer[]
+}) {
+  const t = useDictionary(agentAccessDictionary)
+  const itemLabels: Record<ConnectionCheckItem, string> = {
+    registration: t.itemRegistration,
+    assignment: t.itemAssignment,
+    tokenLimits: t.itemTokenLimits,
+    catalog: t.itemCatalog,
+  }
+  const gapTexts: Record<ConnectionCheckGap, string> = {
+    registration_inactive: t.gapRegistrationInactive,
+    registration_no_client: t.gapRegistrationNoClient,
+    assignment_agent_inactive: t.gapAssignmentAgentInactive,
+    assignment_no_credentials: t.gapAssignmentNoCredentials,
+    assignment_no_tools: t.gapAssignmentNoTools,
+    assignment_unassigned: t.gapAssignmentUnassigned,
+    token_limits_scope: t.gapTokenLimitsScope,
+    token_limits_resource: t.gapTokenLimitsResource,
+    token_limits_detail_type: t.gapTokenLimitsDetailType,
+    token_limits_expired: t.gapTokenLimitsExpired,
+    catalog_not_received: t.gapCatalogNotReceived,
+    catalog_fetch_failed: t.gapCatalogFetchFailed,
+  }
+  const gapHref = (gap: ConnectionCheckGap, serverID: string): string | undefined => {
+    const serverEdit = `/admin/mcp-resource-servers/${encodeURIComponent(serverID)}/edit`
+    switch (gap) {
+      case 'registration_inactive':
+      case 'registration_no_client':
+      case 'assignment_no_tools':
+      case 'catalog_not_received':
+        return serverEdit
+      case 'assignment_agent_inactive':
+        return `/admin/agents/${encodeURIComponent(agent.id)}/edit`
+      case 'assignment_no_credentials':
+      case 'token_limits_scope':
+        return `/admin/agents/${encodeURIComponent(agent.id)}/credentials`
+      case 'assignment_unassigned':
+        return `/admin/agents/${encodeURIComponent(agent.id)}/resources`
+      case 'token_limits_resource':
+      case 'token_limits_detail_type':
+      case 'token_limits_expired':
+        return `/admin/agents/${encodeURIComponent(agent.id)}/guardrail/edit`
+      case 'catalog_fetch_failed':
+        return undefined
+    }
+  }
+  return (
+    <Card className="space-y-3 p-6">
+      <h2 className="text-lg font-semibold">{t.connectionCheck}</h2>
+      <p className="text-sm text-slate-600">{t.connectionCheckHelp}</p>
+      {checks.length === 0 ? (
+        <p>{t.noConnections}</p>
+      ) : (
+        checks.map((check) => {
+          const server = resourceServers.find((candidate) => candidate.id === check.serverId)
+          return (
+            <section
+              key={check.serverId}
+              className="space-y-2 border-t pt-3 first:border-t-0 first:pt-0"
+            >
+              <h3 className="font-semibold">
+                {server ? (
+                  <a
+                    className="underline"
+                    href={tenantURL(
+                      `/admin/mcp-resource-servers/${encodeURIComponent(server.id)}/edit`,
+                    )}
+                  >
+                    {server.name}
+                  </a>
+                ) : (
+                  check.serverId
+                )}
+              </h3>
+              <ul className="space-y-2">
+                {CONNECTION_CHECK_ITEMS.map((item) => {
+                  const result = check.items[item]
+                  return (
+                    <li key={item} className="text-sm">
+                      <p>
+                        <span className="font-medium">{itemLabels[item]}</span>{' '}
+                        {result.status === 'ok' ? t.checkOk : t.checkGap}
+                      </p>
+                      {result.gaps.map((gap) => {
+                        const href = gapHref(gap, check.serverId)
+                        return href ? (
+                          <p key={gap}>
+                            <a className="underline" href={tenantURL(href)}>
+                              {gapTexts[gap]}
+                            </a>
+                          </p>
+                        ) : (
+                          <p key={gap}>{gapTexts[gap]}</p>
+                        )
+                      })}
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          )
+        })
+      )}
+    </Card>
   )
 }
 

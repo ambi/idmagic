@@ -61,6 +61,37 @@ export const agentAccessDictionary = defineDictionary(
     deny: '拒否',
     require_approval_action: '承認を要求',
     issuanceRate: '{seconds} 秒間で {count} 回',
+    connectionCheck: '接続確認',
+    connectionCheckHelp:
+      'IdMagic が保存している設定だけで判定しています。MCP サーバーへの接続と業務ツールの実行は行いません。',
+    checkOk: '問題なし',
+    checkGap: '不足あり',
+    noConnections: '確認する接続先がありません。',
+    itemRegistration: '登録',
+    itemAssignment: '割当',
+    itemTokenLimits: 'トークンの上限',
+    itemCatalog: '一覧の取得',
+    gapRegistrationInactive: '登録が無効です。編集画面で有効化してください。',
+    gapRegistrationNoClient:
+      '評価用のクライアントが紐付いていません。編集画面でクライアントを選んでください。',
+    gapAssignmentAgentInactive:
+      'Agent が停止中のためトークンを発行できません。Agent を有効にしてください。',
+    gapAssignmentNoCredentials:
+      '認証用クライアントが束縛されていません。資格情報の画面で束縛してください。',
+    gapAssignmentNoTools: '公開中のツールがありません。編集画面でツールを公開してください。',
+    gapAssignmentUnassigned:
+      'この接続先の操作への割当がありません。割当の画面で操作を割り当ててください。',
+    gapTokenLimitsScope:
+      '割当済みの操作が要求するスコープをすべて含むクライアントがありません。資格情報の画面で束縛を見直してください。',
+    gapTokenLimitsResource:
+      'ガードレールがこの接続先への発行を拒否します。ガードレールの編集画面で許可する資源を見直してください。',
+    gapTokenLimitsDetailType:
+      'ガードレールが認可詳細の種類を許可していません。ガードレールの編集画面で許可する種類を見直してください。',
+    gapTokenLimitsExpired:
+      'ガードレールの期限を過ぎています。ガードレールの編集画面で期限を見直してください。',
+    gapCatalogNotReceived:
+      'Gateway からカタログが届いていません。Gateway の設定と上流への到達を確認してください。',
+    gapCatalogFetchFailed: 'カタログを取得できませんでした。再読み込みしてください。',
   },
   {
     title: 'Access materials',
@@ -123,5 +154,34 @@ export const agentAccessDictionary = defineDictionary(
     deny: 'Deny',
     require_approval_action: 'Require approval',
     issuanceRate: '{count} issuances per {seconds} seconds',
+    connectionCheck: 'Connection check',
+    connectionCheckHelp:
+      'Judged only from settings IdMagic stores. It does not connect to MCP servers or run business tools.',
+    checkOk: 'No issues',
+    checkGap: 'Missing settings',
+    noConnections: 'No connections to check.',
+    itemRegistration: 'Registration',
+    itemAssignment: 'Assignment',
+    itemTokenLimits: 'Token limits',
+    itemCatalog: 'Catalog retrieval',
+    gapRegistrationInactive: 'The registration is disabled. Enable it on the edit page.',
+    gapRegistrationNoClient: 'No evaluation client is bound. Choose a client on the edit page.',
+    gapAssignmentAgentInactive:
+      'The Agent is not active, so tokens cannot be issued. Enable the Agent.',
+    gapAssignmentNoCredentials:
+      'No authentication client is bound. Bind one on the credentials page.',
+    gapAssignmentNoTools: 'No tools are published. Publish tools on the edit page.',
+    gapAssignmentUnassigned:
+      'No operations of this connection are assigned. Assign operations on the assignment page.',
+    gapTokenLimitsScope:
+      'No bound client covers all scopes the assigned operations require. Review the bindings on the credentials page.',
+    gapTokenLimitsResource:
+      'A guardrail denies issuance for this connection. Review allowed resources on the guardrail edit page.',
+    gapTokenLimitsDetailType:
+      'A guardrail does not allow the authorization detail types. Review allowed types on the guardrail edit page.',
+    gapTokenLimitsExpired: 'A guardrail has expired. Review its expiry on the guardrail edit page.',
+    gapCatalogNotReceived:
+      'No catalog has arrived from the Gateway. Check the Gateway configuration and upstream reachability.',
+    gapCatalogFetchFailed: 'The catalog could not be loaded. Reload the page.',
   },
 )
