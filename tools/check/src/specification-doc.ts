@@ -8,6 +8,10 @@ import {
   featureDocument,
   MODULE_DOCUMENTS,
   DESIGN_AREAS,
+  UI_PAGE_DIRECTORY,
+  modulePageDocument,
+  documentAllowance,
+  describeDocumentSet,
 } from '../../workspace/src/document-layout.ts'
 
 export type SpecificationFinding = {
@@ -67,6 +71,12 @@ export function documentKind(path: string): DocumentKind | undefined {
   const name = path.split('/').at(-1) ?? ''
   const directory = path.slice(0, path.lastIndexOf('/'))
   if (directory === 'docs/design' && name === 'README.md') return 'design-index'
+  if (modulePageDocument(path)) return 'prose'
+  if (
+    path.startsWith(`${UI_PAGE_DIRECTORY}/`) &&
+    documentAllowance(directory, describeDocumentSet([])).names.includes(name)
+  )
+    return 'prose'
   const feature = featureDocument(path)
   if (feature) return feature.part === 'examples' ? 'examples' : 'specification'
   if (/^docs\/modules\/[^/]+\/.+$/.test(directory)) return undefined

@@ -19,6 +19,7 @@ import {
   MODULE_DOCUMENTS,
   SHARED_SCENARIOS,
   SYSTEM_DOCUMENT_PATHS,
+  modulePageDocument,
 } from '../../workspace/src/document-layout.ts'
 import { earsChildren } from './ears.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
@@ -80,6 +81,8 @@ type DocumentCategory =
   | 'feature'
   | 'feature-child'
   | 'feature-examples'
+  | 'module-page-index'
+  | 'module-page'
 
 export type RenderedDocumentationSite = {
   files: Record<string, string>
@@ -278,6 +281,15 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
     }
     return { ...shared, category: 'feature-child' }
   }
+  const pageDocument = modulePageDocument(document.path)
+  if (pageDocument)
+    return {
+      ...base,
+      id: `module-${pageDocument.module}-page-${slug(pageDocument.name)}`,
+      category: pageDocument.name === 'README' ? 'module-page-index' : 'module-page',
+      order: index,
+      module: pageDocument.module,
+    }
   const moduleDocument = document.path.match(/^docs\/modules\/([^/]+)\/([^/]+)$/)
   const module = moduleDocument?.[1]
   const moduleFile = moduleDocument?.[2]
@@ -618,7 +630,8 @@ function markdownRenderer(
     if (token?.info.trim() !== 'mermaid') return defaultFence(tokens, index, options, env, self)
     const source = token.content.trim()
     mermaidSources.push(source)
-    return `<div class="diagram-shell"><button type="button" class="diagram-zoom" data-diagram-zoom>拡大表示</button><pre class="mermaid">${escapeHtml(source)}</pre></div>\n`
+    const uiFlow = source.includes('%% ui-module-flow') ? ' ui-module-flow' : ''
+    return `<div class="diagram-shell${uiFlow}"><button type="button" class="diagram-zoom" data-diagram-zoom>拡大表示</button><pre class="mermaid">${escapeHtml(source)}</pre></div>\n`
   }
 
   const defaultTableOpen =
@@ -630,6 +643,20 @@ function markdownRenderer(
     const heading = tokens.slice(index, index + 6).find((token) => token.type === 'inline')
     if (TERM_HEADINGS.has(heading?.content.trim() ?? ''))
       tokens[index]?.attrJoin('class', 'term-table')
+    const current = env as { document: RenderedDocument }
+    if (
+      (current.document.path.startsWith('docs/design/application/pages/') ||
+        modulePageDocument(current.document.path)) &&
+      ['項目', '操作'].includes(heading?.content.trim() ?? '')
+    ) {
+      const columns = tokens
+        .slice(
+          index + 1,
+          tokens.findIndex((token, one) => one > index && token.type === 'thead_close'),
+        )
+        .filter((token) => token.type === 'th_open').length
+      if (columns > 4) tokens[index]?.attrJoin('class', 'ui-design-table')
+    }
     return defaultTableOpen(tokens, index, options, env, self)
   }
 
@@ -707,7 +734,12 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
   // 「運用手順」の枝の下では、題名の末尾の種類名は枝の名札と同じことを言う。
   if (entry.category === 'runbook') return entry.title.replace(/の運用手順書$/, '')
   // 入れ子の段そのものが所属を示す段では、名札は題名だけでよい。
-  if (entry.category !== 'module-child' && entry.category !== 'feature-child') return entry.title
+  if (
+    entry.category !== 'module-child' &&
+    entry.category !== 'feature-child' &&
+    entry.category !== 'module-page-index'
+  )
+    return entry.title
   const owner = documents.find((document) =>
     entry.category === 'feature-child'
       ? document.category === 'feature' &&
@@ -787,7 +819,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   const directory = (node: NavigationDirectory): string => {
     const children = [...node.documents.map(leaf), ...node.directories.map(directory)].join('')
     const heading = node.document
-      ? link(node.document)
+      ? link(node.document, childLabel(node.document, documents))
       : `<span class="nav-label">${escapeHtml(node.name)}</span>`
     // 子のない枝には開閉の記号がないので、葉として並べて兄弟の頭とそろえる。
     if (!children) return `<li class="nav-item">${heading}</li>`
@@ -830,6 +862,23 @@ function navigation(page: string, documents: RenderedDocument[]): string {
     const features = inGroup(documents, 'feature').filter((feature) => feature.module === module)
     return features.length ? [{ name: '機能', documents: [], directories: features.map(node) }] : []
   }
+  const pagesDirectory = (module: string | undefined): NavigationDirectory[] => {
+    const index = documents.find(
+      (document) => document.category === 'module-page-index' && document.module === module,
+    )
+    return index
+      ? [
+          {
+            name: 'ページ',
+            document: index,
+            documents: inGroup(documents, 'module-page').filter(
+              (document) => document.module === module,
+            ),
+            directories: [],
+          },
+        ]
+      : []
+  }
   const modulesBody = [
     ...inGroup(documents, 'modules-child').map(leaf),
     ...modules.map((entry) =>
@@ -839,7 +888,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
         documents: inGroup(documents, 'module-child').filter(
           (document) => document.module === entry.module,
         ),
-        directories: featuresDirectory(entry.module),
+        directories: [...featuresDirectory(entry.module), ...pagesDirectory(entry.module)],
       }),
     ),
   ].join('')
@@ -1491,7 +1540,20 @@ function validateSiteLinks(files: Record<string, string>): void {
     throw new Error(`generated pages are unreachable: ${unreachable.join(', ')}`)
 }
 
+const uiFlowStyles = `
+.ui-design-table :is(th,td){min-width:120px;padding:10px 16px 10px 10px}.ui-design-table :is(th,td):nth-child(2){min-width:220px}.ui-design-table :is(th,td):last-child{min-width:320px}
+.diagram-shell.ui-module-flow{padding:24px;border-radius:6px;background:var(--bg)}
+.ui-module-flow .mermaid{padding:8px;border:0}.ui-module-flow svg{display:block;margin:auto}
+svg :is(.uiFlowView,.uiFlowOutside)>rect{fill:var(--bg)!important;stroke:var(--muted)!important;stroke-width:1.2px!important;rx:2px;ry:2px}
+svg .uiFlowOutside>rect{stroke-dasharray:4 3}
+svg :is(.uiFlowView,.uiFlowOutside) :is(.nodeLabel,span,p){color:var(--text)!important}
+svg :is(.uiFlowView,.uiFlowOutside) .flow-description{display:block;margin-top:8px;padding-top:8px;border-top:1px solid var(--line-strong);font-size:12px;font-weight:400;line-height:1.5}
+:is(.diagram-shell.ui-module-flow .mermaid,.diagram-canvas) svg:has(.uiFlowView) :is(.flowchart-link,.edgePath path){stroke:var(--muted)!important;stroke-width:1.3px!important}
+:is(.diagram-shell.ui-module-flow .mermaid,.diagram-canvas) svg:has(.uiFlowView) marker path{fill:var(--muted)!important;stroke:var(--muted)!important}
+`
+
 const styles = `
+${uiFlowStyles}
 :root{color-scheme:light dark;--bg:#fff;--bg-soft:#f6f7f9;--text:#1c2024;--muted:#5c646f;--line:#e3e6ea;--line-strong:#c8ced7;--accent:#1f4fd8;--accent-soft:#eef2ff;--code:#f4f5f7;--given:#0f6b84;--when:#8a5200;--then:#0f6b45;--refuse:#b42318;--diagram-line:#294cba;--measure:960px;--wide:1400px;--sidebar:290px;--toc:216px;--code-keyword:#b42318;--code-string:#0f5c2e;--code-comment:#6b7480;--code-literal:#1f4fd8;--code-title:#6d3fc0;--code-meta:#8a5200}
 @media(prefers-color-scheme:dark){:root{--bg:#14171c;--bg-soft:#1a1e25;--text:#e7ebf1;--muted:#9aa3b0;--line:#282e38;--line-strong:#3b4350;--accent:#93adff;--accent-soft:#1e2740;--code:#1e232b;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--refuse:#ff8a7a;--diagram-line:#b9c8ff;--code-keyword:#ff8a7a;--code-string:#8fd9a8;--code-comment:#8b94a1;--code-literal:#93adff;--code-title:#d2b4ff;--code-meta:#ffc36b}}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:16px/1.75 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--bg);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}

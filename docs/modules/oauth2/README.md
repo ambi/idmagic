@@ -81,7 +81,7 @@ IdManagement からの完全削除では保存先ごとの本人の記録の削�
 
 | 設計領域 | 文書 | 内容 |
 | --- | --- | --- |
-| アプリケーション設計 | [標準仕様](standards.md#the-oauth-20-authorization-framework) | プロトコルの形は標準仕様と TypeSpec が、管理 API はシステムのアプリケーション設計が扱う |
+| アプリケーション設計 | [標準仕様](standards.md#the-oauth-20-authorization-framework)、[OAuth2 のページ](pages/README.md#同意と承認) | プロトコルの形は標準仕様と TypeSpec が、管理 API はシステムのアプリケーション設計が扱う。同意・承認・本人の委任はページ設計に示す |
 | データ設計 | [OAuth2 のデータ](data.md#集約)、[トークンの設計](features/token.md#データ) | Aggregate とその関係。トークンの有効期間と保持期間はトークンの設計が、テーブルの定義はスキーマファイルが扱う |
 | セキュリティ設計 | [OAuth2 のセキュリティ](security.md#パースの境界のファズテスト) | パースの境界のファズテスト |
 | 信頼性設計 | [トークン](features/token.md#概要)、[ログアウトの設計](features/logout.md#アーキテクチャ) | 署名の提供元の障害はトークンが、ログアウトの配信の再試行はログアウトの設計が扱う |

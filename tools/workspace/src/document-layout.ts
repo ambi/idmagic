@@ -63,6 +63,9 @@ const DESIGN_AREA_DOCUMENTS: Record<(typeof DESIGN_AREAS)[number]['directory'], 
     observability: ['README.md', 'monitoring.md', 'logging.md', 'tracing.md'],
   }
 
+/** TypeSpec から生成する UI の索引。領域と作業カテゴリには詳細への参照を置く。 */
+export const UI_PAGE_DIRECTORY = 'docs/design/application/pages'
+
 /** 一次情報文書を、`docs/README.md` の区分の順に、上位から読む順序で定義する。 */
 export const SYSTEM_DOCUMENT_DIRECTORIES: ReadonlyArray<{
   directory: string
@@ -78,6 +81,7 @@ export const SYSTEM_DOCUMENT_DIRECTORIES: ReadonlyArray<{
     directory: `docs/design/${directory}`,
     names: DESIGN_AREA_DOCUMENTS[directory],
   })),
+  { directory: UI_PAGE_DIRECTORY, names: ['README.md'] },
   { directory: 'docs/modules', names: MODULE_INDEX_DOCUMENTS },
   {
     directory: 'docs/operations',
@@ -205,6 +209,7 @@ export function featureSpecificationPath(module: string, feature: string): strin
 export interface DocumentAllowance {
   names: readonly string[]
   features?: boolean
+  uiPages?: boolean
 }
 
 /** 段の集合から読み取った、名前の判定に要る事実。 */
@@ -230,18 +235,35 @@ export function describeDocumentSet(listings: readonly DirectoryListing[]): Docu
  * それより下と、印を持たないモジュールの段と、固定の一覧にないシステムの段には何も置けない。
  */
 export function documentAllowance(directory: string, view: DocumentSetView): DocumentAllowance {
+  if (directory.startsWith(`${UI_PAGE_DIRECTORY}/`)) {
+    const parts = directory.slice(UI_PAGE_DIRECTORY.length + 1).split('/')
+    if (!parts.every((part) => /^[a-z][a-z0-9-]*$/.test(part))) return { names: [] }
+    if (parts.length === 1) return { names: ['README.md'] }
+    if (parts.length === 2) return { names: ['README.md'] }
+    return { names: [] }
+  }
   const match = directory.match(/^docs\/modules\/([^/]+)(?:\/(.+))?$/)
   const module = match?.[1]
   if (!module) return { names: canonicalDocumentNames(directory) ?? [] }
   if (!view.featureModules.has(module)) return { names: [] }
   const rest = match[2]
   if (rest === undefined) return { names: MODULE_DOCUMENTS }
+  if (rest === 'pages') return { names: ['README.md'], uiPages: true }
   if (rest === FEATURES_DIRECTORY) return { names: [], features: true }
   return { names: [] }
 }
 
+/** 主担当のモジュールに一度だけ生成する、ページ設計の文書。 */
+export function modulePageDocument(path: string): { module: string; name: string } | undefined {
+  const match = path.match(
+    /^docs\/modules\/([a-z][a-z0-9-]*)\/pages\/(README|[a-z][a-z0-9-]*)\.md$/,
+  )
+  return match ? { module: match[1]!, name: match[2]! } : undefined
+}
+
 export function allowsDocument(allowance: DocumentAllowance, name: string): boolean {
   if (allowance.names.includes(name)) return true
+  if (allowance.uiPages && /^[a-z][a-z0-9-]*\.md$/.test(name)) return true
   return (
     allowance.features === true &&
     featureDocument(`docs/modules/m/${FEATURES_DIRECTORY}/${name}`) !== undefined

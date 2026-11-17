@@ -46,6 +46,7 @@ OAuth2 のイントロスペクションの結果を、利用側の `CallerToken
 
 | 設計領域 | 文書 | 内容 |
 | --- | --- | --- |
+| アプリケーション設計 | [TokenVault のページ](pages/README.md#外部サービス接続) | 本人が外部サービスへの接続を管理するページ |
 | データ設計 | [TokenVault のデータ](data.md#集約) | Aggregate とその関係 |
 | セキュリティ設計 | [代理実行](features/execution.md#セキュリティ上の考慮) | 認可の論理積と外向きの制限 |
 

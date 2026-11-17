@@ -5,6 +5,27 @@ import { verifyCanonicalDocumentSet } from './canonical-document-set.ts'
 const marker = { directory: 'docs/modules/demo', files: ['README.md'] }
 
 describe('verifyCanonicalDocumentSet', () => {
+  it('ページ詳細を主担当のモジュールに許し、全体のカテゴリには索引だけを許す', () => {
+    const findings = verifyCanonicalDocumentSet([
+      { directory: 'docs/design/application/pages', files: ['README.md'] },
+      { directory: 'docs/modules/identity-management', files: ['README.md'] },
+      {
+        directory: 'docs/modules/identity-management/pages',
+        files: ['README.md', 'admin-users.md'],
+      },
+      { directory: 'docs/design/application/pages/admin', files: ['README.md'] },
+      {
+        directory: 'docs/design/application/pages/admin/users',
+        files: ['README.md', 'unexpected.md'],
+      },
+      { directory: 'docs/design/application/pages/admin/users/extra', files: ['unexpected.md'] },
+    ])
+    expect(findings.map((finding) => finding.path)).toEqual([
+      'docs/design/application/pages/admin/users/unexpected.md',
+      'docs/design/application/pages/admin/users/extra/unexpected.md',
+    ])
+  })
+
   it('accepts a directory holding only canonical documents', () => {
     expect(
       verifyCanonicalDocumentSet([

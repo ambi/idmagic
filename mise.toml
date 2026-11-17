@@ -1137,6 +1137,16 @@ bun run spec-review-candidates/src/main.ts "$1"
 '''
 
 # 文書サイトは TypeSpec から生成した OpenAPI を読むので、先にコンパイルして古い生成物を描かない。
+[tasks.generate-ui-pages]
+description = "Generate the UI page inventory and interaction design from TypeSpec"
+dir = "tools"
+run = "bun run build-site/src/write-ui-pages.ts \"$@\""
+
+[tasks.compile-ui-spec]
+description = "Compile the UI design declarations separately from the public HTTP contract"
+dir = "tools"
+run = "bunx tsp compile ../spec/modules/frontend --no-emit"
+
 [tasks.build-site]
 description = "Compile TypeSpec, then build the browsable documentation and API reference site into site/"
 depends = ["compile-spec"]

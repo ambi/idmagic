@@ -1,0 +1,5 @@
+kind: project
+entrypoint: ./main.tsp
+features:
+  - auto-decorators
+emit: []

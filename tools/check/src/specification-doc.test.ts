@@ -112,6 +112,18 @@ describe('品質要件の割り当て', () => {
 })
 
 describe('documentKind', () => {
+  it('UI の索引とモジュールのページ詳細を散文として検査する', () => {
+    expect(documentKind('docs/modules/demo/pages/README.md')).toBe('prose')
+    expect(documentKind('docs/modules/demo/pages/user-edit.md')).toBe('prose')
+    expect(documentKind('docs/design/application/pages/README.md')).toBe('prose')
+    expect(documentKind('docs/design/application/pages/admin/README.md')).toBe('prose')
+    expect(documentKind('docs/design/application/pages/admin/users/README.md')).toBe('prose')
+    expect(documentKind('docs/design/application/pages/admin/users/detail.md')).toBeUndefined()
+    expect(
+      documentKind('docs/design/application/pages/admin/users/extra/README.md'),
+    ).toBeUndefined()
+  })
+
   it('names the grammar of each canonical document', () => {
     expect(documentKind('docs/modules/scenarios.feature.md')).toBe('scenarios')
     expect(documentKind('docs/modules/glossary.md')).toBe('prose')

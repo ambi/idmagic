@@ -10,6 +10,7 @@ import {
   type DirectoryListing,
   documentAllowance,
   SYSTEM_DOCUMENT_DIRECTORIES,
+  UI_PAGE_DIRECTORY,
 } from '../../workspace/src/document-layout.ts'
 import { createWorkspaceSnapshot, discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
 import { generatedModuleDependencies } from '../../check/src/check-module-dependencies.ts'
@@ -52,6 +53,14 @@ for (const { directory, names } of SYSTEM_DOCUMENT_DIRECTORIES) {
 }
 paths.push(...(await procedureDocuments('docs/development')))
 paths.push(...(await procedureDocuments('docs/runbooks')))
+const uiSnapshot = createWorkspaceSnapshot(root)
+if (uiSnapshot.exists(UI_PAGE_DIRECTORY)) {
+  for (const path of await uiSnapshot.files(UI_PAGE_DIRECTORY)) {
+    if (!path.endsWith('.md') || paths.includes(path)) continue
+    const allowance = documentAllowance(dirname(path), describeDocumentSet([]))
+    if (allowsDocument(allowance, basename(path))) paths.push(path)
+  }
+}
 const moduleRoot = resolve(root, 'docs/modules')
 const moduleDirectories = (await readdir(moduleRoot, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
