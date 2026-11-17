@@ -62,6 +62,7 @@ func newAgentDeps(t *testing.T) (agentusecases.AdminAgentDeps, *[]spec.DomainEve
 	})
 	events := &[]spec.DomainEvent{}
 	deps := agentusecases.AdminAgentDeps{
+		Revocation: ignoreRevocation{},
 		AgentRepo:  agentmemory.NewAgentRepository(),
 		ClientRepo: clientRepo,
 		UserRepo:   userRepo,

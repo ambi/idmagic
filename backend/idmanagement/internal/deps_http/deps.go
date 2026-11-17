@@ -7,7 +7,6 @@ package deps_http
 
 import (
 	"context"
-	"time"
 
 	"github.com/labstack/echo/v5"
 
@@ -21,18 +20,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
-
-// EventReactor receives every DomainEvent this context's Emit already emits
-// and fail-closed reacts to the ones it cares about. Unlike Emit (fire-and-
-// forget, wi-190's reverted transactional-event-log decided against
-// making the general audit path error-propagating), a reactor's error
-// propagates back through ReactiveEmit. SharedSignals implements this
-// shape for Agent revocation epoch enforcement (wi-58) without
-// idmanagement importing sharedsignals — only context.Context and
-// spec.DomainEvent are named in the signature.
-type EventReactor interface {
-	React(ctx context.Context, event spec.DomainEvent) error
-}
 
 // AccountIdentity は、認証の所有者が提供する本人の再認証と、認証エラーの表示である。
 type AccountIdentity interface {
@@ -55,10 +42,9 @@ type Deps struct {
 	// Provisioning. Separate from ProvisioningNotifier because the two carry
 	// different IdManagement-owned trigger vocabularies.
 	GroupProvisioningNotifier groupports.ProvisioningNotifier
-	// Reactor fail-closed reacts to emitted DomainEvents (currently
-	// SharedSignals' Agent revocation epoch enforcement; wi-58).
-	// nil skips reaction. See ReactiveEmit.
-	Reactor              EventReactor
+	// Reactor は User と Agent を止めたイベントでアクセスを失効させる（SharedSignals の失効エポック、wi-58）。
+	// 止める操作は監査の Emit と別にこれを呼び、未配線なら失敗する。
+	Reactor              userports.AccessRevocationReactor
 	JobRepo              jobsports.JobRepository
 	JobEnqueuer          jobsports.Enqueuer
 	JobCanceler          jobsports.Canceler
@@ -107,26 +93,5 @@ func (d Deps) LegacyEmit() func(spec.DomainEvent) error {
 			d.Emit(event)
 		}
 		return nil
-	}
-}
-
-// ReactiveEmit composes LegacyEmit's best-effort audit trail with d.Reactor's
-// fail-closed reaction: the mutation that emits (KillAgent, SetUserDisabled, ...)
-// gets Reactor's error back, so a failed Agent revocation epoch advance
-// fails the admin operation instead of being silently swallowed like the
-// audit write is (wi-58). d.Reactor uses its own background
-// context with a timeout, not the caller's request context, matching
-// NewEmitFunc's existing convention of not tying event recording to
-// request cancellation.
-func (d Deps) ReactiveEmit() func(spec.DomainEvent) error {
-	legacy := d.LegacyEmit()
-	return func(event spec.DomainEvent) error {
-		legacy(event) //nolint:errcheck // LegacyEmit always returns nil (best-effort by design)
-		if d.Reactor == nil {
-			return nil
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		return d.Reactor.React(ctx, event)
 	}
 }

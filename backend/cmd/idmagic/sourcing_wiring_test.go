@@ -74,7 +74,7 @@ func TestServerWiresScimUserStopsThroughIdManagement(t *testing.T) {
 	}
 }
 
-// SCIM の取り込みは管理 API の ReactiveEmit を通らず、組み立ての地点の UserLifecycleCommands を通る。
+// SCIM の取り込みは管理 API のハンドラーを通らず、組み立ての地点の UserLifecycleCommands を通る。
 // その経路でも、所有する Agent の失効エポックを進めなければならない。
 //
 //spec:covers REQ-PLATFORM-001: API の起動が組み立てた Sourcing で SCIM の active=false が User を止めると、所有する Agent の失効エポックが所有者の無効化を理由に進むことを固定する。

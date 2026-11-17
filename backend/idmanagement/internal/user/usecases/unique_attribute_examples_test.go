@@ -44,6 +44,7 @@ func TestUniqueAttributeValuesStayUniqueOnEveryWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	admin := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                users,

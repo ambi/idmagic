@@ -74,6 +74,33 @@ func AdminEmit(sink func(spec.DomainEvent) error, event spec.DomainEvent) error 
 	return sink(event)
 }
 
+// ErrAccessRevocationUnavailable は、User または Agent を止める操作に失効の反応器が配線されていない場合に返る。
+// 停止を監査の記録だけで済ませると、失効エポックが進まず、止めた主体のトークンが使われ続ける。
+var ErrAccessRevocationUnavailable = errors.New("access revocation reactor is not configured")
+
+// revocationTimeout は失効の反応の期限である。反応は要求の取り消しに結び付けず、自前の期限で走らせる。
+const revocationTimeout = 5 * time.Second
+
+// EmitRevoking は、User または Agent を止めたイベントを sink へ記録した後、reactor に失効を反応させる。
+// 止める操作はすべてこの関数で停止のイベントを発行し、監査だけの発行で失効を抜かさない。
+// 監査の記録が失敗しても反応を省かず、両方の誤りを返す。状態は確定済みなので、反応器が未配線でも
+// 監査は記録してから失敗を返す。反応は要求の取り消しから切り離し、自前の期限で走り切らせる。
+func EmitRevoking(ctx context.Context, sink func(spec.DomainEvent) error, reactor RevocationReactor, event spec.DomainEvent) error {
+	emitErr := AdminEmit(sink, event)
+	if reactor == nil {
+		return errors.Join(emitErr, ErrAccessRevocationUnavailable)
+	}
+	reactCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), revocationTimeout)
+	defer cancel()
+	return errors.Join(emitErr, reactor.React(reactCtx, event))
+}
+
+// RevocationReactor は EmitRevoking が呼ぶ失効の反応であり、user/ports.AccessRevocationReactor と同じ形である。
+// 機能を横断するこのパッケージが User の公開ポートへ依存しないよう、利用側で宣言する。
+type RevocationReactor interface {
+	React(ctx context.Context, event spec.DomainEvent) error
+}
+
 // ReserveQuotaAndAudit reserves one unit of resource's tenant Hard Quota (wi-160),
 // shared by the user/group/agent usecase packages that all emit through the same
 // error-returning sink signature. The caller defers Release right away and calls

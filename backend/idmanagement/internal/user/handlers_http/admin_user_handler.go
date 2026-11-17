@@ -336,7 +336,7 @@ func adminUserDeps(d Deps) userusecases.AdminUserDeps {
 		TrustedDevices:          d.TrustedDevices,
 		ValidateInitialPassword: d.ValidateInitialPassword,
 		PasswordHasher:          d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
-		Emit: d.ReactiveEmit(), QuotaRepo: d.QuotaRepo,
+		Emit: d.LegacyEmit(), Revocation: d.Reactor, QuotaRepo: d.QuotaRepo,
 		SessionStore: d.SessionStore,
 	}
 	return deps

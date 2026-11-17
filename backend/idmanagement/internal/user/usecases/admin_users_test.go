@@ -42,6 +42,7 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	hasher := testing_passwords.NewHasher()
 	var events []spec.DomainEvent
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,
@@ -133,6 +134,7 @@ func federatedProvisioningDeps(
 	}
 	events := &[]spec.DomainEvent{}
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                userRepo, AttrSchemaRepo: schemaRepo, QuotaRepo: quotaRepo,
@@ -332,6 +334,7 @@ func TestUpdateUserExtraFieldsAndNoop(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	userRepo := usermemory.NewUserRepository()
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                userRepo, PasswordHasher: testing_passwords.NewHasher(),
@@ -393,6 +396,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 		CreatedAt: now, UpdatedAt: now,
 	})
 	_, err := userusecases.CreateUser(testing_tenant.Default(context.Background()), userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                repo, PasswordHasher: testing_passwords.NewHasher(),
@@ -417,6 +421,7 @@ func TestCreateUser_rejectsWhenHardQuotaExceeded(t *testing.T) {
 		t.Fatalf("SetQuota: %v", err)
 	}
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                repo, PasswordHasher: testing_passwords.NewHasher(),
@@ -457,6 +462,7 @@ func TestDeleteUser_decrementsQuotaUsage(t *testing.T) {
 		t.Fatalf("SetQuota: %v", err)
 	}
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authenticationModule.UserCredentials(),
 		UserRepo:                repo, PasswordHasher: testing_passwords.NewHasher(),
@@ -494,6 +500,7 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	hasher := testing_passwords.NewHasher()
 	var events []spec.DomainEvent
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{PasswordHistoryRepo: historyRepo, MfaFactorRepo: mfaRepo}.UserCredentials(),
 		UserRepo:                userRepo, ConsentRepo: consentRepo, RefreshStore: refreshStore,
@@ -589,6 +596,7 @@ func TestDeleteUserRejectsSelfDelete(t *testing.T) {
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	err := userusecases.DeleteUser(ctx, userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                userRepo,
@@ -615,6 +623,7 @@ func TestSetUserDisabledRejectsSelfDisable(t *testing.T) {
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                userRepo,
@@ -641,6 +650,7 @@ func TestSetUserDisabledAllowsDisablingOtherAdmin(t *testing.T) {
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                userRepo,
@@ -662,6 +672,7 @@ func softDeleteTestDeps(events *[]spec.DomainEvent) (userusecases.AdminUserDeps,
 	consentRepo := oauth2.NewMemoryModule().ConsentRepo
 	authenticationModule := authentication.NewMemoryModule(nil)
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authenticationModule.UserCredentials(),
 		UserRepo:                userRepo, ConsentRepo: consentRepo,
@@ -837,6 +848,7 @@ func TestSoftDeleteAndRestoreRejectSelf(t *testing.T) {
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                userRepo,
@@ -897,6 +909,7 @@ func TestPurgeUserReleasesConsentQuotaOfUnrevokedGrants(t *testing.T) {
 	consentRepo := oauth2.NewMemoryModule().ConsentRepo
 	authenticationModule := authentication.NewMemoryModule(nil)
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authenticationModule.UserCredentials(),
 		UserRepo:                usermemory.NewUserRepository(), PasswordHasher: testing_passwords.NewHasher(),

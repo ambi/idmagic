@@ -279,8 +279,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	clientDisplayNames := d.Application.ClientDisplayNames(applicationdeps.NewClientNames(d.OAuth2.ClientRepo))
 	jobEnqueuer := d.Jobs.Enqueuer
 
-	// 管理 API の User と Agent の操作は、IdManagement の経路の ReactiveEmit が発行の後にこの反応器を呼ぶ。
-	// 管理 API の外から User を止める経路は、組み立ての地点の UserLifecycleCommands が同じ反応器を使う。
+	// User と Agent を止める IdManagement の操作は、管理 API でも管理 API の外でも、この反応器を必須の依存として受け取る。
 	revocationReactor := d.SharedSignals.AgentRevocationReactor(d.IdManagement.AgentRepo, d.SigningKeys.KeyStore, d.Issuer, d.Emit)
 	// 以降の経路が発行する Authentication と OAuth2 のイベントは、記録の後に User の失効へ反応させる。
 	d.Emit = userRevocationEmit(d.Emit, revocationReactor)
@@ -549,8 +548,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		lifecycle.TrustedDevices = d.Authentication.UserDeviceRevoker()
 		d.Sourcing.DirectoryUserLifecycle = d.IdManagement.UserLifecycleCommands(lifecycle, func(event spec.DomainEvent) error {
 			d.Emit(event)
-			return revocationReactor.React(context.Background(), event)
-		}, "directory_connector")
+			return nil
+		}, revocationReactor, "directory_connector")
 	}
 	d.Sourcing.PasswordDiagnosticGate = sourcingdeps.PasswordDiagnosticGate(d.Authentication.LoginAttemptThrottle)
 	d.Sourcing.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService,

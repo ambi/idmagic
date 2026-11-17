@@ -24,6 +24,7 @@ func attrTestDeps(t *testing.T) (context.Context, userusecases.AdminUserDeps, *u
 	t.Helper()
 	schemaRepo := usermemory.NewTenantUserAttributeSchemaRepository()
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                usermemory.NewUserRepository(),

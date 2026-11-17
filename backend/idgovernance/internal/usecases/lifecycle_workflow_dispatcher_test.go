@@ -86,7 +86,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	}.AdminUsers(idmanagement.LifecycleDeps{
 		ValidateInitialPassword: authentication.ValidateInitialPassword, UserCredentials: authentication.Module{}.UserCredentials(), PasswordHasher: testing_passwords.NewHasher(),
 		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
-	}, nil)
+	}, nil, ignoreRevocation{})
 	created, err := adminUsers.CreateUser(ctx, idmanagement.CreateUserInput{ActorUserID: "admin", PreferredUsername: "alice", Password: "initial-password-9182", Now: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
@@ -600,7 +600,7 @@ func TestLifecycleWorkflowRunHandlerSendsCatalogTemplateForSendEmail(t *testing.
 
 // workflowUserLifecycle は worker と同じく、disable_user と enable_user を IdManagement の操作として行う。
 func workflowUserLifecycle(users userports.UserRepository) igports.UserLifecycle {
-	return idmanagement.Module{UserRepo: users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, nil, "lifecycle-workflow")
+	return idmanagement.Module{UserRepo: users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, nil, ignoreRevocation{}, "lifecycle-workflow")
 }
 
 // testJobEnqueuer は、repo へジョブを作り、上限のないクォータで数え、イベントを捨てる投入器を返す。

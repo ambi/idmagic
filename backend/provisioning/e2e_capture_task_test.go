@@ -198,7 +198,7 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 
 // adminUsers は管理 API と同じ規則で User を変え、変更をプロビジョニングへ通知する操作を返す。
 func (h *e2eHarness) adminUsers() idmanagement.AdminUsers {
-	return h.idm.AdminUsers(h.lifecycle, nil)
+	return h.idm.AdminUsers(h.lifecycle, nil, ignoreRevocation{})
 }
 
 func (h *e2eHarness) registerActiveConnection() {

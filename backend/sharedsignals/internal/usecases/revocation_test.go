@@ -212,7 +212,7 @@ func TestAgentRevocationReactor_IgnoresUnrelatedEvents(t *testing.T) {
 // TestAgentRevocationReactor_NilEpochRepoIsNoop — RED: EpochRepo が nil の
 // lightweight wiring (SharedSignals.Module 未配線のテスト等) では、対象イベントを
 // 受けても panic せず no-op で返す。composition root は常に non-nil な reactor を
-// 渡すため (deps_http.Deps.ReactiveEmit)、reactor 自身がこの nil-skip を保証する
+// 渡すため (idmanagement の止める操作の必須の依存)、reactor 自身がこの nil-skip を保証する
 // 必要がある (wi-58)。
 func TestAgentRevocationReactor_NilEpochRepoIsNoop(t *testing.T) {
 	ctx := context.Background()

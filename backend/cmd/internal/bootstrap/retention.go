@@ -75,7 +75,7 @@ func purgeExpiredUsers(ctx context.Context, deps *Dependencies, now time.Time) e
 		return err
 	}
 	//nolint:contextcheck // Batch events use the bounded independent audit context.
-	commands := deps.IdManagement.UserLifecycleCommands(deps.UserLifecycleDeps(), deps.ReactiveEmit(deps.NewEmitFunc(logging.Default())), "system")
+	commands := deps.UserLifecycleCommands(deps.NewEmitFunc(logging.Default()), "system")
 	var failures []error
 	for _, tenant := range tenants {
 		tenantCtx := tenantports.WithTenant(ctx, tenant, "", "")

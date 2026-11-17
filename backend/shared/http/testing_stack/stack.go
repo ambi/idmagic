@@ -765,10 +765,8 @@ func New(t *testing.T, options ...Option) *Stack {
 		reactor := b.deps.SharedSignals.AgentRevocationReactor(b.deps.IdManagement.AgentRepo, b.deps.SigningKeys.KeyStore, Issuer, b.deps.Emit)
 		b.deps.Sourcing.UserLifecycle = b.deps.IdManagement.UserLifecycleCommands(lifecycle, func(event spec.DomainEvent) error {
 			b.deps.Emit(event)
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			return reactor.React(ctx, event)
-		}, "scim")
+			return nil
+		}, reactor, "scim")
 	}
 	httpadapter.Register(stack.Echo, b.deps)
 	return stack

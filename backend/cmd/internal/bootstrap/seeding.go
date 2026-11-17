@@ -11,6 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/seeding/domain"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // Seed は環境のシークレットの提供元と各所有者の保存先を Seeding に結ぶ。
@@ -26,8 +27,10 @@ func Seed(ctx context.Context, deps *Dependencies, request domain.Request, secre
 	if seedDeps.Authentication.PasswordHasher == nil {
 		seedDeps.Authentication.PasswordHasher = passwords_argon2id.NewArgon2idPasswordHasher()
 	}
-	emit := seedDeps.NewEmitFunc(logging.Default())                                                                                 //nolint:contextcheck // 起動時の配線。監査と通知は操作の終了後にも記録する。
-	commands := seedCommands{deps: &seedDeps, identities: seedIdentityCommands(&seedDeps, seedDeps.ReactiveEmit(emit)), emit: emit} //nolint:contextcheck // 反応器の構築であり、実行時の context は各操作へ渡す。
+	emit := seedDeps.NewEmitFunc(logging.Default()) //nolint:contextcheck // 起動時の配線。監査と通知は操作の終了後にも記録する。
+	// 初期データは User と Group を作るだけで、止めるイベントを発行しないので、失効の反応器を通さない。
+	audit := func(event spec.DomainEvent) error { emit(event); return nil }
+	commands := seedCommands{deps: &seedDeps, identities: seedIdentityCommands(&seedDeps, audit), emit: emit}
 	contributor, err := seeding.NewContributor(seeding.ResourceDependencies{
 		ClientRepo: deps.OAuth2.ClientRepo,
 		UserRepo:   deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,

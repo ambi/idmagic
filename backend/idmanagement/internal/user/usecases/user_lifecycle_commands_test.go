@@ -2,6 +2,7 @@ package usecases_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/internal/agent/db_memory"
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/internal/user/db_memory"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/internal/user/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -39,6 +41,7 @@ func newLifecycleFixture(t *testing.T, status idmdomain.UserStatus) *lifecycleFi
 	}
 	f.adapter = userusecases.UserLifecycleCommands{
 		Deps: userusecases.AdminUserDeps{
+			Revocation:              ignoreRevocation{},
 			ValidateInitialPassword: authentication.ValidateInitialPassword,
 			UserCredentials:         authentication.Module{}.UserCredentials(),
 			UserRepo:                f.users, AgentRepo: f.agents,
@@ -47,6 +50,42 @@ func newLifecycleFixture(t *testing.T, status idmdomain.UserStatus) *lifecycleFi
 		Actor: "lifecycle-workflow",
 	}
 	return f
+}
+
+type reactorFunc func(context.Context, spec.DomainEvent) error
+
+func (f reactorFunc) React(ctx context.Context, event spec.DomainEvent) error { return f(ctx, event) }
+
+// 停止のイベントはすべて失効の反応器へ渡り、反応の失敗は停止の操作の誤りとして返る。
+func TestStoppingAUserPassesEveryStopEventToTheRevocationReactor(t *testing.T) {
+	f := newLifecycleFixture(t, idmdomain.UserStatusActive)
+	var reacted []string
+	f.adapter.Deps.Revocation = reactorFunc(func(_ context.Context, event spec.DomainEvent) error {
+		reacted = append(reacted, event.EventType())
+		return nil
+	})
+	if _, err := f.adapter.SetUserDisabled(context.Background(), "tenant-a", "alice", true, lifecycleNow); err != nil {
+		t.Fatal(err)
+	}
+	if len(reacted) != 2 || reacted[0] != "UserDisabled" || reacted[1] != "AgentDisabled" {
+		t.Fatalf("reacted=%v, want [UserDisabled AgentDisabled]", reacted)
+	}
+
+	failing := errors.New("epoch store down")
+	g := newLifecycleFixture(t, idmdomain.UserStatusActive)
+	g.adapter.Deps.Revocation = reactorFunc(func(context.Context, spec.DomainEvent) error { return failing })
+	if _, err := g.adapter.SetUserDisabled(context.Background(), "tenant-a", "alice", true, lifecycleNow); !errors.Is(err, failing) {
+		t.Fatalf("err=%v, want the reactor failure", err)
+	}
+}
+
+// 失効の反応器を配線していない組み立ては、停止を監査だけで済ませず失敗させる。
+func TestStoppingAUserWithoutTheRevocationReactorFails(t *testing.T) {
+	f := newLifecycleFixture(t, idmdomain.UserStatusActive)
+	f.adapter.Deps.Revocation = nil
+	if _, err := f.adapter.SetUserDisabled(context.Background(), "tenant-a", "alice", true, lifecycleNow); !errors.Is(err, idmusecases.ErrAccessRevocationUnavailable) {
+		t.Fatalf("err=%v, want ErrAccessRevocationUnavailable", err)
+	}
 }
 
 //spec:covers EX-IDMANAGEMENT-081-02: ワークフローの disable_user が IdManagement の無効化を通り、User を Disabled にして UserDisabled を発行し、所有する Agent を Disabled にすること。

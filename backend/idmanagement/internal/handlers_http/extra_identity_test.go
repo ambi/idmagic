@@ -227,7 +227,7 @@ func TestAdminAgentLifecycle(t *testing.T) {
 	}
 }
 
-// end to end (KillAgent HTTP → deps_http.Deps.ReactiveEmit →
+// end to end (KillAgent HTTP → idmusecases.EmitRevoking →
 // sharedsignalsusecases.AgentRevocationReactor.React →
 // AdvanceRevocationEpoch), not just the reactor unit in isolation. Confirms
 // the SCL scenario `kill-switchは既発行トークンをintrospectionで即時無効化する`'s

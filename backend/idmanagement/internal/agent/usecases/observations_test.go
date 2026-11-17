@@ -48,7 +48,8 @@ func newObservationUsecaseFixture(t *testing.T, agentIDs ...string) observationF
 	return observationFixture{
 		ctx: ctx, mu: mu, events: events, now: now,
 		deps: AdminAgentDeps{
-			AgentRepo: agents, Observations: agentmemory.NewAgentObservationRepository(agents),
+			Revocation: ignoreRevocation{},
+			AgentRepo:  agents, Observations: agentmemory.NewAgentObservationRepository(agents),
 			WorkloadSubjects: stubWorkloadSubjects{},
 			Emit: func(event spec.DomainEvent) error {
 				mu.Lock()

@@ -155,7 +155,7 @@ func (f *governanceFixture) adminUsers() idmanagement.AdminUsers {
 		},
 	}.AdminUsers(idmanagement.LifecycleDeps{
 		ValidateInitialPassword: authentication.ValidateInitialPassword, UserCredentials: authentication.Module{}.UserCredentials(), PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
-	}, nil)
+	}, nil, ignoreRevocation{})
 }
 
 // executor は worker が組み立てるのと同じ依存を渡す。
@@ -166,7 +166,7 @@ func (f *governanceFixture) executor() usecases.LifecycleWorkflowExecutorDeps {
 		ApplicationAssignments: desiredStateAssignments(f.apps, f.assignments, f.users, f.groups, f.events.emit),
 		UserLifecycle:          f.userLifecycle(),
 		GroupMembership:        idmanagement.Module{UserRepo: f.users, GroupRepo: f.groups}.GroupMembershipCommands(f.events.emit, "lifecycle-workflow"),
-		UserRequiredActions:    idmanagement.Module{UserRepo: f.users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, f.events.emit, "lifecycle-workflow"),
+		UserRequiredActions:    idmanagement.Module{UserRepo: f.users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, f.events.emit, ignoreRevocation{}, "lifecycle-workflow"),
 		Notifier:               &template.Notifier{Sender: f.sender, SystemDefaultLocale: "en"},
 		Emit:                   f.events.emit,
 	}
@@ -176,7 +176,7 @@ func (f *governanceFixture) userLifecycle() igports.UserLifecycle {
 	if f.lifecycle != nil {
 		return f.lifecycle
 	}
-	return idmanagement.Module{UserRepo: f.users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, f.events.emit, "lifecycle-workflow")
+	return idmanagement.Module{UserRepo: f.users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, f.events.emit, ignoreRevocation{}, "lifecycle-workflow")
 }
 
 // recordingUserLifecycle は手順が呼んだ User の操作を記録し、User を変えない。

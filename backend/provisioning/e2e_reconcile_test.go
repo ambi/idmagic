@@ -108,7 +108,7 @@ func TestE2E_ReconcileDeactivatesAUserDisabledWithoutCapture(t *testing.T) {
 
 	withoutCapture := h.idm
 	withoutCapture.ProvisioningNotifier = nil
-	if _, err := withoutCapture.AdminUsers(h.lifecycle, nil).SetUserDisabled(testing_tenant.Default(context.Background()), "actor", userID, true, time.Now().UTC()); err != nil {
+	if _, err := withoutCapture.AdminUsers(h.lifecycle, nil, ignoreRevocation{}).SetUserDisabled(testing_tenant.Default(context.Background()), "actor", userID, true, time.Now().UTC()); err != nil {
 		t.Fatalf("SetUserDisabled() error = %v", err)
 	}
 	h.assertNoPendingTask(userID)
@@ -124,7 +124,7 @@ func TestE2E_ReconcileRecoversAFailedCapture(t *testing.T) {
 
 	failingCapture := h.idm
 	failingCapture.ProvisioningNotifier = failingNotifier{}
-	if _, err := failingCapture.AdminUsers(h.lifecycle, nil).SetUserDisabled(testing_tenant.Default(context.Background()), "actor", userID, true, time.Now().UTC()); err != nil {
+	if _, err := failingCapture.AdminUsers(h.lifecycle, nil, ignoreRevocation{}).SetUserDisabled(testing_tenant.Default(context.Background()), "actor", userID, true, time.Now().UTC()); err != nil {
 		t.Fatalf("SetUserDisabled() error = %v, want the change to commit despite the failed capture", err)
 	}
 	user, err := h.userRepo.FindBySub(testing_tenant.Default(context.Background()), userID)

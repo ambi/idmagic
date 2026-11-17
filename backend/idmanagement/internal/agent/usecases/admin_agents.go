@@ -54,6 +54,8 @@ type AdminAgentDeps struct {
 	// WorkloadSubjects は観測の候補を読む先である。nil の配線では観測の候補の計算を失敗させる。
 	WorkloadSubjects agentports.WorkloadSubjectMatcher
 	Emit             func(spec.DomainEvent) error
+	// Revocation は、Agent を止めたイベントで失効エポックを進める。止める操作に必須である。
+	Revocation userports.AccessRevocationReactor
 	// QuotaRepo enforces the tenant's Hard Quota on agents (wi-160).
 	// nil skips enforcement (wiring gaps in tests/tools); production
 	// bootstrap always sets it.
@@ -340,7 +342,7 @@ func SetAgentDisabled(ctx context.Context, deps AdminAgentDeps, actorUserID, id 
 	}
 	var emitErr error
 	if disabled {
-		emitErr = idmusecases.AdminEmit(deps.Emit, &idmdomain.AgentDisabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
+		emitErr = idmusecases.EmitRevoking(ctx, deps.Emit, deps.Revocation, &idmdomain.AgentDisabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
 	} else {
 		emitErr = idmusecases.AdminEmit(deps.Emit, &idmdomain.AgentEnabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID})
 	}
@@ -376,7 +378,7 @@ func KillAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id string,
 	if updated == nil {
 		return nil, ErrAgentNotFound
 	}
-	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.AgentKilled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID}); err != nil {
+	if err := idmusecases.EmitRevoking(ctx, deps.Emit, deps.Revocation, &idmdomain.AgentKilled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID}); err != nil {
 		return nil, err
 	}
 	return updated, nil
@@ -404,7 +406,7 @@ func DeleteAgent(ctx context.Context, deps AdminAgentDeps, actorUserID, id strin
 			return err
 		}
 	}
-	return idmusecases.AdminEmit(deps.Emit, &idmdomain.AgentDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: id})
+	return idmusecases.EmitRevoking(ctx, deps.Emit, deps.Revocation, &idmdomain.AgentDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: id})
 }
 
 // BindCredential は Agent に同一テナントの OAuth2Client を束縛する。既束縛なら no-op
@@ -501,7 +503,7 @@ func UnbindCredential(ctx context.Context, deps AdminAgentDeps, actorUserID, age
 		return err
 	}
 	if removed {
-		return idmusecases.AdminEmit(deps.Emit, &idmdomain.AgentCredentialUnbound{
+		return idmusecases.EmitRevoking(ctx, deps.Emit, deps.Revocation, &idmdomain.AgentCredentialUnbound{
 			At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agentID, ClientID: clientID,
 		})
 	}

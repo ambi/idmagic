@@ -65,6 +65,7 @@ func newErasureFixture(t *testing.T, now time.Time) *erasureFixture {
 		users:  users,
 		events: events,
 		deps: userusecases.AdminUserDeps{
+			Revocation:              ignoreRevocation{},
 			ValidateInitialPassword: authentication.ValidateInitialPassword,
 			UserCredentials:         authentication.Module{}.UserCredentials(),
 			UserRepo:                users,

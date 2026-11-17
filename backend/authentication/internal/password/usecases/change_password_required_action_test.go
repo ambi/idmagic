@@ -33,7 +33,7 @@ func TestChangePasswordAutoClearsUpdatePasswordAction(t *testing.T) {
 	emit := func(event spec.DomainEvent) error { *events = append(*events, event); return nil }
 	now := time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)
 	email := "carol@example.com"
-	user, err := idm.AdminUsers(lifecycle, emit).CreateUser(ctx, idmanagement.CreateUserInput{
+	user, err := idm.AdminUsers(lifecycle, emit, ignoreRevocation{}).CreateUser(ctx, idmanagement.CreateUserInput{
 		ActorUserID: "admin", PreferredUsername: "carol", Password: "initial-password-9182",
 		Email: &email, Now: now,
 	})
@@ -41,7 +41,7 @@ func TestChangePasswordAutoClearsUpdatePasswordAction(t *testing.T) {
 		t.Fatal(err)
 	}
 	now = time.Date(2026, 6, 20, 14, 0, 0, 0, time.UTC)
-	if _, err := idm.UserLifecycleCommands(lifecycle, emit, "admin").SetUserRequiredAction(
+	if _, err := idm.UserLifecycleCommands(lifecycle, emit, ignoreRevocation{}, "admin").SetUserRequiredAction(
 		ctx, user.TenantID, user.ID, idmdomain.RequiredActionUpdatePassword, true, now,
 	); err != nil {
 		t.Fatal(err)

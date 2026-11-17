@@ -95,17 +95,11 @@ func AdvanceUserRevocationEpoch(ctx context.Context, repo ssports.UserRevocation
 	})
 }
 
-// AgentRevocationReactor reacts to IdManagement DomainEvents that IdManagement
-// already emits unconditionally for audit (KillAgent/SetAgentDisabled/
-// UnbindCredential/DeleteAgent/SetUserDisabled/SoftDeleteUser/DeleteUser), and
-// fail-closed advances the affected agent(s)' revocation epoch (
-// wi-58). Every path that emits those events builds it with
-// NewAgentRevocationReactor and calls it after each Emit: the admin API through
-// idmanagement/deps_http.Deps.ReactiveEmit, and the paths that stop a User
-// outside the admin API through bootstrap's UserLifecycleCommands. IdManagement's own usecases
-// need no SharedSignals dependency or extra call — the event they already
-// emit is the trigger. This mirrors the shape [[wi-323]] plans to reuse for
-// human User sessions (more event types, same reactor pattern).
+// AgentRevocationReactor は、IdManagement が User と Agent を止めたイベント（KillAgent、SetAgentDisabled、
+// UnbindCredential、DeleteAgent、SetUserDisabled、SoftDeleteUser、DeleteUser）に反応し、対象の失効エポックを
+// fail-closed に進める (wi-58)。IdManagement の止める操作は、この反応器を
+// idmanagement/user/ports.AccessRevocationReactor として必須の依存に受け取り、停止のイベントの記録の後に呼ぶ。
+// 組み立ての地点は、管理 API でも管理 API の外の経路でも NewAgentRevocationReactor で作った反応器を渡す。
 type AgentRevocationReactor struct {
 	EpochRepo ssports.AgentRevocationEpochRepository
 	// UserEpochRepo は User の失効エポックを保存する。nil なら User の失効を反映しない。
@@ -183,10 +177,8 @@ func (r *AgentRevocationReactor) reactToUserStop(
 	return r.notifyOwner(ctx, deps, tenantID, userID, ownerReason, now)
 }
 
-// React implements the deps_http.EventReactor shape structurally
-// (React(ctx, spec.DomainEvent) error) without importing idmanagement's
-// deps_http package (dependency direction: SharedSignals depends on
-// IdManagement, not the reverse). A nil EpochRepo (lightweight test wiring
+// React は idmanagement/user/ports.AccessRevocationReactor を構造的に満たす。SharedSignals が IdManagement に
+// 依存し、逆向きの依存は持たない。A nil EpochRepo (lightweight test wiring
 // that never sets sharedsignals.Module) skips reaction, mirroring this
 // codebase's other nil-skips-enforcement ports (e.g. QuotaRepo).
 func (r *AgentRevocationReactor) React(ctx context.Context, event spec.DomainEvent) error {

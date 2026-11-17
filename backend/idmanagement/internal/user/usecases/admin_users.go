@@ -61,6 +61,8 @@ type AdminUserDeps struct {
 	PasswordHistoryRepo     userports.PasswordHistoryWriter
 	ValidateInitialPassword func(context.Context, string) error
 	Emit                    func(spec.DomainEvent) error
+	// Revocation は、User と所有する Agent を止めたイベントでアクセスを失効させる。止める操作に必須である。
+	Revocation userports.AccessRevocationReactor
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装し、User 保存と派生する LifecycleWorkflow run 生成を同一トランザクションで
 	// 確定する (wi-237)。nil のとき UserRepo.Save に fallback する。
@@ -337,7 +339,7 @@ func SetUserDisabled(
 	trigger := userports.ProvisioningUserEnabled
 	if disabled {
 		trigger = userports.ProvisioningUserDisabled
-		emitErr = idmusecases.AdminEmit(deps.Emit, &idmdomain.UserDisabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
+		emitErr = idmusecases.EmitRevoking(ctx, deps.Emit, deps.Revocation, &idmdomain.UserDisabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
 	} else {
 		emitErr = idmusecases.AdminEmit(deps.Emit, &idmdomain.UserEnabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
 	}
@@ -372,7 +374,7 @@ func disableOwnedAgents(ctx context.Context, deps AdminUserDeps, tenantID, userI
 	if deps.AgentRepo == nil {
 		return nil
 	}
-	return agentusecases.DisableAgentsOwnedBy(ctx, agentusecases.AgentOwnerDeps{AgentRepo: deps.AgentRepo, Emit: deps.Emit}, tenantID, userID, actorUserID, now)
+	return agentusecases.DisableAgentsOwnedBy(ctx, agentusecases.AgentOwnerDeps{AgentRepo: deps.AgentRepo, Emit: deps.Emit, Revocation: deps.Revocation}, tenantID, userID, actorUserID, now)
 }
 
 // revokeTrustedDevices は止めた User の記憶済みの端末をすべて失効させる。
@@ -579,7 +581,7 @@ func finishPurge(ctx context.Context, deps AdminUserDeps, tombstone *userdomain.
 			return err
 		}
 	}
-	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.UserDeleted{
+	if err := idmusecases.EmitRevoking(ctx, deps.Emit, deps.Revocation, &idmdomain.UserDeleted{
 		At: now, TenantID: tombstone.TenantID, ActorUserID: pending.ActorUserID, TargetUserID: tombstone.ID, Reason: pending.Reason,
 	}); err != nil {
 		return err
@@ -660,7 +662,7 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 	if err := syncDynamicGroups(ctx, deps, &updated, now); err != nil {
 		return err
 	}
-	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.UserSoftDeleted{
+	if err := idmusecases.EmitRevoking(ctx, deps.Emit, deps.Revocation, &idmdomain.UserSoftDeleted{
 		At: now, TenantID: updated.TenantID, ActorUserID: in.ActorUserID, TargetUserID: updated.ID, Reason: in.Reason,
 	}); err != nil {
 		return err

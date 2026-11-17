@@ -333,8 +333,8 @@ func healthFeatureMetadata(metadata bootstrap.FeatureRuntimeMetadata) httpsuppor
 // 操作を、Sourcing へ渡す。イベントの出力先は NewEmitFunc の後でしか決まらないので、ここで組み立てる。
 func sourcingModule(deps *bootstrap.Dependencies, emit func(spec.DomainEvent)) sourcing.Module {
 	module := deps.Sourcing
-	module.UserLifecycle = deps.IdManagement.UserLifecycleCommands(deps.UserLifecycleDeps(), deps.ReactiveEmit(emit), scimActor)
-	module.DirectoryUserLifecycle = deps.IdManagement.UserLifecycleCommands(deps.UserLifecycleDeps(), deps.ReactiveEmit(emit), directoryConnectorActor)
+	module.UserLifecycle = deps.UserLifecycleCommands(emit, scimActor)
+	module.DirectoryUserLifecycle = deps.UserLifecycleCommands(emit, directoryConnectorActor)
 	module.Writes = sourcingdeps.NewWrites(deps.IdManagement, deps.UserLifecycleDeps(), module, emit)
 	module.DirectoryWrites = sourcingdeps.NewDirectoryWrites(deps.IdManagement, deps.UserLifecycleDeps(), module, emit)
 	return module

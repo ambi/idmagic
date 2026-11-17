@@ -360,7 +360,7 @@ func TestUserMutationsCaptureMatchingWorkflowRuns(t *testing.T) {
 		},
 	}.AdminUsers(idmanagement.LifecycleDeps{
 		ValidateInitialPassword: authentication.ValidateInitialPassword, UserCredentials: authentication.Module{}.UserCredentials(), PasswordHasher: testing_passwords.NewHasher(), PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
-	}, nil)
+	}, nil, ignoreRevocation{})
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	user, err := adminUsers.CreateUser(ctx, idmanagement.CreateUserInput{PreferredUsername: "alice", Password: "initial-password-9182", Now: now})
 	if err != nil {

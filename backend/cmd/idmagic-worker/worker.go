@@ -248,7 +248,7 @@ func lifecycleWorkflowExecutorDeps(deps *bootstrap.Dependencies, logger logging.
 		emit(event)
 		return nil
 	}
-	userLifecycle := deps.IdManagement.UserLifecycleCommands(deps.UserLifecycleDeps(), deps.ReactiveEmit(emit), lifecycleWorkflowActor)
+	userLifecycle := deps.UserLifecycleCommands(emit, lifecycleWorkflowActor)
 	return idgovernance.ExecutorDeps{
 		UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,
 		ApplicationRepo: deps.Application.Repo, AssignmentRepo: deps.Application.AssignmentRepo,

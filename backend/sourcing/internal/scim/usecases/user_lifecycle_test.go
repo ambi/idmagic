@@ -19,7 +19,7 @@ import (
 
 // scimUserLifecycle は、組み立ての地点と同じく IdManagement の操作を SCIM のポートへ渡す。
 func scimUserLifecycle(users userports.UserRepository) scimports.UserLifecycle {
-	return idmanagement.Module{UserRepo: users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, nil, "scim")
+	return idmanagement.Module{UserRepo: users}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, nil, ignoreRevocation{}, "scim")
 }
 
 type scimOwnerFixture struct {
@@ -35,11 +35,7 @@ func newScimOwnerFixture(t *testing.T) *scimOwnerFixture {
 	t.Helper()
 	ctx := context.Background()
 	f := &scimOwnerFixture{users: idmanagement.NewMemoryModule().UserRepo, agents: idmanagement.NewMemoryModule().AgentRepo}
-	lifecycle := idmanagement.Module{UserRepo: f.users, AgentRepo: f.agents}.UserLifecycleCommands(
-		idmanagement.LifecycleDeps{},
-		func(event spec.DomainEvent) error { f.events = append(f.events, event.EventType()); return nil },
-		"scim",
-	)
+	lifecycle := idmanagement.Module{UserRepo: f.users, AgentRepo: f.agents}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, func(event spec.DomainEvent) error { f.events = append(f.events, event.EventType()); return nil }, ignoreRevocation{}, "scim")
 	refs, groups := scimmemory.NewScimRepository(), idmanagement.NewMemoryModule().GroupRepo
 	f.u = usecases.NewUsecases(refs, f.users, groups, lifecycle, func(spec.DomainEvent) {}, scimIdentityWrites(refs, f.users, groups, func(spec.DomainEvent) {}))
 	created, err := f.u.CreateUser(ctx, scimTenant, map[string]any{"userName": "alice", "active": true})

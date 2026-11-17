@@ -75,7 +75,7 @@ func newIngestion(t *testing.T, decorate ...func(directoryports.UserLifecycle) d
 	h.quotas = tenancy.NewMemoryModule().QuotaRepo
 	lifecycle := idmanagement.LifecycleDeps{QuotaRepo: h.quotas}
 	module := sourcing.NewMemoryModule()
-	module.DirectoryUserLifecycle = h.identity.UserLifecycleCommands(lifecycle, func(event spec.DomainEvent) error { emit(event); return nil }, "directory_connector")
+	module.DirectoryUserLifecycle = h.identity.UserLifecycleCommands(lifecycle, func(event spec.DomainEvent) error { emit(event); return nil }, ignoreRevocation{}, "directory_connector")
 	for _, wrap := range decorate {
 		module.DirectoryUserLifecycle = wrap(module.DirectoryUserLifecycle)
 	}

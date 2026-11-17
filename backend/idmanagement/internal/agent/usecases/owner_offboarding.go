@@ -9,6 +9,7 @@ import (
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -20,6 +21,8 @@ var ErrAgentOwnerInactive = errors.New("agent owner is not active")
 type AgentOwnerDeps struct {
 	AgentRepo agentports.AgentRepository
 	Emit      func(spec.DomainEvent) error
+	// Revocation は、無効化した Agent の失効エポックを進める。必須である。
+	Revocation userports.AccessRevocationReactor
 }
 
 // DisableAgentsOwnedBy は、ownerUserID が所有する Active の Agent をすべて Disabled にし、
@@ -53,7 +56,7 @@ func DisableAgentsOwnedBy(ctx context.Context, deps AgentOwnerDeps, tenantID, ow
 		if !disabled {
 			continue
 		}
-		if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.AgentDisabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID}); err != nil {
+		if err := idmusecases.EmitRevoking(ctx, deps.Emit, deps.Revocation, &idmdomain.AgentDisabled{At: now, TenantID: tenantID, ActorUserID: actorUserID, AgentID: agent.ID}); err != nil {
 			return err
 		}
 	}

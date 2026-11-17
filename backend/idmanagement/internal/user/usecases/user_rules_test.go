@@ -72,6 +72,7 @@ func newUserRulesFixture(t *testing.T) *userRulesFixture {
 	history := authentication.NewMemoryModule(nil).PasswordHistoryRepo
 	authenticationModule := authentication.Module{TrustedDeviceRepo: f.devices, PasswordHistoryRepo: history}
 	f.deps = userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authenticationModule.UserCredentials(),
 		UserRepo:                f.users, SessionStore: f.sessions, TrustedDevices: authenticationModule.UserDeviceRevoker(), QuotaRepo: f.quota,

@@ -1,12 +1,10 @@
 package bootstrap
 
 import (
-	"context"
-	"time"
-
 	"github.com/ambi/idmagic/backend/authentication"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -25,24 +23,19 @@ func (d *Dependencies) UserLifecycleDeps() idmanagement.LifecycleDeps {
 	}
 }
 
-// ReactiveEmit は、イベントを emit へ記録した後に、所有する Agent の無効化と失効エポックの前進を反応させる。
-// 失効エポックの反応は管理 API の ReactiveEmit と同じく fail-closed にする。前進に失敗した無効化は
-// 誤りとして呼び出し元へ返り、ワークフローの手順や SCIM の要求が失敗する。
-func (d *Dependencies) ReactiveEmit(emit func(spec.DomainEvent)) func(spec.DomainEvent) error {
-	reactor := d.AgentRevocationReactor(emit)
-	return func(event spec.DomainEvent) error {
+// UserLifecycleCommands は、管理 API の外（LifecycleWorkflow、SCIM と Directory の取り込み、保持期間の掃除）から
+// User を止める操作を組み立てる。イベントを emit へ記録し、止めたイベントでは失効エポックを進める。
+// 前進の失敗は誤りとして呼び出し元へ返り、ワークフローの手順や取り込みの要求が失敗する。
+func (d *Dependencies) UserLifecycleCommands(emit func(spec.DomainEvent), actor string) idmanagement.UserLifecycleCommands {
+	audit := func(event spec.DomainEvent) error {
 		emit(event)
-		// 管理 API と同じく、要求の context ではなく自前の期限で反応させる。
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		return reactor.React(ctx, event)
+		return nil
 	}
+	return d.IdManagement.UserLifecycleCommands(d.UserLifecycleDeps(), audit, d.AgentRevocationReactor(emit), actor)
 }
 
 // AgentRevocationReactor は、Agent と所有者のイベントで失効エポックを進め、外部の受信側へ SET を投影する反応器を
 // 組み立てる。派生イベントは emit へ記録する。
-func (d *Dependencies) AgentRevocationReactor(emit func(spec.DomainEvent)) interface {
-	React(context.Context, spec.DomainEvent) error
-} {
+func (d *Dependencies) AgentRevocationReactor(emit func(spec.DomainEvent)) userports.AccessRevocationReactor {
 	return d.SharedSignals.AgentRevocationReactor(d.IdManagement.AgentRepo, d.SigningKeys.KeyStore, d.Issuer, emit)
 }

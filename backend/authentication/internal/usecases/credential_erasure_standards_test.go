@@ -131,7 +131,7 @@ func TestCredentialErasureLeavesNothingAuthenticable(t *testing.T) {
 			WebAuthnCredentialRepo: credentials, RecoveryCodeRepo: codes,
 		}.UserCredentials(),
 		SessionStore: sessions,
-	}, func(spec.DomainEvent) error { return nil })
+	}, func(spec.DomainEvent) error { return nil }, ignoreRevocation{})
 	if err := adminUsers.DeleteUser(ctx, idmanagement.DeleteUserInput{
 		ActorUserID: "admin", Sub: credentialSubject, Reason: "erasure request", Now: now,
 	}); err != nil {

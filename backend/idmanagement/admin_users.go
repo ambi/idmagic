@@ -6,6 +6,7 @@ import (
 
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/internal/user/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -22,9 +23,11 @@ type (
 )
 
 // AdminUsers は、d とこの Module の保存先と通知で User を変える操作を返す。管理 API と同じく、
-// User の変更は Module の UserMutationCommitter で確定する。
-func (m Module) AdminUsers(d LifecycleDeps, emit func(spec.DomainEvent) error) AdminUsers {
+// User の変更は Module の UserMutationCommitter で確定し、止めたイベントで revocation に失効を反応させる。
+// revocation が nil なら組み立ての誤りとして panic する。
+func (m Module) AdminUsers(d LifecycleDeps, emit func(spec.DomainEvent) error, revocation userports.AccessRevocationReactor) AdminUsers {
 	deps := m.adminUserDeps(d, emit)
+	deps.Revocation = requireRevocation(revocation)
 	deps.UserMutationCommitter = m.UserMutationCommitter
 	return AdminUsers{deps: deps}
 }

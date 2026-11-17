@@ -123,7 +123,8 @@ func TestAgentWritesKeepAStateChangeMadeMeanwhile(t *testing.T) {
 			name: "owner offboarding keeps an update", meanwhile: describedAs(edited),
 			write: func(ctx context.Context, deps agentusecases.AdminAgentDeps, _ string) error {
 				return agentusecases.DisableAgentsOwnedBy(ctx, agentusecases.AgentOwnerDeps{
-					AgentRepo: deps.AgentRepo, Emit: deps.Emit,
+					Revocation: ignoreRevocation{},
+					AgentRepo:  deps.AgentRepo, Emit: deps.Emit,
 				}, tenancydomain.DefaultTenantID, "operator", "operator", now)
 			},
 			wantStatus: idmdomain.AgentStatusDisabled, wantDesc: &edited,
@@ -182,7 +183,10 @@ func TestOwnerOffboardingSkipsAnAgentKilledMeanwhile(t *testing.T) {
 	race := &changeBeforeNextWrite{AgentRepository: deps.AgentRepo, meanwhile: killed}
 	*events = nil
 
-	if err := agentusecases.DisableAgentsOwnedBy(ctx, agentusecases.AgentOwnerDeps{AgentRepo: race, Emit: deps.Emit},
+	if err := agentusecases.DisableAgentsOwnedBy(ctx, agentusecases.AgentOwnerDeps{
+		Revocation: ignoreRevocation{},
+		AgentRepo:  race, Emit: deps.Emit,
+	},
 		tenancydomain.DefaultTenantID, "operator", "operator", now); err != nil {
 		t.Fatal(err)
 	}

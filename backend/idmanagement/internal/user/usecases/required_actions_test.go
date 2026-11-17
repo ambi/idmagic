@@ -25,6 +25,7 @@ func newRequiredActionFixture(t *testing.T) (context.Context, userusecases.Admin
 	hasher := testing_passwords.NewHasher()
 	events := &[]spec.DomainEvent{}
 	deps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                userRepo, PasswordHasher: hasher, PasswordHistoryRepo: historyRepo,

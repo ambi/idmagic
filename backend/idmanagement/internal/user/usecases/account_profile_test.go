@@ -26,6 +26,7 @@ func accountTestDeps(t *testing.T) (context.Context, userusecases.AccountProfile
 	userRepo := usermemory.NewUserRepository()
 	schemaRepo := usermemory.NewTenantUserAttributeSchemaRepository()
 	adminDeps := userusecases.AdminUserDeps{
+		Revocation:              ignoreRevocation{},
 		ValidateInitialPassword: authentication.ValidateInitialPassword,
 		UserCredentials:         authentication.Module{}.UserCredentials(),
 		UserRepo:                userRepo, AttrSchemaRepo: schemaRepo,

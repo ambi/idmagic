@@ -227,10 +227,27 @@ type LifecycleDeps struct {
 	PasswordHistoryRepo     userports.PasswordHistoryWriter
 }
 
+// UserLifecycleCommands は、管理 API の外から User を止める操作である。組み立ての地点が名前で受け取れるよう公開する。
+type UserLifecycleCommands = userusecases.UserLifecycleCommands
+
 // UserLifecycleCommands は、管理 API の外から User を止める、必須操作を設定する、削除を予約する操作を返す。
-// emit は発行したイベントの後に必要な反応まで済ませ、反応の失敗を誤りとして返す。actor は監査イベントに残る名前である。
-func (m Module) UserLifecycleCommands(d LifecycleDeps, emit func(spec.DomainEvent) error, actor string) userusecases.UserLifecycleCommands {
-	return userusecases.UserLifecycleCommands{Deps: m.adminUserDeps(d, emit), Actor: actor}
+// emit は監査のイベントを記録し、revocation は User と所有する Agent を止めたイベントでアクセスを失効させる。
+// actor は監査イベントに残る名前である。revocation が nil なら組み立ての誤りとして panic する。
+func (m Module) UserLifecycleCommands(
+	d LifecycleDeps, emit func(spec.DomainEvent) error, revocation userports.AccessRevocationReactor, actor string,
+) UserLifecycleCommands {
+	deps := m.adminUserDeps(d, emit)
+	deps.Revocation = requireRevocation(revocation)
+	return userusecases.UserLifecycleCommands{Deps: deps, Actor: actor}
+}
+
+// requireRevocation は、止める操作の組み立てが失効の反応器を渡したことを確かめる。
+// 監査の発行だけで止めると失効エポックが進まないので、構築の時点で拒否する。
+func requireRevocation(revocation userports.AccessRevocationReactor) userports.AccessRevocationReactor {
+	if revocation == nil {
+		panic("idmanagement: stopping users and agents requires an access revocation reactor")
+	}
+	return revocation
 }
 
 func (m Module) adminUserDeps(d LifecycleDeps, emit func(spec.DomainEvent) error) userusecases.AdminUserDeps {
@@ -290,8 +307,8 @@ type RouteDeps struct {
 	LifecycleDeps
 	support.Deps
 	*support.Authenticator
-	// Reactor は管理 API の User と Agent の操作が発行したイベントに反応する。
-	Reactor    idmhttpdeps.EventReactor
+	// Reactor は管理 API が User と Agent を止めたイベントでアクセスを失効させる。必須である。
+	Reactor    userports.AccessRevocationReactor
 	ClientRepo agentports.ClientLookup
 	// AgentActivity は Agent の棚卸しが最終のトークン発行を読む先である。
 	AgentActivity agentports.AgentActivityReader
@@ -336,7 +353,7 @@ func (m Module) httpDeps(d RouteDeps) idmhttp.Deps {
 		UserMutationCommitter:     m.UserMutationCommitter,
 		ProvisioningNotifier:      m.ProvisioningNotifier,
 		GroupProvisioningNotifier: m.GroupProvisioningNotifier,
-		Reactor:                   d.Reactor,
+		Reactor:                   requireRevocation(d.Reactor),
 		ClientRepo:                d.ClientRepo,
 		AgentActivity:             d.AgentActivity,
 		AgentObservationRepo:      m.AgentObservationRepo,
