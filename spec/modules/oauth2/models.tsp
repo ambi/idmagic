@@ -615,10 +615,14 @@ model ApprovalRequest {
   @maxLength(64)
   binding_message?: string;
   state: ApprovalRequestState;
-  @doc("CIBA の `auth_req_id` の SHA-256 のハッシュ。トランスポートの層の索引であり、判断の意味には関わらない。")
-  auth_req_id_hash: string;
-  @doc("トランスポートの管理情報。クライアントに守らせる問い合わせの最小の間隔（秒）である。`slow_down` のたびに増える。")
-  interval_seconds: int64;
+  @doc("起票者。`client_backchannel` は CIBA で要求したクライアント、`resource_server` は評価で起票したリソースサーバーである。省略は `client_backchannel` を表す。")
+  initiator?: "client_backchannel" | "resource_server";
+  @doc("`initiator` が `resource_server` のとき、起票した登録。")
+  resource_server_id?: string;
+  @doc("CIBA の `auth_req_id` の SHA-256 のハッシュ。トランスポートの層の索引であり、判断の意味には関わらない。CIBA の起票だけが持つ。")
+  auth_req_id_hash?: string;
+  @doc("トランスポートの管理情報。クライアントに守らせる問い合わせの最小の間隔（秒）である。`slow_down` のたびに増える。CIBA の起票だけが持つ。")
+  interval_seconds?: int64;
   @doc("トランスポートの管理情報。最後に問い合わせた時刻である。`slow_down` を決める。")
   last_polled_at?: utcDateTime;
   requested_at: utcDateTime;
@@ -1201,6 +1205,21 @@ model ResourceAccessEvaluationRequest {
   attributes?: string;
   @doc("許可の後にトークンを交換する宛先の `resource`。規則の `token_exchange_resources` になければ不許可である。")
   token_exchange_resource?: string;
+  @doc("承認が必要で承認がないとき、IdMagic に承認リクエストを起票させる。`true` か `false`。主体が利用者のトークンだけで起票する。")
+  approval_start?: boolean;
+  @doc("この入口の起票で作られた承認リクエストの UUID。トークンを差し替えずに、その承認で評価する。")
+  approval_request_id?: string;
+}
+
+
+@doc("評価が起票したか参照した、保留中の承認リクエスト。承認の URL を利用者へ示すためにだけ使う。")
+model StartedApprovalRequest {
+  @doc("承認リクエストの UUID。")
+  id: string;
+  status: "pending";
+  expires_at: utcDateTime;
+  @doc("アカウントポータルで承認リクエストを開く URL。承認リクエストの UUID だけを含み、開いた者が本人として認証されなければ判断できない。")
+  approval_uri: url;
 }
 
 
@@ -1230,6 +1249,8 @@ model ResourceAccessEvaluationResponse {
   token_exchange_grant?: string;
   @doc("承認がないか使えないことで不許可にしたときだけ返す、承認に求める明細。")
   authorization_remediation?: AuthorizationRemediation;
+  @doc("理由が `approval_pending` のときだけ返す、起票したか参照した承認リクエスト。")
+  approval_request?: StartedApprovalRequest;
 }
 
 
@@ -1395,6 +1416,9 @@ model AccountApprovalRequest {
   client_name: string;
   @doc("クライアントに結び付いた Agent があれば、その表示名。")
   agent_name?: string;
+  @doc("リソースサーバーが評価で起票した承認リクエストでは、起票した登録の表示名。")
+  resource_server_name?: string;
+  @doc("承認されたときに発行するトークンのスコープ。リソースサーバーが起票した承認リクエストでは空である。")
   scopes: string[];
   authorization_details?: AuthorizationDetail[];
   binding_message?: string;
@@ -1838,7 +1862,7 @@ model ResourceAccessEvaluated {
   relation: string;
   permitted: boolean;
   reasons: string[];
-  @doc("許可した、人が承認した操作の承認リクエスト。")
+  @doc("許可した、人が承認した操作の承認リクエスト。理由が `approval_pending` の不許可では、起票したか参照した承認リクエストである。")
   approvalRequestId?: string;
   @doc("正規化した引数の SHA-256 の 16 進表現。")
   operationDigest?: string;

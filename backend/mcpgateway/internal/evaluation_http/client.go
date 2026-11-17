@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 )
@@ -32,6 +33,17 @@ type Request struct {
 	HTU       string
 	// TokenExchangeResource があれば、許可とともに交換の許可を求める。
 	TokenExchangeResource string
+	// ApprovalStart は承認が足りないときに起票を求め、ApprovalRequestID は起票した承認を参照する (REQ-MCPGATEWAY-014)。
+	ApprovalStart     bool
+	ApprovalRequestID string
+}
+
+// ApprovalRequest は、評価が起票したか参照した保留中の承認リクエストである。
+type ApprovalRequest struct {
+	ID        string
+	ExpiresAt time.Time
+	// URI は利用者に開かせるアカウントポータルの URL で、https:// の絶対 URL だけを受ける。
+	URI string
 }
 
 // Result は評価の結果である。Available が偽なら判断はなく、許可として扱わない。
@@ -46,6 +58,8 @@ type Result struct {
 	TokenExchangeGrant string
 	// Remediation は承認に求める明細の JSON のオブジェクトで、MCP クライアントへ返し、ログへ出さない。
 	Remediation json.RawMessage
+	// ApprovalRequest は不許可の理由が approval_pending のときだけ持つ。
+	ApprovalRequest *ApprovalRequest
 }
 
 // ApprovedOperationUse は転送前に取得した承認の使用権で、業務の成功を表さない。
@@ -89,6 +103,12 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 	if in.Attributes != "" {
 		form.Set("attributes", in.Attributes)
 	}
+	if in.ApprovalStart {
+		form.Set("approval_start", "true")
+	}
+	if in.ApprovalRequestID != "" {
+		form.Set("approval_request_id", in.ApprovalRequestID)
+	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.EvaluateURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return Result{}, err
@@ -118,6 +138,11 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 			Replayed          *bool  `json:"replayed"`
 		} `json:"approved_operation"`
 		AuthorizationRemediation json.RawMessage `json:"authorization_remediation"`
+		ApprovalRequest          *struct {
+			ID          string    `json:"id"`
+			ExpiresAt   time.Time `json:"expires_at"`
+			ApprovalURI string    `json:"approval_uri"`
+		} `json:"approval_request"`
 	}
 	if err := json.NewDecoder(io.LimitReader(response.Body, maxResponseBytes)).Decode(&body); err != nil {
 		return result, fmt.Errorf("evaluation response: %w", err)
@@ -141,6 +166,13 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 			return result, err
 		}
 		result.Remediation = remediation
+	}
+	if started := body.ApprovalRequest; started != nil {
+		uri, err := url.Parse(started.ApprovalURI)
+		if *body.Decision || started.ID == "" || started.ExpiresAt.IsZero() || err != nil || uri.Scheme != "https" || uri.Host == "" {
+			return result, fmt.Errorf("evaluation response has an invalid approval_request")
+		}
+		result.ApprovalRequest = &ApprovalRequest{ID: started.ID, ExpiresAt: started.ExpiresAt, URI: started.ApprovalURI}
 	}
 	result.Available, result.Permitted, result.Reasons = true, *body.Decision, body.Reasons
 	result.TokenExchangeGrant = body.TokenExchangeGrant

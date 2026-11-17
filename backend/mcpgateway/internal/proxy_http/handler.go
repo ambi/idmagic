@@ -45,7 +45,12 @@ const (
 	outcomeUnavailable     = "unavailable"
 	outcomeUpstreamFailed  = "upstream_failed"
 	outcomeApprovalUnknown = "approval_outcome_unknown"
+	outcomeInputRequired   = "input_required"
 )
+
+// approvalInputKey は InputRequiredResult の inputRequests と再送の inputResponses で、承認の elicitation を指す。
+// 上流の MRTR の項目と衝突しないよう名前を分ける。
+const approvalInputKey = "idmagic_approval"
 
 const (
 	metadataPath   = "/.well-known/oauth-protected-resource"
@@ -86,9 +91,11 @@ type Options struct {
 	// DownstreamResource と Downstream があれば、転送ごとにトークンを差し替える (REQ-MCPGATEWAY-008)。
 	DownstreamResource string
 	Downstream         Exchanger
-	Audit              *slog.Logger
-	Metrics            Recorder
-	Transport          http.RoundTripper
+	// RequestStateKey は承認を待つ再送の requestState を封じる鍵で、クライアントシークレットから導く (REQ-MCPGATEWAY-014)。
+	RequestStateKey []byte
+	Audit           *slog.Logger
+	Metrics         Recorder
+	Transport       http.RoundTripper
 }
 
 // Handler は MCP の入口である。
@@ -135,8 +142,10 @@ type requestRecord struct {
 	reasons                                             []string
 	downstream                                          exchange_http.Credential
 	approval                                            *evaluation_http.ApprovedOperationUse
-	rpcID                                               json.RawMessage
-	proxyFailed                                         bool
+	// pendingApprovalID は、InputRequiredResult で利用者へ示した承認リクエストである。
+	pendingApprovalID string
+	rpcID             json.RawMessage
+	proxyFailed       bool
 }
 
 type recordKey struct{}
@@ -257,6 +266,27 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 	if evaluation.Kind == domain.EvaluateAndForward {
 		in.TokenExchangeResource = h.options.DownstreamResource
 	}
+	// Envoy は 200 を許可と読むので、InputRequiredResult を返せる proxy だけが承認へ導く。
+	guidesApproval := message.Method == domain.MethodToolsCall && evaluation.Kind == domain.EvaluateAndForward && !h.options.EnvoyExtAuthz
+	if guidesApproval {
+		reference, ours, refusal := h.approvalReference(message, time.Now())
+		if refusal != "" {
+			record.outcome, record.reasons = outcomeDenied, []string{refusal}
+			writeError(w, http.StatusForbidden, message.ID, codeForbidden, "forbidden", nil)
+			return
+		}
+		if ours {
+			// 上流は自分の発行していない状態を受け取らない。評価の前に除き、除けない要求で承認を消費させない。
+			stripped, err := withoutApprovalRetry(body)
+			if err != nil {
+				record.outcome, record.reasons = outcomeInvalid, []string{"request_state_unremovable"}
+				writeError(w, http.StatusBadRequest, message.ID, domain.CodeInvalidRequest, "the request could not be forwarded", nil)
+				return
+			}
+			body = stripped
+		}
+		in.ApprovalStart, in.ApprovalRequestID = message.ElicitationURL, reference
+	}
 	result, err := h.options.Evaluator.Evaluate(r.Context(), in)
 	h.options.Metrics.Evaluation(time.Since(started))
 	record.evaluationRequestID = result.RequestID
@@ -280,6 +310,10 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 	if slices.Contains(result.Reasons, "approval_already_used") || (result.ApprovedOperation != nil && result.ApprovedOperation.Replayed) {
 		record.outcome, record.reasons = outcomeDenied, []string{"approval_already_used"}
 		writeError(w, http.StatusForbidden, message.ID, codeApprovalUsed, "approval was already attempted; check the operation outcome", nil)
+		return
+	}
+	if !result.Permitted && guidesApproval && message.ElicitationURL && result.ApprovalRequest != nil {
+		h.requireApproval(w, record, message, result.ApprovalRequest)
 		return
 	}
 	if !result.Permitted {
@@ -415,6 +449,120 @@ func (h *Handler) remediate(w http.ResponseWriter, id, remediation json.RawMessa
 	writeError(w, http.StatusForbidden, id, codeForbidden, "approval is required", &errorData{AuthorizationRemediation: remediation})
 }
 
+// approvalReference は再送の requestState を読み、参照する承認リクエストを返す。ours はこのゲートウェイの
+// 状態を運ぶ再送であることを、refusal は評価せずに拒否する理由を表す。期限を過ぎた状態は参照を持たない要求にする。
+func (h *Handler) approvalReference(message domain.Message, now time.Time) (approvalRequestID string, ours bool, refusal string) {
+	if !strings.HasPrefix(message.RequestState, domain.RequestStatePrefix) {
+		return "", false, ""
+	}
+	if raw, answered := message.InputResponses[approvalInputKey]; answered {
+		var response struct {
+			Action string `json:"action"`
+		}
+		if json.Unmarshal(raw, &response) != nil || response.Action != "accept" {
+			return "", true, "approval_declined"
+		}
+	}
+	state, err := domain.OpenRequestState(h.options.RequestStateKey, h.options.Resource.String(), message.RequestState, now)
+	if errors.Is(err, domain.ErrRequestStateExpired) {
+		return "", true, ""
+	}
+	if err != nil {
+		return "", true, "request_state_invalid"
+	}
+	digest, err := domain.OperationDigest(message.ToolName, message.Arguments)
+	if err != nil || digest != state.OperationDigest {
+		return "", true, "request_state_mismatch"
+	}
+	return state.ApprovalRequestID, true, ""
+}
+
+// requireApproval は MRTR の InputRequiredResult で、承認の URL を開くよう求める。状態には承認リクエストの
+// 参照だけを封じ、許可は再送の評価が IdMagic で決める。
+func (h *Handler) requireApproval(w http.ResponseWriter, record *requestRecord, message domain.Message, approval *evaluation_http.ApprovalRequest) {
+	digest, err := domain.OperationDigest(message.ToolName, message.Arguments)
+	if err == nil {
+		var sealed string
+		sealed, err = domain.SealRequestState(h.options.RequestStateKey, h.options.Resource.String(), domain.RequestState{
+			ApprovalRequestID: approval.ID, OperationDigest: digest, ExpiresAt: approval.ExpiresAt,
+		}, rand.Reader)
+		if err == nil {
+			record.outcome, record.pendingApprovalID = outcomeInputRequired, approval.ID
+			writeInputRequired(w, message.ID, approval.URI, sealed)
+			return
+		}
+	}
+	record.outcome, record.reasons = outcomeUnavailable, []string{"request_state_unavailable"}
+	writeError(w, http.StatusServiceUnavailable, message.ID, codeUnavailable, "authorization is unavailable", nil)
+}
+
+func writeInputRequired(w http.ResponseWriter, id json.RawMessage, uri, state string) {
+	type elicitation struct {
+		Mode    string `json:"mode"`
+		Message string `json:"message"`
+		URL     string `json:"url"`
+	}
+	type inputRequest struct {
+		Method string      `json:"method"`
+		Params elicitation `json:"params"`
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(struct {
+		JSONRPC string          `json:"jsonrpc"`
+		ID      json.RawMessage `json:"id"`
+		Result  any             `json:"result"`
+	}{JSONRPC: "2.0", ID: id, Result: struct {
+		ResultType    string                  `json:"resultType"`
+		InputRequests map[string]inputRequest `json:"inputRequests"`
+		RequestState  string                  `json:"requestState"`
+	}{
+		ResultType: "input_required", RequestState: state,
+		InputRequests: map[string]inputRequest{approvalInputKey: {Method: "elicitation/create", Params: elicitation{
+			Mode: "url", URL: uri,
+			Message: "This operation needs your approval. Open the link, sign in, and approve it, then return here to continue.",
+		}}},
+	}}); err != nil {
+		// ヘッダーを送った後なので、応答を変えられない。
+		return
+	}
+}
+
+// withoutApprovalRetry は params.requestState と params.inputResponses の承認の項目を除く。ほかの項目は値を変えない。
+func withoutApprovalRetry(body []byte) ([]byte, error) {
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return nil, err
+	}
+	var params map[string]json.RawMessage
+	if err := json.Unmarshal(envelope["params"], &params); err != nil {
+		return nil, err
+	}
+	delete(params, "requestState")
+	if raw, ok := params["inputResponses"]; ok {
+		var responses map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &responses); err != nil {
+			return nil, err
+		}
+		delete(responses, approvalInputKey)
+		delete(params, "inputResponses")
+		if len(responses) > 0 {
+			remaining, err := json.Marshal(responses)
+			if err != nil {
+				return nil, err
+			}
+			params["inputResponses"] = remaining
+		}
+	}
+	encoded, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
+	envelope["params"] = encoded
+	return json.Marshal(envelope)
+}
+
 func (h *Handler) finish(ctx context.Context, record *requestRecord) {
 	h.options.Metrics.Request(record.methodLabel, record.toolLabel, record.outcome)
 	attributes := []slog.Attr{
@@ -431,6 +579,8 @@ func (h *Handler) finish(ctx context.Context, record *requestRecord) {
 	}
 	if approval := record.approval; approval != nil {
 		attributes = append(attributes, slog.String("approval_request_id", approval.ApprovalRequestID), slog.String("operation_digest", approval.OperationDigest))
+	} else if record.pendingApprovalID != "" {
+		attributes = append(attributes, slog.String("approval_request_id", record.pendingApprovalID))
 	}
 	h.options.Audit.LogAttrs(ctx, slog.LevelInfo, "mcp gateway request", attributes...)
 }

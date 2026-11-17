@@ -5,6 +5,11 @@ import { hasAdminRole, requirePortalAccount } from '../-guards'
 import { PageMarker } from '../-page'
 
 export const Route = createFileRoute('/account/approvals')({
+  // request は MCP ゲートウェイが示す承認の URL が名指す承認リクエストである (REQ-OAUTH2-043)。
+  validateSearch: (search: Record<string, unknown>) => ({
+    request:
+      typeof search.request === 'string' && search.request !== '' ? search.request : undefined,
+  }),
   loader: async ({ location }) => {
     const account = await requirePortalAccount('account', location.pathname, location.searchStr)
     const approvalRequests = await listMyApprovalRequests()
@@ -20,9 +25,10 @@ export const Route = createFileRoute('/account/approvals')({
 
 function AccountApprovalsRoute() {
   const data = Route.useLoaderData()
+  const { request } = Route.useSearch()
   return (
     <PageMarker kind="account-approvals">
-      <AccountApprovalsPage {...data} />
+      <AccountApprovalsPage {...data} focusRequestId={request} />
     </PageMarker>
   )
 }

@@ -201,6 +201,7 @@ MCP ゲートウェイは、ツールの対応の `attribute_arguments` で名�
 対象は、承認リクエストの `authorization_details` のうち、`type` が規則の `authorization_detail_type`（条件が求めた場合は `approval_detail_type`）、`locations` が登録の `resource` を含み、`actions` が `relation` を含み、`identifier` が `resource_id` と等しい明細である。
 引数は明細の `fields` と比べる。
 承認の使用権はリソースサーバーと `operation_key` の組が得る。
+承認リクエストは、Agent が CIBA で起票してトークンへ引き換えるか、執行点の求めで評価が起票してトークンを変えずに識別子で参照する（REQ-OAUTH2-093）。
 
 | 状況 | 結果 |
 | --- | --- |
@@ -220,8 +221,8 @@ IdMagic は業務の実行結果を持たず、認可の使用記録だけで処
 - `operation_parameters` と `fields` を比べるとき、OAuth2 は、キーの順序と空白を無視し、文字列を正規化せず、どちらもないものを等しいものとして扱う。
 - 明細が一致しないか、引数が等しくない場合、OAuth2 は、200 と `decision=false`、理由 `approved_operation_mismatch` を返し、使用権を記録しない。
 - `operation_parameters` が JSON のオブジェクトでないか、キーが重複するか、絶対値が 2 の 53 乗以上の数か有効桁が 15 桁を超える数を含む場合、OAuth2 は、200 と `decision=false`、理由 `approved_operation_mismatch` を返す。
-- 規則が `requires_approved_operation` を持つ操作で、トークンが規則の明細を持たないか、CIBA の承認から発行されたものでないか、トークン交換で派生したものである場合、OAuth2 は、REQ-OAUTH2-062 の関係の判定の後に、200 と `decision=false`、理由 `approval_required` を返す。
-- 条件が承認を求めた操作で、トークンが CIBA の承認から発行されたものでないか、`approval_detail_type` の一致する明細を持たない場合、OAuth2 は、200 と `decision=false`、理由 `approval_required` を返す。
+- 規則が `requires_approved_operation` を持つ操作で、REQ-OAUTH2-093 の参照も起票も伴わず、トークンが規則の明細を持たないか、CIBA の承認から発行されたものでないか、トークン交換で派生したものである場合、OAuth2 は、REQ-OAUTH2-062 の関係の判定の後に、200 と `decision=false`、理由 `approval_required` を返す。
+- 条件が承認を求めた操作で、REQ-OAUTH2-093 の参照も起票も伴わず、トークンが CIBA の承認から発行されたものでないか、`approval_detail_type` の一致する明細を持たない場合、OAuth2 は、200 と `decision=false`、理由 `approval_required` を返す。
 - 条件が承認を求めなかった操作を許可するとき、OAuth2 は、トークンが持つ承認の使用権を記録しない。
 - 承認リクエストの `expires_at` を過ぎたか、承認リクエストが残っていないか、トークンの主体とクライアントが承認リクエストと異なる場合、OAuth2 は、200 と `decision=false`、理由 `approval_expired` を返す。
 - 別の `operation_key` で使用権が記録済みの場合、OAuth2 は、200 と `decision=false`、理由 `approval_already_used` を返す。
@@ -243,6 +244,36 @@ IdMagic は業務の実行結果を持たず、認可の使用記録だけで処
 - **判断**：条件の承認の明細の種類を規則の `authorization_detail_type` と分ける。後者は常にトークンへ求めるので、流用すると閾値以下の自動許可が成り立たない。
 - **判断**：使用の期限をトークンの期限で延ばさない。人が判断した有効期間を超えて操作を実行させないためである。
 
+#### REQ-OAUTH2-093 評価は承認を起票でき、起票した承認を参照する評価をトークンを差し替えずに一度だけ許可する
+
+- **上位の要件**：[REQ-OAUTH2-065](#req-oauth2-065-承認が必要な操作は承認と同じ対象と引数で一度だけ許可する)
+- 承認が必要な操作で、`approval_start` が `true` の評価がほかの論理積を満たし、トークンの主体が利用者で、トークンが CIBA の承認から発行されたものでなく、`approval_request_id` を伴わないとき、OAuth2 は、明細を組み立てた `Pending` の承認リクエストを有効期間 600 秒で作り、本人のメールアドレスへ承認の依頼を通知し、200 と `decision=false`、理由 `approval_pending`、`approval_request` の `id`、`status`、`expires_at`、`approval_uri` を返す。
+- 承認リクエストを起票するとき、OAuth2 は、`type` が承認の明細の種類、`locations` が登録の `resource` だけ、`actions` が `relation` だけ、`identifier` が `resource_id`、`fields` が `operation_parameters` の明細を一つだけ置き、`operation_parameters` がない操作では `fields` を置かない。
+- 承認リクエストを起票するとき、OAuth2 は、トークンの `sub` を判断する利用者、トークンのクライアントと Agent を起票の相手、評価した登録を起票したリソースサーバーとして記録し、スコープと `binding_message` を記録しない。
+- `approval_uri` を返すとき、OAuth2 は、アカウントポータルの承認リクエストの画面の URL に承認リクエストの `id` だけを付ける。
+- テナント、利用者、クライアント、Agent、登録、承認の明細、正規化した引数が同じで期限内の `Pending` の承認リクエストがある場合、OAuth2 は、新たに起票せず、その承認リクエストを `approval_request` に返し、通知を送らない。
+- リソースサーバーが起票した期限内の `Pending` の承認リクエストを、同じ利用者が 10 件持つ場合、OAuth2 は、起票せず、200 と `decision=false`、理由 `approval_request_limit_exceeded` を返し、通知を送らない。
+- 同じ利用者への起票が並行した場合、OAuth2 は、重複の判定と件数の上限を直列に適用する。
+- `approval_request_id` を伴う評価が、REQ-OAUTH2-062 の論理積を満たし、参照した承認リクエストが評価した登録の起票した `Approved` で期限内であり、利用者、クライアント、Agent がトークンと一致し、明細と引数が REQ-OAUTH2-065 の照合で一致し、使用権が未使用か同じ組のものであるとき、OAuth2 は、トークンが承認の明細を持たなくても、REQ-OAUTH2-065 と同じ許可の応答とイベントを返し、承認リクエストを `Consumed` にする。
+- 参照した承認リクエストが `Pending` で、明細と引数が一致する場合、OAuth2 は、200 と `decision=false`、理由 `approval_pending`、同じ承認リクエストの `approval_request` を返す。
+- 参照した承認リクエストが `Denied` である場合、OAuth2 は、200 と `decision=false`、理由 `approval_denied` を返し、起票しない。
+- 参照した承認リクエストが期限を過ぎたか、残っていないか、評価した登録が起票したものでないか、利用者、クライアント、Agent がトークンと異なり、`approval_start` が `true` である場合、OAuth2 は、残っていない承認として扱い、新たに起票する。
+- 参照した承認リクエストが同じ理由で使えず、`approval_start` が `true` でない場合、OAuth2 は、200 と `decision=false`、理由 `approval_expired` を返す。
+- 参照した承認リクエストの明細か引数が一致しない場合、OAuth2 は、200 と `decision=false`、理由 `approved_operation_mismatch` を返し、起票しない。
+- 参照した承認リクエストの使用権が別の `operation_key` で記録済みの場合、OAuth2 は、200 と `decision=false`、理由 `approval_already_used` を返す。
+- トークンの主体が Agent である場合、OAuth2 は、起票せず、REQ-OAUTH2-065 の `approval_required` の応答を返す。
+- トークンの拒否、送信者の証明の不正、規則にない操作、明細の不一致、主体の未解決、関係の不許可、条件の拒否か評価不能、交換の不許可で不許可を返すとき、OAuth2 は、起票せず、承認リクエストを参照しない。
+- 承認が必要でない操作で `approval_start` か `approval_request_id` を受けたとき、OAuth2 は、それらを読まずに評価する。
+- 起票か保留中の参照で不許可を返すとき、OAuth2 は、`ResourceAccessEvaluated` にその承認リクエストの `approvalRequestId` を含める。
+- `approval_start` が `true` と `false` のどちらでもないか、`approval_request_id` が UUID でない場合、OAuth2 は、400 と `invalid_request` で拒否する。
+- 承認ストアを読み書きできない場合、OAuth2 は、503 と `temporarily_unavailable` を返し、許可も起票もしない。
+- **判断**：起票を評価に統合する。DPoP の証明は一回しか使えず、執行点は一つの要求で評価と起票を別々に呼べない。評価と起票の間で状態が変わることもない。
+- **判断**：承認をトークンではなく承認リクエストに置く。汎用の MCP クライアントはトークンを差し替えず、承認それ自体は許可を与えず、再評価で判定する。
+- **判断**：参照できる承認を、同じ登録が同じ利用者、クライアント、Agent の評価で起票したものに限る。CIBA の承認と他人の承認を、識別子を知るだけで使わせない。
+- **判断**：起票を関係の判定などの後に置く。権限のない呼び出し元に本人へのメールを送らせない。
+- **判断**：同じ操作の起票を重ねず、保留中の件数を限る。評価の流量制限はクライアント単位で、本人へのメールの濫用を抑えられない。
+- **判断**：主体が Agent のトークンでは起票しない。承認する本人が MCP クライアントの前にいないので、承認者を解決する規則が別に要る。
+
 ## 品質
 
 評価の応答時間は [SLO-RESOURCE-ACCESS-LATENCY](../../../requirements/quality.md#サービス目標) に従う。
@@ -261,6 +292,11 @@ IdMagic は業務の実行結果を持たず、認可の使用記録だけで処
 `fields` は承認の画面に表示し、トークンにも載る。
 シークレットの値は `fields` に入れず、必要なら資源と取り決めた鍵付きハッシュを置く。
 監査イベントは `operation_digest` だけを持ち、`operation_key` の平文と引数を持たない。
+
+評価による起票は、関係の判定を通った呼び出し元に本人へのメールを送らせる。
+同じ操作の重複を除き、保留中の件数を一人当たり 10 件に限るが、上限までの通知は防がない。
+`approval_uri` は承認リクエストの UUID だけを含み、開いた者がアカウントポータルで本人として認証されなければ内容も判断も得られない。
+承認リクエストの識別子は秘密ではなく、参照する評価は利用者、クライアント、Agent、登録の一致を IdMagic で確かめる。
 
 この入口は、管理 API の診断の経路とは別である。
 リソースサーバーは、提示されたトークンの主体についてだけ、自身が登録した種類の資源を尋ねられる。

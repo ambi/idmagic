@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -200,5 +201,74 @@ func TestApprovalRequestValidate(t *testing.T) {
 				t.Errorf("Validate accepted %s", tc.name)
 			}
 		})
+	}
+}
+
+func newResourceServerRequest(t *testing.T, now time.Time) *approvaldomain.ApprovalRequest {
+	t.Helper()
+	rec := newRequest(t, spec.ApprovalPending, now)
+	server, digest := "mcp-1", strings.Repeat("a", 64)
+	rec.Initiator, rec.ResourceServerID, rec.OperationDigest = approvaldomain.InitiatedByResourceServer, &server, &digest
+	rec.AuthReqIDHash, rec.IntervalSeconds, rec.Scopes = "", 0, nil
+	return rec
+}
+
+//spec:covers REQ-OAUTH2-093: 評価が起票した承認リクエストは auth_req_id と間隔を持たず、起票した登録と操作の digest を必須とすること
+func TestResourceServerApprovalRequestValidate(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	if err := newResourceServerRequest(t, now).Validate(); err != nil {
+		t.Fatalf("Validate on a well-formed resource server request: %v", err)
+	}
+	tests := []struct {
+		name   string
+		mutate func(rec *approvaldomain.ApprovalRequest)
+	}{
+		{"missing resource server", func(rec *approvaldomain.ApprovalRequest) { rec.ResourceServerID = nil }},
+		{"missing operation digest", func(rec *approvaldomain.ApprovalRequest) { rec.OperationDigest = nil }},
+		{"carries an auth_req_id hash", func(rec *approvaldomain.ApprovalRequest) { rec.AuthReqIDHash = approvaldomain.HashAuthReqID("AR1") }},
+		{"unknown initiator", func(rec *approvaldomain.ApprovalRequest) { rec.Initiator = "someone" }},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			rec := newResourceServerRequest(t, now)
+			tc.mutate(rec)
+			if err := rec.Validate(); err == nil {
+				t.Errorf("Validate accepted %s", tc.name)
+			}
+		})
+	}
+	// CIBA の記録は従来どおり、起票者を省いて読める。
+	if rec := newRequest(t, spec.ApprovalPending, now); rec.InitiatedByResourceServer() {
+		t.Fatal("a CIBA request without an initiator reads as a resource server request")
+	}
+}
+
+//spec:covers REQ-OAUTH2-093: 重複の判定の digest が明細の各要素と引数で変わり、引数のキーの順序では変わらないこと
+func TestOperationStartDigestSeparatesOperations(t *testing.T) {
+	t.Parallel()
+	binding := approvaldomain.OperationBinding{DetailType: "payment", Location: "https://mcp.example/", Action: "payer", Identifier: "a1"}
+	parameters, err := approvaldomain.CanonicalizeOperationParameters(`{"amount":100,"currency":"JPY"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reordered, _ := approvaldomain.CanonicalizeOperationParameters(`{"currency":"JPY", "amount":100}`)
+	base := approvaldomain.OperationStartDigest(binding, parameters)
+	if approvaldomain.OperationStartDigest(binding, reordered) != base {
+		t.Fatal("key order changed the digest")
+	}
+	other, _ := approvaldomain.CanonicalizeOperationParameters(`{"amount":101,"currency":"JPY"}`)
+	variants := map[string]string{
+		"parameters": approvaldomain.OperationStartDigest(binding, other),
+		"type":       approvaldomain.OperationStartDigest(approvaldomain.OperationBinding{DetailType: "x", Location: binding.Location, Action: binding.Action, Identifier: binding.Identifier}, parameters),
+		"location":   approvaldomain.OperationStartDigest(approvaldomain.OperationBinding{DetailType: binding.DetailType, Location: "https://other/", Action: binding.Action, Identifier: binding.Identifier}, parameters),
+		"action":     approvaldomain.OperationStartDigest(approvaldomain.OperationBinding{DetailType: binding.DetailType, Location: binding.Location, Action: "viewer", Identifier: binding.Identifier}, parameters),
+		"identifier": approvaldomain.OperationStartDigest(approvaldomain.OperationBinding{DetailType: binding.DetailType, Location: binding.Location, Action: binding.Action, Identifier: "a2"}, parameters),
+	}
+	for name, digest := range variants {
+		if digest == base {
+			t.Errorf("changing the %s kept the digest", name)
+		}
 	}
 }

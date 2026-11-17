@@ -9,7 +9,7 @@
     {
       "name": "Approved",
       "kind": "—",
-      "meaning": "人間が承認した。1 回だけトークンへ引き換えられる"
+      "meaning": "人間が承認した。CIBA の起票は 1 回だけトークンへ引き換えられ、評価の起票は 1 回だけ使用権を記録できる"
     },
     {
       "name": "Denied",
@@ -19,12 +19,12 @@
     {
       "name": "Expired",
       "kind": "terminal",
-      "meaning": "判断または引き換えの前に有効期間が切れた"
+      "meaning": "判断、引き換え、使用の前に有効期間が切れた"
     },
     {
       "name": "Consumed",
       "kind": "terminal",
-      "meaning": "承認をトークンへ引き換えた。CAS によりちょうど一度だけ成立する"
+      "meaning": "承認をトークンへ引き換えたか、評価の起票の使用権を記録した。CAS によりちょうど一度だけ成立する"
     }
   ],
   "transitions": [
@@ -68,7 +68,8 @@
     "承認",
     "拒否",
     "トークンの交換",
-    "有効期間の経過"
+    "有効期間の経過",
+    "評価による使用"
   ],
   "matrix": {
     "Pending": {
@@ -118,6 +119,12 @@
           "kind": "transition",
           "to": "Expired"
         }
+      ],
+      "評価による使用": [
+        {
+          "kind": "refusal",
+          "response": "200 decision=false approval_pending"
+        }
       ]
     },
     "Approved": {
@@ -150,6 +157,18 @@
           "kind": "transition",
           "to": "Expired"
         }
+      ],
+      "評価による使用": [
+        {
+          "kind": "transition",
+          "to": "Consumed",
+          "condition": "評価の起票で期限内。使用権を記録する"
+        },
+        {
+          "kind": "refusal",
+          "response": "200 decision=false approval_expired",
+          "condition": "CIBA の起票か期限切れ"
+        }
       ]
     },
     "Denied": {
@@ -174,6 +193,12 @@
       "有効期間の経過": [
         {
           "kind": "noop"
+        }
+      ],
+      "評価による使用": [
+        {
+          "kind": "refusal",
+          "response": "200 decision=false approval_denied"
         }
       ]
     },
@@ -200,6 +225,12 @@
         {
           "kind": "noop"
         }
+      ],
+      "評価による使用": [
+        {
+          "kind": "refusal",
+          "response": "200 decision=false approval_expired"
+        }
       ]
     },
     "Consumed": {
@@ -224,6 +255,22 @@
       "有効期間の経過": [
         {
           "kind": "noop"
+        }
+      ],
+      "評価による使用": [
+        {
+          "kind": "noop",
+          "condition": "期限内で使用権が未使用か同じ鍵。許可する"
+        },
+        {
+          "kind": "refusal",
+          "response": "200 decision=false approval_already_used",
+          "condition": "別の鍵が使用権を持つ"
+        },
+        {
+          "kind": "refusal",
+          "response": "200 decision=false approval_expired",
+          "condition": "期限切れ"
         }
       ]
     }

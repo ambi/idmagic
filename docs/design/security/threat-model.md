@@ -146,6 +146,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-039 | Spoofing | 外部 IdP が主張するメールアドレスを信じ、既存アカウントへ結び付ける | Authentication | REQ-AUTHENTICATION-001、REQ-AUTHENTICATION-002 | `covered` |
 | THREAT-040 | Repudiation | 資格情報の変更が本人に知られないまま行われる | Authentication | REQ-AUTHENTICATION-030、REQ-AUTHENTICATION-031、REQ-AUTHENTICATION-032、REQ-AUTHENTICATION-033 | `covered` |
 | THREAT-041 | Spoofing | 承認リクエストを繰り返し送り、利用者が誤って承認する | OAuth2 | CIBA-CORE-BINDING-MESSAGE、REQ-OAUTH2-043、REQ-OAUTH2-040 | `covered` |
+| THREAT-112 | Spoofing | MCP クライアントへ渡った承認の URL を別人に開かせ、その人の判断で自分の操作を承認させる | OAuth2, McpGateway | REQ-OAUTH2-043、REQ-OAUTH2-093: URL は UUID だけを含み、本人宛ての承認リクエストだけを本人のセッションで判断させる | `covered` |
 | THREAT-083 | Spoofing | 盗んだ Kerberos 応答を別の接続やレプリカで再送し、メールの一致で別 User へ結び付ける | Authentication | REQ-AUTHENTICATION-042: SPN、realm、CBT、期限、共有の再送拒否と明示的な User の対応付け | `covered` |
 
 ## プロトコルとトークン
@@ -167,6 +168,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-084 | Elevation of privilege | リソースサーバーが評価の入口を使い、任意の主体や他の資源の関係を探索するか、別の資源宛てのトークンで許可を得る | OAuth2, AccessControl | REQ-OAUTH2-062、REQ-OAUTH2-064 | `covered` |
 | THREAT-085 | Spoofing | 持ち出した送信者制約付きのトークンを、証明を確かめないリソースサーバーで使う | OAuth2 | REQ-OAUTH2-063 | `covered` |
 | THREAT-086 | Tampering | 人が一件の操作として承認したトークンを、別の対象や引数に使うか、同じ操作を別の業務要求として再実行する | OAuth2 | REQ-OAUTH2-065 | `covered` |
+| THREAT-113 | Tampering | `requestState` を書き換えるか承認リクエストの識別子を差し替え、別の利用者、クライアント、登録の承認や別の引数で操作を実行する | OAuth2, McpGateway | REQ-OAUTH2-093、REQ-MCPGATEWAY-014: 状態の認証付き暗号と、IdMagic での参照の照合 | `covered` |
 | THREAT-087 | Elevation of privilege | 無効化、パスワードの変更、セッションの失効の後も、発行済みの User のトークンで資源へ到達し続けるか、refresh で取り直す | OAuth2, SharedSignals | REQ-SHAREDSIGNALS-012 | `covered` |
 | THREAT-088 | Elevation of privilege | テナントの管理者が配送先に内部のアドレスを指定し、サーバーから内部の資源やメタデータへ到達する | SharedSignals | REQ-SHAREDSIGNALS-017 | `covered` |
 | THREAT-089 | Information disclosure | 監査イベントの配送を通じて、個人情報や資格情報がテナントの外へ渡る | SharedSignals, Audit | REQ-SHAREDSIGNALS-016 | `covered` |
@@ -233,6 +235,7 @@ IdMagic の API プロセスと Connector は平文をメモリで扱う信頼�
 | THREAT-109 | Information disclosure | マネージド型 Gateway の上流 URL、DNS、リダイレクトを使って内部資源や別の宛先へ資格情報を送らせる | OAuth2, TokenVault | REQ-OAUTH2-091、REQ-OAUTH2-092 | `covered` |
 | THREAT-110 | Denial of service | MCP の応答を無制限に開くか過大な本文を送り、API の受付資源を占有する | OAuth2, System | REQ-OAUTH2-092、REQ-SYSTEM-018 | `covered` |
 | THREAT-111 | Denial of service | 同じ API プロセスで動くマネージド型 Gateway のメモリ枯渇やプロセス停止が、認証も同時に停止させる | OAuth2, System | REQ-OAUTH2-092: 転送予算による抑制。プロセスの停止の隔離はない | `accepted` |
+| THREAT-114 | Denial of service | Agent が承認の必要な `tools/call` を繰り返し、本人へ承認の依頼のメールを大量に送らせる | OAuth2 | REQ-OAUTH2-093: 関係の判定の後に限り、同じ操作の重複を除き、保留中を一人 10 件に限る。上限までの通知は防がない | `accepted` |
 | THREAT-096 | Spoofing | 偽の発見結果を取り込ませ、未登録の主体を管理済みの Agent として扱わせるか権限を得る | IdManagement | REQ-IDMANAGEMENT-095、REQ-IDMANAGEMENT-098、REQ-IDMANAGEMENT-101 | `covered` |
 | THREAT-097 | Denial of service | 取り込みの件数と未来の時刻で台帳を埋めるか、以後の観測を止める | IdManagement | REQ-IDMANAGEMENT-096、REQ-IDMANAGEMENT-097、REQ-IDMANAGEMENT-102 | `covered` |
 | THREAT-098 | Elevation of privilege | 持ち出した送信者制約付きのトークンをゲートウェイへ持ち込み、別の鍵へ束縛し直す | OAuth2, McpGateway | REQ-OAUTH2-056、REQ-OAUTH2-079 | `covered` |

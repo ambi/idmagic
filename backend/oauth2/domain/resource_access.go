@@ -32,10 +32,14 @@ const (
 	ReasonApprovedOperationMismatch   = "approved_operation_mismatch"
 	ReasonApprovalExpired             = "approval_expired"
 	ReasonApprovalAlreadyUsed         = "approval_already_used"
-	ReasonConditionDenied             = "condition_denied"
-	ReasonConditionIndeterminate      = "condition_indeterminate"
-	ReasonLimitExceeded               = "limit_exceeded"
-	ReasonTokenExchangeNotPermitted   = "token_exchange_not_permitted"
+	// 評価が起票した承認の状態 (REQ-OAUTH2-093)。
+	ReasonApprovalPending              = "approval_pending"
+	ReasonApprovalDenied               = "approval_denied"
+	ReasonApprovalRequestLimitExceeded = "approval_request_limit_exceeded"
+	ReasonConditionDenied              = "condition_denied"
+	ReasonConditionIndeterminate       = "condition_indeterminate"
+	ReasonLimitExceeded                = "limit_exceeded"
+	ReasonTokenExchangeNotPermitted    = "token_exchange_not_permitted"
 )
 
 // ResourceAccessRule は評価できる 1 つの操作と、その操作がトークンへ求める制約である。

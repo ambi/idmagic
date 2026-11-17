@@ -13,12 +13,14 @@ import (
 type Querier interface {
 	// 失効マーカーを追加する。同一 jti は同一トークンを指し exp も決定的なので冪等 (DO NOTHING)。
 	AddOauth2AccessTokenDenylist(ctx context.Context, arg AddOauth2AccessTokenDenylistParams) error
+	// 評価が起票した承認はトークンへ交換しないので、使用権の記録と同時に consumed にする。
 	ClaimApprovalRequestUse(ctx context.Context, arg ClaimApprovalRequestUseParams) (*ClaimApprovalRequestUseRow, error)
 	// 全項目が一致する行だけを消すので、流用の試みは正当な許可を消費しない。並行した要求の一方だけが行を得る。
 	ClaimOauth2TokenExchangeGrant(ctx context.Context, arg ClaimOauth2TokenExchangeGrantParams) (string, error)
 	ConsumeApprovalRequest(ctx context.Context, arg ConsumeApprovalRequestParams) (*ConsumeApprovalRequestRow, error)
 	// 単発消費の CAS。未使用かつ未期限の行だけを used=true にして 1 行返す。それ以外は 0 行。
 	ConsumePARRequest(ctx context.Context, arg ConsumePARRequestParams) ([]byte, error)
+	CountPendingResourceServerApprovals(ctx context.Context, arg CountPendingResourceServerApprovalsParams) (int64, error)
 	DecideApprovalRequest(ctx context.Context, arg DecideApprovalRequestParams) (*DecideApprovalRequestRow, error)
 	DeleteAgentGuardrailPolicy(ctx context.Context, arg DeleteAgentGuardrailPolicyParams) error
 	DeleteApprovalRequestsForUser(ctx context.Context, arg DeleteApprovalRequestsForUserParams) error
@@ -59,6 +61,7 @@ type Querier interface {
 	// 期限フィルタは付けない (memory adapter とのパリティ: 期限判定は呼び出し側の domain が行う)。
 	// tenant_id は fail-closed 述語として必ず含める。used 列を read で payload に overlay する。
 	FindPARRequest(ctx context.Context, arg FindPARRequestParams) (*FindPARRequestRow, error)
+	FindPendingResourceServerApproval(ctx context.Context, arg FindPendingResourceServerApprovalParams) (*FindPendingResourceServerApprovalRow, error)
 	GetAgentDelegation(ctx context.Context, arg GetAgentDelegationParams) (*GetAgentDelegationRow, error)
 	GetAgentGuardrailPolicy(ctx context.Context, arg GetAgentGuardrailPolicyParams) (*GetAgentGuardrailPolicyRow, error)
 	GetAuthorizationDetailType(ctx context.Context, arg GetAuthorizationDetailTypeParams) (*AuthorizationDetailType, error)
@@ -113,6 +116,8 @@ type Querier interface {
 	ListEffectiveAgentGuardrailPolicies(ctx context.Context, arg ListEffectiveAgentGuardrailPoliciesParams) ([]*ListEffectiveAgentGuardrailPoliciesRow, error)
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
 	ListPendingApprovalRequestsForUser(ctx context.Context, arg ListPendingApprovalRequestsForUserParams) ([]*ListPendingApprovalRequestsForUserRow, error)
+	// 同じ利用者への評価の起票を直列にし、重複と件数の上限を確かめてから書く (REQ-OAUTH2-093)。
+	LockApprovalRequestsForUser(ctx context.Context, arg LockApprovalRequestsForUserParams) error
 	// tx 内の read-modify-write を直列化するための行ロック取得。
 	LockAuthorizationRequest(ctx context.Context, arg LockAuthorizationRequestParams) ([]byte, error)
 	LockClientForApplicationDeletion(ctx context.Context, arg LockClientForApplicationDeletionParams) (bool, error)

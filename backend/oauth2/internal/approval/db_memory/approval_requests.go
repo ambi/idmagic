@@ -10,6 +10,7 @@ import (
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
+	approvalports "github.com/ambi/idmagic/backend/oauth2/internal/approval/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -37,10 +38,54 @@ func (s *ApprovalRequestStore) put(ctx context.Context, rec *approvaldomain.Appr
 	defer s.mu.Unlock()
 	rec.TenantID = tenantports.TenantID(ctx)
 	sharedmem.DefaultScope(&rec.TenantID, kernel.DefaultTenantID)
+	s.putLocked(rec)
+	return nil
+}
+
+func (s *ApprovalRequestStore) putLocked(rec *approvaldomain.ApprovalRequest) {
 	stored := cloneApprovalRequest(rec)
 	s.byID[stored.ID] = stored
-	s.byHash[stored.AuthReqIDHash] = stored
-	return nil
+	// 評価の起票は auth_req_id を持たず、CIBA の索引に置かない。
+	if stored.AuthReqIDHash != "" {
+		s.byHash[stored.AuthReqIDHash] = stored
+	}
+}
+
+func (s *ApprovalRequestStore) StartForResourceServer(
+	ctx context.Context, rec *approvaldomain.ApprovalRequest, maxPending int, now time.Time,
+) (*approvaldomain.ApprovalRequest, approvalports.StartOutcome, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tenantID := tenantports.TenantID(ctx)
+	pending := 0
+	for _, held := range s.byID {
+		if held.TenantID != tenantID || held.UserID != rec.UserID || !held.InitiatedByResourceServer() ||
+			held.State != spec.ApprovalPending || !now.Before(held.ExpiresAt) {
+			continue
+		}
+		if sameStartedOperation(held, rec) {
+			return cloneApprovalRequest(held), approvalports.StartExisting, nil
+		}
+		pending++
+	}
+	if pending >= maxPending {
+		return nil, approvalports.StartLimited, nil
+	}
+	rec.TenantID = tenantID
+	s.putLocked(rec)
+	return cloneApprovalRequest(rec), approvalports.StartCreated, nil
+}
+
+func sameStartedOperation(a, b *approvaldomain.ApprovalRequest) bool {
+	return a.ClientID == b.ClientID && deref(a.AgentID) == deref(b.AgentID) &&
+		deref(a.ResourceServerID) == deref(b.ResourceServerID) && deref(a.OperationDigest) == deref(b.OperationDigest)
+}
+
+func deref(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func (s *ApprovalRequestStore) FindByID(ctx context.Context, id string) (*approvaldomain.ApprovalRequest, error) {
@@ -151,11 +196,24 @@ func (s *ApprovalRequestStore) ClaimUse(ctx context.Context, id string, use appr
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rec := s.byID[id]
-	if rec == nil || rec.TenantID != tenantports.TenantID(ctx) || rec.State != spec.ApprovalConsumed || !now.Before(rec.ExpiresAt) {
+	if rec == nil || rec.TenantID != tenantports.TenantID(ctx) || !now.Before(rec.ExpiresAt) {
+		return nil, false, nil
+	}
+	approvedByResourceServer := rec.State == spec.ApprovalApproved && rec.InitiatedByResourceServer()
+	if rec.State != spec.ApprovalConsumed && !approvedByResourceServer {
 		return nil, false, nil
 	}
 	if rec.Use != nil {
 		return cloneApprovalRequest(rec), false, nil
+	}
+	if approvedByResourceServer {
+		// 評価の起票はトークンへ交換しないので、使用権の記録と同時に Consumed へ進める。
+		next, err := spec.TransitionApprovalRequest(rec.State, spec.ApprovalEventConsume)
+		if err != nil {
+			return nil, false, err
+		}
+		consumedAt := now.UTC()
+		rec.State, rec.ConsumedAt = next, &consumedAt
 	}
 	rec.Use = &use
 	return cloneApprovalRequest(rec), true, nil

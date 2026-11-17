@@ -24,6 +24,24 @@ const (
 	MaxBindingMessageLength = spec.LengthHandle
 )
 
+// ApprovalInitiator は承認リクエストを起票した側である。起票の経路ごとに、交換と参照の可否が変わる。
+type ApprovalInitiator string
+
+const (
+	// InitiatedByClientBackchannel は CIBA で要求したクライアントである。保存済みの記録の空の値も、これを表す。
+	InitiatedByClientBackchannel ApprovalInitiator = "client_backchannel"
+	// InitiatedByResourceServer は評価で起票したリソースサーバーである (REQ-OAUTH2-093)。
+	// auth_req_id を持たず、トークンへ交換できず、評価が識別子で参照する。
+	InitiatedByResourceServer ApprovalInitiator = "resource_server"
+)
+
+// ResourceServerApprovalTTL は評価が起票した承認の有効期間である。本人がメールかクライアントの URL から
+// ポータルへ移り、ステップアップ認証を経て判断し、クライアントが再送するまでを含めるため、CIBA の上限にそろえる。
+const ResourceServerApprovalTTL = MaxTTL
+
+// MaxPendingResourceServerApprovals は、リソースサーバーが起票した保留中の承認の、利用者ごとの上限である。
+const MaxPendingResourceServerApprovals = 10
+
 // ApprovalRequest holds the human decision for one requested action.
 type ApprovalRequest struct {
 	ID       string `json:"id"`
@@ -38,11 +56,18 @@ type ApprovalRequest struct {
 	BindingMessage       *string                    `json:"binding_message,omitempty"`
 	State                spec.ApprovalRequestState  `json:"state"`
 
+	// Initiator は起票した側で、空は CIBA を表す。
+	Initiator ApprovalInitiator `json:"initiator,omitempty"`
+	// ResourceServerID は、評価で起票した登録である。参照できる評価をこの登録に限る。
+	ResourceServerID *string `json:"resource_server_id,omitempty"`
+	// OperationDigest は、評価で起票した操作と引数の digest で、同じ操作の重複起票を見分ける。
+	OperationDigest *string `json:"operation_digest,omitempty"`
+
 	// The following fields are transport bookkeeping and do not alter the
-	// meaning of the human decision.
+	// meaning of the human decision. Only CIBA requests carry them.
 
 	// AuthReqIDHash is the SHA-256 digest of the bearer secret.
-	AuthReqIDHash string `json:"auth_req_id_hash"`
+	AuthReqIDHash string `json:"auth_req_id_hash,omitempty"`
 	// IntervalSeconds is the current minimum polling interval.
 	IntervalSeconds int `json:"interval_seconds"`
 	// LastPolledAt records the latest pending-state poll.
@@ -61,15 +86,36 @@ func (a ApprovalRequest) Validate() error {
 		spec.Required("ID", a.ID, spec.UUID()),
 		spec.Required("ClientID", a.ClientID),
 		spec.Required("UserID", a.UserID),
-		spec.Required("AuthReqIDHash", a.AuthReqIDHash),
 		// CIBA の binding_message。start 時の検査 (approval/usecases) も同じ
 		// コードポイント数で数える。
 		spec.OptionalPtr("BindingMessage", a.BindingMessage, spec.CharsAtMost(spec.LengthHandle)),
 		spec.Required("State", a.State, spec.Must(spec.ApprovalRequestState.Valid, "state is not in enum")),
-		spec.Required("IntervalSeconds", a.IntervalSeconds, spec.GreaterThan(0)),
 		spec.Required("RequestedAt", a.RequestedAt),
 		spec.Required("ExpiresAt", a.ExpiresAt),
+		a.validateInitiator(),
 	)
+}
+
+// validateInitiator は起票の経路ごとの項目を確かめる。評価の起票が auth_req_id を持つと、
+// トークンへ交換する経路ができる。
+func (a ApprovalRequest) validateInitiator() spec.Issues {
+	switch a.Initiator {
+	case "", InitiatedByClientBackchannel:
+		return append(spec.Required("AuthReqIDHash", a.AuthReqIDHash),
+			spec.Required("IntervalSeconds", a.IntervalSeconds, spec.GreaterThan(0))...)
+	case InitiatedByResourceServer:
+		issues := spec.Condition(a.ResourceServerID != nil && *a.ResourceServerID != "", "resource_server_id is required")
+		issues = append(issues, spec.Condition(a.OperationDigest != nil && *a.OperationDigest != "", "operation_digest is required")...)
+		return append(issues, spec.Condition(a.AuthReqIDHash == "" && a.IntervalSeconds == 0,
+			"a resource server request has no auth_req_id or polling interval")...)
+	default:
+		return spec.Condition(false, "initiator is not in enum")
+	}
+}
+
+// InitiatedByResourceServer は、評価が起票した承認リクエストかを返す。
+func (a ApprovalRequest) InitiatedByResourceServer() bool {
+	return a.Initiator == InitiatedByResourceServer
 }
 
 // NewApprovalRequestID returns the stable identifier exposed to the account portal.

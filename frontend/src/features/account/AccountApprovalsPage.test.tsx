@@ -61,4 +61,44 @@ describe('AccountApprovalsPresentation', () => {
 
     expect(screen.getByText('保留中の承認リクエストはありません。')).toBeInTheDocument()
   })
+
+  //spec:covers REQ-OAUTH2-043: 承認の URL の承認リクエストを先頭に強調し、起票したリソースサーバーを示すこと
+  it('puts the request from the approval link first and names the resource server that started it', async () => {
+    const started: AccountApprovalRequest = {
+      ...approvalRequest,
+      id: 'approval-2',
+      client_name: 'Generic MCP client',
+      agent_name: undefined,
+      resource_server_name: 'Payments MCP',
+      scopes: [],
+      binding_message: undefined,
+    }
+    await renderWithRouter(
+      <AccountApprovalsPresentation
+        {...baseProps}
+        approvalRequests={[approvalRequest, started]}
+        focusRequestId="approval-2"
+      />,
+    )
+
+    const cards = screen.getAllByRole('article')
+    expect(cards[0]).toHaveAttribute('aria-current', 'true')
+    expect(cards[0]).toHaveTextContent('Generic MCP client')
+    expect(cards[0]).toHaveTextContent('Payments MCP')
+    expect(cards[1]).not.toHaveAttribute('aria-current')
+  })
+
+  //spec:covers REQ-OAUTH2-043: 本人宛の保留中にない承認の URL では、判断できる承認リクエストがないことを示すこと
+  it('says when the request from the approval link cannot be decided', async () => {
+    await renderWithRouter(
+      <AccountApprovalsPresentation {...baseProps} focusRequestId="someone-elses" />,
+    )
+
+    expect(
+      screen.getByText(
+        'このリンクの承認リクエストは、すでに判断されたか、期限が切れたか、あなた宛てではありません。',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Expense Agent')).toBeInTheDocument()
+  })
 })

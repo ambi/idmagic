@@ -101,11 +101,11 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 #### REQ-MCPGATEWAY-003 評価が許可した要求だけを上流へ送る
 
 - 宣言したツールの `tools/call` と宣言した方法を受けたとき、McpGateway は、一つの要求につき一回だけ評価を呼び、結果を再利用しない。
-- `decision=true` の応答を受けたとき、McpGateway は、[承認した操作の転送](#req-mcpgateway-013-承認した操作の転送は最大一回であり結果不明でも再送しない)の条件を満たせば、受け取った本文をそのまま上流へ一回だけ転送する。
+- `decision=true` の応答を受けたとき、McpGateway は、[承認した操作の転送](#req-mcpgateway-013-承認した操作の転送は最大一回であり結果不明でも再送しない)の条件を満たせば、受け取った本文を REQ-MCPGATEWAY-014 で除く項目のほかはそのまま上流へ一回だけ転送する。
 - `Authorization` が一つでないか、`Bearer` か `DPoP` のトークンを持たないか、トークンがカンマを含む場合、McpGateway は、401、`resource_metadata` を持つ `WWW-Authenticate`、JSON-RPC の `-32001` を返し、評価を呼ばず、上流へ送らない。
 - `DPoP` のヘッダーが複数あるか、値がカンマを含む場合、McpGateway は、401、`error="invalid_token"` を持つ `WWW-Authenticate`、JSON-RPC の `-32001` を返し、評価を呼ばず、上流へ送らない。
 - 理由が `token_rejected` か `sender_proof_invalid` の不許可を受けたとき、McpGateway は、401、`error="invalid_token"` を持つ `WWW-Authenticate`、JSON-RPC の `-32001` を返し、上流へ送らない。
-- `authorization_remediation` を伴う不許可を受けたとき、McpGateway は、403、`error="insufficient_authorization"` と base64url で符号化した `authorization_remediation` と `resource_metadata` を持つ `WWW-Authenticate`、JSON-RPC の `-32000` と、同じ明細の JSON の `error.data.authorization_remediation` を返し、上流へ送らない。
+- `authorization_remediation` を伴う不許可を、REQ-MCPGATEWAY-014 の起票を求めなかった要求で受けたとき、McpGateway は、403、`error="insufficient_authorization"` と base64url で符号化した `authorization_remediation` と `resource_metadata` を持つ `WWW-Authenticate`、JSON-RPC の `-32000` と、同じ明細の JSON の `error.data.authorization_remediation` を返し、上流へ送らない。
 - 符号化した `authorization_remediation` が 8 KiB を超える場合、McpGateway は、`WWW-Authenticate` から `authorization_remediation` を除き、`error.data` だけで明細を返す。
 - `authorization_remediation` が、`authorization_details` に配列を持つ JSON のオブジェクトでない場合、McpGateway は、解釈できない評価の応答として扱う。
 - それ以外の不許可を受けたとき、McpGateway は、403 と JSON-RPC の `-32000` を返し、上流へ送らない。
@@ -143,6 +143,25 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - **判断**：本文や JSON-RPC の `id` を鍵にしない。同じ内容の新しい承認を実行でき、再送された要求には使用済みの承認を再発行しない。
 - **判断**：使用記録は IdMagic の承認ストアに置く。ゲートウェイの再起動で使用を忘れず、複数台で同じ記録を共有する。本番の複数プロセスには PostgreSQL を使う。
 
+#### REQ-MCPGATEWAY-014 URL の elicitation を宣言したクライアントには、承認を起票して人の承認へ導く
+
+- `mode` が `proxy` で、転送する `tools/call` の `params._meta` の `io.modelcontextprotocol/clientCapabilities` の `elicitation` が `url` をオブジェクトで宣言するとき、McpGateway は、評価に `approval_start=true` を載せる。
+- `url` を宣言しない要求か、`mode` が `envoy_ext_authz` の要求を評価するとき、McpGateway は、`approval_start` と `approval_request_id` を送らない。
+- 評価が理由 `approval_pending` と `approval_request` を返したとき、McpGateway は、200、`Content-Type: application/json`、`resultType` が `input_required` の JSON-RPC の結果を返し、`inputRequests` の `idmagic_approval` に `mode` が `url`、`url` が `approval_uri`、承認を求める `message` の `elicitation/create` を、`requestState` に封緘した状態を載せ、上流へ送らない。
+- 封緘した状態は、`igw1.` で始まり、承認リクエストの識別子、ツール名と引数の digest、承認リクエストの `expires_at` を AES-256-GCM で保護した値で、鍵は `idmagic.client_secret_file` のシークレットから HKDF-SHA256 で導き、関連データに `resource` を使う。
+- `igw1.` で始まる `params.requestState` を受けたとき、McpGateway は、状態を開き、ツール名と引数の digest の一致を確かめ、評価に `approval_request_id` と `approval_start=true` を載せる。
+- 状態を開けないか、digest が一致しない場合、McpGateway は、403 と JSON-RPC の `-32000` を返し、評価を呼ばず、上流へ送らない。
+- 状態の期限を過ぎた場合、McpGateway は、`approval_request_id` を送らず、状態のない要求として評価する。
+- `params.inputResponses.idmagic_approval.action` が `accept` でない場合、McpGateway は、403 と JSON-RPC の `-32000` を返し、評価を呼ばず、上流へ送らない。
+- `igw1.` で始まらない `params.requestState` を受けたとき、McpGateway は、それを読まず、本文を変えずに扱う。
+- 状態を伴う要求の許可を受けたとき、McpGateway は、本文から `params.requestState` と `params.inputResponses.idmagic_approval` を除き、ほかの項目と `arguments` の値を変えずに、REQ-MCPGATEWAY-013 の条件で上流へ一回だけ転送する。
+- 評価が理由 `approval_denied` か `approval_request_limit_exceeded` を返したとき、McpGateway は、403 と JSON-RPC の `-32000` を返し、上流へ送らない。
+- **判断**：URL を宣言しないクライアントには従来の 403 と明細を返す。CIBA を自分で呼ぶ Agent の経路を保ち、`-32021` で拒否しない。
+- **判断**：状態に主体を入れない。ゲートウェイはトークンを検証せず、主体の一致は IdMagic が参照する評価で確かめる。
+- **判断**：鍵をクライアントシークレットから導く。同じ登録の複数台のゲートウェイが設定を増やさずに同じ状態を開ける。シークレットを替えると保留中の状態は開けなくなり、利用者は承認をやり直す。
+- **判断**：保留中の再送にも `inputRequests` を返す。省くとクライアントが即時に再送を繰り返す。
+- **判断**：転送する本文から自分の状態を除く。上流が自分の発行していない状態を受け取らないようにする。
+
 #### REQ-MCPGATEWAY-004 転送は提示された資格情報を上流へ渡さず、応答を逐次返す
 
 - 上流へ転送するとき、McpGateway は、`Authorization`、`DPoP`、`Cookie` のヘッダーと URL のクエリを除く。
@@ -164,7 +183,8 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - 要求を処理したとき、McpGateway は、標準出力へ JSON の 1 行で、種類 `mcp_gateway_request`、相関 ID、方法、ツール名、資源の型、関係、資源の識別子、結果、判断の理由、評価の応答の `X-Request-ID` を書く。
 - 要求を受けたとき、McpGateway は、MCP クライアントの `X-Request-ID` を使わずに相関 ID を作り、評価と上流への要求と応答の `X-Request-ID` に載せる。
 - 承認した操作の許可を得たとき、McpGateway は、監査ログに `approval_request_id` と `operation_digest` を載せ、引数と `operation_key` を載せない。
-- 結果は、`forwarded`、`permitted`、`denied`、`unauthenticated`、`invalid`、`unavailable`、`upstream_failed`、`approval_outcome_unknown` のどれかにする。
+- 結果は、`forwarded`、`permitted`、`denied`、`unauthenticated`、`invalid`、`unavailable`、`upstream_failed`、`approval_outcome_unknown`、`input_required` のどれかにする。
+- 承認を求める `InputRequiredResult` を返したとき、McpGateway は、結果を `input_required` にし、監査ログに `approval_request_id` を載せる。
 - 承認した操作の上流との通信が失敗したとき、McpGateway は、結果を `approval_outcome_unknown` にする。
 - ツール別の呼び出しを数えるとき、McpGateway は、`mcp_gateway_requests_total` のラベル `method`、`tool`、`outcome` を使い、`tool` を宣言したツール名か `unmapped` か空に限る。
 - 評価の時間を測るとき、McpGateway は、`mcp_gateway_evaluation_duration_seconds` を使う。
@@ -303,6 +323,11 @@ API キーや独自の OAuth を求める上流には、ゲートウェイが資
 承認の消費後にゲートウェイや通信が止まっても、同じ承認を未使用に戻さない。
 実行結果の確認前に新たな承認を出すと、実行済みの処理をもう一度許可し得る。
 この保証は上流への転送を最大一回にするもので、MCP サーバーの内部の再試行や処理の原子性を保証しない。
+
+`requestState` は MCP クライアントを通る攻撃者の入力である。
+ゲートウェイは状態を認証付き暗号で保護し、改ざんした状態を評価へ渡さない。
+状態は承認リクエストの識別子を運ぶだけで許可を表さず、許可は IdMagic が参照する評価で利用者、クライアント、Agent、登録、明細、引数を照合して決める。
+承認の URL を MCP クライアントが別人に開かせても、ポータルは本人宛ての承認リクエストだけを判断させる。
 
 `Mcp-Param-*` のヘッダーと本文の一致は、ツールのスキーマを持つ上流が検査する。
 ゲートウェイの判断は本文だけを読むので、ヘッダーの値は判断に影響しない。

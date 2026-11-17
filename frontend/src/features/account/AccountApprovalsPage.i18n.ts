@@ -8,6 +8,9 @@ export const accountApprovalsDictionary = defineDictionary(
     empty: '保留中の承認リクエストはありません。',
     requestedBy: 'リクエスト元',
     agent: 'エージェント',
+    resourceServer: '承認を求めたサービス',
+    requestUnavailable:
+      'このリンクの承認リクエストは、すでに判断されたか、期限が切れたか、あなた宛てではありません。',
     scopes: '要求された権限',
     details: '操作の詳細',
     bindingMessage: '確認メッセージ',
@@ -26,6 +29,9 @@ export const accountApprovalsDictionary = defineDictionary(
     empty: 'There are no pending approval requests.',
     requestedBy: 'Requested by',
     agent: 'Agent',
+    resourceServer: 'Requested by service',
+    requestUnavailable:
+      'The approval request in this link has already been decided, has expired, or is not addressed to you.',
     scopes: 'Requested permissions',
     details: 'Action details',
     bindingMessage: 'Verification message',

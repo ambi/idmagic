@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 )
@@ -109,6 +110,57 @@ func TestEvaluateSendsTheOperationAndReadsApprovalUse(t *testing.T) {
 		}
 		if use := result.ApprovedOperation; use.ApprovalRequestID != "approval-1" || use.OperationDigest != strings.Repeat("a", 64) || use.Replayed != replayed {
 			t.Fatalf("approval=%+v", use)
+		}
+	}
+}
+
+//spec:covers REQ-MCPGATEWAY-014: 起票と参照を求めるときだけ form に載せ、保留中の承認リクエストを読み、形の誤った値を判断なしにすること
+func TestEvaluateStartsAndReferencesApprovals(t *testing.T) {
+	const pending = `{"decision":false,"reasons":["approval_pending"],"approval_request":{"id":"a1","status":"pending","expires_at":"2026-11-18T09:10:00Z","approval_uri":"https://idp.example/realms/r/account/approvals?request=a1"}}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		if r.PostFormValue("approval_start") != "true" || r.PostFormValue("approval_request_id") != "a0" {
+			t.Errorf("form=%v", r.PostForm)
+		}
+		_, _ = w.Write([]byte(pending))
+	}))
+	defer server.Close()
+	client := Client{EvaluateURL: server.URL, HTTPClient: server.Client()}
+	result, err := client.Evaluate(t.Context(), Request{ApprovalStart: true, ApprovalRequestID: "a0"})
+	if err != nil || !result.Available || result.Permitted || result.ApprovalRequest == nil ||
+		result.ApprovalRequest.ID != "a1" || result.ApprovalRequest.URI != "https://idp.example/realms/r/account/approvals?request=a1" ||
+		!result.ApprovalRequest.ExpiresAt.Equal(time.Date(2026, 11, 18, 9, 10, 0, 0, time.UTC)) {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+
+	quiet := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		if _, sent := r.PostForm["approval_start"]; sent {
+			t.Errorf("approval_start sent without a request: %v", r.PostForm)
+		}
+		if _, sent := r.PostForm["approval_request_id"]; sent {
+			t.Errorf("approval_request_id sent without a reference: %v", r.PostForm)
+		}
+		_, _ = w.Write([]byte(`{"decision":true}`))
+	}))
+	defer quiet.Close()
+	if _, err := (Client{EvaluateURL: quiet.URL, HTTPClient: quiet.Client()}).Evaluate(t.Context(), Request{}); err != nil {
+		t.Fatal(err)
+	}
+
+	for name, body := range map[string]string{
+		"no id":        `{"decision":false,"approval_request":{"status":"pending","expires_at":"2026-11-18T09:10:00Z","approval_uri":"https://idp.example/a"}}`,
+		"no uri":       `{"decision":false,"approval_request":{"id":"a1","status":"pending","expires_at":"2026-11-18T09:10:00Z"}}`,
+		"relative uri": `{"decision":false,"approval_request":{"id":"a1","status":"pending","expires_at":"2026-11-18T09:10:00Z","approval_uri":"/account"}}`,
+		"http uri":     `{"decision":false,"approval_request":{"id":"a1","status":"pending","expires_at":"2026-11-18T09:10:00Z","approval_uri":"http://idp.example/a"}}`,
+		"no expiry":    `{"decision":false,"approval_request":{"id":"a1","status":"pending","approval_uri":"https://idp.example/a"}}`,
+		"on a permit":  `{"decision":true,"approval_request":{"id":"a1","status":"pending","expires_at":"2026-11-18T09:10:00Z","approval_uri":"https://idp.example/a"}}`,
+	} {
+		malformed := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(body)) }))
+		result, err := (Client{EvaluateURL: malformed.URL, HTTPClient: malformed.Client()}).Evaluate(t.Context(), Request{})
+		malformed.Close()
+		if err == nil || result.Available {
+			t.Errorf("%s: result=%+v err=%v", name, result, err)
 		}
 	}
 }

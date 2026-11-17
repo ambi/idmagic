@@ -57,6 +57,7 @@ export type AccountApprovalRequest = {
   client_id: string
   client_name: string
   agent_name?: string
+  resource_server_name?: string
   scopes: string[]
   authorization_details?: Array<Record<string, unknown> & { type: string }>
   binding_message?: string

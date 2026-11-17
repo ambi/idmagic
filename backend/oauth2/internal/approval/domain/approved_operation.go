@@ -164,6 +164,17 @@ func DigestOperationFields(fields map[string]any) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
+// OperationStartDigest は、評価が起票する操作の重複を見分ける digest である。明細の各要素を長さ付きで
+// 連結し、区切り文字を含む値どうしを取り違えない。parametersDigest は CanonicalizeOperationParameters の結果である。
+func OperationStartDigest(binding OperationBinding, parametersDigest string) string {
+	var encoded strings.Builder
+	for _, part := range []string{binding.DetailType, binding.Location, binding.Action, binding.Identifier, parametersDigest} {
+		encoded.WriteString(strconv.Itoa(len(part)) + ":" + part)
+	}
+	sum := sha256.Sum256([]byte(encoded.String()))
+	return hex.EncodeToString(sum[:])
+}
+
 // MatchApprovedOperation compares the approved details with the actual operation. An empty
 // identifier or location never acts as a wildcard: the human approved one named target.
 func MatchApprovedOperation(rec *ApprovalRequest, actual OperationBinding, digest string, now time.Time) ApprovedOperationMatch {

@@ -39,6 +39,27 @@ type Message struct {
 	Method    string
 	ToolName  string
 	Arguments map[string]json.RawMessage
+	// ElicitationURL は、要求の _meta の clientCapabilities が elicitation の url をオブジェクトで宣言したことを表す。
+	ElicitationURL bool
+	// RequestState と InputResponses は、MRTR の再送が運ぶ値である。どちらも呼び出し元の入力として扱う。
+	RequestState   string
+	InputResponses map[string]json.RawMessage
+}
+
+const clientCapabilitiesMetaKey = "io.modelcontextprotocol/clientCapabilities"
+
+// declaresElicitationURL は clientCapabilities.elicitation.url がオブジェクトかを返す。読めない宣言は宣言なしとして扱う。
+func declaresElicitationURL(meta map[string]json.RawMessage) bool {
+	var capabilities struct {
+		Elicitation *struct {
+			URL json.RawMessage `json:"url"`
+		} `json:"elicitation"`
+	}
+	if raw, ok := meta[clientCapabilitiesMetaKey]; !ok || json.Unmarshal(raw, &capabilities) != nil || capabilities.Elicitation == nil {
+		return false
+	}
+	trimmed := bytes.TrimSpace(capabilities.Elicitation.URL)
+	return len(trimmed) > 0 && trimmed[0] == '{'
 }
 
 // Violation は Inspect の拒否で、どれも 400 で応答する。ID は読めたときだけ持つ。
@@ -78,16 +99,24 @@ func Inspect(headers Headers, body []byte) (Message, *Violation) {
 		return Message{}, invalidRequest(id, "the body must be a JSON-RPC 2.0 request with an id")
 	}
 	var params struct {
-		Name      *string                    `json:"name"`
-		Arguments map[string]json.RawMessage `json:"arguments"`
-		Meta      map[string]json.RawMessage `json:"_meta"`
+		Name           *string                    `json:"name"`
+		Arguments      map[string]json.RawMessage `json:"arguments"`
+		Meta           map[string]json.RawMessage `json:"_meta"`
+		RequestState   *string                    `json:"requestState"`
+		InputResponses map[string]json.RawMessage `json:"inputResponses"`
 	}
 	if len(envelope.Params) > 0 {
 		if err := json.Unmarshal(envelope.Params, &params); err != nil {
 			return Message{}, invalidRequest(id, "params must be an object with well-typed members")
 		}
 	}
-	message := Message{ID: id, Method: *envelope.Method, Arguments: params.Arguments}
+	message := Message{
+		ID: id, Method: *envelope.Method, Arguments: params.Arguments,
+		ElicitationURL: declaresElicitationURL(params.Meta), InputResponses: params.InputResponses,
+	}
+	if params.RequestState != nil {
+		message.RequestState = *params.RequestState
+	}
 	if message.Method == MethodToolsCall {
 		if params.Name == nil || *params.Name == "" {
 			return Message{}, invalidRequest(id, "tools/call requires params.name")

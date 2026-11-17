@@ -17,6 +17,10 @@ CIBA の検索のフィールドとポーリングのフィールドは通信の
 承認済みの要求はストアの単位の Compare-and-Set でトークンに交換し、同時のポーリングによる二重の発行を防ぐ。
 それ以外の状態は `/token` で拒否する。
 
+承認リクエストの起票者は、CIBA で要求したクライアントか、評価で起票したリソースサーバーのどちらかである（[REQ-OAUTH2-093](resource-access.md#req-oauth2-093-評価は承認を起票でき起票した承認を参照する評価をトークンを差し替えずに一度だけ許可する)）。
+リソースサーバーが起票した承認リクエストは `auth_req_id` とポーリングの間隔を持たず、トークンへ交換できない。
+承認の後は、参照した評価が使用権を記録するときに `Consumed` になる。
+
 CIBA の配信のモードは `poll` だけを実装する。
 承認の画面はすでにユーザーのセッションとステップアップ認証で保護されているので、`user_code` は未対応として広告する。
 
@@ -33,10 +37,10 @@ CIBA の配信のモードは `poll` だけを実装する。
 | State | Kind | Meaning |
 | --- | --- | --- |
 | Pending | initial | 起票済み。人間の判断を待っている |
-| Approved | — | 人間が承認した。1 回だけトークンへ引き換えられる |
+| Approved | — | 人間が承認した。CIBA の起票は 1 回だけトークンへ引き換えられ、評価の起票は 1 回だけ使用権を記録できる |
 | Denied | terminal | 人間が拒否した |
-| Expired | terminal | 判断または引き換えの前に有効期間が切れた |
-| Consumed | terminal | 承認をトークンへ引き換えた。CAS によりちょうど一度だけ成立する |
+| Expired | terminal | 判断、引き換え、使用の前に有効期間が切れた |
+| Consumed | terminal | 承認をトークンへ引き換えたか、評価の起票の使用権を記録した。CAS によりちょうど一度だけ成立する |
 
 | From | Event | Guard | To | Effects |
 | --- | --- | --- | --- | --- |
@@ -46,13 +50,13 @@ CIBA の配信のモードは `poll` だけを実装する。
 | Approved | Consume | now() < expires_at | Consumed |  |
 | Approved | Expire | — | Expired |  |
 
-| State | 承認 | 拒否 | トークンの交換 | 有効期間の経過 |
-| --- | --- | --- | --- | --- |
-| Pending | → Approved（期限内）<br>拒否：400 invalid_request（期限切れ） | → Denied（期限内）<br>拒否：400 invalid_request（期限切れ） | 拒否：400 authorization_pending（間隔を守った）<br>拒否：400 slow_down（間隔より短い）<br>→ Expired（期限切れ。400 expired_token を返す） | → Expired |
-| Approved | 拒否：400 invalid_request | 拒否：400 invalid_request | → Consumed（期限内）<br>→ Expired（期限切れ。400 expired_token を返す） | → Expired |
-| Denied | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 access_denied | 何もしない |
-| Expired | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 expired_token | 何もしない |
-| Consumed | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_grant | 何もしない |
+| State | 承認 | 拒否 | トークンの交換 | 有効期間の経過 | 評価による使用 |
+| --- | --- | --- | --- | --- | --- |
+| Pending | → Approved（期限内）<br>拒否：400 invalid_request（期限切れ） | → Denied（期限内）<br>拒否：400 invalid_request（期限切れ） | 拒否：400 authorization_pending（間隔を守った）<br>拒否：400 slow_down（間隔より短い）<br>→ Expired（期限切れ。400 expired_token を返す） | → Expired | 拒否：200 decision=false approval_pending |
+| Approved | 拒否：400 invalid_request | 拒否：400 invalid_request | → Consumed（期限内）<br>→ Expired（期限切れ。400 expired_token を返す） | → Expired | → Consumed（評価の起票で期限内。使用権を記録する）<br>拒否：200 decision=false approval_expired（CIBA の起票か期限切れ） |
+| Denied | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 access_denied | 何もしない | 拒否：200 decision=false approval_denied |
+| Expired | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 expired_token | 何もしない | 拒否：200 decision=false approval_expired |
+| Consumed | 拒否：400 invalid_request | 拒否：400 invalid_request | 拒否：400 invalid_grant | 何もしない | 何もしない（期限内で使用権が未使用か同じ鍵。許可する）<br>拒否：200 decision=false approval_already_used（別の鍵が使用権を持つ）<br>拒否：200 decision=false approval_expired（期限切れ） |
 
 <!-- /spec:state-machine -->
 
@@ -98,6 +102,8 @@ CIBA の配信のモードは `poll` だけを実装する。
 
 - **上位の要件**：[REQ-AUTHENTICATION-039](../../authentication/features/account-portal.md#本人によるステップアップ認証)
 - 本人が保留中の承認リクエストを一覧したとき、OAuth2 は、200 と、本人宛の期限内の `Pending` の承認リクエストだけを、クライアントの表示名、Agent の名前、要求したスコープ、`authorization_details`、`binding_message` とともに返す。
+- リソースサーバーが起票した承認リクエストを一覧で返すとき、OAuth2 は、起票した登録の表示名を `resource_server_name` に含め、スコープを空の配列にする。
+- 本人が承認の URL を開いたとき、OAuth2 は、アカウントポータルでその識別子の承認リクエストを一覧の先頭に強調して表示し、本人宛の保留中の承認リクエストにない識別子では、判断できる承認リクエストがないことを示す。
 - 本人がステップアップ認証を経たセッションで本人宛の期限内の `Pending` の承認リクエストを承認したとき、OAuth2 は、204 を返し、承認リクエストを `Approved` にし、`BackchannelAuthApproved` を発行する。
 - 本人がステップアップ認証を経たセッションで本人宛の期限内の `Pending` の承認リクエストを拒否したとき、OAuth2 は、204 を返し、承認リクエストを `Denied` にし、`BackchannelAuthDenied` を発行する。
 - セッションが未認証か認証の途中の場合、OAuth2 は、401 と `authentication_required` で拒否する。

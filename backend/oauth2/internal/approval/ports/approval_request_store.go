@@ -8,6 +8,18 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
+// StartOutcome is what StartForResourceServer did.
+type StartOutcome int
+
+const (
+	// StartCreated saved the new request.
+	StartCreated StartOutcome = iota
+	// StartExisting returned a pending request for the same operation and saved nothing.
+	StartExisting
+	// StartLimited saved nothing because the user holds the maximum of pending requests.
+	StartLimited
+)
+
 // ApprovalRequestStore persists approval decisions and indexes auth_req_id by digest only.
 type ApprovalRequestStore interface {
 	Save(ctx context.Context, rec *approvaldomain.ApprovalRequest) error
@@ -24,10 +36,16 @@ type ApprovalRequestStore interface {
 	Decide(ctx context.Context, id, userID string, event spec.ApprovalRequestEvent, now time.Time) (*approvaldomain.ApprovalRequest, error)
 	// Consume advances only an approved request. Exactly one concurrent caller receives a result.
 	Consume(ctx context.Context, authReqIDHash string, now time.Time) (*approvaldomain.ApprovalRequest, error)
-	// ClaimUse records use on a consumed, unexpired request that has no use yet. The bool
-	// reports whether this call recorded it; the returned record shows the current holder.
-	// A nil record means the request is absent or no longer usable.
+	// ClaimUse records use on an unexpired request that has no use yet: a consumed CIBA request,
+	// or an approved request a resource server started, which it moves to Consumed in the same
+	// step. The bool reports whether this call recorded it; the returned record shows the
+	// current holder. A nil record means the request is absent or no longer usable.
 	ClaimUse(ctx context.Context, id string, use approvaldomain.ApprovalUse, now time.Time) (*approvaldomain.ApprovalRequest, bool, error)
+	// StartForResourceServer saves a request a resource server started, unless the same user
+	// already holds an unexpired pending request with the same client, agent, resource server and
+	// operation digest, which it returns instead, or already holds maxPending unexpired pending
+	// requests started by resource servers. The check and the save are one serialized step per user.
+	StartForResourceServer(ctx context.Context, rec *approvaldomain.ApprovalRequest, maxPending int, now time.Time) (*approvaldomain.ApprovalRequest, StartOutcome, error)
 	// DeleteAllForSub participates in the user-anonymization cascade.
 	DeleteAllForSub(ctx context.Context, sub string) error
 }

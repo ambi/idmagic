@@ -12,6 +12,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
+import { cn } from '../../lib/utils'
 import { accountApprovalsDictionary } from './AccountApprovalsPage.i18n'
 
 export function AccountApprovalsPage({
@@ -19,11 +20,13 @@ export function AccountApprovalsPage({
   username,
   approvalRequests: initial,
   isAdmin,
+  focusRequestId,
 }: {
   csrfToken: string
   username: string
   approvalRequests: AccountApprovalRequest[]
   isAdmin: boolean
+  focusRequestId?: string
 }) {
   const t = useDictionary(accountApprovalsDictionary)
   const [approvalRequests, setApprovalRequests] = useState(initial)
@@ -55,6 +58,7 @@ export function AccountApprovalsPage({
         username={username}
         approvalRequests={approvalRequests}
         isAdmin={isAdmin}
+        focusRequestId={focusRequestId}
         pending={pending}
         error={error}
         notice={notice}
@@ -75,10 +79,12 @@ export function AccountApprovalsPresentation({
   notice,
   onDismissNotice,
   onDecision,
+  focusRequestId,
 }: {
   username: string
   approvalRequests: AccountApprovalRequest[]
   isAdmin: boolean
+  focusRequestId?: string
   pending: string
   error: string
   notice: string
@@ -91,6 +97,11 @@ export function AccountApprovalsPresentation({
     const date = new Date(value)
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale)
   }
+  // 承認の URL が名指した承認リクエストを先頭に置く。本人宛の保留中になければ、判断できないことを示す。
+  const focused = approvalRequests.find((request) => request.id === focusRequestId)
+  const ordered = focused
+    ? [focused, ...approvalRequests.filter((request) => request.id !== focused.id)]
+    : approvalRequests
 
   return (
     <AccountShell
@@ -103,6 +114,12 @@ export function AccountApprovalsPresentation({
       <Toast message={notice} onDismiss={onDismissNotice} />
       {error ? <Alert variant="destructive">{error}</Alert> : null}
 
+      {focusRequestId && !focused ? (
+        <Card className="p-4">
+          <p className="text-sm text-slate-600">{t.requestUnavailable}</p>
+        </Card>
+      ) : null}
+
       {approvalRequests.length === 0 ? (
         <Card className="flex flex-col items-center gap-2 p-10 text-center">
           <IconChecklist size={28} className="text-slate-300" aria-hidden="true" />
@@ -110,8 +127,13 @@ export function AccountApprovalsPresentation({
         </Card>
       ) : (
         <div className="grid gap-4">
-          {approvalRequests.map((request) => (
-            <Card key={request.id} className="grid gap-4 p-5">
+          {ordered.map((request) => (
+            <Card
+              key={request.id}
+              role="article"
+              aria-current={request.id === focused?.id ? 'true' : undefined}
+              className={cn('grid gap-4 p-5', request.id === focused?.id && 'ring-2 ring-sky-500')}
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -123,6 +145,11 @@ export function AccountApprovalsPresentation({
                   {request.agent_name ? (
                     <p className="mt-1 text-sm text-slate-600">
                       {t.agent}: {request.agent_name}
+                    </p>
+                  ) : null}
+                  {request.resource_server_name ? (
+                    <p className="mt-1 text-sm text-slate-600">
+                      {t.resourceServer}: {request.resource_server_name}
                     </p>
                   ) : null}
                 </div>
@@ -138,19 +165,21 @@ export function AccountApprovalsPresentation({
                 </div>
               ) : null}
 
-              <div>
-                <p className="text-xs font-semibold text-slate-700">{t.scopes}</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {request.scopes.map((scope) => (
-                    <span
-                      key={scope}
-                      className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700"
-                    >
-                      {scope}
-                    </span>
-                  ))}
+              {request.scopes.length ? (
+                <div>
+                  <p className="text-xs font-semibold text-slate-700">{t.scopes}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {request.scopes.map((scope) => (
+                      <span
+                        key={scope}
+                        className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700"
+                      >
+                        {scope}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               {request.authorization_details?.length ? (
                 <div>

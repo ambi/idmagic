@@ -29,6 +29,15 @@ type resourceAccessResponse struct {
 	TokenExchangeGrant   string                     `json:"token_exchange_grant,omitempty"`
 	// AuthorizationRemediation は承認に求める明細で、承認がないか使えない不許可だけが持つ。
 	AuthorizationRemediation *authorizationRemediationResponse `json:"authorization_remediation,omitempty"`
+	// ApprovalRequest は理由が approval_pending のときだけ持つ、起票したか参照した承認リクエストである。
+	ApprovalRequest *startedApprovalResponse `json:"approval_request,omitempty"`
+}
+
+type startedApprovalResponse struct {
+	ID          string    `json:"id"`
+	Status      string    `json:"status"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	ApprovalURI string    `json:"approval_uri"`
 }
 
 // authorizationRemediationResponse は draft-ietf-oauth-rar-metadata-remediation-00 の
@@ -58,6 +67,17 @@ func validOperationInput(key, parameters string) bool {
 		len(parameters) <= maxOperationParametersLength
 }
 
+// optionalFormBool は省略を偽として読み、true と false 以外を受け付けない。
+func optionalFormBool(raw string) (bool, bool) {
+	switch raw {
+	case "", "false":
+		return false, true
+	case "true":
+		return true, true
+	}
+	return false, false
+}
+
 func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 	if err := c.Request().ParseForm(); err != nil {
 		return support.NoStoreJSON(c, http.StatusBadRequest, support.OAuthErrorBody("invalid_request", "form parse"))
@@ -80,6 +100,12 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 	if !validOperationInput(in.OperationKey, in.OperationParameters) {
 		return support.NoStoreJSON(c, http.StatusBadRequest,
 			support.OAuthErrorBody("invalid_request", "operation_key or operation_parameters is not acceptable"))
+	}
+	approvalStart, startOK := optionalFormBool(form("approval_start"))
+	in.ApprovalStart, in.ApprovalRequestID = approvalStart, form("approval_request_id")
+	if !startOK || spec.All(spec.Optional("ApprovalRequestID", in.ApprovalRequestID, spec.UUID())) != nil {
+		return support.NoStoreJSON(c, http.StatusBadRequest,
+			support.OAuthErrorBody("invalid_request", "approval_start or approval_request_id is not acceptable"))
 	}
 	if len(in.Attributes) > maxAttributesLength {
 		return support.NoStoreJSON(c, http.StatusBadRequest,
@@ -106,6 +132,8 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 		Tokens:  tokenusecases.RevocationCheckingIntrospector{Deps: d.introspectDeps()},
 		Clients: d.ClientRepo, Relations: d.RelationChecker, Replay: d.DpopReplayStore,
 		Approvals: d.ApprovalRequestStore, Limiter: d.RateLimiter, Grants: d.TokenExchangeGrantStore, Emit: d.Emit,
+		Recipients: d.UserRepo, Notifier: d.Notifier,
+		ApprovalURL: strings.TrimSuffix(support.RequestIssuer(c, d.Issuer), "/") + "/account/approvals",
 	}, in, time.Now().UTC())
 	if errors.Is(err, tokenusecases.ErrOperationKeyRequired) {
 		return support.NoStoreJSON(c, http.StatusBadRequest,
@@ -133,6 +161,11 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 	}
 	if len(decision.Remediation) > 0 {
 		response.AuthorizationRemediation = &authorizationRemediationResponse{AuthorizationDetails: decision.Remediation}
+	}
+	if started := decision.StartedApproval; started != nil {
+		response.ApprovalRequest = &startedApprovalResponse{
+			ID: started.ID, Status: started.Status, ExpiresAt: started.ExpiresAt, ApprovalURI: started.URI,
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, response)
 }

@@ -14,33 +14,40 @@ import (
 
 const claimApprovalRequestUse = `-- name: ClaimApprovalRequestUse :one
 UPDATE oauth2_approval_requests
-SET payload = jsonb_set(payload, '{use}', $1::jsonb),
+SET state = 'consumed',
+    payload = CASE WHEN state = 'approved' THEN
+            jsonb_set(jsonb_set(jsonb_set(payload, '{use}', $1::jsonb), '{state}', '"consumed"'::jsonb),
+                '{consumed_at}', to_jsonb($2::timestamptz))
+        ELSE jsonb_set(payload, '{use}', $1::jsonb)
+    END,
     updated_at = now()
-WHERE id = $2 AND tenant_id = $3
-  AND state = 'consumed' AND expires_at > $4 AND payload->'use' IS NULL
+WHERE id = $3 AND tenant_id = $4
+  AND expires_at > $2 AND payload->'use' IS NULL
+  AND (state = 'consumed' OR (state = 'approved' AND payload->>'initiator' = 'resource_server'))
 RETURNING payload, state, interval_seconds, last_polled_at
 `
 
 type ClaimApprovalRequestUseParams struct {
 	ApprovalUse []byte
+	Now         time.Time
 	ID          string
 	TenantID    string
-	Now         time.Time
 }
 
 type ClaimApprovalRequestUseRow struct {
 	Payload         []byte
 	State           string
-	IntervalSeconds int32
+	IntervalSeconds pgtype.Int4
 	LastPolledAt    pgtype.Timestamptz
 }
 
+// 評価が起票した承認はトークンへ交換しないので、使用権の記録と同時に consumed にする。
 func (q *Queries) ClaimApprovalRequestUse(ctx context.Context, arg ClaimApprovalRequestUseParams) (*ClaimApprovalRequestUseRow, error) {
 	row := q.db.QueryRow(ctx, claimApprovalRequestUse,
 		arg.ApprovalUse,
+		arg.Now,
 		arg.ID,
 		arg.TenantID,
-		arg.Now,
 	)
 	var i ClaimApprovalRequestUseRow
 	err := row.Scan(
@@ -67,14 +74,14 @@ RETURNING payload, state, interval_seconds, last_polled_at
 
 type ConsumeApprovalRequestParams struct {
 	ConsumedAt    time.Time
-	AuthReqIDHash string
+	AuthReqIDHash pgtype.Text
 	TenantID      string
 }
 
 type ConsumeApprovalRequestRow struct {
 	Payload         []byte
 	State           string
-	IntervalSeconds int32
+	IntervalSeconds pgtype.Int4
 	LastPolledAt    pgtype.Timestamptz
 }
 
@@ -88,6 +95,26 @@ func (q *Queries) ConsumeApprovalRequest(ctx context.Context, arg ConsumeApprova
 		&i.LastPolledAt,
 	)
 	return &i, err
+}
+
+const countPendingResourceServerApprovals = `-- name: CountPendingResourceServerApprovals :one
+SELECT count(*) FROM oauth2_approval_requests
+WHERE tenant_id = $1 AND user_id = $2
+  AND state = 'pending' AND expires_at > $3
+  AND payload->>'initiator' = 'resource_server'
+`
+
+type CountPendingResourceServerApprovalsParams struct {
+	TenantID string
+	UserID   string
+	Now      time.Time
+}
+
+func (q *Queries) CountPendingResourceServerApprovals(ctx context.Context, arg CountPendingResourceServerApprovalsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingResourceServerApprovals, arg.TenantID, arg.UserID, arg.Now)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const decideApprovalRequest = `-- name: DecideApprovalRequest :one
@@ -114,7 +141,7 @@ type DecideApprovalRequestParams struct {
 type DecideApprovalRequestRow struct {
 	Payload         []byte
 	State           string
-	IntervalSeconds int32
+	IntervalSeconds pgtype.Int4
 	LastPolledAt    pgtype.Timestamptz
 }
 
@@ -181,7 +208,7 @@ RETURNING payload, state, interval_seconds, last_polled_at
 `
 
 type ExpireApprovalRequestParams struct {
-	AuthReqIDHash string
+	AuthReqIDHash pgtype.Text
 	TenantID      string
 	ExpiredAt     time.Time
 }
@@ -189,7 +216,7 @@ type ExpireApprovalRequestParams struct {
 type ExpireApprovalRequestRow struct {
 	Payload         []byte
 	State           string
-	IntervalSeconds int32
+	IntervalSeconds pgtype.Int4
 	LastPolledAt    pgtype.Timestamptz
 }
 
@@ -211,14 +238,14 @@ WHERE auth_req_id_hash = $1 AND tenant_id = $2
 `
 
 type FindApprovalRequestByAuthReqIDHashParams struct {
-	AuthReqIDHash string
+	AuthReqIDHash pgtype.Text
 	TenantID      string
 }
 
 type FindApprovalRequestByAuthReqIDHashRow struct {
 	Payload         []byte
 	State           string
-	IntervalSeconds int32
+	IntervalSeconds pgtype.Int4
 	LastPolledAt    pgtype.Timestamptz
 }
 
@@ -247,13 +274,62 @@ type FindApprovalRequestByIDParams struct {
 type FindApprovalRequestByIDRow struct {
 	Payload         []byte
 	State           string
-	IntervalSeconds int32
+	IntervalSeconds pgtype.Int4
 	LastPolledAt    pgtype.Timestamptz
 }
 
 func (q *Queries) FindApprovalRequestByID(ctx context.Context, arg FindApprovalRequestByIDParams) (*FindApprovalRequestByIDRow, error) {
 	row := q.db.QueryRow(ctx, findApprovalRequestByID, arg.ID, arg.TenantID)
 	var i FindApprovalRequestByIDRow
+	err := row.Scan(
+		&i.Payload,
+		&i.State,
+		&i.IntervalSeconds,
+		&i.LastPolledAt,
+	)
+	return &i, err
+}
+
+const findPendingResourceServerApproval = `-- name: FindPendingResourceServerApproval :one
+SELECT payload, state, interval_seconds, last_polled_at FROM oauth2_approval_requests
+WHERE tenant_id = $1 AND user_id = $2 AND client_id = $3
+  AND state = 'pending' AND expires_at > $4
+  AND payload->>'initiator' = 'resource_server'
+  AND coalesce(payload->>'agent_id', '') = $5::text
+  AND payload->>'resource_server_id' = $6::text
+  AND payload->>'operation_digest' = $7::text
+ORDER BY created_at ASC
+LIMIT 1
+`
+
+type FindPendingResourceServerApprovalParams struct {
+	TenantID         string
+	UserID           string
+	ClientID         string
+	Now              time.Time
+	AgentID          string
+	ResourceServerID string
+	OperationDigest  string
+}
+
+type FindPendingResourceServerApprovalRow struct {
+	Payload         []byte
+	State           string
+	IntervalSeconds pgtype.Int4
+	LastPolledAt    pgtype.Timestamptz
+}
+
+func (q *Queries) FindPendingResourceServerApproval(ctx context.Context, arg FindPendingResourceServerApprovalParams) (*FindPendingResourceServerApprovalRow, error) {
+	row := q.db.QueryRow(ctx, findPendingResourceServerApproval,
+		arg.TenantID,
+		arg.UserID,
+		arg.ClientID,
+		arg.Now,
+		arg.AgentID,
+		arg.ResourceServerID,
+		arg.OperationDigest,
+	)
+	var i FindPendingResourceServerApprovalRow
 	err := row.Scan(
 		&i.Payload,
 		&i.State,
@@ -278,7 +354,7 @@ type ListPendingApprovalRequestsForUserParams struct {
 type ListPendingApprovalRequestsForUserRow struct {
 	Payload         []byte
 	State           string
-	IntervalSeconds int32
+	IntervalSeconds pgtype.Int4
 	LastPolledAt    pgtype.Timestamptz
 }
 
@@ -307,6 +383,21 @@ func (q *Queries) ListPendingApprovalRequestsForUser(ctx context.Context, arg Li
 	return items, nil
 }
 
+const lockApprovalRequestsForUser = `-- name: LockApprovalRequestsForUser :exec
+SELECT pg_advisory_xact_lock(hashtextextended('oauth2_approval_requests:' || $1::text || ':' || $2::text, 0))
+`
+
+type LockApprovalRequestsForUserParams struct {
+	TenantID string
+	UserID   string
+}
+
+// 同じ利用者への評価の起票を直列にし、重複と件数の上限を確かめてから書く (REQ-OAUTH2-093)。
+func (q *Queries) LockApprovalRequestsForUser(ctx context.Context, arg LockApprovalRequestsForUserParams) error {
+	_, err := q.db.Exec(ctx, lockApprovalRequestsForUser, arg.TenantID, arg.UserID)
+	return err
+}
+
 const recordApprovalRequestPoll = `-- name: RecordApprovalRequestPoll :one
 WITH current_request AS (
     SELECT id,
@@ -332,14 +423,14 @@ RETURNING request.payload, request.state, request.interval_seconds, request.last
 
 type RecordApprovalRequestPollParams struct {
 	Now           pgtype.Timestamptz
-	AuthReqIDHash string
+	AuthReqIDHash pgtype.Text
 	TenantID      string
 }
 
 type RecordApprovalRequestPollRow struct {
 	Payload         []byte
 	State           string
-	IntervalSeconds int32
+	IntervalSeconds pgtype.Int4
 	LastPolledAt    pgtype.Timestamptz
 	TooFast         pgtype.Bool
 }
@@ -365,11 +456,11 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 type SaveApprovalRequestParams struct {
 	ID              string
 	TenantID        string
-	AuthReqIDHash   string
+	AuthReqIDHash   pgtype.Text
 	ClientID        string
 	UserID          string
 	State           string
-	IntervalSeconds int32
+	IntervalSeconds pgtype.Int4
 	LastPolledAt    pgtype.Timestamptz
 	ExpiresAt       time.Time
 	Payload         []byte

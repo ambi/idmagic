@@ -221,3 +221,34 @@ func TestDecideSelectsDeclaredAttributes(t *testing.T) {
 func sizedString(n int) json.RawMessage {
 	return json.RawMessage(`"` + strings.Repeat("x", n-2) + `"`)
 }
+
+//spec:covers REQ-MCPGATEWAY-014: elicitation の url をオブジェクトで宣言した要求だけを URL 対応と読み、再送の requestState と inputResponses を取り出すこと
+func TestInspectReadsElicitationCapabilityAndRetryState(t *testing.T) {
+	body := func(capabilities, retry string) []byte {
+		return []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"read","arguments":{}` + retry +
+			`,"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":` + capabilities + `}}}`)
+	}
+	for capabilities, want := range map[string]bool{
+		`{"elicitation":{"url":{}}}`:           true,
+		`{"elicitation":{"form":{},"url":{}}}`: true,
+		`{"elicitation":{}}`:                   false,
+		`{"elicitation":{"form":{}}}`:          false,
+		`{"elicitation":{"url":true}}`:         false,
+		`{"elicitation":{"url":null}}`:         false,
+		`{}`:                                   false,
+		`{"elicitation":"url"}`:                false,
+	} {
+		message, violation := Inspect(toolCallHeaders("read").Values, body(capabilities, ""))
+		if violation != nil || message.ElicitationURL != want {
+			t.Errorf("capabilities %s: url=%v violation=%+v, want %v", capabilities, message.ElicitationURL, violation, want)
+		}
+	}
+	retry := `,"requestState":"igw1.state","inputResponses":{"idmagic_approval":{"action":"accept"}}`
+	message, violation := Inspect(toolCallHeaders("read").Values, body(`{}`, retry))
+	if violation != nil || message.RequestState != "igw1.state" || string(message.InputResponses["idmagic_approval"]) != `{"action":"accept"}` {
+		t.Fatalf("retry: %+v %+v", message, violation)
+	}
+	if _, violation := Inspect(toolCallHeaders("read").Values, body(`{}`, `,"requestState":1`)); violation == nil || violation.Code != CodeInvalidRequest {
+		t.Fatalf("a numeric requestState was accepted: %+v", violation)
+	}
+}

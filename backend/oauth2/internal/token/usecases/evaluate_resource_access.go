@@ -19,6 +19,7 @@ import (
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	approvalports "github.com/ambi/idmagic/backend/oauth2/internal/approval/ports"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -46,7 +47,12 @@ type ResourceAccessDeps struct {
 	Limiter rlports.RateLimiter
 	// Grants は交換の許可を保存する。交換を求める評価を未配線で許可しない。
 	Grants ports.TokenExchangeGrantStore
-	Emit   func(spec.DomainEvent)
+	// Recipients と Notifier は評価が起票した承認を本人へ知らせる。ApprovalURL はアカウントポータルの
+	// 承認の画面で、起票を求める評価に必須である (REQ-OAUTH2-093)。
+	Recipients  ApprovalRecipients
+	Notifier    notificationports.Notifier
+	ApprovalURL string
+	Emit        func(spec.DomainEvent)
 }
 
 // resourceAccessLimitPolicyID は規則の上限の回数の名前空間で、入口の resource_access の予算と分ける。
@@ -73,6 +79,10 @@ type ResourceAccessRequest struct {
 	TokenExchangeResource string
 	// RequestID は応答の X-Request-ID と同じ値で、監査イベントの相関に使う。
 	RequestID string
+	// ApprovalStart は、承認が足りないときに承認リクエストを起票させる。ApprovalRequestID は、
+	// この入口の起票で作った承認リクエストを、トークンを差し替えずに参照する (REQ-OAUTH2-093)。
+	ApprovalStart     bool
+	ApprovalRequestID string
 }
 
 // ApprovedOperationUse は、許可した承認済みの操作をリソースサーバーの結果と結ぶ相関である。
@@ -97,6 +107,8 @@ type ResourceAccessDecision struct {
 	// Remediation は承認がないか使えないことで拒否したときだけ持つ、承認に求める明細である。
 	// 要求と登録の写しであり、トークンのクレームを含まない (REQ-OAUTH2-065)。
 	Remediation []spec.AuthorizationDetail
+	// StartedApproval は理由が approval_pending のときだけ持つ、起票したか参照した承認リクエストである。
+	StartedApproval *StartedApproval
 }
 
 // EvaluateResourceAccess は登録、規則、トークン、提示の証明、関係の判定の論理積で許可する。
@@ -125,6 +137,9 @@ func EvaluateResourceAccess(ctx context.Context, deps ResourceAccessDeps, in Res
 		}
 		if use := decision.ApprovedOperation; use != nil {
 			event.ApprovalRequestID, event.OperationDigest, event.Replayed = use.ApprovalRequestID, use.OperationDigest, use.Replayed
+		}
+		if started := decision.StartedApproval; started != nil {
+			event.ApprovalRequestID = started.ID
 		}
 		event.ConditionVersion, event.ConditionOutcome, event.DeclaredAttributesDigest = audit.conditionVersion, string(audit.conditionOutcome), audit.attributesDigest
 		if exceeded := audit.exceededLimit; exceeded != nil {
@@ -210,6 +225,8 @@ func evaluateForServer(
 	// 承認を求める規則では、明細のないトークンを関係の判定の後に承認の不足として断る。
 	// 権限のない呼び出し元に承認の要否を知らせず、権限のある Agent には承認の要求へ導く。
 	detailsPresent := rule.PermitsDetails(token.AuthorizationDetails, server.Resource, in.ResourceID)
+	// 承認を承認リクエストの識別子で扱う評価では、承認の明細をトークンに求めない (REQ-OAUTH2-093)。
+	byReference := referencesStartedApproval(in, token)
 	if !detailsPresent && !rule.RequiresApprovedOperation {
 		return denyResourceAccess(domain.ReasonAuthorizationDetailMismatch), audit, nil
 	}
@@ -242,7 +259,7 @@ func evaluateForServer(
 		case domain.ConditionRequireApproval:
 			approvalDetailType = rule.Condition.ApprovalDetailType
 			detail := domain.ResourceAccessRule{AuthorizationDetailType: approvalDetailType, Relation: in.Relation}
-			if token.ApprovalRequestID == "" || !detail.PermitsDetails(token.AuthorizationDetails, server.Resource, in.ResourceID) {
+			if !byReference && (token.ApprovalRequestID == "" || !detail.PermitsDetails(token.AuthorizationDetails, server.Resource, in.ResourceID)) {
 				return denyApproval(server, rule, approvalDetailType, in, domain.ReasonApprovalRequired), audit, nil
 			}
 			// 規則だけでは鍵が要るか決まらないので、承認の経路へ進むときに確かめる。
@@ -256,7 +273,16 @@ func evaluateForServer(
 		return denyResourceAccess(domain.ReasonTokenExchangeNotPermitted), audit, nil
 	}
 	var approval *matchedApproval
-	if approvalDetailType != "" {
+	if approvalDetailType != "" && byReference {
+		outcome, err := resolveStartedApproval(ctx, deps, server, rule, approvalDetailType, token, subject, in, now)
+		if err != nil {
+			return ResourceAccessDecision{}, audit, err
+		}
+		if outcome.deny != nil {
+			return *outcome.deny, audit, nil
+		}
+		approval = outcome.matched
+	} else if approvalDetailType != "" {
 		// 条件の拒否と交換の不許可を優先し、その後で明細のないトークンを承認の不足とする。
 		if !detailsPresent {
 			return denyApproval(server, rule, approvalDetailType, in, domain.ReasonApprovalRequired), audit, nil

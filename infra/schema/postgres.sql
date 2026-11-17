@@ -1978,11 +1978,11 @@ CREATE INDEX oauth2_device_codes_user_idx
 CREATE UNLOGGED TABLE oauth2_approval_requests (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
-    auth_req_id_hash TEXT NOT NULL UNIQUE,
+    auth_req_id_hash TEXT UNIQUE,
     client_id UUID NOT NULL,
     user_id UUID NOT NULL,
     state TEXT NOT NULL CHECK (state IN ('pending', 'approved', 'denied', 'expired', 'consumed')),
-    interval_seconds INTEGER NOT NULL CHECK (interval_seconds > 0),
+    interval_seconds INTEGER CHECK (interval_seconds > 0),
     last_polled_at TIMESTAMPTZ,
     expires_at TIMESTAMPTZ NOT NULL,
     payload JSONB NOT NULL,

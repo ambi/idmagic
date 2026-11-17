@@ -58,10 +58,12 @@ func (d Deps) handleBackchannelAuthenticate(c *echo.Context) error {
 }
 
 type accountApprovalResponse struct {
-	ID                   string                     `json:"id"`
-	ClientID             string                     `json:"client_id"`
-	ClientName           string                     `json:"client_name"`
-	AgentName            string                     `json:"agent_name,omitempty"`
+	ID         string `json:"id"`
+	ClientID   string `json:"client_id"`
+	ClientName string `json:"client_name"`
+	AgentName  string `json:"agent_name,omitempty"`
+	// ResourceServerName は評価で起票した登録の表示名である (REQ-OAUTH2-043)。
+	ResourceServerName   string                     `json:"resource_server_name,omitempty"`
 	Scopes               []string                   `json:"scopes"`
 	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
 	BindingMessage       *string                    `json:"binding_message,omitempty"`
@@ -103,9 +105,19 @@ func (d Deps) handleListMyApprovalRequests(c *echo.Context) error {
 				agentName = agent.Name
 			}
 		}
+		resourceServerName := ""
+		if rec.ResourceServerID != nil && d.McpResourceServerRepo != nil {
+			server, findErr := d.McpResourceServerRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), *rec.ResourceServerID)
+			if findErr != nil {
+				return findErr
+			}
+			if server != nil {
+				resourceServerName = server.Name
+			}
+		}
 		response = append(response, accountApprovalResponse{
-			ID: rec.ID, ClientID: rec.ClientID, ClientName: clientName, AgentName: agentName,
-			Scopes: append([]string(nil), rec.Scopes...), AuthorizationDetails: append([]spec.AuthorizationDetail(nil), rec.AuthorizationDetails...),
+			ID: rec.ID, ClientID: rec.ClientID, ClientName: clientName, AgentName: agentName, ResourceServerName: resourceServerName,
+			Scopes: append([]string{}, rec.Scopes...), AuthorizationDetails: append([]spec.AuthorizationDetail(nil), rec.AuthorizationDetails...),
 			BindingMessage: rec.BindingMessage, RequestedAt: rec.RequestedAt, ExpiresAt: rec.ExpiresAt,
 		})
 	}

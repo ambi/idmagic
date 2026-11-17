@@ -537,7 +537,7 @@ erDiagram
 | `oauth2_authorization_codes` | 発行した認可コードと、交換済みかどうか | OAuth2 | `UNLOGGED` | 非キーカラム |
 | `oauth2_par_requests` | PAR で先に預かった認可要求 | OAuth2 | `UNLOGGED` | 非キーカラム |
 | `oauth2_device_codes` | デバイス認可フローのコードと承認の状態 | OAuth2 | `UNLOGGED` | 非キーカラム |
-| `oauth2_approval_requests` | CIBA の承認要求と、クライアントのポーリングの状態 | OAuth2 | `UNLOGGED` | 非キーカラム |
+| `oauth2_approval_requests` | CIBA と評価が起票した承認要求と、CIBA のクライアントのポーリングの状態 | OAuth2 | `UNLOGGED` | 非キーカラム |
 | `oauth2_replay_jtis` | 一度だけ受け付ける JWT の `jti`。同じ JWT の再送を拒否する | OAuth2 | `UNLOGGED` | 複合主キーの一部 |
 | `oauth2_token_exchange_grants` | 評価が発行した一回限りの交換の許可のハッシュ。別の鍵への束縛の根拠を一度だけ受け付ける | OAuth2 | `UNLOGGED` | 複合主キーの一部 |
 | `oauth2_access_token_denylist` | 失効させたアクセストークンの `jti`。トークンの期限まで拒否する | OAuth2 | `LOGGED` | 複合主キーの一部 |

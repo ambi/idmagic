@@ -71,11 +71,18 @@ WHERE auth_req_id_hash = @auth_req_id_hash AND tenant_id = @tenant_id
 RETURNING payload, state, interval_seconds, last_polled_at;
 
 -- name: ClaimApprovalRequestUse :one
+-- 評価が起票した承認はトークンへ交換しないので、使用権の記録と同時に consumed にする。
 UPDATE oauth2_approval_requests
-SET payload = jsonb_set(payload, '{use}', @approval_use::jsonb),
+SET state = 'consumed',
+    payload = CASE WHEN state = 'approved' THEN
+            jsonb_set(jsonb_set(jsonb_set(payload, '{use}', @approval_use::jsonb), '{state}', '"consumed"'::jsonb),
+                '{consumed_at}', to_jsonb(@now::timestamptz))
+        ELSE jsonb_set(payload, '{use}', @approval_use::jsonb)
+    END,
     updated_at = now()
 WHERE id = @id AND tenant_id = @tenant_id
-  AND state = 'consumed' AND expires_at > @now AND payload->'use' IS NULL
+  AND expires_at > @now AND payload->'use' IS NULL
+  AND (state = 'consumed' OR (state = 'approved' AND payload->>'initiator' = 'resource_server'))
 RETURNING payload, state, interval_seconds, last_polled_at;
 
 -- name: DeleteApprovalRequestsForUser :exec
@@ -86,3 +93,24 @@ DELETE FROM oauth2_approval_requests AS o
 WHERE o.id IN (
     SELECT s.id FROM oauth2_approval_requests AS s WHERE s.expires_at < @cutoff LIMIT @batch_limit
 );
+
+-- name: LockApprovalRequestsForUser :exec
+-- 同じ利用者への評価の起票を直列にし、重複と件数の上限を確かめてから書く (REQ-OAUTH2-093)。
+SELECT pg_advisory_xact_lock(hashtextextended('oauth2_approval_requests:' || sqlc.arg(tenant_id)::text || ':' || sqlc.arg(user_id)::text, 0));
+
+-- name: FindPendingResourceServerApproval :one
+SELECT payload, state, interval_seconds, last_polled_at FROM oauth2_approval_requests
+WHERE tenant_id = @tenant_id AND user_id = @user_id AND client_id = @client_id
+  AND state = 'pending' AND expires_at > @now
+  AND payload->>'initiator' = 'resource_server'
+  AND coalesce(payload->>'agent_id', '') = @agent_id::text
+  AND payload->>'resource_server_id' = @resource_server_id::text
+  AND payload->>'operation_digest' = @operation_digest::text
+ORDER BY created_at ASC
+LIMIT 1;
+
+-- name: CountPendingResourceServerApprovals :one
+SELECT count(*) FROM oauth2_approval_requests
+WHERE tenant_id = @tenant_id AND user_id = @user_id
+  AND state = 'pending' AND expires_at > @now
+  AND payload->>'initiator' = 'resource_server';
