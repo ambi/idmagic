@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math/big"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -155,58 +156,62 @@ func TestWorkloadJWKSCache(t *testing.T) {
 			calls++
 			return goodKeys, nil
 		}
-		keys, stale, err := cache.Get(context.Background(), "bundle-1", fetch, now)
+		keys, source, err := cache.Get(context.Background(), "bundle-1", fetch, nil, now)
 		if err != nil {
 			t.Fatalf("Get: %v", err)
 		}
-		if stale {
-			t.Fatal("freshly fetched keys must not be reported stale")
+		if source != WorkloadJWKSLive {
+			t.Fatalf("source = %v, want live", source)
 		}
 		if len(keys) != 1 || calls != 1 {
 			t.Fatalf("keys=%v calls=%d", keys, calls)
 		}
 	})
 
-	t.Run("falls back to last-known-good within the staleness window on fetch failure", func(t *testing.T) {
-		cache := NewWorkloadJWKSCache()
-		fetch := func(context.Context) ([]map[string]any, error) { return goodKeys, nil }
-		if _, _, err := cache.Get(context.Background(), "bundle-1", fetch, now); err != nil {
-			t.Fatalf("seed fetch: %v", err)
-		}
-		failing := func(context.Context) ([]map[string]any, error) { return nil, errors.New("network down") }
-		keys, stale, err := cache.Get(context.Background(), "bundle-1", failing, now.Add(time.Hour))
-		if err != nil {
-			t.Fatalf("expected fallback to last-known-good, got error: %v", err)
-		}
-		if !stale {
-			t.Fatal("fallback keys must be reported stale")
-		}
-		if len(keys) != 1 {
-			t.Fatalf("keys=%v", keys)
-		}
-	})
-
-	t.Run("fails closed once the last-known-good entry exceeds the staleness window", func(t *testing.T) {
-		cache := NewWorkloadJWKSCache()
-		fetch := func(context.Context) ([]map[string]any, error) { return goodKeys, nil }
-		if _, _, err := cache.Get(context.Background(), "bundle-1", fetch, now); err != nil {
-			t.Fatalf("seed fetch: %v", err)
-		}
-		failing := func(context.Context) ([]map[string]any, error) { return nil, errors.New("network down") }
-		_, _, err := cache.Get(context.Background(), "bundle-1", failing, now.Add(25*time.Hour))
-		if err == nil {
-			t.Fatal("expected fail-closed once last-known-good is stale beyond the window")
-		}
-	})
-
-	t.Run("fails closed with no prior successful fetch", func(t *testing.T) {
-		cache := NewWorkloadJWKSCache()
-		failing := func(context.Context) ([]map[string]any, error) { return nil, errors.New("network down") }
-		_, _, err := cache.Get(context.Background(), "bundle-1", failing, now)
-		if err == nil {
-			t.Fatal("expected fail-closed with no cache entry")
-		}
-	})
+	// 取得に失敗したとき、メモリの鍵と保存した鍵のうち取得の新しいほうを、取得から
+	// 24 時間ちょうどまで使う。
+	memoryKeys := []map[string]any{{"kid": "memory"}}
+	storedKeys := []map[string]any{{"kid": "stored"}}
+	failing := func(context.Context) ([]map[string]any, error) { return nil, errors.New("network down") }
+	for _, tc := range []struct {
+		name       string
+		memoryAt   *time.Duration // 現在からさかのぼったメモリの取得。nil ならメモリの鍵なし
+		storedAt   *time.Duration // 現在からさかのぼった保存した取得。nil なら保存した鍵なし
+		wantKeys   []map[string]any
+		wantSource WorkloadJWKSSource
+	}{
+		{name: "memory within the window", memoryAt: new(time.Hour), wantKeys: memoryKeys, wantSource: WorkloadJWKSMemory},
+		{name: "memory beyond the window", memoryAt: new(24*time.Hour + time.Second)},
+		{name: "nothing cached"},
+		{name: "stored exactly at the window", storedAt: new(24 * time.Hour), wantKeys: storedKeys, wantSource: WorkloadJWKSStored},
+		{name: "stored beyond the window", storedAt: new(24*time.Hour + time.Second)},
+		{name: "newer memory wins", memoryAt: new(time.Minute), storedAt: new(time.Hour), wantKeys: memoryKeys, wantSource: WorkloadJWKSMemory},
+		{name: "newer stored wins", memoryAt: new(2 * time.Hour), storedAt: new(time.Hour), wantKeys: storedKeys, wantSource: WorkloadJWKSStored},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cache := NewWorkloadJWKSCache()
+			if tc.memoryAt != nil {
+				seed := func(context.Context) ([]map[string]any, error) { return memoryKeys, nil }
+				if _, _, err := cache.Get(context.Background(), "bundle-1", seed, nil, now.Add(-*tc.memoryAt)); err != nil {
+					t.Fatalf("seed fetch: %v", err)
+				}
+			}
+			var stored *WorkloadJWKSSnapshot
+			if tc.storedAt != nil {
+				stored = &WorkloadJWKSSnapshot{Keys: storedKeys, FetchedAt: now.Add(-*tc.storedAt)}
+			}
+			keys, source, err := cache.Get(context.Background(), "bundle-1", failing, stored, now)
+			if tc.wantKeys == nil {
+				if err == nil {
+					t.Fatalf("Get = (%v, %v), want fail-closed", keys, source)
+				}
+				return
+			}
+			if err != nil || source != tc.wantSource || !reflect.DeepEqual(keys, tc.wantKeys) {
+				t.Fatalf("Get = (%v, %v, %v), want (%v, %v)", keys, source, err, tc.wantKeys, tc.wantSource)
+			}
+		})
+	}
 }
 
 func TestAudienceStrings(t *testing.T) {

@@ -244,45 +244,60 @@ func TestRefreshWorkloadTrustBundleJWKS(t *testing.T) {
 	})
 }
 
-//spec:covers REQ-WORKLOADIDENTITY-008: JWKS の取得中の無効化と設定の編集を保ち、取得時刻だけを記録する。
+//spec:covers REQ-WORKLOADIDENTITY-008, REQ-WORKLOADIDENTITY-018: JWKS の取得中の無効化と設定の編集を保ち、取得した鍵と時刻だけを記録する。取得中に jwks_uri が変わったら、古い取得元の鍵を記録しない。
 func TestJWKSRefreshPreservesConcurrentConfigurationChanges(t *testing.T) {
-	deps := newAdminDeps()
-	ctx := withTenant("tenant-a")
-	now := time.Date(2026, 10, 21, 0, 0, 0, 0, time.UTC)
-	bundle, err := usecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var edited *workloaddomain.WorkloadTrustBundle
-	deps.FetchJWKS = func(ctx context.Context, fetched *workloaddomain.WorkloadTrustBundle) ([]map[string]any, error) {
-		if fetched.ID != bundle.ID || fetched.TenantID != "tenant-a" || fetched.JWKSURI == nil || *fetched.JWKSURI != *bundle.JWKSURI {
-			t.Fatalf("取得元=%+v, want the original trust bundle", fetched)
-		}
-		if _, err := usecases.DisableWorkloadTrustBundle(ctx, deps, bundle.ID, now.Add(time.Minute)); err != nil {
-			t.Fatal(err)
-		}
-		name := "edited while fetching"
-		uri := "https://issuer.example/replacement-jwks"
-		audiences := []string{"replacement-audience"}
-		edited, err = usecases.UpdateWorkloadTrustBundle(ctx, deps, bundle.ID, usecases.UpdateWorkloadTrustBundleInput{
-			Name: &name, JWKSURI: &uri, AcceptedAudiences: audiences,
-		}, now.Add(time.Minute))
-		if err != nil {
-			t.Fatal(err)
-		}
-		return []map[string]any{{"kid": "fetched-key"}}, nil
-	}
-	refreshedAt := now.Add(2 * time.Minute)
-	result, err := usecases.RefreshWorkloadTrustBundleJWKS(ctx, deps, bundle.ID, refreshedAt)
-	if err != nil || result == nil || !result.Reachable || result.KeyCount != 1 || result.JWKSCachedAt == nil || !result.JWKSCachedAt.Equal(refreshedAt) {
-		t.Fatalf("refresh=(%+v, %v), want reachable with the fetch time", result, err)
-	}
-	stored, err := deps.TrustBundleRepo.FindByID(ctx, "tenant-a", bundle.ID)
-	if err != nil || stored == nil || edited == nil {
-		t.Fatalf("stored=(%+v, %v), edited=%+v", stored, err, edited)
-	}
-	edited.JWKSCachedAt = &refreshedAt
-	if !reflect.DeepEqual(stored, edited) {
-		t.Fatalf("stored=%+v, want concurrent edits plus only the fetch time: %+v", stored, edited)
+	for _, tc := range []struct {
+		name       string
+		changeURI  bool
+		wantStored bool
+	}{
+		{name: "jwks_uri 以外の編集", wantStored: true},
+		{name: "jwks_uri の変更", changeURI: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			deps := newAdminDeps()
+			ctx := withTenant("tenant-a")
+			now := time.Date(2026, 10, 21, 0, 0, 0, 0, time.UTC)
+			bundle, err := usecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fetchedKeys := []map[string]any{{"kid": "fetched-key"}}
+			var edited *workloaddomain.WorkloadTrustBundle
+			deps.FetchJWKS = func(ctx context.Context, fetched *workloaddomain.WorkloadTrustBundle) ([]map[string]any, error) {
+				if fetched.ID != bundle.ID || fetched.TenantID != "tenant-a" || fetched.JWKSURI == nil || *fetched.JWKSURI != *bundle.JWKSURI {
+					t.Fatalf("取得元=%+v, want the original trust bundle", fetched)
+				}
+				if _, err := usecases.DisableWorkloadTrustBundle(ctx, deps, bundle.ID, now.Add(time.Minute)); err != nil {
+					t.Fatal(err)
+				}
+				in := usecases.UpdateWorkloadTrustBundleInput{
+					Name: new("edited while fetching"), AcceptedAudiences: []string{"replacement-audience"},
+				}
+				if tc.changeURI {
+					in.JWKSURI = new("https://issuer.example/replacement-jwks")
+				}
+				edited, err = usecases.UpdateWorkloadTrustBundle(ctx, deps, bundle.ID, in, now.Add(time.Minute))
+				if err != nil {
+					t.Fatal(err)
+				}
+				return fetchedKeys, nil
+			}
+			refreshedAt := now.Add(2 * time.Minute)
+			result, err := usecases.RefreshWorkloadTrustBundleJWKS(ctx, deps, bundle.ID, refreshedAt)
+			if err != nil || result == nil || !result.Reachable || result.KeyCount != 1 {
+				t.Fatalf("refresh=(%+v, %v), want reachable", result, err)
+			}
+			stored, err := deps.TrustBundleRepo.FindByID(ctx, "tenant-a", bundle.ID)
+			if err != nil || stored == nil || edited == nil {
+				t.Fatalf("stored=(%+v, %v), edited=%+v", stored, err, edited)
+			}
+			if tc.wantStored {
+				edited.JWKSCached, edited.JWKSCachedAt = fetchedKeys, &refreshedAt
+			}
+			if !reflect.DeepEqual(stored, edited) {
+				t.Fatalf("stored=%+v, want concurrent edits plus only the fetched keys: %+v", stored, edited)
+			}
+		})
 	}
 }

@@ -68,34 +68,94 @@ func Run(t *testing.T, newFixture NewFixture) {
 		t.Fatalf("before fetch = (%+v, %v)", before, err)
 	}
 	at := f.Now.Add(time.Minute)
-	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantB, f.BundleID, at); err != nil {
+	fetched := domain.JWKSSnapshot{Keys: []map[string]any{{"kty": "EC", "kid": "fetched", "crv": "P-256"}}, FetchedAt: at}
+	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantB, f.BundleID, nil, fetched); err != nil {
 		t.Fatalf("other tenant RecordJWKSFetched: %v", err)
 	}
 	unchanged, err := f.TrustBundles.FindByID(ctx, f.TenantA, f.BundleID)
 	if err != nil || !reflect.DeepEqual(unchanged, before) {
 		t.Fatalf("other tenant changed bundle = (%+v, %v), want %+v", unchanged, err, before)
 	}
-	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, at); err != nil {
+	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, nil, fetched); err != nil {
 		t.Fatalf("RecordJWKSFetched: %v", err)
 	}
 	after, err := f.TrustBundles.FindByID(ctx, f.TenantA, f.BundleID)
 	if err != nil || after == nil || after.JWKSCachedAt == nil || !after.JWKSCachedAt.Equal(at) {
 		t.Fatalf("after fetch = (%+v, %v), want fetch time %s", after, err, at)
 	}
-	before.JWKSCachedAt = after.JWKSCachedAt
+	before.JWKSCachedAt, before.JWKSCached = after.JWKSCachedAt, fetched.Keys
 	if !reflect.DeepEqual(after, before) {
-		t.Fatalf("after fetch = (%+v, %v), want only the fetch time changed: %+v", after, err, before)
+		t.Fatalf("after fetch = (%+v, %v), want only the fetched keys and time changed: %+v", after, err, before)
 	}
+	runJWKSStoreConditions(t, f, after)
 	if err := f.TrustBundles.Delete(ctx, f.TenantA, f.BundleID); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
-	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, at); err != nil {
+	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, nil, fetched); err != nil {
 		t.Fatalf("deleted RecordJWKSFetched: %v", err)
 	}
 	if deleted, err := f.TrustBundles.FindByID(ctx, f.TenantA, f.BundleID); err != nil || deleted != nil {
 		t.Fatalf("FindByID after Delete = (%+v, %v)", deleted, err)
 	}
 	runSPIFFE(t, f)
+}
+
+// runJWKSStoreConditions は、最後に取得できた鍵の保存の条件を確かめる (REQ-WORKLOADIDENTITY-018)。
+// stored は鍵を保存済みの、jwks_uri を持たない信頼設定である。
+//   - 保存済みより古い取得は書かず、別の取得元からの取得も書かない。
+//   - jwks_uri を変えない更新は、読んだときの値で保存した鍵を戻さない。
+//   - jwks_uri を変える更新は、保存した鍵と時刻を消す。
+func runJWKSStoreConditions(t *testing.T, f Fixture, stored *domain.WorkloadTrustBundle) {
+	t.Helper()
+	ctx := context.Background()
+	reload := func() *domain.WorkloadTrustBundle {
+		t.Helper()
+		b, err := f.TrustBundles.FindByID(ctx, f.TenantA, f.BundleID)
+		if err != nil || b == nil {
+			t.Fatalf("FindByID = (%+v, %v)", b, err)
+		}
+		return b
+	}
+	staleRead := *stored
+	stale := domain.JWKSSnapshot{Keys: []map[string]any{{"kid": "older"}}, FetchedAt: stored.JWKSCachedAt.Add(-time.Second)}
+	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, nil, stale); err != nil {
+		t.Fatalf("older RecordJWKSFetched: %v", err)
+	}
+	otherSource := "https://other-source.example.test/jwks"
+	foreign := domain.JWKSSnapshot{Keys: []map[string]any{{"kid": "foreign"}}, FetchedAt: stored.JWKSCachedAt.Add(time.Hour)}
+	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, &otherSource, foreign); err != nil {
+		t.Fatalf("other source RecordJWKSFetched: %v", err)
+	}
+	if got := reload(); !reflect.DeepEqual(got, stored) {
+		t.Fatalf("older or foreign fetch changed the stored keys = %+v, want %+v", got, stored)
+	}
+
+	newer := domain.JWKSSnapshot{Keys: []map[string]any{{"kid": "newer"}}, FetchedAt: stored.JWKSCachedAt.Add(time.Minute)}
+	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, nil, newer); err != nil {
+		t.Fatalf("newer RecordJWKSFetched: %v", err)
+	}
+	staleRead.Name = "Renamed"
+	if err := f.TrustBundles.Save(ctx, &staleRead); err != nil {
+		t.Fatalf("Save without a source change: %v", err)
+	}
+	if got := reload(); got.Name != "Renamed" || got.JWKSCachedAt == nil || !got.JWKSCachedAt.Equal(newer.FetchedAt) || !reflect.DeepEqual(got.JWKSCached, newer.Keys) {
+		t.Fatalf("Save without a source change = %+v, want the newer stored keys kept", got)
+	}
+
+	moved := *reload()
+	moved.JWKSURI = &otherSource
+	if err := f.TrustBundles.Save(ctx, &moved); err != nil {
+		t.Fatalf("Save with a source change: %v", err)
+	}
+	if got := reload(); got.JWKSCachedAt != nil || got.JWKSCached != nil {
+		t.Fatalf("Save with a source change = %+v, want the stored keys cleared", got)
+	}
+	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, &otherSource, foreign); err != nil {
+		t.Fatalf("RecordJWKSFetched from the new source: %v", err)
+	}
+	if got := reload(); got.JWKSCachedAt == nil || !got.JWKSCachedAt.Equal(foreign.FetchedAt) || !reflect.DeepEqual(got.JWKSCached, foreign.Keys) {
+		t.Fatalf("fetch from the new source = %+v, want it stored", got)
+	}
 }
 
 // runSPIFFE は spiffe の信頼設定の保存と探索を確かめる。発行者のない行を保存して読み戻せ、

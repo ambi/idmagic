@@ -66,11 +66,7 @@ func VerifyWorkloadAttestation(
 		return reject("trust_bundle_disabled", bundle.ID)
 	}
 
-	claims, err := deps.SVIDVerifier.Verify(
-		ctx, bundle, in.SubjectToken,
-		func(ctx context.Context) ([]map[string]any, error) { return deps.FetchJWKS(ctx, bundle) },
-		now,
-	)
+	claims, err := deps.SVIDVerifier.Verify(ctx, bundle, in.SubjectToken, fetchAndStoreJWKS(deps, bundle, now), now)
 	if err != nil {
 		return reject(workloadSVIDRejectReason(err), bundle.ID)
 	}
@@ -115,6 +111,26 @@ func VerifyWorkloadAttestation(
 		TrustBundleID: bundle.ID,
 		BindingID:     bindingID,
 	}, nil
+}
+
+// fetchAndStoreJWKS は信頼設定の鍵を取得し、jwks_uri から取得できた集合を、保存した集合と
+// 異なるか保存から JWKSStoreInterval を過ぎていれば、最後に取得できた鍵として保存する
+// (REQ-WORKLOADIDENTITY-018)。保存に失敗しても取得の結果は変えない。保存は取得元に届かない
+// 間の備えであり、その失敗で今の検証を拒否すると、可用性のための仕組みが可用性を下げる。
+func fetchAndStoreJWKS(
+	deps VerifyWorkloadAttestationDeps, bundle *domain.WorkloadTrustBundle, now time.Time,
+) func(ctx context.Context) ([]map[string]any, error) {
+	return func(ctx context.Context) ([]map[string]any, error) {
+		keys, err := deps.FetchJWKS(ctx, bundle)
+		if err != nil || !bundle.FetchesJWKSURI() {
+			return keys, err
+		}
+		fetched := domain.JWKSSnapshot{Keys: keys, FetchedAt: now}
+		if bundle.NeedsJWKSStore(fetched) {
+			_ = deps.TrustBundleRepo.RecordJWKSFetched(ctx, bundle.TenantID, bundle.ID, bundle.JWKSURI, fetched)
+		}
+		return keys, nil
+	}
 }
 
 // findTrustBundle は署名の検証の前に読んだ iss と sub で、テナントの信頼設定を選ぶ

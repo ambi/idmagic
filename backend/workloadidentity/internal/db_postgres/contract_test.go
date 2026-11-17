@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/testing_contract"
 )
 
-//spec:covers REQ-WORKLOADIDENTITY-008
+//spec:covers REQ-WORKLOADIDENTITY-008, REQ-WORKLOADIDENTITY-018: 最後に取得できた鍵の集合と時刻を保存して読み戻し、古い取得と別の取得元からの取得では書かず、jwks_uri を変える更新で消す。
 func TestPersistenceContract(t *testing.T) {
 	testing_contract.Run(t, func(t *testing.T) testing_contract.Fixture {
 		t.Helper()

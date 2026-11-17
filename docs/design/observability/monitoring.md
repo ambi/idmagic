@@ -58,6 +58,15 @@ API と Worker は `idmagic_audit_export_operations_total{operation,outcome}` �
 要求の増加に対して成功が進まない場合は Worker のデプロイと bulk 枠、失敗が増えた場合は上限到達と保存先障害を確認する。
 保存量が減らない場合は `retention-sweep` の成功と成果物の期限を確認する。
 
+### ワークロードの JWKS の猶予
+
+API は `idmagic_workload_jwks_fallback_total{source}` で、信頼設定の `jwks_uri` を取得できず、最後に取得できた鍵でアテステーションを検証した回数を数える。
+`source` は、プロセスのメモリの鍵なら `memory`、信頼設定に保存した鍵なら `stored` である。
+増え続ける場合は外部の取得元の障害であり、最後の取得から 24 時間で交換が `jwks_unavailable` の拒否に変わる。
+`stored` の増加は、障害の間に起動したプロセスが交換を受けていることを示す。
+自動通知は持たず、ダッシュボードのみである。
+仕組みは[アテステーションの交換の信頼性](../../modules/workloadidentity/features/attestation-exchange.md#信頼性)が定める。
+
 ## 要求の種別
 
 API の指標は `route` ラベルを持つが、登録済みの経路は 500 本を超えるので、そのままでは用途ごとの負荷を読めない。

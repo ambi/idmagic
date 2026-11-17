@@ -62,6 +62,11 @@ func trustBundleFromRow(row *WorkloadTrustBundle) (*workloaddomain.WorkloadTrust
 		}
 		b.JWKS = jwks
 	}
+	if len(row.JwksCached) > 0 {
+		if err := json.Unmarshal(row.JwksCached, &b.JWKSCached); err != nil {
+			return nil, err
+		}
+	}
 	if err := json.Unmarshal(row.AcceptedAudiences, &b.AcceptedAudiences); err != nil {
 		return nil, err
 	}
@@ -133,6 +138,13 @@ func (r *WorkloadTrustBundleRepository) Save(ctx context.Context, b *workloaddom
 			return err
 		}
 	}
+	var cachedJSON []byte
+	if b.JWKSCached != nil {
+		cachedJSON, err = json.Marshal(b.JWKSCached)
+		if err != nil {
+			return err
+		}
+	}
 	updatedAt := time.Now().UTC()
 	if b.UpdatedAt != nil {
 		updatedAt = *b.UpdatedAt
@@ -144,12 +156,22 @@ func (r *WorkloadTrustBundleRepository) Save(ctx context.Context, b *workloaddom
 		MaxSubjectTokenTtlSeconds: int32(b.MaxSubjectTokenTTLSeconds), //nolint:gosec // G115: TTL seconds is admin-configured and validated positive, well under int32 max
 		Status:                    string(b.Status),
 		CreatedAt:                 b.CreatedAt, UpdatedAt: updatedAt, JwksCachedAt: timestamptzOrNilPtr(b.JWKSCachedAt),
+		JwksCached: cachedJSON,
 	})
 }
 
-func (r *WorkloadTrustBundleRepository) RecordJWKSFetched(ctx context.Context, tenantID, id string, at time.Time) error {
+func (r *WorkloadTrustBundleRepository) RecordJWKSFetched(ctx context.Context, tenantID, id string, jwksURI *string, fetched workloaddomain.JWKSSnapshot) error {
+	keys := fetched.Keys
+	if keys == nil {
+		keys = []map[string]any{}
+	}
+	keysJSON, err := json.Marshal(keys)
+	if err != nil {
+		return err
+	}
 	return New(r.Pool).RecordWorkloadTrustBundleJWKSFetched(ctx, RecordWorkloadTrustBundleJWKSFetchedParams{
-		TenantID: tenantID, ID: id, JwksCachedAt: timestamptzOrNilPtr(&at),
+		TenantID: tenantID, ID: id, JwksUri: textOrNilPtr(jwksURI),
+		FetchedAt: timestamptzOrNilPtr(&fetched.FetchedAt), Keys: keysJSON,
 	})
 }
 

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math/big"
+	"slices"
 	"testing"
 	"time"
 
@@ -17,14 +18,35 @@ import (
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/verification_jose"
 )
 
-func signSVID(t *testing.T, key *rsa.PrivateKey, kid, iss, sub, aud string, iat, exp time.Time) string {
+const (
+	testIssuer   = "https://issuer.example"
+	testAudience = "https://idmagic.example/token"
+	testKID      = "workload-key"
+	testSubject  = "spiffe://example.org/ns/prod/sa/worker-1"
+)
+
+// newSigningKey は署名鍵と、その公開鍵の JWK を返す。
+func newSigningKey(t *testing.T) (*rsa.PrivateKey, map[string]any) {
 	t.Helper()
-	header, err := json.Marshal(map[string]any{"alg": "RS256", "kid": kid})
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return key, map[string]any{
+		"kty": "RSA", "kid": testKID,
+		"n": base64.RawURLEncoding.EncodeToString(key.N.Bytes()),
+		"e": base64.RawURLEncoding.EncodeToString(new(big.Int).SetInt64(int64(key.E)).Bytes()),
+	}
+}
+
+func signSVID(t *testing.T, key *rsa.PrivateKey, iat, exp time.Time) string {
+	t.Helper()
+	header, err := json.Marshal(map[string]any{"alg": "RS256", "kid": testKID})
 	if err != nil {
 		t.Fatal(err)
 	}
 	payload, err := json.Marshal(map[string]any{
-		"iss": iss, "sub": sub, "aud": aud, "iat": iat.Unix(), "exp": exp.Unix(),
+		"iss": testIssuer, "sub": testSubject, "aud": testAudience, "iat": iat.Unix(), "exp": exp.Unix(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -38,60 +60,89 @@ func signSVID(t *testing.T, key *rsa.PrivateKey, kid, iss, sub, aud string, iat,
 	return input + "." + base64.RawURLEncoding.EncodeToString(sig)
 }
 
-func TestVerifier_Verify(t *testing.T) {
-	const issuer = "https://issuer.example"
-	const audience = "https://idmagic.example/token"
-	const kid = "workload-key"
-	now := time.Now().UTC()
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
-	jwk := map[string]any{
-		"kty": "RSA", "kid": kid,
-		"n": base64.RawURLEncoding.EncodeToString(key.N.Bytes()),
-		"e": base64.RawURLEncoding.EncodeToString(new(big.Int).SetInt64(int64(key.E)).Bytes()),
-	}
-	fetch := func(context.Context) ([]map[string]any, error) { return []map[string]any{jwk}, nil } //nolint:unparam // error is always nil for this successful-fetch fixture; the failure path is exercised separately below
+func fetchKeys(jwk map[string]any) func(context.Context) ([]map[string]any, error) {
+	return func(context.Context) ([]map[string]any, error) { return []map[string]any{jwk}, nil }
+}
 
-	v := verification_jose.NewVerifier()
+func failingFetch(context.Context) ([]map[string]any, error) {
+	return nil, errors.New("network down")
+}
+
+func TestVerifier_Verify(t *testing.T) {
+	now := time.Now().UTC()
+	key, jwk := newSigningKey(t)
+	fetch := fetchKeys(jwk)
+
+	v := verification_jose.NewVerifier(nil)
 
 	t.Run("accepts a valid SVID", func(t *testing.T) {
-		token := signSVID(t, key, kid, issuer, "spiffe://example.org/ns/prod/sa/worker-1", audience, now, now.Add(10*time.Minute))
-		claims, err := v.Verify(context.Background(), oidcBundle("bundle-1", issuer, audience), token, fetch, now)
+		token := signSVID(t, key, now, now.Add(10*time.Minute))
+		claims, err := v.Verify(context.Background(), oidcBundle("bundle-1"), token, fetch, now)
 		if err != nil {
 			t.Fatalf("Verify: %v", err)
 		}
-		if claims.Subject != "spiffe://example.org/ns/prod/sa/worker-1" {
+		if claims.Subject != testSubject {
 			t.Fatalf("claims = %+v", claims)
 		}
 	})
 
 	t.Run("translates spoofed signature to a domain sentinel error", func(t *testing.T) {
-		attacker, err := rsa.GenerateKey(rand.Reader, 2048)
-		if err != nil {
-			t.Fatal(err)
-		}
-		token := signSVID(t, attacker, kid, issuer, "spiffe://example.org/ns/prod/sa/worker-1", audience, now, now.Add(10*time.Minute))
-		_, err = v.Verify(context.Background(), oidcBundle("bundle-1", issuer, audience), token, fetch, now)
+		attacker, _ := newSigningKey(t)
+		token := signSVID(t, attacker, now, now.Add(10*time.Minute))
+		_, err := v.Verify(context.Background(), oidcBundle("bundle-1"), token, fetch, now)
 		if !errors.Is(err, workloaddomain.ErrSVIDInvalidSignature) {
 			t.Fatalf("err = %v, want ErrSVIDInvalidSignature", err)
 		}
 	})
 
 	t.Run("translates a fetch failure to ErrSVIDKeysUnavailable", func(t *testing.T) {
-		failing := func(context.Context) ([]map[string]any, error) { return nil, errors.New("network down") }
-		token := signSVID(t, key, kid, issuer, "spiffe://example.org/ns/prod/sa/worker-1", audience, now, now.Add(10*time.Minute))
-		_, err := v.Verify(context.Background(), oidcBundle("bundle-2", issuer, audience), token, failing, now)
+		token := signSVID(t, key, now, now.Add(10*time.Minute))
+		_, err := v.Verify(context.Background(), oidcBundle("bundle-2"), token, failingFetch, now)
 		if !errors.Is(err, workloaddomain.ErrSVIDKeysUnavailable) {
 			t.Fatalf("err = %v, want ErrSVIDKeysUnavailable", err)
 		}
 	})
 }
 
-func oidcBundle(id, issuer, audience string) *workloaddomain.WorkloadTrustBundle {
+// 取得に失敗して最後に取得できた鍵を使ったとき、出所を観測者へ渡す。メモリの鍵は
+// jwks_uri ごとに持つので、jwks_uri を変えた信頼設定には古い取得元の鍵を使わない。
+//
+//spec:covers REQ-WORKLOADIDENTITY-018: 現在の jwks_uri から最後に取得できた鍵だけを使い、プロセスのメモリと保存した鍵のどちらを使ったかを区別する。
+func TestVerifier_ReportsTheLastGoodKeySource(t *testing.T) {
+	now := time.Now().UTC()
+	key, jwk := newSigningKey(t)
+	token := signSVID(t, key, now, now.Add(10*time.Minute))
+	withURI := func(uri string) *workloaddomain.WorkloadTrustBundle {
+		b := oidcBundle("bundle-1")
+		b.JWKSURI = &uri
+		return b
+	}
+
+	var sources []string
+	v := verification_jose.NewVerifier(func(source string) { sources = append(sources, source) })
+	if _, err := v.Verify(context.Background(), withURI("https://issuer.example/jwks"), token, fetchKeys(jwk), now); err != nil {
+		t.Fatalf("live Verify: %v", err)
+	}
+	if _, err := v.Verify(context.Background(), withURI("https://issuer.example/jwks"), token, failingFetch, now.Add(time.Minute)); err != nil {
+		t.Fatalf("memory Verify: %v", err)
+	}
+	if _, err := v.Verify(context.Background(), withURI("https://issuer.example/moved"), token, failingFetch, now.Add(time.Minute)); !errors.Is(err, workloaddomain.ErrSVIDKeysUnavailable) {
+		t.Fatalf("moved source Verify err = %v, want ErrSVIDKeysUnavailable", err)
+	}
+	stored := withURI("https://issuer.example/moved")
+	fetchedAt := now.Add(-time.Hour)
+	stored.JWKSCached, stored.JWKSCachedAt = []map[string]any{jwk}, &fetchedAt
+	if _, err := v.Verify(context.Background(), stored, token, failingFetch, now.Add(time.Minute)); err != nil {
+		t.Fatalf("stored Verify: %v", err)
+	}
+	if want := []string{"memory", "stored"}; !slices.Equal(sources, want) {
+		t.Fatalf("sources = %v, want %v", sources, want)
+	}
+}
+
+func oidcBundle(id string) *workloaddomain.WorkloadTrustBundle {
 	return &workloaddomain.WorkloadTrustBundle{
-		ID: id, Profile: workloaddomain.WorkloadTrustBundleProfileOIDC, Issuer: issuer,
-		AcceptedAudiences: []string{audience}, MaxSubjectTokenTTLSeconds: 3600,
+		ID: id, Profile: workloaddomain.WorkloadTrustBundleProfileOIDC, Issuer: testIssuer,
+		AcceptedAudiences: []string{testAudience}, MaxSubjectTokenTTLSeconds: 3600,
 	}
 }

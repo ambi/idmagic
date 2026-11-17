@@ -112,7 +112,7 @@ func newFixture(t *testing.T) *fixture {
 		TrustBundleRepo: bundleRepo,
 		BindingRepo:     bindingRepo,
 		AgentRepo:       agentRepo,
-		SVIDVerifier:    verification_jose.NewVerifier(),
+		SVIDVerifier:    verification_jose.NewVerifier(nil),
 		FetchJWKS: func(context.Context, *workloaddomain.WorkloadTrustBundle) ([]map[string]any, error) {
 			return []map[string]any{jwk}, nil
 		},

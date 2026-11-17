@@ -17,8 +17,11 @@ type Querier interface {
 	FindWorkloadTrustBundleByIssuer(ctx context.Context, arg FindWorkloadTrustBundleByIssuerParams) (*WorkloadTrustBundle, error)
 	ListAgentWorkloadBindingsByTrustBundle(ctx context.Context, arg ListAgentWorkloadBindingsByTrustBundleParams) ([]*AgentWorkloadBinding, error)
 	ListWorkloadTrustBundlesByTenant(ctx context.Context, tenantID string) ([]*WorkloadTrustBundle, error)
+	// 取得した jwks_uri が今も行の取得元で、保存済みの取得より新しい場合だけ書く。
 	RecordWorkloadTrustBundleJWKSFetched(ctx context.Context, arg RecordWorkloadTrustBundleJWKSFetchedParams) error
 	SaveAgentWorkloadBinding(ctx context.Context, arg SaveAgentWorkloadBindingParams) error
+	// 更新では、最後に取得できた鍵 (jwks_cached と jwks_cached_at) を読んだ値で上書きせず、
+	// jwks_uri が変わるときだけ消す。並行した取得の記録を古い値へ戻さない。
 	SaveWorkloadTrustBundle(ctx context.Context, arg SaveWorkloadTrustBundleParams) error
 	UpdateAgentWorkloadBindingMapping(ctx context.Context, arg UpdateAgentWorkloadBindingMappingParams) (*AgentWorkloadBinding, error)
 }

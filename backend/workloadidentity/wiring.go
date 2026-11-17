@@ -19,11 +19,17 @@ import (
 )
 
 func NewMemoryModule() Module {
-	return Module{TrustBundleRepo: db_memory.NewWorkloadTrustBundleRepository(), BindingRepo: db_memory.NewAgentWorkloadBindingRepository()}
+	return Module{
+		TrustBundleRepo: db_memory.NewWorkloadTrustBundleRepository(), BindingRepo: db_memory.NewAgentWorkloadBindingRepository(),
+		jwksFallback: newJWKSFallbackMetrics(),
+	}
 }
 
 func NewPostgresModule(pool postgres.DB) Module {
-	return Module{TrustBundleRepo: &db_postgres.WorkloadTrustBundleRepository{Pool: pool}, BindingRepo: &db_postgres.AgentWorkloadBindingRepository{Pool: pool}}
+	return Module{
+		TrustBundleRepo: &db_postgres.WorkloadTrustBundleRepository{Pool: pool}, BindingRepo: &db_postgres.AgentWorkloadBindingRepository{Pool: pool},
+		jwksFallback: newJWKSFallbackMetrics(),
+	}
 }
 
 type RouteDeps struct {
@@ -44,7 +50,7 @@ func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
 func (m Module) TokenVerifier(agents agentports.AgentRepository, fetch func(context.Context, *domain.WorkloadTrustBundle) ([]map[string]any, error), emit func(spec.DomainEvent)) usecases.WorkloadTokenVerifierAdapter {
 	return usecases.WorkloadTokenVerifierAdapter{Deps: usecases.VerifyWorkloadAttestationDeps{
 		TrustBundleRepo: m.TrustBundleRepo, BindingRepo: m.BindingRepo, AgentRepo: agents,
-		SVIDVerifier: verification_jose.NewVerifier(), FetchJWKS: fetch, Emit: emit,
+		SVIDVerifier: verification_jose.NewVerifier(m.jwksFallback.observe), FetchJWKS: fetch, Emit: emit,
 	}}
 }
 

@@ -64,11 +64,7 @@ func VerifyWorkloadClientAssertion(
 	// 署名と有効期間の検証には発行者識別子だけを audience として渡す。
 	expectation := *bundle
 	expectation.AcceptedAudiences = []string{in.ExpectedAudience}
-	claims, err := deps.SVIDVerifier.Verify(
-		ctx, &expectation, in.Assertion,
-		func(ctx context.Context) ([]map[string]any, error) { return deps.FetchJWKS(ctx, bundle) },
-		now,
-	)
+	claims, err := deps.SVIDVerifier.Verify(ctx, &expectation, in.Assertion, fetchAndStoreJWKS(deps, bundle, now), now)
 	if err != nil {
 		return reject(workloadSVIDRejectReason(err), bundle.ID)
 	}

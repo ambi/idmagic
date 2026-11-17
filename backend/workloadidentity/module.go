@@ -13,4 +13,5 @@ import (
 type Module struct {
 	TrustBundleRepo ports.WorkloadTrustBundleRepository
 	BindingRepo     ports.AgentWorkloadBindingRepository
+	jwksFallback    *jwksFallbackMetrics
 }

@@ -28,7 +28,7 @@ func (q *Queries) DeleteWorkloadTrustBundle(ctx context.Context, arg DeleteWorkl
 
 const findSPIFFEWorkloadTrustBundleByTrustDomain = `-- name: FindSPIFFEWorkloadTrustBundleByTrustDomain :one
 SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
-max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
+max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at,jwks_cached
 FROM workload_trust_bundles WHERE tenant_id=$1 AND profile='spiffe' AND trust_domain=$2
 `
 
@@ -55,13 +55,14 @@ func (q *Queries) FindSPIFFEWorkloadTrustBundleByTrustDomain(ctx context.Context
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.JwksCachedAt,
+		&i.JwksCached,
 	)
 	return &i, err
 }
 
 const findWorkloadTrustBundleByID = `-- name: FindWorkloadTrustBundleByID :one
 SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
-max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
+max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at,jwks_cached
 FROM workload_trust_bundles WHERE tenant_id=$1 AND id=$2
 `
 
@@ -88,13 +89,14 @@ func (q *Queries) FindWorkloadTrustBundleByID(ctx context.Context, arg FindWorkl
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.JwksCachedAt,
+		&i.JwksCached,
 	)
 	return &i, err
 }
 
 const findWorkloadTrustBundleByIssuer = `-- name: FindWorkloadTrustBundleByIssuer :one
 SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
-max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
+max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at,jwks_cached
 FROM workload_trust_bundles WHERE tenant_id=$1 AND issuer=$2
 `
 
@@ -121,13 +123,14 @@ func (q *Queries) FindWorkloadTrustBundleByIssuer(ctx context.Context, arg FindW
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.JwksCachedAt,
+		&i.JwksCached,
 	)
 	return &i, err
 }
 
 const listWorkloadTrustBundlesByTenant = `-- name: ListWorkloadTrustBundlesByTenant :many
 SELECT id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,accepted_audiences,
-max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at
+max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at,jwks_cached
 FROM workload_trust_bundles WHERE tenant_id=$1 ORDER BY name
 `
 
@@ -155,6 +158,7 @@ func (q *Queries) ListWorkloadTrustBundlesByTenant(ctx context.Context, tenantID
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.JwksCachedAt,
+			&i.JwksCached,
 		); err != nil {
 			return nil, err
 		}
@@ -167,28 +171,44 @@ func (q *Queries) ListWorkloadTrustBundlesByTenant(ctx context.Context, tenantID
 }
 
 const recordWorkloadTrustBundleJWKSFetched = `-- name: RecordWorkloadTrustBundleJWKSFetched :exec
-UPDATE workload_trust_bundles SET jwks_cached_at=$3 WHERE tenant_id=$1 AND id=$2
+UPDATE workload_trust_bundles SET jwks_cached_at=$1, jwks_cached=$2
+WHERE tenant_id=$3 AND id=$4
+ AND jwks_uri IS NOT DISTINCT FROM $5::text
+ AND (jwks_cached_at IS NULL OR jwks_cached_at <= $1)
 `
 
 type RecordWorkloadTrustBundleJWKSFetchedParams struct {
-	TenantID     string
-	ID           string
-	JwksCachedAt pgtype.Timestamptz
+	FetchedAt pgtype.Timestamptz
+	Keys      []byte
+	TenantID  string
+	ID        string
+	JwksUri   pgtype.Text
 }
 
+// 取得した jwks_uri が今も行の取得元で、保存済みの取得より新しい場合だけ書く。
 func (q *Queries) RecordWorkloadTrustBundleJWKSFetched(ctx context.Context, arg RecordWorkloadTrustBundleJWKSFetchedParams) error {
-	_, err := q.db.Exec(ctx, recordWorkloadTrustBundleJWKSFetched, arg.TenantID, arg.ID, arg.JwksCachedAt)
+	_, err := q.db.Exec(ctx, recordWorkloadTrustBundleJWKSFetched,
+		arg.FetchedAt,
+		arg.Keys,
+		arg.TenantID,
+		arg.ID,
+		arg.JwksUri,
+	)
 	return err
 }
 
 const saveWorkloadTrustBundle = `-- name: SaveWorkloadTrustBundle :exec
 INSERT INTO workload_trust_bundles (id,tenant_id,name,profile,trust_domain,issuer,jwks_uri,jwks,
- accepted_audiences,max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+ accepted_audiences,max_subject_token_ttl_seconds,status,created_at,updated_at,jwks_cached_at,jwks_cached)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,jwks_uri=EXCLUDED.jwks_uri,jwks=EXCLUDED.jwks,
  accepted_audiences=EXCLUDED.accepted_audiences,
  max_subject_token_ttl_seconds=EXCLUDED.max_subject_token_ttl_seconds,status=EXCLUDED.status,
- updated_at=EXCLUDED.updated_at,jwks_cached_at=EXCLUDED.jwks_cached_at
+ updated_at=EXCLUDED.updated_at,
+ jwks_cached_at=CASE WHEN workload_trust_bundles.jwks_uri IS DISTINCT FROM EXCLUDED.jwks_uri
+  THEN NULL ELSE workload_trust_bundles.jwks_cached_at END,
+ jwks_cached=CASE WHEN workload_trust_bundles.jwks_uri IS DISTINCT FROM EXCLUDED.jwks_uri
+  THEN NULL ELSE workload_trust_bundles.jwks_cached END
 `
 
 type SaveWorkloadTrustBundleParams struct {
@@ -206,8 +226,11 @@ type SaveWorkloadTrustBundleParams struct {
 	CreatedAt                 time.Time
 	UpdatedAt                 time.Time
 	JwksCachedAt              pgtype.Timestamptz
+	JwksCached                []byte
 }
 
+// 更新では、最後に取得できた鍵 (jwks_cached と jwks_cached_at) を読んだ値で上書きせず、
+// jwks_uri が変わるときだけ消す。並行した取得の記録を古い値へ戻さない。
 func (q *Queries) SaveWorkloadTrustBundle(ctx context.Context, arg SaveWorkloadTrustBundleParams) error {
 	_, err := q.db.Exec(ctx, saveWorkloadTrustBundle,
 		arg.ID,
@@ -224,6 +247,7 @@ func (q *Queries) SaveWorkloadTrustBundle(ctx context.Context, arg SaveWorkloadT
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.JwksCachedAt,
+		arg.JwksCached,
 	)
 	return err
 }

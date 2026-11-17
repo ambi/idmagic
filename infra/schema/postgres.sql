@@ -1101,6 +1101,8 @@ CREATE TABLE workload_trust_bundles (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     jwks_cached_at TIMESTAMPTZ,
+    -- wi-41950: 現在の jwks_uri から最後に取得できた鍵の集合 (JWK の配列)。取得時刻は jwks_cached_at。
+    jwks_cached JSONB,
     CONSTRAINT workload_trust_bundles_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT workload_trust_bundles_tenant_name_key UNIQUE (tenant_id, name),

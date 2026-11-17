@@ -301,49 +301,83 @@ func audienceStrings(aud any) []string {
 
 const workloadJWKSMaxStaleness = 24 * time.Hour
 
-type workloadJWKSCacheEntry struct {
-	keys      []map[string]any
-	fetchedAt time.Time
+// WorkloadJWKSSnapshot は取得できた鍵の集合と、その取得の時刻である。
+type WorkloadJWKSSnapshot struct {
+	Keys      []map[string]any
+	FetchedAt time.Time
 }
 
-// WorkloadJWKSCache は WorkloadTrustBundle ごとの JWKS を last-known-good として
-// キャッシュする。ライブ取得に失敗しても、直近の成功取得から workloadJWKSMaxStaleness
-// 以内であれば古い鍵を使い続け (ネットワーク瞬断への耐性)、それを超えれば fail-closed で
-// 拒否する ([[wi-54-workload-identity-federation-spiffe]])。
+// WorkloadJWKSSource は WorkloadJWKSCache.Get が返した鍵の出所である。
+type WorkloadJWKSSource int
+
+const (
+	// WorkloadJWKSLive は今回の取得で得た鍵である。
+	WorkloadJWKSLive WorkloadJWKSSource = iota
+	// WorkloadJWKSMemory はこのプロセスが以前に取得した鍵である。
+	WorkloadJWKSMemory
+	// WorkloadJWKSStored は呼び出し側が永続化から渡した鍵である。
+	WorkloadJWKSStored
+)
+
+func (s WorkloadJWKSSource) String() string {
+	switch s {
+	case WorkloadJWKSMemory:
+		return "memory"
+	case WorkloadJWKSStored:
+		return "stored"
+	default:
+		return "live"
+	}
+}
+
+// WorkloadJWKSCache は信頼設定ごとの JWKS を last-known-good としてキャッシュする。
+// 取得に失敗しても、このプロセスのメモリの鍵と、呼び出し側が永続化から渡した鍵のうち
+// 取得の新しいほうを、取得から workloadJWKSMaxStaleness 以内なら使い続け、それを超えれば
+// fail-closed で拒否する (REQ-WORKLOADIDENTITY-018)。
 type WorkloadJWKSCache struct {
 	mu      sync.Mutex
-	entries map[string]workloadJWKSCacheEntry
+	entries map[string]WorkloadJWKSSnapshot
 }
 
 func NewWorkloadJWKSCache() *WorkloadJWKSCache {
-	return &WorkloadJWKSCache{entries: map[string]workloadJWKSCacheEntry{}}
+	return &WorkloadJWKSCache{entries: map[string]WorkloadJWKSSnapshot{}}
 }
 
-// Get はライブ取得を試み、成功すればキャッシュを更新して返す (stale=false)。失敗した
-// 場合、cacheKey の last-known-good が workloadJWKSMaxStaleness 以内なら stale=true で
-// それを返す。live 取得が失敗し、使える cache も無ければ fail-closed でエラーを返す。
+// Get は取得を試み、成功すればメモリを更新して WorkloadJWKSLive で返す。失敗した場合、
+// cacheKey のメモリの鍵と stored (nil なら無し) のうち取得の新しいほうを、取得から
+// workloadJWKSMaxStaleness 以内ならその出所とともに返す。どちらも使えなければ
+// fail-closed でエラーを返す。
 func (c *WorkloadJWKSCache) Get(
 	ctx context.Context,
 	cacheKey string,
 	fetch func(ctx context.Context) ([]map[string]any, error),
+	stored *WorkloadJWKSSnapshot,
 	now time.Time,
-) (keys []map[string]any, stale bool, err error) {
+) ([]map[string]any, WorkloadJWKSSource, error) {
 	keys, fetchErr := fetch(ctx)
 	if fetchErr == nil {
 		c.mu.Lock()
-		c.entries[cacheKey] = workloadJWKSCacheEntry{keys: keys, fetchedAt: now}
+		c.entries[cacheKey] = WorkloadJWKSSnapshot{Keys: keys, FetchedAt: now}
 		c.mu.Unlock()
-		return keys, false, nil
+		return keys, WorkloadJWKSLive, nil
 	}
 
 	c.mu.Lock()
-	entry, ok := c.entries[cacheKey]
+	memory, inMemory := c.entries[cacheKey]
 	c.mu.Unlock()
-	if !ok {
-		return nil, false, fmt.Errorf("workload_jwks_cache: fetch failed and no cached keys exist: %w", fetchErr)
+	var best *WorkloadJWKSSnapshot
+	source := WorkloadJWKSLive
+	if inMemory {
+		best, source = &memory, WorkloadJWKSMemory
 	}
-	if now.Sub(entry.fetchedAt) > workloadJWKSMaxStaleness {
-		return nil, false, fmt.Errorf("workload_jwks_cache: fetch failed and last-known-good is stale beyond %s: %w", workloadJWKSMaxStaleness, fetchErr)
+	if stored != nil && (best == nil || stored.FetchedAt.After(best.FetchedAt)) {
+		best, source = stored, WorkloadJWKSStored
 	}
-	return entry.keys, true, nil
+	if best == nil {
+		return nil, WorkloadJWKSLive, fmt.Errorf("workload_jwks_cache: fetch failed and no cached keys exist: %w", fetchErr)
+	}
+	if now.Sub(best.FetchedAt) > workloadJWKSMaxStaleness {
+		return nil, WorkloadJWKSLive, fmt.Errorf("workload_jwks_cache: fetch failed and last-known-good is stale beyond %s: %w", workloadJWKSMaxStaleness, fetchErr)
+	}
+	return best.Keys, source, nil
 }

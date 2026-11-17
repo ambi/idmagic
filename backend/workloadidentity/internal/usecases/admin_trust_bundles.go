@@ -181,6 +181,10 @@ func UpdateWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDe
 		return &updated, nil
 	}
 	updated.UpdatedAt = &now
+	// 最後に取得できた鍵は現在の jwks_uri のものだけを使う (REQ-WORKLOADIDENTITY-018)。
+	if updated.JWKSSourceChanged(*bundle) {
+		updated.JWKSCached, updated.JWKSCachedAt = nil, nil
+	}
 	if err := updated.Validate(); err != nil {
 		return nil, err
 	}
@@ -281,7 +285,8 @@ func RefreshWorkloadTrustBundleJWKS(ctx context.Context, deps AdminWorkloadIdent
 	reachable := fetchErr == nil
 	result := &RefreshWorkloadTrustBundleJWKSResult{Reachable: reachable, KeyCount: len(keys)}
 	if reachable {
-		if err := deps.TrustBundleRepo.RecordJWKSFetched(ctx, tenantID, id, now); err != nil {
+		fetched := domain.JWKSSnapshot{Keys: keys, FetchedAt: now}
+		if err := deps.TrustBundleRepo.RecordJWKSFetched(ctx, tenantID, id, bundle.JWKSURI, fetched); err != nil {
 			return nil, err
 		}
 		result.JWKSCachedAt = &now

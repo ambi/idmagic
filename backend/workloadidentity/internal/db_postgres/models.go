@@ -37,4 +37,5 @@ type WorkloadTrustBundle struct {
 	CreatedAt                 time.Time
 	UpdatedAt                 time.Time
 	JwksCachedAt              pgtype.Timestamptz
+	JwksCached                []byte
 }

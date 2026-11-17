@@ -23,9 +23,11 @@ type WorkloadTrustBundleRepository interface {
 	// oidc の信頼設定は、同じラベルを持っていても返さない。無ければ nil を返す。
 	FindSPIFFEByTrustDomain(ctx context.Context, tenantID, trustDomain string) (*workloaddomain.WorkloadTrustBundle, error)
 	Save(ctx context.Context, bundle *workloaddomain.WorkloadTrustBundle) error
-	// RecordJWKSFetched は取得時刻だけを記録し、取得中の設定変更を保持する。
+	// RecordJWKSFetched は jwksURI から取得できた鍵の集合と取得時刻だけを記録し、取得中の
+	// 設定変更を保持する。行の jwks_uri が jwksURI と異なるか、保存済みの時刻が取得時刻より
+	// 新しければ書かず、古い取得元や遅れて終わった取得が新しい内容を書き換えない。
 	// 存在しない行は作らない。
-	RecordJWKSFetched(ctx context.Context, tenantID, id string, at time.Time) error
+	RecordJWKSFetched(ctx context.Context, tenantID, id string, jwksURI *string, fetched workloaddomain.JWKSSnapshot) error
 	// Delete は WorkloadTrustBundle 単体を削除する。配下の AgentWorkloadBinding の
 	// cascade 削除は usecase 層が AgentWorkloadBindingRepository を通じて行う責務。
 	Delete(ctx context.Context, tenantID, id string) error

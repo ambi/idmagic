@@ -147,6 +147,9 @@ func Run() error {
 	if err := appMetrics.RegisterCollector(deps.Audit.ExportCollector()); err != nil {
 		return fmt.Errorf("register audit export metrics: %w", err)
 	}
+	if err := appMetrics.RegisterCollector(deps.WorkloadIdentity.JWKSFallbackCollector()); err != nil {
+		return fmt.Errorf("register workload JWKS fallback metrics: %w", err)
+	}
 
 	// Echo フレームワークのログも同じ構造化ハンドラ (field 規約) に載せる。
 	e.Logger = slogLogger

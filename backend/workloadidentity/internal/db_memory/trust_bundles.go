@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
@@ -31,6 +30,7 @@ func NewWorkloadTrustBundleRepository() *WorkloadTrustBundleRepository {
 func cloneTrustBundle(b *workloaddomain.WorkloadTrustBundle) *workloaddomain.WorkloadTrustBundle {
 	cloned := *b
 	cloned.AcceptedAudiences = slices.Clone(b.AcceptedAudiences)
+	cloned.JWKSCached = slices.Clone(b.JWKSCached)
 	return &cloned
 }
 
@@ -93,16 +93,36 @@ func (r *WorkloadTrustBundleRepository) Save(_ context.Context, b *workloaddomai
 			return errDuplicateTrustBundleTrustDomain
 		}
 	}
-	r.bundles[sharedmem.ScopedKey(b.TenantID, b.ID, kernel.DefaultTenantID)] = cloneTrustBundle(b)
+	key := sharedmem.ScopedKey(b.TenantID, b.ID, kernel.DefaultTenantID)
+	saved := cloneTrustBundle(b)
+	// 更新では、最後に取得できた鍵を読んだ値で上書きせず、jwks_uri が変わるときだけ消す
+	// (PostgreSQL の SaveWorkloadTrustBundle と同じ)。
+	if existing := r.bundles[key]; existing != nil {
+		saved.JWKSCached, saved.JWKSCachedAt = existing.JWKSCached, existing.JWKSCachedAt
+		if saved.JWKSSourceChanged(*existing) {
+			saved.JWKSCached, saved.JWKSCachedAt = nil, nil
+		}
+	}
+	r.bundles[key] = saved
 	return nil
 }
 
-func (r *WorkloadTrustBundleRepository) RecordJWKSFetched(_ context.Context, tenantID, id string, at time.Time) error {
+func (r *WorkloadTrustBundleRepository) RecordJWKSFetched(_ context.Context, tenantID, id string, jwksURI *string, fetched workloaddomain.JWKSSnapshot) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if b := r.bundles[sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)]; b != nil {
-		b.JWKSCachedAt = &at
+	b := r.bundles[sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)]
+	if b == nil || b.JWKSSourceChanged(workloaddomain.WorkloadTrustBundle{JWKSURI: jwksURI}) {
+		return nil
 	}
+	if b.JWKSCachedAt != nil && b.JWKSCachedAt.After(fetched.FetchedAt) {
+		return nil
+	}
+	keys := fetched.Keys
+	if keys == nil {
+		keys = []map[string]any{}
+	}
+	at := fetched.FetchedAt
+	b.JWKSCached, b.JWKSCachedAt = slices.Clone(keys), &at
 	return nil
 }
 

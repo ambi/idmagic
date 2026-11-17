@@ -92,7 +92,7 @@ JWKS の再取得は到達確認を行い、成功時に取得時刻を記録す
 - 信頼設定がすでにその状態の間、管理者が無効化または再有効化を要求したとき、WorkloadIdentity は、204 を返し、イベントを発行しない。
 - 管理者が信頼設定を削除したとき、WorkloadIdentity は、配下の関連付けを先に消してから信頼設定を消し、204 を返し、`WorkloadTrustBundleDeleted` を発行する。
 - 管理者が JWKS の再取得を要求したとき、WorkloadIdentity は、到達できたかと、署名の検証に使う鍵（[REQ-WORKLOADIDENTITY-003](attestation-exchange.md#req-workloadidentity-003-署名が不正なアテステーションを拒否する) の表で選んだ鍵）の数を 200 で返し、到達できたかを載せた `WorkloadTrustBundleJWKSRefreshed` を発行する。
-- JWKS に到達できた間、管理者が JWKS の再取得を要求したとき、WorkloadIdentity は、再取得の時刻を `jwks_cached_at` に記録する。
+- JWKS に到達できた間、管理者が JWKS の再取得を要求したとき、WorkloadIdentity は、取得した鍵の集合を 最後に取得できた鍵（[アテステーションの交換](attestation-exchange.md)の REQ-WORKLOADIDENTITY-018）として保存し、再取得の時刻を `jwks_cached_at` に記録する。
 - JWKS に到達できない場合、WorkloadIdentity は、再取得をエラーにせず、`reachable` を `false` として返す。
 - 名前のない登録または更新を要求された場合、WorkloadIdentity は、422 と `workload_trust_bundle_name_required` で拒否する。
 - `oidc` の信頼設定では、発行者のない登録を要求された場合、WorkloadIdentity は、422 と `workload_trust_bundle_issuer_required` で拒否する。
