@@ -147,8 +147,8 @@ const toolRule = (name: string, assignmentID: string, scopes: string[]) => ({
   tool: { name, display_name: name, assignment_resource_id: assignmentID },
 })
 
-//spec:covers REQ-OAUTH2-094: 接続先ごとに登録、割当、トークンの上限、一覧の取得の状態と不足の案内を示す。
-it('TestMcpConnectionCheck shows per-server states and missing-configuration guidance', async () => {
+//spec:covers REQ-OAUTH2-094: 接続先ごとに四項目の状態と、不足している設定とその修正先を示す。
+it('shows per-server check states with guidance linking to where each gap is fixed', async () => {
   await renderWithRouter(
     <AdminAgentAccessPage
       agent={agent}
@@ -159,6 +159,11 @@ it('TestMcpConnectionCheck shows per-server states and missing-configuration gui
       }}
       guardrails={{
         agent: {
+          version: 'v',
+          updated_at: '',
+          allowed_resources: ['https://ok.example'],
+        },
+        tenant_default: {
           version: 'v',
           updated_at: '',
           allowed_resources: ['https://ok.example'],
@@ -206,14 +211,22 @@ it('TestMcpConnectionCheck shows per-server states and missing-configuration gui
   )
   expect(screen.getAllByText('No issues')).toHaveLength(4)
   expect(screen.getAllByText('Missing settings')).toHaveLength(4)
-  for (const guidance of [
-    'The registration is disabled.',
-    'No evaluation client is bound.',
-    'No operations of this connection are assigned.',
-    'A guardrail denies issuance for this connection.',
-    'No catalog has arrived from the Gateway.',
-  ]) {
-    expect(screen.getByText(new RegExp(guidance))).toBeTruthy()
+  const serverEdit = '/admin/mcp-resource-servers/srv-gap/edit'
+  for (const [guidance, href] of [
+    ['The registration is disabled.', serverEdit],
+    ['No evaluation client is bound.', serverEdit],
+    ['No operations of this connection are assigned.', '/admin/agents/agent-1/resources'],
+    [
+      'The Agent guardrail denies issuance for this connection.',
+      '/admin/agents/agent-1/guardrail/edit',
+    ],
+    ['No catalog has arrived from the Gateway.', serverEdit],
+  ] as const) {
+    expect(screen.getByRole('link', { name: new RegExp(guidance) })).toHaveAttribute('href', href)
   }
+  // テナントのデフォルトは管理コンソールに編集画面がないため、管理 API を案内してリンクにしない。
+  const tenantGuidance = screen.getByText(/The tenant default guardrail denies issuance/)
+  expect(tenantGuidance.textContent).toContain('PUT /api/admin/v1/agent-guardrail-default')
+  expect(tenantGuidance.closest('a')).toBeNull()
   expect(screen.getByText(/does not connect to MCP servers or run business tools/)).toBeTruthy()
 })

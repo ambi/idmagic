@@ -9,6 +9,23 @@ export function operationResourceID(server: McpResourceServer, toolName: string)
   )
 }
 
+// assignedOperationIDs は、Agent 自身へ直接付いた操作の割当 (invoke) の資源 ID を返す。
+// 集合を介した割当 (subject_relation 付き) と対象の範囲 (op/target など) は含めない。
+export function assignedOperationIDs(tuples: RelationTuple[], agentID: string): Set<string> {
+  return new Set(
+    tuples
+      .filter(
+        (tuple) =>
+          tuple.resource_type === MCP_OPERATION_TYPE &&
+          tuple.relation === 'invoke' &&
+          tuple.subject_type === 'agent' &&
+          tuple.subject_id === agentID &&
+          !tuple.subject_relation,
+      )
+      .map((tuple) => tuple.resource_id),
+  )
+}
+
 export function operationTuple(
   server: McpResourceServer,
   toolName: string,

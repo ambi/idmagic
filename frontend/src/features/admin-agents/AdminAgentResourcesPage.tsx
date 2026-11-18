@@ -6,7 +6,12 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
-import { MCP_OPERATION_TYPE, operationResourceID, operationTuple } from '../../lib/mcpAccess'
+import {
+  MCP_OPERATION_TYPE,
+  assignedOperationIDs,
+  operationResourceID,
+  operationTuple,
+} from '../../lib/mcpAccess'
 import type { AdminAgent, McpResourceServer, RelationTuple } from '../../types'
 import {
   invalidTargets,
@@ -41,18 +46,7 @@ export function AdminAgentResourcesPage({
   const t = useDictionary(agentResourcesDictionary)
   const base = tenantURL(`/admin/agents/${encodeURIComponent(agent.id)}/resources`)
   const [saved, setSaved] = useState(tuples)
-  const assigned = new Set(
-    saved
-      .filter(
-        (tuple) =>
-          tuple.resource_type === MCP_OPERATION_TYPE &&
-          tuple.relation === 'invoke' &&
-          tuple.subject_type === 'agent' &&
-          tuple.subject_id === agent.id &&
-          !tuple.subject_relation,
-      )
-      .map((tuple) => tuple.resource_id),
-  )
+  const assigned = assignedOperationIDs(saved, agent.id)
   const servers = resourceServers.filter((server) =>
     (server.access_rules ?? []).some((rule) => rule.tool),
   )

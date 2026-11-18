@@ -81,17 +81,26 @@ export const agentAccessDictionary = defineDictionary(
     gapAssignmentNoTools: '公開中のツールがありません。編集画面でツールを公開してください。',
     gapAssignmentUnassigned:
       'この接続先の操作への割当がありません。割当の画面で操作を割り当ててください。',
+    gapAssignmentTruncated:
+      '割当の材料が取得の上限に達したため、割当の有無を確かめられません。割当の画面で確認してください。',
     gapTokenLimitsScope:
       '割当済みの操作が要求するスコープをすべて含むクライアントがありません。資格情報の画面で束縛を見直してください。',
-    gapTokenLimitsResource:
-      'ガードレールがこの接続先への発行を拒否します。ガードレールの編集画面で許可する資源を見直してください。',
-    gapTokenLimitsDetailType:
-      'ガードレールが認可詳細の種類を許可していません。ガードレールの編集画面で許可する種類を見直してください。',
-    gapTokenLimitsExpired:
-      'ガードレールの期限を過ぎています。ガードレールの編集画面で期限を見直してください。',
+    gapAgentGuardrailResource:
+      'Agent のガードレールがこの接続先への発行を拒否します。ガードレールの編集画面で許可する資源を見直してください。',
+    gapAgentGuardrailDetailType:
+      'Agent のガードレールが認可詳細の種類を許可していません。ガードレールの編集画面で許可する種類を見直してください。',
+    gapAgentGuardrailExpired:
+      'Agent のガードレールの期限を過ぎています。ガードレールの編集画面で期限を見直してください。',
+    gapTenantGuardrailResource:
+      'テナントのデフォルトのガードレールがこの接続先への発行を拒否します。管理 API の PUT /api/admin/v1/agent-guardrail-default で許可する資源を見直してください。',
+    gapTenantGuardrailDetailType:
+      'テナントのデフォルトのガードレールが認可詳細の種類を許可していません。管理 API の PUT /api/admin/v1/agent-guardrail-default で許可する種類を見直してください。',
+    gapTenantGuardrailExpired:
+      'テナントのデフォルトのガードレールの期限を過ぎています。管理 API の PUT /api/admin/v1/agent-guardrail-default で期限を見直してください。',
     gapCatalogNotReceived:
       'Gateway からカタログが届いていません。Gateway の設定と上流への到達を確認してください。',
-    gapCatalogFetchFailed: 'カタログを取得できませんでした。再読み込みしてください。',
+    gapCatalogFetchFailed:
+      'カタログを取得できなかったため、一覧の取得を確かめられません。再読み込みしてください。',
   },
   {
     title: 'Access materials',
@@ -173,15 +182,25 @@ export const agentAccessDictionary = defineDictionary(
     gapAssignmentNoTools: 'No tools are published. Publish tools on the edit page.',
     gapAssignmentUnassigned:
       'No operations of this connection are assigned. Assign operations on the assignment page.',
+    gapAssignmentTruncated:
+      'The assignment materials reached the retrieval limit, so assignments could not be checked. Check them on the assignment page.',
     gapTokenLimitsScope:
       'No bound client covers all scopes the assigned operations require. Review the bindings on the credentials page.',
-    gapTokenLimitsResource:
-      'A guardrail denies issuance for this connection. Review allowed resources on the guardrail edit page.',
-    gapTokenLimitsDetailType:
-      'A guardrail does not allow the authorization detail types. Review allowed types on the guardrail edit page.',
-    gapTokenLimitsExpired: 'A guardrail has expired. Review its expiry on the guardrail edit page.',
+    gapAgentGuardrailResource:
+      'The Agent guardrail denies issuance for this connection. Review allowed resources on the guardrail edit page.',
+    gapAgentGuardrailDetailType:
+      'The Agent guardrail does not allow the authorization detail types. Review allowed types on the guardrail edit page.',
+    gapAgentGuardrailExpired:
+      'The Agent guardrail has expired. Review its expiry on the guardrail edit page.',
+    gapTenantGuardrailResource:
+      'The tenant default guardrail denies issuance for this connection. Review allowed resources with PUT /api/admin/v1/agent-guardrail-default.',
+    gapTenantGuardrailDetailType:
+      'The tenant default guardrail does not allow the authorization detail types. Review allowed types with PUT /api/admin/v1/agent-guardrail-default.',
+    gapTenantGuardrailExpired:
+      'The tenant default guardrail has expired. Review its expiry with PUT /api/admin/v1/agent-guardrail-default.',
     gapCatalogNotReceived:
       'No catalog has arrived from the Gateway. Check the Gateway configuration and upstream reachability.',
-    gapCatalogFetchFailed: 'The catalog could not be loaded. Reload the page.',
+    gapCatalogFetchFailed:
+      'The catalog could not be loaded, so catalog retrieval was not checked. Reload the page.',
   },
 )

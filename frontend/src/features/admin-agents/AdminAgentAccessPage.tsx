@@ -1,10 +1,11 @@
 import { tenantURL } from '../../api'
+import { RELATION_TUPLE_LIST_LIMIT } from '../../api/admin'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { useDictionary, useLocale } from '../../lib/i18n'
-import { MCP_OPERATION_TYPE, operationResourceID } from '../../lib/mcpAccess'
+import { MCP_OPERATION_TYPE, assignedOperationIDs, operationResourceID } from '../../lib/mcpAccess'
 import type {
   AgentAccessSummary,
   AdminAgent,
@@ -12,14 +13,15 @@ import type {
   AgentGuardrailPolicySet,
   McpResourceServer,
   RelationTuple,
-  ToolCatalog,
 } from '../../types'
 import { agentAccessDictionary } from './AdminAgentAccessPage.i18n'
 import {
   CONNECTION_CHECK_ITEMS,
   checkMcpConnections,
+  type CatalogResult,
   type ConnectionCheckGap,
   type ConnectionCheckItem,
+  type McpConnectionCheck,
 } from './mcpConnectionCheck'
 import { isTargetScoped, savedRange } from './targetRange'
 
@@ -38,7 +40,7 @@ export function AdminAgentAccessPage({
   guardrails: AgentGuardrailPolicySet
   resourceServers: McpResourceServer[]
   tuples: RelationTuple[]
-  catalogs: Record<string, ToolCatalog | 'failed'>
+  catalogs: Record<string, CatalogResult>
 }) {
   const t = useDictionary(agentAccessDictionary)
   const { locale } = useLocale()
@@ -47,11 +49,7 @@ export function AdminAgentAccessPage({
     (tuple) =>
       tuple.subject_type === 'agent' && tuple.subject_id === agent.id && !tuple.subject_relation,
   )
-  const assigned = new Set(
-    own
-      .filter((tuple) => tuple.resource_type === MCP_OPERATION_TYPE && tuple.relation === 'invoke')
-      .map((tuple) => tuple.resource_id),
-  )
+  const assigned = assignedOperationIDs(tuples, agent.id)
   const rules = resourceServers.flatMap((server) =>
     (server.access_rules ?? []).map((rule) => ({ server, rule })),
   )
@@ -81,7 +79,9 @@ export function AdminAgentAccessPage({
     >
       <div className="space-y-6">
         <p className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm">{t.help}</p>
-        {tuples.length >= 1000 ? <Alert variant="destructive">{t.truncated}</Alert> : null}
+        {tuples.length >= RELATION_TUPLE_LIST_LIMIT ? (
+          <Alert variant="destructive">{t.truncated}</Alert>
+        ) : null}
         <Card className="space-y-3 p-6">
           <dl className="grid gap-3 sm:grid-cols-2">
             <div>
@@ -273,7 +273,7 @@ export function AdminAgentAccessPage({
             </table>
           )}
         </Card>
-        <McpConnectionCheckCard agent={agent} checks={checks} resourceServers={resourceServers} />
+        <McpConnectionCheckCard agent={agent} checks={checks} />
         <Card className="space-y-4 p-6">
           <h2 className="text-lg font-semibold">{t.guardrails}</h2>
           <GuardrailPolicy title={t.agentPolicy} policy={guardrails.agent} />
@@ -283,17 +283,14 @@ export function AdminAgentAccessPage({
     </AdminShell>
   )
 }
-
 // McpConnectionCheckCard は接続先ごとの確認項目と不足の案内を示す (REQ-OAUTH2-094)。
 // 判定は mcpConnectionCheck が保存値から行い、ここは結果の表示だけを担う。
 function McpConnectionCheckCard({
   agent,
   checks,
-  resourceServers,
 }: {
   agent: AdminAgent
-  checks: ReturnType<typeof checkMcpConnections>
-  resourceServers: McpResourceServer[]
+  checks: McpConnectionCheck[]
 }) {
   const t = useDictionary(agentAccessDictionary)
   const itemLabels: Record<ConnectionCheckItem, string> = {
@@ -302,41 +299,45 @@ function McpConnectionCheckCard({
     tokenLimits: t.itemTokenLimits,
     catalog: t.itemCatalog,
   }
-  const gapTexts: Record<ConnectionCheckGap, string> = {
-    registration_inactive: t.gapRegistrationInactive,
-    registration_no_client: t.gapRegistrationNoClient,
-    assignment_agent_inactive: t.gapAssignmentAgentInactive,
-    assignment_no_credentials: t.gapAssignmentNoCredentials,
-    assignment_no_tools: t.gapAssignmentNoTools,
-    assignment_unassigned: t.gapAssignmentUnassigned,
-    token_limits_scope: t.gapTokenLimitsScope,
-    token_limits_resource: t.gapTokenLimitsResource,
-    token_limits_detail_type: t.gapTokenLimitsDetailType,
-    token_limits_expired: t.gapTokenLimitsExpired,
-    catalog_not_received: t.gapCatalogNotReceived,
-    catalog_fetch_failed: t.gapCatalogFetchFailed,
-  }
-  const gapHref = (gap: ConnectionCheckGap, serverID: string): string | undefined => {
-    const serverEdit = `/admin/mcp-resource-servers/${encodeURIComponent(serverID)}/edit`
+  const agentPage = (suffix: string) => `/admin/agents/${encodeURIComponent(agent.id)}${suffix}`
+  // 不足ごとの案内と修正先。修正先の画面がない不足は href を持たない。
+  const gapGuide = (
+    gap: ConnectionCheckGap,
+    serverEdit: string,
+  ): { text: string; href?: string } => {
     switch (gap) {
       case 'registration_inactive':
+        return { text: t.gapRegistrationInactive, href: serverEdit }
       case 'registration_no_client':
-      case 'assignment_no_tools':
-      case 'catalog_not_received':
-        return serverEdit
+        return { text: t.gapRegistrationNoClient, href: serverEdit }
       case 'assignment_agent_inactive':
-        return `/admin/agents/${encodeURIComponent(agent.id)}/edit`
+        return { text: t.gapAssignmentAgentInactive, href: agentPage('/edit') }
       case 'assignment_no_credentials':
-      case 'token_limits_scope':
-        return `/admin/agents/${encodeURIComponent(agent.id)}/credentials`
+        return { text: t.gapAssignmentNoCredentials, href: agentPage('/credentials') }
+      case 'assignment_no_tools':
+        return { text: t.gapAssignmentNoTools, href: serverEdit }
       case 'assignment_unassigned':
-        return `/admin/agents/${encodeURIComponent(agent.id)}/resources`
-      case 'token_limits_resource':
-      case 'token_limits_detail_type':
-      case 'token_limits_expired':
-        return `/admin/agents/${encodeURIComponent(agent.id)}/guardrail/edit`
+        return { text: t.gapAssignmentUnassigned, href: agentPage('/resources') }
+      case 'assignment_truncated':
+        return { text: t.gapAssignmentTruncated, href: agentPage('/resources') }
+      case 'token_limits_scope':
+        return { text: t.gapTokenLimitsScope, href: agentPage('/credentials') }
+      case 'agent_guardrail_resource':
+        return { text: t.gapAgentGuardrailResource, href: agentPage('/guardrail/edit') }
+      case 'agent_guardrail_detail_type':
+        return { text: t.gapAgentGuardrailDetailType, href: agentPage('/guardrail/edit') }
+      case 'agent_guardrail_expired':
+        return { text: t.gapAgentGuardrailExpired, href: agentPage('/guardrail/edit') }
+      case 'tenant_guardrail_resource':
+        return { text: t.gapTenantGuardrailResource }
+      case 'tenant_guardrail_detail_type':
+        return { text: t.gapTenantGuardrailDetailType }
+      case 'tenant_guardrail_expired':
+        return { text: t.gapTenantGuardrailExpired }
+      case 'catalog_not_received':
+        return { text: t.gapCatalogNotReceived, href: serverEdit }
       case 'catalog_fetch_failed':
-        return undefined
+        return { text: t.gapCatalogFetchFailed }
     }
   }
   return (
@@ -346,46 +347,39 @@ function McpConnectionCheckCard({
       {checks.length === 0 ? (
         <p>{t.noConnections}</p>
       ) : (
-        checks.map((check) => {
-          const server = resourceServers.find((candidate) => candidate.id === check.serverId)
+        checks.map(({ server, items }) => {
+          const serverEdit = `/admin/mcp-resource-servers/${encodeURIComponent(server.id)}/edit`
           return (
             <section
-              key={check.serverId}
+              key={server.id}
               className="space-y-2 border-t pt-3 first:border-t-0 first:pt-0"
             >
               <h3 className="font-semibold">
-                {server ? (
-                  <a
-                    className="underline"
-                    href={tenantURL(
-                      `/admin/mcp-resource-servers/${encodeURIComponent(server.id)}/edit`,
-                    )}
-                  >
-                    {server.name}
-                  </a>
-                ) : (
-                  check.serverId
-                )}
+                <a className="underline" href={tenantURL(serverEdit)}>
+                  {server.name}
+                </a>
               </h3>
               <ul className="space-y-2">
                 {CONNECTION_CHECK_ITEMS.map((item) => {
-                  const result = check.items[item]
+                  const gaps = items[item]
                   return (
                     <li key={item} className="text-sm">
                       <p>
                         <span className="font-medium">{itemLabels[item]}</span>{' '}
-                        {result.status === 'ok' ? t.checkOk : t.checkGap}
+                        {gaps.length === 0 ? t.checkOk : t.checkGap}
                       </p>
-                      {result.gaps.map((gap) => {
-                        const href = gapHref(gap, check.serverId)
-                        return href ? (
+                      {gaps.map((gap) => {
+                        const { text, href } = gapGuide(gap, serverEdit)
+                        return (
                           <p key={gap}>
-                            <a className="underline" href={tenantURL(href)}>
-                              {gapTexts[gap]}
-                            </a>
+                            {href ? (
+                              <a className="underline" href={tenantURL(href)}>
+                                {text}
+                              </a>
+                            ) : (
+                              text
+                            )}
                           </p>
-                        ) : (
-                          <p key={gap}>{gapTexts[gap]}</p>
                         )
                       })}
                     </li>

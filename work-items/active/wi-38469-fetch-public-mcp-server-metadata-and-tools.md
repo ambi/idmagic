@@ -11,6 +11,7 @@ change_kind: feature
 affected_spec:
   - { path: docs/modules/oauth2/features/resource-access.md, requirement: REQ-OAUTH2-086 }
   - { path: docs/modules/oauth2/features/admin-access.md, requirement: REQ-OAUTH2-087 }
+  - { path: docs/modules/oauth2/features/admin-access.md, requirement: REQ-OAUTH2-094 }
 ---
 
 # 公開された MCP サーバーから、IdMagic がメタデータとツールの一覧を取得して候補に示す
@@ -30,6 +31,7 @@ Gateway を使わず、MCP サーバー自身がトークンを検査する構�
 - 登録の URL から Protected Resource Metadata（RFC 9728）を取得し、`scopes_supported` と `authorization_servers` を、出所を付けてスコープの候補に示す。
 - 公開された MCP サーバーの `tools/list` を取得し、既存の報告と同じ候補として示す。
 - REQ-OAUTH2-086 の判断「IdMagic から MCP サーバーへ取得に行かない」を改める。
+- 公開された MCP サーバーについて、REQ-OAUTH2-094 の接続確認へ、直接の一覧取得と認証（PRM の `authorization_servers` と、トークンを提示した呼び出しの 401 以外の応答）の項目を加え、同じ要件の判断を改める。
 
 ## 対象外
 
@@ -48,7 +50,7 @@ Gateway を使わず、MCP サーバー自身がトークンを検査する構�
 
 外向きの防御は、[[wi-61303-host-the-mcp-gateway-in-idmagic]] の上流への転送と、TokenVault の REQ-TOKENVAULT-009 から 011 と同じものを使う。
 先に着手した項目が共通の部品を決め、後の項目はそれを再利用する。
-[[wi-85145-check-mcp-connection-without-calling-tools]] の接続確認は、MCP サーバーへの到達をこの項目の経路で行う。
+[[wi-85145-check-mcp-connection-without-calling-tools]] は到達を要しない四項目だけを提供した。接続確認の到達を要する項目は、この項目の取得の経路と制限を使って加える。
 
 ## 計画
 

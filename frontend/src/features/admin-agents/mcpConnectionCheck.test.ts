@@ -6,9 +6,14 @@ import type {
   McpResourceServer,
   RelationTuple,
   ResourceAccessRule,
-  ToolCatalog,
 } from '../../types'
-import { checkMcpConnections, type ConnectionCheckGap } from './mcpConnectionCheck'
+import {
+  CONNECTION_CHECK_ITEMS,
+  type CatalogResult,
+  checkMcpConnections,
+  type ConnectionCheckGap,
+  type ConnectionCheckItem,
+} from './mcpConnectionCheck'
 
 const agent: AdminAgent = {
   id: 'agent-1',
@@ -64,7 +69,7 @@ const invokeTuple = (resourceID: string): RelationTuple => ({
   subject_id: agent.id,
 })
 
-const catalogs: Record<string, ToolCatalog | 'failed'> = {
+const catalogs: Record<string, CatalogResult> = {
   'srv-1': { tools: [], complete: true, received_at: '2026-11-13T00:00:00Z' },
 }
 
@@ -74,7 +79,7 @@ function check(overrides: {
   guardrails?: AgentGuardrailPolicySet
   servers?: McpResourceServer[]
   tuples?: RelationTuple[]
-  catalogs?: Record<string, ToolCatalog | 'failed'>
+  catalogs?: Record<string, CatalogResult>
   now?: Date
 }) {
   const result = checkMcpConnections({
@@ -90,14 +95,13 @@ function check(overrides: {
   return result[0]!
 }
 
-const gapsOf = (result: ReturnType<typeof check>, item: string) =>
-  result.items[item as keyof typeof result.items].gaps
+const gapsOf = (result: ReturnType<typeof check>, item: ConnectionCheckItem) => result.items[item]
 
 //spec:covers REQ-OAUTH2-094: 登録、割当、トークンの上限、一覧の取得を保存値だけで判定する。
-it('reports all items as ok for a fully configured connection', () => {
+it('reports no gaps for a fully configured connection', () => {
   const result = check({})
-  for (const item of ['registration', 'assignment', 'tokenLimits', 'catalog'] as const) {
-    expect(result.items[item]).toEqual({ status: 'ok', gaps: [] })
+  for (const item of CONNECTION_CHECK_ITEMS) {
+    expect(gapsOf(result, item)).toEqual([])
   }
 })
 
@@ -140,9 +144,19 @@ it('flags each assignment gap independently', () => {
       expected: ['assignment_unassigned'],
     },
   ]
-  for (const { overrides, expected } of cases) {
-    expect(gapsOf(check(overrides), 'assignment')).toEqual(expected)
+  for (const { name, overrides, expected } of cases) {
+    expect({ name, gaps: gapsOf(check(overrides), 'assignment') }).toEqual({
+      name,
+      gaps: expected,
+    })
   }
+})
+
+//spec:covers REQ-OAUTH2-094: 取得上限に達した材料では、割当がないと判定せず確かめられないことを示す。
+it('does not claim missing assignments when the tuples reached the retrieval limit', () => {
+  const unrelated = Array.from({ length: 1000 }, (_, index) => invokeTuple(`other-${index}`))
+  expect(gapsOf(check({ tuples: unrelated }), 'assignment')).toEqual(['assignment_truncated'])
+  expect(gapsOf(check({ tuples: [...unrelated, invokeTuple('op-1')] }), 'assignment')).toEqual([])
 })
 
 //spec:covers REQ-OAUTH2-094: トークンの上限は操作ごとのスコープ被覆とガードレールの deny で判定する。
@@ -172,11 +186,11 @@ it('does not count require_approval demotions as token limit gaps', () => {
       tenant_default: { version: 'v', updated_at: '', require_approval: true },
     },
   })
-  expect(result.items.tokenLimits).toEqual({ status: 'ok', gaps: [] })
+  expect(gapsOf(result, 'tokenLimits')).toEqual([])
 })
 
-//spec:covers REQ-OAUTH2-094: ガードレールの deny、認可詳細の種類、期限切れを区別して示す。
-it('flags guardrail denials for resource, detail types, and expiry', () => {
+//spec:covers REQ-OAUTH2-094: ガードレールの deny を、資源、認可詳細の種類、期限切れと、拒否した層で区別して示す。
+it('flags guardrail denials by kind and by the layer that denies', () => {
   const result = check({
     servers: [
       server({
@@ -204,9 +218,9 @@ it('flags guardrail denials for resource, detail types, and expiry', () => {
     now: new Date('2026-11-13T00:00:00Z'),
   })
   expect(gapsOf(result, 'tokenLimits')).toEqual([
-    'token_limits_detail_type',
-    'token_limits_expired',
-    'token_limits_resource',
+    'agent_guardrail_detail_type',
+    'agent_guardrail_expired',
+    'tenant_guardrail_resource',
   ])
 })
 
