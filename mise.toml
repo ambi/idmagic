@@ -1036,19 +1036,19 @@ bun run check/src/runner.ts spec-impact ${1:+--base-revision "$1"}
 
 [tasks.generate-config-reference]
 description = "Generate the operator configuration reference"
-run = "go run ./backend/cmd/idmagic-config-reference --output CONFIGURATION.md"
+run = "go run ./backend/cmd/idmagic-config-reference --output docs/operations/configuration.md"
 
 [tasks.check-config-reference]
 description = "Check the operator configuration reference"
-run = "go run ./backend/cmd/idmagic-config-reference --check --output CONFIGURATION.md"
+run = "go run ./backend/cmd/idmagic-config-reference --check --output docs/operations/configuration.md"
 
 [tasks.generate-route-reference]
 description = "Generate the route priority reference"
-run = "go run ./backend/cmd/idmagic-route-reference --output ROUTE_PRIORITY.md"
+run = "go run ./backend/cmd/idmagic-route-reference --output docs/operations/route-priority.md"
 
 [tasks.check-route-reference]
 description = "Check the route priority reference"
-run = "go run ./backend/cmd/idmagic-route-reference --check --output ROUTE_PRIORITY.md"
+run = "go run ./backend/cmd/idmagic-route-reference --check --output docs/operations/route-priority.md"
 
 [tasks.check-gateway-routes]
 description = "Check the frontend gateway route allowlists against the assembled router"

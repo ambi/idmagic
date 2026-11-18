@@ -82,7 +82,7 @@ type GatewayRouteExpectation struct {
 // GatewayRouteExpectations は組み立て済みの router が登録した経路すべての期待を返す。
 //
 // ホスト形式と /realms/{tenant_id} 配下のパス形式を 1 行へ潰さない。潰すと
-// `@realmBackend` の列挙が何とも照合されなくなる。ROUTE_PRIORITY.md が潰しているのは
+// `@realmBackend` の列挙が何とも照合されなくなる。経路の優先度リファレンスが潰しているのは
 // 読み手が知りたいのが分類だけだからであり、ここでは形の違いそのものが検査対象である。
 func GatewayRouteExpectations() []GatewayRouteExpectation {
 	seen := map[string]struct{}{}

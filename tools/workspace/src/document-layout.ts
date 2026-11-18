@@ -83,7 +83,13 @@ export const SYSTEM_DOCUMENT_DIRECTORIES: ReadonlyArray<{
   { directory: 'docs/modules', names: MODULE_INDEX_DOCUMENTS },
   {
     directory: 'docs/operations',
-    names: ['README.md', 'service-management.md', 'maintenance.md'],
+    names: [
+      'README.md',
+      'service-management.md',
+      'maintenance.md',
+      'configuration.md',
+      'route-priority.md',
+    ],
   },
   {
     directory: 'docs/formats',

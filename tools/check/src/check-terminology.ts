@@ -4,8 +4,8 @@ import { TERMINOLOGY_ROOT_DOCUMENTS, verifyTerminology } from './terminology.ts'
 
 /**
  * 用語を固定する対象は `docs/` の Markdown と、文書体系が所有する root 直下の
- * Markdown である。`CONFIGURATION.md` と `ROUTE_PRIORITY.md` は生成物なので入れず、
- * `work-items/` は書かれた時点の記録なので後から書き換えない。
+ * Markdown である。`docs/operations/` の生成したリファレンスも、生成器の文言が
+ * 用語に従うことを確かめるために含める。`work-items/` は書かれた時点の記録なので後から書き換えない。
  */
 async function terminologyDocumentPaths(snapshot: WorkspaceSnapshot): Promise<string[]> {
   const docs = await snapshot.files('docs').catch((): string[] => [])

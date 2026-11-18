@@ -1,68 +1,69 @@
 ---
 name: integrate-work-item
-description: Integrate a completed work-item branch into main or another target branch by rebasing and fast-forwarding without a merge commit, verify only a newly composed tree, then remove the source branch and its worktree if it had one.
+description: 完了した作業項目のブランチを、マージコミットを作らずに rebase と fast-forward で main または指定のブランチへ取り込み、新しく合成されたツリーだけを検証してから、元のブランチと worktree を削除する。作業項目のブランチを取り込む、統合する、マージすると頼まれたときに使う。
 ---
 
-# Integrating a completed work item
+# 完了した作業項目の取り込み
 
-1. Identify the completed `work-item/<work-item-id>` source branch, the checkout that has it open (the default
-   checkout at the repository root, or `.worktrees/<work-item-id>`), and the user-named target branch, `main`
-   when none is named. The target may be open in some checkout, or open nowhere when the default checkout holds
-   the source branch. Preserve unrelated user changes in every checkout. The source checkout must be clean, its
-   work item completed, and its final commit already verified by `implement-work-item`.
-2. Record the verified source commit and tree before changing commits or refs:
+1. 完了した `work-item/<work-item-id>` の元のブランチ、それを開いているチェックアウト（リポジトリの根の既定のチェックアウト、または `.worktrees/<work-item-id>`）、利用者が指定した取り込み先のブランチ（指定がなければ `main`）を特定する。
+   取り込み先はどこかのチェックアウトで開かれていることも、既定のチェックアウトが元のブランチを開いているためにどこでも開かれていないこともある。
+   どのチェックアウトでも、無関係な利用者の変更を保つ。
+   元のチェックアウトはクリーンで、作業項目が完了し、最終コミットが `implement-work-item` で検証済みでなければならない。
+2. コミットや ref を変える前に、検証済みの元のコミットとツリーを記録する。
 
    ```sh
    source_commit=$(git rev-parse 'work-item/wi-42^{commit}')
    source_tree=$(git rev-parse 'work-item/wi-42^{tree}')
    ```
 
-3. Keep the history linear. When the source is not already based on the target, rebase the source onto the
-   target; use `resolving-merge-conflicts` for an in-progress conflict. Compare the rebased source tree with
-   the recorded verified source tree. If they differ, the rebase composed a new tree. Verify it in the source
-   checkout with:
+3. 履歴を直線に保つ。
+   元のブランチが取り込み先の上にまだなければ、取り込み先の上へ rebase する。
+   進行中の競合には `resolving-merge-conflicts` を使う。
+   rebase 後の元のツリーを、記録した検証済みのツリーと比べる。
+   異なれば、rebase が新しいツリーを合成したということである。
+   元のチェックアウトで次を実行して検証する。
 
    ```sh
    mise run verify-integration -- "$source_commit"
    ```
 
-   Each side was verified on its own tree, so the task reruns only the layers and Go packages that both the
-   source's own change and the incoming change can reach. It records what it ran and what it skipped in
-   `.verification/verify-selection.json`.
-   Also rerun the narrow checks that the conflict resolution itself requires.
+   両側はそれぞれのツリーで検証済みなので、このタスクは、元のブランチ自身の変更と取り込んだ変更の両方が届く層と Go のパッケージだけを再実行する。
+   実行したものと省いたものは `.verification/verify-selection.json` に記録される。
+   競合の解消そのものが必要とする局所の検査も再実行する。
 
-   Do not create a merge commit. Integrate one source branch at a time, and start the next work item from the
-   updated target so that it needs no rebase.
-4. Fast-forward the target to the rebased source, then compare the integrated target tree with that verified tree.
-   When the target is open in a clean checkout, fast-forward it there; when it is open nowhere, move only the
-   ref. Both refuse anything that is not a fast-forward.
+   マージコミットは作らない。
+   元のブランチは一つずつ取り込み、次の作業項目は更新後の取り込み先から始めて rebase を要らなくする。
+4. 取り込み先を rebase 後の元のブランチへ fast-forward し、取り込み後のツリーを検証済みのツリーと比べる。
+   取り込み先がクリーンなチェックアウトで開かれていればそこで fast-forward し、どこでも開かれていなければ ref だけを動かす。
+   どちらも fast-forward でない更新を拒否する。
 
    ```sh
-   git -C <target-checkout> merge --ff-only work-item/wi-42   # the target is open in that checkout
-   git fetch . work-item/wi-42:main                           # the target is open nowhere
+   git -C <target-checkout> merge --ff-only work-item/wi-42   # 取り込み先がそのチェックアウトで開かれている
+   git fetch . work-item/wi-42:main                           # 取り込み先がどこでも開かれていない
    integrated_tree=$(git rev-parse 'main^{tree}')
    test "$integrated_tree" = "$(git rev-parse 'work-item/wi-42^{tree}')"
    ```
 
-   - When the trees are identical, finish immediately. The target contains exactly the already verified result;
-     rerunning `check`, `build-site`, or `verify` adds no evidence.
-   - A tree difference here means the fast-forward did not produce the verified source result. Stop and inspect
-     it before cleanup; a normal fast-forward must be identical.
+   - ツリーが同一なら、すぐに終える。
+     取り込み先は検証済みの結果そのものを持ち、`check`、`build-site`、`verify` を再実行しても証拠は増えない。
+   - ここでツリーが異なるのは、fast-forward が検証済みの元の結果を作らなかったということである。
+     後始末の前に止めて調べる。
+     通常の fast-forward なら同一になる。
 
-   Tree identity, not commit identity, controls this decision. Rebase may change commit metadata without
-   changing files.
-5. Clean up the integrated source once the target contains it and any required verification has passed. When the
-   source was open in the default checkout, return that checkout to the target; when it had a worktree, remove it:
+   この判断を決めるのはコミットの同一性ではなく、ツリーの同一性である。
+   rebase はファイルを変えずにコミットのメタデータを変えることがある。
+5. 取り込み先が元のブランチを含み、必要な検証が通ったら、取り込んだ元のブランチを片付ける。
+   元のブランチが既定のチェックアウトで開かれていたら、そのチェックアウトを取り込み先へ戻す。
+   worktree で開かれていたら、worktree を削除する。
 
    ```sh
-   git switch main                        # source in the default checkout
-   git worktree remove .worktrees/wi-42   # source in a worktree
+   git switch main                        # 元のブランチが既定のチェックアウトにある
+   git worktree remove .worktrees/wi-42   # 元のブランチが worktree にある
    git branch -d work-item/wi-42
    ```
 
-   `git branch -d` refuses a branch the target does not contain, which guards against deleting unintegrated work.
-   If `git worktree remove` fails partway, confirm the worktree's `git status --porcelain` lists only ` D` lines
-   before retrying with `--force`.
-6. Report the integration method, target commit, tree comparison, verification performed, and the removed
-   branch and worktree. Leave `spec/generated/` and `site/` uncommitted. Update remote refs or push only when the
-   user explicitly asks.
+   `git branch -d` は取り込み先が含まないブランチの削除を拒否するので、取り込んでいない作業の削除を防げる。
+   `git worktree remove` が途中で失敗したら、その worktree の `git status --porcelain` が ` D` の行だけであることを確かめてから、`--force` を付けて再実行する。
+6. 取り込みの方法、取り込み先のコミット、ツリーの比較、行った検証、削除したブランチと worktree を報告する。
+   `spec/generated/` と `site/` はコミットしない。
+   リモートの ref の更新と push は、利用者が明示したときだけ行う。

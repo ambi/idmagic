@@ -8,6 +8,8 @@
 | --- | --- |
 | [サービス管理](service-management.md) | SLO 評価、当番、障害対応、変更、サービス継続 |
 | [保守](maintenance.md) | 定期作業、更新、キャパシティ確認、廃止と引渡し |
+| [設定リファレンス](configuration.md) | プロセスごとの起動時の環境変数、デフォルト値、検証規則。コードから生成する |
+| [経路の優先度リファレンス](route-priority.md) | 流入制御が飽和時に拒否する順序と、経路ごとの優先度クラス。コードから生成する |
 | [運用手順](../runbooks/) | 人が手で実行する運用作業と障害対応の手順。作業一つにつき一つ置く |
 | [Kerberos の導入](../runbooks/kerberos-setup.md) | AD の信頼、ブラウザー設定、導入確認と鍵の更新 |
 | [Entra のドメインフェデレーションの導入](../runbooks/entra-domain-federation.md) | Graph PowerShell による適用、読み戻した登録値の照合、端末と SSO の確認 |

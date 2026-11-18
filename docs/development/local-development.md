@@ -5,11 +5,10 @@
 ツールのバージョンとコマンドは `mise.toml` が一次情報である。ただし **mise 自身は `mise.toml` では導入できない**ので、最初の 1 つだけは外から入れる。
 
 ```bash
-brew install mise         # macOS
-curl https://mise.run | sh # それ以外
+curl https://mise.run | sh
 ```
 
-`mise.toml` は `min_version` で必要な下限を宣言している。これより古い mise は設定を読んだ時点で止まるので、上のいずれかで入れ直す。
+`mise.toml` は `min_version` で必要な下限を宣言している。これより古い mise は設定を読んだ時点で止まるので、上のコマンドで入れ直す。
 
 続けて、固定したツールとリポジトリの依存を導入する。
 
@@ -93,7 +92,7 @@ flowchart LR
   TypeSpec[spec/**/*.tsp] --> OpenAPI[spec/generated/openapi]
   TypeSpec --> Contract[生成された経路メタデータ]
   Canonical[docs/**/*.md] --> Site[site/]
-  Config[起動時設定の宣言] --> ConfigReference[CONFIGURATION.md]
+  Config[起動時設定の宣言] --> ConfigReference[設定リファレンス]
   SQL[SQL クエリとスキーマ] --> SQLC[sqlc 生成コード]
   Routes[フロントエンドの経路定義] --> RouteTree[生成された経路ツリー]
 ```
@@ -109,4 +108,4 @@ flowchart LR
 
 ## 外部サービスのローカル代替
 
-メール配信の確認には Mailpit などのローカル SMTP サーバーを使い、本番の資格情報を開発環境へ持ち込まない。起動時設定の型、デフォルト値、条件付き要件、機密区分は [設定リファレンス](../../CONFIGURATION.md) を参照する。
+メール配信の確認には Mailpit などのローカル SMTP サーバーを使い、本番の資格情報を開発環境へ持ち込まない。起動時設定の型、デフォルト値、条件付き要件、機密区分は [設定リファレンス](../operations/configuration.md) を参照する。

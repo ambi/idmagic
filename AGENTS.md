@@ -32,6 +32,7 @@
 | 開発文書の執筆 <!-- context: kinds=docs targets=docs/development --> | [開発文書の形式](docs/formats/documentation-guide.md#開発文書) |
 | 開発環境、ビルド、生成、CI、リリース <!-- context: targets=mise.toml,infra,.github --> | [開発文書の索引](docs/development/README.md)から該当する文書を選ぶ |
 | リポジトリ内ツールの変更 <!-- context: targets=tools --> | [リポジトリツール](tools/README.md) |
+| エージェント向けの指示（AGENTS.md、skills）の変更 <!-- context: targets=.agents,AGENTS.md --> | [エージェント向けの指示](docs/development/agent-guidance.md) |
 
 ## mise
 
@@ -63,7 +64,7 @@ DB を起動できなければ、DB を使うテストはデフォルトで失�
 | --- | --- | --- |
 | ファイルまたは一部の読み取り | 公開されていれば専用の読み取りツール。なければシェル実行ツールで `cat` や `sed -n 'N,Mp'` | 読み取りだけの Perl やその場限りの解析スクリプト |
 | ファイルまたは部分木の構造把握 | `ast-grep outline` | 入口を探すための全ファイル読み取り |
-| コードの編集 | `apply_patch` または公開されている専用の編集ツール | `sed -i`、ファイルを書き換える `python3` または `bun` のヒアドキュメント |
+| コードの編集 | 公開されている専用の編集ツール | `sed -i`、ファイルを書き換える `python3` または `bun` のヒアドキュメント |
 | JSON の照会、抽出、変更 | `jq` | その場限りの `python3 -c` または `bun -e` |
 | YAML の照会、抽出、変更 | `yq` | インデントを前提とする `grep` |
 | 内容の検索 | `rg` | `grep -r`、`find … -exec grep` |

@@ -98,7 +98,7 @@ API の指標は `route` ラベルを持つが、登録済みの経路は 500 �
 | 分類 | 答える問い | 実体の置き場所 |
 | --- | --- | --- |
 | 種別 | この負荷はキャパシティ設計のどの行に当たるか | Prometheus の記録ルールの `route` 正規表現 |
-| 優先度クラス | 飽和したとき何を先に捨てるか | 経路の登録と同じパッケージの分類表（生成物は `ROUTE_PRIORITY.md`） |
+| 優先度クラス | 飽和したとき何を先に捨てるか | 経路の登録と同じパッケージの分類表（生成物は[経路の優先度リファレンス](../../operations/route-priority.md)） |
 
 `/register` は種別が `authentication`、優先度クラスが `management` である。
 `/api/account/v1/step_up/*` は種別が `portal`、優先度クラスが `interactive_auth` である。

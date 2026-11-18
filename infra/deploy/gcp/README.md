@@ -10,7 +10,7 @@
 - 実行単位の配置先とプロファイルの一覧：[デプロイメントアーキテクチャ](../../../docs/design/architecture/deployment.md)
 - コンピューティング、データベース、シークレットの注入、スキーマ適用、スケール単位、費用：[プラットフォーム設計](../../../docs/design/infrastructure/platform.md)
 - エッジ、セグメンテーション、ファイアウォールルール、Egress、DNS と証明書：[ネットワーク設計](../../../docs/design/infrastructure/network.md)
-- 起動時設定の項目、デフォルト値、検証規則：[`CONFIGURATION.md`](../../../CONFIGURATION.md)
+- 起動時設定の項目、デフォルト値、検証規則：[設定リファレンス](../../../docs/operations/configuration.md)
 
 ## ひな型が現在の設計と食い違う点
 

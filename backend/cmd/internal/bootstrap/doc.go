@@ -6,6 +6,6 @@
 // workerconfig.go, seeding_config.go) をすべて呼んでから loader.Err() を1回
 // 確認する。値の型・範囲・相互依存はそこで検証し、不正なら副作用のある初期化
 // (Assemble、listener 起動、seed 適用) より前に集約エラーで停止する
-// (REQ-SYSTEM-016)。設定リファレンス (CONFIGURATION.md) は同じ Load*Config が
+// (REQ-SYSTEM-016)。設定リファレンス (docs/operations/configuration.md) は同じ Load*Config が
 // 記録する ConfigField から生成する (REQ-SYSTEM-017)。
 package bootstrap

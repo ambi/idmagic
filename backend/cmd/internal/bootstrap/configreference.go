@@ -183,7 +183,7 @@ const externallyOwnedConfigNote = `## 外部が所有する変数
 | ` + "`VITE_DEMO_LOGIN_ENABLED`" + ` | フロントエンドのビルド | Vite の開発サーバーの外でも、デモ用のログインの近道を表示する。 |
 `
 
-// RenderConfigReference renders CONFIGURATION.md from the fields each
+// RenderConfigReference renders docs/operations/configuration.md from the fields each
 // process's Load*Config records, so the reference is generated from the same
 // code that parses and validates the values (REQ-SYSTEM-017). Secret fields
 // render as `secret` with no default: their values never leave the process.

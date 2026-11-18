@@ -1,5 +1,5 @@
 // Command idmagic-config-reference writes the operator-facing
-// ConfigurationReference (CONFIGURATION.md) from the startup Config
+// ConfigurationReference (docs/operations/configuration.md) from the startup Config
 // definition, or checks that the tracked file still matches it
 // (REQ-SYSTEM-017). Run it through `mise run generate-config-reference` and
 // `mise run check-config-reference`.
@@ -22,7 +22,7 @@ func main() {
 
 func run(args []string) error {
 	flags := flag.NewFlagSet("idmagic-config-reference", flag.ContinueOnError)
-	output := flags.String("output", "CONFIGURATION.md", "path of the generated configuration reference")
+	output := flags.String("output", "docs/operations/configuration.md", "path of the generated configuration reference")
 	check := flags.Bool("check", false, "fail instead of writing when the file is out of date")
 	if err := flags.Parse(args); err != nil {
 		return err

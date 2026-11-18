@@ -1,76 +1,71 @@
 ---
 name: spec-change
-description: Specification-first workflow for feature and behavior changes. Update TypeSpec for models, APIs, and authentication, and the owning canonical document under docs/ before implementation.
+description: 機能と振る舞いの変更で、実装の前にモデル、API、認証の TypeSpec と docs/ 以下の担当する一次情報の文書を更新する。要件、TypeSpec、機能仕様、状態機械を追加、変更、廃止するときに使う。
 ---
 
-# Changing the specification first
+# 仕様を先に変える
 
 作業項目では `mise run brief -- <work-item> --target <対象パス>` から読む節を選ぶ。
 公開 HTTP 契約を変えるときは `--concern contract`、作用の保証を変えるときは `--concern effects` を付ける。
 起点と追加取得は `docs/development/task-context.md` に従い、変更を所有する最小の仕様と、その形式の該当節を読む。
 
-Update the smallest owning specification before the implementation. `docs/formats/specification-format.md` defines the
-current document kinds and grammar; read the relevant sections, not its rationale document.
+実装の前に、変更を所有する最小の仕様を更新する。
+`docs/formats/specification-format.md` が現在の文書の種類と文法を定める。
+該当する節を読み、その根拠を説明する文書は読まない。
 
-1. Write the requirement delta in the work item's Design first: the requirements to add, change, or retire,
-   each with its id and requirement sentences. Apply the delta to the canonical documents afterwards. Never
-   rewrite a whole feature to make one change.
-2. Put models, API operations, HTTP bindings, request and response shapes, status codes, error unions,
-   deprecation metadata, and authentication mechanisms in
-   `spec/modules/<module>/{models,main}.tsp`.
-3. Put module boundaries in `docs/modules/<module>/README.md`, and the value objects several features
-   share (normalization, comparison, uniqueness scope) in the module's `data.md`; vocabulary in `glossary.md`; adopted protocol
-   rules in `standards.md`. Put one feature's model, state machines, requirements, and security
-   considerations in its feature specification `docs/modules/<module>/features/<feature>.md` (or a
-   chapter `<feature>.<chapter>.md` beside it). Give each operation its own H3 under `## 操作` holding only requirements, ordered normal
-   path, state-dependent branches, then refusals. Do not write a per-operation summary table or an `## エラー`
-   section. Each state machine carries the state table, the transition table, and the state transition matrix
-   with every cell filled. Edit them in the machine's `testdata/<Machine>.statemachine.json`, never in the
-   feature specification, then run `mise run generate-spec-from-testdata`. Put a module's allocated quality requirements in `docs/modules/<module>/quality.md`
-   and a feature's share under `## 品質`. The feature node matches the code slice `backend/<module>/<feature>/`
-   by file name (drop the hyphens to compare names). Put a mechanism shared by features in `## 実現方式` of the
-   feature that implements it, or in the module's design area document such as `observability.md`; a
-   decision that weighed alternatives in `decisions.md`; and only
-   what code cannot show (how a mechanism guarantees a result, how to repair it) in the optional last section
-   `## 実現方式` of the feature specification. Use the matching file under `docs/requirements/` or `docs/design/` for a whole-system fact.
-4. Before writing requirements, answer every question in the observation table of
-   `docs/development/specification-first-workflow.md` (仕様の漏れを探す観点) for each operation you touch.
-   An unanswered question is a gap. Classify each gap as (a) a requirement, (b) left unspecified, or
-   (c) an implementation to change, as that document's 仕様にない振る舞いの分類 defines, and record the
-   classification in the work item. Ask the user when a classification changes what users observe.
-5. Give each new externally observable behavior an unused `REQ-<MODULE>-NNN`, declared as a
-   `#### REQ-<MODULE>-NNN <title>` heading under the operation it governs. Write one sentence per bullet
-   in the Japanese EARS form of `docs/formats/specification-format.md` (preamble, the module name as responder,
-   response), a table when conditions combine, and the `**判断**` field only when the
-   reason is not evident. Do not write `**担保手段**` or `**要判断**`; tests trace requirements through
-   `//spec:covers`, and an open question becomes a work item. Retire a referenced behavior with
-   `(superseded by REQ-<MODULE>-NNN)` in its heading rather than deleting or reusing its id. Put a value the
-   product keeps (a limit, a period, a formula) in the requirement, never only in the design. State a
-   requirement shared by several operations once, under the operation it governs most directly; the others
-   link it from `**上位の要件**` and state only their departure.
-6. Add an example in `<feature>.feature.md` only when a boundary or a surprising behavior is hard to read from
-   the requirement sentences. Prefer generating it from `testdata/*.examples.json`. Never add an example that
-   restates a requirement.
-7. Keep guarantees that need several modules, or that apply alike to several modules, in
-   `docs/modules/scenarios.feature.md`, name the participating modules, and keep module-local fragments out of it.
-8. Keep fine-grained authorization behavior in code and tests unless the project adopts a policy language.
-   TypeSpec records authentication and enforced operation scopes; `docs/design/security/authorization.md`
-   owns the shared principal, scope, tenant-boundary, and fail-closed rules.
-9. Sync the work item's `affected_spec` with the requirement or standard id, or the TypeSpec symbol.
-10. Pass `mise run check-spec`, then regenerate and check the derived artifacts:
-    - Run `mise run build-site`. It compiles TypeSpec first, so the site never renders a stale OpenAPI.
-      Confirm that the OpenAPI carries per-module tags and that `site/index.html` is produced.
-    - When the change adds, removes, or alters a TypeSpec operation, also run `mise run generate-contract`.
-      It rewrites the tracked `backend/shared/spec/operations_gen.go`, which `check-generated-contract`
-      compares against TypeSpec; commit that file with the change.
+1. 要件の差分を、まず作業項目の設計に書く。
+   追加、変更、廃止する要件を、それぞれの ID と要件文とともに書く。
+   一次情報の文書へは、その後で適用する。
+   一つの変更のために機能全体を書き直さない。
+2. モデル、API の操作、HTTP のバインディング、要求と応答の形、ステータスコード、エラーの union、非推奨のメタデータ、認証方式は `spec/modules/<module>/{models,main}.tsp` に置く。
+3. モジュールの境界は `docs/modules/<module>/README.md` に、複数の機能が共有する値オブジェクト（正規化、比較、一意性の範囲）はモジュールの `data.md` に置く。
+   語彙は `glossary.md`、採用したプロトコルの規則は `standards.md` に置く。
+   一つの機能のモデル、状態機械、要件、セキュリティの考慮は、機能仕様 `docs/modules/<module>/features/<feature>.md`（またはその横の章 `<feature>.<chapter>.md`）に置く。
+   各操作は `## 操作` の下に専用の H3 を持たせ、要件だけを、正常系、状態による分岐、拒否の順に書く。
+   章のページ `<feature>.<chapter>.md` では、操作を H2、要件を H3 にする。
+   操作ごとの要約の表や `## エラー` の節は書かない。
+   各状態機械は、状態表、遷移表、すべてのセルを埋めた状態遷移マトリクスを持つ。
+   状態機械は機能仕様ではなく、その機械の `testdata/<Machine>.statemachine.json` で編集し、`mise run generate-spec-from-testdata` を実行する。
+   モジュールに割り当てた品質要件は `docs/modules/<module>/quality.md` に、機能の取り分は `## 品質` に置く。
+   機能のノードは、ファイル名でコードのスライス `backend/<module>/<feature>/` と対応する（名前を比べるときはハイフンを除く）。
+   複数の機能が共有する仕組みは、それを実装する機能の `## 実現方式` か、`observability.md` のようなモジュールの設計領域の文書に置く。
+   代替案を比べた判断は `decisions.md` に置く。
+   コードから読めないこと（仕組みがどう結果を保証するか、どう修復するか）だけを、機能仕様の任意の最後の節 `## 実現方式` に置く。
+   システム全体の事実には、`docs/requirements/` または `docs/design/` の該当するファイルを使う。
+4. 要件を書く前に、触れる操作ごとに `docs/development/specification-first-workflow.md` の観点の表（仕様の漏れを探す観点）のすべての問いに答える。
+   答えのない問いは漏れである。
+   各漏れを、同じ文書の「仕様にない振る舞いの分類」の定義に従って、(a) 要件にする、(b) 未規定のままにする、(c) 実装を変える、に分類し、分類を作業項目に記録する。
+   分類が利用者の観測する結果を変えるときは利用者に確認する。
+5. 外部から観測できる新しい振る舞いには、未使用の `REQ-<MODULE>-NNN` を与え、それが支配する操作の下に `#### REQ-<MODULE>-NNN <タイトル>` の見出し（章のページでは `###`）で宣言する。
+   `docs/formats/specification-format.md` の日本語の EARS 形式（前提、応答者としてのモジュール名、応答）で、箇条ごとに一文を書く。
+   条件が組み合わさるときは表を使い、理由が自明でないときだけ `**判断**` の欄を書く。
+   `**担保手段**` と `**要判断**` は書かない。
+   テストは `//spec:covers` で要件を辿り、未解決の問いは作業項目にする。
+   参照されている振る舞いを廃止するときは、ID を消したり再利用したりせず、見出しに `(superseded by REQ-<MODULE>-NNN)` を付ける。
+   製品が保つ値（上限、期間、計算式）は、設計だけでなく要件に書く。
+   複数の操作が共有する要件は、最も直接に支配する操作の下に一度だけ書き、ほかの操作は `**上位の要件**` からリンクして差分だけを書く。
+6. `<feature>.feature.md` に例を足すのは、境界や意外な振る舞いが要件文から読み取りにくいときだけにする。
+   例は `testdata/*.examples.json` から生成するほうを選ぶ。
+   要件を言い直すだけの例は足さない。
+7. 複数のモジュールを要する保証や、複数のモジュールに同じく当てはまる保証は `docs/modules/scenarios.feature.md` に置き、参加するモジュールを名指し、モジュール内に閉じた断片を入れない。
+8. プロジェクトがポリシー言語を採るまで、細かな認可の振る舞いはコードとテストに置く。
+   TypeSpec は認証と強制する操作のスコープを記録する。
+   共有する主体、スコープ、テナント境界、fail-closed の規則は `docs/design/security/authorization.md` が所有する。
+9. 作業項目の `affected_spec` を、要件または標準の ID、または TypeSpec のシンボルと同期させる。
+10. `mise run check-spec` を通し、派生成果物を再生成して検査する。
+    - `mise run build-site` を実行する。
+      これは先に TypeSpec をコンパイルするので、サイトが古い OpenAPI を描くことはない。
+      OpenAPI がモジュールごとのタグを持つことと、`site/index.html` が作られることを確かめる。
+    - 変更が TypeSpec の操作を追加、削除、変更するときは、`mise run generate-contract` も実行する。
+      これは追跡されている `backend/shared/spec/operations_gen.go` を書き換え、`check-generated-contract` がそれを TypeSpec と比べる。
+      このファイルは変更と一緒にコミットする。
     - `mise run check-published-api-compat` で公開状態に応じた互換性を検査する。
       初回公開前の差分を任意に調べる場合は `mise run check-api-compat` を使う。
       公開状態と初回公開の切り替え、告知と既存バージョン互換性の適用条件は `docs/development/release.md` に従う。
-    - `spec/generated/` and `site/` are untracked views. Do not commit them.
-    - Update the baseline only during a release, with `mise run update-api-baseline`, as an explicit release
-      step. Never update it during an ordinary feature change to get around the compatibility check: skipping
-      the check lets a real regression ship, and a baseline frozen without a release describes something
-      nobody received.
+    - `spec/generated/` と `site/` は追跡しない派生ビューである。
+      コミットしない。
+    - ベースラインはリリースの間だけ、明示したリリースの手順として `mise run update-api-baseline` で更新する。
+      通常の機能変更で互換性の検査を避けるためにベースラインを更新しない。
+      検査を飛ばすと本当の後退が出荷され、リリースなしに固定したベースラインは誰も受け取っていないものを表すことになる。
 
-Use `update-design` as well only when modules, global structure, technology, runtime composition, or
-core design rules change.
+モジュール、全体構造、技術、ランタイムの構成、主要な設計規則が変わるときだけ、`update-design` も使う。

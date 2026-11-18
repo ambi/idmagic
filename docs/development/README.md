@@ -11,11 +11,13 @@
 | 未完了の作業項目のグループと、グループごとの基準の優先度 | [作業項目のグループ](work-item-groups.md) | 参照 |
 | 命名、コメント、関数、抽象化、テストコード、依存関係のコーディングスタイル | [コーディングスタイル](coding-style.md) | 参照 |
 | 文書、コメント、UI 文言の言語 | [文章の言語](writing-language.md) | 参照 |
+| AGENTS.md と skills の置き場所、書く内容、skill の書き方 | [エージェント向けの指示](agent-guidance.md) | 参照 |
 | リポジトリの最上位のディレクトリと、開発工程ごとの置き場所 | [リポジトリ構成](repository-layout.md) | 参照 |
 | 開発環境、起動、ビルド、生成 | [ローカル開発](local-development.md) | 手順 |
 | AI エージェントの統制を、管理画面の設定だけで見せる | [AI エージェントの統制のデモ](ai-agent-demo.md) | 手引き |
 | CI の一次情報と失敗時の切り分け | [継続的インテグレーション](continuous-integration.md) | 参照、解説 |
 | テスト水準、主要ユースケースの境界選択、作用の観測、race 検査、プロパティテスト、ミューテーションテスト、テストダブル | [テスト方針](testing.md) | 参照 |
+| ブラウザー E2E の実行基盤（Bun.WebView と Playwright Test）の比較 | [ブラウザー E2E の実行基盤の比較](e2e-runner-comparison.md) | 解説 |
 | バージョン付け、成果物、段階的な展開 | [リリース](release.md) | 手順 |
 | 開発プロセス指標の採否 | [開発プロセスの計測](process-metrics.md) | 解説、参照 |
 

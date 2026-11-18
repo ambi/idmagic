@@ -2,11 +2,17 @@
 
 IdMagic は、人間とエージェントのアイデンティティ、認証、委譲、プロビジョニングをテナント単位で管理するアイデンティティ基盤である。
 
+ツールとコマンドは [mise](https://mise.jdx.dev/) が管理する。
+mise だけは先に入れてから、固定したツールと依存を導入して起動する。
+
 ```bash
+curl https://mise.run | sh
+mise install
+mise run setup
 mise run dev
 ```
 
-詳しい起動方法は [ローカル開発](docs/development/local-development.md) を参照する。
+詳しい準備と起動方法は [ローカル開発](docs/development/local-development.md) を参照する。
 Windows のサインインを導入する場合は、`mise run setup-kerberos` と [Kerberos の導入手順](docs/runbooks/kerberos-setup.md)を使う。
 
 - プロダクトが解く問題、利用者、対象外：[Product Overview](docs/requirements/product-overview.md)

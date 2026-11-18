@@ -1,5 +1,5 @@
 // Command idmagic-route-reference writes the operator-facing route priority
-// reference (ROUTE_PRIORITY.md) from the assembled router and the priority
+// reference (docs/operations/route-priority.md) from the assembled router and the priority
 // classification the admission middleware applies, or checks that the tracked
 // file still matches it (REQ-SYSTEM-019). Run it through
 // `mise run generate-route-reference` and `mise run check-route-reference`.
@@ -22,7 +22,7 @@ func main() {
 
 func run(args []string) error {
 	flags := flag.NewFlagSet("idmagic-route-reference", flag.ContinueOnError)
-	output := flags.String("output", "ROUTE_PRIORITY.md", "path of the generated route priority reference")
+	output := flags.String("output", "docs/operations/route-priority.md", "path of the generated route priority reference")
 	check := flags.Bool("check", false, "fail instead of writing when the file is out of date")
 	if err := flags.Parse(args); err != nil {
 		return err

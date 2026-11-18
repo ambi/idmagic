@@ -10,6 +10,6 @@ OpenAPI から生成するクライアントの型のコメントも日本語に
 スキーマ、経路、ステータスコード、`operationId`、タグ、Problem Details の `type`（`urn:idmagic:error:*`）は翻訳前と同じである。
 API エラーの `detail`、SCIM と SharedSignals のエラーの説明、ロールと権限の説明のように、レスポンスとして返す文章は引き続き英語である。
 
-[設定リファレンス](../../../CONFIGURATION.md)と[経路の優先度リファレンス](../../../ROUTE_PRIORITY.md)も日本語になった。
+[設定リファレンス](../../operations/configuration.md)と[経路の優先度リファレンス](../../operations/route-priority.md)も日本語になった。
 環境変数名、値の型、クラス名は変わらない。
 条件付きで必須の項目は、`SEED_PROFILE != ""` のようなキーの式で条件を示す。

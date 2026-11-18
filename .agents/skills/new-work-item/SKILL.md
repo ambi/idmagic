@@ -1,23 +1,32 @@
 ---
 name: new-work-item
-description: Create a specification-first work item under work-items using the canonical format, requirement/TypeSpec references, tasks, design alternatives, and verification plan.
+description: 仕様先行の作業項目を work-items/active/ に起票し、形式に沿って動機、対象範囲、要件または TypeSpec への参照、設計の代替案、タスク、検証を書く。新しい作業を記録するとき、または作業項目を作ってと頼まれたときに使う。
 ---
 
-# Creating a work item
+# 作業項目の起票
 
-1. Read `docs/formats/work-item-format.md` as the authority for the format.
-2. `mise run work-item-number` を実行し、`work-items/active/wi-<出力した番号>-kebab-title.md` を作る。
+1. 形式の一次情報として `docs/formats/work-item-format.md` を読む。
+2. 重複と隣接の項目を探す。
+   主題の語、触れるパス、モジュール名で `rg -l '<語>' work-items/active work-items/done` を実行し、当たった項目の題名と対象範囲を読む。
+   同じ結果を扱う未完了の項目があれば、新しく起票せずにその項目を更新する。
+   範囲が重なる項目は、対象外にその項目へのリンクと分担を書く。
+3. 動機に書く事実（未実装である、検査やタスクがある、ファイルや節がある、件数）を、書く前に `rg`、`fd`、`mise tasks` で確かめる。
+   製品に機能がないことを動機にするときは、`docs/modules/README.md` から該当モジュールの README と機能仕様を読んでから書く。
+4. 外部の製品、標準、論文、記事の知見に依る項目では、設計に出典、読んだ範囲（本文か要約か）、調査日を書く。
+   要約しか読めなかった知見は、既存の規則と矛盾しない範囲でだけ使う。
+   `feature` の項目では、`docs/formats/work-item-format.md` の「既存製品との比較」に従い、同じ領域の主要な製品 2〜3 件の扱いを設計に書く。
+5. `mise run work-item-number` を実行し、`work-items/active/wi-<出力した番号>-kebab-title.md` を作る。
    最大の既存番号を数えない。push 済みの番号しか見えず、並列 worktree で衝突するためである。
-3. Write Motivation, Scope, Out of Scope, Design, Plan, Tasks, Verification, and Risk Notes. Surface open
-   questions in Design or Plan; resolve every question that would change what gets built before
-   implementation, and move genuinely deferred choices to Out of Scope.
-4. For `feature`, `bugfix`, and `operations` items, make `affected_spec` a direct reference to a
-   normative scenario or standard id, or to a TypeSpec symbol.
-5. Keep rejected options and change-specific judgment in Design. Do not create an ADR. When the item adds,
-   splits, or merges a module, widens a public package, adds a cross-module dependency, or changes a table
-   owner or composition point, apply the boundary selection procedure in
-   `docs/design/application/design-guidelines.md` and write its record in Design.
-6. Pass `mise run check-work-items`.
+6. 動機、対象範囲、対象外、設計、計画、タスク、検証、リスクを書く。
+   未解決の問いは設計か計画に書く。
+   作るものを変え得る問いは実装の前にすべて解決し、本当に先送りする選択は対象外へ移す。
+7. `feature`、`bugfix`、`operations` の項目では、`affected_spec` に規範シナリオ、標準の ID、または TypeSpec のシンボルを直接挙げる。
+   `check-work-items` は未完了の項目でも参照の解決を求めるので、まだない要件やシンボルは挙げず、変更が触れる既存の要素を挙げる。
+   新しい ID とシンボルは、`spec-change` で仕様を書いたときに足す。
+8. 採らなかった案と変更固有の判断は設計に残す。
+   ADR は作らない。
+   モジュールの追加、分割と統合、公開パッケージの拡大、モジュール間の依存の追加、テーブル所有者または組み立て地点の変更を含む項目では、`docs/design/application/design-guidelines.md` の境界を選ぶ判断手順を適用し、その記録を設計に書く。
+9. `mise run check-work-items` を通す。
 
 完了時は `## 要約` を書いて `mise run move-work-item -- <id>` を実行する。
 コマンドが縮約前の仕様影響の照合、完了時の検査、要約への縮約、`work-items/done/` への移動、リンクの更新を行う。

@@ -72,7 +72,7 @@
 
 デプロイと運用に使うファイルは、実行して初めて意味が決まる。
 書き間違えても、プロダクトのコードを対象とするテストは失敗しない。
-対象は `infra/k8s/` の Kubernetes マニフェスト、`infra/docker/` の Docker Compose 構成、Prometheus の規則と収集エージェントの構成と Grafana のダッシュボード、`infra/schema/postgres.sql`、そして実装から生成する `CONFIGURATION.md` と `ROUTE_PRIORITY.md` である。
+対象は `infra/k8s/` の Kubernetes マニフェスト、`infra/docker/` の Docker Compose 構成、Prometheus の規則と収集エージェントの構成と Grafana のダッシュボード、`infra/schema/postgres.sql`、そして実装から生成する[設定リファレンス](../../operations/configuration.md)と[経路の優先度リファレンス](../../operations/route-priority.md)である。
 これらの合否は、テストの成功ではなく、書いた内容と現実の一致で判断する。
 
 | 対象 | 実行 | 合否条件 |

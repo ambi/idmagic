@@ -204,7 +204,7 @@ IdMagic 自身が提供する認可は[認可設計](../security/authorization.m
 ## 構成管理
 
 `infra/k8s/base/` には環境に共通のマニフェストを、`overlays/` には環境ごとの差分を、`infra/docker/` にはローカルの構成を置く。
-アプリケーションの設定項目、デフォルト値、検証規則は、コードから生成する [`CONFIGURATION.md`](../../../CONFIGURATION.md) が示す。
+アプリケーションの設定項目、デフォルト値、検証規則は、コードから生成する[設定リファレンス](../../operations/configuration.md)が示す。
 シークレットとイメージのダイジェストはデプロイ時に注入し、Git の構成ファイルへは書かない。
 
 | 項目 | 内容 |
