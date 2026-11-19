@@ -22,7 +22,6 @@
 | 信頼性設計 | [reliability/](reliability/README.md#信頼性設計) | 障害、冗長性、縮退、復元 |
 | 性能設計 | [performance/](performance/README.md#性能設計) | 負荷、資源、待ち行列、拡張 |
 | オブザーバビリティ設計 | [observability/](observability/README.md#オブザーバビリティ設計) | メトリクス、ログ、トレース、検知 |
-| 検証設計 | [verification/](verification/README.md#検証設計) | 要件を満たしたと判断するための証拠 |
 
 設計判断とリスクは設計領域ではなく、アーキテクチャ記述に含める設計の記録である。
 システム全体の判断は[アーキテクチャ上の判断](architecture/decisions.md)、既知のリスクと技術的負債は[リスクと技術的負債](architecture/risks.md)、脅威は[脅威モデル](security/threat-model.md)に記載する。
@@ -49,7 +48,7 @@
 数値目標と測定境界は[品質要件](../requirements/quality.md)が宣言し、[論理アーキテクチャの割り当て](architecture/logical.md#品質要件の割り当て)が担当機能、設計、検証への参照を定める。
 数値を持たない品質特性は、[品質特性ごとの要件](../requirements/quality.md#品質特性ごとの要件)が参照する共通設計と検証に従う。
 割り当ては目標の担当を示し、実装済み、検証済み、達成済みのいずれも意味しない。
-監視の実装状況は[検知していない事象](observability/monitoring.md#検知していない事象)、実測の有無は[品質要件の証拠の区分](../requirements/quality.md#証拠の区分)、検証に必要な環境は[要件の群ごとの証拠](verification/README.md#要件の群ごとの証拠)を参照する。
+監視の実装状況は[検知していない事象](observability/monitoring.md#検知していない事象)、実測の有無と検証に必要な環境は[品質要件の証拠の区分](../requirements/quality.md#証拠の区分)を参照する。
 
 ## 用語
 

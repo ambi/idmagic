@@ -103,51 +103,62 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 
 ### モジュールの間の依存
 
-コード上の参照とモデルの関係を重ねた行列は、[論理アーキテクチャのモジュールの構成](../design/architecture/logical.md#モジュールの構成)で読む。
-次の表は各モジュールの「責務と境界」を要約し、モデルの利用、変換、更新の担当を示す。
-サイト生成時に、このラベルを境界検査が抽出する import の辺と合わせる。
+次の表は各モジュールの「責務と境界」を要約し、モデルの関係の種類と、利用、変換、更新の担当を示す。
+文書サイトは、この表と境界検査が抽出する import の辺から、[論理アーキテクチャの Context Map](../design/architecture/logical.md#モジュールの関係)を生成する。
 コードの参照に現れない HTTP とポート越しの関係も表に含める。
-未知のモジュールと同じ組の重複は検査し、ラベルの意味は設計としてレビューする。
 
-| 利用元 | 利用先 | 関係 |
-| --- | --- | --- |
-| Application | SignInPolicy | サインイン条件を評価 |
-| ApplicationCatalog | Application | Application の更新を依頼 |
-| ApplicationCatalog | OAuth2 | クライアントを管理 |
-| ApplicationCatalog | Saml | SP を管理 |
-| ApplicationCatalog | SignInPolicy | 条件の更新を依頼 |
-| ApplicationCatalog | WsFederation | RP を管理 |
-| Authentication | IdManagement | User を照会 |
-| Authentication | SignInPolicy | 認証事実を渡して評価 |
-| Authentication | Tenancy | 設定とデフォルト値を利用 |
-| ClaimMapping | IdManagement | 属性定義を利用 |
-| IdGovernance | Application | 割り当ての更新を依頼 |
-| IdGovernance | IdManagement | User の更新を依頼 |
-| OAuth2 | Application | アクセスを判定 |
-| OAuth2 | Authentication | 認証結果を利用 |
-| OAuth2 | ClaimMapping | クレームを組み立て |
-| OAuth2 | SharedSignals | 失効エポックを照会 |
-| OAuth2 | SigningKeys | 署名と公開鍵を利用 |
-| Provisioning | Application | 割り当てを照会 |
-| Provisioning | IdManagement | User と Group を読み下流向けに変換 |
-| Saml | ClaimMapping | クレームを Assertion へ変換 |
-| SharedSignals | IdManagement | Agent と資格情報の束縛を照会 |
-| Sourcing | IdManagement | 外部の属性と操作を User と Group へ変換 |
-| WorkloadIdentity | IdManagement | 外部の主体を Agent へ対応付け |
-| WsFederation | ClaimMapping | クレームを WS-Fed の表現へ変換 |
-| DirectoryConnector | Sourcing | LDAP の属性を Connector API へ変換 |
-| McpGateway | OAuth2 | MCP の要求を評価の HTTP へ変換 |
-| Frontend | ApplicationCatalog | 管理とポータルの HTTP |
-| Frontend | Authentication | 認証の HTTP |
-| Frontend | IdManagement | User と Group の管理 HTTP |
-| Frontend | OAuth2 | OIDC RP として認可を要求 |
-| IdManagement | Authentication | 資格情報の更新と削除を依頼 |
-| IdManagement | IdGovernance | User の変更時にワークフローを捕捉 |
-| IdManagement | OAuth2 | 同意の照会と削除を依頼 |
-| IdManagement | Provisioning | 確定後に同期を通知 |
-| IdManagement | SharedSignals | Agent と所有者の停止を通知 |
-| Audit | IdManagement | username を User の ID へ対応付け |
-| SignInPolicy | Application | アプリの実在を照会 |
+「関係の種類」には、[モジュール間でのモデルの扱い](../design/application/design-guidelines.md#モジュール間でのモデルの扱い)に対応する次の値を書く。
+
+| 関係の種類 | 意味 |
+| --- | --- |
+| `使う` | 利用先の公開型と操作をそのまま使う |
+| `変換` | 利用元が、利用先のモデルを自分のモデルへ変換する |
+| `共同管理` | モデルの一部を同じ意味と実装で保つ |
+| `公開契約` | Go パッケージを共有せず、公開 HTTP 契約だけで結ぶ |
+
+表に行のない import は、利用先の公開型をそのまま使う関係（`使う`）として図に描く。
+変換、共同管理、公開契約の関係と、import に現れない関係は、表に宣言する。
+未知のモジュール、同じ組の重複、未知の関係の種類、import を持つ `公開契約` は検査が拒否し、値の意味は設計としてレビューする。
+
+| 利用元 | 利用先 | 関係の種類 | 関係 |
+| --- | --- | --- | --- |
+| Application | SignInPolicy | 使う | サインイン条件を評価 |
+| ApplicationCatalog | Application | 使う | Application の更新を依頼 |
+| ApplicationCatalog | OAuth2 | 使う | クライアントを管理 |
+| ApplicationCatalog | Saml | 使う | SP を管理 |
+| ApplicationCatalog | SignInPolicy | 使う | 条件の更新を依頼 |
+| ApplicationCatalog | WsFederation | 使う | RP を管理 |
+| Authentication | IdManagement | 使う | User を照会 |
+| Authentication | SignInPolicy | 使う | 認証事実を渡して評価 |
+| Authentication | Tenancy | 使う | 設定とデフォルト値を利用 |
+| ClaimMapping | IdManagement | 使う | 属性定義を利用 |
+| IdGovernance | Application | 使う | 割り当ての更新を依頼 |
+| IdGovernance | IdManagement | 使う | User の更新を依頼 |
+| OAuth2 | Application | 使う | アクセスを判定 |
+| OAuth2 | Authentication | 使う | 認証結果を利用 |
+| OAuth2 | ClaimMapping | 使う | クレームを組み立て |
+| OAuth2 | SharedSignals | 使う | 失効エポックを照会 |
+| OAuth2 | SigningKeys | 使う | 署名と公開鍵を利用 |
+| Provisioning | Application | 使う | 割り当てを照会 |
+| Provisioning | IdManagement | 変換 | User と Group を読み下流向けに変換 |
+| Saml | ClaimMapping | 変換 | クレームを Assertion へ変換 |
+| SharedSignals | IdManagement | 使う | Agent と資格情報の束縛を照会 |
+| Sourcing | IdManagement | 使う | 外部の属性と操作を User と Group の公開操作へ渡す |
+| WorkloadIdentity | IdManagement | 使う | 外部の主体を Agent へ対応付け |
+| WsFederation | ClaimMapping | 変換 | クレームを WS-Fed の表現へ変換 |
+| DirectoryConnector | Sourcing | 公開契約 | LDAP の属性を Connector API へ変換 |
+| McpGateway | OAuth2 | 公開契約 | MCP の要求を評価の HTTP へ変換 |
+| Frontend | ApplicationCatalog | 公開契約 | 管理とポータルの HTTP |
+| Frontend | Authentication | 公開契約 | 認証の HTTP |
+| Frontend | IdManagement | 公開契約 | User と Group の管理 HTTP |
+| Frontend | OAuth2 | 公開契約 | OIDC RP として認可を要求 |
+| IdManagement | Authentication | 使う | 資格情報の更新と削除を依頼 |
+| IdManagement | IdGovernance | 使う | User の変更時にワークフローを捕捉 |
+| IdManagement | OAuth2 | 使う | 同意の照会と削除を依頼 |
+| IdManagement | Provisioning | 使う | 確定後に同期を通知 |
+| IdManagement | SharedSignals | 使う | Agent と所有者の停止を通知 |
+| Audit | IdManagement | 使う | username を User の ID へ対応付け |
+| SignInPolicy | Application | 使う | アプリの実在を照会 |
 
 イベントの語彙と配信点は[モジュール間イベント](../design/application/backend.md#モジュール間イベント)、複数のモジュールにまたがる保証は[横断シナリオ](scenarios.feature.md)が定める。
 

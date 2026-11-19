@@ -38,7 +38,7 @@ describe('checkBoundaries module rules', () => {
     const root = await boundaryWorkspace({
       'docs/modules/README.md':
         BOUNDARY_FIXTURE['docs/modules/README.md']! +
-        '\n| 利用元 | 利用先 | 関係 |\n| --- | --- | --- |\n| Customer | Supplier | モデルを利用 |\n',
+        '\n| 利用元 | 利用先 | 関係の種類 | 関係 |\n| --- | --- | --- | --- |\n| Customer | Supplier | 変換 | モデルを変換 |\n',
       'backend/customer/service.go':
         'package customer\nimport _ "example.com/product/backend/supplier/domain"\n',
       'backend/supplier/service_test.go':
@@ -56,10 +56,10 @@ describe('checkBoundaries module rules', () => {
       }),
     })
     const diagram = await generatedModuleDependencies(createWorkspaceSnapshot(root))
-    expect(diagram).toContain(
-      '[!](../../modules/README.md#モジュールの間の依存 "Customer → Supplier：境界の負債、モデルを利用")',
-    )
-    expect(diagram).toContain('| 1 Supplier | — | — |')
+    expect(diagram).toContain('m_Customer ==>|"変換：モデルを変換（境界の負債）"| m_Supplier')
+    // テストだけの import は辺にしない。
+    expect(diagram).not.toContain('m_Supplier ==>')
+    expect(diagram).not.toContain('m_Supplier -->')
     expect(diagram).not.toContain('System')
     expect(diagram).not.toContain('shared')
   })

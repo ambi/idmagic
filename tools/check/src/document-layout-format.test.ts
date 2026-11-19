@@ -31,8 +31,8 @@ docs/
       message: '配置図に定義済み文書のパスがない: docs/design/architecture/system-boundary.md',
     })
     expect(findings).toContainEqual({
-      path: 'docs/design/verification/system-acceptance.md',
-      message: '配置図に定義済み文書のパスがない: docs/design/verification/system-acceptance.md',
+      path: 'docs/design/reliability/availability.md',
+      message: '配置図に定義済み文書のパスがない: docs/design/reliability/availability.md',
     })
     expect(findings).toContainEqual({
       path: 'docs/modules/<module>/standards.md',

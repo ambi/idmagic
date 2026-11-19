@@ -1,7 +1,7 @@
-# AccessControl の検証
+# AccessControl のセキュリティ
 
-この文書は、AccessControl の要件と統制のうち、例のテストのほかに確かめているものを扱う。
-システム全体の検証の方式は[検証設計](../../design/verification/README.md)に従う。
+この文書は、AccessControl の信頼境界で、外部から届く入力の解析をどう確かめるかを扱う。
+制御の種類ごとの検証手段は[脅威モデル](../../design/security/threat-model.md#制御の種類ごとの検証手段)が定める。
 
 ## パースの境界のファズテスト
 

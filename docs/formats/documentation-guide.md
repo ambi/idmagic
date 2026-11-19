@@ -102,10 +102,6 @@ docs/
       monitoring.md
       logging.md
       tracing.md
-    verification/
-      README.md
-      system-acceptance.md
-      security.md
   modules/                      # モジュール設計文書
     README.md                   # 入口：読み始める順序、区分ごとの責務表、モジュールの間の依存の図、文書の構成
     glossary.md                 # すべてのモジュールに共通する語彙
@@ -122,7 +118,6 @@ docs/
       reliability.md
       performance.md
       observability.md
-      verification.md
       decisions.md              # 代替案を比べた重要な設計判断
       risks.md                  # 既知の欠陥、技術的負債、受容したリスク
       features/                 # 機能
@@ -156,7 +151,7 @@ spec/
   `SLO-*` と `CAP-*` は論理アーキテクチャの割り当て表で担当機能、設計、検証に結び、数値を複製しない。
   モジュールの `quality.md` は固有の割り当てや例外を書く必要がある場合だけ置く。
 - 固定された各設計ディレクトリには、その範囲、対象外、子要素、隣接する設計を宣言する `README.md` を置く。その配下には、配置図で責務を定めたファイルだけを置ける。
-- `docs/development/`、`docs/runbooks/`、`docs/releases/` は開いた集合、`docs/operations/` と `docs/design/verification/` は固定された集合とする。
+- `docs/development/`、`docs/runbooks/`、`docs/releases/` は開いた集合、`docs/operations/` は固定された集合とする。
 - 内容のないファイルは作らない。共通設計をデフォルトとし、固有設計と委譲の例外、対象外とその理由だけを親の索引へ記録する。
 - 固定された各ディレクトリでは、ファイル名を検査する *(checked)*。許可された名前に近い誤記には意図した名前を、その他の名前には許可される名前の集合を報告する。
 - モジュールの直下には配置図の名前だけを置く。機能の段の文書だけは、ケバブケースの機能名で始める。
@@ -204,7 +199,7 @@ X のライフサイクルと付随するメタデータを扱う。
 
 - `docs/README.md`、`docs/requirements/product-overview.md`、`docs/requirements/`、`docs/design/architecture/` の順に、目的、義務、構造を上から読む。
 - `docs/design/` は、アーキテクチャが各構成要素へ割り当てた要件をどの機構で満たすかを書く。`docs/modules/<module>/` と TypeSpec がアプリケーションの詳細仕様を定め、上位文書はその内容を複製しない。
-- `design/verification/` には要件を満たしたと判断する方法、`development/` には開発の進め方、`operations/` には稼働後の管理、`runbooks/` には作業中に実行する手順を書く。設計と作業手順が同じファイルに入ったら、設計を `design/` へ、手順を後三者へ分ける。一つの構成要素だけに関わる開発時の作業は、その構成要素の設計文書に含めてよい。
+- `design/` には要件を満たす仕組み、`development/` には開発の進め方と要件を満たしたと判断する証拠（[テスト方針](../development/testing.md#要件の群ごとの証拠)）、`operations/` には稼働後の管理、`runbooks/` には作業中に実行する手順を書く。設計と作業手順が同じファイルに入ったら、設計を `design/` へ、手順を後三者へ分ける。一つの構成要素だけに関わる開発時の作業は、その構成要素の設計文書に含めてよい。
 - `docs/` の外の、コードのディレクトリの `README.md`（`frontend/README.md` など）は、`docs/` の文書へのリンクとよく使うコマンドだけを載せる。`docs/` の文書は内容を「`README.md` を参照」と委ねず、必要な内容を自身に含める。
 
 ### 一次情報源の割り当て
@@ -316,8 +311,9 @@ X のライフサイクルと付随するメタデータを扱う。
 
 ## 要件文書と全体設計文書
 
-要件文書と全体設計文書は、外部から見た目的と環境を入口にし、要件、アーキテクチャ、設計領域ごとの設計、検証へ分解する。
-要件は「何を満たすか」、アーキテクチャは「どの構成要素へ割り当てるか」、設計領域ごとの設計は「どの機構で満たすか」、検証設計は「どの証拠で満たしたと判断するか」に答える。
+要件文書と全体設計文書は、外部から見た目的と環境を入口にし、要件、アーキテクチャ、設計領域ごとの設計へ分解する。
+要件は「何を満たすか」、アーキテクチャは「どの構成要素へ割り当てるか」、設計領域ごとの設計は「どの機構で満たすか」に答える。
+「どの証拠で満たしたと判断するか」は、証拠を作るテストと同じ場所で保つため、設計領域にせず[テスト方針](../development/testing.md#要件の群ごとの証拠)と[脅威モデル](../design/security/threat-model.md#状態ごとに求める証拠)が答える。
 requirement は「要件」と訳し、文書の区分にも機能仕様の `REQ-*` にも同じ語を使う。
 実装の単位は「モジュール」と書き、Go の `context.Context` と同じ語を設計の単位に使わない。
 
@@ -331,13 +327,12 @@ requirement は「要件」と訳し、文書の区分にも機能仕様の `REQ
 | `design/architecture/` | `README.md` に制約と解決戦略、`system-boundary.md` に外部の主体と責任分界、`logical.md` にモジュールの責務表とアーキテクチャスタイル、`runtime.md` に実行単位と主要な相互作用、`deployment.md` に実行単位と配置先の対応、`decisions.md` に複数の文書に作用する判断 | 別のビューと同じ構成の再定義 |
 | `design/application/backend.md`、`frontend.md` | パッケージの分類、層構成、アダプターの命名、モジュール間の依存規則と公開範囲、イベント、起動時の組み立て。フロントエンドはルーティング、状態の置き場所、ビルドと配信 | 通すだけの層を構造の改善と呼ぶこと |
 | `design/application/api-guidelines.md` | 操作をまたいで同じでなければならない規則（命名、値の表現、メソッド、状態コード、エラー、ページング、冪等性、条件付き要求、長時間の操作、上限、互換性、非推奨）と、各規則が守っているもの | 個々の操作の形（TypeSpec が定める） |
-| `design/application/user-interface.md` | 画面をまたいで揃える情報の順序、操作、表示状態、エラーの文言、国際化、アクセシビリティの実装手段 | 画面ごとの文言と見た目、アクセシビリティの規範（`standards.md` が定める） |
+| `design/application/user-interface.md` | どの画面にも適用する情報の順序、操作、表示状態、エラーの文言、国際化、アクセシビリティの実装手段 | 画面ごとの文言と見た目、アクセシビリティの規範（`standards.md` が定める） |
 | `design/data/` | `database.md` に型の選択と制約の置き場所とテーブル一覧つきの ER 図、`schema-management.md` に拡張と縮小の段階による変更、`lifecycle.md` にデータが消えるまでの横断的な扱い | カラムと索引（スキーマファイルが定める） |
 | `design/infrastructure/` | `platform.md` にコンピューティング、ストレージ、環境差、構成管理、`network.md` に入口、出口、名前解決、TLS 終端、隔離 | 信頼境界（セキュリティ設計が定める） |
 | `design/security/` | `authorization.md` に主体、境界ごとの受け入れ、スコープ、テナント境界の規則とその検証手段、`threat-model.md` に信頼境界、資産、脅威と応える統制、`secrets.md` に鍵と証明書のライフサイクル | 操作とスコープの割り当て表（TypeSpec が定める）、是正を担う work item |
 | `design/reliability/`、`design/performance/` | 障害単位、冗長化、復旧の順序、過負荷時の振る舞いと再試行の層、利用規模の見積もり、スケーリングの単位と律速点 | 目標値（品質要件が定める）、上限値だけを集めた一覧 |
 | `design/observability/` | 相関 ID、シグナル間の関係、監視対象と通知、ログの扱い、トレースの伝播と標本化 | SLO の目標値、監査イベント名（TypeSpec が定める） |
-| `design/verification/` | 要件ごとに必要な証拠の種類、標準タスク、証拠の保存先、合否条件 | テストコードと実行結果の写し |
 
 ## 変更の記録
 

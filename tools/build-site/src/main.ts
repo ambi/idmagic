@@ -126,7 +126,7 @@ const result = renderDocumentationSite({
   openapiFileName: basename(openapiPath),
   models: catalog.symbols,
   moduleTags: catalog.moduleTags,
-  moduleDependencyMatrix: await generatedModuleDependencies(createWorkspaceSnapshot(root)),
+  moduleContextMap: await generatedModuleDependencies(createWorkspaceSnapshot(root)),
 })
 
 const validationWindow = new Window()

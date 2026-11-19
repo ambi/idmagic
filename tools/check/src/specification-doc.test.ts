@@ -66,7 +66,7 @@ describe('品質要件の割り当て', () => {
   const quality =
     '# 品質要件\n\n| ID | 母集団 | 目標 | 指標 |\n| --- | --- | --- | --- |\n| SLO-DEMO-LATENCY | タスク | 目標 | 指標 |\n\n| ID | エンドポイント | 必要なリクエスト率 | 満たす目標 |\n| --- | --- | --- | --- |\n| CAP-DEMO-THROUGHPUT | タスク | 目標 | SLO-DEMO-LATENCY |\n'
   const row = (id: string) =>
-    `| [${id}](../../requirements/quality.md#目標) | [担当](../../modules/demo/task/README.md#操作) | [設計](../performance/scaling.md#負荷) | [検証](../verification/README.md#証拠) |`
+    `| [${id}](../../requirements/quality.md#目標) | [担当](../../modules/demo/task/README.md#操作) | [設計](../performance/scaling.md#負荷) | [検証](../../development/testing.md#証拠) |`
   const validate = (rows: string) =>
     verifyQualityAllocations(
       new Map([
@@ -125,10 +125,14 @@ describe('documentKind', () => {
   it('names the grammar of the top-down system document tree', () => {
     expect(documentKind('docs/requirements/quality.md')).toBe('prose')
     expect(documentKind('docs/design/architecture/deployment.md')).toBe('prose')
+    // システムの判断も、モジュールの判断と同じ記録の骨格を持つ。
+    expect(documentKind('docs/design/architecture/decisions.md')).toBe('decision-records')
     expect(documentKind('docs/design/security/threat-model.md')).toBe('prose')
     expect(documentKind('docs/design/observability/logging.md')).toBe('prose')
-    expect(documentKind('docs/design/verification/system-acceptance.md')).toBe('prose')
+    expect(documentKind('docs/design/reliability/availability.md')).toBe('prose')
     expect(documentKind('docs/operations/service-management.md')).toBe('prose')
+    // 要件の証拠はテスト方針と脅威モデルが扱い、検証の設計領域は置かない。
+    expect(documentKind('docs/design/verification/system-acceptance.md')).toBeUndefined()
   })
 
   it('rejects a name the layout does not define, and a context-only name at the root', () => {

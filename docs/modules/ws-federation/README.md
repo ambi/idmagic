@@ -72,9 +72,8 @@ RST と RSTR のやり取り自体は、メタデータの一部ではない。
 | --- | --- | --- |
 | アプリケーション設計 | [標準仕様](standards.md#web-services-federation-language-ws-federation-version-12) | 管理 API はシステムのアプリケーション設計に従い、プロトコルの形は標準仕様が定める |
 | データ設計 | [WsFederation のデータ](data.md#集約) | Aggregate とその関係。テーブルの定義はスキーマファイルが扱う |
-| セキュリティ設計 | [WsFederation のセキュリティ](security.md#テナント単位の署名) | テナント単位の署名、認可の境界 |
+| セキュリティ設計 | [WsFederation のセキュリティ](security.md#テナント単位の署名) | テナント単位の署名、認可の境界、パースの境界のファズテスト |
 | 信頼性設計 | [RP と Entra フェデレーションの管理の設計](features/relying-party.md#信頼性) | Entra のフェデレーションの障害の切り分けはRP と Entra フェデレーションの管理の設計が扱い、それ以外に固有の仕組みはない |
-| 検証設計 | [WsFederation の検証](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
 
 | 文書 | 内容 |
 | --- | --- |

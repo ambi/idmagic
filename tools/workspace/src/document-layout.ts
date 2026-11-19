@@ -20,9 +20,9 @@ export const MODULE_INDEX_DOCUMENTS = ['README.md', 'glossary.md', 'scenarios.fe
 /**
  * 全体設計文書の設計領域。システムの `docs/design/<directory>/` とモジュールの直下の
  * `<file>` が同じ語彙と順序を使う。モジュールの索引は、共通設計と異なる領域だけを並べる。
- * 順序は実現対象（アプリケーション、データ、
- * インフラストラクチャ）、複数の実現対象へ作用する領域、検証の順であり、索引の表と生成サイトの
- * 目次はこの順に従う。
+ * 順序は実現対象（アプリケーション、データ、インフラストラクチャ）、複数の実現対象へ
+ * 作用する領域の順であり、索引の表と生成サイトの目次はこの順に従う。
+ * 要件を満たしたと判断する証拠は設計領域にせず、テスト方針と脅威モデルが扱う。
  */
 export const DESIGN_AREAS = [
   { name: 'アーキテクチャ設計', directory: 'architecture', file: 'architecture.md' },
@@ -33,7 +33,6 @@ export const DESIGN_AREAS = [
   { name: '信頼性設計', directory: 'reliability', file: 'reliability.md' },
   { name: '性能設計', directory: 'performance', file: 'performance.md' },
   { name: 'オブザーバビリティ設計', directory: 'observability', file: 'observability.md' },
-  { name: '検証設計', directory: 'verification', file: 'verification.md' },
 ] as const
 
 /** 設計領域ごとの固定の文書。`DESIGN_AREAS` の順に並べて一次情報文書の一覧へ入れる。 */
@@ -62,7 +61,6 @@ const DESIGN_AREA_DOCUMENTS: Record<(typeof DESIGN_AREAS)[number]['directory'], 
     reliability: ['README.md', 'availability.md', 'recovery.md'],
     performance: ['README.md', 'capacity.md', 'scaling.md'],
     observability: ['README.md', 'monitoring.md', 'logging.md', 'tracing.md'],
-    verification: ['README.md', 'system-acceptance.md', 'security.md'],
   }
 
 /** 一次情報文書を、`docs/README.md` の区分の順に、上位から読む順序で定義する。 */

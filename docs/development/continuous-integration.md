@@ -85,6 +85,30 @@ CI の通常テストの報告には `.verification/test-go.json` を明示し�
 OpenLDAP の結合試験と E2E はそれぞれ `.verification/test-go-openldap-integration.json` と `.verification/test-go-openldap-e2e.json` を報告する。
 テスト実行まで到達しなかった場合は結果の欠落として表示され、以前の実行を成功の証拠に使わない。
 
+## 宣言的なファイルの検証
+
+デプロイと運用に使うファイルは、実行して初めて意味が決まる。
+書き間違えても、プロダクトのコードを対象とするテストは失敗しない。
+対象は Kubernetes のマニフェスト、Docker Compose の構成、Prometheus の規則と収集エージェントの構成と Grafana のダッシュボード、PostgreSQL のスキーマ、そして実装から生成する[設定リファレンス](../operations/configuration.md)と[経路の優先度リファレンス](../operations/route-priority.md)である。
+これらの合否は、テストの成功ではなく、書いた内容が意図どおりに解釈されるかで判断する。
+
+| 対象 | 実行 | 合否条件 |
+| --- | --- | --- |
+| Kubernetes のオーバーレイ | `mise run check-k8s -- dev`、`mise run check-k8s -- prod` | 双方のオーバーレイがレンダリングでき、結果が API スキーマに厳密に適合する |
+| Docker Compose の開発スタック | `mise run check-compose` | 構成が解決でき、参照する環境変数とイメージが揃う |
+| Prometheus の規則、収集エージェントの構成、ダッシュボード、監視のオーバーレイ | `mise run check-monitoring` | 規則と構成が構文として妥当で、ダッシュボードが JSON として読め、監視のオーバーレイがレンダリングできる |
+| PostgreSQL スキーマの収束 | `mise run check-schema` | 空のデータベースへ適用したあと、再適用が差分を出さない |
+| 固定した第三者イメージ | `mise run check-container-images -- <image...>` | 宣言したダイジェストまたはタグが解決できる |
+| 負荷試験スクリプト | `mise run check-k6` | スクリプトが解析でき、宣言したシナリオと閾値を読み出せる |
+| 生成した設定リファレンス | `mise run check-config-reference` | 設定スキーマから再生成した内容がコミット済みの文書と一致する |
+| 生成した経路の優先順位 | `mise run check-route-reference` | ルーティングの実装から再生成した内容がコミット済みの文書と一致する |
+
+いずれもリポジトリ内で実行でき、Kubernetes、Docker Compose、監視資産、イメージ、負荷試験スクリプトの検証は Docker を要する。
+どれを CI に入れるかは次節が定める。
+
+この検証が示すのは、ファイルが意図どおり解釈されることまでである。
+リソースの割り当て、スケジューリング、ネットワークポリシー、アラートが意図した事象で発報するかは、[可用性設計の障害試験](../design/reliability/availability.md#障害試験と復元試験)が引き受ける。
+
 ## CI で検証しないもの
 
 **infra の宣言的アセットは CI で検証しない。**

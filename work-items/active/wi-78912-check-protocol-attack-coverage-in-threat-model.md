@@ -26,7 +26,7 @@ SAML と WS-Federation にはモジュールの `security.md` があるが、OAu
 漏れがあっても、今の脅威モデルからは気付けない。
 漏れた類型は `planned` の行としても現れず、是正の作業項目も起票されないためである。
 
-この項目は [wi-83807](wi-83807-make-system-design-docs-easier-to-read.md) の起票時に、設計文書の見直しから分けた。
+この項目は [wi-83807](../done/wi-83807-make-system-design-docs-easier-to-read.md) の起票時に、設計文書の見直しから分けた。
 
 ## 対象範囲
 
@@ -42,7 +42,7 @@ SAML と WS-Federation にはモジュールの `security.md` があるが、OAu
 - 見つけた欠落の是正（規範の追加と実装）。
   欠落ごとに別の作業項目として起票し、その作業項目から `THREAT-NNN` を名指す。
 - 脅威モデルの `Controls` の参照をリンクへ書き換える作業。
-  [wi-83807](wi-83807-make-system-design-docs-easier-to-read.md) が扱う。
+  [wi-83807](../done/wi-83807-make-system-design-docs-easier-to-read.md) が扱う。
   この項目で足す行は、どちらが先に完了しても合うよう、wi-83807 の完了後ならリンクの形で、完了前なら既存の書式で書く。
 - 侵入試験と外部のセキュリティレビュー。
 - 上の四つ以外のプロトコル（SCIM、SSF、MCP など）。

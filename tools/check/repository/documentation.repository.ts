@@ -61,7 +61,6 @@ const PRIMARY_SOURCE_VOCABULARY_ROOTS = [
   'docs/modules/glossary.md',
   'docs/design/application/backend.md',
   'docs/development',
-  'docs/design/verification',
   'frontend/src',
   'tools',
 ]

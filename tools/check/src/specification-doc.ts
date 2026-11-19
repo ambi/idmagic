@@ -49,6 +49,7 @@ export type DocumentKind =
 const KIND_BY_NAME = new Map<string, DocumentKind>([
   ['standards.md', 'standards'],
   ['scenarios.feature.md', 'scenarios'],
+  ['decisions.md', 'decision-records'],
 ])
 
 /** モジュールの直下で種別を返す名前。 */
@@ -530,7 +531,7 @@ const DECISION_RECORD_SECTIONS = [
   '関連する要件',
 ] as const
 
-/** モジュールの `decisions.md` の各判断（H2）が、記録の各部（H3）をこの順で一度ずつ持つことを確かめる。 */
+/** システムとモジュールの `decisions.md` の各判断（H2）が、記録の各部（H3）をこの順で一度ずつ持つことを確かめる。 */
 function validateDecisionRecords(source: string, findings: SpecificationFinding[]): void {
   const decisions = [...source.matchAll(/^## (?!#)(.+)$/gm)]
   for (const [index, decision] of decisions.entries()) {

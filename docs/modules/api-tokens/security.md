@@ -1,7 +1,7 @@
-# ApiTokens の検証
+# ApiTokens のセキュリティ
 
-この文書は、ApiTokens の要件と統制のうち、例のテストのほかに確かめているものを扱う。
-システム全体の検証の方式は[検証設計](../../design/verification/README.md)に従う。
+この文書は、ApiTokens の信頼境界での入力の解析と、拒否の宣言の共有をどう確かめるかを扱う。
+制御の種類ごとの検証手段は[脅威モデル](../../design/security/threat-model.md#制御の種類ごとの検証手段)が定める。
 
 ## パースの境界のファズテスト
 

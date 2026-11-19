@@ -1,6 +1,6 @@
 # 論理アーキテクチャ
 
-この文書は、IdMagic のモジュールの構成を選んだアーキテクチャ様式と、品質要件のモジュールへの割り当てを示す。
+この文書は、IdMagic のアーキテクチャ様式、モジュールの関係、品質要件のモジュールへの割り当てを示す。
 
 ## アーキテクチャ様式
 
@@ -21,21 +21,34 @@ IdMagic は、リポジトリのルートの `go.mod` が定める一つの Go �
 画面は利用者の操作単位で分け、その構成は[フロントエンド設計](../application/frontend.md#機能スライスとモジュールの対応)で定める。
 
 コード上のモジュール間の参照はソースから抽出し、`mise run check-boundaries` が[依存規則](../application/backend.md#モジュール間の依存規則)で判定する。
-下の生成行列は、その参照に、各モジュールの設計が定めるモデルの利用や変換のラベル、HTTP とポート越しの呼び出しを重ねて示す。
 イベントの語彙と配信点は [モジュール間イベント](../application/backend.md#モジュール間イベント) が定める。
 
-## モジュールの構成
+## モジュールの関係
 
-モジュールの一覧、責務、公開パッケージ、Go パッケージとの対応は、[モジュール設計文書の責務表](../../modules/README.md#モジュール)が定める。
+モジュールの一覧、責務、公開パッケージは、[モジュール設計文書の責務表](../../modules/README.md#モジュール)が定める。
+この節は、モジュールどうしがモデルをどう扱い合うかを、DDD の Context Map の形で示す。
 
-文書サイトでは、責務表と本番 Go コードの import から、モジュール間の依存の行列を生成する。
-行が利用元、列が利用先であり、列の番号は行の番号に対応する。
-モジュールと辺が多いため、線を交差させずに依存を読める行列を使う。
-記号は、● が import、◇ がコードの参照に現れない HTTP とポート越しの関係、! が境界の負債台帳に記録された import、— が関係なしを示す。
-記号のリンクのタイトルには利用元、利用先、関係の目的を表示し、リンクを開くと関係の表へ進む。
-行列は上下左右へスクロールでき、行と列の見出しは固定する。
-[モジュールの間の依存](../../modules/README.md#モジュールの間の依存)の表が、関係の目的を定める。
-組み立て地点（System）と共有ライブラリ（shared）は、多くのモジュールへ接続するため行列から省く。
+Context Map は本来、Bounded Context を節点に、モデルの関係を辺にした図である。
+IdMagic は Bounded Context による分類を採らないので（[アーキテクチャ上の判断](decisions.md#モジュール間の依存を共通の規則で検査する)）、節点にはモジュールを置き、辺の種類だけを借りる。
+
+| 線 | 関係の種類 | 意味 | Context Map での名前 |
+| --- | --- | --- | --- |
+| 実線 | 使う | 利用先の公開型と操作をそのまま使う | Conformist、Customer/Supplier |
+| 太線 | 変換 | 利用元が、利用先のモデルを自分のモデルへ変換する | Anti-Corruption Layer |
+| 双方向の線 | 共同管理 | モデルの一部を同じ意味と実装で保つ | Shared Kernel |
+| 点線 | 公開契約 | Go パッケージを共有せず、公開 HTTP 契約だけで結ぶ | Open Host Service、Published Language |
+
+線は利用元から利用先へ引く。
+Context Map の上流と下流は利用の向きの逆になるので、この図では使わない。
+ラベルの末尾の「（境界の負債）」は、[境界の負債台帳](../application/backend.md#検査と負債)に記録された import を示す。
+
+26 のモジュールを一枚に描くと線が交差して読めないので、図を二段に分ける。
+最初の図は責務表の五つの区分を節点にし、区分の間の線の本数を関係の種類ごとに示す。
+続く区分ごとの図は、区分のモジュールと、区分の外の相手（破線の枠）を描く。
+組み立て地点（System）と共有ライブラリは、多くのモジュールへ接続するため図から省く。
+
+図は、[モジュールの間の依存](../../modules/README.md#モジュールの間の依存)の表と本番の Go コードの import から、文書サイトの生成時に作る。
+表に宣言のない import は「使う」として描く。
 
 <!-- generated:module-dependencies -->
 
@@ -48,27 +61,27 @@ JWKS の HTTP 応答と形式への直列化は OAuth2 が担当し、鍵素材�
 
 | 品質要件 | 担当機能 | 設計 | 検証 |
 | --- | --- | --- | --- |
-| [SLO-LOGIN-LATENCY](../../requirements/quality.md#サービス目標) | [ログイン](../../modules/authentication/features/sign-in.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-AUTHORIZE-LATENCY](../../requirements/quality.md#サービス目標) | [認可](../../modules/oauth2/features/authorization.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-PAR-LATENCY](../../requirements/quality.md#サービス目標) | [PAR](../../modules/oauth2/features/authorization.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-TOKEN-LATENCY](../../requirements/quality.md#サービス目標) | [トークン](../../modules/oauth2/features/token.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-INTROSPECT-LATENCY](../../requirements/quality.md#サービス目標) | [イントロスペクション](../../modules/oauth2/features/token.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
+| [SLO-LOGIN-LATENCY](../../requirements/quality.md#サービス目標) | [ログイン](../../modules/authentication/features/sign-in.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-AUTHORIZE-LATENCY](../../requirements/quality.md#サービス目標) | [認可](../../modules/oauth2/features/authorization.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-PAR-LATENCY](../../requirements/quality.md#サービス目標) | [PAR](../../modules/oauth2/features/authorization.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-TOKEN-LATENCY](../../requirements/quality.md#サービス目標) | [トークン](../../modules/oauth2/features/token.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-INTROSPECT-LATENCY](../../requirements/quality.md#サービス目標) | [イントロスペクション](../../modules/oauth2/features/token.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
 | [SLO-RESOURCE-ACCESS-LATENCY](../../requirements/quality.md#サービス目標) | [リソースアクセス評価](../../modules/oauth2/features/resource-access.md#品質) | [評価の性能](../performance/scaling.md#リソースアクセス評価) | [局所測定](../performance/scaling.md#リソースアクセス評価の再現方法) |
 | [CAP-RESOURCE-ACCESS-THROUGHPUT](../../requirements/quality.md#リソースアクセス評価の局所測定) | [リソースアクセス評価](../../modules/oauth2/features/resource-access.md#品質) | [評価の性能](../performance/scaling.md#リソースアクセス評価) | [局所測定](../performance/scaling.md#リソースアクセス評価の再現方法) |
-| [SLO-REVOKE-LATENCY](../../requirements/quality.md#サービス目標) | [失効](../../modules/oauth2/features/token.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-USERINFO-LATENCY](../../requirements/quality.md#サービス目標) | [UserInfo](../../modules/oauth2/features/token.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-DISCOVERY-LATENCY](../../requirements/quality.md#サービス目標) | [メタデータ](../../modules/oauth2/features/protocol-endpoints.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-JWKS-LATENCY](../../requirements/quality.md#サービス目標) | [JWKS](../../modules/oauth2/features/protocol-endpoints.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-REGISTER-LATENCY](../../requirements/quality.md#サービス目標) | [動的登録](../../modules/oauth2/features/client.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-DEVICE-AUTHORIZATION-LATENCY](../../requirements/quality.md#サービス目標) | [デバイス認可](../../modules/oauth2/features/device.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-FEDERATION-CALLBACK-LATENCY](../../requirements/quality.md#サービス目標) | [外部連携](../../modules/authentication/features/federation.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-PRIMARY-ERRORS](../../requirements/quality.md#サービス目標) | [ログイン](../../modules/authentication/features/sign-in.md#概要)、[認可と PAR](../../modules/oauth2/features/authorization.md#概要)、[トークンと失効と UserInfo](../../modules/oauth2/features/token.md#概要)、[動的登録](../../modules/oauth2/features/client.md#概要)、[デバイス認可](../../modules/oauth2/features/device.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-LOOKUP-ERRORS](../../requirements/quality.md#サービス目標) | [イントロスペクション](../../modules/oauth2/features/token.md#概要)、[メタデータと JWKS](../../modules/oauth2/features/protocol-endpoints.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-OAUTH2-AVAILABILITY](../../requirements/quality.md#サービス目標) | [認可と PAR](../../modules/oauth2/features/authorization.md#概要)、[トークンと参照](../../modules/oauth2/features/token.md#概要)、[メタデータと JWKS](../../modules/oauth2/features/protocol-endpoints.md#概要)、[動的登録](../../modules/oauth2/features/client.md#概要)、[デバイス認可](../../modules/oauth2/features/device.md#概要) | [可用性](../reliability/availability.md#可用性設計) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [SLO-TOKEN-AVAILABILITY](../../requirements/quality.md#サービス目標) | [トークン](../../modules/oauth2/features/token.md#概要) | [可用性](../reliability/availability.md#可用性設計) | [SLO の証拠](../verification/README.md#要件の群ごとの証拠) |
-| [CAP-TOKEN-THROUGHPUT](../../requirements/quality.md#キャパシティ受入れ) | [トークン](../../modules/oauth2/features/token.md#概要) | [キャパシティ](../performance/capacity.md#想定ワークロード) | [品質受入れ](../verification/system-acceptance.md#品質受入れ) |
-| [CAP-AUTHORIZE-THROUGHPUT](../../requirements/quality.md#キャパシティ受入れ) | [認可](../../modules/oauth2/features/authorization.md#概要) | [キャパシティ](../performance/capacity.md#想定ワークロード) | [品質受入れ](../verification/system-acceptance.md#品質受入れ) |
-| [CAP-INTROSPECT-THROUGHPUT](../../requirements/quality.md#キャパシティ受入れ) | [イントロスペクション](../../modules/oauth2/features/token.md#概要) | [キャパシティ](../performance/capacity.md#想定ワークロード) | [品質受入れ](../verification/system-acceptance.md#品質受入れ) |
+| [SLO-REVOKE-LATENCY](../../requirements/quality.md#サービス目標) | [失効](../../modules/oauth2/features/token.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-USERINFO-LATENCY](../../requirements/quality.md#サービス目標) | [UserInfo](../../modules/oauth2/features/token.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-DISCOVERY-LATENCY](../../requirements/quality.md#サービス目標) | [メタデータ](../../modules/oauth2/features/protocol-endpoints.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-JWKS-LATENCY](../../requirements/quality.md#サービス目標) | [JWKS](../../modules/oauth2/features/protocol-endpoints.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-REGISTER-LATENCY](../../requirements/quality.md#サービス目標) | [動的登録](../../modules/oauth2/features/client.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-DEVICE-AUTHORIZATION-LATENCY](../../requirements/quality.md#サービス目標) | [デバイス認可](../../modules/oauth2/features/device.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-FEDERATION-CALLBACK-LATENCY](../../requirements/quality.md#サービス目標) | [外部連携](../../modules/authentication/features/federation.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-PRIMARY-ERRORS](../../requirements/quality.md#サービス目標) | [ログイン](../../modules/authentication/features/sign-in.md#概要)、[認可と PAR](../../modules/oauth2/features/authorization.md#概要)、[トークンと失効と UserInfo](../../modules/oauth2/features/token.md#概要)、[動的登録](../../modules/oauth2/features/client.md#概要)、[デバイス認可](../../modules/oauth2/features/device.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-LOOKUP-ERRORS](../../requirements/quality.md#サービス目標) | [イントロスペクション](../../modules/oauth2/features/token.md#概要)、[メタデータと JWKS](../../modules/oauth2/features/protocol-endpoints.md#概要) | [負荷と律速点](../performance/scaling.md#スケーリング単位) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-OAUTH2-AVAILABILITY](../../requirements/quality.md#サービス目標) | [認可と PAR](../../modules/oauth2/features/authorization.md#概要)、[トークンと参照](../../modules/oauth2/features/token.md#概要)、[メタデータと JWKS](../../modules/oauth2/features/protocol-endpoints.md#概要)、[動的登録](../../modules/oauth2/features/client.md#概要)、[デバイス認可](../../modules/oauth2/features/device.md#概要) | [可用性](../reliability/availability.md#可用性設計) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [SLO-TOKEN-AVAILABILITY](../../requirements/quality.md#サービス目標) | [トークン](../../modules/oauth2/features/token.md#概要) | [可用性](../reliability/availability.md#可用性設計) | [SLO の測定](../../requirements/quality.md#測定境界) |
+| [CAP-TOKEN-THROUGHPUT](../../requirements/quality.md#キャパシティ受入れ) | [トークン](../../modules/oauth2/features/token.md#概要) | [キャパシティ](../performance/capacity.md#想定ワークロード) | [キャパシティ受入れ](../../requirements/quality.md#キャパシティ受入れ) |
+| [CAP-AUTHORIZE-THROUGHPUT](../../requirements/quality.md#キャパシティ受入れ) | [認可](../../modules/oauth2/features/authorization.md#概要) | [キャパシティ](../performance/capacity.md#想定ワークロード) | [キャパシティ受入れ](../../requirements/quality.md#キャパシティ受入れ) |
+| [CAP-INTROSPECT-THROUGHPUT](../../requirements/quality.md#キャパシティ受入れ) | [イントロスペクション](../../modules/oauth2/features/token.md#概要) | [キャパシティ](../performance/capacity.md#想定ワークロード) | [キャパシティ受入れ](../../requirements/quality.md#キャパシティ受入れ) |
 
 この表は目標設計の担当を示し、達成済みの証拠ではない。
 数値目標の実測は未実施であり、SLO の達成とキャパシティ受入れには実環境が必要である。

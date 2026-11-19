@@ -228,7 +228,19 @@ const developmentDocument = {
 
 const releaseDocument = {
   path: 'docs/development/release.md',
-  source: '# リリース\n\n段階的に展開する。\n',
+  source: `# リリース
+
+段階的に展開する。
+
+| 段階 | 状態 | 説明 |
+| --- | --- | --- |
+| カナリア | \`LOGGED\` | 一部の利用者へ先に展開し、\`error_rate\` を見る |
+| 段階的な展開に続けて全体へ広げるまでの長い名前の段階 | \`covered\` | 残りへ広げる |
+
+| 文書だけ |
+| --- |
+| 一列の表 |
+`,
 }
 
 const models: CatalogSymbol[] = [
@@ -311,12 +323,12 @@ const childLabels = (html: string | undefined) => {
 }
 
 describe('renderDocumentationSite', () => {
-  it('論理アーキテクチャだけに生成した依存行列を挿入する', () => {
-    const matrix = '| 利用元＼利用先 | 1 |\n| --- | --- |\n| 1 OAuth2 | ● |'
+  it('論理アーキテクチャだけに生成した Context Map を挿入する', () => {
+    const contextMap = '### 全体\n\n```mermaid\nflowchart LR\n  g1["連携プロトコル"]\n```'
     const logical = {
       path: 'docs/design/architecture/logical.md',
       source:
-        '# 論理アーキテクチャ\n\n## モジュールの構成\n\n責務表への参照。\n\n<!-- generated:module-dependencies -->\n\n## 品質要件の割り当て\n',
+        '# 論理アーキテクチャ\n\n## モジュールの関係\n\n責務表への参照。\n\n<!-- generated:module-dependencies -->\n\n## 品質要件の割り当て\n',
     }
     const result = renderDocumentationSite({
       documents: [
@@ -329,19 +341,18 @@ describe('renderDocumentationSite', () => {
       openapiFileName: 'example.openapi.json',
       openapi: {},
       models: [],
-      moduleDependencyMatrix: matrix,
+      moduleContextMap: contextMap,
     })
     const page = result.files['docs/design/architecture/logical.html']!
-    expect(page).toContain('class="module-dependency-matrix"')
-    expect(page).toContain('<th scope="col">1</th>')
-    expect(page).toContain('<th scope="row">1 OAuth2</th>')
-    expect(page.indexOf('責務表への参照')).toBeLessThan(page.indexOf('1 OAuth2'))
-    expect(page.indexOf('1 OAuth2')).toBeLessThan(page.lastIndexOf('品質要件の割り当て'))
-    expect(result.files['docs/modules/index.html']).not.toContain('1 OAuth2')
-    expect(result.mermaidSources).toEqual([])
+    expect(page).toContain('<pre class="mermaid">')
+    expect(page).toContain('>全体</h3>')
+    expect(page.indexOf('責務表への参照')).toBeLessThan(page.indexOf('連携プロトコル'))
+    expect(page.indexOf('連携プロトコル')).toBeLessThan(page.lastIndexOf('品質要件の割り当て'))
+    expect(result.files['docs/modules/index.html']).not.toContain('連携プロトコル')
+    expect(result.mermaidSources).toEqual(['flowchart LR\n  g1["連携プロトコル"]'])
   })
 
-  it('生成行列の配線が抜けた論理アーキテクチャを拒否する', () => {
+  it('生成した Context Map の配線が抜けた論理アーキテクチャを拒否する', () => {
     expect(() =>
       renderDocumentationSite({
         documents: [
@@ -356,7 +367,7 @@ describe('renderDocumentationSite', () => {
         openapi: {},
         models: [],
       }),
-    ).toThrow('Logical architecture needs a generated module dependency matrix')
+    ).toThrow('Logical architecture needs a generated module context map')
   })
 
   it('renders development documents as their own navigable plane', () => {
@@ -1068,7 +1079,41 @@ describe('renderDocumentationSite', () => {
 
   it('keeps a glossary term on one line', () => {
     expect(site().files['docs/modules/demo/glossary.html']).toContain('<table class="term-table">')
-    expect(site().assets['site.css']).toContain('.term-table td:first-child{white-space:nowrap}')
+    expect(site().assets['site.css']).toContain(
+      '.term-table tbody tr>:first-child{white-space:nowrap}',
+    )
+  })
+
+  // 表の 1 列目は、ほぼすべての表で行を識別する語である。見出しのセルにすると、
+  // 読み手は行の鍵を見た目で拾え、支援技術も行の見出しとして読み上げる。
+  it('marks the first cell of each table row as the row heading', () => {
+    const page = site().files['docs/development/release.html'] ?? ''
+
+    expect(page).toContain('<th scope="row" class="row-key">カナリア</th>')
+    expect(page).toContain('<th scope="col">段階</th>')
+    // 長い行の鍵は折り返しを許す。折り返さないと説明の列が潰れる。
+    expect(page).toContain(
+      '<th scope="row">段階的な展開に続けて全体へ広げるまでの長い名前の段階</th>',
+    )
+    // 一列の表は行の見出しと値を分けない。
+    expect(page).toContain('<td>一列の表</td>')
+    // 1 列目の背景色、`code` の枠を外す表示は、ページの配色から浮くか目立たなくなったので採らない。
+    // 行の鍵の列は、2 列目との間の縦線で区切る。
+    const css = site().assets['site.css'] ?? ''
+    expect(css).toContain('tbody th[scope=row]{font-weight:600;border-right:1px solid var(--line)}')
+    expect(css).toContain('tbody th[scope=row]+td{padding-left:14px}')
+    expect(css).not.toContain('tbody th[scope=row] code')
+    expect(css).not.toContain('--row-key')
+    expect(css).toContain('th.row-key{white-space:nowrap}')
+  })
+
+  // `LOGGED` のような列挙値だけのセルは、説明の文と見分けられるようラベルにする。
+  it('shows a cell holding only one code span as a label', () => {
+    const page = site().files['docs/development/release.html'] ?? ''
+
+    expect(page).toContain('<td class="label-cell"><code>LOGGED</code></td>')
+    expect(page).not.toContain('<td class="label-cell">一部の利用者へ')
+    expect(site().assets['site.css']).toContain('.label-cell code{')
   })
 
   // 一覧はリファレンスとカタログに一つだけ置き、モジュールのページは絞り込んだ位置へ案内する。

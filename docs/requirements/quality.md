@@ -15,6 +15,7 @@
 リソースアクセス評価の局所測定は[性能設計](../design/performance/scaling.md#リソースアクセス評価の局所測定の結果)に記録する。
 それ以外のサービス目標と本番のキャパシティ受入れについては実測値がない。
 ステージングでの測定も、まだ行っていない。
+証拠ごとに必要な実行環境は[テスト方針の要件の群ごとの証拠](../development/testing.md#要件の群ごとの証拠)が示す。
 
 ## 測定境界
 
@@ -96,12 +97,12 @@ ISO/IEC 25010:2023 の品質特性ごとに、IdMagic に求める要件と、�
 
 | 品質特性 | 要件 | 規範と検証 |
 | --- | --- | --- |
-| 機能適合性 | [機能要件](functional.md)の機能群と、割り当て先のモジュールの機能仕様の `REQ-*` を満たす。数値目標は未定義 | 各モジュールの機能仕様、[検証設計](../design/verification/README.md#要件の群ごとの証拠) |
+| 機能適合性 | [機能要件](functional.md)の機能群と、割り当て先のモジュールの機能仕様の `REQ-*` を満たす。数値目標は未定義 | 各モジュールの機能仕様、[テスト方針の要件の群ごとの証拠](../development/testing.md#要件の群ごとの証拠) |
 | 性能効率性 | [サービス目標](#サービス目標)のレイテンシーの目標と、[キャパシティ受入れ](#キャパシティ受入れ)の `CAP-*` を満たす | この文書、[性能設計](../design/performance/README.md) |
 | 互換性 | 連携の実装者が、OAuth 2.0、OpenID Connect、SAML 2.0、WS-Federation、SCIM 2.0 の標準どおりに接続できる。公開する API の契約は OpenAPI 3.1.1 で記述する。数値目標は未定義 | 各モジュールの `standards.md`、[全体の標準仕様](standards.md) |
 | インタラクション能力 | 認証の操作は、[全体の標準仕様](standards.md)が採用した WCAG 2.2 の条項（`WCAG22-*`）を満たし、キーボードだけで完了でき、結果と誤りを支援技術へ伝える。数値目標は未定義 | [全体の標準仕様](standards.md)、[ユーザーインターフェース設計](../design/application/user-interface.md) |
 | 信頼性 | [サービス目標](#サービス目標)の非 5xx 比率と可用性の目標、[復旧目標](#復旧目標)を満たす | この文書、[信頼性設計](../design/reliability/README.md) |
-| セキュリティ | 各プロトコルのセキュリティ上の義務は各モジュールの `standards.md` の規範を満たす。個人データの扱いは[全体の標準仕様](standards.md#general-data-protection-regulation)の `GDPR-*` を満たす。[脅威モデル](../design/security/threat-model.md)のすべての脅威に、対応する統制か、再検討の条件を伴う受容を記録する。数値目標は未定義 | [セキュリティ設計](../design/security/README.md)、[セキュリティ検証設計](../design/verification/security.md) |
+| セキュリティ | 各プロトコルのセキュリティ上の義務は各モジュールの `standards.md` の規範を満たす。個人データの扱いは[全体の標準仕様](standards.md#general-data-protection-regulation)の `GDPR-*` を満たす。[脅威モデル](../design/security/threat-model.md)のすべての脅威に、対応する統制か、再検討の条件を伴う受容を記録する。数値目標は未定義 | [セキュリティ設計](../design/security/README.md)、[脅威モデルの状態ごとに求める証拠](../design/security/threat-model.md#状態ごとに求める証拠) |
 | 保守性 | モジュールの間の依存を[バックエンド設計](../design/application/backend.md#モジュール間の依存規則)の規則に保ち、境界検査で違反を拒否する。数値目標は未定義 | [バックエンド設計](../design/application/backend.md#検査と負債) |
 | 柔軟性 | ローカルの Docker Compose と汎用の Kubernetes の二つのデプロイプロファイルで動く。数値目標は未定義 | [アーキテクチャ設計の制約](../design/architecture/README.md#制約)、[デプロイメントアーキテクチャ](../design/architecture/deployment.md#デプロイプロファイル) |
 | 安全性 | 人の身体、財産、環境への危害を直接もたらす機能を持たないため、要件を設けない | — |

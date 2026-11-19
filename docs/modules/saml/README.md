@@ -45,9 +45,8 @@ Web Browser SSO Profile に基づき、SP 起点と IdP 起点の SSO を提供�
 | --- | --- | --- |
 | アプリケーション設計 | [標準仕様](standards.md#assertions-and-protocols-for-the-oasis-security-assertion-markup-language-saml-v20) | 管理 API はシステムのアプリケーション設計に従い、プロトコルの形は標準仕様が定める |
 | データ設計 | [Saml のデータ](data.md#集約)、[SAML の SSO の設計](features/sso.md#データ) | Aggregate とその関係。AuthnRequest の再送の記録はSAML の SSO の設計が扱う |
-| セキュリティ設計 | [Saml のセキュリティ](security.md#テナントとプロファイルの単位の署名) | テナントとプロファイルの単位の署名、XML の処理 |
+| セキュリティ設計 | [Saml のセキュリティ](security.md#テナントとプロファイルの単位の署名) | テナントとプロファイルの単位の署名、XML の処理、パースの境界のファズテスト、実体参照の回帰テスト |
 | 信頼性設計 | [SAML の SSO の設計](features/sso.md#信頼性) | 再送の記録先の障害の扱いはSAML の SSO の設計が扱う |
-| 検証設計 | [Saml の検証](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト、実体参照の回帰テスト |
 
 | 文書 | 内容 |
 | --- | --- |

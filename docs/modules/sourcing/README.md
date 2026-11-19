@@ -50,9 +50,8 @@ Directory Connector へのパスワード照合の配送も所有し、取り込
 | --- | --- | --- |
 | アプリケーション設計 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema) | SCIM のエンドポイントの形は標準仕様と TypeSpec が定める |
 | データ設計 | [Sourcing のデータ](data.md#集約) | Aggregate とその関係。テーブルの定義はスキーマファイルが扱う |
-| セキュリティ設計 | [SCIM による取り込み](features/scim.md#セキュリティ上の考慮) | トークンによるテナントの束縛はSCIM による取り込みのセキュリティ上の考慮の節が扱う |
+| セキュリティ設計 | [SCIM による取り込み](features/scim.md#セキュリティ上の考慮)、[Sourcing のセキュリティ](security.md#パースの境界のファズテスト) | トークンによるテナントの束縛はSCIM による取り込みのセキュリティ上の考慮の節が、パースの境界のファズテストは Sourcing のセキュリティが扱う |
 | 信頼性設計 | [SCIM による取り込みの設計](features/scim.md#信頼性) | 作成と対応表の確定、既存の所属変更の補償を扱う |
-| 検証設計 | [Sourcing の検証](verification.md#パースの境界のファズテスト) | パースの境界のファズテスト |
 
 | 文書 | 内容 |
 | --- | --- |

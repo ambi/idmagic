@@ -25,7 +25,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 `THREAT-NNN` は不変であり、一度参照されたら変更しない。境界や分類を ID に埋めないのは、再分類のたびに ID が嘘になるからである。分類は列で持てば、再分類は列の変更で済む。脅威が当てはまらなくなったときは行を削除せず、`Threat` 列の末尾に後継の ID または当てはまらなくなった理由を書き、`Status` を `retired` にする。ID を消すと、その脅威を検討したという事実まで消える。
 
-`Controls` が指すのは次の 4 つに限る。`REQ-<MODULE>-NNN` は規範シナリオ、大文字の識別子は [全体の標準仕様](../../requirements/standards.md) または各モジュールの `standards.md` の規範、`<file>.md: <節>` はその文書の節、`<file>.md` は節に切り出せない文書全体の判断である。応える規範が 1 つも無い行は `—` とする。**制御の側に新しい ID 体系を作らず、計画中のものも指さない。** ここは現在存在する保護だけを並べる列であり、これから作るものを混ぜると、読み手は表を見て何が守られているかを判断できなくなる。
+`Controls` が指すのは次の 4 つに限る。`REQ-<MODULE>-NNN` は規範シナリオ、大文字の識別子は [全体の標準仕様](../../requirements/standards.md) または各モジュールの `standards.md` の規範、`[文書の題名：節](相対パス#アンカー)` はその文書の節、`[文書の題名](相対パス)` は節に切り出せない文書全体の判断である。文書はパスの文字列ではなくリンクで指す。リンクにすれば `mise run check-links` が参照先の実在を確かめ、読み手は題名から参照先の内容を知れる。応える規範が 1 つも無い行は `—` とする。**制御の側に新しい ID 体系を作らず、計画中のものも指さない。** ここは現在存在する保護だけを並べる列であり、これから作るものを混ぜると、読み手は表を見て何が守られているかを判断できなくなる。
 
 `runbooks/` を指す行は必ず `planned` になる。運用手順書は事象の最中に読む手順であってプロダクトが従う規範ではないので、対応するテストを持たず、検査の対象にもならない。手順としての保護が実在することと、それが規範として書かれていることは別である。
 
@@ -43,6 +43,36 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 **是正を担う work item はこの表に書かない。** 対応する work item の側で `THREAT-NNN` を名指しする。向きを一方向に保つのは、一次情報文書が現在の状態を書く場所であり、まだ存在しない制御への前方参照を書くと、work item が完了して移動した時点で参照が黙って腐るからである。どの work item がある脅威を担っているかは `mise run spec-where THREAT-NNN` で引ける。
 
 `planned` と `accepted` の行こそがこの文書の主な出力である。だから負債を別ファイルへ切り出さない。切り出すと、一覧を読んだ人が欠落に気づかずに読み終えてしまう。
+
+## 状態ごとに求める証拠
+
+脅威に応える制御が実際に働いていることは、行の状態ごとに次の証拠で判断する。
+扱うのはリポジトリ内で作れる証拠であり、外部のセキュリティレビューと侵入試験は含めない。
+証拠が示すのは、識別した脅威に応える制御が働いていることまでであり、識別していない脅威については何も示さない。
+
+| 状態 | 求める証拠 | 実行 |
+| --- | --- | --- |
+| `covered` | `Controls` 列が指す規範 ID を名指すテスト | `mise run test-go`、`mise run test-ui-e2e` |
+| `planned` | テストではなく、その欠落を担う作業項目があること | `mise run spec-where THREAT-NNN` |
+| `accepted` | 受容の理由と再検討の条件が[受容した残留リスク](#受容した残留リスク)に書かれていること | `mise run check-links` が見出しの実在を確かめる |
+| `retired` | 追加の証拠を求めない | 実行しない |
+
+`planned` の行にテストを求めないのは、テストが照合すべき規範がまだないからである。
+規範を書いた時点でその行は `covered` へ移り、テストを求められる。
+
+### 制御の種類ごとの検証手段
+
+| 制御の種類 | 検証手段 | 実行 | 合否条件 | 実行環境 |
+| --- | --- | --- | --- | --- |
+| 認証、認可、テナント境界で許可しない操作 | 受け入れテスト | `mise run test-go` | エラーを返すだけでなく、状態の変更、トークンの発行、外部への通知のいずれも残らない（[テスト方針](../../development/testing.md#レスポンスだけでは副作用を証明できない場合)） | リポジトリ内 |
+| 許可しないと宣言した制御の被覆 | 静的検査 | `mise run check-security-controls`、`mise run report-security-test-gaps` | 許可しないと宣言する制御にテストがあり、拒めないガードがない | リポジトリ内 |
+| 信頼境界での値の解析、分割、正規化、比較 | プロパティテスト、ファジング | `mise run test-go-fuzz-all` | 仕様から導いた不変条件、往復、受け付けなかったあとに何も変わらないことが破れない。対象と判定は各モジュールの `security.md` が定める | リポジトリ内 |
+| レスポンスヘッダー、Cookie の属性、同一オリジンの前提 | E2E | `mise run test-ui-e2e` | ブラウザーが実際に受け取る値が規範のとおりである | リポジトリ内 |
+| 鍵素材の秘匿と失効 | 単体、アダプター統合 | `mise run test-go` | 鍵素材が API、ログ、設定リファレンスへ出ず、失効後の暗号文を復号できない | リポジトリ内 |
+| 依存の既知の脆弱性 | 依存監査と Go の到達性解析 | `mise run audit-dependencies`、`mise run check-vulnerability-suppressions` | 未処理の既知の脆弱性と、理由または期限を欠く抑制がない | リポジトリ内 |
+| リポジトリへ混入したシークレット | 走査 | `mise run lint-repo`、`mise run audit-secrets-history` | 作業ツリーと Git の履歴のどちらにも検出がない | リポジトリ内 |
+| 危険な実装のパターン | 静的解析 | 定期実行の CodeQL | 新たな警告がない | リポジトリ内 |
+| 取り込んだ依存物と配布する成果物の来歴 | 供給鎖の検証 | 定めていない | 来歴を確かめられ、差し替えを識別できる | 手段が未定 |
 
 ## 信頼境界
 
@@ -85,65 +115,65 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
-| THREAT-001 | Spoofing | 攻撃者のサイトが利用者のセッション Cookie に便乗して状態変更操作を呼ぶ | System, Authentication | docs/design/security/authorization.md: その他の境界の規則、REQ-AUTHENTICATION-005 | `covered` |
-| THREAT-002 | Tampering | ログイン、同意、ポータルの画面を埋め込み、利用者の操作を別の意味に変える | System | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `covered` |
-| THREAT-003 | Information disclosure | 注入したスクリプトがセッションとトークンを持ち出す | System | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `covered` |
-| THREAT-004 | Information disclosure | 単一ページアプリがブラウザーに保持するアクセストークンが、スクリプト実行の成立時にそのまま持ち出される | System | contexts/system/design/decisions.md | `accepted` |
-| THREAT-005 | Information disclosure | 認可コードやトークンを含む URL が Referer で外部へ渡る | System, OAuth2 | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `covered` |
-| THREAT-006 | Elevation of privilege | アカウントポータルのトークンで管理 API へ到達する | System, ApiTokens | docs/design/security/authorization.md: スコープの語彙、REQ-APITOKENS-004 | `covered` |
-| THREAT-007 | Denial of service | 低速な接続と過大な本体で接続枠とメモリを枯渇させる | System | design/performance/scaling.md: 接続と本体の上限 | `covered` |
+| THREAT-001 | Spoofing | 攻撃者のサイトが利用者のセッション Cookie に便乗して状態変更操作を呼ぶ | System, Authentication | [認可設計：その他の境界の規則](authorization.md#その他の境界の規則)、REQ-AUTHENTICATION-005 | `covered` |
+| THREAT-002 | Tampering | ログイン、同意、ポータルの画面を埋め込み、利用者の操作を別の意味に変える | System | [API ガイドライン：セキュリティレスポンスヘッダー](../application/api-guidelines.md#セキュリティレスポンスヘッダー) | `covered` |
+| THREAT-003 | Information disclosure | 注入したスクリプトがセッションとトークンを持ち出す | System | [API ガイドライン：セキュリティレスポンスヘッダー](../application/api-guidelines.md#セキュリティレスポンスヘッダー) | `covered` |
+| THREAT-004 | Information disclosure | 単一ページアプリがブラウザーに保持するアクセストークンが、スクリプト実行の成立時にそのまま持ち出される | System | [Frontend の重要な設計判断：管理コンソールとアカウントポータルを BFF ではなく SPA の OIDC RP にする](../../modules/frontend/decisions.md#管理コンソールとアカウントポータルを-bff-ではなく-spa-の-oidc-rp-にする) | `accepted` |
+| THREAT-005 | Information disclosure | 認可コードやトークンを含む URL が Referer で外部へ渡る | System, OAuth2 | [API ガイドライン：セキュリティレスポンスヘッダー](../application/api-guidelines.md#セキュリティレスポンスヘッダー) | `covered` |
+| THREAT-006 | Elevation of privilege | アカウントポータルのトークンで管理 API へ到達する | System, ApiTokens | [認可設計：スコープの語彙](authorization.md#スコープの語彙)、REQ-APITOKENS-004 | `covered` |
+| THREAT-007 | Denial of service | 低速な接続と過大な本体で接続枠とメモリを枯渇させる | System | [スケーリング・負荷設計：接続と本体の上限](../performance/scaling.md#接続と本体の上限) | `covered` |
 | THREAT-008 | Spoofing | ログイン画面を模した別のサイトが資格情報を受け取る | Authentication | WEBAUTHN3-AUTHENTICATION | `accepted` |
 
 ## Gateway と API プロセス
 
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
-| THREAT-009 | Repudiation | クライアントが `X-Request-ID` を偽装し、相関を壊して追跡を妨げる | System | design/observability/README.md: 相関 | `covered` |
-| THREAT-010 | Tampering | 受信ヘッダーの制御文字がログとレスポンスヘッダーへ注入される | System | design/observability/README.md: 相関 | `covered` |
-| THREAT-011 | Information disclosure | 平文への降格により、Cookie とトークンが経路上で読まれる | System | design/application/api-guidelines.md: セキュリティレスポンスヘッダー | `accepted` |
-| THREAT-012 | Spoofing | 同一オリジンでない構成でデプロイされ、Cookie のスコープと `Origin` 検証の前提が崩れる | System | architecture/runtime.md: 実行単位 | `planned` |
+| THREAT-009 | Repudiation | クライアントが `X-Request-ID` を偽装し、相関を壊して追跡を妨げる | System | [オブザーバビリティ設計：シグナル間の相関](../observability/README.md#シグナル間の相関) | `covered` |
+| THREAT-010 | Tampering | 受信ヘッダーの制御文字がログとレスポンスヘッダーへ注入される | System | [オブザーバビリティ設計：シグナル間の相関](../observability/README.md#シグナル間の相関) | `covered` |
+| THREAT-011 | Information disclosure | 平文への降格により、Cookie とトークンが経路上で読まれる | System | [API ガイドライン：セキュリティレスポンスヘッダー](../application/api-guidelines.md#セキュリティレスポンスヘッダー) | `accepted` |
+| THREAT-012 | Spoofing | 同一オリジンでない構成でデプロイされ、Cookie のスコープと `Origin` 検証の前提が崩れる | System | [ランタイムアーキテクチャ：実行単位](../architecture/runtime.md#実行単位) | `planned` |
 | THREAT-100 | Spoofing | クライアントが転送ヘッダーを偽装し、IP 単位の抑制と CIDR 条件を回避する | System | REQ-SYSTEM-032 | `covered` |
 
 ## テナント境界
 
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
-| THREAT-013 | Elevation of privilege | リクエストに含めた `tenant_id` や `sub` を信じさせ、別テナントを操作する | Tenancy | docs/design/security/authorization.md: テナント境界、REQ-TENANCY-009 | `covered` |
+| THREAT-013 | Elevation of privilege | リクエストに含めた `tenant_id` や `sub` を信じさせ、別テナントを操作する | Tenancy | [認可設計：テナント境界](authorization.md#テナント境界)、REQ-TENANCY-009 | `covered` |
 | THREAT-014 | Information disclosure | 未知のサブドメインがデフォルトテナントへ落ち、デフォルトテナントの情報が見える | Tenancy | REQ-TENANCY-008 | `covered` |
 | THREAT-015 | Information disclosure | 正規ロケーション以外の経路からテナントへ到達する | Tenancy | REQ-TENANCY-009、REQ-TENANCY-010 | `covered` |
-| THREAT-016 | Information disclosure | 別テナントで発行されたページングのカーソルを再利用する | Tenancy, Audit | docs/design/security/authorization.md: テナント境界、REQ-AUDIT-004 | `covered` |
-| THREAT-017 | Information disclosure | 権限のない対象と存在しない対象のレスポンス差から、他テナントの資源の存在を推測する | Tenancy, AccessControl | docs/design/security/authorization.md: その他の境界の規則 | `covered` |
+| THREAT-016 | Information disclosure | 別テナントで発行されたページングのカーソルを再利用する | Tenancy, Audit | [認可設計：テナント境界](authorization.md#テナント境界)、REQ-AUDIT-004 | `covered` |
+| THREAT-017 | Information disclosure | 権限のない対象と存在しない対象のレスポンス差から、他テナントの資源の存在を推測する | Tenancy, AccessControl | [認可設計：その他の境界の規則](authorization.md#その他の境界の規則) | `covered` |
 | THREAT-018 | Elevation of privilege | 他テナントの関係タプルが細粒度認可の判定に寄与する | AccessControl | REQ-AUTHORIZATION-006 | `covered` |
-| THREAT-019 | Elevation of privilege | 非同期の実行が処理の途中で別テナントの範囲へ到達する | Jobs | REQ-JOBS-006、docs/design/security/authorization.md: テナント境界 | `covered` |
+| THREAT-019 | Elevation of privilege | 非同期の実行が処理の途中で別テナントの範囲へ到達する | Jobs | REQ-JOBS-006、[認可設計：テナント境界](authorization.md#テナント境界) | `covered` |
 | THREAT-020 | Spoofing | 他テナントの署名鍵で発行したトークンが受理される | SigningKeys, OAuth2 | REQ-SIGNINGKEYS-004、REQ-OAUTH2-034 | `covered` |
 | THREAT-021 | Elevation of privilege | 他テナントのワークロード信頼設定を使って資格情報を得る | WorkloadIdentity | REQ-WORKLOADIDENTITY-007、REQ-WORKLOADIDENTITY-009 | `covered` |
 | THREAT-022 | Denial of service | 単一テナントの投入がレーンを占め、他テナントの非同期処理が滞る | Jobs, Tenancy | REQ-JOBS-009 | `planned` |
-| THREAT-023 | Information disclosure | 管理者が別テナントの監査記録を検索し、別所有者や別範囲の監査成果物を取得できる | Audit | REQ-AUDIT-001、REQ-AUDIT-011、docs/design/security/authorization.md: テナント境界。成果物の各操作で現在の権限、所有者、範囲を照合し、成功状態と期限を検査する | `covered` |
+| THREAT-023 | Information disclosure | 管理者が別テナントの監査記録を検索し、別所有者や別範囲の監査成果物を取得できる | Audit | REQ-AUDIT-001、REQ-AUDIT-011、[認可設計：テナント境界](authorization.md#テナント境界)。成果物の各操作で現在の権限、所有者、範囲を照合し、成功状態と期限を検査する | `covered` |
 
 ## 主体と権限
 
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
-| THREAT-024 | Elevation of privilege | 新設した管理 API がスコープ宣言を持たず、あらゆるスコープから到達できる | ApiTokens | docs/design/security/authorization.md: 対話セッション限定の操作、REQ-APITOKENS-004 | `covered` |
-| THREAT-025 | Elevation of privilege | トークン発行の操作を通じて、任意のスコープ集合を持つ資格情報を作る | ApiTokens, OAuth2 | docs/design/security/authorization.md: 対話セッション限定の操作、REQ-AUTHENTICATION-004、REQ-APITOKENS-005 | `covered` |
+| THREAT-024 | Elevation of privilege | 新設した管理 API がスコープ宣言を持たず、あらゆるスコープから到達できる | ApiTokens | [認可設計：対話セッション限定の操作](authorization.md#対話セッション限定の操作)、REQ-APITOKENS-004 | `covered` |
+| THREAT-025 | Elevation of privilege | トークン発行の操作を通じて、任意のスコープ集合を持つ資格情報を作る | ApiTokens, OAuth2 | [認可設計：対話セッション限定の操作](authorization.md#対話セッション限定の操作)、REQ-AUTHENTICATION-004、REQ-APITOKENS-005 | `covered` |
 | THREAT-026 | Elevation of privilege | 外部 IdP の登録を通じて、任意のユーザーとしてサインインする経路を作る | Authentication | REQ-AUTHENTICATION-025 | `covered` |
 | THREAT-027 | Elevation of privilege | 代行または委譲が、元の主体の権限を超える | OAuth2, AccessControl | RFC8693-DELEGATION-DEFAULT、RFC8693-DELEGATION-DEPTH、REQ-OAUTH2-048、REQ-TENANCY-021、REQ-AUTHORIZATION-004、REQ-AUTHORIZATION-016、REQ-OAUTH2-083 | `covered` |
 | THREAT-028 | Repudiation | 代行による操作を本人の操作と区別できず、誰が行ったかを争える | Audit, OAuth2 | REQ-AUDIT-005、REQ-AUDIT-006、REQ-OAUTH2-049 | `covered` |
 | THREAT-029 | Spoofing | 無効化または削除した主体のセッションとトークンが生き残る | IdManagement, Authentication, OAuth2 | REQ-PLATFORM-001、REQ-PLATFORM-002、REQ-AUTHENTICATION-009、REQ-OAUTH2-046、REQ-OAUTH2-012 | `covered` |
 | THREAT-030 | Elevation of privilege | 通常のテナント管理者が制御面の操作へ到達する | Tenancy, SigningKeys | REQ-TENANCY-014、REQ-SIGNINGKEYS-009、REQ-DATAKEYS-006 | `covered` |
-| THREAT-031 | Elevation of privilege | 判定に必要な事実が得られない状況が、許可として扱われる | AccessControl | REQ-AUTHORIZATION-005、REQ-AUTHORIZATION-016、AUTHZEN-FGA-FAIL-CLOSED、docs/design/security/authorization.md: その他の境界の規則 | `covered` |
+| THREAT-031 | Elevation of privilege | 判定に必要な事実が得られない状況が、許可として扱われる | AccessControl | REQ-AUTHORIZATION-005、REQ-AUTHORIZATION-016、AUTHZEN-FGA-FAIL-CLOSED、[認可設計：その他の境界の規則](authorization.md#その他の境界の規則) | `covered` |
 | THREAT-032 | Information disclosure | 列挙が打ち切りを隠し、権限のない対象の存在を推測させる | AccessControl | REQ-AUTHORIZATION-007 | `covered` |
 
 ## 資格情報と認証
 
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
-| THREAT-033 | Spoofing | 資格情報の総当たりでアカウントへ到達する | Authentication | REQ-AUTHENTICATION-008、design/reliability/availability.md: 共有状態 | `covered` |
-| THREAT-034 | Spoofing | 他所で漏洩したパスワードの使い回しでアカウントへ到達する | Authentication | NIST63B4-PASSWORD-MINIMUM、domain/authentication/password/README.md | `accepted` |
+| THREAT-033 | Spoofing | 資格情報の総当たりでアカウントへ到達する | Authentication | REQ-AUTHENTICATION-008、[可用性設計：共有状態](../reliability/availability.md#共有状態) | `covered` |
+| THREAT-034 | Spoofing | 他所で漏洩したパスワードの使い回しでアカウントへ到達する | Authentication | NIST63B4-PASSWORD-MINIMUM、[パスワード：セキュリティ上の考慮](../../modules/authentication/features/password.md#セキュリティ上の考慮) | `accepted` |
 | THREAT-035 | Information disclosure | データベースの流出からパスワードが復元される | Authentication | NIST63B4-PASSWORD-STORAGE | `covered` |
 | THREAT-036 | Spoofing | 端末の記憶を悪用して第二要素を省略する | Authentication | REQ-AUTHENTICATION-027、REQ-AUTHENTICATION-028、REQ-AUTHENTICATION-029 | `covered` |
 | THREAT-037 | Spoofing | パスワード再設定の導線を使ってアカウントを乗っ取る | Authentication | REQ-AUTHENTICATION-016、REQ-AUTHENTICATION-008 | `covered` |
-| THREAT-038 | Information disclosure | 認証と復旧のレスポンス差から、利用者名の存在を暴く | Authentication | REQ-AUTHENTICATION-016、domain/authentication/password/README.md | `covered` |
+| THREAT-038 | Information disclosure | 認証と復旧のレスポンス差から、利用者名の存在を暴く | Authentication | REQ-AUTHENTICATION-016、[パスワード：セキュリティ上の考慮](../../modules/authentication/features/password.md#セキュリティ上の考慮) | `covered` |
 | THREAT-039 | Spoofing | 外部 IdP が主張するメールアドレスを信じ、既存アカウントへ結び付ける | Authentication | REQ-AUTHENTICATION-001、REQ-AUTHENTICATION-002 | `covered` |
 | THREAT-040 | Repudiation | 資格情報の変更が本人に知られないまま行われる | Authentication | REQ-AUTHENTICATION-030、REQ-AUTHENTICATION-031、REQ-AUTHENTICATION-032、REQ-AUTHENTICATION-033 | `covered` |
 | THREAT-041 | Spoofing | 承認リクエストを繰り返し送り、利用者が誤って承認する | OAuth2 | CIBA-CORE-BINDING-MESSAGE、REQ-OAUTH2-043、REQ-OAUTH2-040 | `covered` |
@@ -163,9 +193,9 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-048 | Spoofing | クライアントアサーションを改竄または再生してクライアントになりすます | OAuth2 | RFC7523-CLIENT-ASSERTION、REQ-OAUTH2-028、REQ-OAUTH2-007 | `covered` |
 | THREAT-049 | Information disclosure | クライアント認証の失敗理由の差から、登録済みクライアントの存在を見分ける | OAuth2 | REQ-OAUTH2-007 | `covered` |
 | THREAT-050 | Information disclosure | クライアントメタデータの取得を通じて、内部ネットワークへ到達させる | OAuth2 | REQ-OAUTH2-017、CIMD02-URL-SHAPE、CIMD02-FETCH | `covered` |
-| THREAT-051 | Denial of service | プロトコルエンドポイントへの大量リクエストで正規の利用を妨げる | OAuth2 | REQ-OAUTH2-040、design/performance/scaling.md: アドミッションコントロール、design/reliability/availability.md: 縮退 | `covered` |
+| THREAT-051 | Denial of service | プロトコルエンドポイントへの大量リクエストで正規の利用を妨げる | OAuth2 | REQ-OAUTH2-040、[スケーリング・負荷設計：アドミッションコントロール](../performance/scaling.md#アドミッションコントロール)、[可用性設計：ロードシェディング](../reliability/availability.md#ロードシェディング) | `covered` |
 | THREAT-052 | Tampering | 署名アルゴリズムの取り違えを突いて署名検証を回避する | OAuth2, SigningKeys | RFC7518-SIGNATURE-ALGORITHMS、RFC9068-ASYMMETRIC-SIGNATURE | `covered` |
-| THREAT-083 | Information disclosure | 登録したバックチャネルログアウト通知先を経由して内部ネットワークへ到達する | OAuth2 | docs/modules/oauth2/features/logout.md: OIDC セッションの関連付けとログアウトの伝播、REQ-OAUTH2-025 | `covered` |
+| THREAT-083 | Information disclosure | 登録したバックチャネルログアウト通知先を経由して内部ネットワークへ到達する | OAuth2 | [ログアウト：OIDC セッションの関連付けとログアウトの伝播](../../modules/oauth2/features/logout.md#oidc-セッションの関連付けとログアウトの伝播)、REQ-OAUTH2-025 | `covered` |
 | THREAT-084 | Elevation of privilege | リソースサーバーが評価の入口を使い、任意の主体や他の資源の関係を探索するか、別の資源宛てのトークンで許可を得る | OAuth2, AccessControl | REQ-OAUTH2-062、REQ-OAUTH2-064 | `covered` |
 | THREAT-085 | Spoofing | 持ち出した送信者制約付きのトークンを、証明を確かめないリソースサーバーで使う | OAuth2 | REQ-OAUTH2-063 | `covered` |
 | THREAT-086 | Tampering | 人が一件の操作として承認したトークンを、別の対象や引数に使うか、同じ操作を別の業務要求として再実行する | OAuth2 | REQ-OAUTH2-065 | `covered` |
@@ -174,23 +204,23 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-088 | Elevation of privilege | テナントの管理者が配送先に内部のアドレスを指定し、サーバーから内部の資源やメタデータへ到達する | SharedSignals | REQ-SHAREDSIGNALS-017 | `covered` |
 | THREAT-089 | Information disclosure | 監査イベントの配送を通じて、個人情報や資格情報がテナントの外へ渡る | SharedSignals, Audit | REQ-SHAREDSIGNALS-016 | `covered` |
 | THREAT-090 | Denial of service | 応答しない配送先への配送が溜まり、ほかのテナントの配送を遅らせる | SharedSignals | REQ-SHAREDSIGNALS-018 | `covered` |
-| THREAT-053 | Tampering | XML 署名の構造を組み替え、検証を通したまま別の内容を主張する | Saml, WsFederation | contexts/saml/decisions.md、contexts/saml/internals.md | `covered` |
-| THREAT-054 | Denial of service | 圧縮された受信リクエストの展開でメモリを枯渇させる | Saml | contexts/saml/internals.md | `covered` |
+| THREAT-053 | Tampering | XML 署名の構造を組み替え、検証を通したまま別の内容を主張する | Saml, WsFederation | [Saml の重要な設計判断：XML の処理と Assertion の組み立てを自作しない](../../modules/saml/decisions.md#xml-の処理と-assertion-の組み立てを自作しない)、[Saml のセキュリティ：XML の処理](../../modules/saml/security.md#xml-の処理) | `covered` |
+| THREAT-054 | Denial of service | 圧縮された受信リクエストの展開でメモリを枯渇させる | Saml | [Saml のセキュリティ：XML の処理](../../modules/saml/security.md#xml-の処理) | `covered` |
 
 ## 鍵と可逆な秘密情報
 
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
-| THREAT-055 | Information disclosure | 暗号文を別テナント、別テーブル、別フィールドへ複製して復号する | DataKeys | docs/design/data/database.md: 可逆な秘密情報のエンベロープ暗号 | `covered` |
-| THREAT-056 | Elevation of privilege | マスターキー提供元へ到達できないときに平文へ退避する | DataKeys | docs/design/data/database.md: 可逆な秘密情報のエンベロープ暗号 | `covered` |
+| THREAT-055 | Information disclosure | 暗号文を別テナント、別テーブル、別フィールドへ複製して復号する | DataKeys | [データベース設計：可逆な秘密情報のエンベロープ暗号](../data/database.md#可逆な秘密情報のエンベロープ暗号) | `covered` |
+| THREAT-056 | Elevation of privilege | マスターキー提供元へ到達できないときに平文へ退避する | DataKeys | [データベース設計：可逆な秘密情報のエンベロープ暗号](../data/database.md#可逆な秘密情報のエンベロープ暗号) | `covered` |
 | THREAT-057 | Information disclosure | 破棄したはずの鍵で、残った暗号文が復号できる | DataKeys | REQ-DATAKEYS-003、REQ-DATAKEYS-005 | `covered` |
-| THREAT-058 | Information disclosure | 管理 API またはエラーレスポンスから鍵素材が出る | DataKeys, SigningKeys | REQ-DATAKEYS-006、docs/design/security/authorization.md: レスポンスが決して含まないもの | `covered` |
+| THREAT-058 | Information disclosure | 管理 API またはエラーレスポンスから鍵素材が出る | DataKeys, SigningKeys | REQ-DATAKEYS-006、[認可設計：レスポンスが決して含まないもの](authorization.md#レスポンスが決して含まないもの) | `covered` |
 | THREAT-091 | Denial of service | テナントの管理者や API アクセストークンが DEK の無効化を起動し、テナントのシークレットを読めなくする | DataKeys | REQ-DATAKEYS-008、REQ-DATAKEYS-009 | `covered` |
 | THREAT-059 | Denial of service | 鍵提供元の障害が、発行と検証の両方を止める | SigningKeys, OAuth2 | REQ-OAUTH2-039、REQ-SIGNINGKEYS-008、REQ-SIGNINGKEYS-001 | `covered` |
 | THREAT-060 | Tampering | 攻撃者の鍵を JWKS へ紛れ込ませ、偽造したトークンを信頼させる | SigningKeys | REQ-SIGNINGKEYS-004、REQ-SIGNINGKEYS-010、REQ-SIGNINGKEYS-011 | `covered` |
 | THREAT-083 | Denial of service | 連携先が知らない XML 鍵へ署名を切り替え、フェデレーションした利用者がサインインできなくなる | SigningKeys, WsFederation | REQ-SIGNINGKEYS-006、REQ-SIGNINGKEYS-007、REQ-WSFEDERATION-001 | `covered` |
-| THREAT-061 | Information disclosure | 起動時設定のシークレットが、生成した設定リファレンスやログへ出る | System | REQ-SYSTEM-016、REQ-SYSTEM-017、docs/modules/glossary.md: 外部契約 | `covered` |
-| THREAT-062 | Information disclosure | 平文の鍵を含むバックアップが、保存先の権限から持ち出される | SigningKeys, DataKeys | REQ-SIGNINGKEYS-012、contexts/signing-keys/design/decisions.md、runbooks/backup-restore-dr.md | `planned` |
+| THREAT-061 | Information disclosure | 起動時設定のシークレットが、生成した設定リファレンスやログへ出る | System | REQ-SYSTEM-016、REQ-SYSTEM-017、[共通用語集：外部契約](../../modules/glossary.md#外部契約) | `covered` |
+| THREAT-062 | Information disclosure | 平文の鍵を含むバックアップが、保存先の権限から持ち出される | SigningKeys, DataKeys | REQ-SIGNINGKEYS-012、[SigningKeys の重要な設計判断：平文の鍵素材を含むバックアップの暗号化をデプロイする側の責務にする](../../modules/signing-keys/decisions.md#平文の鍵素材を含むバックアップの暗号化をデプロイする側の責務にする)、[バックアップ、復元、災害復旧の運用手順書](../../runbooks/backup-restore-dr.md) | `planned` |
 
 ## 上流の外部権威
 
@@ -225,7 +255,7 @@ IdMagic の API プロセスと Connector は平文をメモリで扱う信頼�
 | THREAT-068 | Information disclosure | プロビジョニングタスクが誤った接続先へ個人データを送る | Provisioning | REQ-PROVISIONING-002、REQ-PROVISIONING-015、REQ-PROVISIONING-018 | `covered` |
 | THREAT-069 | Tampering | ログアウトトークンを再生し、任意のセッションを落とす | OAuth2 | OIDC-BACKCHANNEL-REPLAY、OIDC-BACKCHANNEL-LOGOUT-TOKEN、REQ-OAUTH2-025 | `covered` |
 | THREAT-070 | Tampering | 署名の無い、または検証されないセキュリティイベントが受信側で信じられる | SharedSignals | RFC8417-SET-SIGNED、RFC8417-SET-VERIFY | `covered` |
-| THREAT-071 | Information disclosure | ジョブの入出力に混ざった個人データやシークレットが管理 API から出る | Jobs | REQ-JOBS-014、contexts/jobs/decisions.md | `covered` |
+| THREAT-071 | Information disclosure | ジョブの入出力に混ざった個人データやシークレットが管理 API から出る | Jobs | REQ-JOBS-014、[Jobs の重要な設計判断：管理 API を参照と取り消しに限る](../../modules/jobs/decisions.md#管理-api-を参照と取り消しに限る) | `covered` |
 | THREAT-072 | Denial of service | 下流の障害が実行枠を占有し、同じレーンの他の非同期処理を止める | Jobs, Provisioning | REQ-JOBS-005、REQ-JOBS-009 | `planned` |
 
 | THREAT-092 | Information disclosure | Agent が代理実行を通じて上流のトークンを読み出す | TokenVault | REQ-TOKENVAULT-008、REQ-TOKENVAULT-011、REQ-TOKENVAULT-015 | `covered` |
@@ -249,21 +279,21 @@ IdMagic の API プロセスと Connector は平文をメモリで扱う信頼�
 
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
-| THREAT-073 | Tampering | 入力が問い合わせの構造として解釈される | 全モジュール | docs/design/data/database.md: ポートとアダプター | `covered` |
+| THREAT-073 | Tampering | 入力が問い合わせの構造として解釈される | 全モジュール | [データベース設計：ポートとアダプター](../data/database.md#ポートとアダプター) | `covered` |
 | THREAT-074 | Repudiation | 状態は変わったのに、対応する監査イベントが残らない | Audit, SigningKeys | REQ-SIGNINGKEYS-010（署名鍵の無効化の発行）、REQ-AUDIT-008（追記失敗の検知）。保存と配信の間の停止による欠落は残る | `planned` |
 | THREAT-075 | Tampering | 再試行と再取得によって副作用が重複して起きる | Jobs | REQ-JOBS-003、REQ-JOBS-004、REQ-JOBS-007 | `covered` |
-| THREAT-076 | Denial of service | 有効期限を過ぎた一時データの滞留が保存容量を圧迫する | Jobs, OAuth2, Authentication | design/reliability/availability.md: 共有状態 | `covered` |
+| THREAT-076 | Denial of service | 有効期限を過ぎた一時データの滞留が保存容量を圧迫する | Jobs, OAuth2, Authentication | [可用性設計：共有状態](../reliability/availability.md#共有状態) | `covered` |
 
 ## 運用者と制御面
 
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
-| THREAT-077 | Elevation of privilege | 実行環境を取得した者が、HTTP を経ずに任意の状態を作る | Seeding | docs/design/security/authorization.md: テナント境界 | `accepted` |
+| THREAT-077 | Elevation of privilege | 実行環境を取得した者が、HTTP を経ずに任意の状態を作る | Seeding | [認可設計：テナント境界](authorization.md#テナント境界) | `accepted` |
 | THREAT-078 | Tampering | 本番で開発用の構成や環境変数由来のシークレットが使われる | Seeding | REQ-SEEDING-005、REQ-SEEDING-007、REQ-SEEDING-008 | `covered` |
 | THREAT-079 | Tampering | 適用が、運用中に加えた変更を黙って上書きする | Seeding | REQ-SEEDING-009、REQ-SEEDING-010 | `covered` |
-| THREAT-080 | Information disclosure | 指標の公開先からテナントの活動が推測される | System | design/observability/monitoring.md: 監視する層 | `covered` |
-| THREAT-081 | Tampering | 一部のプロセスだけが検証されない設定値で起動する | System | REQ-SYSTEM-016、docs/design/application/backend.md: モジュールの内部構造 | `covered` |
-| THREAT-082 | Tampering | 取り込んだ依存物と配布する成果物の来歴を確かめられず、差し替えを識別できない | 全モジュール | docs/design/application/backend.md: Stack | `planned` |
+| THREAT-080 | Information disclosure | 指標の公開先からテナントの活動が推測される | System | [監視設計：監視する層](../observability/monitoring.md#監視する層) | `covered` |
+| THREAT-081 | Tampering | 一部のプロセスだけが検証されない設定値で起動する | System | REQ-SYSTEM-016、[バックエンド設計：モジュールの内部構造](../application/backend.md#モジュールの内部構造) | `covered` |
+| THREAT-082 | Tampering | 取り込んだ依存物と配布する成果物の来歴を確かめられず、差し替えを識別できない | 全モジュール | [コーディングスタイル：新しい依存関係の利点と負担を比べる](../../development/coding-style.md#新しい依存関係の利点と負担を比べる) | `planned` |
 | THREAT-103 | Tampering | 古い観測、別のドメインの観測、構成や署名鍵を変える前の照合を、現在の Entra への反映の証拠として示し、未適用の構成で利用者を切り替える | WsFederation | REQ-WSFEDERATION-001 | `covered` |
 | THREAT-104 | Spoofing | 管理者が手で書いた観測文書で、Entra に適用していない構成を一致と示すか、Entra を戻していないドメインの解除を通す | WsFederation | REQ-WSFEDERATION-001: 手動で取り込んだ観測であることの表示、レルム探索を優先する解除の判定 | `accepted` |
 | THREAT-105 | Tampering | Microsoft の非公式のレルム探索の応答が変わるか誤り、Entra がまだ IdMagic へ送るドメインの解除を許す | WsFederation | REQ-WSFEDERATION-001: `Managed` と IdMagic を指さない `Federated` だけを根拠にし、そのほかは観測記録へ戻る判定。運用者の設定だけが決める探索の URL | `covered` |

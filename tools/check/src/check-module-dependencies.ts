@@ -5,7 +5,7 @@ import {
   BOUNDARY_DEBT_PATH,
   RESPONSIBILITY_TABLE_PATH,
 } from './check-boundaries.ts'
-import { moduleDependencyMatrix, moduleGroups } from './module-dependency-diagram.ts'
+import { moduleContextMap, moduleGroups } from './module-dependency-diagram.ts'
 import type { CheckOutcome } from './runner.ts'
 
 /** 責務表と境界検査の参照に、人が表へ記した関係と負債の区別を加える。 */
@@ -17,7 +17,7 @@ export async function generatedModuleDependencies(snapshot: WorkspaceSnapshot): 
       ? [{ sourceModule: entry.sourceModule, targetModule: entry.targetModule }]
       : [],
   )
-  return moduleDependencyMatrix(
+  return moduleContextMap(
     moduleGroups(source, COMPOSITION_NAME),
     analysis.dependencies,
     source,

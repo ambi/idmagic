@@ -22,7 +22,7 @@
 | 可用性と復旧の機構 | [可用性設計](../design/reliability/availability.md)、[リカバリ設計](../design/reliability/recovery.md) |
 | 監視、ログ、トレースの設計 | [オブザーバビリティ設計](../design/observability/README.md) |
 | デプロイと後退の段取り | [リリース](../development/release.md) |
-| 要件を満たしたと判断する証拠 | [検証設計](../design/verification/README.md) |
+| 要件を満たしたと判断する証拠 | [テスト方針の要件の群ごとの証拠](../development/testing.md#要件の群ごとの証拠) |
 
 警報が `runbook_url` で指す手順は[運用手順](../runbooks/)にある。
 恒久対策が規則になったときは、対策の記録ではなく、その規則を扱う一次情報文書または仕様へ反映する。

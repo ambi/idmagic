@@ -18,10 +18,10 @@ ER 図はテーブルの存在と外部キーだけを示し、カラムを描�
 | 項目 | 内容 |
 | --- | --- |
 | テーブル | テーブル名 |
-| 役割 | そのテーブルが存在する理由。カラムの言い換えではない |
 | 所有モジュール | テーブルへ書き込むモジュール。モジュールに属さず共有ライブラリだけが書き込む技術基盤は「共通基盤」とする |
 | テーブル種別 | `LOGGED` または `UNLOGGED` |
 | `tenant_id` カラム | `単独主キー`（`tenant_id` だけで主キーを構成する）、`複合主キーの一部`、`非キーカラム`（主キーに含まれないカラム）、`なし`（カラムが存在しない）。どれを選ぶかは [`tenant_id` の保持区分](#tenant_id-の保持区分)が定める |
+| 役割 | そのテーブルが存在する理由。カラムの言い換えではない。長い説明が分類の列を分断しないよう、最後の列に置く |
 
 `mise run check-schema-tables` は、テーブル一覧のテーブル名の集合、テーブル種別、`tenant_id` カラムの区分が `postgres.sql` と一致することを確かめる。
 役割は検査の対象外なので、スキーマを変えるときに同じ変更の中で見直す。
@@ -101,30 +101,30 @@ erDiagram
     users ||--o{ user_unique_attribute_values : 一意の値を持つ
 ```
 
-| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
+| テーブル | 所有モジュール | テーブル種別 | `tenant_id` カラム | 役割 |
 | --- | --- | --- | --- | --- |
-| `tenants` | テナントそのもの。realm、状態、テナント単位で上書きした方針を記録する | Tenancy | `LOGGED` | なし |
-| `tenant_quotas` | テナントが作成できるリソースの上限 | Tenancy | `LOGGED` | 単独主キー |
-| `tenant_usages` | 上限と照合する現在の使用量。リソースを作成するたびに全件を数えずに上限を判定するための集計 | Tenancy | `LOGGED` | 単独主キー |
-| `tenant_brandings` | サインイン画面や通知に使う外観の設定 | Tenancy | `LOGGED` | 単独主キー |
-| `notification_templates` | テナントが上書きした通知メールの文面。レコードがなければ組込みの文面を使う | Tenancy | `LOGGED` | 複合主キーの一部 |
-| `tenant_branding_assets` | 外観の設定が参照するロゴとファビコンの画像本体 | Tenancy | `LOGGED` | 非キーカラム |
-| `users` | 利用者の Aggregate。属性、ロール、ライフサイクルの状態、パスワードハッシュを格納する | IdManagement | `LOGGED` | 非キーカラム |
-| `mfa_factors` | 利用者が登録した TOTP などの第二要素と、その暗号化済みシークレット | Authentication | `LOGGED` | なし |
-| `mfa_enrollment_bypasses` | 管理者が発行する、MFA の登録期限の一回限りの免除。消費、失効、期限切れを記録する | Authentication | `LOGGED` | 非キーカラム |
-| `webauthn_credentials` | 登録済みの WebAuthn 資格情報（パスキーを含む）と署名カウンター | Authentication | `LOGGED` | なし |
-| `recovery_codes` | 第二要素を失ったときに使う回復コードのハッシュ | Authentication | `LOGGED` | なし |
-| `trusted_devices` | MFA を省略できる信頼済み端末。Cookie のセレクターと検証子のハッシュで照合する | Authentication | `LOGGED` | 非キーカラム |
-| `notification_preferences` | 利用者が受信を止めたセキュリティ通知の分類 | Authentication | `LOGGED` | なし |
-| `known_sign_in_devices` | 過去にサインインした端末の指紋。未知の端末からのサインインを通知するために使う | Authentication | `LOGGED` | なし |
-| `signing_keys` | トークンとアサーションに署名する鍵の世代と公開鍵 | SigningKeys | `LOGGED` | 非キーカラム |
-| `vault_signing_key_sets` | Vault の公開鍵とバージョンと有効な世代の選択。秘密鍵を含まない | SigningKeys | `LOGGED` | 複合主キーの一部 |
-| `tenant_data_encryption_keys` | 可逆な秘密情報を暗号化するテナントごとの DEK。ラップ済みの鍵と、バージョンごとの状態を記録する | DataKeys | `LOGGED` | 非キーカラム |
-| `password_history` | 再利用を禁じるための過去のパスワードハッシュ | Authentication | `LOGGED` | なし |
-| `password_reset_tokens` | パスワードの再設定と初期設定のリンクに埋める使い捨てトークンのハッシュ | Authentication | `LOGGED` | なし |
-| `authentication_sessions` | サインイン済みのブラウザーセッション。認証時刻、認証方式、MFA の登録待ちと段階的な認証の状態を記録する | Authentication | `LOGGED` | 非キーカラム |
-| `email_change_tokens` | メールアドレス変更の確認リンクに埋める使い捨てトークンのハッシュ | IdManagement | `LOGGED` | なし |
-| `user_unique_attribute_values` | 属性スキーマで `unique` と定義した属性の、削除されていない User の値。User の保存と同じトランザクションで書き、主キーが値の重なりを拒否する | IdManagement | `LOGGED` | 複合主キーの一部 |
+| `tenants` | Tenancy | `LOGGED` | なし | テナントそのもの。realm、状態、テナント単位で上書きした方針を記録する |
+| `tenant_quotas` | Tenancy | `LOGGED` | 単独主キー | テナントが作成できるリソースの上限 |
+| `tenant_usages` | Tenancy | `LOGGED` | 単独主キー | 上限と照合する現在の使用量。リソースを作成するたびに全件を数えずに上限を判定するための集計 |
+| `tenant_brandings` | Tenancy | `LOGGED` | 単独主キー | サインイン画面や通知に使う外観の設定 |
+| `notification_templates` | Tenancy | `LOGGED` | 複合主キーの一部 | テナントが上書きした通知メールの文面。レコードがなければ組込みの文面を使う |
+| `tenant_branding_assets` | Tenancy | `LOGGED` | 非キーカラム | 外観の設定が参照するロゴとファビコンの画像本体 |
+| `users` | IdManagement | `LOGGED` | 非キーカラム | 利用者の Aggregate。属性、ロール、ライフサイクルの状態、パスワードハッシュを格納する |
+| `mfa_factors` | Authentication | `LOGGED` | なし | 利用者が登録した TOTP などの第二要素と、その暗号化済みシークレット |
+| `mfa_enrollment_bypasses` | Authentication | `LOGGED` | 非キーカラム | 管理者が発行する、MFA の登録期限の一回限りの免除。消費、失効、期限切れを記録する |
+| `webauthn_credentials` | Authentication | `LOGGED` | なし | 登録済みの WebAuthn 資格情報（パスキーを含む）と署名カウンター |
+| `recovery_codes` | Authentication | `LOGGED` | なし | 第二要素を失ったときに使う回復コードのハッシュ |
+| `trusted_devices` | Authentication | `LOGGED` | 非キーカラム | MFA を省略できる信頼済み端末。Cookie のセレクターと検証子のハッシュで照合する |
+| `notification_preferences` | Authentication | `LOGGED` | なし | 利用者が受信を止めたセキュリティ通知の分類 |
+| `known_sign_in_devices` | Authentication | `LOGGED` | なし | 過去にサインインした端末の指紋。未知の端末からのサインインを通知するために使う |
+| `signing_keys` | SigningKeys | `LOGGED` | 非キーカラム | トークンとアサーションに署名する鍵の世代と公開鍵 |
+| `vault_signing_key_sets` | SigningKeys | `LOGGED` | 複合主キーの一部 | Vault の公開鍵とバージョンと有効な世代の選択。秘密鍵を含まない |
+| `tenant_data_encryption_keys` | DataKeys | `LOGGED` | 非キーカラム | 可逆な秘密情報を暗号化するテナントごとの DEK。ラップ済みの鍵と、バージョンごとの状態を記録する |
+| `password_history` | Authentication | `LOGGED` | なし | 再利用を禁じるための過去のパスワードハッシュ |
+| `password_reset_tokens` | Authentication | `LOGGED` | なし | パスワードの再設定と初期設定のリンクに埋める使い捨てトークンのハッシュ |
+| `authentication_sessions` | Authentication | `LOGGED` | 非キーカラム | サインイン済みのブラウザーセッション。認証時刻、認証方式、MFA の登録待ちと段階的な認証の状態を記録する |
+| `email_change_tokens` | IdManagement | `LOGGED` | なし | メールアドレス変更の確認リンクに埋める使い捨てトークンのハッシュ |
+| `user_unique_attribute_values` | IdManagement | `LOGGED` | 複合主キーの一部 | 属性スキーマで `unique` と定義した属性の、削除されていない User の値。User の保存と同じトランザクションで書き、主キーが値の重なりを拒否する |
 
 ### フェデレーション、グループ、監査、エージェント
 
@@ -212,37 +212,37 @@ erDiagram
     users ||--o| user_revocation_epochs : 失効世代を持つ
 ```
 
-| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
+| テーブル | 所有モジュール | テーブル種別 | `tenant_id` カラム | 役割 |
 | --- | --- | --- | --- | --- |
-| `identity_provider_connections` | 外部 IdP（OIDC、SAML）との接続設定。クレームの対応付け、アカウント連携と JIT 作成の方針を含む | Authentication | `LOGGED` | 非キーカラム |
-| `federated_identities` | 外部 IdP の主体と、このテナントの利用者の対応 | Authentication | `LOGGED` | 複合主キーの一部 |
-| `federated_login_attempts` | 外部 IdP へ送り出したサインインの state、nonce、PKCE。戻ってきた応答を照合するまで保持する | Authentication | `LOGGED` | 複合主キーの一部 |
-| `federated_response_replays` | 受け取った外部 IdP の応答の ID。同じ応答の再送を拒否する | Authentication | `LOGGED` | 複合主キーの一部 |
-| `groups` | グループの Aggregate。属性、ロール、所属の決め方（静的、動的）を格納する | IdManagement | `LOGGED` | 非キーカラム |
-| `group_members` | グループと利用者の所属。手動か動的規則かという所属の由来も記録する | IdManagement | `LOGGED` | なし |
-| `dynamic_group_rules` | 動的グループの所属を決める式と、式が参照する属性 | IdManagement | `LOGGED` | 非キーカラム |
-| `tenant_user_attribute_schemas` | テナントが定義する利用者の拡張属性 | IdManagement | `LOGGED` | 単独主キー |
-| `tenant_group_attribute_schemas` | テナントが定義するグループの拡張属性 | IdManagement | `LOGGED` | 単独主キー |
-| `audit_events` | 各モジュールが発行した監査イベント。追記だけで保持する | Audit | `LOGGED` | 非キーカラム |
-| `audit_export_artifacts` | Job ID とテナントに束縛した監査成果物のメタデータと公開状態 | Audit | `LOGGED` | 非キーカラム |
-| `audit_export_chunks` | 公開前後の監査成果物を構成する固定サイズのチャンク | Audit | `LOGGED` | なし |
-| `authentication_event_buckets` | 同じ鍵から続く認証失敗を 5 分の時間枠で数える集計。攻撃による急増で監査イベントのレコードを増やさない | Authentication | `LOGGED` | 複合主キーの一部 |
-| `tenant_correlation_salts` | 利用者名や IP アドレスを相関用にハッシュするときのテナントごとのソルト | 共通基盤 | `LOGGED` | 単独主キー |
-| `audit_event_search_attributes` | 監査イベントの検索属性の索引。個人識別情報は変換済みの値だけを置く | Audit | `LOGGED` | 非キーカラム |
-| `agents` | エージェントの Aggregate。所有者と状態を格納する | IdManagement | `LOGGED` | 非キーカラム |
-| `authorization_detail_types` | テナントが受け付ける `authorization_details` の型の定義 | OAuth2 | `LOGGED` | 複合主キーの一部 |
-| `mcp_resource_servers` | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ、評価用のクライアントと規則、マネージド型の上流設定 | OAuth2 | `LOGGED` | 非キーカラム |
-| `mcp_tool_catalogs` | MCP リソースサーバーの Gateway が送った最新のツールカタログと、内容の変わった直前の一覧。公開の候補と差分の表示にだけ使い、登録の更新時刻と独立して置き換える | OAuth2 | `LOGGED` | 非キーカラム |
-| `agent_guardrail_policies` | Agent の発行の上限とテナントのデフォルト、内容から導いたバージョン | OAuth2 | `LOGGED` | 複合主キーの一部 |
-| `cross_app_access_issue_policies` | ID-JAG の発行の許可 | OAuth2 | `LOGGED` | 非キーカラム |
-| `cross_app_access_redeem_policies` | ID-JAG の受け入れの許可 | OAuth2 | `LOGGED` | 非キーカラム |
-| `workload_trust_bundles` | ワークロード ID のトークンを検証する信頼ドメインと鍵 | WorkloadIdentity | `LOGGED` | 非キーカラム |
-| `agent_workload_bindings` | 信頼ドメインのワークロード主体とエージェントの対応 | WorkloadIdentity | `LOGGED` | 非キーカラム |
-| `token_vault_connectors` | 外部サービスのコネクタ。クライアントシークレットは暗号化する | TokenVault | `LOGGED` | 非キーカラム |
-| `token_vault_connections` | 本人とコネクタの組ごとの上流トークン。トークンは暗号化する | TokenVault | `LOGGED` | 非キーカラム |
-| `token_vault_attempts` | 連携の `state` のハッシュと暗号化した PKCE の検証子。一度だけ消費する | TokenVault | `LOGGED` | 非キーカラム |
-| `agent_revocation_epochs` | エージェントの失効世代。世代を進めると、それより前に発行したトークンを受け付けない。削除の確定後に記録するので `agents` への外部キーを持たず、削除したエージェントの行も保持する | SharedSignals | `LOGGED` | 非キーカラム |
-| `user_revocation_epochs` | User の失効世代。世代を進めると、それより前に発行したトークンを受け付けない | SharedSignals | `LOGGED` | 非キーカラム |
+| `identity_provider_connections` | Authentication | `LOGGED` | 非キーカラム | 外部 IdP（OIDC、SAML）との接続設定。クレームの対応付け、アカウント連携と JIT 作成の方針を含む |
+| `federated_identities` | Authentication | `LOGGED` | 複合主キーの一部 | 外部 IdP の主体と、このテナントの利用者の対応 |
+| `federated_login_attempts` | Authentication | `LOGGED` | 複合主キーの一部 | 外部 IdP へ送り出したサインインの state、nonce、PKCE。戻ってきた応答を照合するまで保持する |
+| `federated_response_replays` | Authentication | `LOGGED` | 複合主キーの一部 | 受け取った外部 IdP の応答の ID。同じ応答の再送を拒否する |
+| `groups` | IdManagement | `LOGGED` | 非キーカラム | グループの Aggregate。属性、ロール、所属の決め方（静的、動的）を格納する |
+| `group_members` | IdManagement | `LOGGED` | なし | グループと利用者の所属。手動か動的規則かという所属の由来も記録する |
+| `dynamic_group_rules` | IdManagement | `LOGGED` | 非キーカラム | 動的グループの所属を決める式と、式が参照する属性 |
+| `tenant_user_attribute_schemas` | IdManagement | `LOGGED` | 単独主キー | テナントが定義する利用者の拡張属性 |
+| `tenant_group_attribute_schemas` | IdManagement | `LOGGED` | 単独主キー | テナントが定義するグループの拡張属性 |
+| `audit_events` | Audit | `LOGGED` | 非キーカラム | 各モジュールが発行した監査イベント。追記だけで保持する |
+| `audit_export_artifacts` | Audit | `LOGGED` | 非キーカラム | Job ID とテナントに束縛した監査成果物のメタデータと公開状態 |
+| `audit_export_chunks` | Audit | `LOGGED` | なし | 公開前後の監査成果物を構成する固定サイズのチャンク |
+| `authentication_event_buckets` | Authentication | `LOGGED` | 複合主キーの一部 | 同じ鍵から続く認証失敗を 5 分の時間枠で数える集計。攻撃による急増で監査イベントのレコードを増やさない |
+| `tenant_correlation_salts` | 共通基盤 | `LOGGED` | 単独主キー | 利用者名や IP アドレスを相関用にハッシュするときのテナントごとのソルト |
+| `audit_event_search_attributes` | Audit | `LOGGED` | 非キーカラム | 監査イベントの検索属性の索引。個人識別情報は変換済みの値だけを置く |
+| `agents` | IdManagement | `LOGGED` | 非キーカラム | エージェントの Aggregate。所有者と状態を格納する |
+| `authorization_detail_types` | OAuth2 | `LOGGED` | 複合主キーの一部 | テナントが受け付ける `authorization_details` の型の定義 |
+| `mcp_resource_servers` | OAuth2 | `LOGGED` | 非キーカラム | トークンの宛先として登録した MCP のリソースサーバーと、そのスコープ、評価用のクライアントと規則、マネージド型の上流設定 |
+| `mcp_tool_catalogs` | OAuth2 | `LOGGED` | 非キーカラム | MCP リソースサーバーの Gateway が送った最新のツールカタログと、内容の変わった直前の一覧。公開の候補と差分の表示にだけ使い、登録の更新時刻と独立して置き換える |
+| `agent_guardrail_policies` | OAuth2 | `LOGGED` | 複合主キーの一部 | Agent の発行の上限とテナントのデフォルト、内容から導いたバージョン |
+| `cross_app_access_issue_policies` | OAuth2 | `LOGGED` | 非キーカラム | ID-JAG の発行の許可 |
+| `cross_app_access_redeem_policies` | OAuth2 | `LOGGED` | 非キーカラム | ID-JAG の受け入れの許可 |
+| `workload_trust_bundles` | WorkloadIdentity | `LOGGED` | 非キーカラム | ワークロード ID のトークンを検証する信頼ドメインと鍵 |
+| `agent_workload_bindings` | WorkloadIdentity | `LOGGED` | 非キーカラム | 信頼ドメインのワークロード主体とエージェントの対応 |
+| `token_vault_connectors` | TokenVault | `LOGGED` | 非キーカラム | 外部サービスのコネクタ。クライアントシークレットは暗号化する |
+| `token_vault_connections` | TokenVault | `LOGGED` | 非キーカラム | 本人とコネクタの組ごとの上流トークン。トークンは暗号化する |
+| `token_vault_attempts` | TokenVault | `LOGGED` | 非キーカラム | 連携の `state` のハッシュと暗号化した PKCE の検証子。一度だけ消費する |
+| `agent_revocation_epochs` | SharedSignals | `LOGGED` | 非キーカラム | エージェントの失効世代。世代を進めると、それより前に発行したトークンを受け付けない。削除の確定後に記録するので `agents` への外部キーを持たず、削除したエージェントの行も保持する |
+| `user_revocation_epochs` | SharedSignals | `LOGGED` | 非キーカラム | User の失効世代。世代を進めると、それより前に発行したトークンを受け付けない |
 
 `audit_events`、`authentication_event_buckets`、`tenant_correlation_salts`、`audit_event_search_attributes` は、監査データの保持や匿名化を独立して制御するため、`tenants` テーブルへの外部キーを置かない。
 
@@ -324,27 +324,27 @@ erDiagram
     users ||--o{ api_tokens : 発行される
 ```
 
-| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
+| テーブル | 所有モジュール | テーブル種別 | `tenant_id` カラム | 役割 |
 | --- | --- | --- | --- | --- |
-| `applications` | アプリケーションの Aggregate。ポータルに並ぶ単位で、プロトコルごとの設定を束ねる | Application | `LOGGED` | 非キーカラム |
-| `oauth2_clients` | OAuth 2.0 と OIDC のクライアントの登録内容 | OAuth2 | `LOGGED` | 非キーカラム |
-| `oauth2_client_sessions` | 一つのサインインセッションでトークンを受け取ったクライアント。ログアウトを伝える先を決める | OAuth2 | `LOGGED` | 複合主キーの一部 |
-| `oauth2_client_secrets` | ローテーション中に並存するクライアントシークレットのハッシュと期限 | OAuth2 | `LOGGED` | なし |
-| `consents` | 利用者がクライアントに与えた同意と、Agent に与えた代行の付与。スコープを持つ | OAuth2 | `LOGGED` | なし |
-| `refresh_tokens` | リフレッシュトークンのハッシュ。ローテーションの系譜をたどって再利用を検知する | OAuth2 | `LOGGED` | なし |
-| `agent_credential_bindings` | エージェントと、そのエージェントが使う OAuth クライアントの対応 | IdManagement | `LOGGED` | なし |
-| `agent_observations` | 外部の発見器が報告した未確認の観測と、管理者の決定。認可とトークンの発行は読まない | IdManagement | `LOGGED` | 非キーカラム |
-| `application_icons` | アプリケーションのアイコン画像本体 | Application | `LOGGED` | なし |
-| `application_sign_in_policies` | アプリケーション単位のサインイン方針 | SignInPolicy | `LOGGED` | なし |
-| `tenant_default_sign_in_policies` | 個別のサインイン方針が設定されていないアプリケーションに適用するデフォルトのサインイン方針 | SignInPolicy | `LOGGED` | 単独主キー |
-| `application_assignments` | アプリケーションを使える利用者とグループ、ポータルに表示するかどうか | Application | `LOGGED` | なし |
-| `saml_identity_provider_profiles` | SAML IdP として名乗る設定の組。SP ごとに選ぶ | Saml | `LOGGED` | 複合主キーの一部 |
-| `saml_service_providers` | SAML SP の登録内容 | Saml | `LOGGED` | 複合主キーの一部 |
-| `wsfed_relying_parties` | WS-Federation の Relying Party の登録内容 | WsFederation | `LOGGED` | 複合主キーの一部 |
-| `wsfed_entra_federation_observations` | 管理者が取り込んだ Entra のドメインフェデレーションの登録値と、期待値と比べた結果。ドメインごとに最新の一件 | WsFederation | `LOGGED` | 複合主キーの一部 |
-| `application_orderings` | 利用者ごとの、ポータルでのアプリケーションの並び順 | Application | `LOGGED` | なし |
-| `application_categories` | ポータルでアプリケーションをまとめる分類 | Application | `LOGGED` | 複合主キーの一部 |
-| `api_tokens` | 管理 API 用に利用者へ発行した長期トークンの記録と失効の状態 | ApiTokens | `LOGGED` | 非キーカラム |
+| `applications` | Application | `LOGGED` | 非キーカラム | アプリケーションの Aggregate。ポータルに並ぶ単位で、プロトコルごとの設定を束ねる |
+| `oauth2_clients` | OAuth2 | `LOGGED` | 非キーカラム | OAuth 2.0 と OIDC のクライアントの登録内容 |
+| `oauth2_client_sessions` | OAuth2 | `LOGGED` | 複合主キーの一部 | 一つのサインインセッションでトークンを受け取ったクライアント。ログアウトを伝える先を決める |
+| `oauth2_client_secrets` | OAuth2 | `LOGGED` | なし | ローテーション中に並存するクライアントシークレットのハッシュと期限 |
+| `consents` | OAuth2 | `LOGGED` | なし | 利用者がクライアントに与えた同意と、Agent に与えた代行の付与。スコープを持つ |
+| `refresh_tokens` | OAuth2 | `LOGGED` | なし | リフレッシュトークンのハッシュ。ローテーションの系譜をたどって再利用を検知する |
+| `agent_credential_bindings` | IdManagement | `LOGGED` | なし | エージェントと、そのエージェントが使う OAuth クライアントの対応 |
+| `agent_observations` | IdManagement | `LOGGED` | 非キーカラム | 外部の発見器が報告した未確認の観測と、管理者の決定。認可とトークンの発行は読まない |
+| `application_icons` | Application | `LOGGED` | なし | アプリケーションのアイコン画像本体 |
+| `application_sign_in_policies` | SignInPolicy | `LOGGED` | なし | アプリケーション単位のサインイン方針 |
+| `tenant_default_sign_in_policies` | SignInPolicy | `LOGGED` | 単独主キー | 個別のサインイン方針が設定されていないアプリケーションに適用するデフォルトのサインイン方針 |
+| `application_assignments` | Application | `LOGGED` | なし | アプリケーションを使える利用者とグループ、ポータルに表示するかどうか |
+| `saml_identity_provider_profiles` | Saml | `LOGGED` | 複合主キーの一部 | SAML IdP として名乗る設定の組。SP ごとに選ぶ |
+| `saml_service_providers` | Saml | `LOGGED` | 複合主キーの一部 | SAML SP の登録内容 |
+| `wsfed_relying_parties` | WsFederation | `LOGGED` | 複合主キーの一部 | WS-Federation の Relying Party の登録内容 |
+| `wsfed_entra_federation_observations` | WsFederation | `LOGGED` | 複合主キーの一部 | 管理者が取り込んだ Entra のドメインフェデレーションの登録値と、期待値と比べた結果。ドメインごとに最新の一件 |
+| `application_orderings` | Application | `LOGGED` | なし | 利用者ごとの、ポータルでのアプリケーションの並び順 |
+| `application_categories` | Application | `LOGGED` | 複合主キーの一部 | ポータルでアプリケーションをまとめる分類 |
+| `api_tokens` | ApiTokens | `LOGGED` | 非キーカラム | 管理 API 用に利用者へ発行した長期トークンの記録と失効の状態 |
 
 ### SCIM、ライフサイクル、プロビジョニング、ジョブ
 
@@ -448,29 +448,29 @@ erDiagram
     provisioning_tasks ||--o| provisioning_full_resync_tasks : 再同期に属する
 ```
 
-| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
+| テーブル | 所有モジュール | テーブル種別 | `tenant_id` カラム | 役割 |
 | --- | --- | --- | --- | --- |
-| `scim_user_refs` | SCIM クライアントが指定した外部 ID と利用者の対応 | Sourcing | `LOGGED` | 複合主キーの一部 |
-| `scim_group_refs` | SCIM クライアントが指定した外部 ID とグループの対応 | Sourcing | `LOGGED` | 複合主キーの一部 |
-| `directory_connectors` | 閉域のディレクトリから取り込む Directory Connector の登録と状態 | Sourcing | `LOGGED` | 非キーカラム |
-| `directory_password_challenges` | 委譲認証の期限付き要求と単回の配信状態。暗号文は配信時に消し、結果は期限まで保持する | Sourcing | `LOGGED` | 非キーカラム |
-| `directory_user_correlations` | Connector と外部の不変 ID の組から利用者への対応と、最後に現れた取り込みの実行 | Sourcing | `LOGGED` | 複合主キーの一部 |
-| `directory_ingestion_runs` | Directory Connector の取り込みの実行の状態と結果ごとの件数 | Sourcing | `LOGGED` | 非キーカラム |
-| `directory_ingestion_batches` | 取り込みの実行に記録したバッチの項目のダイジェストと項目ごとの結果 | Sourcing | `LOGGED` | 非キーカラム |
-| `jobs` | 非同期ジョブのキュー。リースと再試行の状態を管理する | Jobs | `LOGGED` | 非キーカラム |
-| `oauth2_logout_notifications` | バックチャネルログアウト通知の一件ごとの配送状態 | OAuth2 | `LOGGED` | 非キーカラム |
-| `csv_artifacts` | CSV インポートの入力と結果の成果物。本体は分割片に置く | IdManagement | `LOGGED` | 非キーカラム |
-| `csv_artifact_chunks` | 成果物の本体を分けた断片 | IdManagement | `LOGGED` | なし |
-| `lifecycle_workflows` | 利用者の変化を契機に実行するワークフローの定義 | IdGovernance | `LOGGED` | 非キーカラム |
-| `lifecycle_workflow_revisions` | ワークフロー定義の改訂。実行は開始時の改訂を固定して参照する | IdGovernance | `LOGGED` | 非キーカラム |
-| `lifecycle_workflow_runs` | 一人の利用者に対するワークフローの一回の実行 | IdGovernance | `LOGGED` | 非キーカラム |
-| `lifecycle_workflow_steps` | 実行の各手順の結果 | IdGovernance | `LOGGED` | なし |
-| `provisioning_connections` | アプリケーションへ利用者とグループを送り出す SCIM 接続の設定と健全性 | Provisioning | `LOGGED` | 非キーカラム |
-| `provisioning_remote_links` | 送り出した利用者やグループと、接続先での ID の対応 | Provisioning | `LOGGED` | 非キーカラム |
-| `provisioning_tasks` | 接続先への一件ごとのプロビジョニングタスクと、その状態 | Provisioning | `LOGGED` | 非キーカラム |
-| `provisioning_scheduled_deprovisions` | 猶予期間を置く利用者の削除の予約。期限が来るとプロビジョニングタスクへ変わり、猶予期間中の再割り当てで取り消される | Provisioning | `LOGGED` | 非キーカラム |
-| `provisioning_full_resyncs` | フル同期の一回分。開始時の対象数と、完了時の成功数と失敗数 | Provisioning | `LOGGED` | 非キーカラム |
-| `provisioning_full_resync_tasks` | フル同期と、それが作ったプロビジョニングタスクの対応 | Provisioning | `LOGGED` | なし |
+| `scim_user_refs` | Sourcing | `LOGGED` | 複合主キーの一部 | SCIM クライアントが指定した外部 ID と利用者の対応 |
+| `scim_group_refs` | Sourcing | `LOGGED` | 複合主キーの一部 | SCIM クライアントが指定した外部 ID とグループの対応 |
+| `directory_connectors` | Sourcing | `LOGGED` | 非キーカラム | 閉域のディレクトリから取り込む Directory Connector の登録と状態 |
+| `directory_password_challenges` | Sourcing | `LOGGED` | 非キーカラム | 委譲認証の期限付き要求と単回の配信状態。暗号文は配信時に消し、結果は期限まで保持する |
+| `directory_user_correlations` | Sourcing | `LOGGED` | 複合主キーの一部 | Connector と外部の不変 ID の組から利用者への対応と、最後に現れた取り込みの実行 |
+| `directory_ingestion_runs` | Sourcing | `LOGGED` | 非キーカラム | Directory Connector の取り込みの実行の状態と結果ごとの件数 |
+| `directory_ingestion_batches` | Sourcing | `LOGGED` | 非キーカラム | 取り込みの実行に記録したバッチの項目のダイジェストと項目ごとの結果 |
+| `jobs` | Jobs | `LOGGED` | 非キーカラム | 非同期ジョブのキュー。リースと再試行の状態を管理する |
+| `oauth2_logout_notifications` | OAuth2 | `LOGGED` | 非キーカラム | バックチャネルログアウト通知の一件ごとの配送状態 |
+| `csv_artifacts` | IdManagement | `LOGGED` | 非キーカラム | CSV インポートの入力と結果の成果物。本体は分割片に置く |
+| `csv_artifact_chunks` | IdManagement | `LOGGED` | なし | 成果物の本体を分けた断片 |
+| `lifecycle_workflows` | IdGovernance | `LOGGED` | 非キーカラム | 利用者の変化を契機に実行するワークフローの定義 |
+| `lifecycle_workflow_revisions` | IdGovernance | `LOGGED` | 非キーカラム | ワークフロー定義の改訂。実行は開始時の改訂を固定して参照する |
+| `lifecycle_workflow_runs` | IdGovernance | `LOGGED` | 非キーカラム | 一人の利用者に対するワークフローの一回の実行 |
+| `lifecycle_workflow_steps` | IdGovernance | `LOGGED` | なし | 実行の各手順の結果 |
+| `provisioning_connections` | Provisioning | `LOGGED` | 非キーカラム | アプリケーションへ利用者とグループを送り出す SCIM 接続の設定と健全性 |
+| `provisioning_remote_links` | Provisioning | `LOGGED` | 非キーカラム | 送り出した利用者やグループと、接続先での ID の対応 |
+| `provisioning_tasks` | Provisioning | `LOGGED` | 非キーカラム | 接続先への一件ごとのプロビジョニングタスクと、その状態 |
+| `provisioning_scheduled_deprovisions` | Provisioning | `LOGGED` | 非キーカラム | 猶予期間を置く利用者の削除の予約。期限が来るとプロビジョニングタスクへ変わり、猶予期間中の再割り当てで取り消される |
+| `provisioning_full_resyncs` | Provisioning | `LOGGED` | 非キーカラム | フル同期の一回分。開始時の対象数と、完了時の成功数と失敗数 |
+| `provisioning_full_resync_tasks` | Provisioning | `LOGGED` | なし | フル同期と、それが作ったプロビジョニングタスクの対応 |
 
 ### 再生成可能な認証状態と流量制御
 
@@ -531,20 +531,20 @@ erDiagram
     tenants ||--o{ saml_authnrequest_replays : SAML再送を持つ
 ```
 
-| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
+| テーブル | 所有モジュール | テーブル種別 | `tenant_id` カラム | 役割 |
 | --- | --- | --- | --- | --- |
-| `oauth2_authorization_requests` | 認可エンドポイントで受け付け、サインインの完了を待っている要求 | OAuth2 | `UNLOGGED` | 非キーカラム |
-| `oauth2_authorization_codes` | 発行した認可コードと、交換済みかどうか | OAuth2 | `UNLOGGED` | 非キーカラム |
-| `oauth2_par_requests` | PAR で先に預かった認可要求 | OAuth2 | `UNLOGGED` | 非キーカラム |
-| `oauth2_device_codes` | デバイス認可フローのコードと承認の状態 | OAuth2 | `UNLOGGED` | 非キーカラム |
-| `oauth2_approval_requests` | CIBA と評価が起票した承認要求と、CIBA のクライアントのポーリングの状態 | OAuth2 | `UNLOGGED` | 非キーカラム |
-| `oauth2_replay_jtis` | 一度だけ受け付ける JWT の `jti`。同じ JWT の再送を拒否する | OAuth2 | `UNLOGGED` | 複合主キーの一部 |
-| `oauth2_token_exchange_grants` | 評価が発行した一回限りの交換の許可のハッシュ。別の鍵への束縛の根拠を一度だけ受け付ける | OAuth2 | `UNLOGGED` | 複合主キーの一部 |
-| `oauth2_access_token_denylist` | 失効させたアクセストークンの `jti`。トークンの期限まで拒否する | OAuth2 | `LOGGED` | 複合主キーの一部 |
-| `webauthn_sessions` | WebAuthn の登録と認証で発行したチャレンジ | Authentication | `UNLOGGED` | 複合主キーの一部 |
-| `login_throttle_counters` | サインイン失敗の回数とロックアウトの期限 | Authentication | `LOGGED` | 複合主キーの一部 |
-| `endpoint_rate_limit_counters` | エンドポイントごとの流量制御の回数 | 共通基盤 | `UNLOGGED` | 複合主キーの一部 |
-| `saml_authnrequest_replays` | 受け取った SAML AuthnRequest の ID。同じ要求の再送を拒否する | Saml | `UNLOGGED` | 複合主キーの一部 |
+| `oauth2_authorization_requests` | OAuth2 | `UNLOGGED` | 非キーカラム | 認可エンドポイントで受け付け、サインインの完了を待っている要求 |
+| `oauth2_authorization_codes` | OAuth2 | `UNLOGGED` | 非キーカラム | 発行した認可コードと、交換済みかどうか |
+| `oauth2_par_requests` | OAuth2 | `UNLOGGED` | 非キーカラム | PAR で先に預かった認可要求 |
+| `oauth2_device_codes` | OAuth2 | `UNLOGGED` | 非キーカラム | デバイス認可フローのコードと承認の状態 |
+| `oauth2_approval_requests` | OAuth2 | `UNLOGGED` | 非キーカラム | CIBA と評価が起票した承認要求と、CIBA のクライアントのポーリングの状態 |
+| `oauth2_replay_jtis` | OAuth2 | `UNLOGGED` | 複合主キーの一部 | 一度だけ受け付ける JWT の `jti`。同じ JWT の再送を拒否する |
+| `oauth2_token_exchange_grants` | OAuth2 | `UNLOGGED` | 複合主キーの一部 | 評価が発行した一回限りの交換の許可のハッシュ。別の鍵への束縛の根拠を一度だけ受け付ける |
+| `oauth2_access_token_denylist` | OAuth2 | `LOGGED` | 複合主キーの一部 | 失効させたアクセストークンの `jti`。トークンの期限まで拒否する |
+| `webauthn_sessions` | Authentication | `UNLOGGED` | 複合主キーの一部 | WebAuthn の登録と認証で発行したチャレンジ |
+| `login_throttle_counters` | Authentication | `LOGGED` | 複合主キーの一部 | サインイン失敗の回数とロックアウトの期限 |
+| `endpoint_rate_limit_counters` | 共通基盤 | `UNLOGGED` | 複合主キーの一部 | エンドポイントごとの流量制御の回数 |
+| `saml_authnrequest_replays` | Saml | `UNLOGGED` | 複合主キーの一部 | 受け取った SAML AuthnRequest の ID。同じ要求の再送を拒否する |
 
 ### セキュリティイベントと認可関係
 
@@ -578,16 +578,16 @@ erDiagram
     tenants ||--|| authorization_write_versions : 書き込みバージョンを持つ
 ```
 
-| テーブル | 役割 | 所有モジュール | テーブル種別 | `tenant_id` カラム |
+| テーブル | 所有モジュール | テーブル種別 | `tenant_id` カラム | 役割 |
 | --- | --- | --- | --- | --- |
-| `ssf_streams` | SSF の送信ストリームまたは受信ストリーム | SharedSignals | `LOGGED` | 非キーカラム |
-| `ssf_transmitter_configs` | 送信ストリームの配送先と、配送時の認証 | SharedSignals | `LOGGED` | 非キーカラム |
-| `ssf_receiver_configs` | 受信ストリームで信頼する発行者と鍵 | SharedSignals | `LOGGED` | 非キーカラム |
-| `security_event_deliveries` | 送信する SET の一件ごとの配送状態と再試行。監査の配送は内容を持ち、送信時に署名する | SharedSignals | `LOGGED` | 非キーカラム |
-| `received_security_events` | 受信した SET と、その検証結果、反映した時刻 | SharedSignals | `LOGGED` | 非キーカラム |
-| `authorization_models` | テナントの関係ベース認可のモデル定義と、そのバージョン | AccessControl | `LOGGED` | 非キーカラム |
-| `authorization_relation_tuples` | リソースと主体の関係 | AccessControl | `LOGGED` | 複合主キーの一部 |
-| `authorization_write_versions` | 関係を書き込むたびに進む、テナント単位のバージョン番号 | AccessControl | `LOGGED` | 単独主キー |
+| `ssf_streams` | SharedSignals | `LOGGED` | 非キーカラム | SSF の送信ストリームまたは受信ストリーム |
+| `ssf_transmitter_configs` | SharedSignals | `LOGGED` | 非キーカラム | 送信ストリームの配送先と、配送時の認証 |
+| `ssf_receiver_configs` | SharedSignals | `LOGGED` | 非キーカラム | 受信ストリームで信頼する発行者と鍵 |
+| `security_event_deliveries` | SharedSignals | `LOGGED` | 非キーカラム | 送信する SET の一件ごとの配送状態と再試行。監査の配送は内容を持ち、送信時に署名する |
+| `received_security_events` | SharedSignals | `LOGGED` | 非キーカラム | 受信した SET と、その検証結果、反映した時刻 |
+| `authorization_models` | AccessControl | `LOGGED` | 非キーカラム | テナントの関係ベース認可のモデル定義と、そのバージョン |
+| `authorization_relation_tuples` | AccessControl | `LOGGED` | 複合主キーの一部 | リソースと主体の関係 |
+| `authorization_write_versions` | AccessControl | `LOGGED` | 単独主キー | 関係を書き込むたびに進む、テナント単位のバージョン番号 |
 
 ### 所有と書き込みの境界
 

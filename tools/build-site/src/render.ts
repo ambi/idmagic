@@ -7,7 +7,7 @@ import iniLanguage from 'highlight.js/lib/languages/ini'
 import markdownLanguage from 'highlight.js/lib/languages/markdown'
 import shellLanguage from 'highlight.js/lib/languages/shell'
 import yamlLanguage from 'highlight.js/lib/languages/yaml'
-import MarkdownIt, { type MarkdownIt as MarkdownItInstance } from 'markdown-it'
+import MarkdownIt, { type MarkdownIt as MarkdownItInstance, type Token } from 'markdown-it'
 import { specificationRules } from '../../check/src/feature-specification.ts'
 import { ruleBodies } from '../../check/src/gherkin-scenarios.ts'
 import { documentKind } from '../../check/src/specification-doc.ts'
@@ -92,6 +92,27 @@ export type RenderedDocumentationSite = {
 
 /** 用語表の 1 列目の見出し。日本語の文書と、まだ英語のモジュール文書の両方を含む。 */
 const TERM_HEADINGS = new Set(['用語', 'Term'])
+
+/** これより長い行の鍵は折り返しを許す。折り返さないと説明の列が潰れる。 */
+const ROW_KEY_NOWRAP_LENGTH = 20
+
+function tableColumnCount(tokens: Token[], tableOpen: number): number {
+  let count = 0
+  for (let index = tableOpen + 1; index < tokens.length; index++) {
+    const type = tokens[index]?.type
+    if (type === 'th_open') count++
+    if (type === 'tr_close') return count
+  }
+  return count
+}
+
+function inlineText(inline: Token | undefined): string {
+  return (inline?.children ?? [])
+    .filter((child) => child.type === 'text' || child.type === 'code_inline')
+    .map((child) => child.content)
+    .join('')
+    .trim()
+}
 
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'patch', 'head', 'options', 'trace'])
 const SITE_TITLE = 'IdMagic ドキュメント'
@@ -530,21 +551,35 @@ function markdownRenderer(
     return `<${level} id="${prefix}-${slug(inline?.content ?? '')}">`
   }
 
-  md.core.ruler.push('module_dependency_matrix', (state) => {
-    let inMatrix = false
+  // 表の 1 列目は、ほぼすべての表で行を識別する語なので、行の見出しにする。
+  // 表ごとに指定する記法は設けない。書き手に毎回判断を求め、指定の漏れを検査できないためである。
+  md.core.ruler.push('table_row_headings', (state) => {
+    let skip = false
+    let inBody = false
     for (const [index, token] of state.tokens.entries()) {
       if (token.type === 'table_open') {
-        inMatrix = state.tokens[index + 4]?.content === '利用元＼利用先'
-        if (inMatrix) token.attrSet('class', 'module-dependency-matrix')
+        const columns = tableColumnCount(state.tokens, index)
+        skip = columns < 2
       }
-      if (token.type === 'table_close') inMatrix = false
-      if (!inMatrix) continue
+      if (skip) continue
       if (token.type === 'th_open') token.attrSet('scope', 'col')
-      if (token.type === 'td_open' && state.tokens[index - 1]?.type === 'tr_open') {
+      if (token.type === 'tbody_open') inBody = true
+      if (token.type === 'tbody_close') inBody = false
+      if (!inBody || token.type !== 'td_open') continue
+      const inline = state.tokens[index + 1]
+      if (state.tokens[index - 1]?.type === 'tr_open') {
         token.tag = 'th'
         token.attrSet('scope', 'row')
+        if (inlineText(inline).length <= ROW_KEY_NOWRAP_LENGTH) token.attrJoin('class', 'row-key')
         state.tokens[index + 2]!.tag = 'th'
+        continue
       }
+      // 列挙値だけのセルは、説明の文と見分けられるようラベルにする。
+      const children = (inline?.children ?? []).filter(
+        (child) => child.type !== 'text' || child.content.trim() !== '',
+      )
+      if (children.length === 1 && children[0]?.type === 'code_inline')
+        token.attrJoin('class', 'label-cell')
     }
   })
 
@@ -1472,9 +1507,8 @@ a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-vi
 code{padding:.1em .34em;border:1px solid var(--line);border-radius:4px;background:var(--code);font-size:.87em}pre{max-width:100%;overflow:auto;margin:1.4em 0;padding:16px 18px;border:1px solid var(--line);border-radius:8px;background:var(--code)}pre code{padding:0;border:0;background:none;font-size:.86em}.hljs-keyword,.hljs-built_in,.hljs-selector-tag{color:var(--code-keyword)}.hljs-string,.hljs-regexp,.hljs-addition{color:var(--code-string)}.hljs-comment,.hljs-quote{color:var(--code-comment);font-style:italic}.hljs-number,.hljs-literal,.hljs-variable,.hljs-attr,.hljs-attribute{color:var(--code-literal)}.hljs-title,.hljs-section,.hljs-type{color:var(--code-title)}.hljs-meta,.hljs-symbol,.hljs-deletion{color:var(--code-meta)}.hljs-section,.hljs-strong{font-weight:700}.hljs-emphasis{font-style:italic}
 .hero{margin:0 0 44px;padding:0 0 30px;border-bottom:1px solid var(--line)}.hero h1{font-size:34px}.hero p{color:var(--muted);font-size:17px}.hero-links{display:flex;flex-wrap:wrap;gap:20px;margin:0;font-size:15px;font-weight:600}
 .module-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin:1em 0;padding:0;list-style:none;font-size:14px}
-.table-wrap,table{max-width:100%;overflow:auto}table{width:100%;margin:1.4em 0;border-collapse:collapse;display:block;font-size:14.5px;line-height:1.65}th,td{padding:9px 14px 9px 0;border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}thead th{padding-left:10px;border-bottom:1px solid var(--line-strong);background:var(--bg-soft);font-size:13px}tbody th[scope=row]{font-weight:600}.term-table td:first-child{white-space:nowrap}
-.module-dependency-matrix{max-height:75vh;font-size:12px;white-space:nowrap}.module-dependency-matrix :is(th,td){min-width:34px;padding:5px 8px;text-align:center}.module-dependency-matrix tr>:first-child{position:sticky;left:0;z-index:1;min-width:190px;text-align:left;background:var(--bg-soft)}.module-dependency-matrix thead th{position:sticky;top:0;z-index:2}.module-dependency-matrix thead th:first-child{z-index:3}
-.diagram-shell{position:relative;max-width:100%;overflow:auto;margin:1.6em 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.diagram-shell .mermaid{min-width:560px;background:transparent}:is(.diagram-shell .mermaid,.diagram-canvas) svg :is(.edgePath path,.flowchart-link,.transition){stroke:var(--diagram-line)!important;stroke-width:2.4px!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] [stroke="#444444"]{stroke:var(--diagram-line)}:is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] text[fill="#444444"]{fill:var(--text)}
+.table-wrap,table{max-width:100%;overflow:auto}table{width:100%;margin:1.4em 0;border-collapse:collapse;display:block;font-size:14.5px;line-height:1.65}th,td{padding:9px 14px 9px 0;border:0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}thead th{padding-left:10px;border-bottom:1px solid var(--line-strong);background:var(--bg-soft);font-size:13px}tbody th[scope=row]{font-weight:600;border-right:1px solid var(--line)}tbody th[scope=row]+td{padding-left:14px}th.row-key{white-space:nowrap}.term-table tbody tr>:first-child{white-space:nowrap}.label-cell code{display:inline-block;padding:.05em .55em;border-radius:999px;background:var(--bg-soft);border-color:var(--line-strong);font-size:.82em;font-weight:600;white-space:nowrap}
+.diagram-shell{position:relative;max-width:100%;overflow:auto;margin:1.6em 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-soft)}.diagram-shell .mermaid{min-width:560px;background:transparent}:is(.diagram-shell .mermaid,.diagram-canvas) svg :is(.edgePath path,.flowchart-link,.transition){stroke:var(--diagram-line)!important;stroke-width:2.4px!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg .flowchart-link.edge-thickness-thick{stroke-width:5px!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}:is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] [stroke="#444444"]{stroke:var(--diagram-line)}:is(.diagram-shell .mermaid,.diagram-canvas) svg[aria-roledescription=c4] text[fill="#444444"]{fill:var(--text)}
 .diagram-zoom,.diagram-viewer-toolbar button{padding:4px 12px;color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;font:inherit;font-size:13px;cursor:pointer}.diagram-zoom:hover,.diagram-viewer-toolbar button:hover{background:var(--accent-soft)}.diagram-zoom:focus-visible,.diagram-viewer-toolbar button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.diagram-zoom{display:block;width:fit-content;margin:-6px -6px 6px auto}
 .diagram-viewer{width:100vw;max-width:none;height:100vh;max-height:none;margin:0;padding:0;border:0;color:var(--text);background:var(--bg)}.diagram-viewer::backdrop{background:rgba(20,23,28,.6)}.diagram-viewer-toolbar{position:absolute;z-index:1;top:12px;right:12px;display:flex;gap:8px}.diagram-viewport{width:100%;height:100%;overflow:hidden;cursor:grab;touch-action:none}.diagram-viewport.dragging{cursor:grabbing}.diagram-canvas{transform-origin:0 0}.diagram-canvas svg{display:block;max-width:none}
 .scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.given,.scenario-keyword.and{color:var(--given)}.scenario-keyword.when,.scenario-keyword.but{color:var(--when)}.scenario-keyword.then{color:var(--then)}.scenario-keyword:is(.ears-where,.ears-while){color:var(--given)}.scenario-keyword.ears-when{color:var(--when)}.scenario-keyword.ears-if{color:var(--refuse)}.scenario-keyword.ears-then{color:var(--refuse)}.scenario-keyword.ears-shall{color:var(--then)}.ears-clause{display:block;margin:.15em 0}li:has(.ears-clause){margin:.6em 0}li:has(>.scenario-keyword){margin:.45em 0}.scenario-actor{display:inline-block;margin-right:6px;padding:1px 9px;border:1px dashed currentColor;border-radius:999px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em}p:has(>.scenario-actor){margin:.35em 0 .9em}
@@ -1701,17 +1735,17 @@ export function renderDocumentationSite(args: {
   openapiFileName: string
   models: CatalogSymbol[]
   moduleTags?: Record<string, string[]>
-  moduleDependencyMatrix?: string
+  moduleContextMap?: string
 }): RenderedDocumentationSite {
   const documents = inResponsibilityOrder(
     args.documents.map((document, index) => {
       if (
         document.path === 'docs/design/architecture/logical.md' &&
-        (args.moduleDependencyMatrix !== undefined ||
+        (args.moduleContextMap !== undefined ||
           document.source.includes('<!-- generated:module-dependencies -->'))
       ) {
-        if (args.moduleDependencyMatrix === undefined) {
-          throw new Error('Logical architecture needs a generated module dependency matrix')
+        if (args.moduleContextMap === undefined) {
+          throw new Error('Logical architecture needs a generated module context map')
         }
         if (!document.source.includes('<!-- generated:module-dependencies -->')) {
           throw new Error('Logical architecture needs the module dependency insertion marker')
@@ -1720,7 +1754,7 @@ export function renderDocumentationSite(args: {
           ...document,
           source: document.source.replace(
             '<!-- generated:module-dependencies -->',
-            args.moduleDependencyMatrix,
+            args.moduleContextMap,
           ),
         }
       }
