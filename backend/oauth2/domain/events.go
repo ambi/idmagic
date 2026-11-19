@@ -466,3 +466,18 @@ type AgentGuardrailPolicyChanged struct {
 
 func (e *AgentGuardrailPolicyChanged) EventType() string     { return "AgentGuardrailPolicyChanged" }
 func (e *AgentGuardrailPolicyChanged) OccurredAt() time.Time { return e.At }
+
+// McpToolDiscoveryAttempted は管理者が公開された MCP サーバーから PRM と tools/list を取得したことである
+// (REQ-OAUTH2-095)。トークンと応答の本文は含めない。
+type McpToolDiscoveryAttempted struct {
+	At               time.Time `json:"-"`
+	TenantID         string    `json:"tenantId"`
+	ActorUserID      string    `json:"actorUserId"`
+	ResourceServerID string    `json:"resourceServerId"`
+	Resource         string    `json:"resource"`
+	MetadataStatus   string    `json:"metadataStatus"`
+	ToolsStatus      string    `json:"toolsStatus"`
+}
+
+func (e *McpToolDiscoveryAttempted) EventType() string     { return "McpToolDiscoveryAttempted" }
+func (e *McpToolDiscoveryAttempted) OccurredAt() time.Time { return e.At }

@@ -46,6 +46,9 @@ func RegisterJobHandlers(registry jobsports.HandlerRegistrar, deps JobHandlerDep
 // (memory / postgres) に応じてこれらを組み立て、Module へ渡すだけでよい。
 type Module struct {
 	hostedMcp *oauth2http.HostedMcpRuntime
+	// mcpDiscovery は公開された MCP サーバーへの取得の通信である (REQ-OAUTH2-095)。nil なら本番の
+	// safehttp のクライアントを使う。
+	mcpDiscovery oauthports.McpServerFetcher
 	// clientDeletion は単独のクライアントの削除の参加者である。組み立て地点が WithPostgresClientDeletion か
 	// WithMemoryClientDeletion で設定し、設定がなければ管理 API の削除は失敗する。
 	clientDeletion clientDeletionWiring

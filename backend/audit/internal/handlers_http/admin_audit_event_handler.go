@@ -114,6 +114,7 @@ var auditEventCategoryTypes = map[string][]string{
 		"ResourceAccessEvaluated",
 		"AgentGuardrailEvaluated",
 		"AgentGuardrailPolicyChanged",
+		"McpToolDiscoveryAttempted",
 		"RefreshTokenReuseDetected",
 		"PARStored",
 		"DeviceAuthorizationRequested",

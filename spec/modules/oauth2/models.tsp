@@ -2571,4 +2571,47 @@ model ToolCatalog {
   changes?: ToolCatalogChanges;
 }
 
+
+@doc("MCP サーバーの Protected Resource Metadata の取得の結果。`found` のときだけメタデータの値を含める。")
+model McpToolDiscoveryMetadata {
+  status: "found" | "not_found" | "invalid" | "resource_mismatch" | "unreachable";
+  @doc("最後に取得したメタデータの URL。")
+  url?: string;
+  authorization_servers?: string[];
+  scopes_supported?: string[];
+  @doc("`authorization_servers` がテナントの issuer を含むなら `true`。")
+  issuer_trusted?: boolean;
+}
+
+
+@doc("MCP サーバーの `tools/list` の取得の結果。`skipped` はメタデータが IdMagic を認可サーバーとして宣言していないため、トークンを送らなかったことを表す。")
+model McpToolDiscoveryTools {
+  status: "fetched" | "skipped" | "unauthorized" | "forbidden" | "unreachable" | "invalid_response";
+  @doc("`fetched` のとき、保存したツールの件数。")
+  count?: int32;
+  @doc("`fetched` のとき、上流の一覧をすべて取得できたなら `true`。")
+  complete?: boolean;
+}
+
+
+@doc("MCP サーバーからの取得の結果。取得した一覧はカタログとして保存し、この応答には含めない。")
+model McpToolDiscoveryResult {
+  @doc("一覧取得用のトークンの `sub` と `client_id`。MCP サーバーの運用者が許可に使う。")
+  client_id: string;
+  metadata: McpToolDiscoveryMetadata;
+  tools: McpToolDiscoveryTools;
+}
+
+
+@doc("管理者が MCP サーバーから PRM と `tools/list` を取得した。トークンと応答の本文は含めない。")
+model McpToolDiscoveryAttempted {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  actorUserId: string;
+  resourceServerId: string;
+  resource: string;
+  metadataStatus: string;
+  toolsStatus: string;
+}
+
 }

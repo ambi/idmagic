@@ -126,6 +126,113 @@ describe('AdminMcpResourceServerEditPage', () => {
     )
   })
 
+  //spec:covers REQ-OAUTH2-095: MCP サーバーからの取得の後、登録にないメタデータのスコープを出所付きの候補にし、選んだものだけを保存し、取得した一覧をカタログとして読み直す。
+  it('fetches from the MCP server and offers metadata scopes as candidates until chosen', async () => {
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    let discovered = false
+    const saved: unknown[] = []
+    stubGlobal(
+      'fetch',
+      mock((url: string, init?: RequestInit) => {
+        if (url.includes('/tool-discovery')) {
+          discovered = true
+          return Promise.resolve(
+            response(200, {
+              client_id: 'urn:idmagic:mcp-tool-discovery',
+              metadata: {
+                status: 'found',
+                authorization_servers: ['https://idp.example/realms/default'],
+                scopes_supported: ['mcp.read', 'files:read'],
+                issuer_trusted: true,
+              },
+              tools: { status: 'fetched', count: 1, complete: true },
+            }),
+          )
+        }
+        if (url.includes('/tool-catalog')) {
+          return Promise.resolve(
+            response(
+              200,
+              discovered
+                ? {
+                    tools: [{ name: 'search', title: 'Search' }],
+                    complete: true,
+                    received_at: '2026-11-19T00:00:00Z',
+                  }
+                : { tools: [], complete: false },
+            ),
+          )
+        }
+        if (url.includes('/api/admin/v1/applications')) {
+          return Promise.resolve(response(200, { applications: [] }))
+        }
+        saved.push(JSON.parse(String(init?.body)))
+        return Promise.resolve(response(200, resourceServer))
+      }),
+    )
+    await renderWithRouter(
+      <AdminMcpResourceServerEditPage csrfToken="csrf" resourceServer={resourceServer} />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t.discoverFetch }))
+    expect(await screen.findByText(t.discoverMetadataFound)).toBeInTheDocument()
+    expect(screen.getByText(t.discoverScopeSource)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: `${t.discoverAddScope} mcp.read` })).toBeNull()
+    expect(await screen.findByText('Search')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: `${t.discoverAddScope} files:read` }))
+    expect(screen.queryByRole('button', { name: `${t.discoverAddScope} files:read` })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: t.update }))
+    await waitFor(() =>
+      expect(saved).toEqual([
+        expect.objectContaining({ scopes: ['mcp.read', 'mcp.write', 'files:read'] }),
+      ]),
+    )
+  })
+
+  //spec:covers REQ-OAUTH2-095: 一覧を取得できないときは理由と、MCP サーバーの運用者が許可する一覧取得用の client_id を示す。マネージド型には取得の操作を示さない。
+  it('explains why tools were not fetched and hides the action for managed registrations', async () => {
+    stubGlobal(
+      'fetch',
+      mock((url: string) =>
+        Promise.resolve(
+          url.includes('/tool-discovery')
+            ? response(200, {
+                client_id: 'urn:idmagic:mcp-tool-discovery',
+                metadata: {
+                  status: 'found',
+                  authorization_servers: ['https://idp.example/realms/default'],
+                  issuer_trusted: true,
+                },
+                tools: { status: 'unauthorized' },
+              })
+            : response(200, { tools: [], complete: false, applications: [] }),
+        ),
+      ),
+    )
+    const { unmount } = await renderWithRouter(
+      <AdminMcpResourceServerEditPage csrfToken="csrf" resourceServer={resourceServer} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: t.discoverFetch }))
+    expect(await screen.findByText(t.discoverToolsUnauthorized)).toBeInTheDocument()
+    expect(screen.getByText('urn:idmagic:mcp-tool-discovery')).toBeInTheDocument()
+    unmount()
+
+    await renderWithRouter(
+      <AdminMcpResourceServerEditPage
+        csrfToken="csrf"
+        resourceServer={{
+          ...resourceServer,
+          hosting: {
+            upstream_url: 'https://upstream.example/mcp',
+            authentication: 'token_exchange',
+          },
+        }}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: t.discoverFetch })).toBeNull()
+  })
+
   //spec:covers REQ-OAUTH2-087: カタログのツールは選ぶまで公開されず、選ぶと名前と表示名を入れた行になる。完全なカタログにない公開中のツールは削除せずに示す。
   it('publishes a catalog tool only when chosen and flags published tools missing from a complete catalog', async () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })

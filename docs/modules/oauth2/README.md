@@ -31,6 +31,7 @@ IdManagement からの完全削除では保存先ごとの本人の記録の削�
 | リソースアクセスの評価 | リソースサーバーの `/resource-access/evaluate` | `api` が、クライアントを認証し、トークンを検証して AccessControl の判定と合成する | [リソースアクセスの評価](features/resource-access.md#実現方式) |
 | マネージド型 MCP Gateway | 登録した公開 URL への MCP の要求 | `api` が、毎回の評価と上流の資格情報の準備を行い、応答を逐次返す | [マネージド型 MCP Gateway](features/hosted-mcp.md) |
 | ツールカタログの送信 | リソースサーバーの `/resource-access/tools` | `api` が、クライアントを認証し、紐付けた登録の最新のカタログを置き換える。公開と評価はカタログを読まない | [ツールカタログの送信](features/resource-access.md#リソースサーバーによるツールカタログの送信) |
+| MCP サーバーからの取得 | 管理者の取得の操作 | `api` が、公開された MCP サーバーの PRM を読み、IdMagic を信頼する宛先へだけ一覧取得用のトークンで `tools/list` を取得し、カタログを置き換える | [MCP サーバーからの取得](features/admin-access.md#管理者による-mcp-サーバーからの取得) |
 | 承認 | クライアントのバックチャネル認可要求と、本人の承認の画面 | `api` が、判断とポーリングをストアで直列化する | [承認リクエストの設計](features/approval.md#実現方式) |
 | バックチャネルのログアウト | セッションの失効 | `worker` が配信のジョブを実行する | [ログアウトの設計](features/logout.md#実現方式) |
 

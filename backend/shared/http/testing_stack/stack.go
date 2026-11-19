@@ -637,6 +637,11 @@ func WithManagedMcpHTTPClient(client *http.Client) Option {
 	return func(b *builder) { b.deps.OAuth2 = b.deps.OAuth2.WithManagedMcpHTTPClient(client) }
 }
 
+// WithMcpToolDiscoveryHTTPClient は公開された MCP サーバーからの取得の通信を client へ向ける。
+func WithMcpToolDiscoveryHTTPClient(client *http.Client) Option {
+	return func(b *builder) { b.deps.OAuth2 = b.deps.OAuth2.WithMcpToolDiscoveryHTTPClient(client) }
+}
+
 func WithAdmissionBudget(budget support.AdmissionBudget) Option {
 	return func(b *builder) { b.deps.Admission = budget }
 }

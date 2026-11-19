@@ -97,6 +97,7 @@ var generatedOperations = map[string]Operation{
 	"DisableTenantKey": {Method: "POST", Path: "/api/admin/v1/keys/{kid}/disable", Deprecated: false, ApiTokenScopes: []string{"signing-keys:write"}},
 	"DisableWorkloadTrustBundle": {Method: "POST", Path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/disable", Deprecated: false, ApiTokenScopes: []string{"workload-identity:write"}},
 	"DiscardDirectoryIngestionRun": {Method: "POST", Path: "/api/admin/v1/directory-connectors/{connector_id}/ingestion-runs/{run_id}/discard", Deprecated: false, ApiTokenScopes: []string{"interactive_session"}},
+	"DiscoverAdminMcpResourceServerTools": {Method: "POST", Path: "/api/admin/v1/mcp-resource-servers/{id}/tool-discovery", Deprecated: false, ApiTokenScopes: []string{"mcp-resource-servers:write"}},
 	"DiscoverIdentityProviders": {Method: "GET", Path: "/api/auth/federation/providers", Deprecated: false, ApiTokenScopes: nil},
 	"DiscoverWorkloadIssuerMetadata": {Method: "POST", Path: "/api/admin/v1/workload-identity/issuer-metadata", Deprecated: false, ApiTokenScopes: []string{"workload-identity:write"}},
 	"DownloadAdminAuditExport": {Method: "GET", Path: "/api/admin/v1/audit-events/exports/{export_id}/download", Deprecated: false, ApiTokenScopes: []string{"audit:read"}},

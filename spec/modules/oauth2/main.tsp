@@ -1356,6 +1356,34 @@ op GetAdminMcpResourceServerToolCatalog(
   @path id: string
 ): GetAdminMcpResourceServerToolCatalogSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminMcpResourceServerError403 | GetAdminMcpResourceServerError404;
 
+model DiscoverAdminMcpResourceServerToolsSuccess_200 {
+  @statusCode statusCode: 200;
+  @header cacheControl: "no-store";
+  @body body: IdMagic.Contract.McpToolDiscoveryResult;
+}
+
+model DiscoverAdminMcpResourceServerToolsError429 {
+  @statusCode statusCode: 429;
+  @header contentType: "application/json";
+  @header cacheControl: "no-store";
+  @doc("本文の retry_after_seconds と同じ再試行待ち時間（秒）。")
+  @header("Retry-After") retryAfter: int32;
+  @body body: IdMagic.Contract.RateLimitedError;
+}
+
+@doc("管理者が、セルフホスト型の McpResourceServer の `resource` から Protected Resource Metadata を取得し、IdMagic を認可サーバーとして宣言していれば一覧取得用のトークンで `tools/list` を取得して最新のカタログとして保存する。登録と公開設定は変えない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
+@TypeSpec.OpenAPI.operationId("DiscoverAdminMcpResourceServerTools")
+@route("/api/admin/v1/mcp-resource-servers/{id}/tool-discovery")
+@post
+op DiscoverAdminMcpResourceServerTools(
+  @path id: string
+): DiscoverAdminMcpResourceServerToolsSuccess_200 | UpdateAdminMcpResourceServerError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminMcpResourceServerError403 | UpdateAdminMcpResourceServerError404 | DiscoverAdminMcpResourceServerToolsError429 | {
+  @statusCode statusCode: 503;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.ProblemDetails;
+};
+
 model CreateAdminMcpResourceServerSuccess_201 {
   @statusCode statusCode: 201;
   @body body: IdMagic.Contract.McpResourceServerResponse;

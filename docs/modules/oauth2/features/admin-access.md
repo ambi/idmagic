@@ -138,7 +138,7 @@
 - 操作の関係が取得の上限の件数に達している間、OAuth2 は、割当の項目で、割当がないとは示さず、割当を確かめられないことを示す。
 - OAuth2 は、トークンの上限の項目で、割当済みの各操作について、その操作が要求するスコープをすべて含む束縛クライアントがあることを確認する。
 - OAuth2 は、違反時の扱いが `require_approval` の項目の違反と、ポリシー全体の `require_approval` を、トークンの上限の不足に数えない。
-- OAuth2 は、一覧の取得の項目で、Gateway が送ったカタログの `received_at` があることを確認する。
+- OAuth2 は、一覧の取得の項目で、Gateway の報告か直接の取得で得たカタログの `received_at` があることを確認する。
 - カタログの取得に失敗した場合、OAuth2 は、一覧の取得の項目で、カタログが届いていないとは示さず、取得に失敗したため確かめられないことを示し、他の接続先と他の項目の表示を続ける。
 - OAuth2 は、トークンの上限の項目で、Agent 別とテナントのデフォルトの各層のガードレールについて、次の表の拒否を、拒否した層と種類で区別して示す（違反時の扱いの省略は [REQ-OAUTH2-073](guardrail.md#req-oauth2-073-agent-が関わるトークンの発行はグラントによらず関わるすべての-agent-のポリシーで評価される) と同じく `deny` とする）。
 
@@ -152,7 +152,7 @@
 
 | 不足 | 修正先 |
 | --- | --- |
-| 登録が `Active` でない、評価用のクライアントがない、公開中のツールがない、カタログの `received_at` がない | MCP リソースサーバーの編集画面へのリンク。カタログについては Gateway の設定と上流への到達も案内する |
+| 登録が `Active` でない、評価用のクライアントがない、公開中のツールがない、カタログの `received_at` がない | MCP リソースサーバーの編集画面へのリンク。カタログについては、公開されたサーバーなら編集画面の取得を、閉域のサーバーなら Gateway の設定と上流への到達を案内する |
 | Agent が `active` でない | Agent の編集画面へのリンク |
 | 資格情報の束縛がない、スコープを含む束縛クライアントがない | Agent の資格情報の画面へのリンク |
 | 割当がない、割当を確かめられない | Agent の割当の画面へのリンク |
@@ -160,7 +160,51 @@
 | テナントのデフォルトのガードレールの拒否 | 管理 API の `PUT /api/admin/v1/agent-guardrail-default`。管理コンソールに編集画面がないため、リンクを示さない |
 | カタログの取得の失敗 | 画面の再読み込み。リンクを示さない |
 
-- **判断**：IdMagic から MCP サーバーへの到達を要する確認（直接の一覧取得、認証）は置かない。閉域のサーバーへ届かず、任意の URL への接続は SSRF と資格情報の送信先の管理を要するためである（REQ-OAUTH2-086 の判断と同じ）。
+- **判断**：権限の材料の表示では MCP サーバーへ接続しない。到達と認証は、管理者が編集画面で取得したとき（REQ-OAUTH2-095）にだけ確かめ、その結果をカタログの有無で読む。表示のたびに外へ接続すると、閲覧が外向きの作用と流量を生むためである。
+
+### 管理者による MCP サーバーからの取得
+
+#### REQ-OAUTH2-095 公開された MCP サーバーからの取得は PRM が IdMagic を信頼すると宣言した宛先へだけ一覧取得用のトークンを送る
+
+- 管理者が `POST /api/admin/v1/mcp-resource-servers/{id}/tool-discovery` を要求したとき、OAuth2 は、登録の `resource` の Protected Resource Metadata（RFC 9728）を取得し、200 と、メタデータと一覧の取得の結果と、一覧取得用の主体の `client_id` を返す。
+- メタデータを取得するとき、OAuth2 は、`resource` の origin の `/.well-known/oauth-protected-resource` に `resource` の path を継いだ URL を GET する。
+- path を継いだ URL が 404 を返し、`resource` の path が空でない場合、OAuth2 は、続けて path を継がない URL を GET する。
+- 応答が 200 の JSON オブジェクトで、`resource` が登録の `resource` と文字列として一致し、`authorization_servers` が文字列の配列であるとき、OAuth2 は、メタデータの `status` を `found` にし、`authorization_servers`、`scopes_supported`、テナントの issuer を含むかを返す。
+- メタデータの `resource` が登録の `resource` と異なる場合、OAuth2 は、`status` を `resource_mismatch` にし、メタデータの値を返さない。
+- メタデータの URL がすべて 404 を返した場合、OAuth2 は、`status` を `not_found` にする。
+- メタデータの応答が 200 と 404 以外か、JSON オブジェクトでないか、`authorization_servers` が文字列の配列でない場合、OAuth2 は、`status` を `invalid` にする。
+- メタデータへ接続できない場合、OAuth2 は、`status` を `unreachable` にする。
+- メタデータが `found` で `authorization_servers` がテナントの issuer を含むとき、OAuth2 は、[REQ-OAUTH2-096](#req-oauth2-096-一覧取得用のトークンは登録の資源だけを宛先とし-idmagic-のどの入口でも受け付けない) のトークンを付けて、登録の `resource` へ 2026-07-28 版の `tools/list` を送り、`nextCursor` をたどる。
+- メタデータが `found` でないか、`authorization_servers` がテナントの issuer を含まない場合、OAuth2 は、トークンを発行せず、`tools/list` を送らず、一覧の `status` を `skipped` にする。
+- 一覧の一ページ目が成功したとき、OAuth2 は、[REQ-MCPGATEWAY-011](../../mcp-gateway/features/runtime.md#req-mcpgateway-011-カタログを参照する構成は起動後に上流のツールカタログを-idmagic-へ送る) と同じ項目、切り詰め、`complete` の規則で、取得したツールを登録の最新のカタログとして [REQ-OAUTH2-086](resource-access.md#req-oauth2-086-リソースサーバーはツールのカタログを送信できカタログは公開設定を変えない) と同じく保存し、一覧の `status` を `fetched` にして件数と `complete` を返す。
+- 一ページ目が 401 を返した場合、OAuth2 は、一覧の `status` を `unauthorized` にし、カタログを変えない。
+- 一ページ目が 403 を返した場合、OAuth2 は、一覧の `status` を `forbidden` にし、カタログを変えない。
+- 一ページ目へ接続できない場合、OAuth2 は、一覧の `status` を `unreachable` にし、カタログを変えない。
+- 一ページ目が 200 と 401 と 403 以外を返すか、JSON-RPC の結果でないか、REQ-OAUTH2-086 の上限を満たさないツール名を含む場合、OAuth2 は、一覧の `status` を `invalid_response` にし、カタログを変えない。
+- 外へ接続するとき、OAuth2 は、HTTPS の登録の `resource` とその origin のメタデータの URL だけへ、名前解決したすべてのアドレスを接続時に検査して接続し、非公開アドレス、環境のプロキシを使わず、リダイレクトを追わない。
+- 外へ接続するとき、OAuth2 は、メタデータの本文を 64 KiB、一覧の一ページの本文を 4 MiB、一回の要求を 10 秒、取得の全体を 30 秒、ページを 10 までとし、上限を超えた要求を失敗として扱う。
+- 取得が失敗したとき、OAuth2 は、自動で再試行しない。
+- 取得を終えたとき、OAuth2 は、操作した管理者、登録、メタデータと一覧の `status` を持つ `McpToolDiscoveryAttempted` を発行し、トークンと応答の本文をログ、イベント、応答に含めない。
+- 登録が存在しない場合、OAuth2 は、404 と `resource_server_not_found` で拒否する。
+- 登録が `Active` でないか、マネージド型であるか、`resource` が利用者情報、クエリ、フラグメント、非公開の IP リテラル、曖昧な path を持つ HTTPS の URL でない場合、OAuth2 は、400 と `invalid_resource_server` で拒否し、外へ接続しない。
+- 同じ登録の取得が 60 秒に 6 回を超える場合、OAuth2 は、429 と `rate_limited` で拒否し、外へ接続しない。
+- 流量制限を実行できない場合、OAuth2 は、503 で拒否し、外へ接続しない。
+- 管理者が MCP リソースサーバーを編集するとき、OAuth2 は、セルフホスト型の登録に「MCP サーバーから取得」の操作を示し、取得の結果をメタデータと一覧に分けて示す。
+- 取得の結果を示すとき、OAuth2 は、登録にないメタデータの `scopes_supported` を「MCP サーバーの Protected Resource Metadata」と出所を付けたスコープの候補として示し、管理者が選ぶまで登録を変えない。
+- 一覧が `fetched` でないとき、OAuth2 は、状態ごとの理由と、MCP サーバーの運用者が許可する一覧取得用の `client_id` を示す。
+- 一覧が `fetched` のとき、OAuth2 は、カタログを読み直し、REQ-OAUTH2-087 の候補と差分を示す。
+- **判断**：取得は管理者の操作だけを契機にする。閲覧や登録のたびに外へ接続しないためである。定期的な取得は扱わない。
+- **判断**：PRM が IdMagic を認可サーバーとして宣言した宛先へだけトークンを送る。MCP サーバーが IdMagic のトークンを検査すると宣言していない宛先へ、IdMagic のトークンを出さないためである。
+
+#### REQ-OAUTH2-096 一覧取得用のトークンは登録の資源だけを宛先とし IdMagic のどの入口でも受け付けない
+
+- REQ-OAUTH2-095 で一覧を取得するとき、OAuth2 は、`sub` と `client_id` を `urn:idmagic:mcp-tool-discovery`、`aud` を登録の `resource` だけ、スコープを空、寿命を 60 秒とし、`token_use` に `mcp_tool_discovery` を持つアクセストークンを発行する。
+- メタデータの `dpop_signing_alg_values_supported` が `ES256` を含むとき、OAuth2 は、取得ごとに作る P-256 の鍵へトークンを束縛し、`DPoP` の方式と証明を付けて送り、取得を終えたら鍵を保存せず捨てる。
+- メタデータの `dpop_signing_alg_values_supported` が `ES256` を含まないとき、OAuth2 は、トークンを `Bearer` の方式で送る。
+- 一覧取得用のトークンを提示されたとき、OAuth2 は、`/introspect` に `active: false` を返し、トークン交換の `subject_token` と `actor_token`、資源アクセスの評価、管理 API と account API の Bearer 認証で、無効なトークンとして拒否する。
+- OAuth2 は、`urn:idmagic:mcp-tool-discovery` の主体へ token エンドポイントからトークンを発行しない。
+- **判断**：一覧取得用の主体は IdMagic 内部だけで使い、資格情報を持たない。MCP サーバーが受け取ったトークンを IdMagic で使えないようにし、外へ出したトークンが登録の資源の外で価値を持たないようにするためである。
+- **判断**：DPoP は対応を宣言したサーバーにだけ使う。トークンは IdMagic でも他の資源でも受け付けられないので、DPoP に対応しないサーバーで一覧を得られなくなる損失のほうが大きいためである。
 
 ## セキュリティ上の考慮
 

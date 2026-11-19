@@ -671,6 +671,30 @@ export type ToolCatalog = {
   changes?: ToolCatalogChanges
 }
 
+// McpToolDiscoveryResult は公開された MCP サーバーからの取得の結果 (REQ-OAUTH2-095)。
+// 取得した一覧はカタログに保存され、ここには含まれない。
+export type McpToolDiscoveryResult = {
+  client_id: string
+  metadata: {
+    status: 'found' | 'not_found' | 'invalid' | 'resource_mismatch' | 'unreachable'
+    url?: string
+    authorization_servers?: string[]
+    scopes_supported?: string[]
+    issuer_trusted?: boolean
+  }
+  tools: {
+    status:
+      | 'fetched'
+      | 'skipped'
+      | 'unauthorized'
+      | 'forbidden'
+      | 'unreachable'
+      | 'invalid_response'
+    count?: number
+    complete?: boolean
+  }
+}
+
 // WorkloadTrustBundleProfile は信頼設定が掛ける検証の種別。登録の後は変わらない。
 export type WorkloadTrustBundleProfile = 'oidc' | 'spiffe'
 

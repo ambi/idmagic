@@ -14,6 +14,7 @@
 | Agent | 自律的に動く実行主体 | クライアント資格情報、または外部のアテステーション (`WorkloadIdentity`) |
 | DirectoryConnector | 閉域のディレクトリから取り込む実行単位 | 登録した公開鍵で署名した短命の JWT (`Sourcing`) |
 | 運用者 | プロセスを起動できる実行環境 | 権限ではなく実行環境そのものが境界 (`Seeding`) |
+| MCP の一覧取得 | 管理者の操作で、公開された MCP サーバーの `tools/list` を取得する IdMagic 内部の主体 (`urn:idmagic:mcp-tool-discovery`) | 資格情報を持たない。IdMagic が登録の資源だけを宛先として内部で発行し、IdMagic のどの入口でも受け付けない ([REQ-OAUTH2-096](../../modules/oauth2/features/admin-access.md#req-oauth2-096-一覧取得用のトークンは登録の資源だけを宛先とし-idmagic-のどの入口でも受け付けない)) |
 
 主体の種類は境界ごとに制限する。管理 API が受け入れるのは User と ApiToken であり、Client の資格情報だけで管理操作へ到達する経路は設けない。
 

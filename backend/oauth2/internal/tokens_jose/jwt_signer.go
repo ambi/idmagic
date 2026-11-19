@@ -111,6 +111,9 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 	if in.Managed {
 		claims["token_use"] = "managed_api_token"
 	}
+	if in.ToolDiscovery {
+		claims["token_use"] = domain.McpToolDiscoveryTokenUse
+	}
 	if in.Act != nil {
 		claims["act"] = in.Act
 	}
@@ -295,6 +298,11 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*o
 		return &oauthports.IntrospectionResult{Active: false}, nil
 	}
 	if expF, _ := payload["exp"].(float64); int64(expF) < nowUnix() {
+		return &oauthports.IntrospectionResult{Active: false}, nil
+	}
+	// 一覧取得用のトークンは MCP サーバーへ渡すだけで、IdMagic のどの入口でも受け付けない
+	// (REQ-OAUTH2-096)。/introspect、交換、評価、管理 API と account API の検証がここを通る。
+	if use, _ := payload["token_use"].(string); use == domain.McpToolDiscoveryTokenUse {
 		return &oauthports.IntrospectionResult{Active: false}, nil
 	}
 	res := &oauthports.IntrospectionResult{Active: true}

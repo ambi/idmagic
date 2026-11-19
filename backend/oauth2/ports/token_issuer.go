@@ -46,6 +46,9 @@ type AccessTokenInput struct {
 	ExpiresAt int64
 	// Managed は Authorization Server が lifecycle record を持つ管理発行 token を表す。
 	Managed bool
+	// ToolDiscovery は公開された MCP サーバーの一覧取得だけに使うトークンを表す (REQ-OAUTH2-096)。
+	// IdMagic の検証はこの印を持つトークンを無効として扱う。
+	ToolDiscovery bool
 }
 
 type IDTokenInput struct {

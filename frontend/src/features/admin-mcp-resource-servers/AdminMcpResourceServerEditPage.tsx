@@ -14,6 +14,7 @@ import {
   McpResourceServerFormFields,
   parseAccessRules,
   ToolCatalogPanel,
+  ToolDiscoveryPanel,
   resourceServerSchema,
   toForm,
   hostingInput,
@@ -33,6 +34,7 @@ export function AdminMcpResourceServerEditPage({
   const [form, setForm] = useState(() => toForm(resourceServer))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [catalogVersion, setCatalogVersion] = useState(0)
   const t = useDictionary(adminMcpResourceServersDictionary)
   const schema = useMemo(
     () =>
@@ -101,7 +103,19 @@ export function AdminMcpResourceServerEditPage({
             locked={true}
             t={t}
           />
+          {resourceServer.hosting ? null : (
+            <ToolDiscoveryPanel
+              csrfToken={csrfToken}
+              resourceServerID={resourceServer.id}
+              form={form}
+              onChange={setForm}
+              onCatalogUpdated={() => setCatalogVersion((version) => version + 1)}
+              t={t}
+            />
+          )}
+          {/* MCP サーバーから取得した後は key を変えて作り直し、カタログを読み直す。 */}
           <ToolCatalogPanel
+            key={catalogVersion}
             resourceServerID={resourceServer.id}
             form={form}
             onChange={setForm}

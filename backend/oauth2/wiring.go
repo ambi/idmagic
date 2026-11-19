@@ -16,6 +16,7 @@ import (
 	consentpostgres "github.com/ambi/idmagic/backend/oauth2/internal/consent/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
+	"github.com/ambi/idmagic/backend/oauth2/internal/discovery_http"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/internal/handlers_http"
 	logoutmemory "github.com/ambi/idmagic/backend/oauth2/internal/logout/db_memory"
 	logoutpostgres "github.com/ambi/idmagic/backend/oauth2/internal/logout/db_postgres"
@@ -181,6 +182,20 @@ func (m Module) WithManagedMcpHTTPClient(client *http.Client) Module {
 	return m
 }
 
+// WithMcpToolDiscoveryHTTPClient は公開された MCP サーバーへの取得の通信だけを差し替える。
+// リダイレクトを追わないことと期限は本番と同じ部品が付ける。
+func (m Module) WithMcpToolDiscoveryHTTPClient(client *http.Client) Module {
+	m.mcpDiscovery = discovery_http.NewFetcher(client)
+	return m
+}
+
+func (m Module) mcpToolDiscoveryFetcher() oauthports.McpServerFetcher {
+	if m.mcpDiscovery == nil {
+		return discovery_http.NewFetcher(nil)
+	}
+	return m.mcpDiscovery
+}
+
 // RegisterMcpPathMetadata は経路形式の resource の RFC 9728 メタデータを公開する。
 func (m Module) RegisterMcpPathMetadata(g *echo.Group, deps support.Deps) {
 	oauth2http.RegisterHostedMcpPathMetadata(g, oauth2http.Deps{Deps: deps, McpResourceServerRepo: m.McpResourceServerRepo})
@@ -240,6 +255,7 @@ func (m Module) httpDeps(d RouteDeps) oauth2http.Deps {
 		McpResourceServerRepo:      m.McpResourceServerRepo,
 		McpToolCatalogRepo:         m.McpToolCatalogRepo,
 		HostedMcp:                  m.hostedMcp,
+		McpToolDiscovery:           m.mcpToolDiscoveryFetcher(),
 		McpForwarder:               d.McpForwarder,
 		AgentGuardrailPolicies:     m.AgentGuardrailPolicies,
 		CrossAppAccessPolicies:     m.CrossAppAccessPolicies,

@@ -98,6 +98,8 @@ type Deps struct {
 	RelationChecker accessports.RelationChecker
 	HostedMcp       *HostedMcpRuntime
 	McpForwarder    oauthports.McpForwarder
+	// McpToolDiscovery は公開された MCP サーバーへの取得の通信である (REQ-OAUTH2-095)。
+	McpToolDiscovery oauthports.McpServerFetcher
 	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (client
 	// registration) and consents (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
@@ -215,6 +217,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/mcp-resource-servers", d.handleListAdminMcpResourceServers)
 	g.GET("/api/admin/v1/mcp-resource-servers/:id", d.handleGetAdminMcpResourceServer)
 	g.GET("/api/admin/v1/mcp-resource-servers/:id/tool-catalog", d.handleGetAdminMcpToolCatalog)
+	g.POST("/api/admin/v1/mcp-resource-servers/:id/tool-discovery", d.handleDiscoverAdminMcpTools)
 	g.POST("/api/admin/v1/mcp-resource-servers", d.handleCreateAdminMcpResourceServer)
 	g.PATCH("/api/admin/v1/mcp-resource-servers/:id", d.handleUpdateAdminMcpResourceServer)
 	g.DELETE("/api/admin/v1/mcp-resource-servers/:id", d.handleDeleteAdminMcpResourceServer)

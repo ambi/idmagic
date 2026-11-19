@@ -70,7 +70,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 
 ## `management`
 
-経路の数：228
+経路の数：229
 
 | 経路 | メソッド |
 | --- | --- |
@@ -215,6 +215,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/mcp-resource-servers` | GET, POST |
 | `/api/admin/v1/mcp-resource-servers/{id}` | DELETE, GET, PATCH |
 | `/api/admin/v1/mcp-resource-servers/{id}/tool-catalog` | GET |
+| `/api/admin/v1/mcp-resource-servers/{id}/tool-discovery` | POST |
 | `/api/admin/v1/policy/roles` | GET |
 | `/api/admin/v1/provisioning/connections` | GET |
 | `/api/admin/v1/saml/idp-profiles` | GET, POST |

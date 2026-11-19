@@ -220,7 +220,7 @@ it('shows per-server check states with guidance linking to where each gap is fix
       'The Agent guardrail denies issuance for this connection.',
       '/admin/agents/agent-1/guardrail/edit',
     ],
-    ['No catalog has arrived from the Gateway.', serverEdit],
+    ['No tool catalog has been received.', serverEdit],
   ] as const) {
     expect(screen.getByRole('link', { name: new RegExp(guidance) })).toHaveAttribute('href', href)
   }

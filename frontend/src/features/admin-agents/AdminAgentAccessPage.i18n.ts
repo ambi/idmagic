@@ -98,7 +98,7 @@ export const agentAccessDictionary = defineDictionary(
     gapTenantGuardrailExpired:
       'テナントのデフォルトのガードレールの期限を過ぎています。管理 API の PUT /api/admin/v1/agent-guardrail-default で期限を見直してください。',
     gapCatalogNotReceived:
-      'Gateway からカタログが届いていません。Gateway の設定と上流への到達を確認してください。',
+      'ツールのカタログがまだありません。公開された MCP サーバーなら編集画面で MCP サーバーから取得し、閉域のサーバーなら Gateway の設定と上流への到達を確認してください。',
     gapCatalogFetchFailed:
       'カタログを取得できなかったため、一覧の取得を確かめられません。再読み込みしてください。',
   },
@@ -199,7 +199,7 @@ export const agentAccessDictionary = defineDictionary(
     gapTenantGuardrailExpired:
       'The tenant default guardrail has expired. Review its expiry with PUT /api/admin/v1/agent-guardrail-default.',
     gapCatalogNotReceived:
-      'No catalog has arrived from the Gateway. Check the Gateway configuration and upstream reachability.',
+      'No tool catalog has been received. For a public MCP server, fetch it from the MCP server on the edit page; for a private one, check the Gateway configuration and upstream reachability.',
     gapCatalogFetchFailed:
       'The catalog could not be loaded, so catalog retrieval was not checked. Reload the page.',
   },

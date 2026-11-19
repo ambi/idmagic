@@ -60,6 +60,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | 上流の外部権威 | 外部 IdP、SCIM の取り込み元、アテステーション発行者が主張する属性と主体 |
 | 下流の外部受信者 | 配信先が正しいこと。受信側が署名を検証すること |
 | マネージド型 MCP Gateway と上流 | 登録 URL の DNS の応答、リダイレクト、応答の量と所要時間。呼び出し元が送った資格情報と本人の識別情報 |
+| 公開された MCP サーバーからの取得 | 登録 URL の DNS の応答、リダイレクト、応答の量と所要時間。PRM が宣言する認可サーバーとスコープ、`tools/list` の名前と説明。MCP サーバーへ渡した一覧取得用のトークンの使われ方 |
 | 永続化と非同期実行 | ジョブの `params` と `result` の中身。ハンドラーが 1 回だけ動くこと |
 | 運用者と制御面 | 実行環境を取れる者。起動時設定の値 |
 | IdMagic と Directory Connector | 公開鍵を持つことだけでは要求元を証明しない。設定した IdMagic への TLS 接続と署名 JWT、tenant、Connector、要求 ID、鍵と設定の世代、期限の束縛を検査する |
@@ -235,6 +236,9 @@ IdMagic の API プロセスと Connector は平文をメモリで扱う信頼�
 | THREAT-109 | Information disclosure | マネージド型 Gateway の上流 URL、DNS、リダイレクトを使って内部資源や別の宛先へ資格情報を送らせる | OAuth2, TokenVault | REQ-OAUTH2-091、REQ-OAUTH2-092 | `covered` |
 | THREAT-110 | Denial of service | MCP の応答を無制限に開くか過大な本文を送り、API の受付資源を占有する | OAuth2, System | REQ-OAUTH2-092、REQ-SYSTEM-018 | `covered` |
 | THREAT-111 | Denial of service | 同じ API プロセスで動くマネージド型 Gateway のメモリ枯渇やプロセス停止が、認証も同時に停止させる | OAuth2, System | REQ-OAUTH2-092: 転送予算による抑制。プロセスの停止の隔離はない | `accepted` |
+| THREAT-115 | Information disclosure | 管理者が登録した MCP の `resource`、DNS、リダイレクトを使い、一覧の取得で内部資源へ接続させるか、IdMagic を信頼しない宛先へトークンを送らせる | OAuth2 | REQ-OAUTH2-095 | `covered` |
+| THREAT-116 | Elevation of privilege | MCP サーバーが受け取った一覧取得用のトークンを、IdMagic の introspection、トークン交換、管理 API、または別の資源で使う | OAuth2 | REQ-OAUTH2-096 | `covered` |
+| THREAT-117 | Elevation of privilege | `aud` だけを検査する MCP サーバーで、一覧取得用のトークンにより `tools/list` 以外の操作が通る | OAuth2 | REQ-OAUTH2-096: 寿命を 60 秒、スコープを空にし、IdMagic は `tools/list` だけを送る。MCP サーバー側の認可は IdMagic の外にある | `accepted` |
 | THREAT-114 | Denial of service | Agent が承認の必要な `tools/call` を繰り返し、本人へ承認の依頼のメールを大量に送らせる | OAuth2 | REQ-OAUTH2-093: 関係の判定の後に限り、同じ操作の重複を除き、保留中を一人 10 件に限る。上限までの通知は防がない | `accepted` |
 | THREAT-096 | Spoofing | 偽の発見結果を取り込ませ、未登録の主体を管理済みの Agent として扱わせるか権限を得る | IdManagement | REQ-IDMANAGEMENT-095、REQ-IDMANAGEMENT-098、REQ-IDMANAGEMENT-101 | `covered` |
 | THREAT-097 | Denial of service | 取り込みの件数と未来の時刻で台帳を埋めるか、以後の観測を止める | IdManagement | REQ-IDMANAGEMENT-096、REQ-IDMANAGEMENT-097、REQ-IDMANAGEMENT-102 | `covered` |
@@ -270,6 +274,11 @@ IdMagic の API プロセスと Connector は平文をメモリで扱う信頼�
 転送の上限と受付制御は資源の消費を抑えるが、CPU、メモリとプロセス停止を隔離しない。
 MCP と認証の本番規模の混合負荷によるサービス目標の達成は未実測である。
 認証への影響が上限と受付制御で収まらない場合、Gateway だけの資源増設、独立した再起動、障害隔離の運用要件が生じた場合に分離を見直す。
+
+**THREAT-117（`aud` だけを検査する MCP サーバーでの一覧取得用のトークン）**：トークンが MCP サーバーの何を許すかは、その MCP サーバーの認可が決め、IdMagic の外にある。
+IdMagic は、スコープを持たず 60 秒で失効するトークンを、PRM で IdMagic を認可サーバーと宣言した宛先へ `tools/list` のためだけに送ることで影響を限る。
+専用のスコープを MCP の仕様が定めていないため、それ以上の限定はできない。
+**再検討の条件**は、MCP の仕様か拡張が一覧取得専用のスコープまたは主体の区別を定めたとき、または定期的な取得でこのトークンを繰り返し発行するようになったときである。
 
 `accepted` は、制御を設けないことを意図して選んだ行である。それぞれについて、選んだ理由と、その選択を見直すべき条件を書く。**条件が書かれていない受容は、受容ではなく放置である。**
 

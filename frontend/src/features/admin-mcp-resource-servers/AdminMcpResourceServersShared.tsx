@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
-import { getMcpToolCatalog, listAdminApplications, tenantURL } from '../../api'
+import {
+  AuthenticationAPIError,
+  discoverMcpTools,
+  getMcpToolCatalog,
+  listAdminApplications,
+  tenantURL,
+} from '../../api'
 import { FieldError } from '../../components/FieldError'
 import { Button } from '../../components/ui/button'
 import { Label } from '../../components/ui/label'
@@ -18,6 +24,7 @@ import { LENGTH } from '../../lib/lengthLimits'
 import type {
   AdminApplication,
   McpResourceServer,
+  McpToolDiscoveryResult,
   CatalogTool,
   ToolCatalogChanges,
   ToolCatalog,
@@ -647,6 +654,127 @@ function EvaluatorClientField({
 
 // ToolCatalogPanel は Gateway がカタログのツールを、公開中のツールと区別して示す (REQ-OAUTH2-087)。
 // 「公開する」は編集中のフォームへ行を足すだけで、保存するまで何も公開しない。
+// ToolDiscoveryPanel は公開された MCP サーバーから PRM と一覧を取得する操作と結果を示す (REQ-OAUTH2-095)。
+// メタデータのスコープは選ぶまで登録へ加えず、取得した一覧はカタログの読み直しで示す。
+export function ToolDiscoveryPanel({
+  csrfToken,
+  resourceServerID,
+  form,
+  onChange,
+  onCatalogUpdated,
+  t,
+}: {
+  csrfToken: string
+  resourceServerID: string
+  form: FormState
+  onChange: (next: FormState) => void
+  onCatalogUpdated: () => void
+  t: Dictionary
+}) {
+  const [result, setResult] = useState<McpToolDiscoveryResult | null>(null)
+  const [running, setRunning] = useState(false)
+  const [error, setError] = useState('')
+
+  async function discover() {
+    setRunning(true)
+    setError('')
+    try {
+      const discovered = await discoverMcpTools(csrfToken, resourceServerID)
+      setResult(discovered)
+      if (discovered.tools.status === 'fetched') onCatalogUpdated()
+    } catch (cause) {
+      const limited = cause instanceof AuthenticationAPIError && cause.code === 'rate_limited'
+      setError(limited ? t.discoverRateLimited : t.discoverFailed)
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const metadataMessage = result
+    ? {
+        found: t.discoverMetadataFound,
+        not_found: t.discoverMetadataNotFound,
+        invalid: t.discoverMetadataInvalid,
+        resource_mismatch: t.discoverMetadataResourceMismatch,
+        unreachable: t.discoverMetadataUnreachable,
+      }[result.metadata.status]
+    : ''
+  const toolsMessage = result
+    ? {
+        fetched: t.discoverToolsFetched.replace('{count}', String(result.tools.count ?? 0)),
+        skipped: t.discoverToolsSkipped,
+        unauthorized: t.discoverToolsUnauthorized,
+        forbidden: t.discoverToolsForbidden,
+        unreachable: t.discoverToolsUnreachable,
+        invalid_response: t.discoverToolsInvalid,
+      }[result.tools.status]
+    : ''
+  const registered = new Set(parseScopes(form.scopes))
+  const candidates = (result?.metadata.scopes_supported ?? []).filter(
+    (scope) => !registered.has(scope),
+  )
+  return (
+    <section className="flex flex-col gap-2 md:col-span-2" aria-labelledby="tool-discovery-heading">
+      <p id="tool-discovery-heading" className="text-sm font-medium">
+        {t.discoverHeading}
+      </p>
+      <p className="text-xs leading-5 text-slate-500">{t.discoverHelp}</p>
+      <div>
+        <Button type="button" variant="outline" disabled={running} onClick={discover}>
+          {running ? t.discoverRunning : t.discoverFetch}
+        </Button>
+      </div>
+      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {result ? (
+        <div className="flex flex-col gap-2 rounded-md border p-2 text-sm">
+          <p>{metadataMessage}</p>
+          {result.metadata.authorization_servers ? (
+            <p className="text-xs text-slate-600">
+              {t.discoverAuthorizationServers.replace(
+                '{servers}',
+                result.metadata.authorization_servers.join(', '),
+              )}
+            </p>
+          ) : null}
+          {result.metadata.status === 'found' && !result.metadata.issuer_trusted ? (
+            <p className="text-amber-800">{t.discoverIssuerNotTrusted}</p>
+          ) : null}
+          {candidates.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-slate-600">{t.discoverScopeSource}</p>
+              <ul className="flex flex-wrap gap-2">
+                {candidates.map((scope) => (
+                  <li key={scope} className="flex items-center gap-2 rounded-md border p-1">
+                    <code className="text-xs">{scope}</code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      aria-label={`${t.discoverAddScope} ${scope}`}
+                      onClick={() =>
+                        onChange({ ...form, scopes: [...registered, scope].join(' ') })
+                      }
+                    >
+                      {t.discoverAddScope}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <p className={result.tools.status === 'fetched' ? '' : 'text-amber-800'}>
+            {toolsMessage}
+          </p>
+          {result.tools.status === 'fetched' ? null : (
+            <p className="text-xs text-slate-600">
+              {t.discoverClientIDHint} <code>{result.client_id}</code>
+            </p>
+          )}
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 export function ToolCatalogPanel({
   resourceServerID,
   form,
