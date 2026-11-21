@@ -14,7 +14,7 @@ bun = "1.4.4"
 "aqua:google/osv-scanner" = "2.7.1"
 # 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでもバージョンを固定するのは、
 # 生成される変異の集合がバージョンで変わり、work item に残した一覧が再現できなくなるためである。
-"go:github.com/gomutants/gomutants" = "0.7.3"
+"go:github.com/ambi/gamut/cmd/gamut" = "0.1.0"
 
 [tasks.setup]
 description = "Install repository dependencies"
@@ -46,7 +46,7 @@ run = [
   "zizmor --version",
   "betterleaks version",
   "osv-scanner --version",
-  "gomutants -version",
+  "gamut -version",
 ]
 
 [tasks.list-outdated-development-tools]
@@ -659,17 +659,23 @@ case "$directory" in
   *) target="./$directory" ;;
 esac
 # runner の変更と operator の変更を同時に持ち込まないよう、Gremlins の既定集合と同系統の
-# 5 種類に固定する。gomutants の全 operator は survivor の仕分け量を測ってから別に判断する。
+# 5 種類に固定する。gamut の全 operator は survivor の仕分け量を測ってから別に判断する。
 operators="ARITHMETIC_BASE,CONDITIONALS_BOUNDARY,CONDITIONALS_NEGATION,INCREMENT_DECREMENT,INVERT_NEGATIVES"
 report="${4:-${TMPDIR:-/tmp}/idmagic-mutation-report.json}"
-# 固定した gomutants の cache key は、対象 package が import する package の変更を完全には追跡しない。
-# 既定では無効にし、同一変更を反復するときだけ第 3 引数へ cache file を明示する。
+workers="${2:-2}"
+cache="${3:-off}"
+base_revision="${5:-}"
+# 依存の変更後の再利用は未検証のため、同一変更を反復するときだけ cache file を明示する。
 case "${6:-local}" in
   local) mutation_flags="" ;;
-  integration) mutation_flags="--integration" ;;
+  integration) mutation_flags="-integration" ;;
   *) echo "mutation mode must be local or integration" >&2; exit 2 ;;
 esac
-gomutants --workers "${2:-2}" --cache "${3:-off}" --only "$operators" --output "$report" ${5:+--changed-since "$5"} $mutation_flags "$target"
+case "$cache" in
+  off) set -- -no-cache ;;
+  *) set -- -cache "$cache" ;;
+esac
+gamut -workers "$workers" "$@" -only "$operators" -o "$report" ${base_revision:+-since "$base_revision"} $mutation_flags "$target"
 '''
 
 [tasks.test-go-mutation-mutant]
@@ -688,15 +694,15 @@ operators="ARITHMETIC_BASE,CONDITIONALS_BOUNDARY,CONDITIONALS_NEGATION,INCREMENT
 report="${3:-${TMPDIR:-/tmp}/idmagic-mutation-report.json}"
 case "${4:-local}" in
   local) mutation_flags="" ;;
-  integration) mutation_flags="--integration" ;;
+  integration) mutation_flags="-integration" ;;
   *) echo "mutation mode must be local or integration" >&2; exit 2 ;;
 esac
-gomutants \
-  --workers 1 \
-  --cache off \
-  --only "$operators" \
-  --output "$report" \
-  --run-mutant-id "$2" \
+gamut \
+  -workers 1 \
+  -no-cache \
+  -only "$operators" \
+  -o "$report" \
+  -mutant "$2" \
   $mutation_flags \
   "$target"
 '''
@@ -712,11 +718,11 @@ cache="$canary_tmp/cache.json"
 report="$canary_tmp/report.json"
 for attempt in first cached; do
   echo "mutation canary: $attempt run"
-  gomutants \
-    --workers 1 \
-    --cache "$cache" \
-    --only ARITHMETIC_BASE,CONDITIONALS_BOUNDARY \
-    --output "$report" \
+  gamut \
+    -workers 1 \
+    -cache "$cache" \
+    -only ARITHMETIC_BASE,CONDITIONALS_BOUNDARY \
+    -o "$report" \
     ./tools/check/testdata/mutation-canary
   (cd tools && bun run check/src/mutation-canary.ts "$report")
 done

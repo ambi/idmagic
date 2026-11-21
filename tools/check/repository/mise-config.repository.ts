@@ -202,12 +202,14 @@ describe('mise mutation testing boundary', () => {
   const canary = String(config.tasks?.['check-go-mutation-tool']?.run ?? '')
 
   it('mutates one Go package through the pinned tool', () => {
-    expect(mutation).toContain('gomutants')
+    expect(mutation).toContain('gamut ')
   })
 
   /** ツールの保守が止まったときに動くバージョンが残らないと、証拠の作り方ごと失われる。 */
   it('pins the mutation tool to an exact version', () => {
-    expect(config.tools?.['go:github.com/gomutants/gomutants']).toMatch(/^\d+\.\d+\.\d+$/)
+    expect(config.tools?.['go:github.com/ambi/gamut/cmd/gamut']).toMatch(/^\d+\.\d+\.\d+$/)
+    expect(config.tools?.['go:github.com/gomutants/gomutants']).toBeUndefined()
+    expect(config.tasks?.['show-tool-versions']?.run).toContain('gamut -version')
   })
 
   /**
@@ -226,13 +228,12 @@ describe('mise mutation testing boundary', () => {
     }
   })
 
-  /**
-   * gomutants 0.7.2 の cache key は対象 package が import する package の変更を完全には
-   * 追跡しない。既定では再利用せず、同一変更を反復するときだけ cache file を明示する。
-   */
+  /** 同一変更の反復だけでキャッシュを明示し、通常実行は判定を再利用しない。 */
   it('uses conservative worker and cache defaults', () => {
     expect(mutation).toContain('$' + '{2:-2}')
     expect(mutation).toContain('$' + '{3:-off}')
+    expect(mutation).toContain('-no-cache')
+    expect(mutation).toContain('-cache "$cache"')
   })
 
   it('normalizes a repository-relative directory to a Go package pattern', () => {
@@ -241,16 +242,25 @@ describe('mise mutation testing boundary', () => {
 
   it('writes the report outside the repository by default', () => {
     expect(mutation).toContain('idmagic-mutation-report.json')
-    expect(mutation).toContain('--output "$report"')
+    expect(mutation).toContain('-o "$report"')
   })
 
   it('reruns one stable mutant id without the incremental cache', () => {
-    expect(singleMutation).toContain('--run-mutant-id')
-    expect(singleMutation).toContain('--cache off')
+    expect(singleMutation).toContain('-mutant "$2"')
+    expect(singleMutation).toContain('-no-cache')
+  })
+
+  it('差分モードと統合モードを gamut のフラグで実行する', () => {
+    expect(mutation).toContain('-since')
+    for (const task of [mutation, singleMutation]) {
+      expect(task).toContain('mutation_flags="-integration"')
+    }
   })
 
   it('provides a manual verdict canary', () => {
     expect(canary).toContain('mutation-canary')
+    expect(canary).toContain('gamut ')
+    expect(canary).toContain('-cache "$cache"')
   })
 
   /**

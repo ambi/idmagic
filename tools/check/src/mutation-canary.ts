@@ -1,40 +1,42 @@
 type Mutation = {
-  type?: unknown
+  mutatorName?: unknown
   status?: unknown
 }
 
 type MutationFile = {
-  mutations?: unknown
+  mutants?: unknown
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null
+  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 export function verifyMutationCanary(report: unknown): string[] {
-  if (!isRecord(report) || !Array.isArray(report.files)) {
-    return ['mutation report does not contain a files array']
+  if (!isRecord(report) || !isRecord(report.files)) {
+    return ['mutation report does not contain a files object']
   }
 
-  const mutations = report.files.flatMap((file: unknown): Mutation[] => {
+  const mutations = Object.values(report.files).flatMap((file: unknown): Mutation[] => {
     if (!isRecord(file)) return []
-    const { mutations } = file as MutationFile
-    return Array.isArray(mutations) ? (mutations.filter(isRecord) as Mutation[]) : []
+    const { mutants } = file as MutationFile
+    return Array.isArray(mutants) ? (mutants.filter(isRecord) as Mutation[]) : []
   })
 
   const findings: string[] = []
   if (
     !mutations.some(
-      (mutation) => mutation.type === 'CONDITIONALS_BOUNDARY' && mutation.status === 'LIVED',
+      (mutation) =>
+        mutation.mutatorName === 'CONDITIONALS_BOUNDARY' && mutation.status === 'Survived',
     )
   ) {
-    findings.push('expected a CONDITIONALS_BOUNDARY mutant with status LIVED')
+    findings.push('expected a CONDITIONALS_BOUNDARY mutant with status Survived')
   }
   if (
     !mutations.some(
-      (mutation) => mutation.type === 'ARITHMETIC_BASE' && mutation.status === 'NOT VIABLE',
+      (mutation) =>
+        mutation.mutatorName === 'ARITHMETIC_BASE' && mutation.status === 'CompileError',
     )
   ) {
-    findings.push('expected an ARITHMETIC_BASE mutant with status NOT VIABLE')
+    findings.push('expected an ARITHMETIC_BASE mutant with status CompileError')
   }
   return findings
 }
