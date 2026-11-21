@@ -28,26 +28,6 @@ type PageInfo = {
   content: string[]
   references: string[]
 }
-type FieldInfo = {
-  label: string
-  control: string
-  /** 実装の name 属性。束縛先のプロパティ名と異なる場合だけ宣言する。 */
-  name?: string
-  initial: string
-  condition: string
-  /** 束縛先のプロパティ名と同じ値を送る入力では省く。 */
-  mapping?: string
-  repeated?: boolean
-}
-/** name は実装の部品と照合する名前で、束縛先のプロパティ名、なければ宣言のプロパティ名。 */
-type UiField = FieldInfo & { id: string; name: string; type: string; binding?: string }
-type UiForm = {
-  id: string
-  name: string
-  condition: string
-  commit: string
-  fields: UiField[]
-}
 type UiAction = {
   id: string
   event: string
@@ -75,8 +55,6 @@ type UiPage = PageInfo & {
   category: string
   categoryName: string
   source: string
-  forms: UiForm[]
-  parameters: UiField[]
   states: Record<string, string>
   actions: UiAction[]
 }
@@ -150,34 +128,6 @@ export function extractUiCatalog(program: Program, root: string): UiCatalog {
   for (const target of pageTargets) identifiers.set(target, metadata<PageInfo>('page', target)!.id)
   for (const target of destinationTargets)
     identifiers.set(target, metadata<UiDestination>('destination', target)!.id)
-  const fields = (model: Model, prefix: string): UiField[] =>
-    [...model.properties.values()].map((property) => {
-      const id = `${prefix}/${property.name}`
-      const info = metadata<Partial<FieldInfo> & Pick<FieldInfo, 'label' | 'control'>>(
-        'field',
-        property,
-      )
-      if (!info) throw new Error(`${id}: 入力項目の説明がない`)
-      const binding = getAutoDecoratorValue(program, 'IdMagicUi.bind', property)?.source as
-        | ModelProperty
-        | undefined
-      if (!binding && !info.mapping)
-        throw new Error(`${id}: API プロパティへ束縛しない入力には mapping が必要`)
-      // 束縛した入力は型を書き写さず、束縛先から導く。
-      const type =
-        binding && property.type.kind === 'Intrinsic' && property.type.name === 'unknown'
-          ? binding.type
-          : property.type
-      return {
-        initial: '空',
-        condition: '常時',
-        ...info,
-        id,
-        type: getTypeName(type),
-        name: info.name ?? binding?.name ?? property.name,
-        binding: binding ? `${getTypeName(binding.model!)}.${binding.name}` : undefined,
-      }
-    })
   const pages = pageTargets.map((target): UiPage => {
     const info = metadata<PageInfo>('page', target)!
     const source = relative(root, getSourceLocation(target).file.path).replaceAll('\\', '/')
@@ -189,22 +139,6 @@ export function extractUiCatalog(program: Program, root: string): UiCatalog {
     if (!category) throw new Error(`${info.id}: UI のカテゴリがない`)
     if (target.type.kind !== 'Model') throw new Error(`${info.id}: ページがモデルではない`)
     const model = target.type
-    const forms = properties(model, 'forms').map((property): UiForm => {
-      const form = metadata<Omit<UiForm, 'id' | 'fields' | 'condition'> & { condition?: string }>(
-        'form',
-        property,
-      )
-      if (!form || property.type.kind !== 'Model')
-        throw new Error(`${info.id}/${property.name}: フォームの説明がない`)
-      return {
-        condition: '常時',
-        ...form,
-        id: property.name,
-        fields: fields(property.type, `${info.id}/${property.name}`),
-      }
-    })
-    const parameterModel = model.properties.get('parameters')?.type
-    if (parameterModel?.kind !== 'Model') throw new Error(`${info.id}: parameters がない`)
     const states = Object.fromEntries(
       properties(model, 'states').map((property) => {
         if (property.type.kind !== 'String')
@@ -248,8 +182,6 @@ export function extractUiCatalog(program: Program, root: string): UiCatalog {
           ? info.area
           : (info.area as { value: { name: string } }).value.name,
       source,
-      forms,
-      parameters: fields(parameterModel, `${info.id}/parameters`),
       states,
       actions,
     }

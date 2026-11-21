@@ -10,6 +10,6 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 ## ページ一覧
 
-| ページ | URL | 目的 | 入力項目数 |
-| --- | --- | --- | --- |
-| [本人の外部サービス接続](../../../../../modules/token-vault/pages/account-connections.md) | `/account/connections` | 外部サービスとの接続と再認可、解除を管理する | 0 |
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [本人の外部サービス接続](../../../../../modules/token-vault/pages/account-connections.md) | `/account/connections` | 外部サービスとの接続と再認可、解除を管理する |

@@ -1,6 +1,6 @@
 # ログイン
 
-この文書は、ログインの操作、入力項目と状態を示す。
+この文書は、ログインの操作と状態を示す。
 
 > 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
 
@@ -24,33 +24,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 利用手順は[Authentication のページ一覧](README.md)にまとめる。
 
-## フォームと入力項目
-
-項目ごとのバリデーション規則は別の作業で定義する。
-
-### 資格情報
-
-識別子：login/credentials。表示条件：常時。確定：ログイン。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| ユーザー名 | login/credentials/username | text | string | 空 | 資格情報を使う場合 | IdMagic.Authentication.Operations.SubmitBrowserLoginHttpRequest.username |
-| パスワード | login/credentials/password | password | string | 空 | 資格情報を使う場合 | IdMagic.Authentication.Operations.SubmitBrowserLoginHttpRequest.password |
-
-## パラメーター
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 認証後の戻り先 | login/parameters/returnTo | URL パラメーター | string | URL の return_to | 指定された場合 | 同じテナントの許可された戻り先 |
-| Windows 統合認証の抑止 | login/parameters/negotiate | URL パラメーター | string | URL の negotiate | Windows 統合認証を提供する場合 | skip なら統合認証を自動実行しない |
-
-## 実装と照合していない入力
-
-次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
-
-| ファイル | 部品の数 |
-| --- | --- |
-| [`features/auth-flow/MfaEnrollmentPage.tsx`](../../../../frontend/src/features/auth-flow/MfaEnrollmentPage.tsx) | 1 |
+個々の入力項目は実装の画面が持ち、受理範囲は API 契約と[共通の UI 設計](../../../design/application/user-interface.md)の検証の分担が定める。
 
 ## 操作と結果の詳細
 

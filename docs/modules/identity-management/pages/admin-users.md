@@ -1,6 +1,6 @@
 # ユーザー一覧
 
-この文書は、ユーザー一覧の操作、入力項目と状態を示す。
+この文書は、ユーザー一覧の操作と状態を示す。
 
 > 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
 
@@ -20,38 +20,11 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | 利用者 | テナント管理者 |
 | 入口 | 管理コンソールのユーザー一覧または対象ユーザーの詳細 |
 | 利用条件 | 対象テナントの管理者として認可を受ける。変更の許可は API が判断する。 |
-| 表示内容 | ユーザー名、表示名、メールアドレス、状態とロール、総件数と再取得、作成と CSV の入口 |
+| 表示内容 | 検索語と状態による絞り込み。条件は URL に保持する、ユーザー名、表示名、メールアドレス、状態とロール、総件数、ページ送りと再取得、作成と CSV の入口 |
 
 利用手順は[IdManagement のページ一覧](README.md)にまとめる。
 
-## フォームと入力項目
-
-項目ごとのバリデーション規則は別の作業で定義する。
-
-### 検索と絞り込み
-
-識別子：admin-users/search。表示条件：常時。確定：URL の条件を更新して再取得。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 検索語 | admin-users/search/query | text | string | URL の query | 常時 | URL と一覧の query |
-| 状態 | admin-users/search/status | 選択 | string | URL の status または active | 常時 | URL と一覧の status |
-
-## パラメーター
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 次ページのカーソル | admin-users/parameters/cursor | URL パラメーター | string | URL の cursor | ページ送りの場合 | API の cursor |
-
-## 実装と照合していない入力
-
-次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
-
-| ファイル | 部品の数 |
-| --- | --- |
-| [`features/admin-users/AdminUserDialogs.tsx`](../../../../frontend/src/features/admin-users/AdminUserDialogs.tsx) | 4 |
-| [`features/admin-users/AdminUsersListPage.tsx`](../../../../frontend/src/features/admin-users/AdminUsersListPage.tsx) | 1 |
-| [`features/admin-users/AdminUsersPrimitives.tsx`](../../../../frontend/src/features/admin-users/AdminUsersPrimitives.tsx) | 1 |
+個々の入力項目は実装の画面が持ち、受理範囲は API 契約と[共通の UI 設計](../../../design/application/user-interface.md)の検証の分担が定める。
 
 ## 操作と結果の詳細
 

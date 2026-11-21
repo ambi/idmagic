@@ -13,6 +13,9 @@ spec_impact: { kind: none, reason: "フォーム部品に照合用の静的な n
 
 # フロントエンドの全フォーム部品に静的な name 属性を付ける
 
+> 2026-11-22：中止予定。wi-92664 が入力項目を宣言しない方針に変わり、本項目は不要になった。
+> 中止の手順は [wi-92664 の「現在の計画と進捗」](wi-92664-model-ui-pages-and-interaction-flows-in-typespec.md#現在の計画と進捗2026-11-22-時点以下の古い節より優先する)の残作業の3にある。
+
 ## 動機
 
 [wi-92664](wi-92664-model-ui-pages-and-interaction-flows-in-typespec.md) は、TypeSpec の UI ページ宣言の入力項目と、実装のフォーム部品を静的な `name` 属性で照合する。

@@ -1,6 +1,6 @@
 # 本人のセキュリティ設定
 
-この文書は、本人のセキュリティ設定の操作、入力項目と状態を示す。
+この文書は、本人のセキュリティ設定の操作と状態を示す。
 
 > 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
 
@@ -24,54 +24,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 利用手順は[Authentication のページ一覧](README.md)にまとめる。
 
-## フォームと入力項目
-
-項目ごとのバリデーション規則は別の作業で定義する。
-
-### TOTP 登録
-
-識別子：account-security/enrollTotp。表示条件：未登録で登録を開始した場合。確定：登録を完了。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 設定キー | account-security/enrollTotp/secret | 読み取り専用 text | string | StartTotpEnrollment の secret | 登録開始後。QR を読み取れない場合に展開する | 確認要求の secret。利用者は変更しない |
-| 確認コード | account-security/enrollTotp/code | text | string | 空 | 対象のフォームを操作するとき | 確認要求の code |
-
-### TOTP 解除
-
-識別子：account-security/removeTotp。表示条件：登録済み。確定：解除。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 解除用コード | account-security/removeTotp/code | text | string | 空 | 対象のフォームを操作するとき | 解除要求の code |
-
-### パスキー登録
-
-識別子：account-security/passkey。表示条件：WebAuthn を利用できるブラウザー。確定：登録。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| パスキー名 | account-security/passkey/label | text | string | 空 | 対象のフォームを操作するとき | 登録要求の label。資格情報はブラウザーの認証器から取得する |
-
-### 通知設定
-
-識別子：account-security/notifications。表示条件：通知の種別が取得できた場合。確定：切り替え時に更新。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 通知を受け取る（繰り返し） | account-security/notifications/enabled | checkbox | boolean | カテゴリごとの enabled | mandatory の種別は編集不可 | 無効な任意カテゴリを disabled_categories として送信する |
-
-## パラメーター
-
-ページ固有のパラメーターはない。
-
-## 実装と照合していない入力
-
-次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
-
-| ファイル | 部品の数 |
-| --- | --- |
-| [`features/account/AccountSecurityPage.tsx`](../../../../frontend/src/features/account/AccountSecurityPage.tsx) | 5 |
+個々の入力項目は実装の画面が持ち、受理範囲は API 契約と[共通の UI 設計](../../../design/application/user-interface.md)の検証の分担が定める。
 
 ## 操作と結果の詳細
 

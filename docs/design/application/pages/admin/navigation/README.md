@@ -10,6 +10,6 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 ## ページ一覧
 
-| ページ | URL | 目的 | 入力項目数 |
-| --- | --- | --- | --- |
-| [管理ダッシュボード](../../../../../modules/frontend/pages/admin-dashboard.md) | `/admin` | テナントの概要と管理操作への入口を示す | 0 |
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [管理ダッシュボード](../../../../../modules/frontend/pages/admin-dashboard.md) | `/admin` | テナントの概要と管理操作への入口を示す |

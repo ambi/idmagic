@@ -10,6 +10,6 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 ## ページ一覧
 
-| ページ | URL | 目的 | 入力項目数 |
-| --- | --- | --- | --- |
-| [本人のアプリケーションランチャー](../../../../../modules/application/pages/account-apps.md) | `/account/apps` | 利用可能なアプリケーションを起動し表示順を変更する | 1 |
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [本人のアプリケーションランチャー](../../../../../modules/application/pages/account-apps.md) | `/account/apps` | 利用可能なアプリケーションを起動し表示順を変更する |

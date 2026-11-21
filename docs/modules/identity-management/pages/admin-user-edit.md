@@ -1,6 +1,6 @@
 # ユーザーを編集
 
-この文書は、ユーザーを編集の操作、入力項目と状態を示す。
+この文書は、ユーザーを編集の操作と状態を示す。
 
 > 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
 
@@ -24,40 +24,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 利用手順は[IdManagement のページ一覧](README.md)にまとめる。
 
-## フォームと入力項目
-
-項目ごとのバリデーション規則は別の作業で定義する。
-
-### ユーザーの変更
-
-識別子：admin-user-edit/profile。表示条件：常時。確定：変更内容を確認して保存。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| ユーザー名 | admin-user-edit/profile/preferred_username | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.preferred_username |
-| 表示名 | admin-user-edit/profile/name | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.name |
-| 名 | admin-user-edit/profile/given_name | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.given_name |
-| 姓 | admin-user-edit/profile/family_name | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.family_name |
-| メールアドレス | admin-user-edit/profile/email | email | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.email |
-| メールの確認状態 | admin-user-edit/profile/email_verified | checkbox | boolean | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.email_verified |
-| ロール | admin-user-edit/profile/roles | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.roles：カンマ区切りを roles 配列へ変換する |
-| カスタム属性 | admin-user-edit/profile/attributes | 属性の型に応じた入力 | Record&lt;unknown&gt; | 現在のユーザーの値 | テナントに属性定義がある場合 | IdMagic.Contract.AdminUserUpdateRequest.attributes：定義ごとの入力を属性マップへ変換する |
-
-## パラメーター
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| ユーザー ID | admin-user-edit/parameters/id | パスパラメーター | string | URL の id | 常時 | 更新するユーザー ID |
-
-## 実装と照合していない入力
-
-次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
-
-| ファイル | 部品の数 |
-| --- | --- |
-| [`features/admin-users/AdminUserAttributeEditor.tsx`](../../../../frontend/src/features/admin-users/AdminUserAttributeEditor.tsx) | 2 |
-| [`features/admin-users/AdminUserEditPage.tsx`](../../../../frontend/src/features/admin-users/AdminUserEditPage.tsx) | 7 |
-| [`features/admin-users/AdminUsersPrimitives.tsx`](../../../../frontend/src/features/admin-users/AdminUsersPrimitives.tsx) | 1 |
+個々の入力項目は実装の画面が持ち、受理範囲は API 契約と[共通の UI 設計](../../../design/application/user-interface.md)の検証の分担が定める。
 
 ## 操作と結果の詳細
 

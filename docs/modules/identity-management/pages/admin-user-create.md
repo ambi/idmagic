@@ -1,6 +1,6 @@
 # ユーザーを追加
 
-この文書は、ユーザーを追加の操作、入力項目と状態を示す。
+この文書は、ユーザーを追加の操作と状態を示す。
 
 > 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
 
@@ -24,35 +24,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 利用手順は[IdManagement のページ一覧](README.md)にまとめる。
 
-## フォームと入力項目
-
-項目ごとのバリデーション規則は別の作業で定義する。
-
-### ユーザーの作成
-
-識別子：admin-user-create/create。表示条件：常時。確定：作成。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| ユーザー名 | admin-user-create/create/preferredUsername | text | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.preferred_username |
-| 表示名 | admin-user-create/create/name | text | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.name |
-| メールアドレス | admin-user-create/create/email | email | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.email |
-| メールを確認済みにする | admin-user-create/create/emailVerified | checkbox | boolean | false | 常時 | IdMagic.Contract.AdminUserCreateRequest.email_verified |
-| 初期パスワード | admin-user-create/create/password | password | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.password |
-| 初期ロール | admin-user-create/create/roles | text | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.roles：カンマ区切りを roles 配列へ変換 |
-
-## パラメーター
-
-ページ固有のパラメーターはない。
-
-## 実装と照合していない入力
-
-次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
-
-| ファイル | 部品の数 |
-| --- | --- |
-| [`features/admin-users/AdminUserCreatePage.tsx`](../../../../frontend/src/features/admin-users/AdminUserCreatePage.tsx) | 5 |
-| [`features/admin-users/AdminUsersPrimitives.tsx`](../../../../frontend/src/features/admin-users/AdminUsersPrimitives.tsx) | 1 |
+個々の入力項目は実装の画面が持ち、受理範囲は API 契約と[共通の UI 設計](../../../design/application/user-interface.md)の検証の分担が定める。
 
 ## 操作と結果の詳細
 

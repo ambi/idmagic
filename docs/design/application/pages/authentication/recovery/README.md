@@ -10,7 +10,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 ## ページ一覧
 
-| ページ | URL | 目的 | 入力項目数 |
-| --- | --- | --- | --- |
-| [パスワード再設定の依頼](../../../../../modules/authentication/pages/forgot-password.md) | `/forgot_password` | 登録したメールアドレスへ再設定の案内を依頼する | 1 |
-| [パスワードの再設定](../../../../../modules/authentication/pages/reset-password.md) | `/reset_password` | メールのリンクから新しいパスワードを設定する | 1 |
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [パスワード再設定の依頼](../../../../../modules/authentication/pages/forgot-password.md) | `/forgot_password` | 登録したメールアドレスへ再設定の案内を依頼する |
+| [パスワードの再設定](../../../../../modules/authentication/pages/reset-password.md) | `/reset_password` | メールのリンクから新しいパスワードを設定する |

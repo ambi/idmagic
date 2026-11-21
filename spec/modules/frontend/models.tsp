@@ -53,30 +53,6 @@ model PageInfo {
   references: string[];
 }
 
-/** ページ内のフォームまたは独立した操作単位。condition の既定は「常時」。 */
-model FormInfo {
-  name: string;
-  condition?: string;
-  commit: string;
-}
-
-/**
- * 検証規則を含まない入力項目の設計情報。
- * initial の既定は「空」、condition の既定は「常時」。
- * mapping は API プロパティへ束縛しない入力と、束縛先へ変換して送る入力だけに書く。
- * 束縛した入力の型は unknown と書き、束縛先のプロパティから導く。
- * name は実装のフォーム部品の name 属性で、束縛先のプロパティ名（なければ宣言のプロパティ名）と異なる場合だけ書く。
- */
-model FieldInfo {
-  label: string;
-  control: string;
-  name?: string;
-  initial?: string;
-  condition?: string;
-  mapping?: string;
-  repeated?: boolean;
-}
-
 /**
  * 契機から結果への一つの分岐。
  * 省略時は ready から ready への無条件の移動とし、渡すデータはない。
@@ -141,12 +117,6 @@ auto dec flowLink(target: ModelProperty, info: valueof FlowLinkInfo, from: Model
 auto dec page(target: ModelProperty, info: valueof PageInfo);
 /** ページを探すための作業カテゴリ。 */
 auto dec category(target: ModelProperty, category: valueof Category);
-/** 入力をまとめる操作単位。 */
-auto dec form(target: ModelProperty, info: valueof FormInfo);
-/** 入力と URL パラメーターの役割。 */
-auto dec field(target: ModelProperty, info: valueof FieldInfo);
-/** 値の出典となる API プロパティ。 */
-auto dec bind(target: ModelProperty, source: ModelProperty);
 /** 実行する既存 API。 */
 auto dec uses(target: ModelProperty, ...operations: Operation[]);
 /** 操作結果から次のページまたは状態への参照。 */

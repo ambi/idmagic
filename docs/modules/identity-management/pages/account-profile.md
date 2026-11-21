@@ -1,6 +1,6 @@
 # 本人のプロフィール
 
-この文書は、本人のプロフィールの操作、入力項目と状態を示す。
+この文書は、本人のプロフィールの操作と状態を示す。
 
 > 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
 
@@ -24,26 +24,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 利用手順は[IdManagement のページ一覧](README.md)にまとめる。
 
-## フォームと入力項目
-
-項目ごとのバリデーション規則は別の作業で定義する。
-
-入力フォームはない。
-
-## パラメーター
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 更新通知 | account-profile/parameters/notice | URL | string | notice | 編集完了から来た場合 | success のとき更新完了を通知する。永続化しない |
-
-## 実装と照合していない入力
-
-次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
-
-| ファイル | 部品の数 |
-| --- | --- |
-| [`features/account/AccountProfileAttributes.tsx`](../../../../frontend/src/features/account/AccountProfileAttributes.tsx) | 2 |
-| [`features/account/AccountProfilePage.tsx`](../../../../frontend/src/features/account/AccountProfilePage.tsx) | 3 |
+個々の入力項目は実装の画面が持ち、受理範囲は API 契約と[共通の UI 設計](../../../design/application/user-interface.md)の検証の分担が定める。
 
 ## 操作と結果の詳細
 

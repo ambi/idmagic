@@ -1,14 +1,14 @@
 namespace IdMagicUi;
 
-/** 入力と操作の定義を共有しても、入力の識別子は利用するページで展開する。 */
-model PageData<Forms, Actions, Parameters = {}, States = FormStates> {
-  parameters: Parameters;
-  forms: Forms;
+/**
+ * ページの操作と表示状態。入力項目は宣言しない。
+ * 入力の一覧は実装の画面が一次情報で、受理範囲は API プロパティの制約が定める。
+ */
+model PageData<Actions, States = FormStates> {
   states: States;
   actions: Actions;
 }
 
-const entered = #{initial: "空", condition: "対象のフォームを操作するとき"};
 const accountContext = #{area: Area.account, actor: "認証済みの本人", context: "対象テナントの本人のセッションで参照する。CSRF と再認証は共通規則に従う。", references: #["[共通の UI 規則](user-interface.md)"]};
 const adminContext = #{area: Area.admin, actor: "テナント管理者", context: "対象テナントの管理権限で参照し、操作の認可は API が判断する。", references: #["[共通の UI 規則](user-interface.md)"]};
 const systemContext = #{area: Area.system, actor: "システム管理者", context: "制御プレーンの管理権限と必要な認証保証で参照する。", references: #["[共通の UI 規則](user-interface.md)"]};

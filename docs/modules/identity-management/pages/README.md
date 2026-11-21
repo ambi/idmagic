@@ -65,20 +65,20 @@ flowchart LR
 
 ## ユーザー管理
 
-| ページ | URL | 目的 | 入力項目数 |
-| --- | --- | --- | --- |
-| [ユーザー一覧](admin-users.md) | `/admin/users` | ユーザーを検索し、対象の確認と管理の入口を示す | 2 |
-| [ユーザー詳細](admin-user-detail.md) | `/admin/users/$id` | 現在のプロフィール、権限、所属と認証の状態を確認する | 4 |
-| [ユーザーを追加](admin-user-create.md) | `/admin/users/new` | 初期資格情報とプロフィールを指定してユーザーを作成する | 6 |
-| [ユーザーを編集](admin-user-edit.md) | `/admin/users/$id/edit` | プロフィール、ロールとカスタム属性を一回の保存で変更する | 8 |
-| [ユーザーの CSV インポート](admin-user-import.md) | `/admin/users/import` | CSV をプレビューしてから確認を経て適用し、行ごとの結果を確認する | 1 |
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [ユーザー一覧](admin-users.md) | `/admin/users` | ユーザーを検索し、対象の確認と管理の入口を示す |
+| [ユーザー詳細](admin-user-detail.md) | `/admin/users/$id` | 現在のプロフィール、権限、所属と認証の状態を確認する |
+| [ユーザーを追加](admin-user-create.md) | `/admin/users/new` | 初期資格情報とプロフィールを指定してユーザーを作成する |
+| [ユーザーを編集](admin-user-edit.md) | `/admin/users/$id/edit` | プロフィール、ロールとカスタム属性を一回の保存で変更する |
+| [ユーザーの CSV インポート](admin-user-import.md) | `/admin/users/import` | CSV をプレビューしてから確認を経て適用し、行ごとの結果を確認する |
 
 ## プロフィール
 
-| ページ | URL | 目的 | 入力項目数 |
-| --- | --- | --- | --- |
-| [本人のプロフィール](account-profile.md) | `/account/profile` | 本人の基本情報と公開された属性を確認する | 0 |
-| [本人のプロフィールを編集](account-profile-edit.md) | `/account/profile/edit` | 本人に編集が許可された基本情報と属性を更新する | 4 |
-| [本人のメールアドレス](account-emails.md) | `/account/emails` | 現在の確認状態を確認し、新しいアドレスの確認を依頼する | 1 |
-| [メールアドレスの確認](email-verify.md) | `/account/email/verify` | メールに含まれるトークンで変更を確認する | 0 |
-| [本人のデータ](account-data.md) | `/account/data` | 本人のデータを JSON として取得する | 0 |
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [本人のプロフィール](account-profile.md) | `/account/profile` | 本人の基本情報と公開された属性を確認する |
+| [本人のプロフィールを編集](account-profile-edit.md) | `/account/profile/edit` | 本人に編集が許可された基本情報と属性を更新する |
+| [本人のメールアドレス](account-emails.md) | `/account/emails` | 現在の確認状態を確認し、新しいアドレスの確認を依頼する |
+| [メールアドレスの確認](email-verify.md) | `/account/email/verify` | メールに含まれるトークンで変更を確認する |
+| [本人のデータ](account-data.md) | `/account/data` | 本人のデータを JSON として取得する |

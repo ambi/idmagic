@@ -1,6 +1,6 @@
 # ユーザー詳細
 
-この文書は、ユーザー詳細の操作、入力項目と状態を示す。
+この文書は、ユーザー詳細の操作と状態を示す。
 
 > 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
 
@@ -20,46 +20,11 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | 利用者 | テナント管理者 |
 | 入口 | 管理コンソールのユーザー一覧または対象ユーザーの詳細 |
 | 利用条件 | 対象テナントの管理者として認可を受ける。変更の許可は API が判断する。 |
-| 表示内容 | プロフィール、ロールとグループ、認証情報とセッション、必須アクション、無効化と削除の確認 |
+| 表示内容 | プロフィール、ロールとグループ、認証情報とセッション、必須アクション、無効化と削除の確認。削除はユーザー名の入力で確認する、解除する認証情報を選ぶリセットのダイアログ |
 
 利用手順は[IdManagement のページ一覧](README.md)にまとめる。
 
-## フォームと入力項目
-
-項目ごとのバリデーション規則は別の作業で定義する。
-
-### ユーザーの削除確認
-
-識別子：admin-user-detail/deleteConfirmation。表示条件：削除のダイアログを開いた場合。確定：削除。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 確認用ユーザー名 | admin-user-detail/deleteConfirmation/confirmName | text | string | 空 | 削除のダイアログを開いた場合 | UI 内での確認。API へ送信しない |
-
-### 認証情報のリセット
-
-識別子：admin-user-detail/authenticatorReset。表示条件：認証情報のリセットを選択した場合。確定：選択した認証情報を解除。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| TOTP | admin-user-detail/authenticatorReset/totp | checkbox | boolean | false | リセットのダイアログを開いた場合 | 解除する認証情報の種類 |
-| パスキー | admin-user-detail/authenticatorReset/webauthn | checkbox | boolean | false | リセットのダイアログを開いた場合 | 解除する認証情報の種類 |
-| 回復コード | admin-user-detail/authenticatorReset/recoveryCode | checkbox | boolean | false | リセットのダイアログを開いた場合 | 解除する認証情報の種類 |
-
-## パラメーター
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| ユーザー ID | admin-user-detail/parameters/id | パスパラメーター | string | URL の id | 常時 | 取得と管理操作の対象 ID |
-
-## 実装と照合していない入力
-
-次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
-
-| ファイル | 部品の数 |
-| --- | --- |
-| [`features/admin-users/AdminUserDialogs.tsx`](../../../../frontend/src/features/admin-users/AdminUserDialogs.tsx) | 4 |
-| [`features/admin-users/AdminUsersPrimitives.tsx`](../../../../frontend/src/features/admin-users/AdminUsersPrimitives.tsx) | 1 |
+個々の入力項目は実装の画面が持ち、受理範囲は API 契約と[共通の UI 設計](../../../design/application/user-interface.md)の検証の分担が定める。
 
 ## 操作と結果の詳細
 

@@ -1,58 +1,30 @@
 namespace IdMagicUi;
 
 const userAdminContext = #{area: Area.admin, actor: "テナント管理者", entry: "管理コンソールのユーザー一覧または対象ユーザーの詳細", context: "対象テナントの管理者として認可を受ける。変更の許可は API が判断する。", references: #["REQ-FRONTEND-002", "[ナビゲーション](user-interface.md#ナビゲーション)"]};
-const currentUser = #{initial: "現在のユーザーの値"};
 
 /** IdManagement が主担当となるユーザー管理のページ。 */
 model AdminUserPages {
-  @page(#{...userAdminContext, id: "admin-users", name: "ユーザー一覧", purpose: "ユーザーを検索し、対象の確認と管理の入口を示す", content: #["ユーザー名", "表示名", "メールアドレス", "状態とロール", "総件数と再取得", "作成と CSV の入口"]})
+  @page(#{...userAdminContext, id: "admin-users", name: "ユーザー一覧", purpose: "ユーザーを検索し、対象の確認と管理の入口を示す", content: #["検索語と状態による絞り込み。条件は URL に保持する", "ユーザー名、表示名、メールアドレス、状態とロール", "総件数、ページ送りと再取得", "作成と CSV の入口"]})
   @category(Category.users)
   users: PageData<{
-    @form(#{name: "検索と絞り込み", commit: "URL の条件を更新して再取得"}) search: {
-      @field(#{label: "検索語", control: "text", initial: "URL の query", mapping: "URL と一覧の query"}) query: string;
-      @field(#{label: "状態", control: "選択", initial: "URL の status または active", mapping: "URL と一覧の status"}) status: string;
-    };
-  }, {
     @transition(#{event: "検索または絞り込み", result: "条件に合う一覧を表示する", data: "query、status、cursor", mode: "data"}, AdminUserPages.users) @uses(IdMagic.IdManagement.Operations.ListAdminUsers) search: unknown;
     @transition(#{event: "詳細", data: "ユーザー ID"}, AdminUserPages.detail) detail: unknown;
     @transition(#{event: "ユーザーを追加"}, AdminUserPages.create) create: unknown;
     @transition(#{event: "CSV インポート"}, AdminUserPages.importCsv) importCsv: unknown;
-  }, {
-    @field(#{label: "次ページのカーソル", control: "URL パラメーター", initial: "URL の cursor", condition: "ページ送りの場合", mapping: "API の cursor"}) cursor: string;
   }, ListStates>;
 
-  @page(#{...userAdminContext, id: "admin-user-detail", name: "ユーザー詳細", purpose: "現在のプロフィール、権限、所属と認証の状態を確認する", content: #["プロフィール", "ロールとグループ", "認証情報とセッション", "必須アクション", "無効化と削除の確認"]})
+  @page(#{...userAdminContext, id: "admin-user-detail", name: "ユーザー詳細", purpose: "現在のプロフィール、権限、所属と認証の状態を確認する", content: #["プロフィール", "ロールとグループ", "認証情報とセッション", "必須アクション", "無効化と削除の確認。削除はユーザー名の入力で確認する", "解除する認証情報を選ぶリセットのダイアログ"]})
   @category(Category.users)
   detail: PageData<{
-    @form(#{name: "ユーザーの削除確認", condition: "削除のダイアログを開いた場合", commit: "削除"}) deleteConfirmation: {
-      @field(#{label: "確認用ユーザー名", control: "text", condition: "削除のダイアログを開いた場合", mapping: "UI 内での確認。API へ送信しない"}) confirmName: string;
-    };
-    @form(#{name: "認証情報のリセット", condition: "認証情報のリセットを選択した場合", commit: "選択した認証情報を解除"}) authenticatorReset: {
-      @field(#{label: "TOTP", control: "checkbox", initial: "false", condition: "リセットのダイアログを開いた場合", mapping: "解除する認証情報の種類"}) totp: boolean;
-      @field(#{label: "パスキー", control: "checkbox", initial: "false", condition: "リセットのダイアログを開いた場合", mapping: "解除する認証情報の種類"}) webauthn: boolean;
-      @field(#{label: "回復コード", control: "checkbox", initial: "false", condition: "リセットのダイアログを開いた場合", mapping: "解除する認証情報の種類"}) recoveryCode: boolean;
-    };
-  }, {
     @transition(#{event: "編集", data: "ユーザー ID"}, AdminUserPages.edit) edit: unknown;
     @transition(#{event: "削除を確認", condition: "確認が成立し API が削除を受理", result: "一覧を再取得する", data: "ユーザー ID"}, AdminUserPages.users) @uses(IdMagic.IdManagement.Operations.DeleteAdminUser) delete: unknown;
     @transition(#{event: "一覧へ戻る"}, AdminUserPages.users) back: unknown;
     @transition(#{event: "管理操作", condition: "API が再認証を要求", result: "再認証後に元の操作を一度だけ再試行する", toState: "dialog", data: "元の操作と再認証の要求"}, Destinations.stepUp) stepUp: unknown;
-  }, {
-    @field(#{label: "ユーザー ID", control: "パスパラメーター", initial: "URL の id", mapping: "取得と管理操作の対象 ID"}) id: string;
   }>;
 
   @page(#{...userAdminContext, id: "admin-user-create", name: "ユーザーを追加", purpose: "初期資格情報とプロフィールを指定してユーザーを作成する", content: #["ユーザー名と表示名", "メールと確認済みの指定", "初期パスワード", "初期ロール"]})
   @category(Category.users)
   create: PageData<{
-    @form(#{name: "ユーザーの作成", commit: "作成"}) create: {
-      @field(#{label: "ユーザー名", control: "text"}) @bind(IdMagic.Contract.AdminUserCreateRequest.preferred_username) preferredUsername: unknown;
-      @field(#{label: "表示名", control: "text"}) @bind(IdMagic.Contract.AdminUserCreateRequest.name) name: unknown;
-      @field(#{label: "メールアドレス", control: "email"}) @bind(IdMagic.Contract.AdminUserCreateRequest.email) email: unknown;
-      @field(#{label: "メールを確認済みにする", control: "checkbox", initial: "false"}) @bind(IdMagic.Contract.AdminUserCreateRequest.email_verified) emailVerified: unknown;
-      @field(#{label: "初期パスワード", control: "password"}) @bind(IdMagic.Contract.AdminUserCreateRequest.password) password: unknown;
-      @field(#{label: "初期ロール", control: "text", mapping: "カンマ区切りを roles 配列へ変換"}) @bind(IdMagic.Contract.AdminUserCreateRequest.roles) roles: string;
-    };
-  }, {
     @transition(#{event: "作成", condition: "作成に成功", result: "作成したユーザーの詳細を取得する", data: "作成したユーザー ID"}, AdminUserPages.detail) @uses(IdMagic.IdManagement.Operations.CreateAdminUser) create: unknown;
     @transition(#{event: "キャンセル"}, AdminUserPages.users) cancel: unknown;
     @transition(#{event: "作成", condition: "作成を拒否または通信失敗", result: "入力を保持して問題を表示する", toState: "error", mode: "data"}, AdminUserPages.create) failure: unknown;
@@ -61,38 +33,21 @@ model AdminUserPages {
   @page(#{...userAdminContext, id: "admin-user-edit", name: "ユーザーを編集", purpose: "プロフィール、ロールとカスタム属性を一回の保存で変更する", content: #["プロフィールの編集", "ロールの変更内容の確認", "属性定義に応じたカスタム属性"]})
   @category(Category.users)
   edit: PageData<{
-    @form(#{name: "ユーザーの変更", commit: "変更内容を確認して保存"}) profile: {
-      @field(#{...currentUser, label: "ユーザー名", control: "text"}) @bind(IdMagic.Contract.AdminUserUpdateRequest.preferred_username) preferred_username: unknown;
-      @field(#{...currentUser, label: "表示名", control: "text"}) @bind(IdMagic.Contract.AdminUserUpdateRequest.name) name: unknown;
-      @field(#{...currentUser, label: "名", control: "text"}) @bind(IdMagic.Contract.AdminUserUpdateRequest.given_name) given_name: unknown;
-      @field(#{...currentUser, label: "姓", control: "text"}) @bind(IdMagic.Contract.AdminUserUpdateRequest.family_name) family_name: unknown;
-      @field(#{...currentUser, label: "メールアドレス", control: "email"}) @bind(IdMagic.Contract.AdminUserUpdateRequest.email) email: unknown;
-      @field(#{...currentUser, label: "メールの確認状態", control: "checkbox"}) @bind(IdMagic.Contract.AdminUserUpdateRequest.email_verified) email_verified: unknown;
-      @field(#{...currentUser, label: "ロール", control: "text", mapping: "カンマ区切りを roles 配列へ変換する"}) @bind(IdMagic.Contract.AdminUserUpdateRequest.roles) roles: string;
-      @field(#{...currentUser, label: "カスタム属性", control: "属性の型に応じた入力", condition: "テナントに属性定義がある場合", mapping: "定義ごとの入力を属性マップへ変換する"}) @bind(IdMagic.Contract.AdminUserUpdateRequest.attributes) attributes: Record<unknown>;
-    };
-  }, {
     @transition(#{event: "保存", condition: "変更内容を確認し保存に成功", result: "更新後の詳細を再取得して一度通知する", data: "ユーザー ID"}, AdminUserPages.detail) @uses(IdMagic.IdManagement.Operations.UpdateAdminUser) save: unknown;
     @transition(#{event: "キャンセル", result: "未保存の入力を破棄して詳細へ戻る", data: "ユーザー ID"}, AdminUserPages.detail) cancel: unknown;
     @transition(#{event: "保存", condition: "更新の拒否または競合", result: "入力を保持し問題を操作の近くに残す", toState: "error", mode: "data"}, AdminUserPages.edit) failure: unknown;
-  }, {
-    @field(#{label: "ユーザー ID", control: "パスパラメーター", initial: "URL の id", mapping: "更新するユーザー ID"}) id: string;
   }>;
 
   @page(#{...userAdminContext, id: "admin-user-import", name: "ユーザーの CSV インポート", purpose: "CSV をプレビューしてから確認を経て適用し、行ごとの結果を確認する", content: #["テンプレートのダウンロード", "ファイル選択", "プレビュー", "適用の確認ダイアログ", "行と列ごとの結果と問題"]})
   @category(Category.users)
   importCsv: PageData<{
-    @form(#{name: "CSV ファイルの取り込み", commit: "プレビュー"}) upload: {
-      @field(#{label: "CSV ファイル", control: "file", initial: "未選択", condition: "取り込みの開始時", mapping: "選択した CSV の内容をプレビューの要求へ渡す"}) file: string;
-    };
-  }, {
     @transition(#{event: "プレビュー", condition: "プレビューのジョブが完了", result: "適用前の内容と行ごとの問題を表示する", toState: "preview", data: "CSV 内容", mode: "data"}, AdminUserPages.importCsv) preview: unknown;
     @transition(#{event: "取り込みを適用", from: "preview", condition: "プレビューが完了", result: "適用前の確認ダイアログを表示する", toState: "confirm", data: "プレビューのジョブ ID", mode: "data"}, AdminUserPages.importCsv) confirm: unknown;
     @transition(#{event: "キャンセル", from: "confirm", condition: "適用を取りやめる", result: "確認を閉じてプレビューへ戻る", toState: "preview", mode: "data"}, AdminUserPages.importCsv) cancelApply: unknown;
     @transition(#{event: "取り込みの適用を確認", from: "confirm", condition: "確認が成立し適用が完了", result: "処理件数と失敗した行を表示する", toState: "success", data: "プレビューのジョブ ID", mode: "data"}, AdminUserPages.importCsv) apply: unknown;
     @transition(#{event: "取り込みの適用を確認", from: "confirm", condition: "一部の行の処理が失敗", result: "成功と失敗を分けて表示する", toState: "partial", mode: "data"}, AdminUserPages.importCsv) partial: unknown;
     @transition(#{event: "一覧へ戻る"}, AdminUserPages.users) back: unknown;
-  }, {}, ImportStates>;
+  }, ImportStates>;
 }
 
 @flow(#{id: "manage-users", name: "ユーザーを作成して編集する", goal: "ユーザーを作成し、プロフィールとロールを確認して変更する。", notes: #["既存のユーザーは一覧から詳細へ進み、同じ編集の手順を使う。", "入力不備、権限不足、保存の失敗は各ページの操作表に示す。"]})
@@ -139,42 +94,27 @@ model ImportUsersFlow {
 
 model AccountProfilePages {
   @page(#{...accountContext, id: "account-profile", name: "本人のプロフィール", entry: "本人のポータル、編集完了", purpose: "本人の基本情報と公開された属性を確認する", content: #["ユーザー名、表示名、氏名、メール", "属性グループごとの登録内容", "編集の入口と更新通知"]}) @category(Category.profile)
-  profile: PageData<{}, {
+  profile: PageData<{
     @transition(#{...navigation, event: "プロフィールを編集", result: "編集可能な項目を表示する"}, AccountProfilePages.edit) edit: unknown;
-  }, {
-    @field(#{label: "更新通知", control: "URL", initial: "notice", condition: "編集完了から来た場合", mapping: "success のとき更新完了を通知する。永続化しない"}) notice: string;
   }>;
   @page(#{...accountContext, id: "account-profile-edit", name: "本人のプロフィールを編集", entry: "本人のプロフィール", purpose: "本人に編集が許可された基本情報と属性を更新する", content: #["基本情報の入力", "editable_attributes の定義に応じた入力", "保存とキャンセル"]}) @category(Category.profile)
   edit: PageData<{
-    @form(#{name: "プロフィール", commit: "保存"}) profile: {
-      @field(#{label: "表示名", control: "text", initial: "profile.name"}) @bind(IdMagic.Contract.AccountProfileUpdateRequest.name) name: unknown;
-      @field(#{label: "名", control: "text", initial: "profile.given_name"}) @bind(IdMagic.Contract.AccountProfileUpdateRequest.given_name) givenName: unknown;
-      @field(#{label: "姓", control: "text", initial: "profile.family_name"}) @bind(IdMagic.Contract.AccountProfileUpdateRequest.family_name) familyName: unknown;
-      @field(#{label: "編集可能なカスタム属性", control: "定義の型に応じた text、number、date、checkbox。配列は区切り入力", initial: "profile.attributes の同じキー", condition: "profile.editable_attributes に含まれる定義ごとに表示", mapping: "attributes[key]。文字列表現を定義の型の AttributeValue へ変換する", repeated: true}) @bind(IdMagic.Contract.AccountProfileUpdateRequest.attributes) attributes: Record<unknown>;
-    };
-  }, {
     @transition(#{...navigation, event: "保存", condition: "更新成功", result: "プロフィールへ戻り success 通知を表示する"}, AccountProfilePages.profile) save: unknown;
     @transition(#{...navigation, event: "キャンセル・戻る", result: "変更を送信せずプロフィールへ戻る"}, AccountProfilePages.profile) cancel: unknown;
     @transition(#{...update, event: "保存", condition: "更新拒否または通信失敗", result: "入力を保持して問題を表示する", toState: "error"}, AccountProfilePages.edit) failure: unknown;
   }>;
-  @page(#{...accountContext, id: "account-emails", name: "本人のメールアドレス", entry: "本人のポータル", purpose: "現在の確認状態を確認し、新しいアドレスの確認を依頼する", content: #["現在のメールと確認状態", "新しいメールアドレス", "確認通知の送信結果"]}) @category(Category.profile)
+  @page(#{...accountContext, id: "account-emails", name: "本人のメールアドレス", entry: "本人のポータル", purpose: "現在の確認状態を確認し、新しいアドレスの確認を依頼する", content: #["現在のメールと確認状態", "新しいメールアドレス。確認リンクの完了前は現在のアドレスを変えない", "確認通知の送信結果"]}) @category(Category.profile)
   emails: PageData<{
-    @form(#{name: "メールの変更依頼", commit: "確認メールを送信"}) change: {
-      @field(#{...entered, label: "新しいメールアドレス", control: "email", mapping: "確認リンクの完了前は現在のアドレスを変えない"}) @bind(IdMagic.Contract.AccountEmailChangeRequest.new_email) email: unknown;
-    };
-  }, {
     @transition(#{...update, event: "確認メールを送信", condition: "依頼の受け付け成功", result: "送信結果を表示し、確認リンクをメールへ届ける", toState: "external"}, Destinations.email) send: unknown;
     @transition(#{...update, event: "送信", condition: "入力の拒否または送信失敗", result: "入力の近くに問題を表示する", toState: "error"}, AccountProfilePages.emails) failure: unknown;
   }>;
   @page(#{...browserContext, id: "email-verify", name: "メールアドレスの確認", entry: "確認メールのリンク", purpose: "メールに含まれるトークンで変更を確認する", content: #["確認の実行ボタン", "確認成功、無効・期限切れなどの結果"]}) @category(Category.profile)
-  verify: PageData<{}, {
+  verify: PageData<{
     @transition(#{...update, event: "メールアドレスを確認", condition: "トークンが有効で確認成功", result: "確認完了を表示する", toState: "success"}, AccountProfilePages.verify) confirm: unknown;
     @transition(#{...update, event: "確認", condition: "トークンがない、期限切れ、使用済みまたは拒否", result: "確認できない理由を表示する", toState: "error"}, AccountProfilePages.verify) failure: unknown;
-  }, {
-    @field(#{label: "確認トークン", control: "URL", initial: "token", condition: "メールのリンクから受け取る", mapping: "利用者は編集しない"}) @bind(IdMagic.Contract.AccountEmailChangeConfirm.token) token: unknown;
   }>;
   @page(#{...accountContext, id: "account-data", name: "本人のデータ", entry: "本人のポータル", purpose: "本人のデータを JSON として取得する", content: #["取得するデータの説明", "ダウンロードの入口", "取得失敗の表示"]}) @category(Category.profile)
-  data: PageData<{}, {
+  data: PageData<{
     @transition(#{...update, event: "データをダウンロード", condition: "取得成功", result: "ブラウザーへ本人のデータを渡す", toState: "external"}, Destinations.download) @uses(IdMagic.IdManagement.Operations.ExportAccountData) download: unknown;
   }>;
 }

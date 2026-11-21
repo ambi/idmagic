@@ -41,21 +41,11 @@ async function catalog(source: string) {
 }
 
 const example = `
-model Request { display_name: string; }
 model States { ready: "内容を表示する。"; submitting: "送信する。"; success: "保存した内容を表示する。"; }
-model Shared {
-  @field(#{label: "名前", control: "text", initial: "現在値", condition: "常時", mapping: "入力値"})
-  name: string;
-  @field(#{label: "表示名", control: "text"})
-  @bind(Request.display_name)
-  displayName: unknown;
-}
 model Pages {
   @page(#{id: "example", name: "例", area: Area.admin, actor: "管理者", entry: "一覧", context: "テナント", purpose: "設定を編集する", content: #["現在値"], references: #[]})
   @category(Category.users)
   example: {
-    parameters: {};
-    forms: { @form(#{name: "編集", condition: "常時", commit: "保存"}) edit: Shared; };
     states: States;
     actions: {
       @transition(#{event: "保存", from: "ready", condition: "成功", result: "保存した内容", toState: "success", data: "入力値", mode: "data"}, Pages.example)
@@ -119,16 +109,8 @@ describe('UI ページの設計', () => {
     expect(resolveRoutes(explicit, [{ id: '/a', path: '/a', markers: [] }]).findings).toEqual([])
   })
 
-  it('束縛した API プロパティから型を導き、省略した入力と遷移の既定値を補う', async () => {
+  it('省略した遷移の既定値を補う', async () => {
     const page = (await resolved()).pages[0]!
-    expect(page.forms[0]?.fields[1]).toMatchObject({
-      id: 'example/edit/displayName',
-      type: 'string',
-      binding: 'Request.display_name',
-      initial: '空',
-      condition: '常時',
-    })
-    expect(page.forms[0]?.fields[1]?.mapping).toBeUndefined()
     expect(page.actions[1]).toMatchObject({
       from: 'ready',
       toState: 'ready',
@@ -139,10 +121,8 @@ describe('UI ページの設計', () => {
     })
   })
 
-  it('API へ束縛しない入力には mapping を要求する', async () => {
-    await expect(
-      catalog(example.replace(', initial: "現在値", condition: "常時", mapping: "入力値"', '')),
-    ).rejects.toThrow('mapping')
+  it('結果を書かないページ内の更新を拒否する', async () => {
+    await expect(catalog(example.replace('result: "保存した内容", ', ''))).rejects.toThrow('result')
   })
 
   it('詳細を主担当モジュールのナビゲーションに置き、全体のカテゴリから参照する', async () => {
@@ -184,9 +164,8 @@ describe('UI ページの設計', () => {
     await window.close()
   })
 
-  it('共有入力を利用ページの ID で展開し、操作から結果へのフローを生成する', async () => {
+  it('ページの詳細に操作と結果を示し、利用手順はモジュールの一覧に置く', async () => {
     const result = await resolved()
-    expect(result.pages[0]?.forms[0]?.fields[0]?.id).toBe('example/edit/name')
     const documents = renderUiDocuments(result)
     expect(result.pages[0]?.module).toBe('identity-management')
     const markdown = documents.get('docs/modules/identity-management/pages/example.md')!
@@ -197,10 +176,6 @@ describe('UI ページの設計', () => {
       'modules/identity-management/pages/example.md',
     )
     expect([...documents.keys()].filter((path) => path.endsWith('/example.md'))).toHaveLength(1)
-    expect(documents.get('docs/design/application/pages/README.md')).not.toContain(
-      'example/edit/name',
-    )
-    expect(markdown).toContain('example/edit/name')
     expect(markdown).toContain('保存した内容')
     expect(markdown).not.toContain('```mermaid')
     expect(documents.get('docs/design/application/pages/admin/users/README.md')).not.toContain(
@@ -271,7 +246,7 @@ describe('UI ページの設計', () => {
   })
 
   it('ページでも外部の到達先でもないプロパティへの遷移を拒否する', async () => {
-    await expect(catalog(example.replace('Pages.example)', 'Shared.name)'))).rejects.toThrow(
+    await expect(catalog(example.replace('Pages.example)', 'SaveFlow.edit)'))).rejects.toThrow(
       '遷移先',
     )
   })

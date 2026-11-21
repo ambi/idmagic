@@ -1,6 +1,6 @@
 # デバイスの認可
 
-この文書は、デバイスの認可の操作、入力項目と状態を示す。
+この文書は、デバイスの認可の操作と状態を示す。
 
 > 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
 
@@ -20,36 +20,11 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | 利用者 | 認可フローの利用者 |
 | 入口 | デバイスが提示する確認用 URL |
 | 利用条件 | 対象テナントのブラウザートランザクションを使う。CSRF は表示 API から得る。 |
-| 表示内容 | ユーザーコードの入力、許可と拒否、認証切れとコードの問題 |
+| 表示内容 | ユーザーコードの入力。URL の user_code があれば事前に入力する、許可と拒否、認証切れとコードの問題 |
 
 利用手順は[OAuth2 のページ一覧](README.md)にまとめる。
 
-## フォームと入力項目
-
-項目ごとのバリデーション規則は別の作業で定義する。
-
-### デバイスの認可
-
-識別子：device/device。表示条件：常時。確定：許可または拒否。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| ユーザーコード | device/device/code | text | string | 表示 API の user_code。なければ空 | 送信中以外 | IdMagic.Contract.BrowserDeviceRequest.user_code |
-| 認可の判断 | device/device/action | 許可・拒否ボタン | string | 未選択 | コードを入力した場合 | IdMagic.Contract.BrowserDeviceRequest.action |
-
-## パラメーター
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 事前入力するコード | device/parameters/code | URL | string | user_code | URL に含まれる場合 | 表示 API とフォームの初期値 |
-
-## 実装と照合していない入力
-
-次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
-
-| ファイル | 部品の数 |
-| --- | --- |
-| [`features/auth-flow/DevicePage.tsx`](../../../../frontend/src/features/auth-flow/DevicePage.tsx) | 1 |
+個々の入力項目は実装の画面が持ち、受理範囲は API 契約と[共通の UI 設計](../../../design/application/user-interface.md)の検証の分担が定める。
 
 ## 操作と結果の詳細
 

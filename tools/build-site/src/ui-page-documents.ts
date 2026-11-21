@@ -3,7 +3,6 @@ import { moduleFlow } from './ui-flow.ts'
 import type { UiCatalog } from './ui-pages.ts'
 
 type UiPage = UiCatalog['pages'][number]
-type UiField = UiPage['parameters'][number]
 const root = 'docs/design/application/pages'
 const areas: Record<string, string> = {
   authentication: '認証',
@@ -43,41 +42,24 @@ function introduction(title: string, purpose: string, preview: boolean): string[
   ]
 }
 
-function fieldsTable(fields: readonly UiField[]): string[] {
-  return [
-    '| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |',
-    '| --- | --- | --- | --- | --- | --- | --- |',
-    ...fields.map(
-      (field) =>
-        `| ${cell(field.label)}${field.repeated ? '（繰り返し）' : ''} | ${field.id} | ${cell(field.control)} | ${cell(field.type)} | ${cell(field.initial)} | ${cell(field.condition)} | ${cell([field.binding, field.mapping].filter(Boolean).join('：'))} |`,
-    ),
-    '',
-  ]
-}
-
 function summary(pages: readonly UiPage[], path: string): string[] {
   return [
-    '| ページ | URL | 目的 | 入力項目数 |',
-    '| --- | --- | --- | --- |',
+    '| ページ | URL | 目的 |',
+    '| --- | --- | --- |',
     ...pages.map(
       (page) =>
-        `| ${link(path, pagePath(page), page.name)} | \`${page.path}\` | ${cell(page.purpose)} | ${page.forms.reduce((sum, form) => sum + form.fields.length, 0)} |`,
+        `| ${link(path, pagePath(page), page.name)} | \`${page.path}\` | ${cell(page.purpose)} |`,
     ),
     '',
   ]
 }
 
-function detail(
-  page: UiPage,
-  catalog: UiCatalog,
-  preview: boolean,
-  unidentified: Record<string, number> | undefined,
-): string {
+function detail(page: UiPage, catalog: UiCatalog, preview: boolean): string {
   const path = pagePath(page)
   const categoryPath = `${root}/${page.area}/${page.category}/README.md`
   const modulePath = `docs/modules/${page.module}/pages/README.md`
   const moduleName = catalog.moduleNames[page.module] ?? page.module
-  const lines = introduction(page.name, `${page.name}の操作、入力項目と状態`, preview)
+  const lines = introduction(page.name, `${page.name}の操作と状態`, preview)
   const destinationLink = (id: string) => {
     const target = catalog.pages.find((one) => one.id === id)
     return target
@@ -103,44 +85,9 @@ function detail(
     '',
     `利用手順は${link(path, modulePath, `${moduleName} のページ一覧`)}にまとめる。`,
     '',
-    '## フォームと入力項目',
-    '',
-    '項目ごとのバリデーション規則は別の作業で定義する。',
+    `個々の入力項目は実装の画面が持ち、受理範囲は API 契約と${link(path, 'docs/design/application/user-interface.md', '共通の UI 設計')}の検証の分担が定める。`,
     '',
   )
-  if (!page.forms.length) lines.push('入力フォームはない。', '')
-  for (const form of page.forms) {
-    lines.push(
-      `### ${form.name}`,
-      '',
-      `識別子：${page.id}/${form.id}。表示条件：${form.condition}。確定：${form.commit}。`,
-      '',
-    )
-    lines.push(...(form.fields.length ? fieldsTable(form.fields) : ['追加の入力項目はない。', '']))
-  }
-  lines.push('## パラメーター', '')
-  lines.push(
-    ...(page.parameters.length
-      ? fieldsTable(page.parameters)
-      : ['ページ固有のパラメーターはない。', '']),
-  )
-  if (unidentified && Object.keys(unidentified).length) {
-    lines.push(
-      '## 実装と照合していない入力',
-      '',
-      '次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。',
-      '',
-      '| ファイル | 部品の数 |',
-      '| --- | --- |',
-      ...Object.entries(unidentified)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(
-          ([file, count]) =>
-            `| ${link(path, file, `\`${file.replace(/^frontend\/src\//, '')}\``)} | ${count} |`,
-        ),
-      '',
-    )
-  }
   lines.push(
     '## 操作と結果の詳細',
     '',
@@ -175,11 +122,7 @@ function detail(
 /** UI の作業カテゴリで一覧を分け、詳細は一つのページを一つの文書にする。 */
 export function renderUiDocuments(
   catalog: UiCatalog,
-  options: {
-    preview?: boolean
-    /** ページ ID ごとの、静的な name を持たないフォーム部品のファイルと数。 */
-    unidentified?: ReadonlyMap<string, Record<string, number>>
-  } = {},
+  options: { preview?: boolean } = {},
 ): Map<string, string> {
   const preview = options.preview ?? false
   const documents = new Map<string, string>()
@@ -234,10 +177,7 @@ export function renderUiDocuments(
       )
       documents.set(categoryPath, categoryLines.join('\n'))
       for (const page of categoryPages)
-        documents.set(
-          pagePath(page),
-          detail(page, catalog, preview, options.unidentified?.get(page.id)),
-        )
+        documents.set(pagePath(page), detail(page, catalog, preview))
     }
     documents.set(areaPath, `${areaLines.join('\n')}\n`)
   }

@@ -1,6 +1,6 @@
 # 二要素認証
 
-この文書は、二要素認証の操作、入力項目と状態を示す。
+この文書は、二要素認証の操作と状態を示す。
 
 > 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
 
@@ -24,34 +24,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 利用手順は[Authentication のページ一覧](README.md)にまとめる。
 
-## フォームと入力項目
-
-項目ごとのバリデーション規則は別の作業で定義する。
-
-### 第二要素の確認
-
-識別子：totp/factor。表示条件：常時。確定：認証。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 認証手段 | totp/factor/method | 選択 | string | 利用可能な最初の手段 | 利用可能な手段が複数ある場合 | TOTP、WebAuthn、回復コードの UI の切り替え |
-| TOTP のコード | totp/factor/code | text | string | 空 | TOTP を選択した場合 | IdMagic.Contract.BrowserTotpRequest.code |
-| 回復コード | totp/factor/recovery | text | string | 空 | 回復コードを選択した場合 | IdMagic.Contract.BrowserRecoveryCodeRequest.code |
-| デバイスを記憶する | totp/factor/rememberDevice | checkbox | boolean | false | ポリシーが許し TOTP またはパスキーを選択した場合 | IdMagic.Contract.BrowserTotpRequest.remember_device |
-
-## パラメーター
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 認証後の戻り先 | totp/parameters/returnTo | URL パラメーター | string | URL の return_to | 指定された場合 | 同じテナントの許可された戻り先 |
-
-## 実装と照合していない入力
-
-次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
-
-| ファイル | 部品の数 |
-| --- | --- |
-| [`features/auth-flow/MfaEnrollmentPage.tsx`](../../../../frontend/src/features/auth-flow/MfaEnrollmentPage.tsx) | 1 |
+個々の入力項目は実装の画面が持ち、受理範囲は API 契約と[共通の UI 設計](../../../design/application/user-interface.md)の検証の分担が定める。
 
 ## 操作と結果の詳細
 

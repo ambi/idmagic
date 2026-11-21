@@ -1,6 +1,6 @@
 # 本人の同意と Agent への委任
 
-この文書は、本人の同意と Agent への委任の操作、入力項目と状態を示す。
+この文書は、本人の同意と Agent への委任の操作と状態を示す。
 
 > 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
 
@@ -24,30 +24,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 利用手順は[OAuth2 のページ一覧](README.md)にまとめる。
 
-## フォームと入力項目
-
-項目ごとのバリデーション規則は別の作業で定義する。
-
-### Agent への委任
-
-識別子：account-applications/delegation。表示条件：委任の追加欄。確定：委任。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 委任先 Agent | account-applications/delegation/agentId | select | string | 空 | 対象のフォームを操作するとき | 委任可能 Agent 一覧の agent_id |
-| 委任するスコープ | account-applications/delegation/scopes | text | string | 空 | 対象のフォームを操作するとき | 空白で区切って scopes 配列へ変換する |
-
-## パラメーター
-
-ページ固有のパラメーターはない。
-
-## 実装と照合していない入力
-
-次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
-
-| ファイル | 部品の数 |
-| --- | --- |
-| [`features/account/AgentDelegationsSection.tsx`](../../../../frontend/src/features/account/AgentDelegationsSection.tsx) | 2 |
+個々の入力項目は実装の画面が持ち、受理範囲は API 契約と[共通の UI 設計](../../../design/application/user-interface.md)の検証の分担が定める。
 
 ## 操作と結果の詳細
 

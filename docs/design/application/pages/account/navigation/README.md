@@ -10,6 +10,6 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 ## ページ一覧
 
-| ページ | URL | 目的 | 入力項目数 |
-| --- | --- | --- | --- |
-| [アカウントの概要](../../../../../modules/frontend/pages/account-home.md) | `/account` | 本人の登録状態と各セルフサービスの入口を示す | 0 |
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [アカウントの概要](../../../../../modules/frontend/pages/account-home.md) | `/account` | 本人の登録状態と各セルフサービスの入口を示す |

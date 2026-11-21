@@ -5,47 +5,29 @@ import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { modulePageDocument } from '../../workspace/src/document-layout.ts'
 import { loadUiCatalog, resolveRoutes, routeDeclarations, validateUiCatalog } from './ui-pages.ts'
 import { renderUiDocuments } from './ui-page-documents.ts'
-import { formControls, reachableFiles, validateInputs } from './ui-inputs.ts'
 
 const root = resolve(import.meta.dir, '../../..')
 const snapshot = createWorkspaceSnapshot(root)
 const declared = await loadUiCatalog(root)
-const routeFiles = (await snapshot.files('frontend/src/routes')).filter(
-  (path) => path.endsWith('.tsx') && !path.split('/').some((part) => part.startsWith('-')),
-)
-const fileOfRoute = new Map<string, string>()
 const routes = (
   await Promise.all(
-    routeFiles.map(async (path) => {
-      const declarations = routeDeclarations(await snapshot.read(path))
-      for (const route of declarations) fileOfRoute.set(route.id, path)
-      return declarations
-    }),
+    (
+      await snapshot.files('frontend/src/routes')
+    )
+      .filter(
+        (path) => path.endsWith('.tsx') && !path.split('/').some((part) => part.startsWith('-')),
+      )
+      .map(async (path) => routeDeclarations(await snapshot.read(path))),
   )
 ).flat()
 const preview = process.argv.includes('--preview')
 const { catalog, findings: unresolved } = resolveRoutes(declared, routes)
-// 宣言したページの経路から到達する部品だけを照合する。
-const entries = catalog.pages.flatMap((page) => fileOfRoute.get(page.route) ?? [])
-const closure = reachableFiles(entries, root, (path) => snapshot.exists(path))
-const reach = new Map(
-  catalog.pages.flatMap((page) => {
-    const file = fileOfRoute.get(page.route)
-    return file ? [[page.route, closure.get(file)!] as const] : []
-  }),
-)
-const inputs = validateInputs(
-  catalog,
-  reach,
-  formControls([...new Set([...closure.values()].flat())], root),
-)
 const findings = [
   ...unresolved,
   ...validateUiCatalog(catalog, routes, { allowUnassignedRoutes: preview }),
-  ...inputs.findings,
 ]
 if (findings.length) throw new Error(findings.join('\n'))
-const documents = renderUiDocuments(catalog, { preview, unidentified: inputs.unidentified })
+const documents = renderUiDocuments(catalog, { preview })
 const existing = [
   ...(snapshot.exists('docs/design/application/pages')
     ? await snapshot.files('docs/design/application/pages')

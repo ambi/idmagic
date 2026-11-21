@@ -12,8 +12,6 @@ affected_spec:
   - { path: spec/modules/frontend/models.tsp, symbol: IdMagicUi.PageInfo }
   - { path: spec/modules/frontend/models.tsp, symbol: IdMagicUi.Area }
   - { path: spec/modules/frontend/models.tsp, symbol: IdMagicUi.Category }
-  - { path: spec/modules/frontend/models.tsp, symbol: IdMagicUi.FormInfo }
-  - { path: spec/modules/frontend/models.tsp, symbol: IdMagicUi.FieldInfo }
   - { path: spec/modules/frontend/models.tsp, symbol: IdMagicUi.TransitionInfo }
   - { path: spec/modules/frontend/models.tsp, symbol: IdMagicUi.RouteInfo }
   - { path: spec/modules/frontend/models.tsp, symbol: IdMagicUi.DestinationInfo }
@@ -200,6 +198,59 @@ UI Flows の見える内容と操作、IFML の ViewElement と NavigationFlow�
 
 作る成果物、対象領域とバリデーションとの分担は、この項目で固定する。
 TypeSpec の具体的な構文と decorator のシグネチャは、代表例の確認で決めてから全ページへの展開に進む。
+
+### 現在の計画と進捗（2026-11-22 時点。以下の古い節より優先する）
+
+再開する人はこの節から読む。
+以下の「途中コミットからの引き継ぎ（2026-11-17）」以降は経緯の記録である。
+そこに残る入力項目（`@form`、`@field`、`@bind`、`parameters`、`ui-inputs.ts`、wi-80172）の記述は、この節の判断で置き換えた。
+本節の冒頭の「対象範囲」「設計」「計画」「タスク」「検証」にも入力項目を前提とする記述が残っており、書き換えは残作業の1に含める。
+
+#### 利用者と確定した判断：入力項目を宣言しない
+
+利用者の指摘を受け、2026-11-22 に次のとおり決めた。
+
+- 入力バリデーションの設計に、ページごとの入力項目の一覧は必須ではない。規則はページではなく API プロパティに付き、TypeSpec の制約（`@maxLength` など）が受理範囲を定める。実装の `formSchema` のキーは送信するプロパティ名なので、ページの宣言を介さずに TypeSpec と直接照合できる。動機の「バリデーションを漏れなく定義するために入力項目の一覧が先に必要」という前提は誤りだった。
+- 入力を一つずつ宣言すると、全体で 300〜400 行の写しになり、保守負荷を下げる目的と矛盾する。実装から入力の一覧を抽出する案も、全部品への `name` 付与が要るため採らない。
+- 本項目は、ページ、操作と遷移、表示状態、利用手順の図、経路とページマーカーの照合に範囲を絞る。ページの表示内容は `content` の箇条書きで示す。
+- [wi-80172](wi-80172-name-every-frontend-form-control.md)（全フォーム部品への `name` 付与）は中止する。
+- [wi-24528](wi-24528-declare-ui-input-validation-rules.md)（入力バリデーション）は、ページの識別子に依存せず、実装の `formSchema` の欄を API プロパティの TypeSpec 制約と直接照合する形へ書き直す。画面固有の規則（API では任意だが画面では必須、確認用の入力の一致など）は例外として記録する。
+
+#### 実装済み（この節を書いた時点のコミットに含む）
+
+- `spec/modules/frontend/models.tsp` から `FormInfo`、`FieldInfo`、`@form`、`@field`、`@bind` を削除した。`shared.tsp` の `PageData` は `PageData<Actions, States = FormStates>` になり、`states` と `actions` だけを持つ。`entered` 定数も削除した。
+- 6 つの `pages.tsp`（frontend、authentication、identity-management、oauth2、application、token-vault）から、フォーム、入力項目、URL パラメーターを除いた。失われる情報のうち利用者に意味のあるもの（URL に保持する検索条件、user_code の事前入力、削除の確認入力など）は `content` に移した。
+- `tools/build-site/src/ui-pages.ts` からフォームと入力の抽出を削除した。`ui-inputs.ts` と `ui-inputs.test.ts` は削除した。`write-ui-pages.ts` は経路の解決と整合検査だけを行う。
+- `ui-page-documents.ts` は、ページ詳細の「フォームと入力項目」「パラメーター」「実装と照合していない入力」の節と、一覧の「入力項目数」の列を出さない。代わりに、入力項目は実装の画面が持ち、受理範囲は API 契約と共通の UI 設計が定めると一文で示す。
+- 生成文書を再生成した（29ページ、139経路、未宣言104経路）。
+- 保持した仕組み：経路と URL を `PageMarker` から導く `resolveRoutes`、遷移の既定値、名前で参照する `@flowLink` の `action`、`check-ui-pages`（`check` と `check-ci-spec` に含まれ、`--preview` 付き）、`mise.toml` の `aqua:ast-grep/ast-grep` 0.51.3。
+
+この時点の検証：`typecheck-tools`、`lint-tools`、局所テスト4ファイル149件、`generate-ui-pages -- --preview`、`check-ui-pages`、`check-spec`、`check-links` が成功した。
+この節の追記後に `mise run check` 全体、`check-work-items`、`check-links` も成功した。
+残作業の1〜4で記述を変えた後は、残作業の5で再実行する。
+
+#### 残作業（この順に行う）
+
+1. **本項目の記述を新しい範囲へ書き換える。** 動機の第3文、対象範囲の「入力項目」、設計の「一覧とページの詳細」の表のフォームと入力項目・データとの対応の行、「網羅性と検査の限界」のフォームと入力項目の段落、計画の3〜5、タスク T001・T005・T006、検証の最後の箇条を、入力項目を扱わない形にする。T007 の記述（wi-24528 の起票）は、wi-24528 の書き直し後の内容に合わせる。
+2. **手で書いた文書から入力項目の記述を除く。** 次の8か所が「入力項目」を UI ページ宣言の担当としている。
+   - `docs/design/application/frontend.md` の「ページの一覧」の節（194、199、202〜205 行付近。入力項目を識別子で参照する段落は削除する）
+   - `docs/formats/documentation-guide.md` の配置図のコメント（135 行付近）、担当の表の「ページごとの URL、入力項目、状態と操作フロー」（204 行付近）、UI ページ設計の箇条（281 行付近）
+   - `docs/formats/specification-format.md` の TypeSpec の範囲（29 行付近）
+   - `docs/design/application/README.md` の UI ページの行（14 行付近）
+   - `docs/modules/identity-management/README.md`（116 行付近）と `docs/modules/authentication/README.md`（71 行付近）の文書表
+3. **wi-80172 を中止する。** `## 要約` に中止の判断（入力項目を宣言しないため不要になった）を書き、`mise run move-work-item -- wi-80172 --cancel` を実行する。wi-24528 の対象外にある wi-80172 への参照も外す。
+4. **wi-24528 を書き直す。** 動機と設計から wi-92664 の入力項目の識別子への依存を除き、実装の `formSchema` の欄と API プロパティの制約の直接照合を中心にする。削除済みの `IdMagicUi.FieldInfo` を挙げていた `affected_spec` は、検査を通すために仮の `spec_impact: none` へ置き換えてある。書き直しで影響を判断し直す。冒頭の「書き直し待ち」の注記を外す。wi-92664 への `depends_on` が必要かも見直す。
+5. `mise run check-work-items`、`mise run check-links`、`mise run check` を通し、チェックポイントのコミットを作る。
+6. 未宣言の104経路のページを、入力項目なしの形で宣言する。`frontend/src/routes/` の経路と `PageMarker`、`frontend/src/features/` の表示と操作を調べる。ページ ID は `PageMarker` の kind に合わせる（重複している `admin-agent-access` のように一意に定まらない経路だけ `route` を書く）。描画しない経路は `@route` の注記にする。
+7. 全経路を宣言したら、`mise.toml` の `check-ui-pages` と `generate-ui-pages` の実行から `--preview` を外し、生成文書のプレビュー注記を除く。
+8. 七つの視点で差分をレビューし、`mise run verify-changed -- main`、`mise run spec-diff` を実行する。公開 API の生成結果（OpenAPI）が変わっていないことを確かめる。`## 要約` を書き、`mise run move-work-item -- wi-92664` で完了へ移す。
+
+#### 再開の手順
+
+- worktree は `/Users/tn/src/idmagic/.worktrees/wi-92664`、ブランチは `work-item/wi-92664`。2026-11-22 にローカルの `main`（`086a2ec2d`）へ rebase 済み。push はしていない。
+- localhost とブラウザーを使わない検査でも、この環境では mise のキャッシュや worktree の git メタデータへの書き込みでサンドボックスの権限が必要だった。
+- 主な検査：`mise run generate-ui-pages -- --preview`、`mise run check-ui-pages`、`mise run test-tools-file -- build-site/src/ui-pages.test.ts build-site/src/render.test.ts check/src/canonical-document-set.test.ts check/src/specification-doc.test.ts`、`mise run typecheck-tools`、`mise run lint-tools`、`mise run check-spec`、`mise run check-links`、`mise run check-work-items`、`mise run check`。
+- `@ast-grep/napi` を tools の依存へ加える操作は、実行環境の判定で拒否された。代わりに `mise.toml` で CLI を固定している。利用者はこの固定について確認を求められている。
 
 ### 途中コミットからの引き継ぎ（2026-11-17）
 

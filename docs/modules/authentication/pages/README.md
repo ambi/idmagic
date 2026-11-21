@@ -40,23 +40,23 @@ flowchart TB
 
 ## サインイン
 
-| ページ | URL | 目的 | 入力項目数 |
-| --- | --- | --- | --- |
-| [ログイン](login.md) | `/login` | 資格情報または既存の認証手段で認証を開始する | 2 |
-| [二要素認証](totp.md) | `/totp` | 利用可能な認証手段で第二要素を確認する | 4 |
-| [認可フロー内の MFA 登録](mfa-enrollment.md) | `/mfa-enrollment` | ログインを継続する前に TOTP を登録する | 1 |
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [ログイン](login.md) | `/login` | 資格情報または既存の認証手段で認証を開始する |
+| [二要素認証](totp.md) | `/totp` | 利用可能な認証手段で第二要素を確認する |
+| [認可フロー内の MFA 登録](mfa-enrollment.md) | `/mfa-enrollment` | ログインを継続する前に TOTP を登録する |
 
 ## アカウント復旧
 
-| ページ | URL | 目的 | 入力項目数 |
-| --- | --- | --- | --- |
-| [パスワード再設定の依頼](forgot-password.md) | `/forgot_password` | 登録したメールアドレスへ再設定の案内を依頼する | 1 |
-| [パスワードの再設定](reset-password.md) | `/reset_password` | メールのリンクから新しいパスワードを設定する | 1 |
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [パスワード再設定の依頼](forgot-password.md) | `/forgot_password` | 登録したメールアドレスへ再設定の案内を依頼する |
+| [パスワードの再設定](reset-password.md) | `/reset_password` | メールのリンクから新しいパスワードを設定する |
 
 ## セキュリティ
 
-| ページ | URL | 目的 | 入力項目数 |
-| --- | --- | --- | --- |
-| [パスワード変更](change-password.md) | `/account/password` | 現在のパスワードを確認して新しいパスワードへ変更する | 2 |
-| [本人のセキュリティ設定](account-security.md) | `/account/security` | 認証手段、回復コード、記憶済みデバイスと通知を管理する | 5 |
-| [ログイン履歴とセッション](account-activity.md) | `/account/activity` | 本人のログイン履歴を確認し不要なセッションを失効させる | 0 |
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [パスワード変更](change-password.md) | `/account/password` | 現在のパスワードを確認して新しいパスワードへ変更する |
+| [本人のセキュリティ設定](account-security.md) | `/account/security` | 認証手段、回復コード、記憶済みデバイスと通知を管理する |
+| [ログイン履歴とセッション](account-activity.md) | `/account/activity` | 本人のログイン履歴を確認し不要なセッションを失効させる |

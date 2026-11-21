@@ -8,11 +8,13 @@ priority: p2
 group: frontend-ui
 depends_on: [wi-92664-model-ui-pages-and-interaction-flows-in-typespec]
 change_kind: docs
-affected_spec:
-  - { path: spec/modules/frontend/models.tsp, symbol: IdMagicUi.FieldInfo }
+spec_impact: { kind: none, reason: "書き直し前の仮の宣言。入力値の受理範囲、API 契約、製品の振る舞いはまだ変更していない。書き直しで影響を判断し直す。" }
 ---
 
 # UI ページの入力項目ごとに検証規則を宣言し、実装の欄の規則と照合する
+
+> 2026-11-22：書き直し待ち。wi-92664 は入力項目を宣言しない方針に変わったため、本項目の前提（ページ宣言の入力項目への規則の宣言）は無効である。
+> 新しい方針と書き直しの指示は [wi-92664 の「現在の計画と進捗」](wi-92664-model-ui-pages-and-interaction-flows-in-typespec.md#現在の計画と進捗2026-11-22-時点以下の古い節より優先する)の残作業の4にある。
 
 ## 動機
 

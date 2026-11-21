@@ -1,6 +1,6 @@
 # パスワード再設定の依頼
 
-この文書は、パスワード再設定の依頼の操作、入力項目と状態を示す。
+この文書は、パスワード再設定の依頼の操作と状態を示す。
 
 > 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
 
@@ -24,21 +24,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 利用手順は[Authentication のページ一覧](README.md)にまとめる。
 
-## フォームと入力項目
-
-項目ごとのバリデーション規則は別の作業で定義する。
-
-### 再設定の依頼
-
-識別子：forgot-password/request。表示条件：常時。確定：案内を送信。
-
-| 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
-| --- | --- | --- | --- | --- | --- | --- |
-| メールアドレス | forgot-password/request/email | email | string | 空 | 常時 | IdMagic.Contract.BrowserForgotPasswordRequest.email |
-
-## パラメーター
-
-ページ固有のパラメーターはない。
+個々の入力項目は実装の画面が持ち、受理範囲は API 契約と[共通の UI 設計](../../../design/application/user-interface.md)の検証の分担が定める。
 
 ## 操作と結果の詳細
 
