@@ -24,7 +24,7 @@
 | --- | --- | --- | --- |
 | 起動 | プロセスの起動 | 各プロセスが、設定を集約して検証し、失敗すれば部分的に起動せずに止まる | [起動時設定](features/startup-configuration.md) |
 | 要求の受け付け | HTTP の要求 | `api` が、ルーティングの後、ハンドラーの前に入場を判定する | [アドミッションコントロールの設計](features/admission-control.md#実現方式) |
-| ドメインイベントの配信 | 各モジュールの `Emit` | 発行元と同じプロセス、同じ goroutine | [判断](decisions.md#専用のイベントの基盤を持たない) |
+| ドメインイベントの配信 | 各モジュールによるイベントの発行 | 発行元と同じプロセス、同じ goroutine | [判断](decisions.md#専用のイベントの基盤を持たない) |
 
 ## 設計の要点
 
@@ -49,10 +49,10 @@ System の機能は機能スライスを持たず、組み立て地点と共有�
 | 機能 | 実装する部品 |
 | --- | --- |
 | [運用](features/operations.md) | プローブ、運用のマニフェスト、永続化の共通のアダプター |
-| [起動時設定](features/startup-configuration.md) | 起動時設定の検証、`FeatureRegistry`、[設定リファレンス](../../operations/configuration.md)の生成 |
+| [起動時設定](features/startup-configuration.md) | 起動時設定の検証、機能の登録簿、[設定リファレンス](../../operations/configuration.md)の生成 |
 | [アドミッションコントロール](features/admission-control.md) | 優先度クラスの分類、入場の上限のミドルウェア、[経路の優先度リファレンス](../../operations/route-priority.md)の生成 |
 | [API の境界](features/api-boundary.md) | 経路の種類ごとの認可、非推奨のヘッダー、ゲートウェイの許可リスト |
-| [HTTP API の共通の振る舞い](features/http-api.md) | `backend/shared/http/support_http`、`backend/shared/spec`、起動処理のボディ上限のミドルウェア |
+| [HTTP API の共通の振る舞い](features/http-api.md) | HTTP 応答の共通処理、ランタイム契約の検証、起動処理のボディ上限のミドルウェア |
 
 ## 文書
 

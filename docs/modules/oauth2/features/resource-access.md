@@ -314,8 +314,8 @@ IdMagic は業務の実行結果を持たず、認可の使用記録だけで処
 
 ### アーキテクチャ
 
-OAuth2 が入口と編成を持ち、関係の判定は `accesscontrol/ports.RelationChecker` を通して AccessControl へ委ねる。
-失効の判定は `/introspect` と同じ `AccessTokenIsRevoked` を通す。
+OAuth2 が入口と編成を持ち、関係の判定は公開ポート `RelationChecker` を通して AccessControl へ委ねる。
+失効の判定は `/introspect` と同じ検査を通す。
 条件はドメインの計算で、式は評価ごとにコンパイルする。
 解析には CEL の Pratt パーサーと標準マクロを使い、公開 API で AST を変換して、登録と評価で共通の CEL 環境の型検査と AST 検証器へ渡す。
 両パーサーで再帰の数え方が異なるため、再帰を生み得る構文文字が 249 個以上の式と、Pratt が構文を拒否した式は、従来のパーサーへ渡して受理範囲を維持する。

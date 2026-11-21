@@ -632,7 +632,7 @@ Jobs がレーン、重複排除とクォータを担い、行の確定後にだ
 | --- | --- |
 | 条件の数や演算子が要求ごとに変わる | 監査イベントの検索で、絞り込み式の数だけ `EXISTS` を連言でつなぐ |
 | DDL を適用する | テストと開発環境で `infra/schema/postgres.sql` を投入する |
-| `sqlc` の生成コードから受け取った SQL を中継する | `DBTX` を実装する `ResilientDB` |
+| `sqlc` の生成コードから受け取った SQL を中継する | `sqlc` の `DBTX` を実装する、データベース接続の再試行用のラッパー |
 | 接続ごとのセッションを設定する | 接続の確立時に `statement_timeout` を設定する |
 
 例外とする呼び出しは、その直前の行に `//sql:raw <理由>` を書く。`mise run check-repository` の `raw-sql` 検査は、`backend/` のテスト以外の Go コードから、第 1 引数に context を取るこれらの呼び出しを探し、理由のある印がないものを拒否する。
@@ -671,12 +671,12 @@ Repository の保存は、Aggregate 全体を ID で上書きする（`ON CONFLI
 
 | 例 | 形 |
 | --- | --- |
-| ログインセッションの失効 | `RevokeAuthenticationSession` が `revoked_at` と `revoke_reason` だけを、最初の一回だけ書く。セッションの丸ごとの保存はこの二列を書かない |
-| ログインセッションの最終アクセス | `TouchAuthenticationSession` が、前回から一定時間が過ぎたときだけ `last_seen_at` を書く |
+| ログインセッションの失効 | 失効専用の保存操作が `revoked_at` と `revoke_reason` だけを、最初の一回だけ書く。セッションの丸ごとの保存はこの二列を書かない |
+| ログインセッションの最終アクセス | 最終アクセス専用の保存操作が、前回から一定時間が過ぎたときだけ `last_seen_at` を書く |
 | テナントのリソースの使用量 | 使用量の加算を、上限を条件にした一つの更新文で行う。User の使用量の再集計は行を `FOR UPDATE` で固定したまま件数を数えて置き換え、その間の加算と減算を置き換えの後へ待たせる |
-| Authentication による User の記録 | ログイン、パスワードの変更と再設定、MFA の状態の記録が、`UserRepository.Update` で行を固定して読み直した User に変更を当てる。最終ログイン時刻、変更時刻、必須操作は無効化の状態と同じ `lifecycle` の列にあり、期限切れの判定も最新の値から行う。再設定はトークンの使用済み化と同じトランザクションで `UserWriter.Update` を使う |
-| トラストバンドルの JWKS の確認 | `RecordJWKSFetched` が `jwks_cached_at` だけを書き、取得中の設定の編集を保持する |
-| Agent の更新と状態の遷移 | 管理者の更新、無効化と再有効化、停止、所有者の停止に伴う無効化が、`AgentRepository.Update` で行を固定して読み直した Agent に変更を当てる。停止の拒否と変わった項目の判定も最新の値に対して行うので、停止の後に届いた操作が停止を取り消さない |
+| Authentication による User の記録 | ログイン、パスワードの変更と再設定、MFA の状態の記録が、User の保存先の更新操作で行を固定して読み直した User に変更を当てる。最終ログイン時刻、変更時刻、必須操作は無効化の状態と同じ `lifecycle` の列にあり、期限切れの判定も最新の値から行う。再設定ではトークンの使用済み化と同じトランザクションに参加する書き込み操作を使う |
+| トラストバンドルの JWKS の確認 | 取得時刻専用の保存操作が `jwks_cached_at` だけを書き、取得中の設定の編集を保持する |
+| Agent の更新と状態の遷移 | 管理者の更新、無効化と再有効化、停止、所有者の停止に伴う無効化が、Agent の保存先の更新操作で行を固定して読み直した Agent に変更を当てる。停止の拒否と変わった項目の判定も最新の値に対して行うので、停止の後に届いた操作が停止を取り消さない |
 
 適用状況：
 
@@ -691,7 +691,7 @@ Repository の保存は、Aggregate 全体を ID で上書きする（`ON CONFLI
 | --- | --- | --- | --- |
 | 長さに上限がない自由形式の文字列 | `TEXT` | 制約のない `varchar` | `TEXT` と同じ意味の型を二通りに書かない |
 | 長さに上限がある文字列 | `TEXT` + `CHECK (char_length(col) <= N)`。フォーマットが固定された識別子は `CHECK (... ~ regex)` を併せて置く | `varchar(N)` | 上限を型宣言へ分けず、他の `CHECK` と同じ書き方で並べる。`N` の決め方は[文字列長の上限](../application/api-guidelines.md#文字列長の上限)に従う |
-| IdMagic が `spec.NewUUIDv4()` で生成する ID | `UUID` | `TEXT` | Go 側は `string` で保持し、pgx のテキスト用符号器（`RegisterUUIDAsText`）が両者を変換する |
+| IdMagic が採番する UUID バージョン 4 の ID | `UUID` | `TEXT` | Go 側は `string` で保持し、pgx に登録するテキスト用符号器が両者を変換する |
 | `entity_id` や `wtrealm` など、外部が値を決める ID | `TEXT`。索引の鍵の成分になる場合は `CHECK (char_length(col) <= N AND octet_length(col) <= M)` を 1 つの制約として置く | `UUID` | IdMagic が採番する値ではなく、UUID とも限らない。同じカラムに `CHECK` を 2 つ並べると psqldef の差分が収束しない |
 | 時刻 | `TIMESTAMPTZ`。マイクロ秒の精度を正とし、スキーマで丸めない | タイムゾーンのない `TIMESTAMP` | タイムゾーンの解釈を読み手に委ねない |
 | 有限の値集合 | `TEXT` + `CHECK (col IN (...))` | PostgreSQL の列挙型 | 値の追加に `ALTER TYPE` が必要で、[宣言的なスキーマ](schema-management.md#宣言的スキーマ)の差分取りと相性が悪い |
@@ -713,11 +713,11 @@ Repository の保存は、Aggregate 全体を ID で上書きする（`ON CONFLI
 データベースに保存する必要がある可逆なシークレットは、平文で保存しない。差し替え可能な `EnvelopeCrypto` プロバイダーのマスターキーでテナントごとの `DataEncryptionKey`（DEK）をラップし、その DEK で各シークレットを AEAD 暗号化する。AEAD と鍵セットの処理は [Tink](https://developers.google.com/tink) に委ね、nonce、認証タグ、追加認証データの組み立てを自作しない。追加認証データには `(tenant, context, table, record id, field)` と DEK のバージョンを使う。このため、暗号文を別のテナント、テーブル、フィールドへ複製しても復号できない。
 
 - `EnvelopeCrypto`（Tink を使う AEAD と鍵セットのポート、および OpenBao と平文鍵セットによるマスターキー提供元のアダプター）は、`certificates_mtls`、`passwords_argon2id`、`tokens_jose` と並べて `backend/shared/security` に置く。これは業務上の Aggregate ではなく、技術上の共通機能である。
-- `backend/datakeys`（`DataKeys` モジュール）は、ラップされた DEK のメタデータとライフサイクル（初期化、ローテーション、無効化、破棄）だけを担い、`EnvelopeCrypto` ポート自体は定義しない。`SigningKeys` が `transit/sign` を暗号化、復号、データ鍵の機能から分離しているのと同じ構成である。
-- ローテーションでは新しい DEK のバージョンを以後の書き込み用に有効化し、直前のバージョンを復号可能な `retiring` のまま残す。`backend/jobs` の `JobKind` と `HandlerRegistry` に登録した再開可能な再暗号化ジョブがすべての参照を移行し終えた後にだけ、古いバージョンを破棄できる。`FieldMigrator` ポート（`backend/datakeys/ports`）により、各モジュールは自身の一括再暗号化処理と残件数の算出を登録する。これにより、`DataKeys` はこのポートを利用するモジュールのスキーマへ依存しない。ローテーションは登録された移行処理ごとにジョブを自動投入し、いずれかの移行処理が残件を報告している間はラップされた DEK の消去を拒否する。
+- DataKeys モジュールは、ラップされた DEK のメタデータとライフサイクル（初期化、ローテーション、無効化、破棄）だけを担い、暗号処理のポート自体は定義しない。SigningKeys が `transit/sign` を暗号化、復号、データ鍵の機能から分離しているのと同じ構成である。
+- ローテーションでは新しい DEK のバージョンを以後の書き込み用に有効化し、直前のバージョンを復号可能な `retiring` のまま残す。Jobs のジョブ種別とハンドラーの登録簿に登録した再開可能な再暗号化ジョブがすべての参照を移行し終えた後にだけ、古いバージョンを破棄できる。再暗号化の移行ポートにより、各モジュールは自身の一括再暗号化処理と残件数の算出を登録する。これにより、DataKeys はこのポートを利用するモジュールのスキーマへ依存しない。ローテーションは登録された移行処理ごとにジョブを自動投入し、いずれかの移行処理が残件を報告している間はラップされた DEK の消去を拒否する。
 - アンラップに失敗した場合、プロバイダーへ到達できない場合、追加認証データが一致しない場合、または改ざんを検知した場合は、フェイルクローズで復号を拒否する。呼び出し元は平文へフォールバックしたり、項目を読み飛ばしたりしない。
 - マスターキーの提供元は OpenBao（Vault Transit 互換の HTTP API）である。開発環境とローカル環境では Tink の平文鍵セットを使うため、OpenBao は不要である。提供元は設計上差し替え可能である。
-- HTTP の接点は `system_admin` に限定した制御面の管理 API だけである（`backend/datakeys/internal/handlers_http`）。`GET /api/admin/v1/data-keys/health` は各テナントで有効な DEK のバージョンとステータス、マスターキー提供元の名前と到達性を報告する。緊急のローテーションと無効化も同じ境界で公開する。どの応答も鍵素材を返さない。破棄は内部操作とし、管理用エンドポイントを公開しない。
+- HTTP の接点は `system_admin` に限定した制御面の管理 API だけである。`GET /api/admin/v1/data-keys/health` は各テナントで有効な DEK のバージョンとステータス、マスターキー提供元の名前と到達性を報告する。緊急のローテーションと無効化も同じ境界で公開する。どの応答も鍵素材を返さない。破棄は内部操作とし、管理用エンドポイントを公開しない。
 
 署名鍵の秘密鍵はこの規範の対象ではない。`signing_keys.private_jwk` に何が入るかは `KeyProvider` の選択で決まり、その規範は [SigningKeys の集約](../../modules/signing-keys/data.md#集約) が定める。
 

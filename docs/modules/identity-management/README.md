@@ -58,7 +58,7 @@ User の変更は、このモジュールが宣言する二つのポートで、
 | CSV のプレビューと適用 | 管理者の要求で `Jobs` のジョブを作る | `worker` | [CSV の転送の実現方式](features/csv-transfer.md#実現方式) |
 | データエクスポート | 管理者の要求で、種類 `data_export` のジョブを作る | `worker` | [データエクスポート](features/data-export.md) |
 | ドメインイベントの発行 | 状態を変えた操作 | ユースケースが発行し、監査と下流へ渡す | [イベントと監査の記録](observability.md) |
-| 自動所属からのロールの解決 | 認可と管理画面での所属の参照 | `GroupRepository.ListGroupsByUser` が現在の設定と承認を照合し、付与可能なロールを返す | [グループ](features/group.md#実効ロールの解決) |
+| 自動所属からのロールの解決 | 認可と管理画面での所属の参照 | Group の所属照会が現在の設定と承認を照合し、付与可能なロールを返す | [グループ](features/group.md#実効ロールの解決) |
 | CSV の成果物の削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、作成から 30 日を過ぎた成果物を消す | [CSV の転送](features/csv-transfer.md#成果物の保持) |
 | 猶予期間を過ぎた User の完全削除 | 外部のスケジューラーが Batch の `retention-sweep` を起動する | `batch` が、各テナントで猶予期間を過ぎた削除予約の User と、途中で失敗した完全削除を完全削除する | [ユーザーの設計](features/user.md#信頼性) |
 | ほかのモジュールからの User の停止 | ライフサイクルワークフローの手順、SCIM の取り込み | `worker` と `api` が、User のユースケースを呼ぶ | [ほかのモジュールからの User の停止](#ほかのモジュールからの-user-の停止) |
@@ -75,8 +75,8 @@ User の無効化、再有効化、削除の予約は、管理 API の外から�
 | SCIM の `active` の切り替え | `Sourcing` の `UserLifecycle` | 無効化と再有効化 | `scim` |
 | SCIM の `DELETE` | `Sourcing` の `UserLifecycle` | 削除の予約 | `scim` |
 
-`user` スライスの `UserLifecycleCommands` が両方のポートを満たし、組み立ての地点（`worker` と `api` の起動）が依存を管理 API と同じ集合で組み立てて渡す。
-`UserLifecycleCommands` は、User の変更からライフサイクルワークフローの実行を作る仕組みを渡さない。
+User のライフサイクルの操作をまとめるユースケースが両方のポートを満たし、組み立ての地点（Worker と API の起動）が依存を管理 API と同じ集合で組み立てて渡す。
+このユースケースは、User の変更からライフサイクルワークフローの実行を作る仕組みを渡さない。
 ワークフローの手順による User の変更から、さらにワークフローの実行が連鎖しないようにするためである。
 削除予約中の User への無効化と再有効化は、ワークフローの手順にとっては変更なしとして扱う。
 

@@ -140,5 +140,5 @@ User の停止を担う IdManagement も、Authentication の失効操作を呼�
 
 ### 検証
 
-信頼済みデバイスの cookie の `ParseCookie` は、Go のネイティブのファジングで `FormatCookie` との往復を表明する。
+信頼済みデバイスの Cookie の解析は、Go のネイティブのファジングで書式化との往復を表明する。
 最初ではなく最後の `.` で切るような変更を入れると、selector と verifier の対応がずれて、別の端末の記録に対して verifier を照合することになる。

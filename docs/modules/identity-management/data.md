@@ -47,7 +47,8 @@ User の状態の一次情報は、`lifecycle.status` と `status_changed_at` �
 
 CSV の行の確定は、IdManagement の行、同じ Tx の Tenancy の使用量、Audit の監査、Authentication のパスワードの履歴をまとめて保存する。
 他モジュールのテーブルへ直接書かず、所有者の `RecordWriterInTx` と `PasswordHistoryWriterInTx` を組み立て地点が渡す。
-PostgreSQL の保存先は `NewPostgresModule` が作り、行の確定は必須の所有者の操作を受け取る `WithPostgresImports` で組み立てる。
+PostgreSQL の保存先の構築と、CSV の行の確定に必要な依存の組み立てを分ける。
+後者は、同じトランザクションに参加する各所有者の操作を必須の依存として受け取る。
 監査の検索対象は、User の行では対象 User、Group とメンバーシップの行では行為者とし、payload の意味と区別して明示する。
 
 ## 保持と削除
@@ -66,8 +67,8 @@ IdManagement は、Aggregate の保存に楽観的な排他を使わない。
 ただし、Group の通常保存は既存の `role_delegation` を上書きせず、`upstream_managed` を解除しない。
 承認と取消しだけが専用の保存操作で `role_delegation` と更新時刻を変えるため、古い通常保存が取消しを元に戻すことはない。
 所属経由の参照は、Group と現在の規則を同じ読み取りで取得し、承認のロール一覧と式を照合する。
-User の一部の値だけを記録するほかのモジュールのために、`UserRepository.Update` と `UserWriter.Update` が行を `FOR UPDATE` で固定して読み直し、その最新の値へ変更を当てる。
-Agent を変える操作（管理者の更新、無効化と再有効化、停止、所有者の停止に伴う無効化）は、`AgentRepository.Update` で同じことを行う。
+User の一部の値だけを記録するほかのモジュールのために、通常の保存先とトランザクションに参加する書き込み先のどちらも、更新時に行を `FOR UPDATE` で固定して読み直し、その最新の値へ変更を当てる。
+Agent を変える操作（管理者の更新、無効化と再有効化、停止、所有者の停止に伴う無効化）は、Agent の保存先の更新操作で同じことを行う。
 書き手ごとの保存の形は[同時の更新と排他](../../design/data/database.md#同時の更新と排他)に従う。
 同時に重なってはならない結果は、次の仕組みで守る。
 

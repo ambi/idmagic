@@ -26,14 +26,14 @@ URL の接頭辞、OIDC の発行者、Discovery Metadata など外部に示す�
 | 識別子 | 使う場所 |
 | --- | --- |
 | `realm` | URL の接頭辞、OIDC の発行者、Discovery Metadata など、外部に示す箇所 |
-| `id` | `tenant_id` の外部キー、`spec.DefaultTenantID`、リクエストコンテキストの `TenantID` など、内部の参照 |
+| `id` | `tenant_id` の外部キー、デフォルトテナントの ID、リクエストの文脈に保持するテナントの ID など、内部の参照 |
 
-デフォルトテナントを表す二つの定数も、同じ分け方に従う。
+デフォルトテナントの識別子も、同じ分け方に従う。
 
-| 定数 | 値 | 使う場所 |
+| 識別子 | 値 | 使う場所 |
 | --- | --- | --- |
-| `spec.DefaultTenantID` | 固定の UUID | 内部の参照 |
-| `spec.DefaultRealm` | 文字列 `"default"` | テナントを URL に表す箇所 |
+| デフォルトテナントの ID | 固定の UUID | 内部の参照 |
+| デフォルトテナントの realm | 文字列 `"default"` | テナントを URL に表す箇所 |
 
 ## `tenant_id` のカラム
 
@@ -46,12 +46,14 @@ URL の接頭辞、OIDC の発行者、Discovery Metadata など外部に示す�
 
 ## Aggregate の保存先
 
-| Aggregate | 保存先 | 実装 |
-| --- | --- | --- |
-| `Tenant` | `tenants` | `backend/tenancy/internal/db_postgres` |
-| `TenantBranding` | `tenant_brandings`、画像は `tenant_branding_assets` | `backend/tenancy/internal/db_postgres` |
-| `NotificationTemplate` | `notification_templates` | `backend/tenancy/internal/db_postgres` |
-| `TenantQuota` | 上限の上書きは `tenant_quotas`、使用量のカウンターは `tenant_usages` | `backend/tenancy/internal/db_postgres` |
+Tenancy の PostgreSQL アダプターが、次のテーブルへの保存を担当する。
+
+| Aggregate | 保存先 |
+| --- | --- |
+| `Tenant` | `tenants` |
+| `TenantBranding` | `tenant_brandings`、画像は `tenant_branding_assets` |
+| `NotificationTemplate` | `notification_templates` |
+| `TenantQuota` | 上限の上書きは `tenant_quotas`、使用量のカウンターは `tenant_usages` |
 
 Soft Quota の二列は、上限と使用量のどちらも `BIGINT` とし、2 GiB を超える成果物の合計を保持する。
 スキーマを先に広げてから対応するバイナリを展開する。

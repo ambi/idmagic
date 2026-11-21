@@ -21,9 +21,9 @@ SP から届く要求の復号と解析は、Go のネイティブのファジ�
 
 | 対象 | オラクル |
 | --- | --- |
-| `DecodeRedirect`、`DecodePost` | 展開した後の大きさが宣言した上限を超えたら、必ず拒否する。HTTP-Redirect のバインディングは DEFLATE を展開するので、圧縮爆弾がそのまま上限の根拠になる |
-| `ParseAuthnRequest`、`ParseLogoutRequest` | 拒否したときに、部分的に埋まった値を返さない。呼び出し側がエラーを取りこぼしても、未検証の Issuer や ACS の URL をつかめないようにする |
-| `ValidateRequestSignature` | こちらが生成していない署名を、必ず拒否する |
+| HTTP-Redirect と HTTP-POST のバインディングの復号 | 展開した後の大きさが宣言した上限を超えたら、必ず拒否する。HTTP-Redirect のバインディングは DEFLATE を展開するので、圧縮爆弾がそのまま上限の根拠になる |
+| AuthnRequest と LogoutRequest の解析 | 拒否したときに、部分的に埋まった値を返さない。呼び出し側がエラーを取りこぼしても、未検証の Issuer や ACS の URL をつかめないようにする |
+| 要求の署名の検証 | こちらが生成していない署名を、必ず拒否する |
 
 ## 実体参照の回帰テスト
 

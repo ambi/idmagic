@@ -169,18 +169,18 @@ User と Group が共有するプレビュー、適用、成果物、行のエ�
 
 | 構成要素 | 責務 | 依存先 |
 | --- | --- | --- |
-| Group の計画器（`PlanGroupImport`） | 対象を `id`、次に `name` で決め、`membership_type` の不変、動的規則の最終の状態、削除の意図を検証し、行操作を作る | `GroupRepository`、`GroupSourceOwnershipGuard`、`EffectiveGroupAttributeSchemaReader` |
-| Group の適用（`ApplyGroupImport`） | 計画した行を一行ずつ確定する。削除の行は Group の削除、メンバーシップの解除、使用量の解放、監査の記録を一つのトランザクションで確定する | `GroupImportRowCommitter` |
-| メンバーシップの計画器（`PlanGroupMembershipImport`） | 対象の User を `user_id`、次に `preferred_username` で決め、`membership_state` と現在の所属から行操作を作る | `GroupRepository`、`UserRepository`、`GroupSourceOwnershipGuard`、`UserSourceOwnershipGuard` |
-| メンバーシップの適用（`ApplyGroupMembershipImport`） | 一行のメンバーシップの追加または解除と、監査の記録を一つのトランザクションで確定する | `GroupMembershipImportRowCommitter` |
+| Group の計画器 | 対象を `id`、次に `name` で決め、`membership_type` の不変、動的規則の最終の状態、削除の意図を検証し、行操作を作る | `GroupRepository`、`GroupSourceOwnershipGuard`、`EffectiveGroupAttributeSchemaReader` |
+| Group の適用 | 計画した行を一行ずつ確定する。削除の行は Group の削除、メンバーシップの解除、使用量の解放、監査の記録を一つのトランザクションで確定する | `GroupImportRowCommitter` |
+| メンバーシップの計画器 | 対象の User を `user_id`、次に `preferred_username` で決め、`membership_state` と現在の所属から行操作を作る | `GroupRepository`、`UserRepository`、`GroupSourceOwnershipGuard`、`UserSourceOwnershipGuard` |
+| メンバーシップの適用 | 一行のメンバーシップの追加または解除と、監査の記録を一つのトランザクションで確定する | `GroupMembershipImportRowCommitter` |
 | エクスポーター | Group の CSV では `lifecycle_action` を空に、メンバーシップの CSV では `membership_state` を `present` にして書き出す | `GroupRepository`、`CSVArtifactStore` |
 
 PostgreSQL の行の確定は、Group と動的規則、監査、グループの使用量、再評価ジョブとその使用量を同じトランザクションへ入れる。
-再評価は Jobs の `NewEnqueuerInTx` と、同じ Tx に結んだ Tenancy のクォータを使い、レーン、デフォルト値、重複排除、`active_jobs` の判定を Jobs に任せる。
+再評価は Jobs のトランザクションに参加する投入器と、同じ Tx に結んだ Tenancy のクォータを使い、レーン、デフォルト値、重複排除、`active_jobs` の判定を Jobs に任せる。
 IdManagement はハンドラーを組み立てる時点で、投入器の生成関数とイベントの発行先を committer の必須引数として渡す。
 新規の `JobEnqueued` は行が確定した後だけ発行し、クォータ拒否の `QuotaExceeded` は行をロールバックした後に発行する。
-`groups` の上限で拒否した行の `QuotaExceeded` は、committer が戻った後に `ApplyGroupImport` が発行する。
-`active_jobs` の拒否は投入器が発行済みなので、`ApplyGroupImport` は重ねて発行しない。
+`groups` の上限で拒否した行の `QuotaExceeded` は、行の確定処理が戻った後に Group の適用のユースケースが発行する。
+`active_jobs` の拒否は投入器が発行済みなので、Group の適用のユースケースは重ねて発行しない。
 メモリーの committer も、作成の行で使用量を加算して上限を検査し、削除の行で解放する。
 同じ版の重複投入は使用量も投入イベントも増やさず、コミットが失敗した投入のイベントは破棄する。
 確定と通知の間の停止による欠落は、既存の非永続なイベントの配信と同じ制約を持つ。

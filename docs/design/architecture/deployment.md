@@ -63,7 +63,7 @@
 | `psqldef` | `schema` サービス | リリースパイプラインが起動する Job（仮） | 汎用 Kubernetes と同じ（仮） |
 | PostgreSQL | `postgres` サービス | [CloudNativePG のクラスター](../infrastructure/platform.md#汎用-kubernetes)（仮） | Cloud SQL for PostgreSQL |
 
-`idmagic-seed` の実行ファイルは `backend/cmd/idmagic-seed` にあるが、`infra/docker/Dockerfile` が作るイメージには入っていない。
+seed の実行単位は `infra/docker/Dockerfile` が作るイメージには入っていない。
 Job として起動するには、イメージへ加える必要がある（仮）。
 
 ### プロファイルごとの構成

@@ -164,10 +164,10 @@ sequenceDiagram
 
 | 構成要素 | 責務 |
 | --- | --- |
-| `StartDataExport` | 列と絞り込みを、対象の種別ごとの許可リストで検証し、ジョブを作る |
-| `DataExportHandler` | `worker` で CSV を生成する。対象の種別ごとのエクスポーター（User、Group、メンバーシップ）を選ぶだけで、列とセルの書き方は種別の実装が持つ |
-| `DownloadDataExport` | ダウンロードできる状態を確かめ、成果物の SHA-256 とバイト数がジョブの結果と一致する場合だけファイルを返す |
-| 対象ごとの範囲（`ExportScope`） | 種別ごとの HTTP の経路（`/users/exports`、`/groups/exports`、`/groups/{id}/members/exports`）が、ほかの種別や Group のエクスポートを解決しないようにする |
+| エクスポートの開始 | 列と絞り込みを、対象の種別ごとの許可リストで検証し、ジョブを作る |
+| エクスポートのジョブ | Worker で CSV を生成する。対象の種別ごとのエクスポーター（User、Group、メンバーシップ）を選ぶだけで、列とセルの書き方は種別の実装が持つ |
+| 成果物のダウンロード | ダウンロードできる状態を確かめ、成果物の SHA-256 とバイト数がジョブの結果と一致する場合だけファイルを返す |
+| 対象ごとの範囲 | 種別ごとの HTTP の経路（`/users/exports`、`/groups/exports`、`/groups/{id}/members/exports`）が、ほかの種別や Group のエクスポートを解決しないようにする |
 
 ### データ
 

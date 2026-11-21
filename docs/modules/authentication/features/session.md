@@ -104,6 +104,6 @@ PostgreSQL の `authentication_sessions` を `LoginSession` の唯一の正と�
 ### セキュリティ
 
 Cookie のヘッダーの解析は手書きであり、値に URL のデコードを適用する点で `net/http` と異なる。
-セッション ID の選択は `sessionIDFromCookieHeader` の一か所に集約し、解決、失効、参照のすべてがそこを通る。
+Cookie ヘッダーからセッション ID を選ぶ処理は一か所に集約し、解決、失効、参照のすべてがそこを通る。
 サブドメインの形式のテナントは `__Host-` 付きの名前を、パスの形式は接頭辞のない名前を使うので、両方が存在するときは host-only を採る。
 この選択が入口ごとに食い違うと、サインアウトが成功を返したままセッションが生き残る（REQ-AUTHENTICATION-035）。
