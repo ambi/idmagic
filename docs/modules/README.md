@@ -69,7 +69,7 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 | モジュール | 公開方式 | 公開パッケージ | 実装パス | 責務 |
 | --- | --- | --- | --- | --- |
 | [IdManagement](identity-management/README.md) | `internal` | `backend/idmanagement/domain`, `backend/idmanagement/user/domain`, `backend/idmanagement/user/ports`, `backend/idmanagement/group/domain`, `backend/idmanagement/group/ports`, `backend/idmanagement/agent/domain`, `backend/idmanagement/agent/ports` | `backend/idmanagement` | User、Group、Agent、プロフィール、属性定義の管理、アイデンティティのライフサイクル |
-| [IdGovernance](identity-governance/README.md) | `internal` | — | `backend/idgovernance` | LifecycleWorkflow のポリシーとオーケストレーション |
+| [IdGovernance](identity-governance/README.md) | `internal` | — | `backend/idgovernance` | LifecycleWorkflow とアクセスの見直しのポリシーとオーケストレーション |
 | [Sourcing](sourcing/README.md) | `internal` | `backend/sourcing/scim/ports`, `backend/sourcing/directory/ports` | `backend/sourcing` | 上流の権威からの内向きアイデンティティ取り込み |
 | [DirectoryConnector](directory-connector/README.md) | `internal` | なし | `backend/directoryconnector` | 利用者の閉域で AD と OpenLDAP を読み、Connector API へ差分を送る別配布の実行単位 |
 | [Provisioning](provisioning/README.md) | `internal` | `backend/provisioning/testing_scim` | `backend/provisioning` | IdMagic を正とする外向き SCIM プロビジョニング。`testing_scim` はテスト用の下流 HTTP クライアントの組み立て専用 |
@@ -133,7 +133,7 @@ Go パッケージを持たず公開 HTTP 契約で接続する実装も、一�
 | Authentication | Tenancy | 使う | 設定とデフォルト値を利用 |
 | ClaimMapping | IdManagement | 使う | 属性定義を利用 |
 | IdGovernance | Application | 使う | 割り当ての更新を依頼 |
-| IdGovernance | IdManagement | 使う | User の更新を依頼 |
+| IdGovernance | IdManagement | 使う | User、Group の所属と Agent の状態の更新を依頼 |
 | OAuth2 | Application | 使う | アクセスを判定 |
 | OAuth2 | Authentication | 使う | 認証結果を利用 |
 | OAuth2 | ClaimMapping | 使う | クレームを組み立て |

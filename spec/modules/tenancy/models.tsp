@@ -389,6 +389,7 @@ enum NotificationTemplateKey {
   AccountSecurityAlert: "account_security_alert",
   AgentActionApprovalRequest: "agent_action_approval_request",
   LifecycleWorkflowNotification: "lifecycle_workflow_notification",
+  AccessReviewRequest: "access_review_request",
   ProvisioningConnectionQuarantined: "provisioning_connection_quarantined",
 }
 

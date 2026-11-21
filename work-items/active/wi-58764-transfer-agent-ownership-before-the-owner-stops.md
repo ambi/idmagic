@@ -55,7 +55,7 @@ affected_spec:
 
 したがって不足は、移管の操作ではなく、停止の前に所有者の Agent を知らせる通知と、移管先を選ぶ導線である。
 この項目の範囲は、通知と導線に絞れるかを T001 で確かめる。
-所有者が不在の Agent の扱いは、[[wi-213-access-certification-campaigns]] の reviewer の解決と同じ結論にする。
+所有者が不在の Agent の確認は、[[wi-213-access-certification-campaigns]] と同じく明示した代替担当者へ割り当て、作成者へ暗黙に引き継がない。
 
 ## 計画
 

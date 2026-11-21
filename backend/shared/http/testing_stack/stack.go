@@ -40,6 +40,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ambi/idmagic/backend/idgovernance"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/ambi/idmagic/backend/signinpolicy"
@@ -192,6 +193,7 @@ func (l *EventLog) AssertNotEmitted(t *testing.T, eventTypes ...string) {
 // 保存先を公開するのは、拒否が防いだ効果を読み直すためである。nil のままの field は
 // その option を渡していないことを意味する。
 type Stack struct {
+	IdGovernance         idgovernance.Module
 	Echo                 *echo.Echo
 	Events               *EventLog
 	Tenants              tenantports.TenantRepository
@@ -536,6 +538,14 @@ func WithSCIM() Option {
 		b.deps.Tenancy.QuotaRepo = tenancy.NewMemoryModule().QuotaRepo
 		b.stack.Quotas = b.deps.Tenancy.QuotaRepo
 		b.stack.SCIMReferences = b.deps.Sourcing.ScimRepo
+	}
+}
+
+// WithAccessReviews は正式な管理と本人の見直し API を同じ保存先へ配線する。
+func WithAccessReviews() Option {
+	return func(b *builder) {
+		b.stack.IdGovernance = idgovernance.NewMemoryModule(b.stack.Users)
+		b.deps.IdGovernance = b.stack.IdGovernance
 	}
 }
 

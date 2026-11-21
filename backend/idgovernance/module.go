@@ -11,6 +11,8 @@ import (
 
 // Module は identity-governance context が所有する永続化 port と境界実装の束。
 type Module struct {
+	AccessReviewPlans        igports.AccessReviewPlanRepository
+	AccessReviews            igports.AccessReviewRepository
 	LifecycleWorkflowRepo    igports.LifecycleWorkflowRepository
 	LifecycleWorkflowRunRepo igports.LifecycleWorkflowRunRepository
 	UserWorkflowCapture      igports.UserWorkflowCapture

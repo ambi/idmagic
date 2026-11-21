@@ -8,6 +8,7 @@ package handlers_http
 import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -19,6 +20,9 @@ import (
 
 // Deps は identity governance HTTP ハンドラが必要とする依存。
 type Deps struct {
+	AccessReviewPlans igports.AccessReviewPlanRepository
+	AccessReviews     igports.AccessReviewRepository
+	AgentRepo         agentports.AgentRepository
 	support.Deps
 	*support.Authenticator
 
@@ -40,6 +44,12 @@ type Deps struct {
 
 // RegisterRoutes wires the 11 lifecycle workflow admin endpoints.
 func RegisterRoutes(g *echo.Group, d Deps) {
+	g.GET("/api/admin/v1/access-review-plans", d.handleListAccessReviewPlans)
+	g.POST("/api/admin/v1/access-review-plans", d.handleCreateAccessReviewPlan)
+	g.PUT("/api/admin/v1/access-review-plans/:plan_id", d.handleUpdateAccessReviewPlan)
+	g.GET("/api/admin/v1/access-review-plans/:plan_id/reviews", d.handleListAccessReviews)
+	g.GET("/api/account/v1/access-reviews", d.handleListMyAccessReviews)
+	g.POST("/api/account/v1/access-reviews/:review_id/items/:item_id", d.handleDecideAccessReview)
 	g.GET("/api/admin/v1/lifecycle-workflows", d.handleListLifecycleWorkflows)
 	g.GET("/api/admin/v1/lifecycle-workflows/:workflow_id", d.handleGetLifecycleWorkflow)
 	g.POST("/api/admin/v1/lifecycle-workflows", d.handleCreateLifecycleWorkflow)

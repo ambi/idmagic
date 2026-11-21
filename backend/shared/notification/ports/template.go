@@ -17,6 +17,7 @@ const (
 	TemplateKeyAccountSecurityAlert          TemplateKey = "account_security_alert"
 	TemplateKeyAgentActionApprovalRequest    TemplateKey = "agent_action_approval_request"
 	TemplateKeyLifecycleWorkflowNotification TemplateKey = "lifecycle_workflow_notification"
+	TemplateKeyAccessReviewRequest           TemplateKey = "access_review_request"
 	// TemplateKeyProvisioningConnectionQuarantined の宛先は User ではなく接続の notification_email である。
 	TemplateKeyProvisioningConnectionQuarantined TemplateKey = "provisioning_connection_quarantined"
 )
@@ -31,6 +32,7 @@ func TemplateKeys() []TemplateKey {
 		TemplateKeyAccountSecurityAlert,
 		TemplateKeyAgentActionApprovalRequest,
 		TemplateKeyLifecycleWorkflowNotification,
+		TemplateKeyAccessReviewRequest,
 		TemplateKeyProvisioningConnectionQuarantined,
 	}
 }

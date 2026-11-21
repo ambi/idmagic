@@ -1,0 +1,35 @@
+{
+  "name": "AccessReviewLifecycle",
+  "states": [
+    {"name": "open", "kind": "initial", "meaning": "期限前の本人の回答を受け付ける"},
+    {"name": "applying", "kind": "—", "meaning": "判断を固定し、未完了の処置を適用する"},
+    {"name": "completed", "kind": "terminal", "meaning": "すべての項目の処置を適用した"}
+  ],
+  "transitions": [
+    {"from": "open", "event": "本人の回答", "guard": "期限前で未回答", "to": "open", "effects": "判断と判断者と時刻を保存する"},
+    {"from": "open", "event": "期限の到達", "guard": "現在時刻が期限以上", "to": "applying", "effects": "未回答の処置を固定する"},
+    {"from": "applying", "event": "処置の完了", "guard": "未完了の項目がない", "to": "completed", "effects": "完了を記録する"}
+  ],
+  "operations": ["本人の回答", "期限処理", "処置の適用"],
+  "matrix": {
+    "open": {
+      "本人の回答": [
+        {"kind": "transition", "to": "open", "condition": "期限前で未回答"},
+        {"kind": "noop", "condition": "期限前で同じ判断を再送"},
+        {"kind": "refusal", "response": "409 access_review_conflict", "condition": "期限の時刻以降、または確定済みと異なる判断"}
+      ],
+      "期限処理": [{"kind": "noop", "condition": "期限前"}, {"kind": "transition", "to": "applying", "condition": "期限の時刻以降"}],
+      "処置の適用": [{"kind": "noop", "condition": "期限処理の前"}]
+    },
+    "applying": {
+      "本人の回答": [{"kind": "refusal", "response": "409 access_review_conflict"}],
+      "期限処理": [{"kind": "noop"}],
+      "処置の適用": [{"kind": "noop", "condition": "未完了または失敗した項目が残る"}, {"kind": "transition", "to": "completed", "condition": "すべての項目を適用した"}]
+    },
+    "completed": {
+      "本人の回答": [{"kind": "refusal", "response": "409 access_review_conflict"}],
+      "期限処理": [{"kind": "noop"}],
+      "処置の適用": [{"kind": "noop"}]
+    }
+  }
+}

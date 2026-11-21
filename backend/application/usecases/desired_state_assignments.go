@@ -11,7 +11,8 @@ import (
 // DesiredStateAssignments は、ほかのモジュールが User への直接割り当てを
 // 「こうあるべき」という状態として渡す内部インターフェースである。HTTP には公開しない。
 // 同じ入力で何度呼んでも、2 回目以降は保存もイベント発行もせず changed=false を返す。
-// 対象は subject_type=user の行だけであり、グループ割り当ての行は読みも書きもしない。
+// AssignApplicationDesiredState と UnassignApplicationDesiredState は subject_type=user の行だけを扱う。
+// 見直しの解除は、指定した User または Group の割り当ての行を扱う別の操作である。
 type DesiredStateAssignments struct {
 	Deps AssignmentDeps
 	// ActorUserID は発行するイベントの actor として記録する呼び出し元の名前である。

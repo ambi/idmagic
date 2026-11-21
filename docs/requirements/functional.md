@@ -9,7 +9,7 @@ IdMagic は、人とワークロードのアイデンティティを管理し、
 
 | 機能群 | 利用者が行えること | 実現するモジュール |
 | --- | --- | --- |
-| テナントとアイデンティティの管理 | テナントを作成して構成し、利用者、グループ、エージェント、ロールを管理する。CSV で一括して取り込み、書き出す。ライフサイクルワークフローで入社、異動、退職に合わせて処理する | [Tenancy](../modules/tenancy/README.md)、[Identity Management](../modules/identity-management/README.md)、[Identity Governance](../modules/identity-governance/README.md) |
+| テナントとアイデンティティの管理 | テナントを作成して構成し、利用者、グループ、エージェント、ロールを管理する。CSV で一括して取り込み、書き出す。ライフサイクルワークフローで入社、異動、退職に合わせて処理する。所属、割り当てと Agent の継続利用を定期的に見直す | [Tenancy](../modules/tenancy/README.md)、[Identity Management](../modules/identity-management/README.md)、[Identity Governance](../modules/identity-governance/README.md) |
 | 人の認証とセッション | パスワード、TOTP、WebAuthn パスキー、リカバリーコードで認証し、MFA、セッション、信頼済みデバイス、サインイン履歴を管理する。上流の OpenID Connect、SAML 2.0、WS-Federation の IdP と連携してサインインする | [Authentication](../modules/authentication/README.md) |
 | アプリケーションへのサインオン | OAuth 2.0、OpenID Connect、SAML 2.0、WS-Federation で連携アプリケーションへサインオンし、同意と承認を管理する | [OAuth2](../modules/oauth2/README.md)、[SAML](../modules/saml/README.md)、[WS-Federation](../modules/ws-federation/README.md) |
 | アプリケーション、クレーム、権限の管理 | アプリケーションを登録して利用者に割り当て、発行するクレームを対応付け、きめ細かな権限を関係で判定する | [Application](../modules/application/README.md)、[Claim Mapping](../modules/claim-mapping/README.md)、[AccessControl](../modules/authorization/README.md) |

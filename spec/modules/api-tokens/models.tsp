@@ -29,6 +29,8 @@ enum ApiTokenScope {
   consents_write: "consents:write",
   lifecycle_workflows_read: "lifecycle-workflows:read",
   lifecycle_workflows_write: "lifecycle-workflows:write",
+  access_reviews_read: "access-reviews:read",
+  access_reviews_write: "access-reviews:write",
   tenants_read: "tenants:read",
   tenants_write: "tenants:write",
   settings_read: "settings:read",

@@ -8,6 +8,55 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.IdGovernance {
 
 namespace Operations {
+model AccessReviewBadRequest {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.InvalidRequestError;
+}
+model AccessReviewForbidden {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AccessDeniedError | IdMagic.Contract.CsrfFailedError | IdMagic.Contract.InvalidOriginError | IdMagic.Contract.InsufficientScopeError;
+}
+model AccessReviewConflict {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdMagic.Contract.AccessReviewConflictError;
+}
+model AccessReviewPlanOK { @statusCode statusCode: 200; @body body: IdMagic.Contract.AccessReviewPlanResponse; }
+model AccessReviewPlanCreated { @statusCode statusCode: 201; @body body: IdMagic.Contract.AccessReviewPlanResponse; }
+model AccessReviewPlansOK { @statusCode statusCode: 200; @body body: IdMagic.Contract.AccessReviewPlanListResponse; }
+model AccessReviewsOK { @statusCode statusCode: 200; @body body: IdMagic.Contract.AccessReviewListResponse; }
+model AccessReviewOK { @statusCode statusCode: 200; @body body: IdMagic.Contract.AccessReviewResponse; }
+
+@doc("管理者が同じテナントの見直し計画を一覧する。")
+@extension("x-api-token-scopes", #["access-reviews:read"])
+@operationId("ListAccessReviewPlans") @route("/api/admin/v1/access-review-plans") @get
+op ListAccessReviewPlans(): AccessReviewPlansOK | IdMagic.Contract.AuthenticationRequiredResponse | AccessReviewForbidden;
+
+@doc("管理者が一回または繰り返しの見直し計画を作成する。")
+@extension("x-api-token-scopes", #["access-reviews:write"])
+@operationId("CreateAccessReviewPlan") @route("/api/admin/v1/access-review-plans") @post
+op CreateAccessReviewPlan(@body body: IdMagic.Contract.AccessReviewPlanInput): AccessReviewPlanCreated | AccessReviewBadRequest | IdMagic.Contract.AuthenticationRequiredResponse | AccessReviewForbidden;
+
+@doc("管理者が計画を更新する。開始済みの回は変更しない。")
+@extension("x-api-token-scopes", #["access-reviews:write"])
+@operationId("UpdateAccessReviewPlan") @route("/api/admin/v1/access-review-plans/{plan_id}") @put
+op UpdateAccessReviewPlan(@path plan_id: string, @body body: IdMagic.Contract.AccessReviewPlanUpdateRequest): AccessReviewPlanOK | AccessReviewBadRequest | AccessReviewConflict | IdMagic.Contract.AuthenticationRequiredResponse | AccessReviewForbidden;
+
+@doc("管理者が計画の各回の対象、判断、適用と通知の結果を取得する。")
+@extension("x-api-token-scopes", #["access-reviews:read"])
+@operationId("ListAccessReviews") @route("/api/admin/v1/access-review-plans/{plan_id}/reviews") @get
+op ListAccessReviews(@path plan_id: string): AccessReviewsOK | AccessReviewBadRequest | IdMagic.Contract.AuthenticationRequiredResponse | AccessReviewForbidden;
+
+@doc("本人に割り当てられた見直しの項目だけを取得する。")
+@operationId("ListMyAccessReviews") @route("/api/account/v1/access-reviews") @get
+op ListMyAccessReviews(): AccessReviewsOK | IdMagic.Contract.AuthenticationRequiredResponse | AccessReviewForbidden;
+
+@doc("本人が割り当てられた項目へ回答する。判断は確定し、期限後は受け付けない。")
+@operationId("DecideAccessReview") @route("/api/account/v1/access-reviews/{review_id}/items/{item_id}") @post
+op DecideAccessReview(@path review_id: string, @path item_id: string, @body body: IdMagic.Contract.AccessReviewDecisionRequest): AccessReviewOK | AccessReviewBadRequest | AccessReviewConflict | IdMagic.Contract.AuthenticationRequiredResponse | AccessReviewForbidden;
+
 model ListLifecycleWorkflowsSuccess_200 {
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.LifecycleWorkflowListResponse;

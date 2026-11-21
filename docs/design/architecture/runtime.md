@@ -59,6 +59,7 @@ Worker は、ジョブのハンドラーと、プロセス内で周期的に動�
 | 処理 | 内容 | 詳細 |
 | --- | --- | --- |
 | ライフサイクルワークフローのディスパッチ | ジョブへ関連付けられていないワークフロー実行を探し、`lifecycle_workflow_run` のジョブを投入する | [IdGovernance](../../modules/identity-governance/README.md) |
+| アクセスの見直し | 計画の開始時刻に各回を作り、確認の通知と期限後の適用を項目ごとに進める | [アクセスの見直し](../../modules/identity-governance/features/access-review.md) |
 | プロビジョニングのディスパッチ | 保留中のプロビジョニングタスクを `provisioning_task` のジョブへ関連付ける | [Provisioning の内部設計](../../modules/provisioning/features/synchronization.md#実現方式) |
 | プロビジョニングの照合 | イベント同期が作らなかった差分を探し、プロビジョニングタスクにする | [Provisioning の内部設計](../../modules/provisioning/features/synchronization.md#実現方式) |
 | 短命な状態の掃除 | 認可リクエスト、認可コード、デバイスコード、リプレイ防止、WebAuthn のセッション、流量制御など、期限を過ぎた短命な状態のレコードを削除して領域を回収する。有効期限は読み取り時に判定するので、掃除が遅れても期限は延びない | [データのライフサイクル](../data/lifecycle.md) |

@@ -116,6 +116,7 @@ func RunWorker() error {
 	handlers.Register(domain.KindDataKeyReencryption, deps.DataKeys.ReencryptionHandler(jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logger))))
 	handlers.Register(idgovernance.LifecycleWorkflowRunJobKind, deps.IdGovernance.Executor(lifecycleWorkflowExecutorDeps(deps, logger)))
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
+	go accessReviewLoop(ctx, deps, logger)
 
 	// Users と Groups の両方を解決できる供給元を渡す。User だけを渡すと、Group の
 	// プロビジョニングタスクは「対象が無い」として何も送らずに成功で終わる (wi-441 が直した形)。

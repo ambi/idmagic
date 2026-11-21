@@ -1,5 +1,24 @@
 # 組込み既定テンプレート (ja)。テナントは編集できず、上書きの削除で常にここへ戻る
 # 。body_html は <body> 内に入る fragment で、文書外枠はレンダラが供給する。
+access_review_request:
+  subject: "{{product_name}} アクセスの見直しのお願い"
+  body_text: |
+    {{user_display_name}} さん
+
+    「{{review_name}}」でアクセスの継続利用を確認してください。
+    回答期限: {{due_at}}
+    未回答時の処置: {{default_decision}}（retain は維持、revoke は失効）
+    アカウントポータルの「アクセスの見直し」から回答してください。
+    確定した判断は変更できず、期限後に適用されます。
+
+    {{tenant_display_name}}
+  body_html: |
+    <p>{{user_display_name}} さん</p>
+    <p>「{{review_name}}」でアクセスの継続利用を確認してください。</p>
+    <p>回答期限: {{due_at}}<br>未回答時の処置: {{default_decision}}（retain は維持、revoke は失効）</p>
+    <p>アカウントポータルの「アクセスの見直し」から回答してください。確定した判断は変更できず、期限後に適用されます。</p>
+    <p>{{tenant_display_name}}</p>
+
 password_reset:
   subject: "{{product_name}} のパスワード再設定"
   body_text: |

@@ -392,6 +392,10 @@ erDiagram
     }
     lifecycle_workflow_steps {
     }
+    access_review_plans {
+    }
+    access_reviews {
+    }
     token_vault_connectors {
     }
     token_vault_connections {
@@ -433,6 +437,8 @@ erDiagram
     lifecycle_workflows ||--o{ lifecycle_workflow_runs : 実行する
     users ||--o{ lifecycle_workflow_runs : 対象になる
     lifecycle_workflow_runs ||--o{ lifecycle_workflow_steps : 手順を持つ
+    tenants ||--o{ access_review_plans : 見直し計画を持つ
+    access_review_plans ||--o{ access_reviews : 見直しを実施する
     tenants ||--o{ token_vault_connectors : コネクタを分離する
     token_vault_connectors ||--o{ token_vault_connections : 接続を持つ
     token_vault_connectors ||--o{ token_vault_attempts : 連携を持つ
@@ -465,6 +471,8 @@ erDiagram
 | `lifecycle_workflow_revisions` | IdGovernance | `LOGGED` | 非キーカラム | ワークフロー定義の改訂。実行は開始時の改訂を固定して参照する |
 | `lifecycle_workflow_runs` | IdGovernance | `LOGGED` | 非キーカラム | 一人の利用者に対するワークフローの一回の実行 |
 | `lifecycle_workflow_steps` | IdGovernance | `LOGGED` | なし | 実行の各手順の結果 |
+| `access_review_plans` | IdGovernance | `LOGGED` | 非キーカラム | アクセスの見直し計画と次回の開始時刻 |
+| `access_reviews` | IdGovernance | `LOGGED` | 非キーカラム | 各回の対象、判断、通知と失効の適用結果 |
 | `provisioning_connections` | Provisioning | `LOGGED` | 非キーカラム | アプリケーションへ利用者とグループを送り出す SCIM 接続の設定と健全性 |
 | `provisioning_remote_links` | Provisioning | `LOGGED` | 非キーカラム | 送り出した利用者やグループと、接続先での ID の対応 |
 | `provisioning_tasks` | Provisioning | `LOGGED` | 非キーカラム | 接続先への一件ごとのプロビジョニングタスクと、その状態 |

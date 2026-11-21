@@ -140,3 +140,20 @@ provisioning_connection_quarantined:
     <p>Application ID: {{application_id}}<br>Reason: {{quarantine_reason}}<br>When: {{quarantined_at}}</p>
     <p>Check the cause in the admin console, then resume the connection from the application's provisioning settings.</p>
     <p style="color:#475569;font-size:13px;">{{product_name}}</p>
+access_review_request:
+  subject: "{{product_name}} access review request"
+  body_text: |
+    {{user_display_name}},
+
+    Review continued access for "{{review_name}}" in the account portal's Access reviews page.
+    Deadline: {{due_at}}
+    If you do not respond: {{default_decision}}
+    Decisions are final and take effect after the deadline.
+
+    {{tenant_display_name}}
+  body_html: |
+    <p>{{user_display_name}},</p>
+    <p>Review continued access for "{{review_name}}" in the account portal's Access reviews page.</p>
+    <p>Deadline: {{due_at}}<br>If you do not respond: {{default_decision}}</p>
+    <p>Decisions are final and take effect after the deadline.</p>
+    <p>{{tenant_display_name}}</p>

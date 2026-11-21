@@ -24,6 +24,7 @@ var sharedPlaceholders = []string{"product_name", "tenant_display_name", "user_d
 // keyPlaceholders は key 固有の差し込み変数。資格情報・単発トークン単体・生 IP は
 // 意図的に含めない。
 var keyPlaceholders = map[notificationports.TemplateKey][]string{
+	notificationports.TemplateKeyAccessReviewRequest:               {"review_name", "due_at", "default_decision"},
 	notificationports.TemplateKeyPasswordReset:                     {"reset_url", "expires_in_minutes"},
 	notificationports.TemplateKeyEmailVerification:                 {"verification_url", "expires_in_minutes"},
 	notificationports.TemplateKeyEmailChangeConfirmation:           {"confirmation_url", "expires_in_minutes", "new_email"},
@@ -36,6 +37,9 @@ var keyPlaceholders = map[notificationports.TemplateKey][]string{
 // sampleValues はプレビュー用の固定値。実在の利用者名やトークンをプレビュー経路に
 // 流さない。
 var sampleValues = map[string]string{
+	"review_name":         "Quarterly access review",
+	"due_at":              "2026-12-01T00:00:00Z",
+	"default_decision":    "revoke",
 	"product_name":        DefaultProductName,
 	"tenant_display_name": "Example Inc.",
 	"user_display_name":   "Taro Yamada",

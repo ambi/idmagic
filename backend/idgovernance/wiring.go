@@ -10,6 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/idgovernance/internal/handlers_http"
 	"github.com/ambi/idmagic/backend/idgovernance/internal/ports"
 	"github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -23,26 +24,31 @@ import (
 )
 
 func NewMemoryModule(users userports.UserRepository) Module {
+	reviews := db_memory.NewAccessReviewRepository()
 	workflows := db_memory.NewLifecycleWorkflowRepository()
 	runs := db_memory.NewLifecycleWorkflowRunRepository()
 	capture := &db_memory.UserWorkflowCapture{Users: users, Runs: runs}
 	return Module{
+		AccessReviewPlans: reviews, AccessReviews: reviews,
 		LifecycleWorkflowRepo: workflows, LifecycleWorkflowRunRepo: runs, UserWorkflowCapture: capture,
 		UserMutationCommitter: usecases.UserMutationCommitter{WorkflowRepo: workflows, Capture: capture, UserRepo: users, RunRepo: runs},
 	}
 }
 
 func NewPostgresModule(pool postgres.DB, users userports.UserRepository, usersInTx func(pgx.Tx) userports.UserWriter) Module {
+	reviews := &db_postgres.AccessReviewRepository{Pool: pool}
 	workflows := &db_postgres.LifecycleWorkflowRepository{Pool: pool}
 	runs := &db_postgres.LifecycleWorkflowRunRepository{Pool: pool}
 	capture := db_postgres.NewUserWorkflowCapture(pool, usersInTx)
 	return Module{
+		AccessReviewPlans: reviews, AccessReviews: reviews,
 		LifecycleWorkflowRepo: workflows, LifecycleWorkflowRunRepo: runs, UserWorkflowCapture: capture,
 		UserMutationCommitter: usecases.UserMutationCommitter{WorkflowRepo: workflows, Capture: capture, UserRepo: users, RunRepo: runs},
 	}
 }
 
 type RouteDeps struct {
+	AgentRepo agentports.AgentRepository
 	support.Deps
 	*support.Authenticator
 	JobEnqueuer     jobsports.Enqueuer
@@ -56,6 +62,7 @@ type RouteDeps struct {
 
 func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
 	handlers_http.RegisterRoutes(g, handlers_http.Deps{
+		AccessReviewPlans: m.AccessReviewPlans, AccessReviews: m.AccessReviews, AgentRepo: d.AgentRepo,
 		Deps: d.Deps, Authenticator: d.Authenticator,
 		LifecycleWorkflowRepo: m.LifecycleWorkflowRepo, LifecycleWorkflowRunRepo: m.LifecycleWorkflowRunRepo,
 		JobEnqueuer: d.JobEnqueuer, UserRepo: d.UserRepo, GroupRepo: d.GroupRepo,

@@ -6,6 +6,8 @@ package db_postgres
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -13,17 +15,29 @@ type Querier interface {
 	CancelQueuedLifecycleWorkflowRuns(ctx context.Context, arg CancelQueuedLifecycleWorkflowRunsParams) ([]*CancelQueuedLifecycleWorkflowRunsRow, error)
 	CheckpointLifecycleWorkflowStep(ctx context.Context, arg CheckpointLifecycleWorkflowStepParams) error
 	CompleteLifecycleWorkflowRun(ctx context.Context, arg CompleteLifecycleWorkflowRunParams) error
+	CreateAccessReviewPlan(ctx context.Context, arg CreateAccessReviewPlanParams) error
+	FindAccessReviewPlan(ctx context.Context, arg FindAccessReviewPlanParams) (*FindAccessReviewPlanRow, error)
 	FindLifecycleWorkflow(ctx context.Context, arg FindLifecycleWorkflowParams) (*LifecycleWorkflow, error)
 	FindLifecycleWorkflowRevision(ctx context.Context, arg FindLifecycleWorkflowRevisionParams) (*LifecycleWorkflowRevision, error)
 	FindLifecycleWorkflowRun(ctx context.Context, arg FindLifecycleWorkflowRunParams) (*FindLifecycleWorkflowRunRow, error)
+	InsertAccessReview(ctx context.Context, arg InsertAccessReviewParams) error
 	InsertLifecycleWorkflowRun(ctx context.Context, arg InsertLifecycleWorkflowRunParams) (string, error)
 	InsertLifecycleWorkflowStep(ctx context.Context, arg InsertLifecycleWorkflowStepParams) error
+	ListAccessReviewPlans(ctx context.Context, tenantID string) ([]*ListAccessReviewPlansRow, error)
+	ListAccessReviews(ctx context.Context, arg ListAccessReviewsParams) ([]*ListAccessReviewsRow, error)
+	ListActiveAccessReviews(ctx context.Context) ([]*ListActiveAccessReviewsRow, error)
 	ListLifecycleWorkflowRuns(ctx context.Context, arg ListLifecycleWorkflowRunsParams) ([]*ListLifecycleWorkflowRunsRow, error)
 	ListLifecycleWorkflowSteps(ctx context.Context, arg ListLifecycleWorkflowStepsParams) ([]*ListLifecycleWorkflowStepsRow, error)
 	ListLifecycleWorkflowsByTenant(ctx context.Context, tenantID string) ([]*LifecycleWorkflow, error)
+	ListReviewerAccessReviews(ctx context.Context, arg ListReviewerAccessReviewsParams) ([]*ListReviewerAccessReviewsRow, error)
 	ListUnenqueuedLifecycleWorkflowRuns(ctx context.Context, limit int32) ([]*ListUnenqueuedLifecycleWorkflowRunsRow, error)
+	LockAccessReview(ctx context.Context, arg LockAccessReviewParams) (*LockAccessReviewRow, error)
+	LockAccessReviewPlan(ctx context.Context, arg LockAccessReviewPlanParams) (*LockAccessReviewPlanRow, error)
+	ReadyAccessReviewPlans(ctx context.Context, nextStartAt pgtype.Timestamptz) ([]*ReadyAccessReviewPlansRow, error)
 	ResetFailedLifecycleWorkflowSteps(ctx context.Context, runID string) error
 	RetryLifecycleWorkflowRun(ctx context.Context, arg RetryLifecycleWorkflowRunParams) (int64, error)
+	SaveAccessReview(ctx context.Context, arg SaveAccessReviewParams) error
+	SaveAccessReviewPlan(ctx context.Context, arg SaveAccessReviewPlanParams) error
 	SaveLifecycleWorkflow(ctx context.Context, arg SaveLifecycleWorkflowParams) error
 	SaveLifecycleWorkflowRevision(ctx context.Context, arg SaveLifecycleWorkflowRevisionParams) error
 	StartLifecycleWorkflowRun(ctx context.Context, arg StartLifecycleWorkflowRunParams) (int64, error)

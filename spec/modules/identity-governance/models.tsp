@@ -1,5 +1,79 @@
 namespace IdMagic.Contract {
 
+@doc("見直しの対象の種類。Group の所属は手動かつ上流管理でないものに限る。")
+enum AccessReviewTargetKind { group_membership, application_assignment, agent }
+@doc("確認担当者の判断と未回答時の処置。")
+enum AccessReviewDecision { retain, revoke }
+@doc("見直し計画の設定（REQ-IDGOVERNANCE-020）。")
+model AccessReviewPlanInput {
+  @minLength(1) @maxLength(200) name: string;
+  target_kind: AccessReviewTargetKind;
+  @minItems(1) @maxItems(50) resource_ids: string[];
+  reviewer_id?: string;
+  fallback_reviewer_id: string;
+  default_decision: AccessReviewDecision;
+  starts_at: utcDateTime;
+  @minValue(1) @maxValue(90) duration_days: int32;
+  @minValue(0) @maxValue(365) recurrence_days: int32;
+  enabled: boolean;
+}
+@doc("保存済みの見直し計画。開始の失敗は last_error に残る。")
+model AccessReviewPlanResponse extends AccessReviewPlanInput {
+  id: string;
+  revision: int64;
+  next_start_at?: utcDateTime;
+  last_error: string;
+}
+@doc("計画の更新。実施済みの回は書き換えない。")
+model AccessReviewPlanUpdateRequest extends AccessReviewPlanInput { expected_revision: int64; }
+@doc("見直し計画の一覧。")
+model AccessReviewPlanListResponse { plans: AccessReviewPlanResponse[]; }
+@doc("一項目の判断と適用の結果。空の decision は未回答、空の outcome は未適用である。")
+model AccessReviewItemResponse {
+  id: string;
+  resource_id: string;
+  resource_name: string;
+  subject_type: string;
+  subject_id: string;
+  subject_name: string;
+  reviewer_id: string;
+  decision: string;
+  decided_by: string;
+  decided_at?: utcDateTime;
+  defaulted: boolean;
+  outcome: string;
+  error_code: string;
+}
+@doc("各回の結果。open は回答受付中、applying は期限後の適用中、completed は適用完了である。")
+model AccessReviewResponse {
+  id: string;
+  plan_id: string;
+  name: string;
+  target_kind: AccessReviewTargetKind;
+  default_decision: AccessReviewDecision;
+  status: string;
+  started_at: utcDateTime;
+  due_at: utcDateTime;
+  notification_failed: boolean;
+  items: AccessReviewItemResponse[];
+}
+@doc("各回の結果の一覧。本人用の一覧は本人の項目だけを含む。")
+model AccessReviewListResponse { reviews: AccessReviewResponse[]; }
+@doc("本人による項目の回答。")
+model AccessReviewDecisionRequest { decision: AccessReviewDecision; }
+@doc("見直しの期限後、確定済みの判断の変更、古い計画の更新を拒否する。")
+model AccessReviewConflictError is ProblemDetails;
+@doc("見直しの計画、開始、判断、完了を監査へ記録する。")
+model AccessReviewChanged {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  actorUserId: string;
+  planId: string;
+  reviewId: string;
+  itemId: string;
+  action: string;
+}
+
 @doc("User の運用上の状態。IdManagement.UserStatus を公開契約として写したもので、トリガーの `from_status` と `to_status` の評価だけに使う。値の唯一の情報源は IdManagement が管理する。")
 enum UserStatus {
   Active: "active",

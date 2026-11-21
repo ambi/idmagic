@@ -42,6 +42,7 @@ export type AccountNavKey =
   | 'security'
   | 'activity'
   | 'approvals'
+  | 'access-reviews'
   | 'applications'
   | 'connections'
   | 'data'
@@ -73,6 +74,12 @@ export function AccountShell({
     { key: 'security', label: t.security, href: '/account/security', icon: IconShieldLock },
     { key: 'activity', label: t.activity, href: '/account/activity', icon: IconHistory },
     { key: 'approvals', label: t.approvals, href: '/account/approvals', icon: IconChecklist },
+    {
+      key: 'access-reviews',
+      label: t.accessReviews,
+      href: '/account/access-reviews',
+      icon: IconChecklist,
+    },
     { key: 'applications', label: t.connectedApps, href: '/account/applications', icon: IconApps },
     {
       key: 'connections',

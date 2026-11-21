@@ -1139,6 +1139,7 @@ export type NotificationTemplateKey =
   | 'account_security_alert'
   | 'agent_action_approval_request'
   | 'lifecycle_workflow_notification'
+  | 'access_review_request'
   | 'provisioning_connection_quarantined'
 
 export type NotificationTemplateSummary = {
@@ -1405,6 +1406,8 @@ export type ApiTokenScope =
   | 'consents:write'
   | 'lifecycle-workflows:read'
   | 'lifecycle-workflows:write'
+  | 'access-reviews:read'
+  | 'access-reviews:write'
   | 'tenants:read'
   | 'tenants:write'
   | 'settings:read'

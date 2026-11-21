@@ -469,7 +469,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	d.IdManagement.RegisterRoutes(g, idmRoutes)
 
 	d.IdGovernance.RegisterRoutes(g, idgovernance.RouteDeps{
-		Deps: d.Deps, Authenticator: authenticator,
+		AgentRepo: d.IdManagement.AgentRepo,
+		Deps:      d.Deps, Authenticator: authenticator,
 		JobEnqueuer: jobEnqueuer,
 		UserRepo:    d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
 		ApplicationRepo: d.Application.Repo, AssignmentRepo: d.Application.AssignmentRepo,

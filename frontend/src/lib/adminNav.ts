@@ -30,6 +30,7 @@ export type AdminNavKey =
   | 'groups'
   | 'agents'
   | 'workflows'
+  | 'access-reviews'
   | 'roles'
   | 'applications'
   | 'provisioning'
@@ -97,6 +98,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
       icon: IconActivity,
       href: tenantURL('/admin/lifecycle-workflows'),
       active: active === 'workflows',
+    },
+    {
+      key: 'access-reviews',
+      label: t.accessReviews,
+      icon: IconActivity,
+      href: tenantURL('/admin/access-reviews'),
+      active: active === 'access-reviews',
     },
     {
       key: 'roles',
@@ -266,6 +274,7 @@ const navGroup: Record<AdminNavKey, AdminNavGroupKey> = {
   groups: 'directory',
   agents: 'agents',
   workflows: 'directory',
+  'access-reviews': 'directory',
   'tenant-attributes': 'directory',
   'tenant-group-attributes': 'directory',
   applications: 'integrations',

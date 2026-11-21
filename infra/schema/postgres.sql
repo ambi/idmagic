@@ -99,7 +99,7 @@ CREATE TABLE tenant_brandings (
 CREATE TABLE notification_templates (
     tenant_id UUID NOT NULL,
     template_key TEXT NOT NULL CHECK (template_key IN (
-        'account_security_alert', 'email_change_confirmation', 'email_verification',
+        'account_security_alert', 'access_review_request', 'email_change_confirmation', 'email_verification',
         'lifecycle_workflow_notification', 'password_reset', 'provisioning_connection_quarantined'
     )),
     locale TEXT NOT NULL,
@@ -2276,3 +2276,25 @@ CREATE TABLE authorization_write_versions (
     CONSTRAINT authorization_write_versions_tenant_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
+
+CREATE TABLE access_review_plans (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    enabled BOOLEAN NOT NULL,
+    next_start_at TIMESTAMPTZ,
+    data JSONB NOT NULL,
+    UNIQUE (tenant_id, id)
+);
+CREATE INDEX access_review_plans_due_idx ON access_review_plans (next_start_at) WHERE enabled;
+
+CREATE TABLE access_reviews (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    plan_id UUID NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('open', 'applying', 'completed')),
+    started_at TIMESTAMPTZ NOT NULL,
+    data JSONB NOT NULL,
+    FOREIGN KEY (tenant_id, plan_id) REFERENCES access_review_plans(tenant_id, id) ON DELETE CASCADE
+);
+CREATE INDEX access_reviews_plan_idx ON access_reviews (tenant_id, plan_id, started_at DESC);
+CREATE INDEX access_reviews_active_idx ON access_reviews (status) WHERE status <> 'completed';

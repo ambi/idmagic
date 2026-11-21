@@ -23,6 +23,7 @@ import { Route as StatusRouteImport } from './routes/status'
 import { Route as SystemRouteRouteImport } from './routes/system/route'
 import { Route as TotpRouteImport } from './routes/totp'
 import { Route as AccountIndexRouteImport } from './routes/account/index'
+import { Route as AccountAccessReviewsRouteImport } from './routes/account/access-reviews'
 import { Route as AccountActivityRouteImport } from './routes/account/activity'
 import { Route as AccountApiTokensRouteImport } from './routes/account/api-tokens'
 import { Route as AccountApplicationsRouteImport } from './routes/account/applications'
@@ -35,6 +36,7 @@ import { Route as AccountPasswordRouteImport } from './routes/account/password'
 import { Route as AccountProfileRouteImport } from './routes/account/profile'
 import { Route as AccountSecurityRouteImport } from './routes/account/security'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminAccessReviewsRouteImport } from './routes/admin/access-reviews'
 import { Route as AdminAgentsRouteImport } from './routes/admin/agents'
 import { Route as AdminApiTokensRouteImport } from './routes/admin/api-tokens'
 import { Route as AdminApplicationsRouteImport } from './routes/admin/applications'
@@ -67,6 +69,8 @@ import { Route as AccountApiTokensNewRouteImport } from './routes/account/api-to
 import { Route as AccountEmailVerifyRouteImport } from './routes/account/email/verify'
 import { Route as AccountProfileIndexRouteImport } from './routes/account/profile_/index'
 import { Route as AccountProfileEditRouteImport } from './routes/account/profile_/edit'
+import { Route as AdminAccessReviewsPlanIdRouteImport } from './routes/admin/access-reviews_/$planId'
+import { Route as AdminAccessReviewsNewRouteImport } from './routes/admin/access-reviews_/new'
 import { Route as AdminAgentsAgentIdRouteImport } from './routes/admin/agents_/$agentId'
 import { Route as AdminAgentsInventoryRouteImport } from './routes/admin/agents_/inventory'
 import { Route as AdminAgentsNewRouteImport } from './routes/admin/agents_/new'
@@ -104,6 +108,8 @@ import { Route as AdminUsersNewRouteImport } from './routes/admin/users_/new'
 import { Route as AdminWorkloadIdentityTrustBundleIdRouteImport } from './routes/admin/workload-identity_/$trustBundleId'
 import { Route as AdminWorkloadIdentityNewRouteImport } from './routes/admin/workload-identity_/new'
 import { Route as SystemTenantsRealmRouteImport } from './routes/system/tenants_/$realm'
+import { Route as AdminAccessReviewsPlanIdIndexRouteImport } from './routes/admin/access-reviews_/$planId.index'
+import { Route as AdminAccessReviewsPlanIdEditRouteImport } from './routes/admin/access-reviews_/$planId.edit'
 import { Route as AdminAgentsAgentIdIndexRouteImport } from './routes/admin/agents_/$agentId.index'
 import { Route as AdminAgentsAgentIdAccessRouteImport } from './routes/admin/agents_/$agentId.access'
 import { Route as AdminAgentsAgentIdCredentialsRouteImport } from './routes/admin/agents_/$agentId.credentials'
@@ -218,6 +224,11 @@ const AccountIndexRoute = AccountIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AccountRouteRoute,
 } as any)
+const AccountAccessReviewsRoute = AccountAccessReviewsRouteImport.update({
+  id: '/access-reviews',
+  path: '/access-reviews',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
 const AccountActivityRoute = AccountActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
@@ -276,6 +287,11 @@ const AccountSecurityRoute = AccountSecurityRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAccessReviewsRoute = AdminAccessReviewsRouteImport.update({
+  id: '/access-reviews',
+  path: '/access-reviews',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAgentsRoute = AdminAgentsRouteImport.update({
@@ -439,6 +455,17 @@ const AccountProfileEditRoute = AccountProfileEditRouteImport.update({
   id: '/profile_/edit',
   path: '/profile/edit',
   getParentRoute: () => AccountRouteRoute,
+} as any)
+const AdminAccessReviewsPlanIdRoute =
+  AdminAccessReviewsPlanIdRouteImport.update({
+    id: '/access-reviews_/$planId',
+    path: '/access-reviews/$planId',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminAccessReviewsNewRoute = AdminAccessReviewsNewRouteImport.update({
+  id: '/access-reviews_/new',
+  path: '/access-reviews/new',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAgentsAgentIdRoute = AdminAgentsAgentIdRouteImport.update({
   id: '/agents_/$agentId',
@@ -641,6 +668,18 @@ const SystemTenantsRealmRoute = SystemTenantsRealmRouteImport.update({
   path: '/tenants/$realm',
   getParentRoute: () => SystemRouteRoute,
 } as any)
+const AdminAccessReviewsPlanIdIndexRoute =
+  AdminAccessReviewsPlanIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminAccessReviewsPlanIdRoute,
+  } as any)
+const AdminAccessReviewsPlanIdEditRoute =
+  AdminAccessReviewsPlanIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AdminAccessReviewsPlanIdRoute,
+  } as any)
 const AdminAgentsAgentIdIndexRoute = AdminAgentsAgentIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -904,6 +943,7 @@ export interface FileRoutesByFullPath {
   '/reset_password': typeof Reset_passwordRoute
   '/status': typeof StatusRoute
   '/totp': typeof TotpRoute
+  '/account/access-reviews': typeof AccountAccessReviewsRoute
   '/account/activity': typeof AccountActivityRoute
   '/account/api-tokens': typeof AccountApiTokensRoute
   '/account/applications': typeof AccountApplicationsRoute
@@ -915,6 +955,7 @@ export interface FileRoutesByFullPath {
   '/account/password': typeof AccountPasswordRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/security': typeof AccountSecurityRoute
+  '/admin/access-reviews': typeof AdminAccessReviewsRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/api-tokens': typeof AdminApiTokensRoute
   '/admin/applications': typeof AdminApplicationsRoute
@@ -948,6 +989,8 @@ export interface FileRoutesByFullPath {
   '/account/api-tokens/new': typeof AccountApiTokensNewRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile/edit': typeof AccountProfileEditRoute
+  '/admin/access-reviews/$planId': typeof AdminAccessReviewsPlanIdRouteWithChildren
+  '/admin/access-reviews/new': typeof AdminAccessReviewsNewRoute
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdRouteWithChildren
   '/admin/agents/inventory': typeof AdminAgentsInventoryRoute
   '/admin/agents/new': typeof AdminAgentsNewRoute
@@ -986,6 +1029,7 @@ export interface FileRoutesByFullPath {
   '/admin/workload-identity/new': typeof AdminWorkloadIdentityNewRoute
   '/system/tenants/$realm': typeof SystemTenantsRealmRouteWithChildren
   '/account/profile/': typeof AccountProfileIndexRoute
+  '/admin/access-reviews/$planId/edit': typeof AdminAccessReviewsPlanIdEditRoute
   '/admin/agents/$agentId/access': typeof AdminAgentsAgentIdAccessRoute
   '/admin/agents/$agentId/credentials': typeof AdminAgentsAgentIdCredentialsRoute
   '/admin/agents/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
@@ -1014,6 +1058,7 @@ export interface FileRoutesByFullPath {
   '/system/tenants/$realm/edit': typeof SystemTenantsRealmEditRoute
   '/system/tenants/$realm/endpoint-style': typeof SystemTenantsRealmEndpointStyleRoute
   '/system/tenants/$realm/quota': typeof SystemTenantsRealmQuotaRoute
+  '/admin/access-reviews/$planId/': typeof AdminAccessReviewsPlanIdIndexRoute
   '/admin/agents/$agentId/': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId/': typeof AdminGroupsGroupIdIndexRoute
@@ -1041,6 +1086,7 @@ export interface FileRoutesByTo {
   '/reset_password': typeof Reset_passwordRoute
   '/status': typeof StatusRoute
   '/totp': typeof TotpRoute
+  '/account/access-reviews': typeof AccountAccessReviewsRoute
   '/account/activity': typeof AccountActivityRoute
   '/account/api-tokens': typeof AccountApiTokensRoute
   '/account/applications': typeof AccountApplicationsRoute
@@ -1052,6 +1098,7 @@ export interface FileRoutesByTo {
   '/account/password': typeof AccountPasswordRoute
   '/account/profile': typeof AccountProfileIndexRoute
   '/account/security': typeof AccountSecurityRoute
+  '/admin/access-reviews': typeof AdminAccessReviewsRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/api-tokens': typeof AdminApiTokensRoute
   '/admin/applications': typeof AdminApplicationsRoute
@@ -1085,6 +1132,7 @@ export interface FileRoutesByTo {
   '/account/api-tokens/new': typeof AccountApiTokensNewRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile/edit': typeof AccountProfileEditRoute
+  '/admin/access-reviews/new': typeof AdminAccessReviewsNewRoute
   '/admin/agents/inventory': typeof AdminAgentsInventoryRoute
   '/admin/agents/new': typeof AdminAgentsNewRoute
   '/admin/api-tokens/new': typeof AdminApiTokensNewRoute
@@ -1115,6 +1163,7 @@ export interface FileRoutesByTo {
   '/admin/users/import': typeof AdminUsersImportRoute
   '/admin/users/new': typeof AdminUsersNewRoute
   '/admin/workload-identity/new': typeof AdminWorkloadIdentityNewRoute
+  '/admin/access-reviews/$planId/edit': typeof AdminAccessReviewsPlanIdEditRoute
   '/admin/agents/$agentId/access': typeof AdminAgentsAgentIdAccessRoute
   '/admin/agents/$agentId/credentials': typeof AdminAgentsAgentIdCredentialsRoute
   '/admin/agents/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
@@ -1142,6 +1191,7 @@ export interface FileRoutesByTo {
   '/system/tenants/$realm/edit': typeof SystemTenantsRealmEditRoute
   '/system/tenants/$realm/endpoint-style': typeof SystemTenantsRealmEndpointStyleRoute
   '/system/tenants/$realm/quota': typeof SystemTenantsRealmQuotaRoute
+  '/admin/access-reviews/$planId': typeof AdminAccessReviewsPlanIdIndexRoute
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdIndexRoute
@@ -1173,6 +1223,7 @@ export interface FileRoutesById {
   '/reset_password': typeof Reset_passwordRoute
   '/status': typeof StatusRoute
   '/totp': typeof TotpRoute
+  '/account/access-reviews': typeof AccountAccessReviewsRoute
   '/account/activity': typeof AccountActivityRoute
   '/account/api-tokens': typeof AccountApiTokensRoute
   '/account/applications': typeof AccountApplicationsRoute
@@ -1184,6 +1235,7 @@ export interface FileRoutesById {
   '/account/password': typeof AccountPasswordRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/security': typeof AccountSecurityRoute
+  '/admin/access-reviews': typeof AdminAccessReviewsRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/api-tokens': typeof AdminApiTokensRoute
   '/admin/applications': typeof AdminApplicationsRoute
@@ -1217,6 +1269,8 @@ export interface FileRoutesById {
   '/account/api-tokens_/new': typeof AccountApiTokensNewRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile_/edit': typeof AccountProfileEditRoute
+  '/admin/access-reviews_/$planId': typeof AdminAccessReviewsPlanIdRouteWithChildren
+  '/admin/access-reviews_/new': typeof AdminAccessReviewsNewRoute
   '/admin/agents_/$agentId': typeof AdminAgentsAgentIdRouteWithChildren
   '/admin/agents_/inventory': typeof AdminAgentsInventoryRoute
   '/admin/agents_/new': typeof AdminAgentsNewRoute
@@ -1255,6 +1309,7 @@ export interface FileRoutesById {
   '/admin/workload-identity_/new': typeof AdminWorkloadIdentityNewRoute
   '/system/tenants_/$realm': typeof SystemTenantsRealmRouteWithChildren
   '/account/profile_/': typeof AccountProfileIndexRoute
+  '/admin/access-reviews_/$planId/edit': typeof AdminAccessReviewsPlanIdEditRoute
   '/admin/agents_/$agentId/access': typeof AdminAgentsAgentIdAccessRoute
   '/admin/agents_/$agentId/credentials': typeof AdminAgentsAgentIdCredentialsRoute
   '/admin/agents_/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
@@ -1283,6 +1338,7 @@ export interface FileRoutesById {
   '/system/tenants_/$realm/edit': typeof SystemTenantsRealmEditRoute
   '/system/tenants_/$realm/endpoint-style': typeof SystemTenantsRealmEndpointStyleRoute
   '/system/tenants_/$realm/quota': typeof SystemTenantsRealmQuotaRoute
+  '/admin/access-reviews_/$planId/': typeof AdminAccessReviewsPlanIdIndexRoute
   '/admin/agents_/$agentId/': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups_/$groupId/': typeof AdminGroupsGroupIdIndexRoute
@@ -1315,6 +1371,7 @@ export interface FileRouteTypes {
     | '/reset_password'
     | '/status'
     | '/totp'
+    | '/account/access-reviews'
     | '/account/activity'
     | '/account/api-tokens'
     | '/account/applications'
@@ -1326,6 +1383,7 @@ export interface FileRouteTypes {
     | '/account/password'
     | '/account/profile'
     | '/account/security'
+    | '/admin/access-reviews'
     | '/admin/agents'
     | '/admin/api-tokens'
     | '/admin/applications'
@@ -1359,6 +1417,8 @@ export interface FileRouteTypes {
     | '/account/api-tokens/new'
     | '/account/email/verify'
     | '/account/profile/edit'
+    | '/admin/access-reviews/$planId'
+    | '/admin/access-reviews/new'
     | '/admin/agents/$agentId'
     | '/admin/agents/inventory'
     | '/admin/agents/new'
@@ -1397,6 +1457,7 @@ export interface FileRouteTypes {
     | '/admin/workload-identity/new'
     | '/system/tenants/$realm'
     | '/account/profile/'
+    | '/admin/access-reviews/$planId/edit'
     | '/admin/agents/$agentId/access'
     | '/admin/agents/$agentId/credentials'
     | '/admin/agents/$agentId/edit'
@@ -1425,6 +1486,7 @@ export interface FileRouteTypes {
     | '/system/tenants/$realm/edit'
     | '/system/tenants/$realm/endpoint-style'
     | '/system/tenants/$realm/quota'
+    | '/admin/access-reviews/$planId/'
     | '/admin/agents/$agentId/'
     | '/admin/applications/$applicationId/'
     | '/admin/groups/$groupId/'
@@ -1452,6 +1514,7 @@ export interface FileRouteTypes {
     | '/reset_password'
     | '/status'
     | '/totp'
+    | '/account/access-reviews'
     | '/account/activity'
     | '/account/api-tokens'
     | '/account/applications'
@@ -1463,6 +1526,7 @@ export interface FileRouteTypes {
     | '/account/password'
     | '/account/profile'
     | '/account/security'
+    | '/admin/access-reviews'
     | '/admin/agents'
     | '/admin/api-tokens'
     | '/admin/applications'
@@ -1496,6 +1560,7 @@ export interface FileRouteTypes {
     | '/account/api-tokens/new'
     | '/account/email/verify'
     | '/account/profile/edit'
+    | '/admin/access-reviews/new'
     | '/admin/agents/inventory'
     | '/admin/agents/new'
     | '/admin/api-tokens/new'
@@ -1526,6 +1591,7 @@ export interface FileRouteTypes {
     | '/admin/users/import'
     | '/admin/users/new'
     | '/admin/workload-identity/new'
+    | '/admin/access-reviews/$planId/edit'
     | '/admin/agents/$agentId/access'
     | '/admin/agents/$agentId/credentials'
     | '/admin/agents/$agentId/edit'
@@ -1553,6 +1619,7 @@ export interface FileRouteTypes {
     | '/system/tenants/$realm/edit'
     | '/system/tenants/$realm/endpoint-style'
     | '/system/tenants/$realm/quota'
+    | '/admin/access-reviews/$planId'
     | '/admin/agents/$agentId'
     | '/admin/applications/$applicationId'
     | '/admin/groups/$groupId'
@@ -1583,6 +1650,7 @@ export interface FileRouteTypes {
     | '/reset_password'
     | '/status'
     | '/totp'
+    | '/account/access-reviews'
     | '/account/activity'
     | '/account/api-tokens'
     | '/account/applications'
@@ -1594,6 +1662,7 @@ export interface FileRouteTypes {
     | '/account/password'
     | '/account/profile'
     | '/account/security'
+    | '/admin/access-reviews'
     | '/admin/agents'
     | '/admin/api-tokens'
     | '/admin/applications'
@@ -1627,6 +1696,8 @@ export interface FileRouteTypes {
     | '/account/api-tokens_/new'
     | '/account/email/verify'
     | '/account/profile_/edit'
+    | '/admin/access-reviews_/$planId'
+    | '/admin/access-reviews_/new'
     | '/admin/agents_/$agentId'
     | '/admin/agents_/inventory'
     | '/admin/agents_/new'
@@ -1665,6 +1736,7 @@ export interface FileRouteTypes {
     | '/admin/workload-identity_/new'
     | '/system/tenants_/$realm'
     | '/account/profile_/'
+    | '/admin/access-reviews_/$planId/edit'
     | '/admin/agents_/$agentId/access'
     | '/admin/agents_/$agentId/credentials'
     | '/admin/agents_/$agentId/edit'
@@ -1693,6 +1765,7 @@ export interface FileRouteTypes {
     | '/system/tenants_/$realm/edit'
     | '/system/tenants_/$realm/endpoint-style'
     | '/system/tenants_/$realm/quota'
+    | '/admin/access-reviews_/$planId/'
     | '/admin/agents_/$agentId/'
     | '/admin/applications_/$applicationId/'
     | '/admin/groups_/$groupId/'
@@ -1826,6 +1899,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountIndexRouteImport
       parentRoute: typeof AccountRouteRoute
     }
+    '/account/access-reviews': {
+      id: '/account/access-reviews'
+      path: '/access-reviews'
+      fullPath: '/account/access-reviews'
+      preLoaderRoute: typeof AccountAccessReviewsRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
     '/account/activity': {
       id: '/account/activity'
       path: '/activity'
@@ -1908,6 +1988,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/access-reviews': {
+      id: '/admin/access-reviews'
+      path: '/access-reviews'
+      fullPath: '/admin/access-reviews'
+      preLoaderRoute: typeof AdminAccessReviewsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/agents': {
@@ -2133,6 +2220,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/account/profile/edit'
       preLoaderRoute: typeof AccountProfileEditRouteImport
       parentRoute: typeof AccountRouteRoute
+    }
+    '/admin/access-reviews_/$planId': {
+      id: '/admin/access-reviews_/$planId'
+      path: '/access-reviews/$planId'
+      fullPath: '/admin/access-reviews/$planId'
+      preLoaderRoute: typeof AdminAccessReviewsPlanIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/access-reviews_/new': {
+      id: '/admin/access-reviews_/new'
+      path: '/access-reviews/new'
+      fullPath: '/admin/access-reviews/new'
+      preLoaderRoute: typeof AdminAccessReviewsNewRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/agents_/$agentId': {
       id: '/admin/agents_/$agentId'
@@ -2392,6 +2493,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/system/tenants/$realm'
       preLoaderRoute: typeof SystemTenantsRealmRouteImport
       parentRoute: typeof SystemRouteRoute
+    }
+    '/admin/access-reviews_/$planId/': {
+      id: '/admin/access-reviews_/$planId/'
+      path: '/'
+      fullPath: '/admin/access-reviews/$planId/'
+      preLoaderRoute: typeof AdminAccessReviewsPlanIdIndexRouteImport
+      parentRoute: typeof AdminAccessReviewsPlanIdRoute
+    }
+    '/admin/access-reviews_/$planId/edit': {
+      id: '/admin/access-reviews_/$planId/edit'
+      path: '/edit'
+      fullPath: '/admin/access-reviews/$planId/edit'
+      preLoaderRoute: typeof AdminAccessReviewsPlanIdEditRouteImport
+      parentRoute: typeof AdminAccessReviewsPlanIdRoute
     }
     '/admin/agents_/$agentId/': {
       id: '/admin/agents_/$agentId/'
@@ -2698,6 +2813,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AccountRouteRouteChildren {
+  AccountAccessReviewsRoute: typeof AccountAccessReviewsRoute
   AccountActivityRoute: typeof AccountActivityRoute
   AccountApiTokensRoute: typeof AccountApiTokensRoute
   AccountApplicationsRoute: typeof AccountApplicationsRoute
@@ -2717,6 +2833,7 @@ interface AccountRouteRouteChildren {
 }
 
 const AccountRouteRouteChildren: AccountRouteRouteChildren = {
+  AccountAccessReviewsRoute: AccountAccessReviewsRoute,
   AccountActivityRoute: AccountActivityRoute,
   AccountApiTokensRoute: AccountApiTokensRoute,
   AccountApplicationsRoute: AccountApplicationsRoute,
@@ -2738,6 +2855,22 @@ const AccountRouteRouteChildren: AccountRouteRouteChildren = {
 const AccountRouteRouteWithChildren = AccountRouteRoute._addFileChildren(
   AccountRouteRouteChildren,
 )
+
+interface AdminAccessReviewsPlanIdRouteChildren {
+  AdminAccessReviewsPlanIdEditRoute: typeof AdminAccessReviewsPlanIdEditRoute
+  AdminAccessReviewsPlanIdIndexRoute: typeof AdminAccessReviewsPlanIdIndexRoute
+}
+
+const AdminAccessReviewsPlanIdRouteChildren: AdminAccessReviewsPlanIdRouteChildren =
+  {
+    AdminAccessReviewsPlanIdEditRoute: AdminAccessReviewsPlanIdEditRoute,
+    AdminAccessReviewsPlanIdIndexRoute: AdminAccessReviewsPlanIdIndexRoute,
+  }
+
+const AdminAccessReviewsPlanIdRouteWithChildren =
+  AdminAccessReviewsPlanIdRoute._addFileChildren(
+    AdminAccessReviewsPlanIdRouteChildren,
+  )
 
 interface AdminAgentsAgentIdRouteChildren {
   AdminAgentsAgentIdAccessRoute: typeof AdminAgentsAgentIdAccessRoute
@@ -2870,6 +3003,7 @@ const AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren =
   )
 
 interface AdminRouteRouteChildren {
+  AdminAccessReviewsRoute: typeof AdminAccessReviewsRoute
   AdminAgentsRoute: typeof AdminAgentsRoute
   AdminApiTokensRoute: typeof AdminApiTokensRoute
   AdminApplicationsRoute: typeof AdminApplicationsRoute
@@ -2892,6 +3026,8 @@ interface AdminRouteRouteChildren {
   AdminUsersRoute: typeof AdminUsersRoute
   AdminWorkloadIdentityRoute: typeof AdminWorkloadIdentityRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminAccessReviewsPlanIdRoute: typeof AdminAccessReviewsPlanIdRouteWithChildren
+  AdminAccessReviewsNewRoute: typeof AdminAccessReviewsNewRoute
   AdminAgentsAgentIdRoute: typeof AdminAgentsAgentIdRouteWithChildren
   AdminAgentsInventoryRoute: typeof AdminAgentsInventoryRoute
   AdminAgentsNewRoute: typeof AdminAgentsNewRoute
@@ -2947,6 +3083,7 @@ interface AdminRouteRouteChildren {
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminAccessReviewsRoute: AdminAccessReviewsRoute,
   AdminAgentsRoute: AdminAgentsRoute,
   AdminApiTokensRoute: AdminApiTokensRoute,
   AdminApplicationsRoute: AdminApplicationsRoute,
@@ -2969,6 +3106,8 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminUsersRoute: AdminUsersRoute,
   AdminWorkloadIdentityRoute: AdminWorkloadIdentityRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminAccessReviewsPlanIdRoute: AdminAccessReviewsPlanIdRouteWithChildren,
+  AdminAccessReviewsNewRoute: AdminAccessReviewsNewRoute,
   AdminAgentsAgentIdRoute: AdminAgentsAgentIdRouteWithChildren,
   AdminAgentsInventoryRoute: AdminAgentsInventoryRoute,
   AdminAgentsNewRoute: AdminAgentsNewRoute,

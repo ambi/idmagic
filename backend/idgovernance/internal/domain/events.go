@@ -2,6 +2,19 @@ package domain
 
 import "time"
 
+type AccessReviewChanged struct {
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	PlanID      string    `json:"planId"`
+	ReviewID    string    `json:"reviewId"`
+	ItemID      string    `json:"itemId"`
+	Action      string    `json:"action"`
+}
+
+func (e *AccessReviewChanged) EventType() string     { return "AccessReviewChanged" }
+func (e *AccessReviewChanged) OccurredAt() time.Time { return e.At }
+
 type LifecycleWorkflowCreated struct {
 	At          time.Time `json:"-"`
 	TenantID    string    `json:"tenantId"`

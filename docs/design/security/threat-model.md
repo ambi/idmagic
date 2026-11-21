@@ -144,6 +144,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | THREAT-016 | Information disclosure | 別テナントで発行されたページングのカーソルを再利用する | Tenancy, Audit | [認可設計：テナント境界](authorization.md#テナント境界)、REQ-AUDIT-004 | `covered` |
 | THREAT-017 | Information disclosure | 権限のない対象と存在しない対象のレスポンス差から、他テナントの資源の存在を推測する | Tenancy, AccessControl | [認可設計：その他の境界の規則](authorization.md#その他の境界の規則) | `covered` |
 | THREAT-018 | Elevation of privilege | 他テナントの関係タプルが細粒度認可の判定に寄与する | AccessControl | REQ-AUTHORIZATION-006 | `covered` |
+| THREAT-118 | Tampering | 見直しの回または項目の ID を差し替え、別の担当者の判断を確定させる | IdGovernance | REQ-IDGOVERNANCE-022、REQ-IDGOVERNANCE-025: 本人とテナントの照合 | `covered` |
 | THREAT-019 | Elevation of privilege | 非同期の実行が処理の途中で別テナントの範囲へ到達する | Jobs | REQ-JOBS-006、[認可設計：テナント境界](authorization.md#テナント境界) | `covered` |
 | THREAT-020 | Spoofing | 他テナントの署名鍵で発行したトークンが受理される | SigningKeys, OAuth2 | REQ-SIGNINGKEYS-004、REQ-OAUTH2-034 | `covered` |
 | THREAT-021 | Elevation of privilege | 他テナントのワークロード信頼設定を使って資格情報を得る | WorkloadIdentity | REQ-WORKLOADIDENTITY-007、REQ-WORKLOADIDENTITY-009 | `covered` |

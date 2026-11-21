@@ -8,6 +8,8 @@
 | --- | --- | --- |
 | `LifecycleWorkflow` | 名前、状態、`current_revision` と `enabled_revision`、リビジョンごとの `WorkflowTrigger` と `WorkflowAction` の列 | `Tenant` を `tenant_id` で参照する。アクションは同じテナントの Group と Application を参照する |
 | `WorkflowRun` | 作成時に固定した `workflow_id`、`revision`、発火の事象、対象の User、展開したアクションの列、`WorkflowStep` の記録、関連付けた Job | `LifecycleWorkflow` と User を参照する |
+| `AccessReviewPlan` | 対象の種類と ID、確認担当者と代替担当者、未回答時の処置、実施期間と周期、次回の開始時刻、設定のリビジョン | 同じテナントの Group、Application または Agent と、確認する User を参照する |
+| `AccessReview` | 開始時に固定した対象と確認担当者、期限、各項目の判断と適用結果、通知の成否、外向きの作用の占有期限 | `AccessReviewPlan` を参照する。開始済みの回は計画の更新で書き換えない |
 
 | 概念 | 内容 |
 | --- | --- |

@@ -31,6 +31,7 @@ const managementResources: ScopeResource[] = [
   },
   resource('sessionsScopeResourceLabel', 'sessions:read', 'sessions:write'),
   resource('consentsScopeResourceLabel', 'consents:read', 'consents:write'),
+  resource('accessReviewsScopeResourceLabel', 'access-reviews:read', 'access-reviews:write'),
   resource(
     'lifecycleWorkflowsScopeResourceLabel',
     'lifecycle-workflows:read',
