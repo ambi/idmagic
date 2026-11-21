@@ -80,7 +80,7 @@ export function AdminRolesPage({
                   onClick={() => setSelectedName(role.name)}
                   className={cn(
                     'cursor-pointer transition-colors hover:bg-slate-50',
-                    role.name === selectedName && 'bg-blue-50/60 hover:bg-blue-50/80',
+                    role.name === selectedName && 'bg-accent hover:bg-accent',
                   )}
                 >
                   <td className="px-5 py-4">
@@ -265,7 +265,7 @@ function RoleDetails({
               <a
                 key={username}
                 href={`${tenantURL('/admin/users')}?role=${encodeURIComponent(role.name)}`}
-                className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-accent-foreground hover:bg-blue-50"
               >
                 @{username}
               </a>

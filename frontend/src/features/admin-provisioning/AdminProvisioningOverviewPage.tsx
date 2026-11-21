@@ -64,7 +64,7 @@ export function AdminProvisioningOverviewPage({
                     <td className="px-4 py-3">
                       <a
                         href={provisioningURL(c.application_id)}
-                        className="font-medium text-blue-700 hover:underline"
+                        className="font-medium text-accent-foreground hover:underline"
                       >
                         {appNames.get(c.application_id) ?? c.application_id}
                       </a>

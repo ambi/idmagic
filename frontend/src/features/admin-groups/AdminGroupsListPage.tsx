@@ -145,7 +145,7 @@ export function AdminGroupsPage({
                   key={group.id}
                   onClick={() => setSelectedID(group.id)}
                   className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${
-                    selectedID === group.id ? 'bg-blue-50/60' : ''
+                    selectedID === group.id ? 'bg-accent' : ''
                   }`}
                 >
                   <td className="px-4 py-3">

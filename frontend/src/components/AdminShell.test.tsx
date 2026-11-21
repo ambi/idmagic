@@ -3,11 +3,50 @@ import { afterEach, describe, expect, it, mock } from 'bun:test'
 import { restoreGlobals, stubGlobal } from '../test/globals'
 import { renderWithRouter } from '../test/renderWithRouter'
 import { AdminShell } from './AdminShell'
+import { AdminTheme } from './AdminTheme'
 import { shellDictionary } from './shell.i18n'
 import { commonDictionary } from '../lib/i18n/common.i18n'
 
 describe('AdminShell', () => {
   afterEach(() => restoreGlobals())
+
+  //spec:covers REQ-FRONTEND-005, REQ-TENANCY-004: 公開設定のロゴと製品名をヘッダーへ表示し、主要操作とポータルへテーマを渡す。
+  it('applies tenant branding to the chrome and portalled menu', async () => {
+    stubGlobal(
+      'fetch',
+      mock(async () =>
+        Response.json({
+          product_name: 'Acme Console',
+          logo_url: '/realms/acme/tenant-branding-assets/logo/acme',
+          primary_color: '#ffff00',
+          accent_color: '#663399',
+        }),
+      ),
+    )
+    const { container } = await renderWithRouter(
+      <AdminTheme>
+        <AdminShell active="users" title="Users">
+          <p>content</p>
+        </AdminShell>
+      </AdminTheme>,
+    )
+    expect(await screen.findByText('Acme Console')).toBeInTheDocument()
+    expect(container.querySelector('header img')).toHaveAttribute(
+      'src',
+      '/realms/acme/tenant-branding-assets/logo/acme',
+    )
+    const theme = container.querySelector('[data-admin-theme]') as HTMLElement
+    expect(theme.style.getPropertyValue('--admin-theme-interactive')).toBe('#ffff00')
+    expect(theme.style.getPropertyValue('--admin-theme-on-color')).toBe('#000000')
+    expect(document.documentElement.style.getPropertyValue('--primary')).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: 'Account menu' }))
+    const menu = await screen.findByRole('menu')
+    expect(menu.closest('[data-admin-theme]')).toHaveAttribute('style', theme.getAttribute('style'))
+    const logo = container.querySelector('header img') as HTMLImageElement
+    fireEvent.error(logo)
+    expect(container.querySelector('header img')).toBeNull()
+    expect(screen.getByText('Acme Console')).toBeInTheDocument()
+  })
 
   //spec:covers REQ-FRONTEND-001: 総数と表示件数を区別し、一覧を保持して更新する。
   it('shows list totals and refreshes without dropping the current list', async () => {

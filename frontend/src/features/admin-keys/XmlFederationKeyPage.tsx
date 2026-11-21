@@ -266,7 +266,7 @@ export function XmlFederationKeyPage({
                   </span>
                 ) : null}
                 <a
-                  className="font-semibold text-blue-700 hover:underline"
+                  className="font-semibold text-accent-foreground hover:underline"
                   href={entraDomainURL(domain.domain)}
                 >
                   {t.openDomain}

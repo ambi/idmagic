@@ -116,7 +116,11 @@ export function AuditExportPanel({
                 </span>
               ) : null}
               {job.downloadable && job.status === 'succeeded' ? (
-                <a className="text-blue-700 underline" href={client.downloadURL(job.id)} download>
+                <a
+                  className="text-accent-foreground underline"
+                  href={client.downloadURL(job.id)}
+                  download
+                >
                   {t.exportDownload}
                 </a>
               ) : null}

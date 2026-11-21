@@ -152,7 +152,7 @@ export function AdminApplicationDetailPage({
                       href={app.launch_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 break-all font-mono text-xs text-blue-700 hover:underline"
+                      className="inline-flex items-center gap-1 break-all font-mono text-xs text-accent-foreground hover:underline"
                     >
                       {app.launch_url}
                       <IconExternalLink size={13} aria-hidden="true" />

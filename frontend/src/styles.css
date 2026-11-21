@@ -205,6 +205,56 @@
   }
 }
 
+/* 管理画面の役割だけに適用し、業務状態の成功、警告、危険の色は保つ。 */
+[data-admin-theme] .app-header,
+[data-admin-theme] .app-sidebar {
+  background-color: var(--admin-theme-surface);
+}
+
+[data-admin-theme] .app-page-title {
+  color: var(--admin-theme-emphasis);
+}
+
+[data-admin-theme] [data-slot="brand-mark"] {
+  color: var(--admin-theme-link);
+}
+
+[data-admin-theme] [data-slot="brand-dot"] {
+  background-color: var(--admin-theme-interactive);
+}
+
+[data-admin-theme] header [aria-pressed="true"] {
+  background-color: var(--admin-theme-interactive);
+  color: var(--admin-theme-on-color);
+}
+
+[data-admin-theme] :is(input, select, textarea):focus {
+  border-color: var(--admin-theme-focus);
+}
+
+[data-admin-theme] .app-sidebar a[aria-current="page"],
+[data-admin-theme] [role="menuitem"][aria-current="page"] {
+  background-color: var(--admin-theme-surface);
+  color: var(--admin-theme-link);
+  box-shadow: inset 3px 0 var(--admin-theme-link);
+}
+
+/* 淡色のブランドでも透明度を介さず、白い分離線と濃色の輪郭で focus を示す。 */
+[data-admin-theme] :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--admin-theme-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+[data-admin-theme] [data-slot="button"][data-variant="default"]:hover {
+  background-color: var(--admin-theme-interactive);
+}
+
+[data-admin-theme] ::selection {
+  background-color: var(--admin-theme-interactive);
+  color: var(--admin-theme-on-color);
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);

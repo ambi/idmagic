@@ -304,7 +304,7 @@ export function AdminUsersPage({
                       onClick={() => selectUser(user)}
                       className={cn(
                         'cursor-pointer bg-white transition-colors hover:bg-slate-50',
-                        selectedUserId === user.id && 'bg-blue-50/60 hover:bg-blue-50/80',
+                        selectedUserId === user.id && 'bg-accent hover:bg-accent',
                       )}
                     >
                       <td className="px-5 py-4">

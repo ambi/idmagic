@@ -1,4 +1,5 @@
 import { Dialog } from '@base-ui/react/dialog'
+import { useAdminThemeProps } from '../../components/AdminTheme'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import { AuthenticationAPIError, tenantURL } from '../../api'
@@ -35,7 +36,9 @@ export function AuthorizationSectionNav({
   const linkClass = (section: typeof active) =>
     cn(
       'rounded-md px-3 py-1.5 text-sm font-medium',
-      active === section ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100',
+      active === section
+        ? 'bg-primary text-primary-foreground'
+        : 'text-slate-700 hover:bg-slate-100',
     )
   return (
     <nav aria-label={t.sectionNavLabel} className="flex flex-wrap gap-1">
@@ -122,6 +125,7 @@ export function DestructiveConfirmDialog({
   onConfirm: () => void
 }) {
   const t = useDictionary(adminAuthorizationDictionary)
+  const theme = useAdminThemeProps()
   return (
     // フォーカスの移動と閉じ込め、Esc は Dialog に任せる。初期フォーカスは先頭のキャンセルに置く。
     <Dialog.Root
@@ -131,7 +135,7 @@ export function DestructiveConfirmDialog({
         if (!open && !busy) onClose()
       }}
     >
-      <Dialog.Portal>
+      <Dialog.Portal {...theme}>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-[2px]" />
         <Dialog.Popup className="fixed inset-0 z-50 m-auto flex h-fit w-full max-w-lg p-5 outline-none">
           <Card className="flex w-full flex-col gap-3 p-6 shadow-2xl">

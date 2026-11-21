@@ -1,4 +1,5 @@
 import { IconPhoto, IconTrash, IconUpload } from '@tabler/icons-react'
+import { useUpdateAdminBranding } from '../../components/AdminTheme'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import {
   AuthenticationAPIError,
@@ -50,6 +51,7 @@ export function brandingColorError(value: string, t: BrandingTabDictionary): str
 }
 
 export function BrandingTab({ csrfToken }: { csrfToken: string }) {
+  const updateTheme = useUpdateAdminBranding()
   const [branding, setBranding] = useState<Branding | null>(null)
   const [productName, setProductName] = useState('')
   const [primaryColor, setPrimaryColor] = useState('')
@@ -84,6 +86,7 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
   }, [])
 
   function applyBranding(next: Branding) {
+    updateTheme?.(next)
     setBranding(next)
     setProductName(next.product_name ?? '')
     setPrimaryColor(next.primary_color ?? '')

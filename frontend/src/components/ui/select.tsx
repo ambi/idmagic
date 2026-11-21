@@ -6,6 +6,7 @@ import { Select as SelectPrimitive } from '@base-ui/react/select'
 import { cn, type StringClassNameProps } from '@/lib/utils'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { useDictionary } from '../../lib/i18n'
+import { useAdminThemeProps } from '../AdminTheme'
 import { IconSelector, IconCheck, IconChevronUp, IconChevronDown } from '@tabler/icons-react'
 
 const SelectRoot = SelectPrimitive.Root
@@ -70,8 +71,9 @@ function SelectContent({
     SelectPrimitive.Positioner.Props,
     'align' | 'alignOffset' | 'side' | 'sideOffset' | 'alignItemWithTrigger'
   >) {
+  const theme = useAdminThemeProps()
   return (
-    <SelectPrimitive.Portal>
+    <SelectPrimitive.Portal {...theme}>
       <SelectPrimitive.Positioner
         side={side}
         sideOffset={sideOffset}

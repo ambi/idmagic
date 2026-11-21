@@ -326,7 +326,7 @@ export function GroupMembersSection({
             className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
           >
             <a
-              className="font-medium text-blue-700 hover:underline"
+              className="font-medium text-accent-foreground hover:underline"
               href={tenantURL(`/admin/users?role=${encodeURIComponent(member.preferred_username)}`)}
             >
               {member.preferred_username}

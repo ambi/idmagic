@@ -130,7 +130,7 @@ export function AdminApplicationsPage({
                     type="button"
                     onClick={() => setSelectedID(app.id)}
                     className={`flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-left first:border-t-0 hover:bg-slate-50 ${
-                      selectedID === app.id ? 'bg-blue-50/60' : ''
+                      selectedID === app.id ? 'bg-accent' : ''
                     }`}
                   >
                     <AppIcon app={app} size="sm" />
@@ -310,7 +310,7 @@ function ApplicationSummaryCard({
                 href={app.launch_url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 break-all font-mono text-xs text-blue-700 hover:underline"
+                className="inline-flex items-center gap-1 break-all font-mono text-xs text-accent-foreground hover:underline"
               >
                 {app.launch_url}
                 <IconExternalLink size={13} aria-hidden="true" />

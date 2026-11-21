@@ -348,7 +348,7 @@ function RemovalSection({
       <h3 className="text-xs font-semibold text-slate-800">{t.removalTargetPreviousIdp}</h3>
       <p className="text-xs text-slate-600">{t.removalPreviousIdpNotice}</p>
       <a
-        className="text-xs font-semibold text-blue-700 hover:underline"
+        className="text-xs font-semibold text-accent-foreground hover:underline"
         href={MIGRATION_GUIDE_URL}
         target="_blank"
         rel="noreferrer"

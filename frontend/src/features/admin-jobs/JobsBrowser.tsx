@@ -273,7 +273,7 @@ export function JobsBrowser({
                     key={job.id}
                     onClick={() => setSelected(job)}
                     className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${
-                      selected?.id === job.id ? 'bg-blue-50/60' : ''
+                      selected?.id === job.id ? 'bg-accent' : ''
                     }`}
                   >
                     {tenantColumn ? (

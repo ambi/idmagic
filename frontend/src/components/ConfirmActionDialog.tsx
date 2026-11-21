@@ -1,4 +1,5 @@
 import { Dialog } from '@base-ui/react/dialog'
+import { useAdminThemeProps } from './AdminTheme'
 import { useDictionary } from '../lib/i18n'
 import { commonDictionary } from '../lib/i18n/common.i18n'
 import { Button } from './ui/button'
@@ -24,6 +25,7 @@ export function ConfirmActionDialog({
   onConfirm: () => void
 }) {
   const t = useDictionary(commonDictionary)
+  const theme = useAdminThemeProps()
   return (
     <Dialog.Root
       open
@@ -32,7 +34,7 @@ export function ConfirmActionDialog({
         if (!open && !busy) onClose()
       }}
     >
-      <Dialog.Portal>
+      <Dialog.Portal {...theme}>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-[2px]" />
         <Dialog.Popup className="fixed inset-0 z-50 m-auto h-fit w-[calc(100%-2rem)] max-w-lg outline-none">
           <Card className="space-y-4 p-6 shadow-2xl">

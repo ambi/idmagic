@@ -464,7 +464,7 @@ function ApplicationPolicyList({ apps }: { apps: SignInPolicyAppRow[] }) {
                           href={tenantURL(
                             `/admin/applications/${encodeURIComponent(application.id)}/edit`,
                           )}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-accent-foreground hover:underline"
                         >
                           <IconPencil size={14} aria-hidden="true" />
                           {t.edit}

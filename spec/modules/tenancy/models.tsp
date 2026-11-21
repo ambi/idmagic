@@ -321,10 +321,10 @@ model TenantBranding {
   favicon_object_key?: string;
   @doc("保存したファビコンから IdP が組み立てる、内部の配信用の URL。")
   favicon_url?: string;
-  @doc("主たるブランドの色。CSS のカスタムプロパティ `--tenant-brand-primary` としてだけ注入する。`#rrggbb` の形式であればコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステムのデフォルトに戻す。配色が読みやすいかどうかはテナントが判断する。")
+  @doc("主たるブランドの色。ホステッド UI の `--tenant-brand-primary` または管理コンソールの固定した semantic token に渡す。`#rrggbb` の形式であればコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステムのデフォルトに戻す。管理コンソールは前景色を自動選択して可読性を保つ。")
   @pattern("^#[0-9a-fA-F]{6}$")
   primary_color?: string;
-  @doc("アクセントのブランドの色。CSS のカスタムプロパティ `--tenant-brand-accent` としてだけ注入する。`#rrggbb` の形式であればコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステムのデフォルトに戻す。配色が読みやすいかどうかはテナントが判断する。")
+  @doc("アクセントのブランドの色。ホステッド UI の `--tenant-brand-accent` または管理コンソールの固定した semantic token に渡す。`#rrggbb` の形式であればコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステムのデフォルトに戻す。管理コンソールは安全な選択色と focus の色を導出する。")
   @pattern("^#[0-9a-fA-F]{6}$")
   accent_color?: string;
   @doc("一つ目のフッターのリンク。順序は footer_link_1、footer_link_2 の順に固定する。")

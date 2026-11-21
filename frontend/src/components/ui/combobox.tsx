@@ -6,6 +6,7 @@ import { IconCheck, IconChevronDown, IconX } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { useDictionary } from '../../lib/i18n'
+import { useAdminThemeProps } from '../AdminTheme'
 
 export type ComboboxOption = { value: string; label: string }
 
@@ -35,6 +36,7 @@ function SearchableSelect({
   disabled,
   'aria-label': ariaLabel,
 }: SearchableSelectProps) {
+  const theme = useAdminThemeProps()
   const t = useDictionary(commonDictionary)
   const resolvedPlaceholder = placeholder ?? t.searchPlaceholder
   const selected = options.find((option) => option.value === value) ?? null
@@ -71,7 +73,7 @@ function SearchableSelect({
         </ComboboxPrimitive.Trigger>
       </ComboboxPrimitive.InputGroup>
 
-      <ComboboxPrimitive.Portal>
+      <ComboboxPrimitive.Portal {...theme}>
         <ComboboxPrimitive.Positioner className="z-50 outline-none" sideOffset={4}>
           <ComboboxPrimitive.Popup className="max-h-(--available-height) w-(--anchor-width) min-w-48 overflow-y-auto rounded-md bg-popover text-popover-foreground shadow-sm ring-1 ring-foreground/10 outline-none">
             <ComboboxPrimitive.Empty className="px-3 py-2 text-xs text-muted-foreground">

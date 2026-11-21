@@ -7,6 +7,24 @@ import { SystemShell } from './SystemShell'
 describe('SystemShell', () => {
   afterEach(() => restoreGlobals())
 
+  //spec:covers REQ-FRONTEND-005: システムコンソールはテナント設定を取得せず、ポータルにも適用しない。
+  it('keeps tenant branding out of the system console and its menus', async () => {
+    const fetch = mock(async () =>
+      Response.json({ product_name: 'Tenant', primary_color: '#ff0000' }),
+    )
+    stubGlobal('fetch', fetch)
+    const { container } = await renderWithRouter(
+      <SystemShell active="tenants" title="Tenants">
+        <p>content</p>
+      </SystemShell>,
+    )
+    expect(screen.getByText('IdMagic')).toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(container.querySelector('[data-admin-theme]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Account menu' }))
+    expect((await screen.findByRole('menu')).closest('[data-admin-theme]')).toBeNull()
+  })
+
   it('marks the active nav item and shows a return link back to the admin console', async () => {
     await renderWithRouter(
       <SystemShell active="tenants" title="Tenants" description="Description">

@@ -127,7 +127,7 @@ export function AdminConsentsPage({
                   onClick={() => setSelected(c)}
                   className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${
                     selected?.user_id === c.user_id && selected.client_id === c.client_id
-                      ? 'bg-blue-50/60'
+                      ? 'bg-accent'
                       : ''
                   }`}
                 >

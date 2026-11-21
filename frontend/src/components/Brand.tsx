@@ -1,4 +1,5 @@
 import { IconFingerprint } from '@tabler/icons-react'
+import { useState } from 'react'
 import { safeTenantBrandingAssetURL } from '../lib/tenantBranding'
 import { cn } from '../lib/utils'
 
@@ -13,6 +14,7 @@ type BrandProps = {
 export function Brand({ compact = false, inverse = false, productName, logoURL }: BrandProps) {
   const name = productName?.trim() || 'IdMagic'
   const safeLogoURL = safeTenantBrandingAssetURL(logoURL)
+  const [failedLogoURL, setFailedLogoURL] = useState('')
   return (
     <div
       className={cn(
@@ -21,6 +23,7 @@ export function Brand({ compact = false, inverse = false, productName, logoURL }
       )}
     >
       <div
+        data-slot="brand-mark"
         className={cn(
           'relative flex size-11 items-center justify-center overflow-hidden rounded-lg border shadow-sm',
           inverse
@@ -28,12 +31,18 @@ export function Brand({ compact = false, inverse = false, productName, logoURL }
             : 'border-slate-200 bg-white text-blue-700 shadow-blue-950/5',
         )}
       >
-        {safeLogoURL ? (
-          <img src={safeLogoURL} alt="" className="size-full object-contain p-1.5" />
+        {safeLogoURL && safeLogoURL !== failedLogoURL ? (
+          <img
+            src={safeLogoURL}
+            alt=""
+            className="size-full object-contain p-1.5"
+            onError={() => setFailedLogoURL(safeLogoURL)}
+          />
         ) : (
           <>
             <IconFingerprint size={25} stroke={1.7} aria-hidden="true" />
             <span
+              data-slot="brand-dot"
               className={cn(
                 'absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 bg-teal-400',
                 inverse ? 'border-[#0a1020]' : 'border-white',

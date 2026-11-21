@@ -143,7 +143,7 @@ export function AdminEntraFederationPage({
           ({ label, href, value, icon: Icon }) => (
             <a
               key={value}
-              className="flex min-w-0 items-start gap-2 rounded-md border border-slate-200 bg-white p-2.5 text-xs text-slate-600 hover:border-blue-300 hover:text-blue-700"
+              className="flex min-w-0 items-start gap-2 rounded-md border border-slate-200 bg-white p-2.5 text-xs text-slate-600 hover:border-blue-300 hover:text-accent-foreground"
               href={href}
             >
               <Icon size={16} className="mt-0.5 shrink-0 text-blue-600" aria-hidden="true" />
@@ -194,7 +194,7 @@ export function EntraFederationList({
                     data-domain={federated.domain}
                   >
                     <a
-                      className="font-semibold text-blue-700 hover:underline"
+                      className="font-semibold text-accent-foreground hover:underline"
                       href={entraDomainURL(federated.domain)}
                       aria-label={t.viewDomainDetail.replace('{domain}', federated.domain)}
                     >

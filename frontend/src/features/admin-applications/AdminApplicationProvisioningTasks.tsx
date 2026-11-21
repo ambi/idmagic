@@ -202,7 +202,7 @@ function TasksTable({
               key={d.id}
               onClick={() => onSelect(d)}
               className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${
-                selected?.id === d.id ? 'bg-blue-50/60' : ''
+                selected?.id === d.id ? 'bg-accent' : ''
               }`}
             >
               <td className="px-3 py-2 font-mono text-xs">

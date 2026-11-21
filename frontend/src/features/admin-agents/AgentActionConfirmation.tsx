@@ -1,4 +1,5 @@
 import { Dialog } from '@base-ui/react/dialog'
+import { useAdminThemeProps } from '../../components/AdminTheme'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { useDictionary } from '../../lib/i18n'
@@ -20,6 +21,7 @@ export function AgentActionConfirmation({
   onCancel: () => void
 }) {
   const t = useDictionary(adminAgentsDictionary)
+  const theme = useAdminThemeProps()
   return (
     <Dialog.Root
       open
@@ -27,7 +29,7 @@ export function AgentActionConfirmation({
         if (!open && !busy) onCancel()
       }}
     >
-      <Dialog.Portal>
+      <Dialog.Portal {...theme}>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-slate-900/40" />
         <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl">
           <Dialog.Title className="text-lg font-semibold">{title}</Dialog.Title>

@@ -152,7 +152,10 @@ export function AdminSettingsPage({
         <Alert variant="destructive">
           <p className="text-sm text-slate-700">
             {t.crossTenantNoticePrefix}
-            <a href="/system/tenants" className="ml-1 font-medium text-blue-700 hover:underline">
+            <a
+              href="/system/tenants"
+              className="ml-1 font-medium text-accent-foreground hover:underline"
+            >
               {t.crossTenantNoticeLinkText}
             </a>
             {t.crossTenantNoticeSuffix}
@@ -174,7 +177,7 @@ export function AdminSettingsPage({
                 tab.disabled
                   ? 'cursor-not-allowed text-slate-400'
                   : active === tab.key
-                    ? 'bg-slate-950 text-white shadow-sm'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-slate-600 hover:bg-white hover:text-slate-950 hover:shadow-xs',
               )}
             >

@@ -2,6 +2,7 @@ import type * as React from 'react'
 import { Menu as MenuPrimitive } from '@base-ui/react/menu'
 
 import { cn, type StringClassNameProps } from '@/lib/utils'
+import { useAdminThemeProps } from '../AdminTheme'
 import { IconChevronRight, IconCheck } from '@tabler/icons-react'
 
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
@@ -9,7 +10,8 @@ function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
 }
 
 function DropdownMenuPortal({ ...props }: MenuPrimitive.Portal.Props) {
-  return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
+  const theme = useAdminThemeProps()
+  return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...theme} {...props} />
 }
 
 function DropdownMenuTrigger({ ...props }: MenuPrimitive.Trigger.Props) {
@@ -26,7 +28,7 @@ function DropdownMenuContent({
 }: StringClassNameProps<MenuPrimitive.Popup.Props> &
   Pick<MenuPrimitive.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>) {
   return (
-    <MenuPrimitive.Portal>
+    <DropdownMenuPortal>
       <MenuPrimitive.Positioner
         className="isolate z-50 outline-none"
         align={align}
@@ -43,7 +45,7 @@ function DropdownMenuContent({
           {...props}
         />
       </MenuPrimitive.Positioner>
-    </MenuPrimitive.Portal>
+    </DropdownMenuPortal>
   )
 }
 

@@ -5,6 +5,7 @@ import { logout } from '../api'
 import { adminNavItems, type AdminNavKey } from '../lib/adminNav'
 import { useDictionary, useLocale } from '../lib/i18n'
 import { Brand } from './Brand'
+import { useAdminBranding } from './AdminTheme'
 import { AdminNavigation } from './AdminNavigation'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { shellDictionary } from './shell.i18n'
@@ -38,6 +39,7 @@ export function AdminShell({
   list,
   children,
 }: AdminShellProps) {
+  const branding = useAdminBranding()
   const t = useDictionary(shellDictionary)
   const { locale } = useLocale()
   const items = adminNavItems(active, locale)
@@ -54,7 +56,7 @@ export function AdminShell({
               aria-label={t.adminConsole}
               className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
             >
-              <Brand compact />
+              <Brand compact productName={branding.product_name} logoURL={branding.logo_url} />
             </Link>
             <div className="hidden h-4 w-px bg-slate-200 sm:block" />
             <span className="hidden text-sm font-medium text-slate-500 sm:inline">
@@ -79,7 +81,7 @@ export function AdminShell({
                   </p>
                   <p className="text-xs text-slate-500">{t.organizationAdministrator}</p>
                 </div>
-                <span className="flex size-9 items-center justify-center rounded-full bg-slate-950 text-sm font-semibold text-white">
+                <span className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                   {(actorUsername ?? 'A').slice(0, 1).toUpperCase()}
                 </span>
                 <IconChevronDown size={15} className="text-slate-400" aria-hidden="true" />

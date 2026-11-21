@@ -93,7 +93,7 @@ export function AdminMcpResourceServersPage({
                 <tr
                   key={item.id}
                   onClick={() => setSelectedID(item.id)}
-                  className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${selected?.id === item.id ? 'bg-blue-50/60' : ''}`}
+                  className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${selected?.id === item.id ? 'bg-accent' : ''}`}
                 >
                   <td className="px-4 py-3">
                     <button

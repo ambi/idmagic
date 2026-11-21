@@ -209,7 +209,7 @@ export function SigningKeyTable({
             <tr
               key={key.kid}
               onClick={() => onSelect(key)}
-              className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${selectedKid === key.kid ? 'bg-blue-50/60' : ''}`}
+              className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${selectedKid === key.kid ? 'bg-accent' : ''}`}
             >
               <td className="px-4 py-3 font-mono text-xs">{key.kid}</td>
               <td className="px-4 py-3">{key.alg}</td>

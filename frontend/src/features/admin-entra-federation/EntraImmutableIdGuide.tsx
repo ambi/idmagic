@@ -15,7 +15,7 @@ export function EntraImmutableIdGuide() {
       </ol>
       <p className="text-xs text-slate-600">{t.immutableIdEncodingHint}</p>
       <a
-        className="text-xs text-blue-700 underline"
+        className="text-xs text-accent-foreground underline"
         href="https://learn.microsoft.com/en-us/entra/identity/hybrid/connect/plan-connect-design-concepts#sourceanchor"
       >
         {t.immutableIdConnectReference}

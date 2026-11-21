@@ -139,7 +139,7 @@ export function AdminAgentsPage({
                   key={agent.id}
                   onClick={() => setSelectedID(agent.id)}
                   className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${
-                    selectedID === agent.id ? 'bg-blue-50/60' : ''
+                    selectedID === agent.id ? 'bg-accent' : ''
                   }`}
                 >
                   <td className="px-4 py-3">

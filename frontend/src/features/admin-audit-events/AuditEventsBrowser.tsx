@@ -569,7 +569,7 @@ export function AuditEventsBrowser({
                   key={e.id}
                   onClick={() => setSelected(e)}
                   className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${
-                    selected?.id === e.id ? 'bg-blue-50/60' : ''
+                    selected?.id === e.id ? 'bg-accent' : ''
                   }`}
                 >
                   <td className="px-4 py-3 font-mono text-xs">
