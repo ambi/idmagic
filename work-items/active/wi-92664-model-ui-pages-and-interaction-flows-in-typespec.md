@@ -241,16 +241,23 @@ TypeSpec の具体的な構文と decorator のシグネチャは、代表例の
 3. **wi-80172 を中止する。** `## 要約` に中止の判断（入力項目を宣言しないため不要になった）を書き、`mise run move-work-item -- wi-80172 --cancel` を実行する。wi-24528 の対象外にある wi-80172 への参照も外す。
 4. **wi-24528 を書き直す。** 動機と設計から wi-92664 の入力項目の識別子への依存を除き、実装の `formSchema` の欄と API プロパティの制約の直接照合を中心にする。削除済みの `IdMagicUi.FieldInfo` を挙げていた `affected_spec` は、検査を通すために仮の `spec_impact: none` へ置き換えてある。書き直しで影響を判断し直す。冒頭の「書き直し待ち」の注記を外す。wi-92664 への `depends_on` が必要かも見直す。
 5. `mise run check-work-items`、`mise run check-links`、`mise run check` を通し、チェックポイントのコミットを作る。
-6. 未宣言の104経路のページを、入力項目なしの形で宣言する。`frontend/src/routes/` の経路と `PageMarker`、`frontend/src/features/` の表示と操作を調べる。ページ ID は `PageMarker` の kind に合わせる（重複している `admin-agent-access` のように一意に定まらない経路だけ `route` を書く）。描画しない経路は `@route` の注記にする。
-7. 全経路を宣言したら、`mise.toml` の `check-ui-pages` と `generate-ui-pages` の実行から `--preview` を外し、生成文書のプレビュー注記を除く。
-8. 七つの視点で差分をレビューし、`mise run verify-changed -- main`、`mise run spec-diff` を実行する。公開 API の生成結果（OpenAPI）が変わっていないことを確かめる。`## 要約` を書き、`mise run move-work-item -- wi-92664` で完了へ移す。
+6. **経路の抽出から ast-grep をなくし、`mise.toml` の固定を外す。** 利用者と合意した方針である。CI の `check-ci-spec` が `check-ui-pages` を実行するため ast-grep の CLI を固定したが、必須ではない。
+   - 経路 ID と URL は、TanStack Router が生成して Git で追跡する `frontend/src/routeTree.gen.ts` の `FileRoutesById` と `fullPaths` から読む。経路ファイルの `createFileRoute(...)` と `createRootRoute(...)` を解析しない。
+   - ページマーカーは、経路ファイルの `<PageMarker kind="…">` を正規表現で読む。kind を式で決めるマーカーは数えない。コメント中のマーカーを誤って数えても、ページ ID との不一致として `resolveRoutes` の検査に現れる。
+   - 経路ごとのマーカーを対応付けるため、`routeTree.gen.ts` の import から経路 ID と経路ファイルの対応を取る。
+   - `ui-pages.ts` の `routeDeclarations` と `pageMarkerRule`、`write-ui-pages.ts` の経路の収集を置き換え、`ui-pages.test.ts` の AST のテストを新しい読み取りのテストにする（偽のマーカーを含む例と、kind が式のマーカーを残す）。
+   - `mise.toml` の `[tools]` から `"aqua:ast-grep/ast-grep" = "0.51.3"` と、その上のコメントを削除する。ast-grep はエージェントの補助 CLI（`setup-cli-tools`）に戻る。
+   - `mise run check-ui-pages` と `mise run check` で、29ページ、139経路、未宣言104経路の結果が変わらないことを確かめる。
+7. 未宣言の104経路のページを、入力項目なしの形で宣言する。`frontend/src/routes/` の経路と `PageMarker`、`frontend/src/features/` の表示と操作を調べる。ページ ID は `PageMarker` の kind に合わせる（重複している `admin-agent-access` のように一意に定まらない経路だけ `route` を書く）。描画しない経路は `@route` の注記にする。
+8. 全経路を宣言したら、`mise.toml` の `check-ui-pages` と `generate-ui-pages` の実行から `--preview` を外し、生成文書のプレビュー注記を除く。
+9. 七つの視点で差分をレビューし、`mise run verify-changed -- main`、`mise run spec-diff` を実行する。公開 API の生成結果（OpenAPI）が変わっていないことを確かめる。`## 要約` を書き、`mise run move-work-item -- wi-92664` で完了へ移す。
 
 #### 再開の手順
 
 - worktree は `/Users/tn/src/idmagic/.worktrees/wi-92664`、ブランチは `work-item/wi-92664`。2026-11-22 にローカルの `main`（`086a2ec2d`）へ rebase 済み。push はしていない。
 - localhost とブラウザーを使わない検査でも、この環境では mise のキャッシュや worktree の git メタデータへの書き込みでサンドボックスの権限が必要だった。
 - 主な検査：`mise run generate-ui-pages -- --preview`、`mise run check-ui-pages`、`mise run test-tools-file -- build-site/src/ui-pages.test.ts build-site/src/render.test.ts check/src/canonical-document-set.test.ts check/src/specification-doc.test.ts`、`mise run typecheck-tools`、`mise run lint-tools`、`mise run check-spec`、`mise run check-links`、`mise run check-work-items`、`mise run check`。
-- `@ast-grep/napi` を tools の依存へ加える操作は、実行環境の判定で拒否された。代わりに `mise.toml` で CLI を固定している。利用者はこの固定について確認を求められている。
+- `@ast-grep/napi` を tools の依存へ加える操作は、実行環境の判定で拒否された。現在は `mise.toml` で CLI を固定しているが、残作業の6で ast-grep への依存ごとなくす。
 
 ### 途中コミットからの引き継ぎ（2026-11-17）
 
