@@ -243,8 +243,8 @@ TypeSpec の具体的な構文と decorator のシグネチャは、代表例の
 | --- | --- |
 | T001 | UI Flows、IFML と Wireflows を調査し、代表例とモデルを実装。保守負荷を踏まえた記述量の確定が残る |
 | T002 | 文書の担当、生成例外、モジュール配下の許可とナビゲーション、モジュールの構成説明と現在の担当モジュールの索引を更新。未定義のモジュールの索引は今後の追加時に扱う |
-| T003 | UI 専用コンパイル、抽出、文書・図の生成と mise タスクを実装。通常検査への組み込みは未実施 |
-| T004 | ID、遷移、フローと操作の対応、経路の双方向照合を実装。ドリフト検査の通常ゲートへの接続と故障検出の追加確認が残る |
+| T003 | UI 専用コンパイル、抽出、文書・図の生成と mise タスクを実装。2026-11-22 に `check-ui-pages` として通常検査へ組み込んだ |
+| T004 | ID、遷移、フローと操作の対応、経路の双方向照合、ページマーカーと入力名の照合、ドリフト検査を実装し通常ゲートへ接続した。`--preview` の除去は全経路の宣言後 |
 | T005 | 29ページの宣言を作成。104経路の分類と、全フォーム・条件付き入力のレビューは未完了 |
 | T006 | 局所テストとプレビューの検証まで。最終差分の集約検査、公開 API の出力の比較、全件の入力・操作レビューは未実施 |
 | T007 | 未着手。本項目に依存する入力バリデーションの WI を、識別子と API プロパティの参照を引き継いで起票する |
@@ -298,22 +298,31 @@ TypeSpec の具体的な構文と decorator のシグネチャは、代表例の
 import の探索は Bun の `scanImports` を試したが、一部の経路ファイルで JSX の警告を例外として投げたため、ast-grep に揃えた。
 
 経路、マーカー、import と入力の抽出は `ast-grep` CLI を呼ぶ。
-`@ast-grep/napi` を tools の依存へ固定する変更は、実行環境の権限判定で拒否されたため未実施であり、CI での再現性の課題は残っている。
+`@ast-grep/napi` を tools の依存へ固定する変更は、実行環境の権限判定で拒否されたため採らなかった。
+代わりに、ほかのゲートのツールと同じく `mise.toml` の `[tools]` へ `aqua:ast-grep/ast-grep` 0.51.3 を固定し、CI でも mise から導入されるようにした。
 
-照合の後も残る作業は、未照合104経路のページの宣言、通常の `check` と `verify-changed` への UI 検査の接続、ast-grep の依存の宣言、T007 の入力バリデーションの WI の起票、最終レビュー、要約と完了への移動である。
+#### 通常ゲートへの接続（2026-11-22）
+
+`mise run check-ui-pages` が `write-ui-pages.ts --preview --check` を実行し、`check` と CI の `check-ci-spec` に含めた。
+`verify-changed` は変更があれば必ず `check` を実行するため、同じ検査が走る。
+全経路を宣言するまでは `--preview` で未宣言の経路だけを許し、宣言済みのページの参照、経路とマーカー、宣言にない入力名、生成文書の古さは拒否する。
+全経路を宣言した時点で `--preview` を外し、生成文書のプレビュー注記を除く。
+生成文書へ一行を足すと `check-ui-pages` が古い生成文書として拒否し、戻すと通ることを確かめた。
+
+残る作業は、未照合104経路のページの宣言、`--preview` の除去、最終レビュー、要約と完了への移動である。
 104経路への展開では、各ページ詳細の「実装と照合していない入力」を、入力項目のレビューの対象にする。
 
 #### 実装の入口と既知の残作業
 
 - `spec/modules/frontend/main.tsp` は UI 専用の入口。`tspconfig.yaml` の `auto-decorators` が必要。HTTP 用の `spec/main.tsp` から UI の宣言を import しない。
 - `models.tsp` が decorator と情報の型、`shared.tsp` が共通状態、`PageData` と値の共有を持つ。主担当は宣言元の `spec/modules/<module>/pages.tsp` から抽出する。
-- `tools/build-site/src/ui-pages.ts` が compiler からの抽出、経路の取得と整合検査を持つ。API の参照と遷移先は TypeSpec が解決する。`routeDeclarations` は `ast-grep` CLI を呼ぶため、CI で再現できる依存の宣言または解析方法への変更が必要。現在のローカル環境には CLI があるが、`tools/package.json` の依存にはない。
+- `tools/build-site/src/ui-pages.ts` が compiler からの抽出、経路の取得と整合検査を持つ。API の参照と遷移先は TypeSpec が解決する。`routeDeclarations` と `ui-inputs.ts` は `ast-grep` CLI を呼び、そのバージョンは `mise.toml` の `[tools]` が固定する。
 - `ui-page-documents.ts` が Markdown の生成、`ui-flow.ts` が主要フローの Mermaid を担当する。4表示までは横、5表示以上は縦に配置する試作。全件の図を自動生成するのではなく、`flow`、`view`、`flowLink` で主要手順を選ぶ。
 - `write-ui-pages.ts` が書き出しと `--check`。`--preview` は未照合経路だけを許し、宣言内の不正な参照・状態・操作とフローの不一致は拒否する。現時点で通常モードは未照合の経路のため失敗する。これを成功扱いにしない。
 - `tools/build-site/src/render.ts` がモジュール配下のナビゲーション、表と白黒の図を描画する。`tools/workspace/src/document-layout.ts` が配置を許可する。
 - `tools/check/src/specification-doc.ts` も新しい生成文書を散文として受け付ける。配置の許可だけを変えると `check-spec` の文書検査で拒否されたため、分類と回帰テストを加えた。
 - 生成 Markdown は追跡するが、HTML の `site/` は追跡しない。全生成文書に途中プレビューの注記がある。`build-site` 自体は UI の再生成・ドリフト検査をまだ行わない。
-- 通常の `check` への UI 検査の登録、`check-spec`・`verify-changed` での実行経路、ツールの入力依存の宣言は未接続。未接続のまま完了にしない。
+- 通常の `check`、CI の `check-ci-spec` と `verify-changed` から `check-ui-pages` が走る。全経路の宣言までは `--preview` 付きであり、このまま完了にしない。
 - 今回の通常 API の生成入口は変えていないが、OpenAPI の比較を最終差分で実行する。製品の `frontend/src/` と `backend/` の振る舞いは変更していない。
 
 未照合の内訳は、本人用・管理用 API トークン、グループ、Agent、アプリケーション管理、認可、MCP、外部 IdP、Entra、ディレクトリ連携、ライフサイクル、設定、テナント、ワークロード ID、監査、ジョブ、鍵などである。
@@ -384,7 +393,7 @@ localhost の待受けとブラウザー起動を要する検査は初回から�
 - [ ] T004 [Tooling] 経路の双方向照合、参照と識別子の検査、生成文書のドリフト検査を加える。
 - [ ] T005 [Docs] 全領域のページ、共有要素、フォームと入力項目、状態と遷移を定義し、設計文書を生成する。
 - [ ] T006 [Verify] 機械検査の故障検出と公開 API の生成結果を確認し、ページ内の入力と操作の網羅性をレビューする。
-- [ ] T007 [Plan] 入力バリデーション規則を定義する別の作業項目を、識別子と出典を引き継いで起票する。
+- [x] T007 [Plan] 入力バリデーション規則を定義する別の作業項目を、識別子と出典を引き継いで起票する。[wi-24528](wi-24528-declare-ui-input-validation-rules.md) として起票した。束縛先の API プロパティの制約は導出し、UI 固有の規則だけを宣言して、実装の `formSchema` と照合する。
 
 ## 検証
 
