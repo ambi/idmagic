@@ -52,6 +52,15 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | --- | --- | --- | --- | --- | --- | --- |
 | ユーザー ID | admin-user-detail/parameters/id | パスパラメーター | string | URL の id | 常時 | 取得と管理操作の対象 ID |
 
+## 実装と照合していない入力
+
+次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
+
+| ファイル | 部品の数 |
+| --- | --- |
+| [`features/admin-users/AdminUserDialogs.tsx`](../../../../frontend/src/features/admin-users/AdminUserDialogs.tsx) | 4 |
+| [`features/admin-users/AdminUsersPrimitives.tsx`](../../../../frontend/src/features/admin-users/AdminUsersPrimitives.tsx) | 1 |
+
 ## 操作と結果の詳細
 
 | 操作 | 起点 | 契機 | 条件 | API | 結果 | 到達先 | データ |

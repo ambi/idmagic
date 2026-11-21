@@ -30,7 +30,7 @@ model AuthenticationPages {
     @form(#{name: "第二要素の確認", commit: "認証"}) factor: {
       @field(#{label: "認証手段", control: "選択", initial: "利用可能な最初の手段", condition: "利用可能な手段が複数ある場合", mapping: "TOTP、WebAuthn、回復コードの UI の切り替え"}) method: string;
       @field(#{label: "TOTP のコード", control: "text", condition: "TOTP を選択した場合"}) @bind(IdMagic.Contract.BrowserTotpRequest.code) code: unknown;
-      @field(#{label: "回復コード", control: "text", condition: "回復コードを選択した場合"}) @bind(IdMagic.Contract.BrowserRecoveryCodeRequest.code) recovery: unknown;
+      @field(#{label: "回復コード", control: "text", name: "recovery", condition: "回復コードを選択した場合"}) @bind(IdMagic.Contract.BrowserRecoveryCodeRequest.code) recovery: unknown;
       @field(#{label: "デバイスを記憶する", control: "checkbox", initial: "false", condition: "ポリシーが許し TOTP またはパスキーを選択した場合"}) @bind(IdMagic.Contract.BrowserTotpRequest.remember_device) rememberDevice: unknown;
     };
   }, {

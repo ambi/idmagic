@@ -65,10 +65,12 @@ model FormInfo {
  * initial の既定は「空」、condition の既定は「常時」。
  * mapping は API プロパティへ束縛しない入力と、束縛先へ変換して送る入力だけに書く。
  * 束縛した入力の型は unknown と書き、束縛先のプロパティから導く。
+ * name は実装のフォーム部品の name 属性で、束縛先のプロパティ名（なければ宣言のプロパティ名）と異なる場合だけ書く。
  */
 model FieldInfo {
   label: string;
   control: string;
+  name?: string;
   initial?: string;
   condition?: string;
   mapping?: string;

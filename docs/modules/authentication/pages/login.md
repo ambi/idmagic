@@ -44,6 +44,14 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | 認証後の戻り先 | login/parameters/returnTo | URL パラメーター | string | URL の return_to | 指定された場合 | 同じテナントの許可された戻り先 |
 | Windows 統合認証の抑止 | login/parameters/negotiate | URL パラメーター | string | URL の negotiate | Windows 統合認証を提供する場合 | skip なら統合認証を自動実行しない |
 
+## 実装と照合していない入力
+
+次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。
+
+| ファイル | 部品の数 |
+| --- | --- |
+| [`features/auth-flow/MfaEnrollmentPage.tsx`](../../../../frontend/src/features/auth-flow/MfaEnrollmentPage.tsx) | 1 |
+
 ## 操作と結果の詳細
 
 | 操作 | 起点 | 契機 | 条件 | API | 結果 | 到達先 | データ |

@@ -31,13 +31,16 @@ type PageInfo = {
 type FieldInfo = {
   label: string
   control: string
+  /** 実装の name 属性。束縛先のプロパティ名と異なる場合だけ宣言する。 */
+  name?: string
   initial: string
   condition: string
   /** 束縛先のプロパティ名と同じ値を送る入力では省く。 */
   mapping?: string
   repeated?: boolean
 }
-type UiField = FieldInfo & { id: string; type: string; binding?: string }
+/** name は実装の部品と照合する名前で、束縛先のプロパティ名、なければ宣言のプロパティ名。 */
+type UiField = FieldInfo & { id: string; name: string; type: string; binding?: string }
 type UiForm = {
   id: string
   name: string
@@ -171,6 +174,7 @@ export function extractUiCatalog(program: Program, root: string): UiCatalog {
         ...info,
         id,
         type: getTypeName(type),
+        name: info.name ?? binding?.name ?? property.name,
         binding: binding ? `${getTypeName(binding.model!)}.${binding.name}` : undefined,
       }
     })

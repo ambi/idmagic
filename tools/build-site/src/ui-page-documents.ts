@@ -67,7 +67,12 @@ function summary(pages: readonly UiPage[], path: string): string[] {
   ]
 }
 
-function detail(page: UiPage, catalog: UiCatalog, preview: boolean): string {
+function detail(
+  page: UiPage,
+  catalog: UiCatalog,
+  preview: boolean,
+  unidentified: Record<string, number> | undefined,
+): string {
   const path = pagePath(page)
   const categoryPath = `${root}/${page.area}/${page.category}/README.md`
   const modulePath = `docs/modules/${page.module}/pages/README.md`
@@ -119,6 +124,23 @@ function detail(page: UiPage, catalog: UiCatalog, preview: boolean): string {
       ? fieldsTable(page.parameters)
       : ['ページ固有のパラメーターはない。', '']),
   )
+  if (unidentified && Object.keys(unidentified).length) {
+    lines.push(
+      '## 実装と照合していない入力',
+      '',
+      '次のフォーム部品は静的な `name` 属性を持たないため、上の入力項目との対応を機械的に確かめていない。ページを変更するときは、これらの部品を入力項目と突き合わせる。',
+      '',
+      '| ファイル | 部品の数 |',
+      '| --- | --- |',
+      ...Object.entries(unidentified)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(
+          ([file, count]) =>
+            `| ${link(path, file, `\`${file.replace(/^frontend\/src\//, '')}\``)} | ${count} |`,
+        ),
+      '',
+    )
+  }
   lines.push(
     '## 操作と結果の詳細',
     '',
@@ -153,7 +175,11 @@ function detail(page: UiPage, catalog: UiCatalog, preview: boolean): string {
 /** UI の作業カテゴリで一覧を分け、詳細は一つのページを一つの文書にする。 */
 export function renderUiDocuments(
   catalog: UiCatalog,
-  options: { preview?: boolean } = {},
+  options: {
+    preview?: boolean
+    /** ページ ID ごとの、静的な name を持たないフォーム部品のファイルと数。 */
+    unidentified?: ReadonlyMap<string, Record<string, number>>
+  } = {},
 ): Map<string, string> {
   const preview = options.preview ?? false
   const documents = new Map<string, string>()
@@ -208,7 +234,10 @@ export function renderUiDocuments(
       )
       documents.set(categoryPath, categoryLines.join('\n'))
       for (const page of categoryPages)
-        documents.set(pagePath(page), detail(page, catalog, preview))
+        documents.set(
+          pagePath(page),
+          detail(page, catalog, preview, options.unidentified?.get(page.id)),
+        )
     }
     documents.set(areaPath, `${areaLines.join('\n')}\n`)
   }
