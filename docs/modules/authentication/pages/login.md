@@ -34,8 +34,8 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| ユーザー名 | login/credentials/username | text | string | 空 | 資格情報を使う場合 | IdMagic.Authentication.Operations.SubmitBrowserLoginHttpRequest.username：username |
-| パスワード | login/credentials/password | password | string | 空 | 資格情報を使う場合 | IdMagic.Authentication.Operations.SubmitBrowserLoginHttpRequest.password：password |
+| ユーザー名 | login/credentials/username | text | string | 空 | 資格情報を使う場合 | IdMagic.Authentication.Operations.SubmitBrowserLoginHttpRequest.username |
+| パスワード | login/credentials/password | password | string | 空 | 資格情報を使う場合 | IdMagic.Authentication.Operations.SubmitBrowserLoginHttpRequest.password |
 
 ## パラメーター
 

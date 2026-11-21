@@ -34,8 +34,8 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| ユーザーコード | device/device/code | text | string | 表示 API の user_code。なければ空 | 送信中以外 | IdMagic.Contract.BrowserDeviceRequest.user_code：BrowserDeviceRequest.user_code |
-| 認可の判断 | device/device/action | 許可・拒否ボタン | string | 未選択 | コードを入力した場合 | IdMagic.Contract.BrowserDeviceRequest.action：BrowserDeviceRequest.action |
+| ユーザーコード | device/device/code | text | string | 表示 API の user_code。なければ空 | 送信中以外 | IdMagic.Contract.BrowserDeviceRequest.user_code |
+| 認可の判断 | device/device/action | 許可・拒否ボタン | string | 未選択 | コードを入力した場合 | IdMagic.Contract.BrowserDeviceRequest.action |
 
 ## パラメーター
 

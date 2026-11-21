@@ -34,7 +34,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 確認トークン | email-verify/parameters/token | URL | string | token | メールのリンクから受け取る | IdMagic.Contract.AccountEmailChangeConfirm.token：AccountEmailChangeConfirm.token。利用者は編集しない |
+| 確認トークン | email-verify/parameters/token | URL | string | token | メールのリンクから受け取る | IdMagic.Contract.AccountEmailChangeConfirm.token：利用者は編集しない |
 
 ## 操作と結果の詳細
 

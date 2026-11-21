@@ -34,12 +34,12 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| ユーザー名 | admin-user-edit/profile/preferred_username | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.preferred_username：preferred_username |
-| 表示名 | admin-user-edit/profile/name | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.name：name |
-| 名 | admin-user-edit/profile/given_name | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.given_name：given_name |
-| 姓 | admin-user-edit/profile/family_name | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.family_name：family_name |
-| メールアドレス | admin-user-edit/profile/email | email | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.email：email |
-| メールの確認状態 | admin-user-edit/profile/email_verified | checkbox | boolean | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.email_verified：email_verified |
+| ユーザー名 | admin-user-edit/profile/preferred_username | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.preferred_username |
+| 表示名 | admin-user-edit/profile/name | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.name |
+| 名 | admin-user-edit/profile/given_name | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.given_name |
+| 姓 | admin-user-edit/profile/family_name | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.family_name |
+| メールアドレス | admin-user-edit/profile/email | email | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.email |
+| メールの確認状態 | admin-user-edit/profile/email_verified | checkbox | boolean | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.email_verified |
 | ロール | admin-user-edit/profile/roles | text | string | 現在のユーザーの値 | 常時 | IdMagic.Contract.AdminUserUpdateRequest.roles：カンマ区切りを roles 配列へ変換する |
 | カスタム属性 | admin-user-edit/profile/attributes | 属性の型に応じた入力 | Record&lt;unknown&gt; | 現在のユーザーの値 | テナントに属性定義がある場合 | IdMagic.Contract.AdminUserUpdateRequest.attributes：定義ごとの入力を属性マップへ変換する |
 

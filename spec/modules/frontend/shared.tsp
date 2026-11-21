@@ -13,8 +13,8 @@ const accountContext = #{area: Area.account, actor: "認証済みの本人", con
 const adminContext = #{area: Area.admin, actor: "テナント管理者", context: "対象テナントの管理権限で参照し、操作の認可は API が判断する。", references: #["[共通の UI 規則](user-interface.md)"]};
 const systemContext = #{area: Area.system, actor: "システム管理者", context: "制御プレーンの管理権限と必要な認証保証で参照する。", references: #["[共通の UI 規則](user-interface.md)"]};
 const browserContext = #{area: Area.authentication, actor: "認可フローの利用者", context: "対象テナントのブラウザートランザクションを使う。CSRF は表示 API から得る。", references: #["[共通の UI 規則](user-interface.md)"]};
-const navigation = #{from: "ready", toState: "ready", condition: "リンクを選択したとき", mode: "navigation", data: "対象の識別子とテナントの文脈"};
-const update = #{from: "ready", toState: "ready", mode: "data", data: "対象の識別子と操作の入力値"};
+const navigation = #{condition: "リンクを選択したとき", data: "対象の識別子とテナントの文脈"};
+const update = #{mode: "data", data: "対象の識別子と操作の入力値"};
 
 /** 共通の状態。個別のページは必要な状態をこのモデルへ加える。 */
 model ReadStates {

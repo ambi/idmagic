@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'bun:test'
 import { createTestHost } from '@typespec/compiler/testing'
 import { resolveCompilerOptions } from '@typespec/compiler'
-import { extractUiCatalog, routeDeclarations, validateUiCatalog } from './ui-pages.ts'
+import {
+  extractUiCatalog,
+  resolveRoutes,
+  routeDeclarations,
+  type UiRoute,
+  validateUiCatalog,
+} from './ui-pages.ts'
 import { renderUiDocuments } from './ui-page-documents.ts'
 import { renderDocumentationSite } from './render.ts'
 import { Window } from 'happy-dom'
@@ -35,13 +41,17 @@ async function catalog(source: string) {
 }
 
 const example = `
+model Request { display_name: string; }
 model States { ready: "内容を表示する。"; submitting: "送信する。"; success: "保存した内容を表示する。"; }
 model Shared {
   @field(#{label: "名前", control: "text", initial: "現在値", condition: "常時", mapping: "入力値"})
   name: string;
+  @field(#{label: "表示名", control: "text"})
+  @bind(Request.display_name)
+  displayName: unknown;
 }
 model Pages {
-  @page(#{id: "example", name: "例", area: Area.admin, route: "/example", path: "/example", actor: "管理者", entry: "一覧", context: "テナント", purpose: "設定を編集する", content: #["現在値"], references: #[]})
+  @page(#{id: "example", name: "例", area: Area.admin, actor: "管理者", entry: "一覧", context: "テナント", purpose: "設定を編集する", content: #["現在値"], references: #[]})
   @category(Category.users)
   example: {
     parameters: {};
@@ -50,6 +60,8 @@ model Pages {
     actions: {
       @transition(#{event: "保存", from: "ready", condition: "成功", result: "保存した内容", toState: "success", data: "入力値", mode: "data"}, Pages.example)
       save: unknown;
+      @transition(#{event: "戻る"}, Pages.example)
+      back: unknown;
     };
   };
 }
@@ -59,14 +71,82 @@ model SaveFlow {
   edit: unknown;
   @view(#{state: "success", visible: #["保存した名前"]}, Pages.example)
   saved: unknown;
-  @flowLink(#{trigger: "名前を入力して保存"}, SaveFlow.edit, SaveFlow.saved, Pages.example::type.actions::type.save)
+  @flowLink(#{trigger: "名前を入力して保存", action: "save"}, SaveFlow.edit, SaveFlow.saved)
   save: unknown;
 }
 `
 
+const exampleRoutes = [{ id: '/example', path: '/example', markers: ['example'] }]
+const resolved = async (source = example, routes: UiRoute[] = exampleRoutes) =>
+  resolveRoutes(await catalog(source), routes).catalog
+
 describe('UI ページの設計', () => {
+  it('経路を実装のページマーカーから解決し、URL を手書きしない', async () => {
+    const result = resolveRoutes(await catalog(example), [
+      { id: '/other', path: '/other', markers: ['other'] },
+      { id: '/admin/users_/$id/', path: '/admin/users/$id', markers: ['example'] },
+    ])
+    expect(result.findings).toEqual([])
+    expect(result.catalog.pages[0]).toMatchObject({
+      route: '/admin/users_/$id/',
+      path: '/admin/users/$id',
+    })
+  })
+
+  it('ページマーカーが一つの経路に定まらなければ、明示の route を要求する', async () => {
+    const source = await catalog(example)
+    expect(resolveRoutes(source, []).findings).toEqual([
+      expect.stringContaining('ページマーカーに一致する経路がない'),
+    ])
+    const twice = [
+      { id: '/a', path: '/a', markers: ['example'] },
+      { id: '/b', path: '/b', markers: ['example'] },
+    ]
+    expect(resolveRoutes(source, twice).findings).toEqual([
+      expect.stringContaining('同じページマーカーを持つ経路が複数ある'),
+    ])
+    const explicit = await catalog(example.replace('id: "example",', 'id: "example", route: "/b",'))
+    const chosen = resolveRoutes(explicit, twice)
+    expect(chosen.findings).toEqual([])
+    expect(chosen.catalog.pages[0]?.path).toBe('/b')
+  })
+
+  it('明示した経路のページマーカーが別のページを指せば拒否する', async () => {
+    const explicit = await catalog(example.replace('id: "example",', 'id: "example", route: "/a",'))
+    expect(
+      resolveRoutes(explicit, [{ id: '/a', path: '/a', markers: ['renamed'] }]).findings,
+    ).toEqual([expect.stringContaining('ページ ID とページマーカーが異なる')])
+    expect(resolveRoutes(explicit, [{ id: '/a', path: '/a', markers: [] }]).findings).toEqual([])
+  })
+
+  it('束縛した API プロパティから型を導き、省略した入力と遷移の既定値を補う', async () => {
+    const page = (await resolved()).pages[0]!
+    expect(page.forms[0]?.fields[1]).toMatchObject({
+      id: 'example/edit/displayName',
+      type: 'string',
+      binding: 'Request.display_name',
+      initial: '空',
+      condition: '常時',
+    })
+    expect(page.forms[0]?.fields[1]?.mapping).toBeUndefined()
+    expect(page.actions[1]).toMatchObject({
+      from: 'ready',
+      toState: 'ready',
+      condition: '常時',
+      mode: 'navigation',
+      data: 'なし',
+      result: '移動先を表示する',
+    })
+  })
+
+  it('API へ束縛しない入力には mapping を要求する', async () => {
+    await expect(
+      catalog(example.replace(', initial: "現在値", condition: "常時", mapping: "入力値"', '')),
+    ).rejects.toThrow('mapping')
+  })
+
   it('詳細を主担当モジュールのナビゲーションに置き、全体のカテゴリから参照する', async () => {
-    const result = await catalog(example)
+    const result = await resolved()
     result.moduleNames = { 'identity-management': 'IdManagement', frontend: 'Frontend' }
     const sources = renderUiDocuments(result)
     const site = renderDocumentationSite({
@@ -105,7 +185,7 @@ describe('UI ページの設計', () => {
   })
 
   it('共有入力を利用ページの ID で展開し、操作から結果へのフローを生成する', async () => {
-    const result = await catalog(example)
+    const result = await resolved()
     expect(result.pages[0]?.forms[0]?.fields[0]?.id).toBe('example/edit/name')
     const documents = renderUiDocuments(result)
     expect(result.pages[0]?.module).toBe('identity-management')
@@ -129,24 +209,27 @@ describe('UI ページの設計', () => {
     expect(documents.get('docs/modules/identity-management/pages/README.md')).toContain(
       '設定を保存する',
     )
-    expect(validateUiCatalog(result, [{ id: '/example', path: '/example' }])).toEqual([])
+    expect(
+      validateUiCatalog(result, [{ id: '/example', path: '/example', markers: ['example'] }]),
+    ).toEqual([])
   })
 
   it('経路の欠落を双方向に検出する', async () => {
-    const result = await catalog(example)
-    expect(validateUiCatalog(result, [{ id: '/missing', path: '/missing' }])).toEqual(
+    const routes = [{ id: '/missing', path: '/missing', markers: [] }]
+    const result = resolveRoutes(await catalog(example), routes)
+    expect([...result.findings, ...validateUiCatalog(result.catalog, routes)]).toEqual(
       expect.arrayContaining([
         expect.stringContaining('/missing'),
-        expect.stringContaining('/example'),
+        expect.stringContaining('example'),
       ]),
     )
   })
 
   it('途中プレビューでは未棚卸しの実装経路だけを許し、壊れた宣言は拒否する', async () => {
-    const result = await catalog(example)
+    const result = await resolved()
     const routes = [
-      { id: '/example', path: '/example' },
-      { id: '/pending', path: '/pending' },
+      { id: '/example', path: '/example', markers: ['example'] },
+      { id: '/pending', path: '/pending', markers: ['pending'] },
     ]
     expect(validateUiCatalog(result, routes, { allowUnassignedRoutes: true })).toEqual([])
     result.pages[0]!.actions[0]!.from = 'absent'
@@ -156,9 +239,11 @@ describe('UI ページの設計', () => {
   })
 
   it('利用手順と実際の操作の到達先が違う場合や、入口から到達できない表示を拒否する', async () => {
-    const result = await catalog(example)
+    const result = await resolved()
     result.flows[0]!.links[0]!.to = 'edit'
-    expect(validateUiCatalog(result, [{ id: '/example', path: '/example' }])).toEqual(
+    expect(
+      validateUiCatalog(result, [{ id: '/example', path: '/example', markers: ['example'] }]),
+    ).toEqual(
       expect.arrayContaining([
         expect.stringContaining('起点または到達先が一致しない'),
         expect.stringContaining('到達できない表示'),
@@ -166,12 +251,21 @@ describe('UI ページの設計', () => {
     )
   })
 
+  it('利用手順が起点のページにない操作名を参照すれば拒否する', async () => {
+    const result = await resolved(example.replace('action: "save"', 'action: "absent"'))
+    expect(validateUiCatalog(result, exampleRoutes)).toEqual(
+      expect.arrayContaining([expect.stringContaining('起点または到達先が一致しない')]),
+    )
+  })
+
   it('同じ ID のページと未知の起点状態を拒否する', async () => {
-    const result = await catalog(example)
+    const result = await resolved()
     const page = result.pages[0]!
     result.pages.push({ ...page })
     page.actions[0]!.from = 'absent'
-    expect(validateUiCatalog(result, [{ id: '/example', path: '/example' }])).toEqual(
+    expect(
+      validateUiCatalog(result, [{ id: '/example', path: '/example', markers: ['example'] }]),
+    ).toEqual(
       expect.arrayContaining([expect.stringContaining('重複'), expect.stringContaining('absent')]),
     )
   })
@@ -182,12 +276,20 @@ describe('UI ページの設計', () => {
     )
   })
 
-  it('経路を AST から取得し、コメントと文字列に含む偽の宣言を数えない', () => {
+  it('経路とページマーカーを AST から取得し、コメントと文字列に含む偽の宣言を数えない', () => {
     const routes = routeDeclarations(`
-      // createFileRoute('/fake')
+      // createFileRoute('/fake') <PageMarker kind="fake">
       const label = "createFileRoute('/fake2')";
       export const Route = createFileRoute('/admin/users_/$id/edit')({ component: View });
+      function View() {
+        return <PageMarker kind="admin-user-edit"><Form /></PageMarker>
+      }
+      function Dynamic({ kind }) {
+        return <PageMarker kind={kind} />
+      }
     `)
-    expect(routes).toEqual([{ id: '/admin/users_/$id/edit', path: '/admin/users/$id/edit' }])
+    expect(routes).toEqual([
+      { id: '/admin/users_/$id/edit', path: '/admin/users/$id/edit', markers: ['admin-user-edit'] },
+    ])
   })
 })

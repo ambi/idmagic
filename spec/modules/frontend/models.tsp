@@ -35,13 +35,16 @@ enum Category {
   @doc("入口と共通表示") navigation: "navigation",
 }
 
-/** ページ一覧と詳細に共通する設計情報。 */
+/**
+ * ページ一覧と詳細に共通する設計情報。
+ * id は実装の PageMarker の kind と同じ値にし、経路と URL は実装から導く。
+ * 同じ kind の経路が複数ある、または kind を動的に決める経路だけ route を書く。
+ */
 model PageInfo {
   id: string;
   name: string;
   area: Area;
-  route: string;
-  path: string;
+  route?: string;
   actor: string;
   entry: string;
   context: string;
@@ -50,32 +53,41 @@ model PageInfo {
   references: string[];
 }
 
-/** ページ内のフォームまたは独立した操作単位。 */
+/** ページ内のフォームまたは独立した操作単位。condition の既定は「常時」。 */
 model FormInfo {
   name: string;
-  condition: string;
+  condition?: string;
   commit: string;
 }
 
-/** 検証規則を含まない入力項目の設計情報。 */
+/**
+ * 検証規則を含まない入力項目の設計情報。
+ * initial の既定は「空」、condition の既定は「常時」。
+ * mapping は API プロパティへ束縛しない入力と、束縛先へ変換して送る入力だけに書く。
+ * 束縛した入力の型は unknown と書き、束縛先のプロパティから導く。
+ */
 model FieldInfo {
   label: string;
   control: string;
-  initial: string;
-  condition: string;
-  mapping: string;
+  initial?: string;
+  condition?: string;
+  mapping?: string;
   repeated?: boolean;
 }
 
-/** 契機から結果への一つの分岐。 */
+/**
+ * 契機から結果への一つの分岐。
+ * 省略時は ready から ready への無条件の移動とし、渡すデータはない。
+ * mode が data の場合は result を書く。
+ */
 model TransitionInfo {
   event: string;
-  from: string;
-  condition: string;
-  result: string;
-  toState: string;
-  data: string;
-  mode: "navigation" | "data";
+  from?: string;
+  condition?: string;
+  result?: string;
+  toState?: string;
+  data?: string;
+  mode?: "navigation" | "data";
 }
 
 /** 描画しない経路も照合対象に残す。 */
@@ -112,6 +124,8 @@ model FlowViewInfo {
 model FlowLinkInfo {
   trigger: string;
   alternate?: boolean;
+  /** 起点の表示のページが持つ操作の名前。生成時に存在と到達先の一致を検査する。 */
+  action?: string;
 }
 
 /** モジュールの主要な利用手順。 */
@@ -119,7 +133,7 @@ auto dec flow(target: Model, info: valueof FlowInfo);
 /** 利用者が見るページや外部の表示。 */
 auto dec view(target: ModelProperty, info: valueof FlowViewInfo, page: ModelProperty);
 /** 同じ手順内の表示をつなぎ、既存の操作を参照する。 */
-auto dec flowLink(target: ModelProperty, info: valueof FlowLinkInfo, from: ModelProperty, to: ModelProperty, action?: ModelProperty);
+auto dec flowLink(target: ModelProperty, info: valueof FlowLinkInfo, from: ModelProperty, to: ModelProperty);
 
 /** 一覧に載せるページ。 */
 auto dec page(target: ModelProperty, info: valueof PageInfo);

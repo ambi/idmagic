@@ -41,7 +41,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | 操作 | 起点 | 契機 | 条件 | API | 結果 | 到達先 | データ |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | account | ready | アカウントへログイン | signed-out | UI 内の操作 | 本人のポータルの認可を開始する | [アカウントの概要](account-home.md) / ready | 対象の識別子とテナントの文脈 |
-| admin | ready | 管理コンソールへログイン | signed-out | UI 内の操作 | 管理コンソールの認可を開始する | [管理ダッシュボード](admin-home.md) / ready | 対象の識別子とテナントの文脈 |
+| admin | ready | 管理コンソールへログイン | signed-out | UI 内の操作 | 管理コンソールの認可を開始する | [管理ダッシュボード](admin-dashboard.md) / ready | 対象の識別子とテナントの文脈 |
 
 ## 表示状態
 

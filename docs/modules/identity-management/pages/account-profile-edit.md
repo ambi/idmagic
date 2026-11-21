@@ -34,9 +34,9 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 表示名 | account-profile-edit/profile/name | text | string | profile.name | 常時 | IdMagic.Contract.AccountProfileUpdateRequest.name：name |
-| 名 | account-profile-edit/profile/givenName | text | string | profile.given_name | 常時 | IdMagic.Contract.AccountProfileUpdateRequest.given_name：given_name |
-| 姓 | account-profile-edit/profile/familyName | text | string | profile.family_name | 常時 | IdMagic.Contract.AccountProfileUpdateRequest.family_name：family_name |
+| 表示名 | account-profile-edit/profile/name | text | string | profile.name | 常時 | IdMagic.Contract.AccountProfileUpdateRequest.name |
+| 名 | account-profile-edit/profile/givenName | text | string | profile.given_name | 常時 | IdMagic.Contract.AccountProfileUpdateRequest.given_name |
+| 姓 | account-profile-edit/profile/familyName | text | string | profile.family_name | 常時 | IdMagic.Contract.AccountProfileUpdateRequest.family_name |
 | 編集可能なカスタム属性（繰り返し） | account-profile-edit/profile/attributes | 定義の型に応じた text、number、date、checkbox。配列は区切り入力 | Record&lt;unknown&gt; | profile.attributes の同じキー | profile.editable_attributes に含まれる定義ごとに表示 | IdMagic.Contract.AccountProfileUpdateRequest.attributes：attributes[key]。文字列表現を定義の型の AttributeValue へ変換する |
 
 ## パラメーター

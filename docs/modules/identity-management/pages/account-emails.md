@@ -34,7 +34,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 新しいメールアドレス | account-emails/change/email | email | string | 空 | 対象のフォームを操作するとき | IdMagic.Contract.AccountEmailChangeRequest.new_email：new_email。確認リンクの完了前は現在のアドレスを変えない |
+| 新しいメールアドレス | account-emails/change/email | email | string | 空 | 対象のフォームを操作するとき | IdMagic.Contract.AccountEmailChangeRequest.new_email：確認リンクの完了前は現在のアドレスを変えない |
 
 ## パラメーター
 

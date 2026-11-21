@@ -34,7 +34,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 確認コード | mfa-enrollment/confirm/code | text | string | 空 | 対象のフォームを操作するとき | IdMagic.Contract.BrowserMfaEnrollmentConfirmRequest.code：BrowserMfaEnrollmentConfirmRequest.code |
+| 確認コード | mfa-enrollment/confirm/code | text | string | 空 | 対象のフォームを操作するとき | IdMagic.Contract.BrowserMfaEnrollmentConfirmRequest.code |
 
 ## パラメーター
 

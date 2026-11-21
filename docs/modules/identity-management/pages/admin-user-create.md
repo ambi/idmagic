@@ -34,11 +34,11 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| ユーザー名 | admin-user-create/create/preferredUsername | text | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.preferred_username：preferred_username |
-| 表示名 | admin-user-create/create/name | text | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.name：name |
-| メールアドレス | admin-user-create/create/email | email | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.email：email |
-| メールを確認済みにする | admin-user-create/create/emailVerified | checkbox | boolean | false | 常時 | IdMagic.Contract.AdminUserCreateRequest.email_verified：email_verified |
-| 初期パスワード | admin-user-create/create/password | password | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.password：password |
+| ユーザー名 | admin-user-create/create/preferredUsername | text | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.preferred_username |
+| 表示名 | admin-user-create/create/name | text | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.name |
+| メールアドレス | admin-user-create/create/email | email | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.email |
+| メールを確認済みにする | admin-user-create/create/emailVerified | checkbox | boolean | false | 常時 | IdMagic.Contract.AdminUserCreateRequest.email_verified |
+| 初期パスワード | admin-user-create/create/password | password | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.password |
 | 初期ロール | admin-user-create/create/roles | text | string | 空 | 常時 | IdMagic.Contract.AdminUserCreateRequest.roles：カンマ区切りを roles 配列へ変換 |
 
 ## パラメーター

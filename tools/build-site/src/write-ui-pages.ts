@@ -3,12 +3,12 @@ import { mkdir, rm } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { createWorkspaceSnapshot } from '../../workspace/src/workspace.ts'
 import { modulePageDocument } from '../../workspace/src/document-layout.ts'
-import { loadUiCatalog, routeDeclarations, validateUiCatalog } from './ui-pages.ts'
+import { loadUiCatalog, resolveRoutes, routeDeclarations, validateUiCatalog } from './ui-pages.ts'
 import { renderUiDocuments } from './ui-page-documents.ts'
 
 const root = resolve(import.meta.dir, '../../..')
 const snapshot = createWorkspaceSnapshot(root)
-const catalog = await loadUiCatalog(root)
+const declared = await loadUiCatalog(root)
 const routes = (
   await Promise.all(
     (
@@ -21,7 +21,11 @@ const routes = (
   )
 ).flat()
 const preview = process.argv.includes('--preview')
-const findings = validateUiCatalog(catalog, routes, { allowUnassignedRoutes: preview })
+const { catalog, findings: unresolved } = resolveRoutes(declared, routes)
+const findings = [
+  ...unresolved,
+  ...validateUiCatalog(catalog, routes, { allowUnassignedRoutes: preview }),
+]
 if (findings.length) throw new Error(findings.join('\n'))
 const documents = renderUiDocuments(catalog, { preview })
 const existing = [

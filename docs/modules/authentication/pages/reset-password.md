@@ -34,13 +34,13 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 新しいパスワード | reset-password/reset/newPassword | password | string | 空 | 有効な再設定トークンがある場合 | IdMagic.Contract.BrowserResetPasswordRequest.new_password：new_password |
+| 新しいパスワード | reset-password/reset/newPassword | password | string | 空 | 有効な再設定トークンがある場合 | IdMagic.Contract.BrowserResetPasswordRequest.new_password |
 
 ## パラメーター
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 再設定トークン | reset-password/parameters/token | URL パラメーター | string | URL の token | メールのリンクから開く場合 | IdMagic.Contract.BrowserResetPasswordRequest.token：token |
+| 再設定トークン | reset-password/parameters/token | URL パラメーター | string | URL の token | メールのリンクから開く場合 | IdMagic.Contract.BrowserResetPasswordRequest.token |
 
 ## 操作と結果の詳細
 

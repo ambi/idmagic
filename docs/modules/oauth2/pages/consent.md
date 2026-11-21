@@ -34,7 +34,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 同意の判断 | consent/decision/action | 許可・拒否ボタン | "allow" &#124; "deny" | 未選択 | 送信中以外 | IdMagic.Contract.BrowserConsentRequest.action：BrowserConsentRequest.action |
+| 同意の判断 | consent/decision/action | 許可・拒否ボタン | string | 未選択 | 送信中以外 | IdMagic.Contract.BrowserConsentRequest.action |
 
 ## パラメーター
 

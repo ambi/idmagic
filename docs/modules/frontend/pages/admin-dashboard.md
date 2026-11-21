@@ -10,7 +10,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 分類：[管理コンソール](../../../design/application/pages/admin/README.md) / [入口と共通表示](../../../design/application/pages/admin/navigation/README.md)
 
-`admin-home`　`/admin`
+`admin-dashboard`　`/admin`
 
 テナントの概要と管理操作への入口を示す
 

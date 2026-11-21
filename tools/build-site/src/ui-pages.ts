@@ -20,8 +20,7 @@ type PageInfo = {
   id: string
   name: string
   area: string
-  route: string
-  path: string
+  route?: string
   actor: string
   entry: string
   context: string
@@ -34,7 +33,8 @@ type FieldInfo = {
   control: string
   initial: string
   condition: string
-  mapping: string
+  /** 束縛先のプロパティ名と同じ値を送る入力では省く。 */
+  mapping?: string
   repeated?: boolean
 }
 type UiField = FieldInfo & { id: string; type: string; binding?: string }
@@ -65,6 +65,9 @@ type UiDestination = {
 }
 type RouteNote = { route: string; kind: string; reason: string; destination?: string }
 type UiPage = PageInfo & {
+  /** resolveRoutes が実装の経路から埋めるまでは空文字列。 */
+  route: string
+  path: string
   module: string
   category: string
   categoryName: string
@@ -95,7 +98,8 @@ export type UiCatalog = {
     }>
   }>
 }
-export type UiRoute = { id: string; path: string }
+/** markers は経路のファイルが静的に描画する PageMarker の kind。 */
+export type UiRoute = { id: string; path: string; markers: string[] }
 
 /** UI の宣言は HTTP のコンパイルへ混ぜず、型の参照だけを共有する。 */
 export async function loadUiCatalog(root: string): Promise<UiCatalog> {
@@ -145,19 +149,31 @@ export function extractUiCatalog(program: Program, root: string): UiCatalog {
     identifiers.set(target, metadata<UiDestination>('destination', target)!.id)
   const fields = (model: Model, prefix: string): UiField[] =>
     [...model.properties.values()].map((property) => {
-      const info = metadata<FieldInfo>('field', property)
-      if (!info) throw new Error(`${prefix}/${property.name}: 入力項目の説明がない`)
+      const id = `${prefix}/${property.name}`
+      const info = metadata<Partial<FieldInfo> & Pick<FieldInfo, 'label' | 'control'>>(
+        'field',
+        property,
+      )
+      if (!info) throw new Error(`${id}: 入力項目の説明がない`)
       const binding = getAutoDecoratorValue(program, 'IdMagicUi.bind', property)?.source as
         | ModelProperty
         | undefined
+      if (!binding && !info.mapping)
+        throw new Error(`${id}: API プロパティへ束縛しない入力には mapping が必要`)
+      // 束縛した入力は型を書き写さず、束縛先から導く。
+      const type =
+        binding && property.type.kind === 'Intrinsic' && property.type.name === 'unknown'
+          ? binding.type
+          : property.type
       return {
+        initial: '空',
+        condition: '常時',
         ...info,
-        id: `${prefix}/${property.name}`,
-        type: getTypeName(property.type),
+        id,
+        type: getTypeName(type),
         binding: binding ? `${getTypeName(binding.model!)}.${binding.name}` : undefined,
       }
     })
-  const actionOwners = new Map<ModelProperty, { page: string; id: string }>()
   const pages = pageTargets.map((target): UiPage => {
     const info = metadata<PageInfo>('page', target)!
     const source = relative(root, getSourceLocation(target).file.path).replaceAll('\\', '/')
@@ -170,10 +186,14 @@ export function extractUiCatalog(program: Program, root: string): UiCatalog {
     if (target.type.kind !== 'Model') throw new Error(`${info.id}: ページがモデルではない`)
     const model = target.type
     const forms = properties(model, 'forms').map((property): UiForm => {
-      const form = metadata<Omit<UiForm, 'id' | 'fields'>>('form', property)
+      const form = metadata<Omit<UiForm, 'id' | 'fields' | 'condition'> & { condition?: string }>(
+        'form',
+        property,
+      )
       if (!form || property.type.kind !== 'Model')
         throw new Error(`${info.id}/${property.name}: フォームの説明がない`)
       return {
+        condition: '常時',
         ...form,
         id: property.name,
         fields: fields(property.type, `${info.id}/${property.name}`),
@@ -189,15 +209,23 @@ export function extractUiCatalog(program: Program, root: string): UiCatalog {
       }),
     )
     const actions = properties(model, 'actions').map((property): UiAction => {
-      actionOwners.set(property, { page: info.id, id: property.name })
       const transition = getAutoDecoratorValue(program, 'IdMagicUi.transition', property)
       const destination = identifiers.get(transition?.destination as ModelProperty)
       if (!transition || !destination) throw new Error(`${info.id}/${property.name}: 遷移先が不明`)
       const operations = getAutoDecoratorValue(program, 'IdMagicUi.uses', property)?.operations as
         | Operation[]
         | undefined
+      const declared = transition.info as Partial<UiAction> & Pick<UiAction, 'event'>
+      if (declared.mode === 'data' && !declared.result)
+        throw new Error(`${info.id}/${property.name}: ページ内の更新には result が必要`)
       return {
-        ...(transition.info as Omit<UiAction, 'id' | 'destination' | 'operations'>),
+        from: 'ready',
+        toState: 'ready',
+        condition: '常時',
+        mode: 'navigation',
+        data: 'なし',
+        result: '移動先を表示する',
+        ...declared,
         id: property.name,
         destination,
         operations: (operations ?? []).map((operation) => getTypeName(operation)),
@@ -205,6 +233,8 @@ export function extractUiCatalog(program: Program, root: string): UiCatalog {
     })
     return {
       ...info,
+      route: info.route ?? '',
+      path: '',
       module,
       category: String(category.value.value ?? category.value.name),
       categoryName: getDoc(program, category.value) ?? category.value.name,
@@ -251,15 +281,25 @@ export function extractUiCatalog(program: Program, root: string): UiCatalog {
         const to = edge.to as ModelProperty
         if (from.model !== target || to.model !== target)
           throw new Error(`${info.id}: 別の利用手順の表示をつないでいる`)
-        const action = edge.action ? actionOwners.get(edge.action as ModelProperty) : undefined
-        if (edge.action && !action) throw new Error(`${info.id}: 参照する操作が不明`)
+        const { action, ...link } = edge.info as {
+          trigger: string
+          alternate?: boolean
+          action?: string
+        }
+        // 操作を持つページは、すべての表示を集めた後で起点の表示から決める。
         links.push({
-          ...(edge.info as { trigger: string; alternate?: boolean }),
+          ...link,
           from: from.name,
           to: to.name,
-          action,
+          action: action ? { page: '', id: action } : undefined,
         })
       }
+    }
+    for (const link of links) {
+      if (!link.action) continue
+      const page = views.find((view) => view.id === link.from)?.page
+      if (!page) throw new Error(`${info.id}: 操作 ${link.action.id} の起点の表示が不明`)
+      link.action.page = page
     }
     return { ...info, module, views, links }
   })
@@ -274,8 +314,67 @@ export function extractUiCatalog(program: Program, root: string): UiCatalog {
   }
 }
 
+const pageMarkerRule = `
+id: page-marker
+language: tsx
+rule:
+  kind: string_fragment
+  inside:
+    kind: string
+    inside:
+      kind: jsx_attribute
+      has: { kind: property_identifier, regex: ^kind$ }
+      inside:
+        any: [{ kind: jsx_opening_element }, { kind: jsx_self_closing_element }]
+        has: { field: name, regex: ^PageMarker$ }
+`
+
+/**
+ * 宣言のページ ID と実装の PageMarker を対応させ、経路と URL を埋めた写しを返す。
+ * route を明示したページは、その経路のマーカーが別の ID を指していないことだけを確かめる。
+ */
+export function resolveRoutes(
+  catalog: UiCatalog,
+  routes: readonly UiRoute[],
+): { catalog: UiCatalog; findings: string[] } {
+  const findings: string[] = []
+  const pages = catalog.pages.map((page) => {
+    const candidates = page.route
+      ? routes.filter((route) => route.id === page.route)
+      : routes.filter((route) => route.markers.includes(page.id))
+    if (page.route && candidates.length === 0)
+      findings.push(`${page.id}: 明示した経路に実装がない: ${page.route}`)
+    else if (candidates.length === 0)
+      findings.push(
+        `${page.id}: ページマーカーに一致する経路がない。ID を PageMarker の kind に合わせる`,
+      )
+    else if (candidates.length > 1)
+      findings.push(
+        `${page.id}: 同じページマーカーを持つ経路が複数ある。route で選ぶ: ${candidates.map((one) => one.id).join(', ')}`,
+      )
+    const route = candidates.length === 1 ? candidates[0]! : undefined
+    if (route?.markers.length && !route.markers.includes(page.id))
+      findings.push(
+        `${page.id}: ページ ID とページマーカーが異なる: ${route.id} (${route.markers.join(', ')})`,
+      )
+    return route ? { ...page, route: route.id, path: route.path } : page
+  })
+  return { catalog: { ...catalog, pages }, findings }
+}
+
 /** ファイル名や JSX の見た目を推測せず、正式な経路宣言を読む。 */
 export function routeDeclarations(source: string): UiRoute[] {
+  // kind を式で決めるマーカーは数えず、その経路のページは route を明示する。
+  const marked = Bun.spawnSync(
+    ['ast-grep', 'scan', '--stdin', '--json=compact', '--inline-rules', pageMarkerRule],
+    { stdin: new TextEncoder().encode(source) },
+  )
+  if (marked.exitCode !== 0) throw new Error(marked.stderr.toString())
+  const markers = [
+    ...new Set<string>(
+      JSON.parse(marked.stdout.toString() || '[]').map((match: { text: string }) => match.text),
+    ),
+  ]
   const matches = Bun.spawnSync(
     ['ast-grep', 'run', '--lang', 'tsx', '-p', 'createFileRoute($ID)', '--json=compact', '--stdin'],
     { stdin: new TextEncoder().encode(source) },
@@ -298,7 +397,7 @@ export function routeDeclarations(source: string): UiRoute[] {
           .map((part) => (part.endsWith('_') ? part.slice(0, -1) : part))
           .join('/')
           .replace(/\/$/, '') || '/'
-      return { id, path }
+      return { id, path, markers }
     },
   )
   const root = Bun.spawnSync(
@@ -315,7 +414,7 @@ export function routeDeclarations(source: string): UiRoute[] {
     { stdin: new TextEncoder().encode(source) },
   )
   if (root.exitCode === 0) {
-    routes.push({ id: '__root__', path: '/' })
+    routes.push({ id: '__root__', path: '/', markers: [] })
   }
   return routes
 }
@@ -336,12 +435,13 @@ export function validateUiCatalog(
     ids.add(item.id)
   }
   for (const page of catalog.pages) {
-    if (paths.has(page.path)) findings.push(`ページ URL の重複: ${page.path}`)
-    paths.add(page.path)
-    if (assigned.has(page.route)) findings.push(`経路の重複: ${page.route}`)
-    assigned.set(page.route, page.path)
-    if (!routes.some((route) => route.id === page.route && route.path === page.path))
-      findings.push(`設計の経路に実装がない、または URL が異なる: ${page.route} (${page.path})`)
+    // 経路を解決できなかったページは resolveRoutes が報告する。
+    if (page.path) {
+      if (paths.has(page.path)) findings.push(`ページ URL の重複: ${page.path}`)
+      paths.add(page.path)
+      if (assigned.has(page.route)) findings.push(`経路の重複: ${page.route}`)
+      assigned.set(page.route, page.path)
+    }
     if (!page.states.ready) findings.push(`${page.id}: ready 状態がない`)
     if (page.actions.length === 0) findings.push(`${page.id}: 操作と結果の記述がない`)
     for (const action of page.actions) {

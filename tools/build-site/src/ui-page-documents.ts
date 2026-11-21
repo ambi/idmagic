@@ -49,7 +49,7 @@ function fieldsTable(fields: readonly UiField[]): string[] {
     '| --- | --- | --- | --- | --- | --- | --- |',
     ...fields.map(
       (field) =>
-        `| ${cell(field.label)}${field.repeated ? '（繰り返し）' : ''} | ${field.id} | ${cell(field.control)} | ${cell(field.type)} | ${cell(field.initial)} | ${cell(field.condition)} | ${cell(field.binding ? `${field.binding}：${field.mapping}` : field.mapping)} |`,
+        `| ${cell(field.label)}${field.repeated ? '（繰り返し）' : ''} | ${field.id} | ${cell(field.control)} | ${cell(field.type)} | ${cell(field.initial)} | ${cell(field.condition)} | ${cell([field.binding, field.mapping].filter(Boolean).join('：'))} |`,
     ),
     '',
   ]

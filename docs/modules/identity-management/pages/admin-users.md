@@ -34,15 +34,13 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 検索語 | admin-users/search/query | text | string | URL の query | 常時 | 一覧の query |
-| 状態 | admin-users/search/status | 選択 | string | URL の status または active | 常時 | 一覧の status |
+| 検索語 | admin-users/search/query | text | string | URL の query | 常時 | URL と一覧の query |
+| 状態 | admin-users/search/status | 選択 | string | URL の status または active | 常時 | URL と一覧の status |
 
 ## パラメーター
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 検索語 | admin-users/parameters/query | text | string | URL の query | 常時 | 一覧の query |
-| 状態 | admin-users/parameters/status | 選択 | string | URL の status または active | 常時 | 一覧の status |
 | 次ページのカーソル | admin-users/parameters/cursor | URL パラメーター | string | URL の cursor | ページ送りの場合 | API の cursor |
 
 ## 操作と結果の詳細

@@ -35,9 +35,9 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 認証手段 | totp/factor/method | 選択 | string | 利用可能な最初の手段 | 利用可能な手段が複数ある場合 | TOTP、WebAuthn、回復コードの UI の切り替え |
-| TOTP のコード | totp/factor/code | text | string | 空 | TOTP を選択した場合 | IdMagic.Contract.BrowserTotpRequest.code：code |
-| 回復コード | totp/factor/recovery | text | string | 空 | 回復コードを選択した場合 | IdMagic.Contract.BrowserRecoveryCodeRequest.code：code |
-| デバイスを記憶する | totp/factor/rememberDevice | checkbox | boolean | false | ポリシーが許し TOTP またはパスキーを選択した場合 | IdMagic.Contract.BrowserTotpRequest.remember_device：remember_device |
+| TOTP のコード | totp/factor/code | text | string | 空 | TOTP を選択した場合 | IdMagic.Contract.BrowserTotpRequest.code |
+| 回復コード | totp/factor/recovery | text | string | 空 | 回復コードを選択した場合 | IdMagic.Contract.BrowserRecoveryCodeRequest.code |
+| デバイスを記憶する | totp/factor/rememberDevice | checkbox | boolean | false | ポリシーが許し TOTP またはパスキーを選択した場合 | IdMagic.Contract.BrowserTotpRequest.remember_device |
 
 ## パラメーター
 

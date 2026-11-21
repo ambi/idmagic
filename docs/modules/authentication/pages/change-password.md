@@ -10,7 +10,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 分類：[アカウントポータル](../../../design/application/pages/account/README.md) / [セキュリティ](../../../design/application/pages/account/security/README.md)
 
-`account-password`　`/account/password`
+`change-password`　`/account/password`
 
 現在のパスワードを確認して新しいパスワードへ変更する
 
@@ -30,25 +30,25 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 ### パスワード変更
 
-識別子：account-password/change。表示条件：常時。確定：変更。
+識別子：change-password/change。表示条件：常時。確定：変更。
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 現在のパスワード | account-password/change/currentPassword | password | string | 空 | 対象のフォームを操作するとき | IdMagic.Contract.BrowserChangePasswordRequest.current_password：current_password |
-| 新しいパスワード | account-password/change/newPassword | password | string | 空 | 対象のフォームを操作するとき | IdMagic.Contract.BrowserChangePasswordRequest.new_password：new_password |
+| 現在のパスワード | change-password/change/currentPassword | password | string | 空 | 対象のフォームを操作するとき | IdMagic.Contract.BrowserChangePasswordRequest.current_password |
+| 新しいパスワード | change-password/change/newPassword | password | string | 空 | 対象のフォームを操作するとき | IdMagic.Contract.BrowserChangePasswordRequest.new_password |
 
 ## パラメーター
 
 | 項目 | 識別子 | 入力の種類 | 型 | 初期値 | 表示条件 | データとの対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 認証後の戻り先 | account-password/parameters/returnTo | URL | string | return_to | 認可フローから来た場合 | 同じテナントの許可された戻り先 |
+| 認証後の戻り先 | change-password/parameters/returnTo | URL | string | return_to | 認可フローから来た場合 | 同じテナントの許可された戻り先 |
 
 ## 操作と結果の詳細
 
 | 操作 | 起点 | 契機 | 条件 | API | 結果 | 到達先 | データ |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| save | ready | 変更 | 更新が成功 | IdMagic.Authentication.Operations.ChangePassword | 必須アクションなら認可フローを継続し、それ以外は完了を表示する | [パスワード変更](account-password.md) / ready | 対象の識別子と操作の入力値 |
-| failure | ready | 変更 | 現在のパスワードが違う、ポリシー違反または更新失敗 | UI 内の操作 | 変更せず理由を表示する | [パスワード変更](account-password.md) / error | 対象の識別子と操作の入力値 |
+| save | ready | 変更 | 更新が成功 | IdMagic.Authentication.Operations.ChangePassword | 必須アクションなら認可フローを継続し、それ以外は完了を表示する | [パスワード変更](change-password.md) / ready | 対象の識別子と操作の入力値 |
+| failure | ready | 変更 | 現在のパスワードが違う、ポリシー違反または更新失敗 | UI 内の操作 | 変更せず理由を表示する | [パスワード変更](change-password.md) / error | 対象の識別子と操作の入力値 |
 
 ## 表示状態
 
